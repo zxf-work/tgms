@@ -19,8 +19,12 @@ test:
 test-full:
 	TGMS_HYP_EXAMPLES=500 $(UV) run pytest tests/
 
-ci: lint
+ci: lint hygiene
 	TGMS_HYP_EXAMPLES=50 $(UV) run pytest tests/ -q
+
+# spec §8.1: no commit may mix tests//oracle.py with implementation changes
+hygiene:
+	$(UV) run python scripts/check_commit_hygiene.py
 
 lint:
 	$(UV) run ruff check tgms/ tests/
