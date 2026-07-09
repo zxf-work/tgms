@@ -123,3 +123,19 @@ implementation — hygiene checking starts at the marker recorded in D-010.
 - **Proposal:** Implement with WP2.6 baselines/harness (M6/M7, not yet built);
   T4 authoring targets the raised n.
 - **Consequence:** Tracked in the M6/M7 task list; no code yet.
+
+## D-013 — 2026-07-09 — Model matrix: open-source first, commercial deferred
+- **Context:** Spec WP2.6 lists `claude-sonnet-4-6` + one OpenAI flagship as
+  the frontier tier. PI direction (2026-07-09): use open-source models (Qwen
+  family and peers that fit the 24GB Turing GPU) for now; commercial models
+  move to a future phase.
+- **Proposal:** Serve ≤14B open-source instruct/reasoner models via vLLM on
+  xzgpu (Quadro RTX 6000, sm_75 → fp16 only, AWQ for 14B). Start:
+  Qwen2.5-7B-Instruct; then Qwen2.5-14B-Instruct-AWQ, Phi-4-mini, a distilled
+  reasoner. The "frontier vs small" C3 gap readout is re-scoped to
+  "largest servable open model vs smaller open models" until commercial
+  models are added; C1/C2 readouts are unaffected (system-vs-baseline under
+  identical models).
+- **Consequence:** configs/matrix-dev-oss.yaml is the active dev config;
+  llm_api_base/llm_api_key plumb LiteLLM to the vLLM endpoint. Model version
+  strings recorded per §8.4 receipts remain mandatory.

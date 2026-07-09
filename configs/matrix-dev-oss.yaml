@@ -1,0 +1,18 @@
+# Open-source dev-split matrix (C3 track): models served locally by vLLM
+# (OpenAI-compatible endpoint), zero API cost. Commercial frontier models
+# deferred (PI decision 2026-07-09; see DECISIONS.md D-013).
+#
+# Serve first (GPU node):
+#   vllm serve Qwen/Qwen2.5-7B-Instruct --dtype half --max-model-len 16384
+suite_path: stores/suite-collegemsg/suite.json
+store_path: stores/collegemsg
+out_dir: runs/dev-collegemsg-oss
+split: dev
+systems: [ours, b2, b5]
+models: ["openai/Qwen/Qwen2.5-7B-Instruct"]
+seeds: [0]
+max_repairs: 3
+b1_k: 20
+memory_db: stores/collegemsg/memory.sqlite
+llm_api_base: "http://localhost:8000/v1"
+llm_api_key: "EMPTY"
