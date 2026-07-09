@@ -715,12 +715,16 @@ def generate_suite(store: Store, dataset: str, seed: int = 0,
     engine-executed gold -> 20/80 dev/test split -> hash the frozen test
     split. Deterministic given (store content, dataset, seed, sizes)."""
     sizes = sizes or {"t1": 60, "t3": 24, "t4": 16, "probes": 8}
-    rng = random.Random(seed)
-    ctx = build_context(store, dataset, rng)
+    # independent rng streams: the correction-injection path consumes draws
+    # only on first run (reuse recovers from the event log), so task sampling
+    # must not share its stream or reruns would diverge
+    rng_corr = random.Random(seed ^ 0x0C0FFEE)
+    rng = random.Random(seed ^ 0x7A5C7A5)
+    ctx = build_context(store, dataset, rng_corr)
 
     # corrections first: they become part of the belief history all gold
     # answers are computed under
-    records = inject_corrections(store, ctx, rng, sizes.get("probes", 8))
+    records = inject_corrections(store, ctx, rng_corr, sizes.get("probes", 8))
     ctx = build_context(store, dataset, random.Random(seed))  # extent may grow
 
     tasks: list[Task] = []

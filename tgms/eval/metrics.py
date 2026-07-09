@@ -16,15 +16,30 @@ FLOAT_TOL = 1e-9
 # answer scoring                                                               #
 # --------------------------------------------------------------------------- #
 
+def _collect_entity_strings(obj: Any, out: set[str]) -> None:
+    """uid-bearing strings anywhere in a row structure (uid/src/dst keys) —
+    entity answers may be uid strings, {uid: ...} rows, or nested structures
+    such as motif instances."""
+    if isinstance(obj, dict):
+        for k, v in obj.items():
+            if k in ("uid", "src", "dst") and isinstance(v, str):
+                out.add(v)
+            else:
+                _collect_entity_strings(v, out)
+    elif isinstance(obj, (list, tuple, set)):
+        for v in obj:
+            _collect_entity_strings(v, out)
+
+
 def _as_uid_set(value: Any) -> set[str]:
     if value is None:
         return set()
-    out = set()
+    out: set[str] = set()
     for v in value if isinstance(value, (list, tuple, set)) else [value]:
-        if isinstance(v, dict) and "uid" in v:
-            out.add(str(v["uid"]))
-        elif isinstance(v, str):
+        if isinstance(v, str):
             out.add(v)
+        else:
+            _collect_entity_strings(v, out)
     return out
 
 

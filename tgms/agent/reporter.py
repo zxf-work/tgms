@@ -87,7 +87,17 @@ def mechanical_answer(plan: Plan, trace: Trace) -> dict[str, Any]:
             claim["from"] = src
         text = f"The answer is {ans}."
     elif kind == "entity_set":
-        uids = [r["uid"] if isinstance(r, dict) else r for r in (ans or [])]
+        # rows may be uid strings, {uid: ...} dicts, or nested structures
+        # (e.g. motif instances) — collect entity identifiers wherever they sit
+        from tgms.agent.verifier import _collect_strings
+        uids: list[str] = []
+        for r in (ans or []):
+            if isinstance(r, str):
+                found = {r}
+            else:
+                found = set()
+                _collect_strings(r, frozenset({"uid", "src", "dst"}), found)
+            uids.extend(u for u in sorted(found) if u not in uids)
         claim.update(type="entity", uids=uids)
         text = f"The entities are: {', '.join(uids) if uids else '(none)'}."
     elif kind == "interval" and isinstance(ans, dict):
