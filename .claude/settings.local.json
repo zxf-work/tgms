@@ -1,0 +1,11 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(uv --version)",
+      "Bash(ssh -o BatchMode=yes -o ConnectTimeout=8 xzhang@xzgpu.uom.memphis.edu 'hostname && echo OK && ls /mnt/project/xzhang 2>/dev/null | head')",
+      "Bash(python3 -)",
+      "Bash(git add *)",
+      "Bash(git commit -q -m 'M1: bi-temporal core, HLC clock, write-ahead event log, DuckDB + Kùzu adapters *)"
+    ]
+  }
+}

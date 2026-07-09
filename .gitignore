@@ -1,0 +1,12 @@
+.venv/
+__pycache__/
+*.pyc
+.pytest_cache/
+.hypothesis/
+.coverage
+data_raw/
+*.duckdb
+*.kuzu/
+stores/
+.ruff_cache/
+dist/
