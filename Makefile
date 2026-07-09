@@ -1,6 +1,12 @@
 UV ?= uv
 STORE ?= stores/synth-100k
 
+# keep the venv OUT of iCloud-synced ~/Documents: iCloud sets the macOS
+# hidden flag on .pth files and Python 3.12+ silently skips them, which
+# breaks the editable install (symptom: ModuleNotFoundError: tgms from
+# console scripts). Same var is documented in README for interactive use.
+export UV_PROJECT_ENVIRONMENT ?= $(HOME)/.venvs/tgms
+
 .PHONY: setup test test-full ci lint bench-ops synth-100k synth-1m reproduce clean
 
 setup:

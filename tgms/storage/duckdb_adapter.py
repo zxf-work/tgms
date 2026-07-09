@@ -113,6 +113,25 @@ class DuckDBAdapter(StorageAdapter):
     def insert_edge_versions(self, rows: Sequence[EdgeVersion]) -> None:
         if not rows:
             return
+        if len(rows) >= 5_000:  # bulk path: Arrow scan, no per-row binds
+            import pyarrow as pa
+            tbl = pa.table({
+                "vid": [v.vid for v in rows], "eid": [v.eid for v in rows],
+                "src": [v.src for v in rows], "dst": [v.dst for v in rows],
+                "src_id": pa.array((self._ids[v.src] for v in rows), pa.int64()),
+                "dst_id": pa.array((self._ids[v.dst] for v in rows), pa.int64()),
+                "rel_type": [v.rel_type for v in rows],
+                "disc": [v.disc for v in rows],
+                "vt_s": pa.array((v.vt_s for v in rows), pa.int64()),
+                "vt_e": pa.array((v.vt_e for v in rows), pa.int64()),
+                "tt_s": pa.array((v.tt_s for v in rows), pa.int64()),
+                "tt_e": pa.array((v.tt_e for v in rows), pa.int64()),
+                "props": [canonical_json(v.props) for v in rows],
+            })
+            self.conn.register("_bulk_edges", tbl)
+            self.conn.execute("INSERT INTO edge_versions SELECT * FROM _bulk_edges")
+            self.conn.unregister("_bulk_edges")
+            return
         self.conn.executemany(
             "INSERT INTO edge_versions VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)",
             [(v.vid, v.eid, v.src, v.dst, self._ids[v.src], self._ids[v.dst], v.rel_type,
@@ -146,6 +165,20 @@ class DuckDBAdapter(StorageAdapter):
             "WHERE eid = ? AND tt_s <= ? AND ? < tt_e ORDER BY vt_s",
             (eid, as_of_tt, as_of_tt)).fetchall()
         return [_edge_from_row(r) for r in rows]
+
+    def nodes_with_believed_versions(self, uids: Sequence[str],
+                                     as_of_tt: int = OPEN_END) -> set[str]:
+        a = clamp_tt(as_of_tt)
+        out: set[str] = set()
+        uids = list(uids)
+        for i in range(0, len(uids), 10_000):  # chunked IN lists
+            chunk = uids[i:i + 10_000]
+            rows = self.conn.execute(
+                "SELECT DISTINCT uid FROM node_versions "
+                f"WHERE tt_s <= ? AND ? < tt_e AND uid IN ({','.join('?' * len(chunk))})",
+                [a, a, *chunk]).fetchall()
+            out.update(r[0] for r in rows)
+        return out
 
     def all_node_versions(self) -> Iterable[NodeVersion]:
         rows = self.conn.execute(

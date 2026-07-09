@@ -1,0 +1,24 @@
+{
+  "question": "In which week did overall message activity burst, and who were the three most active senders that week? The dataset spans March 2020.",
+  "plan": {
+    "plan_id": "ex-burst-topk",
+    "question": "In which week did overall message activity burst, and who were the three most active senders that week? The dataset spans March 2020.",
+    "steps": [
+      {"id": "s1", "op": "burst_detection",
+       "args": {"target": {"kind": "edge_event_rate"},
+                "window": {"t_a": 1583020800000000, "t_b": 1585699200000000},
+                "stride": 604800000000, "method": "zscore"},
+       "depends_on": []},
+      {"id": "s2", "op": "graph_metric_timeseries",
+       "args": {"metric": "edge_event_count",
+                "window": {"t_a": 1583020800000000, "t_b": 1585699200000000},
+                "stride": 604800000000},
+       "depends_on": []},
+      {"id": "s3", "op": "compute",
+       "args": {"fn": "topk", "input": {"$ref": "s2.rows"},
+                "field": "value", "k": 1},
+       "depends_on": ["s2"]}
+    ],
+    "answer_spec": {"kind": "interval", "from": "s1.rows[0]"}
+  }
+}

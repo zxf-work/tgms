@@ -1,0 +1,16 @@
+{
+  "question": "As of transaction time 1614556800000000, what did we believe Bob's affiliation history was?",
+  "plan": {
+    "plan_id": "ex-as-of",
+    "question": "As of transaction time 1614556800000000, what did we believe Bob's affiliation history was?",
+    "steps": [
+      {"id": "s1", "op": "resolve_entities",
+       "args": {"query": "Bob", "as_of_tt": 1614556800000000}, "depends_on": []},
+      {"id": "s2", "op": "entity_history",
+       "args": {"uid": {"$ref": "s1.rows[0].uid"},
+                "as_of_tt": 1614556800000000, "include_edges": true},
+       "depends_on": ["s1"]}
+    ],
+    "answer_spec": {"kind": "series", "from": "s2.rows"}
+  }
+}

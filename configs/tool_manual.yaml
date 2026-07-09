@@ -115,6 +115,16 @@ co_active:
               "b_spec": {"rel_type": "S"},
               "allen_relation": {"relation": "before", "gap": 3600000000}}
 
+compute:
+  description: |
+    Deterministic computation over a prior step's rows — never do arithmetic
+    yourself. fn: count (rows), sum/min/max (numeric `field`), topk (`field`,
+    `k` -> best rows), filter (`field`, `cmp` in eq/ne/lt/le/gt/ge/contains,
+    `value`), interval_relation (`a`, `b` half-open intervals -> Allen
+    relation name). `input` normally arrives via {"$ref": "sN.rows"}.
+    Cost: trivial. Example: {"fn": "topk", "input": {"$ref": "s2.rows"},
+    "field": "value", "k": 3}
+
 resolve_entities:
   description: |
     Look up node uids by name: exact uid match first, then case-insensitive

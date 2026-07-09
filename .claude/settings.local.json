@@ -9,7 +9,24 @@
       "Bash(git commit -q -m 'M2: temporal operator algebra O1-O12 + brute-force oracle + property/metamorphic tests *)",
       "Read(//private/tmp/**)",
       "Bash(/Users/xz/Documents/TGMS/.venv/bin/python3 -c \"import sys; print\\(sys.path\\)\")",
-      "Bash(xxd)"
+      "Bash(xxd)",
+      "Bash(ssh -o BatchMode=yes xzhang@xzgpu.uom.memphis.edu 'mkdir -p /mnt/project/xzhang/tgms/repo.git /mnt/project/xzhang/tgms/work && cd /mnt/project/xzhang/tgms/repo.git && git init --bare -b main 2>&1 | tail -1 && echo \"--- env:\" && \\(command -v uv && uv --version\\) 2>/dev/null; python3 --version 2>/dev/null; nproc; free -g | head -2; nvidia-smi --query-gpu=name,memory.total --format=csv,noheader 2>/dev/null')",
+      "Bash(ssh -o BatchMode=yes xzhang@xzgpu.uom.memphis.edu 'cd /mnt/project/xzhang/tgms/repo.git && \\(ls HEAD >/dev/null 2>&1 && echo has-head || \\(git init --bare . 2>&1 | tail -1 && git symbolic-ref HEAD refs/heads/main\\)\\) && git --version')",
+      "Bash(git remote *)",
+      "Bash(git push *)",
+      "Bash(ssh -o BatchMode=yes xzhang@xzgpu.uom.memphis.edu 'cd /mnt/project/xzhang/tgms/work && \\(git clone -q /mnt/project/xzhang/tgms/repo.git tgms 2>/dev/null || \\(cd tgms && git pull -q\\)\\) && cd tgms && git log --oneline | head -3')",
+      "Bash(ssh -o BatchMode=yes xzhang@xzgpu.uom.memphis.edu 'export PATH=\"$HOME/.local/bin:$PATH\"; command -v uv >/dev/null || \\(curl -LsSf https://astral.sh/uv/install.sh | sh\\) >/dev/null 2>&1; uv --version && cd /mnt/project/xzhang/tgms/work/tgms && uv python install 3.12 2>&1 | tail -1 && uv sync --extra agent 2>&1 | tail -1')",
+      "Bash(ssh -o BatchMode=yes xzhang@xzgpu.uom.memphis.edu 'export PATH=\"$HOME/.local/bin:$PATH\"; cd /mnt/project/xzhang/tgms/work/tgms && uv run pytest tests/ 2>&1 | tail -2')",
+      "Bash(ssh -o BatchMode=yes xzhang@xzgpu.uom.memphis.edu 'export PATH=\"$HOME/.local/bin:$PATH\"; cd /mnt/project/xzhang/tgms/work/tgms && make synth-1m && make bench-ops STORE=stores/synth-1m')",
+      "Bash(rm \".venv/lib/python3.12/site-packages/_editable_impl_tgms 2.pth\")",
+      "Bash(printf '/Users/xz/Documents/TGMS\\\\n')",
+      "Bash(/Users/xz/Documents/TGMS/.venv/bin/tgms --help)",
+      "Bash(/Users/xz/Documents/TGMS/.venv/bin/python3 -c \"import sys; print\\('/Users/xz/Documents/TGMS' in sys.path\\)\")",
+      "Bash(/Users/xz/Documents/TGMS/.venv/bin/python3 -c \"import site; print\\(site.ENABLE_USER_SITE, site.getsitepackages\\(\\)\\)\")",
+      "Bash(/Users/xz/Documents/TGMS/.venv/bin/python3 -c ' *)",
+      "Bash(/Users/xz/Documents/TGMS/.venv/bin/python3 -s -c \"print\\('with -s'\\)\")",
+      "Bash(chflags nohidden *)",
+      "Bash(git commit -q -m 'M4: Plan IR + $ref language, O13 compute, static verifier, executor, planner, Agent facade *)"
     ]
   }
 }

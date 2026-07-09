@@ -1,0 +1,22 @@
+{
+  "question": "Among accounts reachable from ACME Corp between Feb 1 and Mar 1 2020, how many cyclic temporal triangles closed within one day?",
+  "plan": {
+    "plan_id": "ex-reach-motifs",
+    "question": "Among accounts reachable from ACME Corp between Feb 1 and Mar 1 2020, how many cyclic temporal triangles closed within one day?",
+    "steps": [
+      {"id": "s1", "op": "resolve_entities",
+       "args": {"query": "ACME Corp", "label": "Org"}, "depends_on": []},
+      {"id": "s2", "op": "temporal_reachability",
+       "args": {"src": {"$ref": "s1.rows[0].uid"},
+                "window": {"t_a": 1580515200000000, "t_b": 1583020800000000},
+                "direction": "out", "limit": 10000},
+       "depends_on": ["s1"]},
+      {"id": "s3", "op": "count_temporal_motifs",
+       "args": {"motif": "M_triangle_cyclic", "delta": 86400000000,
+                "window": {"t_a": 1580515200000000, "t_b": 1583020800000000},
+                "node_filter": {"$ref": "s2.rows[*].uid"}},
+       "depends_on": ["s2"]}
+    ],
+    "answer_spec": {"kind": "count", "from": "s3.count"}
+  }
+}

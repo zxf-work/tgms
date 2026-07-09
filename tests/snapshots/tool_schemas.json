@@ -244,6 +244,124 @@
   "name": "co_active"
  },
  {
+  "description": "Deterministic computation over a prior step's rows \u2014 never do arithmetic\nyourself. fn: count (rows), sum/min/max (numeric `field`), topk (`field`,\n`k` -> best rows), filter (`field`, `cmp` in eq/ne/lt/le/gt/ge/contains,\n`value`), interval_relation (`a`, `b` half-open intervals -> Allen\nrelation name). `input` normally arrives via {\"$ref\": \"sN.rows\"}.\nCost: trivial. Example: {\"fn\": \"topk\", \"input\": {\"$ref\": \"s2.rows\"},\n\"field\": \"value\", \"k\": 3}\n",
+  "input_schema": {
+   "additionalProperties": false,
+   "properties": {
+    "a": {
+     "additionalProperties": false,
+     "default": null,
+     "properties": {
+      "end": {
+       "type": "integer"
+      },
+      "start": {
+       "type": "integer"
+      }
+     },
+     "required": [
+      "start",
+      "end"
+     ],
+     "type": [
+      "object",
+      "null"
+     ]
+    },
+    "b": {
+     "additionalProperties": false,
+     "default": null,
+     "properties": {
+      "end": {
+       "type": "integer"
+      },
+      "start": {
+       "type": "integer"
+      }
+     },
+     "required": [
+      "start",
+      "end"
+     ],
+     "type": [
+      "object",
+      "null"
+     ]
+    },
+    "cmp": {
+     "default": null,
+     "enum": [
+      "eq",
+      "ne",
+      "lt",
+      "le",
+      "gt",
+      "ge",
+      "contains",
+      null
+     ],
+     "type": [
+      "string",
+      "null"
+     ]
+    },
+    "field": {
+     "default": null,
+     "description": "object field to aggregate/compare on",
+     "type": [
+      "string",
+      "null"
+     ]
+    },
+    "fn": {
+     "enum": [
+      "count",
+      "sum",
+      "min",
+      "max",
+      "topk",
+      "filter",
+      "interval_relation"
+     ],
+     "type": "string"
+    },
+    "input": {
+     "default": null,
+     "description": "rows or scalars from a prior step ($ref)",
+     "maxItems": 50000,
+     "type": [
+      "array",
+      "null"
+     ]
+    },
+    "k": {
+     "default": null,
+     "maximum": 1000,
+     "minimum": 1,
+     "type": [
+      "integer",
+      "null"
+     ]
+    },
+    "limit": {
+     "default": 100,
+     "maximum": 10000,
+     "minimum": 1,
+     "type": "integer"
+    },
+    "value": {
+     "default": null,
+     "description": "comparison value for filter"
+    }
+   },
+   "required": [
+    "fn"
+   ],
+   "type": "object"
+  },
+  "name": "compute"
+ },
+ {
   "description": "Exact count of delta-temporal motif instances among edge events in\n`window`: motif edges strictly time-ordered with span <= delta\n(microseconds), motif nodes pairwise distinct, rel_type ignored.\nMotifs: M_triangle_cyclic (u->v,v->w,w->u), M_triangle_acyclic_1\n(u->v,u->w,v->w), M_2node_pingpong (u->v,v->u,u->v), M_star_out_3\n(u->a,u->b,u->c), M_path_3 (u->v->w->x).\nCost: heavy \u2014 REQUIRES node_filter (<= 10k uids) on large graphs;\nE_COST tells you when. Example: {\"motif\": \"M_triangle_cyclic\",\n\"delta\": 86400000000, \"window\": {...}, \"node_filter\": [\"a\",\"b\",\"c\"]}\n",
   "input_schema": {
    "additionalProperties": false,

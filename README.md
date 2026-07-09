@@ -19,7 +19,12 @@ See `docs/` and the Phase 1–2 implementation spec for details.
 ## Quickstart
 
 ```bash
-uv sync                 # install (Python 3.12, managed by uv)
+# NOTE (macOS): if this repo sits in an iCloud-synced folder (~/Documents),
+# keep the venv outside it — iCloud sets the hidden flag on .pth files and
+# Python 3.12+ silently skips them, breaking the editable install.
+export UV_PROJECT_ENVIRONMENT=$HOME/.venvs/tgms
+
+uv sync --extra agent   # install (Python 3.12, managed by uv)
 make test               # property/oracle test suite
 ```
 

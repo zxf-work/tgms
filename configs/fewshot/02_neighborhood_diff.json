@@ -1,0 +1,16 @@
+{
+  "question": "Which collaborators did Alice lose between January 1 and June 1 2021?",
+  "plan": {
+    "plan_id": "ex-nbhd-diff",
+    "question": "Which collaborators did Alice lose between January 1 and June 1 2021?",
+    "steps": [
+      {"id": "s1", "op": "resolve_entities",
+       "args": {"query": "Alice"}, "depends_on": []},
+      {"id": "s2", "op": "neighborhood_evolution",
+       "args": {"uid": {"$ref": "s1.rows[0].uid"},
+                "t1": 1609459200000000, "t2": 1622505600000000, "limit": 200},
+       "depends_on": ["s1"]}
+    ],
+    "answer_spec": {"kind": "entity_set", "from": "s2.neighbors_lost"}
+  }
+}

@@ -114,6 +114,12 @@ class StorageAdapter(ABC):
     @abstractmethod
     def all_edge_versions(self) -> Iterable[EdgeVersion]: ...
 
+    def nodes_with_believed_versions(self, uids: Sequence[str],
+                                     as_of_tt: int = OPEN_END) -> set[str]:
+        """Subset of `uids` that have at least one believed version.
+        Backends should override with a batched query (hot on bulk ingest)."""
+        return {u for u in uids if self.believed_node_versions(u, as_of_tt)}
+
     # --- dense id dictionary ------------------------------------------- #
 
     @abstractmethod
@@ -332,7 +338,8 @@ class StorageAdapter(ABC):
                 if u not in node_first_seen or vt_s < node_first_seen[u]:
                     node_first_seen[u] = vt_s
         label = op.get("node_label", "Node")
-        new_uids = [u for u in node_first_seen if not self.believed_node_versions(u)]
+        known = self.nodes_with_believed_versions(list(node_first_seen))
+        new_uids = [u for u in node_first_seen if u not in known]
         self.ensure_entities([(u, label) for u in node_first_seen])
         self.insert_node_versions([
             NodeVersion(vid=_vid(u, tt, node_first_seen[u]), uid=u, label=label,
