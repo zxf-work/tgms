@@ -578,7 +578,14 @@ def inject_corrections(store: Store, ctx: Ctx, rng: random.Random,
         return existing
     records = []
     for uid in rng.sample(ctx.uids, min(n, len(ctx.uids))):
-        vt_s = ctx.t0 + rng.randrange(max(1, ctx.span // 2))
+        versions = store.adapter.believed_node_versions(uid)
+        if not versions:
+            continue
+        # the correction window must overlap the node's believed history
+        # (event-stream nodes exist from first activity onward)
+        lo = max(versions[0].vt_s, ctx.t0)
+        hi = max(lo + 2, ctx.t1)
+        vt_s = lo + rng.randrange(max(1, (hi - lo) // 2))
         vt_e = vt_s + max(2, ctx.span // 10)
         tt_before = store.clock.last_tt
         tt = store.correct(EntityRef(kind="node", uid=uid),

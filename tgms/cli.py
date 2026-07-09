@@ -44,6 +44,12 @@ def main(argv: list[str] | None = None) -> int:
                          help="synth manifest.json for T2 planted tasks")
     p_tasks.add_argument("--out", required=True)
 
+    p_eval = sub.add_parser("eval", help="run the experiment matrix")
+    p_eval.add_argument("action", choices=["run"])
+    p_eval.add_argument("--config", required=True)
+    p_eval.add_argument("--force", default=None,
+                        help="rerun the frozen test split; reason is logged (§8.3)")
+
     p_mem = sub.add_parser("memory", help="evolution-memory maintenance")
     p_mem.add_argument("action", choices=["build"])
     p_mem.add_argument("--store", required=True)
@@ -96,6 +102,14 @@ def main(argv: list[str] | None = None) -> int:
         print(json.dumps({"n_dev": suite["n_dev"], "n_test": suite["n_test"],
                           "test_split_sha": suite["test_split_sha"]}))
         store.close()
+    elif args.cmd == "eval":
+        import yaml
+        from tgms.agent.planner import default_llm_fn
+        from tgms.eval.harness import run_matrix
+        with open(args.config) as f:
+            cfg = yaml.safe_load(f)
+        rows = run_matrix(cfg, llm_fn=default_llm_fn, force=args.force)
+        print(json.dumps({"rows": len(rows), "out_dir": cfg["out_dir"]}))
     elif args.cmd == "memory":
         import tgms
         from tgms.agent.memory import MICROS_PER_DAY, EvolutionMemory
