@@ -37,20 +37,24 @@ class Store:
     def assert_node(self, uid: str, label: str, props: Props | None = None,
                     vt_s: int = 0, vt_e: int = OPEN_END) -> int:
         return self._write([make_op("assert_node", uid=uid, label=label,
-                                    props=props or {}, vt_s=vt_s, vt_e=vt_e)])
+                                    props=props or {}, vt_s=vt_s, vt_e=vt_e,
+                                    source="ingest", provenance_ref=None)])
 
     def assert_edge(self, src: str, dst: str, rel_type: str, props: Props | None = None,
                     vt_s: int = 0, vt_e: int = OPEN_END, disc: str = "") -> int:
         return self._write([make_op("assert_edge", src=src, dst=dst, rel_type=rel_type,
-                                    props=props or {}, vt_s=vt_s, vt_e=vt_e, disc=disc)])
+                                    props=props or {}, vt_s=vt_s, vt_e=vt_e, disc=disc,
+                                    source="ingest", provenance_ref=None)])
 
     def retract(self, ref: EntityRef, t: int) -> int:
-        return self._write([make_op("retract", ref=_ref_json(ref), t=t)])
+        return self._write([make_op("retract", ref=_ref_json(ref), t=t,
+                                    source="ingest", provenance_ref=None)])
 
     def correct(self, ref: EntityRef, new_props: Props,
                 vt_s: int = 0, vt_e: int = OPEN_END) -> int:
         return self._write([make_op("correct", ref=_ref_json(ref), props=new_props,
-                                    vt_s=vt_s, vt_e=vt_e)])
+                                    vt_s=vt_s, vt_e=vt_e,
+                                    source="ingest", provenance_ref=None)])
 
     def ingest_events(self, events: Iterable[dict[str, Any]],
                       node_label: str = "Node") -> int:
@@ -60,7 +64,8 @@ class Store:
         offset = 0
         for chunk in _chunks(events, INGEST_CHUNK):
             tt = self._write([make_op("ingest_events", events=chunk, offset=offset,
-                                      node_label=node_label)])
+                                      node_label=node_label,
+                                      source="ingest", provenance_ref=None)])
             offset += len(chunk)
         return tt
 

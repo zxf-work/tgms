@@ -113,6 +113,10 @@ class NodeVersion:
     tt_s: int
     tt_e: int
     props: Props = field(default_factory=dict)
+    # provenance (spec v1.1 WP1.1): reserved now, used by Phase 3 agent
+    # write-back; Phase 1-2 writes are always source='ingest', ref=None
+    source: str = "ingest"
+    provenance_ref: str | None = None
 
     def believed_at(self, as_of_tt: int) -> bool:
         return self.tt_s <= clamp_tt(as_of_tt) < self.tt_e
@@ -125,6 +129,7 @@ class NodeVersion:
             "vid": self.vid, "uid": self.uid, "label": self.label,
             "vt_s": self.vt_s, "vt_e": self.vt_e, "tt_s": self.tt_s, "tt_e": self.tt_e,
             "props": self.props,
+            "source": self.source, "provenance_ref": self.provenance_ref,
         }
 
 
@@ -141,6 +146,8 @@ class EdgeVersion:
     tt_s: int
     tt_e: int
     props: Props = field(default_factory=dict)
+    source: str = "ingest"
+    provenance_ref: str | None = None
 
     def believed_at(self, as_of_tt: int) -> bool:
         return self.tt_s <= clamp_tt(as_of_tt) < self.tt_e
@@ -154,4 +161,5 @@ class EdgeVersion:
             "rel_type": self.rel_type, "disc": self.disc,
             "vt_s": self.vt_s, "vt_e": self.vt_e, "tt_s": self.tt_s, "tt_e": self.tt_e,
             "props": self.props,
+            "source": self.source, "provenance_ref": self.provenance_ref,
         }

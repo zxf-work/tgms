@@ -24,18 +24,20 @@ _DDL = [
     """CREATE NODE TABLE IF NOT EXISTS NodeVersion(
         vid STRING, uid STRING, label STRING,
         vt_s INT64, vt_e INT64, tt_s INT64, tt_e INT64,
-        props STRING, PRIMARY KEY(vid))""",
+        props STRING, source STRING, provenance_ref STRING,
+        PRIMARY KEY(vid))""",
     """CREATE REL TABLE IF NOT EXISTS OF_ENTITY(FROM NodeVersion TO Entity)""",
     """CREATE REL TABLE IF NOT EXISTS EdgeVersion(
         FROM Entity TO Entity,
         eid STRING, vid STRING, rel_type STRING, disc STRING,
         vt_s INT64, vt_e INT64, tt_s INT64, tt_e INT64,
-        props STRING)""",
+        props STRING, source STRING, provenance_ref STRING)""",
 ]
 
-_NODE_RET = "v.vid, v.uid, v.label, v.vt_s, v.vt_e, v.tt_s, v.tt_e, v.props"
+_NODE_RET = ("v.vid, v.uid, v.label, v.vt_s, v.vt_e, v.tt_s, v.tt_e, v.props, "
+             "v.source, v.provenance_ref")
 _EDGE_RET = ("e.eid, e.vid, a.uid, b.uid, e.rel_type, e.disc, "
-             "e.vt_s, e.vt_e, e.tt_s, e.tt_e, e.props")
+             "e.vt_s, e.vt_e, e.tt_s, e.tt_e, e.props, e.source, e.provenance_ref")
 
 
 class KuzuAdapter(StorageAdapter):
@@ -104,11 +106,13 @@ class KuzuAdapter(StorageAdapter):
         for v in rows:
             self.conn.execute(
                 "CREATE (nv:NodeVersion {vid: $vid, uid: $uid, label: $label, "
-                "vt_s: $vt_s, vt_e: $vt_e, tt_s: $tt_s, tt_e: $tt_e, props: $props}) "
+                "vt_s: $vt_s, vt_e: $vt_e, tt_s: $tt_s, tt_e: $tt_e, props: $props, "
+                "source: $source, provenance_ref: $prov}) "
                 "WITH nv MATCH (e:Entity {uid: $uid}) CREATE (nv)-[:OF_ENTITY]->(e)",
                 parameters={"vid": v.vid, "uid": v.uid, "label": v.label,
                             "vt_s": v.vt_s, "vt_e": v.vt_e, "tt_s": v.tt_s, "tt_e": v.tt_e,
-                            "props": canonical_json(v.props)})
+                            "props": canonical_json(v.props),
+                            "source": v.source, "prov": v.provenance_ref})
 
     def insert_edge_versions(self, rows: Sequence[EdgeVersion]) -> None:
         for v in rows:
@@ -116,11 +120,12 @@ class KuzuAdapter(StorageAdapter):
                 "MATCH (a:Entity {uid: $src}), (b:Entity {uid: $dst}) "
                 "CREATE (a)-[:EdgeVersion {eid: $eid, vid: $vid, rel_type: $rel_type, "
                 "disc: $disc, vt_s: $vt_s, vt_e: $vt_e, tt_s: $tt_s, tt_e: $tt_e, "
-                "props: $props}]->(b)",
+                "props: $props, source: $source, provenance_ref: $prov}]->(b)",
                 parameters={"src": v.src, "dst": v.dst, "eid": v.eid, "vid": v.vid,
                             "rel_type": v.rel_type, "disc": v.disc,
                             "vt_s": v.vt_s, "vt_e": v.vt_e, "tt_s": v.tt_s, "tt_e": v.tt_e,
-                            "props": canonical_json(v.props)})
+                            "props": canonical_json(v.props),
+                            "source": v.source, "prov": v.provenance_ref})
 
     def close_node_versions(self, vids: Sequence[str], tt_e: int) -> None:
         for vid in vids:
@@ -268,15 +273,17 @@ class KuzuAdapter(StorageAdapter):
 
 
 def _node_from_row(r: tuple) -> NodeVersion:
-    vid, uid, label, vt_s, vt_e, tt_s, tt_e, props = r
+    vid, uid, label, vt_s, vt_e, tt_s, tt_e, props, source, prov = r
     return NodeVersion(vid=vid, uid=uid, label=label, vt_s=vt_s, vt_e=vt_e,
-                       tt_s=tt_s, tt_e=tt_e, props=json.loads(props))
+                       tt_s=tt_s, tt_e=tt_e, props=json.loads(props),
+                       source=source or "ingest", provenance_ref=prov)
 
 
 def _edge_from_row(r: tuple) -> EdgeVersion:
-    eid, vid, src, dst, rel_type, disc, vt_s, vt_e, tt_s, tt_e, props = r
+    eid, vid, src, dst, rel_type, disc, vt_s, vt_e, tt_s, tt_e, props, source, prov = r
     return EdgeVersion(eid=eid, vid=vid, src=src, dst=dst, rel_type=rel_type, disc=disc or "",
-                       vt_s=vt_s, vt_e=vt_e, tt_s=tt_s, tt_e=tt_e, props=json.loads(props))
+                       vt_s=vt_s, vt_e=vt_e, tt_s=tt_s, tt_e=tt_e, props=json.loads(props),
+                       source=source or "ingest", provenance_ref=prov)
 
 
 def _arrow_to_soa(tbl, int_cols: tuple[str, ...], str_cols: tuple[str, ...]) -> dict[str, np.ndarray]:

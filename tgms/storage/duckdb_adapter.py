@@ -27,7 +27,9 @@ CREATE TABLE IF NOT EXISTS node_versions(
   vid VARCHAR PRIMARY KEY,
   uid VARCHAR NOT NULL, uid_id BIGINT NOT NULL, label VARCHAR,
   vt_s BIGINT, vt_e BIGINT, tt_s BIGINT, tt_e BIGINT,
-  props VARCHAR);
+  props VARCHAR,
+  source VARCHAR DEFAULT 'ingest',
+  provenance_ref VARCHAR);
 CREATE TABLE IF NOT EXISTS edge_versions(
   vid VARCHAR PRIMARY KEY,
   eid VARCHAR NOT NULL,
@@ -35,7 +37,9 @@ CREATE TABLE IF NOT EXISTS edge_versions(
   src_id BIGINT NOT NULL, dst_id BIGINT NOT NULL,
   rel_type VARCHAR NOT NULL, disc VARCHAR,
   vt_s BIGINT, vt_e BIGINT, tt_s BIGINT, tt_e BIGINT,
-  props VARCHAR);
+  props VARCHAR,
+  source VARCHAR DEFAULT 'ingest',
+  provenance_ref VARCHAR);
 """
 
 
@@ -106,9 +110,9 @@ class DuckDBAdapter(StorageAdapter):
         if not rows:
             return
         self.conn.executemany(
-            "INSERT INTO node_versions VALUES (?,?,?,?,?,?,?,?,?)",
+            "INSERT INTO node_versions VALUES (?,?,?,?,?,?,?,?,?,?,?)",
             [(v.vid, v.uid, self._ids[v.uid], v.label, v.vt_s, v.vt_e, v.tt_s, v.tt_e,
-              canonical_json(v.props)) for v in rows])
+              canonical_json(v.props), v.source, v.provenance_ref) for v in rows])
 
     def insert_edge_versions(self, rows: Sequence[EdgeVersion]) -> None:
         if not rows:
@@ -127,15 +131,18 @@ class DuckDBAdapter(StorageAdapter):
                 "tt_s": pa.array((v.tt_s for v in rows), pa.int64()),
                 "tt_e": pa.array((v.tt_e for v in rows), pa.int64()),
                 "props": [canonical_json(v.props) for v in rows],
+                "source": [v.source for v in rows],
+                "provenance_ref": [v.provenance_ref for v in rows],
             })
             self.conn.register("_bulk_edges", tbl)
             self.conn.execute("INSERT INTO edge_versions SELECT * FROM _bulk_edges")
             self.conn.unregister("_bulk_edges")
             return
         self.conn.executemany(
-            "INSERT INTO edge_versions VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)",
+            "INSERT INTO edge_versions VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
             [(v.vid, v.eid, v.src, v.dst, self._ids[v.src], self._ids[v.dst], v.rel_type,
-              v.disc, v.vt_s, v.vt_e, v.tt_s, v.tt_e, canonical_json(v.props)) for v in rows])
+              v.disc, v.vt_s, v.vt_e, v.tt_s, v.tt_e, canonical_json(v.props),
+              v.source, v.provenance_ref) for v in rows])
 
     def close_node_versions(self, vids: Sequence[str], tt_e: int) -> None:
         self.conn.executemany(
@@ -147,8 +154,10 @@ class DuckDBAdapter(StorageAdapter):
 
     # --- version reads ---------------------------------------------------- #
 
-    _NODE_COLS = "vid, uid, label, vt_s, vt_e, tt_s, tt_e, props"
-    _EDGE_COLS = "eid, vid, src, dst, rel_type, disc, vt_s, vt_e, tt_s, tt_e, props"
+    _NODE_COLS = ("vid, uid, label, vt_s, vt_e, tt_s, tt_e, props, "
+                  "source, provenance_ref")
+    _EDGE_COLS = ("eid, vid, src, dst, rel_type, disc, vt_s, vt_e, tt_s, tt_e, "
+                  "props, source, provenance_ref")
 
     def believed_node_versions(self, uid: str, as_of_tt: int = OPEN_END) -> list[NodeVersion]:
         as_of_tt = clamp_tt(as_of_tt)
@@ -282,15 +291,17 @@ class DuckDBAdapter(StorageAdapter):
 
 
 def _node_from_row(r: tuple) -> NodeVersion:
-    vid, uid, label, vt_s, vt_e, tt_s, tt_e, props = r
+    vid, uid, label, vt_s, vt_e, tt_s, tt_e, props, source, prov = r
     return NodeVersion(vid=vid, uid=uid, label=label, vt_s=vt_s, vt_e=vt_e,
-                       tt_s=tt_s, tt_e=tt_e, props=json.loads(props))
+                       tt_s=tt_s, tt_e=tt_e, props=json.loads(props),
+                       source=source or "ingest", provenance_ref=prov)
 
 
 def _edge_from_row(r: tuple) -> EdgeVersion:
-    eid, vid, src, dst, rel_type, disc, vt_s, vt_e, tt_s, tt_e, props = r
+    eid, vid, src, dst, rel_type, disc, vt_s, vt_e, tt_s, tt_e, props, source, prov = r
     return EdgeVersion(eid=eid, vid=vid, src=src, dst=dst, rel_type=rel_type, disc=disc or "",
-                       vt_s=vt_s, vt_e=vt_e, tt_s=tt_s, tt_e=tt_e, props=json.loads(props))
+                       vt_s=vt_s, vt_e=vt_e, tt_s=tt_s, tt_e=tt_e, props=json.loads(props),
+                       source=source or "ingest", provenance_ref=prov)
 
 
 def _arrow_to_soa(tbl, int_cols: tuple[str, ...], str_cols: tuple[str, ...]) -> dict[str, np.ndarray]:

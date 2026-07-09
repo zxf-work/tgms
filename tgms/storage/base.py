@@ -225,11 +225,14 @@ class StorageAdapter(ABC):
             for fs, fe in _remainder(v.vt_s, v.vt_e, vt.start, vt.end):
                 fragments.append(NodeVersion(
                     vid=_vid(uid, tt, fs), uid=uid, label=v.label,
-                    vt_s=fs, vt_e=fe, tt_s=tt, tt_e=OPEN_END, props=v.props))
+                    vt_s=fs, vt_e=fe, tt_s=tt, tt_e=OPEN_END, props=v.props,
+                    source=v.source, provenance_ref=v.provenance_ref))
         if to_close:
             self.close_node_versions(to_close, tt)
         new = NodeVersion(vid=_vid(uid, tt, vt.start), uid=uid, label=label,
-                          vt_s=vt.start, vt_e=vt.end, tt_s=tt, tt_e=OPEN_END, props=props)
+                          vt_s=vt.start, vt_e=vt.end, tt_s=tt, tt_e=OPEN_END, props=props,
+                          source=op.get("source", "ingest"),
+                          provenance_ref=op.get("provenance_ref"))
         self.insert_node_versions(fragments + [new])
 
     # -- edge ops -------------------------------------------------------- #
@@ -248,12 +251,15 @@ class StorageAdapter(ABC):
             for fs, fe in _remainder(v.vt_s, v.vt_e, vt.start, vt.end):
                 fragments.append(EdgeVersion(
                     eid=eid, vid=_vid(eid, tt, fs), src=src, dst=dst, rel_type=rel_type,
-                    disc=disc, vt_s=fs, vt_e=fe, tt_s=tt, tt_e=OPEN_END, props=v.props))
+                    disc=disc, vt_s=fs, vt_e=fe, tt_s=tt, tt_e=OPEN_END, props=v.props,
+                    source=v.source, provenance_ref=v.provenance_ref))
         if to_close:
             self.close_edge_versions(to_close, tt)
         new = EdgeVersion(eid=eid, vid=_vid(eid, tt, vt.start), src=src, dst=dst,
                           rel_type=rel_type, disc=disc, vt_s=vt.start, vt_e=vt.end,
-                          tt_s=tt, tt_e=OPEN_END, props=props)
+                          tt_s=tt, tt_e=OPEN_END, props=props,
+                          source=op.get("source", "ingest"),
+                          provenance_ref=op.get("provenance_ref"))
         self.insert_edge_versions(fragments + [new])
         return eid
 
@@ -268,7 +274,8 @@ class StorageAdapter(ABC):
                 raise NotFoundError(f"no believed node version of {ref.identity} valid at {t}")
             self.close_node_versions([v.vid for v in hits], tt)
             repl = [NodeVersion(vid=_vid(v.uid, tt, v.vt_s), uid=v.uid, label=v.label,
-                                vt_s=v.vt_s, vt_e=t, tt_s=tt, tt_e=OPEN_END, props=v.props)
+                                vt_s=v.vt_s, vt_e=t, tt_s=tt, tt_e=OPEN_END, props=v.props,
+                                source=v.source, provenance_ref=v.provenance_ref)
                     for v in hits if v.vt_s < t]
             self.insert_node_versions(repl)
         else:
@@ -278,7 +285,8 @@ class StorageAdapter(ABC):
             self.close_edge_versions([v.vid for v in hits], tt)
             repl = [EdgeVersion(eid=v.eid, vid=_vid(v.eid, tt, v.vt_s), src=v.src, dst=v.dst,
                                 rel_type=v.rel_type, disc=v.disc, vt_s=v.vt_s, vt_e=t,
-                                tt_s=tt, tt_e=OPEN_END, props=v.props)
+                                tt_s=tt, tt_e=OPEN_END, props=v.props,
+                                source=v.source, provenance_ref=v.provenance_ref)
                     for v in hits if v.vt_s < t]
             self.insert_edge_versions(repl)
 
@@ -297,11 +305,14 @@ class StorageAdapter(ABC):
                 for fs, fe in _remainder(v.vt_s, v.vt_e, vt.start, vt.end):
                     rows.append(NodeVersion(vid=_vid(v.uid, tt, fs), uid=v.uid, label=v.label,
                                             vt_s=fs, vt_e=fe, tt_s=tt, tt_e=OPEN_END,
-                                            props=v.props))
+                                            props=v.props, source=v.source,
+                                            provenance_ref=v.provenance_ref))
             label = hits[0].label
             rows.append(NodeVersion(vid=_vid(ref.identity, tt, vt.start), uid=ref.identity,
                                     label=label, vt_s=vt.start, vt_e=vt.end,
-                                    tt_s=tt, tt_e=OPEN_END, props=new_props))
+                                    tt_s=tt, tt_e=OPEN_END, props=new_props,
+                                    source=op.get("source", "ingest"),
+                                    provenance_ref=op.get("provenance_ref")))
             self.insert_node_versions(rows)
         else:
             versions = self.believed_edge_versions(ref.identity)
@@ -316,11 +327,14 @@ class StorageAdapter(ABC):
                     rows_e.append(EdgeVersion(eid=v.eid, vid=_vid(v.eid, tt, fs), src=v.src,
                                               dst=v.dst, rel_type=v.rel_type, disc=v.disc,
                                               vt_s=fs, vt_e=fe, tt_s=tt, tt_e=OPEN_END,
-                                              props=v.props))
+                                              props=v.props, source=v.source,
+                                              provenance_ref=v.provenance_ref))
             rows_e.append(EdgeVersion(eid=proto.eid, vid=_vid(proto.eid, tt, vt.start),
                                       src=proto.src, dst=proto.dst, rel_type=proto.rel_type,
                                       disc=proto.disc, vt_s=vt.start, vt_e=vt.end,
-                                      tt_s=tt, tt_e=OPEN_END, props=new_props))
+                                      tt_s=tt, tt_e=OPEN_END, props=new_props,
+                                      source=op.get("source", "ingest"),
+                                      provenance_ref=op.get("provenance_ref")))
             self.insert_edge_versions(rows_e)
 
     # -- bulk event ingestion --------------------------------------------- #
@@ -342,7 +356,9 @@ class StorageAdapter(ABC):
             edge_rows.append(EdgeVersion(
                 eid=eid, vid=_vid(eid, tt, vt_s), src=src, dst=dst, rel_type=rel_type,
                 disc=disc, vt_s=vt_s, vt_e=vt_e, tt_s=tt, tt_e=OPEN_END,
-                props=ev.get("props", {})))
+                props=ev.get("props", {}),
+                source=op.get("source", "ingest"),
+                provenance_ref=op.get("provenance_ref")))
             for u in (src, dst):
                 if u not in node_first_seen or vt_s < node_first_seen[u]:
                     node_first_seen[u] = vt_s
@@ -353,7 +369,8 @@ class StorageAdapter(ABC):
         self.insert_node_versions([
             NodeVersion(vid=_vid(u, tt, node_first_seen[u]), uid=u, label=label,
                         vt_s=node_first_seen[u], vt_e=OPEN_END, tt_s=tt, tt_e=OPEN_END,
-                        props={})
+                        props={}, source=op.get("source", "ingest"),
+                        provenance_ref=op.get("provenance_ref"))
             for u in sorted(new_uids)])
         self.insert_edge_versions(edge_rows)
 
