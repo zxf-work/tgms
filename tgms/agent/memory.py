@@ -48,6 +48,8 @@ CREATE INDEX IF NOT EXISTS idx_notes_window ON memory_notes(window_ta, window_tb
 def window_facts(adapter: StorageAdapter, t_a: int, t_b: int) -> dict[str, Any]:
     """Operator-computed facts for one window — the ground truth the digest
     must embed verbatim."""
+    from tgms.temporal.algebra import ensure_all_registered
+    ensure_all_registered()  # memory may be the first operator consumer
     stride = max(1, (t_b - t_a) // 7)
     w = {"t_a": t_a, "t_b": t_b}
     events = call_operator(adapter, "graph_metric_timeseries",
