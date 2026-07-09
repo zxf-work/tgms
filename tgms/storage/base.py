@@ -140,6 +140,10 @@ class StorageAdapter(ABC):
         """Keys: uid_id, vt_s, vt_e (int64), uid, vid, label (object). Sorted by vt_s."""
 
     @abstractmethod
+    def props_for_vids(self, kind: str, vids: Sequence[str]) -> dict[str, dict]:
+        """Fetch props JSON for specific version ids. kind: "node" | "edge"."""
+
+    @abstractmethod
     def stats(self) -> dict[str, Any]:
         """Lightweight statistics for cost estimation (WP1.4)."""
 

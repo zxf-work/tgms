@@ -5,7 +5,8 @@
       "Bash(ssh -o BatchMode=yes -o ConnectTimeout=8 xzhang@xzgpu.uom.memphis.edu 'hostname && echo OK && ls /mnt/project/xzhang 2>/dev/null | head')",
       "Bash(python3 -)",
       "Bash(git add *)",
-      "Bash(git commit -q -m 'M1: bi-temporal core, HLC clock, write-ahead event log, DuckDB + Kùzu adapters *)"
+      "Bash(git commit -q -m 'M1: bi-temporal core, HLC clock, write-ahead event log, DuckDB + Kùzu adapters *)",
+      "Bash(git commit -q -m 'M2: temporal operator algebra O1-O12 + brute-force oracle + property/metamorphic tests *)"
     ]
   }
 }

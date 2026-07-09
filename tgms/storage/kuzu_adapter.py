@@ -219,6 +219,19 @@ class KuzuAdapter(StorageAdapter):
         return _arrow_to_soa(tbl, int_cols=("uid_id", "vt_s", "vt_e"),
                              str_cols=("uid", "vid", "label"))
 
+    def props_for_vids(self, kind: str, vids: Sequence[str]) -> dict[str, dict]:
+        out: dict[str, dict] = {}
+        for vid in vids:
+            if kind == "node":
+                rows = self._rows("MATCH (v:NodeVersion {vid: $vid}) RETURN v.props",
+                                  {"vid": vid})
+            else:
+                rows = self._rows("MATCH ()-[e:EdgeVersion {vid: $vid}]->() RETURN e.props",
+                                  {"vid": vid})
+            if rows:
+                out[vid] = json.loads(rows[0][0])
+        return out
+
     # --- stats ------------------------------------------------------------------------ #
 
     def stats(self) -> dict[str, Any]:
