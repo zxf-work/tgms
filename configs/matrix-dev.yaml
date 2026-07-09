@@ -1,0 +1,13 @@
+# Dev-split matrix config (prompt iteration happens here — never on test).
+# `tgms eval run --config configs/matrix-dev.yaml` requires provider API keys
+# (LiteLLM model names) and, for b1, the `memory` extra (sentence-transformers).
+suite_path: stores/suite-collegemsg/suite.json
+store_path: stores/collegemsg
+out_dir: runs/dev-collegemsg
+split: dev
+systems: [ours, ours-noverify, b1, b2, b5]
+models: ["claude-sonnet-4-6"]
+seeds: [0, 1, 2]
+max_repairs: 3
+b1_k: 20
+memory_db: stores/collegemsg/memory.sqlite

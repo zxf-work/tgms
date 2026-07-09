@@ -40,9 +40,26 @@ synth-1m:
 bench-ops:
 	$(UV) run tgms bench ops --store $(STORE) --out docs/bench_ops.md
 
-# full pipeline: ingest -> tests -> task-gen -> matrix -> tables (built out
-# through M7; stages land with their milestones)
-reproduce: test-full
+data-collegemsg:
+	$(UV) run python -c "from tgms.data.loaders import ingest_dataset; \
+	  print(ingest_dataset('collegemsg', 'data_raw', 'stores/collegemsg'))"
+
+suite-collegemsg:
+	mkdir -p stores/suite-collegemsg
+	$(UV) run tgms tasks --store stores/collegemsg --dataset collegemsg \
+	  --seed 0 --out stores/suite-collegemsg/suite.json
+	$(UV) run tgms memory build --store stores/collegemsg
+
+# full pipeline (spec §0): ingest -> operator tests -> task-suite generation
+# -> matrix -> tables. The matrix stage needs provider API keys; without
+# them, reproduce stops after deterministic stages with instructions.
+reproduce: test-full data-collegemsg suite-collegemsg
+	@if [ -n "$$ANTHROPIC_API_KEY$$OPENAI_API_KEY" ]; then \
+	  $(UV) run tgms eval run --config configs/matrix-dev.yaml; \
+	else \
+	  echo "deterministic stages done. Set ANTHROPIC_API_KEY (or"; \
+	  echo "OPENAI_API_KEY) and run: tgms eval run --config configs/matrix-dev.yaml"; \
+	fi
 
 clean:
-	rm -rf stores data_raw .pytest_cache .hypothesis
+	rm -rf stores data_raw runs .pytest_cache .hypothesis
