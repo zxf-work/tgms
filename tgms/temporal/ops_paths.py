@@ -75,7 +75,8 @@ def temporal_reachability(adapter: StorageAdapter, args: dict[str, Any]) -> dict
     delta = args["delta_max_wait"]
     sid = int(adapter.dense_ids([args["src"]])[0])
 
-    e = adapter.edges_columnar(as_of_tt=as_of, vt_min=t_a, vt_max=t_b)
+    e = adapter.edges_columnar(as_of_tt=as_of, vt_min=t_a, vt_max=t_b,
+                               columns=("src_id", "dst_id", "vt_s", "vt_e"))
     src, dst, vt_s, vt_e = e["src_id"], e["dst_id"], e["vt_s"], e["vt_e"]
     if args["direction"] == "in":
         src, dst = dst, src

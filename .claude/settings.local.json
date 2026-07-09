@@ -26,7 +26,8 @@
       "Bash(/Users/xz/Documents/TGMS/.venv/bin/python3 -c ' *)",
       "Bash(/Users/xz/Documents/TGMS/.venv/bin/python3 -s -c \"print\\('with -s'\\)\")",
       "Bash(chflags nohidden *)",
-      "Bash(git commit -q -m 'M4: Plan IR + $ref language, O13 compute, static verifier, executor, planner, Agent facade *)"
+      "Bash(git commit -q -m 'M4: Plan IR + $ref language, O13 compute, static verifier, executor, planner, Agent facade *)",
+      "Bash(ssh -o BatchMode=yes xzhang@xzgpu.uom.memphis.edu 'pkill -f \"tgms \\(synth|ingest|bench\\)\" 2>/dev/null; cd /mnt/project/xzhang/tgms/work/tgms && git pull -q && export PATH=\"$HOME/.local/bin:$PATH\" && rm -rf stores/synth-1m && \\(make synth-1m && make bench-ops STORE=stores/synth-1m && cat docs/bench_ops.md\\) 2>&1 | tail -25')"
     ]
   }
 }

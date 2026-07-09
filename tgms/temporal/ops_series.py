@@ -61,9 +61,11 @@ def _series_values(adapter: StorageAdapter, metric: str, args: dict[str, Any],
         nodes = adapter.nodes_columnar(as_of_tt=as_of, vt_max=t_b)
     if metric in ("edge_event_count", "active_edge_count", "mean_out_degree",
                   "reciprocity"):
-        edges = adapter.edges_columnar(as_of_tt=as_of, vt_min=t_a, vt_max=t_b) \
+        ints = ("src_id", "dst_id", "vt_s", "vt_e")
+        edges = adapter.edges_columnar(as_of_tt=as_of, vt_min=t_a, vt_max=t_b,
+                                       columns=ints) \
             if metric != "mean_out_degree" else \
-            adapter.edges_columnar(as_of_tt=as_of, vt_max=t_b)
+            adapter.edges_columnar(as_of_tt=as_of, vt_max=t_b, columns=ints)
 
     if metric == "node_count":
         return _active_at(np.sort(nodes["vt_s"]), np.sort(nodes["vt_e"]),
@@ -192,7 +194,8 @@ def burst_detection(adapter: StorageAdapter, args: dict[str, Any]) -> dict[str, 
 
     rel_types = [tgt["rel_type"]] if tgt.get("rel_type") else None
     e = adapter.edges_columnar(as_of_tt=args["as_of_tt"], vt_min=t_a, vt_max=t_b,
-                               rel_types=rel_types)
+                               rel_types=rel_types,
+                               columns=("src_id", "dst_id", "vt_s", "vt_e"))
     m = (e["vt_s"] >= t_a) & (e["vt_s"] < t_b)
     if tgt["kind"] == "node_activity":
         uid_id = int(adapter.dense_ids([tgt["uid"]])[0])

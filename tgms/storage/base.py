@@ -134,6 +134,9 @@ class StorageAdapter(ABC):
 
     # --- columnar read path (operator kernels) ------------------------- #
 
+    EDGE_INT_COLS = ("src_id", "dst_id", "vt_s", "vt_e")
+    EDGE_STR_COLS = ("eid", "vid", "rel_type")
+
     @abstractmethod
     def edges_columnar(
         self,
@@ -141,10 +144,16 @@ class StorageAdapter(ABC):
         vt_min: int | None = None,
         vt_max: int | None = None,
         rel_types: Sequence[str] | None = None,
+        columns: Sequence[str] | None = None,
+        touching_ids: Sequence[int] | None = None,
     ) -> dict[str, np.ndarray]:
         """Struct-of-arrays over believed edge versions whose vt overlaps
         [vt_min, vt_max). Keys: src_id, dst_id, vt_s, vt_e (int64),
-        eid, vid, rel_type (object). Sorted by vt_s."""
+        eid, vid, rel_type (object). Sorted by (vt_s, vid).
+
+        `columns` restricts materialization (string columns are the expensive
+        part at 1M+ rows — profiled at M3); `touching_ids` pushes down an
+        incidence filter (src_id or dst_id in the given dense ids)."""
 
     @abstractmethod
     def nodes_columnar(

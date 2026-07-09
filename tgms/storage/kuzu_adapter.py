@@ -169,8 +169,17 @@ class KuzuAdapter(StorageAdapter):
         vt_min: int | None = None,
         vt_max: int | None = None,
         rel_types: Sequence[str] | None = None,
+        columns: Sequence[str] | None = None,
+        touching_ids: Sequence[int] | None = None,
     ) -> dict[str, np.ndarray]:
         a = clamp_tt(as_of_tt)
+        int_cols = tuple(c for c in self.EDGE_INT_COLS
+                         if columns is None or c in columns)
+        str_cols = tuple(c for c in self.EDGE_STR_COLS
+                         if columns is None or c in columns)
+        exprs = {"src_id": "x.dense_id", "dst_id": "y.dense_id", "vt_s": "e.vt_s",
+                 "vt_e": "e.vt_e", "eid": "e.eid", "vid": "e.vid",
+                 "rel_type": "e.rel_type"}
         where = ["e.tt_s <= $a", "$a < e.tt_e"]
         params: dict[str, Any] = {"a": a}
         if vt_min is not None:
@@ -182,16 +191,17 @@ class KuzuAdapter(StorageAdapter):
         if rel_types is not None:
             where.append("e.rel_type IN $rel_types")
             params["rel_types"] = list(rel_types)
+        if touching_ids is not None:
+            where.append("(x.dense_id IN $touch OR y.dense_id IN $touch)")
+            params["touch"] = [int(i) for i in touching_ids]
+        select = ", ".join(f"{exprs[c]} AS {c}" for c in int_cols + str_cols)
+        order = "e.vt_s, e.vid"
         res = self.conn.execute(
             "MATCH (x:Entity)-[e:EdgeVersion]->(y:Entity) "
-            f"WHERE {' AND '.join(where)} "
-            "RETURN x.dense_id AS src_id, y.dense_id AS dst_id, e.vt_s AS vt_s, "
-            "e.vt_e AS vt_e, e.eid AS eid, e.vid AS vid, e.rel_type AS rel_type "
-            "ORDER BY vt_s, vid",
+            f"WHERE {' AND '.join(where)} RETURN {select} ORDER BY {order}",
             parameters=params)
         tbl = res.get_as_arrow()
-        return _arrow_to_soa(tbl, int_cols=("src_id", "dst_id", "vt_s", "vt_e"),
-                             str_cols=("eid", "vid", "rel_type"))
+        return _arrow_to_soa(tbl, int_cols=int_cols, str_cols=str_cols)
 
     def nodes_columnar(
         self,

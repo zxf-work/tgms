@@ -198,8 +198,14 @@ class DuckDBAdapter(StorageAdapter):
         vt_min: int | None = None,
         vt_max: int | None = None,
         rel_types: Sequence[str] | None = None,
+        columns: Sequence[str] | None = None,
+        touching_ids: Sequence[int] | None = None,
     ) -> dict[str, np.ndarray]:
         as_of_tt = clamp_tt(as_of_tt)
+        int_cols = tuple(c for c in self.EDGE_INT_COLS
+                         if columns is None or c in columns)
+        str_cols = tuple(c for c in self.EDGE_STR_COLS
+                         if columns is None or c in columns)
         where = ["tt_s <= ? AND ? < tt_e"]
         params: list[Any] = [as_of_tt, as_of_tt]
         if vt_min is not None:
@@ -211,11 +217,15 @@ class DuckDBAdapter(StorageAdapter):
         if rel_types is not None:
             where.append(f"rel_type IN ({','.join('?' * len(rel_types))})")
             params.extend(rel_types)
+        if touching_ids is not None:
+            marks = ",".join("?" * len(touching_ids))
+            where.append(f"(src_id IN ({marks}) OR dst_id IN ({marks}))")
+            params.extend(touching_ids)
+            params.extend(touching_ids)
         tbl = self.conn.execute(
-            "SELECT src_id, dst_id, vt_s, vt_e, eid, vid, rel_type FROM edge_versions "
+            f"SELECT {', '.join(int_cols + str_cols)} FROM edge_versions "
             f"WHERE {' AND '.join(where)} ORDER BY vt_s, vid", params).to_arrow_table()
-        return _arrow_to_soa(tbl, int_cols=("src_id", "dst_id", "vt_s", "vt_e"),
-                             str_cols=("eid", "vid", "rel_type"))
+        return _arrow_to_soa(tbl, int_cols=int_cols, str_cols=str_cols)
 
     def nodes_columnar(
         self,

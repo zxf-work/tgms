@@ -109,11 +109,11 @@ def entity_history(adapter: StorageAdapter, args: dict[str, Any]) -> dict[str, A
     out = paginate(rows, args["limit"], args["cursor"])
     if args["include_edges"]:
         uid_id = int(adapter.dense_ids([uid])[0])
-        edges = adapter.edges_columnar(as_of_tt=as_of)
-        m = (edges["src_id"] == uid_id) | (edges["dst_id"] == uid_id)
-        idx = np.flatnonzero(m)[: args["limit"]]
+        edges = adapter.edges_columnar(as_of_tt=as_of, touching_ids=[uid_id])
+        n_incident = len(edges["src_id"])
+        idx = np.arange(min(n_incident, args["limit"]))
         out["edges"] = _edge_rows(adapter, edges, idx)
-        out["edges_truncated"] = bool(int(m.sum()) > args["limit"])
+        out["edges_truncated"] = n_incident > args["limit"]
     return out
 
 
@@ -313,7 +313,9 @@ def neighborhood_evolution(adapter: StorageAdapter, args: dict[str, Any]) -> dic
                          "increase stride")
 
     def neighbors(t: int) -> set[str]:
-        e = edges_at(adapter, t, as_of)
+        e = adapter.edges_columnar(as_of_tt=as_of, vt_min=t, vt_max=t + 1,
+                                   columns=("src_id", "dst_id"),
+                                   touching_ids=[uid_id])
         m_out = e["src_id"] == uid_id
         m_in = e["dst_id"] == uid_id
         ids = np.unique(np.concatenate([e["dst_id"][m_out], e["src_id"][m_in]]))
@@ -322,11 +324,11 @@ def neighborhood_evolution(adapter: StorageAdapter, args: dict[str, Any]) -> dic
     n_t1, n_t2 = neighbors(t1), neighbors(t2)
     gained, lost = sorted(n_t2 - n_t1), sorted(n_t1 - n_t2)
 
-    # incident active-edge count at each bucket start, one interval scan
-    e = adapter.edges_columnar(as_of_tt=as_of, vt_min=t1, vt_max=t2)
-    m = (e["src_id"] == uid_id) | (e["dst_id"] == uid_id)
-    starts = np.sort(e["vt_s"][m])
-    ends = np.sort(e["vt_e"][m])
+    # incident active-edge count at each bucket start, one pushed-down scan
+    e = adapter.edges_columnar(as_of_tt=as_of, vt_min=t1, vt_max=t2,
+                               columns=("vt_s", "vt_e"), touching_ids=[uid_id])
+    starts = np.sort(e["vt_s"])
+    ends = np.sort(e["vt_e"])
     bucket_starts = np.arange(t1, t2, stride, dtype=np.int64)
     deg = (np.searchsorted(starts, bucket_starts, side="right")
            - np.searchsorted(ends, bucket_starts, side="right"))
