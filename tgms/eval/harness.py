@@ -175,7 +175,9 @@ def build_systems(cfg: dict[str, Any], store: Store, model: str,
                                     embed_fn=embed_fn, seed=seed)
         elif system == "b2":
             from tgms.eval.baselines import StaticGraphRAG
-            out[system] = StaticGraphRAG(store, llm_fn, model, seed=seed)
+            out[system] = StaticGraphRAG(store, llm_fn, model,
+                                         max_edges=cfg.get("b2_max_edges", 2_000),
+                                         seed=seed)
         elif system == "b5":
             from tgms.eval.baselines import TextToCypher, build_vanilla_kuzu
             vk_path = Path(cfg["out_dir"]) / f"vanilla-kuzu-{suite_tag(cfg)}"
