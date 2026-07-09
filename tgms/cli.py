@@ -36,6 +36,14 @@ def main(argv: list[str] | None = None) -> int:
     p_serve.add_argument("--store", required=True)
     p_serve.add_argument("--readonly", action="store_true", default=True)
 
+    p_tasks = sub.add_parser("tasks", help="generate a task suite with oracle gold")
+    p_tasks.add_argument("--store", required=True)
+    p_tasks.add_argument("--dataset", required=True)
+    p_tasks.add_argument("--seed", type=int, default=0)
+    p_tasks.add_argument("--manifest", default=None,
+                         help="synth manifest.json for T2 planted tasks")
+    p_tasks.add_argument("--out", required=True)
+
     p_mem = sub.add_parser("memory", help="evolution-memory maintenance")
     p_mem.add_argument("action", choices=["build"])
     p_mem.add_argument("--store", required=True)
@@ -73,6 +81,21 @@ def main(argv: list[str] | None = None) -> int:
     elif args.cmd == "serve":
         from tgms.tools.server import build_mcp_server
         build_mcp_server(args.store).run()
+    elif args.cmd == "tasks":
+        import tgms
+        from tgms.eval.tasks import generate_suite
+        store = tgms.open(args.store)
+        manifest = None
+        if args.manifest:
+            with open(args.manifest) as f:
+                manifest = json.load(f)
+        suite = generate_suite(store, args.dataset, seed=args.seed,
+                               manifest=manifest)
+        with open(args.out, "w") as f:
+            json.dump(suite, f, indent=1, sort_keys=True)
+        print(json.dumps({"n_dev": suite["n_dev"], "n_test": suite["n_test"],
+                          "test_split_sha": suite["test_split_sha"]}))
+        store.close()
     elif args.cmd == "memory":
         import tgms
         from tgms.agent.memory import MICROS_PER_DAY, EvolutionMemory
