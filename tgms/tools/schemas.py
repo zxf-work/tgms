@@ -31,7 +31,10 @@ def load_manual() -> dict[str, str]:
 
 def tool_description(name: str) -> str:
     manual = load_manual()
-    return manual.get(name, REGISTRY[name].description)
+    desc = manual.get(name, REGISTRY[name].description)
+    # authoritative output-field list: planners must not invent output paths
+    fields = ", ".join(REGISTRY[name].output_fields)
+    return f"{desc.rstrip()}\nOutput fields: {fields}."
 
 
 def anthropic_tools(exclude: tuple[str, ...] = ()) -> list[dict[str, Any]]:

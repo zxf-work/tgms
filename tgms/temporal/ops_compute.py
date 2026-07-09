@@ -92,6 +92,7 @@ def allen_relation(a: dict[str, int], b: dict[str, int]) -> str:
     "(optionally over `field`), topk(field, k), filter(field, cmp, value), "
     "or interval_relation(a, b) -> Allen relation name. Never do arithmetic "
     "in prose — use this.",
+    output_fields=("value", "rows", "rows_total", "truncated", "cursor"),
 )
 def compute(adapter: StorageAdapter, args: dict[str, Any]) -> dict[str, Any]:
     fn = args["fn"]

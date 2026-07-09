@@ -47,6 +47,9 @@ UID = {"type": "string", "minLength": 1}
 UID_LIST = {"type": "array", "items": UID, "minItems": 1, "maxItems": 10_000}
 
 
+PAGINATED_FIELDS = ("rows", "rows_total", "truncated", "cursor")
+
+
 @dataclass
 class OperatorSpec:
     name: str
@@ -55,6 +58,10 @@ class OperatorSpec:
     description: str
     cost_fn: Callable[[dict[str, Any], dict[str, Any]], dict[str, int]] | None = None
     validators: list[Callable[[dict[str, Any]], None]] = field(default_factory=list)
+    # top-level payload fields the operator emits — used by static plan
+    # validation ($refs / answer_spec must name real fields) and surfaced in
+    # the tool manual so planners never invent output paths
+    output_fields: tuple[str, ...] = PAGINATED_FIELDS
 
 
 REGISTRY: dict[str, OperatorSpec] = {}
@@ -62,7 +69,8 @@ REGISTRY: dict[str, OperatorSpec] = {}
 
 def operator(name: str, args_schema: dict[str, Any], description: str,
              cost_fn: Callable | None = None,
-             validators: list[Callable] | None = None) -> Callable:
+             validators: list[Callable] | None = None,
+             output_fields: tuple[str, ...] = PAGINATED_FIELDS) -> Callable:
     """Register an operator kernel. The kernel receives (adapter, args) with
     schema defaults already filled in, and returns the payload dict; the
     envelope is added by `call_operator`."""
@@ -78,7 +86,8 @@ def operator(name: str, args_schema: dict[str, Any], description: str,
                 v.pop("_required", None)
         REGISTRY[name] = OperatorSpec(name=name, fn=fn, args_schema=schema,
                                       description=description, cost_fn=cost_fn,
-                                      validators=list(validators or []))
+                                      validators=list(validators or []),
+                                      output_fields=output_fields)
         return fn
 
     return deco

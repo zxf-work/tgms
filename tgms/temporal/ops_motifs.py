@@ -142,6 +142,7 @@ def _run(events: pa.Table, sql: str, delta: int) -> duckdb.DuckDBPyRelation:
     "nodes pairwise distinct; rel_type ignored).",
     cost_fn=_motif_cost,
     validators=[check_window],
+    output_fields=("count", "n_events_in_window", "truncated"),
 )
 def count_temporal_motifs(adapter: StorageAdapter, args: dict[str, Any]) -> dict[str, Any]:
     if args["mode"] == "sample":

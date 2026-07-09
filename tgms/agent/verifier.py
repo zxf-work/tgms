@@ -123,6 +123,11 @@ def validate_static(plan_json: dict[str, Any], adapter: StorageAdapter | None = 
                 violations.append(_violation(
                     "E_SCHEMA",
                     f"$ref {r.raw!r} targets step not in depends_on", s.id))
+            elif r.tokens:
+                v = _check_output_field(by_id, r.step_id, r.tokens[0][0],
+                                        f"$ref {r.raw!r}", s.id)
+                if v:
+                    violations.append(v)
         # arg names must exist on the operator
         for k in s.args:
             if k not in spec.args_schema["properties"]:
@@ -178,13 +183,38 @@ def validate_static(plan_json: dict[str, Any], adapter: StorageAdapter | None = 
             except (TgmsError, KeyError, TypeError):
                 pass  # runtime validation will produce the authoritative error
 
-    # answer_spec must reference an existing step
+    # answer_spec must reference an existing step and a real output field
     root = plan.answer_spec.get("from", "")
-    if not any(root == s.id or root.startswith(s.id + ".") for s in plan.steps):
+    src_step = next((s for s in plan.steps
+                     if root == s.id or root.startswith(s.id + ".")), None)
+    if src_step is None:
         violations.append(_violation("E_SCHEMA",
                                      f"answer_spec.from {root!r} references no step"))
+    elif "." in root:
+        first_field = root.split(".")[1].split("[")[0]
+        v = _check_output_field(by_id, src_step.id, first_field,
+                                f"answer_spec.from {root!r}", None)
+        if v:
+            violations.append(v)
 
     return {"valid": not violations, "violations": violations}
+
+
+def _check_output_field(by_id: dict[str, Any], step_id: str, first_field: str,
+                        what: str, at_step: str | None) -> dict[str, Any] | None:
+    """Paths into a step's output must name a field the operator actually
+    emits — 's2.count' on entity_history is a plan bug we can reject
+    statically, with the real field list in the repair payload."""
+    step = by_id.get(step_id)
+    spec = REGISTRY.get(step.op) if step else None
+    if spec is None:
+        return None  # unknown op is reported separately
+    if first_field not in spec.output_fields:
+        return _violation(
+            "E_SCHEMA",
+            f"{what}: {step.op} outputs no field {first_field!r} "
+            f"(available: {', '.join(spec.output_fields)})", at_step)
+    return None
 
 
 # =========================================================================== #

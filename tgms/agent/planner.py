@@ -47,6 +47,9 @@ PLAN IR RULES
   filter/interval_relation) over prior rows.
 - answer_spec: {"kind": one of count|value|entity_set|interval|series|paths|
   text, "from": "sN.<path>"} — where the final answer is read from.
+- $ref and answer_spec paths may only use the output fields each tool lists
+  ("Output fields: ..."); e.g. compute exposes `value`, list results expose
+  `rows` / `rows_total` — there is no generic `count` field.
 - Timestamps are int64 epoch MICROSECONDS, UTC; windows are half-open
   [t_a, t_b) and must lie inside the dataset extent given in the dataset card.
 

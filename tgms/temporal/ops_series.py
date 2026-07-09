@@ -122,6 +122,7 @@ def _series_values(adapter: StorageAdapter, metric: str, args: dict[str, Any],
     "sample the bucket start; event metrics aggregate vt_s within the bucket.",
     cost_fn=scan_estimate,
     validators=[check_window],
+    output_fields=("rows", "rows_total", "truncated", "cursor", "n_buckets"),
 )
 def graph_metric_timeseries(adapter: StorageAdapter, args: dict[str, Any]) -> dict[str, Any]:
     bucket_starts = _buckets(args)
@@ -186,6 +187,7 @@ def _burst_validators(args: dict[str, Any]) -> None:
     "ratio: x / trailing_median >= r (median=0 -> flagged iff x > 0).",
     cost_fn=scan_estimate,
     validators=[_burst_validators],
+    output_fields=("rows", "rows_total", "truncated", "cursor", "n_buckets"),
 )
 def burst_detection(adapter: StorageAdapter, args: dict[str, Any]) -> dict[str, Any]:
     bucket_starts = _buckets(args)

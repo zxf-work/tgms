@@ -93,6 +93,8 @@ def _edge_rows(adapter: StorageAdapter, edges: dict[str, np.ndarray],
     "Ordered version list of a node (optionally with incident edge versions): "
     "all versions of `uid` believed at `as_of_tt`, ordered by vt_s.",
     cost_fn=scan_estimate,
+    output_fields=("rows", "rows_total", "truncated", "cursor",
+                   "edges", "edges_truncated"),
 )
 def entity_history(adapter: StorageAdapter, args: dict[str, Any]) -> dict[str, Any]:
     uid = args["uid"]
@@ -142,6 +144,8 @@ def _check_hops(args: dict[str, Any]) -> None:
     "paginated; `nodes` carry hop distance.",
     cost_fn=scan_estimate,
     validators=[_check_hops],
+    output_fields=("rows", "rows_total", "truncated", "cursor",
+                   "nodes", "nodes_total", "nodes_truncated"),
 )
 def snapshot_subgraph(adapter: StorageAdapter, args: dict[str, Any]) -> dict[str, Any]:
     t, as_of = args["t_valid"], args["as_of_tt"]
@@ -201,6 +205,10 @@ def _point_state(adapter: StorageAdapter, t: int, as_of: int):
     "nodes/edges added & removed (by logical identity) and props_changed. "
     "Each list is independently capped at `limit` with *_total counts.",
     cost_fn=scan_estimate,
+    output_fields=("nodes_added", "nodes_added_total", "nodes_removed",
+                   "nodes_removed_total", "edges_added", "edges_added_total",
+                   "edges_removed", "edges_removed_total", "props_changed",
+                   "props_changed_total", "truncated"),
 )
 def diff_snapshots(adapter: StorageAdapter, args: dict[str, Any]) -> dict[str, Any]:
     t1, t2, as_of, limit = args["t1"], args["t2"], args["as_of_tt"], args["limit"]
@@ -302,6 +310,9 @@ def _check_t1_t2(args: dict[str, Any]) -> None:
     "an incident-active-edge-count series sampled at bucket starts in [t1, t2).",
     cost_fn=scan_estimate,
     validators=[_check_t1_t2],
+    output_fields=("neighbors_gained", "neighbors_gained_total",
+                   "neighbors_lost", "neighbors_lost_total",
+                   "degree_series", "stride", "truncated"),
 )
 def neighborhood_evolution(adapter: StorageAdapter, args: dict[str, Any]) -> dict[str, Any]:
     uid, t1, t2, as_of = args["uid"], args["t1"], args["t2"], args["as_of_tt"]
