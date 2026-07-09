@@ -55,13 +55,39 @@ def bench_cases(store: tgms.Store) -> list[tuple[str, str, dict[str, Any]]]:
     ]
 
 
+def _receipts(store_path: str) -> str:
+    """Determinism receipts (spec §8.4): a table without receipts is not a
+    result."""
+    import subprocess
+    from pathlib import Path
+
+    def git(*args):
+        try:
+            return subprocess.run(["git", *args], capture_output=True,
+                                  text=True, check=True).stdout.strip()
+        except Exception:
+            return "n/a"
+
+    manifest = Path(store_path) / "dataset_card.json"
+    parts = [
+        f"commit: `{git('rev-parse', 'HEAD')}`"
+        + (" (dirty)" if git("status", "--porcelain") else ""),
+        f"store: `{store_path}`",
+        f"dataset card: `{manifest if manifest.exists() else 'none'}`",
+        f"python: `{__import__('sys').version.split()[0]}`",
+        f"repeats: {REPEATS}",
+    ]
+    return "receipts — " + "; ".join(parts)
+
+
 def run_bench(store_path: str) -> str:
     ensure_all_registered()
     store = tgms.open(store_path)
     stats = store.stats()
     lines = [
         "# TGMS operator micro-benchmarks",
-        f"\nstore: `{store_path}` — |V|={stats['n_entities']:,}, "
+        f"\n{_receipts(store_path)}\n",
+        f"store: `{store_path}` — |V|={stats['n_entities']:,}, "
         f"edge versions={stats['n_edge_versions']:,}\n",
         "| operator | case | p50 ms | p95 ms | rows | note |",
         "|---|---|---:|---:|---:|---|",
