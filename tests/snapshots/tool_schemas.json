@@ -1,6 +1,6 @@
 [
  {
-  "description": "Flag bursty buckets in an event-rate series. target.kind:\n'edge_event_rate' (optionally per rel_type) or 'node_activity'\n(requires target.uid; counts incident events). method 'zscore' flags\n|x - trailing_mean| >= z * trailing_std over the previous params.w\nbuckets (default w=10, z=3); 'ratio' flags x / trailing_median >= r.\nReturns only flagged buckets, with scores. Cost: cheap.\nExample: {\"target\": {\"kind\": \"edge_event_rate\"}, \"window\": {...},\n          \"stride\": 86400000000, \"method\": \"zscore\"}\n",
+  "description": "Flag bursty buckets in an event-rate series. target.kind:\n'edge_event_rate' (optionally per rel_type) or 'node_activity'\n(requires target.uid; counts incident events). method 'zscore' flags\n|x - trailing_mean| >= z * trailing_std over the previous params.w\nbuckets (default w=10, z=3); 'ratio' flags x / trailing_median >= r.\nReturns only flagged buckets, with scores. Cost: cheap.\nExample: {\"target\": {\"kind\": \"edge_event_rate\"}, \"window\": {...},\n          \"stride\": 86400000000, \"method\": \"zscore\"}\nOutput fields: rows, rows_total, truncated, cursor, n_buckets.",
   "input_schema": {
    "additionalProperties": false,
    "properties": {
@@ -125,7 +125,7 @@
   "name": "burst_detection"
  },
  {
-  "description": "Interval join between two edge-version sets selected by a_spec/b_spec\n{src?, dst?, rel_type?} under a strict Allen relation on valid time:\noverlaps (a starts first, they overlap, b ends last), during (a inside\nb), meets (a ends exactly when b starts), before (a ends, then b starts\nwithin `gap`; gap required). Cost: moderate; narrow the specs.\nExample: {\"a_spec\": {\"src\": \"a\", \"rel_type\": \"R\"},\n          \"b_spec\": {\"rel_type\": \"S\"},\n          \"allen_relation\": {\"relation\": \"before\", \"gap\": 3600000000}}\n",
+  "description": "Interval join between two edge-version sets selected by a_spec/b_spec\n{src?, dst?, rel_type?} under a strict Allen relation on valid time:\noverlaps (a starts first, they overlap, b ends last), during (a inside\nb), meets (a ends exactly when b starts), before (a ends, then b starts\nwithin `gap`; gap required). Cost: moderate; narrow the specs.\nExample: {\"a_spec\": {\"src\": \"a\", \"rel_type\": \"R\"},\n          \"b_spec\": {\"rel_type\": \"S\"},\n          \"allen_relation\": {\"relation\": \"before\", \"gap\": 3600000000}}\nOutput fields: rows, rows_total, truncated, cursor.",
   "input_schema": {
    "additionalProperties": false,
    "properties": {
@@ -244,7 +244,7 @@
   "name": "co_active"
  },
  {
-  "description": "Deterministic computation over a prior step's rows \u2014 never do arithmetic\nyourself. fn: count (rows), sum/min/max (numeric `field`), topk (`field`,\n`k` -> best rows), filter (`field`, `cmp` in eq/ne/lt/le/gt/ge/contains,\n`value`), interval_relation (`a`, `b` half-open intervals -> Allen\nrelation name). `input` normally arrives via {\"$ref\": \"sN.rows\"}.\nCost: trivial. Example: {\"fn\": \"topk\", \"input\": {\"$ref\": \"s2.rows\"},\n\"field\": \"value\", \"k\": 3}\n",
+  "description": "Deterministic computation over a prior step's rows \u2014 never do arithmetic\nyourself. fn: count (rows), sum/min/max (numeric `field`), topk (`field`,\n`k` -> best rows), filter (`field`, `cmp` in eq/ne/lt/le/gt/ge/contains,\n`value`), interval_relation (`a`, `b` half-open intervals -> Allen\nrelation name). `input` normally arrives via {\"$ref\": \"sN.rows\"}.\nCost: trivial. Example: {\"fn\": \"topk\", \"input\": {\"$ref\": \"s2.rows\"},\n\"field\": \"value\", \"k\": 3}\nOutput fields: value, rows, rows_total, truncated, cursor.",
   "input_schema": {
    "additionalProperties": false,
    "properties": {
@@ -362,7 +362,7 @@
   "name": "compute"
  },
  {
-  "description": "Exact count of delta-temporal motif instances among edge events in\n`window`: motif edges strictly time-ordered with span <= delta\n(microseconds), motif nodes pairwise distinct, rel_type ignored.\nMotifs: M_triangle_cyclic (u->v,v->w,w->u), M_triangle_acyclic_1\n(u->v,u->w,v->w), M_2node_pingpong (u->v,v->u,u->v), M_star_out_3\n(u->a,u->b,u->c), M_path_3 (u->v->w->x).\nCost: heavy \u2014 REQUIRES node_filter (<= 10k uids) on large graphs;\nE_COST tells you when. Example: {\"motif\": \"M_triangle_cyclic\",\n\"delta\": 86400000000, \"window\": {...}, \"node_filter\": [\"a\",\"b\",\"c\"]}\n",
+  "description": "Exact count of delta-temporal motif instances among edge events in\n`window`: motif edges strictly time-ordered with span <= delta\n(microseconds), motif nodes pairwise distinct, rel_type ignored.\nMotifs: M_triangle_cyclic (u->v,v->w,w->u), M_triangle_acyclic_1\n(u->v,u->w,v->w), M_2node_pingpong (u->v,v->u,u->v), M_star_out_3\n(u->a,u->b,u->c), M_path_3 (u->v->w->x).\nCost: heavy \u2014 REQUIRES node_filter (<= 10k uids) on large graphs;\nE_COST tells you when. Example: {\"motif\": \"M_triangle_cyclic\",\n\"delta\": 86400000000, \"window\": {...}, \"node_filter\": [\"a\",\"b\",\"c\"]}\nOutput fields: count, n_events_in_window, truncated.",
   "input_schema": {
    "additionalProperties": false,
    "properties": {
@@ -449,7 +449,7 @@
   "name": "count_temporal_motifs"
  },
  {
-  "description": "What changed between the snapshots at t1 and t2 under one belief state:\nnodes/edges added & removed (by logical identity) and props_changed.\nUse `scope` {seeds, hops} to restrict to a neighborhood \u2014 strongly\nrecommended on large graphs. Each list is capped at `limit` and reports\na *_total count. Cost: two interval-pruned scans (moderate; scope helps).\nExample: {\"t1\": 1580515200000000, \"t2\": 1583020800000000,\n          \"scope\": {\"seeds\": [\"acme-corp\"], \"hops\": 2}}\n",
+  "description": "What changed between the snapshots at t1 and t2 under one belief state:\nnodes/edges added & removed (by logical identity) and props_changed.\nUse `scope` {seeds, hops} to restrict to a neighborhood \u2014 strongly\nrecommended on large graphs. Each list is capped at `limit` and reports\na *_total count. Cost: two interval-pruned scans (moderate; scope helps).\nExample: {\"t1\": 1580515200000000, \"t2\": 1583020800000000,\n          \"scope\": {\"seeds\": [\"acme-corp\"], \"hops\": 2}}\nOutput fields: nodes_added, nodes_added_total, nodes_removed, nodes_removed_total, edges_added, edges_added_total, edges_removed, edges_removed_total, props_changed, props_changed_total, truncated.",
   "input_schema": {
    "additionalProperties": false,
    "properties": {
@@ -517,7 +517,7 @@
   "name": "diff_snapshots"
  },
  {
-  "description": "Full version history of one node: every version of `uid` believed at\n`as_of_tt` (default: current beliefs), ordered by valid-time start; set\ninclude_edges=true to also get its incident edge versions.\nConstraints: uid must come from resolve_entities or the task input.\nCost: cheap (single-identity lookup; incident edges add one scan).\nExample: {\"uid\": \"acme-corp\", \"include_edges\": true, \"limit\": 50}\n-> rows: [{vid, label, vt_s, vt_e, tt_s, tt_e, props}, ...]\n",
+  "description": "Full version history of one node: every version of `uid` believed at\n`as_of_tt` (default: current beliefs), ordered by valid-time start; set\ninclude_edges=true to also get its incident edge versions.\nConstraints: uid must come from resolve_entities or the task input.\nCost: cheap (single-identity lookup; incident edges add one scan).\nExample: {\"uid\": \"acme-corp\", \"include_edges\": true, \"limit\": 50}\n-> rows: [{vid, label, vt_s, vt_e, tt_s, tt_e, props}, ...]\nOutput fields: rows, rows_total, truncated, cursor, edges, edges_truncated.",
   "input_schema": {
    "additionalProperties": false,
    "properties": {
@@ -559,7 +559,7 @@
   "name": "entity_history"
  },
  {
-  "description": "Like count_temporal_motifs but returns the instances themselves as\nordered edge-event tuples, paginated and deterministically ordered.\nUse to name participants after counting. Same cost caveats.\nExample adds: {\"limit\": 20} -> rows: [{edges: [{src,dst,t,eid,rel_type}\nx3]}, ...]\n",
+  "description": "Like count_temporal_motifs but returns the instances themselves as\nordered edge-event tuples, paginated and deterministically ordered.\nUse to name participants after counting. Same cost caveats.\nExample adds: {\"limit\": 20} -> rows: [{edges: [{src,dst,t,eid,rel_type}\nx3]}, ...]\nOutput fields: rows, rows_total, truncated, cursor.",
   "input_schema": {
    "additionalProperties": false,
    "properties": {
@@ -656,7 +656,7 @@
   "name": "find_temporal_motif_instances"
  },
  {
-  "description": "Per-bucket metric series over `window` with bucket width `stride`\n(bucket count <= 2000). Metrics: node_count / active_edge_count /\nmean_out_degree sample the bucket start; edge_event_count /\nnew_node_rate / reciprocity aggregate events inside the bucket.\nCost: one interval-pruned scan \u2014 cheap.\nExample: {\"metric\": \"edge_event_count\", \"window\": {...},\n          \"stride\": 604800000000}  # weekly buckets\n",
+  "description": "Per-bucket metric series over `window` with bucket width `stride`\n(bucket count <= 2000). Metrics: node_count / active_edge_count /\nmean_out_degree sample the bucket start; edge_event_count /\nnew_node_rate / reciprocity aggregate events inside the bucket.\nCost: one interval-pruned scan \u2014 cheap.\nExample: {\"metric\": \"edge_event_count\", \"window\": {...},\n          \"stride\": 604800000000}  # weekly buckets\nOutput fields: rows, rows_total, truncated, cursor, n_buckets.",
   "input_schema": {
    "additionalProperties": false,
    "properties": {
@@ -730,7 +730,7 @@
   "name": "graph_metric_timeseries"
  },
  {
-  "description": "How `uid`'s neighborhood changed between t1 and t2: neighbors gained\nand lost (undirected), plus an incident-active-edge-count series\nsampled every `stride` (default (t2-t1)/20). Thin composition of\ndiff + timeseries scoped to one node \u2014 prefer it over manual diffs.\nCost: cheap. Example: {\"uid\": \"acme-corp\", \"t1\": ..., \"t2\": ...}\n",
+  "description": "How `uid`'s neighborhood changed between t1 and t2: neighbors gained\nand lost (undirected), plus an incident-active-edge-count series\nsampled every `stride` (default (t2-t1)/20). Thin composition of\ndiff + timeseries scoped to one node \u2014 prefer it over manual diffs.\nCost: cheap. Example: {\"uid\": \"acme-corp\", \"t1\": ..., \"t2\": ...}\nOutput fields: neighbors_gained, neighbors_gained_total, neighbors_lost, neighbors_lost_total, degree_series, stride, truncated.",
   "input_schema": {
    "additionalProperties": false,
    "properties": {
@@ -783,7 +783,7 @@
   "name": "neighborhood_evolution"
  },
  {
-  "description": "Look up node uids by name: exact uid match first, then case-insensitive\nsubstring on uid and on the `name` property of any believed version.\nALWAYS use this to obtain uids \u2014 never invent identifiers; plans with\nliteral uids not from the task input or a prior step are rejected.\nCost: cheap. Example: {\"query\": \"ACME\", \"label\": \"Org\", \"limit\": 5}\n-> rows: [{uid, label, name, match}, ...]\n",
+  "description": "Look up node uids by name: exact uid match first, then case-insensitive\nsubstring on uid and on the `name` property of any believed version.\nALWAYS use this to obtain uids \u2014 never invent identifiers; plans with\nliteral uids not from the task input or a prior step are rejected.\nCost: cheap. Example: {\"query\": \"ACME\", \"label\": \"Org\", \"limit\": 5}\n-> rows: [{uid, label, name, match}, ...]\nOutput fields: rows, rows_total, truncated, cursor.",
   "input_schema": {
    "additionalProperties": false,
    "properties": {
@@ -828,7 +828,7 @@
   "name": "resolve_entities"
  },
  {
-  "description": "The k-hop neighborhood (undirected expansion, hops <= 3) of `seeds` in\nthe snapshot graph at instant `t_valid`, under belief state `as_of_tt`;\nreturns induced edges (paginated `rows`) and nodes with hop distance.\nCost: cheap for hops <= 2; hop 3 on hubs can be large \u2014 lower `limit`.\nExample: {\"seeds\": [\"acme-corp\"], \"hops\": 2, \"t_valid\": 1580515200000000}\n-> rows: [{eid, src, dst, rel_type, vt_s, vt_e}, ...], nodes: [...]\n",
+  "description": "The k-hop neighborhood (undirected expansion, hops <= 3) of `seeds` in\nthe snapshot graph at instant `t_valid`, under belief state `as_of_tt`;\nreturns induced edges (paginated `rows`) and nodes with hop distance.\nCost: cheap for hops <= 2; hop 3 on hubs can be large \u2014 lower `limit`.\nExample: {\"seeds\": [\"acme-corp\"], \"hops\": 2, \"t_valid\": 1580515200000000}\n-> rows: [{eid, src, dst, rel_type, vt_s, vt_e}, ...], nodes: [...]\nOutput fields: rows, rows_total, truncated, cursor, nodes, nodes_total, nodes_truncated.",
   "input_schema": {
    "additionalProperties": false,
    "properties": {
@@ -894,7 +894,7 @@
   "name": "snapshot_subgraph"
  },
  {
-  "description": "Up to k (<= 20) concrete node-simple time-respecting paths src -> dst\ninside `window`, hop cap 6, ordered by (arrival, hops). Use after\ntemporal_reachability confirms dst is reachable. Cost: exponential in\nmax_hops \u2014 keep max_hops <= 4 and windows narrow.\nExample: {\"src\": \"a\", \"dst\": \"d\", \"k\": 3, \"max_hops\": 4,\n          \"window\": {\"t_a\": 0, \"t_b\": 1700000000000000}}\n-> rows: [{arrival, hops, edges: [{src, dst, rel_type, t, eid}, ...]}]\n",
+  "description": "Up to k (<= 20) concrete node-simple time-respecting paths src -> dst\ninside `window`, hop cap 6, ordered by (arrival, hops). Use after\ntemporal_reachability confirms dst is reachable. Cost: exponential in\nmax_hops \u2014 keep max_hops <= 4 and windows narrow.\nExample: {\"src\": \"a\", \"dst\": \"d\", \"k\": 3, \"max_hops\": 4,\n          \"window\": {\"t_a\": 0, \"t_b\": 1700000000000000}}\n-> rows: [{arrival, hops, edges: [{src, dst, rel_type, t, eid}, ...]}]\nOutput fields: rows, rows_total, truncated, cursor.",
   "input_schema": {
    "additionalProperties": false,
    "properties": {
@@ -959,7 +959,7 @@
   "name": "temporal_paths"
  },
  {
-  "description": "Which nodes are reachable from `src` via time-respecting paths (edge\ntimes non-decreasing) inside `window` \u2014 returns earliest arrival per\nnode, source excluded, sorted by arrival. direction='in' answers \"who\ncould reach src\"; delta_max_wait caps the wait at intermediate nodes\n(exact path semantics). Cost: linear in window edges without delta;\nwith delta it can be much heavier \u2014 keep windows narrow.\nExample: {\"src\": \"acme-corp\",\n          \"window\": {\"t_a\": 1580515200000000, \"t_b\": 1583020800000000},\n          \"direction\": \"out\"}\n-> rows: [{uid, earliest_arrival}, ...]\n",
+  "description": "Which nodes are reachable from `src` via time-respecting paths (edge\ntimes non-decreasing) inside `window` \u2014 returns earliest arrival per\nnode, source excluded, sorted by arrival. direction='in' answers \"who\ncould reach src\"; delta_max_wait caps the wait at intermediate nodes\n(exact path semantics). Cost: linear in window edges without delta;\nwith delta it can be much heavier \u2014 keep windows narrow.\nExample: {\"src\": \"acme-corp\",\n          \"window\": {\"t_a\": 1580515200000000, \"t_b\": 1583020800000000},\n          \"direction\": \"out\"}\n-> rows: [{uid, earliest_arrival}, ...]\nOutput fields: rows, rows_total, truncated, cursor.",
   "input_schema": {
    "additionalProperties": false,
    "properties": {
