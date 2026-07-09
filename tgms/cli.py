@@ -36,6 +36,12 @@ def main(argv: list[str] | None = None) -> int:
     p_serve.add_argument("--store", required=True)
     p_serve.add_argument("--readonly", action="store_true", default=True)
 
+    p_mem = sub.add_parser("memory", help="evolution-memory maintenance")
+    p_mem.add_argument("action", choices=["build"])
+    p_mem.add_argument("--store", required=True)
+    p_mem.add_argument("--stride-days", type=int, default=7)
+    p_mem.add_argument("--refresh-stale", action="store_true")
+
     args = p.parse_args(argv)
 
     if args.cmd == "ingest":
@@ -67,6 +73,17 @@ def main(argv: list[str] | None = None) -> int:
     elif args.cmd == "serve":
         from tgms.tools.server import build_mcp_server
         build_mcp_server(args.store).run()
+    elif args.cmd == "memory":
+        import tgms
+        from tgms.agent.memory import MICROS_PER_DAY, EvolutionMemory
+        store = tgms.open(args.store)
+        mem = EvolutionMemory(f"{args.store}/memory.sqlite")
+        n = mem.build(store.adapter, stride=args.stride_days * MICROS_PER_DAY,
+                      as_of_tt=store.clock.last_tt,
+                      refresh_stale=args.refresh_stale)
+        print(json.dumps({"notes": n, "refresh_stale": args.refresh_stale}))
+        mem.close()
+        store.close()
     return 0
 
 

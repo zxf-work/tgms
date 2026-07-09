@@ -28,9 +28,19 @@ class Store:
         self.adapter = _make_adapter(backend, self.path)
         self.adapter.paranoid = paranoid
         self.clock = HybridLogicalClock(last_tt=self.eventlog.last_tt())
+        self._memories: list[Any] = []  # EvolutionMemory hooks (spec v1.1 WP2.4)
 
     def close(self) -> None:
         self.adapter.close()
+
+    def attach_memory(self, memory: Any) -> None:
+        """Register an EvolutionMemory for staleness invalidation: correct()
+        and retract() quarantine notes overlapping the affected vt extent."""
+        self._memories.append(memory)
+
+    def _invalidate_memories(self, vt_a: int, vt_e: int) -> None:
+        for m in self._memories:
+            m.mark_stale(vt_a, vt_e)
 
     # --- write API (WP1.2) ------------------------------------------------ #
 
@@ -47,14 +57,19 @@ class Store:
                                     source="ingest", provenance_ref=None)])
 
     def retract(self, ref: EntityRef, t: int) -> int:
-        return self._write([make_op("retract", ref=_ref_json(ref), t=t,
-                                    source="ingest", provenance_ref=None)])
+        tt = self._write([make_op("retract", ref=_ref_json(ref), t=t,
+                                  source="ingest", provenance_ref=None)])
+        # belief about [t, OPEN_END) changed: quarantine overlapping notes
+        self._invalidate_memories(t, OPEN_END)
+        return tt
 
     def correct(self, ref: EntityRef, new_props: Props,
                 vt_s: int = 0, vt_e: int = OPEN_END) -> int:
-        return self._write([make_op("correct", ref=_ref_json(ref), props=new_props,
-                                    vt_s=vt_s, vt_e=vt_e,
-                                    source="ingest", provenance_ref=None)])
+        tt = self._write([make_op("correct", ref=_ref_json(ref), props=new_props,
+                                  vt_s=vt_s, vt_e=vt_e,
+                                  source="ingest", provenance_ref=None)])
+        self._invalidate_memories(vt_s, vt_e)
+        return tt
 
     def ingest_events(self, events: Iterable[dict[str, Any]],
                       node_label: str = "Node") -> int:
