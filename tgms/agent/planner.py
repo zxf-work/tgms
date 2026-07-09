@@ -124,11 +124,33 @@ def build_prompt(question: str, dataset_card: dict[str, Any],
 
 def default_llm_fn(model: str, messages: list[dict[str, str]],
                    temperature: float, seed: int) -> str:
-    import litellm
+    return make_llm_fn()(model, messages, temperature, seed)
 
-    resp = litellm.completion(model=model, messages=messages,
-                              temperature=temperature, seed=seed)
-    return resp.choices[0].message.content or ""
+
+def make_llm_fn(api_base: str | None = None, api_key: str | None = None,
+                max_tokens: int = 4096,
+                extra_body: dict[str, Any] | None = None) -> Callable[..., str]:
+    """LiteLLM-backed llm_fn. `api_base` points at any OpenAI-compatible
+    endpoint (vLLM serve for the open-source C3 matrix); model names then use
+    the "openai/<served-model>" prefix. `extra_body` passes server-specific
+    knobs (e.g. Qwen3 {"chat_template_kwargs": {"enable_thinking": false}})."""
+
+    def llm_fn(model: str, messages: list[dict[str, str]],
+               temperature: float, seed: int) -> str:
+        import litellm
+
+        kwargs: dict[str, Any] = {}
+        if api_base:
+            kwargs["api_base"] = api_base
+            kwargs["api_key"] = api_key or "EMPTY"
+        if extra_body:
+            kwargs["extra_body"] = extra_body
+        resp = litellm.completion(model=model, messages=messages,
+                                  temperature=temperature, seed=seed,
+                                  max_tokens=max_tokens, **kwargs)
+        return resp.choices[0].message.content or ""
+
+    return llm_fn
 
 
 class ResponseCache:
@@ -149,8 +171,14 @@ class ResponseCache:
 
 
 def strip_fences(text: str) -> str:
-    text = text.strip()
+    # reasoning models (Qwen3, R1 distills) prepend <think>...</think>;
+    # drop it before strict JSON parsing
+    text = re.sub(r"<think>.*?</think>", "", text, flags=re.DOTALL).strip()
     m = re.match(r"^```(?:json)?\s*(.*?)\s*```$", text, re.DOTALL)
+    if m:
+        return m.group(1)
+    # some models wrap JSON in prose fences mid-text; grab a fenced block
+    m = re.search(r"```(?:json)?\s*(\{.*?\})\s*```", text, re.DOTALL)
     return m.group(1) if m else text
 
 
