@@ -1,0 +1,125 @@
+# Tool manual (WP1.5) — the operator descriptions LLM planners read.
+# Reviewed prose, one entry per operator. Every entry: semantics one-liner,
+# arg constraints, cost hint, one worked example. Timestamps are int64 epoch
+# MICROSECONDS, UTC; intervals/windows are half-open [start, end).
+
+entity_history:
+  description: |
+    Full version history of one node: every version of `uid` believed at
+    `as_of_tt` (default: current beliefs), ordered by valid-time start; set
+    include_edges=true to also get its incident edge versions.
+    Constraints: uid must come from resolve_entities or the task input.
+    Cost: cheap (single-identity lookup; incident edges add one scan).
+    Example: {"uid": "acme-corp", "include_edges": true, "limit": 50}
+    -> rows: [{vid, label, vt_s, vt_e, tt_s, tt_e, props}, ...]
+
+snapshot_subgraph:
+  description: |
+    The k-hop neighborhood (undirected expansion, hops <= 3) of `seeds` in
+    the snapshot graph at instant `t_valid`, under belief state `as_of_tt`;
+    returns induced edges (paginated `rows`) and nodes with hop distance.
+    Cost: cheap for hops <= 2; hop 3 on hubs can be large — lower `limit`.
+    Example: {"seeds": ["acme-corp"], "hops": 2, "t_valid": 1580515200000000}
+    -> rows: [{eid, src, dst, rel_type, vt_s, vt_e}, ...], nodes: [...]
+
+diff_snapshots:
+  description: |
+    What changed between the snapshots at t1 and t2 under one belief state:
+    nodes/edges added & removed (by logical identity) and props_changed.
+    Use `scope` {seeds, hops} to restrict to a neighborhood — strongly
+    recommended on large graphs. Each list is capped at `limit` and reports
+    a *_total count. Cost: two interval-pruned scans (moderate; scope helps).
+    Example: {"t1": 1580515200000000, "t2": 1583020800000000,
+              "scope": {"seeds": ["acme-corp"], "hops": 2}}
+
+temporal_reachability:
+  description: |
+    Which nodes are reachable from `src` via time-respecting paths (edge
+    times non-decreasing) inside `window` — returns earliest arrival per
+    node, source excluded, sorted by arrival. direction='in' answers "who
+    could reach src"; delta_max_wait caps the wait at intermediate nodes
+    (exact path semantics). Cost: linear in window edges without delta;
+    with delta it can be much heavier — keep windows narrow.
+    Example: {"src": "acme-corp",
+              "window": {"t_a": 1580515200000000, "t_b": 1583020800000000},
+              "direction": "out"}
+    -> rows: [{uid, earliest_arrival}, ...]
+
+temporal_paths:
+  description: |
+    Up to k (<= 20) concrete node-simple time-respecting paths src -> dst
+    inside `window`, hop cap 6, ordered by (arrival, hops). Use after
+    temporal_reachability confirms dst is reachable. Cost: exponential in
+    max_hops — keep max_hops <= 4 and windows narrow.
+    Example: {"src": "a", "dst": "d", "k": 3, "max_hops": 4,
+              "window": {"t_a": 0, "t_b": 1700000000000000}}
+    -> rows: [{arrival, hops, edges: [{src, dst, rel_type, t, eid}, ...]}]
+
+count_temporal_motifs:
+  description: |
+    Exact count of delta-temporal motif instances among edge events in
+    `window`: motif edges strictly time-ordered with span <= delta
+    (microseconds), motif nodes pairwise distinct, rel_type ignored.
+    Motifs: M_triangle_cyclic (u->v,v->w,w->u), M_triangle_acyclic_1
+    (u->v,u->w,v->w), M_2node_pingpong (u->v,v->u,u->v), M_star_out_3
+    (u->a,u->b,u->c), M_path_3 (u->v->w->x).
+    Cost: heavy — REQUIRES node_filter (<= 10k uids) on large graphs;
+    E_COST tells you when. Example: {"motif": "M_triangle_cyclic",
+    "delta": 86400000000, "window": {...}, "node_filter": ["a","b","c"]}
+
+find_temporal_motif_instances:
+  description: |
+    Like count_temporal_motifs but returns the instances themselves as
+    ordered edge-event tuples, paginated and deterministically ordered.
+    Use to name participants after counting. Same cost caveats.
+    Example adds: {"limit": 20} -> rows: [{edges: [{src,dst,t,eid,rel_type}
+    x3]}, ...]
+
+graph_metric_timeseries:
+  description: |
+    Per-bucket metric series over `window` with bucket width `stride`
+    (bucket count <= 2000). Metrics: node_count / active_edge_count /
+    mean_out_degree sample the bucket start; edge_event_count /
+    new_node_rate / reciprocity aggregate events inside the bucket.
+    Cost: one interval-pruned scan — cheap.
+    Example: {"metric": "edge_event_count", "window": {...},
+              "stride": 604800000000}  # weekly buckets
+
+burst_detection:
+  description: |
+    Flag bursty buckets in an event-rate series. target.kind:
+    'edge_event_rate' (optionally per rel_type) or 'node_activity'
+    (requires target.uid; counts incident events). method 'zscore' flags
+    |x - trailing_mean| >= z * trailing_std over the previous params.w
+    buckets (default w=10, z=3); 'ratio' flags x / trailing_median >= r.
+    Returns only flagged buckets, with scores. Cost: cheap.
+    Example: {"target": {"kind": "edge_event_rate"}, "window": {...},
+              "stride": 86400000000, "method": "zscore"}
+
+neighborhood_evolution:
+  description: |
+    How `uid`'s neighborhood changed between t1 and t2: neighbors gained
+    and lost (undirected), plus an incident-active-edge-count series
+    sampled every `stride` (default (t2-t1)/20). Thin composition of
+    diff + timeseries scoped to one node — prefer it over manual diffs.
+    Cost: cheap. Example: {"uid": "acme-corp", "t1": ..., "t2": ...}
+
+co_active:
+  description: |
+    Interval join between two edge-version sets selected by a_spec/b_spec
+    {src?, dst?, rel_type?} under a strict Allen relation on valid time:
+    overlaps (a starts first, they overlap, b ends last), during (a inside
+    b), meets (a ends exactly when b starts), before (a ends, then b starts
+    within `gap`; gap required). Cost: moderate; narrow the specs.
+    Example: {"a_spec": {"src": "a", "rel_type": "R"},
+              "b_spec": {"rel_type": "S"},
+              "allen_relation": {"relation": "before", "gap": 3600000000}}
+
+resolve_entities:
+  description: |
+    Look up node uids by name: exact uid match first, then case-insensitive
+    substring on uid and on the `name` property of any believed version.
+    ALWAYS use this to obtain uids — never invent identifiers; plans with
+    literal uids not from the task input or a prior step are rejected.
+    Cost: cheap. Example: {"query": "ACME", "label": "Org", "limit": 5}
+    -> rows: [{uid, label, name, match}, ...]

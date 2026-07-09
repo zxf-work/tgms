@@ -1,0 +1,922 @@
+[
+ {
+  "description": "Flag bursty buckets in an event-rate series. target.kind:\n'edge_event_rate' (optionally per rel_type) or 'node_activity'\n(requires target.uid; counts incident events). method 'zscore' flags\n|x - trailing_mean| >= z * trailing_std over the previous params.w\nbuckets (default w=10, z=3); 'ratio' flags x / trailing_median >= r.\nReturns only flagged buckets, with scores. Cost: cheap.\nExample: {\"target\": {\"kind\": \"edge_event_rate\"}, \"window\": {...},\n          \"stride\": 86400000000, \"method\": \"zscore\"}\n",
+  "input_schema": {
+   "additionalProperties": false,
+   "properties": {
+    "as_of_tt": {
+     "default": 4611686018427387904,
+     "description": "belief state to evaluate under; OPEN_END = current beliefs",
+     "maximum": 4611686018427387904,
+     "minimum": 0,
+     "type": "integer"
+    },
+    "cursor": {
+     "default": null,
+     "description": "opaque pagination cursor from a previous call",
+     "type": [
+      "string",
+      "null"
+     ]
+    },
+    "limit": {
+     "default": 100,
+     "maximum": 10000,
+     "minimum": 1,
+     "type": "integer"
+    },
+    "method": {
+     "default": "zscore",
+     "enum": [
+      "zscore",
+      "ratio"
+     ],
+     "type": "string"
+    },
+    "params": {
+     "additionalProperties": false,
+     "default": {},
+     "properties": {
+      "r": {
+       "default": 3.0,
+       "minimum": 1.0,
+       "type": "number"
+      },
+      "w": {
+       "default": 10,
+       "description": "trailing window length in buckets",
+       "maximum": 500,
+       "minimum": 2,
+       "type": "integer"
+      },
+      "z": {
+       "default": 3.0,
+       "minimum": 0.1,
+       "type": "number"
+      }
+     },
+     "type": "object"
+    },
+    "stride": {
+     "minimum": 1,
+     "type": "integer"
+    },
+    "target": {
+     "additionalProperties": false,
+     "properties": {
+      "kind": {
+       "enum": [
+        "edge_event_rate",
+        "node_activity"
+       ],
+       "type": "string"
+      },
+      "rel_type": {
+       "default": null,
+       "type": [
+        "string",
+        "null"
+       ]
+      },
+      "uid": {
+       "default": null,
+       "type": [
+        "string",
+        "null"
+       ]
+      }
+     },
+     "required": [
+      "kind"
+     ],
+     "type": "object"
+    },
+    "window": {
+     "additionalProperties": false,
+     "description": "half-open valid-time window [t_a, t_b)",
+     "properties": {
+      "t_a": {
+       "description": "int64 epoch microseconds, UTC",
+       "maximum": 4611686018427387904,
+       "minimum": 0,
+       "type": "integer"
+      },
+      "t_b": {
+       "description": "int64 epoch microseconds, UTC",
+       "maximum": 4611686018427387904,
+       "minimum": 0,
+       "type": "integer"
+      }
+     },
+     "required": [
+      "t_a",
+      "t_b"
+     ],
+     "type": "object"
+    }
+   },
+   "required": [
+    "target",
+    "window",
+    "stride"
+   ],
+   "type": "object"
+  },
+  "name": "burst_detection"
+ },
+ {
+  "description": "Interval join between two edge-version sets selected by a_spec/b_spec\n{src?, dst?, rel_type?} under a strict Allen relation on valid time:\noverlaps (a starts first, they overlap, b ends last), during (a inside\nb), meets (a ends exactly when b starts), before (a ends, then b starts\nwithin `gap`; gap required). Cost: moderate; narrow the specs.\nExample: {\"a_spec\": {\"src\": \"a\", \"rel_type\": \"R\"},\n          \"b_spec\": {\"rel_type\": \"S\"},\n          \"allen_relation\": {\"relation\": \"before\", \"gap\": 3600000000}}\n",
+  "input_schema": {
+   "additionalProperties": false,
+   "properties": {
+    "a_spec": {
+     "additionalProperties": false,
+     "description": "edge-version selector; null fields match anything",
+     "properties": {
+      "dst": {
+       "default": null,
+       "type": [
+        "string",
+        "null"
+       ]
+      },
+      "rel_type": {
+       "default": null,
+       "type": [
+        "string",
+        "null"
+       ]
+      },
+      "src": {
+       "default": null,
+       "type": [
+        "string",
+        "null"
+       ]
+      }
+     },
+     "type": "object"
+    },
+    "allen_relation": {
+     "additionalProperties": false,
+     "properties": {
+      "gap": {
+       "default": null,
+       "description": "required for 'before': 0 < b.vt_s - a.vt_e <= gap",
+       "minimum": 1,
+       "type": [
+        "integer",
+        "null"
+       ]
+      },
+      "relation": {
+       "enum": [
+        "overlaps",
+        "during",
+        "before",
+        "meets"
+       ],
+       "type": "string"
+      }
+     },
+     "required": [
+      "relation"
+     ],
+     "type": "object"
+    },
+    "as_of_tt": {
+     "default": 4611686018427387904,
+     "description": "belief state to evaluate under; OPEN_END = current beliefs",
+     "maximum": 4611686018427387904,
+     "minimum": 0,
+     "type": "integer"
+    },
+    "b_spec": {
+     "additionalProperties": false,
+     "description": "edge-version selector; null fields match anything",
+     "properties": {
+      "dst": {
+       "default": null,
+       "type": [
+        "string",
+        "null"
+       ]
+      },
+      "rel_type": {
+       "default": null,
+       "type": [
+        "string",
+        "null"
+       ]
+      },
+      "src": {
+       "default": null,
+       "type": [
+        "string",
+        "null"
+       ]
+      }
+     },
+     "type": "object"
+    },
+    "cursor": {
+     "default": null,
+     "description": "opaque pagination cursor from a previous call",
+     "type": [
+      "string",
+      "null"
+     ]
+    },
+    "limit": {
+     "default": 100,
+     "maximum": 10000,
+     "minimum": 1,
+     "type": "integer"
+    }
+   },
+   "required": [
+    "a_spec",
+    "b_spec",
+    "allen_relation"
+   ],
+   "type": "object"
+  },
+  "name": "co_active"
+ },
+ {
+  "description": "Exact count of delta-temporal motif instances among edge events in\n`window`: motif edges strictly time-ordered with span <= delta\n(microseconds), motif nodes pairwise distinct, rel_type ignored.\nMotifs: M_triangle_cyclic (u->v,v->w,w->u), M_triangle_acyclic_1\n(u->v,u->w,v->w), M_2node_pingpong (u->v,v->u,u->v), M_star_out_3\n(u->a,u->b,u->c), M_path_3 (u->v->w->x).\nCost: heavy \u2014 REQUIRES node_filter (<= 10k uids) on large graphs;\nE_COST tells you when. Example: {\"motif\": \"M_triangle_cyclic\",\n\"delta\": 86400000000, \"window\": {...}, \"node_filter\": [\"a\",\"b\",\"c\"]}\n",
+  "input_schema": {
+   "additionalProperties": false,
+   "properties": {
+    "as_of_tt": {
+     "default": 4611686018427387904,
+     "description": "belief state to evaluate under; OPEN_END = current beliefs",
+     "maximum": 4611686018427387904,
+     "minimum": 0,
+     "type": "integer"
+    },
+    "delta": {
+     "description": "max span t_last - t_first, microseconds",
+     "minimum": 1,
+     "type": "integer"
+    },
+    "mode": {
+     "default": "exact",
+     "enum": [
+      "exact",
+      "sample"
+     ],
+     "type": "string"
+    },
+    "motif": {
+     "enum": [
+      "M_2node_pingpong",
+      "M_path_3",
+      "M_star_out_3",
+      "M_triangle_acyclic_1",
+      "M_triangle_cyclic"
+     ],
+     "type": "string"
+    },
+    "node_filter": {
+     "default": null,
+     "description": "restrict all motif nodes to this uid set",
+     "items": {
+      "type": "string"
+     },
+     "maxItems": 10000,
+     "type": [
+      "array",
+      "null"
+     ]
+    },
+    "seed": {
+     "default": null,
+     "type": [
+      "integer",
+      "null"
+     ]
+    },
+    "window": {
+     "additionalProperties": false,
+     "description": "half-open valid-time window [t_a, t_b)",
+     "properties": {
+      "t_a": {
+       "description": "int64 epoch microseconds, UTC",
+       "maximum": 4611686018427387904,
+       "minimum": 0,
+       "type": "integer"
+      },
+      "t_b": {
+       "description": "int64 epoch microseconds, UTC",
+       "maximum": 4611686018427387904,
+       "minimum": 0,
+       "type": "integer"
+      }
+     },
+     "required": [
+      "t_a",
+      "t_b"
+     ],
+     "type": "object"
+    }
+   },
+   "required": [
+    "motif",
+    "delta",
+    "window"
+   ],
+   "type": "object"
+  },
+  "name": "count_temporal_motifs"
+ },
+ {
+  "description": "What changed between the snapshots at t1 and t2 under one belief state:\nnodes/edges added & removed (by logical identity) and props_changed.\nUse `scope` {seeds, hops} to restrict to a neighborhood \u2014 strongly\nrecommended on large graphs. Each list is capped at `limit` and reports\na *_total count. Cost: two interval-pruned scans (moderate; scope helps).\nExample: {\"t1\": 1580515200000000, \"t2\": 1583020800000000,\n          \"scope\": {\"seeds\": [\"acme-corp\"], \"hops\": 2}}\n",
+  "input_schema": {
+   "additionalProperties": false,
+   "properties": {
+    "as_of_tt": {
+     "default": 4611686018427387904,
+     "description": "belief state to evaluate under; OPEN_END = current beliefs",
+     "maximum": 4611686018427387904,
+     "minimum": 0,
+     "type": "integer"
+    },
+    "limit": {
+     "default": 100,
+     "maximum": 10000,
+     "minimum": 1,
+     "type": "integer"
+    },
+    "scope": {
+     "additionalProperties": false,
+     "default": null,
+     "description": "restrict the diff to nodes within `hops` of `seeds` in either snapshot (edges need both endpoints in scope)",
+     "properties": {
+      "hops": {
+       "maximum": 3,
+       "minimum": 0,
+       "type": "integer"
+      },
+      "seeds": {
+       "items": {
+        "minLength": 1,
+        "type": "string"
+       },
+       "maxItems": 10000,
+       "minItems": 1,
+       "type": "array"
+      }
+     },
+     "required": [
+      "seeds",
+      "hops"
+     ],
+     "type": [
+      "object",
+      "null"
+     ]
+    },
+    "t1": {
+     "description": "int64 epoch microseconds, UTC",
+     "maximum": 4611686018427387904,
+     "minimum": 0,
+     "type": "integer"
+    },
+    "t2": {
+     "description": "int64 epoch microseconds, UTC",
+     "maximum": 4611686018427387904,
+     "minimum": 0,
+     "type": "integer"
+    }
+   },
+   "required": [
+    "t1",
+    "t2"
+   ],
+   "type": "object"
+  },
+  "name": "diff_snapshots"
+ },
+ {
+  "description": "Full version history of one node: every version of `uid` believed at\n`as_of_tt` (default: current beliefs), ordered by valid-time start; set\ninclude_edges=true to also get its incident edge versions.\nConstraints: uid must come from resolve_entities or the task input.\nCost: cheap (single-identity lookup; incident edges add one scan).\nExample: {\"uid\": \"acme-corp\", \"include_edges\": true, \"limit\": 50}\n-> rows: [{vid, label, vt_s, vt_e, tt_s, tt_e, props}, ...]\n",
+  "input_schema": {
+   "additionalProperties": false,
+   "properties": {
+    "as_of_tt": {
+     "default": 4611686018427387904,
+     "description": "belief state to evaluate under; OPEN_END = current beliefs",
+     "maximum": 4611686018427387904,
+     "minimum": 0,
+     "type": "integer"
+    },
+    "cursor": {
+     "default": null,
+     "description": "opaque pagination cursor from a previous call",
+     "type": [
+      "string",
+      "null"
+     ]
+    },
+    "include_edges": {
+     "default": false,
+     "type": "boolean"
+    },
+    "limit": {
+     "default": 100,
+     "maximum": 10000,
+     "minimum": 1,
+     "type": "integer"
+    },
+    "uid": {
+     "minLength": 1,
+     "type": "string"
+    }
+   },
+   "required": [
+    "uid"
+   ],
+   "type": "object"
+  },
+  "name": "entity_history"
+ },
+ {
+  "description": "Like count_temporal_motifs but returns the instances themselves as\nordered edge-event tuples, paginated and deterministically ordered.\nUse to name participants after counting. Same cost caveats.\nExample adds: {\"limit\": 20} -> rows: [{edges: [{src,dst,t,eid,rel_type}\nx3]}, ...]\n",
+  "input_schema": {
+   "additionalProperties": false,
+   "properties": {
+    "as_of_tt": {
+     "default": 4611686018427387904,
+     "description": "belief state to evaluate under; OPEN_END = current beliefs",
+     "maximum": 4611686018427387904,
+     "minimum": 0,
+     "type": "integer"
+    },
+    "cursor": {
+     "default": null,
+     "description": "opaque pagination cursor from a previous call",
+     "type": [
+      "string",
+      "null"
+     ]
+    },
+    "delta": {
+     "description": "max span t_last - t_first, microseconds",
+     "minimum": 1,
+     "type": "integer"
+    },
+    "limit": {
+     "default": 100,
+     "maximum": 10000,
+     "minimum": 1,
+     "type": "integer"
+    },
+    "mode": {
+     "default": "exact",
+     "enum": [
+      "exact",
+      "sample"
+     ],
+     "type": "string"
+    },
+    "motif": {
+     "enum": [
+      "M_2node_pingpong",
+      "M_path_3",
+      "M_star_out_3",
+      "M_triangle_acyclic_1",
+      "M_triangle_cyclic"
+     ],
+     "type": "string"
+    },
+    "node_filter": {
+     "default": null,
+     "description": "restrict all motif nodes to this uid set",
+     "items": {
+      "type": "string"
+     },
+     "maxItems": 10000,
+     "type": [
+      "array",
+      "null"
+     ]
+    },
+    "seed": {
+     "default": null,
+     "type": [
+      "integer",
+      "null"
+     ]
+    },
+    "window": {
+     "additionalProperties": false,
+     "description": "half-open valid-time window [t_a, t_b)",
+     "properties": {
+      "t_a": {
+       "description": "int64 epoch microseconds, UTC",
+       "maximum": 4611686018427387904,
+       "minimum": 0,
+       "type": "integer"
+      },
+      "t_b": {
+       "description": "int64 epoch microseconds, UTC",
+       "maximum": 4611686018427387904,
+       "minimum": 0,
+       "type": "integer"
+      }
+     },
+     "required": [
+      "t_a",
+      "t_b"
+     ],
+     "type": "object"
+    }
+   },
+   "required": [],
+   "type": "object"
+  },
+  "name": "find_temporal_motif_instances"
+ },
+ {
+  "description": "Per-bucket metric series over `window` with bucket width `stride`\n(bucket count <= 2000). Metrics: node_count / active_edge_count /\nmean_out_degree sample the bucket start; edge_event_count /\nnew_node_rate / reciprocity aggregate events inside the bucket.\nCost: one interval-pruned scan \u2014 cheap.\nExample: {\"metric\": \"edge_event_count\", \"window\": {...},\n          \"stride\": 604800000000}  # weekly buckets\n",
+  "input_schema": {
+   "additionalProperties": false,
+   "properties": {
+    "as_of_tt": {
+     "default": 4611686018427387904,
+     "description": "belief state to evaluate under; OPEN_END = current beliefs",
+     "maximum": 4611686018427387904,
+     "minimum": 0,
+     "type": "integer"
+    },
+    "cursor": {
+     "default": null,
+     "description": "opaque pagination cursor from a previous call",
+     "type": [
+      "string",
+      "null"
+     ]
+    },
+    "limit": {
+     "default": 100,
+     "maximum": 10000,
+     "minimum": 1,
+     "type": "integer"
+    },
+    "metric": {
+     "enum": [
+      "node_count",
+      "edge_event_count",
+      "active_edge_count",
+      "mean_out_degree",
+      "new_node_rate",
+      "reciprocity"
+     ],
+     "type": "string"
+    },
+    "stride": {
+     "minimum": 1,
+     "type": "integer"
+    },
+    "window": {
+     "additionalProperties": false,
+     "description": "half-open valid-time window [t_a, t_b)",
+     "properties": {
+      "t_a": {
+       "description": "int64 epoch microseconds, UTC",
+       "maximum": 4611686018427387904,
+       "minimum": 0,
+       "type": "integer"
+      },
+      "t_b": {
+       "description": "int64 epoch microseconds, UTC",
+       "maximum": 4611686018427387904,
+       "minimum": 0,
+       "type": "integer"
+      }
+     },
+     "required": [
+      "t_a",
+      "t_b"
+     ],
+     "type": "object"
+    }
+   },
+   "required": [
+    "metric",
+    "window",
+    "stride"
+   ],
+   "type": "object"
+  },
+  "name": "graph_metric_timeseries"
+ },
+ {
+  "description": "How `uid`'s neighborhood changed between t1 and t2: neighbors gained\nand lost (undirected), plus an incident-active-edge-count series\nsampled every `stride` (default (t2-t1)/20). Thin composition of\ndiff + timeseries scoped to one node \u2014 prefer it over manual diffs.\nCost: cheap. Example: {\"uid\": \"acme-corp\", \"t1\": ..., \"t2\": ...}\n",
+  "input_schema": {
+   "additionalProperties": false,
+   "properties": {
+    "as_of_tt": {
+     "default": 4611686018427387904,
+     "description": "belief state to evaluate under; OPEN_END = current beliefs",
+     "maximum": 4611686018427387904,
+     "minimum": 0,
+     "type": "integer"
+    },
+    "limit": {
+     "default": 100,
+     "maximum": 10000,
+     "minimum": 1,
+     "type": "integer"
+    },
+    "stride": {
+     "default": null,
+     "description": "degree-series bucket width; default (t2-t1)/20",
+     "minimum": 1,
+     "type": [
+      "integer",
+      "null"
+     ]
+    },
+    "t1": {
+     "description": "int64 epoch microseconds, UTC",
+     "maximum": 4611686018427387904,
+     "minimum": 0,
+     "type": "integer"
+    },
+    "t2": {
+     "description": "int64 epoch microseconds, UTC",
+     "maximum": 4611686018427387904,
+     "minimum": 0,
+     "type": "integer"
+    },
+    "uid": {
+     "minLength": 1,
+     "type": "string"
+    }
+   },
+   "required": [
+    "uid",
+    "t1",
+    "t2"
+   ],
+   "type": "object"
+  },
+  "name": "neighborhood_evolution"
+ },
+ {
+  "description": "Look up node uids by name: exact uid match first, then case-insensitive\nsubstring on uid and on the `name` property of any believed version.\nALWAYS use this to obtain uids \u2014 never invent identifiers; plans with\nliteral uids not from the task input or a prior step are rejected.\nCost: cheap. Example: {\"query\": \"ACME\", \"label\": \"Org\", \"limit\": 5}\n-> rows: [{uid, label, name, match}, ...]\n",
+  "input_schema": {
+   "additionalProperties": false,
+   "properties": {
+    "as_of_tt": {
+     "default": 4611686018427387904,
+     "description": "belief state to evaluate under; OPEN_END = current beliefs",
+     "maximum": 4611686018427387904,
+     "minimum": 0,
+     "type": "integer"
+    },
+    "cursor": {
+     "default": null,
+     "description": "opaque pagination cursor from a previous call",
+     "type": [
+      "string",
+      "null"
+     ]
+    },
+    "label": {
+     "default": null,
+     "type": [
+      "string",
+      "null"
+     ]
+    },
+    "limit": {
+     "default": 100,
+     "maximum": 10000,
+     "minimum": 1,
+     "type": "integer"
+    },
+    "query": {
+     "minLength": 1,
+     "type": "string"
+    }
+   },
+   "required": [
+    "query"
+   ],
+   "type": "object"
+  },
+  "name": "resolve_entities"
+ },
+ {
+  "description": "The k-hop neighborhood (undirected expansion, hops <= 3) of `seeds` in\nthe snapshot graph at instant `t_valid`, under belief state `as_of_tt`;\nreturns induced edges (paginated `rows`) and nodes with hop distance.\nCost: cheap for hops <= 2; hop 3 on hubs can be large \u2014 lower `limit`.\nExample: {\"seeds\": [\"acme-corp\"], \"hops\": 2, \"t_valid\": 1580515200000000}\n-> rows: [{eid, src, dst, rel_type, vt_s, vt_e}, ...], nodes: [...]\n",
+  "input_schema": {
+   "additionalProperties": false,
+   "properties": {
+    "as_of_tt": {
+     "default": 4611686018427387904,
+     "description": "belief state to evaluate under; OPEN_END = current beliefs",
+     "maximum": 4611686018427387904,
+     "minimum": 0,
+     "type": "integer"
+    },
+    "cursor": {
+     "default": null,
+     "description": "opaque pagination cursor from a previous call",
+     "type": [
+      "string",
+      "null"
+     ]
+    },
+    "hops": {
+     "default": 1,
+     "maximum": 3,
+     "minimum": 0,
+     "type": "integer"
+    },
+    "limit": {
+     "default": 100,
+     "maximum": 10000,
+     "minimum": 1,
+     "type": "integer"
+    },
+    "rel_types": {
+     "default": null,
+     "items": {
+      "type": "string"
+     },
+     "type": [
+      "array",
+      "null"
+     ]
+    },
+    "seeds": {
+     "items": {
+      "minLength": 1,
+      "type": "string"
+     },
+     "maxItems": 10000,
+     "minItems": 1,
+     "type": "array"
+    },
+    "t_valid": {
+     "description": "int64 epoch microseconds, UTC",
+     "maximum": 4611686018427387904,
+     "minimum": 0,
+     "type": "integer"
+    }
+   },
+   "required": [
+    "seeds",
+    "t_valid"
+   ],
+   "type": "object"
+  },
+  "name": "snapshot_subgraph"
+ },
+ {
+  "description": "Up to k (<= 20) concrete node-simple time-respecting paths src -> dst\ninside `window`, hop cap 6, ordered by (arrival, hops). Use after\ntemporal_reachability confirms dst is reachable. Cost: exponential in\nmax_hops \u2014 keep max_hops <= 4 and windows narrow.\nExample: {\"src\": \"a\", \"dst\": \"d\", \"k\": 3, \"max_hops\": 4,\n          \"window\": {\"t_a\": 0, \"t_b\": 1700000000000000}}\n-> rows: [{arrival, hops, edges: [{src, dst, rel_type, t, eid}, ...]}]\n",
+  "input_schema": {
+   "additionalProperties": false,
+   "properties": {
+    "as_of_tt": {
+     "default": 4611686018427387904,
+     "description": "belief state to evaluate under; OPEN_END = current beliefs",
+     "maximum": 4611686018427387904,
+     "minimum": 0,
+     "type": "integer"
+    },
+    "dst": {
+     "minLength": 1,
+     "type": "string"
+    },
+    "k": {
+     "default": 5,
+     "maximum": 20,
+     "minimum": 1,
+     "type": "integer"
+    },
+    "max_hops": {
+     "default": 4,
+     "maximum": 6,
+     "minimum": 1,
+     "type": "integer"
+    },
+    "src": {
+     "minLength": 1,
+     "type": "string"
+    },
+    "window": {
+     "additionalProperties": false,
+     "description": "half-open valid-time window [t_a, t_b)",
+     "properties": {
+      "t_a": {
+       "description": "int64 epoch microseconds, UTC",
+       "maximum": 4611686018427387904,
+       "minimum": 0,
+       "type": "integer"
+      },
+      "t_b": {
+       "description": "int64 epoch microseconds, UTC",
+       "maximum": 4611686018427387904,
+       "minimum": 0,
+       "type": "integer"
+      }
+     },
+     "required": [
+      "t_a",
+      "t_b"
+     ],
+     "type": "object"
+    }
+   },
+   "required": [
+    "src",
+    "dst",
+    "window"
+   ],
+   "type": "object"
+  },
+  "name": "temporal_paths"
+ },
+ {
+  "description": "Which nodes are reachable from `src` via time-respecting paths (edge\ntimes non-decreasing) inside `window` \u2014 returns earliest arrival per\nnode, source excluded, sorted by arrival. direction='in' answers \"who\ncould reach src\"; delta_max_wait caps the wait at intermediate nodes\n(exact path semantics). Cost: linear in window edges without delta;\nwith delta it can be much heavier \u2014 keep windows narrow.\nExample: {\"src\": \"acme-corp\",\n          \"window\": {\"t_a\": 1580515200000000, \"t_b\": 1583020800000000},\n          \"direction\": \"out\"}\n-> rows: [{uid, earliest_arrival}, ...]\n",
+  "input_schema": {
+   "additionalProperties": false,
+   "properties": {
+    "as_of_tt": {
+     "default": 4611686018427387904,
+     "description": "belief state to evaluate under; OPEN_END = current beliefs",
+     "maximum": 4611686018427387904,
+     "minimum": 0,
+     "type": "integer"
+    },
+    "cursor": {
+     "default": null,
+     "description": "opaque pagination cursor from a previous call",
+     "type": [
+      "string",
+      "null"
+     ]
+    },
+    "delta_max_wait": {
+     "default": null,
+     "minimum": 1,
+     "type": [
+      "integer",
+      "null"
+     ]
+    },
+    "direction": {
+     "default": "out",
+     "enum": [
+      "out",
+      "in",
+      "both"
+     ],
+     "type": "string"
+    },
+    "limit": {
+     "default": 100,
+     "maximum": 10000,
+     "minimum": 1,
+     "type": "integer"
+    },
+    "src": {
+     "minLength": 1,
+     "type": "string"
+    },
+    "window": {
+     "additionalProperties": false,
+     "description": "half-open valid-time window [t_a, t_b)",
+     "properties": {
+      "t_a": {
+       "description": "int64 epoch microseconds, UTC",
+       "maximum": 4611686018427387904,
+       "minimum": 0,
+       "type": "integer"
+      },
+      "t_b": {
+       "description": "int64 epoch microseconds, UTC",
+       "maximum": 4611686018427387904,
+       "minimum": 0,
+       "type": "integer"
+      }
+     },
+     "required": [
+      "t_a",
+      "t_b"
+     ],
+     "type": "object"
+    }
+   },
+   "required": [
+    "src",
+    "window"
+   ],
+   "type": "object"
+  },
+  "name": "temporal_reachability"
+ }
+]

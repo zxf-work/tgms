@@ -59,6 +59,16 @@ class StorageAdapter(ABC):
     """Backend-agnostic bi-temporal store."""
 
     paranoid: bool = False  # re-check disjointness invariant after every batch
+    _tcsr = None  # lazily built current-belief TemporalCSR + its columnar arrays
+
+    def tcsr(self):
+        """Current-belief TemporalCSR (+ the columnar arrays it was built
+        from), built lazily and invalidated by apply_ops."""
+        if self._tcsr is None:
+            from tgms.storage.tcsr import TemporalCSR
+            cols = self.edges_columnar()
+            self._tcsr = (TemporalCSR.build(cols, self.num_entities()), cols)
+        return self._tcsr
 
     # --- batch transactions (backends override; default = no-op) --------- #
 
@@ -172,6 +182,7 @@ class StorageAdapter(ABC):
                 self._ingest_events(op, tt)
             else:
                 raise InvalidArgError(f"unknown op kind: {kind}")
+        self._tcsr = None  # writes invalidate the current-belief index
         if self.paranoid:
             for uid in touched_nodes:
                 self._check_disjoint([v for v in self.believed_node_versions(uid)], f"node {uid}")

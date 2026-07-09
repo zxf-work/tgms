@@ -183,45 +183,36 @@ def temporal_paths(adapter: StorageAdapter, args: dict[str, Any]) -> dict[str, A
     as_of = args["as_of_tt"]
     sid, did = (int(x) for x in adapter.dense_ids([args["src"], args["dst"]]))
 
-    e = adapter.edges_columnar(as_of_tt=as_of, vt_min=t_a, vt_max=t_b)
-    # per-source adjacency slices, neighbors ordered by (vt_s, eid) — this
-    # ordering also fixes the deterministic enumeration order
-    order = np.lexsort((e["eid"], e["vt_s"], e["src_id"]))
-    src = e["src_id"][order]
-    dst = e["dst_id"][order]
-    vt_s = e["vt_s"][order]
-    vt_e = e["vt_e"][order]
-    eid = e["eid"][order]
-    rel = e["rel_type"][order]
-    starts = np.searchsorted(src, np.arange(adapter.num_entities()), side="left")
-    stops = np.searchsorted(src, np.arange(adapter.num_entities()), side="right")
-
+    csr, cols = _csr_for(adapter, as_of, t_a, t_b)
+    # traversal over the TCSR: per-node slices ordered by (vt_s, eid), which
+    # also fixes the deterministic enumeration order
     paths: list[tuple[int, int, tuple, list[int]]] = []
     expansions = 0
 
     def dfs(node: int, arrival: int, hops: int, visited: set[int], trail: list[int]) -> None:
         nonlocal expansions
         if node == did and trail:
-            key = tuple((int(vt_s[i]), eid[i]) for i in trail)
+            key = tuple((int(cols["vt_s"][r]), cols["eid"][r]) for r in trail)
             paths.append((arrival, hops, key, list(trail)))
             return  # node-simple: dst terminates the path
         if hops == args["max_hops"]:
             return
-        for i in range(int(starts[node]), int(stops[node])):
+        nbr, vt_s, vt_e, row = csr.neighbors(node, "out", t_max=t_b)
+        for j in range(len(nbr)):
             expansions += 1
             if expansions > MAX_EXPANSIONS:
                 raise CostError("temporal_paths expansion budget exceeded",
                                 estimate={"expansions_est": expansions},
                                 suggestions=["narrow the window",
                                              "reduce max_hops"])
-            v = int(dst[i])
+            v = int(nbr[j])
             if v in visited:
                 continue
-            tau = max(arrival, int(vt_s[i]))
-            if tau >= int(vt_e[i]) or tau >= t_b:
+            tau = max(arrival, int(vt_s[j]))
+            if tau >= int(vt_e[j]) or tau >= t_b:
                 continue
             visited.add(v)
-            trail.append(i)
+            trail.append(int(row[j]))
             dfs(v, tau, hops + 1, visited, trail)
             trail.pop()
             visited.remove(v)
@@ -230,14 +221,27 @@ def temporal_paths(adapter: StorageAdapter, args: dict[str, Any]) -> dict[str, A
     paths.sort(key=lambda p: (p[0], p[1], p[2]))
     rows = []
     for arrival, hops, _, trail in paths[: args["k"]]:
-        s_uids = adapter.uids_for([int(src[i]) for i in trail])
-        d_uids = adapter.uids_for([int(dst[i]) for i in trail])
+        s_uids = adapter.uids_for([int(cols["src_id"][r]) for r in trail])
+        d_uids = adapter.uids_for([int(cols["dst_id"][r]) for r in trail])
         rows.append({
             "arrival": arrival,
             "hops": hops,
-            "edges": [{"src": s, "dst": d, "rel_type": rel[i], "eid": eid[i],
-                       "t": int(vt_s[i])}
-                      for i, s, d in zip(trail, s_uids, d_uids)],
+            "edges": [{"src": s, "dst": d, "rel_type": cols["rel_type"][r],
+                       "eid": cols["eid"][r], "t": int(cols["vt_s"][r])}
+                      for r, s, d in zip(trail, s_uids, d_uids)],
         })
     return {"rows": rows, "rows_total": len(paths),
             "truncated": len(paths) > args["k"], "cursor": None}
+
+
+def _csr_for(adapter: StorageAdapter, as_of: int, t_a: int, t_b: int):
+    """Cached current-belief TCSR when possible; windowed per-call build
+    otherwise. Traversal constraints (tau < vt_e, tau < t_b, tau >= t_a via
+    the source arrival) make the unwindowed index return identical results."""
+    from tgms.core.model import clamp_tt
+    from tgms.storage.tcsr import TemporalCSR
+
+    if clamp_tt(as_of) == clamp_tt(OPEN_END):
+        return adapter.tcsr()
+    cols = adapter.edges_columnar(as_of_tt=as_of, vt_min=t_a, vt_max=t_b)
+    return TemporalCSR.build(cols, adapter.num_entities()), cols

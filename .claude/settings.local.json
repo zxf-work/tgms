@@ -6,7 +6,10 @@
       "Bash(python3 -)",
       "Bash(git add *)",
       "Bash(git commit -q -m 'M1: bi-temporal core, HLC clock, write-ahead event log, DuckDB + Kùzu adapters *)",
-      "Bash(git commit -q -m 'M2: temporal operator algebra O1-O12 + brute-force oracle + property/metamorphic tests *)"
+      "Bash(git commit -q -m 'M2: temporal operator algebra O1-O12 + brute-force oracle + property/metamorphic tests *)",
+      "Read(//private/tmp/**)",
+      "Bash(/Users/xz/Documents/TGMS/.venv/bin/python3 -c \"import sys; print\\(sys.path\\)\")",
+      "Bash(xxd)"
     ]
   }
 }
