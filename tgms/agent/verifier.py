@@ -231,6 +231,21 @@ ANSWER_SCHEMA: dict[str, Any] = {
 }
 
 
+def _collect_all_strings(obj: Any, out: set[str]) -> None:
+    """Every string leaf. The entity-grounding lexicon uses this: a claimed
+    uid is grounded iff it appears as a value anywhere in the evidence
+    (uid-bearing fields are not limited to keys named uid/src/dst — e.g.
+    neighbors_gained is a plain list of uid strings)."""
+    if isinstance(obj, str):
+        out.add(obj)
+    elif isinstance(obj, dict):
+        for v in obj.values():
+            _collect_all_strings(v, out)
+    elif isinstance(obj, list):
+        for v in obj:
+            _collect_all_strings(v, out)
+
+
 def _collect_strings(obj: Any, keys: frozenset[str], out: set[str]) -> None:
     if isinstance(obj, dict):
         for k, v in obj.items():
@@ -329,7 +344,7 @@ class ClaimVerifier:
             return "unverifiable", "no uids in claim"
         lexicon: set[str] = set()
         for p in payloads:
-            _collect_strings(p, frozenset({"uid", "src", "dst"}), lexicon)
+            _collect_all_strings(p, lexicon)
         missing = [u for u in uids if u not in lexicon]
         if missing:
             return "unsupported", f"uids not in evidence: {missing[:5]}"

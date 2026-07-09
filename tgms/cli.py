@@ -44,9 +44,12 @@ def main(argv: list[str] | None = None) -> int:
                          help="synth manifest.json for T2 planted tasks")
     p_tasks.add_argument("--out", required=True)
 
-    p_eval = sub.add_parser("eval", help="run the experiment matrix")
-    p_eval.add_argument("action", choices=["run"])
-    p_eval.add_argument("--config", required=True)
+    p_eval = sub.add_parser("eval", help="run the experiment matrix / C2 readout")
+    p_eval.add_argument("action", choices=["run", "c2"])
+    p_eval.add_argument("--config", default=None)
+    p_eval.add_argument("--store", default=None)
+    p_eval.add_argument("--suite", default=None)
+    p_eval.add_argument("--mutants", type=int, default=500)
     p_eval.add_argument("--force", default=None,
                         help="rerun the frozen test split; reason is logged (§8.3)")
 
@@ -102,6 +105,17 @@ def main(argv: list[str] | None = None) -> int:
         print(json.dumps({"n_dev": suite["n_dev"], "n_test": suite["n_test"],
                           "test_split_sha": suite["test_split_sha"]}))
         store.close()
+    elif args.cmd == "eval" and args.action == "c2":
+        import tgms
+        from tgms.eval.faults import c2_readout_from_suite
+        store = tgms.open(args.store)
+        with open(args.suite) as f:
+            suite = json.load(f)
+        stats = c2_readout_from_suite(store, suite, n_mutants=args.mutants)
+        print(json.dumps(stats, indent=1))
+        store.close()
+        if not stats["accepted"]:
+            return 1
     elif args.cmd == "eval":
         import yaml
         from tgms.agent.planner import make_llm_fn

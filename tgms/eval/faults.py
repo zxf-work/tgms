@@ -92,6 +92,45 @@ MUTATORS: dict[str, Mutator] = {
 }
 
 
+def c2_readout_from_suite(store: Any, suite: dict[str, Any],
+                          n_mutants: int = 500, seed: int = 0,
+                          scratch_dir: str | None = None) -> dict[str, Any]:
+    """The C2 acceptance experiment (spec WP2.3): execute every oracle plan
+    in the suite, derive the correct AnswerObject mechanically (always
+    grounded), then measure mutant detection and FP rates. No LLM involved."""
+    import tempfile
+    from pathlib import Path
+
+    from tgms.agent.executor import Executor, ResultStore
+    from tgms.agent.ir import Plan
+    from tgms.agent.reporter import mechanical_answer
+    from tgms.tools.server import ToolRouter
+
+    scratch = Path(scratch_dir or tempfile.mkdtemp(prefix="tgms-c2-"))
+    results = ResultStore(scratch / "results")
+    executor = Executor(ToolRouter(store.adapter), results)
+    answers: list[tuple[dict[str, Any], ClaimVerifier]] = []
+    for task in suite["dev"] + suite["test"]:
+        if task.get("gold_source") != "oracle_plan":
+            continue
+        plan = Plan.from_json(task["oracle_plan"])
+        trace = executor.run(plan)
+        if not trace.ok:
+            continue
+        ans = mechanical_answer(plan, trace)
+        if not ans["claims"]:
+            continue
+        verifier = ClaimVerifier(trace, results, store.adapter)
+        report = verifier.verify(ans)
+        if all(c["verdict"] in ("supported", "weakly_supported")
+               for c in report["claims"]):
+            answers.append((ans, verifier))
+    stats = run_fault_injection(answers, n_mutants=n_mutants, seed=seed)
+    stats["accepted"] = (stats["detection_rate"] >= 0.95
+                         and stats["fp_rate"] < 0.05)
+    return stats
+
+
 def run_fault_injection(answers: list[tuple[dict[str, Any], ClaimVerifier]],
                         n_mutants: int = 500, seed: int = 0) -> dict[str, Any]:
     """answers: (correct AnswerObject, its verifier). Returns detection/FP
