@@ -5,6 +5,7 @@ from __future__ import annotations
 import argparse
 import json
 import sys
+from typing import Any
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -43,6 +44,22 @@ def main(argv: list[str] | None = None) -> int:
     p_tasks.add_argument("--manifest", default=None,
                          help="synth manifest.json for T2 planted tasks")
     p_tasks.add_argument("--out", required=True)
+
+    p_ask = sub.add_parser("ask", help="ask one question against a store")
+    p_ask.add_argument("question")
+    p_ask.add_argument("--store", required=True)
+    p_ask.add_argument("--model", required=True)
+    p_ask.add_argument("--api-base", default=None)
+    p_ask.add_argument("--input-uids", nargs="*", default=[])
+    p_ask.add_argument("--save-record", default=None,
+                       help="write the full ask record (plan/trace/claims) as JSON")
+    p_ask.add_argument("--html", default=None,
+                       help="also render the record as a self-contained trace.html")
+
+    p_trace = sub.add_parser("trace", help="render a saved ask record")
+    p_trace.add_argument("action", choices=["render"])
+    p_trace.add_argument("record_json")
+    p_trace.add_argument("-o", "--out", required=True)
 
     p_eval = sub.add_parser("eval", help="run the experiment matrix / C2 readout")
     p_eval.add_argument("action", choices=["run", "c2"])
@@ -105,6 +122,54 @@ def main(argv: list[str] | None = None) -> int:
         print(json.dumps({"n_dev": suite["n_dev"], "n_test": suite["n_test"],
                           "test_split_sha": suite["test_split_sha"]}))
         store.close()
+    elif args.cmd == "ask":
+        import subprocess
+
+        import tgms
+        from tgms.agent.agent import Agent
+        from tgms.agent.planner import make_llm_fn
+        from tgms.agent.reporter import Reporter
+        from tgms.agent.verifier import ClaimVerifier
+        store = tgms.open(args.store)
+        llm = make_llm_fn(api_base=args.api_base)
+        agent = Agent(store, model=args.model, llm_fn=llm)
+        out = agent.ask(args.question, task_input_uids=set(args.input_uids))
+        trace, plan = out["trace"], out["plan_result"].plan
+        record: dict[str, Any] = {"question": args.question, "answer": out["answer"]}
+        if plan is not None and trace is not None:
+            reporter = Reporter(args.model, llm_fn=llm)
+            ao = reporter.report(args.question, plan, trace, agent.executor.results)
+            report = ClaimVerifier(trace, agent.executor.results,
+                                   store.adapter).verify(ao)
+            try:
+                commit = subprocess.run(["git", "rev-parse", "--short", "HEAD"],
+                                        capture_output=True, text=True).stdout.strip()
+            except Exception:
+                commit = "n/a"
+            record.update(plan=plan.to_json(), trace=trace.to_json(),
+                          answer_object=ao, verifier_report=report,
+                          receipts=f"commit {commit}; store {args.store}; "
+                                   f"model {args.model}")
+        print(json.dumps({"answer": record.get("answer"),
+                          "text": record.get("answer_object", {}).get("text"),
+                          "pvr_first_emission":
+                              out["plan_result"].first_emission_valid}))
+        if args.save_record:
+            with open(args.save_record, "w") as f:
+                json.dump(record, f, indent=1)
+        if args.html and "plan" in record:
+            from tgms.tools.trace_viewer import render_trace_html
+            with open(args.html, "w") as f:
+                f.write(render_trace_html(record))
+            print(json.dumps({"html": args.html}))
+        store.close()
+    elif args.cmd == "trace":
+        from tgms.tools.trace_viewer import render_trace_html
+        with open(args.record_json) as f:
+            record = json.load(f)
+        with open(args.out, "w") as f:
+            f.write(render_trace_html(record))
+        print(json.dumps({"html": args.out}))
     elif args.cmd == "eval" and args.action == "c2":
         import tgms
         from tgms.eval.faults import c2_readout_from_suite

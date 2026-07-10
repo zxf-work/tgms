@@ -1,0 +1,56 @@
+<!doctype html><html><head><meta charset='utf-8'><title>TGMS trace t4-coactive</title><style>
+body{font-family:-apple-system,'Segoe UI',Roboto,sans-serif;margin:0;
+     background:#f6f7f9;color:#1c2733}
+.wrap{max-width:1060px;margin:0 auto;padding:24px}
+h1{font-size:20px} h2{font-size:15px;margin:26px 0 10px;color:#44546a;
+   text-transform:uppercase;letter-spacing:.06em}
+.q{background:#fff;border:1px solid #dfe3e8;border-radius:10px;padding:14px 18px;
+   font-size:16px}
+.card{background:#fff;border:1px solid #dfe3e8;border-radius:10px;
+      padding:12px 16px;margin:10px 0}
+.card h3{margin:0 0 6px;font-size:14px;font-family:ui-monospace,monospace}
+.meta{color:#5b6b7c;font-size:12px;margin-bottom:6px}
+.meta b{color:#1c2733}
+pre{background:#f2f4f7;border-radius:6px;padding:8px 10px;font-size:12px;
+    overflow-x:auto;margin:6px 0;white-space:pre-wrap;word-break:break-word}
+.badge{display:inline-block;border-radius:12px;color:#fff;font-size:11px;
+       padding:2px 10px;margin-right:8px;vertical-align:middle}
+.status-ok{color:#0a7d33;font-weight:600}
+.status-failed,.status-skipped{color:#c0392b;font-weight:600}
+.claim{border-left:4px solid #dfe3e8;padding:8px 12px;margin:8px 0;
+       background:#fff;border-radius:0 8px 8px 0;border-top:1px solid #eef1f4;
+       border-right:1px solid #eef1f4;border-bottom:1px solid #eef1f4}
+.evidence a{font-family:ui-monospace,monospace;font-size:12px;margin-right:6px}
+.answer{background:#eef7ef;border:1px solid #bfe3c6;border-radius:10px;
+        padding:14px 18px;font-size:15px}
+.receipts{color:#7f8c8d;font-size:11px;margin-top:28px;
+          font-family:ui-monospace,monospace}
+svg text{font-family:ui-monospace,monospace;font-size:12px}
+</style></head><body><div class='wrap'><h1>TGMS execution trace</h1><div class='q'><b>Question.</b> Among n636&#x27;s outgoing edges, count interval pairs where one ends and another starts within 232.4 hours.</div><h2>Plan DAG</h2><svg viewBox="0 0 590 70" width="590" style="max-width:100%"><path d="M 178 35.0 C 212 35.0, 176 35.0, 210 35.0" fill="none" stroke="#9aa7b4" stroke-width="1.6"/><path d="M 378 35.0 C 412 35.0, 376 35.0, 410 35.0" fill="none" stroke="#9aa7b4" stroke-width="1.6"/><a href="#step-s1"><rect x="10" y="12" width="168" height="46" rx="9" fill="#fff" stroke="#0a7d33" stroke-width="2"/><text x="20" y="31" fill="#44546a">s1</text><text x="20" y="48" fill="#1c2733">resolve_entities</text></a><a href="#step-s2"><rect x="210" y="12" width="168" height="46" rx="9" fill="#fff" stroke="#0a7d33" stroke-width="2"/><text x="220" y="31" fill="#44546a">s2</text><text x="220" y="48" fill="#1c2733">co_active</text></a><a href="#step-s3"><rect x="410" y="12" width="168" height="46" rx="9" fill="#fff" stroke="#0a7d33" stroke-width="2"/><text x="420" y="31" fill="#44546a">s3</text><text x="420" y="48" fill="#1c2733">compute</text></a></svg><h2>Steps</h2><div class='card' id='step-s1'><h3>s1 · resolve_entities <span class='status-ok'>ok</span></h3><div class='meta'>rows: <b>1</b> · wall: <b>368.167 ms</b> · truncated: <b>False</b> · digest: <b>29e6c7a0ca20f371</b></div><pre>{
+ &quot;query&quot;: &quot;n636&quot;
+}</pre></div><div class='card' id='step-s2'><h3>s2 · co_active <span class='status-ok'>ok</span></h3><div class='meta'>rows: <b>78</b> · wall: <b>195.967 ms</b> · truncated: <b>False</b> · digest: <b>3a39a241ecb72f91</b></div><pre>{
+ &quot;a_spec&quot;: {
+  &quot;src&quot;: {
+   &quot;$ref&quot;: &quot;s1.rows[0].uid&quot;
+  }
+ },
+ &quot;allen_relation&quot;: {
+  &quot;gap&quot;: 836809050000,
+  &quot;relation&quot;: &quot;before&quot;
+ },
+ &quot;b_spec&quot;: {
+  &quot;src&quot;: {
+   &quot;$ref&quot;: &quot;s1.rows[0].uid&quot;
+  }
+ },
+ &quot;limit&quot;: 10000
+}</pre></div><div class='card' id='step-s3'><h3>s3 · compute <span class='status-ok'>ok</span></h3><div class='meta'>rows: <b>0</b> · wall: <b>4.879 ms</b> · truncated: <b>False</b> · digest: <b>62819ecdb45d5890</b></div><pre>{
+ &quot;fn&quot;: &quot;count&quot;,
+ &quot;input&quot;: {
+  &quot;$ref&quot;: &quot;s2.rows&quot;
+ }
+}</pre></div><h2>Answer</h2><div class='answer'>The answer is 78.</div><h2>Claims</h2><div class='claim' style='border-left-color:#0a7d33'><span class='badge' style='background:#0a7d33'>verified</span><b>c1</b> <span class='evidence'>evidence: <a href='#step-s3'>s3</a></span><pre>{
+ &quot;from&quot;: &quot;s3.value&quot;,
+ &quot;type&quot;: &quot;count&quot;,
+ &quot;value&quot;: 78
+}</pre><div class='meta'>verifier: matched 78</div></div><div class='receipts'>receipts — demo record, CollegeMsg dev task collegemsg-t4-coactive_count-003</div></div></body></html>
