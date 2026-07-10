@@ -14,7 +14,7 @@ seeds: [0]
 max_repairs: 3
 # context budgets sized for 16k-token serving windows (fairness rule WP2.6a:
 # still >= the operator system's per-task consumption, measured on dev)
-b1_k: 2
+b1_k: 1
 b2_max_edges: 400
 memory_db: stores/collegemsg/memory.sqlite
 llm_api_base: "http://localhost:8000/v1"
