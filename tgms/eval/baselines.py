@@ -264,7 +264,7 @@ class TextToCypher:
             {"role": "user", "content":
                 f"QUESTION: {question}\nCYPHER USED: {query}\n"
                 f"QUERY OUTPUT (first {self.max_rows} rows):\n"
-                f"{fence_data(canonical_json(out_rows), cap=60_000)}\n"
+                f"{fence_data(canonical_json(out_rows), cap=24_000)}\n"
                 "ANSWER OBJECT:"},
         ]
         obj = answer_contract_call(self.llm_fn, self.model, report_messages,

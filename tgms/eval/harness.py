@@ -244,12 +244,18 @@ def run_matrix(cfg: dict[str, Any], llm_fn: Callable[..., str],
                     if cache_file.exists():
                         row = json.loads(cache_file.read_text())
                     else:
-                        if system in OURS_SYSTEMS:
-                            row = run_task_ours(system, task, store, model,
-                                                llm_fn, seed, memory=memory)
-                        else:
-                            row = run_task_baseline(system, task,
-                                                    systems[system], seed)
+                        try:
+                            if system in OURS_SYSTEMS:
+                                row = run_task_ours(system, task, store, model,
+                                                    llm_fn, seed, memory=memory)
+                            else:
+                                row = run_task_baseline(system, task,
+                                                        systems[system], seed)
+                        except Exception as e:  # one bad task must not kill
+                            row = {"first_emission_valid": None,   # the matrix
+                                   "executed_ok": 0.0, "em": 0.0, "f1": 0.0,
+                                   "task_error": f"{type(e).__name__}: "
+                                                 f"{str(e)[:300]}"}
                         row.update(task_id=task["id"], family=task["family"],
                                    dataset=task["dataset"], system=system,
                                    model=model, seed=seed)

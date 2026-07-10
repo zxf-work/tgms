@@ -68,9 +68,23 @@ def trace_summary(plan: Plan, trace: Trace, results: ResultStore | None,
             line["error"] = rec["error"].get("error")
         parts.append(canonical_json(line))
     parts.append(canonical_json(
-        {"final_answer": sanitize_data_strings(trace.answer),
+        {"final_answer": _truncate_for_prompt(
+            sanitize_data_strings(trace.answer)),
          "answer_spec": plan.answer_spec}))
     return "<data>\n" + "\n".join(parts) + "\n</data>"
+
+
+def _truncate_for_prompt(obj: Any, max_items: int = 20,
+                         max_chars: int = 4_000) -> Any:
+    """Answers can be arbitrarily large row lists; the reporter only needs a
+    representative slice (claims cite evidence digests, not prompt text).
+    Without this cap a single big answer blows the serving context window."""
+    if isinstance(obj, list) and len(obj) > max_items:
+        obj = obj[:max_items] + [f"...[{len(obj) - max_items} more items]"]
+    s = json.dumps(obj, ensure_ascii=False)
+    if len(s) > max_chars:
+        return {"_truncated_preview": s[:max_chars] + "…"}
+    return obj
 
 
 def mechanical_answer(plan: Plan, trace: Trace) -> dict[str, Any]:
