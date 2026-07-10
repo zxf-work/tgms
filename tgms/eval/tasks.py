@@ -345,6 +345,34 @@ def t1_burst_buckets(rng, ctx, q):
     return question, _p("t1-bursts", steps, "count", "s2.value", question), []
 
 
+@_register_t1("partners_window", "medium", [
+    "Which accounts (including {x} itself) appear in {x}'s communications {w}?",
+    "List every account involved in an interaction with {x} — as sender or "
+    "recipient, {x} included — {w}.",
+    "Name all accounts, {x} among them, that occur in {x}'s edges {w}."])
+def t1_partners_window(rng, ctx, q):
+    # the spec's own T1 example ("who did X communicate with in the two weeks
+    # after t") — windowed, so it stays meaningful on instantaneous streams
+    x = rng.choice(ctx.uids)
+    t_a, t_b = _window(rng, ctx, min_frac=0.1)
+    question = q.format(x=x, w=fmt_w(t_a, t_b))
+    steps = [
+        {"id": "s1", "op": "entity_history",
+         "args": {"uid": x, "include_edges": True, "limit": 10000},
+         "depends_on": []},
+        {"id": "s2", "op": "compute",
+         "args": {"fn": "filter", "input": {"$ref": "s1.edges"},
+                  "field": "vt_s", "cmp": "ge", "value": t_a, "limit": 10000},
+         "depends_on": ["s1"]},
+        {"id": "s3", "op": "compute",
+         "args": {"fn": "filter", "input": {"$ref": "s2.rows"},
+                  "field": "vt_s", "cmp": "lt", "value": t_b, "limit": 10000},
+         "depends_on": ["s2"]},
+    ]
+    return question, _p("t1-partners", steps, "entity_set", "s3.rows",
+                        question), [x]
+
+
 @_register_t1("history_count", "easy", [
     "How many belief versions does node {x} currently have?",
     "Count the currently-believed versions of {x} in the store.",

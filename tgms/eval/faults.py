@@ -149,25 +149,32 @@ def run_fault_injection(answers: list[tuple[dict[str, Any], ClaimVerifier]],
     for ans, verifier in answers:
         fp += rejected(verifier.verify(ans))
 
+    # precompute which answers each mutator can apply to — a mutator is
+    # excluded only when *no* answer in the pool supports it, never because
+    # of an unlucky random draw
     per: dict[str, dict[str, int]] = {m: {"made": 0, "detected": 0}
                                       for m in MUTATORS}
+    applicable: dict[str, list[int]] = {}
+    probe_rng = random.Random(seed ^ 0x5EED)
+    for name, fn in MUTATORS.items():
+        applicable[name] = [i for i, (ans, _) in enumerate(answers)
+                            if fn(ans, probe_rng) is not None]
+    live = [n for n, idxs in applicable.items() if idxs]
     made = 0
-    while made < n_mutants:
-        progressed = False
-        for name, fn in MUTATORS.items():
+    while made < n_mutants and live:
+        for name in list(live):
             if made >= n_mutants:
                 break
-            ans, verifier = answers[rng.randrange(len(answers))]
+            fn = MUTATORS[name]
+            idx = applicable[name][rng.randrange(len(applicable[name]))]
+            ans, verifier = answers[idx]
             mutant = fn(ans, rng)
             if mutant is None:
                 continue
-            progressed = True
             made += 1
             per[name]["made"] += 1
             if rejected(verifier.verify(mutant)):
                 per[name]["detected"] += 1
-        if not progressed:
-            break  # no mutator applies to this answer pool
     total_detected = sum(v["detected"] for v in per.values())
     return {
         "n_answers": len(answers),
