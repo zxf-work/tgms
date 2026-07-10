@@ -6,10 +6,10 @@
 #   vllm serve Qwen/Qwen2.5-7B-Instruct --dtype half --max-model-len 16384
 suite_path: stores/suite-collegemsg/suite.json
 store_path: stores/collegemsg
-out_dir: runs/dev-collegemsg-oss-v3
+out_dir: runs/dev-collegemsg-oss-14b
 split: dev
 systems: [ours, ours-noverify, b1, b2, b5]
-models: ["openai/Qwen/Qwen2.5-7B-Instruct"]
+models: ["openai/Qwen/Qwen2.5-14B-Instruct-AWQ"]
 seeds: [0]
 max_repairs: 3
 # context budgets sized for 16k-token serving windows (fairness rule WP2.6a:
