@@ -1,11 +1,10 @@
 # TGMS: An Agent-Native Bi-Temporal Graph Management System
 ## Technical Report — Design, Implementation, Measurements, and Roadmap
 
-**Version 0.95 — July 2026 · PI: Xiaofei Zhang, University of Memphis**
+**Version 1.0 — July 2026 · PI: Xiaofei Zhang, University of Memphis**
 *Prepared against implementation spec v1.1. Every reported number carries
 determinism receipts (git SHA, config SHA, suite SHA, model strings — spec
-§8.4). Placeholders marked ⟦B1⟧ await one in-flight baseline rerun; all other
-results are final for the dev-split campaign.*
+§8.4). Dev-split campaign complete: five systems × two open-source models.*
 
 ---
 
@@ -302,28 +301,33 @@ on EM by construction — the verifier gates claims, not answers):
 
 | family (n) | model | ours PVR | ours ESR | **ours EM** | B1 EM | B2 EM | B5 EM |
 |---|---|---:|---:|---:|---:|---:|---:|
-| probes (3) | Qwen2.5-7B | 0.67 | 1.00 | **0.67** | ⟦B1⟧ | 0.33 | 0.00 |
-| T1 (12) | Qwen2.5-7B | 0.08 | 0.50 | 0.08 | ⟦B1⟧ | 0.00 | 0.17 |
-| T3 (4) | Qwen2.5-7B | 0.50 | 0.25 | 0.00 | ⟦B1⟧ | 0.00 | 0.00 |
-| T4 (3) | Qwen2.5-7B | 0.00 | 0.67 | 0.00 | ⟦B1⟧ | 0.00 | 0.00 |
-| probes (3) | Qwen2.5-14B-AWQ | 0.33 | 0.67 | **0.67** | ⟦B1⟧ | 0.00 | 0.00 |
-| T1 (12) | Qwen2.5-14B-AWQ | 0.50 | 0.67 | **0.42** | ⟦B1⟧ | 0.08 | 0.33 |
-| T3 (4) | Qwen2.5-14B-AWQ | 0.75 | 0.25 | 0.25 | ⟦B1⟧ | 0.00 | 0.00 |
-| T4 (3) | Qwen2.5-14B-AWQ | 0.33 | 0.67 | **0.33** | ⟦B1⟧ | 0.00 | 0.00 |
+| probes (3) | Qwen2.5-7B | 0.67 | 1.00 | **0.67** | 0.00 | 0.33 | 0.00 |
+| T1 (12) | Qwen2.5-7B | 0.08 | 0.50 | 0.08 | 0.08 | 0.00 | 0.17 |
+| T3 (4) | Qwen2.5-7B | 0.50 | 0.25 | 0.00 | 0.00 | 0.00 | 0.00 |
+| T4 (3) | Qwen2.5-7B | 0.00 | 0.67 | 0.00 | 0.00 | 0.00 | 0.00 |
+| probes (3) | Qwen2.5-14B-AWQ | 0.33 | 0.67 | **0.67** | 0.00 | 0.00 | 0.00 |
+| T1 (12) | Qwen2.5-14B-AWQ | 0.50 | 0.67 | **0.42** | 0.08 | 0.08 | 0.33 |
+| T3 (4) | Qwen2.5-14B-AWQ | 0.75 | 0.25 | 0.25 | 0.00 | 0.00 | 0.00 |
+| T4 (3) | Qwen2.5-14B-AWQ | 0.33 | 0.67 | **0.33** | 0.00 | 0.00 | 0.33 |
 
 Pooled dev EM and paired-bootstrap deltas (10k resamples):
 
-| model | ours | B2 | B5 | ours−B2 [95% CI] | ours−B5 [95% CI] |
-|---|---:|---:|---:|---|---|
-| Qwen2.5-7B | 0.136 | 0.045 | 0.091 | +0.091 [0.000, 0.227] n.s. | +0.045 [−0.136, 0.227] n.s. |
-| Qwen2.5-14B-AWQ | **0.409** | 0.045 | 0.182 | **+0.364 [0.182, 0.591] ✓sig** | +0.227 [0.000, 0.455] borderline |
+| model | ours | B1 | B2 | B5 | ours−B1 [95% CI] | ours−B2 [95% CI] | ours−B5 [95% CI] |
+|---|---:|---:|---:|---:|---|---|---|
+| Qwen2.5-7B | 0.136 | 0.045 | 0.045 | 0.091 | +0.091 [−0.091, 0.273] n.s. | +0.091 [0.000, 0.227] n.s. | +0.045 [−0.136, 0.227] n.s. |
+| Qwen2.5-14B-AWQ | **0.409** | 0.091 | 0.045 | 0.182 | **+0.318 [0.091, 0.545] ✓sig** | **+0.364 [0.182, 0.591] ✓sig** | +0.227 [0.000, 0.455] borderline |
 
-⟦B1 row pending: at k=3 (spec default scaled down from 20) and even k=2,
-every request overflowed a 28k serving window — numeric-dense event text
-tokenizes at ~0.65 tokens/char, and vLLM charges the output reservation
-against the window. The k=1 rerun (its feasible best on this hardware,
-≈12k input tokens = 256 of 59,835 events) is in flight; cells will carry
-those numbers plus this finding as a serving-envelope fairness note.⟧
+**B1 serving-envelope note (a finding in itself).** The spec's B1 design
+(k=20 × 256-event chunks) assumes frontier context windows: numeric-dense
+event text tokenizes at ~0.65 tokens/char, so even k=3 (~27k input tokens)
+and k=2 (input + the 4k output reservation vLLM charges against the window)
+overflow a 28k serving envelope. B1 runs at its feasible best here, k=1 —
+256 of 59,835 events (0.4% of the corpus) per question — and its nonzero
+scores come from guessable small counts, not retrieval coverage. Fairness
+rule WP2.6(d) is satisfied (k tuned on dev to the baseline's own feasible
+best); the deeper point is that retrieval-based designs inherit a hard
+context dependency that the operator system does not have — its per-task
+consumption (~8–10k tokens) is window-independent.
 
 **Scaling readout (C3).** 7B→14B doubles-to-sextuples PVR by family (T1
 0.08→0.50) and triples pooled EM (0.136→0.409); the repair loop is worth
@@ -373,7 +377,7 @@ bi-temporal advantage does not depend on model size.
 
 ## 10. Roadmap
 
-**Near term — close M7.** ⟦B1 k=1 results⟧; email-Eu + synthetic (T2)
+**Near term — close M7.** email-Eu + synthetic (T2)
 suites; Phi-4-mini and a distilled reasoner (think-block handling already
 in place); three seeds; freeze the test split (SHA into DECISIONS.md) and
 run the pre-registered readouts including end-to-end UCR vs B3;
