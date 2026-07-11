@@ -15,14 +15,14 @@ cd "$TGMS_REPO"
 
 serve() {  # serve <hf-model-id> <ready-pattern> [extra vllm args...]
   local model="$1" pat="$2"; shift 2
-  curl -s -m 3 http://localhost:8000/v1/models 2>/dev/null | grep -q "$pat" \
+  curl -s -m 10 http://localhost:8000/v1/models 2>/dev/null | grep -q "$pat" \
     && { echo "SERVER_ALREADY_UP $pat"; return 0; }
   pkill -f "[v]llm.serve" || true; sleep 8
   local log="$TGMS_REPO/runs/vllm-$(echo "$pat" | tr '/ ' '--').log"
   nohup "$VLLM_ENV/bin/vllm" serve "$model" --dtype half --port 8000 \
     --gpu-memory-utilization 0.92 "$@" > "$log" 2>&1 &
   for i in $(seq 1 100); do
-    curl -s -m 3 http://localhost:8000/v1/models 2>/dev/null | grep -q "$pat" \
+    curl -s -m 10 http://localhost:8000/v1/models 2>/dev/null | grep -q "$pat" \
       && { echo "SERVER_UP $pat"; return 0; }
     grep -q "Engine core initialization failed" "$log" 2>/dev/null \
       && { echo "SERVER_FAILED $pat"; exit 1; }
