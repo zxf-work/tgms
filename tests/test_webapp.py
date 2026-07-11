@@ -26,7 +26,7 @@ def server(tmp_path_factory):
     generate(tmp / "synth", n_nodes=150, n_events=3000, seed=4, n_rings=2)
     store = tgms.open(tmp / "store")
     with open(tmp / "synth" / "events.jsonl") as f:
-        store.ingest_events(json.loads(l) for l in f if l.strip())
+        store.ingest_events(json.loads(line) for line in f if line.strip())
     suite = generate_suite(store, "demo", seed=2,
                            sizes={"t1": 12, "t3": 6, "t4": 6, "probes": 4})
 

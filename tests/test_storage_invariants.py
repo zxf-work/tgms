@@ -21,7 +21,7 @@ from tgms.core.errors import NotFoundError
 from tgms.core.model import OPEN_END, canonical_json
 from tgms.storage.base import _remainder
 
-from .conftest import RELS, UIDS, fresh_adapter, op_sequences
+from .conftest import fresh_adapter, op_sequences
 
 SETTINGS = settings(max_examples=120, deadline=None,
                     suppress_health_check=[HealthCheck.too_slow])

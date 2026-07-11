@@ -16,7 +16,7 @@ from __future__ import annotations
 import tgms
 from tgms.agent.memory import MICROS_PER_DAY, EvolutionMemory
 from tgms.agent.planner import build_prompt, fence_data, sanitize_data_strings
-from tgms.core.model import OPEN_END, EntityRef
+from tgms.core.model import EntityRef
 
 T0 = 1_577_836_800_000_000
 WEEK = 7 * MICROS_PER_DAY

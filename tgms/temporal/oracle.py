@@ -10,7 +10,6 @@ Python loops are explicitly allowed here (spec 7.1).
 
 from __future__ import annotations
 
-import itertools
 from collections import deque
 from typing import Any
 

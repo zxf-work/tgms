@@ -18,7 +18,7 @@ def _ingest(tmp_path, name, **gen_kwargs):
     manifest = generate(tmp_path / name, seed=5, **gen_kwargs)
     store = tgms.open(tmp_path / f"{name}-store")
     with open(tmp_path / name / "events.jsonl") as f:
-        store.ingest_events(json.loads(l) for l in f if l.strip())
+        store.ingest_events(json.loads(line) for line in f if line.strip())
     return store, manifest
 
 

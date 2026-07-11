@@ -34,7 +34,7 @@ def suite_env(tmp_path_factory):
                         n_rings=3, n_pingpong=1, n_bursts=1)
     store = tgms.open(tmp / "store")
     with open(tmp / "synth" / "events.jsonl") as f:
-        store.ingest_events(json.loads(l) for l in f if l.strip())
+        store.ingest_events(json.loads(line) for line in f if line.strip())
     suite = generate_suite(store, "synth-t", seed=1,
                            sizes={"t1": 20, "t3": 9, "t4": 8, "probes": 4},
                            manifest=manifest)
@@ -274,4 +274,5 @@ def test_harness_frozen_split_guard(suite_env, tmp_path):
         run_matrix(cfg, llm_fn=llm)
     run_matrix(cfg, llm_fn=llm, force="unit test rerun")  # logged override
     log = (tmp_path / "out2" / "runs_log.jsonl").read_text().splitlines()
-    assert any(json.loads(l)["force"] == "unit test rerun" for l in log)
+    assert any(json.loads(line)["force"] == "unit test rerun"
+               for line in log)

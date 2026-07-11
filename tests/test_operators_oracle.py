@@ -10,7 +10,6 @@ import os
 import random
 from typing import Any
 
-import pytest
 from hypothesis import HealthCheck, given, settings
 from hypothesis import strategies as st
 
