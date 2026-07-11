@@ -139,3 +139,18 @@ implementation — hygiene checking starts at the marker recorded in D-010.
 - **Consequence:** configs/matrix-dev-oss.yaml is the active dev config;
   llm_api_base/llm_api_key plumb LiteLLM to the vLLM endpoint. Model version
   strings recorded per §8.4 receipts remain mandatory.
+
+## D-015 — 2026-07-10 — Interactive demo GUI (PI-directed scope extension)
+- **Context:** Spec §7.3 scopes Phase 1–2 UI to the static trace viewer; an
+  interactive shell was listed as a Phase-3 demo-track extension. PI request
+  (2026-07-10): an interactive guided GUI showing how TGMS is used, with
+  prepared test cases, served from xzgpu and visited from a local machine.
+- **Proposal:** `tgms webapp` — a stdlib-only HTTP server (no new
+  dependencies) embedding a single-page guided tour: dataset card → verified
+  operator playground (preset calls) → ask-the-agent with curated suite
+  tasks and expected-gold checks → live claim-tamper demo (the C2 mechanism
+  on demand) → bi-temporal probe pair (deterministic, no LLM). Read-only
+  store access behind a lock; binds 127.0.0.1; remote access via SSH port
+  forwarding only (no firewall exposure).
+- **Consequence:** Demo surface added ahead of Phase 3; static trace viewer
+  remains the archival artifact (the GUI links to it per ask).

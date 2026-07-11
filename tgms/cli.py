@@ -56,6 +56,14 @@ def main(argv: list[str] | None = None) -> int:
     p_ask.add_argument("--html", default=None,
                        help="also render the record as a self-contained trace.html")
 
+    p_web = sub.add_parser("webapp", help="serve the interactive guided demo GUI")
+    p_web.add_argument("--store", required=True)
+    p_web.add_argument("--suite", required=True)
+    p_web.add_argument("--model", required=True)
+    p_web.add_argument("--api-base", default=None)
+    p_web.add_argument("--host", default="127.0.0.1")
+    p_web.add_argument("--port", type=int, default=8080)
+
     p_trace = sub.add_parser("trace", help="render a saved ask record")
     p_trace.add_argument("action", choices=["render"])
     p_trace.add_argument("record_json")
@@ -163,6 +171,16 @@ def main(argv: list[str] | None = None) -> int:
                 f.write(render_trace_html(record))
             print(json.dumps({"html": args.html}))
         store.close()
+    elif args.cmd == "webapp":
+        import tgms
+        from tgms.agent.planner import make_llm_fn
+        from tgms.tools.webapp import serve
+        store = tgms.open(args.store)
+        with open(args.suite) as f:
+            suite = json.load(f)
+        serve(store, suite, args.model, make_llm_fn(api_base=args.api_base),
+              results_dir=f"{args.store}/demo-results",
+              host=args.host, port=args.port)
     elif args.cmd == "trace":
         from tgms.tools.trace_viewer import render_trace_html
         with open(args.record_json) as f:
