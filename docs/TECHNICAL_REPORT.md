@@ -435,7 +435,7 @@ natural Phase-3 demo-track extension.
 | Artifact | Location |
 |---|---|
 | Operator benchmarks (1M events, receipts embedded) | `docs/bench_ops.md` |
-| Matrix run records | `runs/dev-collegemsg-oss-v3/`, `runs/dev-collegemsg-oss-14b/` (server), `docs/first_oss_matrix_devrun.md` |
+| Matrix run records | `runs/dev-collegemsg-oss-v3/`, `runs/dev-collegemsg-oss-14b/` (GPU node), `docs/first_oss_matrix_devrun.md` |
 | C2 readout | `tgms eval c2 --store … --suite …` (deterministic) |
 | Rendered demo trace | `docs/demo_trace.html` |
 | Decision log (D-001…D-014) | `docs/DECISIONS.md` |

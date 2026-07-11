@@ -130,7 +130,7 @@ implementation — hygiene checking starts at the marker recorded in D-010.
   family and peers that fit the 24GB Turing GPU) for now; commercial models
   move to a future phase.
 - **Proposal:** Serve ≤14B open-source instruct/reasoner models via vLLM on
-  xzgpu (Quadro RTX 6000, sm_75 → fp16 only, AWQ for 14B). Start:
+  the lab GPU node (Quadro RTX 6000, sm_75 → fp16 only, AWQ for 14B). Start:
   Qwen2.5-7B-Instruct; then Qwen2.5-14B-Instruct-AWQ, Phi-4-mini, a distilled
   reasoner. The "frontier vs small" C3 gap readout is re-scoped to
   "largest servable open model vs smaller open models" until commercial
@@ -144,7 +144,7 @@ implementation — hygiene checking starts at the marker recorded in D-010.
 - **Context:** Spec §7.3 scopes Phase 1–2 UI to the static trace viewer; an
   interactive shell was listed as a Phase-3 demo-track extension. PI request
   (2026-07-10): an interactive guided GUI showing how TGMS is used, with
-  prepared test cases, served from xzgpu and visited from a local machine.
+  prepared test cases, served from the lab GPU node and visited from a local machine.
 - **Proposal:** `tgms webapp` — a stdlib-only HTTP server (no new
   dependencies) embedding a single-page guided tour: dataset card → verified
   operator playground (preset calls) → ask-the-agent with curated suite
@@ -154,3 +154,17 @@ implementation — hygiene checking starts at the marker recorded in D-010.
   forwarding only (no firewall exposure).
 - **Consequence:** Demo surface added ahead of Phase 3; static trace viewer
   remains the archival artifact (the GUI links to it per ask).
+
+## D-016 — 2026-07-10 — Apache-2.0 license; public-release preparation
+- **Context:** PI decision to publish on GitHub and maintain a technical
+  blog. Spec §8.6 requires license hygiene; the repo contained user-local
+  Claude settings and deployment-specific hostnames.
+- **Proposal:** Apache-2.0 (patent grant suits infrastructure adoption);
+  untrack `.claude/` (user-local); parameterize deployment scripts via env
+  vars (TGMS_REPO/VLLM_ENV/HF_HOME/TGMS_*); genericize internal host
+  references in docs; add GitHub Actions CI (lint + §8.1 hygiene + fast
+  property profile, <15 min per spec §7.5); README/CITATION/CHANGELOG/
+  CONTRIBUTING/SECURITY; tag v0.1.0.
+- **Consequence:** First-ever full ruff pass enforced (32 findings fixed);
+  measured coverage gate: tgms/temporal at 96% (spec target ≥90%). History
+  is kept intact — it documents the process and contains no secrets.

@@ -1,0 +1,24 @@
+name: ci
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15   # spec §7.5: make ci must finish < 15 min
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0   # commit-hygiene check (§8.1) walks history
+      - uses: astral-sh/setup-uv@v4
+        with:
+          python-version: "3.12"
+      - run: uv sync --extra agent
+      - name: lint
+        run: uv run ruff check tgms/ tests/ scripts/
+      - name: commit hygiene (spec §8.1)
+        run: uv run python scripts/check_commit_hygiene.py
+      - name: tests (fast property profile)
+        run: TGMS_HYP_EXAMPLES=25 uv run pytest tests/ -q
