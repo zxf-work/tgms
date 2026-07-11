@@ -79,36 +79,46 @@ acceptance thresholds before measurement and report against them.
 
 \begin{figure}[t]
 \centering
+\resizebox{\textwidth}{!}{%
 \begin{tikzpicture}[
   box/.style={draw=black!35, rounded corners=3pt, align=center, inner sep=6pt,
               font=\small, fill=black!3},
-  wide/.style={box, minimum width=118mm},
-  arr/.style={-{Stealth[length=2.4mm]}, black!60, thick}]
-\node[box, minimum width=34mm] (plan) {Planner (LLM)\\ \scriptsize plan IR};
-\node[box, minimum width=34mm, right=8mm of plan] (ver) {Static verifier\\
-  \scriptsize grounding $\cdot$ output contracts\\ \scriptsize temporal sanity $\cdot$ cost};
-\node[box, minimum width=30mm, right=8mm of ver] (exec) {Executor\\
-  \scriptsize content-addressed\\ \scriptsize traces $\cdot$ taint};
-\node[wide, below=7mm of ver] (tools) {Tool layer: O1--O13 --- typed $\cdot$
-  deterministic $\cdot$ bounded $\cdot$ bi-temporal (\texttt{as\_of\_tt})
-  $\cdot$ cost-guarded \quad {\scriptsize (in-process router / MCP server)}};
-\node[wide, below=6mm of tools] (store) {Bi-temporal substrate: versions over
-  valid $\times$ transaction time $\cdot$ write-ahead event log $\cdot$
-  K\`uzu / DuckDB $\cdot$ temporal-CSR index};
-\node[box, minimum width=34mm, below=6mm of store.south west, anchor=north west]
-  (rep) {Reporter (LLM)\\ \scriptsize answer object};
-\node[box, minimum width=62mm, below=6mm of store.south east, anchor=north east]
-  (cver) {Claim verifier\\ \scriptsize counts $\cdot$ entities $\cdot$ orderings
-  $\cdot$ patterns vs.\ trace digests; gates unsupported claims};
+  arr/.style={-{Stealth[length=2.6mm]}, black!60, thick}]
+% top row
+\node[box, minimum width=40mm, minimum height=13mm] (plan) at (0,0)
+  {Planner (LLM)\\ \scriptsize emits plan IR};
+\node[box, minimum width=46mm, minimum height=13mm] (ver) at (5.6,0)
+  {Static verifier\\ \scriptsize grounding $\cdot$ output contracts\\
+   \scriptsize temporal sanity $\cdot$ cost};
+\node[box, minimum width=40mm, minimum height=13mm] (exec) at (11.2,0)
+  {Executor\\ \scriptsize content-addressed traces\\ \scriptsize truncation taint};
+% middle rows
+\node[box, minimum width=136mm] (tools) at (5.6,-2.1)
+  {Tool layer (in-process router / MCP): O1--O13 --- typed $\cdot$ deterministic
+   $\cdot$ bounded $\cdot$ bi-temporal (\texttt{as\_of\_tt}) $\cdot$ cost-guarded};
+\node[box, minimum width=136mm] (store) at (5.6,-3.5)
+  {Bi-temporal substrate: versions over valid $\times$ transaction time $\cdot$
+   write-ahead event log $\cdot$ K\`uzu / DuckDB $\cdot$ temporal-CSR index};
+% bottom row
+\node[box, minimum width=46mm, minimum height=11mm] (rep) at (1.2,-5.4)
+  {Reporter (LLM)\\ \scriptsize writes the answer object};
+\node[box, minimum width=76mm, minimum height=11mm] (cver) at (8.4,-5.4)
+  {Claim verifier\\ \scriptsize counts $\cdot$ entities $\cdot$ orderings $\cdot$
+   patterns re-checked vs.\ trace digests; unsupported claims gated};
+% arrows
 \draw[arr] (plan) -- (ver);
 \draw[arr] (ver) -- (exec);
-\draw[arr, dashed] (ver.north) to[bend right=22]
-  node[above, font=\scriptsize, black!60]{repair payloads} (plan.north);
-\draw[arr] (exec.south) -- (tools.north -| exec.south);
+\draw[arr, dashed] (ver.north) to[bend right=20]
+  node[above, font=\scriptsize, black!60]{repair payloads (E\_SCHEMA / E\_COST / \dots)}
+  (plan.north);
+\draw[arr] (exec.south) -- (exec.south |- tools.north);
 \draw[arr] (tools) -- (store);
-\draw[arr] (exec.east) to[bend left=42] (cver.east);
+\draw[arr] (exec.south east) -- ++(0,-0.35) -| (cver.north east)
+  node[pos=0.22, right, font=\scriptsize, black!60]{trace};
 \draw[arr] (rep) -- (cver);
-\end{tikzpicture}
+\draw[arr, dashed] (store.south -| rep.north) -- (rep.north)
+  node[midway, left, font=\scriptsize, black!60]{summaries};
+\end{tikzpicture}}
 \caption{TGMS architecture. The LLM only plans and reports; operators compute;
 the verifier checks every claim against the execution trace.}
 \label{fig:arch}
@@ -267,6 +277,7 @@ seed; temperature 0). Paired-bootstrap 95\% CIs for TGMS$-$baseline:
 vs.\ B2 $[+0.18, +0.59]$ and vs.\ B1 $[+0.09, +0.55]$ (both significant);
 vs.\ B5 $[0.00, +0.46]$ (borderline at $n{=}22$).}
 \label{tab:results}
+\small
 \begin{tabular}{lcccc}
 \toprule
  & TGMS & B1 vector-RAG & B2 static-RAG & B5 text-to-Cypher \\
@@ -320,21 +331,90 @@ fairness must be defined per serving envelope; the operator system's
 per-task consumption ($\sim$8--10k tokens) is corpus-size-independent.
 
 \section{Related work}
-\textbf{Bi-temporal agent memory} (Zep/Graphiti~\cite{zep2025}) shares the
-data-model precedent but treats the graph as memory retrieved into
-context; TGMS treats it as a database that computes, with verification
-against traces. \textbf{Temporal graph databases}
-(AeonG~\cite{aeong2024}) motivate the storage design; TGMS deliberately
-ships an agent-facing algebra rather than a general query language.
-\textbf{GraphRAG and vector RAG} are instantiated as controlled baselines
-here; the correction probes isolate what retrieval cannot express.
-\textbf{Text-to-query} systems give the model a query language directly;
-beyond accuracy, TGMS's structural contrast is verifiability---claims
-citing raw query output cannot be machine-audited. \textbf{Temporal graph
-mining} algorithms~\cite{paranjape2017motifs,wu2014path} are packaged
-behind verified contracts with guardrails instead of silent sampling.
-The tool server speaks the Model Context Protocol~\cite{mcp2024}, making
-one deterministic, read-only temporal store shareable by many agents.
+\paragraph{Temporal and bi-temporal graph databases.} Bi-temporal semantics
+--- valid versus transaction time, evolution versus correction --- are
+classical~\cite{snodgrass1999}. Recent systems bring native temporal support
+to property graphs: AeonG~\cite{aeong2024} adds built-in temporality with a
+current/historical storage split (mirrored in our substrate), Gradoop's TPGM
+supports distributed temporal graph analytics~\cite{rost2022gradoop}, and
+T-GQL proposes a temporal query language~\cite{debrouvier2021tgql}. These
+systems target human-written queries in a general language. TGMS
+deliberately does not: its surface is a small, closed algebra whose
+contracts (types, bounds, cost ceilings, output fields) exist so that
+\emph{language models} can plan over it and \emph{verifiers} can check the
+results---and, to our knowledge, none of these systems expose
+transaction-time reasoning to agents or verify answers against execution.
+
+\paragraph{Graph-augmented and agent memory for LLMs.} GraphRAG summarizes
+corpus-derived graphs for query-focused retrieval~\cite{edge2024graphrag};
+HippoRAG uses graph structure for long-term memory
+consolidation~\cite{gutierrez2024hipporag}; Zep/Graphiti is closest to us in
+adopting a bi-temporal knowledge graph for agent memory~\cite{zep2025}. The
+shared paradigm is \emph{retrieval into context}: structure is serialized
+and the model reasons over it in-context. TGMS inverts this: the model
+never sees raw structure at scale; operators compute, and the model
+composes and reports. Our correction probes make the difference measurable
+--- retrieval-based systems score zero regardless of model size because
+their inputs do not contain belief history --- and our memory layer adds a
+guarantee the retrieval paradigm lacks: digests are quarantined when
+corrections touch their windows, so verification never blesses answers
+grounded in retracted facts.
+
+\paragraph{Tool use, planning, and program-aided reasoning.} Tool-augmented
+LLMs~\cite{schick2023toolformer}, interleaved reasoning and
+acting~\cite{yao2023react}, and compiled parallel function-calling
+plans~\cite{kim2024llmcompiler} established that models can orchestrate
+external calls; program-aided approaches showed that delegating computation
+to an interpreter beats in-context arithmetic~\cite{gao2023pal,chen2023pot}.
+TGMS applies both lessons with a domain-specific twist: the plan is a
+constrained DAG IR over a \emph{closed, semantically verified} operator set
+(each operator oracle-tested on hundreds of randomized cases), and the
+executable surface itself enforces grounding and output contracts
+statically. Our finding that output contracts moved small-model execution
+success from 0.00 to 1.00 suggests tool \emph{result} schemas deserve the
+same first-class treatment the literature gives argument schemas.
+
+\paragraph{Natural-language interfaces to databases.} Text-to-SQL and
+text-to-Cypher map questions directly to queries~\cite{yu2018spider}; our
+B5 baseline instantiates this fairly (same models, repair budget, answer
+contract) on a vanilla property graph. Beyond the accuracy gap on temporal
+composition, the structural contrast is auditability: generated-query
+answers can only be re-executed wholesale, whereas TGMS answers carry
+per-claim evidence digests that a verifier checks mechanically. Temporal
+KGQA benchmarks~\cite{saxena2021cron} probe time-aware questions over
+knowledge graphs but assume a fixed, correct KG; our correction probes
+target the orthogonal axis of \emph{belief revision}, which those
+benchmarks---like the systems above---cannot express.
+
+\paragraph{Faithfulness and claim verification.} Post-hoc attribution and
+revision~\cite{gao2023rarr}, atomic-fact scoring~\cite{min2023factscore},
+and self-verification chains~\cite{dhuliawala2023cove} check generated text
+against retrieved or model-internal evidence, probabilistically. TGMS's
+verifier is narrower and stronger: claims cite content-addressed results of
+deterministic operators, so checking is exact (500/500 injected faults
+caught at zero false positives), and evidence \emph{completeness} is
+tracked through the plan (truncation taint)---a dimension that
+text-attribution methods do not model.
+
+\paragraph{Temporal graph analysis.} Our operator semantics follow the
+temporal-networks literature: time-respecting
+paths~\cite{wu2014path,holme2012temporal} and $\delta$-temporal
+motifs~\cite{paranjape2017motifs}, with datasets in the SNAP/TGB
+tradition~\cite{panzarasa2009,huang2023tgb}. TGMS packages these algorithms
+behind agent-usable contracts with exactness guarantees and explicit cost
+refusal instead of silent sampling---and, for reachability under wait
+constraints, replaces the schedule-dependent greedy relaxation with an
+exact multi-label semantics.
+
+\paragraph{Positioning.} Across these lines of work, TGMS occupies an
+unclaimed intersection: (i)~database-grade temporal semantics including the
+transaction-time axis, (ii)~an agent-facing computation surface with
+machine-checkable contracts rather than a query language or a retrieval
+index, and (iii)~verification that is exact because the evidence is
+deterministic. The correction-probe benchmark operationalizes~(i), the
+output-contract finding motivates~(ii), and the fault-injection results
+validate~(iii); the tool server speaks MCP~\cite{mcp2024}, making the
+combination available to any agent framework.
 
 \section{Limitations and roadmap}
 Reported numbers are development-split, single-seed, single-dataset;
