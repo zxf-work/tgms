@@ -1,0 +1,15 @@
+# R3 escalation A/B: guided JSON decoding of plan IR + AnswerObject at the
+# decoder (vLLM guided_json / xgrammar). Compare against runs/dev-collegemsg-
+# oss-14b (identical config, guided off) on PVR / execution success / EM.
+suite_path: stores/suite-collegemsg/suite.json
+store_path: stores/collegemsg
+out_dir: runs/dev-collegemsg-guided
+split: dev
+systems: [ours]
+models: ["openai/Qwen/Qwen2.5-14B-Instruct-AWQ"]
+seeds: [0]
+max_repairs: 3
+memory_db: stores/collegemsg/memory.sqlite
+llm_guided: true
+llm_api_base: "http://localhost:8000/v1"
+llm_api_key: "EMPTY"

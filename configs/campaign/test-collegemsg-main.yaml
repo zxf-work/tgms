@@ -1,0 +1,15 @@
+# Pre-registered frozen-test campaign, primary contrast (C1 + C2):
+# all systems, primary model, 3 seeds. Test split frozen in DECISIONS D-018.
+suite_path: stores/suite-collegemsg/suite.json
+store_path: stores/collegemsg
+out_dir: runs/test-collegemsg-main
+split: test
+systems: [ours, ours-noverify, b1, b2, b5]
+models: ["openai/Qwen/Qwen2.5-14B-Instruct-AWQ"]
+seeds: [0, 1, 2]
+max_repairs: 3
+b1_k: 1
+b2_max_edges: 400
+memory_db: stores/collegemsg/memory.sqlite
+llm_api_base: "http://localhost:8000/v1"
+llm_api_key: "EMPTY"

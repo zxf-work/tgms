@@ -50,6 +50,30 @@ suite-collegemsg:
 	  --seed 0 --out stores/suite-collegemsg/suite.json
 	$(UV) run tgms memory build --store stores/collegemsg
 
+data-emaileu:
+	$(UV) run python -c "from tgms.data.loaders import ingest_dataset; \
+	  print(ingest_dataset('email-eu', 'data_raw', 'stores/emaileu'))"
+
+suite-emaileu:
+	mkdir -p stores/suite-emaileu
+	$(UV) run tgms tasks --store stores/emaileu --dataset email-eu \
+	  --seed 0 --out stores/suite-emaileu/suite.json
+	$(UV) run tgms memory build --store stores/emaileu
+
+# synthetic campaign store: planted rings/ping-pong/bursts give T2 tasks
+# with construction-known gold (spec WP2.5)
+synth-t2:
+	$(UV) run tgms synth data_raw/synth-t2 --nodes 5000 --events 200000 \
+	  --seed 7 --rings 10 --pingpong 6 --bursts 4
+	$(UV) run tgms ingest data_raw/synth-t2/events.jsonl --store stores/synth-t2
+
+suite-synth:
+	mkdir -p stores/suite-synth
+	$(UV) run tgms tasks --store stores/synth-t2 --dataset synth-t2 \
+	  --seed 0 --manifest data_raw/synth-t2/manifest.json \
+	  --out stores/suite-synth/suite.json
+	$(UV) run tgms memory build --store stores/synth-t2
+
 # full pipeline (spec §0): ingest -> operator tests -> task-suite generation
 # -> matrix -> tables. The matrix stage needs provider API keys; without
 # them, reproduce stops after deterministic stages with instructions.

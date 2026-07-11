@@ -1,0 +1,14 @@
+# Synthetic store with planted rings/ping-pong/bursts: T2 gold known by
+# construction, frozen test split.
+suite_path: stores/suite-synth/suite.json
+store_path: stores/synth-t2
+out_dir: runs/test-synth
+split: test
+systems: [ours, b2, b5]
+models: ["openai/Qwen/Qwen2.5-14B-Instruct-AWQ"]
+seeds: [0]
+max_repairs: 3
+b2_max_edges: 400
+memory_db: stores/synth-t2/memory.sqlite
+llm_api_base: "http://localhost:8000/v1"
+llm_api_key: "EMPTY"

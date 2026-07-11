@@ -22,6 +22,9 @@ def main(argv: list[str] | None = None) -> int:
     p_synth.add_argument("--nodes", type=int, default=1000)
     p_synth.add_argument("--events", type=int, default=100_000)
     p_synth.add_argument("--seed", type=int, default=0)
+    p_synth.add_argument("--rings", type=int, default=0)
+    p_synth.add_argument("--pingpong", type=int, default=0)
+    p_synth.add_argument("--bursts", type=int, default=0)
 
     p_call = sub.add_parser("call", help="call one operator against a store")
     p_call.add_argument("--store", required=True)
@@ -95,7 +98,9 @@ def main(argv: list[str] | None = None) -> int:
         store.close()
     elif args.cmd == "synth":
         from tgms.data.synth import generate
-        m = generate(args.out_dir, args.nodes, args.events, args.seed)
+        m = generate(args.out_dir, args.nodes, args.events, args.seed,
+                     n_rings=args.rings, n_pingpong=args.pingpong,
+                     n_bursts=args.bursts)
         print(json.dumps(m))
     elif args.cmd == "call":
         import tgms
