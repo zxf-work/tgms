@@ -1,0 +1,35 @@
+{
+  "$schema": "https://static.modelcontextprotocol.io/schemas/2025-07-09/server.schema.json",
+  "name": "io.github.zxf-work/tgms",
+  "description": "Bi-temporal graph store with 13 verified temporal operators as MCP tools: time-respecting reachability, delta-motifs, snapshot diffs, burst detection, Allen interval joins, and as-of belief-state queries. Typed, deterministic, bounded, cost-guarded; read-only.",
+  "repository": {
+    "url": "https://github.com/zxf-work/tgms",
+    "source": "github"
+  },
+  "version": "0.1.0",
+  "packages": [
+    {
+      "registry_type": "pypi",
+      "identifier": "tgms",
+      "version": "0.1.0",
+      "transport": {
+        "type": "stdio"
+      },
+      "runtime_hint": "uvx",
+      "package_arguments": [
+        {
+          "type": "positional",
+          "value": "serve"
+        },
+        {
+          "type": "named",
+          "name": "--store",
+          "description": "Path to a TGMS store directory (create one with `tgms ingest` or `tgms synth`)",
+          "is_required": true,
+          "format": "string",
+          "value_hint": "/path/to/store"
+        }
+      ]
+    }
+  ]
+}

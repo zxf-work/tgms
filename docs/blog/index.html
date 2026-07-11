@@ -1,0 +1,48 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>TGMS blog</title>
+<style>
+:root{--ink:#16212e;--mut:#5b6b7c;--blue:#1c64d9;--line:#dfe3e8}
+body{margin:0;font-family:-apple-system,'Segoe UI',Roboto,sans-serif;color:var(--ink);background:#f6f7f9}
+.head{background:#0e1c30;color:#fff;padding:22px 24px}
+.head a{color:#c9d8ef;text-decoration:none;font-size:14px}
+main{max-width:720px;margin:0 auto;padding:36px 24px}
+h1{font-size:28px}
+.post{background:#fff;border:1px solid var(--line);border-radius:14px;
+      padding:20px 24px;margin:16px 0;display:block;text-decoration:none;color:var(--ink)}
+.post:hover{border-color:var(--blue)}
+.post h2{margin:0 0 6px;font-size:19px;color:var(--blue)}
+.post .mut{color:var(--mut);font-size:14.5px;line-height:1.55}
+.meta{color:var(--mut);font-size:13px;margin-top:8px}
+.soon{opacity:.65}
+</style></head><body>
+<div class="head"><a href="../">← TGMS</a></div>
+<main>
+<h1>TGMS blog</h1>
+<p class="mut" style="color:#5b6b7c">Engineering notes from building an
+agent-native temporal graph store — each post ships with runnable artifacts
+and determinism receipts.</p>
+
+<a class="post" href="two-kinds-of-time.html">
+<h2>#1 · Why your agent needs two kinds of time</h2>
+<div class="mut">Correction probes: the question class that snapshot and RAG
+systems cannot express — and what happened when we measured it. Baselines
+score zero at every model size; the bi-temporal system doesn't care how big
+the model is.</div>
+<div class="meta">July 2026</div></a>
+
+<div class="post soon">
+<h2>#2 · Statically valid, semantically doomed</h2>
+<div class="mut">A 7B model met our operator schemas: valid plans, zero
+successful executions. The one-line class of contract that took execution
+success from 0.00 to 1.00 — and why tool manuals must be checkable.</div>
+<div class="meta">coming soon</div></div>
+
+<div class="post soon">
+<h2>#3 · Your verifier believes correct arithmetic on incomplete evidence</h2>
+<div class="mut">A live demo caught our claim verifier approving a count
+computed over a truncated page. On truncation taint, and evidence quality as
+a lattice.</div>
+<div class="meta">coming soon</div></div>
+
+</main></body></html>

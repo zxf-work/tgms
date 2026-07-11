@@ -7,6 +7,8 @@
 **A temporal graph database whose query surface is built for LLM agents —
 and whose answers can be audited claim by claim.**
 
+**Project page & blog:** https://zxf-work.github.io/tgms/ · **Paper:** [paper/main.pdf](paper/main.pdf)
+
 LLM agents are unreliable at exactly the things temporal graph analytics
 requires: arithmetic, identifiers, and asserting only what the evidence
 shows. TGMS's answer is architectural — give the model **no opportunity**

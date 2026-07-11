@@ -168,3 +168,16 @@ implementation — hygiene checking starts at the marker recorded in D-010.
 - **Consequence:** First-ever full ruff pass enforced (32 findings fixed);
   measured coverage gate: tgms/temporal at 96% (spec target ≥90%). History
   is kept intact — it documents the process and contains no secrets.
+
+## D-017 — 2026-07-10 — Visibility campaign artifacts
+- **Context:** Repo is public; PI requested arXiv preprint, blog, MCP
+  registry listing, and a project page.
+- **Proposal:** paper/ (LaTeX system-description preprint, compiles with
+  tectonic; PI submits to arXiv cs.DB, cross-list cs.AI); GitHub Pages from
+  docs/ (hand-rolled static site: project page + blog, no build step, no
+  external assets); blog post #1 "Why your agent needs two kinds of time";
+  server.json for the official MCP registry (publication gated on a PyPI
+  release of the tgms package — queued).
+- **Consequence:** docs/ now serves double duty (repo docs + website);
+  .nojekyll disables Jekyll processing; public claims in site/blog restate
+  only receipt-carrying numbers from the technical report.

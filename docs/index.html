@@ -1,0 +1,184 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>TGMS — Agent-Native Bi-Temporal Graph Store</title>
+<meta name="description" content="A temporal graph database whose query surface is built for LLM agents — and whose answers can be audited claim by claim.">
+<style>
+:root{--ink:#16212e;--mut:#5b6b7c;--blue:#1c64d9;--bg:#f6f7f9;--card:#fff;
+      --line:#dfe3e8;--ok:#0a7d33;--bad:#c0392b;--mono:ui-monospace,'SF Mono',Menlo,monospace}
+*{box-sizing:border-box}
+body{margin:0;font-family:-apple-system,'Segoe UI',Roboto,sans-serif;color:var(--ink);background:var(--bg)}
+.hero{background:linear-gradient(160deg,#0e1c30 0%,#173863 70%,#1c64d9 130%);color:#fff;padding:64px 24px 56px}
+.wrap{max-width:1020px;margin:0 auto;padding:0 24px}
+.hero .wrap{padding:0}
+h1{font-size:40px;margin:0 0 6px;letter-spacing:-.5px}
+.tag{font-size:19px;color:#c9d8ef;max-width:720px;line-height:1.5}
+.btns{margin-top:26px}
+.btn{display:inline-block;background:#fff;color:#173863;border-radius:10px;padding:10px 18px;
+     margin:0 10px 10px 0;text-decoration:none;font-weight:600;font-size:14px}
+.btn.ghost{background:transparent;color:#fff;border:1.5px solid #ffffff66}
+section{padding:44px 0}
+h2{font-size:24px;margin:0 0 18px}
+.grid{display:grid;gap:16px}
+.g3{grid-template-columns:repeat(auto-fit,minmax(260px,1fr))}
+.g2{grid-template-columns:repeat(auto-fit,minmax(380px,1fr))}
+.card{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:20px 22px}
+.stat{font-size:34px;font-weight:700;color:var(--blue)}
+.stat small{font-size:15px;color:var(--mut);font-weight:400}
+.mut{color:var(--mut);line-height:1.55}
+pre{background:#0e1c30;color:#dce7f5;border-radius:10px;padding:14px 16px;font-family:var(--mono);
+    font-size:12.5px;overflow-x:auto;line-height:1.5;margin:12px 0 0}
+pre .c{color:#7fa3d0}pre .g{color:#7fd0a0}
+.pill{display:inline-block;font-size:11px;border-radius:12px;padding:2px 10px;color:#fff;margin-right:6px}
+.vs{width:100%;border-collapse:collapse;margin-top:10px;font-size:14px}
+.vs th,.vs td{padding:8px 10px;text-align:right;border-bottom:1px solid var(--line)}
+.vs th:first-child,.vs td:first-child{text-align:left}
+.vs .win{color:var(--ok);font-weight:700}
+footer{padding:36px 0 56px;color:var(--mut);font-size:13px;border-top:1px solid var(--line)}
+a{color:var(--blue)} .hero a.btn{color:#173863}.hero a.btn.ghost{color:#fff}
+code{font-family:var(--mono);background:#e9eef5;border-radius:5px;padding:1px 5px;font-size:.92em}
+.flow{display:flex;flex-wrap:wrap;gap:10px;align-items:stretch}
+.flow .step{flex:1;min-width:180px;background:var(--card);border:1px solid var(--line);
+  border-radius:12px;padding:14px 16px;font-size:14px}
+.flow .step b{display:block;color:var(--blue);margin-bottom:4px}
+</style></head><body>
+
+<div class="hero"><div class="wrap">
+<h1>TGMS</h1>
+<div class="tag"><b>An agent-native bi-temporal graph store.</b> Thirteen verified
+temporal operators exposed as tools — typed, deterministic, cost-guarded — and a
+Planner–Executor–Verifier loop that machine-checks every claim in an answer
+against the execution trace that produced it.</div>
+<div class="btns">
+<a class="btn" href="https://github.com/zxf-work/tgms">GitHub ↗</a>
+<a class="btn" href="https://github.com/zxf-work/tgms/blob/main/paper/main.pdf">Paper (PDF)</a>
+<a class="btn ghost" href="https://github.com/zxf-work/tgms/blob/main/docs/TECHNICAL_REPORT.md">Technical report</a>
+<a class="btn ghost" href="blog/">Blog</a>
+<a class="btn ghost" href="demo_trace.html">Example trace ↗</a>
+</div></div></div>
+
+<div class="wrap">
+
+<section>
+<div class="grid g3">
+<div class="card"><div class="stat">0.41 <small>vs 0.18 best baseline</small></div>
+<div class="mut">Pooled exact match on temporal-analytics tasks (CollegeMsg dev,
+Qwen2.5-14B on one 24&nbsp;GB GPU). Significant over vector-RAG and static-graph
+RAG at 95% CI.</div></div>
+<div class="card"><div class="stat">0.67 <small>vs 0.00 all baselines</small></div>
+<div class="mut">Correction probes — <i>“as of transaction time T, what did we
+believe?”</i> No snapshot or RAG system can even express the question.</div></div>
+<div class="card"><div class="stat">500/500 <small>· 0 false positives</small></div>
+<div class="mut">Injected false claims caught by the trace-grounded verifier.
+Emitted answers carry an unsupported-claim rate of 0.000.</div></div>
+</div>
+</section>
+
+<section>
+<h2>Why two kinds of time?</h2>
+<div class="grid g2">
+<div class="card"><div class="mut">Every fact carries <b>valid time</b> (when it
+held in the world) and <b>transaction time</b> (when the store believed it). That
+separates <i>evolution</i> — “the edge ended” — from <i>correction</i> — “we were
+wrong.” Agents can then answer belief-state questions deterministically, no LLM
+required for the time travel itself:</div>
+<pre><span class="c"># same entity, same operators — only as_of_tt differs</span>
+entity_history(uid="n605", as_of_tt=BEFORE_CORRECTION)  <span class="g"># → 1 version</span>
+entity_history(uid="n605")                              <span class="g"># → 3 versions</span></pre></div>
+<div class="card"><div class="mut">And every answer is auditable. The trace viewer
+renders the plan DAG, per-operator cards (args, rows, latency, result digests),
+and each claim badged by the verifier:</div>
+<pre>$ tgms ask "How many nodes can n9 reach in May?" \
+    --store stores/collegemsg --model openai/Qwen/... \
+    --html trace.html
+<span class="g">claims: c1 count=343 → verified ✓  (evidence: s1)</span></pre>
+<div style="margin-top:10px"><span class="pill" style="background:var(--ok)">verified</span>
+<span class="pill" style="background:#b58900">weakly supported</span>
+<span class="pill" style="background:var(--bad)">unsupported</span>
+<span class="mut" style="font-size:13px">— see a <a href="demo_trace.html">real rendered trace</a></span></div></div>
+</div>
+</section>
+
+<section>
+<h2>Quick use cases</h2>
+<div class="grid g2">
+
+<div class="card"><b>1 · Verified operators, no LLM needed</b>
+<div class="mut">Time-respecting reachability, δ-motifs, snapshot diffs, bursts,
+Allen interval joins — deterministic, bounded, oracle-tested (500 randomized
+cases per operator).</div>
+<pre>$ uv run tgms call temporal_reachability '{"src": "n9",
+    "window": {"t_a": 1082040961000000, "t_b": 1088000000000000}}' \
+    --store stores/collegemsg
+<span class="g">{"rows": [...], "rows_total": 343, "result_digest": "9c4f…"}</span></pre></div>
+
+<div class="card"><b>2 · Hand the toolbox to any MCP agent</b>
+<div class="mut">The tool server is stateless and read-only: attach Claude
+Desktop/Code or any MCP client and it gets the whole verified algebra against a
+shared temporal store.</div>
+<pre>$ tgms serve --store stores/collegemsg
+<span class="c"># any MCP client now sees 13 typed temporal tools,
+# each with schemas, cost hints, and output contracts</span></pre></div>
+
+<div class="card"><b>3 · Investigations with an evidence trail</b>
+<div class="mut">“Among accounts reachable from X in February, how many cyclic
+temporal triangles closed within a day?” — reachability feeds motif counting via
+plan refs; arithmetic runs in a <code>compute</code> operator, never in the LLM.</div>
+<pre>s1 resolve_entities → s2 temporal_reachability
+   → s3 count_temporal_motifs(node_filter=$s2.rows[*].uid)
+<span class="g">answer: 14 · claim c1 verified against s3’s digest</span></pre></div>
+
+<div class="card"><b>4 · Audit under revision</b>
+<div class="mut">Knowledge bases get corrected. Reproduce exactly what the system
+believed when a decision was made — results pinned to a past belief state are
+byte-identical forever (a tested metamorphic property, not a promise).</div>
+<pre>$ uv run tgms eval c2 --store … --suite …   <span class="c"># verifier acceptance</span>
+<span class="g">detection 500/500 · false positives 0 · accepted: true</span></pre></div>
+
+</div>
+</section>
+
+<section>
+<h2>How it works</h2>
+<div class="flow">
+<div class="step"><b>1 · Plan</b>The LLM emits a small JSON DAG of operator calls.
+A static verifier enforces grounding (no invented identifiers), output contracts
+(no invented result fields), temporal sanity, and cost — with structured repair
+payloads.</div>
+<div class="step"><b>2 · Execute</b>A deterministic executor runs the DAG over the
+bi-temporal store; results are content-addressed; truncation taints dependents.
+Re-execution reproduces identical digests.</div>
+<div class="step"><b>3 · Verify</b>A reporter writes the answer; every count,
+entity, ordering, and pattern claim is machine-checked against the trace.
+Unsupported claims never ship.</div>
+</div>
+<table class="vs">
+<tr><th>pooled EM · Qwen2.5-14B</th><th>TGMS</th><th>vector-RAG</th><th>static-RAG</th><th>text-to-Cypher</th></tr>
+<tr><td>all task families</td><td class="win">0.41</td><td>0.09</td><td>0.05</td><td>0.18</td></tr>
+<tr><td>correction probes</td><td class="win">0.67</td><td>0.00</td><td>0.00</td><td>0.00</td></tr>
+</table>
+<div class="mut" style="font-size:13px;margin-top:8px">Dev split, single seed,
+open-source models served locally; every number carries determinism receipts —
+<a href="https://github.com/zxf-work/tgms/blob/main/docs/TECHNICAL_REPORT.md">full report</a>.</div>
+</section>
+
+<section>
+<h2>Get started</h2>
+<div class="card">
+<pre>git clone https://github.com/zxf-work/tgms && cd tgms
+uv sync --extra agent
+make test                        <span class="c"># 81 tests: property, oracle, metamorphic</span>
+make data-collegemsg suite-collegemsg
+bash scripts/run_webapp.sh       <span class="c"># interactive guided demo → localhost:8080</span></pre>
+<div class="mut" style="margin-top:10px">Works fully offline for operators, task
+suites, and the verifier; point <code>--api-base</code> at any OpenAI-compatible
+endpoint (e.g. vLLM) for the agent loop. Apache-2.0.</div>
+</div>
+</section>
+
+<footer class="wrap" style="padding-left:0;padding-right:0">
+TGMS · Xiaofei Zhang, University of Memphis · Apache-2.0 ·
+<a href="https://github.com/zxf-work/tgms/blob/main/CITATION.cff">cite</a> ·
+<a href="blog/">blog</a> ·
+<a href="https://github.com/zxf-work/tgms/releases">releases</a>
+</footer>
+</div></body></html>
