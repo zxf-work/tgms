@@ -14,3 +14,5 @@ dist/
 
 # user-local Claude Code settings
 .claude/
+# eval artifacts (result rows, server logs) live outside version control
+runs/
