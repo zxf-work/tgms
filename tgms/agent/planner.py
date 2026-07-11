@@ -23,7 +23,7 @@ from typing import Any, Callable
 
 
 from tgms.core.model import canonical_json, sha256_hex
-from tgms.agent.ir import Plan
+from tgms.agent.ir import PLAN_SCHEMA, Plan
 from tgms.agent.verifier import validate_static
 from tgms.storage.base import StorageAdapter
 
@@ -130,25 +130,37 @@ def default_llm_fn(model: str, messages: list[dict[str, str]],
 
 def make_llm_fn(api_base: str | None = None, api_key: str | None = None,
                 max_tokens: int = 4096,
-                extra_body: dict[str, Any] | None = None) -> Callable[..., str]:
+                extra_body: dict[str, Any] | None = None,
+                usage_log: list[dict[str, int]] | None = None) -> Callable[..., str]:
     """LiteLLM-backed llm_fn. `api_base` points at any OpenAI-compatible
     endpoint (vLLM serve for the open-source C3 matrix); model names then use
     the "openai/<served-model>" prefix. `extra_body` passes server-specific
-    knobs (e.g. Qwen3 {"chat_template_kwargs": {"enable_thinking": false}})."""
+    knobs (e.g. Qwen3 {"chat_template_kwargs": {"enable_thinking": false}}).
+
+    Callers may pass `schema=<json schema>` to request vLLM guided JSON
+    decoding (spec R3 escalation: constrained decoding); `usage_log`
+    accumulates {tokens_in, tokens_out} per call for cost accounting."""
 
     def llm_fn(model: str, messages: list[dict[str, str]],
-               temperature: float, seed: int) -> str:
+               temperature: float, seed: int,
+               schema: dict[str, Any] | None = None) -> str:
         import litellm
 
         kwargs: dict[str, Any] = {}
         if api_base:
             kwargs["api_base"] = api_base
             kwargs["api_key"] = api_key or "EMPTY"
-        if extra_body:
-            kwargs["extra_body"] = extra_body
+        body = dict(extra_body or {})
+        if schema is not None:
+            body["guided_json"] = schema
+        if body:
+            kwargs["extra_body"] = body
         resp = litellm.completion(model=model, messages=messages,
                                   temperature=temperature, seed=seed,
                                   max_tokens=max_tokens, **kwargs)
+        if usage_log is not None and getattr(resp, "usage", None):
+            usage_log.append({"tokens_in": resp.usage.prompt_tokens or 0,
+                              "tokens_out": resp.usage.completion_tokens or 0})
         return resp.choices[0].message.content or ""
 
     return llm_fn
@@ -203,7 +215,7 @@ class Planner:
                  llm_fn: Callable[..., str] | None = None,
                  cache_dir: str | Path | None = None,
                  max_repairs: int = 3, temperature: float = 0.0,
-                 seed: int = 0) -> None:
+                 seed: int = 0, guided: bool = False) -> None:
         self.model = model
         self.tool_manual = tool_manual
         self.llm_fn = llm_fn or default_llm_fn
@@ -211,6 +223,9 @@ class Planner:
         self.max_repairs = max_repairs
         self.temperature = temperature
         self.seed = seed
+        # guided JSON decoding of the plan IR (R3 escalation); only passed to
+        # llm_fns that accept a schema kwarg, so test fakes stay untouched
+        self.guided = guided
 
     def _call(self, messages: list[dict[str, str]], result: PlanResult) -> str:
         prompt_sha = sha256_hex(canonical_json(messages))
@@ -221,7 +236,11 @@ class Planner:
                                      "cached": True})
                 return hit
         t0 = time.perf_counter()
-        text = self.llm_fn(self.model, messages, self.temperature, self.seed)
+        if self.guided:
+            text = self.llm_fn(self.model, messages, self.temperature,
+                               self.seed, schema=PLAN_SCHEMA)
+        else:
+            text = self.llm_fn(self.model, messages, self.temperature, self.seed)
         result.calls.append({"model": self.model, "prompt_sha": prompt_sha,
                              "cached": False,
                              "latency_ms": round((time.perf_counter() - t0) * 1000, 1)})

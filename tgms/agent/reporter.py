@@ -128,11 +128,13 @@ def mechanical_answer(plan: Plan, trace: Trace) -> dict[str, Any]:
 
 class Reporter:
     def __init__(self, model: str, llm_fn: Callable[..., str],
-                 temperature: float = 0.0, seed: int = 0) -> None:
+                 temperature: float = 0.0, seed: int = 0,
+                 guided: bool = False) -> None:
         self.model = model
         self.llm_fn = llm_fn
         self.temperature = temperature
         self.seed = seed
+        self.guided = guided
 
     def report(self, question: str, plan: Plan, trace: Trace,
                results: ResultStore | None) -> dict[str, Any]:
@@ -143,7 +145,12 @@ class Reporter:
                 f"{trace_summary(plan, trace, results)}\n\nANSWER OBJECT:"},
         ]
         for _ in range(2):
-            raw = self.llm_fn(self.model, messages, self.temperature, self.seed)
+            if self.guided:
+                raw = self.llm_fn(self.model, messages, self.temperature,
+                                  self.seed, schema=ANSWER_SCHEMA)
+            else:
+                raw = self.llm_fn(self.model, messages, self.temperature,
+                                  self.seed)
             try:
                 obj = json.loads(strip_fences(raw))
                 jsonschema.validate(obj, ANSWER_SCHEMA)

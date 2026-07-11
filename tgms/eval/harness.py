@@ -49,7 +49,7 @@ def _task_window(task: dict[str, Any]) -> tuple[int, int] | None:
 
 def run_task_ours(system: str, task: dict[str, Any], store: Store,
                   model: str, llm_fn: Callable[..., str], seed: int,
-                  memory=None) -> dict[str, Any]:
+                  memory=None, guided: bool = False) -> dict[str, Any]:
     from tgms.agent.agent import Agent
     from tgms.agent.reporter import Reporter
     from tgms.agent.verifier import ClaimVerifier
@@ -60,7 +60,7 @@ def run_task_ours(system: str, task: dict[str, Any], store: Store,
         if w is not None:
             notes = [n["text"] for n in memory.retrieve(w[0], w[1], k=3)]
 
-    agent = Agent(store, model=model, llm_fn=llm_fn, seed=seed)
+    agent = Agent(store, model=model, llm_fn=llm_fn, seed=seed, guided=guided)
     t0 = time.perf_counter()
     out = agent.ask(task["question_text"],
                     task_input_uids=set(task["input_uids"]),
@@ -79,12 +79,19 @@ def run_task_ours(system: str, task: dict[str, Any], store: Store,
 
     # reporter + (optionally) verifier gating
     if trace is not None and out["plan_result"].plan is not None:
-        reporter = Reporter(model, llm_fn=llm_fn, seed=seed)
+        reporter = Reporter(model, llm_fn=llm_fn, seed=seed, guided=guided)
         answer_obj = reporter.report(task["question_text"],
                                      out["plan_result"].plan, trace,
                                      agent.executor.results)
         if system == "ours-noverify":
-            row["ucr"] = None  # unmeasured by construction; scored offline
+            # B3 ablation: emit the raw reporter answer; the verifier runs as
+            # a measurement instrument only (no gating) so end-to-end UCR is
+            # directly comparable with the gated system (C2 contrast)
+            verifier = ClaimVerifier(trace, agent.executor.results,
+                                     store.adapter)
+            report = verifier.verify(answer_obj)
+            row["ucr"] = report["metrics"].get("ucr")
+            row["coverage"] = report["metrics"].get("coverage")
             row["answer_object"] = answer_obj
         else:
             verifier = ClaimVerifier(trace, agent.executor.results,
@@ -212,7 +219,8 @@ def suite_tag(cfg: dict[str, Any]) -> str:
 
 def run_matrix(cfg: dict[str, Any], llm_fn: Callable[..., str],
                embed_fn: Callable | None = None,
-               force: str | None = None) -> list[dict[str, Any]]:
+               force: str | None = None,
+               usage_log: list | None = None) -> list[dict[str, Any]]:
     """cfg keys: suite_path, store_path, out_dir, systems, models, seeds,
     split ('dev'|'test'), optional b1_k / max_repairs / memory_db."""
     import tgms
@@ -245,10 +253,13 @@ def run_matrix(cfg: dict[str, Any], llm_fn: Callable[..., str],
                     if cache_file.exists():
                         row = json.loads(cache_file.read_text())
                     else:
+                        u0 = len(usage_log) if usage_log is not None else 0
                         try:
                             if system in OURS_SYSTEMS:
-                                row = run_task_ours(system, task, store, model,
-                                                    llm_fn, seed, memory=memory)
+                                row = run_task_ours(
+                                    system, task, store, model, llm_fn, seed,
+                                    memory=memory,
+                                    guided=bool(cfg.get("llm_guided")))
                             else:
                                 row = run_task_baseline(system, task,
                                                         systems[system], seed)
@@ -257,6 +268,10 @@ def run_matrix(cfg: dict[str, Any], llm_fn: Callable[..., str],
                                    "executed_ok": 0.0, "em": 0.0, "f1": 0.0,
                                    "task_error": f"{type(e).__name__}: "
                                                  f"{str(e)[:300]}"}
+                        if usage_log is not None:
+                            new = usage_log[u0:]
+                            row["tokens_in"] = sum(x["tokens_in"] for x in new)
+                            row["tokens_out"] = sum(x["tokens_out"] for x in new)
                         row.update(task_id=task["id"], family=task["family"],
                                    dataset=task["dataset"], system=system,
                                    model=model, seed=seed)

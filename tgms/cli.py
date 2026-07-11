@@ -205,10 +205,14 @@ def main(argv: list[str] | None = None) -> int:
         from tgms.eval.harness import run_matrix
         with open(args.config) as f:
             cfg = yaml.safe_load(f)
+        usage: list = []
         llm_fn = make_llm_fn(api_base=cfg.get("llm_api_base"),
                              api_key=cfg.get("llm_api_key"),
-                             extra_body=cfg.get("llm_extra_body"))
-        rows = run_matrix(cfg, llm_fn=llm_fn, force=args.force)
+                             extra_body=cfg.get("llm_extra_body"),
+                             max_tokens=cfg.get("llm_max_tokens", 4096),
+                             usage_log=usage)
+        rows = run_matrix(cfg, llm_fn=llm_fn, force=args.force,
+                          usage_log=usage)
         print(json.dumps({"rows": len(rows), "out_dir": cfg["out_dir"]}))
     elif args.cmd == "memory":
         import tgms
