@@ -199,3 +199,18 @@ implementation — hygiene checking starts at the marker recorded in D-010.
   pre-specified campaign configs; any change to task generation or gold
   computation invalidates the freeze and requires a new dated entry. Dev
   splits remain free for iteration (e.g. the guided-decoding A/B).
+
+## D-019 — 2026-07-11 — Guided JSON decoding rejected at 14B (R3 escalation A/B)
+- **Context:** Spec R3 lists constrained decoding as the escalation for plan
+  syntax failures. A/B on the CollegeMsg dev split, Qwen2.5-14B-AWQ, ours
+  only, seed 0: runs/dev-collegemsg-guided (vLLM guided_json over PLAN_SCHEMA
+  and ANSWER_SCHEMA) vs runs/dev-collegemsg-oss-14b (unguided).
+- **Observation:** Guided is worse on every axis — EM 0.409→0.227,
+  first-emission validity 0.50→0.32, execution success 0.59→0.36, repair
+  calls 1.6→2.3/task, wall time 140→231 s/task (one task took ~18 min).
+  Syntactic validity is not the 14B bottleneck; constraining the decoder
+  degrades plan semantics (grammar masks distort the model's natural JSON
+  emission and leave no room for drafting) while adding latency.
+- **Consequence:** llm_guided stays false for all v1 campaign configs. The
+  knob remains available; re-testing at 7B (where E_SCHEMA malformation is a
+  larger failure share) is an open question for the models phase.
