@@ -5,14 +5,18 @@
 \usepackage[hidelinks]{hyperref}
 \usepackage{xcolor}
 \usepackage{listings}
+\usepackage{tikz}
+\usetikzlibrary{arrows.meta,positioning}
 \lstset{basicstyle=\ttfamily\small, breaklines=true, columns=fullflexible,
         frame=single, framerule=0pt, backgroundcolor=\color{gray!8}}
 
 \title{TGMS: An Agent-Native Bi-Temporal Graph Management System\\
 \large Verified Temporal Operators as Tools, and Trace-Grounded Answer Verification}
 \author{Xiaofei Zhang\\University of Memphis\\\texttt{xiaofei.zhang@memphis.edu}}
-\date{July 2026 \;\textperiodcentered\; system description preprint \;\textperiodcentered\;
-\url{https://github.com/zxf-work/tgms}}
+\date{July 2026 \;\textperiodcentered\; system description preprint (v1)
+\;\textperiodcentered\; \url{https://github.com/zxf-work/tgms}\thanks{This
+preprint accompanies TGMS v0.1.0 and reports development-split results; a
+revised version will accompany the pre-registered frozen-test campaign.}}
 
 \begin{document}
 \maketitle
@@ -73,6 +77,43 @@ development-split measurements with open-source models, and two design
 findings that emerged from live model traffic. We pre-registered
 acceptance thresholds before measurement and report against them.
 
+\begin{figure}[t]
+\centering
+\begin{tikzpicture}[
+  box/.style={draw=black!35, rounded corners=3pt, align=center, inner sep=6pt,
+              font=\small, fill=black!3},
+  wide/.style={box, minimum width=118mm},
+  arr/.style={-{Stealth[length=2.4mm]}, black!60, thick}]
+\node[box, minimum width=34mm] (plan) {Planner (LLM)\\ \scriptsize plan IR};
+\node[box, minimum width=34mm, right=8mm of plan] (ver) {Static verifier\\
+  \scriptsize grounding $\cdot$ output contracts\\ \scriptsize temporal sanity $\cdot$ cost};
+\node[box, minimum width=30mm, right=8mm of ver] (exec) {Executor\\
+  \scriptsize content-addressed\\ \scriptsize traces $\cdot$ taint};
+\node[wide, below=7mm of ver] (tools) {Tool layer: O1--O13 --- typed $\cdot$
+  deterministic $\cdot$ bounded $\cdot$ bi-temporal (\texttt{as\_of\_tt})
+  $\cdot$ cost-guarded \quad {\scriptsize (in-process router / MCP server)}};
+\node[wide, below=6mm of tools] (store) {Bi-temporal substrate: versions over
+  valid $\times$ transaction time $\cdot$ write-ahead event log $\cdot$
+  K\`uzu / DuckDB $\cdot$ temporal-CSR index};
+\node[box, minimum width=34mm, below=6mm of store.south west, anchor=north west]
+  (rep) {Reporter (LLM)\\ \scriptsize answer object};
+\node[box, minimum width=62mm, below=6mm of store.south east, anchor=north east]
+  (cver) {Claim verifier\\ \scriptsize counts $\cdot$ entities $\cdot$ orderings
+  $\cdot$ patterns vs.\ trace digests; gates unsupported claims};
+\draw[arr] (plan) -- (ver);
+\draw[arr] (ver) -- (exec);
+\draw[arr, dashed] (ver.north) to[bend right=22]
+  node[above, font=\scriptsize, black!60]{repair payloads} (plan.north);
+\draw[arr] (exec.south) -- (tools.north -| exec.south);
+\draw[arr] (tools) -- (store);
+\draw[arr] (exec.east) to[bend left=42] (cver.east);
+\draw[arr] (rep) -- (cver);
+\end{tikzpicture}
+\caption{TGMS architecture. The LLM only plans and reports; operators compute;
+the verifier checks every claim against the execution trace.}
+\label{fig:arch}
+\end{figure}
+
 \section{Bi-temporal substrate}
 Every logical node and edge is an identity plus a set of \emph{versions}
 carrying half-open valid-time $[vt_s, vt_e)$ and transaction-time
@@ -102,15 +143,35 @@ and returned versions must censor belief-closure timestamps later than the
 pinned transaction time.
 
 \section{A verified operator algebra}
-The query surface is thirteen operators: entity history; $k$-hop snapshot
-subgraph; snapshot diff (computed from version intervals, not materialized
-snapshots); earliest-arrival temporal reachability; $k$ time-respecting
-paths; $\delta$-temporal motif counting and enumeration over the catalog
-of Paranjape et al.~\cite{paranjape2017motifs}; bucketed metric time
-series; burst detection; neighborhood evolution; Allen-relation interval
-joins; entity resolution; and \texttt{compute}
-(count/sum/min/max/top-$k$/filter/interval-relation over prior step
-outputs), which keeps arithmetic out of the LLM entirely.
+The query surface is the thirteen operators of Table~\ref{tab:ops};
+\texttt{compute} keeps arithmetic out of the LLM entirely, and
+\texttt{resolve\_entities} is the only legal source of identifiers.
+
+\begin{table}[t]
+\centering\small
+\caption{The operator algebra. Every operator additionally takes
+\texttt{as\_of\_tt}, \texttt{limit}/\texttt{cursor}, and declares its
+output fields.}
+\label{tab:ops}
+\begin{tabular}{llp{8.2cm}}
+\toprule
+ & Operator & Semantics \\
+\midrule
+O1 & \texttt{entity\_history} & version list of a node under a belief state \\
+O2 & \texttt{snapshot\_subgraph} & $k$-hop ($\le$3) neighborhood of the snapshot $G(t, tt)$ \\
+O3 & \texttt{diff\_snapshots} & adds/removes/changes between $G(t_1)$ and $G(t_2)$, from version intervals \\
+O4 & \texttt{temporal\_reachability} & earliest arrival over time-respecting paths; exact under wait caps \\
+O5 & \texttt{temporal\_paths} & up to $k \le 20$ node-simple time-respecting paths \\
+O6/O7 & \texttt{count/find\_temporal\_motifs} & $\delta$-temporal motif catalog~\cite{paranjape2017motifs}, exact, order $(t, \textit{eid})$ \\
+O8 & \texttt{graph\_metric\_timeseries} & bucketed node/edge/degree/reciprocity series \\
+O9 & \texttt{burst\_detection} & rolling z-score / trailing-median outlier buckets \\
+O10 & \texttt{neighborhood\_evolution} & neighbors gained/lost + degree series \\
+O11 & \texttt{co\_active} & Allen-relation interval join between edge selections \\
+O12 & \texttt{resolve\_entities} & name/uid lookup --- the only legal identifier source \\
+O13 & \texttt{compute} & count/sum/min/max/top-$k$/filter/interval relation over step outputs \\
+\bottomrule
+\end{tabular}
+\end{table}
 
 Five design rules bind every operator. \textbf{Typed}: inputs and outputs
 validate against JSON Schemas generated from one registry, which also
@@ -206,7 +267,7 @@ seed; temperature 0). Paired-bootstrap 95\% CIs for TGMS$-$baseline:
 vs.\ B2 $[+0.18, +0.59]$ and vs.\ B1 $[+0.09, +0.55]$ (both significant);
 vs.\ B5 $[0.00, +0.46]$ (borderline at $n{=}22$).}
 \label{tab:results}
-\begin{tabular}{lccccc}
+\begin{tabular}{lcccc}
 \toprule
  & TGMS & B1 vector-RAG & B2 static-RAG & B5 text-to-Cypher \\
 \midrule
