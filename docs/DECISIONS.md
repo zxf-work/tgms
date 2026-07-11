@@ -181,3 +181,21 @@ implementation — hygiene checking starts at the marker recorded in D-010.
 - **Consequence:** docs/ now serves double duty (repo docs + website);
   .nojekyll disables Jekyll processing; public claims in site/blog restate
   only receipt-carrying numbers from the technical report.
+
+## D-018 — 2026-07-11 — Test splits frozen for the v1 evaluation campaign
+- **Context:** Spec §7.6/§8 require freezing the test split before any
+  test-split measurement; dev-split iteration is complete (D-012 treatment)
+  and the campaign configs are committed (configs/campaign/).
+- **Proposal:** Freeze three suites, generated deterministically on the
+  canonical stores (xzgpu, seed 0). Canonical copies are committed at
+  benchmarks/frozen-v1/ (byte-identical to the generating machine's).
+  - suite-collegemsg: n_dev=22 n_test=94,
+    test_split_sha cbdc36a0774e78cb5301c091131750ef403f95379f8e4b7d8a07334354a0142f
+  - suite-emaileu: n_dev=22 n_test=94,
+    test_split_sha c8b2dfd660df31aa3578fdfae47dc30d8e7d9651d881915cab6210077677c093
+  - suite-synth (planted rings/ping-pong/bursts, T2): n_dev=24 n_test=102,
+    test_split_sha 696d8e8b8bf9af06b862e99639635af5be11e923ffac0d8b7fc80edda8dbcb09
+- **Consequence:** From this entry on, test-split runs are limited to the
+  pre-specified campaign configs; any change to task generation or gold
+  computation invalidates the freeze and requires a new dated entry. Dev
+  splits remain free for iteration (e.g. the guided-decoding A/B).
