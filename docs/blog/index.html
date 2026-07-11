@@ -1,48 +1,89 @@
 <!doctype html><html lang="en"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>TGMS blog</title>
+<title>TGMS blog — engineering notes from an agent-native temporal graph store</title>
 <style>
-:root{--ink:#16212e;--mut:#5b6b7c;--blue:#1c64d9;--line:#dfe3e8}
-body{margin:0;font-family:-apple-system,'Segoe UI',Roboto,sans-serif;color:var(--ink);background:#f6f7f9}
-.head{background:#0e1c30;color:#fff;padding:22px 24px}
-.head a{color:#c9d8ef;text-decoration:none;font-size:14px}
-main{max-width:720px;margin:0 auto;padding:36px 24px}
-h1{font-size:28px}
-.post{background:#fff;border:1px solid var(--line);border-radius:14px;
-      padding:20px 24px;margin:16px 0;display:block;text-decoration:none;color:var(--ink)}
-.post:hover{border-color:var(--blue)}
-.post h2{margin:0 0 6px;font-size:19px;color:var(--blue)}
-.post .mut{color:var(--mut);font-size:14.5px;line-height:1.55}
-.meta{color:var(--mut);font-size:13px;margin-top:8px}
-.soon{opacity:.65}
+:root{--ink:#1a2534;--mut:#5b6b7c;--blue:#1c64d9;--blue2:#3b82f6;--line:#e3e8ef;
+      --bg:#fbfcfe;--card:#fff;--mono:ui-monospace,'SF Mono',Menlo,monospace}
+@media (prefers-color-scheme: dark){
+:root{--ink:#e6edf6;--mut:#95a6ba;--blue:#6ea8ff;--blue2:#8bbcff;--line:#243244;
+      --bg:#0b1420;--card:#121e2e}}
+*{box-sizing:border-box}
+body{margin:0;font-family:-apple-system,'Segoe UI',Roboto,sans-serif;
+     color:var(--ink);background:var(--bg);-webkit-font-smoothing:antialiased}
+.hero{background:linear-gradient(150deg,#0e1c30 0%,#173863 62%,#1c64d9 130%);
+      color:#fff;padding:30px 24px 46px}
+.hero .nav{max-width:760px;margin:0 auto 30px;font-size:14px}
+.hero .nav a{color:#c9d8ef;text-decoration:none;margin-right:14px}
+.hero .inner{max-width:760px;margin:0 auto}
+h1{font-size:clamp(28px,4.6vw,38px);letter-spacing:-.6px;margin:0 0 8px}
+.sub{color:#a9c0e2;font-size:16.5px;line-height:1.55;max-width:600px}
+main{max-width:760px;margin:0 auto;padding:34px 24px 70px}
+.post{display:block;background:var(--card);border:1px solid var(--line);
+      border-radius:16px;padding:20px 24px 18px;margin:16px 0;
+      text-decoration:none;color:var(--ink);position:relative;
+      transition:transform .12s, box-shadow .12s, border-color .12s}
+a.post:hover{transform:translateY(-3px);box-shadow:0 12px 30px #0e1c3022;
+      border-color:var(--blue)}
+.num{position:absolute;top:-12px;left:20px;background:linear-gradient(135deg,var(--blue),var(--blue2));
+     color:#fff;font-weight:700;font-size:13px;border-radius:12px;padding:2px 12px;
+     font-family:var(--mono)}
+.post h2{margin:8px 0 8px;font-size:19.5px;letter-spacing:-.2px;color:var(--blue)}
+.post p{color:var(--mut);font-size:15px;line-height:1.6;margin:0 0 10px}
+.meta{color:var(--mut);font-size:12.5px;text-transform:uppercase;letter-spacing:.06em}
+.tag{display:inline-block;background:#1c64d914;color:var(--blue);border-radius:11px;
+     padding:2px 10px;font-size:11.5px;margin-right:6px;letter-spacing:.03em}
+.soon{opacity:.62}
+.soon .num{background:var(--mut)}
+.soon h2{color:var(--ink)}
+footer{max-width:760px;margin:0 auto;padding:0 24px 60px;color:var(--mut);font-size:13px}
+footer a{color:var(--blue)}
 </style></head><body>
-<div class="head"><a href="../">← TGMS</a></div>
-<main>
+
+<div class="hero">
+<div class="nav"><a href="../">← TGMS</a>
+<a href="https://github.com/zxf-work/tgms">github</a>
+<a href="https://github.com/zxf-work/tgms/blob/main/paper/main.pdf">paper</a></div>
+<div class="inner">
 <h1>TGMS blog</h1>
-<p class="mut" style="color:#5b6b7c">Engineering notes from building an
-agent-native temporal graph store — each post ships with runnable artifacts
-and determinism receipts.</p>
+<div class="sub">Engineering notes from building an agent-native bi-temporal
+graph store. Every post ships with runnable artifacts and determinism
+receipts — no result without a reproduction path.</div>
+</div></div>
+
+<main>
 
 <a class="post" href="two-kinds-of-time.html">
-<h2>#1 · Why your agent needs two kinds of time</h2>
-<div class="mut">Correction probes: the question class that snapshot and RAG
-systems cannot express — and what happened when we measured it. Baselines
-score zero at every model size; the bi-temporal system doesn't care how big
-the model is.</div>
-<div class="meta">July 2026</div></a>
+<span class="num">#1</span>
+<h2>Why your agent needs two kinds of time</h2>
+<p>Correction probes: the question class that snapshot and RAG systems
+cannot express — and what happened when we measured it. Baselines score zero
+at every model size; the bi-temporal system doesn’t care how big the model
+is, because the model isn’t doing the temporal work.</p>
+<span class="tag">bi-temporal</span><span class="tag">benchmarks</span>
+<div class="meta" style="margin-top:10px">July 2026 · published</div></a>
 
 <div class="post soon">
-<h2>#2 · Statically valid, semantically doomed</h2>
-<div class="mut">A 7B model met our operator schemas: valid plans, zero
-successful executions. The one-line class of contract that took execution
-success from 0.00 to 1.00 — and why tool manuals must be checkable.</div>
-<div class="meta">coming soon</div></div>
+<span class="num">#2</span>
+<h2>Statically valid, semantically doomed</h2>
+<p>A 7B model met our operator schemas: perfectly valid plans, zero
+successful executions. Models invent <i>output</i> paths no input schema
+constrains. On output contracts — the one-line class of check that took
+execution success from 0.00 to 1.00 — and why tool manuals must be
+checkable, not just readable.</p>
+<span class="tag">small models</span><span class="tag">tool contracts</span>
+<div class="meta" style="margin-top:10px">coming soon</div></div>
 
 <div class="post soon">
-<h2>#3 · Your verifier believes correct arithmetic on incomplete evidence</h2>
-<div class="mut">A live demo caught our claim verifier approving a count
-computed over a truncated page. On truncation taint, and evidence quality as
-a lattice.</div>
-<div class="meta">coming soon</div></div>
+<span class="num">#3</span>
+<h2>Your verifier believes correct arithmetic on incomplete evidence</h2>
+<p>A live demo caught our claim verifier approving a count computed over a
+truncated result page — the value matched, the evidence didn’t. On
+truncation taint, transitively poisoned steps, and treating evidence quality
+as a lattice instead of a boolean.</p>
+<span class="tag">verification</span><span class="tag">war story</span>
+<div class="meta" style="margin-top:10px">coming soon</div></div>
 
-</main></body></html>
+</main>
+<footer>TGMS · <a href="https://github.com/zxf-work/tgms">zxf-work/tgms</a> ·
+Apache-2.0 · <a href="../">project page</a></footer>
+</body></html>

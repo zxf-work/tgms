@@ -3,79 +3,180 @@
 <title>Why your agent needs two kinds of time — TGMS blog</title>
 <meta name="description" content="Correction probes: the temporal-graph question class that snapshot and RAG systems cannot express, and what happens when you measure it.">
 <style>
-:root{--ink:#16212e;--mut:#5b6b7c;--blue:#1c64d9;--line:#dfe3e8;
+:root{--ink:#1a2534;--mut:#5b6b7c;--blue:#1c64d9;--blue2:#3b82f6;--line:#e3e8ef;
+      --bg:#fbfcfe;--card:#fff;--codebg:#0e1c30;--codetx:#dce7f5;--ok:#0a7d33;
+      --amber:#b58900;--corr:#e07b39;
       --mono:ui-monospace,'SF Mono',Menlo,monospace}
-body{margin:0;font-family:-apple-system,'Segoe UI',Roboto,sans-serif;color:var(--ink);background:#fff}
-.head{background:#0e1c30;color:#fff;padding:22px 24px}
-.head a{color:#c9d8ef;text-decoration:none;font-size:14px}
-article{max-width:720px;margin:0 auto;padding:36px 24px 72px;line-height:1.65;font-size:16.5px}
-h1{font-size:32px;line-height:1.2;letter-spacing:-.5px;margin:8px 0 4px}
-.meta{color:var(--mut);font-size:14px;margin-bottom:28px}
-h2{font-size:21px;margin-top:36px}
-pre{background:#0e1c30;color:#dce7f5;border-radius:10px;padding:14px 16px;
-    font-family:var(--mono);font-size:13px;overflow-x:auto;line-height:1.55}
+@media (prefers-color-scheme: dark){
+:root{--ink:#e6edf6;--mut:#95a6ba;--blue:#6ea8ff;--blue2:#8bbcff;--line:#243244;
+      --bg:#0b1420;--card:#121e2e;--codebg:#0a1017;--codetx:#cfe0f2;--ok:#4ade80;
+      --corr:#f0975a}}
+*{box-sizing:border-box}
+body{margin:0;font-family:-apple-system,'Segoe UI',Roboto,sans-serif;
+     color:var(--ink);background:var(--bg);-webkit-font-smoothing:antialiased}
+.hero{background:linear-gradient(150deg,#0e1c30 0%,#173863 62%,#1c64d9 130%);
+      color:#fff;padding:30px 24px 44px}
+.hero .nav{max-width:760px;margin:0 auto 30px;font-size:14px}
+.hero .nav a{color:#c9d8ef;text-decoration:none;margin-right:14px}
+.hero .inner{max-width:760px;margin:0 auto}
+.kicker{display:inline-block;background:#ffffff22;border:1px solid #ffffff33;
+        border-radius:14px;padding:3px 12px;font-size:12px;letter-spacing:.08em;
+        text-transform:uppercase;color:#dbe7f8}
+h1{font-size:clamp(30px,5.4vw,44px);line-height:1.12;letter-spacing:-.8px;
+   margin:14px 0 10px;color:#fff}
+.byline{color:#a9c0e2;font-size:14.5px}
+.byline a{color:#dbe7f8}
+article{max-width:760px;margin:0 auto;padding:40px 24px 30px;line-height:1.72;
+        font-size:17px}
+article>p:first-of-type{font-size:19px;color:var(--mut)}
+h2{font-size:23px;letter-spacing:-.3px;margin:44px 0 12px;position:relative;
+   padding-top:18px}
+h2::before{content:"";position:absolute;top:0;left:0;width:44px;height:4px;
+   border-radius:2px;background:linear-gradient(90deg,var(--blue),var(--blue2))}
+.pull{font-size:22px;line-height:1.45;font-weight:600;letter-spacing:-.2px;
+      border:0;margin:30px 0;padding:0 0 0 22px;position:relative;color:var(--ink)}
+.pull::before{content:"";position:absolute;left:0;top:6px;bottom:6px;width:5px;
+      border-radius:3px;background:linear-gradient(180deg,var(--blue),var(--blue2))}
+pre{background:var(--codebg);color:var(--codetx);border-radius:12px;
+    padding:16px 18px;font-family:var(--mono);font-size:13px;overflow-x:auto;
+    line-height:1.6;box-shadow:0 6px 24px #0e1c3022}
 pre .g{color:#7fd0a0}pre .c{color:#7fa3d0}
-code{font-family:var(--mono);background:#e9eef5;border-radius:5px;padding:1px 5px;font-size:.9em}
-blockquote{border-left:4px solid var(--blue);margin:20px 0;padding:4px 18px;color:var(--mut)}
-table{border-collapse:collapse;width:100%;font-size:15px;margin:16px 0}
-th,td{border-bottom:1px solid var(--line);padding:8px 10px;text-align:right}
+code{font-family:var(--mono);background:#1c64d914;border-radius:5px;
+     padding:1px 6px;font-size:.9em}
+.duo{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin:22px 0}
+@media(max-width:640px){.duo{grid-template-columns:1fr}}
+.duo .cell{background:var(--card);border:1px solid var(--line);border-radius:12px;
+     padding:14px 16px}
+.duo .cell b{display:block;font-size:13px;text-transform:uppercase;
+     letter-spacing:.06em;color:var(--mut);margin-bottom:6px}
+.duo .big{font-size:30px;font-weight:700;color:var(--blue)}
+figure{margin:26px 0;background:var(--card);border:1px solid var(--line);
+       border-radius:14px;padding:18px 18px 8px}
+figcaption{color:var(--mut);font-size:13.5px;line-height:1.5;padding:8px 4px 10px}
+table{border-collapse:collapse;width:100%;font-size:15px;margin:20px 0;
+      background:var(--card);border-radius:12px;overflow:hidden;
+      border:1px solid var(--line)}
+th,td{padding:11px 12px;text-align:right;border-bottom:1px solid var(--line)}
+th{background:#1c64d90d;font-size:13px;text-transform:uppercase;
+   letter-spacing:.04em;color:var(--mut)}
 th:first-child,td:first-child{text-align:left}
-.win{color:#0a7d33;font-weight:700}
+tr:last-child td{border-bottom:0}
+td.win{color:var(--ok);font-weight:700;font-size:16px}
+td.zero{color:var(--mut)}
 a{color:var(--blue)}
-.note{background:#f2f6fd;border:1px solid #d5e2f7;border-radius:10px;padding:12px 16px;font-size:14.5px}
+.note{background:#1c64d90e;border:1px solid #1c64d930;border-radius:12px;
+      padding:14px 18px;font-size:15px;margin:24px 0;line-height:1.6}
+.next{max-width:760px;margin:0 auto;padding:0 24px 70px}
+.next a{display:block;background:var(--card);border:1px solid var(--line);
+        border-radius:14px;padding:18px 22px;text-decoration:none;color:var(--ink);
+        transition:transform .12s, box-shadow .12s}
+.next a:hover{transform:translateY(-2px);box-shadow:0 10px 26px #0e1c301f}
+.next .lbl{font-size:12px;color:var(--mut);text-transform:uppercase;letter-spacing:.07em}
+.next .ttl{color:var(--blue);font-weight:650;font-size:17px;margin-top:4px}
+svg text{font-family:-apple-system,'Segoe UI',Roboto,sans-serif}
+svg .m{font-family:var(--mono)}
 </style></head><body>
-<div class="head"><a href="../">← TGMS</a> · <a href="./">blog</a></div>
-<article>
-<h1>Why your agent needs two kinds of time</h1>
-<div class="meta">TGMS blog · #1 · July 2026 · Xiaofei Zhang ·
-<a href="https://github.com/zxf-work/tgms">code</a> ·
-<a href="https://github.com/zxf-work/tgms/blob/main/paper/main.pdf">paper</a></div>
 
+<div class="hero">
+<div class="nav"><a href="../">← TGMS</a><a href="./">blog</a>
+<a href="https://github.com/zxf-work/tgms">github</a></div>
+<div class="inner">
+<span class="kicker">Post #1 · Bi-temporal semantics</span>
+<h1>Why your agent needs<br>two kinds of time</h1>
+<div class="byline">Xiaofei Zhang · University of Memphis · July 2026 ·
+<a href="https://github.com/zxf-work/tgms/blob/main/paper/main.pdf">paper</a> ·
+<a href="https://github.com/zxf-work/tgms">code</a></div>
+</div></div>
+
+<article>
 <p>Here is a question class that sounds exotic and is actually everywhere:</p>
 
-<blockquote>“As of March 1 — before we corrected the record — what did we
-believe about this account?”</blockquote>
+<div class="pull">“As of March 1 — before we corrected the record — what did
+we believe about this account?”</div>
 
 <p>Auditors ask it about trades. Safety teams ask it about moderation
-decisions. Scientists ask it about datasets that got revised after the
-analysis shipped. Anyone who has debugged an ML feature store has asked it
-through gritted teeth. And if your agent’s data layer is a snapshot, a
-vector index, or a plain property graph, the question is not merely hard —
-it is <em>unrepresentable</em>. The information needed to answer it was
-destroyed at write time.</p>
+decisions. Scientists ask it about datasets revised after the analysis
+shipped. Anyone who has debugged an ML feature store has asked it through
+gritted teeth. And if your agent’s data layer is a snapshot, a vector index,
+or a plain property graph, the question is not merely hard — it is
+<em>unrepresentable</em>. The information needed to answer it was destroyed
+at write time.</p>
 
 <h2>Evolution is not correction</h2>
 
 <p>The fix is old, from temporal databases: store <b>two</b> time axes per
 fact. <b>Valid time</b> is when the fact held in the world. <b>Transaction
 time</b> is when the store believed it. With both, two very different
-updates stop being conflated:</p>
+updates stop being conflated: <b>evolution</b> — “the collaboration ended in
+June” (the world changed; the old belief was right while it lasted) — and
+<b>correction</b> — “it never included Bob; fix it” (the world didn’t
+change; <em>we were wrong</em>, and the record of our error is itself
+data).</p>
 
-<ul>
-<li><b>Evolution</b> — “the collaboration ended in June.” The world changed;
-the old belief was right while it lasted.</li>
-<li><b>Correction</b> — “the collaboration never included Bob; fix it.” The
-world didn’t change; <em>we were wrong</em>, and the record of our error is
-itself data.</li>
-</ul>
+<figure>
+<svg viewBox="0 0 720 240" width="100%" role="img"
+     aria-label="Bi-temporal correction: belief rows before and after a correction">
+  <!-- valid-time axis -->
+  <line x1="150" y1="204" x2="700" y2="204" stroke="var(--mut)" stroke-width="1.4"/>
+  <polygon points="700,204 691,199 691,209" fill="var(--mut)"/>
+  <text x="704" y="228" font-size="12" fill="var(--mut)" text-anchor="end">valid time →</text>
+  <text x="160" y="220" font-size="11" fill="var(--mut)" class="m">0</text>
+  <text x="368" y="220" font-size="11" fill="var(--mut)" class="m">40</text>
+  <text x="472" y="220" font-size="11" fill="var(--mut)" class="m">60</text>
+  <text x="672" y="220" font-size="11" fill="var(--mut)" class="m">100</text>
+  <line x1="374" y1="60" x2="374" y2="206" stroke="var(--line)" stroke-dasharray="3 4"/>
+  <line x1="478" y1="60" x2="478" y2="206" stroke="var(--line)" stroke-dasharray="3 4"/>
 
-<p>In <a href="https://github.com/zxf-work/tgms">TGMS</a>, every node and
-edge version carries both intervals, corrections close the old belief and
-open a new one (never overwrite), and — the part that matters for agents —
-<b>every query operator takes an <code>as_of_tt</code> argument</b>. Time
-travel is just a parameter:</p>
+  <!-- belief row tt1 -->
+  <text x="10" y="76" font-size="13" fill="var(--ink)" font-weight="600">belief at tt₁</text>
+  <rect x="166" y="58" width="510" height="28" rx="7" fill="#1c64d9" opacity="0.88"/>
+  <text x="421" y="77" font-size="13" fill="#fff" text-anchor="middle" class="m">p = 1 · vt [0, 100)</text>
 
-<pre><span class="c"># same entity, same operator — only the belief state differs</span>
-entity_history(uid="n605", as_of_tt=1783612870890759)  <span class="g"># → 1 version</span>
-entity_history(uid="n605")                             <span class="g"># → 3 versions</span></pre>
+  <!-- correction arrow -->
+  <path d="M 426 96 C 426 112, 426 112, 426 126" stroke="var(--corr)"
+        stroke-width="2" fill="none" marker-end="url(#arr)"/>
+  <defs><marker id="arr" markerWidth="9" markerHeight="9" refX="7" refY="4.5" orient="auto">
+    <path d="M0,0 L9,4.5 L0,9 z" fill="var(--corr)"/></marker></defs>
+  <text x="440" y="116" font-size="12.5" fill="var(--corr)" class="m">correct(p=2, vt=[40,60))</text>
 
-<p>No LLM is involved in that difference. It is deterministic, and it is
-protected by a metamorphic test we consider the signature property of the
-whole system: <em>any result pinned to a past belief state is byte-identical
-before and after later corrections.</em> Getting that test to pass flushed
-out two real leaks — result digests that included current-belief metadata,
-and version rows whose belief-closure timestamps quietly revealed the
-future.</p>
+  <!-- belief row tt2 -->
+  <text x="10" y="152" font-size="13" fill="var(--ink)" font-weight="600">belief at tt₂</text>
+  <rect x="166" y="134" width="204" height="28" rx="7" fill="#1c64d9" opacity="0.88"/>
+  <text x="268" y="153" font-size="13" fill="#fff" text-anchor="middle" class="m">p = 1</text>
+  <rect x="374" y="134" width="104" height="28" rx="7" fill="var(--corr)"/>
+  <text x="426" y="153" font-size="13" fill="#fff" text-anchor="middle" class="m">p = 2</text>
+  <rect x="482" y="134" width="194" height="28" rx="7" fill="#1c64d9" opacity="0.88"/>
+  <text x="579" y="153" font-size="13" fill="#fff" text-anchor="middle" class="m">p = 1</text>
+
+  <text x="10" y="186" font-size="12.5" fill="var(--mut)">tt₁ stays queryable forever: as_of_tt = tt₁ still returns the top row, byte-identical</text>
+</svg>
+<figcaption>A correction never overwrites. It closes the old belief in
+transaction time and opens a new one — carving the corrected interval while
+preserving the remainder. Both rows remain queryable, each under its own
+<code>as_of_tt</code>.</figcaption>
+</figure>
+
+<p>In <a href="https://github.com/zxf-work/tgms">TGMS</a>, every query
+operator takes an <code>as_of_tt</code> argument, so time travel is just a
+parameter — deterministic, no LLM involved:</p>
+
+<div class="duo">
+<div class="cell"><b>pinned before the correction</b>
+<div class="big">1 version</div>
+<pre style="box-shadow:none;margin-top:10px">entity_history(uid="n605",
+  as_of_tt=1783612870…)</pre></div>
+<div class="cell"><b>current beliefs</b>
+<div class="big">3 versions</div>
+<pre style="box-shadow:none;margin-top:10px">entity_history(uid="n605")
+<span class="c"># carved: before/corrected/after</span></pre></div>
+</div>
+
+<p>This behavior is protected by the metamorphic test we consider the
+signature property of the whole system: <em>any result pinned to a past
+belief state is byte-identical before and after later corrections.</em>
+Getting it to pass flushed out two real leaks — result digests that included
+current-belief metadata, and version rows whose belief-closure timestamps
+quietly revealed the future.</p>
 
 <h2>Measuring the gap</h2>
 
@@ -90,25 +191,25 @@ static-graph RAG over the latest snapshot, and text-to-Cypher against the
 same events in a vanilla property graph.</p>
 
 <table>
-<tr><th>exact match · Qwen2.5-14B (local, 24 GB GPU)</th><th>TGMS</th>
+<tr><th>exact match · Qwen2.5-14B<br>(local, 24 GB GPU)</th><th>TGMS</th>
 <th>vector-RAG</th><th>static-RAG</th><th>text-to-Cypher</th></tr>
 <tr><td>all task families (dev, n=22)</td><td class="win">0.41</td>
 <td>0.09</td><td>0.05</td><td>0.18</td></tr>
 <tr><td>correction probes</td><td class="win">0.67</td>
-<td>0.00</td><td>0.00</td><td>0.00</td></tr>
+<td class="zero">0.00</td><td class="zero">0.00</td><td class="zero">0.00</td></tr>
 </table>
 
 <p>Two things worth noticing. The pooled gap (+36 points over static-graph
 RAG, 95% CI [0.18, 0.59] by paired bootstrap) is the expected story:
 computation over structure beats retrieval when questions compose time. But
 the probe row is the interesting one — <b>zeros across every baseline, at
-every model size we tried</b>. That’s not a capability gap that scaling
+every model size we tried</b>. That is not a capability gap that scaling
 fixes; the baselines’ inputs simply do not contain the belief history.
 Meanwhile TGMS scores 0.67 on probes with a 7B model <em>and</em> a 14B
 model. The bi-temporal advantage is model-size-independent, because the
 model isn’t doing the temporal work.</p>
 
-<div class="note">Everything above carries determinism receipts (git SHA,
+<div class="note">📎 Everything above carries determinism receipts (git SHA,
 config SHA, suite SHA, model strings) and regenerates from a clean checkout
 — see the <a
 href="https://github.com/zxf-work/tgms/blob/main/docs/TECHNICAL_REPORT.md">
@@ -119,17 +220,17 @@ verifier-badged claims.</div>
 
 <h2>Why this matters beyond graphs</h2>
 
-<p>The deeper pattern: <b>agent memory that can be corrected must record
-its own belief history, or its verifier will bless answers grounded in
-retracted facts.</b> TGMS applies this to its own summarization layer —
-memory digests record the transaction time they were computed at, and any
-correction quarantines digests whose window it touches. If you are building
-agent memory of any kind, that invalidation rule transfers directly.</p>
+<p>The deeper pattern: <b>agent memory that can be corrected must record its
+own belief history, or its verifier will bless answers grounded in retracted
+facts.</b> TGMS applies this to its own summarization layer — memory digests
+record the transaction time they were computed at, and any correction
+quarantines digests whose window it touches. If you are building agent
+memory of any kind, that invalidation rule transfers directly.</p>
+</article>
 
-<p>Next post: what happened when a 7B model met our operator schemas —
-statically valid plans, zero successful executions, and the one-line class
-of contract that fixed it.</p>
+<div class="next"><a href="./">
+<div class="lbl">Next up</div>
+<div class="ttl">#2 · Statically valid, semantically doomed — what happened
+when a 7B model met our operator schemas →</div></a></div>
 
-<p class="meta">Comments & issues → <a
-href="https://github.com/zxf-work/tgms/issues">github.com/zxf-work/tgms</a></p>
-</article></body></html>
+</body></html>
