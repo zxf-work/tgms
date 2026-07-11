@@ -16,13 +16,11 @@ from typing import Any
 import numpy as np
 
 from tgms.core.errors import CostError, InvalidArgError, LimitError
-from tgms.core.model import OPEN_END
 from tgms.storage.base import StorageAdapter
 from tgms.temporal.algebra import (
     AS_OF_TT,
     CURSOR,
     LIMIT,
-    UID,
     WINDOW,
     check_window,
     operator,
@@ -55,7 +53,6 @@ def _series_values(adapter: StorageAdapter, metric: str, args: dict[str, Any],
                    bucket_starts: np.ndarray) -> np.ndarray:
     t_a, t_b, stride = args["window"]["t_a"], args["window"]["t_b"], args["stride"]
     as_of = args["as_of_tt"]
-    bucket_ends = np.minimum(bucket_starts + stride, t_b)
 
     if metric in ("node_count", "mean_out_degree", "new_node_rate"):
         nodes = adapter.nodes_columnar(as_of_tt=as_of, vt_max=t_b)

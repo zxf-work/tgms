@@ -32,7 +32,7 @@ class Agent:
                  llm_fn: Callable[..., str] | None = None,
                  cache_dir: str | Path | None = None,
                  max_repairs: int = 3, seed: int = 0) -> None:
-        from tgms.tools.schemas import load_manual, tool_description
+        from tgms.tools.schemas import tool_description
 
         self.store = store
         self.router = ToolRouter(store.adapter)

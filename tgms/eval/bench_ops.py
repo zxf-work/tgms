@@ -31,7 +31,10 @@ def bench_cases(store: tgms.Store) -> list[tuple[str, str, dict[str, Any]]]:
     span = max(1, t1 - t0)
     mid = t0 + span // 2
     uid = store.adapter.uids_for([0])[0]
-    win = lambda frac: {"t_a": t0, "t_b": t0 + max(1, int(span * frac))}
+
+    def win(frac):
+        return {"t_a": t0, "t_b": t0 + max(1, int(span * frac))}
+
     return [
         ("entity_history", "base", {"uid": uid, "include_edges": True}),
         ("snapshot_subgraph", "hop2", {"seeds": [uid], "hops": 2, "t_valid": mid}),

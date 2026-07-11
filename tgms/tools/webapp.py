@@ -18,7 +18,6 @@ are not thread-safe under the threading server).
 
 from __future__ import annotations
 
-import html
 import json
 import threading
 import uuid
@@ -28,9 +27,8 @@ from typing import Any
 from tgms.agent.agent import Agent, dataset_card
 from tgms.agent.executor import Executor, ResultStore
 from tgms.agent.ir import Plan
-from tgms.agent.reporter import Reporter, mechanical_answer
+from tgms.agent.reporter import Reporter
 from tgms.agent.verifier import ClaimVerifier
-from tgms.core.model import canonical_json
 from tgms.store import Store
 from tgms.tools.server import ToolRouter
 from tgms.tools.trace_viewer import render_trace_html

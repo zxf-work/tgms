@@ -25,7 +25,6 @@ from tgms.temporal.algebra import (
     AS_OF_TT,
     CURSOR,
     LIMIT,
-    UID_LIST,
     WINDOW,
     check_window,
     operator,

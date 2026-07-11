@@ -29,7 +29,7 @@ import numpy as np
 
 from tgms.agent.planner import fence_data, sanitize_data_strings, strip_fences
 from tgms.agent.verifier import ANSWER_SCHEMA
-from tgms.core.model import OPEN_END, canonical_json
+from tgms.core.model import canonical_json
 from tgms.store import Store
 
 ANSWER_CONTRACT = """Answer as ONE JSON AnswerObject and nothing else:

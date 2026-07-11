@@ -11,7 +11,6 @@ from __future__ import annotations
 from typing import Any
 
 from tgms.core.errors import CostError
-from tgms.core.model import OPEN_END
 
 DEFAULT_CEILINGS = {
     "rows_scanned_est": 20_000_000,

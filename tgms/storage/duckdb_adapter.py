@@ -77,19 +77,19 @@ class DuckDBAdapter(StorageAdapter):
     # --- entities ------------------------------------------------------- #
 
     def ensure_entities(self, uid_labels: Iterable[tuple[str, str]]) -> None:
-        new = [(u, l) for u, l in uid_labels if u not in self._ids]
+        new = [(u, label) for u, label in uid_labels if u not in self._ids]
         if not new:
             return
         seen: dict[str, str] = {}
-        for u, l in new:  # dedupe, keep first label
+        for u, label in new:  # dedupe, keep first label
             if u not in seen:
-                seen[u] = l
+                seen[u] = label
         rows = []
-        for u, l in seen.items():
+        for u, label in seen.items():
             did = len(self._uid_list)
             self._ids[u] = did
             self._uid_list.append(u)
-            rows.append((did, u, l))
+            rows.append((did, u, label))
         self.conn.executemany("INSERT INTO entities VALUES (?, ?, ?)", rows)
 
     def dense_ids(self, uids: Sequence[str]) -> np.ndarray:

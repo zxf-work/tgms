@@ -13,7 +13,7 @@ import hashlib
 import json
 import urllib.request
 from pathlib import Path
-from typing import Any, Callable, Iterator
+from typing import Any, Iterator
 
 Event = dict[str, Any]
 

@@ -148,7 +148,8 @@ def _frozen_guard(out_dir: Path, cfg_sha: str, split: str,
     override is logged with a reason."""
     log = out_dir / "runs_log.jsonl"
     if split == "test" and log.exists():
-        prior = [json.loads(l) for l in log.read_text().splitlines() if l]
+        prior = [json.loads(line) for line in log.read_text().splitlines()
+                 if line]
         if any(r["config_sha"] == cfg_sha and r["split"] == "test"
                for r in prior):
             if not force:

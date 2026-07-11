@@ -22,7 +22,7 @@ from typing import Any, Callable
 import jsonschema
 
 from tgms.core.errors import InvalidArgError, SchemaError
-from tgms.core.model import OPEN_END, canonical_json, digest
+from tgms.core.model import OPEN_END, digest
 from tgms.storage.base import StorageAdapter
 
 DEFAULT_LIMIT = 100

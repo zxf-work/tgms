@@ -58,8 +58,6 @@ def build_mcp_server(store_path: str | Path, readonly: bool = True):
     from tgms.tools.schemas import tool_description
 
     for name in router.tools():
-        spec = REGISTRY[name]
-
         def make_handler(op_name: str):
             def handler(args: dict[str, Any]) -> dict[str, Any]:
                 return router.call(op_name, args)

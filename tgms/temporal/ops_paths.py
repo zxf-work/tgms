@@ -38,7 +38,7 @@ from tgms.temporal.algebra import (
     paginate,
     required,
 )
-from tgms.temporal.guardrails import scan_estimate, window_fraction
+from tgms.temporal.guardrails import window_fraction
 
 INF = OPEN_END
 MAX_PATH_HOPS = 6
