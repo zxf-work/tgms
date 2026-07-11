@@ -10,3 +10,4 @@ data_raw/
 stores/
 .ruff_cache/
 dist/
+.DS_Store
