@@ -180,5 +180,27 @@ TGMS · Xiaofei Zhang, University of Memphis · Apache-2.0 ·
 <a href="https://github.com/zxf-work/tgms/blob/main/CITATION.cff">cite</a> ·
 <a href="blog/">blog</a> ·
 <a href="https://github.com/zxf-work/tgms/releases">releases</a>
+<span id="visits" style="display:none"> · 👀 <b id="visits-n"></b> unique visits ·
+<a id="visits-link" href="#">live stats ↗</a></span>
 </footer>
+<script>
+/* GoatCounter: privacy-friendly, no cookies, ~3.5KB. Counts unique visitors
+   via a daily-rotating hash — raw IPs are never stored. Widget stays hidden
+   unless the stats endpoint responds. */
+var GC = "zxf-tgms";  // goatcounter site code
+(function(){
+  var s = document.createElement("script");
+  s.async = true; s.src = "https://gc.zgo.at/count.js";
+  s.setAttribute("data-goatcounter", "https://" + GC + ".goatcounter.com/count");
+  document.body.appendChild(s);
+  fetch("https://" + GC + ".goatcounter.com/counter/TOTAL.json")
+    .then(function(r){ return r.ok ? r.json() : null; })
+    .then(function(j){
+      if (!j || !j.count) return;
+      document.getElementById("visits-n").textContent = j.count.trim();
+      document.getElementById("visits-link").href = "https://" + GC + ".goatcounter.com";
+      document.getElementById("visits").style.display = "inline";
+    }).catch(function(){});
+})();
+</script>
 </div></body></html>
