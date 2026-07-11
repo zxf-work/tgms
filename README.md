@@ -1,6 +1,6 @@
 # TGMS — Agent-Native Bi-Temporal Graph Management System
 
-[![CI](https://github.com/OWNER/tgms/actions/workflows/ci.yml/badge.svg)](../../actions)
+[![CI](https://github.com/zxf-work/tgms/actions/workflows/ci.yml/badge.svg)](../../actions)
 [![License: Apache-2.0](https://img.shields.io/badge/license-Apache--2.0-blue.svg)](LICENSE)
 [![Coverage: temporal/ 96%](https://img.shields.io/badge/coverage_(temporal)-96%25-brightgreen.svg)](#correctness)
 
