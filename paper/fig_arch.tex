@@ -1,0 +1,66 @@
+% TGMS architecture figure — \input into main.tex and the standalone checker.
+% Color code: amber = LLM components, green = verification, blue = deterministic
+% systems. All boxes use explicit text width so nodes can never overlap.
+\definecolor{tgmsblue}{RGB}{28,100,217}
+\definecolor{tgmsdeep}{RGB}{23,56,99}
+\definecolor{tgmsgreen}{RGB}{10,125,51}
+\definecolor{tgmsamber}{RGB}{176,116,0}
+\begin{tikzpicture}[
+  every node/.style={font=\small},
+  base/.style={rounded corners=5pt, align=center, inner ysep=7pt, inner xsep=5pt},
+  llm/.style={base, draw=tgmsamber!80, fill=tgmsamber!9, thick},
+  vrf/.style={base, draw=tgmsgreen!80, fill=tgmsgreen!8, thick},
+  sys/.style={base, draw=tgmsblue!75, fill=tgmsblue!7, thick},
+  band/.style={base, draw=tgmsdeep!60, fill=tgmsdeep!6, thick, text width=128mm},
+  lbl/.style={font=\scriptsize, text=black!55},
+  chip/.style={font=\tiny\bfseries, text=white, rounded corners=2pt,
+               inner sep=2.2pt, yshift=1mm},
+  arr/.style={-{Stealth[length=2.6mm]}, black!55, thick},
+  darr/.style={arr, dashed}]
+
+% ---- top row: plan -> validate -> execute -------------------------------
+\node[llm, text width=32mm] (plan) at (2.0,0)
+  {\textbf{Planner}\\[1pt] {\scriptsize emits plan IR\\ (JSON DAG + \$refs)}};
+\node[vrf, text width=42mm] (ver) at (7.0,0)
+  {\textbf{Static verifier}\\[1pt] {\scriptsize grounding $\cdot$ output contracts\\
+   temporal sanity $\cdot$ cost}};
+\node[sys, text width=32mm] (exec) at (12.0,0)
+  {\textbf{Executor}\\[1pt] {\scriptsize content-addressed traces\\ truncation taint}};
+\node[chip, fill=tgmsamber] at (plan.north west) {LLM};
+\node[chip, fill=tgmsgreen!90!black] at (ver.north west) {CHECK};
+
+% ---- bands ---------------------------------------------------------------
+\node[band] (tools) at (7.0,-2.35)
+  {\textbf{Tool layer} {\scriptsize(in-process router / MCP)}\\[1pt]
+   {\small O1--O13: typed $\cdot$ \mbox{deterministic} $\cdot$ bounded $\cdot$
+   bi-temporal (\texttt{as\_of\_tt}) $\cdot$ cost-guarded}};
+\node[band, fill=tgmsdeep!11] (store) at (7.0,-3.85)
+  {\textbf{Bi-temporal substrate}\\[1pt]
+   {\small versions over valid $\times$ transaction time $\cdot$ write-ahead
+   event log $\cdot$ K\`uzu / DuckDB $\cdot$ temporal CSR}};
+
+% ---- bottom row: report -> verify claims --------------------------------
+\node[llm, text width=36mm] (rep) at (2.4,-6.1)
+  {\textbf{Reporter}\\[1pt] {\scriptsize writes the answer object\\
+   (claims cite evidence steps)}};
+\node[vrf, text width=76mm] (cver) at (9.9,-6.1)
+  {\textbf{Claim verifier}\\[1pt] {\scriptsize counts $\cdot$ entities $\cdot$
+   orderings $\cdot$ \mbox{patterns} \mbox{re-checked} against trace digests\\
+   \mbox{unsupported claims are gated out of the answer}}};
+\node[chip, fill=tgmsamber] at (rep.north west) {LLM};
+\node[chip, fill=tgmsgreen!90!black] at (cver.north west) {CHECK};
+
+% ---- arrows --------------------------------------------------------------
+\draw[arr] (plan) -- node[lbl, above]{plan} (ver);
+\draw[arr] (ver) -- node[lbl, above]{valid} (exec);
+\draw[darr] (ver.north) to[bend right=22]
+  node[lbl, above]{repair payloads\; (E\_SCHEMA / E\_COST / …)} (plan.north);
+\draw[arr] (exec.south) -- node[lbl, right]{operator calls}
+  (exec.south |- tools.north);
+\draw[arr] (tools) -- (store);
+\draw[arr, rounded corners=6pt]
+  (exec.east) -- ++(0.55,0) |- node[lbl, right, pos=0.22]{trace} (cver.east);
+\draw[arr] (rep) -- node[lbl, above]{answer object} (cver);
+\draw[darr, rounded corners=6pt]
+  (store.south -| rep) -- node[lbl, left]{trace summaries} (rep.north);
+\end{tikzpicture}

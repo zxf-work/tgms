@@ -79,46 +79,7 @@ acceptance thresholds before measurement and report against them.
 
 \begin{figure}[t]
 \centering
-\resizebox{\textwidth}{!}{%
-\begin{tikzpicture}[
-  box/.style={draw=black!35, rounded corners=3pt, align=center, inner sep=6pt,
-              font=\small, fill=black!3},
-  arr/.style={-{Stealth[length=2.6mm]}, black!60, thick}]
-% top row
-\node[box, minimum width=40mm, minimum height=13mm] (plan) at (0,0)
-  {Planner (LLM)\\ \scriptsize emits plan IR};
-\node[box, minimum width=46mm, minimum height=13mm] (ver) at (5.6,0)
-  {Static verifier\\ \scriptsize grounding $\cdot$ output contracts\\
-   \scriptsize temporal sanity $\cdot$ cost};
-\node[box, minimum width=40mm, minimum height=13mm] (exec) at (11.2,0)
-  {Executor\\ \scriptsize content-addressed traces\\ \scriptsize truncation taint};
-% middle rows
-\node[box, minimum width=136mm] (tools) at (5.6,-2.1)
-  {Tool layer (in-process router / MCP): O1--O13 --- typed $\cdot$ deterministic
-   $\cdot$ bounded $\cdot$ bi-temporal (\texttt{as\_of\_tt}) $\cdot$ cost-guarded};
-\node[box, minimum width=136mm] (store) at (5.6,-3.5)
-  {Bi-temporal substrate: versions over valid $\times$ transaction time $\cdot$
-   write-ahead event log $\cdot$ K\`uzu / DuckDB $\cdot$ temporal-CSR index};
-% bottom row
-\node[box, minimum width=46mm, minimum height=11mm] (rep) at (1.2,-5.4)
-  {Reporter (LLM)\\ \scriptsize writes the answer object};
-\node[box, minimum width=76mm, minimum height=11mm] (cver) at (8.4,-5.4)
-  {Claim verifier\\ \scriptsize counts $\cdot$ entities $\cdot$ orderings $\cdot$
-   patterns re-checked vs.\ trace digests; unsupported claims gated};
-% arrows
-\draw[arr] (plan) -- (ver);
-\draw[arr] (ver) -- (exec);
-\draw[arr, dashed] (ver.north) to[bend right=20]
-  node[above, font=\scriptsize, black!60]{repair payloads (E\_SCHEMA / E\_COST / \dots)}
-  (plan.north);
-\draw[arr] (exec.south) -- (exec.south |- tools.north);
-\draw[arr] (tools) -- (store);
-\draw[arr] (exec.south east) -- ++(0,-0.35) -| (cver.north east)
-  node[pos=0.22, right, font=\scriptsize, black!60]{trace};
-\draw[arr] (rep) -- (cver);
-\draw[arr, dashed] (store.south -| rep.north) -- (rep.north)
-  node[midway, left, font=\scriptsize, black!60]{summaries};
-\end{tikzpicture}}
+\resizebox{\textwidth}{!}{\input{fig_arch}}
 \caption{TGMS architecture. The LLM only plans and reports; operators compute;
 the verifier checks every claim against the execution trace.}
 \label{fig:arch}
