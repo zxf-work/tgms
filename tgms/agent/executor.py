@@ -113,6 +113,14 @@ class Executor:
                 trace.steps.append(rec)
                 failed.add(sid)
                 continue
+            # truncation taints dependents: a count over a truncated page is
+            # not a count over the full result — the verifier caps claims
+            # citing such steps at weakly_supported
+            upstream_truncated = bool(truncations) or any(
+                outputs.get(d, {}).get("truncated")
+                or next((s2 for s2 in trace.steps
+                         if s2["step_id"] == d), {}).get("upstream_truncated")
+                for d in step.depends_on)
 
             t0 = time.perf_counter()
             res = self.router.call(step.op, resolved)
@@ -129,7 +137,9 @@ class Executor:
                 rows = res.get("rows_total", len(res.get("rows", [])) or 0)
                 total_rows += int(rows or 0)
                 rec.update(status="ok", result_digest=res["result_digest"],
-                           rows_returned=rows, truncated=res.get("truncated", False))
+                           rows_returned=rows,
+                           truncated=res.get("truncated", False),
+                           upstream_truncated=upstream_truncated)
                 outputs[sid] = res
                 if self.results is not None:
                     self.results.put(res)

@@ -335,7 +335,8 @@ class ClaimVerifier:
                 missing = True
                 continue
             payloads.append(self.results.get(rec["result_digest"]))
-            truncated = truncated or bool(rec.get("truncated"))
+            truncated = truncated or bool(rec.get("truncated")) \
+                or bool(rec.get("upstream_truncated"))
         return payloads, missing, truncated
 
     # -- per-type checks ----------------------------------------------------- #
