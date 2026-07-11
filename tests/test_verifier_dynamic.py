@@ -159,3 +159,21 @@ def test_fault_injection_detection_and_fp(tmp_path):
     stats = run_fault_injection(answers, n_mutants=120, seed=7)
     assert stats["fp_rate"] == 0.0, stats
     assert stats["detection_rate"] >= 0.95, stats
+
+
+def test_upstream_truncation_taints_dependent_claims(tmp_path):
+    """[tests] a count computed over a truncated page must not verify as
+    fully supported (D-015 live-demo finding: 14B counted a 100-row page of
+    a 343-row result and the claim showed 'supported')."""
+    adapter, _, _ = build_store(2)
+    plan_json = _reach_plan()
+    plan_json["steps"][0]["args"]["limit"] = 1          # truncate upstream
+    plan, trace, results = _run(adapter, tmp_path, plan_json)
+    by = {s["step_id"]: s for s in trace.steps}
+    assert by["s1"]["truncated"] and by["s2"]["upstream_truncated"]
+    v = ClaimVerifier(trace, results, adapter)
+    report = v.verify({"text": f"{trace.answer} nodes.",
+                       "claims": [{"id": "c1", "type": "count",
+                                   "value": trace.answer, "from": "s2.value",
+                                   "evidence": ["s2"]}]})
+    assert report["claims"][0]["verdict"] == "weakly_supported"
