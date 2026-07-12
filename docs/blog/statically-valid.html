@@ -1,0 +1,254 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Statically valid, semantically doomed — TGMS blog</title>
+<meta name="description" content="A 7B model met our operator schemas: perfectly valid plans, zero successful executions. On output contracts — the check that took execution success from 0.00 to 1.00.">
+<style>
+:root{--ink:#1a2534;--mut:#5b6b7c;--blue:#1c64d9;--blue2:#3b82f6;--line:#e3e8ef;
+      --bg:#fbfcfe;--card:#fff;--codebg:#0e1c30;--codetx:#dce7f5;--ok:#0a7d33;
+      --amber:#b58900;--bad:#c0392b;
+      --mono:ui-monospace,'SF Mono',Menlo,monospace}
+@media (prefers-color-scheme: dark){
+:root{--ink:#e6edf6;--mut:#95a6ba;--blue:#6ea8ff;--blue2:#8bbcff;--line:#243244;
+      --bg:#0b1420;--card:#121e2e;--codebg:#0a1017;--codetx:#cfe0f2;--ok:#4ade80;
+      --bad:#f87171}}
+*{box-sizing:border-box}
+body{margin:0;font-family:-apple-system,'Segoe UI',Roboto,sans-serif;
+     color:var(--ink);background:var(--bg);-webkit-font-smoothing:antialiased}
+.hero{background:linear-gradient(150deg,#0e1c30 0%,#173863 62%,#1c64d9 130%);
+      color:#fff;padding:30px 24px 44px}
+.hero .nav{max-width:760px;margin:0 auto 30px;font-size:14px}
+.hero .nav a{color:#c9d8ef;text-decoration:none;margin-right:14px}
+.hero .inner{max-width:760px;margin:0 auto}
+.kicker{display:inline-block;background:#ffffff22;border:1px solid #ffffff33;
+        border-radius:14px;padding:3px 12px;font-size:12px;letter-spacing:.08em;
+        text-transform:uppercase;color:#dbe7f8}
+h1{font-size:clamp(30px,5.4vw,44px);line-height:1.12;letter-spacing:-.8px;
+   margin:14px 0 10px;color:#fff}
+.byline{color:#a9c0e2;font-size:14.5px}
+.byline a{color:#dbe7f8}
+article{max-width:760px;margin:0 auto;padding:40px 24px 30px;line-height:1.72;
+        font-size:17px}
+article>p:first-of-type{font-size:19px;color:var(--mut)}
+h2{font-size:23px;letter-spacing:-.3px;margin:44px 0 12px;position:relative;
+   padding-top:18px}
+h2::before{content:"";position:absolute;top:0;left:0;width:44px;height:4px;
+   border-radius:2px;background:linear-gradient(90deg,var(--blue),var(--blue2))}
+.pull{font-size:22px;line-height:1.45;font-weight:600;letter-spacing:-.2px;
+      border:0;margin:30px 0;padding:0 0 0 22px;position:relative;color:var(--ink)}
+.pull::before{content:"";position:absolute;left:0;top:6px;bottom:6px;width:5px;
+      border-radius:3px;background:linear-gradient(180deg,var(--blue),var(--blue2))}
+pre{background:var(--codebg);color:var(--codetx);border-radius:12px;
+    padding:16px 18px;font-family:var(--mono);font-size:13px;overflow-x:auto;
+    line-height:1.6;box-shadow:0 6px 24px #0e1c3022}
+pre .g{color:#7fd0a0}pre .c{color:#7fa3d0}pre .r{color:#f0975a}
+code{font-family:var(--mono);background:#1c64d914;border-radius:5px;
+     padding:1px 6px;font-size:.9em}
+.duo{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin:22px 0}
+@media(max-width:640px){.duo{grid-template-columns:1fr}}
+.duo .cell{background:var(--card);border:1px solid var(--line);border-radius:12px;
+     padding:14px 16px}
+.duo .cell b{display:block;font-size:13px;text-transform:uppercase;
+     letter-spacing:.06em;color:var(--mut);margin-bottom:6px}
+.duo .big{font-size:30px;font-weight:700;color:var(--blue)}
+figure{margin:26px 0;background:var(--card);border:1px solid var(--line);
+       border-radius:14px;padding:18px 18px 8px}
+figcaption{color:var(--mut);font-size:13.5px;line-height:1.5;padding:8px 4px 10px}
+table{border-collapse:collapse;width:100%;font-size:15px;margin:20px 0;
+      background:var(--card);border-radius:12px;overflow:hidden;
+      border:1px solid var(--line)}
+th,td{padding:11px 12px;text-align:right;border-bottom:1px solid var(--line)}
+th{background:#1c64d90d;font-size:13px;text-transform:uppercase;
+   letter-spacing:.04em;color:var(--mut)}
+th:first-child,td:first-child{text-align:left}
+tr:last-child td{border-bottom:0}
+td.win{color:var(--ok);font-weight:700;font-size:16px}
+td.zero{color:var(--mut)}
+a{color:var(--blue)}
+.note{background:#1c64d90e;border:1px solid #1c64d930;border-radius:12px;
+      padding:14px 18px;font-size:15px;margin:24px 0;line-height:1.6}
+.next{max-width:760px;margin:0 auto;padding:0 24px 70px}
+.next a{display:block;background:var(--card);border:1px solid var(--line);
+        border-radius:14px;padding:18px 22px;text-decoration:none;color:var(--ink);
+        transition:transform .12s, box-shadow .12s}
+.next a:hover{transform:translateY(-2px);box-shadow:0 10px 26px #0e1c301f}
+.next .lbl{font-size:12px;color:var(--mut);text-transform:uppercase;letter-spacing:.07em}
+.next .ttl{color:var(--blue);font-weight:650;font-size:17px;margin-top:4px}
+svg text{font-family:-apple-system,'Segoe UI',Roboto,sans-serif}
+svg .m{font-family:var(--mono)}
+</style></head><body>
+
+<div class="hero">
+<div class="nav"><a href="../">← TGMS</a><a href="./">blog</a>
+<a href="https://github.com/zxf-work/tgms">github</a></div>
+<div class="inner">
+<span class="kicker">Post #2 · Tool contracts</span>
+<h1>Statically valid,<br>semantically doomed</h1>
+<div class="byline">Xiaofei Zhang · University of Memphis · July 2026 ·
+<a href="https://github.com/zxf-work/tgms/blob/main/paper/main.pdf">paper</a> ·
+<a href="https://github.com/zxf-work/tgms">code</a></div>
+</div></div>
+
+<article>
+<p>The first time we pointed a live model at our operator toolbox, we were
+ready for it to fail in interesting ways. It failed in a boring one: after
+22 tasks, the execution success rate across the run was exactly 0.00 — and
+every single plan had passed validation.</p>
+
+<div class="pull">Every plan was valid. Nothing ran.</div>
+
+<h2>What the validator saw</h2>
+
+<p>TGMS makes an LLM express its query as a small JSON DAG of operator
+calls, and a static verifier checks that plan <em>before anything
+executes</em>. The checks are not shallow: JSON Schema on every argument,
+DAG acyclicity, reference scope, temporal sanity on every window, a
+grounding rule (no identifier the task didn’t supply or an operator didn’t
+resolve), and a cost estimate. Qwen2.5-7B cleared all of it. The plans were
+well-formed, well-typed, well-grounded, affordable — and doomed.</p>
+
+<p>Here is the failure, minimally reproduced. The model planned a
+reachability query, then tried to read the result:</p>
+
+<pre><span class="c">// step s2: temporal_reachability — fine, passes every input check</span>
+{"id": "s3", "op": "compute",
+ "args": {"op": "identity", <span class="r">"value": {"$ref": "s2.count"}</span>}}
+
+<span class="c">// what s2 actually returns:</span>
+{"rows": [...], <span class="g">"rows_total": 343</span>, "truncated": false}</pre>
+
+<p>There is no <code>s2.count</code>. The operator emits
+<code>rows_total</code>. At runtime this is a dangling reference into a
+result that will never contain the field — but at validation time, nothing
+knew that. Input schemas constrain what goes <em>into</em> a tool. No schema
+constrained what the model was allowed to <em>read back out</em>.</p>
+
+<figure>
+<svg viewBox="0 0 720 250" width="100%" role="img"
+     aria-label="Input arguments are schema-checked; output paths were unconstrained until output contracts closed the gap">
+  <!-- tool card -->
+  <rect x="240" y="30" width="240" height="190" rx="12" fill="none"
+        stroke="var(--blue)" stroke-width="1.6"/>
+  <text x="360" y="58" text-anchor="middle" font-size="14" font-weight="700"
+        fill="var(--ink)">temporal_reachability</text>
+  <line x1="258" y1="70" x2="462" y2="70" stroke="var(--line)"/>
+  <!-- args side -->
+  <text x="258" y="94" font-size="12" fill="var(--mut)" font-weight="600">ARGS (schema-checked)</text>
+  <text x="258" y="116" font-size="12.5" class="m" fill="var(--ink)">src: string ✓</text>
+  <text x="258" y="136" font-size="12.5" class="m" fill="var(--ink)">window: interval ✓</text>
+  <text x="258" y="156" font-size="12.5" class="m" fill="var(--ink)">as_of_tt: int64 ✓</text>
+  <!-- results side -->
+  <text x="258" y="188" font-size="12" fill="var(--mut)" font-weight="600">RESULTS</text>
+  <text x="258" y="208" font-size="12.5" class="m" fill="var(--mut)">…undocumented</text>
+  <!-- plan node left -->
+  <rect x="20" y="88" width="150" height="64" rx="10" fill="#1c64d914"
+        stroke="var(--blue)" stroke-width="1.2"/>
+  <text x="95" y="114" text-anchor="middle" font-size="13" font-weight="650"
+        fill="var(--ink)">plan step</text>
+  <text x="95" y="134" text-anchor="middle" font-size="12" class="m"
+        fill="var(--ink)">args in</text>
+  <path d="M170 120 H236" stroke="var(--ok)" stroke-width="1.8" fill="none"/>
+  <polygon points="236,120 227,115 227,125" fill="var(--ok)"/>
+  <text x="203" y="110" text-anchor="middle" font-size="11.5" fill="var(--ok)">validated</text>
+  <!-- read-back right -->
+  <rect x="550" y="88" width="150" height="64" rx="10" fill="#c0392b14"
+        stroke="var(--bad)" stroke-width="1.2"/>
+  <text x="625" y="114" text-anchor="middle" font-size="13" font-weight="650"
+        fill="var(--ink)">next step reads</text>
+  <text x="625" y="134" text-anchor="middle" font-size="12" class="m"
+        fill="var(--bad)">$ref: s2.count</text>
+  <path d="M484 120 H546" stroke="var(--bad)" stroke-width="1.8"
+        stroke-dasharray="5 4" fill="none"/>
+  <polygon points="546,120 537,115 537,125" fill="var(--bad)"/>
+  <text x="515" y="110" text-anchor="middle" font-size="11.5" fill="var(--bad)">unchecked</text>
+</svg>
+<figcaption>The asymmetry that produced a 0.00 execution rate: every
+argument into a tool was schema-validated, but the paths a plan read back
+out of a result had no contract at all — so the model was free to invent
+them.</figcaption>
+</figure>
+
+<h2>Why models invent output paths</h2>
+
+<p>Once you see it, it’s obvious why this is the failure mode. The model
+has read a million JSON APIs where a counting endpoint returns
+<code>count</code>. Absent evidence, it emits the modal name — a perfectly
+reasonable guess that happens to be wrong for this toolbox. And nothing in
+the standard tool-calling stack pushes back: tool definitions ship an input
+schema, the call succeeds, and the invention only surfaces later as a
+dangling reference, an empty value, or a silently wrong answer. Bigger
+models guess field names better; they do not stop guessing.</p>
+
+<p>This is worth stating generally, because it applies to any agent given
+tools: <b>an operator manual that documents arguments but not results is
+half a contract, and the model will improvise the missing half.</b></p>
+
+<h2>The fix: output contracts</h2>
+
+<p>The repair was almost embarrassingly small. Every operator in the TGMS
+registry now declares its output fields alongside its input schema — the
+same registry that generates the tool definitions the model sees, so the
+manual and the enforcement can’t drift apart. The static verifier resolves
+every <code>$ref</code> in a plan and rejects any path whose first field the
+producing operator does not emit. The rejection is a structured repair
+payload that carries the real field list:</p>
+
+<pre><span class="r">E_SCHEMA</span>: temporal_reachability outputs no field <span class="r">'count'</span>
+  (available: <span class="g">rows, rows_total, truncated, cursor</span>)</pre>
+
+<p>The planner gets that message and, on the next attempt, reads
+<code>rows_total</code> like it should have the first time. One check, one
+useful error message.</p>
+
+<div class="duo">
+<div class="cell"><b>Execution success, probe tasks</b>
+<div class="big">0.00 → 1.00</div>
+after output-field validation landed — same model, same tasks, same
+prompts.</div>
+<div class="cell"><b>Repair loop at 7B</b>
+<div class="big">≈3×</div>
+overall execution success with structured repair payloads versus
+first-attempt plans alone.</div>
+</div>
+
+<p>With the check in place, the 7B run stopped being a wall of zeros and
+became an actual measurement — first-attempt validity 0.17 on
+single-operator tasks, lifted to 0.50 execution success by repairs, and
+0.67 exact match on the correction probes that motivated the system in the
+first place. The bottleneck moved from “can the model address a result” to
+“can the model plan” — which is the bottleneck you want, because it’s the
+one that model scaling actually improves (first-attempt validity roughly
+triples from 7B to 14B on our dev split).</p>
+
+<h2>Manuals must be checkable, not just readable</h2>
+
+<p>We could have “fixed” this with prompting — paste every operator’s
+result shape into the manual and hope. But the model already <em>had</em> a
+readable manual; what it lacked was a checkable one. The distinction is the
+whole design philosophy of TGMS in miniature: every property of the system
+that matters is either enforced by a machine or it will eventually be
+violated by a model. Documentation is a prompt; a contract is a gate.</p>
+
+<p>If you build tools for agents — MCP servers included — the transferable
+lesson is one sentence: <b>result schemas deserve the same rigor as
+argument schemas, and small models are where you find out whether you
+meant it.</b> Input validation tells you the model called your tool
+correctly. Only an output contract tells you the model is allowed to
+believe what it thinks your tool said.</p>
+
+<div class="note">📎 The 0.00 → 1.00 run is preserved with determinism
+receipts (git SHA, config SHA, suite SHA) in the
+<a href="https://github.com/zxf-work/tgms/blob/main/docs/first_oss_matrix_devrun.md">
+first live-matrix record</a>; the check itself is
+<a href="https://github.com/zxf-work/tgms/blob/main/tgms/agent/verifier.py">
+about fifteen lines in the static verifier</a>. The finding is written up
+in §6 of the <a
+href="https://github.com/zxf-work/tgms/blob/main/paper/main.pdf">paper</a>.</div>
+</article>
+
+<div class="next"><a href="two-kinds-of-time.html">
+<div class="lbl">Previously</div>
+<div class="ttl">#1 · Why your agent needs two kinds of time — correction
+probes, and the question class RAG cannot express →</div></a></div>
+
+<script data-goatcounter="https://zxf-tgms.goatcounter.com/count" async src="https://gc.zgo.at/count.js"></script>
+</body></html>
