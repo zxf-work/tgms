@@ -5,7 +5,9 @@
 #   main       — C1/C2: all systems x 3 seeds, CollegeMsg test split (14B)
 #   datasets   — email-Eu + synth test splits (14B)
 #   models     — C3 scaling: ours on each smaller model, CollegeMsg test
-# Env: TGMS_REPO, VLLM_ENV, HF_HOME as in run_oss_matrix.sh.
+# Env: TGMS_REPO, VLLM_ENV, HF_HOME as in run_oss_matrix.sh; TGMS_FORCE
+# passes a logged --force reason through to `tgms eval run` (needed to
+# heal infra-failure rows past the spec §8.3 frozen-test guard).
 set -e
 TGMS_REPO="${TGMS_REPO:-$(cd "$(dirname "$0")/.." && pwd)}"
 VLLM_ENV="${VLLM_ENV:-$TGMS_REPO/../vllm/env}"
@@ -40,21 +42,21 @@ serve() {  # serve <hf-model-id> <ready-pattern> [extra vllm args...]
 case "$1" in
 guided-ab)
   serve Qwen/Qwen2.5-14B-Instruct-AWQ 14B-Instruct-AWQ --max-model-len 28672
-  uv run tgms eval run --config configs/campaign/dev-guided-ab.yaml
+  uv run tgms eval run --config configs/campaign/dev-guided-ab.yaml ${TGMS_FORCE:+--force "$TGMS_FORCE"}
   echo "PHASE_DONE guided-ab" ;;
 main)
   serve Qwen/Qwen2.5-14B-Instruct-AWQ 14B-Instruct-AWQ --max-model-len 28672
-  uv run tgms eval run --config configs/campaign/test-collegemsg-main.yaml
+  uv run tgms eval run --config configs/campaign/test-collegemsg-main.yaml ${TGMS_FORCE:+--force "$TGMS_FORCE"}
   echo "PHASE_DONE main" ;;
 datasets)
   serve Qwen/Qwen2.5-14B-Instruct-AWQ 14B-Instruct-AWQ --max-model-len 28672
-  uv run tgms eval run --config configs/campaign/test-emaileu.yaml
+  uv run tgms eval run --config configs/campaign/test-emaileu.yaml ${TGMS_FORCE:+--force "$TGMS_FORCE"}
   echo "EMAILEU_DONE"
-  uv run tgms eval run --config configs/campaign/test-synth.yaml
+  uv run tgms eval run --config configs/campaign/test-synth.yaml ${TGMS_FORCE:+--force "$TGMS_FORCE"}
   echo "PHASE_DONE datasets" ;;
 models)
   serve Qwen/Qwen2.5-7B-Instruct Qwen2.5-7B-Instruct --max-model-len 16384
-  uv run tgms eval run --config configs/campaign/test-collegemsg-models.yaml
+  uv run tgms eval run --config configs/campaign/test-collegemsg-models.yaml ${TGMS_FORCE:+--force "$TGMS_FORCE"}
   echo "PHASE_DONE models" ;;
 *) echo "usage: $0 guided-ab|main|datasets|models"; exit 2 ;;
 esac
