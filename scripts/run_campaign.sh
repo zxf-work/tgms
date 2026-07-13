@@ -17,7 +17,10 @@ serve() {  # serve <hf-model-id> <ready-pattern> [extra vllm args...]
   local model="$1" pat="$2"; shift 2
   curl -s -m 10 http://localhost:8000/v1/models 2>/dev/null | grep -q "$pat" \
     && { echo "SERVER_ALREADY_UP $pat"; return 0; }
-  pkill -f "[v]llm.serve" || true; sleep 8
+  [ -x "$VLLM_ENV/bin/vllm" ] || { echo "VLLM_NOT_FOUND $VLLM_ENV"; exit 1; }
+  # kill the API parent AND the EngineCore child — the child holds the GPU
+  # memory and does not match the parent pattern
+  pkill -f "[v]llm.serve" || true; pkill -f "VLLM::EngineCore" || true; sleep 8
   local log="$TGMS_REPO/runs/vllm-$(echo "$pat" | tr '/ ' '--').log"
   nohup "$VLLM_ENV/bin/vllm" serve "$model" --dtype half --port 8000 \
     --gpu-memory-utilization 0.92 "$@" > "$log" 2>&1 &
