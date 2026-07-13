@@ -24,11 +24,12 @@ serve() {  # serve <hf-model-id> <ready-pattern> [extra vllm args...]
   # memory and does not match the parent pattern
   pkill -f "[v]llm.serve" || true; pkill -f "VLLM::EngineCore" || true; sleep 8
   local log="$TGMS_REPO/runs/vllm-$(echo "$pat" | tr '/ ' '--').log"
-  # FlexAttention (the sm_75 default) recompiles per shape until torch's
-  # recompile limit kills the engine mid-campaign; --enforce-eager avoids
-  # that but generates at ~3 tok/s. XFORMERS supports sm_75 with no
-  # per-shape compilation — fast AND stable.
-  nohup env VLLM_ATTENTION_BACKEND=XFORMERS \
+  # sm_75 serving triage: FlexAttention (default) is fast but hits torch's
+  # dynamo recompile limit after hours of traffic; --enforce-eager is
+  # stable at an unusable ~3 tok/s; XFORMERS crashes in its kernel here.
+  # So: default backend, a raised recompile ceiling to push the crash
+  # horizon out, and run_heal() absorbs any crash that still lands.
+  nohup env TORCHDYNAMO_CACHE_SIZE_LIMIT=1024 TORCH_LOGS="" \
     "$VLLM_ENV/bin/vllm" serve "$model" --dtype half --port 8000 \
     --gpu-memory-utilization 0.92 "$@" > "$log" 2>&1 &
   for i in $(seq 1 100); do
