@@ -22,8 +22,11 @@ serve() {  # serve <hf-model-id> <ready-pattern> [extra vllm args...]
   # memory and does not match the parent pattern
   pkill -f "[v]llm.serve" || true; pkill -f "VLLM::EngineCore" || true; sleep 8
   local log="$TGMS_REPO/runs/vllm-$(echo "$pat" | tr '/ ' '--').log"
+  # --enforce-eager: FlexAttention on sm_75 recompiles per shape until
+  # torch._dynamo's recompile limit kills the engine mid-campaign (observed
+  # twice, ~hours of traffic each). Eager is slower but survives the run.
   nohup "$VLLM_ENV/bin/vllm" serve "$model" --dtype half --port 8000 \
-    --gpu-memory-utilization 0.92 "$@" > "$log" 2>&1 &
+    --gpu-memory-utilization 0.92 --enforce-eager "$@" > "$log" 2>&1 &
   for i in $(seq 1 100); do
     curl -s -m 10 http://localhost:8000/v1/models 2>/dev/null | grep -q "$pat" \
       && { echo "SERVER_UP $pat"; return 0; }
