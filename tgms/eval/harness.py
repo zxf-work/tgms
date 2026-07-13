@@ -250,9 +250,13 @@ def run_matrix(cfg: dict[str, Any], llm_fn: Callable[..., str],
                     key = sha256_hex(canonical_json(
                         [task["id"], system, model, seed, split]))
                     cache_file = cache_dir / f"{key}.json"
-                    if cache_file.exists():
-                        row = json.loads(cache_file.read_text())
+                    cached = (json.loads(cache_file.read_text())
+                              if cache_file.exists() else None)
+                    if cached is not None and "task_error" not in cached:
+                        row = cached
                     else:
+                        # infrastructure-failure rows (dead server, network)
+                        # are never treated as results — recompute them
                         u0 = len(usage_log) if usage_log is not None else 0
                         try:
                             if system in OURS_SYSTEMS:
