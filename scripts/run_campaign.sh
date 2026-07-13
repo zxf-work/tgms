@@ -24,11 +24,13 @@ serve() {  # serve <hf-model-id> <ready-pattern> [extra vllm args...]
   # memory and does not match the parent pattern
   pkill -f "[v]llm.serve" || true; pkill -f "VLLM::EngineCore" || true; sleep 8
   local log="$TGMS_REPO/runs/vllm-$(echo "$pat" | tr '/ ' '--').log"
-  # --enforce-eager: FlexAttention on sm_75 recompiles per shape until
-  # torch._dynamo's recompile limit kills the engine mid-campaign (observed
-  # twice, ~hours of traffic each). Eager is slower but survives the run.
-  nohup "$VLLM_ENV/bin/vllm" serve "$model" --dtype half --port 8000 \
-    --gpu-memory-utilization 0.92 --enforce-eager "$@" > "$log" 2>&1 &
+  # FlexAttention (the sm_75 default) recompiles per shape until torch's
+  # recompile limit kills the engine mid-campaign; --enforce-eager avoids
+  # that but generates at ~3 tok/s. XFORMERS supports sm_75 with no
+  # per-shape compilation — fast AND stable.
+  nohup env VLLM_ATTENTION_BACKEND=XFORMERS \
+    "$VLLM_ENV/bin/vllm" serve "$model" --dtype half --port 8000 \
+    --gpu-memory-utilization 0.92 "$@" > "$log" 2>&1 &
   for i in $(seq 1 100); do
     curl -s -m 10 http://localhost:8000/v1/models 2>/dev/null | grep -q "$pat" \
       && { echo "SERVER_UP $pat"; return 0; }
@@ -39,24 +41,57 @@ serve() {  # serve <hf-model-id> <ready-pattern> [extra vllm args...]
   echo "SERVER_TIMEOUT $pat"; exit 1
 }
 
+count_errors() {  # count_errors <out_dir>
+  python3 -c "
+import json, glob, sys
+print(sum(1 for f in glob.glob('$1/results/*.json')
+          if 'task_error' in json.load(open(f))))"
+}
+
+run_heal() {  # run_heal <config> <out_dir> <model> <pattern> [serve args...]
+  # eval passes until no infrastructure-failure rows remain (max 3); the
+  # per-row cache recomputes only rows carrying task_error, so each pass
+  # costs just the failed remainder. Server restarts between passes.
+  local cfg="$1" out="$2" model="$3" pat="$4" n=-1; shift 4
+  for pass in 1 2 3; do
+    uv run tgms eval run --config "$cfg" \
+      ${TGMS_FORCE:+--force "$TGMS_FORCE"} || true
+    n=$(count_errors "$out")
+    echo "PASS $pass ERRORS $n ($cfg)"
+    [ "$n" = "0" ] && return 0
+    pkill -f "[v]llm.serve" || true; pkill -f "VLLM::EngineCore" || true
+    sleep 8
+    serve "$model" "$pat" "$@"
+  done
+  echo "HEAL_INCOMPLETE $cfg ($n errors remain)"
+}
+
+M14=Qwen/Qwen2.5-14B-Instruct-AWQ; P14=14B-Instruct-AWQ
+M7=Qwen/Qwen2.5-7B-Instruct;       P7=Qwen2.5-7B-Instruct
+
 case "$1" in
 guided-ab)
-  serve Qwen/Qwen2.5-14B-Instruct-AWQ 14B-Instruct-AWQ --max-model-len 28672
-  uv run tgms eval run --config configs/campaign/dev-guided-ab.yaml ${TGMS_FORCE:+--force "$TGMS_FORCE"}
+  serve "$M14" "$P14" --max-model-len 28672
+  run_heal configs/campaign/dev-guided-ab.yaml runs/dev-collegemsg-guided \
+    "$M14" "$P14" --max-model-len 28672
   echo "PHASE_DONE guided-ab" ;;
 main)
-  serve Qwen/Qwen2.5-14B-Instruct-AWQ 14B-Instruct-AWQ --max-model-len 28672
-  uv run tgms eval run --config configs/campaign/test-collegemsg-main.yaml ${TGMS_FORCE:+--force "$TGMS_FORCE"}
+  serve "$M14" "$P14" --max-model-len 28672
+  run_heal configs/campaign/test-collegemsg-main.yaml runs/test-collegemsg-main \
+    "$M14" "$P14" --max-model-len 28672
   echo "PHASE_DONE main" ;;
 datasets)
-  serve Qwen/Qwen2.5-14B-Instruct-AWQ 14B-Instruct-AWQ --max-model-len 28672
-  uv run tgms eval run --config configs/campaign/test-emaileu.yaml ${TGMS_FORCE:+--force "$TGMS_FORCE"}
+  serve "$M14" "$P14" --max-model-len 28672
+  run_heal configs/campaign/test-emaileu.yaml runs/test-emaileu \
+    "$M14" "$P14" --max-model-len 28672
   echo "EMAILEU_DONE"
-  uv run tgms eval run --config configs/campaign/test-synth.yaml ${TGMS_FORCE:+--force "$TGMS_FORCE"}
+  run_heal configs/campaign/test-synth.yaml runs/test-synth \
+    "$M14" "$P14" --max-model-len 28672
   echo "PHASE_DONE datasets" ;;
 models)
-  serve Qwen/Qwen2.5-7B-Instruct Qwen2.5-7B-Instruct --max-model-len 16384
-  uv run tgms eval run --config configs/campaign/test-collegemsg-models.yaml ${TGMS_FORCE:+--force "$TGMS_FORCE"}
+  serve "$M7" "$P7" --max-model-len 16384
+  run_heal configs/campaign/test-collegemsg-models.yaml runs/test-collegemsg-models \
+    "$M7" "$P7" --max-model-len 16384
   echo "PHASE_DONE models" ;;
 *) echo "usage: $0 guided-ab|main|datasets|models"; exit 2 ;;
 esac

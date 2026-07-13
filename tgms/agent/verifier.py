@@ -473,7 +473,15 @@ class ClaimVerifier:
             if missing and not payloads:
                 verdict, reason = "unverifiable", "evidence steps unavailable"
             else:
-                verdict, reason = checks[claim["type"]](claim, payloads)
+                try:
+                    verdict, reason = checks[claim["type"]](claim, payloads)
+                except Exception as e:
+                    # a claim the checker cannot even parse (e.g. an
+                    # unresolved $ref string where a timestamp belongs) is
+                    # unverifiable — malformed evidence must never crash
+                    # verification, especially on raw un-gated answers
+                    verdict, reason = "unverifiable", \
+                        f"malformed claim ({type(e).__name__}: {str(e)[:80]})"
                 if verdict == "supported" and truncated:
                     verdict, reason = "weakly_supported", \
                         reason + " (evidence truncated)"
