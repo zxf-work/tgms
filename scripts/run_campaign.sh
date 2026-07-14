@@ -29,7 +29,7 @@ serve() {  # serve <hf-model-id> <ready-pattern> [extra vllm args...]
   # stable at an unusable ~3 tok/s; XFORMERS crashes in its kernel here.
   # So: default backend, a raised recompile ceiling to push the crash
   # horizon out, and run_heal() absorbs any crash that still lands.
-  nohup env TORCHDYNAMO_CACHE_SIZE_LIMIT=1024 TORCH_LOGS="" \
+  nohup env TORCHDYNAMO_CACHE_SIZE_LIMIT=1024 \
     "$VLLM_ENV/bin/vllm" serve "$model" --dtype half --port 8000 \
     --gpu-memory-utilization 0.92 "$@" > "$log" 2>&1 &
   for i in $(seq 1 100); do
