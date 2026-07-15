@@ -19,7 +19,7 @@ while true; do
   echo "$(date -Is) bouncing $model" >> "$LOG_DIR/watchdog.log"
   pkill -f "[v]llm.serve" || true; pkill -f "VLLM::EngineCore" || true
   sleep 10
-  nohup env TORCHDYNAMO_CACHE_SIZE_LIMIT=1024 \
+  nohup \
     "$VLLM_ENV/bin/vllm" serve "$model" --dtype half --port 8000 \
     --gpu-memory-utilization 0.92 --max-model-len "$len" \
     > "$LOG_DIR/vllm-watchdog.log" 2>&1 &

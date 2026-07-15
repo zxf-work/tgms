@@ -26,10 +26,13 @@ serve() {  # serve <hf-model-id> <ready-pattern> [extra vllm args...]
   local log="$TGMS_REPO/runs/vllm-$(echo "$pat" | tr '/ ' '--').log"
   # sm_75 serving triage: FlexAttention (default) is fast but hits torch's
   # dynamo recompile limit after hours of traffic; --enforce-eager is
-  # stable at an unusable ~3 tok/s; XFORMERS crashes in its kernel here.
-  # So: default backend, a raised recompile ceiling to push the crash
-  # horizon out, and run_heal() absorbs any crash that still lands.
-  nohup env TORCHDYNAMO_CACHE_SIZE_LIMIT=1024 \
+  # stable at an unusable ~3 tok/s; XFORMERS crashes in its kernel; and
+  # RAISING the recompile ceiling makes guard dispatch CPU-bound within
+  # minutes (1024 cached variants evaluated per step -> 1.7 tok/s). So:
+  # stock config — small guard table stays fast — with the watchdog
+  # bouncing the engine before the hours-scale limit crash, and
+  # run_heal() absorbing anything that still lands.
+  nohup \
     "$VLLM_ENV/bin/vllm" serve "$model" --dtype half --port 8000 \
     --gpu-memory-utilization 0.92 "$@" > "$log" 2>&1 &
   for i in $(seq 1 100); do
