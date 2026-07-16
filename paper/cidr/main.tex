@@ -1,0 +1,49 @@
+\documentclass[sigconf]{acmart}
+\settopmatter{printacmref=false}
+\renewcommand\footnotetextcopyrightpermission[1]{}
+\pagestyle{plain}
+\begin{document}
+
+\title{The Database as the Trusted Computing Base for LLM Agents:\\
+Experience from TGMS}
+
+\author{Xiaofei Zhang}
+\affiliation{\institution{University of Memphis}\city{Memphis}\state{TN}\country{USA}}
+\email{xiaofei.zhang@memphis.edu}
+
+\begin{abstract}
+Placeholder: existing agent--database interfaces ask an unreliable model to
+generate a query, interpret partial results, perform additional computation,
+and state conclusions. We argue agent-native databases should instead expose
+a small, typed, costed operator algebra and return evidence-carrying results
+whose downstream claims can be mechanically verified.
+\end{abstract}
+
+\maketitle
+
+\section{The problem and the position}
+% p1: failure example; TCB thesis; why SQL/Cypher-gen and RAG are
+% insufficient; the three principles; contributions.
+
+\section{Agent-native database architecture}
+% p2: trust-boundary figure; plan IR; contract-bearing operator
+% abstraction; LLM role vs DBMS role.
+
+\section{Evidence and belief semantics}
+% p3: bi-temporal correction example; execution trace; claim contract;
+% truncation-taint example; support tuple.
+
+\section{The TGMS prototype and lessons}
+% p4: operator categories (4-5, not 13); implementation footprint;
+% three lessons from live traffic; why each generalizes.
+
+\section{Preliminary evidence}
+% p5: end-to-end results table (frozen campaign); ablation table;
+% scaling figure; honest limitations.
+
+\section{Research agenda}
+% p6: agent-facing algebra design; cost-based rewriting; evidence-aware
+% execution; verification under approximation; bi-temporal provenance;
+% multi-agent concurrency.
+
+\end{document}
