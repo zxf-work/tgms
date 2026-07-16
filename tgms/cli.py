@@ -46,6 +46,9 @@ def main(argv: list[str] | None = None) -> int:
     p_tasks.add_argument("--seed", type=int, default=0)
     p_tasks.add_argument("--manifest", default=None,
                          help="synth manifest.json for T2 planted tasks")
+    p_tasks.add_argument("--sizes", default=None,
+                         help="JSON dict of per-family task counts, e.g. "
+                              "'{\"t1\":60,\"probes\":60}'")
     p_tasks.add_argument("--out", required=True)
 
     p_ask = sub.add_parser("ask", help="ask one question against a store")
@@ -74,6 +77,8 @@ def main(argv: list[str] | None = None) -> int:
 
     p_eval = sub.add_parser("eval", help="run the experiment matrix / C2 readout")
     p_eval.add_argument("action", choices=["run", "c2"])
+    p_eval.add_argument("--extended", action="store_true",
+                        help="extended mutation classes (CIDR table)")
     p_eval.add_argument("--config", default=None)
     p_eval.add_argument("--store", default=None)
     p_eval.add_argument("--suite", default=None)
@@ -128,7 +133,9 @@ def main(argv: list[str] | None = None) -> int:
         if args.manifest:
             with open(args.manifest) as f:
                 manifest = json.load(f)
+        sizes = json.loads(args.sizes) if args.sizes else None
         suite = generate_suite(store, args.dataset, seed=args.seed,
+                               sizes=sizes,
                                manifest=manifest)
         with open(args.out, "w") as f:
             json.dump(suite, f, indent=1, sort_keys=True)
@@ -195,10 +202,17 @@ def main(argv: list[str] | None = None) -> int:
         print(json.dumps({"html": args.out}))
     elif args.cmd == "eval" and args.action == "c2":
         import tgms
-        from tgms.eval.faults import c2_readout_from_suite
         store = tgms.open(args.store)
         with open(args.suite) as f:
             suite = json.load(f)
+        if args.extended:
+            from tgms.eval.faults_ext import c2_extended_readout
+            stats = c2_extended_readout(store, suite,
+                                        per_class=args.mutants or 100)
+            print(json.dumps(stats, indent=1))
+            store.close()
+            return 0
+        from tgms.eval.faults import c2_readout_from_suite
         stats = c2_readout_from_suite(store, suite, n_mutants=args.mutants)
         print(json.dumps(stats, indent=1))
         store.close()

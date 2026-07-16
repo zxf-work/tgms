@@ -480,7 +480,15 @@ class ClaimVerifier:
         results = []
         for claim in answer_object["claims"]:
             payloads, missing, truncated = self._evidence_payloads(claim["evidence"])
-            if missing and not payloads:
+            frm = claim.get("from")
+            if frm and str(frm).split(".")[0] not in claim.get("evidence", []):
+                # a claim whose provenance pointer names a step it does not
+                # cite is malformed — low-entropy values (small counts) can
+                # coincidentally appear in other steps' payloads, so value
+                # presence alone must not ground a mis-cited claim
+                verdict, reason = "unverifiable", \
+                    "provenance pointer names an uncited step"
+            elif missing and not payloads:
                 verdict, reason = "unverifiable", "evidence steps unavailable"
             else:
                 try:
