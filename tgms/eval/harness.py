@@ -49,7 +49,9 @@ def _task_window(task: dict[str, Any]) -> tuple[int, int] | None:
 
 def run_task_ours(system: str, task: dict[str, Any], store: Store,
                   model: str, llm_fn: Callable[..., str], seed: int,
-                  memory=None, guided: bool = False) -> dict[str, Any]:
+                  memory=None, guided: bool = False,
+                  ablate_output_contracts: bool = False,
+                  ablate_truncation_taint: bool = False) -> dict[str, Any]:
     from tgms.agent.agent import Agent
     from tgms.agent.reporter import Reporter
     from tgms.agent.verifier import ClaimVerifier
@@ -60,7 +62,8 @@ def run_task_ours(system: str, task: dict[str, Any], store: Store,
         if w is not None:
             notes = [n["text"] for n in memory.retrieve(w[0], w[1], k=3)]
 
-    agent = Agent(store, model=model, llm_fn=llm_fn, seed=seed, guided=guided)
+    agent = Agent(store, model=model, llm_fn=llm_fn, seed=seed, guided=guided,
+                  ablate_output_contracts=ablate_output_contracts)
     t0 = time.perf_counter()
     out = agent.ask(task["question_text"],
                     task_input_uids=set(task["input_uids"]),
@@ -88,16 +91,25 @@ def run_task_ours(system: str, task: dict[str, Any], store: Store,
             # a measurement instrument only (no gating) so end-to-end UCR is
             # directly comparable with the gated system (C2 contrast)
             verifier = ClaimVerifier(trace, agent.executor.results,
-                                     store.adapter)
+                                     store.adapter,
+                                     honor_truncation=not ablate_truncation_taint)
             report = verifier.verify(answer_obj)
             row["ucr"] = report["metrics"].get("ucr")
             row["coverage"] = report["metrics"].get("coverage")
             row["answer_object"] = answer_obj
         else:
             verifier = ClaimVerifier(trace, agent.executor.results,
-                                     store.adapter)
+                                     store.adapter,
+                                     honor_truncation=not ablate_truncation_taint)
             report = verifier.verify(answer_obj)
             row["ucr_pre_gate"] = report["metrics"].get("ucr")
+            # E2 readout: supported claims whose evidence was truncated or
+            # tainted — with taint honored this is 0 by construction; with
+            # the ablation it counts incomplete-evidence claims passing
+            row["supported_incomplete"] = sum(
+                1 for c, r in zip(answer_obj["claims"], report["claims"])
+                if r["verdict"] == "supported"
+                and verifier._evidence_payloads(c["evidence"])[2])
             kept = [c for c, r in zip(answer_obj["claims"], report["claims"])
                     if r["verdict"] != "unsupported"]
             gated = {**answer_obj, "claims": kept}
@@ -263,7 +275,11 @@ def run_matrix(cfg: dict[str, Any], llm_fn: Callable[..., str],
                                 row = run_task_ours(
                                     system, task, store, model, llm_fn, seed,
                                     memory=memory,
-                                    guided=bool(cfg.get("llm_guided")))
+                                    guided=bool(cfg.get("llm_guided")),
+                                    ablate_output_contracts=bool(
+                                        cfg.get("ablate_output_contracts")),
+                                    ablate_truncation_taint=bool(
+                                        cfg.get("ablate_truncation_taint")))
                             else:
                                 row = run_task_baseline(system, task,
                                                         systems[system], seed)

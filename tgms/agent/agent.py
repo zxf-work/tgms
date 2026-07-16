@@ -32,7 +32,8 @@ class Agent:
                  llm_fn: Callable[..., str] | None = None,
                  cache_dir: str | Path | None = None,
                  max_repairs: int = 3, seed: int = 0,
-                 guided: bool = False) -> None:
+                 guided: bool = False,
+                 ablate_output_contracts: bool = False) -> None:
         from tgms.tools.schemas import tool_description
 
         self.store = store
@@ -42,6 +43,7 @@ class Agent:
         self.planner = Planner(model=model, tool_manual=manual, llm_fn=llm_fn,
                                cache_dir=cache_dir, max_repairs=max_repairs,
                                seed=seed, guided=guided)
+        self.planner.check_output_fields = not ablate_output_contracts
         self.executor = Executor(self.router,
                                  ResultStore(Path(store.path) / "results")
                                  if store.path else None)

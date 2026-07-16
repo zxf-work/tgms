@@ -227,6 +227,8 @@ class Planner:
         # guided JSON decoding of the plan IR (R3 escalation); only passed to
         # llm_fns that accept a schema kwarg, so test fakes stay untouched
         self.guided = guided
+        # E1 ablation (CIDR): skip output-contract validation
+        self.check_output_fields = True
 
     def _call(self, messages: list[dict[str, str]], result: PlanResult) -> str:
         prompt_sha = sha256_hex(canonical_json(messages))
@@ -258,7 +260,8 @@ class Planner:
             attempt.error = {"error": "E_SCHEMA", "message": f"not valid JSON: {e}"}
             return attempt
         verdict = validate_static(obj, adapter=adapter,
-                                  task_input_uids=task_input_uids)
+                                  task_input_uids=task_input_uids,
+                                  check_output_fields=self.check_output_fields)
         if not verdict["valid"]:
             attempt.error = {"error": "E_PLAN_INVALID",
                              "violations": verdict["violations"]}

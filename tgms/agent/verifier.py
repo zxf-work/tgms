@@ -69,8 +69,12 @@ def _literal_uids(args: Any, inside_uid_key: bool = False) -> list[str]:
 
 
 def validate_static(plan_json: dict[str, Any], adapter: StorageAdapter | None = None,
-                    task_input_uids: set[str] | None = None) -> dict[str, Any]:
-    """Returns {"valid": bool, "violations": [...]}. Never raises."""
+                    task_input_uids: set[str] | None = None,
+                    check_output_fields: bool = True) -> dict[str, Any]:
+    """Returns {"valid": bool, "violations": [...]}. Never raises.
+    check_output_fields=False disables output-contract validation — the E1
+    ablation (CIDR): plans may then reference result fields that operators
+    never emit, failing only at execution time."""
     ensure_all_registered()
     violations: list[dict[str, Any]] = []
 
@@ -123,7 +127,7 @@ def validate_static(plan_json: dict[str, Any], adapter: StorageAdapter | None = 
                 violations.append(_violation(
                     "E_SCHEMA",
                     f"$ref {r.raw!r} targets step not in depends_on", s.id))
-            elif r.tokens:
+            elif r.tokens and check_output_fields:
                 v = _check_output_field(by_id, r.step_id, r.tokens[0][0],
                                         f"$ref {r.raw!r}", s.id)
                 if v:
@@ -190,7 +194,7 @@ def validate_static(plan_json: dict[str, Any], adapter: StorageAdapter | None = 
     if src_step is None:
         violations.append(_violation("E_SCHEMA",
                                      f"answer_spec.from {root!r} references no step"))
-    elif "." in root:
+    elif "." in root and check_output_fields:
         first_field = root.split(".")[1].split("[")[0]
         v = _check_output_field(by_id, src_step.id, first_field,
                                 f"answer_spec.from {root!r}", None)
@@ -317,10 +321,16 @@ class ClaimVerifier:
     """Trace-grounded claim verification (the C2 mechanism)."""
 
     def __init__(self, trace: Any, result_store: Any,
-                 adapter: StorageAdapter | None = None) -> None:
+                 adapter: StorageAdapter | None = None,
+                 honor_truncation: bool = True) -> None:
         self.trace = trace
         self.results = result_store
         self.adapter = adapter
+        # honor_truncation=False is the E2 ablation (CIDR): truncated or
+        # tainted evidence no longer caps a claim at weakly_supported, so
+        # arithmetically correct claims over incomplete pages pass as
+        # fully supported — the failure mode the taint machinery prevents
+        self.honor_truncation = honor_truncation
         self._steps = {s["step_id"]: s for s in trace.steps}
 
     # -- evidence access ---------------------------------------------------- #
@@ -482,7 +492,8 @@ class ClaimVerifier:
                     # verification, especially on raw un-gated answers
                     verdict, reason = "unverifiable", \
                         f"malformed claim ({type(e).__name__}: {str(e)[:80]})"
-                if verdict == "supported" and truncated:
+                if verdict == "supported" and truncated \
+                        and self.honor_truncation:
                     verdict, reason = "weakly_supported", \
                         reason + " (evidence truncated)"
             results.append({"id": claim["id"], "type": claim["type"],
