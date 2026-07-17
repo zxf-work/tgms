@@ -1,49 +1,418 @@
 \documentclass[sigconf]{acmart}
+\usepackage{tikz}
+\usetikzlibrary{arrows.meta,positioning,fit}
+\usepackage{booktabs}
+
 \settopmatter{printacmref=false}
 \renewcommand\footnotetextcopyrightpermission[1]{}
 \pagestyle{plain}
+\setcopyright{none}
+\acmConference[CIDR '27]{Conference on Innovative Data Systems Research}{January 2027}{Amsterdam, The Netherlands}
+\acmBooktitle{CIDR '27}
+\acmDOI{}
+\acmISBN{}
+
+% placeholders for numbers pending the frozen campaign / ablations
+\newcommand{\tbd}[1]{\textcolor{red}{\textbf{[#1]}}}
+
 \begin{document}
 
 \title{The Database as the Trusted Computing Base for LLM Agents:\\
 Experience from TGMS}
 
 \author{Xiaofei Zhang}
-\affiliation{\institution{University of Memphis}\city{Memphis}\state{TN}\country{USA}}
+\affiliation{%
+  \institution{University of Memphis}
+  \city{Memphis}\state{TN}\country{USA}}
 \email{xiaofei.zhang@memphis.edu}
 
 \begin{abstract}
-Placeholder: existing agent--database interfaces ask an unreliable model to
-generate a query, interpret partial results, perform additional computation,
-and state conclusions. We argue agent-native databases should instead expose
-a small, typed, costed operator algebra and return evidence-carrying results
-whose downstream claims can be mechanically verified.
+LLM agents are becoming a dominant client of data systems, and today's
+interfaces ask them to do exactly what they are worst at: generate a
+correct query in a general-purpose language, judge whether a partial
+result is complete, perform arithmetic over it, and assert conclusions.
+We argue for a different division of labor: \emph{the database should be
+the trusted computing base for LLM agents}. An agent-native database
+exposes a small, typed, costed operator algebra instead of unrestricted
+query generation; executes plans deterministically over an explicit
+belief state; and returns evidence-carrying results against which every
+downstream claim can be mechanically checked.
+
+We report experience from TGMS, a bi-temporal graph management system
+built on this architecture and exercised with live open-source models on
+temporal-graph analytics, a setting where computation is compositional,
+historical corrections matter, and completeness cannot be judged from a
+result page. Three lessons generalize beyond graphs: input schemas are
+half a contract --- models invent \emph{output} fields, and statically
+checking result paths took execution success from 0.00 to 1.00; evidence
+support is multidimensional --- a model can compute a correct count over
+a truncated page, so verification must track completeness, belief time,
+and provenance, not just values; and agent accountability requires
+belief-state semantics --- ``what did we believe on March~1'' is
+unanswerable after a correction unless transaction time is a first-class
+axis. A verifier built on these ideas rejects
+500/500 injected numeric and identifier faults and, across
+database-specific mutation classes (wrong belief state, truncated
+completeness, uncited entities), detects
+\tbd{per-class table, receipted run} with zero false positives, while
+the architecture keeps prompts constant-size as data grows.
 \end{abstract}
 
 \maketitle
 
 \section{The problem and the position}
-% p1: failure example; TCB thesis; why SQL/Cypher-gen and RAG are
-% insufficient; the three principles; contributions.
+\label{sec:position}
 
-\section{Agent-native database architecture}
-% p2: trust-boundary figure; plan IR; contract-bearing operator
-% abstraction; LLM role vs DBMS role.
+Consider an investigation question posed to an agent over a
+communication network:
+\begin{quote}\itshape
+Under what we believed on March~1 --- before the record was corrected
+--- among the accounts temporally reachable from Alice during February,
+how many participated in a communication triangle that completed within
+24 hours?
+\end{quote}
+Answering it requires resolving \emph{Alice} to an identifier, selecting
+a historical belief state, time-respecting reachability, temporal motif
+counting, exact arithmetic, and evidence that no intermediate result was
+silently truncated. Every mainstream agent--database interface fails
+this question in a characteristic way. Text-to-SQL/Cypher asks the model
+to emit one correct query in a language that cannot express ``what we
+believed on March~1'' over a latest-state store, and whose output the
+model must still interpret. Retrieval pipelines serialize edges into
+prompt chunks, destroying the structure the question quantifies over ---
+and on numeric-dense data even $k{=}2$ retrieved chunks overflow a 28k
+serving window (we measured 36{,}956 prompt tokens), so the model sees
+under 1\% of the corpus. And in all of these designs the model performs
+arithmetic, invents identifiers, and asserts numbers that appear in no
+result.
+
+The community is converging on the diagnosis: agents are becoming the
+dominant database client, and systems should be redesigned for
+them~\cite{liu2026agentfirst,urban2024caesura,wang2025aop}. We advance a
+specific architectural answer:
+
+\begin{quote}
+\textbf{Position.} The database should be the \emph{trusted computing
+base} (TCB) for LLM agents. The model plans and narrates; everything
+that must be true --- computation, temporal semantics, evidence,
+verification --- happens inside the database boundary, under contracts
+the model cannot violate.
+\end{quote}
+
+Three design principles follow, each backed by a mechanism and a
+measurement in this paper:
+
+\textbf{P1 --- Agents need a contract-bearing algebra, not query
+generation.} The agent selects and composes operations; it never
+controls arbitrary computation. Every operation declares typed inputs
+\emph{and outputs}, cost and completeness behavior, temporal semantics,
+and provenance identity (\S\ref{sec:arch}).
+
+\textbf{P2 --- Evidence support is multidimensional.} A result is not
+just a value; it is a value under conditions:
+$\langle$correctness, completeness, belief time, approximation,
+provenance$\rangle$. Databases should return those conditions, and
+verifiers should refuse full support when any dimension is degraded
+(\S\ref{sec:evidence}).
+
+\textbf{P3 --- Agent answers require a belief state, not a data
+snapshot.} Accountability questions --- what was known when, which
+correction invalidated it, can a decision be reproduced --- need
+transaction time as a first-class axis (\S\ref{sec:evidence}).
+
+TGMS~\cite{tgms2026} is our concrete instance: a bi-temporal property
+graph store whose only query surface is thirteen verified temporal
+operators exposed as agent tools, with a static plan verifier, a
+deterministic executor producing content-addressed traces, and a claim
+verifier that gates final answers against those traces. We use temporal
+graph analytics as the proving ground precisely because it is
+unforgiving: computation is compositional, corrections are routine,
+completeness matters, and neither identifiers nor time can be left to
+the model. The lessons, however, are about databases, not graphs.
+
+\section{An agent-native architecture}
+\label{sec:arch}
+
+\begin{figure}[t]
+\centering
+\resizebox{\columnwidth}{!}{%
+\begin{tikzpicture}[
+  every node/.style={font=\small},
+  box/.style={rounded corners=4pt, align=center, inner ysep=5pt,
+              inner xsep=4pt, draw, thick},
+  llm/.style={box, draw=orange!80!black, fill=orange!8},
+  tcb/.style={box, draw=blue!60!black, fill=blue!6},
+  arr/.style={-{Stealth[length=2.4mm]}, thick, black!60}]
+\node[llm, text width=21mm] (plan) at (0,0) {\textbf{Planner}\\[-1pt]
+  {\scriptsize emits plan IR}};
+\node[llm, text width=21mm] (rep) at (0,-3.1) {\textbf{Reporter}\\[-1pt]
+  {\scriptsize writes claims}};
+\node[tcb, text width=24mm] (ver) at (3.6,0) {\textbf{Static verifier}\\[-1pt]
+  {\scriptsize types $\cdot$ grounding $\cdot$\\[-2pt] output fields $\cdot$ cost}};
+\node[tcb, text width=24mm] (exec) at (7.2,0) {\textbf{Executor}\\[-1pt]
+  {\scriptsize deterministic $\cdot$\\[-2pt] content-addressed}};
+\node[tcb, text width=24mm] (store) at (7.2,-1.6)
+  {\textbf{Bi-temporal store}\\[-1pt]
+  {\scriptsize valid $\times$ transaction time}};
+\node[tcb, text width=24mm] (cver) at (3.6,-3.1) {\textbf{Claim verifier}\\[-1pt]
+  {\scriptsize re-checks $\cdot$ gates}};
+\node[draw=blue!60!black, dashed, thick, rounded corners=6pt,
+      fit=(ver)(exec)(store)(cver), inner sep=7pt,
+      label={[blue!60!black,font=\scriptsize\bfseries]below right:{TRUSTED
+      (deterministic, contract-enforced)}}] {};
+\node[font=\scriptsize\bfseries, text=orange!80!black] at (0,-1.55)
+  {UNTRUSTED (LLM)};
+\draw[arr] (plan) -- node[above,font=\scriptsize]{plan} (ver);
+\draw[arr] (ver) -- node[above,font=\scriptsize]{valid} (exec);
+\draw[arr, dashed] (ver.north) to[bend right=14]
+  node[above,font=\scriptsize]{repair payloads} (plan.north);
+\draw[arr] (exec) -- (store);
+\draw[arr] (exec.south) to[bend left=12]
+  node[right,font=\scriptsize,pos=0.35]{trace} (cver.east);
+\draw[arr] (rep) -- node[above,font=\scriptsize]{answer object} (cver);
+\draw[arr, dashed] (cver.west) to[bend left=18]
+  node[left,font=\scriptsize]{summaries} (rep.west);
+\end{tikzpicture}}
+\caption{The trust boundary, not the module list. The LLM only plans and
+narrates; plans are checked before execution, computation and temporal
+semantics live inside the boundary, and claims are re-checked against
+the trace before an answer leaves the system.}
+\label{fig:tcb}
+\end{figure}
+
+Figure~\ref{fig:tcb} shows the architecture as a trust boundary. The
+model appears exactly twice, both times outside the boundary; nothing it
+produces is executed or emitted unchecked.
+
+\paragraph{Plan IR, not query text.}
+The agent expresses intent as a small JSON DAG. Each step names one
+operator from a closed registry; references between steps use a
+deliberately weak path language (dotted fields, row projections) that
+cannot express computation. An \texttt{answer\_spec} names the step and
+field that constitute the result. This is the CAESURA
+intuition~\cite{urban2024caesura} pushed to its safety conclusion: if
+the plan is data, the system can check it.
+
+\paragraph{Contracts on both sides of every operator.}
+Each operator declares its argument schema \emph{and its output fields},
+cost estimation, pagination behavior, and temporal parameters. The same
+registry generates the tool manual the model reads and the checks the
+verifier enforces, so documentation and enforcement cannot drift. A
+static verifier rejects, before execution: schema violations, cycles,
+out-of-scope references, references to output fields the producing
+operator does not emit, identifiers that neither the task supplied nor a
+resolution operator produced (the \emph{grounding rule}), temporal
+nonsense, and plans whose estimated cost exceeds a budget --- returning
+structured repair payloads that name the violation and the legal
+alternatives. Arithmetic is an operator too: the model never adds.
+
+\paragraph{Deterministic, evidence-carrying execution.}
+The executor runs the DAG with canonical serialization; every step
+yields a content-addressed \texttt{result\_digest} (SHA-256), and
+re-execution over the same store state is byte-identical. Results are pages with explicit
+\texttt{rows\_total} and truncation flags, and \emph{truncation taint}
+propagates to every dependent step. The reporter model turns trace
+summaries into a typed answer object in which every numeric, entity,
+ordering, and pattern claim cites the trace steps that ground it; the
+claim verifier re-checks each claim against the cited digests and gates
+unsupported claims out of the emitted answer.
+
+This division reframes the question asked by recent work on LLM query
+planning~\cite{urban2024caesura,wang2025aop} and agent-first
+systems~\cite{liu2026agentfirst}: not \emph{can} a model produce a plan,
+but what interface makes a fallible plan \emph{safe} --- checkable
+before execution, auditable after.
 
 \section{Evidence and belief semantics}
-% p3: bi-temporal correction example; execution trace; claim contract;
-% truncation-taint example; support tuple.
+\label{sec:evidence}
+
+\paragraph{Corrections are not updates.}
+On March~1 the store believes fact $F$; on March~10 it learns $F$ was
+wrong. A latest-state system overwrites and the question ``what did we
+believe on March~1'' becomes unrepresentable --- the information was
+destroyed at write time. TGMS stores half-open valid-time and
+transaction-time intervals per version~\cite{snodgrass1999} and
+distinguishes \emph{evolution} (the world changed) from \emph{correction}
+(we were wrong). Every operator takes \texttt{as\_of\_tt}; a plan pinned
+to a past belief state is reproducible byte-for-byte even after later
+corrections (a tested metamorphic property). Derived artifacts join in:
+summaries record the transaction time they were computed at, and a
+correction quarantines every summary whose window it touches. This is
+what agent accountability needs and agent-memory systems are groping
+toward~\cite{zep2025,wang2026toki}: not temporal storage for its own
+sake, but the ability to say \emph{what was known when, which correction
+invalidated it, and whether an earlier decision reproduces under the
+earlier belief state}.
+
+\paragraph{Support is a tuple, not a boolean.}
+In a live run, our 14B model called reachability, received the default
+page of 100 rows (of 343), and computed a flawlessly correct count ---
+of the page. A value-only verifier marks that claim supported; it is
+false as a statement about the database. We now treat support as
+\[
+\langle \text{correctness},\ \text{completeness},\ \text{belief time},\
+\text{approximation},\ \text{provenance} \rangle,
+\]
+and a claim whose evidence is incomplete on any dimension can be at most
+\emph{weakly supported}. The mechanism is mundane --- flags on result
+pages, taint through the DAG, verdict caps in the verifier --- and that
+is the point: it generalizes immediately to SQL \texttt{LIMIT}, top-$k$
+retrieval, sampling, approximate query processing, timeouts, stale
+replicas, and partially failed distributed queries. Databases already
+know when their answers are partial; they just don't say so in a form an
+agent pipeline is forced to respect.
 
 \section{The TGMS prototype and lessons}
-% p4: operator categories (4-5, not 13); implementation footprint;
-% three lessons from live traffic; why each generalizes.
+\label{sec:lessons}
+
+TGMS implements the architecture in ${\sim}10$k lines of Python over
+embedded columnar and graph backends: an append-only event log as the
+source of truth, thirteen operators in five groups (belief-state reads;
+snapshots and diffs; time-respecting traversal; temporal aggregation and
+patterns; resolution and compute), each validated against an independent
+brute-force oracle on 500 randomized cases, plus the planner/verifier
+loop served by vLLM~\cite{kwon2023vllm} with open-weight
+models~\cite{qwen25} on a single 24\,GB GPU. Three lessons from live
+traffic did not appear in any design document.
+
+\paragraph{Lesson 1: models invent \emph{output} fields.}
+Our first live matrix run scored 0.00 execution success on every task
+--- with every plan passing validation. Plans referenced
+\texttt{s2.count} where the operator emits \texttt{rows\_total}: input
+schemas constrain what goes into a tool, and nothing constrained what
+the model read back. Declaring output fields in the registry and
+checking every reference statically took probe-task execution success
+from 0.00 to 1.00, and structured repair payloads (``available:
+\texttt{rows, rows\_total, truncated}'') roughly tripled overall
+execution success at 7B. Result schemas deserve the same rigor as
+argument schemas; tool manuals must be checkable, not just readable.
+
+\paragraph{Lesson 2: constrained decoding is not the safety
+mechanism.} Grammar-constrained JSON decoding --- the standard remedy
+for malformed plans --- made everything worse at 14B: exact match
+0.409${\to}$0.227, first-emission validity 0.50${\to}$0.32, and 65\%
+more wall time. Syntactic validity was never the bottleneck; semantic
+plan quality was, and grammar masks degrade it. Checking artifacts
+\emph{after generation} against contracts, with a repair loop, is both
+safer and cheaper than constraining generation itself.
+
+\paragraph{Lesson 3: the verifier's blind spots are database
+semantics.} Value-grounding catches fabrication but not mis-citation:
+small counts coincidentally appear in other steps' payloads, so a claim
+citing the wrong step often still ``grounds.'' We now reject claims
+whose provenance pointer names an uncited step. Conversely, entity
+\emph{under}-claiming is invisible to trace grounding by construction
+--- precision is checkable against evidence; completeness of a reported
+set is checkable only against the database. Verification design is
+database design.
 
 \section{Preliminary evidence}
-% p5: end-to-end results table (frozen campaign); ablation table;
-% scaling figure; honest limitations.
+\label{sec:eval}
+
+All numbers carry receipts (git SHA, config SHA, frozen-split SHA) and
+regenerate from the public artifact~\cite{tgms2026}. Tasks are
+program-generated with engine-computed gold over the CollegeMsg
+network~\cite{panzarasa2009}, the email-EU log, and a synthetic
+temporal-pattern workload; test splits (94/94/102 tasks) were frozen,
+with SHAs logged, before any test measurement.
+
+\paragraph{End-to-end.}
+Table~\ref{tab:e2e} reports the frozen-test campaign
+\tbd{final numbers landing; dev-split results shown here are complete}.
+On the CollegeMsg dev split (22 tasks, 14B), the operator-backed agent
+reaches 0.409 exact match versus 0.045--0.182 for vector-RAG,
+static-graph RAG, and text-to-Cypher under identical serving; on
+correction probes it scores 0.67 while all baselines score zero at 14B
+--- not a capability gap but a representational one: the baselines'
+inputs no longer contain the earlier belief state. The emitted-answer
+unsupported-claim rate is 0.000 with gating; the no-verifier ablation's
+raw answers carry \tbd{UCR, campaign} unsupported claims.
+
+\begin{table}[t]
+\centering\small
+\caption{Frozen-test campaign (placeholder layout): exact match by task
+family, 5 systems $\times$ 3 seeds, Qwen2.5-14B; second family
+\tbd{Phi-4-mini} for architecture portability.}
+\label{tab:e2e}
+\begin{tabular}{lcccc}
+\toprule
+ & TGMS & Vec-RAG & Graph-RAG & Text-to-Cypher \\
+\midrule
+CollegeMsg (94) & \tbd{x} & \tbd{x} & \tbd{x} & \tbd{x} \\
+email-EU (94)   & \tbd{x} & --      & \tbd{x} & \tbd{x} \\
+synthetic (102) & \tbd{x} & --      & \tbd{x} & \tbd{x} \\
+correction probes & \tbd{x} & \tbd{0.00} & \tbd{0.00} & \tbd{0.00} \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\paragraph{Mechanism ablations.}
+Removing output contracts \tbd{E1: invalid references, repairs,
+execution success, accuracy}. Removing completeness propagation: in a
+controlled generator that shrinks one page limit so a correct count runs
+over a truncated page, the verifier refuses full support in 15/15 cases
+with taint on and \emph{misses 15/15} with taint off --- the mechanism
+is load-bearing, not decorative \tbd{E2 end-to-end rates on the frozen
+suites}. Removing transaction time is not an ablation but an
+impossibility: the latest-state representation does not contain the
+queried information, which is why every baseline scores zero on probes.
+
+\paragraph{Verifier validation.}
+Beyond the classic classes (500/500 injected count and identifier faults
+detected; 0 false positives on 87 clean answers), database-specific
+mutation classes on a dedicated suite (202 enriched clean answers, 0
+false positives): real-but-uncited entity added 100/100 detected;
+ordering operands swapped 100/100; microsecond/millisecond unit
+confusion 100/100; \emph{correct value from the wrong belief state}
+60/60; wrong-step citation 36/100 (the remainder are genuinely grounded
+by the surrogate step); entity member dropped 0/100 --- reported, not
+hidden: grounding checks precision, and set completeness is checkable
+only against the database (Lesson~3)
+\tbd{receipted rerun on frozen-campaign hardware}.
+
+\paragraph{The database stays a database.}
+Prompt size is constant (${\sim}$8--10k tokens) as data grows, because
+structure never enters the context window. Operator p50 latency on
+$10^5$/$10^6$/$10^7$-event stores: 2-hop snapshot 13/99/272\,ms; global
+diff 23/163/485\,ms; metric time series 144/157/1127\,ms (40-thread CPU
+host, DuckDB backend; the $10^7$ store is 2.6\,GB). Traversals beyond
+the cost budget refuse with a narrowing suggestion rather than degrade
+--- bounded execution is part of the contract
+\tbd{small line figure replacing this prose}.
+
+\paragraph{Honest limitations.}
+Single-GPU open-weight serving; one graph domain; 290 frozen test tasks;
+pattern claims are verified but not yet gated; agent write-back is
+schema-ready but disabled pending provenance policy. Sustained agent
+traffic also surfaced a serving lesson: on older accelerators the
+inference engine degrades and must be recycled on a schedule ---
+agent-era benchmarking is an endurance discipline.
 
 \section{Research agenda}
-% p6: agent-facing algebra design; cost-based rewriting; evidence-aware
-% execution; verification under approximation; bi-temporal provenance;
-% multi-agent concurrency.
+\label{sec:agenda}
+
+TGMS is one point in a space the community should map:
+\emph{agent-facing logical algebras} --- what is the right closed
+operator set for relational, document, and streaming data, and can it be
+derived from a workload?; \emph{cost-based rewriting of agent plans} ---
+the verifier sees the whole DAG before execution, so optimize it,
+don't just admit it; \emph{evidence-aware execution} --- make
+completeness, staleness, and approximation first-class result
+attributes with propagation semantics; \emph{verification under
+approximation} --- what does ``supported'' mean over samples and
+sketches?; \emph{bi-temporal provenance} --- derived-view and
+memory invalidation under correction, at scale; and \emph{multi-agent
+isolation} --- belief states as the unit of concurrency control when
+many agents read, and eventually write, one store.
+
+\medskip
+\noindent Today's database interfaces assume a competent client. LLM
+agents violate that assumption. Agent-native databases must therefore
+make plans checkable, computations deterministic, evidence explicit, and
+conclusions auditable. TGMS is an initial architecture showing what such
+a database can look like.
+
+\bibliographystyle{ACM-Reference-Format}
+\bibliography{references}
 
 \end{document}
