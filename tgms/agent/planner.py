@@ -158,6 +158,7 @@ def make_llm_fn(api_base: str | None = None, api_key: str | None = None,
         resp = litellm.completion(model=model, messages=messages,
                                   temperature=temperature, seed=seed,
                                   max_tokens=max_tokens, num_retries=4,
+                                  timeout=1800,
                                   **kwargs)
         if usage_log is not None and getattr(resp, "usage", None):
             usage_log.append({"tokens_in": resp.usage.prompt_tokens or 0,
