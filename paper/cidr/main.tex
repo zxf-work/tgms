@@ -6,6 +6,7 @@
 \settopmatter{printacmref=false}
 \renewcommand\footnotetextcopyrightpermission[1]{}
 \pagestyle{plain}
+\emergencystretch=1.5em
 \setcopyright{none}
 \acmConference[CIDR '27]{Conference on Innovative Data Systems Research}{January 2027}{Amsterdam, The Netherlands}
 \acmBooktitle{CIDR '27}
@@ -250,8 +251,9 @@ page of 100 rows (of 343), and computed a flawlessly correct count ---
 of the page. A value-only verifier marks that claim supported; it is
 false as a statement about the database. We now treat support as
 \[
-\langle \text{correctness},\ \text{completeness},\ \text{belief time},\
-\text{approximation},\ \text{provenance} \rangle,
+\small
+\langle \text{correctness},\, \text{completeness},\, \text{belief time},\,
+\text{approximation},\, \text{provenance} \rangle,
 \]
 and a claim whose evidence is incomplete on any dimension can be at most
 \emph{weakly supported}. The mechanism is mundane --- flags on result
