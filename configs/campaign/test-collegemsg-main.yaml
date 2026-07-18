@@ -13,3 +13,8 @@ b2_max_edges: 400
 memory_db: stores/collegemsg/memory.sqlite
 llm_api_base: "http://localhost:8000/v1"
 llm_api_key: "EMPTY"
+# D-020: generation cap for the baseline heal — remaining rows are
+# b1/b2/b5 only; a valid AnswerObject needs <1k tokens, and 4096-token
+# ramblers score 0 regardless. Outcome-neutral, cuts worst-case row
+# latency ~4x on this hardware.
+llm_max_tokens: 1024

@@ -214,3 +214,15 @@ implementation — hygiene checking starts at the marker recorded in D-010.
 - **Consequence:** llm_guided stays false for all v1 campaign configs. The
   knob remains available; re-testing at 7B (where E_SCHEMA malformation is a
   larger failure share) is an open question for the models phase.
+
+## D-020 — 2026-07-18 — Generation cap for the baseline heal (main config)
+- **Context:** 12 unhealed CollegeMsg-main rows, all baselines, are
+  generations that run to the 4096-token cap: ~25–50 min each at this
+  card's 3–4 tok/s, ~2.5 h/row with bounce collisions and retries.
+- **Proposal:** llm_max_tokens: 1024 in test-collegemsg-main.yaml only
+  (its ours/ours-noverify blocks are complete; pending rows are b1/b2/b5).
+  A valid AnswerObject fits comfortably in 1024 tokens; generations that
+  exceed it fail JSON parsing and score 0 with or without the cap.
+- **Consequence:** Outcome-neutral by construction, latency-bounded heal.
+  Dataset-phase configs keep 4096 (their pending rows include `ours`);
+  revisit per-config only if the same pathology appears there.
