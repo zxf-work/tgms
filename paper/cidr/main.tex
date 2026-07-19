@@ -319,31 +319,35 @@ temporal-pattern workload; test splits (94/94/102 tasks) were frozen,
 with SHAs logged, before any test measurement.
 
 \paragraph{End-to-end.}
-Table~\ref{tab:e2e} reports the frozen-test campaign
-\tbd{final numbers landing; dev-split results shown here are complete}.
-On the CollegeMsg dev split (22 tasks, 14B), the operator-backed agent
-reaches 0.409 exact match versus 0.045--0.182 for vector-RAG,
-static-graph RAG, and text-to-Cypher under identical serving; on
-correction probes it scores 0.67 while all baselines score zero at 14B
---- not a capability gap but a representational one: the baselines'
-inputs no longer contain the earlier belief state. The emitted-answer
-unsupported-claim rate is 0.000 with gating; the no-verifier ablation's
-raw answers carry \tbd{UCR, campaign} unsupported claims.
+Table~\ref{tab:e2e} reports the frozen-test campaign. On the CollegeMsg
+test split (94 tasks $\times$ 3 seeds, 14B), the operator-backed agent
+reaches 0.408 exact match --- replicating its 0.409 development figure
+almost exactly, with per-seed spread of one task --- versus 0.064--0.152
+for the baselines; all paired-bootstrap deltas are significant
+($+0.26$ to $+0.34$, 95\% CIs excluding zero, 10k resamples). On
+correction probes (13/seed) it scores 0.90; static-graph RAG and
+text-to-Cypher score exactly zero --- not a capability gap but a
+representational one: their inputs no longer contain the earlier belief
+state (vector-RAG's 0.15 comes entirely from the current-belief half of
+probe pairs). The no-verifier ablation's raw answers carry a 7.8\%
+unsupported-claim rate; gating removes every one (measured 0.000 over
+268 answers) at a cost of one point of exact match (0.418 vs.\ 0.408)
+--- the price of emitting only what the trace supports.
 
 \begin{table}[t]
 \centering\small
-\caption{Frozen-test campaign (placeholder layout): exact match by task
-family, 5 systems $\times$ 3 seeds, Qwen2.5-14B; second family
-\tbd{Phi-4-mini} for architecture portability.}
+\caption{Frozen-test campaign, exact match, Qwen2.5-14B, temperature 0.
+CollegeMsg rows are complete (3 seeds); dataset-generalization rows
+\tbd{healing run in flight}; second family \tbd{Phi-4-mini} pending.}
 \label{tab:e2e}
 \begin{tabular}{lcccc}
 \toprule
  & TGMS & Vec-RAG & Graph-RAG & Text-to-Cypher \\
 \midrule
-CollegeMsg (94) & \tbd{x} & \tbd{x} & \tbd{x} & \tbd{x} \\
+CollegeMsg (94$\times$3) & \textbf{0.408} & 0.106 & 0.064 & 0.152 \\
 email-EU (94)   & \tbd{x} & --      & \tbd{x} & \tbd{x} \\
 synthetic (102) & \tbd{x} & --      & \tbd{x} & \tbd{x} \\
-correction probes & \tbd{x} & \tbd{0.00} & \tbd{0.00} & \tbd{0.00} \\
+correction probes (13$\times$3) & \textbf{0.897} & 0.154 & 0.000 & 0.000 \\
 \bottomrule
 \end{tabular}
 \end{table}
