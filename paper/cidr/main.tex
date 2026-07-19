@@ -345,9 +345,10 @@ CollegeMsg rows are complete (3 seeds); dataset-generalization rows
  & TGMS & Vec-RAG & Graph-RAG & Text-to-Cypher \\
 \midrule
 CollegeMsg (94$\times$3) & \textbf{0.408} & 0.106 & 0.064 & 0.152 \\
-email-EU (94)   & \tbd{x} & --      & \tbd{x} & \tbd{x} \\
+email-EU (94)   & \textbf{0.309} & --      & 0.053 & 0.106 \\
 synthetic (102) & \tbd{x} & --      & \tbd{x} & \tbd{x} \\
-correction probes (13$\times$3) & \textbf{0.897} & 0.154 & 0.000 & 0.000 \\
+correction probes (CollegeMsg) & \textbf{0.897} & 0.154 & 0.000 & 0.000 \\
+correction probes (email-EU) & \textbf{0.846} & -- & 0.000 & 0.000 \\
 \bottomrule
 \end{tabular}
 \end{table}
