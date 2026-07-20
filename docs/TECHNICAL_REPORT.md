@@ -294,6 +294,26 @@ Interval-shift and ordering-inversion mutators are validated at unit scale
 (100% detection); they require reporter-style answers and land with the
 full end-to-end UCR readout. Emitted-answer UCR: 0.000 wherever measured.
 
+### 8.2b Frozen-test campaign (v0.2.0, 2026-07-20)
+Pre-registered splits (D-018), all rows clean after the healing campaign
+(infra-failure rows recomputed, never scored). Qwen2.5-14B, temp 0:
+
+| suite | ours | b1 | b2 | b5 |
+|---|---:|---:|---:|---:|
+| CollegeMsg (94×3 seeds) | **0.408** | 0.106 | 0.064 | 0.152 |
+| email-EU (94) | **0.309** | — | 0.053 | 0.106 |
+| synthetic (102) | **0.314** | — | 0.029 | 0.157 |
+| probes CollegeMsg (13×3) | **0.897** | 0.154 | 0.000 | 0.000 |
+| probes email-EU (13) | **0.846** | — | 0.000 | 0.000 |
+
+Paired bootstrap (CollegeMsg, 10k): ours−b1 +0.30 [0.21,0.40], ours−b2
++0.34 [0.25,0.44], ours−b5 +0.26 [0.15,0.36] — all significant. C2
+end-to-end: raw UCR 0.078 → gated 0.000 (n=268) at one EM point
+(0.418→0.408). 7B second config: 0.129. Honest zeros: T2
+planted-pattern mining 0/8 (planner exhausts repairs, emits nothing —
+UCR stays 0); one deterministic 7B context-window overflow. Full
+details: D-021, paper §5, release notes v0.2.0.
+
 ### 8.3 Dev-split matrix — CollegeMsg, 22 tasks, single seed, temp 0
 
 Per-family EM (PVR/ESR for `ours`; ablation `ours-noverify` matches `ours`
