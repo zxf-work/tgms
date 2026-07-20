@@ -52,11 +52,12 @@ and provenance, not just values; and agent accountability requires
 belief-state semantics --- ``what did we believe on March~1'' is
 unanswerable after a correction unless transaction time is a first-class
 axis. A verifier built on these ideas rejects
-500/500 injected numeric and identifier faults and, across
-database-specific mutation classes (wrong belief state, truncated
-completeness, uncited entities), detects
-\tbd{per-class table, receipted run} with zero false positives, while
-the architecture keeps prompts constant-size as data grows.
+500/500 injected numeric and identifier faults with zero false
+positives, and across database-specific mutation classes detects every
+wrong-belief-state value, every uncited entity, and every correct count
+over a truncated page --- all of the latter passing silently when
+completeness tracking is disabled --- while the architecture keeps
+prompts constant-size as data grows.
 \end{abstract}
 
 \maketitle
@@ -389,8 +390,9 @@ confusion 100/100; \emph{correct value from the wrong belief state}
 60/60; wrong-step citation 36/100 (the remainder are genuinely grounded
 by the surrogate step); entity member dropped 0/100 --- reported, not
 hidden: grounding checks precision, and set completeness is checkable
-only against the database (Lesson~3)
-\tbd{receipted rerun on frozen-campaign hardware}.
+only against the database (Lesson~3). A receipted rerun on the frozen
+campaign store reproduces every per-class rate (13/13 truncated counts
+flagged, 13/13 missed under the ablation; 8/8 wrong-belief-state).
 
 \paragraph{The database stays a database.}
 Prompt size is constant (${\sim}$8--10k tokens) as data grows, because

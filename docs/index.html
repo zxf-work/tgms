@@ -60,16 +60,17 @@ against the execution trace that produced it.</div>
 
 <section>
 <div class="grid g3">
-<div class="card"><div class="stat">0.41 <small>vs 0.18 best baseline</small></div>
-<div class="mut">Pooled exact match on temporal-analytics tasks (CollegeMsg dev,
-Qwen2.5-14B on one 24&nbsp;GB GPU). Significant over vector-RAG and static-graph
-RAG at 95% CI.</div></div>
-<div class="card"><div class="stat">0.67 <small>vs 0.00 all baselines</small></div>
+<div class="card"><div class="stat">0.41 <small>vs 0.15 best baseline</small></div>
+<div class="mut">Exact match on the <b>frozen test split</b> (CollegeMsg, 94 tasks
+× 3 seeds, Qwen2.5-14B, one 24&nbsp;GB GPU) — replicating the dev figure, with
+every baseline delta significant at 95% CI.</div></div>
+<div class="card"><div class="stat">0.90 <small>vs 0.00 latest-state systems</small></div>
 <div class="mut">Correction probes — <i>“as of transaction time T, what did we
-believe?”</i> No snapshot or RAG system can even express the question.</div></div>
-<div class="card"><div class="stat">500/500 <small>· 0 false positives</small></div>
-<div class="mut">Injected false claims caught by the trace-grounded verifier.
-Emitted answers carry an unsupported-claim rate of 0.000.</div></div>
+believe?”</i> — 0.897 on CollegeMsg, 0.846 on email-EU. Snapshot and RAG systems
+cannot express the question.</div></div>
+<div class="card"><div class="stat">7.8% → 0.000 <small>unsupported claims</small></div>
+<div class="mut">Raw model answers carry 7.8% unsupported claims; trace-grounded
+gating removes every one, costing a single point of exact match.</div></div>
 </div>
 </section>
 
@@ -152,12 +153,15 @@ entity, ordering, and pattern claim is machine-checked against the trace.
 Unsupported claims never ship.</div>
 </div>
 <table class="vs">
-<tr><th>pooled EM · Qwen2.5-14B</th><th>TGMS</th><th>vector-RAG</th><th>static-RAG</th><th>text-to-Cypher</th></tr>
-<tr><td>all task families</td><td class="win">0.41</td><td>0.09</td><td>0.05</td><td>0.18</td></tr>
-<tr><td>correction probes</td><td class="win">0.67</td><td>0.00</td><td>0.00</td><td>0.00</td></tr>
+<tr><th>exact match · Qwen2.5-14B</th><th>TGMS</th><th>vector-RAG</th><th>static-RAG</th><th>text-to-Cypher</th></tr>
+<tr><td>CollegeMsg (94 tasks × 3 seeds)</td><td class="win">0.408</td><td>0.106</td><td>0.064</td><td>0.152</td></tr>
+<tr><td>email-EU (94 tasks)</td><td class="win">0.309</td><td>—</td><td>0.053</td><td>0.106</td></tr>
+<tr><td>synthetic patterns (102 tasks)</td><td class="win">0.314</td><td>—</td><td>0.029</td><td>0.157</td></tr>
+<tr><td>correction probes</td><td class="win">0.897</td><td>0.154</td><td>0.000</td><td>0.000</td></tr>
 </table>
-<div class="mut" style="font-size:13px;margin-top:8px">Dev split, single seed,
-open-source models served locally; every number carries determinism receipts —
+<div class="mut" style="font-size:13px;margin-top:8px">Frozen test splits
+(SHAs recorded before measurement), open-source models served locally; every
+number carries determinism receipts —
 <a href="https://github.com/zxf-work/tgms/blob/main/docs/TECHNICAL_REPORT.md">full report</a>.</div>
 </section>
 
