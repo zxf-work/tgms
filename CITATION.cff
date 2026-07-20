@@ -7,8 +7,8 @@ authors:
     given-names: Xiaofei
     affiliation: University of Memphis
 license: Apache-2.0
-version: 0.1.0
-date-released: 2026-07-10
+version: 0.2.0
+date-released: 2026-07-20
 abstract: >-
   A bi-temporal property graph store whose query surface is a small algebra
   of verified temporal operators exposed as tools to LLM agents, with a
