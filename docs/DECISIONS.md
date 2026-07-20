@@ -226,3 +226,22 @@ implementation — hygiene checking starts at the marker recorded in D-010.
 - **Consequence:** Outcome-neutral by construction, latency-bounded heal.
   Dataset-phase configs keep 4096 (their pending rows include `ours`);
   revisit per-config only if the same pathology appears there.
+
+## D-021 — 2026-07-20 — Frozen-test campaign complete
+- **Context:** Healing campaign (heal8) reached HEAL8_ALL_DONE; all frozen
+  suites clean except one deterministic row.
+- **Results (14B, temp 0):** CollegeMsg 94x3 ours 0.408 (dev 0.409, replicated)
+  vs b1 0.106 / b2 0.064 / b5 0.152, all paired-bootstrap deltas SIG
+  (+0.26..+0.34, 95% CIs exclude 0); probes 0.897 vs 0.154/0/0. email-EU
+  ours 0.309 vs 0.053/0.106, probes 0.846 vs 0/0. synth ours 0.314 (non-T2
+  0.340) vs 0.029/0.157. C2 end-to-end: raw UCR 0.078 -> gated 0.000 at
+  one EM point. 7B second config: ours 0.129.
+- **Honest findings:** (1) T2 planted-pattern mining 0/8 for ours — planner
+  cannot compose the multi-operator plan, exhausts repairs, emits empty
+  answer (fails safe, UCR 0). (2) One 7B row fails by deterministic
+  ContextWindowExceededError when repair-loop prompt growth overflows the
+  16k window — a real small-window-serving limitation, not infra; counted
+  as a scored 0, HEAL_INCOMPLETE is expected and correct.
+- **Consequence:** Primary CIDR results table populated. GPU freed for the
+  E1/E2 ablations, receipted extended-mutation rerun, and Phi-4-mini
+  cross-family run.
