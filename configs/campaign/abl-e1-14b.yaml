@@ -1,0 +1,15 @@
+# CIDR mechanism ablation (e1-14b): dev split, ours only, ablate_output_contracts on.
+# Compare against the contracts/taint-on dev run of the same model.
+suite_path: stores/suite-collegemsg/suite.json
+store_path: stores/collegemsg
+out_dir: runs/abl-e1-14b
+split: dev
+systems: [ours]
+models: ["openai/Qwen/Qwen2.5-14B-Instruct-AWQ"]
+seeds: [0]
+max_repairs: 3
+memory_db: stores/collegemsg/memory.sqlite
+ablate_output_contracts: true
+llm_max_tokens: 1024
+llm_api_base: "http://localhost:8000/v1"
+llm_api_key: "EMPTY"
