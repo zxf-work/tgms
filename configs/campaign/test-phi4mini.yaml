@@ -1,0 +1,14 @@
+# Cross-family portability run (CIDR): ours only, frozen CollegeMsg test
+# split, Microsoft Phi-4-mini — a different model lineage than Qwen.
+suite_path: stores/suite-collegemsg/suite.json
+store_path: stores/collegemsg
+out_dir: runs/test-phi4mini
+split: test
+systems: [ours]
+models: ["openai/microsoft/Phi-4-mini-instruct"]
+seeds: [0]
+max_repairs: 3
+memory_db: stores/collegemsg/memory.sqlite
+llm_max_tokens: 1024
+llm_api_base: "http://localhost:8000/v1"
+llm_api_key: "EMPTY"
