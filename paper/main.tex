@@ -14,12 +14,11 @@
 \title{TGMS: An Agent-Native Bi-Temporal Graph Management System\\
 \large Verified Temporal Operators and Trace-Grounded Answer Checking}
 \author{Xiaofei Zhang\\University of Memphis\\\texttt{xiaofei.zhang@memphis.edu}}
-\date{July 2026 \;\textperiodcentered\; System Description Preprint (v1)
+\date{July 2026 \;\textperiodcentered\; System Description Preprint (v2)
 \;\textperiodcentered\; \url{https://github.com/zxf-work/tgms}\thanks{This
-preprint accompanies TGMS v0.1.0 and reports results on the development
-split. A revised version will report the frozen-test campaign, whose
-acceptance thresholds are recorded in the repository's dated decision
-log.}}
+preprint accompanies TGMS v0.2.0 and reports both development-split
+results and the frozen-test campaign whose acceptance thresholds were
+recorded in the repository's dated decision log before measurement.}}
 
 \begin{document}
 \maketitle
@@ -40,13 +39,20 @@ TGMS separates valid time from transaction time. It can therefore answer
 belief-state questions such as ``as of transaction time $T$, what did the
 system believe?'' Standard latest-state snapshots and retrieval pipelines
 do not preserve enough information to answer such questions. On a
-development benchmark built from a real communication network, TGMS with
-a 14B open-source model reaches 0.409 exact match. Vector-RAG,
-static-graph RAG, and text-to-Cypher reach 0.045--0.182 under the same
-serving setup. TGMS reaches 0.67 exact match on correction probes, while
-the three 14B baselines score zero. The claim verifier detects all 500
-injected count and entity errors with no false positives on the clean
-answers. Two implementation findings were especially important. First,
+frozen 94-task test split of a real communication network, TGMS with a
+14B open-source model reaches 0.408 exact match over three seeds ---
+replicating its 0.409 development figure --- while vector-RAG,
+static-graph RAG, and text-to-Cypher reach 0.064--0.152 under the same
+serving setup; all paired-bootstrap deltas are significant. On
+correction probes TGMS scores 0.897 (and 0.846 on a second corpus)
+while latest-state baselines score zero. End to end, un-gated answers
+carry a 7.8\% unsupported-claim rate; verification removes every
+unsupported claim at a cost of one point of exact match. The claim
+verifier detects all 500 injected count and entity errors with no false
+positives, and extended mutation classes probe database-specific
+evidence semantics, including values that are correct under the wrong
+belief state (60/60 detected) and correct counts over truncated pages
+(15/15 flagged; all missed when completeness tracking is disabled). Two implementation findings were especially important. First,
 operator output contracts prevent plans from referring to fields that do
 not exist. Second, verification must track whether the cited evidence is
 complete, because correct arithmetic over a truncated result is still
@@ -297,11 +303,9 @@ The compared systems are:
     \item text-to-Cypher over the same events loaded into a standard
     K\`uzu property graph, with the same repair budget.
 \end{itemize}
-We also implement a no-verifier TGMS ablation. This preprint does not yet
-report the full end-to-end hallucination comparison for that ablation.
-The harness now scores the ablation's raw answers by running the claim
-verifier as a measurement instrument without gating, and the comparison
-will appear with the frozen-test campaign.
+We also implement a no-verifier TGMS ablation whose raw answers are
+scored by the claim verifier acting as a measurement instrument without
+gating; Section~\ref{sec:frozen} reports the end-to-end comparison.
 
 The models are Qwen2.5-7B-Instruct and
 Qwen2.5-14B-Instruct-AWQ~\cite{qwen25}. They are served with
@@ -381,6 +385,53 @@ raises pooled TGMS exact match from 0.136 to 0.409. First-attempt plan
 validity rises from 0.08--0.17 to 0.33--0.75 across task families. In the
 7B runs, the repair loop increases execution success by roughly a factor
 of three.
+
+\subsection{The frozen-test campaign}
+\label{sec:frozen}
+After development-split iteration closed, we evaluated on the frozen
+test splits recorded in the repository's dated decision log: 94 tasks
+each for CollegeMsg and email-EU and 102 for a synthetic
+temporal-pattern workload, with CollegeMsg run at three seeds.
+Table~\ref{tab:frozen} reports exact match with the 14B model.
+
+\begin{table}[t]
+\centering\small
+\caption{Frozen-test campaign, exact match, Qwen2.5-14B, temperature 0.
+CollegeMsg pools three seeds (per-seed spread was one task). Paired
+bootstrap over CollegeMsg tasks (10k resamples): TGMS minus vector-RAG
+$+0.30$ $[+0.21,+0.40]$, minus static-graph RAG $+0.34$
+$[+0.25,+0.44]$, minus text-to-Cypher $+0.26$ $[+0.15,+0.36]$.}
+\label{tab:frozen}
+\begin{tabular}{lcccc}
+\toprule
+ & TGMS & Vector-RAG & Static-graph & Text-to-Cypher \\
+\midrule
+CollegeMsg (94$\times$3) & \textbf{0.408} & 0.106 & 0.064 & 0.152 \\
+email-EU (94) & \textbf{0.309} & -- & 0.053 & 0.106 \\
+synthetic (102) & \textbf{0.314} & -- & 0.029 & 0.157 \\
+probes, CollegeMsg (13$\times$3) & \textbf{0.897} & 0.154 & 0.000 & 0.000 \\
+probes, email-EU (13) & \textbf{0.846} & -- & 0.000 & 0.000 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+Four results stand out. First, the development figure replicates almost
+exactly (0.409 dev, 0.408 test), and all deltas over baselines are now
+significant. Second, the correction-probe separation strengthens with
+scale and transfers across corpora: 0.897 and 0.846 versus zero for
+both latest-state baselines, with vector-RAG's 0.154 fully explained by
+the current-belief halves of probe pairs. Third, the end-to-end value
+of verification is now measured: raw reporter answers carry a 7.8\%
+unsupported-claim rate, and gating removes every unsupported claim
+(0.000 over 268 answers) at a cost of one point of exact match (0.418
+un-gated versus 0.408). Fourth, honesty about the ceiling: on the eight
+synthetic planted-pattern-mining tasks the 14B planner never produces a
+valid multi-operator plan and the system emits no answer at all ---
+failing safe, with an unsupported-claim rate of zero, on exactly the
+family it cannot plan. Plan quality tracks the model; the safety
+properties do not. A 7B configuration on the same split reaches 0.129,
+with one deterministic failure when repair-loop prompt growth exceeds
+its 16k serving window.
 
 Third, operator latency remains modest at the tested scale. Operators
 are benchmarked in isolation on the host CPUs of the GPU server (two
@@ -542,15 +593,21 @@ MCP~\cite{mcp2024}, so it can be connected to agent frameworks that
 support the protocol.
 
 \section{Limitations and roadmap}
-The reported evaluation is limited to one development split, one dataset,
-one seed, and two model sizes. These results should be viewed as an
-initial system check rather than a final comparison. The next evaluation
-will use the frozen test split, more datasets, additional models, and
-multiple seeds. It will also report the no-verifier ablation, constrained
-decoding for plan generation, and concurrency when many agents share one
-store. Pattern claims are checked and reported but are not yet gated.
-Agent write-back is reflected in the schema and log design, but it remains
-disabled until provenance and authorization policies are complete.
+The frozen-test campaign covers three corpora in one domain (temporal
+communication graphs), two Qwen model sizes on a single 24\,GB GPU, and
+290 test tasks; a cross-family model configuration is in progress.
+Constrained decoding was evaluated and rejected at 14B: grammar-masked
+generation degraded exact match (0.409 to 0.227), first-emission
+validity, and latency --- checking artifacts after generation beats
+constraining generation. Multi-operator pattern-mining plans exceed the
+current planner (the campaign's honest zero), pattern claims are checked
+and reported but not yet gated, and agent write-back remains disabled
+until provenance and authorization policies are complete. Sustained
+campaign traffic also surfaced an operational lesson: long-running
+inference engines on older accelerators degrade and need scheduled
+recycling --- endurance is part of agent-era evaluation. Next:
+concurrency when many agents share one store, cost-based rewriting of
+agent plans, and verification under approximation.
 
 \section{Conclusion}
 TGMS treats temporal graph question answering as a systems problem.
