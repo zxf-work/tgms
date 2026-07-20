@@ -370,8 +370,13 @@ with the model; safety, which lives inside it, does not depend on the
 model getting the plan right.
 
 \paragraph{Mechanism ablations.}
-Removing output contracts \tbd{E1: invalid references, repairs,
-execution success, accuracy}. Removing completeness propagation: in a
+Removing output contracts inverts the meaning of validity: at 7B,
+first-emission ``validity'' \emph{rises} from 0.23 to 0.41 --- the
+validator simply checks less --- while execution success collapses from
+0.55 to 0.23 and exact match falls from 0.136 to 0.091
+\tbd{14B run}. The check does not create failures or remove them; it
+moves them from silent runtime deaths to statically repairable
+rejections. Removing completeness propagation: in a
 controlled generator that shrinks one page limit so a correct count runs
 over a truncated page, the verifier refuses full support in 15/15 cases
 with taint on and \emph{misses 15/15} with taint off --- the mechanism
