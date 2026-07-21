@@ -382,8 +382,12 @@ to statically repairable rejections. Removing completeness propagation: in a
 controlled generator that shrinks one page limit so a correct count runs
 over a truncated page, the verifier refuses full support in 15/15 cases
 with taint on and \emph{misses 15/15} with taint off --- the mechanism
-is load-bearing, not decorative \tbd{E2 end-to-end rates on the frozen
-suites}. Removing transaction time is not an ablation but an
+is load-bearing, not decorative. On the natural dev distribution the
+effect is real but rarer --- most tasks fit one result page --- so
+disabling taint lets three answers present a fully-supported claim over
+truncated evidence where the mechanism would have withheld full support
+(three versus zero); the constructed generator is what isolates the
+mechanism cleanly. Removing transaction time is not an ablation but an
 impossibility: the latest-state representation does not contain the
 queried information, which is why every baseline scores zero on probes.
 
