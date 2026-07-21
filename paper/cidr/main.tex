@@ -415,14 +415,21 @@ the cost budget refuse with a narrowing suggestion rather than degrade
 --- bounded execution is part of the contract
 \tbd{small line figure replacing this prose}.
 
-\paragraph{Second configuration.}
-To show the architecture is not tied to one checkpoint, we ran TGMS with
-Qwen2.5-7B on the CollegeMsg test split: exact match falls to 0.129, and
-one task fails outright when the repair loop's growing prompt overflows
-the model's 16k window --- a smaller model plans worse and needs more
-serving headroom, but the trust boundary is unchanged and the emitted
-unsupported-claim rate stays zero. Plan quality tracks model capability;
-safety does not \tbd{cross-family Phi-4-mini run}.
+\paragraph{Portability, and the invariant it exposes.}
+The architecture is not tied to one checkpoint, and running it across
+model sizes and families makes visible \emph{which} properties travel.
+On the CollegeMsg test split, Qwen2.5-7B reaches 0.129 exact match (from
+0.408 at 14B), and Phi-4-mini --- a 3.8B model of a different family,
+with the same operator manual and no family-specific prompt tuning ---
+reaches only 0.043, producing a valid first plan on 16\% of tasks. Plan
+quality collapses as the planner weakens. Yet the number that matters
+for a trusted computing base does not move: the emitted unsupported-claim
+rate is \textbf{0.000} for every configuration, 14B to 3.8B, Qwen to
+Phi. A weaker model answers fewer questions correctly; it does not answer
+more of them \emph{wrongly}. Safety lives inside the boundary and is
+invariant to the model; competence lives outside it and is not. That
+decoupling is the whole point of the architecture, and it is easiest to
+see precisely where the model is worst.
 
 \paragraph{Honest limitations.}
 Single-GPU open-weight serving; one graph domain; 290 frozen test tasks;
