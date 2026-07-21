@@ -373,10 +373,12 @@ model getting the plan right.
 Removing output contracts inverts the meaning of validity: at 7B,
 first-emission ``validity'' \emph{rises} from 0.23 to 0.41 --- the
 validator simply checks less --- while execution success collapses from
-0.55 to 0.23 and exact match falls from 0.136 to 0.091
-\tbd{14B run}. The check does not create failures or remove them; it
-moves them from silent runtime deaths to statically repairable
-rejections. Removing completeness propagation: in a
+0.55 to 0.23 and exact match falls from 0.136 to 0.091. The pattern
+persists at 14B (validity 0.50${\to}$0.55, exact match
+0.409${\to}$0.318): a stronger planner invents fewer output fields but
+still pays a 22\% relative accuracy loss without the check. It does not
+create failures or remove them; it moves them from silent runtime deaths
+to statically repairable rejections. Removing completeness propagation: in a
 controlled generator that shrinks one page limit so a correct count runs
 over a truncated page, the verifier refuses full support in 15/15 cases
 with taint on and \emph{misses 15/15} with taint off --- the mechanism
