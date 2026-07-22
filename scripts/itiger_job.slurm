@@ -8,14 +8,16 @@
 # Generic serve+eval job. Pass via --export: MODEL (hf id for vllm),
 # CFG (eval config), MAXLEN, TP. Resources via sbatch flags (--gres/--time).
 set -e
-cd ~/tgms
 export PATH="$HOME/.local/bin:$PATH"
+export UV_CACHE_DIR=/project/$USER/uv-cache
+export HF_HOME=/project/$USER/hf
+cd /project/$USER/tgms
 mkdir -p logs
 PORT=$((8000 + SLURM_JOB_ID % 2000))
 PAT=$(echo "$MODEL" | sed 's#.*/##')
 echo "JOB $SLURM_JOB_ID on $(hostname): MODEL=$MODEL PORT=$PORT MAXLEN=${MAXLEN:-16384} TP=${TP:-1}"
 nvidia-smi --query-gpu=name,memory.total --format=csv,noheader
-source ~/vllm-env/bin/activate
+source /project/$USER/vllm-env/bin/activate
 nohup vllm serve "$MODEL" --port $PORT --gpu-memory-utilization 0.92 \
   --max-model-len ${MAXLEN:-16384} --tensor-parallel-size ${TP:-1} \
   > logs/vllm_${SLURM_JOB_ID}.log 2>&1 &
