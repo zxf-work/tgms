@@ -11,6 +11,5 @@ models: ["openai/NousResearch/Meta-Llama-3.1-8B-Instruct"]
 seeds: [0]
 max_repairs: 3
 memory_db: stores/collegemsg/memory.sqlite
-llm_max_tokens: 1024
 llm_api_base: "http://localhost:8000/v1"
 llm_api_key: "EMPTY"

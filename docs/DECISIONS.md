@@ -245,3 +245,21 @@ implementation — hygiene checking starts at the marker recorded in D-010.
 - **Consequence:** Primary CIDR results table populated. GPU freed for the
   E1/E2 ablations, receipted extended-mutation rerun, and Phi-4-mini
   cross-family run.
+
+## D-022 — 2026-07-21 — Token-cap confound in post-campaign experiments; corrected
+- **Context:** The E1/E2 ablation and cross-family configs were templated
+  off test-collegemsg-main.yaml *after* D-020 added `llm_max_tokens: 1024`,
+  so they inherited the 1024 cap — while their comparison baselines
+  (dev-collegemsg-oss-14b/v3 ours, and the Qwen-7B models config) used the
+  default 4096. Verbose non-Qwen models truncate: Phi-4-mini's tokens_out
+  was uniformly 4096 (= 4 repair calls each maxing the 1024 cap without
+  emitting a parseable plan). This inflated the apparent cross-family gap
+  (both Llama-3.1-8B and Phi-4-mini hit 0.043 — the truncation floor, not a
+  capability floor).
+- **Proposal:** Remove the cap from all five post-campaign experiment
+  configs (abl-e1-7b, abl-e1-14b, abl-e2-14b, test-phi4mini, test-llama8b)
+  and re-run at 4096 so every comparison is at equal generation budget.
+- **Consequence:** The frozen headline is unaffected — the ours/14B rows
+  predate D-020 (4096) and were never re-healed; D-020's 1024 cap only ever
+  touched late baseline-answer rows, which fit well under 1024. Only the
+  ablation and portability numbers are re-measured.
