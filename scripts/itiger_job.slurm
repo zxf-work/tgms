@@ -20,7 +20,7 @@ nvidia-smi --query-gpu=name,memory.total --format=csv,noheader
 source /project/$USER/vllm-env/bin/activate
 nohup vllm serve "$MODEL" --port $PORT --gpu-memory-utilization 0.92 \
   --max-model-len ${MAXLEN:-16384} --tensor-parallel-size ${TP:-1} \
-  > logs/vllm_${SLURM_JOB_ID}.log 2>&1 &
+  ${EXTRA_ARGS:-} > logs/vllm_${SLURM_JOB_ID}.log 2>&1 &
 VPID=$!
 deactivate
 up=0
