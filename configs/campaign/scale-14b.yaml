@@ -1,0 +1,14 @@
+# iTiger model-scale study (14b): does the operator-backed advantage hold
+# as models scale? ours + baselines, frozen CollegeMsg test split.
+suite_path: stores/suite-collegemsg/suite.json
+store_path: stores/collegemsg
+out_dir: runs/itiger-scale-14b
+split: test
+systems: [ours, b2, b5]
+models: ["openai/Qwen/Qwen2.5-14B-Instruct"]
+seeds: [0]
+max_repairs: 3
+b2_max_edges: 400
+memory_db: stores/collegemsg/memory.sqlite
+llm_api_base: "http://localhost:8000/v1"
+llm_api_key: "EMPTY"
