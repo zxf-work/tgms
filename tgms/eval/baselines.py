@@ -204,7 +204,9 @@ def build_vanilla_kuzu(events: Iterable[dict[str, Any]], path: str | Path):
         w = csv.writer(f)
         for e in events:
             w.writerow([e["src"], e["dst"], e["rel_type"], e["vt_s"]])
-    db = kuzu.Database(str(path))
+    # bounded pool: kuzu defaults to ~80% of physical RAM, which
+    # OOMs inside a smaller cgroup (Slurm --mem) on big-RAM nodes
+    db = kuzu.Database(str(path), buffer_pool_size=4 * 1024**3)
     conn = kuzu.Connection(db)
     conn.execute("CREATE NODE TABLE Node(uid STRING, PRIMARY KEY(uid))")
     conn.execute("CREATE REL TABLE E(FROM Node TO Node, rel_type STRING, t INT64)")

@@ -42,7 +42,7 @@ _EDGE_RET = ("e.eid, e.vid, a.uid, b.uid, e.rel_type, e.disc, "
 
 class KuzuAdapter(StorageAdapter):
     def __init__(self, path: str | Path) -> None:
-        self.db = kuzu.Database(str(path))
+        self.db = kuzu.Database(str(path), buffer_pool_size=4 * 1024**3)
         self.conn = kuzu.Connection(self.db)
         for stmt in _DDL:
             self.conn.execute(stmt)

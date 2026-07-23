@@ -208,7 +208,8 @@ def build_systems(cfg: dict[str, Any], store: Store, model: str,
                 _, conn = build_vanilla_kuzu(events, vk_path)
             else:
                 import kuzu
-                conn = kuzu.Connection(kuzu.Database(str(vk_path)))
+                conn = kuzu.Connection(
+                    kuzu.Database(str(vk_path), buffer_pool_size=4 * 1024**3))
             out[system] = TextToCypher(conn, llm_fn, model,
                                        max_repairs=cfg.get("max_repairs", 3),
                                        seed=seed)
