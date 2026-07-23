@@ -1,14 +1,16 @@
 # iTiger fair-baseline run: RAG baselines at the largest k a real serving
 # context allows (impossible on the 24GB/28k-window Turing card that forced
-# k=1). Served with Qwen2.5-14B extended to its 128k YaRN context; each
-# retrieved chunk measured ~18k tokens, so k=7 (~126k) is the ceiling —
-# 7x the corpus exposure of the original k=1. 14B full-precision (no AWQ).
+# k=1). Uses Qwen2.5-14B-Instruct-1M — same family/size as the primary but
+# with a NATIVE long context, so no rope-scaling override is needed (forcing
+# 128k on the base 32k model triggered a device-side assert once prompts
+# actually exceeded the trained window). Each retrieved chunk measures ~18k
+# tokens, so k=7 (~126k) is the ceiling — 7x the corpus exposure of k=1.
 suite_path: stores/suite-collegemsg/suite.json
 store_path: stores/collegemsg
 out_dir: runs/itiger-fair-14b
 split: test
 systems: [ours, b1, b2, b5]
-models: ["openai/Qwen/Qwen2.5-14B-Instruct"]
+models: ["openai/Qwen/Qwen2.5-14B-Instruct-1M"]
 seeds: [0]
 max_repairs: 3
 b1_k: 7
