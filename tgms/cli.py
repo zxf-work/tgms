@@ -17,6 +17,13 @@ def main(argv: list[str] | None = None) -> int:
     p_ing.add_argument("--store", required=True)
     p_ing.add_argument("--backend", default="duckdb", choices=["duckdb", "kuzu"])
 
+    p_rep = sub.add_parser("replay", help="rebuild a store from a recorded "
+                           "event log (byte-identical; preserves transaction "
+                           "times, unlike a fresh ingest)")
+    p_rep.add_argument("eventlog_jsonl")
+    p_rep.add_argument("--store", required=True)
+    p_rep.add_argument("--backend", default="duckdb", choices=["duckdb", "kuzu"])
+
     p_synth = sub.add_parser("synth", help="generate a synthetic dataset")
     p_synth.add_argument("out_dir")
     p_synth.add_argument("--nodes", type=int, default=1000)
@@ -100,6 +107,21 @@ def main(argv: list[str] | None = None) -> int:
         with open(args.events_jsonl) as f:
             tt = store.ingest_events(json.loads(line) for line in f if line.strip())
         print(json.dumps({"last_tt": tt, "stats": store.stats()}, default=str))
+        store.close()
+    elif args.cmd == "replay":
+        import shutil
+        from pathlib import Path
+
+        import tgms
+        from tgms.storage.eventlog import replay
+        # replay writes into a fresh store, then seeds the store's own log with
+        # the same file so future opens/replays stay consistent
+        store = tgms.open(args.store, backend=args.backend)
+        n = replay(args.eventlog_jsonl, store.adapter)
+        dst = Path(store.path) / "eventlog.jsonl"
+        if Path(args.eventlog_jsonl).resolve() != dst.resolve():
+            shutil.copyfile(args.eventlog_jsonl, dst)
+        print(json.dumps({"batches": n, "stats": store.stats()}, default=str))
         store.close()
     elif args.cmd == "synth":
         from tgms.data.synth import generate

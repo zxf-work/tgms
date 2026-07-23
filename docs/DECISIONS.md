@@ -263,3 +263,22 @@ implementation — hygiene checking starts at the marker recorded in D-010.
   predate D-020 (4096) and were never re-healed; D-020's 1024 cap only ever
   touched late baseline-answer rows, which fit well under 1024. Only the
   ablation and portability numbers are re-measured.
+
+## D-023 — 2026-07-22 — Canonical store vaulted; ingest is not reproducible
+- **Context:** Running the frozen suites on the iTiger cluster gave wrong
+  gold matches (probes 0.000, deflated analytical EM). Root cause: a fresh
+  `tgms ingest` assigns transaction times from the clock at write time, so a
+  re-ingested store differs from the one the frozen gold was computed on —
+  its regenerated test_split_sha was 117f951... not the D-018 cbdc36a...
+  The suites alone are insufficient for reproducibility; the *store* is a
+  required artifact.
+- **Proposal:** Vault the canonical CollegeMsg store's event log
+  (benchmarks/frozen-v1/collegemsg.eventlog.jsonl) and evolution memory
+  (collegemsg.memory.sqlite). Add a `tgms replay` command that rebuilds a
+  byte-identical store from a recorded event log (preserving tt, unlike
+  ingest). Verified: replay -> regenerate suite reproduces the D-018 sha
+  exactly. Reproduction procedure in benchmarks/frozen-v1/README.md.
+- **Consequence:** Any machine reproduces the exact frozen store via
+  `tgms replay`; re-ingestion is never used for the frozen splits. email-EU
+  and synth stores should be vaulted the same way if their campaigns are
+  rerun off-host.
