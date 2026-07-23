@@ -14,6 +14,9 @@ set -e
 export PATH="$HOME/.local/bin:$PATH"
 export UV_CACHE_DIR=/project/$USER/uv-cache
 export HF_HOME=/project/$USER/hf
+# weights are cached on /project; run offline so a compute node without
+# internet (some cannot reach huggingface.co) still serves from cache
+export HF_HUB_OFFLINE=1 TRANSFORMERS_OFFLINE=1
 cd /project/$USER/tgms
 mkdir -p logs
 PORT=$((8000 + SLURM_JOB_ID % 2000))
