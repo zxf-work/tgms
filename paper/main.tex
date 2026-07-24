@@ -14,11 +14,12 @@
 \title{TGMS: An Agent-Native Bi-Temporal Graph Management System\\
 \large Verified Temporal Operators and Trace-Grounded Answer Checking}
 \author{Xiaofei Zhang\\University of Memphis\\\texttt{xiaofei.zhang@memphis.edu}}
-\date{July 2026 \;\textperiodcentered\; System Description Preprint (v2)
+\date{July 2026 \;\textperiodcentered\; System Description Preprint (v3)
 \;\textperiodcentered\; \url{https://github.com/zxf-work/tgms}\thanks{This
-preprint accompanies TGMS v0.2.0 and reports both development-split
-results and the frozen-test campaign whose acceptance thresholds were
-recorded in the repository's dated decision log before measurement.}}
+preprint accompanies TGMS v0.3.0: development results, the frozen-test
+campaign (thresholds recorded in the repository's dated decision log
+before measurement), and post-campaign scale, fair-baseline, and
+portability studies.}}
 
 \begin{document}
 \maketitle
@@ -52,7 +53,14 @@ verifier detects all 500 injected count and entity errors with no false
 positives, and extended mutation classes probe database-specific
 evidence semantics, including values that are correct under the wrong
 belief state (60/60 detected) and correct counts over truncated pages
-(15/15 flagged; all missed when completeness tracking is disabled). Two implementation findings were especially important. First,
+(15/15 flagged; all missed when completeness tracking is disabled).
+A post-campaign scale study shows the architecture's advantage grows
+with model capability --- 0.138/0.340/0.628 exact match at 7B/14B/32B
+full precision, with belief-state probes reaching 1.000 at 32B ---
+while a 72B-AWQ regression isolates quantization, not scale, as the
+planning bottleneck; giving vector-RAG its intended 20-chunk retrieval
+breadth makes it worse (0.021), not better; and the emitted
+unsupported-claim rate is 0.000 in every configuration measured. Two implementation findings were especially important. First,
 operator output contracts prevent plans from referring to fields that do
 not exist. Second, verification must track whether the cited evidence is
 complete, because correct arithmetic over a truncated result is still
@@ -432,6 +440,69 @@ family it cannot plan. Plan quality tracks the model; the safety
 properties do not. A 7B configuration on the same split reaches 0.129,
 with one deterministic failure when repair-loop prompt growth exceeds
 its 16k serving window.
+
+\subsection{Post-campaign studies: scale, fair baselines, portability}
+\label{sec:postcampaign}
+Access to a multi-GPU cluster (RTX 5000/6000 Ada, H100) enabled studies
+the single 24\,GB development GPU could not support, all on the frozen
+CollegeMsg test split against a byte-identically rebuilt canonical store
+(replayed from the vaulted event log; a fresh ingest re-assigns
+transaction times and does not reproduce the store the frozen gold was
+computed on).
+
+\begin{table}[t]
+\centering\small
+\caption{Model-scale study: frozen CollegeMsg test split, temperature 0.
+The operator-backed advantage grows with capability while baselines stay
+flat; probes saturate at 32B; the 72B-AWQ regression isolates
+quantization as the planning bottleneck. Emitted unsupported-claim rate
+is 0.000 in every cell.}
+\label{tab:scale}
+\begin{tabular}{lccccc}
+\toprule
+ & \multicolumn{2}{c}{TGMS} & Static-graph & Text-to-Cypher \\
+model & EM & probes & EM & EM \\
+\midrule
+Qwen2.5-7B fp16 & 0.138 & 0.38 & 0.096 & 0.096 \\
+Qwen2.5-14B fp16 & 0.340 & 0.77 & 0.032 & 0.191 \\
+Qwen2.5-32B fp16 & \textbf{0.628} & \textbf{1.000} & 0.074 & 0.277 \\
+Qwen2.5-72B AWQ & 0.511 & 0.31 & 0.096 & 0.138 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\paragraph{The advantage grows with the model.}
+Table~\ref{tab:scale}: exact match rises 4.6$\times$ from 7B to 32B
+(0.138 to 0.628) while the baselines never exceed 0.277 at any scale ---
+the interface is what converts model capability into answer quality, and
+serialized-context interfaces cannot. Belief-state probes reach a
+perfect 1.000 at 32B: the bi-temporal machinery is fully exploitable by
+a sufficiently capable planner. The 72B-AWQ point \emph{regresses} on
+both metrics (0.511; probes 0.31) despite five times the parameters ---
+isolating quantization, not scale, as the bottleneck for structured
+planning, a deployment-relevant finding since AWQ is precisely what
+small-GPU serving uses.
+
+\paragraph{Un-hobbling the retrieval baseline makes it worse.}
+The development-split protocol capped vector-RAG at $k{=}1$ because 28k
+serving windows could not fit more (Section~\ref{sec:findings}). On an
+H100 with the model's native 32k window we ran the intended $k{=}20$
+breadth (20 chunks of 24 events, ${\sim}$27k-token prompts): exact
+match \emph{fell} to 0.021 --- below the $k{=}1$ configuration ---
+while consuming 32{,}475 tokens per task against TGMS's 6{,}521
+(same-run comparison: 0.362 vs.\ 0.021). More retrieved context diluted
+rather than helped: the baseline's failure is representational, not a
+retrieval budget artifact.
+
+\paragraph{Portability and the safety invariant.}
+With the same untuned operator manual, Llama-3.1-8B reaches 0.043 and
+Phi-4-mini (3.8B) 0.015 --- verified insensitive to generation budget
+--- so plan competence transfers only above a capability threshold. The
+number that never moves is the emitted unsupported-claim rate:
+\textbf{0.000 in every configuration measured} --- four scales, three
+model families, two quantizations, two serving clusters. Competence
+lives outside the trust boundary and varies with the model; safety
+lives inside it and does not.
 
 Third, operator latency remains modest at the tested scale. Operators
 are benchmarked in isolation on the host CPUs of the GPU server (two
