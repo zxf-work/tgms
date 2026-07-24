@@ -454,8 +454,10 @@ over-budget traversals refuse with a narrowing suggestion rather than
 degrade --- bounded execution is part of the contract.
 
 \paragraph{Scale, and the invariant it exposes.}
-Running the architecture across model scales and families makes visible
-\emph{which} properties travel (Figure~\ref{fig:scale}). Exact match
+Running the architecture across model scales and families --- on the
+University of Memphis iTiger GPU cluster~\cite{sharif2025itiger} ---
+makes visible \emph{which} properties travel
+(Figure~\ref{fig:scale}). Exact match
 grows 4.6$\times$ from 7B to 32B full precision (0.138 to 0.628) while
 the baselines never exceed 0.277 --- the interface converts model
 capability into answer quality, and serialized-context interfaces
