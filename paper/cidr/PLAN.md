@@ -57,3 +57,15 @@ single-blind. One running example threads the whole paper
 Operator-by-operator semantics; Kùzu-vs-DuckDB details; HLC details;
 CLI/GUI; prompt-security depth; memory beyond correction-invalidation;
 motif implementation; long benchmark narratives.
+
+## EXPERIMENTS COMPLETE — 2026-07-24
+All runs closed, zero error rows except phi heal (27 rows, healing now).
+Scale study (frozen CollegeMsg, canonical store, iTiger): ours 7B 0.138 /
+14B 0.340 / 32B 0.628 (probes 1.000) / 72B-AWQ 0.511 (probes 0.31 — AWQ,
+not scale, is the bottleneck); baselines flat <=0.28; UCR 0.000 in every
+cell. Fair baseline (H100, native 32k, k=20 x 24-event chunks): b1 0.021
+vs ours 0.362 — RAG got WORSE when un-hobbled, at 32.5k vs 6.5k
+tokens/task. E1/E2 replicated exactly at equal budget. Cross-family:
+Llama-8B 0.043, Phi-4-mini 0.015 — capability threshold real; safety
+invariant. Writing sweep: receipts table -> repo v0.3.0 -> arXiv v3 ->
+CIDR -> site/blog per the 2026-07-22 plan.
