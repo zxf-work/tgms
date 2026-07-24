@@ -48,6 +48,10 @@ code{font-family:var(--mono);background:#e9eef5;border-radius:5px;padding:1px 5p
 temporal operators exposed as tools — typed, deterministic, cost-guarded — and a
 Planner–Executor–Verifier loop that machine-checks every claim in an answer
 against the execution trace that produced it.</div>
+<div style="margin-top:14px;font-size:13.5px;color:#a9c0e2">v0.3.0 · frozen-test
+campaign + scale &amp; fair-baseline studies complete · validated on two GPU
+clusters, four model scales, three model families · unsupported-claim rate
+0.000 in every configuration measured</div>
 <div class="btns">
 <a class="btn" href="https://github.com/zxf-work/tgms">GitHub ↗</a>
 <a class="btn" href="https://github.com/zxf-work/tgms/blob/main/paper/main.pdf">Paper (PDF)</a>
@@ -175,7 +179,8 @@ every configuration measured. Every number carries determinism receipts —
 <pre>git clone https://github.com/zxf-work/tgms && cd tgms
 uv sync --extra agent
 make test                        <span class="c"># 81 tests: property, oracle, metamorphic</span>
-make data-collegemsg suite-collegemsg
+uv run tgms replay benchmarks/frozen-v1/collegemsg.eventlog.jsonl \
+    --store stores/collegemsg     <span class="c"># byte-identical frozen-campaign store</span>
 bash scripts/run_webapp.sh       <span class="c"># interactive guided demo → localhost:8080</span></pre>
 <div class="mut" style="margin-top:10px">Works fully offline for operators, task
 suites, and the verifier; point <code>--api-base</code> at any OpenAI-compatible
