@@ -1,0 +1,13 @@
+# CIDR same-information baseline over email-EU, frozen test split, 1 seed
+# (matches b2/b5 coverage on this corpus).
+suite_path: stores/suite-emaileu/suite.json
+store_path: stores/emaileu
+out_dir: runs/test-b6-emaileu
+split: test
+systems: [b6]
+models: ["openai/Qwen/Qwen2.5-14B-Instruct-AWQ"]
+seeds: [0]
+max_repairs: 3
+memory_db: stores/emaileu/memory.sqlite
+llm_api_base: "http://localhost:8000/v1"
+llm_api_key: "EMPTY"

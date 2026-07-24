@@ -1,0 +1,14 @@
+# CIDR same-information baseline (review §9): text-to-SQL over the identical
+# bi-temporal DuckDB store TGMS executes on. Frozen test split (D-018),
+# campaign model, 3 seeds to match the primary contrast. No token cap (D-022).
+suite_path: stores/suite-collegemsg/suite.json
+store_path: stores/collegemsg
+out_dir: runs/test-b6-collegemsg
+split: test
+systems: [b6]
+models: ["openai/Qwen/Qwen2.5-14B-Instruct-AWQ"]
+seeds: [0, 1, 2]
+max_repairs: 3
+memory_db: stores/collegemsg/memory.sqlite
+llm_api_base: "http://localhost:8000/v1"
+llm_api_key: "EMPTY"
