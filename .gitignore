@@ -16,3 +16,6 @@ dist/
 .claude/
 # eval artifacts (result rows, server logs) live outside version control
 runs/
+
+# CIDR submission draft — not public yet
+paper/cidr/
