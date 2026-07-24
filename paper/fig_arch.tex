@@ -1,74 +1,111 @@
 % TGMS architecture figure — \input into main.tex and the standalone checker.
-% Color code: amber = LLM components, green = verification, blue = deterministic
-% systems. All boxes use explicit text width so nodes can never overlap.
-\definecolor{tgmsblue}{RGB}{28,100,217}
-\definecolor{tgmsdeep}{RGB}{23,56,99}
-\definecolor{tgmsgreen}{RGB}{10,125,51}
-\definecolor{tgmsamber}{RGB}{176,116,0}
+% Visual style: flat rounded boxes, corner badges, dashed trust boundary,
+% legend row. Content: the trust boundary (LLM outside; deterministic,
+% contract-enforced components inside).
+\definecolor{figamber}{RGB}{214,138,0}
+\definecolor{figamberfill}{RGB}{255,247,224}
+\definecolor{figgreen}{RGB}{46,125,50}
+\definecolor{figgreenfill}{RGB}{232,245,233}
+\definecolor{figblue}{RGB}{21,101,192}
+\definecolor{figbluefill}{RGB}{227,242,253}
+\definecolor{figgray}{RGB}{110,116,124}
+\definecolor{figgrayfill}{RGB}{245,246,247}
+\definecolor{figbound}{RGB}{26,86,196}
 \begin{tikzpicture}[
   every node/.style={font=\small},
-  base/.style={rounded corners=5pt, align=center, inner ysep=7pt, inner xsep=5pt},
-  llm/.style={base, draw=tgmsamber!80, fill=tgmsamber!9, thick},
-  vrf/.style={base, draw=tgmsgreen!80, fill=tgmsgreen!8, thick},
-  sys/.style={base, draw=tgmsblue!75, fill=tgmsblue!7, thick},
-  band/.style={base, draw=tgmsdeep!60, fill=tgmsdeep!6, thick, text width=86mm},
-  lbl/.style={font=\scriptsize, text=black!55},
-  chip/.style={font=\tiny\bfseries, text=white, rounded corners=2pt,
-               inner sep=2.2pt, yshift=1mm},
-  arr/.style={-{Stealth[length=2.6mm]}, black!55, thick},
-  darr/.style={arr, dashed}]
+  box/.style={rounded corners=7pt, align=center, inner ysep=8pt,
+              inner xsep=8pt, line width=1.1pt},
+  llm/.style={box, draw=figamber, fill=figamberfill},
+  vrf/.style={box, draw=figgreen, fill=figgreenfill},
+  exe/.style={box, draw=figblue, fill=figbluefill},
+  gry/.style={box, draw=figgray, fill=figgrayfill},
+  badge/.style={font=\scriptsize\bfseries, text=white, rounded corners=3pt,
+                inner xsep=5pt, inner ysep=2.5pt},
+  ttl/.style={font=\small\bfseries},
+  lbl/.style={font=\scriptsize, text=black!60},
+  arr/.style={-{Stealth[length=2.8mm]}, line width=1.1pt, black!75},
+  darr/.style={arr, dashed, black!55},
+  leg/.style={rounded corners=3pt, line width=1pt, minimum width=7mm,
+              minimum height=3.6mm}]
 
-% ---- top row: plan -> validate -> execute -------------------------------
-\node[llm, text width=32mm] (plan) at (2.0,0)
-  {\textbf{Planner}\\[1pt] {\scriptsize emits plan IR\\ (JSON DAG + \$refs)}};
-\node[vrf, text width=42mm] (ver) at (7.0,0)
-  {\textbf{Static verifier}\\[1pt] {\scriptsize grounding $\cdot$ output contracts\\
-   temporal sanity $\cdot$ cost}};
-\node[sys, text width=32mm] (exec) at (12.0,0)
-  {\textbf{Executor}\\[1pt] {\scriptsize content-addressed traces\\ truncation taint}};
-\node[chip, fill=tgmsamber] at (plan.north west) {LLM};
-\node[chip, fill=tgmsgreen!90!black] at (ver.north west) {CHECK};
+% ---- outside the boundary: the LLM ---------------------------------------
+\node[llm, text width=33mm] (plan) at (0,0)
+  {\textbf{Planner}\\[2pt] {\scriptsize emits the plan IR\\ (JSON DAG + \$refs)}};
+\node[badge, fill=figamber] at ($(plan.north west)+(0.55,0)$) {LLM};
 
-% ---- bands ---------------------------------------------------------------
-\node[band] (tools) at (8.7,-2.35)
-  {\textbf{Tool layer} {\scriptsize(in-process router / MCP)}\\[1pt]
-   {\small O1--O13: typed $\cdot$ \mbox{deterministic} $\cdot$ bounded $\cdot$
-   bi-temporal (\texttt{as\_of\_tt}) $\cdot$ cost-guarded}};
-\node[band, fill=tgmsdeep!11] (store) at (8.7,-3.85)
-  {\textbf{Bi-temporal substrate}\\[1pt]
-   {\small versions over valid $\times$ transaction time $\cdot$ write-ahead
-   event log $\cdot$ K\`uzu / DuckDB $\cdot$ temporal CSR}};
+\node[llm, text width=33mm] (rep) at (0,-6.6)
+  {\textbf{Reporter}\\[2pt] {\scriptsize writes the answer object\\ (claims cite evidence)}};
+\node[badge, fill=figamber] at ($(rep.north west)+(0.55,0)$) {LLM};
 
-% ---- bottom row: report -> verify claims --------------------------------
-\node[llm, text width=36mm] (rep) at (2.0,-6.1)
-  {\textbf{Reporter}\\[1pt] {\scriptsize writes the answer object\\
-   (claims cite evidence steps)}};
-\node[vrf, text width=76mm] (cver) at (9.9,-6.1)
-  {\textbf{Claim verifier}\\[1pt] {\scriptsize counts $\cdot$ entities $\cdot$
-   orderings $\cdot$ \mbox{patterns} \mbox{re-checked} against trace digests\\
-   \mbox{unsupported claims are gated out of the answer}}};
-\node[chip, fill=tgmsamber] at (rep.north west) {LLM};
-\node[chip, fill=tgmsgreen!90!black] at (cver.north west) {CHECK};
+% ---- inside the boundary ---------------------------------------------------
+\node[vrf, text width=44mm] (ver) at (7.1,0)
+  {\textbf{Static verifier}\\[2pt] {\scriptsize grounding $\cdot$ output contracts\\
+    temporal sanity $\cdot$ cost}};
+\node[badge, fill=figgreen] at ($(ver.north west)+(0.7,0)$) {CHECK};
+
+\node[exe, text width=38mm] (exec) at (12.3,0)
+  {\textbf{Executor}\\[2pt] {\scriptsize deterministic\\
+    content-addressed $\cdot$ truncation taint}};
+
+% stacked gray abstraction box with dashed divider
+\node[gry, text width=88mm, align=center] (stack) at (9.65,-3.1)
+  {\textbf{Operator layer}~{\scriptsize (in-process router / MCP)}\\[1pt]
+   {\scriptsize O1--O13: typed $\cdot$ deterministic $\cdot$ bounded $\cdot$
+    bi-temporal (\texttt{as\_of\_tt}) $\cdot$ cost-guarded}\\[4.5pt]
+   \textcolor{figgray}{\rule{80mm}{0.4pt}}\\[3.5pt]
+   \textbf{Bi-temporal substrate}\\[1pt]
+   {\scriptsize versions over valid $\times$ transaction time $\cdot$
+    write-ahead event log $\cdot$ temporal CSR}};
+
+\node[vrf, text width=76mm] (cver) at (9.05,-6.6)
+  {\textbf{Claim verifier}\\[2pt] {\scriptsize counts $\cdot$ entities $\cdot$ orderings
+    $\cdot$ patterns re-checked against trace digests\\
+    unsupported claims are gated out of the answer}};
+\node[badge, fill=figgreen] at ($(cver.north west)+(0.7,0)$) {CHECK};
 
 % ---- trust boundary --------------------------------------------------------
-\node[draw=tgmsblue!70, dashed, very thick, rounded corners=8pt, inner sep=9pt,
-      fit=(ver)(exec)(tools)(store)(cver)] (tcb) {};
-\node[font=\scriptsize\bfseries, text=tgmsblue!80!black,
-      anchor=south east] at (tcb.south east) {TRUSTED (deterministic, contract-enforced)};
-\node[font=\scriptsize\bfseries, text=tgmsamber!90!black, rotate=90,
-      anchor=south] at ($(plan.west)!0.5!(rep.west)+(-0.45,0)$) {UNTRUSTED (LLM)};
+\node[draw=figbound, dashed, line width=1.3pt, rounded corners=10pt,
+      inner sep=11pt, fit=(ver)(exec)(stack)(cver)] (tcb) {};
+\node[badge, fill=figbound, font=\scriptsize\bfseries]
+  at ($(tcb.north west)+(1.05,0)$) {TRUSTED};
 
-% ---- arrows --------------------------------------------------------------
-\draw[arr] (plan) -- node[lbl, above]{plan} (ver);
+% ---- verified answer out ----------------------------------------------------
+\node[align=center, text width=26mm] (out) at (16.9,-6.6)
+  {\textbf{Verified answer}\\[1pt]{\scriptsize every claim cites trace digests}};
+\node[draw=black!70, line width=1pt, rounded corners=2pt, minimum width=9mm,
+      minimum height=11mm] (doc) at ($(out.north)+(0,0.85)$) {};
+\draw[figgreen, line width=1.4pt, line cap=round]
+  ($(doc.center)+(-0.14,0.0)$) -- ($(doc.center)+(-0.03,-0.12)$)
+  -- ($(doc.center)+(0.16,0.14)$);
+
+% ---- arrows -----------------------------------------------------------------
+\draw[arr] (plan) -- node[lbl, below, align=center, pos=0.38]
+  {plan\\[-1pt] {\tiny\ttfamily \{"steps":[...]\}}} (ver);
+\draw[darr] (ver.north) to[bend right=14]
+  node[lbl, above=3pt, pos=0.82, xshift=-7mm]{repair payloads (E\_SCHEMA / E\_COST / ...)}
+  (plan.north);
 \draw[arr] (ver) -- node[lbl, above]{valid} (exec);
-\draw[darr] (ver.north) to[bend right=22]
-  node[lbl, above]{repair payloads\; (E\_SCHEMA / E\_COST / …)} (plan.north);
 \draw[arr] (exec.south) -- node[lbl, right]{operator calls}
-  (exec.south |- tools.north);
-\draw[arr] (tools) -- (store);
-\draw[arr, rounded corners=6pt]
-  (exec.east) -- ++(0.55,0) |- node[lbl, right, pos=0.22]{trace} (cver.east);
-\draw[arr] (rep) -- node[lbl, above]{answer object} (cver);
-\draw[darr, rounded corners=6pt]
-  (store.south -| rep) -- node[lbl, left]{trace summaries} (rep.north);
+  (exec.south |- stack.north);
+\draw[arr, rounded corners=8pt]
+  (exec.east) -- ++(0.7,0) |- node[lbl, right, pos=0.25]{trace} (cver.east);
+\draw[arr] (rep) -- node[lbl, below]{answer object} (cver);
+\draw[darr, rounded corners=8pt]
+  (stack.west) -| node[lbl, left, pos=0.75]{trace summaries} (rep.north);
+\draw[arr, rounded corners=8pt] (cver.south) -- ++(0,-0.55) -|
+  node[lbl, below, pos=0.22]{gated claims} (out.south);
+
+% ---- legend -----------------------------------------------------------------
+\begin{scope}[shift={(1.2,-9.4)}]
+  \node[leg, draw=figamber, fill=figamberfill] (l1) at (0,0) {};
+  \node[right=1.5mm of l1, font=\scriptsize] {LLM (untrusted)};
+  \node[leg, draw=figgreen, fill=figgreenfill] (l2) at (3.6,0) {};
+  \node[right=1.5mm of l2, font=\scriptsize] {verification};
+  \node[leg, draw=figblue, fill=figbluefill] (l3) at (6.8,0) {};
+  \node[right=1.5mm of l3, font=\scriptsize] {execution};
+  \node[leg, draw=figgray, fill=figgrayfill] (l4) at (9.8,0) {};
+  \node[right=1.5mm of l4, font=\scriptsize] {data layer};
+  \node[leg, draw=figbound, dashed] (l5) at (12.8,0) {};
+  \node[right=1.5mm of l5, font=\scriptsize] {trust boundary};
+\end{scope}
 \end{tikzpicture}
