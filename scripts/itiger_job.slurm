@@ -46,6 +46,10 @@ echo "SERVER_UP $PAT"
 STORE_SRC=$(grep '^store_path:' "$CFG" | awk '{print $2}')
 STORE_JOB="${STORE_SRC}-j${SLURM_JOB_ID}"
 cp -r "$STORE_SRC" "$STORE_JOB"
+# rebuild the b5 vanilla-kuzu DB fresh: a predecessor killed mid-query
+# leaves a dirty WAL whose recovery can hang the open (build is seconds)
+OUTDIR=$(grep '^out_dir:' "$CFG" | awk '{print $2}')
+rm -rf "$OUTDIR"/vanilla-kuzu-*
 CFGJOB=/tmp/cfg_${SLURM_JOB_ID}.yaml
 sed -e "s|localhost:8000|localhost:$PORT|" \
     -e "s|${STORE_SRC}|${STORE_JOB}|g" "$CFG" > "$CFGJOB"
