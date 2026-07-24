@@ -1,6 +1,7 @@
 # iTiger fair-baseline run: vector-RAG at the spec-intended k=20 breadth,
 # with chunks sized so 20 of them fit the model's NATIVE 32k window
-# (20 x 32-event chunks ~= 30k tokens). No YaRN, no long-context override
+# (20 x 24-event chunks ~= 27k tokens incl. overhead; 32-event chunks
+# measured ~35k and overflowed). No YaRN, no long-context override
 # (vLLM 0.11/cu126 cannot serve the 1M variant, and forcing 128k on the
 # base model produces device-side asserts). 2.5x the corpus exposure of
 # the Turing-forced k=1 x 256-event configuration, at 20x the retrieval
@@ -14,7 +15,7 @@ models: ["openai/Qwen/Qwen2.5-14B-Instruct"]
 seeds: [0]
 max_repairs: 3
 b1_k: 20
-b1_chunk_events: 32
+b1_chunk_events: 24
 b2_max_edges: 2000
 memory_db: stores/collegemsg/memory.sqlite
 llm_api_base: "http://localhost:8000/v1"
