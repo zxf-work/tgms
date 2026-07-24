@@ -282,3 +282,21 @@ implementation — hygiene checking starts at the marker recorded in D-010.
   `tgms replay`; re-ingestion is never used for the frozen splits. email-EU
   and synth stores should be vaulted the same way if their campaigns are
   rerun off-host.
+
+## D-024 — 2026-07-24 — Post-campaign studies complete (scale, fair-baseline, portability)
+- **Context:** iTiger cluster access (Slurm, RTX 5000/6000 Ada, H100)
+  enabled experiments impossible on the 24GB Turing host; frozen splits and
+  the canonical store (D-018/D-023) were reused unchanged.
+- **Results:** model-scale study 7B/14B/32B fp16 + 72B AWQ — ours 0.138 /
+  0.340 / 0.628 / 0.511 EM, probes 0.38 / 0.77 / 1.000 / 0.31, UCR 0.000
+  everywhere; baselines flat (<=0.277). Fair baseline: b1 at k=20 breadth
+  in a native 32k window scores 0.021 vs ours 0.362 same-run (32.5k vs
+  6.5k tokens/task). E1/E2 replicated exactly at equal budget (D-022).
+  Cross-family (Llama-3.1-8B 0.043, Phi-4-mini 0.015): competence needs a
+  capability threshold; safety does not.
+- **Consequence:** Headline claims for arXiv v3 and CIDR: the advantage
+  grows with model capability; quantization (not scale) degrades planning;
+  un-hobbling retrieval baselines does not rescue them; verification value
+  persists at every scale. Full section: TECHNICAL_REPORT 8.2c. Serving
+  and storage robustness fixes from the campaign are in vllm watchdog /
+  kuzu pool bound / subprocess-bounded b5 / itiger job script.

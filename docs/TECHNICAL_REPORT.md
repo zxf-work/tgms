@@ -314,6 +314,65 @@ planted-pattern mining 0/8 (planner exhausts repairs, emits nothing —
 UCR stays 0); one deterministic 7B context-window overflow. Full
 details: D-021, paper §5, release notes v0.2.0.
 
+### 8.2c Post-campaign studies (v0.3.0, 2026-07-24)
+
+All runs on the frozen CollegeMsg test split (94 tasks, D-018) against the
+**canonical store** (rebuilt byte-identically via `tgms replay`, D-023).
+Zero infrastructure-error rows in every table below. Artifacts:
+`runs/itiger-*` on the iTiger cluster checkout, `runs/abl-*` and
+`runs/test-*` on xzgpu; per-run `runs_log.jsonl` records config SHAs.
+
+**Model-scale study** (iTiger; ours vs static-graph RAG (b2) and
+text-to-Cypher (b5); vLLM 0.11/cu126, temp 0, seed 0):
+
+| model | ours EM | ours probes | ours UCR | b2 EM | b5 EM |
+|---|---:|---:|---:|---:|---:|
+| Qwen2.5-7B fp16 | 0.138 | 0.38 | 0.000 | 0.096 | 0.096 |
+| Qwen2.5-14B fp16 | 0.340 | 0.77 | 0.000 | 0.032 | 0.191 |
+| Qwen2.5-32B fp16 | **0.628** | **1.000** | 0.000 | 0.074 | 0.277 |
+| Qwen2.5-72B AWQ | 0.511 | 0.31 | 0.000 | 0.096 | 0.138 |
+
+Findings: (1) the operator-backed advantage **grows with model
+capability** — 4.6x from 7B to 32B while baselines stay flat; (2)
+belief-state probes saturate (1.000) at 32B; (3) the 72B-AWQ regression
+on EM and especially probes isolates **quantization, not scale**, as the
+planning bottleneck; (4) emitted unsupported-claim rate is 0.000 in
+every cell.
+
+**Fair-baseline study** (iTiger H100, 14B fp16, native 32k window):
+vector-RAG at its intended k=20 breadth (20 x 24-event chunks ~ 27k
+tokens/prompt) scores **0.021** — below the k=1 x 256-event
+configuration (0.106 in the frozen campaign) — while consuming 32,475
+tokens/task vs ours 6,521. Same-run comparison: ours 0.362 vs b1 0.021
+(17x) at 5x lower cost. Un-hobbling the retrieval baseline made it
+worse: the failure mode is representational, not budgetary.
+
+**Ablations at equal generation budget (4096; D-022), xzgpu, dev split:**
+output contracts OFF: first-emission "validity" rises (7B 0.23->0.41,
+14B 0.50->0.55) while execution success and EM fall (14B EM
+0.409->0.318) — the check moves failures from silent runtime deaths to
+statically repairable rejections; re-runs replicated the original
+numbers exactly. Truncation taint OFF: 3 answers on the natural dev
+distribution present fully-supported claims over truncated evidence
+(vs 0 with taint), alongside the constructed 15/15-vs-0/15 generator
+result.
+
+**Cross-family portability** (frozen test split): Llama-3.1-8B 0.043,
+Phi-4-mini 0.015 (both at 4096 budget; Llama verified identical at 1024
+and 4096) — plan competence does not transfer below a capability
+threshold with an untuned manual, but **UCR is 0.000 for every family,
+scale, and quantization measured**. Safety is architecture-invariant;
+competence is not.
+
+**Operational lessons** (now encoded in code/scripts): Kùzu sizes its
+default buffer pool from physical RAM and OOMs inside smaller cgroups
+(bounded at 4GB); generated Cypher can be uninterruptible inside the
+engine (b5 attempts now run in killable child processes with a hard
+wall-clock bound); killed jobs leave dirty-WAL DBs whose recovery hangs
+opens (per-job rebuilds); HF-based serving needs offline mode on
+airgapped compute nodes; long-running engines on older GPUs need
+scheduled recycling.
+
 ### 8.3 Dev-split matrix — CollegeMsg, 22 tasks, single seed, temp 0
 
 Per-family EM (PVR/ESR for `ours`; ablation `ours-noverify` matches `ours`

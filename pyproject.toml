@@ -1,6 +1,6 @@
 [project]
 name = "tgms"
-version = "0.2.0"
+version = "0.3.0"
 description = "Agent-Native Temporal Graph Management System (bi-temporal property graph + verified temporal operator algebra + PEV agent layer)"
 requires-python = ">=3.11"
 readme = "README.md"

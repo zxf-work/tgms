@@ -1,5 +1,30 @@
 # Changelog
 
+## v0.3.0 — 2026-07-24
+
+Post-campaign studies release: model scale, fair baselines, portability.
+
+- Results (frozen splits, canonical store; TECHNICAL_REPORT 8.2c): the
+  operator-backed advantage grows with model capability (EM 0.138 -> 0.340
+  -> 0.628 across Qwen2.5 7B/14B/32B fp16; probes saturate at 1.000 at
+  32B); 72B-AWQ regression isolates quantization as the planning
+  bottleneck; vector-RAG at its intended k=20 breadth scores 0.021 vs ours
+  0.362 in the same run; unsupported-claim rate 0.000 in every measured
+  cell (4 scales, 3 families, 2 quantizations, 2 clusters).
+- `tgms replay`: rebuild byte-identical stores from a recorded event log
+  (preserves transaction times); canonical CollegeMsg event log + memory
+  vaulted under benchmarks/frozen-v1/ (D-023 — a fresh ingest does NOT
+  reproduce the store the frozen gold was computed on).
+- Robustness from live campaigns: Kùzu buffer pool bounded (physical-RAM
+  default OOMs in cgroups); b5 Cypher attempts execute in killable child
+  processes with a hard wall-clock bound (cooperative query timeouts
+  cannot interrupt every generated query); b1 chunk size plumbed
+  (b1_chunk_events); 60-min LLM request budget; HF offline serving mode.
+- Slurm tooling for HPC clusters (scripts/itiger_job.slurm): serve+eval
+  in one right-sized allocation, per-job ports and store copies, fresh
+  per-job b5 DB rebuilds.
+- Decisions D-022..D-024.
+
 ## v0.2.0 — 2026-07-20
 
 Frozen-test campaign release: the pre-registered evaluation is complete.
