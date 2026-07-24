@@ -220,16 +220,64 @@ class TextToCypher:
 
     def __init__(self, conn, llm_fn: Callable[..., str], model: str,
                  max_repairs: int = 3, max_rows: int = 200,
-                 seed: int = 0, query_timeout_ms: int = 120_000) -> None:
+                 seed: int = 0, query_timeout_ms: int = 120_000,
+                 db_path: str | None = None) -> None:
         self.conn, self.llm_fn, self.model = conn, llm_fn, model
         self.max_repairs, self.max_rows, self.seed = max_repairs, max_rows, seed
-        # a generated Cypher query can be a runaway cartesian product that
-        # burns CPU forever (observed live); bound it — a timeout becomes a
-        # failed attempt for the repair loop, not a hung evaluation
+        self.query_timeout_ms = query_timeout_ms
+        self.db_path = db_path
+        # first line of defense: kuzu's cooperative timeout. It is NOT
+        # sufficient alone — some generated queries never hit an interrupt
+        # checkpoint (observed live via py-spy: execute() pinned for hours
+        # despite the timeout) — hence the subprocess hard bound below.
         if hasattr(conn, "set_query_timeout"):
             conn.set_query_timeout(query_timeout_ms)
+        if db_path is not None:
+            # subprocess mode: release the parent's handles, else the
+            # child's read_only open hits kuzu's single-writer lock
+            for closer in (getattr(conn, "close", None),):
+                try:
+                    closer and closer()
+                except Exception:
+                    pass
+            self.conn = None
+
+    _CHILD = (
+        "import sys, base64, pickle, kuzu\n"
+        "path, q, max_rows = sys.argv[1], sys.argv[2], int(sys.argv[3])\n"
+        "db = kuzu.Database(path, read_only=True)\n"
+        "conn = kuzu.Connection(db)\n"
+        "res = conn.execute(q)\n"
+        "rows = []\n"
+        "while res.has_next() and len(rows) < max_rows:\n"
+        "    rows.append(tuple(res.get_next()))\n"
+        "sys.stdout.write(base64.b64encode(pickle.dumps(rows)).decode())\n"
+    )
 
     def _run_cypher(self, query: str) -> tuple[list[tuple] | None, str | None]:
+        # hard wall-clock bound: execute in a child process that can be
+        # killed. A generated query can be uninterruptible inside the native
+        # engine; pickle round-trip keeps result types byte-exact.
+        if self.db_path is not None:
+            import base64
+            import pickle
+            import subprocess
+            import sys
+            try:
+                out = subprocess.run(
+                    [sys.executable, "-c", self._CHILD, str(self.db_path),
+                     query, str(self.max_rows)],
+                    capture_output=True, text=True,
+                    timeout=max(30, self.query_timeout_ms // 1000 + 30))
+            except subprocess.TimeoutExpired:
+                return None, "query exceeded the time limit and was killed"
+            if out.returncode != 0:
+                tail = out.stderr.strip().splitlines()[-4:] or ["query failed"]
+                return None, " | ".join(line for line in tail if line.strip())[:500]
+            try:
+                return pickle.loads(base64.b64decode(out.stdout)), None
+            except Exception as e:
+                return None, f"result decode failed: {e}"[:500]
         try:
             res = self.conn.execute(query)
             rows = []

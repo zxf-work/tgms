@@ -206,12 +206,16 @@ def build_systems(cfg: dict[str, Any], store: Store, model: str,
                 from tgms.data.loaders import load
                 events = load(cfg["b5_events_dataset"], cfg["data_dir"]) \
                     if cfg.get("b5_events_dataset") else _events_from_store(store)
-                _, conn = build_vanilla_kuzu(events, vk_path)
-            else:
-                import kuzu
-                conn = kuzu.Connection(
-                    kuzu.Database(str(vk_path), buffer_pool_size=4 * 1024**3))
-            out[system] = TextToCypher(conn, llm_fn, model,
+                vdb, conn = build_vanilla_kuzu(events, vk_path)
+                # release the writer handles: query execution runs in
+                # hard-bounded child processes that need to open the file
+                for closer in (conn.close, vdb.close):
+                    try:
+                        closer()
+                    except Exception:
+                        pass
+            out[system] = TextToCypher(None, llm_fn, model,
+                                       db_path=str(vk_path),
                                        max_repairs=cfg.get("max_repairs", 3),
                                        seed=seed)
         else:
