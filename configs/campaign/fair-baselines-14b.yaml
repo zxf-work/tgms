@@ -1,20 +1,20 @@
-# iTiger fair-baseline run: RAG baselines at the largest k a real serving
-# context allows (impossible on the 24GB/28k-window Turing card that forced
-# k=1). Uses Qwen2.5-14B-Instruct-1M — same family/size as the primary but
-# with a NATIVE long context, so no rope-scaling override is needed (forcing
-# 128k on the base 32k model triggered a device-side assert once prompts
-# actually exceeded the trained window). Each retrieved chunk measures ~18k
-# tokens, so k=7 (~126k) is the ceiling — 7x the corpus exposure of k=1.
+# iTiger fair-baseline run: vector-RAG at the spec-intended k=20 breadth,
+# with chunks sized so 20 of them fit the model's NATIVE 32k window
+# (20 x 32-event chunks ~= 30k tokens). No YaRN, no long-context override
+# (vLLM 0.11/cu126 cannot serve the 1M variant, and forcing 128k on the
+# base model produces device-side asserts). 2.5x the corpus exposure of
+# the Turing-forced k=1 x 256-event configuration, at 20x the retrieval
+# breadth. 14B full-precision.
 suite_path: stores/suite-collegemsg/suite.json
 store_path: stores/collegemsg
 out_dir: runs/itiger-fair-14b
 split: test
 systems: [ours, b1, b2, b5]
-models: ["openai/Qwen/Qwen2.5-14B-Instruct-1M"]
+models: ["openai/Qwen/Qwen2.5-14B-Instruct"]
 seeds: [0]
 max_repairs: 3
-b1_k: 7
-b1_chunk_events: 256
+b1_k: 20
+b1_chunk_events: 32
 b2_max_edges: 2000
 memory_db: stores/collegemsg/memory.sqlite
 llm_api_base: "http://localhost:8000/v1"

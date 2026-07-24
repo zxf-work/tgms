@@ -192,6 +192,7 @@ def build_systems(cfg: dict[str, Any], store: Store, model: str,
             from tgms.eval.baselines import VectorRAG
             out[system] = VectorRAG(store, llm_fn, model,
                                     k=cfg.get("b1_k", 20),
+                                    chunk_events=cfg.get("b1_chunk_events", 256),
                                     embed_fn=embed_fn, seed=seed)
         elif system == "b2":
             from tgms.eval.baselines import StaticGraphRAG
