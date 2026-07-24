@@ -97,5 +97,18 @@ models)
   run_heal configs/campaign/test-collegemsg-models.yaml runs/test-collegemsg-models \
     "$M7" "$P7" --max-model-len 16384
   echo "PHASE_DONE models" ;;
-*) echo "usage: $0 guided-ab|main|datasets|models"; exit 2 ;;
+b6)
+  # CIDR same-information baseline: text-to-SQL over the bi-temporal store,
+  # all three frozen corpora, campaign model.
+  serve "$M14" "$P14" --max-model-len 28672
+  run_heal configs/campaign/test-b6-collegemsg.yaml runs/test-b6-collegemsg \
+    "$M14" "$P14" --max-model-len 28672
+  echo "B6_COLLEGEMSG_DONE"
+  run_heal configs/campaign/test-b6-emaileu.yaml runs/test-b6-emaileu \
+    "$M14" "$P14" --max-model-len 28672
+  echo "B6_EMAILEU_DONE"
+  run_heal configs/campaign/test-b6-synth.yaml runs/test-b6-synth \
+    "$M14" "$P14" --max-model-len 28672
+  echo "PHASE_DONE b6" ;;
+*) echo "usage: $0 guided-ab|main|datasets|models|b6"; exit 2 ;;
 esac
