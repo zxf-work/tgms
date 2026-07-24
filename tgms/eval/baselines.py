@@ -220,9 +220,14 @@ class TextToCypher:
 
     def __init__(self, conn, llm_fn: Callable[..., str], model: str,
                  max_repairs: int = 3, max_rows: int = 200,
-                 seed: int = 0) -> None:
+                 seed: int = 0, query_timeout_ms: int = 120_000) -> None:
         self.conn, self.llm_fn, self.model = conn, llm_fn, model
         self.max_repairs, self.max_rows, self.seed = max_repairs, max_rows, seed
+        # a generated Cypher query can be a runaway cartesian product that
+        # burns CPU forever (observed live); bound it — a timeout becomes a
+        # failed attempt for the repair loop, not a hung evaluation
+        if hasattr(conn, "set_query_timeout"):
+            conn.set_query_timeout(query_timeout_ms)
 
     def _run_cypher(self, query: str) -> tuple[list[tuple] | None, str | None]:
         try:
