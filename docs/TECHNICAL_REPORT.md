@@ -317,7 +317,12 @@ details: D-021, paper §5, release notes v0.2.0.
 ### 8.2c Post-campaign studies (v0.3.0, 2026-07-24)
 
 All runs on the frozen CollegeMsg test split (94 tasks, D-018) against the
-**canonical store** (rebuilt byte-identically via `tgms replay`, D-023).
+**canonical store** (rebuilt byte-identically via `tgms replay`, D-023),
+executed on the University of Memphis **iTiger** GPU cluster (Sharif,
+Han, Liu & Huang, *Cultivating Multidisciplinary Research and Education
+on GPU Infrastructure for Mid-South Institutions at the University of
+Memphis*, arXiv:2504.14786, 2025 —
+<https://arxiv.org/abs/2504.14786>).
 Zero infrastructure-error rows in every table below. Artifacts:
 `runs/itiger-*` on the iTiger cluster checkout, `runs/abl-*` and
 `runs/test-*` on xzgpu; per-run `runs_log.jsonl` records config SHAs.
