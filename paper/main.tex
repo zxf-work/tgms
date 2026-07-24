@@ -6,13 +6,13 @@
 \usepackage{xcolor}
 \usepackage{listings}
 \usepackage{tikz}
-\usetikzlibrary{arrows.meta,positioning}
+\usetikzlibrary{arrows.meta,positioning,fit,calc}
 \lstset{basicstyle=\ttfamily\small, breaklines=true, columns=fullflexible,
         frame=single, framerule=0pt, backgroundcolor=\color{gray!8}}
 \emergencystretch=2em
 
 \title{TGMS: An Agent-Native Bi-Temporal Graph Management System\\
-\large Verified Temporal Operators and Trace-Grounded Answer Checking}
+\large Validated Temporal Operators and Trace-Grounded Answer Checking}
 \author{Xiaofei Zhang\\University of Memphis\\\texttt{xiaofei.zhang@memphis.edu}}
 \date{July 2026 \;\textperiodcentered\; System Description Preprint (v3)
 \;\textperiodcentered\; \url{https://github.com/zxf-work/tgms}\thanks{This
@@ -25,47 +25,39 @@ portability studies.}}
 \maketitle
 
 \begin{abstract}
-Temporal graph questions require reliable handling of time, identifiers,
-and arithmetic. Large language model (LLM) agents often fail on these
-tasks, especially when a graph records both ordinary evolution and later
-corrections. We present TGMS, a bi-temporal property graph management
-system that exposes thirteen verified temporal operators as agent tools.
-Each operator is typed, deterministic, bounded, cost-guarded, and
-bi-temporal by default. The LLM plans operator calls and writes the final
-response, while the system performs all graph computation. Numeric,
-entity, ordering, and pattern claims are checked against the
-content-addressed execution trace.
+Temporal graph question answering requires exact composition over time
+and, when records are corrected, reconstruction of prior belief states.
+Large language model (LLM) agents are unreliable at identifier
+grounding, arithmetic, and interpreting partial query results. We
+present TGMS, an agent-native bi-temporal graph system that assigns the
+model two bounded roles: constructing a plan over a fixed operator
+interface and verbalizing the result. A static verifier checks plan
+structure, identifier grounding, declared output fields, temporal
+arguments, and estimated cost. Thirteen deterministic temporal
+operators execute over valid-time and transaction-time data and produce
+content-addressed traces with completeness metadata. A claim verifier
+checks the final answer against those traces.
 
-TGMS separates valid time from transaction time. It can therefore answer
-belief-state questions such as ``as of transaction time $T$, what did the
-system believe?'' Standard latest-state snapshots and retrieval pipelines
-do not preserve enough information to answer such questions. On a
-frozen 94-task test split of a real communication network, TGMS with a
-14B open-source model reaches 0.408 exact match over three seeds ---
-replicating its 0.409 development figure --- while vector-RAG,
-static-graph RAG, and text-to-Cypher reach 0.064--0.152 under the same
-serving setup; all paired-bootstrap deltas are significant. On
-correction probes TGMS scores 0.897 (and 0.846 on a second corpus)
-while latest-state baselines score zero. End to end, un-gated answers
-carry a 7.8\% unsupported-claim rate; verification removes every
-unsupported claim at a cost of one point of exact match. The claim
-verifier detects all 500 injected count and entity errors with no false
-positives, and extended mutation classes probe database-specific
-evidence semantics, including values that are correct under the wrong
-belief state (60/60 detected) and correct counts over truncated pages
-(15/15 flagged; all missed when completeness tracking is disabled).
-A post-campaign scale study shows the architecture's advantage grows
-with model capability --- 0.138/0.340/0.628 exact match at 7B/14B/32B
-full precision, with belief-state probes reaching 1.000 at 32B ---
-while a 72B-AWQ regression isolates quantization, not scale, as the
-planning bottleneck; giving vector-RAG its intended 20-chunk retrieval
-breadth makes it worse (0.021), not better; and the emitted
-unsupported-claim rate is 0.000 in every configuration measured. Two implementation findings were especially important. First,
-operator output contracts prevent plans from referring to fields that do
-not exist. Second, verification must track whether the cited evidence is
-complete, because correct arithmetic over a truncated result is still
-misleading. The code, benchmark, and trace viewer are open source under
-Apache-2.0.
+On a frozen 94-task CollegeMsg test split run with three seeds, TGMS
+using Qwen2.5-14B-Instruct-AWQ obtains 0.408 normalized typed-answer
+accuracy, compared with 0.106 for vector-RAG, 0.064 for static-graph
+RAG, and 0.152 for text-to-Cypher. On correction probes, TGMS obtains
+0.897; the two latest-state baselines obtain zero, while vector-RAG
+obtains 0.154 by answering current-belief cases. The main result
+transfers to a second communication corpus and a synthetic
+temporal-pattern suite, although complex multi-operator pattern plans
+remain beyond the 14B planner. Before gating, 21 of 270 reporter
+answers (7.8\%) contain at least one unsupported gated claim;
+verification reduces this to 0 of 268 at a 1.0-percentage-point
+reduction in overall answer accuracy. Mutation experiments show that
+output contracts and evidence-completeness tracking catch errors that
+value-only checking misses. In a separate full-precision serving
+configuration, accuracy rises markedly with model scale
+(0.138/0.340/0.628 at 7B/14B/32B) while the tested baselines change
+little, and increasing vector-RAG's retrieval breadth to a long-context
+configuration does not improve it. These results suggest that
+agent-facing database interfaces should make belief time, result
+contracts, and evidence completeness explicit.
 \end{abstract}
 
 \section{Introduction}
@@ -90,47 +82,80 @@ applied.
 
 LLMs introduce a separate set of risks. They may perform arithmetic
 incorrectly, invent identifiers, or report values that do not appear in
-the evidence. TGMS addresses these risks through system design rather
-than prompting. Identifiers must come from the task input or from an
-entity-resolution operator. Arithmetic must use a \texttt{compute}
-operator. Each final claim must cite a content-addressed result, and a
-verifier checks the cited evidence.
+the evidence.
 
-This paper makes four contributions:
+These problems share one cause: conventional database interfaces assume
+a competent client, whereas an LLM is an approximate planner and
+reporter. TGMS therefore places the LLM outside the trusted computing
+boundary. The model chooses and composes operations and verbalizes
+their results, while the database owns temporal semantics, identifier
+grounding, arithmetic, bounded execution, provenance, and claim
+checking. We call a database interface \emph{agent-native} when it is
+designed for a fallible machine planner: operations have
+machine-readable input and output contracts, explicit bounds and costs,
+deterministic result identities, and evidence metadata that supports
+automated checking.
+
+This paper makes four contributions, each subordinate to that thesis:
 \begin{itemize}
-    \item We develop a bi-temporal property graph substrate with explicit
-    operations for assertion, retraction, and correction. An append-only
-    event log makes updates replayable across storage backends.
-    \item We define a closed algebra of thirteen temporal operators. The
-    operators have typed input and output contracts, deterministic
-    results, pagination, and cost guards.
-    \item We introduce a Planner--Executor--Verifier architecture. A
-    static verifier checks plans before execution, and a claim verifier
-    checks final answers against execution traces.
-    \item We report an initial development-split evaluation with
-    open-source models. The results include end-to-end accuracy,
-    correction probes, fault injection, operator latency, and lessons
-    from live model traffic.
+    \item \textbf{Belief-state-preserving storage:} a bi-temporal
+    property graph substrate with explicit assertion, retraction, and
+    correction, backed by an append-only event log that replays to
+    byte-identical state across storage backends.
+    \item \textbf{A machine-checkable computation interface:} a fixed
+    algebra of thirteen temporal operators with typed input \emph{and
+    output} contracts, deterministic results, pagination, and
+    pre-execution cost guards.
+    \item \textbf{Evidence-aware execution and answer verification:} a
+    static plan verifier, a deterministic executor that produces
+    content-addressed traces with completeness metadata, and a claim
+    verifier that gates final answers against those traces.
+    \item \textbf{Empirical evidence about when and why this separation
+    helps:} frozen test suites over two real communication networks and
+    one synthetic temporal-pattern workload, measuring answer accuracy,
+    correction handling, plan validity, unsupported claims, verifier
+    fault detection, model-scale behavior, baseline sensitivity to
+    context limits, and operator latency.
 \end{itemize}
 
-The current evaluation is an early system study. We recorded acceptance
-thresholds before running the experiments, in the repository's dated
-decision log (\texttt{docs/DECISIONS.md}) and in the committed evaluation
-driver; this is an internal dated record rather than an external
-registry. The reported numbers use one dataset, one seed, and a
-development split. The frozen-test campaign
-is part of the next release.
+\paragraph{Evaluation status and chronology.}
+We first used a 22-task development split to finalize the operator
+interface, prompts, repair protocol, and acceptance criteria; the
+acceptance thresholds were recorded in the repository's dated decision
+log and committed evaluation driver before measurement (an internal
+dated record, not an external registry). We then froze the evaluation
+protocol and ran the reported test campaign on 290 unique tasks, with
+three seeds for CollegeMsg. Post-campaign studies examine model scale,
+quantization, longer-context retrieval, and cross-family portability;
+these are reported separately from the frozen primary evaluation
+(Section~\ref{sec:sensitivity}).
+
+\subsection{System overview and trust boundary}
+Figure~\ref{fig:arch} shows the architecture as a trust boundary. The
+LLM appears exactly twice --- as planner and as reporter --- and both
+roles sit outside the boundary: nothing the model produces is executed
+or emitted unchecked. Inside the boundary, deterministic components own
+everything that must be true: the static verifier admits or rejects
+plans; the operator engine computes over the bi-temporal store; the
+executor records content-addressed evidence; and the claim verifier
+checks the final answer against that evidence. The remainder of the
+paper follows this decomposition: the substrate
+(Section~\ref{sec:substrate}), the operator interface
+(Section~\ref{sec:operators}), and planning, execution, and
+verification (Section~\ref{sec:pev}).
 
 \begin{figure}[t]
 \centering
 \resizebox{\textwidth}{!}{\input{fig_arch}}
-\caption{TGMS architecture. The LLM plans and reports. Operators perform
-the graph computation, and the verifier checks claims against the
-execution trace.}
+\caption{TGMS as a trust boundary. The planner and reporter (the LLM)
+are outside the trusted region; the static verifier, operator engine,
+bi-temporal store, execution trace, and claim verifier are inside it.
+Model outputs cross the boundary only through checks.}
 \label{fig:arch}
 \end{figure}
 
 \section{Bi-temporal substrate}
+\label{sec:substrate}
 Each logical node and edge has a stable identity and one or more
 versions. A version carries a half-open valid-time interval
 $[vt_s, vt_e)$ and a half-open transaction-time interval $[tt_s, tt_e)$.
@@ -141,14 +166,35 @@ contain $tt$.
 
 The write API provides three bi-temporal operations. \texttt{assert}
 records a new belief and carves its valid-time interval out of any
-overlapping prior belief. \texttt{retract} records that a fact stops
-being valid. \texttt{correct} changes a previously recorded belief while
-preserving the transaction-time history of the error. TGMS also provides
-a bulk-ingest path for instantaneous event streams.
+overlapping prior belief of the \emph{same logical identity};
+independently coexisting facts use distinct identities, so within one
+identity the believed valid-time intervals are always pairwise
+disjoint. \texttt{retract} closes a fact's valid time (the world
+changed; the earlier belief remains correct for its interval).
+\texttt{correct} closes the \emph{transaction time} of an erroneous
+version and records its replacement (we were wrong; the record of the
+error is preserved). TGMS also provides a bulk-ingest path for
+instantaneous event streams.
 
-All writes pass through an append-only write-ahead event log. The log is
-the source of truth. Replaying it into a backend reproduces the same store
-digest. We test this property across K\`uzu~\cite{kuzu2023} and
+A minimal worked example. At transaction time $tt_1$ we assert that
+edge $e$ has weight $p{=}1$ over valid time $[0, 100)$: one version,
+$vt{=}[0,100)$, $tt{=}[tt_1, \infty)$. At $tt_2$ we \emph{correct} the
+weight to $p{=}2$ for $vt{=}[40, 60)$: the original version's
+transaction interval closes at $tt_2$, and three new versions open ---
+$p{=}1$ over $[0,40)$, $p{=}2$ over $[40,60)$, and $p{=}1$ over
+$[60,100)$, all with $tt{=}[tt_2,\infty)$. The current snapshot at
+$vt{=}50$ returns $p{=}2$; the same query pinned to
+$\texttt{as\_of\_tt}{=}tt_1$ returns $p{=}1$ --- the belief before the
+correction --- and continues to do so forever.
+
+All writes pass through an append-only write-ahead event log. The log
+records every \emph{attempted} batch together with its deterministic
+outcome: only successfully committed batches contribute to the
+materialized graph state, and replay reproduces both the successful
+state transitions and the recorded failures, skipping the latter
+exactly as the original writer did. In this sense the log is the source
+of truth for state and audit trail for attempts. Replaying it into a
+backend reproduces the same store digest. We test this property across K\`uzu~\cite{kuzu2023} and
 DuckDB~\cite{duckdb2019} adapters. Update semantics are implemented once,
 above a small adapter interface, so the backends share the same behavior.
 A hybrid logical clock provides strictly increasing transaction times.
@@ -168,11 +214,20 @@ the current belief state. Returned versions must also hide
 belief-closure timestamps that occur after the requested transaction
 time.
 
-\section{A verified operator algebra}
+\section{A fixed operator algebra}
+\label{sec:operators}
 TGMS exposes the thirteen operators in Table~\ref{tab:ops}. The
-\texttt{compute} operator keeps arithmetic out of the LLM.
-\texttt{resolve\_entities} is the only operator that may introduce an
-identifier not already present in the task.
+interface is \emph{fixed}: plans may invoke only operators from the
+registered set; we do not claim algebraic completeness. The set covers
+four workload families --- historical state (O1--O3), temporal
+traversal (O4--O5), temporal patterns (O6--O9), and evolution analysis
+(O10--O11) --- plus entity grounding (O12) and deterministic
+post-processing (O13). It is not intended to be complete; the
+evaluation measures which task families are expressible and which still
+exceed the planner or the interface. The \texttt{compute} operator
+keeps arithmetic out of the LLM, and \texttt{resolve\_entities} is the
+only operator that may introduce an identifier not already present in
+the task.
 
 \begin{table}[t]
 \centering\small
@@ -214,9 +269,12 @@ canonicalized before both serialization and threshold comparisons. This
 keeps the engine and its test oracle consistent.
 
 \paragraph{Bounded execution.}
-All operators use \texttt{limit} and \texttt{cursor} pagination.
-Pre-execution cost estimates reject requests that exceed configured
-limits. The rejection includes concrete ways to narrow the request, which
+Two distinct bounds apply. Result \emph{cardinality} is bounded through
+\texttt{limit}/\texttt{cursor} pagination. Computational \emph{work}
+is bounded separately through pre-execution cost estimation and refusal
+--- a motif count can return one number after an expensive search, so
+pagination alone would not bound it. The rejection includes concrete
+ways to narrow the request, which
 the planner may use during repair.
 
 \paragraph{Bi-temporal semantics.}
@@ -239,6 +297,7 @@ now uses an exact multi-label search over
 $(\text{node},\text{arrival})$ states.
 
 \section{Planner--Executor--Verifier}
+\label{sec:pev}
 A TGMS plan is a small JSON DAG. Each step calls one operator. References
 between steps use a limited \texttt{\$ref} language with dotted fields,
 \texttt{rows[i]}, and \texttt{rows[*].field} projections. The language
@@ -271,198 +330,292 @@ Count, value, entity, and ordering claims are currently gated before the
 answer is emitted. Pattern checks are reported but are not yet used to
 block output.
 
-Stored graph content is treated as data rather than instructions. Strings
-inserted into prompts are escaped, length-limited, and placed inside
-explicit data fences. The system prompt states that fenced data cannot
-change the task or tool policy. Red-team fixtures for this boundary run in
-continuous integration.
-
-TGMS also maintains an \emph{evolution memory}. The system computes facts
-over weekly windows and asks an LLM to summarize them. A summary is stored
-only when every numeric statement matches the computed values. Each note
-records the transaction time at which it was created. A later correction
-quarantines any note whose valid-time window overlaps the corrected
-interval. This step prevents a verifier from accepting an answer that
-relies on an outdated summary.
+\subsection{Extensions outside the evaluated pipeline}
+Two components ship with TGMS but are not exercised by the primary
+evaluation; we summarize them for completeness. First, a
+\emph{threat-model} defense: stored graph content is treated as data
+rather than instructions --- strings inserted into prompts are escaped,
+length-limited, and placed inside explicit data fences, and red-team
+fixtures for this boundary run in continuous integration. Second, an
+\emph{evolution memory}: operator-computed facts over weekly windows
+are summarized by an LLM, stored only when every numeric statement
+matches the computed values, and stamped with their creation
+transaction time. A later correction quarantines any note whose
+valid-time window overlaps the corrected interval. Quarantined notes
+are excluded from planner and reporter context and cannot be cited;
+final claims must still resolve to operator traces --- the memory
+supplies hints, never evidence.
 
 \section{Evaluation}
+\label{sec:eval}
 
-\subsection{Benchmark and protocol}
-The benchmark uses program-computed gold answers. Oracle plans are
-executed by the engine, so no LLM-generated label is treated as ground
-truth. The task generator defines seventeen templates with three
-hand-written paraphrases each. They cover temporal questions, graph
-evolution, multi-step analysis, and correction probes.
+\subsection{Questions and experimental design}
+The evaluation tests four hypotheses:
+\textbf{H1} transaction-time storage enables correction queries that are
+unavailable from latest-state inputs;
+\textbf{H2} operator output contracts improve plan validity and
+execution success;
+\textbf{H3} completeness-aware verification reduces unsupported output;
+\textbf{H4} the interface remains usable across data scales and model
+configurations.
+We first used a 22-task development split to finalize the interface,
+prompts, repair protocol, and acceptance thresholds; the protocol was
+then frozen (task generator, splits, and split SHAs recorded in the
+repository's dated decision log) before any test-split measurement, and
+task generation was not altered afterwards. All systems use
+temperature~0, the same model checkpoint, the same seeds, the same
+repair budget, and the same typed answer format.
 
-For a correction probe, the benchmark first inserts a correction and then
-computes both gold answers. A paired set of questions asks about the same
-graph condition before the correction and under the current belief state.
-The generator verifies that the two answers differ. This design tests
-transaction-time reasoning rather than simple timestamp filtering.
+\subsection{Data, frozen suites, systems, and metrics}
+\label{sec:setup}
 
-All systems use temperature~0, the same model checkpoints, the same
-random seed, the same repair budget, and the same final answer format.
-The compared systems are:
-\begin{itemize}
-    \item TGMS with the full Planner--Executor--Verifier pipeline;
-    \item vector-RAG over serialized events, with MiniLM retrieval;
-    \item static-graph RAG over two-hop edge lists from the latest
-    snapshot; and
-    \item text-to-Cypher over the same events loaded into a standard
-    K\`uzu property graph, with the same repair budget.
-\end{itemize}
-We also implement a no-verifier TGMS ablation whose raw answers are
-scored by the claim verifier acting as a measurement instrument without
-gating; Section~\ref{sec:frozen} reports the end-to-end comparison.
-
-The models are Qwen2.5-7B-Instruct and
-Qwen2.5-14B-Instruct-AWQ~\cite{qwen25}. They are served with
-vLLM~\cite{vllm2023} on one 24\,GB Turing GPU. The development split uses
-the CollegeMsg network~\cite{panzarasa2009}, which contains 1,899 nodes
-and 59,835 timestamped edges. The split contains 22 instantiated tasks:
-12 single-operator temporal questions (T1), 4 evolution questions (T3),
-3 multi-step analytical tasks (T4), and 3 correction probes. The frozen
-test split is reserved for the larger evaluation. We use paired bootstrap
-resampling over tasks with 10{,}000 resamples and report 95\% confidence
-intervals.
-
-\paragraph{Answer normalization.}
-Exact match compares the typed final answer, not the prose. Count and
-value answers match when they agree within $10^{-9}$ after float
-canonicalization. Entity-set answers match when the predicted and gold
-identifier sets are equal; identifiers are collected from \texttt{uid},
-\texttt{src}, and \texttt{dst} fields at any nesting depth, and order is
-ignored (set-F1 is tracked alongside). Interval answers match when
-interval intersection-over-union is at least 0.5. Remaining kinds, such
-as time series, use canonical-JSON equality with sorted keys and
-9-decimal float quantization. Gold answers are computed by the engine
-under the same canonicalization.
-
-\subsection{Verifier validation}
-A fault-injection harness perturbs correct answer objects. The clean pool
-contains 87 answer objects derived mechanically from the suite's oracle
-plans, so every claim is grounded by construction. From this pool the
-harness generated 500 mutants: 250 count perturbations ($\pm 1$) and 250
-entity-identifier swaps. The verifier rejects 500 of 500 mutants (250/250
-for each mutator class). False positives are measured by re-verifying
-each of the 87 unperturbed answers; none is rejected. Interval-shift and
-ordering-inversion mutators pass unit-scale validation with full
-detection, but they require reporter-style answers and are deferred to
-the end-to-end campaign. The acceptance targets (at least 95\% detection,
-under 5\% false positives) were recorded in the repository's dated
-decision log and committed evaluation driver before these measurements
-were run. The unsupported-claim rate among emitted answers is 0.000 for
-the claim types that are currently gated.
-
-\subsection{End-to-end accuracy}
-Table~\ref{tab:results} reports exact match on the development split.
+\paragraph{Task construction.}
+Tasks are program-generated with engine-computed gold: oracle plans are
+executed by TGMS itself, so no LLM-generated label is ground truth. The
+generator defines 17 semantic templates (10 single-operator temporal
+questions, T1; 3 evolution questions, T3; 4 multi-step analytical
+questions, T4), each with three hand-written paraphrases; every
+instantiated task samples template parameters (entities, windows,
+thresholds) from the store and uses one paraphrase. Instances whose
+oracle execution fails or degenerates are discarded. Correction probes
+are constructed by injecting a correction and generating a
+\emph{pair} of separately scored questions over the same logical fact
+--- one asking for the belief before the correction, one for the
+current belief --- keeping only pairs whose two gold answers differ.
+The synthetic suite adds planted-pattern mining tasks (T2) whose gold
+comes from the generator's manifest. Tasks are split 20/80
+(development/test), stratified by family; because the split cuts
+across probe pairs, a split may contain one or both halves of a pair.
 
 \begin{table}[t]
-\centering
-\caption{Exact match on the CollegeMsg development split. Results use one
-seed and temperature 0. For the 14B pooled results, paired-bootstrap
-95\% confidence intervals for TGMS minus each baseline are
-$[+0.18,+0.59]$ versus static-graph RAG,
-$[+0.09,+0.55]$ versus vector-RAG, and
-$[0.00,+0.46]$ versus text-to-Cypher.}
-\label{tab:results}
-\small
-\begin{tabular}{lcccc}
+\centering\small
+\caption{Frozen suites. CollegeMsg test answer types: 42 count,
+34 value, 14 interval, 4 entity-set. The CollegeMsg test split
+contains 13 probe \emph{questions}: 7 before-correction halves and 6
+current-belief halves.}
+\label{tab:data}
+\begin{tabular}{lcccccc}
 \toprule
-Model and task set & TGMS & Vector-RAG & Static-graph RAG & Text-to-Cypher \\
+suite & dev & test & T1 & T2 & T3 & T4 / probes \\
 \midrule
-Qwen2.5-7B, all tasks & 0.136 & 0.045 & 0.045 & 0.091 \\
-Qwen2.5-14B, all tasks & \textbf{0.409} & 0.091 & 0.045 & 0.182 \\
-Qwen2.5-7B, correction probes & \textbf{0.67} & 0.00 & 0.33 & 0.00 \\
-Qwen2.5-14B, correction probes & \textbf{0.67} & 0.00 & 0.00 & 0.00 \\
+CollegeMsg & 22 & 94 & 48 & --- & 20 & 13 / 13 \\
+email-EU & 22 & 94 & 48 & --- & 20 & 13 / 13 \\
+synthetic & 24 & 102 & 48 & 8 & 20 & 13 / 13 \\
 \bottomrule
 \end{tabular}
 \end{table}
 
-The results support three observations. First, transaction-time history
-matters on correction probes. With the 14B model, TGMS reaches 0.67 and
-all three baselines score zero. With the 7B model, TGMS again reaches
-0.67, and static-graph RAG answers one probe of three. Each probe pairs
-a before-correction question with a current-belief question, and the
-current-belief half can occasionally be read off the latest snapshot.
-The before-correction half requires the earlier belief state, which the
-baseline inputs do not preserve.
+Because the operator set and the workload were co-designed, the study
+does not establish coverage of independently collected temporal-graph
+questions; the frozen protocol limits tuning to the test sets but not
+this closed-world alignment (Section~\ref{sec:limits}).
 
-Second, model size has a large effect on planning. Moving from 7B to 14B
-raises pooled TGMS exact match from 0.136 to 0.409. First-attempt plan
-validity rises from 0.08--0.17 to 0.33--0.75 across task families. In the
-7B runs, the repair loop increases execution success by roughly a factor
-of three.
-
-\subsection{The frozen-test campaign}
-\label{sec:frozen}
-After development-split iteration closed, we evaluated on the frozen
-test splits recorded in the repository's dated decision log: 94 tasks
-each for CollegeMsg and email-EU and 102 for a synthetic
-temporal-pattern workload, with CollegeMsg run at three seeds.
-Table~\ref{tab:frozen} reports exact match with the 14B model.
+\paragraph{Systems and the information each receives.}
+Table~\ref{tab:baselineinfo} makes the input representations explicit,
+because the correction probes are a \emph{capability} comparison ---
+they demonstrate the value of retaining transaction-time history ---
+while the non-probe tasks compare the reliability of different planning
+and data-access interfaces over comparable information.
 
 \begin{table}[t]
 \centering\small
-\caption{Frozen-test campaign, exact match, Qwen2.5-14B, temperature 0.
-CollegeMsg pools three seeds (per-seed spread was one task). Paired
-bootstrap over CollegeMsg tasks (10k resamples): TGMS minus vector-RAG
-$+0.30$ $[+0.21,+0.40]$, minus static-graph RAG $+0.34$
-$[+0.25,+0.44]$, minus text-to-Cypher $+0.26$ $[+0.15,+0.36]$.}
+\caption{What each system can see. ``valid time'' for vector-RAG means
+timestamps serialized into chunk text; no baseline retains
+transaction-time history.}
+\label{tab:baselineinfo}
+\begin{tabular}{lp{3.6cm}cccc}
+\toprule
+system & input representation & valid t. & trans.\ hist. & exact ops & bounded \\
+\midrule
+TGMS & bi-temporal versions & yes & yes & yes & yes \\
+Vector-RAG & retrieved chunks of serialized event sentences & in text & no & no & yes \\
+Static-graph RAG & 2-hop edge lists, latest snapshot & current only & no & no & yes \\
+Text-to-Cypher & latest-state property graph, timestamp property & as property & no & query engine & yes \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+We also run a no-verifier TGMS ablation whose raw reporter answers are
+scored by the claim verifier acting as a measurement instrument without
+gating.
+
+\paragraph{Metric: normalized typed-answer accuracy.}
+Scoring compares the typed final answer, not prose. Count and value
+answers must agree within $10^{-9}$ after float canonicalization;
+entity-set answers require set equality of identifiers; interval
+answers count as correct when interval intersection-over-union is at
+least 0.5; remaining kinds use canonical-JSON equality. Because of the
+interval rule we call the pooled measure \emph{normalized typed-answer
+accuracy} rather than exact match; counts and values are exact.
+One known laxity: entity identifiers are collected from
+\texttt{uid}/\texttt{src}/\texttt{dst} fields at any nesting depth,
+which can accept an answer with the right identifiers in the wrong
+structure. Gold answers are computed by the engine under the same
+normalization.
+
+\paragraph{Unsupported-claim rate.}
+An answer is \emph{unsupported} if at least one emitted gated claim
+(count, value, entity, or ordering; pattern claims are checked but not
+yet gated) is rejected by the claim verifier. We report the
+answer-level rate with explicit denominators, together with
+\emph{coverage} (fraction of tasks for which an answer with at least
+one gated claim is emitted) and \emph{conditional accuracy} (accuracy
+among emitted answers), because a zero unsupported rate can arise
+either from correct supported answers or from abstention.
+
+\subsection{Primary frozen-test results}
+\label{sec:frozen}
+Table~\ref{tab:frozen} reports the campaign: frozen splits, three seeds
+for CollegeMsg, Qwen2.5-14B-Instruct-AWQ served by vLLM~0.11 on a
+single 24\,GB Turing GPU.
+
+\begin{table}[t]
+\centering\small
+\caption{Frozen-test campaign. Model: Qwen2.5-14B-Instruct-AWQ (AWQ
+4-bit), vLLM 0.11, 24\,GB Turing GPU; CollegeMsg pools three seeds
+(per-seed spread one task), other suites one seed. Paired bootstrap
+over CollegeMsg tasks (10k resamples): TGMS $-$ vector-RAG $+0.30$
+$[+0.21,+0.40]$; $-$ static-graph RAG $+0.34$ $[+0.25,+0.44]$; $-$
+text-to-Cypher $+0.26$ $[+0.15,+0.36]$.}
 \label{tab:frozen}
 \begin{tabular}{lcccc}
 \toprule
  & TGMS & Vector-RAG & Static-graph & Text-to-Cypher \\
 \midrule
 CollegeMsg (94$\times$3) & \textbf{0.408} & 0.106 & 0.064 & 0.152 \\
-email-EU (94) & \textbf{0.309} & -- & 0.053 & 0.106 \\
-synthetic (102) & \textbf{0.314} & -- & 0.029 & 0.157 \\
+email-EU (94) & \textbf{0.309} & --- & 0.053 & 0.106 \\
+synthetic (102) & \textbf{0.314} & --- & 0.029 & 0.157 \\
 probes, CollegeMsg (13$\times$3) & \textbf{0.897} & 0.154 & 0.000 & 0.000 \\
-probes, email-EU (13) & \textbf{0.846} & -- & 0.000 & 0.000 \\
+probes, email-EU (13) & \textbf{0.846} & --- & 0.000 & 0.000 \\
 \bottomrule
 \end{tabular}
 \end{table}
 
-Four results stand out. First, the development figure replicates almost
-exactly (0.409 dev, 0.408 test), and all deltas over baselines are now
-significant. Second, the correction-probe separation strengthens with
-scale and transfers across corpora: 0.897 and 0.846 versus zero for
-both latest-state baselines, with vector-RAG's 0.154 fully explained by
-the current-belief halves of probe pairs. Third, the end-to-end value
-of verification is now measured: raw reporter answers carry a 7.8\%
-unsupported-claim rate, and gating removes every unsupported claim
-(0.000 over 268 answers) at a cost of one point of exact match (0.418
-un-gated versus 0.408). Fourth, honesty about the ceiling: on the eight
-synthetic planted-pattern-mining tasks the 14B planner never produces a
-valid multi-operator plan and the system emits no answer at all ---
-failing safe, with an unsupported-claim rate of zero, on exactly the
-family it cannot plan. Plan quality tracks the model; the safety
-properties do not. A 7B configuration on the same split reaches 0.129,
-with one deterministic failure when repair-loop prompt growth exceeds
-its 16k serving window.
+\paragraph{Correction probes (H1).}
+TGMS answers 0.897 of probe questions on CollegeMsg and 0.846 on
+email-EU. The two latest-state baselines score exactly zero;
+vector-RAG's 0.154 comes entirely from current-belief halves, whose
+answers a latest-state input can contain. The before-correction halves
+require the earlier belief state, which no baseline input preserves ---
+a representational distinction, not a planning-quality one
+(Table~\ref{tab:baselineinfo}).
 
-\subsection{Post-campaign studies: scale, fair baselines, portability}
-\label{sec:postcampaign}
-Access to a multi-GPU cluster (RTX 5000/6000 Ada, H100; the University
-of Memphis iTiger GPU infrastructure~\cite{sharif2025itiger}) enabled
-studies the single 24\,GB development GPU could not support, all on the frozen
-CollegeMsg test split against a byte-identically rebuilt canonical store
-(replayed from the vaulted event log; a fresh ingest re-assigns
-transaction times and does not reproduce the store the frozen gold was
-computed on).
+\paragraph{Answer support, coverage, and the cost of gating (H3).}
+Of 270 raw reporter answers measured on CollegeMsg (the no-verifier
+ablation; 282 tasks, 12 runs produced no measurable report), 21
+contained at least one unsupported gated claim: an answer-level rate of
+7.8\%. With gating, 0 of 268 measured emitted answers contained an
+unsupported gated claim. Gating cost 1.0 percentage point of overall
+accuracy (0.418 ungated vs.\ 0.408 gated). The gated system's coverage
+was 199/282 (0.706) with conditional accuracy 0.548 among emitted
+answers --- so part of the zero unsupported rate is bought by
+abstention, and we report both sides of that trade. These guarantees
+extend only to gated claim types, not to pattern claims, approximate
+operators, write-back, or adversarial tool behavior.
+
+\paragraph{An honest zero.}
+On the eight synthetic planted-pattern tasks (T2) the 14B planner never
+produced a valid multi-operator mining plan: coverage on that family
+was zero, so accuracy was zero while no unsupported claim was emitted.
+Abstention is the designed failure mode, but it is a coverage failure,
+not a success.
+
+\paragraph{Replication of the development result.}
+The frozen CollegeMsg result, 0.408, closely matches the 0.409
+development-split result obtained during protocol design (22 tasks,
+same configuration), indicating that the development figure was not an
+artifact of split selection.
+
+\subsection{Mechanism ablations and verifier validation}
+\label{sec:mechanisms}
+
+\paragraph{Output contracts (H2).}
+With output-contract checking disabled on the development split,
+first-emission ``validity'' \emph{rises} --- the validator simply
+checks less --- while execution success and accuracy fall: at 7B,
+validity 0.23$\to$0.41 but execution success 0.55$\to$0.23 and accuracy
+0.136$\to$0.091; at 14B, validity 0.50$\to$0.55 but accuracy
+0.409$\to$0.318. Both runs were repeated at an equal generation budget
+with identical results. The check does not create or remove failures;
+it moves them from silent runtime deaths to statically repairable
+rejections.
+
+\paragraph{Completeness tracking (H3).}
+Disabling truncation-taint propagation on the development split lets 3
+answers present a fully supported claim over truncated evidence (versus
+0 with tainting); most development tasks fit one result page, which is
+why the controlled generator below isolates the mechanism more sharply.
+
+\paragraph{Verifier fault injection.}
+Table~\ref{tab:mutations} summarizes all mutation classes. The classic
+classes perturb mechanically derived, fully grounded answers from
+oracle plans (87-answer pool; zero false positives). The
+database-semantics classes run on a dedicated non-frozen suite with an
+enriched 202-answer pool (zero false positives); a receipted rerun on
+the frozen-campaign store reproduces every rate. The wrong-belief-state
+class takes its incorrect value from a control execution of the same
+plan with \texttt{as\_of\_tt} removed; the truncated-count class
+shrinks one page limit so a correct count is computed over a partial
+page.
 
 \begin{table}[t]
 \centering\small
-\caption{Model-scale study: frozen CollegeMsg test split, temperature 0.
-The operator-backed advantage grows with capability while baselines stay
-flat; probes saturate at 32B; the 72B-AWQ regression isolates
-quantization as the planning bottleneck. Emitted unsupported-claim rate
-is 0.000 in every cell.}
+\caption{Verifier mutation classes. ``Detected'' means the mutated
+claim no longer verifies as fully supported. The final column disables
+the mechanism under test where one exists.}
+\label{tab:mutations}
+\begin{tabular}{lrrr}
+\toprule
+mutation class & cases & detected & w/o mechanism \\
+\midrule
+count $\pm 1$ & 250 & 250 & --- \\
+entity substitution (fabricated) & 250 & 250 & --- \\
+real-but-uncited entity added & 100 & 100 & --- \\
+ordering operand swap & 100 & 100 & --- \\
+unit confusion ($\mu$s as ms) & 100 & 100 & --- \\
+wrong belief state & 60 & 60 & --- \\
+truncated-page count & 15 & 15 & 0 \\
+wrong-step citation & 100 & 36 & --- \\
+entity member dropped & 100 & 0 & --- \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+Two entries are deliberate negatives. Wrong-step citations are caught
+only when the surrogate step cannot ground the claim (a provenance
+pointer naming an uncited step is now rejected outright; the remaining
+64 cases were genuinely grounded by the surrogate evidence). Dropped
+entity-set members are invisible to trace grounding by construction:
+the verifier checks that claimed identifiers appear in cited evidence
+(precision), while set completeness is checkable only against the
+database --- gold scoring catches it, the trace verifier does not.
+The reasoning chain for the truncation row: value-only verification
+accepts a count that is arithmetically correct over the returned page;
+completeness metadata records that the page is partial; propagating
+that metadata through dependent steps prevents the count from being
+treated as a complete answer.
+
+\subsection{Model and serving sensitivity}
+\label{sec:sensitivity}
+These post-campaign studies were run under a different serving
+configuration --- a multi-GPU cluster (RTX 5000/6000 Ada, H100; the
+University of Memphis iTiger infrastructure~\cite{sharif2025itiger}),
+full-precision weights except where noted, vLLM 0.11/cu126, one seed
+--- against the same frozen splits and a byte-identically replayed
+canonical store. Absolute values should not be compared with the AWQ
+primary evaluation; the object is within-configuration trends.
+
+\begin{table}[t]
+\centering\small
+\caption{Model-scale study. All rows: iTiger cluster, vLLM 0.11/cu126,
+temperature 0, one seed, frozen CollegeMsg test split; fp16 except the
+72B row (AWQ 4-bit). Emitted unsupported-claim rate is 0.000 in every
+row.}
 \label{tab:scale}
 \begin{tabular}{lccccc}
 \toprule
  & \multicolumn{2}{c}{TGMS} & Static-graph & Text-to-Cypher \\
-model & EM & probes & EM & EM \\
+model & acc. & probes & acc. & acc. \\
 \midrule
 Qwen2.5-7B fp16 & 0.138 & 0.38 & 0.096 & 0.096 \\
 Qwen2.5-14B fp16 & 0.340 & 0.77 & 0.032 & 0.191 \\
@@ -472,107 +625,118 @@ Qwen2.5-72B AWQ & 0.511 & 0.31 & 0.096 & 0.138 \\
 \end{tabular}
 \end{table}
 
-\paragraph{The advantage grows with the model.}
-Table~\ref{tab:scale}: exact match rises 4.6$\times$ from 7B to 32B
-(0.138 to 0.628) while the baselines never exceed 0.277 at any scale ---
-the interface is what converts model capability into answer quality, and
-serialized-context interfaces cannot. Belief-state probes reach a
-perfect 1.000 at 32B: the bi-temporal machinery is fully exploitable by
-a sufficiently capable planner. The 72B-AWQ point \emph{regresses} on
-both metrics (0.511; probes 0.31) despite five times the parameters ---
-isolating quantization, not scale, as the bottleneck for structured
-planning, a deployment-relevant finding since AWQ is precisely what
-small-GPU serving uses.
+\paragraph{Scale.}
+Under the evaluated prompts, models, and representations, the
+operator-backed interface benefits more strongly from increasing
+full-precision model size than the two tested baselines (0.138 to 0.628
+from 7B to 32B, with probe questions reaching 1.000 at 32B, while
+neither baseline exceeds 0.277). This suggests that the constrained
+plan representation makes additional planning capability more usable;
+it does not establish that serialized-context interfaces categorically
+cannot benefit from stronger models. The 14B full-precision row (0.340)
+differs from the primary 14B-AWQ result (0.408); the two were served on
+different hardware, engines, and precisions and are not directly
+comparable.
 
-\paragraph{Un-hobbling the retrieval baseline makes it worse.}
-The development-split protocol capped vector-RAG at $k{=}1$ because 28k
-serving windows could not fit more (Section~\ref{sec:findings}). On an
-H100 with the model's native 32k window we ran the intended $k{=}20$
-breadth (20 chunks of 24 events, ${\sim}$27k-token prompts): exact
-match \emph{fell} to 0.021 --- below the $k{=}1$ configuration ---
-while consuming 32{,}475 tokens per task against TGMS's 6{,}521
-(same-run comparison: 0.362 vs.\ 0.021). More retrieved context diluted
-rather than helped: the baseline's failure is representational, not a
-retrieval budget artifact.
+\paragraph{Quantization.}
+The 72B-AWQ configuration underperforms the 32B full-precision
+configuration on both accuracy and probes. This result is consistent
+with quantization-related degradation in structured planning, but the
+present experiment does not separate quantization from model size and
+serving effects; a matched pair (32B fp16 vs.\ 32B AWQ, or 72B fp16
+vs.\ 72B AWQ) is required to isolate the cause.
 
-\paragraph{Portability and the safety invariant.}
-With the same untuned operator manual, Llama-3.1-8B reaches 0.043 and
-Phi-4-mini (3.8B) 0.015 --- verified insensitive to generation budget
---- so plan competence transfers only above a capability threshold. The
-number that never moves is the emitted unsupported-claim rate:
-\textbf{0.000 in every configuration measured} --- four scales, three
-model families, two quantizations, two serving clusters. Competence
-lives outside the trust boundary and varies with the model; safety
-lives inside it and does not.
+\paragraph{Long-context retrieval control.}
+Two vector-RAG configurations must be distinguished. The
+\emph{original chunking target} ($k{=}20$ chunks of 256 events,
+roughly $2\times 10^5$ prompt tokens on this corpus) is not runnable on
+any serving window we tested; the primary campaign therefore used
+$k{=}1$ of 256 events, and a measured $k{=}2$ request of 36{,}956
+tokens was rejected by the serving window. The \emph{long-context
+control} ($k{=}20$ chunks of 24 events, ${\sim}$27k tokens, run on an
+H100 within the model's native 32k window, 14B fp16) scored 0.021,
+consuming 32{,}475 tokens per task, against TGMS's 0.362 at 6{,}521
+tokens in the same run. Increasing retrieval breadth from the locally
+feasible configuration to this long-context configuration did not
+improve accuracy; the main result is therefore not explained solely by
+the small $k$ of the original experiment. Chunking granularity,
+ranking, serialization, and prompt design were not exhaustively
+explored.
 
-Third, operator latency remains modest at the tested scale. Operators
-are benchmarked in isolation on the host CPUs of the GPU server (two
-Intel Xeon Silver 4210 processors, 40 hardware threads, 94\,GB RAM)
-using the DuckDB backend over a synthetic store with $10^6$ edge versions
-and 20{,}000 nodes (generator seed 1). Each case performs one untimed
-warm-up call, which populates the temporal-CSR cache, followed by seven
-timed repetitions. Reported values are operator-only p50 wall times; no
-LLM or network is involved. Median latency is 98\,ms for snapshot
-subgraph, 163\,ms for a global diff, 63--244\,ms for reachability, and
-about 155\,ms for metric time series. Profiling showed that
-materializing unused string columns dominated several scans. Removing
-those columns produced most of the observed improvement.
+\paragraph{Cross-family transfer.}
+With the same untuned operator manual, Llama-3.1-8B reaches 0.043
+(verified insensitive to generation budget) and Phi-4-mini (3.8B)
+0.015. The two smaller untuned models produce few successful plans,
+indicating that portability to weaker model families is not automatic;
+determining whether a family-independent capability threshold exists
+requires matched-size experiments. Across the tested configurations ---
+four scales, three families, two quantizations, two serving clusters
+--- gated claim support remained stable (no measured unsupported gated
+claims) while answer accuracy and coverage varied substantially.
 
-\section{Findings from live model traffic}
+\paragraph{Constrained decoding.}
+Grammar-constrained JSON decoding of the plan IR, evaluated as the
+escalation for syntactically invalid plans, degraded the 14B
+development result on every axis (accuracy 0.409$\to$0.227,
+first-emission validity 0.50$\to$0.32, 65\% more wall time): syntactic
+validity was not the bottleneck, and post-generation checking with a
+repair loop was both safer and cheaper than constraining generation.
+
+\subsection{Operator performance}
+\label{sec:opperf}
+Operators are benchmarked in isolation on the host CPUs of the
+development server (two Xeon Silver 4210, 40 hardware threads, 94\,GB
+RAM, DuckDB backend) over synthetic stores of $10^5$, $10^6$, and
+$10^7$ edge versions, with one untimed warm-up and seven timed
+repetitions; values are operator-only p50 wall times. Two-hop
+snapshots run in 13/99/272\,ms across the three scales, global diffs
+in 23/163/485\,ms, and metric time series in 144/157/1127\,ms; the
+$10^7$ store occupies 2.6\,GB. Over-budget traversals refuse with a
+narrowing suggestion rather than degrade. Prompt size stays
+${\sim}$6--10k tokens per task at every data scale because structure
+never enters the context window.
+
+\section{Design lessons and their experimental support}
 \label{sec:findings}
+Each lesson follows the same chain: observed failure $\to$ missing
+system property $\to$ mechanism added $\to$ controlled test $\to$
+consequence.
 
-\paragraph{An operator manual must specify outputs.}
-The first live matrix run produced no successful executions across the
-systems under test. The generated plans passed input validation but
-referred to output paths that did not exist. For example, a plan used
-\texttt{s2.count} even though the operator returned
-\texttt{rows\_total}. Input schemas cannot detect this error. We added
-output fields to the central operator registry, checked all result paths
-statically, and returned the valid field list in repair messages. On the
-probe tasks, this change raised execution success from 0.00 to 1.00.
+\paragraph{Lesson 1: models invent \emph{output} fields.}
+Our first live run scored 0 of 22 development tasks on execution ---
+with every plan passing input validation. Plans referenced
+\texttt{s2.count} where the operator emits \texttt{rows\_total}:
+argument schemas alone are insufficient for a model-generated dataflow
+plan, because nothing constrained what the model read \emph{back}. TGMS
+added declared output fields to the operator registry and static
+checking of every result reference, with the legal field list in the
+repair payload. In the controlled re-run, execution success on the
+three probe tasks rose from 0/3 to 3/3 and overall from 0/22 to 12/22;
+the effect replicates at 14B (Section~\ref{sec:mechanisms}). Result
+schemas deserve the same rigor as argument schemas.
 
-\paragraph{Verification must check evidence completeness.}
-In one run, the 14B model called reachability with the default page limit.
-It then counted the 100 returned rows, even though the complete result
-contained 343 rows. The arithmetic was correct, so a value-only verifier
-marked the claim as supported. TGMS now propagates truncation taint
-through dependent steps and limits claims based on tainted evidence to
-\emph{weakly supported}. Other forms of incomplete evidence, such as
-cost-limited windows and sampling, need similar treatment. A useful
-verification model should record these conditions rather than represent
-support as a single Boolean value.
+\paragraph{Lesson 2: verification must check evidence completeness.}
+A live 14B run called reachability, received the default page of 100
+rows (of 343), and computed a flawlessly correct count --- of the page.
+Value-only verification accepts that claim; it is false as a statement
+about the database. TGMS records completeness metadata on every result
+page and propagates truncation taint through dependent steps; claims
+resting on tainted evidence are capped below full support. The
+controlled generator in Section~\ref{sec:mechanisms} shows the
+mechanism is load-bearing: 15/15 truncated-page counts refused full
+support with tainting, 0/15 without. The same treatment should extend
+to sampling, approximation, timeouts, and stale replicas --- database
+answers already know when they are partial.
 
-\paragraph{Serving limits affect baseline fairness.}
-A common vector-RAG setting retrieves $k=20$ chunks with 256 serialized
-events per chunk. On our hardware, numeric event text uses about 0.65
-tokens per character, and chunks are capped at 20{,}000 characters when
-inserted into the prompt. Table~\ref{tab:b1cfg} lists the
-configurations we attempted. The largest feasible setting was $k=1$,
-which exposes about 0.4\% of the corpus per question. TGMS uses about
-8--10k tokens per task, and this prompt size does not grow with the
-number of stored events. Baseline configurations should therefore be
-reported together with the serving limits under which they were run; the
-frozen-test campaign will add a longer-context serving configuration to
-give the retrieval baselines a more favorable setting.
-
-\begin{table}[t]
-\centering\small
-\caption{Attempted vector-RAG configurations under local serving
-(Qwen2.5, one 24\,GB GPU). Windows: 16{,}384 tokens (7B) and 28{,}672
-tokens (14B), the latter minus a 4{,}096-token generation reservation.}
-\label{tab:b1cfg}
-\begin{tabular}{llp{6.4cm}}
-\toprule
-Setting & Prompt size & Outcome \\
-\midrule
-$k=20$ & $\approx\!2\times10^5$ tokens (est.) & Exceeds every feasible
-window; not runnable locally. \\
-$k=2$ & 36{,}956 tokens (observed) & Rejected by the server
-(HTTP 400 context-length error) under both windows. \\
-$k=1$ & fits both windows & Used in all reported runs. \\
-\bottomrule
-\end{tabular}
-\end{table}
+\paragraph{Lesson 3: serving limits shape baseline design.}
+Numeric-dense event text tokenizes at roughly 0.65 tokens per
+character, so the original vector-RAG chunking target could not fit any
+window we could serve locally, and the primary campaign ran it at
+$k{=}1$. When later hardware allowed a runnable $k{=}20$ long-context
+control, added breadth did not improve the baseline
+(Section~\ref{sec:sensitivity}). Baseline configurations should be
+reported together with the serving limits under which they ran, and
+retrieval-breadth conclusions should be tested rather than assumed.
 
 \section{Related work}
 
@@ -613,7 +777,7 @@ and compose external tools. Program-aided methods delegate arithmetic
 and symbolic computation to an interpreter~\cite{gao2023pal,chen2023pot}.
 ToolGate attaches Hoare-style pre- and postconditions to individual tool
 invocations~\cite{liu2026toolgate}. TGMS applies these ideas to temporal
-graphs. Its plan is a constrained DAG over a closed set of independently
+graphs. Its plan is a constrained DAG over a fixed set of independently
 tested operators, checked statically before execution rather than call
 by call. The executable surface also enforces identifier grounding and
 output-field validity.
@@ -664,33 +828,51 @@ second, and fault injection evaluates the third. The tool server uses
 MCP~\cite{mcp2024}, so it can be connected to agent frameworks that
 support the protocol.
 
-\section{Limitations and roadmap}
-The frozen-test campaign covers three corpora in one domain (temporal
-communication graphs), two Qwen model sizes on a single 24\,GB GPU, and
-290 test tasks; a cross-family model configuration is in progress.
-Constrained decoding was evaluated and rejected at 14B: grammar-masked
-generation degraded exact match (0.409 to 0.227), first-emission
-validity, and latency --- checking artifacts after generation beats
-constraining generation. Multi-operator pattern-mining plans exceed the
-current planner (the campaign's honest zero), pattern claims are checked
-and reported but not yet gated, and agent write-back remains disabled
-until provenance and authorization policies are complete. Sustained
-campaign traffic also surfaced an operational lesson: long-running
-inference engines on older accelerators degrade and need scheduled
-recycling --- endurance is part of agent-era evaluation. Next:
-concurrency when many agents share one store, cost-based rewriting of
-agent plans, and verification under approximation.
+\section{Limitations}
+\label{sec:limits}
+\textbf{Workload alignment.} The tasks and the operator set were
+co-designed; the study does not yet establish coverage of independently
+collected temporal-graph questions.
+\textbf{Domain scope.} The real datasets are communication networks;
+cross-domain generalization is untested.
+\textbf{Capability versus fairness.} Correction probes demonstrate the
+value of transaction-time information but compare systems with
+different representational capabilities
+(Table~\ref{tab:baselineinfo}).
+\textbf{Coverage trade-off.} Zero unsupported gated claims is partly
+achieved through abstention; coverage and conditional accuracy are
+reported alongside it.
+\textbf{Verification scope.} Pattern claims are checked but not gated;
+approximate operators and probabilistic entity resolution are
+unsupported; the guarantees do not extend to adversarial tool behavior
+or write-back.
+\textbf{Causal uncertainty.} The scale study does not isolate
+quantization from size and serving effects, and two small cross-family
+models cannot identify a general capability threshold.
+\textbf{System maturity.} Concurrency, isolation, incremental index
+maintenance, cost-based plan rewriting, and agent write-back remain
+open; write-back is schema-ready but disabled pending provenance and
+authorization policies.
+\textbf{Baseline scope.} The study evaluates particular vector-RAG,
+static-graph RAG, and text-to-Cypher implementations, not every
+retrieval or query-generation design.
 
 \section{Conclusion}
-TGMS treats temporal graph question answering as a systems problem.
-The LLM chooses and composes operations, while the database performs the
-computation and records the evidence. Typed operator contracts,
-transaction-time semantics, and trace-based verification reduce the work
-that the model must do on its own. The development results show clear
-benefits on correction probes and identify two practical requirements:
-tools need explicit output contracts, and verifiers need to track
-incomplete evidence. The frozen-test campaign will determine how well
-these findings generalize across datasets, models, and serving setups.
+TGMS explores a database architecture in which an LLM plans and
+reports, while the data system owns temporal semantics, deterministic
+computation, bounded execution, and evidence checking. The frozen
+evaluation shows that this separation is particularly valuable for
+questions that require transaction-time belief states and for answers
+whose support depends on complete intermediate results. The experiments
+also expose two general interface requirements: machine-generated plans
+need explicit output contracts, and claim verification must represent
+evidence completeness rather than checking values alone. TGMS does not
+yet solve general temporal graph question answering: its workload
+remains domain-specific, complex multi-operator plans frequently lead
+to abstention, and several claim types and approximate operators remain
+outside the gating boundary. These limitations motivate cost-based plan
+rewriting, broader workload coverage, concurrency control, and
+verification with approximate evidence.
 
 \paragraph{Artifacts.}
 Code, benchmark generator, task suites, guided demo, and trace viewer:

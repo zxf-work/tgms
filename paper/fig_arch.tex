@@ -11,7 +11,7 @@
   llm/.style={base, draw=tgmsamber!80, fill=tgmsamber!9, thick},
   vrf/.style={base, draw=tgmsgreen!80, fill=tgmsgreen!8, thick},
   sys/.style={base, draw=tgmsblue!75, fill=tgmsblue!7, thick},
-  band/.style={base, draw=tgmsdeep!60, fill=tgmsdeep!6, thick, text width=128mm},
+  band/.style={base, draw=tgmsdeep!60, fill=tgmsdeep!6, thick, text width=86mm},
   lbl/.style={font=\scriptsize, text=black!55},
   chip/.style={font=\tiny\bfseries, text=white, rounded corners=2pt,
                inner sep=2.2pt, yshift=1mm},
@@ -30,17 +30,17 @@
 \node[chip, fill=tgmsgreen!90!black] at (ver.north west) {CHECK};
 
 % ---- bands ---------------------------------------------------------------
-\node[band] (tools) at (7.0,-2.35)
+\node[band] (tools) at (8.7,-2.35)
   {\textbf{Tool layer} {\scriptsize(in-process router / MCP)}\\[1pt]
    {\small O1--O13: typed $\cdot$ \mbox{deterministic} $\cdot$ bounded $\cdot$
    bi-temporal (\texttt{as\_of\_tt}) $\cdot$ cost-guarded}};
-\node[band, fill=tgmsdeep!11] (store) at (7.0,-3.85)
+\node[band, fill=tgmsdeep!11] (store) at (8.7,-3.85)
   {\textbf{Bi-temporal substrate}\\[1pt]
    {\small versions over valid $\times$ transaction time $\cdot$ write-ahead
    event log $\cdot$ K\`uzu / DuckDB $\cdot$ temporal CSR}};
 
 % ---- bottom row: report -> verify claims --------------------------------
-\node[llm, text width=36mm] (rep) at (2.4,-6.1)
+\node[llm, text width=36mm] (rep) at (2.0,-6.1)
   {\textbf{Reporter}\\[1pt] {\scriptsize writes the answer object\\
    (claims cite evidence steps)}};
 \node[vrf, text width=76mm] (cver) at (9.9,-6.1)
@@ -49,6 +49,14 @@
    \mbox{unsupported claims are gated out of the answer}}};
 \node[chip, fill=tgmsamber] at (rep.north west) {LLM};
 \node[chip, fill=tgmsgreen!90!black] at (cver.north west) {CHECK};
+
+% ---- trust boundary --------------------------------------------------------
+\node[draw=tgmsblue!70, dashed, very thick, rounded corners=8pt, inner sep=9pt,
+      fit=(ver)(exec)(tools)(store)(cver)] (tcb) {};
+\node[font=\scriptsize\bfseries, text=tgmsblue!80!black,
+      anchor=south east] at (tcb.south east) {TRUSTED (deterministic, contract-enforced)};
+\node[font=\scriptsize\bfseries, text=tgmsamber!90!black, rotate=90,
+      anchor=south] at ($(plan.west)!0.5!(rep.west)+(-0.45,0)$) {UNTRUSTED (LLM)};
 
 % ---- arrows --------------------------------------------------------------
 \draw[arr] (plan) -- node[lbl, above]{plan} (ver);
