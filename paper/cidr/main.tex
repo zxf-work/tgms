@@ -82,9 +82,9 @@ to emit one correct query in a language that cannot express ``what we
 believed on March~1'' over a latest-state store, and whose output the
 model must still interpret. Retrieval pipelines serialize edges into
 prompt chunks, destroying the structure the question quantifies over ---
-and on numeric-dense data even $k{=}2$ retrieved chunks overflow a 28k
-serving window (we measured 36{,}956 prompt tokens), so the model sees
-under 1\% of the corpus. And in all of these designs the model performs
+and giving them more window does not help: at the intended $k{=}20$
+retrieval breadth on an H100, vector-RAG scores \emph{worse} than at
+the $k{=}1$ a 24\,GB card once forced (\S\ref{sec:eval}). And in all of these designs the model performs
 arithmetic, invents identifiers, and asserts numbers that appear in no
 result.
 
@@ -339,7 +339,8 @@ unsupported-claim rate; gating removes every one (measured 0.000 over
 \centering\small
 \caption{Frozen-test campaign, exact match, Qwen2.5-14B, temperature 0.
 All rows are complete over frozen splits (CollegeMsg at 3 seeds);
-a second model family \tbd{Phi-4-mini} is pending.}
+scale and cross-family configurations appear in Figure~\ref{fig:scale}
+and \S\ref{sec:eval}.}
 \label{tab:e2e}
 \begin{tabular}{lcccc}
 \toprule
@@ -405,31 +406,71 @@ only against the database (Lesson~3). A receipted rerun on the frozen
 campaign store reproduces every per-class rate (13/13 truncated counts
 flagged, 13/13 missed under the ablation; 8/8 wrong-belief-state).
 
-\paragraph{The database stays a database.}
-Prompt size is constant (${\sim}$8--10k tokens) as data grows, because
-structure never enters the context window. Operator p50 latency on
-$10^5$/$10^6$/$10^7$-event stores: 2-hop snapshot 13/99/272\,ms; global
-diff 23/163/485\,ms; metric time series 144/157/1127\,ms (40-thread CPU
-host, DuckDB backend; the $10^7$ store is 2.6\,GB). Traversals beyond
-the cost budget refuse with a narrowing suggestion rather than degrade
---- bounded execution is part of the contract
-\tbd{small line figure replacing this prose}.
+\begin{figure}[t]
+\centering
+\begin{tikzpicture}[scale=0.9]
+\begin{scope}
+% axes
+\draw[->, black!60] (0,0) -- (7.4,0) node[below left, font=\scriptsize]{model};
+\draw[->, black!60] (0,0) -- (0,3.6) node[left, font=\scriptsize, rotate=90, anchor=south, yshift=2pt]{exact match};
+\foreach \y/\l in {0.7/0.2, 1.4/0.4, 2.1/0.6, 2.8/0.8}
+  {\draw[black!20] (0,\y) -- (7.2,\y); \node[left, font=\tiny] at (0,\y) {\l};}
+\foreach \x/\l in {0.9/7B, 2.7/14B, 4.5/32B, 6.3/{72B\,AWQ}}
+  \node[below, font=\tiny] at (\x,0) {\l};
+% ours line
+\draw[very thick, blue!70!black, mark=*]
+  plot coordinates {(0.9,0.48) (2.7,1.19) (4.5,2.20) (6.3,1.79)};
+\node[above left, font=\tiny, blue!70!black] at (4.5,2.24) {TGMS};
+% b5
+\draw[thick, orange!80!black, mark=square*, mark size=1.4pt]
+  plot coordinates {(0.9,0.34) (2.7,0.67) (4.5,0.97) (6.3,0.48)};
+\node[below right, font=\tiny, orange!80!black] at (4.5,0.97) {text-to-Cypher};
+% b2
+\draw[thick, black!50, mark=triangle*, mark size=1.6pt]
+  plot coordinates {(0.9,0.34) (2.7,0.11) (4.5,0.26) (6.3,0.34)};
+\node[above, font=\tiny, black!55] at (2.7,0.10) {static-graph RAG};
+% annotate probes + AWQ
+\node[font=\tiny, blue!70!black] at (4.5,2.55) {probes 1.000};
+\draw[->, black!60, thin] (6.05,2.15) -- (6.25,1.86);
+\node[font=\tiny, black!70, align=left] at (5.7,2.32) {AWQ, not scale};
+\end{scope}
+\end{tikzpicture}
+\caption{The advantage grows with model capability (frozen CollegeMsg
+test split): TGMS rises 4.6$\times$ from 7B to 32B while baselines stay
+flat; belief-state probes saturate at 32B; the 72B-AWQ regression
+isolates quantization as the planning bottleneck. Emitted
+unsupported-claim rate is 0.000 at every point.}
+\label{fig:scale}
+\end{figure}
 
-\paragraph{Portability, and the invariant it exposes.}
-The architecture is not tied to one checkpoint, and running it across
-model sizes and families makes visible \emph{which} properties travel.
-On the CollegeMsg test split, Qwen2.5-7B reaches 0.129 exact match (from
-0.408 at 14B), and Phi-4-mini --- a 3.8B model of a different family,
-with the same operator manual and no family-specific prompt tuning ---
-reaches only 0.043, producing a valid first plan on 16\% of tasks. Plan
-quality collapses as the planner weakens. Yet the number that matters
-for a trusted computing base does not move: the emitted unsupported-claim
-rate is \textbf{0.000} for every configuration, 14B to 3.8B, Qwen to
-Phi. A weaker model answers fewer questions correctly; it does not answer
-more of them \emph{wrongly}. Safety lives inside the boundary and is
-invariant to the model; competence lives outside it and is not. That
-decoupling is the whole point of the architecture, and it is easiest to
-see precisely where the model is worst.
+\paragraph{The database stays a database.}
+Prompt size stays ${\sim}$6--10k tokens as data grows, because structure
+never enters the context window; the un-hobbled $k{=}20$ retrieval
+baseline consumed 32{,}475 tokens per task to score 0.021 against
+TGMS's 0.362 at 6{,}521 (same run, same model). Operator p50 latency on
+$10^5$/$10^6$/$10^7$-event stores: 2-hop snapshot 13/99/272\,ms; global
+diff 23/163/485\,ms (40-thread CPU host; the $10^7$ store is 2.6\,GB);
+over-budget traversals refuse with a narrowing suggestion rather than
+degrade --- bounded execution is part of the contract.
+
+\paragraph{Scale, and the invariant it exposes.}
+Running the architecture across model scales and families makes visible
+\emph{which} properties travel (Figure~\ref{fig:scale}). Exact match
+grows 4.6$\times$ from 7B to 32B full precision (0.138 to 0.628) while
+the baselines never exceed 0.277 --- the interface converts model
+capability into answer quality, and serialized-context interfaces
+cannot. Belief-state probes saturate at \textbf{1.000} at 32B. Two
+honest wrinkles sharpen the picture: the 72B-AWQ point \emph{regresses}
+(0.511; probes 0.31), isolating quantization --- exactly what small-GPU
+deployment uses --- rather than scale as the planning bottleneck; and
+different families with an untuned manual (Llama-3.1-8B 0.043,
+Phi-4-mini 0.015) show competence transfers only above a capability
+threshold. The number that never moves is the emitted unsupported-claim
+rate: \textbf{0.000 in every configuration measured} --- four scales,
+three families, two quantizations, two clusters. A weaker model answers
+fewer questions; it does not answer more of them \emph{wrongly}.
+Competence lives outside the trust boundary and varies with the model;
+safety lives inside it and does not.
 
 \paragraph{Honest limitations.}
 Single-GPU open-weight serving; one graph domain; 290 frozen test tasks;
