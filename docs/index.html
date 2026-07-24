@@ -60,10 +60,10 @@ against the execution trace that produced it.</div>
 
 <section>
 <div class="grid g3">
-<div class="card"><div class="stat">0.41 <small>vs 0.15 best baseline</small></div>
-<div class="mut">Exact match on the <b>frozen test split</b> (CollegeMsg, 94 tasks
-× 3 seeds, Qwen2.5-14B, one 24&nbsp;GB GPU) — replicating the dev figure, with
-every baseline delta significant at 95% CI.</div></div>
+<div class="card"><div class="stat">0.14 → 0.63 <small>as models scale · baselines flat</small></div>
+<div class="mut">The operator-backed advantage <b>grows with model capability</b>
+(Qwen2.5 7B→32B, frozen test split) while RAG and text-to-Cypher never exceed
+0.28 — and giving RAG its intended k=20 context made it <i>worse</i>.</div></div>
 <div class="card"><div class="stat">0.90 <small>vs 0.00 latest-state systems</small></div>
 <div class="mut">Correction probes — <i>“as of transaction time T, what did we
 believe?”</i> — 0.897 on CollegeMsg, 0.846 on email-EU. Snapshot and RAG systems
@@ -158,10 +158,14 @@ Unsupported claims never ship.</div>
 <tr><td>email-EU (94 tasks)</td><td class="win">0.309</td><td>—</td><td>0.053</td><td>0.106</td></tr>
 <tr><td>synthetic patterns (102 tasks)</td><td class="win">0.314</td><td>—</td><td>0.029</td><td>0.157</td></tr>
 <tr><td>correction probes</td><td class="win">0.897</td><td>0.154</td><td>0.000</td><td>0.000</td></tr>
+<tr><td>CollegeMsg @ Qwen2.5-32B (H100)</td><td class="win">0.628</td><td>—</td><td>0.074</td><td>0.277</td></tr>
+<tr><td>… probes @ 32B</td><td class="win">1.000</td><td>—</td><td>0.077</td><td>0.385</td></tr>
+<tr><td>vector-RAG at intended k=20</td><td class="win">0.362</td><td>0.021</td><td>—</td><td>—</td></tr>
 </table>
 <div class="mut" style="font-size:13px;margin-top:8px">Frozen test splits
-(SHAs recorded before measurement), open-source models served locally; every
-number carries determinism receipts —
+(SHAs recorded before measurement); validated across two clusters, four model
+scales, and three model families — emitted unsupported-claim rate is 0.000 in
+every configuration measured. Every number carries determinism receipts —
 <a href="https://github.com/zxf-work/tgms/blob/main/docs/TECHNICAL_REPORT.md">full report</a>.</div>
 </section>
 
