@@ -39,7 +39,8 @@ BASELINE_SYSTEMS = ("b1", "b2", "b5", "b6")
 # --------------------------------------------------------------------------- #
 
 def _task_window(task: dict[str, Any]) -> tuple[int, int] | None:
-    for step in task["oracle_plan"]["steps"]:
+    # independent-study tasks carry manual gold and no oracle plan
+    for step in (task.get("oracle_plan") or {}).get("steps", []):
         w = step["args"].get("window")
         if isinstance(w, dict) and "t_a" in w and not any(
                 isinstance(v, dict) for v in w.values()):
