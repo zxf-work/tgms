@@ -321,3 +321,27 @@ implementation — hygiene checking starts at the marker recorded in D-010.
 - **Consequence:** queue on xzgpu is phi-heal -> b6 (3 corpora) ->
   bitcoinotc; no test-split reruns without a logged TGMS_FORCE reason.
   CIDR tables consume these runs via scripts/cidr_metrics.py.
+
+## D-026 — 2026-07-26 — Independent-question study pre-registered
+- **Context:** four students wrote 110 questions over CollegeMsg and
+  Bitcoin-OTC seeing only a natural-language data description and the
+  two-clock property (handout: contamination controls; examples from a
+  held-out library-log domain). Raw questions + hand-audited
+  classification: benchmarks/independent-v1/.
+- **Coverage result (no GPU needed):** 10/110 expressible by operator
+  composition; 98 require unimplemented capability — grouped/distinct
+  aggregation 76, arithmetic beyond count/sum/min/max 27,
+  property-filtered patterns 20, calendar semantics 18, global
+  scan-select 10, set ops 7, absence conditions 3 (multi-tagged);
+  1 clock conflation; 1 false presupposition. Behavioral findings:
+  writers misjudge data extent; writers anchor transaction time to
+  event years.
+- **Accuracy slice:** 5 runnable questions (3 CollegeMsg, 2 Bitcoin-OTC),
+  verbatim, double-keyed manual gold (SQL + independent Python, asserted
+  equal), 3 seeds, systems ours/b2/b5/b6. Frozen suite SHAs:
+  suite-indep-collegemsg 31f045b969e8f2f4..., suite-indep-bitcoinotc
+  b8ad8354bf8dba10.... Queued as campaign phase `independent` behind
+  the bitcoinotc phase.
+- **Consequence:** the CIDR draft reports coverage (RQ5) separately from
+  accuracy; the 76/27/20 gap counts become the priced agenda item
+  ("coverage-driven algebra growth").
