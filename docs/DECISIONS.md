@@ -300,3 +300,24 @@ implementation — hygiene checking starts at the marker recorded in D-010.
   persists at every scale. Full section: TECHNICAL_REPORT 8.2c. Serving
   and storage robustness fixes from the campaign are in vllm watchdog /
   kuzu pool bound / subprocess-bounded b5 / itiger job script.
+
+## D-025 — 2026-07-25 — CIDR revision experiments pre-registered (b6, Bitcoin-OTC)
+- **Context:** CIDR 2027 strategy review (2026-07-24) requires (1) a
+  same-information baseline isolating the operator interface from
+  history preservation, and (2) evidence beyond communication-network
+  domains. Both run on the frozen-campaign model (Qwen2.5-14B-AWQ).
+- **b6 (bi-temporal text-to-SQL):** the model writes DuckDB SQL against
+  the identical version store TGMS executes on (schema + vt/tt semantics
+  documented in the prompt; b5 repair budget; read-only subprocess
+  execution; shared answer contract). Frozen splits: CollegeMsg 94x3,
+  email-EU 94, synth 102 (existing D-018 SHAs).
+- **Bitcoin-OTC:** new financial-trust domain (SNAP soc-sign-bitcoinotc,
+  5,881 nodes / 35,592 signed ratings; rating as an edge property).
+  Canonical store built once on xzgpu (D-023 discipline; corrections
+  injected at suite generation, before any gold). Frozen test split:
+  94 tasks, seed 0, test_split_sha
+  4e69bfbac23a053fadd1139d7e2513838a214b400ce64e77e828b34c7b8ff3be.
+  Systems pre-registered: ours, b2, b5, b6; one seed.
+- **Consequence:** queue on xzgpu is phi-heal -> b6 (3 corpora) ->
+  bitcoinotc; no test-split reruns without a logged TGMS_FORCE reason.
+  CIDR tables consume these runs via scripts/cidr_metrics.py.
