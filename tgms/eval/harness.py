@@ -76,6 +76,16 @@ def run_task_ours(system: str, task: dict[str, Any], store: Store,
         "n_llm_calls": len(out["plan_result"].calls),
         "wall_s": round(time.perf_counter() - t0, 3),
     }
+    if trace is not None and not trace.ok:
+        # first failed step's error payload — makes exec failures diagnosable
+        # from cached rows instead of requiring a live rerun
+        errs = [s.get("error") for s in trace.steps if s.get("status") != "ok"]
+        row["exec_error"] = (errs[0] if errs else
+                             {"error": "E_ANSWER", "detail":
+                              str(trace.answer_error)[:300]})
+    elif trace is None:
+        row["exec_error"] = {"error": "E_NO_PLAN",
+                             "detail": "no admissible plan produced"}
     pred = trace.answer if trace is not None else None
     scores = score_answer(task["answer_kind"], task["gold"],
                           extract_pred(task["answer_kind"], pred))
