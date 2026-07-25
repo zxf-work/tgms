@@ -1,0 +1,15 @@
+# Independent-question study (CIDR review §10): student-written questions,
+# classes 1-2 only, verbatim text, double-keyed manual gold. 3 seeds for
+# stability at small N.
+suite_path: stores/suite-indep-bitcoinotc/suite.json
+store_path: stores/bitcoinotc
+out_dir: runs/test-indep-bitcoinotc
+split: test
+systems: [ours, b2, b5, b6]
+models: ["openai/Qwen/Qwen2.5-14B-Instruct-AWQ"]
+seeds: [0, 1, 2]
+max_repairs: 3
+b2_max_edges: 400
+memory_db: stores/bitcoinotc/memory.sqlite
+llm_api_base: "http://localhost:8000/v1"
+llm_api_key: "EMPTY"

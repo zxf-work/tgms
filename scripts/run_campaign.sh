@@ -115,5 +115,12 @@ bitcoinotc)
   run_heal configs/campaign/test-bitcoinotc.yaml runs/test-bitcoinotc \
     "$M14" "$P14" --max-model-len 28672
   echo "PHASE_DONE bitcoinotc" ;;
-*) echo "usage: $0 guided-ab|main|datasets|models|b6|bitcoinotc"; exit 2 ;;
+independent)
+  serve "$M14" "$P14" --max-model-len 28672
+  run_heal configs/campaign/test-indep-collegemsg.yaml runs/test-indep-collegemsg \
+    "$M14" "$P14" --max-model-len 28672
+  run_heal configs/campaign/test-indep-bitcoinotc.yaml runs/test-indep-bitcoinotc \
+    "$M14" "$P14" --max-model-len 28672
+  echo "PHASE_DONE independent" ;;
+*) echo "usage: $0 guided-ab|main|datasets|models|b6|bitcoinotc|independent"; exit 2 ;;
 esac
