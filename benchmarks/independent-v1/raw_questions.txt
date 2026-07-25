@@ -1,0 +1,132 @@
+Q1 | How many distinct accounts sent at least one message in April 2004? | number | Basic activity volume for a specific month.
+Q2 | How many distinct accounts received at least one message in the entire dataset? | number | To understand the reach of the network versus those who only send.
+Q3 | Which account sent the highest number of messages in March 2004? | list of accounts | To identify the most prolific sender during a specific month.
+Q4 | Which account received messages from the largest number of distinct senders between January 1, 2004 and June 30, 2004? | list of accounts | To find the person who was the most common contact point for others in the first half of the year.
+Q5 | On which date were the most messages sent? | time | To pinpoint the single day with the highest network activity.
+Q6 | What is the longest sequence of accounts a1 → a2 → ... → an where each account sent a message to the next in the chain, with each message happening after the previous one, during the entire log? Report the chain length (n). | number | To measure the longest chronological information cascade visible in the data.
+Q7 | How many accounts sent exactly one message total, and that message was in the first week of January 2004? | number | To count potentially "one-off" users who signed up and used the system only at the very start.
+Q8 | Between accounts n152 and n847, which one sent the first message, and on what date? | time | To determine the direction and start date of a specific pair's communication.
+Q9 | Was there any 24-hour period where a single account sent more than 100 messages? Answer yes or no. | yes-no | A basic check for automated or spam-like sending behavior.
+Q10 | How many accounts received a message but never sent one during the entire six months? | number | To count the purely passive consumers or "lurkers" in the network.
+Q11 | What was the average number of messages sent per account per day, considering only accounts that were active on that day, for the month of May 2004? | number | To get a normalized view of daily engagement per active user in a specific month.
+Q12 | List the IDs of all accounts that sent a message to account n5 on June 15, 2004. | list of accounts | To identify all the direct contacts of a specific account on a specific day.
+Q13 | How many pairs of accounts (A, B) exist where A sent a message to B and B sent a message to A within the same hour? | number | To count instances of near real-time, two-way conversations.
+Q14 | Which account had the longest period of total inactivity (no messages sent or received), and what was the duration of that gap? | list of accounts + duration | To find the account that had the biggest "break" from the network, perhaps indicating a holiday.
+Q15 | What percentage of all messages were sent between 12:00 PM and 6:00 PM across the entire dataset? | number | To understand the daily rhythm and peak usage hours for the network.
+Q16 | How many distinct accounts sent a message to account n42 only after receiving a message from account n42? | number | To count how many contacts were "reactive" rather than "proactive" for a specific user.
+Q17 | Identify the account that exchanged messages with the highest number of distinct accounts, where an exchange is defined as at least one message sent in each direction. | list of accounts | To find the most reciprocally connected "social" user, not just a broadcaster.
+Q18 | How many messages were sent in the first seven days after the first message timestamp in the log? | number | To measure the initial burst of activity when the system launched.
+Q19 | Was there any sequence of three accounts a1, a2, a3 such that a1 sent a message to a2, and within 10 minutes a2 sent a message to a3, where the message from a2 to a3 happened on the same day as the message from a1 to a2? | yes-no | A tight temporal chain to look for real-time information passing.
+Q20 | Which day of the week (e.g., Monday, Tuesday) had the lowest total message volume over the entire six months? | time | To find the least active day for the community overall.
+Q21 | How many accounts sent their first message in the log on a different day than they received their first message? | number | To see how often initiation activity is staggered.
+Q22 | What is the median time delay between when account A sent a first message to account B, and account B sent a first message back to account A, across all reciprocal pairs? | duration | To understand the typical latency of a reply in a new connection.
+Q23 | List the IDs of the top 3 accounts that sent messages to the widest variety of recipients in the final two weeks of the dataset. | list of accounts | To find those with the most diverse outgoing communication near the end of the log.
+Q24 | Did any account send a message, then send another message more than 30 days later, with no messages sent or received in between? | yes-no | To check for users who churned and then returned.
+Q25 | How many messages were sent by an account to itself? | number | To count potentially erroneous or placeholder messages.
+Q26 | For account n991, did its first message sent or first message received occur first? | list of accounts + which was first | To determine if a specific account's network life began proactively or reactively.
+Q27 | What is the difference in the total number of messages sent on June 1, 2004 and June 30, 2004? | number | To compare the messaging volume at the very start and end of the last month of data.
+Q28 | Identify all accounts that sent a message to at least 5 distinct accounts but never received a single message. | list of accounts | To find potential broadcasters whose messages are universally ignored.
+Q29 | Among accounts that sent at least 10 messages, which one has the highest ratio of sent messages to received messages? | list of accounts | To find an extreme "talker" who rarely gets responses relative to their output.
+Q30 | How many distinct accounts were active (sent or received a message) in every single month from January to June 2004? | number | To count the truly persistent, core users of the network.
+Q31 | What is the single largest number of distinct accounts that one account, say A, sent a message to within a single 1-hour window, and which account was A? | list of accounts + number | To find a potential spike in a user's broadcast behavior.
+Q32 | Was any message sent between 2:00 AM and 5:00 AM on a Saturday? | yes-no | A simple check for late-night/weekend activity patterns.
+Q33 | For the 10 accounts that sent the most messages overall, what is the median number of distinct recipients they messaged? | number | To see if top senders focus on a few friends or broadcast widely.
+Q34 | How many reciprocal pairs (A and B have each sent at least one message to the other) exist where the total messages sent by A to B is more than double the total sent by B to A? | number | To count asymmetrical relationships where one party dominates the conversation volume.
+Q35 | What was the duration of the longest continuous conversation chain, defined as a sequence of messages between the same two accounts where no gap between consecutive messages exceeds 60 minutes? | duration | To measure the length of a sustained, focused chat between two people.
+Q36 | How many accounts received a message from account n770 but never sent a message to account n770? | number | To count unreciprocated contacts for a specific account.
+Q37 | Identify the account that sent the very last message in the dataset, and who it was sent to. | list of accounts | To see the final interaction recorded in the log.
+Q38 | How many messages were sent in the log where the sender and receiver are the same? | number | A basic data quality check for anomalous self-messages.
+Q39 | Which pair of accounts exchanged the most total messages (sum of both directions) in a single day, and what was that day? | list of accounts + time | To find the day and pair with the most intense one-day conversation.
+Q40 | How many accounts are "isolated," meaning they only ever sent messages to accounts that never sent a message to anyone else? | number | To find users who may be talking exclusively to abandoned or bot accounts.
+Q41 | What is the average number of new contacts (distinct accounts messaged) per week for account n202, from their first message onward? | number | To measure how quickly a specific user expands their social circle.
+Q42 | List all accounts that received a message from both account n100 and account n200 on the exact same day. | list of accounts | To find the common contacts of two specific users on the same day.
+Q43 | Did the total weekly message volume increase or decrease from the first full week of February 2004 to the last full week of February 2004? | yes-no (increase/decrease) | To track the short-term trend in network activity over a month.
+Q44 | Which account has the single longest "average reply time" to messages it receives, considering only the first reply to each sender it eventually replied to? | list of accounts | To find the most unresponsive account that does eventually engage.
+Q45 | How many distinct accounts that were active (sent or received) in January 2004 were completely inactive (no messages sent or received) in June 2004? | number | To measure the churn rate from the first month to the last month.
+Q46 | Was there any day where the number of messages sent was zero? | yes-no | To check if the network ever had a full day of downtime or total inactivity.
+Q47 | Which account sent messages to the second-highest number of distinct accounts in the entire month of April 2004? | list of accounts | A slight variation on a simple rank query to avoid just asking for the top one.
+Q48 | How many accounts sent a message on the same day they received their very first message? | number | To see how many users' first active day was immediately prompted by an incoming message.
+Q49 | What is the shortest time gap between the first message ever sent by account n55 and the first message ever sent by account n490 to the same recipient? | duration | To compare the near-simultaneous outreach of two accounts.
+Q50 | How many distinct sender-receiver pairs communicated only once (exactly one message from sender to receiver) during the entire dataset? | number | To count the number of "one-and-done" unidirectional connections.
+Q51 | Which account initiated the most new "reciprocal relationships" in May 2004, defined as sending the first message to a user B and then receiving at least one message back from B by the end of the log? | list of accounts | To find the most successful networker who converts outgoing messages into two-way conversations.
+Q52 | What is the ratio of messages sent among the top 10 most active senders to messages sent among the bottom 50% of senders during March 2004? | number | To measure the concentration of activity among power users.
+Q53 | List any accounts that only ever sent messages between 9 PM and 3 AM. | list of accounts | To find "night owl" users with highly constrained active hours.
+Q54 | How many messages were sent by the top 1% of accounts by message volume, as a percentage of total messages? | number | To quantify the dominance of the most active users.
+Q55 | Did account n712 send its last message before or after receiving its last message? | time (before/after) | To determine the final action of a specific account in the network's record.
+
+
+Basic counts and aggregates
+
+Q1 | How many distinct accounts gave at least one rating (positive, negative, or zero) across the entire dataset? | number | To measure how many people actively participated in evaluating others.
+Q2 | How many distinct accounts received at least one rating in 2012? | number | To count how many traders were evaluated by someone that year.
+Q3 | What is the total number of ratings given in the dataset? | number | A simple baseline for the overall volume of trust activity.
+Q4 | How many ratings had a value of exactly 0? | number | To count neutral ratings, which may indicate ambivalence or a placeholder.
+Q5 | On which date were the most ratings given? | time | To find the single day with peak trust-evaluation activity.
+Q6 | What percentage of all ratings were positive (greater than 0)? | number | To understand the overall sentiment balance in the community.
+Q7 | How many accounts both gave at least one rating and received at least one rating? | number | To count fully "bidirectional" participants who were both evaluators and evaluated.
+Q8 | What was the average rating value given in each year (2010, 2011, 2012, 2013, 2014)? Report as a list per year. | list of numbers | To track whether community sentiment became more positive or negative over time.
+
+Extreme values and outliers
+
+Q9 | Which account gave the most ratings overall? | list of accounts | To identify the most prolific evaluator in the community.
+Q10 | Which account received the most ratings overall? | list of accounts | To identify the most-scrutinized or most-rated trader.
+Q11 | Which account received the lowest (most negative) average rating, considering only accounts that received at least 10 ratings? | list of accounts | To find the least-trusted trader among those with a meaningful sample size.
+Q12 | Which account gave the highest average rating to others, considering only accounts that gave at least 10 ratings? | list of accounts | To find the most generous or least critical rater.
+Q13 | What was the single most negative rating given, and which account gave it to which account? | list of accounts + number | To find the harshest individual judgment in the entire log.
+Q14 | Which account had the largest difference between the number of positive ratings received and negative ratings received, among those with at least 20 total ratings? | list of accounts | To find the most controversially rated trader with a wide spread of opinions.
+Q15 | How many accounts received only negative ratings (all ratings ≤ 0) and at least 3 ratings total? | number | To count traders who appear universally distrusted.
+
+Temporal patterns
+
+Q16 | How many accounts received their very first rating in 2013? | number | To count how many traders were "newly rated" in a specific year.
+Q17 | What is the longest gap (in days) between two consecutive ratings given by the same account? | duration | To find an evaluator who took a very long break from rating and then returned.
+Q18 | Did any account receive more than 5 ratings within a single 24-hour period? Answer yes or no. | yes-no | To check for bursts of attention on a single trader, possibly during a dispute.
+Q19 | How many accounts gave at least one rating in each of the years 2011, 2012, and 2013? | number | To count consistently active long-term evaluators.
+Q20 | What was the median time between when an account A first rated account B, and account B first rated account A, for all pairs where both eventually rated each other? | duration | To understand the typical lag in reciprocal trust evaluation.
+Q21 | Was there any month with zero ratings given? | yes-no | To check for complete gaps or downtime in the community's evaluation activity.
+Q22 | How many accounts gave their first rating and received their first rating on the same day? | number | To find traders who entered both sides of the trust system simultaneously.
+Q23 | For accounts that gave at least 50 ratings, what is the average number of calendar days between their first and last rating? | number | To measure the typical "career span" of the most active evaluators.
+
+Relationships and reciprocity
+
+Q24 | How many distinct pairs of accounts (A, B) exist where A rated B and B also rated A? | number | To count reciprocal trust relationships.
+Q25 | For reciprocal pairs, what percentage have both ratings positive? | number | To measure how often mutual trust is positive in both directions.
+Q26 | For reciprocal pairs, how many have one positive rating and one negative rating? | number | To count "disputed" relationships where the two parties disagree about each other.
+Q27 | How many accounts rated another account, and then later rated the same account again with a different value? | number | To count instances of updated or changed opinions about a specific trader.
+Q28 | Which pair of accounts (A, B) exchanged the most ratings in total (A rating B plus B rating A)? | list of accounts | To find the pair with the most intense mutual evaluation history.
+Q29 | How many accounts rated someone who had previously rated them, and gave a rating that was lower (more negative) than what they received? | number | To count potential "retaliatory" downgrades.
+Q30 | Of all pairs where A rated B first and B later rated A, what is the correlation in sign (both positive, both negative, or mixed)? Report counts for each category. | list of numbers | To see whether trust is generally mutual or contentious.
+
+Chains and indirect trust
+
+Q31 | How many distinct triads (A → B → C) exist where A rated B positively, B rated C positively, but A never rated C? | number | To find potential "missing" trust edges that could be inferred transitively.
+Q32 | Is there any chain of accounts a1 → a2 → a3 → a4 such that each rated the next positively, and all ratings occurred within the same calendar year? | yes-no | To check for multi-hop trust paths forming within a concentrated timeframe.
+Q33 | How many accounts are rated positively by at least 3 accounts who all also positively rated each other? | number | To find traders embedded in tightly-knit, mutually trusting clusters.
+Q34 | What is the longest chain of accounts where each rated the next one negatively, with each rating happening after the previous one? | number | To find extended sequences of distrust propagation.
+Q35 | How many accounts received a positive rating from an account that they had never directly rated, but who was rated positively by someone they did rate positively? | number | A two-hop trust reachability query measuring indirect endorsement.
+Q36 | For account n100, how many accounts are "two positive steps away" (n100 rated X positively, and X rated Y positively, where n100 never directly rated Y)? | number | To measure the extended trusted network of a specific account.
+Q37 | Is there any cycle of three accounts A, B, C such that A rated B positively, B rated C positively, and C rated A positively, with all ratings following the time order A→B then B→C then C→A? | yes-no | To find a chronologically valid "trust triangle."
+
+Two-clock / revision-oriented questions (auditor perspective)
+
+Q38 | According to what the database believed on January 1, 2013, how many ratings did account n5 have? | number | To query the historical state of knowledge about a specific trader.
+Q39 | A rating for account n77 was recorded with the wrong value on March 15, 2012, and corrected on March 20, 2012. What value did the database report for account n77's average rating on March 18, 2012? | number | To see the impact of a known error during the window before correction.
+Q40 | How many corrections (records that revise an earlier rating's value, time, or account) exist in the entire dataset? | number | To measure the overall frequency of data revisions.
+Q41 | On which date was the largest number of corrections made? | time | To find a potential "cleanup day" where many errors were fixed at once.
+Q42 | How many accounts had their recorded rating count change by more than 5 between what the database believed on June 1, 2012, and what it believed on July 1, 2012? | number | To find traders whose trust profiles shifted significantly due to corrections in a single month.
+Q43 | According to the database state as of the end of 2011, which account had the highest average rating among those with at least 5 ratings? | list of accounts | To see who was the "most trusted" trader at a historical point in time, which may differ from the final dataset.
+Q44 | Was there any account whose number of positive ratings decreased from one database snapshot date to a later one due to corrections? | yes-no | To check for cases where revisions made a trader look worse over time.
+Q45 | How many ratings in the final database state were originally recorded with a different timestamp than their event time? | number | To count ratings where the "when it happened" and "when it was recorded" disagree.
+
+Trust dynamics and behavior
+
+Q46 | How many accounts received their first rating as negative (less than 0), and what percentage of those eventually received a positive rating later? | number + percentage | To see if traders can recover from a bad initial reputation.
+Q47 | Which account "flipped" most dramatically, defined as having the largest difference between their average rating in their first 5 ratings and their last 5 ratings, with at least 10 ratings total? | list of accounts | To find a trader whose reputation changed the most over time.
+Q48 | How many accounts gave exclusively positive ratings (all > 0) and gave at least 5 ratings total? | number | To count purely trusting or non-critical evaluators.
+Q49 | How many accounts gave exclusively negative ratings (all < 0) and gave at least 5 ratings total? | number | To count purely distrustful evaluators who never praise anyone.
+Q50 | What percentage of ratings given by accounts that received mostly negative ratings (average < 0, at least 5 received) were themselves positive? | number | To see if distrusted traders tend to still give positive ratings to others.
+Q51 | How many accounts rated someone on the same day they themselves received a rating, at least once? | number | To find traders whose evaluation activity coincides with being evaluated.
+Q52 | Which account was the first to rate a particular account that later became one of the top 10 most-rated accounts? | list of accounts | To identify early "discoverers" or first evaluators of eventually prominent traders.
+Q53 | How many accounts that were active raters in 2011 (gave at least 1 rating) were completely inactive (gave zero ratings) in 2013? | number | To measure evaluator churn from one period to a later period.
+Q54 | What is the ratio of ratings given to ratings received for the top 10% most active accounts by total ratings given? | number | To see whether the most prolific raters are also heavily rated themselves.
+Q55 | Did account n200's average received rating increase, decrease, or stay the same when comparing ratings received before July 2012 to ratings received after July 2012? | increase/decrease/same | To track whether a specific trader's perceived trustworthiness improved or declined over time.
