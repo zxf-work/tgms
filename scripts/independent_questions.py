@@ -252,9 +252,12 @@ def gold_count_window(db, t_a, t_b):
 
 
 def build():
+    import os
     q = parse_raw()
-    cm_db = "stores/collegemsg/store.duckdb"
-    bo_db = "stores/bitcoinotc/store.duckdb"
+    # env overrides let gold run on snapshot copies when the live store's
+    # write lock is held by a running eval
+    cm_db = os.environ.get("TGMS_CM_DB", "stores/collegemsg/store.duckdb")
+    bo_db = os.environ.get("TGMS_BO_DB", "stores/bitcoinotc/store.duckdb")
     conn = _events_sql(cm_db)
     (cm_min,) = conn.execute(
         f"SELECT min(vt_s) FROM edge_versions WHERE tt_e = {OPEN_END}"
