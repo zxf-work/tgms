@@ -110,5 +110,10 @@ b6)
   run_heal configs/campaign/test-b6-synth.yaml runs/test-b6-synth \
     "$M14" "$P14" --max-model-len 28672
   echo "PHASE_DONE b6" ;;
-*) echo "usage: $0 guided-ab|main|datasets|models|b6"; exit 2 ;;
+bitcoinotc)
+  serve "$M14" "$P14" --max-model-len 28672
+  run_heal configs/campaign/test-bitcoinotc.yaml runs/test-bitcoinotc \
+    "$M14" "$P14" --max-model-len 28672
+  echo "PHASE_DONE bitcoinotc" ;;
+*) echo "usage: $0 guided-ab|main|datasets|models|b6|bitcoinotc"; exit 2 ;;
 esac

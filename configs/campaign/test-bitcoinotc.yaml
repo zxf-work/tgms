@@ -1,0 +1,15 @@
+# CIDR domain generalization: Bitcoin-OTC signed trust network (financial
+# domain, SNAP). Frozen test split, campaign model, one seed; b6 included
+# so the same-information contrast covers this domain too.
+suite_path: stores/suite-bitcoinotc/suite.json
+store_path: stores/bitcoinotc
+out_dir: runs/test-bitcoinotc
+split: test
+systems: [ours, b2, b5, b6]
+models: ["openai/Qwen/Qwen2.5-14B-Instruct-AWQ"]
+seeds: [0]
+max_repairs: 3
+b2_max_edges: 400
+memory_db: stores/bitcoinotc/memory.sqlite
+llm_api_base: "http://localhost:8000/v1"
+llm_api_key: "EMPTY"

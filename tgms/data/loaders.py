@@ -30,6 +30,15 @@ DATASETS: dict[str, dict[str, Any]] = {
         "rel_type": "EMAIL",
         "notes": "986 nodes / 332k events",
     },
+    "bitcoinotc": {
+        "url": "https://snap.stanford.edu/data/soc-sign-bitcoinotc.csv.gz",
+        "raw": "soc-sign-bitcoinotc.csv.gz",
+        "rel_type": "TRUST",
+        "format": "csv_rated",
+        "notes": "5,881 nodes / 35,592 signed trust ratings (-10..10); "
+                 "financial trust domain (who-trusts-whom on the Bitcoin "
+                 "OTC market); timestamped, instantaneous events",
+    },
 }
 
 
@@ -74,6 +83,22 @@ def snap_edge_stream(raw: Path, rel_type: str) -> Iterator[Event]:
                    "vt_s": int(t) * 1_000_000}
 
 
+def csv_rated_stream(raw: Path, rel_type: str) -> Iterator[Event]:
+    """SNAP signed-rating CSV: `SOURCE,TARGET,RATING,TIME` per line. TIME is
+    epoch seconds (possibly fractional); RATING becomes an edge property.
+    Events are instantaneous (vt_e = vt_s + 1 downstream)."""
+    opener = gzip.open if raw.suffix == ".gz" else open
+    with opener(raw, "rt") as f:
+        for line in f:
+            line = line.strip()
+            if not line or line.startswith(("#", "%")):
+                continue
+            s, d, rating, t = line.split(",")[:4]
+            yield {"src": f"n{s}", "dst": f"n{d}", "rel_type": rel_type,
+                   "vt_s": int(float(t) * 1_000_000),
+                   "props": {"rating": int(rating)}}
+
+
 def load(name: str, data_dir: str | Path) -> Iterator[Event]:
     if name.startswith("synth"):
         path = Path(data_dir) / name / "events.jsonl"
@@ -83,7 +108,11 @@ def load(name: str, data_dir: str | Path) -> Iterator[Event]:
                     yield json.loads(line)
         return
     spec = DATASETS[name]
-    yield from snap_edge_stream(download(name, data_dir), spec["rel_type"])
+    raw = download(name, data_dir)
+    if spec.get("format") == "csv_rated":
+        yield from csv_rated_stream(raw, spec["rel_type"])
+        return
+    yield from snap_edge_stream(raw, spec["rel_type"])
 
 
 def ingest_dataset(name: str, data_dir: str | Path, store_path: str | Path,
