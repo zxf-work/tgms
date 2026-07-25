@@ -345,3 +345,28 @@ implementation — hygiene checking starts at the marker recorded in D-010.
 - **Consequence:** the CIDR draft reports coverage (RQ5) separately from
   accuracy; the 76/27/20 gap counts become the priced agenda item
   ("coverage-driven algebra growth").
+
+## D-027 — 2026-07-25 — Runtime repair extended after Bitcoin-OTC dev diagnosis
+- **Context:** frozen Bitcoin-OTC test (D-025) measured ours 0.309 vs b6
+  0.340 (paired bootstrap CI [-0.117,+0.053], indistinguishable) with 43/94
+  ours runs failing at execution. Diagnosis on the untouched dev split
+  (22 tasks; runs dev-bitcoinotc{,2,3,4} on iTiger).
+- **Findings:** (1) only E_COST/E_NOT_FOUND runtime errors re-entered the
+  repair loop; E_LIMIT / E_INVALID_ARG / E_SCHEMA died with no retry
+  (14/15 dev failures carried actionable payloads). (2) Payload precision
+  is measurable: told "increase stride", the 14B undershot the 2000-bucket
+  cap 3/3 (2026-2344 after seeing ~30k); told "use stride >= X" (computed
+  minimum), it repaired 3/3.
+- **Fixes (general, committed):** e0b529a extends REPAIRABLE to
+  {E_COST, E_NOT_FOUND, E_LIMIT, E_INVALID_ARG, E_SCHEMA};
+  ea04746 makes bucket-cap payloads name the minimum admissible stride and
+  empty-$ref payloads direct re-planning of the producing step.
+- **Dev effect:** exec success 7/22 -> 12/22 (E_LIMIT class eliminated);
+  EM unchanged 3/22 — recovered executions produce wrong plans, so the
+  residual is planning quality, outside the contracts by design.
+- **Consequence:** frozen test numbers are NOT rerun; the pre-registered
+  0.309 stands in the CIDR draft with the fixes disclosed as post-diagnosis
+  and dev-validated. The payload-precision observation feeds the paper's
+  repair-payload design principle. Post-campaign heals (Phi tail on xzgpu)
+  run pre-fix code via the xzgpu bare remote, keeping their campaign
+  internally consistent.
