@@ -14,7 +14,13 @@ from tgms.agent.planner import Planner, PlanResult
 from tgms.store import Store
 from tgms.tools.server import ToolRouter
 
-REPAIRABLE = {"E_COST", "E_NOT_FOUND"}
+# Runtime errors whose payloads carry an actionable fix (narrowing
+# suggestions, "increase stride", "$ref resolved to 0 rows"): feed them back
+# through the repair loop within the same budget. E_STATE / E_INTERNAL are
+# genuine faults and stay terminal. E_LIMIT / E_INVALID_ARG / E_SCHEMA can
+# surface at runtime when a $ref materializes an empty or ill-typed value
+# that static checking (shapes, not values) cannot see.
+REPAIRABLE = {"E_COST", "E_NOT_FOUND", "E_LIMIT", "E_INVALID_ARG", "E_SCHEMA"}
 
 
 def dataset_card(store: Store) -> dict[str, Any]:
