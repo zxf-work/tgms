@@ -38,7 +38,12 @@ def _buckets(args: dict[str, Any]) -> np.ndarray:
     t_a, t_b, stride = args["window"]["t_a"], args["window"]["t_b"], args["stride"]
     n = -(-(t_b - t_a) // stride)
     if n > MAX_BUCKETS:
-        raise LimitError(f"bucket count {n} exceeds cap {MAX_BUCKETS}; increase stride")
+        # actionable repair payload: name the legal alternative, not just the
+        # violation — the minimum admissible stride is computable here
+        min_stride = -(-(t_b - t_a) // MAX_BUCKETS)
+        raise LimitError(
+            f"bucket count {n} exceeds cap {MAX_BUCKETS}; "
+            f"use stride >= {min_stride} for this window")
     return np.arange(t_a, t_b, stride, dtype=np.int64)
 
 

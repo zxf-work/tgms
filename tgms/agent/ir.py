@@ -141,8 +141,12 @@ def resolve_ref(ref: Ref, step_output: Any) -> Any:
                 rest = tokens[pos + 1:]
                 return [walk(el, rest) if rest else el for el in obj]
             if idx >= len(obj):
+                hint = (" — the producing step returned no rows; re-plan it "
+                        "(wider window, different name, or use a task-supplied "
+                        "uid directly)" if len(obj) == 0 else "")
                 raise InvalidArgError(
-                    f"$ref {ref.raw!r}: index {idx} out of range ({len(obj)} rows)")
+                    f"$ref {ref.raw!r}: index {idx} out of range "
+                    f"({len(obj)} rows){hint}")
             obj = obj[idx]
         return obj
 
