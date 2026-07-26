@@ -48,10 +48,10 @@ code{font-family:var(--mono);background:#e9eef5;border-radius:5px;padding:1px 5p
 temporal operators exposed as tools — typed, deterministic, cost-guarded — and a
 Planner–Executor–Verifier loop that machine-checks every claim in an answer
 against the execution trace that produced it.</div>
-<div style="margin-top:14px;font-size:13.5px;color:#a9c0e2">v0.3.0 · frozen-test
-campaign + scale &amp; fair-baseline studies complete · validated on two GPU
-clusters, four model scales, three model families · unsupported-claim rate
-0.000 in every configuration measured</div>
+<div style="margin-top:14px;font-size:13.5px;color:#a9c0e2">v0.4.0 · four frozen
+domains incl. an equal-information SQL baseline · 110-question independent
+coverage study · validated on two GPU clusters, four model scales, three model
+families · unsupported-claim rate 0.000 in every configuration measured</div>
 <div class="btns">
 <a class="btn" href="https://github.com/zxf-work/tgms">GitHub ↗</a>
 <a class="btn" href="https://github.com/zxf-work/tgms/blob/main/paper/main.pdf">Paper (PDF)</a>
@@ -157,19 +157,22 @@ entity, ordering, and pattern claim is machine-checked against the trace.
 Unsupported claims never ship.</div>
 </div>
 <table class="vs">
-<tr><th>exact match · Qwen2.5-14B</th><th>TGMS</th><th>vector-RAG</th><th>static-RAG</th><th>text-to-Cypher</th></tr>
-<tr><td>CollegeMsg (94 tasks × 3 seeds)</td><td class="win">0.408</td><td>0.106</td><td>0.064</td><td>0.152</td></tr>
-<tr><td>email-EU (94 tasks)</td><td class="win">0.309</td><td>—</td><td>0.053</td><td>0.106</td></tr>
-<tr><td>synthetic patterns (102 tasks)</td><td class="win">0.314</td><td>—</td><td>0.029</td><td>0.157</td></tr>
-<tr><td>correction probes</td><td class="win">0.897</td><td>0.154</td><td>0.000</td><td>0.000</td></tr>
-<tr><td>CollegeMsg @ Qwen2.5-32B (H100)</td><td class="win">0.628</td><td>—</td><td>0.074</td><td>0.277</td></tr>
-<tr><td>… probes @ 32B</td><td class="win">1.000</td><td>—</td><td>0.077</td><td>0.385</td></tr>
-<tr><td>vector-RAG at intended k=20</td><td class="win">0.362</td><td>0.021</td><td>—</td><td>—</td></tr>
+<tr><th>typed-answer accuracy · Qwen2.5-14B</th><th>TGMS</th><th>bi-temporal SQL</th><th>text-to-Cypher</th><th>static-RAG</th></tr>
+<tr><td>CollegeMsg (94 tasks × 3 seeds)</td><td class="win">0.408</td><td>0.284</td><td>0.152</td><td>0.064</td></tr>
+<tr><td>email-EU (94 tasks)</td><td class="win">0.309</td><td>0.266</td><td>0.106</td><td>0.053</td></tr>
+<tr><td>synthetic patterns (102 tasks)</td><td class="win">0.314</td><td>0.265</td><td>0.157</td><td>0.029</td></tr>
+<tr><td>Bitcoin-OTC trust network (94 tasks)</td><td>0.309</td><td class="win">0.340</td><td>0.160</td><td>0.085</td></tr>
+<tr><td>correction probes (three domains)</td><td class="win">0.85–0.92</td><td>0.85–0.92</td><td>0.000</td><td>0.000</td></tr>
+<tr><td>CollegeMsg @ Qwen2.5-32B (H100)</td><td class="win">0.628</td><td>—</td><td>0.277</td><td>0.074</td></tr>
 </table>
 <div class="mut" style="font-size:13px;margin-top:8px">Frozen test splits
-(SHAs recorded before measurement); validated across two clusters, four model
-scales, and three model families — emitted unsupported-claim rate is 0.000 in
-every configuration measured. Every number carries determinism receipts —
+(SHAs recorded before measurement). The bi-temporal SQL baseline writes SQL
+against the <i>same</i> version store TGMS uses — equal information, different
+interface: it matches TGMS on belief-state probes and on flat schemas, and
+trails by +0.124 (CI [+0.07,+0.18]) where computation composes. A 110-question
+independent study puts current operator coverage at 10/110, with grouped
+aggregation the dominant gap. Emitted unsupported-claim rate is 0.000 in every
+configuration measured. Every number carries determinism receipts —
 <a href="https://github.com/zxf-work/tgms/blob/main/docs/TECHNICAL_REPORT.md">full report</a>.</div>
 </section>
 

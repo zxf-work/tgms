@@ -378,6 +378,69 @@ opens (per-job rebuilds); HF-based serving needs offline mode on
 airgapped compute nodes; long-running engines on older GPUs need
 scheduled recycling.
 
+### 8.2d CIDR-round studies (v0.4.0, 2026-07-26)
+
+Four studies were pre-registered (D-025, D-026) and run for the CIDR
+revision; all rows carry receipts and completed with zero
+infrastructure-failure rows.
+
+**b6 — same-information text-to-SQL baseline.** The campaign model
+writes DuckDB SQL directly against the identical bi-temporal version
+store TGMS executes on (schema and vt/tt semantics documented in the
+prompt; the b5 repair budget; read-only subprocess-bounded execution;
+the shared answer contract). Results, typed-answer accuracy vs. ours:
+CollegeMsg 0.284 vs. **0.408** (paired bootstrap delta +0.124, 95% CI
+[+0.071, +0.181]); email-EU 0.266 vs. 0.309 and synthetic 0.265 vs.
+0.314 (positive but CIs include zero at one seed); Bitcoin-OTC 0.340
+vs. 0.309 (CI [-0.117, +0.053] — statistically indistinguishable).
+Correction probes: b6 scores 0.846/0.846/0.923, at or near ours —
+preserved transaction history, not the operator interface, decides
+probe answerability. b6 answers far more and is right far less
+(CollegeMsg coverage 0.943 at 0.301 conditional accuracy vs. ours
+0.706 at 0.548), and its claims cite query output no trace can check.
+Reading: the contracted interface wins where computation is
+compositional, ties where a single query fits the schema, and is the
+only configuration with measurable claim support.
+
+**Bitcoin-OTC domain (D-025).** Third real domain (SNAP signed trust
+network, 5,881 nodes / 35,592 rated events; financial). Frozen split
+94 tasks; all four systems measured on one iTiger H100 host. Ours
+0.309, b6 0.340, b5 0.160, b2 0.085; probes 0.923/0.923/0/0. Ours lost
+46% of runs at execution here, which triggered the D-027 diagnosis
+below.
+
+**Independent-question study (D-026).** Four students wrote 110
+questions from a data description only (no operator list; handout and
+raw questions in `benchmarks/independent-v1/`). 10/110 are expressible
+in the current algebra; 98 need at least one missing capability
+(nonexclusive tags: grouped/distinct aggregation 76, arithmetic beyond
+count/sum/min/max 27, property-filtered patterns 20, calendar
+semantics 18; 30 questions are blocked by aggregation alone). One
+question presupposes corrections that do not exist; one conflates the
+two clocks. Behavioral findings: writers misjudge dataset extent, and
+writers anchor transaction time to event years — belief-state
+semantics must be surfaced, not just stored. The five scoreable
+expressible questions ran verbatim (3 seeds, double-keyed gold): every
+system 3/9 on CollegeMsg and 0/6 on Bitcoin-OTC, where ours abstained
+six times and the query baselines emitted six wrong answers.
+
+**Runtime-repair extension (D-027).** Dev-split diagnosis on
+Bitcoin-OTC showed 14/15 execution failures carried actionable
+payloads that never re-entered the repair loop (only E_COST/E_NOT_FOUND
+did). Extending REPAIRABLE to E_LIMIT/E_INVALID_ARG/E_SCHEMA and making
+bucket-cap payloads name the computed minimum stride raised dev
+execution success 7/22 → 12/22 and eliminated the bucket-cap class.
+Payload precision is measurable: told "increase stride" the 14B
+undershot the cap 3/3; told the minimum stride it repaired 3/3. EM was
+unchanged (recovered executions run wrong plans), so the frozen test
+numbers were **not** rerun; the pre-registered values stand.
+
+**Support metric, restated at the answer level.** An emitted answer
+(≥1 claim) is unsupported if ≥1 gated claim is rejected. Ungated:
+21/220 emitted answers (9.5%). Gated: 0/199. Coverage cost: 21 task
+runs. (Earlier reports used a per-report denominator, 21/270 = 7.8%;
+same underlying rows.)
+
 ### 8.3 Dev-split matrix — CollegeMsg, 22 tasks, single seed, temp 0
 
 Per-family EM (PVR/ESR for `ours`; ablation `ours-noverify` matches `ours`

@@ -46,9 +46,9 @@ RAG, and 0.152 for text-to-Cypher. On correction probes, TGMS obtains
 obtains 0.154 by answering current-belief cases. The main result
 transfers to a second communication corpus and a synthetic
 temporal-pattern suite, although complex multi-operator pattern plans
-remain beyond the 14B planner. Before gating, 21 of 270 reporter
-answers (7.8\%) contain at least one unsupported gated claim;
-verification reduces this to 0 of 268 at a 1.0-percentage-point
+remain beyond the 14B planner. Before gating, 21 of 220 emitted
+answers (9.5\%) contain at least one unsupported gated claim;
+with gating, 0 of 199 emitted answers do, at a 1.0-percentage-point
 reduction in overall answer accuracy. Mutation experiments show that
 output contracts and evidence-completeness tracking catch errors that
 value-only checking misses. In a separate full-precision serving
@@ -501,11 +501,12 @@ a representational distinction, not a planning-quality one
 (Table~\ref{tab:baselineinfo}).
 
 \paragraph{Answer support, coverage, and the cost of gating (H3).}
-Of 270 raw reporter answers measured on CollegeMsg (the no-verifier
-ablation; 282 tasks, 12 runs produced no measurable report), 21
-contained at least one unsupported gated claim: an answer-level rate of
-7.8\%. With gating, 0 of 268 measured emitted answers contained an
-unsupported gated claim. Gating cost 1.0 percentage point of overall
+An answer is \emph{emitted} when it carries at least one claim. On
+CollegeMsg, the ungated system (the no-verifier ablation) emitted 220
+answers of 282 task runs, of which 21 (9.5\%) contained at least one
+unsupported gated claim. With gating, 0 of 199 emitted answers did.
+(Counting instead over the 270 task runs that produced any measurable
+report, the ungated rate is 7.8\%.) Gating cost 1.0 percentage point of overall
 accuracy (0.418 ungated vs.\ 0.408 gated). The gated system's coverage
 was 199/282 (0.706) with conditional accuracy 0.548 among emitted
 answers --- so part of the zero unsupported rate is bought by
@@ -681,6 +682,28 @@ development result on every axis (accuracy 0.409$\to$0.227,
 first-emission validity 0.50$\to$0.32, 65\% more wall time): syntactic
 validity was not the bottleneck, and post-generation checking with a
 repair loop was both safer and cheaper than constraining generation.
+
+\paragraph{Same-information baseline and further studies.}
+Three later pre-registered studies (repository decisions D-025 to
+D-027) sharpen the interface claim. First, a same-information baseline
+lets the model write SQL directly against the identical bi-temporal
+version store, with the schema and temporal semantics documented in
+the prompt and the same repair budget and answer contract. It matches
+TGMS on correction probes (0.846--0.923; history, not the interface,
+decides probe answerability) and separates by workload on overall
+accuracy: TGMS leads by $+0.124$ on CollegeMsg (95\% CI
+$[+0.071,+0.181]$) while the two are statistically indistinguishable
+on a flatter financial-trust workload (Bitcoin-OTC, a fourth frozen
+suite of 94 tasks: 0.309 vs.\ 0.340, CI includes zero). Second, 110
+independently written questions (authors saw only a data description,
+never the operator list) put the algebra's coverage at 10/110, with
+grouped/distinct aggregation the dominant missing capability (30
+questions blocked by it alone). Third, a dev-split diagnosis extended
+runtime repair to all structured executor refusals and made refusal
+payloads name the computed legal alternative, raising dev execution
+success from 7/22 to 12/22 without changing accuracy; frozen test
+numbers were not rerun. Full receipts accompany the
+artifact~\cite{tgms2026}.
 
 \subsection{Operator performance}
 \label{sec:opperf}
