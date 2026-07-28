@@ -28,3 +28,10 @@ target/
 # compiled engine extension (built into the source tree by maturin editable installs)
 *.so
 *.pyd
+
+# phase-3 planning and design-review notes (internal; reference the
+# unpublished CIDR draft and PI-side items — this repo is public)
+PHASE3_SPEC.md
+TGMS_NATIVE_ENGINE_REVIEW.md
+TGMS_NATIVE_ENGINE_V2_REVIEW.md
+TGMS_NATIVE_ENGINE_EVALUATION_PLAN.md
