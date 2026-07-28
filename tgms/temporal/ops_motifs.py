@@ -15,11 +15,10 @@ from __future__ import annotations
 
 from typing import Any
 
-import duckdb
 import numpy as np
 import pyarrow as pa
 
-from tgms.core.errors import InvalidArgError
+from tgms.core.errors import InvalidArgError, StateError
 from tgms.storage.base import StorageAdapter
 from tgms.temporal.algebra import (
     AS_OF_TT,
@@ -127,7 +126,20 @@ def _motif_query(motif: str, select: str, order: str = "") -> str:
     return f"SELECT {select} FROM {froms} WHERE {where} {order}"
 
 
-def _run(events: pa.Table, sql: str, delta: int) -> duckdb.DuckDBPyRelation:
+def _run(events: pa.Table, sql: str, delta: int):
+    """Execute the motif join.
+
+    DuckDB is imported here rather than at module level so the operator
+    algebra loads without it: only motif *execution* needs it, and the
+    native join kernel that removes the dependency is WP-N4.
+    """
+    try:
+        import duckdb
+    except ImportError as e:  # pragma: no cover - depends on the install
+        raise StateError(
+            "temporal motif operators still need DuckDB for their join; "
+            "install it with `pip install tgms[duckdb]`"
+        ) from e
     conn = duckdb.connect(":memory:")
     conn.register("ev", events)
     return conn.execute(sql, {"delta": delta})

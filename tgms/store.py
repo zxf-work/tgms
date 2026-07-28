@@ -138,19 +138,35 @@ def open(path: str | Path, backend: str | None = None, paranoid: bool = False) -
 
 
 def _make_adapter(backend: str, path: Path) -> StorageAdapter:
-    if backend == "duckdb":
-        from tgms.storage.duckdb_adapter import DuckDBAdapter
-        return DuckDBAdapter(path / "store.duckdb")
-    if backend == "kuzu":
-        from tgms.storage.kuzu_adapter import KuzuAdapter
-        return KuzuAdapter(path / "store.kuzu")
     if backend == "native":
         from tgms.storage.native import NativeAdapter
         return NativeAdapter(path / "native")
-    if backend == "memory":
-        from tgms.storage.duckdb_adapter import DuckDBAdapter
-        return DuckDBAdapter(":memory:")
+    if backend in ("duckdb", "memory"):
+        DuckDBAdapter = _optional_backend("duckdb")
+        return DuckDBAdapter(":memory:" if backend == "memory" else path / "store.duckdb")
+    if backend == "kuzu":
+        from tgms.storage.kuzu_adapter import KuzuAdapter
+        return KuzuAdapter(path / "store.kuzu")
     raise ValueError(f"unknown backend: {backend}")
+
+
+def _optional_backend(name: str):
+    """Import a backend that ships as an optional extra.
+
+    DuckDB is no longer a runtime dependency (D-029): the native engine is
+    the default and needs nothing beyond the wheel. An existing DuckDB store
+    still opens — `detect_backend` sees its layout — but only if the extra is
+    installed, so say so plainly rather than surfacing a bare ImportError.
+    """
+    try:
+        from tgms.storage.duckdb_adapter import DuckDBAdapter
+    except ImportError as e:  # pragma: no cover - depends on the install
+        raise ImportError(
+            f"this store uses the {name} backend, which is now an optional "
+            f"extra: install it with `pip install tgms[{name}]`, or migrate "
+            f"the store to the native engine with `tgms replay`."
+        ) from e
+    return DuckDBAdapter
 
 
 def _ref_json(ref: EntityRef) -> dict[str, Any]:

@@ -16,7 +16,6 @@ classifiers = [
     "Topic :: Scientific/Engineering :: Artificial Intelligence",
 ]
 dependencies = [
-    "duckdb>=1.1",
     "kuzu>=0.7",
     "numpy>=1.26",
     "pyarrow>=17",
@@ -29,6 +28,10 @@ dependencies = [
 ]
 
 [project.optional-dependencies]
+# DuckDB is no longer needed at runtime (D-029): the native engine is the
+# default. It remains available for opening pre-existing DuckDB stores, as
+# the A/B reference backend, and for the b6 text-to-SQL baseline.
+duckdb = ["duckdb>=1.1"]
 agent = ["litellm>=1.48", "fastmcp>=2.0"]
 memory = ["faiss-cpu>=1.8", "sentence-transformers>=3.0"]
 
@@ -42,6 +45,7 @@ Documentation = "https://github.com/zxf-work/tgms/blob/main/docs/TECHNICAL_REPOR
 
 [dependency-groups]
 dev = [
+    "duckdb>=1.1",       # reference backend for the A/B digest harness
     "pytest>=8.3",
     "hypothesis>=6.112",
     "pytest-cov>=5.0",
