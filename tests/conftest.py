@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import os
+import tempfile
 from typing import Any
 
 from hypothesis import strategies as st
@@ -52,7 +54,31 @@ def write_op(draw) -> dict[str, Any]:
 op_sequences = st.lists(write_op(), min_size=1, max_size=25)
 
 
-def fresh_adapter(paranoid: bool = True) -> DuckDBAdapter:
-    a = DuckDBAdapter(":memory:")
+def fresh_adapter(paranoid: bool = True):
+    """The adapter every suite runs against.
+
+    Defaults to DuckDB, so nothing about an ordinary run changes. Setting
+    TGMS_TEST_BACKEND=native points the *entire* suite — invariants, the
+    500-case operator oracle, metamorphic, replay — at the native engine
+    instead (D-028; ENGINE_IMPLEMENTATION_SPEC WP-N3). That is the whole
+    acceptance argument for the new backend: it has to satisfy the same
+    human-owned ground truth, unmodified, that DuckDB does.
+
+    The native store is a directory rather than an in-memory handle, so each
+    adapter gets a temporary one whose lifetime is tied to the adapter object.
+    """
+    backend = os.environ.get("TGMS_TEST_BACKEND", "duckdb")
+    if backend == "duckdb":
+        a = DuckDBAdapter(":memory:")
+    elif backend == "native":
+        from tgms.storage.native import NativeAdapter
+
+        tmp = tempfile.TemporaryDirectory(prefix="tgms-test-native-")
+        a = NativeAdapter(tmp.name)
+        a._test_tmpdir = tmp  # keep the directory alive as long as the adapter
+    else:
+        raise ValueError(
+            f"unknown TGMS_TEST_BACKEND {backend!r}; expected 'duckdb' or 'native'"
+        )
     a.paranoid = paranoid
     return a
