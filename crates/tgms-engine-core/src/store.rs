@@ -1,0 +1,982 @@
+//! Store layout, recovery, and the commit protocol (spec §4, §5.2).
+//!
+//! Durability objective (D-028, blueprint §1): the store is a deterministic
+//! materialization of the event log, so we do not need to make every partial
+//! physical update recoverable — we need to *never expose an undetected
+//! inconsistent generation*. Everything here serves that: a commit publishes
+//! files first and flips a single pointer last, so any crash leaves the
+//! previous generation intact and the partial work orphaned.
+//!
+//! Commit order (each step durable before the next begins):
+//!
+//! 1. the event log is appended and fsynced — by the Python `Store`, before
+//!    the engine is called at all (write-ahead, `store.py::_write`);
+//! 2. segment and close-run files are written and fsynced;
+//! 3. the dictionary tail is appended and fsynced;
+//! 4. `manifests/<G>.json` is written, fsynced, renamed, and its directory
+//!    fsynced;
+//! 5. `CURRENT` is rewritten atomically — **the publication point**.
+//!
+//! A crash before step 5 is invisible: `open` reads the old `CURRENT`, and
+//! the orphaned manifest and dictionary tail are ignored (and the tail
+//! truncated). A crash during step 5 leaves either the old or the new
+//! pointer, never a torn one, because the rename is atomic.
+
+use std::collections::HashMap;
+use std::fs::{self, File};
+use std::io::Write;
+use std::path::{Path, PathBuf};
+
+use crate::dict::Dictionary;
+use crate::error::{EngineError, Result};
+use crate::derive::Id96;
+use crate::manifest::{CloseRunRef, EventLogRef, Manifest};
+use crate::row::{EdgeRow, Lane, NodeRow, RowKind};
+use crate::segment::MemorySource;
+use crate::staging::{PartitionMap, Staging};
+use crate::visibility::{read_close_run, write_close_run, CloseIndex, CloseRecord};
+
+const CURRENT: &str = "CURRENT";
+const DICT: &str = "dict.log";
+const SUBDIRS: [&str; 4] = ["manifests", "seg", "close", "idx"];
+
+pub struct NativeStore {
+    root: PathBuf,
+    dict: Dictionary,
+    manifest: Manifest,
+    staging: Staging,
+    /// Closes landing on rows staged in this same batch — folded into the
+    /// owning segment's sidecar at seal, so no run file is needed.
+    staged_closes: HashMap<Id96, i64>,
+    /// Closes landing on already-committed rows, written as a close run.
+    pending_closes: Vec<CloseRecord>,
+    partitions: PartitionMap,
+    segment_target_bytes: u64,
+    /// Segments whose checksums have been walked in this session. Corruption
+    /// must be caught *before* rows reach a query, but re-hashing a file on
+    /// every read would be ruinous — so each segment is verified the first
+    /// time this process opens it, and trusted thereafter. Segments are
+    /// immutable, so once verified they stay valid for the session.
+    verified: std::sync::Mutex<std::collections::HashSet<String>>,
+    /// Transaction time of the open batch, if any (`begin` .. `commit`).
+    batch_tt: Option<i64>,
+}
+
+impl NativeStore {
+    pub fn open(root: impl Into<PathBuf>) -> Result<Self> {
+        let root = root.into();
+        for sub in SUBDIRS {
+            fs::create_dir_all(root.join(sub))
+                .map_err(|e| EngineError::from(e).at_file(root.join(sub)))?;
+        }
+        let manifest = if root.join(CURRENT).exists() {
+            Self::load_current(&root)?
+        } else {
+            let genesis = Manifest::genesis();
+            Self::publish(&root, &genesis)?;
+            genesis
+        };
+        let dict = Dictionary::open(
+            root.join(DICT),
+            manifest.dict.records,
+            manifest.dict.bytes,
+        )?;
+        Ok(Self {
+            root,
+            dict,
+            manifest,
+            staging: Staging::default(),
+            staged_closes: HashMap::new(),
+            pending_closes: Vec::new(),
+            partitions: PartitionMap::default(),
+            segment_target_bytes: crate::defaults::SEGMENT_TARGET_BYTES,
+            verified: std::sync::Mutex::new(std::collections::HashSet::new()),
+            batch_tt: None,
+        })
+    }
+
+    fn load_current(root: &Path) -> Result<Manifest> {
+        let cur_path = root.join(CURRENT);
+        let text = fs::read_to_string(&cur_path)
+            .map_err(|e| EngineError::from(e).at_file(&cur_path))?;
+        let mut parts = text.split_whitespace();
+        let (gen, sha) = match (parts.next(), parts.next()) {
+            (Some(g), Some(s)) => (g, s),
+            _ => {
+                return Err(EngineError::corrupt(format!(
+                    "CURRENT must contain '<generation> <sha>', found {text:?}"
+                ))
+                .at_file(&cur_path))
+            }
+        };
+        let generation: u64 = gen.parse().map_err(|_| {
+            EngineError::corrupt(format!("CURRENT generation is not a number: {gen:?}"))
+                .at_file(&cur_path)
+        })?;
+
+        let m_path = Self::manifest_path(root, generation);
+        let raw = fs::read_to_string(&m_path).map_err(|e| {
+            EngineError::corrupt(format!(
+                "CURRENT points at generation {generation} but its manifest is unreadable: {e}"
+            ))
+            .at_file(&m_path)
+        })?;
+        let manifest = Manifest::from_json(&raw).map_err(|e| e.at_file(&m_path))?;
+        if manifest.generation != generation {
+            return Err(EngineError::corrupt(format!(
+                "manifest says generation {} but is filed as {generation}",
+                manifest.generation
+            ))
+            .at_file(&m_path));
+        }
+        if manifest.manifest_sha != sha {
+            return Err(EngineError::corrupt(format!(
+                "CURRENT records sha {sha} but manifest {generation} has {}",
+                manifest.manifest_sha
+            ))
+            .at_file(&m_path));
+        }
+        Ok(manifest)
+    }
+
+    fn manifest_path(root: &Path, generation: u64) -> PathBuf {
+        root.join("manifests").join(format!("{generation:020}.json"))
+    }
+
+    /// Steps 4 and 5: write the manifest, then flip `CURRENT`.
+    fn publish(root: &Path, manifest: &Manifest) -> Result<()> {
+        manifest.verify()?;
+        let m_path = Self::manifest_path(root, manifest.generation);
+        write_atomic(&m_path, &manifest.to_json())?;
+        write_atomic(
+            &root.join(CURRENT),
+            &format!("{} {}\n", manifest.generation, manifest.manifest_sha),
+        )
+    }
+
+    pub fn root(&self) -> &Path {
+        &self.root
+    }
+
+    pub fn generation(&self) -> u64 {
+        self.manifest.generation
+    }
+
+    pub fn manifest(&self) -> &Manifest {
+        &self.manifest
+    }
+
+    pub fn dict(&self) -> &Dictionary {
+        &self.dict
+    }
+
+    /// Layout policy in force, for callers that re-seal existing data.
+    pub(crate) fn layout(&self) -> (&PartitionMap, u64) {
+        (&self.partitions, self.segment_target_bytes)
+    }
+
+    /// Publish an already-built manifest as the next generation. Used by
+    /// compaction, which rewrites content without going through a batch.
+    pub(crate) fn install(&mut self, next: Manifest) -> Result<u64> {
+        if self.in_batch() {
+            return Err(EngineError::invariant(
+                "cannot publish a generation while a batch is open",
+            ));
+        }
+        Self::publish(&self.root, &next)?;
+        self.manifest = next;
+        Ok(self.manifest.generation)
+    }
+
+    /// Open a segment, verifying its checksums the first time this session
+    /// touches it. Every read path must come through here — opening a segment
+    /// directly would skip the check and could serve corrupt rows.
+    pub fn open_segment(&self, file: &str) -> Result<crate::segment::Segment<MemorySource>> {
+        let path = self.root.join(file);
+        let first_time = {
+            let seen = self.verified.lock().expect("verified-set mutex poisoned");
+            !seen.contains(file)
+        };
+        let seg = crate::segment::Segment::open(&path, MemorySource::load(&path)?, first_time)?;
+        if first_time {
+            self.verified
+                .lock()
+                .expect("verified-set mutex poisoned")
+                .insert(file.to_string());
+        }
+        Ok(seg)
+    }
+
+    /// Walk every file this generation references, checking magic numbers,
+    /// checksums, completion markers, and cross-references.
+    ///
+    /// Corruption must be *detected*, not merely survived: the durability
+    /// objective is "never expose an undetected inconsistent generation"
+    /// (blueprint §1). Problems are collected rather than raised on the first
+    /// one, so an operator sees the whole picture instead of peeling the
+    /// onion a file at a time.
+    pub fn verify(&self) -> Result<VerifyReport> {
+        let mut report = VerifyReport {
+            generation: self.manifest.generation,
+            ..Default::default()
+        };
+        self.manifest.verify()?;
+
+        let m = &self.manifest;
+        let segments: Vec<(&str, u32)> = m
+            .edge_lanes
+            .event
+            .iter()
+            .chain(m.edge_lanes.interval.iter())
+            .chain(m.node_store.iter())
+            .map(|e| (e.file.as_str(), e.rows))
+            .collect();
+
+        for (file, claimed_rows) in segments {
+            let path = self.root.join(file);
+            match crate::segment::MemorySource::load(&path)
+                .and_then(|src| crate::segment::Segment::open(&path, src, true))
+            {
+                Ok(seg) => {
+                    report.segments_checked += 1;
+                    report.rows += seg.rows() as u64;
+                    if seg.rows() != claimed_rows {
+                        report.problems.push(format!(
+                            "{file}: manifest claims {claimed_rows} rows, segment holds {}",
+                            seg.rows()
+                        ));
+                    }
+                }
+                Err(e) => report.problems.push(format!("{file}: {e}")),
+            }
+        }
+
+        for run in &m.close_runs {
+            let path = self.root.join(&run.file);
+            match crate::visibility::read_close_run(&path) {
+                Ok(records) => {
+                    report.close_runs_checked += 1;
+                    report.closes += records.len() as u64;
+                    if records.len() as u32 != run.entries {
+                        report.problems.push(format!(
+                            "{}: manifest claims {} entries, file holds {}",
+                            run.file,
+                            run.entries,
+                            records.len()
+                        ));
+                    }
+                }
+                Err(e) => report.problems.push(format!("{}: {e}", run.file)),
+            }
+        }
+
+        report.dict_records = self.dict.len();
+        if self.dict.len() != m.dict.records {
+            report.problems.push(format!(
+                "dictionary holds {} records, manifest claims {}",
+                self.dict.len(),
+                m.dict.records
+            ));
+        }
+        Ok(report)
+    }
+
+    /// Closes this generation makes visible, resolved for scanning. A reader
+    /// on an older generation loads that generation's runs and therefore sees
+    /// that generation's beliefs — never a newer correction.
+    pub fn close_index(&self) -> Result<CloseIndex> {
+        let mut records = Vec::new();
+        for r in &self.manifest.close_runs {
+            records.extend(read_close_run(&self.root.join(&r.file))?);
+        }
+        Ok(CloseIndex::from_records(records))
+    }
+
+    pub fn in_batch(&self) -> bool {
+        self.batch_tt.is_some()
+    }
+
+    pub fn begin(&mut self, tt: i64) -> Result<()> {
+        if let Some(open_tt) = self.batch_tt {
+            return Err(EngineError::invariant(format!(
+                "a batch at tt={open_tt} is already open (single-writer, no nesting)"
+            )));
+        }
+        if tt <= self.manifest.created_tt && self.manifest.generation > 0 {
+            return Err(EngineError::invariant(format!(
+                "transaction time must advance: batch tt={tt} is not after \
+                 generation {}'s tt={}",
+                self.manifest.generation, self.manifest.created_tt
+            )));
+        }
+        self.batch_tt = Some(tt);
+        Ok(())
+    }
+
+    /// Register an entity, returning its dense id.
+    ///
+    /// Deliberately does not require an open batch: `apply_ops` registers
+    /// entities before it knows which rows it will write, and a staged
+    /// dictionary entry is discarded on rollback and published on commit
+    /// either way. Visible to reads immediately; durable only at commit.
+    pub fn ensure_entity(&mut self, uid: &str, label: &str) -> Result<u32> {
+        self.dict.ensure(uid, label)
+    }
+
+    /// Layout policy. Changing it affects only future segments — lane
+    /// assignment is physical, so already-written rows are unaffected.
+    pub fn set_layout(&mut self, partitions: PartitionMap, segment_target_bytes: u64) {
+        self.partitions = partitions;
+        self.segment_target_bytes = segment_target_bytes;
+    }
+
+    pub fn stage_edge(&mut self, row: EdgeRow) -> Result<()> {
+        self.require_batch()?;
+        self.staging.push_edge(row);
+        Ok(())
+    }
+
+    pub fn stage_node(&mut self, row: NodeRow) -> Result<()> {
+        self.require_batch()?;
+        self.staging.push_node(row);
+        Ok(())
+    }
+
+    /// Stop believing a version from `tt_e` on.
+    ///
+    /// The target may be a row staged in this very batch (a carve that splits
+    /// a version and closes the original) or one committed earlier. Staged
+    /// hits fold into the segment's sidecar; committed hits become a close
+    /// run. Either way the row itself is never touched — closing is data.
+    ///
+    /// Locating a committed row is a linear scan for now; the identity
+    /// postings index that makes it O(1) is WP-N4, and the semantics do not
+    /// change when it lands.
+    pub fn close_version(&mut self, kind: RowKind, vid: Id96, tt_e: i64) -> Result<()> {
+        self.require_batch()?;
+        let staged_hit = match kind {
+            RowKind::Edge => self.staging.edges().iter().any(|r| r.vid == vid),
+            RowKind::Node => self.staging.nodes().iter().any(|r| r.vid == vid),
+        };
+        if staged_hit {
+            self.staged_closes.insert(vid, tt_e);
+            return Ok(());
+        }
+        match self.locate_committed(kind, vid)? {
+            Some((segment, row)) => {
+                self.pending_closes.push(CloseRecord {
+                    kind,
+                    segment,
+                    row,
+                    tt_e,
+                });
+                Ok(())
+            }
+            None => Err(EngineError::not_found(format!(
+                "no version {} to close",
+                vid.to_hex()
+            ))),
+        }
+    }
+
+    /// Physical location of a committed version, by scanning segments.
+    fn locate_committed(&self, kind: RowKind, vid: Id96) -> Result<Option<(u64, u32)>> {
+        let m = &self.manifest;
+        let files: Vec<&String> = match kind {
+            RowKind::Edge => m
+                .edge_lanes
+                .event
+                .iter()
+                .chain(m.edge_lanes.interval.iter())
+                .map(|e| &e.file)
+                .collect(),
+            RowKind::Node => m.node_store.iter().map(|e| &e.file).collect(),
+        };
+        for file in files {
+            let seg = self.open_segment(file)?;
+            let hi = seg.u64_column("vid64")?;
+            let lo = seg.u32_column("vid_lo32")?;
+            for i in 0..hi.len() {
+                if hi[i] == vid.hi && lo[i] == vid.lo {
+                    return Ok(Some((segment_id_of(file), i as u32)));
+                }
+            }
+        }
+        Ok(None)
+    }
+
+    /// Rows staged in the open batch — the read-your-own-writes overlay that
+    /// `apply_ops` depends on (spec §2.4).
+    pub fn staged_edges(&self) -> &[EdgeRow] {
+        self.staging.edges()
+    }
+
+    /// Closes recorded against rows staged in this batch — the overlay that
+    /// makes a same-batch carve visible to a read inside the same batch.
+    pub(crate) fn staged_closes(&self) -> &HashMap<Id96, i64> {
+        &self.staged_closes
+    }
+
+    pub fn staged_nodes(&self) -> &[NodeRow] {
+        self.staging.nodes()
+    }
+
+    /// Publish the open batch as a new generation. `event_log` records where
+    /// in the (already durable) log this generation ends.
+    pub fn commit(&mut self, event_log: EventLogRef) -> Result<u64> {
+        let tt = self.require_batch()?;
+        let mut next = self.manifest.successor(tt);
+
+        // step 2 — segments: written and fsynced before anything names them
+        let mut next_id = next.next_segment_id;
+        let sealed = self.staging.seal(
+            &self.root.join("seg"),
+            &self.partitions,
+            self.segment_target_bytes,
+            &mut next_id,
+            &self.staged_closes,
+        )?;
+        next.next_segment_id = next_id;
+        for (lane, entry) in sealed.edges {
+            next.stats.n_edge_versions += entry.rows as u64;
+            match lane {
+                Lane::Event => next.edge_lanes.event.push(entry),
+                Lane::Interval => next.edge_lanes.interval.push(entry),
+            }
+        }
+        for entry in sealed.nodes {
+            next.stats.n_node_versions += entry.rows as u64;
+            next.node_store.push(entry);
+        }
+
+        // close run for corrections landing on already-committed rows,
+        // durable before the manifest that lists it
+        if !self.pending_closes.is_empty() {
+            let file = format!("close/{:012}.tgc", next.generation);
+            let path = self.root.join(&file);
+            let entries = write_close_run(&path, &self.pending_closes)?;
+            next.close_runs.push(CloseRunRef {
+                file,
+                entries,
+                sha: String::new(),
+            });
+        }
+
+        // step 3 — dictionary tail durable before anything references it
+        let (records, bytes) = self.dict.commit_to_disk()?;
+        next.event_log = event_log;
+        next.dict.records = records;
+        next.dict.bytes = bytes;
+        next.stats.n_entities = self.dict.len();
+        next.seal();
+
+        // steps 4-5 — manifest, then CURRENT
+        Self::publish(&self.root, &next)?;
+        self.manifest = next;
+        self.staging.clear();
+        self.staged_closes.clear();
+        self.pending_closes.clear();
+        self.batch_tt = None;
+        Ok(self.manifest.generation)
+    }
+
+    /// Abandon the open batch. Staged dictionary entries are dropped; nothing
+    /// was published, so the store is already at the previous generation.
+    pub fn rollback(&mut self) -> Result<()> {
+        self.require_batch()?;
+        self.dict.discard_staged();
+        self.staging.clear();
+        self.staged_closes.clear();
+        self.pending_closes.clear();
+        self.batch_tt = None;
+        Ok(())
+    }
+
+    fn require_batch(&self) -> Result<i64> {
+        self.batch_tt
+            .ok_or_else(|| EngineError::invariant("no batch is open; call begin() first"))
+    }
+}
+
+/// What a `verify` pass found. An empty `problems` list is the only
+/// acceptable outcome for a healthy store.
+#[derive(Clone, Debug, Default, PartialEq, Eq)]
+pub struct VerifyReport {
+    pub generation: u64,
+    pub segments_checked: u32,
+    pub close_runs_checked: u32,
+    pub rows: u64,
+    pub closes: u64,
+    pub dict_records: u32,
+    pub problems: Vec<String>,
+}
+
+impl VerifyReport {
+    pub fn is_healthy(&self) -> bool {
+        self.problems.is_empty()
+    }
+}
+
+/// Segment file id from its manifest path (`seg/000000000042.tgs` -> 42).
+pub fn segment_id_of(file: &str) -> u64 {
+    file.rsplit('/')
+        .next()
+        .and_then(|n| n.strip_suffix(".tgs"))
+        .and_then(|n| n.parse().ok())
+        .unwrap_or(u64::MAX)
+}
+
+/// Write via a temp file and rename, so readers see the old bytes or the new
+/// bytes and never a partial write. The parent directory is fsynced too —
+/// without it the rename itself can be lost on crash.
+fn write_atomic(path: &Path, contents: &str) -> Result<()> {
+    let tmp = path.with_extension("tmp");
+    {
+        let mut f = File::create(&tmp).map_err(|e| EngineError::from(e).at_file(&tmp))?;
+        f.write_all(contents.as_bytes())
+            .map_err(|e| EngineError::from(e).at_file(&tmp))?;
+        f.sync_all().map_err(|e| EngineError::from(e).at_file(&tmp))?;
+    }
+    fs::rename(&tmp, path).map_err(|e| EngineError::from(e).at_file(path))?;
+    if let Some(dir) = path.parent() {
+        fsync_dir(dir)?;
+    }
+    Ok(())
+}
+
+fn fsync_dir(dir: &Path) -> Result<()> {
+    File::open(dir)
+        .and_then(|f| f.sync_all())
+        .map_err(|e| EngineError::from(e).at_file(dir))
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::segment::Segment;
+    use crate::OPEN_END;
+
+    fn tmp_root(name: &str) -> PathBuf {
+        let mut p = std::env::temp_dir();
+        p.push(format!("tgms-store-{name}-{}", std::process::id()));
+        let _ = fs::remove_dir_all(&p);
+        p
+    }
+
+    fn commit_with(store: &mut NativeStore, tt: i64, uids: &[&str]) -> u64 {
+        store.begin(tt).unwrap();
+        for u in uids {
+            store.ensure_entity(u, "Node").unwrap();
+        }
+        let prev = store.manifest().event_log.chain.clone();
+        store
+            .commit(EventLogRef {
+                offset: tt as u64,
+                chain: EventLogRef::extend_chain(&prev, format!("{{\"tt\":{tt}}}\n").as_bytes()),
+            })
+            .unwrap()
+    }
+
+    #[test]
+    fn fresh_store_bootstraps_at_generation_zero() {
+        let root = tmp_root("bootstrap");
+        let s = NativeStore::open(&root).unwrap();
+        assert_eq!(s.generation(), 0);
+        assert!(root.join("CURRENT").exists());
+        assert!(NativeStore::manifest_path(&root, 0).exists());
+        assert_eq!(s.dict().len(), 0);
+    }
+
+    #[test]
+    fn commits_advance_generations_and_survive_reopen() {
+        let root = tmp_root("advance");
+        let mut s = NativeStore::open(&root).unwrap();
+        assert_eq!(commit_with(&mut s, 10, &["n1", "n2"]), 1);
+        assert_eq!(commit_with(&mut s, 20, &["n3"]), 2);
+        drop(s);
+
+        let re = NativeStore::open(&root).unwrap();
+        assert_eq!(re.generation(), 2);
+        assert_eq!(re.dict().len(), 3);
+        assert_eq!(re.dict().dense_id("n3"), Some(2));
+        assert_eq!(re.manifest().parent, Some(1));
+    }
+
+    #[test]
+    fn rollback_leaves_no_trace() {
+        let root = tmp_root("rollback");
+        let mut s = NativeStore::open(&root).unwrap();
+        commit_with(&mut s, 10, &["kept"]);
+        s.begin(20).unwrap();
+        s.ensure_entity("dropped", "Node").unwrap();
+        s.rollback().unwrap();
+        assert_eq!(s.generation(), 1);
+        assert_eq!(s.dict().dense_id("dropped"), None);
+        drop(s);
+
+        let re = NativeStore::open(&root).unwrap();
+        assert_eq!(re.generation(), 1);
+        assert_eq!(re.dict().len(), 1);
+        assert_eq!(re.dict().dense_id("dropped"), None);
+    }
+
+    // --- staged rows -> segments (WP-N2) ------------------------------- //
+
+    fn edge_row(src: u32, dst: u32, vt_s: i64, tt_s: i64, i: u32) -> EdgeRow {
+        use crate::derive::{edge_eid, version_vid};
+        let disc = format!("#{i}");
+        let eid = edge_eid("n1", "n2", "SENT_MSG_TO", &disc);
+        EdgeRow {
+            vid: version_vid(&eid.to_hex(), tt_s, vt_s),
+            src_id: src,
+            dst_id: dst,
+            rel_type: "SENT_MSG_TO".into(),
+            disc,
+            vt_s,
+            vt_e: vt_s + 1,
+            tt_s,
+            props: "{}".into(),
+            source: "ingest".into(),
+            provenance_ref: None,
+        }
+    }
+
+    fn read_segment(root: &Path, file: &str) -> crate::segment::Segment<crate::segment::MemorySource> {
+        let path = root.join(file);
+        let src = crate::segment::MemorySource::load(&path).unwrap();
+        crate::segment::Segment::open(&path, src, true).unwrap()
+    }
+
+    #[test]
+    fn staged_rows_become_readable_segments_on_commit() {
+        let root = tmp_root("segments");
+        let mut s = NativeStore::open(&root).unwrap();
+        s.begin(100).unwrap();
+        let a = s.ensure_entity("n1", "Node").unwrap();
+        let b = s.ensure_entity("n2", "Node").unwrap();
+        for i in 0..10u32 {
+            s.stage_edge(edge_row(a, b, 1_000 + i as i64, 100, i)).unwrap();
+        }
+        assert_eq!(s.staged_edges().len(), 10, "read-your-own-writes");
+        s.commit(EventLogRef::default()).unwrap();
+        assert!(s.staged_edges().is_empty(), "commit drains staging");
+        drop(s);
+
+        let re = NativeStore::open(&root).unwrap();
+        assert_eq!(re.manifest().stats.n_edge_versions, 10);
+        assert_eq!(re.manifest().edge_lanes.event.len(), 1);
+        assert!(re.manifest().edge_lanes.interval.is_empty());
+        let seg = read_segment(&root, &re.manifest().edge_lanes.event[0].file);
+        assert_eq!(seg.rows(), 10);
+        assert_eq!(seg.i64_column("vt_s").unwrap()[0], 1_000);
+    }
+
+    #[test]
+    fn rollback_writes_no_segments_and_advances_nothing() {
+        let root = tmp_root("rollback-segments");
+        let mut s = NativeStore::open(&root).unwrap();
+        s.begin(100).unwrap();
+        s.ensure_entity("n1", "Node").unwrap();
+        s.stage_edge(edge_row(0, 0, 5, 100, 0)).unwrap();
+        s.rollback().unwrap();
+
+        assert!(s.staged_edges().is_empty());
+        assert_eq!(s.generation(), 0);
+        assert_eq!(s.manifest().next_segment_id, 0);
+        assert_eq!(
+            fs::read_dir(root.join("seg")).unwrap().count(),
+            0,
+            "a rolled-back batch must leave no segment files"
+        );
+    }
+
+    #[test]
+    fn segment_ids_never_repeat_across_generations() {
+        let root = tmp_root("segment-ids");
+        let mut s = NativeStore::open(&root).unwrap();
+        for gen in 0..3u32 {
+            s.begin(100 + gen as i64).unwrap();
+            let a = s.ensure_entity("n1", "Node").unwrap();
+            s.stage_edge(edge_row(a, a, 10 + gen as i64, 100 + gen as i64, gen)).unwrap();
+            s.commit(EventLogRef::default()).unwrap();
+        }
+        // each generation inherits its parent's segments and adds its own
+        let files: Vec<String> = s
+            .manifest()
+            .edge_lanes
+            .event
+            .iter()
+            .map(|e| e.file.clone())
+            .collect();
+        assert_eq!(files.len(), 3, "every generation's segment is still listed");
+        let mut unique = files.clone();
+        unique.sort();
+        unique.dedup();
+        assert_eq!(unique.len(), files.len(), "ids were reused: {files:?}");
+        assert_eq!(s.manifest().next_segment_id, 3);
+        assert_eq!(s.manifest().stats.n_edge_versions, 3);
+    }
+
+    #[test]
+    fn long_lived_facts_route_to_the_interval_lane() {
+        let root = tmp_root("lanes");
+        let mut s = NativeStore::open(&root).unwrap();
+        s.begin(100).unwrap();
+        let a = s.ensure_entity("n1", "Node").unwrap();
+        let mut forever = edge_row(a, a, 0, 100, 0);
+        forever.vt_e = crate::OPEN_END;
+        s.stage_edge(forever).unwrap();
+        s.stage_edge(edge_row(a, a, 5, 100, 1)).unwrap();
+        s.commit(EventLogRef::default()).unwrap();
+
+        assert_eq!(s.manifest().edge_lanes.event.len(), 1);
+        assert_eq!(s.manifest().edge_lanes.interval.len(), 1);
+    }
+
+    // --- belief visibility (WP-N3) -------------------------------------- //
+
+    fn scan_at(root: &Path, store: &NativeStore, as_of: i64) -> Vec<Id96> {
+        use crate::scan::{ScanRequest, ScanSet, ScanTarget};
+        let m = store.manifest();
+        let mut segs = Vec::new();
+        let mut ids = Vec::new();
+        for e in m.edge_lanes.event.iter().chain(m.edge_lanes.interval.iter()) {
+            let path = root.join(&e.file);
+            segs.push(Segment::open(&path, MemorySource::load(&path).unwrap(), true).unwrap());
+            ids.push(super::segment_id_of(&e.file));
+        }
+        let targets: Vec<ScanTarget<'_, MemorySource>> = segs
+            .iter()
+            .zip(&ids)
+            .map(|(segment, id)| ScanTarget {
+                segment,
+                lane: Lane::Event,
+                id: *id,
+            })
+            .collect();
+        let set = ScanSet::new(targets).with_closes(store.close_index().unwrap());
+        let mut req = ScanRequest::current();
+        req.as_of_tt = as_of;
+        let (sel, _) = set.select(&req).unwrap();
+        set.merged(&sel, None)
+            .unwrap()
+            .into_iter()
+            .map(|(si, row)| segs[si].vid_at(row as usize).unwrap())
+            .collect()
+    }
+
+    #[test]
+    fn closing_a_version_hides_it_only_from_later_beliefs() {
+        // the bi-temporal immutability property: a correction must not change
+        // what the database believed *before* the correction happened
+        let root = tmp_root("close-bitemporal");
+        let mut s = NativeStore::open(&root).unwrap();
+        s.begin(100).unwrap();
+        let a = s.ensure_entity("n1", "Node").unwrap();
+        let rows: Vec<EdgeRow> = (0..3).map(|i| edge_row(a, a, 10 + i as i64, 100, i)).collect();
+        for r in &rows {
+            s.stage_edge(r.clone()).unwrap();
+        }
+        s.commit(EventLogRef::default()).unwrap();
+        assert_eq!(scan_at(&root, &s, OPEN_END).len(), 3);
+
+        // a later batch stops believing the middle version
+        s.begin(200).unwrap();
+        s.close_version(RowKind::Edge, rows[1].vid, 200).unwrap();
+        s.commit(EventLogRef::default()).unwrap();
+
+        let now = scan_at(&root, &s, OPEN_END);
+        assert_eq!(now.len(), 2, "the closed version is no longer believed");
+        assert!(!now.contains(&rows[1].vid));
+
+        let before = scan_at(&root, &s, 150);
+        assert_eq!(before.len(), 3, "history must be unchanged by a correction");
+        assert!(before.contains(&rows[1].vid));
+
+        // and exactly at the close time it is already gone (half-open tt)
+        assert_eq!(scan_at(&root, &s, 200).len(), 2);
+        assert_eq!(scan_at(&root, &s, 199).len(), 3);
+    }
+
+    #[test]
+    fn closes_survive_reopening_the_store() {
+        let root = tmp_root("close-reopen");
+        let mut s = NativeStore::open(&root).unwrap();
+        s.begin(100).unwrap();
+        let a = s.ensure_entity("n1", "Node").unwrap();
+        let row = edge_row(a, a, 10, 100, 0);
+        s.stage_edge(row.clone()).unwrap();
+        s.commit(EventLogRef::default()).unwrap();
+        s.begin(200).unwrap();
+        s.close_version(RowKind::Edge, row.vid, 200).unwrap();
+        s.commit(EventLogRef::default()).unwrap();
+        assert_eq!(s.manifest().close_runs.len(), 1);
+        drop(s);
+
+        let re = NativeStore::open(&root).unwrap();
+        assert_eq!(re.close_index().unwrap().len(), 1);
+        assert!(scan_at(&root, &re, OPEN_END).is_empty());
+        assert_eq!(scan_at(&root, &re, 150).len(), 1);
+    }
+
+    #[test]
+    fn a_version_closed_in_its_own_batch_folds_into_the_sidecar() {
+        // a carve: the batch inserts a version and closes it again, so no
+        // close run is needed — the segment carries its own sidecar
+        let root = tmp_root("close-staged");
+        let mut s = NativeStore::open(&root).unwrap();
+        s.begin(100).unwrap();
+        let a = s.ensure_entity("n1", "Node").unwrap();
+        let keep = edge_row(a, a, 10, 100, 0);
+        let doomed = edge_row(a, a, 20, 100, 1);
+        s.stage_edge(keep.clone()).unwrap();
+        s.stage_edge(doomed.clone()).unwrap();
+        s.close_version(RowKind::Edge, doomed.vid, 100).unwrap();
+        s.commit(EventLogRef::default()).unwrap();
+
+        assert!(
+            s.manifest().close_runs.is_empty(),
+            "a same-batch close needs no run file"
+        );
+        let entry = &s.manifest().edge_lanes.event[0];
+        assert_eq!(entry.n_closed_folded, 1);
+        assert!(!entry.all_current);
+
+        let now = scan_at(&root, &s, OPEN_END);
+        assert_eq!(now, vec![keep.vid], "only the surviving version is believed");
+        // the row is still stored — closed is not deleted
+        let path = root.join(&entry.file);
+        let seg = Segment::open(&path, MemorySource::load(&path).unwrap(), true).unwrap();
+        assert_eq!(seg.rows(), 2, "a closed row is retained, only hidden");
+    }
+
+    #[test]
+    fn closing_an_unknown_version_is_not_found() {
+        let root = tmp_root("close-missing");
+        let mut s = NativeStore::open(&root).unwrap();
+        s.begin(100).unwrap();
+        let ghost = crate::derive::version_vid("nope", 1, 1);
+        let err = match s.close_version(RowKind::Edge, ghost, 200) {
+            Ok(()) => panic!("closing a nonexistent version must fail"),
+            Err(e) => e,
+        };
+        assert_eq!(err.category, crate::error::Category::NotFound);
+    }
+
+    #[test]
+    fn rolled_back_closes_leave_no_run() {
+        let root = tmp_root("close-rollback");
+        let mut s = NativeStore::open(&root).unwrap();
+        s.begin(100).unwrap();
+        let a = s.ensure_entity("n1", "Node").unwrap();
+        let row = edge_row(a, a, 10, 100, 0);
+        s.stage_edge(row.clone()).unwrap();
+        s.commit(EventLogRef::default()).unwrap();
+
+        s.begin(200).unwrap();
+        s.close_version(RowKind::Edge, row.vid, 200).unwrap();
+        s.rollback().unwrap();
+
+        assert!(s.manifest().close_runs.is_empty());
+        assert_eq!(scan_at(&root, &s, OPEN_END).len(), 1, "the close was abandoned");
+    }
+
+    // --- crash-step matrix (spec WP-N1 acceptance) --------------------- //
+
+    #[test]
+    fn crash_after_manifest_before_current_serves_previous_generation() {
+        let root = tmp_root("crash-manifest");
+        let mut s = NativeStore::open(&root).unwrap();
+        commit_with(&mut s, 10, &["n1"]);
+        drop(s);
+
+        // simulate: generation 2's manifest reached disk, CURRENT did not
+        let g1 = Manifest::from_json(
+            &fs::read_to_string(NativeStore::manifest_path(&root, 1)).unwrap(),
+        )
+        .unwrap();
+        let mut g2 = g1.successor(20);
+        g2.stats.n_entities = 99;
+        g2.seal();
+        write_atomic(&NativeStore::manifest_path(&root, 2), &g2.to_json()).unwrap();
+
+        let re = NativeStore::open(&root).unwrap();
+        assert_eq!(re.generation(), 1, "orphaned manifest must not be adopted");
+        assert_eq!(re.dict().len(), 1);
+    }
+
+    #[test]
+    fn crash_after_dict_append_before_manifest_truncates_the_tail() {
+        let root = tmp_root("crash-dict");
+        let mut s = NativeStore::open(&root).unwrap();
+        commit_with(&mut s, 10, &["n1"]);
+        let committed_bytes = s.manifest().dict.bytes;
+        drop(s);
+
+        // simulate: a later batch appended to dict.log and died pre-manifest
+        let mut d = Dictionary::open(root.join(DICT), 1, committed_bytes).unwrap();
+        d.ensure("orphan", "Node").unwrap();
+        d.commit_to_disk().unwrap();
+        assert!(fs::metadata(root.join(DICT)).unwrap().len() > committed_bytes);
+
+        let re = NativeStore::open(&root).unwrap();
+        assert_eq!(re.generation(), 1);
+        assert_eq!(re.dict().len(), 1);
+        assert_eq!(re.dict().dense_id("orphan"), None);
+        assert_eq!(fs::metadata(root.join(DICT)).unwrap().len(), committed_bytes);
+    }
+
+    #[test]
+    fn current_pointing_at_a_missing_manifest_is_corruption() {
+        let root = tmp_root("missing-manifest");
+        let mut s = NativeStore::open(&root).unwrap();
+        commit_with(&mut s, 10, &["n1"]);
+        drop(s);
+        fs::remove_file(NativeStore::manifest_path(&root, 1)).unwrap();
+
+        let err = match NativeStore::open(&root) {
+            Ok(_) => panic!("must not open with a dangling CURRENT"),
+            Err(e) => e,
+        };
+        assert_eq!(err.category, crate::error::Category::Corrupt);
+        assert!(err.remedy.is_some(), "corruption must name a remedy");
+    }
+
+    #[test]
+    fn tampered_manifest_is_rejected() {
+        let root = tmp_root("tampered");
+        let mut s = NativeStore::open(&root).unwrap();
+        commit_with(&mut s, 10, &["n1"]);
+        drop(s);
+
+        let path = NativeStore::manifest_path(&root, 1);
+        let text = fs::read_to_string(&path).unwrap();
+        fs::write(&path, text.replace("\"n_entities\": 1", "\"n_entities\": 4")).unwrap();
+
+        assert!(NativeStore::open(&root).is_err(), "checksum must catch edits");
+    }
+
+    #[test]
+    fn malformed_current_is_corruption() {
+        let root = tmp_root("bad-current");
+        NativeStore::open(&root).unwrap();
+        fs::write(root.join(CURRENT), "garbage\n").unwrap();
+        let err = match NativeStore::open(&root) {
+            Ok(_) => panic!("malformed CURRENT must not open"),
+            Err(e) => e,
+        };
+        assert_eq!(err.category, crate::error::Category::Corrupt);
+    }
+
+    #[test]
+    fn batches_do_not_nest_and_time_must_advance() {
+        let root = tmp_root("batch-rules");
+        let mut s = NativeStore::open(&root).unwrap();
+        commit_with(&mut s, 10, &["n1"]);
+        s.begin(20).unwrap();
+        assert!(s.begin(21).is_err(), "single-writer: no nested batches");
+        s.rollback().unwrap();
+        assert!(s.begin(10).is_err(), "tt must be strictly monotone");
+        assert!(s.begin(11).is_ok());
+    }
+}

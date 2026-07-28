@@ -1,0 +1,17 @@
+[package]
+name = "tgms-engine-py"
+description = "PyO3 bindings for the TGMS native storage engine"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+
+[lib]
+# must match the last component of tool.maturin module-name (tgms._engine)
+name = "_engine"
+crate-type = ["cdylib"]
+
+[dependencies]
+numpy = "0.29.0"
+pyo3 = { version = "0.29.0", features = ["extension-module"] }
+tgms-engine-core = { path = "../tgms-engine-core" }
