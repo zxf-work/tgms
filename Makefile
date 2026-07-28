@@ -7,7 +7,8 @@ STORE ?= stores/synth-100k
 # console scripts). Same var is documented in README for interactive use.
 export UV_PROJECT_ENVIRONMENT ?= $(HOME)/.venvs/tgms
 
-.PHONY: setup test test-full ci lint bench-ops synth-100k synth-1m reproduce clean
+.PHONY: setup test test-full ci lint hygiene rust-test rust-lint bench-ops \
+        synth-100k synth-1m reproduce clean
 
 setup:
 	$(UV) sync --extra agent
@@ -19,7 +20,19 @@ test:
 test-full:
 	TGMS_HYP_EXAMPLES=500 $(UV) run pytest tests/
 
-ci: lint hygiene
+# native engine (D-028): the Rust core is tested on its own — it has no
+# Python dependency, so these run without a venv.
+rust-test:
+	cargo test -p tgms-engine-core
+
+rust-lint:
+	cargo clippy --all-targets -- -D warnings
+
+# regenerate the Python-derived parity fixtures the Rust tests assert against
+derive-vectors:
+	$(UV) run python scripts/gen_derive_vectors.py
+
+ci: lint rust-lint hygiene rust-test
 	TGMS_HYP_EXAMPLES=50 $(UV) run pytest tests/ -q
 
 # spec §8.1: no commit may mix tests//oracle.py with implementation changes

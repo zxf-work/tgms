@@ -22,3 +22,9 @@ paper/cidr/
 
 # phase-3 private planning handoff
 HANDOFF-PHASE3.md
+
+# rust build artifacts
+target/
+# compiled engine extension (built into the source tree by maturin editable installs)
+*.so
+*.pyd

@@ -370,3 +370,84 @@ implementation — hygiene checking starts at the marker recorded in D-010.
   repair-payload design principle. Post-campaign heals (Phi tail on xzgpu)
   run pre-fix code via the xzgpu bare remote, keeping their campaign
   internally consistent.
+
+## D-028 — 2026-07-28 — Phase-3 native storage engine: architecture
+- **Context:** Kùzu is no longer available (acquired by Apple) and DuckDB is
+  the only remaining third-party engine in the runtime path
+  (`storage/duckdb_adapter.py` as the primary store; `temporal/ops_motifs.py`
+  for motif joins). PI direction (2026-07-26): build the lower-level storage
+  system ourselves and keep it minimal but extremely fast on the closed
+  surface TGMS actually uses. Design went through three drafts and two
+  external review rounds; artifacts: `ENGINE_BLUEPRINT.md` (v3),
+  `TGMS_NATIVE_ENGINE_REVIEW.md`, `TGMS_NATIVE_ENGINE_V2_REVIEW.md`,
+  `ENGINE_IMPLEMENTATION_SPEC.md` (binding implementation contract).
+- **Proposal — 17 locked decisions** (blueprint §8, recorded here verbatim):
+  1. All logical state is manifest-generation scoped; readers hold snapshot
+     handles; close patches are immutable commit artifacts.
+  2. Identity is derived, not stored, under the derivability invariant
+     (`disc` always recoverable); 64-bit prefixes are accelerators; ties
+     compare full derived ids. Stored 96-bit ids are the recorded fallback.
+  3. One canonical derivation implementation in the engine core, with an
+     ingest-time parity assertion against the Python semantics layer.
+  4. Composite-key `(vt_s, vid64)` tie groups never split across segment
+     boundaries; manifests record full 96-bit boundary keys.
+  5. Logical partitions ≠ physical segments; segments are byte-targeted;
+     blocks are the codec/pruning unit.
+  6. Lane membership = interval intersects ≤ K(=2) adjacent partitions;
+     lane assignment is physical, not logical identity.
+  7. Visibility v0 = `all_current` flag + sparse sidecars; the dense-`tt_e`
+     sidecar tag is reserved in the format but unimplemented.
+  8. Compaction preserves closed rows; equivalence test = store digest +
+     historical-query sample byte-identical.
+  9. No physical GC in the first version; later GC is explicit
+     (`tgms store gc`) and reader-marker guarded.
+  10. Group-commit durability, one mode; the manifest event-log offset lands
+      on a record boundary; the log prefix hash is chained/checkpointed.
+  11. u32 entity ids and row ids with capacity checks; column widths declared
+      in the format header, fixed (not adaptive) in v0.
+  12. The internal API is a chunked scan cursor; `StorageAdapter` is a
+      compatibility boundary that materializes; the PyO3 boundary is coarse
+      (one crossing per batch, GIL released).
+  13. **Rust-first persistent core** (`crates/tgms-engine-core`, no Python
+      dependency) with a thin PyO3/maturin layer; Python keeps semantics,
+      CLI, adapters, and tests; NumPy prototypes are never authoritative.
+  14. Version-specific wheels first; no `abi3` until the extension API
+      stabilizes.
+  15. The node store is identity-clustered; name lookup is current-canonical
+      only.
+  16. Format v0 carries checksums, codec ids, declared widths, versions, and
+      segment complete-markers.
+  17. Gates: E3/WP-N3 = semantic completeness (linear-scan fallbacks legal);
+      E4/WP-N4 = indexed performance; scan and join gates are
+      output-sensitive and name their materialization level.
+- **Consequence:** implementation proceeds as WP-N0..WP-N5
+  (`ENGINE_IMPLEMENTATION_SPEC.md` §7). DuckDB stays the default backend and
+  the A/B reference until WP-N5, then becomes an optional extra; TGMS must
+  function fully without it. Nothing above `storage/base.py` changes — the
+  500-case oracle, replay/digest, and metamorphic suites are the arbiters of
+  correctness and stay human-owned (§8.1). Deferred by design to E6+:
+  compression, dense visibility sidecars, kernel parallelism, trigram name
+  index, window-CSR caching, GC reclamation.
+
+## D-029 — 2026-07-28 — Native-engine dependencies, licenses, and build backend
+- **Context:** D-028 introduces a compiled Rust extension into a previously
+  pure-Python package. Spec §8.6 requires a dated entry with licenses for new
+  dependencies.
+- **Rust (runtime):** `pyo3` (Apache-2.0/MIT), `numpy` rust crate
+  (BSD-2-Clause), `serde` + `serde_json` (MIT/Apache-2.0), `sha2`
+  (MIT/Apache-2.0), `crc32c` (Apache-2.0/MIT), `memmap2` (MIT/Apache-2.0),
+  `thiserror` (MIT/Apache-2.0). **Build:** `maturin` (MIT/Apache-2.0),
+  `cibuildwheel` (BSD-2-Clause, CI only). All permissive and compatible with
+  the project's Apache-2.0 license. Deferred to E6+ under their own entry:
+  `rayon`, integer/compression codecs.
+- **Build backend:** `hatchling` → `maturin` (mixed Rust/Python project;
+  the compiled module is `tgms._engine`, a private submodule of the existing
+  `tgms` package, so the public import surface is unchanged).
+- **Consequence (operational, deliberate):** binary wheels cover the
+  supported matrix (CPython 3.11–3.13 × manylinux-x86_64 + macOS-arm64), so
+  `pip install tgms` remains a single command with no toolchain — this is
+  gated by the WP-N0 packaging probe. **Installing from source (including
+  `uv sync` in a git checkout) now requires a Rust toolchain**, which affects
+  the xzgpu and iTiger checkouts; both need `rustup`/`brew install rust`
+  (no root required) before their next `uv sync`. The frozen campaigns are
+  complete, so no experiment depends on this transition.

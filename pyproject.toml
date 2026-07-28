@@ -49,11 +49,19 @@ dev = [
 ]
 
 [build-system]
-requires = ["hatchling"]
-build-backend = "hatchling.build"
+requires = ["maturin>=1.7,<2.0"]
+build-backend = "maturin"
 
-[tool.hatch.build.targets.wheel]
-packages = ["tgms"]
+# Mixed Rust/Python project (D-028/D-029): the pure-Python package `tgms`
+# stays where it is; the compiled engine is installed as the private
+# submodule `tgms._engine`, so the public import surface is unchanged.
+# Binary wheels cover the supported matrix — a source install (including
+# `uv sync` in a checkout) additionally needs a Rust toolchain.
+[tool.maturin]
+python-source = "."
+module-name = "tgms._engine"
+manifest-path = "crates/tgms-engine-py/Cargo.toml"
+features = ["pyo3/extension-module"]
 
 [tool.uv]
 python-preference = "managed"

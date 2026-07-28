@@ -5,23 +5,55 @@ on:
     types: [published]
   workflow_dispatch: {}
 
+# D-029: `tgms` is a mixed Rust/Python project, so the release artifact is a
+# matrix of binary wheels (plus an sdist that needs a Rust toolchain to
+# build). The WP-N0 packaging probe is exactly this workflow: a user running
+# `pip install tgms` must never need cargo.
 jobs:
-  build:
+  wheels:
+    name: wheels ${{ matrix.os }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-14]   # manylinux x86_64, macOS arm64
+    steps:
+      - uses: actions/checkout@v5
+      - uses: pypa/cibuildwheel@v2.21.3
+        env:
+          CIBW_BUILD: "cp311-* cp312-* cp313-*"
+          CIBW_SKIP: "*-musllinux_*"
+          CIBW_ARCHS_LINUX: x86_64
+          CIBW_ARCHS_MACOS: arm64
+          # manylinux containers have no Rust; install a minimal toolchain
+          CIBW_BEFORE_ALL_LINUX: >-
+            curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs
+            | sh -s -- -y --profile minimal
+          CIBW_ENVIRONMENT_LINUX: 'PATH="$HOME/.cargo/bin:$PATH"'
+          # the probe: the shipped wheel must import and round-trip an array
+          CIBW_TEST_COMMAND: >-
+            python -c "import tgms._engine as e;
+            assert e.ping(3).tolist() == [0, 1, 2];
+            print('engine', e.core_version(), 'format', e.FORMAT_VERSION)"
+      - uses: actions/upload-artifact@v7
+        with:
+          name: dist-${{ matrix.os }}
+          path: wheelhouse/*.whl
+
+  sdist:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v5
       - uses: astral-sh/setup-uv@v7
-      - name: Build sdist and wheel
-        run: uv build
-      - name: Check metadata
-        run: uvx twine check dist/*
+      - name: Build sdist
+        run: uv build --sdist
       - uses: actions/upload-artifact@v7
         with:
-          name: dist
-          path: dist/
+          name: dist-sdist
+          path: dist/*.tar.gz
 
   publish:
-    needs: build
+    needs: [wheels, sdist]
     runs-on: ubuntu-latest
     environment: pypi
     permissions:
@@ -29,8 +61,11 @@ jobs:
     steps:
       - uses: actions/download-artifact@v8
         with:
-          name: dist
+          pattern: dist-*
+          merge-multiple: true
           path: dist/
+      - name: Check metadata
+        run: uvx twine check dist/*
       - name: Publish to PyPI
         uses: pypa/gh-action-pypi-publish@release/v1
         with:

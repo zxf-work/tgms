@@ -1,0 +1,15 @@
+[workspace]
+resolver = "2"
+members = ["crates/tgms-engine-core", "crates/tgms-engine-py"]
+
+[workspace.package]
+version = "0.4.0"
+edition = "2021"
+license = "Apache-2.0"
+repository = "https://github.com/zxf-work/tgms"
+
+[profile.release]
+opt-level = 3
+lto = "thin"
+codegen-units = 1
+panic = "unwind"   # PyO3 maps panics to Python exceptions; never abort the host
