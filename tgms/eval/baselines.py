@@ -123,6 +123,25 @@ class VectorRAG:
 # B2 — static-graph RAG                                                        #
 # --------------------------------------------------------------------------- #
 
+def _known_uids(adapter: Any, uids: list[str]) -> list[str]:
+    """Filter to uids the store actually knows, using only the public ABC.
+
+    This used to read the DuckDB adapter's private `_ids` cache, which
+    silently made the baseline backend-specific; `dense_ids` is the
+    backend-agnostic way to ask.
+    """
+    from tgms.core.errors import NotFoundError
+
+    known = []
+    for u in uids:
+        try:
+            adapter.dense_ids([u])
+        except NotFoundError:
+            continue
+        known.append(u)
+    return known
+
+
 class StaticGraphRAG:
     """B2. Latest-snapshot 2-hop neighborhood as an edge list; timestamps and
     history are invisible by construction."""
@@ -136,8 +155,7 @@ class StaticGraphRAG:
     def _context(self, input_uids: list[str]) -> str:
         from tgms.temporal.algebra import call_operator, ensure_all_registered
         ensure_all_registered()
-        seeds = [u for u in input_uids
-                 if u in self.store.adapter._ids]  # ignore unknown mentions
+        seeds = _known_uids(self.store.adapter, input_uids)  # ignore unknown mentions
         if not seeds:
             e = self.store.adapter.edges_columnar(
                 vt_min=self.t_latest, vt_max=self.t_latest + 1)

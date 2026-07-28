@@ -20,9 +20,11 @@ INGEST_CHUNK = 50_000
 
 
 class Store:
-    def __init__(self, path: str | Path, backend: str = "duckdb", paranoid: bool = False) -> None:
+    def __init__(self, path: str | Path, backend: str | None = None,
+                 paranoid: bool = False) -> None:
         self.path = Path(path)
         self.path.mkdir(parents=True, exist_ok=True)
+        backend = backend or detect_backend(self.path)
         self.backend = backend
         self.eventlog = EventLog(self.path / "eventlog.jsonl")
         self.adapter = _make_adapter(backend, self.path)
@@ -108,7 +110,30 @@ class Store:
         return self.adapter.stats()
 
 
-def open(path: str | Path, backend: str = "duckdb", paranoid: bool = False) -> Store:
+#: Backend used for new stores (D-028). Existing stores keep the backend they
+#: were written with — see `detect_backend`.
+DEFAULT_BACKEND = "native"
+
+
+def detect_backend(path: Path) -> str:
+    """Which backend an existing store at `path` uses, else the default.
+
+    Flipping the default to the native engine must not strand data that is
+    already on disk: opening an existing DuckDB store without this check would
+    silently create an empty native store beside it and look like data loss.
+    Layout is self-identifying, so no migration or marker file is needed —
+    pass `backend=` explicitly to override.
+    """
+    if (path / "store.duckdb").exists():
+        return "duckdb"
+    if (path / "store.kuzu").exists():
+        return "kuzu"
+    return DEFAULT_BACKEND
+
+
+def open(path: str | Path, backend: str | None = None, paranoid: bool = False) -> Store:
+    """Open (or create) a store. `backend` defaults to the existing store's
+    layout, or `DEFAULT_BACKEND` for a new one."""
     return Store(path, backend=backend, paranoid=paranoid)
 
 
@@ -119,6 +144,9 @@ def _make_adapter(backend: str, path: Path) -> StorageAdapter:
     if backend == "kuzu":
         from tgms.storage.kuzu_adapter import KuzuAdapter
         return KuzuAdapter(path / "store.kuzu")
+    if backend == "native":
+        from tgms.storage.native import NativeAdapter
+        return NativeAdapter(path / "native")
     if backend == "memory":
         from tgms.storage.duckdb_adapter import DuckDBAdapter
         return DuckDBAdapter(":memory:")
