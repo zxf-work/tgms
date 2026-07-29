@@ -145,28 +145,37 @@ def _make_adapter(backend: str, path: Path) -> StorageAdapter:
         DuckDBAdapter = _optional_backend("duckdb")
         return DuckDBAdapter(":memory:" if backend == "memory" else path / "store.duckdb")
     if backend == "kuzu":
-        from tgms.storage.kuzu_adapter import KuzuAdapter
-        return KuzuAdapter(path / "store.kuzu")
+        return _optional_backend("kuzu")(path / "store.kuzu")
     raise ValueError(f"unknown backend: {backend}")
+
+
+#: Backends that ship as optional extras, not runtime dependencies (D-029).
+_OPTIONAL_BACKENDS = {
+    "duckdb": ("tgms.storage.duckdb_adapter", "DuckDBAdapter"),
+    "kuzu": ("tgms.storage.kuzu_adapter", "KuzuAdapter"),
+}
 
 
 def _optional_backend(name: str):
     """Import a backend that ships as an optional extra.
 
-    DuckDB is no longer a runtime dependency (D-029): the native engine is
-    the default and needs nothing beyond the wheel. An existing DuckDB store
-    still opens — `detect_backend` sees its layout — but only if the extra is
-    installed, so say so plainly rather than surfacing a bare ImportError.
+    Neither third-party engine is a runtime dependency any more (D-029): the
+    native engine is the default and needs nothing beyond the wheel. An
+    existing store on one of them still opens — `detect_backend` reads its
+    layout — but only if the extra is installed, so say so plainly instead of
+    surfacing a bare ImportError from deep in an adapter.
     """
+    import importlib
+
+    module, cls = _OPTIONAL_BACKENDS[name]
     try:
-        from tgms.storage.duckdb_adapter import DuckDBAdapter
+        return getattr(importlib.import_module(module), cls)
     except ImportError as e:  # pragma: no cover - depends on the install
         raise ImportError(
             f"this store uses the {name} backend, which is now an optional "
             f"extra: install it with `pip install tgms[{name}]`, or migrate "
             f"the store to the native engine with `tgms replay`."
         ) from e
-    return DuckDBAdapter
 
 
 def _ref_json(ref: EntityRef) -> dict[str, Any]:

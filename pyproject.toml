@@ -16,7 +16,6 @@ classifiers = [
     "Topic :: Scientific/Engineering :: Artificial Intelligence",
 ]
 dependencies = [
-    "kuzu>=0.7",
     "numpy>=1.26",
     "pyarrow>=17",
     "networkx>=3.3",
@@ -32,6 +31,10 @@ dependencies = [
 # default. It remains available for opening pre-existing DuckDB stores, as
 # the A/B reference backend, and for the b6 text-to-SQL baseline.
 duckdb = ["duckdb>=1.1"]
+# Kuzu is unavailable going forward (acquired), and was only ever a secondary
+# backend plus the b5 text-to-Cypher baseline. Pinned here for replaying the
+# frozen b5 results; nothing in the runtime needs it.
+kuzu = ["kuzu>=0.7"]
 agent = ["litellm>=1.48", "fastmcp>=2.0"]
 memory = ["faiss-cpu>=1.8", "sentence-transformers>=3.0"]
 
@@ -46,6 +49,7 @@ Documentation = "https://github.com/zxf-work/tgms/blob/main/docs/TECHNICAL_REPOR
 [dependency-groups]
 dev = [
     "duckdb>=1.1",       # reference backend for the A/B digest harness
+    "kuzu>=0.7",         # b5 baseline replay only
     "pytest>=8.3",
     "hypothesis>=6.112",
     "pytest-cov>=5.0",

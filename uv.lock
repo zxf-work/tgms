@@ -3400,7 +3400,6 @@ version = "0.4.0"
 source = { editable = "." }
 dependencies = [
     { name = "jsonschema" },
-    { name = "kuzu" },
     { name = "networkx" },
     { name = "numpy", version = "2.4.6", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version < '3.12'" },
     { name = "numpy", version = "2.5.1", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version >= '3.12'" },
@@ -3419,6 +3418,9 @@ agent = [
 duckdb = [
     { name = "duckdb" },
 ]
+kuzu = [
+    { name = "kuzu" },
+]
 memory = [
     { name = "faiss-cpu" },
     { name = "sentence-transformers" },
@@ -3428,6 +3430,7 @@ memory = [
 dev = [
     { name = "duckdb" },
     { name = "hypothesis" },
+    { name = "kuzu" },
     { name = "pytest" },
     { name = "pytest-cov" },
     { name = "ruff" },
@@ -3439,7 +3442,7 @@ requires-dist = [
     { name = "faiss-cpu", marker = "extra == 'memory'", specifier = ">=1.8" },
     { name = "fastmcp", marker = "extra == 'agent'", specifier = ">=2.0" },
     { name = "jsonschema", specifier = ">=4.23" },
-    { name = "kuzu", specifier = ">=0.7" },
+    { name = "kuzu", marker = "extra == 'kuzu'", specifier = ">=0.7" },
     { name = "litellm", marker = "extra == 'agent'", specifier = ">=1.48" },
     { name = "networkx", specifier = ">=3.3" },
     { name = "numpy", specifier = ">=1.26" },
@@ -3450,12 +3453,13 @@ requires-dist = [
     { name = "sentence-transformers", marker = "extra == 'memory'", specifier = ">=3.0" },
     { name = "tenacity", specifier = ">=9.1.4" },
 ]
-provides-extras = ["duckdb", "agent", "memory"]
+provides-extras = ["duckdb", "kuzu", "agent", "memory"]
 
 [package.metadata.requires-dev]
 dev = [
     { name = "duckdb", specifier = ">=1.1" },
     { name = "hypothesis", specifier = ">=6.112" },
+    { name = "kuzu", specifier = ">=0.7" },
     { name = "pytest", specifier = ">=8.3" },
     { name = "pytest-cov", specifier = ">=5.0" },
     { name = "ruff", specifier = ">=0.6" },

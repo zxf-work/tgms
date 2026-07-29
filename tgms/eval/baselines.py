@@ -206,7 +206,15 @@ def build_vanilla_kuzu(events: Iterable[dict[str, Any]], path: str | Path):
     via CSV + COPY — the fair 'no bi-temporal layer' strawman store."""
     import csv
 
-    import kuzu
+    from tgms.core.errors import StateError
+
+    try:
+        import kuzu
+    except ImportError as e:  # pragma: no cover - depends on the install
+        raise StateError(
+            "the b5 text-to-Cypher baseline needs Kuzu, now an optional "
+            "extra: install it with `pip install tgms[kuzu]`"
+        ) from e
 
     path = Path(path)
     path.parent.mkdir(parents=True, exist_ok=True)
