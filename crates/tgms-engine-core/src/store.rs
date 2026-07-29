@@ -52,6 +52,11 @@ pub struct NativeStore {
     pending_closes: Vec<CloseRecord>,
     partitions: PartitionMap,
     segment_target_bytes: u64,
+    /// Cost-guardrail statistics, maintained incrementally (spec §4.1: stats
+    /// are served from the manifest, never by scanning). Built once on first
+    /// use, then each commit folds in its own batch, so a write-then-read
+    /// loop never rescans.
+    stats: std::sync::Mutex<Option<StatsAccum>>,
     /// Identity postings, built incrementally (C3.1). Segments are
     /// immutable and manifests only accumulate, so a segment is indexed once
     /// and never revisited — which keeps a store built by N single-row
@@ -96,6 +101,7 @@ impl NativeStore {
             pending_closes: Vec::new(),
             partitions: PartitionMap::default(),
             segment_target_bytes: crate::defaults::SEGMENT_TARGET_BYTES,
+            stats: std::sync::Mutex::new(None),
             edge_postings: std::sync::Mutex::new(Postings::default()),
             node_postings: std::sync::Mutex::new(Postings::default()),
             verified: std::sync::Mutex::new(std::collections::HashSet::new()),
@@ -176,6 +182,10 @@ impl NativeStore {
 
     pub fn dict(&self) -> &Dictionary {
         &self.dict
+    }
+
+    pub(crate) fn stats_cell(&self) -> &std::sync::Mutex<Option<StatsAccum>> {
+        &self.stats
     }
 
     pub(crate) fn edge_postings(&self) -> &std::sync::Mutex<Postings> {
@@ -481,6 +491,18 @@ impl NativeStore {
             });
         }
 
+        // fold this batch into the running statistics rather than
+        // invalidating them; staging is still intact here
+        {
+            let mut cell = self.stats.lock().expect("stats mutex poisoned");
+            if let Some(acc) = cell.as_mut() {
+                for r in self.staging.edges() {
+                    acc.add_edge(r.vt_s, r.vt_e, &r.rel_type, r.src_id);
+                }
+                acc.n_node_versions += self.staging.nodes().len() as u64;
+            }
+        }
+
         // step 3 — dictionary tail durable before anything references it
         let (records, bytes) = self.dict.commit_to_disk()?;
         next.event_log = event_log;
@@ -514,6 +536,37 @@ impl NativeStore {
     fn require_batch(&self) -> Result<i64> {
         self.batch_tt
             .ok_or_else(|| EngineError::invariant("no batch is open; call begin() first"))
+    }
+}
+
+/// Running statistics. Counts cover every stored row, not just believed
+/// ones, matching what the DuckDB adapter reports — the two backends have to
+/// agree here or `estimate_cost` would diverge between them.
+#[derive(Default, Clone)]
+pub struct StatsAccum {
+    pub n_node_versions: u64,
+    pub n_edge_versions: u64,
+    pub vt_min: Option<i64>,
+    pub vt_max: Option<i64>,
+    pub rel_type_counts: std::collections::HashMap<String, u64>,
+    /// Out-degree per source, so the max is available without a group-by.
+    pub out_degree: std::collections::HashMap<u32, u64>,
+}
+
+impl StatsAccum {
+    /// Fold in one edge version.
+    pub fn add_edge(&mut self, vt_s: i64, vt_e: i64, rel_type: &str, src_id: u32) {
+        self.n_edge_versions += 1;
+        self.vt_min = Some(self.vt_min.map_or(vt_s, |m| m.min(vt_s)));
+        // an open-ended interval contributes vt_s + 1, as DuckDB does
+        let ve = if vt_e >= crate::OPEN_END { vt_s + 1 } else { vt_e };
+        self.vt_max = Some(self.vt_max.map_or(ve, |m| m.max(ve)));
+        *self.rel_type_counts.entry(rel_type.to_string()).or_default() += 1;
+        *self.out_degree.entry(src_id).or_default() += 1;
+    }
+
+    pub fn max_out_degree(&self) -> u64 {
+        self.out_degree.values().copied().max().unwrap_or(0)
     }
 }
 

@@ -436,6 +436,33 @@ impl NativeStore {
             .collect())
     }
 
+    /// Running statistics, building them once if this is the first call.
+    ///
+    /// After the initial build every commit folds its own batch in, so a
+    /// write-then-read loop never rescans. Compaction rewrites rows without
+    /// changing content, so it leaves these untouched by construction.
+    pub fn stats_accum(&self) -> Result<crate::store::StatsAccum> {
+        {
+            let cell = self.stats_cell().lock().expect("stats mutex poisoned");
+            if let Some(acc) = cell.as_ref() {
+                return Ok(acc.clone());
+            }
+        }
+        let mut acc = crate::store::StatsAccum::default();
+        for e in self.all_edge_versions()? {
+            let src_id = self.dict().dense_id(&e.src).unwrap_or(0);
+            acc.add_edge(e.vt_s, e.vt_e, &e.rel_type, src_id);
+        }
+        acc.n_node_versions = self.all_node_versions()?.len() as u64;
+        let mut cell = self.stats_cell().lock().expect("stats mutex poisoned");
+        // an open batch's rows are already counted above; do not cache a
+        // snapshot that a rollback could invalidate
+        if !self.in_batch() {
+            *cell = Some(acc.clone());
+        }
+        Ok(acc)
+    }
+
     /// Canonical-JSON props for specific version ids, returned verbatim.
     pub fn props_for_vids(&self, kind: RowKind, vids: &[String]) -> Result<HashMap<String, String>> {
         let wanted: HashSet<&str> = vids.iter().map(String::as_str).collect();
