@@ -419,6 +419,11 @@ pub fn write_node_segment(path: &Path, rows: &[NodeRow], spec: &SegmentSpec) -> 
     let mut c_vt_e = ColumnBuilder::new("vt_e", DType::I64, if vt_e_elided { 0 } else { n });
     let mut c_label = ColumnBuilder::new("label_ref", DType::U32, n);
     let mut c_props = ColumnBuilder::new("props_ref", DType::U32, n);
+    // `name` promoted out of the props blob into its own column, so entity
+    // resolution can scan it without parsing JSON per row. It is duplicated,
+    // never moved: `props` is returned byte-identical because the store
+    // digest is computed over that exact text.
+    let mut c_name = ColumnBuilder::new("name_ref", DType::U32, n);
     let mut c_source = ColumnBuilder::new("source_ref", DType::U32, n);
     let mut c_prov = ColumnBuilder::new("prov_ref", DType::U32, n);
 
@@ -435,6 +440,10 @@ pub fn write_node_segment(path: &Path, rows: &[NodeRow], spec: &SegmentSpec) -> 
         }
         c_label.push_u32(strings.intern(&r.label));
         c_props.push_u32(strings.intern(&r.props));
+        c_name.push_u32(match name_of(&r.props) {
+            Some(v) => strings.intern(&v),
+            None => NULL_REF,
+        });
         c_source.push_u32(strings.intern(&r.source));
         c_prov.push_u32(strings.intern_opt(r.provenance_ref.as_deref()));
 
@@ -450,7 +459,7 @@ pub fn write_node_segment(path: &Path, rows: &[NodeRow], spec: &SegmentSpec) -> 
     if !vt_e_elided {
         columns.push(c_vt_e);
     }
-    columns.extend([c_label, c_props, c_source, c_prov]);
+    columns.extend([c_label, c_props, c_name, c_source, c_prov]);
 
     let first = &rows[0];
     let last = &rows[n - 1];
@@ -550,6 +559,22 @@ fn write_segment(
     }
     fs::rename(&tmp, path).map_err(|e| EngineError::from(e).at_file(path))?;
     Ok(())
+}
+
+/// The `name` property, if the row has one as a JSON string.
+///
+/// Parsed once at seal time rather than on every lookup. Anything that is not
+/// a string (absent, null, a number) simply has no name — resolution matches
+/// on text, so there is nothing to index.
+fn name_of(props: &str) -> Option<String> {
+    if !props.contains("\"name\"") {
+        return None; // the overwhelmingly common case: skip the parse
+    }
+    serde_json::from_str::<serde_json::Value>(props)
+        .ok()?
+        .get("name")?
+        .as_str()
+        .map(str::to_string)
 }
 
 fn align_up(n: usize) -> usize {
@@ -1070,6 +1095,53 @@ mod tests {
     fn empty_segments_are_refused() {
         let path = tmp("empty");
         assert!(write_edge_segment(&path, &[], &SegmentSpec::default()).is_err());
+    }
+
+    #[test]
+    fn name_is_promoted_to_a_column_without_leaving_props() {
+        let path = tmp("name-column");
+        let props = [
+            r#"{"name":"Alice"}"#,                 // plain
+            r#"{"age":3,"name":"Bob"}"#,           // not the first key
+            r#"{}"#,                               // absent
+            r#"{"name":null}"#,                    // present but not a string
+            r#"{"name":"\u00e9l\u00e8ve","x":1}"#, // escaped non-ascii
+            r#"{"nickname":"trap"}"#,              // substring of the key only
+        ];
+        let mut rows: Vec<NodeRow> = props
+            .iter()
+            .enumerate()
+            .map(|(i, p)| NodeRow {
+                vid: version_vid(&format!("n{i}"), 7, i as i64),
+                uid_id: i as u32,
+                label: "Node".into(),
+                vt_s: i as i64,
+                vt_e: crate::OPEN_END,
+                tt_s: 7,
+                props: (*p).to_string(),
+                source: "ingest".into(),
+                provenance_ref: None,
+            })
+            .collect();
+        rows.sort_by_key(|r| r.sort_key());
+        write_node_segment(&path, &rows, &SegmentSpec::default()).unwrap();
+
+        let seg = open(&path);
+        let strings = seg.strings().unwrap();
+        let name = seg.u32_column("name_ref").unwrap();
+        let props_col = seg.u32_column("props_ref").unwrap();
+        for (i, r) in rows.iter().enumerate() {
+            // props survives byte-identical: the store digest depends on it
+            assert_eq!(strings.get(props_col[i]).unwrap(), r.props);
+            let got = strings.get_opt(name[i]).unwrap();
+            let want = match r.props.as_str() {
+                p if p.contains(r#""name":"Alice""#) => Some("Alice"),
+                p if p.contains(r#""name":"Bob""#) => Some("Bob"),
+                p if p.contains(r#"\u00e9l"#) => Some("élève"),
+                _ => None,
+            };
+            assert_eq!(got, want, "props {}", r.props);
+        }
     }
 
     #[test]
