@@ -88,7 +88,10 @@ def registry(scale: int, tt_epoch1: int) -> list[Query]:
         Query("snap.hop2", "snapshot_subgraph",
               {"seeds": ["n1"], "hops": 2, "t_valid": mid},
               "2-hop neighbourhood at an instant"),
-        Query("diff.global", "diff_snapshots", {"t1": mid, "t2": mid + span // 10},
+        # t2 - t1 is half an edge lifetime, so the two instants can see
+        # different versions of the same edge; a wider gap makes the edge sets
+        # disjoint and props_changed empty whatever the data contains.
+        Query("diff.global", "diff_snapshots", {"t1": mid, "t2": mid + span // 40},
               "global difference between two instants"),
         Query("reach.window", "temporal_reachability",
               {"src": "n1", "window": {"t_a": 0, "t_b": span // 10}},
@@ -410,6 +413,18 @@ def build_dataset(scale: int) -> Dataset:
                       vt_s=e["vt_s"], vt_e=e["vt_e"])
     store.correct(EntityRef(kind="node", uid="n1"), {"name": "alpha-corrected"},
                   vt_s=0, vt_e=scale)
+
+    # Partial corrections: rewrite only the tail half of an edge's interval,
+    # which splits it into two versions carrying different props. Whole-
+    # interval corrections cannot produce that, and `diff_snapshots` only
+    # reports a props change when the two instants see *different* vids — so
+    # without a split its props_changed list is empty by construction and that
+    # branch of any reimplementation goes untested.
+    life, mid = edge_life(scale), scale // 2
+    for i in range(mid - life // 2, mid, max(1, life // 20)):
+        e = _event(i, scale)
+        store.correct(_edge_ref(i, scale), {"weight": 3},
+                      vt_s=e["vt_s"] + life // 2, vt_e=e["vt_e"])
     for i in range(0, scale, step * 4):
         store.retract(_edge_ref(i, scale),
                       _event(i, scale)["vt_s"] + edge_life(scale) // 2)

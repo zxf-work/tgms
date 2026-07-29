@@ -304,11 +304,353 @@ def co_active(conn, *, a_spec: dict, b_spec: dict, allen_relation: dict,
 #: The rest are absent on purpose: the harness reports a missing entry as
 #: unsupported, which is the honest answer, whereas a weakened query would be
 #: reported as a fast one.
+
+
+
+# --------------------------------------------------------------------------
+# O3  diff_snapshots
+# --------------------------------------------------------------------------
+
+_STATE = """
+SELECT DISTINCT ON (eid) eid, src, dst, rel_type, vid, props
+FROM edge_versions WHERE {bel} AND vt_s <= %(t)s AND %(t)s < vt_e
+ORDER BY eid, vt_s, vid COLLATE "C"
+"""
+
+_NSTATE = """
+SELECT DISTINCT ON (uid) uid, label, vid, props
+FROM node_versions WHERE {bel} AND vt_s <= %(t)s AND %(t)s < vt_e
+ORDER BY uid, vt_s, vid COLLATE "C"
+"""
+
+
+def diff_snapshots(conn, *, t1: int, t2: int, as_of_tt: int = OPEN_END,
+                   scope: dict | None = None, limit: int = 100) -> dict[str, Any]:
+    if scope is not None:
+        raise NotImplementedError("scoped diff")
+    bel = belief(as_of_tt)
+    # Identity maps take the *last* row in (vt_s, vid) order on duplicates,
+    # which DISTINCT ON reverses — so the ORDER BY here is ascending and the
+    # disjointness invariant makes the choice moot in practice.
+    n1, n2 = (dict((r[0], r[1:]) for r in
+                   conn.execute(_NSTATE.format(bel=bel), {"t": t}).fetchall())
+              for t in (t1, t2))
+    e1, e2 = (dict((r[0], r[1:]) for r in
+                   conn.execute(_STATE.format(bel=bel), {"t": t}).fetchall())
+              for t in (t1, t2))
+
+    nodes_added = sorted(u for u in n2 if u not in n1)
+    nodes_removed = sorted(u for u in n1 if u not in n2)
+
+    def edesc(eid: str, st: dict) -> dict[str, Any]:
+        src, dst, rel, _vid, _props = st[eid]
+        return {"eid": eid, "src": src, "dst": dst, "rel_type": rel}
+
+    edges_added = [edesc(e, e2) for e in sorted(e for e in e2 if e not in e1)]
+    edges_removed = [edesc(e, e1) for e in sorted(e for e in e1 if e not in e2)]
+
+    # props_changed: same identity at both instants, different vid, and then
+    # a genuine content difference. Node changes first (by uid), then edge
+    # changes (by eid) — two sorted runs appended, not one merged sort.
+    changed: list[dict[str, Any]] = []
+    for u in sorted(u for u in n1 if u in n2 and n1[u][1] != n2[u][1]):
+        (la, _va, pa), (lb, _vb, pb) = n1[u], n2[u]
+        if _props(pa) != _props(pb) or la != lb:
+            changed.append({"kind": "node", "id": u,
+                            "from": {"label": la, "props": _props(pa)},
+                            "to": {"label": lb, "props": _props(pb)}})
+    for e in sorted(e for e in e1 if e in e2 and e1[e][3] != e2[e][3]):
+        pa, pb = e1[e][4], e2[e][4]
+        if _props(pa) != _props(pb):
+            changed.append({"kind": "edge", "id": e,
+                            "from": {"props": _props(pa)},
+                            "to": {"props": _props(pb)}})
+
+    lists = {"nodes_added": nodes_added, "nodes_removed": nodes_removed,
+             "edges_added": edges_added, "edges_removed": edges_removed,
+             "props_changed": changed}
+    out: dict[str, Any] = {}
+    for k, v in lists.items():
+        out[k], out[f"{k}_total"] = v[:limit], len(v)
+    out["truncated"] = any(len(v) > limit for v in lists.values())
+    return out
+
+
+# --------------------------------------------------------------------------
+# O5  temporal_reachability
+# --------------------------------------------------------------------------
+
+#: Time-respecting traversal, as a fixpoint over (node, arrival) states.
+#:
+#: The rule is *non-decreasing*, not strictly increasing: arriving at v over an
+#: edge [vt_s, vt_e) from arrival `a` gives tau = max(a, vt_s), admissible iff
+#: tau < vt_e and tau < t_b. Many edges may therefore be traversed at the same
+#: instant. `UNION` (not `UNION ALL`) supplies the dedup that keeps the
+#: recursion finite — it is the SQL spelling of "have I seen this label".
+_REACH = """
+WITH RECURSIVE ev AS (
+    SELECT src_id, dst_id, vt_s, vt_e FROM edge_versions
+    WHERE {bel} AND vt_e > %(t_a)s AND vt_s < %(t_b)s
+),
+reach(id, arr) AS (
+    SELECT %(src)s::bigint, %(t_a)s::bigint
+    UNION
+    SELECT e.dst_id, GREATEST(r.arr, e.vt_s)
+    FROM reach r JOIN ev e ON e.src_id = r.id
+    WHERE GREATEST(r.arr, e.vt_s) < e.vt_e
+      AND GREATEST(r.arr, e.vt_s) < %(t_b)s
+)
+SELECT ent.uid, min(reach.arr) AS earliest
+FROM reach JOIN entities ent ON ent.dense_id = reach.id
+WHERE reach.id <> %(src)s
+GROUP BY ent.uid
+ORDER BY earliest, ent.uid COLLATE "C"
+"""
+
+
+def temporal_reachability(conn, *, src: str, window: dict,
+                          direction: str = "out", delta_max_wait: int | None = None,
+                          as_of_tt: int = OPEN_END, limit: int = 100) -> dict[str, Any]:
+    if direction != "out" or delta_max_wait is not None:
+        raise NotImplementedError(f"direction={direction} delta={delta_max_wait}")
+    sid = conn.execute("SELECT dense_id FROM entities WHERE uid = %s",
+                       (src,)).fetchone()[0]
+    p = {"src": sid, "t_a": window["t_a"], "t_b": window["t_b"]}
+    sql = _REACH.format(bel=belief(as_of_tt))
+    rows = conn.execute(sql, p).fetchall()
+    out = [{"uid": r[0], "earliest_arrival": int(r[1])} for r in rows[:limit]]
+    return {"rows": out, **_page(len(rows), len(out))}
+
+
+# --------------------------------------------------------------------------
+# O6  temporal_paths
+# --------------------------------------------------------------------------
+
+#: Node-simple k-shortest time-respecting paths.
+#:
+#: Ranking is (arrival, hops, then the path's sequence of (vt_s, eid) pairs
+#: compared lexicographically). The sequence is accumulated as one text column
+#: of fixed-width chunks — 19 zero-padded digits of vt_s followed by the
+#: 24-char eid — because equal `hops` is compared first, so all keys being
+#: compared have equal length and concatenation orders exactly as element-wise
+#: comparison would. `COLLATE "C"` on it is what makes that match Python.
+_PATHS = """
+WITH RECURSIVE ev AS (
+    SELECT src_id, dst_id, eid, rel_type, src, dst, vt_s, vt_e
+    FROM edge_versions
+    WHERE {bel} AND vt_e > %(t_a)s AND vt_s < %(t_b)s
+),
+p(node, arr, hops, seen, sortkey, eids, srcs, dsts, rels, ts) AS (
+    SELECT %(src)s::bigint, %(t_a)s::bigint, 0, ARRAY[%(src)s::bigint],
+           ''::text, ARRAY[]::text[], ARRAY[]::text[], ARRAY[]::text[],
+           ARRAY[]::text[], ARRAY[]::bigint[]
+    UNION ALL
+    SELECT e.dst_id, GREATEST(p.arr, e.vt_s), p.hops + 1,
+           p.seen || e.dst_id,
+           p.sortkey || lpad(e.vt_s::text, 19, '0') || e.eid,
+           p.eids || e.eid, p.srcs || e.src, p.dsts || e.dst,
+           p.rels || e.rel_type, p.ts || e.vt_s
+    FROM p JOIN ev e ON e.src_id = p.node
+    WHERE p.hops < %(max_hops)s
+      AND p.node <> %(dst)s                      -- dst terminates the path
+      AND GREATEST(p.arr, e.vt_s) < e.vt_e
+      AND GREATEST(p.arr, e.vt_s) < %(t_b)s
+      AND NOT (e.dst_id = ANY(p.seen))           -- node-simple
+)
+SELECT arr, hops, eids, srcs, dsts, rels, ts
+FROM p WHERE node = %(dst)s AND hops > 0
+ORDER BY arr, hops, sortkey COLLATE "C"
+"""
+
+
+def temporal_paths(conn, *, src: str, dst: str, window: dict, k: int = 5,
+                   max_hops: int = 4, as_of_tt: int = OPEN_END) -> dict[str, Any]:
+    ids = dict(conn.execute(
+        "SELECT uid, dense_id FROM entities WHERE uid = ANY(%s)",
+        ([src, dst],)).fetchall())
+    rows = conn.execute(_PATHS.format(bel=belief(as_of_tt)),
+                        {"src": ids[src], "dst": ids[dst], "t_a": window["t_a"],
+                         "t_b": window["t_b"], "max_hops": max_hops}).fetchall()
+    out = [{"arrival": int(r[0]), "hops": int(r[1]),
+            "edges": [{"src": s, "dst": d, "rel_type": rt, "eid": e, "t": int(t)}
+                      for e, s, d, rt, t in zip(r[2], r[3], r[4], r[5], r[6])]}
+           for r in rows[:k]]
+    # not `paginate`: truncated is `rows_total > k`, and cursor is always null
+    return {"rows": out, "rows_total": len(rows), "truncated": len(rows) > k}
+
+
+# --------------------------------------------------------------------------
+# O7  burst_detection (zscore)
+# --------------------------------------------------------------------------
+
+#: Bucket counts plus the trailing-window mean and population stddev.
+#:
+#: `stddev_pop`, not `stddev_samp`: the reference divides by len(hist).
+#: The frame is `w PRECEDING AND 1 PRECEDING` — strictly earlier buckets,
+#: excluding the current one, so bucket 0 has no history and is skipped.
+_BURST = """
+WITH b AS (
+    SELECT g AS i, %(t_a)s + g * %(stride)s AS ba,
+           LEAST(%(t_a)s + (g + 1) * %(stride)s, %(t_b)s) AS bb
+    FROM generate_series(0, %(n)s - 1) g
+),
+c AS (
+    SELECT (vt_s - %(t_a)s) / %(stride)s AS i, count(*) AS n
+    FROM edge_versions
+    WHERE {bel} AND vt_s >= %(t_a)s AND vt_s < %(t_b)s
+    GROUP BY 1
+),
+s AS (SELECT b.i, b.ba, b.bb, COALESCE(c.n, 0)::float8 AS v
+      FROM b LEFT JOIN c ON c.i = b.i)
+SELECT i, ba, bb, v,
+       avg(v)        OVER (ORDER BY i ROWS BETWEEN %(w)s PRECEDING AND 1 PRECEDING),
+       stddev_pop(v) OVER (ORDER BY i ROWS BETWEEN %(w)s PRECEDING AND 1 PRECEDING),
+       count(*)      OVER (ORDER BY i ROWS BETWEEN %(w)s PRECEDING AND 1 PRECEDING)
+FROM s ORDER BY i
+"""
+
+BIG_SCORE = 1e9
+
+
+def burst_detection(conn, *, target: dict, window: dict, stride: int,
+                    method: str = "zscore", params: dict | None = None,
+                    as_of_tt: int = OPEN_END, limit: int = 100) -> dict[str, Any]:
+    if method != "zscore" or target.get("kind") != "edge_event_rate":
+        raise NotImplementedError(f"{method}/{target.get('kind')}")
+    if target.get("rel_type") or target.get("uid"):
+        raise NotImplementedError("filtered burst target")
+    params = params or {}
+    t_a, t_b = window["t_a"], window["t_b"]
+    n = -(-(t_b - t_a) // stride)
+    rows = conn.execute(
+        _BURST.format(bel=belief(as_of_tt)),
+        {"t_a": t_a, "t_b": t_b, "stride": stride, "n": n,
+         "w": params.get("w", 10)}).fetchall()
+
+    # The scalar arithmetic stays in Python deliberately. Python rounds
+    # half-to-even on the binary double; PostgreSQL's round() is half-away-
+    # from-zero on a decimal expansion, and the reference thresholds on the
+    # *rounded* score — so rounding server-side would change which rows exist,
+    # not merely how they print. At most 2000 buckets reach here; the scan,
+    # the bucketing and the windowed aggregation all stayed in SQL.
+    z = params.get("z", 3.0)
+    flagged = []
+    for _i, ba, bb, v, mean, std, hist_n in rows:
+        if not hist_n:
+            continue
+        std = float(std or 0.0)
+        score = abs(v - float(mean)) / std if std > 0 else (
+            0.0 if v == float(mean) else BIG_SCORE)
+        score = round(score, 9)
+        if score >= z:
+            flagged.append({"t_a": int(ba), "t_b": int(bb),
+                            "value": float(v), "score": float(score)})
+    page = flagged[:limit]
+    return {"rows": page, **_page(len(flagged), len(page)), "n_buckets": n}
+
+
+# --------------------------------------------------------------------------
+# O8  resolve_entities
+# --------------------------------------------------------------------------
+
+#: Match every believed node version, score it, and keep the best per uid.
+#:
+#: There is no valid-time filter at all — belief only. The "canonical"
+#: label/name come from the latest version by vt_s over *all* believed
+#: versions of that uid, not merely the matching ones, and ties on vt_s keep
+#: the earliest in (vt_s, vid) order.
+_RESOLVE = """
+WITH v AS (
+    SELECT uid, label, props, vt_s, vid,
+           lower(uid) AS luid, lower(COALESCE(props::jsonb ->> 'name', '')) AS lname
+    FROM node_versions WHERE {bel}
+),
+scored AS (
+    SELECT uid, min(CASE WHEN uid = %(q)s THEN 0
+                         WHEN strpos(luid,  %(ql)s) > 0 THEN 1
+                         WHEN lname <> '' AND strpos(lname, %(ql)s) > 0 THEN 2
+                    END) AS match
+    FROM v GROUP BY uid
+),
+latest AS (
+    SELECT DISTINCT ON (uid) uid, label, props
+    FROM v ORDER BY uid, vt_s DESC, vid COLLATE "C"
+)
+SELECT s.uid, l.label, l.props, s.match
+FROM scored s JOIN latest l ON l.uid = s.uid
+WHERE s.match IS NOT NULL {label_f}
+ORDER BY s.match, s.uid COLLATE "C"
+"""
+
+
+def resolve_entities(conn, *, query: str, label: str | None = None,
+                     as_of_tt: int = OPEN_END, limit: int = 100) -> dict[str, Any]:
+    sql = _RESOLVE.format(bel=belief(as_of_tt),
+                          label_f="AND l.label = %(label)s" if label else "")
+    rows = conn.execute(sql, {"q": query, "ql": query.lower(),
+                              "label": label}).fetchall()
+    # `name` keeps its JSON type — a number stays a number, absent is null —
+    # so it is read from the parsed props, never via ->> which stringifies.
+    out = [{"uid": r[0], "label": r[1], "name": _props(r[2]).get("name"),
+            "match": int(r[3])} for r in rows[:limit]]
+    return {"rows": out, **_page(len(rows), len(out))}
+
+
+# --------------------------------------------------------------------------
+# O9  count_temporal_motifs (M_triangle_cyclic)
+# --------------------------------------------------------------------------
+
+#: Three-way self-join over events ordered by (vt_s, eid).
+#:
+#: The ordering is strict in the *composite* key, not in time alone, so three
+#: events sharing a vt_s can still form a motif with eid deciding their roles.
+#: The span bound is inclusive: t3 - t1 <= delta.
+_MOTIF = """
+WITH ev AS (
+    SELECT eid, src, dst, vt_s AS t FROM edge_versions
+    WHERE {bel} AND vt_s >= %(t_a)s AND vt_s < %(t_b)s {nf}
+)
+SELECT (SELECT count(*) FROM ev) AS n_events,
+       (SELECT count(*)
+        FROM ev a JOIN ev b
+          ON (b.t, b.eid COLLATE "C") > (a.t, a.eid COLLATE "C")
+         AND b.src = a.dst
+        JOIN ev c
+          ON (c.t, c.eid COLLATE "C") > (b.t, b.eid COLLATE "C")
+         AND c.src = b.dst AND c.dst = a.src
+        WHERE c.t - a.t <= %(delta)s
+          AND a.src <> a.dst AND b.dst <> a.dst AND b.dst <> a.src) AS cnt
+"""
+
+
+def count_temporal_motifs(conn, *, motif: str, delta: int, window: dict,
+                          node_filter: list[str] | None = None,
+                          as_of_tt: int = OPEN_END) -> dict[str, Any]:
+    if motif != "M_triangle_cyclic":
+        raise NotImplementedError(motif)
+    p = {"t_a": window["t_a"], "t_b": window["t_b"], "delta": delta}
+    nf = ""
+    if node_filter is not None:
+        # both endpoints must be inside the filter, and it is a pre-filter on
+        # events, so it shrinks n_events_in_window too
+        nf = "AND src = ANY(%(nf)s) AND dst = ANY(%(nf)s)"
+        p["nf"] = sorted(set(node_filter))
+    r = conn.execute(_MOTIF.format(bel=belief(as_of_tt), nf=nf), p).fetchone()
+    return {"count": int(r[1]), "n_events_in_window": int(r[0]),
+            "truncated": False}
+
+
 QUERIES = {
     "hist.single": entity_history,
     "hist.asof": entity_history,
     "snap.hop2": snapshot_subgraph,
+    "diff.global": diff_snapshots,
+    "reach.window": temporal_reachability,
+    "paths.k": temporal_paths,
     "series.count": graph_metric_timeseries,
+    "burst.zscore": burst_detection,
     "nbr.evolution": neighborhood_evolution,
     "coactive.narrow": co_active,
+    "resolve.substr": resolve_entities,
+    "motif.filtered": count_temporal_motifs,
 }
