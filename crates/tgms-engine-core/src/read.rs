@@ -59,6 +59,15 @@ pub struct EdgeVersionOut {
     pub provenance_ref: Option<String>,
 }
 
+/// Postings key for a node identity. Any stable hash works: the full uid is
+/// verified on every hit, so this only has to spread, not to be unique.
+fn uid_key(uid: &str) -> u64 {
+    use std::hash::{Hash, Hasher};
+    let mut h = std::collections::hash_map::DefaultHasher::new();
+    uid.hash(&mut h);
+    h.finish()
+}
+
 impl NativeStore {
     fn edge_files(&self) -> Vec<(String, u64)> {
         let m = self.manifest();
@@ -248,6 +257,88 @@ impl NativeStore {
     // public reads                                                        //
     // ------------------------------------------------------------------ //
 
+    /// Fold any not-yet-indexed segment into the identity postings.
+    ///
+    /// Deriving `eid` per row is the expensive part, so it happens once per
+    /// row ever rather than once per lookup — which is the whole point of the
+    /// index. Node identities are uids and need no derivation.
+    fn index_segments(&self, kind: RowKind) -> Result<()> {
+        let files = match kind {
+            RowKind::Edge => self.edge_files(),
+            RowKind::Node => self.node_files(),
+        };
+        let pending: Vec<(String, u64)> = {
+            let p = self.postings_for(kind).lock().expect("postings mutex poisoned");
+            files
+                .into_iter()
+                .filter(|(_, id)| !p.indexed.contains(id))
+                .collect()
+        };
+        for (file, id) in pending {
+            let seg = self.open_segment(&file)?;
+            let mut entries: Vec<(u64, u32)> = Vec::with_capacity(seg.rows() as usize);
+            match kind {
+                RowKind::Edge => {
+                    let strings = seg.strings()?;
+                    let src = seg.u32_column("src_id")?;
+                    let dst = seg.u32_column("dst_id")?;
+                    let rel = seg.u16_column("rel_code")?;
+                    let disc = seg.u32_column("disc_ref")?;
+                    let rel_types = &seg.header().rel_types;
+                    for i in 0..src.len() {
+                        let eid = edge_eid(
+                            &self.uid_of(src[i])?,
+                            &self.uid_of(dst[i])?,
+                            rel_types.get(rel[i] as usize).map(String::as_str).unwrap_or(""),
+                            strings.get(disc[i])?,
+                        );
+                        entries.push((eid.hi, i as u32));
+                    }
+                }
+                RowKind::Node => {
+                    let uid_id = seg.u32_column("uid_id")?;
+                    for (i, &u) in uid_id.iter().enumerate() {
+                        entries.push((uid_key(&self.uid_of(u)?), i as u32));
+                    }
+                }
+            }
+            let mut p = self.postings_for(kind).lock().expect("postings mutex poisoned");
+            for (key, row) in entries {
+                p.by_identity.entry(key).or_default().push((id, row));
+            }
+            p.indexed.insert(id);
+        }
+        Ok(())
+    }
+
+    fn postings_for(&self, kind: RowKind) -> &std::sync::Mutex<crate::store::Postings> {
+        match kind {
+            RowKind::Edge => self.edge_postings(),
+            RowKind::Node => self.node_postings(),
+        }
+    }
+
+    /// Candidate `(file, row)` locations for one identity.
+    fn locate(&self, kind: RowKind, key: u64) -> Result<Vec<(String, u32)>> {
+        self.index_segments(kind)?;
+        let files = match kind {
+            RowKind::Edge => self.edge_files(),
+            RowKind::Node => self.node_files(),
+        };
+        let by_id: std::collections::HashMap<u64, String> =
+            files.into_iter().map(|(f, i)| (i, f)).collect();
+        let p = self.postings_for(kind).lock().expect("postings mutex poisoned");
+        Ok(p
+            .by_identity
+            .get(&key)
+            .map(|v| {
+                v.iter()
+                    .filter_map(|(seg, row)| by_id.get(seg).map(|f| (f.clone(), *row)))
+                    .collect()
+            })
+            .unwrap_or_default())
+    }
+
     /// Every edge version ever committed, plus anything staged in the open
     /// batch. Order is unspecified — the digest sorts (spec §2.3).
     pub fn all_edge_versions(&self) -> Result<Vec<EdgeVersionOut>> {
@@ -273,21 +364,58 @@ impl NativeStore {
     /// Versions of one logical edge believed at `as_of_tt`, ordered by `vt_s`
     /// — the ordering `believed_edge_versions` promises.
     pub fn believed_edge_versions(&self, eid: &str, as_of_tt: i64) -> Result<Vec<EdgeVersionOut>> {
-        let mut out: Vec<EdgeVersionOut> = self
-            .all_edge_versions()?
-            .into_iter()
-            .filter(|r| r.eid == eid && believed_at(r.tt_s, r.tt_e, as_of_tt))
-            .collect();
+        let key = Id96::from_hex(eid).map(|i| i.hi)?;
+        let closes = self.close_index()?;
+        let mut out = Vec::new();
+        // group candidate rows by file so each segment is opened once
+        let mut by_file: std::collections::BTreeMap<String, Vec<u32>> = Default::default();
+        for (file, row) in self.locate(RowKind::Edge, key)? {
+            by_file.entry(file).or_default().push(row);
+        }
+        for (file, rows) in by_file {
+            let id = segment_id_of(&file);
+            // a prefix hit is a candidate; the full eid decides
+            let all = self.edge_rows_of(&file, id, &closes)?;
+            for row in rows {
+                if let Some(r) = all.get(row as usize) {
+                    if r.eid == eid && believed_at(r.tt_s, r.tt_e, as_of_tt) {
+                        out.push(r.clone());
+                    }
+                }
+            }
+        }
+        out.extend(
+            self.staged_edge_versions()?
+                .into_iter()
+                .filter(|r| r.eid == eid && believed_at(r.tt_s, r.tt_e, as_of_tt)),
+        );
         out.sort_by_key(|r| (r.vt_s, r.vid.clone()));
         Ok(out)
     }
 
     pub fn believed_node_versions(&self, uid: &str, as_of_tt: i64) -> Result<Vec<NodeVersionOut>> {
-        let mut out: Vec<NodeVersionOut> = self
-            .all_node_versions()?
-            .into_iter()
-            .filter(|r| r.uid == uid && believed_at(r.tt_s, r.tt_e, as_of_tt))
-            .collect();
+        let closes = self.close_index()?;
+        let mut out = Vec::new();
+        let mut by_file: std::collections::BTreeMap<String, Vec<u32>> = Default::default();
+        for (file, row) in self.locate(RowKind::Node, uid_key(uid))? {
+            by_file.entry(file).or_default().push(row);
+        }
+        for (file, rows) in by_file {
+            let id = segment_id_of(&file);
+            let all = self.node_rows_of(&file, id, &closes)?;
+            for row in rows {
+                if let Some(r) = all.get(row as usize) {
+                    if r.uid == uid && believed_at(r.tt_s, r.tt_e, as_of_tt) {
+                        out.push(r.clone());
+                    }
+                }
+            }
+        }
+        out.extend(
+            self.staged_node_versions()?
+                .into_iter()
+                .filter(|r| r.uid == uid && believed_at(r.tt_s, r.tt_e, as_of_tt)),
+        );
         out.sort_by_key(|r| (r.vt_s, r.vid.clone()));
         Ok(out)
     }

@@ -32,7 +32,7 @@ use crate::error::{EngineError, Result};
 use crate::derive::Id96;
 use crate::manifest::{CloseRunRef, EventLogRef, Manifest};
 use crate::row::{EdgeRow, Lane, NodeRow, RowKind};
-use crate::segment::MemorySource;
+use crate::segment::MmapSource;
 use crate::staging::{PartitionMap, Staging};
 use crate::visibility::{read_close_run, write_close_run, CloseIndex, CloseRecord};
 
@@ -52,6 +52,12 @@ pub struct NativeStore {
     pending_closes: Vec<CloseRecord>,
     partitions: PartitionMap,
     segment_target_bytes: u64,
+    /// Identity postings, built incrementally (C3.1). Segments are
+    /// immutable and manifests only accumulate, so a segment is indexed once
+    /// and never revisited — which keeps a store built by N single-row
+    /// batches linear overall instead of quadratic.
+    edge_postings: std::sync::Mutex<Postings>,
+    node_postings: std::sync::Mutex<Postings>,
     /// Segments whose checksums have been walked in this session. Corruption
     /// must be caught *before* rows reach a query, but re-hashing a file on
     /// every read would be ruinous — so each segment is verified the first
@@ -90,6 +96,8 @@ impl NativeStore {
             pending_closes: Vec::new(),
             partitions: PartitionMap::default(),
             segment_target_bytes: crate::defaults::SEGMENT_TARGET_BYTES,
+            edge_postings: std::sync::Mutex::new(Postings::default()),
+            node_postings: std::sync::Mutex::new(Postings::default()),
             verified: std::sync::Mutex::new(std::collections::HashSet::new()),
             batch_tt: None,
         })
@@ -170,6 +178,14 @@ impl NativeStore {
         &self.dict
     }
 
+    pub(crate) fn edge_postings(&self) -> &std::sync::Mutex<Postings> {
+        &self.edge_postings
+    }
+
+    pub(crate) fn node_postings(&self) -> &std::sync::Mutex<Postings> {
+        &self.node_postings
+    }
+
     /// Layout policy in force, for callers that re-seal existing data.
     pub(crate) fn layout(&self) -> (&PartitionMap, u64) {
         (&self.partitions, self.segment_target_bytes)
@@ -191,13 +207,16 @@ impl NativeStore {
     /// Open a segment, verifying its checksums the first time this session
     /// touches it. Every read path must come through here — opening a segment
     /// directly would skip the check and could serve corrupt rows.
-    pub fn open_segment(&self, file: &str) -> Result<crate::segment::Segment<MemorySource>> {
+    pub fn open_segment(&self, file: &str) -> Result<crate::segment::Segment<MmapSource>> {
         let path = self.root.join(file);
         let first_time = {
             let seen = self.verified.lock().expect("verified-set mutex poisoned");
             !seen.contains(file)
         };
-        let seg = crate::segment::Segment::open(&path, MemorySource::load(&path)?, first_time)?;
+        // mapped, not read: a point lookup touches a few pages, and reading
+        // the whole file per open made `believed_*` cost a full scan even
+        // when it wanted one row
+        let seg = crate::segment::Segment::open(&path, MmapSource::load(&path)?, first_time)?;
         if first_time {
             self.verified
                 .lock()
@@ -498,6 +517,16 @@ impl NativeStore {
     }
 }
 
+/// Physical locations of each logical identity, keyed by the first 64 bits
+/// of its id. A hit is only a candidate: the caller verifies the full
+/// identity, so a prefix collision can never return the wrong version.
+#[derive(Default)]
+pub(crate) struct Postings {
+    pub(crate) by_identity: std::collections::HashMap<u64, Vec<(u64, u32)>>,
+    /// Segment ids already folded in.
+    pub(crate) indexed: std::collections::HashSet<u64>,
+}
+
 /// What a `verify` pass found. An empty `problems` list is the only
 /// acceptable outcome for a healthy store.
 #[derive(Clone, Debug, Default, PartialEq, Eq)]
@@ -553,7 +582,7 @@ fn fsync_dir(dir: &Path) -> Result<()> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::segment::Segment;
+    use crate::segment::{MemorySource, Segment};
     use crate::OPEN_END;
 
     fn tmp_root(name: &str) -> PathBuf {

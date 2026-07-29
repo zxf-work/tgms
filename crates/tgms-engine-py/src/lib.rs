@@ -29,7 +29,7 @@ use tgms_engine_core::error::{Category, EngineError};
 use tgms_engine_core::read::{EdgeVersionOut, NodeVersionOut};
 use tgms_engine_core::row::{EdgeRow, NodeRow, RowKind};
 use tgms_engine_core::scan::{ScanRequest, ScanSet, ScanTarget};
-use tgms_engine_core::segment::MemorySource;
+use tgms_engine_core::segment::MmapSource;
 use tgms_engine_core::store::{segment_id_of, NativeStore as CoreStore};
 use tgms_engine_core::OPEN_END;
 
@@ -380,7 +380,7 @@ impl NativeStore {
                 segment_id_of(file),
             ));
         }
-        let targets: Vec<ScanTarget<'_, MemorySource>> = segs
+        let targets: Vec<ScanTarget<'_, MmapSource>> = segs
             .iter()
             .map(|(segment, lane, id)| ScanTarget {
                 segment,
