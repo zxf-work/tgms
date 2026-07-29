@@ -318,10 +318,6 @@ class NativeAdapter(StorageAdapter):
         for c in self.EDGE_STR_COLS:
             if columns is None or c in columns:
                 out[c] = np.asarray(got[c], dtype=object)
-        # integer form of eid, kept unsigned so the high half orders correctly
-        for c, dt in (("eid_hi", np.uint64), ("eid_lo", np.uint32)):
-            if columns is not None and c in columns and c in got:
-                out[c] = np.asarray(got[c], dtype=dt)
         return out
 
     def nodes_columnar(
