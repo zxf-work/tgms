@@ -13,7 +13,7 @@ actually cost time.
 
 ## 1. Measure the layer before optimizing it
 
-Seven times we identified "the bottleneck" and were wrong. Every single time,
+Eight times we identified "the bottleneck" and were wrong. Every single time,
 the fix that mattered was found by measuring *after* the intended fix failed
 to move the number.
 
@@ -26,8 +26,9 @@ to move the number.
 | materialization pushes row-by-row | flat 170 ns/row at any segment count | `vid` hex built for unprojected rows |
 | `diff_snapshots` is scan-bound | the two scans were 54 ms of 419 | a 16-row lookup rebuilding the whole store |
 | a point lookup is all storage | arg validation ≈ the lookup, ~2 ms each | `jsonschema.validate` rebuilding a validator per call |
+| the motif kernel is the motif cost | the kernel was 11 ms of 369 | an unprojected scan hashing `eid` for rows the filter dropped |
 
-Two of those seven fixes we implemented were *correct but irrelevant* — the
+Two of those eight fixes we implemented were *correct but irrelevant* — the
 contiguous-run copy and the postings index both stayed, because they are
 cheap and right, but neither produced the win attributed to them.
 
@@ -287,6 +288,41 @@ not to include. And **a read-path fix moved the write path 4.5×** (200k-event
 load, 24.1 s → 5.3 s), because writes read: every correction must first find
 the version it corrects. Read and write paths are not separable when the write
 is a correction.
+
+## 9e. Filter before you derive, not after
+
+`count_temporal_motifs` was the slowest operator in the suite at 369 ms, and
+the obvious place to look was the δ-motif kernel — a three-way join with
+ordering and span predicates, the only genuinely algorithmic thing in the
+operator. **It was 11.4 ms.** Ninety-six percent of the time was the call that
+fetched the events, and it was the same two mistakes the engine had already
+been taught elsewhere:
+
+- **No projection.** The scan built props, vid, vt_e, source and provenance
+  for every row in the window; the operator reads five columns. That is
+  lesson §4 recurring at a call site rather than in the API.
+- **Filter after derive.** The node filter ran in NumPy on the returned
+  arrays, so `eid` — a sha256 per row — had been computed for all 200,009
+  window rows before 93% of them were thrown away.
+
+The second is the interesting one, because the filter *could not* be pushed
+down as written: a motif event needs both endpoints in the set, and the scan
+signature only offers or-incidence. The move was to notice that
+`{both} ⊆ {either}`, push the weaker filter down as an exact pre-filter, and
+keep the exact test above it. **369 → 52.6 ms**, with the kernel untouched.
+
+Two things to carry. **When a column is expensive to derive, the filter that
+discards it has to run first** — and if the pushdown you want is not
+expressible, a *weaker* pushdown that is a superset is usually available and
+costs nothing in correctness. And **the named, algorithmic-looking component
+is rarely the cost**; it is the one everybody has already thought about. The
+scan call around it is the one nobody has.
+
+A pleasant side effect worth designing for: the fix lived in the shared
+operator layer, so the DuckDB backend got it too (576.8 → 85.6 ms). A speedup
+that comes from removing work rather than from specializing one backend
+improves the baseline you are being compared against, which is the only kind
+that is unambiguously real.
 
 ## 10. Fault injection earns its keep in ways you did not plan
 

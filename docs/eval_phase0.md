@@ -9,7 +9,7 @@ uv run python scripts/eval_harness.py --scale 200000 --systems native,duckdb,pos
 
 ## Receipts (spec §8.4)
 
-- commit `0dfd31e`, 200,000 events, 3 repeats per query, p50 reported
+- commit `bcafe95`, 200,000 events, 3 repeats per query, p50 reported
 - **xzgpu** — 40 cores, 93 GB, Linux 5.4. Every number here comes from that
   one host; `eval_harness.py` warns when run anywhere else, because a laptop
   differs by 5× in cores and 6× in RAM and pins `effective_io_concurrency`
@@ -31,18 +31,18 @@ p50 milliseconds.
 
 | query | native | duckdb | postgres | fastest |
 |---|---:|---:|---:|---|
-| hist.single | 1.1 | 8.9 | **0.6** | postgres |
-| hist.asof | 1.1 | 8.8 | **0.5** | postgres |
-| snap.hop2 | **23.6** | 47.1 | 40.8 | native |
-| diff.global | **74.1** | 113.9 | 111.6 | native |
-| reach.window | **20.0** | 25.1 | 700.0 | native |
-| paths.k | **8.5** | 16.1 | 22.6 | native |
-| series.count | **28.3** | 43.0 | 56.6 | native |
-| burst.zscore | **29.4** | 40.1 | 56.3 | native |
-| nbr.evolution | 15.1 | 16.3 | **3.5** | postgres |
-| coactive.narrow | **37.5** | 54.7 | 53.9 | native |
-| resolve.substr | **3.6** | 19.2 | 6.0 | native |
-| motif.filtered | **355.4** | 576.8 | 1000.4 | native |
+| hist.single | 1.1 | 9.7 | **0.5** | postgres |
+| hist.asof | 1.1 | 9.1 | **0.5** | postgres |
+| snap.hop2 | **23.6** | 46.7 | 41.2 | native |
+| diff.global | **72.2** | 108.1 | 109.2 | native |
+| reach.window | **18.3** | 23.9 | 699.7 | native |
+| paths.k | **8.9** | 16.2 | 21.9 | native |
+| series.count | **29.0** | 40.2 | 56.9 | native |
+| burst.zscore | **29.8** | 44.8 | 56.8 | native |
+| nbr.evolution | 15.1 | 17.0 | **3.6** | postgres |
+| coactive.narrow | **37.4** | 62.5 | 54.3 | native |
+| resolve.substr | **3.6** | 19.0 | 6.0 | native |
+| motif.filtered | **52.6** | 85.6 | 143.2 | native |
 
 Native is fastest on 9, PostgreSQL on 3. Against DuckDB alone the native
 engine wins all 12.
@@ -128,6 +128,29 @@ The validator fix is why every other operator in the table also improved:
 they all pay the envelope. The load-time change is the read fix showing up in
 the write path — each correction has to find the version it corrects.
 
+## The motif operator, where the kernel was never the cost
+
+`motif.filtered` was the slowest query on all three systems. On the engine it
+took 369 ms — of which the Rust δ-motif matcher was **11.4 ms**. Everything
+else was the call that fetched the events:
+
+- the scan requested no column projection, so props, vid, vt_e, source and
+  provenance were materialized for every row in the window — 95 ms;
+- the node filter was applied in NumPy *after* the scan, by which point `eid`
+  — a sha256 per row — had been derived for all 200,009 window rows, 227 ms,
+  and the mask then discarded 93% of them (14,472 survived).
+
+A motif event needs *both* endpoints in the filter and the scan can only push
+down or-incidence, but `{both} ⊆ {either}`, so passing the filter as
+`touching_ids` is an exact pre-filter and the and-test still decides.
+Projecting the five columns actually read and pushing the filter down took the
+operator to **52.6 ms**. The matcher still measures 11.1 ms: unchanged, and
+now a fifth of the total rather than a thirtieth.
+
+Because the fix is in the shared operator layer and both backends implement
+`touching_ids`, **DuckDB improved too, 576.8 → 85.6 ms** — the comparison did
+not move in TGMS's favour by handicapping the other side.
+
 ## One number that was mine, not PostgreSQL's
 
 `reach.window` first measured **278,810 ms**. The natural SQL for
@@ -139,17 +162,25 @@ state space. Rewritten as round-by-round relaxation against a temp table
 holding one row per node, it runs in **699 ms** — a 399× difference, entirely
 in the query.
 
-It is still 31× slower than the engine's 22.6 ms, and that residue is a real
+It is still 38× slower than the engine's 18.3 ms, and that residue is a real
 result. But had the first number been published, the table would have said
 PostgreSQL is 12,000× slower at reachability, and that would have been a
 measurement of my SQL. D-030 makes baseline query quality part of what is
 being measured for exactly this reason.
 
+The motif query needed the same correction, twice over. Its events lived in a
+CTE rather than an indexed temp table, and its middle join carried no time
+bound — `b.t <= a.t + delta` is *implied* by the row ordering, but leaving it
+implicit let that join range over every event sharing an endpoint regardless
+of when it happened. Indexing the events and stating the bound: **1005.7 →
+143.2 ms**. Two of the three slowest PostgreSQL numbers in this evaluation
+were my SQL rather than the database.
+
 ## Load time
 
 | | native | duckdb | postgres |
 |---|---:|---:|---:|
-| load 200k events | 5.3 s | 11.0 s | 5.1 s |
+| load 200k events | 4.9 s | 11.0 s | 5.0 s |
 
 Native was **24.1 s** here until the point-lookup fix below. The generated log
 ends with ~250 single-op corrections and retractions, and each one performed
