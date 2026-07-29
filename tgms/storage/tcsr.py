@@ -29,17 +29,21 @@ class _Direction:
 
 
 def _build_direction(key: np.ndarray, other: np.ndarray, vt_s: np.ndarray,
-                     vt_e: np.ndarray, tie: tuple[np.ndarray, ...],
-                     n: int) -> _Direction:
-    """Group edges by `key`, ordered within a group by (vt_s, eid).
+                     vt_e: np.ndarray, n: int) -> _Direction:
+    """Group edges by `key`, keeping each group in scan order.
 
-    `tie` breaks vt_s ties: the eid, given either as its integer halves or as
-    the hex strings. The two orderings are identical — the hex is lowercase
-    and fixed width, so comparing it lexicographically is comparing the
-    number — but an object array makes lexsort compare Python strings, which
-    costs roughly twelve times the integer sort.
+    A *stable* sort on the grouping key alone. The columnar scan contract
+    orders rows by `(vt_s, vid)`, so stability preserves that inside every
+    group — which is all the traversal needs: `neighbors()` binary-searches
+    on `vt_s`, and the identity only has to break ties deterministically.
+
+    This was a four-key lexsort ending in the eid, costing ~750 ms per
+    direction at 1M rows against ~85 ms here — and the sort was the entire
+    build. The tiebreak is now vid rather than eid; the operator oracle is
+    indifferent, and its fixtures do exercise the distinction (91 tied
+    groups, 60 of them ordered differently by the two identities).
     """
-    order = np.lexsort((*tie, vt_s, key))
+    order = np.argsort(key, kind="stable")
     counts = np.bincount(key, minlength=n)
     offsets = np.zeros(n + 1, dtype=np.int64)
     np.cumsum(counts, out=offsets[1:])
@@ -60,14 +64,8 @@ class TemporalCSR:
     def build(cls, cols: dict[str, np.ndarray], n_entities: int) -> "TemporalCSR":
         src, dst = cols["src_id"], cols["dst_id"]
         vt_s, vt_e = cols["vt_s"], cols["vt_e"]
-        # prefer the integer form of eid when the backend supplies it;
-        # lexsort's last key is primary, so (low, high) puts high first
-        if "eid_hi" in cols and "eid_lo" in cols:
-            tie = (cols["eid_lo"], cols["eid_hi"])
-        else:
-            tie = (cols["eid"],)
-        return cls(_build_direction(src, dst, vt_s, vt_e, tie, n_entities),
-                   _build_direction(dst, src, vt_s, vt_e, tie, n_entities),
+        return cls(_build_direction(src, dst, vt_s, vt_e, n_entities),
+                   _build_direction(dst, src, vt_s, vt_e, n_entities),
                    n_entities, len(src))
 
     def neighbors(self, u: int, direction: str = "out",
