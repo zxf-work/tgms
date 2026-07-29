@@ -35,10 +35,11 @@ from pathlib import Path
 from typing import Any
 
 import tgms
-from tgms.core.model import canonical_json, sha256_hex
+from tgms.core.model import EntityRef, canonical_json, sha256_hex
 from tgms.temporal.algebra import call_operator, ensure_all_registered
 
 ROOT = Path(__file__).resolve().parents[1]
+sys.path.insert(0, str(Path(__file__).resolve().parent))
 
 #: Fields that describe the *call* rather than the answer. They legitimately
 #: differ between systems and runs, so they are excluded from the hash: the
@@ -59,19 +60,31 @@ class Query:
     requires: tuple[str, ...] = ()
 
 
-def registry(scale: int) -> list[Query]:
+#: Fixed, not scale-relative. Sized to stay inside the cost guardrail at every
+#: scale in the sweep while still covering whole communities: a filter of
+#: n_nodes/5 answered at 20k events and raised E_COST at 200k, which makes the
+#: motif row measure the guardrail rather than the operator.
+MOTIF_FILTER = 200
+
+
+def registry(scale: int, tt_epoch1: int) -> list[Query]:
     """The Phase 0 query set: one per operator family, plus belief-time probes.
 
     Parameters are derived from the scale so the same registry is meaningful
-    at 1e5 and 1e7 without editing.
+    at 1e5 and 1e7 without editing. `tt_epoch1` is the belief boundary from
+    `build_dataset` — an `as_of_tt` that predates the corrections but not the
+    data. It has to come from the store: transaction times are epoch
+    microseconds, so any literal small enough to write by hand predates
+    everything and turns the belief probe into a query over an empty store.
     """
     span = scale
     mid = span // 2
     return [
         Query("hist.single", "entity_history", {"uid": "n1"},
               "point lookup by identity"),
-        Query("hist.asof", "entity_history", {"uid": "n1", "as_of_tt": 1},
-              "same lookup under an earlier belief", requires=("bitemporal",)),
+        Query("hist.asof", "entity_history", {"uid": "n1", "as_of_tt": tt_epoch1},
+              "same lookup under the pre-correction belief",
+              requires=("bitemporal",)),
         Query("snap.hop2", "snapshot_subgraph",
               {"seeds": ["n1"], "hops": 2, "t_valid": mid},
               "2-hop neighbourhood at an instant"),
@@ -81,7 +94,7 @@ def registry(scale: int) -> list[Query]:
               {"src": "n1", "window": {"t_a": 0, "t_b": span // 10}},
               "time-respecting reachability"),
         Query("paths.k", "temporal_paths",
-              {"src": "n1", "dst": "n2", "window": {"t_a": 0, "t_b": span // 20},
+              {"src": "n1", "dst": "n2", "window": {"t_a": 0, "t_b": span // 4},
                "k": 3, "max_hops": 3},
               "k shortest time-respecting paths"),
         Query("series.count", "graph_metric_timeseries",
@@ -104,7 +117,7 @@ def registry(scale: int) -> list[Query]:
         Query("motif.filtered", "count_temporal_motifs",
               {"motif": "M_triangle_cyclic", "delta": span // 50,
                "window": {"t_a": 0, "t_b": span},
-               "node_filter": [f"n{i}" for i in range(40)]},
+               "node_filter": [f"n{i}" for i in range(MOTIF_FILTER)]},
               "delta-motif count, node-filtered to stay inside the guardrail"),
     ]
 
@@ -118,6 +131,25 @@ def canonical_hash(payload: dict[str, Any]) -> str:
     """
     stable = {k: v for k, v in payload.items() if k not in VOLATILE}
     return sha256_hex(canonical_json(stable))[:32]
+
+
+def _answer_size(payload: dict[str, Any]) -> int:
+    """How big the answer is, for operators that do not all use `rows`.
+
+    `diff_snapshots` and `neighborhood_evolution` carry several named lists
+    and no `rows` key at all, so reading `len(payload["rows"])` reported them
+    as empty — which is how a 999-edge difference showed up in the results
+    table as a zero.
+    """
+    if "rows_total" in payload:
+        return int(payload["rows_total"])
+    totals = [v for k, v in payload.items()
+              if k.endswith("_total") and isinstance(v, int)]
+    if totals:
+        return sum(totals)
+    if "count" in payload:
+        return int(payload["count"])
+    return len(payload.get("rows", []))
 
 
 @dataclass
@@ -146,14 +178,57 @@ def run_system(name: str, store_path: Path, queries: list[Query],
                 payload = call_operator(adapter, q.op, dict(q.args))
                 timings.append((time.perf_counter() - t0) * 1e3)
             assert payload is not None
-            rows = payload.get("rows_total")
-            if rows is None:
-                rows = len(payload.get("rows", []))
+            rows = _answer_size(payload)
             out.append(Result(q.id, True, canonical_hash(payload),
                               round(min(timings), 3), int(rows)))
         except Exception as e:  # a system that cannot answer is data, not a crash
             out.append(Result(q.id, False, error=f"{type(e).__name__}: {e}"[:160]))
     store.close()
+    return out
+
+
+def run_postgres(store_path: Path, queries: list[Query],
+                 repeats: int) -> list[Result]:
+    """Answer the registry with SQL instead of with TGMS operators.
+
+    Only the queries in `pg_queries.QUERIES` are attempted. A missing entry is
+    reported as *not yet written*, which is deliberately not the same as
+    `eval_semantics`'s `unsupported` verdict: that one asserts a system cannot
+    express the query, and nothing here has established it. Conflating the two
+    would let unfinished work read as a limitation of PostgreSQL.
+    """
+    import pg_baseline
+    import pg_queries
+
+    adapter = tgms.open(store_path, backend="native").adapter
+    pg_baseline.ensure_database()
+    conn = pg_baseline.connect()
+    pg_baseline.apply_tuning(conn)
+    conn.execute(pg_baseline.SCHEMA)
+    pg_baseline.load(conn, adapter)
+    conn.execute(pg_baseline.INDEXES)
+    conn.execute("ANALYZE edge_versions")
+    conn.execute("ANALYZE node_versions")
+
+    out: list[Result] = []
+    for q in queries:
+        fn = pg_queries.QUERIES.get(q.id)
+        if fn is None:
+            out.append(Result(q.id, False, error="no SQL written yet (not a verdict)"))
+            continue
+        try:
+            timings = []
+            payload = None
+            for _ in range(repeats):
+                t0 = time.perf_counter()
+                payload = fn(conn, **q.args)
+                timings.append((time.perf_counter() - t0) * 1e3)
+            assert payload is not None
+            out.append(Result(q.id, True, canonical_hash(payload),
+                              round(min(timings), 3), _answer_size(payload)))
+        except Exception as e:
+            out.append(Result(q.id, False, error=f"{type(e).__name__}: {e}"[:160]))
+    conn.close()
     return out
 
 
@@ -180,7 +255,120 @@ def manifest(scale: int, systems: list[str], repeats: int) -> dict[str, Any]:
     }
 
 
-def build_event_log(scale: int) -> Path:
+#: The graph grows with `scale` at *constant average degree* — |V| and edge
+#: lifetime both scale, so an instant snapshot has ~10 neighbours per node at
+#: every scale. A fixed |V| would make 2-hop neighbourhoods swallow the whole
+#: graph as scale rose; a fixed lifetime made them empty. Neither measures the
+#: operator.
+def n_nodes(scale: int) -> int:
+    return max(200, scale // 100)
+
+
+def edge_life(scale: int) -> int:
+    return max(40, scale // 20)
+
+
+_M64 = (1 << 64) - 1
+
+
+def _mix(x: int) -> int:
+    """splitmix64 finalizer — a deterministic stand-in for a PRNG.
+
+    Deterministic matters: the corrections in `build_dataset` have to name
+    edges by the identity ingestion gave them, which means every endpoint must
+    be recomputable from the event index alone.
+    """
+    x = (x * 0x9E3779B97F4A7C15) & _M64
+    x ^= x >> 30
+    x = (x * 0xBF58476D1CE4E5B9) & _M64
+    x ^= x >> 27
+    x = (x * 0x94D049BB133111EB) & _M64
+    return x ^ (x >> 31)
+
+
+def _vt_s(i: int, scale: int) -> int:
+    """Event `i` starts at tick `i`, except inside one deliberate burst.
+
+    Without this the event rate is exactly flat, so `burst_detection` returns
+    an empty list at every scale and two systems "agree" on having found
+    nothing. A band of 5% of the events is compressed tenfold into one stretch
+    of the timeline, which puts a bucket roughly six sigma above the mean.
+    """
+    b0 = scale // 2
+    b1 = b0 + max(1, scale // 20)
+    if b0 <= i < b1:
+        return b0 + (i - b0) // 10
+    return i
+
+
+#: Nodes per community, and the share of edges that stay inside one.
+#: A uniform random graph has almost no triangles — that is a property of the
+#: model, not of the data it is standing in for. With a flat endpoint choice,
+#: `count_temporal_motifs` returned zero cyclic triangles at every node-filter
+#: size that stayed inside the cost guardrail, so the motif operator was being
+#: compared on an answer of nothing. Real interaction graphs cluster; blocking
+#: most edges inside a community reproduces enough of that for the operator to
+#: have something to count.
+COMMUNITY = 50
+INTRA_PCT = 70
+
+
+def _event(i: int, scale: int) -> dict[str, Any]:
+    """Event `i`: a random edge with community structure, reproducible from `i`.
+
+    Endpoints used to be `src = i mod |V|`, `dst = 7i + 3 mod |V|`. That is not
+    a random graph — `dst` is a function of `src`, so the graph is one
+    deterministic cycle in which every edge out of n1 goes to n10 and nowhere
+    else. `neighborhood_evolution` reported zero neighbours gained and zero
+    lost at every scale, and 2-hop neighbourhoods held four nodes, because
+    there was nothing else to find. Mixing the index independently for each
+    endpoint gives a random multigraph with Poisson degree instead.
+
+    The degree distribution is deliberately uniform rather than power-law: a
+    scale sweep should vary scale alone, and the real skew is measured on the
+    frozen CollegeMsg replay, which has a genuine one.
+    """
+    n, t = n_nodes(scale), _vt_s(i, scale)
+    src = _mix(2 * i) % n
+    r = _mix(2 * i + 1)
+    if r % 100 < INTRA_PCT:
+        # Communities are contiguous id ranges so that a node_filter of the
+        # first k nodes covers whole communities rather than slicing every one.
+        base = (src // COMMUNITY) * COMMUNITY
+        dst = base + (r >> 8) % min(COMMUNITY, n - base)
+    else:
+        dst = (r >> 8) % n
+    return {"src": f"n{src}", "dst": f"n{dst}",
+            "rel_type": "R" if i % 3 else "S",
+            "vt_s": t, "vt_e": t + edge_life(scale)}
+
+
+def _edge_ref(i: int, scale: int) -> EntityRef:
+    """The identity `ingest_events` gave event `i`.
+
+    Ingestion discriminates by batch offset (`storage/base.py:360`), so the
+    endpoints repeat every 6000 events but each occurrence is a *distinct*
+    logical edge, not a new version of one. A ref built without the disc names
+    an edge that was never written, and correcting it raises NotFound.
+    """
+    e = _event(i, scale)
+    return EntityRef(kind="edge", src=e["src"], dst=e["dst"],
+                     rel_type=e["rel_type"], disc=f"#{i}")
+
+
+@dataclass(frozen=True)
+class Dataset:
+    """A reference store plus the belief boundary needed to query it."""
+
+    log: Path
+    scale: int
+    #: A transaction time at which epoch-1 data is believed and the epoch-2
+    #: corrections are not yet. Without it there is no way to ask a belief
+    #: question, because tt values are wall-clock and not known in advance.
+    tt_epoch1: int
+
+
+def build_dataset(scale: int) -> Dataset:
     """Write the reference event log once. Every system replays *this*.
 
     Building a store per system would look equivalent and is not: transaction
@@ -188,17 +376,45 @@ def build_event_log(scale: int) -> Path:
     the same data differ in tt, and therefore in every version id derived from
     it. The first run of this harness reported two systems disagreeing for
     exactly that reason (D-023).
+
+    Two properties of the generated data are deliberate, and both were added
+    after measuring that their absence made the comparison vacuous:
+
+    **The graph scales at constant average degree.** Lifetime used to be a
+    constant 40 ticks while one edge starts per tick, so exactly ~40 edges were
+    ever valid at any instant, on 2000 nodes — every instant operator was
+    answering over an essentially empty graph no matter the scale.
+    `snapshot_subgraph` at 2 hops returned its seed and nothing else at 20k
+    events and at 200k alike. Two systems agreeing on that is not evidence of
+    anything. Scaling |V| and lifetime together keeps degree near 10
+    throughout, so the same query stays meaningful and stays bounded.
+
+    **There is a second belief epoch.** The generator previously produced no
+    corrections at all, so every row had an open `tt_e` and no query could
+    distinguish one belief state from another — while `eval_semantics` §1 sets
+    exactly that as the bar for calling a system `equivalent`. The corrections
+    below close `tt_e` on real rows, so `hist.asof` finally tests the clock.
     """
     path = Path(tempfile.mkdtemp()) / "reference"
     store = tgms.open(path, backend="native")
-    store.ingest_events([
-        {"src": f"n{i % 2000}", "dst": f"n{(i * 7 + 3) % 2000}",
-         "rel_type": "R" if i % 3 else "S", "vt_s": i, "vt_e": i + 40}
-        for i in range(scale)
-    ])
-    store.assert_node("n1", "Node", {"name": "alpha"}, vt_s=0, vt_e=scale)
+    store.ingest_events([_event(i, scale) for i in range(scale)])
+    tt_epoch1 = store.assert_node("n1", "Node", {"name": "alpha"},
+                                  vt_s=0, vt_e=scale)
+
+    # Epoch 2: corrections and a retraction. These supersede believed rows,
+    # so their tt_e closes and the store stops being uniformly "current".
+    step = max(1, scale // 200)
+    for i in range(0, scale, step):
+        e = _event(i, scale)
+        store.correct(_edge_ref(i, scale), {"weight": 2},
+                      vt_s=e["vt_s"], vt_e=e["vt_e"])
+    store.correct(EntityRef(kind="node", uid="n1"), {"name": "alpha-corrected"},
+                  vt_s=0, vt_e=scale)
+    for i in range(0, scale, step * 4):
+        store.retract(_edge_ref(i, scale),
+                      _event(i, scale)["vt_s"] + edge_life(scale) // 2)
     store.close()
-    return path / "eventlog.jsonl"
+    return Dataset(path / "eventlog.jsonl", scale, tt_epoch1)
 
 
 def load_store(path: Path, backend: str, log: Path) -> None:
@@ -219,7 +435,8 @@ def main() -> int:
     args = ap.parse_args()
 
     systems = [s.strip() for s in args.systems.split(",") if s.strip()]
-    queries = registry(args.scale)
+    data = build_dataset(args.scale)
+    queries = registry(args.scale, data.tt_epoch1)
     meta = manifest(args.scale, systems, args.repeats)
 
     print(f"phase-0 harness — {len(queries)} queries x {len(systems)} systems "
@@ -227,14 +444,18 @@ def main() -> int:
     print(f"  commit {meta['commit']}{' (dirty)' if meta['dirty'] else ''} | "
           f"{meta['platform']} | {meta['cpu_count']} cores\n")
 
-    log = build_event_log(args.scale)
+    log = data.log
     results: dict[str, list[Result]] = {}
     for name in systems:
         path = Path(tempfile.mkdtemp()) / "store"
         t0 = time.perf_counter()
-        load_store(path, name, log)
+        # PostgreSQL is a baseline, not a backend: it cannot replay the log,
+        # so it is loaded from a native store's canonical rows instead.
+        load_store(path, "native" if name == "postgres" else name, log)
         load = time.perf_counter() - t0
-        results[name] = run_system(name, path, queries, args.repeats)
+        results[name] = (run_postgres(path, queries, args.repeats)
+                         if name == "postgres"
+                         else run_system(name, path, queries, args.repeats))
         print(f"  {name}: loaded in {load:.1f}s")
 
     base, *others = systems
@@ -266,7 +487,7 @@ def main() -> int:
 
     print()
     for s, qid, err in unsupported:
-        print(f"  unsupported: {s}/{qid} — {err}")
+        print(f"  no answer: {s}/{qid} — {err}")
     if mismatches:
         print(f"\n  RESULT HASHES DIFFER on {len(mismatches)}: {', '.join(mismatches)}")
     else:
@@ -282,7 +503,8 @@ def main() -> int:
         }, indent=2, sort_keys=True) + "\n", encoding="utf-8")
         print(f"  wrote {args.json}")
 
-    # Phase 0's exit criterion: identical hashes on native and DuckDB
+    # Phase 0's exit criterion: identical hashes across the TGMS backends.
+    # A PostgreSQL gap is expressiveness, not a bug, so it must not fail here.
     return 1 if mismatches else 0
 
 
