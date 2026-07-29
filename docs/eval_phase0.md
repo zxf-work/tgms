@@ -9,7 +9,7 @@ uv run python scripts/eval_harness.py --scale 200000 --systems native,duckdb,pos
 
 ## Receipts (spec §8.4)
 
-- commit `d72244f`, 200,000 events, 3 repeats per query, p50 reported
+- commit `0dfd31e`, 200,000 events, 3 repeats per query, p50 reported
 - **xzgpu** — 40 cores, 93 GB, Linux 5.4. Every number here comes from that
   one host; `eval_harness.py` warns when run anywhere else, because a laptop
   differs by 5× in cores and 6× in RAM and pins `effective_io_concurrency`
@@ -31,37 +31,39 @@ p50 milliseconds.
 
 | query | native | duckdb | postgres | fastest |
 |---|---:|---:|---:|---|
-| hist.single | 4.4 | 11.9 | **0.5** | postgres |
-| hist.asof | 4.2 | 11.5 | **0.5** | postgres |
-| snap.hop2 | **26.9** | 49.9 | 43.5 | native |
-| diff.global | **75.6** | 113.8 | 108.1 | native |
-| reach.window | **22.6** | 28.5 | 699.1 | native |
-| paths.k | **11.9** | 19.7 | 21.8 | native |
-| series.count | **31.8** | 49.2 | 57.1 | native |
-| burst.zscore | **37.1** | 49.2 | 56.5 | native |
-| nbr.evolution | 17.4 | 18.9 | **3.5** | postgres |
-| coactive.narrow | **43.0** | 56.8 | 55.1 | native |
-| resolve.substr | **5.7** | 21.5 | 5.8 | tie |
-| motif.filtered | **356.2** | 584.0 | 1003.8 | native |
+| hist.single | 1.1 | 8.9 | **0.6** | postgres |
+| hist.asof | 1.1 | 8.8 | **0.5** | postgres |
+| snap.hop2 | **23.6** | 47.1 | 40.8 | native |
+| diff.global | **74.1** | 113.9 | 111.6 | native |
+| reach.window | **20.0** | 25.1 | 700.0 | native |
+| paths.k | **8.5** | 16.1 | 22.6 | native |
+| series.count | **28.3** | 43.0 | 56.6 | native |
+| burst.zscore | **29.4** | 40.1 | 56.3 | native |
+| nbr.evolution | 15.1 | 16.3 | **3.5** | postgres |
+| coactive.narrow | **37.5** | 54.7 | 53.9 | native |
+| resolve.substr | **3.6** | 19.2 | 6.0 | native |
+| motif.filtered | **355.4** | 576.8 | 1000.4 | native |
 
-Native is fastest on 8, PostgreSQL on 3, one tie. Against DuckDB alone the
-native engine now wins all 12.
+Native is fastest on 9, PostgreSQL on 3. Against DuckDB alone the native
+engine wins all 12.
 
 ## What the baseline actually showed
 
-**PostgreSQL wins point lookups by roughly 9×.** `hist.single` and
-`hist.asof` are 0.5 ms against the engine's 4.2–4.4 ms. A B-tree lookup is
-hard to beat, and the engine has a fixed per-lookup cost — the same ~13 ms
-flat identity lookup that shows up in the write path (`engine_lessons.md`
-§9b) — that does not shrink with the answer. This is the clearest thing the
-baseline bought: it is a floor the engine was not previously measured against.
+**PostgreSQL still wins point lookups, but by 1.8× rather than 9×.**
+`hist.single` and `hist.asof` are 0.5–0.6 ms against the engine's 1.1 ms.
+They were 4.2–4.4 ms until the baseline made the gap impossible to ignore;
+see the point-lookup section below. A B-tree lookup on a warm 16 GB buffer
+pool is a hard floor, and the residual difference is now small enough to be
+mostly fixed per-call cost on both sides rather than a structural defect.
+This remains the clearest thing the baseline bought: a floor the engine had
+never been measured against.
 
 **`diff.global` was the native engine's worst result and is now its clearest
 win** — see the section below. It measured 419 ms against 111 and 104, the
 only operator where DuckDB beat native; it now measures 75.6 ms, the fastest
 of the three. The baseline is what made the regression visible.
 
-**`nbr.evolution`** also favours PostgreSQL (3.5 vs 17.4 ms): it is a small
+**`nbr.evolution`** also favours PostgreSQL (3.5 vs 15.1 ms): it is a small
 indexed neighbourhood lookup plus a bucketed count, which is exactly what
 partial indexes are good at.
 
@@ -93,6 +95,39 @@ It is the sixth entry in `engine_lessons.md` §1 — the running table of times
 the layer under suspicion was not the one costing the time — and the second
 where the suspected layer was genuinely wasteful yet nowhere near dominant.
 
+## Closing the point-lookup floor
+
+PostgreSQL answering a two-row lookup in 0.5 ms against the engine's 4.2 ms
+was the baseline's most useful result, because nothing in the TGMS-only
+comparison had ever suggested a problem. Two causes, in roughly equal parts,
+and neither was the storage layout:
+
+**The index located the rows and the row fetch threw it away.** `locate()`
+returns exact `(file, row)` pairs from the identity postings index, and both
+`believed_*` paths then rebuilt the *entire segment* to index into it — for
+edges, a sha256 and two dictionary lookups per row of a whole segment to reach
+two of them. The signature was unmistakable once measured: `believed_edge_
+versions` cost **76 ms at 50k versions and 76 ms at 200k**, flat, because one
+segment has a fixed maximum size. Materializing only the located rows takes it
+to **1.01 ms** — 76×.
+
+**Argument validation cost as much as reading the data.** `jsonschema.validate`
+is a convenience wrapper that re-checks the schema and constructs a fresh
+validator on every call, re-resolving `$ref`s through `urljoin`. On
+`entity_history` that was ~2 ms per call against a ~2 ms Rust lookup. Compiling
+the validator once per operator removed it.
+
+| | before | after |
+|---|---:|---:|
+| `believed_edge_versions` | 76.44 ms | **1.01 ms** |
+| `believed_node_versions` | 2.03 ms | **0.92 ms** |
+| `entity_history` (end to end) | 4.14 ms | **1.06 ms** |
+| load 200k events | 24.1 s | **5.3 s** |
+
+The validator fix is why every other operator in the table also improved:
+they all pay the envelope. The load-time change is the read fix showing up in
+the write path — each correction has to find the version it corrects.
+
 ## One number that was mine, not PostgreSQL's
 
 `reach.window` first measured **278,810 ms**. The natural SQL for
@@ -114,14 +149,17 @@ being measured for exactly this reason.
 
 | | native | duckdb | postgres |
 |---|---:|---:|---:|
-| load 200k events | 24.1 s | 11.0 s | 24.9 s |
+| load 200k events | 5.3 s | 11.0 s | 5.1 s |
 
-Native's figure is not bulk-ingest throughput. The generated log ends with
-~250 single-op corrections and retractions, and each one costs ~45 ms — half
-fsynced commit, half identity lookup (`engine_lessons.md` §9b). Bulk ingest
-alone is 0.27 s per 20k events. PostgreSQL's number includes building the
-reference store first, so it is not comparable either; only the DuckDB column
-is close to a straight load measurement.
+Native was **24.1 s** here until the point-lookup fix below. The generated log
+ends with ~250 single-op corrections and retractions, and each one performed
+an identity lookup that cost 76 ms; that is now 1 ms, and what remains is
+mostly per-commit fsync (`engine_lessons.md` §9b). A read-path fix moved the
+write path by 4.5×, because the write path reads.
+
+Neither the native nor the PostgreSQL column is a clean ingest measurement —
+PostgreSQL's includes building the reference store first — so only the DuckDB
+column is close to a straight load number.
 
 ## Storage
 

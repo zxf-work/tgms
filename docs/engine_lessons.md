@@ -244,10 +244,10 @@ load time went from fractions of a second to twelve. Splitting it: bulk
 ingestion of 20,000 events takes **0.27 s**, while 200 single-op corrections
 take **9.0 s — about 45 ms each**, in two roughly equal halves. Half is the
 commit itself (segment write, dictionary append, manifest swap, each fsynced —
-§7, and the cost is real durability rather than waste). The other half is the
-identity lookup that finds the version being corrected: a flat ~13.5 ms per
-call that grows with segment count, on a store where point reads were supposed
-to be served by the identity postings index.
+§7, and the cost is real durability rather than waste). The other half was the
+identity lookup that finds the version being corrected — which turned out to
+be a read-path defect, not a write cost at all, and is fixed in §9d. Loading
+200k events fell from 24.1 s to 5.3 s once it was.
 
 Neither half had ever been measured, because every benchmark to date wrote in
 bulk and never corrected anything. An append-only engine with an atomic
@@ -255,6 +255,37 @@ manifest swap is optimized for batches by construction, and a workload of many
 tiny commits meets none of those assumptions. If the write path has a batched
 mode, benchmark the unbatched one too — it is a different system, and users
 will find it.
+
+## 9d. Count the envelope, not just the engine
+
+An outside baseline answered a two-row point lookup in 0.5 ms against the
+engine's 4.2 ms. Nothing in the TGMS-only comparison had ever hinted at a
+problem — both TGMS backends were slow in the same way, so they agreed, and
+agreement reads as health.
+
+Two causes, roughly equal, neither in the storage layout.
+
+The first was §9c's defect again, in a second place: the postings index
+returned exact `(file, row)` pairs and the read path rebuilt the whole segment
+to index into it. Same tell, too — `believed_edge_versions` cost 76 ms at 50k
+versions and 76 ms at 200k, flat, because a segment has a fixed maximum size.
+Flat-in-the-data is as diagnostic as linear-in-the-data: it says the unit of
+work is a segment, not a row and not the store. Fixing it: 76 ms → 1.01 ms.
+
+The second was not in the engine at all. `jsonschema.validate` is a
+convenience wrapper that re-checks the schema and builds a fresh validator on
+every call, re-resolving `$ref`s through `urljoin` as it goes — about 2 ms per
+operator call, against a 2 ms lookup. **Validating the arguments cost as much
+as answering the query.** Compiling the validator once per operator removed
+it, and every operator in the suite got faster, because they all pay it.
+
+Two things worth carrying. **A per-call envelope is invisible in a
+storage-layer profile** and is only exposed by a query small enough that the
+answer is cheap — which is exactly the query class a storage benchmark tends
+not to include. And **a read-path fix moved the write path 4.5×** (200k-event
+load, 24.1 s → 5.3 s), because writes read: every correction must first find
+the version it corrects. Read and write paths are not separable when the write
+is a correction.
 
 ## 10. Fault injection earns its keep in ways you did not plan
 
