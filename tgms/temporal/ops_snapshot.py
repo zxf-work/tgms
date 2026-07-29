@@ -7,6 +7,8 @@ loops (exception documented on O12).
 
 from __future__ import annotations
 
+import json
+
 from typing import Any
 
 import numpy as np
@@ -373,9 +375,20 @@ def neighborhood_evolution(adapter: StorageAdapter, args: dict[str, Any]) -> dic
     cost_fn=scan_estimate,
 )
 def resolve_entities(adapter: StorageAdapter, args: dict[str, Any]) -> dict[str, Any]:
-    # NOTE: Python row loop tolerated here — resolve is a small-table lookup,
-    # not a hot-path scan (TODO M3: move behind a name index).
     q = args["query"]
+    kernel = getattr(adapter, "resolve_entities", None)
+    if kernel is not None:
+        # engine-side: matches over the promoted name column, no JSON per row
+        rows = []
+        for uid, score, label, props_text in kernel(q, args["as_of_tt"]):
+            if args["label"] is not None and label != args["label"]:
+                continue
+            rows.append({"uid": uid, "label": label,
+                         "name": json.loads(props_text).get("name"),
+                         "match": int(score)})
+        return paginate(rows, args["limit"], args["cursor"])
+
+    # portable fallback: a row loop over every believed node version
     ql = q.lower()
     as_of = args["as_of_tt"]
     latest: dict[str, Any] = {}

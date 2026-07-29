@@ -335,6 +335,20 @@ impl NativeStore {
         Ok(out)
     }
 
+    /// Entity resolution (O12). Returns `(uid, score, label, props)` for the
+    /// latest believed version of each match, already ordered by
+    /// `(score, uid)`. The caller builds the rows, because the output `name`
+    /// comes from `props` and may be a non-string the typed column does not
+    /// index.
+    #[pyo3(signature = (query, as_of_tt = OPEN_END))]
+    fn resolve_entities(
+        &self,
+        query: &str,
+        as_of_tt: i64,
+    ) -> Res<Vec<(String, u8, String, String)>> {
+        self.inner.resolve_entities(query, as_of_tt).map_err(err)
+    }
+
     fn props_for_vids(&self, kind: &str, vids: Vec<String>) -> Res<HashMap<String, String>> {
         self.inner
             .props_for_vids(kind_of(kind)?, &vids)

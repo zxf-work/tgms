@@ -357,6 +357,17 @@ class NativeAdapter(StorageAdapter):
         except Exception as e:
             raise _translate(e) from None
 
+    def resolve_entities(self, query: str, as_of_tt: int = OPEN_END):
+        """Engine-side entity resolution (O12).
+
+        Present only on this backend; `ops_snapshot.resolve_entities` uses it
+        when available and otherwise falls back to its portable scan.
+        """
+        try:
+            return self._store.resolve_entities(query, clamp_tt(as_of_tt))
+        except Exception as e:
+            raise _translate(e) from None
+
     def verify(self) -> dict[str, Any]:
         """Checksum-walk every file this generation references.
 

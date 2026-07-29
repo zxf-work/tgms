@@ -436,6 +436,85 @@ impl NativeStore {
             .collect())
     }
 
+    /// Entity resolution (O12): match a query against uids and names, and
+    /// report the latest believed version of each entity that matched.
+    ///
+    /// Scored exactly as the operator defines: 0 for an exact uid, 1 for a
+    /// uid substring, 2 for a name substring, lowest wins. `name` is read
+    /// from the promoted `name_ref` column, so no JSON is parsed per row —
+    /// that parse over every node version was the whole cost of this
+    /// operator.
+    ///
+    /// Returns `(uid, score, label, props)` for the latest believed version
+    /// of each match. Row construction stays with the caller: the output
+    /// `name` field comes from `props`, which may hold a non-string value
+    /// that the typed column deliberately does not index.
+    pub fn resolve_entities(
+        &self,
+        query: &str,
+        as_of_tt: i64,
+    ) -> Result<Vec<(String, u8, String, String)>> {
+        let ql = query.to_lowercase();
+        let closes = self.close_index()?;
+        // uid -> (best score, latest vt_s, label, props)
+        let mut best: HashMap<String, (u8, i64, String, String)> = HashMap::new();
+
+        for (file, id) in self.node_files() {
+            let seg = self.open_segment(&file)?;
+            let h = seg.header();
+            let strings = seg.strings()?;
+            let sidecar = seg.sidecar();
+            let vt_s = seg.i64_column("vt_s")?;
+            let uid_id = seg.u32_column("uid_id")?;
+            let label_ref = seg.u32_column("label_ref")?;
+            let props_ref = seg.u32_column("props_ref")?;
+            // segments written before the column was promoted simply have no
+            // names to match on; uid matching still works
+            let name_ref = seg.u32_column("name_ref").ok();
+
+            for i in 0..vt_s.len() {
+                let from_run = closes.tt_e(id, i as u32);
+                let tt_e = if from_run != OPEN_END {
+                    from_run
+                } else {
+                    sidecar.tt_e(i as u32)
+                };
+                if !believed_at(h.tt_s_at(i as u32)?, tt_e, as_of_tt) {
+                    continue;
+                }
+                let uid = self.uid_of(uid_id[i])?;
+                let name = match name_ref {
+                    Some(col) => strings.get_opt(col[i])?,
+                    None => None,
+                };
+                let score = if uid == query {
+                    0u8
+                } else if uid.to_lowercase().contains(&ql) {
+                    1
+                } else if name.is_some_and(|n| !n.is_empty() && n.to_lowercase().contains(&ql)) {
+                    2
+                } else {
+                    continue;
+                };
+                let entry = best.entry(uid).or_insert((u8::MAX, i64::MIN, String::new(), String::new()));
+                entry.0 = entry.0.min(score);
+                // the newest believed version supplies label and props
+                if vt_s[i] >= entry.1 {
+                    entry.1 = vt_s[i];
+                    entry.2 = strings.get(label_ref[i])?.to_string();
+                    entry.3 = strings.get(props_ref[i])?.to_string();
+                }
+            }
+        }
+
+        let mut out: Vec<(String, u8, String, String)> = best
+            .into_iter()
+            .map(|(uid, (score, _, label, props))| (uid, score, label, props))
+            .collect();
+        out.sort_by(|a, b| a.1.cmp(&b.1).then_with(|| a.0.cmp(&b.0)));
+        Ok(out)
+    }
+
     /// Running statistics, building them once if this is the first call.
     ///
     /// After the initial build every commit folds its own batch in, so a
