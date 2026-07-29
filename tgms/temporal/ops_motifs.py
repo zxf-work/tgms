@@ -68,13 +68,28 @@ def _motif_cost(args: dict[str, Any], stats: dict[str, Any]) -> dict[str, int]:
             "expansions_est": min(e_w * deg, 2**40)}
 
 
+#: Everything the matcher and the instance formatter read, and nothing else.
+#: Unprojected, the scan also builds props, vid, vt_e, source and provenance
+#: for every row in the window — 95 ms of the operator's 369 at 200k events.
+_EVENT_COLS = ("src_id", "dst_id", "vt_s", "eid", "rel_type")
+
+
 def _events(adapter: StorageAdapter, args: dict[str, Any]) -> dict[str, Any]:
     """Window events as columns, filtered exactly as the operator specifies."""
     t_a, t_b = args["window"]["t_a"], args["window"]["t_b"]
-    e = adapter.edges_columnar(as_of_tt=args["as_of_tt"], vt_min=t_a, vt_max=t_b)
-    m = (e["vt_s"] >= t_a) & (e["vt_s"] < t_b)
+    ids = None
     if args["node_filter"] is not None:
         ids = adapter.dense_ids(sorted(set(args["node_filter"])))
+    # A motif event needs *both* endpoints in the filter, which the scan cannot
+    # express — it pushes down or-incidence. But {both} is a subset of {either},
+    # so or-incidence is an exact pre-filter and the and-test below still
+    # decides. It matters because `eid` is a sha256 per row: unfiltered, the
+    # scan derived 200k of them at 200k events and the mask then discarded 93%.
+    e = adapter.edges_columnar(as_of_tt=args["as_of_tt"], vt_min=t_a, vt_max=t_b,
+                               columns=_EVENT_COLS,
+                               touching_ids=None if ids is None else [int(i) for i in ids])
+    m = (e["vt_s"] >= t_a) & (e["vt_s"] < t_b)
+    if ids is not None:
         m &= np.isin(e["src_id"], ids) & np.isin(e["dst_id"], ids)
     if args["mode"] == "exact" and args["node_filter"] is None \
             and int(m.sum()) > EXACT_EDGE_CAP:
