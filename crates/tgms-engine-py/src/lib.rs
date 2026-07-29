@@ -138,9 +138,25 @@ struct NodeCols {
     provenance_ref: Vec<Option<String>>,
 }
 
+/// Cost-guardrail statistics for one generation.
+struct StatsSnapshot {
+    generation: u64,
+    n_node_versions: usize,
+    n_edge_versions: usize,
+    vt_min: Option<i64>,
+    vt_max: Option<i64>,
+    rel_type_counts: HashMap<String, u64>,
+    max_out_degree: u64,
+}
+
 #[pyclass(module = "tgms._engine")]
 pub struct NativeStore {
     inner: CoreStore,
+    /// `stats()` is on the hot path — every operator call embeds
+    /// `dataset_extent` in its self-describing envelope — but computing it
+    /// walks the store. Generations are immutable, so one walk per generation
+    /// is enough; a commit changes the generation and invalidates this.
+    stats_cache: std::sync::Mutex<Option<StatsSnapshot>>,
 }
 
 #[pymethods]
@@ -149,6 +165,7 @@ impl NativeStore {
     fn new(path: &str) -> Res<Self> {
         Ok(Self {
             inner: CoreStore::open(path).map_err(err)?,
+            stats_cache: std::sync::Mutex::new(None),
         })
     }
 
@@ -540,31 +557,46 @@ impl NativeStore {
     /// incremental maintenance that makes it O(1) rides with the WP-N4
     /// indexes.
     fn stats(&self, py: Python<'_>) -> Res<Py<PyDict>> {
-        let edges = self.inner.all_edge_versions().map_err(err)?;
-        let nodes = self.inner.all_node_versions().map_err(err)?;
-
-        let mut vt_min: Option<i64> = None;
-        let mut vt_max: Option<i64> = None;
-        let mut rel_counts: HashMap<String, u64> = HashMap::new();
-        let mut out_degree: HashMap<String, u64> = HashMap::new();
-        for e in &edges {
-            vt_min = Some(vt_min.map_or(e.vt_s, |m: i64| m.min(e.vt_s)));
-            // an open-ended interval contributes vt_s + 1, as DuckDB does
-            let ve = if e.vt_e >= OPEN_END { e.vt_s + 1 } else { e.vt_e };
-            vt_max = Some(vt_max.map_or(ve, |m: i64| m.max(ve)));
-            *rel_counts.entry(e.rel_type.clone()).or_default() += 1;
-            *out_degree.entry(e.src.clone()).or_default() += 1;
+        let generation = self.inner.generation();
+        let mut cache = self.stats_cache.lock().expect("stats cache mutex poisoned");
+        let fresh = matches!(cache.as_ref(), Some(s) if s.generation == generation)
+            && !self.inner.in_batch();
+        if !fresh {
+            let edges = self.inner.all_edge_versions().map_err(err)?;
+            let nodes = self.inner.all_node_versions().map_err(err)?;
+            let mut vt_min: Option<i64> = None;
+            let mut vt_max: Option<i64> = None;
+            let mut rel_counts: HashMap<String, u64> = HashMap::new();
+            let mut out_degree: HashMap<String, u64> = HashMap::new();
+            for e in &edges {
+                vt_min = Some(vt_min.map_or(e.vt_s, |m: i64| m.min(e.vt_s)));
+                // an open-ended interval contributes vt_s + 1, as DuckDB does
+                let ve = if e.vt_e >= OPEN_END { e.vt_s + 1 } else { e.vt_e };
+                vt_max = Some(vt_max.map_or(ve, |m: i64| m.max(ve)));
+                *rel_counts.entry(e.rel_type.clone()).or_default() += 1;
+                *out_degree.entry(e.src.clone()).or_default() += 1;
+            }
+            *cache = Some(StatsSnapshot {
+                generation,
+                n_node_versions: nodes.len(),
+                n_edge_versions: edges.len(),
+                vt_min,
+                vt_max,
+                rel_type_counts: rel_counts,
+                max_out_degree: out_degree.values().copied().max().unwrap_or(0),
+            });
         }
+        let s = cache.as_ref().expect("just populated");
 
         let d = PyDict::new(py);
         d.set_item("n_entities", self.inner.dict().len())?;
-        d.set_item("n_node_versions", nodes.len())?;
-        d.set_item("n_edge_versions", edges.len())?;
-        d.set_item("vt_min", vt_min)?;
-        d.set_item("vt_max", vt_max)?;
-        d.set_item("rel_type_counts", rel_counts)?;
-        d.set_item("max_out_degree", out_degree.values().copied().max().unwrap_or(0))?;
-        d.set_item("generation", self.inner.generation())?;
+        d.set_item("n_node_versions", s.n_node_versions)?;
+        d.set_item("n_edge_versions", s.n_edge_versions)?;
+        d.set_item("vt_min", s.vt_min)?;
+        d.set_item("vt_max", s.vt_max)?;
+        d.set_item("rel_type_counts", &s.rel_type_counts)?;
+        d.set_item("max_out_degree", s.max_out_degree)?;
+        d.set_item("generation", generation)?;
         Ok(d.into())
     }
 
