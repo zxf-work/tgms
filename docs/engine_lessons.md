@@ -13,7 +13,7 @@ actually cost time.
 
 ## 1. Measure the layer before optimizing it
 
-Six times we identified "the bottleneck" and were wrong. Every single time,
+Seven times we identified "the bottleneck" and were wrong. Every single time,
 the fix that mattered was found by measuring *after* the intended fix failed
 to move the number.
 
@@ -25,8 +25,9 @@ to move the number.
 | incidence filter needs an index | filter answered in 0.8 ms | `stats()` scanning on every operator call |
 | materialization pushes row-by-row | flat 170 ns/row at any segment count | `vid` hex built for unprojected rows |
 | `diff_snapshots` is scan-bound | the two scans were 54 ms of 419 | a 16-row lookup rebuilding the whole store |
+| a point lookup is all storage | arg validation ≈ the lookup, ~2 ms each | `jsonschema.validate` rebuilding a validator per call |
 
-Two of those six fixes we implemented were *correct but irrelevant* — the
+Two of those seven fixes we implemented were *correct but irrelevant* — the
 contiguous-run copy and the postings index both stayed, because they are
 cheap and right, but neither produced the win attributed to them.
 
