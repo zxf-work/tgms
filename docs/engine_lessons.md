@@ -206,6 +206,36 @@ truncation actually exercised — or the suite will keep reporting a pass it did
 not earn. The oracle (§8) is what makes a rewrite tractable, but an oracle only
 tests the inputs you hand it.
 
+## 9c. A cheap primitive can be the whole operator
+
+`diff_snapshots` measured 419 ms against a PostgreSQL baseline's 104 and
+DuckDB's 111 — the only operator where the native engine lost to both. The
+obvious suspect was the scan: `edges_at` requests no column projection, so it
+materializes `eid` — a sha256 per row — for every edge valid at each of two
+instants.
+
+That suspicion was right about the waste and wrong about the magnitude. The
+two scans together are 54 ms. The other 365 ms was `props_for_vids`, fetching
+props for the *sixteen* candidate identities whose version differed between
+the instants. It routed through `all_*_versions`, which rebuilds every row in
+the store — two dictionary lookups, several string allocations, and a sha256
+for `eid` — to find those sixteen. Two measurements settled it in a minute:
+the cost was identical for one vid and for 256, and it doubled with the store
+(86 ms at 50k versions, 353 ms at 200k). Flat in the query, linear in the
+data: that is a full scan wearing a lookup's signature.
+
+Sweeping three integer columns per segment and reading a string only on a
+match took it to 6.9 ms, and the operator to 75.6 ms — from last place to
+first. The complexity did not change; it is still O(rows), because vids are
+hashes and no segment ordering can help. Only the constant changed.
+
+Two things generalize. **A lookup-shaped API can hide a scan**, and the way to
+find out costs nothing: vary the query size and vary the data size, and see
+which one moves the clock. **And a primitive that looks too small to matter
+can be the entire operator** — nobody profiles a function that fetches sixteen
+rows, which is exactly why it went unnoticed until an outside baseline made
+the operator look wrong.
+
 ## 9b. Batch writes and single writes are different systems
 
 The same investigation put the first corrections into the generated data, and

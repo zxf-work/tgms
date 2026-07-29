@@ -101,10 +101,10 @@ time-respecting reachability is a `WITH RECURSIVE ... UNION` over
 aggregate over its own working table, so it cannot discard a state dominated
 by a better arrival at the same node, and it enumerates the entire reachable
 state space. Rewritten as round-by-round relaxation against a temp table
-holding one row per node, it runs in **702 ms** — a 397× difference, entirely
+holding one row per node, it runs in **699 ms** — a 399× difference, entirely
 in the query.
 
-It is still 31× slower than the engine's 22.9 ms, and that residue is a real
+It is still 31× slower than the engine's 22.6 ms, and that residue is a real
 result. But had the first number been published, the table would have said
 PostgreSQL is 12,000× slower at reachability, and that would have been a
 measurement of my SQL. D-030 makes baseline query quality part of what is
@@ -114,7 +114,7 @@ being measured for exactly this reason.
 
 | | native | duckdb | postgres |
 |---|---:|---:|---:|
-| load 200k events | 24.3 s | 10.9 s | 25.2 s |
+| load 200k events | 24.1 s | 11.0 s | 24.9 s |
 
 Native's figure is not bulk-ingest throughput. The generated log ends with
 ~250 single-op corrections and retractions, and each one costs ~45 ms — half
