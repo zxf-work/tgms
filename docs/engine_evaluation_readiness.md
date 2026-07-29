@@ -1,15 +1,16 @@
 # Native engine — evaluation readiness
 
 Where the engine stands against the evaluation plan's own adoption criteria,
-and what has to exist before a cross-system study can start. Written
-2026-07-29 at commit `cc1abd8`.
+and what has to exist before a cross-system study can start. Updated
+2026-07-29 after the kernel work.
 
 ## Is the implementation done?
 
-**Substitutable: yes. Complete: no.** The engine passes every correctness
-gate and beats DuckDB on every benchmarked operator, but three planned
-kernels and two operational items are still open, and two of the three are
-things the evaluation explicitly measures.
+**Substitutable: yes. Complete: nearly.** The engine passes every correctness
+gate and beats DuckDB on every benchmarked operator. All three kernels the
+plan benchmarks by name are now settled — two built, one measured and
+deliberately not built. What remains is TCSR persistence and three
+operational items, none of which blocks the Phase 1 decision.
 
 ### Done
 
@@ -112,17 +113,16 @@ dependency order:
 
 ## Recommended sequencing
 
-1. **Close the three kernel gaps first** — name index, TCSR persistence,
-   bucket aggregation. They are days of work, they are the parts the plan
-   benchmarks by name, and measuring NumPy stand-ins would produce numbers
-   that have to be thrown away and re-run.
-2. **Measure index and compaction storage overhead**, closing the one
-   outstanding §25 criterion.
-3. **Build the Phase 0 harness** (items 1–4 above) against native and DuckDB
-   only. Phase 0's exit criterion is already met, so this is about making the
-   result reproducible rather than discovering it.
-4. **Then** add external systems, starting with PostgreSQL, which is the
-   cheapest baseline with genuinely equivalent semantics.
+1. **Measure index and compaction storage overhead** — the one outstanding
+   §25 criterion, and the only thing standing between the current numbers and
+   a defensible storage claim.
+2. **Build the Phase 0 harness** against native and DuckDB only. Phase 0's
+   exit criterion is already met, so this is about making the result
+   reproducible rather than discovering it.
+3. **Then** add external systems, starting with PostgreSQL, the cheapest
+   baseline with genuinely equivalent semantics.
 
-Doing 3 before 1 is the tempting order and the wrong one: the harness would
-measure a configuration that is about to change.
+TCSR persistence and the operational items (suffix replay, the `verify`
+subcommand, compression) can proceed in parallel — none of them changes a
+measured number, so the harness will not have to be re-run because of them.
+That was not true of the kernels, which is why they came first.
