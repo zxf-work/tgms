@@ -139,9 +139,53 @@ which is what makes them the useful Phase 0 pair.
 
 ### PostgreSQL
 
-*(to be completed as the baseline is implemented — expected divergences:
+Schema, indexes, tuning, and loader live in `scripts/pg_baseline.py`. The
+registry SQL is not written yet, so no query carries a verdict here.
+
+**How the data gets in.** PostgreSQL is a baseline, not a backend: it never
+implements the write semantics. TGMS produces the canonical version rows and
+`COPY` loads them, so transaction times arrive exactly as recorded. Anything
+else would regenerate `tt` from the clock and change every derived id (§3).
+
+**Storing props as text, not JSONB.** `props` is TEXT holding canonical JSON.
+JSONB normalizes key order and whitespace, so a round trip would not return
+the stored bytes, and the digest is computed over exactly those bytes. An
+earlier schema carried a generated JSONB column alongside for querying; it was
+dropped after measuring, because an expression index over `props::jsonb`
+serves the same predicates without storing every blob twice. The effect is
+that both systems parse JSON above the storage layer, which is what TGMS
+already does (§6).
+
+**The belief predicate has two spellings, and they are not interchangeable to
+the planner.** A partial index `WHERE tt_e = OPEN_END` is the relational
+analogue of the engine's `all_current` flag, and current-belief queries reach
+it — but only when written as that equality. The general as-of form
+`tt_s <= T AND T < tt_e` falls back to the full index, measured. The planner
+is right to refuse: the implication holds only because `tt_e` never exceeds
+`OPEN_END` in our data, which is not something the schema states. So registry
+SQL must branch on whether `as_of_tt` was supplied — the same branch the
+engine makes. Writing every query in the general form would understate
+PostgreSQL; writing every query as the equality would answer the wrong
+question at `hist.asof`.
+
+**Storage, recorded without a ratio.** At 1M edge versions the tuned server
+holds a 182.2 MB heap plus 366.4 MB of indexes, or 548.6 B/row all in. TGMS
+measures 65.2 B/row and projects 92.9 B/row with indexes persisted. **These
+are not yet a like-for-like comparison** and no ratio should be quoted from
+them: the PostgreSQL figure carries eight edge indexes chosen for the whole
+registry, against two on the TGMS side, and the TGMS index figure is a
+projection rather than a measurement. An earlier storage claim in this project
+was wrong for exactly this kind of mismatched-baseline reason. A real
+comparison needs both systems carrying only the indexes the registry uses.
+
+**Host caveat.** These runs are on a 16 GB / 8-core macOS laptop, while the
+operator benchmarks in `bench_ops.md` were taken on xzgpu (40 cores, 93 GB).
+Numbers from the two hosts are not comparable, and macOS additionally pins
+`effective_io_concurrency` to 0 — no posix_fadvise, so the baseline cannot
+prefetch at all here. The comparison run belongs on one Linux host.
+
+**Expected divergences, still to be confirmed against the hash oracle:**
 time-respecting reachability needs a recursive CTE carrying a monotonic
 arrival time; δ-motifs need a three-way self-join with the ordering and span
-predicates written out; belief filtering must be threaded through both.
-Tuning applied and index choices belong in the run manifest, since they are
-part of what is being measured.)*
+predicates written out; belief filtering must be threaded through both,
+including the recursive part.
