@@ -7,8 +7,10 @@ Motif semantics (engine and oracle agree on exactly this):
   that breaks timestamp ties — and satisfy t_last - t_first <= delta.
 - Motif node variables are pairwise distinct; rel_type is ignored.
 
-Matching runs as DuckDB non-equi self-joins over an in-memory Arrow event
-table — vectorized, engine-parallel, no per-edge Python loops.
+Matching runs in the native engine kernel (`tgms._engine.motif_match`),
+which indexes the window's events once and then resolves each motif edge by
+lookup rather than by scanning. It replaced a DuckDB three-way self-join —
+the last third-party engine in the runtime path.
 """
 
 from __future__ import annotations
@@ -16,9 +18,8 @@ from __future__ import annotations
 from typing import Any
 
 import numpy as np
-import pyarrow as pa
 
-from tgms.core.errors import InvalidArgError, StateError
+from tgms.core.errors import InvalidArgError
 from tgms.storage.base import StorageAdapter
 from tgms.temporal.algebra import (
     AS_OF_TT,
@@ -32,43 +33,14 @@ from tgms.temporal.algebra import (
 )
 from tgms.temporal.guardrails import window_fraction
 
-# each motif: number of edges + join/filter SQL over aliases e1..eN
-# (s = src dense id, d = dst dense id, t = event time, x = eid tiebreaker)
-_ORD = ("(({b}.t > {a}.t) OR ({b}.t = {a}.t AND {b}.x > {a}.x))")
-
-
-def _seq(*aliases: str) -> str:
-    return " AND ".join(_ORD.format(a=a, b=b) for a, b in zip(aliases, aliases[1:]))
-
-
+# The catalogue is the operator contract's fixed motif set; the matching
+# rules themselves live in the engine kernel, keyed by these names.
 MOTIFS: dict[str, dict[str, Any]] = {
-    "M_triangle_cyclic": {  # u->v, v->w, w->u
-        "n": 3,
-        "join": ("e2.s = e1.d AND e3.s = e2.d AND e3.d = e1.s "
-                 "AND e1.s <> e1.d AND e2.s <> e2.d AND e1.s <> e2.d"),
-    },
-    "M_triangle_acyclic_1": {  # u->v, u->w, v->w
-        "n": 3,
-        "join": ("e2.s = e1.s AND e3.s = e1.d AND e3.d = e2.d "
-                 "AND e1.d <> e2.d AND e1.s <> e1.d AND e1.s <> e2.d"),
-    },
-    "M_2node_pingpong": {  # u->v, v->u, u->v
-        "n": 3,
-        "join": ("e2.s = e1.d AND e2.d = e1.s AND e3.s = e1.s AND e3.d = e1.d "
-                 "AND e1.s <> e1.d"),
-    },
-    "M_star_out_3": {  # u->a, u->b, u->c
-        "n": 3,
-        "join": ("e2.s = e1.s AND e3.s = e1.s "
-                 "AND e1.d <> e2.d AND e1.d <> e3.d AND e2.d <> e3.d "
-                 "AND e1.d <> e1.s AND e2.d <> e1.s AND e3.d <> e1.s"),
-    },
-    "M_path_3": {  # u->v->w->x
-        "n": 3,
-        "join": ("e2.s = e1.d AND e3.s = e2.d "
-                 "AND e1.s <> e1.d AND e1.s <> e2.d AND e1.s <> e3.d "
-                 "AND e1.d <> e2.d AND e1.d <> e3.d AND e2.d <> e3.d"),
-    },
+    "M_triangle_cyclic": {"n": 3},        # u->v, v->w, w->u
+    "M_triangle_acyclic_1": {"n": 3},     # u->v, u->w, v->w
+    "M_2node_pingpong": {"n": 3},         # u->v, v->u, u->v
+    "M_star_out_3": {"n": 3},             # u->a, u->b, u->c
+    "M_path_3": {"n": 3},                 # u->v->w->x
 }
 
 MOTIF_ARGS = {
@@ -96,7 +68,8 @@ def _motif_cost(args: dict[str, Any], stats: dict[str, Any]) -> dict[str, int]:
             "expansions_est": min(e_w * deg, 2**40)}
 
 
-def _event_table(adapter: StorageAdapter, args: dict[str, Any]) -> pa.Table:
+def _events(adapter: StorageAdapter, args: dict[str, Any]) -> dict[str, Any]:
+    """Window events as columns, filtered exactly as the operator specifies."""
     t_a, t_b = args["window"]["t_a"], args["window"]["t_b"]
     e = adapter.edges_columnar(as_of_tt=args["as_of_tt"], vt_min=t_a, vt_max=t_b)
     m = (e["vt_s"] >= t_a) & (e["vt_s"] < t_b)
@@ -108,41 +81,24 @@ def _event_table(adapter: StorageAdapter, args: dict[str, Any]) -> pa.Table:
         raise InvalidArgError(
             f"exact motif matching needs node_filter or <= {EXACT_EDGE_CAP} "
             "window events; add a node_filter or use mode='sample'")
-    return pa.table({
-        "s": pa.array(e["src_id"][m], pa.int64()),
-        "d": pa.array(e["dst_id"][m], pa.int64()),
-        "t": pa.array(e["vt_s"][m], pa.int64()),
-        "x": pa.array(e["eid"][m].tolist(), pa.string()),
-        "r": pa.array(e["rel_type"][m].tolist(), pa.string()),
-    })
+    return {
+        "src": e["src_id"][m], "dst": e["dst_id"][m], "t": e["vt_s"][m],
+        "eid": e["eid"][m], "rel_type": e["rel_type"][m],
+    }
 
 
-def _motif_query(motif: str, select: str, order: str = "") -> str:
-    spec = MOTIFS[motif]
-    aliases = [f"e{i + 1}" for i in range(spec["n"])]
-    froms = ", ".join(f"ev {a}" for a in aliases)
-    where = (f"{spec['join']} AND {_seq(*aliases)} "
-             f"AND {aliases[-1]}.t - {aliases[0]}.t <= $delta")
-    return f"SELECT {select} FROM {froms} WHERE {where} {order}"
+def _match(ev: dict[str, Any], motif: str, delta: int, collect: bool):
+    from tgms import _engine
 
-
-def _run(events: pa.Table, sql: str, delta: int):
-    """Execute the motif join.
-
-    DuckDB is imported here rather than at module level so the operator
-    algebra loads without it: only motif *execution* needs it, and the
-    native join kernel that removes the dependency is WP-N4.
-    """
-    try:
-        import duckdb
-    except ImportError as e:  # pragma: no cover - depends on the install
-        raise StateError(
-            "temporal motif operators still need DuckDB for their join; "
-            "install it with `pip install tgms[duckdb]`"
-        ) from e
-    conn = duckdb.connect(":memory:")
-    conn.register("ev", events)
-    return conn.execute(sql, {"delta": delta})
+    return _engine.motif_match(
+        motif,
+        [int(v) for v in ev["src"]],
+        [int(v) for v in ev["dst"]],
+        [int(v) for v in ev["t"]],
+        [str(v) for v in ev["eid"]],
+        int(delta),
+        collect,
+    )
 
 
 @operator(
@@ -159,10 +115,9 @@ def count_temporal_motifs(adapter: StorageAdapter, args: dict[str, Any]) -> dict
     if args["mode"] == "sample":
         raise InvalidArgError("mode='sample' lands with the M3 guardrail work; "
                               "use node_filter for now")
-    events = _event_table(adapter, args)
-    sql = _motif_query(args["motif"], "count(*)")
-    count = _run(events, sql, args["delta"]).fetchone()[0]
-    return {"count": int(count), "n_events_in_window": events.num_rows,
+    ev = _events(adapter, args)
+    count, _ = _match(ev, args["motif"], args["delta"], collect=False)
+    return {"count": int(count), "n_events_in_window": int(len(ev["t"])),
             "truncated": False}
 
 
@@ -178,19 +133,19 @@ def find_temporal_motif_instances(adapter: StorageAdapter, args: dict[str, Any])
     if args["mode"] == "sample":
         raise InvalidArgError("mode='sample' lands with the M3 guardrail work; "
                               "use node_filter for now")
-    events = _event_table(adapter, args)
-    n = MOTIFS[args["motif"]]["n"]
-    select = ", ".join(f"e{i}.s, e{i}.d, e{i}.t, e{i}.x, e{i}.r"
-                       for i in range(1, n + 1))
-    order = "ORDER BY " + ", ".join(f"e{i}.t, e{i}.x" for i in range(1, n + 1))
-    res = _run(events, _motif_query(args["motif"], select, order), args["delta"])
-    raw = res.fetchall()
-    rows = []
-    for tup in raw:
-        edges = []
-        for i in range(n):
-            s, d, t, x, r = tup[i * 5: i * 5 + 5]
-            su, du = adapter.uids_for([int(s), int(d)])
-            edges.append({"src": su, "dst": du, "t": int(t), "eid": x, "rel_type": r})
-        rows.append({"edges": edges})
+    ev = _events(adapter, args)
+    _, instances = _match(ev, args["motif"], args["delta"], collect=True)
+    # one dense-id lookup for the whole result rather than two per edge
+    needed = sorted({int(v) for tri in instances for i in tri
+                     for v in (ev["src"][i], ev["dst"][i])})
+    uid = dict(zip(needed, adapter.uids_for(needed))) if needed else {}
+    rows = [
+        {"edges": [
+            {"src": uid[int(ev["src"][i])], "dst": uid[int(ev["dst"][i])],
+             "t": int(ev["t"][i]), "eid": str(ev["eid"][i]),
+             "rel_type": str(ev["rel_type"][i])}
+            for i in tri
+        ]}
+        for tri in instances
+    ]
     return paginate(rows, args["limit"], args["cursor"])

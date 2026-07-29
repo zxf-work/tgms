@@ -574,6 +574,39 @@ impl NativeStore {
     }
 }
 
+/// δ-temporal motif matching (O6/O7).
+///
+/// Takes the window's events as columns and returns `(count, instances)`,
+/// where each instance is a triple of row indices into those columns — the
+/// caller already holds the strings, so there is no reason to send them back
+/// across the boundary. `collect=False` counts without materializing, which
+/// is all O6 needs.
+#[pyfunction]
+#[pyo3(signature = (motif, src, dst, t, eid, delta, collect = false))]
+#[allow(clippy::too_many_arguments)]
+fn motif_match(
+    py: Python<'_>,
+    motif: &str,
+    src: Vec<i64>,
+    dst: Vec<i64>,
+    t: Vec<i64>,
+    eid: Vec<String>,
+    delta: i64,
+    collect: bool,
+) -> Res<(u64, Vec<[u32; 3]>)> {
+    let kind = tgms_engine_core::motif::Motif::parse(motif).map_err(err)?;
+    // pure Rust over owned data: nothing here touches Python
+    py.detach(|| {
+        let events = tgms_engine_core::motif::Events {
+            src: &src,
+            dst: &dst,
+            t: &t,
+            eid: &eid,
+        };
+        tgms_engine_core::motif::match_motifs(kind, &events, delta, collect).map_err(err)
+    })
+}
+
 /// Round-trip probe (WP-N0 acceptance): proves the extension is importable,
 /// the core crate is linked, and arrays cross into NumPy without a copy.
 #[pyfunction]
@@ -594,6 +627,7 @@ fn core_version() -> &'static str {
 #[pymodule]
 fn _engine(m: &Bound<'_, PyModule>) -> PyResult<()> {
     m.add_class::<NativeStore>()?;
+    m.add_function(wrap_pyfunction!(motif_match, m)?)?;
     m.add_function(wrap_pyfunction!(ping, m)?)?;
     m.add_function(wrap_pyfunction!(core_version, m)?)?;
     m.add("FORMAT_VERSION", tgms_engine_core::FORMAT_VERSION)?;

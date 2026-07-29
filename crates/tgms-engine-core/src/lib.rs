@@ -16,6 +16,7 @@ pub mod derive;
 pub mod dict;
 pub mod error;
 pub mod manifest;
+pub mod motif;
 pub mod read;
 pub mod row;
 pub mod scan;
