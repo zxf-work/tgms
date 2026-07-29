@@ -178,33 +178,61 @@ projection rather than a measurement. An earlier storage claim in this project
 was wrong for exactly this kind of mismatched-baseline reason. A real
 comparison needs both systems carrying only the indexes the registry uses.
 
-**Host caveat.** These runs are on a 16 GB / 8-core macOS laptop, while the
-operator benchmarks in `bench_ops.md` were taken on xzgpu (40 cores, 93 GB).
-Numbers from the two hosts are not comparable, and macOS additionally pins
-`effective_io_concurrency` to 0 — no posix_fadvise, so the baseline cannot
-prefetch at all here. The comparison run belongs on one Linux host.
+**All measurement happens on xzgpu.** Every reported number comes from the
+one Linux host (40 cores, 93 GB) that `bench_ops.md` already uses. The laptop
+is for development only, and figures taken there are not comparable: macOS
+pins `effective_io_concurrency` to 0 for want of `posix_fadvise`, so the
+baseline cannot prefetch at all, and the two machines differ by 5× in cores
+and 6× in RAM.
 
-**Verdicts so far.** Six registry queries are written in SQL
-(`scripts/pg_queries.py`) and each returns a canonical hash identical to the
-TGMS operator's, over non-empty answers, on data containing corrections:
+PostgreSQL 16.14 on xzgpu is a source build under
+`/mnt/project/xzhang/tgms/pg` (no root on that host), listening on a unix
+socket at `/mnt/project/xzhang/tgms/pgrun` port 5433. Point the harness at it
+with `PGHOST`/`PGPORT`; `scripts/pg_baseline.py --tune-server` records the
+settings. Two choices there are worth stating because they are favourable to
+PostgreSQL and deliberate: the cluster is initialized `--locale=C`, which
+matches TGMS's byte ordering natively *and* is faster than a locale collation,
+and it is built `--without-icu` for the same reason.
 
-| query | verdict |
-|---|---|
-| `hist.single`, `hist.asof` | equivalent |
-| `snap.hop2` | equivalent (recursive CTE for the BFS) |
-| `series.count` | equivalent |
-| `nbr.evolution` | equivalent |
-| `coactive.narrow` | equivalent |
+**Verdicts.** All twelve registry queries are written in SQL
+(`scripts/pg_queries.py`) and every one returns a canonical hash identical to
+the TGMS operator's, over non-trivial answers, on data containing corrections.
+So the whole registry is **equivalent** on PostgreSQL — nothing in it turned
+out to be inexpressible, which is itself worth stating: the expressiveness gap
+this baseline was expected to expose is not there at the registry's scope.
 
-The other six carry **no verdict yet** — the SQL is simply unwritten. The
-harness reports them as "no SQL written yet", deliberately not as
-`unsupported`: that verdict asserts a system *cannot* express a query, and
-nothing has established it for PostgreSQL. Letting unfinished work read as a
-limitation of the baseline would be the same error as a weakened query, in the
-opposite direction. Still expected to be the hard ones: time-respecting
-reachability needs a recursive CTE carrying a monotonic arrival time; δ-motifs
-need a three-way self-join with the ordering and span predicates written out;
-belief filtering must be threaded through both, including the recursive part.
+Three needed more than a translation:
+
+- **`reach.window` / `paths.k`** — recursive CTEs over `(node, arrival)`
+  states. The traversal rule is *non-decreasing*, not strictly increasing:
+  `tau = max(arrival, vt_s)`, admissible iff `tau < vt_e` and `tau < t_b`, so
+  many edges may be traversed at one instant. `UNION` rather than `UNION ALL`
+  supplies the label dedup that makes the recursion terminate. Path ranking is
+  `(arrival, hops, sequence of (vt_s, eid))`; the sequence rides along as one
+  text column of fixed-width chunks, which orders identically to element-wise
+  array comparison because equal `hops` is compared first.
+- **`burst.zscore`** — the scan, bucketing, and windowed aggregation are SQL
+  (`stddev_pop`, frame `w PRECEDING AND 1 PRECEDING`), but the final scalar
+  arithmetic is Python. The reference thresholds on the *rounded* score, and
+  Python rounds half-to-even on the binary double while PostgreSQL rounds
+  half-away-from-zero on a decimal expansion — so rounding server-side would
+  change which rows exist, not merely how they print. At most 2000 buckets
+  cross that boundary; no scan work moves.
+- **`motif.filtered`** — a three-way self-join with `ROW(t, eid)` strict
+  ordering. The ordering is strict in the *composite* key, not in time alone,
+  so three events sharing a `vt_s` can still form a motif with `eid` deciding
+  their roles.
+
+**`resolve_entities`: the two TGMS implementations disagree with each other.**
+Porting it surfaced a divergence that has nothing to do with PostgreSQL. The
+oracle and portable fallback update the per-uid canonical version for *every*
+believed version before the match test, so `label` and `name` come from the
+latest version overall; the Rust kernel reaches that update only for
+*matching* versions, so they come from the latest matching one. The two also
+break `vt_s` ties in opposite directions — the oracle keeps the earlier-scanned
+version, the kernel the later — and neither is order-independent. The SQL
+follows the oracle. The synthetic data does not currently distinguish them, so
+nothing fails; a uid whose newest version does not itself match would.
 
 Three details did the work in getting those six to match, and each would have
 produced a wrong-but-plausible answer on its own:
