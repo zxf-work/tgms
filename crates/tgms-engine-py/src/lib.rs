@@ -470,10 +470,10 @@ impl NativeStore {
                 .collect::<Vec<_>>()
                 .into_pyarray(py),
         )?;
-        d.set_item(
-            "vid",
-            PyList::new(py, cols.vid.iter().map(|v| v.to_hex()))?,
-        )?;
+        // only pay for hex when the caller asked for it
+        if !cols.vid.is_empty() || req.columns.is_none() {
+            d.set_item("vid", PyList::new(py, cols.vid.iter().map(|v| v.to_hex()))?)?;
+        }
         d.set_item("rel_type", PyList::new(py, &cols.rel_type)?)?;
         d.set_item("disc", PyList::new(py, &cols.disc)?)?;
         d.set_item("props", PyList::new(py, &cols.props)?)?;

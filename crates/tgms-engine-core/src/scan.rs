@@ -351,37 +351,68 @@ impl<'a, S: SegmentSource> ScanSet<'a, S> {
                 .unwrap_or(true)
         };
         let (w_rel, w_disc, w_props) = (want("rel_type"), want("disc"), want("props"));
+        // vid is two integer columns here but a 24-char hex string at the
+        // boundary, so building it unasked cost more than the scan itself
+        let w_vid = want("vid");
         let mut cols = EdgeColumns::with_capacity(order.len());
         // resolve each segment's columns once, then walk its rows
         let mut views: Vec<Option<SegmentView<'_>>> =
             (0..self.targets.len()).map(|_| None).collect();
-        for (seg_idx, row) in order {
+
+        // Copy contiguous runs rather than pushing row by row. A selection is
+        // usually one ascending stretch of one segment, and for the fixed-width
+        // columns that turns a bounds-checked push per row into a memcpy —
+        // which was the whole gap against an Arrow-backed reader at 1M rows.
+        let mut i = 0usize;
+        while i < order.len() {
+            let (seg_idx, first_row) = order[i];
+            let mut j = i + 1;
+            while j < order.len()
+                && order[j].0 == seg_idx
+                && order[j].1 == order[j - 1].1 + 1
+            {
+                j += 1;
+            }
             if views[seg_idx].is_none() {
                 views[seg_idx] = Some(SegmentView::open(self.targets[seg_idx].segment)?);
             }
             let v = views[seg_idx].as_ref().expect("just populated");
-            let r = row as usize;
-            cols.vt_s.push(v.vt_s[r]);
-            cols.vt_e.push(match v.vt_e {
-                Some(col) => col[r],
-                None => v.vt_s[r] + 1,
-            });
-            cols.src_id.push(v.src_id[r]);
-            cols.dst_id.push(v.dst_id[r]);
-            cols.vid.push(Id96 {
-                hi: v.vid64[r],
-                lo: v.vid_lo32[r],
-            });
+            let (a, b) = (first_row as usize, first_row as usize + (j - i));
+
+            cols.vt_s.extend_from_slice(&v.vt_s[a..b]);
+            cols.src_id.extend_from_slice(&v.src_id[a..b]);
+            cols.dst_id.extend_from_slice(&v.dst_id[a..b]);
+            match v.vt_e {
+                Some(col) => cols.vt_e.extend_from_slice(&col[a..b]),
+                // elided means every row is instantaneous
+                None => cols.vt_e.extend(v.vt_s[a..b].iter().map(|t| t + 1)),
+            }
+            if w_vid {
+                cols.vid.extend(
+                    v.vid64[a..b]
+                        .iter()
+                        .zip(&v.vid_lo32[a..b])
+                        .map(|(&hi, &lo)| Id96 { hi, lo }),
+                );
+            }
             if w_rel {
-                cols.rel_type
-                    .push(v.rel_types[v.rel_code[r] as usize].clone());
+                cols.rel_type.extend(
+                    v.rel_code[a..b]
+                        .iter()
+                        .map(|&c| v.rel_types[c as usize].clone()),
+                );
             }
             if w_disc {
-                cols.disc.push(v.strings.get(v.disc_ref[r])?.to_string());
+                for &r in &v.disc_ref[a..b] {
+                    cols.disc.push(v.strings.get(r)?.to_string());
+                }
             }
             if w_props {
-                cols.props.push(v.strings.get(v.props_ref[r])?.to_string());
+                for &r in &v.props_ref[a..b] {
+                    cols.props.push(v.strings.get(r)?.to_string());
+                }
             }
+            i = j;
         }
         Ok((cols, stats))
     }
