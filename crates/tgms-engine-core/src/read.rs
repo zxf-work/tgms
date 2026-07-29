@@ -96,6 +96,22 @@ impl NativeStore {
 
     /// Every edge version in one segment, closes applied.
     fn edge_rows_of(&self, file: &str, id: u64, closes: &CloseIndex) -> Result<Vec<EdgeVersionOut>> {
+        self.edge_rows_sel(file, id, closes, None)
+    }
+
+    /// Edge versions in one segment: all of them, or just `rows`.
+    ///
+    /// The selective form exists because the identity postings index hands
+    /// back exact `(file, row)` pairs and the point-read path then threw that
+    /// away, rebuilding the whole segment to index into it — a sha256 per row
+    /// to reach two of them.
+    fn edge_rows_sel(
+        &self,
+        file: &str,
+        id: u64,
+        closes: &CloseIndex,
+        rows: Option<&[u32]>,
+    ) -> Result<Vec<EdgeVersionOut>> {
         let seg = self.open_segment(file)?;
         let h = seg.header();
         let strings = seg.strings()?;
@@ -116,8 +132,7 @@ impl NativeStore {
         let source = seg.u32_column("source_ref")?;
         let prov = seg.u32_column("prov_ref")?;
 
-        let mut out = Vec::with_capacity(vt_s.len());
-        for i in 0..vt_s.len() {
+        let emit = |i: usize| -> Result<EdgeVersionOut> {
             let src_uid = self.uid_of(src[i])?;
             let dst_uid = self.uid_of(dst[i])?;
             let rel_type = h
@@ -135,7 +150,7 @@ impl NativeStore {
             } else {
                 sidecar.tt_e(i as u32)
             };
-            out.push(EdgeVersionOut {
+            Ok(EdgeVersionOut {
                 eid: edge_eid(&src_uid, &dst_uid, &rel_type, &disc_s).to_hex(),
                 vid: Id96 {
                     hi: vid_hi[i],
@@ -153,12 +168,23 @@ impl NativeStore {
                 props: strings.get(props[i])?.to_string(),
                 source: strings.get(source[i])?.to_string(),
                 provenance_ref: strings.get_opt(prov[i])?.map(str::to_string),
-            });
-        }
-        Ok(out)
+            })
+        };
+        collect_rows(vt_s.len(), rows, emit)
     }
 
     fn node_rows_of(&self, file: &str, id: u64, closes: &CloseIndex) -> Result<Vec<NodeVersionOut>> {
+        self.node_rows_sel(file, id, closes, None)
+    }
+
+    /// Node versions in one segment: all of them, or just `rows`.
+    fn node_rows_sel(
+        &self,
+        file: &str,
+        id: u64,
+        closes: &CloseIndex,
+        rows: Option<&[u32]>,
+    ) -> Result<Vec<NodeVersionOut>> {
         let seg = self.open_segment(file)?;
         let h = seg.header();
         let strings = seg.strings()?;
@@ -177,15 +203,14 @@ impl NativeStore {
         let source = seg.u32_column("source_ref")?;
         let prov = seg.u32_column("prov_ref")?;
 
-        let mut out = Vec::with_capacity(vt_s.len());
-        for i in 0..vt_s.len() {
+        let emit = |i: usize| -> Result<NodeVersionOut> {
             let from_run = closes.tt_e(id, i as u32);
             let tt_e = if from_run != OPEN_END {
                 from_run
             } else {
                 sidecar.tt_e(i as u32)
             };
-            out.push(NodeVersionOut {
+            Ok(NodeVersionOut {
                 vid: Id96 {
                     hi: vid_hi[i],
                     lo: vid_lo[i],
@@ -200,9 +225,9 @@ impl NativeStore {
                 props: strings.get(props[i])?.to_string(),
                 source: strings.get(source[i])?.to_string(),
                 provenance_ref: strings.get_opt(prov[i])?.map(str::to_string),
-            });
-        }
-        Ok(out)
+            })
+        };
+        collect_rows(vt_s.len(), rows, emit)
     }
 
     /// Edge versions staged in the open batch, if any.
@@ -375,12 +400,9 @@ impl NativeStore {
         for (file, rows) in by_file {
             let id = segment_id_of(&file);
             // a prefix hit is a candidate; the full eid decides
-            let all = self.edge_rows_of(&file, id, &closes)?;
-            for row in rows {
-                if let Some(r) = all.get(row as usize) {
-                    if r.eid == eid && believed_at(r.tt_s, r.tt_e, as_of_tt) {
-                        out.push(r.clone());
-                    }
+            for r in self.edge_rows_sel(&file, id, &closes, Some(&rows))? {
+                if r.eid == eid && believed_at(r.tt_s, r.tt_e, as_of_tt) {
+                    out.push(r);
                 }
             }
         }
@@ -402,12 +424,10 @@ impl NativeStore {
         }
         for (file, rows) in by_file {
             let id = segment_id_of(&file);
-            let all = self.node_rows_of(&file, id, &closes)?;
-            for row in rows {
-                if let Some(r) = all.get(row as usize) {
-                    if r.uid == uid && believed_at(r.tt_s, r.tt_e, as_of_tt) {
-                        out.push(r.clone());
-                    }
+            // a uid_key hit is a candidate; the full uid decides
+            for r in self.node_rows_sel(&file, id, &closes, Some(&rows))? {
+                if r.uid == uid && believed_at(r.tt_s, r.tt_e, as_of_tt) {
+                    out.push(r);
                 }
             }
         }
@@ -602,6 +622,37 @@ impl NativeStore {
             }
         }
         Ok(out)
+    }
+}
+
+/// Materialize either every row of a segment or just the selected ones.
+///
+/// Row indices that fall outside the segment are skipped rather than
+/// erroring, matching what the previous `all.get(row)` lookup did: a stale
+/// posting names a row that is no longer there, and that is not corruption.
+fn collect_rows<T>(
+    n: usize,
+    rows: Option<&[u32]>,
+    emit: impl Fn(usize) -> Result<T>,
+) -> Result<Vec<T>> {
+    match rows {
+        Some(sel) => {
+            let mut out = Vec::with_capacity(sel.len());
+            for &row in sel {
+                let i = row as usize;
+                if i < n {
+                    out.push(emit(i)?);
+                }
+            }
+            Ok(out)
+        }
+        None => {
+            let mut out = Vec::with_capacity(n);
+            for i in 0..n {
+                out.push(emit(i)?);
+            }
+            Ok(out)
+        }
     }
 }
 
