@@ -165,6 +165,66 @@ The valid comparison replays *one* recorded event log into both. Obvious in
 retrospect; it cost a confused half hour and would have cost far more if the
 "failure" had been believed.
 
+## 9a. A benchmark can agree perfectly and mean nothing
+
+Adding a PostgreSQL baseline meant reimplementing operators in SQL and
+checking them against the canonical result hash. Six of them matched
+byte-for-byte on the first run. That should have been the good news; it was
+the warning.
+
+Three of the six matched on **empty answers**. Reading the shapes rather than
+the verdicts turned up four separate defects in the synthetic dataset the
+harness had been generating all along:
+
+- **Endpoints were `src = i mod |V|`, `dst = 7i + 3 mod |V|`.** `dst` is a
+  function of `src`, so the "random graph" was a single deterministic cycle —
+  every edge out of `n1` went to `n10` and nowhere else. Neighbourhood
+  evolution reported zero neighbours gained and zero lost at every scale
+  because there was genuinely nothing to find.
+- **Edge lifetime was a constant 40 ticks** while one edge started per tick,
+  so ~40 edges were valid at any instant no matter the scale. Every instant
+  operator was answering over an empty graph, and *more data made it emptier*.
+- **The belief probe used `as_of_tt = 1`.** Transaction times are epoch
+  microseconds, so that literal predates the entire store; the one query whose
+  job was to catch a system ignoring the clock returned nothing, always. Worse,
+  the generator wrote no corrections at all, so no `as_of_tt` could have
+  discriminated anything.
+- **The results table printed `0` for every operator without a `rows` key.** A
+  difference of 999 added and 999 removed edges displayed as zero.
+
+Each defect independently made "the systems agree" vacuous, and together they
+had been reported as a clean pass. Two more surfaced only after fixing those:
+a uniform random graph has almost no triangles, so the motif operator was
+compared on a count of zero until the generator grew community structure; and
+a node filter sized as a fraction of `|V|` answered at 20k events and tripped
+the cost guardrail at 200k, so that row measured the guardrail instead.
+
+The transferable part: **agreement is evidence only if the answer was hard to
+agree on.** An equality check over an empty set passes for free. Assert on the
+shape of what you compared — non-zero rows, corrections actually present,
+truncation actually exercised — or the suite will keep reporting a pass it did
+not earn. The oracle (§8) is what makes a rewrite tractable, but an oracle only
+tests the inputs you hand it.
+
+## 9b. Batch writes and single writes are different systems
+
+The same investigation put the first corrections into the generated data, and
+load time went from fractions of a second to twelve. Splitting it: bulk
+ingestion of 20,000 events takes **0.27 s**, while 200 single-op corrections
+take **9.0 s — about 45 ms each**, in two roughly equal halves. Half is the
+commit itself (segment write, dictionary append, manifest swap, each fsynced —
+§7, and the cost is real durability rather than waste). The other half is the
+identity lookup that finds the version being corrected: a flat ~13.5 ms per
+call that grows with segment count, on a store where point reads were supposed
+to be served by the identity postings index.
+
+Neither half had ever been measured, because every benchmark to date wrote in
+bulk and never corrected anything. An append-only engine with an atomic
+manifest swap is optimized for batches by construction, and a workload of many
+tiny commits meets none of those assumptions. If the write path has a batched
+mode, benchmark the unbatched one too — it is a different system, and users
+will find it.
+
 ## 10. Fault injection earns its keep in ways you did not plan
 
 A 14-case corruption matrix was written to prove that a damaged store never
