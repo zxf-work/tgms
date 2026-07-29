@@ -71,7 +71,15 @@ the current schema, which is also what makes the digests match.
 
 ## Storage
 
-The same content occupies ~58 bytes per edge version in the native format,
-uncompressed and with no codecs, against roughly 260 bytes per row for
-DuckDB (≈ 0.22×; 578 MB vs 2.6 GB at 1e7 events). Compression is deliberately
-deferred until the uncompressed baseline is established (blueprint C4).
+Measured like for like — both backends built from the same event log, 1M
+edge versions — the native store is **65.2 bytes per row against DuckDB's
+186.3, a ratio of 0.350×**, uncompressed and with no codecs.
+
+An earlier 0.22× claim here was wrong: it compared a native measurement
+against a DuckDB figure from a different store at a different scale.
+
+Including the indexes once they are persisted (identity postings and the
+TCSR permutation) the projection is 92.9 B/row, or **0.499×** — so indexes
+consume most of the remaining margin. Compaction additionally needs
+transient space equal to the store, since it deletes nothing. Full
+breakdown in `engine_evaluation_readiness.md`.

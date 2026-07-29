@@ -69,13 +69,40 @@ At 1M events on xzgpu, same event log replayed into both backends
   against a target of 2×.
 - `co_active`, the named hotspot, went from ~5.3 s to 32.8 ms.
 
-### Storage — partly met
+### Storage — met, with less headroom than previously claimed
 
-- Per-row size is ≈ 0.22× DuckDB's, uncompressed and with no codecs.
-- **Not yet measured:** index and sidecar overhead, and temporary compaction
-  space. Postings and TCSR are currently in-memory, so today's on-disk figure
-  understates a persisted design. Both are required by §25 and should be
-  measured before the storage claim is made.
+Measured at 1M edge versions, |V| = 20,000, both backends built from the same
+event log. Per row, counting node versions too:
+
+| | MB | B/row | vs DuckDB |
+|---|---:|---:|---:|
+| segments | 65.97 | 64.67 | |
+| dictionary | 0.35 | 0.34 | |
+| manifests | 0.15 | 0.15 | |
+| close runs | 0.00 | 0.00 | |
+| **on disk today** | **66.47** | **65.17** | **0.350×** |
+| + identity postings (persisted) | 20.00 | 19.61 | |
+| + TCSR, permutation form | 8.32 | 8.16 | |
+| **projected with indexes** | **94.79** | **92.93** | **0.499×** |
+| DuckDB, same log | 190.07 | 186.34 | 1.0 |
+
+**An earlier 0.22× figure in this repository was wrong.** It compared a
+58 B/row native measurement against a 260 B/row DuckDB number taken from a
+different store at a different scale. Like for like, on identical content,
+the ratio today is 0.350×.
+
+That still meets the criterion, but the margin matters: once postings and
+TCSR are persisted — which is what closing the TCSR gap means — the ratio is
+**0.499×**, effectively touching the 0.5× gate. Indexes cost more than the
+base rows saved. Compression (blueprint C4) is what would restore headroom,
+and this is the measurement that makes it worth doing rather than a
+deferred nicety.
+
+**Temporary compaction space: +99%.** Compaction rewrites content into fresh
+segments and deletes nothing (D-028 #9, no GC), so peak usage is twice the
+store — 66.47 MB became 132.41 MB while merging 24 segments into 3. Any
+capacity planning has to budget 2× the store, and reclaiming it needs the
+explicit `tgms store gc` that does not exist yet.
 
 ### Operations — met
 
