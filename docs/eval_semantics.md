@@ -184,8 +184,38 @@ Numbers from the two hosts are not comparable, and macOS additionally pins
 `effective_io_concurrency` to 0 — no posix_fadvise, so the baseline cannot
 prefetch at all here. The comparison run belongs on one Linux host.
 
-**Expected divergences, still to be confirmed against the hash oracle:**
-time-respecting reachability needs a recursive CTE carrying a monotonic
-arrival time; δ-motifs need a three-way self-join with the ordering and span
-predicates written out; belief filtering must be threaded through both,
-including the recursive part.
+**Verdicts so far.** Six registry queries are written in SQL
+(`scripts/pg_queries.py`) and each returns a canonical hash identical to the
+TGMS operator's, over non-empty answers, on data containing corrections:
+
+| query | verdict |
+|---|---|
+| `hist.single`, `hist.asof` | equivalent |
+| `snap.hop2` | equivalent (recursive CTE for the BFS) |
+| `series.count` | equivalent |
+| `nbr.evolution` | equivalent |
+| `coactive.narrow` | equivalent |
+
+The other six carry **no verdict yet** — the SQL is simply unwritten. The
+harness reports them as "no SQL written yet", deliberately not as
+`unsupported`: that verdict asserts a system *cannot* express a query, and
+nothing has established it for PostgreSQL. Letting unfinished work read as a
+limitation of the baseline would be the same error as a weakened query, in the
+opposite direction. Still expected to be the hard ones: time-respecting
+reachability needs a recursive CTE carrying a monotonic arrival time; δ-motifs
+need a three-way self-join with the ordering and span predicates written out;
+belief filtering must be threaded through both, including the recursive part.
+
+Three details did the work in getting those six to match, and each would have
+produced a wrong-but-plausible answer on its own:
+
+- **`COLLATE "C"` on every string ordering.** The operators sort uids and vids
+  as Python strings, by code point. Under a locale collation PostgreSQL sorts
+  them differently — and both answers look correctly sorted.
+- **`clamp_tt`.** `a = LEAST(as_of_tt, OPEN_END - 1)`. Without it the default
+  `as_of_tt = OPEN_END` matches no row at all.
+- **`rows_total` counts before `LIMIT`**, so each query is a count plus a page.
+
+Comparisons here are on logical content *and* on vid, which §3 would normally
+forbid. It is sound in this one case because PostgreSQL is loaded with the
+canonical rows and carries the vids TGMS derived, rather than deriving any.

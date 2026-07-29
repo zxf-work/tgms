@@ -21,7 +21,6 @@ import argparse
 import io
 import json
 import sys
-import tempfile
 import time
 from pathlib import Path
 from typing import Any
@@ -30,6 +29,8 @@ import psycopg
 
 import tgms
 from tgms.core.model import OPEN_END, canonical_json
+
+sys.path.insert(0, str(Path(__file__).resolve().parent))
 
 DB = "tgms_eval"
 
@@ -251,18 +252,16 @@ def load(conn: psycopg.Connection, adapter) -> dict[str, int]:
     return counts
 
 
-def build_reference(scale: int) -> Path:
-    """The same generator the Phase 0 harness uses, so the data matches."""
-    path = Path(tempfile.mkdtemp()) / "reference"
-    store = tgms.open(path, backend="native")
-    store.ingest_events([
-        {"src": f"n{i % 2000}", "dst": f"n{(i * 7 + 3) % 2000}",
-         "rel_type": "R" if i % 3 else "S", "vt_s": i, "vt_e": i + 40}
-        for i in range(scale)
-    ])
-    store.assert_node("n1", "Node", {"name": "alpha"}, vt_s=0, vt_e=scale)
-    store.close()
-    return path
+def build_reference(scale: int):
+    """Delegate to the harness generator, so both see identical data.
+
+    This used to be a copy of the generator. It drifted the moment the harness
+    one grew a second belief epoch, which is exactly the kind of divergence
+    that makes a baseline measure the wrong dataset.
+    """
+    from eval_harness import build_dataset
+
+    return build_dataset(scale)
 
 
 def main() -> int:
@@ -279,8 +278,8 @@ def main() -> int:
         return 0
 
     print(f"postgres baseline — loading {args.scale:,} events")
-    store_path = build_reference(args.scale)
-    adapter = tgms.open(store_path, backend="native").adapter
+    data = build_reference(args.scale)
+    adapter = tgms.open(data.log.parent, backend="native").adapter
 
     ensure_database()
     with connect() as conn:
