@@ -627,21 +627,31 @@ def resolve_entities(conn, *, query: str, label: str | None = None,
 #: The ordering is strict in the *composite* key, not in time alone, so three
 #: events sharing a vt_s can still form a motif with eid deciding their roles.
 #: The span bound is inclusive: t3 - t1 <= delta.
-_MOTIF = """
-WITH ev AS (
-    SELECT eid, src, dst, vt_s AS t FROM edge_versions
-    WHERE {bel} AND vt_s >= %(t_a)s AND vt_s < %(t_b)s {nf}
-)
-SELECT (SELECT count(*) FROM ev) AS n_events,
+#:
+#: Two things make this tractable, and the first version had neither. The
+#: events go into an indexed temp table rather than a CTE, so each join is a
+#: range scan instead of a re-scan; and `b` carries its own `b.t <= a.t +
+#: delta` bound. That bound is implied — b.t <= c.t <= a.t + delta follows
+#: from the row ordering — but leaving it implicit let the middle join range
+#: over every event sharing an endpoint regardless of time, which is where the
+#: first measurement's 1005 ms went.
+_MOTIF_EVENTS = """
+CREATE TEMP TABLE _mev AS
+SELECT eid, src, dst, vt_s AS t FROM edge_versions
+WHERE {bel} AND vt_s >= %(t_a)s AND vt_s < %(t_b)s {nf}
+"""
+
+_MOTIF_COUNT = """
+SELECT (SELECT count(*) FROM _mev) AS n_events,
        (SELECT count(*)
-        FROM ev a JOIN ev b
-          ON (b.t, b.eid COLLATE "C") > (a.t, a.eid COLLATE "C")
-         AND b.src = a.dst
-        JOIN ev c
-          ON (c.t, c.eid COLLATE "C") > (b.t, b.eid COLLATE "C")
-         AND c.src = b.dst AND c.dst = a.src
-        WHERE c.t - a.t <= %(delta)s
-          AND a.src <> a.dst AND b.dst <> a.dst AND b.dst <> a.src) AS cnt
+        FROM _mev a
+        JOIN _mev b ON b.src = a.dst
+                   AND b.t >= a.t AND b.t <= a.t + %(delta)s
+                   AND (b.t, b.eid COLLATE "C") > (a.t, a.eid COLLATE "C")
+        JOIN _mev c ON c.src = b.dst AND c.dst = a.src
+                   AND c.t >= b.t AND c.t <= a.t + %(delta)s
+                   AND (c.t, c.eid COLLATE "C") > (b.t, b.eid COLLATE "C")
+        WHERE a.src <> a.dst AND b.dst <> a.dst AND b.dst <> a.src) AS cnt
 """
 
 
@@ -657,7 +667,12 @@ def count_temporal_motifs(conn, *, motif: str, delta: int, window: dict,
         # events, so it shrinks n_events_in_window too
         nf = "AND src = ANY(%(nf)s) AND dst = ANY(%(nf)s)"
         p["nf"] = sorted(set(node_filter))
-    r = conn.execute(_MOTIF.format(bel=belief(as_of_tt), nf=nf), p).fetchone()
+    conn.execute("DROP TABLE IF EXISTS _mev")
+    conn.execute(_MOTIF_EVENTS.format(bel=belief(as_of_tt), nf=nf), p)
+    conn.execute('CREATE INDEX ON _mev (src, t, eid COLLATE "C")')
+    conn.execute('CREATE INDEX ON _mev (dst)')
+    conn.execute("ANALYZE _mev")
+    r = conn.execute(_MOTIF_COUNT, p).fetchone()
     return {"count": int(r[1]), "n_events_in_window": int(r[0]),
             "truncated": False}
 
