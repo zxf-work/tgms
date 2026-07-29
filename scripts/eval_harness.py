@@ -39,6 +39,12 @@ from tgms.core.model import EntityRef, canonical_json, sha256_hex
 from tgms.temporal.algebra import call_operator, ensure_all_registered
 
 ROOT = Path(__file__).resolve().parents[1]
+
+#: Reported numbers come from one host, so that two rows of a table are
+#: always comparable. A laptop run is for development; it differs by 5x in
+#: cores and 6x in RAM, and macOS pins effective_io_concurrency to 0 for want
+#: of posix_fadvise, so the PostgreSQL baseline cannot prefetch there at all.
+MEASUREMENT_HOST = "xzgpu"
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
 #: Fields that describe the *call* rather than the answer. They legitimately
@@ -255,6 +261,8 @@ def manifest(scale: int, systems: list[str], repeats: int) -> dict[str, Any]:
         "systems": systems,
         "repeats": repeats,
         "cache_state": "warm",  # queries repeat in-process; see plan §15
+        "measurement_host": MEASUREMENT_HOST,
+        "on_measurement_host": platform.node().split(".")[0] == MEASUREMENT_HOST,
     }
 
 
@@ -457,7 +465,11 @@ def main() -> int:
     print(f"phase-0 harness — {len(queries)} queries x {len(systems)} systems "
           f"@ {args.scale:,} events")
     print(f"  commit {meta['commit']}{' (dirty)' if meta['dirty'] else ''} | "
-          f"{meta['platform']} | {meta['cpu_count']} cores\n")
+          f"{meta['platform']} | {meta['cpu_count']} cores")
+    if not meta["on_measurement_host"]:
+        print(f"  WARNING: not {MEASUREMENT_HOST} — development run, timings "
+              f"are not comparable with reported numbers")
+    print()
 
     log = data.log
     results: dict[str, list[Result]] = {}
