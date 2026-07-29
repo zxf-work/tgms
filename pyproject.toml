@@ -37,6 +37,9 @@ duckdb = ["duckdb>=1.1"]
 kuzu = ["kuzu>=0.7"]
 agent = ["litellm>=1.48", "fastmcp>=2.0"]
 memory = ["faiss-cpu>=1.8", "sentence-transformers>=3.0"]
+eval = [
+    "psycopg[binary]>=3.2",
+]
 
 [project.scripts]
 tgms = "tgms.cli:main"

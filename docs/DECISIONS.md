@@ -451,3 +451,25 @@ implementation — hygiene checking starts at the marker recorded in D-010.
   the xzgpu and iTiger checkouts; both need `rustup`/`brew install rust`
   (no root required) before their next `uv sync`. The frozen campaigns are
   complete, so no experiment depends on this transition.
+
+## D-030 — 2026-07-29 — PostgreSQL baseline: dependency and fairness policy
+- **Context:** the evaluation plan (§4.1) requires a relational baseline with
+  genuinely equivalent bi-temporal semantics. PostgreSQL is the cheapest such
+  system to stand up, and the first external system in the matrix.
+- **Dependency:** `psycopg[binary] >= 3.2` (LGPL-3.0-or-later for psycopg3;
+  the `binary` wheel bundles libpq, PostgreSQL licence). Added as the
+  **`eval` optional extra**, not a runtime dependency — nothing in TGMS
+  itself talks to PostgreSQL, and a user installing the package must not
+  acquire a database driver. Server: PostgreSQL 16 as a local service, not a
+  container, so the same procedure applies on xzgpu.
+- **Fairness policy (evaluation plan §11.4 permits system-native tuning):**
+  the baseline is tuned as a competent operator would tune it — covering
+  indexes on the version tables, `work_mem` and `shared_buffers` raised from
+  defaults, and `EXPLAIN` checked on every registry query to confirm the
+  planner is not doing something the schema could fix. **Every setting and
+  index is recorded in the run manifest**, because tuning is part of what is
+  being measured, and an untuned baseline would flatter TGMS for a reason
+  that has nothing to do with storage design.
+- **Consequence:** a query PostgreSQL cannot express equivalently is marked
+  `unsupported` in `docs/eval_semantics.md` rather than being weakened until
+  it runs — a faster number for an easier question is worse than no number.
