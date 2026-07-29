@@ -138,7 +138,8 @@ class StorageAdapter(ABC):
 
     #: Columns the temporal-CSR build and its consumers need. Anything else
     #: is paid for and discarded.
-    TCSR_COLS = ("src_id", "dst_id", "vt_s", "vt_e", "eid", "rel_type")
+    TCSR_COLS = ("src_id", "dst_id", "vt_s", "vt_e", "eid", "rel_type",
+                 "eid_hi", "eid_lo")
 
     EDGE_INT_COLS = ("src_id", "dst_id", "vt_s", "vt_e")
     EDGE_STR_COLS = ("eid", "vid", "rel_type")

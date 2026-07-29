@@ -438,13 +438,22 @@ impl NativeStore {
         // dictionary, so it is the one place that can turn dense ids back
         // into the uids the identity hash is defined over. Done before any
         // column is moved into NumPy.
-        let want_eid = req
-            .columns
-            .as_ref()
-            .map(|c| c.iter().any(|x| x == "eid"))
-            .unwrap_or(true);
-        let mut eids = Vec::with_capacity(if want_eid { cols.len() } else { 0 });
-        for i in 0..(if want_eid { cols.len() } else { 0 }) {
+        let asked = |name: &str| {
+            req.columns
+                .as_ref()
+                .map(|c| c.iter().any(|x| x == name))
+                .unwrap_or(true)
+        };
+        let want_eid = asked("eid");
+        // eid_hi/eid_lo are the same identity as integers: the hex form is
+        // lexicographically ordered, so the numeric pair sorts identically
+        // and lets callers avoid comparing strings.
+        let want_eid_ints = asked("eid_hi") || asked("eid_lo");
+        let n_ids = if want_eid || want_eid_ints { cols.len() } else { 0 };
+        let mut eids = Vec::with_capacity(if want_eid { n_ids } else { 0 });
+        let mut eid_hi: Vec<u64> = Vec::with_capacity(if want_eid_ints { n_ids } else { 0 });
+        let mut eid_lo: Vec<u32> = Vec::with_capacity(if want_eid_ints { n_ids } else { 0 });
+        for i in 0..n_ids {
             let src = self.inner.dict().uid(cols.src_id[i]).ok_or_else(|| {
                 PyKeyError::new_err(format!("dense id {} vanished", cols.src_id[i]))
             })?;
@@ -461,11 +470,27 @@ impl NativeStore {
                     ))
                 }
             };
-            eids.push(tgms_engine_core::derive::edge_eid(src, dst, rel, disc).to_hex());
+            let id = tgms_engine_core::derive::edge_eid(src, dst, rel, disc);
+            if want_eid {
+                eids.push(id.to_hex());
+            }
+            if want_eid_ints {
+                eid_hi.push(id.hi);
+                eid_lo.push(id.lo);
+            }
         }
 
         let d = PyDict::new(py);
-        d.set_item("eid", PyList::new(py, &eids)?)?;
+        if want_eid {
+            d.set_item("eid", PyList::new(py, &eids)?)?;
+        }
+        if want_eid_ints {
+            // unsigned on purpose: the high half is the top 64 bits of a
+            // hash, so about half of all values exceed i64::MAX and would
+            // wrap negative, inverting the very ordering this exists to give
+            d.set_item("eid_hi", eid_hi.into_pyarray(py))?;
+            d.set_item("eid_lo", eid_lo.into_pyarray(py))?;
+        }
         d.set_item("vt_s", cols.vt_s.into_pyarray(py))?;
         d.set_item("vt_e", cols.vt_e.into_pyarray(py))?;
         d.set_item(
