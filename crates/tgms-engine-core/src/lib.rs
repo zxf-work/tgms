@@ -15,6 +15,7 @@ pub mod compact;
 pub mod derive;
 pub mod dict;
 pub mod error;
+pub mod interval;
 pub mod manifest;
 pub mod motif;
 pub mod read;

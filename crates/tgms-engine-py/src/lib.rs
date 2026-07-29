@@ -607,6 +607,32 @@ fn motif_match(
     })
 }
 
+/// Interval-join pair enumeration (O11 `co_active`).
+///
+/// Takes the per-row candidate ranges the caller already computed by binary
+/// search and walks them. Returns `(a_row, b_row)` pairs in input order,
+/// which is the order the operator contract promises.
+#[pyfunction]
+fn interval_pairs(
+    py: Python<'_>,
+    lo: Vec<u32>,
+    hi: Vec<u32>,
+    a_vt_e: Vec<i64>,
+    b_vt_e: Vec<i64>,
+    require_b_end_after_a_end: bool,
+) -> Res<Vec<(u32, u32)>> {
+    py.detach(|| {
+        tgms_engine_core::interval::interval_pairs(
+            &lo,
+            &hi,
+            &a_vt_e,
+            &b_vt_e,
+            require_b_end_after_a_end,
+        )
+        .map_err(err)
+    })
+}
+
 /// Round-trip probe (WP-N0 acceptance): proves the extension is importable,
 /// the core crate is linked, and arrays cross into NumPy without a copy.
 #[pyfunction]
@@ -627,6 +653,7 @@ fn core_version() -> &'static str {
 #[pymodule]
 fn _engine(m: &Bound<'_, PyModule>) -> PyResult<()> {
     m.add_class::<NativeStore>()?;
+    m.add_function(wrap_pyfunction!(interval_pairs, m)?)?;
     m.add_function(wrap_pyfunction!(motif_match, m)?)?;
     m.add_function(wrap_pyfunction!(ping, m)?)?;
     m.add_function(wrap_pyfunction!(core_version, m)?)?;

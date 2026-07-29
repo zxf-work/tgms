@@ -277,7 +277,14 @@ def _co_active_validators(args: dict[str, Any]) -> None:
 
 def _select(adapter: StorageAdapter, spec: dict[str, Any], as_of: int):
     rel_types = [spec["rel_type"]] if spec.get("rel_type") else None
-    e = adapter.edges_columnar(as_of_tt=as_of, rel_types=rel_types)
+    # Push the endpoint spec into the scan as an incidence filter. It matches
+    # either endpoint, so the exact src/dst test below still has to run — but
+    # the scan then materializes a narrow slice instead of the whole store,
+    # and materializing is where the time went.
+    touching = [int(adapter.dense_ids([spec[k]])[0])
+                for k in ("src", "dst") if spec.get(k)] or None
+    e = adapter.edges_columnar(as_of_tt=as_of, rel_types=rel_types,
+                               touching_ids=touching)
     m = np.ones(len(e["src_id"]), dtype=bool)
     if spec.get("src"):
         m &= e["src_id"] == int(adapter.dense_ids([spec["src"]])[0])
@@ -332,23 +339,36 @@ def co_active(adapter: StorageAdapter, args: dict[str, Any]) -> dict[str, Any]:
                         estimate={"expansions_est": int((hi - lo).clip(min=0).sum())},
                         suggestions=["narrow a_spec/b_spec (src, dst, rel_type)"])
 
+
+    # Walking the candidate ranges is the hot part (the old Python double
+    # loop was ~5.3 s at 1M events); the engine kernel does it. The self-pair
+    # check stays here because it only has to look at surviving pairs, which
+    # PAIR_CAP already bounds — so the kernel needs no identities at all.
+    from tgms import _engine
+
+    pairs = _engine.interval_pairs(
+        [int(v) for v in np.asarray(lo).ravel()],
+        [int(v) for v in np.asarray(hi).clip(min=0).ravel()],
+        [int(v) for v in a_e],
+        [int(v) for v in b["vt_e"]],
+        rel in ("overlaps", "during"),
+    )
+    pairs = [(i, j) for i, j in pairs if a["vid"][i] != b["vid"][j]]
+
+    # one dictionary lookup for the whole result rather than two per row:
+    # uids_for crosses the adapter boundary, so per-row calls dominated
+    needed = sorted({int(v) for i, j in pairs
+                     for v in (a["src_id"][i], a["dst_id"][i],
+                               b["src_id"][j], b["dst_id"][j])})
+    uid = dict(zip(needed, adapter.uids_for(needed))) if needed else {}
+
     def edge_desc(cols, i: int) -> dict[str, Any]:
-        s, d = adapter.uids_for([int(cols["src_id"][i]), int(cols["dst_id"][i])])
-        return {"eid": cols["eid"][i], "vid": cols["vid"][i], "src": s, "dst": d,
+        return {"eid": cols["eid"][i], "vid": cols["vid"][i],
+                "src": uid[int(cols["src_id"][i])], "dst": uid[int(cols["dst_id"][i])],
                 "rel_type": cols["rel_type"][i],
                 "vt_s": int(cols["vt_s"][i]), "vt_e": int(cols["vt_e"][i])}
 
-    pairs = []
-    for i in range(len(a_s)):  # loop over selected a-rows (spec-narrowed)
-        for j in range(int(lo[i]), int(hi[i])):
-            if rel == "overlaps" and not (b["vt_e"][j] > a_e[i]):
-                continue
-            if rel == "during" and not (b["vt_e"][j] > a_e[i]):
-                continue
-            if a["vid"][i] == b["vid"][j]:
-                continue
-            pairs.append((i, j))
     rows = [{"a": edge_desc(a, i), "b": edge_desc(b, j)} for i, j in pairs]
-    rows.sort(key=lambda r: (r["a"]["vt_s"], r["a"]["vid"],
-                             r["b"]["vt_s"], r["b"]["vid"]))
+    # both selections arrive in (vt_s, vid) order and the kernel preserves it,
+    # so the contract's ordering already holds
     return paginate(rows, args["limit"], args["cursor"])
