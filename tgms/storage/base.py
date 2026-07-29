@@ -66,7 +66,9 @@ class StorageAdapter(ABC):
         from), built lazily and invalidated by apply_ops."""
         if self._tcsr is None:
             from tgms.storage.tcsr import TemporalCSR
-            cols = self.edges_columnar()
+            # exactly what the CSR build and its callers read; vid, disc and
+            # props were being materialized here and thrown away
+            cols = self.edges_columnar(columns=self.TCSR_COLS)
             self._tcsr = (TemporalCSR.build(cols, self.num_entities()), cols)
         return self._tcsr
 
@@ -133,6 +135,10 @@ class StorageAdapter(ABC):
     def num_entities(self) -> int: ...
 
     # --- columnar read path (operator kernels) ------------------------- #
+
+    #: Columns the temporal-CSR build and its consumers need. Anything else
+    #: is paid for and discarded.
+    TCSR_COLS = ("src_id", "dst_id", "vt_s", "vt_e", "eid", "rel_type")
 
     EDGE_INT_COLS = ("src_id", "dst_id", "vt_s", "vt_e")
     EDGE_STR_COLS = ("eid", "vid", "rel_type")
