@@ -26,16 +26,22 @@ things the evaluation explicitly measures.
 
 | gap | state | matters for |
 |---|---|---|
-| Time-bucket group aggregation | still a NumPy path, not a kernel | plan §8.4 |
-| TCSR traversal | rebuilt in memory per query, never persisted | plan §8.5 |
-| Name lookup index | **absent** — `resolve_entities` is a full scan (142 ms at 1M) | plan §8.6 |
+| Time-bucket group aggregation | ~~open~~ **closed, not built** — measured at 9% of its operator (4.9 ms of 53.2 ms at 1M); the scan is 86%. A kernel could not repay itself. | plan §8.4 |
+| TCSR traversal | build cost fixed (2803 ms → 665 ms via a stable single-key sort); still rebuilt per process and invalidated by writes, so on-disk persistence remains open | plan §8.5 |
+| Name lookup index | **closed** — `name` promoted to a typed column and matching moved into the engine (142 ms → 13.5 ms at 1M) | plan §8.6 |
 | Event-log offset / chain in `commit` | stubbed; recovery is full replay, not suffix replay | plan §12, §18 |
 | `tgms store verify` CLI | the engine call exists, no subcommand wraps it | plan §23 |
 | Compression | deliberately deferred, gated on the uncompressed baseline | plan §20.8 |
 
-The first three are *kernels the plan benchmarks by name*. Evaluating today
-would measure NumPy paths for two of them and a linear scan for the third,
-which understates the design rather than testing it.
+Of the three kernels the plan benchmarks by name, two are now closed and the
+third turned out not to need building: measurement showed bucket aggregation
+is 9% of its operator, so a native kernel could not repay the complexity.
+What remains for TCSR is persistence, not speed — the build itself is now
+~9 ms, and the cost that made it look urgent was a four-key sort.
+
+The general lesson, which held nine times across this work: measure the layer
+before optimizing it. Twice that meant discovering the fix was elsewhere;
+once it meant not writing the code at all.
 
 ## Against the plan's adoption criteria (§25)
 
