@@ -543,21 +543,60 @@ impl NativeStore {
     }
 
     /// Canonical-JSON props for specific version ids, returned verbatim.
+    /// Props for a handful of version ids.
+    ///
+    /// Deliberately does not route through `all_*_versions`. That materializes
+    /// every row in the store — two dictionary lookups, several string
+    /// allocations, and a sha256 to derive `eid` — so a lookup of 16 vids cost
+    /// 353 ms at 200k edge versions, and cost exactly the same for one vid as
+    /// for 256. It was the whole of `diff_snapshots`, its only caller.
+    ///
+    /// The sweep below touches three integer columns and reads a string only
+    /// once a vid actually matches. It is still O(rows): vids are hashes, so
+    /// segments have no order to search them by and there is no vid index.
+    /// Only the constant changed — but the constant was the problem.
     pub fn props_for_vids(&self, kind: RowKind, vids: &[String]) -> Result<HashMap<String, String>> {
-        let wanted: HashSet<&str> = vids.iter().map(String::as_str).collect();
-        let mut out = HashMap::with_capacity(vids.len());
+        // Keyed by the caller's own spelling, so the result is looked up with
+        // the same string that was asked for. A vid that is not a well-formed
+        // identity cannot name a row, so it is dropped rather than swept for.
+        let wanted: HashMap<(u64, u32), &str> = vids
+            .iter()
+            .filter_map(|v| Id96::from_hex(v).ok().map(|id| ((id.hi, id.lo), v.as_str())))
+            .collect();
+        let mut out = HashMap::with_capacity(wanted.len());
+        if wanted.is_empty() {
+            return Ok(out);
+        }
+        let files = match kind {
+            RowKind::Edge => self.edge_files(),
+            RowKind::Node => self.node_files(),
+        };
+        for (file, _id) in files {
+            let seg = self.open_segment(&file)?;
+            let hi = seg.u64_column("vid64")?;
+            let lo = seg.u32_column("vid_lo32")?;
+            let props = seg.u32_column("props_ref")?;
+            let strings = seg.strings()?;
+            for i in 0..hi.len() {
+                if let Some(&hex) = wanted.get(&(hi[i], lo[i])) {
+                    out.insert(hex.to_string(), strings.get(props[i])?.to_string());
+                }
+            }
+        }
+        // Staged rows are inserted last so they win, as they do in
+        // `all_*_versions`: a batch must read its own writes.
         match kind {
             RowKind::Edge => {
-                for r in self.all_edge_versions()? {
-                    if wanted.contains(r.vid.as_str()) {
-                        out.insert(r.vid, r.props);
+                for r in self.staged_edges() {
+                    if let Some(&hex) = wanted.get(&(r.vid.hi, r.vid.lo)) {
+                        out.insert(hex.to_string(), r.props.clone());
                     }
                 }
             }
             RowKind::Node => {
-                for r in self.all_node_versions()? {
-                    if wanted.contains(r.vid.as_str()) {
-                        out.insert(r.vid, r.props);
+                for r in self.staged_nodes() {
+                    if let Some(&hex) = wanted.get(&(r.vid.hi, r.vid.lo)) {
+                        out.insert(hex.to_string(), r.props.clone());
                     }
                 }
             }
