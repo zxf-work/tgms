@@ -62,6 +62,13 @@ class OperatorSpec:
     # validation ($refs / answer_spec must name real fields) and surfaced in
     # the tool manual so planners never invent output paths
     output_fields: tuple[str, ...] = PAGINATED_FIELDS
+    #: Compiled validator, built on first use. `jsonschema.validate` is a
+    #: convenience wrapper that re-checks the *schema* and constructs a fresh
+    #: validator on every call, re-resolving `$ref`s through `urljoin` as it
+    #: goes. On a point lookup returning two rows that cost more than reading
+    #: the data did. Not part of the spec's identity, so it is excluded from
+    #: comparison and repr.
+    _validator: Any = field(default=None, compare=False, repr=False)
 
 
 REGISTRY: dict[str, OperatorSpec] = {}
@@ -110,11 +117,16 @@ def validate_args(name: str, args: dict[str, Any]) -> dict[str, Any]:
     if spec is None:
         raise InvalidArgError(f"unknown operator: {name}",
                               known=sorted(REGISTRY))
-    try:
-        jsonschema.validate(args, spec.args_schema)
-    except jsonschema.ValidationError as e:
-        raise SchemaError(f"invalid args for {name}: {e.message}",
-                          path=list(e.absolute_path)) from None
+    if spec._validator is None:
+        cls = jsonschema.validators.validator_for(spec.args_schema)
+        cls.check_schema(spec.args_schema)
+        spec._validator = cls(spec.args_schema)
+    # `best_match` rather than the first error, so the message a caller sees is
+    # the one `jsonschema.validate` would have chosen
+    error = jsonschema.exceptions.best_match(spec._validator.iter_errors(args))
+    if error is not None:
+        raise SchemaError(f"invalid args for {name}: {error.message}",
+                          path=list(error.absolute_path)) from None
     filled = _fill_defaults(spec.args_schema, args)
     for v in spec.validators:
         v(filled)
