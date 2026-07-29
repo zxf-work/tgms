@@ -9,7 +9,7 @@ uv run python scripts/eval_harness.py --scale 200000 --systems native,duckdb,pos
 
 ## Receipts (spec §8.4)
 
-- commit `8cc444b`, 200,000 events, 3 repeats per query, p50 reported
+- commit `d72244f`, 200,000 events, 3 repeats per query, p50 reported
 - **xzgpu** — 40 cores, 93 GB, Linux 5.4. Every number here comes from that
   one host; `eval_harness.py` warns when run anywhere else, because a laptop
   differs by 5× in cores and 6× in RAM and pins `effective_io_concurrency`
@@ -31,21 +31,21 @@ p50 milliseconds.
 
 | query | native | duckdb | postgres | fastest |
 |---|---:|---:|---:|---|
-| hist.single | 4.4 | 15.4 | **0.5** | postgres |
-| hist.asof | 4.2 | 11.7 | **0.5** | postgres |
-| snap.hop2 | **27.6** | 48.3 | 40.5 | native |
-| diff.global | 419.2 | 111.0 | **103.7** | postgres |
-| reach.window | **22.9** | 29.1 | 702.3 | native |
-| paths.k | **11.8** | 18.3 | 21.9 | native |
-| series.count | **32.1** | 46.2 | 56.7 | native |
-| burst.zscore | **36.0** | 49.3 | 56.6 | native |
-| nbr.evolution | 17.4 | 19.0 | **3.5** | postgres |
-| coactive.narrow | **43.3** | 66.1 | 54.8 | native |
-| resolve.substr | **5.7** | 20.0 | 5.8 | tie |
-| motif.filtered | **358.6** | 579.3 | 1014.9 | native |
+| hist.single | 4.4 | 11.9 | **0.5** | postgres |
+| hist.asof | 4.2 | 11.5 | **0.5** | postgres |
+| snap.hop2 | **26.9** | 49.9 | 43.5 | native |
+| diff.global | **75.6** | 113.8 | 108.1 | native |
+| reach.window | **22.6** | 28.5 | 699.1 | native |
+| paths.k | **11.9** | 19.7 | 21.8 | native |
+| series.count | **31.8** | 49.2 | 57.1 | native |
+| burst.zscore | **37.1** | 49.2 | 56.5 | native |
+| nbr.evolution | 17.4 | 18.9 | **3.5** | postgres |
+| coactive.narrow | **43.0** | 56.8 | 55.1 | native |
+| resolve.substr | **5.7** | 21.5 | 5.8 | tie |
+| motif.filtered | **356.2** | 584.0 | 1003.8 | native |
 
-Native is fastest on 7, PostgreSQL on 4, one tie. Against DuckDB alone the
-native engine wins 11 of 12.
+Native is fastest on 8, PostgreSQL on 3, one tie. Against DuckDB alone the
+native engine now wins all 12.
 
 ## What the baseline actually showed
 
@@ -56,11 +56,10 @@ flat identity lookup that shows up in the write path (`engine_lessons.md`
 §9b) — that does not shrink with the answer. This is the clearest thing the
 baseline bought: it is a floor the engine was not previously measured against.
 
-**`diff.global` is the native engine's worst result**, 419 ms against 111
-(DuckDB) and 104 (PostgreSQL) — 4× slower than *both* baselines, and the only
-operator where DuckDB beats native. Two full point-state materializations
-plus set difference, and nothing in the engine specializes it. Worth
-investigating on its own.
+**`diff.global` was the native engine's worst result and is now its clearest
+win** — see the section below. It measured 419 ms against 111 and 104, the
+only operator where DuckDB beat native; it now measures 75.6 ms, the fastest
+of the three. The baseline is what made the regression visible.
 
 **`nbr.evolution`** also favours PostgreSQL (3.5 vs 17.4 ms): it is a small
 indexed neighbourhood lookup plus a bucketed count, which is exactly what
@@ -69,6 +68,30 @@ partial indexes are good at.
 **The engine wins where scanning and ordering dominate** — snapshots,
 traversal, series, interval join, motifs — which is the shape it was designed
 for, and it wins them on a fair baseline rather than an untuned one.
+
+## The one regression the baseline caught, and its cause
+
+`diff_snapshots` at 419 ms looked like a scan problem. The obvious suspect was
+`edges_at`, which requests no column projection and so materializes `eid` —
+a sha256 per row — for every edge valid at each of the two instants.
+
+That is real and costs 19 ms. The two point-state scans together are 54 ms of
+the 419. **The remaining 365 ms was `props_for_vids`**, called twice to fetch
+props for the handful of candidate identities whose version differs between
+the instants. It routed through `all_*_versions`, rebuilding every row in the
+store — two dictionary lookups, several string allocations, and a sha256 for
+`eid` — to pick out sixteen vids. Measured, it cost the same for one vid as
+for 256, and scaled with the store: 86 ms at 50k versions, 353 ms at 200k.
+
+It now sweeps three integer columns per segment and reads a string only once
+a vid matches: **353 ms → 6.9 ms**, and `diff.global` 419 → 75.6 ms. It is
+still O(rows) — vids are hashes, so segments have no order to search them by
+and there is no vid index — but the constant was the problem, not the
+complexity.
+
+This is the tenth time in this project that the layer under suspicion was not
+the one costing the time, and the second where the suspected layer was
+genuinely wasteful but nowhere near the bottleneck.
 
 ## One number that was mine, not PostgreSQL's
 
