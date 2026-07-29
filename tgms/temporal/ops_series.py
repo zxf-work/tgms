@@ -275,7 +275,13 @@ def _co_active_validators(args: dict[str, Any]) -> None:
         raise InvalidArgError("allen_relation 'before' requires gap")
 
 
-def _select(adapter: StorageAdapter, spec: dict[str, Any], as_of: int):
+#: Columns the join itself needs. `vid` is only for the self-pair check, and
+#: is cheap; `eid` is a hash per row and is deferred until a pair survives.
+JOIN_COLS = ("src_id", "dst_id", "vt_s", "vt_e", "vid")
+
+
+def _select(adapter: StorageAdapter, spec: dict[str, Any], as_of: int,
+            columns: tuple[str, ...] | None = None):
     rel_types = [spec["rel_type"]] if spec.get("rel_type") else None
     # Push the endpoint spec into the scan as an incidence filter. It matches
     # either endpoint, so the exact src/dst test below still has to run — but
@@ -284,7 +290,7 @@ def _select(adapter: StorageAdapter, spec: dict[str, Any], as_of: int):
     touching = [int(adapter.dense_ids([spec[k]])[0])
                 for k in ("src", "dst") if spec.get(k)] or None
     e = adapter.edges_columnar(as_of_tt=as_of, rel_types=rel_types,
-                               touching_ids=touching)
+                               touching_ids=touching, columns=columns)
     m = np.ones(len(e["src_id"]), dtype=bool)
     if spec.get("src"):
         m &= e["src_id"] == int(adapter.dense_ids([spec["src"]])[0])
@@ -313,8 +319,11 @@ def _select(adapter: StorageAdapter, spec: dict[str, Any], as_of: int):
 )
 def co_active(adapter: StorageAdapter, args: dict[str, Any]) -> dict[str, Any]:
     as_of = args["as_of_tt"]
-    a = _select(adapter, args["a_spec"], as_of)
-    b = _select(adapter, args["b_spec"], as_of)
+    # join on the cheap projection: an unrestricted selection is the whole
+    # store, and deriving an eid for every version of it dominated the
+    # operator even when the answer was empty
+    a = _select(adapter, args["a_spec"], as_of, columns=JOIN_COLS)
+    b = _select(adapter, args["b_spec"], as_of, columns=JOIN_COLS)
     rel = args["allen_relation"]["relation"]
     gap = args["allen_relation"].get("gap")
 
@@ -354,6 +363,12 @@ def co_active(adapter: StorageAdapter, args: dict[str, Any]) -> dict[str, Any]:
         rel in ("overlaps", "during"),
     )
     pairs = [(i, j) for i, j in pairs if a["vid"][i] != b["vid"][j]]
+    if not pairs:
+        return paginate([], args["limit"], args["cursor"])
+
+    # only now is the full projection worth its hashes
+    a = _select(adapter, args["a_spec"], as_of)
+    b = _select(adapter, args["b_spec"], as_of)
 
     # one dictionary lookup for the whole result rather than two per row:
     # uids_for crosses the adapter boundary, so per-row calls dominated

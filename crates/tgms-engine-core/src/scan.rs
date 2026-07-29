@@ -44,6 +44,12 @@ pub struct ScanRequest {
     pub touching_ids: Option<Vec<u32>>,
     /// Stop after this many rows. Applied after ordering.
     pub limit: Option<usize>,
+    /// Columns to materialize. `None` means all of them.
+    ///
+    /// This is a real pushdown, not a filter on the way out: building a
+    /// string per row for a column the caller discards was the dominant cost
+    /// of a wide scan, and `edges_columnar` never asks for `disc` or `props`.
+    pub columns: Option<Vec<String>>,
 }
 
 impl ScanRequest {
@@ -331,9 +337,20 @@ impl<'a, S: SegmentSource> ScanSet<'a, S> {
 
     /// Materialize a sorted struct-of-arrays — the shape
     /// `edges_columnar` hands to Python. Done once, at the boundary.
+    ///
+    /// Only projected columns are built. The integer columns are near-free;
+    /// the string ones each cost an allocation per row, so skipping the
+    /// unasked-for ones is most of the work this function does.
     pub fn materialize_edges(&self, req: &ScanRequest) -> Result<(EdgeColumns, ScanStats)> {
         let (selections, stats) = self.select(req)?;
         let order = self.merged(&selections, req.limit)?;
+        let want = |name: &str| {
+            req.columns
+                .as_ref()
+                .map(|c| c.iter().any(|x| x == name))
+                .unwrap_or(true)
+        };
+        let (w_rel, w_disc, w_props) = (want("rel_type"), want("disc"), want("props"));
         let mut cols = EdgeColumns::with_capacity(order.len());
         // resolve each segment's columns once, then walk its rows
         let mut views: Vec<Option<SegmentView<'_>>> =
@@ -355,10 +372,16 @@ impl<'a, S: SegmentSource> ScanSet<'a, S> {
                 hi: v.vid64[r],
                 lo: v.vid_lo32[r],
             });
-            cols.rel_type
-                .push(v.rel_types[v.rel_code[r] as usize].clone());
-            cols.disc.push(v.strings.get(v.disc_ref[r])?.to_string());
-            cols.props.push(v.strings.get(v.props_ref[r])?.to_string());
+            if w_rel {
+                cols.rel_type
+                    .push(v.rel_types[v.rel_code[r] as usize].clone());
+            }
+            if w_disc {
+                cols.disc.push(v.strings.get(v.disc_ref[r])?.to_string());
+            }
+            if w_props {
+                cols.props.push(v.strings.get(v.props_ref[r])?.to_string());
+            }
         }
         Ok((cols, stats))
     }

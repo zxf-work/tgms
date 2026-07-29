@@ -306,6 +306,8 @@ class NativeAdapter(StorageAdapter):
                 if touching_ids is not None
                 else None,
                 limit=None,
+                # a real pushdown: unprojected string columns are never built
+                columns=list(columns) if columns is not None else None,
             )
         except Exception as e:
             raise _translate(e) from None

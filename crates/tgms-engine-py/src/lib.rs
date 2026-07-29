@@ -343,7 +343,8 @@ impl NativeStore {
 
     /// Windowed columnar scan — the workhorse `edges_columnar` serves.
     #[pyo3(signature = (as_of_tt = OPEN_END, vt_min = None, vt_max = None,
-                        rel_types = None, touching_ids = None, limit = None))]
+                        rel_types = None, touching_ids = None, limit = None,
+                        columns = None))]
     #[allow(clippy::too_many_arguments)]
     fn scan_edges<'py>(
         &self,
@@ -354,6 +355,7 @@ impl NativeStore {
         rel_types: Option<Vec<String>>,
         touching_ids: Option<Vec<i64>>,
         limit: Option<usize>,
+        columns: Option<Vec<String>>,
     ) -> Res<Bound<'py, PyDict>> {
         let m = self.inner.manifest();
         let mut files = Vec::new();
@@ -402,6 +404,19 @@ impl NativeStore {
                 ids
             }),
             limit,
+            // eid is derived from rel_type and disc, so asking for it implies
+            // materializing those two even when the caller does not want them
+            // back. The adapter drops the extras on the way out.
+            columns: columns.map(|mut c| {
+                if c.iter().any(|x| x == "eid") {
+                    for dep in ["rel_type", "disc"] {
+                        if !c.iter().any(|x| x == dep) {
+                            c.push(dep.to_string());
+                        }
+                    }
+                }
+                c
+            }),
         };
         let (cols, stats) = set.materialize_edges(&req).map_err(err)?;
 
@@ -409,18 +424,30 @@ impl NativeStore {
         // dictionary, so it is the one place that can turn dense ids back
         // into the uids the identity hash is defined over. Done before any
         // column is moved into NumPy.
-        let mut eids = Vec::with_capacity(cols.len());
-        for i in 0..cols.len() {
+        let want_eid = req
+            .columns
+            .as_ref()
+            .map(|c| c.iter().any(|x| x == "eid"))
+            .unwrap_or(true);
+        let mut eids = Vec::with_capacity(if want_eid { cols.len() } else { 0 });
+        for i in 0..(if want_eid { cols.len() } else { 0 }) {
             let src = self.inner.dict().uid(cols.src_id[i]).ok_or_else(|| {
                 PyKeyError::new_err(format!("dense id {} vanished", cols.src_id[i]))
             })?;
             let dst = self.inner.dict().uid(cols.dst_id[i]).ok_or_else(|| {
                 PyKeyError::new_err(format!("dense id {} vanished", cols.dst_id[i]))
             })?;
-            eids.push(
-                tgms_engine_core::derive::edge_eid(src, dst, &cols.rel_type[i], &cols.disc[i])
-                    .to_hex(),
-            );
+            // never index blindly across the boundary: a projection bug
+            // should surface as an error, not a panic inside Python
+            let (rel, disc) = match (cols.rel_type.get(i), cols.disc.get(i)) {
+                (Some(r), Some(d)) => (r, d),
+                _ => {
+                    return Err(PyRuntimeError::new_err(
+                        "scan_edges: eid requested without rel_type/disc materialized",
+                    ))
+                }
+            };
+            eids.push(tgms_engine_core::derive::edge_eid(src, dst, rel, disc).to_hex());
         }
 
         let d = PyDict::new(py);
