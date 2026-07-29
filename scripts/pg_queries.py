@@ -380,31 +380,38 @@ def diff_snapshots(conn, *, t1: int, t2: int, as_of_tt: int = OPEN_END,
 # O5  temporal_reachability
 # --------------------------------------------------------------------------
 
-#: Time-respecting traversal, as a fixpoint over (node, arrival) states.
+#: Time-respecting reachability, as round-by-round relaxation.
 #:
-#: The rule is *non-decreasing*, not strictly increasing: arriving at v over an
-#: edge [vt_s, vt_e) from arrival `a` gives tau = max(a, vt_s), admissible iff
-#: tau < vt_e and tau < t_b. Many edges may therefore be traversed at the same
-#: instant. `UNION` (not `UNION ALL`) supplies the dedup that keeps the
-#: recursion finite — it is the SQL spelling of "have I seen this label".
-_REACH = """
-WITH RECURSIVE ev AS (
-    SELECT src_id, dst_id, vt_s, vt_e FROM edge_versions
-    WHERE {bel} AND vt_e > %(t_a)s AND vt_s < %(t_b)s
-),
-reach(id, arr) AS (
-    SELECT %(src)s::bigint, %(t_a)s::bigint
-    UNION
-    SELECT e.dst_id, GREATEST(r.arr, e.vt_s)
-    FROM reach r JOIN ev e ON e.src_id = r.id
+#: The traversal rule is *non-decreasing*, not strictly increasing: arriving at
+#: v over an edge [vt_s, vt_e) from arrival `a` gives tau = max(a, vt_s),
+#: admissible iff tau < vt_e and tau < t_b. Many edges may therefore be
+#: traversed at the same instant.
+#:
+#: The obvious spelling is one `WITH RECURSIVE ... UNION` over (node, arrival)
+#: states. It is correct and it is a trap: a recursive CTE may not aggregate
+#: over its own working table, so it cannot discard a state that is dominated
+#: by a better arrival at the same node, and it enumerates the whole reachable
+#: state space instead. Measured on xzgpu at 200k events, that formulation took
+#: **278 seconds** against the engine's 24 ms. Relaxing round by round against
+#: a temp table keeps one row per node -- the pruning the recursive form cannot
+#: express -- and terminates when a round changes nothing.
+_REACH_EDGES = """
+CREATE TEMP TABLE _ev ON COMMIT DROP AS
+SELECT src_id, dst_id, vt_s, vt_e FROM edge_versions
+WHERE {bel} AND vt_e > %(t_a)s AND vt_s < %(t_b)s
+"""
+
+_REACH_ROUND = """
+WITH upd AS (
+    SELECT e.dst_id AS id, min(GREATEST(r.arr, e.vt_s)) AS arr
+    FROM _reach r JOIN _ev e ON e.src_id = r.id
     WHERE GREATEST(r.arr, e.vt_s) < e.vt_e
       AND GREATEST(r.arr, e.vt_s) < %(t_b)s
+    GROUP BY e.dst_id
 )
-SELECT ent.uid, min(reach.arr) AS earliest
-FROM reach JOIN entities ent ON ent.dense_id = reach.id
-WHERE reach.id <> %(src)s
-GROUP BY ent.uid
-ORDER BY earliest, ent.uid COLLATE "C"
+INSERT INTO _reach (id, arr) SELECT id, arr FROM upd
+ON CONFLICT (id) DO UPDATE SET arr = EXCLUDED.arr
+WHERE _reach.arr > EXCLUDED.arr
 """
 
 
@@ -416,8 +423,23 @@ def temporal_reachability(conn, *, src: str, window: dict,
     sid = conn.execute("SELECT dense_id FROM entities WHERE uid = %s",
                        (src,)).fetchone()[0]
     p = {"src": sid, "t_a": window["t_a"], "t_b": window["t_b"]}
-    sql = _REACH.format(bel=belief(as_of_tt))
-    rows = conn.execute(sql, p).fetchall()
+    conn.execute("DROP TABLE IF EXISTS _ev")
+    conn.execute("DROP TABLE IF EXISTS _reach")
+    conn.execute(_REACH_EDGES.format(bel=belief(as_of_tt)).replace(
+        " ON COMMIT DROP", ""), p)
+    conn.execute("CREATE INDEX ON _ev (src_id)")
+    conn.execute("ANALYZE _ev")
+    conn.execute("CREATE TEMP TABLE _reach (id bigint PRIMARY KEY, arr bigint)")
+    conn.execute("INSERT INTO _reach VALUES (%(src)s, %(t_a)s)", p)
+    # Bellman-Ford style: each round relaxes every frontier edge once. Rounds
+    # are bounded by the longest shortest path in hops, not by the state space.
+    while conn.execute(_REACH_ROUND, p).rowcount:
+        pass
+    rows = conn.execute(
+        "SELECT ent.uid, r.arr FROM _reach r "
+        "JOIN entities ent ON ent.dense_id = r.id "
+        "WHERE r.id <> %(src)s "
+        'ORDER BY r.arr, ent.uid COLLATE "C"', p).fetchall()
     out = [{"uid": r[0], "earliest_arrival": int(r[1])} for r in rows[:limit]]
     return {"rows": out, **_page(len(rows), len(out))}
 
