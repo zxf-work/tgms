@@ -89,9 +89,9 @@ still O(rows) — vids are hashes, so segments have no order to search them by
 and there is no vid index — but the constant was the problem, not the
 complexity.
 
-This is the tenth time in this project that the layer under suspicion was not
-the one costing the time, and the second where the suspected layer was
-genuinely wasteful but nowhere near the bottleneck.
+It is the sixth entry in `engine_lessons.md` §1 — the running table of times
+the layer under suspicion was not the one costing the time — and the second
+where the suspected layer was genuinely wasteful yet nowhere near dominant.
 
 ## One number that was mine, not PostgreSQL's
 

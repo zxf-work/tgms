@@ -13,7 +13,7 @@ actually cost time.
 
 ## 1. Measure the layer before optimizing it
 
-Five times we identified "the bottleneck" and were wrong. Every single time,
+Six times we identified "the bottleneck" and were wrong. Every single time,
 the fix that mattered was found by measuring *after* the intended fix failed
 to move the number.
 
@@ -24,8 +24,9 @@ to move the number.
 | `co_active`'s loop is the cost | `meets` cost 443 ms for 500 rows | unwindowed scan, not the join |
 | incidence filter needs an index | filter answered in 0.8 ms | `stats()` scanning on every operator call |
 | materialization pushes row-by-row | flat 170 ns/row at any segment count | `vid` hex built for unprojected rows |
+| `diff_snapshots` is scan-bound | the two scans were 54 ms of 419 | a 16-row lookup rebuilding the whole store |
 
-Two of those five fixes we implemented were *correct but irrelevant* — the
+Two of those six fixes we implemented were *correct but irrelevant* — the
 contiguous-run copy and the postings index both stayed, because they are
 cheap and right, but neither produced the win attributed to them.
 
