@@ -116,12 +116,20 @@ instead of heap-merging at all — took the scan 1167 → 811 ms and the
 operator to **929 ms, just under DuckDB's ~958**. The two paths are
 byte-identical (the disjointness check uses the selected rows' own
 composite keys), all 12 queries still agree. Parallelizing materialization (disjoint selections on scoped threads, no
-order list at all) then moved **nothing** — 811 → 819 ms, noise — making
-it entry nine in the misdiagnosis tally: correct, kept for its structure,
-irrelevant to the clock. The residual ~810 ms is therefore selection
-itself or the NumPy boundary, unmeasured. Parity with DuckDB is reached;
-decisive headroom is not; the next step is a Rust-side stage timing, not
-another optimization.
+order list at all) then moved **nothing** — 811 → 819 ms — and a stage-
+timing probe explained why in a way that revises the record: the code is
+not irrelevant, it is **unreachable on this store**. Measured per call:
+`select` 33 ms (parallel, cheap), NumPy boundary + eid 73 ms, core total
+733 ms. The disjoint fast path never fires, because the dataset's
+corrections write superseding versions into segments whose key ranges
+overlap the originals — one overlap anywhere fails the all-or-nothing
+disjointness check, and every full-window scan falls back to the 10M-row
+heap merge with serial materialize (~630 ms). A corrected store is the
+*normal* store, so the fast path as written is the exception, not the
+rule. The fix is group-wise: partition selections into overlap clusters,
+concatenate across clusters, heap-merge only within them — correction
+segments are tiny, so nearly all rows would take the fast path. Not yet
+built; parity with DuckDB stands meanwhile.
 
 The guardrail gates both traversal queries on TGMS at this scale.
 PostgreSQL's answers split the verdict: reachability genuinely explodes
