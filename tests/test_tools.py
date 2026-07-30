@@ -78,6 +78,46 @@ def test_cost_guardrail_rejects_with_suggestions():
     assert "count" in ok
 
 
+def test_motif_cost_prices_skew_by_filter_not_by_max_degree():
+    """The motif estimate must not explode on skewed degree distributions.
+
+    Shapes are the two anchors from the Phase 0 evaluation (docs/
+    eval_phase0.md): CollegeMsg — 59,835 events, one user with out-degree
+    1091 — where the registry's 200-uid filtered query touches ~1.1k events
+    and must be answerable; and the synthetic 200k log with a |V|/5 filter,
+    whose ~30k filtered events pair 18.7M times within delta and must stay
+    refused. The old `max_out_degree**2` form refused both.
+    """
+    from tgms.temporal.guardrails import DEFAULT_CEILINGS
+    from tgms.temporal.ops_motifs import _motif_cost
+
+    ceiling = DEFAULT_CEILINGS["expansions_est"]
+
+    collegemsg = {"n_edge_versions": 59_835, "n_entities": 1_899,
+                  "max_out_degree": 1_091, "vt_min": 0, "vt_max": 16_736_181}
+    span = collegemsg["vt_max"]
+    skewed = _motif_cost(
+        {"delta": span // 50, "window": {"t_a": 0, "t_b": span + 1},
+         "node_filter": [f"n{i}" for i in range(200)]},
+        collegemsg)
+    assert skewed["expansions_est"] < ceiling
+
+    synth200k = {"n_edge_versions": 200_269, "n_entities": 2_000,
+                 "max_out_degree": 142, "vt_min": 0, "vt_max": 210_000}
+    explosive = _motif_cost(
+        {"delta": 4_000, "window": {"t_a": 0, "t_b": 200_000},
+         "node_filter": [f"n{i}" for i in range(400)]},
+        synth200k)
+    assert explosive["expansions_est"] > ceiling
+
+    # same log, no filter at all: the whole window pairs with itself
+    unfiltered = _motif_cost(
+        {"delta": 4_000, "window": {"t_a": 0, "t_b": 200_000},
+         "node_filter": None},
+        synth200k)
+    assert unfiltered["expansions_est"] > explosive["expansions_est"] > ceiling
+
+
 def test_mcp_round_trip(tmp_path):
     fastmcp = pytest.importorskip("fastmcp")
     import tgms
