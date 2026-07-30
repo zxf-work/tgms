@@ -9,7 +9,7 @@ uv run python scripts/eval_harness.py --scale 200000 --systems native,duckdb,pos
 
 ## Receipts (spec §8.4)
 
-- commit `284f768`, 200,000 events, 3 repeats per query, p50 reported
+- commit `2d5f146`, 200,000 events, 3 repeats per query, p50 reported
 - **xzgpu** — 40 cores, 93 GB, Linux 5.4. Every number here comes from that
   one host; `eval_harness.py` warns when run anywhere else, because a laptop
   differs by 5× in cores and 6× in RAM and pins `effective_io_concurrency`
@@ -34,7 +34,7 @@ p50 milliseconds.
 | hist.single | 1.1 | 10.2 | **0.5** | postgres |
 | hist.asof | 1.1 | 9.2 | **0.5** | postgres |
 | snap.hop2 | **23.8** | 44.7 | 41.1 | native |
-| diff.global | **71.7** | 109.0 | 109.9 | native |
+| diff.global | **69.1** | 110.1 | 106.8 | native |
 | reach.window | **18.4** | 25.2 | 702.9 | native |
 | paths.k | **8.6** | 16.5 | 22.1 | native |
 | series.count | **27.7** | 39.0 | 56.5 | native |
@@ -42,7 +42,7 @@ p50 milliseconds.
 | nbr.evolution | 14.9 | 16.7 | **3.6** | postgres |
 | coactive.narrow | **37.8** | 56.5 | 54.2 | native |
 | resolve.substr | **3.6** | 18.2 | 5.3 | native |
-| motif.filtered | **32.0** | 60.6 | 143.5 | native |
+| motif.filtered | **32.1** | 62.4 | 143.8 | native |
 
 Native is fastest on 9, PostgreSQL on 3. Against DuckDB alone the native
 engine wins all 12.
@@ -94,6 +94,17 @@ complexity.
 It is the sixth entry in `engine_lessons.md` §1 — the running table of times
 the layer under suspicion was not the one costing the time — and the second
 where the suspected layer was genuinely wasteful yet nowhere near dominant.
+
+A footnote from finishing the job: projecting the diff's point-state scans to
+the five columns it reads bought only 72.2 → 69.8 ms. The measurement says
+why: `('eid',)` alone costs 15.3 of the projected scan's 17.6 ms. The diff is
+*defined* over derived identity, so a sha256 per row at each instant is the
+price of D-028's identity-is-derived decision, not a call-site defect — and
+the earlier `eid_hi`/`eid_lo` experiment already showed integer identity does
+not pay for itself end to end. The projection's real yield was a latent bug:
+the scan omitted a *requested* `vid` column whenever zero rows matched, which
+no unprojected caller could ever hit. It is fixed with a regression test, and
+`diff_snapshots` no longer fails on a window that sees an empty instant.
 
 ## Closing the point-lookup floor
 
