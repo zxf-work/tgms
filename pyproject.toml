@@ -39,6 +39,8 @@ agent = ["litellm>=1.48", "fastmcp>=2.0"]
 memory = ["faiss-cpu>=1.8", "sentence-transformers>=3.0"]
 eval = [
     "psycopg[binary]>=3.2",
+    # ClickHouse HTTP client; Apache-2.0, like the server (D-035, spec §8.6)
+    "clickhouse-connect>=0.8",
 ]
 
 [project.scripts]
