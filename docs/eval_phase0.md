@@ -115,10 +115,13 @@ valid-time clustering means non-interleaving segments can concatenate
 instead of heap-merging at all — took the scan 1167 → 811 ms and the
 operator to **929 ms, just under DuckDB's ~958**. The two paths are
 byte-identical (the disjointness check uses the selected rows' own
-composite keys), all 12 queries still agree. The residual 800 ms is
-selection plus the order-list build, the materialize copy, and the numpy
-boundary, still partly serial: parity is reached, decisive headroom is
-not, and that residue is recorded rather than chased further here.
+composite keys), all 12 queries still agree. Parallelizing materialization (disjoint selections on scoped threads, no
+order list at all) then moved **nothing** — 811 → 819 ms, noise — making
+it entry nine in the misdiagnosis tally: correct, kept for its structure,
+irrelevant to the clock. The residual ~810 ms is therefore selection
+itself or the NumPy boundary, unmeasured. Parity with DuckDB is reached;
+decisive headroom is not; the next step is a Rust-side stage timing, not
+another optimization.
 
 The guardrail gates both traversal queries on TGMS at this scale.
 PostgreSQL's answers split the verdict: reachability genuinely explodes
