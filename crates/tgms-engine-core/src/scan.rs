@@ -194,15 +194,61 @@ impl<'a, S: SegmentSource> ScanSet<'a, S> {
     /// predicate itself and made this path slower than vectorized NumPy —
     /// measured, then fixed; see `docs/engine_probe.md`.
     pub fn select(&self, req: &ScanRequest) -> Result<(Vec<Selection>, ScanStats)> {
+        // Segments are independent, and a Selection carries its segment
+        // index, so per-segment work fans out across threads and the results
+        // concatenate in segment order — byte-identical output to the serial
+        // loop by construction. Serial below a few segments: thread spawn
+        // costs more than it saves, and correctness never depends on which
+        // path ran. This is the 10M finding from eval_phase0 ("DuckDB wins
+        // exactly the full-window scans"): the scan was the one single-
+        // threaded stage on a 40-core host.
+        let threads = std::thread::available_parallelism()
+            .map(|n| n.get().min(16))
+            .unwrap_or(1);
+        if threads > 1 && self.targets.len() >= 8 {
+            let chunk = self.targets.len().div_ceil(threads);
+            let parts: Vec<Result<(Vec<Selection>, ScanStats)>> =
+                std::thread::scope(|scope| {
+                    let handles: Vec<_> = (0..self.targets.len())
+                        .step_by(chunk)
+                        .map(|start| {
+                            let end = (start + chunk).min(self.targets.len());
+                            scope.spawn(move || self.select_range(req, start, end))
+                        })
+                        .collect();
+                    handles.into_iter().map(|h| h.join().expect("scan worker panicked")).collect()
+                });
+            let mut out = Vec::new();
+            let mut stats = ScanStats::default();
+            for part in parts {
+                let (sel, st) = part?;
+                out.extend(sel);
+                stats.segments_total += st.segments_total;
+                stats.segments_pruned += st.segments_pruned;
+                stats.rows_examined += st.rows_examined;
+                stats.rows_selected += st.rows_selected;
+            }
+            return Ok((out, stats));
+        }
+        self.select_range(req, 0, self.targets.len())
+    }
+
+    fn select_range(
+        &self,
+        req: &ScanRequest,
+        lo_idx: usize,
+        hi_idx: usize,
+    ) -> Result<(Vec<Selection>, ScanStats)> {
         let mut stats = ScanStats {
-            segments_total: self.targets.len(),
+            // this range's share; the parallel caller sums ranges
+            segments_total: hi_idx - lo_idx,
             ..Default::default()
         };
         let mut out = Vec::new();
         let as_of = clamp_tt(req.as_of_tt);
         let touching = req.touching_ids.as_ref().map(|ids| IdSet::new(ids));
 
-        for (idx, target) in self.targets.iter().enumerate() {
+        for (idx, target) in self.targets.iter().enumerate().take(hi_idx).skip(lo_idx) {
             let seg = target.segment;
             if self.prunes(seg, req) {
                 stats.segments_pruned += 1;
