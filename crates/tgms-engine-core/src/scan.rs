@@ -370,39 +370,59 @@ impl<'a, S: SegmentSource> ScanSet<'a, S> {
     ///
     /// Only callers that need global order pay for this; a kernel that works
     /// segment-at-a-time consumes `select` directly.
-    /// Are the selections' composite-key ranges pairwise disjoint? Returns
-    /// the selection indices in key order when they are. Exact: it compares
-    /// the selected rows' own first/last keys, so any path that branches on
-    /// this stays byte-identical to the heap merge.
-    fn disjoint_order(&self, selections: &[Selection]) -> Result<Option<Vec<usize>>> {
-        struct K<'a> {
-            vt_s: &'a [i64],
-            hi: &'a [u64],
-            lo: &'a [u32],
-        }
-        let mut cols = Vec::with_capacity(selections.len());
+    /// Group selections into clusters of overlapping composite-key ranges,
+    /// in key order.
+    ///
+    /// Everything in cluster *i* sorts strictly before everything in cluster
+    /// *i+1*, so clusters concatenate; only rows *within* a cluster ever need
+    /// the heap merge. The earlier version of this check was all-or-nothing
+    /// disjointness — which a single correction voided, because a superseding
+    /// version lands in a segment overlapping the original's range. On a
+    /// corrected store (the normal store) the fast path therefore never ran.
+    /// Clusters make it the common case again: correction segments are tiny,
+    /// so they form small local clusters while the bulk concatenates.
+    fn cluster_order(&self, selections: &[Selection]) -> Result<Vec<Vec<usize>>> {
+        let mut keys = Vec::with_capacity(selections.len());
         for sel in selections {
+            if sel.rows.is_empty() {
+                keys.push(None);
+                continue;
+            }
             let seg = self.targets[sel.segment].segment;
-            cols.push(K {
-                vt_s: seg.i64_column("vt_s")?,
-                hi: seg.u64_column("vid64")?,
-                lo: seg.u32_column("vid_lo32")?,
-            });
+            let vt_s = seg.i64_column("vt_s")?;
+            let hi = seg.u64_column("vid64")?;
+            let lo = seg.u32_column("vid_lo32")?;
+            let k = |row: u32| -> (i64, Id96) {
+                let r = row as usize;
+                (vt_s[r], Id96 { hi: hi[r], lo: lo[r] })
+            };
+            let first = *sel.rows.first().expect("non-empty");
+            let last = *sel.rows.last().expect("non-empty");
+            keys.push(Some((k(first), k(last))));
         }
-        let key = |si: usize, row: u32| -> (i64, Id96) {
-            let c = &cols[si];
-            let r = row as usize;
-            (c.vt_s[r], Id96 { hi: c.hi[r], lo: c.lo[r] })
-        };
         let mut order: Vec<usize> = (0..selections.len())
-            .filter(|&si| !selections[si].rows.is_empty())
+            .filter(|&si| keys[si].is_some())
             .collect();
-        order.sort_by_key(|&si| key(si, selections[si].rows[0]));
-        let disjoint = order.windows(2).all(|w| {
-            let last = *selections[w[0]].rows.last().expect("non-empty");
-            key(w[0], last) <= key(w[1], selections[w[1]].rows[0])
-        });
-        Ok(if disjoint { Some(order) } else { None })
+        order.sort_by_key(|&si| keys[si].expect("filtered").0);
+
+        let mut clusters: Vec<Vec<usize>> = Vec::new();
+        let mut cur_max_last: Option<(i64, Id96)> = None;
+        for si in order {
+            let (first, last) = keys[si].expect("filtered");
+            match (&mut clusters.last_mut(), cur_max_last) {
+                (Some(cluster), Some(max_last)) if first < max_last => {
+                    // overlaps the running cluster: keys are unique, so
+                    // first < max_last is the exact overlap condition
+                    cluster.push(si);
+                    cur_max_last = Some(max_last.max(last));
+                }
+                _ => {
+                    clusters.push(vec![si]);
+                    cur_max_last = Some(last);
+                }
+            }
+        }
+        Ok(clusters)
     }
 
     pub fn merged(
@@ -435,39 +455,38 @@ impl<'a, S: SegmentSource> ScanSet<'a, S> {
         };
         let cap = limit.unwrap_or(usize::MAX);
 
-        // Fast path: valid-time clustering means segments rarely interleave;
-        // then the merge is concatenation, no heap, no per-row key.
-        if let Some(order) = self.disjoint_order(selections)? {
-            let mut out = Vec::new();
-            'outer: for &si in &order {
+        // Cluster-wise: concatenate across clusters, heap-merge only within.
+        // A pristine store is all singleton clusters (pure concatenation); a
+        // pathological one is a single cluster (the old full heap merge); a
+        // corrected store is almost-all singletons plus small local clusters.
+        let mut out = Vec::new();
+        'clusters: for cluster in self.cluster_order(selections)? {
+            if let [si] = cluster[..] {
                 let sel = &selections[si];
                 for &row in &sel.rows {
                     out.push((sel.segment, row));
                     if out.len() >= cap {
-                        break 'outer;
+                        break 'clusters;
                     }
                 }
+                continue;
             }
-            return Ok(out);
-        }
-
-        let mut heap: BinaryHeap<Reverse<(i64, Id96, usize, usize)>> = BinaryHeap::new();
-        for (si, sel) in selections.iter().enumerate() {
-            if let Some(&row) = sel.rows.first() {
+            let mut heap: BinaryHeap<Reverse<(i64, Id96, usize, usize)>> = BinaryHeap::new();
+            for &si in &cluster {
+                let row = selections[si].rows[0];
                 let (t, vid) = key(si, row);
                 heap.push(Reverse((t, vid, si, 0)));
             }
-        }
-        let mut out = Vec::new();
-        while let Some(Reverse((_, _, si, pos))) = heap.pop() {
-            let sel = &selections[si];
-            out.push((sel.segment, sel.rows[pos]));
-            if out.len() >= cap {
-                break;
-            }
-            if let Some(&next) = sel.rows.get(pos + 1) {
-                let (t, vid) = key(si, next);
-                heap.push(Reverse((t, vid, si, pos + 1)));
+            while let Some(Reverse((_, _, si, pos))) = heap.pop() {
+                let sel = &selections[si];
+                out.push((sel.segment, sel.rows[pos]));
+                if out.len() >= cap {
+                    break 'clusters;
+                }
+                if let Some(&next) = sel.rows.get(pos + 1) {
+                    let (t, vid) = key(si, next);
+                    heap.push(Reverse((t, vid, si, pos + 1)));
+                }
             }
         }
         Ok(out)
@@ -499,47 +518,78 @@ impl<'a, S: SegmentSource> ScanSet<'a, S> {
         Ok(cols)
     }
 
+    /// One cluster's rows, as columns: the direct run-walk for a singleton,
+    /// a within-cluster heap merge otherwise.
+    fn materialize_cluster(
+        &self,
+        req: &ScanRequest,
+        selections: &[Selection],
+        cluster: &[usize],
+    ) -> Result<EdgeColumns> {
+        if let [si] = cluster[..] {
+            return self.materialize_selection(req, &selections[si]);
+        }
+        let members: Vec<Selection> = cluster
+            .iter()
+            .map(|&si| selections[si].clone())
+            .collect();
+        let order = self.merged(&members, None)?;
+        self.materialize_order(req, &order)
+    }
+
     pub fn materialize_edges(&self, req: &ScanRequest) -> Result<(EdgeColumns, ScanStats)> {
         let (selections, stats) = self.select(req)?;
-        // When selections do not interleave (the clustered-store norm) each
-        // one materializes independently — on threads, into its own columns,
-        // appended in key order. Byte-identical to the merged path because
-        // the disjointness check is exact; the 10M-entry order list is never
-        // built at all. Unlimited scans only: a limit reintroduces cross-
-        // selection coupling that the merged path already handles.
+        // Clusters materialize independently — on threads, into their own
+        // columns, appended in key order. A singleton cluster (the corrected-
+        // store norm: bulk segments plus tiny local correction clusters) runs
+        // the direct run-walk with no order list; a multi-member cluster
+        // heap-merges its own rows only. Byte-identical to the merged path
+        // because cluster boundaries are exact key-order boundaries.
+        // Unlimited scans only: a limit reintroduces cross-cluster coupling
+        // that the merged path already handles.
         if req.limit.is_none() {
-            if let Some(order) = self.disjoint_order(&selections)? {
-                let threads = std::thread::available_parallelism()
-                    .map(|n| n.get().min(16))
-                    .unwrap_or(1);
-                let parts: Vec<Result<EdgeColumns>> = if threads > 1 && order.len() >= 4 {
-                    std::thread::scope(|scope| {
-                        let handles: Vec<_> = order
-                            .iter()
-                            .map(|&si| {
-                                let sel = &selections[si];
-                                scope.spawn(move || self.materialize_selection(req, sel))
-                            })
-                            .collect();
-                        handles
-                            .into_iter()
-                            .map(|h| h.join().expect("materialize worker panicked"))
-                            .collect()
-                    })
-                } else {
-                    order
+            let clusters = self.cluster_order(&selections)?;
+            let threads = std::thread::available_parallelism()
+                .map(|n| n.get().min(16))
+                .unwrap_or(1);
+            let parts: Vec<Result<EdgeColumns>> = if threads > 1 && clusters.len() >= 4 {
+                std::thread::scope(|scope| {
+                    let handles: Vec<_> = clusters
                         .iter()
-                        .map(|&si| self.materialize_selection(req, &selections[si]))
+                        .map(|cluster| {
+                            let sels = &selections;
+                            scope.spawn(move || self.materialize_cluster(req, sels, cluster))
+                        })
+                        .collect();
+                    handles
+                        .into_iter()
+                        .map(|h| h.join().expect("materialize worker panicked"))
                         .collect()
-                };
-                let mut cols = EdgeColumns::with_capacity(stats.rows_selected as usize);
-                for part in parts {
-                    cols.append(part?);
-                }
-                return Ok((cols, stats));
+                })
+            } else {
+                clusters
+                    .iter()
+                    .map(|cluster| self.materialize_cluster(req, &selections, cluster))
+                    .collect()
+            };
+            let mut cols = EdgeColumns::with_capacity(stats.rows_selected as usize);
+            for part in parts {
+                cols.append(part?);
             }
+            return Ok((cols, stats));
         }
         let order = self.merged(&selections, req.limit)?;
+        let cols = self.materialize_order(req, &order)?;
+        Ok((cols, stats))
+    }
+
+    /// Materialize an explicit (segment, row) order list — the general path
+    /// shared by limited scans and multi-member clusters.
+    fn materialize_order(
+        &self,
+        req: &ScanRequest,
+        order: &[(usize, u32)],
+    ) -> Result<EdgeColumns> {
         let want = |name: &str| {
             req.columns
                 .as_ref()
@@ -577,7 +627,7 @@ impl<'a, S: SegmentSource> ScanSet<'a, S> {
             copy_run(v, a, b, &mut cols, w_vid, w_rel, w_disc, w_props)?;
             i = j;
         }
-        Ok((cols, stats))
+        Ok(cols)
     }
 }
 
@@ -987,6 +1037,43 @@ mod tests {
             "a 40-unit window examined {} rows",
             narrow.rows_examined
         );
+    }
+
+    #[test]
+    fn clusters_mix_concatenation_and_local_merges() {
+        // The corrected-store geometry: two overlapping segments (a bulk run
+        // and its correction) plus one far-away disjoint segment. Output must
+        // equal the brute-force (vt_s, vid) sort regardless of which cluster
+        // path each segment took.
+        let dir = tmp("clusters-mixed");
+        let mut rows = Vec::new();
+        let mut segs = Vec::new();
+        for (name, base, n, tt) in [("a", 1_000i64, 200u32, 10i64),
+                                    ("b", 1_150, 60, 20),
+                                    ("c", 5_000, 80, 30)] {
+            let mut b: Vec<EdgeRow> = (0..n)
+                .map(|i| edge(base + i as i64, i + tt as u32 * 100, tt, "SENT",
+                              i % 7, (i + 3) % 7))
+                .collect();
+            b.sort_by_key(|r| r.sort_key());
+            let path = dir.join(format!("{name}.tgs"));
+            write_edge_segment(&path, &b, &SegmentSpec::default()).unwrap();
+            segs.push(Segment::open(&path, MemorySource::load(&path).unwrap(), true).unwrap());
+            rows.extend(b);
+        }
+        let set = ScanSet::from_pairs(segs.iter().map(|s| (s, Lane::Event)).collect());
+        let req = ScanRequest::current();
+        let (cols, _) = set.materialize_edges(&req).unwrap();
+        let want = expected(&rows, &req);
+        assert_eq!(cols.len(), want.len());
+        for (i, (vt_s, vid)) in want.iter().enumerate() {
+            assert_eq!((cols.vt_s[i], cols.vid[i]), (*vt_s, *vid), "row {i}");
+        }
+        // and the order list agrees with itself under a limit
+        let (sel, _) = set.select(&req).unwrap();
+        let full = set.merged(&sel, None).unwrap();
+        let capped = set.merged(&sel, Some(37)).unwrap();
+        assert_eq!(&full[..37], &capped[..]);
     }
 
     #[test]
