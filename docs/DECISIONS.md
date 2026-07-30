@@ -597,3 +597,28 @@ implementation — hygiene checking starts at the marker recorded in D-010.
   schedule. The fault matrix gains four cases (CURRENT untouchable,
   interrupted pass, reader pins, orphan collection); `docs/eval_phase0.md`
   "Storage" now reports whole-store B/row with retention closed.
+
+## D-035 — ClickHouse baseline (Phase 2, second system)
+
+- **Date:** 2026-07-31
+- **Context:** the plan's Phase 2 pairs PostgreSQL with a columnar
+  aggregation engine. ClickHouse 26.8 runs as a user-space static binary on
+  the measurement host (no root there, like the PostgreSQL source build),
+  localhost-only, data on /mnt/project. Client: clickhouse-connect. Both
+  Apache-2.0 (§8.6).
+- **Decision:** same fairness contract as D-030 — a baseline, never a
+  backend; canonical rows loaded so tt and derived ids arrive byte-for-byte
+  (D-023); registry SQL added slice by slice, each verified against the
+  canonical hash before it is ever timed; unwritten queries report "no SQL
+  written yet", which is not a verdict. Schema: MergeTree with
+  edge_versions ordered by (vt_s, vid) — the scan contract's total order —
+  and node_versions by (uid, vt_s, vid). Bytewise String comparison is the
+  operators' code-point order, so PostgreSQL's COLLATE pinning has no
+  ClickHouse counterpart.
+- **First slice (xzgpu, 200k, §16 protocol):** hist.single 9.2 ms /
+  hist.asof 10.0 (HTTP roundtrip floor ~1 ms; not its shape),
+  **series.count 14.2 and burst.zscore 16.6 — fastest of all four systems**,
+  native at 27.6/30.0. All four hashes identical across native, DuckDB,
+  PostgreSQL, and ClickHouse. The aggregation win is exactly what this
+  baseline exists to measure; whether it survives the remaining eight
+  queries and 10M scale is the open question, not a foregone one.

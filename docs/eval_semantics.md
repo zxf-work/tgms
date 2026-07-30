@@ -138,6 +138,17 @@ and the comparison should not claim TGMS's restriction as an advantage:
 layer and differ only in storage. Any hash mismatch between them is a bug,
 which is what makes them the useful Phase 0 pair.
 
+### ClickHouse
+
+Schema, loader, and tuning: `scripts/ch_baseline.py`; registry SQL, added
+slice by slice: `scripts/ch_queries.py` (D-035). Loading follows the same
+replay rule as PostgreSQL (§3). Verdicts so far: `hist.single`, `hist.asof`,
+`series.count`, `burst.zscore` — **equivalent**, hash-verified. Everything
+else carries no verdict yet. Two structural notes: bytewise String
+comparison matches the operators' code-point order natively (no COLLATE
+analogue needed), and `burst.zscore` keeps its scalar tail in Python for
+the same rounded-threshold reason as the PostgreSQL twin.
+
 ### PostgreSQL
 
 Schema, indexes, tuning, and loader live in `scripts/pg_baseline.py`; the
