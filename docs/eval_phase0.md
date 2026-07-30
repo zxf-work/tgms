@@ -108,10 +108,17 @@ DuckDB — those scans are selection-bound (incidence and node filters per
 row). `series.count`/`burst.zscore` did not move (~1.26 s vs DuckDB's ~0.96) —
 profiled: the scan is 1167 ms of the operator's 1274, and projecting down
 to one column changes nothing (1170 ms), so the cost is not column
-materialization. NumPy's mask-and-bincount is 88 ms. What remains is the
-serial post-selection machinery — building the 10M-entry merge order and
-copying rows out through the boundary — which parallel selection does not
-touch. Known, bounded, and filed; not yet fixed.
+materialization. NumPy's mask-and-bincount is 88 ms. What remained was the
+serial post-selection machinery. Fixing the merge — keys were resolved by
+column name and built into an `Id96` per popped row (lesson §2 again), and
+valid-time clustering means non-interleaving segments can concatenate
+instead of heap-merging at all — took the scan 1167 → 811 ms and the
+operator to **929 ms, just under DuckDB's ~958**. The two paths are
+byte-identical (the disjointness check uses the selected rows' own
+composite keys), all 12 queries still agree. The residual 800 ms is
+selection plus the order-list build, the materialize copy, and the numpy
+boundary, still partly serial: parity is reached, decisive headroom is
+not, and that residue is recorded rather than chased further here.
 
 The guardrail gates both traversal queries on TGMS at this scale.
 PostgreSQL's answers split the verdict: reachability genuinely explodes
