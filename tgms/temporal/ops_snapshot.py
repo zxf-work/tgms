@@ -37,10 +37,11 @@ MAX_HOPS = 3
 # --------------------------------------------------------------------------- #
 
 def edges_at(adapter: StorageAdapter, t: int, as_of_tt: int,
-             rel_types: list[str] | None = None) -> dict[str, np.ndarray]:
+             rel_types: list[str] | None = None,
+             columns: tuple[str, ...] | None = None) -> dict[str, np.ndarray]:
     """Believed edge versions valid at instant t (vt_s <= t < vt_e)."""
     return adapter.edges_columnar(as_of_tt=as_of_tt, vt_min=t, vt_max=t + 1,
-                                  rel_types=rel_types)
+                                  rel_types=rel_types, columns=columns)
 
 
 def nodes_at(adapter: StorageAdapter, t: int, as_of_tt: int) -> dict[str, np.ndarray]:
@@ -186,9 +187,19 @@ SCOPE = {
 }
 
 
+#: Everything `diff_snapshots` reads off an edge: `eid` is the logical
+#: identity the difference is taken over, `vid` decides which identities are
+#: props_changed candidates, and the rest fill the output rows. Notably absent
+#: are `vt_s` and `vt_e` — the snapshot is an instant, so both are implied.
+#: `snapshot_subgraph` does need them, which is why the projection lives here
+#: rather than in `edges_at`.
+_DIFF_EDGE_COLS = ("eid", "vid", "src_id", "dst_id", "rel_type")
+
+
 def _point_state(adapter: StorageAdapter, t: int, as_of: int):
     """(node columnar, edge columnar) valid at t, plus identity->index maps."""
-    nodes, edges = nodes_at(adapter, t, as_of), edges_at(adapter, t, as_of)
+    nodes = nodes_at(adapter, t, as_of)
+    edges = edges_at(adapter, t, as_of, columns=_DIFF_EDGE_COLS)
     node_map = {u: i for i, u in enumerate(nodes["uid"].tolist())}
     edge_map = {e: i for i, e in enumerate(edges["eid"].tolist())}
     return nodes, edges, node_map, edge_map
