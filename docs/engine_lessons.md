@@ -307,9 +307,19 @@ been taught elsewhere:
 
 The second is the interesting one, because the filter *could not* be pushed
 down as written: a motif event needs both endpoints in the set, and the scan
-signature only offers or-incidence. The move was to notice that
+signature only offered or-incidence. The first move was to notice that
 `{both} ⊆ {either}`, push the weaker filter down as an exact pre-filter, and
-keep the exact test above it. **369 → 52.6 ms**, with the kernel untouched.
+keep the exact test above it: **369 → 52.6 ms**, with the kernel untouched.
+
+The weaker pushdown was worth having on its own, but it still derived `eid`
+for every or-match — 25k rows to keep 14.5k — so the scan then learned the
+and-form outright (`touching_both`), taking the operator to **40.5 ms**. Worth
+noting what that cost: a new field on the scan request, a branch in the row
+test, and the same keyword threaded through four adapters so the backends stay
+interchangeable. Widening a closed scan signature is cheap exactly once per
+predicate, and the discipline that keeps it cheap is that every backend must
+implement it — which is also what stops the "optimization" from being a
+native-only special case.
 
 Two things to carry. **When a column is expensive to derive, the filter that
 discards it has to run first** — and if the pushdown you want is not
@@ -318,11 +328,15 @@ costs nothing in correctness. And **the named, algorithmic-looking component
 is rarely the cost**; it is the one everybody has already thought about. The
 scan call around it is the one nobody has.
 
-A pleasant side effect worth designing for: the fix lived in the shared
-operator layer, so the DuckDB backend got it too (576.8 → 85.6 ms). A speedup
-that comes from removing work rather than from specializing one backend
-improves the baseline you are being compared against, which is the only kind
-that is unambiguously real.
+A pleasant side effect worth designing for: the work lived in the shared
+operator layer and the scan ABC, so the DuckDB backend got it too (576.8 →
+69.5 ms). A speedup that comes from removing work rather than from
+specializing one backend improves the baseline you are being compared against,
+which is the only kind that is unambiguously real.
+
+The kernel measures 11.0 ms throughout. It started as 3% of the operator and
+ended as 27% — not because it changed, but because everything around it
+stopped costing more than it did.
 
 ## 10. Fault injection earns its keep in ways you did not plan
 
