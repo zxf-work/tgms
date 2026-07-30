@@ -8,6 +8,9 @@ repository.workspace = true
 
 [dependencies]
 crc32c = "0.6.8"
+# DEFLATE for the string heap (D-033). Pure Rust, zero transitive deps,
+# MIT OR Zlib OR Apache-2.0 (spec §8.6).
+miniz_oxide = "0.8"
 memmap2 = "0.9.11"
 serde = { version = "1.0.229", features = ["derive"] }
 serde_json = "1.0.151"

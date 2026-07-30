@@ -555,7 +555,13 @@ fn write_segment(
         });
         cursor += align_up(bytes.len()) as u64;
     }
-    let encoded_strings = strings.encode();
+    let encoded_strings = {
+        let raw = strings.encode();
+        match crate::codec::pack_heap(&raw) {
+            Some(packed) if packed.len() + 8 < raw.len() => packed,
+            _ => raw,
+        }
+    };
     header.columns = descs;
     header.strings_offset = cursor;
     header.strings_bytes = encoded_strings.len() as u64;
@@ -687,6 +693,8 @@ pub struct Segment<S: SegmentSource> {
     /// Backed by `Vec<u64>` so any dtype's alignment holds; the usize is the
     /// logical byte length. Raw columns stay zero-copy out of the source.
     decoded: Vec<Option<(Vec<u64>, usize)>>,
+    /// The string heap in raw layout, when the file stores it packed.
+    decoded_strings: Option<Vec<u8>>,
 }
 
 impl<S: SegmentSource> Segment<S> {
@@ -748,6 +756,7 @@ impl<S: SegmentSource> Segment<S> {
             data_start,
             path,
             decoded: Vec::new(),
+            decoded_strings: None,
         };
         if verify_checksums {
             seg.verify(&footer, footer_start)?;
@@ -796,6 +805,13 @@ impl<S: SegmentSource> Segment<S> {
             decoded.push(Some((backing, n * size)));
         }
         seg.decoded = decoded;
+        // Same once-per-open treatment for a packed string heap. Unpacking is
+        // fully bounds-checked, so it too doubles as structural validation.
+        let raw_strings = seg.raw_strings()?;
+        if crate::codec::heap_is_packed(raw_strings) {
+            seg.decoded_strings =
+                Some(crate::codec::unpack_heap(raw_strings).map_err(|e| e.at_file(&seg.path))?);
+        }
         Ok(seg)
     }
 
@@ -857,7 +873,10 @@ impl<S: SegmentSource> Segment<S> {
     }
 
     pub fn strings(&self) -> Result<StringView<'_>> {
-        StringView::parse(self.raw_strings()?)
+        match &self.decoded_strings {
+            Some(raw) => StringView::parse(raw),
+            None => StringView::parse(self.raw_strings()?),
+        }
     }
 
     fn typed<T: Copy>(&self, name: &str, dtype: DType) -> Result<&[T]> {
