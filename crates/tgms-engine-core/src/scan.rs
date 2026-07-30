@@ -375,19 +375,65 @@ impl<'a, S: SegmentSource> ScanSet<'a, S> {
         selections: &[Selection],
         limit: Option<usize>,
     ) -> Result<Vec<(usize, u32)>> {
+        // Hoisted per selection: the vt_s slice and both vid halves. The
+        // first version resolved the vt_s column *by name* and built an Id96
+        // for every row popped from the heap — lesson §2's defect, recurring
+        // here at 10M rows a call.
+        struct Cols<'a> {
+            vt_s: &'a [i64],
+            hi: &'a [u64],
+            lo: &'a [u32],
+        }
+        let mut cols = Vec::with_capacity(selections.len());
+        for sel in selections {
+            let seg = self.targets[sel.segment].segment;
+            cols.push(Cols {
+                vt_s: seg.i64_column("vt_s")?,
+                hi: seg.u64_column("vid64")?,
+                lo: seg.u32_column("vid_lo32")?,
+            });
+        }
+        let key = |si: usize, row: u32| -> (i64, Id96) {
+            let c = &cols[si];
+            let r = row as usize;
+            (c.vt_s[r], Id96 { hi: c.hi[r], lo: c.lo[r] })
+        };
+        let cap = limit.unwrap_or(usize::MAX);
+
+        // Fast path: valid-time clustering means segments rarely interleave.
+        // When each selection's whole key range sits before the next one's,
+        // the merge is concatenation — O(rows) with no heap and no per-row
+        // key at all. The check is exact (it uses the selected rows' own
+        // first/last keys), so this is byte-identical to the heap path.
+        let mut order: Vec<usize> = (0..selections.len())
+            .filter(|&si| !selections[si].rows.is_empty())
+            .collect();
+        order.sort_by_key(|&si| key(si, selections[si].rows[0]));
+        let disjoint = order.windows(2).all(|w| {
+            let last = *selections[w[0]].rows.last().expect("non-empty");
+            key(w[0], last) <= key(w[1], selections[w[1]].rows[0])
+        });
+        if disjoint {
+            let mut out = Vec::new();
+            'outer: for &si in &order {
+                let sel = &selections[si];
+                for &row in &sel.rows {
+                    out.push((sel.segment, row));
+                    if out.len() >= cap {
+                        break 'outer;
+                    }
+                }
+            }
+            return Ok(out);
+        }
+
         let mut heap: BinaryHeap<Reverse<(i64, Id96, usize, usize)>> = BinaryHeap::new();
         for (si, sel) in selections.iter().enumerate() {
             if let Some(&row) = sel.rows.first() {
-                let seg = self.targets[sel.segment].segment;
-                heap.push(Reverse((
-                    seg.i64_column("vt_s")?[row as usize],
-                    seg.vid_at(row as usize)?,
-                    si,
-                    0,
-                )));
+                let (t, vid) = key(si, row);
+                heap.push(Reverse((t, vid, si, 0)));
             }
         }
-        let cap = limit.unwrap_or(usize::MAX);
         let mut out = Vec::new();
         while let Some(Reverse((_, _, si, pos))) = heap.pop() {
             let sel = &selections[si];
@@ -396,24 +442,13 @@ impl<'a, S: SegmentSource> ScanSet<'a, S> {
                 break;
             }
             if let Some(&next) = sel.rows.get(pos + 1) {
-                let seg = self.targets[sel.segment].segment;
-                heap.push(Reverse((
-                    seg.i64_column("vt_s")?[next as usize],
-                    seg.vid_at(next as usize)?,
-                    si,
-                    pos + 1,
-                )));
+                let (t, vid) = key(si, next);
+                heap.push(Reverse((t, vid, si, pos + 1)));
             }
         }
         Ok(out)
     }
 
-    /// Materialize a sorted struct-of-arrays — the shape
-    /// `edges_columnar` hands to Python. Done once, at the boundary.
-    ///
-    /// Only projected columns are built. The integer columns are near-free;
-    /// the string ones each cost an allocation per row, so skipping the
-    /// unasked-for ones is most of the work this function does.
     pub fn materialize_edges(&self, req: &ScanRequest) -> Result<(EdgeColumns, ScanStats)> {
         let (selections, stats) = self.select(req)?;
         let order = self.merged(&selections, req.limit)?;
