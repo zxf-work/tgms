@@ -42,6 +42,10 @@ const SUBDIRS: [&str; 4] = ["manifests", "seg", "close", "idx"];
 
 pub struct NativeStore {
     root: PathBuf,
+    /// Canonicalized root — the key under which this handle pins its
+    /// generation in the process-global reader table (gc.rs). Canonical so
+    /// two handles opened through different spellings of one path agree.
+    pin_key: PathBuf,
     dict: Dictionary,
     manifest: Manifest,
     staging: Staging,
@@ -101,8 +105,11 @@ impl NativeStore {
             manifest.dict.records,
             manifest.dict.bytes,
         )?;
+        let pin_key = fs::canonicalize(&root).unwrap_or_else(|_| root.clone());
+        crate::gc::pin(&pin_key, manifest.generation);
         Ok(Self {
             root,
+            pin_key,
             dict,
             manifest,
             staging: Staging::default(),
@@ -182,6 +189,33 @@ impl NativeStore {
         &self.root
     }
 
+    pub(crate) fn pin_key(&self) -> &Path {
+        &self.pin_key
+    }
+
+    /// Adopt a freshly published manifest as this handle's view, moving its
+    /// reader pin with it. Every path that advances `self.manifest` after
+    /// open must come through here or gc could collect the old view early —
+    /// or keep protecting a generation nobody holds.
+    fn adopt(&mut self, next: Manifest) {
+        crate::gc::repin(&self.pin_key, self.manifest.generation, next.generation);
+        self.manifest = next;
+    }
+
+    /// Drop cached segments gc just removed from disk. Sound because ids are
+    /// never reused (`Manifest::next_segment_id`), so an evicted name can
+    /// never come back meaning different bytes.
+    pub(crate) fn evict_segments_not_in(&self, keep: &std::collections::HashSet<String>) {
+        self.segments
+            .lock()
+            .expect("segment-cache mutex poisoned")
+            .retain(|file, _| keep.contains(file));
+        self.verified
+            .lock()
+            .expect("verified-set mutex poisoned")
+            .retain(|file| keep.contains(file));
+    }
+
     pub fn generation(&self) -> u64 {
         self.manifest.generation
     }
@@ -220,7 +254,7 @@ impl NativeStore {
             ));
         }
         Self::publish(&self.root, &next)?;
-        self.manifest = next;
+        self.adopt(next);
         Ok(self.manifest.generation)
     }
 
@@ -539,7 +573,7 @@ impl NativeStore {
 
         // steps 4-5 — manifest, then CURRENT
         Self::publish(&self.root, &next)?;
-        self.manifest = next;
+        self.adopt(next);
         self.staging.clear();
         self.staged_closes.clear();
         self.pending_closes.clear();
@@ -562,6 +596,12 @@ impl NativeStore {
     fn require_batch(&self) -> Result<i64> {
         self.batch_tt
             .ok_or_else(|| EngineError::invariant("no batch is open; call begin() first"))
+    }
+}
+
+impl Drop for NativeStore {
+    fn drop(&mut self) {
+        crate::gc::unpin(&self.pin_key, self.manifest.generation);
     }
 }
 

@@ -93,6 +93,13 @@ def main(argv: list[str] | None = None) -> int:
     p_eval.add_argument("--force", default=None,
                         help="rerun the frozen test split; reason is logged (§8.3)")
 
+    p_store = sub.add_parser("store", help="native store maintenance")
+    p_store.add_argument("action", choices=["gc", "compact"])
+    p_store.add_argument("--store", required=True)
+    p_store.add_argument("--keep", type=int, default=2,
+                         help="gc: generations to retain besides those "
+                              "pinned by live readers (default 2)")
+
     p_mem = sub.add_parser("memory", help="evolution-memory maintenance")
     p_mem.add_argument("action", choices=["build"])
     p_mem.add_argument("--store", required=True)
@@ -255,6 +262,15 @@ def main(argv: list[str] | None = None) -> int:
         rows = run_matrix(cfg, llm_fn=llm_fn, force=args.force,
                           usage_log=usage)
         print(json.dumps({"rows": len(rows), "out_dir": cfg["out_dir"]}))
+    elif args.cmd == "store":
+        import tgms
+        store = tgms.open(args.store, backend="native")
+        if args.action == "gc":
+            report = store.adapter.gc(keep_last=args.keep)
+        else:
+            report = store.adapter.compact()
+        print(json.dumps(report))
+        store.close()
     elif args.cmd == "memory":
         import tgms
         from tgms.agent.memory import MICROS_PER_DAY, EvolutionMemory

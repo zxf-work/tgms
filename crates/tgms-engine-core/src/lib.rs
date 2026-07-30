@@ -16,6 +16,7 @@ pub mod compact;
 pub mod derive;
 pub mod dict;
 pub mod error;
+pub mod gc;
 pub mod interval;
 pub mod manifest;
 pub mod motif;
@@ -29,6 +30,7 @@ pub mod visibility;
 
 pub use derive::{edge_eid, version_vid, Id96};
 pub use dict::Dictionary;
+pub use gc::GcReport;
 pub use manifest::Manifest;
 pub use row::{EdgeRow, Lane, NodeRow, RowKind};
 pub use store::NativeStore;
@@ -59,6 +61,10 @@ pub mod defaults {
     pub const LANE_MAX_PARTITION_CROSSINGS: u32 = 2;
     /// TCSR switches to dense per-vertex offsets at or above this density.
     pub const TCSR_DENSE_THRESHOLD: f64 = 0.5;
+    /// Generations gc retains besides those pinned by live readers. 2 keeps
+    /// one full generation of headroom behind `CURRENT` for post-incident
+    /// inspection while still bounding manifest growth.
+    pub const GC_KEEP_GENERATIONS: u64 = 2;
 }
 
 /// `as_of_tt = OPEN_END` means "current beliefs"; clamping keeps the

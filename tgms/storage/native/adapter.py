@@ -359,6 +359,20 @@ class NativeAdapter(StorageAdapter):
         except Exception as e:
             raise _translate(e) from None
 
+    def gc(self, keep_last: int = 2) -> dict[str, int]:
+        """Collect superseded generations (spec §5.6, `tgms store gc`).
+
+        Removes manifests older than the last `keep_last` generations, then
+        any segment or close-run file no retained manifest references. The
+        generation `CURRENT` names and generations pinned by in-process
+        readers are never touched, so this is safe to run any time no batch
+        is open.
+        """
+        try:
+            return self._store.gc(keep_last)
+        except Exception as e:
+            raise _translate(e) from None
+
     def resolve_entities(self, query: str, as_of_tt: int = OPEN_END):
         """Engine-side entity resolution (O12).
 

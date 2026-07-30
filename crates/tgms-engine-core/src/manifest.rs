@@ -140,7 +140,8 @@ pub struct Manifest {
     pub edge_lanes: EdgeLanes,
     pub close_runs: Vec<CloseRunRef>,
     /// Next unused segment file id. Ids are never reused: an older manifest
-    /// may still reference a file, and this engine deletes nothing.
+    /// may still reference a file, and deletion happens only through gc,
+    /// which never touches a file a retained generation names.
     pub next_segment_id: u64,
     pub stats: Stats,
     /// SHA of this manifest with this field blanked. Always last.

@@ -15,9 +15,10 @@
 //! than by store size. A streaming, partition-at-a-time merge is the natural
 //! successor once a store outgrows RAM; the file format does not change.
 //!
-//! Old segment files are left on disk. Nothing is deleted in this version of
-//! the engine (D-028 #9): an older manifest may still reference them, and a
-//! reader holding that generation must keep working.
+//! Old segment files are left on disk: an older manifest may still reference
+//! them, and a reader holding that generation must keep working. Reclaiming
+//! them is generation collection's job (gc.rs), which removes a file only
+//! once no retained generation names it.
 
 use std::collections::HashMap;
 

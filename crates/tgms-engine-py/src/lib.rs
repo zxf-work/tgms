@@ -612,6 +612,21 @@ impl NativeStore {
         d.set_item("node_rows", r.node_rows)?;
         Ok(d.into())
     }
+
+    /// Collect superseded generations: manifests older than the retention
+    /// window, then any segment or close-run file no retained manifest
+    /// references (superseded by compaction, or orphaned by a crash).
+    #[pyo3(signature = (keep_last = tgms_engine_core::defaults::GC_KEEP_GENERATIONS))]
+    fn gc(&mut self, py: Python<'_>, keep_last: u64) -> Res<Py<PyDict>> {
+        let r = self.inner.gc(keep_last).map_err(err)?;
+        let d = PyDict::new(py);
+        d.set_item("manifests_removed", r.manifests_removed)?;
+        d.set_item("segments_removed", r.segments_removed)?;
+        d.set_item("close_runs_removed", r.close_runs_removed)?;
+        d.set_item("bytes_reclaimed", r.bytes_reclaimed)?;
+        d.set_item("generations_retained", r.generations_retained)?;
+        Ok(d.into())
+    }
 }
 
 /// δ-temporal motif matching (O6/O7).
