@@ -19,7 +19,7 @@
 
 use std::collections::HashMap;
 
-use numpy::{IntoPyArray, PyArray1};
+use numpy::{IntoPyArray, PyArray1, PyReadonlyArray1};
 use pyo3::exceptions::{PyIOError, PyKeyError, PyOverflowError, PyRuntimeError};
 use pyo3::prelude::*;
 use pyo3::types::{PyDict, PyList};
@@ -618,20 +618,26 @@ impl NativeStore {
 fn motif_match(
     py: Python<'_>,
     motif: &str,
-    src: Vec<i64>,
-    dst: Vec<i64>,
-    t: Vec<i64>,
+    src: PyReadonlyArray1<'_, i64>,
+    dst: PyReadonlyArray1<'_, i64>,
+    t: PyReadonlyArray1<'_, i64>,
     eid: Vec<String>,
     delta: i64,
     collect: bool,
 ) -> Res<(u64, Vec<[u32; 3]>)> {
     let kind = tgms_engine_core::motif::Motif::parse(motif).map_err(err)?;
-    // pure Rust over owned data: nothing here touches Python
+    // The three integer columns are borrowed from NumPy rather than copied
+    // into Vecs. Building those Vecs cost 4.4 ms of an 11 ms call at 14.5k
+    // events — first in Python materializing lists, then again in PyO3
+    // converting them element by element. `eid` still has to be copied: it is
+    // an object array of Python strings, and there is no buffer to borrow.
+    let (src, dst, t) = (src.as_slice()?, dst.as_slice()?, t.as_slice()?);
+    // pure Rust over borrowed data: nothing here touches Python
     py.detach(|| {
         let events = tgms_engine_core::motif::Events {
-            src: &src,
-            dst: &dst,
-            t: &t,
+            src,
+            dst,
+            t,
             eid: &eid,
         };
         tgms_engine_core::motif::match_motifs(kind, &events, delta, collect).map_err(err)

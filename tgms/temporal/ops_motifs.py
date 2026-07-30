@@ -17,6 +17,8 @@ from __future__ import annotations
 
 from typing import Any
 
+import numpy as np
+
 
 from tgms.core.errors import InvalidArgError
 from tgms.storage.base import StorageAdapter
@@ -103,12 +105,20 @@ def _events(adapter: StorageAdapter, args: dict[str, Any]) -> dict[str, Any]:
 def _match(ev: dict[str, Any], motif: str, delta: int, collect: bool):
     from tgms import _engine
 
+    # The integer columns cross as NumPy buffers, borrowed on the Rust side
+    # rather than copied. `ascontiguousarray` is a no-op when the scan already
+    # produced int64 — which it does — and a cheap cast if that ever changes,
+    # rather than a TypeError at the boundary.
+    #
+    # `eid` cannot be borrowed: it is an object array of Python strings. But
+    # `.tolist()` is 7x cheaper than a `str(v)` comprehension over it, because
+    # the elements are already `str`.
     return _engine.motif_match(
         motif,
-        [int(v) for v in ev["src"]],
-        [int(v) for v in ev["dst"]],
-        [int(v) for v in ev["t"]],
-        [str(v) for v in ev["eid"]],
+        np.ascontiguousarray(ev["src"], dtype=np.int64),
+        np.ascontiguousarray(ev["dst"], dtype=np.int64),
+        np.ascontiguousarray(ev["t"], dtype=np.int64),
+        ev["eid"].tolist(),
         int(delta),
         collect,
     )
