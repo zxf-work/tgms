@@ -134,17 +134,20 @@ CollegeMsg motif row exposed, second instance.
 
 | query | native | duckdb | postgres | fastest |
 |---|---:|---:|---:|---|
-| hist.single | **0.1** | 7.2 | 0.3 | native |
-| snap.hop2 | **2.5** | 14.2 | 8.4 | native |
-| diff.global | **5.2** | 23.6 | 8.3 | native |
-| reach.window | **2.1** | 9.5 | 38.8 | native |
-| paths.k | **137.0** | 141.7 | 306.7 | native |
-| coactive.narrow | **1.4** | 14.4 | 37.5 | native |
-| resolve.substr | **2.6** | 17.0 | 5.2 | native |
-| motif.filtered | **3.8** | 22.0 | 27.7 | native |
+| hist.single | **0.1** | 7.3 | 0.3 | native |
+| snap.hop2 | **2.3** | 14.1 | 8.6 | native |
+| diff.global | **4.6** | 21.4 | 8.5 | native |
+| reach.window | **1.6** | 9.6 | 39.2 | native |
+| paths.k | **137.6** | 143.2 | 307.6 | native |
+| series.count | **1.4** | 19.6 | 20.2 | native |
+| coactive.narrow | **1.2** | 13.9 | 37.4 | native |
+| resolve.substr | **2.8** | 16.8 | 5.2 | native |
+| motif.filtered | **3.6** | 21.9 | 27.4 | native |
 
-Full table in `eval-collegemsg-costfix.json` (the pre-reprice record, with
-the motif refusals, is `eval-collegemsg.json`). Instant snapshots and interval joins
+One coherent run at the current tip (parallel scan, merge fast path, gc,
+and the cost-model reprice all in): `eval-collegemsg.json`. The reprice's
+own rerun record is `eval-collegemsg-costfix.json`; the pre-reprice motif
+refusals survive only in this file's history. Instant snapshots and interval joins
 are legitimately thin here — the events are instantaneous, so microsecond
 intervals cannot strictly overlap — and the belief probe works without
 corrections because it pins mid-ingestion state.
