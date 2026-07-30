@@ -281,6 +281,121 @@ def test_a_reader_holding_an_older_generation_is_unaffected_by_a_writer(tmp_path
     assert [v.props for v in reopen(root).believed_node_versions("n1", OPEN_END)] == [{"p": 99}]
 
 
+# --- generation collection ------------------------------------------------ #
+#
+# gc's contract mirrors the durability objective: whatever it removes, the
+# store must keep opening, verifying clean, and serving exactly the current
+# generation's content. The generation CURRENT names is categorically
+# untouchable, and an interrupted pass may only under-collect.
+
+
+def manifest_files(root: Path) -> list[Path]:
+    return sorted((native_dir(root) / "manifests").glob("*.json"))
+
+
+def segment_count(root: Path) -> int:
+    return len(list((native_dir(root) / "seg").glob("*.tgs")))
+
+
+def test_gc_never_touches_the_current_generation(tmp_path):
+    root = tmp_path / "s"
+    adapter = build(root)
+    gen = current_generation(root)
+    before = sorted(v.vid for v in adapter.all_edge_versions())
+    assert len(manifest_files(root)) > 1, "fixture should span generations"
+
+    report = adapter.gc(keep_last=1)
+
+    assert report["manifests_removed"] > 0
+    assert report["bytes_reclaimed"] > 0
+    assert manifest_files(root) == [native_dir(root) / "manifests" / f"{gen:020}.json"]
+    assert current_generation(root) == gen, "CURRENT must be untouched"
+    assert sorted(v.vid for v in adapter.all_edge_versions()) == before
+    # and a fresh open of the collected store is healthy end to end
+    re = reopen(root)
+    assert re.generation == gen
+    assert sorted(v.vid for v in re.all_edge_versions()) == before
+    assert re.verify()["healthy"]
+
+
+def test_gc_after_compaction_reclaims_superseded_segments(tmp_path):
+    root = tmp_path / "s"
+    adapter = build(root)
+    before = sorted(v.vid for v in adapter.all_edge_versions())
+    segments_before = segment_count(root)
+    assert list((native_dir(root) / "close").glob("*.tgc")), (
+        "the fixture's correction should have written a close run"
+    )
+
+    adapter.compact()  # supersedes every old segment, folds the close run
+    report = adapter.gc(keep_last=1)
+
+    assert report["segments_removed"] == segments_before
+    assert report["close_runs_removed"] == 1
+    assert segment_count(root) < segments_before
+    assert not list((native_dir(root) / "close").glob("*.tgc"))
+    assert sorted(v.vid for v in adapter.all_edge_versions()) == before
+    assert reopen(root).verify()["healthy"]
+
+
+def test_interrupted_gc_leaves_the_store_openable(tmp_path):
+    """gc killed between its passes: some superseded manifests deleted, the
+    segments only they referenced still on disk, a temp file left behind."""
+    root = tmp_path / "s"
+    adapter = build(root)
+    before = sorted(v.vid for v in adapter.all_edge_versions())
+    adapter.compact()
+    gen = current_generation(root)
+
+    doomed = [p for p in manifest_files(root) if int(p.stem) != gen]
+    assert doomed, "expected superseded manifests for the pass to be amid"
+    doomed[0].unlink()
+    (native_dir(root) / "manifests" / "junk.tmp").write_bytes(b"partial")
+
+    re = reopen(root)
+    assert re.generation == gen
+    assert sorted(v.vid for v in re.all_edge_versions()) == before
+    assert re.verify()["healthy"]
+
+    # the next pass finishes the job
+    re.gc(keep_last=1)
+    assert not (native_dir(root) / "manifests" / "junk.tmp").exists()
+    assert manifest_files(root) == [native_dir(root) / "manifests" / f"{gen:020}.json"]
+    assert sorted(v.vid for v in re.all_edge_versions()) == before
+    assert re.verify()["healthy"]
+
+
+def test_gc_spares_a_generation_pinned_by_an_open_reader(tmp_path):
+    """The reader-pin rule: a reader that opened at generation N keeps N on
+    disk through any number of gc passes, and N collects once it closes."""
+    import gc as pygc
+
+    import tgms
+
+    root = tmp_path / "s"
+    store = tgms.open(root, backend="native")
+    store.assert_node("n1", "N", {"p": 1}, vt_s=0, vt_e=50)
+
+    reader = reopen(root)
+    pinned_gen = reader.generation
+    pinned_manifest = native_dir(root) / "manifests" / f"{pinned_gen:020}.json"
+    before = [v.props for v in reader.believed_node_versions("n1", OPEN_END)]
+
+    store.correct(EntityRef(kind="node", uid="n1"), {"p": 99}, vt_s=0, vt_e=50)
+    store.assert_node("n2", "N", {"q": 1}, vt_s=0, vt_e=50)
+    store.adapter.gc(keep_last=1)
+
+    assert pinned_manifest.exists(), "a pinned generation must survive gc"
+    assert reader.generation == pinned_gen
+    assert [v.props for v in reader.believed_node_versions("n1", OPEN_END)] == before
+
+    del reader
+    pygc.collect()  # drop the engine handle, and with it the pin
+    store.adapter.gc(keep_last=1)
+    assert not pinned_manifest.exists(), "an unpinned generation must collect"
+    assert reopen(root).verify()["healthy"]
+
+
 def test_projected_scan_over_empty_window_keeps_requested_columns(tmp_path):
     """Regression: a projection must decide the key set, not the row count.
 
