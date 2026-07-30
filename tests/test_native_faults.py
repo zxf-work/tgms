@@ -279,3 +279,21 @@ def test_a_reader_holding_an_older_generation_is_unaffected_by_a_writer(tmp_path
     )
     # a freshly opened reader does see it
     assert [v.props for v in reopen(root).believed_node_versions("n1", OPEN_END)] == [{"p": 99}]
+
+
+def test_projected_scan_over_empty_window_keeps_requested_columns(tmp_path):
+    """Regression: a projection must decide the key set, not the row count.
+
+    scan_edges once omitted the vid key whenever zero rows matched, so a
+    projected scan over an empty window raised KeyError in the adapter while
+    the same call over a non-empty window worked (fixed alongside the
+    diff_snapshots projection).
+    """
+    adapter = build(tmp_path)
+    for cols in (None, ("vid",), ("eid", "vid", "src_id", "dst_id", "rel_type")):
+        # every fixture row lives at vt >= 0; this window matches nothing
+        got = adapter.edges_columnar(vt_min=-20, vt_max=-10, columns=cols)
+        expected = {"src_id", "dst_id", "vt_s", "vt_e",
+                    "eid", "vid", "rel_type"} if cols is None else set(cols)
+        assert expected <= set(got), (cols, sorted(got))
+        assert all(len(got[c]) == 0 for c in expected)
