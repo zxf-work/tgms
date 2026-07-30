@@ -358,15 +358,25 @@ bytes, the standing price of derived identity), 4.4 B of packed string heap,
 packing cost no measurable query latency: medians are within noise of the
 D-032 run, since both decode once per process behind the segment cache.
 
-Two honest caveats. Query latency *improved* alongside (co_active 37.3 →
-23.5 ms, nbr.evolution 15.0 → 5.6, diff 60.4), but compression landed
-together with a store-level segment cache that stops every operator call
-re-opening and re-parsing every segment — the gain belongs to the pair, and
-no ablation separates them. And the **manifest directory is now the
-dominant overhead**: 24 MB at 1M rows after ~250 commits, against 31 MB of
-segments — every commit writes a full manifest naming every segment, and
-nothing collects superseded generations. Whole-store bytes are therefore
-~56 B/row today, most of it reclaimable metadata, not data.
+One honest caveat stands. Query latency *improved* alongside (co_active
+37.3 → 23.5 ms, nbr.evolution 15.0 → 5.6, diff 60.4), but compression
+landed together with a store-level segment cache that stops every operator
+call re-opening and re-parsing every segment — the gain belongs to the
+pair, and no ablation separates them.
+
+The other caveat this section used to carry — manifest retention as the
+dominant overhead — is closed. Every commit still writes a full manifest
+naming every segment, and at 1M rows the 283 commits had accumulated
+23.6 MB of manifests (23.4 B/row) against 24.8 MB of segments. Generation
+collection (`tgms store gc`, D-034) now removes generations outside a
+retention window — the last K plus any pinned by a live reader — and the
+same pass collects segment and close-run files no retained generation
+references. Measured on the same 1M build (xzgpu): whole store 48.2 →
+**25.1 B/row** after gc alone (manifests 23.41 → 0.33 B/row, 283 files →
+2), and **24.6 B/row** after compaction merges the 283 segments into 3 and
+gc collects the superseded files — reclaiming compaction's 2× transient
+(50.0 MB peak → 24.8 MB). What a retained manifest costs stays O(segments):
+165 KB while it names 283 segments, 1 KB naming the 3 post-compaction ones.
 
 The PostgreSQL comparison stays unratioed: its schema carries eight edge
 indexes chosen for the whole registry against two on the TGMS side. See

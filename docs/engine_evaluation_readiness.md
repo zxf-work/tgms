@@ -98,11 +98,13 @@ base rows saved. Compression (blueprint C4) is what would restore headroom,
 and this is the measurement that makes it worth doing rather than a
 deferred nicety.
 
-**Temporary compaction space: +99%.** Compaction rewrites content into fresh
-segments and deletes nothing (D-028 #9, no GC), so peak usage is twice the
-store — 66.47 MB became 132.41 MB while merging 24 segments into 3. Any
-capacity planning has to budget 2× the store, and reclaiming it needs the
-explicit `tgms store gc` that does not exist yet.
+**Temporary compaction space: +99%, now reclaimable.** Compaction rewrites
+content into fresh segments and deletes nothing itself, so peak usage is
+twice the store — 66.47 MB became 132.41 MB while merging 24 segments into
+3. Capacity planning still has to budget 2× *during* the pass, but the
+explicit `tgms store gc` (D-034) now collects the superseded files
+afterwards: on the 1M store, 50.0 MB peak returned to 24.8 MB once gc
+removed the 283 superseded segments.
 
 ### Operations — met
 

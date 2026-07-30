@@ -559,3 +559,41 @@ implementation — hygiene checking starts at the marker recorded in D-010.
   48.8% of segment bytes: the compression story ends at the identity
   design, and the remaining store overhead is the manifest retention
   problem, not the data.
+
+## D-034 — generation collection: retention window plus reader pins
+
+- **Date:** 2026-07-30
+- **Context:** every commit publishes `manifests/<G>.json` naming every
+  live segment, and nothing collected superseded generations — at 1M rows
+  the 283 commits held 23.6 MB of manifests against 24.8 MB of segments
+  (the "retention problem" D-032/D-033 filed separately). Compaction has
+  the same question from the other side: superseded segments stay on disk,
+  so its peak is 2× the store. The engine is single-writer with in-process
+  readers; there is no cross-process reader registry.
+- **Decision:** one gc pass, one rule — a file is removed exactly when no
+  retained generation names it. Retained = the generation `CURRENT` names,
+  the last K generations (`keep_last`, default 2), and any generation
+  pinned by a live in-process reader: every open `NativeStore` registers
+  its generation in a process-global pin table keyed by canonical store
+  root, commits re-pin, drop unregisters. Cross-process readers are
+  deliberately out of scope — they hold their manifest in memory and
+  already-opened segments via mmap, so the one exposure is a lazy first
+  open of a collected segment, which fails with a *detected* IO error
+  naming the file, never silent wrong data. Crash order: superseded
+  manifests are deleted first, the directory fsynced, and segment/close
+  eligibility is then recomputed from the manifests actually on disk, so
+  an interrupted pass can only under-collect; `CURRENT` and its files are
+  categorically untouched. Exposed as `NativeStore::gc(keep_last)`,
+  `NativeAdapter.gc`, and `tgms store gc --keep K` (the blueprint's
+  deferred command; `store compact` gained a CLI alongside). The same pass
+  collects segments a crashed batch orphaned.
+- **Measured (xzgpu, 1M rows):** whole store 48.2 → **25.1 B/row** after
+  gc alone — manifests 23.41 → 0.33 B/row (283 files → 2) — and **24.6**
+  after compaction merges 283 segments into 3 and gc collects the
+  superseded files plus all 262 folded close runs, reclaiming the 2×
+  compaction transient (50.0 MB peak → 24.8 MB). A retained manifest still
+  costs O(segments): 165 KB naming 283 segments, 1 KB naming 3.
+- **Consequence:** gc is explicit, like compaction — no background
+  schedule. The fault matrix gains four cases (CURRENT untouchable,
+  interrupted pass, reader pins, orphan collection); `docs/eval_phase0.md`
+  "Storage" now reports whole-store B/row with retention closed.
