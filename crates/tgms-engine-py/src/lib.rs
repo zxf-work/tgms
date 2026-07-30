@@ -489,8 +489,17 @@ impl NativeStore {
                 .collect::<Vec<_>>()
                 .into_pyarray(py),
         )?;
-        // only pay for hex when the caller asked for it
-        if !cols.vid.is_empty() || req.columns.is_none() {
+        // Only pay for hex when the caller asked for it — decided from the
+        // request, like eid above, never from the result. The previous test
+        // (`!cols.vid.is_empty()`) conflated "not requested" with "zero rows
+        // matched", so a projected scan over an empty window returned a dict
+        // with no vid key and the adapter raised KeyError.
+        let want_vid = req
+            .columns
+            .as_ref()
+            .map(|c| c.iter().any(|x| x == "vid"))
+            .unwrap_or(true);
+        if want_vid {
             d.set_item("vid", PyList::new(py, cols.vid.iter().map(|v| v.to_hex()))?)?;
         }
         d.set_item("rel_type", PyList::new(py, &cols.rel_type)?)?;
