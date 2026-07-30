@@ -30,8 +30,9 @@ to move the number.
 | 10M scans are materialize-bound | parallel materialize moved 811 → 819 ms | still unknown — selection or the NumPy boundary |
 
 Three of those nine fixes we implemented were *correct but irrelevant* — the
-contiguous-run copy and the postings index both stayed, because they are
-cheap and right, but neither produced the win attributed to them.
+contiguous-run copy, the postings index, and the parallel materialization
+all stayed, because they are cheap and right, but none produced the win
+attributed to them.
 
 The concrete discipline that worked: after implementing a fix, re-measure
 before writing the commit message. If the number did not move, the
