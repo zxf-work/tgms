@@ -61,12 +61,40 @@ EXACT_EDGE_CAP = 5_000_000
 
 
 def _motif_cost(args: dict[str, Any], stats: dict[str, Any]) -> dict[str, int]:
-    e_w = int(stats.get("n_edge_versions", 0) * window_fraction(args, stats))
-    deg = max(1, int(stats.get("max_out_degree", 1)))
+    """Charge half the estimated delta-ordered event pairs.
+
+    Two estimates multiply, and each is chosen to over- rather than
+    under-count:
+
+    - Filtered event count: a node_filter keeps an event only when *both*
+      endpoints are in it, but the estimate charges the filter's whole
+      degree mass `k * mean_out_degree` — every event whose src is in an
+      average-degree filter, dst unexamined. Mean degree, not max: the old
+      `min(e_w, k*max_deg) * max_deg` form priced CollegeMsg's skew (one
+      user, out-degree 1091) at 65M expansions when the filtered query
+      actually touches 1102 events — a guardrail false positive found by
+      the PostgreSQL baseline (docs/eval_phase0.md).
+    - Pairs among those events: the matcher expands an event only into
+      events within `delta`, so uniformly-spread events pair at density
+      `delta / span`. Half of that product is charged: the structural join
+      (next edge must attach to *this* motif's nodes) prunes far deeper
+      than half, so the constant keeps measured anchors conservative —
+      CollegeMsg-shaped skew estimates 0.40M (actual pairs 0.17M) and the
+      synthetic 200k log at node_filter = |V|/5 estimates 14.5M (actual
+      pairs 18.7M), which keeps that genuinely heavy case refused.
+    """
+    n_ev = int(stats.get("n_edge_versions", 0))
+    wf = window_fraction(args, stats)
+    e_f = int(n_ev * wf)
     if args.get("node_filter"):
-        e_w = min(e_w, len(args["node_filter"]) * deg)
-    return {"rows_scanned_est": stats.get("n_edge_versions", 0),
-            "expansions_est": min(e_w * deg, 2**40)}
+        mean_deg = max(1.0, n_ev / max(1, int(stats.get("n_entities", 1))))
+        e_f = min(e_f, int(len(args["node_filter"]) * mean_deg * wf) + 1)
+    vt_min, vt_max = stats.get("vt_min"), stats.get("vt_max")
+    span = int((vt_max - vt_min) * wf) if vt_min is not None \
+        and vt_max is not None and vt_max > vt_min else 0
+    density = min(1.0, args["delta"] / span) if span > 0 else 1.0
+    return {"rows_scanned_est": n_ev,
+            "expansions_est": min(int(e_f * e_f * density / 2), 2**40)}
 
 
 #: Everything the matcher and the instance formatter read, and nothing else.
