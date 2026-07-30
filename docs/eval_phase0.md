@@ -78,6 +78,39 @@ survive 5× the data, which makes it the next thing worth profiling, not
 hiding. And native's point lookup holds flat at 1.1 ms across scale while
 PostgreSQL holds at 0.3; DuckDB's 23.7 grows, because it is a scan.
 
+### synth, 10M events (abridged)
+
+| query | native | duckdb | postgres | fastest |
+|---|---:|---:|---:|---|
+| hist.single | **1.7** | 66.1 | 0.3 | postgres |
+| snap.hop2 | **1001.4** | 1716.3 | 2538.3 | native |
+| diff.global | **3918.9** | 5611.7 | 6686.9 | native |
+| reach.window | n/a | n/a | **43987.2** | guardrailed |
+| paths.k | n/a | n/a | **38.0** | guardrailed |
+| series.count | 1207.9 | **956.6** | 2160.0 | duckdb |
+| burst.zscore | 1209.4 | **957.2** | 2127.7 | duckdb |
+| nbr.evolution | 70.5 | 105.7 | **2.7** | postgres |
+| coactive.narrow | 724.1 | **224.9** | 1722.4 | duckdb |
+| resolve.substr | **34.8** | 775.4 | 201.0 | native |
+| motif.filtered | 227.1 | **167.0** | 644.1 | duckdb |
+
+10M inverts part of the picture, and the pattern of what flips is the
+finding. **Every query DuckDB now wins is a full-window scan** — series,
+burst, the interval join (3.2× faster), the motif event fetch — while native
+keeps everything index-served or selective (point lookup flat at 1.7 ms,
+resolve 22× faster, snapshots and diff still ahead). The obvious hypothesis
+is parallelism: DuckDB scans on all 40 cores, the native scan is
+single-threaded. That is a hypothesis, not a measurement — nothing here
+profiles it — but it is the first structural argument for parallel scan in
+the native engine, and it puts a number on what it would buy.
+
+The guardrail gates both traversal queries on TGMS at this scale.
+PostgreSQL's answers split the verdict: reachability genuinely explodes
+(44 s), so that refusal is the guardrail working; but `paths.k` runs in
+**38 ms** — the k-shortest search is cheap at any scale because the frontier
+is bounded — so that refusal is the same cost-model false positive the
+CollegeMsg motif row exposed, second instance.
+
 ### CollegeMsg (59,835 events, real timestamps; abridged)
 
 | query | native | duckdb | postgres | fastest |

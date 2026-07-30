@@ -140,8 +140,8 @@ which is what makes them the useful Phase 0 pair.
 
 ### PostgreSQL
 
-Schema, indexes, tuning, and loader live in `scripts/pg_baseline.py`. The
-registry SQL is not written yet, so no query carries a verdict here.
+Schema, indexes, tuning, and loader live in `scripts/pg_baseline.py`; the
+registry SQL in `scripts/pg_queries.py`.
 
 **How the data gets in.** PostgreSQL is a baseline, not a backend: it never
 implements the write semantics. TGMS produces the canonical version rows and
