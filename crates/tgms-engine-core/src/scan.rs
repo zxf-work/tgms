@@ -370,6 +370,41 @@ impl<'a, S: SegmentSource> ScanSet<'a, S> {
     ///
     /// Only callers that need global order pay for this; a kernel that works
     /// segment-at-a-time consumes `select` directly.
+    /// Are the selections' composite-key ranges pairwise disjoint? Returns
+    /// the selection indices in key order when they are. Exact: it compares
+    /// the selected rows' own first/last keys, so any path that branches on
+    /// this stays byte-identical to the heap merge.
+    fn disjoint_order(&self, selections: &[Selection]) -> Result<Option<Vec<usize>>> {
+        struct K<'a> {
+            vt_s: &'a [i64],
+            hi: &'a [u64],
+            lo: &'a [u32],
+        }
+        let mut cols = Vec::with_capacity(selections.len());
+        for sel in selections {
+            let seg = self.targets[sel.segment].segment;
+            cols.push(K {
+                vt_s: seg.i64_column("vt_s")?,
+                hi: seg.u64_column("vid64")?,
+                lo: seg.u32_column("vid_lo32")?,
+            });
+        }
+        let key = |si: usize, row: u32| -> (i64, Id96) {
+            let c = &cols[si];
+            let r = row as usize;
+            (c.vt_s[r], Id96 { hi: c.hi[r], lo: c.lo[r] })
+        };
+        let mut order: Vec<usize> = (0..selections.len())
+            .filter(|&si| !selections[si].rows.is_empty())
+            .collect();
+        order.sort_by_key(|&si| key(si, selections[si].rows[0]));
+        let disjoint = order.windows(2).all(|w| {
+            let last = *selections[w[0]].rows.last().expect("non-empty");
+            key(w[0], last) <= key(w[1], selections[w[1]].rows[0])
+        });
+        Ok(if disjoint { Some(order) } else { None })
+    }
+
     pub fn merged(
         &self,
         selections: &[Selection],
@@ -400,20 +435,9 @@ impl<'a, S: SegmentSource> ScanSet<'a, S> {
         };
         let cap = limit.unwrap_or(usize::MAX);
 
-        // Fast path: valid-time clustering means segments rarely interleave.
-        // When each selection's whole key range sits before the next one's,
-        // the merge is concatenation — O(rows) with no heap and no per-row
-        // key at all. The check is exact (it uses the selected rows' own
-        // first/last keys), so this is byte-identical to the heap path.
-        let mut order: Vec<usize> = (0..selections.len())
-            .filter(|&si| !selections[si].rows.is_empty())
-            .collect();
-        order.sort_by_key(|&si| key(si, selections[si].rows[0]));
-        let disjoint = order.windows(2).all(|w| {
-            let last = *selections[w[0]].rows.last().expect("non-empty");
-            key(w[0], last) <= key(w[1], selections[w[1]].rows[0])
-        });
-        if disjoint {
+        // Fast path: valid-time clustering means segments rarely interleave;
+        // then the merge is concatenation, no heap, no per-row key.
+        if let Some(order) = self.disjoint_order(selections)? {
             let mut out = Vec::new();
             'outer: for &si in &order {
                 let sel = &selections[si];
@@ -449,8 +473,72 @@ impl<'a, S: SegmentSource> ScanSet<'a, S> {
         Ok(out)
     }
 
+    /// One selection's rows, as columns. The run loop mirrors the merged
+    /// path: contiguous stretches memcpy, everything else pushes.
+    fn materialize_selection(&self, req: &ScanRequest, sel: &Selection) -> Result<EdgeColumns> {
+        let want = |name: &str| {
+            req.columns
+                .as_ref()
+                .map(|c| c.iter().any(|x| x == name))
+                .unwrap_or(true)
+        };
+        let (w_rel, w_disc, w_props) = (want("rel_type"), want("disc"), want("props"));
+        let w_vid = want("vid");
+        let v = SegmentView::open(self.targets[sel.segment].segment)?;
+        let mut cols = EdgeColumns::with_capacity(sel.rows.len());
+        let mut i = 0usize;
+        while i < sel.rows.len() {
+            let mut j = i + 1;
+            while j < sel.rows.len() && sel.rows[j] == sel.rows[j - 1] + 1 {
+                j += 1;
+            }
+            let (a, b) = (sel.rows[i] as usize, sel.rows[i] as usize + (j - i));
+            copy_run(&v, a, b, &mut cols, w_vid, w_rel, w_disc, w_props)?;
+            i = j;
+        }
+        Ok(cols)
+    }
+
     pub fn materialize_edges(&self, req: &ScanRequest) -> Result<(EdgeColumns, ScanStats)> {
         let (selections, stats) = self.select(req)?;
+        // When selections do not interleave (the clustered-store norm) each
+        // one materializes independently — on threads, into its own columns,
+        // appended in key order. Byte-identical to the merged path because
+        // the disjointness check is exact; the 10M-entry order list is never
+        // built at all. Unlimited scans only: a limit reintroduces cross-
+        // selection coupling that the merged path already handles.
+        if req.limit.is_none() {
+            if let Some(order) = self.disjoint_order(&selections)? {
+                let threads = std::thread::available_parallelism()
+                    .map(|n| n.get().min(16))
+                    .unwrap_or(1);
+                let parts: Vec<Result<EdgeColumns>> = if threads > 1 && order.len() >= 4 {
+                    std::thread::scope(|scope| {
+                        let handles: Vec<_> = order
+                            .iter()
+                            .map(|&si| {
+                                let sel = &selections[si];
+                                scope.spawn(move || self.materialize_selection(req, sel))
+                            })
+                            .collect();
+                        handles
+                            .into_iter()
+                            .map(|h| h.join().expect("materialize worker panicked"))
+                            .collect()
+                    })
+                } else {
+                    order
+                        .iter()
+                        .map(|&si| self.materialize_selection(req, &selections[si]))
+                        .collect()
+                };
+                let mut cols = EdgeColumns::with_capacity(stats.rows_selected as usize);
+                for part in parts {
+                    cols.append(part?);
+                }
+                return Ok((cols, stats));
+            }
+        }
         let order = self.merged(&selections, req.limit)?;
         let want = |name: &str| {
             req.columns
@@ -486,40 +574,7 @@ impl<'a, S: SegmentSource> ScanSet<'a, S> {
             }
             let v = views[seg_idx].as_ref().expect("just populated");
             let (a, b) = (first_row as usize, first_row as usize + (j - i));
-
-            cols.vt_s.extend_from_slice(&v.vt_s[a..b]);
-            cols.src_id.extend_from_slice(&v.src_id[a..b]);
-            cols.dst_id.extend_from_slice(&v.dst_id[a..b]);
-            match v.vt_e {
-                Some(col) => cols.vt_e.extend_from_slice(&col[a..b]),
-                // elided means every row is instantaneous
-                None => cols.vt_e.extend(v.vt_s[a..b].iter().map(|t| t + 1)),
-            }
-            if w_vid {
-                cols.vid.extend(
-                    v.vid64[a..b]
-                        .iter()
-                        .zip(&v.vid_lo32[a..b])
-                        .map(|(&hi, &lo)| Id96 { hi, lo }),
-                );
-            }
-            if w_rel {
-                cols.rel_type.extend(
-                    v.rel_code[a..b]
-                        .iter()
-                        .map(|&c| v.rel_types[c as usize].clone()),
-                );
-            }
-            if w_disc {
-                for &r in &v.disc_ref[a..b] {
-                    cols.disc.push(v.strings.get(r)?.to_string());
-                }
-            }
-            if w_props {
-                for &r in &v.props_ref[a..b] {
-                    cols.props.push(v.strings.get(r)?.to_string());
-                }
-            }
+            copy_run(v, a, b, &mut cols, w_vid, w_rel, w_disc, w_props)?;
             i = j;
         }
         Ok((cols, stats))
@@ -626,7 +681,68 @@ pub struct EdgeColumns {
     pub props: Vec<String>,
 }
 
+/// Copy rows [a, b) of one segment view into the output columns — the one
+/// copy routine both materialize paths share. Fixed-width columns memcpy;
+/// derived and string columns pay per row only when asked for.
+#[allow(clippy::too_many_arguments)]
+fn copy_run(
+    v: &SegmentView<'_>,
+    a: usize,
+    b: usize,
+    cols: &mut EdgeColumns,
+    w_vid: bool,
+    w_rel: bool,
+    w_disc: bool,
+    w_props: bool,
+) -> Result<()> {
+    cols.vt_s.extend_from_slice(&v.vt_s[a..b]);
+    cols.src_id.extend_from_slice(&v.src_id[a..b]);
+    cols.dst_id.extend_from_slice(&v.dst_id[a..b]);
+    match v.vt_e {
+        Some(col) => cols.vt_e.extend_from_slice(&col[a..b]),
+        // elided means every row is instantaneous
+        None => cols.vt_e.extend(v.vt_s[a..b].iter().map(|t| t + 1)),
+    }
+    if w_vid {
+        cols.vid.extend(
+            v.vid64[a..b]
+                .iter()
+                .zip(&v.vid_lo32[a..b])
+                .map(|(&hi, &lo)| Id96 { hi, lo }),
+        );
+    }
+    if w_rel {
+        cols.rel_type.extend(
+            v.rel_code[a..b]
+                .iter()
+                .map(|&c| v.rel_types[c as usize].clone()),
+        );
+    }
+    if w_disc {
+        for &r in &v.disc_ref[a..b] {
+            cols.disc.push(v.strings.get(r)?.to_string());
+        }
+    }
+    if w_props {
+        for &r in &v.props_ref[a..b] {
+            cols.props.push(v.strings.get(r)?.to_string());
+        }
+    }
+    Ok(())
+}
+
 impl EdgeColumns {
+    fn append(&mut self, mut o: EdgeColumns) {
+        self.vt_s.append(&mut o.vt_s);
+        self.vt_e.append(&mut o.vt_e);
+        self.src_id.append(&mut o.src_id);
+        self.dst_id.append(&mut o.dst_id);
+        self.vid.append(&mut o.vid);
+        self.rel_type.append(&mut o.rel_type);
+        self.disc.append(&mut o.disc);
+        self.props.append(&mut o.props);
+    }
+
     fn with_capacity(n: usize) -> Self {
         Self {
             vt_s: Vec::with_capacity(n),
