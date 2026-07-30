@@ -98,15 +98,17 @@ PostgreSQL holds at 0.3; DuckDB's 23.7 grows, because it is a scan.
 | resolve.substr | **34.8** | 775.4 | 201.0 | native |
 | motif.filtered | 227.1 | **167.0** | 644.1 | duckdb |
 
-10M inverts part of the picture, and the pattern of what flips is the
-finding. **Every query DuckDB now wins is a full-window scan** — series,
-burst, the interval join (3.2× faster), the motif event fetch — while native
-keeps everything index-served or selective (point lookup flat at 1.7 ms,
-resolve 22× faster, snapshots and diff still ahead). The obvious hypothesis
-is parallelism: DuckDB scans on all 40 cores, the native scan is
-single-threaded. That is a hypothesis, not a measurement — nothing here
-profiles it — but it is the first structural argument for parallel scan in
-the native engine, and it puts a number on what it would buy.
+10M initially inverted part of the picture: DuckDB won series, burst, the
+interval join (3.2×), and the motif fetch — every full-window scan — on a
+40-core host where the native scan ran single-threaded. Parallelizing the
+per-segment selection (scoped threads, byte-identical results by
+construction) settled the hypothesis **half-right**: `coactive.narrow`
+724 → **151 ms** and `motif.filtered` 227 → **77 ms**, both back ahead of
+DuckDB — those scans are selection-bound (incidence and node filters per
+row). `series.count`/`burst.zscore` did not move (~1.26 s vs DuckDB's
+~0.96) — their cost is not in selection, and where it is remains
+unprofiled. The remaining two-query gap is recorded as open, not
+explained.
 
 The guardrail gates both traversal queries on TGMS at this scale.
 PostgreSQL's answers split the verdict: reachability genuinely explodes
