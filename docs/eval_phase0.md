@@ -9,7 +9,13 @@ uv run python scripts/eval_harness.py --scale 200000 --systems native,duckdb,pos
 
 ## Receipts (spec §8.4)
 
-- commit `2d5f146`, 200,000 events, 3 repeats per query, p50 reported
+- commit `7606fd5` — measured under the plan's §16 protocol: 5 warmups,
+  30 measured repetitions per sub-second query (10 for slower), true median
+  reported here, p95 and raw timings in the JSON records.
+  **Tables in earlier revisions of this file were min-of-3 labeled as p50**;
+  the harness computed a best case and the field name hid it. Medians turn
+  out close to those minimums, so no conclusion flips, but the labels were
+  wrong and this note is the correction.
 - **xzgpu** — 40 cores, 93 GB, Linux 5.4. Every number here comes from that
   one host; `eval_harness.py` warns when run anywhere else, because a laptop
   differs by 5× in cores and 6× in RAM and pins `effective_io_concurrency`
@@ -27,25 +33,77 @@ result. That was not true of earlier runs of this harness; see
 
 ## Results
 
-p50 milliseconds.
+Median milliseconds. Three datasets: the synthetic reference at 200k and 1M
+events, and the frozen CollegeMsg replay (59,835 instantaneous events, real
+timestamps, no corrections). Every (query, system, dataset) cell agrees on
+the canonical hash, except where noted.
+
+### synth, 200k events
 
 | query | native | duckdb | postgres | fastest |
 |---|---:|---:|---:|---|
-| hist.single | 1.1 | 10.2 | **0.5** | postgres |
-| hist.asof | 1.1 | 9.2 | **0.5** | postgres |
-| snap.hop2 | **23.8** | 44.7 | 41.1 | native |
-| diff.global | **69.1** | 110.1 | 106.8 | native |
-| reach.window | **18.4** | 25.2 | 702.9 | native |
-| paths.k | **8.6** | 16.5 | 22.1 | native |
-| series.count | **27.7** | 39.0 | 56.5 | native |
-| burst.zscore | **29.2** | 45.1 | 56.6 | native |
-| nbr.evolution | 14.9 | 16.7 | **3.6** | postgres |
-| coactive.narrow | **37.8** | 56.5 | 54.2 | native |
-| resolve.substr | **3.6** | 18.2 | 5.3 | native |
-| motif.filtered | **32.1** | 62.4 | 143.8 | native |
+| hist.single | 1.1 | 9.0 | **0.3** | postgres |
+| hist.asof | 1.1 | 8.9 | **0.2** | postgres |
+| snap.hop2 | **23.7** | 45.1 | 61.4 | native |
+| diff.global | **70.4** | 111.2 | 111.7 | native |
+| reach.window | **18.6** | 24.7 | 703.9 | native |
+| paths.k | **9.5** | 16.4 | 21.4 | native |
+| series.count | **27.9** | 42.6 | 66.9 | native |
+| burst.zscore | **29.2** | 43.3 | 67.8 | native |
+| nbr.evolution | 15.0 | 16.3 | **2.8** | postgres |
+| coactive.narrow | **37.3** | 62.6 | 56.7 | native |
+| resolve.substr | **3.6** | 19.3 | 5.7 | native |
+| motif.filtered | **32.2** | 63.3 | 144.0 | native |
 
-Native is fastest on 9, PostgreSQL on 3. Against DuckDB alone the native
-engine wins all 12.
+### synth, 1M events
+
+| query | native | duckdb | postgres | fastest |
+|---|---:|---:|---:|---|
+| hist.single | 1.1 | 23.7 | **0.3** | postgres |
+| hist.asof | 1.1 | 24.8 | **0.2** | postgres |
+| snap.hop2 | **96.6** | 214.8 | 244.4 | native |
+| diff.global | **325.2** | 575.2 | 576.7 | native |
+| reach.window | **122.8** | 155.8 | 6115.8 | native |
+| paths.k | **11.1** | 36.8 | 27.4 | native |
+| series.count | **123.2** | 131.8 | 210.3 | native |
+| burst.zscore | **124.6** | 134.0 | 210.2 | native |
+| nbr.evolution | 20.1 | 42.9 | **3.0** | postgres |
+| coactive.narrow | 125.8 | **109.9** | 178.2 | duckdb |
+| resolve.substr | **4.3** | 85.5 | 18.5 | native |
+| motif.filtered | **52.6** | 91.2 | 186.4 | native |
+
+Two honest notes on 1M. **`coactive.narrow` is DuckDB's first win**: 109.9
+against native's 125.8 — the interval join's advantage at 200k does not
+survive 5× the data, which makes it the next thing worth profiling, not
+hiding. And native's point lookup holds flat at 1.1 ms across scale while
+PostgreSQL holds at 0.3; DuckDB's 23.7 grows, because it is a scan.
+
+### CollegeMsg (59,835 events, real timestamps; abridged)
+
+| query | native | duckdb | postgres | fastest |
+|---|---:|---:|---:|---|
+| hist.single | **0.1** | 7.2 | 0.3 | native |
+| snap.hop2 | **2.5** | 14.2 | 8.4 | native |
+| diff.global | **5.2** | 23.6 | 8.3 | native |
+| reach.window | **2.1** | 9.5 | 38.8 | native |
+| paths.k | **137.0** | 141.7 | 306.7 | native |
+| coactive.narrow | **1.4** | 14.4 | 37.5 | native |
+| resolve.substr | **2.6** | 17.0 | 5.2 | native |
+| motif.filtered | n/a | n/a | **27.3** | see below |
+
+Full table in `eval-collegemsg.json`. Instant snapshots and interval joins
+are legitimately thin here — the events are instantaneous, so microsecond
+intervals cannot strictly overlap — and the belief probe works without
+corrections because it pins mid-ingestion state.
+
+**The motif row is a guardrail false positive, found by the baseline.** Both
+TGMS backends refused with `E_COST` while PostgreSQL answered in 27.3 ms —
+count 7. The cost model scales with max out-degree, and CollegeMsg's skew
+(one user messaging hundreds) inflates the estimate far past the actual
+work. The two TGMS backends agreeing on the refusal is consistency, not
+correctness: the ceiling is mispriced for skewed degree distributions.
+
+On synth 200k native is fastest on 9 of 12 and wins all 12 vs DuckDB.
 
 ## What the baseline actually showed
 
