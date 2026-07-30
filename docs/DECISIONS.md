@@ -535,3 +535,27 @@ implementation — hygiene checking starts at the marker recorded in D-010.
   of segments) now dominates store overhead: every commit writes a full
   manifest and nothing collects old generations. That is a retention
   problem, not a codec problem, and is filed separately.
+
+## D-033 — string heap packing: FOR offsets + DEFLATE payload
+
+- **Date:** 2026-07-30
+- **Context:** after D-032 the heap was the second-largest block at 11.2
+  B/row (36% of segments), in two structurally different halves: monotone
+  offsets and text payload.
+- **Decision:** pack them separately — offsets through the existing FOR
+  codec (3.98 → 0.40 B/row, no new dependency), payload through DEFLATE
+  (6.40 → 2.14, measured with zlib on a real heap *before* choosing the
+  codec). The split beats one DEFLATE stream over the whole heap by 1.4×.
+  Dependency: `miniz_oxide` — pure Rust, zero transitive deps, MIT OR Zlib
+  OR Apache-2.0 (§8.6); inflate uses the `with_limit` form so corrupt input
+  cannot balloon. Same trial rule as columns (pack only when smaller), same
+  decode-once-at-open. A packed heap leads with `u32::MAX` where a raw heap
+  keeps its count — a value the count can never take — so old builds fail
+  bounds checks rather than misreading text.
+- **Measured (xzgpu, 1M rows):** heap 11.17 → **4.35 B/row**; segments
+  31.4 → **24.6 B/row, 0.132×** DuckDB's 186.3 (65.3 before C4 — 2.65×
+  total). Query medians statistically unchanged from the D-032 run; all 12
+  registry queries hash identically across the three systems. vid is now
+  48.8% of segment bytes: the compression story ends at the identity
+  design, and the remaining store overhead is the manifest retention
+  problem, not the data.

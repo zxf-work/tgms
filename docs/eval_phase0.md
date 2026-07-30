@@ -349,12 +349,14 @@ column is close to a straight load number.
 
 ## Storage
 
-With column compression (D-032), the native store's segments measure
-**31.4 B/row at 1M rows — 0.169×** the DuckDB representation's 186.3,
-uncompressed 65.3. The breakdown after compression, per row: 12.0 B of vid
-(sha256-derived, incompressible — now 38% of segment bytes, the standing
-price of derived identity), 11.2 B of string heap (untouched this round),
-3.5 B of endpoints, 3.0 B of timestamps, ~1.6 B of everything else.
+With column compression (D-032) and string-heap packing (D-033), the
+native store's segments measure **24.6 B/row at 1M rows — 0.132×** the
+DuckDB representation's 186.3; uncompressed they were 65.3, so 2.65× total.
+Per row: 12.0 B of vid (sha256-derived, incompressible — 49% of segment
+bytes, the standing price of derived identity), 4.4 B of packed string heap,
+3.5 B of endpoints, 3.0 B of timestamps, ~1.7 B of everything else. Heap
+packing cost no measurable query latency: medians are within noise of the
+D-032 run, since both decode once per process behind the segment cache.
 
 Two honest caveats. Query latency *improved* alongside (co_active 37.3 →
 23.5 ms, nbr.evolution 15.0 → 5.6, diff 60.4), but compression landed
