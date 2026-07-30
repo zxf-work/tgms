@@ -69,6 +69,15 @@ pub struct NativeStore {
     /// time this process opens it, and trusted thereafter. Segments are
     /// immutable, so once verified they stay valid for the session.
     verified: std::sync::Mutex<std::collections::HashSet<String>>,
+    /// Open segments, by file name. Sound because segment files are
+    /// immutable — closes live in separate .tgc files and compaction writes
+    /// new files — so a cached entry can never be stale. This is also what
+    /// makes compressed columns viable: they are decoded once per process
+    /// here, not once per operator call. Memory ceiling is the decoded
+    /// store, the same working set the OS page cache held before.
+    segments: std::sync::Mutex<
+        std::collections::HashMap<String, std::sync::Arc<crate::segment::Segment<MmapSource>>>,
+    >,
     /// Transaction time of the open batch, if any (`begin` .. `commit`).
     batch_tt: Option<i64>,
 }
@@ -105,6 +114,7 @@ impl NativeStore {
             edge_postings: std::sync::Mutex::new(Postings::default()),
             node_postings: std::sync::Mutex::new(Postings::default()),
             verified: std::sync::Mutex::new(std::collections::HashSet::new()),
+            segments: std::sync::Mutex::new(std::collections::HashMap::new()),
             batch_tt: None,
         })
     }
@@ -217,7 +227,15 @@ impl NativeStore {
     /// Open a segment, verifying its checksums the first time this session
     /// touches it. Every read path must come through here — opening a segment
     /// directly would skip the check and could serve corrupt rows.
-    pub fn open_segment(&self, file: &str) -> Result<crate::segment::Segment<MmapSource>> {
+    pub fn open_segment(&self, file: &str) -> Result<std::sync::Arc<crate::segment::Segment<MmapSource>>> {
+        if let Some(seg) = self
+            .segments
+            .lock()
+            .expect("segment-cache mutex poisoned")
+            .get(file)
+        {
+            return Ok(seg.clone());
+        }
         let path = self.root.join(file);
         let first_time = {
             let seen = self.verified.lock().expect("verified-set mutex poisoned");
@@ -226,13 +244,21 @@ impl NativeStore {
         // mapped, not read: a point lookup touches a few pages, and reading
         // the whole file per open made `believed_*` cost a full scan even
         // when it wanted one row
-        let seg = crate::segment::Segment::open(&path, MmapSource::load(&path)?, first_time)?;
+        let seg = std::sync::Arc::new(crate::segment::Segment::open(
+            &path,
+            MmapSource::load(&path)?,
+            first_time,
+        )?);
         if first_time {
             self.verified
                 .lock()
                 .expect("verified-set mutex poisoned")
                 .insert(file.to_string());
         }
+        self.segments
+            .lock()
+            .expect("segment-cache mutex poisoned")
+            .insert(file.to_string(), seg.clone());
         Ok(seg)
     }
 

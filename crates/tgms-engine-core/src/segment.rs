@@ -490,25 +490,70 @@ pub fn write_node_segment(path: &Path, rows: &[NodeRow], spec: &SegmentSpec) -> 
     )
 }
 
+/// Reinterpret a raw little-endian extent as logical values for encoding.
+fn extent_values(dtype: DType, bytes: &[u8]) -> Vec<i64> {
+    let mut out = Vec::with_capacity(bytes.len() / dtype.size());
+    match dtype {
+        DType::I64 => {
+            for c in bytes.chunks_exact(8) {
+                out.push(i64::from_le_bytes(c.try_into().unwrap()));
+            }
+        }
+        DType::U64 => {
+            for c in bytes.chunks_exact(8) {
+                out.push(u64::from_le_bytes(c.try_into().unwrap()) as i64);
+            }
+        }
+        DType::U32 => {
+            for c in bytes.chunks_exact(4) {
+                out.push(u32::from_le_bytes(c.try_into().unwrap()) as i64);
+            }
+        }
+        DType::U16 => {
+            for c in bytes.chunks_exact(2) {
+                out.push(u16::from_le_bytes(c.try_into().unwrap()) as i64);
+            }
+        }
+    }
+    out
+}
+
 fn write_segment(
     path: &Path,
     mut header: SegmentHeader,
     columns: Vec<ColumnBuilder>,
     strings: &StringTable,
 ) -> Result<()> {
+    // Compression is a measurement, not a policy: every column is trial-
+    // encoded and the smaller representation wins. The vid halves come out
+    // raw every time (sha256 prefixes have no structure to pack), the
+    // timestamp and ref columns collapse — and nothing here needs to know
+    // which column is which for that to hold.
+    let stored: Vec<(Vec<u8>, u32)> = columns
+        .iter()
+        .map(|c| {
+            let encoded = crate::codec::encode_i64(&extent_values(c.dtype, &c.bytes));
+            if encoded.len() + 8 < c.bytes.len() {
+                (encoded, crate::codec::CODEC_FOR)
+            } else {
+                (c.bytes.clone(), crate::codec::CODEC_RAW)
+            }
+        })
+        .collect();
+
     // Offsets are relative to data_start, so they do not depend on how long
     // the header serializes to — which would otherwise be circular.
     let mut descs = Vec::with_capacity(columns.len());
     let mut cursor = 0u64;
-    for c in &columns {
+    for (c, (bytes, codec)) in columns.iter().zip(&stored) {
         descs.push(ColumnDesc {
             name: c.name.to_string(),
             dtype: c.dtype,
             offset: cursor,
-            bytes: c.bytes.len() as u64,
-            codec: 0,
+            bytes: bytes.len() as u64,
+            codec: *codec,
         });
-        cursor += align_up(c.bytes.len()) as u64;
+        cursor += align_up(bytes.len()) as u64;
     }
     let encoded_strings = strings.encode();
     header.columns = descs;
@@ -525,10 +570,10 @@ fn write_segment(
     buf.extend_from_slice(&header_json);
     pad_to(&mut buf, data_start);
 
-    let mut extent_crcs = Vec::with_capacity(columns.len());
-    for c in &columns {
-        extent_crcs.push(crc32c::crc32c(&c.bytes));
-        buf.extend_from_slice(&c.bytes);
+    let mut extent_crcs = Vec::with_capacity(stored.len());
+    for (bytes, _) in &stored {
+        extent_crcs.push(crc32c::crc32c(bytes));
+        buf.extend_from_slice(bytes);
         let padded = align_up(buf.len());
         pad_to(&mut buf, padded);
     }
@@ -638,6 +683,10 @@ pub struct Segment<S: SegmentSource> {
     header: SegmentHeader,
     data_start: usize,
     path: PathBuf,
+    /// Compressed columns, materialized once at open (by column index).
+    /// Backed by `Vec<u64>` so any dtype's alignment holds; the usize is the
+    /// logical byte length. Raw columns stay zero-copy out of the source.
+    decoded: Vec<Option<(Vec<u64>, usize)>>,
 }
 
 impl<S: SegmentSource> Segment<S> {
@@ -693,15 +742,60 @@ impl<S: SegmentSource> Segment<S> {
             )));
         }
 
-        let seg = Self {
+        let mut seg = Self {
             source,
             header,
             data_start,
             path,
+            decoded: Vec::new(),
         };
         if verify_checksums {
             seg.verify(&footer, footer_start)?;
         }
+        // Materialize compressed columns exactly once. Decode is fully
+        // bounds-checked, so on the fast path (checksums already verified
+        // this session) it doubles as structural validation of the extent.
+        let mut decoded = Vec::with_capacity(seg.header.columns.len());
+        for idx in 0..seg.header.columns.len() {
+            let desc = &seg.header.columns[idx];
+            if desc.codec == crate::codec::CODEC_RAW {
+                decoded.push(None);
+                continue;
+            }
+            if desc.codec != crate::codec::CODEC_FOR {
+                return Err(EngineError::corrupt(format!(
+                    "column '{}' uses codec {} which this build cannot decode",
+                    desc.name, desc.codec
+                ))
+                .at_file(&seg.path));
+            }
+            let n = seg.header.rows as usize;
+            let vals = crate::codec::decode_i64(seg.raw(desc)?, n)
+                .map_err(|e| e.at_file(&seg.path))?;
+            let size = desc.dtype.size();
+            let mut backing = vec![0u64; (n * size).div_ceil(8)];
+            {
+                // fill through a byte view so every dtype lands in its own
+                // little-endian layout, same as the raw extent would hold
+                let out: &mut [u8] = unsafe {
+                    std::slice::from_raw_parts_mut(
+                        backing.as_mut_ptr() as *mut u8,
+                        backing.len() * 8,
+                    )
+                };
+                for (i, &v) in vals.iter().enumerate() {
+                    let b = &mut out[i * size..(i + 1) * size];
+                    match desc.dtype {
+                        DType::I64 => b.copy_from_slice(&v.to_le_bytes()),
+                        DType::U64 => b.copy_from_slice(&(v as u64).to_le_bytes()),
+                        DType::U32 => b.copy_from_slice(&(v as u32).to_le_bytes()),
+                        DType::U16 => b.copy_from_slice(&(v as u16).to_le_bytes()),
+                    }
+                }
+            }
+            decoded.push(Some((backing, n * size)));
+        }
+        seg.decoded = decoded;
         Ok(seg)
     }
 
@@ -777,16 +871,25 @@ impl<S: SegmentSource> Segment<S> {
             ))
             .at_file(&self.path));
         }
-        if desc.codec != 0 {
-            return Err(EngineError::corrupt(format!(
-                "column '{name}' uses codec {} which this build cannot decode",
-                desc.codec
-            ))
-            .at_file(&self.path));
-        }
-        let bytes = self.raw(desc)?;
+        let bytes: &[u8] = if desc.codec == crate::codec::CODEC_RAW {
+            self.raw(desc)?
+        } else {
+            // decoded at open; index alignment with header.columns is fixed
+            let idx = self
+                .header
+                .columns
+                .iter()
+                .position(|c| std::ptr::eq(c, desc))
+                .expect("desc comes from this header");
+            let (backing, len) = self.decoded[idx]
+                .as_ref()
+                .expect("non-raw columns are decoded at open");
+            unsafe {
+                std::slice::from_raw_parts(backing.as_ptr() as *const u8, *len)
+            }
+        };
         let size = std::mem::size_of::<T>();
-        if bytes.len() % size != 0 {
+        if !bytes.len().is_multiple_of(size) {
             return Err(EngineError::corrupt(format!(
                 "column '{name}' length {} is not a multiple of {size}",
                 bytes.len()
