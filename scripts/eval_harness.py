@@ -26,6 +26,7 @@ from __future__ import annotations
 import argparse
 import json
 import platform
+import statistics
 import subprocess
 import sys
 import tempfile
@@ -73,18 +74,21 @@ class Query:
 MOTIF_FILTER = 200
 
 
-def registry(scale: int, tt_epoch1: int) -> list[Query]:
+def registry(t0: int, t1: int, tt_epoch1: int,
+             filter_uids: tuple[str, ...]) -> list[Query]:
     """The Phase 0 query set: one per operator family, plus belief-time probes.
 
-    Parameters are derived from the scale so the same registry is meaningful
-    at 1e5 and 1e7 without editing. `tt_epoch1` is the belief boundary from
-    `build_dataset` — an `as_of_tt` that predates the corrections but not the
-    data. It has to come from the store: transaction times are epoch
-    microseconds, so any literal small enough to write by hand predates
-    everything and turns the belief probe into a query over an empty store.
+    Parameters are derived from the dataset's valid-time extent `[t0, t1)`, so
+    the same registry is meaningful on a synthetic log whose clock starts at
+    zero and on CollegeMsg, whose clock starts in April 2004. `tt_epoch1` is a
+    belief boundary that must come from the store: an as_of_tt that sees the
+    first write batch but not everything after it — on the synthetic data
+    that is pre-correction belief, on a replayed real dataset it is
+    mid-ingestion belief. Either way both systems must agree on what was
+    believed then, which is what the probe exists to check.
     """
-    span = scale
-    mid = span // 2
+    span = t1 - t0
+    mid = t0 + span // 2
     return [
         Query("hist.single", "entity_history", {"uid": "n1"},
               "point lookup by identity"),
@@ -100,18 +104,18 @@ def registry(scale: int, tt_epoch1: int) -> list[Query]:
         Query("diff.global", "diff_snapshots", {"t1": mid, "t2": mid + span // 40},
               "global difference between two instants"),
         Query("reach.window", "temporal_reachability",
-              {"src": "n1", "window": {"t_a": 0, "t_b": span // 10}},
+              {"src": "n1", "window": {"t_a": t0, "t_b": t0 + span // 10}},
               "time-respecting reachability"),
         Query("paths.k", "temporal_paths",
-              {"src": "n1", "dst": "n2", "window": {"t_a": 0, "t_b": span // 4},
+              {"src": "n1", "dst": "n2", "window": {"t_a": t0, "t_b": t0 + span // 4},
                "k": 3, "max_hops": 3},
               "k shortest time-respecting paths"),
         Query("series.count", "graph_metric_timeseries",
-              {"metric": "edge_event_count", "window": {"t_a": 0, "t_b": span},
+              {"metric": "edge_event_count", "window": {"t_a": t0, "t_b": t1},
                "stride": max(1, span // 100)},
               "bucketed event rate"),
         Query("burst.zscore", "burst_detection",
-              {"target": {"kind": "edge_event_rate"}, "window": {"t_a": 0, "t_b": span},
+              {"target": {"kind": "edge_event_rate"}, "window": {"t_a": t0, "t_b": t1},
                "stride": max(1, span // 100), "method": "zscore", "params": {"z": 3.0}},
               "burst flags over the same buckets"),
         Query("nbr.evolution", "neighborhood_evolution",
@@ -125,8 +129,8 @@ def registry(scale: int, tt_epoch1: int) -> list[Query]:
               "entity resolution by substring"),
         Query("motif.filtered", "count_temporal_motifs",
               {"motif": "M_triangle_cyclic", "delta": span // 50,
-               "window": {"t_a": 0, "t_b": span},
-               "node_filter": [f"n{i}" for i in range(MOTIF_FILTER)]},
+               "window": {"t_a": t0, "t_b": t1},
+               "node_filter": list(filter_uids)},
               "delta-motif count, node-filtered to stay inside the guardrail"),
     ]
 
@@ -161,18 +165,51 @@ def _answer_size(payload: dict[str, Any]) -> int:
     return len(payload.get("rows", []))
 
 
+#: Plan §16.3: warmup runs, then 30 measured repetitions for sub-second
+#: queries and 10 for slower ones. Earlier revisions reported min-of-3 in a
+#: field named p50_ms; the tables produced then were mislabeled best cases.
+WARMUP = 5
+REPS_FAST = 30
+REPS_SLOW = 10
+
+
+def _measure(fn) -> tuple[Any, list[float]]:
+    """Run `fn` per the repetition protocol; return (last payload, timings)."""
+    for _ in range(WARMUP):
+        payload = fn()
+    t0 = time.perf_counter()
+    payload = fn()
+    first = (time.perf_counter() - t0) * 1e3
+    timings = [first]
+    for _ in range((REPS_FAST if first < 1000.0 else REPS_SLOW) - 1):
+        t0 = time.perf_counter()
+        payload = fn()
+        timings.append((time.perf_counter() - t0) * 1e3)
+    return payload, timings
+
+
+def _p50_p95(timings: list[float]) -> tuple[float, float]:
+    xs = sorted(timings)
+    n = len(xs)
+    p50 = statistics.median(xs)
+    p95 = xs[min(n - 1, max(0, -(-95 * n // 100) - 1))]
+    return round(p50, 3), round(p95, 3)
+
+
 @dataclass
 class Result:
     query: str
     ok: bool
     hash: str | None = None
     p50_ms: float | None = None
+    p95_ms: float | None = None
     rows: int | None = None
     error: str | None = None
+    timings_ms: list[float] | None = None
 
 
-def run_system(name: str, store_path: Path, queries: list[Query],
-               repeats: int) -> list[Result]:
+def run_system(name: str, store_path: Path,
+               queries: list[Query]) -> list[Result]:
     """Answer every registry query on one system."""
     ensure_all_registered()
     store = tgms.open(store_path, backend=name)
@@ -180,24 +217,19 @@ def run_system(name: str, store_path: Path, queries: list[Query],
     out: list[Result] = []
     for q in queries:
         try:
-            timings = []
-            payload = None
-            for _ in range(repeats):
-                t0 = time.perf_counter()
-                payload = call_operator(adapter, q.op, dict(q.args))
-                timings.append((time.perf_counter() - t0) * 1e3)
-            assert payload is not None
-            rows = _answer_size(payload)
-            out.append(Result(q.id, True, canonical_hash(payload),
-                              round(min(timings), 3), int(rows)))
+            payload, timings = _measure(
+                lambda: call_operator(adapter, q.op, dict(q.args)))
+            p50, p95 = _p50_p95(timings)
+            out.append(Result(q.id, True, canonical_hash(payload), p50, p95,
+                              int(_answer_size(payload)),
+                              timings_ms=[round(t, 3) for t in timings]))
         except Exception as e:  # a system that cannot answer is data, not a crash
             out.append(Result(q.id, False, error=f"{type(e).__name__}: {e}"[:160]))
     store.close()
     return out
 
 
-def run_postgres(store_path: Path, queries: list[Query],
-                 repeats: int) -> list[Result]:
+def run_postgres(store_path: Path, queries: list[Query]) -> list[Result]:
     """Answer the registry with SQL instead of with TGMS operators.
 
     Only the queries in `pg_queries.QUERIES` are attempted. A missing entry is
@@ -226,22 +258,18 @@ def run_postgres(store_path: Path, queries: list[Query],
             out.append(Result(q.id, False, error="no SQL written yet (not a verdict)"))
             continue
         try:
-            timings = []
-            payload = None
-            for _ in range(repeats):
-                t0 = time.perf_counter()
-                payload = fn(conn, **q.args)
-                timings.append((time.perf_counter() - t0) * 1e3)
-            assert payload is not None
-            out.append(Result(q.id, True, canonical_hash(payload),
-                              round(min(timings), 3), _answer_size(payload)))
+            payload, timings = _measure(lambda: fn(conn, **q.args))
+            p50, p95 = _p50_p95(timings)
+            out.append(Result(q.id, True, canonical_hash(payload), p50, p95,
+                              _answer_size(payload),
+                              timings_ms=[round(t, 3) for t in timings]))
         except Exception as e:
             out.append(Result(q.id, False, error=f"{type(e).__name__}: {e}"[:160]))
     conn.close()
     return out
 
 
-def manifest(scale: int, systems: list[str], repeats: int) -> dict[str, Any]:
+def manifest(data: Dataset, systems: list[str]) -> dict[str, Any]:
     """Everything needed to say whether two runs are comparable."""
     def sh(*cmd: str) -> str:
         try:
@@ -252,14 +280,18 @@ def manifest(scale: int, systems: list[str], repeats: int) -> dict[str, Any]:
 
     return {
         "commit": sh("git", "rev-parse", "--short", "HEAD"),
-        "dirty": bool(sh("git", "status", "--porcelain")),
+        # -uno: untracked files on a runner are scratch, not provenance dirt
+        "dirty": bool(sh("git", "status", "--porcelain", "-uno")),
         "rustc": sh("rustc", "--version"),
         "python": platform.python_version(),
         "platform": f"{platform.system()} {platform.release()} {platform.machine()}",
         "cpu_count": __import__("os").cpu_count(),
-        "scale_events": scale,
+        "dataset": data.name,
+        "scale_events": data.scale,
         "systems": systems,
-        "repeats": repeats,
+        "protocol": {"warmup": WARMUP, "reps_fast": REPS_FAST,
+                     "reps_slow": REPS_SLOW,
+                     "stats": "median and p95 over measured reps"},
         "cache_state": "warm",  # queries repeat in-process; see plan §15
         "measurement_host": MEASUREMENT_HOST,
         "on_measurement_host": platform.node().split(".")[0] == MEASUREMENT_HOST,
@@ -369,14 +401,56 @@ def _edge_ref(i: int, scale: int) -> EntityRef:
 
 @dataclass(frozen=True)
 class Dataset:
-    """A reference store plus the belief boundary needed to query it."""
+    """A reference event log plus everything the registry derives from it."""
 
     log: Path
     scale: int
-    #: A transaction time at which epoch-1 data is believed and the epoch-2
-    #: corrections are not yet. Without it there is no way to ask a belief
+    #: A transaction time at which the first write batch is believed and
+    #: later ones are not. Without it there is no way to ask a belief
     #: question, because tt values are wall-clock and not known in advance.
     tt_epoch1: int
+    #: Valid-time extent [t0, t1) the registry windows are placed in.
+    t0: int
+    t1: int
+    #: Node population for the motif filter (plan §11.5: parameters are
+    #: curated per dataset). Uids that do not exist would make the native
+    #: backend raise E_NOT_FOUND while a SQL baseline silently matches
+    #: nothing — a divergence in the *harness*, not the systems.
+    filter_uids: tuple[str, ...] = ()
+    name: str = "synth"
+
+
+def dataset_from_log(path: Path) -> Dataset:
+    """Registry parameters for a pre-recorded event log (e.g. CollegeMsg).
+
+    The extent comes from scanning the log's events, and the belief boundary
+    is the first batch's tt — an as_of_tt under which mid-ingestion state is
+    visible and everything later is not. That probes the transaction clock
+    even on a dataset with no corrections: a system that ignores it returns
+    the whole store and the hashes split.
+    """
+    vt_lo, vt_hi, n = None, None, 0
+    first_tt = None
+    srcs: set[str] = set()
+    with open(path, encoding="utf-8") as f:
+        f.readline()  # header
+        for line in f:
+            rec = json.loads(line)
+            if first_tt is None:
+                first_tt = rec["tt"]
+            for op in rec["ops"]:
+                for ev in op.get("events", []):
+                    t = ev["vt_s"]
+                    vt_lo = t if vt_lo is None else min(vt_lo, t)
+                    vt_hi = t if vt_hi is None else max(vt_hi, t)
+                    srcs.add(ev["src"])
+                    n += 1
+    if not n:
+        raise SystemExit(f"{path}: no events found")
+    return Dataset(log=path, scale=n, tt_epoch1=first_tt,
+                   t0=vt_lo, t1=vt_hi + 1,
+                   filter_uids=tuple(sorted(srcs)[:MOTIF_FILTER]),
+                   name=path.stem)
 
 
 def build_dataset(scale: int) -> Dataset:
@@ -437,7 +511,8 @@ def build_dataset(scale: int) -> Dataset:
         store.retract(_edge_ref(i, scale),
                       _event(i, scale)["vt_s"] + edge_life(scale) // 2)
     store.close()
-    return Dataset(path / "eventlog.jsonl", scale, tt_epoch1)
+    return Dataset(path / "eventlog.jsonl", scale, tt_epoch1, t0=0, t1=scale,
+                   filter_uids=tuple(f"n{i}" for i in range(MOTIF_FILTER)))
 
 
 def load_store(path: Path, backend: str, log: Path) -> None:
@@ -453,17 +528,20 @@ def main() -> int:
     ap = argparse.ArgumentParser()
     ap.add_argument("--scale", type=int, default=200_000, help="events to generate")
     ap.add_argument("--systems", default="native,duckdb")
-    ap.add_argument("--repeats", type=int, default=3)
+    ap.add_argument("--log", type=Path,
+                    help="replay this pre-recorded event log instead of "
+                         "generating synthetic data (e.g. "
+                         "benchmarks/frozen-v1/collegemsg.eventlog.jsonl)")
     ap.add_argument("--json", type=Path, help="write the full run record here")
     args = ap.parse_args()
 
     systems = [s.strip() for s in args.systems.split(",") if s.strip()]
-    data = build_dataset(args.scale)
-    queries = registry(args.scale, data.tt_epoch1)
-    meta = manifest(args.scale, systems, args.repeats)
+    data = dataset_from_log(args.log) if args.log else build_dataset(args.scale)
+    queries = registry(data.t0, data.t1, data.tt_epoch1, data.filter_uids)
+    meta = manifest(data, systems)
 
     print(f"phase-0 harness — {len(queries)} queries x {len(systems)} systems "
-          f"@ {args.scale:,} events")
+          f"on {data.name} @ {data.scale:,} events")
     print(f"  commit {meta['commit']}{' (dirty)' if meta['dirty'] else ''} | "
           f"{meta['platform']} | {meta['cpu_count']} cores")
     if not meta["on_measurement_host"]:
@@ -480,9 +558,9 @@ def main() -> int:
         # so it is loaded from a native store's canonical rows instead.
         load_store(path, "native" if name == "postgres" else name, log)
         load = time.perf_counter() - t0
-        results[name] = (run_postgres(path, queries, args.repeats)
+        results[name] = (run_postgres(path, queries)
                          if name == "postgres"
-                         else run_system(name, path, queries, args.repeats))
+                         else run_system(name, path, queries))
         print(f"  {name}: loaded in {load:.1f}s")
 
     base, *others = systems
