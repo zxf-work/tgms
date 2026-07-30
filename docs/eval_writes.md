@@ -60,7 +60,8 @@ manifest per commit. DuckDB, with no manifest-per-generation design, pays
 - **digest preserved** — the bi-temporal answer set is untouched, by check
   rather than by assumption
 - bytes on disk grew 28.8 → 31.2 MB: compaction writes new segments and
-  deletes nothing, so reclamation waits on generation collection
+  deletes nothing; `tgms store gc` (D-034, landed after this run) collects
+  the superseded files once they leave the retention window
 
 ## What §12 established
 
@@ -68,6 +69,7 @@ manifest per commit. DuckDB, with no manifest-per-generation design, pays
    2× DuckDB on bulk load, corrections at 4.8 ms.
 2. Every write-side pathology measured here — singleton-append drift,
    64 KB corrections, compaction that grows the store — is the *same*
-   root cause: full manifests per commit, never collected. The pending
-   generation-collection work has its before/after targets in
-   `eval-writes.json`.
+   root cause: full manifests per commit, never collected. Generation
+   collection (D-034) has since landed against exactly these targets:
+   at 1M rows, whole-store 48.2 → 25.1 B/row after gc alone, 24.6 after
+   compaction plus gc (`eval-1m-gc.json` on xzgpu).
