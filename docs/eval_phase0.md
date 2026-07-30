@@ -84,19 +84,23 @@ PostgreSQL holds at 0.3; DuckDB's 23.7 grows, because it is a scan.
 
 ### synth, 10M events (abridged)
 
-| query | native | duckdb | postgres | fastest |
+Refreshed at commit `9d38404` (cluster-wise merge in; native and DuckDB —
+the PostgreSQL 10M column, measured once pre-refresh, is retained where no
+TGMS-side change affects it):
+
+| query | native | duckdb | postgres (pre-refresh) | fastest |
 |---|---:|---:|---:|---|
-| hist.single | **1.7** | 66.1 | 0.3 | postgres |
-| snap.hop2 | **1001.4** | 1716.3 | 2538.3 | native |
-| diff.global | **3918.9** | 5611.7 | 6686.9 | native |
+| hist.single | **1.6** | 68.4 | 0.3 | postgres |
+| snap.hop2 | **937.2** | 1710.3 | 2538.3 | native |
+| diff.global | **3771.3** | 5659.0 | 6686.9 | native |
 | reach.window | n/a | n/a | **43987.2** | guardrailed |
 | paths.k | n/a | n/a | **38.0** | guardrailed |
-| series.count | 1207.9 | **956.6** | 2160.0 | duckdb |
-| burst.zscore | 1209.4 | **957.2** | 2127.7 | duckdb |
-| nbr.evolution | 70.5 | 105.7 | **2.7** | postgres |
-| coactive.narrow | 724.1 | **224.9** | 1722.4 | duckdb |
-| resolve.substr | **34.8** | 775.4 | 201.0 | native |
-| motif.filtered | 227.1 | **167.0** | 644.1 | duckdb |
+| series.count | **439.0** | 937.9 | 2160.0 | native |
+| burst.zscore | **439.0** | 959.8 | 2127.7 | native |
+| nbr.evolution | 70.9 | 106.0 | **2.7** | postgres |
+| coactive.narrow | **182.1** | 212.6 | 1722.4 | native |
+| resolve.substr | **95.3** | 790.1 | 201.0 | native |
+| motif.filtered | **73.1** | 162.5 | 644.1 | native |
 
 10M initially inverted part of the picture: DuckDB won series, burst, the
 interval join (3.2×), and the motif fetch — every full-window scan — on a
@@ -116,20 +120,20 @@ instead of heap-merging at all — took the scan 1167 → 811 ms and the
 operator to **929 ms, just under DuckDB's ~958**. The two paths are
 byte-identical (the disjointness check uses the selected rows' own
 composite keys), all 12 queries still agree. Parallelizing materialization (disjoint selections on scoped threads, no
-order list at all) then moved **nothing** — 811 → 819 ms — and a stage-
-timing probe explained why in a way that revises the record: the code is
-not irrelevant, it is **unreachable on this store**. Measured per call:
-`select` 33 ms (parallel, cheap), NumPy boundary + eid 73 ms, core total
-733 ms. The disjoint fast path never fires, because the dataset's
-corrections write superseding versions into segments whose key ranges
-overlap the originals — one overlap anywhere fails the all-or-nothing
-disjointness check, and every full-window scan falls back to the 10M-row
-heap merge with serial materialize (~630 ms). A corrected store is the
-*normal* store, so the fast path as written is the exception, not the
-rule. The fix is group-wise: partition selections into overlap clusters,
-concatenate across clusters, heap-merge only within them — correction
-segments are tiny, so nearly all rows would take the fast path. Not yet
-built; parity with DuckDB stands meanwhile.
+order list at all) first moved **nothing** — 811 → 819 ms — and a stage-
+timing probe explained why: the code was not irrelevant, it was
+**unreachable on this store**. Per call: `select` 33 ms, NumPy boundary +
+eid 73 ms, core total 733 ms — with the disjoint fast path never firing,
+because corrections write superseding versions into segments whose key
+ranges overlap the originals, and one overlap anywhere failed the then
+all-or-nothing disjointness check. A corrected store is the *normal*
+store. The fix is **cluster-wise merging**: selections group into
+key-range overlap clusters; clusters concatenate and materialize in
+parallel; only rows within a cluster heap-merge. That took the scan
+817 → 330 ms and `series.count` to **434–439 ms, 2.1× ahead of DuckDB**
+— and made the "irrelevant" parallel materialization the thing doing the
+work. The full arc (parallel select → null result → probe → clustering)
+is lesson material: the 819 ms non-result was inventory, not waste.
 
 The guardrail gates both traversal queries on TGMS at this scale.
 PostgreSQL's answers split the verdict: reachability genuinely explodes
