@@ -13,7 +13,7 @@
 //! WHERE tt_s <= as_of AND as_of < tt_e          -- belief
 //!   AND vt_e > vt_min AND vt_s < vt_max         -- valid-time overlap
 //!   AND rel_type IN (...)                       -- optional
-//!   AND (src_id IN touching OR dst_id IN touching)
+//!   AND (src_id IN touching OR dst_id IN touching)   -- or AND, see below
 //! ORDER BY vt_s, vid
 //! ```
 //!
@@ -42,6 +42,13 @@ pub struct ScanRequest {
     pub rel_types: Option<Vec<String>>,
     /// Incidence filter over dense ids. Must be sorted (binary-searched).
     pub touching_ids: Option<Vec<u32>>,
+    /// Require *both* endpoints in `touching_ids` rather than either.
+    ///
+    /// Or-incidence is what most callers want ("edges at this node"). Motif
+    /// matching wants the and-form, and expressing it above the scan means
+    /// deriving `eid` — a sha256 per row — for rows the caller is about to
+    /// discard. No effect unless `touching_ids` is set.
+    pub touching_both: bool,
     /// Stop after this many rows. Applied after ordering.
     pub limit: Option<usize>,
     /// Columns to materialize. `None` means all of them.
@@ -70,6 +77,13 @@ impl ScanRequest {
         ids.sort_unstable();
         ids.dedup();
         self.touching_ids = Some(ids);
+        self
+    }
+
+    /// `touching`, but both endpoints must be in the set.
+    pub fn touching_both(mut self, ids: Vec<u32>) -> Self {
+        self = self.touching(ids);
+        self.touching_both = true;
         self
     }
 }
@@ -221,6 +235,14 @@ impl<'a, S: SegmentSource> ScanSet<'a, S> {
             let rel_codes = seg.u16_column("rel_code").ok();
             let src = seg.u32_column("src_id").ok();
             let dst = seg.u32_column("dst_id").ok();
+            // The or-form can still answer with one endpoint column missing;
+            // the and-form cannot, so say so rather than silently matching
+            // nothing.
+            if req.touching_both && touching.is_some() && (src.is_none() || dst.is_none()) {
+                return Err(crate::EngineError::corrupt(
+                    "both-endpoint incidence needs src_id and dst_id",
+                ));
+            }
             // direct lookup by rel_code instead of searching a list per row
             let rel_allowed: Option<Vec<bool>> = req
                 .rel_types
@@ -276,8 +298,13 @@ impl<'a, S: SegmentSource> ScanSet<'a, S> {
                         }
                     }
                     if let Some(ids) = &touching {
-                        let hit = src.is_some_and(|s| ids.contains(s[i]))
-                            || dst.is_some_and(|d| ids.contains(d[i]));
+                        let s_hit = src.is_some_and(|s| ids.contains(s[i]));
+                        let d_hit = dst.is_some_and(|d| ids.contains(d[i]));
+                        let hit = if req.touching_both {
+                            s_hit && d_hit
+                        } else {
+                            s_hit || d_hit
+                        };
                         if !hit {
                             continue;
                         }

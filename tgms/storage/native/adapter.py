@@ -295,6 +295,7 @@ class NativeAdapter(StorageAdapter):
         rel_types: Sequence[str] | None = None,
         columns: Sequence[str] | None = None,
         touching_ids: Sequence[int] | None = None,
+        touching_both: bool = False,
     ) -> dict[str, np.ndarray]:
         try:
             got = self._store.scan_edges(
@@ -305,6 +306,7 @@ class NativeAdapter(StorageAdapter):
                 touching_ids=[int(i) for i in touching_ids]
                 if touching_ids is not None
                 else None,
+                touching_both=touching_both,
                 limit=None,
                 # a real pushdown: unprojected string columns are never built
                 columns=list(columns) if columns is not None else None,

@@ -176,6 +176,7 @@ class KuzuAdapter(StorageAdapter):
         rel_types: Sequence[str] | None = None,
         columns: Sequence[str] | None = None,
         touching_ids: Sequence[int] | None = None,
+        touching_both: bool = False,
     ) -> dict[str, np.ndarray]:
         a = clamp_tt(as_of_tt)
         int_cols = tuple(c for c in self.EDGE_INT_COLS
@@ -197,7 +198,8 @@ class KuzuAdapter(StorageAdapter):
             where.append("e.rel_type IN $rel_types")
             params["rel_types"] = list(rel_types)
         if touching_ids is not None:
-            where.append("(x.dense_id IN $touch OR y.dense_id IN $touch)")
+            op = "AND" if touching_both else "OR"
+            where.append(f"(x.dense_id IN $touch {op} y.dense_id IN $touch)")
             params["touch"] = [int(i) for i in touching_ids]
         select = ", ".join(f"{exprs[c]} AS {c}" for c in int_cols + str_cols)
         order = "e.vt_s, e.vid"

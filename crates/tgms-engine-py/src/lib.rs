@@ -357,8 +357,8 @@ impl NativeStore {
 
     /// Windowed columnar scan — the workhorse `edges_columnar` serves.
     #[pyo3(signature = (as_of_tt = OPEN_END, vt_min = None, vt_max = None,
-                        rel_types = None, touching_ids = None, limit = None,
-                        columns = None))]
+                        rel_types = None, touching_ids = None, touching_both = false,
+                        limit = None, columns = None))]
     #[allow(clippy::too_many_arguments)]
     fn scan_edges<'py>(
         &self,
@@ -368,6 +368,7 @@ impl NativeStore {
         vt_max: Option<i64>,
         rel_types: Option<Vec<String>>,
         touching_ids: Option<Vec<i64>>,
+        touching_both: bool,
         limit: Option<usize>,
         columns: Option<Vec<String>>,
     ) -> Res<Bound<'py, PyDict>> {
@@ -417,6 +418,7 @@ impl NativeStore {
                 ids.dedup();
                 ids
             }),
+            touching_both,
             limit,
             // eid is derived from rel_type and disc, so asking for it implies
             // materializing those two even when the caller does not want them

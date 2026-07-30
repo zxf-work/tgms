@@ -209,6 +209,7 @@ class DuckDBAdapter(StorageAdapter):
         rel_types: Sequence[str] | None = None,
         columns: Sequence[str] | None = None,
         touching_ids: Sequence[int] | None = None,
+        touching_both: bool = False,
     ) -> dict[str, np.ndarray]:
         as_of_tt = clamp_tt(as_of_tt)
         int_cols = tuple(c for c in self.EDGE_INT_COLS
@@ -228,7 +229,8 @@ class DuckDBAdapter(StorageAdapter):
             params.extend(rel_types)
         if touching_ids is not None:
             marks = ",".join("?" * len(touching_ids))
-            where.append(f"(src_id IN ({marks}) OR dst_id IN ({marks}))")
+            op = "AND" if touching_both else "OR"
+            where.append(f"(src_id IN ({marks}) {op} dst_id IN ({marks}))")
             params.extend(touching_ids)
             params.extend(touching_ids)
         tbl = self.conn.execute(

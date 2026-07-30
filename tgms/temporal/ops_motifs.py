@@ -17,7 +17,6 @@ from __future__ import annotations
 
 from typing import Any
 
-import numpy as np
 
 from tgms.core.errors import InvalidArgError
 from tgms.storage.base import StorageAdapter
@@ -80,17 +79,16 @@ def _events(adapter: StorageAdapter, args: dict[str, Any]) -> dict[str, Any]:
     ids = None
     if args["node_filter"] is not None:
         ids = adapter.dense_ids(sorted(set(args["node_filter"])))
-    # A motif event needs *both* endpoints in the filter, which the scan cannot
-    # express — it pushes down or-incidence. But {both} is a subset of {either},
-    # so or-incidence is an exact pre-filter and the and-test below still
-    # decides. It matters because `eid` is a sha256 per row: unfiltered, the
-    # scan derived 200k of them at 200k events and the mask then discarded 93%.
+    # A motif event needs *both* endpoints in the filter, so the scan is asked
+    # for exactly that. It matters because `eid` is a sha256 per row:
+    # unfiltered, the scan derived 200k of them at 200k events and a NumPy mask
+    # then discarded 93%. An or-incidence pre-filter (the scan's older, weaker
+    # form) still derived 25k.
     e = adapter.edges_columnar(as_of_tt=args["as_of_tt"], vt_min=t_a, vt_max=t_b,
                                columns=_EVENT_COLS,
-                               touching_ids=None if ids is None else [int(i) for i in ids])
+                               touching_ids=None if ids is None else [int(i) for i in ids],
+                               touching_both=ids is not None)
     m = (e["vt_s"] >= t_a) & (e["vt_s"] < t_b)
-    if ids is not None:
-        m &= np.isin(e["src_id"], ids) & np.isin(e["dst_id"], ids)
     if args["mode"] == "exact" and args["node_filter"] is None \
             and int(m.sum()) > EXACT_EDGE_CAP:
         raise InvalidArgError(

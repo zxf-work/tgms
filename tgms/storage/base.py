@@ -152,6 +152,7 @@ class StorageAdapter(ABC):
         rel_types: Sequence[str] | None = None,
         columns: Sequence[str] | None = None,
         touching_ids: Sequence[int] | None = None,
+        touching_both: bool = False,
     ) -> dict[str, np.ndarray]:
         """Struct-of-arrays over believed edge versions whose vt overlaps
         [vt_min, vt_max). Keys: src_id, dst_id, vt_s, vt_e (int64),
@@ -159,7 +160,11 @@ class StorageAdapter(ABC):
 
         `columns` restricts materialization (string columns are the expensive
         part at 1M+ rows — profiled at M3); `touching_ids` pushes down an
-        incidence filter (src_id or dst_id in the given dense ids)."""
+        incidence filter (src_id or dst_id in the given dense ids), and
+        `touching_both` narrows that to *both* endpoints. The and-form exists
+        because expressing it above the scan means deriving `eid` — a sha256
+        per row — for rows the caller then discards; it has no effect unless
+        `touching_ids` is given."""
 
     @abstractmethod
     def nodes_columnar(
