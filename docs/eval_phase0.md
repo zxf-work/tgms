@@ -128,7 +128,8 @@ CollegeMsg motif row exposed, second instance.
 | resolve.substr | **2.6** | 17.0 | 5.2 | native |
 | motif.filtered | **3.8** | 22.0 | 27.7 | native |
 
-Full table in `eval-collegemsg.json`. Instant snapshots and interval joins
+Full table in `eval-collegemsg-costfix.json` (the pre-reprice record, with
+the motif refusals, is `eval-collegemsg.json`). Instant snapshots and interval joins
 are legitimately thin here — the events are instantaneous, so microsecond
 intervals cannot strictly overlap — and the belief probe works without
 corrections because it pins mid-ingestion state.
