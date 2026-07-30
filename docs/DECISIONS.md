@@ -504,3 +504,34 @@ implementation — hygiene checking starts at the marker recorded in D-010.
   behaviors on both backends; the output `name` field keeps its raw JSON
   type either way. `docs/eval_semantics.md` §6's "current-canonical only"
   gains "and string-matched".
+
+## D-032 — column compression: one codec, chosen by trial per column
+
+- **Date:** 2026-07-30
+- **Context:** C4 was deferred until the uncompressed baseline existed; the
+  measured breakdown at 1M rows showed integer columns at 71% of segment
+  bytes, dominated by values in narrow per-segment ranges (sorted vt_s/vt_e,
+  constant or sequential string refs, dictionary-bounded ids) — and 12 B/row
+  of sha256-derived vid that cannot compress.
+- **Decision:** per-block frame-of-reference bit-packing (codec 1), applied
+  by measurement: the writer trial-encodes every column and keeps the
+  smaller representation, so incompressible columns stay raw without a
+  special case. Codec ids were reserved from format v0, so old stores read
+  unchanged and old builds fail cleanly on new stores. Compressed columns
+  decode once at open behind a new store-level Arc segment cache — sound
+  because segment files are immutable — and the hot path keeps serving
+  plain slices.
+- **Measured (xzgpu, 1M rows):** segments 65.3 → **31.4 B/row** (0.169× the
+  DuckDB baseline's 186.3). vt_s+vt_e 16 → 2.95; four ref columns ~16 → 1.5;
+  src/dst 8 → 3.46; vid stays 12 and is now 38% of segment bytes — the
+  standing price of derived identity. Query latency *improved* across the
+  board (e.g. co_active 37.3 → 23.5 ms median), but that gain is
+  attributable to the segment cache and decode-once pair, not compression
+  alone — no ablation was run separating them. All 12 registry queries
+  still hash identically across the three systems.
+- **Open:** the string heap (11.2 B/row, now 36% of segments) is untouched —
+  compressing it needs a general codec and a dependency decision (§8.6).
+  And the manifest directory (24 MB at 1M after ~250 commits, versus 31 MB
+  of segments) now dominates store overhead: every commit writes a full
+  manifest and nothing collects old generations. That is a retention
+  problem, not a codec problem, and is filed separately.
