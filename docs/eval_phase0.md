@@ -9,7 +9,7 @@ uv run python scripts/eval_harness.py --scale 200000 --systems native,duckdb,pos
 
 ## Receipts (spec §8.4)
 
-- commit `33a303f`, 200,000 events, 3 repeats per query, p50 reported
+- commit `284f768`, 200,000 events, 3 repeats per query, p50 reported
 - **xzgpu** — 40 cores, 93 GB, Linux 5.4. Every number here comes from that
   one host; `eval_harness.py` warns when run anywhere else, because a laptop
   differs by 5× in cores and 6× in RAM and pins `effective_io_concurrency`
@@ -31,18 +31,18 @@ p50 milliseconds.
 
 | query | native | duckdb | postgres | fastest |
 |---|---:|---:|---:|---|
-| hist.single | 1.1 | 9.7 | **0.5** | postgres |
-| hist.asof | 1.1 | 7.6 | **0.5** | postgres |
-| snap.hop2 | **24.2** | 44.6 | 41.5 | native |
-| diff.global | **72.1** | 110.3 | 107.1 | native |
-| reach.window | **18.9** | 25.4 | 704.9 | native |
-| paths.k | **8.6** | 16.4 | 21.9 | native |
-| series.count | **28.0** | 43.6 | 56.9 | native |
-| burst.zscore | **29.1** | 44.0 | 57.6 | native |
-| nbr.evolution | 14.9 | 15.8 | **3.5** | postgres |
-| coactive.narrow | **38.4** | 55.9 | 56.8 | native |
-| resolve.substr | **3.6** | 19.5 | 5.4 | native |
-| motif.filtered | **40.5** | 69.5 | 143.6 | native |
+| hist.single | 1.1 | 10.2 | **0.5** | postgres |
+| hist.asof | 1.1 | 9.2 | **0.5** | postgres |
+| snap.hop2 | **23.8** | 44.7 | 41.1 | native |
+| diff.global | **71.7** | 109.0 | 109.9 | native |
+| reach.window | **18.4** | 25.2 | 702.9 | native |
+| paths.k | **8.6** | 16.5 | 22.1 | native |
+| series.count | **27.7** | 39.0 | 56.5 | native |
+| burst.zscore | **29.2** | 45.1 | 56.6 | native |
+| nbr.evolution | 14.9 | 16.7 | **3.6** | postgres |
+| coactive.narrow | **37.8** | 56.5 | 54.2 | native |
+| resolve.substr | **3.6** | 18.2 | 5.3 | native |
+| motif.filtered | **32.0** | 60.6 | 143.5 | native |
 
 Native is fastest on 9, PostgreSQL on 3. Against DuckDB alone the native
 engine wins all 12.
@@ -151,17 +151,23 @@ pushdown still derived `eid` for every or-match, 25k rows to keep 14.5k.
 |---|---:|
 | original | 368.9 |
 | + column projection, or-pushdown | 52.6 |
-| + both-endpoints pushdown | **40.5** |
-| — of which the Rust matcher | 11.0 |
+| + both-endpoints pushdown | 40.5 |
+| + NumPy buffers at the PyO3 boundary | **32.0** |
+| — of which `_match` (boundary + kernel) | 5.5 |
 
-The matcher never changed. It began as 3% of the operator and is now 27%,
-which is what the operator ought to look like. What remains is close to the
-floor: scanning the window's three integer columns costs 26.0 ms on its own,
-and `_events` now costs 25.6.
+The matching algorithm was never touched. `_match` fell from 11.0 to 5.5 ms
+only because the three int64 columns stopped being converted twice — once by
+a Python list comprehension, once by PyO3 walking the list — and now cross as
+borrowed NumPy buffers. Python-side conversion is down to 0.07 ms, all of it
+`eid.tolist()`; the remaining 5.3 ms is inside the extension, and this run did
+not separate `Vec<String>` extraction from the matching itself.
 
-Because the work happened in the shared operator layer and the scan ABC, both
-backends benefited: **DuckDB 576.8 → 69.5 ms**. The comparison did not move in
-TGMS's favour by handicapping the other side.
+What remains in the operator is close to the scan floor: reading the window's
+three integer columns costs 25.4 ms on its own, and `_events` costs 25.6.
+
+Because the work happened in the shared operator layer, the scan ABC, and a
+shared kernel binding, both backends benefited: **DuckDB 576.8 → 60.6 ms**.
+The comparison did not move in TGMS's favour by handicapping the other side.
 
 ## One number that was mine, not PostgreSQL's
 
@@ -192,7 +198,7 @@ were my SQL rather than the database.
 
 | | native | duckdb | postgres |
 |---|---:|---:|---:|
-| load 200k events | 4.6 s | 11.2 s | 4.8 s |
+| load 200k events | 4.6 s | 11.1 s | 4.8 s |
 
 Native was **24.1 s** here until the point-lookup fix below. The generated log
 ends with ~250 single-op corrections and retractions, and each one performed

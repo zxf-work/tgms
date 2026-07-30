@@ -334,9 +334,22 @@ operator layer and the scan ABC, so the DuckDB backend got it too (576.8 →
 specializing one backend improves the baseline you are being compared against,
 which is the only kind that is unambiguously real.
 
-The kernel measures 11.0 ms throughout. It started as 3% of the operator and
-ended as 27% — not because it changed, but because everything around it
-stopped costing more than it did.
+One more layer sat between the operator and the kernel. `_match` measured
+11.0 ms, and it was tempting to read that as "the kernel". It was not: 4.4 ms
+of it was the three int64 columns being converted *twice* on the way in —
+first by a Python list comprehension building boxed ints, then by PyO3 walking
+that list to build a `Vec<i64>`. Passing them as NumPy buffers and borrowing
+the slices in Rust — which is what the kernel's `Events` already wanted, since
+it takes `&[i64]` — halved it to 5.5 ms and took the operator to 32.0.
+
+So the full arc is 368.9 → 32.0 ms with the matching algorithm never once
+touched, and even the "11 ms kernel" turning out to be half boundary. The
+honest summary of what remains: Python-side conversion is 0.07 ms, and 5.3 ms
+is inside the extension — `Vec<String>` extraction for `eid` plus the match —
+which we have not yet separated. `eid` is the one column that cannot be
+borrowed, being an object array of Python strings; the scan holds it as a
+96-bit id and formats it to hex on the way out, so there is a real change
+available there, and no measurement yet to justify it.
 
 ## 10. Fault injection earns its keep in ways you did not plan
 
