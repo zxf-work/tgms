@@ -472,12 +472,15 @@ class Oracle:
             cur = latest.get(v.uid)
             if cur is None or v.vt_s > cur.vt_s:
                 latest[v.uid] = v
-            name = str(v.props.get("name", ""))
+            # D-031: only JSON *string* names participate in matching. The
+            # former str() coercion matched text the store never held —
+            # "None" for a JSON null, "42" for a number.
+            name = v.props.get("name")
             if v.uid == q:
                 score = 0
             elif ql in v.uid.lower():
                 score = 1
-            elif name and ql in name.lower():
+            elif isinstance(name, str) and name and ql in name.lower():
                 score = 2
             else:
                 continue

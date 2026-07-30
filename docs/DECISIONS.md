@@ -473,3 +473,34 @@ implementation — hygiene checking starts at the marker recorded in D-010.
 - **Consequence:** a query PostgreSQL cannot express equivalently is marked
   `unsupported` in `docs/eval_semantics.md` rather than being weakened until
   it runs — a faster number for an easier question is worse than no number.
+
+## D-031 — resolve_entities: one canonical-version rule, string-only name matching
+
+- **Date:** 2026-07-30
+- **Context:** porting `resolve_entities` to SQL for the PostgreSQL baseline
+  exposed that the Rust kernel and the reference oracle disagreed, and the
+  suite could not tell: the kernel took an entity's canonical `label`/`name`
+  from the latest **matching** believed version, the oracle from the latest
+  believed version **overall**; the two broke `vt_s` ties in opposite
+  scan-order-dependent directions; and the oracle's `str()` coercion let
+  non-string names match text the store never contained ("None" for a JSON
+  null, "42" for a number) while the kernel's promoted name column indexes
+  strings only.
+- **Decision:**
+  1. Canonical state comes from the latest believed version by
+     `(vt_s, vid)`, whether or not that version matched — an entity found
+     by a superseded name resolves to what it is now. (Oracle behavior;
+     kernel fixed, and it now also reads staged rows so a batch sees its
+     own writes.)
+  2. Name matching participates only when `name` is a non-empty JSON
+     **string**. (Kernel/typed-column behavior; oracle, portable fallback,
+     and the PostgreSQL SQL narrowed. This is the one place the reference
+     implementation changed: its coercion was an accident, not a
+     semantics.)
+  3. The `vid` tiebreak is unreachable for believed versions of one uid
+     (disjoint valid intervals) but is stated so every implementation is
+     order-independent by construction.
+- **Consequence:** `tests/test_resolve_semantics.py` pins all three
+  behaviors on both backends; the output `name` field keeps its raw JSON
+  type either way. `docs/eval_semantics.md` §6's "current-canonical only"
+  gains "and string-matched".

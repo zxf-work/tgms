@@ -584,7 +584,11 @@ def burst_detection(conn, *, target: dict, window: dict, stride: int,
 _RESOLVE = """
 WITH v AS (
     SELECT uid, label, props, vt_s, vid,
-           lower(uid) AS luid, lower(COALESCE(props::jsonb ->> 'name', '')) AS lname
+           lower(uid) AS luid,
+           -- D-031: only JSON string names participate in matching; ->> would
+           -- stringify numbers and match text the store never held
+           lower(COALESCE(CASE WHEN jsonb_typeof(props::jsonb -> 'name') = 'string'
+                               THEN props::jsonb ->> 'name' END, '')) AS lname
     FROM node_versions WHERE {bel}
 ),
 scored AS (
@@ -596,7 +600,7 @@ scored AS (
 ),
 latest AS (
     SELECT DISTINCT ON (uid) uid, label, props
-    FROM v ORDER BY uid, vt_s DESC, vid COLLATE "C"
+    FROM v ORDER BY uid, vt_s DESC, vid COLLATE "C" DESC
 )
 SELECT s.uid, l.label, l.props, s.match
 FROM scored s JOIN latest l ON l.uid = s.uid

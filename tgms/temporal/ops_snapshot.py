@@ -410,12 +410,13 @@ def resolve_entities(adapter: StorageAdapter, args: dict[str, Any]) -> dict[str,
         cur = latest.get(v.uid)
         if cur is None or v.vt_s > cur.vt_s:
             latest[v.uid] = v
-        name = str(v.props.get("name", ""))
+        # D-031: only JSON string names participate in matching
+        name = v.props.get("name")
         if v.uid == q:
             score = 0
         elif ql in v.uid.lower():
             score = 1
-        elif name and ql in name.lower():
+        elif isinstance(name, str) and name and ql in name.lower():
             score = 2
         else:
             continue

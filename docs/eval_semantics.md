@@ -119,8 +119,9 @@ a truncated answer is a different answer. Baselines must apply the same
 Recorded for symmetry — these are places a baseline may legitimately do more,
 and the comparison should not claim TGMS's restriction as an advantage:
 
-- **Name resolution is current-canonical only.** Matching is over the latest
-  believed name; historical alias lookup is not offered.
+- **Name resolution is current-canonical and string-only.** Matching is over
+  the latest believed name, and only when it is a JSON string (D-031);
+  historical alias lookup is not offered.
 - **Single writer.** Concurrency comparisons are read-side only until
   belief-state isolation exists.
 - **Fixed motif catalogue.** Five shapes, not arbitrary pattern matching. A

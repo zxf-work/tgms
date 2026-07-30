@@ -566,7 +566,7 @@ fn write_segment(
 /// Parsed once at seal time rather than on every lookup. Anything that is not
 /// a string (absent, null, a number) simply has no name — resolution matches
 /// on text, so there is nothing to index.
-fn name_of(props: &str) -> Option<String> {
+pub(crate) fn name_of(props: &str) -> Option<String> {
     if !props.contains("\"name\"") {
         return None; // the overwhelmingly common case: skip the parse
     }

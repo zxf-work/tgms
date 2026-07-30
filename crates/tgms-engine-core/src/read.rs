@@ -457,18 +457,24 @@ impl NativeStore {
     }
 
     /// Entity resolution (O12): match a query against uids and names, and
-    /// report the latest believed version of each entity that matched.
+    /// report each matched entity through its latest believed version.
     ///
     /// Scored exactly as the operator defines: 0 for an exact uid, 1 for a
     /// uid substring, 2 for a name substring, lowest wins. `name` is read
     /// from the promoted `name_ref` column, so no JSON is parsed per row —
     /// that parse over every node version was the whole cost of this
-    /// operator.
+    /// operator. Name matching is over JSON *string* names only (D-031): the
+    /// typed column indexes nothing else, and the reference implementation's
+    /// former `str()` coercion matched text like "None" that no version
+    /// actually contained.
     ///
-    /// Returns `(uid, score, label, props)` for the latest believed version
-    /// of each match. Row construction stays with the caller: the output
-    /// `name` field comes from `props`, which may hold a non-string value
-    /// that the typed column deliberately does not index.
+    /// Returns `(uid, score, label, props)`. The canonical label and props
+    /// come from the latest believed version by `(vt_s, vid)` **whether or
+    /// not that version itself matched** — an entity found by an old name
+    /// still resolves to what it is now, not to what it was when it matched.
+    /// The vid tiebreak is unreachable for believed versions of one uid
+    /// (disjoint valid intervals) but keeps every implementation
+    /// order-independent by construction.
     pub fn resolve_entities(
         &self,
         query: &str,
@@ -476,8 +482,26 @@ impl NativeStore {
     ) -> Result<Vec<(String, u8, String, String)>> {
         let ql = query.to_lowercase();
         let closes = self.close_index()?;
-        // uid -> (best score, latest vt_s, label, props)
-        let mut best: HashMap<String, (u8, i64, String, String)> = HashMap::new();
+        // uid -> (best matching score, canonical (vt_s, vid), label, props)
+        type Entry = (u8, (i64, Id96), String, String);
+        let mut best: HashMap<String, Entry> = HashMap::new();
+        let mut upsert = |uid: String,
+                          score: Option<u8>,
+                          key: (i64, Id96),
+                          label: &str,
+                          props: &str| {
+            let e = best.entry(uid).or_insert_with(|| {
+                (u8::MAX, key, label.to_string(), props.to_string())
+            });
+            if let Some(sc) = score {
+                e.0 = e.0.min(sc);
+            }
+            if key >= e.1 {
+                e.1 = key;
+                e.2 = label.to_string();
+                e.3 = props.to_string();
+            }
+        };
 
         for (file, id) in self.node_files() {
             let seg = self.open_segment(&file)?;
@@ -486,6 +510,8 @@ impl NativeStore {
             let sidecar = seg.sidecar();
             let vt_s = seg.i64_column("vt_s")?;
             let uid_id = seg.u32_column("uid_id")?;
+            let vid_hi = seg.u64_column("vid64")?;
+            let vid_lo = seg.u32_column("vid_lo32")?;
             let label_ref = seg.u32_column("label_ref")?;
             let props_ref = seg.u32_column("props_ref")?;
             // segments written before the column was promoted simply have no
@@ -508,27 +534,48 @@ impl NativeStore {
                     None => None,
                 };
                 let score = if uid == query {
-                    0u8
+                    Some(0u8)
                 } else if uid.to_lowercase().contains(&ql) {
-                    1
+                    Some(1)
                 } else if name.is_some_and(|n| !n.is_empty() && n.to_lowercase().contains(&ql)) {
-                    2
+                    Some(2)
                 } else {
-                    continue;
+                    None // no match — still a candidate for canonical state
                 };
-                let entry = best.entry(uid).or_insert((u8::MAX, i64::MIN, String::new(), String::new()));
-                entry.0 = entry.0.min(score);
-                // the newest believed version supplies label and props
-                if vt_s[i] >= entry.1 {
-                    entry.1 = vt_s[i];
-                    entry.2 = strings.get(label_ref[i])?.to_string();
-                    entry.3 = strings.get(props_ref[i])?.to_string();
-                }
+                upsert(
+                    uid,
+                    score,
+                    (vt_s[i], Id96 { hi: vid_hi[i], lo: vid_lo[i] }),
+                    strings.get(label_ref[i])?,
+                    strings.get(props_ref[i])?,
+                );
             }
+        }
+
+        // rows staged in an open batch: a batch must read its own writes
+        let staged_closes = self.staged_closes();
+        for r in self.staged_nodes() {
+            let tt_e = staged_closes.get(&r.vid).copied().unwrap_or(OPEN_END);
+            if !believed_at(r.tt_s, tt_e, as_of_tt) {
+                continue;
+            }
+            let uid = self.uid_of(r.uid_id)?;
+            let name = crate::segment::name_of(&r.props);
+            let score = if uid == query {
+                Some(0u8)
+            } else if uid.to_lowercase().contains(&ql) {
+                Some(1)
+            } else if name.as_deref().is_some_and(|n| !n.is_empty() && n.to_lowercase().contains(&ql)) {
+                Some(2)
+            } else {
+                None
+            };
+            upsert(uid, score, (r.vt_s, r.vid), &r.label, &r.props);
         }
 
         let mut out: Vec<(String, u8, String, String)> = best
             .into_iter()
+            .filter(|(_, e)| e.0 != u8::MAX) // tracked for state, never matched
             .map(|(uid, (score, _, label, props))| (uid, score, label, props))
             .collect();
         out.sort_by(|a, b| a.1.cmp(&b.1).then_with(|| a.0.cmp(&b.0)));
