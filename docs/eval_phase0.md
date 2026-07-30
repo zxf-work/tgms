@@ -16,6 +16,10 @@ uv run python scripts/eval_harness.py --scale 200000 --systems native,duckdb,pos
   the harness computed a best case and the field name hid it. Medians turn
   out close to those minimums, so no conclusion flips, but the labels were
   wrong and this note is the correction.
+- the CollegeMsg `motif.filtered` row was remeasured on the same host and
+  protocol after the cost-model reprice ("motifs: price the filtered query
+  by delta-pairs, not max-degree squared"); the full rerun agreed on all 12
+  hashes, and the other rows kept their `7606fd5`-sweep values.
 - **xzgpu** — 40 cores, 93 GB, Linux 5.4. Every number here comes from that
   one host; `eval_harness.py` warns when run anywhere else, because a laptop
   differs by 5× in cores and 6× in RAM and pins `effective_io_concurrency`
@@ -122,19 +126,30 @@ CollegeMsg motif row exposed, second instance.
 | paths.k | **137.0** | 141.7 | 306.7 | native |
 | coactive.narrow | **1.4** | 14.4 | 37.5 | native |
 | resolve.substr | **2.6** | 17.0 | 5.2 | native |
-| motif.filtered | n/a | n/a | **27.3** | see below |
+| motif.filtered | **3.8** | 22.0 | 27.7 | native |
 
 Full table in `eval-collegemsg.json`. Instant snapshots and interval joins
 are legitimately thin here — the events are instantaneous, so microsecond
 intervals cannot strictly overlap — and the belief probe works without
 corrections because it pins mid-ingestion state.
 
-**The motif row is a guardrail false positive, found by the baseline.** Both
-TGMS backends refused with `E_COST` while PostgreSQL answered in 27.3 ms —
-count 7. The cost model scales with max out-degree, and CollegeMsg's skew
-(one user messaging hundreds) inflates the estimate far past the actual
-work. The two TGMS backends agreeing on the refusal is consistency, not
-correctness: the ceiling is mispriced for skewed degree distributions.
+**The motif row was a guardrail false positive, found by the baseline.**
+Both TGMS backends refused with `E_COST` while PostgreSQL answered in 27.3
+ms — count 7. The cost model scaled with max out-degree, and CollegeMsg's
+skew (one user with out-degree 1091) put the estimate at 65M expansions
+when the filtered window actually holds 1,102 events. The two TGMS backends
+agreeing on the refusal is consistency, not correctness: the ceiling was
+mispriced for skewed degree distributions.
+
+Repriced: the estimate now charges the filter's event mass at *mean* out
+degree and expands it only against events within `delta` — half of
+`e_f² · delta/span` — instead of `min(e_w, k·max_deg) · max_deg`
+(`_motif_cost` in `tgms/temporal/ops_motifs.py`). On the rerun the row
+answers on all three systems with agreeing hashes (table above). The
+refusals that were correct stay refusals: the synthetic 200k log at
+`node_filter = |V|/5` estimates 14.5M expansions against 18.7M measured
+delta-pairs and keeps its `E_COST`, and the unfiltered full-window query
+stays gated at every scale in the sweep.
 
 On synth 200k native is fastest on 9 of 12 and wins all 12 vs DuckDB.
 
