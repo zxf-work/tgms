@@ -105,10 +105,13 @@ per-segment selection (scoped threads, byte-identical results by
 construction) settled the hypothesis **half-right**: `coactive.narrow`
 724 → **151 ms** and `motif.filtered` 227 → **77 ms**, both back ahead of
 DuckDB — those scans are selection-bound (incidence and node filters per
-row). `series.count`/`burst.zscore` did not move (~1.26 s vs DuckDB's
-~0.96) — their cost is not in selection, and where it is remains
-unprofiled. The remaining two-query gap is recorded as open, not
-explained.
+row). `series.count`/`burst.zscore` did not move (~1.26 s vs DuckDB's ~0.96) —
+profiled: the scan is 1167 ms of the operator's 1274, and projecting down
+to one column changes nothing (1170 ms), so the cost is not column
+materialization. NumPy's mask-and-bincount is 88 ms. What remains is the
+serial post-selection machinery — building the 10M-entry merge order and
+copying rows out through the boundary — which parallel selection does not
+touch. Known, bounded, and filed; not yet fixed.
 
 The guardrail gates both traversal queries on TGMS at this scale.
 PostgreSQL's answers split the verdict: reachability genuinely explodes
