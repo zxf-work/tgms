@@ -343,13 +343,25 @@ the slices in Rust — which is what the kernel's `Events` already wanted, since
 it takes `&[i64]` — halved it to 5.5 ms and took the operator to 32.0.
 
 So the full arc is 368.9 → 32.0 ms with the matching algorithm never once
-touched, and even the "11 ms kernel" turning out to be half boundary. The
-honest summary of what remains: Python-side conversion is 0.07 ms, and 5.3 ms
-is inside the extension — `Vec<String>` extraction for `eid` plus the match —
-which we have not yet separated. `eid` is the one column that cannot be
-borrowed, being an object array of Python strings; the scan holds it as a
-96-bit id and formats it to hex on the way out, so there is a real change
-available there, and no measurement yet to justify it.
+touched, and even the "11 ms kernel" turning out to be half boundary.
+
+Splitting the remainder took a throwaway probe — a `#[pyfunction]` with the
+identical signature that extracts its arguments and returns — built, measured,
+and deleted without being committed. Full call 5.31 ms; extraction 0.94 ms;
+the same probe with `eid=[]` **0.00 ms**; matching therefore ~4.37 ms.
+
+Two conclusions, and the second is the point. The NumPy buffers are genuinely
+free — three int64 columns cross at no measurable cost. And the obvious next
+step is **not worth taking**: `eid` is the one column that cannot be borrowed,
+and the scan does hold it as a 96-bit id before formatting it to hex, so
+passing `(hi, lo)` integer arrays is a real and correct option — worth at most
+0.94 ms of a 32 ms operator, 3%, against changing the scan's output contract
+and the kernel's comparison logic.
+
+The measurement that stops you is worth as much as the one that redirects you.
+Four of the five optimizations in this section were found by profiling; this
+one was *declined* by profiling, and an hour of plausible work went unspent
+because a fifteen-minute probe put a number on it.
 
 ## 10. Fault injection earns its keep in ways you did not plan
 

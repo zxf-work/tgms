@@ -158,9 +158,28 @@ pushdown still derived `eid` for every or-match, 25k rows to keep 14.5k.
 The matching algorithm was never touched. `_match` fell from 11.0 to 5.5 ms
 only because the three int64 columns stopped being converted twice — once by
 a Python list comprehension, once by PyO3 walking the list — and now cross as
-borrowed NumPy buffers. Python-side conversion is down to 0.07 ms, all of it
-`eid.tolist()`; the remaining 5.3 ms is inside the extension, and this run did
-not separate `Vec<String>` extraction from the matching itself.
+borrowed NumPy buffers.
+
+Splitting what remains, with a probe that extracts the same arguments and then
+returns:
+
+| | ms |
+|---|---:|
+| full `motif_match` | 5.31 |
+| argument extraction | 0.94 |
+| — same probe with `eid=[]` | 0.00 |
+| **matching** | **4.37** |
+
+So the boundary is now genuinely cheap: passing three int64 columns as NumPy
+buffers costs nothing measurable, and the whole 0.94 ms is building
+`Vec<String>` for `eid`. Python-side conversion is 0.07 ms.
+
+That settles the obvious next optimization as **not worth doing**. `eid` could
+avoid the string entirely — the scan holds it as a 96-bit id and formats it to
+hex on the way out, and hex order equals `Id96` order so the tiebreak would
+survive — but it would buy at most 0.94 ms of a 32 ms operator, 3%, in
+exchange for changing the scan's output contract and the kernel's comparison
+logic. The measurement is the reason not to.
 
 What remains in the operator is close to the scan floor: reading the window's
 three integer columns costs 25.4 ms on its own, and `_events` costs 25.6.
