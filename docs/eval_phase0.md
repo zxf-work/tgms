@@ -349,7 +349,23 @@ column is close to a straight load number.
 
 ## Storage
 
-Recorded without a ratio, because the index sets are not comparable: the
-PostgreSQL schema carries eight edge indexes chosen for the whole registry
-against two on the TGMS side, and the TGMS index figure is a projection
-rather than a measurement. See `eval_semantics.md`.
+With column compression (D-032), the native store's segments measure
+**31.4 B/row at 1M rows — 0.169×** the DuckDB representation's 186.3,
+uncompressed 65.3. The breakdown after compression, per row: 12.0 B of vid
+(sha256-derived, incompressible — now 38% of segment bytes, the standing
+price of derived identity), 11.2 B of string heap (untouched this round),
+3.5 B of endpoints, 3.0 B of timestamps, ~1.6 B of everything else.
+
+Two honest caveats. Query latency *improved* alongside (co_active 37.3 →
+23.5 ms, nbr.evolution 15.0 → 5.6, diff 60.4), but compression landed
+together with a store-level segment cache that stops every operator call
+re-opening and re-parsing every segment — the gain belongs to the pair, and
+no ablation separates them. And the **manifest directory is now the
+dominant overhead**: 24 MB at 1M rows after ~250 commits, against 31 MB of
+segments — every commit writes a full manifest naming every segment, and
+nothing collects superseded generations. Whole-store bytes are therefore
+~56 B/row today, most of it reclaimable metadata, not data.
+
+The PostgreSQL comparison stays unratioed: its schema carries eight edge
+indexes chosen for the whole registry against two on the TGMS side. See
+`eval_semantics.md`.
