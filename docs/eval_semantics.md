@@ -167,14 +167,26 @@ PostgreSQL twin.
 
 ### Neo4j
 
-Loader and model: `scripts/neo4j_baseline.py`; Cypher, slice by slice:
-`scripts/neo4j_queries.py` (D-036). Verdicts so far: `hist.single`,
-`hist.asof`, `series.count`, `burst.zscore` — **equivalent**,
-hash-verified; the rest unwritten. Semantics notes: Neo4j stores no
-property for null, so absent and null are the same fact (compatible with
-the operators, which never distinguish them); string comparison is
-codepoint-ordered, matching the contract natively. The traversal slice is
-the one this baseline exists for and is written next.
+Loader and model: `scripts/neo4j_baseline.py`; Cypher:
+`scripts/neo4j_queries.py` (D-036). **Verdict: equivalent on the whole
+registry**, hash-verified. Iterative queries (BFS, relaxation, path
+search) drive rounds from Python — Community edition has no fixpoint
+primitive without APOC — with state crossing as bolt parameters, which
+have no query-text size ceiling. Semantics notes: Neo4j stores no
+property for null, so absent and null are one fact (compatible with the
+operators, which never distinguish them); string comparison is
+codepoint-ordered natively; string-valued names are promoted to a
+property at load (D-031's rule, the engine's typed-column move) because
+Cypher cannot parse the props JSON.
+
+### Memgraph
+
+`scripts/memgraph_baseline.py` / `scripts/memgraph_queries.py` (D-037):
+the Neo4j baseline by reuse — loader verbatim, eleven of twelve queries
+unchanged, one override (degree series; Neo4j 5's scoped CALL subquery
+is not openCypher). **Verdict: equivalent on the whole registry**,
+hash-verified independently — the canonical hash judged the openCypher
+compatibility claim rather than trusting it, and it held.
 
 ### PostgreSQL
 
