@@ -1,7 +1,8 @@
 # Phase 0 evaluation: three systems, one registry
 
 Twelve registry queries answered by the TGMS native engine, the TGMS DuckDB
-adapter, and a tuned PostgreSQL baseline. Regenerate with:
+adapter, and tuned PostgreSQL and ClickHouse baselines (D-030, D-035).
+Regenerate with:
 
 ```bash
 uv run python scripts/eval_harness.py --scale 200000 --systems native,duckdb,postgres
@@ -84,11 +85,10 @@ that does not natively offer it. Native holds 8 of 12.
 | resolve.substr | **7.7** | 85.8 | 19.4 | 17.4 | native |
 | motif.filtered | **58.6** | 92.6 | 197.1 | 134.0 | native |
 
-Two honest notes on 1M. **`coactive.narrow` is DuckDB's first win**: 109.9
-against native's 125.8 — the interval join's advantage at 200k does not
-survive 5× the data, which makes it the next thing worth profiling, not
-hiding. And native's point lookup holds flat at 1.1 ms across scale while
-PostgreSQL holds at 0.3; DuckDB's 23.7 grows, because it is a scan.
+(The interval join's 1M story moved twice as the engine improved: DuckDB
+took it from native pre-clustering, and ClickHouse now holds it at this
+scale; native retakes it at 10M. Point lookups stay flat across scale on
+native and PostgreSQL; DuckDB's grow, because its lookup is a scan.)
 
 ### synth, 10M events (abridged)
 
