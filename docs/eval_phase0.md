@@ -67,22 +67,22 @@ ClickHouse's reachability rounds cost ~1 ms of HTTP plus a table build
 each, which is the honest price of expressing recursion in an engine
 that does not natively offer it. Native holds 8 of 12.
 
-### synth, 1M events
+### synth, 1M events (four systems)
 
-| query | native | duckdb | postgres | fastest |
-|---|---:|---:|---:|---|
-| hist.single | 1.1 | 23.7 | **0.3** | postgres |
-| hist.asof | 1.1 | 24.8 | **0.2** | postgres |
-| snap.hop2 | **96.6** | 214.8 | 244.4 | native |
-| diff.global | **325.2** | 575.2 | 576.7 | native |
-| reach.window | **122.8** | 155.8 | 6115.8 | native |
-| paths.k | **11.1** | 36.8 | 27.4 | native |
-| series.count | **123.2** | 131.8 | 210.3 | native |
-| burst.zscore | **124.6** | 134.0 | 210.2 | native |
-| nbr.evolution | 20.1 | 42.9 | **3.0** | postgres |
-| coactive.narrow | 125.8 | **109.9** | 178.2 | duckdb |
-| resolve.substr | **4.3** | 85.5 | 18.5 | native |
-| motif.filtered | **52.6** | 91.2 | 186.4 | native |
+| query | native | duckdb | postgres | clickhouse | fastest |
+|---|---:|---:|---:|---:|---|
+| hist.single | 1.1 | 23.6 | **0.3** | 10.7 | postgres |
+| hist.asof | 1.1 | 25.3 | **0.2** | 11.2 | postgres |
+| snap.hop2 | **97.2** | 209.8 | 267.8 | 150.1 | native |
+| diff.global | **340.4** | 566.7 | 613.1 | 581.0 | native |
+| reach.window | **127.4** | 162.6 | 6334.0 | 3731.2 | native |
+| paths.k | **11.6** | 39.5 | 28.9 | 178.0 | native |
+| series.count | 59.0 | 141.0 | 219.0 | **16.6** | clickhouse |
+| burst.zscore | 60.3 | 145.2 | 220.1 | **18.0** | clickhouse |
+| nbr.evolution | 23.6 | 48.7 | **3.1** | 48.7 | postgres |
+| coactive.narrow | 135.1 | 109.2 | 195.4 | **104.2** | clickhouse |
+| resolve.substr | **7.7** | 85.8 | 19.4 | 17.4 | native |
+| motif.filtered | **58.6** | 92.6 | 197.1 | 134.0 | native |
 
 Two honest notes on 1M. **`coactive.narrow` is DuckDB's first win**: 109.9
 against native's 125.8 — the interval join's advantage at 200k does not
@@ -96,19 +96,37 @@ Refreshed at commit `9d38404` (cluster-wise merge in; native and DuckDB —
 the PostgreSQL 10M column, measured once pre-refresh, is retained where no
 TGMS-side change affects it):
 
-| query | native | duckdb | postgres (pre-refresh) | fastest |
-|---|---:|---:|---:|---|
-| hist.single | **1.6** | 68.4 | 0.3 | postgres |
-| snap.hop2 | **937.2** | 1710.3 | 2538.3 | native |
-| diff.global | **3771.3** | 5659.0 | 6686.9 | native |
-| reach.window | n/a | n/a | **43987.2** | guardrailed |
-| paths.k | n/a | n/a | **38.0** | guardrailed |
-| series.count | **439.0** | 937.9 | 2160.0 | native |
-| burst.zscore | **439.0** | 959.8 | 2127.7 | native |
-| nbr.evolution | 70.9 | 106.0 | **2.7** | postgres |
-| coactive.narrow | **182.1** | 212.6 | 1722.4 | native |
-| resolve.substr | **95.3** | 790.1 | 201.0 | native |
-| motif.filtered | **73.1** | 162.5 | 644.1 | native |
+| query | native | duckdb | postgres | clickhouse | fastest |
+|---|---:|---:|---:|---:|---|
+| hist.single | 1.6 | 66.6 | **0.3** | 12.5 | postgres |
+| snap.hop2 | **937.0** | 1669.8 | 2506.8 | n/a† | native |
+| diff.global | **3791.4** | 5490.1 | 6670.6 | 5347.9 | native |
+| reach.window | n/a | n/a | 44400.4 | **4044.9** | guardrailed |
+| paths.k | n/a | n/a | **37.2** | 242.6 | guardrailed |
+| series.count | 469.6 | 954.1 | 2176.7 | **38.8** | clickhouse |
+| burst.zscore | 465.1 | 959.9 | 2156.5 | **40.2** | clickhouse |
+| nbr.evolution | 75.9 | 107.8 | **2.8** | 99.4 | postgres |
+| coactive.narrow | **181.4** | 224.1 | 1781.7 | 221.2 | native |
+| resolve.substr | **97.3** | 884.3 | 200.5 | 121.9 | native |
+| motif.filtered | **73.5** | 168.0 | 661.3 | 230.0 | native |
+
+†ClickHouse `snap.hop2` at 10M failed on **my query's plumbing, not the
+engine or the semantics**: the BFS passes the reached-node id list inline
+in the query text, and at 10M it exceeded the default `max_query_size`.
+The fix (ship the frontier through a working table like the other
+iterative queries) is known and pending; the cell is a defect record, not
+a verdict.
+
+The scaling stories the four-system sweep settles: **ClickHouse's
+aggregation lead grows with scale** — 2× over native at 200k, 3.5× at 1M,
+**12× at 10M** (38.8 vs 469.6) — it is simply the right engine for
+whole-window aggregation, and the honest comparison says so. Its
+iterative relaxation also **beats PostgreSQL's by 11×** on the
+reachability query TGMS guardrails (4.0 s vs 44.4 s), so the baselines
+now bracket that guardrail from both sides. Meanwhile the interval join
+flipped back: ClickHouse took `coactive.narrow` at 1M (104.2 vs 135.1)
+and native retook it at 10M (181.4 vs 221.2) on the cluster-wise merge.
+Native holds every selective and traversal shape it answers.
 
 10M initially inverted part of the picture: DuckDB won series, burst, the
 interval join (3.2×), and the motif fetch — every full-window scan — on a
