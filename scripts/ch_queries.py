@@ -411,12 +411,18 @@ def neighborhood_evolution(client, *, uid: str, t1: int, t2: int,
 
     m1, m2 = nbrs(t1), nbrs(t2)
     gained, lost = sorted(m2 - m1), sorted(m1 - m2)
-    series = client.query(
-        f"SELECT bs, (SELECT count() FROM {DB}.edge_versions ev "
-        f"  WHERE {bel} AND ev.vt_s <= bs AND ev.vt_e > bs "
-        f"  AND (ev.src_id = {dense} OR ev.dst_id = {dense})) AS deg "
+    # cross join of ~20 bucket starts against the incident versions, not a
+    # correlated scalar subquery: that construct silently yielded NULL at 1M
+    # while passing at smaller scales. Buckets with no active version drop
+    # out of the group-by and are refilled as zero.
+    got = dict(client.query(
+        f"SELECT bs, countIf(ev.vt_s <= bs AND ev.vt_e > bs) AS deg "
         f"FROM (SELECT arrayJoin(range({t1}, {t2}, {stride})) AS bs) "
-        f"ORDER BY bs").result_rows
+        f"CROSS JOIN (SELECT vt_s, vt_e FROM {DB}.edge_versions ev "
+        f"  WHERE {bel} AND ev.vt_e > {t1} AND ev.vt_s < {t2} "
+        f"  AND (ev.src_id = {dense} OR ev.dst_id = {dense})) ev "
+        f"GROUP BY bs").result_rows)
+    series = [(bs, int(got.get(bs, 0))) for bs in range(t1, t2, stride)]
     return {
         "neighbors_gained": gained[:limit], "neighbors_gained_total": len(gained),
         "neighbors_lost": lost[:limit], "neighbors_lost_total": len(lost),
