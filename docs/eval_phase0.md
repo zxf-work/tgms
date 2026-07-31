@@ -436,6 +436,28 @@ gc collects the superseded files — reclaiming compaction's 2× transient
 (50.0 MB peak → 24.8 MB). What a retained manifest costs stays O(segments):
 165 KB while it names 283 segments, 1 KB naming the 3 post-compaction ones.
 
-The PostgreSQL comparison stays unratioed: its schema carries eight edge
-indexes chosen for the whole registry against two on the TGMS side. See
-`eval_semantics.md`.
+### Four systems, one dataset, one accounting
+
+Whole store on disk ÷ 1,000,269 edge rows, all loaded from the same 1M
+event log on xzgpu, measured in one run:
+
+| system | bytes | B/row | × native |
+|---|---:|---:|---:|
+| native (as built, pre-gc) | 48.7 MB | 48.7 | 1.0× |
+| native (post-gc, D-034) | — | **25.1** | 0.52× |
+| clickhouse (MergeTree, lz4) | 78.4 MB | 78.4 | 1.6× |
+| duckdb | 187.7 MB | 187.7 | 3.9× |
+| postgres (8 registry indexes) | 549.8 MB | 549.7 | 11.3× |
+
+What each number carries, because the comparison is only honest with the
+asymmetries stated: **native** counts segments, manifests, close runs, and
+dictionary — but its query indexes (postings, TCSR) live in memory and are
+not persisted, so its disk figure buys less query readiness than the
+others'; the as-built row still holds ~250 uncollected manifest
+generations, the post-gc row is D-034's collected figure. **ClickHouse**
+is the only other compressed representation (lz4 MergeTree, no secondary
+indexes) and lands within 1.6× of native's as-built bytes — the closest
+any baseline comes. **PostgreSQL**'s 11× is mostly deliberate: 366 MB of
+its total is the eight covering indexes the registry queries earn their
+speed from; heap alone is ~182 B/row. **DuckDB** is a single uncompressed
+columnar file. Ratios against post-gc native roughly double everywhere.
