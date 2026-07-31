@@ -1,0 +1,125 @@
+{
+  "duckdb": {
+    "append": [
+      {
+        "batch": 1,
+        "commits": 2000,
+        "events_per_s": 230,
+        "p50_ms": 4.11,
+        "p95_ms": 5.37
+      },
+      {
+        "batch": 10,
+        "commits": 200,
+        "events_per_s": 724,
+        "p50_ms": 12.97,
+        "p95_ms": 19.5
+      },
+      {
+        "batch": 100,
+        "commits": 20,
+        "events_per_s": 1120,
+        "p50_ms": 88.07,
+        "p95_ms": 95.08
+      },
+      {
+        "batch": 1000,
+        "commits": 2,
+        "events_per_s": 1228,
+        "p50_ms": 814.02,
+        "p95_ms": 809.04
+      }
+    ],
+    "compaction": {
+      "supported": false
+    },
+    "corrections": {
+      "bytes_per_correction": 812,
+      "corrections": 200,
+      "digest": "b31d63da709fb9fe",
+      "p50_ms": 9.64,
+      "p95_ms": 13.86
+    },
+    "load": [
+      {
+        "events_per_s": 24382,
+        "runs": 3,
+        "scale": 200000,
+        "seconds": 8.2
+      },
+      {
+        "events_per_s": 21752,
+        "runs": 3,
+        "scale": 1000000,
+        "seconds": 45.97
+      }
+    ]
+  },
+  "native": {
+    "append": [
+      {
+        "batch": 1,
+        "commits": 2000,
+        "events_per_s": 96,
+        "p50_ms": 9.83,
+        "p95_ms": 17.71
+      },
+      {
+        "batch": 10,
+        "commits": 200,
+        "events_per_s": 1846,
+        "p50_ms": 4.06,
+        "p95_ms": 6.3
+      },
+      {
+        "batch": 100,
+        "commits": 20,
+        "events_per_s": 18703,
+        "p50_ms": 5.28,
+        "p95_ms": 6.13
+      },
+      {
+        "batch": 1000,
+        "commits": 2,
+        "events_per_s": 45958,
+        "p50_ms": 21.76,
+        "p95_ms": 21.43
+      }
+    ],
+    "compaction": {
+      "bytes_after": 31220491,
+      "bytes_before": 28823977,
+      "digest_preserved": true,
+      "seconds": 0.41,
+      "stats": {
+        "closes_folded": 250,
+        "edge_rows": 100250,
+        "node_rows": 1000,
+        "segments_after": 2,
+        "segments_before": 253
+      },
+      "supported": true
+    },
+    "corrections": {
+      "bytes_per_correction": 63671,
+      "corrections": 200,
+      "digest": "f3f35685883d9508",
+      "p50_ms": 4.84,
+      "p95_ms": 6.98
+    },
+    "load": [
+      {
+        "events_per_s": 43651,
+        "runs": 3,
+        "scale": 200000,
+        "seconds": 4.58
+      },
+      {
+        "events_per_s": 42437,
+        "runs": 3,
+        "scale": 1000000,
+        "seconds": 23.56
+      }
+    ]
+  }
+}

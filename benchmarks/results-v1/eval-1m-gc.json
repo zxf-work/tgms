@@ -1,0 +1,37 @@
+{
+  "scale": 1000000,
+  "rows_in_segments": 1010272,
+  "before": {
+    "manifests_bytes": 23645784,
+    "manifest_files": 283,
+    "seg_bytes": 24838196,
+    "seg_files": 283,
+    "close_bytes": 10742,
+    "dict_bytes": 168890,
+    "total_bytes": 48663633
+  },
+  "after": {
+    "manifests_bytes": 333158,
+    "manifest_files": 2,
+    "seg_bytes": 24838196,
+    "seg_files": 283,
+    "close_bytes": 10742,
+    "dict_bytes": 168890,
+    "total_bytes": 25351007
+  },
+  "gc_report": {
+    "manifests_removed": 281,
+    "segments_removed": 0,
+    "close_runs_removed": 0,
+    "bytes_reclaimed": 23312626,
+    "generations_retained": 2
+  },
+  "b_per_row": {
+    "segments": 24.59,
+    "manifests_before": 23.41,
+    "manifests_after": 0.33,
+    "whole_store_before": 48.17,
+    "whole_store_after": 25.09
+  },
+  "store_dir": "/mnt/project/xzhang/tgms/tmp/tmp1acrzgzi/reference"
+}
