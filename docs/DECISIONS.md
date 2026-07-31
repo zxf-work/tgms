@@ -648,3 +648,23 @@ implementation — hygiene checking starts at the marker recorded in D-010.
   traversal, Cypher's home turf — waits on the next slice, and judging
   Neo4j on this one would be exactly the mistake the fairness rules exist
   to prevent.
+
+## D-037 — Memgraph baseline (Phase 3, second graph system)
+
+- **Date:** 2026-07-31
+- **Context:** unblocked by host sudo (Docker CE installed by the PI; the
+  earlier deferral in D-036 no longer applies). Official container,
+  loopback-only on 7688, data and logs on /mnt/project, run under the
+  invoking uid; `vm.max_map_count` raised host-side for large loads.
+- **Decision:** same fairness contract (D-030), implemented by *reuse*:
+  the Neo4j loader verbatim, seven of eight queries unchanged, one
+  override (degree series — Neo4j 5's scoped CALL subquery is not
+  openCypher), Memgraph's own DDL applied tolerantly so an index gap
+  degrades speed, never correctness. All eight slices hash-identical on
+  first verification, which is the reuse being judged rather than
+  trusted.
+- **Consequence:** the six-system matrix (two TGMS backends, two SQL
+  baselines, two graph baselines) covers every system class the plan's
+  Phase 2-3 asked for on this host. Remaining registry gaps per graph
+  system: diff, coactive, resolve, motif — written next as one shared
+  slice where openCypher allows.
