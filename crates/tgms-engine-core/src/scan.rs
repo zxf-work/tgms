@@ -503,7 +503,9 @@ impl<'a, S: SegmentSource> ScanSet<'a, S> {
         };
         let (w_rel, w_disc, w_props) = (want("rel_type"), want("disc"), want("props"));
         let w_vid = want("vid");
+        let w_addr = want("seg_id") || want("seg_row");
         let v = SegmentView::open(self.targets[sel.segment].segment)?;
+        let tid = self.targets[sel.segment].id;
         let mut cols = EdgeColumns::with_capacity(sel.rows.len());
         let mut i = 0usize;
         while i < sel.rows.len() {
@@ -513,6 +515,10 @@ impl<'a, S: SegmentSource> ScanSet<'a, S> {
             }
             let (a, b) = (sel.rows[i] as usize, sel.rows[i] as usize + (j - i));
             copy_run(&v, a, b, &mut cols, w_vid, w_rel, w_disc, w_props)?;
+            if w_addr {
+                cols.seg_id.extend(std::iter::repeat_n(tid, b - a));
+                cols.seg_row.extend(a as u32..b as u32);
+            }
             i = j;
         }
         Ok(cols)
@@ -600,6 +606,7 @@ impl<'a, S: SegmentSource> ScanSet<'a, S> {
         // vid is two integer columns here but a 24-char hex string at the
         // boundary, so building it unasked cost more than the scan itself
         let w_vid = want("vid");
+        let w_addr = want("seg_id") || want("seg_row");
         let mut cols = EdgeColumns::with_capacity(order.len());
         // resolve each segment's columns once, then walk its rows
         let mut views: Vec<Option<SegmentView<'_>>> =
@@ -625,6 +632,11 @@ impl<'a, S: SegmentSource> ScanSet<'a, S> {
             let v = views[seg_idx].as_ref().expect("just populated");
             let (a, b) = (first_row as usize, first_row as usize + (j - i));
             copy_run(v, a, b, &mut cols, w_vid, w_rel, w_disc, w_props)?;
+            if w_addr {
+                let tid = self.targets[seg_idx].id;
+                cols.seg_id.extend(std::iter::repeat_n(tid, b - a));
+                cols.seg_row.extend(a as u32..b as u32);
+            }
             i = j;
         }
         Ok(cols)
@@ -729,6 +741,13 @@ pub struct EdgeColumns {
     pub rel_type: Vec<String>,
     pub disc: Vec<String>,
     pub props: Vec<String>,
+    /// Physical address of each returned row (`ScanTarget::id`, row within
+    /// that segment), filled only when the projection asks for `seg_id` /
+    /// `seg_row`. Addresses let a caller come back later for the expensive
+    /// derived fields of a few surviving rows (`edge_idents_at`) instead of
+    /// materializing them for the whole scan.
+    pub seg_id: Vec<u64>,
+    pub seg_row: Vec<u32>,
 }
 
 /// Copy rows [a, b) of one segment view into the output columns — the one
@@ -791,6 +810,8 @@ impl EdgeColumns {
         self.rel_type.append(&mut o.rel_type);
         self.disc.append(&mut o.disc);
         self.props.append(&mut o.props);
+        self.seg_id.append(&mut o.seg_id);
+        self.seg_row.append(&mut o.seg_row);
     }
 
     fn with_capacity(n: usize) -> Self {
@@ -803,6 +824,8 @@ impl EdgeColumns {
             rel_type: Vec::with_capacity(n),
             disc: Vec::with_capacity(n),
             props: Vec::with_capacity(n),
+            seg_id: Vec::new(),
+            seg_row: Vec::new(),
         }
     }
 

@@ -94,6 +94,75 @@ impl NativeStore {
             .ok_or_else(|| EngineError::invariant(format!("dense id {id} is not in the dictionary")))
     }
 
+    /// `(eid, rel_type)` for explicit `(segment id, row)` addresses, in
+    /// input order.
+    ///
+    /// The companion of the scan's `seg_id` / `seg_row` projection: a
+    /// traversal scans integer columns only and comes back here for the two
+    /// derived fields of the rows that actually survive it — a sha256 and a
+    /// dictionary lookup per *surviving* row instead of per scanned row.
+    /// Addresses are meaningful only against the generation that produced
+    /// them; ids of segments outside the current generation are refused.
+    pub fn edge_idents_at(
+        &self,
+        seg_ids: &[u64],
+        seg_rows: &[u32],
+    ) -> Result<Vec<(String, String)>> {
+        if seg_ids.len() != seg_rows.len() {
+            return Err(EngineError::invariant(
+                "edge_idents_at: seg_ids and seg_rows differ in length",
+            ));
+        }
+        let files: HashMap<u64, String> = self
+            .edge_files()
+            .into_iter()
+            .map(|(file, id)| (id, file))
+            .collect();
+        // group requests by segment so each is opened (and verified) once
+        let mut by_seg: HashMap<u64, Vec<usize>> = HashMap::new();
+        for (i, &sid) in seg_ids.iter().enumerate() {
+            by_seg.entry(sid).or_default().push(i);
+        }
+        let mut out: Vec<Option<(String, String)>> = vec![None; seg_ids.len()];
+        for (sid, idxs) in by_seg {
+            let file = files.get(&sid).ok_or_else(|| {
+                EngineError::invariant(format!(
+                    "segment id {sid} is not in the current generation"
+                ))
+            })?;
+            let seg = self.open_segment(file)?;
+            let h = seg.header();
+            let strings = seg.strings()?;
+            let src = seg.u32_column("src_id")?;
+            let dst = seg.u32_column("dst_id")?;
+            let rel = seg.u16_column("rel_code")?;
+            let disc = seg.u32_column("disc_ref")?;
+            for i in idxs {
+                let r = seg_rows[i] as usize;
+                if r >= src.len() {
+                    return Err(EngineError::invariant(format!(
+                        "row {r} is out of bounds for segment {sid}"
+                    )));
+                }
+                let src_uid = self.uid_of(src[r])?;
+                let dst_uid = self.uid_of(dst[r])?;
+                let rel_type = h.rel_types.get(rel[r] as usize).ok_or_else(|| {
+                    EngineError::corrupt(format!("rel_code {} has no entry", rel[r]))
+                        .at_row(r as u32)
+                })?;
+                let disc_s = strings.get(disc[r])?;
+                out[i] = Some((
+                    edge_eid(&src_uid, &dst_uid, rel_type, disc_s).to_hex(),
+                    rel_type.clone(),
+                ));
+            }
+        }
+        Ok(out
+            .into_iter()
+            .map(|o| o.expect("every requested address was filled"))
+            .collect())
+    }
+
     /// Every edge version in one segment, closes applied.
     fn edge_rows_of(&self, file: &str, id: u64, closes: &CloseIndex) -> Result<Vec<EdgeVersionOut>> {
         self.edge_rows_sel(file, id, closes, None)
@@ -886,5 +955,80 @@ mod tests {
         s.rollback().unwrap();
         assert!(s.believed_edge_versions(&eid, OPEN_END).unwrap().is_empty());
         assert_eq!(s.all_edge_versions().unwrap().len(), 2);
+    }
+
+    #[test]
+    fn scan_addresses_round_trip_through_edge_idents_at() {
+        use crate::row::Lane;
+        use crate::scan::{ScanRequest, ScanSet, ScanTarget};
+
+        // two commits so the manifest accumulates more than one segment and
+        // the address column has to distinguish them
+        let (_root, mut s, _) = seeded("idents-at");
+        s.begin(200).unwrap();
+        let a = s.ensure_entity("n1", "Node").unwrap();
+        let c = s.ensure_entity("n3", "Node").unwrap();
+        s.stage_edge(edge(a, c, "n1", "n3", 15, 200, 7)).unwrap();
+        s.stage_edge(edge(c, a, "n3", "n1", 25, 200, 8)).unwrap();
+        s.commit(EventLogRef::default()).unwrap();
+
+        // assemble the scan exactly as the binding does
+        let m = s.manifest().clone();
+        let files: Vec<(Lane, String)> = m
+            .edge_lanes
+            .event
+            .iter()
+            .map(|e| (Lane::Event, e.file.clone()))
+            .chain(m.edge_lanes.interval.iter().map(|e| (Lane::Interval, e.file.clone())))
+            .collect();
+        let segs: Vec<_> = files
+            .iter()
+            .map(|(lane, f)| (s.open_segment(f).unwrap(), *lane, crate::store::segment_id_of(f)))
+            .collect();
+        let targets: Vec<ScanTarget<'_, _>> = segs
+            .iter()
+            .map(|(segment, lane, id)| ScanTarget { segment, lane: *lane, id: *id })
+            .collect();
+        let set = ScanSet::new(targets).with_closes(s.close_index().unwrap());
+
+        let req = ScanRequest {
+            columns: Some(
+                ["vt_s", "src_id", "dst_id", "rel_type", "disc", "seg_id", "seg_row"]
+                    .iter()
+                    .map(|c| c.to_string())
+                    .collect(),
+            ),
+            ..ScanRequest::current()
+        };
+        let (cols, _) = set.materialize_edges(&req).unwrap();
+        assert_eq!(cols.seg_id.len(), cols.len(), "addresses cover every row");
+        assert_eq!(cols.seg_row.len(), cols.len());
+        assert!(cols.len() >= 4);
+        assert!(
+            cols.seg_id.iter().collect::<std::collections::HashSet<_>>().len() > 1,
+            "rows must come from more than one segment for this to test anything"
+        );
+
+        // the point read must agree with the full materialization, row by row
+        let got = s.edge_idents_at(&cols.seg_id, &cols.seg_row).unwrap();
+        for (i, (eid, rel)) in got.iter().enumerate() {
+            let src = s.dict().uid(cols.src_id[i]).unwrap();
+            let dst = s.dict().uid(cols.dst_id[i]).unwrap();
+            let expect = edge_eid(src, dst, &cols.rel_type[i], &cols.disc[i]).to_hex();
+            assert_eq!(*eid, expect, "eid at scan position {i}");
+            assert_eq!(*rel, cols.rel_type[i], "rel_type at scan position {i}");
+        }
+
+        // an unprojected scan carries no addresses…
+        let bare = ScanRequest {
+            columns: Some(vec!["vt_s".into()]),
+            ..ScanRequest::current()
+        };
+        let (bare_cols, _) = set.materialize_edges(&bare).unwrap();
+        assert!(bare_cols.seg_id.is_empty() && bare_cols.seg_row.is_empty());
+
+        // …and addresses from another generation's segments are refused
+        assert!(s.edge_idents_at(&[u64::MAX - 1], &[0]).is_err());
+        assert!(s.edge_idents_at(&[cols.seg_id[0]], &[u32::MAX]).is_err());
     }
 }

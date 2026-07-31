@@ -505,11 +505,41 @@ impl NativeStore {
         d.set_item("rel_type", PyList::new(py, &cols.rel_type)?)?;
         d.set_item("disc", PyList::new(py, &cols.disc)?)?;
         d.set_item("props", PyList::new(py, &cols.props)?)?;
+        // physical row addresses, for callers that will come back later for
+        // derived fields of a few surviving rows (edge_idents_at)
+        d.set_item(
+            "seg_id",
+            cols.seg_id
+                .iter()
+                .map(|&v| v as i64)
+                .collect::<Vec<_>>()
+                .into_pyarray(py),
+        )?;
+        d.set_item("seg_row", cols.seg_row.iter().map(|&v| v as i64).collect::<Vec<_>>().into_pyarray(py))?;
         // pruning counters, so effectiveness is observable rather than assumed
         d.set_item("segments_total", stats.segments_total)?;
         d.set_item("segments_pruned", stats.segments_pruned)?;
         d.set_item("rows_examined", stats.rows_examined)?;
         Ok(d)
+    }
+
+    /// `(eids, rel_types)` for explicit `(segment id, row)` scan addresses.
+    ///
+    /// Addresses are only meaningful against the generation that produced
+    /// them — the engine refuses segment ids the current generation does not
+    /// name, and the caller (the persisted TCSR) is stamped with the
+    /// generation it was built from.
+    fn edge_idents_at(&self, seg_ids: Vec<i64>, seg_rows: Vec<i64>) -> Res<(Vec<String>, Vec<String>)> {
+        let ids: Vec<u64> = seg_ids.iter().map(|&v| v as u64).collect();
+        let rows: Vec<u32> = seg_rows.iter().map(|&v| v as u32).collect();
+        let pairs = self.inner.edge_idents_at(&ids, &rows).map_err(err)?;
+        Ok(pairs.into_iter().unzip())
+    }
+
+    /// SHA of the current generation's manifest — with the generation
+    /// number, the identity a persisted derived index must be stamped with.
+    fn manifest_sha(&self) -> String {
+        self.inner.manifest().manifest_sha.clone()
     }
 
     // --- maintenance ------------------------------------------------------ //
