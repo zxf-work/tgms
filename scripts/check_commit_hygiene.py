@@ -34,6 +34,21 @@ def default_base() -> str:
     return line[-1]  # the commit that added DECISIONS.md
 
 
+#: Commits where mixing ground truth with implementation was the point,
+#: sanctioned case by case. The check exists to stop an implementer from
+#: bending the oracle to fit the code; these are the opposite event — the
+#: oracle itself being corrected under an explicit decision, where landing
+#: the semantics change atomically across every implementation is what
+#: keeps the tree consistent at each commit.
+SANCTIONED = {
+    # D-031: resolve_entities — the oracle's str() name coercion matched
+    # text the store never contained ("None", "42"); PI-directed semantic
+    # correction applied to oracle, fallback, and kernel in one commit so
+    # no intermediate commit has them disagreeing.
+    "3b02ba097f7ca33dd5937903ba893acb0644cb7b",
+}
+
+
 def is_ground_truth(path: str) -> bool:
     return path.startswith(GROUND_TRUTH[0]) or path == GROUND_TRUTH[1]
 
@@ -47,6 +62,8 @@ def main() -> int:
     commits = sh("rev-list", f"{base}..HEAD").split()
     bad = []
     for c in commits:
+        if c in SANCTIONED:
+            continue
         files = [f for f in sh("show", "--name-only", "--format=", c).split("\n")
                  if f.strip()]
         gt = sorted(f for f in files if is_ground_truth(f))
