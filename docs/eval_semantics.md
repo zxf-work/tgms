@@ -142,12 +142,28 @@ which is what makes them the useful Phase 0 pair.
 
 Schema, loader, and tuning: `scripts/ch_baseline.py`; registry SQL, added
 slice by slice: `scripts/ch_queries.py` (D-035). Loading follows the same
-replay rule as PostgreSQL (§3). Verdicts so far: `hist.single`, `hist.asof`,
-`series.count`, `burst.zscore` — **equivalent**, hash-verified. Everything
-else carries no verdict yet. Two structural notes: bytewise String
-comparison matches the operators' code-point order natively (no COLLATE
-analogue needed), and `burst.zscore` keeps its scalar tail in Python for
-the same rounded-threshold reason as the PostgreSQL twin.
+replay rule as PostgreSQL (§3). **Verdict: equivalent on the whole
+registry** — all twelve queries hash-identical to the operators, verified
+before timed.
+
+How the hard shapes were expressed: ClickHouse has no session temp tables
+over stateless HTTP and recursion is not its native shape, so the three
+iterative queries (BFS, Bellman-Ford reachability, bounded path search)
+drive rounds through Memory-engine working tables — round control in
+Python, every set operation in ClickHouse; bounded hops make iteration
+exact, not approximate. `LIMIT 1 BY` stands in for `DISTINCT ON`, tuple
+comparison carries the motif's `(t, eid)` ordering, and
+`JSONExtractString` returning empty for non-string values is precisely
+D-031's string-only name rule. The round-trip structure is also the honest
+performance story: the iterative queries pay ~1 ms per HTTP round plus a
+table build per stage, which is why reachability is ClickHouse's worst
+number and aggregation its best.
+
+Two residual caveats: `lowerUTF8` and Python's `str.lower()` can disagree
+on exotic case mappings (same class of divergence as PostgreSQL's
+`lower()`, unobservable on the current datasets); and `burst.zscore` keeps
+its scalar tail in Python for the same rounded-threshold reason as the
+PostgreSQL twin.
 
 ### PostgreSQL
 

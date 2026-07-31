@@ -42,22 +42,30 @@ events, and the frozen CollegeMsg replay (59,835 instantaneous events, real
 timestamps, no corrections). Every (query, system, dataset) cell agrees on
 the canonical hash, except where noted.
 
-### synth, 200k events
+### synth, 200k events (four systems, D-035)
 
-| query | native | duckdb | postgres | fastest |
-|---|---:|---:|---:|---|
-| hist.single | 1.1 | 9.0 | **0.3** | postgres |
-| hist.asof | 1.1 | 8.9 | **0.2** | postgres |
-| snap.hop2 | **23.7** | 45.1 | 61.4 | native |
-| diff.global | **70.4** | 111.2 | 111.7 | native |
-| reach.window | **18.6** | 24.7 | 703.9 | native |
-| paths.k | **9.5** | 16.4 | 21.4 | native |
-| series.count | **27.9** | 42.6 | 66.9 | native |
-| burst.zscore | **29.2** | 43.3 | 67.8 | native |
-| nbr.evolution | 15.0 | 16.3 | **2.8** | postgres |
-| coactive.narrow | **37.3** | 62.6 | 56.7 | native |
-| resolve.substr | **3.6** | 19.3 | 5.7 | native |
-| motif.filtered | **32.2** | 63.3 | 144.0 | native |
+| query | native | duckdb | postgres | clickhouse | fastest |
+|---|---:|---:|---:|---:|---|
+| hist.single | 1.0 | 9.3 | **0.3** | 9.6 | postgres |
+| hist.asof | 1.0 | 9.1 | **0.2** | 10.0 | postgres |
+| snap.hop2 | **23.6** | 46.6 | 67.0 | 62.2 | native |
+| diff.global | **71.2** | 114.4 | 121.8 | 149.7 | native |
+| reach.window | **17.1** | 26.5 | 734.5 | 1161.4 | native |
+| paths.k | **9.1** | 16.8 | 22.6 | 146.1 | native |
+| series.count | 29.2 | 44.3 | 73.5 | **14.7** | clickhouse |
+| burst.zscore | 29.5 | 44.7 | 74.0 | **17.4** | clickhouse |
+| nbr.evolution | 11.5 | 17.0 | **2.8** | 76.7 | postgres |
+| coactive.narrow | **54.7** | 61.5 | 61.9 | 120.9 | native |
+| resolve.substr | **4.0** | 19.7 | 5.8 | 12.4 | native |
+| motif.filtered | **40.8** | 63.2 | 149.6 | 132.4 | native |
+
+All twelve hash-identical across all four systems. The baselines divide
+the map cleanly: PostgreSQL owns indexed point shapes, ClickHouse owns
+whole-window aggregation (the first system to beat native on any scan
+shape at this scale), and both pay heavily for iterative traversal —
+ClickHouse's reachability rounds cost ~1 ms of HTTP plus a table build
+each, which is the honest price of expressing recursion in an engine
+that does not natively offer it. Native holds 8 of 12.
 
 ### synth, 1M events
 
