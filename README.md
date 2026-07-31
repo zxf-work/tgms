@@ -34,7 +34,7 @@ to do any of them:
 ## Does it work?
 
 Dev-split campaign (CollegeMsg, open-source models served locally on one
-24 GB GPU; details + receipts in [docs/TECHNICAL_REPORT.md](docs/TECHNICAL_REPORT.md)):
+24 GB GPU; full receipts ship with the paper and the eval records in `benchmarks/results-v1/`):
 
 | pooled EM, Qwen2.5-14B | TGMS | vector-RAG | static-graph RAG | text-to-Cypher |
 |---|---:|---:|---:|---:|
@@ -99,7 +99,7 @@ later corrections. The write path is property-tested over random
 assert/retract/correct interleavings, and the append-only event log replays
 into either backend with identical store digests. Process rules (test
 ownership, decision log, determinism receipts) are enforced in CI — see
-[CONTRIBUTING.md](CONTRIBUTING.md) and [docs/DECISIONS.md](docs/DECISIONS.md).
+[CONTRIBUTING.md](CONTRIBUTING.md).
 
 ## Layout
 
@@ -114,7 +114,7 @@ tgms/eval       task suites, baselines, matrix harness, metrics, fault injection
 ```
 
 Datasets are never bundled: loaders download from source (SNAP) and pin
-SHA-256 manifests. See [docs/TECHNICAL_REPORT.md](docs/TECHNICAL_REPORT.md)
+SHA-256 manifests. See [docs/eval/](docs/eval/)
 for design, positioning, measurements, and roadmap.
 
 ## License

@@ -35,3 +35,21 @@ PHASE3_SPEC.md
 TGMS_NATIVE_ENGINE_REVIEW.md
 TGMS_NATIVE_ENGINE_V2_REVIEW.md
 TGMS_NATIVE_ENGINE_EVALUATION_PLAN.md
+
+# --- internal working documents: never published (policy, 2026-07-31) ---
+# Plans, blueprints, decision logs, roadmaps, and milestone notes stay
+# local. Public docs are: the website (docs/index.html, docs/blog/), the
+# community lessons doc, evaluation results + docs/eval deliverables.
+ENGINE_BLUEPRINT.md
+ENGINE_IMPLEMENTATION_SPEC.md
+docs/ROADMAP.md
+docs/DECISIONS.md
+docs/design/
+docs/engine_evaluation_readiness.md
+docs/engine_probe.md
+docs/bench_ops.md
+docs/TECHNICAL_REPORT.md
+docs/RELATED.md
+PHASE3_SPEC.md
+TGMS_NATIVE_ENGINE_*.md
+HANDOFF-*.md
