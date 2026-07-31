@@ -389,6 +389,7 @@ impl NativeStore {
     /// Versions of one logical edge believed at `as_of_tt`, ordered by `vt_s`
     /// — the ordering `believed_edge_versions` promises.
     pub fn believed_edge_versions(&self, eid: &str, as_of_tt: i64) -> Result<Vec<EdgeVersionOut>> {
+        self.assert_full_belief(as_of_tt)?;
         let key = Id96::from_hex(eid).map(|i| i.hi)?;
         let closes = self.close_index()?;
         let mut out = Vec::new();
@@ -416,6 +417,7 @@ impl NativeStore {
     }
 
     pub fn believed_node_versions(&self, uid: &str, as_of_tt: i64) -> Result<Vec<NodeVersionOut>> {
+        self.assert_full_belief(as_of_tt)?;
         let closes = self.close_index()?;
         let mut out = Vec::new();
         let mut by_file: std::collections::BTreeMap<String, Vec<u32>> = Default::default();
@@ -447,6 +449,7 @@ impl NativeStore {
         uids: &[String],
         as_of_tt: i64,
     ) -> Result<HashSet<String>> {
+        self.assert_full_belief(as_of_tt)?;
         let wanted: HashSet<&str> = uids.iter().map(String::as_str).collect();
         Ok(self
             .all_node_versions()?
@@ -480,6 +483,7 @@ impl NativeStore {
         query: &str,
         as_of_tt: i64,
     ) -> Result<Vec<(String, u8, String, String)>> {
+        self.assert_full_belief(as_of_tt)?;
         let ql = query.to_lowercase();
         let closes = self.close_index()?;
         // uid -> (best matching score, canonical (vt_s, vid), label, props)

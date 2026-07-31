@@ -372,6 +372,9 @@ impl NativeStore {
         limit: Option<usize>,
         columns: Option<Vec<String>>,
     ) -> Res<Bound<'py, PyDict>> {
+        // a current-only store must refuse a past-belief scan rather than
+        // silently answer it from the surviving rows
+        self.inner.assert_full_belief(as_of_tt).map_err(err)?;
         let m = self.inner.manifest();
         let mut files = Vec::new();
         for (lane, entries) in [
@@ -527,6 +530,7 @@ impl NativeStore {
         vt_min: Option<i64>,
         vt_max: Option<i64>,
     ) -> Res<Bound<'py, PyDict>> {
+        self.inner.assert_full_belief(as_of_tt).map_err(err)?;
         let mut rows: Vec<NodeVersionOut> = self
             .inner
             .all_node_versions()
@@ -611,6 +615,26 @@ impl NativeStore {
         d.set_item("edge_rows", r.edge_rows)?;
         d.set_item("node_rows", r.node_rows)?;
         Ok(d.into())
+    }
+
+    /// The §13 stripped configuration: rewrite the store keeping only the
+    /// currently believed rows and stamp it `CURRENT_ONLY`. Experimental —
+    /// the store refuses past-belief queries and corrections afterwards.
+    /// `closes_folded` reports the superseded versions *dropped*.
+    fn compact_current_only(&mut self, py: Python<'_>) -> Res<Py<PyDict>> {
+        let r = self.inner.compact_current_only().map_err(err)?;
+        let d = PyDict::new(py);
+        d.set_item("segments_before", r.segments_before)?;
+        d.set_item("segments_after", r.segments_after)?;
+        d.set_item("versions_dropped", r.closes_folded)?;
+        d.set_item("edge_rows", r.edge_rows)?;
+        d.set_item("node_rows", r.node_rows)?;
+        Ok(d.into())
+    }
+
+    /// Whether this store is the stripped current-only configuration.
+    fn current_only(&self) -> bool {
+        self.inner.current_only()
     }
 
     /// Collect superseded generations: manifests older than the retention

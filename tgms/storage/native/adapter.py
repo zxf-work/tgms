@@ -359,6 +359,24 @@ class NativeAdapter(StorageAdapter):
         except Exception as e:
             raise _translate(e) from None
 
+    def compact_current_only(self) -> dict[str, int]:
+        """Strip the store to the currently believed rows (plan §13).
+
+        Experimental configuration for the current-vs-bi-temporal overhead
+        measurement: superseded versions, close runs, and sidecars are
+        physically dropped and the store is stamped ``CURRENT_ONLY``, after
+        which it refuses past-belief queries and corrections. Current-belief
+        answers are unchanged — that equivalence is the experiment's gate.
+        """
+        try:
+            return self._store.compact_current_only()
+        except Exception as e:
+            raise _translate(e) from None
+
+    def current_only(self) -> bool:
+        """Whether this store is the stripped §13 configuration."""
+        return bool(self._store.current_only())
+
     def gc(self, keep_last: int = 2) -> dict[str, int]:
         """Collect superseded generations (spec §5.6, `tgms store gc`).
 

@@ -39,6 +39,11 @@ use crate::visibility::{read_close_run, write_close_run, CloseIndex, CloseRecord
 const CURRENT: &str = "CURRENT";
 const DICT: &str = "dict.log";
 const SUBDIRS: [&str; 4] = ["manifests", "seg", "close", "idx"];
+/// Marker written by `compact_current_only` (plan §13). A store carrying it
+/// has physically discarded its superseded versions, so it must refuse the
+/// questions it can no longer answer honestly — past-belief reads and new
+/// corrections — no matter which handle opens it.
+const CURRENT_ONLY_MARKER: &str = "CURRENT_ONLY";
 
 pub struct NativeStore {
     root: PathBuf,
@@ -84,6 +89,10 @@ pub struct NativeStore {
     >,
     /// Transaction time of the open batch, if any (`begin` .. `commit`).
     batch_tt: Option<i64>,
+    /// True when the `CURRENT_ONLY` marker is present: the stripped
+    /// experimental configuration of plan §13, which has dropped historical
+    /// versions and must refuse past-belief queries and corrections.
+    current_only: bool,
 }
 
 impl NativeStore {
@@ -107,6 +116,7 @@ impl NativeStore {
         )?;
         let pin_key = fs::canonicalize(&root).unwrap_or_else(|_| root.clone());
         crate::gc::pin(&pin_key, manifest.generation);
+        let current_only = root.join(CURRENT_ONLY_MARKER).exists();
         Ok(Self {
             root,
             pin_key,
@@ -123,7 +133,41 @@ impl NativeStore {
             verified: std::sync::Mutex::new(std::collections::HashSet::new()),
             segments: std::sync::Mutex::new(std::collections::HashMap::new()),
             batch_tt: None,
+            current_only,
         })
+    }
+
+    /// Whether this store is the stripped current-only configuration
+    /// (plan §13): historical versions discarded, past-belief refused.
+    pub fn current_only(&self) -> bool {
+        self.current_only
+    }
+
+    /// Refuse a past-belief question on a current-only store. Answering it
+    /// would silently use only the surviving rows and be wrong; an error is
+    /// the honest response. "Current" is anything that clamps to
+    /// `OPEN_END - 1`: the Python adapter passes `clamp_tt(as_of_tt)` down,
+    /// so both the raw sentinel and its clamped form must count as now.
+    pub fn assert_full_belief(&self, as_of_tt: i64) -> Result<()> {
+        if self.current_only && crate::clamp_tt(as_of_tt) < crate::OPEN_END - 1 {
+            return Err(EngineError::invariant(format!(
+                "this store is current-only (plan §13 stripped configuration): \
+                 historical versions were discarded, so belief at tt={as_of_tt} \
+                 cannot be answered"
+            ))
+            .with_remedy("rebuild the store from its event log for bi-temporal queries"));
+        }
+        Ok(())
+    }
+
+    /// Stamp the store as current-only. Called by `compact_current_only`
+    /// after the stripped generation is published; the marker outlives this
+    /// handle so every later open refuses what the store can no longer
+    /// answer.
+    pub(crate) fn mark_current_only(&mut self) -> Result<()> {
+        write_atomic(&self.root.join(CURRENT_ONLY_MARKER), "stripped by compact_current_only\n")?;
+        self.current_only = true;
+        Ok(())
     }
 
     fn load_current(root: &Path) -> Result<Manifest> {
@@ -374,6 +418,18 @@ impl NativeStore {
     /// on an older generation loads that generation's runs and therefore sees
     /// that generation's beliefs — never a newer correction.
     pub fn close_index(&self) -> Result<CloseIndex> {
+        if self.current_only {
+            // the stripped configuration has no closes by construction; a
+            // run appearing anyway means the marker and the manifest
+            // disagree, which must surface rather than be half-honoured
+            if !self.manifest.close_runs.is_empty() {
+                return Err(EngineError::invariant(
+                    "current-only store has close runs — the CURRENT_ONLY \
+                     marker does not match the manifest",
+                ));
+            }
+            return Ok(CloseIndex::default());
+        }
         let mut records = Vec::new();
         for r in &self.manifest.close_runs {
             records.extend(read_close_run(&self.root.join(&r.file))?);
@@ -442,6 +498,13 @@ impl NativeStore {
     /// postings index that makes it O(1) is WP-N4, and the semantics do not
     /// change when it lands.
     pub fn close_version(&mut self, kind: RowKind, vid: Id96, tt_e: i64) -> Result<()> {
+        if self.current_only {
+            return Err(EngineError::invariant(
+                "a current-only store cannot record a correction: closing a \
+                 version creates the belief history this configuration \
+                 deliberately does not keep",
+            ));
+        }
         self.require_batch()?;
         let staged_hit = match kind {
             RowKind::Edge => self.staging.edges().iter().any(|r| r.vid == vid),

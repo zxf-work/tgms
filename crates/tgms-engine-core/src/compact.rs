@@ -158,6 +158,135 @@ impl NativeStore {
         })
     }
 
+    /// The §13 stripped configuration: rewrite the store keeping **only the
+    /// currently believed rows**, then stamp it `CURRENT_ONLY`.
+    ///
+    /// This is the one deliberate exception to "compaction never drops a
+    /// row", and it exists purely so the evaluation plan's current-versus-
+    /// bi-temporal overhead question (§13) can be measured on a store that
+    /// genuinely lacks historical versions, close runs, sidecars, and the
+    /// postings entries that indexed them. It is not reachable from the
+    /// default compaction path, and the marker it writes makes the store
+    /// refuse past-belief queries and corrections from then on
+    /// (`assert_full_belief`, `close_version`).
+    ///
+    /// The current-belief answer set is unchanged: a row believed now has
+    /// `tt_e == OPEN_END` and is kept verbatim, with its vid, tt_s, and
+    /// props intact — so current-belief queries must hash identically
+    /// against the full store they came from. That equivalence is the
+    /// experiment's correctness gate.
+    pub fn compact_current_only(&mut self) -> Result<CompactionReport> {
+        if self.in_batch() {
+            return Err(EngineError::invariant(
+                "cannot compact while a batch is open",
+            ));
+        }
+        let m = self.manifest();
+        let segments_before =
+            m.edge_lanes.event.len() + m.edge_lanes.interval.len() + m.node_store.len();
+        if segments_before == 0 {
+            self.mark_current_only()?;
+            return Ok(CompactionReport::default());
+        }
+
+        // Read the logical content back and keep only what is believed now.
+        // Everything else — superseded versions and the closes that hid
+        // them — is dropped, so the sealed segments are all-current by
+        // construction and no close map is passed to seal.
+        let edges = self.all_edge_versions()?;
+        let nodes = self.all_node_versions()?;
+        let dropped_closes = edges.iter().filter(|e| e.tt_e != OPEN_END).count()
+            + nodes.iter().filter(|n| n.tt_e != OPEN_END).count();
+        let mut staging = Staging::default();
+        let mut kept_edges = 0usize;
+        let mut kept_nodes = 0usize;
+
+        for e in &edges {
+            if e.tt_e != OPEN_END {
+                continue;
+            }
+            kept_edges += 1;
+            staging.push_edge(EdgeRow {
+                vid: Id96::from_hex(&e.vid)?,
+                src_id: self.dense_or_err(&e.src)?,
+                dst_id: self.dense_or_err(&e.dst)?,
+                rel_type: e.rel_type.clone(),
+                disc: e.disc.clone(),
+                vt_s: e.vt_s,
+                vt_e: e.vt_e,
+                tt_s: e.tt_s,
+                props: e.props.clone(),
+                source: e.source.clone(),
+                provenance_ref: e.provenance_ref.clone(),
+            });
+        }
+        for n in &nodes {
+            if n.tt_e != OPEN_END {
+                continue;
+            }
+            kept_nodes += 1;
+            staging.push_node(NodeRow {
+                vid: Id96::from_hex(&n.vid)?,
+                uid_id: self.dense_or_err(&n.uid)?,
+                label: n.label.clone(),
+                vt_s: n.vt_s,
+                vt_e: n.vt_e,
+                tt_s: n.tt_s,
+                props: n.props.clone(),
+                source: n.source.clone(),
+                provenance_ref: n.provenance_ref.clone(),
+            });
+        }
+
+        // A physical rewrite: no belief changed, so tt does not advance.
+        let mut next = self.manifest().successor(self.manifest().created_tt);
+        let mut next_id = next.next_segment_id;
+        let (partitions, target_bytes) = {
+            let (p, t) = self.layout();
+            (*p, t)
+        };
+        let sealed = staging.seal(
+            &self.root().join("seg"),
+            &partitions,
+            target_bytes,
+            &mut next_id,
+            &HashMap::new(),
+        )?;
+
+        next.next_segment_id = next_id;
+        next.edge_lanes = EdgeLanes::default();
+        next.node_store = Vec::new();
+        next.close_runs = Vec::new(); // nothing hidden remains to describe
+        for (lane, entry) in sealed.edges {
+            match lane {
+                Lane::Event => next.edge_lanes.event.push(entry),
+                Lane::Interval => next.edge_lanes.interval.push(entry),
+            }
+        }
+        next.node_store = sealed.nodes;
+        next.stats.n_edge_versions = kept_edges as u64;
+        next.stats.n_node_versions = kept_nodes as u64;
+        next.stats.n_entities = self.dict().len();
+        next.seal();
+
+        let segments_after =
+            next.edge_lanes.event.len() + next.edge_lanes.interval.len() + next.node_store.len();
+        self.install(next)?;
+        self.mark_current_only()?;
+        // Unlike default compaction this *changed* the logical content, so a
+        // cached stats snapshot over all versions is now wrong. Postings need
+        // no flush: `locate` resolves hits through the current manifest.
+        *self.stats_cell().lock().expect("stats mutex poisoned") = None;
+
+        Ok(CompactionReport {
+            segments_before,
+            segments_after,
+            closes_folded: dropped_closes,
+            edge_rows: kept_edges,
+            node_rows: kept_nodes,
+        })
+    }
+
     fn dense_or_err(&self, uid: &str) -> Result<u32> {
         self.dict()
             .dense_id(uid)
@@ -375,6 +504,93 @@ mod tests {
 
         s.begin(100).unwrap();
         assert!(s.compact().is_err(), "must not compact with a batch open");
+    }
+
+    #[test]
+    fn current_only_strip_keeps_the_current_belief_and_drops_the_rest() {
+        let (root, mut s, all) = seeded("current-only");
+        let believed_now: Vec<String> = {
+            let mut v: Vec<String> = s
+                .all_edge_versions()
+                .unwrap()
+                .into_iter()
+                .filter(|r| r.tt_e == OPEN_END)
+                .map(|r| r.vid)
+                .collect();
+            v.sort();
+            v
+        };
+        let rows_before = s.all_edge_versions().unwrap().len();
+        assert!(believed_now.len() < rows_before, "the seed must have history");
+
+        let report = s.compact_current_only().unwrap();
+        assert_eq!(report.closes_folded, 2, "two superseded versions dropped");
+        assert!(s.current_only());
+        assert!(s.manifest().close_runs.is_empty());
+
+        // the current belief is exactly what survives — nothing more hidden
+        let mut after: Vec<String> = s
+            .all_edge_versions()
+            .unwrap()
+            .into_iter()
+            .map(|r| {
+                assert_eq!(r.tt_e, OPEN_END, "a closed row survived the strip");
+                r.vid
+            })
+            .collect();
+        after.sort();
+        assert_eq!(after, believed_now, "the current belief changed");
+
+        // segments must be all-current by construction
+        assert!(s.manifest().edge_lanes.event.iter().all(|e| e.all_current));
+
+        // the stripped store refuses what it can no longer answer: a
+        // past-belief read errs, a current-belief read still works
+        assert!(s.believed_node_versions("n1", 100).is_err());
+        assert!(s.believed_node_versions("n1", OPEN_END).is_ok());
+        s.begin(300).unwrap();
+        assert!(
+            s.close_version(RowKind::Edge, all[2].vid, 300).is_err(),
+            "a correction must be refused on a current-only store"
+        );
+        s.rollback().unwrap();
+
+        // the marker survives reopening
+        drop(s);
+        let re = NativeStore::open(&root).unwrap();
+        assert!(re.current_only(), "CURRENT_ONLY marker was not honoured on open");
+        assert!(re.believed_node_versions("n1", 100).is_err());
+        let mut re_rows: Vec<String> =
+            re.all_edge_versions().unwrap().into_iter().map(|r| r.vid).collect();
+        re_rows.sort();
+        assert_eq!(re_rows, believed_now);
+    }
+
+    #[test]
+    fn current_only_strip_leaves_current_belief_queries_identical() {
+        let (_root, mut s, _) = seeded("current-only-eq");
+        let now = OPEN_END;
+        let before = {
+            let mut v: Vec<String> = s
+                .all_edge_versions()
+                .unwrap()
+                .into_iter()
+                .filter(|r| crate::believed_at(r.tt_s, r.tt_e, now))
+                .map(|r| r.vid)
+                .collect();
+            v.sort();
+            v
+        };
+        s.compact_current_only().unwrap();
+        let mut after: Vec<String> = s
+            .all_edge_versions()
+            .unwrap()
+            .into_iter()
+            .filter(|r| crate::believed_at(r.tt_s, r.tt_e, now))
+            .map(|r| r.vid)
+            .collect();
+        after.sort();
+        assert_eq!(before, after, "current-belief answers must not change");
     }
 
     #[test]
