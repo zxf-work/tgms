@@ -1,16 +1,16 @@
 <!doctype html><html lang="en"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Nine wrong bottlenecks: building a bi-temporal storage engine — TGMS blog</title>
-<meta name="description" content="What we learned replacing DuckDB and Kuzu with 7,500 lines of Rust: a misdiagnosis table, the one property that buys everything, and 24.6 bytes per edge version.">
+<meta name="description" content="Replacing DuckDB and Kuzu with 7,500 lines of Rust: the misdiagnosis table, the immutability dividend, and 24.6 bytes per edge version — with the measurements that earned each claim.">
 <style>
 :root{--ink:#1a2534;--mut:#5b6b7c;--blue:#1c64d9;--blue2:#3b82f6;--line:#e3e8ef;
       --bg:#fbfcfe;--card:#fff;--codebg:#0e1c30;--codetx:#dce7f5;--ok:#0a7d33;
-      --amber:#b58900;--corr:#e07b39;
+      --amber:#b58900;--bad:#c0392b;
       --mono:ui-monospace,'SF Mono',Menlo,monospace}
 @media (prefers-color-scheme: dark){
 :root{--ink:#e6edf6;--mut:#95a6ba;--blue:#6ea8ff;--blue2:#8bbcff;--line:#243244;
       --bg:#0b1420;--card:#121e2e;--codebg:#0a1017;--codetx:#cfe0f2;--ok:#4ade80;
-      --corr:#f0975a}}
+      --amber:#e3b341;--bad:#f87171}}
 *{box-sizing:border-box}
 body{margin:0;font-family:-apple-system,'Segoe UI',Roboto,sans-serif;
      color:var(--ink);background:var(--bg);-webkit-font-smoothing:antialiased}
@@ -22,7 +22,7 @@ body{margin:0;font-family:-apple-system,'Segoe UI',Roboto,sans-serif;
 .kicker{display:inline-block;background:#ffffff22;border:1px solid #ffffff33;
         border-radius:14px;padding:3px 12px;font-size:12px;letter-spacing:.08em;
         text-transform:uppercase;color:#dbe7f8}
-h1{font-size:clamp(30px,5.4vw,44px);line-height:1.12;letter-spacing:-.8px;
+h1{font-size:clamp(26px,4.6vw,38px);line-height:1.16;letter-spacing:-.7px;
    margin:14px 0 10px;color:#fff}
 .byline{color:#a9c0e2;font-size:14.5px}
 .byline a{color:#dbe7f8}
@@ -37,12 +37,6 @@ h2::before{content:"";position:absolute;top:0;left:0;width:44px;height:4px;
       border:0;margin:30px 0;padding:0 0 0 22px;position:relative;color:var(--ink)}
 .pull::before{content:"";position:absolute;left:0;top:6px;bottom:6px;width:5px;
       border-radius:3px;background:linear-gradient(180deg,var(--blue),var(--blue2))}
-pre{background:var(--codebg);color:var(--codetx);border-radius:12px;
-    padding:16px 18px;font-family:var(--mono);font-size:13px;overflow-x:auto;
-    line-height:1.6;box-shadow:0 6px 24px #0e1c3022}
-pre .g{color:#7fd0a0}pre .c{color:#7fa3d0}
-code{font-family:var(--mono);background:#1c64d914;border-radius:5px;
-     padding:1px 6px;font-size:.9em}
 .duo{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin:22px 0}
 @media(max-width:640px){.duo{grid-template-columns:1fr}}
 .duo .cell{background:var(--card);border:1px solid var(--line);border-radius:12px;
@@ -50,6 +44,7 @@ code{font-family:var(--mono);background:#1c64d914;border-radius:5px;
 .duo .cell b{display:block;font-size:13px;text-transform:uppercase;
      letter-spacing:.06em;color:var(--mut);margin-bottom:6px}
 .duo .big{font-size:30px;font-weight:700;color:var(--blue)}
+.duo .big.bad{color:var(--bad)}
 figure{margin:26px 0;background:var(--card);border:1px solid var(--line);
        border-radius:14px;padding:18px 18px 8px}
 figcaption{color:var(--mut);font-size:13.5px;line-height:1.5;padding:8px 4px 10px}
@@ -61,9 +56,11 @@ th{background:#1c64d90d;font-size:13px;text-transform:uppercase;
    letter-spacing:.04em;color:var(--mut)}
 th:first-child,td:first-child{text-align:left}
 tr:last-child td{border-bottom:0}
-td.win{color:var(--ok);font-weight:700;font-size:16px}
-td.zero{color:var(--mut)}
+td.win{color:var(--ok);font-weight:700}
+td.miss{color:var(--bad);font-weight:700}
 a{color:var(--blue)}
+code{font-family:var(--mono);background:#1c64d914;border-radius:5px;
+     padding:1px 6px;font-size:.9em}
 .note{background:#1c64d90e;border:1px solid #1c64d930;border-radius:12px;
       padding:14px 18px;font-size:15px;margin:24px 0;line-height:1.6}
 .next{max-width:760px;margin:0 auto;padding:0 24px 70px}
@@ -81,7 +78,7 @@ svg .m{font-family:var(--mono)}
 <div class="nav"><a href="../">← TGMS</a><a href="./">blog</a>
 <a href="https://github.com/zxf-work/tgms">github</a></div>
 <div class="inner">
-<span class="kicker">Post #6 · Native engine</span>
+<span class="kicker">Post #6 · Native engine design</span>
 <h1>Nine wrong bottlenecks:<br>building our storage engine</h1>
 <div class="byline">Xiaofei Zhang · University of Memphis · July 2026 ·
 <a href="https://github.com/zxf-work/tgms/blob/main/docs/eval/ENGINE_EVAL_REPORT.md">report</a> ·
@@ -89,73 +86,126 @@ svg .m{font-family:var(--mono)}
 </div></div>
 
 <article>
-<p>When K&ugrave;zu — the embedded graph database under one of our two storage
-backends — was acquired and its open-source line ended, we had a choice:
-find another general-purpose engine to sit under TGMS, or build the storage
-layer the semantics actually wanted. We built it: about 7,500 lines of Rust
-behind an unchanged Python adapter interface, validated against a 500-case
-brute-force oracle that the implementation was never allowed to touch.</p>
+<p>K&ugrave;zu — the embedded graph engine under one of our storage backends —
+was acquired, and its open-source line ended. We replaced it and DuckDB with
+an engine built for our semantics: ~7,500 lines of Rust behind an unchanged
+Python interface, validated by a 500-case oracle the implementation was
+never allowed to touch.</p>
 
-<p>This post is not about the design being clever. It is about the log we
-kept while building it, because the log's headline is embarrassing and
-useful: <b>nine times we identified "the bottleneck" and were wrong nine
-times.</b></p>
+<div class="duo">
+<div class="cell"><b>Storage, same rows</b><span class="big">24.6 B/row</span>
+<div>vs DuckDB's 187 · smaller than lz4 ClickHouse</div></div>
+<div class="cell"><b>Bottleneck guesses that were wrong</b><span class="big bad">9 of 9</span>
+<div>every real fix came from a measurement</div></div>
+</div>
 
-<h2>The misdiagnosis table</h2>
+<h2>One property pays for everything</h2>
 
-<p>We kept a running table (it lives in
-<a href="https://github.com/zxf-work/tgms/blob/main/docs/engine_lessons.md">engine_lessons.md</a>)
-with three columns: what we believed, what we measured, what the cost
-actually was. A few entries:</p>
+<p>Segments are immutable. The only mutation in the model — closing a
+version's transaction time — is an append-only patch folded in by
+compaction. Everything expensive elsewhere becomes free here: snapshot
+isolation is "pin a manifest", mmap is safe because bytes never change, a
+checksum verified once stays verified, the segment cache cannot go stale,
+readers never lock.</p>
 
-<ul>
-<li>We believed a Rust scan would beat NumPy. It measured 2&ndash;5&times;
-<i>slower</i> — a column resolved by name and a table walked per row, inside
-the loop.</li>
-<li>We believed <code>diff_snapshots</code> was scan-bound. The two scans
-were 54&nbsp;ms of 419; a lookup that fetched <i>sixteen rows</i> was
-rebuilding the entire store to find them.</li>
-<li>We believed a point lookup was all storage. Argument validation cost as
-much as reading the data — a JSON-schema validator was being recompiled on
-every call.</li>
-<li>We believed 10M-row scans were materialize-bound, parallelized
-materialization, and moved the number from 811&nbsp;ms to 819. A stage probe
-then showed the parallel path <i>never executed</i>: one overlapping
-correction segment voided the fast path's all-or-nothing check, and a
-corrected store is the normal store.</li>
-</ul>
+<div class="pull">We never tuned our way to correctness. Immutability made
+the correct thing the cheap thing.</div>
 
-<p>Three of the nine fixes were <i>correct but irrelevant</i> — good code,
-kept, that produced none of the win attributed to it. The discipline that
-survived: <b>re-measure before writing the commit message.</b> If the number
-did not move, the hypothesis was wrong even though the code got better.</p>
+<h2>Compression chosen by trial, not by policy</h2>
 
-<h2>What the design actually bought</h2>
+<p>The writer trial-encodes every column and keeps whichever representation
+is smaller. Sorted timestamps and near-constant columns collapse;
+hash-derived ids stay raw <i>by measurement</i>, not by special case.</p>
 
-<p>One property does most of the work: segments are immutable. The only
-mutation in the model — closing a version's transaction time — is an
-append-only patch folded in by compaction. Immutability makes snapshot
-isolation, safe mmap, verify-once checksums, a sound segment cache, and
-lock-free readers <i>free</i> rather than engineered.</p>
+<svg viewBox="0 0 720 240" width="100%" role="img"
+     aria-label="Bytes per edge version: DuckDB 187, uncompressed native 65, column compression 31, plus heap packing 24.6">
+  <g font-size="13" fill="var(--mut)">
+    <text x="10" y="38">DuckDB</text>
+    <text x="10" y="88">native, raw</text>
+    <text x="10" y="138">+ column FoR</text>
+    <text x="10" y="188">+ heap packing</text>
+  </g>
+  <g>
+    <rect x="150" y="22" width="540" height="24" rx="5" fill="var(--mut)" opacity="0.45"/>
+    <rect x="150" y="72" width="188" height="24" rx="5" fill="var(--blue2)" opacity="0.8"/>
+    <rect x="150" y="122" width="91" height="24" rx="5" fill="var(--blue)"/>
+    <rect x="150" y="172" width="71" height="24" rx="5" fill="var(--ok)"/>
+  </g>
+  <g font-size="13" class="m" fill="var(--ink)">
+    <text x="560" y="39" fill="#fff">187 B</text>
+    <text x="346" y="89">65.3</text>
+    <text x="249" y="139">31.4</text>
+    <text x="229" y="189">24.6 B/row</text>
+  </g>
+  <text x="150" y="222" font-size="12" fill="var(--mut)">1M edge versions, same replayed
+  event log, whole segments ÷ rows · the 12 B that remain incompressible are the
+  sha256-derived version id — the price of derived identity, visible at last.</text>
+</svg>
 
-<p>On top of that: valid-time clustering (so scans read in output order and
-merges are usually concatenations), derived identity (edge ids are hashes,
-never stored twice), frame-of-reference compression chosen per column by
-trial (the writer keeps whichever representation is smaller — sha256-derived
-columns stay raw by measurement, not by special case), and a packed string
-heap. Segments landed at <b>24.6 bytes per edge version</b> — smaller than a
-mature lz4 columnar engine holding the same rows.</p>
+<h2>Nine wrong bottlenecks</h2>
 
-<h2>The lesson we would give anyone</h2>
+<p>We kept a table: what we believed, what we measured, what it actually
+was. It reached nine rows. The full table is in
+<a href="https://github.com/zxf-work/tgms/blob/main/docs/engine_lessons.md">engine_lessons.md</a>;
+these four carry the flavor:</p>
 
-<p>"We rewrote it in Rust" is not a performance claim, and the named,
-algorithmic-looking component is rarely the cost — it is the part everyone
-already thought about. The scan call around it, the boundary crossing per
-row, the validator per call, the manifest per commit: that is where the
-milliseconds live. Profile the layer before optimizing it, and price the
-optimization you are about to decline — one fifteen-minute probe saved us an
-hour of plausible work by putting a number (0.94&nbsp;ms of a 32&nbsp;ms
-operator) on the next "obvious" improvement.</p>
+<table>
+<tr><th>we believed</th><th>we measured</th><th>it actually was</th></tr>
+<tr><td>Rust scan beats NumPy</td><td class="miss">2–5× slower</td>
+<td>a column resolved <i>by name</i> per row, inside the loop</td></tr>
+<tr><td>diff is scan-bound</td><td>scans were 54 ms of 419</td>
+<td>a 16-row lookup rebuilding the whole store</td></tr>
+<tr><td>a point lookup is all storage</td><td>validation ≈ the lookup</td>
+<td>a JSON-schema validator recompiled per call</td></tr>
+<tr><td>10M scans are materialize-bound</td><td class="miss">811 → 819 ms</td>
+<td>the parallel path <i>never ran</i>: one correction segment voided its precondition</td></tr>
+</table>
+
+<p>That last row is the one we would frame: we parallelized materialization,
+measured nothing, and a fifteen-minute stage probe showed the fast path was
+unreachable on any store containing corrections — which is every real
+store. The fix (merge by overlap <i>clusters</i>) made the "irrelevant"
+parallel code the thing doing the work:</p>
+
+<svg viewBox="0 0 720 210" width="100%" role="img"
+     aria-label="Full-window scan at 10M events: 1274 ms serial, 929 after merge-key hoisting, 434 after cluster-wise merge; DuckDB reference 958">
+  <g font-size="13" fill="var(--mut)">
+    <text x="10" y="38">serial merge</text>
+    <text x="10" y="88">keys hoisted</text>
+    <text x="10" y="138">cluster-wise</text>
+  </g>
+  <g>
+    <rect x="150" y="22" width="540" height="24" rx="5" fill="var(--mut)" opacity="0.45"/>
+    <rect x="150" y="72" width="394" height="24" rx="5" fill="var(--blue2)" opacity="0.8"/>
+    <rect x="150" y="122" width="184" height="24" rx="5" fill="var(--ok)"/>
+  </g>
+  <line x1="556" y1="14" x2="556" y2="158" stroke="var(--amber)" stroke-width="2" stroke-dasharray="5 4"/>
+  <text x="562" y="30" font-size="12" fill="var(--amber)">DuckDB · 958 ms</text>
+  <g font-size="13" class="m">
+    <text x="600" y="39" fill="#fff">1274 ms</text>
+    <text x="552" y="89">929</text>
+    <text x="342" y="139">434 ms</text>
+  </g>
+  <text x="150" y="192" font-size="12" fill="var(--mut)">graph_metric_timeseries,
+  10M events, 40 cores · the matching kernel measured 11 ms throughout.</text>
+</svg>
+
+<div class="note"><b>The transferable rule.</b> The named, algorithmic-looking
+component is rarely the cost — it is the part everyone already thought
+about. The scan call around it, the boundary crossing per row, the
+validator per call, the manifest per commit: that is where milliseconds
+live. Re-measure before writing the commit message; if the number did not
+move, the hypothesis was wrong even though the code got better.</div>
+
+<h2>What we refused to optimize</h2>
+
+<p>Durability. A commit is several fsyncs and ~20 ms, so batch-1 writes are
+slow and batch-1000 writes hit 46k events/s on the same floor. The lever is
+group-commit at the API — never weakening what a commit <i>means</i>. And a
+fifteen-minute probe priced the next "obvious" win (passing ids as integers
+across the language boundary) at 0.94 ms of a 32 ms operator — measured,
+declined, recorded. The measurement that stops you is worth as much as the
+one that redirects you.</p>
 </article>
 
 <div class="next"><a href="evaluating-the-engine.html">
