@@ -41,6 +41,8 @@ eval = [
     "psycopg[binary]>=3.2",
     # ClickHouse HTTP client; Apache-2.0, like the server (D-035, spec §8.6)
     "clickhouse-connect>=0.8",
+    # Neo4j bolt driver; Apache-2.0 (D-036, spec §8.6)
+    "neo4j>=5.20",
 ]
 
 [project.scripts]

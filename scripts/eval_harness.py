@@ -296,6 +296,32 @@ def run_clickhouse(store_path: Path, queries: list[Query]) -> list[Result]:
     return out
 
 
+def run_neo4j(store_path: Path, queries: list[Query]) -> list[Result]:
+    """Answer the registry in Cypher — same contract as the SQL baselines."""
+    import neo4j_baseline
+    import neo4j_queries
+
+    adapter = tgms.open(store_path, backend="native").adapter
+    drv = neo4j_baseline.connect()
+    neo4j_baseline.create_schema(drv)
+    neo4j_baseline.load(drv, adapter)
+    out: list[Result] = []
+    for q in queries:
+        fn = neo4j_queries.QUERIES.get(q.id)
+        if fn is None:
+            out.append(Result(q.id, False, error="no Cypher written yet (not a verdict)"))
+            continue
+        try:
+            payload, timings = _measure(lambda: fn(drv, **q.args))
+            p50, p95 = _p50_p95(timings)
+            out.append(Result(q.id, True, canonical_hash(payload), p50, p95,
+                              _answer_size(payload),
+                              timings_ms=[round(t, 3) for t in timings]))
+        except Exception as e:
+            out.append(Result(q.id, False, error=f"{type(e).__name__}: {e}"[:160]))
+    return out
+
+
 def manifest(data: Dataset, systems: list[str]) -> dict[str, Any]:
     """Everything needed to say whether two runs are comparable."""
     def sh(*cmd: str) -> str:
@@ -583,11 +609,12 @@ def main() -> int:
         t0 = time.perf_counter()
         # PostgreSQL is a baseline, not a backend: it cannot replay the log,
         # so it is loaded from a native store's canonical rows instead.
-        baseline = name in ("postgres", "clickhouse")
+        baseline = name in ("postgres", "clickhouse", "neo4j")
         load_store(path, "native" if baseline else name, log)
         load = time.perf_counter() - t0
         results[name] = (run_postgres(path, queries) if name == "postgres"
                          else run_clickhouse(path, queries) if name == "clickhouse"
+                         else run_neo4j(path, queries) if name == "neo4j"
                          else run_system(name, path, queries))
         print(f"  {name}: loaded in {load:.1f}s")
 
