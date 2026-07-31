@@ -56,6 +56,12 @@ class NativeAdapter(StorageAdapter):
     are what give snapshot isolation and crash recovery.
     """
 
+    #: The TCSR path scans integer columns plus row addresses — never eid or
+    #: rel_type, which cost a sha256 / a string per *scanned* row. Traversal
+    #: fetches identities afterwards for the rows that survive it, via
+    #: `edge_idents_at`. Portable backends keep the base class columns.
+    TCSR_COLS = ("src_id", "dst_id", "vt_s", "vt_e", "seg_id", "seg_row")
+
     def __init__(self, path: str | Path) -> None:
         self.path = Path(path)
         self.path.mkdir(parents=True, exist_ok=True)
@@ -66,6 +72,36 @@ class NativeAdapter(StorageAdapter):
 
     def close(self) -> None:
         self._store.close()
+
+    def tcsr(self):
+        """The base lazy build, wrapped in generation-stamped persistence.
+
+        The permutation is saved under `index/` (a directory neither gc nor
+        verify walks) stamped with `(generation, manifest_sha)`; a stamp
+        match on open replaces the two argsorts with a file read, and any
+        mismatch — including a store rebuilt in place, which reuses
+        generation numbers with different content — falls back to a rebuild
+        and re-save (D-039). Inside an open batch nothing is loaded or
+        saved: staged rows are visible to reads before the generation
+        advances, so a stamp written mid-batch would lie.
+        """
+        if self._tcsr is not None:
+            return self._tcsr
+        from tgms.storage.tcsr import TemporalCSR, load_permutation, save_permutation
+
+        cols = self.edges_columnar(columns=self.TCSR_COLS)
+        n = self.num_entities()
+        if self._store.in_batch():
+            self._tcsr = (TemporalCSR.build(cols, n), cols)
+            return self._tcsr
+        path = self.path / "index" / "tcsr.npz"
+        gen, sha = self._store.generation(), self._store.manifest_sha()
+        csr = load_permutation(path, cols, n, gen, sha)
+        if csr is None:
+            csr = TemporalCSR.build(cols, n)
+            save_permutation(path, csr, gen, sha)
+        self._tcsr = (csr, cols)
+        return self._tcsr
 
     # --- batch transactions ---------------------------------------------- #
     #
@@ -320,7 +356,28 @@ class NativeAdapter(StorageAdapter):
         for c in self.EDGE_STR_COLS:
             if columns is None or c in columns:
                 out[c] = np.asarray(got[c], dtype=object)
+        # physical row addresses (native only, explicit request only): the
+        # ticket for coming back to the engine for derived fields of a few
+        # surviving rows without materializing them for the whole scan
+        for c in ("seg_id", "seg_row"):
+            if columns is not None and c in columns:
+                out[c] = np.asarray(got[c], dtype=np.int64)
         return out
+
+    def edge_idents_at(self, seg_ids: Sequence[int],
+                       seg_rows: Sequence[int]) -> tuple[np.ndarray, np.ndarray]:
+        """`(eid, rel_type)` for scan addresses, in input order.
+
+        Addresses come from a scan projecting `seg_id`/`seg_row` and are
+        valid only against the generation that produced them — the engine
+        refuses ids the current generation does not name.
+        """
+        try:
+            eids, rels = self._store.edge_idents_at(
+                [int(i) for i in seg_ids], [int(r) for r in seg_rows])
+        except Exception as e:
+            raise _translate(e) from None
+        return np.asarray(eids, dtype=object), np.asarray(rels, dtype=object)
 
     def nodes_columnar(
         self,

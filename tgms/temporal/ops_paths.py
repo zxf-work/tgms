@@ -220,16 +220,15 @@ def temporal_paths(adapter: StorageAdapter, args: dict[str, Any]) -> dict[str, A
     sid, did = (int(x) for x in adapter.dense_ids([args["src"], args["dst"]]))
 
     csr, cols = _csr_for(adapter, as_of, t_a, t_b)
-    # traversal over the TCSR: per-node slices ordered by (vt_s, eid), which
-    # also fixes the deterministic enumeration order
-    paths: list[tuple[int, int, tuple, list[int]]] = []
+    # traversal over the TCSR: per-node slices ordered by (vt_s, vid); the
+    # deterministic enumeration order is fixed after the walk, by (vt_s, eid)
+    found: list[tuple[int, int, list[int]]] = []
     expansions = 0
 
     def dfs(node: int, arrival: int, hops: int, visited: set[int], trail: list[int]) -> None:
         nonlocal expansions
         if node == did and trail:
-            key = tuple((int(cols["vt_s"][r]), cols["eid"][r]) for r in trail)
-            paths.append((arrival, hops, key, list(trail)))
+            found.append((arrival, hops, list(trail)))
             return  # node-simple: dst terminates the path
         if hops == args["max_hops"]:
             return
@@ -254,6 +253,22 @@ def temporal_paths(adapter: StorageAdapter, args: dict[str, Any]) -> dict[str, A
             visited.remove(v)
 
     dfs(sid, t_a, 0, {sid}, [])
+    # Identity fetch. Portable backends carry eid/rel_type in the scan; the
+    # native TCSR path deliberately does not (a sha256 per scanned row), so
+    # its scan returns row addresses instead and the engine derives the two
+    # fields for exactly the rows on found paths.
+    if "eid" in cols:
+        eid_of, rel_of = cols["eid"], cols["rel_type"]
+    else:
+        need = sorted({r for _, _, trail in found for r in trail})
+        eids, rels = (adapter.edge_idents_at(cols["seg_id"][need],
+                                             cols["seg_row"][need])
+                      if need else ((), ()))
+        eid_of = dict(zip(need, eids))
+        rel_of = dict(zip(need, rels))
+    paths = [(arrival, hops,
+              tuple((int(cols["vt_s"][r]), eid_of[r]) for r in trail), trail)
+             for arrival, hops, trail in found]
     paths.sort(key=lambda p: (p[0], p[1], p[2]))
     rows = []
     for arrival, hops, _, trail in paths[: args["k"]]:
@@ -262,8 +277,8 @@ def temporal_paths(adapter: StorageAdapter, args: dict[str, Any]) -> dict[str, A
         rows.append({
             "arrival": arrival,
             "hops": hops,
-            "edges": [{"src": s, "dst": d, "rel_type": cols["rel_type"][r],
-                       "eid": cols["eid"][r], "t": int(cols["vt_s"][r])}
+            "edges": [{"src": s, "dst": d, "rel_type": rel_of[r],
+                       "eid": eid_of[r], "t": int(cols["vt_s"][r])}
                       for r, s, d in zip(trail, s_uids, d_uids)],
         })
     return {"rows": rows, "rows_total": len(paths),
@@ -279,5 +294,6 @@ def _csr_for(adapter: StorageAdapter, as_of: int, t_a: int, t_b: int):
 
     if clamp_tt(as_of) == clamp_tt(OPEN_END):
         return adapter.tcsr()
-    cols = adapter.edges_columnar(as_of_tt=as_of, vt_min=t_a, vt_max=t_b)
+    cols = adapter.edges_columnar(as_of_tt=as_of, vt_min=t_a, vt_max=t_b,
+                                  columns=adapter.TCSR_COLS)
     return TemporalCSR.build(cols, adapter.num_entities()), cols
