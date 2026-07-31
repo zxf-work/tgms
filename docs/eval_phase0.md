@@ -99,7 +99,7 @@ TGMS-side change affects it):
 | query | native | duckdb | postgres | clickhouse | fastest |
 |---|---:|---:|---:|---:|---|
 | hist.single | 1.6 | 66.6 | **0.3** | 12.5 | postgres |
-| snap.hop2 | **937.0** | 1669.8 | 2506.8 | n/a† | native |
+| snap.hop2 | 937.0 | 1669.8 | 2506.8 | **749.3**† | clickhouse |
 | diff.global | **3791.4** | 5490.1 | 6670.6 | 5347.9 | native |
 | reach.window | n/a | n/a | 44400.4 | **4044.9** | guardrailed |
 | paths.k | n/a | n/a | **37.2** | 242.6 | guardrailed |
@@ -110,12 +110,12 @@ TGMS-side change affects it):
 | resolve.substr | **97.3** | 884.3 | 200.5 | 121.9 | native |
 | motif.filtered | **73.5** | 168.0 | 661.3 | 230.0 | native |
 
-†ClickHouse `snap.hop2` at 10M failed on **my query's plumbing, not the
-engine or the semantics**: the BFS passes the reached-node id list inline
-in the query text, and at 10M it exceeded the default `max_query_size`.
-The fix (ship the frontier through a working table like the other
-iterative queries) is known and pending; the cell is a defect record, not
-a verdict.
+†Re-measured after a plumbing fix: the BFS originally inlined the
+reached-node id list in query text and blew `max_query_size` at 10M. With
+node sets shipped through working tables the query hash-matches and runs
+749.3 ms — **beating native**, whose 937 ms materializes the induced
+snapshot serially. A cell that began as a defect record ended as a
+ClickHouse win; both facts are kept.
 
 The scaling stories the four-system sweep settles: **ClickHouse's
 aggregation lead grows with scale** — 2× over native at 200k, 3.5× at 1M,
@@ -126,7 +126,9 @@ reachability query TGMS guardrails (4.0 s vs 44.4 s), so the baselines
 now bracket that guardrail from both sides. Meanwhile the interval join
 flipped back: ClickHouse took `coactive.narrow` at 1M (104.2 vs 135.1)
 and native retook it at 10M (181.4 vs 221.2) on the cluster-wise merge.
-Native holds every selective and traversal shape it answers.
+Native holds every other selective and traversal shape it answers;
+ClickHouse took the 2-hop snapshot at 10M once its query was fixed — the
+first traversal-family loss, worth watching as scale grows.
 
 10M initially inverted part of the picture: DuckDB won series, burst, the
 interval join (3.2×), and the motif fetch — every full-window scan — on a
