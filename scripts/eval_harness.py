@@ -296,15 +296,24 @@ def run_clickhouse(store_path: Path, queries: list[Query]) -> list[Result]:
     return out
 
 
-def run_neo4j(store_path: Path, queries: list[Query]) -> list[Result]:
-    """Answer the registry in Cypher — same contract as the SQL baselines."""
-    import neo4j_baseline
-    import neo4j_queries
+def run_neo4j(store_path: Path, queries: list[Query],
+              flavor: str = "neo4j") -> list[Result]:
+    """Answer the registry in Cypher — same contract as the SQL baselines.
+
+    `flavor` picks neo4j or memgraph: same driver, same loader, different
+    connection and DDL, one query override (see memgraph_queries).
+    """
+    if flavor == "memgraph":
+        import memgraph_baseline as baseline
+        import memgraph_queries as neo4j_queries
+    else:
+        import neo4j_baseline as baseline
+        import neo4j_queries
 
     adapter = tgms.open(store_path, backend="native").adapter
-    drv = neo4j_baseline.connect()
-    neo4j_baseline.create_schema(drv)
-    neo4j_baseline.load(drv, adapter)
+    drv = baseline.connect()
+    baseline.create_schema(drv)
+    baseline.load(drv, adapter)
     out: list[Result] = []
     for q in queries:
         fn = neo4j_queries.QUERIES.get(q.id)
@@ -609,12 +618,13 @@ def main() -> int:
         t0 = time.perf_counter()
         # PostgreSQL is a baseline, not a backend: it cannot replay the log,
         # so it is loaded from a native store's canonical rows instead.
-        baseline = name in ("postgres", "clickhouse", "neo4j")
+        baseline = name in ("postgres", "clickhouse", "neo4j", "memgraph")
         load_store(path, "native" if baseline else name, log)
         load = time.perf_counter() - t0
         results[name] = (run_postgres(path, queries) if name == "postgres"
                          else run_clickhouse(path, queries) if name == "clickhouse"
                          else run_neo4j(path, queries) if name == "neo4j"
+                         else run_neo4j(path, queries, "memgraph") if name == "memgraph"
                          else run_system(name, path, queries))
         print(f"  {name}: loaded in {load:.1f}s")
 
