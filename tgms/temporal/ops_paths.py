@@ -52,6 +52,41 @@ def _reach_cost(args: dict[str, Any], stats: dict[str, Any]) -> dict[str, int]:
     return {"rows_scanned_est": rows, "expansions_est": rows * 8}
 
 
+def _paths_cost(args: dict[str, Any], stats: dict[str, Any]) -> dict[str, int]:
+    """Charge the branching-bounded DFS frontier, not the windowed scan.
+
+    temporal_paths explores from a single source, node-simply, to at most
+    `max_hops` levels, so its work is the frontier sum
+    b + b^2 + ... + b^max_hops with branching b = the mean windowed
+    out-degree — NOT a multiple of the windowed event count. The old
+    `rows * 8` form charged the reachability fixpoint's shape (every
+    windowed edge relaxed per round) and refused a query at 10M events
+    that the PostgreSQL baseline answered in 37 ms (docs/eval_phase0.md):
+    a quarter-span window priced 20M "expansions" where a 3-hop frontier
+    over mean degree 25 explores ~16k.
+
+    Mean degree, not max — the motif lesson (44a0d8f): one heavy sender
+    does not sit on every hop of every path, and max-degree skew is
+    exactly what produced that operator's false positive. The estimate
+    stays an over-count of live traversal because time-respecting
+    pruning (tau < vt_e, tau < t_b) and node-simplicity cut far below
+    the full b^h product; the runtime MAX_EXPANSIONS budget remains the
+    exact backstop for stores whose local structure beats the average.
+    """
+    n_ev = int(stats.get("n_edge_versions", 0))
+    wf = window_fraction(args, stats)
+    e_w = int(n_ev * wf)
+    branching = max(1.0, e_w / max(1, int(stats.get("n_entities", 1))))
+    expansions, frontier = 0.0, 1.0
+    for _ in range(int(args.get("max_hops") or MAX_PATH_HOPS)):
+        frontier *= branching
+        expansions += frontier
+        if expansions >= 2**40:
+            break
+    return {"rows_scanned_est": e_w,
+            "expansions_est": min(int(expansions), 2**40)}
+
+
 @operator(
     "temporal_reachability",
     {
@@ -176,7 +211,7 @@ def _paths_validators(args: dict[str, Any]) -> None:
     },
     "Up to k node-simple time-respecting paths src -> dst inside `window`, "
     "ordered by (arrival, hops, edge sequence).",
-    cost_fn=_reach_cost,
+    cost_fn=_paths_cost,
     validators=[_paths_validators],
 )
 def temporal_paths(adapter: StorageAdapter, args: dict[str, Any]) -> dict[str, Any]:
