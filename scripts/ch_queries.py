@@ -161,57 +161,69 @@ def _work(client, name: str, schema: str, as_select: str | None = None,
 def snapshot_subgraph(client, *, seeds: list[str], hops: int, t_valid: int,
                       as_of_tt: int = OPEN_END, limit: int = 100) -> dict[str, Any]:
     bel = belief(as_of_tt)
-    # nodes valid at the instant, one row per uid: LIMIT 1 BY is the
-    # DISTINCT ON analogue, and (vt_s, vid) DESC picks the same canonical
-    # row the operator's node_pos map does (last in scan order)
-    nrows = client.query(
-        f"SELECT uid, label, e.dense_id FROM {DB}.node_versions nv "
-        f"JOIN {DB}.entities e ON e.uid = nv.uid "
-        f"WHERE {bel} AND vt_s <= {t_valid} AND {t_valid} < vt_e "
-        f"ORDER BY uid, vt_s DESC, vid DESC LIMIT 1 BY uid").result_rows
-    valid = {int(r[2]): (r[0], r[1]) for r in nrows}
-    # instant edges with both endpoints valid — the only edges that can
-    # contribute to traversal or the induced set (frontier nodes are always
-    # valid, and invalid neighbours never enter dist)
-    ids = sorted(valid)
+    # Valid nodes and instant edges are built entirely server-side: at 10M
+    # the valid-id set is ~100k ids, and inlining it in query text blew the
+    # default max_query_size. Sets that must cross the boundary (frontier,
+    # reached) travel through Memory tables via INSERT — the HTTP body has
+    # no query-size ceiling — never through SQL text.
+    _work(client, "_validn", "id UInt64",
+          f"SELECT e.dense_id FROM {DB}.node_versions nv "
+          f"JOIN {DB}.entities e ON e.uid = nv.uid "
+          f"WHERE {bel} AND vt_s <= {t_valid} AND {t_valid} < vt_e "
+          f"GROUP BY e.dense_id")
     _work(client, "_snape", "src_id UInt64, dst_id UInt64",
           f"SELECT src_id, dst_id FROM {DB}.edge_versions "
           f"WHERE {bel} AND vt_s <= {t_valid} AND {t_valid} < vt_e "
-          f"AND src_id IN %(ids)s AND dst_id IN %(ids)s", {"ids": ids})
+          f"AND src_id IN (SELECT id FROM {DB}._validn) "
+          f"AND dst_id IN (SELECT id FROM {DB}._validn)")
 
-    uid_of = {i: u for i, (u, _) in valid.items()}
-    seed_ids = sorted({i for i, (u, _) in valid.items() if u in set(seeds)})
-    dist: dict[int, int] = {i: 0 for i in seed_ids}
-    frontier = seed_ids
+    seed_rows = client.query(
+        f"SELECT DISTINCT e.dense_id FROM {DB}.entities e "
+        f"WHERE e.uid IN %(s)s AND e.dense_id IN (SELECT id FROM {DB}._validn)",
+        parameters={"s": list(seeds)}).result_rows
+    dist: dict[int, int] = {int(r[0]): 0 for r in seed_rows}
+    frontier = sorted(dist)
+    _work(client, "_front", "id UInt64")
     for h in range(1, hops + 1):
         if not frontier:
             break
+        client.command(f"TRUNCATE TABLE {DB}._front")
+        client.insert(f"{DB}._front", [(i,) for i in frontier],
+                      column_names=["id"])
         touched = client.query(
             f"SELECT DISTINCT arrayJoin([src_id, dst_id]) FROM {DB}._snape "
-            f"WHERE src_id IN %(f)s OR dst_id IN %(f)s",
-            parameters={"f": frontier}).result_rows
-        new = sorted(int(r[0]) for r in touched
-                     if int(r[0]) not in dist and int(r[0]) in valid)
+            f"WHERE src_id IN (SELECT id FROM {DB}._front) "
+            f"   OR dst_id IN (SELECT id FROM {DB}._front)").result_rows
+        new = sorted(int(r[0]) for r in touched if int(r[0]) not in dist)
         for i in new:
             dist[i] = h
         frontier = new
 
-    reached = sorted(dist)
-    total = client.query(
-        f"SELECT count() FROM {DB}.edge_versions "
-        f"WHERE {bel} AND vt_s <= {t_valid} AND {t_valid} < vt_e "
-        f"AND src_id IN %(d)s AND dst_id IN %(d)s",
-        parameters={"d": reached}).result_rows[0][0]
+    _work(client, "_distn", "id UInt64")
+    if dist:
+        client.insert(f"{DB}._distn", [(i,) for i in sorted(dist)],
+                      column_names=["id"])
+    ind = (f"FROM {DB}.edge_versions "
+           f"WHERE {bel} AND vt_s <= {t_valid} AND {t_valid} < vt_e "
+           f"AND src_id IN (SELECT id FROM {DB}._distn) "
+           f"AND dst_id IN (SELECT id FROM {DB}._distn)")
+    total = client.query(f"SELECT count() {ind}").result_rows[0][0]
     erows = client.query(
-        f"SELECT eid, vid, src, dst, rel_type, vt_s, vt_e "
-        f"FROM {DB}.edge_versions "
-        f"WHERE {bel} AND vt_s <= {t_valid} AND {t_valid} < vt_e "
-        f"AND src_id IN %(d)s AND dst_id IN %(d)s "
-        f"ORDER BY vt_s, vid LIMIT {int(limit)}",
-        parameters={"d": reached}).result_rows
+        f"SELECT eid, vid, src, dst, rel_type, vt_s, vt_e {ind} "
+        f"ORDER BY vt_s, vid LIMIT {int(limit)}").result_rows
     rows = [{"eid": r[0], "vid": r[1], "src": r[2], "dst": r[3],
              "rel_type": r[4], "vt_s": r[5], "vt_e": r[6]} for r in erows]
-    nodes = sorted(({"uid": uid_of[i], "label": valid[i][1], "hop": hh}
+
+    # labels and uids for reached nodes, canonical row per uid
+    nrows = client.query(
+        f"SELECT e.dense_id, nv.uid, nv.label FROM ("
+        f"  SELECT uid, label FROM {DB}.node_versions "
+        f"  WHERE {bel} AND vt_s <= {t_valid} AND {t_valid} < vt_e "
+        f"  ORDER BY uid, vt_s DESC, vid DESC LIMIT 1 BY uid) nv "
+        f"JOIN {DB}.entities e ON e.uid = nv.uid "
+        f"WHERE e.dense_id IN (SELECT id FROM {DB}._distn)").result_rows
+    meta = {int(r[0]): (r[1], r[2]) for r in nrows}
+    nodes = sorted(({"uid": meta[i][0], "label": meta[i][1], "hop": hh}
                     for i, hh in dist.items()),
                    key=lambda r: (r["hop"], r["uid"]))
     nodes_truncated = len(nodes) > limit
