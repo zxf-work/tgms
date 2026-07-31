@@ -302,6 +302,189 @@ def temporal_paths(drv, *, src: str, dst: str, window: dict, k: int = 5,
     return {"rows": out, "rows_total": len(done), "truncated": len(done) > k}
 
 
+# --------------------------------------------------------------------------
+# shared four-query slice — written once in openCypher, reused by Memgraph
+# --------------------------------------------------------------------------
+
+def diff_snapshots(drv, *, t1: int, t2: int, as_of_tt: int = OPEN_END,
+                   scope: dict | None = None, limit: int = 100) -> dict[str, Any]:
+    if scope is not None:
+        raise NotImplementedError("scoped diff")
+    rbel, nbel = belief(as_of_tt, "r"), belief(as_of_tt, "n")
+
+    with drv.session() as s:
+        def edge_state(t: int) -> dict[str, tuple]:
+            rows = s.run(
+                f"MATCH (a:Entity)-[r:E]->(b:Entity) "
+                f"WHERE {rbel} AND r.vt_s <= $t AND $t < r.vt_e "
+                f"RETURN r.eid AS eid, a.uid AS src, b.uid AS dst, "
+                f"r.rel_type AS rel, r.vid AS vid, r.vt_s AS vs, "
+                f"r.props AS props", t=t).data()
+            st: dict[str, tuple] = {}
+            for r in rows:  # canonical row per eid: max (vt_s, vid)
+                cur = st.get(r["eid"])
+                if cur is None or (r["vs"], r["vid"]) > (cur[4], cur[3]):
+                    st[r["eid"]] = (r["src"], r["dst"], r["rel"], r["vid"],
+                                    r["vs"], r["props"])
+            return st
+
+        def node_state(t: int) -> dict[str, tuple]:
+            rows = s.run(
+                f"MATCH (n:NodeVersion) "
+                f"WHERE {nbel} AND n.vt_s <= $t AND $t < n.vt_e "
+                f"RETURN n.uid AS uid, n.label AS label, n.vid AS vid, "
+                f"n.vt_s AS vs, n.props AS props", t=t).data()
+            st: dict[str, tuple] = {}
+            for r in rows:
+                cur = st.get(r["uid"])
+                if cur is None or (r["vs"], r["vid"]) > (cur[3], cur[1]):
+                    st[r["uid"]] = (r["label"], r["vid"], r["props"], r["vs"])
+            return st
+
+        n1, n2 = node_state(t1), node_state(t2)
+        e1, e2 = edge_state(t1), edge_state(t2)
+
+    nodes_added = sorted(u for u in n2 if u not in n1)
+    nodes_removed = sorted(u for u in n1 if u not in n2)
+
+    def edesc(eid, st):
+        src, dst, rel = st[eid][0], st[eid][1], st[eid][2]
+        return {"eid": eid, "src": src, "dst": dst, "rel_type": rel}
+
+    edges_added = [edesc(e, e2) for e in sorted(e for e in e2 if e not in e1)]
+    edges_removed = [edesc(e, e1) for e in sorted(e for e in e1 if e not in e2)]
+
+    changed: list[dict[str, Any]] = []
+    for u in sorted(u for u in n1 if u in n2 and n1[u][1] != n2[u][1]):
+        (la, _va, pa, _), (lb, _vb, pb, _) = n1[u], n2[u]
+        if json.loads(pa) != json.loads(pb) or la != lb:
+            changed.append({"kind": "node", "id": u,
+                            "from": {"label": la, "props": json.loads(pa)},
+                            "to": {"label": lb, "props": json.loads(pb)}})
+    for e in sorted(e for e in e1 if e in e2 and e1[e][3] != e2[e][3]):
+        pa, pb = e1[e][5], e2[e][5]
+        if json.loads(pa) != json.loads(pb):
+            changed.append({"kind": "edge", "id": e,
+                            "from": {"props": json.loads(pa)},
+                            "to": {"props": json.loads(pb)}})
+
+    lists = {"nodes_added": nodes_added, "nodes_removed": nodes_removed,
+             "edges_added": edges_added, "edges_removed": edges_removed,
+             "props_changed": changed}
+    out: dict[str, Any] = {}
+    for k, v in lists.items():
+        out[k], out[f"{k}_total"] = v[:limit], len(v)
+    out["truncated"] = any(len(v) > limit for v in lists.values())
+    return out
+
+
+def _spec_where(spec: dict, rel: str, src: str, dst: str) -> str:
+    parts = []
+    if spec.get("rel_type"):
+        parts.append(f"{rel}.rel_type = '" + spec["rel_type"].replace("'", "\'") + "'")
+    if spec.get("src"):
+        parts.append(f"{src}.uid = '" + spec["src"].replace("'", "\'") + "'")
+    if spec.get("dst"):
+        parts.append(f"{dst}.uid = '" + spec["dst"].replace("'", "\'") + "'")
+    return (" AND " + " AND ".join(parts)) if parts else ""
+
+
+def co_active(drv, *, a_spec: dict, b_spec: dict, allen_relation: dict,
+              as_of_tt: int = OPEN_END, limit: int = 100) -> dict[str, Any]:
+    if allen_relation.get("relation") != "overlaps":
+        raise NotImplementedError(allen_relation.get("relation"))
+    where = (f"{belief(as_of_tt, 'ra')} AND {belief(as_of_tt, 'rb')} "
+             f"AND ra.vt_s < rb.vt_s AND rb.vt_s < ra.vt_e "
+             f"AND ra.vt_e < rb.vt_e AND ra.vid <> rb.vid"
+             f"{_spec_where(a_spec, 'ra', 'sa', 'da')}"
+             f"{_spec_where(b_spec, 'rb', 'sb', 'db')}")
+    pat = ("MATCH (sa:Entity)-[ra:E]->(da:Entity) "
+           "MATCH (sb:Entity)-[rb:E]->(db:Entity) ")
+    with drv.session() as s:
+        total = s.run(f"{pat} WHERE {where} RETURN count(*)").single()[0]
+        rows = s.run(
+            f"{pat} WHERE {where} "
+            f"RETURN ra.eid AS ae, ra.vid AS av, sa.uid AS asrc, da.uid AS adst, "
+            f"ra.rel_type AS ar, ra.vt_s AS avs, ra.vt_e AS ave, "
+            f"rb.eid AS be, rb.vid AS bv, sb.uid AS bsrc, db.uid AS bdst, "
+            f"rb.rel_type AS br, rb.vt_s AS bvs, rb.vt_e AS bve "
+            f"ORDER BY ra.vt_s, ra.vid, rb.vt_s, rb.vid LIMIT {int(limit)}").data()
+    out = [{"a": {"eid": r["ae"], "vid": r["av"], "src": r["asrc"],
+                  "dst": r["adst"], "rel_type": r["ar"], "vt_s": r["avs"],
+                  "vt_e": r["ave"]},
+            "b": {"eid": r["be"], "vid": r["bv"], "src": r["bsrc"],
+                  "dst": r["bdst"], "rel_type": r["br"], "vt_s": r["bvs"],
+                  "vt_e": r["bve"]}} for r in rows]
+    return {"rows": out, **_page(total, len(out))}
+
+
+def resolve_entities(drv, *, query: str, label: str | None = None,
+                     as_of_tt: int = OPEN_END, limit: int = 100) -> dict[str, Any]:
+    nbel = belief(as_of_tt, "n")
+    ql = query.lower()
+    with drv.session() as s:
+        scored = {r["uid"]: int(r["m"]) for r in s.run(
+            f"MATCH (n:NodeVersion) WHERE {nbel} "
+            f"WITH n, CASE WHEN n.uid = $q THEN 0 "
+            f"WHEN toLower(n.uid) CONTAINS $ql THEN 1 "
+            f"WHEN n.name IS NOT NULL AND n.name <> '' "
+            f"AND toLower(n.name) CONTAINS $ql THEN 2 ELSE 9 END AS sc "
+            f"WITH n.uid AS uid, min(sc) AS m WHERE m < 9 "
+            f"RETURN uid, m", q=query, ql=ql).data()}
+        canon = {}
+        if scored:
+            for r in s.run(
+                f"MATCH (n:NodeVersion) WHERE {nbel} AND n.uid IN $uids "
+                f"WITH n ORDER BY n.vt_s DESC, n.vid DESC "
+                f"WITH n.uid AS uid, collect(n)[0] AS c "
+                f"RETURN uid, c.label AS label, c.props AS props",
+                    uids=sorted(scored)).data():
+                canon[r["uid"]] = (r["label"], r["props"])
+    rows = [{"uid": u, "label": canon[u][0],
+             "name": json.loads(canon[u][1]).get("name"), "match": m}
+            for u, m in scored.items()
+            if label is None or canon[u][0] == label]
+    rows.sort(key=lambda r: (r["match"], r["uid"]))
+    out = rows[:limit]
+    return {"rows": out, **_page(len(rows), len(out))}
+
+
+def count_temporal_motifs(drv, *, motif: str, delta: int, window: dict,
+                          node_filter: list[str] | None = None,
+                          as_of_tt: int = OPEN_END) -> dict[str, Any]:
+    if motif != "M_triangle_cyclic":
+        raise NotImplementedError(motif)
+    t_a, t_b = window["t_a"], window["t_b"]
+    nf_ev = nf_tri = ""
+    params: dict[str, Any] = {"ta": t_a, "tb": t_b, "d": delta}
+    if node_filter is not None:
+        params["nf"] = sorted(set(node_filter))
+        nf_ev = " AND x.uid IN $nf AND y.uid IN $nf"
+        nf_tri = " AND x.uid IN $nf AND y.uid IN $nf AND z.uid IN $nf"
+    rbel = belief(as_of_tt, "r")
+    with drv.session() as s:
+        n_events = s.run(
+            f"MATCH (x:Entity)-[r:E]->(y:Entity) "
+            f"WHERE {rbel} AND r.vt_s >= $ta AND r.vt_s < $tb{nf_ev} "
+            f"RETURN count(r)", **params).single()[0]
+        # closed triangle pattern; strictness lives in the composite
+        # (vt_s, eid) comparisons, span bound inclusive (t3 - t1 <= delta)
+        cnt = s.run(
+            f"MATCH (x:Entity)-[a:E]->(y:Entity)-[b:E]->(z:Entity)-[c:E]->(x) "
+            f"WHERE {belief(as_of_tt, 'a')} AND {belief(as_of_tt, 'b')} "
+            f"AND {belief(as_of_tt, 'c')} "
+            f"AND a.vt_s >= $ta AND a.vt_s < $tb "
+            f"AND b.vt_s >= $ta AND b.vt_s < $tb "
+            f"AND c.vt_s >= $ta AND c.vt_s < $tb{nf_tri} "
+            f"AND (b.vt_s > a.vt_s OR (b.vt_s = a.vt_s AND b.eid > a.eid)) "
+            f"AND (c.vt_s > b.vt_s OR (c.vt_s = b.vt_s AND c.eid > b.eid)) "
+            f"AND c.vt_s - a.vt_s <= $d AND b.vt_s - a.vt_s <= $d "
+            f"AND x <> y AND y <> z AND z <> x "
+            f"RETURN count(*)", **params).single()[0]
+    return {"count": int(cnt), "n_events_in_window": int(n_events),
+            "truncated": False}
+
+
 QUERIES = {
     "hist.single": entity_history,
     "hist.asof": entity_history,
@@ -311,4 +494,8 @@ QUERIES = {
     "series.count": graph_metric_timeseries,
     "burst.zscore": burst_detection,
     "nbr.evolution": neighborhood_evolution,
+    "diff.global": diff_snapshots,
+    "coactive.narrow": co_active,
+    "resolve.substr": resolve_entities,
+    "motif.filtered": count_temporal_motifs,
 }

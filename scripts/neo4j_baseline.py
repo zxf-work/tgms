@@ -66,16 +66,21 @@ def load(drv, adapter) -> dict[str, int]:
               rows=[{"uid": u, "id": i} for i, u in enumerate(uids)]).consume()
         counts["entities"] = len(uids)
 
+        # `name` is promoted to a property when it is a JSON string —
+        # D-031's rule, and the same move as the engine's typed column:
+        # Cypher has no JSON parser without APOC, and resolve matches on it
         nv = [{"vid": v.vid, "uid": v.uid, "label": v.label, "vt_s": v.vt_s,
                "vt_e": v.vt_e, "tt_s": v.tt_s, "tt_e": v.tt_e,
                "props": canonical_json(v.props), "source": v.source,
-               "prov": v.provenance_ref}
+               "prov": v.provenance_ref,
+               "name": (v.props.get("name")
+                        if isinstance(v.props.get("name"), str) else None)}
               for v in adapter.all_node_versions()]
         for i in range(0, len(nv), 10_000):
             s.run("UNWIND $rows AS r CREATE (:NodeVersion {vid: r.vid, "
                   "uid: r.uid, label: r.label, vt_s: r.vt_s, vt_e: r.vt_e, "
                   "tt_s: r.tt_s, tt_e: r.tt_e, props: r.props, "
-                  "source: r.source, prov: r.prov})",
+                  "source: r.source, prov: r.prov, name: r.name})",
                   rows=nv[i:i + 10_000]).consume()
         counts["node_versions"] = len(nv)
 
