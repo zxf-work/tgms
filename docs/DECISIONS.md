@@ -668,3 +668,28 @@ implementation — hygiene checking starts at the marker recorded in D-010.
   Phase 2-3 asked for on this host. Remaining registry gaps per graph
   system: diff, coactive, resolve, motif — written next as one shared
   slice where openCypher allows.
+
+## D-038 — openCypher read façade, compiled onto the operator algebra
+
+- **Date:** 2026-07-31
+- **Context:** the operator algebra covers 10/110 independently-authored
+  questions, there is no declarative surface, no server, and no
+  non-Python client — while the six-system evaluation proved the whole
+  registry expressible in Cypher (hash-verified on Neo4j and Memgraph).
+  The user-facing stack, not the engine, is now the binding constraint.
+- **Decision:** build a read-only openCypher-subset façade that compiles a
+  *closed shape grammar* to the existing plan DAG — inheriting the static
+  verifier, cost guardrails, deterministic execution, digests, and traces
+  rather than creating a second execution path. Minimal temporal dialect
+  (`VALID AT/DURING`, `BELIEVED AT`), documented as a dialect. Unsupported
+  constructs are rejected with the nearest operator and a rewrite sketch,
+  never reinterpreted. Writes stay on the typed API: corrections are not
+  updates, and a compatibility surface must not teach the wrong model.
+  Delivery: embedded `store.cypher()` → HTTP server → bolt transport, with
+  the twelve hash-verified Cypher formulations from the graph baselines as
+  the conformance corpus, and coverage re-measured against the
+  110-question set so the façade's value is a delta, not a claim.
+- **Prerequisite recorded separately:** grouped-aggregation operators (the
+  dominant coverage gap) are operator-algebra work, not façade work.
+- **Full design:** `docs/design/query_facade.md`. Future-steps context:
+  `docs/ROADMAP.md`.
