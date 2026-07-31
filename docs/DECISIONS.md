@@ -622,3 +622,29 @@ implementation — hygiene checking starts at the marker recorded in D-010.
   PostgreSQL, and ClickHouse. The aggregation win is exactly what this
   baseline exists to measure; whether it survives the remaining eight
   queries and 10M scale is the open question, not a foregone one.
+
+## D-036 — Neo4j baseline (Phase 3, first graph system)
+
+- **Date:** 2026-07-31
+- **Context:** Phase 3 pairs the SQL baselines with graph engines. On a
+  root-less host, Neo4j Community 5.26 runs fully user-space (tarball plus
+  a Temurin JDK 21), loopback-only, heap 8g / page cache 16g. Memgraph is
+  deferred — it wants root or docker, xzgpu has neither. The Kùzu/LadybugDB
+  slot can reuse the existing TGMS Kùzu adapter as an embedded column.
+  Driver: neo4j (Apache-2.0, §8.6).
+- **Decision:** same fairness contract (D-030): baseline, never a backend;
+  canonical rows loaded byte-for-byte; slices verified before timed. Data
+  model chosen for the registry: Entity nodes, NodeVersion nodes indexed by
+  uid, edge versions as relationships under a single type with rel_type as
+  a property, all bi-temporal fields as integer properties, props as
+  canonical-JSON strings. Recorded quirk: Neo4j stores no property for a
+  null value, so absent and null are one fact — the loader and readers
+  treat them as such.
+- **First slice (xzgpu, 200k, §16 protocol):** hist.single 10.0-class,
+  series.count 245.9 ms, burst.zscore 242.5 — slowest system on the
+  aggregation shapes, as expected: scanning every relationship's
+  properties is not what a graph engine is for. All four cells
+  hash-identical across all five systems. The verdict that matters —
+  traversal, Cypher's home turf — waits on the next slice, and judging
+  Neo4j on this one would be exactly the mistake the fairness rules exist
+  to prevent.

@@ -165,6 +165,17 @@ on exotic case mappings (same class of divergence as PostgreSQL's
 its scalar tail in Python for the same rounded-threshold reason as the
 PostgreSQL twin.
 
+### Neo4j
+
+Loader and model: `scripts/neo4j_baseline.py`; Cypher, slice by slice:
+`scripts/neo4j_queries.py` (D-036). Verdicts so far: `hist.single`,
+`hist.asof`, `series.count`, `burst.zscore` — **equivalent**,
+hash-verified; the rest unwritten. Semantics notes: Neo4j stores no
+property for null, so absent and null are the same fact (compatible with
+the operators, which never distinguish them); string comparison is
+codepoint-ordered, matching the contract natively. The traversal slice is
+the one this baseline exists for and is written next.
+
 ### PostgreSQL
 
 Schema, indexes, tuning, and loader live in `scripts/pg_baseline.py`; the
