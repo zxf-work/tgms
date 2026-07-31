@@ -436,6 +436,38 @@ gc collects the superseded files — reclaiming compaction's 2× transient
 (50.0 MB peak → 24.8 MB). What a retained manifest costs stays O(segments):
 165 KB while it names 283 segments, 1 KB naming the 3 post-compaction ones.
 
+### Phase 3: the graph baselines (200k, D-036/D-037)
+
+| query | native | neo4j | memgraph | fastest |
+|---|---:|---:|---:|---|
+| hist.single | **1.0** | 2.7 | 1.1 | native |
+| snap.hop2 | **27.1** | 639.9 | 637.3 | native |
+| diff.global | **73.7** | 1754.2 | 1702.9 | native |
+| reach.window | **17.2** | 7261.3 | 3840.8 | native |
+| paths.k | **9.1** | 651.3 | 712.5 | native |
+| series.count | **28.4** | 243.1 | 170.4 | native |
+| burst.zscore | **29.3** | 236.8 | 168.9 | native |
+| nbr.evolution | 11.8 | 15.5 | **10.6** | memgraph |
+| coactive.narrow | 48.5 | 91.1 | **46.9** | memgraph |
+| resolve.substr | **4.4** | 124.3 | 92.6 | native |
+| motif.filtered | **40.4** | 5066.9 | 2123.7 | native |
+
+All twelve hash-identical across the three systems. The result Phase 3
+existed to test is unambiguous: **on the traversal family — the graph
+engines' home turf — native wins by one to two orders of magnitude**
+(reachability 17 ms vs 3.8–7.3 s; the closed-triangle motif 40 ms vs
+2.1–5.1 s, despite Cypher expressing that query most naturally of any
+system). The bi-temporal predicates are the reason: every hop re-filters
+by belief and validity on relationship properties, which no graph index
+here accelerates, while the native engine's clustering and kernels were
+built for exactly those predicates. Memgraph edges out native on the two
+small incidence-shaped queries (within noise on coactive) and runs the
+same Cypher ~2× faster than Neo4j throughout. One measurement-quality
+note: Neo4j's first run of this table sat at 47 s *per reachability
+round* until `Entity.dense_id` got the index the Memgraph DDL already
+had — found live via SHOW TRANSACTIONS, fixed, and re-run; the numbers
+above are post-fix (D-030: baseline quality is part of what is measured).
+
 ### Four systems, one dataset, one accounting
 
 Whole store on disk ÷ 1,000,269 edge rows, all loaded from the same 1M
