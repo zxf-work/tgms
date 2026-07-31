@@ -417,7 +417,7 @@ def neighborhood_evolution(client, *, uid: str, t1: int, t2: int,
     # out of the group-by and are refilled as zero.
     got = dict(client.query(
         f"SELECT bs, countIf(ev.vt_s <= bs AND ev.vt_e > bs) AS deg "
-        f"FROM (SELECT arrayJoin(range({t1}, {t2}, {stride})) AS bs) "
+        f"FROM (SELECT arrayJoin(range({t1}, {t2}, {stride})) AS bs) b "
         f"CROSS JOIN (SELECT vt_s, vt_e FROM {DB}.edge_versions ev "
         f"  WHERE {bel} AND ev.vt_e > {t1} AND ev.vt_s < {t2} "
         f"  AND (ev.src_id = {dense} OR ev.dst_id = {dense})) ev "
