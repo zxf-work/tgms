@@ -50,6 +50,11 @@ def create_schema(drv) -> None:
             "FOR (e:Entity) REQUIRE e.uid IS UNIQUE",
             "CREATE INDEX nv_uid IF NOT EXISTS "
             "FOR (n:NodeVersion) ON (n.uid)",
+            # the iterative queries join frontiers on dense_id; without this
+            # index every UNWIND row is a label scan and reachability's
+            # rounds go quadratic (found live: 47 s per round at 200k)
+            "CREATE INDEX ent_dense IF NOT EXISTS "
+            "FOR (e:Entity) ON (e.dense_id)",
             "CREATE INDEX e_vts IF NOT EXISTS "
             "FOR ()-[r:E]-() ON (r.vt_s)",
             "CREATE INDEX e_tte IF NOT EXISTS "
