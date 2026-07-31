@@ -1,0 +1,157 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Six systems, one registry: benchmarking a bi-temporal engine honestly — TGMS blog</title>
+<meta name="description" content="TGMS native vs DuckDB, PostgreSQL, ClickHouse, Neo4j, and Memgraph: hash-verified equivalence on every cell, specialists winning exactly their shape, and baselines that audited us back.">
+<style>
+:root{--ink:#1a2534;--mut:#5b6b7c;--blue:#1c64d9;--blue2:#3b82f6;--line:#e3e8ef;
+      --bg:#fbfcfe;--card:#fff;--codebg:#0e1c30;--codetx:#dce7f5;--ok:#0a7d33;
+      --amber:#b58900;--corr:#e07b39;
+      --mono:ui-monospace,'SF Mono',Menlo,monospace}
+@media (prefers-color-scheme: dark){
+:root{--ink:#e6edf6;--mut:#95a6ba;--blue:#6ea8ff;--blue2:#8bbcff;--line:#243244;
+      --bg:#0b1420;--card:#121e2e;--codebg:#0a1017;--codetx:#cfe0f2;--ok:#4ade80;
+      --corr:#f0975a}}
+*{box-sizing:border-box}
+body{margin:0;font-family:-apple-system,'Segoe UI',Roboto,sans-serif;
+     color:var(--ink);background:var(--bg);-webkit-font-smoothing:antialiased}
+.hero{background:linear-gradient(150deg,#0e1c30 0%,#173863 62%,#1c64d9 130%);
+      color:#fff;padding:30px 24px 44px}
+.hero .nav{max-width:760px;margin:0 auto 30px;font-size:14px}
+.hero .nav a{color:#c9d8ef;text-decoration:none;margin-right:14px}
+.hero .inner{max-width:760px;margin:0 auto}
+.kicker{display:inline-block;background:#ffffff22;border:1px solid #ffffff33;
+        border-radius:14px;padding:3px 12px;font-size:12px;letter-spacing:.08em;
+        text-transform:uppercase;color:#dbe7f8}
+h1{font-size:clamp(30px,5.4vw,44px);line-height:1.12;letter-spacing:-.8px;
+   margin:14px 0 10px;color:#fff}
+.byline{color:#a9c0e2;font-size:14.5px}
+.byline a{color:#dbe7f8}
+article{max-width:760px;margin:0 auto;padding:40px 24px 30px;line-height:1.72;
+        font-size:17px}
+article>p:first-of-type{font-size:19px;color:var(--mut)}
+h2{font-size:23px;letter-spacing:-.3px;margin:44px 0 12px;position:relative;
+   padding-top:18px}
+h2::before{content:"";position:absolute;top:0;left:0;width:44px;height:4px;
+   border-radius:2px;background:linear-gradient(90deg,var(--blue),var(--blue2))}
+.pull{font-size:22px;line-height:1.45;font-weight:600;letter-spacing:-.2px;
+      border:0;margin:30px 0;padding:0 0 0 22px;position:relative;color:var(--ink)}
+.pull::before{content:"";position:absolute;left:0;top:6px;bottom:6px;width:5px;
+      border-radius:3px;background:linear-gradient(180deg,var(--blue),var(--blue2))}
+pre{background:var(--codebg);color:var(--codetx);border-radius:12px;
+    padding:16px 18px;font-family:var(--mono);font-size:13px;overflow-x:auto;
+    line-height:1.6;box-shadow:0 6px 24px #0e1c3022}
+pre .g{color:#7fd0a0}pre .c{color:#7fa3d0}
+code{font-family:var(--mono);background:#1c64d914;border-radius:5px;
+     padding:1px 6px;font-size:.9em}
+.duo{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin:22px 0}
+@media(max-width:640px){.duo{grid-template-columns:1fr}}
+.duo .cell{background:var(--card);border:1px solid var(--line);border-radius:12px;
+     padding:14px 16px}
+.duo .cell b{display:block;font-size:13px;text-transform:uppercase;
+     letter-spacing:.06em;color:var(--mut);margin-bottom:6px}
+.duo .big{font-size:30px;font-weight:700;color:var(--blue)}
+figure{margin:26px 0;background:var(--card);border:1px solid var(--line);
+       border-radius:14px;padding:18px 18px 8px}
+figcaption{color:var(--mut);font-size:13.5px;line-height:1.5;padding:8px 4px 10px}
+table{border-collapse:collapse;width:100%;font-size:15px;margin:20px 0;
+      background:var(--card);border-radius:12px;overflow:hidden;
+      border:1px solid var(--line)}
+th,td{padding:11px 12px;text-align:right;border-bottom:1px solid var(--line)}
+th{background:#1c64d90d;font-size:13px;text-transform:uppercase;
+   letter-spacing:.04em;color:var(--mut)}
+th:first-child,td:first-child{text-align:left}
+tr:last-child td{border-bottom:0}
+td.win{color:var(--ok);font-weight:700;font-size:16px}
+td.zero{color:var(--mut)}
+a{color:var(--blue)}
+.note{background:#1c64d90e;border:1px solid #1c64d930;border-radius:12px;
+      padding:14px 18px;font-size:15px;margin:24px 0;line-height:1.6}
+.next{max-width:760px;margin:0 auto;padding:0 24px 70px}
+.next a{display:block;background:var(--card);border:1px solid var(--line);
+        border-radius:14px;padding:18px 22px;text-decoration:none;color:var(--ink);
+        transition:transform .12s, box-shadow .12s}
+.next a:hover{transform:translateY(-2px);box-shadow:0 10px 26px #0e1c301f}
+.next .lbl{font-size:12px;color:var(--mut);text-transform:uppercase;letter-spacing:.07em}
+.next .ttl{color:var(--blue);font-weight:650;font-size:17px;margin-top:4px}
+svg text{font-family:-apple-system,'Segoe UI',Roboto,sans-serif}
+svg .m{font-family:var(--mono)}
+</style></head><body>
+
+<div class="hero">
+<div class="nav"><a href="../">← TGMS</a><a href="./">blog</a>
+<a href="https://github.com/zxf-work/tgms">github</a></div>
+<div class="inner">
+<span class="kicker">Post #7 · Evaluation</span>
+<h1>Six systems, one registry</h1>
+<div class="byline">Xiaofei Zhang · University of Memphis · July 2026 ·
+<a href="https://github.com/zxf-work/tgms/blob/main/docs/eval/ENGINE_EVAL_REPORT.md">report</a> ·
+<a href="https://github.com/zxf-work/tgms">code</a></div>
+</div></div>
+
+<article>
+<p>We benchmarked our native storage engine against five systems — DuckDB,
+PostgreSQL&nbsp;16, ClickHouse, Neo4j, and Memgraph — on one twelve-query
+bi-temporal registry, at 200k / 1M / 10M synthetic events plus a real
+messaging dataset. Before any timing counts, every (system, query) cell must
+return a <b>canonical-hash-identical answer</b> to our reference
+implementation: same rows, same order, same types. A faster number for an
+easier question is a mistake, not a result.</p>
+
+<h2>The finding nobody advertises: everything was expressible</h2>
+
+<p>Not one cell in the matrix is "unsupported." Bi-temporal semantics —
+corrections, belief states, half-open intervals, strict interval algebra —
+ported to SQL and to Cypher, with care. The gap between TGMS and general
+systems is not expressiveness. It is what the queries cost:</p>
+
+<div class="pull">Correctness ported everywhere. Speed did not.</div>
+
+<h2>Specialists win their shape — and nobody else's</h2>
+
+<p>PostgreSQL owns indexed point lookups (0.3&nbsp;ms, a warm B-tree is a
+hard floor). ClickHouse owns whole-window aggregation, and its lead
+<i>grows</i> with scale: 2&times; over native at 200k, 12&times; at 10M. And
+the graph engines lose their own home turf: on traversal, native wins by one
+to two orders of magnitude — reachability in 17&nbsp;ms against 3.8&ndash;7.3
+seconds, temporal motifs in 40&nbsp;ms against 2.1&ndash;5.1 seconds.
+Cypher expressed the motif more elegantly than any SQL in the study, as a
+closed triangle pattern. It ran it 50&ndash;125&times; slower than our
+kernel. <b>Query elegance and execution speed are independent axes.</b></p>
+
+<p>Why do graph engines lose here? Every hop of a bi-temporal traversal
+re-filters by belief and validity on edge properties. No graph index in the
+study accelerates that; our engine's valid-time clustering exists for
+exactly those predicates.</p>
+
+<h2>The baselines audited us back</h2>
+
+<p>Honest baselines cut both ways. PostgreSQL's 0.5&nbsp;ms lookups exposed
+that our point reads were rebuilding whole segments the index had already
+located — 76&nbsp;ms fell to 1. ClickHouse answered a motif query our own
+cost model refused, exposing a guardrail false positive. Building the
+baselines fixed the engine: roughly a 10&times; end-to-end improvement on
+our worst operators came from defects that TGMS-only benchmarking could
+never see, because both our backends were slow in the same ways and
+agreement reads as health.</p>
+
+<h2>Storage, one accounting</h2>
+
+<p>All systems loaded from the same event log, whole store divided by the
+same row count: native <b>25.1&nbsp;B/row</b> (after generation collection),
+ClickHouse 78.4 (the only other compressed form), DuckDB 187.7, PostgreSQL
+549.7 — of which two thirds is the covering indexes its fast lookups are
+made of. Every asymmetry is stated in the report; ratios without stated
+accounting are how our own earlier 0.22&times; storage claim went wrong, and
+we keep that correction in the record.</p>
+
+<p>Everything regenerates from one command, and the raw records ship in the
+repo. The full report, capability matrix, and reproduction guide are in
+<a href="https://github.com/zxf-work/tgms/tree/main/docs/eval">docs/eval</a>.</p>
+</article>
+
+<div class="next"><a href="./">
+<div class="lbl">Next up</div>
+<div class="ttl">All posts — the TGMS engineering blog →</div></a></div>
+
+<script data-goatcounter="https://zxf-tgms.goatcounter.com/count" async src="https://gc.zgo.at/count.js"></script>
+</body></html>

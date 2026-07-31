@@ -143,6 +143,33 @@ byte-identical forever (a tested metamorphic property, not a promise).</div>
 </section>
 
 <section>
+<h2>The native storage engine</h2>
+<div class="grid g3">
+<div class="card"><div class="stat">6 systems · 0 gaps <small>hash-verified equivalence</small></div>
+<div class="mut">A twelve-query bi-temporal registry answered identically by the
+native engine, DuckDB, PostgreSQL, ClickHouse, Neo4j, and Memgraph — every
+cell canonical-hash-checked before it was timed. Nothing was unsupported
+anywhere; <b>speed, not expressiveness, is the difference</b>.</div></div>
+<div class="card"><div class="stat">17 ms vs 3.8–7.3 s <small>traversal at 10M events</small></div>
+<div class="mut">Purpose-built for bi-temporal predicates: valid-time-clustered
+immutable segments, parallel scans, native temporal kernels. Graph engines
+lose their home turf by 1–2 orders of magnitude; ClickHouse keeps only
+whole-window aggregation.</div></div>
+<div class="card"><div class="stat">24.6 B/row <small>compressed · 0.132× DuckDB</small></div>
+<div class="mut">Frame-of-reference columns and a packed string heap, chosen
+per column by trial — smaller at rest than an lz4 columnar engine holding
+the same rows, with byte-identical replay digests and a fault-injection-
+tested read path. Ships as a wheel; no Rust toolchain needed.</div></div>
+</div>
+<div class="mut" style="font-size:13px;margin-top:8px">TGMS runs on its own
+engine by default since v0.4 — Kùzu's acquisition retired our embedded-DB
+dependency, and the replacement beat every acceptance floor. Full story:
+<a href="blog/building-the-engine.html">the design</a> ·
+<a href="blog/evaluating-the-engine.html">the evaluation</a> ·
+<a href="https://github.com/zxf-work/tgms/tree/main/docs/eval">report &amp; reproduction</a>.</div>
+</section>
+
+<section>
 <h2>How it works</h2>
 <div class="flow">
 <div class="step"><b>1 · Plan</b>The LLM emits a small JSON DAG of operator calls.

@@ -1,0 +1,166 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Nine wrong bottlenecks: building a bi-temporal storage engine — TGMS blog</title>
+<meta name="description" content="What we learned replacing DuckDB and Kuzu with 7,500 lines of Rust: a misdiagnosis table, the one property that buys everything, and 24.6 bytes per edge version.">
+<style>
+:root{--ink:#1a2534;--mut:#5b6b7c;--blue:#1c64d9;--blue2:#3b82f6;--line:#e3e8ef;
+      --bg:#fbfcfe;--card:#fff;--codebg:#0e1c30;--codetx:#dce7f5;--ok:#0a7d33;
+      --amber:#b58900;--corr:#e07b39;
+      --mono:ui-monospace,'SF Mono',Menlo,monospace}
+@media (prefers-color-scheme: dark){
+:root{--ink:#e6edf6;--mut:#95a6ba;--blue:#6ea8ff;--blue2:#8bbcff;--line:#243244;
+      --bg:#0b1420;--card:#121e2e;--codebg:#0a1017;--codetx:#cfe0f2;--ok:#4ade80;
+      --corr:#f0975a}}
+*{box-sizing:border-box}
+body{margin:0;font-family:-apple-system,'Segoe UI',Roboto,sans-serif;
+     color:var(--ink);background:var(--bg);-webkit-font-smoothing:antialiased}
+.hero{background:linear-gradient(150deg,#0e1c30 0%,#173863 62%,#1c64d9 130%);
+      color:#fff;padding:30px 24px 44px}
+.hero .nav{max-width:760px;margin:0 auto 30px;font-size:14px}
+.hero .nav a{color:#c9d8ef;text-decoration:none;margin-right:14px}
+.hero .inner{max-width:760px;margin:0 auto}
+.kicker{display:inline-block;background:#ffffff22;border:1px solid #ffffff33;
+        border-radius:14px;padding:3px 12px;font-size:12px;letter-spacing:.08em;
+        text-transform:uppercase;color:#dbe7f8}
+h1{font-size:clamp(30px,5.4vw,44px);line-height:1.12;letter-spacing:-.8px;
+   margin:14px 0 10px;color:#fff}
+.byline{color:#a9c0e2;font-size:14.5px}
+.byline a{color:#dbe7f8}
+article{max-width:760px;margin:0 auto;padding:40px 24px 30px;line-height:1.72;
+        font-size:17px}
+article>p:first-of-type{font-size:19px;color:var(--mut)}
+h2{font-size:23px;letter-spacing:-.3px;margin:44px 0 12px;position:relative;
+   padding-top:18px}
+h2::before{content:"";position:absolute;top:0;left:0;width:44px;height:4px;
+   border-radius:2px;background:linear-gradient(90deg,var(--blue),var(--blue2))}
+.pull{font-size:22px;line-height:1.45;font-weight:600;letter-spacing:-.2px;
+      border:0;margin:30px 0;padding:0 0 0 22px;position:relative;color:var(--ink)}
+.pull::before{content:"";position:absolute;left:0;top:6px;bottom:6px;width:5px;
+      border-radius:3px;background:linear-gradient(180deg,var(--blue),var(--blue2))}
+pre{background:var(--codebg);color:var(--codetx);border-radius:12px;
+    padding:16px 18px;font-family:var(--mono);font-size:13px;overflow-x:auto;
+    line-height:1.6;box-shadow:0 6px 24px #0e1c3022}
+pre .g{color:#7fd0a0}pre .c{color:#7fa3d0}
+code{font-family:var(--mono);background:#1c64d914;border-radius:5px;
+     padding:1px 6px;font-size:.9em}
+.duo{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin:22px 0}
+@media(max-width:640px){.duo{grid-template-columns:1fr}}
+.duo .cell{background:var(--card);border:1px solid var(--line);border-radius:12px;
+     padding:14px 16px}
+.duo .cell b{display:block;font-size:13px;text-transform:uppercase;
+     letter-spacing:.06em;color:var(--mut);margin-bottom:6px}
+.duo .big{font-size:30px;font-weight:700;color:var(--blue)}
+figure{margin:26px 0;background:var(--card);border:1px solid var(--line);
+       border-radius:14px;padding:18px 18px 8px}
+figcaption{color:var(--mut);font-size:13.5px;line-height:1.5;padding:8px 4px 10px}
+table{border-collapse:collapse;width:100%;font-size:15px;margin:20px 0;
+      background:var(--card);border-radius:12px;overflow:hidden;
+      border:1px solid var(--line)}
+th,td{padding:11px 12px;text-align:right;border-bottom:1px solid var(--line)}
+th{background:#1c64d90d;font-size:13px;text-transform:uppercase;
+   letter-spacing:.04em;color:var(--mut)}
+th:first-child,td:first-child{text-align:left}
+tr:last-child td{border-bottom:0}
+td.win{color:var(--ok);font-weight:700;font-size:16px}
+td.zero{color:var(--mut)}
+a{color:var(--blue)}
+.note{background:#1c64d90e;border:1px solid #1c64d930;border-radius:12px;
+      padding:14px 18px;font-size:15px;margin:24px 0;line-height:1.6}
+.next{max-width:760px;margin:0 auto;padding:0 24px 70px}
+.next a{display:block;background:var(--card);border:1px solid var(--line);
+        border-radius:14px;padding:18px 22px;text-decoration:none;color:var(--ink);
+        transition:transform .12s, box-shadow .12s}
+.next a:hover{transform:translateY(-2px);box-shadow:0 10px 26px #0e1c301f}
+.next .lbl{font-size:12px;color:var(--mut);text-transform:uppercase;letter-spacing:.07em}
+.next .ttl{color:var(--blue);font-weight:650;font-size:17px;margin-top:4px}
+svg text{font-family:-apple-system,'Segoe UI',Roboto,sans-serif}
+svg .m{font-family:var(--mono)}
+</style></head><body>
+
+<div class="hero">
+<div class="nav"><a href="../">← TGMS</a><a href="./">blog</a>
+<a href="https://github.com/zxf-work/tgms">github</a></div>
+<div class="inner">
+<span class="kicker">Post #6 · Native engine</span>
+<h1>Nine wrong bottlenecks:<br>building our storage engine</h1>
+<div class="byline">Xiaofei Zhang · University of Memphis · July 2026 ·
+<a href="https://github.com/zxf-work/tgms/blob/main/docs/eval/ENGINE_EVAL_REPORT.md">report</a> ·
+<a href="https://github.com/zxf-work/tgms">code</a></div>
+</div></div>
+
+<article>
+<p>When K&ugrave;zu — the embedded graph database under one of our two storage
+backends — was acquired and its open-source line ended, we had a choice:
+find another general-purpose engine to sit under TGMS, or build the storage
+layer the semantics actually wanted. We built it: about 7,500 lines of Rust
+behind an unchanged Python adapter interface, validated against a 500-case
+brute-force oracle that the implementation was never allowed to touch.</p>
+
+<p>This post is not about the design being clever. It is about the log we
+kept while building it, because the log's headline is embarrassing and
+useful: <b>nine times we identified "the bottleneck" and were wrong nine
+times.</b></p>
+
+<h2>The misdiagnosis table</h2>
+
+<p>We kept a running table (it lives in
+<a href="https://github.com/zxf-work/tgms/blob/main/docs/engine_lessons.md">engine_lessons.md</a>)
+with three columns: what we believed, what we measured, what the cost
+actually was. A few entries:</p>
+
+<ul>
+<li>We believed a Rust scan would beat NumPy. It measured 2&ndash;5&times;
+<i>slower</i> — a column resolved by name and a table walked per row, inside
+the loop.</li>
+<li>We believed <code>diff_snapshots</code> was scan-bound. The two scans
+were 54&nbsp;ms of 419; a lookup that fetched <i>sixteen rows</i> was
+rebuilding the entire store to find them.</li>
+<li>We believed a point lookup was all storage. Argument validation cost as
+much as reading the data — a JSON-schema validator was being recompiled on
+every call.</li>
+<li>We believed 10M-row scans were materialize-bound, parallelized
+materialization, and moved the number from 811&nbsp;ms to 819. A stage probe
+then showed the parallel path <i>never executed</i>: one overlapping
+correction segment voided the fast path's all-or-nothing check, and a
+corrected store is the normal store.</li>
+</ul>
+
+<p>Three of the nine fixes were <i>correct but irrelevant</i> — good code,
+kept, that produced none of the win attributed to it. The discipline that
+survived: <b>re-measure before writing the commit message.</b> If the number
+did not move, the hypothesis was wrong even though the code got better.</p>
+
+<h2>What the design actually bought</h2>
+
+<p>One property does most of the work: segments are immutable. The only
+mutation in the model — closing a version's transaction time — is an
+append-only patch folded in by compaction. Immutability makes snapshot
+isolation, safe mmap, verify-once checksums, a sound segment cache, and
+lock-free readers <i>free</i> rather than engineered.</p>
+
+<p>On top of that: valid-time clustering (so scans read in output order and
+merges are usually concatenations), derived identity (edge ids are hashes,
+never stored twice), frame-of-reference compression chosen per column by
+trial (the writer keeps whichever representation is smaller — sha256-derived
+columns stay raw by measurement, not by special case), and a packed string
+heap. Segments landed at <b>24.6 bytes per edge version</b> — smaller than a
+mature lz4 columnar engine holding the same rows.</p>
+
+<h2>The lesson we would give anyone</h2>
+
+<p>"We rewrote it in Rust" is not a performance claim, and the named,
+algorithmic-looking component is rarely the cost — it is the part everyone
+already thought about. The scan call around it, the boundary crossing per
+row, the validator per call, the manifest per commit: that is where the
+milliseconds live. Profile the layer before optimizing it, and price the
+optimization you are about to decline — one fifteen-minute probe saved us an
+hour of plausible work by putting a number (0.94&nbsp;ms of a 32&nbsp;ms
+operator) on the next "obvious" improvement.</p>
+</article>
+
+<div class="next"><a href="evaluating-the-engine.html">
+<div class="lbl">Next up</div>
+<div class="ttl">#7 · Six systems, one registry — what an honest benchmark taught the engine →</div></a></div>
+
+<script data-goatcounter="https://zxf-tgms.goatcounter.com/count" async src="https://gc.zgo.at/count.js"></script>
+</body></html>
