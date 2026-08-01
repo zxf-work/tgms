@@ -1,0 +1,278 @@
+{
+  "caps": [
+    "2g",
+    "4g",
+    "8g"
+  ],
+  "enforcement_note": "docker --memory bounds residency; on a cgroup-v1 kernel without swap-limit support the overflow may swap rather than OOM, which is the working-set>RAM behavior \u00a714.2 asks about. RLIMIT_AS instead caps address space (mmapped store files count), a strictly harsher approximation.",
+  "host_swap_kb": 8388604,
+  "manifest": {
+    "cache_state": "warm",
+    "commit": "6fb7cb1",
+    "cpu_count": 40,
+    "dataset": "synth",
+    "dirty": false,
+    "measurement_host": "xzgpu",
+    "on_measurement_host": true,
+    "platform": "Linux 5.4.0-216-generic x86_64",
+    "protocol": {
+      "reps_fast": 30,
+      "reps_slow": 10,
+      "resource_mode": "memcap",
+      "stats": "median and p95 over measured reps",
+      "warmup": 5
+    },
+    "python": "3.12.13",
+    "rustc": "unknown",
+    "scale_events": 10000000,
+    "systems": [
+      "native"
+    ]
+  },
+  "method": "docker",
+  "mode": "memcap",
+  "protocol_note": "reduced reps: warmup=2, reps=5 (feasibility under caps)",
+  "queries": [
+    "hist.single",
+    "snap.hop2",
+    "series.count",
+    "coactive.narrow",
+    "diff.global",
+    "motif.filtered"
+  ],
+  "records": [
+    {
+      "cap": null,
+      "method": "none",
+      "open_ms": 45.414,
+      "queries_done": 30,
+      "results": [
+        {
+          "first_ms": 0.802,
+          "hash": "d609f648e21441d95d9a71fcf004ec79",
+          "ok": true,
+          "p50_ms": 0.787,
+          "p95_ms": 0.802,
+          "query": "hist.single",
+          "rows": 2,
+          "timings_ms": [
+            0.802,
+            0.74,
+            0.743,
+            0.787,
+            0.787
+          ]
+        },
+        {
+          "first_ms": 977.6,
+          "hash": "8500bcff5724837e5695b7ebb974a3bf",
+          "ok": true,
+          "p50_ms": 969.929,
+          "p95_ms": 977.6,
+          "query": "snap.hop2",
+          "rows": 151,
+          "timings_ms": [
+            977.6,
+            954.015,
+            957.24,
+            975.672,
+            969.929
+          ]
+        },
+        {
+          "first_ms": 482.068,
+          "hash": "7150c22b1170fd0da26c945a61d4d361",
+          "ok": true,
+          "p50_ms": 482.068,
+          "p95_ms": 491.062,
+          "query": "series.count",
+          "rows": 100,
+          "timings_ms": [
+            482.068,
+            491.062,
+            481.0,
+            488.523,
+            479.599
+          ]
+        },
+        {
+          "first_ms": 214.509,
+          "hash": "7077c6ade05f6ec7dbdc14b11d552b88",
+          "ok": true,
+          "p50_ms": 202.101,
+          "p95_ms": 215.89,
+          "query": "coactive.narrow",
+          "rows": 489,
+          "timings_ms": [
+            214.509,
+            215.89,
+            178.329,
+            194.665,
+            202.101
+          ]
+        },
+        {
+          "first_ms": 4181.536,
+          "hash": "499256cb25a8fef326b9ebefb188d2e9",
+          "ok": true,
+          "p50_ms": 4081.194,
+          "p95_ms": 4181.536,
+          "query": "diff.global",
+          "rows": 749999,
+          "timings_ms": [
+            4181.536,
+            4082.276,
+            4074.562,
+            4081.194,
+            4025.784
+          ]
+        },
+        {
+          "first_ms": 77.093,
+          "hash": "af380bb913a298ff49a8dfccbca5b27a",
+          "ok": true,
+          "p50_ms": 75.375,
+          "p95_ms": 77.093,
+          "query": "motif.filtered",
+          "rows": 303,
+          "timings_ms": [
+            77.093,
+            76.895,
+            74.732,
+            75.375,
+            72.543
+          ]
+        }
+      ],
+      "vmhwm_kb": 6068708,
+      "vmrss_kb": 4346928,
+      "vmsize_kb": 8193064,
+      "wall_s": null
+    },
+    {
+      "cap": "2g",
+      "failed": true,
+      "method": "docker",
+      "oom": true,
+      "returncode": 137,
+      "stderr": "WARNING: Your kernel does not support swap limit capabilities or the cgroup is not mounted. Memory limited without swap."
+    },
+    {
+      "cap": "4g",
+      "failed": true,
+      "method": "docker",
+      "oom": true,
+      "returncode": 137,
+      "stderr": "WARNING: Your kernel does not support swap limit capabilities or the cgroup is not mounted. Memory limited without swap."
+    },
+    {
+      "cap": "8g",
+      "method": "docker",
+      "oom": false,
+      "open_ms": 28.864,
+      "queries_done": 30,
+      "results": [
+        {
+          "first_ms": 0.763,
+          "hash": "d609f648e21441d95d9a71fcf004ec79",
+          "ok": true,
+          "p50_ms": 0.595,
+          "p95_ms": 0.763,
+          "query": "hist.single",
+          "rows": 2,
+          "timings_ms": [
+            0.763,
+            0.645,
+            0.595,
+            0.534,
+            0.532
+          ]
+        },
+        {
+          "first_ms": 987.482,
+          "hash": "8500bcff5724837e5695b7ebb974a3bf",
+          "ok": true,
+          "p50_ms": 987.989,
+          "p95_ms": 993.578,
+          "query": "snap.hop2",
+          "rows": 151,
+          "timings_ms": [
+            987.482,
+            982.122,
+            987.989,
+            993.578,
+            993.439
+          ]
+        },
+        {
+          "first_ms": 479.08,
+          "hash": "7150c22b1170fd0da26c945a61d4d361",
+          "ok": true,
+          "p50_ms": 478.899,
+          "p95_ms": 508.201,
+          "query": "series.count",
+          "rows": 100,
+          "timings_ms": [
+            479.08,
+            478.899,
+            476.77,
+            508.201,
+            473.932
+          ]
+        },
+        {
+          "first_ms": 207.702,
+          "hash": "7077c6ade05f6ec7dbdc14b11d552b88",
+          "ok": true,
+          "p50_ms": 209.376,
+          "p95_ms": 229.744,
+          "query": "coactive.narrow",
+          "rows": 489,
+          "timings_ms": [
+            207.702,
+            215.547,
+            209.376,
+            185.317,
+            229.744
+          ]
+        },
+        {
+          "first_ms": 4268.767,
+          "hash": "499256cb25a8fef326b9ebefb188d2e9",
+          "ok": true,
+          "p50_ms": 4220.918,
+          "p95_ms": 4268.767,
+          "query": "diff.global",
+          "rows": 749999,
+          "timings_ms": [
+            4268.767,
+            4224.095,
+            4220.918,
+            4188.582,
+            4198.493
+          ]
+        },
+        {
+          "first_ms": 75.906,
+          "hash": "af380bb913a298ff49a8dfccbca5b27a",
+          "ok": true,
+          "p50_ms": 75.299,
+          "p95_ms": 82.551,
+          "query": "motif.filtered",
+          "rows": 303,
+          "timings_ms": [
+            75.906,
+            72.176,
+            82.551,
+            73.014,
+            75.299
+          ]
+        }
+      ],
+      "vmhwm_kb": 6071956,
+      "vmrss_kb": 4395216,
+      "vmsize_kb": 9946844,
+      "wall_s": null
+    }
+  ]
+}

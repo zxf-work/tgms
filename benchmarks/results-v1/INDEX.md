@@ -30,5 +30,21 @@ supersessions are part of the record:
   green at every density, motif.filtered's one-sided 20% refusal
   recorded as `partial` — see eval_bitemporal.md
 
+- eval-resources-threads-{1m,10m}.json — §14.3 thread-scaling curves
+  (native via TGMS_SCAN_THREADS, DuckDB via SET threads; 1–32 workers;
+  result hashes verified identical across every width)
+- eval-resources-coldwarm-{1m,10m}.json — §15 warm / process-cold /
+  fully-cold states, eviction by user-space posix_fadvise(DONTNEED)
+  (no root on the host); 5 single-shot trials per cold cell
+- eval-resources-readers-{1m,10m}.json — §14.4 reader concurrency,
+  1–16 processes over one store in barrier-aligned windows; the 10M
+  n=16 row records 2 readers OOM-killed by the host (rc −9), which is
+  the finding, not a harness failure
+- eval-resources-memcap-10m.json — §14.2 whole-suite Docker memory caps
+  (cgroup-v1 rootful; --memory enforced, swap-limit unsupported):
+  8g parity, 4g and 2g OOM-killed against a 5.9 GB suite VmHWM
+- eval-resources-memcap-10m-perquery.json — §14.2 one container per
+  query, attributing the suite OOMs to individual queries
+
 Plan §26 asks for parquet; JSON was chosen instead: the records are small
 (&lt;400 KB total), diffable, and dependency-free to read.

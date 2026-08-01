@@ -1,0 +1,3750 @@
+{
+  "eviction": "posix_fadvise(fd,0,0,POSIX_FADV_DONTNEED) per store file (user-space; no root on the host)",
+  "manifest": {
+    "cache_state": "warm",
+    "commit": "6fb7cb1",
+    "cpu_count": 40,
+    "dataset": "synth",
+    "dirty": false,
+    "measurement_host": "xzgpu",
+    "on_measurement_host": true,
+    "platform": "Linux 5.4.0-216-generic x86_64",
+    "protocol": {
+      "reps_fast": 30,
+      "reps_slow": 10,
+      "resource_mode": "coldwarm",
+      "stats": "median and p95 over measured reps",
+      "warmup": 5
+    },
+    "python": "3.12.13",
+    "rustc": "unknown",
+    "scale_events": 1000000,
+    "systems": [
+      "native"
+    ]
+  },
+  "mode": "coldwarm",
+  "queries": [
+    "hist.single",
+    "snap.hop2",
+    "series.count",
+    "coactive.narrow",
+    "diff.global",
+    "motif.filtered"
+  ],
+  "records": [
+    {
+      "backend": "native",
+      "open_ms": 5.957,
+      "queries_done": 180,
+      "results": [
+        {
+          "first_ms": 0.143,
+          "hash": "9527ee69a3c9584deab88367ac78e5bf",
+          "ok": true,
+          "p50_ms": 0.132,
+          "p95_ms": 0.152,
+          "query": "hist.single",
+          "rows": 2,
+          "timings_ms": [
+            0.143,
+            0.141,
+            0.138,
+            0.138,
+            0.135,
+            0.139,
+            0.127,
+            0.125,
+            0.126,
+            0.126,
+            0.126,
+            0.34,
+            0.139,
+            0.131,
+            0.127,
+            0.152,
+            0.132,
+            0.131,
+            0.134,
+            0.131,
+            0.13,
+            0.132,
+            0.13,
+            0.15,
+            0.152,
+            0.136,
+            0.132,
+            0.134,
+            0.132,
+            0.129
+          ]
+        },
+        {
+          "first_ms": 97.295,
+          "hash": "618e4234d921a32a58f28bacf19e998b",
+          "ok": true,
+          "p50_ms": 97.956,
+          "p95_ms": 100.964,
+          "query": "snap.hop2",
+          "rows": 135,
+          "timings_ms": [
+            97.295,
+            99.017,
+            98.004,
+            96.246,
+            97.871,
+            99.033,
+            99.183,
+            96.95,
+            97.546,
+            98.014,
+            98.546,
+            97.547,
+            99.375,
+            97.027,
+            98.645,
+            97.679,
+            98.625,
+            97.493,
+            97.908,
+            99.755,
+            97.05,
+            103.152,
+            100.964,
+            99.109,
+            98.79,
+            97.329,
+            97.589,
+            97.89,
+            96.661,
+            98.366
+          ]
+        },
+        {
+          "first_ms": 53.964,
+          "hash": "091344cc76d81babfa083f4bed1ab8cd",
+          "ok": true,
+          "p50_ms": 54.396,
+          "p95_ms": 61.976,
+          "query": "series.count",
+          "rows": 100,
+          "timings_ms": [
+            53.964,
+            56.52,
+            52.369,
+            51.338,
+            45.2,
+            49.673,
+            54.073,
+            61.976,
+            57.797,
+            56.408,
+            54.505,
+            58.509,
+            56.3,
+            52.002,
+            54.351,
+            60.021,
+            52.587,
+            51.279,
+            50.271,
+            64.885,
+            60.445,
+            54.442,
+            61.254,
+            61.579,
+            58.669,
+            50.177,
+            48.982,
+            51.403,
+            55.417,
+            47.561
+          ]
+        },
+        {
+          "first_ms": 139.864,
+          "hash": "71ca856490ed9edb9f9c9200120d2970",
+          "ok": true,
+          "p50_ms": 143.162,
+          "p95_ms": 153.355,
+          "query": "coactive.narrow",
+          "rows": 401,
+          "timings_ms": [
+            139.864,
+            150.327,
+            137.446,
+            145.842,
+            150.676,
+            143.388,
+            140.178,
+            149.279,
+            141.852,
+            143.837,
+            153.853,
+            137.663,
+            143.872,
+            153.355,
+            152.905,
+            141.205,
+            141.657,
+            128.096,
+            134.154,
+            134.694,
+            142.936,
+            141.885,
+            144.294,
+            141.064,
+            151.528,
+            144.656,
+            143.945,
+            135.079,
+            139.919,
+            152.875
+          ]
+        },
+        {
+          "first_ms": 337.731,
+          "hash": "1302008dbe499cc1a2ef467c5d843316",
+          "ok": true,
+          "p50_ms": 334.257,
+          "p95_ms": 343.106,
+          "query": "diff.global",
+          "rows": 74999,
+          "timings_ms": [
+            337.731,
+            340.122,
+            339.369,
+            329.521,
+            332.962,
+            336.316,
+            330.045,
+            336.753,
+            343.106,
+            334.781,
+            333.3,
+            333.344,
+            340.085,
+            335.573,
+            332.555,
+            331.604,
+            334.185,
+            333.052,
+            334.329,
+            341.568,
+            334.403,
+            325.609,
+            332.37,
+            333.912,
+            333.102,
+            345.66,
+            341.721,
+            332.339,
+            330.251,
+            339.951
+          ]
+        },
+        {
+          "first_ms": 50.193,
+          "hash": "92af8a07bad5516ee7b6a41d297fb7ea",
+          "ok": true,
+          "p50_ms": 60.333,
+          "p95_ms": 63.849,
+          "query": "motif.filtered",
+          "rows": 385,
+          "timings_ms": [
+            50.193,
+            60.307,
+            60.786,
+            60.296,
+            50.338,
+            50.631,
+            50.74,
+            50.288,
+            50.037,
+            60.509,
+            60.167,
+            60.626,
+            60.922,
+            60.553,
+            60.359,
+            60.683,
+            60.152,
+            60.495,
+            57.073,
+            63.849,
+            63.13,
+            62.714,
+            55.405,
+            58.331,
+            62.91,
+            60.937,
+            60.095,
+            60.545,
+            52.652,
+            64.603
+          ]
+        }
+      ],
+      "state": "warm",
+      "vmhwm_kb": 654028,
+      "vmrss_kb": 569664,
+      "vmsize_kb": 3443708,
+      "wall_s": null
+    },
+    {
+      "backend": "native",
+      "first_ms": [
+        2409.306,
+        2433.776,
+        2434.817,
+        2514.787,
+        2551.218
+      ],
+      "median_first_ms": 2434.817,
+      "median_open_ms": 6.216,
+      "open_ms": [
+        6.039,
+        6.171,
+        6.216,
+        6.393,
+        7.741
+      ],
+      "query": "hist.single",
+      "state": "process_cold",
+      "trials": [
+        {
+          "open_ms": 6.393,
+          "queries_done": 1,
+          "results": [
+            {
+              "first_ms": 2514.787,
+              "hash": "9527ee69a3c9584deab88367ac78e5bf",
+              "ok": true,
+              "p50_ms": 2514.787,
+              "p95_ms": 2514.787,
+              "query": "hist.single",
+              "rows": 2,
+              "timings_ms": [
+                2514.787
+              ]
+            }
+          ],
+          "vmhwm_kb": 654052,
+          "vmrss_kb": 412024,
+          "vmsize_kb": 2100688,
+          "wall_s": null
+        },
+        {
+          "open_ms": 7.741,
+          "queries_done": 1,
+          "results": [
+            {
+              "first_ms": 2551.218,
+              "hash": "9527ee69a3c9584deab88367ac78e5bf",
+              "ok": true,
+              "p50_ms": 2551.218,
+              "p95_ms": 2551.218,
+              "query": "hist.single",
+              "rows": 2,
+              "timings_ms": [
+                2551.218
+              ]
+            }
+          ],
+          "vmhwm_kb": 653848,
+          "vmrss_kb": 411832,
+          "vmsize_kb": 2100692,
+          "wall_s": null
+        },
+        {
+          "open_ms": 6.216,
+          "queries_done": 1,
+          "results": [
+            {
+              "first_ms": 2409.306,
+              "hash": "9527ee69a3c9584deab88367ac78e5bf",
+              "ok": true,
+              "p50_ms": 2409.306,
+              "p95_ms": 2409.306,
+              "query": "hist.single",
+              "rows": 2,
+              "timings_ms": [
+                2409.306
+              ]
+            }
+          ],
+          "vmhwm_kb": 654016,
+          "vmrss_kb": 411988,
+          "vmsize_kb": 2100696,
+          "wall_s": null
+        },
+        {
+          "open_ms": 6.039,
+          "queries_done": 1,
+          "results": [
+            {
+              "first_ms": 2434.817,
+              "hash": "9527ee69a3c9584deab88367ac78e5bf",
+              "ok": true,
+              "p50_ms": 2434.817,
+              "p95_ms": 2434.817,
+              "query": "hist.single",
+              "rows": 2,
+              "timings_ms": [
+                2434.817
+              ]
+            }
+          ],
+          "vmhwm_kb": 653752,
+          "vmrss_kb": 411724,
+          "vmsize_kb": 2101716,
+          "wall_s": null
+        },
+        {
+          "open_ms": 6.171,
+          "queries_done": 1,
+          "results": [
+            {
+              "first_ms": 2433.776,
+              "hash": "9527ee69a3c9584deab88367ac78e5bf",
+              "ok": true,
+              "p50_ms": 2433.776,
+              "p95_ms": 2433.776,
+              "query": "hist.single",
+              "rows": 2,
+              "timings_ms": [
+                2433.776
+              ]
+            }
+          ],
+          "vmhwm_kb": 653828,
+          "vmrss_kb": 411816,
+          "vmsize_kb": 2100692,
+          "wall_s": null
+        }
+      ]
+    },
+    {
+      "backend": "native",
+      "first_ms": [
+        2521.298,
+        2536.228,
+        2537.465,
+        2539.99,
+        2546.113
+      ],
+      "median_first_ms": 2537.465,
+      "median_open_ms": 6.086,
+      "open_ms": [
+        5.919,
+        5.955,
+        6.086,
+        6.125,
+        6.951
+      ],
+      "query": "snap.hop2",
+      "state": "process_cold",
+      "trials": [
+        {
+          "open_ms": 5.919,
+          "queries_done": 1,
+          "results": [
+            {
+              "first_ms": 2536.228,
+              "hash": "618e4234d921a32a58f28bacf19e998b",
+              "ok": true,
+              "p50_ms": 2536.228,
+              "p95_ms": 2536.228,
+              "query": "snap.hop2",
+              "rows": 135,
+              "timings_ms": [
+                2536.228
+              ]
+            }
+          ],
+          "vmhwm_kb": 654020,
+          "vmrss_kb": 426412,
+          "vmsize_kb": 2341400,
+          "wall_s": null
+        },
+        {
+          "open_ms": 6.125,
+          "queries_done": 1,
+          "results": [
+            {
+              "first_ms": 2537.465,
+              "hash": "618e4234d921a32a58f28bacf19e998b",
+              "ok": true,
+              "p50_ms": 2537.465,
+              "p95_ms": 2537.465,
+              "query": "snap.hop2",
+              "rows": 135,
+              "timings_ms": [
+                2537.465
+              ]
+            }
+          ],
+          "vmhwm_kb": 654020,
+          "vmrss_kb": 426312,
+          "vmsize_kb": 2406936,
+          "wall_s": null
+        },
+        {
+          "open_ms": 6.951,
+          "queries_done": 1,
+          "results": [
+            {
+              "first_ms": 2521.298,
+              "hash": "618e4234d921a32a58f28bacf19e998b",
+              "ok": true,
+              "p50_ms": 2521.298,
+              "p95_ms": 2521.298,
+              "query": "snap.hop2",
+              "rows": 135,
+              "timings_ms": [
+                2521.298
+              ]
+            }
+          ],
+          "vmhwm_kb": 654072,
+          "vmrss_kb": 426436,
+          "vmsize_kb": 2406932,
+          "wall_s": null
+        },
+        {
+          "open_ms": 6.086,
+          "queries_done": 1,
+          "results": [
+            {
+              "first_ms": 2546.113,
+              "hash": "618e4234d921a32a58f28bacf19e998b",
+              "ok": true,
+              "p50_ms": 2546.113,
+              "p95_ms": 2546.113,
+              "query": "snap.hop2",
+              "rows": 135,
+              "timings_ms": [
+                2546.113
+              ]
+            }
+          ],
+          "vmhwm_kb": 654036,
+          "vmrss_kb": 426392,
+          "vmsize_kb": 2406936,
+          "wall_s": null
+        },
+        {
+          "open_ms": 5.955,
+          "queries_done": 1,
+          "results": [
+            {
+              "first_ms": 2539.99,
+              "hash": "618e4234d921a32a58f28bacf19e998b",
+              "ok": true,
+              "p50_ms": 2539.99,
+              "p95_ms": 2539.99,
+              "query": "snap.hop2",
+              "rows": 135,
+              "timings_ms": [
+                2539.99
+              ]
+            }
+          ],
+          "vmhwm_kb": 654068,
+          "vmrss_kb": 426364,
+          "vmsize_kb": 2406936,
+          "wall_s": null
+        }
+      ]
+    },
+    {
+      "backend": "native",
+      "first_ms": [
+        2522.195,
+        2534.61,
+        2536.095,
+        2547.399,
+        2552.296
+      ],
+      "median_first_ms": 2536.095,
+      "median_open_ms": 6.366,
+      "open_ms": [
+        6.132,
+        6.292,
+        6.366,
+        6.505,
+        9.525
+      ],
+      "query": "series.count",
+      "state": "process_cold",
+      "trials": [
+        {
+          "open_ms": 6.132,
+          "queries_done": 1,
+          "results": [
+            {
+              "first_ms": 2552.296,
+              "hash": "091344cc76d81babfa083f4bed1ab8cd",
+              "ok": true,
+              "p50_ms": 2552.296,
+              "p95_ms": 2552.296,
+              "query": "series.count",
+              "rows": 100,
+              "timings_ms": [
+                2552.296
+              ]
+            }
+          ],
+          "vmhwm_kb": 654016,
+          "vmrss_kb": 461796,
+          "vmsize_kb": 3451428,
+          "wall_s": null
+        },
+        {
+          "open_ms": 9.525,
+          "queries_done": 1,
+          "results": [
+            {
+              "first_ms": 2536.095,
+              "hash": "091344cc76d81babfa083f4bed1ab8cd",
+              "ok": true,
+              "p50_ms": 2536.095,
+              "p95_ms": 2536.095,
+              "query": "series.count",
+              "rows": 100,
+              "timings_ms": [
+                2536.095
+              ]
+            }
+          ],
+          "vmhwm_kb": 653936,
+          "vmrss_kb": 461240,
+          "vmsize_kb": 3516964,
+          "wall_s": null
+        },
+        {
+          "open_ms": 6.505,
+          "queries_done": 1,
+          "results": [
+            {
+              "first_ms": 2522.195,
+              "hash": "091344cc76d81babfa083f4bed1ab8cd",
+              "ok": true,
+              "p50_ms": 2522.195,
+              "p95_ms": 2522.195,
+              "query": "series.count",
+              "rows": 100,
+              "timings_ms": [
+                2522.195
+              ]
+            }
+          ],
+          "vmhwm_kb": 654060,
+          "vmrss_kb": 462076,
+          "vmsize_kb": 3451428,
+          "wall_s": null
+        },
+        {
+          "open_ms": 6.292,
+          "queries_done": 1,
+          "results": [
+            {
+              "first_ms": 2534.61,
+              "hash": "091344cc76d81babfa083f4bed1ab8cd",
+              "ok": true,
+              "p50_ms": 2534.61,
+              "p95_ms": 2534.61,
+              "query": "series.count",
+              "rows": 100,
+              "timings_ms": [
+                2534.61
+              ]
+            }
+          ],
+          "vmhwm_kb": 653784,
+          "vmrss_kb": 461740,
+          "vmsize_kb": 3516956,
+          "wall_s": null
+        },
+        {
+          "open_ms": 6.366,
+          "queries_done": 1,
+          "results": [
+            {
+              "first_ms": 2547.399,
+              "hash": "091344cc76d81babfa083f4bed1ab8cd",
+              "ok": true,
+              "p50_ms": 2547.399,
+              "p95_ms": 2547.399,
+              "query": "series.count",
+              "rows": 100,
+              "timings_ms": [
+                2547.399
+              ]
+            }
+          ],
+          "vmhwm_kb": 653840,
+          "vmrss_kb": 461984,
+          "vmsize_kb": 3516960,
+          "wall_s": null
+        }
+      ]
+    },
+    {
+      "backend": "native",
+      "first_ms": [
+        2637.741,
+        2637.78,
+        2638.336,
+        2648.913,
+        2722.626
+      ],
+      "median_first_ms": 2638.336,
+      "median_open_ms": 6.423,
+      "open_ms": [
+        6.152,
+        6.419,
+        6.423,
+        6.46,
+        6.516
+      ],
+      "query": "coactive.narrow",
+      "state": "process_cold",
+      "trials": [
+        {
+          "open_ms": 6.423,
+          "queries_done": 1,
+          "results": [
+            {
+              "first_ms": 2638.336,
+              "hash": "71ca856490ed9edb9f9c9200120d2970",
+              "ok": true,
+              "p50_ms": 2638.336,
+              "p95_ms": 2638.336,
+              "query": "coactive.narrow",
+              "rows": 401,
+              "timings_ms": [
+                2638.336
+              ]
+            }
+          ],
+          "vmhwm_kb": 654156,
+          "vmrss_kb": 413516,
+          "vmsize_kb": 3058208,
+          "wall_s": null
+        },
+        {
+          "open_ms": 6.419,
+          "queries_done": 1,
+          "results": [
+            {
+              "first_ms": 2648.913,
+              "hash": "71ca856490ed9edb9f9c9200120d2970",
+              "ok": true,
+              "p50_ms": 2648.913,
+              "p95_ms": 2648.913,
+              "query": "coactive.narrow",
+              "rows": 401,
+              "timings_ms": [
+                2648.913
+              ]
+            }
+          ],
+          "vmhwm_kb": 653940,
+          "vmrss_kb": 413240,
+          "vmsize_kb": 2796188,
+          "wall_s": null
+        },
+        {
+          "open_ms": 6.516,
+          "queries_done": 1,
+          "results": [
+            {
+              "first_ms": 2637.741,
+              "hash": "71ca856490ed9edb9f9c9200120d2970",
+              "ok": true,
+              "p50_ms": 2637.741,
+              "p95_ms": 2637.741,
+              "query": "coactive.narrow",
+              "rows": 401,
+              "timings_ms": [
+                2637.741
+              ]
+            }
+          ],
+          "vmhwm_kb": 654120,
+          "vmrss_kb": 413432,
+          "vmsize_kb": 2861728,
+          "wall_s": null
+        },
+        {
+          "open_ms": 6.152,
+          "queries_done": 1,
+          "results": [
+            {
+              "first_ms": 2722.626,
+              "hash": "71ca856490ed9edb9f9c9200120d2970",
+              "ok": true,
+              "p50_ms": 2722.626,
+              "p95_ms": 2722.626,
+              "query": "coactive.narrow",
+              "rows": 401,
+              "timings_ms": [
+                2722.626
+              ]
+            }
+          ],
+          "vmhwm_kb": 653808,
+          "vmrss_kb": 413224,
+          "vmsize_kb": 2861604,
+          "wall_s": null
+        },
+        {
+          "open_ms": 6.46,
+          "queries_done": 1,
+          "results": [
+            {
+              "first_ms": 2637.78,
+              "hash": "71ca856490ed9edb9f9c9200120d2970",
+              "ok": true,
+              "p50_ms": 2637.78,
+              "p95_ms": 2637.78,
+              "query": "coactive.narrow",
+              "rows": 401,
+              "timings_ms": [
+                2637.78
+              ]
+            }
+          ],
+          "vmhwm_kb": 653964,
+          "vmrss_kb": 413296,
+          "vmsize_kb": 2927268,
+          "wall_s": null
+        }
+      ]
+    },
+    {
+      "backend": "native",
+      "first_ms": [
+        2761.96,
+        2770.531,
+        2808.692,
+        2809.427,
+        2851.996
+      ],
+      "median_first_ms": 2808.692,
+      "median_open_ms": 6.297,
+      "open_ms": [
+        6.209,
+        6.296,
+        6.297,
+        6.305,
+        6.348
+      ],
+      "query": "diff.global",
+      "state": "process_cold",
+      "trials": [
+        {
+          "open_ms": 6.209,
+          "queries_done": 1,
+          "results": [
+            {
+              "first_ms": 2851.996,
+              "hash": "1302008dbe499cc1a2ef467c5d843316",
+              "ok": true,
+              "p50_ms": 2851.996,
+              "p95_ms": 2851.996,
+              "query": "diff.global",
+              "rows": 74999,
+              "timings_ms": [
+                2851.996
+              ]
+            }
+          ],
+          "vmhwm_kb": 654300,
+          "vmrss_kb": 441352,
+          "vmsize_kb": 2605588,
+          "wall_s": null
+        },
+        {
+          "open_ms": 6.305,
+          "queries_done": 1,
+          "results": [
+            {
+              "first_ms": 2808.692,
+              "hash": "1302008dbe499cc1a2ef467c5d843316",
+              "ok": true,
+              "p50_ms": 2808.692,
+              "p95_ms": 2808.692,
+              "query": "diff.global",
+              "rows": 74999,
+              "timings_ms": [
+                2808.692
+              ]
+            }
+          ],
+          "vmhwm_kb": 654244,
+          "vmrss_kb": 442288,
+          "vmsize_kb": 2410008,
+          "wall_s": null
+        },
+        {
+          "open_ms": 6.297,
+          "queries_done": 1,
+          "results": [
+            {
+              "first_ms": 2809.427,
+              "hash": "1302008dbe499cc1a2ef467c5d843316",
+              "ok": true,
+              "p50_ms": 2809.427,
+              "p95_ms": 2809.427,
+              "query": "diff.global",
+              "rows": 74999,
+              "timings_ms": [
+                2809.427
+              ]
+            }
+          ],
+          "vmhwm_kb": 653844,
+          "vmrss_kb": 443788,
+          "vmsize_kb": 2674196,
+          "wall_s": null
+        },
+        {
+          "open_ms": 6.348,
+          "queries_done": 1,
+          "results": [
+            {
+              "first_ms": 2761.96,
+              "hash": "1302008dbe499cc1a2ef467c5d843316",
+              "ok": true,
+              "p50_ms": 2761.96,
+              "p95_ms": 2761.96,
+              "query": "diff.global",
+              "rows": 74999,
+              "timings_ms": [
+                2761.96
+              ]
+            }
+          ],
+          "vmhwm_kb": 653836,
+          "vmrss_kb": 441676,
+          "vmsize_kb": 2541076,
+          "wall_s": null
+        },
+        {
+          "open_ms": 6.296,
+          "queries_done": 1,
+          "results": [
+            {
+              "first_ms": 2770.531,
+              "hash": "1302008dbe499cc1a2ef467c5d843316",
+              "ok": true,
+              "p50_ms": 2770.531,
+              "p95_ms": 2770.531,
+              "query": "diff.global",
+              "rows": 74999,
+              "timings_ms": [
+                2770.531
+              ]
+            }
+          ],
+          "vmhwm_kb": 654020,
+          "vmrss_kb": 441132,
+          "vmsize_kb": 2540048,
+          "wall_s": null
+        }
+      ]
+    },
+    {
+      "backend": "native",
+      "first_ms": [
+        2490.481,
+        2515.2,
+        2535.073,
+        2569.796,
+        2753.501
+      ],
+      "median_first_ms": 2535.073,
+      "median_open_ms": 6.181,
+      "open_ms": [
+        5.832,
+        6.013,
+        6.181,
+        6.28,
+        6.287
+      ],
+      "query": "motif.filtered",
+      "state": "process_cold",
+      "trials": [
+        {
+          "open_ms": 6.181,
+          "queries_done": 1,
+          "results": [
+            {
+              "first_ms": 2515.2,
+              "hash": "92af8a07bad5516ee7b6a41d297fb7ea",
+              "ok": true,
+              "p50_ms": 2515.2,
+              "p95_ms": 2515.2,
+              "query": "motif.filtered",
+              "rows": 385,
+              "timings_ms": [
+                2515.2
+              ]
+            }
+          ],
+          "vmhwm_kb": 654028,
+          "vmrss_kb": 417224,
+          "vmsize_kb": 3452452,
+          "wall_s": null
+        },
+        {
+          "open_ms": 5.832,
+          "queries_done": 1,
+          "results": [
+            {
+              "first_ms": 2490.481,
+              "hash": "92af8a07bad5516ee7b6a41d297fb7ea",
+              "ok": true,
+              "p50_ms": 2490.481,
+              "p95_ms": 2490.481,
+              "query": "motif.filtered",
+              "rows": 385,
+              "timings_ms": [
+                2490.481
+              ]
+            }
+          ],
+          "vmhwm_kb": 654040,
+          "vmrss_kb": 417240,
+          "vmsize_kb": 3452452,
+          "wall_s": null
+        },
+        {
+          "open_ms": 6.013,
+          "queries_done": 1,
+          "results": [
+            {
+              "first_ms": 2753.501,
+              "hash": "92af8a07bad5516ee7b6a41d297fb7ea",
+              "ok": true,
+              "p50_ms": 2753.501,
+              "p95_ms": 2753.501,
+              "query": "motif.filtered",
+              "rows": 385,
+              "timings_ms": [
+                2753.501
+              ]
+            }
+          ],
+          "vmhwm_kb": 654216,
+          "vmrss_kb": 417368,
+          "vmsize_kb": 3452580,
+          "wall_s": null
+        },
+        {
+          "open_ms": 6.28,
+          "queries_done": 1,
+          "results": [
+            {
+              "first_ms": 2535.073,
+              "hash": "92af8a07bad5516ee7b6a41d297fb7ea",
+              "ok": true,
+              "p50_ms": 2535.073,
+              "p95_ms": 2535.073,
+              "query": "motif.filtered",
+              "rows": 385,
+              "timings_ms": [
+                2535.073
+              ]
+            }
+          ],
+          "vmhwm_kb": 653940,
+          "vmrss_kb": 417056,
+          "vmsize_kb": 3452452,
+          "wall_s": null
+        },
+        {
+          "open_ms": 6.287,
+          "queries_done": 1,
+          "results": [
+            {
+              "first_ms": 2569.796,
+              "hash": "92af8a07bad5516ee7b6a41d297fb7ea",
+              "ok": true,
+              "p50_ms": 2569.796,
+              "p95_ms": 2569.796,
+              "query": "motif.filtered",
+              "rows": 385,
+              "timings_ms": [
+                2569.796
+              ]
+            }
+          ],
+          "vmhwm_kb": 654032,
+          "vmrss_kb": 417248,
+          "vmsize_kb": 3452448,
+          "wall_s": null
+        }
+      ]
+    },
+    {
+      "backend": "native",
+      "first_ms": [
+        2576.895,
+        2578.768,
+        2603.529,
+        2606.482,
+        2694.759
+      ],
+      "median_first_ms": 2603.529,
+      "median_open_ms": 8.454,
+      "open_ms": [
+        7.603,
+        8.082,
+        8.454,
+        9.317,
+        10.296
+      ],
+      "query": "hist.single",
+      "state": "cold",
+      "trials": [
+        {
+          "open_ms": 10.296,
+          "queries_done": 1,
+          "results": [
+            {
+              "first_ms": 2694.759,
+              "hash": "9527ee69a3c9584deab88367ac78e5bf",
+              "ok": true,
+              "p50_ms": 2694.759,
+              "p95_ms": 2694.759,
+              "query": "hist.single",
+              "rows": 2,
+              "timings_ms": [
+                2694.759
+              ]
+            }
+          ],
+          "vmhwm_kb": 655140,
+          "vmrss_kb": 413108,
+          "vmsize_kb": 2101716,
+          "wall_s": null
+        },
+        {
+          "open_ms": 8.454,
+          "queries_done": 1,
+          "results": [
+            {
+              "first_ms": 2606.482,
+              "hash": "9527ee69a3c9584deab88367ac78e5bf",
+              "ok": true,
+              "p50_ms": 2606.482,
+              "p95_ms": 2606.482,
+              "query": "hist.single",
+              "rows": 2,
+              "timings_ms": [
+                2606.482
+              ]
+            }
+          ],
+          "vmhwm_kb": 655084,
+          "vmrss_kb": 413052,
+          "vmsize_kb": 2101724,
+          "wall_s": null
+        },
+        {
+          "open_ms": 8.082,
+          "queries_done": 1,
+          "results": [
+            {
+              "first_ms": 2603.529,
+              "hash": "9527ee69a3c9584deab88367ac78e5bf",
+              "ok": true,
+              "p50_ms": 2603.529,
+              "p95_ms": 2603.529,
+              "query": "hist.single",
+              "rows": 2,
+              "timings_ms": [
+                2603.529
+              ]
+            }
+          ],
+          "vmhwm_kb": 655168,
+          "vmrss_kb": 413136,
+          "vmsize_kb": 2101716,
+          "wall_s": null
+        },
+        {
+          "open_ms": 7.603,
+          "queries_done": 1,
+          "results": [
+            {
+              "first_ms": 2576.895,
+              "hash": "9527ee69a3c9584deab88367ac78e5bf",
+              "ok": true,
+              "p50_ms": 2576.895,
+              "p95_ms": 2576.895,
+              "query": "hist.single",
+              "rows": 2,
+              "timings_ms": [
+                2576.895
+              ]
+            }
+          ],
+          "vmhwm_kb": 654908,
+          "vmrss_kb": 412876,
+          "vmsize_kb": 2101716,
+          "wall_s": null
+        },
+        {
+          "open_ms": 9.317,
+          "queries_done": 1,
+          "results": [
+            {
+              "first_ms": 2578.768,
+              "hash": "9527ee69a3c9584deab88367ac78e5bf",
+              "ok": true,
+              "p50_ms": 2578.768,
+              "p95_ms": 2578.768,
+              "query": "hist.single",
+              "rows": 2,
+              "timings_ms": [
+                2578.768
+              ]
+            }
+          ],
+          "vmhwm_kb": 655004,
+          "vmrss_kb": 412972,
+          "vmsize_kb": 2101720,
+          "wall_s": null
+        }
+      ]
+    },
+    {
+      "backend": "native",
+      "first_ms": [
+        2674.135,
+        2682.541,
+        2691.428,
+        2692.193,
+        2700.025
+      ],
+      "median_first_ms": 2691.428,
+      "median_open_ms": 8.128,
+      "open_ms": [
+        7.878,
+        7.887,
+        8.128,
+        8.565,
+        9.012
+      ],
+      "query": "snap.hop2",
+      "state": "cold",
+      "trials": [
+        {
+          "open_ms": 8.128,
+          "queries_done": 1,
+          "results": [
+            {
+              "first_ms": 2682.541,
+              "hash": "618e4234d921a32a58f28bacf19e998b",
+              "ok": true,
+              "p50_ms": 2682.541,
+              "p95_ms": 2682.541,
+              "query": "snap.hop2",
+              "rows": 135,
+              "timings_ms": [
+                2682.541
+              ]
+            }
+          ],
+          "vmhwm_kb": 654904,
+          "vmrss_kb": 426360,
+          "vmsize_kb": 2406936,
+          "wall_s": null
+        },
+        {
+          "open_ms": 7.887,
+          "queries_done": 1,
+          "results": [
+            {
+              "first_ms": 2691.428,
+              "hash": "618e4234d921a32a58f28bacf19e998b",
+              "ok": true,
+              "p50_ms": 2691.428,
+              "p95_ms": 2691.428,
+              "query": "snap.hop2",
+              "rows": 135,
+              "timings_ms": [
+                2691.428
+              ]
+            }
+          ],
+          "vmhwm_kb": 654916,
+          "vmrss_kb": 426568,
+          "vmsize_kb": 2472472,
+          "wall_s": null
+        },
+        {
+          "open_ms": 9.012,
+          "queries_done": 1,
+          "results": [
+            {
+              "first_ms": 2700.025,
+              "hash": "618e4234d921a32a58f28bacf19e998b",
+              "ok": true,
+              "p50_ms": 2700.025,
+              "p95_ms": 2700.025,
+              "query": "snap.hop2",
+              "rows": 135,
+              "timings_ms": [
+                2700.025
+              ]
+            }
+          ],
+          "vmhwm_kb": 655140,
+          "vmrss_kb": 426460,
+          "vmsize_kb": 2538008,
+          "wall_s": null
+        },
+        {
+          "open_ms": 7.878,
+          "queries_done": 1,
+          "results": [
+            {
+              "first_ms": 2692.193,
+              "hash": "618e4234d921a32a58f28bacf19e998b",
+              "ok": true,
+              "p50_ms": 2692.193,
+              "p95_ms": 2692.193,
+              "query": "snap.hop2",
+              "rows": 135,
+              "timings_ms": [
+                2692.193
+              ]
+            }
+          ],
+          "vmhwm_kb": 655136,
+          "vmrss_kb": 426468,
+          "vmsize_kb": 2406936,
+          "wall_s": null
+        },
+        {
+          "open_ms": 8.565,
+          "queries_done": 1,
+          "results": [
+            {
+              "first_ms": 2674.135,
+              "hash": "618e4234d921a32a58f28bacf19e998b",
+              "ok": true,
+              "p50_ms": 2674.135,
+              "p95_ms": 2674.135,
+              "query": "snap.hop2",
+              "rows": 135,
+              "timings_ms": [
+                2674.135
+              ]
+            }
+          ],
+          "vmhwm_kb": 654848,
+          "vmrss_kb": 426304,
+          "vmsize_kb": 2406932,
+          "wall_s": null
+        }
+      ]
+    },
+    {
+      "backend": "native",
+      "first_ms": [
+        2632.123,
+        2632.405,
+        2647.724,
+        2664.924,
+        2687.567
+      ],
+      "median_first_ms": 2647.724,
+      "median_open_ms": 7.953,
+      "open_ms": [
+        7.715,
+        7.762,
+        7.953,
+        8.001,
+        8.064
+      ],
+      "query": "series.count",
+      "state": "cold",
+      "trials": [
+        {
+          "open_ms": 8.001,
+          "queries_done": 1,
+          "results": [
+            {
+              "first_ms": 2664.924,
+              "hash": "091344cc76d81babfa083f4bed1ab8cd",
+              "ok": true,
+              "p50_ms": 2664.924,
+              "p95_ms": 2664.924,
+              "query": "series.count",
+              "rows": 100,
+              "timings_ms": [
+                2664.924
+              ]
+            }
+          ],
+          "vmhwm_kb": 654900,
+          "vmrss_kb": 463116,
+          "vmsize_kb": 3713572,
+          "wall_s": null
+        },
+        {
+          "open_ms": 7.953,
+          "queries_done": 1,
+          "results": [
+            {
+              "first_ms": 2632.405,
+              "hash": "091344cc76d81babfa083f4bed1ab8cd",
+              "ok": true,
+              "p50_ms": 2632.405,
+              "p95_ms": 2632.405,
+              "query": "series.count",
+              "rows": 100,
+              "timings_ms": [
+                2632.405
+              ]
+            }
+          ],
+          "vmhwm_kb": 655148,
+          "vmrss_kb": 463172,
+          "vmsize_kb": 3582628,
+          "wall_s": null
+        },
+        {
+          "open_ms": 8.064,
+          "queries_done": 1,
+          "results": [
+            {
+              "first_ms": 2687.567,
+              "hash": "091344cc76d81babfa083f4bed1ab8cd",
+              "ok": true,
+              "p50_ms": 2687.567,
+              "p95_ms": 2687.567,
+              "query": "series.count",
+              "rows": 100,
+              "timings_ms": [
+                2687.567
+              ]
+            }
+          ],
+          "vmhwm_kb": 655136,
+          "vmrss_kb": 463196,
+          "vmsize_kb": 3451428,
+          "wall_s": null
+        },
+        {
+          "open_ms": 7.762,
+          "queries_done": 1,
+          "results": [
+            {
+              "first_ms": 2632.123,
+              "hash": "091344cc76d81babfa083f4bed1ab8cd",
+              "ok": true,
+              "p50_ms": 2632.123,
+              "p95_ms": 2632.123,
+              "query": "series.count",
+              "rows": 100,
+              "timings_ms": [
+                2632.123
+              ]
+            }
+          ],
+          "vmhwm_kb": 655288,
+          "vmrss_kb": 463064,
+          "vmsize_kb": 3713572,
+          "wall_s": null
+        },
+        {
+          "open_ms": 7.715,
+          "queries_done": 1,
+          "results": [
+            {
+              "first_ms": 2647.724,
+              "hash": "091344cc76d81babfa083f4bed1ab8cd",
+              "ok": true,
+              "p50_ms": 2647.724,
+              "p95_ms": 2647.724,
+              "query": "series.count",
+              "rows": 100,
+              "timings_ms": [
+                2647.724
+              ]
+            }
+          ],
+          "vmhwm_kb": 655368,
+          "vmrss_kb": 462348,
+          "vmsize_kb": 3386020,
+          "wall_s": null
+        }
+      ]
+    },
+    {
+      "backend": "native",
+      "first_ms": [
+        2732.879,
+        2737.389,
+        2741.926,
+        2745.264,
+        2763.43
+      ],
+      "median_first_ms": 2741.926,
+      "median_open_ms": 8.541,
+      "open_ms": [
+        7.713,
+        8.484,
+        8.541,
+        8.969,
+        9.265
+      ],
+      "query": "coactive.narrow",
+      "state": "cold",
+      "trials": [
+        {
+          "open_ms": 9.265,
+          "queries_done": 1,
+          "results": [
+            {
+              "first_ms": 2737.389,
+              "hash": "71ca856490ed9edb9f9c9200120d2970",
+              "ok": true,
+              "p50_ms": 2737.389,
+              "p95_ms": 2737.389,
+              "query": "coactive.narrow",
+              "rows": 401,
+              "timings_ms": [
+                2737.389
+              ]
+            }
+          ],
+          "vmhwm_kb": 654856,
+          "vmrss_kb": 413848,
+          "vmsize_kb": 3058212,
+          "wall_s": null
+        },
+        {
+          "open_ms": 8.969,
+          "queries_done": 1,
+          "results": [
+            {
+              "first_ms": 2763.43,
+              "hash": "71ca856490ed9edb9f9c9200120d2970",
+              "ok": true,
+              "p50_ms": 2763.43,
+              "p95_ms": 2763.43,
+              "query": "coactive.narrow",
+              "rows": 401,
+              "timings_ms": [
+                2763.43
+              ]
+            }
+          ],
+          "vmhwm_kb": 655136,
+          "vmrss_kb": 414136,
+          "vmsize_kb": 3320352,
+          "wall_s": null
+        },
+        {
+          "open_ms": 7.713,
+          "queries_done": 1,
+          "results": [
+            {
+              "first_ms": 2732.879,
+              "hash": "71ca856490ed9edb9f9c9200120d2970",
+              "ok": true,
+              "p50_ms": 2732.879,
+              "p95_ms": 2732.879,
+              "query": "coactive.narrow",
+              "rows": 401,
+              "timings_ms": [
+                2732.879
+              ]
+            }
+          ],
+          "vmhwm_kb": 655084,
+          "vmrss_kb": 413980,
+          "vmsize_kb": 2796064,
+          "wall_s": null
+        },
+        {
+          "open_ms": 8.484,
+          "queries_done": 1,
+          "results": [
+            {
+              "first_ms": 2741.926,
+              "hash": "71ca856490ed9edb9f9c9200120d2970",
+              "ok": true,
+              "p50_ms": 2741.926,
+              "p95_ms": 2741.926,
+              "query": "coactive.narrow",
+              "rows": 401,
+              "timings_ms": [
+                2741.926
+              ]
+            }
+          ],
+          "vmhwm_kb": 654872,
+          "vmrss_kb": 413904,
+          "vmsize_kb": 3254820,
+          "wall_s": null
+        },
+        {
+          "open_ms": 8.541,
+          "queries_done": 1,
+          "results": [
+            {
+              "first_ms": 2745.264,
+              "hash": "71ca856490ed9edb9f9c9200120d2970",
+              "ok": true,
+              "p50_ms": 2745.264,
+              "p95_ms": 2745.264,
+              "query": "coactive.narrow",
+              "rows": 401,
+              "timings_ms": [
+                2745.264
+              ]
+            }
+          ],
+          "vmhwm_kb": 655152,
+          "vmrss_kb": 414092,
+          "vmsize_kb": 3189284,
+          "wall_s": null
+        }
+      ]
+    },
+    {
+      "backend": "native",
+      "first_ms": [
+        2929.865,
+        2930.95,
+        2934.288,
+        2935.132,
+        2972.817
+      ],
+      "median_first_ms": 2934.288,
+      "median_open_ms": 9.091,
+      "open_ms": [
+        8.586,
+        8.612,
+        9.091,
+        9.151,
+        9.58
+      ],
+      "query": "diff.global",
+      "state": "cold",
+      "trials": [
+        {
+          "open_ms": 9.091,
+          "queries_done": 1,
+          "results": [
+            {
+              "first_ms": 2972.817,
+              "hash": "1302008dbe499cc1a2ef467c5d843316",
+              "ok": true,
+              "p50_ms": 2972.817,
+              "p95_ms": 2972.817,
+              "query": "diff.global",
+              "rows": 74999,
+              "timings_ms": [
+                2972.817
+              ]
+            }
+          ],
+          "vmhwm_kb": 655088,
+          "vmrss_kb": 442016,
+          "vmsize_kb": 2475548,
+          "wall_s": null
+        },
+        {
+          "open_ms": 9.58,
+          "queries_done": 1,
+          "results": [
+            {
+              "first_ms": 2929.865,
+              "hash": "1302008dbe499cc1a2ef467c5d843316",
+              "ok": true,
+              "p50_ms": 2929.865,
+              "p95_ms": 2929.865,
+              "query": "diff.global",
+              "rows": 74999,
+              "timings_ms": [
+                2929.865
+              ]
+            }
+          ],
+          "vmhwm_kb": 655012,
+          "vmrss_kb": 444304,
+          "vmsize_kb": 2475548,
+          "wall_s": null
+        },
+        {
+          "open_ms": 9.151,
+          "queries_done": 1,
+          "results": [
+            {
+              "first_ms": 2935.132,
+              "hash": "1302008dbe499cc1a2ef467c5d843316",
+              "ok": true,
+              "p50_ms": 2935.132,
+              "p95_ms": 2935.132,
+              "query": "diff.global",
+              "rows": 74999,
+              "timings_ms": [
+                2935.132
+              ]
+            }
+          ],
+          "vmhwm_kb": 654844,
+          "vmrss_kb": 441780,
+          "vmsize_kb": 2410012,
+          "wall_s": null
+        },
+        {
+          "open_ms": 8.586,
+          "queries_done": 1,
+          "results": [
+            {
+              "first_ms": 2930.95,
+              "hash": "1302008dbe499cc1a2ef467c5d843316",
+              "ok": true,
+              "p50_ms": 2930.95,
+              "p95_ms": 2930.95,
+              "query": "diff.global",
+              "rows": 74999,
+              "timings_ms": [
+                2930.95
+              ]
+            }
+          ],
+          "vmhwm_kb": 655044,
+          "vmrss_kb": 444348,
+          "vmsize_kb": 2410004,
+          "wall_s": null
+        },
+        {
+          "open_ms": 8.612,
+          "queries_done": 1,
+          "results": [
+            {
+              "first_ms": 2934.288,
+              "hash": "1302008dbe499cc1a2ef467c5d843316",
+              "ok": true,
+              "p50_ms": 2934.288,
+              "p95_ms": 2934.288,
+              "query": "diff.global",
+              "rows": 74999,
+              "timings_ms": [
+                2934.288
+              ]
+            }
+          ],
+          "vmhwm_kb": 655048,
+          "vmrss_kb": 442228,
+          "vmsize_kb": 2475540,
+          "wall_s": null
+        }
+      ]
+    },
+    {
+      "backend": "native",
+      "first_ms": [
+        2644.231,
+        2652.351,
+        2655.1,
+        2669.358,
+        2704.46
+      ],
+      "median_first_ms": 2655.1,
+      "median_open_ms": 8.192,
+      "open_ms": [
+        7.912,
+        7.994,
+        8.192,
+        8.231,
+        8.459
+      ],
+      "query": "motif.filtered",
+      "state": "cold",
+      "trials": [
+        {
+          "open_ms": 8.192,
+          "queries_done": 1,
+          "results": [
+            {
+              "first_ms": 2669.358,
+              "hash": "92af8a07bad5516ee7b6a41d297fb7ea",
+              "ok": true,
+              "p50_ms": 2669.358,
+              "p95_ms": 2669.358,
+              "query": "motif.filtered",
+              "rows": 385,
+              "timings_ms": [
+                2669.358
+              ]
+            }
+          ],
+          "vmhwm_kb": 655100,
+          "vmrss_kb": 417464,
+          "vmsize_kb": 3452456,
+          "wall_s": null
+        },
+        {
+          "open_ms": 8.459,
+          "queries_done": 1,
+          "results": [
+            {
+              "first_ms": 2652.351,
+              "hash": "92af8a07bad5516ee7b6a41d297fb7ea",
+              "ok": true,
+              "p50_ms": 2652.351,
+              "p95_ms": 2652.351,
+              "query": "motif.filtered",
+              "rows": 385,
+              "timings_ms": [
+                2652.351
+              ]
+            }
+          ],
+          "vmhwm_kb": 655064,
+          "vmrss_kb": 417396,
+          "vmsize_kb": 3321380,
+          "wall_s": null
+        },
+        {
+          "open_ms": 7.994,
+          "queries_done": 1,
+          "results": [
+            {
+              "first_ms": 2644.231,
+              "hash": "92af8a07bad5516ee7b6a41d297fb7ea",
+              "ok": true,
+              "p50_ms": 2644.231,
+              "p95_ms": 2644.231,
+              "query": "motif.filtered",
+              "rows": 385,
+              "timings_ms": [
+                2644.231
+              ]
+            }
+          ],
+          "vmhwm_kb": 655148,
+          "vmrss_kb": 417572,
+          "vmsize_kb": 3452460,
+          "wall_s": null
+        },
+        {
+          "open_ms": 8.231,
+          "queries_done": 1,
+          "results": [
+            {
+              "first_ms": 2655.1,
+              "hash": "92af8a07bad5516ee7b6a41d297fb7ea",
+              "ok": true,
+              "p50_ms": 2655.1,
+              "p95_ms": 2655.1,
+              "query": "motif.filtered",
+              "rows": 385,
+              "timings_ms": [
+                2655.1
+              ]
+            }
+          ],
+          "vmhwm_kb": 655096,
+          "vmrss_kb": 417416,
+          "vmsize_kb": 3452452,
+          "wall_s": null
+        },
+        {
+          "open_ms": 7.912,
+          "queries_done": 1,
+          "results": [
+            {
+              "first_ms": 2704.46,
+              "hash": "92af8a07bad5516ee7b6a41d297fb7ea",
+              "ok": true,
+              "p50_ms": 2704.46,
+              "p95_ms": 2704.46,
+              "query": "motif.filtered",
+              "rows": 385,
+              "timings_ms": [
+                2704.46
+              ]
+            }
+          ],
+          "vmhwm_kb": 655036,
+          "vmrss_kb": 417524,
+          "vmsize_kb": 3387048,
+          "wall_s": null
+        }
+      ]
+    },
+    {
+      "backend": "duckdb",
+      "open_ms": 88.894,
+      "queries_done": 180,
+      "results": [
+        {
+          "first_ms": 25.638,
+          "hash": "9527ee69a3c9584deab88367ac78e5bf",
+          "ok": true,
+          "p50_ms": 26.297,
+          "p95_ms": 29.734,
+          "query": "hist.single",
+          "rows": 2,
+          "timings_ms": [
+            25.638,
+            30.153,
+            29.734,
+            27.839,
+            24.672,
+            21.789,
+            26.489,
+            28.448,
+            28.33,
+            25.779,
+            22.812,
+            27.929,
+            25.91,
+            26.127,
+            25.557,
+            25.536,
+            26.467,
+            29.251,
+            28.405,
+            29.085,
+            23.442,
+            27.58,
+            26.625,
+            24.855,
+            25.232,
+            24.459,
+            28.109,
+            28.978,
+            22.661,
+            23.625
+          ]
+        },
+        {
+          "first_ms": 202.835,
+          "hash": "618e4234d921a32a58f28bacf19e998b",
+          "ok": true,
+          "p50_ms": 205.141,
+          "p95_ms": 215.707,
+          "query": "snap.hop2",
+          "rows": 135,
+          "timings_ms": [
+            202.835,
+            202.494,
+            208.024,
+            203.913,
+            203.633,
+            210.172,
+            206.413,
+            205.046,
+            200.714,
+            201.61,
+            205.083,
+            206.06,
+            211.24,
+            210.127,
+            205.198,
+            204.063,
+            207.879,
+            210.105,
+            204.204,
+            226.567,
+            213.576,
+            215.707,
+            205.699,
+            202.348,
+            200.597,
+            202.571,
+            206.601,
+            201.845,
+            203.049,
+            206.463
+          ]
+        },
+        {
+          "first_ms": 152.029,
+          "hash": "091344cc76d81babfa083f4bed1ab8cd",
+          "ok": true,
+          "p50_ms": 151.936,
+          "p95_ms": 170.118,
+          "query": "series.count",
+          "rows": 100,
+          "timings_ms": [
+            152.029,
+            160.121,
+            169.211,
+            148.407,
+            148.331,
+            160.609,
+            147.68,
+            145.272,
+            151.222,
+            165.094,
+            156.079,
+            157.032,
+            153.165,
+            149.367,
+            148.656,
+            151.842,
+            158.216,
+            138.692,
+            170.118,
+            155.198,
+            148.348,
+            148.325,
+            153.291,
+            164.326,
+            150.486,
+            144.264,
+            156.907,
+            170.711,
+            151.017,
+            144.742
+          ]
+        },
+        {
+          "first_ms": 121.972,
+          "hash": "71ca856490ed9edb9f9c9200120d2970",
+          "ok": true,
+          "p50_ms": 110.257,
+          "p95_ms": 121.972,
+          "query": "coactive.narrow",
+          "rows": 401,
+          "timings_ms": [
+            121.972,
+            118.821,
+            121.534,
+            106.205,
+            106.944,
+            103.151,
+            111.554,
+            109.676,
+            119.583,
+            107.464,
+            96.629,
+            101.451,
+            108.04,
+            110.254,
+            116.084,
+            115.434,
+            99.978,
+            113.163,
+            108.495,
+            115.555,
+            112.337,
+            107.876,
+            128.884,
+            110.259,
+            104.723,
+            110.068,
+            103.543,
+            111.219,
+            116.302,
+            119.842
+          ]
+        },
+        {
+          "first_ms": 567.819,
+          "hash": "1302008dbe499cc1a2ef467c5d843316",
+          "ok": true,
+          "p50_ms": 562.462,
+          "p95_ms": 594.358,
+          "query": "diff.global",
+          "rows": 74999,
+          "timings_ms": [
+            567.819,
+            554.949,
+            556.499,
+            561.8,
+            551.934,
+            546.131,
+            571.681,
+            557.739,
+            560.958,
+            549.61,
+            554.526,
+            594.587,
+            571.467,
+            577.693,
+            563.203,
+            573.313,
+            570.666,
+            558.77,
+            565.208,
+            561.279,
+            569.417,
+            563.253,
+            556.88,
+            559.408,
+            559.327,
+            568.846,
+            563.124,
+            589.827,
+            594.358,
+            561.484
+          ]
+        },
+        {
+          "first_ms": 81.861,
+          "hash": "92af8a07bad5516ee7b6a41d297fb7ea",
+          "ok": true,
+          "p50_ms": 92.592,
+          "p95_ms": 98.428,
+          "query": "motif.filtered",
+          "rows": 385,
+          "timings_ms": [
+            81.861,
+            93.555,
+            88.253,
+            93.678,
+            96.703,
+            88.851,
+            97.512,
+            86.425,
+            94.648,
+            92.541,
+            98.428,
+            88.905,
+            94.328,
+            85.567,
+            90.658,
+            97.399,
+            88.319,
+            89.854,
+            91.287,
+            85.667,
+            97.605,
+            92.643,
+            95.624,
+            91.483,
+            86.16,
+            94.258,
+            91.018,
+            95.689,
+            97.921,
+            100.448
+          ]
+        }
+      ],
+      "state": "warm",
+      "vmhwm_kb": 799952,
+      "vmrss_kb": 492532,
+      "vmsize_kb": 9856320,
+      "wall_s": null
+    },
+    {
+      "backend": "duckdb",
+      "first_ms": [
+        277.907,
+        282.392,
+        284.596,
+        284.97,
+        291.404
+      ],
+      "median_first_ms": 284.596,
+      "median_open_ms": 80.271,
+      "open_ms": [
+        79.094,
+        80.107,
+        80.271,
+        81.047,
+        83.815
+      ],
+      "query": "hist.single",
+      "state": "process_cold",
+      "trials": [
+        {
+          "open_ms": 83.815,
+          "queries_done": 1,
+          "results": [
+            {
+              "first_ms": 284.596,
+              "hash": "9527ee69a3c9584deab88367ac78e5bf",
+              "ok": true,
+              "p50_ms": 284.596,
+              "p95_ms": 284.596,
+              "query": "hist.single",
+              "rows": 2,
+              "timings_ms": [
+                284.596
+              ]
+            }
+          ],
+          "vmhwm_kb": 168716,
+          "vmrss_kb": 168716,
+          "vmsize_kb": 5364240,
+          "wall_s": null
+        },
+        {
+          "open_ms": 79.094,
+          "queries_done": 1,
+          "results": [
+            {
+              "first_ms": 277.907,
+              "hash": "9527ee69a3c9584deab88367ac78e5bf",
+              "ok": true,
+              "p50_ms": 277.907,
+              "p95_ms": 277.907,
+              "query": "hist.single",
+              "rows": 2,
+              "timings_ms": [
+                277.907
+              ]
+            }
+          ],
+          "vmhwm_kb": 169240,
+          "vmrss_kb": 169240,
+          "vmsize_kb": 5204880,
+          "wall_s": null
+        },
+        {
+          "open_ms": 80.107,
+          "queries_done": 1,
+          "results": [
+            {
+              "first_ms": 291.404,
+              "hash": "9527ee69a3c9584deab88367ac78e5bf",
+              "ok": true,
+              "p50_ms": 291.404,
+              "p95_ms": 291.404,
+              "query": "hist.single",
+              "rows": 2,
+              "timings_ms": [
+                291.404
+              ]
+            }
+          ],
+          "vmhwm_kb": 168428,
+          "vmrss_kb": 168428,
+          "vmsize_kb": 5278616,
+          "wall_s": null
+        },
+        {
+          "open_ms": 81.047,
+          "queries_done": 1,
+          "results": [
+            {
+              "first_ms": 284.97,
+              "hash": "9527ee69a3c9584deab88367ac78e5bf",
+              "ok": true,
+              "p50_ms": 284.97,
+              "p95_ms": 284.97,
+              "query": "hist.single",
+              "rows": 2,
+              "timings_ms": [
+                284.97
+              ]
+            }
+          ],
+          "vmhwm_kb": 170336,
+          "vmrss_kb": 170336,
+          "vmsize_kb": 5092748,
+          "wall_s": null
+        },
+        {
+          "open_ms": 80.271,
+          "queries_done": 1,
+          "results": [
+            {
+              "first_ms": 282.392,
+              "hash": "9527ee69a3c9584deab88367ac78e5bf",
+              "ok": true,
+              "p50_ms": 282.392,
+              "p95_ms": 282.392,
+              "query": "hist.single",
+              "rows": 2,
+              "timings_ms": [
+                282.392
+              ]
+            }
+          ],
+          "vmhwm_kb": 170700,
+          "vmrss_kb": 170700,
+          "vmsize_kb": 5286796,
+          "wall_s": null
+        }
+      ]
+    },
+    {
+      "backend": "duckdb",
+      "first_ms": [
+        463.588,
+        468.153,
+        470.268,
+        470.75,
+        481.751
+      ],
+      "median_first_ms": 470.268,
+      "median_open_ms": 79.747,
+      "open_ms": [
+        78.9,
+        79.363,
+        79.747,
+        79.896,
+        79.972
+      ],
+      "query": "snap.hop2",
+      "state": "process_cold",
+      "trials": [
+        {
+          "open_ms": 79.747,
+          "queries_done": 1,
+          "results": [
+            {
+              "first_ms": 468.153,
+              "hash": "618e4234d921a32a58f28bacf19e998b",
+              "ok": true,
+              "p50_ms": 468.153,
+              "p95_ms": 468.153,
+              "query": "snap.hop2",
+              "rows": 135,
+              "timings_ms": [
+                468.153
+              ]
+            }
+          ],
+          "vmhwm_kb": 205772,
+          "vmrss_kb": 197408,
+          "vmsize_kb": 7943060,
+          "wall_s": null
+        },
+        {
+          "open_ms": 79.896,
+          "queries_done": 1,
+          "results": [
+            {
+              "first_ms": 481.751,
+              "hash": "618e4234d921a32a58f28bacf19e998b",
+              "ok": true,
+              "p50_ms": 481.751,
+              "p95_ms": 481.751,
+              "query": "snap.hop2",
+              "rows": 135,
+              "timings_ms": [
+                481.751
+              ]
+            }
+          ],
+          "vmhwm_kb": 202644,
+          "vmrss_kb": 194252,
+          "vmsize_kb": 7802252,
+          "wall_s": null
+        },
+        {
+          "open_ms": 78.9,
+          "queries_done": 1,
+          "results": [
+            {
+              "first_ms": 470.268,
+              "hash": "618e4234d921a32a58f28bacf19e998b",
+              "ok": true,
+              "p50_ms": 470.268,
+              "p95_ms": 470.268,
+              "query": "snap.hop2",
+              "rows": 135,
+              "timings_ms": [
+                470.268
+              ]
+            }
+          ],
+          "vmhwm_kb": 203328,
+          "vmrss_kb": 195332,
+          "vmsize_kb": 7745092,
+          "wall_s": null
+        },
+        {
+          "open_ms": 79.363,
+          "queries_done": 1,
+          "results": [
+            {
+              "first_ms": 470.75,
+              "hash": "618e4234d921a32a58f28bacf19e998b",
+              "ok": true,
+              "p50_ms": 470.75,
+              "p95_ms": 470.75,
+              "query": "snap.hop2",
+              "rows": 135,
+              "timings_ms": [
+                470.75
+              ]
+            }
+          ],
+          "vmhwm_kb": 202552,
+          "vmrss_kb": 194988,
+          "vmsize_kb": 7886228,
+          "wall_s": null
+        },
+        {
+          "open_ms": 79.972,
+          "queries_done": 1,
+          "results": [
+            {
+              "first_ms": 463.588,
+              "hash": "618e4234d921a32a58f28bacf19e998b",
+              "ok": true,
+              "p50_ms": 463.588,
+              "p95_ms": 463.588,
+              "query": "snap.hop2",
+              "rows": 135,
+              "timings_ms": [
+                463.588
+              ]
+            }
+          ],
+          "vmhwm_kb": 203164,
+          "vmrss_kb": 194824,
+          "vmsize_kb": 8003980,
+          "wall_s": null
+        }
+      ]
+    },
+    {
+      "backend": "duckdb",
+      "first_ms": [
+        417.562,
+        420.51,
+        422.75,
+        425.699,
+        427.537
+      ],
+      "median_first_ms": 422.75,
+      "median_open_ms": 82.342,
+      "open_ms": [
+        78.857,
+        81.476,
+        82.342,
+        85.029,
+        86.733
+      ],
+      "query": "series.count",
+      "state": "process_cold",
+      "trials": [
+        {
+          "open_ms": 86.733,
+          "queries_done": 1,
+          "results": [
+            {
+              "first_ms": 417.562,
+              "hash": "091344cc76d81babfa083f4bed1ab8cd",
+              "ok": true,
+              "p50_ms": 417.562,
+              "p95_ms": 417.562,
+              "query": "series.count",
+              "rows": 100,
+              "timings_ms": [
+                417.562
+              ]
+            }
+          ],
+          "vmhwm_kb": 363744,
+          "vmrss_kb": 342528,
+          "vmsize_kb": 6557732,
+          "wall_s": null
+        },
+        {
+          "open_ms": 78.857,
+          "queries_done": 1,
+          "results": [
+            {
+              "first_ms": 425.699,
+              "hash": "091344cc76d81babfa083f4bed1ab8cd",
+              "ok": true,
+              "p50_ms": 425.699,
+              "p95_ms": 425.699,
+              "query": "series.count",
+              "rows": 100,
+              "timings_ms": [
+                425.699
+              ]
+            }
+          ],
+          "vmhwm_kb": 364836,
+          "vmrss_kb": 344032,
+          "vmsize_kb": 6499880,
+          "wall_s": null
+        },
+        {
+          "open_ms": 82.342,
+          "queries_done": 1,
+          "results": [
+            {
+              "first_ms": 420.51,
+              "hash": "091344cc76d81babfa083f4bed1ab8cd",
+              "ok": true,
+              "p50_ms": 420.51,
+              "p95_ms": 420.51,
+              "query": "series.count",
+              "rows": 100,
+              "timings_ms": [
+                420.51
+              ]
+            }
+          ],
+          "vmhwm_kb": 360368,
+          "vmrss_kb": 339468,
+          "vmsize_kb": 6606880,
+          "wall_s": null
+        },
+        {
+          "open_ms": 81.476,
+          "queries_done": 1,
+          "results": [
+            {
+              "first_ms": 422.75,
+              "hash": "091344cc76d81babfa083f4bed1ab8cd",
+              "ok": true,
+              "p50_ms": 422.75,
+              "p95_ms": 422.75,
+              "query": "series.count",
+              "rows": 100,
+              "timings_ms": [
+                422.75
+              ]
+            }
+          ],
+          "vmhwm_kb": 361292,
+          "vmrss_kb": 340012,
+          "vmsize_kb": 6556196,
+          "wall_s": null
+        },
+        {
+          "open_ms": 85.029,
+          "queries_done": 1,
+          "results": [
+            {
+              "first_ms": 427.537,
+              "hash": "091344cc76d81babfa083f4bed1ab8cd",
+              "ok": true,
+              "p50_ms": 427.537,
+              "p95_ms": 427.537,
+              "query": "series.count",
+              "rows": 100,
+              "timings_ms": [
+                427.537
+              ]
+            }
+          ],
+          "vmhwm_kb": 361880,
+          "vmrss_kb": 339804,
+          "vmsize_kb": 6631516,
+          "wall_s": null
+        }
+      ]
+    },
+    {
+      "backend": "duckdb",
+      "first_ms": [
+        355.714,
+        362.424,
+        366.942,
+        369.388,
+        381.333
+      ],
+      "median_first_ms": 366.942,
+      "median_open_ms": 81.093,
+      "open_ms": [
+        80.351,
+        80.641,
+        81.093,
+        81.613,
+        87.533
+      ],
+      "query": "coactive.narrow",
+      "state": "process_cold",
+      "trials": [
+        {
+          "open_ms": 87.533,
+          "queries_done": 1,
+          "results": [
+            {
+              "first_ms": 366.942,
+              "hash": "71ca856490ed9edb9f9c9200120d2970",
+              "ok": true,
+              "p50_ms": 366.942,
+              "p95_ms": 366.942,
+              "query": "coactive.narrow",
+              "rows": 401,
+              "timings_ms": [
+                366.942
+              ]
+            }
+          ],
+          "vmhwm_kb": 218308,
+          "vmrss_kb": 218308,
+          "vmsize_kb": 5336980,
+          "wall_s": null
+        },
+        {
+          "open_ms": 80.351,
+          "queries_done": 1,
+          "results": [
+            {
+              "first_ms": 362.424,
+              "hash": "71ca856490ed9edb9f9c9200120d2970",
+              "ok": true,
+              "p50_ms": 362.424,
+              "p95_ms": 362.424,
+              "query": "coactive.narrow",
+              "rows": 401,
+              "timings_ms": [
+                362.424
+              ]
+            }
+          ],
+          "vmhwm_kb": 219260,
+          "vmrss_kb": 219260,
+          "vmsize_kb": 5477780,
+          "wall_s": null
+        },
+        {
+          "open_ms": 81.613,
+          "queries_done": 1,
+          "results": [
+            {
+              "first_ms": 369.388,
+              "hash": "71ca856490ed9edb9f9c9200120d2970",
+              "ok": true,
+              "p50_ms": 369.388,
+              "p95_ms": 369.388,
+              "query": "coactive.narrow",
+              "rows": 401,
+              "timings_ms": [
+                369.388
+              ]
+            }
+          ],
+          "vmhwm_kb": 219400,
+          "vmrss_kb": 219400,
+          "vmsize_kb": 5485564,
+          "wall_s": null
+        },
+        {
+          "open_ms": 81.093,
+          "queries_done": 1,
+          "results": [
+            {
+              "first_ms": 381.333,
+              "hash": "71ca856490ed9edb9f9c9200120d2970",
+              "ok": true,
+              "p50_ms": 381.333,
+              "p95_ms": 381.333,
+              "query": "coactive.narrow",
+              "rows": 401,
+              "timings_ms": [
+                381.333
+              ]
+            }
+          ],
+          "vmhwm_kb": 218908,
+          "vmrss_kb": 218908,
+          "vmsize_kb": 5413260,
+          "wall_s": null
+        },
+        {
+          "open_ms": 80.641,
+          "queries_done": 1,
+          "results": [
+            {
+              "first_ms": 355.714,
+              "hash": "71ca856490ed9edb9f9c9200120d2970",
+              "ok": true,
+              "p50_ms": 355.714,
+              "p95_ms": 355.714,
+              "query": "coactive.narrow",
+              "rows": 401,
+              "timings_ms": [
+                355.714
+              ]
+            }
+          ],
+          "vmhwm_kb": 219388,
+          "vmrss_kb": 219388,
+          "vmsize_kb": 5477276,
+          "wall_s": null
+        }
+      ]
+    },
+    {
+      "backend": "duckdb",
+      "first_ms": [
+        806.31,
+        818.567,
+        836.301,
+        844.548,
+        895.336
+      ],
+      "median_first_ms": 836.301,
+      "median_open_ms": 82.558,
+      "open_ms": [
+        80.963,
+        81.936,
+        82.558,
+        83.009,
+        83.203
+      ],
+      "query": "diff.global",
+      "state": "process_cold",
+      "trials": [
+        {
+          "open_ms": 80.963,
+          "queries_done": 1,
+          "results": [
+            {
+              "first_ms": 818.567,
+              "hash": "1302008dbe499cc1a2ef467c5d843316",
+              "ok": true,
+              "p50_ms": 818.567,
+              "p95_ms": 818.567,
+              "query": "diff.global",
+              "rows": 74999,
+              "timings_ms": [
+                818.567
+              ]
+            }
+          ],
+          "vmhwm_kb": 254268,
+          "vmrss_kb": 221552,
+          "vmsize_kb": 8036240,
+          "wall_s": null
+        },
+        {
+          "open_ms": 81.936,
+          "queries_done": 1,
+          "results": [
+            {
+              "first_ms": 806.31,
+              "hash": "1302008dbe499cc1a2ef467c5d843316",
+              "ok": true,
+              "p50_ms": 806.31,
+              "p95_ms": 806.31,
+              "query": "diff.global",
+              "rows": 74999,
+              "timings_ms": [
+                806.31
+              ]
+            }
+          ],
+          "vmhwm_kb": 248016,
+          "vmrss_kb": 234100,
+          "vmsize_kb": 8156020,
+          "wall_s": null
+        },
+        {
+          "open_ms": 82.558,
+          "queries_done": 1,
+          "results": [
+            {
+              "first_ms": 895.336,
+              "hash": "1302008dbe499cc1a2ef467c5d843316",
+              "ok": true,
+              "p50_ms": 895.336,
+              "p95_ms": 895.336,
+              "query": "diff.global",
+              "rows": 74999,
+              "timings_ms": [
+                895.336
+              ]
+            }
+          ],
+          "vmhwm_kb": 257252,
+          "vmrss_kb": 224604,
+          "vmsize_kb": 7930208,
+          "wall_s": null
+        },
+        {
+          "open_ms": 83.203,
+          "queries_done": 1,
+          "results": [
+            {
+              "first_ms": 844.548,
+              "hash": "1302008dbe499cc1a2ef467c5d843316",
+              "ok": true,
+              "p50_ms": 844.548,
+              "p95_ms": 844.548,
+              "query": "diff.global",
+              "rows": 74999,
+              "timings_ms": [
+                844.548
+              ]
+            }
+          ],
+          "vmhwm_kb": 255000,
+          "vmrss_kb": 221364,
+          "vmsize_kb": 7970908,
+          "wall_s": null
+        },
+        {
+          "open_ms": 83.009,
+          "queries_done": 1,
+          "results": [
+            {
+              "first_ms": 836.301,
+              "hash": "1302008dbe499cc1a2ef467c5d843316",
+              "ok": true,
+              "p50_ms": 836.301,
+              "p95_ms": 836.301,
+              "query": "diff.global",
+              "rows": 74999,
+              "timings_ms": [
+                836.301
+              ]
+            }
+          ],
+          "vmhwm_kb": 254796,
+          "vmrss_kb": 225516,
+          "vmsize_kb": 8076692,
+          "wall_s": null
+        }
+      ]
+    },
+    {
+      "backend": "duckdb",
+      "first_ms": [
+        341.381,
+        346.583,
+        351.559,
+        360.195,
+        363.015
+      ],
+      "median_first_ms": 351.559,
+      "median_open_ms": 81.721,
+      "open_ms": [
+        78.096,
+        80.363,
+        81.721,
+        82.133,
+        83.902
+      ],
+      "query": "motif.filtered",
+      "state": "process_cold",
+      "trials": [
+        {
+          "open_ms": 80.363,
+          "queries_done": 1,
+          "results": [
+            {
+              "first_ms": 346.583,
+              "hash": "92af8a07bad5516ee7b6a41d297fb7ea",
+              "ok": true,
+              "p50_ms": 346.583,
+              "p95_ms": 346.583,
+              "query": "motif.filtered",
+              "rows": 385,
+              "timings_ms": [
+                346.583
+              ]
+            }
+          ],
+          "vmhwm_kb": 220484,
+          "vmrss_kb": 220484,
+          "vmsize_kb": 5432672,
+          "wall_s": null
+        },
+        {
+          "open_ms": 78.096,
+          "queries_done": 1,
+          "results": [
+            {
+              "first_ms": 360.195,
+              "hash": "92af8a07bad5516ee7b6a41d297fb7ea",
+              "ok": true,
+              "p50_ms": 360.195,
+              "p95_ms": 360.195,
+              "query": "motif.filtered",
+              "rows": 385,
+              "timings_ms": [
+                360.195
+              ]
+            }
+          ],
+          "vmhwm_kb": 218724,
+          "vmrss_kb": 218724,
+          "vmsize_kb": 5374324,
+          "wall_s": null
+        },
+        {
+          "open_ms": 82.133,
+          "queries_done": 1,
+          "results": [
+            {
+              "first_ms": 351.559,
+              "hash": "92af8a07bad5516ee7b6a41d297fb7ea",
+              "ok": true,
+              "p50_ms": 351.559,
+              "p95_ms": 351.559,
+              "query": "motif.filtered",
+              "rows": 385,
+              "timings_ms": [
+                351.559
+              ]
+            }
+          ],
+          "vmhwm_kb": 220504,
+          "vmrss_kb": 220504,
+          "vmsize_kb": 5446008,
+          "wall_s": null
+        },
+        {
+          "open_ms": 83.902,
+          "queries_done": 1,
+          "results": [
+            {
+              "first_ms": 363.015,
+              "hash": "92af8a07bad5516ee7b6a41d297fb7ea",
+              "ok": true,
+              "p50_ms": 363.015,
+              "p95_ms": 363.015,
+              "query": "motif.filtered",
+              "rows": 385,
+              "timings_ms": [
+                363.015
+              ]
+            }
+          ],
+          "vmhwm_kb": 221336,
+          "vmrss_kb": 221336,
+          "vmsize_kb": 5297500,
+          "wall_s": null
+        },
+        {
+          "open_ms": 81.721,
+          "queries_done": 1,
+          "results": [
+            {
+              "first_ms": 341.381,
+              "hash": "92af8a07bad5516ee7b6a41d297fb7ea",
+              "ok": true,
+              "p50_ms": 341.381,
+              "p95_ms": 341.381,
+              "query": "motif.filtered",
+              "rows": 385,
+              "timings_ms": [
+                341.381
+              ]
+            }
+          ],
+          "vmhwm_kb": 219704,
+          "vmrss_kb": 219704,
+          "vmsize_kb": 5436384,
+          "wall_s": null
+        }
+      ]
+    },
+    {
+      "backend": "duckdb",
+      "first_ms": [
+        290.984,
+        293.022,
+        295.15,
+        295.679,
+        310.373
+      ],
+      "median_first_ms": 295.15,
+      "median_open_ms": 92.667,
+      "open_ms": [
+        89.656,
+        89.969,
+        92.667,
+        92.845,
+        94.08
+      ],
+      "query": "hist.single",
+      "state": "cold",
+      "trials": [
+        {
+          "open_ms": 92.845,
+          "queries_done": 1,
+          "results": [
+            {
+              "first_ms": 295.15,
+              "hash": "9527ee69a3c9584deab88367ac78e5bf",
+              "ok": true,
+              "p50_ms": 295.15,
+              "p95_ms": 295.15,
+              "query": "hist.single",
+              "rows": 2,
+              "timings_ms": [
+                295.15
+              ]
+            }
+          ],
+          "vmhwm_kb": 170564,
+          "vmrss_kb": 170564,
+          "vmsize_kb": 5227408,
+          "wall_s": null
+        },
+        {
+          "open_ms": 92.667,
+          "queries_done": 1,
+          "results": [
+            {
+              "first_ms": 290.984,
+              "hash": "9527ee69a3c9584deab88367ac78e5bf",
+              "ok": true,
+              "p50_ms": 290.984,
+              "p95_ms": 290.984,
+              "query": "hist.single",
+              "rows": 2,
+              "timings_ms": [
+                290.984
+              ]
+            }
+          ],
+          "vmhwm_kb": 169412,
+          "vmrss_kb": 169412,
+          "vmsize_kb": 5004168,
+          "wall_s": null
+        },
+        {
+          "open_ms": 89.656,
+          "queries_done": 1,
+          "results": [
+            {
+              "first_ms": 295.679,
+              "hash": "9527ee69a3c9584deab88367ac78e5bf",
+              "ok": true,
+              "p50_ms": 295.679,
+              "p95_ms": 295.679,
+              "query": "hist.single",
+              "rows": 2,
+              "timings_ms": [
+                295.679
+              ]
+            }
+          ],
+          "vmhwm_kb": 169064,
+          "vmrss_kb": 169064,
+          "vmsize_kb": 5024784,
+          "wall_s": null
+        },
+        {
+          "open_ms": 94.08,
+          "queries_done": 1,
+          "results": [
+            {
+              "first_ms": 310.373,
+              "hash": "9527ee69a3c9584deab88367ac78e5bf",
+              "ok": true,
+              "p50_ms": 310.373,
+              "p95_ms": 310.373,
+              "query": "hist.single",
+              "rows": 2,
+              "timings_ms": [
+                310.373
+              ]
+            }
+          ],
+          "vmhwm_kb": 169860,
+          "vmrss_kb": 169860,
+          "vmsize_kb": 5208972,
+          "wall_s": null
+        },
+        {
+          "open_ms": 89.969,
+          "queries_done": 1,
+          "results": [
+            {
+              "first_ms": 293.022,
+              "hash": "9527ee69a3c9584deab88367ac78e5bf",
+              "ok": true,
+              "p50_ms": 293.022,
+              "p95_ms": 293.022,
+              "query": "hist.single",
+              "rows": 2,
+              "timings_ms": [
+                293.022
+              ]
+            }
+          ],
+          "vmhwm_kb": 169544,
+          "vmrss_kb": 169544,
+          "vmsize_kb": 5078932,
+          "wall_s": null
+        }
+      ]
+    },
+    {
+      "backend": "duckdb",
+      "first_ms": [
+        486.283,
+        490.089,
+        494.564,
+        499.649,
+        512.826
+      ],
+      "median_first_ms": 494.564,
+      "median_open_ms": 88.554,
+      "open_ms": [
+        87.37,
+        88.26,
+        88.554,
+        89.97,
+        92.777
+      ],
+      "query": "snap.hop2",
+      "state": "cold",
+      "trials": [
+        {
+          "open_ms": 92.777,
+          "queries_done": 1,
+          "results": [
+            {
+              "first_ms": 512.826,
+              "hash": "618e4234d921a32a58f28bacf19e998b",
+              "ok": true,
+              "p50_ms": 512.826,
+              "p95_ms": 512.826,
+              "query": "snap.hop2",
+              "rows": 135,
+              "timings_ms": [
+                512.826
+              ]
+            }
+          ],
+          "vmhwm_kb": 205976,
+          "vmrss_kb": 198112,
+          "vmsize_kb": 7805112,
+          "wall_s": null
+        },
+        {
+          "open_ms": 88.26,
+          "queries_done": 1,
+          "results": [
+            {
+              "first_ms": 486.283,
+              "hash": "618e4234d921a32a58f28bacf19e998b",
+              "ok": true,
+              "p50_ms": 486.283,
+              "p95_ms": 486.283,
+              "query": "snap.hop2",
+              "rows": 135,
+              "timings_ms": [
+                486.283
+              ]
+            }
+          ],
+          "vmhwm_kb": 202388,
+          "vmrss_kb": 193996,
+          "vmsize_kb": 7672936,
+          "wall_s": null
+        },
+        {
+          "open_ms": 87.37,
+          "queries_done": 1,
+          "results": [
+            {
+              "first_ms": 494.564,
+              "hash": "618e4234d921a32a58f28bacf19e998b",
+              "ok": true,
+              "p50_ms": 494.564,
+              "p95_ms": 494.564,
+              "query": "snap.hop2",
+              "rows": 135,
+              "timings_ms": [
+                494.564
+              ]
+            }
+          ],
+          "vmhwm_kb": 204052,
+          "vmrss_kb": 195688,
+          "vmsize_kb": 7812192,
+          "wall_s": null
+        },
+        {
+          "open_ms": 88.554,
+          "queries_done": 1,
+          "results": [
+            {
+              "first_ms": 499.649,
+              "hash": "618e4234d921a32a58f28bacf19e998b",
+              "ok": true,
+              "p50_ms": 499.649,
+              "p95_ms": 499.649,
+              "query": "snap.hop2",
+              "rows": 135,
+              "timings_ms": [
+                499.649
+              ]
+            }
+          ],
+          "vmhwm_kb": 207072,
+          "vmrss_kb": 198704,
+          "vmsize_kb": 7819668,
+          "wall_s": null
+        },
+        {
+          "open_ms": 89.97,
+          "queries_done": 1,
+          "results": [
+            {
+              "first_ms": 490.089,
+              "hash": "618e4234d921a32a58f28bacf19e998b",
+              "ok": true,
+              "p50_ms": 490.089,
+              "p95_ms": 490.089,
+              "query": "snap.hop2",
+              "rows": 135,
+              "timings_ms": [
+                490.089
+              ]
+            }
+          ],
+          "vmhwm_kb": 202500,
+          "vmrss_kb": 194128,
+          "vmsize_kb": 7668704,
+          "wall_s": null
+        }
+      ]
+    },
+    {
+      "backend": "duckdb",
+      "first_ms": [
+        446.19,
+        461.393,
+        461.747,
+        465.381,
+        472.298
+      ],
+      "median_first_ms": 461.747,
+      "median_open_ms": 88.804,
+      "open_ms": [
+        84.857,
+        86.418,
+        88.804,
+        89.064,
+        90.657
+      ],
+      "query": "series.count",
+      "state": "cold",
+      "trials": [
+        {
+          "open_ms": 88.804,
+          "queries_done": 1,
+          "results": [
+            {
+              "first_ms": 465.381,
+              "hash": "091344cc76d81babfa083f4bed1ab8cd",
+              "ok": true,
+              "p50_ms": 465.381,
+              "p95_ms": 465.381,
+              "query": "series.count",
+              "rows": 100,
+              "timings_ms": [
+                465.381
+              ]
+            }
+          ],
+          "vmhwm_kb": 364416,
+          "vmrss_kb": 341436,
+          "vmsize_kb": 9113172,
+          "wall_s": null
+        },
+        {
+          "open_ms": 89.064,
+          "queries_done": 1,
+          "results": [
+            {
+              "first_ms": 472.298,
+              "hash": "091344cc76d81babfa083f4bed1ab8cd",
+              "ok": true,
+              "p50_ms": 472.298,
+              "p95_ms": 472.298,
+              "query": "series.count",
+              "rows": 100,
+              "timings_ms": [
+                472.298
+              ]
+            }
+          ],
+          "vmhwm_kb": 361480,
+          "vmrss_kb": 340516,
+          "vmsize_kb": 9173544,
+          "wall_s": null
+        },
+        {
+          "open_ms": 90.657,
+          "queries_done": 1,
+          "results": [
+            {
+              "first_ms": 461.747,
+              "hash": "091344cc76d81babfa083f4bed1ab8cd",
+              "ok": true,
+              "p50_ms": 461.747,
+              "p95_ms": 461.747,
+              "query": "series.count",
+              "rows": 100,
+              "timings_ms": [
+                461.747
+              ]
+            }
+          ],
+          "vmhwm_kb": 362268,
+          "vmrss_kb": 340868,
+          "vmsize_kb": 9182756,
+          "wall_s": null
+        },
+        {
+          "open_ms": 86.418,
+          "queries_done": 1,
+          "results": [
+            {
+              "first_ms": 461.393,
+              "hash": "091344cc76d81babfa083f4bed1ab8cd",
+              "ok": true,
+              "p50_ms": 461.393,
+              "p95_ms": 461.393,
+              "query": "series.count",
+              "rows": 100,
+              "timings_ms": [
+                461.393
+              ]
+            }
+          ],
+          "vmhwm_kb": 361100,
+          "vmrss_kb": 339120,
+          "vmsize_kb": 9186856,
+          "wall_s": null
+        },
+        {
+          "open_ms": 84.857,
+          "queries_done": 1,
+          "results": [
+            {
+              "first_ms": 446.19,
+              "hash": "091344cc76d81babfa083f4bed1ab8cd",
+              "ok": true,
+              "p50_ms": 446.19,
+              "p95_ms": 446.19,
+              "query": "series.count",
+              "rows": 100,
+              "timings_ms": [
+                446.19
+              ]
+            }
+          ],
+          "vmhwm_kb": 360964,
+          "vmrss_kb": 338020,
+          "vmsize_kb": 8395308,
+          "wall_s": null
+        }
+      ]
+    },
+    {
+      "backend": "duckdb",
+      "first_ms": [
+        417.345,
+        417.987,
+        424.072,
+        430.295,
+        436.126
+      ],
+      "median_first_ms": 424.072,
+      "median_open_ms": 86.757,
+      "open_ms": [
+        84.321,
+        85.884,
+        86.757,
+        87.514,
+        88.208
+      ],
+      "query": "coactive.narrow",
+      "state": "cold",
+      "trials": [
+        {
+          "open_ms": 88.208,
+          "queries_done": 1,
+          "results": [
+            {
+              "first_ms": 430.295,
+              "hash": "71ca856490ed9edb9f9c9200120d2970",
+              "ok": true,
+              "p50_ms": 430.295,
+              "p95_ms": 430.295,
+              "query": "coactive.narrow",
+              "rows": 401,
+              "timings_ms": [
+                430.295
+              ]
+            }
+          ],
+          "vmhwm_kb": 219160,
+          "vmrss_kb": 219160,
+          "vmsize_kb": 5451540,
+          "wall_s": null
+        },
+        {
+          "open_ms": 84.321,
+          "queries_done": 1,
+          "results": [
+            {
+              "first_ms": 417.345,
+              "hash": "71ca856490ed9edb9f9c9200120d2970",
+              "ok": true,
+              "p50_ms": 417.345,
+              "p95_ms": 417.345,
+              "query": "coactive.narrow",
+              "rows": 401,
+              "timings_ms": [
+                417.345
+              ]
+            }
+          ],
+          "vmhwm_kb": 219652,
+          "vmrss_kb": 219652,
+          "vmsize_kb": 5473684,
+          "wall_s": null
+        },
+        {
+          "open_ms": 86.757,
+          "queries_done": 1,
+          "results": [
+            {
+              "first_ms": 436.126,
+              "hash": "71ca856490ed9edb9f9c9200120d2970",
+              "ok": true,
+              "p50_ms": 436.126,
+              "p95_ms": 436.126,
+              "query": "coactive.narrow",
+              "rows": 401,
+              "timings_ms": [
+                436.126
+              ]
+            }
+          ],
+          "vmhwm_kb": 218600,
+          "vmrss_kb": 218600,
+          "vmsize_kb": 5532052,
+          "wall_s": null
+        },
+        {
+          "open_ms": 85.884,
+          "queries_done": 1,
+          "results": [
+            {
+              "first_ms": 424.072,
+              "hash": "71ca856490ed9edb9f9c9200120d2970",
+              "ok": true,
+              "p50_ms": 424.072,
+              "p95_ms": 424.072,
+              "query": "coactive.narrow",
+              "rows": 401,
+              "timings_ms": [
+                424.072
+              ]
+            }
+          ],
+          "vmhwm_kb": 218992,
+          "vmrss_kb": 218992,
+          "vmsize_kb": 5470176,
+          "wall_s": null
+        },
+        {
+          "open_ms": 87.514,
+          "queries_done": 1,
+          "results": [
+            {
+              "first_ms": 417.987,
+              "hash": "71ca856490ed9edb9f9c9200120d2970",
+              "ok": true,
+              "p50_ms": 417.987,
+              "p95_ms": 417.987,
+              "query": "coactive.narrow",
+              "rows": 401,
+              "timings_ms": [
+                417.987
+              ]
+            }
+          ],
+          "vmhwm_kb": 218508,
+          "vmrss_kb": 218508,
+          "vmsize_kb": 5463448,
+          "wall_s": null
+        }
+      ]
+    },
+    {
+      "backend": "duckdb",
+      "first_ms": [
+        873.137,
+        879.95,
+        880.494,
+        883.345,
+        893.166
+      ],
+      "median_first_ms": 880.494,
+      "median_open_ms": 87.18,
+      "open_ms": [
+        86.154,
+        86.182,
+        87.18,
+        87.554,
+        87.678
+      ],
+      "query": "diff.global",
+      "state": "cold",
+      "trials": [
+        {
+          "open_ms": 87.554,
+          "queries_done": 1,
+          "results": [
+            {
+              "first_ms": 880.494,
+              "hash": "1302008dbe499cc1a2ef467c5d843316",
+              "ok": true,
+              "p50_ms": 880.494,
+              "p95_ms": 880.494,
+              "query": "diff.global",
+              "rows": 74999,
+              "timings_ms": [
+                880.494
+              ]
+            }
+          ],
+          "vmhwm_kb": 253680,
+          "vmrss_kb": 221748,
+          "vmsize_kb": 8063456,
+          "wall_s": null
+        },
+        {
+          "open_ms": 86.182,
+          "queries_done": 1,
+          "results": [
+            {
+              "first_ms": 879.95,
+              "hash": "1302008dbe499cc1a2ef467c5d843316",
+              "ok": true,
+              "p50_ms": 879.95,
+              "p95_ms": 879.95,
+              "query": "diff.global",
+              "rows": 74999,
+              "timings_ms": [
+                879.95
+              ]
+            }
+          ],
+          "vmhwm_kb": 249540,
+          "vmrss_kb": 217680,
+          "vmsize_kb": 7979968,
+          "wall_s": null
+        },
+        {
+          "open_ms": 86.154,
+          "queries_done": 1,
+          "results": [
+            {
+              "first_ms": 893.166,
+              "hash": "1302008dbe499cc1a2ef467c5d843316",
+              "ok": true,
+              "p50_ms": 893.166,
+              "p95_ms": 893.166,
+              "query": "diff.global",
+              "rows": 74999,
+              "timings_ms": [
+                893.166
+              ]
+            }
+          ],
+          "vmhwm_kb": 252952,
+          "vmrss_kb": 222264,
+          "vmsize_kb": 8060680,
+          "wall_s": null
+        },
+        {
+          "open_ms": 87.678,
+          "queries_done": 1,
+          "results": [
+            {
+              "first_ms": 873.137,
+              "hash": "1302008dbe499cc1a2ef467c5d843316",
+              "ok": true,
+              "p50_ms": 873.137,
+              "p95_ms": 873.137,
+              "query": "diff.global",
+              "rows": 74999,
+              "timings_ms": [
+                873.137
+              ]
+            }
+          ],
+          "vmhwm_kb": 253556,
+          "vmrss_kb": 240664,
+          "vmsize_kb": 8160576,
+          "wall_s": null
+        },
+        {
+          "open_ms": 87.18,
+          "queries_done": 1,
+          "results": [
+            {
+              "first_ms": 883.345,
+              "hash": "1302008dbe499cc1a2ef467c5d843316",
+              "ok": true,
+              "p50_ms": 883.345,
+              "p95_ms": 883.345,
+              "query": "diff.global",
+              "rows": 74999,
+              "timings_ms": [
+                883.345
+              ]
+            }
+          ],
+          "vmhwm_kb": 249168,
+          "vmrss_kb": 216736,
+          "vmsize_kb": 7993148,
+          "wall_s": null
+        }
+      ]
+    },
+    {
+      "backend": "duckdb",
+      "first_ms": [
+        401.897,
+        403.9,
+        404.1,
+        413.387,
+        415.229
+      ],
+      "median_first_ms": 404.1,
+      "median_open_ms": 83.572,
+      "open_ms": [
+        82.736,
+        83.175,
+        83.572,
+        84.414,
+        89.431
+      ],
+      "query": "motif.filtered",
+      "state": "cold",
+      "trials": [
+        {
+          "open_ms": 89.431,
+          "queries_done": 1,
+          "results": [
+            {
+              "first_ms": 415.229,
+              "hash": "92af8a07bad5516ee7b6a41d297fb7ea",
+              "ok": true,
+              "p50_ms": 415.229,
+              "p95_ms": 415.229,
+              "query": "motif.filtered",
+              "rows": 385,
+              "timings_ms": [
+                415.229
+              ]
+            }
+          ],
+          "vmhwm_kb": 221860,
+          "vmrss_kb": 221860,
+          "vmsize_kb": 5382112,
+          "wall_s": null
+        },
+        {
+          "open_ms": 83.572,
+          "queries_done": 1,
+          "results": [
+            {
+              "first_ms": 413.387,
+              "hash": "92af8a07bad5516ee7b6a41d297fb7ea",
+              "ok": true,
+              "p50_ms": 413.387,
+              "p95_ms": 413.387,
+              "query": "motif.filtered",
+              "rows": 385,
+              "timings_ms": [
+                413.387
+              ]
+            }
+          ],
+          "vmhwm_kb": 220168,
+          "vmrss_kb": 220168,
+          "vmsize_kb": 5380460,
+          "wall_s": null
+        },
+        {
+          "open_ms": 82.736,
+          "queries_done": 1,
+          "results": [
+            {
+              "first_ms": 401.897,
+              "hash": "92af8a07bad5516ee7b6a41d297fb7ea",
+              "ok": true,
+              "p50_ms": 401.897,
+              "p95_ms": 401.897,
+              "query": "motif.filtered",
+              "rows": 385,
+              "timings_ms": [
+                401.897
+              ]
+            }
+          ],
+          "vmhwm_kb": 220776,
+          "vmrss_kb": 220776,
+          "vmsize_kb": 5372260,
+          "wall_s": null
+        },
+        {
+          "open_ms": 84.414,
+          "queries_done": 1,
+          "results": [
+            {
+              "first_ms": 404.1,
+              "hash": "92af8a07bad5516ee7b6a41d297fb7ea",
+              "ok": true,
+              "p50_ms": 404.1,
+              "p95_ms": 404.1,
+              "query": "motif.filtered",
+              "rows": 385,
+              "timings_ms": [
+                404.1
+              ]
+            }
+          ],
+          "vmhwm_kb": 219612,
+          "vmrss_kb": 219612,
+          "vmsize_kb": 5367156,
+          "wall_s": null
+        },
+        {
+          "open_ms": 83.175,
+          "queries_done": 1,
+          "results": [
+            {
+              "first_ms": 403.9,
+              "hash": "92af8a07bad5516ee7b6a41d297fb7ea",
+              "ok": true,
+              "p50_ms": 403.9,
+              "p95_ms": 403.9,
+              "query": "motif.filtered",
+              "rows": 385,
+              "timings_ms": [
+                403.9
+              ]
+            }
+          ],
+          "vmhwm_kb": 220424,
+          "vmrss_kb": 220424,
+          "vmsize_kb": 5451624,
+          "wall_s": null
+        }
+      ]
+    }
+  ],
+  "systems": [
+    "native",
+    "duckdb"
+  ],
+  "trials": 5
+}
