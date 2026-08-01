@@ -14,6 +14,9 @@ supersessions are part of the record:
 - eval-1m-bitemporal.json — §13 current-vs-bi-temporal overhead, density
   sweep 0–20% (its `agree:false` is the run gate miscounting a one-sided
   guardrail refusal at 20%; zero hash mismatches — see eval_bitemporal.md)
+- eval-10m-bitemporal.json — §13 at 10M, 0.1% density (`agree:false` is
+  the same gate miscount, there on the two-sided pre-reprice guardrail
+  refusals of paths.k and reach.window; zero hash mismatches)
 
 Plan §26 asks for parquet; JSON was chosen instead: the records are small
 (&lt;400 KB total), diffable, and dependency-free to read.

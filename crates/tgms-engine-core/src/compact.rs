@@ -374,6 +374,32 @@ mod tests {
     }
 
     #[test]
+    fn a_close_after_compaction_resolves_through_the_new_segments() {
+        // the postings-vs-manifest staleness rule: `seeded`'s corrections
+        // built the vid postings over the pre-compaction segments, and
+        // compaction then replaced every file in the manifest. A later
+        // correction must land in a surviving segment — a stale candidate
+        // is filtered out before any file is opened.
+        let (_root, mut s, all) = seeded("close-after-compact");
+        s.compact().unwrap();
+
+        s.begin(300).unwrap();
+        s.close_version(RowKind::Edge, all[3].vid, 300).unwrap();
+        s.commit(EventLogRef::default()).unwrap();
+
+        for r in s.all_edge_versions().unwrap() {
+            let expected = if r.vid == all[3].vid.to_hex() {
+                300
+            } else if r.vid == all[1].vid.to_hex() || r.vid == all[7].vid.to_hex() {
+                200
+            } else {
+                OPEN_END
+            };
+            assert_eq!(r.tt_e, expected, "vid {}", r.vid);
+        }
+    }
+
+    #[test]
     fn historical_queries_agree_either_side_of_a_compaction() {
         let (_root, mut s, _) = seeded("historical");
         let sample = [99i64, 100, 101, 150, 199, 200, 201, OPEN_END];

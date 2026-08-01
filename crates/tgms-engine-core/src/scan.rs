@@ -118,14 +118,14 @@ pub struct ScanTarget<'a, S: SegmentSource> {
 /// merge below is a general k-way merge rather than a concatenation.
 pub struct ScanSet<'a, S: SegmentSource> {
     targets: Vec<ScanTarget<'a, S>>,
-    closes: CloseIndex,
+    closes: std::sync::Arc<CloseIndex>,
 }
 
 impl<'a, S: SegmentSource> ScanSet<'a, S> {
     pub fn new(targets: Vec<ScanTarget<'a, S>>) -> Self {
         Self {
             targets,
-            closes: CloseIndex::default(),
+            closes: std::sync::Arc::default(),
         }
     }
 
@@ -146,7 +146,7 @@ impl<'a, S: SegmentSource> ScanSet<'a, S> {
 
     /// Attach the closes a manifest generation makes visible. Without this a
     /// scan sees every stored row as still believed.
-    pub fn with_closes(mut self, closes: CloseIndex) -> Self {
+    pub fn with_closes(mut self, closes: std::sync::Arc<CloseIndex>) -> Self {
         self.closes = closes;
         self
     }

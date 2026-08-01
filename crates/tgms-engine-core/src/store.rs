@@ -78,6 +78,14 @@ pub struct NativeStore {
     /// time this process opens it, and trusted thereafter. Segments are
     /// immutable, so once verified they stay valid for the session.
     verified: std::sync::Mutex<std::collections::HashSet<String>>,
+    /// The close index the current generation makes visible, built once per
+    /// generation and shared by every read (keyed by manifest generation).
+    /// Sound for the same reason the segment cache is: close-run files are
+    /// immutable, and the visible set of runs only changes when a commit
+    /// publishes a new manifest — so within one generation the rebuilt index
+    /// is always identical. Without this, every point read re-reads every
+    /// run file, which made correction-heavy replay quadratic.
+    close_cache: std::sync::Mutex<Option<(u64, std::sync::Arc<CloseIndex>)>>,
     /// Open segments, by file name. Sound because segment files are
     /// immutable — closes live in separate .tgc files and compaction writes
     /// new files — so a cached entry can never be stale. This is also what
@@ -131,6 +139,7 @@ impl NativeStore {
             edge_postings: std::sync::Mutex::new(Postings::default()),
             node_postings: std::sync::Mutex::new(Postings::default()),
             verified: std::sync::Mutex::new(std::collections::HashSet::new()),
+            close_cache: std::sync::Mutex::new(None),
             segments: std::sync::Mutex::new(std::collections::HashMap::new()),
             batch_tt: None,
             current_only,
@@ -416,8 +425,10 @@ impl NativeStore {
 
     /// Closes this generation makes visible, resolved for scanning. A reader
     /// on an older generation loads that generation's runs and therefore sees
-    /// that generation's beliefs — never a newer correction.
-    pub fn close_index(&self) -> Result<CloseIndex> {
+    /// that generation's beliefs — never a newer correction: each handle
+    /// caches against its *own* manifest generation, so a pinned older view
+    /// serves its own generation's closes, not a newer handle's.
+    pub fn close_index(&self) -> Result<std::sync::Arc<CloseIndex>> {
         if self.current_only {
             // the stripped configuration has no closes by construction; a
             // run appearing anyway means the marker and the manifest
@@ -428,13 +439,27 @@ impl NativeStore {
                      marker does not match the manifest",
                 ));
             }
-            return Ok(CloseIndex::default());
+            return Ok(std::sync::Arc::new(CloseIndex::default()));
+        }
+        let generation = self.manifest.generation;
+        if let Some((cached_gen, idx)) = self
+            .close_cache
+            .lock()
+            .expect("close-cache mutex poisoned")
+            .as_ref()
+        {
+            if *cached_gen == generation {
+                return Ok(idx.clone());
+            }
         }
         let mut records = Vec::new();
         for r in &self.manifest.close_runs {
             records.extend(read_close_run(&self.root.join(&r.file))?);
         }
-        Ok(CloseIndex::from_records(records))
+        let idx = std::sync::Arc::new(CloseIndex::from_records(records));
+        *self.close_cache.lock().expect("close-cache mutex poisoned") =
+            Some((generation, idx.clone()));
+        Ok(idx)
     }
 
     pub fn in_batch(&self) -> bool {
@@ -494,9 +519,11 @@ impl NativeStore {
     /// hits fold into the segment's sidecar; committed hits become a close
     /// run. Either way the row itself is never touched — closing is data.
     ///
-    /// Locating a committed row is a linear scan for now; the identity
-    /// postings index that makes it O(1) is WP-N4, and the semantics do not
-    /// change when it lands.
+    /// Locating a committed row goes through the identity postings (WP-N4):
+    /// candidates by vid prefix, the full vid verified at the row. Same
+    /// answer the linear scan gave, without the per-close segment walk that
+    /// made correction-heavy replay superlinear (docs/eval_bitemporal.md
+    /// §"close_version's linear scan").
     pub fn close_version(&mut self, kind: RowKind, vid: Id96, tt_e: i64) -> Result<()> {
         if self.current_only {
             return Err(EngineError::invariant(
@@ -531,30 +558,9 @@ impl NativeStore {
         }
     }
 
-    /// Physical location of a committed version, by scanning segments.
+    /// Physical location of a committed version, through the vid postings.
     fn locate_committed(&self, kind: RowKind, vid: Id96) -> Result<Option<(u64, u32)>> {
-        let m = &self.manifest;
-        let files: Vec<&String> = match kind {
-            RowKind::Edge => m
-                .edge_lanes
-                .event
-                .iter()
-                .chain(m.edge_lanes.interval.iter())
-                .map(|e| &e.file)
-                .collect(),
-            RowKind::Node => m.node_store.iter().map(|e| &e.file).collect(),
-        };
-        for file in files {
-            let seg = self.open_segment(file)?;
-            let hi = seg.u64_column("vid64")?;
-            let lo = seg.u32_column("vid_lo32")?;
-            for i in 0..hi.len() {
-                if hi[i] == vid.hi && lo[i] == vid.lo {
-                    return Ok(Some((segment_id_of(file), i as u32)));
-                }
-            }
-        }
-        Ok(None)
+        self.locate_vid(kind, vid)
     }
 
     /// Rows staged in the open batch — the read-your-own-writes overlay that
@@ -705,6 +711,11 @@ impl StatsAccum {
 #[derive(Default)]
 pub(crate) struct Postings {
     pub(crate) by_identity: std::collections::HashMap<u64, Vec<(u64, u32)>>,
+    /// The same shape keyed by the version id's `hi` prefix (the `vid64`
+    /// column) — the WP-N4 path `close_version` locates committed rows
+    /// through. A hit is a candidate here too: the full vid at the row
+    /// decides.
+    pub(crate) by_vid: std::collections::HashMap<u64, Vec<(u64, u32)>>,
     /// Segment ids already folded in.
     pub(crate) indexed: std::collections::HashSet<u64>,
 }
@@ -1072,6 +1083,112 @@ mod tests {
             Err(e) => e,
         };
         assert_eq!(err.category, crate::error::Category::NotFound);
+    }
+
+    #[test]
+    fn a_close_verifies_the_full_vid_not_just_its_prefix() {
+        // the postings key is only the 64-bit prefix; a candidate whose lo
+        // differs must be rejected, or a prefix collision could close the
+        // wrong version
+        let root = tmp_root("close-prefix");
+        let mut s = NativeStore::open(&root).unwrap();
+        s.begin(100).unwrap();
+        let a = s.ensure_entity("n1", "Node").unwrap();
+        let row = edge_row(a, a, 10, 100, 0);
+        s.stage_edge(row.clone()).unwrap();
+        s.commit(EventLogRef::default()).unwrap();
+
+        s.begin(200).unwrap();
+        let imposter = Id96 {
+            hi: row.vid.hi,
+            lo: row.vid.lo.wrapping_add(1),
+        };
+        let err = s.close_version(RowKind::Edge, imposter, 200).unwrap_err();
+        assert_eq!(err.category, crate::error::Category::NotFound);
+        s.close_version(RowKind::Edge, row.vid, 200).unwrap();
+        s.commit(EventLogRef::default()).unwrap();
+        assert_eq!(s.close_index().unwrap().len(), 1);
+    }
+
+    #[test]
+    fn a_node_close_locates_through_the_postings_too() {
+        let root = tmp_root("close-node");
+        let mut s = NativeStore::open(&root).unwrap();
+        s.begin(100).unwrap();
+        let a = s.ensure_entity("n1", "Node").unwrap();
+        let row = NodeRow {
+            vid: crate::derive::version_vid("n1", 100, 10),
+            uid_id: a,
+            label: "Node".into(),
+            vt_s: 10,
+            vt_e: 11,
+            tt_s: 100,
+            props: "{}".into(),
+            source: "ingest".into(),
+            provenance_ref: None,
+        };
+        s.stage_node(row.clone()).unwrap();
+        s.commit(EventLogRef::default()).unwrap();
+
+        s.begin(200).unwrap();
+        s.close_version(RowKind::Node, row.vid, 200).unwrap();
+        s.commit(EventLogRef::default()).unwrap();
+
+        assert!(s.believed_node_versions("n1", OPEN_END).unwrap().is_empty());
+        assert_eq!(s.believed_node_versions("n1", 150).unwrap().len(), 1);
+    }
+
+    #[test]
+    fn corrections_at_scale_locate_through_the_postings() {
+        // WP-N4 regression scale. The §13 sweep (docs/eval_bitemporal.md)
+        // showed replay superlinear in correction volume because every close
+        // walked every segment. Enough segments and closes here that the old
+        // shape is exercised — and the postings must come out built and
+        // consulted, not bypassed.
+        let root = tmp_root("close-scale");
+        let mut s = NativeStore::open(&root).unwrap();
+        let mut rows = Vec::new();
+        for batch in 0..8u32 {
+            let tt = 100 + batch as i64;
+            s.begin(tt).unwrap();
+            let a = s.ensure_entity("n1", "Node").unwrap();
+            let b = s.ensure_entity("n2", "Node").unwrap();
+            for i in 0..250u32 {
+                let n = batch * 250 + i;
+                let r = edge_row(a, b, n as i64, tt, n);
+                rows.push(r.clone());
+                s.stage_edge(r).unwrap();
+            }
+            s.commit(EventLogRef::default()).unwrap();
+        }
+        assert!(
+            s.manifest().edge_lanes.event.len() >= 8,
+            "the scale must span many segments"
+        );
+
+        s.begin(500).unwrap();
+        for r in rows.iter().step_by(10) {
+            s.close_version(RowKind::Edge, r.vid, 500).unwrap();
+        }
+        s.commit(EventLogRef::default()).unwrap();
+
+        {
+            let p = s.edge_postings().lock().unwrap();
+            assert_eq!(p.indexed.len(), 8, "closes must build the postings");
+            assert_eq!(
+                p.by_vid.values().map(Vec::len).sum::<usize>(),
+                rows.len(),
+                "every committed row is posted exactly once"
+            );
+        }
+
+        let closed: std::collections::HashSet<String> =
+            rows.iter().step_by(10).map(|r| r.vid.to_hex()).collect();
+        assert_eq!(s.close_index().unwrap().len(), closed.len());
+        for r in s.all_edge_versions().unwrap() {
+            let expected = if closed.contains(&r.vid) { 500 } else { OPEN_END };
+            assert_eq!(r.tt_e, expected, "vid {}", r.vid);
+        }
     }
 
     #[test]

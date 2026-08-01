@@ -355,7 +355,9 @@ impl NativeStore {
     ///
     /// Deriving `eid` per row is the expensive part, so it happens once per
     /// row ever rather than once per lookup — which is the whole point of the
-    /// index. Node identities are uids and need no derivation.
+    /// index. Node identities are uids and need no derivation. The vid
+    /// postings ride in the same pass: they only read the `vid64` column,
+    /// and one `indexed` set keeps both maps consistent.
     fn index_segments(&self, kind: RowKind) -> Result<()> {
         let files = match kind {
             RowKind::Edge => self.edge_files(),
@@ -396,9 +398,13 @@ impl NativeStore {
                     }
                 }
             }
+            let vid_hi = seg.u64_column("vid64")?;
             let mut p = self.postings_for(kind).lock().expect("postings mutex poisoned");
             for (key, row) in entries {
                 p.by_identity.entry(key).or_default().push((id, row));
+            }
+            for (i, &hi) in vid_hi.iter().enumerate() {
+                p.by_vid.entry(hi).or_default().push((id, i as u32));
             }
             p.indexed.insert(id);
         }
@@ -431,6 +437,37 @@ impl NativeStore {
                     .collect()
             })
             .unwrap_or_default())
+    }
+
+    /// Physical location of one committed version, or None (WP-N4).
+    ///
+    /// Candidates come from the vid postings; the full vid at the row
+    /// decides, exactly as the identity paths verify their prefix hits.
+    /// Candidates are filtered through the current manifest before any file
+    /// is opened, so a postings entry for a segment that compaction dropped
+    /// (or gc deleted) can never resolve.
+    pub(crate) fn locate_vid(&self, kind: RowKind, vid: Id96) -> Result<Option<(u64, u32)>> {
+        self.index_segments(kind)?;
+        let files = match kind {
+            RowKind::Edge => self.edge_files(),
+            RowKind::Node => self.node_files(),
+        };
+        let by_id: HashMap<u64, String> = files.into_iter().map(|(f, i)| (i, f)).collect();
+        let candidates: Vec<(u64, u32)> = {
+            let p = self.postings_for(kind).lock().expect("postings mutex poisoned");
+            p.by_vid.get(&vid.hi).cloned().unwrap_or_default()
+        };
+        for (seg_id, row) in candidates {
+            let Some(file) = by_id.get(&seg_id) else { continue };
+            let seg = self.open_segment(file)?;
+            // a prefix hit is a candidate; the full vid decides
+            if seg.u64_column("vid64")?[row as usize] == vid.hi
+                && seg.u32_column("vid_lo32")?[row as usize] == vid.lo
+            {
+                return Ok(Some((seg_id, row)));
+            }
+        }
+        Ok(None)
     }
 
     /// Every edge version ever committed, plus anything staged in the open
