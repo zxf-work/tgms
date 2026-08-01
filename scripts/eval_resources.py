@@ -459,11 +459,11 @@ def cmd_memcap(args: argparse.Namespace) -> tuple[int, dict[str, Any]]:
             print(f"  uncapped     {res['query']:<18} p50 {res['p50_ms']:>9.1f} ms",
                   flush=True)
 
-    for cap in caps:
-        cfg = _suite_config(store, "native", queries, **proto)
+    def run_capped(cap: str, qs: list[dict[str, Any]], tag: str) -> dict[str, Any]:
+        cfg = _suite_config(store, "native", qs, **proto)
         name = None
         if use_docker:
-            name = f"tgms-memcap-{cap}-{os.getpid()}"
+            name = f"tgms-memcap-{tag}-{os.getpid()}"
             mounts = sorted({str(ROOT), str(store.parents[1]),
                              _site_packages().split("/lib/")[0]})
             cmd = ["docker", "run", "--rm", "-i", "--name", name,
@@ -482,12 +482,36 @@ def cmd_memcap(args: argparse.Namespace) -> tuple[int, dict[str, Any]]:
             cfg["rlimit_as_bytes"] = _parse_cap(cap)
             p = spawn_suite(cfg)
         r = collect(p, timeout_s=args.cap_timeout, docker_name=name)
-        oom = bool(r.get("failed")) and (r.get("returncode") in (137, -9)
-                                         or "MemoryError" in r.get("stderr", ""))
-        records.append({"cap": cap, "method": method, "oom": oom, **r})
+        r["oom"] = bool(r.get("failed")) and (
+            r.get("returncode") in (137, -9)
+            or "MemoryError" in r.get("stderr", ""))
+        return r
+
+    for cap in caps:
+        if args.per_query:
+            # one container per query: a whole-suite OOM says the *suite*
+            # exceeds the cap; this says which queries do on their own
+            for q in queries:
+                r = run_capped(cap, [q], f"{cap}-{q['id'].replace('.', '-')}")
+                records.append({"cap": cap, "method": method,
+                                "query": q["id"], **r})
+                if r.get("failed"):
+                    what = ("timed out" if r.get("timed_out")
+                            else "OOM-killed" if r["oom"] else "FAILED")
+                    print(f"  cap {cap:<6} {q['id']:<18} {what} "
+                          f"(rc={r.get('returncode')})", flush=True)
+                else:
+                    res = r["results"][0]
+                    msg = (f"p50 {res['p50_ms']:>9.1f} ms  "
+                           f"hwm {r.get('vmhwm_kb', 0) // 1024} MB"
+                           if res.get("ok") else f"FAILED {res.get('error')}")
+                    print(f"  cap {cap:<6} {q['id']:<18} {msg}", flush=True)
+            continue
+        r = run_capped(cap, queries, cap)
+        records.append({"cap": cap, "method": method, **r})
         if r.get("failed"):
             what = ("timed out (thrash budget exceeded)" if r.get("timed_out")
-                    else "OOM-killed" if oom else "FAILED")
+                    else "OOM-killed" if r["oom"] else "FAILED")
             print(f"  cap {cap:<6} {what} (rc={r.get('returncode')})", flush=True)
         else:
             for res in r.get("results", []):
@@ -502,6 +526,7 @@ def cmd_memcap(args: argparse.Namespace) -> tuple[int, dict[str, Any]]:
     except OSError:
         pass
     return 0, {"mode": "memcap", "caps": caps, "method": method,
+               "per_query": bool(args.per_query),
                "host_swap_kb": swap_kb,
                "enforcement_note":
                    "docker --memory bounds residency; on a cgroup-v1 kernel "
@@ -602,6 +627,9 @@ def main() -> int:
     ap.add_argument("--reps", type=int, default=5, help="memcap reps")
     ap.add_argument("--cap-timeout", type=float, default=3600.0,
                     help="wall budget per capped suite before it is killed")
+    ap.add_argument("--per-query", action="store_true",
+                    help="memcap: one container per query instead of one "
+                         "per cap, to attribute an OOM to a query")
     ap.add_argument("--readers", default="1,2,4,8,16")
     ap.add_argument("--duration", type=float, default=45.0,
                     help="seconds each reader loops the mix")
