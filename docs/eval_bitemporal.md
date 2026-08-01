@@ -250,6 +250,20 @@ term is gone; the remaining ~32 s over the floor is the corrections'
 own linear work (believed-read lookups, close-run writes, batched
 commits), not further profiled here.
 
+**Update (2026-08-01, xzgpu):** full density sweep rerun on the
+measurement host at commit `96ea135`, both fixes in (receipt
+`eval-1m-bitemporal-closecache.json`): replay 16.1 / 18.0 / 18.4 /
+32.2 / 98.3 / 361.1 s across 0–20%, against the pre-fix 15.9 / 18.1 /
+18.4 / 38.6 / 233.1 / 2,856.8 s. The superlinear turn is gone — replay
+over the density-0 floor is ~1.6 ms *per correction* at 1%, 5%, and 20%
+alike, i.e. the correction path is now linear where it was quadratic
+(20%: 48 min → 6 min, 7.9×). Hash gates agree at every density;
+`motif.filtered`'s one-sided guardrail refusal at 20% (full store only,
+same refusal as the original sweep) is recorded as `partial` by the
+fixed gate instead of miscounting as disagreement. Query latencies and
+storage reproduce the original sweep's shape, so the tables above
+stand; only the build/replay column is superseded.
+
 ## Honest limits
 
 - The correction *ages* are uniform; §12.3's age profiles (newest-1%,
