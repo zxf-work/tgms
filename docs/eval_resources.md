@@ -41,17 +41,16 @@ both scales** — the engine's claim that parallel scan output is
 byte-identical to the serial loop by construction was measured here, not
 assumed.
 
-### 10M events (p50 ms)
+### 10M events (p50 ms, native → duckdb)
 
-| threads | series.count | | coactive.narrow | | motif.filtered | |
-|---|---|---|---|---|---|---|
-| | native | duckdb | native | duckdb | native | duckdb |
-| 1 | 596 | 2,422 | 699 | 2,291 | 205 | 1,087 |
-| 2 | 637 | 1,826 | 783 | 1,202 | 240 | 597 |
-| 4 | 561 | 1,767 | 490 | 713 | 155 | 406 |
-| 8 | 513 | 1,532 | 298 | 428 | 106 | 275 |
-| 16 (native default) | 472 | 1,332 | 196 | 255 | 74 | 183 |
-| 32 | 466 | 1,336 | 162 | 230 | 76 | 171 |
+| threads | series.count | coactive.narrow | motif.filtered |
+|---|---|---|---|
+| 1 | 596 → 2,422 | 699 → 2,291 | 205 → 1,087 |
+| 2 | 637 → 1,826 | 783 → 1,202 | 240 → 597 |
+| 4 | 561 → 1,767 | 490 → 713 | 155 → 406 |
+| 8 | 513 → 1,532 | 298 → 428 | 106 → 275 |
+| 16 (both defaults) | 472 → 1,332 | 196 → 255 | 74 → 183 |
+| 32 | 466 → 1,336 | 162 → 230 | 76 → 171 |
 
 ### 1M events (p50 ms, native)
 
