@@ -21,6 +21,14 @@ supersessions are part of the record:
   receipts for the correction-replay fixes (dev M-series host, **not**
   xzgpu): before / after the WP-N4 postings `close_version`, and after
   the per-generation `close_index` cache — see eval_bitemporal.md
+- eval-1m-bitemporal-confirm5.json — independent 1M/5% rerun at commit
+  96ea135 (same host): replay 41.6 s, hash gate green — reproduces the
+  closecache5 receipt within noise
+- eval-1m-bitemporal-closecache.json — §13 full density sweep rerun on
+  **xzgpu** at 96ea135, both correction-replay fixes in: replay linear
+  in corrections (~1.6 ms each), 2,856.8 s → 361.1 s at 20%; hash gates
+  green at every density, motif.filtered's one-sided 20% refusal
+  recorded as `partial` — see eval_bitemporal.md
 
 Plan §26 asks for parquet; JSON was chosen instead: the records are small
 (&lt;400 KB total), diffable, and dependency-free to read.
