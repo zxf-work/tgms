@@ -1,0 +1,442 @@
+{
+  "caps": [
+    "2g",
+    "4g",
+    "8g"
+  ],
+  "enforcement_note": "docker --memory bounds residency; on a cgroup-v1 kernel without swap-limit support the overflow may swap rather than OOM, which is the working-set>RAM behavior \u00a714.2 asks about. RLIMIT_AS instead caps address space (mmapped store files count), a strictly harsher approximation.",
+  "host_swap_kb": 8388604,
+  "manifest": {
+    "cache_state": "warm",
+    "commit": "e644503",
+    "cpu_count": 40,
+    "dataset": "synth",
+    "dirty": false,
+    "measurement_host": "xzgpu",
+    "on_measurement_host": true,
+    "platform": "Linux 5.4.0-216-generic x86_64",
+    "protocol": {
+      "reps_fast": 30,
+      "reps_slow": 10,
+      "resource_mode": "memcap",
+      "stats": "median and p95 over measured reps",
+      "warmup": 5
+    },
+    "python": "3.12.13",
+    "rustc": "unknown",
+    "scale_events": 10000000,
+    "systems": [
+      "native"
+    ]
+  },
+  "method": "docker",
+  "mode": "memcap",
+  "per_query": true,
+  "protocol_note": "reduced reps: warmup=2, reps=5 (feasibility under caps)",
+  "queries": [
+    "hist.single",
+    "snap.hop2",
+    "series.count",
+    "coactive.narrow",
+    "diff.global",
+    "motif.filtered"
+  ],
+  "records": [
+    {
+      "cap": null,
+      "method": "none",
+      "open_ms": 30.245,
+      "queries_done": 30,
+      "results": [
+        {
+          "first_ms": 0.808,
+          "hash": "d609f648e21441d95d9a71fcf004ec79",
+          "ok": true,
+          "p50_ms": 0.765,
+          "p95_ms": 0.808,
+          "query": "hist.single",
+          "rows": 2,
+          "timings_ms": [
+            0.808,
+            0.739,
+            0.741,
+            0.794,
+            0.765
+          ]
+        },
+        {
+          "first_ms": 960.779,
+          "hash": "8500bcff5724837e5695b7ebb974a3bf",
+          "ok": true,
+          "p50_ms": 961.695,
+          "p95_ms": 969.569,
+          "query": "snap.hop2",
+          "rows": 151,
+          "timings_ms": [
+            960.779,
+            961.695,
+            950.955,
+            969.569,
+            967.586
+          ]
+        },
+        {
+          "first_ms": 461.628,
+          "hash": "7150c22b1170fd0da26c945a61d4d361",
+          "ok": true,
+          "p50_ms": 461.628,
+          "p95_ms": 464.932,
+          "query": "series.count",
+          "rows": 100,
+          "timings_ms": [
+            461.628,
+            464.932,
+            463.578,
+            451.514,
+            458.621
+          ]
+        },
+        {
+          "first_ms": 233.235,
+          "hash": "7077c6ade05f6ec7dbdc14b11d552b88",
+          "ok": true,
+          "p50_ms": 182.616,
+          "p95_ms": 233.235,
+          "query": "coactive.narrow",
+          "rows": 489,
+          "timings_ms": [
+            233.235,
+            211.838,
+            178.31,
+            182.616,
+            169.73
+          ]
+        },
+        {
+          "first_ms": 3891.814,
+          "hash": "499256cb25a8fef326b9ebefb188d2e9",
+          "ok": true,
+          "p50_ms": 3914.133,
+          "p95_ms": 3959.969,
+          "query": "diff.global",
+          "rows": 749999,
+          "timings_ms": [
+            3891.814,
+            3936.872,
+            3899.833,
+            3914.133,
+            3959.969
+          ]
+        },
+        {
+          "first_ms": 74.917,
+          "hash": "af380bb913a298ff49a8dfccbca5b27a",
+          "ok": true,
+          "p50_ms": 73.664,
+          "p95_ms": 75.216,
+          "query": "motif.filtered",
+          "rows": 303,
+          "timings_ms": [
+            74.917,
+            73.49,
+            72.301,
+            73.664,
+            75.216
+          ]
+        }
+      ],
+      "vmhwm_kb": 6068404,
+      "vmrss_kb": 4311856,
+      "vmsize_kb": 9039988,
+      "wall_s": null
+    },
+    {
+      "cap": "2g",
+      "failed": true,
+      "method": "docker",
+      "oom": true,
+      "query": "hist.single",
+      "returncode": 137,
+      "stderr": "WARNING: Your kernel does not support swap limit capabilities or the cgroup is not mounted. Memory limited without swap."
+    },
+    {
+      "cap": "2g",
+      "failed": true,
+      "method": "docker",
+      "oom": true,
+      "query": "snap.hop2",
+      "returncode": 137,
+      "stderr": "WARNING: Your kernel does not support swap limit capabilities or the cgroup is not mounted. Memory limited without swap."
+    },
+    {
+      "cap": "2g",
+      "failed": true,
+      "method": "docker",
+      "oom": true,
+      "query": "series.count",
+      "returncode": 137,
+      "stderr": "WARNING: Your kernel does not support swap limit capabilities or the cgroup is not mounted. Memory limited without swap."
+    },
+    {
+      "cap": "2g",
+      "failed": true,
+      "method": "docker",
+      "oom": true,
+      "query": "coactive.narrow",
+      "returncode": 137,
+      "stderr": "WARNING: Your kernel does not support swap limit capabilities or the cgroup is not mounted. Memory limited without swap."
+    },
+    {
+      "cap": "2g",
+      "failed": true,
+      "method": "docker",
+      "oom": true,
+      "query": "diff.global",
+      "returncode": 137,
+      "stderr": "WARNING: Your kernel does not support swap limit capabilities or the cgroup is not mounted. Memory limited without swap."
+    },
+    {
+      "cap": "2g",
+      "failed": true,
+      "method": "docker",
+      "oom": true,
+      "query": "motif.filtered",
+      "returncode": 137,
+      "stderr": "WARNING: Your kernel does not support swap limit capabilities or the cgroup is not mounted. Memory limited without swap."
+    },
+    {
+      "cap": "4g",
+      "failed": true,
+      "method": "docker",
+      "oom": true,
+      "query": "hist.single",
+      "returncode": 137,
+      "stderr": "WARNING: Your kernel does not support swap limit capabilities or the cgroup is not mounted. Memory limited without swap."
+    },
+    {
+      "cap": "4g",
+      "failed": true,
+      "method": "docker",
+      "oom": true,
+      "query": "snap.hop2",
+      "returncode": 137,
+      "stderr": "WARNING: Your kernel does not support swap limit capabilities or the cgroup is not mounted. Memory limited without swap."
+    },
+    {
+      "cap": "4g",
+      "failed": true,
+      "method": "docker",
+      "oom": true,
+      "query": "series.count",
+      "returncode": 137,
+      "stderr": "WARNING: Your kernel does not support swap limit capabilities or the cgroup is not mounted. Memory limited without swap."
+    },
+    {
+      "cap": "4g",
+      "failed": true,
+      "method": "docker",
+      "oom": true,
+      "query": "coactive.narrow",
+      "returncode": 137,
+      "stderr": "WARNING: Your kernel does not support swap limit capabilities or the cgroup is not mounted. Memory limited without swap."
+    },
+    {
+      "cap": "4g",
+      "failed": true,
+      "method": "docker",
+      "oom": true,
+      "query": "diff.global",
+      "returncode": 137,
+      "stderr": "WARNING: Your kernel does not support swap limit capabilities or the cgroup is not mounted. Memory limited without swap."
+    },
+    {
+      "cap": "4g",
+      "failed": true,
+      "method": "docker",
+      "oom": true,
+      "query": "motif.filtered",
+      "returncode": 137,
+      "stderr": "WARNING: Your kernel does not support swap limit capabilities or the cgroup is not mounted. Memory limited without swap."
+    },
+    {
+      "cap": "8g",
+      "method": "docker",
+      "oom": false,
+      "open_ms": 28.147,
+      "queries_done": 5,
+      "query": "hist.single",
+      "results": [
+        {
+          "first_ms": 0.654,
+          "hash": "d609f648e21441d95d9a71fcf004ec79",
+          "ok": true,
+          "p50_ms": 0.552,
+          "p95_ms": 0.654,
+          "query": "hist.single",
+          "rows": 2,
+          "timings_ms": [
+            0.654,
+            0.556,
+            0.542,
+            0.552,
+            0.538
+          ]
+        }
+      ],
+      "vmhwm_kb": 6071840,
+      "vmrss_kb": 3651432,
+      "vmsize_kb": 5327088,
+      "wall_s": null
+    },
+    {
+      "cap": "8g",
+      "method": "docker",
+      "oom": false,
+      "open_ms": 28.664,
+      "queries_done": 5,
+      "query": "snap.hop2",
+      "results": [
+        {
+          "first_ms": 960.527,
+          "hash": "8500bcff5724837e5695b7ebb974a3bf",
+          "ok": true,
+          "p50_ms": 960.527,
+          "p95_ms": 977.589,
+          "query": "snap.hop2",
+          "rows": 151,
+          "timings_ms": [
+            960.527,
+            977.589,
+            949.374,
+            960.035,
+            963.723
+          ]
+        }
+      ],
+      "vmhwm_kb": 6071936,
+      "vmrss_kb": 3966772,
+      "vmsize_kb": 6160284,
+      "wall_s": null
+    },
+    {
+      "cap": "8g",
+      "method": "docker",
+      "oom": false,
+      "open_ms": 29.055,
+      "queries_done": 5,
+      "query": "series.count",
+      "results": [
+        {
+          "first_ms": 478.537,
+          "hash": "7150c22b1170fd0da26c945a61d4d361",
+          "ok": true,
+          "p50_ms": 481.724,
+          "p95_ms": 491.888,
+          "query": "series.count",
+          "rows": 100,
+          "timings_ms": [
+            478.537,
+            481.724,
+            479.477,
+            482.163,
+            491.888
+          ]
+        }
+      ],
+      "vmhwm_kb": 6071824,
+      "vmrss_kb": 4226884,
+      "vmsize_kb": 9544484,
+      "wall_s": null
+    },
+    {
+      "cap": "8g",
+      "method": "docker",
+      "oom": false,
+      "open_ms": 27.9,
+      "queries_done": 5,
+      "query": "coactive.narrow",
+      "results": [
+        {
+          "first_ms": 200.632,
+          "hash": "7077c6ade05f6ec7dbdc14b11d552b88",
+          "ok": true,
+          "p50_ms": 202.931,
+          "p95_ms": 208.042,
+          "query": "coactive.narrow",
+          "rows": 489,
+          "timings_ms": [
+            200.632,
+            202.931,
+            188.186,
+            205.594,
+            208.042
+          ]
+        }
+      ],
+      "vmhwm_kb": 6071900,
+      "vmrss_kb": 3653444,
+      "vmsize_kb": 6283580,
+      "wall_s": null
+    },
+    {
+      "cap": "8g",
+      "method": "docker",
+      "oom": false,
+      "open_ms": 27.759,
+      "queries_done": 5,
+      "query": "diff.global",
+      "results": [
+        {
+          "first_ms": 4027.695,
+          "hash": "499256cb25a8fef326b9ebefb188d2e9",
+          "ok": true,
+          "p50_ms": 4034.111,
+          "p95_ms": 4072.487,
+          "query": "diff.global",
+          "rows": 749999,
+          "timings_ms": [
+            4027.695,
+            4034.111,
+            3999.693,
+            4072.487,
+            4063.061
+          ]
+        }
+      ],
+      "vmhwm_kb": 6071744,
+      "vmrss_kb": 4119900,
+      "vmsize_kb": 6468388,
+      "wall_s": null
+    },
+    {
+      "cap": "8g",
+      "method": "docker",
+      "oom": false,
+      "open_ms": 29.154,
+      "queries_done": 5,
+      "query": "motif.filtered",
+      "results": [
+        {
+          "first_ms": 74.977,
+          "hash": "af380bb913a298ff49a8dfccbca5b27a",
+          "ok": true,
+          "p50_ms": 74.977,
+          "p95_ms": 81.624,
+          "query": "motif.filtered",
+          "rows": 303,
+          "timings_ms": [
+            74.977,
+            76.131,
+            71.435,
+            74.753,
+            81.624
+          ]
+        }
+      ],
+      "vmhwm_kb": 6072280,
+      "vmrss_kb": 3663224,
+      "vmsize_kb": 7267772,
+      "wall_s": null
+    }
+  ]
+}
