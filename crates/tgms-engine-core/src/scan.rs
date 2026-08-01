@@ -25,6 +25,31 @@
 use std::cmp::Reverse;
 use std::collections::BinaryHeap;
 
+/// Parse a `TGMS_SCAN_THREADS` override: a positive integer, clamped to 64.
+/// Anything unparseable (empty, zero, garbage) is treated as unset rather
+/// than as an error — a measurement knob must never make reads fail.
+fn scan_threads_override(v: Option<&str>) -> Option<usize> {
+    v.and_then(|s| s.trim().parse::<usize>().ok())
+        .filter(|&n| n >= 1)
+        .map(|n| n.min(64))
+}
+
+/// Worker count for the parallel scan stages.
+///
+/// `TGMS_SCAN_THREADS` overrides (evaluation plan §14.3 needs the curve,
+/// including oversubscription past the core count, hence the 64 clamp);
+/// when unset the behavior is exactly what shipped: one worker per
+/// available core, capped at 16. Read per call, so a harness can sweep
+/// thread counts within one process against one warm store.
+fn scan_threads() -> usize {
+    scan_threads_override(std::env::var("TGMS_SCAN_THREADS").ok().as_deref())
+        .unwrap_or_else(|| {
+            std::thread::available_parallelism()
+                .map(|n| n.get().min(16))
+                .unwrap_or(1)
+        })
+}
+
 use crate::derive::Id96;
 use crate::error::Result;
 use crate::row::Lane;
@@ -202,9 +227,7 @@ impl<'a, S: SegmentSource> ScanSet<'a, S> {
         // path ran. This is the 10M finding from eval_phase0 ("DuckDB wins
         // exactly the full-window scans"): the scan was the one single-
         // threaded stage on a 40-core host.
-        let threads = std::thread::available_parallelism()
-            .map(|n| n.get().min(16))
-            .unwrap_or(1);
+        let threads = scan_threads();
         if threads > 1 && self.targets.len() >= 8 {
             let chunk = self.targets.len().div_ceil(threads);
             let parts: Vec<Result<(Vec<Selection>, ScanStats)>> =
@@ -555,9 +578,10 @@ impl<'a, S: SegmentSource> ScanSet<'a, S> {
         // that the merged path already handles.
         if req.limit.is_none() {
             let clusters = self.cluster_order(&selections)?;
-            let threads = std::thread::available_parallelism()
-                .map(|n| n.get().min(16))
-                .unwrap_or(1);
+            // scan_threads() gates whether clusters fan out at all (1 forces
+            // the serial path); the fan-out width itself is one thread per
+            // cluster, exactly as before the override existed.
+            let threads = scan_threads();
             let parts: Vec<Result<EdgeColumns>> = if threads > 1 && clusters.len() >= 4 {
                 std::thread::scope(|scope| {
                     let handles: Vec<_> = clusters
@@ -1114,5 +1138,22 @@ mod tests {
             assert_eq!(cols.props[i], "{}");
             assert!(cols.disc[i].starts_with('#'));
         }
+    }
+
+    /// The env override parses strictly and fails open: only a positive
+    /// integer overrides, and it is clamped, never trusted for width.
+    /// (Parsing is tested through the pure function — mutating the process
+    /// environment inside a threaded test harness races other tests.)
+    #[test]
+    fn scan_threads_override_parses_strictly() {
+        assert_eq!(scan_threads_override(None), None);
+        assert_eq!(scan_threads_override(Some("")), None);
+        assert_eq!(scan_threads_override(Some("0")), None);
+        assert_eq!(scan_threads_override(Some("-4")), None);
+        assert_eq!(scan_threads_override(Some("many")), None);
+        assert_eq!(scan_threads_override(Some("1")), Some(1));
+        assert_eq!(scan_threads_override(Some(" 8 ")), Some(8));
+        assert_eq!(scan_threads_override(Some("32")), Some(32));
+        assert_eq!(scan_threads_override(Some("4096")), Some(64));
     }
 }
