@@ -237,6 +237,19 @@ and profiles as ~100% of `_correct`'s remaining time post-fix (cProfile,
 close runs are immutable and the set only changes at commit, the same
 argument the segment cache already rests on.
 
+**Update (2026-08-01):** the cache landed — `close_index()` now builds
+the index once per manifest generation and keeps it in the store
+(`store.rs::close_cache`, keyed by generation, superseded when a commit
+adopts the next manifest; within a generation the rebuild was always
+identical, the segment cache's argument). Point reads and `ScanSet`
+share one `Arc<CloseIndex>` per generation. Same-host A/B at 1M/5%
+(same dev M-series host as above, receipt
+`eval-1m-bitemporal-closecache5.json`, hash gate green): replay
+141.2 s → **40.0 s**, against the 8.2 s density-0 floor. The quadratic
+term is gone; the remaining ~32 s over the floor is the corrections'
+own linear work (believed-read lookups, close-run writes, batched
+commits), not further profiled here.
+
 ## Honest limits
 
 - The correction *ages* are uniform; §12.3's age profiles (newest-1%,
