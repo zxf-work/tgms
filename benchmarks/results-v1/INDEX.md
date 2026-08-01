@@ -11,6 +11,9 @@ supersessions are part of the record:
 - eval-collegemsg{,-costfix}.json — real-dataset runs
 - eval-200k-costfix.json — motif cost-model reprice rerun
 - eval-writes.json — write-path evaluation (§12)
+- eval-1m-bitemporal.json — §13 current-vs-bi-temporal overhead, density
+  sweep 0–20% (its `agree:false` is the run gate miscounting a one-sided
+  guardrail refusal at 20%; zero hash mismatches — see eval_bitemporal.md)
 
 Plan §26 asks for parquet; JSON was chosen instead: the records are small
 (&lt;400 KB total), diffable, and dependency-free to read.

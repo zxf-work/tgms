@@ -334,11 +334,24 @@ def run_density(scale: int, pct: float, keep: bool) -> dict[str, Any]:
             raise SystemExit(f"GATE: current-only store answered {r.query} "
                              f"instead of refusing it")
 
+    # The gate is semantic equivalence: both answered and the hashes differ.
+    # A one-sided refusal is data, not disagreement — the cost guardrail can
+    # legitimately refuse on the full store while the smaller stripped store
+    # stays under the ceiling (first seen: motif.filtered at 20% density),
+    # exactly as the harness records a baseline's non-answer as `partial`.
     full_by_id = {r["query"]: r for r in rec["full"]["results"]}
-    mismatches = [r.query for r in curr_results
-                  if not r.ok or r.hash != full_by_id[r.query]["hash"]]
+    mismatches, partial = [], []
+    for r in curr_results:
+        f = full_by_id[r.query]
+        if r.ok and f["ok"]:
+            if r.hash != f["hash"]:
+                mismatches.append(r.query)
+        else:
+            partial.append({"query": r.query, "full_error": f["error"],
+                            "curr_error": r.error})
     rec["agree"] = not mismatches
     rec["mismatches"] = mismatches
+    rec["partial"] = partial
 
     if keep:
         rec["stores"] = str(work)
@@ -395,6 +408,9 @@ def main() -> int:
                   f"  current {c_lat[qid]:>9.2f} ms")
         if not rec["agree"]:
             print(f"  HASH MISMATCH: {rec['mismatches']}")
+        for p in rec.get("partial", []):
+            print(f"  partial: {p['query']} — full: {p['full_error'] or 'ok'}"
+                  f" | current: {p['curr_error'] or 'ok'}")
 
     if args.json:
         args.json.write_text(json.dumps(
