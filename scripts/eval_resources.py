@@ -290,8 +290,20 @@ def spawn_suite(cfg: dict[str, Any], env_extra: dict[str, str] | None = None,
     return p
 
 
-def collect(p: subprocess.Popen) -> dict[str, Any]:
-    out, err = p.communicate()
+def collect(p: subprocess.Popen, timeout_s: float | None = None,
+            docker_name: str | None = None) -> dict[str, Any]:
+    try:
+        out, err = p.communicate(timeout=timeout_s)
+    except subprocess.TimeoutExpired:
+        # killing the docker *client* leaves the container running; kill it
+        # by name so a thrashing capped run cannot outlive its budget
+        if docker_name:
+            subprocess.run(["docker", "kill", docker_name],
+                           capture_output=True, timeout=60)
+        p.kill()
+        out, err = p.communicate()
+        return {"failed": True, "timed_out": True, "timeout_s": timeout_s,
+                "stderr": (err or "").strip()[-2000:]}
     if p.returncode != 0:
         return {"failed": True, "returncode": p.returncode,
                 "stderr": err.strip()[-2000:]}
@@ -393,17 +405,24 @@ def cmd_coldwarm(args: argparse.Namespace) -> tuple[int, dict[str, Any]]:
 # --------------------------------------------------------------------------- #
 
 def docker_memory_enforced() -> bool:
-    """Can rootless Docker actually enforce --memory here? Probe with a
-    canary that allocates past the cap; enforcement kills it (137)."""
+    """Can Docker actually enforce --memory here? Read the limit back from
+    the container's own cgroup — an allocation canary is wrong on a host
+    with swap but no swap-limit support (cgroup v1: memory is capped, the
+    overflow swaps, so the canary survives while the cap is real)."""
+    code = ("import pathlib\n"
+            "for p in ('/sys/fs/cgroup/memory/memory.limit_in_bytes',"
+            " '/sys/fs/cgroup/memory.max'):\n"
+            "    q = pathlib.Path(p)\n"
+            "    if q.exists():\n"
+            "        print(q.read_text().strip()); break\n")
     try:
         r = subprocess.run(
-            ["docker", "run", "--rm", "--memory", "256m", "--memory-swap",
-             "256m", "python:3.12-slim", "python", "-c",
-             "b = bytearray(512 * 1024 * 1024); print('survived')"],
+            ["docker", "run", "--rm", "--memory", "256m",
+             "python:3.12-slim", "python", "-c", code],
             capture_output=True, text=True, timeout=300)
-    except (FileNotFoundError, subprocess.TimeoutExpired):
+        return int(r.stdout.strip()) <= 512 * 1024 * 1024
+    except (FileNotFoundError, subprocess.TimeoutExpired, ValueError):
         return False
-    return r.returncode != 0 and "survived" not in r.stdout
 
 
 def _parse_cap(cap: str) -> int:
@@ -442,10 +461,13 @@ def cmd_memcap(args: argparse.Namespace) -> tuple[int, dict[str, Any]]:
 
     for cap in caps:
         cfg = _suite_config(store, "native", queries, **proto)
+        name = None
         if use_docker:
+            name = f"tgms-memcap-{cap}-{os.getpid()}"
             mounts = sorted({str(ROOT), str(store.parents[1]),
                              _site_packages().split("/lib/")[0]})
-            cmd = ["docker", "run", "--rm", "-i", "--network", "none",
+            cmd = ["docker", "run", "--rm", "-i", "--name", name,
+                   "--network", "none",
                    "--memory", cap, "--memory-swap", cap]
             for m in mounts:
                 cmd += ["-v", f"{m}:{m}:ro"]
@@ -459,19 +481,34 @@ def cmd_memcap(args: argparse.Namespace) -> tuple[int, dict[str, Any]]:
         else:
             cfg["rlimit_as_bytes"] = _parse_cap(cap)
             p = spawn_suite(cfg)
-        r = collect(p)
+        r = collect(p, timeout_s=args.cap_timeout, docker_name=name)
         oom = bool(r.get("failed")) and (r.get("returncode") in (137, -9)
                                          or "MemoryError" in r.get("stderr", ""))
         records.append({"cap": cap, "method": method, "oom": oom, **r})
         if r.get("failed"):
-            print(f"  cap {cap:<6} {'OOM-killed' if oom else 'FAILED'} "
-                  f"(rc={r.get('returncode')})", flush=True)
+            what = ("timed out (thrash budget exceeded)" if r.get("timed_out")
+                    else "OOM-killed" if oom else "FAILED")
+            print(f"  cap {cap:<6} {what} (rc={r.get('returncode')})", flush=True)
         else:
             for res in r.get("results", []):
                 msg = (f"p50 {res['p50_ms']:>9.1f} ms" if res.get("ok")
                        else f"FAILED {res.get('error')}")
                 print(f"  cap {cap:<6} {res['query']:<18} {msg}", flush=True)
+    swap_kb = None
+    try:
+        for line in Path("/proc/meminfo").read_text().splitlines():
+            if line.startswith("SwapTotal:"):
+                swap_kb = int(line.split()[1])
+    except OSError:
+        pass
     return 0, {"mode": "memcap", "caps": caps, "method": method,
+               "host_swap_kb": swap_kb,
+               "enforcement_note":
+                   "docker --memory bounds residency; on a cgroup-v1 kernel "
+                   "without swap-limit support the overflow may swap rather "
+                   "than OOM, which is the working-set>RAM behavior §14.2 asks "
+                   "about. RLIMIT_AS instead caps address space (mmapped store "
+                   "files count), a strictly harsher approximation.",
                "protocol_note": f"reduced reps: warmup={args.warmup}, "
                                 f"reps={args.reps} (feasibility under caps)",
                "queries": [q["id"] for q in queries], "records": records}
@@ -563,6 +600,8 @@ def main() -> int:
                     default="auto")
     ap.add_argument("--warmup", type=int, default=2, help="memcap warmups")
     ap.add_argument("--reps", type=int, default=5, help="memcap reps")
+    ap.add_argument("--cap-timeout", type=float, default=3600.0,
+                    help="wall budget per capped suite before it is killed")
     ap.add_argument("--readers", default="1,2,4,8,16")
     ap.add_argument("--duration", type=float, default=45.0,
                     help="seconds each reader loops the mix")
