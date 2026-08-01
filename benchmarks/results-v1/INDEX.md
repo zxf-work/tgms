@@ -17,6 +17,10 @@ supersessions are part of the record:
 - eval-10m-bitemporal.json — §13 at 10M, 0.1% density (`agree:false` is
   the same gate miscount, there on the two-sided pre-reprice guardrail
   refusals of paths.k and reach.window; zero hash mismatches)
+- eval-1m-bitemporal-{prefix5,postfix5,closecache5}.json — 1M/5% A/B
+  receipts for the correction-replay fixes (dev M-series host, **not**
+  xzgpu): before / after the WP-N4 postings `close_version`, and after
+  the per-generation `close_index` cache — see eval_bitemporal.md
 
 Plan §26 asks for parquet; JSON was chosen instead: the records are small
 (&lt;400 KB total), diffable, and dependency-free to read.
