@@ -7,16 +7,19 @@ across correction density.
 
 ## Receipts (spec §8.4)
 
-- commit `1e81393` (clean), branch `eval-bitemporal`; raw record
-  `benchmarks/results-v1/eval-1m-bitemporal.json`
-  <!-- TODO(run in flight): add eval-10m-bitemporal.json -->
-- the raw record's own `agree` flag reads `false`: the run's gate counted
-  the one-sided guardrail refusal of `motif.filtered` at 20% (below) as a
-  mismatch. Post-hoc verification over the record shows **zero hash
-  mismatches among queries both variants answered, at every density**;
+- commit `1e81393` (clean), branch `eval-bitemporal`; raw records
+  `benchmarks/results-v1/eval-1m-bitemporal.json` (density sweep) and
+  `benchmarks/results-v1/eval-10m-bitemporal.json` (10M at 0.1%)
+- both raw records' own `agree` flags read `false`: the run's original
+  gate counted guardrail refusals as mismatches — one-sided for
+  `motif.filtered` at 1M/20% (below), two-sided for `paths.k` and
+  `reach.window` at 10M (both variants refused; the pre-reprice 10M
+  guardrail cells, exactly as the capability matrix records). Post-hoc
+  verification over the records shows **zero hash mismatches among
+  queries both variants answered, at every density and both scales**;
   the gate was corrected to the harness's `partial` semantics in the
-  commit after the run, and the record is kept verbatim (supersessions
-  are part of the record).
+  commit after the 1M run, and the records are kept verbatim
+  (supersessions are part of the record).
 - host: xzgpu — 40 cores, 93 GB, Linux 5.4.0-216-generic x86_64; same host
   as every published table
 - protocol: plan §16.3 — 5 warmups, 30 measured reps per sub-second query
@@ -111,6 +114,35 @@ Queries that do not:
 | reach.window | 111.9 → 111.5 | 115.0 → 111.5 | same |
 | resolve.substr | 6.3 → 6.3 | 6.2 → 6.2 | name/uid sweep dominated by string work |
 
+## The 10M point: overhead grows with scale at fixed density
+
+One density (0.1%), one order of magnitude up. All nine both-answered
+queries hash-identical; `paths.k` and `reach.window` guardrail-refused on
+**both** variants (the pre-reprice 10M cells); `hist.asof` refused on the
+stripped store as contracted.
+
+| | 1M @ 0.1% | 10M @ 0.1% |
+|---|---|---|
+| storage overhead | +0.2% | +0.85% (270.2 vs 267.9 MB) |
+| coactive.narrow | 1.8× (115 → 65 ms) | **4.0×** (1,103 → 273 ms) |
+| motif.filtered | 1.6× (50 → 32 ms) | **3.4×** (300 → 88 ms) |
+| nbr.evolution | 4.8× (33 → 7 ms) | **6.6×** (194 → 29 ms) |
+| burst.zscore / series.count | 1.6× | 1.8× |
+| snap.hop2 / diff.global | ≤1.09× | ≤1.07× |
+| hist.single / resolve.substr | 1.0× | 1.0× |
+| open time | 3.3–3.8 ms both | 25–26 ms both |
+| maintain vs strip | 5.2 vs 4.9 s | 59.3 vs 57.5 s |
+| suite VmRSS / VmHWM | parity | parity (3.58 vs 3.57 GB / 6.1 GB both) |
+
+The same 0.1% density costs **more** at 10M than at 1M on the
+scan-shaped queries: the absolute number of corrected segments grows
+with scale, so the fraction of segments that lose the all-current fast
+path grows too, and the per-query `close_index()` rebuild reads ten
+times the close records. Memory and open time stay at parity at this
+density — those overheads track correction *volume*, which 0.1% keeps
+small either way. Conversion cost again equals one compaction
+(57.5 s strip vs 59.3 s fold-compact).
+
 ## What the curve says
 
 1. **At zero corrections the two clocks cost nothing measurable.** Every
@@ -187,11 +219,23 @@ beside TCSR persistence.
 rows through the WP-N4 vid postings (`read.rs::locate_vid`): candidates
 by `vid64` prefix, the full vid verified at the row, hits filtered
 through the current manifest. Per-close cost is O(candidates) after a
-one-time index build the read path shares, so replay is linear in
-correction volume again. The scan numbers above (38.6 s / 233.1 s /
-2,856.8 s) describe the pre-fix engine and stand as the baseline; the
-regression-scale guard is
+one-time index build the read path shares; the regression-scale guard is
 `store.rs::corrections_at_scale_locate_through_the_postings`.
+
+A same-host A/B at 1M/5% (dev M-series host, **not xzgpu**; receipts
+`eval-1m-bitemporal-{prefix5,postfix5}.json`, hash gates green in both):
+replay 148.4 s pre-fix → 141.2 s post-fix, against an 8.2 s density-0
+floor. The scan was real but **not the dominant term on that host**
+(~5% of replay; decoded columns scan at memory speed there — its xzgpu
+share is unknown until a rerun there, so the 38.6 s / 233.1 s /
+2,856.8 s baseline stands unsplit). The rest of the correction overhead
+is the **per-read `close_index()` rebuild**: every correction's
+believed-versions lookup re-reads every close-run file accumulated so
+far (`store.rs::close_index`), which is quadratic in correction volume
+and profiles as ~100% of `_correct`'s remaining time post-fix (cProfile,
+200k/5%). Caching the built index per generation is the open follow-up —
+close runs are immutable and the set only changes at commit, the same
+argument the segment cache already rests on.
 
 ## Honest limits
 
