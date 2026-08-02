@@ -18,8 +18,9 @@ to do any of them:
   distinguishes *evolution* ("the edge ended") from *correction* ("we were
   wrong"), so agents can answer *"what did we believe on March 1?"* —
   a question no snapshot or RAG system can express;
-- **13 verified temporal operators** (reachability over time-respecting
-  paths, δ-motifs, snapshot diffs, burst detection, interval joins, …) —
+- **14 verified temporal operators** (reachability over time-respecting
+  paths, δ-motifs, snapshot diffs, burst detection, interval joins, grouped
+  aggregation over edge events, …) —
   typed, deterministic, bounded, cost-guarded, exposed as tools (MCP or
   in-process); identifiers must come from a resolver, arithmetic from a
   `compute` operator;
@@ -106,7 +107,7 @@ ownership, decision log, determinism receipts) are enforced in CI — see
 ```
 tgms/core       clock, bi-temporal data model, error taxonomy
 tgms/storage    StorageAdapter ABC, Kùzu + DuckDB backends, event log, TCSR index
-tgms/temporal   operator algebra O1–O13 + brute-force oracle
+tgms/temporal   operator algebra O1–O14 + brute-force oracle
 tgms/tools      tool schemas, MCP server / ToolRouter, trace viewer, demo GUI
 tgms/agent      plan IR, planner, executor, verifier, reporter, memory
 tgms/data       dataset loaders (SHA-256 pinned) + synthetic generator
