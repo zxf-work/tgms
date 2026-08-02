@@ -960,6 +960,24 @@ impl<S: SegmentSource> Segment<S> {
         crate::visibility::Sidecar::new(&self.header.closed_rows)
     }
 
+    /// Bytes this open segment keeps addressable: the source bytes (file
+    /// contents or mapping) plus everything decoded at open (materialized
+    /// compressed columns, the unpacked string heap). This is the unit the
+    /// store's byte-budget segment cache accounts in — deliberately the
+    /// *whole* footprint rather than just the anonymous heap, so the budget
+    /// reads as "bytes resident because this segment is cached" without
+    /// requiring the operator to know which columns compressed.
+    pub fn resident_bytes(&self) -> u64 {
+        let decoded: usize = self
+            .decoded
+            .iter()
+            .flatten()
+            .map(|(backing, _)| backing.len() * 8)
+            .sum();
+        let strings = self.decoded_strings.as_ref().map_or(0, Vec::len);
+        (self.source.bytes().len() + decoded + strings) as u64
+    }
+
     /// Full 96-bit version id for one row, reassembled from its two columns.
     pub fn vid_at(&self, row: usize) -> Result<Id96> {
         Ok(Id96 {
