@@ -46,5 +46,21 @@ supersessions are part of the record:
 - eval-resources-memcap-10m-perquery.json — §14.2 one container per
   query, attributing the suite OOMs to individual queries
 
+- eval-resources-threads-recal-{1m,10m}.json — §17 rerun of the thread
+  sweep after the row-based parallel-gate recalibration (native only):
+  1M flat at serial latency at every width (the 2–16-thread regression
+  gone), 10M unchanged where parallel pays (coactive 719 → 164 ms at
+  t=16, 133 at t=32); hashes identical across every width
+- eval-resources-memcap-budget-10m{,-perquery}.json — §18 capped rerun
+  with the byte-budget segment cache (D-041, 768 MB budget) and the
+  streamed statistics fold: the whole 10M suite completes under a 2 GB
+  Docker cap at 1.76 GB VmHWM (previously OOM at 2 g and 4 g against a
+  5.93 GB floor), per-query 2 g/4 g all green; `segment_cache` receipts
+  embedded per suite
+- eval-resources-memcap-smallbudget-10m.json — §18 the same suite with a
+  deliberately under-sized 256 MB budget (below the store's ~794 MB
+  decoded size): everything still answers under 2 g — the budget trades
+  re-decode latency for memory, priced per query in the record
+
 Plan §26 asks for parquet; JSON was chosen instead: the records are small
 (&lt;400 KB total), diffable, and dependency-free to read.

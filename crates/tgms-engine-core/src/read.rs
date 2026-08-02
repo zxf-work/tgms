@@ -697,6 +697,16 @@ impl NativeStore {
     /// After the initial build every commit folds its own batch in, so a
     /// write-then-read loop never rescans. Compaction rewrites rows without
     /// changing content, so it leaves these untouched by construction.
+    ///
+    /// The build folds integer columns segment by segment. It used to route
+    /// through `all_edge_versions`, which materializes every row — two
+    /// dictionary lookups, several string allocations, and a sha256-derived
+    /// `eid` per row that statistics never read — as one store-sized
+    /// transient `Vec`. At 10M rows that transient alone exceeded a 2 GB
+    /// memory cap (docs/eval_resources.md §14.2 rerun), so the first query
+    /// OOM'd before the byte-budgeted segment cache could matter. Counts
+    /// cover every stored row, belief ignored, exactly as before — the
+    /// DuckDB adapter must agree here or `estimate_cost` diverges.
     pub fn stats_accum(&self) -> Result<crate::store::StatsAccum> {
         {
             let cell = self.stats_cell().lock().expect("stats mutex poisoned");
@@ -705,11 +715,50 @@ impl NativeStore {
             }
         }
         let mut acc = crate::store::StatsAccum::default();
-        for e in self.all_edge_versions()? {
-            let src_id = self.dict().dense_id(&e.src).unwrap_or(0);
-            acc.add_edge(e.vt_s, e.vt_e, &e.rel_type, src_id);
+        for (file, _id) in self.edge_files() {
+            let seg = self.open_segment(&file)?;
+            let h = seg.header();
+            let vt_s = seg.i64_column("vt_s")?;
+            let vt_e = if h.vt_e_elided {
+                None
+            } else {
+                Some(seg.i64_column("vt_e")?)
+            };
+            let src = seg.u32_column("src_id")?;
+            let rel = seg.u16_column("rel_code")?;
+            // per-code counts within the segment, names merged once at the
+            // end — a string allocation per row was most of the fold
+            let mut code_counts = vec![0u64; h.rel_types.len()];
+            for i in 0..vt_s.len() {
+                let ve = vt_e.map(|c| c[i]).unwrap_or(vt_s[i] + 1);
+                acc.n_edge_versions += 1;
+                acc.vt_min = Some(acc.vt_min.map_or(vt_s[i], |m| m.min(vt_s[i])));
+                let ve = if ve >= OPEN_END { vt_s[i] + 1 } else { ve };
+                acc.vt_max = Some(acc.vt_max.map_or(ve, |m| m.max(ve)));
+                if let Some(c) = code_counts.get_mut(rel[i] as usize) {
+                    *c += 1;
+                }
+                *acc.out_degree.entry(src[i]).or_default() += 1;
+            }
+            for (code, n) in code_counts.into_iter().enumerate() {
+                if n > 0 {
+                    *acc
+                        .rel_type_counts
+                        .entry(h.rel_types[code].clone())
+                        .or_default() += n;
+                }
+            }
         }
-        acc.n_node_versions = self.all_node_versions()?.len() as u64;
+        for r in self.staged_edges() {
+            acc.add_edge(r.vt_s, r.vt_e, &r.rel_type, r.src_id);
+        }
+        acc.n_node_versions = self
+            .manifest()
+            .node_store
+            .iter()
+            .map(|e| e.rows as u64)
+            .sum::<u64>()
+            + self.staged_nodes().len() as u64;
         let mut cell = self.stats_cell().lock().expect("stats mutex poisoned");
         // an open batch's rows are already counted above; do not cache a
         // snapshot that a rollback could invalidate
@@ -996,6 +1045,41 @@ mod tests {
         s.rollback().unwrap();
         assert!(s.believed_edge_versions(&eid, OPEN_END).unwrap().is_empty());
         assert_eq!(s.all_edge_versions().unwrap().len(), 2);
+    }
+
+    #[test]
+    fn stats_fold_matches_the_materializing_definition() {
+        // the column fold must agree with the old all_edge_versions walk —
+        // same counts, extents, rel histogram, and degrees — including rows
+        // staged in an open batch and interval-lane rows with real vt_e
+        let (_root, mut s, _) = seeded("stats-fold");
+        s.begin(200).unwrap();
+        let a = s.ensure_entity("n1", "Node").unwrap();
+        let mut long = edge(a, a, "n1", "n1", 40, 200, 5);
+        long.vt_e = crate::OPEN_END; // routes to the interval lane
+        s.stage_edge(long).unwrap();
+        s.stage_edge(edge(a, a, "n1", "n1", 50, 200, 6)).unwrap();
+        s.commit(EventLogRef::default()).unwrap();
+
+        s.begin(300).unwrap();
+        let b = s.ensure_entity("n9", "Node").unwrap();
+        s.stage_edge(edge(b, a, "n9", "n1", 60, 300, 7)).unwrap();
+
+        let acc = s.stats_accum().unwrap();
+        let mut want = crate::store::StatsAccum::default();
+        for e in s.all_edge_versions().unwrap() {
+            let src_id = s.dict().dense_id(&e.src).unwrap_or(0);
+            want.add_edge(e.vt_s, e.vt_e, &e.rel_type, src_id);
+        }
+        want.n_node_versions = s.all_node_versions().unwrap().len() as u64;
+
+        assert_eq!(acc.n_edge_versions, want.n_edge_versions);
+        assert_eq!(acc.n_node_versions, want.n_node_versions);
+        assert_eq!(acc.vt_min, want.vt_min);
+        assert_eq!(acc.vt_max, want.vt_max);
+        assert_eq!(acc.rel_type_counts, want.rel_type_counts);
+        assert_eq!(acc.out_degree, want.out_degree);
+        s.rollback().unwrap();
     }
 
     #[test]

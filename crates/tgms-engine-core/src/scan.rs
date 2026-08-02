@@ -50,6 +50,22 @@ fn scan_threads() -> usize {
         })
 }
 
+/// Should a scan stage fan out? `units` is the stage's chunking unit
+/// (segments for select, clusters for materialize), `rows` the stage's work
+/// proxy (candidate rows for select, selected rows for materialize).
+///
+/// Recalibrated 2026-08-01 (docs/eval_resources.md §14.3): the old gates
+/// were segment-count-only, and parallel select measured *slower* than
+/// serial at every width 2–16 on a 1M-row store while paying 4.3× at 10M —
+/// so the deciding term is rows, with the unit minimum kept only so there
+/// is something to chunk. Widths below `PARALLEL_SCAN_MIN_THREADS` never
+/// engage: t=2 lost to t=1 at both measured scales.
+fn parallel_gate(threads: usize, units: usize, min_units: usize, rows: u64) -> bool {
+    threads >= crate::defaults::PARALLEL_SCAN_MIN_THREADS
+        && units >= min_units
+        && rows >= crate::defaults::PARALLEL_SCAN_MIN_ROWS
+}
+
 use crate::derive::Id96;
 use crate::error::Result;
 use crate::row::Lane;
@@ -222,13 +238,21 @@ impl<'a, S: SegmentSource> ScanSet<'a, S> {
         // Segments are independent, and a Selection carries its segment
         // index, so per-segment work fans out across threads and the results
         // concatenate in segment order — byte-identical output to the serial
-        // loop by construction. Serial below a few segments: thread spawn
-        // costs more than it saves, and correctness never depends on which
-        // path ran. This is the 10M finding from eval_phase0 ("DuckDB wins
-        // exactly the full-window scans"): the scan was the one single-
-        // threaded stage on a 40-core host.
+        // loop by construction. Serial below the gates: thread spawn costs
+        // more than it saves, and correctness never depends on which path
+        // ran. The gates are row-count-based, not segment-count-based, since
+        // the §14.3 sweep measured the segment gate misfiring by a decade:
+        // parallel actively hurt at 1M rows (2–16 threads all slower than
+        // serial) while paying 4.3× at 10M — see PARALLEL_SCAN_MIN_ROWS.
+        // Candidate rows come from headers already in memory, so the gate
+        // itself costs nothing.
         let threads = scan_threads();
-        if threads > 1 && self.targets.len() >= 8 {
+        let candidate_rows: u64 = self
+            .targets
+            .iter()
+            .map(|t| t.segment.rows() as u64)
+            .sum();
+        if parallel_gate(threads, self.targets.len(), 8, candidate_rows) {
             let chunk = self.targets.len().div_ceil(threads);
             let parts: Vec<Result<(Vec<Selection>, ScanStats)>> =
                 std::thread::scope(|scope| {
@@ -578,11 +602,13 @@ impl<'a, S: SegmentSource> ScanSet<'a, S> {
         // that the merged path already handles.
         if req.limit.is_none() {
             let clusters = self.cluster_order(&selections)?;
-            // scan_threads() gates whether clusters fan out at all (1 forces
-            // the serial path); the fan-out width itself is one thread per
-            // cluster, exactly as before the override existed.
+            // Same recalibrated gates as select(), but on *selected* rows —
+            // known exactly here, and the honest proxy for materialization
+            // work. The fan-out width itself is one thread per cluster,
+            // exactly as before the override existed.
             let threads = scan_threads();
-            let parts: Vec<Result<EdgeColumns>> = if threads > 1 && clusters.len() >= 4 {
+            let parts: Vec<Result<EdgeColumns>> =
+                if parallel_gate(threads, clusters.len(), 4, stats.rows_selected) {
                 std::thread::scope(|scope| {
                     let handles: Vec<_> = clusters
                         .iter()
@@ -1144,6 +1170,29 @@ mod tests {
     /// integer overrides, and it is clamped, never trusted for width.
     /// (Parsing is tested through the pure function — mutating the process
     /// environment inside a threaded test harness races other tests.)
+    /// The recalibrated gates (docs/eval_resources.md §14.3): rows decide,
+    /// width 2–3 never engages, and the unit minimum only guards chunking.
+    #[test]
+    fn parallel_gate_is_row_based_and_skips_narrow_widths() {
+        const ROWS: u64 = crate::defaults::PARALLEL_SCAN_MIN_ROWS;
+        // a 1M-row store stays serial at every width — the measured regression
+        for t in [1, 2, 4, 8, 16, 32] {
+            assert!(!parallel_gate(t, 20, 8, 1_000_000), "t={t} at 1M rows");
+        }
+        // a 10M-row store engages from 4 workers up
+        assert!(parallel_gate(4, 200, 8, 10_000_000));
+        assert!(parallel_gate(16, 200, 8, 10_000_000));
+        // t=2 lost to t=1 at both measured scales: never engage
+        assert!(!parallel_gate(2, 200, 8, 10_000_000));
+        assert!(!parallel_gate(3, 200, 8, 10_000_000));
+        // nothing to chunk below the unit minimum, whatever the rows
+        assert!(!parallel_gate(16, 7, 8, ROWS));
+        assert!(parallel_gate(16, 8, 8, ROWS));
+        // the materialize form: clusters >= 4
+        assert!(parallel_gate(16, 4, 4, ROWS));
+        assert!(!parallel_gate(16, 3, 4, ROWS));
+    }
+
     #[test]
     fn scan_threads_override_parses_strictly() {
         assert_eq!(scan_threads_override(None), None);

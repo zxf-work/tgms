@@ -90,11 +90,18 @@ pub struct NativeStore {
     /// immutable — closes live in separate .tgc files and compaction writes
     /// new files — so a cached entry can never be stale. This is also what
     /// makes compressed columns viable: they are decoded once per process
-    /// here, not once per operator call. Memory ceiling is the decoded
-    /// store, the same working set the OS page cache held before.
-    segments: std::sync::Mutex<
-        std::collections::HashMap<String, std::sync::Arc<crate::segment::Segment<MmapSource>>>,
-    >,
+    /// here, not once per operator call.
+    ///
+    /// Byte-budgeted since the §14.2 measurement priced the unbounded form
+    /// at a ~6 GB per-process floor for a 268 MB store (docs/
+    /// eval_resources.md): least-recently-used whole segments are dropped
+    /// once the accounted bytes exceed the budget, and an evicted segment
+    /// simply reopens on next touch — checksum walk skipped via `verified`,
+    /// which is never evicted, so the once-per-session guarantee holds.
+    /// Correctness never depends on residency; the budget trades re-decode
+    /// latency for memory. `TGMS_SEGMENT_CACHE_BYTES` overrides (0 =
+    /// unbounded); the default is half of detected physical RAM (D-041).
+    segments: std::sync::Mutex<SegmentCache>,
     /// Transaction time of the open batch, if any (`begin` .. `commit`).
     batch_tt: Option<i64>,
     /// True when the `CURRENT_ONLY` marker is present: the stripped
@@ -140,7 +147,10 @@ impl NativeStore {
             node_postings: std::sync::Mutex::new(Postings::default()),
             verified: std::sync::Mutex::new(std::collections::HashSet::new()),
             close_cache: std::sync::Mutex::new(None),
-            segments: std::sync::Mutex::new(std::collections::HashMap::new()),
+            segments: std::sync::Mutex::new(SegmentCache::new(cache_budget(
+                std::env::var("TGMS_SEGMENT_CACHE_BYTES").ok().as_deref(),
+                detected_ram_bytes(),
+            ))),
             batch_tt: None,
             current_only,
         })
@@ -262,11 +272,31 @@ impl NativeStore {
         self.segments
             .lock()
             .expect("segment-cache mutex poisoned")
-            .retain(|file, _| keep.contains(file));
+            .retain_files(keep);
         self.verified
             .lock()
             .expect("verified-set mutex poisoned")
             .retain(|file| keep.contains(file));
+    }
+
+    /// Override the segment-cache byte budget for this handle (`None` =
+    /// unbounded). Exists so tests and harnesses can exercise eviction
+    /// without mutating the process environment, which races other threads.
+    pub fn set_segment_cache_budget(&self, budget: Option<u64>) {
+        self.segments
+            .lock()
+            .expect("segment-cache mutex poisoned")
+            .set_budget(budget);
+    }
+
+    /// `(entries, accounted_bytes, budget, evictions)` — observability for
+    /// the byte-budget cache, so "the cache stayed under budget" is a
+    /// measurement rather than an assumption.
+    pub fn segment_cache_stats(&self) -> (usize, u64, Option<u64>, u64) {
+        self.segments
+            .lock()
+            .expect("segment-cache mutex poisoned")
+            .stats()
     }
 
     pub fn generation(&self) -> u64 {
@@ -314,6 +344,12 @@ impl NativeStore {
     /// Open a segment, verifying its checksums the first time this session
     /// touches it. Every read path must come through here — opening a segment
     /// directly would skip the check and could serve corrupt rows.
+    ///
+    /// A budget-evicted segment lands on the slow path again and simply
+    /// reopens: `verified` still names it, so the checksum walk stays
+    /// once-per-session and only the decode is repaid. Callers holding an
+    /// `Arc` from before an eviction keep a valid segment either way —
+    /// eviction drops the cache's reference, never the data under a reader.
     pub fn open_segment(&self, file: &str) -> Result<std::sync::Arc<crate::segment::Segment<MmapSource>>> {
         if let Some(seg) = self
             .segments
@@ -321,7 +357,7 @@ impl NativeStore {
             .expect("segment-cache mutex poisoned")
             .get(file)
         {
-            return Ok(seg.clone());
+            return Ok(seg);
         }
         let path = self.root.join(file);
         let first_time = {
@@ -718,6 +754,149 @@ pub(crate) struct Postings {
     pub(crate) by_vid: std::collections::HashMap<u64, Vec<(u64, u32)>>,
     /// Segment ids already folded in.
     pub(crate) indexed: std::collections::HashSet<u64>,
+}
+
+/// The store's open-segment cache, accounted in bytes (D-041).
+///
+/// Eviction unit: whole cached segments, least-recently-used first. The
+/// entry being inserted is never the eviction victim — a single segment
+/// larger than the whole budget still gets served (over budget transiently)
+/// rather than thrashing on itself. All access happens under the same mutex
+/// the unbounded map already took, so the read hot path gains no lock.
+pub(crate) struct SegmentCache {
+    entries: std::collections::HashMap<String, CacheEntry>,
+    /// Logical access clock: bumped per touch, recorded per entry. Cheaper
+    /// and simpler than a linked LRU list at segment-count scale (hundreds),
+    /// where the O(n) victim scan is noise against the decode it replaces.
+    clock: u64,
+    total_bytes: u64,
+    budget: Option<u64>,
+    evictions: u64,
+}
+
+struct CacheEntry {
+    seg: std::sync::Arc<crate::segment::Segment<MmapSource>>,
+    bytes: u64,
+    last_used: u64,
+}
+
+impl SegmentCache {
+    fn new(budget: Option<u64>) -> Self {
+        Self {
+            entries: std::collections::HashMap::new(),
+            clock: 0,
+            total_bytes: 0,
+            budget,
+            evictions: 0,
+        }
+    }
+
+    fn get(&mut self, file: &str) -> Option<std::sync::Arc<crate::segment::Segment<MmapSource>>> {
+        self.clock += 1;
+        let clock = self.clock;
+        self.entries.get_mut(file).map(|e| {
+            e.last_used = clock;
+            e.seg.clone()
+        })
+    }
+
+    fn insert(&mut self, file: String, seg: std::sync::Arc<crate::segment::Segment<MmapSource>>) {
+        let bytes = seg.resident_bytes();
+        self.clock += 1;
+        if let Some(old) = self.entries.insert(
+            file.clone(),
+            CacheEntry {
+                seg,
+                bytes,
+                last_used: self.clock,
+            },
+        ) {
+            // two threads raced the same miss; the replaced entry is identical
+            self.total_bytes -= old.bytes;
+        }
+        self.total_bytes += bytes;
+        if let Some(budget) = self.budget {
+            while self.total_bytes > budget && self.entries.len() > 1 {
+                let victim = self
+                    .entries
+                    .iter()
+                    .filter(|(name, _)| name.as_str() != file)
+                    .min_by_key(|(_, e)| e.last_used)
+                    .map(|(name, _)| name.clone());
+                match victim {
+                    Some(name) => {
+                        let e = self.entries.remove(&name).expect("victim came from the map");
+                        self.total_bytes -= e.bytes;
+                        self.evictions += 1;
+                    }
+                    None => break, // only the just-inserted entry remains
+                }
+            }
+        }
+    }
+
+    fn retain_files(&mut self, keep: &std::collections::HashSet<String>) {
+        let total = &mut self.total_bytes;
+        self.entries.retain(|file, e| {
+            let kept = keep.contains(file);
+            if !kept {
+                *total -= e.bytes;
+            }
+            kept
+        });
+    }
+
+    fn set_budget(&mut self, budget: Option<u64>) {
+        self.budget = budget;
+        if let Some(b) = budget {
+            while self.total_bytes > b && self.entries.len() > 1 {
+                let victim = self
+                    .entries
+                    .iter()
+                    .min_by_key(|(_, e)| e.last_used)
+                    .map(|(name, _)| name.clone());
+                match victim {
+                    Some(name) => {
+                        let e = self.entries.remove(&name).expect("victim came from the map");
+                        self.total_bytes -= e.bytes;
+                        self.evictions += 1;
+                    }
+                    None => break,
+                }
+            }
+        }
+    }
+
+    fn stats(&self) -> (usize, u64, Option<u64>, u64) {
+        (self.entries.len(), self.total_bytes, self.budget, self.evictions)
+    }
+}
+
+/// Resolve the segment-cache budget: the env override wins, otherwise half
+/// of detected physical RAM, otherwise unbounded (D-041).
+///
+/// The override is plain bytes; `0` means unbounded explicitly. Garbage is
+/// treated as unset rather than as an error — a tuning knob must never make
+/// a store fail to open.
+pub(crate) fn cache_budget(env: Option<&str>, ram_bytes: Option<u64>) -> Option<u64> {
+    if let Some(v) = env.and_then(|s| s.trim().parse::<u64>().ok()) {
+        return if v == 0 { None } else { Some(v) };
+    }
+    ram_bytes.map(|r| r / 2)
+}
+
+/// Total physical RAM, where the platform makes it cheap to ask (Linux
+/// `/proc/meminfo`). `None` elsewhere — the cache is then unbounded by
+/// default, which is exactly the pre-D-041 behavior.
+fn detected_ram_bytes() -> Option<u64> {
+    let text = std::fs::read_to_string("/proc/meminfo").ok()?;
+    for line in text.lines() {
+        if let Some(rest) = line.strip_prefix("MemTotal:") {
+            let kb: u64 = rest.trim().trim_end_matches("kB").trim().parse().ok()?;
+            return Some(kb * 1024);
+        }
+    }
+    None
 }
 
 /// What a `verify` pass found. An empty `problems` list is the only
@@ -1294,6 +1473,107 @@ mod tests {
             Err(e) => e,
         };
         assert_eq!(err.category, crate::error::Category::Corrupt);
+    }
+
+    // --- byte-budget segment cache (D-041) ------------------------------ //
+
+    #[test]
+    fn cache_budget_resolution() {
+        // explicit override wins, 0 means unbounded, garbage falls through
+        assert_eq!(cache_budget(Some("1048576"), Some(1 << 33)), Some(1 << 20));
+        assert_eq!(cache_budget(Some("0"), Some(1 << 33)), None);
+        assert_eq!(cache_budget(Some(" 42 "), None), Some(42));
+        assert_eq!(cache_budget(Some("lots"), Some(1 << 33)), Some(1 << 32));
+        assert_eq!(cache_budget(Some(""), None), None);
+        // default: half of detected RAM, unbounded where undetectable
+        assert_eq!(cache_budget(None, Some(1 << 33)), Some(1 << 32));
+        assert_eq!(cache_budget(None, None), None);
+    }
+
+    /// Results must be byte-identical under any budget: an evicted segment
+    /// reopens transparently, and the checksum walk stays once-per-session.
+    #[test]
+    fn tiny_cache_budget_changes_memory_not_answers() {
+        let root = tmp_root("cache-budget");
+        let mut s = NativeStore::open(&root).unwrap();
+        for batch in 0..6u32 {
+            let tt = 100 + batch as i64;
+            s.begin(tt).unwrap();
+            let a = s.ensure_entity("n1", "Node").unwrap();
+            let b = s.ensure_entity("n2", "Node").unwrap();
+            for i in 0..50u32 {
+                s.stage_edge(edge_row(a, b, (batch * 50 + i) as i64, tt, batch * 50 + i))
+                    .unwrap();
+            }
+            s.commit(EventLogRef::default()).unwrap();
+        }
+        assert!(s.manifest().edge_lanes.event.len() >= 6);
+
+        let unbounded: Vec<_> = s.all_edge_versions().unwrap();
+        let (entries, bytes, _, evictions) = s.segment_cache_stats();
+        assert_eq!(entries, 6, "unbounded: every touched segment stays");
+        assert!(bytes > 0);
+        assert_eq!(evictions, 0);
+
+        // one segment's worth of budget: the walk must evict as it goes
+        let one = s
+            .open_segment(&s.manifest().edge_lanes.event[0].file)
+            .unwrap()
+            .resident_bytes();
+        s.set_segment_cache_budget(Some(one));
+        let capped: Vec<_> = s.all_edge_versions().unwrap();
+        assert_eq!(capped, unbounded, "answers must not depend on residency");
+
+        let (entries, bytes, budget, evictions) = s.segment_cache_stats();
+        assert!(evictions > 0, "a one-segment budget must have evicted");
+        assert!(entries < 6, "the cache cannot hold every segment");
+        assert!(
+            bytes <= budget.unwrap() || entries == 1,
+            "over budget with multiple entries: {bytes} of {budget:?}"
+        );
+
+        // and point reads through the postings still agree after evictions
+        let eid = unbounded[0].eid.clone();
+        let vids: Vec<String> = s
+            .believed_edge_versions(&eid, OPEN_END)
+            .unwrap()
+            .iter()
+            .map(|r| r.vid.clone())
+            .collect();
+        s.set_segment_cache_budget(None);
+        let vids_unbounded: Vec<String> = s
+            .believed_edge_versions(&eid, OPEN_END)
+            .unwrap()
+            .iter()
+            .map(|r| r.vid.clone())
+            .collect();
+        assert_eq!(vids, vids_unbounded);
+    }
+
+    #[test]
+    fn an_arc_held_across_an_eviction_stays_valid() {
+        let root = tmp_root("cache-arc");
+        let mut s = NativeStore::open(&root).unwrap();
+        for batch in 0..3u32 {
+            let tt = 100 + batch as i64;
+            s.begin(tt).unwrap();
+            let a = s.ensure_entity("n1", "Node").unwrap();
+            s.stage_edge(edge_row(a, a, batch as i64, tt, batch)).unwrap();
+            s.commit(EventLogRef::default()).unwrap();
+        }
+        let file = s.manifest().edge_lanes.event[0].file.clone();
+        let held = s.open_segment(&file).unwrap();
+        let vt_before = held.i64_column("vt_s").unwrap().to_vec();
+
+        s.set_segment_cache_budget(Some(1)); // evicts everything but the MRU
+        for e in &s.manifest().edge_lanes.event.clone() {
+            s.open_segment(&e.file).unwrap();
+        }
+        let (_, _, _, evictions) = s.segment_cache_stats();
+        assert!(evictions > 0);
+        // the reader's view is untouched: eviction drops the cache's
+        // reference, never the data under a live Arc
+        assert_eq!(held.i64_column("vt_s").unwrap(), &vt_before[..]);
     }
 
     #[test]

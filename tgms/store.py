@@ -11,10 +11,10 @@ from pathlib import Path
 from typing import Any, Iterable, Iterator
 
 from tgms.core.clock import HybridLogicalClock
-from tgms.core.errors import TgmsError
+from tgms.core.errors import StateError, TgmsError
 from tgms.core.model import OPEN_END, EntityRef, Props
 from tgms.storage.base import StorageAdapter, make_op
-from tgms.storage.eventlog import EventLog
+from tgms.storage.eventlog import EventLog, extend_chain
 
 INGEST_CHUNK = 50_000
 
@@ -29,8 +29,68 @@ class Store:
         self.eventlog = EventLog(self.path / "eventlog.jsonl")
         self.adapter = _make_adapter(backend, self.path)
         self.adapter.paranoid = paranoid
+        #: Rolling chain over the log prefix the backend has applied; None on
+        #: backends without a cursor and on legacy stores until their next
+        #: write (which pays a one-time full-prefix hash to start the chain).
+        self._chain: str | None = None
+        self._recover()
         self.clock = HybridLogicalClock(last_tt=self.eventlog.last_tt())
         self._memories: list[Any] = []  # EvolutionMemory hooks (spec v1.1 WP2.4)
+
+    def _recover(self) -> None:
+        """Apply the event-log suffix the backend has not seen (D-042).
+
+        The write path is write-ahead: a crash between the log fsync and the
+        backend commit leaves a durable record with no store state. Backends
+        that record a replay cursor (the native engine) recover here by
+        replaying exactly the un-applied suffix. The rules, in order of
+        distrust: a cursor the log cannot account for (past its end, off a
+        record boundary, or with a chain mismatch) is corruption and raises
+        loudly; a *missing* cursor (legacy store, chain "") recovers nothing
+        — it cannot know what was applied — and upgrades at the next write;
+        an accounted cursor short of the log replays forward, re-failing
+        failed batches deterministically, exactly like full replay.
+        """
+        cursor = getattr(self.adapter, "event_cursor", None)
+        if cursor is None:
+            return  # backend keeps no cursor; recovery stays `tgms replay`
+        offset, chain = cursor()
+        if chain == "":
+            return  # legacy store: no cursor was ever recorded (see above)
+        size = self.eventlog.size()
+        if offset > size:
+            raise StateError(
+                f"replay cursor is ahead of the event log: the manifest says "
+                f"{offset} bytes were applied but {self.eventlog.path} holds "
+                f"{size} — the log was truncated or belongs to a different "
+                f"store; refusing to guess. Restore the full log or rebuild "
+                f"the store with `tgms replay`."
+            )
+        # verify the applied prefix is the prefix the cursor was cut from;
+        # chain_of_prefix also rejects an offset that is no record boundary
+        got = self.eventlog.chain_of_prefix(offset)
+        if got != chain:
+            raise StateError(
+                f"replay cursor chain mismatch at offset {offset} of "
+                f"{self.eventlog.path}: manifest records {chain}, log yields "
+                f"{got} — the applied prefix was rewritten; refusing to "
+                f"replay onto it. Rebuild the store with `tgms replay`."
+            )
+        self._chain = chain
+        if offset == size:
+            return  # clean shutdown: nothing to do
+        for batch, end, raw in self.eventlog.batches_from(offset):
+            self._chain = extend_chain(self._chain, raw)
+            self.adapter.begin()
+            try:
+                self.adapter.apply_ops(batch["ops"], batch["tt"])
+            except TgmsError:
+                # failed on the live path, fails identically here; the next
+                # successful commit's cursor covers the skipped record
+                self.adapter.rollback()
+                continue
+            self.adapter.note_event_cursor(end, self._chain)
+            self.adapter.commit()
 
     def close(self) -> None:
         self.adapter.close()
@@ -89,15 +149,33 @@ class Store:
     def _write(self, ops: list[dict[str, Any]]) -> int:
         """Write-ahead: the batch is logged before it is applied. If apply
         fails, the backend rolls back; replay skips the batch identically
-        (apply is deterministic), so log and store never diverge."""
+        (apply is deterministic), so log and store never diverge.
+
+        On cursor-keeping backends the commit also records how far into the
+        log this batch reaches (offset past its newline, rolling chain), so
+        a crash after the append recovers by suffix replay (`_recover`)."""
         tt = self.clock.tick()
-        self.eventlog.append(tt, ops)
+        _batch_id, end_offset, record = self.eventlog.append(tt, ops)
+        note_cursor = getattr(self.adapter, "note_event_cursor", None)
+        if note_cursor is not None:
+            if self._chain is None:
+                # legacy store's first write since cursors exist: start the
+                # chain by hashing the whole applied prefix once (everything
+                # before this record — the store predates cursor recording,
+                # so its manifest vouches for the prefix, not the chain)
+                self._chain = self.eventlog.chain_of_prefix(
+                    end_offset - len(record))
+            # the chain covers log bytes, failed batches included — extend
+            # unconditionally; the cursor is staged only on success below
+            self._chain = extend_chain(self._chain, record)
         self.adapter.begin()
         try:
             self.adapter.apply_ops(ops, tt)
         except TgmsError:
             self.adapter.rollback()
             raise
+        if note_cursor is not None:
+            note_cursor(end_offset, self._chain)
         self.adapter.commit()
         return tt
 

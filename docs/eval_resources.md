@@ -1,5 +1,11 @@
 # Resource axes: threads, cache state, memory ceiling, readers
 
+> **2026-08-01 follow-up:** the two defects this document measured — the
+> segment-count parallel gates and the unbounded memory floor — were fixed
+> and re-measured on the same host and stores; see
+> [§17–18 below](#17-parallel-gate-recalibration-re-measured). The tables
+> in §14–15 describe the code as it was when measured.
+
 What do the published timings assume about the machine? Every table so
 far was warm, single-client, uncapped, and free to use 16 scan threads.
 This answers the evaluation plan's resource sections with four controlled
@@ -275,6 +281,115 @@ behind the "lock-free reads off immutable segments" claim.
    reader's scans themselves fan out 16 threads, so 16 readers ask for
    ~256 workers on 40 cores: coactive.narrow doubles (206 → 412 ms) at
    16 readers while hist.single, which never fans out, moves 0.2 ms.
+
+## §17 Parallel-gate recalibration, re-measured
+
+The engine's scan stages gated parallelism on *segment counts*
+(select at ≥8 targets, materialize at ≥4 clusters, any width above 1),
+which §14.3 measured misfiring by a decade: parallel select was slower
+than serial at every width 2–16 on the 1M store while paying 4.3× at
+10M, and t=2 lost to t=1 at both scales. The gates are now row-based
+(scan.rs `parallel_gate`): candidate rows (select) or selected rows
+(materialize) must reach 4M — splitting the measured decade — and
+widths below 4 never engage. Re-swept with the same harness and stores,
+native only (records `eval-resources-threads-recal-{1m,10m}.json`,
+commit `88b18d3`):
+
+### 1M events (p50 ms, native)
+
+| threads | series.count | coactive.narrow | motif.filtered |
+|---|---|---|---|
+| 1 | 69 | 106 | 45 |
+| 2 | 71 | 108 | 45 |
+| 4 | 68 | 106 | 45 |
+| 8 | 68 | 109 | 46 |
+| 16 | 68 | 106 | 44 |
+| 32 | 68 | 107 | 45 |
+
+Flat at serial latency at every width: the 2–16-thread regression
+(coactive 107 → 145–153 ms in §14.3) is gone, because a 1M-row store no
+longer takes the parallel path at all. The old t=32 anomaly disappears
+with it.
+
+### 10M events (p50 ms, native)
+
+| threads | series.count | coactive.narrow | motif.filtered |
+|---|---|---|---|
+| 1 | 600 | 719 | 212 |
+| 2 | 611 | 749 | 221 |
+| 4 | 567 | 463 | 157 |
+| 8 | 510 | 270 | 105 |
+| 16 (default) | 468 | 164 | 76 |
+| 32 | 473 | 133 | 77 |
+
+t=2 now runs the serial path by design (it measured slower than serial
+at both scales) and sits at serial latency ±2%; from 4 workers up the
+curve is the §14.3 curve. The 10M payoff is intact: coactive.narrow
+719 → 164 ms at the default width (4.4×), 133 ms at 32 (5.4×). Result
+hashes agreed across every width at both scales, as before.
+
+## §18 Memory ceiling, re-measured under the byte budget
+
+Two fixes, then the §14.2 probe rerun (commit `f841738`):
+
+1. **Byte-budget LRU segment cache** (D-041): the open-segment cache
+   evicts whole segments least-recently-used past
+   `TGMS_SEGMENT_CACHE_BYTES` (0 = unbounded; default: half of detected
+   physical RAM). Accounting is `Segment::resident_bytes` — source
+   bytes + decoded columns + unpacked heap. Evicted segments reopen
+   transparently; the verified set is not evicted, so checksums stay
+   once-per-session; results are byte-identical under any budget
+   (engine and Python tests pin this at a 1-byte budget).
+2. **Streamed statistics fold:** the first-query warm-up used to
+   materialize *every stored row* — strings, dictionary round-trips,
+   and a sha256-derived `eid` per row — as one store-sized transient
+   `Vec` just to compute counts and extents. At 10M that transient
+   alone broke any 2 GB cap before the cache budget could matter (the
+   first rerun measured exactly that: all six queries OOM at 2 g with a
+   256 MB budget). `stats_accum` now folds integer columns segment by
+   segment.
+
+With a 768 MB budget (the 10M store's decoded form measures 794 MB in
+475 segments, so this budget fits it with no evictions —
+`segment_cache` receipts are embedded in the records):
+
+| cap | outcome (whole suite, one process) |
+|---|---|
+| uncapped | completes; **VmHWM 1.82 GB** (was 5.93 GB) |
+| 2 GB | **completes, VmHWM 1.76 GB** (was OOM-killed) — hist.single 0.5 ms, snap.hop2 1,119 ms, series.count 484 ms, coactive.narrow 171 ms, diff.global 4,319 ms, motif.filtered 75 ms |
+
+Per query, each in its own capped container: all six queries pass at
+both 2 GB and 4 GB (previously all OOM at both), with per-query VmHWM
+814–1,648 MB. Latencies at 2 GB sit within 3–8% of the uncapped run and
+match the §14.2 8 GB-cap column — e.g. series.count 484 vs 482 ms,
+motif.filtered 75 vs 75 ms; coactive.narrow is *faster* than the old
+8 GB row (171 vs 203 ms) because the §17 gates land it on the better
+path. Records: `eval-resources-memcap-budget-10m{,-perquery}.json`.
+
+**What a too-small budget costs.** With the budget forced to 256 MB —
+a third of the store's decoded size — every query pays re-decode of
+evicted segments instead of memory
+(`eval-resources-memcap-smallbudget-10m.json`): under the same 2 GB cap
+the suite still completes (VmHWM 1.61 GB; 32,615 evictions, cache held
+at 264.9 of 268.4 MB), at series.count 1,690 ms (3.5×), coactive.narrow
+4,562 ms (28×), diff.global 7,605 ms (1.8×), motif.filtered 1,179 ms
+(16×), snap.hop2 2,187 ms (2×); hist.single stays 0.6 ms. This is the
+degradation region §14.2 found missing: below the comfortable budget
+the store now gets slower instead of getting killed.
+
+**Attribution, honestly:** the ~6 GB floor §14.2 measured was mostly
+the stats warm-up transient, not the cache — the cache's whole
+accounted footprint at 10M is 794 MB. The budget is what keeps that
+number from growing without bound at 100M+, and what a small-RAM
+deployment tunes; the transient was what made 10M unusable below 6 GB
+today. One caveat carried into D-041: inside a cgroup, `/proc/meminfo`
+still shows host RAM, so the half-of-RAM default cannot see a
+container cap — capped deployments set `TGMS_SEGMENT_CACHE_BYTES`
+explicitly (the harness forwards it into the container).
+
+The remaining §14.4 exposure — 2 of 16 readers OOM-killed at ~4 GB per
+reader — should shrink with the same fixes, but was not re-measured
+here; the reader sweep is unchanged since §14.4.
 
 ## Honest limits
 

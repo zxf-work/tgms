@@ -266,9 +266,16 @@ def run_suite(cfg: dict[str, Any]) -> dict[str, Any]:
                             "p95_ms": p95, "count": len(ts),
                             "timings_ms": [round(x, 3) for x in ts[:2000]]})
 
+    cache = None
+    try:  # receipts for the byte-budget segment cache (native only, D-041)
+        entries, cbytes, budget, evictions = adapter._store.segment_cache_stats()
+        cache = {"entries": entries, "bytes": cbytes, "budget": budget,
+                 "evictions": evictions}
+    except AttributeError:
+        pass
     return {"open_ms": round(open_ms, 3), "results": results,
             "wall_s": round(wall_s, 3) if wall_s is not None else None,
-            "queries_done": done, **_vm_status()}
+            "queries_done": done, "segment_cache": cache, **_vm_status()}
 
 
 def _suite_config(store: Path, backend: str, queries: list[dict[str, Any]],
@@ -473,8 +480,14 @@ def cmd_memcap(args: argparse.Namespace) -> tuple[int, dict[str, Any]]:
             # site-packages via PYTHONPATH skips .pth processing, so the
             # editable install does not resolve from it — the repo root is
             # appended explicitly instead (mounted at its host path).
-            cmd += ["-e", f"PYTHONPATH={_site_packages()}:{ROOT}",
-                    "python:3.12-slim", "python",
+            cmd += ["-e", f"PYTHONPATH={_site_packages()}:{ROOT}"]
+            # the cache budget must cross into the container explicitly —
+            # inside a cgroup /proc/meminfo still shows host RAM, so the
+            # engine's half-of-RAM default cannot see the cap (D-041)
+            if os.environ.get("TGMS_SEGMENT_CACHE_BYTES"):
+                cmd += ["-e", "TGMS_SEGMENT_CACHE_BYTES="
+                        f"{os.environ['TGMS_SEGMENT_CACHE_BYTES']}"]
+            cmd += ["python:3.12-slim", "python",
                     str(Path(__file__).resolve()), "_suite"]
             p = spawn_suite(cfg, argv=cmd)
         else:

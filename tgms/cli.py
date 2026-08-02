@@ -15,14 +15,16 @@ def main(argv: list[str] | None = None) -> int:
     p_ing = sub.add_parser("ingest", help="ingest an event JSONL file into a store")
     p_ing.add_argument("events_jsonl")
     p_ing.add_argument("--store", required=True)
-    p_ing.add_argument("--backend", default="duckdb", choices=["duckdb", "kuzu"])
+    p_ing.add_argument("--backend", default="duckdb",
+                       choices=["native", "duckdb", "kuzu"])
 
     p_rep = sub.add_parser("replay", help="rebuild a store from a recorded "
                            "event log (byte-identical; preserves transaction "
                            "times, unlike a fresh ingest)")
     p_rep.add_argument("eventlog_jsonl")
     p_rep.add_argument("--store", required=True)
-    p_rep.add_argument("--backend", default="duckdb", choices=["duckdb", "kuzu"])
+    p_rep.add_argument("--backend", default="duckdb",
+                       choices=["native", "duckdb", "kuzu"])
 
     p_synth = sub.add_parser("synth", help="generate a synthetic dataset")
     p_synth.add_argument("out_dir")
@@ -94,7 +96,7 @@ def main(argv: list[str] | None = None) -> int:
                         help="rerun the frozen test split; reason is logged (§8.3)")
 
     p_store = sub.add_parser("store", help="native store maintenance")
-    p_store.add_argument("action", choices=["gc", "compact"])
+    p_store.add_argument("action", choices=["gc", "compact", "verify"])
     p_store.add_argument("--store", required=True)
     p_store.add_argument("--keep", type=int, default=2,
                          help="gc: generations to retain besides those "
@@ -121,13 +123,16 @@ def main(argv: list[str] | None = None) -> int:
 
         import tgms
         from tgms.storage.eventlog import replay
-        # replay writes into a fresh store, then seeds the store's own log with
-        # the same file so future opens/replays stay consistent
+        # replay writes into a fresh store. The log is copied into place
+        # *first* and replayed from the copy, so the replay cursor a
+        # cursor-keeping backend records (suffix recovery, D-042) names
+        # offsets in the store's own log — and an interrupted replay simply
+        # resumes from its cursor on the next open.
         store = tgms.open(args.store, backend=args.backend)
-        n = replay(args.eventlog_jsonl, store.adapter)
         dst = Path(store.path) / "eventlog.jsonl"
         if Path(args.eventlog_jsonl).resolve() != dst.resolve():
             shutil.copyfile(args.eventlog_jsonl, dst)
+        n = replay(dst, store.adapter, thread_cursor=True)
         print(json.dumps({"batches": n, "stats": store.stats()}, default=str))
         store.close()
     elif args.cmd == "synth":
@@ -265,6 +270,25 @@ def main(argv: list[str] | None = None) -> int:
     elif args.cmd == "store":
         import tgms
         store = tgms.open(args.store, backend="native")
+        if args.action == "verify":
+            r = store.adapter.verify()
+            print(f"store:      {args.store}")
+            print(f"generation: {r['generation']}")
+            print(f"checked:    {r['segments_checked']} segments "
+                  f"({r['rows']} rows), {r['close_runs_checked']} close runs "
+                  f"({r['closes']} closes), {r['dict_records']} dictionary "
+                  f"records")
+            if r["problems"]:
+                print(f"\nPROBLEMS ({len(r['problems'])}):")
+                for p in r["problems"]:
+                    print(f"  - {p}")
+                print("\nverdict: CORRUPT — do not trust this store; rebuild "
+                      "it from its event log with `tgms replay`")
+            else:
+                print("\nverdict: healthy — every referenced file passed its "
+                      "checksums and cross-references")
+            store.close()
+            return 0 if r["healthy"] else 1
         if args.action == "gc":
             report = store.adapter.gc(keep_last=args.keep)
         else:

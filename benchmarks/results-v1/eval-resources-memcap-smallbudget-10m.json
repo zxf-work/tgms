@@ -1,0 +1,273 @@
+{
+  "caps": [
+    "2g"
+  ],
+  "enforcement_note": "docker --memory bounds residency; on a cgroup-v1 kernel without swap-limit support the overflow may swap rather than OOM, which is the working-set>RAM behavior \u00a714.2 asks about. RLIMIT_AS instead caps address space (mmapped store files count), a strictly harsher approximation.",
+  "host_swap_kb": 8388604,
+  "manifest": {
+    "cache_state": "warm",
+    "commit": "f841738",
+    "cpu_count": 40,
+    "dataset": "synth",
+    "dirty": false,
+    "measurement_host": "xzgpu",
+    "on_measurement_host": true,
+    "platform": "Linux 5.4.0-216-generic x86_64",
+    "protocol": {
+      "reps_fast": 30,
+      "reps_slow": 10,
+      "resource_mode": "memcap",
+      "stats": "median and p95 over measured reps",
+      "warmup": 5
+    },
+    "python": "3.12.13",
+    "rustc": "rustc 1.97.1 (8bab26f4f 2026-07-14)",
+    "scale_events": 10000000,
+    "systems": [
+      "native"
+    ]
+  },
+  "method": "docker",
+  "mode": "memcap",
+  "per_query": false,
+  "protocol_note": "reduced reps: warmup=2, reps=5 (feasibility under caps)",
+  "queries": [
+    "hist.single",
+    "snap.hop2",
+    "series.count",
+    "coactive.narrow",
+    "diff.global",
+    "motif.filtered"
+  ],
+  "records": [
+    {
+      "cap": null,
+      "method": "none",
+      "open_ms": 30.769,
+      "queries_done": 30,
+      "results": [
+        {
+          "first_ms": 0.823,
+          "hash": "d609f648e21441d95d9a71fcf004ec79",
+          "ok": true,
+          "p50_ms": 0.745,
+          "p95_ms": 0.823,
+          "query": "hist.single",
+          "rows": 2,
+          "timings_ms": [
+            0.823,
+            0.774,
+            0.74,
+            0.745,
+            0.737
+          ]
+        },
+        {
+          "first_ms": 2199.283,
+          "hash": "8500bcff5724837e5695b7ebb974a3bf",
+          "ok": true,
+          "p50_ms": 2183.367,
+          "p95_ms": 2220.11,
+          "query": "snap.hop2",
+          "rows": 151,
+          "timings_ms": [
+            2199.283,
+            2146.681,
+            2220.11,
+            2183.367,
+            2149.051
+          ]
+        },
+        {
+          "first_ms": 1674.045,
+          "hash": "7150c22b1170fd0da26c945a61d4d361",
+          "ok": true,
+          "p50_ms": 1634.821,
+          "p95_ms": 1674.045,
+          "query": "series.count",
+          "rows": 100,
+          "timings_ms": [
+            1674.045,
+            1602.831,
+            1635.381,
+            1560.93,
+            1634.821
+          ]
+        },
+        {
+          "first_ms": 4607.5,
+          "hash": "7077c6ade05f6ec7dbdc14b11d552b88",
+          "ok": true,
+          "p50_ms": 4548.741,
+          "p95_ms": 4607.5,
+          "query": "coactive.narrow",
+          "rows": 489,
+          "timings_ms": [
+            4607.5,
+            4548.741,
+            4498.7,
+            4505.33,
+            4568.323
+          ]
+        },
+        {
+          "first_ms": 7443.879,
+          "hash": "499256cb25a8fef326b9ebefb188d2e9",
+          "ok": true,
+          "p50_ms": 7443.879,
+          "p95_ms": 7520.987,
+          "query": "diff.global",
+          "rows": 749999,
+          "timings_ms": [
+            7443.879,
+            7454.689,
+            7520.987,
+            7425.756,
+            7414.974
+          ]
+        },
+        {
+          "first_ms": 1146.31,
+          "hash": "af380bb913a298ff49a8dfccbca5b27a",
+          "ok": true,
+          "p50_ms": 1146.31,
+          "p95_ms": 1202.396,
+          "query": "motif.filtered",
+          "rows": 303,
+          "timings_ms": [
+            1146.31,
+            1202.396,
+            1144.332,
+            1154.316,
+            1145.996
+          ]
+        }
+      ],
+      "segment_cache": {
+        "budget": 268435456,
+        "bytes": 264920060,
+        "entries": 326,
+        "evictions": 32615
+      },
+      "vmhwm_kb": 1765724,
+      "vmrss_kb": 1238184,
+      "vmsize_kb": 11865700,
+      "wall_s": null
+    },
+    {
+      "cap": "2g",
+      "method": "docker",
+      "oom": false,
+      "open_ms": 28.392,
+      "queries_done": 30,
+      "results": [
+        {
+          "first_ms": 0.679,
+          "hash": "d609f648e21441d95d9a71fcf004ec79",
+          "ok": true,
+          "p50_ms": 0.552,
+          "p95_ms": 0.679,
+          "query": "hist.single",
+          "rows": 2,
+          "timings_ms": [
+            0.679,
+            0.552,
+            0.553,
+            0.541,
+            0.52
+          ]
+        },
+        {
+          "first_ms": 2214.621,
+          "hash": "8500bcff5724837e5695b7ebb974a3bf",
+          "ok": true,
+          "p50_ms": 2187.249,
+          "p95_ms": 2255.914,
+          "query": "snap.hop2",
+          "rows": 151,
+          "timings_ms": [
+            2214.621,
+            2175.732,
+            2255.914,
+            2187.249,
+            2164.628
+          ]
+        },
+        {
+          "first_ms": 1780.317,
+          "hash": "7150c22b1170fd0da26c945a61d4d361",
+          "ok": true,
+          "p50_ms": 1689.481,
+          "p95_ms": 1797.122,
+          "query": "series.count",
+          "rows": 100,
+          "timings_ms": [
+            1780.317,
+            1797.122,
+            1618.748,
+            1689.481,
+            1593.457
+          ]
+        },
+        {
+          "first_ms": 4649.825,
+          "hash": "7077c6ade05f6ec7dbdc14b11d552b88",
+          "ok": true,
+          "p50_ms": 4561.79,
+          "p95_ms": 4649.825,
+          "query": "coactive.narrow",
+          "rows": 489,
+          "timings_ms": [
+            4649.825,
+            4561.79,
+            4573.083,
+            4492.697,
+            4534.036
+          ]
+        },
+        {
+          "first_ms": 7641.618,
+          "hash": "499256cb25a8fef326b9ebefb188d2e9",
+          "ok": true,
+          "p50_ms": 7605.024,
+          "p95_ms": 7641.618,
+          "query": "diff.global",
+          "rows": 749999,
+          "timings_ms": [
+            7641.618,
+            7625.903,
+            7605.024,
+            7569.104,
+            7582.699
+          ]
+        },
+        {
+          "first_ms": 1143.348,
+          "hash": "af380bb913a298ff49a8dfccbca5b27a",
+          "ok": true,
+          "p50_ms": 1178.578,
+          "p95_ms": 1193.047,
+          "query": "motif.filtered",
+          "rows": 303,
+          "timings_ms": [
+            1143.348,
+            1146.12,
+            1193.047,
+            1178.578,
+            1186.397
+          ]
+        }
+      ],
+      "segment_cache": {
+        "budget": 268435456,
+        "bytes": 264920060,
+        "entries": 326,
+        "evictions": 32615
+      },
+      "vmhwm_kb": 1654676,
+      "vmrss_kb": 1127580,
+      "vmsize_kb": 6777792,
+      "wall_s": null
+    }
+  ]
+}

@@ -141,6 +141,23 @@ class NativeAdapter(StorageAdapter):
         except Exception as e:
             raise _translate(e) from None
 
+    # --- replay cursor (suffix recovery, D-042) --------------------------- #
+
+    def event_cursor(self) -> tuple[int, str]:
+        """`(offset, chain)` the current generation recorded.
+
+        `offset` points immediately past the newline of the last applied
+        event-log record; `chain` is the rolling hash over that prefix. A
+        store written before cursors existed reports chain `""` — the
+        caller must treat that as "no cursor", never as "nothing applied".
+        """
+        offset, chain = self._store.event_cursor()
+        return int(offset), chain
+
+    def note_event_cursor(self, offset: int, chain: str) -> None:
+        """Stage the cursor the next commit records in its manifest."""
+        self._store.set_event_cursor(int(offset), chain)
+
     def _ensure_batch(self, tt: int) -> None:
         """Open the engine batch lazily; `in_batch` is the source of truth."""
         if not self._store.in_batch():

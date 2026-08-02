@@ -141,6 +141,12 @@ struct NodeCols {
 #[pyclass(module = "tgms._engine")]
 pub struct NativeStore {
     inner: CoreStore,
+    /// Event-log position of the batch being committed, staged by
+    /// `set_event_cursor` and consumed by the next `commit`. `None` means
+    /// the caller did not say — the manifest then inherits its parent's
+    /// cursor unchanged, which is exactly right for cursorless callers
+    /// (legacy stores keep their empty chain, compaction keeps the real one).
+    pending_cursor: Option<tgms_engine_core::manifest::EventLogRef>,
 }
 
 #[pymethods]
@@ -149,6 +155,7 @@ impl NativeStore {
     fn new(path: &str) -> Res<Self> {
         Ok(Self {
             inner: CoreStore::open(path).map_err(err)?,
+            pending_cursor: None,
         })
     }
 
@@ -168,16 +175,48 @@ impl NativeStore {
     }
 
     fn commit(&mut self) -> Res<u64> {
-        // the event-log position is owned by the Python `Store`, which has
-        // already appended and fsynced before calling us; wiring the offset
-        // through is a WP-N5 concern (suffix replay)
-        self.inner
-            .commit(tgms_engine_core::manifest::EventLogRef::default())
-            .map_err(err)
+        // The event-log position is owned by the Python `Store`, which
+        // appended and fsynced before the engine was called (write-ahead)
+        // and staged the resulting cursor here. A commit without a staged
+        // cursor inherits the parent generation's — never regresses it —
+        // so cursorless callers (legacy stores, direct engine use) keep
+        // whatever recovery information the store already had.
+        let cursor = self
+            .pending_cursor
+            .take()
+            .unwrap_or_else(|| self.inner.manifest().event_log.clone());
+        self.inner.commit(cursor).map_err(err)
     }
 
     fn rollback(&mut self) -> Res<()> {
+        // a cursor staged for the failed batch must not leak into the next
+        // commit: the batch published nothing, so the log suffix it covered
+        // is still unapplied
+        self.pending_cursor = None;
         self.inner.rollback().map_err(err)
+    }
+
+    /// Stage the event-log cursor the next `commit` will record in its
+    /// manifest: `offset` points immediately past the newline of the last
+    /// applied record; `chain` is the rolling hash over the log prefix up
+    /// to `offset` (manifest.rs `EventLogRef`). Together they are the
+    /// durable replay cursor suffix recovery starts from.
+    fn set_event_cursor(&mut self, offset: u64, chain: String) {
+        self.pending_cursor =
+            Some(tgms_engine_core::manifest::EventLogRef { offset, chain });
+    }
+
+    /// `(offset, chain)` the current generation recorded — the replay
+    /// cursor. A store written before cursors existed reports chain `""`.
+    fn event_cursor(&self) -> (u64, String) {
+        let e = &self.inner.manifest().event_log;
+        (e.offset, e.chain.clone())
+    }
+
+    /// `(entries, accounted_bytes, budget, evictions)` of the byte-budget
+    /// segment cache (D-041) — receipts for capped-memory runs.
+    fn segment_cache_stats(&self) -> (usize, u64, Option<u64>, u64) {
+        self.inner.segment_cache_stats()
     }
 
     fn in_batch(&self) -> bool {

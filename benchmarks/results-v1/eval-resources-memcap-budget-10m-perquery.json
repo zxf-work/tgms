@@ -1,0 +1,591 @@
+{
+  "caps": [
+    "2g",
+    "4g"
+  ],
+  "enforcement_note": "docker --memory bounds residency; on a cgroup-v1 kernel without swap-limit support the overflow may swap rather than OOM, which is the working-set>RAM behavior \u00a714.2 asks about. RLIMIT_AS instead caps address space (mmapped store files count), a strictly harsher approximation.",
+  "host_swap_kb": 8388604,
+  "manifest": {
+    "cache_state": "warm",
+    "commit": "f841738",
+    "cpu_count": 40,
+    "dataset": "synth",
+    "dirty": false,
+    "measurement_host": "xzgpu",
+    "on_measurement_host": true,
+    "platform": "Linux 5.4.0-216-generic x86_64",
+    "protocol": {
+      "reps_fast": 30,
+      "reps_slow": 10,
+      "resource_mode": "memcap",
+      "stats": "median and p95 over measured reps",
+      "warmup": 5
+    },
+    "python": "3.12.13",
+    "rustc": "rustc 1.97.1 (8bab26f4f 2026-07-14)",
+    "scale_events": 10000000,
+    "systems": [
+      "native"
+    ]
+  },
+  "method": "docker",
+  "mode": "memcap",
+  "per_query": true,
+  "protocol_note": "reduced reps: warmup=2, reps=5 (feasibility under caps)",
+  "queries": [
+    "hist.single",
+    "snap.hop2",
+    "series.count",
+    "coactive.narrow",
+    "diff.global",
+    "motif.filtered"
+  ],
+  "records": [
+    {
+      "cap": null,
+      "method": "none",
+      "open_ms": 29.192,
+      "queries_done": 30,
+      "results": [
+        {
+          "first_ms": 0.884,
+          "hash": "d609f648e21441d95d9a71fcf004ec79",
+          "ok": true,
+          "p50_ms": 0.829,
+          "p95_ms": 0.884,
+          "query": "hist.single",
+          "rows": 2,
+          "timings_ms": [
+            0.884,
+            0.805,
+            0.781,
+            0.829,
+            0.832
+          ]
+        },
+        {
+          "first_ms": 1070.248,
+          "hash": "8500bcff5724837e5695b7ebb974a3bf",
+          "ok": true,
+          "p50_ms": 1085.244,
+          "p95_ms": 1119.43,
+          "query": "snap.hop2",
+          "rows": 151,
+          "timings_ms": [
+            1070.248,
+            1071.873,
+            1088.83,
+            1085.244,
+            1119.43
+          ]
+        },
+        {
+          "first_ms": 445.173,
+          "hash": "7150c22b1170fd0da26c945a61d4d361",
+          "ok": true,
+          "p50_ms": 453.346,
+          "p95_ms": 466.194,
+          "query": "series.count",
+          "rows": 100,
+          "timings_ms": [
+            445.173,
+            459.36,
+            451.722,
+            466.194,
+            453.346
+          ]
+        },
+        {
+          "first_ms": 140.828,
+          "hash": "7077c6ade05f6ec7dbdc14b11d552b88",
+          "ok": true,
+          "p50_ms": 150.24,
+          "p95_ms": 158.84,
+          "query": "coactive.narrow",
+          "rows": 489,
+          "timings_ms": [
+            140.828,
+            139.736,
+            150.24,
+            153.073,
+            158.84
+          ]
+        },
+        {
+          "first_ms": 4050.56,
+          "hash": "499256cb25a8fef326b9ebefb188d2e9",
+          "ok": true,
+          "p50_ms": 4058.003,
+          "p95_ms": 4117.326,
+          "query": "diff.global",
+          "rows": 749999,
+          "timings_ms": [
+            4050.56,
+            4053.417,
+            4078.504,
+            4058.003,
+            4117.326
+          ]
+        },
+        {
+          "first_ms": 76.727,
+          "hash": "af380bb913a298ff49a8dfccbca5b27a",
+          "ok": true,
+          "p50_ms": 75.115,
+          "p95_ms": 76.727,
+          "query": "motif.filtered",
+          "rows": 303,
+          "timings_ms": [
+            76.727,
+            74.815,
+            75.115,
+            74.056,
+            76.151
+          ]
+        }
+      ],
+      "segment_cache": {
+        "budget": 805306368,
+        "bytes": 793764792,
+        "entries": 475,
+        "evictions": 0
+      },
+      "vmhwm_kb": 1960296,
+      "vmrss_kb": 1552620,
+      "vmsize_kb": 10001444,
+      "wall_s": null
+    },
+    {
+      "cap": "2g",
+      "method": "docker",
+      "oom": false,
+      "open_ms": 28.587,
+      "queries_done": 5,
+      "query": "hist.single",
+      "results": [
+        {
+          "first_ms": 0.683,
+          "hash": "d609f648e21441d95d9a71fcf004ec79",
+          "ok": true,
+          "p50_ms": 0.52,
+          "p95_ms": 0.683,
+          "query": "hist.single",
+          "rows": 2,
+          "timings_ms": [
+            0.683,
+            0.547,
+            0.52,
+            0.516,
+            0.508
+          ]
+        }
+      ],
+      "segment_cache": {
+        "budget": 805306368,
+        "bytes": 793764792,
+        "entries": 475,
+        "evictions": 0
+      },
+      "vmhwm_kb": 859864,
+      "vmrss_kb": 859864,
+      "vmsize_kb": 2535536,
+      "wall_s": null
+    },
+    {
+      "cap": "2g",
+      "method": "docker",
+      "oom": false,
+      "open_ms": 28.018,
+      "queries_done": 5,
+      "query": "snap.hop2",
+      "results": [
+        {
+          "first_ms": 1069.579,
+          "hash": "8500bcff5724837e5695b7ebb974a3bf",
+          "ok": true,
+          "p50_ms": 1086.064,
+          "p95_ms": 1131.768,
+          "query": "snap.hop2",
+          "rows": 151,
+          "timings_ms": [
+            1069.579,
+            1103.417,
+            1076.618,
+            1131.768,
+            1086.064
+          ]
+        }
+      ],
+      "segment_cache": {
+        "budget": 805306368,
+        "bytes": 793764792,
+        "entries": 475,
+        "evictions": 0
+      },
+      "vmhwm_kb": 1171572,
+      "vmrss_kb": 1017484,
+      "vmsize_kb": 3306832,
+      "wall_s": null
+    },
+    {
+      "cap": "2g",
+      "method": "docker",
+      "oom": false,
+      "open_ms": 28.451,
+      "queries_done": 5,
+      "query": "series.count",
+      "results": [
+        {
+          "first_ms": 507.826,
+          "hash": "7150c22b1170fd0da26c945a61d4d361",
+          "ok": true,
+          "p50_ms": 498.345,
+          "p95_ms": 516.658,
+          "query": "series.count",
+          "rows": 100,
+          "timings_ms": [
+            507.826,
+            485.235,
+            498.345,
+            472.77,
+            516.658
+          ]
+        }
+      ],
+      "segment_cache": {
+        "budget": 805306368,
+        "bytes": 788221603,
+        "entries": 459,
+        "evictions": 0
+      },
+      "vmhwm_kb": 1683072,
+      "vmrss_kb": 1269124,
+      "vmsize_kb": 6171656,
+      "wall_s": null
+    },
+    {
+      "cap": "2g",
+      "method": "docker",
+      "oom": false,
+      "open_ms": 30.215,
+      "queries_done": 5,
+      "query": "coactive.narrow",
+      "results": [
+        {
+          "first_ms": 159.474,
+          "hash": "7077c6ade05f6ec7dbdc14b11d552b88",
+          "ok": true,
+          "p50_ms": 161.872,
+          "p95_ms": 175.868,
+          "query": "coactive.narrow",
+          "rows": 489,
+          "timings_ms": [
+            159.474,
+            154.976,
+            175.868,
+            169.234,
+            161.872
+          ]
+        }
+      ],
+      "segment_cache": {
+        "budget": 805306368,
+        "bytes": 788221603,
+        "entries": 459,
+        "evictions": 0
+      },
+      "vmhwm_kb": 833864,
+      "vmrss_kb": 833864,
+      "vmsize_kb": 3461196,
+      "wall_s": null
+    },
+    {
+      "cap": "2g",
+      "method": "docker",
+      "oom": false,
+      "open_ms": 30.154,
+      "queries_done": 5,
+      "query": "diff.global",
+      "results": [
+        {
+          "first_ms": 4177.15,
+          "hash": "499256cb25a8fef326b9ebefb188d2e9",
+          "ok": true,
+          "p50_ms": 4177.15,
+          "p95_ms": 4208.102,
+          "query": "diff.global",
+          "rows": 749999,
+          "timings_ms": [
+            4177.15,
+            4208.102,
+            4156.057,
+            4194.041,
+            4107.805
+          ]
+        }
+      ],
+      "segment_cache": {
+        "budget": 805306368,
+        "bytes": 793764792,
+        "entries": 475,
+        "evictions": 0
+      },
+      "vmhwm_kb": 1442484,
+      "vmrss_kb": 1122592,
+      "vmsize_kb": 3271300,
+      "wall_s": null
+    },
+    {
+      "cap": "2g",
+      "method": "docker",
+      "oom": false,
+      "open_ms": 28.742,
+      "queries_done": 5,
+      "query": "motif.filtered",
+      "results": [
+        {
+          "first_ms": 75.341,
+          "hash": "af380bb913a298ff49a8dfccbca5b27a",
+          "ok": true,
+          "p50_ms": 74.59,
+          "p95_ms": 75.341,
+          "query": "motif.filtered",
+          "rows": 303,
+          "timings_ms": [
+            75.341,
+            74.59,
+            74.01,
+            74.791,
+            74.469
+          ]
+        }
+      ],
+      "segment_cache": {
+        "budget": 805306368,
+        "bytes": 788221603,
+        "entries": 459,
+        "evictions": 0
+      },
+      "vmhwm_kb": 836880,
+      "vmrss_kb": 836880,
+      "vmsize_kb": 3462076,
+      "wall_s": null
+    },
+    {
+      "cap": "4g",
+      "method": "docker",
+      "oom": false,
+      "open_ms": 27.813,
+      "queries_done": 5,
+      "query": "hist.single",
+      "results": [
+        {
+          "first_ms": 0.649,
+          "hash": "d609f648e21441d95d9a71fcf004ec79",
+          "ok": true,
+          "p50_ms": 0.515,
+          "p95_ms": 0.649,
+          "query": "hist.single",
+          "rows": 2,
+          "timings_ms": [
+            0.649,
+            0.562,
+            0.515,
+            0.509,
+            0.508
+          ]
+        }
+      ],
+      "segment_cache": {
+        "budget": 805306368,
+        "bytes": 793764792,
+        "entries": 475,
+        "evictions": 0
+      },
+      "vmhwm_kb": 859984,
+      "vmrss_kb": 859984,
+      "vmsize_kb": 2535672,
+      "wall_s": null
+    },
+    {
+      "cap": "4g",
+      "method": "docker",
+      "oom": false,
+      "open_ms": 28.944,
+      "queries_done": 5,
+      "query": "snap.hop2",
+      "results": [
+        {
+          "first_ms": 1090.468,
+          "hash": "8500bcff5724837e5695b7ebb974a3bf",
+          "ok": true,
+          "p50_ms": 1092.669,
+          "p95_ms": 1129.222,
+          "query": "snap.hop2",
+          "rows": 151,
+          "timings_ms": [
+            1090.468,
+            1092.669,
+            1092.85,
+            1129.222,
+            1087.687
+          ]
+        }
+      ],
+      "segment_cache": {
+        "budget": 805306368,
+        "bytes": 793764792,
+        "entries": 475,
+        "evictions": 0
+      },
+      "vmhwm_kb": 1183648,
+      "vmrss_kb": 1049872,
+      "vmsize_kb": 3212236,
+      "wall_s": null
+    },
+    {
+      "cap": "4g",
+      "method": "docker",
+      "oom": false,
+      "open_ms": 28.003,
+      "queries_done": 5,
+      "query": "series.count",
+      "results": [
+        {
+          "first_ms": 472.746,
+          "hash": "7150c22b1170fd0da26c945a61d4d361",
+          "ok": true,
+          "p50_ms": 480.776,
+          "p95_ms": 508.255,
+          "query": "series.count",
+          "rows": 100,
+          "timings_ms": [
+            472.746,
+            488.027,
+            508.255,
+            477.695,
+            480.776
+          ]
+        }
+      ],
+      "segment_cache": {
+        "budget": 805306368,
+        "bytes": 788221603,
+        "entries": 459,
+        "evictions": 0
+      },
+      "vmhwm_kb": 1687692,
+      "vmrss_kb": 1297184,
+      "vmsize_kb": 6370992,
+      "wall_s": null
+    },
+    {
+      "cap": "4g",
+      "method": "docker",
+      "oom": false,
+      "open_ms": 29.418,
+      "queries_done": 5,
+      "query": "coactive.narrow",
+      "results": [
+        {
+          "first_ms": 173.063,
+          "hash": "7077c6ade05f6ec7dbdc14b11d552b88",
+          "ok": true,
+          "p50_ms": 173.063,
+          "p95_ms": 191.116,
+          "query": "coactive.narrow",
+          "rows": 489,
+          "timings_ms": [
+            173.063,
+            155.69,
+            174.279,
+            191.116,
+            170.44
+          ]
+        }
+      ],
+      "segment_cache": {
+        "budget": 805306368,
+        "bytes": 788221603,
+        "entries": 459,
+        "evictions": 0
+      },
+      "vmhwm_kb": 833896,
+      "vmrss_kb": 833896,
+      "vmsize_kb": 3395508,
+      "wall_s": null
+    },
+    {
+      "cap": "4g",
+      "method": "docker",
+      "oom": false,
+      "open_ms": 27.849,
+      "queries_done": 5,
+      "query": "diff.global",
+      "results": [
+        {
+          "first_ms": 4166.213,
+          "hash": "499256cb25a8fef326b9ebefb188d2e9",
+          "ok": true,
+          "p50_ms": 4192.615,
+          "p95_ms": 4250.189,
+          "query": "diff.global",
+          "rows": 749999,
+          "timings_ms": [
+            4166.213,
+            4250.189,
+            4192.615,
+            4220.15,
+            4166.642
+          ]
+        }
+      ],
+      "segment_cache": {
+        "budget": 805306368,
+        "bytes": 793764792,
+        "entries": 475,
+        "evictions": 0
+      },
+      "vmhwm_kb": 1439492,
+      "vmrss_kb": 1120008,
+      "vmsize_kb": 3862148,
+      "wall_s": null
+    },
+    {
+      "cap": "4g",
+      "method": "docker",
+      "oom": false,
+      "open_ms": 27.985,
+      "queries_done": 5,
+      "query": "motif.filtered",
+      "results": [
+        {
+          "first_ms": 78.028,
+          "hash": "af380bb913a298ff49a8dfccbca5b27a",
+          "ok": true,
+          "p50_ms": 75.887,
+          "p95_ms": 78.028,
+          "query": "motif.filtered",
+          "rows": 303,
+          "timings_ms": [
+            78.028,
+            74.438,
+            75.887,
+            74.03,
+            76.694
+          ]
+        }
+      ],
+      "segment_cache": {
+        "budget": 805306368,
+        "bytes": 788221603,
+        "entries": 459,
+        "evictions": 0
+      },
+      "vmhwm_kb": 837304,
+      "vmrss_kb": 837304,
+      "vmsize_kb": 3593156,
+      "wall_s": null
+    }
+  ]
+}
