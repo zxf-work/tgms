@@ -1,6 +1,6 @@
 # TGMS native engine: evaluation report
 
-Six systems, one twelve-query registry, three synthetic scales plus one
+Six systems, one thirteen-query registry, three synthetic scales plus one
 real dataset, every answered cell verified by canonical hash before it was
 timed. Numbers: `docs/eval_phase0.md` (tables with receipts) and
 `benchmarks/results-v1/` (raw records, timings included). Semantics:
@@ -8,7 +8,7 @@ timed. Numbers: `docs/eval_phase0.md` (tables with receipts) and
 
 ## The four headline results
 
-**1. Correctness portability.** All twelve registry queries are
+**1. Correctness portability.** All thirteen registry queries are
 `equivalent` on all six systems — nothing was `unsupported` anywhere. The
 bi-temporal semantics that motivated a custom engine are *expressible* in
 SQL and Cypher; what they are not is *fast* (result 3). The hash oracle
@@ -18,11 +18,14 @@ divergence, D-031; the motif cost-model false positive).
 
 **2. The native engine is the best generalist.** At every scale it is
 fastest on the majority of queries and never catastrophically slow on any.
-Its losses are specific and explained: indexed point lookups to PostgreSQL
-(0.3 vs 1.1–1.6 ms — a warm B-tree is a hard floor), whole-window
-aggregation to ClickHouse (12× at 10M — the right engine for that shape),
-two small incidence queries to Memgraph by whiskers, and the 10M 2-hop
-snapshot to ClickHouse post-fix.
+Its losses are specific and explained, and two of them have since closed:
+whole-window aggregation to ClickHouse (8.7× at 10M — the right engine for
+that shape) and the 10M 2-hop snapshot to ClickHouse post-fix remain;
+indexed point lookups no longer go to PostgreSQL (0.1 vs 0.3 ms at 200k
+and 1M), and the two small incidence queries came back from Memgraph on
+the D-039 scan-address work, so the 200k graph table is now a native
+sweep. The one new query since — grouped aggregation, D-044 — splits by
+scale: native leads 2.2× at 200k, ClickHouse leads 1.8–2.4× above it.
 
 **3. Specialists win their shape; nobody else's.** ClickHouse's
 aggregation lead grows with scale but it pays 100–400× on traversal

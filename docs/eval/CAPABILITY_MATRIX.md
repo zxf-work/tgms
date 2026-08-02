@@ -2,7 +2,9 @@
 
 Verdicts per `docs/eval_semantics.md`: **eq** = equivalent (canonical hash
 matches the operators, verified before timed); **gr** = guardrailed (TGMS
-declines by policy at that scale; baselines answer). No cell in the matrix
+declines by policy at that scale; baselines answer). Thirteen queries since
+D-044 added grouped aggregation — whose twins were written *before* the
+operator raced them, in SQL twice and in Cypher once. No cell in the matrix
 is `unsupported` or `approximated` — the expressiveness gap this evaluation
 was designed to expose does not exist at the registry's scope, on any of
 the five non-native systems. That is a finding, not a disclaimer.
@@ -14,17 +16,21 @@ the five non-native systems. That is a finding, not a disclaimer.
 | snap.hop2 | eq | eq | eq | eq | eq | eq |
 | diff.global | eq | eq | eq | eq | eq | eq |
 | reach.window | eq/gr¹ | eq/gr¹ | eq | eq | eq | eq |
-| paths.k | eq/gr¹ | eq/gr¹ | eq | eq | eq | eq |
+| paths.k | eq | eq | eq | eq | eq | eq |
 | series.count | eq | eq | eq | eq | eq | eq |
 | burst.zscore | eq | eq | eq | eq | eq | eq |
 | nbr.evolution | eq | eq | eq | eq | eq | eq |
 | coactive.narrow | eq | eq | eq | eq | eq | eq |
 | resolve.substr | eq | eq | eq | eq | eq | eq |
+| agg.rel_bucket | eq | eq | eq | eq | eq | eq |
 | motif.filtered | eq | eq | eq | eq | eq | eq |
 
-¹ guardrailed at 10M only (`E_COST`); the PostgreSQL/ClickHouse answers at
-that scale bracket the refused work at 44 s / 4 s (reach) and 37 ms / 243 ms
-(paths — the paths refusal is a known cost-model false positive, tracked).
+¹ `reach.window` is guardrailed at 10M only (`E_COST`); PostgreSQL and
+ClickHouse bracket the refused work at 44 s / 4 s, which is why that
+refusal is the guardrail working rather than a defect. **`paths.k` is no
+longer guardrailed at any scale** — the cost-model false positive this
+footnote used to track was closed by pricing the DFS frontier (D-039);
+native answers at 10M in 16.2 ms, fastest of the four.
 
 Structural capabilities, for the comparison's scope:
 

@@ -61,24 +61,36 @@ events, and the frozen CollegeMsg replay (59,835 instantaneous events, real
 timestamps, no corrections). Every (query, system, dataset) cell agrees on
 the canonical hash, except where noted.
 
-### synth, 200k events (four systems, D-035)
+### synth, 200k events (four of the six, D-035/D-044)
+
+Refreshed 2026-08-02 at commit `03a678c` in a single six-system run; the
+graph engines' columns from the same run are in the Phase 3 table below.
 
 | query | native | duckdb | postgres | clickhouse | fastest |
 |---|---:|---:|---:|---:|---|
-| hist.single | 1.0 | 9.3 | **0.3** | 9.6 | postgres |
-| hist.asof | 1.0 | 9.1 | **0.2** | 10.0 | postgres |
-| snap.hop2 | **23.6** | 46.6 | 67.0 | 62.2 | native |
-| diff.global | **71.2** | 114.4 | 121.8 | 149.7 | native |
-| reach.window | **17.1** | 26.5 | 734.5 | 1161.4 | native |
-| paths.k | **9.1** | 16.8 | 22.6 | 146.1 | native |
-| series.count | 29.2 | 44.3 | 73.5 | **14.7** | clickhouse |
-| burst.zscore | 29.5 | 44.7 | 74.0 | **17.4** | clickhouse |
-| nbr.evolution | 11.5 | 17.0 | **2.8** | 76.7 | postgres |
-| coactive.narrow | **54.7** | 61.5 | 61.9 | 120.9 | native |
-| resolve.substr | **4.0** | 19.7 | 5.8 | 12.4 | native |
-| motif.filtered | **40.8** | 63.2 | 149.6 | 132.4 | native |
+| hist.single | **0.1** | 9.8 | 0.3 | 10.0 | native |
+| hist.asof | **0.1** | 9.1 | 0.2 | 10.0 | native |
+| snap.hop2 | **19.6** | 46.2 | 67.0 | 284.3 | native |
+| diff.global | **58.9** | 114.7 | 122.0 | 154.4 | native |
+| reach.window | **14.7** | 26.0 | 740.3 | 1236.7 | native |
+| paths.k | **9.4** | 16.5 | 22.4 | 154.9 | native |
+| series.count | 16.3 | 43.7 | 74.4 | 16.7 | tie |
+| burst.zscore | 17.7 | 44.3 | 75.0 | 17.1 | tie |
+| nbr.evolution | 3.4 | 16.7 | **2.8** | 59.9 | postgres |
+| coactive.narrow | **21.5** | 62.6 | 63.0 | 132.0 | native |
+| resolve.substr | **3.1** | 19.5 | 5.8 | 11.9 | native |
+| agg.rel_bucket | **14.5** | 537.3 | 422.9 | 32.6 | native |
+| motif.filtered | **28.7** | 63.5 | 146.4 | 142.4 | native |
 
-All twelve hash-identical across all four systems. The baselines divide
+All thirteen hash-identical across all six systems (four here, two below).
+Two rows changed hands since the July sweep and both are engine work, not
+noise: **native's point lookups now beat PostgreSQL's** (0.1 vs 0.3 ms),
+and `series.count`/`burst.zscore` are now *ties* with ClickHouse at this
+scale where ClickHouse led 2×. Its lead is a scale effect, not a shape
+effect — it starts at 200k as a tie, reaches 3.5× at 1M and 8.7× at 10M.
+The new `agg.rel_bucket` runs the other way: **native leads it 2.2× at
+200k** and loses it at 1M and 10M, so the crossover for grouped
+aggregation sits between 200k and 1M. The baselines divide
 the map cleanly: PostgreSQL owns indexed point shapes, ClickHouse owns
 whole-window aggregation (the first system to beat native on any scan
 shape at this scale), and both pay heavily for iterative traversal —
@@ -423,13 +435,15 @@ groups, verified before timed against **four independent implementations**
 (the operator, ClickHouse, PostgreSQL, and — at 200k — Cypher on two graph
 engines), all agreeing on one canonical hash.
 
-| scale | native | clickhouse | postgres | duckdb (portable) |
-|---|---:|---:|---:|---:|
-| 1M | 65.1 | **36.6** | 2387.5 | 3031.9 |
-| 10M | 334.7 | **140.8** | — | 34515.9 |
+| scale | native | clickhouse | postgres | duckdb (portable) | neo4j | memgraph |
+|---|---:|---:|---:|---:|---:|---:|
+| 200k | **14.5** | 32.6 | 422.9 | 537.3 | 511.2 | 340.5 |
+| 1M | 65.1 | **36.6** | 2387.5 | 3031.9 | — | — |
+| 10M | 334.7 | **140.8** | — | 34515.9 | — | — |
 
-**We did not take the shape.** ClickHouse holds it, 1.8× at 1M and 2.4× at
-10M. That is the result, and it is a better one than it looks: the same
+**We take it at 200k and lose it after.** Native leads 2.2× at 200k;
+ClickHouse holds it at 1.8× (1M) and 2.4× (10M), so the crossover sits
+between the first two scales. That is the result, and it is a better one than it looks: the same
 engine leads `series.count` by 8.7× at 10M, so on the query family the
 operator was designed for, the gap closed from roughly nine-fold to
 two-fold. Against the row stores it is not close — 37× faster than tuned
@@ -530,21 +544,29 @@ gc collects the superseded files — reclaiming compaction's 2× transient
 
 ### Phase 3: the graph baselines (200k, D-036/D-037)
 
+Refreshed 2026-08-02 at commit `03a678c`, in the same six-system run as
+the table above:
+
 | query | native | neo4j | memgraph | fastest |
 |---|---:|---:|---:|---|
-| hist.single | **1.0** | 2.7 | 1.1 | native |
-| snap.hop2 | **27.1** | 639.9 | 637.3 | native |
-| diff.global | **73.7** | 1754.2 | 1702.9 | native |
-| reach.window | **17.2** | 7261.3 | 3840.8 | native |
-| paths.k | **9.1** | 651.3 | 712.5 | native |
-| series.count | **28.4** | 243.1 | 170.4 | native |
-| burst.zscore | **29.3** | 236.8 | 168.9 | native |
-| nbr.evolution | 11.8 | 15.5 | **10.6** | memgraph |
-| coactive.narrow | 48.5 | 91.1 | **46.9** | memgraph |
-| resolve.substr | **4.4** | 124.3 | 92.6 | native |
-| motif.filtered | **40.4** | 5066.9 | 2123.7 | native |
+| hist.single | **0.1** | 9.7 | 1.0 | native |
+| hist.asof | **0.1** | 7.6 | 1.0 | native |
+| snap.hop2 | **19.6** | 666.5 | 619.8 | native |
+| diff.global | **58.9** | 1811.7 | 1730.9 | native |
+| reach.window | **14.7** | 7265.5 | 3860.9 | native |
+| paths.k | **9.4** | 659.2 | 717.2 | native |
+| series.count | **16.3** | 291.9 | 171.4 | native |
+| burst.zscore | **17.7** | 291.9 | 170.5 | native |
+| nbr.evolution | **3.4** | 15.1 | 10.0 | native |
+| coactive.narrow | **21.5** | 100.2 | 44.2 | native |
+| resolve.substr | **3.1** | 113.4 | 92.5 | native |
+| agg.rel_bucket | **14.5** | 511.2 | 340.5 | native |
+| motif.filtered | **28.7** | 5514.1 | 2069.8 | native |
 
-All twelve hash-identical across the three systems. The result Phase 3
+All thirteen hash-identical across the three systems — including the
+grouped-aggregation query, whose Cypher twin is one statement with no
+Python-driven rounds, so this is the graph engines reading at their most
+natural rather than handicapped. The result Phase 3
 existed to test is unambiguous: **on the traversal family — the graph
 engines' home turf — native wins by one to two orders of magnitude**
 (reachability 17 ms vs 3.8–7.3 s; the closed-triangle motif 40 ms vs
@@ -552,8 +574,10 @@ engines' home turf — native wins by one to two orders of magnitude**
 system). The bi-temporal predicates are the reason: every hop re-filters
 by belief and validity on relationship properties, which no graph index
 here accelerates, while the native engine's clustering and kernels were
-built for exactly those predicates. Memgraph edges out native on the two
-small incidence-shaped queries (within noise on coactive) and runs the
+built for exactly those predicates. **Native now takes all thirteen**:
+the two small incidence-shaped queries Memgraph held in July
+(`nbr.evolution`, `coactive.narrow`) came back on the scan-address work of
+D-039, which is where those two spent their time. Memgraph still runs the
 same Cypher ~2× faster than Neo4j throughout. One measurement-quality
 note: Neo4j's first run of this table sat at 47 s *per reachability
 round* until `Entity.dense_id` got the index the Memgraph DDL already
@@ -577,7 +601,8 @@ What each number carries, because the comparison is only honest with the
 asymmetries stated: **native** counts segments, manifests, close runs, and
 dictionary — but its query indexes (postings, TCSR) live in memory and are
 not persisted, so its disk figure buys less query readiness than the
-others'; the as-built row still holds ~250 uncollected manifest
+others' (and, per D-045, that residency has a measured latency cost of its
+own on later scans); the as-built row still holds ~250 uncollected manifest
 generations, the post-gc row is D-034's collected figure. **ClickHouse**
 is the only other compressed representation (lz4 MergeTree, no secondary
 indexes) and lands within 1.6× of native's as-built bytes — the closest
