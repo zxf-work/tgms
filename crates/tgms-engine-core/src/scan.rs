@@ -660,6 +660,28 @@ impl<'a, S: SegmentSource> ScanSet<'a, S> {
         &self,
         req: &ScanRequest,
     ) -> Result<(EdgeColumns, ScanStats, ScanTimings)> {
+        self.materialize_at(req, None)
+    }
+
+    /// `materialize_edges_timed`, with the fan-out width forced.
+    ///
+    /// `Some(w)` runs `w` workers whatever the gates would have said, so a
+    /// test can pin every width against the serial path without mutating the
+    /// process environment (which races other tests) — the same reason
+    /// `aggregate_partials` takes its width explicitly.
+    pub fn materialize_edges_at(
+        &self,
+        req: &ScanRequest,
+        threads: usize,
+    ) -> Result<(EdgeColumns, ScanStats, ScanTimings)> {
+        self.materialize_at(req, Some(threads))
+    }
+
+    fn materialize_at(
+        &self,
+        req: &ScanRequest,
+        force: Option<usize>,
+    ) -> Result<(EdgeColumns, ScanStats, ScanTimings)> {
         let mut timings = ScanTimings::default();
         let t_select = std::time::Instant::now();
         let (selections, stats) = self.select(req)?;
@@ -682,20 +704,49 @@ impl<'a, S: SegmentSource> ScanSet<'a, S> {
             let probe = StageProbe::default();
             // Same recalibrated gates as select(), but on *selected* rows —
             // known exactly here, and the honest proxy for materialization
-            // work. The fan-out width itself is one thread per cluster,
-            // exactly as before the override existed.
-            let threads = scan_threads();
-            let parts: Vec<Result<EdgeColumns>> =
-                if parallel_gate(threads, clusters.len(), 4, stats.rows_selected) {
-                std::thread::scope(|scope| {
-                    let handles: Vec<_> = clusters
+            // work.
+            //
+            // The fan-out used to be one thread per cluster, which on a 10M
+            // store meant 371 threads on 40 cores, each allocating its own
+            // column buffers: the same copy cost 2.5× more CPU parallel than
+            // serial and the stage scaled 1.41× (D-046). Workers are now the
+            // configured width, over contiguous cluster *ranges* balanced by
+            // row count — contiguous so the parts still concatenate in key
+            // order, balanced because 370 singletons plus one 89-member
+            // cluster is not an even split of anything.
+            let threads = force.unwrap_or_else(scan_threads);
+            let parallel = match force {
+                Some(w) => w > 1 && clusters.len() > 1,
+                None => parallel_gate(threads, clusters.len(), 4, stats.rows_selected),
+            };
+            let ranges = if parallel {
+                balance_clusters(&clusters, &selections, threads)
+            } else {
+                whole(clusters.len())
+            };
+            let run = |range: &std::ops::Range<usize>,
+                       sels: &[Selection],
+                       probe: &StageProbe| {
+                let mut part = EdgeColumns::with_capacity(
+                    clusters[range.clone()]
                         .iter()
-                        .map(|cluster| {
-                            let sels = &selections;
-                            let probe = &probe;
-                            scope.spawn(move || {
-                                self.materialize_cluster(req, sels, cluster, probe)
-                            })
+                        .flat_map(|c| c.iter())
+                        .map(|&si| sels[si].rows.len())
+                        .sum(),
+                    Want::of(req),
+                );
+                for cluster in &clusters[range.clone()] {
+                    part.append(self.materialize_cluster(req, sels, cluster, probe)?);
+                }
+                Ok(part)
+            };
+            let parts: Vec<Result<EdgeColumns>> = if parallel {
+                std::thread::scope(|scope| {
+                    let handles: Vec<_> = ranges
+                        .iter()
+                        .map(|range| {
+                            let (sels, probe) = (&selections, &probe);
+                            scope.spawn(move || run(range, sels, probe))
                         })
                         .collect();
                     handles
@@ -704,16 +755,18 @@ impl<'a, S: SegmentSource> ScanSet<'a, S> {
                         .collect()
                 })
             } else {
-                clusters
-                    .iter()
-                    .map(|cluster| self.materialize_cluster(req, &selections, cluster, &probe))
-                    .collect()
+                ranges.iter().map(|r| run(r, &selections, &probe)).collect()
             };
-            let mut cols =
-                EdgeColumns::with_capacity(stats.rows_selected as usize, Want::of(req));
+            let mut ok = Vec::with_capacity(parts.len());
             for part in parts {
-                cols.append(part?);
+                ok.push(part?);
             }
+            // Concatenating the parts used to be a serial pass over every
+            // column of every cluster — 145 of the 322 ms serial
+            // materialization spent outside both of its halves. The parts are
+            // already in key order, so the destination offsets are known and
+            // each part copies into its own disjoint slice.
+            let cols = concat_parts(ok, stats.rows_selected as usize, Want::of(req), parallel);
             timings.materialize_ns = t_mat.elapsed().as_nanos() as u64;
             timings.order_ns = probe.order_ns.load(std::sync::atomic::Ordering::Relaxed);
             timings.copy_ns = probe.copy_ns.load(std::sync::atomic::Ordering::Relaxed);
@@ -769,6 +822,150 @@ impl<'a, S: SegmentSource> ScanSet<'a, S> {
             i = j;
         }
         Ok(cols)
+    }
+}
+
+/// One range covering every cluster — the serial layout.
+fn whole(n: usize) -> Vec<std::ops::Range<usize>> {
+    std::iter::once(0..n).collect()
+}
+
+/// Split clusters into at most `parts` contiguous ranges of roughly equal
+/// row count. Contiguity is what lets the parts concatenate without a merge;
+/// balancing by rows rather than by cluster count is what makes the widths
+/// mean anything, since one cluster can hold a hundred times another's rows.
+fn balance_clusters(
+    clusters: &[Vec<usize>],
+    selections: &[Selection],
+    parts: usize,
+) -> Vec<std::ops::Range<usize>> {
+    let rows = |c: &Vec<usize>| -> u64 {
+        c.iter().map(|&si| selections[si].rows.len() as u64).sum()
+    };
+    let total: u64 = clusters.iter().map(rows).sum();
+    if parts <= 1 || clusters.len() <= 1 || total == 0 {
+        return whole(clusters.len());
+    }
+    let target = total.div_ceil(parts as u64).max(1);
+    let mut out = Vec::with_capacity(parts);
+    let (mut start, mut acc) = (0usize, 0u64);
+    for (i, c) in clusters.iter().enumerate() {
+        acc += rows(c);
+        // never cut so late that the tail cannot hold the remaining parts
+        let must_cut = clusters.len() - i - 1 == parts - out.len() - 1;
+        if (acc >= target || must_cut) && out.len() + 1 < parts {
+            out.push(start..i + 1);
+            start = i + 1;
+            acc = 0;
+        }
+    }
+    if start < clusters.len() {
+        out.push(start..clusters.len());
+    }
+    out
+}
+
+/// Cut `rest` into consecutive sub-slices of the given lengths.
+fn split_by<'a, T>(mut rest: &'a mut [T], lens: &[usize]) -> Vec<&'a mut [T]> {
+    let mut out = Vec::with_capacity(lens.len());
+    for &n in lens {
+        let n = n.min(rest.len());
+        let (a, b) = std::mem::take(&mut rest).split_at_mut(n);
+        out.push(a);
+        rest = b;
+    }
+    out
+}
+
+/// Lay the parts end to end into one set of columns, each part into its own
+/// disjoint slice — so the copy happens once rather than once per part into
+/// a growing buffer, and can run on the same workers that produced them.
+fn concat_parts(
+    mut parts: Vec<EdgeColumns>,
+    total: usize,
+    w: Want,
+    parallel: bool,
+) -> EdgeColumns {
+    if parts.len() == 1 {
+        return parts.pop().expect("len 1");
+    }
+    let mut out = EdgeColumns::zeroed(total, w, &parts);
+    macro_rules! cuts {
+        ($field:ident) => {{
+            let lens: Vec<usize> = parts.iter().map(|p| p.$field.len()).collect();
+            split_by(out.$field.as_mut_slice(), &lens).into_iter()
+        }};
+    }
+    let (mut vt_s, mut vt_e) = (cuts!(vt_s), cuts!(vt_e));
+    let (mut src, mut dst) = (cuts!(src_id), cuts!(dst_id));
+    let (mut vid, mut rel) = (cuts!(vid), cuts!(rel_type));
+    let (mut disc, mut props) = (cuts!(disc), cuts!(props));
+    let (mut sid, mut srow) = (cuts!(seg_id), cuts!(seg_row));
+    let mut jobs: Vec<(EdgeColumns, Dest<'_>)> = Vec::with_capacity(parts.len());
+    for part in parts {
+        jobs.push((
+            part,
+            Dest {
+                vt_s: vt_s.next().expect("one cut per part"),
+                vt_e: vt_e.next().expect("one cut per part"),
+                src_id: src.next().expect("one cut per part"),
+                dst_id: dst.next().expect("one cut per part"),
+                vid: vid.next().expect("one cut per part"),
+                rel_type: rel.next().expect("one cut per part"),
+                disc: disc.next().expect("one cut per part"),
+                props: props.next().expect("one cut per part"),
+                seg_id: sid.next().expect("one cut per part"),
+                seg_row: srow.next().expect("one cut per part"),
+            },
+        ));
+    }
+    if parallel {
+        std::thread::scope(|scope| {
+            for (part, dest) in jobs {
+                scope.spawn(move || dest.fill(part));
+            }
+        });
+    } else {
+        for (part, dest) in jobs {
+            dest.fill(part);
+        }
+    }
+    out
+}
+
+/// One part's slot in the concatenated output.
+struct Dest<'a> {
+    vt_s: &'a mut [i64],
+    vt_e: &'a mut [i64],
+    src_id: &'a mut [u32],
+    dst_id: &'a mut [u32],
+    vid: &'a mut [Id96],
+    rel_type: &'a mut [String],
+    disc: &'a mut [String],
+    props: &'a mut [String],
+    seg_id: &'a mut [u64],
+    seg_row: &'a mut [u32],
+}
+
+impl Dest<'_> {
+    fn fill(self, part: EdgeColumns) {
+        self.vt_s.copy_from_slice(&part.vt_s);
+        self.vt_e.copy_from_slice(&part.vt_e);
+        self.src_id.copy_from_slice(&part.src_id);
+        self.dst_id.copy_from_slice(&part.dst_id);
+        self.vid.copy_from_slice(&part.vid);
+        self.seg_id.copy_from_slice(&part.seg_id);
+        self.seg_row.copy_from_slice(&part.seg_row);
+        // strings move rather than copy: the part is consumed here
+        for (slot, s) in [
+            (self.rel_type, part.rel_type),
+            (self.disc, part.disc),
+            (self.props, part.props),
+        ] {
+            for (d, v) in slot.iter_mut().zip(s) {
+                *d = v;
+            }
+        }
     }
 }
 
@@ -989,6 +1186,26 @@ impl EdgeColumns {
         self.props.append(&mut o.props);
         self.seg_id.append(&mut o.seg_id);
         self.seg_row.append(&mut o.seg_row);
+    }
+
+    /// Destination for a concatenation: every column that some part filled,
+    /// sized to hold all of them. `seg_id`/`seg_row` follow the parts rather
+    /// than `Want`, because they are filled together or not at all.
+    fn zeroed(n: usize, w: Want, parts: &[EdgeColumns]) -> Self {
+        let any = |f: fn(&EdgeColumns) -> bool| parts.iter().any(f);
+        let len = |yes: bool| if yes { n } else { 0 };
+        Self {
+            vt_s: vec![0; n],
+            vt_e: vec![0; len(w.vt_e)],
+            src_id: vec![0; len(w.src)],
+            dst_id: vec![0; len(w.dst)],
+            vid: vec![Id96::default(); len(w.vid)],
+            rel_type: vec![String::new(); len(w.rel)],
+            disc: vec![String::new(); len(w.disc)],
+            props: vec![String::new(); len(w.props)],
+            seg_id: vec![0; len(any(|p| !p.seg_id.is_empty()))],
+            seg_row: vec![0; len(any(|p| !p.seg_row.is_empty()))],
+        }
     }
 
     /// Reserve only what will be filled. Reserving all eight columns for a
@@ -1338,6 +1555,89 @@ mod tests {
                 assert_eq!(got.vt_e, full.vt_e);
             }
         }
+    }
+
+    /// Every fan-out width returns the identical columns, on a store whose
+    /// clusters are a mix of singletons and a genuine multi-member merge —
+    /// the two paths materialization can take. Widths are forced rather than
+    /// gated, so this covers the shapes the gates would keep serial too.
+    #[test]
+    fn every_width_materializes_the_identical_columns() {
+        let dir = tmp("width-identity");
+        let mut rows = Vec::new();
+        let mut segs = Vec::new();
+        // eight bulk runs plus four overlapping corrections plus one far
+        // segment: enough clusters to split several ways, and at least one
+        // cluster that has to heap-merge
+        for (name, base, n, tt) in [
+            ("a", 1_000i64, 120u32, 10i64), ("b", 1_240, 120, 10),
+            ("c", 1_480, 120, 10), ("d", 1_720, 120, 10),
+            ("e", 1_100, 30, 20), ("f", 1_340, 30, 20),
+            ("g", 1_580, 30, 20), ("h", 5_000, 60, 30),
+        ] {
+            let mut b: Vec<EdgeRow> = (0..n)
+                .map(|i| {
+                    let rel = if i % 3 == 0 { "RATED" } else { "SENT" };
+                    edge(base + (i as i64) * 2, i + tt as u32 * 1000, tt, rel,
+                         i % 13, (i + 4) % 13)
+                })
+                .collect();
+            b.sort_by_key(|r| r.sort_key());
+            let path = dir.join(format!("{name}.tgs"));
+            write_edge_segment(&path, &b, &SegmentSpec::default()).unwrap();
+            segs.push(Segment::open(&path, MemorySource::load(&path).unwrap(), true).unwrap());
+            rows.extend(b);
+        }
+        let set = ScanSet::from_pairs(segs.iter().map(|s| (s, Lane::Event)).collect());
+        for req in [
+            ScanRequest::current(),
+            ScanRequest::current().window(1_100, 1_800),
+            ScanRequest {
+                columns: Some(vec!["vt_s".into(), "src_id".into()]),
+                ..ScanRequest::current()
+            },
+        ] {
+            let (serial, _, t) = set.materialize_edges_at(&req, 1).unwrap();
+            assert!(t.clusters >= 3, "fixture must produce clusters to split");
+            assert!(t.clusters_multi > 0, "fixture must exercise the merge path");
+            // the brute-force reference, for the unprojected cases
+            if req.columns.is_none() {
+                let want = expected(&rows, &req);
+                assert_eq!(serial.len(), want.len());
+                for (i, (vt_s, vid)) in want.iter().enumerate() {
+                    assert_eq!((serial.vt_s[i], serial.vid[i]), (*vt_s, *vid), "row {i}");
+                }
+            }
+            for w in [2, 3, 5, 8, 16, 64] {
+                let (got, _, _) = set.materialize_edges_at(&req, w).unwrap();
+                assert_eq!(got, serial, "width {w} disagreed with serial");
+            }
+        }
+    }
+
+    /// Cluster ranges are contiguous, cover everything exactly once, and
+    /// balance by rows rather than by cluster count.
+    #[test]
+    fn cluster_ranges_are_contiguous_and_row_balanced() {
+        let sel = |seg: usize, n: usize| Selection {
+            segment: seg,
+            rows: (0..n as u32).collect(),
+        };
+        let selections: Vec<Selection> = (0..6).map(|i| sel(i, [900, 10, 10, 10, 10, 60][i])).collect();
+        let clusters: Vec<Vec<usize>> = (0..6).map(|i| vec![i]).collect();
+        for parts in [1, 2, 3, 4, 8, 100] {
+            let ranges = balance_clusters(&clusters, &selections, parts);
+            assert!(!ranges.is_empty());
+            assert!(ranges.len() <= parts.max(1));
+            assert_eq!(ranges[0].start, 0);
+            assert_eq!(ranges.last().expect("non-empty").end, clusters.len());
+            for w in ranges.windows(2) {
+                assert_eq!(w[0].end, w[1].start, "ranges must be contiguous");
+            }
+        }
+        // the 900-row cluster is a part on its own rather than sharing one
+        let ranges = balance_clusters(&clusters, &selections, 3);
+        assert_eq!(ranges[0], 0..1);
     }
 
     #[test]
