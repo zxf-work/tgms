@@ -169,11 +169,19 @@ run builds its own store from a fresh clock (D-023). The other nine hash
 byte-identically across both runs and all systems.
 
 **`series.count` 352.1 → 183.7 and `burst.zscore` 351.1 → 185.3** are the
-D-046 scan work; nothing else moved by more than the ±20% reproducibility
-band, in either direction. Two cautions on reading the rest of the column:
-`nbr.evolution` is 10% *slower* and DuckDB's `series.count` is 20% *faster*
-than in the morning's run at code neither change touches — which is what
-that band is for.
+D-046 scan work; no *native* cell moved by more than the ±20%
+reproducibility band in either direction (`nbr.evolution` is 10% slower at
+code neither change touches, which is what that band is for).
+
+**DuckDB's `series.count` also improved, 981.6 → 782.0, and that one is
+not drift.** Half of D-046 landed in the shared operator layer rather than
+the engine: `edge_event_count` was asking for four columns and reading one,
+and every backend honours a projection. We did not isolate it with an A/B,
+so the attribution is by mechanism rather than measurement — but the
+direction, the size and the code path all agree, and it is the same
+pattern §9e recorded the first time. A fix that removes work improves the
+baseline you are compared against, which is the only kind of speed-up that
+is unambiguously real.
 
 **`paths.k` at 10M is no longer refused.** The July table recorded it as a
 guardrail firing on a query PostgreSQL answered in 37 ms — a cost-model
@@ -483,6 +491,15 @@ deterministically so the answer is byte-identical at any thread count.
 Grouping is free; **the residual gap to ClickHouse is entirely the scan
 underneath it**, which is exactly where D-043's next item points and is a
 far more actionable finding than "we are slower at aggregation."
+
+> **Retracted 2026-08-03 — the paragraph above is wrong, and it is kept
+> because the next section is what corrects it.** The two operators cost
+> about the same, but not out of the same parts: `aggregate_events` calls
+> `select` and stops, so *its* scan is 38.8 ms, not 352. The remaining
+> ~270 ms is the aggregation kernel, most of it `count_distinct`. "The
+> residual gap is the scan" is true of `series.count` and false of
+> `agg.rel_bucket`, and the error was comparing two totals as if the word
+> "scan" meant the same work on both sides. See D-046 below.
 
 One cell deserves its own sentence, because it is ours and it is bad. The
 **portable fallback — the same operator on the DuckDB backend — takes 34.5

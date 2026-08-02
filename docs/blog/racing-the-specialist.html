@@ -160,7 +160,8 @@ dimension and an exact distinct count over ten million endpoint
 identifiers.</p>
 
 <div class="pull">Grouping is free. Everything we are still losing by is
-the scan underneath it.</div>
+the scan underneath it. <span style="font-size:15px;font-weight:400;
+color:var(--bad)">— which turned out to be false; see below.</span></div>
 
 <p>That is the whole payoff of copying ClickHouse's execution shape rather
 than its results: per-thread partial aggregates over the parallel scan,
@@ -170,6 +171,19 @@ answer is byte-identical whatever the thread count. The aggregation
 machinery costs nothing measurable. A two-fold gap that lives entirely in
 the scan is a far better problem to own than a two-fold gap smeared across
 a kernel, because it names exactly one thing to work on next.</p>
+
+<div class="note"><b>Retracted the next day, by the work it pointed at.</b>
+The paragraph above is wrong, and it is left standing because what
+corrected it is the subject of the next post. We went to profile "the
+scan" and found that the two operators never shared one: our grouped
+aggregation calls the selection step and stops — it never materializes
+columns or crosses the language boundary — so <i>its</i> scan is 38.8 ms of
+those 334.7, not 352. The remaining ~270 ms is the aggregation kernel, and
+about 232 of it is the exact distinct count alone. Grouping is not free; we
+had compared two totals as though the word "scan" meant the same work on
+both sides of the comparison. The claim was load-bearing — it is what
+aimed the next session — and it survived exactly one day of being
+measured.</div>
 
 <p>One cell in that comparison is ours and it is bad, so it is published
 too: the portable fallback — the same operator running on our DuckDB
