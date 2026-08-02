@@ -414,6 +414,7 @@ impl NativeStore {
         // a current-only store must refuse a past-belief scan rather than
         // silently answer it from the surviving rows
         self.inner.assert_full_belief(as_of_tt).map_err(err)?;
+        let t_open = std::time::Instant::now();
         let m = self.inner.manifest();
         let mut files = Vec::new();
         for (lane, entries) in [
@@ -448,6 +449,7 @@ impl NativeStore {
             })
             .collect();
         let set = ScanSet::new(targets).with_closes(self.inner.close_index().map_err(err)?);
+        let open_ns = t_open.elapsed().as_nanos() as u64;
 
         let req = ScanRequest {
             as_of_tt,
@@ -462,12 +464,16 @@ impl NativeStore {
             }),
             touching_both,
             limit,
-            // eid is derived from rel_type and disc, so asking for it implies
-            // materializing those two even when the caller does not want them
-            // back. The adapter drops the extras on the way out.
+            // eid is `sha256(src_uid, dst_uid, rel_type, disc)`, so asking for
+            // it implies materializing all four inputs even when the caller
+            // does not want them back. The adapter drops the extras on the way
+            // out. `src_id`/`dst_id` joined this list when the projection
+            // started reaching the fixed-width columns (D-046) — before that
+            // they were built unconditionally, which is exactly the kind of
+            // silent dependency lesson §4 warns a projection layer about.
             columns: columns.map(|mut c| {
                 if c.iter().any(|x| x == "eid") {
-                    for dep in ["rel_type", "disc"] {
+                    for dep in ["rel_type", "disc", "src_id", "dst_id"] {
                         if !c.iter().any(|x| x == dep) {
                             c.push(dep.to_string());
                         }
@@ -476,7 +482,8 @@ impl NativeStore {
                 c
             }),
         };
-        let (cols, stats) = set.materialize_edges(&req).map_err(err)?;
+        let (cols, stats, timings) = set.materialize_edges_timed(&req).map_err(err)?;
+        let t_eid = std::time::Instant::now();
 
         // eid is derived, never stored (D-028 #2). This layer owns the
         // dictionary, so it is the one place that can turn dense ids back
@@ -490,78 +497,103 @@ impl NativeStore {
         let n_ids = if want_eid { cols.len() } else { 0 };
         let mut eids = Vec::with_capacity(n_ids);
         for i in 0..n_ids {
-            let src = self.inner.dict().uid(cols.src_id[i]).ok_or_else(|| {
-                PyKeyError::new_err(format!("dense id {} vanished", cols.src_id[i]))
-            })?;
-            let dst = self.inner.dict().uid(cols.dst_id[i]).ok_or_else(|| {
-                PyKeyError::new_err(format!("dense id {} vanished", cols.dst_id[i]))
-            })?;
             // never index blindly across the boundary: a projection bug
             // should surface as an error, not a panic inside Python
-            let (rel, disc) = match (cols.rel_type.get(i), cols.disc.get(i)) {
-                (Some(r), Some(d)) => (r, d),
+            let (src_id, dst_id, rel, disc) = match (
+                cols.src_id.get(i),
+                cols.dst_id.get(i),
+                cols.rel_type.get(i),
+                cols.disc.get(i),
+            ) {
+                (Some(&s), Some(&d), Some(r), Some(dc)) => (s, d, r, dc),
                 _ => {
                     return Err(PyRuntimeError::new_err(
-                        "scan_edges: eid requested without rel_type/disc materialized",
+                        "scan_edges: eid requested without src_id/dst_id/rel_type/disc \
+                         materialized",
                     ))
                 }
             };
+            let src = self.inner.dict().uid(src_id).ok_or_else(|| {
+                PyKeyError::new_err(format!("dense id {src_id} vanished"))
+            })?;
+            let dst = self.inner.dict().uid(dst_id).ok_or_else(|| {
+                PyKeyError::new_err(format!("dense id {dst_id} vanished"))
+            })?;
             eids.push(tgms_engine_core::derive::edge_eid(src, dst, rel, disc).to_hex());
         }
 
+        let eid_ns = t_eid.elapsed().as_nanos() as u64;
+        let t_conv = std::time::Instant::now();
         let d = PyDict::new(py);
         if want_eid {
             d.set_item("eid", PyList::new(py, &eids)?)?;
         }
+        // Every key is decided from the *request*, never from whether the
+        // result happens to be empty — the two are different, and conflating
+        // them once returned a dict with no `vid` key for a projected scan
+        // over an empty window, which the adapter met with a KeyError.
+        let want = |name: &str| {
+            req.columns
+                .as_ref()
+                .map(|c| c.iter().any(|x| x == name))
+                .unwrap_or(true)
+        };
         d.set_item("vt_s", cols.vt_s.into_pyarray(py))?;
-        d.set_item("vt_e", cols.vt_e.into_pyarray(py))?;
-        d.set_item(
-            "src_id",
-            cols.src_id
-                .iter()
-                .map(|&v| v as i64)
-                .collect::<Vec<_>>()
-                .into_pyarray(py),
-        )?;
-        d.set_item(
-            "dst_id",
-            cols.dst_id
-                .iter()
-                .map(|&v| v as i64)
-                .collect::<Vec<_>>()
-                .into_pyarray(py),
-        )?;
-        // Only pay for hex when the caller asked for it — decided from the
-        // request, like eid above, never from the result. The previous test
-        // (`!cols.vid.is_empty()`) conflated "not requested" with "zero rows
-        // matched", so a projected scan over an empty window returned a dict
-        // with no vid key and the adapter raised KeyError.
-        let want_vid = req
-            .columns
-            .as_ref()
-            .map(|c| c.iter().any(|x| x == "vid"))
-            .unwrap_or(true);
-        if want_vid {
+        if want("vt_e") {
+            d.set_item("vt_e", cols.vt_e.into_pyarray(py))?;
+        }
+        // u32 -> i64 is a widening copy of the whole column; skipping it for
+        // an unprojected endpoint is 20 ms a call at 10M rows (D-046).
+        for (name, col) in [("src_id", &cols.src_id), ("dst_id", &cols.dst_id)] {
+            if want(name) {
+                d.set_item(
+                    name,
+                    col.iter().map(|&v| v as i64).collect::<Vec<_>>().into_pyarray(py),
+                )?;
+            }
+        }
+        if want("vid") {
             d.set_item("vid", PyList::new(py, cols.vid.iter().map(|v| v.to_hex()))?)?;
         }
-        d.set_item("rel_type", PyList::new(py, &cols.rel_type)?)?;
-        d.set_item("disc", PyList::new(py, &cols.disc)?)?;
-        d.set_item("props", PyList::new(py, &cols.props)?)?;
+        if want("rel_type") {
+            d.set_item("rel_type", PyList::new(py, &cols.rel_type)?)?;
+        }
+        if want("disc") {
+            d.set_item("disc", PyList::new(py, &cols.disc)?)?;
+        }
+        if want("props") {
+            d.set_item("props", PyList::new(py, &cols.props)?)?;
+        }
         // physical row addresses, for callers that will come back later for
         // derived fields of a few surviving rows (edge_idents_at)
-        d.set_item(
-            "seg_id",
-            cols.seg_id
-                .iter()
-                .map(|&v| v as i64)
-                .collect::<Vec<_>>()
-                .into_pyarray(py),
-        )?;
-        d.set_item("seg_row", cols.seg_row.iter().map(|&v| v as i64).collect::<Vec<_>>().into_pyarray(py))?;
+        if want("seg_id") || want("seg_row") {
+            d.set_item(
+                "seg_id",
+                cols.seg_id.iter().map(|&v| v as i64).collect::<Vec<_>>().into_pyarray(py),
+            )?;
+            d.set_item(
+                "seg_row",
+                cols.seg_row.iter().map(|&v| v as i64).collect::<Vec<_>>().into_pyarray(py),
+            )?;
+        }
         // pruning counters, so effectiveness is observable rather than assumed
         d.set_item("segments_total", stats.segments_total)?;
         d.set_item("segments_pruned", stats.segments_pruned)?;
         d.set_item("rows_examined", stats.rows_examined)?;
+        // Stage wall times (ms). Six `Instant`s on a path that moves tens of
+        // megabytes; the alternative is subtracting stages from a Python wall
+        // clock that contains all of them at once (D-046).
+        let ms = |ns: u64| ns as f64 / 1e6;
+        d.set_item("t_open_ms", ms(open_ns))?;
+        d.set_item("t_select_ms", ms(timings.select_ns))?;
+        d.set_item("t_cluster_ms", ms(timings.cluster_ns))?;
+        d.set_item("t_materialize_ms", ms(timings.materialize_ns))?;
+        d.set_item("t_order_ms", ms(timings.order_ns))?;
+        d.set_item("t_copy_ms", ms(timings.copy_ns))?;
+        d.set_item("clusters", timings.clusters)?;
+        d.set_item("clusters_multi", timings.clusters_multi)?;
+        d.set_item("t_eid_ms", ms(eid_ns))?;
+        d.set_item("t_convert_ms", ms(t_conv.elapsed().as_nanos() as u64))?;
         Ok(d)
     }
 
