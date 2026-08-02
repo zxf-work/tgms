@@ -701,6 +701,13 @@ It is a change to an operator's execution strategy, not to the scan, so it
 is named here with its number rather than folded into a scan decision; D-046
 records it as the next item.
 
+`select`'s own residue is the same shape one stage earlier. It costs 35 ms
+at 16 workers and 178 serial whatever predicates it is given, because what
+it is doing is writing a `Vec<u32>` of ten million row ids — 40 MB per call
+that materialization then reads back to find the contiguous runs it already
+knew about. A run-encoded `Selection` would delete both halves of that; it
+is the third item on this list and the only one still inside the scan.
+
 One residue inside materialization is worth naming too, because the split
 still reports it: at 10M and 16 workers the stage costs 97 ms while its two
 measured halves (the k-way merge, 42 ms of CPU, and the run-walk copy,
