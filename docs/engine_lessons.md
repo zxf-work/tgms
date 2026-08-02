@@ -30,13 +30,18 @@ failed to move the number.
 | 10M scans are materialize-bound | parallel materialize moved 811 → 819 ms | the fast path never ran: one overlapping correction segment voids the all-or-nothing disjointness check |
 | the 6 GB working-set floor is the segment cache | budgeting the cache still OOM'd at 2 GB; the cache was 794 MB | the stats warm-up materialized all 10M rows as one transient — fixed, suite now runs in 1.76 GB |
 | the 1M scan regression is the recalibrated parallel gate | forcing the parallel path on at 1M moved nothing (83.1 vs 84.4 ms) | an index built by an *earlier query in the same process* — resident TCSR, 18% on every later scan (§9g) |
+| the 10M scan is selection-bound (belief test, valid-time test, close index per row) | selection is 39 ms of a 349 ms scan, and removing the per-row `vt_e` test saves 1 ms | materialization (47%) and the NumPy boundary (16%) — the cost is *moving* the rows, not deciding on them (§13) |
+| projecting to one column changing nothing proves materialization is not the cost | one column and four measured the same, 360 vs 352 ms | the projection was never applied to the fixed-width columns; once it was, the same scan fell to 143 ms |
 
 Three of the fixes we implemented were *correct but irrelevant* — the
 contiguous-run copy, the postings index, and the parallel materialization
 all stayed, because they are cheap and right, but none produced the win
 attributed to them. The eleventh entry produced no fix at all: the
 hypothesis was tested with an environment override before any default was
-changed, which cost one run and saved a wrong recalibration.
+changed, which cost one run and saved a wrong recalibration. The thirteenth
+is the worst of the set, because it is the only one where a *measurement*
+rather than a guess pointed the wrong way for three sessions: the experiment
+was right, the instrument was broken, and nothing in the number said so.
 
 The concrete discipline that worked: after implementing a fix, re-measure
 before writing the commit message. If the number did not move, the
@@ -495,6 +500,38 @@ identities unrecoverable.
 And measure the cost honestly: deriving `eid` is a SHA per row — about 85 ms
 per million. That is fine at a `limit`-bounded API boundary and unacceptable
 inside a scan, which is exactly why projection pushdown mattered.
+
+## 13. A half-applied optimization is worse than none, because it lies
+
+`columns=` was pushed into materialization (§4) and it worked: a 1M integer
+scan went 130 → 32 ms. What nobody re-read afterwards is that the pushdown
+covered `vid` and the three string columns and **stopped there**. `vt_s`,
+`vt_e`, `src_id` and `dst_id` were copied whatever the caller asked for,
+because at the time they were cheap relative to building a string per row.
+
+Three sessions later a profile asked "is the cost column materialization?"
+and answered it the right way — by projecting down to one column and
+re-measuring. One column: 1170 ms. Four columns: 1167 ms. **Conclusion:
+materialization is not the cost.** That conclusion went into a published
+table, and the next three sessions spent themselves on the merge, the
+cluster geometry and the selection loop.
+
+Materialization was 47% of the scan the whole time. The experiment was
+sound; the knob it turned was not connected. When the projection was
+finished, the same one-column 10M scan went 360 → 143 ms and the operator
+above it 463 → 215.
+
+The generalisable part is not "check your projection". It is that **a
+negative result from a control you did not verify is not a negative result**.
+A knob you turn to prove something is itself a claim, and it deserves the
+same treatment as the thing under test: assert that it changed what you
+think it changed. One assertion — that a one-column scan returns one column —
+would have caught this, and it now exists as a test rather than as a habit.
+
+The same shape appears one layer up. Once the engine honoured the
+projection, `edge_event_count` was still asking for four columns and reading
+one; that had been free for as long as the pushdown was broken, so nothing
+ever flagged it. Fixing an abstraction can make callers wrong retroactively.
 
 ## 12. Small operational traps worth knowing
 

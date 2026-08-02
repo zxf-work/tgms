@@ -628,6 +628,85 @@ materialize-and-cross-the-boundary path on the other. The scan is still the
 right target for `series.count` and `burst.zscore`, which is where D-046
 spends itself; `aggregate_events`' kernel is now a separate, priced item.
 
+### What closing the two named stages bought
+
+Two changes, each aimed at a row of the table above, each re-measured on the
+same store the same day in a fresh process per condition.
+
+1. **The projection now reaches the fixed-width columns**, and the boundary
+   emits only what was asked for. `edge_event_count` and the event-rate
+   burst target were also asking for four columns and reading one.
+2. **Materialization is sized by the configured width** — contiguous cluster
+   ranges balanced by rows, not one thread per cluster — **and the parts are
+   concatenated once**, each into its own disjoint slice, instead of being
+   appended into a growing buffer.
+
+| 10M, default width | before | + projection | + materialize |
+|---|---:|---:|---:|
+| scan, 4 int columns | 352.2 | 360.6 | **219.1** |
+| … `select` | 39.0 | 37.7 | 35.0 |
+| … `materialize` | 221.3 | 235.7 | **97.1** |
+| … NumPy conversion | 75.5 | 77.0 | 77.7 |
+| scan, `vt_s` only | 360.4 | **142.5** | **99.9** |
+| … `materialize` | 229.2 | 101.7 | 57.3 |
+| … NumPy conversion | 74.5 | **0.0** | 0.0 |
+| **`series.count` operator** | **463.3** | **283.1** | **214.9** |
+
+**2.16× on the operator, 3.6× on the scan it issues.** The four-column scan
+— what every other scan-bound query pays — is 1.6× faster on the
+materialization change alone, which is the part that helps queries nobody
+aimed at.
+
+Materialization also scales now, where it did not:
+
+| `TGMS_SCAN_THREADS` (10M, 4 int columns) | materialize before | after |
+|---|---:|---:|
+| 1 | 318.9 | 200.8 |
+| 16 | 227.1 | 97.1 |
+| 40 | 226.8 | 110.6 |
+| speed-up 1 → 16 | 1.41× | **2.07×** |
+
+40 workers is now *worse* than 16 on a 40-core host — the concatenation
+spawns a second wave of workers, so asking for the whole machine
+oversubscribes it. The shipped default (16) is the measured best, which is
+where it already was.
+
+At 1M the same changes are small and positive: `series.count` 85.2 → 66.8,
+the one-column scan 65.5 → 48.9. Nothing regressed at the scale where the
+parallel gates keep everything serial.
+
+### What is left, priced rather than chased
+
+`series.count` is now **214.9 ms** against ClickHouse's 40.3, and the split
+has moved: `select` 35, `materialize` 57, boundary 0, and **106 ms of NumPy
+above the engine** — the mask, the divide and the `bincount` that turn ten
+million returned timestamps into a hundred bucket counts. Over half the
+remaining time is the operator refusing to push its aggregation down.
+
+That structure has a name and now a price. `aggregate_events` already
+computes exactly this shape without materializing anything, and on the same
+store, the same day:
+
+| query at 10M | ms |
+|---|---:|
+| count by time bucket, through the aggregation kernel | **93.7** |
+| count by rel_type × time bucket | 91.5 |
+| count + distinct-dst by rel_type × time bucket (`agg.rel_bucket`) | 323.6 |
+| `series.count`, through the scan and NumPy | 214.9 |
+
+So routing `graph_metric_timeseries`' event metrics through the O14 kernel
+is worth roughly another **2.3×** on `series.count` and `burst.zscore`, and
+would land them at ~94 ms against ClickHouse's 40 — the same order at last.
+It is a change to an operator's execution strategy, not to the scan, so it
+is named here with its number rather than folded into a scan decision; D-046
+records it as the next item.
+
+The third number in that table is its own result: **`count_distinct` is
+232 ms of `agg.rel_bucket`'s 324** (91.5 without it). The gap between
+`agg.rel_bucket` and ClickHouse's 140.8 ms is one aggregate — exact distinct
+counting over ten million endpoint ids — and not the scan, not grouping, and
+not the two-phase design.
+
 ## One number that was mine, not PostgreSQL's
 
 `reach.window` first measured **278,810 ms**. The natural SQL for
