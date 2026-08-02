@@ -13,9 +13,9 @@ actually cost time.
 
 ## 1. Measure the layer before optimizing it
 
-Ten times we identified "the bottleneck" and were wrong. Every single time,
-the fix that mattered was found by measuring *after* the intended fix failed
-to move the number.
+Eleven times we identified "the bottleneck" and were wrong. Every single
+time, the fix that mattered was found by measuring *after* the intended fix
+failed to move the number.
 
 | we believed | we measured | actual cause |
 |---|---|---|
@@ -29,11 +29,14 @@ to move the number.
 | the motif kernel is the motif cost | the kernel was 11 ms of 369 | an unprojected scan hashing `eid` for rows the filter dropped |
 | 10M scans are materialize-bound | parallel materialize moved 811 → 819 ms | the fast path never ran: one overlapping correction segment voids the all-or-nothing disjointness check |
 | the 6 GB working-set floor is the segment cache | budgeting the cache still OOM'd at 2 GB; the cache was 794 MB | the stats warm-up materialized all 10M rows as one transient — fixed, suite now runs in 1.76 GB |
+| the 1M scan regression is the recalibrated parallel gate | forcing the parallel path on at 1M moved nothing (83.1 vs 84.4 ms) | an index built by an *earlier query in the same process* — resident TCSR, 18% on every later scan (§9g) |
 
-Three of those nine fixes we implemented were *correct but irrelevant* — the
+Three of the fixes we implemented were *correct but irrelevant* — the
 contiguous-run copy, the postings index, and the parallel materialization
 all stayed, because they are cheap and right, but none produced the win
-attributed to them.
+attributed to them. The eleventh entry produced no fix at all: the
+hypothesis was tested with an environment override before any default was
+changed, which cost one run and saved a wrong recalibration.
 
 The concrete discipline that worked: after implementing a fix, re-measure
 before writing the commit message. If the number did not move, the
@@ -365,6 +368,104 @@ The measurement that stops you is worth as much as the one that redirects you.
 Four of the five optimizations in this section were found by profiling; this
 one was *declined* by profiling, and an hour of plausible work went unspent
 because a fifteen-minute probe put a number on it.
+
+## 9g. Queries measured in one process are not independent
+
+A routine check before publishing a new table: does the rest of the table
+still say what it said? It did not. `series.count` at 1M read 84 ms against
+a published 59.0, on the same dataset, with a byte-identical answer.
+
+Bisecting the engine commits in between (five builds, one 1M run each, ~15
+minutes total) put the step at the commit that persists the TCSR
+permutation — a commit that touches three Python files, none of them on a
+scan path. The suspicious part was that it *shouldn't* matter, so the next
+step was a probe rather than a patch: time the same operator in one process
+before and after building the index.
+
+| condition | series.count |
+|---|---:|
+| nothing resident | 68.4 ms |
+| + 1M rows of plain int columns held | 71.7 ms |
+| + the TCSR's own columns held | 71.1 ms |
+| **+ the built CSR held too** | **80.7 ms** |
+| everything released again | 68.3 ms |
+
+The index costs 18% to *have*, not to build, on a query that never touches
+it — and hands it straight back when dropped. `diff.global`, measured in the
+same process, does not move at all. It is a working-set effect: the scan
+streams tens of megabytes per call, and the resident permutation evicts the
+part of it that was staying hot.
+
+Two consequences, and the first is about measurement rather than engines.
+**The registry runs thirteen queries in one process, in order, and `paths.k`
+comes before `series.count`** — so the published aggregation numbers had
+been quietly paying for the traversal index of the query that ran before
+them, on every run, for as long as the table has existed. Native is also the
+only system in that table that builds such an index, so the tax is
+one-sided. None of it was wrong, and no conclusion moved; it was simply
+undisclosed, and it is the kind of thing a reader has a right to know when a
+column is compared against another system's.
+
+The second is a product observation. An agent process is exactly the
+long-lived process this describes: run one path query, keep the index, pay
+18% on every scan afterwards. That is a defensible trade — the index saves
+400 ms on the query that built it — but it should be a *decision* with a
+budget behind it, the way segment residency became one in D-041, rather than
+a cache that is born immortal.
+
+The general lesson is the one this file keeps relearning in new costumes:
+**a number is a property of a process, not of a query.** Ours had four
+different meanings depending on what had run before it, on what day, and
+with what resident. Anything published to the tenth of a millisecond should
+be able to survive being re-measured; ours survives to about ±20%, which is
+now written next to it.
+
+## 9f. A capability tag is a hypothesis, not a measurement
+
+The 110-question study (D-026) was the most useful thing we did for planning:
+questions written by people who had never seen the operator list, each
+inexpressible one tagged with the capability it wanted. Grouped aggregation
+led by a mile — 76 questions touched it, and **30 were blocked by it alone**.
+We published that number, and the sentence it justified: one operator family
+would make thirty more questions expressible. It was the whole argument for
+building `aggregate_events` first.
+
+We built it, then re-audited all 110 against the fourteen-operator algebra
+without touching the pre-registered table. **Fourteen questions moved**, not
+thirty. Thirteen of the thirty, plus one from elsewhere.
+
+The seventeen that stayed are the lesson. With grouping in hand, what they
+actually need became visible:
+
+- **eleven want a set or pair join.** "How many distinct pairs (A, B) where A
+  rated B *and* B rated A?" groups by pair perfectly well — and then has to
+  match each pair against its own transpose.
+- **ten want per-group ordered sequences.** "The longest gap between two
+  consecutive ratings by the same account"; "more than 5 ratings in any
+  24-hour period". `min`/`max` give the endpoints of a group, never the
+  structure inside it, and a sliding window is not a bucket.
+- the rest hit rating props or division, both of which D-044 declined on
+  purpose.
+
+None of that was hidden. It was folded into a tag named `G`, applied by
+people who could see what was missing but not what was underneath it,
+because the thing that would reveal the second layer did not exist yet. A
+tag assigned before the capability exists records *the first blocker a
+reader hits*, and the first blocker is the shallowest one.
+
+Two things to carry. **A tag histogram is a prioritization tool, not a
+forecast** — it ranks what to build next, which it did correctly here (no
+other capability would have moved fourteen), but the number attached to it
+is an upper bound that will not be met. And the deflation is largely
+avoidable: **make every tag name the operator call that would satisfy it.**
+The tags that cannot name one — "needs grouped aggregation" for a
+reciprocity question — are the ones concealing a second capability. Both new
+tags this re-audit had to introduce (`SET` grown from 7 to 36, `SEQ` from
+nothing to 14) came out of entries that could not have named a call.
+
+The re-audit is kept beside the pre-registration rather than replacing it
+(`C` and `C14` in `scripts/independent_questions.py`), because a prediction
+is only worth publishing if the miss is still visible afterwards.
 
 ## 10. Fault injection earns its keep in ways you did not plan
 

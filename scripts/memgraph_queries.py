@@ -1,9 +1,9 @@
 """Registry queries for Memgraph — the Neo4j Cypher, with one override.
 
-Seven of the eight written queries run unchanged against Memgraph through
-the same bolt driver; openCypher compatibility is the entire point of
-reusing them, and the canonical hash judges the reuse rather than trusting
-it. The one override: `neighborhood_evolution`'s degree series used Neo4j
+Twelve of the thirteen registry queries run unchanged against Memgraph
+through the same bolt driver; openCypher compatibility is the entire point
+of reusing them, and the canonical hash judges the reuse rather than
+trusting it. The one override: `neighborhood_evolution`'s degree series used Neo4j
 5's scoped `CALL (bs) {...}` subquery, which Memgraph does not parse — here
 it is a correlated UNWIND/MATCH with empty buckets refilled client-side.
 """
@@ -15,6 +15,7 @@ from typing import Any
 from neo4j_queries import (  # noqa: F401  (re-exported registry entries)
     OPEN_END,
     _page,
+    aggregate_events,
     belief,
     burst_detection,
     co_active,
@@ -69,6 +70,7 @@ QUERIES = {
     "paths.k": temporal_paths,
     "series.count": graph_metric_timeseries,
     "burst.zscore": burst_detection,
+    "agg.rel_bucket": aggregate_events,
     "nbr.evolution": neighborhood_evolution,
     "diff.global": diff_snapshots,
     "coactive.narrow": co_active,

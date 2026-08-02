@@ -127,6 +127,19 @@ def registry(t0: int, t1: int, tt_epoch1: int,
               "interval join between two edge sets"),
         Query("resolve.substr", "resolve_entities", {"query": "n1"},
               "entity resolution by substring"),
+        # D-044: the grouped-aggregation flagship — the query family the
+        # 110-question study named as the dominant gap, and the shape
+        # ClickHouse dominates (12x at 10M on series.count). Integer-valued
+        # aggregates only, so the cross-system hash is exact. limit covers
+        # every group (~2 rels x ~100 buckets), so the *full* answer is
+        # what gets verified, not a page.
+        Query("agg.rel_bucket", "aggregate_events",
+              {"group_by": [{"dim": "rel_type"}, {"dim": "time_bucket"}],
+               "aggregates": [{"agg": "count"},
+                              {"agg": "count_distinct", "of": "dst"}],
+               "window": {"t_a": t0, "t_b": t1},
+               "stride": max(1, span // 100), "limit": 1000},
+              "count + distinct-dst by rel_type x time-bucket, full window"),
         Query("motif.filtered", "count_temporal_motifs",
               {"motif": "M_triangle_cyclic", "delta": span // 50,
                "window": {"t_a": t0, "t_b": t1},

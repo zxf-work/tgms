@@ -78,6 +78,42 @@ def graph_metric_timeseries(drv, *, metric: str, window: dict, stride: int,
             "n_buckets": n}
 
 
+def aggregate_events(drv, *, group_by: list, aggregates: list, window: dict,
+                     stride: int | None = None, rel_types: list | None = None,
+                     as_of_tt: int = OPEN_END, limit: int = 100,
+                     cursor: str | None = None) -> dict[str, Any]:
+    """O14, the registry's flagship grouped-aggregation shape only.
+
+    Grouped aggregation is the one query family Cypher expresses as
+    directly as SQL does, so this twin is a fair reading of the graph
+    engines on it — no Python-driven rounds, one statement. Only non-empty
+    groups exist, which is the operator's contract; ORDER BY on a string is
+    codepoint-ordered, which is its canonical order; distinct dst counts
+    `dense_id`, which bijects with uid.
+    """
+    if [d["dim"] for d in group_by] != ["rel_type", "time_bucket"] \
+            or aggregates != [{"agg": "count"},
+                              {"agg": "count_distinct", "of": "dst"}] \
+            or rel_types is not None or cursor is not None:
+        raise NotImplementedError("only the agg.rel_bucket shape is written")
+    t_a, t_b = window["t_a"], window["t_b"]
+    with drv.session() as s:
+        recs = s.run(
+            f"MATCH ()-[r:E]->(b:Entity) WHERE {belief(as_of_tt, 'r')} "
+            f"AND r.vt_s >= $ta AND r.vt_s < $tb "
+            f"RETURN r.rel_type AS rel, (r.vt_s - $ta) / $stride AS i, "
+            f"count(r) AS c, count(DISTINCT b.dense_id) AS d "
+            f"ORDER BY rel, i",
+            ta=t_a, tb=t_b, stride=stride).data()
+    out = [{"rel_type": r["rel"],
+            "t_a": t_a + int(r["i"]) * stride,
+            "t_b": min(t_a + (int(r["i"]) + 1) * stride, t_b),
+            "count": int(r["c"]), "distinct_dst": int(r["d"])}
+           for r in recs]
+    page = out[:limit]
+    return {"rows": page, **_page(len(out), len(page))}
+
+
 BIG_SCORE = 1e9
 
 
@@ -493,6 +529,7 @@ QUERIES = {
     "paths.k": temporal_paths,
     "series.count": graph_metric_timeseries,
     "burst.zscore": burst_detection,
+    "agg.rel_bucket": aggregate_events,
     "nbr.evolution": neighborhood_evolution,
     "diff.global": diff_snapshots,
     "coactive.narrow": co_active,

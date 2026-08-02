@@ -143,7 +143,7 @@ which is what makes them the useful Phase 0 pair.
 Schema, loader, and tuning: `scripts/ch_baseline.py`; registry SQL, added
 slice by slice: `scripts/ch_queries.py` (D-035). Loading follows the same
 replay rule as PostgreSQL (§3). **Verdict: equivalent on the whole
-registry** — all twelve queries hash-identical to the operators, verified
+registry** — all thirteen queries hash-identical to the operators, verified
 before timed.
 
 How the hard shapes were expressed: ClickHouse has no session temp tables
@@ -182,7 +182,7 @@ Cypher cannot parse the props JSON.
 ### Memgraph
 
 `scripts/memgraph_baseline.py` / `scripts/memgraph_queries.py` (D-037):
-the Neo4j baseline by reuse — loader verbatim, eleven of twelve queries
+the Neo4j baseline by reuse — loader verbatim, twelve of thirteen queries
 unchanged, one override (degree series; Neo4j 5's scoped CALL subquery
 is not openCypher). **Verdict: equivalent on the whole registry**,
 hash-verified independently — the canonical hash judged the openCypher
@@ -245,7 +245,7 @@ PostgreSQL and deliberate: the cluster is initialized `--locale=C`, which
 matches TGMS's byte ordering natively *and* is faster than a locale collation,
 and it is built `--without-icu` for the same reason.
 
-**Verdicts.** All twelve registry queries are written in SQL
+**Verdicts.** All thirteen registry queries are written in SQL
 (`scripts/pg_queries.py`) and every one returns a canonical hash identical to
 the TGMS operator's, over non-trivial answers, on data containing corrections.
 So the whole registry is **equivalent** on PostgreSQL — nothing in it turned

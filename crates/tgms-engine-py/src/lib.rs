@@ -565,6 +565,122 @@ impl NativeStore {
         Ok(d)
     }
 
+    /// O14 `aggregate_events`, engine side (aggregate.rs): one crossing per
+    /// call. `group_by` is `(dim, role)` pairs, `aggregates` is `(agg, of)`
+    /// pairs — the operator's already-validated closed sets. Returns group
+    /// key columns as fixed-width codes (NumPy i64) plus the rehydration
+    /// tables; the operator builds only the requested page in Python.
+    #[pyo3(signature = (as_of_tt, t_a, t_b, rel_types, stride, group_by,
+                        aggregates, max_groups))]
+    #[allow(clippy::too_many_arguments)]
+    fn aggregate_edges<'py>(
+        &self,
+        py: Python<'py>,
+        as_of_tt: i64,
+        t_a: i64,
+        t_b: i64,
+        rel_types: Option<Vec<String>>,
+        stride: Option<i64>,
+        group_by: Vec<(String, Option<String>)>,
+        aggregates: Vec<(String, Option<String>)>,
+        max_groups: usize,
+    ) -> Res<Bound<'py, PyDict>> {
+        use tgms_engine_core::aggregate::{Agg, AggValues, AggregateRequest, Dim, Source};
+
+        let is_dst = |role: &Option<String>, what: &str| -> Res<bool> {
+            match role.as_deref() {
+                Some("src") => Ok(false),
+                Some("dst") => Ok(true),
+                other => Err(PyRuntimeError::new_err(format!(
+                    "aggregate_edges: {what} requires role src|dst, got {other:?}"
+                ))),
+            }
+        };
+        let mut dims = Vec::with_capacity(group_by.len());
+        for (dim, role) in &group_by {
+            dims.push(match dim.as_str() {
+                "time_bucket" => Dim::TimeBucket {
+                    stride: stride.ok_or_else(|| {
+                        PyRuntimeError::new_err(
+                            "aggregate_edges: time_bucket requires stride",
+                        )
+                    })?,
+                },
+                "rel_type" => Dim::RelType,
+                "endpoint" => Dim::Endpoint { dst: is_dst(role, "endpoint")? },
+                "label" => Dim::Label { dst: is_dst(role, "label")? },
+                other => {
+                    return Err(PyRuntimeError::new_err(format!(
+                        "aggregate_edges: unknown dimension {other:?}"
+                    )))
+                }
+            });
+        }
+        let source = |of: &Option<String>| -> Res<Source> {
+            match of.as_deref() {
+                Some("vt_s") => Ok(Source::VtS),
+                Some("duration") => Ok(Source::Duration),
+                other => Err(PyRuntimeError::new_err(format!(
+                    "aggregate_edges: stat aggregate requires of vt_s|duration, got {other:?}"
+                ))),
+            }
+        };
+        let mut aggs = Vec::with_capacity(aggregates.len());
+        for (agg, of) in &aggregates {
+            aggs.push(match agg.as_str() {
+                "count" => Agg::Count,
+                "count_distinct" => Agg::CountDistinct {
+                    dst: is_dst(of, "count_distinct")?,
+                },
+                "min" => Agg::Min(source(of)?),
+                "max" => Agg::Max(source(of)?),
+                "mean" => Agg::Mean(source(of)?),
+                other => {
+                    return Err(PyRuntimeError::new_err(format!(
+                        "aggregate_edges: unknown aggregate {other:?}"
+                    )))
+                }
+            });
+        }
+        let req = AggregateRequest {
+            as_of_tt,
+            t_a,
+            t_b,
+            rel_types,
+            dims,
+            aggs,
+            max_groups,
+        };
+        let out = self.inner.aggregate_edges(&req).map_err(err)?;
+
+        let d = PyDict::new(py);
+        let n = out
+            .aggs
+            .first()
+            .map(|c| match c {
+                AggValues::Int(v) => v.len(),
+                AggValues::Float(v) => v.len(),
+            })
+            .unwrap_or(0);
+        d.set_item("rows_total", n)?;
+        let keys = PyList::empty(py);
+        for col in out.keys {
+            keys.append(col.into_pyarray(py))?;
+        }
+        d.set_item("keys", keys)?;
+        let aggs_py = PyList::empty(py);
+        for col in out.aggs {
+            match col {
+                AggValues::Int(v) => aggs_py.append(v)?,
+                AggValues::Float(v) => aggs_py.append(v)?,
+            }
+        }
+        d.set_item("aggs", aggs_py)?;
+        d.set_item("rel_names", PyList::new(py, &out.rel_names)?)?;
+        d.set_item("label_names", PyList::new(py, &out.label_names)?)?;
+        Ok(d)
+    }
+
     /// `(eids, rel_types)` for explicit `(segment id, row)` scan addresses.
     ///
     /// Addresses are only meaningful against the generation that produced

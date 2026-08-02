@@ -461,6 +461,99 @@ class Oracle:
         return paginate(rows, args["limit"], args["cursor"])
 
     # ------------------------------------------------------------------ #
+    # O14 aggregate_events                                                 #
+    # ------------------------------------------------------------------ #
+
+    def aggregate_events(self, args: dict[str, Any]) -> dict[str, Any]:
+        t_a, t_b = args["window"]["t_a"], args["window"]["t_b"]
+        as_of, stride = args["as_of_tt"], args.get("stride")
+        dims, aggs = args["group_by"], args["aggregates"]
+        events = [v for v in self.believed_edges(as_of)
+                  if t_a <= v.vt_s < t_b
+                  and (args["rel_types"] is None
+                       or v.rel_type in args["rel_types"])]
+
+        def label_at(uid: str, t: int) -> str | None:
+            # believed valid intervals of one identity are disjoint, so at
+            # most one version matches
+            for v in self.believed_nodes(as_of):
+                if v.uid == uid and v.valid_at(t):
+                    return v.label
+            return None
+
+        def dim_value(d: dict[str, Any], v: EdgeVersion) -> Any:
+            if d["dim"] == "time_bucket":
+                return (v.vt_s - t_a) // stride
+            if d["dim"] == "rel_type":
+                return v.rel_type
+            ep = v.src if d["role"] == "src" else v.dst
+            if d["dim"] == "endpoint":
+                return ep
+            return label_at(ep, v.vt_s)
+
+        groups: dict[tuple, list[EdgeVersion]] = {}
+        if dims:
+            for v in events:
+                groups.setdefault(tuple(dim_value(d, v) for d in dims),
+                                  []).append(v)
+        else:
+            groups[()] = list(events)  # exactly one row, even with 0 events
+
+        def sort_key(key: tuple) -> tuple:
+            # numeric dims in numeric order, strings in code-point order,
+            # null labels first
+            return tuple((0, "") if kv is None else (1, kv) for kv in key)
+
+        def mean(vals: list[int]) -> float:
+            q, r = divmod(sum(vals), len(vals))
+            return float(q) + r / len(vals)
+
+        def agg_field(a: dict[str, Any]) -> str:
+            if a["agg"] == "count":
+                return "count"
+            if a["agg"] == "count_distinct":
+                return f"distinct_{a['of']}"
+            return f"{a['agg']}_{a['of']}"
+
+        rows = []
+        for key in sorted(groups, key=sort_key):
+            evs = groups[key]
+            row: dict[str, Any] = {}
+            for d, kv in zip(dims, key):
+                if d["dim"] == "time_bucket":
+                    row["t_a"] = t_a + kv * stride
+                    row["t_b"] = min(t_a + (kv + 1) * stride, t_b)
+                elif d["dim"] == "rel_type":
+                    row["rel_type"] = kv
+                elif d["dim"] == "endpoint":
+                    row[d["role"]] = kv
+                else:
+                    row[f"{d['role']}_label"] = kv
+            for a in aggs:
+                if a["agg"] == "count":
+                    val: Any = len(evs)
+                elif a["agg"] == "count_distinct":
+                    val = len({v.src if a["of"] == "src" else v.dst
+                               for v in evs})
+                else:
+                    if a["of"] == "vt_s":
+                        vals = [v.vt_s for v in evs]
+                    else:  # duration: open-ended rows contribute nothing
+                        vals = [v.vt_e - v.vt_s for v in evs
+                                if v.vt_e < OPEN_END]
+                    if not vals:
+                        val = None
+                    elif a["agg"] == "min":
+                        val = min(vals)
+                    elif a["agg"] == "max":
+                        val = max(vals)
+                    else:
+                        val = mean(vals)
+                row[agg_field(a)] = val
+            rows.append(row)
+        return paginate(rows, args["limit"], args["cursor"])
+
+    # ------------------------------------------------------------------ #
     # O12 resolve_entities                                                 #
     # ------------------------------------------------------------------ #
 

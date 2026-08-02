@@ -198,6 +198,7 @@ def paginate(rows: list[Any], limit: int, cursor: str | None) -> dict[str, Any]:
 def ensure_all_registered() -> None:
     """Import all operator modules so REGISTRY is fully populated."""
     from tgms.temporal import (  # noqa: F401
+        ops_aggregate,
         ops_compute,
         ops_motifs,
         ops_paths,

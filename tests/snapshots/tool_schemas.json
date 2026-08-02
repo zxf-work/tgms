@@ -1,5 +1,158 @@
 [
  {
+  "description": "Grouped aggregation over edge events (believed edge versions with t_a <= vt_s < t_b). Dimensions: time_bucket (with stride), rel_type, endpoint (src|dst as uids), label (endpoint's node label valid at the event; null when none). Aggregates: count, count_distinct(src|dst), min/max/mean over vt_s or duration (= vt_e - vt_s; open-ended rows excluded). Non-empty groups only; group_by [] returns one global row. Rows ordered by dimension values (numeric order / code-point order, null labels first).\nOutput fields: rows, rows_total, truncated, cursor.",
+  "input_schema": {
+   "additionalProperties": false,
+   "properties": {
+    "aggregates": {
+     "items": {
+      "additionalProperties": false,
+      "properties": {
+       "agg": {
+        "enum": [
+         "count",
+         "count_distinct",
+         "min",
+         "max",
+         "mean"
+        ],
+        "type": "string"
+       },
+       "of": {
+        "default": null,
+        "description": "src|dst for count_distinct; vt_s|duration for min/max/mean",
+        "enum": [
+         "src",
+         "dst",
+         "vt_s",
+         "duration",
+         null
+        ],
+        "type": [
+         "string",
+         "null"
+        ]
+       }
+      },
+      "required": [
+       "agg"
+      ],
+      "type": "object"
+     },
+     "maxItems": 4,
+     "minItems": 1,
+     "type": "array"
+    },
+    "as_of_tt": {
+     "default": 4611686018427387904,
+     "description": "belief state to evaluate under; OPEN_END = current beliefs",
+     "maximum": 4611686018427387904,
+     "minimum": 0,
+     "type": "integer"
+    },
+    "cursor": {
+     "default": null,
+     "description": "opaque pagination cursor from a previous call",
+     "type": [
+      "string",
+      "null"
+     ]
+    },
+    "group_by": {
+     "description": "0-2 dimensions; [] = one global row",
+     "items": {
+      "additionalProperties": false,
+      "properties": {
+       "dim": {
+        "enum": [
+         "time_bucket",
+         "rel_type",
+         "endpoint",
+         "label"
+        ],
+        "type": "string"
+       },
+       "role": {
+        "default": null,
+        "description": "which endpoint, for endpoint/label dims",
+        "enum": [
+         "src",
+         "dst",
+         null
+        ],
+        "type": [
+         "string",
+         "null"
+        ]
+       }
+      },
+      "required": [
+       "dim"
+      ],
+      "type": "object"
+     },
+     "maxItems": 2,
+     "type": "array"
+    },
+    "limit": {
+     "default": 100,
+     "maximum": 10000,
+     "minimum": 1,
+     "type": "integer"
+    },
+    "rel_types": {
+     "default": null,
+     "items": {
+      "type": "string"
+     },
+     "type": [
+      "array",
+      "null"
+     ]
+    },
+    "stride": {
+     "default": null,
+     "description": "bucket width; required with a time_bucket dimension (cap 2000 buckets)",
+     "minimum": 1,
+     "type": [
+      "integer",
+      "null"
+     ]
+    },
+    "window": {
+     "additionalProperties": false,
+     "description": "half-open valid-time window [t_a, t_b)",
+     "properties": {
+      "t_a": {
+       "description": "int64 epoch microseconds, UTC",
+       "maximum": 4611686018427387904,
+       "minimum": 0,
+       "type": "integer"
+      },
+      "t_b": {
+       "description": "int64 epoch microseconds, UTC",
+       "maximum": 4611686018427387904,
+       "minimum": 0,
+       "type": "integer"
+      }
+     },
+     "required": [
+      "t_a",
+      "t_b"
+     ],
+     "type": "object"
+    }
+   },
+   "required": [
+    "group_by",
+    "aggregates",
+    "window"
+   ],
+   "type": "object"
+  },
+  "name": "aggregate_events"
+ },
+ {
   "description": "Flag bursty buckets in an event-rate series. target.kind:\n'edge_event_rate' (optionally per rel_type) or 'node_activity'\n(requires target.uid; counts incident events). method 'zscore' flags\n|x - trailing_mean| >= z * trailing_std over the previous params.w\nbuckets (default w=10, z=3); 'ratio' flags x / trailing_median >= r.\nReturns only flagged buckets, with scores. Cost: cheap.\nExample: {\"target\": {\"kind\": \"edge_event_rate\"}, \"window\": {...},\n          \"stride\": 86400000000, \"method\": \"zscore\"}\nOutput fields: rows, rows_total, truncated, cursor, n_buckets.",
   "input_schema": {
    "additionalProperties": false,

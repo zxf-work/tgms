@@ -11,6 +11,18 @@ supersessions are part of the record:
 - eval-collegemsg{,-costfix}.json — real-dataset runs
 - eval-200k-costfix.json — motif cost-model reprice rerun
 - eval-writes.json — write-path evaluation (§12)
+- eval-200k-6sys.json — 200k, all six systems in one run, thirteen queries
+  (D-044): the first record covering the whole matrix at once
+- eval-1m-agg.json, eval-10m-agg.json — 1M (four systems) and 10M (three)
+  with the grouped-aggregation query
+- gate-1m-{control,parallel}.json — the parallel-gate A/B at 1M
+  (`TGMS_PARALLEL_MIN_ROWS` default vs 250k): a **null result**, kept
+  because it is what ruled the gate out as the cause of the 1M scan
+  regression (D-045)
+- bisect-{47379fc,c56ebbb,e5756a9,468ee32,2601d1a}.json — five 1M
+  native-only runs, one per candidate commit, locating that regression at
+  the TCSR-persistence commit; the cause turned out to be index residency
+  rather than anything in the diff (engine_lessons §9g)
 - eval-1m-bitemporal.json — §13 current-vs-bi-temporal overhead, density
   sweep 0–20% (its `agree:false` is the run gate miscounting a one-sided
   guardrail refusal at 20%; zero hash mismatches — see eval_bitemporal.md)

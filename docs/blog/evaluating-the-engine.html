@@ -181,6 +181,18 @@ are independent axes.</b></p>
 workload, ClickHouse is the right tool and our report says so. Nothing else
 in the registry transfers — the same engine pays 100–400× on traversal.</p>
 
+<div class="note"><b>Updated, August 2026.</b> Re-running this table after
+adding a grouped-aggregation operator moved two of its rows. The lead above
+now measures a tie at 200k, 3.5× at 1M and <b>8.7× at 10M</b> rather than
+12× — partly engine work, partly a measurement effect we had not disclosed:
+the registry runs its queries in one process, and the traversal index built
+by an earlier query taxes these two by 18%. Point lookups no longer go to
+PostgreSQL, the two incidence queries came back from Memgraph, and
+<code>paths.k</code> is no longer guardrailed at 10M. The refreshed tables
+and a ±20% reproducibility bound are in
+<a href="https://github.com/zxf-work/tgms/blob/main/docs/eval_phase0.md">eval_phase0.md</a>;
+the story is <a href="racing-the-specialist.html">post #9</a>.</div>
+
 <h2>The baselines audited us back</h2>
 
 <p>Building honest baselines fixed <i>our</i> engine. PostgreSQL's 0.5 ms

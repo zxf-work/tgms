@@ -97,6 +97,11 @@ answered.</p>
 thirteen-operator algebra. The other 98 are a measured, prioritized
 to-do list.</div>
 
+<div class="note"><b>Followed up.</b> We since built the operator this
+study ranked first and re-measured the coverage: 24 of 110, where the
+tag histogram below implied 40. <a href="#built-it">What that gap
+taught us</a> is further down.</div>
+
 <h2>What people actually ask</h2>
 <p>The gaps were not random. Tagging every inexpressible question with
 its missing capabilities (tags overlap, so counts exceed 98):</p>
@@ -114,6 +119,53 @@ questions expressible on its own. Nothing else comes close. That is
 what workload-driven interface design looks like: not a designer's
 intuition about what agents need, but a count of what real questions
 break on.</p>
+
+<h2 id="built-it">Update, August 2026: we built it, and the thirty was fourteen</h2>
+<p>That prediction was the whole argument for what to build next, so
+it deserved to be checked rather than quietly reused. We built the
+grouped-aggregation operator, then re-audited all 110 questions against
+the fourteen-operator algebra — without touching the pre-registered
+table, so the miss stays visible.</p>
+
+<div class="duo">
+<div class="cell"><b>Predicted, July</b>
+<div class="big">30</div>
+questions the tag histogram said grouped aggregation would unlock on
+its own.</div>
+<div class="cell"><b>Measured, August</b>
+<div class="big bad">14</div>
+questions that actually became expressible — 24 of 110 in total, up
+from 10.</div>
+</div>
+
+<p>The seventeen that didn't move are the interesting half. With
+grouping in hand, what they had really been waiting for became
+legible:</p>
+
+<table>
+<tr><th>What the other 17 actually needed</th><th>Questions</th></tr>
+<tr><td>A set or pair join — "pairs where A rated B <i>and</i> B rated A"
+groups by pair fine, then must match each pair against its transpose</td><td>11</td></tr>
+<tr><td>Ordered sequences inside a group — "longest gap between
+consecutive ratings", "more than 5 in any 24-hour period". Min and max
+give a group's endpoints, never its interior; a sliding window is not
+a bucket</td><td>10</td></tr>
+<tr><td>Rating properties or division, both deliberately out of
+scope</td><td>4</td></tr>
+</table>
+
+<div class="pull">A capability tag assigned before the capability
+exists records the first blocker a reader hits — and the first blocker
+is the shallowest one.</div>
+
+<p>None of this was concealed; it was folded into a tag named <code>G</code>
+by people who could see what was missing but not what sat underneath
+it. The histogram still did its job — it ranked the work correctly, and
+nothing else on the list would have moved fourteen questions. But the
+number attached to a tag is an upper bound, not a forecast, and the
+deflation is mostly avoidable: make every tag name the operator call
+that would satisfy it, and the tags that can't name one are the ones
+hiding a second capability.</p>
 
 <h2>Two findings we didn't pay for</h2>
 <p>The students misjudged the data. Several questions target months
