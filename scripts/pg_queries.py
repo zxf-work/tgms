@@ -203,6 +203,47 @@ def graph_metric_timeseries(conn, *, metric: str, window: dict, stride: int,
 
 
 # --------------------------------------------------------------------------
+# O14 aggregate_events (rel_type x time_bucket; count + distinct dst)
+# --------------------------------------------------------------------------
+
+def aggregate_events(conn, *, group_by: list, aggregates: list, window: dict,
+                     stride: int | None = None, rel_types: list | None = None,
+                     as_of_tt: int = OPEN_END, limit: int = 100,
+                     cursor: str | None = None) -> dict[str, Any]:
+    # Written for the registry's flagship shape; other combinations are "no
+    # SQL written yet", which is not a verdict (see run_postgres).
+    if [d["dim"] for d in group_by] != ["rel_type", "time_bucket"] \
+            or aggregates != [{"agg": "count"},
+                              {"agg": "count_distinct", "of": "dst"}] \
+            or rel_types is not None or cursor is not None:
+        raise NotImplementedError("only the agg.rel_bucket shape is written")
+    t_a, t_b = window["t_a"], window["t_b"]
+    bel = belief(as_of_tt)
+    # Unlike the series twin there is no bucket spine: the operator's
+    # contract emits only non-empty groups, which is exactly what GROUP BY
+    # produces. COLLATE "C" pins rel_type to code-point order; distinct dst
+    # counts dense ids, which biject with uids. Integer division truncates
+    # toward zero, correct for vt_s >= t_a.
+    rows = conn.execute(
+        f"""
+        SELECT rel_type, (vt_s - %s) / %s AS b,
+               count(*) AS c, count(DISTINCT dst_id) AS d
+        FROM edge_versions
+        WHERE {bel} AND vt_s >= %s AND vt_s < %s
+        GROUP BY rel_type, b
+        ORDER BY rel_type COLLATE "C", b
+        """,
+        [t_a, stride, t_a, t_b],
+    ).fetchall()
+    out = [{"rel_type": r[0],
+            "t_a": t_a + int(r[1]) * stride,
+            "t_b": min(t_a + (int(r[1]) + 1) * stride, t_b),
+            "count": int(r[2]), "distinct_dst": int(r[3])} for r in rows]
+    page = out[:limit]
+    return {"rows": page, **_page(len(out), len(page))}
+
+
+# --------------------------------------------------------------------------
 # O10  neighborhood_evolution
 # --------------------------------------------------------------------------
 
@@ -690,6 +731,7 @@ QUERIES = {
     "paths.k": temporal_paths,
     "series.count": graph_metric_timeseries,
     "burst.zscore": burst_detection,
+    "agg.rel_bucket": aggregate_events,
     "nbr.evolution": neighborhood_evolution,
     "coactive.narrow": co_active,
     "resolve.substr": resolve_entities,
