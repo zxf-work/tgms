@@ -198,7 +198,10 @@ DuckDB — those scans are selection-bound (incidence and node filters per
 row). `series.count`/`burst.zscore` did not move (~1.26 s vs DuckDB's ~0.96) —
 profiled: the scan is 1167 ms of the operator's 1274, and projecting down
 to one column changes nothing (1170 ms), so the cost is not column
-materialization. NumPy's mask-and-bincount is 88 ms. What remained was the
+materialization. *(That last inference is retired — see "Where the 10M scan
+actually goes" below. The projection changed nothing because it was not
+being applied to the fixed-width columns, and materialization was 47% of the
+scan the whole time.)* NumPy's mask-and-bincount is 88 ms. What remained was the
 serial post-selection machinery. Fixing the merge — keys were resolved by
 column name and built into an `Id96` per popped row (lesson §2 again), and
 valid-time clustering means non-interleaving segments can concatenate
@@ -470,6 +473,160 @@ of ten million Python strings, which is the dictionary-coding lesson the
 native path was careful to obey and the portable path was not. Anyone using
 the DuckDB backend for grouped aggregation at scale is paying for that
 today; it is written here rather than left for them to discover.
+
+## Where the 10M scan actually goes (D-046)
+
+The section above ends by naming the scan as the residual gap. This one
+measures it, because "the scan" was still a single number subtracted from a
+Python wall clock. Six timers now live on the path — `select`,
+`cluster_order` and `materialize` inside Rust, segment open, `eid`
+derivation and the NumPy conversion at the PyO3 boundary — and every
+condition below runs in **its own process** against a pre-built store
+(lessons §9g: a resident index taxes any later scan 18%, so conditions
+measured together are not independent). Commit `0a7d2ce`, xzgpu, 40 cores,
+2026-08-02, median of 5 reps after one warm-up. Numbers on this page from
+other days are not comparable with these to better than ±20%.
+
+`series.count` at 10M, default width (16 workers):
+
+| stage | ms | share of the operator |
+|---|---:|---:|
+| **operator total** | **463.3** | |
+| ├ `edges_columnar` (adapter) | 349.4 | 75% |
+| │ ├ segment open (warm) | 0.2 | |
+| │ ├ **`select`** | **38.8** | 8% |
+| │ ├ `cluster_order` | 0.3 | |
+| │ ├ **`materialize`** | **220.0** | 47% |
+| │ ├ `eid` (not projected) | 0.0 | |
+| │ ├ **NumPy conversion** | **72.5** | 16% |
+| │ └ residue (PyO3 marshalling) | 17.0 | 4% |
+| ├ NumPy above the scan (mask + `bincount`) | 107.5 | 23% |
+| └ unaccounted (validation, pagination) | 6.4 | 1% |
+
+**Selection is 8% of it.** Every hypothesis this project has held about the
+10M scan — that it is selection-bound, that the belief test or the
+valid-time test per row is the cost, that a resident close index makes
+visibility expensive — is refuted by that one row. The cost is *moving ten
+million rows out of the engine*: materialization, the boundary, and the
+NumPy pass above it are 400 of the 463 ms.
+
+Three narrower conditions place it exactly.
+
+**The projection never reached the fixed-width columns.** Same 10M scan,
+three different `columns=`:
+
+| projection | select | materialize | convert | wall |
+|---|---:|---:|---:|---:|
+| `src_id, dst_id, vt_s, vt_e` | 39.0 | 221.3 | 75.5 | 352.2 |
+| `vt_s, vt_e` | 42.2 | 227.2 | 75.6 | 367.0 |
+| `vt_s` | 42.5 | 229.2 | 74.5 | 360.4 |
+
+Asking for one column costs what asking for four costs, because `copy_run`
+honoured the projection for `vid` and the three string columns and copied
+`vt_e`, `src_id` and `dst_id` unconditionally — and the boundary widened
+both endpoint columns from `u32` to `i64` whatever was asked for. **This
+retires a claim published above**: the 2026-08-01 note that "projecting down
+to one column changes nothing … so the cost is not column materialization"
+measured a projection that was not being applied. The conclusion drawn from
+it was wrong in the strongest possible way — it steered the next three
+sessions away from materialization, which is where 47% of the time was.
+
+**The per-row predicates are noise.** Removing them one at a time:
+
+| request | select | materialize | wall | rows out |
+|---|---:|---:|---:|---:|
+| `vt_min` + `vt_max` | 39.0 | 225.5 | 349.6 | 10,000,009 |
+| `vt_max` only (no per-row `vt_e` test) | 38.1 | 217.7 | 341.8 | 10,000,009 |
+| no window at all | 38.5 | 216.2 | 341.7 | 10,000,009 |
+| `rel_types=["R"]` | 39.5 | 149.9 | 242.4 | 6,666,673 |
+
+The `vt_e > vt_min` test that runs for every one of ten million rows costs
+**~1 ms**. What `select` is actually doing is writing a `Vec<u32>` of ten
+million row ids — the last row confirms it: filtering to two thirds of the
+rows leaves `select` unchanged (the loop still visits every row) and cuts
+materialize and convert by exactly a third.
+
+**Materialization does not parallelize.** Thread sweep at 10M
+(`TGMS_PARALLEL_MIN_ROWS=1`, so the row gate never decides instead of the
+width; widths below 4 stay serial by `PARALLEL_SCAN_MIN_THREADS`):
+
+| `TGMS_SCAN_THREADS` | select | cluster | materialize | convert | wall |
+|---|---:|---:|---:|---:|---:|
+| 1 | 177.2 | 0.2 | 318.9 | 72.4 | 586.9 |
+| 2 *(serial)* | 173.0 | 0.2 | 331.9 | 77.7 | 605.8 |
+| 4 | 111.3 | 0.4 | 243.0 | 72.9 | 439.1 |
+| 8 | 64.8 | 0.4 | 236.8 | 72.6 | 392.1 |
+| 16 | 38.7 | 0.3 | 227.1 | 72.6 | 350.5 |
+| 32 | 38.0 | 0.3 | 226.9 | 72.7 | 353.1 |
+| 40 | 32.7 | 0.3 | 226.8 | 72.6 | 343.8 |
+
+`select` scales **5.4×**; `materialize` scales **1.41×** and stops moving at
+8 workers; `convert` is flat by construction. The whole-scan "4.3× at 10M"
+recorded in §14.3 of `eval_resources.md` is `select`'s number carrying two
+stages that do not scale.
+
+Why materialize does not scale, from the sub-split (CPU summed over workers,
+so it exceeds the stage's wall time when the stage fanned out):
+
+| width | materialize wall | k-way merge CPU | run-walk copy CPU | clusters | multi-member |
+|---|---:|---:|---:|---:|---:|
+| 1 | 321.9 | 33.5 | 143.3 | 371 | 1 |
+| 16 | 225.1 | 49.1 | 358.0 | 371 | 1 |
+
+Two things fall out. First, **serial materialization spends 145 of its
+322 ms outside both halves** — that is the final `append`, which copies
+every column of every cluster a second time into the aggregate. Second,
+**the same copy costs 2.5× more CPU in parallel than serial** (358 vs
+143 ms), because the stage spawns *one thread per cluster* — 371 of them on
+a 40-core host — each allocating its own column buffers. `TGMS_SCAN_THREADS`
+never reaches this stage: it gates it and does not size it.
+
+The cluster shape also contradicts the note above it. "A corrected store is
+almost-all singletons plus small local clusters" is right at 10M (370 of 371
+clusters are singletons) and **wrong at 1M**, where 19 of 38 clusters are
+multi-member and the k-way merge is 29 of the 42 ms materialize takes. The
+same code has opposite cost profiles at the two scales.
+
+For completeness, the two edges of the picture:
+
+| condition | 10M | 1M |
+|---|---:|---:|
+| `tgms.open` in a fresh process | 24.7–25.6 s | 2.6–2.7 s |
+| first (tiny) scan — opens 459 segments, decodes FOR columns | 2.57 s | — |
+| second identical scan | 0.7 ms | — |
+| `series.count` operator | 463.3 | 85.2 |
+| … of which `select` / `materialize` / `convert` | 38.8 / 220.0 / 72.5 | 16.5 / 46.1 / 2.3 |
+
+The ~25 s store open is what `eval_resources.md` §15 recorded as "a fresh
+process pays ~28 s at 10M on its first query, whatever it is"; the split
+above attributes it: essentially all of it is `tgms.open`, and 2.6 s more is
+the first scan mapping and decoding 459 segments. Neither is on the measured
+path of any published number, and neither is touched here.
+
+### One published claim this profile overturns, beyond the projection
+
+D-044 concluded that "grouping is free; the residual gap to ClickHouse is
+entirely the scan underneath it", from `agg.rel_bucket` (334.7 ms) costing
+less than `series.count` (352.1 ms) at 10M. The two do not share a scan.
+`aggregate_events` calls `select` and nothing else — no materialization, no
+boundary, no NumPy — so its scan is the **38.8 ms** row above, not 352.
+Everything else it costs is the aggregation kernel:
+
+| width | `agg.rel_bucket` | of which `select` | kernel |
+|---|---:|---:|---:|
+| 1 | 693.2 | ~177 | ~516 |
+| 4 | 497.2 | ~111 | ~386 |
+| 16 | 313.4 | ~39 | ~274 |
+| 40 | 277.0 | ~33 | ~244 |
+
+So on that query the gap to ClickHouse's 140.8 ms is **the kernel, not the
+scan** — the opposite attribution to the one published. The claim was not
+wrong about the comparison it made (the two operators really do cost about
+the same); it was wrong about what the two costs were made of, because
+"scan" meant `select` on one side of the comparison and the whole
+materialize-and-cross-the-boundary path on the other. The scan is still the
+right target for `series.count` and `burst.zscore`, which is where D-046
+spends itself; `aggregate_events`' kernel is now a separate, priced item.
 
 ## One number that was mine, not PostgreSQL's
 
