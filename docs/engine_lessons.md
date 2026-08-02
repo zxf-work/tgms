@@ -13,7 +13,7 @@ actually cost time.
 
 ## 1. Measure the layer before optimizing it
 
-Nine times we identified "the bottleneck" and were wrong. Every single time,
+Ten times we identified "the bottleneck" and were wrong. Every single time,
 the fix that mattered was found by measuring *after* the intended fix failed
 to move the number.
 
@@ -28,6 +28,7 @@ to move the number.
 | a point lookup is all storage | arg validation ≈ the lookup, ~2 ms each | `jsonschema.validate` rebuilding a validator per call |
 | the motif kernel is the motif cost | the kernel was 11 ms of 369 | an unprojected scan hashing `eid` for rows the filter dropped |
 | 10M scans are materialize-bound | parallel materialize moved 811 → 819 ms | the fast path never ran: one overlapping correction segment voids the all-or-nothing disjointness check |
+| the 6 GB working-set floor is the segment cache | budgeting the cache still OOM'd at 2 GB; the cache was 794 MB | the stats warm-up materialized all 10M rows as one transient — fixed, suite now runs in 1.76 GB |
 
 Three of those nine fixes we implemented were *correct but irrelevant* — the
 contiguous-run copy, the postings index, and the parallel materialization
