@@ -41,7 +41,7 @@ fn scan_threads_override(v: Option<&str>) -> Option<usize> {
 /// when unset the behavior is exactly what shipped: one worker per
 /// available core, capped at 16. Read per call, so a harness can sweep
 /// thread counts within one process against one warm store.
-fn scan_threads() -> usize {
+pub(crate) fn scan_threads() -> usize {
     scan_threads_override(std::env::var("TGMS_SCAN_THREADS").ok().as_deref())
         .unwrap_or_else(|| {
             std::thread::available_parallelism()
@@ -60,7 +60,7 @@ fn scan_threads() -> usize {
 /// so the deciding term is rows, with the unit minimum kept only so there
 /// is something to chunk. Widths below `PARALLEL_SCAN_MIN_THREADS` never
 /// engage: t=2 lost to t=1 at both measured scales.
-fn parallel_gate(threads: usize, units: usize, min_units: usize, rows: u64) -> bool {
+pub(crate) fn parallel_gate(threads: usize, units: usize, min_units: usize, rows: u64) -> bool {
     threads >= crate::defaults::PARALLEL_SCAN_MIN_THREADS
         && units >= min_units
         && rows >= crate::defaults::PARALLEL_SCAN_MIN_ROWS

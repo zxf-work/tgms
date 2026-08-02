@@ -381,6 +381,43 @@ class NativeAdapter(StorageAdapter):
                 out[c] = np.asarray(got[c], dtype=np.int64)
         return out
 
+    def aggregate_events_columnar(
+        self,
+        as_of_tt: int,
+        t_a: int,
+        t_b: int,
+        rel_types: Sequence[str] | None,
+        stride: int | None,
+        group_by: Sequence[tuple[str, str | None]],
+        aggregates: Sequence[tuple[str, str | None]],
+        max_groups: int,
+    ) -> dict[str, Any]:
+        """O14 fast path: the whole grouped aggregation in one engine call
+        (aggregate.rs — two-phase parallel partials over the scan's
+        selections, fixed-width group codes, canonical order). Returns key
+        code columns plus rehydration tables; the operator pages in Python.
+        """
+        try:
+            got = self._store.aggregate_edges(
+                as_of_tt=clamp_tt(as_of_tt),
+                t_a=int(t_a),
+                t_b=int(t_b),
+                rel_types=list(rel_types) if rel_types is not None else None,
+                stride=None if stride is None else int(stride),
+                group_by=[(d, r) for d, r in group_by],
+                aggregates=[(a, o) for a, o in aggregates],
+                max_groups=int(max_groups),
+            )
+        except Exception as e:
+            raise _translate(e) from None
+        return {
+            "rows_total": int(got["rows_total"]),
+            "keys": [np.asarray(k, dtype=np.int64) for k in got["keys"]],
+            "aggs": got["aggs"],
+            "rel_names": got["rel_names"],
+            "label_names": got["label_names"],
+        }
+
     def edge_idents_at(self, seg_ids: Sequence[int],
                        seg_rows: Sequence[int]) -> tuple[np.ndarray, np.ndarray]:
         """`(eid, rel_type)` for scan addresses, in input order.

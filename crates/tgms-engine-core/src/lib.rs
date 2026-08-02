@@ -11,6 +11,7 @@
 //! *never expose an undetected inconsistent generation* — roll back to the
 //! last valid generation and replay the log suffix.
 
+pub mod aggregate;
 pub mod codec;
 pub mod compact;
 pub mod derive;

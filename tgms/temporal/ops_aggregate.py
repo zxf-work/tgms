@@ -374,15 +374,24 @@ def _portable(adapter: StorageAdapter, args: dict[str, Any]) -> dict[str, Any]:
 
 
 def _native(adapter: StorageAdapter, args: dict[str, Any]) -> dict[str, Any]:
-    got = adapter.aggregate_events_columnar(
-        as_of_tt=args["as_of_tt"],
-        t_a=args["window"]["t_a"], t_b=args["window"]["t_b"],
-        rel_types=args["rel_types"],
-        stride=args.get("stride"),
-        group_by=[(d["dim"], d.get("role")) for d in args["group_by"]],
-        aggregates=[(a["agg"], a.get("of")) for a in args["aggregates"]],
-        max_groups=MAX_GROUPS,
-    )
+    try:
+        got = adapter.aggregate_events_columnar(
+            as_of_tt=args["as_of_tt"],
+            t_a=args["window"]["t_a"], t_b=args["window"]["t_b"],
+            rel_types=args["rel_types"],
+            stride=args.get("stride"),
+            group_by=[(d["dim"], d.get("role")) for d in args["group_by"]],
+            aggregates=[(a["agg"], a.get("of")) for a in args["aggregates"]],
+            max_groups=MAX_GROUPS,
+        )
+    except InvalidArgError as e:
+        # the kernel's capacity refusal is this operator's E_LIMIT, with the
+        # same narrowing levers as the portable path
+        if "group count" in str(e) and "exceeds cap" in str(e):
+            raise LimitError(
+                f"{str(e).split('capacity: ', 1)[-1]}; narrow the window, "
+                f"add a rel_types filter, or use coarser dimensions") from None
+        raise
     g = got["rows_total"]
     try:
         offset = int(args["cursor"]) if args["cursor"] else 0
