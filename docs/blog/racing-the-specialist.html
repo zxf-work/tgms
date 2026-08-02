@@ -107,9 +107,11 @@ quietly grows to fit whatever we shipped.</p>
 
 <p>The query is deliberately ordinary — count and distinct-recipient count
 per relationship type per time bucket, 196 groups over the whole window —
-because an unusual query is a way of not being compared. Five independent
-implementations agree on it: our operator, ClickHouse, PostgreSQL, and the
-same Cypher statement on Neo4j and Memgraph. Grouped aggregation is the one
+because an unusual query is a way of not being compared. Four independent
+implementations across six systems agree on it: our operator — which has a
+fifth, a brute-force oracle, behind it in the test suite — ClickHouse SQL,
+PostgreSQL SQL, and one Cypher statement that runs unchanged on both Neo4j
+and Memgraph. Grouped aggregation is the one
 family Cypher states as directly as SQL, so the graph engines are reading
 here at their most natural rather than handicapped.</p>
 

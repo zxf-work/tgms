@@ -431,9 +431,10 @@ operator, `aggregate_events`, was built directly against that column —
 count and distinct-endpoint counts over closed dimensions (time bucket,
 rel_type, endpoint, label) — and the registry gained `agg.rel_bucket`:
 count and distinct-dst by rel_type × time bucket over the full window, 196
-groups, verified before timed against **four independent implementations**
-(the operator, ClickHouse, PostgreSQL, and — at 200k — Cypher on two graph
-engines), all agreeing on one canonical hash.
+groups, verified before timed against **four independent implementations
+across six systems** — the operator (with its brute-force oracle behind it),
+ClickHouse SQL, PostgreSQL SQL, and one Cypher statement that runs unchanged
+on Neo4j and Memgraph — all agreeing on one canonical hash.
 
 | scale | native | clickhouse | postgres | duckdb (portable) | neo4j | memgraph |
 |---|---:|---:|---:|---:|---:|---:|
