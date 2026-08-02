@@ -575,6 +575,10 @@ impl NativeStore {
         d.set_item("t_select_ms", ms(timings.select_ns))?;
         d.set_item("t_cluster_ms", ms(timings.cluster_ns))?;
         d.set_item("t_materialize_ms", ms(timings.materialize_ns))?;
+        d.set_item("t_order_ms", ms(timings.order_ns))?;
+        d.set_item("t_copy_ms", ms(timings.copy_ns))?;
+        d.set_item("clusters", timings.clusters)?;
+        d.set_item("clusters_multi", timings.clusters_multi)?;
         d.set_item("t_eid_ms", ms(eid_ns))?;
         d.set_item("t_convert_ms", ms(t_conv.elapsed().as_nanos() as u64))?;
         Ok(d)

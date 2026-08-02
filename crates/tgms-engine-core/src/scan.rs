@@ -164,6 +164,39 @@ pub struct ScanTimings {
     pub select_ns: u64,
     pub cluster_ns: u64,
     pub materialize_ns: u64,
+    /// Inside `materialize`: CPU time summed over workers, so these two do
+    /// not add up to `materialize_ns` when the stage fanned out. `order_ns`
+    /// is the within-cluster k-way merge that produces an order list;
+    /// `copy_ns` is the run-walk that copies columns.
+    pub order_ns: u64,
+    pub copy_ns: u64,
+    /// Cluster shape, which decides which of the two paths every row takes.
+    pub clusters: u32,
+    pub clusters_multi: u32,
+}
+
+/// Worker-side accumulator for the two halves of materialization. One
+/// relaxed atomic add per cluster — the stage fans out, so a plain counter
+/// would need the lock the stage exists to avoid.
+#[derive(Default)]
+struct StageProbe {
+    order_ns: std::sync::atomic::AtomicU64,
+    copy_ns: std::sync::atomic::AtomicU64,
+}
+
+impl StageProbe {
+    fn order(&self, t: std::time::Instant) {
+        self.order_ns.fetch_add(
+            t.elapsed().as_nanos() as u64,
+            std::sync::atomic::Ordering::Relaxed,
+        );
+    }
+    fn copy(&self, t: std::time::Instant) {
+        self.copy_ns.fetch_add(
+            t.elapsed().as_nanos() as u64,
+            std::sync::atomic::Ordering::Relaxed,
+        );
+    }
 }
 
 /// Row ids selected within one segment, in ascending (already sorted) order.
@@ -604,16 +637,25 @@ impl<'a, S: SegmentSource> ScanSet<'a, S> {
         req: &ScanRequest,
         selections: &[Selection],
         cluster: &[usize],
+        probe: &StageProbe,
     ) -> Result<EdgeColumns> {
         if let [si] = cluster[..] {
-            return self.materialize_selection(req, &selections[si]);
+            let t = std::time::Instant::now();
+            let out = self.materialize_selection(req, &selections[si]);
+            probe.copy(t);
+            return out;
         }
+        let t = std::time::Instant::now();
         let members: Vec<Selection> = cluster
             .iter()
             .map(|&si| selections[si].clone())
             .collect();
         let order = self.merged(&members, None)?;
-        self.materialize_order(req, &order)
+        probe.order(t);
+        let t = std::time::Instant::now();
+        let out = self.materialize_order(req, &order);
+        probe.copy(t);
+        out
     }
 
     pub fn materialize_edges(&self, req: &ScanRequest) -> Result<(EdgeColumns, ScanStats)> {
@@ -643,6 +685,9 @@ impl<'a, S: SegmentSource> ScanSet<'a, S> {
             let clusters = self.cluster_order(&selections)?;
             timings.cluster_ns = t_cluster.elapsed().as_nanos() as u64;
             let t_mat = std::time::Instant::now();
+            timings.clusters = clusters.len() as u32;
+            timings.clusters_multi = clusters.iter().filter(|c| c.len() > 1).count() as u32;
+            let probe = StageProbe::default();
             // Same recalibrated gates as select(), but on *selected* rows —
             // known exactly here, and the honest proxy for materialization
             // work. The fan-out width itself is one thread per cluster,
@@ -655,7 +700,10 @@ impl<'a, S: SegmentSource> ScanSet<'a, S> {
                         .iter()
                         .map(|cluster| {
                             let sels = &selections;
-                            scope.spawn(move || self.materialize_cluster(req, sels, cluster))
+                            let probe = &probe;
+                            scope.spawn(move || {
+                                self.materialize_cluster(req, sels, cluster, probe)
+                            })
                         })
                         .collect();
                     handles
@@ -666,7 +714,7 @@ impl<'a, S: SegmentSource> ScanSet<'a, S> {
             } else {
                 clusters
                     .iter()
-                    .map(|cluster| self.materialize_cluster(req, &selections, cluster))
+                    .map(|cluster| self.materialize_cluster(req, &selections, cluster, &probe))
                     .collect()
             };
             let mut cols = EdgeColumns::with_capacity(stats.rows_selected as usize);
@@ -674,6 +722,8 @@ impl<'a, S: SegmentSource> ScanSet<'a, S> {
                 cols.append(part?);
             }
             timings.materialize_ns = t_mat.elapsed().as_nanos() as u64;
+            timings.order_ns = probe.order_ns.load(std::sync::atomic::Ordering::Relaxed);
+            timings.copy_ns = probe.copy_ns.load(std::sync::atomic::Ordering::Relaxed);
             return Ok((cols, stats, timings));
         }
         let t_cluster = std::time::Instant::now();
