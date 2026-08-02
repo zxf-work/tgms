@@ -54,6 +54,16 @@ def _active_at(starts_sorted: np.ndarray, ends_sorted: np.ndarray,
             - np.searchsorted(ends_sorted, at, side="right"))
 
 
+#: Edge columns each metric actually reads. The engine honours a projection
+#: down to the column (D-046), so a superset here is paid for in copies.
+EDGE_METRIC_COLUMNS: dict[str, tuple[str, ...]] = {
+    "edge_event_count": ("vt_s",),
+    "active_edge_count": ("vt_s", "vt_e"),
+    "mean_out_degree": ("vt_s", "vt_e"),
+    "reciprocity": ("src_id", "dst_id", "vt_s"),
+}
+
+
 def _series_values(adapter: StorageAdapter, metric: str, args: dict[str, Any],
                    bucket_starts: np.ndarray) -> np.ndarray:
     t_a, t_b, stride = args["window"]["t_a"], args["window"]["t_b"], args["stride"]
@@ -61,9 +71,13 @@ def _series_values(adapter: StorageAdapter, metric: str, args: dict[str, Any],
 
     if metric in ("node_count", "mean_out_degree", "new_node_rate"):
         nodes = adapter.nodes_columnar(as_of_tt=as_of, vt_max=t_b)
-    if metric in ("edge_event_count", "active_edge_count", "mean_out_degree",
-                  "reciprocity"):
-        ints = ("src_id", "dst_id", "vt_s", "vt_e")
+    if metric in EDGE_METRIC_COLUMNS:
+        # Ask for what the metric reads, not for a convenient superset: at 10M
+        # rows the endpoint columns alone are 80 MB of copy plus 160 MB of
+        # widening at the boundary, and `edge_event_count` never looks at them
+        # (D-046). Once the projection reached the fixed-width columns this
+        # stopped being cosmetic.
+        ints = EDGE_METRIC_COLUMNS[metric]
         edges = adapter.edges_columnar(as_of_tt=as_of, vt_min=t_a, vt_max=t_b,
                                        columns=ints) \
             if metric != "mean_out_degree" else \
@@ -197,9 +211,12 @@ def burst_detection(adapter: StorageAdapter, args: dict[str, Any]) -> dict[str, 
     tgt = args["target"]
 
     rel_types = [tgt["rel_type"]] if tgt.get("rel_type") else None
+    # only `node_activity` reads the endpoints; the event-rate target is one
+    # column (D-046, same reasoning as `EDGE_METRIC_COLUMNS`)
+    cols = (("src_id", "dst_id", "vt_s") if tgt["kind"] == "node_activity"
+            else ("vt_s",))
     e = adapter.edges_columnar(as_of_tt=args["as_of_tt"], vt_min=t_a, vt_max=t_b,
-                               rel_types=rel_types,
-                               columns=("src_id", "dst_id", "vt_s", "vt_e"))
+                               rel_types=rel_types, columns=cols)
     m = (e["vt_s"] >= t_a) & (e["vt_s"] < t_b)
     if tgt["kind"] == "node_activity":
         uid_id = int(adapter.dense_ids([tgt["uid"]])[0])
