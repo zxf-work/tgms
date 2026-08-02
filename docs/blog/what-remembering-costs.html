@@ -1,0 +1,201 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>What remembering costs — TGMS blog</title>
+<meta name="description" content="We measured the price of the bi-temporal contract: free until the first correction, a memory floor that was misdiagnosed and then repaid, and recovery that went from superlinear to six minutes.">
+<style>
+:root{--ink:#1a2534;--mut:#5b6b7c;--blue:#1c64d9;--blue2:#3b82f6;--line:#e3e8ef;
+      --bg:#fbfcfe;--card:#fff;--codebg:#0e1c30;--codetx:#dce7f5;--ok:#0a7d33;
+      --amber:#b58900;--bad:#c0392b;
+      --mono:ui-monospace,'SF Mono',Menlo,monospace}
+@media (prefers-color-scheme: dark){
+:root{--ink:#e6edf6;--mut:#95a6ba;--blue:#6ea8ff;--blue2:#8bbcff;--line:#243244;
+      --bg:#0b1420;--card:#121e2e;--codebg:#0a1017;--codetx:#cfe0f2;--ok:#4ade80;
+      --amber:#e3b341;--bad:#f87171}}
+*{box-sizing:border-box}
+body{margin:0;font-family:-apple-system,'Segoe UI',Roboto,sans-serif;
+     color:var(--ink);background:var(--bg);-webkit-font-smoothing:antialiased}
+.hero{background:linear-gradient(150deg,#0e1c30 0%,#173863 62%,#1c64d9 130%);
+      color:#fff;padding:30px 24px 44px}
+.hero .nav{max-width:760px;margin:0 auto 30px;font-size:14px}
+.hero .nav a{color:#c9d8ef;text-decoration:none;margin-right:14px}
+.hero .inner{max-width:760px;margin:0 auto}
+.kicker{display:inline-block;background:#ffffff22;border:1px solid #ffffff33;
+        border-radius:14px;padding:3px 12px;font-size:12px;letter-spacing:.08em;
+        text-transform:uppercase;color:#dbe7f8}
+h1{font-size:clamp(26px,4.6vw,38px);line-height:1.16;letter-spacing:-.7px;
+   margin:14px 0 10px;color:#fff}
+.byline{color:#a9c0e2;font-size:14.5px}
+.byline a{color:#dbe7f8}
+article{max-width:760px;margin:0 auto;padding:40px 24px 30px;line-height:1.72;
+        font-size:17px}
+article>p:first-of-type{font-size:19px;color:var(--mut)}
+h2{font-size:23px;letter-spacing:-.3px;margin:44px 0 12px;position:relative;
+   padding-top:18px}
+h2::before{content:"";position:absolute;top:0;left:0;width:44px;height:4px;
+   border-radius:2px;background:linear-gradient(90deg,var(--blue),var(--blue2))}
+.pull{font-size:22px;line-height:1.45;font-weight:600;letter-spacing:-.2px;
+      border:0;margin:30px 0;padding:0 0 0 22px;position:relative;color:var(--ink)}
+.pull::before{content:"";position:absolute;left:0;top:6px;bottom:6px;width:5px;
+      border-radius:3px;background:linear-gradient(180deg,var(--blue),var(--blue2))}
+.duo{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin:22px 0}
+@media(max-width:640px){.duo{grid-template-columns:1fr}}
+.duo .cell{background:var(--card);border:1px solid var(--line);border-radius:12px;
+     padding:14px 16px}
+.duo .cell b{display:block;font-size:13px;text-transform:uppercase;
+     letter-spacing:.06em;color:var(--mut);margin-bottom:6px}
+.duo .big{font-size:30px;font-weight:700;color:var(--blue)}
+.duo .big.bad{color:var(--bad)}
+figure{margin:26px 0;background:var(--card);border:1px solid var(--line);
+       border-radius:14px;padding:18px 18px 8px}
+figcaption{color:var(--mut);font-size:13.5px;line-height:1.5;padding:8px 4px 10px}
+table{border-collapse:collapse;width:100%;font-size:15px;margin:20px 0;
+      background:var(--card);border-radius:12px;overflow:hidden;
+      border:1px solid var(--line)}
+th,td{padding:11px 12px;text-align:right;border-bottom:1px solid var(--line)}
+th{background:#1c64d90d;font-size:13px;text-transform:uppercase;
+   letter-spacing:.04em;color:var(--mut)}
+th:first-child,td:first-child{text-align:left}
+tr:last-child td{border-bottom:0}
+td.win{color:var(--ok);font-weight:700}
+td.miss{color:var(--bad);font-weight:700}
+a{color:var(--blue)}
+code{font-family:var(--mono);background:#1c64d914;border-radius:5px;
+     padding:1px 6px;font-size:.9em}
+.note{background:#1c64d90e;border:1px solid #1c64d930;border-radius:12px;
+      padding:14px 18px;font-size:15px;margin:24px 0;line-height:1.6}
+.next{max-width:760px;margin:0 auto;padding:0 24px 70px}
+.next a{display:block;background:var(--card);border:1px solid var(--line);
+        border-radius:14px;padding:18px 22px;text-decoration:none;color:var(--ink);
+        transition:transform .12s, box-shadow .12s}
+.next a:hover{transform:translateY(-2px);box-shadow:0 10px 26px #0e1c301f}
+.next .lbl{font-size:12px;color:var(--mut);text-transform:uppercase;letter-spacing:.07em}
+.next .ttl{color:var(--blue);font-weight:650;font-size:17px;margin-top:4px}
+svg text{font-family:-apple-system,'Segoe UI',Roboto,sans-serif}
+svg .m{font-family:var(--mono)}
+</style></head><body>
+
+<div class="hero">
+<div class="nav"><a href="../">← TGMS</a><a href="./">blog</a>
+<a href="https://github.com/zxf-work/tgms">github</a></div>
+<div class="inner">
+<span class="kicker">Post #8 · Engine economics</span>
+<h1>What remembering costs</h1>
+<div class="byline">Xiaofei Zhang · University of Memphis · August 2026 ·
+<a href="https://github.com/zxf-work/tgms/blob/main/docs/eval_resources.md">records</a> ·
+<a href="https://github.com/zxf-work/tgms">code</a></div>
+</div></div>
+
+<article>
+<p>A bi-temporal store promises to remember: what held in the world, what we
+believed, and what we corrected. Promises have prices. We measured this one
+along every axis the evaluation plan names — correction density, memory,
+cache state, threads, concurrent readers, recovery — on the same host and
+protocol as every published table.</p>
+
+<div class="duo">
+<div class="cell"><b>Overhead at zero corrections</b><span class="big">0</span>
+<div>storage, latency, memory — all at parity with a current-state store</div></div>
+<div class="cell"><b>10M-event suite, memory-capped</b><span class="big">1.76 GB</span>
+<div>where the same suite OOM-killed at 4 GB two days earlier</div></div>
+</div>
+
+<h2>Free until the first correction</h2>
+
+<p>We built a stripped configuration that keeps only currently-believed rows
+— and refuses past-belief queries rather than answering them wrongly — then
+swept correction density from 0 to 20% against the full store.</p>
+
+<svg viewBox="0 0 720 220" width="100%" role="img"
+     aria-label="Storage overhead vs correction density: 0% at density 0, 2.1% at 1%, 8.8% at 5%, 30.1% at 20%">
+  <g font-size="13" fill="var(--mut)" text-anchor="middle">
+    <text x="150" y="205">0%</text><text x="300" y="205">1%</text>
+    <text x="450" y="205">5%</text><text x="600" y="205">20% density</text>
+  </g>
+  <g>
+    <rect x="130" y="178" width="40" height="2" rx="1" fill="var(--ok)"/>
+    <rect x="280" y="169" width="40" height="11" rx="3" fill="var(--blue2)"/>
+    <rect x="430" y="136" width="40" height="44" rx="3" fill="var(--blue2)"/>
+    <rect x="580" y="30" width="40" height="150" rx="4" fill="var(--blue)"/>
+  </g>
+  <g font-size="12" class="m" text-anchor="middle">
+    <text x="150" y="170">+0%</text><text x="300" y="162">+2.1%</text>
+    <text x="450" y="129">+8.8%</text><text x="600" y="23">+30.1%</text>
+  </g>
+  <text x="130" y="40" font-size="13" fill="var(--ink)">storage overhead vs a
+  current-only store, 1M events</text>
+</svg>
+
+<p>Latency tells the same story with a sharper edge: scan queries step 30–50%
+at the <i>first</i> corrections and grow roughly linearly after — and the
+multipliers grow with scale (at 10M, a mere 0.1% density already costs 4×
+on the interval join). Retention is not a flat tax; it is a usage-based
+bill, and at 20% density it even costs <i>admissibility</i> — one full-store
+query crosses the cost guardrail. If your workload never corrects, the
+two-clock design costs you nothing. That is the honest pricing table no
+bi-temporal system we know of publishes.</p>
+
+<h2>The memory bill, misdiagnosed and then repaid</h2>
+
+<p>The resource sweep found something worse than a cost: a cliff. At 10M
+events every process needed ~5.9 GB <i>whatever the query</i> — a 0.6 ms
+point lookup and a 4 s diff had identical peaks — and under a 4 GB cap the
+suite did not degrade, it died. We blamed our unbounded segment cache,
+published that attribution, and built the budget to fix it.</p>
+
+<p>The budget's acceptance run refuted the diagnosis: with the cache capped,
+2 GB <i>still</i> OOM'd, because the cache held only 794 MB. The dominant
+term was the statistics warm-up materializing all ten million rows — strings
+and a sha256 each — as one transient. Entry #10 in our running misdiagnosis
+table; the fix was a streaming fold.</p>
+
+<svg viewBox="0 0 720 210" width="100%" role="img"
+     aria-label="Peak memory for the 10M suite: 5.93 GB before, 1.76 GB after the cache budget and stats fix; a 256 MB budget still answers">
+  <g font-size="13" fill="var(--mut)">
+    <text x="10" y="38">before</text>
+    <text x="10" y="88">after (2 GB cap)</text>
+    <text x="10" y="138">256 MB budget</text>
+  </g>
+  <g>
+    <rect x="150" y="22" width="540" height="24" rx="5" fill="var(--mut)" opacity="0.45"/>
+    <rect x="150" y="72" width="160" height="24" rx="5" fill="var(--ok)"/>
+    <rect x="150" y="122" width="146" height="24" rx="5" fill="var(--blue)"/>
+  </g>
+  <g font-size="13" class="m">
+    <text x="560" y="39" fill="#fff">5.93 GB · OOM under 4 GB</text>
+    <text x="318" y="89">1.76 GB · latency −3–8%</text>
+    <text x="304" y="139">1.6 GB HWM · scans 1.8–28× slower</text>
+  </g>
+  <text x="150" y="192" font-size="12" fill="var(--mut)">10M events, docker
+  --memory caps, full query suite · the degradation region that was missing
+  now exists — 32,615 evictions and every answer still hash-identical.</text>
+</svg>
+
+<h2>The rest of the envelope</h2>
+
+<table>
+<tr><th>axis</th><th>finding</th><th>number</th></tr>
+<tr><td>thread scaling</td><td>pays at 10M, now correctly refuses to engage at 1M</td><td class="win">4.4–5.4× at 10M; 1M flat</td></tr>
+<tr><td>concurrent readers</td><td>lock-free reads confirmed; memory is the ceiling, not locks</td><td class="win">13× aggregate at 16 readers</td></tr>
+<tr><td>cold start</td><td>a per-process warm-up, not an I/O story; page-cache eviction adds almost nothing</td><td class="miss">~28 s at 10M, any first query</td></tr>
+<tr><td>crash recovery</td><td>replay was superlinear in correction density; a per-generation close cache and a durable log cursor fixed it</td><td class="win">2,857 s → 6 min at 20% density</td></tr>
+</table>
+
+<p>The cold-start row is the honest one to sit with: a short-lived client
+gets its first answer from DuckDB 10–70× sooner. Our engine assumes a
+resident process; that is a real deployment constraint, now written down
+next to the numbers that assume it.</p>
+
+<div class="note"><b>What transfers.</b> Price your durability promise per
+axis, and let the acceptance run refute your diagnosis — ours did, twice
+this week. Every number here regenerates from one harness command, exits
+nonzero on any hash mismatch, and ships its raw records in the repo:
+<a href="https://github.com/zxf-work/tgms/blob/main/docs/eval_bitemporal.md">eval_bitemporal.md</a> ·
+<a href="https://github.com/zxf-work/tgms/blob/main/docs/eval_resources.md">eval_resources.md</a>.</div>
+</article>
+
+<div class="next"><a href="./">
+<div class="lbl">Next up</div>
+<div class="ttl">All posts — the TGMS engineering blog →</div></a></div>
+
+<script data-goatcounter="https://zxf-tgms.goatcounter.com/count" async src="https://gc.zgo.at/count.js"></script>
+</body></html>
