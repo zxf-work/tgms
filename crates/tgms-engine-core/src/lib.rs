@@ -65,6 +65,17 @@ pub mod defaults {
     /// one full generation of headroom behind `CURRENT` for post-incident
     /// inspection while still bounding manifest growth.
     pub const GC_KEEP_GENERATIONS: u64 = 2;
+    /// Candidate rows (sum over scan targets) below which the scan stages
+    /// stay serial. Recalibrated 2026-08-01 from the §14.3 sweep
+    /// (`docs/eval_resources.md`): parallel select was *slower* than serial
+    /// at every width 2–16 on a 1M-row store and 4.3× faster at 10M — the
+    /// break-even sits between the scales, so the gate is row-count-based,
+    /// not segment-count-based. 4M splits the measured decade.
+    pub const PARALLEL_SCAN_MIN_ROWS: u64 = 4_000_000;
+    /// Worker widths below this run serial: t=2 measured slower than t=1 at
+    /// both 1M and 10M (spawn-and-merge overhead against a straggler-set
+    /// finish line); the win only appears from 4 workers up.
+    pub const PARALLEL_SCAN_MIN_THREADS: usize = 4;
 }
 
 /// `as_of_tt = OPEN_END` means "current beliefs"; clamping keeps the
