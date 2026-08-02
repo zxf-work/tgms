@@ -601,18 +601,10 @@ impl<'a, S: SegmentSource> ScanSet<'a, S> {
     /// One selection's rows, as columns. The run loop mirrors the merged
     /// path: contiguous stretches memcpy, everything else pushes.
     fn materialize_selection(&self, req: &ScanRequest, sel: &Selection) -> Result<EdgeColumns> {
-        let want = |name: &str| {
-            req.columns
-                .as_ref()
-                .map(|c| c.iter().any(|x| x == name))
-                .unwrap_or(true)
-        };
-        let (w_rel, w_disc, w_props) = (want("rel_type"), want("disc"), want("props"));
-        let w_vid = want("vid");
-        let w_addr = want("seg_id") || want("seg_row");
+        let w = Want::of(req);
         let v = SegmentView::open(self.targets[sel.segment].segment)?;
         let tid = self.targets[sel.segment].id;
-        let mut cols = EdgeColumns::with_capacity(sel.rows.len());
+        let mut cols = EdgeColumns::with_capacity(sel.rows.len(), w);
         let mut i = 0usize;
         while i < sel.rows.len() {
             let mut j = i + 1;
@@ -620,8 +612,8 @@ impl<'a, S: SegmentSource> ScanSet<'a, S> {
                 j += 1;
             }
             let (a, b) = (sel.rows[i] as usize, sel.rows[i] as usize + (j - i));
-            copy_run(&v, a, b, &mut cols, w_vid, w_rel, w_disc, w_props)?;
-            if w_addr {
+            copy_run(&v, a, b, &mut cols, w)?;
+            if w.addr {
                 cols.seg_id.extend(std::iter::repeat_n(tid, b - a));
                 cols.seg_row.extend(a as u32..b as u32);
             }
@@ -717,7 +709,8 @@ impl<'a, S: SegmentSource> ScanSet<'a, S> {
                     .map(|cluster| self.materialize_cluster(req, &selections, cluster, &probe))
                     .collect()
             };
-            let mut cols = EdgeColumns::with_capacity(stats.rows_selected as usize);
+            let mut cols =
+                EdgeColumns::with_capacity(stats.rows_selected as usize, Want::of(req));
             for part in parts {
                 cols.append(part?);
             }
@@ -742,18 +735,8 @@ impl<'a, S: SegmentSource> ScanSet<'a, S> {
         req: &ScanRequest,
         order: &[(usize, u32)],
     ) -> Result<EdgeColumns> {
-        let want = |name: &str| {
-            req.columns
-                .as_ref()
-                .map(|c| c.iter().any(|x| x == name))
-                .unwrap_or(true)
-        };
-        let (w_rel, w_disc, w_props) = (want("rel_type"), want("disc"), want("props"));
-        // vid is two integer columns here but a 24-char hex string at the
-        // boundary, so building it unasked cost more than the scan itself
-        let w_vid = want("vid");
-        let w_addr = want("seg_id") || want("seg_row");
-        let mut cols = EdgeColumns::with_capacity(order.len());
+        let w = Want::of(req);
+        let mut cols = EdgeColumns::with_capacity(order.len(), w);
         // resolve each segment's columns once, then walk its rows
         let mut views: Vec<Option<SegmentView<'_>>> =
             (0..self.targets.len()).map(|_| None).collect();
@@ -777,8 +760,8 @@ impl<'a, S: SegmentSource> ScanSet<'a, S> {
             }
             let v = views[seg_idx].as_ref().expect("just populated");
             let (a, b) = (first_row as usize, first_row as usize + (j - i));
-            copy_run(v, a, b, &mut cols, w_vid, w_rel, w_disc, w_props)?;
-            if w_addr {
+            copy_run(v, a, b, &mut cols, w)?;
+            if w.addr {
                 let tid = self.targets[seg_idx].id;
                 cols.seg_id.extend(std::iter::repeat_n(tid, b - a));
                 cols.seg_row.extend(a as u32..b as u32);
@@ -896,27 +879,75 @@ pub struct EdgeColumns {
     pub seg_row: Vec<u32>,
 }
 
+/// Which columns materialization builds. `vt_s` is unconditional: it is the
+/// sort key, and `EdgeColumns::len` is defined by it.
+///
+/// The fixed-width columns used to be exempt from the projection — `copy_run`
+/// honoured it only for `vid` and the three string columns. That is the same
+/// defect as lesson §4, one layer lower: `columns=["vt_s"]` and
+/// `columns=["src_id","dst_id","vt_s","vt_e"]` measured within noise of each
+/// other at 10M (D-046), because three of the four were being built either
+/// way.
+#[derive(Clone, Copy, Debug)]
+struct Want {
+    vt_e: bool,
+    src: bool,
+    dst: bool,
+    vid: bool,
+    rel: bool,
+    disc: bool,
+    props: bool,
+    addr: bool,
+}
+
+impl Want {
+    fn of(req: &ScanRequest) -> Self {
+        let want = |name: &str| {
+            req.columns
+                .as_ref()
+                .map(|c| c.iter().any(|x| x == name))
+                .unwrap_or(true)
+        };
+        Self {
+            vt_e: want("vt_e"),
+            src: want("src_id"),
+            dst: want("dst_id"),
+            // vid is two integer columns here but a 24-char hex string at the
+            // boundary, so building it unasked cost more than the scan itself
+            vid: want("vid"),
+            rel: want("rel_type"),
+            disc: want("disc"),
+            props: want("props"),
+            addr: want("seg_id") || want("seg_row"),
+        }
+    }
+
+}
+
 /// Copy rows [a, b) of one segment view into the output columns — the one
 /// copy routine both materialize paths share. Fixed-width columns memcpy;
 /// derived and string columns pay per row only when asked for.
-#[allow(clippy::too_many_arguments)]
 fn copy_run(
     v: &SegmentView<'_>,
     a: usize,
     b: usize,
     cols: &mut EdgeColumns,
-    w_vid: bool,
-    w_rel: bool,
-    w_disc: bool,
-    w_props: bool,
+    w: Want,
 ) -> Result<()> {
+    let (w_vid, w_rel, w_disc, w_props) = (w.vid, w.rel, w.disc, w.props);
     cols.vt_s.extend_from_slice(&v.vt_s[a..b]);
-    cols.src_id.extend_from_slice(&v.src_id[a..b]);
-    cols.dst_id.extend_from_slice(&v.dst_id[a..b]);
-    match v.vt_e {
-        Some(col) => cols.vt_e.extend_from_slice(&col[a..b]),
-        // elided means every row is instantaneous
-        None => cols.vt_e.extend(v.vt_s[a..b].iter().map(|t| t + 1)),
+    if w.src {
+        cols.src_id.extend_from_slice(&v.src_id[a..b]);
+    }
+    if w.dst {
+        cols.dst_id.extend_from_slice(&v.dst_id[a..b]);
+    }
+    if w.vt_e {
+        match v.vt_e {
+            Some(col) => cols.vt_e.extend_from_slice(&col[a..b]),
+            // elided means every row is instantaneous
+            None => cols.vt_e.extend(v.vt_s[a..b].iter().map(|t| t + 1)),
+        }
     }
     if w_vid {
         cols.vid.extend(
@@ -960,16 +991,20 @@ impl EdgeColumns {
         self.seg_row.append(&mut o.seg_row);
     }
 
-    fn with_capacity(n: usize) -> Self {
+    /// Reserve only what will be filled. Reserving all eight columns for a
+    /// 10M-row scan asks the allocator for ~1.1 GB of address space that a
+    /// projected scan never touches.
+    fn with_capacity(n: usize, w: Want) -> Self {
+        let cap = |yes: bool| if yes { n } else { 0 };
         Self {
             vt_s: Vec::with_capacity(n),
-            vt_e: Vec::with_capacity(n),
-            src_id: Vec::with_capacity(n),
-            dst_id: Vec::with_capacity(n),
-            vid: Vec::with_capacity(n),
-            rel_type: Vec::with_capacity(n),
-            disc: Vec::with_capacity(n),
-            props: Vec::with_capacity(n),
+            vt_e: Vec::with_capacity(cap(w.vt_e)),
+            src_id: Vec::with_capacity(cap(w.src)),
+            dst_id: Vec::with_capacity(cap(w.dst)),
+            vid: Vec::with_capacity(cap(w.vid)),
+            rel_type: Vec::with_capacity(cap(w.rel)),
+            disc: Vec::with_capacity(cap(w.disc)),
+            props: Vec::with_capacity(cap(w.props)),
             seg_id: Vec::new(),
             seg_row: Vec::new(),
         }
@@ -1243,6 +1278,66 @@ mod tests {
         let full = set.merged(&sel, None).unwrap();
         let capped = set.merged(&sel, Some(37)).unwrap();
         assert_eq!(&full[..37], &capped[..]);
+    }
+
+    /// The projection reaches the fixed-width columns, not just the string
+    /// ones. Before D-046 `columns=["vt_s"]` still built `vt_e`, `src_id` and
+    /// `dst_id` — a pushdown that stopped three columns short, and the reason
+    /// a one-column 10M scan measured the same as a four-column one.
+    #[test]
+    fn projection_reaches_the_fixed_width_columns() {
+        let f = Fixture::build("projection");
+        let req = ScanRequest {
+            columns: Some(vec!["vt_s".into()]),
+            ..ScanRequest::current()
+        };
+        let (cols, _) = f.set().materialize_edges(&req).unwrap();
+        assert_eq!(cols.len(), 400);
+        for (name, n) in [
+            ("vt_e", cols.vt_e.len()),
+            ("src_id", cols.src_id.len()),
+            ("dst_id", cols.dst_id.len()),
+            ("vid", cols.vid.len()),
+            ("rel_type", cols.rel_type.len()),
+            ("disc", cols.disc.len()),
+            ("props", cols.props.len()),
+        ] {
+            assert_eq!(n, 0, "unprojected column '{name}' was materialized");
+        }
+        // …and asking for one of them brings back exactly that one
+        let req = ScanRequest {
+            columns: Some(vec!["vt_s".into(), "src_id".into()]),
+            ..ScanRequest::current()
+        };
+        let (cols, _) = f.set().materialize_edges(&req).unwrap();
+        assert_eq!(cols.src_id.len(), 400);
+        assert!(cols.dst_id.is_empty() && cols.vt_e.is_empty());
+    }
+
+    /// Values, not just lengths: a projected scan must return the same column
+    /// contents as an unprojected one, on both materialize paths.
+    #[test]
+    fn projected_columns_match_the_unprojected_ones() {
+        let f = Fixture::build("projection-values");
+        let req = ScanRequest::current().window(1_100, 1_300);
+        let (full, _) = f.set().materialize_edges(&req).unwrap();
+        for cols in [vec!["vt_s", "src_id"], vec!["vt_s", "vt_e", "dst_id"]] {
+            let p = ScanRequest {
+                columns: Some(cols.iter().map(|c| c.to_string()).collect()),
+                ..req.clone()
+            };
+            let (got, _) = f.set().materialize_edges(&p).unwrap();
+            assert_eq!(got.vt_s, full.vt_s, "vt_s under {cols:?}");
+            if cols.contains(&"src_id") {
+                assert_eq!(got.src_id, full.src_id);
+            }
+            if cols.contains(&"dst_id") {
+                assert_eq!(got.dst_id, full.dst_id);
+            }
+            if cols.contains(&"vt_e") {
+                assert_eq!(got.vt_e, full.vt_e);
+            }
+        }
     }
 
     #[test]
