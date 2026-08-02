@@ -414,6 +414,7 @@ impl NativeStore {
         // a current-only store must refuse a past-belief scan rather than
         // silently answer it from the surviving rows
         self.inner.assert_full_belief(as_of_tt).map_err(err)?;
+        let t_open = std::time::Instant::now();
         let m = self.inner.manifest();
         let mut files = Vec::new();
         for (lane, entries) in [
@@ -448,6 +449,7 @@ impl NativeStore {
             })
             .collect();
         let set = ScanSet::new(targets).with_closes(self.inner.close_index().map_err(err)?);
+        let open_ns = t_open.elapsed().as_nanos() as u64;
 
         let req = ScanRequest {
             as_of_tt,
@@ -476,7 +478,8 @@ impl NativeStore {
                 c
             }),
         };
-        let (cols, stats) = set.materialize_edges(&req).map_err(err)?;
+        let (cols, stats, timings) = set.materialize_edges_timed(&req).map_err(err)?;
+        let t_eid = std::time::Instant::now();
 
         // eid is derived, never stored (D-028 #2). This layer owns the
         // dictionary, so it is the one place that can turn dense ids back
@@ -509,6 +512,8 @@ impl NativeStore {
             eids.push(tgms_engine_core::derive::edge_eid(src, dst, rel, disc).to_hex());
         }
 
+        let eid_ns = t_eid.elapsed().as_nanos() as u64;
+        let t_conv = std::time::Instant::now();
         let d = PyDict::new(py);
         if want_eid {
             d.set_item("eid", PyList::new(py, &eids)?)?;
@@ -562,6 +567,16 @@ impl NativeStore {
         d.set_item("segments_total", stats.segments_total)?;
         d.set_item("segments_pruned", stats.segments_pruned)?;
         d.set_item("rows_examined", stats.rows_examined)?;
+        // Stage wall times (ms). Six `Instant`s on a path that moves tens of
+        // megabytes; the alternative is subtracting stages from a Python wall
+        // clock that contains all of them at once (D-046).
+        let ms = |ns: u64| ns as f64 / 1e6;
+        d.set_item("t_open_ms", ms(open_ns))?;
+        d.set_item("t_select_ms", ms(timings.select_ns))?;
+        d.set_item("t_cluster_ms", ms(timings.cluster_ns))?;
+        d.set_item("t_materialize_ms", ms(timings.materialize_ns))?;
+        d.set_item("t_eid_ms", ms(eid_ns))?;
+        d.set_item("t_convert_ms", ms(t_conv.elapsed().as_nanos() as u64))?;
         Ok(d)
     }
 

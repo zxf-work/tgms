@@ -152,6 +152,20 @@ pub struct ScanStats {
     pub rows_selected: u64,
 }
 
+/// Wall time of each scan stage, in nanoseconds.
+///
+/// Three `Instant::now()` calls per scan, on a path that moves tens of
+/// megabytes — the same argument that put the pruning counters in
+/// [`ScanStats`]. Without them "the scan is the cost" is a subtraction done
+/// in Python against a wall clock that also contains segment opening, `eid`
+/// derivation and the NumPy boundary, and D-046 needed to know which.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+pub struct ScanTimings {
+    pub select_ns: u64,
+    pub cluster_ns: u64,
+    pub materialize_ns: u64,
+}
+
 /// Row ids selected within one segment, in ascending (already sorted) order.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct Selection {
@@ -603,7 +617,19 @@ impl<'a, S: SegmentSource> ScanSet<'a, S> {
     }
 
     pub fn materialize_edges(&self, req: &ScanRequest) -> Result<(EdgeColumns, ScanStats)> {
+        let (cols, stats, _) = self.materialize_edges_timed(req)?;
+        Ok((cols, stats))
+    }
+
+    /// `materialize_edges`, with per-stage wall times.
+    pub fn materialize_edges_timed(
+        &self,
+        req: &ScanRequest,
+    ) -> Result<(EdgeColumns, ScanStats, ScanTimings)> {
+        let mut timings = ScanTimings::default();
+        let t_select = std::time::Instant::now();
         let (selections, stats) = self.select(req)?;
+        timings.select_ns = t_select.elapsed().as_nanos() as u64;
         // Clusters materialize independently — on threads, into their own
         // columns, appended in key order. A singleton cluster (the corrected-
         // store norm: bulk segments plus tiny local correction clusters) runs
@@ -613,7 +639,10 @@ impl<'a, S: SegmentSource> ScanSet<'a, S> {
         // Unlimited scans only: a limit reintroduces cross-cluster coupling
         // that the merged path already handles.
         if req.limit.is_none() {
+            let t_cluster = std::time::Instant::now();
             let clusters = self.cluster_order(&selections)?;
+            timings.cluster_ns = t_cluster.elapsed().as_nanos() as u64;
+            let t_mat = std::time::Instant::now();
             // Same recalibrated gates as select(), but on *selected* rows —
             // known exactly here, and the honest proxy for materialization
             // work. The fan-out width itself is one thread per cluster,
@@ -644,11 +673,16 @@ impl<'a, S: SegmentSource> ScanSet<'a, S> {
             for part in parts {
                 cols.append(part?);
             }
-            return Ok((cols, stats));
+            timings.materialize_ns = t_mat.elapsed().as_nanos() as u64;
+            return Ok((cols, stats, timings));
         }
+        let t_cluster = std::time::Instant::now();
         let order = self.merged(&selections, req.limit)?;
+        timings.cluster_ns = t_cluster.elapsed().as_nanos() as u64;
+        let t_mat = std::time::Instant::now();
         let cols = self.materialize_order(req, &order)?;
-        Ok((cols, stats))
+        timings.materialize_ns = t_mat.elapsed().as_nanos() as u64;
+        Ok((cols, stats, timings))
     }
 
     /// Materialize an explicit (segment, row) order list — the general path
