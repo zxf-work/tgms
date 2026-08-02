@@ -50,6 +50,18 @@ pub(crate) fn scan_threads() -> usize {
         })
 }
 
+/// Row threshold above which a stage fans out. `TGMS_PARALLEL_MIN_ROWS`
+/// overrides it, for the same reason `TGMS_SCAN_THREADS` exists: the gate
+/// was calibrated from a sweep, and re-running that sweep at a new scale or
+/// on a new stage must not need a rebuild. Unparseable values are treated as
+/// unset — a measurement knob must never make reads fail.
+pub(crate) fn parallel_min_rows() -> u64 {
+    std::env::var("TGMS_PARALLEL_MIN_ROWS")
+        .ok()
+        .and_then(|s| s.trim().parse::<u64>().ok())
+        .unwrap_or(crate::defaults::PARALLEL_SCAN_MIN_ROWS)
+}
+
 /// Should a scan stage fan out? `units` is the stage's chunking unit
 /// (segments for select, clusters for materialize), `rows` the stage's work
 /// proxy (candidate rows for select, selected rows for materialize).
@@ -63,7 +75,7 @@ pub(crate) fn scan_threads() -> usize {
 pub(crate) fn parallel_gate(threads: usize, units: usize, min_units: usize, rows: u64) -> bool {
     threads >= crate::defaults::PARALLEL_SCAN_MIN_THREADS
         && units >= min_units
-        && rows >= crate::defaults::PARALLEL_SCAN_MIN_ROWS
+        && rows >= parallel_min_rows()
 }
 
 use crate::derive::Id96;
