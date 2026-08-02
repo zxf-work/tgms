@@ -701,6 +701,16 @@ It is a change to an operator's execution strategy, not to the scan, so it
 is named here with its number rather than folded into a scan decision; D-046
 records it as the next item.
 
+One residue inside materialization is worth naming too, because the split
+still reports it: at 10M and 16 workers the stage costs 97 ms while its two
+measured halves (the k-way merge, 42 ms of CPU, and the run-walk copy,
+124 ms of CPU) account for about 10 ms of wall between them. The difference
+is allocation, imbalance, and one copy that survives — each worker still
+gathers its clusters into a part before the parts are concatenated. Letting
+`materialize_cluster` append straight into the worker's part would remove
+that copy; it is a smaller lever than the kernel route above, and it is not
+taken here.
+
 The third number in that table is its own result: **`count_distinct` is
 232 ms of `agg.rel_bucket`'s 324** (91.5 without it). The gap between
 `agg.rel_bucket` and ClickHouse's 140.8 ms is one aggregate — exact distinct
