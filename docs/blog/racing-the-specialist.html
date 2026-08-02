@@ -173,8 +173,8 @@ the scan is a far better problem to own than a two-fold gap smeared across
 a kernel, because it names exactly one thing to work on next.</p>
 
 <div class="note"><b>Retracted the next day, by the work it pointed at.</b>
-The paragraph above is wrong, and it is left standing because what
-corrected it is the subject of the next post. We went to profile "the
+The paragraph above is wrong, and it is left standing because the
+correction is worth more than the claim was. We went to profile "the
 scan" and found that the two operators never shared one: our grouped
 aggregation calls the selection step and stops — it never materializes
 columns or crosses the language boundary — so <i>its</i> scan is 38.8 ms of
@@ -183,7 +183,9 @@ about 232 of it is the exact distinct count alone. Grouping is not free; we
 had compared two totals as though the word "scan" meant the same work on
 both sides of the comparison. The claim was load-bearing — it is what
 aimed the next session — and it survived exactly one day of being
-measured.</div>
+measured. The profile that killed it is in
+<a href="https://github.com/zxf-work/tgms/blob/main/docs/eval_phase0.md">eval_phase0.md</a>
+under "Where the 10M scan actually goes".</div>
 
 <p>One cell in that comparison is ours and it is bad, so it is published
 too: the portable fallback — the same operator running on our DuckDB
