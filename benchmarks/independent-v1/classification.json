@@ -8,7 +8,10 @@
   "class": 3,
   "need_or_ops": "G",
   "run": false,
-  "note": ""
+  "note": "",
+  "class_14": 1,
+  "need_or_ops_14": "aggregate_events",
+  "justification_14": "one call: group_by [], count_distinct src over the full window"
  },
  {
   "dataset": "bo",
@@ -19,7 +22,10 @@
   "class": 3,
   "need_or_ops": "G",
   "run": false,
-  "note": ""
+  "note": "",
+  "class_14": 1,
+  "need_or_ops_14": "aggregate_events",
+  "justification_14": "one call: group_by [], count_distinct dst, window = 2012 (a window, not a calendar bucket)"
  },
  {
   "dataset": "bo",
@@ -30,7 +36,10 @@
   "class": 2,
   "need_or_ops": "graph_metric_timeseries+sum",
   "run": true,
-  "note": "total rating events"
+  "note": "total rating events",
+  "class_14": 2,
+  "need_or_ops_14": "graph_metric_timeseries+sum",
+  "justification_14": ""
  },
  {
   "dataset": "bo",
@@ -41,7 +50,10 @@
   "class": 3,
   "need_or_ops": "GLOB,PROP",
   "run": false,
-  "note": "global selection by rating value"
+  "note": "global selection by rating value",
+  "class_14": 3,
+  "need_or_ops_14": "PROP",
+  "justification_14": "a global count is now group_by [] count, but the predicate is on the rating prop, and prop aggregates/filters are explicitly deferred by D-044"
  },
  {
   "dataset": "bo",
@@ -52,7 +64,10 @@
   "class": 2,
   "need_or_ops": "graph_metric_timeseries+topk",
   "run": true,
-  "note": "daily buckets"
+  "note": "daily buckets",
+  "class_14": 2,
+  "need_or_ops_14": "graph_metric_timeseries+topk",
+  "justification_14": ""
  },
  {
   "dataset": "bo",
@@ -63,7 +78,10 @@
   "class": 3,
   "need_or_ops": "AR,PROP",
   "run": false,
-  "note": "percentage"
+  "note": "percentage",
+  "class_14": 3,
+  "need_or_ops_14": "AR,PROP",
+  "justification_14": ""
  },
  {
   "dataset": "bo",
@@ -74,7 +92,10 @@
   "class": 3,
   "need_or_ops": "G,SET",
   "run": false,
-  "note": ""
+  "note": "",
+  "class_14": 3,
+  "need_or_ops_14": "SET",
+  "justification_14": "each side is a count_distinct; 'both' is an intersection of the two uid sets"
  },
  {
   "dataset": "bo",
@@ -85,7 +106,10 @@
   "class": 3,
   "need_or_ops": "AR,CAL,G",
   "run": false,
-  "note": "yearly averages"
+  "note": "yearly averages",
+  "class_14": 3,
+  "need_or_ops_14": "AR,CAL,PROP",
+  "justification_14": "years are not fixed strides and the mean is over the rating prop"
  },
  {
   "dataset": "bo",
@@ -96,7 +120,10 @@
   "class": 3,
   "need_or_ops": "G",
   "run": false,
-  "note": ""
+  "note": "",
+  "class_14": 2,
+  "need_or_ops_14": "aggregate_events+topk",
+  "justification_14": "group_by [endpoint src] count over the log, then compute topk(count,1)"
  },
  {
   "dataset": "bo",
@@ -107,7 +134,10 @@
   "class": 3,
   "need_or_ops": "G",
   "run": false,
-  "note": ""
+  "note": "",
+  "class_14": 2,
+  "need_or_ops_14": "aggregate_events+topk",
+  "justification_14": "group_by [endpoint dst] count over the log, then compute topk(count,1)"
  },
  {
   "dataset": "bo",
@@ -118,7 +148,10 @@
   "class": 3,
   "need_or_ops": "G,AR",
   "run": false,
-  "note": ""
+  "note": "",
+  "class_14": 3,
+  "need_or_ops_14": "AR,PROP",
+  "justification_14": "filter(count ge 10) is expressible; the mean is over the rating prop"
  },
  {
   "dataset": "bo",
@@ -129,7 +162,10 @@
   "class": 3,
   "need_or_ops": "G,AR",
   "run": false,
-  "note": ""
+  "note": "",
+  "class_14": 3,
+  "need_or_ops_14": "AR,PROP",
+  "justification_14": "same shape as bo-Q11 on the giving side"
  },
  {
   "dataset": "bo",
@@ -140,7 +176,10 @@
   "class": 3,
   "need_or_ops": "GLOB,PROP",
   "run": false,
-  "note": "global min over rating property"
+  "note": "global min over rating property",
+  "class_14": 3,
+  "need_or_ops_14": "PROP",
+  "justification_14": "an argmin over the rating prop; the window-reselect idiom that closes cm-Q37 needs the extremum to be over vt_s"
  },
  {
   "dataset": "bo",
@@ -151,7 +190,10 @@
   "class": 3,
   "need_or_ops": "G,AR,PROP",
   "run": false,
-  "note": ""
+  "note": "",
+  "class_14": 3,
+  "need_or_ops_14": "AR,PROP",
+  "justification_14": "counts of positive vs negative need a prop filter, and the spread needs a subtraction"
  },
  {
   "dataset": "bo",
@@ -162,7 +204,10 @@
   "class": 3,
   "need_or_ops": "G,PROP",
   "run": false,
-  "note": ""
+  "note": "",
+  "class_14": 3,
+  "need_or_ops_14": "PROP",
+  "justification_14": "'all ratings <= 0' is a predicate over the rating prop"
  },
  {
   "dataset": "bo",
@@ -173,7 +218,10 @@
   "class": 3,
   "need_or_ops": "G",
   "run": false,
-  "note": "per-account first rating"
+  "note": "per-account first rating",
+  "class_14": 2,
+  "need_or_ops_14": "aggregate_events+filter+count",
+  "justification_14": "group_by [endpoint dst], aggregates [min vt_s] over the whole log, compute filter(min_vt_s ge 2013-01-01), filter(min_vt_s lt 2014-01-01), then count"
  },
  {
   "dataset": "bo",
@@ -184,7 +232,10 @@
   "class": 3,
   "need_or_ops": "G",
   "run": false,
-  "note": ""
+  "note": "",
+  "class_14": 3,
+  "need_or_ops_14": "SEQ",
+  "justification_14": "the longest gap between consecutive events in a group is a lag; min/max vt_s only give the two endpoints"
  },
  {
   "dataset": "bo",
@@ -195,7 +246,10 @@
   "class": 3,
   "need_or_ops": "G",
   "run": false,
-  "note": "any-account burst; burst_detection is per-uid"
+  "note": "any-account burst; burst_detection is per-uid",
+  "class_14": 3,
+  "need_or_ops_14": "SEQ",
+  "justification_14": "arbitrary 24-hour periods, not buckets anchored at t_a"
  },
  {
   "dataset": "bo",
@@ -206,7 +260,10 @@
   "class": 3,
   "need_or_ops": "G,CAL",
   "run": false,
-  "note": ""
+  "note": "",
+  "class_14": 3,
+  "need_or_ops_14": "CAL,SET",
+  "justification_14": "years are not fixed strides and 'each of' is an intersection"
  },
  {
   "dataset": "bo",
@@ -217,7 +274,10 @@
   "class": 3,
   "need_or_ops": "G,AR",
   "run": false,
-  "note": "median"
+  "note": "median",
+  "class_14": 3,
+  "need_or_ops_14": "AR,SET",
+  "justification_14": "reciprocal-pair join, then a median"
  },
  {
   "dataset": "bo",
@@ -228,7 +288,10 @@
   "class": 2,
   "need_or_ops": "graph_metric_timeseries+filter",
   "run": false,
-  "note": "yes/no answer kind not scoreable"
+  "note": "yes/no answer kind not scoreable",
+  "class_14": 2,
+  "need_or_ops_14": "graph_metric_timeseries+filter",
+  "justification_14": ""
  },
  {
   "dataset": "bo",
@@ -239,7 +302,10 @@
   "class": 3,
   "need_or_ops": "G,CAL",
   "run": false,
-  "note": ""
+  "note": "",
+  "class_14": 3,
+  "need_or_ops_14": "SET,AR",
+  "justification_14": "per-src and per-dst min vt_s are expressible; the match is a join and 'same day' a floor-divide of two minima"
  },
  {
   "dataset": "bo",
@@ -250,7 +316,10 @@
   "class": 3,
   "need_or_ops": "G,AR",
   "run": false,
-  "note": ""
+  "note": "",
+  "class_14": 3,
+  "need_or_ops_14": "AR",
+  "justification_14": "one call gives count, min vt_s and max vt_s per rater and filter(count ge 50) the cohort; the span in days and its average both need division"
  },
  {
   "dataset": "bo",
@@ -261,7 +330,10 @@
   "class": 3,
   "need_or_ops": "G",
   "run": false,
-  "note": "distinct reciprocal pairs; near CTM"
+  "note": "distinct reciprocal pairs; near CTM",
+  "class_14": 3,
+  "need_or_ops_14": "SET",
+  "justification_14": "the pair set intersected with its transpose"
  },
  {
   "dataset": "bo",
@@ -272,7 +344,10 @@
   "class": 3,
   "need_or_ops": "AR,PROP,G",
   "run": false,
-  "note": ""
+  "note": "",
+  "class_14": 3,
+  "need_or_ops_14": "AR,PROP,SET",
+  "justification_14": "reciprocal-pair join, rating signs, and a percentage"
  },
  {
   "dataset": "bo",
@@ -283,7 +358,10 @@
   "class": 3,
   "need_or_ops": "G,PROP",
   "run": false,
-  "note": ""
+  "note": "",
+  "class_14": 3,
+  "need_or_ops_14": "PROP,SET",
+  "justification_14": "reciprocal-pair join plus rating signs"
  },
  {
   "dataset": "bo",
@@ -294,7 +372,10 @@
   "class": 3,
   "need_or_ops": "G",
   "run": false,
-  "note": "re-rating detection per pair"
+  "note": "re-rating detection per pair",
+  "class_14": 3,
+  "need_or_ops_14": "PROP,SEQ",
+  "justification_14": "'later, with a different value' compares consecutive ratings' props inside a pair"
  },
  {
   "dataset": "bo",
@@ -305,7 +386,10 @@
   "class": 3,
   "need_or_ops": "G",
   "run": false,
-  "note": ""
+  "note": "",
+  "class_14": 3,
+  "need_or_ops_14": "SET",
+  "justification_14": "directed pair counts are one call; summing the two directions is a transpose join"
  },
  {
   "dataset": "bo",
@@ -316,7 +400,10 @@
   "class": 3,
   "need_or_ops": "G,PROP",
   "run": false,
-  "note": ""
+  "note": "",
+  "class_14": 3,
+  "need_or_ops_14": "PROP,SET,SEQ",
+  "justification_14": "pair-set transpose join, rating comparison, and 'previously rated' ordering"
  },
  {
   "dataset": "bo",
@@ -327,7 +414,10 @@
   "class": 3,
   "need_or_ops": "G,PROP",
   "run": false,
-  "note": ""
+  "note": "",
+  "class_14": 3,
+  "need_or_ops_14": "PROP,SET",
+  "justification_14": "reciprocal-pair join, then sign categories"
  },
  {
   "dataset": "bo",
@@ -338,7 +428,10 @@
   "class": 3,
   "need_or_ops": "NEG,PROP,G",
   "run": false,
-  "note": "absent-edge condition"
+  "note": "absent-edge condition",
+  "class_14": 3,
+  "need_or_ops_14": "NEG,PROP",
+  "justification_14": "a positive-sign triad with an absent third edge; grouping was never the obstacle here"
  },
  {
   "dataset": "bo",
@@ -349,7 +442,10 @@
   "class": 3,
   "need_or_ops": "PROP,CAL",
   "run": false,
-  "note": "sign filter in path motif"
+  "note": "sign filter in path motif",
+  "class_14": 3,
+  "need_or_ops_14": "PROP,CAL",
+  "justification_14": ""
  },
  {
   "dataset": "bo",
@@ -360,7 +456,10 @@
   "class": 3,
   "need_or_ops": "G,PROP",
   "run": false,
-  "note": ""
+  "note": "",
+  "class_14": 3,
+  "need_or_ops_14": "PROP",
+  "justification_14": "a mutually-positive clique condition over rating signs"
  },
  {
   "dataset": "bo",
@@ -371,7 +470,10 @@
   "class": 3,
   "need_or_ops": "PROP,GLOB",
   "run": false,
-  "note": ""
+  "note": "",
+  "class_14": 3,
+  "need_or_ops_14": "PROP,GLOB",
+  "justification_14": ""
  },
  {
   "dataset": "bo",
@@ -382,7 +484,10 @@
   "class": 3,
   "need_or_ops": "PROP,G",
   "run": false,
-  "note": ""
+  "note": "",
+  "class_14": 3,
+  "need_or_ops_14": "PROP,NEG",
+  "justification_14": "two-hop positive reachability with a 'never directly rated' exclusion"
  },
  {
   "dataset": "bo",
@@ -393,7 +498,10 @@
   "class": 3,
   "need_or_ops": "PROP",
   "run": false,
-  "note": "signed directed 2-hop; snapshot is undirected, unsigned"
+  "note": "signed directed 2-hop; snapshot is undirected, unsigned",
+  "class_14": 3,
+  "need_or_ops_14": "PROP",
+  "justification_14": ""
  },
  {
   "dataset": "bo",
@@ -404,7 +512,10 @@
   "class": 3,
   "need_or_ops": "PROP",
   "run": false,
-  "note": "sign filter in cyclic motif"
+  "note": "sign filter in cyclic motif",
+  "class_14": 3,
+  "need_or_ops_14": "PROP",
+  "justification_14": ""
  },
  {
   "dataset": "bo",
@@ -415,7 +526,10 @@
   "class": 4,
   "need_or_ops": "",
   "run": false,
-  "note": "clock conflation: presupposes the database held beliefs on 2013-01-01; transaction time begins at the 2026 ingest, so the belief state at that tt is empty"
+  "note": "clock conflation: presupposes the database held beliefs on 2013-01-01; transaction time begins at the 2026 ingest, so the belief state at that tt is empty",
+  "class_14": 4,
+  "need_or_ops_14": "",
+  "justification_14": ""
  },
  {
   "dataset": "bo",
@@ -426,7 +540,10 @@
   "class": 5,
   "need_or_ops": "",
   "run": false,
-  "note": "presupposes a specific correction (n77, 2012-03-15) that does not exist in the data"
+  "note": "presupposes a specific correction (n77, 2012-03-15) that does not exist in the data",
+  "class_14": 5,
+  "need_or_ops_14": "",
+  "justification_14": ""
  },
  {
   "dataset": "bo",
@@ -437,7 +554,10 @@
   "class": 3,
   "need_or_ops": "GLOB",
   "run": false,
-  "note": "global version/correction scan"
+  "note": "global version/correction scan",
+  "class_14": 3,
+  "need_or_ops_14": "GLOB",
+  "justification_14": ""
  },
  {
   "dataset": "bo",
@@ -448,7 +568,10 @@
   "class": 3,
   "need_or_ops": "GLOB,CAL",
   "run": false,
-  "note": ""
+  "note": "",
+  "class_14": 3,
+  "need_or_ops_14": "GLOB,CAL",
+  "justification_14": ""
  },
  {
   "dataset": "bo",
@@ -459,7 +582,10 @@
   "class": 3,
   "need_or_ops": "G,AR",
   "run": false,
-  "note": "also clock conflation (2012 tt)"
+  "note": "also clock conflation (2012 tt)",
+  "class_14": 3,
+  "need_or_ops_14": "AR,SET",
+  "justification_14": "as_of_tt makes each snapshot's per-account count one call; the per-account difference across snapshots needs a join and a subtraction"
  },
  {
   "dataset": "bo",
@@ -470,7 +596,10 @@
   "class": 3,
   "need_or_ops": "G,AR",
   "run": false,
-  "note": "also clock conflation (2011 tt)"
+  "note": "also clock conflation (2011 tt)",
+  "class_14": 3,
+  "need_or_ops_14": "AR,PROP",
+  "justification_14": "as_of_tt fixes the belief state and filter(count ge 5) the cohort; the mean is over the rating prop"
  },
  {
   "dataset": "bo",
@@ -481,7 +610,10 @@
   "class": 3,
   "need_or_ops": "G",
   "run": false,
-  "note": "also clock conflation"
+  "note": "also clock conflation",
+  "class_14": 3,
+  "need_or_ops_14": "AR,PROP,SET",
+  "justification_14": "positive-rating counts need a prop filter, and 'decreased' needs a cross-snapshot join and comparison"
  },
  {
   "dataset": "bo",
@@ -492,7 +624,10 @@
   "class": 3,
   "need_or_ops": "GLOB",
   "run": false,
-  "note": "event-time vs record-time comparison"
+  "note": "event-time vs record-time comparison",
+  "class_14": 3,
+  "need_or_ops_14": "GLOB",
+  "justification_14": ""
  },
  {
   "dataset": "bo",
@@ -503,7 +638,10 @@
   "class": 3,
   "need_or_ops": "G,PROP,AR",
   "run": false,
-  "note": ""
+  "note": "",
+  "class_14": 3,
+  "need_or_ops_14": "AR,PROP",
+  "justification_14": "min vt_s per dst is expressible, but the sign of that first rating is a prop, and the tail is a percentage"
  },
  {
   "dataset": "bo",
@@ -514,7 +652,10 @@
   "class": 3,
   "need_or_ops": "G,AR",
   "run": false,
-  "note": ""
+  "note": "",
+  "class_14": 3,
+  "need_or_ops_14": "AR,PROP,SEQ",
+  "justification_14": "'first 5 vs last 5' is per-group sequence slicing over rating props, then a difference of means"
  },
  {
   "dataset": "bo",
@@ -525,7 +666,10 @@
   "class": 3,
   "need_or_ops": "G,PROP",
   "run": false,
-  "note": ""
+  "note": "",
+  "class_14": 3,
+  "need_or_ops_14": "PROP",
+  "justification_14": "filter(count ge 5) is expressible; 'all > 0' is a prop predicate"
  },
  {
   "dataset": "bo",
@@ -536,7 +680,10 @@
   "class": 3,
   "need_or_ops": "G,PROP",
   "run": false,
-  "note": ""
+  "note": "",
+  "class_14": 3,
+  "need_or_ops_14": "PROP",
+  "justification_14": "mirror of bo-Q48"
  },
  {
   "dataset": "bo",
@@ -547,7 +694,10 @@
   "class": 3,
   "need_or_ops": "G,PROP,AR",
   "run": false,
-  "note": ""
+  "note": "",
+  "class_14": 3,
+  "need_or_ops_14": "AR,PROP",
+  "justification_14": "a prop-conditioned cohort and a percentage"
  },
  {
   "dataset": "bo",
@@ -558,7 +708,10 @@
   "class": 3,
   "need_or_ops": "G,CAL",
   "run": false,
-  "note": ""
+  "note": "",
+  "class_14": 3,
+  "need_or_ops_14": "SET",
+  "justification_14": "(day, src) and (day, dst) groupings are both single calls; the coincidence is their intersection"
  },
  {
   "dataset": "bo",
@@ -569,7 +722,10 @@
   "class": 3,
   "need_or_ops": "G",
   "run": false,
-  "note": "depends on top-10 group-by"
+  "note": "depends on top-10 group-by",
+  "class_14": 3,
+  "need_or_ops_14": "G,SET",
+  "justification_14": "top-10 by received count is expressible; the first rater per account is an argmin over a second, pair-level grouping joined back to that list"
  },
  {
   "dataset": "bo",
@@ -580,7 +736,10 @@
   "class": 3,
   "need_or_ops": "G,SET",
   "run": false,
-  "note": ""
+  "note": "",
+  "class_14": 3,
+  "need_or_ops_14": "SET",
+  "justification_14": "the two per-window rater sets are single calls; the difference is not"
  },
  {
   "dataset": "bo",
@@ -591,7 +750,10 @@
   "class": 3,
   "need_or_ops": "G,AR",
   "run": false,
-  "note": ""
+  "note": "",
+  "class_14": 3,
+  "need_or_ops_14": "AR,SET",
+  "justification_14": "given and received counts are two groupings; the top-10% percentile and the ratio are not"
  },
  {
   "dataset": "bo",
@@ -602,7 +764,10 @@
   "class": 3,
   "need_or_ops": "AR",
   "run": false,
-  "note": "near-miss: sum and count expressible for the named account, but no division"
+  "note": "near-miss: sum and count expressible for the named account, but no division",
+  "class_14": 3,
+  "need_or_ops_14": "AR",
+  "justification_14": ""
  },
  {
   "dataset": "cm",
@@ -613,7 +778,10 @@
   "class": 3,
   "need_or_ops": "G",
   "run": false,
-  "note": "distinct senders in window"
+  "note": "distinct senders in window",
+  "class_14": 1,
+  "need_or_ops_14": "aggregate_events",
+  "justification_14": "one call: group_by [], count_distinct src, window = April 2004; the answer is the row's distinct_src"
  },
  {
   "dataset": "cm",
@@ -624,7 +792,10 @@
   "class": 3,
   "need_or_ops": "G",
   "run": false,
-  "note": ""
+  "note": "",
+  "class_14": 1,
+  "need_or_ops_14": "aggregate_events",
+  "justification_14": "one call: group_by [], count_distinct dst over the full window; the answer is distinct_dst"
  },
  {
   "dataset": "cm",
@@ -635,7 +806,10 @@
   "class": 3,
   "need_or_ops": "G",
   "run": false,
-  "note": "empty month (data start Apr 15)"
+  "note": "empty month (data start Apr 15)",
+  "class_14": 2,
+  "need_or_ops_14": "aggregate_events+topk",
+  "justification_14": "group_by [endpoint src] count over March 2004, then compute topk(count,1); March precedes the data extent (starts Apr 15) so the chain runs and correctly returns no account"
  },
  {
   "dataset": "cm",
@@ -646,7 +820,10 @@
   "class": 3,
   "need_or_ops": "G",
   "run": false,
-  "note": "partial window vs data extent"
+  "note": "partial window vs data extent",
+  "class_14": 2,
+  "need_or_ops_14": "aggregate_events+topk",
+  "justification_14": "group_by [endpoint dst], count_distinct src over the window, then compute topk(distinct_src,1)"
  },
  {
   "dataset": "cm",
@@ -657,7 +834,10 @@
   "class": 2,
   "need_or_ops": "graph_metric_timeseries+topk",
   "run": true,
-  "note": "daily buckets"
+  "note": "daily buckets",
+  "class_14": 2,
+  "need_or_ops_14": "graph_metric_timeseries+topk",
+  "justification_14": ""
  },
  {
   "dataset": "cm",
@@ -668,7 +848,10 @@
   "class": 3,
   "need_or_ops": "GLOB",
   "run": false,
-  "note": "global longest cascade"
+  "note": "global longest cascade",
+  "class_14": 3,
+  "need_or_ops_14": "GLOB",
+  "justification_14": ""
  },
  {
   "dataset": "cm",
@@ -679,7 +862,10 @@
   "class": 3,
   "need_or_ops": "G",
   "run": false,
-  "note": "empty week (Jan)"
+  "note": "empty week (Jan)",
+  "class_14": 2,
+  "need_or_ops_14": "aggregate_events+filter+count",
+  "justification_14": "group_by [endpoint src] with count and min vt_s over the whole log, compute filter(count eq 1), two filters bounding min_vt_s to the week, then count; the week precedes the data extent so the answer is 0"
  },
  {
   "dataset": "cm",
@@ -690,7 +876,10 @@
   "class": 2,
   "need_or_ops": "entity_history+filter+min",
   "run": false,
-  "note": "compound answer (who + date) not scoreable"
+  "note": "compound answer (who + date) not scoreable",
+  "class_14": 2,
+  "need_or_ops_14": "entity_history+filter+min",
+  "justification_14": ""
  },
  {
   "dataset": "cm",
@@ -701,7 +890,10 @@
   "class": 3,
   "need_or_ops": "G",
   "run": false,
-  "note": "per-account sliding window"
+  "note": "per-account sliding window",
+  "class_14": 3,
+  "need_or_ops_14": "SEQ",
+  "justification_14": "per-(day, sender) counts are expressible, but buckets are fixed strides anchored at t_a, not the arbitrary 24-hour periods asked for"
  },
  {
   "dataset": "cm",
@@ -712,7 +904,10 @@
   "class": 3,
   "need_or_ops": "G,SET",
   "run": false,
-  "note": ""
+  "note": "",
+  "class_14": 3,
+  "need_or_ops_14": "SET",
+  "justification_14": "both uid sets are enumerable by endpoint grouping; their difference is not an operator"
  },
  {
   "dataset": "cm",
@@ -723,7 +918,10 @@
   "class": 3,
   "need_or_ops": "AR,G",
   "run": false,
-  "note": "average"
+  "note": "average",
+  "class_14": 3,
+  "need_or_ops_14": "AR",
+  "justification_14": "group_by [time_bucket, endpoint src] count gives the per-account-per-day counts; the mean over them needs division, which compute does not have"
  },
  {
   "dataset": "cm",
@@ -734,7 +932,10 @@
   "class": 2,
   "need_or_ops": "entity_history+filter",
   "run": true,
-  "note": "incoming on one day"
+  "note": "incoming on one day",
+  "class_14": 2,
+  "need_or_ops_14": "entity_history+filter",
+  "justification_14": ""
  },
  {
   "dataset": "cm",
@@ -745,7 +946,10 @@
   "class": 3,
   "need_or_ops": "G",
   "run": false,
-  "note": "distinct pairs; near count_temporal_motifs"
+  "note": "distinct pairs; near count_temporal_motifs",
+  "class_14": 3,
+  "need_or_ops_14": "SET,SEQ",
+  "justification_14": "pair grouping is expressible; matching A->B against B->A within an hour is a pair-set self-join under a time bound"
  },
  {
   "dataset": "cm",
@@ -756,7 +960,10 @@
   "class": 3,
   "need_or_ops": "G",
   "run": false,
-  "note": "argmax gap per account"
+  "note": "argmax gap per account",
+  "class_14": 3,
+  "need_or_ops_14": "SEQ,SET",
+  "justification_14": "min/max vt_s give an account's endpoints, not its largest inter-event gap; 'sent or received' also unions the two endpoint roles"
  },
  {
   "dataset": "cm",
@@ -767,7 +974,10 @@
   "class": 3,
   "need_or_ops": "CAL,AR",
   "run": false,
-  "note": "hour-of-day grouping, %"
+  "note": "hour-of-day grouping, %",
+  "class_14": 3,
+  "need_or_ops_14": "CAL,AR",
+  "justification_14": ""
  },
  {
   "dataset": "cm",
@@ -778,7 +988,10 @@
   "class": 3,
   "need_or_ops": "G",
   "run": false,
-  "note": "per-contact first-in/first-out compare"
+  "note": "per-contact first-in/first-out compare",
+  "class_14": 3,
+  "need_or_ops_14": "SET",
+  "justification_14": "per-counterpart first-in and first-out are two aggregate results; comparing them needs a keyed join"
  },
  {
   "dataset": "cm",
@@ -789,7 +1002,10 @@
   "class": 3,
   "need_or_ops": "G",
   "run": false,
-  "note": ""
+  "note": "",
+  "class_14": 3,
+  "need_or_ops_14": "SET",
+  "justification_14": "'exchanged' intersects the pair set with its transpose before any per-account distinct count"
  },
  {
   "dataset": "cm",
@@ -800,7 +1016,10 @@
   "class": 2,
   "need_or_ops": "graph_metric_timeseries+sum",
   "run": true,
-  "note": "first-week burst"
+  "note": "first-week burst",
+  "class_14": 2,
+  "need_or_ops_14": "graph_metric_timeseries+sum",
+  "justification_14": ""
  },
  {
   "dataset": "cm",
@@ -811,7 +1030,10 @@
   "class": 3,
   "need_or_ops": "CAL",
   "run": false,
-  "note": "same-calendar-day constraint; near CTM"
+  "note": "same-calendar-day constraint; near CTM",
+  "class_14": 3,
+  "need_or_ops_14": "CAL",
+  "justification_14": ""
  },
  {
   "dataset": "cm",
@@ -822,7 +1044,10 @@
   "class": 3,
   "need_or_ops": "CAL,G",
   "run": false,
-  "note": "weekday grouping"
+  "note": "weekday grouping",
+  "class_14": 3,
+  "need_or_ops_14": "CAL",
+  "justification_14": "weekday is not a dimension and not a fixed stride"
  },
  {
   "dataset": "cm",
@@ -833,7 +1058,10 @@
   "class": 3,
   "need_or_ops": "G,CAL",
   "run": false,
-  "note": ""
+  "note": "",
+  "class_14": 3,
+  "need_or_ops_14": "SET,AR",
+  "justification_14": "per-src and per-dst min vt_s are both expressible; matching them per account is a join, and 'different day' needs a floor-divide on the two minima"
  },
  {
   "dataset": "cm",
@@ -844,7 +1072,10 @@
   "class": 3,
   "need_or_ops": "AR,G",
   "run": false,
-  "note": "median"
+  "note": "median",
+  "class_14": 3,
+  "need_or_ops_14": "AR,SET",
+  "justification_14": "reciprocal-pair join plus a median"
  },
  {
   "dataset": "cm",
@@ -855,7 +1086,10 @@
   "class": 3,
   "need_or_ops": "G",
   "run": false,
-  "note": "top-3 distinct recipients"
+  "note": "top-3 distinct recipients",
+  "class_14": 2,
+  "need_or_ops_14": "aggregate_events+topk",
+  "justification_14": "group_by [endpoint src], count_distinct dst over the final two weeks, then compute topk(distinct_dst,3)"
  },
  {
   "dataset": "cm",
@@ -866,7 +1100,10 @@
   "class": 3,
   "need_or_ops": "G",
   "run": false,
-  "note": "per-account gap pattern"
+  "note": "per-account gap pattern",
+  "class_14": 3,
+  "need_or_ops_14": "SEQ,SET",
+  "justification_14": "consecutive-gap detection over the union of an account's sent and received events"
  },
  {
   "dataset": "cm",
@@ -877,7 +1114,10 @@
   "class": 3,
   "need_or_ops": "GLOB",
   "run": false,
-  "note": "src==dst predicate unsupported"
+  "note": "src==dst predicate unsupported",
+  "class_14": 3,
+  "need_or_ops_14": "GLOB",
+  "justification_14": ""
  },
  {
   "dataset": "cm",
@@ -888,7 +1128,10 @@
   "class": 2,
   "need_or_ops": "entity_history+min+interval_relation",
   "run": false,
-  "note": "categorical answer (sent-first/received-first)"
+  "note": "categorical answer (sent-first/received-first)",
+  "class_14": 2,
+  "need_or_ops_14": "entity_history+min+interval_relation",
+  "justification_14": ""
  },
  {
   "dataset": "cm",
@@ -899,7 +1142,10 @@
   "class": 3,
   "need_or_ops": "AR",
   "run": false,
-  "note": "difference of two counts"
+  "note": "difference of two counts",
+  "class_14": 3,
+  "need_or_ops_14": "AR",
+  "justification_14": ""
  },
  {
   "dataset": "cm",
@@ -910,7 +1156,10 @@
   "class": 3,
   "need_or_ops": "G,SET,NEG",
   "run": false,
-  "note": ""
+  "note": "",
+  "class_14": 3,
+  "need_or_ops_14": "SET,NEG",
+  "justification_14": "count_distinct dst per src settles the >=5 side; 'never received' is a set difference"
  },
  {
   "dataset": "cm",
@@ -921,7 +1170,10 @@
   "class": 3,
   "need_or_ops": "AR,G",
   "run": false,
-  "note": "ratio"
+  "note": "ratio",
+  "class_14": 3,
+  "need_or_ops_14": "AR,SET",
+  "justification_14": "sent and received counts per account are two groupings; the ratio needs a join and a division"
  },
  {
   "dataset": "cm",
@@ -932,7 +1184,10 @@
   "class": 3,
   "need_or_ops": "G,CAL",
   "run": false,
-  "note": "empty months Jan-Mar"
+  "note": "empty months Jan-Mar",
+  "class_14": 3,
+  "need_or_ops_14": "CAL,SET",
+  "justification_14": "months are not fixed strides, and 'every month' is an intersection across buckets"
  },
  {
   "dataset": "cm",
@@ -943,7 +1198,10 @@
   "class": 3,
   "need_or_ops": "G",
   "run": false,
-  "note": "per-account 1h window argmax"
+  "note": "per-account 1h window argmax",
+  "class_14": 3,
+  "need_or_ops_14": "SEQ",
+  "justification_14": "argmax over arbitrary 1-hour windows inside each account's event sequence"
  },
  {
   "dataset": "cm",
@@ -954,7 +1212,10 @@
   "class": 3,
   "need_or_ops": "CAL",
   "run": false,
-  "note": "weekday + hour-of-day"
+  "note": "weekday + hour-of-day",
+  "class_14": 3,
+  "need_or_ops_14": "CAL",
+  "justification_14": ""
  },
  {
   "dataset": "cm",
@@ -965,7 +1226,10 @@
   "class": 3,
   "need_or_ops": "G,AR",
   "run": false,
-  "note": "median over top-10 group"
+  "note": "median over top-10 group",
+  "class_14": 3,
+  "need_or_ops_14": "AR",
+  "justification_14": "one call gives count and count_distinct dst per sender and topk(count,10) the cohort; only the median is missing"
  },
  {
   "dataset": "cm",
@@ -976,7 +1240,10 @@
   "class": 3,
   "need_or_ops": "G,AR",
   "run": false,
-  "note": ""
+  "note": "",
+  "class_14": 3,
+  "need_or_ops_14": "SET,AR",
+  "justification_14": "pair-set transpose join, then a 'more than double' ratio"
  },
  {
   "dataset": "cm",
@@ -987,7 +1254,10 @@
   "class": 3,
   "need_or_ops": "G",
   "run": false,
-  "note": "per-pair sessionization"
+  "note": "per-pair sessionization",
+  "class_14": 3,
+  "need_or_ops_14": "SEQ",
+  "justification_14": "sessionization by 60-minute gaps inside each pair"
  },
  {
   "dataset": "cm",
@@ -998,7 +1268,10 @@
   "class": 3,
   "need_or_ops": "SET",
   "run": false,
-  "note": "uid-set difference; near entity_history"
+  "note": "uid-set difference; near entity_history",
+  "class_14": 3,
+  "need_or_ops_14": "SET",
+  "justification_14": ""
  },
  {
   "dataset": "cm",
@@ -1009,7 +1282,10 @@
   "class": 3,
   "need_or_ops": "GLOB",
   "run": false,
-  "note": "global argmax event; motif rows nested"
+  "note": "global argmax event; motif rows nested",
+  "class_14": 2,
+  "need_or_ops_14": "aggregate_events+aggregate_events",
+  "justification_14": "s1 group_by [] max vt_s over the log; s2 group_by [endpoint src, endpoint dst] count with window [$ref s1.rows[0].max_vt_s, OPEN_END) \u2014 exactly the last event, with both endpoints"
  },
  {
   "dataset": "cm",
@@ -1020,7 +1296,10 @@
   "class": 3,
   "need_or_ops": "GLOB",
   "run": false,
-  "note": "duplicate of Q25"
+  "note": "duplicate of Q25",
+  "class_14": 3,
+  "need_or_ops_14": "GLOB",
+  "justification_14": ""
  },
  {
   "dataset": "cm",
@@ -1031,7 +1310,10 @@
   "class": 3,
   "need_or_ops": "G,CAL",
   "run": false,
-  "note": ""
+  "note": "",
+  "class_14": 3,
+  "need_or_ops_14": "G,SET",
+  "justification_14": "needs three dimensions (day x src x dst) against a cap of two, and sums both directions of the pair"
  },
  {
   "dataset": "cm",
@@ -1042,7 +1324,10 @@
   "class": 3,
   "need_or_ops": "G,NEG",
   "run": false,
-  "note": ""
+  "note": "",
+  "class_14": 3,
+  "need_or_ops_14": "SET,NEG",
+  "justification_14": "'only ever sent to accounts that never sent' is a set difference under an absence condition"
  },
  {
   "dataset": "cm",
@@ -1053,7 +1338,10 @@
   "class": 3,
   "need_or_ops": "G,AR,CAL",
   "run": false,
-  "note": "weekly new-contact average"
+  "note": "weekly new-contact average",
+  "class_14": 3,
+  "need_or_ops_14": "AR,SEQ",
+  "justification_14": "group_by [endpoint src, time_bucket] count_distinct dst gives weekly recipients (filter src post-hoc); 'new' needs dedup against earlier buckets and the average needs division"
  },
  {
   "dataset": "cm",
@@ -1064,7 +1352,10 @@
   "class": 3,
   "need_or_ops": "SET,CAL",
   "run": false,
-  "note": "join on (dst, same-day)"
+  "note": "join on (dst, same-day)",
+  "class_14": 3,
+  "need_or_ops_14": "G,SET",
+  "justification_14": "day bucketing is now a stride, but pinning both senders needs a third dimension (day x src x dst), then an intersection"
  },
  {
   "dataset": "cm",
@@ -1075,7 +1366,10 @@
   "class": 3,
   "need_or_ops": "AR,CAL",
   "run": false,
-  "note": "compare two buckets; Feb empty"
+  "note": "compare two buckets; Feb empty",
+  "class_14": 3,
+  "need_or_ops_14": "AR,CAL",
+  "justification_14": ""
  },
  {
   "dataset": "cm",
@@ -1086,7 +1380,10 @@
   "class": 3,
   "need_or_ops": "G,AR",
   "run": false,
-  "note": "average reply time argmax"
+  "note": "average reply time argmax",
+  "class_14": 3,
+  "need_or_ops_14": "AR,SEQ",
+  "justification_14": "first-reply latency per sender is a lag, and the argmax is over an average"
  },
  {
   "dataset": "cm",
@@ -1097,7 +1394,10 @@
   "class": 3,
   "need_or_ops": "G,SET",
   "run": false,
-  "note": "Jan empty -> degenerate"
+  "note": "Jan empty -> degenerate",
+  "class_14": 3,
+  "need_or_ops_14": "SET",
+  "justification_14": "the two per-window activity sets are expressible; their union across roles and difference across windows are not"
  },
  {
   "dataset": "cm",
@@ -1108,7 +1408,10 @@
   "class": 2,
   "need_or_ops": "graph_metric_timeseries+filter",
   "run": false,
-  "note": "yes/no answer kind not scoreable"
+  "note": "yes/no answer kind not scoreable",
+  "class_14": 2,
+  "need_or_ops_14": "graph_metric_timeseries+filter",
+  "justification_14": ""
  },
  {
   "dataset": "cm",
@@ -1119,7 +1422,10 @@
   "class": 3,
   "need_or_ops": "G",
   "run": false,
-  "note": "second-highest rank"
+  "note": "second-highest rank",
+  "class_14": 2,
+  "need_or_ops_14": "aggregate_events+topk",
+  "justification_14": "group_by [endpoint src], count_distinct dst over April 2004, compute topk(distinct_dst,2); the answer is rows[1]"
  },
  {
   "dataset": "cm",
@@ -1130,7 +1436,10 @@
   "class": 3,
   "need_or_ops": "G,CAL",
   "run": false,
-  "note": ""
+  "note": "",
+  "class_14": 3,
+  "need_or_ops_14": "SET,AR",
+  "justification_14": "(src, day) counts and per-dst min vt_s are both expressible; matching them needs a join plus a floor-divide of the minimum to a day"
  },
  {
   "dataset": "cm",
@@ -1141,7 +1450,10 @@
   "class": 3,
   "need_or_ops": "G",
   "run": false,
-  "note": "per-recipient join of two accounts"
+  "note": "per-recipient join of two accounts",
+  "class_14": 3,
+  "need_or_ops_14": "SET,AR",
+  "justification_14": "per-(src,dst) min vt_s is one call; joining the two accounts on recipient and differencing is not"
  },
  {
   "dataset": "cm",
@@ -1152,7 +1464,10 @@
   "class": 3,
   "need_or_ops": "G",
   "run": false,
-  "note": "pairs with exactly one message"
+  "note": "pairs with exactly one message",
+  "class_14": 2,
+  "need_or_ops_14": "aggregate_events+filter+count",
+  "justification_14": "group_by [endpoint src, endpoint dst] count over the log, compute filter(count eq 1), then count; CollegeMsg's 20,296 pair groups exceed the 10,000-row page, so this one readout needs three cursor pages summed"
  },
  {
   "dataset": "cm",
@@ -1163,7 +1478,10 @@
   "class": 3,
   "need_or_ops": "G",
   "run": false,
-  "note": ""
+  "note": "",
+  "class_14": 3,
+  "need_or_ops_14": "SET,SEQ",
+  "justification_14": "'first message to B, then a reply back' is a pair-set transpose join with an ordering constraint"
  },
  {
   "dataset": "cm",
@@ -1174,7 +1492,10 @@
   "class": 3,
   "need_or_ops": "G,AR",
   "run": false,
-  "note": "ratio; March empty"
+  "note": "ratio; March empty",
+  "class_14": 3,
+  "need_or_ops_14": "AR",
+  "justification_14": "per-sender counts and the top-10 are expressible; the bottom-50% percentile and the ratio are not"
  },
  {
   "dataset": "cm",
@@ -1185,7 +1506,10 @@
   "class": 3,
   "need_or_ops": "G,CAL",
   "run": false,
-  "note": ""
+  "note": "",
+  "class_14": 3,
+  "need_or_ops_14": "CAL,NEG",
+  "justification_14": "an hour-of-day band, plus 'no message outside it'"
  },
  {
   "dataset": "cm",
@@ -1196,7 +1520,10 @@
   "class": 3,
   "need_or_ops": "G,AR",
   "run": false,
-  "note": "top-1% share"
+  "note": "top-1% share",
+  "class_14": 3,
+  "need_or_ops_14": "AR",
+  "justification_14": "per-account counts are expressible; the 1% percentile and the share of the total are not"
  },
  {
   "dataset": "cm",
@@ -1207,6 +1534,9 @@
   "class": 2,
   "need_or_ops": "entity_history+max+interval_relation",
   "run": false,
-  "note": "categorical answer (before/after)"
+  "note": "categorical answer (before/after)",
+  "class_14": 2,
+  "need_or_ops_14": "entity_history+max+interval_relation",
+  "justification_14": ""
  }
 ]

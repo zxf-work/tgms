@@ -23,9 +23,28 @@ run verbatim (run=True); gold is computed two independent ways (SQL over
 the canonical DuckDB store; pure Python over the event rows) and must
 agree.
 
-Usage (on the host that has the canonical stores):
-  python3 scripts/independent_questions.py report
-  python3 scripts/independent_questions.py build   # writes suites + gold
+`C` is the *pre-registered* 13-operator classification (D-026, hand-audited
+2026-07-26, before any operator was built to close a gap). It is never
+rewritten. `C14` is the re-audit after D-044 added the 14th operator,
+`aggregate_events`, and holds only the entries whose class or need-tags
+change; everything absent from `C14` keeps its `C` verdict verbatim. Keeping
+both tables side by side is the point: the coverage delta is a diff against
+a table nobody could tune after the fact. Class 4 (ambiguous) and class 5
+(not a computation) entries never appear in `C14` — a new operator cannot
+repair a question's presupposition. `C14` re-audits the *whole* need string
+of every entry it touches, so a residual capability the pre-registration had
+folded into `G` can surface under its own tag; one tag is new, `SEQ`
+(per-group ordered-sequence work: gaps between consecutive events,
+sessionization, arbitrary sliding windows, first-reply latency), and under
+`C14` `SET` also covers pair-set joins (reciprocity), which the
+pre-registration counted as `G`. `G` survives in `C14` only where grouped
+aggregation itself is still out of reach — chiefly groupings needing more
+than the operator's two dimensions.
+
+Usage:
+  python3 scripts/independent_questions.py report  # tables only, no stores
+  python3 scripts/independent_questions.py build   # writes suites + gold;
+                                # needs the canonical stores on this host
 """
 from __future__ import annotations
 
@@ -168,6 +187,275 @@ C: dict[tuple[str, int], tuple[int, str, bool, str]] = {
                                  "the named account, but no division"),
 }
 
+# --------------------------------------------------------------------------- #
+# re-audit against the 14-operator algebra (D-044 `aggregate_events`)          #
+# --------------------------------------------------------------------------- #
+# Only entries whose class or need-tags change; `C` stays as pre-registered.
+# value = (class, need/ops, justification)
+#
+# What the 14th operator does and does not give (D-044, re-read per question):
+#   groups events (believed edge versions, t_a <= vt_s < t_b) by AT MOST TWO
+#   dimensions from {time_bucket(stride), rel_type, endpoint(src|dst),
+#   label(src|dst)} and computes from {count, count_distinct(src|dst),
+#   min|max|mean(vt_s|duration)}; `rows_total` is the pre-limit group count.
+#   No aggregate over JSON props (so nothing about ratings); no calendar units
+#   (buckets are fixed strides anchored at t_a — days and weeks yes, months,
+#   years, weekday and hour-of-day no); no uid pre-filter (recovered only
+#   post-hoc by `compute` filter on the emitted src/dst field); no set ops, no
+#   joins, no absence, and no arithmetic past the listed aggregates.
+# Readout chains use the existing O13 `compute`
+#   {count, sum, min, max, topk(field,k), filter(field,cmp,value)} over a
+#   prior step's rows via $ref. Page ceiling: limit <= 10,000 and $ref list
+#   projections truncate at 10,000 items, which matters once per table below.
+C14: dict[tuple[str, int], tuple[int, str, str]] = {
+    # ---- CollegeMsg ----
+    ("cm", 1): (1, "aggregate_events",
+                "one call: group_by [], count_distinct src, window = April "
+                "2004; the answer is the row's distinct_src"),
+    ("cm", 2): (1, "aggregate_events",
+                "one call: group_by [], count_distinct dst over the full "
+                "window; the answer is distinct_dst"),
+    ("cm", 3): (2, "aggregate_events+topk",
+                "group_by [endpoint src] count over March 2004, then compute "
+                "topk(count,1); March precedes the data extent (starts Apr "
+                "15) so the chain runs and correctly returns no account"),
+    ("cm", 4): (2, "aggregate_events+topk",
+                "group_by [endpoint dst], count_distinct src over the window, "
+                "then compute topk(distinct_src,1)"),
+    ("cm", 7): (2, "aggregate_events+filter+count",
+                "group_by [endpoint src] with count and min vt_s over the "
+                "whole log, compute filter(count eq 1), two filters bounding "
+                "min_vt_s to the week, then count; the week precedes the data "
+                "extent so the answer is 0"),
+    ("cm", 9): (3, "SEQ",
+                "per-(day, sender) counts are expressible, but buckets are "
+                "fixed strides anchored at t_a, not the arbitrary 24-hour "
+                "periods asked for"),
+    ("cm", 10): (3, "SET",
+                 "both uid sets are enumerable by endpoint grouping; their "
+                 "difference is not an operator"),
+    ("cm", 11): (3, "AR",
+                 "group_by [time_bucket, endpoint src] count gives the "
+                 "per-account-per-day counts; the mean over them needs "
+                 "division, which compute does not have"),
+    ("cm", 13): (3, "SET,SEQ",
+                 "pair grouping is expressible; matching A->B against B->A "
+                 "within an hour is a pair-set self-join under a time bound"),
+    ("cm", 14): (3, "SEQ,SET",
+                 "min/max vt_s give an account's endpoints, not its largest "
+                 "inter-event gap; 'sent or received' also unions the two "
+                 "endpoint roles"),
+    ("cm", 16): (3, "SET",
+                 "per-counterpart first-in and first-out are two aggregate "
+                 "results; comparing them needs a keyed join"),
+    ("cm", 17): (3, "SET",
+                 "'exchanged' intersects the pair set with its transpose "
+                 "before any per-account distinct count"),
+    ("cm", 20): (3, "CAL",
+                 "weekday is not a dimension and not a fixed stride"),
+    ("cm", 21): (3, "SET,AR",
+                 "per-src and per-dst min vt_s are both expressible; matching "
+                 "them per account is a join, and 'different day' needs a "
+                 "floor-divide on the two minima"),
+    ("cm", 22): (3, "AR,SET",
+                 "reciprocal-pair join plus a median"),
+    ("cm", 23): (2, "aggregate_events+topk",
+                 "group_by [endpoint src], count_distinct dst over the final "
+                 "two weeks, then compute topk(distinct_dst,3)"),
+    ("cm", 24): (3, "SEQ,SET",
+                 "consecutive-gap detection over the union of an account's "
+                 "sent and received events"),
+    ("cm", 28): (3, "SET,NEG",
+                 "count_distinct dst per src settles the >=5 side; 'never "
+                 "received' is a set difference"),
+    ("cm", 29): (3, "AR,SET",
+                 "sent and received counts per account are two groupings; the "
+                 "ratio needs a join and a division"),
+    ("cm", 30): (3, "CAL,SET",
+                 "months are not fixed strides, and 'every month' is an "
+                 "intersection across buckets"),
+    ("cm", 31): (3, "SEQ",
+                 "argmax over arbitrary 1-hour windows inside each account's "
+                 "event sequence"),
+    ("cm", 33): (3, "AR",
+                 "one call gives count and count_distinct dst per sender and "
+                 "topk(count,10) the cohort; only the median is missing"),
+    ("cm", 34): (3, "SET,AR",
+                 "pair-set transpose join, then a 'more than double' ratio"),
+    ("cm", 35): (3, "SEQ",
+                 "sessionization by 60-minute gaps inside each pair"),
+    ("cm", 37): (2, "aggregate_events+aggregate_events",
+                 "s1 group_by [] max vt_s over the log; s2 group_by [endpoint "
+                 "src, endpoint dst] count with window "
+                 "[$ref s1.rows[0].max_vt_s, OPEN_END) — exactly the last "
+                 "event, with both endpoints"),
+    ("cm", 39): (3, "G,SET",
+                 "needs three dimensions (day x src x dst) against a cap of "
+                 "two, and sums both directions of the pair"),
+    ("cm", 40): (3, "SET,NEG",
+                 "'only ever sent to accounts that never sent' is a set "
+                 "difference under an absence condition"),
+    ("cm", 41): (3, "AR,SEQ",
+                 "group_by [endpoint src, time_bucket] count_distinct dst "
+                 "gives weekly recipients (filter src post-hoc); 'new' needs "
+                 "dedup against earlier buckets and the average needs "
+                 "division"),
+    ("cm", 42): (3, "G,SET",
+                 "day bucketing is now a stride, but pinning both senders "
+                 "needs a third dimension (day x src x dst), then an "
+                 "intersection"),
+    ("cm", 44): (3, "AR,SEQ",
+                 "first-reply latency per sender is a lag, and the argmax is "
+                 "over an average"),
+    ("cm", 45): (3, "SET",
+                 "the two per-window activity sets are expressible; their "
+                 "union across roles and difference across windows are not"),
+    ("cm", 47): (2, "aggregate_events+topk",
+                 "group_by [endpoint src], count_distinct dst over April "
+                 "2004, compute topk(distinct_dst,2); the answer is rows[1]"),
+    ("cm", 48): (3, "SET,AR",
+                 "(src, day) counts and per-dst min vt_s are both "
+                 "expressible; matching them needs a join plus a "
+                 "floor-divide of the minimum to a day"),
+    ("cm", 49): (3, "SET,AR",
+                 "per-(src,dst) min vt_s is one call; joining the two "
+                 "accounts on recipient and differencing is not"),
+    ("cm", 50): (2, "aggregate_events+filter+count",
+                 "group_by [endpoint src, endpoint dst] count over the log, "
+                 "compute filter(count eq 1), then count; CollegeMsg's 20,296 "
+                 "pair groups exceed the 10,000-row page, so this one readout "
+                 "needs three cursor pages summed"),
+    ("cm", 51): (3, "SET,SEQ",
+                 "'first message to B, then a reply back' is a pair-set "
+                 "transpose join with an ordering constraint"),
+    ("cm", 52): (3, "AR",
+                 "per-sender counts and the top-10 are expressible; the "
+                 "bottom-50% percentile and the ratio are not"),
+    ("cm", 53): (3, "CAL,NEG",
+                 "an hour-of-day band, plus 'no message outside it'"),
+    ("cm", 54): (3, "AR",
+                 "per-account counts are expressible; the 1% percentile and "
+                 "the share of the total are not"),
+    # ---- Bitcoin-OTC ----
+    ("bo", 1): (1, "aggregate_events",
+                "one call: group_by [], count_distinct src over the full "
+                "window"),
+    ("bo", 2): (1, "aggregate_events",
+                "one call: group_by [], count_distinct dst, window = 2012 "
+                "(a window, not a calendar bucket)"),
+    ("bo", 4): (3, "PROP",
+                "a global count is now group_by [] count, but the predicate "
+                "is on the rating prop, and prop aggregates/filters are "
+                "explicitly deferred by D-044"),
+    ("bo", 7): (3, "SET",
+                "each side is a count_distinct; 'both' is an intersection of "
+                "the two uid sets"),
+    ("bo", 8): (3, "AR,CAL,PROP",
+                "years are not fixed strides and the mean is over the rating "
+                "prop"),
+    ("bo", 9): (2, "aggregate_events+topk",
+                "group_by [endpoint src] count over the log, then compute "
+                "topk(count,1)"),
+    ("bo", 10): (2, "aggregate_events+topk",
+                 "group_by [endpoint dst] count over the log, then compute "
+                 "topk(count,1)"),
+    ("bo", 11): (3, "AR,PROP",
+                 "filter(count ge 10) is expressible; the mean is over the "
+                 "rating prop"),
+    ("bo", 12): (3, "AR,PROP",
+                 "same shape as bo-Q11 on the giving side"),
+    ("bo", 13): (3, "PROP",
+                 "an argmin over the rating prop; the window-reselect idiom "
+                 "that closes cm-Q37 needs the extremum to be over vt_s"),
+    ("bo", 14): (3, "AR,PROP",
+                 "counts of positive vs negative need a prop filter, and the "
+                 "spread needs a subtraction"),
+    ("bo", 15): (3, "PROP",
+                 "'all ratings <= 0' is a predicate over the rating prop"),
+    ("bo", 16): (2, "aggregate_events+filter+count",
+                 "group_by [endpoint dst], aggregates [min vt_s] over the "
+                 "whole log, compute filter(min_vt_s ge 2013-01-01), "
+                 "filter(min_vt_s lt 2014-01-01), then count"),
+    ("bo", 17): (3, "SEQ",
+                 "the longest gap between consecutive events in a group is a "
+                 "lag; min/max vt_s only give the two endpoints"),
+    ("bo", 18): (3, "SEQ",
+                 "arbitrary 24-hour periods, not buckets anchored at t_a"),
+    ("bo", 19): (3, "CAL,SET",
+                 "years are not fixed strides and 'each of' is an "
+                 "intersection"),
+    ("bo", 20): (3, "AR,SET",
+                 "reciprocal-pair join, then a median"),
+    ("bo", 22): (3, "SET,AR",
+                 "per-src and per-dst min vt_s are expressible; the match is "
+                 "a join and 'same day' a floor-divide of two minima"),
+    ("bo", 23): (3, "AR",
+                 "one call gives count, min vt_s and max vt_s per rater and "
+                 "filter(count ge 50) the cohort; the span in days and its "
+                 "average both need division"),
+    ("bo", 24): (3, "SET",
+                 "the pair set intersected with its transpose"),
+    ("bo", 25): (3, "AR,PROP,SET",
+                 "reciprocal-pair join, rating signs, and a percentage"),
+    ("bo", 26): (3, "PROP,SET",
+                 "reciprocal-pair join plus rating signs"),
+    ("bo", 27): (3, "PROP,SEQ",
+                 "'later, with a different value' compares consecutive "
+                 "ratings' props inside a pair"),
+    ("bo", 28): (3, "SET",
+                 "directed pair counts are one call; summing the two "
+                 "directions is a transpose join"),
+    ("bo", 29): (3, "PROP,SET,SEQ",
+                 "pair-set transpose join, rating comparison, and 'previously "
+                 "rated' ordering"),
+    ("bo", 30): (3, "PROP,SET",
+                 "reciprocal-pair join, then sign categories"),
+    ("bo", 31): (3, "NEG,PROP",
+                 "a positive-sign triad with an absent third edge; grouping "
+                 "was never the obstacle here"),
+    ("bo", 33): (3, "PROP",
+                 "a mutually-positive clique condition over rating signs"),
+    ("bo", 35): (3, "PROP,NEG",
+                 "two-hop positive reachability with a 'never directly "
+                 "rated' exclusion"),
+    ("bo", 42): (3, "AR,SET",
+                 "as_of_tt makes each snapshot's per-account count one call; "
+                 "the per-account difference across snapshots needs a join "
+                 "and a subtraction"),
+    ("bo", 43): (3, "AR,PROP",
+                 "as_of_tt fixes the belief state and filter(count ge 5) the "
+                 "cohort; the mean is over the rating prop"),
+    ("bo", 44): (3, "AR,PROP,SET",
+                 "positive-rating counts need a prop filter, and 'decreased' "
+                 "needs a cross-snapshot join and comparison"),
+    ("bo", 46): (3, "AR,PROP",
+                 "min vt_s per dst is expressible, but the sign of that first "
+                 "rating is a prop, and the tail is a percentage"),
+    ("bo", 47): (3, "AR,PROP,SEQ",
+                 "'first 5 vs last 5' is per-group sequence slicing over "
+                 "rating props, then a difference of means"),
+    ("bo", 48): (3, "PROP",
+                 "filter(count ge 5) is expressible; 'all > 0' is a prop "
+                 "predicate"),
+    ("bo", 49): (3, "PROP",
+                 "mirror of bo-Q48"),
+    ("bo", 50): (3, "AR,PROP",
+                 "a prop-conditioned cohort and a percentage"),
+    ("bo", 51): (3, "SET",
+                 "(day, src) and (day, dst) groupings are both single calls; "
+                 "the coincidence is their intersection"),
+    ("bo", 52): (3, "G,SET",
+                 "top-10 by received count is expressible; the first rater "
+                 "per account is an argmin over a second, pair-level grouping "
+                 "joined back to that list"),
+    ("bo", 53): (3, "SET",
+                 "the two per-window rater sets are single calls; the "
+                 "difference is not"),
+    ("bo", 54): (3, "AR,SET",
+                 "given and received counts are two groupings; the top-10% "
+                 "percentile and the ratio are not"),
+}
+
 
 def parse_raw() -> dict[tuple[str, int], dict]:
     """Parse raw_questions.txt into {(dataset, n): {text, kind, why}}."""
@@ -302,19 +590,66 @@ def build():
         print(out, suite["n_test"], "tasks", suite["test_split_sha"][:16])
 
 
+def _needs(cls: int, tags: str) -> list[str]:
+    """Need-tags of a class-3 entry; ops strings (`a+b`) are not needs."""
+    if cls != 3:
+        return []
+    return [t for t in tags.split(",") if t and "+" not in t]
+
+
+def _check_c14() -> None:
+    """C14 is a diff, not a rewrite: guard the invariants that make it one."""
+    for k, (cls14, tags14, why) in C14.items():
+        assert k in C, f"C14 key {k} not in the pre-registered table"
+        cls, tags = C[k][0], C[k][1]
+        assert cls not in (4, 5), (
+            f"C14 must not touch class-{cls} {k}: a new operator cannot "
+            f"repair an ambiguous or non-computational question")
+        assert (cls14, tags14) != (cls, tags), f"C14 {k} is not a change"
+        assert cls14 <= cls, f"C14 {k} moved backwards: {cls} -> {cls14}"
+        assert why, f"C14 {k} has no justification"
+
+
 def report():
     q = parse_raw()
     assert len(q) == 110, len(q)
+    _check_c14()
+
+    def cls14(k):
+        return C14[k][0] if k in C14 else C[k][0]
+
+    def tags14(k):
+        return C14[k][1] if k in C14 else C[k][1]
+
     dist = Counter(C[k][0] for k in q)
-    print("class distribution:", dict(sorted(dist.items())))
-    need = Counter(tag for k in q for tag in C[k][1].split(",")
-                   if C[k][0] == 3 and tag and "+" not in tag)
-    print("missing capabilities (class 3):", dict(need.most_common()))
+    print("class distribution (13 ops, pre-registered):",
+          dict(sorted(dist.items())))
+    dist14 = Counter(cls14(k) for k in q)
+    print("class distribution (14 ops, D-044 re-audit):",
+          dict(sorted(dist14.items())))
+
+    moved = sorted(k for k in q if cls14(k) != C[k][0])
+    by_move = Counter((C[k][0], cls14(k)) for k in moved)
+    print(f"became expressible: {len(moved)} of {len(q)} "
+          f"({', '.join(f'{a}->{b}: {n}' for (a, b), n in sorted(by_move.items()))})")
+    for d, n in moved:
+        print(f"  {d}-Q{n:<2} {C[(d, n)][0]} -> {cls14((d, n))}  "
+              f"{tags14((d, n))}")
+
+    need = Counter(t for k in q for t in _needs(C[k][0], C[k][1]))
+    print("missing capabilities (class 3, 13 ops):", dict(need.most_common()))
+    need14 = Counter(t for k in q for t in _needs(cls14(k), tags14(k)))
+    print("missing capabilities (class 3, 14 ops):", dict(need14.most_common()))
+    retagged = [k for k in C14 if C14[k][0] == 3]
+    print(f"class-3 entries whose need-tags were re-audited: {len(retagged)}")
+
     print("runnable:", [f"{d}-Q{n}" for (d, n) in sorted(C)
                         if C[(d, n)][2]])
     rows = [{"dataset": d, "q": n, **q[(d, n)],
              "class": C[(d, n)][0], "need_or_ops": C[(d, n)][1],
-             "run": C[(d, n)][2], "note": C[(d, n)][3]}
+             "run": C[(d, n)][2], "note": C[(d, n)][3],
+             "class_14": cls14((d, n)), "need_or_ops_14": tags14((d, n)),
+             "justification_14": C14[(d, n)][2] if (d, n) in C14 else ""}
             for (d, n) in sorted(q)]
     out = Path("benchmarks/independent-v1/classification.json")
     out.parent.mkdir(parents=True, exist_ok=True)
