@@ -87,7 +87,8 @@ Two rows changed hands since the July sweep and both are engine work, not
 noise: **native's point lookups now beat PostgreSQL's** (0.1 vs 0.3 ms),
 and `series.count`/`burst.zscore` are now *ties* with ClickHouse at this
 scale where ClickHouse led 2×. Its lead is a scale effect, not a shape
-effect — it starts at 200k as a tie, reaches 3.5× at 1M and 8.7× at 10M.
+effect — it starts at 200k as a tie, reaches 3.5× at 1M and 4.6× at 10M
+(8.7× before D-046).
 The new `agg.rel_bucket` runs the other way: **native leads it 2.2× at
 200k** and loses it at 1M and 10M, so the crossover for grouped
 aggregation sits between 200k and 1M. The baselines divide
@@ -136,27 +137,43 @@ host. The ClickHouse gap on those two queries is real either way.
 
 ### synth, 10M events (abridged)
 
-Refreshed 2026-08-02 at commit `d12b30f` (native, DuckDB and ClickHouse
-re-measured together; the PostgreSQL 10M column, measured once in July, is
-retained where no TGMS-side change affects it):
+Refreshed 2026-08-02 at commit `cc49795` (native, DuckDB and ClickHouse
+re-measured together after the D-046 scan work; the PostgreSQL 10M column,
+measured once in July, is retained where no TGMS-side change affects it).
+The `was` column is the previous full sweep of the same three systems at
+`d12b30f`, earlier the same day:
 
-| query | native | duckdb | postgres | clickhouse | fastest |
-|---|---:|---:|---:|---:|---|
-| hist.single | **0.7** | 65.1 | **0.3**‡ | 12.6 | native |
-| hist.asof | **0.7** | 66.0 | — | 13.2 | native |
-| snap.hop2 | 1029.6 | 1716.3 | 2506.8‡ | **777.1**† | clickhouse |
-| diff.global | **3983.1** | 5591.6 | 6670.6‡ | 5039.2 | native |
-| reach.window | gr | gr | 44400.4‡ | **4057.4** | guardrailed |
-| paths.k | **16.2** | 81.8 | 37.2‡ | 241.3 | native |
-| series.count | 352.1 | 981.6 | 2176.7‡ | **40.3** | clickhouse |
-| burst.zscore | 351.1 | 981.1 | 2156.5‡ | **39.2** | clickhouse |
-| nbr.evolution | 62.3 | 106.1 | **2.8**‡ | 99.8 | postgres |
-| coactive.narrow | **172.5** | 226.2 | 1781.7‡ | 207.1 | native |
-| resolve.substr | **95.3** | 796.4 | 200.5‡ | 121.6 | native |
-| agg.rel_bucket | 334.7 | 34515.9 | — | **140.8** | clickhouse |
-| motif.filtered | **78.1** | 163.8 | 661.3‡ | 225.7 | native |
+| query | native | *was* | duckdb | postgres | clickhouse | fastest |
+|---|---:|---:|---:|---:|---:|---|
+| hist.single | **0.7** | 0.7 | 65.0 | **0.3**‡ | 12.2 | native |
+| hist.asof | **0.7** | 0.7 | 65.6 | — | 14.1 | native |
+| snap.hop2 | 1017.6 | 1029.6 | 1745.6 | 2506.8‡ | **764.8**† | clickhouse |
+| diff.global | **3998.6** | 3983.1 | 5625.9 | 6670.6‡ | 5010.0 | native |
+| reach.window | gr | gr | gr | 44400.4‡ | **4052.0** | guardrailed |
+| paths.k | **15.5** | 16.2 | 82.9 | 37.2‡ | 240.1 | native |
+| series.count | 183.7 | *352.1* | 782.0 | 2176.7‡ | **40.0** | clickhouse |
+| burst.zscore | 185.3 | *351.1* | 787.1 | 2156.5‡ | **39.5** | clickhouse |
+| nbr.evolution | 68.4 | 62.3 | 107.1 | **2.8**‡ | 88.8 | postgres |
+| coactive.narrow | **166.7** | 172.5 | 222.1 | 1781.7‡ | 207.5 | native |
+| resolve.substr | **95.4** | 95.3 | 838.0 | 200.5‡ | 122.2 | native |
+| agg.rel_bucket | 331.1 | 334.7 | 35798.5 | — | **134.1** | clickhouse |
+| motif.filtered | **75.9** | 78.1 | 164.9 | 661.3‡ | 224.2 | native |
 
 ‡July measurement, carried forward. `gr` = guardrailed (`E_COST`).
+
+**All 13 queries agree across native, DuckDB and ClickHouse in this run.**
+Four of them — `hist.single`, `hist.asof`, `snap.hop2`, `coactive.narrow` —
+hash differently from the `d12b30f` run, *identically on all three systems*,
+because those are the four whose answers carry `vid`/`tt` and each harness
+run builds its own store from a fresh clock (D-023). The other nine hash
+byte-identically across both runs and all systems.
+
+**`series.count` 352.1 → 183.7 and `burst.zscore` 351.1 → 185.3** are the
+D-046 scan work; nothing else moved by more than the ±20% reproducibility
+band, in either direction. Two cautions on reading the rest of the column:
+`nbr.evolution` is 10% *slower* and DuckDB's `series.count` is 20% *faster*
+than in the morning's run at code neither change touches — which is what
+that band is for.
 
 **`paths.k` at 10M is no longer refused.** The July table recorded it as a
 guardrail firing on a query PostgreSQL answered in 37 ms — a cost-model
@@ -176,9 +193,9 @@ ClickHouse win; both facts are kept.
 
 The scaling stories the four-system sweep settles: **ClickHouse's
 aggregation lead grows with scale** — 2× over native at 200k, 3.5× at 1M,
-**8.7× at 10M** (40.3 vs 352.1, and 12× before the refresh) — it is simply
-the right engine for whole-window aggregation, and the honest comparison
-says so. Its
+and **4.6× at 10M** (40.0 vs 183.7; it was 8.7× before the D-046 scan work
+and 12× before the refresh before that) — it is simply the right engine for
+whole-window aggregation, and the honest comparison says so. Its
 iterative relaxation also **beats PostgreSQL's by 11×** on the
 reachability query TGMS guardrails (4.0 s vs 44.4 s), so the baselines
 now bracket that guardrail from both sides. Meanwhile the interval join
@@ -428,7 +445,7 @@ The comparison did not move in TGMS's favour by handicapping the other side.
 ## Racing the specialist on its own shape (D-044)
 
 ClickHouse's aggregation lead was the clearest thing the baselines found:
-8.7× at 10M on `series.count`, growing with scale. It was also the
+8.7× at 10M on `series.count` as measured then, growing with scale. It was also the
 capability the independent-question study ranked first. So the fourteenth
 operator, `aggregate_events`, was built directly against that column —
 count and distinct-endpoint counts over closed dimensions (time bucket,
@@ -448,9 +465,11 @@ on Neo4j and Memgraph — all agreeing on one canonical hash.
 **We take it at 200k and lose it after.** Native leads 2.2× at 200k;
 ClickHouse holds it at 1.8× (1M) and 2.4× (10M), so the crossover sits
 between the first two scales. That is the result, and it is a better one than it looks: the same
-engine leads `series.count` by 8.7× at 10M, so on the query family the
-operator was designed for, the gap closed from roughly nine-fold to
-two-fold. Against the row stores it is not close — 37× faster than tuned
+engine led `series.count` by 8.7× at 10M when this was written, so on the
+query family the operator was designed for, the gap closed from roughly
+nine-fold to two-fold. (D-046 has since taken `series.count` to 183.7 ms
+and that lead to 4.6×, without moving `agg.rel_bucket` — see "Where the 10M
+scan actually goes", which explains why the two were never the same cost.) Against the row stores it is not close — 37× faster than tuned
 PostgreSQL at 1M, on a query PostgreSQL answers with a plain `GROUP BY`.
 
 The interesting number is not in the table. At 10M, `agg.rel_bucket`
