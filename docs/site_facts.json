@@ -98,6 +98,16 @@
       ],
       "note": "Memory caps enforced with docker --memory. Thread recalibration at 88b18d3, original sweep at 6fb7cb1. Memory-cap cells are warmup 2, reps 5; cold-start is a median of firsts over 5 trials.",
       "record": "benchmarks/results-v1/eval-resources-memcap-budget-10m.json"
+    },
+    "concurrency-1m-d049": {
+      "commit": "cb3248e",
+      "date": "2026-08-03",
+      "scale": "1,000,000 events",
+      "systems": [
+        "native"
+      ],
+      "note": "D-049 concurrency run; the write-path cells were re-measured on the same host and are within the +/-20% band of their previous values.",
+      "record": "docs/eval_concurrency.md"
     }
   },
   "facts": {
@@ -520,16 +530,16 @@
       "label_required": "historical waypoint"
     },
     "append_batch1000_ev_s": {
-      "value": "45,958",
+      "value": "44874",
       "kind": "benchmark",
-      "prose": "events per second on sustained appends at batch size 1000; the same durable commit floor gives 96 ev/s at batch 1",
-      "snapshot": "eval-writes.json, commit caa5246"
+      "prose": "events per second on sustained appends at batch size 1000; the same durable commit floor gives 95 ev/s at batch 1",
+      "snapshot": "concurrency-1m-d049"
     },
     "correction_latency_p50_ms": {
-      "value": "4.84",
+      "value": "4.66",
       "kind": "benchmark",
       "prose": "ms median for a single-operation correction against a 100k-row store",
-      "snapshot": "eval-writes.json, commit caa5246"
+      "snapshot": "concurrency-1m-d049"
     },
     "correction_growth_kb": {
       "value": "64",
@@ -786,6 +796,24 @@
       "kind": "benchmark",
       "prose": "times faster than ClickHouse on grouped aggregation at 10M, after D-047 \u2014 outside this run's noise but only just outside a doubled between-day band",
       "snapshot": "registry-v2-10m-3sys"
+    },
+    "writer_cost_to_readers_pct": {
+      "value": "0-3",
+      "kind": "benchmark",
+      "prose": "percent of per-query latency that a live writer costs concurrent readers at 1M (0.3-1.5% of aggregate throughput)",
+      "snapshot": "concurrency-1m-d049"
+    },
+    "readers_cost_to_writer_pct": {
+      "value": "1.0",
+      "kind": "benchmark",
+      "prose": "percent of commit latency that concurrent readers cost the writer, across 1 to 8 readers at 1M",
+      "snapshot": "concurrency-1m-d049"
+    },
+    "group_commit_speedup_16": {
+      "value": "39.3",
+      "kind": "benchmark",
+      "prose": "times more rows per second at 16 concurrent single writers when queued writes share one fsync; opt-in, because it costs the single-writer case 56% latency",
+      "snapshot": "concurrency-1m-d049"
     }
   },
   "retired_phrases": [

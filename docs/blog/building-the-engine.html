@@ -345,7 +345,7 @@ waypoint, since later projection work took the query above this scan to
 <h2>What this means in practice</h2>
 
 <p><b>What you gain.</b> Corrections are cheap and never destroy history
-(<span data-fact="correction_latency_p50_ms">4.84</span> ms against a 100k-row
+(<span data-fact="correction_latency_p50_ms">4.66</span> ms against a 100k-row
 store). Readers are lock-free and see a consistent store without coordinating
 with writers — a reader opens with <code>read_only=True</code>, pins the
 generation it opened, and a live writer costs it 0–3% of query latency. Answers reproduce across backends and thread counts, which is
@@ -358,7 +358,7 @@ under a 2 GB cap
 <ul>
 <li><b>Commit latency.</b> A commit is several fsyncs plus a fresh manifest, so
 one-event-per-commit writing is slow: 96 events/s at batch 1 against
-<span data-fact="append_batch1000_ev_s">45,958</span> at batch 1000. One
+<span data-fact="append_batch1000_ev_s">44874</span> at batch 1000. One
 correction also grows the store by about
 <span data-fact="correction_growth_kb">64</span> KB, nearly all manifest.</li>
 <li><b>Warm-up.</b> Query indexes are built in memory on first read, so the
