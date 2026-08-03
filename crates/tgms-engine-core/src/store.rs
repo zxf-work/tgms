@@ -1413,7 +1413,7 @@ mod tests {
     }
 
     #[test]
-    fn crash_after_dict_append_before_manifest_truncates_the_tail() {
+    fn crash_after_dict_append_before_manifest_leaves_the_tail_invisible() {
         let root = tmp_root("crash-dict");
         let mut s = NativeStore::open(&root).unwrap();
         commit_with(&mut s, 10, &["n1"]);
@@ -1424,13 +1424,79 @@ mod tests {
         let mut d = Dictionary::open(root.join(DICT), 1, committed_bytes).unwrap();
         d.ensure("orphan", "Node").unwrap();
         d.commit_to_disk().unwrap();
-        assert!(fs::metadata(root.join(DICT)).unwrap().len() > committed_bytes);
+        let orphaned_len = fs::metadata(root.join(DICT)).unwrap().len();
+        assert!(orphaned_len > committed_bytes);
 
-        let re = NativeStore::open(&root).unwrap();
+        // the orphan is invisible: the manifest's byte count is the only
+        // authority on what the dictionary contains
+        let mut re = NativeStore::open(&root).unwrap();
         assert_eq!(re.generation(), 1);
         assert_eq!(re.dict().len(), 1);
         assert_eq!(re.dict().dense_id("orphan"), None);
-        assert_eq!(fs::metadata(root.join(DICT)).unwrap().len(), committed_bytes);
+
+        // and the next commit reclaims those bytes by overwriting them —
+        // open does not truncate, because open must not mutate the store
+        // (a *live* writer's tail looks identical to a dead one's)
+        commit_with(&mut re, 20, &["n2"]);
+        assert_eq!(
+            fs::metadata(root.join(DICT)).unwrap().len(),
+            re.manifest().dict.bytes,
+            "the writer rewrites from its committed offset and trims the rest"
+        );
+        assert_eq!(re.dict().dense_id("orphan"), None);
+        assert_eq!(re.dict().dense_id("n2"), Some(1));
+        drop(re);
+        assert_eq!(NativeStore::open(&root).unwrap().dict().len(), 2);
+    }
+
+    /// Opening a store must not mutate it.
+    ///
+    /// The single writer spends a window inside every commit between step 3
+    /// (the dictionary tail is fsynced) and step 5 (`CURRENT` flips). In that
+    /// window `dict.log` is longer than the published generation claims —
+    /// byte-for-byte indistinguishable from the orphaned tail a crashed batch
+    /// leaves behind. A reader process that opens there and "cleans up" the
+    /// tail destroys bytes the writer has already made durable and is about
+    /// to name: the generation the writer then publishes is unreadable, so a
+    /// commit that returned successfully has lost its durability guarantee to
+    /// an unrelated reader. Lessons §6: every mutation must be scoped, and
+    /// the cheapest scoping is not mutating at all.
+    #[test]
+    fn a_reader_opening_mid_commit_cannot_brick_the_generation_being_published() {
+        let root = tmp_root("open-midcommit");
+        let mut w = NativeStore::open(&root).unwrap();
+        commit_with(&mut w, 10, &["n1"]);
+        let base = w.manifest().dict.bytes;
+
+        // the writer is inside commit(): step 3 has fsynced the tail for the
+        // generation it is about to publish; steps 4-5 have not run
+        let mut tail = Dictionary::open(root.join(DICT), 1, base).unwrap();
+        tail.ensure("n2", "Node").unwrap();
+        let (records, bytes) = tail.commit_to_disk().unwrap();
+        assert!(bytes > base);
+
+        // a reader process opens the store in exactly that window
+        let reader = NativeStore::open(&root).unwrap();
+        assert_eq!(reader.generation(), 1);
+        assert_eq!(reader.dict().len(), 1, "a reader sees its own generation");
+        drop(reader);
+        assert_eq!(
+            fs::metadata(root.join(DICT)).unwrap().len(),
+            bytes,
+            "a reader deleted a live writer's fsynced dictionary tail"
+        );
+
+        // steps 4-5 complete: what the writer promised is durable
+        let mut next = w.manifest().successor(20);
+        next.dict.records = records;
+        next.dict.bytes = bytes;
+        next.seal();
+        NativeStore::publish(&root, &next).unwrap();
+
+        let re = NativeStore::open(&root).unwrap();
+        assert_eq!(re.generation(), 2);
+        assert_eq!(re.dict().len(), 2);
+        assert_eq!(re.dict().dense_id("n2"), Some(1));
     }
 
     #[test]
