@@ -13,7 +13,7 @@ actually cost time.
 
 ## 1. Measure the layer before optimizing it
 
-Eleven times we identified "the bottleneck" and were wrong. Every single
+Thirteen times we identified "the bottleneck" and were wrong. Every single
 time, the fix that mattered was found by measuring *after* the intended fix
 failed to move the number.
 

@@ -217,7 +217,12 @@ correction box and the changelog.
 
 Retired claims are enforced mechanically: `docs/site_facts.json` carries a
 `retired_phrases` list with a reason each, and `scripts/site_facts.py check`
-fails CI if one reappears anywhere on the site.
+fails CI if one reappears anywhere on the site — including in the README.
+
+A changelog entry has to be able to *name* the claim it retracts, so a line
+carrying the marker `<!--retired-ok-->` is exempt. Use it for a mention,
+never for a use: if the sentence would still read as an assertion with the
+marker removed, the marker is being abused.
 
 ## 8. The facts pipeline
 

@@ -44,6 +44,18 @@ def _strip_tags(s: str) -> str:
     return re.sub(r"<[^>]+>", "", s)
 
 
+#: A changelog entry has to be able to name the claim it retracts, so a line
+#: carrying this marker is exempt. Use it for mentions, never for uses.
+ALLOW = "<!--retired-ok-->"
+
+
+def _retired_hits(text: str, phrase: str) -> bool:
+    """True when `phrase` appears on a line that is not exempted."""
+    needle = phrase.lower()
+    return any(needle in line.lower() and ALLOW not in line
+               for line in text.splitlines())
+
+
 def check(data: dict) -> int:
     facts, bad = data["facts"], []
     retired = data.get("retired_phrases", [])
@@ -61,7 +73,7 @@ def check(data: dict) -> int:
                 bad.append(f"{rel}: {key} shows {shown!r}, source says "
                            f"{facts[key]['value']!r} — run `site_facts.py apply`")
         for r in retired:
-            if r["phrase"].lower() in text.lower():
+            if _retired_hits(text, r["phrase"]):
                 bad.append(f"{rel}: retired phrase {r['phrase']!r} — {r['reason']}")
 
     for doc in PROSE:
@@ -69,7 +81,7 @@ def check(data: dict) -> int:
             continue
         text, rel = doc.read_text(), doc.relative_to(ROOT)
         for r in retired:
-            if r["phrase"].lower() in text.lower():
+            if _retired_hits(text, r["phrase"]):
                 bad.append(f"{rel}: retired phrase {r['phrase']!r} — {r['reason']}")
 
     if bad:

@@ -125,8 +125,8 @@
     "unsupported_claims": {
       "value": "0",
       "kind": "tested",
-      "prose": "unsupported claims among the 268 evaluated answers of the dev-split campaign",
-      "scope_required": "must be stated with its denominator, never as a universal guarantee"
+      "prose": "emitted answers containing an unsupported claim, with gating \u2014 0 of 199 on the frozen CollegeMsg campaign; before gating it was 21 of 220",
+      "scope_required": "always state the denominator (199 emitted, of 282 task runs) and never as a universal guarantee; coverage is 199/282, so part of the zero is bought by declining"
     },
     "unsupported_claims_denominator": {
       "value": "268",
@@ -138,7 +138,7 @@
     "answer_accuracy_tgms": {
       "value": "41",
       "kind": "benchmark",
-      "prose": "percent of tasks whose structured answer exactly matched the reference (pooled, Qwen2.5-14B)",
+      "prose": "percent, normalized typed-answer accuracy (the paper's metric: counts and values exact, interval answers credited at IoU >= 0.5) \u2014 pooled dev split, Qwen2.5-14B",
       "exact": "0.41"
     },
     "series_10m_native_ms": {
@@ -499,6 +499,10 @@
     {
       "phrase": "graph engines lose their home turf",
       "reason": "overgeneralises from a bi-temporal traversal workload; say which workload was measured"
+    },
+    {
+      "phrase": "exact match",
+      "reason": "the paper explicitly rejects this name \u2014 interval answers are credited at IoU >= 0.5, so the metric is normalized typed-answer accuracy; see paper/main.tex 'Metric'"
     }
   ]
 }
