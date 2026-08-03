@@ -268,6 +268,16 @@ behind the "lock-free reads off immutable segments" claim.
    perfectly linear to 8 readers (2.33 → 16.0 q/s, 6.9×). No
    cross-reader interference consistent with locking appears anywhere.
 
+   **Read this as narrowly as it is written.** Every reader here runs
+   against a *quiescent* store — no writer is committing. The mixed case,
+   measured on 2026-08-03 (`docs/eval_concurrency.md`, D-049), found two
+   correctness defects before it found any cost: opening a store ran crash
+   recovery, so each reader published generations of its own, and opening
+   truncated a live writer's fsynced dictionary tail. Both were structurally
+   invisible here, because a readers-only run never puts the store in the
+   state that exposes them. Readers now open `read_only=True`, and the cost
+   with a live writer is 0–3% of per-query latency.
+
 2. **At 10M the ceiling is memory, not locks: the host OOM killer took
    2 of 16 readers.** Each reader independently warms ~4 GB of process
    memory (unbounded segment cache plus materialization) — 16 readers

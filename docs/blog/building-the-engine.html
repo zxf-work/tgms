@@ -347,7 +347,8 @@ waypoint, since later projection work took the query above this scan to
 <p><b>What you gain.</b> Corrections are cheap and never destroy history
 (<span data-fact="correction_latency_p50_ms">4.84</span> ms against a 100k-row
 store). Readers are lock-free and see a consistent store without coordinating
-with writers. Answers reproduce across backends and thread counts, which is
+with writers — a reader opens with <code>read_only=True</code>, pins the
+generation it opened, and a live writer costs it 0–3% of query latency. Answers reproduce across backends and thread counts, which is
 what makes post #7's six-system comparison possible. A 10M-event suite fits
 under a 2 GB cap
 (<span data-fact="memory_10m_suite">1.76</span> GB peak).</p>
@@ -426,6 +427,13 @@ scan</a>.</li>
 
 <h2>Changelog</h2>
 <ul>
+<li><b>3 August 2026, later</b> — the lock-free reader claim is now
+measured against a <i>live writer</i> rather than a quiescent store, and
+says so. Getting there took fixing two defects in what opening a store did:
+it ran crash recovery, which made every reader a second writer, and it
+truncated a dictionary tail that a committing writer had already made
+durable. Neither was reachable from the readers-only measurement this post
+originally cited.</li>
 <li><b>3 August 2026</b> — rewritten to lead with the requirement rather than
 with Kùzu's acquisition; the misdiagnosis table is linked rather than
 reproduced, and warm-up, compaction growth and the maintenance commitment are

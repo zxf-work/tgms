@@ -139,6 +139,16 @@ safe `mmap` (nothing can change underneath a mapping), verify-once-per-session
 checksums (a verified segment stays verified), and lock-free concurrent
 readers.
 
+**Free is not the same as already true**, and this list is where that
+distinction cost the most. Immutability makes concurrent reads *possible*
+without locks; it does not stop the code from writing anyway. Two things a
+reader did at open — replaying the crash-recovery suffix, and truncating a
+dictionary tail it read as orphaned — were writes, and both were invisible
+to every readers-only measurement we took. The story is §17. Read this
+section as the argument for a design, not as a report that the design is
+implemented; that difference is exactly what the mixed writer+readers test
+was built to check.
+
 The design mistake we made and had to fix: an early draft kept a store-wide
 mutable set of closes. It would have let a reader holding generation *N*
 observe visibility from *N+1* — a coherent-snapshot violation that no test
