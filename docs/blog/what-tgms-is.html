@@ -1,0 +1,347 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>What TGMS Is — and Is Not — TGMS blog</title>
+<meta name="description" content="A five-minute orientation: the problem TGMS solves for agents, its three components, one worked example, and a plain statement of the workloads PostgreSQL, ClickHouse and Neo4j remain better at.">
+<style>
+:root{--ink:#1a2534;--mut:#5b6b7c;--blue:#1c64d9;--blue2:#3b82f6;--line:#e3e8ef;
+      --bg:#fbfcfe;--card:#fff;--codebg:#0e1c30;--codetx:#dce7f5;--ok:#0a7d33;
+      --amber:#b58900;--bad:#c0392b;
+      --mono:ui-monospace,'SF Mono',Menlo,monospace}
+@media (prefers-color-scheme: dark){
+:root{--ink:#e6edf6;--mut:#95a6ba;--blue:#6ea8ff;--blue2:#8bbcff;--line:#243244;
+      --bg:#0b1420;--card:#121e2e;--codebg:#0a1017;--codetx:#cfe0f2;--ok:#4ade80;
+      --amber:#e3b341;--bad:#f87171}}
+*{box-sizing:border-box}
+body{margin:0;font-family:-apple-system,'Segoe UI',Roboto,sans-serif;
+     color:var(--ink);background:var(--bg);-webkit-font-smoothing:antialiased}
+.hero{background:linear-gradient(150deg,#0e1c30 0%,#173863 62%,#1c64d9 130%);
+      color:#fff;padding:30px 24px 44px}
+.hero .nav{max-width:760px;margin:0 auto 30px;font-size:14px}
+.hero .nav a{color:#c9d8ef;text-decoration:none;margin-right:14px}
+.hero .inner{max-width:760px;margin:0 auto}
+.kicker{display:inline-block;background:#ffffff22;border:1px solid #ffffff33;
+        border-radius:14px;padding:3px 12px;font-size:12px;letter-spacing:.08em;
+        text-transform:uppercase;color:#dbe7f8}
+h1{font-size:clamp(26px,4.6vw,38px);line-height:1.16;letter-spacing:-.7px;
+   margin:14px 0 10px;color:#fff}
+.byline{color:#a9c0e2;font-size:14.5px}
+.byline a{color:#dbe7f8}
+article{max-width:760px;margin:0 auto;padding:40px 24px 30px;line-height:1.72;
+        font-size:17px}
+article>p:first-of-type{font-size:19px;color:var(--mut)}
+h2{font-size:23px;letter-spacing:-.3px;margin:44px 0 12px;position:relative;
+   padding-top:18px}
+h2::before{content:"";position:absolute;top:0;left:0;width:44px;height:4px;
+   border-radius:2px;background:linear-gradient(90deg,var(--blue),var(--blue2))}
+.pull{font-size:22px;line-height:1.45;font-weight:600;letter-spacing:-.2px;
+      border:0;margin:30px 0;padding:0 0 0 22px;position:relative;color:var(--ink)}
+.pull::before{content:"";position:absolute;left:0;top:6px;bottom:6px;width:5px;
+      border-radius:3px;background:linear-gradient(180deg,var(--blue),var(--blue2))}
+.duo{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin:22px 0}
+@media(max-width:640px){.duo{grid-template-columns:1fr}}
+.duo .cell{background:var(--card);border:1px solid var(--line);border-radius:12px;
+     padding:14px 16px}
+.duo .cell b{display:block;font-size:13px;text-transform:uppercase;
+     letter-spacing:.06em;color:var(--mut);margin-bottom:6px}
+.duo .big{font-size:30px;font-weight:700;color:var(--blue)}
+.duo .big.bad{color:var(--bad)}
+figure{margin:26px 0;background:var(--card);border:1px solid var(--line);
+       border-radius:14px;padding:18px 18px 8px}
+figcaption{color:var(--mut);font-size:13.5px;line-height:1.5;padding:8px 4px 10px}
+table{border-collapse:collapse;width:100%;font-size:15px;margin:20px 0;
+      background:var(--card);border-radius:12px;overflow:hidden;
+      border:1px solid var(--line)}
+th,td{padding:11px 12px;text-align:right;border-bottom:1px solid var(--line)}
+th{background:#1c64d90d;font-size:13px;text-transform:uppercase;
+   letter-spacing:.04em;color:var(--mut)}
+th:first-child,td:first-child{text-align:left}
+tr:last-child td{border-bottom:0}
+td.win{color:var(--ok);font-weight:700}
+td.miss{color:var(--bad);font-weight:700}
+a{color:var(--blue)}
+code{font-family:var(--mono);background:#1c64d914;border-radius:5px;
+     padding:1px 6px;font-size:.9em}
+.note{background:#1c64d90e;border:1px solid #1c64d930;border-radius:12px;
+      padding:14px 18px;font-size:15px;margin:24px 0;line-height:1.6}
+.next{max-width:760px;margin:0 auto;padding:0 24px 70px}
+.next a{display:block;background:var(--card);border:1px solid var(--line);
+        border-radius:14px;padding:18px 22px;text-decoration:none;color:var(--ink);
+        transition:transform .12s, box-shadow .12s}
+.next a:hover{transform:translateY(-2px);box-shadow:0 10px 26px #0e1c301f}
+.next .lbl{font-size:12px;color:var(--mut);text-transform:uppercase;letter-spacing:.07em}
+.next .ttl{color:var(--blue);font-weight:650;font-size:17px;margin-top:4px}
+.sub{color:#c9d8ef;font-size:16.5px;line-height:1.5;margin:6px 0 10px;max-width:56ch}
+.lede{margin:0 0 26px;padding:16px 20px;border-left:5px solid var(--blue);
+      background:var(--card);border-radius:0 12px 12px 0;font-size:18px;
+      line-height:1.6;color:var(--ink)}
+article ul{padding-left:22px;margin:16px 0}
+article li{margin:7px 0}
+article ol{padding-left:22px;margin:16px 0}
+svg text{font-family:-apple-system,'Segoe UI',Roboto,sans-serif}
+svg .m{font-family:var(--mono)}
+</style></head><body>
+
+<div class="hero">
+<div class="nav"><a href="../">← TGMS</a><a href="./">blog</a>
+<a href="https://github.com/zxf-work/tgms">github</a></div>
+<div class="inner">
+<span class="kicker">Post #0 · Understand TGMS</span>
+<h1>What TGMS Is — and Is Not</h1>
+<div class="sub">Start here: the problem, the three components, one worked
+example, and the workloads other systems still do better.</div>
+<div class="byline">Xiaofei Zhang · University of Memphis · 3 August 2026 ·
+TGMS 0.4.0 · snapshot <code>registry-v2</code> · 5 min · status: Current ·
+<a href="https://github.com/zxf-work/tgms">code</a></div>
+</div></div>
+
+<article>
+<blockquote class="lede"><b>In one sentence:</b> TGMS is a store for facts
+that change over time, built so an agent can ask what was true, ask what the
+system <i>believed</i> at some past moment, and get an answer whose supporting
+evidence can be checked — and it is not a general replacement for the database
+you already run.</blockquote>
+
+<h2>Why this matters</h2>
+
+<p>Give a language model a question about a changing world and it has two bad
+options. It can be handed a pile of text and asked to reason over it, which
+works until the question needs counting, grouping, or following relationships
+several steps out. Or it can be handed today's database, which answers about
+<i>now</i> and quietly loses the fact that last month's answer was different —
+and that someone corrected the data on Tuesday.</p>
+
+<p>Two problems live in that gap:</p>
+
+<ul>
+<li><b>Structured temporal computation.</b> "How many distinct accounts did
+each region message in March?" is arithmetic over relationships in a time
+window. A model that estimates it is guessing; the computation should be
+executed, not narrated.</li>
+<li><b>Auditable answers.</b> When the answer matters, "the model said so" is
+not a citation. You need to know which records produced the number, and
+whether the records were complete.</li>
+</ul>
+
+<h2>The idea in plain language</h2>
+
+<p>TGMS has three parts. The vocabulary here is used by every other post in
+this series.</p>
+
+<p><b>1. A bi-temporal store.</b> Every fact carries two clocks: when it was
+true in the world, and when the database believed it. Recording a correction
+appends a new version rather than overwriting the old one, so the question
+"what did we believe on 1 April?" stays answerable after the data is fixed on
+10 April. That second clock — what the system believed, and when — is what
+<b>bi-temporal</b> adds, and reconstructing an answer at a past moment gives
+you a <b>past belief state</b>.</p>
+
+<p><b>2. Verified operations.</b> Questions are not answered by free-form
+code. They are answered by <span data-fact="operator_count">14</span> named
+<b>verified data operations</b> — filter a time window, follow relationships
+forward in time, group and count, find a repeating pattern — each with a
+checked input and output contract, each with an independent reference
+implementation that tests agree with it. Several of them chained together is a
+<b>plan</b>.</p>
+
+<p><b>3. A plan–execute–verify loop.</b> The model writes the plan; the engine
+executes it; a verifier then checks that every claim in the final answer is
+actually supported by what the operations returned. A claim computed over a
+result page that was cut short is marked rather than believed — the value can
+be arithmetically correct and the evidence still incomplete.</p>
+
+<figure>
+<svg viewBox="0 0 720 230" width="100%" role="img"
+     aria-label="The three components: a bi-temporal store holding two clocks per fact feeds verified operations, which are chained into a plan by the model, executed, and then checked by a verifier that marks any claim whose evidence is incomplete before the answer is returned.">
+  <defs><marker id="a0" markerWidth="9" markerHeight="9" refX="7" refY="3"
+    orient="auto"><path d="M0,0 L7,3 L0,6 z" fill="var(--mut)"/></marker></defs>
+  <rect x="12" y="52" width="150" height="66" rx="10" fill="#7c5cd6" opacity=".16"
+        stroke="#7c5cd6" stroke-opacity=".55"/>
+  <text x="87" y="76" font-size="13" fill="var(--ink)" text-anchor="middle">bi-temporal</text>
+  <text x="87" y="93" font-size="13" fill="var(--ink)" text-anchor="middle">store</text>
+  <text x="87" y="109" font-size="11" fill="var(--mut)" text-anchor="middle">two clocks per fact</text>
+
+  <rect x="200" y="52" width="150" height="66" rx="10" fill="var(--blue)" opacity=".16"
+        stroke="var(--blue)" stroke-opacity=".55"/>
+  <text x="275" y="76" font-size="13" fill="var(--ink)" text-anchor="middle">verified</text>
+  <text x="275" y="93" font-size="13" fill="var(--ink)" text-anchor="middle">operations</text>
+  <text x="275" y="109" font-size="11" fill="var(--mut)" text-anchor="middle">14, contract-checked</text>
+
+  <rect x="388" y="52" width="150" height="66" rx="10" fill="var(--blue)" opacity=".16"
+        stroke="var(--blue)" stroke-opacity=".55"/>
+  <text x="463" y="76" font-size="13" fill="var(--ink)" text-anchor="middle">plan, executed</text>
+  <text x="463" y="93" font-size="13" fill="var(--ink)" text-anchor="middle">by the engine</text>
+  <text x="463" y="109" font-size="11" fill="var(--mut)" text-anchor="middle">model writes it</text>
+
+  <rect x="576" y="52" width="132" height="66" rx="10" fill="var(--ok)" opacity=".16"
+        stroke="var(--ok)" stroke-opacity=".55"/>
+  <text x="642" y="76" font-size="13" fill="var(--ink)" text-anchor="middle">verifier</text>
+  <text x="642" y="93" font-size="11" fill="var(--mut)" text-anchor="middle">is each claim</text>
+  <text x="642" y="108" font-size="11" fill="var(--mut)" text-anchor="middle">supported?</text>
+
+  <g stroke="var(--mut)" stroke-width="1.6" fill="none" marker-end="url(#a0)" opacity=".7">
+    <path d="M164,85 L196,85"/><path d="M352,85 L384,85"/><path d="M540,85 L572,85"/>
+  </g>
+  <path d="M642,124 C642,168 642,178 500,178 L300,178" stroke="var(--amber)"
+        stroke-width="1.6" fill="none" stroke-dasharray="5 4" marker-end="url(#a0)"
+        opacity=".85"/>
+  <text x="300" y="196" font-size="11.5" fill="var(--amber)" text-anchor="middle">unsupported
+  or incomplete → replan, or return the answer marked</text>
+  <text x="12" y="30" font-size="12" fill="var(--mut)">a question enters here →</text>
+</svg>
+<figcaption>The three components and how a question moves through them. The
+amber path is the case that makes the loop worth having: an answer whose
+evidence does not support it goes back rather than out. Conceptual diagram,
+not measured data.</figcaption>
+</figure>
+
+<h2>One question, all the way through</h2>
+
+<p>Take a real shape: <i>"In March, how many distinct accounts did users in
+each region message — as we believed things on 1 April?"</i> A correction
+landed on 10 April moving several accounts to a different region.</p>
+
+<ol>
+<li><b>The store</b> holds every relationship version with both clocks, so "as
+believed on 1 April" is a filter over data that is already there. Nothing is
+rebuilt or restored, and the 10 April correction is simply not yet visible at
+that belief time.</li>
+<li><b>The operations</b> do the work: select the March valid-time window,
+group by region, count distinct recipients. Each is a named operation with a
+contract, so the plan is checkable before it runs — and the result carries a
+fingerprint, which is how we verify that four other systems answering the same
+question get byte-identical results.</li>
+<li><b>The verifier</b> checks the final claim against what came back. If the
+result had been truncated by a row limit, the distinct count would rest on
+partial evidence, and the claim is marked instead of asserted.</li>
+</ol>
+
+<p>The same question asked today, without the belief filter, gives a different
+and equally correct answer. Both remain available, permanently. That is the
+whole point.</p>
+
+<div class="note"><b>Where the numbers on this page come from.</b> Every
+figure quoted below is measured on one 40-core host with
+<span data-fact="registry_queries">13</span> registry queries run against
+<span data-fact="system_count">6</span> systems, on a synthetic bi-temporal
+event log containing corrections, at 200k to 10M events. Every cell is
+hash-verified to return the identical answer before it is timed. Latency cells
+reproduce to about ±<span data-fact="reproducibility_band">20</span>% between
+days. Snapshot <code>registry-v2</code>; full tables and records in
+<a href="https://github.com/zxf-work/tgms/blob/main/docs/eval_phase0.md">eval_phase0.md</a>.</div>
+
+<h2>What TGMS is not</h2>
+
+<p>It is not a general replacement for the database you already run, and the
+measured boundaries are specific.</p>
+
+<ul>
+<li><b>Not a replacement for PostgreSQL.</b> If your workload is transactional
+writes, high-rate indexed reads over current state, or anything wanting a
+mature general query optimiser, PostgreSQL is the better tool. On point
+lookups the two are close and the ordering depends on scale —
+<span data-fact="point_lookup_200k_native_ms">0.1</span> ms against
+PostgreSQL's <span data-fact="point_lookup_200k_postgres_ms">0.3</span> at
+200k events, with PostgreSQL ahead again at 10M.</li>
+<li><b>Not a replacement for ClickHouse.</b> Large whole-window aggregation is
+a column store's home ground and the gap grows with scale: at 10M events
+ClickHouse answers the bucketed count in
+<span data-fact="series_10m_clickhouse_ms">40.0</span> ms against our
+<span data-fact="series_10m_native_ms">183.7</span>, a factor of
+<span data-fact="clickhouse_agg_lead_10m">4.6</span>. If nightly rollups over
+tens of millions of events are the job, use a column store; our own numbers
+say so.</li>
+<li><b>Not a replacement for Neo4j or a general graph database.</b> TGMS is
+faster on <i>bi-temporal</i> traversal by one to two orders of magnitude —
+<span data-fact="traversal_200k_native_ms">14.7</span> ms against
+<span data-fact="traversal_200k_graph_engines">3.9-7.3</span> seconds at 200k
+events — because every hop re-filters by validity and belief, which no index
+in those engines accelerates. That is a statement about temporal workloads,
+not about graph engines in general. For ordinary non-temporal traversal we
+have no evidence, and for arbitrary subgraph pattern matching a general graph
+database is strictly more expressive than our fixed catalogue of five
+shapes.</li>
+</ul>
+
+<p>A realistic deployment is often TGMS <i>beside</i> one of these: the
+temporal-graph composition here, the rollups there.</p>
+
+<h2>Maturity, plainly</h2>
+
+<p>TGMS is a research system at version 0.4.0. The limits that will affect you
+first:</p>
+
+<ul>
+<li><b>Single writer.</b> One writing process at a time; concurrency is
+read-side only until belief-state isolation exists.</li>
+<li><b>Fixed pattern catalogue.</b> Five motif shapes, not arbitrary pattern
+matching.</li>
+<li><b>Name resolution is current-canonical and string-only.</b> Matching runs
+over the latest believed name; looking an entity up by a historical alias is
+not offered — a real gap in a system otherwise built around history.</li>
+<li><b>Coverage.</b> Of <span data-fact="coverage_total_questions">110</span>
+questions written by people who had never seen the operator list,
+<span data-fact="coverage_current">24</span> are expressible in the current
+operation set. That number is the honest measure of how much of a real
+analyst's curiosity this system can serve today, and it is the one we most
+want to move.</li>
+</ul>
+
+<h2>What this page does not establish</h2>
+
+<ul>
+<li>The comparisons are one host, one synthetic workload family plus one
+frozen real dataset, warm caches, single client. They do not cover OLTP,
+distributed operation, or cold start.</li>
+<li>Answer-quality figures elsewhere in this series come from specific models
+on specific task sets — for example
+<span data-fact="answer_accuracy_tgms">41</span>% of tasks whose structured
+answer exactly matched the reference (pooled, Qwen2.5-14B). They are not
+claims about language models in general.</li>
+<li>Where this series reports that a campaign produced
+<span data-fact="unsupported_claims">0</span> unsupported claims, that is
+among the 268 evaluated answers of that campaign — a result on a task set, not
+a guarantee.</li>
+</ul>
+
+<h2>Takeaway</h2>
+
+<p>TGMS is narrow on purpose: it makes questions that combine history,
+correction and relationship structure computable and checkable, and it is
+second-best or worse at nearly everything else. The useful question is not
+whether it is faster than your database, but whether your questions have that
+shape.</p>
+
+<h2>Where to go next</h2>
+
+<ul>
+<li><b>If you want the idea:</b> <a href="two-kinds-of-time.html">why an agent
+needs two kinds of time</a>, then
+<a href="statically-valid.html">why valid plans still fail</a> and
+<a href="incomplete-evidence.html">why a verifier must check evidence, not
+just arithmetic</a>.</li>
+<li><b>If you are evaluating it:</b>
+<a href="evaluating-the-engine.html">where TGMS is fast and where specialists
+still win</a>, then <a href="building-the-engine.html">why the storage engine
+exists</a> and <a href="what-remembering-costs.html">what remembering
+costs</a>.</li>
+<li><b>If you like watching measurements overturn beliefs:</b>
+<a href="racing-the-specialist.html">racing the specialist</a> and
+<a href="resident-index.html">how a resident index slowed an unrelated scan by
+18%</a>.</li>
+</ul>
+
+<h2>Changelog</h2>
+<ul>
+<li><b>3 August 2026</b> — first published, as the front door for the series.
+It fixes an ordering problem rather than a factual one: the blog previously
+opened on a specific experiment and left readers to infer what the system was
+and what it did not claim to be.</li>
+</ul>
+</article>
+
+<div class="next"><a href="two-kinds-of-time.html">
+<div class="lbl">Next up</div>
+<div class="ttl">#1 · Why your agent needs two kinds of time →</div></a></div>
+
+<script data-goatcounter="https://zxf-tgms.goatcounter.com/count" async src="https://gc.zgo.at/count.js"></script>
+</body></html>
