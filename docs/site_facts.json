@@ -40,6 +40,64 @@
       ],
       "note": "PostgreSQL's 10M column is a July measurement carried forward, marked in the table.",
       "record": "benchmarks/results-v1/eval-10m-agg.json"
+    },
+    "scale-sweep-collegemsg-94": {
+      "commit": "paper tab:scale",
+      "date": "2026-07-24",
+      "scale": "94-task frozen CollegeMsg test split",
+      "systems": [
+        "native",
+        "static-graph RAG",
+        "text-to-Cypher"
+      ],
+      "note": "Temperature 0, ONE SEED per cell, no confidence interval - unlike the primary campaign, which pools three seeds and reports paired bootstrap CIs. 7B/14B/32B are fp16; the 72B row is AWQ 4-bit, so it varies precision as well as size and is not a controlled scale point. Accuracy cells are 94ths (one task = 1.1 points); probe cells are 13ths (one probe = 7.7 points).",
+      "record": "paper/main.tex tab:scale"
+    },
+    "rag-breadth-h100": {
+      "commit": "paper main.tex",
+      "date": "2026-07-24",
+      "scale": "94-task frozen CollegeMsg test split, 59,835-event corpus",
+      "systems": [
+        "native",
+        "vector-RAG k=1",
+        "vector-RAG k=20"
+      ],
+      "note": "Secondary experiment: retrieval breadth at full 32k context on an H100, single seed. Not a model-scale point.",
+      "record": "paper/main.tex"
+    },
+    "primary-campaign-collegemsg": {
+      "commit": "paper main.tex",
+      "date": "2026-07-24",
+      "scale": "282-task dev campaign",
+      "systems": [
+        "native",
+        "vector-RAG",
+        "static-graph RAG",
+        "text-to-Cypher"
+      ],
+      "note": "Three seeds pooled, paired bootstrap CIs over 10k resamples. Source of the baseline correction-probe numbers.",
+      "record": "paper/main.tex"
+    },
+    "retention-1m-density": {
+      "commit": "1e81393",
+      "date": "2026-08-01",
+      "scale": "1,000,000 events, correction density 0 to 20 percent",
+      "systems": [
+        "native full store",
+        "native current-only store"
+      ],
+      "note": "Host xzgpu. Latency is a median of 30 reps (10 above 1 s); storage, memory and replay are single observations. The close-cache rerun is commit 96ea135.",
+      "record": "benchmarks/results-v1/eval-1m-bitemporal.json"
+    },
+    "retention-10m-resources": {
+      "commit": "f841738",
+      "date": "2026-08-01",
+      "scale": "10,000,000 events",
+      "systems": [
+        "native"
+      ],
+      "note": "Memory caps enforced with docker --memory. Thread recalibration at 88b18d3, original sweep at 6fb7cb1. Memory-cap cells are warmup 2, reps 5; cold-start is a median of firsts over 5 trials.",
+      "record": "benchmarks/results-v1/eval-resources-memcap-budget-10m.json"
     }
   },
   "facts": {
@@ -133,6 +191,250 @@
       "kind": "benchmark",
       "prose": "percent of tasks whose structured answer exactly matched the reference (pooled, Qwen2.5-14B)",
       "exact": "0.41"
+    },
+
+    "scale_tasks": {
+      "value": "94",
+      "kind": "benchmark",
+      "prose": "tasks in the frozen CollegeMsg test split (48 one-hop, 20 three-hop, 13 correction probes, 13 four-hop)",
+      "snapshot": "scale-sweep-collegemsg-94"
+    },
+    "scale_probe_tasks": {
+      "value": "13",
+      "kind": "benchmark",
+      "prose": "correction probes inside the 94-task split; one probe is 7.7 percentage points",
+      "snapshot": "scale-sweep-collegemsg-94"
+    },
+    "scale_acc_7b": {
+      "value": "13.8",
+      "kind": "benchmark",
+      "prose": "percent answer accuracy, Qwen2.5-7B fp16 (13 of 94, single seed)",
+      "snapshot": "scale-sweep-collegemsg-94"
+    },
+    "scale_acc_14b": {
+      "value": "34.0",
+      "kind": "benchmark",
+      "prose": "percent answer accuracy, Qwen2.5-14B fp16 (32 of 94, single seed)",
+      "snapshot": "scale-sweep-collegemsg-94"
+    },
+    "scale_acc_32b": {
+      "value": "62.8",
+      "kind": "benchmark",
+      "prose": "percent answer accuracy, Qwen2.5-32B fp16 (59 of 94, single seed)",
+      "snapshot": "scale-sweep-collegemsg-94"
+    },
+    "scale_acc_72b_awq": {
+      "value": "51.1",
+      "kind": "benchmark",
+      "prose": "percent answer accuracy, Qwen2.5-72B AWQ 4-bit (48 of 94, single seed) - different precision, not a controlled scale point",
+      "snapshot": "scale-sweep-collegemsg-94",
+      "scope_required": "must never be drawn on one continuous line with the fp16 points"
+    },
+    "scale_gain_7b_32b": {
+      "value": "4.5",
+      "kind": "benchmark",
+      "prose": "times higher answer accuracy at 32B than at 7B, both fp16 (62.8 over 13.8; 59 of 94 over 13 of 94)",
+      "snapshot": "scale-sweep-collegemsg-94",
+      "was": "published as 4.6x, which rounded 4.55 up"
+    },
+    "scale_probe_7b": {
+      "value": "38",
+      "kind": "benchmark",
+      "prose": "percent of the 13 correction probes answered exactly, 7B fp16 (5 of 13)",
+      "snapshot": "scale-sweep-collegemsg-94"
+    },
+    "scale_probe_14b": {
+      "value": "77",
+      "kind": "benchmark",
+      "prose": "percent of the 13 correction probes answered exactly, 14B fp16 (10 of 13)",
+      "snapshot": "scale-sweep-collegemsg-94"
+    },
+    "scale_probe_32b": {
+      "value": "100",
+      "kind": "benchmark",
+      "prose": "percent of the 13 correction probes answered exactly, 32B fp16 (13 of 13, single seed)",
+      "snapshot": "scale-sweep-collegemsg-94",
+      "scope_required": "must be stated with its denominator of 13 and its single seed"
+    },
+    "scale_probe_72b_awq": {
+      "value": "31",
+      "kind": "benchmark",
+      "prose": "percent of the 13 correction probes answered exactly, 72B AWQ 4-bit (4 of 13)",
+      "snapshot": "scale-sweep-collegemsg-94"
+    },
+    "scale_cypher_7b": {
+      "value": "9.6",
+      "kind": "benchmark",
+      "prose": "percent answer accuracy, text-to-Cypher baseline at 7B fp16",
+      "snapshot": "scale-sweep-collegemsg-94"
+    },
+    "scale_cypher_32b": {
+      "value": "27.7",
+      "kind": "benchmark",
+      "prose": "percent answer accuracy, text-to-Cypher baseline at 32B fp16 - the best any evaluated baseline reached at any size",
+      "snapshot": "scale-sweep-collegemsg-94"
+    },
+    "baseline_probe_best": {
+      "value": "15.4",
+      "kind": "benchmark",
+      "prose": "percent of correction probes answered exactly by the best evaluated baseline (vector-RAG); static-graph RAG and text-to-Cypher scored 0",
+      "snapshot": "primary-campaign-collegemsg"
+    },
+    "rag_k1_acc": {
+      "value": "10.6",
+      "kind": "benchmark",
+      "prose": "percent answer accuracy, vector-RAG at k=1 over 256-event chunks on a 24 GB card",
+      "snapshot": "rag-breadth-h100"
+    },
+    "rag_k20_acc": {
+      "value": "2.1",
+      "kind": "benchmark",
+      "prose": "percent answer accuracy, vector-RAG at k=20 over 24-event chunks at full 32k context (2 of 94)",
+      "snapshot": "rag-breadth-h100"
+    },
+    "rag_k20_tokens": {
+      "value": "32,475",
+      "kind": "benchmark",
+      "prose": "prompt tokens per task, vector-RAG at k=20",
+      "snapshot": "rag-breadth-h100"
+    },
+    "rag_k20_exposure": {
+      "value": "0.8",
+      "kind": "benchmark",
+      "prose": "percent of the 59,835-event CollegeMsg corpus visible to the k=20 configuration in total (20 chunks x 24 events = 480 events)",
+      "snapshot": "rag-breadth-h100",
+      "was": "published as '0.8% x 20 sites', which read as 16% and overstated exposure twentyfold"
+    },
+    "tgms_same_run_tokens": {
+      "value": "6,521",
+      "kind": "benchmark",
+      "prose": "prompt tokens per task, TGMS on the same run and model as the k=20 comparison",
+      "snapshot": "rag-breadth-h100"
+    },
+    "tgms_same_run_acc": {
+      "value": "36.2",
+      "kind": "benchmark",
+      "prose": "percent answer accuracy, TGMS on the same run and model as the k=20 comparison (34 of 94)",
+      "snapshot": "rag-breadth-h100"
+    },
+
+    "indep_blocked": {
+      "value": "98",
+      "kind": "benchmark",
+      "prose": "of 110 questions blocked by a capability that did not exist in the original 13-operator set"
+    },
+    "indep_g_blocked": {
+      "value": "76",
+      "kind": "benchmark",
+      "prose": "questions whose blockers include grouped or distinct aggregation, somewhere in the chain"
+    },
+    "indep_g_alone": {
+      "value": "30",
+      "kind": "benchmark",
+      "prose": "questions for which grouped aggregation was the only recorded blocker"
+    },
+    "indep_delivered": {
+      "value": "14",
+      "kind": "benchmark",
+      "prose": "questions that actually became expressible once grouped aggregation shipped, against 30 predicted",
+      "snapshot": "coverage re-audit 2026-08-02 (C14 in scripts/independent_questions.py)"
+    },
+    "indep_still_blocked": {
+      "value": "17",
+      "kind": "benchmark",
+      "prose": "of the 30 predicted questions that stayed blocked, on a capability the tag concealed",
+      "snapshot": "coverage re-audit 2026-08-02 (C14 in scripts/independent_questions.py)"
+    },
+    "indep_multi_blocker": {
+      "value": "55",
+      "kind": "benchmark",
+      "prose": "of the 98 blocked questions that need two or more missing capabilities at once"
+    },
+    "indep_scoreable": {
+      "value": "5",
+      "kind": "benchmark",
+      "prose": "of the 10 originally expressible questions whose answer kind was scoreable enough to run verbatim"
+    },
+
+    "zero_density_latency_spread": {
+      "value": "3.4",
+      "kind": "benchmark",
+      "prose": "percent - the widest latency gap between the full bi-temporal store and a current-only store at zero corrections, sign varying by query, against a 20 percent day-to-day reproducibility band"
+    },
+    "storage_overhead_1pct": {
+      "value": "2.1",
+      "kind": "benchmark",
+      "prose": "percent storage overhead over a current-only store at 1 percent correction density, 1M events"
+    },
+    "storage_overhead_5pct": {
+      "value": "8.8",
+      "kind": "benchmark",
+      "prose": "percent storage overhead at 5 percent correction density, 1M events"
+    },
+    "storage_overhead_20pct": {
+      "value": "30.1",
+      "kind": "benchmark",
+      "prose": "percent storage overhead at 20 percent correction density, 1M events"
+    },
+    "density_10m_interval_join": {
+      "value": "4.0",
+      "kind": "benchmark",
+      "prose": "times slower on the interval-join query at 10M events with only 0.1 percent correction density (1,102.6 vs 272.7 ms)"
+    },
+    "memory_10m_before": {
+      "value": "5.93",
+      "kind": "benchmark",
+      "prose": "GB peak RSS for the 10M suite before the statistics warm-up fix, whatever the query; OOM-killed under a 4 GB cap"
+    },
+    "memory_10m_smallbudget": {
+      "value": "1.61",
+      "kind": "benchmark",
+      "prose": "GB peak RSS for the 10M suite with a 256 MiB segment-cache budget"
+    },
+    "memory_cache_measured": {
+      "value": "794",
+      "kind": "benchmark",
+      "prose": "MB the segment cache actually held - far too little to explain a 5.93 GB peak, which is what refuted the cache diagnosis"
+    },
+    "evictions_smallbudget": {
+      "value": "32,615",
+      "kind": "benchmark",
+      "prose": "cache evictions under the 256 MiB budget, with every answer still hash-identical"
+    },
+    "threads_10m_speedup": {
+      "value": "4.4-5.4",
+      "kind": "benchmark",
+      "prose": "times faster on the interval-join query at 10M events going from 1 to 16 and 32 threads; at 1M the same sweep is flat within 1.4 percent"
+    },
+    "readers_1m_throughput": {
+      "value": "13.1",
+      "kind": "benchmark",
+      "prose": "times aggregate query throughput at 16 concurrent readers versus 1, at 1M events (173.1 vs 13.21 queries per second)"
+    },
+    "readers_10m_throughput": {
+      "value": "10.2",
+      "kind": "benchmark",
+      "prose": "times aggregate query throughput at 16 concurrent readers at 10M events, with 2 of the 16 readers OOM-killed"
+    },
+    "readers_latency_worst": {
+      "value": "53",
+      "kind": "benchmark",
+      "prose": "percent worse per-query latency for the slowest query at 16 readers (snap.hop2, 100.7 to 154.1 ms) - throughput scaling is not latency parity"
+    },
+    "coldstart_10m": {
+      "value": "27-31",
+      "kind": "benchmark",
+      "prose": "seconds to first answer at 10M events on a fresh process, whichever query runs first (median of firsts, 5 trials)"
+    },
+    "replay_20pct_before_min": {
+      "value": "47.6",
+      "kind": "benchmark",
+      "prose": "minutes to replay the event log at 20 percent correction density before the close-cache fix (2,856.8 s)"
+    },
+    "replay_20pct_after_min": {
+      "value": "6.0",
+      "kind": "benchmark",
+      "prose": "minutes to replay the same log after the per-generation close cache (361.1 s), a 7.9x reduction"
     }
   },
   "retired_phrases": [

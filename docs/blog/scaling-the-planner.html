@@ -1,16 +1,16 @@
 <!doctype html><html lang="en"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>What happens when you give the same database a model 10× bigger? — TGMS blog</title>
-<meta name="description" content="We froze everything except the model and scaled 7B→72B. The operator-backed advantage grew 4.6×, belief-state probes hit 1.000 — and the two surprises were quantization and a fair fight RAG lost harder.">
+<title>Bigger models help only when the data interface can use them — TGMS blog</title>
+<meta name="description" content="Holding the store, the tasks and the prompts fixed, TGMS answer accuracy rose from 13.8% at 7B to 62.8% at 32B while the evaluated retrieval baselines gained far less. The 72B point changes precision as well as size, so it is reported separately.">
 <style>
 :root{--ink:#1a2534;--mut:#5b6b7c;--blue:#1c64d9;--blue2:#3b82f6;--line:#e3e8ef;
       --bg:#fbfcfe;--card:#fff;--codebg:#0e1c30;--codetx:#dce7f5;--ok:#0a7d33;
-      --amber:#b58900;--bad:#c0392b;
+      --amber:#b58900;--bad:#c0392b;--purple:#7c3aed;
       --mono:ui-monospace,'SF Mono',Menlo,monospace}
 @media (prefers-color-scheme: dark){
 :root{--ink:#e6edf6;--mut:#95a6ba;--blue:#6ea8ff;--blue2:#8bbcff;--line:#243244;
       --bg:#0b1420;--card:#121e2e;--codebg:#0a1017;--codetx:#cfe0f2;--ok:#4ade80;
-      --amber:#e3b341;--bad:#f87171}}
+      --amber:#e3b341;--bad:#f87171;--purple:#a78bfa}}
 *{box-sizing:border-box}
 body{margin:0;font-family:-apple-system,'Segoe UI',Roboto,sans-serif;
      color:var(--ink);background:var(--bg);-webkit-font-smoothing:antialiased}
@@ -24,6 +24,7 @@ body{margin:0;font-family:-apple-system,'Segoe UI',Roboto,sans-serif;
         text-transform:uppercase;color:#dbe7f8}
 h1{font-size:clamp(26px,4.6vw,38px);line-height:1.16;letter-spacing:-.7px;
    margin:14px 0 10px;color:#fff}
+.sub{color:#dbe7f8;font-size:17.5px;line-height:1.45;margin:0 0 14px;max-width:640px}
 .byline{color:#a9c0e2;font-size:14.5px}
 .byline a{color:#dbe7f8}
 article{max-width:760px;margin:0 auto;padding:40px 24px 30px;line-height:1.72;
@@ -45,6 +46,7 @@ h2::before{content:"";position:absolute;top:0;left:0;width:44px;height:4px;
      letter-spacing:.06em;color:var(--mut);margin-bottom:6px}
 .duo .big{font-size:30px;font-weight:700;color:var(--blue)}
 .duo .big.bad{color:var(--bad)}
+.duo .big.amber{color:var(--amber)}
 figure{margin:26px 0;background:var(--card);border:1px solid var(--line);
        border-radius:14px;padding:18px 18px 8px}
 figcaption{color:var(--mut);font-size:13.5px;line-height:1.5;padding:8px 4px 10px}
@@ -58,11 +60,22 @@ th:first-child,td:first-child{text-align:left}
 tr:last-child td{border-bottom:0}
 td.win{color:var(--ok);font-weight:700}
 td.miss{color:var(--bad);font-weight:700}
+td.amber{color:var(--amber);font-weight:700}
 a{color:var(--blue)}
 code{font-family:var(--mono);background:#1c64d914;border-radius:5px;
      padding:1px 6px;font-size:.9em}
 .note{background:#1c64d90e;border:1px solid #1c64d930;border-radius:12px;
       padding:14px 18px;font-size:15px;margin:24px 0;line-height:1.6}
+.note.ev{background:#0a7d3310;border-color:#0a7d3340}
+.note.sec{background:#b5890012;border-color:#b5890040}
+.note.dep{background:#7c3aed10;border-color:#7c3aed38}
+.note h3{margin:0 0 8px;font-size:13px;text-transform:uppercase;
+      letter-spacing:.07em;color:var(--mut)}
+.note ul{margin:6px 0 0;padding-left:20px}
+.note li{margin:3px 0}
+.meta{font-size:13.5px;color:var(--mut);border:1px solid var(--line);
+      background:var(--card);border-radius:12px;padding:12px 16px;margin:0 0 8px;
+      line-height:1.6}
 .next{max-width:760px;margin:0 auto;padding:0 24px 70px}
 .next a{display:block;background:var(--card);border:1px solid var(--line);
         border-radius:14px;padding:18px 22px;text-decoration:none;color:var(--ink);
@@ -78,161 +91,320 @@ svg .m{font-family:var(--mono)}
 <div class="nav"><a href="../">← TGMS</a><a href="./">blog</a>
 <a href="https://github.com/zxf-work/tgms">github</a></div>
 <div class="inner">
-<span class="kicker">Post #4 · Scale study</span>
-<h1>What happens when you give the same database a model 10× bigger?</h1>
-<div class="byline">Xiaofei Zhang · University of Memphis · July 2026 ·
+<span class="kicker">Post #4 · Evidence &amp; capability</span>
+<h1>Bigger models help only when the data interface can use them</h1>
+<p class="sub">TGMS accuracy improved sharply from 7B to 32B, while the
+evaluated retrieval baselines improved little.</p>
+<div class="byline">Xiaofei Zhang · University of Memphis ·
+published July 2026 · updated 3 August 2026 ·
 <a href="https://github.com/zxf-work/tgms/blob/main/paper/main.pdf">paper</a> ·
 <a href="https://github.com/zxf-work/tgms">code</a></div>
 </div></div>
 
 <article>
-<p>We froze everything — the store (rebuilt byte-identically from its
-event log), the task suite (SHA-pinned before any measurement), the
-prompts, the temperature — and changed exactly one thing: the model.
-Qwen2.5 at 7B, 14B, 32B, and 72B, each driving the same operator
-toolbox and the same retrieval baselines, on H100 and Ada GPUs.</p>
 
-<div class="pull">The operator-backed advantage grew 4.6× as the model
-scaled. The baselines didn't move.</div>
+<p><b>In one sentence:</b> changing only the model and leaving the data,
+tasks and prompts alone, the system that hands the model a set of verified
+data operations went from answering 13.8% of tasks to 62.8%, while the best
+system that hands it retrieved text went from 9.6% to 27.7% — model quality
+converts into answer quality at very different rates depending on what the
+model is allowed to do with the data.</p>
+
+<div class="meta"><b>Status: Updated result.</b> TGMS 0.4.0 · snapshot
+<code>scale-sweep-collegemsg-94</code> · ~7 min · substantially revised
+3 August 2026, see the <a href="#changelog">changelog</a>.</div>
+
+<h2>Why this matters</h2>
+
+<p>Connecting a language model to a store of historical data gives you two
+ways to spend a budget: buy a bigger model, or build a better interface
+between the model and the data. Teams overwhelmingly do the first, on an
+assumption that is rarely examined — that a stronger model will make better
+use of whatever you hand it. If that holds, every approach improves at
+roughly the same rate and the next model is always the cheapest fix. If it
+does not, the ranking you measured on a small model will not survive to a
+large one.</p>
+
+<h2>The idea in plain language</h2>
+
+<p>The questions here are not lookups. They ask which accounts messaged a
+given account during one week in June, or what the database believed about
+a relationship before a later correction arrived — so answering means
+composing several steps: select a window, follow relationships, group,
+compare against an earlier belief.</p>
+
+<p>You can retrieve relevant records, paste them into the prompt as text,
+and let the model compose in its head. Or you can hand it a set of
+<b>verified data operations</b> — individually checked units of work such
+as "history of this entity" or "state as believed at this past moment" —
+and let it write a plan connecting them, which the system executes. TGMS
+does the second; a retrieval baseline does the first. The difference is
+where composition happens: in a context window over serialised text, or in
+an execution engine.</p>
+
+<h2>What we measured</h2>
+
+<div class="note ev"><h3>Evidence box</h3>
+<ul>
+<li><b>Question.</b> As the planning model gets stronger, does answer
+quality improve at the same rate for an operator interface as for retrieval
+baselines?</li>
+<li><b>Dataset.</b> The frozen CollegeMsg test split —
+<span data-fact="scale_tasks">94</span> tasks over a 59,835-event message
+log, SHA-pinned before measurement, against a store rebuilt byte-identically
+from its event log.</li>
+<li><b>Systems.</b> TGMS, a static-graph RAG baseline and a text-to-Cypher
+baseline, each driven by the same model at each size.</li>
+<li><b>Metric.</b> <b>Answer accuracy</b> — the share of tasks whose
+structured answer exactly matched the reference; higher is better. One task
+is worth 1.1 points.</li>
+<li><b>Held constant.</b> Store, tasks, prompts, temperature 0, operator
+set. Only the model changes.</li>
+<li><b>Runs.</b> <b>Single run, one seed per cell, no confidence
+interval</b> — weaker sampling than our primary campaign, which pools three
+seeds with paired bootstrap intervals.</li>
+<li><b>Snapshot.</b> <code>scale-sweep-collegemsg-94</code>, Qwen2.5 family,
+iTiger cluster.</li>
+</ul></div>
+
+<h2>What we found</h2>
+
+<p>Across the three sizes that share a precision — 7B, 14B and 32B, all at
+16-bit — TGMS answer accuracy rose from
+<span data-fact="scale_acc_7b">13.8</span>% to
+<span data-fact="scale_acc_14b">34.0</span>% to
+<span data-fact="scale_acc_32b">62.8</span>%, a factor of
+<span data-fact="scale_gain_7b_32b">4.5</span>. The strongest baseline,
+text-to-Cypher, rose from <span data-fact="scale_cypher_7b">9.6</span>% to
+<span data-fact="scale_cypher_32b">27.7</span>% — nearly tripling in
+relative terms, but gaining about 18 points where TGMS gained 49, and never
+passing 27.7% at any size we ran.</p>
 
 <figure>
-<svg viewBox="0 0 720 320" width="100%" role="img"
-     aria-label="Exact match versus model size: TGMS rises steeply while baselines stay flat">
-  <!-- gridlines + y labels -->
+<svg viewBox="0 0 720 372" width="100%" role="img"
+     aria-label="Answer accuracy against model size at 16-bit precision: TGMS rises from 13.8 to 34.0 to 62.8 percent across 7B, 14B and 32B, while text-to-Cypher rises from 9.6 to 19.1 to 27.7 percent. A separate detached panel shows the 72B model at 4-bit precision reaching 51.1 percent, which is not directly comparable.">
   <g stroke="var(--line)" stroke-width="1">
-    <line x1="70" y1="250" x2="690" y2="250"/>
-    <line x1="70" y1="190" x2="690" y2="190"/>
-    <line x1="70" y1="130" x2="690" y2="130"/>
-    <line x1="70" y1="70" x2="690" y2="70"/>
+    <line x1="70" y1="300" x2="500" y2="300"/>
+    <line x1="70" y1="234" x2="500" y2="234"/>
+    <line x1="70" y1="169" x2="500" y2="169"/>
+    <line x1="70" y1="103" x2="500" y2="103"/>
   </g>
   <g font-size="12" fill="var(--mut)" text-anchor="end">
-    <text x="62" y="254">0.0</text><text x="62" y="194">0.2</text>
-    <text x="62" y="134">0.4</text><text x="62" y="74">0.6</text>
+    <text x="62" y="304">0</text><text x="62" y="238">20</text>
+    <text x="62" y="173">40</text><text x="62" y="107">60</text>
   </g>
-  <!-- x labels -->
+  <text x="70" y="34" font-size="13" fill="var(--ink)">answer accuracy, % of
+  94 tasks · higher is better</text>
+  <text x="70" y="52" font-size="12" fill="var(--mut)">single run, one seed
+  per point · one task = 1.1 points</text>
+
+  <!-- panel A label -->
+  <text x="70" y="76" font-size="12.5" font-weight="700" fill="var(--ink)">
+  16-bit precision — controlled scale curve</text>
+
   <g font-size="13" fill="var(--mut)" text-anchor="middle">
-    <text x="140" y="278">7B</text><text x="320" y="278">14B</text>
-    <text x="500" y="278">32B</text><text x="660" y="278">72B·AWQ</text>
+    <text x="130" y="324">7B</text><text x="270" y="324">14B</text>
+    <text x="410" y="324">32B</text>
   </g>
-  <!-- baselines -->
-  <polyline points="140,221 320,240 500,228 660,221" fill="none"
-    stroke="var(--mut)" stroke-width="2" stroke-dasharray="5 4"/>
-  <text x="330" y="256" font-size="12" fill="var(--mut)">static-graph RAG</text>
-  <polyline points="140,221 320,193 500,167 660,209" fill="none"
-    stroke="var(--amber)" stroke-width="2.5"/>
-  <text x="508" y="163" font-size="12" fill="var(--amber)">text-to-Cypher</text>
+
+  <!-- text-to-Cypher -->
+  <polyline points="130,268 270,237 410,209" fill="none"
+    stroke="var(--mut)" stroke-width="2.5"/>
+  <g fill="var(--mut)">
+    <circle cx="130" cy="268" r="4"/><circle cx="270" cy="237" r="4"/>
+    <circle cx="410" cy="209" r="4"/>
+  </g>
+  <text x="500" y="232" font-size="12" fill="var(--mut)" text-anchor="end">text-to-Cypher 27.7%</text>
+
   <!-- TGMS -->
-  <polyline points="140,209 320,148 500,62 660,97" fill="none"
+  <polyline points="130,255 270,188 410,94" fill="none"
     stroke="var(--blue)" stroke-width="3.5"/>
   <g fill="var(--blue)">
-    <circle cx="140" cy="209" r="5"/><circle cx="320" cy="148" r="5"/>
-    <circle cx="500" cy="62" r="6"/><circle cx="660" cy="97" r="5"/>
+    <circle cx="130" cy="255" r="5.5"/><circle cx="270" cy="188" r="5.5"/>
+    <circle cx="410" cy="94" r="6.5"/>
   </g>
-  <text x="500" y="46" font-size="14" font-weight="700" fill="var(--blue)"
-        text-anchor="middle">TGMS 0.628 · probes 1.000</text>
-  <text x="148" y="200" font-size="12" fill="var(--blue)">0.138</text>
-  <text x="328" y="142" font-size="12" fill="var(--blue)">0.340</text>
-  <text x="668" y="92" font-size="12" fill="var(--blue)" text-anchor="end">0.511</text>
-  <!-- AWQ annotation -->
-  <line x1="660" y1="108" x2="660" y2="128" stroke="var(--bad)" stroke-width="1.5"/>
-  <text x="688" y="144" font-size="12" fill="var(--bad)" text-anchor="end">AWQ, not scale</text>
+  <g font-size="12" class="m" fill="var(--blue)">
+    <text x="138" y="248">13.8</text><text x="278" y="181">34.0</text>
+    <text x="380" y="80" font-weight="700">62.8% TGMS</text>
+  </g>
+
+  <!-- divider -->
+  <line x1="530" y1="60" x2="530" y2="330" stroke="var(--line)"
+        stroke-width="2" stroke-dasharray="6 5"/>
+
+  <!-- panel B: detached 72B AWQ -->
+  <text x="630" y="76" font-size="12.5" font-weight="700" fill="var(--amber)"
+        text-anchor="middle">different precision —</text>
+  <text x="630" y="93" font-size="12.5" font-weight="700" fill="var(--amber)"
+        text-anchor="middle">not directly comparable</text>
+  <g stroke="var(--line)" stroke-width="1">
+    <line x1="560" y1="300" x2="700" y2="300"/>
+    <line x1="560" y1="234" x2="700" y2="234"/>
+    <line x1="560" y1="169" x2="700" y2="169"/>
+    <line x1="560" y1="103" x2="700" y2="103"/>
+  </g>
+  <circle cx="630" cy="132" r="6.5" fill="none" stroke="var(--amber)"
+          stroke-width="3"/>
+  <text x="630" y="120" font-size="12" class="m" fill="var(--amber)"
+        text-anchor="middle" font-weight="700">51.1</text>
+  <text x="630" y="324" font-size="13" fill="var(--mut)"
+        text-anchor="middle">72B · 4-bit</text>
+  <text x="630" y="346" font-size="11.5" fill="var(--mut)"
+        text-anchor="middle">no line drawn — this point</text>
+  <text x="630" y="361" font-size="11.5" fill="var(--mut)"
+        text-anchor="middle">varies size and precision</text>
 </svg>
-<figcaption>Exact match on the frozen CollegeMsg test split (94 tasks) as
-only the model changes. TGMS climbs 0.138 → 0.340 → 0.628; the baselines
-never exceed 0.28 at any size. The 72B point is AWQ-quantized — and drops.</figcaption>
+<figcaption><b>Takeaway.</b> On the 94-task frozen CollegeMsg split
+(<code>scale-sweep-collegemsg-94</code>, single run, one seed, temperature
+0), answer accuracy under an operator interface rises about 4.5× from 7B to
+32B at 16-bit, while the strongest retrieval baseline gains about 18 points
+and stays below 28%. <b>Boundary.</b> The 72B point is detached and
+unconnected because it is 4-bit: it differs in precision as well as size, so
+it is not the continuation of this curve and the study cannot attribute its
+lower score to either cause. Three points are an ordering, not a functional
+form, and one seed per cell cannot resolve differences of a few
+points.</figcaption>
 </figure>
 
-<h2>The interface is the multiplier</h2>
+<p>The correction probes — questions whose answer changes after a later
+correction, answerable only from what the database believed at a past
+moment — moved from <span data-fact="scale_probe_7b">38</span>% to
+<span data-fact="scale_probe_14b">77</span>% to
+<span data-fact="scale_probe_32b">100</span>%. That last figure needs its
+denominator said plainly: the split holds
+<span data-fact="scale_probe_tasks">13</span> probes, so 100% is 13 of 13
+on one seed and a single probe is worth 7.7 points. It shows the
+bi-temporal machinery is usable rather than aspirational; it does not
+establish a rate that would survive more probes or more seeds.</p>
 
-<p>This is the cleanest evidence yet for the claim that started this
-project: <b>the interface is what converts model capability into answer
-quality.</b> A stronger planner writes better operator DAGs, so every
-increment of model quality flows straight into accuracy — 0.138 at 7B,
-0.340 at 14B, 0.628 at 32B. Meanwhile the same stronger models gained
-the baselines almost nothing, because no amount of reasoning fixes an
-input that doesn't contain the answer's structure: serialized edges
-still don't compose, and generated Cypher still can't express
-belief-state time travel.</p>
+<h2>What this means in practice</h2>
 
-<p>The belief-state result is the sharpest version: correction probes —
-<i>"as of transaction time T, what did we believe?"</i> — went
-0.38 → 0.77 → <b>1.000</b>. A perfect score at 32B means the bi-temporal
-machinery isn't aspirational headroom; a good enough planner uses it
-flawlessly, today, with open weights on one GPU.</p>
+<div class="note dep"><h3>Deployment envelope, measured</h3>
+<ul>
+<li><b>Best configuration.</b> Qwen2.5-32B at 16-bit,
+<span data-fact="scale_acc_32b">62.8</span>% — open weights, but roughly
+65 GB of them, so an 80 GB accelerator or two smaller cards.</li>
+<li><b>Smaller step.</b> 14B at 16-bit reached
+<span data-fact="scale_acc_14b">34.0</span>% and fits a single 48 GB
+card.</li>
+<li><b>Tokens per task.</b>
+<span data-fact="tgms_same_run_tokens">6,521</span> — the operator
+interface sends a plan and its results, not a corpus.</li>
+<li><b>If you must quantize,</b> measure your quantized model on your own
+structured-planning tasks, not on general benchmarks. Our one 4-bit point
+scored below the 16-bit 32B model, and we cannot tell you whether that is
+the quantization or the model.</li>
+</ul></div>
 
-<div class="duo">
-<div class="cell"><b>TGMS, 7B → 32B</b>
-<div class="big">0.138 → 0.628</div>
-4.6× — the advantage <i>grows</i> with the model.</div>
-<div class="cell"><b>Belief-state probes at 32B</b>
-<div class="big">1.000</div>
-Perfect. The baselines' best at any scale: 0.385.</div>
-</div>
-
-<h2>Surprise #1: the 72B model got worse</h2>
-
-<p>The biggest model in the sweep — 72B, five times the parameters of
-our 32B point — scored <em>lower</em>: 0.511 overall, and a striking
-0.31 on probes. The asterisk explains it: 72B only fits a single 80&nbsp;GB
-GPU with <b>AWQ 4-bit quantization</b>, and every other point in the
-curve ran full-precision. Quantization, not scale, is the planning
-bottleneck: the compressed model writes visibly worse structured plans
-even though its general benchmark scores barely move. That matters for
-deployment, because AWQ-class quantization is exactly what small-GPU
-serving uses. If your agent plans against tools, benchmark your
-<i>quantized</i> model — the degradation concentrates precisely in
-structured planning.</p>
-
-<h2>Surprise #2: we un-hobbled RAG, and it got worse</h2>
-
-<p>Since our first writeup, the fairest criticism has been: <i>"your
-vector-RAG baseline only retrieved one chunk because your GPU was
-small."</i> True — a 24&nbsp;GB card's serving window forced k=1. So on an
-H100, at the model's full native 32k context, we ran the intended
-<b>k=20 retrieval breadth</b>. The result:</p>
-
+<div class="note sec"><h3>Secondary experiment: does more retrieval breadth
+help?</h3>
+<p style="margin:0 0 10px">A fair criticism of our first writeup was that
+the vector-RAG baseline retrieved one chunk only because its GPU was small.
+On an H100 at full 32k context we re-ran it at the intended breadth of 20
+chunks — a separate question from model scale, on a separate snapshot
+(<code>rag-breadth-h100</code>), single run, same 94 tasks and model.</p>
 <table>
-<tr><th>vector-RAG config</th><th>corpus exposure</th><th>tokens/task</th><th>exact match</th></tr>
-<tr><td>k=1 × 256-event chunks (24 GB card)</td><td>~0.4%</td><td>~19k</td><td>0.106</td></tr>
-<tr><td>k=20 × 24-event chunks (H100, 32k)</td><td>~0.8% × 20 sites</td><td>32,475</td><td class="miss">0.021</td></tr>
-<tr><td>TGMS, same run, same model</td><td>—</td><td>6,521</td><td class="win">0.362</td></tr>
+<tr><th>vector-RAG configuration</th><th>corpus seen</th><th>tokens/task</th><th>accuracy</th></tr>
+<tr><td>k=1 × 256-event chunks (24 GB card)</td><td>0.4%</td><td>~19k</td><td><span data-fact="rag_k1_acc">10.6</span>%</td></tr>
+<tr><td>k=20 × 24-event chunks (H100, 32k ctx)</td><td><span data-fact="rag_k20_exposure">0.8</span>%</td><td><span data-fact="rag_k20_tokens">32,475</span></td><td class="miss"><span data-fact="rag_k20_acc">2.1</span>%</td></tr>
+<tr><td>TGMS, same run, same model</td><td>—</td><td><span data-fact="tgms_same_run_tokens">6,521</span></td><td class="win"><span data-fact="tgms_same_run_acc">36.2</span>%</td></tr>
 </table>
+<p style="margin:10px 0 0">Twenty chunks of 24 events is 480 of 59,835 —
+0.8% of the corpus in total, not 0.8% at each of twenty sites. Widening
+retrieval lowered accuracy while multiplying the prompt roughly fivefold.
+Our reading is that spreading attention across twenty short, disconnected
+windows dilutes the ordering signal these questions quantify over:
+retrieving more serialised edges gives the model no explicit mechanism for
+composing a temporal join. Both retrieval cells are single runs and 2.1% is
+2 tasks, so the ranking is safe while the exact ratio is not.</p></div>
 
-<p>More context made it <em>worse</em> — 17× behind TGMS at 5× the
-token cost. Retrieval breadth was never the bottleneck; representation
-was. Spreading attention across twenty chunks of serialized edges
-dilutes exactly the signal the questions quantify over. You cannot
-prompt your way to a temporal join.</p>
+<h2>The number that did not move</h2>
 
-<h2>The number that never moved</h2>
+<p>Across every cell here, and two further model families on the same
+operator set, the number of emitted claims that failed verification against
+the execution trace was <span data-fact="unsupported_claims">0</span>.
+Weaker models answered fewer questions rather than more of them wrongly —
+partly by declining to answer: in the primary campaign the gated system
+answered 70.6% of tasks and was right 54.8% of the time on those. What
+ships is checked; not everything gets an answer.</p>
 
-<p>Across every cell of this study — four scales, two quantizations,
-plus two other model families (Llama-3.1-8B and Phi-4-mini) driving the
-same toolbox — the emitted <b>unsupported-claim rate was 0.000</b>.
-Weaker models answered fewer questions; they never answered more of
-them <i>wrongly</i>, because claims that don't verify against the
-execution trace never ship. That's the architecture's contract:
-competence lives outside the trust boundary and scales with the model;
-safety lives inside it and doesn't have to.</p>
+<h2>What this result does not show</h2>
 
-<div class="pull">Buy a better model, get better answers — but only
-through an interface that converts capability into computation instead
-of context.</div>
+<p><b>It does not show that quantization is the planning bottleneck.</b>
+The 72B configuration changes two things at once — larger model, 4-bit
+weights — because that is the only way it fits a single 80 GB GPU, and one
+point moving two variables cannot separate them. We previously published
+that conclusion from this point; it was not supported and has been
+withdrawn. <b>The controlled follow-up:</b> the same model at 16-bit and at
+4-bit, or quantization matched across every size. Until then the honest
+statement is that a 4-bit 72B model wrote worse plans than a 16-bit 32B
+model on this workload.</p>
 
-<div class="note">📎 All runs on frozen, SHA-pinned test splits against
-a byte-identically replayed store (<code>tgms replay</code>), on the
-University of Memphis iTiger GPU cluster; receipts and per-class tables
-in the <a href="https://github.com/zxf-work/tgms/blob/main/docs/TECHNICAL_REPORT.md">
-technical report §8.2c</a> and the
-<a href="https://github.com/zxf-work/tgms/releases/tag/v0.3.0">v0.3.0
-release</a>. The scale figure appears in the updated
-<a href="https://github.com/zxf-work/tgms/blob/main/paper/main.pdf">paper</a>.</div>
+<p><b>It does not show that the baselines are static.</b> Text-to-Cypher
+improved roughly 2.9× in relative terms across the three 16-bit sizes. The
+measured claim is that it gained far less absolute accuracy and stayed well
+behind — not that a stronger model did nothing for it.</p>
+
+<p><b>The sampling is thin, and the workload is one dataset.</b> Every cell
+is a single run at one seed with no interval, unlike our primary campaign;
+three sizes establish an ordering, not a scaling law; the probe column rests
+on 13 questions. All of it is CollegeMsg. On a flat rating schema we have
+measured this interface and a SQL-generating baseline as a statistical
+tie.</p>
+
+<h2>Takeaway</h2>
+
+<p>Model capability and interface capability multiply rather than
+substitute. On this workload a bigger model paid about 4.5× under an
+interface that turns capability into computation, and far less under one
+that turns it into a longer prompt — a reason to measure your own interface
+before assuming the next model will fix it, and to treat any point that
+moves two variables at once as a question rather than a finding.</p>
+
+<div class="note"><h3>Evidence and reproduction</h3>
+Frozen, SHA-pinned test splits against a store rebuilt byte-identically
+from its event log (<code>tgms replay</code>), on the University of Memphis
+iTiger cluster. The scale table and the breadth study are in the
+<a href="https://github.com/zxf-work/tgms/blob/main/paper/main.pdf">paper</a>
+under model and serving sensitivity; suites and harness are in
+<a href="https://github.com/zxf-work/tgms">the repository</a>, cut at
+<a href="https://github.com/zxf-work/tgms/releases/tag/v0.3.0">v0.3.0</a>.
+Every number here is quoted from <code>docs/site_facts.json</code> and
+checked in CI.</div>
+
+<h2>Continue reading</h2>
+
+<div class="note"><b>Before this:</b> why a verifier that checks arithmetic
+can still sign off on incomplete evidence —
+<a href="incomplete-evidence.html">support is a tuple, not a boolean</a>.
+<br><b>After this:</b> what happens when the workload is written by people
+who have never seen the operator list —
+<a href="independent-questions.html">we let users define the workload</a>.</div>
+
+<h2 id="changelog">Changelog</h2>
+
+<div class="note"><b>3 August 2026 — substantial revision.</b>
+<ul>
+<li>Withdrew "quantization, not scale, is the planning bottleneck". The 72B
+point varies precision and size together; it is now a detached marker, not
+the end of the curve.</li>
+<li>Corrected four numbers: 72B is 2.25× the parameters of 32B, not 5×; the
+7B→32B gain is <span data-fact="scale_gain_7b_32b">4.5</span>×, not 4.6×;
+k=20 sees <span data-fact="rag_k20_exposure">0.8</span>% of the corpus in
+total, not "0.8% × 20 sites"; and "the baselines' best on probes: 0.385"
+was unsupported — neither baseline in this sweep has a probe column.</li>
+<li>Replaced "the baselines didn't move" and "you cannot prompt your way to
+a temporal join" with what the experiment supports.</li>
+<li>Added the evidence box, single-seed disclosure, probe denominators,
+deployment envelope and limitations; moved the retrieval-breadth study into
+a labelled secondary experiment; repaired a dead report link.</li>
+</ul></div>
 </article>
 
 <div class="next"><a href="independent-questions.html">
-<div class="lbl">Next</div>
-<div class="ttl">#5 · We asked four students to write 110 questions.
-Our system could express 10. →</div></a></div>
+<div class="lbl">Next up</div>
+<div class="ttl">#5 · We let users define the workload — an independent
+study of what the system could and could not answer →</div></a></div>
 
 <div class="next" style="padding-top:12px"><a href="incomplete-evidence.html">
 <div class="lbl">Previously</div>
