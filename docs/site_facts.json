@@ -169,6 +169,151 @@
       "kind": "benchmark",
       "prose": "seconds for the same motif on Memgraph and Neo4j",
       "snapshot": "registry-v2-200k-6sys"
+    },
+    "storage_duckdb_bytes_per_row": {
+      "value": "187.7",
+      "kind": "benchmark",
+      "prose": "bytes per relationship version on DuckDB for the same 1M event log, uncompressed columnar, no secondary indexes",
+      "snapshot": "registry-v2-1m-4sys"
+    },
+    "storage_clickhouse_bytes_per_row": {
+      "value": "78.4",
+      "kind": "benchmark",
+      "prose": "bytes per relationship version on ClickHouse, lz4 MergeTree, no secondary indexes",
+      "snapshot": "registry-v2-1m-4sys"
+    },
+    "storage_postgres_bytes_per_row": {
+      "value": "549.7",
+      "kind": "benchmark",
+      "prose": "bytes per relationship version on PostgreSQL including the eight covering indexes its lookup speed is made of",
+      "snapshot": "registry-v2-1m-4sys"
+    },
+    "scan_10m_parallel_null_before_ms": {
+      "value": "811",
+      "kind": "benchmark",
+      "prose": "ms, the 10M scan before materialization was parallelised",
+      "snapshot": "D-045 stage probe, August 2026"
+    },
+    "scan_10m_parallel_null_after_ms": {
+      "value": "819",
+      "kind": "benchmark",
+      "prose": "ms, the same scan after parallel materialization landed - the null result that started the probe",
+      "snapshot": "D-045 stage probe, August 2026"
+    },
+    "scan_10m_clusterwise_ms": {
+      "value": "330",
+      "kind": "benchmark",
+      "prose": "ms, the same scan once selections were merged cluster-wise so the parallel path could fire",
+      "snapshot": "D-045 stage probe, August 2026"
+    },
+    "series_10m_clusterwise_ms": {
+      "value": "434",
+      "kind": "benchmark",
+      "prose": "ms, series.count at 10M immediately after cluster-wise merging - an August 2026 waypoint, not the current figure; later projection work took the same query to 183.7 ms",
+      "snapshot": "D-045, superseded by registry-v2-10m-3sys",
+      "label_required": "historical waypoint"
+    },
+    "append_batch1000_ev_s": {
+      "value": "45,958",
+      "kind": "benchmark",
+      "prose": "events per second on sustained appends at batch size 1000; the same durable commit floor gives 96 ev/s at batch 1",
+      "snapshot": "eval-writes.json, commit caa5246"
+    },
+    "correction_latency_p50_ms": {
+      "value": "4.84",
+      "kind": "benchmark",
+      "prose": "ms median for a single-operation correction against a 100k-row store",
+      "snapshot": "eval-writes.json, commit caa5246"
+    },
+    "correction_growth_kb": {
+      "value": "64",
+      "kind": "benchmark",
+      "prose": "KB of store growth per single-op correction, almost all of it a fresh full manifest rather than the corrected data",
+      "snapshot": "eval-writes.json, commit caa5246"
+    },
+    "compaction_100k_s": {
+      "value": "0.41",
+      "kind": "benchmark",
+      "prose": "seconds to compact a 100k-row store with 250 corrections folded, 253 segments to 2, answer digest preserved",
+      "snapshot": "eval-writes.json, commit caa5246"
+    },
+    "warmup_first_query_10m_s": {
+      "value": "28",
+      "kind": "benchmark",
+      "prose": "seconds for the first query in a fresh process against a 10M store - the in-memory warm-up, paid whatever the query asks for",
+      "snapshot": "eval-resources coldwarm sweep, commit 6fb7cb1"
+    },
+    "warmup_first_query_1m_s": {
+      "value": "2.5",
+      "kind": "benchmark",
+      "prose": "seconds for the first query in a fresh process against a 1M store",
+      "snapshot": "eval-resources coldwarm sweep, commit 6fb7cb1"
+    },
+    "resident_index_tax_pct": {
+      "value": "18",
+      "kind": "benchmark",
+      "prose": "percent that an unrelated scan slows by while the traversal index built by an earlier query stays resident in the same process",
+      "snapshot": "D-045 four-condition probe, 1M store"
+    },
+    "betweenday_drift_pct": {
+      "value": "18",
+      "kind": "benchmark",
+      "prose": "percent drift on scan-bound queries when the same commits are re-measured on a later day - distinct from the resident-index tax, and the reason the published band is 20 percent",
+      "snapshot": "D-045 re-measurement of July commits"
+    },
+    "resident_probe_nothing_ms": {
+      "value": "68.4",
+      "kind": "benchmark",
+      "prose": "ms, series.count at 1M with nothing resident",
+      "snapshot": "D-045 four-condition probe, 1M store"
+    },
+    "resident_probe_plain_columns_ms": {
+      "value": "71.7",
+      "kind": "benchmark",
+      "prose": "ms, the same query while 1M rows of plain integer columns are held",
+      "snapshot": "D-045 four-condition probe, 1M store"
+    },
+    "resident_probe_index_columns_ms": {
+      "value": "71.1",
+      "kind": "benchmark",
+      "prose": "ms, the same query while the traversal index's own source columns are held",
+      "snapshot": "D-045 four-condition probe, 1M store"
+    },
+    "resident_probe_index_built_ms": {
+      "value": "80.7",
+      "kind": "benchmark",
+      "prose": "ms, the same query while the built traversal index is held - the 18 percent",
+      "snapshot": "D-045 four-condition probe, 1M store"
+    },
+    "resident_probe_released_ms": {
+      "value": "68.3",
+      "kind": "benchmark",
+      "prose": "ms, the same query after the index is released - the time comes back",
+      "snapshot": "D-045 four-condition probe, 1M store"
+    },
+    "parallel_gate_ab_default_ms": {
+      "value": "84.4",
+      "kind": "benchmark",
+      "prose": "ms, series.count at 1M with the scan-parallelism gate at its default - the reading that would not reproduce",
+      "snapshot": "D-045 parallelism A/B"
+    },
+    "parallel_gate_ab_forced_ms": {
+      "value": "83.1",
+      "kind": "benchmark",
+      "prose": "ms, the same query with the parallel path forced on - the hypothesis measured false",
+      "snapshot": "D-045 parallelism A/B"
+    },
+    "series_1m_july_published_ms": {
+      "value": "59.0",
+      "kind": "benchmark",
+      "prose": "ms, the July 2026 published figure for series.count at 1M that a later run could not reproduce",
+      "snapshot": "July 2026 sweep, superseded",
+      "label_required": "historical"
+    },
+    "bisect_builds": {
+      "value": "5",
+      "kind": "benchmark",
+      "prose": "engine builds bisected, one 1M run each, to locate the step change"
     }
   },
   "retired_phrases": [
