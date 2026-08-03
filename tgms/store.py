@@ -21,8 +21,14 @@ INGEST_CHUNK = 50_000
 
 class Store:
     def __init__(self, path: str | Path, backend: str | None = None,
-                 paranoid: bool = False) -> None:
+                 paranoid: bool = False, read_only: bool = False) -> None:
         self.path = Path(path)
+        #: Read-only handles never publish a generation: no recovery, no
+        #: writes. This is the mode a *reader* process must use against a
+        #: store some other process is writing — see `open`.
+        self.read_only = read_only
+        if read_only and not self.path.exists():
+            raise StateError(f"no store to open read-only at {self.path}")
         self.path.mkdir(parents=True, exist_ok=True)
         backend = backend or detect_backend(self.path)
         self.backend = backend
@@ -33,7 +39,8 @@ class Store:
         #: backends without a cursor and on legacy stores until their next
         #: write (which pays a one-time full-prefix hash to start the chain).
         self._chain: str | None = None
-        self._recover()
+        if not read_only:
+            self._recover()
         self.clock = HybridLogicalClock(last_tt=self.eventlog.last_tt())
         self._memories: list[Any] = []  # EvolutionMemory hooks (spec v1.1 WP2.4)
 
@@ -50,6 +57,15 @@ class Store:
         — it cannot know what was applied — and upgrades at the next write;
         an accounted cursor short of the log replays forward, re-failing
         failed batches deterministically, exactly like full replay.
+
+        **Recovery is a writer's act**, which is why `read_only` skips it
+        entirely. A live writer is *always* in the state this reads as a
+        crash — the log is fsynced before the batch is applied, so for the
+        whole duration of every commit the log is ahead of the manifest.
+        A reader opening in that window used to replay the suffix and publish
+        a generation of its own, concurrently with the writer publishing the
+        same generation number: two writers, overwriting each other's segment
+        files under the mmap of anyone already reading them.
         """
         cursor = getattr(self.adapter, "event_cursor", None)
         if cursor is None:
@@ -154,6 +170,12 @@ class Store:
         On cursor-keeping backends the commit also records how far into the
         log this batch reaches (offset past its newline, rolling chain), so
         a crash after the append recovers by suffix replay (`_recover`)."""
+        if self.read_only:
+            raise StateError(
+                f"{self.path} is open read-only: this handle cannot write. "
+                f"Reopen without read_only=True — and only from the single "
+                f"writer process, since a second writer is undefined."
+            )
         tt = self.clock.tick()
         _batch_id, end_offset, record = self.eventlog.append(tt, ops)
         note_cursor = getattr(self.adapter, "note_event_cursor", None)
@@ -209,10 +231,24 @@ def detect_backend(path: Path) -> str:
     return DEFAULT_BACKEND
 
 
-def open(path: str | Path, backend: str | None = None, paranoid: bool = False) -> Store:
+def open(path: str | Path, backend: str | None = None, paranoid: bool = False,
+         read_only: bool = False) -> Store:
     """Open (or create) a store. `backend` defaults to the existing store's
-    layout, or `DEFAULT_BACKEND` for a new one."""
-    return Store(path, backend=backend, paranoid=paranoid)
+    layout, or `DEFAULT_BACKEND` for a new one.
+
+    `read_only=True` is the mode for a **reader process**: it skips crash
+    recovery and refuses the write API, so the handle never publishes a
+    generation. Use it for every process that is not the single writer.
+    A default (read-write) handle recovers the event-log suffix on open,
+    which is correct for the writer and is a second writer for anyone else —
+    a live writer spends every commit in the state recovery reads as a crash.
+
+    A read-only handle still answers every query at full speed and still
+    pins its manifest generation for as long as it is open; it simply never
+    advances one. It may still write the derived TCSR permutation cache
+    (`index/`, saved atomically and disposable), which is not store state.
+    """
+    return Store(path, backend=backend, paranoid=paranoid, read_only=read_only)
 
 
 def _make_adapter(backend: str, path: Path) -> StorageAdapter:
