@@ -35,6 +35,7 @@ writer.
 from __future__ import annotations
 
 import argparse
+import contextlib
 import json
 import os
 import statistics
@@ -202,6 +203,21 @@ def child_writer(cfg: dict[str, Any]) -> dict[str, Any]:
 # --------------------------------------------------------------------------- #
 
 
+@contextlib.contextmanager
+def _pristine(store: Path):
+    """A private copy of `store`, removed afterwards."""
+    import shutil
+    import tempfile
+
+    tmp = Path(tempfile.mkdtemp(prefix="tgms-mixed-"))
+    live = tmp / store.name
+    shutil.copytree(store, live)
+    try:
+        yield live
+    finally:
+        shutil.rmtree(tmp, ignore_errors=True)
+
+
 def cmd_mixed(args: argparse.Namespace) -> tuple[int, dict[str, Any]]:
     data, d = R.ensure_dataset(Path(args.workdir), args.scale)
     store = Path(args.store) if args.store else R.ensure_store(d, "native", data.log)
@@ -217,16 +233,24 @@ def cmd_mixed(args: argparse.Namespace) -> tuple[int, dict[str, Any]]:
             commit_runs: list[list[float]] = []
             trial_rows: list[dict[str, Any]] = []
             for trial in range(args.trials):
-                start_at = time.time() + lead
-                rcfg = {"store": str(store), "start_at": start_at,
-                        "duration_s": duration, "mix": mix}
-                wcfg = {"store": str(store), "start_at": start_at,
-                        "duration_s": duration, "batch_rows": args.batch_rows,
-                        "vt_base": 10_000_000 + trial * 1_000_000}
-                procs = [_spawn("reader", rcfg) for _ in range(n)]
-                wproc = _spawn("writer", wcfg) if with_writer else None
-                readers = [_collect(p, duration + lead + 600) for p in procs]
-                writer = _collect(wproc, duration + lead + 600) if wproc else None
+                # Every trial gets its own copy. The writer grows the store by
+                # thousands of generations, so a shared one would make the
+                # later conditions measure a different store than the earlier
+                # ones — and would quietly corrupt the cached §14.4 store that
+                # every other harness replays from.
+                with _pristine(store) as live:
+                    start_at = time.time() + lead
+                    rcfg = {"store": str(live), "start_at": start_at,
+                            "duration_s": duration, "mix": mix}
+                    wcfg = {"store": str(live), "start_at": start_at,
+                            "duration_s": duration,
+                            "batch_rows": args.batch_rows,
+                            "vt_base": 10_000_000 + trial * 1_000_000}
+                    procs = [_spawn("reader", rcfg) for _ in range(n)]
+                    wproc = _spawn("writer", wcfg) if with_writer else None
+                    readers = [_collect(p, duration + lead + 900) for p in procs]
+                    writer = (_collect(wproc, duration + lead + 900)
+                              if wproc else None)
 
                 ok = [r for r in readers if not r.get("failed")]
                 if len(ok) != n or (wproc and writer.get("failed")):
