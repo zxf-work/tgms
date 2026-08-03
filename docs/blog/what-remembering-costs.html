@@ -1,16 +1,16 @@
 <!doctype html><html lang="en"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>What remembering costs — TGMS blog</title>
-<meta name="description" content="We measured the price of the bi-temporal contract: free until the first correction, a memory floor that was misdiagnosed and then repaid, and recovery that went from superlinear to six minutes.">
+<title>The operational cost of keeping a correctable history — TGMS blog</title>
+<meta name="description" content="What a bi-temporal store costs to run: no measurable overhead when nothing is corrected, storage and latency that grow with correction density, a per-process warm-up, and log replay that went from 47.6 minutes to 6.">
 <style>
 :root{--ink:#1a2534;--mut:#5b6b7c;--blue:#1c64d9;--blue2:#3b82f6;--line:#e3e8ef;
       --bg:#fbfcfe;--card:#fff;--codebg:#0e1c30;--codetx:#dce7f5;--ok:#0a7d33;
-      --amber:#b58900;--bad:#c0392b;
+      --amber:#b58900;--bad:#c0392b;--purple:#7c3aed;
       --mono:ui-monospace,'SF Mono',Menlo,monospace}
 @media (prefers-color-scheme: dark){
 :root{--ink:#e6edf6;--mut:#95a6ba;--blue:#6ea8ff;--blue2:#8bbcff;--line:#243244;
       --bg:#0b1420;--card:#121e2e;--codebg:#0a1017;--codetx:#cfe0f2;--ok:#4ade80;
-      --amber:#e3b341;--bad:#f87171}}
+      --amber:#e3b341;--bad:#f87171;--purple:#a78bfa}}
 *{box-sizing:border-box}
 body{margin:0;font-family:-apple-system,'Segoe UI',Roboto,sans-serif;
      color:var(--ink);background:var(--bg);-webkit-font-smoothing:antialiased}
@@ -24,6 +24,7 @@ body{margin:0;font-family:-apple-system,'Segoe UI',Roboto,sans-serif;
         text-transform:uppercase;color:#dbe7f8}
 h1{font-size:clamp(26px,4.6vw,38px);line-height:1.16;letter-spacing:-.7px;
    margin:14px 0 10px;color:#fff}
+.sub{color:#dbe7f8;font-size:17.5px;line-height:1.45;margin:0 0 14px;max-width:640px}
 .byline{color:#a9c0e2;font-size:14.5px}
 .byline a{color:#dbe7f8}
 article{max-width:760px;margin:0 auto;padding:40px 24px 30px;line-height:1.72;
@@ -45,6 +46,7 @@ h2::before{content:"";position:absolute;top:0;left:0;width:44px;height:4px;
      letter-spacing:.06em;color:var(--mut);margin-bottom:6px}
 .duo .big{font-size:30px;font-weight:700;color:var(--blue)}
 .duo .big.bad{color:var(--bad)}
+.duo .big.amber{color:var(--amber)}
 figure{margin:26px 0;background:var(--card);border:1px solid var(--line);
        border-radius:14px;padding:18px 18px 8px}
 figcaption{color:var(--mut);font-size:13.5px;line-height:1.5;padding:8px 4px 10px}
@@ -58,11 +60,23 @@ th:first-child,td:first-child{text-align:left}
 tr:last-child td{border-bottom:0}
 td.win{color:var(--ok);font-weight:700}
 td.miss{color:var(--bad);font-weight:700}
+td.amber{color:var(--amber);font-weight:700}
+.wrap{overflow-x:auto}
 a{color:var(--blue)}
 code{font-family:var(--mono);background:#1c64d914;border-radius:5px;
      padding:1px 6px;font-size:.9em}
 .note{background:#1c64d90e;border:1px solid #1c64d930;border-radius:12px;
       padding:14px 18px;font-size:15px;margin:24px 0;line-height:1.6}
+.note.ev{background:#0a7d3310;border-color:#0a7d3340}
+.note.side{background:#5b6b7c12;border-color:#5b6b7c38}
+.note.dep{background:#7c3aed10;border-color:#7c3aed38}
+.note h3{margin:0 0 8px;font-size:13px;text-transform:uppercase;
+      letter-spacing:.07em;color:var(--mut)}
+.note ul{margin:6px 0 0;padding-left:20px}
+.note li{margin:3px 0}
+.meta{font-size:13.5px;color:var(--mut);border:1px solid var(--line);
+      background:var(--card);border-radius:12px;padding:12px 16px;margin:0 0 8px;
+      line-height:1.6}
 .next{max-width:760px;margin:0 auto;padding:0 24px 70px}
 .next a{display:block;background:var(--card);border:1px solid var(--line);
         border-radius:14px;padding:18px 22px;text-decoration:none;color:var(--ink);
@@ -78,125 +92,335 @@ svg .m{font-family:var(--mono)}
 <div class="nav"><a href="../">← TGMS</a><a href="./">blog</a>
 <a href="https://github.com/zxf-work/tgms">github</a></div>
 <div class="inner">
-<span class="kicker">Post #8 · Engine economics</span>
-<h1>What remembering costs</h1>
-<div class="byline">Xiaofei Zhang · University of Memphis · August 2026 ·
-<a href="https://github.com/zxf-work/tgms/blob/main/docs/eval_resources.md">records</a> ·
-<a href="https://github.com/zxf-work/tgms">code</a></div>
+<span class="kicker">Post #8 · Evidence &amp; capability</span>
+<h1>The operational cost of keeping a correctable history</h1>
+<p class="sub">Bi-temporal retention is inexpensive without corrections,
+but correction density, warm-up and recovery shape deployment cost.</p>
+<div class="byline">Xiaofei Zhang · University of Memphis ·
+published August 2026 · updated 3 August 2026 ·
+<a href="https://github.com/zxf-work/tgms/blob/main/docs/eval_resources.md">records</a>
+· <a href="https://github.com/zxf-work/tgms">code</a></div>
 </div></div>
 
 <article>
-<p>A bi-temporal store promises to remember: what held in the world, what we
-believed, and what we corrected. Promises have prices. We measured this one
-along every axis the evaluation plan names — correction density, memory,
-cache state, threads, concurrent readers, recovery — on the same host and
-protocol as every published table.</p>
 
-<div class="duo">
-<div class="cell"><b>Overhead at zero corrections</b><span class="big">0</span>
-<div>storage, latency, memory — all at parity with a current-state store</div></div>
-<div class="cell"><b>10M-event suite, memory-capped</b><span class="big">1.76 GB</span>
-<div>where the same suite OOM-killed at 4 GB two days earlier</div></div>
-</div>
+<p><b>In one sentence:</b> keeping a full, correctable history costs
+essentially nothing until something is corrected, after which storage and
+query time grow with how often corrections happen — and the costs that
+actually decide a deployment are not those, but a per-process warm-up of
+roughly half a minute and a memory floor that has to be budgeted.</p>
 
-<h2>Free until the first correction</h2>
+<div class="meta"><b>Status: Updated result.</b> TGMS 0.4.0 · snapshots
+<code>retention-1m-density</code> and <code>retention-10m-resources</code> ·
+~7 min · substantially revised 3 August 2026, see the
+<a href="#changelog">changelog</a>.</div>
 
-<p>We built a stripped configuration that keeps only currently-believed rows
-— and refuses past-belief queries rather than answering them wrongly — then
-swept correction density from 0 to 20% against the full store.</p>
+<h2>Decide this first</h2>
 
-<svg viewBox="0 0 720 220" width="100%" role="img"
-     aria-label="Storage overhead vs correction density: 0% at density 0, 2.1% at 1%, 8.8% at 5%, 30.1% at 20%">
+<p>Before any numbers, the four questions that determine whether this
+design fits, in the order they matter:</p>
+
+<div class="note dep"><h3>Deployment decision framework</h3>
+<ul>
+<li><b>1. How often is history corrected?</b> The one variable that sets
+storage and query cost. If the answer is "never", the capability costs
+nothing measurable.</li>
+<li><b>2. How long do your processes live?</b> A resident service absorbs
+the warm-up once; a per-request process pays it every time, which is the
+likeliest reason to choose something else.</li>
+<li><b>3. How much memory can you give it?</b> There is a floor, it scales
+with the store, and below it the process is killed rather than slowed.</li>
+<li><b>4. How fast must it come back?</b> Rebuilding from the event log is
+minutes, not seconds, and grows with correction density.</li>
+</ul></div>
+
+<h2>The idea in plain language</h2>
+
+<p>When a fact turns out to have been recorded wrongly, an ordinary store
+overwrites it and the earlier belief is gone. A store that must answer
+"what did we think last March?" cannot overwrite: it keeps the superseded
+version and records when the system believed it. That second clock is
+<b>transaction time</b>, and the cost of the design is the cost of those
+retained versions.</p>
+
+<figure>
+<svg viewBox="0 0 720 196" width="100%" role="img"
+     aria-label="A current-only store overwrites a corrected value and keeps one row. A bi-temporal store keeps the superseded row alongside the corrected one, so past beliefs remain answerable.">
+  <text x="12" y="22" font-size="13" fill="var(--ink)">one fact, later
+  corrected</text>
+  <text x="12" y="62" font-size="12.5" fill="var(--mut)">current-only</text>
+  <rect x="150" y="44" width="180" height="30" rx="5" fill="var(--mut)" opacity=".3"/>
+  <text x="240" y="64" font-size="12.5" fill="var(--mut)" text-anchor="middle">value = 7 (erased)</text>
+  <text x="345" y="64" font-size="16" fill="var(--mut)">→</text>
+  <rect x="372" y="44" width="180" height="30" rx="5" fill="var(--ok)" opacity=".75"/>
+  <text x="462" y="64" font-size="12.5" fill="#fff" text-anchor="middle">value = 9</text>
+  <text x="566" y="64" font-size="12" fill="var(--mut)">1 row kept</text>
+
+  <text x="12" y="132" font-size="12.5" fill="var(--mut)">bi-temporal</text>
+  <rect x="150" y="114" width="180" height="30" rx="5" fill="var(--purple)" opacity=".65"/>
+  <text x="240" y="134" font-size="12.5" fill="#fff" text-anchor="middle">value = 7, believed until Mar</text>
+  <rect x="372" y="114" width="180" height="30" rx="5" fill="var(--ok)" opacity=".75"/>
+  <text x="462" y="134" font-size="12.5" fill="#fff" text-anchor="middle">value = 9, believed since</text>
+  <text x="566" y="134" font-size="12" fill="var(--mut)">2 rows kept</text>
+  <text x="150" y="170" font-size="12" fill="var(--mut)">the retained row is the
+  entire cost of the design — so the bill is set by how many corrections arrive</text>
+</svg>
+<figcaption><b>Takeaway.</b> A correction adds a version rather than
+replacing one, which is why cost tracks correction frequency rather than
+store size. <b>Boundary.</b> Conceptual, not measured; real corrections also
+include partial-interval edits, which split one retained row into
+two.</figcaption>
+</figure>
+
+<div class="note ev"><h3>Evidence box</h3>
+<ul>
+<li><b>Question.</b> What does the bi-temporal contract cost along each
+operational axis, against a store keeping only current beliefs?</li>
+<li><b>Workload.</b> A 1,000,000-event log swept from 0 to 20% correction
+density, plus a 10,000,000-event suite for memory, threads, readers and
+warm-up. Host <code>xzgpu</code>.</li>
+<li><b>Compared.</b> The full store against a stripped configuration that
+keeps only currently-believed rows and refuses past-belief queries rather
+than answering them wrongly.</li>
+<li><b>Correction density.</b> Percent <i>of ingest events</i>: at 1%, a
+1M-event log applies about 10,000 corrections — roughly one per hundred
+initial edge versions. Realized counts run slightly above nominal (20%
+yields 215,002), and a correction may be a whole-interval replacement, a
+partial carve, or a retraction.</li>
+<li><b>Metrics.</b> Storage bytes and latency, lower better; peak resident
+memory; seconds to first answer; seconds to replay the log.</li>
+<li><b>Runs.</b> Latency is a median of 30 repetitions (10 above one
+second); storage, memory and replay are <b>single observations</b>. Cells
+reproduce to about <span data-fact="reproducibility_band">20</span>%
+between days.</li>
+</ul></div>
+
+<h2>Axis 1 — correction density sets storage</h2>
+
+<p>At zero corrections we could not measure a penalty. The widest latency
+gap was <span data-fact="zero_density_latency_spread">3.4</span>%, its sign
+varying query to query — the full store was <i>faster</i> on 6 of 11 — with
+bytes differing by 0.002% and peak memory by 0.2%, all far inside the
+±<span data-fact="reproducibility_band">20</span>% band a single cell
+reproduces to across days. So: <b>no measurable overhead in the tested
+zero-correction configuration</b>, not "zero overhead".</p>
+
+<figure>
+<svg viewBox="0 0 720 248" width="100%" role="img"
+     aria-label="Storage overhead over a current-only store at 1 million events: no measurable difference at zero corrections, 2.1 percent at 1 percent density, 8.8 percent at 5 percent, and 30.1 percent at 20 percent.">
+  <g stroke="var(--line)" stroke-width="1">
+    <line x1="70" y1="200" x2="690" y2="200"/>
+    <line x1="70" y1="150" x2="690" y2="150"/>
+    <line x1="70" y1="100" x2="690" y2="100"/>
+    <line x1="70" y1="50" x2="690" y2="50"/>
+  </g>
+  <g font-size="12" fill="var(--mut)" text-anchor="end">
+    <text x="62" y="204">0</text><text x="62" y="154">10</text>
+    <text x="62" y="104">20</text><text x="62" y="54">30</text>
+  </g>
+  <text x="70" y="26" font-size="13" fill="var(--ink)">extra storage vs a
+  current-only store, % · 1M events · lower is better</text>
+  <g>
+    <rect x="110" y="197" width="60" height="3" rx="1" fill="var(--ok)"/>
+    <rect x="260" y="189" width="60" height="11" rx="3" fill="var(--blue)"/>
+    <rect x="410" y="156" width="60" height="44" rx="3" fill="var(--blue)"/>
+    <rect x="560" y="50" width="60" height="150" rx="3" fill="var(--amber)"/>
+  </g>
+  <g font-size="12.5" class="m" text-anchor="middle">
+    <text x="140" y="189" fill="var(--ok)">none measurable</text>
+    <text x="290" y="181" fill="var(--blue)">+2.1</text>
+    <text x="440" y="148" fill="var(--blue)">+8.8</text>
+    <text x="590" y="42" fill="var(--amber)">+30.1</text>
+  </g>
   <g font-size="13" fill="var(--mut)" text-anchor="middle">
-    <text x="150" y="205">0%</text><text x="300" y="205">1%</text>
-    <text x="450" y="205">5%</text><text x="600" y="205">20% density</text>
+    <text x="140" y="220">0%</text><text x="290" y="220">1%</text>
+    <text x="440" y="220">5%</text><text x="590" y="220">20%</text>
   </g>
-  <g>
-    <rect x="130" y="178" width="40" height="2" rx="1" fill="var(--ok)"/>
-    <rect x="280" y="169" width="40" height="11" rx="3" fill="var(--blue2)"/>
-    <rect x="430" y="136" width="40" height="44" rx="3" fill="var(--blue2)"/>
-    <rect x="580" y="30" width="40" height="150" rx="4" fill="var(--blue)"/>
-  </g>
-  <g font-size="12" class="m" text-anchor="middle">
-    <text x="150" y="170">+0%</text><text x="300" y="162">+2.1%</text>
-    <text x="450" y="129">+8.8%</text><text x="600" y="23">+30.1%</text>
-  </g>
-  <text x="130" y="40" font-size="13" fill="var(--ink)">storage overhead vs a
-  current-only store, 1M events</text>
+  <text x="380" y="240" font-size="12" fill="var(--mut)" text-anchor="middle">correction
+  density, % of ingest events</text>
 </svg>
+<figcaption><b>Takeaway.</b> Storage is a usage-based bill, not a flat tax:
+retention costs in proportion to how often history is corrected
+(<code>retention-1m-density</code>, single observation per density, bars
+from zero). <b>Boundary.</b> Storage only — latency behaves differently and
+is covered next. Measured at one million events on one host; the 20% cell
+realizes 21.5% density because corrections are applied on an integer
+stride.</figcaption>
+</figure>
 
-<p>Latency tells the same story with a sharper edge: scan queries step 30–50%
-at the <i>first</i> corrections and grow roughly linearly after — and the
-multipliers grow with scale (at 10M, a mere 0.1% density already costs 4×
-on the interval join). Retention is not a flat tax; it is a usage-based
-bill, and at 20% density it even costs <i>admissibility</i> — one full-store
-query crosses the cost guardrail. If your workload never corrects, the
-two-clock design costs you nothing. That is the honest pricing table no
-bi-temporal system we know of publishes.</p>
+<h2>Axis 2 — latency is a separate bill</h2>
 
-<h2>The memory bill, misdiagnosed and then repaid</h2>
+<p>Storage and speed do not move together, so "free until the first
+correction" is too broad for both. Latency steps almost immediately: at
+0.01% density — about a hundred corrections in a million events — most scan
+queries are 33–47% slower and one neighbourhood query is 3.4× slower. After
+that, growth is roughly linear in each <i>tenfold</i> increase of density
+rather than in density itself.</p>
 
-<p>The resource sweep found something worse than a cost: a cliff. At 10M
-events every process needed ~5.9 GB <i>whatever the query</i> — a 0.6 ms
-point lookup and a 4 s diff had identical peaks — and under a 4 GB cap the
-suite did not degrade, it died. We blamed our unbounded segment cache,
-published that attribution, and built the budget to fix it.</p>
+<p>Scale sharpens it. At ten million events, 0.1% density makes the
+interval-join query
+<span data-fact="density_10m_interval_join">4.0</span>× slower; at 20% one
+full-store query is <b>refused outright</b> by the cost guardrail — the
+limit that declines work predicted to be too expensive — where the stripped
+store answers in 35.6 ms. Retention can cost answerability, not just
+time.</p>
 
-<p>The budget's acceptance run refuted the diagnosis: with the cache capped,
-2 GB <i>still</i> OOM'd, because the cache held only 794 MB. The dominant
-term was the statistics warm-up materializing all ten million rows — strings
-and a sha256 each — as one transient. Entry #10 in our running misdiagnosis
-table; the fix was a streaming fold.</p>
+<h2>Axis 3 — resident memory, and a floor you must budget</h2>
 
-<svg viewBox="0 0 720 210" width="100%" role="img"
-     aria-label="Peak memory for the 10M suite: 5.93 GB before, 1.76 GB after the cache budget and stats fix; a 256 MB budget still answers">
-  <g font-size="13" fill="var(--mut)">
-    <text x="10" y="38">before</text>
-    <text x="10" y="88">after (2 GB cap)</text>
-    <text x="10" y="138">256 MB budget</text>
-  </g>
-  <g>
-    <rect x="150" y="22" width="540" height="24" rx="5" fill="var(--mut)" opacity="0.45"/>
-    <rect x="150" y="72" width="160" height="24" rx="5" fill="var(--ok)"/>
-    <rect x="150" y="122" width="146" height="24" rx="5" fill="var(--blue)"/>
-  </g>
-  <g font-size="13" class="m">
-    <text x="560" y="39" fill="#fff">5.93 GB · OOM under 4 GB</text>
-    <text x="318" y="89">1.76 GB · latency −3–8%</text>
-    <text x="304" y="139">1.6 GB HWM · scans 1.8–28× slower</text>
-  </g>
-  <text x="150" y="192" font-size="12" fill="var(--mut)">10M events, docker
-  --memory caps, full query suite · the degradation region that was missing
-  now exists — 32,615 evictions and every answer still hash-identical.</text>
-</svg>
+<p>At ten million events every process needed about
+<span data-fact="memory_10m_before">5.93</span> GB regardless of the query:
+a 0.6 ms point lookup and a four-second diff had identical peaks. Under a
+4 GB cap — imposed with a container memory limit — the suite did not slow
+down but was <b>OOM-killed</b>: when a process exceeds its memory limit the
+operating system terminates it outright rather than degrading it.</p>
 
-<h2>The rest of the envelope</h2>
+<p>After the fix described in the sidebar, the same suite peaks at
+<span data-fact="memory_10m_suite">1.76</span> GB under a 2 GB cap, and
+still answers under a 256 MiB cache budget at
+<span data-fact="memory_10m_smallbudget">1.61</span> GB — paying
+<span data-fact="evictions_smallbudget">32,615</span> cache evictions and
+running 1.8–27× slower on scans, every answer still hash-identical. Capped
+configurations are not uniformly faster or slower than uncapped: individual
+queries land within about 10% either way.</p>
 
-<table>
-<tr><th>axis</th><th>finding</th><th>number</th></tr>
-<tr><td>thread scaling</td><td>pays at 10M, now correctly refuses to engage at 1M</td><td class="win">4.4–5.4× at 10M; 1M flat</td></tr>
-<tr><td>concurrent readers</td><td>lock-free reads confirmed; memory is the ceiling, not locks</td><td class="win">13× aggregate at 16 readers</td></tr>
-<tr><td>cold start</td><td>a per-process warm-up, not an I/O story; page-cache eviction adds almost nothing</td><td class="miss">~28 s at 10M, any first query</td></tr>
-<tr><td>crash recovery</td><td>replay was superlinear in correction density; a per-generation close cache and a durable log cursor fixed it</td><td class="win">2,857 s → 6 min at 20% density</td></tr>
-</table>
+<div class="note side"><h3>Sidebar: how we misdiagnosed this</h3>
+The floor was first attributed to our unbounded segment cache, and we
+published that attribution before testing it. The fix's acceptance run
+refuted it: with the cache capped the suite <i>still</i> exceeded a 2 GB
+limit, because the cache only ever held
+<span data-fact="memory_cache_measured">794</span> MB — far too little to
+explain a 5.93 GB peak. The dominant term was the statistics warm-up,
+materialising all ten million rows, each with strings and a hash, as one
+transient allocation; the fix was to fold it segment by segment. Entry #10
+in our running misdiagnosis table in
+<a href="https://github.com/zxf-work/tgms/blob/main/docs/engine_lessons.md">engine_lessons.md</a>.</div>
 
-<p>The cold-start row is the honest one to sit with: a short-lived client
-gets its first answer from DuckDB 10–70× sooner. Our engine assumes a
-resident process; that is a real deployment constraint, now written down
-next to the numbers that assume it.</p>
+<h2>Axis 4 — service lifecycle and concurrency</h2>
 
-<div class="note"><b>What transfers.</b> Price your durability promise per
-axis, and let the acceptance run refute your diagnosis — ours did, twice
-this week. Every number here regenerates from one harness command, exits
-nonzero on any hash mismatch, and ships its raw records in the repo:
-<a href="https://github.com/zxf-work/tgms/blob/main/docs/eval_bitemporal.md">eval_bitemporal.md</a> ·
-<a href="https://github.com/zxf-work/tgms/blob/main/docs/eval_resources.md">eval_resources.md</a>.</div>
+<p>The cost most likely to disqualify this design is not correction-related
+at all. On a fresh process at ten million events, the first query of any
+kind takes <span data-fact="coldstart_10m">27-31</span> seconds — a
+per-process warm-up rather than a disk-reading story, since evicting the
+page cache barely changes it. A short-lived client gets its first answer
+from DuckDB roughly 5–70× sooner. <b>The engine assumes a resident
+process</b>, and so does every other number here.</p>
+
+<p>Concurrency is the happier axis, with one clarification this post
+previously owed its readers. Sixteen readers deliver
+<span data-fact="readers_1m_throughput">13.1</span>× the <b>aggregate
+throughput</b> of one reader at a million events — throughput, not latency:
+per-query latency <i>worsens</i> under load, by up to
+<span data-fact="readers_latency_worst">53</span>% on the slowest query. At
+ten million events the same measurement gives
+<span data-fact="readers_10m_throughput">10.2</span>× with two of sixteen
+readers OOM-killed. Concurrency is bounded by memory, not locks.</p>
+
+<h2>Axis 5 — recovery</h2>
+
+<p>Rebuilding state by replaying the event log was superlinear in
+correction density. At 20% it took 2,856.8 seconds — <b>about 47.6
+minutes</b> — before a per-generation close-version cache and a faster
+version lookup brought the same replay to 361.1 seconds, or
+<span data-fact="replay_20pct_after_min">6.0</span> minutes: 7.9×
+better.</p>
+
+<p>Two qualifications. <b>There is no stated recovery objective</b>, so six
+minutes is an improvement rather than a pass — nothing defines what
+recovery time this workload requires, and that gap is worth closing before
+anyone depends on it. And this is log replay during dataset construction,
+not a crash-and-restart test; no process was killed. Reading it as a
+recovery figure is an inference.</p>
+
+<h2>What this result does not show</h2>
+
+<p><b>These are single observations on one host.</b> Storage, memory and
+replay are one run each, and the replay pair is a before-and-after across
+two commits rather than a repeated measurement. Latency medians reproduce
+to about ±<span data-fact="reproducibility_band">20</span>% between days —
+treat smaller differences as ties.</p>
+
+<p><b>Correction density is synthetic.</b> We generate corrections at a
+chosen rate with a fixed mix of replacements, carves and retractions. Real
+corrections may cluster in time or on particular entities, which these
+numbers would not capture.</p>
+
+<p><b>It is not a cross-system cost comparison.</b> Only cold start is
+measured against another engine. We have not found a directly comparable
+public cost breakdown for a bi-temporal store to set these beside — which
+is why they are published in this shape, not a claim that none exists.</p>
+
+<h2>What this means in practice: four profiles</h2>
+
+<div class="wrap"><table>
+<tr><th>Profile</th><th>What you pay</th><th>Verdict</th></tr>
+<tr><td><b>Current-only workload</b> — never corrected</td><td>no measurable storage, latency or memory overhead; still the warm-up and memory floor</td><td class="win">good fit — effectively free</td></tr>
+<tr><td><b>Moderate corrections</b> — about 1% of events</td><td>+<span data-fact="storage_overhead_1pct">2.1</span>% storage; scans a third slower</td><td class="win">good fit</td></tr>
+<tr><td><b>Correction-heavy audit store</b> — 5–20%</td><td>+<span data-fact="storage_overhead_5pct">8.8</span>% to +<span data-fact="storage_overhead_20pct">30.1</span>% storage; multi-fold latency at scale; one query refused at 20%</td><td class="amber">budget memory and rebuild time deliberately</td></tr>
+<tr><td><b>Short-lived process</b> — CLI, serverless, per-request</td><td>the full <span data-fact="coldstart_10m">27-31</span> s warm-up every invocation</td><td class="miss">consider another approach</td></tr>
+</table></div>
+
+<h2>Takeaway</h2>
+
+<p>Price a durability promise per axis rather than as one number. The
+bi-temporal contract is cheap where people expect it to be expensive — a
+store that is never corrected pays nothing we can measure — and expensive
+where they do not look: a half-minute warm-up per process, and a memory
+floor that kills rather than slows. Those two, not storage, decide whether
+it fits.</p>
+
+<div class="note"><h3>Evidence and reproduction</h3>
+The density sweep regenerates from one harness command
+(<code>scripts/run_bitemporal.sh</code>) and exits nonzero on any hash
+mismatch. The resource numbers take several invocations, and the memory
+budget and thread-recalibration records were produced outside
+<code>run_resources.sh</code>; all are listed with their commits in
+<a href="https://github.com/zxf-work/tgms/blob/main/docs/eval_bitemporal.md">eval_bitemporal.md</a>
+and
+<a href="https://github.com/zxf-work/tgms/blob/main/docs/eval_resources.md">eval_resources.md</a>.
+Every answer in every capped and threaded configuration is
+hash-identical.</div>
+
+<h2>Continue reading</h2>
+
+<div class="note"><b>Before this:</b>
+<a href="two-kinds-of-time.html">two kinds of time</a> — why a correction
+must not erase what was believed. <b>After this:</b>
+<a href="racing-the-specialist.html">racing the specialist</a> — building
+the operator we were worst at.</div>
+
+<h2 id="changelog">Changelog</h2>
+
+<div class="note"><b>3 August 2026 — substantial revision.</b>
+<ul>
+<li><b>Four corrections.</b> Capped-memory latency read "−3–8%", implying a
+speed-up; four of six queries were <i>slower</i>, one by 10%. "A durable
+log cursor" appears nowhere in the records — the fixes were a version-lookup
+index and a per-generation close-version cache. The small-budget scan
+penalty is 27×, not 28×. Cold start is 5–70× behind DuckDB, not 10–70× —
+one query is 5.3×. "Two days earlier" is unsupported and is gone.</li>
+<li>Reframed the replay measurement: log replay during dataset build, not
+crash recovery, with no stated recovery objective to judge six minutes
+against. 2,856.8 s now appears as ≈47.6 minutes so the pair is
+comparable.</li>
+<li>Qualified concurrency as <b>aggregate throughput</b> at one million
+events, with the per-query latency cost and the 10M figure where two of
+sixteen readers were OOM-killed.</li>
+<li>Scoped "overhead at zero corrections: 0" to no <i>measurable</i>
+overhead with its tolerance; separated storage from latency; defined
+correction density, OOM and the memory cap; softened the novelty claim; and
+moved the misdiagnosis chronology to a sidebar.</li>
+</ul></div>
 </article>
 
 <div class="next"><a href="racing-the-specialist.html">
 <div class="lbl">Next up</div>
-<div class="ttl">#9 — Racing the specialist: building the operator we were
+<div class="ttl">#9 · Racing the specialist — building the operator we were
 worst at →</div></a></div>
+
+<div class="next" style="padding-top:12px"><a href="two-kinds-of-time.html">
+<div class="lbl">Previously</div>
+<div class="ttl">#7 · Two kinds of time — why a correction must not erase
+what was believed →</div></a></div>
 
 <script data-goatcounter="https://zxf-tgms.goatcounter.com/count" async src="https://gc.zgo.at/count.js"></script>
 </body></html>
