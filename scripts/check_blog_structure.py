@@ -20,6 +20,7 @@ Rules, each traceable to a failure the audit found:
 from __future__ import annotations
 
 import re
+import subprocess
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -37,8 +38,15 @@ def headings(html: str) -> list[str]:
             for h in re.findall(r"<h2[^>]*>(.*?)</h2>", html, re.S)]
 
 
+def tracked_paths() -> set[str]:
+    out = subprocess.run(["git", "ls-files"], capture_output=True, text=True,
+                         cwd=ROOT).stdout.split()
+    return set(out)
+
+
 def main() -> int:
     bad: list[str] = []
+    tracked = tracked_paths()
     for post in POSTS:
         html, name = post.read_text(), post.name
         hs = headings(html)
@@ -59,6 +67,18 @@ def main() -> int:
                           html, re.I):
             bad.append(f"{name}: no status (Current / Updated result / "
                        f"Historical snapshot)")
+
+        # A citation the reader cannot open is worse than none. Internal
+        # planning documents are gitignored by policy, so a link into the
+        # repo has to name something that is actually published.
+        for m in re.finditer(
+                r"https://github\.com/zxf-work/tgms/(?:blob|tree)/main/([^\"#?]+)",
+                html):
+            path = m.group(1).rstrip("/")
+            if path not in tracked and not any(t.startswith(path + "/")
+                                               for t in tracked):
+                bad.append(f"{name}: cites {path}, which is not in the "
+                           f"published repo")
 
     if bad:
         print("blog structure: FAIL")

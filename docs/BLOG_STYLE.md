@@ -281,4 +281,7 @@ values traceable to the same record as the report.
 
 **Maintenance** — TGMS version and last-updated visible; index card matches
 the post; project page matches the post; reproduction links point at an
-immutable commit; `scripts/site_facts.py check` passes.
+immutable commit; **every repo link names a published file** — the internal
+planning documents are gitignored by policy, so citing one gives the reader
+a 404 where they expected evidence; `scripts/site_facts.py check` and
+`scripts/check_blog_structure.py` both pass.

@@ -106,10 +106,10 @@ before it.</p>
 
 <a class="post" href="what-remembering-costs.html">
 <span class="num">#8</span>
-<span class="trk e">Evidence & capability</span>
+<span class="trk e">Evidence &amp; capability</span>
 <h2>The operational cost of keeping a correctable history</h2>
 <p class="q">What do you actually pay to keep a history you can correct?</p>
-<p>Retention is close to free until the first correction; after that, correction density, a memory floor and a per-process warm-up are what decide the deployment.</p>
+<p>No measurable overhead when nothing is corrected; storage and latency that grow with correction density; a per-process warm-up of about half a minute; and a memory floor that kills rather than slows. Four deployment profiles, and what the numbers do not cover.</p>
 </a>
 
 <a class="post" href="evaluating-the-engine.html">
@@ -130,18 +130,18 @@ before it.</p>
 
 <a class="post" href="independent-questions.html">
 <span class="num">#5</span>
-<span class="trk e">Evidence & capability</span>
+<span class="trk e">Evidence &amp; capability</span>
 <h2>We let users define the workload</h2>
 <p class="q">What do people ask a temporal graph store, when nobody shows them the manual?</p>
-<p>Four people wrote 110 questions without seeing the operator list. The study measured real coverage, ranked the missing capability correctly — and its headline prediction still overshot by half.</p>
+<p>Ten of 110 independently written questions were expressible; after building the capability the study ranked first, 24 are. The gap between 30 predicted and 14 delivered is the useful part.</p>
 </a>
 
 <a class="post" href="scaling-the-planner.html">
 <span class="num">#4</span>
-<span class="trk e">Evidence & capability</span>
+<span class="trk e">Evidence &amp; capability</span>
 <h2>Bigger models help only when the data interface can use them</h2>
 <p class="q">Does a stronger model make a temporal system better, or is the interface the limit?</p>
-<p>Accuracy rose sharply from 7B to 32B under a frozen system, while the retrieval baselines improved little — and the 72B point changes precision as well as size, so it is read separately.</p>
+<p>Changing only the model, answer accuracy rose from 13.8% at 7B to 62.8% at 32B through an operator interface, and from 9.6% to 27.7% through the strongest retrieval baseline. The 72B point varies precision as well as size, so it is reported detached rather than as the end of the curve.</p>
 </a>
 
 <a class="post" href="incomplete-evidence.html">
