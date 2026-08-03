@@ -1,16 +1,16 @@
 <!doctype html><html lang="en"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>We asked four students to write 110 questions. Our system could express 10. — TGMS blog</title>
-<meta name="description" content="An independent-question study for a fixed operator algebra: what people actually ask, which capabilities are missing, and why an equal-information SQL baseline is the fairest fight we ever staged.">
+<title>We let users define the workload — TGMS blog</title>
+<meta name="description" content="We asked people who had never seen our operator list to write the questions they actually wanted answered. Ten of 110 were expressible; after building the capability they ranked first, 24 are. What the gap between prediction and delivery taught us about reading a capability histogram.">
 <style>
 :root{--ink:#1a2534;--mut:#5b6b7c;--blue:#1c64d9;--blue2:#3b82f6;--line:#e3e8ef;
       --bg:#fbfcfe;--card:#fff;--codebg:#0e1c30;--codetx:#dce7f5;--ok:#0a7d33;
-      --amber:#b58900;--bad:#c0392b;
+      --amber:#b58900;--bad:#c0392b;--purple:#7c3aed;
       --mono:ui-monospace,'SF Mono',Menlo,monospace}
 @media (prefers-color-scheme: dark){
 :root{--ink:#e6edf6;--mut:#95a6ba;--blue:#6ea8ff;--blue2:#8bbcff;--line:#243244;
       --bg:#0b1420;--card:#121e2e;--codebg:#0a1017;--codetx:#cfe0f2;--ok:#4ade80;
-      --amber:#e3b341;--bad:#f87171}}
+      --amber:#e3b341;--bad:#f87171;--purple:#a78bfa}}
 *{box-sizing:border-box}
 body{margin:0;font-family:-apple-system,'Segoe UI',Roboto,sans-serif;
      color:var(--ink);background:var(--bg);-webkit-font-smoothing:antialiased}
@@ -24,6 +24,7 @@ body{margin:0;font-family:-apple-system,'Segoe UI',Roboto,sans-serif;
         text-transform:uppercase;color:#dbe7f8}
 h1{font-size:clamp(26px,4.6vw,38px);line-height:1.16;letter-spacing:-.7px;
    margin:14px 0 10px;color:#fff}
+.sub{color:#dbe7f8;font-size:17.5px;line-height:1.45;margin:0 0 14px;max-width:640px}
 .byline{color:#a9c0e2;font-size:14.5px}
 .byline a{color:#dbe7f8}
 article{max-width:760px;margin:0 auto;padding:40px 24px 30px;line-height:1.72;
@@ -45,6 +46,7 @@ h2::before{content:"";position:absolute;top:0;left:0;width:44px;height:4px;
      letter-spacing:.06em;color:var(--mut);margin-bottom:6px}
 .duo .big{font-size:30px;font-weight:700;color:var(--blue)}
 .duo .big.bad{color:var(--bad)}
+.duo .big.amber{color:var(--amber)}
 figure{margin:26px 0;background:var(--card);border:1px solid var(--line);
        border-radius:14px;padding:18px 18px 8px}
 figcaption{color:var(--mut);font-size:13.5px;line-height:1.5;padding:8px 4px 10px}
@@ -58,11 +60,24 @@ th:first-child,td:first-child{text-align:left}
 tr:last-child td{border-bottom:0}
 td.win{color:var(--ok);font-weight:700}
 td.miss{color:var(--bad);font-weight:700}
+td.amber{color:var(--amber);font-weight:700}
+.wrap{overflow-x:auto}
 a{color:var(--blue)}
 code{font-family:var(--mono);background:#1c64d914;border-radius:5px;
      padding:1px 6px;font-size:.9em}
 .note{background:#1c64d90e;border:1px solid #1c64d930;border-radius:12px;
       padding:14px 18px;font-size:15px;margin:24px 0;line-height:1.6}
+.note.ev{background:#0a7d3310;border-color:#0a7d3340}
+.note.sec{background:#b5890012;border-color:#b5890040}
+.note h3{margin:0 0 8px;font-size:13px;text-transform:uppercase;
+      letter-spacing:.07em;color:var(--mut)}
+.note ul{margin:6px 0 0;padding-left:20px}
+.note li{margin:3px 0}
+.q{border-left:3px solid var(--line);padding:2px 0 2px 14px;margin:14px 0;
+   font-size:16px}
+.meta{font-size:13.5px;color:var(--mut);border:1px solid var(--line);
+      background:var(--card);border-radius:12px;padding:12px 16px;margin:0 0 8px;
+      line-height:1.6}
 .next{max-width:760px;margin:0 auto;padding:0 24px 70px}
 .next a{display:block;background:var(--card);border:1px solid var(--line);
         border-radius:14px;padding:18px 22px;text-decoration:none;color:var(--ink);
@@ -78,83 +93,183 @@ svg .m{font-family:var(--mono)}
 <div class="nav"><a href="../">← TGMS</a><a href="./">blog</a>
 <a href="https://github.com/zxf-work/tgms">github</a></div>
 <div class="inner">
-<span class="kicker">Post #5 · Coverage &amp; fair fights</span>
-<h1>We asked four students to write 110 questions. Our system could express 10.</h1>
-<div class="byline">Xiaofei Zhang · University of Memphis · July 2026 ·
-<a href="https://github.com/zxf-work/tgms/blob/main/paper/main.pdf">paper</a> ·
-<a href="https://github.com/zxf-work/tgms/tree/main/benchmarks/independent-v1">study artifact</a></div>
+<span class="kicker">Post #5 · Evidence &amp; capability</span>
+<h1>We let users define the workload</h1>
+<p class="sub">An independent study exposed what TGMS could answer, what it
+could not, and what to build next.</p>
+<div class="byline">Xiaofei Zhang · University of Memphis ·
+published July 2026 · updated 3 August 2026 ·
+<a href="https://github.com/zxf-work/tgms/tree/main/benchmarks/independent-v1">study
+artifact</a> · <a href="https://github.com/zxf-work/tgms">code</a></div>
 </div></div>
 
 <article>
-<p>Every agent benchmark has a dirty secret: the people who wrote the
-tasks knew what the system could do. Ours included. So we ran the
-experiment that hurts — we handed four students a plain-language
-description of two datasets, deliberately withheld the operator list,
-and asked them to write whatever questions they actually wanted
-answered.</p>
 
-<div class="pull"><span data-fact="coverage_original">10</span> of
-<span data-fact="coverage_total_questions">110</span> questions were
-expressible in the operator set we had at the time. The rest are a
-measured, prioritised to-do list.</div>
+<p><b>In one sentence:</b> we asked people who had never seen our operator
+list to write the questions they actually wanted answered, and only
+<span data-fact="coverage_original">10</span> of
+<span data-fact="coverage_total_questions">110</span> could be expressed at
+all — a number that is <span data-fact="coverage_current">24</span> today,
+and that taught us more by missing its own forecast than by hitting it.</p>
 
-<p>All 110, disposed of completely, because "10 expressible and 98
-blocked" leaves two unaccounted for and a reader is right to notice:</p>
+<div class="meta"><b>Status: Updated result.</b> TGMS 0.4.0 · study July
+2026, pre-registered as D-026 · re-audit 2 August 2026 · ~6 min · see the
+<a href="#changelog">changelog</a>.</div>
+
+<h2>Why this matters</h2>
+
+<p>A benchmark written by the people who built the system will, without
+anyone intending it, tend to reflect the capabilities that system already
+has: you reach for examples you know are answerable, and the tasks that
+never occur to you are precisely the ones your design cannot express. The
+cheapest correction is to let somebody else write the questions, then
+publish the coverage number that comes back, whatever it is.</p>
+
+<h2>What we measured</h2>
+
+<div class="note ev"><h3>Evidence box</h3>
+<ul>
+<li><b>Question.</b> What share of the questions people actually want to ask
+can our operator set express — and which missing capabilities account for
+the rest?</li>
+<li><b>Instrument.</b> A plain-language description of two public datasets
+and a template: the question, the answer kind expected, why they wanted it.
+Writers were <b>not</b> shown the operator list, the repository, or any
+existing benchmark task. The two-clock model <i>was</i> explained.</li>
+<li><b>Datasets.</b> CollegeMsg — 1,899 accounts, 59,835 messages,
+April–October 2004. Bitcoin-OTC — 5,881 accounts, 35,592 signed trust
+ratings, November 2010 to January 2016.</li>
+<li><b>Sample.</b> <span data-fact="coverage_total_questions">110</span>
+questions, 55 per dataset — <b>raw submissions</b>, nothing screened out,
+deduplicated or merged. One duplicate pair and two unanswerable questions
+are still counted.</li>
+<li><b>Metric.</b> <b>Expressible</b> — the question can be <i>stated</i> as
+a chain of verified data operations returning a readable answer. Coverage,
+not accuracy.</li>
+<li><b>Classification.</b> One hand audit against the operator registry,
+26 July 2026, <b>pre-registered before any operator was built to close a
+gap</b>; the August re-audit is a diff a test refuses to let move backwards.
+Not blind, not double-annotated, no agreement measure.</li>
+<li><b>Not recorded.</b> The artifact holds the questions, not the people —
+no level, field, prior exposure or per-writer attribution. Treat "four
+writers" as recollection, not a documented figure.</li>
+</ul></div>
+
+<h2>What we found</h2>
+
+<p>All 110, disposed of completely — "10 expressible and 98 blocked" leaves
+two unaccounted for, and a reader is right to notice:</p>
 
 <table>
 <tr><th>Disposition (original study, July 2026)</th><th>Questions</th></tr>
-<tr><td>Expressible — one operation, or a chain of them</td><td class="win">10</td></tr>
-<tr><td>Blocked — needs a capability we had not built</td><td>98</td></tr>
+<tr><td>Expressible — a chain of verified operations</td><td class="win"><span data-fact="coverage_original">10</span></td></tr>
+<tr><td>Blocked — needs a capability we had not built</td><td><span data-fact="indep_blocked">98</span></td></tr>
 <tr><td>Ambiguous as written — conflates the two clocks, so it has no single
 answer</td><td>1</td></tr>
 <tr><td>Not a computation over the log — presupposes a correction the data
 never contained</td><td>1</td></tr>
 </table>
 
-<p>"Expressible" here means the question can be <i>stated</i> as a chain of
-verified operations with a readable answer. It is not a claim that a model
-answered it correctly; that is a separate measurement, and only five of the
-expressible questions had answers scoreable enough to run verbatim.</p>
+<p>Nine percent, and every one of the ten was a multi-step chain rather
+than a single operation — the honest starting coverage of a
+thirteen-operation algebra against questions nobody steered.</p>
 
-<div class="note"><b>Followed up.</b> We since built the operator this
-study ranked first and re-measured the coverage: 24 of 110, where the
-tag histogram below implied 40. <a href="#built-it">What that gap
-taught us</a> is further down.</div>
+<h2>Which capabilities were missing</h2>
 
-<h2>What people actually ask</h2>
-<p>The gaps were not random. Tagging every inexpressible question with
-its missing capabilities (tags overlap, so counts exceed 98):</p>
+<p>Tagging each blocked question produces two very different counts, and
+running them together is the easiest mistake here. A capability can be one
+of several blockers, or the <b>only</b> thing in the way — and only the
+second tells you what shipping it would buy.</p>
 
-<table>
-<tr><th>Missing capability</th><th>Questions blocked</th><th>Blocked by this alone</th></tr>
-<tr><td>Grouped / distinct aggregation ("which account sent the most…")</td><td>76</td><td class="win">30</td></tr>
-<tr><td>Arithmetic beyond count/sum/min/max (ratios, medians, %)</td><td>27</td><td>2</td></tr>
-<tr><td>Property-filtered patterns (rating-sign in motifs)</td><td>20</td><td>2</td></tr>
-<tr><td>Calendar semantics (weekday, hour-of-day)</td><td>18</td><td>2</td></tr>
-</table>
+<figure>
+<svg viewBox="0 0 720 336" width="100%" role="img"
+     aria-label="Grouped aggregation blocks 76 of 98 questions somewhere in the chain but is the sole blocker on 30. Arithmetic blocks 27, sole blocker on 2; property filters 20 and 2; calendar semantics 18 and 2; global scan-select 10 and 6; set operations 7 and 1; absence 3 and 0.">
+  <text x="12" y="22" font-size="13" fill="var(--ink)">questions blocked, of
+  98 · light bar = blocked by this somewhere · solid = <tspan
+  font-weight="700">sole blocker</tspan></text>
+  <g font-size="12.5" fill="var(--mut)" text-anchor="end">
+    <text x="168" y="72">grouped aggregation</text>
+    <text x="168" y="108">arithmetic (ratios, %)</text>
+    <text x="168" y="144">property filters</text>
+    <text x="168" y="180">calendar semantics</text>
+    <text x="168" y="216">global scan-select</text>
+    <text x="168" y="252">set operations</text>
+    <text x="168" y="288">absence / negation</text>
+  </g>
+  <g fill="var(--blue)">
+    <rect x="180" y="56" width="510" height="11" rx="3" opacity=".28"/>
+    <rect x="180" y="70" width="201" height="11" rx="3"/>
+    <rect x="180" y="92" width="181" height="11" rx="3" opacity=".28"/>
+    <rect x="180" y="106" width="13" height="11" rx="3"/>
+    <rect x="180" y="128" width="134" height="11" rx="3" opacity=".28"/>
+    <rect x="180" y="142" width="13" height="11" rx="3"/>
+    <rect x="180" y="164" width="121" height="11" rx="3" opacity=".28"/>
+    <rect x="180" y="178" width="13" height="11" rx="3"/>
+    <rect x="180" y="200" width="67" height="11" rx="3" opacity=".28"/>
+    <rect x="180" y="214" width="40" height="11" rx="3"/>
+    <rect x="180" y="236" width="47" height="11" rx="3" opacity=".28"/>
+    <rect x="180" y="250" width="7" height="11" rx="3"/>
+    <rect x="180" y="272" width="20" height="11" rx="3" opacity=".28"/>
+  </g>
+  <g font-size="12" class="m" fill="var(--mut)">
+    <text x="698" y="66" text-anchor="end">76</text>
+    <text x="389" y="80" font-weight="700">30</text>
+    <text x="369" y="102">27</text><text x="201" y="116">2</text>
+    <text x="322" y="138">20</text><text x="201" y="152">2</text>
+    <text x="309" y="174">18</text><text x="201" y="188">2</text>
+    <text x="255" y="210">10</text><text x="228" y="224" font-weight="700">6</text>
+    <text x="235" y="246">7</text><text x="195" y="260">1</text>
+    <text x="208" y="282">3</text><text x="180" y="296">0 sole</text>
+  </g>
+  <text x="180" y="320" font-size="11.5" fill="var(--mut)">tags overlap —
+  <tspan data-fact="indep_multi_blocker">55</tspan> of the 98 need two or
+  more at once, so neither column sums to 98</text>
+</svg>
+<figcaption><b>Takeaway.</b> Grouped aggregation is not merely the most
+common blocker but the one most often the <i>sole</i> blocker, which made it
+the right thing to build first. Global scan-select is the quiet second — few
+questions, but the only obstacle on 6. <b>Boundary.</b> The two bars measure
+different things and neither sums to 98, because
+<span data-fact="indep_multi_blocker">55</span> questions need two or more
+capabilities at once. These are hand-assigned tags from a single audit, not
+measurements — and what follows is the finding that they were systematically
+optimistic.</figcaption>
+</figure>
 
-<p>One operator family — grouped aggregation — would make 30 more
-questions expressible on its own. Nothing else comes close. That is
-what workload-driven interface design looks like: not a designer's
-intuition about what agents need, but a count of what real questions
-break on.</p>
+<h2>Three questions, in plain language</h2>
 
-<h2 id="built-it">Update, August 2026: we built it, and the thirty was fourteen</h2>
-<p>That prediction was the whole argument for what to build next, so
-it deserved to be checked rather than quietly reused. We built the
-grouped-aggregation operator, then re-audited all 110 questions against
-the fourteen-operator algebra — without touching the pre-registered
-table, so the miss stays visible.</p>
+<div class="q"><b>Expressible.</b> <i>"List the IDs of all accounts that
+sent a message to account n5 on June 15, 2004."</i> — fetch that account's
+history, keep inbound messages, filter to one day. Three verified
+operations, and one of the <span data-fact="indep_scoreable">5</span> crisp
+enough to score verbatim.</div>
+
+<div class="q"><b>Blocked, and instructive.</b> <i>"How many distinct pairs
+of accounts (A, B) exist where A rated B and B also rated A?"</i> — tagged
+"needs grouped aggregation". Grouping shipped, and it is <i>still</i>
+blocked: after grouping by pair you must match the set of pairs against its
+own transpose, which is a join, not an aggregate.</div>
+
+<div class="q"><b>Blocked on order.</b> <i>"What is the longest gap in days
+between two consecutive ratings by the same account?"</i> — minimum and
+maximum give a group's endpoints, never its interior.</div>
+
+<h2>We built the top-ranked capability, and missed our own forecast</h2>
+
+<p>The histogram said grouped aggregation alone would unlock
+<span data-fact="indep_g_alone">30</span> questions — the whole argument
+for building it rather than something else. So the finished operator owed
+us a re-audit of all 110 against the new algebra, without touching the
+pre-registered table.</p>
 
 <div class="duo">
-<div class="cell"><b>Predicted, July</b>
-<div class="big">30</div>
-questions the tag histogram said grouped aggregation would unlock on
-its own.</div>
+<div class="cell"><b>Predicted, July</b><div class="big">30</div>
+questions the histogram said grouping would unlock on its own.</div>
 <div class="cell"><b>Measured, August</b>
-<div class="big bad">14</div>
-questions that actually became expressible — 24 of 110 in total, up
-from 10.</div>
+<div class="big amber"><span data-fact="indep_delivered">14</span></div>
+that actually became expressible — coverage
+<span data-fact="coverage_current">24</span> of 110, up from
+<span data-fact="coverage_original">10</span>.</div>
 </div>
 
 <p>Fourteen moved but seventeen stayed blocked, which does not obviously
@@ -162,91 +277,144 @@ add up to thirty, so here is the full accounting:</p>
 
 <table>
 <tr><th>Reconciliation</th><th>Questions</th></tr>
-<tr><td>Predicted: blocked by grouped aggregation <i>alone</i></td><td>30</td></tr>
+<tr><td>Predicted: blocked by grouped aggregation <i>alone</i></td><td><span data-fact="indep_g_alone">30</span></td></tr>
 <tr><td>… of those, became expressible</td><td class="win">13</td></tr>
-<tr><td>… of those, still blocked by something the tag concealed</td><td class="miss">17</td></tr>
+<tr><td>… of those, still blocked by something the tag concealed</td><td class="miss"><span data-fact="indep_still_blocked">17</span></td></tr>
 <tr><td>Plus one question tagged for a different capability that the new
 operation happened to unlock</td><td class="win">1</td></tr>
-<tr><td><b>Delivered</b></td><td class="win"><b>14</b></td></tr>
-<tr><td>Coverage: 10 originally expressible + 14</td><td class="win"><b>24 of 110</b></td></tr>
+<tr><td><b>Delivered</b></td><td class="win"><b><span data-fact="indep_delivered">14</span></b></td></tr>
+<tr><td>Coverage: 10 originally expressible + 14</td><td class="win"><b><span data-fact="coverage_current">24</span> of 110</b></td></tr>
 </table>
 
-<p>The seventeen that didn't move are the interesting half. With
-grouping in hand, what they had really been waiting for became
-legible:</p>
+<p>With grouping in hand, what the seventeen had been waiting for became
+legible: <b>11</b> want a set or pair join, <b>10</b> want ordered sequences
+inside a group, and <b>4 want both</b> — 11 + 10 − 4 = 17, with no third
+group. Two also touch rating properties or division, but sit inside those
+counts rather than beside them.</p>
 
-<table>
-<tr><th>What the other 17 actually needed</th><th>Questions</th></tr>
-<tr><td>A set or pair join — "pairs where A rated B <i>and</i> B rated A"
-groups by pair fine, then must match each pair against its transpose</td><td>11</td></tr>
-<tr><td>Ordered sequences inside a group — "longest gap between
-consecutive ratings", "more than 5 in any 24-hour period". Min and max
-give a group's endpoints, never its interior; a sliding window is not
-a bucket</td><td>10</td></tr>
-<tr><td>Rating properties or division, both deliberately out of
-scope</td><td>4</td></tr>
-</table>
+<div class="pull">A capability tag assigned before the capability exists
+records the first blocker a reader hits — and the first blocker is the
+shallowest one.</div>
 
-<div class="pull">A capability tag assigned before the capability
-exists records the first blocker a reader hits — and the first blocker
-is the shallowest one.</div>
+<p>None of this was concealed; it was folded into one tag by people who
+could see what was missing but not what sat underneath it. The histogram
+still ranked the work correctly — nothing else would have moved fourteen
+questions. But a number attached to a tag is an upper bound, not a
+forecast, and the fix is cheap: make every tag name the operation that
+would satisfy it, and the tags that cannot name one are the ones hiding a
+second capability.</p>
 
-<p>None of this was concealed; it was folded into a tag named <code>G</code>
-by people who could see what was missing but not what sat underneath
-it. The histogram still did its job — it ranked the work correctly, and
-nothing else on the list would have moved fourteen questions. But the
-number attached to a tag is an upper bound, not a forecast, and the
-deflation is mostly avoidable: make every tag name the operator call
-that would satisfy it, and the tags that can't name one are the ones
-hiding a second capability.</p>
+<h2>What this result does not show</h2>
 
-<h2>Two findings we didn't pay for</h2>
-<p>The students misjudged the data. Several questions target months
-before the log begins — a good system should answer <i>zero</i>
-there, not hallucinate, and it should expose its time range so an
-agent can tell "no matching events" from "outside coverage."
-Sharper: even after reading our two-clock explanation, some writers
-anchored <b>transaction time</b> to event years. The database did not
-exist in 2013; its beliefs began at ingest. Storing two clocks is not
-enough — the interface has to teach them.</p>
+<p><b>Coverage is not usefulness.</b> Expressible means statable, not
+answered correctly; only <span data-fact="indep_scoreable">5</span> of the
+original ten could be scored verbatim, and how many a model gets right is a
+separate experiment.</p>
 
-<h2>The fairest fight we ever staged</h2>
-<p>The same review cycle produced our favorite baseline: give the
-same model direct SQL access to the <i>identical</i> bi-temporal
-store our operators run on, schema and temporal semantics documented
-in the prompt. No information asymmetry left. Three things happened:</p>
+<p><b>It does not generalise past two datasets and one round.</b> Both are
+public interaction logs. A different domain would produce a different
+histogram, and 110 questions from an unrecorded number of writers is a
+small, unstratified sample with no measure of annotation reliability.</p>
 
-<div class="duo">
-<div class="cell"><b>Correction probes</b>
-<div class="big">0.85–0.92</div>
-matched us everywhere. History, not the interface, decides whether
-belief-state questions are answerable.</div>
-<div class="cell"><b>Compositional workload</b>
-<div class="big">+0.124</div>
-our margin on CollegeMsg (CI [+0.07, +0.18]). Where one query can't
-carry the computation, the contracted plan wins.</div>
-</div>
+<p><b>The tags are judgments, not measurements</b> — which is the finding
+rather than a caveat. The one tag we tested against reality overstated its
+delivery by more than two to one, and the roadmap inherits that
+uncertainty.</p>
 
-<p>And on a flat rating schema (Bitcoin-OTC), SQL generation tied us
-outright — 0.340 vs 0.309, confidence interval spanning zero. We put
-that number in the paper with pleasure. The operator interface is not
-universally better; it is better exactly where computation composes,
-and it is the only configuration whose every emitted claim is checked
-against a deterministic trace. SQL answered 94% of tasks and was right
-30% of the time; we answered 71% and were right 55% of the time.</p>
+<h2>What this means in practice: the roadmap</h2>
 
-<div class="note"><b>Receipts.</b> Study protocol, raw questions,
-hand-audited classification, and frozen gold:
-<code>benchmarks/independent-v1/</code> and decisions D-025–D-027 in
-the repo. The five scoreable expressible questions ran verbatim
-against every system; nobody did well, and only our system knew when
-to say nothing.</div>
+<div class="wrap"><table>
+<tr><th>Capability</th><th>Sole blocker on</th><th>Difficulty</th><th>Composes</th><th>Status</th></tr>
+<tr><td>Grouped / distinct aggregation</td><td><span data-fact="indep_g_alone">30</span> predicted</td><td>medium</td><td>high</td><td class="win">shipped — delivered <span data-fact="indep_delivered">14</span></td></tr>
+<tr><td>Set / pair join (reciprocity, transpose)</td><td>11</td><td>high</td><td>high</td><td class="amber">next</td></tr>
+<tr><td>Ordered sequences in a group (gaps, sliding windows)</td><td>10</td><td>high</td><td>high</td><td class="amber">next</td></tr>
+<tr><td>Global scan-select</td><td>6</td><td>low</td><td>medium</td><td class="amber">cheapest remaining</td></tr>
+<tr><td>Calendar semantics (weekday, hour-of-day)</td><td>2</td><td>low</td><td>low</td><td>queued</td></tr>
+<tr><td>Arithmetic beyond count / sum / min / max</td><td>2</td><td>low</td><td>medium</td><td>queued</td></tr>
+<tr><td>Property-filtered patterns</td><td>2</td><td>medium</td><td>medium</td><td>queued</td></tr>
+</table></div>
+
+<p>Difficulty and composability are engineering judgment, not measurement,
+and the sole-blocker column is exactly the quantity this study showed to be
+an upper bound. Read the ordering, not the arithmetic — only the first row
+is measured.</p>
+
+<p>One item did not come from the histogram at all. Four questions anchor
+<b>transaction time</b> to event years — asking what the database believed
+in 2013, when its beliefs begin at ingest — and seven target months outside
+the log entirely. Those writers had read the two-clock explanation. Storing
+two clocks is not enough; the interface has to teach them, and expose its
+coverage window.</p>
+
+<h2>Takeaway</h2>
+
+<p>Letting users define the workload cost us a flattering number and bought
+a ranked, measured roadmap — plus the more durable lesson: a capability
+histogram built before those capabilities exist ranks the work correctly
+while overstating what each item delivers, because a reader can only report
+the first thing that stops them.</p>
+
+<div class="note"><h3>Evidence and reproduction</h3>
+Raw questions and the hand-audited classification are in
+<a href="https://github.com/zxf-work/tgms/tree/main/benchmarks/independent-v1"><code>benchmarks/independent-v1/</code></a>;
+the pre-registered table, the August diff and the invariants guarding it
+are in
+<a href="https://github.com/zxf-work/tgms/blob/main/scripts/independent_questions.py"><code>scripts/independent_questions.py</code></a>,
+which also rebuilds the five scoreable questions into a suite whose gold
+answers are computed twice — once in SQL, once in plain Python — and
+asserted equal. That suite is generated rather than archived, and there is
+no separate protocol document: the script is the protocol.</div>
+
+<div class="note sec"><h3>Related work, covered elsewhere</h3>
+An earlier version of this post also carried our <b>equal-information SQL
+baseline</b> — the same model given direct SQL access to the identical
+bi-temporal store. It answers a different question and diluted this one, so
+it now lives in the
+<a href="https://github.com/zxf-work/tgms/blob/main/paper/main.pdf">paper</a>
+under same-information baselines. Two figures it used here are being
+re-derived from the run records first.</div>
+
+<h2>Continue reading</h2>
+
+<div class="note"><b>Before this:</b>
+<a href="scaling-the-planner.html">bigger models help only when the data
+interface can use them</a>. <b>After this:</b> what it took to build the
+capability this study ranked first —
+<a href="building-the-engine.html">nine wrong bottlenecks, and the
+misdiagnosis table we kept</a>.</div>
+
+<h2 id="changelog">Changelog</h2>
+
+<div class="note"><b>3 August 2026 — substantial revision.</b>
+<ul>
+<li>Added the missing methodology, and what the artifact does <i>not</i>
+record about the writers.</li>
+<li>Split the capability chart into "blocked somewhere" and "sole blocker",
+restoring three tags the old table dropped — including global scan-select,
+the second-largest sole blocker at 6.</li>
+<li>Corrected the seventeen still-blocked questions, printed as 11 + 10 + 4,
+which does not sum to 17. The tags overlap: it is 11 + 10 − 4.</li>
+<li>Moved the equal-information SQL baseline out to a pointer; two of its
+figures did not survive checking.</li>
+<li>Replaced "every agent benchmark has a dirty secret"; added worked
+questions, a roadmap and a limitations section; corrected a receipts note
+promising a protocol, frozen gold and a decisions file that do not
+exist.</li>
+</ul>
+<b>2 August 2026.</b> Added the complete disposition of all 110 questions
+and the 30/14/17 reconciliation, after the published totals were found not
+to account for every question.</div>
 </article>
 
 <div class="next"><a href="building-the-engine.html">
 <div class="lbl">Next up</div>
 <div class="ttl">#6 · Nine wrong bottlenecks — building our own storage
 engine, and the misdiagnosis table we kept →</div></a></div>
+
+<div class="next" style="padding-top:12px"><a href="scaling-the-planner.html">
+<div class="lbl">Previously</div>
+<div class="ttl">#4 · Bigger models help only when the data interface can
+use them →</div></a></div>
 
 <script data-goatcounter="https://zxf-tgms.goatcounter.com/count" async src="https://gc.zgo.at/count.js"></script>
 </body></html>
