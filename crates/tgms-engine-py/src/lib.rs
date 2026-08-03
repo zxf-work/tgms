@@ -542,15 +542,19 @@ impl NativeStore {
         if want("vt_e") {
             d.set_item("vt_e", cols.vt_e.into_pyarray(py))?;
         }
-        // u32 -> i64 is a widening copy of the whole column; skipping it for
-        // an unprojected endpoint is 20 ms a call at 10M rows (D-046).
-        for (name, col) in [("src_id", &cols.src_id), ("dst_id", &cols.dst_id)] {
-            if want(name) {
-                d.set_item(
-                    name,
-                    col.iter().map(|&v| v as i64).collect::<Vec<_>>().into_pyarray(py),
-                )?;
-            }
+        // Endpoint ids are stored `u32` and the adapter's contract is `int64`
+        // (both backends, or operators diverge). Someone has to widen them,
+        // and it costs ~37 ms per 10M column here against ~28 ms in NumPy —
+        // the arithmetic is free either way, what is paid for is writing
+        // 80 MB of fresh pages. So the columns *move* across the boundary at
+        // their stored width and the adapter's existing
+        // `np.asarray(..., dtype=np.int64)` does the widening (D-047). The
+        // dtype seen by any caller is unchanged.
+        if want("src_id") {
+            d.set_item("src_id", cols.src_id.into_pyarray(py))?;
+        }
+        if want("dst_id") {
+            d.set_item("dst_id", cols.dst_id.into_pyarray(py))?;
         }
         if want("vid") {
             d.set_item("vid", PyList::new(py, cols.vid.iter().map(|v| v.to_hex()))?)?;
