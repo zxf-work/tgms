@@ -133,6 +133,42 @@
       "kind": "benchmark",
       "prose": "percent of tasks whose structured answer exactly matched the reference (pooled, Qwen2.5-14B)",
       "exact": "0.41"
+    },
+    "series_10m_native_ms": {
+      "value": "183.7",
+      "kind": "benchmark",
+      "prose": "ms, whole-window bucketed count at 10M",
+      "snapshot": "registry-v2-10m-3sys"
+    },
+    "series_10m_clickhouse_ms": {
+      "value": "40.0",
+      "kind": "benchmark",
+      "prose": "ms, the same query on ClickHouse",
+      "snapshot": "registry-v2-10m-3sys"
+    },
+    "point_lookup_200k_native_ms": {
+      "value": "0.1",
+      "kind": "benchmark",
+      "prose": "ms, entity history by identity at 200k",
+      "snapshot": "registry-v2-200k-6sys"
+    },
+    "point_lookup_200k_postgres_ms": {
+      "value": "0.3",
+      "kind": "benchmark",
+      "prose": "ms, the same lookup on PostgreSQL with a covering index",
+      "snapshot": "registry-v2-200k-6sys"
+    },
+    "motif_200k_native_ms": {
+      "value": "28.7",
+      "kind": "benchmark",
+      "prose": "ms, closed-triangle temporal motif at 200k",
+      "snapshot": "registry-v2-200k-6sys"
+    },
+    "motif_200k_graph_engines": {
+      "value": "2.1-5.5",
+      "kind": "benchmark",
+      "prose": "seconds for the same motif on Memgraph and Neo4j",
+      "snapshot": "registry-v2-200k-6sys"
     }
   },
   "retired_phrases": [
