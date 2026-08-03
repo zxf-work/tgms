@@ -27,6 +27,9 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 FACTS = ROOT / "docs" / "site_facts.json"
 PAGES = sorted([*(ROOT / "docs").glob("*.html"), *(ROOT / "docs" / "blog").glob("*.html")])
+#: Markdown cannot carry data-fact spans, but it can still repeat a retired
+#: claim — and the README is the page most readers reach first.
+PROSE = [ROOT / "README.md"]
 
 #: <span data-fact="key">value</span> — the value is regenerated, never authored.
 MARK = re.compile(r'(<([a-z]+)\s+[^>]*?data-fact="([a-z0-9_]+)"[^>]*>)(.*?)(</\2>)',
@@ -61,15 +64,20 @@ def check(data: dict) -> int:
             if r["phrase"].lower() in text.lower():
                 bad.append(f"{rel}: retired phrase {r['phrase']!r} — {r['reason']}")
 
-    for key, f in facts.items():
-        if f.get("scope_required") and key not in seen:
-            continue  # only constrained where it is used
+    for doc in PROSE:
+        if not doc.exists():
+            continue
+        text, rel = doc.read_text(), doc.relative_to(ROOT)
+        for r in retired:
+            if r["phrase"].lower() in text.lower():
+                bad.append(f"{rel}: retired phrase {r['phrase']!r} — {r['reason']}")
+
     if bad:
         print("site facts: FAIL")
         for b in bad:
             print("  " + b)
         return 1
-    print(f"site facts: {len(PAGES)} pages clean "
+    print(f"site facts: {len(PAGES)} pages + {len(PROSE)} prose file(s) clean "
           f"({len(seen)} marked facts, {len(retired)} retired phrases)")
     return 0
 
