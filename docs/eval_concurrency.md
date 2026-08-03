@@ -72,6 +72,75 @@ is, and it failed in under a second the first time it ran.
 
 ---
 
+## §19b What a live writer costs readers, and readers cost the writer
+
+1M events, N reader processes looping the §14.4 mix, against a writer
+committing 100-row batches as fast as it can. Three trials per condition,
+30 s window each, one fresh process per participant, a private copy of the
+store per trial. **1M rather than 10M deliberately**: §14.4 found the host
+OOM killer taking 2 of 16 readers at 10M (~4 GB each on a 93 GB host), and
+adding a writer to a configuration already at the memory ceiling would
+measure the OOM killer rather than concurrency.
+
+### Aggregate throughput (queries/second, per-trial values)
+
+| readers | writer idle | writer running | cost |
+|---:|---|---|---:|
+| 1 | 15.62, 15.41, 15.66 | 15.38, 15.30, 15.66 | 1.5% |
+| 2 | 31.45, 31.44, 31.65 | 30.77, 30.98, 31.18 | 1.5% |
+| 4 | 60.84, 60.98, 60.81 | 60.80, 60.68, 60.29 | 0.3% |
+| 8 | 117.31, 117.85, 117.31 | 116.78, 116.99, 117.01 | 0.3% |
+
+Reader throughput scales **7.5× at 8 readers with the writer idle and 7.6×
+with it running** — the live writer does not change the scaling shape.
+
+### Per-query latency (p50 ms, median of three trial p50s)
+
+This is a *different claim* from the row above and is reported separately.
+
+| query | I1 | W1 | I2 | W2 | I4 | W4 | I8 | W8 |
+|---|---:|---:|---:|---:|---:|---:|---:|---:|
+| hist.single | 0.281 | 0.283 | 0.273 | 0.293 | 0.308 | 0.310 | 0.320 | 0.318 |
+| snap.hop2 | 100.4 | 100.9 | 99.0 | 100.6 | 103.0 | 102.8 | 107.4 | 106.8 |
+| series.count | 43.45 | 43.71 | 43.20 | 44.46 | 44.25 | 45.18 | 45.70 | 46.15 |
+| coactive.narrow | 112.5 | 112.8 | 111.3 | 114.9 | 114.6 | 117.1 | 118.8 | 119.7 |
+
+Tails move no differently: pooled p99 for `coactive.narrow` is 123.2 (I1) →
+122.8 (W1), 124.4 (I2) → 128.3 (W2), 128.6 (I4) → 128.8 (W4), 134.6 (I8) →
+134.0 (W8).
+
+**A live writer costs concurrent readers 0–3% of scan latency**, with
+per-trial spreads under 1%, so the 2–3% at 2 and 4 readers is a real effect
+and the ~0% at 1 and 8 is a tie. It is smaller than the reader-count effect
+sitting next to it: `coactive.narrow` moves 112.5 → 118.8 ms going from one
+reader to eight *with no writer at all*, which is the scan-thread
+oversubscription §14.4 already recorded.
+
+### What readers cost the writer
+
+| concurrent readers | commit p50 per trial (ms) | pooled p50/p90/p99 | commits/s |
+|---:|---|---|---|
+| 1 | 36.93, 36.33, 36.14 | 36.45 / 56.41 / 61.54 | 27.02, 27.13, 27.26 |
+| 2 | 36.97, 36.38, 36.67 | 36.68 / 57.22 / 62.44 | 26.99, 27.20, 27.15 |
+| 4 | 36.32, 36.84, 36.87 | 36.75 / 57.77 / 63.48 | 26.95, 26.83, 26.89 |
+| 8 | 36.67, 37.02, 36.86 | 36.82 / 57.70 / 62.75 | 26.85, 26.76, 26.88 |
+
+**Nothing measurable**: 1.0% across an eightfold increase in readers, with
+per-trial spreads of the same size, and identical p90/p99 shape. ~2,400
+commits per condition.
+
+### Why it is this small
+
+Every reader in every trial reported **exactly one pinned generation (282)**
+for its whole life, while the writer published thousands underneath it. That
+is the design working rather than a coincidence: the reader's manifest is
+read once at open, its segments are immutable, and the writer's commits
+create new files instead of touching existing ones. What remains — the 0–3%
+— is page-cache and I/O-bandwidth contention from the writer's fsyncs, not
+coordination. There is no lock on this path to contend for.
+
+---
+
 ## §20 The singleton-write floor, by layer
 
 Before building group commit, measure what a commit costs. Two published
@@ -101,19 +170,54 @@ table, on the same code: at batch=1 the total was 90.6 ms, of which
 to answer a question about two uids (`engine_lessons.md` §16). That is fixed,
 and the table above is the world after it.
 
-*Now* §7 is right and `eval_writes.md` is not:
+*Now* both are partly right, about different things, and the split says which
+fix belongs to which.
 
-- The engine commit is **5.07 of 5.76 ms, 88%**, at batch=1 — it is the
-  durable generation, as §7 says.
-- The manifest is **1.17 ms of it**, and stays 1.17 ms while the manifest
-  itself grows from 18 KB to 286 KB across the run (15.9×). Manifest *size*
-  is a space cost, not a time one; four fsynced file writes are the time.
-- What does grow: total write 3.92 → 7.46 ms first decile to last (1.90×) at
-  batch=1. Real, and much smaller than a 15.9× manifest would produce.
+**§7 owns the floor.** At batch=1 the engine commit is **5.07 of 5.76 ms,
+88%** — it is the durable generation, four fsynced file writes, exactly as
+§7 says. There is nothing else there to remove.
+
+**`eval_writes.md` owns the growth.** Its claim is that singleton commits get
+progressively more expensive because each rewrites a manifest naming every
+segment. First decile against last decile of the same batch=1 run, as the
+store goes from 35 to 575 segments and the manifest from 18 KB to 286 KB
+(15.9×):
+
+| phase, µs | first decile | last decile | ratio |
+|---|---:|---:|---:|
+| write-ahead log | 373 | 314 | 0.84× |
+| `apply_ops` | 241 | 277 | 1.15× |
+| seal (segments) | 1,025 | 877 | 0.86× |
+| dictionary | 350 | 315 | 0.90× |
+| **manifest write + fsync** | **728** | **1,615** | **2.22×** |
+| `CURRENT` | 729 | 688 | 0.94× |
+| **engine commit total** | **3,278** | **6,854** | **2.09×** |
+
+The manifest phase is the **only** phase that moves. Everything else is flat
+to within measurement noise across a 16× growth in store history — which is
+also the cleanest available confirmation that the fsyncs really are a fixed
+floor rather than something that scales with anything.
+
+Two refinements the original claim did not have:
+
+1. **The manifest's time grows far more slowly than its bytes** — 2.22×
+   against 15.9× — because a `write_atomic` is two fsyncs (fixed) plus a
+   write (linear), and at these sizes the fsyncs still dominate.
+2. **Most of the growth is not the write at all.** The timed phases account
+   for 2,832 of the first decile's 3,278 µs but only 3,495 of the last
+   decile's 6,854. So of the engine commit's 3,576 µs of growth, 887 µs is
+   the manifest write and fsync and **2,689 µs is manifest *handling*
+   outside the timed phases** — cloning the parent's segment lists in
+   `successor`, serializing, sha256-ing in `seal`, and `verify` — every one
+   of them O(segments). By elimination, because every other phase is flat.
+
+So the per-generation manifest is a CPU cost as well as a byte cost, and it
+is the one part of a commit that a longer-lived store pays more for. Group
+commit amortizes it along with the fsyncs (§21); bounding it directly is
+compaction's and gc's job and is not attempted here.
 
 The `eval_writes.md` claim that **64 KB of store growth per correction is
-almost all manifest** is unaffected — that is a space measurement, and it
-stands.
+almost all manifest** is a space measurement and is unaffected.
 
 ---
 
@@ -138,41 +242,149 @@ losing writes and blaming the engine. `Store` now serializes `_write` under a
 lock, which is both the correct behaviour and the only baseline group commit
 can honestly be measured against.
 
-100k-row store, 40 rows per writer, single trial:
+100k-row store, **400 rows per writer** (400 latency samples per condition):
 
-| writers | serialized rows/s | coalesced rows/s | speedup | serialized p50 | coalesced p50 | generations |
+| writers | serialized rows/s | coalesced rows/s | speedup | serialized p50 / p99 | coalesced p50 / p99 | generations |
 |---:|---:|---:|---:|---:|---:|---|
-| 1 | 143.8 | 103.5 | 0.72× | 3.44 ms | 6.35 ms | 40 → 40 |
-| 2 | 153.2 | 197.6 | 1.29× | 9.60 ms | 6.65 ms | 80 → 40 |
-| 4 | 158.1 | 370.1 | 2.34× | 22.12 ms | 7.37 ms | 160 → 40 |
-| 8 | 134.4 | 651.2 | 4.85× | 56.91 ms | 8.95 ms | 320 → 41 |
-| 16 | 99.6 | 1,078.1 | 10.8× | 155.21 ms | 11.35 ms | 640 → 42 |
-| 32 | 73.0 | 1,592.2 | 21.8× | 414.98 ms | 16.08 ms | 1,280 → 45 |
+| 1 | 164.5 | 109.0 | **0.66×** | 5.67 / 8.86 ms | 8.86 / 12.95 ms | 400 → 400 |
+| 2 | 96.5 | 211.4 | 2.19× | 20.36 / 35.18 ms | 9.18 / 12.59 ms | 800 → 400 |
+| 4 | 63.2 | 398.9 | 6.31× | 63.31 / 153.12 ms | 9.58 / 13.85 ms | 1,600 → 401 |
+| 8 | 43.1 | 698.7 | 16.2× | 182.68 / 485.78 ms | 10.70 / 15.62 ms | 3,200 → 401 |
+| 16 | 27.6 | 1,085.1 | 39.3× | 614.90 / 983.81 ms | 13.65 / 20.21 ms | 6,400 → 405 |
+
+Replicated by an earlier independent run at 40 rows per writer, same host and
+commit, which adds a 32-writer point: 73.0 → 1,592.2 rows/s (21.8×), p50
+415.0 → 16.1 ms, 1,280 → 45 generations. Shapes agree; the absolute
+throughputs differ because the two runs commit different totals into stores
+of different final sizes, which is itself the point of the next paragraph.
 
 Both claims, kept separate:
 
-- **Throughput** scales with writers instead of being flat. Serialized
-  throughput *falls* past 4 writers; coalesced rises to 21.8× at 32.
-- **Per-caller latency** stays inside one commit's cost — 3.4 → 16.1 ms
-  across a 32× increase in writers — where serialized latency grows linearly
-  to 415 ms.
+- **Throughput.** Coalesced throughput rises with writers (109 → 1,085
+  rows/s, 16×). Serialized throughput *falls* — 164.5 → 27.6 rows/s, a 6×
+  degradation — and that is not contention. It is §20 compounding: 6,400
+  singleton commits publish 6,400 generations, each adding a segment that
+  every later manifest must name, serialize, hash and verify. The singleton
+  write path makes itself slower as it runs. Coalescing to 405 generations
+  removes the pressure rather than parallelizing around it.
+- **Per-caller latency.** Stays inside one commit's cost across a 16×
+  increase in writers — 8.9 → 13.7 ms — where serialized latency grows to
+  614.9 ms p50 and 983.8 ms p99.
 
-**Where it does not pay, stated plainly.** It buys nothing for bulk ingest,
-which already batches, and nothing for a single writer — by design, since it
-must not. At one writer it is a measured *cost*, and §22 says how big.
+**Where it does not pay, stated plainly.** Nothing for bulk ingest, which
+already batches. Nothing for a single writer — by design, since it must not
+— and there it is a measured *cost*: see §22.
 
 ---
 
 ## §22 The single-writer cost of group commit
 
-*(Section filled from `conc-groupcommit-t{1,2,3}.json`; the single-trial
-40-sample cell above is not enough to call it.)*
+The one cell worth its own section, because it is the one that argues against
+the feature. At **one** writer, coalescing has nothing to coalesce — the
+measured `max_group` is 1, every time — so what it measures is pure overhead:
+
+| one writer | serialized | coalesced | cost |
+|---|---:|---:|---:|
+| submit p50 | 5.67 ms | 8.86 ms | **+3.19 ms (+56%)** |
+| submit p99 | 8.86 ms | 12.95 ms | +4.09 ms |
+| throughput | 164.5 rows/s | 109.0 rows/s | **−34%** |
+
+400 samples per condition; the earlier 40-sample run agrees in shape (3.44 →
+6.35 ms, 143.8 → 103.5 rows/s), which is why the run was repeated at ten
+times the sample count rather than reported from 40.
+
+**It is a thread-handoff cost, not a durability or design one.** Nothing
+extra is fsynced; the same batch is committed once either way. A bare
+`queue.Queue` + `threading.Event` round trip with an idle consumer measures
+6 µs, so the 3.2 ms is what the handoff costs when the consumer holds the GIL
+through a multi-millisecond commit between the put and the set — the
+submitter has to win the GIL back, and Python's default switch interval is
+5 ms.
+
+Two honest consequences:
+
+- **Group commit is opt-in and should stay opt-in.** Making it the default
+  write path would tax the single-writer case — which is every bulk load,
+  every replay, and every one of this project's own harnesses — to help a
+  case none of them run.
+- **The tax is removable and was not removed.** A leader/follower
+  arrangement, where the first submitter commits inline instead of handing
+  to a dedicated thread, makes the one-writer path identical to the
+  serialized one by construction. It is more concurrent code in the one
+  session where correctness was the headline finding, so it is named here
+  rather than written.
 
 ---
 
 ## §23 Index residency: the D-045 budget
 
-*(Section filled from `conc-residency-1m.json`.)*
+D-045 deferred this decision explicitly, and said what it was waiting for:
+"Dropping the TCSR costs 400 ms to rebuild; keeping it costs 18% per scan.
+Which trade is right depends on the workload mix, and no workload mix has
+been measured yet."
+
+So: one path query (`paths.k`, which builds the TCSR) followed by K scans
+(`series.count`, the query D-045 measured the tax on), five rounds, three
+trials, one fresh process per condition, 1M events. The control is asserted
+rather than trusted (lessons §13): each round checks the index is present
+after the path query, and absent after dropping it, before the scans run.
+
+| scans per path query | round p50, index kept | round p50, index dropped | path query, kept | path query, dropped | scan, kept | scan, dropped |
+|---:|---:|---:|---:|---:|---:|---:|
+| 1 | 55.2 | 212.4 | 12.0 | 168.7 | 43.28 | 44.31 |
+| 4 | 183.1 | 329.9 | 12.0 | 161.9 | 42.71 | 41.49 |
+| 16 | 674.1 | 832.7 | 11.9 | 163.0 | 41.12 | 41.65 |
+| 64 | 2,660 | 2,810 | 12.4 | 166.8 | 41.00 | 40.98 |
+
+*(medians of three trial p50s; per-trial spreads under 1.5% everywhere)*
+
+**Both numbers D-045 was waiting on have changed, and both in the direction
+that settles it.**
+
+**The 18% tax is gone — it is now ≤2.5%, and it changes sign.** Scan latency
+with the index resident against without: +2.4% at K=1, **−2.9%** at K=4,
++1.3% at K=16, −0.05% at K=64. An effect that reverses across conditions of
+the same experiment is not an effect. D-045's mechanism explains why it
+vanished: the tax was a working-set effect, "the scan streams tens of
+megabytes per call, and the resident permutation evicts the part of it that
+was staying hot". **D-047 stopped that scan streaming anything** — the event
+rate now counts inside the O14 aggregation kernel and never materializes a
+column. The resident permutation has nothing left to evict. The 18% was
+retired by work done for a different reason, and nothing in either session
+would have noticed without re-measuring.
+
+**The rebuild is 155 ms, not 400.** Dropping the index costs the next path
+query 12.0 → 166.8 ms, every time, in every condition. D-045's 400 ms
+predates D-039 persisting the permutation: a rebuild is now a stamped file
+read plus a gather, not two argsorts.
+
+**Decision: keep it, and say so as a decision.** There is no crossover to
+find. Keeping wins at every ratio measured — most heavily at K=1 (55 vs 212
+ms per round, 3.8×) and still by 5% at K=64, where a hypothetical tax would
+have had 64 scans to accumulate over. The memory case is equally weak: the
+permutation is 8.16 B/row (D-039), so 8 MB at 1M and 82 MB at 10M against
+794 MB of decoded segments, which is why D-041's budget was worth building
+and this one is not.
+
+What the decision is *not*:
+
+- **It is not "residency is free forever."** It is a measurement of one index
+  at one scale on today's operators. The tax was real when it was measured
+  and disappeared because an unrelated query got faster; the same could
+  reverse if a future scan starts materializing again.
+- **It is not measured at 10M.** The working-set argument is scale-sensitive
+  by construction. It was not run at 10M for the reason §14.4 gives: that
+  configuration is at the memory ceiling, and this experiment holds two
+  large structures resident on purpose.
+- **One real residency cost is left standing and is not a budget question.**
+  The persisted permutation (`index/tcsr.npz`) is stamped with a single
+  `(generation, manifest_sha)`. A reader on generation *N* and a writer on
+  *N+1* each find the other's stamp foreign, rebuild, and overwrite the file
+  — correct, since the stamp is the gate, but it means the shared cache
+  thrashes under exactly the mixed workload §19b measures. Nothing here
+  depends on it (the file is disposable and saved atomically) and it is not
+  fixed: a per-generation filename would fix it, and that is a separate
+  change.
 
 ---
 
