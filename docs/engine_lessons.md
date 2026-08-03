@@ -34,6 +34,8 @@ failed to move the number.
 | projecting to one column changing nothing proves materialization is not the cost | one column and four measured the same, 360 vs 352 ms | the projection was never applied to the fixed-width columns; once it was, the same scan fell to 143 ms |
 | exact distinct counting over 10M ids is inherently expensive — it is what ClickHouse's `uniqExact` costs too | the same answer in 9.6 ms instead of 240.7 | the sort was not the algorithm, it was a *representation*: dense ids make a per-group bitset a popcount, and the sort had also been placed in the one serial stage |
 | the boundary's `u32 → i64` widening is 77 ms of recoverable cost | moving the cast to NumPy recovered 20 of 73 ms; the other 53 stayed | the cost is not the conversion, it is writing 80 MB of int64 per column — whoever does it pays it, and only *not building the column* removes it |
+| the singleton-write floor is the durable generation's fsyncs (§7) — or the full manifest each commit rewrites (`eval_writes.md`) | the fsyncs were 30.4 ms and the manifest write 8.5 of a 90.6 ms one-row write; the Python semantics layer was 59.9 | a two-uid existence probe that materialized every node version in the store. 90.6 → 34.9 ms, after which §7 is finally right (§16) |
+| readers-only concurrency proves the reader story: 16 readers, no interference | with one *writer* running, the writer crashed on its second batch and two of three readers with it | opening a store performed crash recovery, so every reader was a second writer — and `open` truncated a live writer's dictionary tail (§17) |
 
 Three of the fixes we implemented were *correct but irrelevant* — the
 contiguous-run copy, the postings index, and the parallel materialization
@@ -158,6 +160,23 @@ Real ingest paths batch, which is why bulk replay beats the general engine
 The temptation is to relax fsync. That would trade away the one guarantee the
 engine exists to make. The right lever is group-commit at the layer that
 decides what a batch *is* — not weakening what a batch *means*.
+
+**Amended, and this is the interesting part.** The conclusion above was right
+about what to do and wrong about why, and nobody noticed for four months
+because the recommendation it produced was correct anyway. When the commit was
+finally instrumented per phase, a one-row write was 90.6 ms of which the
+fsyncs were 30.4 — the other 59.9 was an existence probe on the *read* path
+that materialized the whole node store to answer a question about two uids
+(§16). Only after fixing that is "several fsyncs" the floor: 33.8 ms of 34.9.
+
+Two things generalise. First, **a correct recommendation is not evidence for
+the reasoning that produced it** — "batch your writes" was going to be the
+advice whatever the profile said, so the advice could never falsify the
+attribution. Second, the attribution had a *competing* published version the
+whole time: `eval_writes.md` blamed the full manifest each commit rewrites,
+this file blamed the fsyncs, and neither had been measured against the other.
+Two documents disagreeing about a cause is a measurement waiting to be taken,
+not a matter of emphasis.
 
 ## 8. The oracle is what makes a rewrite tractable
 
@@ -614,6 +633,87 @@ which bounds the state at twice the append path's — *independently of the
 group cap and of the entity count*. A performance change that needs a
 capacity caveat is not finished; make the caveat impossible instead, and
 then state the bound it bought.
+
+## 16. Instrument the thing you are about to fix, not the thing you blame
+
+Group commit was on the roadmap for months with a price tag attached: single
+writes cost 26 ms each, batched ones 0.1, and the fix was to coalesce. Before
+building it we finally measured a single write layer by layer — the
+write-ahead log fsync, the Python bi-temporal semantics, and the engine
+commit, which was taught to report its own phase split:
+
+| layer, one-row write | before | after |
+|---|---:|---:|
+| write-ahead log fsync | 0.19 ms | 0.19 ms |
+| `apply_ops` (Python semantics) | **59.86 ms** | **0.53 ms** |
+| engine commit (four fsynced writes) | 30.39 ms | 33.78 ms |
+| **total** | **90.60** | **34.87** |
+
+Two thirds of the "durability floor" was `nodes_with_believed_versions`, the
+existence probe bulk ingest uses to decide which nodes are new. It asked
+about two uids and materialized every node version in the store. Measured on
+a 100k-event store: the scan costs 50.5 ms about 2 uids and 58.9 ms about
+20,000 — flat, because the uids were never the work — while one postings
+probe costs 0.005 ms. Both paths kept, chosen by the ratio between them, so
+bulk ingest keeps the scan it actually needs.
+
+This is the sixth entry in the misdiagnosis table with the same shape — *a
+small lookup rebuilding the whole store* — and the second time it was found
+hiding inside a cost we had labelled as something else (§9b was the first).
+The pattern is specific enough now to be a checklist item: **when a write is
+slow, time the read inside it.** Writes read. They read to carve intervals,
+to find the version being corrected, to decide what is new; and a read on a
+write path is invisible to every read benchmark you have.
+
+The fix did not make group commit unnecessary — with the probe gone the
+floor is genuinely the durable generation, 33.8 ms of 34.9 — but it changed
+what group commit is worth by 2.6× before a line of it was written. An
+optimization sized against an unprofiled baseline is sized against a
+different system.
+
+## 17. A reader that repairs the store is a writer
+
+The concurrency work started from a comfortable position: readers-only
+concurrency had been measured and was clean — 13× aggregate throughput at 16
+readers, flat per-reader medians, no interference consistent with locking.
+The remaining question looked like a cost question. The first mixed
+writer+readers run answered a correctness one instead: **the writer crashed
+on its second batch**, with a missing segment file, and took two of the three
+readers with it.
+
+Two defects, both invisible to every readers-only measurement, both in the
+same place — *what opening a store does*.
+
+The first: the Python `Store` runs crash recovery on open, replaying the
+event-log suffix the backend has not applied. That is correct for the writer.
+But the write path is write-ahead — the batch is fsynced to the log *before*
+it is applied — so a live writer spends the whole of every commit in exactly
+the state recovery reads as a crash. Every reader opening in that window
+replayed the batch and published a generation, concurrently with the writer
+publishing the same generation number: two writers, allocating the same
+segment ids, overwriting each other's segment files under the mmap of anyone
+already reading them.
+
+The second: `Dictionary::open` truncated `dict.log` when the file was longer
+than the manifest claimed, reading that as a batch that died before
+publishing. It is also byte-for-byte what a live writer looks like between
+its dictionary fsync and its `CURRENT` flip. Open could not tell them apart,
+so it deleted bytes the writer had already made durable and was about to
+name — and the generation the writer then published would not open.
+
+The generalisable rule is smaller than either bug: **opening a store must not
+mutate it.** Both defects are the same instinct — open sees something that
+looks like debris and tidies it — and the instinct is safe only under an
+assumption ("nobody else is running") that opening is precisely the moment
+you cannot check. Recovery is an act of the writer; a reader gets
+`read_only=True`, which does no recovery and refuses the write API.
+
+And a note on what measurement can and cannot buy you. §14.4 was a good
+measurement, honestly reported, and it licensed a conclusion one word wider
+than it had earned: it showed *readers* do not interfere with *readers*, and
+was read as showing the concurrency story worked. The missing case was not an
+exotic interleaving. It was the second-simplest configuration there is, and
+it failed in under a second the first time it ran.
 
 ---
 
