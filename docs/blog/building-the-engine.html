@@ -1,7 +1,7 @@
 <!doctype html><html lang="en"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Nine wrong bottlenecks: building a bi-temporal storage engine — TGMS blog</title>
-<meta name="description" content="Replacing DuckDB and Kuzu with 7,500 lines of Rust: the misdiagnosis table, the immutability dividend, and 24.6 bytes per edge version — with the measurements that earned each claim.">
+<title>Why TGMS Needed a Native Storage Engine — TGMS blog</title>
+<meta name="description" content="Bi-temporal corrections, deterministic replay and temporal operators are requirements no general backend jointly satisfied. Why TGMS stores immutable segments plus append-only correction records, what that buys, and what it costs.">
 <style>
 :root{--ink:#1a2534;--mut:#5b6b7c;--blue:#1c64d9;--blue2:#3b82f6;--line:#e3e8ef;
       --bg:#fbfcfe;--card:#fff;--codebg:#0e1c30;--codetx:#dce7f5;--ok:#0a7d33;
@@ -70,6 +70,12 @@ code{font-family:var(--mono);background:#1c64d914;border-radius:5px;
 .next a:hover{transform:translateY(-2px);box-shadow:0 10px 26px #0e1c301f}
 .next .lbl{font-size:12px;color:var(--mut);text-transform:uppercase;letter-spacing:.07em}
 .next .ttl{color:var(--blue);font-weight:650;font-size:17px;margin-top:4px}
+.sub{color:#c9d8ef;font-size:16.5px;line-height:1.5;margin:6px 0 10px;max-width:56ch}
+.lede{margin:0 0 26px;padding:16px 20px;border-left:5px solid var(--blue);
+      background:var(--card);border-radius:0 12px 12px 0;font-size:18px;
+      line-height:1.6;color:var(--ink)}
+article ul{padding-left:22px;margin:16px 0}
+article li{margin:7px 0}
 svg text{font-family:-apple-system,'Segoe UI',Roboto,sans-serif}
 svg .m{font-family:var(--mono)}
 </style></head><body>
@@ -78,139 +84,363 @@ svg .m{font-family:var(--mono)}
 <div class="nav"><a href="../">← TGMS</a><a href="./">blog</a>
 <a href="https://github.com/zxf-work/tgms">github</a></div>
 <div class="inner">
-<span class="kicker">Post #6 · Native engine design</span>
-<h1>Nine wrong bottlenecks:<br>building our storage engine</h1>
-<div class="byline">Xiaofei Zhang · University of Memphis · July 2026 ·
+<span class="kicker">Post #6 · Understand TGMS</span>
+<h1>Why TGMS Needed a Native Storage Engine</h1>
+<div class="sub">Bi-temporal corrections, immutable segments and deterministic
+operators required a storage layout designed around TGMS semantics.</div>
+<div class="byline">Xiaofei Zhang · University of Memphis · first published
+July 2026 · <b>updated 3 August 2026</b> · TGMS 0.4.0 ·
+snapshot <code>registry-v2</code> · status: Updated result ·
 <a href="https://github.com/zxf-work/tgms/blob/main/docs/eval/ENGINE_EVAL_REPORT.md">report</a> ·
 <a href="https://github.com/zxf-work/tgms">code</a></div>
 </div></div>
 
 <article>
-<p>K&ugrave;zu — the embedded graph engine under one of our storage backends —
-was acquired, and its open-source line ended. We replaced it and DuckDB with
-an engine built for our semantics: ~7,500 lines of Rust behind an unchanged
-Python interface, validated by a 500-case oracle the implementation was
-never allowed to touch.</p>
+<blockquote class="lede"><b>In one sentence:</b> TGMS keeps history in files
+written once and never edited, with corrections recorded separately and folded
+in later — because no backend we could adopt met all of what TGMS promises at
+once.</blockquote>
 
-<div class="duo">
-<div class="cell"><b>Storage, same rows</b><span class="big">24.6 B/row</span>
-<div>vs DuckDB's 187 · smaller than lz4 ClickHouse</div></div>
-<div class="cell"><b>Bottleneck guesses that were wrong</b><span class="big bad">9 of 9</span>
-<div>every real fix came from a measurement</div></div>
-</div>
+<h2>Why this matters</h2>
 
-<h2>One property pays for everything</h2>
+<p>TGMS makes four promises at once, and the conjunction is the hard part:</p>
 
-<p>Segments are immutable. The only mutation in the model — closing a
-version's transaction time — is an append-only patch folded in by
-compaction. Everything expensive elsewhere becomes free here: snapshot
-isolation is "pin a manifest", mmap is safe because bytes never change, a
-checksum verified once stays verified, the segment cache cannot go stale,
-readers never lock.</p>
+<ul>
+<li><b>A correction must not erase what was previously believed.</b> Correct
+an account's country on Tuesday, and a question about Monday's belief must
+still answer as Monday would have. That needs two clocks per fact — when it
+was true, and when the database held that version. That pair is what
+<b>bi-temporal</b> means.</li>
+<li><b>The same question returns byte-identical answers</b> on a re-run,
+another machine, a second backend.</li>
+<li><b>Temporal graph operations are first-class</b> — time-respecting
+traversal, temporal motifs, interval joins.</li>
+<li><b>It runs embedded, in the agent's process, with cappable memory.</b></li>
+</ul>
 
-<div class="pull">We never tuned our way to correctness. Immutability made
-the correct thing the cheap thing.</div>
+<p>Most systems deliver any three. We shipped on DuckDB and Kùzu for months and
+each broke on a different one: versioning was emulated above the storage
+layer, making the belief clock a query convention rather than a property of
+the data; identity was re-derived per row; memory was whatever the engine
+chose. Kùzu's acquisition settled the timing, not the question.</p>
 
-<h2>Compression chosen by trial, not by policy</h2>
+<h2>The idea in plain language</h2>
 
-<p>The writer trial-encodes every column and keeps whichever representation
-is smaller. Sorted timestamps and near-constant columns collapse;
-hash-derived ids stay raw <i>by measurement</i>, not by special case.</p>
+<p>The design rests on one choice: <b>finished files are never edited.</b> An
+accountant correcting a closed ledger does not overwrite the page — the closed
+book is evidence of what was believed then. They write an adjusting entry
+superseding the old figure, and later issue a consolidated statement folding
+the adjustments in.</p>
 
-<svg viewBox="0 0 720 240" width="100%" role="img"
-     aria-label="Bytes per edge version: DuckDB 187, uncompressed native 65, column compression 31, plus heap packing 24.6">
+<p>TGMS stores history that way. A <b>segment</b> is a closed page:
+relationship versions written once in a compressed columnar layout, never
+modified. A <b>correction record</b> is the adjusting entry — an append-only
+note that some version stopped being believed at a given moment, original
+untouched. A <b>manifest</b> is the index: which segments and correction
+records constitute the store at one point in its history. A commit is a new
+manifest; a reader pins one, and because everything it names is immutable, its
+view cannot shift however many writes land meanwhile.</p>
+
+<figure>
+<svg viewBox="0 0 720 250" width="100%" role="img"
+     aria-label="Architecture: an append-only event log is written into immutable segments; corrections are appended as separate patch records rather than editing segments; a manifest names the exact set of segments and patches forming one generation; operators read one pinned manifest, so their view cannot change while they run; compaction later folds patches into fresh segments.">
+  <defs><marker id="ar" markerWidth="9" markerHeight="9" refX="7" refY="3"
+    orient="auto"><path d="M0,0 L7,3 L0,6 z" fill="var(--mut)"/></marker></defs>
+  <g font-size="12.5" text-anchor="middle">
+    <rect x="12" y="60" width="112" height="52" rx="9" fill="var(--mut)" opacity=".16"
+          stroke="var(--mut)" stroke-opacity=".5"/>
+    <text x="68" y="82" fill="var(--ink)">event log</text>
+    <text x="68" y="99" fill="var(--mut)" font-size="11">append-only</text>
+
+    <rect x="176" y="26" width="128" height="52" rx="9" fill="var(--blue)" opacity=".16"
+          stroke="var(--blue)" stroke-opacity=".55"/>
+    <text x="240" y="48" fill="var(--ink)">immutable</text>
+    <text x="240" y="65" fill="var(--ink)">segments</text>
+
+    <rect x="176" y="98" width="128" height="52" rx="9" fill="#7c5cd6"
+          opacity=".16" stroke="#7c5cd6" stroke-opacity=".55"/>
+    <text x="240" y="120" fill="var(--ink)">correction</text>
+    <text x="240" y="137" fill="var(--ink)">records</text>
+
+    <rect x="356" y="60" width="120" height="52" rx="9" fill="var(--ok)" opacity=".16"
+          stroke="var(--ok)" stroke-opacity=".55"/>
+    <text x="416" y="82" fill="var(--ink)">manifest</text>
+    <text x="416" y="99" fill="var(--mut)" font-size="11">one generation</text>
+
+    <rect x="528" y="60" width="120" height="52" rx="9" fill="var(--blue)" opacity=".16"
+          stroke="var(--blue)" stroke-opacity=".55"/>
+    <text x="588" y="82" fill="var(--ink)">operators</text>
+    <text x="588" y="99" fill="var(--mut)" font-size="11">pinned, lock-free</text>
+  </g>
+  <g stroke="var(--mut)" stroke-width="1.6" fill="none" marker-end="url(#ar)" opacity=".7">
+    <path d="M126,80 L172,54"/>
+    <path d="M126,92 L172,122"/>
+    <path d="M306,52 L352,78"/>
+    <path d="M306,124 L352,94"/>
+    <path d="M478,86 L524,86"/>
+  </g>
+  <path d="M240,152 C240,196 240,206 300,206 L360,206" stroke="var(--mut)"
+        stroke-width="1.4" fill="none" stroke-dasharray="5 4" marker-end="url(#ar)"
+        opacity=".7"/>
+  <text x="372" y="202" font-size="11.5" fill="var(--mut)">compaction folds patches</text>
+  <text x="372" y="217" font-size="11.5" fill="var(--mut)">into fresh segments, later,</text>
+  <text x="372" y="232" font-size="11.5" fill="var(--mut)">off the write path</text>
+  <text x="12" y="240" font-size="11.5" fill="var(--mut)">Nothing left of the manifest
+  is ever rewritten in place.</text>
+</svg>
+<figcaption>How a correction reaches a reader without editing anything.
+Compaction is a space optimisation, not a correctness step — answers are
+identical either way, and that equality is checked. Storage layout
+only.</figcaption>
+</figure>
+
+<h2>What immutability buys</h2>
+
+<p>"Easier to reason about" is a slogan. The specific list, each item
+otherwise its own subsystem:</p>
+
+<ul>
+<li><b>Snapshot isolation costs one integer</b> — a reader pins a generation:
+no version chain, no undo log, no reader lock.</li>
+<li><b>Memory-mapping is safe by construction.</b> Bytes cannot change under a
+live mapping — <b>mmap</b> hands a file to a program as if it were memory — so
+files are mapped rather than copied through a buffer pool.</li>
+<li><b>A checksum verified once stays verified</b>, and <b>the segment cache
+cannot go stale</b>: a cached segment is the right bytes or absent.</li>
+<li><b>Replay is deterministic</b>, which makes byte-identical answers
+testable rather than aspirational.</li>
+</ul>
+
+<h2>What we measured</h2>
+
+<div class="note"><b>Evidence.</b> Question: what does this layout cost in
+stored bytes, and where does a large scan's time go? Workload: one synthetic
+bi-temporal event log containing corrections, replayed identically into every
+system, at 1,000,000 events (1,000,269 relationship versions) and 10,000,000.
+Systems: TGMS native, TGMS-on-DuckDB, PostgreSQL 16.14, ClickHouse 26.8 — one
+40-core host, tuned, warm. Metrics: whole store on disk ÷ relationship
+versions in bytes, and median latency in ms; lower is better for both. Held
+constant: the event log, so identifiers and transaction times are identical
+everywhere. Latency cells reproduce to about
+±<span data-fact="reproducibility_band">20</span>% between days, so smaller
+differences are ties. Snapshots <code>registry-v2-1m-4sys</code> and
+<code>registry-v2-10m-3sys</code>.</div>
+
+<h2>The storage result</h2>
+
+<p>The denominator matters more than the numerator. <b>Bytes per relationship
+version</b> is the whole store directory on disk — segments, manifests,
+correction records, dictionary — divided by the 1,000,269 relationship
+versions it holds.</p>
+
+<figure>
+<svg viewBox="0 0 720 252" width="100%" role="img"
+     aria-label="Bytes per relationship version for the same one million event log: TGMS native 25.1, ClickHouse 78.4, DuckDB 187.7, PostgreSQL 549.7. TGMS stores the same content in the fewest bytes, but its query indexes are not on disk.">
   <g font-size="13" fill="var(--mut)">
-    <text x="10" y="38">DuckDB</text>
-    <text x="10" y="88">native, raw</text>
-    <text x="10" y="138">+ column FoR</text>
-    <text x="10" y="188">+ heap packing</text>
+    <text x="10" y="38">TGMS native</text>
+    <text x="10" y="86">ClickHouse</text>
+    <text x="10" y="134">DuckDB</text>
+    <text x="10" y="182">PostgreSQL</text>
   </g>
   <g>
-    <rect x="150" y="22" width="540" height="24" rx="5" fill="var(--mut)" opacity="0.45"/>
-    <rect x="150" y="72" width="188" height="24" rx="5" fill="var(--blue2)" opacity="0.8"/>
-    <rect x="150" y="122" width="91" height="24" rx="5" fill="var(--blue)"/>
-    <rect x="150" y="172" width="71" height="24" rx="5" fill="var(--ok)"/>
+    <rect x="150" y="22" width="25" height="24" rx="5" fill="var(--blue)"/>
+    <rect x="150" y="70" width="77" height="24" rx="5" fill="var(--mut)" opacity=".5"/>
+    <rect x="150" y="118" width="185" height="24" rx="5" fill="var(--mut)" opacity=".5"/>
+    <rect x="150" y="166" width="540" height="24" rx="5" fill="var(--mut)" opacity=".5"/>
   </g>
   <g font-size="13" class="m" fill="var(--ink)">
-    <text x="560" y="39" fill="#fff">187 B</text>
-    <text x="346" y="89">65.3</text>
-    <text x="249" y="139">31.4</text>
-    <text x="229" y="189">24.6 B/row</text>
+    <text x="183" y="39">25.1 B</text>
+    <text x="235" y="87">78.4</text>
+    <text x="343" y="135">187.7</text>
+    <text x="600" y="183" fill="#fff">549.7 B/row</text>
   </g>
-  <text x="150" y="222" font-size="12" fill="var(--mut)">1M edge versions, same replayed
-  event log, whole segments ÷ rows · the 12 B that remain incompressible are the
-  sha256-derived version id — the price of derived identity, visible at last.</text>
+  <text x="150" y="212" font-size="12" fill="var(--mut)">1M event log, 1,000,269
+  relationship versions · whole store on disk ÷ rows</text>
+  <text x="150" y="227" font-size="12" fill="var(--mut)">Bars start at zero; lower is
+  better. Compaction takes native to 24.6 B/row.</text>
+  <text x="150" y="242" font-size="12" fill="var(--mut)">These systems do not store
+  equivalent things — see caption.</text>
 </svg>
+<figcaption>TGMS native holds the same logical content in
+<span data-fact="storage_whole_store_bytes_per_row">25.1</span> bytes per
+relationship version against ClickHouse's
+<span data-fact="storage_clickhouse_bytes_per_row">78.4</span>, DuckDB's
+<span data-fact="storage_duckdb_bytes_per_row">187.7</span> and PostgreSQL's
+<span data-fact="storage_postgres_bytes_per_row">549.7</span>
+(<code>registry-v2-1m-4sys</code>, one run, one host). <b>The comparison does
+not hold compression or indexes equivalent:</b> all four are durable, but
+ClickHouse is lz4 with no secondary indexes, DuckDB is uncompressed, two
+thirds of PostgreSQL's total is covering indexes, and TGMS keeps its query
+indexes in memory rather than on disk — so its number buys the least query
+readiness, paying for that in a slow first query and a tax on later scans
+(<a href="resident-index.html">post #10</a>).</figcaption>
+</figure>
 
-<h2>Nine wrong bottlenecks</h2>
+<h2>One case study, and it is a null result</h2>
 
-<p>We kept a table: what we believed, what we measured, what it actually
-was. It reached nine rows. The full table is in
-<a href="https://github.com/zxf-work/tgms/blob/main/docs/engine_lessons.md">engine_lessons.md</a>;
-these four carry the flavor:</p>
+<p>Performance work produced a long table of hypotheses that measurement
+refuted; it lives in
+<a href="https://github.com/zxf-work/tgms/blob/main/docs/engine_lessons.md">engine_lessons.md</a>,
+because a chronology of misdiagnoses is a reference, not an explanation. One
+entry earns space here.</p>
 
-<table>
-<tr><th>we believed</th><th>we measured</th><th>it actually was</th></tr>
-<tr><td>Rust scan beats NumPy</td><td class="miss">2–5× slower</td>
-<td>a column resolved <i>by name</i> per row, inside the loop</td></tr>
-<tr><td>diff is scan-bound</td><td>scans were 54 ms of 419</td>
-<td>a 16-row lookup rebuilding the whole store</td></tr>
-<tr><td>a point lookup is all storage</td><td>validation ≈ the lookup</td>
-<td>a JSON-schema validator recompiled per call</td></tr>
-<tr><td>10M scans are materialize-bound</td><td class="miss">811 → 819 ms</td>
-<td>the parallel path <i>never ran</i>: one correction segment voided its precondition</td></tr>
-</table>
+<p>A full-window scan at ten million events was slow, diagnosed as bound by
+<i>materialisation</i> — copying selected rows out of the columnar layout — so
+materialisation was parallelised across threads. The number went from
+<span data-fact="scan_10m_parallel_null_before_ms">811</span> ms to
+<span data-fact="scan_10m_parallel_null_after_ms">819</span>: nothing.</p>
 
-<p>That last row is the one we would frame: we parallelized materialization,
-measured nothing, and a fifteen-minute stage probe showed the fast path was
-unreachable on any store containing corrections — which is every real
-store. The fix (merge by overlap <i>clusters</i>) made the "irrelevant"
-parallel code the thing doing the work:</p>
+<p>A fifteen-minute stage probe explained why. The parallel path could run only
+when selected row ranges from different segments did not overlap. That check
+was all-or-nothing, and <b>it never passed</b>: a correction writes a
+superseding version into a segment whose key range overlaps the original's, so
+one correction anywhere fails the check for the whole scan. The fast path was
+not underperforming; it was unreachable on any store containing a correction —
+which is every store TGMS is built for.</p>
 
-<svg viewBox="0 0 720 210" width="100%" role="img"
-     aria-label="Full-window scan at 10M events: 1274 ms serial, 929 after merge-key hoisting, 434 after cluster-wise merge; DuckDB reference 958">
+<div class="pull">We had optimised for a store with no corrections. The system
+exists because real stores have corrections.</div>
+
+<p>The fix was to stop treating disjointness as global: group selections into
+clusters of overlapping key ranges, materialise clusters in parallel,
+sort-merge only within one. At ten million events 370 of 371 clusters are
+singletons. The scan fell to
+<span data-fact="scan_10m_clusterwise_ms">330</span> ms, and the parallel code
+that had measured as worthless became the thing doing the work.</p>
+
+<figure>
+<svg viewBox="0 0 720 226" width="100%" role="img"
+     aria-label="Scan stage at 10 million events: 811 ms before parallel materialisation, 819 ms after it — no change, because the fast path never ran — and 330 ms once selections were merged cluster-wise so the path could fire.">
   <g font-size="13" fill="var(--mut)">
-    <text x="10" y="38">serial merge</text>
-    <text x="10" y="88">keys hoisted</text>
-    <text x="10" y="138">cluster-wise</text>
+    <text x="10" y="40">before</text>
+    <text x="10" y="90">+ parallel</text>
+    <text x="10" y="106" font-size="11.5">materialise</text>
+    <text x="10" y="150">+ cluster-wise</text>
+    <text x="10" y="166" font-size="11.5">merge</text>
   </g>
+  <line x1="148" y1="14" x2="148" y2="186" stroke="var(--line)" stroke-width="2"/>
   <g>
-    <rect x="150" y="22" width="540" height="24" rx="5" fill="var(--mut)" opacity="0.45"/>
-    <rect x="150" y="72" width="394" height="24" rx="5" fill="var(--blue2)" opacity="0.8"/>
-    <rect x="150" y="122" width="184" height="24" rx="5" fill="var(--ok)"/>
+    <rect x="148" y="24" width="534" height="26" rx="5" fill="var(--mut)" opacity=".45"/>
+    <rect x="148" y="76" width="539" height="26" rx="5" fill="var(--amber)" opacity=".75"/>
+    <rect x="148" y="128" width="217" height="26" rx="5" fill="var(--blue)"/>
   </g>
-  <line x1="556" y1="14" x2="556" y2="158" stroke="var(--amber)" stroke-width="2" stroke-dasharray="5 4"/>
-  <text x="562" y="30" font-size="12" fill="var(--amber)">DuckDB · 958 ms</text>
-  <g font-size="13" class="m">
-    <text x="600" y="39" fill="#fff">1274 ms</text>
-    <text x="552" y="89">929</text>
-    <text x="342" y="139">434 ms</text>
+  <g font-size="13" class="m" fill="var(--ink)">
+    <text x="620" y="42" fill="#fff">811 ms</text>
+    <text x="625" y="94" fill="#fff">819 ms</text>
+    <text x="373" y="146">330 ms</text>
   </g>
-  <text x="150" y="192" font-size="12" fill="var(--mut)">graph_metric_timeseries,
-  10M events, 40 cores · the matching kernel measured 11 ms throughout.</text>
+  <text x="148" y="200" font-size="11.5" fill="var(--bad)">▲ the fast path fired
+  0 times: one overlapping correction segment fails an all-or-nothing check</text>
+  <text x="148" y="218" font-size="12" fill="var(--mut)">10M events, 40 cores, scan
+  stage of the bucketed-count query.</text>
 </svg>
+<figcaption>The middle bar is the finding: correct parallel code that changed
+nothing because its precondition was never met on a corrected store. Amber
+marks the measurement that refuted its own hypothesis; red the failing
+condition, not a slow result. Engine stage timings from one probe run — a
+waypoint, since later projection work took the query above this scan to
+<span data-fact="series_10m_native_ms">183.7</span> ms end-to-end.</figcaption>
+</figure>
 
-<div class="note"><b>The transferable rule.</b> The named, algorithmic-looking
-component is rarely the cost — it is the part everyone already thought
-about. The scan call around it, the boundary crossing per row, the
-validator per call, the manifest per commit: that is where milliseconds
-live. Re-measure before writing the commit message; if the number did not
-move, the hypothesis was wrong even though the code got better.</div>
+<h2>What this means in practice</h2>
 
-<h2>What we refused to optimize</h2>
+<p><b>What you gain.</b> Corrections are cheap and never destroy history
+(<span data-fact="correction_latency_p50_ms">4.84</span> ms against a 100k-row
+store). Readers are lock-free and see a consistent store without coordinating
+with writers. Answers reproduce across backends and thread counts, which is
+what makes post #7's six-system comparison possible. A 10M-event suite fits
+under a 2 GB cap
+(<span data-fact="memory_10m_suite">1.76</span> GB peak).</p>
 
-<p>Durability. A commit is several fsyncs and ~20 ms, so batch-1 writes are
-slow and batch-1000 writes hit 46k events/s on the same floor. The lever is
-group-commit at the API — never weakening what a commit <i>means</i>. And a
-fifteen-minute probe priced the next "obvious" win (passing ids as integers
-across the language boundary) at 0.94 ms of a 32 ms operator — measured,
-declined, recorded. The measurement that stops you is worth as much as the
-one that redirects you.</p>
+<p><b>What you still pay</b> — three structural costs:</p>
+
+<ul>
+<li><b>Commit latency.</b> A commit is several fsyncs plus a fresh manifest, so
+one-event-per-commit writing is slow: 96 events/s at batch 1 against
+<span data-fact="append_batch1000_ev_s">45,958</span> at batch 1000. One
+correction also grows the store by about
+<span data-fact="correction_growth_kb">64</span> KB, nearly all manifest.</li>
+<li><b>Warm-up.</b> Query indexes are built in memory on first read, so the
+first query in a fresh process costs about
+<span data-fact="warmup_first_query_1m_s">2.5</span> s at 1M events and
+<span data-fact="warmup_first_query_10m_s">28</span> s at 10M — even a point
+lookup. Long-lived processes amortise it; one-shot scripts do not.</li>
+<li><b>Compaction.</b> Folding corrections into fresh segments is fast
+(<span data-fact="compaction_100k_s">0.41</span> s for a 100k-row store) but
+writes new files and deletes none, so the store grows until generation
+collection runs.</li>
+</ul>
+
+<div class="note"><b>The commitment that is not a feature.</b> A custom storage
+engine is not finished when it is fast. It means owning crash recovery and its
+testing, on-disk format compatibility for every future version that must open
+old stores, the observability a mature engine ships for free, and the tooling
+around compaction and backup. None of that appears in a benchmark table; over
+a multi-year horizon it is the larger number.</div>
+
+<h2>What this result does not show</h2>
+
+<ul>
+<li>Not that a general backend could not work — only that ours could not
+express bi-temporal versioning, deterministic identity and bounded memory at
+once <i>without</i> building most of this layer above them anyway.</li>
+<li>The case study is one probe run, one host, one query shape, one scale; the
+811 → 819 ms step is a null result inside noise, not a regression.</li>
+<li>Nothing here establishes durability under hardware fault, distributed
+operation, multi-writer concurrency, or format migration — the engine is
+single-writer today.</li>
+</ul>
+
+<h2>Takeaway</h2>
+
+<p>The engine exists because bi-temporal correction, deterministic replay,
+temporal operators and bounded embedded memory are one requirement rather than
+four, and nothing available satisfied the conjunction. Immutable segments plus
+append-only correction records makes it cheap: consistency becomes an integer,
+a correction becomes an append. The bill arrives as commit latency, a slow
+first query, and a maintenance commitment measured in years.</p>
+
+<h2>Evidence and reproduction</h2>
+
+<div class="note"><b>Receipts.</b> Storage accounting and the scan stage probe:
+<a href="https://github.com/zxf-work/tgms/blob/main/docs/eval_phase0.md">eval_phase0.md</a>;
+write path, corrections and compaction:
+<a href="https://github.com/zxf-work/tgms/blob/main/docs/eval_writes.md">eval_writes.md</a>;
+warm-up and memory:
+<a href="https://github.com/zxf-work/tgms/blob/main/docs/eval_resources.md">eval_resources.md</a>;
+the refuted-hypothesis table:
+<a href="https://github.com/zxf-work/tgms/blob/main/docs/engine_lessons.md">engine_lessons.md</a>.
+Raw records in <code>benchmarks/results-v1/</code>. The engine is validated
+against a 500-case brute-force oracle it was never allowed to modify.</div>
+
+<h2>Continue reading</h2>
+
+<ul>
+<li><b>Before this:</b> <a href="two-kinds-of-time.html">why an agent needs two
+kinds of time</a>.</li>
+<li><b>After this:</b> <a href="evaluating-the-engine.html">where TGMS is fast
+and where specialists still win</a>, and
+<a href="resident-index.html">what a resident index costs an unrelated
+scan</a>.</li>
+</ul>
+
+<h2>Changelog</h2>
+<ul>
+<li><b>3 August 2026</b> — rewritten to lead with the requirement rather than
+with Kùzu's acquisition; the misdiagnosis table is linked rather than
+reproduced, and warm-up, compaction growth and the maintenance commitment are
+added.</li>
+<li><b>3 August 2026</b> — corrected: the case-study figure showed
+<code>series.count</code> at 434 ms against a DuckDB reference of 958 ms as
+though current. Both were waypoints from the day that work landed. The figure
+now shows the scan stages it is about, with the current end-to-end figure
+taken from the live snapshot.</li>
+</ul>
 </article>
 
 <div class="next"><a href="evaluating-the-engine.html">
 <div class="lbl">Next up</div>
-<div class="ttl">#7 · Six systems, one registry — what an honest benchmark taught the engine →</div></a></div>
+<div class="ttl">#7 · Where TGMS is fast — and where specialists still win →</div></a></div>
 
 <script data-goatcounter="https://zxf-tgms.goatcounter.com/count" async src="https://gc.zgo.at/count.js"></script>
 </body></html>
