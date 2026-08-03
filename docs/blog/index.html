@@ -1,6 +1,7 @@
 <!doctype html><html lang="en"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>TGMS blog — engineering notes from an agent-native temporal graph store</title>
+<title>TGMS design notes — one design choice at a time</title>
+<meta name="description" content="Design notes on an agent-native bi-temporal graph store: the problem each choice solves, what we measured, and what the result does and does not show.">
 <style>
 :root{--ink:#1a2534;--mut:#5b6b7c;--blue:#1c64d9;--blue2:#3b82f6;--line:#e3e8ef;
       --bg:#fbfcfe;--card:#fff;--mono:ui-monospace,'SF Mono',Menlo,monospace}
@@ -35,6 +36,24 @@ a.post:hover{transform:translateY(-3px);box-shadow:0 12px 30px #0e1c3022;
 .soon{opacity:.62}
 .soon .num{background:var(--mut)}
 .soon h2{color:var(--ink)}
+.rail{background:var(--card);border:1px solid var(--line);border-radius:16px;
+      padding:20px 24px;margin:6px 0 30px}
+.rail h2{margin:0 0 6px;font-size:17px;letter-spacing:-.1px}
+.rail p{color:var(--mut);font-size:14.5px;line-height:1.6;margin:0 0 12px}
+.rail ol{margin:0;padding-left:20px;color:var(--mut);font-size:14.5px;line-height:1.85}
+.rail ol a{color:var(--blue);text-decoration:none;font-weight:600}
+.rail ol a:hover{text-decoration:underline}
+.sect{margin:34px 0 6px;font-size:13px;text-transform:uppercase;
+      letter-spacing:.08em;color:var(--mut)}
+.trk{display:inline-block;border-radius:11px;padding:2px 10px;font-size:11.5px;
+     letter-spacing:.03em;margin-bottom:2px}
+.trk.u{background:#1c64d914;color:var(--blue)}
+.trk.e{background:#0a7d3314;color:#0a7d33}
+.trk.c{background:#b5890018;color:#8a6a00}
+@media (prefers-color-scheme: dark){
+  .trk.e{background:#4ade8018;color:#4ade80}
+  .trk.c{background:#e3b34118;color:#e3b341}}
+.q{color:var(--ink);font-weight:600}
 footer{max-width:760px;margin:0 auto;padding:0 24px 60px;color:var(--mut);font-size:13px}
 footer a{color:var(--blue)}
 </style></head><body>
@@ -44,103 +63,118 @@ footer a{color:var(--blue)}
 <a href="https://github.com/zxf-work/tgms">github</a>
 <a href="https://github.com/zxf-work/tgms/blob/main/paper/main.pdf">paper</a></div>
 <div class="inner">
-<h1>TGMS blog</h1>
-<div class="sub">Engineering notes from building an agent-native bi-temporal
-graph store. Every post ships with runnable artifacts and determinism
-receipts — no result without a reproduction path.</div>
+<h1>TGMS design notes</h1>
+<div class="sub">One design choice at a time: the problem it solves, how the
+system handles it, what we measured, and what the result does and does not
+show. Start with the two-clock model, or browse by architecture, evidence
+and engine design.</div>
 </div></div>
 
 <main>
 
+<div class="rail">
+<h2>Start here</h2>
+<p>New to the project? These read in order — each one assumes only the ones
+before it.</p>
+<ol>
+<li><a href="what-tgms-is.html">What TGMS is — and is not</a> · five-minute orientation</li>
+<li><a href="two-kinds-of-time.html">Why TGMS stores two kinds of time</a> · the problem it exists for</li>
+<li><a href="statically-valid.html">Why AI tools need output contracts</a> · how plans are kept valid</li>
+<li><a href="incomplete-evidence.html">A correct number can still be unsupported</a> · how answers are verified</li>
+<li><a href="building-the-engine.html">Why TGMS needed a native storage engine</a> · the storage rationale</li>
+<li><a href="evaluating-the-engine.html">Where TGMS is fast — and where specialists win</a> · workload fit</li>
+</ol>
+</div>
+
+<div class="sect">All posts · newest first</div>
+
+<a class="post" href="resident-index.html">
+<span class="num">#10</span>
+<span class="trk c">Engineering case study</span>
+<h2>How a resident index slowed an unrelated scan by 18%</h2>
+<p class="q">A published number stopped reproducing. What broke — the code, the machine, or the measurement?</p>
+<p>The obvious hypothesis measured false, a five-build bisect landed on a commit touching no scan path, and a four-condition probe found an index costing 18% just by being resident — including in our own benchmark table.</p>
+</a>
+
 <a class="post" href="racing-the-specialist.html">
 <span class="num">#9</span>
+<span class="trk c">Engineering case study</span>
 <h2>Racing the specialist</h2>
-<p>We built the operator our own measurements said we were worst at, wrote
-its SQL and Cypher baselines before we wrote it, and lost to ClickHouse
-above a few hundred thousand events. Profiling the loss found the gap in
-one aggregate — exact distinct counting — and overturned our first
-explanation of it.</p>
+<p class="q">What happens when you build the operation you are worst at and race the system that is best at it?</p>
+<p>We wrote the SQL and Cypher baselines before writing the feature, lost to ClickHouse above a few hundred thousand events, and found the gap was one aggregate — after our first explanation of it turned out to be wrong.</p>
 </a>
 
 <a class="post" href="what-remembering-costs.html">
 <span class="num">#8</span>
-<h2>What remembering costs</h2>
-<p>The price of the bi-temporal contract, measured: free until the first
-correction, then a usage-based bill; a memory floor we misdiagnosed,
-published, refuted, and repaid — the 10M suite now runs in 1.76 GB; and
-crash recovery down from 48 minutes to six.</p>
+<span class="trk e">Evidence & capability</span>
+<h2>The operational cost of keeping a correctable history</h2>
+<p class="q">What do you actually pay to keep a history you can correct?</p>
+<p>Retention is close to free until the first correction; after that, correction density, a memory floor and a per-process warm-up are what decide the deployment.</p>
 </a>
 
 <a class="post" href="evaluating-the-engine.html">
 <span class="num">#7</span>
+<span class="trk e">Evidence & capability</span>
 <h2>Where TGMS is fast — and where specialists still win</h2>
-<p>Which system should answer which operation shape? Thirteen queries on
-six systems, every cell hash-verified before it was timed: TGMS owns the
-shapes that combine history with graph structure, ClickHouse owns
-large-scale aggregation, and building the baselines honestly fixed two
-defects in our own engine.</p>
+<p class="q">Which system should answer which shape of query?</p>
+<p>Thirteen queries on six systems, every cell hash-verified before it was timed: TGMS owns the shapes combining history with graph structure, ClickHouse owns large-scale aggregation, and building the baselines honestly fixed two defects in our own engine.</p>
 </a>
 
 <a class="post" href="building-the-engine.html">
 <span class="num">#6</span>
-<h2>Nine wrong bottlenecks: building a bi-temporal storage engine</h2>
-<p>Replacing DuckDB and K&ugrave;zu with 7,500 lines of Rust — the
-misdiagnosis table we kept, the immutability that buys everything else, and
-how segments landed at 24.6 bytes per edge version.</p>
+<span class="trk u">Understand TGMS</span>
+<h2>Why TGMS needed a native storage engine</h2>
+<p class="q">Why write a storage engine instead of using one that exists?</p>
+<p>Four properties had to hold at once and no adoptable backend delivered the conjunction. On immutable segments plus append-only corrections, 25.1 bytes per relationship version, and a fast path that never once ran.</p>
 </a>
 
 <a class="post" href="independent-questions.html">
 <span class="num">#5</span>
-<h2>We asked four students to write 110 questions. Our system could express 10.</h2>
-<p>An independent-question study with the operator list withheld:
-grouped aggregation is the missing capability that matters (30
-questions blocked by it alone), writers conflate the two clocks, and
-an equal-information SQL baseline ties us on flat schemas while losing
-by +0.124 where computation composes.</p>
-<span class="tag">coverage</span><span class="tag">fair baselines</span><span class="tag">study</span>
-<div class="meta" style="margin-top:10px">July 2026 · published</div></a>
+<span class="trk e">Evidence & capability</span>
+<h2>We let users define the workload</h2>
+<p class="q">What do people ask a temporal graph store, when nobody shows them the manual?</p>
+<p>Four people wrote 110 questions without seeing the operator list. The study measured real coverage, ranked the missing capability correctly — and its headline prediction still overshot by half.</p>
+</a>
 
 <a class="post" href="scaling-the-planner.html">
 <span class="num">#4</span>
-<h2>What happens when you give the same database a model 10× bigger?</h2>
-<p>We froze everything except the model and scaled 7B→72B. The
-operator-backed advantage grew 4.6× while baselines stayed flat;
-belief-state probes hit a perfect 1.000 at 32B. The surprises: AWQ
-quantization — not scale — is the planning bottleneck, and giving
-vector-RAG its intended k=20 context made it <i>worse</i>.</p>
-<span class="tag">scale study</span><span class="tag">quantization</span><span class="tag">fair baselines</span>
-<div class="meta" style="margin-top:10px">July 2026 · published</div></a>
+<span class="trk e">Evidence & capability</span>
+<h2>Bigger models help only when the data interface can use them</h2>
+<p class="q">Does a stronger model make a temporal system better, or is the interface the limit?</p>
+<p>Accuracy rose sharply from 7B to 32B under a frozen system, while the retrieval baselines improved little — and the 72B point changes precision as well as size, so it is read separately.</p>
+</a>
 
 <a class="post" href="incomplete-evidence.html">
 <span class="num">#3</span>
-<h2>Your verifier believes correct arithmetic on incomplete evidence</h2>
-<p>A live demo caught our claim verifier approving a count computed over a
-truncated result page — the value matched, the evidence didn’t. On
-truncation taint, support as a tuple instead of a boolean, and the ablation
-where all fifteen incomplete-evidence claims sail through untouched.</p>
-<span class="tag">verification</span><span class="tag">war story</span>
-<div class="meta" style="margin-top:10px">July 2026 · published</div></a>
+<span class="trk u">Understand TGMS</span>
+<h2>A correct number can still be unsupported</h2>
+<p class="q">If the arithmetic is right and the citation checks out, can the answer still be wrong?</p>
+<p>Yes — it counted 100 rows of a 343-row result. Completeness has to travel with the evidence, or a verifier will bless a confident summary of half the data.</p>
+</a>
 
 <a class="post" href="statically-valid.html">
 <span class="num">#2</span>
-<h2>Statically valid, semantically doomed</h2>
-<p>A 7B model met our operator schemas: perfectly valid plans, zero
-successful executions. Models invent <i>output</i> paths no input schema
-constrains. On output contracts — the one-line class of check that took
-execution success from 0.00 to 1.00 — and why tool manuals must be
-checkable, not just readable.</p>
-<span class="tag">small models</span><span class="tag">tool contracts</span>
-<div class="meta" style="margin-top:10px">July 2026 · published</div></a>
+<span class="trk u">Understand TGMS</span>
+<h2>Why AI tools need output contracts</h2>
+<p class="q">Your tool's input schema is airtight — so why did a model still break every plan?</p>
+<p>Nothing constrained the field names it read back out of your results. Declaring output fields took execution success on the probe tasks from none to all of them.</p>
+</a>
 
 <a class="post" href="two-kinds-of-time.html">
 <span class="num">#1</span>
-<h2>Why your agent needs two kinds of time</h2>
-<p>Correction probes: the question class that snapshot and RAG systems
-cannot express — and what happened when we measured it. Baselines score zero
-at every model size; the bi-temporal system doesn’t care how big the model
-is, because the model isn’t doing the temporal work.</p>
-<span class="tag">bi-temporal</span><span class="tag">benchmarks</span>
-<div class="meta" style="margin-top:10px">July 2026 · published</div></a>
+<span class="trk u">Understand TGMS</span>
+<h2>Why TGMS stores two kinds of time</h2>
+<p class="q">What happens to the record of what you believed, when a database corrects itself?</p>
+<p>Storing when a fact was true separately from when the system believed it turns “what did we think on 1 March?” into a filter the database applies, not an archaeology project.</p>
+</a>
+
+<a class="post" href="what-tgms-is.html">
+<span class="num">#0</span>
+<span class="trk u">Understand TGMS</span>
+<h2>What TGMS is — and is not</h2>
+<p class="q">What problem does an agent-native temporal store actually solve, and what should you keep using PostgreSQL for?</p>
+<p>A five-minute orientation: the three components, one question carried end to end, and a plain statement of the workloads other systems still do better, each cited to a measured shape.</p>
+</a>
 
 </main>
 <footer>TGMS · <a href="https://github.com/zxf-work/tgms">zxf-work/tgms</a> ·
