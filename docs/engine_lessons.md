@@ -449,8 +449,13 @@ actually need became visible:
   consecutive ratings by the same account"; "more than 5 ratings in any
   24-hour period". `min`/`max` give the endpoints of a group, never the
   structure inside it, and a sliding window is not a bucket.
-- the rest hit rating props or division, both of which D-044 declined on
-  purpose.
+
+Those two counts overlap — **four questions want both**, so the seventeen
+partition as 7 set-join only, 6 ordered-sequence only, and 4 wanting each.
+(A few also hit rating properties or division, which D-044 declined on
+purpose; no question is left needing only those.) Tag counts are
+occurrences, not a partition, which is the same reading error the original
+histogram invited and this section is about.
 
 None of that was hidden. It was folded into a tag named `G`, applied by
 people who could see what was missing but not what was underneath it,
