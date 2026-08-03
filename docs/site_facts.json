@@ -128,6 +128,13 @@
       "prose": "unsupported claims among the 268 evaluated answers of the dev-split campaign",
       "scope_required": "must be stated with its denominator, never as a universal guarantee"
     },
+    "unsupported_claims_denominator": {
+      "value": "268",
+      "kind": "benchmark",
+      "prose": "evaluated answers behind the 0 unsupported claims figure",
+      "scope_required": "unsupported_claims must never appear without this number beside it",
+      "review": "paper/main.tex reports the frozen campaign as 282 task runs, 270 measurable, 220 ungated-emitted and 0 of 199 gated-emitted; 268 traces only to paper/REVIEW_RESPONSE.md. Denominator and split label both need the author's adjudication."
+    },
     "answer_accuracy_tgms": {
       "value": "41",
       "kind": "benchmark",
@@ -314,6 +321,154 @@
       "value": "5",
       "kind": "benchmark",
       "prose": "engine builds bisected, one 1M run each, to locate the step change"
+    },
+    "dev_task_count": {
+      "value": "22",
+      "kind": "benchmark",
+      "prose": "development-split tasks every system answers under identical models, seeds, temperature 0 and repair budget",
+      "snapshot": "matrix-dev-oss-14b (Qwen2.5-14B-Instruct-AWQ, single 24 GB GPU)"
+    },
+    "dev_probe_task_count": {
+      "value": "3",
+      "kind": "benchmark",
+      "prose": "of the development tasks are correction probes: the same question asked of the belief before a correction and of the belief after it",
+      "snapshot": "matrix-dev-oss-14b"
+    },
+    "answer_accuracy_cypher_dev": {
+      "value": "18",
+      "kind": "benchmark",
+      "prose": "percent typed-answer accuracy for text-to-Cypher over the same events in a plain property graph (dev split)",
+      "snapshot": "matrix-dev-oss-14b"
+    },
+    "answer_accuracy_vector_rag_dev": {
+      "value": "9",
+      "kind": "benchmark",
+      "prose": "percent typed-answer accuracy for vector-RAG over serialised events (dev split)",
+      "snapshot": "matrix-dev-oss-14b"
+    },
+    "answer_accuracy_static_rag_dev": {
+      "value": "5",
+      "kind": "benchmark",
+      "prose": "percent typed-answer accuracy for static-graph RAG over the latest snapshot (dev split)",
+      "snapshot": "matrix-dev-oss-14b"
+    },
+    "probe_accuracy_tgms_dev": {
+      "value": "67",
+      "kind": "benchmark",
+      "prose": "percent typed-answer accuracy on the correction probes, TGMS, Qwen2.5-14B (2 of 3 dev probe tasks)",
+      "scope_required": "3 tasks; state the count beside the percentage",
+      "snapshot": "matrix-dev-oss-14b"
+    },
+    "probe_accuracy_baselines_dev": {
+      "value": "0",
+      "kind": "benchmark",
+      "prose": "percent typed-answer accuracy on the correction probes for all three baselines at 14B on the dev split",
+      "scope_required": "dev split only; on the frozen split vector-RAG scores 15.4 percent on CollegeMsg probes, from current-belief halves",
+      "snapshot": "matrix-dev-oss-14b"
+    },
+    "exec_success_probes_before": {
+      "value": "0",
+      "kind": "benchmark",
+      "prose": "percent execution success on the 3 dev correction-probe tasks with output-field validation disabled (0 of 3), Qwen2.5-7B",
+      "snapshot": "E1 output-contract ablation, matrix-dev-oss (Qwen2.5-7B-Instruct)"
+    },
+    "exec_success_probes_after": {
+      "value": "100",
+      "kind": "benchmark",
+      "prose": "percent execution success on the same 3 tasks with output-field validation enabled (3 of 3), Qwen2.5-7B",
+      "scope_required": "3 tasks, execution success only - never state as overall system accuracy",
+      "snapshot": "E1 output-contract ablation, matrix-dev-oss (Qwen2.5-7B-Instruct)"
+    },
+    "exec_success_overall_before": {
+      "value": "0",
+      "kind": "benchmark",
+      "prose": "percent execution success across all 22 dev tasks before output contracts (0 of 22)",
+      "snapshot": "E1 output-contract ablation, matrix-dev-oss (Qwen2.5-7B-Instruct)"
+    },
+    "exec_success_overall_after": {
+      "value": "55",
+      "kind": "benchmark",
+      "prose": "percent execution success across all 22 dev tasks after output contracts (12 of 22)",
+      "snapshot": "E1 output-contract ablation, matrix-dev-oss (Qwen2.5-7B-Instruct)"
+    },
+    "plan_validity_7b": {
+      "value": "23",
+      "kind": "benchmark",
+      "prose": "percent of first-emitted plans that pass validation at Qwen2.5-7B on the dev split",
+      "snapshot": "matrix-dev-oss"
+    },
+    "plan_validity_14b": {
+      "value": "50",
+      "kind": "benchmark",
+      "prose": "percent of first-emitted plans that pass validation at Qwen2.5-14B on the dev split",
+      "snapshot": "matrix-dev-oss-14b"
+    },
+    "default_page_limit": {
+      "value": "100",
+      "kind": "architectural",
+      "prose": "rows returned by default from any paginated operator, maximum 10,000"
+    },
+    "incident_page_rows": {
+      "value": "100",
+      "kind": "benchmark",
+      "prose": "rows on the page the model counted during the D-015 live demo"
+    },
+    "incident_total_rows": {
+      "value": "343",
+      "kind": "benchmark",
+      "prose": "rows the complete result actually held during the D-015 live demo"
+    },
+    "mutation_truncated_cases": {
+      "value": "15",
+      "kind": "tested",
+      "prose": "generated correct-arithmetic-over-truncated-evidence cases, all refused full support when completeness propagation is on",
+      "snapshot": "E2 truncation-taint ablation"
+    },
+    "mutation_truncated_without_taint": {
+      "value": "0",
+      "kind": "tested",
+      "prose": "of the 15 truncated-page counts are caught when completeness propagation is disabled",
+      "snapshot": "E2 truncation-taint ablation"
+    },
+    "mutation_belief_cases": {
+      "value": "60",
+      "kind": "tested",
+      "prose": "wrong-belief-state cases, all detected by re-checking claims against the transaction time the trace was pinned to"
+    },
+    "mutation_uncited_entity_cases": {
+      "value": "100",
+      "kind": "tested",
+      "prose": "cases adding a real entity the cited evidence never mentioned, all detected"
+    },
+    "mutation_unit_confusion_cases": {
+      "value": "100",
+      "kind": "tested",
+      "prose": "cases reading microseconds as milliseconds, all detected"
+    },
+    "mutation_member_dropped_cases": {
+      "value": "100",
+      "kind": "tested",
+      "prose": "cases dropping a member from a reported entity set"
+    },
+    "mutation_member_dropped_detected": {
+      "value": "0",
+      "kind": "limitation",
+      "prose": "of the dropped-member cases are detected - under-claiming is invisible to trace grounding by construction"
+    },
+    "mutation_clean_pool": {
+      "value": "202",
+      "kind": "tested",
+      "prose": "clean answers in the database-semantics pool, on which the checks raised no false positives"
+    },
+    "accuracy_ungated": {
+      "value": "41.8",
+      "kind": "benchmark",
+      "prose": "percent typed-answer accuracy with claim gating off"
+    },
+    "accuracy_gated": {
+      "value": "40.8",
+      "kind": "benchmark",
+      "prose": "percent typed-answer accuracy with claim gating on - the cost of the gate is this one point"
     }
   },
   "retired_phrases": [
