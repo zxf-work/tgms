@@ -235,6 +235,38 @@ def test_bucket_counts_agree_with_graph_metric_timeseries(seed):
 
 
 @SETTINGS
+@given(seed=seeds, stride=st.integers(1, 4))
+def test_series_keeps_the_empty_buckets_aggregate_events_omits(seed, stride):
+    """The two operators disagree on purpose, and the disagreement is the
+    contract (D-044).
+
+    `graph_metric_timeseries` emits **every** bucket in the window, value 0
+    where nothing happened, and reports `n_buckets`; `aggregate_events`
+    emits only non-empty groups. Sharing an implementation underneath is
+    allowed; letting the sharing leak upward is not. A small stride over a
+    sparse store guarantees empty buckets exist, so this fails loudly if the
+    series operator ever starts returning the aggregation operator's rows.
+    """
+    adapter, _ = build_store(seed)
+    series = call_operator(adapter, "graph_metric_timeseries",
+                           {"metric": "edge_event_count", "window": W,
+                            "stride": stride, "limit": 10_000})
+    agg = _call(adapter, group_by=[{"dim": "time_bucket"}],
+                aggregates=[{"agg": "count"}], stride=stride, limit=10_000)
+
+    expected_buckets = -(-(W["t_b"] - W["t_a"]) // stride)
+    assert series["n_buckets"] == expected_buckets
+    assert len(series["rows"]) == expected_buckets
+    assert [r["t_a"] for r in series["rows"]] == \
+        list(range(W["t_a"], W["t_b"], stride))
+    # every bucket the aggregation omitted is present above with value 0
+    nonempty = {r["t_a"] for r in agg["rows"]}
+    for r in series["rows"]:
+        assert (r["value"] > 0) == (r["t_a"] in nonempty), r
+    assert len(agg["rows"]) <= expected_buckets
+
+
+@SETTINGS
 @given(seed=seeds)
 def test_rel_dimension_agrees_with_rel_filter(seed):
     """Grouping by rel_type == running one rel_types-filtered ungrouped call
