@@ -40,7 +40,7 @@ from pathlib import Path
 import pytest
 
 from tgms.core.errors import TgmsError
-from tgms.core.model import OPEN_END, EntityRef
+from tgms.core.model import EntityRef
 
 pytest.importorskip("tgms._engine", reason="native engine extension not built")
 
