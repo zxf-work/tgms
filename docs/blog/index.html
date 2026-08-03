@@ -56,10 +56,10 @@ receipts — no result without a reproduction path.</div>
 <span class="num">#9</span>
 <h2>Racing the specialist</h2>
 <p>We built the operator our own measurements said we were worst at, wrote
-its SQL and Cypher baselines before we wrote it, and lost to ClickHouse by
-2&times;. Grouping turned out to be free — the whole gap is the scan — and
-re-measuring the old table found an index that taxes every later query 18%
-just by existing.</p>
+its SQL and Cypher baselines before we wrote it, and lost to ClickHouse
+above a few hundred thousand events. Profiling the loss found the gap in
+one aggregate — exact distinct counting — and overturned our first
+explanation of it.</p>
 </a>
 
 <a class="post" href="what-remembering-costs.html">

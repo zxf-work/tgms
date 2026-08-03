@@ -30,5 +30,7 @@ jobs:
         run: uv run ruff check tgms/ tests/ scripts/
       - name: commit hygiene (spec §8.1)
         run: uv run python scripts/check_commit_hygiene.py
+      - name: site facts (docs/BLOG_STYLE.md §8)
+        run: uv run python scripts/site_facts.py check
       - name: tests (fast property profile)
         run: TGMS_HYP_EXAMPLES=25 uv run pytest tests/ -q

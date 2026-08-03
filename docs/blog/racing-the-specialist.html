@@ -151,40 +151,59 @@ PostgreSQL at a million events, on a query PostgreSQL answers with a plain
 <code>GROUP BY</code>. Against the specialist, we are second. That is the
 honest headline, and it goes in the report with the rest.</p>
 
-<h2>The number that isn't in the table</h2>
+<h2>Where the remaining gap actually is</h2>
 
-<p>At ten million events, the new grouped query costs <b>less</b> than the
-plain bucketed count it was built alongside — 334.7 ms against 352.1 ms.
-Same scan; the grouped one additionally carries a second grouping
-dimension and an exact distinct count over ten million endpoint
-identifiers.</p>
+<p>The obvious guess is that we lose because our scan is slower. We
+profiled it, and that is not what the time is made of. At ten million
+events the grouped query spends <b>38.8 ms selecting rows</b> and the rest
+inside the aggregation itself — and about <b>232 ms of it is one
+aggregate</b>, the exact count of distinct recipients per group.</p>
 
-<div class="pull">Grouping is free. Everything we are still losing by is
-the scan underneath it. <span style="font-size:15px;font-weight:400;
-color:var(--bad)">— which turned out to be false; see below.</span></div>
+<figure>
+<svg viewBox="0 0 720 150" width="100%" role="img"
+     aria-label="Breakdown of the 10M grouped-aggregation query, 331 ms total: 38.8 ms selecting rows, 232 ms exact distinct counting, about 60 ms grouping and merge. ClickHouse answers the same query in 134 ms.">
+  <g font-size="12.5" fill="var(--mut)"><text x="16" y="42">TGMS</text>
+    <text x="16" y="112">ClickHouse</text></g>
+  <rect x="100" y="26" width="70" height="26" rx="3" fill="var(--blue)"/>
+  <rect x="172" y="26" width="418" height="26" rx="3" fill="var(--amber)"/>
+  <rect x="592" y="26" width="106" height="26" rx="3" fill="var(--blue)" opacity=".45"/>
+  <g font-size="12" class="m" fill="#fff">
+    <text x="106" y="44">39</text><text x="330" y="44">232 ms — exact distinct count</text>
+    <text x="600" y="44">60</text></g>
+  <rect x="100" y="96" width="242" height="26" rx="3" fill="var(--ok)" opacity=".75"/>
+  <text x="110" y="114" font-size="12" class="m" fill="#fff">134 ms, whole query</text>
+  <g font-size="11.5" fill="var(--mut)">
+    <text x="100" y="72">select rows</text>
+    <text x="592" y="72">group + merge</text></g>
+</svg>
+<figcaption>Where 331 ms goes on the 10M grouped-aggregation query
+(<code>registry-v2-10m-3sys</code>, median of 10 runs, lower is better).
+One aggregate — the exact distinct count — is more than twice ClickHouse's
+entire answer. Selection, the part we assumed was the problem, is 12% of
+it. This does not say our scan is fast in general; a different query,
+<code>series.count</code>, is still scan-bound and is where the next
+session's work went.</figcaption>
+</figure>
 
-<p>That is the whole payoff of copying ClickHouse's execution shape rather
-than its results: per-thread partial aggregates over the parallel scan,
-group keys as fixed-width integer codes end to end — bucket index, relation
-code, dense endpoint id, never a string — merged deterministically so the
-answer is byte-identical whatever the thread count. The aggregation
-machinery costs nothing measurable. A two-fold gap that lives entirely in
-the scan is a far better problem to own than a two-fold gap smeared across
-a kernel, because it names exactly one thing to work on next.</p>
+<p>So the two-phase design does work: per-thread partial aggregates over
+the parallel scan, group keys as fixed-width integer codes end to end —
+bucket index, relation code, dense endpoint id, never a string — merged
+deterministically so the answer is byte-identical whatever the thread
+count. What it does not do is make exact distinct counting cheap. Ours
+appends every endpoint id into a per-group list and sorts it once at the
+end; ClickHouse has spent years on that specific problem. <b>That is the
+gap, and it is one aggregate rather than an architecture.</b></p>
 
-<div class="note"><b>Retracted the next day, by the work it pointed at.</b>
-The paragraph above is wrong, and it is left standing because the
-correction is worth more than the claim was. We went to profile "the
-scan" and found that the two operators never shared one: our grouped
-aggregation calls the selection step and stops — it never materializes
-columns or crosses the language boundary — so <i>its</i> scan is 38.8 ms of
-those 334.7, not 352. The remaining ~270 ms is the aggregation kernel, and
-about 232 of it is the exact distinct count alone. Grouping is not free; we
-had compared two totals as though the word "scan" meant the same work on
-both sides of the comparison. The claim was load-bearing — it is what
-aimed the next session — and it survived exactly one day of being
-measured. The profile that killed it is in
-<a href="https://github.com/zxf-work/tgms/blob/main/docs/eval_phase0.md">eval_phase0.md</a>
+<div class="note"><b>Correction, 3 August 2026.</b> This section originally
+said the opposite — that grouping was free and the whole remaining gap was
+the scan — on the grounds that the grouped query (334.7 ms) cost less than
+the plain bucketed count (352.1 ms) beside it. The two never shared a scan:
+the grouped operator selects rows and stops, never materialising columns or
+crossing into Python, so its scan is 38.8 ms and not 352. We had compared
+two totals as if "the scan" meant the same work on both sides. The claim
+was load-bearing — it is what aimed the following session — so it is
+recorded here rather than quietly replaced. The profile that overturned it
+is in <a href="https://github.com/zxf-work/tgms/blob/main/docs/eval_phase0.md">eval_phase0.md</a>
 under "Where the 10M scan actually goes".</div>
 
 <p>One cell in that comparison is ours and it is bad, so it is published
@@ -305,12 +324,19 @@ being measured twice.</div>
 
 <h2>What we would tell someone doing this</h2>
 
-<p>Build the thing your own measurements say you are worst at, and race the
-system that is best at it, using implementations you wrote before you wrote
-yours. You will probably lose. A loss that says <i>the aggregation is free
-and the scan is the whole gap</i> is worth more than a win that says
-nothing, and it costs the same to obtain — provided you are willing to
-print it.</p>
+<p>Three things carried, in the order we would repeat them. <b>Write the
+baselines before the feature</b>, so the reference cannot grow to fit what
+you shipped. <b>Benchmark against the strongest specialist you can find</b>,
+because second place against ClickHouse told us more about where we stand
+than any win over a general-purpose system would have. And <b>profile the
+gap before you explain it</b> — our first explanation of this one was
+wrong, it was confident, and it survived a single day of measurement.</p>
+
+<p>For a reader deciding whether this matters to them: TGMS answers grouped
+aggregation over bi-temporal event data in one verified operation, and is
+faster than a tuned column store up to a few hundred thousand events. Above
+that, if whole-window aggregation is the workload, a dedicated analytical
+engine is the better tool and our own numbers say so.</p>
 
 <div class="note"><b>Receipts.</b> Thirteen registry queries × six systems,
 every cell hash-verified before timing:
