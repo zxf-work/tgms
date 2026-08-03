@@ -242,7 +242,11 @@ losing writes and blaming the engine. `Store` now serializes `_write` under a
 lock, which is both the correct behaviour and the only baseline group commit
 can honestly be measured against.
 
-100k-row store, **400 rows per writer** (400 latency samples per condition):
+100k-row store, **400 rows per writer** — one trial per condition, 400
+latency samples in each. (Two further trials were planned and abandoned: the
+serialized 32-writer condition alone commits 12,800 generations and was
+taking longer than the result was worth once the shape had replicated. The
+trial count is one; the replication below is what stands in for a spread.)
 
 | writers | serialized rows/s | coalesced rows/s | speedup | serialized p50 / p99 | coalesced p50 / p99 | generations |
 |---:|---:|---:|---:|---:|---:|---|
@@ -289,9 +293,12 @@ measured `max_group` is 1, every time — so what it measures is pure overhead:
 | submit p99 | 8.86 ms | 12.95 ms | +4.09 ms |
 | throughput | 164.5 rows/s | 109.0 rows/s | **−34%** |
 
-400 samples per condition; the earlier 40-sample run agrees in shape (3.44 →
-6.35 ms, 143.8 → 103.5 rows/s), which is why the run was repeated at ten
-times the sample count rather than reported from 40.
+One trial, 400 samples per condition. The earlier independent 40-sample run
+agrees in shape (3.44 → 6.35 ms, 143.8 → 103.5 rows/s) — which is why it was
+repeated at ten times the sample count rather than reported from 40, since 40
+samples could not distinguish this from noise and 400 can: the p99 of the
+serialized condition (8.86 ms) is below the p50 of the coalesced one (8.86)
+rather than overlapping it.
 
 **It is a thread-handoff cost, not a durability or design one.** Nothing
 extra is fsynced; the same batch is committed once either way. A bare
