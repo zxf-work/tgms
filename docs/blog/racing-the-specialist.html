@@ -70,6 +70,11 @@ code{font-family:var(--mono);background:#1c64d914;border-radius:5px;
 .next a:hover{transform:translateY(-2px);box-shadow:0 10px 26px #0e1c301f}
 .next .lbl{font-size:12px;color:var(--mut);text-transform:uppercase;letter-spacing:.07em}
 .next .ttl{color:var(--blue);font-weight:650;font-size:17px;margin-top:4px}
+.metaline{color:#93aacd;font-size:13px;margin-top:8px;line-height:1.55}
+.metaline b{color:#cfe0f8;font-weight:600}
+.chg{font-size:14.5px;color:var(--mut);line-height:1.6}
+.chg li{margin-bottom:7px}
+article ul{padding-left:22px;margin:16px 0}
 svg text{font-family:-apple-system,'Segoe UI',Roboto,sans-serif}
 svg .m{font-family:var(--mono)}
 </style></head><body>
@@ -78,11 +83,15 @@ svg .m{font-family:var(--mono)}
 <div class="nav"><a href="../">← TGMS</a><a href="./">blog</a>
 <a href="https://github.com/zxf-work/tgms">github</a></div>
 <div class="inner">
-<span class="kicker">Post #9 · Operators &amp; kernels</span>
+<span class="kicker">Post #9 · Engineering case study</span>
 <h1>Racing the specialist</h1>
-<div class="byline">Xiaofei Zhang · University of Memphis · August 2026 ·
+<div class="byline">Xiaofei Zhang · University of Memphis ·
 <a href="https://github.com/zxf-work/tgms/blob/main/docs/eval_phase0.md">records</a> ·
 <a href="https://github.com/zxf-work/tgms">code</a></div>
+<div class="metaline">First published 2 August 2026 · updated 3 August 2026 ·
+TGMS 0.4.0 · snapshots <span class="m">registry-v2-200k-6sys</span>,
+<span class="m">registry-v2-10m-3sys</span> · 8 min read ·
+<b>Status: Updated result</b></div>
 </div></div>
 
 <article>
@@ -281,6 +290,40 @@ aggregation over bi-temporal event data in one verified operation, and is
 faster than a tuned column store up to a few hundred thousand events. Above
 that, if whole-window aggregation is the workload, a dedicated analytical
 engine is the better tool and our own numbers say so.</p>
+
+<h2>What this result does not show</h2>
+
+<ul>
+<li>It does not show TGMS is slower at aggregation in general. One query
+shape was raced, on one synthetic workload, at three scales; the crossover
+we found sits between 200k and 1M events on this data and would move with
+group count, cardinality, and how much of the window a query touches.</li>
+<li>It does not show our two-phase design is the reason we lose. The
+design carries the grouping at no measurable cost; one aggregate —
+exact distinct counting — is where the remaining time goes, and that is an
+implementation we have not optimised rather than an architecture that
+cannot.</li>
+<li>The coverage re-audit judges whether a question can be
+<i>expressed</i>, not whether a model answers it correctly. Those are
+different measurements.</li>
+<li>The 18% residency tax was measured on one host with one working-set
+size. It is a real effect with a mechanism, but the magnitude is not a
+constant.</li>
+</ul>
+
+<h2>Changelog</h2>
+<ul class="chg">
+<li><b>3 August 2026</b> — rebuilt around the corrected profile. This post
+originally concluded that grouping was free and the whole remaining gap was
+the scan; the following session's profile overturned that, and the section
+"Where the remaining gap actually is" now leads with what was measured —
+exact distinct counting at 232 of 331 ms — with the retracted claim kept in
+a dated correction box. The resident-index material moved to its own post,
+where it is the subject rather than a third story. The takeaway no longer
+repeats the retracted claim, and the ClickHouse aggregation lead quoted in
+the opening is scoped as historical.</li>
+<li><b>2 August 2026</b> — First published.</li>
+</ul>
 
 <div class="note"><b>Receipts.</b> Thirteen registry queries × six systems,
 every cell hash-verified before timing:
