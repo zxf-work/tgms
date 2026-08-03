@@ -1,16 +1,16 @@
 <!doctype html><html lang="en"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Your verifier believes correct arithmetic on incomplete evidence — TGMS blog</title>
-<meta name="description" content="A live demo caught our claim verifier approving a count computed over a truncated result page. On truncation taint, and the ablation where every incomplete-evidence claim sails through.">
+<title>A Correct Number Can Still Be Unsupported — TGMS blog</title>
+<meta name="description" content="The model counted 100 returned rows correctly, but the database contained 343. Why a verifier that checks values must also check whether the evidence was complete.">
 <style>
 :root{--ink:#1a2534;--mut:#5b6b7c;--blue:#1c64d9;--blue2:#3b82f6;--line:#e3e8ef;
       --bg:#fbfcfe;--card:#fff;--codebg:#0e1c30;--codetx:#dce7f5;--ok:#0a7d33;
-      --amber:#b58900;--bad:#c0392b;
+      --amber:#b58900;--corr:#7c4dbd;--gray:#8b98a8;--bad:#c0392b;
       --mono:ui-monospace,'SF Mono',Menlo,monospace}
 @media (prefers-color-scheme: dark){
 :root{--ink:#e6edf6;--mut:#95a6ba;--blue:#6ea8ff;--blue2:#8bbcff;--line:#243244;
       --bg:#0b1420;--card:#121e2e;--codebg:#0a1017;--codetx:#cfe0f2;--ok:#4ade80;
-      --amber:#e3b341;--bad:#f87171}}
+      --amber:#e3b341;--corr:#b58bea;--gray:#7d8b9c;--bad:#f87171}}
 *{box-sizing:border-box}
 body{margin:0;font-family:-apple-system,'Segoe UI',Roboto,sans-serif;
      color:var(--ink);background:var(--bg);-webkit-font-smoothing:antialiased}
@@ -22,10 +22,13 @@ body{margin:0;font-family:-apple-system,'Segoe UI',Roboto,sans-serif;
 .kicker{display:inline-block;background:#ffffff22;border:1px solid #ffffff33;
         border-radius:14px;padding:3px 12px;font-size:12px;letter-spacing:.08em;
         text-transform:uppercase;color:#dbe7f8}
-h1{font-size:clamp(28px,5vw,40px);line-height:1.14;letter-spacing:-.8px;
+h1{font-size:clamp(28px,5vw,42px);line-height:1.14;letter-spacing:-.8px;
    margin:14px 0 10px;color:#fff}
+.sub{color:#cfe0f8;font-size:18px;line-height:1.45;margin:0 0 16px;max-width:640px}
 .byline{color:#a9c0e2;font-size:14.5px}
 .byline a{color:#dbe7f8}
+.metaline{color:#93aacd;font-size:13px;margin-top:8px;line-height:1.55}
+.metaline b{color:#cfe0f8;font-weight:600}
 article{max-width:760px;margin:0 auto;padding:40px 24px 30px;line-height:1.72;
         font-size:17px}
 article>p:first-of-type{font-size:19px;color:var(--mut)}
@@ -43,14 +46,9 @@ pre{background:var(--codebg);color:var(--codetx);border-radius:12px;
 pre .g{color:#7fd0a0}pre .c{color:#7fa3d0}pre .r{color:#f0975a}
 code{font-family:var(--mono);background:#1c64d914;border-radius:5px;
      padding:1px 6px;font-size:.9em}
-.duo{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin:22px 0}
-@media(max-width:640px){.duo{grid-template-columns:1fr}}
-.duo .cell{background:var(--card);border:1px solid var(--line);border-radius:12px;
-     padding:14px 16px}
-.duo .cell b{display:block;font-size:13px;text-transform:uppercase;
-     letter-spacing:.06em;color:var(--mut);margin-bottom:6px}
-.duo .big{font-size:30px;font-weight:700;color:var(--blue)}
-.duo .big.bad{color:var(--bad)}
+figure{margin:26px 0;background:var(--card);border:1px solid var(--line);
+       border-radius:14px;padding:18px 18px 8px}
+figcaption{color:var(--mut);font-size:13.5px;line-height:1.5;padding:8px 4px 10px}
 table{border-collapse:collapse;width:100%;font-size:15px;margin:20px 0;
       background:var(--card);border-radius:12px;overflow:hidden;
       border:1px solid var(--line)}
@@ -58,12 +56,33 @@ th,td{padding:11px 12px;text-align:right;border-bottom:1px solid var(--line)}
 th{background:#1c64d90d;font-size:13px;text-transform:uppercase;
    letter-spacing:.04em;color:var(--mut)}
 th:first-child,td:first-child{text-align:left}
+td:last-child{text-align:left;font-size:14px;color:var(--mut)}
 tr:last-child td{border-bottom:0}
 td.win{color:var(--ok);font-weight:700}
 td.miss{color:var(--bad);font-weight:700}
 a{color:var(--blue)}
 .note{background:#1c64d90e;border:1px solid #1c64d930;border-radius:12px;
       padding:14px 18px;font-size:15px;margin:24px 0;line-height:1.6}
+.side{background:var(--card);border:1px solid var(--line);border-left:4px solid var(--blue);
+      border-radius:10px;padding:14px 18px;font-size:15px;margin:26px 0;line-height:1.62}
+.side b.h{display:block;font-size:12px;text-transform:uppercase;letter-spacing:.07em;
+      color:var(--mut);margin-bottom:6px}
+.ev{background:var(--card);border:1px solid var(--line);border-radius:12px;
+    padding:6px 18px 14px;margin:24px 0;font-size:14.5px}
+.ev b.h{display:block;font-size:12px;text-transform:uppercase;letter-spacing:.07em;
+    color:var(--mut);margin:14px 0 8px}
+.ev dl{margin:0;display:grid;grid-template-columns:auto 1fr;gap:6px 16px}
+.ev dt{color:var(--mut);font-size:13px}
+.ev dd{margin:0}
+@media(max-width:560px){.ev dl{grid-template-columns:1fr}
+  .ev dt{margin-top:6px}}
+.limit{background:#b5890010;border:1px solid #b5890040;border-radius:12px;
+       padding:14px 18px;font-size:15.5px;margin:24px 0;line-height:1.65}
+.check{background:var(--card);border:1px solid var(--line);border-radius:12px;
+       padding:6px 20px 14px;margin:24px 0;font-size:16px;line-height:1.6}
+.check li{margin:9px 0}
+.chg{font-size:14.5px;color:var(--mut);line-height:1.6}
+.chg li{margin-bottom:7px}
 .next{max-width:760px;margin:0 auto;padding:0 24px 70px}
 .next a{display:block;background:var(--card);border:1px solid var(--line);
         border-radius:14px;padding:18px 22px;text-decoration:none;color:var(--ink);
@@ -71,139 +90,326 @@ a{color:var(--blue)}
 .next a:hover{transform:translateY(-2px);box-shadow:0 10px 26px #0e1c301f}
 .next .lbl{font-size:12px;color:var(--mut);text-transform:uppercase;letter-spacing:.07em}
 .next .ttl{color:var(--blue);font-weight:650;font-size:17px;margin-top:4px}
+svg text{font-family:-apple-system,'Segoe UI',Roboto,sans-serif}
+svg .m{font-family:var(--mono)}
 </style></head><body>
 
 <div class="hero">
 <div class="nav"><a href="../">← TGMS</a><a href="./">blog</a>
 <a href="https://github.com/zxf-work/tgms">github</a></div>
 <div class="inner">
-<span class="kicker">Post #3 · Evidence semantics</span>
-<h1>Your verifier believes correct arithmetic on incomplete evidence</h1>
-<div class="byline">Xiaofei Zhang · University of Memphis · July 2026 ·
+<span class="kicker">Post #3 · Understand TGMS</span>
+<h1>A correct number can<br>still be unsupported</h1>
+<p class="sub">The model counted 100 returned rows correctly, but the database
+contained 343.</p>
+<div class="byline">Xiaofei Zhang · University of Memphis ·
 <a href="https://github.com/zxf-work/tgms/blob/main/paper/main.pdf">paper</a> ·
 <a href="https://github.com/zxf-work/tgms">code</a></div>
+<div class="metaline">First published July 2026 · updated 3 August 2026 ·
+TGMS 0.4.0 · snapshot <span class="m">frozen-test campaign</span> ·
+7 min read · <b>Status: Updated result</b></div>
 </div></div>
 
 <article>
+
+<h2>In one sentence</h2>
+
+<p>Checking that a claimed number really appears in the cited evidence does not
+tell you the evidence was all of the evidence — so a verifier has to track
+completeness as carefully as it tracks values.</p>
+
+<h2>Why this matters</h2>
+
 <p>During a live demo, our 14B model did everything right. It planned a
-reachability query, got a result page back, counted the rows — carefully,
-correctly — and reported the count with a citation to the evidence. The
-verifier checked the claim against the trace and approved it. One
-problem: the page held 100 rows. The complete result held 343.</p>
+reachability query, got a page of results back, counted the rows — carefully,
+correctly — and reported the count, citing the step it came from. The verifier
+checked the claim against the trace and approved it.</p>
 
-<div class="pull">The arithmetic was flawless. The answer was still false
-— as a statement about the database.</div>
+<p>One problem. The page held
+<span data-fact="incident_page_rows">100</span> rows. The complete result held
+<span data-fact="incident_total_rows">343</span>.</p>
 
-<h2>The blind spot every value-checker shares</h2>
+<div class="pull">The arithmetic was flawless. The answer was still false as a
+statement about the database.</div>
 
-<p>Most answer verification — ours included, at first — asks one
-question: <i>does the claimed value appear in the cited evidence?</i>
-That check catches fabrication beautifully (we had just finished proving
-it on 500 injected faults). But it is a <b>correctness</b> check, and
-correctness is only one dimension of whether evidence actually supports
-a claim. The model counted the rows it was given. The rows it was given
-were not the rows that exist:</p>
+<p>Nobody in that chain misbehaved. The operation returned a page because that
+is what it is supposed to do. The model counted what it was given. The verifier
+confirmed the number appeared in the cited evidence, which it did. The claim was
+wrong anyway, and every check passed.</p>
 
-<pre><span class="c">// what the operator returned (default page limit: 100)</span>
-{"rows": [ ...100 items... ], <span class="g">"rows_total": 343</span>, <span class="r">"truncated": true</span>}
+<h2>The idea in plain language</h2>
 
-<span class="c">// what the model claimed, with a perfectly valid citation</span>
-{"type": "count", "value": <span class="r">100</span>, "evidence": ["s2"]}  <span class="c">// ✓ value found in s2 …</span></pre>
+<p>The database was not hiding anything. Every paginated result it returns
+carries two extra pieces of information alongside the rows: <b>how many rows
+matched in total</b>, and <b>whether what you are holding is the whole set</b>.
+In TGMS those are called <code>rows_total</code> and <code>truncated</code>, and
+they are the honest part of this story — a <b>partial-result marker</b>, present
+and correct in the payload the model received.</p>
 
-<p>The database <em>knew</em> the result was partial — it said so, right
-there in the payload. But nothing forced anyone downstream to care.
-Sound familiar? It should: this is every SQL <code>LIMIT</code>, every
-top-<i>k</i> retrieval, every sampled or approximate query, every
-timed-out scan, every stale replica. Databases constantly return partial
-answers and label them honestly. The labels just evaporate on the way to
-the conclusion.</p>
+<pre><span class="c">// what the operation returned — default page limit 100</span>
+{"rows": [ …100 items… ], <span class="g">"rows_total": 343</span>, <span class="r">"truncated": true</span>}
 
-<h2>Support is a tuple, not a boolean</h2>
+<span class="c">// what the model claimed, citing that step</span>
+{"type": "count", "value": <span class="r">100</span>, "evidence": ["s2"]}
+<span class="c">//                        ✓ the value really is in s2 …</span></pre>
 
-<p>The fix reframes what a verifier certifies. A claim is not
-“supported” or “unsupported” — it is supported <i>under conditions</i>:</p>
+<p>The marker existed. What did not exist was any obligation to carry it
+forward. The moment those rows were counted, the count became a plain number
+with no memory of where it came from — and once that is lost, no downstream
+check can recover it.</p>
 
-<div class="pull" style="font-size:19px">⟨ correctness · completeness ·
-belief time · approximation · provenance ⟩</div>
+<figure>
+<svg viewBox="0 0 720 268" width="100%" role="img"
+     aria-label="A funnel. 343 rows exist in the database; one page of 100 is returned carrying a truncated marker; a count over that page produces 100; the claim reports 100. Without propagation the marker is dropped at the counting step and the claim looks fully supported. With propagation the marker survives to the claim, which is capped at weakly supported.">
+  <g font-size="12.5" fill="var(--ink)">
+    <text x="10" y="26" font-weight="700">343 rows match</text>
+    <text x="196" y="26" font-weight="700">a page of 100</text>
+    <text x="378" y="26" font-weight="700">a count</text>
+    <text x="540" y="26" font-weight="700">a claim</text></g>
 
-<p>In TGMS this is machinery, not philosophy. Every operator result
-carries <code>rows_total</code> and a <code>truncated</code> flag.
-The executor propagates <b>truncation taint</b>: any step that reads a
-truncated page is tainted, and so is every step downstream of it — the
-count over those rows, the filter over that count, all of it. The claim
-verifier then caps any claim resting on tainted evidence at
-<i>weakly&nbsp;supported</i>, no matter how perfect its arithmetic. Full
-support requires full evidence.</p>
+  <rect x="10" y="38" width="150" height="58" rx="8" fill="var(--blue)" opacity=".85"/>
+  <text x="85" y="73" text-anchor="middle" font-size="14" class="m" fill="#fff">343</text>
+  <path d="M164 67 H192" stroke="var(--mut)" stroke-width="1.6"/><polygon points="194,67 185,62 185,72" fill="var(--mut)"/>
+  <rect x="196" y="48" width="150" height="38" rx="8" fill="var(--blue)" opacity=".55"/>
+  <text x="271" y="72" text-anchor="middle" font-size="14" class="m" fill="#fff">100</text>
+  <text x="271" y="104" text-anchor="middle" font-size="11" fill="var(--amber)">truncated: true</text>
+  <path d="M350 67 H374" stroke="var(--mut)" stroke-width="1.6"/><polygon points="376,67 367,62 367,72" fill="var(--mut)"/>
+  <rect x="378" y="48" width="140" height="38" rx="8" fill="var(--card)" stroke="var(--line)"/>
+  <text x="448" y="72" text-anchor="middle" font-size="14" class="m" fill="var(--ink)">= 100</text>
+  <path d="M522 67 H538" stroke="var(--mut)" stroke-width="1.6"/><polygon points="540,67 531,62 531,72" fill="var(--mut)"/>
+  <rect x="542" y="48" width="168" height="38" rx="8" fill="var(--card)" stroke="var(--line)"/>
+  <text x="626" y="72" text-anchor="middle" font-size="12.5" fill="var(--ink)">“there are 100”</text>
 
-<h2>Measuring the mechanism</h2>
+  <line x1="10" y1="128" x2="710" y2="128" stroke="var(--line)"/>
 
-<p>Does the taint actually carry weight? We built a generator that takes
-correct counting tasks, shrinks one page limit so the count runs over a
-truncated page, and derives the answer mechanically — correct arithmetic
-over incomplete evidence, by construction. Then we verified each case
-twice: once with taint propagation on, once with it disabled:</p>
+  <text x="10" y="156" font-size="12" font-weight="700" fill="var(--bad)">WITHOUT PROPAGATION — the marker is dropped at the count</text>
+  <rect x="196" y="166" width="150" height="20" rx="5" fill="var(--amber)" opacity=".8"/>
+  <text x="271" y="181" text-anchor="middle" font-size="11" fill="#fff">marker here</text>
+  <text x="360" y="181" font-size="16" fill="var(--bad)">✕</text>
+  <rect x="378" y="166" width="332" height="20" rx="5" fill="var(--bad)" opacity=".13"/>
+  <text x="544" y="181" text-anchor="middle" font-size="11" fill="var(--bad)">no marker — claim reads as fully supported</text>
 
-<div class="duo">
-<div class="cell"><b>Taint propagation ON</b>
-<div class="big">15/15 flagged</div>
-Every truncated-page count is refused full support (capped at
-weakly&nbsp;supported).</div>
-<div class="cell"><b>Taint propagation OFF</b>
-<div class="big bad">15/15 pass</div>
-Every one sails through as fully supported. The mechanism is
-load-bearing, not decorative.</div>
+  <text x="10" y="220" font-size="12" font-weight="700" fill="var(--ok)">WITH PROPAGATION — the marker rides along and caps the claim</text>
+  <rect x="196" y="230" width="514" height="20" rx="5" fill="var(--amber)" opacity=".8"/>
+  <text x="453" y="245" text-anchor="middle" font-size="11" fill="#fff">marker survives to the claim → capped at weakly supported</text>
+</svg>
+<figcaption>Where completeness is lost. The database states that the result is
+partial; the arithmetic step is where that statement silently stops travelling,
+and everything after it looks clean. Amber marks incomplete-but-honest evidence,
+not an error. The figure shows one counting chain — the same loss happens
+wherever a partial result is reduced to a value.</figcaption>
+</figure>
+
+<p>This is not a quirk of one query. It is every SQL <code>LIMIT</code>, every
+top-<i>k</i> retrieval, every sampled aggregate, every timed-out scan, every
+stale replica. Databases label partial answers honestly; the labels evaporate on
+the way to the conclusion.</p>
+
+<h2>How TGMS handles it</h2>
+
+<p>The mechanism is that the marker is propagated instead of dropped. When a
+step reads a result that was truncated, that step is marked too, and so is every
+step that depends on it — the count over those rows, the filter over that count,
+all the way to the answer. In the code this downstream mark is called
+<b>truncation taint</b>; a step records both its own <code>truncated</code> flag
+and an <code>upstream_truncated</code> one inherited from its dependencies.</p>
+
+<p>The claim verifier then reads that mark. It rates each claim
+<i>supported</i>, <i>weakly supported</i>, <i>unsupported</i> or
+<i>unverifiable</i>, and a claim resting on tainted evidence can be rated no
+higher than <b>weakly supported</b>, however perfect its arithmetic. The badge a
+reader sees changes accordingly:</p>
+
+<figure>
+<svg viewBox="0 0 720 132" width="100%" role="img"
+     aria-label="Two verification badges. Complete evidence, 343 of 343 rows seen, earns a supported badge. Partial evidence, 100 of 343 rows seen, earns a weakly supported badge that names the reason.">
+  <rect x="8" y="14" width="344" height="104" rx="12" fill="var(--ok)" opacity=".07"/>
+  <rect x="8" y="14" width="344" height="104" rx="12" fill="none" stroke="var(--ok)" opacity=".5"/>
+  <text x="28" y="42" font-size="12" font-weight="700" fill="var(--mut)">COMPLETE EVIDENCE</text>
+  <text x="28" y="64" font-size="12.5" class="m" fill="var(--ink)">343 of 343 rows seen</text>
+  <rect x="28" y="78" width="122" height="24" rx="12" fill="var(--ok)"/>
+  <text x="89" y="94" text-anchor="middle" font-size="12" fill="#fff">✓ supported</text>
+
+  <rect x="368" y="14" width="344" height="104" rx="12" fill="var(--amber)" opacity=".1"/>
+  <rect x="368" y="14" width="344" height="104" rx="12" fill="none" stroke="var(--amber)" opacity=".55"/>
+  <text x="388" y="42" font-size="12" font-weight="700" fill="var(--mut)">PARTIAL EVIDENCE</text>
+  <text x="388" y="64" font-size="12.5" class="m" fill="var(--ink)">100 of 343 rows seen</text>
+  <rect x="388" y="78" width="176" height="24" rx="12" fill="var(--amber)"/>
+  <text x="476" y="94" text-anchor="middle" font-size="12" fill="#fff">◑ weakly supported</text>
+  <text x="574" y="94" font-size="11.5" fill="var(--mut)">evidence truncated</text>
+</svg>
+<figcaption>The same correct arithmetic earns a different badge depending on
+whether the evidence behind it was complete. Amber is a caveat, not a rejection:
+a weakly supported claim is not asserted to be wrong, only known to rest on part
+of the data. What the badge cannot tell you is whether the missing rows would
+have changed the answer.</figcaption>
+</figure>
+
+<div class="side"><b class="h">Sidebar · a way to think about it</b>
+Completeness is one of several conditions under which a claim can be true, and
+it helps to hold them apart: is the value <i>correct</i>; was the evidence
+<i>complete</i>; which <i>belief time</i> was it read at; was the computation
+<i>approximate</i>; does the citation <i>point</i> at the step that produced it?
+That is a framing rather than a data structure — TGMS records one verdict per
+claim, and completeness is the dimension it mechanises most directly.</div>
+
+<h2>What we measured</h2>
+
+<div class="ev">
+<b class="h">Evidence box</b>
+<dl>
+<dt>Question</dt><dd>Does propagating the partial-result marker change which
+claims are certified, and what else does the suite catch?</dd>
+<dt>Workload</dt><dd>Generated mutations of otherwise-correct answers, one class
+per failure mode, plus a clean pool of
+<span data-fact="mutation_clean_pool">202</span> unmutated answers to measure
+false positives.</dd>
+<dt>Compared</dt><dd>For the truncation class: the same cases verified twice,
+with completeness propagation enabled and disabled.</dd>
+<dt>Metric</dt><dd>Detection — the share of injected faults refused full
+support. Higher is better.</dd>
+<dt>Run</dt><dd>Deterministic generation and verification; case counts are what
+the generator could construct per class, not a chosen sample size.</dd>
+</dl>
 </div>
 
-<p>The same study probed other database-shaped ways a claim can be wrong
-while looking right. Values that are correct <i>under the wrong belief
-state</i> — the number you'd get before a correction was applied — are
-caught 60/60, because TGMS re-checks claims against the transaction-time
-state the trace was pinned to. Real entities that the cited evidence
-never mentioned: 100/100. Unit confusion (microseconds read as
-milliseconds): 100/100. Zero false positives on 202 clean answers
-throughout. And one honest zero: <i>dropping</i> a member from a
-reported entity set is invisible to trace grounding — under-claiming can
-only be caught against the database itself, which is a statement about
-where verification has to live, not a bug to patch.</p>
+<h2>What we found</h2>
 
-<h2>End to end, in the campaign</h2>
-
-<p>The frozen-test campaign measured what all of this buys at the system
-level. Raw, un-gated model answers carried a <b>7.8% unsupported-claim
-rate</b>. With trace-grounded gating, the emitted rate is
-<b>0.000</b> — across 268 answers — and the cost of that guarantee was a
-single point of exact match (0.418 → 0.408). One EM point buys zero
-unsupported claims.</p>
+<p>The propagation carries the weight: with it enabled, every generated
+correct-arithmetic-over-partial-evidence case is refused full support; with it
+disabled, every one passes as fully supported. One class is a deliberate,
+documented zero.</p>
 
 <table>
-<tr><th></th><th>raw answers</th><th>gated answers</th></tr>
-<tr><td>unsupported-claim rate</td><td class="miss">7.8%</td><td class="win">0.000</td></tr>
-<tr><td>exact match</td><td>0.418</td><td>0.408</td></tr>
+<tr><th>Failure type</th><th>Detected</th><th>Why</th></tr>
+<tr><td>Correct count over a partial page</td>
+<td class="win"><span data-fact="mutation_truncated_cases">15</span> / <span data-fact="mutation_truncated_cases">15</span></td>
+<td>the marker reaches the claim and caps it</td></tr>
+<tr><td>… the same cases, propagation disabled</td>
+<td class="miss"><span data-fact="mutation_truncated_without_taint">0</span> / <span data-fact="mutation_truncated_cases">15</span></td>
+<td>nothing links the count back to a partial page</td></tr>
+<tr><td>Value correct under the wrong belief time</td>
+<td class="win"><span data-fact="mutation_belief_cases">60</span> / <span data-fact="mutation_belief_cases">60</span></td>
+<td>claims are re-checked at the belief time the trace was pinned to</td></tr>
+<tr><td>A real entity the evidence never mentioned</td>
+<td class="win"><span data-fact="mutation_uncited_entity_cases">100</span> / <span data-fact="mutation_uncited_entity_cases">100</span></td>
+<td>cited identifiers must appear in the cited step</td></tr>
+<tr><td>Unit confusion — microseconds read as milliseconds</td>
+<td class="win"><span data-fact="mutation_unit_confusion_cases">100</span> / <span data-fact="mutation_unit_confusion_cases">100</span></td>
+<td>units travel with the value</td></tr>
+<tr><td>A member dropped from a reported set</td>
+<td class="miss"><span data-fact="mutation_member_dropped_detected">0</span> / <span data-fact="mutation_member_dropped_cases">100</span></td>
+<td>nothing in the trace is inconsistent — see below</td></tr>
 </table>
 
-<h2>If you build agent pipelines</h2>
+<p>End to end, the effect on emitted answers is that
+<span data-fact="unsupported_claims">0</span> unsupported claims appear among the
+<span data-fact="unsupported_claims_denominator">268</span> evaluated answers of
+this campaign, against a rate of 7.8% for the same answers ungated. The gate
+costs about one point of answer accuracy —
+<span data-fact="accuracy_ungated">41.8</span>% ungated against
+<span data-fact="accuracy_gated">40.8</span>% gated.</p>
 
-<p>The transferable rule is one sentence: <b>your database already knows
-when its answer is partial — make that knowledge un-ignorable.</b>
-Return completeness as data, propagate it through derived computations,
-and let your verifier treat “correct over what I saw” and “correct over
-what exists” as the different statements they are. A verifier that
-tracks only values will approve every confident summary of half the
-truth.</p>
+<h2>What this means in practice</h2>
 
-<div class="note">📎 The generator, taint machinery, and per-class
-mutation tables are in the
-<a href="https://github.com/zxf-work/tgms">repository</a> (v0.2.0) with
-determinism receipts; the study is written up in the
+<p>The transferable rule for anyone designing an API that agents will call:
+<b>your service already knows when its answer is partial — make that knowledge
+impossible to ignore.</b> Completeness is not the only such fact, and all of
+them behave the same way.</p>
+
+<ol class="check">
+<li><b>Return the qualifier as data, never as prose.</b> Pagination
+(<code>rows_total</code>, <code>truncated</code>), approximation and its error
+bound, timeouts, replica staleness and sampling rate all belong in the payload as
+machine-readable fields — not in a documentation note about default limits.</li>
+<li><b>Make them compositional.</b> A qualifier is only useful if it survives
+being computed over. Define what happens when a partial result is counted,
+joined or filtered — the answer is almost always “it propagates”.</li>
+<li><b>Give consumers a place to put it.</b> If your answer format has no field
+for “this rests on partial data”, every consumer will drop it, and yours is the
+API that made the loss inevitable.</li>
+<li><b>Distinguish “correct over what I saw” from “correct over what exists”.</b>
+Only one of them is what the user asked for.</li>
+</ol>
+
+<h2>What this result does not show</h2>
+
+<div class="limit"><p style="margin-top:0"><b>Under-claiming is invisible here,
+by construction.</b> If a model reports four members of a set that has five, the
+trace is entirely self-consistent: every identifier it cites really is in the
+cited evidence, and nothing is truncated. Grounding checks that what was said is
+<em>in</em> the evidence, never that nothing was left out; set completeness is
+checkable only against the database itself. That is the
+<span data-fact="mutation_member_dropped_detected">0</span> of
+<span data-fact="mutation_member_dropped_cases">100</span> in the table, and it
+is a statement about where verification has to live rather than a bug awaiting a
+patch.</p>
+<p><b>The zero is not a guarantee.</b> It is
+<span data-fact="unsupported_claims">0</span> unsupported claims among
+<span data-fact="unsupported_claims_denominator">268</span> evaluated answers on
+one task set — a measured rate on a finite sample, not a property that holds for
+any question. Part of it is also bought by declining to answer: gating both
+suppresses bad claims and reduces coverage, so the honest reading is “nothing
+unsupported was emitted here”, not “nothing unsupported can be emitted”.</p>
+<p>The per-class figures come from generated mutations, cleaner than the
+mistakes real models make unprompted, and case counts are whatever the generator
+could construct.</p></div>
+
+<h2>Takeaway</h2>
+
+<p>A verifier that only checks values will approve confident summaries of half
+the truth. Completeness has to be carried — from the operation that knows the
+answer was partial, through every computation over it, to the badge the reader
+finally sees.</p>
+
+<h2>Evidence and reproduction</h2>
+
+<p>The generator and per-class tables are in
+<a href="https://github.com/zxf-work/tgms/blob/main/tgms/eval/faults_ext.py">
+<span class="m">tgms/eval/faults_ext.py</span></a>; the propagation is in
+<a href="https://github.com/zxf-work/tgms/blob/main/tgms/agent/executor.py">
+<span class="m">tgms/agent/executor.py</span></a> and the cap in
+<a href="https://github.com/zxf-work/tgms/blob/main/tgms/agent/verifier.py">
+<span class="m">verifier.py</span></a>, both pinned by regression tests in
+<a href="https://github.com/zxf-work/tgms/blob/main/tests/test_verifier_dynamic.py">
+<span class="m">tests/test_verifier_dynamic.py</span></a> — including one whose
+docstring is the demo described at the top of this post. The ablation flag is
+<span class="m">ablate_truncation_taint</span>. The study is written up in the
 <a href="https://github.com/zxf-work/tgms/blob/main/paper/main.pdf">paper</a>,
-and the original 100-vs-343 incident is preserved in the technical
-report.</div>
+and every number here is quoted from
+<a href="https://github.com/zxf-work/tgms/blob/main/docs/site_facts.json">
+<span class="m">docs/site_facts.json</span></a> and checked in CI.</p>
+
+<h2>Continue reading</h2>
+
+<p><b>Prerequisite:</b> <a href="statically-valid.html">why AI tools need output
+contracts</a> — the same argument one layer down, about what a model is allowed
+to read out of a result.</p>
+
+<h2>Changelog</h2>
+
+<ul class="chg">
+<li><b>3 August 2026</b> — Rewritten to the
+<a href="https://github.com/zxf-work/tgms/blob/main/docs/BLOG_STYLE.md">blog
+standard</a>. The five-part "support tuple" was demoted from machinery to a
+sidebar framing: it is not a structure in the code, which records a single
+verdict per claim. The mutation counts moved into a table, and the under-claiming
+class now shows its denominator
+(<span data-fact="mutation_member_dropped_detected">0</span> of
+<span data-fact="mutation_member_dropped_cases">100</span>). The
+<span data-fact="unsupported_claims">0</span> unsupported-claim figure is now
+always stated with its denominator and with the abstention trade-off. A stale
+"(v0.2.0)" label and a citation to an unpublished internal report were
+removed.</li>
+<li><b>July 2026</b> — First published.</li>
+</ul>
+
 </article>
 
 <div class="next"><a href="scaling-the-planner.html">
-<div class="lbl">Next up</div>
-<div class="ttl">#4 · What happens when you give the same database a
-model 10× bigger? — the scale study →</div></a></div>
+<div class="lbl">Next up · Evidence &amp; capability</div>
+<div class="ttl">What happens when you give the same database a model 10×
+bigger — freezing everything except model size, and what actually moved →</div></a></div>
 
 <script data-goatcounter="https://zxf-tgms.goatcounter.com/count" async src="https://gc.zgo.at/count.js"></script>
 </body></html>
