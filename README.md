@@ -35,16 +35,20 @@ to do any of them:
 ## Does it work?
 
 Dev-split campaign (CollegeMsg, open-source models served locally on one
-24 GB GPU; full receipts ship with the paper and the eval records in `benchmarks/results-v1/`):
+24 GB GPU. "Answer accuracy" is normalized typed-answer accuracy — counts and
+values exact, interval answers credited at IoU ≥ 0.5. Full receipts ship with
+the paper and the eval records in `benchmarks/results-v1/`):
 
-| pooled EM, Qwen2.5-14B | TGMS | vector-RAG | static-graph RAG | text-to-Cypher |
+| pooled answer accuracy, Qwen2.5-14B | TGMS | vector-RAG | static-graph RAG | text-to-Cypher |
 |---|---:|---:|---:|---:|
 | all task families | **0.41** | 0.09 | 0.05 | 0.18 |
 | correction probes ("as of tt…") | **0.67** | 0.00 | 0.00 | 0.00 |
 
 - vs static-graph RAG: **+36 points**, paired-bootstrap 95% CI [0.18, 0.59]
 - verifier fault injection: **500/500 injected false claims caught, 0 false
-  positives**; emitted answers carry an unsupported-claim rate of 0.000
+  positives**; on the frozen campaign, **0 of 199 emitted answers** contained
+  an unsupported claim with gating (21 of 220 without it) — coverage is
+  199/282, so some of that is bought by declining to answer
 - operators meet all latency targets at 1M events (snapshot 98 ms, diff
   163 ms, reachability 63–244 ms)
 

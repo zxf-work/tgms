@@ -105,7 +105,7 @@ term may follow and be used thereafter.
 |---|---|
 | operator | a verified data operation |
 | operator DAG | a plan connecting several verified operations |
-| exact match | the share of answers exactly matching the reference answer |
+| normalized typed-answer accuracy | the share of answers matching the reference (counts and values exact; interval answers credited at IoU ≥ 0.5) — **never** call it "exact match", which the paper explicitly declines |
 | correction probe | a question whose answer changes after a correction |
 | canonical hash | a fingerprint confirming two systems returned the same result |
 | cost guardrail | a limit that refuses work predicted to be too expensive |
@@ -120,7 +120,8 @@ parentheses on first use; *past belief state* rather than "time travel"
 where precision matters.
 
 **Percentages in the narrative, decimals in the evidence table.** 0.408
-becomes "40.8% exact-answer accuracy". Define any metric at first use.
+becomes "40.8% answer accuracy", with the metric's full name given at
+first use. Define any metric at first use.
 
 **Calibrate every claim to the experiment.** The failure mode is a true
 measurement stated as a universal property:
@@ -131,7 +132,7 @@ measurement stated as a universal property:
 | quantization, not scale, is the bottleneck | the 72B result suggests 4-bit quantization may hurt structured planning; a same-model comparison is still needed |
 | the baselines did not move | the baselines did not improve materially in this experiment |
 | no snapshot or RAG system can express this | latest-state snapshots and the evaluated RAG configurations do not retain the belief history this needs |
-| zero unsupported claims | 0 unsupported claims among the 268 evaluated answers, on this task set |
+| zero unsupported claims | 0 of 199 emitted answers contained an unsupported claim, with gating — and coverage was 199 of 282, so part of that zero is bought by declining to answer |
 
 **Label what kind of fact each result is** — the same sentence reads very
 differently depending on which it is:
