@@ -148,7 +148,9 @@ Three native cells moved and all three are engine work:
 (85.2 → 66.8 in its own 1M A/B) followed by D-047 routing them through the
 aggregation kernel; the third is D-047's bitset `count_distinct`, which
 pays less at 1M than at 10M because there are ten times fewer ids to sort
-in the first place. Everything else is within 3% of the previous sweep.
+in the first place. Everything else is within 8% of the previous sweep —
+`coactive.narrow` at +7.8% and `nbr.evolution` at +5.2% are the widest, on
+code neither change touches, which is what the band is for.
 
 Two older notes still stand. Native's **point lookups beat PostgreSQL's**
 at this scale (0.1 ms against 0.4), which the 200k table above shows the
@@ -201,9 +203,12 @@ operators now counting inside the aggregation kernel instead of
 materializing ten million rows and bucketing them in NumPy.
 `agg.rel_bucket` 331.1 → **96.1** is `count_distinct` counting endpoints in
 a per-group bitset instead of sorting ten million appended ids at finalize.
-Nothing else moved: the ten remaining native cells are within 2.5% of the
-previous sweep in both directions, which is a tighter agreement than the
-±20% band and is what a change confined to two operators should look like.
+Nothing else moved: eight of the ten remaining native cells are within 2.5%
+of the previous sweep in both directions, and the other two are the
+sub-millisecond point lookups, which read 0.8 against 0.7 — 0.1 ms at the
+resolution the harness prints, which is 14% and means nothing. That is a
+tighter agreement than the ±20% band and is what a change confined to two
+operators should look like.
 
 **One row changed hands the other way, and it is the one this project has
 been chasing since D-043.** `agg.rel_bucket` was the query family the
@@ -944,8 +949,9 @@ not worth taking. **The dtype contract is load-bearing.**
 
 **What the registry says.** At 10M the three changes move exactly the three
 cells they aim at — `series.count` 183.7 → 84.7, `burst.zscore`
-185.3 → 89.5, `agg.rel_bucket` 331.1 → 96.1 — and the other ten native
-cells sit within 2.5% of the previous sweep. The boundary change is not
+185.3 → 89.5, `agg.rel_bucket` 331.1 → 96.1 — and eight of the other ten
+native cells sit within 2.5% of the previous sweep (the remaining two are
+the point lookups, 0.7 → 0.8 ms). The boundary change is not
 separately visible at registry level: `diff.global` moved 0.4% and
 `nbr.evolution` 2%, both inside the noise, because at 10M the queries that
 project both endpoints over a full window are the TCSR build and little
