@@ -57,17 +57,66 @@ def _active_at(starts_sorted: np.ndarray, ends_sorted: np.ndarray,
 #: Edge columns each metric actually reads. The engine honours a projection
 #: down to the column (D-046), so a superset here is paid for in copies.
 EDGE_METRIC_COLUMNS: dict[str, tuple[str, ...]] = {
-    "edge_event_count": ("vt_s",),
     "active_edge_count": ("vt_s", "vt_e"),
     "mean_out_degree": ("vt_s", "vt_e"),
     "reciprocity": ("src_id", "dst_id", "vt_s"),
 }
 
 
+def _event_bucket_counts(adapter: StorageAdapter, args: dict[str, Any],
+                         n_buckets: int,
+                         rel_types: list[str] | None = None) -> np.ndarray:
+    """Events per bucket, as a dense array of length `n_buckets`.
+
+    This is the *only* thing the two event-rate metrics need, and it is
+    exactly what the O14 aggregation kernel computes — one `time_bucket`
+    dimension, one `count` aggregate — without ever moving a row across the
+    boundary. Where the kernel exists it answers; otherwise the portable path
+    scans one column and buckets it in NumPy (D-047).
+
+    The contract difference between the two operators lives here and nowhere
+    else: `aggregate_events` emits only non-empty groups, and this function
+    scatters those groups into a zero-filled array, so the series operator
+    above it keeps every bucket in the window including the empty ones. The
+    bucket index is `(vt_s - t_a) // stride` on both sides, which is why the
+    scatter is exact rather than a re-derivation.
+    """
+    t_a, t_b = args["window"]["t_a"], args["window"]["t_b"]
+    stride = args["stride"]
+    if hasattr(adapter, "aggregate_events_columnar"):
+        got = adapter.aggregate_events_columnar(
+            as_of_tt=args["as_of_tt"], t_a=t_a, t_b=t_b,
+            rel_types=rel_types, stride=stride,
+            group_by=[("time_bucket", None)],
+            aggregates=[("count", None)],
+            # a bucket index is < n_buckets <= MAX_BUCKETS by construction,
+            # so the kernel's group cap can never bind here
+            max_groups=MAX_BUCKETS)
+        out = np.zeros(n_buckets, dtype=np.int64)
+        if got["rows_total"]:
+            out[np.asarray(got["keys"][0], dtype=np.int64)] = \
+                np.asarray(got["aggs"][0], dtype=np.int64)
+        return out
+    e = adapter.edges_columnar(as_of_tt=args["as_of_tt"], vt_min=t_a,
+                               vt_max=t_b, rel_types=rel_types,
+                               columns=("vt_s",))
+    # the scan's window filter is interval overlap; an event is containment
+    m = (e["vt_s"] >= t_a) & (e["vt_s"] < t_b)
+    idx = (e["vt_s"][m] - t_a) // stride
+    return np.bincount(idx, minlength=n_buckets).astype(np.int64)
+
+
 def _series_values(adapter: StorageAdapter, metric: str, args: dict[str, Any],
                    bucket_starts: np.ndarray) -> np.ndarray:
     t_a, t_b, stride = args["window"]["t_a"], args["window"]["t_b"], args["stride"]
     as_of = args["as_of_tt"]
+
+    # The one metric that is a pure per-bucket event count is also the one
+    # the aggregation kernel already computes; the other five read columns
+    # (vt_e for the instant metrics, node versions, endpoint pairs) that no
+    # closed aggregate expresses, so they keep the scan (D-047).
+    if metric == "edge_event_count":
+        return _event_bucket_counts(adapter, args, len(bucket_starts))
 
     if metric in ("node_count", "mean_out_degree", "new_node_rate"):
         nodes = adapter.nodes_columnar(as_of_tt=as_of, vt_max=t_b)
@@ -86,10 +135,6 @@ def _series_values(adapter: StorageAdapter, metric: str, args: dict[str, Any],
     if metric == "node_count":
         return _active_at(np.sort(nodes["vt_s"]), np.sort(nodes["vt_e"]),
                           bucket_starts).astype(np.int64)
-    if metric == "edge_event_count":
-        m = (edges["vt_s"] >= t_a) & (edges["vt_s"] < t_b)
-        idx = (edges["vt_s"][m] - t_a) // stride
-        return np.bincount(idx, minlength=len(bucket_starts)).astype(np.int64)
     if metric == "active_edge_count":
         return _active_at(np.sort(edges["vt_s"]), np.sort(edges["vt_e"]),
                           bucket_starts).astype(np.int64)
@@ -211,18 +256,23 @@ def burst_detection(adapter: StorageAdapter, args: dict[str, Any]) -> dict[str, 
     tgt = args["target"]
 
     rel_types = [tgt["rel_type"]] if tgt.get("rel_type") else None
-    # only `node_activity` reads the endpoints; the event-rate target is one
-    # column (D-046, same reasoning as `EDGE_METRIC_COLUMNS`)
-    cols = (("src_id", "dst_id", "vt_s") if tgt["kind"] == "node_activity"
-            else ("vt_s",))
-    e = adapter.edges_columnar(as_of_tt=args["as_of_tt"], vt_min=t_a, vt_max=t_b,
-                               rel_types=rel_types, columns=cols)
-    m = (e["vt_s"] >= t_a) & (e["vt_s"] < t_b)
-    if tgt["kind"] == "node_activity":
+    if tgt["kind"] == "edge_event_rate":
+        # a rel-filtered per-bucket event count is exactly the aggregation
+        # kernel's shape, so it never leaves Rust (D-047)
+        series = _event_bucket_counts(adapter, args, len(bucket_starts),
+                                      rel_types).astype(np.float64)
+    else:
+        # `node_activity` is an incidence filter no closed dimension
+        # expresses, so it keeps the scan — over the endpoints it reads and
+        # nothing more (D-046, same reasoning as `EDGE_METRIC_COLUMNS`)
+        e = adapter.edges_columnar(as_of_tt=args["as_of_tt"], vt_min=t_a,
+                                   vt_max=t_b, rel_types=rel_types,
+                                   columns=("src_id", "dst_id", "vt_s"))
         uid_id = int(adapter.dense_ids([tgt["uid"]])[0])
+        m = (e["vt_s"] >= t_a) & (e["vt_s"] < t_b)
         m &= (e["src_id"] == uid_id) | (e["dst_id"] == uid_id)
-    idx = (e["vt_s"][m] - t_a) // stride
-    series = np.bincount(idx, minlength=len(bucket_starts)).astype(np.float64)
+        idx = (e["vt_s"][m] - t_a) // stride
+        series = np.bincount(idx, minlength=len(bucket_starts)).astype(np.float64)
 
     w = args["params"].get("w", 10)
     flagged_rows = []
