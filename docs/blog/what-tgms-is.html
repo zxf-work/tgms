@@ -245,9 +245,9 @@ PostgreSQL's <span data-fact="point_lookup_200k_postgres_ms">0.3</span> at
 <li><b>Not a replacement for ClickHouse.</b> Large whole-window aggregation is
 a column store's home ground and the gap grows with scale: at 10M events
 ClickHouse answers the bucketed count in
-<span data-fact="series_10m_clickhouse_ms">40.0</span> ms against our
-<span data-fact="series_10m_native_ms">183.7</span>, a factor of
-<span data-fact="clickhouse_agg_lead_10m">4.6</span>. If nightly rollups over
+<span data-fact="series_10m_clickhouse_ms">37.9</span> ms against our
+<span data-fact="series_10m_native_ms">84.7</span>, a factor of
+<span data-fact="clickhouse_agg_lead_10m">2.2</span>. If nightly rollups over
 tens of millions of events are the job, use a column store; our own numbers
 say so.</li>
 <li><b>Not a replacement for Neo4j or a general graph database.</b> TGMS is

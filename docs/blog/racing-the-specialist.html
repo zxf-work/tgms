@@ -99,7 +99,7 @@ TGMS 0.4.0 · snapshots <span class="m">registry-v2-200k-6sys</span>,
 questions written by people who had never seen our operator list said the
 capability they wanted most was grouped aggregation. Our benchmark said
 ClickHouse beat us at aggregation by 8.7× at ten million events (it is
-<span data-fact="clickhouse_agg_lead_10m">4.6</span>× today, after later
+<span data-fact="clickhouse_agg_lead_10m">2.2</span>× today, after later
 work on the scan). So we
 built the operator we were worst at, and raced the engine that was best
 at it.</p>
@@ -126,49 +126,57 @@ and Memgraph. Grouped aggregation is the one
 family Cypher states as directly as SQL, so the graph engines are reading
 here at their most natural rather than handicapped.</p>
 
-<h2>The result, which is a loss</h2>
+<h2>The result, which was a loss</h2>
 
 <figure>
 <svg viewBox="0 0 720 250" width="100%" role="img"
-     aria-label="Grouped aggregation, native versus ClickHouse: native 2.2 times faster at 200k, 1.8 times slower at 1M, 2.4 times slower at 10M.">
+     aria-label="Grouped aggregation, TGMS against ClickHouse at three scales: TGMS 2.2 times faster at 200k, 1.4 times slower at 1M, and 1.4 times faster at 10M after later work on the aggregate.">
   <line x1="60" y1="130" x2="690" y2="130" stroke="var(--line)" stroke-width="2"/>
   <text x="62" y="124" font-size="12" fill="var(--mut)">parity with ClickHouse</text>
-  <!-- 200k: native faster, bar downward -->
-  <rect x="140" y="130" width="70" height="70" rx="4" fill="var(--ok)" opacity=".85"/>
-  <text x="175" y="218" font-size="13" fill="var(--mut)" text-anchor="middle">200k</text>
+  <rect x="140" y="130" width="70" height="72" rx="4" fill="var(--ok)" opacity=".85"/>
+  <text x="175" y="220" font-size="13" fill="var(--mut)" text-anchor="middle">200k</text>
   <text x="175" y="172" font-size="14" class="m" fill="#fff" text-anchor="middle">2.2×</text>
   <text x="175" y="190" font-size="11" fill="#fff" text-anchor="middle" opacity=".9">faster</text>
-  <!-- 1M: slower, upward -->
-  <rect x="330" y="80" width="70" height="50" rx="4" fill="var(--bad)" opacity=".85"/>
-  <text x="365" y="218" font-size="13" fill="var(--mut)" text-anchor="middle">1M</text>
-  <text x="365" y="105" font-size="14" class="m" fill="#fff" text-anchor="middle">1.8×</text>
-  <text x="365" y="122" font-size="11" fill="#fff" text-anchor="middle" opacity=".9">slower</text>
-  <!-- 10M: slower, upward -->
-  <rect x="520" y="55" width="70" height="75" rx="4" fill="var(--bad)" opacity=".85"/>
-  <text x="555" y="218" font-size="13" fill="var(--mut)" text-anchor="middle">10M</text>
-  <text x="555" y="90" font-size="14" class="m" fill="#fff" text-anchor="middle">2.4×</text>
-  <text x="555" y="107" font-size="11" fill="#fff" text-anchor="middle" opacity=".9">slower</text>
-  <text x="60" y="34" font-size="13" fill="var(--ink)">14.5 / 32.6 ms · 65.1 / 36.6 ms · 334.7 / 140.8 ms
-  <tspan fill="var(--mut)" font-size="12">(native / ClickHouse)</tspan></text>
+  <rect x="330" y="86" width="70" height="44" rx="4" fill="var(--amber)" opacity=".9"/>
+  <text x="365" y="220" font-size="13" fill="var(--mut)" text-anchor="middle">1M</text>
+  <text x="365" y="106" font-size="14" class="m" fill="#fff" text-anchor="middle">1.4×</text>
+  <text x="365" y="123" font-size="11" fill="#fff" text-anchor="middle" opacity=".9">slower</text>
+  <rect x="520" y="130" width="70" height="46" rx="4" fill="var(--ok)" opacity=".85"/>
+  <text x="555" y="220" font-size="13" fill="var(--mut)" text-anchor="middle">10M</text>
+  <text x="555" y="150" font-size="14" class="m" fill="#fff" text-anchor="middle">1.4×</text>
+  <text x="555" y="167" font-size="11" fill="#fff" text-anchor="middle" opacity=".9">faster</text>
+  <text x="60" y="34" font-size="13" fill="var(--ink)">14.5 / 32.6 ms · 50.4 / 36.6 ms · 96.1 / 138.0 ms
+  <tspan fill="var(--mut)" font-size="12">(TGMS / ClickHouse, lower is better)</tspan></text>
 </svg>
-<figcaption>The crossover sits between 200k and 1M events. We take the
-small scale by a clear margin and give it back as the data grows — the
-same shape as ClickHouse's lead on our older aggregation query, which
-starts as a tie at 200k and reaches
-<span data-fact="clickhouse_agg_lead_10m">4.6</span>× at 10M.</figcaption>
+<figcaption>Grouped aggregation against the specialist, after the profiling
+this post describes and the fix it pointed at
+(<code>registry-v2</code> snapshots, median of 10 runs). There is no clean
+crossover: we lead at 200k, trail at 1M by a margin barely outside the
+run's noise, and lead again at 10M. When this post was first published the
+10M column read 334.7 ms against 140.8 — the difference is one aggregate,
+described below.</figcaption>
 </figure>
 
-<p>Against the row stores it is not close: 37× faster than tuned
+<p>Against the row stores it was never close: 37× faster than tuned
 PostgreSQL at a million events, on a query PostgreSQL answers with a plain
-<code>GROUP BY</code>. Against the specialist, we are second. That is the
-honest headline, and it goes in the report with the rest.</p>
+<code>GROUP BY</code>. Against the specialist we were second, by 2.4× at
+ten million, and that is what this post said when it was published.</p>
+
+<p>It is not what the numbers say now, and the reason is the whole point of
+what follows. Profiling that loss found the gap in one place, fixing that
+place moved the 10M query from 331 ms to
+<span data-fact="agg_10m_native_ms">96.1</span> — and the same query
+ClickHouse answers in <span data-fact="agg_10m_clickhouse_ms">138.0</span>.
+So the honest current headline is: <b>ahead at 200k, behind at a million by
+a margin barely outside the noise, ahead again at ten million.</b> No clean
+crossover, and no story about one system simply being faster.</p>
 
 <h2>Where the remaining gap actually is</h2>
 
-<p>The obvious guess is that we lose because our scan is slower. We
-profiled it, and that is not what the time is made of. At ten million
-events the grouped query spends <b>38.8 ms selecting rows</b> and the rest
-inside the aggregation itself — and about <b>232 ms of it is one
+<p>The obvious guess was that we lose because our scan is slower. We
+profiled it, and that is not what the time was made of. At ten million
+events the grouped query spent <b>38.8 ms selecting rows</b> and the rest
+inside the aggregation itself — and about <b>232 ms of it in one
 aggregate</b>, the exact count of distinct recipients per group.</p>
 
 <figure>
@@ -203,8 +211,18 @@ bucket index, relation code, dense endpoint id, never a string — merged
 deterministically so the answer is byte-identical whatever the thread
 count. What it does not do is make exact distinct counting cheap. Ours
 appends every endpoint id into a per-group list and sorts it once at the
-end; ClickHouse has spent years on that specific problem. <b>That is the
-gap, and it is one aggregate rather than an architecture.</b></p>
+end; ClickHouse has spent years on that specific problem. <b>That was the gap, and it was one aggregate
+rather than an architecture.</b></p>
+
+<p>Which is a considerably better thing to find than a diffuse one, because
+it can be fixed. Endpoint identifiers are dense integers, so an exact
+distinct count does not need a sort at all — it needs a bitset and a
+population count, and the merge of two bitsets is an OR, which a
+partial-aggregate design already knows how to do. That aggregate now costs
+<b>9.6 ms instead of 240.7</b>, and the query as a whole 96.1 ms instead of
+331. Two things had been wrong rather than one: the representation, and the
+fact that the sort sat in the single serial stage of an otherwise parallel
+design.</p>
 
 <div class="note"><b>Correction, 3 August 2026.</b> This section originally
 said the opposite — that grouping was free and the whole remaining gap was
@@ -286,18 +304,24 @@ gap before you explain it</b> — our first explanation of this one was
 wrong, it was confident, and it survived a single day of measurement.</p>
 
 <p>For a reader deciding whether this matters to them: TGMS answers grouped
-aggregation over bi-temporal event data in one verified operation, and is
-faster than a tuned column store up to a few hundred thousand events. Above
-that, if whole-window aggregation is the workload, a dedicated analytical
-engine is the better tool and our own numbers say so.</p>
+aggregation over bi-temporal event data in one verified operation, at
+broadly the same cost as a dedicated column store — ahead at small and
+large scale on this workload, behind in the middle, none of the margins
+large. If aggregation over a flat event table is the whole job, the column
+store is still the simpler answer. If that aggregation has to be composed
+with history and graph structure, doing it in one system that can also
+answer what you believed last March is worth more than either margin.</p>
 
 <h2>What this result does not show</h2>
 
 <ul>
-<li>It does not show TGMS is slower at aggregation in general. One query
-shape was raced, on one synthetic workload, at three scales; the crossover
-we found sits between 200k and 1M events on this data and would move with
-group count, cardinality, and how much of the window a query touches.</li>
+<li>It does not show TGMS is faster at aggregation in general — nor, in
+its earlier form, that we were slower. One query shape was raced, on one
+synthetic workload, at three scales, and the ordering is not monotonic in
+scale. The 1M gap and the 10M lead are both about 1.4×, which is outside
+this run's noise but not outside a between-day reproducibility band applied
+to both sides. Group count, key cardinality and how much of the window a
+query touches would all move it.</li>
 <li>It does not show our two-phase design is the reason we lose. The
 design carries the grouping at no measurable cost; one aggregate —
 exact distinct counting — is where the remaining time goes, and that is an
@@ -313,6 +337,13 @@ constant.</li>
 
 <h2>Changelog</h2>
 <ul class="chg">
+<li><b>3 August 2026, later</b> — the loss this post was written about is
+partly reversed. Acting on the profile below, exact distinct counting went
+from 240.7 ms to 9.6 and the 10M query from 331 ms to 96.1, which puts TGMS
+1.4× ahead of ClickHouse where it had been 2.4× behind. The result figure
+and the narrative are updated; the original numbers stay visible in the
+figure caption and in this entry. The claim that the crossover sits between
+200k and 1M is retired — there is no clean crossover.</li>
 <li><b>3 August 2026</b> — rebuilt around the corrected profile. This post
 originally concluded that grouping was free and the whole remaining gap was
 the scan; the following session's profile overturned that, and the section

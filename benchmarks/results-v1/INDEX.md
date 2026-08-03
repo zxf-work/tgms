@@ -11,6 +11,9 @@ supersessions are part of the record:
 - eval-collegemsg{,-costfix}.json — real-dataset runs
 - eval-200k-costfix.json — motif cost-model reprice rerun
 - eval-writes.json — write-path evaluation (§12)
+- eval-10m-d047.json, eval-1m-d047.json — the D-047 refresh: series metrics
+  routed through the aggregation kernel and count_distinct on bitsets
+  (series.count at 10M 183.7 -> 84.7 ms, agg.rel_bucket 331.1 -> 96.1)
 - eval-200k-6sys.json — 200k, all six systems in one run, thirteen queries
   (D-044): the first record covering the whole matrix at once
 - eval-1m-agg.json, eval-10m-agg.json — 1M (four systems) and 10M (three)

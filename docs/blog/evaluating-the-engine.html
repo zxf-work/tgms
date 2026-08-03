@@ -187,16 +187,19 @@ scan per hop. Cypher expressed the motif query more elegantly than any SQL
 in the study and still ran it two orders of magnitude slower. Query
 elegance and execution speed are independent axes.</p>
 
-<p><b>2. On whole-window aggregation, ClickHouse wins at scale, and the
-lead grows with the data.</b> At 200k the two are a tie; at 10M ClickHouse
-answers the bucketed count in
-<span data-fact="series_10m_clickhouse_ms">40.0</span> ms against our
-<span data-fact="series_10m_native_ms">183.7</span> —
-<span data-fact="clickhouse_agg_lead_10m">4.6</span>×. That gap has closed
-twice as we profiled the scan path (it was 12×, then 8.7×) and it has not
-closed further. If your workload is dominated by aggregating whole windows
-of ten million events, a column store is the right tool and our own numbers
-say so.</p>
+<p><b>2. On whole-window aggregation ClickHouse still wins, by a factor of
+two at every scale we measure.</b> It answers the bucketed count at 10M in
+<span data-fact="series_10m_clickhouse_ms">37.9</span> ms against our
+<span data-fact="series_10m_native_ms">84.7</span> —
+<span data-fact="clickhouse_agg_lead_10m">2.2</span>×, and the same ratio
+at a million, and a tie at 200k. We reported for months that this lead
+<i>grew</i> with scale, because it did: 2× at 200k, 3.5× at 1M, 12× at 10M.
+Three rounds of profiling took the 10M figure to 8.7×, then 4.6×, then 2.2×
+— so what looked like a property of the workload was a property of our
+implementation, and the growth disappeared as the implementation improved.
+The remaining factor of two has not moved and we do not currently know how
+to move it. If aggregating whole windows is the job, a column store is
+still the right tool.</p>
 
 <p><b>3. On point lookups the picture reversed, and it is worth saying
 why.</b> PostgreSQL held this shape for most of the campaign — a warm
@@ -214,7 +217,8 @@ depends on scale.</p>
 <tr><th>If your workload is…</th><th>Use</th></tr>
 <tr><td>Reconstructing past belief states, auditing corrections</td><td class="win">TGMS</td></tr>
 <tr><td>Time-respecting traversal, temporal motifs, interval joins</td><td class="win">TGMS</td></tr>
-<tr><td>Large whole-window aggregation and rollups</td><td>ClickHouse</td></tr>
+<tr><td>Large whole-window aggregation and rollups</td><td>ClickHouse, by about 2×</td></tr>
+<tr><td>Grouped aggregation over event history</td><td class="win">Either — within ~1.4× at every scale measured</td></tr>
 <tr><td>High-rate indexed point reads over current state</td><td>PostgreSQL, or TGMS — measure at your scale</td></tr>
 <tr><td>Ordinary graph traversal with no temporal filtering</td><td>Not established by this study</td></tr>
 </table>
@@ -283,6 +287,11 @@ query readiness.</div>
 
 <h2>Changelog</h2>
 <ul>
+<li><b>3 August 2026, later</b> — the aggregation section is rewritten
+again: the gap at 10M is now 2.2×, and the claim that ClickHouse's lead
+grows with scale is retired, because three rounds of profiling removed the
+growth. Grouped aggregation joins the decision table, where the two systems
+are within 1.4× at every scale measured.</li>
 <li><b>3 August 2026</b> — rebuilt from the current registry rather than
 patched. The registry grew from 12 to 13 queries when grouped aggregation
 was added; ClickHouse's 10M aggregation lead is 4.6× where this post

@@ -30,16 +30,16 @@
       "record": "benchmarks/results-v1/eval-1m-agg.json"
     },
     "registry-v2-10m-3sys": {
-      "commit": "cc49795",
-      "date": "2026-08-02",
+      "commit": "7842a1f",
+      "date": "2026-08-03",
       "scale": "10,000,000 events",
       "systems": [
         "native",
         "duckdb",
         "clickhouse"
       ],
-      "note": "PostgreSQL's 10M column is a July measurement carried forward, marked in the table.",
-      "record": "benchmarks/results-v1/eval-10m-agg.json"
+      "note": "Refreshed after D-047. PostgreSQL's 10M column is a July measurement carried forward, marked in the table.",
+      "record": "benchmarks/results-v1/eval-10m-d047.json"
     },
     "scale-sweep-collegemsg-94": {
       "commit": "paper tab:scale",
@@ -163,11 +163,11 @@
       "snapshot": "registry-v2-200k-6sys"
     },
     "clickhouse_agg_lead_10m": {
-      "value": "4.6",
+      "value": "2.2",
       "kind": "benchmark",
-      "prose": "times faster than TGMS on whole-window aggregation at 10M (40.0 vs 183.7 ms)",
+      "prose": "times faster than TGMS on whole-window aggregation at 10M (37.9 vs 84.7 ms) \u2014 the same ratio at 1M, and a tie at 200k, so it is a constant of the shape rather than something that grows with scale",
       "snapshot": "registry-v2-10m-3sys",
-      "history": "12x, then 8.7x after the D-044 refresh, then 4.6x after the D-046 scan work"
+      "history": "12x, then 8.7x after D-044, then 4.6x after D-046's scan work, then 2.2x after D-047 routed the metric through the aggregation kernel"
     },
     "agg_native_lead_200k": {
       "value": "2.2",
@@ -441,13 +441,13 @@
       "prose": "minutes to replay the same log after the per-generation close cache (361.1 s), a 7.9x reduction"
     },
     "series_10m_native_ms": {
-      "value": "183.7",
+      "value": "84.7",
       "kind": "benchmark",
       "prose": "ms, whole-window bucketed count at 10M",
       "snapshot": "registry-v2-10m-3sys"
     },
     "series_10m_clickhouse_ms": {
-      "value": "40.0",
+      "value": "37.9",
       "kind": "benchmark",
       "prose": "ms, the same query on ClickHouse",
       "snapshot": "registry-v2-10m-3sys"
@@ -768,6 +768,24 @@
       "value": "40.8",
       "kind": "benchmark",
       "prose": "percent typed-answer accuracy with claim gating on - the cost of the gate is this one point"
+    },
+    "agg_10m_native_ms": {
+      "value": "96.1",
+      "kind": "benchmark",
+      "prose": "ms, grouped aggregation (count + distinct recipients by type and bucket) at 10M",
+      "snapshot": "registry-v2-10m-3sys"
+    },
+    "agg_10m_clickhouse_ms": {
+      "value": "138.0",
+      "kind": "benchmark",
+      "prose": "ms, the same grouped aggregation on ClickHouse",
+      "snapshot": "registry-v2-10m-3sys"
+    },
+    "agg_native_lead_10m": {
+      "value": "1.4",
+      "kind": "benchmark",
+      "prose": "times faster than ClickHouse on grouped aggregation at 10M, after D-047 \u2014 outside this run's noise but only just outside a doubled between-day band",
+      "snapshot": "registry-v2-10m-3sys"
     }
   },
   "retired_phrases": [
@@ -802,6 +820,14 @@
     {
       "phrase": "exact match",
       "reason": "the paper explicitly rejects this name \u2014 interval answers are credited at IoU >= 0.5, so the metric is normalized typed-answer accuracy; see paper/main.tex 'Metric'"
+    },
+    {
+      "phrase": "aggregation lead grows with scale",
+      "reason": "retired by D-047 \u2014 it is 2.2x at both 1M and 10M and a tie at 200k"
+    },
+    {
+      "phrase": "the crossover sits between 200k and 1M",
+      "reason": "retired by D-047 \u2014 native is ahead at 200k, behind at 1M, ahead again at 10M"
     }
   ]
 }
