@@ -89,7 +89,9 @@ svg .m{font-family:var(--mono)}
 <p>Two of our own measurements pointed at the same hole. A study of 110
 questions written by people who had never seen our operator list said the
 capability they wanted most was grouped aggregation. Our benchmark said
-ClickHouse beat us at aggregation by 8.7× at ten million events. So we
+ClickHouse beat us at aggregation by 8.7× at ten million events (it is
+<span data-fact="clickhouse_agg_lead_10m">4.6</span>× today, after later
+work on the scan). So we
 built the operator we were worst at, and raced the engine that was best
 at it.</p>
 
@@ -143,7 +145,8 @@ here at their most natural rather than handicapped.</p>
 <figcaption>The crossover sits between 200k and 1M events. We take the
 small scale by a clear margin and give it back as the data grows — the
 same shape as ClickHouse's lead on our older aggregation query, which
-starts as a tie at 200k and reaches 8.7× at 10M.</figcaption>
+starts as a tie at 200k and reaches
+<span data-fact="clickhouse_agg_lead_10m">4.6</span>× at 10M.</figcaption>
 </figure>
 
 <p>Against the row stores it is not close: 37× faster than tuned
