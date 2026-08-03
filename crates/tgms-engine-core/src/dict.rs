@@ -19,7 +19,7 @@
 use std::collections::HashMap;
 use std::fs::{File, OpenOptions};
 use std::hash::{Hash, Hasher};
-use std::io::{BufWriter, Read, Write};
+use std::io::{BufWriter, Read, Seek, SeekFrom, Write};
 use std::path::{Path, PathBuf};
 
 use crate::error::{EngineError, Result};
@@ -55,9 +55,14 @@ pub struct Dictionary {
 impl Dictionary {
     /// Open (creating if absent), exposing exactly `visible_records`.
     ///
-    /// A file longer than `visible_bytes` is the signature of a batch that
-    /// appended and then died before its manifest was published: the tail is
-    /// orphaned by definition and is truncated away (spec §5.2).
+    /// A file longer than `visible_bytes` is either a batch that appended and
+    /// died before publishing its manifest, or the *live* writer's in-flight
+    /// batch, between its step-3 fsync and its step-5 `CURRENT` flip. The two
+    /// are byte-for-byte identical, so open cannot tell them apart — and must
+    /// therefore not act on the difference. It reads the visible prefix and
+    /// leaves the file alone; `commit_to_disk` reclaims the bytes by writing
+    /// over them. **Opening a store never mutates it**, which is what lets a
+    /// reader process open one while the writer is committing.
     pub fn open(path: impl Into<PathBuf>, visible_records: u32, visible_bytes: u64) -> Result<Self> {
         let path = path.into();
         let mut buf = Vec::new();
@@ -75,16 +80,8 @@ impl Dictionary {
             .at_file(&path));
         }
         if on_disk > visible_bytes {
-            // orphaned tail from an unpublished batch
+            // an unpublished tail: another batch's, or a live writer's
             buf.truncate(visible_bytes as usize);
-            let f = OpenOptions::new()
-                .write(true)
-                .open(&path)
-                .map_err(|e| EngineError::from(e).at_file(&path))?;
-            f.set_len(visible_bytes)
-                .map_err(|e| EngineError::from(e).at_file(&path))?;
-            f.sync_all()
-                .map_err(|e| EngineError::from(e).at_file(&path))?;
         }
 
         let mut d = Self {
@@ -203,17 +200,28 @@ impl Dictionary {
         self.len() > self.committed_records
     }
 
-    /// Append staged records and fsync. Returns the new (records, bytes) for
-    /// the manifest. Called *before* the manifest is written, so a crash
-    /// here leaves an orphaned tail that `open` truncates.
+    /// Write staged records at the committed offset and fsync. Returns the
+    /// new (records, bytes) for the manifest.
+    ///
+    /// Positioned rather than appended, because the bytes past
+    /// `committed_bytes` may be an earlier batch's orphaned tail that `open`
+    /// deliberately left in place: the writer owns them, so it overwrites
+    /// them and trims whatever is left over. Called *before* the manifest is
+    /// written, so a crash here leaves a tail no manifest names, which the
+    /// next commit reclaims the same way.
     pub fn commit_to_disk(&mut self) -> Result<(u32, u64)> {
         if !self.has_staged() {
             return Ok((self.committed_records, self.committed_bytes));
         }
-        let f = OpenOptions::new()
+        let mut f = OpenOptions::new()
             .create(true)
-            .append(true)
+            .write(true)
+            // never truncate on open: the file already holds every committed
+            // record, and this writes only from `committed_bytes` on
+            .truncate(false)
             .open(&self.path)
+            .map_err(|e| EngineError::from(e).at_file(&self.path))?;
+        f.seek(SeekFrom::Start(self.committed_bytes))
             .map_err(|e| EngineError::from(e).at_file(&self.path))?;
         let mut w = BufWriter::new(f);
         let mut written = 0u64;
@@ -231,6 +239,10 @@ impl Dictionary {
         let f = w
             .into_inner()
             .map_err(|e| EngineError::from(e.into_error()).at_file(&self.path))?;
+        // trim any leftover of an orphaned tail this batch did not cover, so
+        // the file length always equals what the manifest is about to claim
+        f.set_len(self.committed_bytes + written)
+            .map_err(|e| EngineError::from(e).at_file(&self.path))?;
         f.sync_all()
             .map_err(|e| EngineError::from(e).at_file(&self.path))?;
         self.committed_records = self.len();
@@ -307,6 +319,53 @@ mod tests {
     }
 
     #[test]
+    fn open_never_writes_to_the_file() {
+        // an unpublished tail may belong to a live writer mid-commit, so open
+        // reads the visible prefix and touches nothing
+        let path = tmp("no-mutation");
+        let mut d = Dictionary::open(&path, 0, 0).unwrap();
+        d.ensure("n1", "Node").unwrap();
+        let (records, bytes) = d.commit_to_disk().unwrap();
+        d.ensure("inflight", "Node").unwrap();
+        let (_, longer) = d.commit_to_disk().unwrap();
+
+        let visible = Dictionary::open(&path, records, bytes).unwrap();
+        assert_eq!(visible.len(), records);
+        assert_eq!(visible.dense_id("inflight"), None, "tail is not visible");
+        assert_eq!(
+            std::fs::metadata(&path).unwrap().len(),
+            longer,
+            "open must leave every byte on disk where it found it"
+        );
+    }
+
+    #[test]
+    fn a_commit_overwrites_an_orphaned_tail_and_trims_it() {
+        let path = tmp("overwrite-orphan");
+        let mut d = Dictionary::open(&path, 0, 0).unwrap();
+        d.ensure("kept", "Node").unwrap();
+        let (records, bytes) = d.commit_to_disk().unwrap();
+        // a long orphan from a batch that died before publishing
+        d.ensure("a-very-long-orphan-uid-nobody-published", "Node").unwrap();
+        let (_, orphan_len) = d.commit_to_disk().unwrap();
+        assert!(orphan_len > bytes);
+
+        // the next writer reopens at the published generation and commits a
+        // *shorter* record: the leftover must go, or the file would decode
+        // a record the manifest never counted
+        let mut next = Dictionary::open(&path, records, bytes).unwrap();
+        next.ensure("n2", "Node").unwrap();
+        let (r2, b2) = next.commit_to_disk().unwrap();
+        assert!(b2 < orphan_len, "the shorter record must leave a leftover to trim");
+        assert_eq!(std::fs::metadata(&path).unwrap().len(), b2);
+
+        let re = Dictionary::open(&path, r2, b2).unwrap();
+        assert_eq!(re.len(), 2);
+        assert_eq!(re.dense_id("kept"), Some(0));
+        assert_eq!(re.dense_id("n2"), Some(1));
+    }
+
+    #[test]
     fn first_label_wins() {
         let path = tmp("label");
         let mut d = Dictionary::open(&path, 0, 0).unwrap();
@@ -344,7 +403,7 @@ mod tests {
     }
 
     #[test]
-    fn orphaned_tail_is_truncated_on_open() {
+    fn orphaned_tail_is_invisible_on_open() {
         let path = tmp("orphan");
         let mut d = Dictionary::open(&path, 0, 0).unwrap();
         d.ensure("committed", "Node").unwrap();
@@ -354,10 +413,13 @@ mod tests {
         d.commit_to_disk().unwrap();
         assert!(std::fs::metadata(&path).unwrap().len() > bytes);
 
+        // the manifest's byte count is the sole authority on what is visible;
+        // the tail is ignored rather than removed (a live writer's tail looks
+        // identical, and open must not mutate the store)
         let re = Dictionary::open(&path, records, bytes).unwrap();
         assert_eq!(re.len(), 1);
         assert_eq!(re.dense_id("orphan"), None);
-        assert_eq!(std::fs::metadata(&path).unwrap().len(), bytes);
+        assert_eq!(re.committed_bytes(), bytes);
     }
 
     #[test]

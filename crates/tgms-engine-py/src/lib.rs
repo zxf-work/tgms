@@ -219,6 +219,29 @@ impl NativeStore {
         self.inner.segment_cache_stats()
     }
 
+    /// Where the last commit spent its microseconds, by phase, or `None`
+    /// before this handle has committed anything. Instrumentation for the
+    /// singleton-write floor: the split says whether the cost is the fsyncs
+    /// or the full manifest each generation rewrites.
+    fn last_commit_phases<'py>(&self, py: Python<'py>) -> Option<Bound<'py, PyDict>> {
+        let p = self.inner.last_commit_phases()?;
+        let d = PyDict::new(py);
+        for (k, v) in [
+            ("seal_us", p.seal_us),
+            ("closes_us", p.closes_us),
+            ("stats_us", p.stats_us),
+            ("dict_us", p.dict_us),
+            ("manifest_us", p.manifest_us),
+            ("current_us", p.current_us),
+            ("total_us", p.total_us),
+            ("manifest_bytes", p.manifest_bytes),
+            ("segments_named", p.segments_named),
+        ] {
+            d.set_item(k, v).expect("fresh dict accepts u64 values");
+        }
+        Some(d)
+    }
+
     fn in_batch(&self) -> bool {
         self.inner.in_batch()
     }

@@ -19,6 +19,12 @@
 
 use std::collections::{HashMap, HashSet};
 
+/// How many stored node versions one identity-postings probe is worth, from
+/// the measurement in `nodes_with_believed_versions`: ~5 µs per probe against
+/// ~0.25 µs per materialized node version. Only the crossover moves if a host
+/// disagrees, and at the crossover the two paths cost the same by definition.
+const PROBE_COST_RATIO: u64 = 20;
+
 use crate::derive::{edge_eid, Id96};
 use crate::error::{EngineError, Result};
 use crate::row::RowKind;
@@ -550,12 +556,40 @@ impl NativeStore {
 
     /// Which of `uids` have at least one believed version — the batched
     /// existence probe bulk ingest leans on.
+    /// Two implementations, chosen by size, because the probe and the scan
+    /// have opposite shapes: a point probe through the identity postings is
+    /// flat in store size and linear in `uids`, while materializing every
+    /// node version is flat in `uids` and linear in store size.
+    ///
+    /// Measured (100k events, 200k node versions, macOS): the scan costs
+    /// **50.5 ms whether it is asked about 2 uids or 20,000**, while one
+    /// probe costs **0.005 ms** — 0.25 µs per stored node version against
+    /// 5 µs per uid, so the probe wins below roughly one uid per 20 stored
+    /// versions. Bulk ingest asks about ~100,000 uids at a time and stays on
+    /// the scan; a singleton append asks about two and used to pay for the
+    /// whole store.
+    ///
+    /// That singleton case was 57.7 ms of a 90 ms single-row write — the
+    /// actual singleton-write floor, which `engine_lessons.md` §7 had
+    /// attributed to fsyncs (30 ms) and `docs/eval_writes.md` to manifest
+    /// size. It is the sixth appearance of the same shape in the
+    /// misdiagnosis table: *a small lookup rebuilding the whole store*.
     pub fn nodes_with_believed_versions(
         &self,
         uids: &[String],
         as_of_tt: i64,
     ) -> Result<HashSet<String>> {
         self.assert_full_belief(as_of_tt)?;
+        let stored = self.manifest().stats.n_node_versions;
+        if (uids.len() as u64).saturating_mul(PROBE_COST_RATIO) < stored {
+            let mut out = HashSet::new();
+            for uid in uids {
+                if !self.believed_node_versions(uid, as_of_tt)?.is_empty() {
+                    out.insert(uid.clone());
+                }
+            }
+            return Ok(out);
+        }
         let wanted: HashSet<&str> = uids.iter().map(String::as_str).collect();
         Ok(self
             .all_node_versions()?
@@ -1004,6 +1038,98 @@ mod tests {
             )
             .unwrap();
         assert_eq!(probe, HashSet::from(["n1".to_string()]));
+    }
+
+    /// `nodes_with_believed_versions` picks between a postings probe and a
+    /// full materialization by size. Two implementations of one contract is
+    /// exactly the arrangement where a divergence hides, and the write path
+    /// (`_ingest_events`) is what would silently create duplicate nodes if
+    /// the cheap branch ever said "absent" about something present. So: both
+    /// branches, same store, same answer, and each branch asserted to be the
+    /// one that ran.
+    #[test]
+    fn both_existence_probes_agree_and_each_branch_is_reachable() {
+        let root = tmp_root("probe-branches");
+        let mut s = NativeStore::open(&root).unwrap();
+        s.begin(100).unwrap();
+        let mut present: Vec<String> = Vec::new();
+        for i in 0..200u32 {
+            let uid = format!("n{i}");
+            let id = s.ensure_entity(&uid, "Node").unwrap();
+            s.stage_node(NodeRow {
+                vid: version_vid(&uid, 100, 10),
+                uid_id: id,
+                label: "Node".into(),
+                vt_s: 10,
+                vt_e: OPEN_END,
+                tt_s: 100,
+                props: "{}".into(),
+                source: "ingest".into(),
+                provenance_ref: None,
+            })
+            .unwrap();
+            present.push(uid);
+        }
+        s.commit(EventLogRef::default()).unwrap();
+        let stored = s.manifest().stats.n_node_versions;
+        assert_eq!(stored, 200);
+
+        let absent: Vec<String> = (0..200).map(|i| format!("ghost{i}")).collect();
+        let mixed: Vec<String> = present
+            .iter()
+            .take(3)
+            .chain(absent.iter().take(3))
+            .cloned()
+            .collect();
+
+        // small ask: the probe branch, by the ratio rule
+        assert!((mixed.len() as u64) * PROBE_COST_RATIO < stored);
+        let probed = s.nodes_with_believed_versions(&mixed, OPEN_END).unwrap();
+
+        // large ask: the same store, the scan branch
+        let all: Vec<String> = present.iter().chain(absent.iter()).cloned().collect();
+        assert!((all.len() as u64) * PROBE_COST_RATIO >= stored);
+        let scanned = s.nodes_with_believed_versions(&all, OPEN_END).unwrap();
+
+        assert_eq!(
+            probed,
+            mixed
+                .iter()
+                .filter(|u| present.contains(u))
+                .cloned()
+                .collect::<HashSet<String>>()
+        );
+        assert_eq!(scanned, present.iter().cloned().collect::<HashSet<String>>());
+        for uid in &mixed {
+            assert_eq!(
+                probed.contains(uid),
+                scanned.contains(uid),
+                "the two branches disagree about {uid}"
+            );
+        }
+
+        // belief is part of the answer on both paths: close every version and
+        // the small ask must go empty while the past stays populated
+        s.begin(200).unwrap();
+        let vids: Vec<_> = s
+            .all_node_versions()
+            .unwrap()
+            .iter()
+            .map(|r| Id96::from_hex(&r.vid).expect("engine-produced vid"))
+            .collect();
+        for vid in vids {
+            s.close_version(RowKind::Node, vid, 200).unwrap();
+        }
+        s.commit(EventLogRef::default()).unwrap();
+        assert!(s
+            .nodes_with_believed_versions(&mixed, OPEN_END)
+            .unwrap()
+            .is_empty());
+        assert_eq!(
+            s.nodes_with_believed_versions(&mixed, 150).unwrap().len(),
+            3,
+            "past belief must survive on the probe branch too"
+        );
     }
 
     #[test]

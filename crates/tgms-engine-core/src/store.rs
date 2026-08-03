@@ -108,6 +108,37 @@ pub struct NativeStore {
     /// experimental configuration of plan §13, which has dropped historical
     /// versions and must refuse past-belief queries and corrections.
     current_only: bool,
+    /// Where the last commit spent its time (instrumentation, not contract).
+    last_commit: Option<CommitPhases>,
+}
+
+/// Wall-clock microseconds per phase of one commit, plus the two numbers
+/// that decide whether the singleton-write floor is fsyncs or manifest size.
+///
+/// Lessons §7 attributes the 265× batch-vs-singleton gap to "several
+/// fsyncs"; `docs/eval_writes.md` attributes the same shape to "a fresh full
+/// manifest per commit". Those are different fixes, so the split is measured
+/// rather than argued.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+pub struct CommitPhases {
+    /// Step 2: staged rows sealed into segment files, written and fsynced.
+    pub seal_us: u64,
+    /// Step 2b: the close run for corrections against committed rows.
+    pub closes_us: u64,
+    /// Folding this batch into the running statistics.
+    pub stats_us: u64,
+    /// Step 3: the dictionary tail, written and fsynced.
+    pub dict_us: u64,
+    /// Step 4: manifest serialized, written, fsynced, renamed, dir fsynced.
+    pub manifest_us: u64,
+    /// Step 5: `CURRENT` rewritten atomically — the publication point.
+    pub current_us: u64,
+    pub total_us: u64,
+    /// Bytes of the manifest this commit wrote, and how many segments it
+    /// names: a manifest is rewritten in full every generation, so both grow
+    /// with store history rather than with the batch.
+    pub manifest_bytes: u64,
+    pub segments_named: u64,
 }
 
 impl NativeStore {
@@ -153,7 +184,13 @@ impl NativeStore {
             ))),
             batch_tt: None,
             current_only,
+            last_commit: None,
         })
+    }
+
+    /// Where the last commit spent its time, if this handle has committed.
+    pub fn last_commit_phases(&self) -> Option<CommitPhases> {
+        self.last_commit
     }
 
     /// Whether this store is the stripped current-only configuration
@@ -238,14 +275,24 @@ impl NativeStore {
     }
 
     /// Steps 4 and 5: write the manifest, then flip `CURRENT`.
-    fn publish(root: &Path, manifest: &Manifest) -> Result<()> {
+    ///
+    /// Returns `(manifest_us, current_us, manifest_bytes)` — the split
+    /// matters because step 4 rewrites the whole manifest every generation
+    /// while step 5 writes forty bytes, and only one of those grows with
+    /// store history.
+    fn publish(root: &Path, manifest: &Manifest) -> Result<(u64, u64, u64)> {
         manifest.verify()?;
         let m_path = Self::manifest_path(root, manifest.generation);
-        write_atomic(&m_path, &manifest.to_json())?;
+        let json = manifest.to_json();
+        let t = std::time::Instant::now();
+        write_atomic(&m_path, &json)?;
+        let manifest_us = t.elapsed().as_micros() as u64;
+        let t = std::time::Instant::now();
         write_atomic(
             &root.join(CURRENT),
             &format!("{} {}\n", manifest.generation, manifest.manifest_sha),
-        )
+        )?;
+        Ok((manifest_us, t.elapsed().as_micros() as u64, json.len() as u64))
     }
 
     pub fn root(&self) -> &Path {
@@ -619,9 +666,12 @@ impl NativeStore {
     /// in the (already durable) log this generation ends.
     pub fn commit(&mut self, event_log: EventLogRef) -> Result<u64> {
         let tt = self.require_batch()?;
+        let mut phases = CommitPhases::default();
+        let commit_start = std::time::Instant::now();
         let mut next = self.manifest.successor(tt);
 
         // step 2 — segments: written and fsynced before anything names them
+        let phase = std::time::Instant::now();
         let mut next_id = next.next_segment_id;
         let sealed = self.staging.seal(
             &self.root.join("seg"),
@@ -642,9 +692,11 @@ impl NativeStore {
             next.stats.n_node_versions += entry.rows as u64;
             next.node_store.push(entry);
         }
+        phases.seal_us = phase.elapsed().as_micros() as u64;
 
         // close run for corrections landing on already-committed rows,
         // durable before the manifest that lists it
+        let phase = std::time::Instant::now();
         if !self.pending_closes.is_empty() {
             let file = format!("close/{:012}.tgc", next.generation);
             let path = self.root.join(&file);
@@ -655,9 +707,11 @@ impl NativeStore {
                 sha: String::new(),
             });
         }
+        phases.closes_us = phase.elapsed().as_micros() as u64;
 
         // fold this batch into the running statistics rather than
         // invalidating them; staging is still intact here
+        let phase = std::time::Instant::now();
         {
             let mut cell = self.stats.lock().expect("stats mutex poisoned");
             if let Some(acc) = cell.as_mut() {
@@ -667,22 +721,33 @@ impl NativeStore {
                 acc.n_node_versions += self.staging.nodes().len() as u64;
             }
         }
+        phases.stats_us = phase.elapsed().as_micros() as u64;
 
         // step 3 — dictionary tail durable before anything references it
+        let phase = std::time::Instant::now();
         let (records, bytes) = self.dict.commit_to_disk()?;
+        phases.dict_us = phase.elapsed().as_micros() as u64;
         next.event_log = event_log;
         next.dict.records = records;
         next.dict.bytes = bytes;
         next.stats.n_entities = self.dict.len();
         next.seal();
+        phases.segments_named = (next.edge_lanes.event.len()
+            + next.edge_lanes.interval.len()
+            + next.node_store.len()) as u64;
 
         // steps 4-5 — manifest, then CURRENT
-        Self::publish(&self.root, &next)?;
+        let (manifest_us, current_us, manifest_bytes) = Self::publish(&self.root, &next)?;
+        phases.manifest_us = manifest_us;
+        phases.current_us = current_us;
+        phases.manifest_bytes = manifest_bytes;
         self.adopt(next);
         self.staging.clear();
         self.staged_closes.clear();
         self.pending_closes.clear();
         self.batch_tt = None;
+        phases.total_us = commit_start.elapsed().as_micros() as u64;
+        self.last_commit = Some(phases);
         Ok(self.manifest.generation)
     }
 
@@ -1413,7 +1478,7 @@ mod tests {
     }
 
     #[test]
-    fn crash_after_dict_append_before_manifest_truncates_the_tail() {
+    fn crash_after_dict_append_before_manifest_leaves_the_tail_invisible() {
         let root = tmp_root("crash-dict");
         let mut s = NativeStore::open(&root).unwrap();
         commit_with(&mut s, 10, &["n1"]);
@@ -1424,13 +1489,79 @@ mod tests {
         let mut d = Dictionary::open(root.join(DICT), 1, committed_bytes).unwrap();
         d.ensure("orphan", "Node").unwrap();
         d.commit_to_disk().unwrap();
-        assert!(fs::metadata(root.join(DICT)).unwrap().len() > committed_bytes);
+        let orphaned_len = fs::metadata(root.join(DICT)).unwrap().len();
+        assert!(orphaned_len > committed_bytes);
 
-        let re = NativeStore::open(&root).unwrap();
+        // the orphan is invisible: the manifest's byte count is the only
+        // authority on what the dictionary contains
+        let mut re = NativeStore::open(&root).unwrap();
         assert_eq!(re.generation(), 1);
         assert_eq!(re.dict().len(), 1);
         assert_eq!(re.dict().dense_id("orphan"), None);
-        assert_eq!(fs::metadata(root.join(DICT)).unwrap().len(), committed_bytes);
+
+        // and the next commit reclaims those bytes by overwriting them —
+        // open does not truncate, because open must not mutate the store
+        // (a *live* writer's tail looks identical to a dead one's)
+        commit_with(&mut re, 20, &["n2"]);
+        assert_eq!(
+            fs::metadata(root.join(DICT)).unwrap().len(),
+            re.manifest().dict.bytes,
+            "the writer rewrites from its committed offset and trims the rest"
+        );
+        assert_eq!(re.dict().dense_id("orphan"), None);
+        assert_eq!(re.dict().dense_id("n2"), Some(1));
+        drop(re);
+        assert_eq!(NativeStore::open(&root).unwrap().dict().len(), 2);
+    }
+
+    /// Opening a store must not mutate it.
+    ///
+    /// The single writer spends a window inside every commit between step 3
+    /// (the dictionary tail is fsynced) and step 5 (`CURRENT` flips). In that
+    /// window `dict.log` is longer than the published generation claims —
+    /// byte-for-byte indistinguishable from the orphaned tail a crashed batch
+    /// leaves behind. A reader process that opens there and "cleans up" the
+    /// tail destroys bytes the writer has already made durable and is about
+    /// to name: the generation the writer then publishes is unreadable, so a
+    /// commit that returned successfully has lost its durability guarantee to
+    /// an unrelated reader. Lessons §6: every mutation must be scoped, and
+    /// the cheapest scoping is not mutating at all.
+    #[test]
+    fn a_reader_opening_mid_commit_cannot_brick_the_generation_being_published() {
+        let root = tmp_root("open-midcommit");
+        let mut w = NativeStore::open(&root).unwrap();
+        commit_with(&mut w, 10, &["n1"]);
+        let base = w.manifest().dict.bytes;
+
+        // the writer is inside commit(): step 3 has fsynced the tail for the
+        // generation it is about to publish; steps 4-5 have not run
+        let mut tail = Dictionary::open(root.join(DICT), 1, base).unwrap();
+        tail.ensure("n2", "Node").unwrap();
+        let (records, bytes) = tail.commit_to_disk().unwrap();
+        assert!(bytes > base);
+
+        // a reader process opens the store in exactly that window
+        let reader = NativeStore::open(&root).unwrap();
+        assert_eq!(reader.generation(), 1);
+        assert_eq!(reader.dict().len(), 1, "a reader sees its own generation");
+        drop(reader);
+        assert_eq!(
+            fs::metadata(root.join(DICT)).unwrap().len(),
+            bytes,
+            "a reader deleted a live writer's fsynced dictionary tail"
+        );
+
+        // steps 4-5 complete: what the writer promised is durable
+        let mut next = w.manifest().successor(20);
+        next.dict.records = records;
+        next.dict.bytes = bytes;
+        next.seal();
+        NativeStore::publish(&root, &next).unwrap();
+
+        let re = NativeStore::open(&root).unwrap();
+        assert_eq!(re.generation(), 2);
+        assert_eq!(re.dict().len(), 2);
+        assert_eq!(re.dict().dense_id("n2"), Some(1));
     }
 
     #[test]
