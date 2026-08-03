@@ -97,9 +97,10 @@ grouped-aggregation shape the operator was built for — native leads
 leads 1.4× at 10M (96.1 vs 138.0): there is no longer a monotone
 crossover story to tell, and the two middle results are close enough that
 the honest summary is *comparable at every scale measured*. The baselines divide
-the map cleanly: PostgreSQL owns indexed point shapes, ClickHouse owns
-whole-window aggregation (the first system to beat native on any scan
-shape at this scale), and both pay heavily for iterative traversal —
+the map cleanly: PostgreSQL owns indexed point shapes, ClickHouse is the
+strongest whole-window aggregator and the first system to draw level with
+native on a scan shape at this scale, and both pay heavily for iterative
+traversal —
 ClickHouse's reachability rounds cost ~1 ms of HTTP plus a table build
 each, which is the honest price of expressing recursion in an engine
 that does not natively offer it. Native holds 8 of 12.
@@ -505,7 +506,9 @@ The comparison did not move in TGMS's favour by handicapping the other side.
 ## Racing the specialist on its own shape (D-044)
 
 ClickHouse's aggregation lead was the clearest thing the baselines found:
-8.7× at 10M on `series.count` as measured then, growing with scale. It was also the
+8.7× at 10M on `series.count` as measured then, and apparently growing with
+scale — a reading D-047 has since retired; it is 2.2× at both 1M and 10M
+now. It was also the
 capability the independent-question study ranked first. So the fourteenth
 operator, `aggregate_events`, was built directly against that column —
 count and distinct-endpoint counts over closed dimensions (time bucket,
