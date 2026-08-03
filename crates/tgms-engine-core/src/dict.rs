@@ -216,6 +216,9 @@ impl Dictionary {
         let mut f = OpenOptions::new()
             .create(true)
             .write(true)
+            // never truncate on open: the file already holds every committed
+            // record, and this writes only from `committed_bytes` on
+            .truncate(false)
             .open(&self.path)
             .map_err(|e| EngineError::from(e).at_file(&self.path))?;
         f.seek(SeekFrom::Start(self.committed_bytes))
