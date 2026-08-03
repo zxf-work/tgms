@@ -32,6 +32,8 @@ failed to move the number.
 | the 1M scan regression is the recalibrated parallel gate | forcing the parallel path on at 1M moved nothing (83.1 vs 84.4 ms) | an index built by an *earlier query in the same process* — resident TCSR, 18% on every later scan (§9g) |
 | the 10M scan is selection-bound (belief test, valid-time test, close index per row) | selection is 39 ms of a 349 ms scan, and removing the per-row `vt_e` test saves 1 ms | materialization (47%) and the NumPy boundary (16%) — the cost is *moving* the rows, not deciding on them (§13) |
 | projecting to one column changing nothing proves materialization is not the cost | one column and four measured the same, 360 vs 352 ms | the projection was never applied to the fixed-width columns; once it was, the same scan fell to 143 ms |
+| exact distinct counting over 10M ids is inherently expensive — it is what ClickHouse's `uniqExact` costs too | the same answer in 9.6 ms instead of 240.7 | the sort was not the algorithm, it was a *representation*: dense ids make a per-group bitset a popcount, and the sort had also been placed in the one serial stage |
+| the boundary's `u32 → i64` widening is 77 ms of recoverable cost | moving the cast to NumPy recovered 20 of 73 ms; the other 53 stayed | the cost is not the conversion, it is writing 80 MB of int64 per column — whoever does it pays it, and only *not building the column* removes it |
 
 Three of the fixes we implemented were *correct but irrelevant* — the
 contiguous-run copy, the postings index, and the parallel materialization
@@ -42,6 +44,12 @@ changed, which cost one run and saved a wrong recalibration. The thirteenth
 is the worst of the set, because it is the only one where a *measurement*
 rather than a guess pointed the wrong way for three sessions: the experiment
 was right, the instrument was broken, and nothing in the number said so.
+The last entry is the only one where the *correct* course of action was to
+stop: the fix worked, it was worth a quarter of what the price tag said,
+and the remaining three quarters would have cost a dtype contract shared by
+three backends. A priced item is a hypothesis about how much of the price
+is recoverable, and that hypothesis deserves testing before the invoice is
+paid.
 
 The concrete discipline that worked: after implementing a fix, re-measure
 before writing the commit message. If the number did not move, the
@@ -555,6 +563,57 @@ ever flagged it. Fixing an abstraction can make callers wrong retroactively.
   Detect the on-disk layout so existing stores keep their own engine; a naive
   flip creates an empty store beside the real one and looks exactly like data
   loss.
+
+## 14. Two operators can share an implementation without sharing a contract
+
+`graph_metric_timeseries` and `aggregate_events` compute the same per-bucket
+event count and *disagree about what to emit*: the series operator returns
+every bucket in the window, zero where nothing happened, and reports
+`n_buckets`; the aggregation operator returns only non-empty groups. D-044
+kept them apart for that reason. D-047 then routed the first through the
+second's kernel and took it 217 → 84 ms, because the disagreement is four
+lines wide — scatter the non-empty groups into a zero-filled array — and
+everything else the two contracts differ on lives above it.
+
+The generalisable part is the ordering. What made this safe was not care;
+it was that a third, independent implementation of the series operator
+already existed in the oracle, and that the property tests comparing them
+were **not allowed to be edited**. An implementation swap under a stable
+contract is either provably invisible or it is a semantics change wearing a
+performance change's clothes, and the only cheap way to tell the two apart
+is to have written the contract down somewhere the optimizer cannot reach.
+The two assertions worth adding first, both written before the change:
+one that the operators still disagree in the way they are supposed to, and
+one that the *control* — here, the dtype the boundary returns — is what you
+believe it is (§13).
+
+## 15. The cost of an exact aggregate can be its representation, and its place
+
+`count_distinct` was 240 ms of a 338 ms query, and the reflex reading is
+that exact distinct counting over ten million ids is simply expensive —
+ClickHouse's `uniqExact` costs about the same, which makes the reflex feel
+confirmed. Two things were wrong with it.
+
+The representation was wrong. The kernel appended raw `u32` ids per group
+and sorted-plus-deduplicated them at the end. But these ids are *dense*: a
+group's distinct set is a subset of `0..n_entities`, so a bitset answers the
+question with a popcount, and merges with an OR — which is also the
+commutative operation the two-phase design already required everywhere else.
+Same answer, 9.6 ms.
+
+And the *place* was wrong. The sort lived in `finalize`, which is the one
+serial stage; the per-row work lives in the parallel fold. A design can be
+parallel and still put its dominant cost in the sequential part, and nothing
+about the design says so — only a stage split does.
+
+The trap the fix has to avoid is worth as much as the fix. A bitset per
+group is a capacity hazard precisely where groups are numerous, which is the
+case the group cap exists for. So the group starts as an id vector and
+promotes only once that vector holds as many bytes as the bitset would,
+which bounds the state at twice the append path's — *independently of the
+group cap and of the entity count*. A performance change that needs a
+capacity caveat is not finished; make the caveat impossible instead, and
+then state the bound it bought.
 
 ---
 

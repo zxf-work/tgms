@@ -161,3 +161,35 @@ def test_correct_preserves_remainder_and_replaces_props():
     old = adapter.believed_node_versions("a", as_of_tt=1)
     assert [(v.vt_s, v.vt_e, v.props["p"]) for v in old] == [(0, 100, 1)]
     adapter.close()
+
+
+def test_columnar_int_columns_are_int64_on_every_backend():
+    """`edges_columnar`'s integer columns are int64, whatever the backend.
+
+    Operators do arithmetic on these ids — `src * n + dst` pair keys, group
+    offsets — so a narrower dtype would overflow silently on one backend and
+    not on the other, which is the one failure mode a differential suite
+    cannot see: both backends would still be self-consistent. The native
+    engine stores endpoints as u32 and something has to widen them; this
+    pins *that* the widening happens, not which side of the boundary does
+    it.
+
+    It is also the assertion lesson §13 asks for. A projection experiment
+    once "proved" materialization was free by turning a knob that was not
+    connected, and one assertion about what the knob returned would have
+    caught it; a control deserves the same scrutiny as the thing under test.
+    """
+    import numpy as np
+
+    adapter = fresh_adapter()
+    adapter.apply_ops([{"op": "assert_edge", "src": "a", "dst": "b",
+                        "rel_type": "R", "props": {}, "vt_s": 0,
+                        "vt_e": OPEN_END, "disc": ""}], 1)
+    for cols in (None, ("src_id",), ("src_id", "dst_id", "vt_s", "vt_e")):
+        for vt_min, vt_max in ((None, None), (-20, -10)):  # non-empty, empty
+            got = adapter.edges_columnar(vt_min=vt_min, vt_max=vt_max,
+                                         columns=cols)
+            names = adapter.EDGE_INT_COLS if cols is None else cols
+            for c in names:
+                assert got[c].dtype == np.int64, (c, cols, vt_min, got[c].dtype)
+    adapter.close()

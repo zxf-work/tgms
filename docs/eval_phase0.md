@@ -86,92 +86,144 @@ All thirteen hash-identical across all six systems (four here, two below).
 Two rows changed hands since the July sweep and both are engine work, not
 noise: **native's point lookups now beat PostgreSQL's** (0.1 vs 0.3 ms),
 and `series.count`/`burst.zscore` are now *ties* with ClickHouse at this
-scale where ClickHouse led 2×. Its lead is a scale effect, not a shape
-effect — it starts at 200k as a tie, reaches 3.5× at 1M and 4.6× at 10M
-(8.7× before D-046).
-The new `agg.rel_bucket` runs the other way: **native leads it 2.2× at
-200k** and loses it at 1M and 10M, so the crossover for grouped
-aggregation sits between 200k and 1M. The baselines divide
-the map cleanly: PostgreSQL owns indexed point shapes, ClickHouse owns
-whole-window aggregation (the first system to beat native on any scan
-shape at this scale), and both pay heavily for iterative traversal —
+scale where ClickHouse led 2×.
+
+Its remaining lead is on `series.count` and `burst.zscore` only, and after
+D-047 it no longer grows with scale: a tie at 200k (16.3 vs 16.7),
+**2.2× at 1M** (43.0 vs 19.7) and **2.2× at 10M** (84.7 vs 37.9), where
+before D-046 it was 8.7× and before D-047 4.6×. On `agg.rel_bucket` — the
+grouped-aggregation shape the operator was built for — native leads
+**2.2× at 200k**, ClickHouse leads 1.4× at 1M (50.4 vs 37.0) and native
+leads 1.4× at 10M (96.1 vs 138.0): there is no longer a monotone
+crossover story to tell, and the two middle results are close enough that
+the honest summary is *comparable at every scale measured*. The baselines divide
+the map cleanly: PostgreSQL owns indexed point shapes, ClickHouse is the
+strongest whole-window aggregator and the first system to draw level with
+native on a scan shape at this scale, and both pay heavily for iterative
+traversal —
 ClickHouse's reachability rounds cost ~1 ms of HTTP plus a table build
 each, which is the honest price of expressing recursion in an engine
 that does not natively offer it. Native holds 8 of 12.
 
 ### synth, 1M events (four systems)
 
-Refreshed 2026-08-02 at commit `d12b30f`, when the registry gained its
-thirteenth query. All four columns re-measured in the same run:
-
-| query | native | duckdb | postgres | clickhouse | fastest |
-|---|---:|---:|---:|---:|---|
-| hist.single | **0.1** | 25.2 | 0.3 | 11.6 | native |
-| hist.asof | **0.2** | 25.2 | **0.2** | 12.1 | tie |
-| snap.hop2 | **95.1** | 198.0 | 266.3 | 352.0 | native |
-| diff.global | **317.2** | 537.0 | 607.8 | 596.7 | native |
-| reach.window | **117.1** | 159.4 | 6323.9 | 4032.6 | native |
-| paths.k | **11.6** | 37.4 | 29.2 | 179.8 | native |
-| series.count | 81.9 | 143.4 | 219.9 | **20.1** | clickhouse |
-| burst.zscore | 83.7 | 146.2 | 219.3 | **20.6** | clickhouse |
-| nbr.evolution | 7.7 | 48.8 | **3.1** | 56.8 | postgres |
-| coactive.narrow | **105.2** | 111.6 | 194.2 | 106.5 | native† |
-| resolve.substr | **6.8** | 87.8 | 19.0 | 17.7 | native |
-| agg.rel_bucket | 65.1 | 3031.9 | 2387.5 | **36.6** | clickhouse |
-| motif.filtered | **44.4** | 93.1 | 195.4 | 137.9 | native |
-
-†1.3% apart, inside the ±20% reproducibility band above: read
-`coactive.narrow` at 1M as a tie with ClickHouse, not a win. The interval
-join has now changed hands three times as both sides improved, which is
-the honest reading of a query neither system is built for.
-
-Two cells moved for reasons worth naming rather than burying. Native's
-**point lookups now beat PostgreSQL's** at this scale (0.1 ms against
-0.3), which the 200k table above still shows the other way round.
-`nbr.evolution` fell 23.6 → 7.7 ms on the scan-address work (D-039).
-And `series.count`/`burst.zscore` read *slower* than the 59.0/60.3 this
-table carried in July — not a code regression: §9g of `engine_lessons.md`
-traces most of it to the traversal index that `paths.k` leaves resident
-earlier in the same process, and the remainder to between-day drift on the
-host. The ClickHouse gap on those two queries is real either way.
-
-### synth, 10M events (abridged)
-
-Refreshed 2026-08-02 at commit `cc49795` (native, DuckDB and ClickHouse
-re-measured together after the D-046 scan work; the PostgreSQL 10M column,
-measured once in July, is retained where no TGMS-side change affects it).
-The `was` column is the previous full sweep of the same three systems at
-`d12b30f`, earlier the same day:
+Refreshed 2026-08-03 at commit `7842a1f`, all four columns re-measured in
+the same run. The `was` column is the previous four-system sweep at
+`d12b30f`, which predates **both** the D-046 scan work and the D-047 kernel
+routing — so where a native cell moved, the two are not separable here and
+the split is given in their own sections below:
 
 | query | native | *was* | duckdb | postgres | clickhouse | fastest |
 |---|---:|---:|---:|---:|---:|---|
-| hist.single | **0.7** | 0.7 | 65.0 | **0.3**‡ | 12.2 | native |
-| hist.asof | **0.7** | 0.7 | 65.6 | — | 14.1 | native |
-| snap.hop2 | 1017.6 | 1029.6 | 1745.6 | 2506.8‡ | **764.8**† | clickhouse |
-| diff.global | **3998.6** | 3983.1 | 5625.9 | 6670.6‡ | 5010.0 | native |
-| reach.window | gr | gr | gr | 44400.4‡ | **4052.0** | guardrailed |
-| paths.k | **15.5** | 16.2 | 82.9 | 37.2‡ | 240.1 | native |
-| series.count | 183.7 | *352.1* | 782.0 | 2176.7‡ | **40.0** | clickhouse |
-| burst.zscore | 185.3 | *351.1* | 787.1 | 2156.5‡ | **39.5** | clickhouse |
-| nbr.evolution | 68.4 | 62.3 | 107.1 | **2.8**‡ | 88.8 | postgres |
-| coactive.narrow | **166.7** | 172.5 | 222.1 | 1781.7‡ | 207.5 | native |
-| resolve.substr | **95.4** | 95.3 | 838.0 | 200.5‡ | 122.2 | native |
-| agg.rel_bucket | 331.1 | 334.7 | 35798.5 | — | **134.1** | clickhouse |
-| motif.filtered | **75.9** | 78.1 | 164.9 | 661.3‡ | 224.2 | native |
+| hist.single | **0.1** | 0.1 | 23.3 | 0.4 | 11.2 | native |
+| hist.asof | **0.1** | 0.2 | 25.1 | 0.4 | 12.4 | native |
+| snap.hop2 | **92.9** | 95.1 | 193.8 | 257.7 | 343.9 | native |
+| diff.global | **312.4** | 317.2 | 529.6 | 647.2 | 570.8 | native |
+| reach.window | **117.1** | 117.1 | 160.2 | 6233.0 | 4055.8 | native |
+| paths.k | **11.9** | 11.6 | 36.2 | 29.4 | 207.5 | native |
+| series.count | 43.0 | *81.9* | 114.6 | 222.9 | **19.7** | clickhouse |
+| burst.zscore | 44.6 | *83.7* | 113.8 | 221.4 | **20.5** | clickhouse |
+| nbr.evolution | 8.1 | 7.7 | 46.5 | **3.1** | 55.4 | postgres |
+| coactive.narrow | 113.4 | 105.2 | 108.8 | 188.7 | 105.1 | tie† |
+| resolve.substr | **6.7** | 6.8 | 88.1 | 19.6 | 17.8 | native |
+| agg.rel_bucket | 50.4 | *65.1* | 3019.2 | 2351.1 | **37.0** | clickhouse |
+| motif.filtered | **45.1** | 44.4 | 88.0 | 192.0 | 139.9 | native |
+
+†native, DuckDB and ClickHouse land within 8% of each other on
+`coactive.narrow` — read it as a three-way tie, not a win. The interval
+join has now changed hands three times as all sides improved, which is the
+honest reading of a query none of them is built for. Elsewhere the winner
+column names the fastest system when it is more than ~15% clear; the ±20%
+band in the preamble is a *between-day* bound on re-measuring one cell,
+and within a single run cross-system comparison is tighter than that
+(D-045: within-run comparability is what these tables rest on).
+
+**All 13 queries agree across all four systems.** The same four that carry
+`vid`/`tt` hash differently from the `d12b30f` run and do so identically on
+every system (D-023); the other nine are byte-identical across both runs.
+
+Three native cells moved and all three are engine work:
+`series.count` 81.9 → **43.0**, `burst.zscore` 83.7 → **44.6** and
+`agg.rel_bucket` 65.1 → **50.4**. The first two are D-046's scan work
+(85.2 → 66.8 in its own 1M A/B) followed by D-047 routing them through the
+aggregation kernel; the third is D-047's bitset `count_distinct`, which
+pays less at 1M than at 10M because there are ten times fewer ids to sort
+in the first place. Everything else is within 8% of the previous sweep —
+`coactive.narrow` at +7.8% and `nbr.evolution` at +5.2% are the widest, on
+code neither change touches, which is what the band is for.
+
+Two older notes still stand. Native's **point lookups beat PostgreSQL's**
+at this scale (0.1 ms against 0.4), which the 200k table above shows the
+other way round and the 10M table now shows the other way round again.
+And these `series.count`/`burst.zscore` cells were *slower* than the
+59.0/60.3 this table carried in July before the last two sessions' work —
+not a regression then either: §9g of `engine_lessons.md` traces most of it
+to the traversal index `paths.k` leaves resident earlier in the same
+process, and the rest to between-day drift on the host.
+
+### synth, 10M events (abridged)
+
+Refreshed 2026-08-03 at commit `7842a1f` (native, DuckDB and ClickHouse
+re-measured together after the D-047 kernel-routing work; the PostgreSQL 10M
+column, measured once in July, is retained where no TGMS-side change affects
+it). The `was` column is the previous full sweep of the same three systems
+at `cc49795` (D-046):
+
+| query | native | *was* | duckdb | postgres | clickhouse | fastest |
+|---|---:|---:|---:|---:|---:|---|
+| hist.single | 0.8 | 0.7 | 66.3 | **0.3**‡ | 12.3 | postgres |
+| hist.asof | **0.8** | 0.7 | 66.5 | — | 12.7 | native |
+| snap.hop2 | 1029.4 | 1017.6 | 1874.0 | 2506.8‡ | **784.9** | clickhouse |
+| diff.global | **3981.2** | 3998.6 | 6018.1 | 6670.6‡ | 4972.1 | native |
+| reach.window | gr | gr | gr | 44400.4‡ | **4144.4** | guardrailed |
+| paths.k | **15.3** | 15.5 | 83.2 | 37.2‡ | 240.8 | native |
+| series.count | 84.7 | *183.7* | 802.3 | 2176.7‡ | **37.9** | clickhouse |
+| burst.zscore | 89.5 | *185.3* | 781.5 | 2156.5‡ | **39.8** | clickhouse |
+| nbr.evolution | 66.8 | 68.4 | 106.0 | **2.8**‡ | 96.7 | postgres |
+| coactive.narrow | **168.8** | 166.7 | 223.6 | 1781.7‡ | 204.5 | native |
+| resolve.substr | **96.3** | 95.4 | 812.5 | 200.5‡ | 121.6 | native |
+| agg.rel_bucket | **96.1** | *331.1* | 36483.3 | — | 138.0 | native† |
+| motif.filtered | **76.6** | 75.9 | 167.1 | 661.3‡ | 226.3 | native |
 
 ‡July measurement, carried forward. `gr` = guardrailed (`E_COST`).
+†44% apart — a real lead, but the narrowest winner call in this table; see
+the reading below.
 
 **All 13 queries agree across native, DuckDB and ClickHouse in this run.**
 Four of them — `hist.single`, `hist.asof`, `snap.hop2`, `coactive.narrow` —
-hash differently from the `d12b30f` run, *identically on all three systems*,
+hash differently from the `cc49795` run, *identically on all three systems*,
 because those are the four whose answers carry `vid`/`tt` and each harness
 run builds its own store from a fresh clock (D-023). The other nine hash
-byte-identically across both runs and all systems.
+byte-identically across both runs and all systems — the same four-and-nine
+split D-046's run produced, for the same reason.
 
-**`series.count` 352.1 → 183.7 and `burst.zscore` 351.1 → 185.3** are the
-D-046 scan work; no *native* cell moved by more than the ±20%
-reproducibility band in either direction (`nbr.evolution` is 10% slower at
-code neither change touches, which is what that band is for).
+**Three cells moved, all three on purpose (D-047).** `series.count`
+183.7 → **84.7** and `burst.zscore` 185.3 → **89.5** are the two event-rate
+operators now counting inside the aggregation kernel instead of
+materializing ten million rows and bucketing them in NumPy.
+`agg.rel_bucket` 331.1 → **96.1** is `count_distinct` counting endpoints in
+a per-group bitset instead of sorting ten million appended ids at finalize.
+Nothing else moved: eight of the ten remaining native cells are within 2.5%
+of the previous sweep in both directions, and the other two are the
+sub-millisecond point lookups, which read 0.8 against 0.7 — 0.1 ms at the
+resolution the harness prints, which is 14% and means nothing. That is a
+tighter agreement than the ±20% band and is what a change confined to two
+operators should look like.
+
+**One row changed hands the other way, and it is the one this project has
+been chasing since D-043.** `agg.rel_bucket` was the query family the
+110-question study ranked first and the one ClickHouse dominated 12× when
+the operator was designed. Native now answers it in 96.1 ms against
+ClickHouse's 138.0 — a 1.44× lead, the narrowest winner call in the table
+and one worth reading conservatively: it is comfortably outside the run's
+own noise but not outside the between-day ±20% band applied twice. The
+defensible statement is that **the lead is gone**, not that it has been
+decisively reversed; the next sweep decides which.
+
+**`hist.single` at 10M belongs to PostgreSQL** (0.3 ms against 0.8), and
+this table said otherwise until now — it bolded both cells and named native
+the winner on a number that is more than twice as large. Native takes that
+row at 200k and 1M and loses it at 10M; a correction rather than a change.
 
 **DuckDB's `series.count` also improved, 981.6 → 782.0, and that one is
 not drift.** Half of D-046 landed in the shared operator layer rather than
@@ -199,16 +251,22 @@ node sets shipped through working tables the query hash-matches and runs
 snapshot serially. A cell that began as a defect record ended as a
 ClickHouse win; both facts are kept.
 
-The scaling stories the four-system sweep settles: **ClickHouse's
-aggregation lead grows with scale** — 2× over native at 200k, 3.5× at 1M,
-and **4.6× at 10M** (40.0 vs 183.7; it was 8.7× before the D-046 scan work
-and 12× before the refresh before that) — it is simply the right engine for
-whole-window aggregation, and the honest comparison says so. Its
+The scaling story the four-system sweep used to settle has itself been
+settled the other way. **ClickHouse's lead on the bucketed event rate no
+longer grows with scale**: 12× when this evaluation began, 8.7× before
+D-046, 4.6× after it, and **2.2× now** (37.9 vs 84.7) — the same 2.2× it
+shows at 1M, against a tie at 200k. It remains the right engine for
+whole-window aggregation and the honest comparison still says so; what has
+gone is the divergence. On the grouped-aggregation query the operator was
+actually designed for, `agg.rel_bucket`, native now answers 96.1 ms
+against 138.0 and **the 12× deficit is closed**. Its
 iterative relaxation also **beats PostgreSQL's by 11×** on the
 reachability query TGMS guardrails (4.0 s vs 44.4 s), so the baselines
 now bracket that guardrail from both sides. Meanwhile the interval join
-flipped back: ClickHouse took `coactive.narrow` at 1M (104.2 vs 135.1)
-and native retook it at 10M (181.4 vs 221.2) on the cluster-wise merge.
+has stopped picking a side at all: at 1M native, DuckDB and ClickHouse
+finish within 8% of each other (113.4 / 108.8 / 105.1) and at 10M native
+leads by 21% (168.8 vs 204.5). Read `coactive.narrow` as a query none of
+the three is built for rather than as a scoreboard.
 Native holds every other selective and traversal shape it answers;
 ClickHouse took the 2-hop snapshot at 10M once its query was fixed — the
 first traversal-family loss, worth watching as scale grows.
@@ -453,7 +511,9 @@ The comparison did not move in TGMS's favour by handicapping the other side.
 ## Racing the specialist on its own shape (D-044)
 
 ClickHouse's aggregation lead was the clearest thing the baselines found:
-8.7× at 10M on `series.count` as measured then, growing with scale. It was also the
+8.7× at 10M on `series.count` as measured then, and apparently growing with
+scale — a reading D-047 has since retired; it is 2.2× at both 1M and 10M
+now. It was also the
 capability the independent-question study ranked first. So the fourteenth
 operator, `aggregate_events`, was built directly against that column —
 count and distinct-endpoint counts over closed dimensions (time bucket,
@@ -464,21 +524,28 @@ across six systems** — the operator (with its brute-force oracle behind it),
 ClickHouse SQL, PostgreSQL SQL, and one Cypher statement that runs unchanged
 on Neo4j and Memgraph — all agreeing on one canonical hash.
 
-| scale | native | clickhouse | postgres | duckdb (portable) | neo4j | memgraph |
-|---|---:|---:|---:|---:|---:|---:|
-| 200k | **14.5** | 32.6 | 422.9 | 537.3 | 511.2 | 340.5 |
-| 1M | 65.1 | **36.6** | 2387.5 | 3031.9 | — | — |
-| 10M | 334.7 | **140.8** | — | 34515.9 | — | — |
+| scale | native | *was* | clickhouse | postgres | duckdb (portable) | neo4j | memgraph |
+|---|---:|---:|---:|---:|---:|---:|---:|
+| 200k | **14.5** | 14.5 | 32.6 | 422.9 | 537.3 | 511.2 | 340.5 |
+| 1M | 50.4 | *65.1* | **37.0** | 2351.1 | 3019.2 | — | — |
+| 10M | **96.1** | *334.7* | 138.0 | — | 36483.3 | — | — |
 
-**We take it at 200k and lose it after.** Native leads 2.2× at 200k;
-ClickHouse holds it at 1.8× (1M) and 2.4× (10M), so the crossover sits
-between the first two scales. That is the result, and it is a better one than it looks: the same
-engine led `series.count` by 8.7× at 10M when this was written, so on the
-query family the operator was designed for, the gap closed from roughly
-nine-fold to two-fold. (D-046 has since taken `series.count` to 183.7 ms
-and that lead to 4.6×, without moving `agg.rel_bucket` — see "Where the 10M
-scan actually goes", which explains why the two were never the same cost.) Against the row stores it is not close — 37× faster than tuned
-PostgreSQL at 1M, on a query PostgreSQL answers with a plain `GROUP BY`.
+*(`was` = the D-044 sweep this section was written from; native's 1M and
+10M cells were re-measured 2026-08-03 at `7842a1f` after D-046 and D-047,
+and the other columns with them.)*
+
+**Written as a loss, since closed.** As first measured this read "we take
+it at 200k and lose it after": native led 2.2× at 200k, ClickHouse held it
+1.8× at 1M and 2.4× at 10M, and the honest summary was a crossover between
+the first two scales. After D-047's bitset `count_distinct` — the aggregate
+that turned out to be 232 of those 334.7 ms — the shape is different:
+native 2.2× ahead at 200k, 1.4× behind at 1M, **1.4× ahead at 10M**. Two of
+those three margins are narrow enough to want another sweep before anyone
+leans on them, and the defensible claim is the one that does not depend on
+them: on the query family the 110-question study ranked first, a **12×
+deficit is now a comparable pair at every scale measured**. Against the row
+stores it is not close — 47× faster than tuned PostgreSQL at 1M, on a query
+PostgreSQL answers with a plain `GROUP BY`.
 
 The interesting number is not in the table. At 10M, `agg.rel_bucket`
 (334.7 ms) costs **less than `series.count` (352.1 ms)** — the same scan,
@@ -502,9 +569,10 @@ far more actionable finding than "we are slower at aggregation."
 > "scan" meant the same work on both sides. See D-046 below.
 
 One cell deserves its own sentence, because it is ours and it is bad. The
-**portable fallback — the same operator on the DuckDB backend — takes 34.5
-seconds at 10M**, a hundred times the native kernel and fourteen times
-PostgreSQL. It is vectorized NumPy, but it groups by `rel_type` as an array
+**portable fallback — the same operator on the DuckDB backend — takes 36.5
+seconds at 10M**, three hundred and eighty times the native kernel and
+fifteen times PostgreSQL, and it has not moved while the native path got
+3.5× faster. It is vectorized NumPy, but it groups by `rel_type` as an array
 of ten million Python strings, which is the dictionary-coding lesson the
 native path was careful to obey and the portable path was not. Anyone using
 the DuckDB backend for grouped aggregation at scale is paying for that
@@ -713,6 +781,11 @@ parallel gates keep everything serial.
 
 ### What is left, priced rather than chased
 
+*(All three items below were taken up the next day; the results are in
+"The three residues, taken (D-047)" at the end of this file. The prices
+here are D-046's own and are left as written, because reproducing them
+independently before changing anything is what made them trustworthy.)*
+
 `series.count` is now **214.9 ms** against ClickHouse's 40.3, and the split
 has moved: `select` 35, `materialize` 57, boundary 0, and **106 ms of NumPy
 above the engine** — the mask, the divide and the `bincount` that turn ten
@@ -759,6 +832,131 @@ The third number in that table is its own result: **`count_distinct` is
 `agg.rel_bucket` and ClickHouse's 140.8 ms is one aggregate — exact distinct
 counting over ten million endpoint ids — and not the scan, not grouping, and
 not the two-phase design.
+
+## The three residues, taken (D-047)
+
+D-046 left three items priced and untouched. All three were re-measured
+before anything was changed — the numbers above are another session's and
+another day's, and this host drifts ~18% between days — and then each was
+changed and re-measured on its own. One process per condition throughout,
+against the pre-built 10M store, median of 5 after one warm-up, 2026-08-03.
+
+**Baseline first, at `98e4a1e`:**
+
+| condition, 10M | ms |
+|---|---:|
+| `series.count` operator | 217.2 |
+| `burst.zscore` operator | 215.3 |
+| the same count through the O14 kernel | **82.6** |
+| `agg.rel_bucket` (count + distinct-dst) | 338.3 |
+| … the same without `count_distinct` | 97.6 |
+| … `count_distinct`'s share, by difference | **240.7** |
+| scan of `vt_s` alone (adapter) | 97.8 |
+| scan of `vt_s, src_id, dst_id` (adapter) | 196.0 |
+| … the boundary's `u32 → i64` widening | **72.9** |
+
+Every one of the three reproduced D-046's price to within its own band
+(93.7 / 232 / 77 there), which is the point of re-measuring rather than
+inheriting.
+
+**1. The event-rate metrics now count in the kernel.**
+`graph_metric_timeseries`' `edge_event_count` and `burst_detection`'s
+`edge_event_rate` target were scanning ten million rows, materializing one
+column, crossing the boundary and bucketing in NumPy. `aggregate_events`
+computes the identical thing — one `time_bucket` dimension, one `count`
+aggregate — without moving a row. Routing them there:
+
+| 10M | before | after |
+|---|---:|---:|
+| `series.count` operator | 217.2 | **84.0** |
+| `burst.zscore` operator | 215.3 | **87.0** |
+| the kernel call underneath, for reference | 82.6 | 84.6 |
+
+**2.59× and 2.47×**, and the operator now costs what the kernel costs — the
+entire remaining margin above it is ~1 ms. At 1M the same operators read
+42.1 and 43.5.
+
+What did *not* change is the contract, which was the whole risk.
+`graph_metric_timeseries` still emits every bucket in the window including
+the empty ones and still reports `n_buckets`; `aggregate_events` still
+emits only non-empty groups. The difference now lives in one function that
+scatters the kernel's groups into a zero-filled array, and the oracle
+proves it: the property tests for both operators pass unedited, and a new
+test asserts the divergence directly rather than trusting that they do.
+Only the two metrics that *are* per-bucket event counts route; the other
+five read `vt_e`, node versions or endpoint pairs, which no closed
+aggregate expresses, and they keep the scan.
+
+**2. `count_distinct` counts in a bitset.** The kernel appended raw `u32`
+endpoint ids per group and sorted-plus-deduplicated all ten million of them
+in `finalize`, which is serial. Endpoint ids are *dense*, so a group's
+distinct set is a subset of `0..n_entities` (100,000 here — 12.5 KB) and a
+bitset answers with a popcount and merges by OR:
+
+| 10M | before | after |
+|---|---:|---:|
+| `agg.rel_bucket` (count + distinct-dst, 196 groups) | 338.3 | **98.6** |
+| … without `count_distinct` | 97.6 | 89.0 |
+| … `count_distinct`'s share | 240.7 | **9.6** |
+| distinct-dst alone by rel_type × bucket | 312.6 | 98.1 |
+| one global distinct over the whole window | 319.1 | 80.7 |
+| count + distinct-dst grouped by src `endpoint` (100k groups) | 1344.2 | 1329.8 |
+
+**3.4× on the query, 25× on the aggregate.** The last row is the design
+working as intended rather than a miss: a bitset per group is a capacity
+hazard exactly where groups are numerous, so a group starts as an id vector
+and promotes only when that vector already occupies as many bytes as the
+bitset would. With 100k groups of ~100 events each, nothing promotes and
+nothing changes. The bound this buys is stated because it is the reason the
+promotion exists: at most `rows / promote_at` groups can promote, so
+distinct state stays under **8 bytes per selected row per thread** against
+the append path's 4 — independent of `MAX_GROUPS` and of the entity count.
+
+**3. The endpoint widening is mostly irreducible, and that is the result.**
+D-046 priced the boundary's `u32 → i64` conversion at 77 ms; it measures
+72.9 here. Moving it out of Rust and into the adapter's existing
+`np.asarray(..., dtype=np.int64)` — which was a no-op until now — keeps the
+dtype contract exactly and recovers part of it:
+
+| 10M, adapter level | before | after |
+|---|---:|---:|
+| `vt_s` | 97.8 | 100.4 |
+| `vt_s, src_id` | 148.4 | 138.8 |
+| `vt_s, src_id, dst_id` | 196.0 | **175.7** |
+| four int columns | 213.1 | **191.3** |
+| the widening itself | 72.9 (in Rust) | 58.3 (in NumPy) |
+
+Measured at the *adapter*, deliberately: moving the cast changes which
+layer pays, and a raw-scan A/B would have reported the whole 73 ms as a win
+while the cost simply reappeared one call up. (The raw scan's convert stage
+does go to 0.0; the adapter call goes down by 20.) The control was checked
+too — the raw scan now hands back `uint32` and the adapter still hands back
+`int64`, asserted in the run and pinned by a test.
+
+**20 ms of the 73 is the cast; 53 ms is the int64 column itself.** NumPy
+widens a 10M `u32` column in 27.4 ms and this loop took ~36; the arithmetic
+is free either way and what is being paid for is writing 80 MB of fresh
+pages per endpoint column. Recovering the rest means *not building an
+int64 column* — narrowing `edges_columnar`'s dtype contract — and that is
+priced and declined in D-047: it would have to land in the native adapter,
+the DuckDB adapter and the Kuzu adapter together or the backends diverge
+silently, and it would put `reciprocity`'s `src * n + dst` pair key and the
+portable aggregation's `inv * base + ids` one unnoticed weak-promotion rule
+away from overflowing. For ≤53 ms on the subset of queries that project
+both endpoints over a full window, against a change that touches three
+adapters and three operators to buy a silent-overflow risk, the trade is
+not worth taking. **The dtype contract is load-bearing.**
+
+**What the registry says.** At 10M the three changes move exactly the three
+cells they aim at — `series.count` 183.7 → 84.7, `burst.zscore`
+185.3 → 89.5, `agg.rel_bucket` 331.1 → 96.1 — and eight of the other ten
+native cells sit within 2.5% of the previous sweep (the remaining two are
+the point lookups, 0.7 → 0.8 ms). The boundary change is not
+separately visible at registry level: `diff.global` moved 0.4% and
+`nbr.evolution` 2%, both inside the noise, because at 10M the queries that
+project both endpoints over a full window are the TCSR build and little
+else. A 20 ms saving on a 4-second query is not a result, and it is
+recorded as one that did not show rather than quietly credited.
 
 ## One number that was mine, not PostgreSQL's
 

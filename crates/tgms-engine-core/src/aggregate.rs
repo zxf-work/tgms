@@ -91,13 +91,123 @@ pub struct AggregateOut {
     pub label_names: Vec<String>,
 }
 
+/// How a group remembers which endpoints it has seen (D-047).
+///
+/// Endpoint ids are *dense* `u32`, so a group's distinct set is a subset of
+/// `0..n_entities` and a bitset over that space answers `count_distinct`
+/// with a popcount instead of a sort. A bitset per group is a capacity
+/// hazard, though — the endpoint dimension can emit one group per entity —
+/// so a group starts as an id vector and is promoted only once that vector
+/// occupies as many bytes as the bitset would (`promote_at`). Two bounds
+/// follow, and both are independent of the group cap:
+///
+/// * a promoted group never costs more than twice what the append-only path
+///   was already paying for it at the moment of promotion;
+/// * at most `rows / promote_at` groups can promote, so total distinct state
+///   is at most **8 bytes per selected row per thread** — twice the 4 bytes
+///   per row the id-append path costs, whatever the entity count.
+///
+/// Both forms answer a set cardinality, so the merged result is
+/// order-independent and therefore byte-identical at any thread count; the
+/// merge of two bitsets is a commutative OR.
+#[derive(Clone, Debug)]
+enum Distinct {
+    Ids(Vec<u32>),
+    Bits(Vec<u64>),
+}
+
+/// Bitset geometry for one call, derived from the dense id space.
+#[derive(Clone, Copy, Debug)]
+pub struct DistinctPlan {
+    words: usize,
+    promote_at: usize,
+}
+
+impl DistinctPlan {
+    /// `n_entities` is the dictionary's dense id space; ids are `< n_entities`.
+    pub fn for_space(n_entities: u32) -> Self {
+        let words = (n_entities as usize).div_ceil(64).max(1);
+        Self {
+            words,
+            // 8 bytes per word against 4 bytes per appended id
+            promote_at: words * 2,
+        }
+    }
+}
+
+fn set_bit(w: &mut Vec<u64>, id: u32) {
+    let i = (id >> 6) as usize;
+    // dense ids are `< dict.len()`, so this never grows in practice; the
+    // check is here because silently dropping an id would be a wrong answer
+    // and a panic across the PyO3 boundary is the worst failure shape there
+    if i >= w.len() {
+        w.resize(i + 1, 0);
+    }
+    w[i] |= 1u64 << (id & 63);
+}
+
+impl Distinct {
+    fn insert(&mut self, id: u32, plan: &DistinctPlan) {
+        match self {
+            Distinct::Ids(v) => {
+                v.push(id);
+                if v.len() >= plan.promote_at {
+                    let mut w = vec![0u64; plan.words];
+                    for &x in v.iter() {
+                        set_bit(&mut w, x);
+                    }
+                    *self = Distinct::Bits(w);
+                }
+            }
+            Distinct::Bits(w) => set_bit(w, id),
+        }
+    }
+
+    fn merge(&mut self, other: Distinct) {
+        match (&mut *self, other) {
+            (Distinct::Ids(a), Distinct::Ids(mut b)) => a.append(&mut b),
+            (Distinct::Bits(a), Distinct::Bits(b)) => {
+                if b.len() > a.len() {
+                    a.resize(b.len(), 0);
+                }
+                for (x, y) in a.iter_mut().zip(b.iter()) {
+                    *x |= *y;
+                }
+            }
+            (Distinct::Bits(a), Distinct::Ids(b)) => {
+                for id in b {
+                    set_bit(a, id);
+                }
+            }
+            (Distinct::Ids(a), Distinct::Bits(mut w)) => {
+                for &id in a.iter() {
+                    set_bit(&mut w, id);
+                }
+                *self = Distinct::Bits(w);
+            }
+        }
+    }
+
+    fn cardinality(&self) -> i64 {
+        match self {
+            Distinct::Ids(v) => {
+                let mut ids = v.clone();
+                ids.sort_unstable();
+                ids.dedup();
+                ids.len() as i64
+            }
+            Distinct::Bits(w) => w.iter().map(|x| x.count_ones() as i64).sum(),
+        }
+    }
+}
+
 /// Per-group partial state. Shapes follow the request: `distinct[i]` and
 /// `stats[j]` align with the distinct/stat aggregates in request order.
 #[derive(Clone, Debug)]
 pub(crate) struct GroupState {
     count: u64,
-    /// Raw id appends; sorted + deduplicated once, at finalize.
-    distinct: Vec<Vec<u32>>,
+    /// Seen-endpoint sets, one per `count_distinct` aggregate.
+    distinct: Vec<Distinct>,
     /// `(min, max, sum, n)` per stat aggregate.
     stats: Vec<(i64, i64, i128, u64)>,
 }
@@ -106,15 +216,15 @@ impl GroupState {
     fn new(n_distinct: usize, n_stats: usize) -> Self {
         Self {
             count: 0,
-            distinct: vec![Vec::new(); n_distinct],
+            distinct: vec![Distinct::Ids(Vec::new()); n_distinct],
             stats: vec![(i64::MAX, i64::MIN, 0, 0); n_stats],
         }
     }
 
-    fn merge(&mut self, mut other: GroupState) {
+    fn merge(&mut self, other: GroupState) {
         self.count += other.count;
-        for (a, b) in self.distinct.iter_mut().zip(other.distinct.iter_mut()) {
-            a.append(b);
+        for (a, b) in self.distinct.iter_mut().zip(other.distinct) {
+            a.merge(b);
         }
         for (a, b) in self.stats.iter_mut().zip(other.stats.iter()) {
             a.0 = a.0.min(b.0);
@@ -230,6 +340,7 @@ fn fold_selections<S: SegmentSource>(
     layout: &AggLayout,
     global_rel: &HashMap<&str, i64>,
     labels: Option<&LabelIndex>,
+    plan: &DistinctPlan,
 ) -> Result<GroupMap> {
     let need_rel = req.dims.iter().any(|d| matches!(d, Dim::RelType));
     let n_distinct = layout.distinct.len();
@@ -268,7 +379,7 @@ fn fold_selections<S: SegmentSource>(
                 .or_insert_with(|| GroupState::new(n_distinct, n_stats));
             g.count += 1;
             for (slot, dst) in layout.distinct.iter().enumerate() {
-                g.distinct[slot].push(if *dst { c.dst[i] } else { c.src[i] });
+                g.distinct[slot].insert(if *dst { c.dst[i] } else { c.src[i] }, plan);
             }
             if !layout.stats.is_empty() {
                 let vt_e = c.vt_e.map(|col| col[i]).unwrap_or(c.vt_s[i] + 1);
@@ -298,17 +409,19 @@ fn fold_selections<S: SegmentSource>(
 /// `threads` is explicit so tests can pin any width (the store entry decides
 /// its width through the recalibrated scan gates); any width yields the same
 /// map, because every per-group state merges commutatively.
+#[allow(clippy::too_many_arguments)]
 pub(crate) fn aggregate_partials<S: SegmentSource>(
     segments: &[&Segment<S>],
     selections: &[Selection],
     req: &AggregateRequest,
     global_rel: &HashMap<&str, i64>,
     labels: Option<&LabelIndex>,
+    plan: DistinctPlan,
     threads: usize,
 ) -> Result<GroupMap> {
     let layout = AggLayout::of(&req.aggs);
     if threads <= 1 || selections.len() < 2 {
-        return fold_selections(segments, selections, req, &layout, global_rel, labels);
+        return fold_selections(segments, selections, req, &layout, global_rel, labels, &plan);
     }
     let chunk = selections.len().div_ceil(threads);
     let parts: Vec<Result<GroupMap>> = std::thread::scope(|scope| {
@@ -316,8 +429,9 @@ pub(crate) fn aggregate_partials<S: SegmentSource>(
             .chunks(chunk)
             .map(|part| {
                 let layout = &layout;
+                let plan = &plan;
                 scope.spawn(move || {
-                    fold_selections(segments, part, req, layout, global_rel, labels)
+                    fold_selections(segments, part, req, layout, global_rel, labels, plan)
                 })
             })
             .collect();
@@ -416,12 +530,7 @@ fn finalize(
                 aggs_out.push(AggValues::Int(
                     groups
                         .iter()
-                        .map(|(_, g)| {
-                            let mut ids = g.distinct[slot].clone();
-                            ids.sort_unstable();
-                            ids.dedup();
-                            Some(ids.len() as i64)
-                        })
+                        .map(|(_, g)| Some(g.distinct[slot].cardinality()))
                         .collect(),
                 ));
             }
@@ -575,6 +684,9 @@ impl NativeStore {
             req,
             &global_rel,
             labels.as_ref(),
+            // endpoint ids are dense over the dictionary, which is what
+            // makes a per-group bitset possible at all (D-047)
+            DistinctPlan::for_space(self.dict().len()),
             width,
         )?;
         // the contract's SQL scalar-aggregate shape: an ungrouped call emits
@@ -761,7 +873,16 @@ mod tests {
         out
     }
 
+    /// Dense id space of the fixture (uids `0..13`), and a plan that keeps
+    /// every group in the id-vector form.
+    const IDS: u32 = 13;
+
     fn run_partials(f: &Fixture, r: &AggregateRequest, threads: usize) -> GroupMap {
+        run_partials_with(f, r, DistinctPlan::for_space(IDS), threads)
+    }
+
+    fn run_partials_with(f: &Fixture, r: &AggregateRequest, plan: DistinctPlan,
+                         threads: usize) -> GroupMap {
         let set = ScanSet::from_pairs(f.segs.iter().map(|s| (s, Lane::Event)).collect());
         let scan_req = ScanRequest {
             as_of_tt: r.as_of_tt,
@@ -778,7 +899,8 @@ mod tests {
             .enumerate()
             .map(|(i, s)| (*s, i as i64))
             .collect();
-        aggregate_partials(&seg_refs, &selections, r, &global_rel, None, threads).unwrap()
+        aggregate_partials(&seg_refs, &selections, r, &global_rel, None, plan, threads)
+            .unwrap()
     }
 
     #[test]
@@ -827,6 +949,78 @@ mod tests {
             let AggValues::Float(me) = &out.aggs[4] else { panic!() };
             assert_eq!(me[gi], stats[2].map(|s| mean(s.2, s.3)));
         }
+    }
+
+    /// The non-negotiable for D-047's distinct rewrite: the answer must not
+    /// depend on which representation a group happened to take, nor on how
+    /// the folding was split. `promote_at` is the only knob separating the
+    /// two forms, so forcing it — rather than relying on the heuristic to
+    /// pick both — is what makes this a control (lessons §13); a middle
+    /// value guarantees partials that promoted merging with partials that
+    /// did not. Same shape as scan.rs's
+    /// `every_width_materializes_the_identical_columns`.
+    #[test]
+    fn count_distinct_is_identical_in_both_representations_at_every_width() {
+        let f = Fixture::build("distinct");
+        let rel_names: Vec<String> =
+            ["PAID", "RATED", "SENT"].iter().map(|s| s.to_string()).collect();
+        let r = req(
+            vec![Dim::RelType, Dim::TimeBucket { stride: 60 }],
+            vec![
+                Agg::Count,
+                Agg::CountDistinct { dst: true },
+                Agg::CountDistinct { dst: false },
+            ],
+        );
+        let words = (IDS as usize).div_ceil(64).max(1);
+        let ids_only = DistinctPlan { words, promote_at: usize::MAX };
+        let base = finalize(
+            run_partials_with(&f, &r, ids_only, 1),
+            &r,
+            rel_names.clone(),
+            vec![],
+            |_| HashMap::new(),
+        )
+        .unwrap();
+        // and the id-vector form is the one the brute-force reference
+        // mirrors, so anchor the pair to it before comparing them
+        let want = reference(&f.rows, &r, &rel_names);
+        let AggValues::Int(d_dst) = &base.aggs[1] else { panic!() };
+        let AggValues::Int(d_src) = &base.aggs[2] else { panic!() };
+        assert_eq!(d_dst.len(), want.len());
+        for (gi, (_, (_, dcounts, _))) in want.iter().enumerate() {
+            assert_eq!(d_dst[gi], Some(dcounts[0]));
+            assert_eq!(d_src[gi], Some(dcounts[1]));
+        }
+
+        for promote_at in [1usize, 4, 37, usize::MAX] {
+            for threads in [1usize, 2, 3, 5, 8] {
+                let plan = DistinctPlan { words, promote_at };
+                let got = finalize(
+                    run_partials_with(&f, &r, plan, threads),
+                    &r,
+                    rel_names.clone(),
+                    vec![],
+                    |_| HashMap::new(),
+                )
+                .unwrap();
+                assert_eq!(got, base, "promote_at={promote_at} threads={threads}");
+            }
+        }
+    }
+
+    /// A bitset sized from a stale dense-id space must still be exact: an id
+    /// past its end grows it rather than being dropped, because a silently
+    /// missing id is a wrong count and a panic here crosses into Python.
+    #[test]
+    fn an_id_past_the_planned_id_space_still_counts() {
+        let mut d = Distinct::Ids(Vec::new());
+        let plan = DistinctPlan { words: 1, promote_at: 1 };
+        for id in [3u32, 3, 70, 4096, 70] {
+            d.insert(id, &plan);
+        }
+        assert!(matches!(d, Distinct::Bits(_)));
+        assert_eq!(d.cardinality(), 3);
     }
 
     #[test]
