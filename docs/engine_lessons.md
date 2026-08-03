@@ -13,9 +13,11 @@ actually cost time.
 
 ## 1. Measure the layer before optimizing it
 
-Thirteen times we identified "the bottleneck" and were wrong. Every single
+Seventeen times we identified "the bottleneck" and were wrong. Every single
 time, the fix that mattered was found by measuring *after* the intended fix
-failed to move the number.
+failed to move the number. The last row is the one where the wrong belief was
+*ours, about our own fix*, and the thing that caught it was the routine
+re-run of a published table.
 
 | we believed | we measured | actual cause |
 |---|---|---|
@@ -34,7 +36,8 @@ failed to move the number.
 | projecting to one column changing nothing proves materialization is not the cost | one column and four measured the same, 360 vs 352 ms | the projection was never applied to the fixed-width columns; once it was, the same scan fell to 143 ms |
 | exact distinct counting over 10M ids is inherently expensive — it is what ClickHouse's `uniqExact` costs too | the same answer in 9.6 ms instead of 240.7 | the sort was not the algorithm, it was a *representation*: dense ids make a per-group bitset a popcount, and the sort had also been placed in the one serial stage |
 | the boundary's `u32 → i64` widening is 77 ms of recoverable cost | moving the cast to NumPy recovered 20 of 73 ms; the other 53 stayed | the cost is not the conversion, it is writing 80 MB of int64 per column — whoever does it pays it, and only *not building the column* removes it |
-| the singleton-write floor is the durable generation's fsyncs (§7) — or the full manifest each commit rewrites (`eval_writes.md`) | the fsyncs were 30.4 ms and the manifest write 8.5 of a 90.6 ms one-row write; the Python semantics layer was 59.9 | a two-uid existence probe that materialized every node version in the store. 90.6 → 34.9 ms, after which §7 is finally right (§16) |
+| the singleton-write floor is the durable generation's fsyncs (§7) — or the full manifest each commit rewrites (`eval_writes.md`) | the fsyncs were 30.4 ms and the manifest write 8.5 of a 90.6 ms one-row write; the Python semantics layer was 59.9 | a two-uid existence probe that materialized every node version in the store. 90.6 → 34.9 ms, after which §7 is right about the floor and `eval_writes` about the growth (§16) |
+| that 90.6 → 34.9 ms is the singleton-write floor, full stop | the published single-row append did not move at all: 96 → 95 ev/s | the probe's cost scales with *entities*, and the benchmark's generator makes 1,000 of them where ours made 200,000 — ~0.6 ms against 157 (§16) |
 | readers-only concurrency proves the reader story: 16 readers, no interference | with one *writer* running, the writer crashed on its second batch and two of three readers with it | opening a store performed crash recovery, so every reader was a second writer — and `open` truncated a live writer's dictionary tail (§17) |
 
 Three of the fixes we implemented were *correct but irrelevant* — the
@@ -656,6 +659,26 @@ a 100k-event store: the scan costs 50.5 ms about 2 uids and 58.9 ms about
 20,000 — flat, because the uids were never the work — while one postings
 probe costs 0.005 ms. Both paths kept, chosen by the ratio between them, so
 bulk ingest keeps the scan it actually needs.
+
+**And then the same discipline took most of that headline back.** The rule
+this project keeps — after changing anything, re-run the published table —
+found `docs/eval_writes.md`'s single-row append *unmoved*: 96 ev/s before,
+95 after. The probe materializes node *versions*, so its cost scales with
+distinct entities rather than with events, and that benchmark's generator
+mints `scale / 100` entities: its append test runs against **1,000** of them,
+where the defect was worth under a millisecond. The 90.6 → 34.9 figure above
+came from a generator with a fresh entity pair per event — 200,000 node
+versions, the other end of the same axis. On this host: ~0.6 ms at 1,000
+node versions, 24.2 ms at 40,000, 157.4 ms at 200,000; 0.005 ms on the new
+path throughout.
+
+Both sentences are true — an O(entities) cost on every ingest batch, and no
+change to any published write number — and only the flattering one was going
+to get written down. **A speedup is a property of a workload, not of a
+patch**, and the workload that produced it deserves the same scrutiny as the
+patch: ours differed from the benchmark's on an axis (entity cardinality)
+that nobody had thought to hold fixed, because nobody had previously had a
+reason to care about it.
 
 This is the sixth entry in the misdiagnosis table with the same shape — *a
 small lookup rebuilding the whole store* — and the second time it was found

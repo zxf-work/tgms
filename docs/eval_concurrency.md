@@ -163,12 +163,56 @@ per batch size, p50:
 | **total ms** | **5.76** | 7.27 | 16.80 | 117.29 |
 | **ms per row** | 5.764 | 0.727 | 0.168 | 0.117 |
 
-**Neither published attribution survived, in a way neither document could
-have predicted.** The measurement that mattered was taken *before* this
-table, on the same code: at batch=1 the total was 90.6 ms, of which
+**A third cost was in front of both of them, and it is not on this table
+because it was fixed first.** At batch=1 the total was 90.6 ms, of which
 `apply_ops` was 59.9 — an existence probe materializing the whole node store
-to answer a question about two uids (`engine_lessons.md` §16). That is fixed,
-and the table above is the world after it.
+to answer a question about two uids (`engine_lessons.md` §16). The table
+above is the world after that fix.
+
+### How big that third cost was depends on entity cardinality — including on this table
+
+The probe materialized every *node version*, so its cost scales with the
+number of distinct entities, not with the number of events. Measured on
+xzgpu, the old engine-side scan (recovered by forcing the same branch, which
+is flat in the number of uids asked about) against the postings probe that
+replaced it:
+
+| stored node versions | old probe | new probe |
+|---:|---:|---:|
+| 1,000 | ~0.6 ms | 0.005 ms |
+| 40,000 | 24.2 ms | 0.005 ms |
+| 200,000 | 157.4 ms | 0.007 ms |
+
+**This retired a claim of our own, one paragraph after making it.** The
+90.6 → 34.9 ms headline was measured with a generator that mints a fresh
+entity pair per event — 200,000 node versions at a 100k-event store, the
+high-cardinality end. `docs/eval_writes.md` uses the project's standard
+generator, where `n_nodes = scale / 100`: its append benchmark runs against
+**1,000 entities**, where the defect was worth under a millisecond. And
+indeed the re-measured write table below is unchanged.
+
+So the honest form of the claim: the defect was an **O(entities) cost paid by
+every ingest batch**, invisible at the entity cardinality this project's own
+write benchmark uses and dominant an order of magnitude above it. Both
+statements are true and only one of them was going to get written down if the
+published table had not been re-run.
+
+### The write table, re-measured (xzgpu, commit `cb3248e`)
+
+| | published (`caa5246`) | today |
+|---|---|---|
+| load 200k | 4.58 s / 43,700 ev/s | 4.56 s / 43,818 ev/s |
+| load 1M | 23.56 s / 42,400 ev/s | 23.63 s / 42,311 ev/s |
+| append b=1 | 9.83 / 17.71 ms, 96 ev/s | 10.31 / 16.58 ms, **95 ev/s** |
+| append b=10 | 4.06 / 6.30 ms, 1,846 ev/s | 3.78 / 5.44 ms, 2,582 ev/s |
+| append b=100 | 5.28 / 6.13 ms, 18,703 ev/s | 5.30 / 6.97 ms, 17,806 ev/s |
+| append b=1000 | 21.76 / 21.43 ms, 45,958 ev/s | 22.28 / 21.77 ms, 44,874 ev/s |
+| correction p50 | 4.84 / 6.98 ms | 4.66 / 6.8 ms |
+| correction growth | 63,671 B | 63,694 B |
+
+Every cell inside the ±20% band, and `append b=1` unmoved at 95 ev/s. **No
+published write number changes.** The registry is likewise unaffected: all 13
+queries still agree by hash across native and DuckDB at 1M.
 
 *Now* both are partly right, about different things, and the split says which
 fix belongs to which.
