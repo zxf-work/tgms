@@ -288,9 +288,9 @@ can honestly be measured against.
 
 100k-row store, **400 rows per writer** — one trial per condition, 400
 latency samples in each. (Two further trials were planned and abandoned: the
-serialized 32-writer condition alone commits 12,800 generations and was
-taking longer than the result was worth once the shape had replicated. The
-trial count is one; the replication below is what stands in for a spread.)
+serialized 32-writer condition alone commits 12,800 generations and takes
+about thirteen minutes, and the shape had already replicated. **The trial
+count is one**; the independent run below is what stands in for a spread.)
 
 | writers | serialized rows/s | coalesced rows/s | speedup | serialized p50 / p99 | coalesced p50 / p99 | generations |
 |---:|---:|---:|---:|---:|---:|---|
@@ -299,25 +299,30 @@ trial count is one; the replication below is what stands in for a spread.)
 | 4 | 63.2 | 398.9 | 6.31× | 63.31 / 153.12 ms | 9.58 / 13.85 ms | 1,600 → 401 |
 | 8 | 43.1 | 698.7 | 16.2× | 182.68 / 485.78 ms | 10.70 / 15.62 ms | 3,200 → 401 |
 | 16 | 27.6 | 1,085.1 | 39.3× | 614.90 / 983.81 ms | 13.65 / 20.21 ms | 6,400 → 405 |
+| 32 | 16.3 | 1,730.0 | **106×** | 1,972.0 / 3,479.8 ms | 17.51 / 28.01 ms | 12,800 → 407 |
 
 Replicated by an earlier independent run at 40 rows per writer, same host and
-commit, which adds a 32-writer point: 73.0 → 1,592.2 rows/s (21.8×), p50
-415.0 → 16.1 ms, 1,280 → 45 generations. Shapes agree; the absolute
-throughputs differ because the two runs commit different totals into stores
-of different final sizes, which is itself the point of the next paragraph.
+commit: 73.0 → 1,592.2 rows/s at 32 writers (21.8×), p50 415.0 → 16.1 ms,
+1,280 → 45 generations. The shapes agree and the coalesced absolutes nearly
+do (1,592 against 1,730 rows/s); the *serialized* column differs a lot (73.0
+against 16.3) because that run committed a tenth as many generations into a
+much smaller final store — which is the next paragraph's point, arriving as
+a side effect.
 
 Both claims, kept separate:
 
-- **Throughput.** Coalesced throughput rises with writers (109 → 1,085
-  rows/s, 16×). Serialized throughput *falls* — 164.5 → 27.6 rows/s, a 6×
-  degradation — and that is not contention. It is §20 compounding: 6,400
-  singleton commits publish 6,400 generations, each adding a segment that
-  every later manifest must name, serialize, hash and verify. The singleton
-  write path makes itself slower as it runs. Coalescing to 405 generations
-  removes the pressure rather than parallelizing around it.
-- **Per-caller latency.** Stays inside one commit's cost across a 16×
-  increase in writers — 8.9 → 13.7 ms — where serialized latency grows to
-  614.9 ms p50 and 983.8 ms p99.
+- **Throughput.** Coalesced throughput rises with writers (109 → 1,730
+  rows/s, 16×). Serialized throughput *falls* — 164.5 → 16.3 rows/s, a 10×
+  degradation — and that is not contention. It is §20 compounding: 12,800
+  singleton commits publish 12,800 generations, each adding a segment that
+  every later manifest must name, clone, serialize, hash and verify. The
+  singleton write path makes itself slower as it runs. Coalescing to 407
+  generations removes the pressure rather than parallelizing around it, which
+  is why the ratio reaches 106× — most of that is the serialized path
+  degrading, not the coalesced path accelerating.
+- **Per-caller latency.** Stays inside a small multiple of one commit across
+  a 32× increase in writers — 8.9 → 17.5 ms — where serialized latency grows
+  to 1,972 ms p50 and 3,480 ms p99.
 
 **Where it does not pay, stated plainly.** Nothing for bulk ingest, which
 already batches. Nothing for a single writer — by design, since it must not
