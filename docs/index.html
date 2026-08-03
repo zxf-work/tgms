@@ -727,7 +727,7 @@
           </div>
 
           <div class="hero-meta">
-            <span>14 verified temporal operators</span>
+            <span><span data-fact="operator_count">14</span> verified temporal operators</span>
             <span>Bi-temporal by default</span>
             <span>Apache-2.0</span>
           </div>
@@ -969,15 +969,15 @@
 
           <div class="engine-metrics">
             <div class="engine-metric">
-              <strong>14.7 ms</strong>
-              <span>Temporal traversal at 200K events; the graph engines measured here take 3.9–7.3 s.</span>
+              <strong><span data-fact="traversal_200k_native_ms">14.7</span> ms</strong>
+              <span>Temporal traversal at 200K events; the graph engines measured here take <span data-fact="traversal_200k_graph_engines">3.9-7.3</span> s.</span>
             </div>
             <div class="engine-metric">
-              <strong>24.6 B/row · 1.76 GB</strong>
+              <strong><span data-fact="storage_bytes_per_row">24.6</span> B/row · <span data-fact="memory_10m_suite">1.76</span> GB</strong>
               <span>On-disk footprint, and peak memory for the full 10M-event query suite under a 2 GB cap.</span>
             </div>
             <div class="engine-metric">
-              <strong>6 systems, 13 queries, 0 gaps</strong>
+              <strong><span data-fact="system_count">6</span> systems, <span data-fact="registry_queries">13</span> queries, 0 gaps</strong>
               <span>Every answer hash-verified across TGMS, DuckDB, PostgreSQL, ClickHouse, Neo4j, and Memgraph before any timing.</span>
             </div>
           </div>
