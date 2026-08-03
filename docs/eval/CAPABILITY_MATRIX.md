@@ -9,6 +9,16 @@ is `unsupported` or `approximated` — the expressiveness gap this evaluation
 was designed to expose does not exist at the registry's scope, on any of
 the five non-native systems. That is a finding, not a disclaimer.
 
+**And it is a finding about this registry, which we wrote.** Measured
+against a workload nobody here chose, the same comparison runs the other
+way: of LDBC SNB's 41 read templates, the operator algebra expresses 3, and
+35 of the 38 it cannot express are blocked by labelled pattern matching and
+property projection — capabilities every system in the table above has and
+TGMS deliberately does not. `docs/eval/EXTERNAL_BENCHMARKS.md` has the
+query-by-query classification. Both facts are true, and quoting the first
+without the second would be the kind of scope error this project keeps
+finding in its own claims.
+
 | query | native | duckdb | postgres | clickhouse | neo4j | memgraph |
 |---|---|---|---|---|---|---|
 | hist.single | eq | eq | eq | eq | eq | eq |
