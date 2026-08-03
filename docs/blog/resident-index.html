@@ -1,0 +1,378 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>How a Resident Index Slowed an Unrelated Scan by 18% — TGMS blog</title>
+<meta name="description" content="A published benchmark number would not reproduce. The first hypothesis measured false; a bisect pointed at a commit touching no scan path. Holding a traversal index costs an unrelated query 18%, and releasing it returns the time exactly.">
+<style>
+:root{--ink:#1a2534;--mut:#5b6b7c;--blue:#1c64d9;--blue2:#3b82f6;--line:#e3e8ef;
+      --bg:#fbfcfe;--card:#fff;--codebg:#0e1c30;--codetx:#dce7f5;--ok:#0a7d33;
+      --amber:#b58900;--bad:#c0392b;
+      --mono:ui-monospace,'SF Mono',Menlo,monospace}
+@media (prefers-color-scheme: dark){
+:root{--ink:#e6edf6;--mut:#95a6ba;--blue:#6ea8ff;--blue2:#8bbcff;--line:#243244;
+      --bg:#0b1420;--card:#121e2e;--codebg:#0a1017;--codetx:#cfe0f2;--ok:#4ade80;
+      --amber:#e3b341;--bad:#f87171}}
+*{box-sizing:border-box}
+body{margin:0;font-family:-apple-system,'Segoe UI',Roboto,sans-serif;
+     color:var(--ink);background:var(--bg);-webkit-font-smoothing:antialiased}
+.hero{background:linear-gradient(150deg,#0e1c30 0%,#173863 62%,#1c64d9 130%);
+      color:#fff;padding:30px 24px 44px}
+.hero .nav{max-width:760px;margin:0 auto 30px;font-size:14px}
+.hero .nav a{color:#c9d8ef;text-decoration:none;margin-right:14px}
+.hero .inner{max-width:760px;margin:0 auto}
+.kicker{display:inline-block;background:#ffffff22;border:1px solid #ffffff33;
+        border-radius:14px;padding:3px 12px;font-size:12px;letter-spacing:.08em;
+        text-transform:uppercase;color:#dbe7f8}
+h1{font-size:clamp(26px,4.6vw,38px);line-height:1.16;letter-spacing:-.7px;
+   margin:14px 0 10px;color:#fff}
+.byline{color:#a9c0e2;font-size:14.5px}
+.byline a{color:#dbe7f8}
+article{max-width:760px;margin:0 auto;padding:40px 24px 30px;line-height:1.72;
+        font-size:17px}
+article>p:first-of-type{font-size:19px;color:var(--mut)}
+h2{font-size:23px;letter-spacing:-.3px;margin:44px 0 12px;position:relative;
+   padding-top:18px}
+h2::before{content:"";position:absolute;top:0;left:0;width:44px;height:4px;
+   border-radius:2px;background:linear-gradient(90deg,var(--blue),var(--blue2))}
+.pull{font-size:22px;line-height:1.45;font-weight:600;letter-spacing:-.2px;
+      border:0;margin:30px 0;padding:0 0 0 22px;position:relative;color:var(--ink)}
+.pull::before{content:"";position:absolute;left:0;top:6px;bottom:6px;width:5px;
+      border-radius:3px;background:linear-gradient(180deg,var(--blue),var(--blue2))}
+.duo{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin:22px 0}
+@media(max-width:640px){.duo{grid-template-columns:1fr}}
+.duo .cell{background:var(--card);border:1px solid var(--line);border-radius:12px;
+     padding:14px 16px}
+.duo .cell b{display:block;font-size:13px;text-transform:uppercase;
+     letter-spacing:.06em;color:var(--mut);margin-bottom:6px}
+.duo .big{font-size:30px;font-weight:700;color:var(--blue)}
+.duo .big.bad{color:var(--bad)}
+figure{margin:26px 0;background:var(--card);border:1px solid var(--line);
+       border-radius:14px;padding:18px 18px 8px}
+figcaption{color:var(--mut);font-size:13.5px;line-height:1.5;padding:8px 4px 10px}
+table{border-collapse:collapse;width:100%;font-size:15px;margin:20px 0;
+      background:var(--card);border-radius:12px;overflow:hidden;
+      border:1px solid var(--line)}
+th,td{padding:11px 12px;text-align:right;border-bottom:1px solid var(--line)}
+th{background:#1c64d90d;font-size:13px;text-transform:uppercase;
+   letter-spacing:.04em;color:var(--mut)}
+th:first-child,td:first-child{text-align:left}
+tr:last-child td{border-bottom:0}
+td.win{color:var(--ok);font-weight:700}
+td.miss{color:var(--bad);font-weight:700}
+a{color:var(--blue)}
+code{font-family:var(--mono);background:#1c64d914;border-radius:5px;
+     padding:1px 6px;font-size:.9em}
+.note{background:#1c64d90e;border:1px solid #1c64d930;border-radius:12px;
+      padding:14px 18px;font-size:15px;margin:24px 0;line-height:1.6}
+.next{max-width:760px;margin:0 auto;padding:0 24px 70px}
+.next a{display:block;background:var(--card);border:1px solid var(--line);
+        border-radius:14px;padding:18px 22px;text-decoration:none;color:var(--ink);
+        transition:transform .12s, box-shadow .12s}
+.next a:hover{transform:translateY(-2px);box-shadow:0 10px 26px #0e1c301f}
+.next .lbl{font-size:12px;color:var(--mut);text-transform:uppercase;letter-spacing:.07em}
+.next .ttl{color:var(--blue);font-weight:650;font-size:17px;margin-top:4px}
+.sub{color:#c9d8ef;font-size:16.5px;line-height:1.5;margin:6px 0 10px;max-width:56ch}
+.lede{margin:0 0 26px;padding:16px 20px;border-left:5px solid var(--blue);
+      background:var(--card);border-radius:0 12px 12px 0;font-size:18px;
+      line-height:1.6;color:var(--ink)}
+article ul{padding-left:22px;margin:16px 0}
+article li{margin:7px 0}
+svg text{font-family:-apple-system,'Segoe UI',Roboto,sans-serif}
+svg .m{font-family:var(--mono)}
+</style></head><body>
+
+<div class="hero">
+<div class="nav"><a href="../">← TGMS</a><a href="./">blog</a>
+<a href="https://github.com/zxf-work/tgms">github</a></div>
+<div class="inner">
+<span class="kicker">Post #10 · Engineering case study</span>
+<h1>How a Resident Index Slowed an Unrelated Scan by 18%</h1>
+<div class="sub">A published number would not reproduce. Two wrong
+explanations later, the cause was a data structure the query never
+touches.</div>
+<div class="byline">Xiaofei Zhang · University of Memphis · 3 August 2026 ·
+TGMS 0.4.0 · snapshot <code>registry-v2</code> · status: Current ·
+<a href="https://github.com/zxf-work/tgms/blob/main/docs/eval_phase0.md">records</a> ·
+<a href="https://github.com/zxf-work/tgms">code</a></div>
+</div></div>
+
+<article>
+<blockquote class="lede"><b>In one sentence:</b> An index built by one query
+and left in memory makes a completely unrelated query
+<span data-fact="resident_index_tax_pct">18</span>% slower for as long as it
+is held — which quietly taxed our own published benchmark numbers, and taxes
+any long-lived process that runs one path query and then keeps
+working.</blockquote>
+
+<h2>Why this matters</h2>
+
+<p>A routine check before publishing a new benchmark table: does the rest of
+the table still say what it said? It did not. Our bucketed-count query at one
+million events read 84 ms against a published
+<span data-fact="series_1m_july_published_ms">59.0</span>. Same dataset, same
+code path, byte-identical answer — a number that had been printed to the tenth
+of a millisecond, and it had moved by 40%.</p>
+
+<p>A benchmark number that will not reproduce is worse than a slow one,
+because every conclusion resting on it is now unpinned. And the reason turned
+out not to be a regression at all. It was that <b>a query's latency is a
+property of the process it runs in, not of the query</b> — which is a fact
+about how we measure, and also a fact about how the system behaves in
+production.</p>
+
+<h2>The idea in plain language</h2>
+
+<p>Two terms, both defined by the problem they cause here.</p>
+
+<p>A <b>traversal index</b> is a lookup structure TGMS builds the first time a
+query walks relationships — it turns "who does this entity point to?" from a
+scan into a direct jump, and saves about 400 ms on the query that builds it.
+Once built it stays in memory for the life of the process, because the next
+traversal query would otherwise rebuild it.</p>
+
+<p>A <b>working set</b> is the slice of data a query touches often enough to
+want it in fast memory. A full-window scan streams tens of megabytes per call;
+the parts it re-reads are what keep it fast, and anything else large and
+resident competes for the same space.</p>
+
+<p>The mechanism is then ordinary: the index is not <i>used</i> by the scan
+but it is <i>resident</i>, and it evicts the part of the scan's working set
+that was staying hot.</p>
+
+<figure>
+<svg viewBox="0 0 720 210" width="100%" role="img"
+     aria-label="One process runs several queries in a fixed order. The path query runs first and builds a traversal index that stays resident. Every scan-based query afterwards runs about 18 percent slower, even though none of them use the index.">
+  <text x="14" y="22" font-size="12.5" fill="var(--mut)">one process, queries in
+  registry order →</text>
+  <rect x="14" y="36" width="120" height="46" rx="9" fill="var(--blue)" opacity=".18"
+        stroke="var(--blue)" stroke-opacity=".55"/>
+  <text x="74" y="58" font-size="12.5" fill="var(--ink)" text-anchor="middle">path query</text>
+  <text x="74" y="74" font-size="11" fill="var(--mut)" text-anchor="middle">builds the index</text>
+
+  <rect x="160" y="36" width="118" height="46" rx="9" fill="var(--mut)" opacity=".16"
+        stroke="var(--mut)" stroke-opacity=".45"/>
+  <text x="219" y="63" font-size="12.5" fill="var(--ink)" text-anchor="middle">scan query</text>
+
+  <rect x="304" y="36" width="118" height="46" rx="9" fill="var(--mut)" opacity=".16"
+        stroke="var(--mut)" stroke-opacity=".45"/>
+  <text x="363" y="63" font-size="12.5" fill="var(--ink)" text-anchor="middle">scan query</text>
+
+  <rect x="448" y="36" width="118" height="46" rx="9" fill="var(--mut)" opacity=".16"
+        stroke="var(--mut)" stroke-opacity=".45"/>
+  <text x="507" y="63" font-size="12.5" fill="var(--ink)" text-anchor="middle">scan query</text>
+
+  <rect x="14" y="104" width="552" height="30" rx="7" fill="#7c5cd6" opacity=".18"
+        stroke="#7c5cd6" stroke-opacity=".5"/>
+  <text x="26" y="124" font-size="12" fill="var(--ink)">traversal index stays
+  resident for the life of the process</text>
+
+  <g stroke="var(--amber)" stroke-width="2" fill="none">
+    <path d="M219,90 L219,100"/><path d="M363,90 L363,100"/><path d="M507,90 L507,100"/>
+  </g>
+  <text x="14" y="160" font-size="12" fill="var(--amber)">every scan after the first
+  path query pays about 18% — none of them use the index</text>
+  <text x="14" y="184" font-size="11.5" fill="var(--mut)">Releasing the index returns
+  the time exactly, so the cost is residency, not damage.</text>
+</svg>
+<figcaption>The mechanism: the index is never read by the scans, it only
+occupies space their working set wanted. A conceptual diagram of one process's
+timeline, not measured data.</figcaption>
+</figure>
+
+<h2>Two explanations that were wrong</h2>
+
+<p><b>The first hypothesis was a knob we had turned the day before.</b> A
+scan-parallelism gate — the threshold deciding when a scan splits across
+threads — had been recalibrated. Testable without changing any default: force
+the parallel path on through an environment override and measure both ways.
+The result was <span data-fact="parallel_gate_ab_forced_ms">83.1</span> ms
+forced against <span data-fact="parallel_gate_ab_default_ms">84.4</span> ms at
+the default — nothing, well inside the reproducibility band. The hypothesis
+was <b>measured false</b> before a line of configuration changed, which cost
+one run and saved a wrong recalibration.</p>
+
+<p><b>The second attempt was a bisect</b>: <span data-fact="bisect_builds">5</span>
+engine builds, one run each, about fifteen minutes. It landed on a commit that
+persists the traversal index — three Python files, none on any scan path. That
+a scan-irrelevant commit could move a scan by 18% was implausible enough that
+the next step had to be a probe rather than a patch.</p>
+
+<h2>What we measured</h2>
+
+<div class="note"><b>Evidence.</b> Question: does holding a built traversal
+index slow an unrelated query, and if so is it the index or its underlying
+columns? Workload: the bucketed-count query (<code>series.count</code>) over a
+1,000,000-event synthetic bi-temporal store, warm, one 40-core host. Design:
+five conditions measured <i>in a single process</i> against one store, so
+nothing differs but what is resident — nothing held; 1M rows of plain integer
+columns held; the index's own source columns held; the built index held; then
+the index released. Metric: median latency in milliseconds, lower is better.
+Held constant: the store, the query, the process, the code. Latency cells
+reproduce to about ±<span data-fact="reproducibility_band">20</span>% between
+days, so this comparison is only meaningful because all five conditions ran
+minutes apart in one process. Records:
+<code>benchmarks/results-v1/</code>.</div>
+
+<h2>What we found</h2>
+
+<p>Holding the built index costs the unrelated query
+<span data-fact="resident_index_tax_pct">18</span>%. Holding merely the
+columns the index is built from costs 4–5%. Releasing the index returns the
+time — to within a tenth of a millisecond of where it started. That
+reversibility is what makes it a residency effect rather than damage, and a
+second query measured in the same process does not move at all.</p>
+
+<figure>
+<svg viewBox="0 0 720 268" width="100%" role="img"
+     aria-label="Bucketed-count query at 1M events, five conditions in one process: 68.4 ms with nothing resident, 71.7 with plain columns held, 71.1 with the index's own columns held, 80.7 with the built index held — 18 percent slower — and 68.3 after releasing it, back to the starting time.">
+  <g stroke="var(--line)" stroke-width="1">
+    <line x1="62" y1="200" x2="700" y2="200"/>
+    <line x1="62" y1="146.7" x2="700" y2="146.7" opacity=".55"/>
+    <line x1="62" y1="93.3" x2="700" y2="93.3" opacity=".55"/>
+    <line x1="62" y1="40" x2="700" y2="40" opacity=".55"/>
+  </g>
+  <g font-size="11.5" fill="var(--mut)" text-anchor="end">
+    <text x="56" y="204">0</text><text x="56" y="151">30</text>
+    <text x="56" y="97">60</text><text x="56" y="44">90</text>
+  </g>
+  <text x="14" y="26" font-size="12" fill="var(--mut)">ms · lower is better</text>
+  <g>
+    <rect x="80" y="78.4" width="84" height="121.6" rx="4" fill="var(--blue)" opacity=".85"/>
+    <rect x="196" y="72.5" width="84" height="127.5" rx="4" fill="var(--blue)" opacity=".85"/>
+    <rect x="312" y="73.6" width="84" height="126.4" rx="4" fill="var(--blue)" opacity=".85"/>
+    <rect x="428" y="56.5" width="84" height="143.5" rx="4" fill="var(--amber)" opacity=".9"/>
+    <rect x="544" y="78.6" width="84" height="121.4" rx="4" fill="var(--ok)" opacity=".85"/>
+  </g>
+  <g font-size="13.5" class="m" fill="#fff" text-anchor="middle">
+    <text x="122" y="98" data-fact="resident_probe_nothing_ms">68.4</text>
+    <text x="238" y="92" data-fact="resident_probe_plain_columns_ms">71.7</text>
+    <text x="354" y="93" data-fact="resident_probe_index_columns_ms">71.1</text>
+    <text x="470" y="76" data-fact="resident_probe_index_built_ms">80.7</text>
+    <text x="586" y="98" data-fact="resident_probe_released_ms">68.3</text>
+  </g>
+  <g font-size="12" fill="var(--mut)" text-anchor="middle">
+    <text x="122" y="220">nothing</text><text x="122" y="235">resident</text>
+    <text x="238" y="220">plain columns</text><text x="238" y="235">held</text>
+    <text x="354" y="220">index's own</text><text x="354" y="235">columns held</text>
+    <text x="470" y="220" fill="var(--amber)">the built index</text>
+    <text x="470" y="235" fill="var(--amber)">held</text>
+    <text x="586" y="220" fill="var(--ok)">released</text>
+    <text x="586" y="235" fill="var(--ok)">again</text>
+  </g>
+  <text x="62" y="258" font-size="11.5" fill="var(--mut)">series.count, 1M events,
+  one process, one warm store · +18% held, and all of it returned on release.</text>
+</svg>
+<figcaption>The axis starts at zero, so the 18% gap is drawn as 18%. Amber
+marks the condition where TGMS is slower — a cost, not a failure; green marks
+the release that hands the time back. The four-condition design is the whole
+argument: holding the index's <i>source columns</i> costs 4–5%, so most of the
+18% belongs to the built structure rather than to the raw bytes.
+<code>series.count</code> at 1M, median of repeated runs, all conditions in a
+single process minutes apart.</figcaption>
+</figure>
+
+<p>That also reconciles the number we could not reproduce. The July figure was
+<span data-fact="series_1m_july_published_ms">59.0</span>. Re-running commits
+that predate every engine change since then still gives about 70 ms — roughly
+<span data-fact="betweenday_drift_pct">18</span>% of between-day drift on the
+measurement host, which is a separate effect and not the index. Add the
+resident index's 18% on top and you land near the 84 ms that started this. Two
+independent 18% effects, compounding, and neither of them a code regression.</p>
+
+<h2>What this means in practice</h2>
+
+<p><b>First, a measurement consequence.</b> Our registry runs
+<span data-fact="registry_queries">13</span> queries in one process in a fixed
+order, and the traversal query runs <i>before</i> the aggregation queries. So
+every native aggregation number we have published has been quietly paying for
+the index built by the query ahead of it, on every run, for as long as the
+table has existed. TGMS is also the only system in that table that builds such
+an index, so the tax is one-sided — the baselines do not pay it.</p>
+
+<p>Nothing in that was wrong and no conclusion moved: the gaps those tables
+report are two-fold and up, far outside an 18% effect. But a reader comparing
+columns has a right to know it is there, so the records now say so and the
+tables carry an explicit
+±<span data-fact="reproducibility_band">20</span>% reproducibility bound. One
+conclusion that lived inside that band — a 1.3% "win" on the interval join at
+1M — is relabelled a tie.</p>
+
+<div class="pull">A number is a property of a process, not of a query. Ours had
+four meanings depending on what had run before it.</div>
+
+<p><b>Second, a product consequence, and it is the one that matters to
+users.</b> A long-lived agent process is exactly what this describes: run one
+path query, keep the index, pay 18% on every scan for the rest of the session.
+That is a defensible trade for an agent doing repeated traversals — the index
+saves about 400 ms on the query that builds it — and a bad one for an agent
+that asks a single path question and then spends an hour aggregating.</p>
+
+<p>The fix is not to delete the index, but to make residency a <b>budgeted
+decision</b>, the way segment residency already is, rather than a cache born
+immortal and never asked to justify itself. An engine that can say "this
+structure costs 18% of your scans, keep it?" is making a choice; one that
+silently keeps everything is making the same choice badly.</p>
+
+<h2>What this result does not show</h2>
+
+<ul>
+<li>It does not show 18% is a constant. One query shape, one scale, one host,
+one index; a scan with a smaller working set, or a machine with more cache,
+would show a different number — possibly none.</li>
+<li>It does not show the index is not worth building. It saves roughly 400 ms
+on the query that builds it; this prices the other side of a trade, not the
+trade's verdict.</li>
+<li>It does not explain the between-day drift, a separate ~18% that remains
+uncharacterised — host state, thermal behaviour and scheduling are all
+candidates and none is isolated.</li>
+<li>The mechanism is inferred from residency and reversibility, not from cache
+counters; we did not instrument last-level cache misses.</li>
+</ul>
+
+<h2>Takeaway</h2>
+
+<p>An index no query in sight reads can still be why a query is slow, because
+occupying memory is itself a cost. The discipline that found it: test the
+plausible hypothesis with an override instead of believing it, bisect when the
+override says no, and when the bisect lands somewhere impossible, isolate
+conditions in one process rather than reasoning about them. Two of those three
+steps returned nothing, and both are in the records — a null result is
+evidence about a hypothesis.</p>
+
+<h2>Evidence and reproduction</h2>
+
+<div class="note"><b>Receipts.</b> The reproducibility bound, the registry
+tables it applies to, and the four-condition probe:
+<a href="https://github.com/zxf-work/tgms/blob/main/docs/eval_phase0.md">eval_phase0.md</a>.
+The narrative version with the full condition table is §9g of
+<a href="https://github.com/zxf-work/tgms/blob/main/docs/engine_lessons.md">engine_lessons.md</a>.
+The two runs that found nothing — the parallelism A/B and the five-commit
+bisect — ship in <code>benchmarks/results-v1/</code> with the rest, because a
+null result is evidence about a hypothesis.</div>
+
+<h2>Continue reading</h2>
+
+<ul>
+<li><b>Before this:</b> <a href="building-the-engine.html">why TGMS needed a
+native storage engine</a> — where that in-memory index comes from, and why it
+is not on disk.</li>
+<li><b>After this:</b> <a href="evaluating-the-engine.html">where TGMS is fast
+and where specialists still win</a> — the tables this effect applies to.</li>
+</ul>
+
+<h2>Changelog</h2>
+<ul>
+<li><b>3 August 2026</b> — first published. This material previously appeared
+as a third strand inside <a href="racing-the-specialist.html">post #9</a>,
+where it was too compressed to show the reasoning; it is told here in full and
+removed from there. The chart's baseline is now zero, so the 18% difference is
+drawn as 18%, and the condition where TGMS is slower is amber rather than red:
+it is a cost, not a failure.</li>
+</ul>
+</article>
+
+<div class="next"><a href="./">
+<div class="lbl">Next up</div>
+<div class="ttl">All posts — the TGMS engineering blog →</div></a></div>
+
+<script data-goatcounter="https://zxf-tgms.goatcounter.com/count" async src="https://gc.zgo.at/count.js"></script>
+</body></html>
