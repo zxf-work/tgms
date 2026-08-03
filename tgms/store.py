@@ -7,6 +7,7 @@ event log first (write-ahead), then applied to the backend at the same tt.
 
 from __future__ import annotations
 
+import threading
 from pathlib import Path
 from typing import Any, Iterable, Iterator
 
@@ -39,6 +40,15 @@ class Store:
         #: backends without a cursor and on legacy stores until their next
         #: write (which pays a one-time full-prefix hash to start the chain).
         self._chain: str | None = None
+        #: One write batch at a time. The engine is single-writer by design
+        #: (D-028) and says so by refusing a nested batch, but two *threads*
+        #: in one process used to interleave `_write` and surface that as
+        #: "transaction time must advance ... this is an engine bug", losing
+        #: writes to a message that blames the wrong layer. Serializing here
+        #: costs an uncontended lock against a ~34 ms commit; callers that
+        #: want concurrency without the serialization want
+        #: `tgms.write.GroupCommitWriter`, which coalesces instead.
+        self._write_lock = threading.Lock()
         if not read_only:
             self._recover()
         self.clock = HybridLogicalClock(last_tt=self.eventlog.last_tt())
@@ -176,6 +186,10 @@ class Store:
                 f"Reopen without read_only=True — and only from the single "
                 f"writer process, since a second writer is undefined."
             )
+        with self._write_lock:
+            return self._write_locked(ops)
+
+    def _write_locked(self, ops: list[dict[str, Any]]) -> int:
         tt = self.clock.tick()
         _batch_id, end_offset, record = self.eventlog.append(tt, ops)
         note_cursor = getattr(self.adapter, "note_event_cursor", None)
