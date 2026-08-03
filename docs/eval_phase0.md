@@ -895,7 +895,7 @@ bitset answers with a popcount and merges by OR:
 | … `count_distinct`'s share | 240.7 | **9.6** |
 | distinct-dst alone by rel_type × bucket | 312.6 | 98.1 |
 | one global distinct over the whole window | 319.1 | 80.7 |
-| distinct-dst grouped by `endpoint` (100k groups) | 1344.2 | 1329.8 |
+| count + distinct-dst grouped by src `endpoint` (100k groups) | 1344.2 | 1329.8 |
 
 **3.4× on the query, 25× on the aggregate.** The last row is the design
 working as intended rather than a miss: a bitset per group is a capacity
@@ -938,8 +938,8 @@ the DuckDB adapter and the Kuzu adapter together or the backends diverge
 silently, and it would put `reciprocity`'s `src * n + dst` pair key and the
 portable aggregation's `inv * base + ids` one unnoticed weak-promotion rule
 away from overflowing. For ≤53 ms on the subset of queries that project
-both endpoints over a full window, against a change that touches two
-backends and three operators to buy a silent-overflow risk, the trade is
+both endpoints over a full window, against a change that touches three
+adapters and three operators to buy a silent-overflow risk, the trade is
 not worth taking. **The dtype contract is load-bearing.**
 
 **What the registry says.** At 10M the three changes move exactly the three
