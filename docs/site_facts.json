@@ -814,6 +814,13 @@
       "kind": "benchmark",
       "prose": "times more rows per second at 16 concurrent single writers when queued writes share one fsync; opt-in, because it costs the single-writer case 56% latency",
       "snapshot": "concurrency-1m-d049"
+    },
+    "append_batch1_ev_s": {
+      "value": "95",
+      "kind": "benchmark",
+      "prose": "events per second appending one event per commit — the durable commit floor, several fsyncs and a fresh manifest per event",
+      "snapshot": "concurrency-1m-d049",
+      "was": "96 in the earlier eval-writes run at caa5246, inside the +/-20% band"
     }
   },
   "retired_phrases": [

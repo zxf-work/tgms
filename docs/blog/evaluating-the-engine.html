@@ -171,7 +171,7 @@ between days, so differences smaller than that are ties. Raw records:
 <p>Three results, in decreasing order of how much they should affect a
 decision.</p>
 
-<p><b>1. On traversal, the specialists lose by one to two orders of
+<p><b>1. On traversal, the specialists lose by about two orders of
 magnitude — on the query family that is supposedly their home ground.</b>
 Temporal reachability at 200k events costs TGMS
 <span data-fact="traversal_200k_native_ms">14.7</span> ms; the two graph
@@ -187,8 +187,8 @@ scan per hop. Cypher expressed the motif query more elegantly than any SQL
 in the study and still ran it two orders of magnitude slower. Query
 elegance and execution speed are independent axes.</p>
 
-<p><b>2. On whole-window aggregation ClickHouse still wins, by a factor of
-two at every scale we measure.</b> It answers the bucketed count at 10M in
+<p><b>2. On whole-window aggregation ClickHouse still wins above a few
+hundred thousand events, by a factor of two.</b> It answers the bucketed count at 10M in
 <span data-fact="series_10m_clickhouse_ms">37.9</span> ms against our
 <span data-fact="series_10m_native_ms">84.7</span> —
 <span data-fact="clickhouse_agg_lead_10m">2.2</span>×, and the same ratio
@@ -205,7 +205,8 @@ still the right tool.</p>
 why.</b> PostgreSQL held this shape for most of the campaign — a warm
 B-tree is a hard floor. At 200k and 1M, TGMS now answers in
 <span data-fact="point_lookup_200k_native_ms">0.1</span> ms against
-PostgreSQL's <span data-fact="point_lookup_200k_postgres_ms">0.3</span>,
+PostgreSQL's <span data-fact="point_lookup_200k_postgres_ms">0.3</span> at
+200k and 0.4 at a million,
 because a profiling pass removed a segment rebuild from a path that an
 index had already resolved. At 10M events PostgreSQL is still ahead. The
 honest summary is that the two are close on this shape and the ordering
@@ -218,7 +219,7 @@ depends on scale.</p>
 <tr><td>Reconstructing past belief states, auditing corrections</td><td class="win">TGMS</td></tr>
 <tr><td>Time-respecting traversal, temporal motifs, interval joins</td><td class="win">TGMS</td></tr>
 <tr><td>Large whole-window aggregation and rollups</td><td>ClickHouse, by about 2×</td></tr>
-<tr><td>Grouped aggregation over event history</td><td class="win">Either — within ~1.4× at every scale measured</td></tr>
+<tr><td>Grouped aggregation over event history</td><td class="win">Either — comparable at every scale measured</td></tr>
 <tr><td>High-rate indexed point reads over current state</td><td>PostgreSQL, or TGMS — measure at your scale</td></tr>
 <tr><td>Ordinary graph traversal with no temporal filtering</td><td>Not established by this study</td></tr>
 </table>
@@ -270,10 +271,10 @@ as health.</p>
 
 <table>
 <tr><th>system</th><th>whole store, B/row</th><th>note</th></tr>
-<tr><td>TGMS native</td><td class="win">25.1</td><td>compressed, after generation collection</td></tr>
-<tr><td>ClickHouse</td><td>78.4</td><td>lz4 MergeTree — the only other compressed form</td></tr>
-<tr><td>DuckDB</td><td>187.7</td><td>uncompressed columnar</td></tr>
-<tr><td>PostgreSQL</td><td>549.7</td><td>two thirds is the indexes its sub-millisecond lookups are made of</td></tr>
+<tr><td>TGMS native</td><td class="win"><span data-fact="storage_whole_store_bytes_per_row">25.1</span></td><td>compressed, after generation collection</td></tr>
+<tr><td>ClickHouse</td><td><span data-fact="storage_clickhouse_bytes_per_row">78.4</span></td><td>lz4 MergeTree — the only other compressed form</td></tr>
+<tr><td>DuckDB</td><td><span data-fact="storage_duckdb_bytes_per_row">187.7</span></td><td>uncompressed columnar</td></tr>
+<tr><td>PostgreSQL</td><td><span data-fact="storage_postgres_bytes_per_row">549.7</span></td><td>two thirds is the indexes its sub-millisecond lookups are made of</td></tr>
 </table>
 
 <div class="note"><b>What these storage numbers count.</b> TGMS counts
