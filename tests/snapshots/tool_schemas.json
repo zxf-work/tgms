@@ -1,6 +1,6 @@
 [
  {
-  "description": "Grouped aggregation over edge events (believed edge versions with t_a <= vt_s < t_b). Dimensions: time_bucket (with stride), rel_type, endpoint (src|dst as uids), label (endpoint's node label valid at the event; null when none). Aggregates: count, count_distinct(src|dst), min/max/mean over vt_s or duration (= vt_e - vt_s; open-ended rows excluded). Non-empty groups only; group_by [] returns one global row. Rows ordered by dimension values (numeric order / code-point order, null labels first). Properties (D-052): min/max/mean over of='prop' with a `prop` key, and `prop_filter` to select on one; a value participates only if its JSON type fits \u2014 text is never parsed into a number and a boolean is not one \u2014 and every excluded row is counted per property in `prop_coercion`. Sets (D-054): `endpoint_filter` {role: src|dst|either, uids} restricts events to a cohort from an earlier step; `pair_mode` over a [endpoint src, endpoint dst] grouping folds A->B with B->A (`undirected`) or additionally keeps only pairs that occurred both ways (`reciprocal`).\nOutput fields: rows, rows_total, truncated, cursor, prop_coercion.",
+  "description": "Grouped aggregation over edge events (believed edge versions with t_a <= vt_s < t_b). Dimensions: time_bucket (with stride), rel_type, endpoint (src|dst as uids), label (endpoint's node label valid at the event; null when none). Aggregates: count, count_distinct(src|dst), min/max/mean over vt_s or duration (= vt_e - vt_s; open-ended rows excluded). Non-empty groups only; group_by [] returns one global row. Rows ordered by dimension values (numeric order / code-point order, null labels first). Properties (D-052): min/max/mean over of='prop' with a `prop` key, and `prop_filter` to select on one; a value participates only if its JSON type fits \u2014 text is never parsed into a number and a boolean is not one \u2014 and every excluded row is counted per property in `prop_coercion`. Sets (D-054): `endpoint_filter` {role: src|dst|either, uids} restricts events to a cohort from an earlier step; `pair_mode` over a [endpoint src, endpoint dst] grouping folds A->B with B->A (`undirected`) or additionally keeps only pairs that occurred both ways (`reciprocal`). Sequences (D-056), each over the group's events in vt_s order and taking no 'of': `max_gap` is the longest hole between two consecutive events (null below two events, 0 for simultaneous ones); `max_in_window` with `span` is the largest number of events in ANY window [t, t+span) \u2014 a sliding window, not the fixed stride a time_bucket dimension gives, and 0 over an empty group; `max_session_span` with `gap` is the longest run of events no two of which are more than `gap` apart, measured first to last. One `span` and one `gap` per call.\nOutput fields: rows, rows_total, truncated, cursor, prop_coercion.",
   "input_schema": {
    "additionalProperties": false,
    "properties": {
@@ -14,13 +14,25 @@
          "count_distinct",
          "min",
          "max",
-         "mean"
+         "mean",
+         "max_gap",
+         "max_in_window",
+         "max_session_span"
         ],
         "type": "string"
        },
+       "gap": {
+        "default": null,
+        "description": "session-splitting threshold, required by max_session_span; a run continues while consecutive events are at most this apart",
+        "minimum": 1,
+        "type": [
+         "integer",
+         "null"
+        ]
+       },
        "of": {
         "default": null,
-        "description": "src|dst for count_distinct; vt_s|duration|prop for min/max/mean",
+        "description": "src|dst for count_distinct; vt_s|duration|prop for min/max/mean; the sequence aggregates take none",
         "enum": [
          "src",
          "dst",
@@ -40,6 +52,15 @@
         "minLength": 1,
         "type": [
          "string",
+         "null"
+        ]
+       },
+       "span": {
+        "default": null,
+        "description": "sliding-window width, required by max_in_window; the window is [t, t + span)",
+        "minimum": 1,
+        "type": [
+         "integer",
          "null"
         ]
        }

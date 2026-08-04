@@ -18,6 +18,12 @@ from tgms.temporal.algebra import paginate
 from tgms.temporal.ops_compute import _mean as blessed_mean
 from tgms.temporal.props import SKIP, matches, numeric_value, prop_keys
 
+#: D-056's sequence aggregates. Spelled out here rather than imported from
+#: `ops_aggregate` on purpose — the blessed `mean` is shared because the
+#: float sequence has to be bit-identical, but a *set of names* is exactly
+#: the kind of thing ground truth should restate independently.
+SEQ_AGGS = ("max_gap", "max_in_window", "max_session_span")
+
 
 class Oracle:
     def __init__(self, node_versions: list[NodeVersion],
@@ -552,11 +558,39 @@ class Oracle:
         def agg_field(a: dict[str, Any]) -> str:
             if a["agg"] == "count":
                 return "count"
+            if a["agg"] in SEQ_AGGS:
+                return a["agg"]
             if a["agg"] == "count_distinct":
                 return f"distinct_{a['of']}"
             if a.get("of") == "prop":
                 return f"{a['agg']}_prop_{a['prop']}"
             return f"{a['agg']}_{a['of']}"
+
+        # The three sequence aggregates (D-056), each written as the
+        # definition reads rather than as it would be computed: sort the
+        # group's event times, then walk them.
+        def max_gap(ts: list[int]) -> int | None:
+            # fewer than two events is no gap at all, which is null and not
+            # zero — zero is what "two simultaneous events" means
+            return None if len(ts) < 2 else max(b - a for a, b in
+                                                zip(ts, ts[1:]))
+
+        def max_in_window(ts: list[int], span: int) -> int:
+            # a window that maximizes the count can always be slid until it
+            # starts on an event, so the event times are the only starts
+            # worth testing. Half-open [t, t + span), as every window in this
+            # system is.
+            return max((sum(1 for u in ts if t <= u < t + span) for t in ts),
+                       default=0)
+
+        def max_session_span(ts: list[int], gap: int) -> int | None:
+            if not ts:
+                return None          # no run exists, so it has no span
+            best, start = 0, ts[0]
+            for prev, cur in zip(ts, ts[1:]):
+                if cur - prev > gap:
+                    best, start = max(best, prev - start), cur
+            return max(best, ts[-1] - start)
 
         rows = []
         for key in sorted(groups, key=sort_key):
@@ -575,6 +609,14 @@ class Oracle:
             for a in aggs:
                 if a["agg"] == "count":
                     val: Any = len(evs)
+                elif a["agg"] in SEQ_AGGS:
+                    ts = sorted(v.vt_s for v in evs)
+                    if a["agg"] == "max_gap":
+                        val = max_gap(ts)
+                    elif a["agg"] == "max_in_window":
+                        val = max_in_window(ts, a["span"])
+                    else:
+                        val = max_session_span(ts, a["gap"])
                 elif a["agg"] == "count_distinct":
                     val = len({v.src if a["of"] == "src" else v.dst
                                for v in evs})
