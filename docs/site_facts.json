@@ -129,10 +129,10 @@
    "prose": "systems answering the same registry: TGMS native, TGMS-on-DuckDB, PostgreSQL, ClickHouse, Neo4j, Memgraph"
   },
   "coverage_current": {
-   "value": "72",
+   "value": "79",
    "kind": "benchmark",
    "prose": "of 110 independently written questions expressible in the current operator set",
-   "snapshot": "coverage re-audit 2026-08-04 (C19 in scripts/independent_questions.py)"
+   "snapshot": "coverage re-audit 2026-08-04 (C20 in scripts/independent_questions.py)"
   },
   "coverage_after_grouping": {
    "value": "24",
@@ -429,6 +429,18 @@
    "kind": "benchmark",
    "prose": "questions that actually became expressible once the sequence aggregates shipped, against 8 from the histogram and 5-or-6 from the session's own reading of the questions",
    "snapshot": "coverage re-audit 2026-08-04 (C19 in scripts/independent_questions.py)"
+  },
+  "indep_cal_predicted": {
+   "value": "5",
+   "kind": "benchmark",
+   "prose": "questions the seventh histogram said calendar units would unlock on their own",
+   "snapshot": "coverage re-audit 2026-08-04 (C20 in scripts/independent_questions.py)"
+  },
+  "indep_cal_delivered": {
+   "value": "5",
+   "kind": "benchmark",
+   "prose": "questions that actually became expressible once calendar units shipped, against 5 predicted \u2014 and the first forecast made per question rather than in aggregate, which came in 8 of 8 correct",
+   "snapshot": "coverage re-audit 2026-08-04 (C20 in scripts/independent_questions.py)"
   },
   "indep_multi_blocker": {
    "value": "55",

@@ -11,6 +11,7 @@ Python loops are explicitly allowed here (spec 7.1).
 from __future__ import annotations
 
 from collections import deque
+from datetime import datetime, timedelta, timezone
 from typing import Any
 
 from tgms.core.model import OPEN_END, EdgeVersion, NodeVersion
@@ -23,6 +24,32 @@ from tgms.temporal.props import SKIP, matches, numeric_value, prop_keys
 #: float sequence has to be bit-identical, but a *set of names* is exactly
 #: the kind of thing ground truth should restate independently.
 SEQ_AGGS = ("max_gap", "max_in_window", "max_session_span")
+
+#: D-057's calendar units, computed here with `datetime` while the engine
+#: computes them with integer civil arithmetic. That the two agree is the
+#: evidence; sharing an implementation would make the test vacuous.
+DAY_NAMES = ("Monday", "Tuesday", "Wednesday", "Thursday", "Friday",
+             "Saturday", "Sunday")
+MONTH_NAMES = ("January", "February", "March", "April", "May", "June",
+               "July", "August", "September", "October", "November",
+               "December")
+
+
+def calendar_unit(t: int, unit: str, offset_minutes: int) -> Any:
+    """The calendar unit of one epoch-microsecond instant, at a fixed offset.
+
+    A fixed offset and not a timezone: see D-057. `datetime` here, and only
+    UTC plus explicit arithmetic, so nothing consults a tz database.
+    """
+    local = datetime(1970, 1, 1, tzinfo=timezone.utc) + timedelta(
+        microseconds=int(t) + offset_minutes * 60_000_000)
+    if unit == "hour_of_day":
+        return local.hour
+    if unit == "day_of_week":
+        return DAY_NAMES[local.weekday()]
+    if unit == "month_of_year":
+        return MONTH_NAMES[local.month - 1]
+    raise ValueError(f"unknown calendar unit {unit!r}")
 
 
 class Oracle:
@@ -530,6 +557,9 @@ class Oracle:
         def dim_value(d: dict[str, Any], v: EdgeVersion) -> Any:
             if d["dim"] == "time_bucket":
                 return (v.vt_s - t_a) // stride
+            if d["dim"] == "calendar_unit":
+                return calendar_unit(v.vt_s, d["unit"],
+                                     d.get("tz_offset_minutes") or 0)
             if d["dim"] == "rel_type":
                 return v.rel_type
             cs, cd = canon(v)
@@ -548,8 +578,21 @@ class Oracle:
 
         def sort_key(key: tuple) -> tuple:
             # numeric dims in numeric order, strings in code-point order,
-            # null labels first
-            return tuple((0, "") if kv is None else (1, kv) for kv in key)
+            # null labels first — except a named calendar unit, which sorts
+            # in CALENDAR order. Code-point order would put Friday first and
+            # April before January, which is not an ordering of anything.
+            out = []
+            for d, kv in zip(dims, key):
+                if kv is None:
+                    out.append((0, ""))
+                elif d["dim"] == "calendar_unit" and \
+                        d["unit"] in ("day_of_week", "month_of_year"):
+                    names = DAY_NAMES if d["unit"] == "day_of_week" \
+                        else MONTH_NAMES
+                    out.append((1, names.index(kv)))
+                else:
+                    out.append((1, kv))
+            return tuple(out)
 
         def mean(vals: list[int]) -> float:
             q, r = divmod(sum(vals), len(vals))
@@ -600,6 +643,8 @@ class Oracle:
                 if d["dim"] == "time_bucket":
                     row["t_a"] = t_a + kv * stride
                     row["t_b"] = min(t_a + (kv + 1) * stride, t_b)
+                elif d["dim"] == "calendar_unit":
+                    row[d["unit"]] = kv
                 elif d["dim"] == "rel_type":
                     row["rel_type"] = kv
                 elif d["dim"] == "endpoint":

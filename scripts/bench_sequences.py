@@ -42,16 +42,33 @@ AGGREGATES = {
 }
 
 
+def _group_by(args: argparse.Namespace, t_a: int, t_b: int) -> list:
+    if args.group == "src":
+        return [{"dim": "endpoint", "role": "src"}]
+    if args.group == "none":
+        return []
+    if args.group == "bucket":
+        # 24 buckets, so the group count matches hour_of_day's and only the
+        # code derivation differs between the two conditions
+        return [{"dim": "time_bucket"}]
+    return [{"dim": "calendar_unit", "unit": args.group}]
+
+
 def main() -> None:
     p = argparse.ArgumentParser()
     p.add_argument("--store", required=True)
     p.add_argument("--condition", required=True, choices=sorted(AGGREGATES))
     p.add_argument("--frac", type=float, default=1.0,
                    help="fraction of the valid-time extent to scan")
-    p.add_argument("--group", default="src", choices=("src", "none"),
+    p.add_argument("--group", default="src",
+                   choices=("src", "none", "bucket", "hour_of_day",
+                            "day_of_week", "month_of_year"),
                    help="src = many small runs (one per sender); "
                         "none = one run holding every event, which is where "
-                        "a sort that is really per-group would show")
+                        "a sort that is really per-group would show; "
+                        "bucket = a time_bucket stride, which is the honest "
+                        "control for the calendar units (same event count, "
+                        "same portable path, a different code per event)")
     p.add_argument("--reps", type=int, default=5)
     args = p.parse_args()
 
@@ -65,10 +82,11 @@ def main() -> None:
     t_b = lo + int((hi - lo) * args.frac)
     call = validate_args("aggregate_events", {
         "window": {"t_a": lo, "t_b": max(t_b, lo + 1)},
-        "group_by": ([{"dim": "endpoint", "role": "src"}]
-                     if args.group == "src" else []),
+        "group_by": _group_by(args, lo, t_b),
         "aggregates": [AGGREGATES[args.condition]],
         "limit": 10_000,
+        **({"stride": max((t_b - lo) // 24, 1)}
+           if args.group == "bucket" else {}),
     })
 
     times, rows_total, events = [], None, None
