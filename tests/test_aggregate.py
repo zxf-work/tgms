@@ -357,7 +357,9 @@ def test_argument_contract():
     bad("takes no role", group_by=[{"dim": "rel_type", "role": "src"}])
     bad("takes no 'of'", aggregates=[{"agg": "count", "of": "src"}])
     bad("requires of 'src' or 'dst'", aggregates=[{"agg": "count_distinct"}])
-    bad("requires of 'vt_s' or 'duration'",
+    # D-052 widened the legal sources to include 'prop'; the message names
+    # all three so the repair loop can act on it
+    bad(r"requires of 'vt_s', 'duration' or 'prop'",
         aggregates=[{"agg": "mean", "of": "src"}])
     bad("duplicate aggregate",
         aggregates=[{"agg": "count"}, {"agg": "count"}])

@@ -15,6 +15,8 @@ from typing import Any
 
 from tgms.core.model import OPEN_END, EdgeVersion, NodeVersion
 from tgms.temporal.algebra import paginate
+from tgms.temporal.ops_compute import _mean as blessed_mean
+from tgms.temporal.props import SKIP, matches, numeric_value, prop_keys
 
 
 class Oracle:
@@ -473,6 +475,22 @@ class Oracle:
                   and (args["rel_types"] is None
                        or v.rel_type in args["rel_types"])]
 
+        # property typing (D-052), by the same rule and its own loop: a row
+        # whose value is absent or of the wrong JSON type leaves the
+        # population and is counted, per property.
+        pkeys = prop_keys(args)
+        skipped: dict[str, int] = {k: 0 for k in pkeys}
+        pf = args.get("prop_filter")
+        if pf is not None:
+            kept = []
+            for v in events:
+                verdict = matches(v.props, pf["prop"], pf["cmp"], pf["value"])
+                if verdict is SKIP:
+                    skipped[pf["prop"]] += 1
+                elif verdict:
+                    kept.append(v)
+            events = kept
+
         def label_at(uid: str, t: int) -> str | None:
             # believed valid intervals of one identity are disjoint, so at
             # most one version matches
@@ -513,6 +531,8 @@ class Oracle:
                 return "count"
             if a["agg"] == "count_distinct":
                 return f"distinct_{a['of']}"
+            if a.get("of") == "prop":
+                return f"{a['agg']}_prop_{a['prop']}"
             return f"{a['agg']}_{a['of']}"
 
         rows = []
@@ -535,6 +555,18 @@ class Oracle:
                 elif a["agg"] == "count_distinct":
                     val = len({v.src if a["of"] == "src" else v.dst
                                for v in evs})
+                elif a.get("of") == "prop":
+                    vals = []
+                    for v in evs:
+                        pv = numeric_value(v.props, a["prop"])
+                        if pv is SKIP:
+                            skipped[a["prop"]] += 1
+                        else:
+                            vals.append(pv)
+                    # D-051's arithmetic, not the typed-column `mean` above
+                    val = None if not vals else \
+                        {"min": min, "max": max,
+                         "mean": blessed_mean}[a["agg"]](vals)
                 else:
                     if a["of"] == "vt_s":
                         vals = [v.vt_s for v in evs]
@@ -551,7 +583,10 @@ class Oracle:
                         val = mean(vals)
                 row[agg_field(a)] = val
             rows.append(row)
-        return paginate(rows, args["limit"], args["cursor"])
+        out = paginate(rows, args["limit"], args["cursor"])
+        if pkeys:
+            out["prop_coercion"] = {k: skipped[k] for k in pkeys}
+        return out
 
     # ------------------------------------------------------------------ #
     # O12 resolve_entities                                                 #
