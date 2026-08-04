@@ -5,6 +5,11 @@ description = "Agent-Native Temporal Graph Management System (bi-temporal proper
 requires-python = ">=3.11"
 readme = "README.md"
 license = "Apache-2.0"
+# PyPI validates that every License-File the metadata declares is actually
+# present in the distribution, and rejects the upload otherwise (400). The
+# sdist declared LICENSE and shipped without it; naming it here makes the
+# backend carry the file as well as the field.
+license-files = ["LICENSE"]
 authors = [{ name = "Xiaofei Zhang", email = "zxfhkust@gmail.com" }]
 keywords = ["temporal-graph", "bi-temporal", "llm-agents", "database", "verification"]
 classifiers = [
