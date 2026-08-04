@@ -1,7 +1,7 @@
 <!doctype html><html lang="en"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>We let users define the workload — TGMS blog</title>
-<meta name="description" content="We asked people who had never seen our operator list to write the questions they actually wanted answered. Ten of 110 were expressible; after building the capability they ranked first, 24 are. What the gap between prediction and delivery taught us about reading a capability histogram.">
+<meta name="description" content="We asked people who had never seen our operator list to write the questions they actually wanted answered. Ten of 110 were expressible; after building the three capabilities they ranked first, 38 are. What the gap between prediction and delivery taught us about reading a capability histogram.">
 <style>
 :root{--ink:#1a2534;--mut:#5b6b7c;--blue:#1c64d9;--blue2:#3b82f6;--line:#e3e8ef;
       --bg:#fbfcfe;--card:#fff;--codebg:#0e1c30;--codetx:#dce7f5;--ok:#0a7d33;
@@ -109,11 +109,11 @@ artifact</a> · <a href="https://github.com/zxf-work/tgms">code</a></div>
 list to write the questions they actually wanted answered, and only
 <span data-fact="coverage_original">10</span> of
 <span data-fact="coverage_total_questions">110</span> could be expressed at
-all — a number that is <span data-fact="coverage_current">28</span> today,
+all — a number that is <span data-fact="coverage_current">38</span> today,
 and that taught us more by missing its own forecast than by hitting it.</p>
 
 <div class="meta"><b>Status: Current.</b> TGMS 0.4.0 · study July
-2026, pre-registered as D-026 · re-audits 2 and 3 August 2026 · ~7 min.</div>
+2026, pre-registered as D-026 · re-audits 2-4 August 2026 · ~8 min.</div>
 
 <h2>Why this matters</h2>
 
@@ -308,7 +308,7 @@ histogram ranked next: arithmetic beyond counting — averages, medians,
 ratios, differences, percentages — was going to unlock
 <span data-fact="indep_ar_predicted">7</span> questions on its own. It
 unlocked <span data-fact="indep_ar_delivered">4</span>, taking coverage to
-<span data-fact="coverage_current">28</span> of
+<span data-fact="coverage_after_arithmetic">28</span> of
 <span data-fact="coverage_total_questions">110</span>, and the shortfall has
 the same shape: of the questions that stayed blocked, most do not want a
 number computed from a result — they want a number computed <i>per row of
@@ -317,6 +317,20 @@ those spans are averaged. Three more want a rank the operator cannot
 express, such as the top 1% of accounts. One tag, three capabilities, found
 the same way as the first: by building one of them and re-classifying
 everything it touched.</p>
+
+<p>A third test has now run, on reading values out of the untyped property
+bag — the ratings themselves. It was going to unlock
+<span data-fact="indep_prop_predicted">13</span> questions; it unlocked
+<span data-fact="indep_prop_delivered">10</span>, taking coverage to
+<span data-fact="coverage_current">38</span> of
+<span data-fact="coverage_total_questions">110</span>. Same shape a third
+time — what the tag was also carrying is the ability to hand a property's
+<i>value</i> back into a row, so that two rows can be compared with each
+other; an average reduces it and a filter tests it, but neither returns it.
+The forecasts are getting better as the tags get more specific, 47% then 57%
+then 77% of what each predicted, and that is worth exactly as much as it
+sounds: the method of guessing from a tag has not improved, only the tags
+have. Whatever the next one predicts, discount it the same way.</p>
 
 <h2>What this result does not show</h2>
 

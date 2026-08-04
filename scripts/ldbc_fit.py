@@ -315,6 +315,41 @@ L15: dict[str, tuple[int, str, str]] = {
              "the weight is the difference of study years, per edge"),
 }
 
+# --------------------------------------------------------------------------- #
+# re-audit after D-052's property typing shipped (the D-053 session)          #
+# --------------------------------------------------------------------------- #
+# `aggregate_events` gained a predicate and min/max/mean over an **edge**
+# property. Two facts decide this table, and both are worth stating plainly
+# because they are the difference between the two workloads:
+#   1. the implementation reaches *edge* properties only. LDBC's property
+#      demand is overwhelmingly *node* attributes — a Person's names, a
+#      Message's content and length — which it does not touch;
+#   2. most of that demand is **projection**, not predication: the template
+#      must return the attribute, not test it. That is `PROJ`, the tag the
+#      companion study also grew this session.
+# **No template changes class.** LDBC stays 3 of 41 for the third session
+# running, because `PAT` gates 35 of the 38 and nothing here is `PAT`.
+# value = (class, need tags, justification)
+L16: dict[str, tuple[int, str, str]] = {
+    "IS2": (3, "PAT,PROJ",
+            "the missing half is message content and the root author's "
+            "names in the answer — projection, not a predicate"),
+    "IS3": (3, "PROJ",
+            "the one template `PROP` was the sole blocker of, and it wants "
+            "firstName/lastName *per friend in the output*. An aggregate "
+            "reduces a property to one number and a predicate compares it "
+            "to a literal; neither returns it"),
+    "IS6": (3, "PAT,PROJ", "the moderator's names in the answer"),
+    "IS7": (3, "PAT,PROJ,NEG", "per-author name projection"),
+    "IC1": (3, "SP,PROP,PROJ,PAT",
+            "both halves, and they are different capabilities: firstName "
+            "equality is a predicate on a node attribute, the thirteen "
+            "returned attributes and the nested tuples are projection"),
+    "IC2": (3, "PAT,PROJ", "message content and author names in the answer"),
+    "IC8": (3, "PAT,PROJ", "reply content and author names in the answer"),
+    "IC9": (3, "PAT,PROJ", "content and author names in the answer"),
+}
+
 WORKLOADS = {"IS": "Interactive Short", "IC": "Interactive Complex (v1)",
              "BI": "Business Intelligence"}
 
@@ -352,14 +387,19 @@ CHAIN_VOCAB = {
 #: study needs it, and the fact that **no LDBC template needs it** is itself
 #: a difference between the two workloads worth being able to state.
 TAG_VOCAB = {"G", "PROP", "CAL", "SET", "NEG", "GLOB", "SEQ",
-             "PAT", "SP", "ROW", "PCT"}
+             "PAT", "SP", "ROW", "PCT", "PROJ"}
 #: Retired tags: still legal in `L`, never legal in a re-audit.
 RETIRED_TAGS = {"AR"}
 
 
-def verdict(qid: str) -> tuple[int, str]:
-    """The current verdict: `L15` if it re-audited the template, else `L`."""
+def verdict15(qid: str) -> tuple[int, str]:
+    """The 15th-capability verdict: `L15` if it re-audited, else `L`."""
     return (L15[qid][0], L15[qid][1]) if qid in L15 else (L[qid][0], L[qid][1])
+
+
+def verdict(qid: str) -> tuple[int, str]:
+    """The current verdict: `L16` if it re-audited, else the `L15` one."""
+    return (L16[qid][0], L16[qid][1]) if qid in L16 else verdict15(qid)
 
 
 def _check() -> None:
@@ -375,14 +415,16 @@ def _check() -> None:
             assert not unknown, f"{qid}: chain names non-operator {unknown}"
             assert (cls == 1) == ("+" not in tags), (
                 f"{qid}: class 1 is a single operator, class 2 a chain")
-    for qid, (cls, tags, why) in L15.items():
-        assert qid in L, f"L15 {qid} is not an LDBC template"
-        assert why, f"L15 {qid} has no justification"
-        assert (cls, tags) != (L[qid][0], L[qid][1]), f"L15 {qid} is not a change"
-        assert cls <= L[qid][0], f"L15 {qid} moved backwards"
+    for name, table, base in (("L15", L15, lambda q: (L[q][0], L[q][1])),
+                              ("L16", L16, verdict15)):
+      for qid, (cls, tags, why) in table.items():
+        assert qid in L, f"{name} {qid} is not an LDBC template"
+        assert why, f"{name} {qid} has no justification"
+        assert (cls, tags) != base(qid), f"{name} {qid} is not a change"
+        assert cls <= base(qid)[0], f"{name} {qid} moved backwards"
         unknown = set(tags.split(",")) - TAG_VOCAB if cls == 3 \
             else set(tags.split("+")) - CHAIN_VOCAB
-        assert not unknown, f"L15 {qid}: unknown tag(s) {unknown}"
+        assert not unknown, f"{name} {qid}: unknown tag(s) {unknown}"
     assert not [q for q in L if set(_needs(*verdict(q))) & RETIRED_TAGS], \
         "a retired tag survived the L15 re-audit"
 
@@ -391,7 +433,7 @@ def report() -> None:
     _check()
     print("class distribution (D-050, 14 ops):",
           dict(sorted(Counter(L[q][0] for q in L).items())))
-    print("class distribution (D-051 session re-audit):",
+    print("class distribution (D-052 session re-audit):",
           dict(sorted(Counter(verdict(q)[0] for q in L).items())))
     expressible = sorted(q for q in L if verdict(q)[0] <= 2)
     print(f"expressible: {len(expressible)} of {len(L)} — "
@@ -404,13 +446,13 @@ def report() -> None:
     print("missing capabilities (class 3, D-050):",
           dict(Counter(t for q in L
                        for t in _needs(L[q][0], L[q][1])).most_common()))
-    print("missing capabilities (class 3, after the re-audit):",
+    print("missing capabilities (class 3, after both re-audits):",
           dict(Counter(t for q in L
                        for t in _needs(*verdict(q))).most_common()))
     moved = [q for q in L if verdict(q)[0] != L[q][0]]
     print(f"templates that changed class: {len(moved) or 'none'}"
           f"{' — ' + ', '.join(moved) if moved else ''}; "
-          f"{len(L15)} re-audited tag strings")
+          f"{len(L15)} + {len(L16)} re-audited tag strings")
     tp = sum(1 for q in L if L[q][2])
     print(f"templates with a predicate on a temporal attribute: {tp} of {len(L)}")
     print(f"templates referencing a second clock (belief/as-of): 0 of {len(L)}")
