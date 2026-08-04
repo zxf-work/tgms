@@ -397,7 +397,7 @@
   "name": "co_active"
  },
  {
-  "description": "Deterministic computation over a prior step's rows \u2014 never do arithmetic\nyourself. fn: count (rows), sum/min/max (numeric `field`), topk (`field`,\n`k` -> best rows), filter (`field`, `cmp` in eq/ne/lt/le/gt/ge/contains,\n`value`), interval_relation (`a`, `b` half-open intervals -> Allen\nrelation name). `input` normally arrives via {\"$ref\": \"sN.rows\"}.\nCost: trivial. Example: {\"fn\": \"topk\", \"input\": {\"$ref\": \"s2.rows\"},\n\"field\": \"value\", \"k\": 3}\nOutput fields: value, rows, rows_total, truncated, cursor.",
+  "description": "Deterministic computation \u2014 never do arithmetic yourself.\nOver a prior step's rows (`input`, normally {\"$ref\": \"sN.rows\"}, with an\noptional numeric `field`): count, sum, min, max, mean, median; topk\n(`field`, `k` -> best rows); filter (`field`, `cmp` in\neq/ne/lt/le/gt/ge/contains, `value`).\nOver two scalars from earlier steps, passed as `x` and `y` (each normally\n{\"$ref\": \"sN.value\"} or {\"$ref\": \"sN.rows[0].count\"}): ratio -> x/y,\ndiff -> x-y, percent -> 100*x/y. Use these to compare or combine two\nresults; they take no `input`.\nAlso interval_relation (`a`, `b` half-open intervals -> Allen relation\nname).\nInteger inputs give exact integer answers; anything inexact is rounded\nonce. Cost: trivial.\nExamples: {\"fn\": \"topk\", \"input\": {\"$ref\": \"s2.rows\"}, \"field\": \"value\",\n\"k\": 3} \u00b7 {\"fn\": \"mean\", \"input\": {\"$ref\": \"s1.rows\"}, \"field\": \"count\"} \u00b7\n{\"fn\": \"diff\", \"x\": {\"$ref\": \"s1.rows[0].count\"},\n\"y\": {\"$ref\": \"s2.rows[0].count\"}}\nOutput fields: value, rows, rows_total, truncated, cursor.",
   "input_schema": {
    "additionalProperties": false,
    "properties": {
@@ -472,8 +472,13 @@
       "sum",
       "min",
       "max",
+      "mean",
+      "median",
       "topk",
       "filter",
+      "ratio",
+      "diff",
+      "percent",
       "interval_relation"
      ],
      "type": "string"
@@ -505,6 +510,22 @@
     "value": {
      "default": null,
      "description": "comparison value for filter"
+    },
+    "x": {
+     "default": null,
+     "description": "first operand of ratio/diff/percent ($ref)",
+     "type": [
+      "number",
+      "null"
+     ]
+    },
+    "y": {
+     "default": null,
+     "description": "second operand of ratio/diff/percent ($ref)",
+     "type": [
+      "number",
+      "null"
+     ]
     }
    },
    "required": [
