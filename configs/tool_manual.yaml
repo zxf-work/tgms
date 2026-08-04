@@ -126,6 +126,12 @@ compute:
     {"$ref": "sN.value"} or {"$ref": "sN.rows[0].count"}): ratio -> x/y,
     diff -> x-y, percent -> 100*x/y. Use these to compare or combine two
     results; they take no `input`.
+    Over two lists, passed as `input` and `other` (each normally
+    {"$ref": "sN.rows"}, with `field`/`other_field` naming the column to take
+    from each): intersect, difference, union. Use these for "both X and Y"
+    (intersect), "X but never Y" (difference) and "either" (union) over uid
+    sets from two groupings. The answer is a deduplicated, canonically
+    ordered list in `rows`, with `rows_total` its size.
     Also interval_relation (`a`, `b` half-open intervals -> Allen relation
     name).
     Integer inputs give exact integer answers; anything inexact is rounded

@@ -35,7 +35,10 @@ from tgms.storage.base import StorageAdapter
 from tgms.temporal.algebra import LIMIT, operator, paginate, required
 
 FNS = ["count", "sum", "min", "max", "mean", "median", "topk", "filter",
-       "ratio", "diff", "percent", "interval_relation"]
+       "ratio", "diff", "percent", "intersect", "difference", "union",
+       "interval_relation"]
+#: set operations over two lists of scalars (uids, in practice)
+SET_FNS = ("intersect", "difference", "union")
 #: aggregate a group of rows down to one number
 REDUCERS = ("sum", "min", "max", "mean", "median")
 #: combine two scalars from earlier steps
@@ -58,6 +61,11 @@ ARGS = {
     "cmp": {"type": ["string", "null"], "enum": CMPS + [None], "default": None},
     "value": {"default": None,
               "description": "comparison value for filter"},
+    "other": {"type": ["array", "null"], "maxItems": 50_000, "default": None,
+              "description": "second list for intersect/difference/union ($ref)"},
+    "other_field": {"type": ["string", "null"], "default": None,
+                    "description": "field to project from `other`'s rows; "
+                                   "defaults to `field`"},
     "x": {"type": ["number", "null"], "default": None,
           "description": "first operand of ratio/diff/percent ($ref)"},
     "y": {"type": ["number", "null"], "default": None,
@@ -117,6 +125,26 @@ def _operands(args: dict[str, Any], fn: str) -> tuple[int | float, int | float]:
     return x, y
 
 
+def _members(rows: list[Any], f: str | None, fn: str) -> set[Any]:
+    """A set of scalars from a list of rows or bare values. Members must be
+    hashable scalars: a set of dicts is a plan bug, not an empty set."""
+    out = set()
+    for v in _values(rows, f):
+        if isinstance(v, (dict, list)):
+            raise InvalidArgError(
+                f"compute {fn}: set members must be scalars, got "
+                f"{type(v).__name__} — name the column with `field`")
+        out.add(v)
+    return out
+
+
+def _sorted_members(s: set[Any]) -> list[Any]:
+    """Canonical order for a set answer. Sorting by (type name, value) keeps
+    a mixed-type set total-orderable, so the digest never depends on which
+    order the inputs arrived in."""
+    return sorted(s, key=lambda v: (type(v).__name__, v))
+
+
 def _cmp(x: Any, cmp: str, v: Any) -> bool:
     if cmp == "contains":
         return isinstance(x, (str, list)) and v in x
@@ -159,6 +187,9 @@ def allen_relation(a: dict[str, int], b: dict[str, int]) -> str:
     "mean/median (optionally over `field`), topk(field, k), "
     "filter(field, cmp, value); arithmetic over two scalars from earlier "
     "steps: ratio(x, y) = x/y, diff(x, y) = x-y, percent(x, y) = 100*x/y; "
+    "set operations over two lists (`input` and `other`, optionally "
+    "projected with `field`/`other_field`): intersect, difference, union — "
+    "deduplicated and canonically ordered; "
     "or interval_relation(a, b) -> Allen relation name. Never do arithmetic "
     "in prose — use this.",
     output_fields=("value", "rows", "rows_total", "truncated", "cursor"),
@@ -172,6 +203,14 @@ def compute(adapter: StorageAdapter, args: dict[str, Any]) -> dict[str, Any]:
             if not (iv["start"] < iv["end"]):
                 raise InvalidArgError(f"invalid interval {iv}")
         return {"value": allen_relation(args["a"], args["b"]), "truncated": False}
+    if fn in SET_FNS:
+        rows, other = args["input"], args["other"]
+        if rows is None or other is None:
+            raise InvalidArgError(f"compute {fn} requires input and other")
+        a = _members(rows, args["field"], fn)
+        b = _members(other, args["other_field"] or args["field"], fn)
+        out = {"intersect": a & b, "difference": a - b, "union": a | b}[fn]
+        return paginate(_sorted_members(out), args["limit"], None)
     if fn in BINARY:
         x, y = _operands(args, fn)
         val = (x - y if fn == "diff"

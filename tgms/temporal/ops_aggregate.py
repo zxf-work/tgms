@@ -36,7 +36,7 @@ from typing import Any, Callable
 
 import numpy as np
 
-from tgms.core.errors import InvalidArgError, LimitError
+from tgms.core.errors import InvalidArgError, LimitError, NotFoundError
 from tgms.core.model import OPEN_END
 from tgms.storage.base import StorageAdapter
 from tgms.temporal.algebra import (
@@ -109,6 +109,27 @@ PROP_FILTER = {
                    "rows whose value is absent or of another JSON type are "
                    "excluded and counted in `prop_coercion` (D-052)",
 }
+ENDPOINT_FILTER = {
+    "type": ["object", "null"],
+    "default": None,
+    "properties": {
+        "role": {"type": "string", "enum": ["src", "dst", "either"]},
+        "uids": {"type": "array", "items": {"type": "string"},
+                 "maxItems": 50_000},
+    },
+    "required": ["role", "uids"],
+    "additionalProperties": False,
+    "description": "restrict events to those whose endpoint is in `uids` — "
+                   "the cohort pre-filter a prior step's result feeds by "
+                   "$ref. An empty list is an empty population, not an error",
+}
+#: `undirected` folds A->B together with B->A; `reciprocal` does that and
+#: then keeps only pairs where **both** directions occurred. Both are decided
+#: over the whole group set before pagination, which is exactly why they are
+#: operator arguments and not a `compute` function over a `$ref` page.
+PAIR_MODE = {"type": ["string", "null"],
+             "enum": ["undirected", "reciprocal", None], "default": None,
+             "description": "requires group_by = [endpoint src, endpoint dst]"}
 
 
 def _dim_key(d: dict[str, Any]) -> tuple[str, str | None]:
@@ -173,6 +194,13 @@ def _aggregate_validators(args: dict[str, Any]) -> None:
             raise InvalidArgError(f"duplicate aggregate {f!r}")
         fields.add(f)
 
+    if args.get("pair_mode") is not None and \
+            [_dim_key(d) for d in dims] != [("endpoint", "src"),
+                                            ("endpoint", "dst")]:
+        raise InvalidArgError(
+            "pair_mode requires group_by = [endpoint src, endpoint dst]; "
+            "folding or matching directions is only defined over a pair")
+
     has_bucket = any(d["dim"] == "time_bucket" for d in dims)
     stride = args.get("stride")
     if has_bucket:
@@ -189,6 +217,29 @@ def _aggregate_validators(args: dict[str, Any]) -> None:
                 f"use stride >= {min_stride} for this window")
     elif stride is not None:
         raise InvalidArgError("'stride' requires a time_bucket dimension")
+
+
+def _cohort_ids(adapter: StorageAdapter, uids: list[str]) -> list[int]:
+    """Dense ids for a cohort, tolerating uids the store has never seen.
+
+    A cohort arrives from an earlier step or from a task's input, so a uid
+    that does not exist is an ordinary empty contribution rather than an
+    error — the same judgment `tgms/eval/baselines.py` makes for seed uids.
+    The bulk call is one boundary crossing; only a cohort that actually
+    contains an unknown pays for the per-uid fallback.
+    """
+    if not uids:
+        return []
+    try:
+        return [int(i) for i in adapter.dense_ids(uids)]
+    except NotFoundError:
+        out = []
+        for u in uids:
+            try:
+                out.append(int(adapter.dense_ids([u])[0]))
+            except NotFoundError:
+                continue
+        return out
 
 
 def _mean(s: int, n: int) -> float:
@@ -320,11 +371,28 @@ def _portable(adapter: StorageAdapter, args: dict[str, Any]) -> dict[str, Any]:
     cols = ["src_id", "dst_id", "vt_s", "vt_e"] + (["rel_type"] if need_rel else [])
     if prop_keys:
         cols.append("props")            # opt-in; never on a bare scan
+    # The cohort pre-filter pushes down as an incidence filter the scan has
+    # carried all along. `touching_ids` is src-OR-dst, so for a role-specific
+    # cohort it is a *superset* filter that only prunes; the exact predicate
+    # is applied below, where correctness does not depend on the pushdown.
+    ef = args.get("endpoint_filter")
+    cohort_ids: list[int] = []
+    if ef is not None:
+        cohort_ids = _cohort_ids(adapter, ef["uids"])
     e = adapter.edges_columnar(
         as_of_tt=args["as_of_tt"], vt_min=t_a, vt_max=t_b,
-        rel_types=args["rel_types"], columns=tuple(cols))
+        rel_types=args["rel_types"], columns=tuple(cols),
+        # an empty cohort cannot be pushed down (`IN ()` is not SQL); the
+        # mask below makes the population empty either way
+        touching_ids=cohort_ids or None)
     # the scan filter is interval *overlap*; an event is containment of vt_s
     m = e["vt_s"] >= t_a
+    if ef is not None:
+        cohort = np.asarray(cohort_ids, dtype=np.int64)
+        in_src = np.isin(e["src_id"], cohort)
+        in_dst = np.isin(e["dst_id"], cohort)
+        m = m & {"src": in_src, "dst": in_dst,
+                 "either": in_src | in_dst}[ef["role"]]
     vt_s, vt_e = e["vt_s"][m], e["vt_e"][m]
     src, dst = e["src_id"][m], e["dst_id"][m]
     rel = e["rel_type"][m] if need_rel else None
@@ -349,6 +417,34 @@ def _portable(adapter: StorageAdapter, args: dict[str, Any]) -> dict[str, Any]:
                 rel = rel[keep]
             bags = [b for b, k in zip(bags, keep) if k]
     n = len(vt_s)
+
+    # --- pair modes (D-054) ------------------------------------------------ #
+    # Both fold a directed pair onto its canonical (lo, hi) form; `reciprocal`
+    # first drops pairs that occurred in only one direction. The transpose
+    # test is a set membership over the directed pairs *present in the whole
+    # window*, so it is O(n) and — crucially — decided before any pagination.
+    if args.get("pair_mode") is not None and n:
+        base = int(adapter.num_entities()) + 1
+        lo, hi = np.minimum(src, dst), np.maximum(src, dst)
+        if args["pair_mode"] == "reciprocal":
+            present = set((src.astype(np.int64) * base
+                           + dst.astype(np.int64)).tolist())
+            # BOTH directions must be present, tested from the canonical
+            # form: checking only "the other direction" would be trivially
+            # true for whichever direction this row happens to be.
+            # A self-pair is its own transpose, which the encoding gives free.
+            keep = np.array(
+                [(int(a) * base + int(b)) in present
+                 and (int(b) * base + int(a)) in present
+                 for a, b in zip(lo.tolist(), hi.tolist())], dtype=bool)
+            vt_s, vt_e = vt_s[keep], vt_e[keep]
+            lo, hi = lo[keep], hi[keep]
+            if rel is not None:
+                rel = rel[keep]
+            if bags:
+                bags = [b for b, k in zip(bags, keep) if k]
+            n = len(vt_s)
+        src, dst = lo, hi
 
     dim_cols = [_portable_dim_codes(adapter, d, args, vt_s, src, dst, rel)
                 for d in dims]
@@ -543,6 +639,8 @@ def _native(adapter: StorageAdapter, args: dict[str, Any]) -> dict[str, Any]:
         "rel_types": {"type": ["array", "null"], "items": {"type": "string"},
                       "default": None},
         "prop_filter": PROP_FILTER,
+        "endpoint_filter": ENDPOINT_FILTER,
+        "pair_mode": PAIR_MODE,
         "as_of_tt": AS_OF_TT,
         "limit": LIMIT,
         "cursor": CURSOR,
@@ -558,7 +656,12 @@ def _native(adapter: StorageAdapter, args: dict[str, Any]) -> dict[str, Any]:
     "of='prop' with a `prop` key, and `prop_filter` to select on one; a "
     "value participates only if its JSON type fits — text is never parsed "
     "into a number and a boolean is not one — and every excluded row is "
-    "counted per property in `prop_coercion`.",
+    "counted per property in `prop_coercion`. Sets (D-054): "
+    "`endpoint_filter` {role: src|dst|either, uids} restricts events to a "
+    "cohort from an earlier step; `pair_mode` over a "
+    "[endpoint src, endpoint dst] grouping folds A->B with B->A "
+    "(`undirected`) or additionally keeps only pairs that occurred both "
+    "ways (`reciprocal`).",
     cost_fn=scan_estimate,
     validators=[_aggregate_validators],
     output_fields=("rows", "rows_total", "truncated", "cursor",
@@ -571,6 +674,8 @@ def aggregate_events(adapter: StorageAdapter, args: dict[str, Any]) -> dict[str,
     # correctness first and made the typed column conditional on a
     # measurement; this is where that trade is actually paid, and the
     # measurement that would justify the column is a measurement of this.
-    if hasattr(adapter, "aggregate_events_columnar") and not _prop_keys(args):
+    if (hasattr(adapter, "aggregate_events_columnar") and not _prop_keys(args)
+            and args.get("pair_mode") is None
+            and args.get("endpoint_filter") is None):
         return _native(adapter, args)
     return _portable(adapter, args)
