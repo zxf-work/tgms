@@ -9,7 +9,7 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 15   # spec §7.5: make ci must finish < 15 min
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
         with:
           fetch-depth: 0   # commit-hygiene check (§8.1) walks history
       # native engine (D-028): the package is a mixed Rust/Python build, so
@@ -18,7 +18,9 @@ jobs:
         with:
           components: clippy
       - uses: Swatinem/rust-cache@v2
-      - uses: astral-sh/setup-uv@v4
+      # v7, not v5: publish.yml already pins v7, and two workflows on
+      # different majors of the same action is how one of them goes stale
+      - uses: astral-sh/setup-uv@v7
         with:
           python-version: "3.12"
       - run: uv sync --extra agent
