@@ -171,7 +171,7 @@ on a 28 s quantity, not a signal.)
 4. **Operationally, short-lived clients never see the warm tables.**
    DuckDB's fresh-process first query at 10M is 0.4–6.3 s against
    native's 27–32 s: the backend that wins every warm comparison loses
-   the first-query race by ~10–70×. Long-lived processes amortize the
+   the first-query race by 5.3–71.9×. Long-lived processes amortize the
    warm-up; one-shot scripts pay it in full every time.
 
 ## §14.2 Working set versus RAM
@@ -382,7 +382,7 @@ evicted segments instead of memory
 (`eval-resources-memcap-smallbudget-10m.json`): under the same 2 GB cap
 the suite still completes (VmHWM 1.61 GB; 32,615 evictions, cache held
 at 264.9 of 268.4 MB), at series.count 1,690 ms (3.5×), coactive.narrow
-4,562 ms (28×), diff.global 7,605 ms (1.8×), motif.filtered 1,179 ms
+4,562 ms (26.7×), diff.global 7,605 ms (1.8×), motif.filtered 1,179 ms
 (16×), snap.hop2 2,187 ms (2×); hist.single stays 0.6 ms. This is the
 degradation region §14.2 found missing: below the comfortable budget
 the store now gets slower instead of getting killed.

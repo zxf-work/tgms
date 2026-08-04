@@ -196,13 +196,6 @@
       "prose": "emitted answers containing an unsupported claim, with gating \u2014 0 of 199 on the frozen CollegeMsg campaign; before gating it was 21 of 220",
       "scope_required": "always state the denominator (199 emitted, of 282 task runs) and never as a universal guarantee; coverage is 199/282, so part of the zero is bought by declining"
     },
-    "unsupported_claims_denominator": {
-      "value": "268",
-      "kind": "benchmark",
-      "prose": "evaluated answers behind the 0 unsupported claims figure",
-      "scope_required": "unsupported_claims must never appear without this number beside it",
-      "review": "paper/main.tex reports the frozen campaign as 282 task runs, 270 measurable, 220 ungated-emitted and 0 of 199 gated-emitted; 268 traces only to paper/REVIEW_RESPONSE.md. Denominator and split label both need the author's adjudication."
-    },
     "answer_accuracy_tgms": {
       "value": "41",
       "kind": "benchmark",
@@ -691,7 +684,7 @@
     "exec_success_overall_before": {
       "value": "0",
       "kind": "benchmark",
-      "prose": "percent execution success across all 22 dev tasks before output contracts (0 of 22)",
+      "prose": "of 22 tasks executed successfully before declared output fields existed, in the controlled re-run of paper/main.tex:737 (it rose to 12 of 22). Not to be confused with the separate dev-split ablation at main.tex:537, where disabling contract checking took execution success 0.55 -> 0.23 at 7B \u2014 a different experiment on a different question",
       "snapshot": "E1 output-contract ablation, matrix-dev-oss (Qwen2.5-7B-Instruct)"
     },
     "exec_success_overall_after": {
@@ -818,9 +811,16 @@
     "append_batch1_ev_s": {
       "value": "95",
       "kind": "benchmark",
-      "prose": "events per second appending one event per commit — the durable commit floor, several fsyncs and a fresh manifest per event",
+      "prose": "events per second appending one event per commit \u2014 the durable commit floor, several fsyncs and a fresh manifest per event",
       "snapshot": "concurrency-1m-d049",
       "was": "96 in the earlier eval-writes run at caa5246, inside the +/-20% band"
+    },
+    "probe_accuracy_frozen_suites": {
+      "value": "85-90",
+      "kind": "benchmark",
+      "prose": "percent of correction-probe questions TGMS answers on the two frozen suites (0.846 email-EU, 0.897 CollegeMsg, Qwen2.5-14B-AWQ)",
+      "snapshot": "paper/main.tex tab:main, and the paragraph at main.tex:495",
+      "scope_required": "these are TGMS's own scores; the 0.846-0.923 range in the paper's discussion spans TGMS and the equal-information SQL baseline together, so it must not be quoted as TGMS alone"
     }
   },
   "retired_phrases": [
@@ -863,6 +863,10 @@
     {
       "phrase": "the crossover sits between 200k and 1M",
       "reason": "retired by D-047 \u2014 native is ahead at 200k, behind at 1M, ahead again at 10M"
+    },
+    {
+      "phrase": "268 evaluated answers",
+      "reason": "the denominator appears nowhere in paper/main.tex, which reports 282 task runs, 270 measurable, 220 ungated-emitted and 0 of 199 gated-emitted; 268 traces only to a superseded review response"
     }
   ]
 }

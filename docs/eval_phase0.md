@@ -103,7 +103,7 @@ native on a scan shape at this scale, and both pay heavily for iterative
 traversal —
 ClickHouse's reachability rounds cost ~1 ms of HTTP plus a table build
 each, which is the honest price of expressing recursion in an engine
-that does not natively offer it. Native holds 8 of 12.
+that does not natively offer it. Native holds 8 of 13.
 
 ### synth, 1M events (four systems)
 
@@ -571,7 +571,7 @@ far more actionable finding than "we are slower at aggregation."
 One cell deserves its own sentence, because it is ours and it is bad. The
 **portable fallback — the same operator on the DuckDB backend — takes 36.5
 seconds at 10M**, three hundred and eighty times the native kernel and
-fifteen times PostgreSQL, and it has not moved while the native path got
+far beyond the row stores at that scale, and it has not moved while the native path got
 3.5× faster. It is vectorized NumPy, but it groups by `rel_type` as an array
 of ten million Python strings, which is the dictionary-coding lesson the
 native path was careful to obey and the portable path was not. Anyone using
@@ -1057,8 +1057,8 @@ Python-driven rounds, so this is the graph engines reading at their most
 natural rather than handicapped. The result Phase 3
 existed to test is unambiguous: **on the traversal family — the graph
 engines' home turf — native wins by one to two orders of magnitude**
-(reachability 17 ms vs 3.8–7.3 s; the closed-triangle motif 40 ms vs
-2.1–5.1 s, despite Cypher expressing that query most naturally of any
+(reachability 14.7 ms vs 3.9–7.3 s; the closed-triangle motif 28.7 ms vs
+2.1–5.5 s, despite Cypher expressing that query most naturally of any
 system). The bi-temporal predicates are the reason: every hop re-filters
 by belief and validity on relationship properties, which no graph index
 here accelerates, while the native engine's clustering and kernels were
