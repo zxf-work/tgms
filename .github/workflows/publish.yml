@@ -25,6 +25,14 @@ jobs:
           CIBW_SKIP: "*-musllinux_*"
           CIBW_ARCHS_LINUX: x86_64
           CIBW_ARCHS_MACOS: arm64
+          # manylinux_2_28, not the default manylinux2014. The wheel builds
+          # fine either way; what fails is the install-test below, because
+          # NumPy and pyarrow stopped publishing manylinux2014 wheels, so
+          # pip falls back to building them from source and manylinux2014's
+          # GCC 9 is older than the GCC >= 10.3 NumPy now requires. The cost
+          # is glibc < 2.28 (CentOS 7 era, long EOL) — already excluded in
+          # spirit by requires-python >= 3.11.
+          CIBW_MANYLINUX_X86_64_IMAGE: manylinux_2_28
           # manylinux containers have no Rust; install a minimal toolchain
           CIBW_BEFORE_ALL_LINUX: >-
             curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs
