@@ -9,6 +9,7 @@
   "class_15": 2,
   "need_or_ops_15": "entity_history+filter",
   "justification_15": "",
+  "justification_17": "",
   "temporal_predicate": false,
   "belief_clock": false,
   "justification": "one entity_history(uid, include_edges) carries every returned scalar in the version's props and creationDate as vt_s; compute filter(rel_type eq IS_LOCATED_IN) over the incident edges yields the City uid, which is `cityId` under the mapping"
@@ -23,6 +24,7 @@
   "class_15": 3,
   "need_or_ops_15": "PAT,PROJ",
   "justification_15": "",
+  "justification_17": "",
   "temporal_predicate": false,
   "belief_clock": false,
   "justification": "the ten most recent messages are reachable (incident HAS_CREATOR edges, then topk on vt_s), but each one then needs a variable-length typed REPLY_OF walk to its root Post and the root author's names \u2014 a per-row expansion with no iteration primitive in the plan language"
@@ -37,6 +39,7 @@
   "class_15": 3,
   "need_or_ops_15": "PROJ",
   "justification_15": "",
+  "justification_17": "",
   "temporal_predicate": false,
   "belief_clock": false,
   "justification": "friend uids and friendship dates come from one entity_history+filter chain; firstName/lastName per friend do not \u2014 operators take one uid, no operator projects props for a set of nodes, and the plan DAG has no map"
@@ -51,6 +54,7 @@
   "class_15": 1,
   "need_or_ops_15": "entity_history",
   "justification_15": "",
+  "justification_17": "",
   "temporal_predicate": false,
   "belief_clock": false,
   "justification": "one call on the Message uid: creationDate is the version's vt_s and content/imageFile are its props"
@@ -65,6 +69,7 @@
   "class_15": 2,
   "need_or_ops_15": "entity_history+filter+entity_history",
   "justification_15": "",
+  "justification_17": "",
   "temporal_predicate": false,
   "belief_clock": false,
   "justification": "the incident HAS_CREATOR edge gives the creator uid; a $ref binds that scalar into a second entity_history whose props carry firstName and lastName"
@@ -79,6 +84,7 @@
   "class_15": 3,
   "need_or_ops_15": "PAT,PROJ",
   "justification_15": "",
+  "justification_17": "",
   "temporal_predicate": false,
   "belief_clock": false,
   "justification": "variable-length typed REPLY_OF walk to the root Post, then CONTAINER_OF and HAS_MODERATOR, then the moderator's names"
@@ -93,6 +99,7 @@
   "class_15": 3,
   "need_or_ops_15": "PAT,PROJ,NEG",
   "justification_15": "",
+  "justification_17": "",
   "temporal_predicate": false,
   "belief_clock": false,
   "justification": "two-hop typed pattern to each reply's author, per-author name projection, and an optional KNOWS test whose *absence* is part of the answer"
@@ -107,6 +114,7 @@
   "class_15": 3,
   "need_or_ops_15": "SP,PROP,PROJ,PAT",
   "justification_15": "",
+  "justification_17": "",
   "temporal_predicate": false,
   "belief_clock": false,
   "justification": "ranks friends by shortest-path distance 1..3 (a hop count, which no operator returns), selects on firstName equality, and projects thirteen attributes plus nested university and company tuples"
@@ -121,6 +129,7 @@
   "class_15": 3,
   "need_or_ops_15": "PAT,PROJ",
   "justification_15": "",
+  "justification_17": "",
   "temporal_predicate": true,
   "belief_clock": false,
   "justification": "one-hop KNOWS then HAS_CREATOR into messages under a date bound is a typed two-way pattern; the answer projects message content and each author's names"
@@ -133,8 +142,9 @@
   "class": 3,
   "need_or_ops": "PAT,PROP,SET,AR,NEG",
   "class_15": 3,
-  "need_or_ops_15": "PAT,PROP,SET,ROW,NEG",
+  "need_or_ops_15": "PAT,PROP,JOIN,ROW,NEG",
   "justification_15": "the two per-country counts are summed per friend once the sets are joined \u2014 a derived column, not a scalar quotient",
+  "justification_17": "the two per-friend counts must be summed, so the sets have to be aligned on the friend and carry their values",
   "temporal_predicate": true,
   "belief_clock": false,
   "justification": "two country restrictions reached through Message->Country, an intersection of the two per-friend count sets, their sum, and a not-located-in exclusion"
@@ -149,6 +159,7 @@
   "class_15": 3,
   "need_or_ops_15": "PAT,PROP,NEG,G",
   "justification_15": "",
+  "justification_17": "",
   "temporal_predicate": true,
   "belief_clock": false,
   "justification": "tags of friends' posts inside a window minus tags used before it \u2014 a typed three-hop pattern with a set difference over grouped counts"
@@ -163,6 +174,7 @@
   "class_15": 3,
   "need_or_ops_15": "PAT,PROP,G",
   "justification_15": "",
+  "justification_17": "",
   "temporal_predicate": true,
   "belief_clock": false,
   "justification": "forums joined after a date by friends and friends-of-friends, counted by that same friend's posts inside each forum: a three-way typed join underneath a grouping"
@@ -177,6 +189,7 @@
   "class_15": 3,
   "need_or_ops_15": "PAT,PROP,G",
   "justification_15": "",
+  "justification_17": "",
   "temporal_predicate": false,
   "belief_clock": false,
   "justification": "co-occurring tags on friends' posts carrying a given tag; tag identity is reached through HAS_TAG and the anchor tag is excluded from its own histogram"
@@ -191,6 +204,7 @@
   "class_15": 3,
   "need_or_ops_15": "PAT,PROP,ROW,NEG",
   "justification_15": "latency in minutes is (like time - message creation) per row, then a divide \u2014 a derived column, not a scalar quotient",
+  "justification_17": "",
   "temporal_predicate": true,
   "belief_clock": false,
   "justification": "most recent like per liker, latency in minutes from the message's creation (a division), and an is-new test against the KNOWS set"
@@ -205,6 +219,7 @@
   "class_15": 3,
   "need_or_ops_15": "PAT,PROJ",
   "justification_15": "",
+  "justification_17": "",
   "temporal_predicate": false,
   "belief_clock": false,
   "justification": "replies to any message of a person \u2014 a typed three-hop pattern \u2014 projecting reply content and author names"
@@ -219,6 +234,7 @@
   "class_15": 3,
   "need_or_ops_15": "PAT,PROJ",
   "justification_15": "",
+  "justification_17": "",
   "temporal_predicate": true,
   "belief_clock": false,
   "justification": "two-hop KNOWS expansion into messages under a date bound, projecting content and author names"
@@ -233,6 +249,7 @@
   "class_15": 3,
   "need_or_ops_15": "PAT,PROP,CAL,ROW,SET",
   "justification_15": "the common-minus-non-common score is per candidate friend",
+  "justification_17": "",
   "temporal_predicate": true,
   "belief_clock": false,
   "justification": "exactly-two-hop friends filtered by a birthday month/day window, scored as common-interest minus non-common counts"
@@ -247,6 +264,7 @@
   "class_15": 3,
   "need_or_ops_15": "PAT,PROP,CAL",
   "justification_15": "",
+  "justification_17": "",
   "temporal_predicate": true,
   "belief_clock": false,
   "justification": "friends and friends-of-friends with a WORK_AT edge into a named country before a year; the year predicate is on an integer attribute and the company->country restriction is a typed two-hop pattern"
@@ -261,6 +279,7 @@
   "class_15": 3,
   "need_or_ops_15": "PAT,PROP,G",
   "justification_15": "",
+  "justification_17": "",
   "temporal_predicate": false,
   "belief_clock": false,
   "justification": "comments replying to posts whose tags sit under a TagClass, requiring a variable-length IS_SUBCLASS_OF walk and a per-friend distinct count"
@@ -275,6 +294,7 @@
   "class_15": 3,
   "need_or_ops_15": "SP,PAT",
   "justification_15": "",
+  "justification_17": "",
   "temporal_predicate": false,
   "belief_clock": false,
   "justification": "unbounded shortest-path length over KNOWS. temporal_paths caps at six hops and ranks by (arrival, hops, edge sequence) rather than reporting the minimum hop count; temporal_reachability returns earliest arrival, not distance"
@@ -289,6 +309,7 @@
   "class_15": 3,
   "need_or_ops_15": "SP,PAT,ROW",
   "justification_15": "the path weight is summed per path from interaction counts",
+  "justification_17": "",
   "temporal_predicate": false,
   "belief_clock": false,
   "justification": "all shortest paths over KNOWS plus a weight summed from interaction counts. v2 replaces this with a Dijkstra cheapest path, which is no closer to any operator"
@@ -303,6 +324,7 @@
   "class_15": 3,
   "need_or_ops_15": "G,CAL,ROW,PROP",
   "justification_15": "both remaining numbers are per bucket \u2014 the average message length within the group and that group's share of the global total \u2014 so a whole-input mean and a two-scalar percent reach neither",
+  "justification_17": "",
   "temporal_predicate": true,
   "belief_clock": false,
   "justification": "three grouping dimensions (year x isComment x length bucket) against a cap of two, a calendar year rather than a fixed stride, an aggregate over message length (a JSON prop \u2014 explicitly deferred in D-044), an average, and a percentage of a global total"
@@ -315,8 +337,9 @@
   "class": 3,
   "need_or_ops": "PAT,SET,AR,PROP",
   "class_15": 3,
-  "need_or_ops_15": "PAT,SET,ROW,PROP",
+  "need_or_ops_15": "PAT,JOIN,ROW,PROP",
   "justification_15": "the two windows are differenced per tag, with abs()",
+  "justification_17": "the two windows are joined per tag and differenced",
   "temporal_predicate": true,
   "belief_clock": false,
   "justification": "the nearest miss on the aggregation side: per-tag counts in one window ARE an aggregate_events grouping by dst endpoint. The two windows must then be joined per tag, differenced with abs(), restricted to a TagClass through HAS_TYPE, and reported by tag name"
@@ -331,6 +354,7 @@
   "class_15": 3,
   "need_or_ops_15": "PAT,PROP,G",
   "justification_15": "",
+  "justification_17": "",
   "temporal_predicate": false,
   "belief_clock": false,
   "justification": "forums in a country whose threads carry a TagClass, counting messages over a variable-length reply chain"
@@ -345,6 +369,7 @@
   "class_15": 3,
   "need_or_ops_15": "PAT,PROP,G,SET",
   "justification_15": "",
+  "justification_17": "",
   "temporal_predicate": true,
   "belief_clock": false,
   "justification": "top-100 forums by member count, then top message creators inside them, with a UNION ALL over two branches"
@@ -357,8 +382,9 @@
   "class": 3,
   "need_or_ops": "PAT,PROP,AR,SET",
   "class_15": 3,
-  "need_or_ops_15": "PAT,PROP,ROW,SET",
+  "need_or_ops_15": "PAT,PROP,ROW,JOIN",
   "justification_15": "1*m + 2*r + 10*l is a weighted sum per person",
+  "justification_17": "message, reply and like counts joined per person",
   "temporal_predicate": false,
   "belief_clock": false,
   "justification": "per-poster message, reply and like counts joined per person and combined as 1*m + 2*r + 10*l"
@@ -371,8 +397,9 @@
   "class": 3,
   "need_or_ops": "PAT,PROP,G,SET",
   "class_15": 3,
-  "need_or_ops_15": "PAT,PROP,G,SET",
+  "need_or_ops_15": "PAT,PROP,G,JOIN",
   "justification_15": "",
+  "justification_17": "per-message like counts joined into a per-author score",
   "temporal_predicate": false,
   "belief_clock": false,
   "justification": "two-level like propagation: per-message like counts feed a per-author authority score, a join between two groupings"
@@ -387,6 +414,7 @@
   "class_15": 3,
   "need_or_ops_15": "PAT,PROP,NEG,G",
   "justification_15": "",
+  "justification_17": "",
   "temporal_predicate": false,
   "belief_clock": false,
   "justification": "tags carried by replies to messages carrying a tag, excluding that tag itself"
@@ -399,8 +427,9 @@
   "class": 3,
   "need_or_ops": "PAT,PROP,AR,SET",
   "class_15": 3,
-  "need_or_ops_15": "PAT,PROP,ROW,SET",
+  "need_or_ops_15": "PAT,PROP,ROW,JOIN",
   "justification_15": "100*i + m is a weighted sum per person",
+  "justification_17": "two groupings joined per person, plus the friends' summed scores",
   "temporal_predicate": true,
   "belief_clock": false,
   "justification": "interest and message scores per person plus the summed scores of that person's friends \u2014 a join of two groupings and a weighted sum (100*i + m)"
@@ -415,6 +444,7 @@
   "class_15": 3,
   "need_or_ops_15": "PAT,PROP,G",
   "justification_15": "AR was over-tagged here: counts and sums are original-13 aggregates, and what blocks the template is reaching message length (a prop) under a grouping over a variable-length walk",
+  "justification_17": "",
   "temporal_predicate": true,
   "belief_clock": false,
   "justification": "per-thread message counts and length sums over variable-length reply chains inside a window"
@@ -429,6 +459,7 @@
   "class_15": 3,
   "need_or_ops_15": "PAT,PROP,SET,G",
   "justification_15": "",
+  "justification_17": "",
   "temporal_predicate": false,
   "belief_clock": false,
   "justification": "a variable-length friend expansion at distance 3-4, a country restriction, a TagClass restriction and an explicit set difference"
@@ -443,6 +474,7 @@
   "class_15": 3,
   "need_or_ops_15": "PAT,SET",
   "justification_15": "",
+  "justification_17": "",
   "temporal_predicate": true,
   "belief_clock": false,
   "justification": "the nearest miss in the whole set. M_triangle_cyclic and M_triangle_acyclic_1 between them cover both orientation classes of a triangle, and the date window is a valid-time window. But the country restriction is a typed two-hop pattern (Person->City->Country), node_filter caps at 10,000 uids against 68,673 Persons at SF10, and the delta-motif contract counts *time-ordered* instances under a span bound rather than undirected triangles, so the two counts would have to be argued equal rather than read off"
@@ -457,6 +489,7 @@
   "class_15": 3,
   "need_or_ops_15": "PROP,G",
   "justification_15": "AR was over-tagged here too: a histogram of persons by their message count is a grouping over a grouping, and the threshold is `filter(count ge k)`, which shipped with the original thirteen",
+  "justification_17": "",
   "temporal_predicate": true,
   "belief_clock": false,
   "justification": "a histogram of persons by their qualifying-message count \u2014 a grouping over the result of a grouping \u2014 with a message length predicate on a prop"
@@ -469,8 +502,9 @@
   "class": 3,
   "need_or_ops": "PAT,PROP,CAL,AR,SET",
   "class_15": 3,
-  "need_or_ops_15": "PAT,PROP,CAL,ROW,SET",
+  "need_or_ops_15": "PAT,PROP,CAL,ROW,JOIN",
   "justification_15": "the zombie rate is per person: messages over months since that person's own account creation",
+  "justification_17": "the zombie set joined to its likers",
   "temporal_predicate": true,
   "belief_clock": false,
   "justification": "the zombie definition is a per-calendar-month message rate since account creation, and the reported ratio needs a join between the zombie set and its likers"
@@ -483,8 +517,9 @@
   "class": 3,
   "need_or_ops": "PAT,PROP,AR,SET,G",
   "class_15": 3,
-  "need_or_ops_15": "PAT,PROP,ROW,SET,G",
+  "need_or_ops_15": "PAT,PROP,ROW,JOIN,G",
   "justification_15": "the 4/1/10/1 score is per city-pair row",
+  "justification_17": "four reply patterns combined per city pair",
   "temporal_predicate": false,
   "belief_clock": false,
   "justification": "per-city top interacting person pair across two countries, scored 4/1/10/1 over four distinct reply patterns"
@@ -499,6 +534,7 @@
   "class_15": 3,
   "need_or_ops_15": "SP,PAT,ROW",
   "justification_15": "1/(interaction count + 1) is a derived edge weight",
+  "justification_17": "",
   "temporal_predicate": true,
   "belief_clock": false,
   "justification": "a weighted shortest path where the weight is 1/(interaction count + 1) computed over a window \u2014 a Dijkstra over a derived projection"
@@ -511,8 +547,9 @@
   "class": 3,
   "need_or_ops": "PAT,PROP,CAL,SET,AR",
   "class_15": 3,
-  "need_or_ops_15": "PAT,PROP,CAL,SET,ROW",
+  "need_or_ops_15": "PAT,PROP,CAL,JOIN,ROW",
   "justification_15": "the two tag counts are summed per person",
+  "justification_17": "two per-person tag counts joined and summed",
   "temporal_predicate": true,
   "belief_clock": false,
   "justification": "persons who posted about two different tags on two given calendar dates, joined per person and summed"
@@ -527,6 +564,7 @@
   "class_15": 3,
   "need_or_ops_15": "PAT,PROP,G,SET",
   "justification_15": "",
+  "justification_17": "",
   "temporal_predicate": true,
   "belief_clock": false,
   "justification": "an eight-step typed pattern with two variable-length reply chains and a duration offset between two message times"
@@ -541,6 +579,7 @@
   "class_15": 3,
   "need_or_ops_15": "PAT,PROP,G,NEG",
   "justification_15": "",
+  "justification_17": "",
   "temporal_predicate": false,
   "belief_clock": false,
   "justification": "mutual friends sharing a tag, excluding pairs that already know each other"
@@ -555,6 +594,7 @@
   "class_15": 3,
   "need_or_ops_15": "SP,PAT,ROW",
   "justification_15": "a derived weighted projection, as BI15",
+  "justification_17": "",
   "temporal_predicate": false,
   "belief_clock": false,
   "justification": "cheapest interaction path between persons in two cities over a derived weighted projection"
@@ -569,6 +609,7 @@
   "class_15": 3,
   "need_or_ops_15": "SP,PAT,ROW,PROP",
   "justification_15": "the weight is the difference of study years, per edge",
+  "justification_17": "",
   "temporal_predicate": false,
   "belief_clock": false,
   "justification": "cheapest path weighted by the difference of study years \u2014 a Dijkstra over a projection built from STUDY_AT attributes"

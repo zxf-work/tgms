@@ -491,6 +491,28 @@ class Oracle:
                     kept.append(v)
             events = kept
 
+        # cohort pre-filter and pair modes (D-054), each in its own loop
+        ef = args.get("endpoint_filter")
+        if ef is not None:
+            cohort = set(ef["uids"])
+            events = [v for v in events
+                      if (v.src in cohort if ef["role"] == "src" else
+                          v.dst in cohort if ef["role"] == "dst" else
+                          v.src in cohort or v.dst in cohort)]
+        pair_mode = args.get("pair_mode")
+        if pair_mode == "reciprocal":
+            directed = {(v.src, v.dst) for v in events}
+            events = [v for v in events
+                      if (v.src, v.dst) in directed
+                      and (v.dst, v.src) in directed]
+
+        def canon(v: EdgeVersion) -> tuple[str, str]:
+            """Endpoints as the grouping sees them: folded onto the canonical
+            pair under either pair mode, untouched otherwise."""
+            if pair_mode is None:
+                return v.src, v.dst
+            return (v.src, v.dst) if v.src <= v.dst else (v.dst, v.src)
+
         def label_at(uid: str, t: int) -> str | None:
             # believed valid intervals of one identity are disjoint, so at
             # most one version matches
@@ -504,7 +526,8 @@ class Oracle:
                 return (v.vt_s - t_a) // stride
             if d["dim"] == "rel_type":
                 return v.rel_type
-            ep = v.src if d["role"] == "src" else v.dst
+            cs, cd = canon(v)
+            ep = cs if d["role"] == "src" else cd
             if d["dim"] == "endpoint":
                 return ep
             return label_at(ep, v.vt_s)
