@@ -72,6 +72,11 @@ jobs:
           pattern: dist-*
           merge-multiple: true
           path: dist/
+      # this job is the only one that never installed uv, and it worked in
+      # July because the runner image happened to carry it. It does not any
+      # more: `uvx: command not found`, exit 127, after every wheel had
+      # built. The sdist job above already does this.
+      - uses: astral-sh/setup-uv@v7
       - name: Check metadata
         run: uvx twine check dist/*
       - name: Publish to PyPI
