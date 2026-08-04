@@ -109,7 +109,7 @@ artifact</a> · <a href="https://github.com/zxf-work/tgms">code</a></div>
 list to write the questions they actually wanted answered, and only
 <span data-fact="coverage_original">10</span> of
 <span data-fact="coverage_total_questions">110</span> could be expressed at
-all — a number that is <span data-fact="coverage_current">72</span> today,
+all — a number that is <span data-fact="coverage_current">79</span> today,
 and that taught us more by missing its own forecast than by hitting it.</p>
 
 <div class="meta"><b>Status: Current.</b> TGMS 0.4.0 · study July
@@ -356,7 +356,7 @@ uncertainty.</p>
 <tr><td>Set / pair join (reciprocity, transpose)</td><td>11 of the 17 re-audited</td><td>high</td><td>high</td><td class="win">shipped — delivered <span data-fact="indep_set_delivered">14</span></td></tr>
 <tr><td>Ordered sequences in a group (gaps, sliding windows)</td><td>10 of the 17 re-audited</td><td>high</td><td>high</td><td class="win">shipped — delivered <span data-fact="indep_seq_delivered">4</span></td></tr>
 <tr><td>Global scan-select</td><td>6 sole blocker, July</td><td>low</td><td>medium</td><td class="amber">cheapest remaining</td></tr>
-<tr><td>Calendar semantics (weekday, hour-of-day)</td><td>2 sole blocker, July</td><td>low</td><td>low</td><td>queued</td></tr>
+<tr><td>Calendar semantics (weekday, hour-of-day)</td><td>2 sole blocker, July</td><td>low</td><td>low</td><td class="win">shipped — delivered <span data-fact="indep_cal_delivered">5</span></td></tr>
 <tr><td>Arithmetic beyond count / sum / min / max</td><td>2 sole blocker, July</td><td>low</td><td>medium</td><td class="win">shipped — delivered <span data-fact="indep_ar_delivered">4</span>, then <span data-fact="indep_rowjoin_delivered">15</span> once it split</td></tr>
 <tr><td>Property-filtered patterns</td><td>2 sole blocker, July</td><td>medium</td><td>medium</td><td class="win">shipped — delivered <span data-fact="indep_prop_delivered">10</span></td></tr>
 </table></div>
@@ -369,12 +369,19 @@ so they do not sum. Difficulty and composability are engineering judgment,
 not measurement, and the sole-blocker counts are exactly the quantity this
 study showed to be an upper bound. Read the ordering, not the arithmetic.</p>
 
-<p><b>Five rows have now been tested against reality, and the upper-bound
+<p><b>Six rows have now been tested against reality, and the upper-bound
 finding held every time.</b> Predicted-versus-delivered runs 30/14, 7/4,
-13/10, 16/14, 15/15 and 8/4. The one exact hit came from the session that
-re-audited no blocked question at all, and the session after it found two
-of that session's tags still on the board for capabilities that had already
-shipped — so the count agreeing is not evidence the tags did.</p>
+13/10, 16/14, 15/15, 8/4 and 5/5. The one exact hit in the middle came from
+the session that re-audited no blocked question at all, and each of the
+three sessions after it found tags still on the board for capabilities that
+had already shipped — so a count agreeing is not evidence the tags did.</p>
+
+<p>The last row is the first forecast made <b>per question</b> rather than
+in aggregate, and it came in <b>8 of 8 correct</b> — including two cells
+where reading the question contradicted its own tag. That is the only
+method we have found that predicts which questions move, and it is
+laborious: it means reading every blocked question again, not the label
+attached to it.</p>
 
 <p>One item did not come from the histogram at all. Four questions anchor
 <b>transaction time</b> to event years — asking what the database believed

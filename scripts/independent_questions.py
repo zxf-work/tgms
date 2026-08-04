@@ -121,6 +121,27 @@ of them what shipped: a lag between events of *opposite directions* within a
 pair, a *distinct* count inside a sliding window, a first-k/last-k slice per
 group, and a gap whose two ends must both be sends.
 
+`C20` is the eighth, after D-057's `calendar_unit` dimension: three cyclic
+units (`hour_of_day`, `day_of_week`, `month_of_year`) at a fixed offset from
+UTC. Seven questions moved, 72 -> 79, of which **five** are the capability;
+the other two are `REREAD`. The per-question forecast was pre-registered in
+the `[tests]` commit and came in **8 of 8 correct**, including two cells
+where reading the question contradicted its tag — cm-Q53 moved despite
+`NEG`, and cm-Q19 stayed for a reason (`PAT`: the motif catalogue has no
+2-edge delta-path at all) that has nothing to do with calendars.
+
+The two re-reads are the finding. They are tags left behind by **D-054 and
+D-055**, not by the session immediately before — cm-Q40's absence condition
+is a cohort pre-filter plus `difference`, and bo-Q11's "lowest average among
+accounts with at least 10 ratings" contains no percentile at all. Three
+consecutive re-audits have now cleaned up after their predecessors, so
+`NO_CLASS3_AUDIT` below turns that lesson into a check.
+
+`CAL` survives on three entries and means something narrower: a calendar
+predicate *inside* another operator (cm-Q19, bo-Q32), or an **absolute**
+calendar unit rather than a cyclic one (bo-Q41's date). LDBC's five `CAL`
+templates are all the absolute kind, which is why none of them moved.
+
 Usage:
   python3 scripts/independent_questions.py report  # tables only, no stores
   python3 scripts/independent_questions.py build   # writes suites + gold;
@@ -1120,7 +1141,7 @@ C18: dict[tuple[str, int], tuple[int, str, str]] = {
 #: Entries that changed class because the *earlier verdict* was wrong, not
 #: because a capability shipped. Kept out of every capability's delta, in
 #: this table and in any that follows it.
-REREAD: set[tuple[str, int]] = {("cm", 41)}
+REREAD: set[tuple[str, int]] = {("cm", 41), ("cm", 40), ("bo", 11)}
 
 C19: dict[tuple[str, int], tuple[int, str, str]] = {
     # ---- became expressible, on the capability ---- #
@@ -1181,15 +1202,102 @@ C19: dict[tuple[str, int], tuple[int, str, str]] = {
 }
 
 
+# --------------------------------------------------------------------------- #
+# re-audit after the calendar dimension shipped (D-057)                        #
+# --------------------------------------------------------------------------- #
+# `aggregate_events` gained a `calendar_unit` dimension with three cyclic
+# units — hour_of_day, day_of_week, month_of_year — at a fixed offset from
+# UTC. Absolute `date`/`month`/`year` were NOT built: they are the same ten
+# lines and are wanted only by entries that stay blocked on `GLOB` or `PROP`.
+#
+# **Seven questions moved and only five are the capability.** The other two
+# are `REREAD`: tags that outlived the capability that answered them, from
+# **two earlier sessions** this time rather than one.
+#   cm-Q40  D-054's `endpoint_filter` cohort plus `difference` answers
+#           "only ever sent to accounts that never sent" outright.
+#   bo-Q11  "the lowest average, among accounts with at least 10" has no
+#           percentile in it: the threshold is a `filter` and "lowest" is
+#           D-055's `derive mul -1` in front of `topk`, which ranks
+#           descending only.
+# That makes it three consecutive sessions in which the previous session's
+# tags were still on the board. It is not a coincidence and D-057 records it
+# as a process defect rather than a run of bad luck.
+#
+# `NEG` is the tag that nearly retired here. Both remaining entries want the
+# absence *inside a motif* (bo-Q31, bo-Q35), which is `PROP`'s territory and
+# exactly the shape `PROP` itself took after D-052; the two that wanted
+# absence over a result set (cm-Q40, cm-Q53) are set differences and are
+# expressible. It is left un-retired on purpose because two entries still
+# carry it honestly.
+#
+# `CAL` survives on three entries and means something narrower now: a
+# calendar predicate *inside another operator* (cm-Q19's motif, bo-Q32's
+# path), or an ABSOLUTE calendar unit rather than a cyclic one (bo-Q41's
+# date). Neither is what shipped.
+C20: dict[tuple[str, int], tuple[int, str, str]] = {
+    # ---- became expressible, on the capability ---- #
+    ("cm", 15): (2, "aggregate_events+filter+filter+sum+sum+percent",
+                 "hour_of_day grouping, the two half-open bounds as two "
+                 "filters, then the share of the total. Measured on the "
+                 "real store it is 5.66% at UTC and 23.20% at UTC-7, which "
+                 "is why the offset is an argument and not a default"),
+    ("cm", 20): (2, "aggregate_events+derive+topk",
+                 "day_of_week grouping; `topk` ranks descending only, so "
+                 "'lowest' is D-055's derive mul -1 in front of it"),
+    ("cm", 30): (2, "aggregate_events+aggregate_events+filter+union+intersect",
+                 "month_of_year x endpoint twice, because 'active' spans "
+                 "both roles; a union per month makes the role-merged set "
+                 "and the answer is the intersection across months. Note "
+                 "this needs only set membership, which is why it is not "
+                 "blocked by `EGO` the way cm-Q14 is"),
+    ("cm", 32): (2, "aggregate_events+filter+filter+filter+count",
+                 "hour_of_day and day_of_week as the two dimensions — the "
+                 "case that made `unit` part of the dimension key"),
+    ("cm", 53): (2, "aggregate_events+filter+union+filter+difference",
+                 "against its own tag: 'only ever between 21:00 and 03:00' "
+                 "is the difference between senders seen in the window and "
+                 "senders seen outside it. `NEG` was never the blocker"),
+    # ---- became expressible on a re-reading, NOT on this session's work ---- #
+    ("cm", 40): (2, "aggregate_events+aggregate_events+difference",
+                 "not a D-057 capability. D-054 shipped both halves: the "
+                 "cohort pre-filter selects senders who sent to a sender, "
+                 "and `difference` removes them from the senders"),
+    ("bo", 11): (2, "aggregate_events+filter+derive+topk",
+                 "not a D-057 capability, and never a percentile: 'at least "
+                 "10 ratings' is a filter on count and 'lowest average' is "
+                 "derive mul -1 then topk, both of which shipped in D-055"),
+    # ---- re-tagged, still class 3 ---- #
+    ("cm", 19): (3, "PAT,CAL",
+                 "the calendar constraint was not the obstacle. The motif "
+                 "catalogue has five shapes and every one is three edges; "
+                 "there is no 2-edge delta-path at all, and 'the same day' "
+                 "would have to be a predicate inside it"),
+}
+
+
 def _verdict(table: dict, base, k):
     """A re-audit table's verdict for `k`, falling back to the table it
     chains onto. `base` is a callable so the chain composes."""
     return (table[k][0], table[k][1]) if k in table else base(k)
 
 
+#: Re-audit tables that inspected no still-blocked entry. A table with no
+#: class-3 row cannot discover that a tag has outlived the capability that
+#: answered it — it can only record what its own session freed. `C18` is
+#: here because it did exactly that, and the two sessions after it each had
+#: to clean up tags C18 left standing (`ROW`, `JOIN` in C19; `PCT` on
+#: bo-Q11, `SET`/`NEG` on cm-Q40 in C20). The set is closed: a new table
+#: that audits nothing fails this check rather than joining it.
+NO_CLASS3_AUDIT = frozenset({"C18"})
+
+
 def _check_diff(table: dict, base, name: str) -> None:
     """A re-audit is a diff, not a rewrite: guard the invariants that make it
     one. `base` returns the (class, tags) each entry is a diff against."""
+    assert any(v[0] == 3 for v in table.values()) or name in NO_CLASS3_AUDIT, (
+        f"{name} re-audited no class-3 entry. Re-read the need string of "
+        f"every blocked question this session's capability could touch; a "
+        f"re-audit that only records what it freed has not looked.")
     for k, (cls_new, tags_new, why) in table.items():
         assert k in C, f"{name} key {k} not in the pre-registered table"
         cls, tags = base(k)
@@ -1226,12 +1334,16 @@ def report():
     def v19(k):
         return _verdict(C19, v18, k)
 
+    def v20(k):
+        return _verdict(C20, v19, k)
+
     _check_diff(C14, v13, "C14")
     _check_diff(C15, v14, "C15")
     _check_diff(C16, v15, "C16")
     _check_diff(C17, v16, "C17")
     _check_diff(C18, v17, "C18")
     _check_diff(C19, v18, "C19")
+    _check_diff(C20, v19, "C20")
     # AR is retired by C15: the capability shipped, and what is left of it
     # was never AR. Guard it so a later edit cannot quietly reintroduce the
     # tag without deciding what it now means.
@@ -1252,7 +1364,8 @@ def report():
               ("property typing, D-052 session re-audit", v16),
               ("sets, D-054 session re-audit", v17),
               ("row + join, D-055 session re-audit", v18),
-              ("sequences, D-056 session re-audit", v19)]
+              ("sequences, D-056 session re-audit", v19),
+              ("calendar units, D-057 session re-audit", v20)]
     for label, v in stages:
         print(f"class distribution ({label}):",
               dict(sorted(Counter(v(k)[0] for k in q).items())))
@@ -1266,7 +1379,8 @@ def report():
             ("D-052 property typing", v15, v16, C16),
             ("D-054 sets", v16, v17, C17),
             ("D-055 row + join", v17, v18, C18),
-            ("D-056 sequences", v18, v19, C19)]:
+            ("D-056 sequences", v18, v19, C19),
+            ("D-057 calendar units", v19, v20, C20)]:
         moved = sorted(k for k in q if cur(k)[0] != prev(k)[0])
         by_move = Counter((prev(k)[0], cur(k)[0]) for k in moved)
         print(f"\nbecame expressible under {label}: {len(moved)} of {len(q)} "
@@ -1287,7 +1401,7 @@ def report():
         print(f"class-3 entries whose need-tags were re-audited: "
               f"{len([k for k in table if table[k][0] == 3])}")
 
-    expressible = sum(1 for k in q if v19(k)[0] in (1, 2))
+    expressible = sum(1 for k in q if v20(k)[0] in (1, 2))
     print(f"\nexpressible now: {expressible} of {len(q)}")
     print("runnable:", [f"{d}-Q{n}" for (d, n) in sorted(C)
                         if C[(d, n)][2]])
@@ -1306,6 +1420,8 @@ def report():
              "justification_18": C18[(d, n)][2] if (d, n) in C18 else "",
              "class_19": v19((d, n))[0], "need_or_ops_19": v19((d, n))[1],
              "justification_19": C19[(d, n)][2] if (d, n) in C19 else "",
+             "class_20": v20((d, n))[0], "need_or_ops_20": v20((d, n))[1],
+             "justification_20": C20[(d, n)][2] if (d, n) in C20 else "",
              "reread_not_capability": (d, n) in REREAD}
             for (d, n) in sorted(q)]
     out = Path("benchmarks/independent-v1/classification.json")

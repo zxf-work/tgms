@@ -27,6 +27,9 @@
   "class_19": 1,
   "need_or_ops_19": "aggregate_events",
   "justification_19": "",
+  "class_20": 1,
+  "need_or_ops_20": "aggregate_events",
+  "justification_20": "",
   "reread_not_capability": false
  },
  {
@@ -57,6 +60,9 @@
   "class_19": 1,
   "need_or_ops_19": "aggregate_events",
   "justification_19": "",
+  "class_20": 1,
+  "need_or_ops_20": "aggregate_events",
+  "justification_20": "",
   "reread_not_capability": false
  },
  {
@@ -87,6 +93,9 @@
   "class_19": 2,
   "need_or_ops_19": "graph_metric_timeseries+sum",
   "justification_19": "",
+  "class_20": 2,
+  "need_or_ops_20": "graph_metric_timeseries+sum",
+  "justification_20": "",
   "reread_not_capability": false
  },
  {
@@ -117,6 +126,9 @@
   "class_19": 1,
   "need_or_ops_19": "aggregate_events",
   "justification_19": "",
+  "class_20": 1,
+  "need_or_ops_20": "aggregate_events",
+  "justification_20": "",
   "reread_not_capability": false
  },
  {
@@ -147,6 +159,9 @@
   "class_19": 2,
   "need_or_ops_19": "graph_metric_timeseries+topk",
   "justification_19": "",
+  "class_20": 2,
+  "need_or_ops_20": "graph_metric_timeseries+topk",
+  "justification_20": "",
   "reread_not_capability": false
  },
  {
@@ -177,6 +192,9 @@
   "class_19": 2,
   "need_or_ops_19": "aggregate_events+aggregate_events+percent",
   "justification_19": "",
+  "class_20": 2,
+  "need_or_ops_20": "aggregate_events+aggregate_events+percent",
+  "justification_20": "",
   "reread_not_capability": false
  },
  {
@@ -207,6 +225,9 @@
   "class_19": 2,
   "need_or_ops_19": "aggregate_events+aggregate_events+intersect+count",
   "justification_19": "",
+  "class_20": 2,
+  "need_or_ops_20": "aggregate_events+aggregate_events+intersect+count",
+  "justification_20": "",
   "reread_not_capability": false
  },
  {
@@ -237,6 +258,9 @@
   "class_19": 2,
   "need_or_ops_19": "aggregate_events+aggregate_events",
   "justification_19": "",
+  "class_20": 2,
+  "need_or_ops_20": "aggregate_events+aggregate_events",
+  "justification_20": "",
   "reread_not_capability": false
  },
  {
@@ -267,6 +291,9 @@
   "class_19": 2,
   "need_or_ops_19": "aggregate_events+topk",
   "justification_19": "",
+  "class_20": 2,
+  "need_or_ops_20": "aggregate_events+topk",
+  "justification_20": "",
   "reread_not_capability": false
  },
  {
@@ -297,6 +324,9 @@
   "class_19": 2,
   "need_or_ops_19": "aggregate_events+topk",
   "justification_19": "",
+  "class_20": 2,
+  "need_or_ops_20": "aggregate_events+topk",
+  "justification_20": "",
   "reread_not_capability": false
  },
  {
@@ -327,7 +357,10 @@
   "class_19": 3,
   "need_or_ops_19": "PCT",
   "justification_19": "",
-  "reread_not_capability": false
+  "class_20": 2,
+  "need_or_ops_20": "aggregate_events+filter+derive+topk",
+  "justification_20": "not a D-057 capability, and never a percentile: 'at least 10 ratings' is a filter on count and 'lowest average' is derive mul -1 then topk, both of which shipped in D-055",
+  "reread_not_capability": true
  },
  {
   "dataset": "bo",
@@ -357,6 +390,9 @@
   "class_19": 2,
   "need_or_ops_19": "aggregate_events+filter+topk",
   "justification_19": "",
+  "class_20": 2,
+  "need_or_ops_20": "aggregate_events+filter+topk",
+  "justification_20": "",
   "reread_not_capability": false
  },
  {
@@ -387,6 +423,9 @@
   "class_19": 2,
   "need_or_ops_19": "aggregate_events+aggregate_events",
   "justification_19": "",
+  "class_20": 2,
+  "need_or_ops_20": "aggregate_events+aggregate_events",
+  "justification_20": "",
   "reread_not_capability": false
  },
  {
@@ -417,6 +456,9 @@
   "class_19": 2,
   "need_or_ops_19": "aggregate_events+aggregate_events+join+derive+topk",
   "justification_19": "",
+  "class_20": 2,
+  "need_or_ops_20": "aggregate_events+aggregate_events+join+derive+topk",
+  "justification_20": "",
   "reread_not_capability": false
  },
  {
@@ -447,6 +489,9 @@
   "class_19": 2,
   "need_or_ops_19": "aggregate_events+filter+filter+count",
   "justification_19": "",
+  "class_20": 2,
+  "need_or_ops_20": "aggregate_events+filter+filter+count",
+  "justification_20": "",
   "reread_not_capability": false
  },
  {
@@ -477,6 +522,9 @@
   "class_19": 2,
   "need_or_ops_19": "aggregate_events+filter+count",
   "justification_19": "",
+  "class_20": 2,
+  "need_or_ops_20": "aggregate_events+filter+count",
+  "justification_20": "",
   "reread_not_capability": false
  },
  {
@@ -507,6 +555,9 @@
   "class_19": 2,
   "need_or_ops_19": "aggregate_events+filter+max+ratio",
   "justification_19": "max_gap per rater; the accounts that rated once have a null gap and `filter not_null` drops them, which is why that cmp shipped in the same session",
+  "class_20": 2,
+  "need_or_ops_20": "aggregate_events+filter+max+ratio",
+  "justification_20": "",
   "reread_not_capability": false
  },
  {
@@ -537,6 +588,9 @@
   "class_19": 2,
   "need_or_ops_19": "aggregate_events+filter+count",
   "justification_19": "max_in_window with a 24h span per rated account, then 'more than 5' and 'was there any'",
+  "class_20": 2,
+  "need_or_ops_20": "aggregate_events+filter+count",
+  "justification_20": "",
   "reread_not_capability": false
  },
  {
@@ -567,6 +621,9 @@
   "class_19": 2,
   "need_or_ops_19": "aggregate_events+intersect+intersect+count",
   "justification_19": "",
+  "class_20": 2,
+  "need_or_ops_20": "aggregate_events+intersect+intersect+count",
+  "justification_20": "",
   "reread_not_capability": false
  },
  {
@@ -597,6 +654,9 @@
   "class_19": 2,
   "need_or_ops_19": "aggregate_events+derive+derive+join+derive+median",
   "justification_19": "",
+  "class_20": 2,
+  "need_or_ops_20": "aggregate_events+derive+derive+join+derive+median",
+  "justification_20": "",
   "reread_not_capability": false
  },
  {
@@ -627,6 +687,9 @@
   "class_19": 2,
   "need_or_ops_19": "graph_metric_timeseries+filter",
   "justification_19": "",
+  "class_20": 2,
+  "need_or_ops_20": "graph_metric_timeseries+filter",
+  "justification_20": "",
   "reread_not_capability": false
  },
  {
@@ -657,6 +720,9 @@
   "class_19": 2,
   "need_or_ops_19": "aggregate_events+aggregate_events+join+derive+derive+count",
   "justification_19": "",
+  "class_20": 2,
+  "need_or_ops_20": "aggregate_events+aggregate_events+join+derive+derive+count",
+  "justification_20": "",
   "reread_not_capability": false
  },
  {
@@ -687,6 +753,9 @@
   "class_19": 2,
   "need_or_ops_19": "aggregate_events+filter+derive+derive+mean",
   "justification_19": "",
+  "class_20": 2,
+  "need_or_ops_20": "aggregate_events+filter+derive+derive+mean",
+  "justification_20": "",
   "reread_not_capability": false
  },
  {
@@ -717,6 +786,9 @@
   "class_19": 1,
   "need_or_ops_19": "aggregate_events",
   "justification_19": "",
+  "class_20": 1,
+  "need_or_ops_20": "aggregate_events",
+  "justification_20": "",
   "reread_not_capability": false
  },
  {
@@ -747,6 +819,9 @@
   "class_19": 2,
   "need_or_ops_19": "aggregate_events+aggregate_events+percent",
   "justification_19": "",
+  "class_20": 2,
+  "need_or_ops_20": "aggregate_events+aggregate_events+percent",
+  "justification_20": "",
   "reread_not_capability": false
  },
  {
@@ -777,6 +852,9 @@
   "class_19": 3,
   "need_or_ops_19": "PROJ",
   "justification_19": "",
+  "class_20": 3,
+  "need_or_ops_20": "PROJ",
+  "justification_20": "",
   "reread_not_capability": false
  },
  {
@@ -807,6 +885,9 @@
   "class_19": 3,
   "need_or_ops_19": "PROJ,SEQ",
   "justification_19": "",
+  "class_20": 3,
+  "need_or_ops_20": "PROJ,SEQ",
+  "justification_20": "",
   "reread_not_capability": false
  },
  {
@@ -837,6 +918,9 @@
   "class_19": 2,
   "need_or_ops_19": "aggregate_events+topk",
   "justification_19": "",
+  "class_20": 2,
+  "need_or_ops_20": "aggregate_events+topk",
+  "justification_20": "",
   "reread_not_capability": false
  },
  {
@@ -867,6 +951,9 @@
   "class_19": 3,
   "need_or_ops_19": "PROJ,SEQ",
   "justification_19": "",
+  "class_20": 3,
+  "need_or_ops_20": "PROJ,SEQ",
+  "justification_20": "",
   "reread_not_capability": false
  },
  {
@@ -897,6 +984,9 @@
   "class_19": 3,
   "need_or_ops_19": "PROJ",
   "justification_19": "",
+  "class_20": 3,
+  "need_or_ops_20": "PROJ",
+  "justification_20": "",
   "reread_not_capability": false
  },
  {
@@ -927,6 +1017,9 @@
   "class_19": 3,
   "need_or_ops_19": "NEG,PROP",
   "justification_19": "",
+  "class_20": 3,
+  "need_or_ops_20": "NEG,PROP",
+  "justification_20": "",
   "reread_not_capability": false
  },
  {
@@ -957,6 +1050,9 @@
   "class_19": 3,
   "need_or_ops_19": "PROP,CAL",
   "justification_19": "",
+  "class_20": 3,
+  "need_or_ops_20": "PROP,CAL",
+  "justification_20": "",
   "reread_not_capability": false
  },
  {
@@ -987,6 +1083,9 @@
   "class_19": 3,
   "need_or_ops_19": "SET",
   "justification_19": "",
+  "class_20": 3,
+  "need_or_ops_20": "SET",
+  "justification_20": "",
   "reread_not_capability": false
  },
  {
@@ -1017,6 +1116,9 @@
   "class_19": 3,
   "need_or_ops_19": "PROP,GLOB",
   "justification_19": "",
+  "class_20": 3,
+  "need_or_ops_20": "PROP,GLOB",
+  "justification_20": "",
   "reread_not_capability": false
  },
  {
@@ -1047,6 +1149,9 @@
   "class_19": 3,
   "need_or_ops_19": "PROP,NEG",
   "justification_19": "",
+  "class_20": 3,
+  "need_or_ops_20": "PROP,NEG",
+  "justification_20": "",
   "reread_not_capability": false
  },
  {
@@ -1077,6 +1182,9 @@
   "class_19": 2,
   "need_or_ops_19": "aggregate_events+aggregate_events+count",
   "justification_19": "",
+  "class_20": 2,
+  "need_or_ops_20": "aggregate_events+aggregate_events+count",
+  "justification_20": "",
   "reread_not_capability": false
  },
  {
@@ -1107,6 +1215,9 @@
   "class_19": 3,
   "need_or_ops_19": "PROP",
   "justification_19": "",
+  "class_20": 3,
+  "need_or_ops_20": "PROP",
+  "justification_20": "",
   "reread_not_capability": false
  },
  {
@@ -1137,6 +1248,9 @@
   "class_19": 4,
   "need_or_ops_19": "",
   "justification_19": "",
+  "class_20": 4,
+  "need_or_ops_20": "",
+  "justification_20": "",
   "reread_not_capability": false
  },
  {
@@ -1167,6 +1281,9 @@
   "class_19": 5,
   "need_or_ops_19": "",
   "justification_19": "",
+  "class_20": 5,
+  "need_or_ops_20": "",
+  "justification_20": "",
   "reread_not_capability": false
  },
  {
@@ -1197,6 +1314,9 @@
   "class_19": 3,
   "need_or_ops_19": "GLOB",
   "justification_19": "",
+  "class_20": 3,
+  "need_or_ops_20": "GLOB",
+  "justification_20": "",
   "reread_not_capability": false
  },
  {
@@ -1227,6 +1347,9 @@
   "class_19": 3,
   "need_or_ops_19": "GLOB,CAL",
   "justification_19": "",
+  "class_20": 3,
+  "need_or_ops_20": "GLOB,CAL",
+  "justification_20": "",
   "reread_not_capability": false
  },
  {
@@ -1257,6 +1380,9 @@
   "class_19": 2,
   "need_or_ops_19": "aggregate_events+aggregate_events+join+derive+filter+count",
   "justification_19": "",
+  "class_20": 2,
+  "need_or_ops_20": "aggregate_events+aggregate_events+join+derive+filter+count",
+  "justification_20": "",
   "reread_not_capability": false
  },
  {
@@ -1287,6 +1413,9 @@
   "class_19": 2,
   "need_or_ops_19": "aggregate_events+filter+topk",
   "justification_19": "",
+  "class_20": 2,
+  "need_or_ops_20": "aggregate_events+filter+topk",
+  "justification_20": "",
   "reread_not_capability": false
  },
  {
@@ -1317,6 +1446,9 @@
   "class_19": 2,
   "need_or_ops_19": "aggregate_events+aggregate_events+join+derive+filter",
   "justification_19": "",
+  "class_20": 2,
+  "need_or_ops_20": "aggregate_events+aggregate_events+join+derive+filter",
+  "justification_20": "",
   "reread_not_capability": false
  },
  {
@@ -1347,6 +1479,9 @@
   "class_19": 3,
   "need_or_ops_19": "GLOB",
   "justification_19": "",
+  "class_20": 3,
+  "need_or_ops_20": "GLOB",
+  "justification_20": "",
   "reread_not_capability": false
  },
  {
@@ -1377,6 +1512,9 @@
   "class_19": 2,
   "need_or_ops_19": "aggregate_events+aggregate_events+join+derive+percent",
   "justification_19": "",
+  "class_20": 2,
+  "need_or_ops_20": "aggregate_events+aggregate_events+join+derive+percent",
+  "justification_20": "",
   "reread_not_capability": false
  },
  {
@@ -1407,6 +1545,9 @@
   "class_19": 3,
   "need_or_ops_19": "SEQ",
   "justification_19": "`ROW` is not the obstacle: with a first-5/last-5 slice per account the two means are `mean of prop` inside the operator and the difference is `derive`. The slice is the whole of it",
+  "class_20": 3,
+  "need_or_ops_20": "SEQ",
+  "justification_20": "",
   "reread_not_capability": false
  },
  {
@@ -1437,6 +1578,9 @@
   "class_19": 2,
   "need_or_ops_19": "aggregate_events+filter+filter+count",
   "justification_19": "",
+  "class_20": 2,
+  "need_or_ops_20": "aggregate_events+filter+filter+count",
+  "justification_20": "",
   "reread_not_capability": false
  },
  {
@@ -1467,6 +1611,9 @@
   "class_19": 2,
   "need_or_ops_19": "aggregate_events+filter+filter+count",
   "justification_19": "",
+  "class_20": 2,
+  "need_or_ops_20": "aggregate_events+filter+filter+count",
+  "justification_20": "",
   "reread_not_capability": false
  },
  {
@@ -1497,6 +1644,9 @@
   "class_19": 2,
   "need_or_ops_19": "aggregate_events+filter+filter+aggregate_events+aggregate_events+percent",
   "justification_19": "",
+  "class_20": 2,
+  "need_or_ops_20": "aggregate_events+filter+filter+aggregate_events+aggregate_events+percent",
+  "justification_20": "",
   "reread_not_capability": false
  },
  {
@@ -1527,6 +1677,9 @@
   "class_19": 2,
   "need_or_ops_19": "aggregate_events+derive+aggregate_events+derive+intersect+count",
   "justification_19": "",
+  "class_20": 2,
+  "need_or_ops_20": "aggregate_events+derive+aggregate_events+derive+intersect+count",
+  "justification_20": "",
   "reread_not_capability": false
  },
  {
@@ -1557,6 +1710,9 @@
   "class_19": 3,
   "need_or_ops_19": "G,SET",
   "justification_19": "",
+  "class_20": 3,
+  "need_or_ops_20": "G,SET",
+  "justification_20": "",
   "reread_not_capability": false
  },
  {
@@ -1587,6 +1743,9 @@
   "class_19": 2,
   "need_or_ops_19": "aggregate_events+aggregate_events+difference+count",
   "justification_19": "",
+  "class_20": 2,
+  "need_or_ops_20": "aggregate_events+aggregate_events+difference+count",
+  "justification_20": "",
   "reread_not_capability": false
  },
  {
@@ -1617,6 +1776,9 @@
   "class_19": 3,
   "need_or_ops_19": "PCT",
   "justification_19": "stale tags, found by re-reading rather than by building: `ROW` and `JOIN` both shipped in D-055 and the two per-account counts join and divide today. Only the top 10% selection is still missing",
+  "class_20": 3,
+  "need_or_ops_20": "PCT",
+  "justification_20": "",
   "reread_not_capability": false
  },
  {
@@ -1647,6 +1809,9 @@
   "class_19": 2,
   "need_or_ops_19": "aggregate_events+filter+aggregate_events+filter+diff",
   "justification_19": "",
+  "class_20": 2,
+  "need_or_ops_20": "aggregate_events+filter+aggregate_events+filter+diff",
+  "justification_20": "",
   "reread_not_capability": false
  },
  {
@@ -1677,6 +1842,9 @@
   "class_19": 1,
   "need_or_ops_19": "aggregate_events",
   "justification_19": "",
+  "class_20": 1,
+  "need_or_ops_20": "aggregate_events",
+  "justification_20": "",
   "reread_not_capability": false
  },
  {
@@ -1707,6 +1875,9 @@
   "class_19": 1,
   "need_or_ops_19": "aggregate_events",
   "justification_19": "",
+  "class_20": 1,
+  "need_or_ops_20": "aggregate_events",
+  "justification_20": "",
   "reread_not_capability": false
  },
  {
@@ -1737,6 +1908,9 @@
   "class_19": 2,
   "need_or_ops_19": "aggregate_events+topk",
   "justification_19": "",
+  "class_20": 2,
+  "need_or_ops_20": "aggregate_events+topk",
+  "justification_20": "",
   "reread_not_capability": false
  },
  {
@@ -1767,6 +1941,9 @@
   "class_19": 2,
   "need_or_ops_19": "aggregate_events+topk",
   "justification_19": "",
+  "class_20": 2,
+  "need_or_ops_20": "aggregate_events+topk",
+  "justification_20": "",
   "reread_not_capability": false
  },
  {
@@ -1797,6 +1974,9 @@
   "class_19": 2,
   "need_or_ops_19": "graph_metric_timeseries+topk",
   "justification_19": "",
+  "class_20": 2,
+  "need_or_ops_20": "graph_metric_timeseries+topk",
+  "justification_20": "",
   "reread_not_capability": false
  },
  {
@@ -1827,6 +2007,9 @@
   "class_19": 3,
   "need_or_ops_19": "GLOB",
   "justification_19": "",
+  "class_20": 3,
+  "need_or_ops_20": "GLOB",
+  "justification_20": "",
   "reread_not_capability": false
  },
  {
@@ -1857,6 +2040,9 @@
   "class_19": 2,
   "need_or_ops_19": "aggregate_events+filter+count",
   "justification_19": "",
+  "class_20": 2,
+  "need_or_ops_20": "aggregate_events+filter+count",
+  "justification_20": "",
   "reread_not_capability": false
  },
  {
@@ -1887,6 +2073,9 @@
   "class_19": 2,
   "need_or_ops_19": "entity_history+filter+min",
   "justification_19": "",
+  "class_20": 2,
+  "need_or_ops_20": "entity_history+filter+min",
+  "justification_20": "",
   "reread_not_capability": false
  },
  {
@@ -1917,6 +2106,9 @@
   "class_19": 2,
   "need_or_ops_19": "aggregate_events+filter+count",
   "justification_19": "as bo-Q18, per sender and over 100; the busiest 24 hours in the store hold 179 messages from one account",
+  "class_20": 2,
+  "need_or_ops_20": "aggregate_events+filter+count",
+  "justification_20": "",
   "reread_not_capability": false
  },
  {
@@ -1947,6 +2139,9 @@
   "class_19": 2,
   "need_or_ops_19": "aggregate_events+aggregate_events+difference+count",
   "justification_19": "",
+  "class_20": 2,
+  "need_or_ops_20": "aggregate_events+aggregate_events+difference+count",
+  "justification_20": "",
   "reread_not_capability": false
  },
  {
@@ -1977,6 +2172,9 @@
   "class_19": 2,
   "need_or_ops_19": "aggregate_events+mean",
   "justification_19": "",
+  "class_20": 2,
+  "need_or_ops_20": "aggregate_events+mean",
+  "justification_20": "",
   "reread_not_capability": false
  },
  {
@@ -2007,6 +2205,9 @@
   "class_19": 2,
   "need_or_ops_19": "entity_history+filter",
   "justification_19": "",
+  "class_20": 2,
+  "need_or_ops_20": "entity_history+filter",
+  "justification_20": "",
   "reread_not_capability": false
  },
  {
@@ -2037,6 +2238,9 @@
   "class_19": 3,
   "need_or_ops_19": "SEQ",
   "justification_19": "",
+  "class_20": 3,
+  "need_or_ops_20": "SEQ",
+  "justification_20": "",
   "reread_not_capability": false
  },
  {
@@ -2067,6 +2271,9 @@
   "class_19": 3,
   "need_or_ops_19": "EGO",
   "justification_19": "the gap shipped; the grouping did not. 'No messages sent or received' is one stream per account across both roles, and asking it of every account at once is the missing dimension, not the missing aggregate",
+  "class_20": 3,
+  "need_or_ops_20": "EGO",
+  "justification_20": "",
   "reread_not_capability": false
  },
  {
@@ -2097,6 +2304,9 @@
   "class_19": 3,
   "need_or_ops_19": "CAL",
   "justification_19": "",
+  "class_20": 2,
+  "need_or_ops_20": "aggregate_events+filter+filter+sum+sum+percent",
+  "justification_20": "hour_of_day grouping, the two half-open bounds as two filters, then the share of the total. Measured on the real store it is 5.66% at UTC and 23.20% at UTC-7, which is why the offset is an argument and not a default",
   "reread_not_capability": false
  },
  {
@@ -2127,6 +2337,9 @@
   "class_19": 2,
   "need_or_ops_19": "aggregate_events+aggregate_events+join+derive+filter+count",
   "justification_19": "",
+  "class_20": 2,
+  "need_or_ops_20": "aggregate_events+aggregate_events+join+derive+filter+count",
+  "justification_20": "",
   "reread_not_capability": false
  },
  {
@@ -2157,6 +2370,9 @@
   "class_19": 3,
   "need_or_ops_19": "G",
   "justification_19": "",
+  "class_20": 3,
+  "need_or_ops_20": "G",
+  "justification_20": "",
   "reread_not_capability": false
  },
  {
@@ -2187,6 +2403,9 @@
   "class_19": 2,
   "need_or_ops_19": "graph_metric_timeseries+sum",
   "justification_19": "",
+  "class_20": 2,
+  "need_or_ops_20": "graph_metric_timeseries+sum",
+  "justification_20": "",
   "reread_not_capability": false
  },
  {
@@ -2217,6 +2436,9 @@
   "class_19": 3,
   "need_or_ops_19": "CAL",
   "justification_19": "",
+  "class_20": 3,
+  "need_or_ops_20": "PAT,CAL",
+  "justification_20": "the calendar constraint was not the obstacle. The motif catalogue has five shapes and every one is three edges; there is no 2-edge delta-path at all, and 'the same day' would have to be a predicate inside it",
   "reread_not_capability": false
  },
  {
@@ -2247,6 +2469,9 @@
   "class_19": 3,
   "need_or_ops_19": "CAL",
   "justification_19": "",
+  "class_20": 2,
+  "need_or_ops_20": "aggregate_events+derive+topk",
+  "justification_20": "day_of_week grouping; `topk` ranks descending only, so 'lowest' is D-055's derive mul -1 in front of it",
   "reread_not_capability": false
  },
  {
@@ -2277,6 +2502,9 @@
   "class_19": 2,
   "need_or_ops_19": "aggregate_events+aggregate_events+join+derive+derive+count",
   "justification_19": "",
+  "class_20": 2,
+  "need_or_ops_20": "aggregate_events+aggregate_events+join+derive+derive+count",
+  "justification_20": "",
   "reread_not_capability": false
  },
  {
@@ -2307,6 +2535,9 @@
   "class_19": 2,
   "need_or_ops_19": "aggregate_events+derive+derive+join+derive+median",
   "justification_19": "",
+  "class_20": 2,
+  "need_or_ops_20": "aggregate_events+derive+derive+join+derive+median",
+  "justification_20": "",
   "reread_not_capability": false
  },
  {
@@ -2337,6 +2568,9 @@
   "class_19": 2,
   "need_or_ops_19": "aggregate_events+topk",
   "justification_19": "",
+  "class_20": 2,
+  "need_or_ops_20": "aggregate_events+topk",
+  "justification_20": "",
   "reread_not_capability": false
  },
  {
@@ -2367,6 +2601,9 @@
   "class_19": 3,
   "need_or_ops_19": "EGO,SEQ",
   "justification_19": "as cm-Q14, and additionally the two ends of the gap must both be *sends* while the events in between are of either role \u2014 a role-aware gap, which max_gap is not. `SET` was never the obstacle",
+  "class_20": 3,
+  "need_or_ops_20": "EGO,SEQ",
+  "justification_20": "",
   "reread_not_capability": false
  },
  {
@@ -2397,6 +2634,9 @@
   "class_19": 3,
   "need_or_ops_19": "GLOB",
   "justification_19": "",
+  "class_20": 3,
+  "need_or_ops_20": "GLOB",
+  "justification_20": "",
   "reread_not_capability": false
  },
  {
@@ -2427,6 +2667,9 @@
   "class_19": 2,
   "need_or_ops_19": "entity_history+min+interval_relation",
   "justification_19": "",
+  "class_20": 2,
+  "need_or_ops_20": "entity_history+min+interval_relation",
+  "justification_20": "",
   "reread_not_capability": false
  },
  {
@@ -2457,6 +2700,9 @@
   "class_19": 2,
   "need_or_ops_19": "aggregate_events+aggregate_events+diff",
   "justification_19": "",
+  "class_20": 2,
+  "need_or_ops_20": "aggregate_events+aggregate_events+diff",
+  "justification_20": "",
   "reread_not_capability": false
  },
  {
@@ -2487,6 +2733,9 @@
   "class_19": 2,
   "need_or_ops_19": "aggregate_events+filter+aggregate_events+difference+count",
   "justification_19": "",
+  "class_20": 2,
+  "need_or_ops_20": "aggregate_events+filter+aggregate_events+difference+count",
+  "justification_20": "",
   "reread_not_capability": false
  },
  {
@@ -2517,6 +2766,9 @@
   "class_19": 2,
   "need_or_ops_19": "aggregate_events+aggregate_events+join+derive+topk",
   "justification_19": "",
+  "class_20": 2,
+  "need_or_ops_20": "aggregate_events+aggregate_events+join+derive+topk",
+  "justification_20": "",
   "reread_not_capability": false
  },
  {
@@ -2547,6 +2799,9 @@
   "class_19": 3,
   "need_or_ops_19": "CAL",
   "justification_19": "",
+  "class_20": 2,
+  "need_or_ops_20": "aggregate_events+aggregate_events+filter+union+intersect",
+  "justification_20": "month_of_year x endpoint twice, because 'active' spans both roles; a union per month makes the role-merged set and the answer is the intersection across months. Note this needs only set membership, which is why it is not blocked by `EGO` the way cm-Q14 is",
   "reread_not_capability": false
  },
  {
@@ -2577,6 +2832,9 @@
   "class_19": 3,
   "need_or_ops_19": "SEQ",
   "justification_19": "",
+  "class_20": 3,
+  "need_or_ops_20": "SEQ",
+  "justification_20": "",
   "reread_not_capability": false
  },
  {
@@ -2607,6 +2865,9 @@
   "class_19": 3,
   "need_or_ops_19": "CAL",
   "justification_19": "",
+  "class_20": 2,
+  "need_or_ops_20": "aggregate_events+filter+filter+filter+count",
+  "justification_20": "hour_of_day and day_of_week as the two dimensions \u2014 the case that made `unit` part of the dimension key",
   "reread_not_capability": false
  },
  {
@@ -2637,6 +2898,9 @@
   "class_19": 2,
   "need_or_ops_19": "aggregate_events+topk+median",
   "justification_19": "",
+  "class_20": 2,
+  "need_or_ops_20": "aggregate_events+topk+median",
+  "justification_20": "",
   "reread_not_capability": false
  },
  {
@@ -2667,6 +2931,9 @@
   "class_19": 2,
   "need_or_ops_19": "aggregate_events+derive+derive+join+derive+filter+count",
   "justification_19": "",
+  "class_20": 2,
+  "need_or_ops_20": "aggregate_events+derive+derive+join+derive+filter+count",
+  "justification_20": "",
   "reread_not_capability": false
  },
  {
@@ -2697,6 +2964,9 @@
   "class_19": 2,
   "need_or_ops_19": "aggregate_events+max",
   "justification_19": "max_session_span with a 60-minute gap over an undirected pair grouping. The D-055 study read this one as a traversal and forecast it would stay blocked; read again, 'a sequence of messages between the same two accounts' is sessionization inside one group and nothing more",
+  "class_20": 2,
+  "need_or_ops_20": "aggregate_events+max",
+  "justification_20": "",
   "reread_not_capability": false
  },
  {
@@ -2727,6 +2997,9 @@
   "class_19": 2,
   "need_or_ops_19": "aggregate_events+aggregate_events+difference+count",
   "justification_19": "",
+  "class_20": 2,
+  "need_or_ops_20": "aggregate_events+aggregate_events+difference+count",
+  "justification_20": "",
   "reread_not_capability": false
  },
  {
@@ -2757,6 +3030,9 @@
   "class_19": 2,
   "need_or_ops_19": "aggregate_events+aggregate_events",
   "justification_19": "",
+  "class_20": 2,
+  "need_or_ops_20": "aggregate_events+aggregate_events",
+  "justification_20": "",
   "reread_not_capability": false
  },
  {
@@ -2787,6 +3063,9 @@
   "class_19": 3,
   "need_or_ops_19": "GLOB",
   "justification_19": "",
+  "class_20": 3,
+  "need_or_ops_20": "GLOB",
+  "justification_20": "",
   "reread_not_capability": false
  },
  {
@@ -2817,6 +3096,9 @@
   "class_19": 2,
   "need_or_ops_19": "aggregate_events+topk",
   "justification_19": "",
+  "class_20": 2,
+  "need_or_ops_20": "aggregate_events+topk",
+  "justification_20": "",
   "reread_not_capability": false
  },
  {
@@ -2847,7 +3129,10 @@
   "class_19": 3,
   "need_or_ops_19": "SET,NEG",
   "justification_19": "",
-  "reread_not_capability": false
+  "class_20": 2,
+  "need_or_ops_20": "aggregate_events+aggregate_events+difference",
+  "justification_20": "not a D-057 capability. D-054 shipped both halves: the cohort pre-filter selects senders who sent to a sender, and `difference` removes them from the senders",
+  "reread_not_capability": true
  },
  {
   "dataset": "cm",
@@ -2877,6 +3162,9 @@
   "class_19": 2,
   "need_or_ops_19": "aggregate_events+diff+ratio+ratio",
   "justification_19": "not a D-056 capability. Every contact is new in exactly one week, so the mean of the weekly counts is the contacts divided by the weeks \u2014 one endpoint_filter call for count_distinct dst and min vt_s, then arithmetic. It was expressible before this session and the `SEQ` tag was simply wrong",
+  "class_20": 2,
+  "need_or_ops_20": "aggregate_events+diff+ratio+ratio",
+  "justification_20": "",
   "reread_not_capability": true
  },
  {
@@ -2907,6 +3195,9 @@
   "class_19": 2,
   "need_or_ops_19": "aggregate_events+aggregate_events+intersect",
   "justification_19": "",
+  "class_20": 2,
+  "need_or_ops_20": "aggregate_events+aggregate_events+intersect",
+  "justification_20": "",
   "reread_not_capability": false
  },
  {
@@ -2937,6 +3228,9 @@
   "class_19": 2,
   "need_or_ops_19": "aggregate_events+aggregate_events+diff",
   "justification_19": "",
+  "class_20": 2,
+  "need_or_ops_20": "aggregate_events+aggregate_events+diff",
+  "justification_20": "",
   "reread_not_capability": false
  },
  {
@@ -2967,6 +3261,9 @@
   "class_19": 3,
   "need_or_ops_19": "SEQ,GMEAN",
   "justification_19": "first-reply latency is a lag between events of opposite directions, and the average is over each receiver's senders \u2014 a reducer per group, which is the half of `ROW` that did not ship",
+  "class_20": 3,
+  "need_or_ops_20": "SEQ,GMEAN",
+  "justification_20": "",
   "reread_not_capability": false
  },
  {
@@ -2997,6 +3294,9 @@
   "class_19": 2,
   "need_or_ops_19": "aggregate_events+union+aggregate_events+union+difference+count",
   "justification_19": "",
+  "class_20": 2,
+  "need_or_ops_20": "aggregate_events+union+aggregate_events+union+difference+count",
+  "justification_20": "",
   "reread_not_capability": false
  },
  {
@@ -3027,6 +3327,9 @@
   "class_19": 2,
   "need_or_ops_19": "graph_metric_timeseries+filter",
   "justification_19": "",
+  "class_20": 2,
+  "need_or_ops_20": "graph_metric_timeseries+filter",
+  "justification_20": "",
   "reread_not_capability": false
  },
  {
@@ -3057,6 +3360,9 @@
   "class_19": 2,
   "need_or_ops_19": "aggregate_events+topk",
   "justification_19": "",
+  "class_20": 2,
+  "need_or_ops_20": "aggregate_events+topk",
+  "justification_20": "",
   "reread_not_capability": false
  },
  {
@@ -3087,6 +3393,9 @@
   "class_19": 2,
   "need_or_ops_19": "aggregate_events+aggregate_events+join+derive+filter+count",
   "justification_19": "",
+  "class_20": 2,
+  "need_or_ops_20": "aggregate_events+aggregate_events+join+derive+filter+count",
+  "justification_20": "",
   "reread_not_capability": false
  },
  {
@@ -3117,6 +3426,9 @@
   "class_19": 2,
   "need_or_ops_19": "aggregate_events+aggregate_events+join+derive+min",
   "justification_19": "",
+  "class_20": 2,
+  "need_or_ops_20": "aggregate_events+aggregate_events+join+derive+min",
+  "justification_20": "",
   "reread_not_capability": false
  },
  {
@@ -3147,6 +3459,9 @@
   "class_19": 2,
   "need_or_ops_19": "aggregate_events+filter+count",
   "justification_19": "",
+  "class_20": 2,
+  "need_or_ops_20": "aggregate_events+filter+count",
+  "justification_20": "",
   "reread_not_capability": false
  },
  {
@@ -3177,6 +3492,9 @@
   "class_19": 3,
   "need_or_ops_19": "G",
   "justification_19": "min vt_s per directed pair, self-joined on the swapped key, gives who initiated and whether B replied; counting those per initiator is a regrouping of a result",
+  "class_20": 3,
+  "need_or_ops_20": "G",
+  "justification_20": "",
   "reread_not_capability": false
  },
  {
@@ -3207,6 +3525,9 @@
   "class_19": 3,
   "need_or_ops_19": "PCT",
   "justification_19": "",
+  "class_20": 3,
+  "need_or_ops_20": "PCT",
+  "justification_20": "",
   "reread_not_capability": false
  },
  {
@@ -3237,6 +3558,9 @@
   "class_19": 3,
   "need_or_ops_19": "CAL,NEG",
   "justification_19": "",
+  "class_20": 2,
+  "need_or_ops_20": "aggregate_events+filter+union+filter+difference",
+  "justification_20": "against its own tag: 'only ever between 21:00 and 03:00' is the difference between senders seen in the window and senders seen outside it. `NEG` was never the blocker",
   "reread_not_capability": false
  },
  {
@@ -3267,6 +3591,9 @@
   "class_19": 3,
   "need_or_ops_19": "PCT",
   "justification_19": "",
+  "class_20": 3,
+  "need_or_ops_20": "PCT",
+  "justification_20": "",
   "reread_not_capability": false
  },
  {
@@ -3297,6 +3624,9 @@
   "class_19": 2,
   "need_or_ops_19": "entity_history+max+interval_relation",
   "justification_19": "",
+  "class_20": 2,
+  "need_or_ops_20": "entity_history+max+interval_relation",
+  "justification_20": "",
   "reread_not_capability": false
  }
 ]
