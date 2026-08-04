@@ -378,6 +378,66 @@ L17: dict[str, tuple[int, str, str]] = {
              "two per-person tag counts joined and summed"),
 }
 
+# --------------------------------------------------------------------------- #
+# The sequence aggregates shipped (D-056) and block nothing here — `SEQ` was
+# never an LDBC tag. This table exists for the other half of that session's
+# re-audit: **`ROW` and `JOIN` shipped in D-055 and no LDBC table re-audited
+# them**, so fifteen templates spent a session carrying tags for capabilities
+# that already existed, and the published board read `ROW` 14, `JOIN` 8.
+# Again **no template changes class**: `PAT` gates 35 of 38, and none of this
+# is `PAT`.
+#
+# What survives, and it is one thing rather than fourteen: BI2 orders by the
+# *absolute* difference of two windows, and `derive`'s op set has no `abs` —
+# closed on purpose in D-055, and this is the first concrete thing the
+# closure costs. Everywhere else the residual belonged to a tag that was
+# already there: a weight computed *inside* a path operator is `SP`'s
+# (IC14, BI15, BI19, BI20), exactly as D-052 left `PROP` only where the
+# predicate is inside another operator, and a score summed over a person's
+# friends or over an author's messages is a regrouping, which is `G`.
+L18: dict[str, tuple[int, str, str]] = {
+    "IC3": (3, "PAT,PROP,NEG",
+            "the per-friend sets are aligned by `join` and summed by "
+            "`derive add`; both shipped in D-055"),
+    "IC7": (3, "PAT,PROP,NEG",
+            "latency in minutes is `derive sub` then `derive div`"),
+    "IC10": (3, "PAT,PROP,CAL,SET",
+             "common-minus-non-common is one `derive sub` per candidate"),
+    "IC14": (3, "SP,PAT",
+             "the weight is summed along a path, which is work inside the "
+             "path operator rather than row arithmetic over its output"),
+    "BI1": (3, "G,CAL,PROP",
+            "the in-group average of a JSON property is `mean of prop` on "
+            "the operator, and the group's share of the global total is "
+            "`derive div` against a $ref'd scalar; the three grouping "
+            "dimensions are the whole of what is missing"),
+    "BI2": (3, "PAT,ROW,PROP",
+            "the join and the difference both shipped; ordering by the "
+            "ABSOLUTE difference did not, and `derive` has no `abs`. This "
+            "is what `ROW` now names here, and it is the first bill D-055's "
+            "deliberately closed op set has presented"),
+    "BI5": (3, "PAT,PROP",
+            "1*m + 2*r + 10*l is a chain of `derive` steps over two joins"),
+    "BI6": (3, "PAT,PROP,G",
+            "the join shipped; rolling per-message counts up to the author "
+            "is a regrouping of a result, which `G` already covers"),
+    "BI8": (3, "PAT,PROP,G",
+            "100*i + m is `derive`; the friends' summed scores are a "
+            "regrouping, so `G` replaces both retired tags"),
+    "BI13": (3, "PAT,PROP,CAL",
+             "the zombie rate is `derive div` of two fields on a joined row"),
+    "BI14": (3, "PAT,PROP,G",
+             "the 4/1/10/1 score is `derive` over joined city-pair rows"),
+    "BI15": (3, "SP,PAT",
+             "1/(interactions + 1) is a weight the path search must use "
+             "while searching, not a column added to its output"),
+    "BI16": (3, "PAT,PROP,CAL",
+             "two per-person tag counts, joined and added"),
+    "BI19": (3, "SP,PAT", "as BI15"),
+    "BI20": (3, "SP,PAT,PROP",
+             "the difference of study years is a weight inside the search"),
+}
+
 WORKLOADS = {"IS": "Interactive Short", "IC": "Interactive Complex (v1)",
              "BI": "Business Intelligence"}
 
@@ -430,9 +490,14 @@ def verdict16(qid: str) -> tuple[int, str]:
     return (L16[qid][0], L16[qid][1]) if qid in L16 else verdict15(qid)
 
 
-def verdict(qid: str) -> tuple[int, str]:
-    """The current verdict: `L17` if it re-audited, else the `L16` one."""
+def verdict17(qid: str) -> tuple[int, str]:
+    """The D-054 verdict: `L17` if it re-audited, else the `L16` one."""
     return (L17[qid][0], L17[qid][1]) if qid in L17 else verdict16(qid)
+
+
+def verdict(qid: str) -> tuple[int, str]:
+    """The current verdict: `L18` if it re-audited, else the `L17` one."""
+    return (L18[qid][0], L18[qid][1]) if qid in L18 else verdict17(qid)
 
 
 def _check() -> None:
@@ -450,7 +515,8 @@ def _check() -> None:
                 f"{qid}: class 1 is a single operator, class 2 a chain")
     for name, table, base in (("L15", L15, lambda q: (L[q][0], L[q][1])),
                               ("L16", L16, verdict15),
-                              ("L17", L17, verdict16)):
+                              ("L17", L17, verdict16),
+                              ("L18", L18, verdict17)):
       for qid, (cls, tags, why) in table.items():
         assert qid in L, f"{name} {qid} is not an LDBC template"
         assert why, f"{name} {qid} has no justification"
@@ -461,13 +527,17 @@ def _check() -> None:
         assert not unknown, f"{name} {qid}: unknown tag(s) {unknown}"
     assert not [q for q in L if set(_needs(*verdict(q))) & RETIRED_TAGS], \
         "a retired tag survived the L15 re-audit"
+    # `JOIN` shipped whole in D-055 and nothing here still needs it. `ROW`
+    # is not retired: BI2 wants an `abs` that `derive` does not have.
+    assert not [q for q in L if "JOIN" in _needs(*verdict(q))], \
+        "JOIN survived the L18 re-audit; the capability shipped in D-055"
 
 
 def report() -> None:
     _check()
     print("class distribution (D-050, 14 ops):",
           dict(sorted(Counter(L[q][0] for q in L).items())))
-    print("class distribution (D-052 session re-audit):",
+    print("class distribution (D-056 session re-audit):",
           dict(sorted(Counter(verdict(q)[0] for q in L).items())))
     expressible = sorted(q for q in L if verdict(q)[0] <= 2)
     print(f"expressible: {len(expressible)} of {len(L)} — "
@@ -480,13 +550,14 @@ def report() -> None:
     print("missing capabilities (class 3, D-050):",
           dict(Counter(t for q in L
                        for t in _needs(L[q][0], L[q][1])).most_common()))
-    print("missing capabilities (class 3, after both re-audits):",
+    print("missing capabilities (class 3, after every re-audit):",
           dict(Counter(t for q in L
                        for t in _needs(*verdict(q))).most_common()))
     moved = [q for q in L if verdict(q)[0] != L[q][0]]
     print(f"templates that changed class: {len(moved) or 'none'}"
           f"{' — ' + ', '.join(moved) if moved else ''}; "
-          f"{len(L15)} + {len(L16)} + {len(L17)} re-audited tag strings")
+          f"{len(L15)} + {len(L16)} + {len(L17)} + {len(L18)} "
+          f"re-audited tag strings")
     tp = sum(1 for q in L if L[q][2])
     print(f"templates with a predicate on a temporal attribute: {tp} of {len(L)}")
     print(f"templates referencing a second clock (belief/as-of): 0 of {len(L)}")
@@ -497,6 +568,7 @@ def report() -> None:
              "class_15": verdict(q)[0], "need_or_ops_15": verdict(q)[1],
              "justification_15": L15[q][2] if q in L15 else "",
              "justification_17": L17[q][2] if q in L17 else "",
+             "justification_18": L18[q][2] if q in L18 else "",
              "temporal_predicate": L[q][2], "belief_clock": False,
              "justification": L[q][4]}
             for q in sorted(L, key=lambda k: (list(WORKLOADS).index(workload(k)),
