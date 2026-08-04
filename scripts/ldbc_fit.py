@@ -350,6 +350,34 @@ L16: dict[str, tuple[int, str, str]] = {
     "IC9": (3, "PAT,PROJ", "content and author names in the answer"),
 }
 
+# --------------------------------------------------------------------------- #
+# re-audit after the SET capability shipped (D-054)                           #
+# --------------------------------------------------------------------------- #
+# Set operations over uid lists, a cohort pre-filter and pair modes shipped.
+# What LDBC's `SET` mostly means is the other half — aligning two grouped
+# results on their key so both rows' fields can be combined into a score —
+# which is `JOIN`. **No template changes class**: PAT still gates 35 of 38.
+L17: dict[str, tuple[int, str, str]] = {
+    "IC3": (3, "PAT,PROP,JOIN,ROW,NEG",
+            "the two per-friend counts must be summed, so the sets have to "
+            "be aligned on the friend and carry their values"),
+    "BI2": (3, "PAT,JOIN,ROW,PROP",
+            "the two windows are joined per tag and differenced"),
+    "BI5": (3, "PAT,PROP,ROW,JOIN",
+            "message, reply and like counts joined per person"),
+    "BI6": (3, "PAT,PROP,G,JOIN",
+            "per-message like counts joined into a per-author score"),
+    "BI8": (3, "PAT,PROP,ROW,JOIN",
+            "two groupings joined per person, plus the friends' summed "
+            "scores"),
+    "BI13": (3, "PAT,PROP,CAL,ROW,JOIN",
+             "the zombie set joined to its likers"),
+    "BI14": (3, "PAT,PROP,ROW,JOIN,G",
+             "four reply patterns combined per city pair"),
+    "BI16": (3, "PAT,PROP,CAL,JOIN,ROW",
+             "two per-person tag counts joined and summed"),
+}
+
 WORKLOADS = {"IS": "Interactive Short", "IC": "Interactive Complex (v1)",
              "BI": "Business Intelligence"}
 
@@ -387,7 +415,7 @@ CHAIN_VOCAB = {
 #: study needs it, and the fact that **no LDBC template needs it** is itself
 #: a difference between the two workloads worth being able to state.
 TAG_VOCAB = {"G", "PROP", "CAL", "SET", "NEG", "GLOB", "SEQ",
-             "PAT", "SP", "ROW", "PCT", "PROJ"}
+             "PAT", "SP", "ROW", "PCT", "PROJ", "JOIN"}
 #: Retired tags: still legal in `L`, never legal in a re-audit.
 RETIRED_TAGS = {"AR"}
 
@@ -397,9 +425,14 @@ def verdict15(qid: str) -> tuple[int, str]:
     return (L15[qid][0], L15[qid][1]) if qid in L15 else (L[qid][0], L[qid][1])
 
 
-def verdict(qid: str) -> tuple[int, str]:
-    """The current verdict: `L16` if it re-audited, else the `L15` one."""
+def verdict16(qid: str) -> tuple[int, str]:
+    """The D-052 verdict: `L16` if it re-audited, else the `L15` one."""
     return (L16[qid][0], L16[qid][1]) if qid in L16 else verdict15(qid)
+
+
+def verdict(qid: str) -> tuple[int, str]:
+    """The current verdict: `L17` if it re-audited, else the `L16` one."""
+    return (L17[qid][0], L17[qid][1]) if qid in L17 else verdict16(qid)
 
 
 def _check() -> None:
@@ -416,7 +449,8 @@ def _check() -> None:
             assert (cls == 1) == ("+" not in tags), (
                 f"{qid}: class 1 is a single operator, class 2 a chain")
     for name, table, base in (("L15", L15, lambda q: (L[q][0], L[q][1])),
-                              ("L16", L16, verdict15)):
+                              ("L16", L16, verdict15),
+                              ("L17", L17, verdict16)):
       for qid, (cls, tags, why) in table.items():
         assert qid in L, f"{name} {qid} is not an LDBC template"
         assert why, f"{name} {qid} has no justification"
@@ -452,7 +486,7 @@ def report() -> None:
     moved = [q for q in L if verdict(q)[0] != L[q][0]]
     print(f"templates that changed class: {len(moved) or 'none'}"
           f"{' — ' + ', '.join(moved) if moved else ''}; "
-          f"{len(L15)} + {len(L16)} re-audited tag strings")
+          f"{len(L15)} + {len(L16)} + {len(L17)} re-audited tag strings")
     tp = sum(1 for q in L if L[q][2])
     print(f"templates with a predicate on a temporal attribute: {tp} of {len(L)}")
     print(f"templates referencing a second clock (belief/as-of): 0 of {len(L)}")
@@ -462,6 +496,7 @@ def report() -> None:
              "class": L[q][0], "need_or_ops": L[q][1],
              "class_15": verdict(q)[0], "need_or_ops_15": verdict(q)[1],
              "justification_15": L15[q][2] if q in L15 else "",
+             "justification_17": L17[q][2] if q in L17 else "",
              "temporal_predicate": L[q][2], "belief_clock": False,
              "justification": L[q][4]}
             for q in sorted(L, key=lambda k: (list(WORKLOADS).index(workload(k)),

@@ -79,6 +79,20 @@ work did not touch. That is a far more specific claim than the tag carried
 before, and it is the third time in a row that building a capability showed
 its tag had been naming the first obstacle rather than the set.
 
+`C17` is the fifth table, after D-054 shipped the `SET` capability: set
+operations over two uid lists in `compute` (intersect/difference/union), an
+`endpoint_filter` cohort pre-filter on `aggregate_events`, and `pair_mode`
+(undirected / reciprocal) over an (src, dst) grouping. **Fourteen questions
+moved, 38 -> 52 of 110** — the closest any prediction has come, 14 against
+16. One tag is new:
+  JOIN aligning two grouped results on their key so fields from both rows can
+       be used together ("A's count minus B's count, per account"). The set
+       operations answer *which uids*; they cannot carry a value across from
+       one result to the other.
+`SET` survives on four entries. That is the fourth tag to split on contact —
+G hid SET and SEQ, AR hid ROW and PCT, PROP hid PROJ, SET hid JOIN — and the
+board is now flat: ROW 18, SEQ 14, JOIN 13, then a long tail.
+
 Usage:
   python3 scripts/independent_questions.py report  # tables only, no stores
   python3 scripts/independent_questions.py build   # writes suites + gold;
@@ -880,6 +894,115 @@ C16: dict[tuple[str, int], tuple[int, str, str]] = {
 }
 
 
+
+# --------------------------------------------------------------------------- #
+# re-audit after the SET capability shipped (D-054)                           #
+# --------------------------------------------------------------------------- #
+# Chains onto C16. What shipped: `compute` set operations over two uid lists
+# (intersect/difference/union), an `endpoint_filter` cohort pre-filter on
+# `aggregate_events`, and `pair_mode` (undirected / reciprocal) over an
+# (src, dst) grouping.
+# What did NOT ship, and the tag it leaves behind:
+#   JOIN *new* — aligning two grouped results on their key so that fields
+#        from both rows can be used together ("A's count minus B's count per
+#        account"). The set operations answer *which uids*; they cannot
+#        carry a value across from one result to the other. This is the
+#        fourth tag to split on contact.
+C17: dict[tuple[str, int], tuple[int, str, str]] = {
+    # ---- became expressible ---- #
+    ("bo", 7): (2, "aggregate_events+aggregate_events+intersect+count",
+                "givers by [endpoint src], receivers by [endpoint dst], "
+                "intersect on the uid column, count"),
+    ("bo", 19): (2, "aggregate_events+intersect+intersect+count",
+                 "one grouping per year window (literal windows, the bo-Q2 "
+                 "distinction), then two intersections"),
+    ("bo", 24): (1, "aggregate_events",
+                 "group_by [endpoint src, endpoint dst] with "
+                 "pair_mode reciprocal; rows_total is the answer"),
+    ("bo", 25): (2, "aggregate_events+aggregate_events+percent",
+                 "reciprocal pairs among positive ratings over reciprocal "
+                 "pairs overall — filtering to positives first makes "
+                 "'both rated the other positively' the reciprocity test"),
+    ("bo", 28): (2, "aggregate_events+topk",
+                 "pair_mode undirected sums both directions per pair, then "
+                 "topk(count, 1)"),
+    ("bo", 36): (2, "aggregate_events+aggregate_events+count",
+                 "endpoint_filter src=[n100] with a positive prop_filter "
+                 "gives X by [endpoint dst]; the same shape with "
+                 "endpoint_filter src=$ref X gives the second hop"),
+    ("bo", 50): (2, "aggregate_events+filter+filter+aggregate_events"
+                    "+aggregate_events+percent",
+                 "the cohort is filter(mean_prop_rating lt 0) and "
+                 "filter(count ge 5); endpoint_filter src=$ref cohort then "
+                 "restricts both counts the percentage is taken over"),
+    ("bo", 53): (2, "aggregate_events+aggregate_events+difference+count",
+                 "raters in each year window, then a set difference"),
+    ("cm", 10): (2, "aggregate_events+aggregate_events+difference+count",
+                 "recipients minus senders over the whole log"),
+    ("cm", 28): (2, "aggregate_events+filter+aggregate_events+difference+count",
+                 "count_distinct dst per src with filter(distinct_dst ge 5), "
+                 "minus the set of accounts that received"),
+    ("cm", 36): (2, "aggregate_events+aggregate_events+difference+count",
+                 "endpoint_filter pins n770 on each side; recipients from "
+                 "n770 minus senders to n770"),
+    ("cm", 39): (2, "aggregate_events+topk",
+                 "the cm twin of bo-Q28: pair_mode undirected, topk"),
+    ("cm", 42): (2, "aggregate_events+aggregate_events+intersect",
+                 "one endpoint_filter grouping per named sender, then "
+                 "intersect the recipient sets"),
+    ("cm", 45): (2, "aggregate_events+union+aggregate_events+union"
+                    "+difference+count",
+                 "active = union of the src and dst sets in a window; the "
+                 "two windows then differ. January precedes the data extent, "
+                 "so the chain runs and correctly returns none (cm-Q3)"),
+    # ---- the set need is met; the other tags are not ---- #
+    ("bo", 29): (3, "PROJ,SEQ", "reciprocity is an operator argument now"),
+    ("bo", 30): (3, "PROJ", "the pair set is expressible; both ratings in "
+                            "one row is not"),
+    ("cm", 13): (3, "SEQ", "pair_mode reciprocal gives the pairs; 'within an "
+                           "hour' is the ordered-sequence part"),
+    ("cm", 14): (3, "SEQ", "endpoint_filter either unions the two roles; the "
+                           "longest gap is sequence work"),
+    ("cm", 30): (3, "CAL", "months are not fixed strides, and seven of them "
+                           "plus six intersections exceeds the 12-step cap"),
+    ("cm", 34): (3, "ROW", "reciprocal pairs are one call; 'more than double' "
+                           "compares the two directions of a row"),
+    ("cm", 51): (3, "SEQ,G", "reciprocity is available; 'new in May' is an "
+                             "ordering, and the argmax is a regrouping"),
+    # ---- what the set tag was hiding ---- #
+    ("bo", 14): (3, "ROW,JOIN", "two prop-filtered groupings aligned per "
+                                "account, then differenced"),
+    ("bo", 20): (3, "ROW,JOIN", "the pair set is expressible; the per-pair "
+                                "time difference needs both minima in a row"),
+    ("bo", 22): (3, "ROW,JOIN", "two per-account minima, aligned then "
+                                "floor-divided"),
+    ("bo", 42): (3, "ROW,JOIN", "two as_of_tt groupings aligned per account"),
+    ("bo", 44): (3, "ROW,JOIN", "as bo-Q42, with a comparison"),
+    ("bo", 46): (3, "ROW,JOIN", "'first rating was negative' compares the "
+                                "overall minimum with the negatives-only "
+                                "minimum, per account"),
+    ("bo", 54): (3, "PCT,ROW,JOIN", "given and received counts aligned per "
+                                    "account"),
+    ("cm", 21): (3, "ROW,JOIN", "as bo-Q22"),
+    ("cm", 22): (3, "ROW,JOIN", "as bo-Q20"),
+    ("cm", 29): (3, "ROW,JOIN", "sent and received counts aligned per "
+                                "account, then a ratio"),
+    ("cm", 48): (3, "ROW,JOIN", "per-src day counts aligned to per-dst "
+                                "minima"),
+    ("cm", 49): (3, "ROW,JOIN", "two accounts' per-recipient minima aligned "
+                                "on the recipient"),
+    ("bo", 51): (3, "ROW", "the two per-day sets are expressible; matching "
+                           "them needs a derived (day, account) key"),
+    ("cm", 16): (3, "ROW,JOIN", "two per-account minima against n42, "
+                                "compared"),
+    ("cm", 17): (3, "G", "reciprocal pairs are one call; counting distinct "
+                         "partners per account regroups that result"),
+    ("bo", 26): (3, "PROJ", "reciprocity is available; 'one positive and one "
+                            "negative' needs both directions' values in a "
+                            "row, and zero ratings make it not the "
+                            "complement of the both-positive count"),
+}
+
 def _verdict(table: dict, base, k):
     """A re-audit table's verdict for `k`, falling back to the table it
     chains onto. `base` is a callable so the chain composes."""
@@ -916,9 +1039,13 @@ def report():
     def v16(k):
         return _verdict(C16, v15, k)
 
+    def v17(k):
+        return _verdict(C17, v16, k)
+
     _check_diff(C14, v13, "C14")
     _check_diff(C15, v14, "C15")
     _check_diff(C16, v15, "C16")
+    _check_diff(C17, v16, "C17")
     # AR is retired by C15: the capability shipped, and what is left of it
     # was never AR. Guard it so a later edit cannot quietly reintroduce the
     # tag without deciding what it now means.
@@ -928,7 +1055,8 @@ def report():
     stages = [("13 ops, pre-registered", v13),
               ("14 ops, D-044 re-audit", v14),
               ("15th capability, D-051 session re-audit", v15),
-              ("property typing, D-052 session re-audit", v16)]
+              ("property typing, D-052 session re-audit", v16),
+              ("sets, D-054 session re-audit", v17)]
     for label, v in stages:
         print(f"class distribution ({label}):",
               dict(sorted(Counter(v(k)[0] for k in q).items())))
@@ -939,7 +1067,8 @@ def report():
     for label, prev, cur, table in [
             ("D-044 aggregate_events", v13, v14, C14),
             ("D-051 compute arithmetic", v14, v15, C15),
-            ("D-052 property typing", v15, v16, C16)]:
+            ("D-052 property typing", v15, v16, C16),
+            ("D-054 sets", v16, v17, C17)]:
         moved = sorted(k for k in q if cur(k)[0] != prev(k)[0])
         by_move = Counter((prev(k)[0], cur(k)[0]) for k in moved)
         print(f"\nbecame expressible under {label}: {len(moved)} of {len(q)} "
@@ -950,7 +1079,7 @@ def report():
         print(f"class-3 entries whose need-tags were re-audited: "
               f"{len([k for k in table if table[k][0] == 3])}")
 
-    expressible = sum(1 for k in q if v16(k)[0] in (1, 2))
+    expressible = sum(1 for k in q if v17(k)[0] in (1, 2))
     print(f"\nexpressible now: {expressible} of {len(q)}")
     print("runnable:", [f"{d}-Q{n}" for (d, n) in sorted(C)
                         if C[(d, n)][2]])
@@ -962,7 +1091,9 @@ def report():
              "class_15": v15((d, n))[0], "need_or_ops_15": v15((d, n))[1],
              "justification_15": C15[(d, n)][2] if (d, n) in C15 else "",
              "class_16": v16((d, n))[0], "need_or_ops_16": v16((d, n))[1],
-             "justification_16": C16[(d, n)][2] if (d, n) in C16 else ""}
+             "justification_16": C16[(d, n)][2] if (d, n) in C16 else "",
+             "class_17": v17((d, n))[0], "need_or_ops_17": v17((d, n))[1],
+             "justification_17": C17[(d, n)][2] if (d, n) in C17 else ""}
             for (d, n) in sorted(q)]
     out = Path("benchmarks/independent-v1/classification.json")
     out.parent.mkdir(parents=True, exist_ok=True)

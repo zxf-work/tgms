@@ -129,10 +129,10 @@
    "prose": "systems answering the same registry: TGMS native, TGMS-on-DuckDB, PostgreSQL, ClickHouse, Neo4j, Memgraph"
   },
   "coverage_current": {
-   "value": "38",
+   "value": "52",
    "kind": "benchmark",
    "prose": "of 110 independently written questions expressible in the current operator set",
-   "snapshot": "coverage re-audit 2026-08-04 (C16 in scripts/independent_questions.py)"
+   "snapshot": "coverage re-audit 2026-08-04 (C17 in scripts/independent_questions.py)"
   },
   "coverage_after_grouping": {
    "value": "24",
@@ -147,6 +147,13 @@
    "prose": "of 110 expressible immediately after the compute arithmetic shipped \u2014 the endpoint of the D-051 episode, not the current number",
    "label_required": "after the arithmetic shipped",
    "snapshot": "coverage re-audit 2026-08-03 (C15 in scripts/independent_questions.py)"
+  },
+  "coverage_after_properties": {
+   "value": "38",
+   "kind": "benchmark",
+   "prose": "of 110 expressible immediately after property typing shipped \u2014 the endpoint of the D-053 episode, not the current number",
+   "label_required": "after property typing shipped",
+   "snapshot": "coverage re-audit 2026-08-04 (C16 in scripts/independent_questions.py)"
   },
   "coverage_original": {
    "value": "10",
@@ -388,6 +395,17 @@
    "kind": "benchmark",
    "prose": "questions that actually became expressible once property typing shipped, against 13 predicted",
    "snapshot": "coverage re-audit 2026-08-04 (C16 in scripts/independent_questions.py)"
+  },
+  "indep_set_predicted": {
+   "value": "16",
+   "kind": "benchmark",
+   "prose": "questions the fourth histogram said set operations would unlock on their own"
+  },
+  "indep_set_delivered": {
+   "value": "14",
+   "kind": "benchmark",
+   "prose": "questions that actually became expressible once set operations shipped, against 16 predicted",
+   "snapshot": "coverage re-audit 2026-08-04 (C17 in scripts/independent_questions.py)"
   },
   "indep_multi_blocker": {
    "value": "55",
