@@ -52,7 +52,27 @@ from tgms.temporal.algebra import (
     paginate,
     required,
 )
-from tgms.temporal.guardrails import scan_estimate
+
+def _version_cost(args: dict[str, Any], stats: dict[str, Any]) -> dict[str, int]:
+    """This operator is in a different cost class from the rest of the
+    algebra, and the guardrail has to know it.
+
+    `all_*_versions` materializes one Python object per version; every other
+    operator reads packed columns. Measured at 10,000,000 versions: 153.9 s
+    and 13.3 GB peak RSS, against 1.3 s and 2.3 GB for a columnar count over
+    the same population — 116x the time, 54x the bytes per row (D-058).
+
+    Two departures from `scan_estimate`, both of them the truth rather than
+    a safety margin. **No window pruning**, because there is no pushdown:
+    the window filters the output, not the work, so a narrow window must not
+    make the call look cheap. And the per-row cost is charged against
+    `expansions_est`, because per-row allocation is what that ceiling is
+    for — which puts the refusal at around 5M versions, on the right side of
+    a call that would otherwise run for two and a half minutes.
+    """
+    n = int(stats.get("n_edge_versions", 0)) + int(stats.get("n_node_versions", 0))
+    return {"rows_scanned_est": n, "expansions_est": n}
+
 
 #: Columns dropped from the version row. `props` is a blob and this
 #: operator is a whole-store scan; `source`/`provenance_ref` are reserved
@@ -94,8 +114,12 @@ def _version_validators(args: dict[str, Any]) -> None:
     "A version written after as_of_tt does not appear, and a belief that "
     "ended after as_of_tt is reported as still open — so a pinned result "
     "never leaks a revision the caller's belief state has not seen. Props "
-    "are not returned; use entity_history for one identity's full rows.",
-    cost_fn=scan_estimate,
+    "are not returned; use entity_history for one identity's full rows. "
+    "COST: this materializes the whole version log — no columnar version "
+    "scan exists — so it is refused by the cost guardrail on stores past a "
+    "few million versions, and the window prunes the answer rather than the "
+    "work.",
+    cost_fn=_version_cost,
     validators=[_version_validators],
     output_fields=("rows", "rows_total", "truncated", "cursor"),
 )
