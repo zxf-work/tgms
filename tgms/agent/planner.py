@@ -41,8 +41,9 @@ PLAN IR RULES
   {"$ref": "sN.<path>"}: dotted fields, rows[i], or rows[*].field (projects a
   column to a list). Refs may only target steps listed in depends_on.
 - Node uids MUST come from the task input or from resolve_entities via $ref.
-- No arithmetic in args: use the `compute` operator (count/sum/min/max/topk/
-  filter/interval_relation) over prior rows.
+- No arithmetic in args: use the `compute` operator over prior rows
+  (count/sum/min/max/mean/median/topk/filter/interval_relation) or over two
+  scalars bound by $ref (ratio/diff/percent, taking `x` and `y`).
 - answer_spec: {"kind": one of count|value|entity_set|interval|series|paths|
   text, "from": "sN.<path>"} — where the final answer is read from.
 - $ref and answer_spec paths may only use the output fields each tool lists

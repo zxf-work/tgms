@@ -41,6 +41,27 @@ pre-registration counted as `G`. `G` survives in `C14` only where grouped
 aggregation itself is still out of reach — chiefly groupings needing more
 than the operator's two dimensions.
 
+`C15` is the third table, the re-audit after D-051's session extended the
+existing O13 `compute` operator with the `AR` arithmetic — `mean` and
+`median` over a prior step's rows, and `ratio`/`diff`/`percent` over two
+scalars from earlier steps. It chains onto `C14` exactly as `C14` chains
+onto `C`: an entry absent from `C15` keeps its effective 14-operator
+verdict. Two tags are new, and they exist because `AR` turned out to be
+three capabilities wearing one label:
+  ROW  row-wise arithmetic over a prior step's rows — a derived column
+       (`max_vt_s - min_vt_s` per group, a per-row ratio of two fields, a
+       floor-divide to a calendar unit), or a mean taken *per group* rather
+       than over the whole result. `compute` reduces a row set to one
+       number; it cannot yet add a column to one.
+  PCT  rank or percentile selection beyond `topk` — "top 1% of accounts",
+       "the bottom 50% of senders", "top 10% most active".
+`AR` itself is retired by `C15`: after this session no class-3 entry is
+blocked by arithmetic that the operator now performs, and every entry that
+still needs a number computed needs it in one of the two shapes above.
+That split is the session's main finding and it is why the measured delta
+(4 questions) came in below the +7 the handoff projected from the
+sole-blocker count.
+
 Usage:
   python3 scripts/independent_questions.py report  # tables only, no stores
   python3 scripts/independent_questions.py build   # writes suites + gold;
@@ -457,6 +478,146 @@ C14: dict[tuple[str, int], tuple[int, str, str]] = {
 }
 
 
+# --------------------------------------------------------------------------- #
+# re-audit against the 15th capability (D-051 session: `compute` arithmetic)   #
+# --------------------------------------------------------------------------- #
+# Chains onto the effective C14 verdict; absent entries keep it. Only entries
+# whose class or need-tags change appear.
+# value = (class, need/ops, justification)
+#
+# What the extended `compute` does and does not give:
+#   REDUCERS over a prior step's rows -> one number: count, sum, min, max,
+#   mean(field), median(field). BINARY over two scalars arriving by $ref:
+#   ratio(x,y) = x/y, diff(x,y) = x-y, percent(x,y) = 100*x/y. Integer inputs
+#   stay exact; anything inexact spends exactly one IEEE rounding.
+#   It does NOT add a derived column to a row set (that is `ROW`), does not
+#   aggregate per group (a mean is over the whole input, not per key), and
+#   does not select by rank or percentile beyond `topk` (that is `PCT`).
+C15: dict[tuple[str, int], tuple[int, str, str]] = {
+    # ---- became expressible ---- #
+    ("cm", 11): (2, "aggregate_events+mean",
+                 "group_by [time_bucket(1 day), endpoint src] count over May "
+                 "2004 emits one row per account that was active that day — "
+                 "the question's own restriction, and the operator's "
+                 "non-empty-groups contract — then compute mean(count). "
+                 "Measured on the raw log: 7,060 (day, sender) groups in May "
+                 "2004, inside one 10,000-row page, so the chain is two "
+                 "calls with no cursor walk"),
+    ("cm", 27): (2, "aggregate_events+aggregate_events+diff",
+                 "one group_by [] count per day-window (2004-06-01 and "
+                 "2004-06-30, both inside the data extent), then "
+                 "compute diff(x=$ref s1, y=$ref s2)"),
+    ("cm", 33): (2, "aggregate_events+topk+median",
+                 "group_by [endpoint src] with count and count_distinct dst "
+                 "over the whole log (1,350 sender groups, one page), "
+                 "topk(count, 10) for the cohort, then "
+                 "median(distinct_dst) — the one thing C14 said was missing"),
+    ("cm", 43): (2, "aggregate_events+aggregate_events+diff",
+                 "the two named weeks are literal windows, not calendar "
+                 "buckets, which is the distinction bo-Q2 already turned on "
+                 "in C14 ('a window, not a calendar bucket'); two group_by [] "
+                 "counts and a diff, whose sign is the answer. February 2004 "
+                 "precedes the data extent, so the chain runs and correctly "
+                 "reports no change — the cm-Q3 situation"),
+    # ---- arithmetic no longer the blocker; the other tags still are ---- #
+    ("bo", 6): (3, "PROP",
+                "percent(x, y) supplies the percentage; 'greater than 0' is "
+                "still a predicate over the rating prop"),
+    ("bo", 8): (3, "CAL,PROP",
+                "mean is now an operator, but it cannot reach a rating: the "
+                "value lives in untyped JSON props"),
+    ("bo", 11): (3, "PROP", "as bo-Q8: the mean exists, the rating does not"),
+    ("bo", 12): (3, "PROP", "mirror of bo-Q11 on the giving side"),
+    ("bo", 25): (3, "PROP,SET",
+                 "reciprocal-pair join and rating signs remain; the "
+                 "percentage of the two resulting counts is now one call"),
+    ("bo", 43): (3, "PROP",
+                 "as_of_tt fixes the belief state and filter(count ge 5) the "
+                 "cohort; the mean is over the rating prop"),
+    ("bo", 46): (3, "PROP,SET",
+                 "the tail percentage is now expressible; the sign of the "
+                 "first rating is a prop, and 'of those ... later' restricts "
+                 "one per-account result by another, which is a join"),
+    ("bo", 50): (3, "PROP,SET",
+                 "percent closes the readout; the cohort needs a mean over "
+                 "rating props and then a uid pre-filter by that cohort, "
+                 "which `aggregate_events` does not have"),
+    ("bo", 55): (3, "PROP",
+                 "mean closes the arithmetic half, and this corrects the "
+                 "pre-registered note: the sum was never expressible either. "
+                 "No operator projects an *edge* property as a numeric "
+                 "field — entity_history and snapshot_subgraph both build "
+                 "edge rows from _edge_rows (eid, vid, src, dst, rel_type, "
+                 "vt_s, vt_e), and diff_snapshots exposes props only as "
+                 "before/after pairs for versions that changed"),
+    ("cm", 15): (3, "CAL",
+                 "percent supplies the readout; a 12:00-18:00 band across "
+                 "every day in the log is an hour-of-day predicate, not a "
+                 "window"),
+    ("cm", 41): (3, "SEQ",
+                 "the average over weekly counts is now mean(field); 'new' "
+                 "still needs dedup against every earlier bucket"),
+    # ---- residual arithmetic, renamed to the shape it actually needs ---- #
+    ("bo", 14): (3, "ROW,PROP,SET",
+                 "positive and negative received counts are two "
+                 "prop-filtered groupings; aligning them per account is a "
+                 "join and the difference is per row, not per result set"),
+    ("bo", 20): (3, "ROW,SET",
+                 "median is now an operator, but the values it would take "
+                 "the median of are per-pair time differences — a derived "
+                 "column over the transpose join"),
+    ("bo", 22): (3, "ROW,SET",
+                 "join the two per-account minima, then floor-divide each "
+                 "row to a day and compare the two fields"),
+    ("bo", 23): (3, "ROW",
+                 "the cohort and its min/max vt_s are one call, and mean is "
+                 "now available — but the span it should average is "
+                 "max_vt_s - min_vt_s *per row*, and there is no way to "
+                 "write that column"),
+    ("bo", 42): (3, "ROW,SET",
+                 "two as_of_tt groupings joined per account, then a per-row "
+                 "difference against a threshold"),
+    ("bo", 44): (3, "ROW,PROP,SET",
+                 "'decreased' compares two fields of the joined row; filter "
+                 "compares a field to a literal"),
+    ("bo", 47): (3, "ROW,PROP,SEQ",
+                 "first-5 and last-5 slices are sequence work, their means "
+                 "are per group, and the flip is their per-row difference"),
+    ("bo", 54): (3, "PCT,ROW,SET",
+                 "the top 10% is a percentile cut, and the given/received "
+                 "ratio is per account rather than over two scalars"),
+    ("cm", 21): (3, "ROW,SET",
+                 "as bo-Q22: a join, then a per-row floor-divide of two "
+                 "minima to days"),
+    ("cm", 22): (3, "ROW,SET",
+                 "as bo-Q20: the median is available, the per-pair delay it "
+                 "would consume is not"),
+    ("cm", 29): (3, "ROW,SET",
+                 "sent and received counts joined per account, then a ratio "
+                 "per row before the argmax"),
+    ("cm", 34): (3, "ROW,SET",
+                 "'more than double' compares two fields of the joined pair "
+                 "row"),
+    ("cm", 44): (3, "ROW,SEQ",
+                 "first-reply latency is a lag, and the average is per "
+                 "sender — a grouped mean over a derived column, not the "
+                 "whole-input mean compute performs"),
+    ("cm", 48): (3, "ROW,SET",
+                 "join the per-src day counts to the per-dst first-message "
+                 "minimum, then floor-divide that minimum per row"),
+    ("cm", 49): (3, "ROW,SET",
+                 "join the two accounts on recipient, then difference the "
+                 "two first-message times per row"),
+    ("cm", 52): (3, "PCT",
+                 "ratio(x, y) now closes the readout; selecting the bottom "
+                 "50% of senders by count is a percentile cut, and topk only "
+                 "goes from the top"),
+    ("cm", 54): (3, "PCT",
+                 "percent(x, y) closes the readout; 'top 1% of accounts' is "
+                 "a percentile cut whose k is a fraction of the group count"),
+}
+
+
 def parse_raw() -> dict[tuple[str, int], dict]:
     """Parse raw_questions.txt into {(dataset, n): {text, kind, why}}."""
     out: dict[tuple[str, int], dict] = {}
@@ -597,59 +758,81 @@ def _needs(cls: int, tags: str) -> list[str]:
     return [t for t in tags.split(",") if t and "+" not in t]
 
 
-def _check_c14() -> None:
-    """C14 is a diff, not a rewrite: guard the invariants that make it one."""
-    for k, (cls14, tags14, why) in C14.items():
-        assert k in C, f"C14 key {k} not in the pre-registered table"
-        cls, tags = C[k][0], C[k][1]
+def _verdict(table: dict, base, k):
+    """A re-audit table's verdict for `k`, falling back to the table it
+    chains onto. `base` is a callable so the chain composes."""
+    return (table[k][0], table[k][1]) if k in table else base(k)
+
+
+def _check_diff(table: dict, base, name: str) -> None:
+    """A re-audit is a diff, not a rewrite: guard the invariants that make it
+    one. `base` returns the (class, tags) each entry is a diff against."""
+    for k, (cls_new, tags_new, why) in table.items():
+        assert k in C, f"{name} key {k} not in the pre-registered table"
+        cls, tags = base(k)
         assert cls not in (4, 5), (
-            f"C14 must not touch class-{cls} {k}: a new operator cannot "
+            f"{name} must not touch class-{cls} {k}: a new capability cannot "
             f"repair an ambiguous or non-computational question")
-        assert (cls14, tags14) != (cls, tags), f"C14 {k} is not a change"
-        assert cls14 <= cls, f"C14 {k} moved backwards: {cls} -> {cls14}"
-        assert why, f"C14 {k} has no justification"
+        assert (cls_new, tags_new) != (cls, tags), f"{name} {k} is not a change"
+        assert cls_new <= cls, f"{name} {k} moved backwards: {cls} -> {cls_new}"
+        assert why, f"{name} {k} has no justification"
 
 
 def report():
     q = parse_raw()
     assert len(q) == 110, len(q)
-    _check_c14()
 
-    def cls14(k):
-        return C14[k][0] if k in C14 else C[k][0]
+    def v13(k):
+        return C[k][0], C[k][1]
 
-    def tags14(k):
-        return C14[k][1] if k in C14 else C[k][1]
+    def v14(k):
+        return _verdict(C14, v13, k)
 
-    dist = Counter(C[k][0] for k in q)
-    print("class distribution (13 ops, pre-registered):",
-          dict(sorted(dist.items())))
-    dist14 = Counter(cls14(k) for k in q)
-    print("class distribution (14 ops, D-044 re-audit):",
-          dict(sorted(dist14.items())))
+    def v15(k):
+        return _verdict(C15, v14, k)
 
-    moved = sorted(k for k in q if cls14(k) != C[k][0])
-    by_move = Counter((C[k][0], cls14(k)) for k in moved)
-    print(f"became expressible: {len(moved)} of {len(q)} "
-          f"({', '.join(f'{a}->{b}: {n}' for (a, b), n in sorted(by_move.items()))})")
-    for d, n in moved:
-        print(f"  {d}-Q{n:<2} {C[(d, n)][0]} -> {cls14((d, n))}  "
-              f"{tags14((d, n))}")
+    _check_diff(C14, v13, "C14")
+    _check_diff(C15, v14, "C15")
+    # AR is retired by C15: the capability shipped, and what is left of it
+    # was never AR. Guard it so a later edit cannot quietly reintroduce the
+    # tag without deciding what it now means.
+    assert not [k for k in q if "AR" in _needs(*v15(k))], \
+        "AR survived the C15 re-audit; it should have split into ROW and PCT"
 
-    need = Counter(t for k in q for t in _needs(C[k][0], C[k][1]))
-    print("missing capabilities (class 3, 13 ops):", dict(need.most_common()))
-    need14 = Counter(t for k in q for t in _needs(cls14(k), tags14(k)))
-    print("missing capabilities (class 3, 14 ops):", dict(need14.most_common()))
-    retagged = [k for k in C14 if C14[k][0] == 3]
-    print(f"class-3 entries whose need-tags were re-audited: {len(retagged)}")
+    stages = [("13 ops, pre-registered", v13),
+              ("14 ops, D-044 re-audit", v14),
+              ("15th capability, D-051 session re-audit", v15)]
+    for label, v in stages:
+        print(f"class distribution ({label}):",
+              dict(sorted(Counter(v(k)[0] for k in q).items())))
+    for label, v in stages:
+        print(f"missing capabilities (class 3, {label}):",
+              dict(Counter(t for k in q for t in _needs(*v(k))).most_common()))
 
+    for label, prev, cur, table in [
+            ("D-044 aggregate_events", v13, v14, C14),
+            ("D-051 compute arithmetic", v14, v15, C15)]:
+        moved = sorted(k for k in q if cur(k)[0] != prev(k)[0])
+        by_move = Counter((prev(k)[0], cur(k)[0]) for k in moved)
+        print(f"\nbecame expressible under {label}: {len(moved)} of {len(q)} "
+              f"({', '.join(f'{a}->{b}: {n}' for (a, b), n in sorted(by_move.items()))})")
+        for d, n in moved:
+            print(f"  {d}-Q{n:<2} {prev((d, n))[0]} -> {cur((d, n))[0]}  "
+                  f"{cur((d, n))[1]}")
+        print(f"class-3 entries whose need-tags were re-audited: "
+              f"{len([k for k in table if table[k][0] == 3])}")
+
+    expressible = sum(1 for k in q if v15(k)[0] in (1, 2))
+    print(f"\nexpressible now: {expressible} of {len(q)}")
     print("runnable:", [f"{d}-Q{n}" for (d, n) in sorted(C)
                         if C[(d, n)][2]])
     rows = [{"dataset": d, "q": n, **q[(d, n)],
              "class": C[(d, n)][0], "need_or_ops": C[(d, n)][1],
              "run": C[(d, n)][2], "note": C[(d, n)][3],
-             "class_14": cls14((d, n)), "need_or_ops_14": tags14((d, n)),
-             "justification_14": C14[(d, n)][2] if (d, n) in C14 else ""}
+             "class_14": v14((d, n))[0], "need_or_ops_14": v14((d, n))[1],
+             "justification_14": C14[(d, n)][2] if (d, n) in C14 else "",
+             "class_15": v15((d, n))[0], "need_or_ops_15": v15((d, n))[1],
+             "justification_15": C15[(d, n)][2] if (d, n) in C15 else ""}
             for (d, n) in sorted(q)]
     out = Path("benchmarks/independent-v1/classification.json")
     out.parent.mkdir(parents=True, exist_ok=True)

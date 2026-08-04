@@ -117,13 +117,23 @@ co_active:
 
 compute:
   description: |
-    Deterministic computation over a prior step's rows — never do arithmetic
-    yourself. fn: count (rows), sum/min/max (numeric `field`), topk (`field`,
-    `k` -> best rows), filter (`field`, `cmp` in eq/ne/lt/le/gt/ge/contains,
-    `value`), interval_relation (`a`, `b` half-open intervals -> Allen
-    relation name). `input` normally arrives via {"$ref": "sN.rows"}.
-    Cost: trivial. Example: {"fn": "topk", "input": {"$ref": "s2.rows"},
-    "field": "value", "k": 3}
+    Deterministic computation — never do arithmetic yourself.
+    Over a prior step's rows (`input`, normally {"$ref": "sN.rows"}, with an
+    optional numeric `field`): count, sum, min, max, mean, median; topk
+    (`field`, `k` -> best rows); filter (`field`, `cmp` in
+    eq/ne/lt/le/gt/ge/contains, `value`).
+    Over two scalars from earlier steps, passed as `x` and `y` (each normally
+    {"$ref": "sN.value"} or {"$ref": "sN.rows[0].count"}): ratio -> x/y,
+    diff -> x-y, percent -> 100*x/y. Use these to compare or combine two
+    results; they take no `input`.
+    Also interval_relation (`a`, `b` half-open intervals -> Allen relation
+    name).
+    Integer inputs give exact integer answers; anything inexact is rounded
+    once. Cost: trivial.
+    Examples: {"fn": "topk", "input": {"$ref": "s2.rows"}, "field": "value",
+    "k": 3} · {"fn": "mean", "input": {"$ref": "s1.rows"}, "field": "count"} ·
+    {"fn": "diff", "x": {"$ref": "s1.rows[0].count"},
+    "y": {"$ref": "s2.rows[0].count"}}
 
 resolve_entities:
   description: |
