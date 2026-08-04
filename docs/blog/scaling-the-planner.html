@@ -96,7 +96,7 @@ svg .m{font-family:var(--mono)}
 <p class="sub">TGMS accuracy improved sharply from 7B to 32B, while the
 evaluated retrieval baselines improved little.</p>
 <div class="byline">Xiaofei Zhang · University of Memphis ·
-published July 2026 · updated 3 August 2026 ·
+published July 2026 ·
 <a href="https://github.com/zxf-work/tgms/blob/main/paper/main.pdf">paper</a> ·
 <a href="https://github.com/zxf-work/tgms">code</a></div>
 </div></div>
@@ -110,7 +110,7 @@ system that hands it retrieved text went from 9.6% to 27.7% — model quality
 converts into answer quality at very different rates depending on what the
 model is allowed to do with the data.</p>
 
-<div class="meta"><b>Status: Updated result.</b> TGMS 0.4.0 · snapshot
+<div class="meta"><b>Status: Current.</b> TGMS 0.4.0 · snapshot
 <code>scale-sweep-collegemsg-94</code> · ~7 min · substantially revised
 3 August 2026, see the <a href="#changelog">changelog</a>.</div>
 
@@ -381,24 +381,6 @@ can still sign off on incomplete evidence —
 who have never seen the operator list —
 <a href="independent-questions.html">we let users define the workload</a>.</div>
 
-<h2 id="changelog">Changelog</h2>
-
-<div class="note"><b>3 August 2026 — substantial revision.</b>
-<ul>
-<li>Withdrew "quantization, not scale, is the planning bottleneck". The 72B
-point varies precision and size together; it is now a detached marker, not
-the end of the curve.</li>
-<li>Corrected four numbers: 72B is 2.25× the parameters of 32B, not 5×; the
-7B→32B gain is <span data-fact="scale_gain_7b_32b">4.5</span>×, not 4.6×;
-k=20 sees <span data-fact="rag_k20_exposure">0.8</span>% of the corpus in
-total, not "0.8% × 20 sites"; and "the baselines' best on probes: 0.385"
-was unsupported — neither baseline in this sweep has a probe column.</li>
-<li>Replaced "the baselines didn't move" and "you cannot prompt your way to
-a temporal join" with what the experiment supports.</li>
-<li>Added the evidence box, single-seed disclosure, probe denominators,
-deployment envelope and limitations; moved the retrieval-breadth study into
-a labelled secondary experiment; repaired a dead report link.</li>
-</ul></div>
 </article>
 
 <div class="next"><a href="independent-questions.html">

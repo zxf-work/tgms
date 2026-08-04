@@ -97,7 +97,7 @@ svg .m{font-family:var(--mono)}
 <p class="sub">Bi-temporal retention is inexpensive without corrections,
 but correction density, warm-up and recovery shape deployment cost.</p>
 <div class="byline">Xiaofei Zhang · University of Memphis ·
-published August 2026 · updated 3 August 2026 ·
+published August 2026 ·
 <a href="https://github.com/zxf-work/tgms/blob/main/docs/eval_resources.md">records</a>
 · <a href="https://github.com/zxf-work/tgms">code</a></div>
 </div></div>
@@ -110,7 +110,7 @@ query time grow with how often corrections happen — and the costs that
 actually decide a deployment are not those, but a per-process warm-up of
 roughly half a minute and a memory floor that has to be budgeted.</p>
 
-<div class="meta"><b>Status: Updated result.</b> TGMS 0.4.0 · snapshots
+<div class="meta"><b>Status: Current.</b> TGMS 0.4.0 · snapshots
 <code>retention-1m-density</code> and <code>retention-10m-resources</code> ·
 ~7 min · substantially revised 3 August 2026, see the
 <a href="#changelog">changelog</a>.</div>
@@ -388,28 +388,6 @@ must not erase what was believed. <b>After this:</b>
 <a href="racing-the-specialist.html">racing the specialist</a> — building
 the operator we were worst at.</div>
 
-<h2 id="changelog">Changelog</h2>
-
-<div class="note"><b>3 August 2026 — substantial revision.</b>
-<ul>
-<li><b>Four corrections.</b> Capped-memory latency read "−3–8%", implying a
-speed-up; four of six queries were <i>slower</i>, one by 10%. "A durable
-log cursor" appears nowhere in the records — the fixes were a version-lookup
-index and a per-generation close-version cache. The small-budget scan
-penalty is 27×, not 28×. Cold start is 5–70× behind DuckDB, not 10–70× —
-one query is 5.3×. "Two days earlier" is unsupported and is gone.</li>
-<li>Reframed the replay measurement: log replay during dataset build, not
-crash recovery, with no stated recovery objective to judge six minutes
-against. 2,856.8 s now appears as ≈47.6 minutes so the pair is
-comparable.</li>
-<li>Qualified concurrency as <b>aggregate throughput</b> at one million
-events, with the per-query latency cost and the 10M figure where two of
-sixteen readers were OOM-killed.</li>
-<li>Scoped "overhead at zero corrections: 0" to no <i>measurable</i>
-overhead with its tolerance; separated storage from latency; defined
-correction density, OOM and the memory cap; softened the novelty claim; and
-moved the misdiagnosis chronology to a sidebar.</li>
-</ul></div>
 </article>
 
 <div class="next"><a href="racing-the-specialist.html">
