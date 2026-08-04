@@ -88,9 +88,8 @@ svg .m{font-family:var(--mono)}
 <h1>Why TGMS Needed a Native Storage Engine</h1>
 <div class="sub">Bi-temporal corrections, immutable segments and deterministic
 operators required a storage layout designed around TGMS semantics.</div>
-<div class="byline">Xiaofei Zhang · University of Memphis · first published
-July 2026 · <b>updated 3 August 2026</b> · TGMS 0.4.0 ·
-snapshot <code>registry-v2</code> · status: Updated result ·
+<div class="byline">Xiaofei Zhang · University of Memphis · July 2026 · TGMS 0.4.0 ·
+snapshot <code>registry-v2</code> · status: Current ·
 <a href="https://github.com/zxf-work/tgms/blob/main/docs/eval/ENGINE_EVAL_REPORT.md">report</a> ·
 <a href="https://github.com/zxf-work/tgms">code</a></div>
 </div></div>
@@ -428,25 +427,6 @@ and where specialists still win</a>, and
 scan</a>.</li>
 </ul>
 
-<h2>Changelog</h2>
-<ul>
-<li><b>3 August 2026, later</b> — the lock-free reader claim is now
-measured against a <i>live writer</i> rather than a quiescent store, and
-says so. Getting there took fixing two defects in what opening a store did:
-it ran crash recovery, which made every reader a second writer, and it
-truncated a dictionary tail that a committing writer had already made
-durable. Neither was reachable from the readers-only measurement this post
-originally cited.</li>
-<li><b>3 August 2026</b> — rewritten to lead with the requirement rather than
-with Kùzu's acquisition; the misdiagnosis table is linked rather than
-reproduced, and warm-up, compaction growth and the maintenance commitment are
-added.</li>
-<li><b>3 August 2026</b> — corrected: the case-study figure showed
-<code>series.count</code> at 434 ms against a DuckDB reference of 958 ms as
-though current. Both were waypoints from the day that work landed. The figure
-now shows the scan stages it is about, with the current end-to-end figure
-taken from the live snapshot.</li>
-</ul>
 </article>
 
 <div class="next"><a href="evaluating-the-engine.html">

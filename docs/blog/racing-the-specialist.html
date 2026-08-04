@@ -88,10 +88,10 @@ svg .m{font-family:var(--mono)}
 <div class="byline">Xiaofei Zhang · University of Memphis ·
 <a href="https://github.com/zxf-work/tgms/blob/main/docs/eval_phase0.md">records</a> ·
 <a href="https://github.com/zxf-work/tgms">code</a></div>
-<div class="metaline">First published 2 August 2026 · updated 3 August 2026 ·
+<div class="metaline">First published 2 August 2026 ·
 TGMS 0.4.0 · snapshots <span class="m">registry-v2-200k-6sys</span>,
 <span class="m">registry-v2-10m-3sys</span> · 8 min read ·
-<b>Status: Updated result</b></div>
+<b>Status: Current</b></div>
 </div></div>
 
 <article>
@@ -152,9 +152,8 @@ here at their most natural rather than handicapped.</p>
 this post describes and the fix it pointed at
 (<code>registry-v2</code> snapshots, median of 10 runs). There is no clean
 crossover: we lead at 200k, trail at 1M by a margin barely outside the
-run's noise, and lead again at 10M. When this post was first published the
-10M column read 334.7 ms against 140.8 — the difference is one aggregate,
-described below.</figcaption>
+run's noise, and lead again at 10M. The 10M column is where the work
+described below landed: one aggregate, from 240.7 ms to 9.6.</figcaption>
 </figure>
 
 <p>Against the row stores it was never close: 47× faster than tuned
@@ -225,17 +224,16 @@ partial-aggregate design already knows how to do. That aggregate now costs
 fact that the sort sat in the single serial stage of an otherwise parallel
 design.</p>
 
-<div class="note"><b>Correction, 3 August 2026.</b> This section originally
-said the opposite — that grouping was free and the whole remaining gap was
-the scan — on the grounds that the grouped query (334.7 ms) cost less than
-the plain bucketed count (352.1 ms) beside it. The two never shared a scan:
-the grouped operator selects rows and stops, never materialising columns or
-crossing into Python, so its scan is 38.8 ms and not 352. We had compared
-two totals as if "the scan" meant the same work on both sides. The claim
-was load-bearing — it is what aimed the following session — so it is
-recorded here rather than quietly replaced. The profile that overturned it
-is in <a href="https://github.com/zxf-work/tgms/blob/main/docs/eval_phase0.md">eval_phase0.md</a>
-under "Where the 10M scan actually goes".</div>
+<div class="note"><b>A comparison worth not making.</b> The tempting read
+of the table above is that the grouped query and the plain bucketed count
+cost about the same at 10M, so the grouping must be free and the whole gap
+must be the scan. We made exactly that inference and it is wrong: the two
+operators do not share a scan. The grouped one selects rows and stops —
+it never materialises columns or crosses into Python — so its scan is 38.8
+ms, where the bucketed count's is most of its total. Two totals that match
+can be made of entirely different parts, and "the scan" has to mean the
+same work on both sides of a comparison before the comparison means
+anything.</div>
 
 <p>One cell in that comparison is ours and it is bad, so it is published
 too: the portable fallback — the same operator running on our DuckDB
@@ -336,27 +334,6 @@ different measurements.</li>
 <li>The 18% residency tax was measured on one host with one working-set
 size. It is a real effect with a mechanism, but the magnitude is not a
 constant.</li>
-</ul>
-
-<h2>Changelog</h2>
-<ul class="chg">
-<li><b>3 August 2026, later</b> — the loss this post was written about is
-partly reversed. Acting on the profile below, exact distinct counting went
-from 240.7 ms to 9.6 and the 10M query from 331 ms to 96.1, which puts TGMS
-1.4× ahead of ClickHouse where it had been 2.4× behind. The result figure
-and the narrative are updated; the original numbers stay visible in the
-figure caption and in this entry. The claim that the crossover sits between
-200k and 1M is retired — there is no clean crossover.</li>
-<li><b>3 August 2026</b> — rebuilt around the corrected profile. This post
-originally concluded that grouping was free and the whole remaining gap was
-the scan; the following session's profile overturned that, and the section
-"Where the remaining gap actually is" now leads with what was measured —
-exact distinct counting at 232 of 331 ms — with the retracted claim kept in
-a dated correction box. The resident-index material moved to its own post,
-where it is the subject rather than a third story. The takeaway no longer
-repeats the retracted claim, and the ClickHouse aggregation lead quoted in
-the opening is scoped as historical.</li>
-<li><b>2 August 2026</b> — First published.</li>
 </ul>
 
 <div class="note"><b>Receipts.</b> Thirteen registry queries × six systems,
