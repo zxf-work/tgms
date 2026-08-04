@@ -601,7 +601,7 @@
     },
     "field2": {
      "default": null,
-     "description": "second field for derive (with `field`)",
+     "description": "second field, for derive or for a filter that compares two columns of the same row (e.g. src eq dst); exclusive with `value`",
      "type": [
       "string",
       "null"
@@ -1434,5 +1434,90 @@
    "type": "object"
   },
   "name": "temporal_reachability"
+ },
+ {
+  "description": "The belief log itself: version rows of nodes or edges whose valid-time interval overlaps `window`, with BOTH clocks on every row (vt_s, vt_e, tt_s, tt_e) and ordered by transaction time. `belief` selects which beliefs, always as of `as_of_tt`: 'current' = still believed then, 'superseded' = already revised by then, 'all' = everything written by then. **How many corrections exist is a count of `superseded` rows.** A version written after as_of_tt does not appear, and a belief that ended after as_of_tt is reported as still open \u2014 so a pinned result never leaks a revision the caller's belief state has not seen. Props are not returned; use entity_history for one identity's full rows.\nOutput fields: rows, rows_total, truncated, cursor.",
+  "input_schema": {
+   "additionalProperties": false,
+   "properties": {
+    "as_of_tt": {
+     "default": 4611686018427387904,
+     "description": "belief state to evaluate under; OPEN_END = current beliefs",
+     "maximum": 4611686018427387904,
+     "minimum": 0,
+     "type": "integer"
+    },
+    "belief": {
+     "default": "current",
+     "description": "which beliefs, AS OF as_of_tt: current = still believed then, superseded = revised by then, all = written by then",
+     "enum": [
+      "current",
+      "superseded",
+      "all"
+     ],
+     "type": "string"
+    },
+    "cursor": {
+     "default": null,
+     "description": "opaque pagination cursor from a previous call",
+     "type": [
+      "string",
+      "null"
+     ]
+    },
+    "kind": {
+     "enum": [
+      "node",
+      "edge"
+     ],
+     "type": "string"
+    },
+    "limit": {
+     "default": 100,
+     "maximum": 10000,
+     "minimum": 1,
+     "type": "integer"
+    },
+    "rel_types": {
+     "default": null,
+     "items": {
+      "type": "string"
+     },
+     "type": [
+      "array",
+      "null"
+     ]
+    },
+    "window": {
+     "additionalProperties": false,
+     "description": "half-open valid-time window [t_a, t_b)",
+     "properties": {
+      "t_a": {
+       "description": "int64 epoch microseconds, UTC",
+       "maximum": 4611686018427387904,
+       "minimum": 0,
+       "type": "integer"
+      },
+      "t_b": {
+       "description": "int64 epoch microseconds, UTC",
+       "maximum": 4611686018427387904,
+       "minimum": 0,
+       "type": "integer"
+      }
+     },
+     "required": [
+      "t_a",
+      "t_b"
+     ],
+     "type": "object"
+    }
+   },
+   "required": [
+    "kind",
+    "window"
+   ],
+   "type": "object"
+  },
+  "name": "version_history"
  }
 ]
