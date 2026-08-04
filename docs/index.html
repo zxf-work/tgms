@@ -544,7 +544,9 @@
       font-size: 26px;
       letter-spacing: -0.035em;
     }
-    .engine-metric span {
+    /* direct child only: a data-fact span nested inside <strong> must keep
+       the number at the headline size, not shrink to the caption size */
+    .engine-metric > span {
       color: #aebed5;
       font-size: 13px;
     }

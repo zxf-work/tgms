@@ -12,8 +12,9 @@ Rules, each traceable to a failure the audit found:
   * every post declares a track in its kicker, so its genre is visible;
   * every post states what its result does *not* show, because a measured
     result stated without a boundary reads as a universal property;
-  * every post carries a changelog, because results change and the audit
-    found stale headlines patched by paragraphs underneath them;
+  * no post carries a changelog: §7 keeps edit history in the decision log
+    and the git history, and a page that argues with its own past confuses
+    a first-time reader;
   * every post names its status, so a historical snapshot cannot be
     mistaken for a current one.
 """
@@ -61,12 +62,13 @@ def main() -> int:
         if not any(LIMIT.search(h) for h in hs):
             bad.append(f"{name}: no limitation section — BLOG_STYLE §3 item 8 "
                        f"is not optional")
-        if not any(h.lower().startswith("changelog") for h in hs):
-            bad.append(f"{name}: no changelog section")
-        if not re.search(r"status:\s*(current|updated result|historical snapshot)",
+        # §7: posts show current state and carry no edit history
+        if any(h.lower().startswith("changelog") for h in hs):
+            bad.append(f"{name}: has a changelog section — BLOG_STYLE §7 "
+                       f"keeps history in the decision log, not on the page")
+        if not re.search(r"status:\s*(current|historical snapshot)",
                           html, re.I):
-            bad.append(f"{name}: no status (Current / Updated result / "
-                       f"Historical snapshot)")
+            bad.append(f"{name}: no status (Current / Historical snapshot)")
 
         # A citation the reader cannot open is worse than none. Internal
         # planning documents are gitignored by policy, so a link into the

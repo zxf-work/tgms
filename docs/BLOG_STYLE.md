@@ -60,8 +60,9 @@ meta:    author · date first published · last updated · TGMS version ·
          benchmark snapshot · reading time · status
 ```
 
-`status` is one of **Current**, **Updated result**, or **Historical
-snapshot**. A post that is not being kept current must say so at the top.
+`status` is **Current** for a post being kept in step with the numbers, or
+**Historical snapshot** for one deliberately frozen. There is no "updated"
+state: a current post simply shows current values (§7).
 
 Body sections, in this order:
 
@@ -85,8 +86,6 @@ Body sections, in this order:
     commit.
 11. **Continue reading** — one prerequisite and one next post, named by
     topic rather than by number.
-12. **Changelog** — dated entries when a result changed (§7).
-
 Length: **1,000–1,600 words**; one conceptual figure; one or two result
 charts; tables only when the reader must compare exact values.
 
@@ -194,36 +193,32 @@ Captions state **the conclusion and the boundary**:
 Alt text conveys the *result*, not the chart type. Bars must start at zero
 unless the caption says otherwise; an 18% difference must look like 18%.
 
-## 7. Corrections, and the one rule that is easy to get wrong
+## 7. Corrections: the page always shows the current state
 
-This project publishes its mistakes; that is a differentiator and it stays.
-But **honesty is not the same as leaving stale numbers in the headline
-position.** The rule:
+**A post shows what is true now. It does not carry its own edit history.**
+When a result changes, regenerate the figure, the table, the prose, the alt
+text and the index card, and delete whatever the old number supported. No
+changelog sections, no "this originally said" boxes, no dated correction
+notes appended under a stale chart.
 
-1. **The body always shows the current result.** Regenerate the figure, the
-   table, the prose, the alt text, and the index card.
-2. **The correction is a dated changelog entry** at the foot of the post,
-   and a `status: Updated result` in the meta.
-3. Where a wrong *interpretation* was load-bearing — it aimed a decision —
-   keep it in the body as a clearly framed correction box **after** the
-   corrected explanation, not before it.
-4. Never leave an old chart as the visual headline with a correction
-   paragraph below asking the reader to mentally patch it.
+The history is not lost by this — it lives where history belongs: in
+`docs/DECISIONS.md`, in `docs/engine_lessons.md`, and in the git log, all of
+which are linkable when a reader wants them.
 
-Rule 4 was violated by post #9's "grouping is free" pull quote, which is
-exactly why it is written down here. The claim was retracted the next day
-by D-046; the fix is to state the corrected finding — exact distinct
-counting dominates the remaining kernel cost — and put the retraction in a
-correction box and the changelog.
+The distinction that matters, because it is easy to get backwards:
 
-Retired claims are enforced mechanically: `docs/site_facts.json` carries a
+- **Editorial history is apparatus.** "Updated 3 August; this table used to
+  say 12×." Remove it.
+- **Being wrong can be the subject.** A post whose point is that a
+  hypothesis was measured false, or that a published claim did not survive
+  re-measurement, keeps that as *content* — written in the present tense as
+  what was learned, not as an apology appended to something stale.
+
+Retired claims stay enforced mechanically: `docs/site_facts.json` carries a
 `retired_phrases` list with a reason each, and `scripts/site_facts.py check`
-fails CI if one reappears anywhere on the site — including in the README.
-
-A changelog entry has to be able to *name* the claim it retracts, so a line
-carrying the marker `<!--retired-ok-->` is exempt. Use it for a mention,
-never for a use: if the sentence would still read as an assertion with the
-marker removed, the marker is being abused.
+fails CI if one reappears anywhere on the site, including the README. The
+`<!--retired-ok-->` marker exempts a line that must *name* a retired claim
+in order to explain it.
 
 ## 8. The facts pipeline
 
