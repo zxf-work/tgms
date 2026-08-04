@@ -57,6 +57,8 @@ Documentation = "https://github.com/zxf-work/tgms/blob/main/docs/TECHNICAL_REPOR
 [dependency-groups]
 dev = [
     "duckdb>=1.1",       # reference backend for the A/B digest harness
+    "pyarrow>=17",       # its bulk loader; rides with duckdb, never runtime
+    "pandas>=2.2",       # the eval harness's tables, which the suite covers
     "kuzu>=0.7",         # b5 baseline replay only
     "pytest>=8.3",
     "hypothesis>=6.112",
