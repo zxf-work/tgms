@@ -1003,6 +1003,59 @@ C17: dict[tuple[str, int], tuple[int, str, str]] = {
                             "complement of the both-positive count"),
 }
 
+
+# --------------------------------------------------------------------------- #
+# re-audit after ROW + JOIN shipped (D-055)                                    #
+# --------------------------------------------------------------------------- #
+# `compute` gained `derive` (one computed column from two fields or a field
+# and a literal: add/sub/mul/div/floordiv/concat) and `join` (align two prior
+# steps on a key unique on both sides; inner or left with a fill). The pair
+# shipped together because JOIN was the sole blocker of nothing.
+C18: dict[tuple[str, int], tuple[int, str, str]] = {
+    ("bo", 14): (2, "aggregate_events+aggregate_events+join+derive+topk",
+                 "positive and negative counts per account, joined left with "
+                 "fill 0 so an account with no negatives scores zero, then "
+                 "derive sub and topk"),
+    ("bo", 20): (2, "aggregate_events+derive+derive+join+derive+median",
+                 "pair minima keyed both ways with derive concat, self-joined "
+                 "on the swapped key, then the per-pair difference and its "
+                 "median"),
+    ("bo", 22): (2, "aggregate_events+aggregate_events+join+derive+derive+count",
+                 "the two per-account minima joined, each floor-divided to a "
+                 "day, then compared"),
+    ("bo", 23): (2, "aggregate_events+filter+derive+derive+mean",
+                 "max_vt_s - min_vt_s per rater, floor-divided to days, then "
+                 "the whole-input mean that already existed — not a grouped "
+                 "mean, which is why this one needed only `derive`"),
+    ("bo", 42): (2, "aggregate_events+aggregate_events+join+derive+filter+count",
+                 "two as_of_tt groupings joined per account, differenced, "
+                 "thresholded"),
+    ("bo", 44): (2, "aggregate_events+aggregate_events+join+derive+filter",
+                 "as bo-Q42, reading the sign of the difference"),
+    ("bo", 46): (2, "aggregate_events+aggregate_events+join+derive+percent",
+                 "the overall minimum and the negatives-only minimum joined "
+                 "per account; equality says the first rating was negative"),
+    ("bo", 51): (2, "aggregate_events+derive+aggregate_events+derive+intersect+count",
+                 "a (day, account) key on each side with derive concat, then "
+                 "the set intersection that shipped in D-054"),
+    ("cm", 16): (2, "aggregate_events+aggregate_events+join+derive+filter+count",
+                 "the two per-account minima against n42, joined and compared"),
+    ("cm", 21): (2, "aggregate_events+aggregate_events+join+derive+derive+count",
+                 "as bo-Q22"),
+    ("cm", 22): (2, "aggregate_events+derive+derive+join+derive+median",
+                 "as bo-Q20"),
+    ("cm", 29): (2, "aggregate_events+aggregate_events+join+derive+topk",
+                 "sent and received counts joined per account, then a ratio"),
+    ("cm", 34): (2, "aggregate_events+derive+derive+join+derive+filter+count",
+                 "the two directions of each pair brought into one row by a "
+                 "swapped concat key, then 'more than double'"),
+    ("cm", 48): (2, "aggregate_events+aggregate_events+join+derive+filter+count",
+                 "per-src day counts joined to per-dst minima"),
+    ("cm", 49): (2, "aggregate_events+aggregate_events+join+derive+min",
+                 "the two accounts' per-recipient minima joined on the "
+                 "recipient, then differenced"),
+}
+
 def _verdict(table: dict, base, k):
     """A re-audit table's verdict for `k`, falling back to the table it
     chains onto. `base` is a callable so the chain composes."""
@@ -1042,10 +1095,14 @@ def report():
     def v17(k):
         return _verdict(C17, v16, k)
 
+    def v18(k):
+        return _verdict(C18, v17, k)
+
     _check_diff(C14, v13, "C14")
     _check_diff(C15, v14, "C15")
     _check_diff(C16, v15, "C16")
     _check_diff(C17, v16, "C17")
+    _check_diff(C18, v17, "C18")
     # AR is retired by C15: the capability shipped, and what is left of it
     # was never AR. Guard it so a later edit cannot quietly reintroduce the
     # tag without deciding what it now means.
@@ -1056,7 +1113,8 @@ def report():
               ("14 ops, D-044 re-audit", v14),
               ("15th capability, D-051 session re-audit", v15),
               ("property typing, D-052 session re-audit", v16),
-              ("sets, D-054 session re-audit", v17)]
+              ("sets, D-054 session re-audit", v17),
+              ("row + join, D-055 session re-audit", v18)]
     for label, v in stages:
         print(f"class distribution ({label}):",
               dict(sorted(Counter(v(k)[0] for k in q).items())))
@@ -1068,7 +1126,8 @@ def report():
             ("D-044 aggregate_events", v13, v14, C14),
             ("D-051 compute arithmetic", v14, v15, C15),
             ("D-052 property typing", v15, v16, C16),
-            ("D-054 sets", v16, v17, C17)]:
+            ("D-054 sets", v16, v17, C17),
+            ("D-055 row + join", v17, v18, C18)]:
         moved = sorted(k for k in q if cur(k)[0] != prev(k)[0])
         by_move = Counter((prev(k)[0], cur(k)[0]) for k in moved)
         print(f"\nbecame expressible under {label}: {len(moved)} of {len(q)} "
@@ -1079,7 +1138,7 @@ def report():
         print(f"class-3 entries whose need-tags were re-audited: "
               f"{len([k for k in table if table[k][0] == 3])}")
 
-    expressible = sum(1 for k in q if v17(k)[0] in (1, 2))
+    expressible = sum(1 for k in q if v18(k)[0] in (1, 2))
     print(f"\nexpressible now: {expressible} of {len(q)}")
     print("runnable:", [f"{d}-Q{n}" for (d, n) in sorted(C)
                         if C[(d, n)][2]])
@@ -1093,7 +1152,9 @@ def report():
              "class_16": v16((d, n))[0], "need_or_ops_16": v16((d, n))[1],
              "justification_16": C16[(d, n)][2] if (d, n) in C16 else "",
              "class_17": v17((d, n))[0], "need_or_ops_17": v17((d, n))[1],
-             "justification_17": C17[(d, n)][2] if (d, n) in C17 else ""}
+             "justification_17": C17[(d, n)][2] if (d, n) in C17 else "",
+             "class_18": v18((d, n))[0], "need_or_ops_18": v18((d, n))[1],
+             "justification_18": C18[(d, n)][2] if (d, n) in C18 else ""}
             for (d, n) in sorted(q)]
     out = Path("benchmarks/independent-v1/classification.json")
     out.parent.mkdir(parents=True, exist_ok=True)

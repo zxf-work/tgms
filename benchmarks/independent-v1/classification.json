@@ -20,7 +20,10 @@
   "justification_16": "",
   "class_17": 1,
   "need_or_ops_17": "aggregate_events",
-  "justification_17": ""
+  "justification_17": "",
+  "class_18": 1,
+  "need_or_ops_18": "aggregate_events",
+  "justification_18": ""
  },
  {
   "dataset": "bo",
@@ -43,7 +46,10 @@
   "justification_16": "",
   "class_17": 1,
   "need_or_ops_17": "aggregate_events",
-  "justification_17": ""
+  "justification_17": "",
+  "class_18": 1,
+  "need_or_ops_18": "aggregate_events",
+  "justification_18": ""
  },
  {
   "dataset": "bo",
@@ -66,7 +72,10 @@
   "justification_16": "",
   "class_17": 2,
   "need_or_ops_17": "graph_metric_timeseries+sum",
-  "justification_17": ""
+  "justification_17": "",
+  "class_18": 2,
+  "need_or_ops_18": "graph_metric_timeseries+sum",
+  "justification_18": ""
  },
  {
   "dataset": "bo",
@@ -89,7 +98,10 @@
   "justification_16": "one call: group_by [], prop_filter(rating eq 0), count",
   "class_17": 1,
   "need_or_ops_17": "aggregate_events",
-  "justification_17": ""
+  "justification_17": "",
+  "class_18": 1,
+  "need_or_ops_18": "aggregate_events",
+  "justification_18": ""
  },
  {
   "dataset": "bo",
@@ -112,7 +124,10 @@
   "justification_16": "",
   "class_17": 2,
   "need_or_ops_17": "graph_metric_timeseries+topk",
-  "justification_17": ""
+  "justification_17": "",
+  "class_18": 2,
+  "need_or_ops_18": "graph_metric_timeseries+topk",
+  "justification_18": ""
  },
  {
   "dataset": "bo",
@@ -135,7 +150,10 @@
   "justification_16": "positives via prop_filter(rating gt 0) count, all ratings via a second group_by [] count, then percent(x, y)",
   "class_17": 2,
   "need_or_ops_17": "aggregate_events+aggregate_events+percent",
-  "justification_17": ""
+  "justification_17": "",
+  "class_18": 2,
+  "need_or_ops_18": "aggregate_events+aggregate_events+percent",
+  "justification_18": ""
  },
  {
   "dataset": "bo",
@@ -158,7 +176,10 @@
   "justification_16": "",
   "class_17": 2,
   "need_or_ops_17": "aggregate_events+aggregate_events+intersect+count",
-  "justification_17": "givers by [endpoint src], receivers by [endpoint dst], intersect on the uid column, count"
+  "justification_17": "givers by [endpoint src], receivers by [endpoint dst], intersect on the uid column, count",
+  "class_18": 2,
+  "need_or_ops_18": "aggregate_events+aggregate_events+intersect+count",
+  "justification_18": ""
  },
  {
   "dataset": "bo",
@@ -181,7 +202,10 @@
   "justification_16": "one group_by [] with mean of prop rating per year window \u2014 five literal windows, the distinction bo-Q2 already turned on ('a window, not a calendar bucket'), so no calendar bucketing is required",
   "class_17": 2,
   "need_or_ops_17": "aggregate_events+aggregate_events",
-  "justification_17": ""
+  "justification_17": "",
+  "class_18": 2,
+  "need_or_ops_18": "aggregate_events+aggregate_events",
+  "justification_18": ""
  },
  {
   "dataset": "bo",
@@ -204,7 +228,10 @@
   "justification_16": "",
   "class_17": 2,
   "need_or_ops_17": "aggregate_events+topk",
-  "justification_17": ""
+  "justification_17": "",
+  "class_18": 2,
+  "need_or_ops_18": "aggregate_events+topk",
+  "justification_18": ""
  },
  {
   "dataset": "bo",
@@ -227,7 +254,10 @@
   "justification_16": "",
   "class_17": 2,
   "need_or_ops_17": "aggregate_events+topk",
-  "justification_17": ""
+  "justification_17": "",
+  "class_18": 2,
+  "need_or_ops_18": "aggregate_events+topk",
+  "justification_18": ""
  },
  {
   "dataset": "bo",
@@ -250,7 +280,10 @@
   "justification_16": "count and mean of prop rating per dst are one call and filter(count ge N) the cohort; the *lowest* mean is a bottom-k selection, and topk only ranks from the top",
   "class_17": 3,
   "need_or_ops_17": "PCT",
-  "justification_17": ""
+  "justification_17": "",
+  "class_18": 3,
+  "need_or_ops_18": "PCT",
+  "justification_18": ""
  },
  {
   "dataset": "bo",
@@ -273,7 +306,10 @@
   "justification_16": "group_by [endpoint src] with count and mean of prop rating, filter(count ge 10), topk(mean_prop_rating, 1)",
   "class_17": 2,
   "need_or_ops_17": "aggregate_events+filter+topk",
-  "justification_17": ""
+  "justification_17": "",
+  "class_18": 2,
+  "need_or_ops_18": "aggregate_events+filter+topk",
+  "justification_18": ""
  },
  {
   "dataset": "bo",
@@ -296,7 +332,10 @@
   "justification_16": "s1 group_by [] min of prop rating; s2 group_by [endpoint src, endpoint dst] with prop_filter(rating eq $ref s1) \u2014 the window-reselect idiom C14 found for cm-Q37, now reselecting on a property instead of a time",
   "class_17": 2,
   "need_or_ops_17": "aggregate_events+aggregate_events",
-  "justification_17": ""
+  "justification_17": "",
+  "class_18": 2,
+  "need_or_ops_18": "aggregate_events+aggregate_events",
+  "justification_18": ""
  },
  {
   "dataset": "bo",
@@ -319,7 +358,10 @@
   "justification_16": "positive and negative counts are now two prop_filter calls; joining them per account and differencing per row is what is left",
   "class_17": 3,
   "need_or_ops_17": "ROW,JOIN",
-  "justification_17": "two prop-filtered groupings aligned per account, then differenced"
+  "justification_17": "two prop-filtered groupings aligned per account, then differenced",
+  "class_18": 2,
+  "need_or_ops_18": "aggregate_events+aggregate_events+join+derive+topk",
+  "justification_18": "positive and negative counts per account, joined left with fill 0 so an account with no negatives scores zero, then derive sub and topk"
  },
  {
   "dataset": "bo",
@@ -342,7 +384,10 @@
   "justification_16": "'all ratings <= 0' is max_prop_rating le 0: group_by [endpoint dst] with count and max of prop rating, filter(count ge 3), filter(max_prop_rating le 0), count",
   "class_17": 2,
   "need_or_ops_17": "aggregate_events+filter+filter+count",
-  "justification_17": ""
+  "justification_17": "",
+  "class_18": 2,
+  "need_or_ops_18": "aggregate_events+filter+filter+count",
+  "justification_18": ""
  },
  {
   "dataset": "bo",
@@ -365,7 +410,10 @@
   "justification_16": "",
   "class_17": 2,
   "need_or_ops_17": "aggregate_events+filter+count",
-  "justification_17": ""
+  "justification_17": "",
+  "class_18": 2,
+  "need_or_ops_18": "aggregate_events+filter+count",
+  "justification_18": ""
  },
  {
   "dataset": "bo",
@@ -388,7 +436,10 @@
   "justification_16": "",
   "class_17": 3,
   "need_or_ops_17": "SEQ",
-  "justification_17": ""
+  "justification_17": "",
+  "class_18": 3,
+  "need_or_ops_18": "SEQ",
+  "justification_18": ""
  },
  {
   "dataset": "bo",
@@ -411,7 +462,10 @@
   "justification_16": "",
   "class_17": 3,
   "need_or_ops_17": "SEQ",
-  "justification_17": ""
+  "justification_17": "",
+  "class_18": 3,
+  "need_or_ops_18": "SEQ",
+  "justification_18": ""
  },
  {
   "dataset": "bo",
@@ -434,7 +488,10 @@
   "justification_16": "",
   "class_17": 2,
   "need_or_ops_17": "aggregate_events+intersect+intersect+count",
-  "justification_17": "one grouping per year window (literal windows, the bo-Q2 distinction), then two intersections"
+  "justification_17": "one grouping per year window (literal windows, the bo-Q2 distinction), then two intersections",
+  "class_18": 2,
+  "need_or_ops_18": "aggregate_events+intersect+intersect+count",
+  "justification_18": ""
  },
  {
   "dataset": "bo",
@@ -457,7 +514,10 @@
   "justification_16": "",
   "class_17": 3,
   "need_or_ops_17": "ROW,JOIN",
-  "justification_17": "the pair set is expressible; the per-pair time difference needs both minima in a row"
+  "justification_17": "the pair set is expressible; the per-pair time difference needs both minima in a row",
+  "class_18": 2,
+  "need_or_ops_18": "aggregate_events+derive+derive+join+derive+median",
+  "justification_18": "pair minima keyed both ways with derive concat, self-joined on the swapped key, then the per-pair difference and its median"
  },
  {
   "dataset": "bo",
@@ -480,7 +540,10 @@
   "justification_16": "",
   "class_17": 2,
   "need_or_ops_17": "graph_metric_timeseries+filter",
-  "justification_17": ""
+  "justification_17": "",
+  "class_18": 2,
+  "need_or_ops_18": "graph_metric_timeseries+filter",
+  "justification_18": ""
  },
  {
   "dataset": "bo",
@@ -503,7 +566,10 @@
   "justification_16": "",
   "class_17": 3,
   "need_or_ops_17": "ROW,JOIN",
-  "justification_17": "two per-account minima, aligned then floor-divided"
+  "justification_17": "two per-account minima, aligned then floor-divided",
+  "class_18": 2,
+  "need_or_ops_18": "aggregate_events+aggregate_events+join+derive+derive+count",
+  "justification_18": "the two per-account minima joined, each floor-divided to a day, then compared"
  },
  {
   "dataset": "bo",
@@ -526,7 +592,10 @@
   "justification_16": "",
   "class_17": 3,
   "need_or_ops_17": "ROW",
-  "justification_17": ""
+  "justification_17": "",
+  "class_18": 2,
+  "need_or_ops_18": "aggregate_events+filter+derive+derive+mean",
+  "justification_18": "max_vt_s - min_vt_s per rater, floor-divided to days, then the whole-input mean that already existed \u2014 not a grouped mean, which is why this one needed only `derive`"
  },
  {
   "dataset": "bo",
@@ -549,7 +618,10 @@
   "justification_16": "",
   "class_17": 1,
   "need_or_ops_17": "aggregate_events",
-  "justification_17": "group_by [endpoint src, endpoint dst] with pair_mode reciprocal; rows_total is the answer"
+  "justification_17": "group_by [endpoint src, endpoint dst] with pair_mode reciprocal; rows_total is the answer",
+  "class_18": 1,
+  "need_or_ops_18": "aggregate_events",
+  "justification_18": ""
  },
  {
   "dataset": "bo",
@@ -572,7 +644,10 @@
   "justification_16": "rating signs are a predicate now; the reciprocal-pair join is not, and percent closes the readout",
   "class_17": 2,
   "need_or_ops_17": "aggregate_events+aggregate_events+percent",
-  "justification_17": "reciprocal pairs among positive ratings over reciprocal pairs overall \u2014 filtering to positives first makes 'both rated the other positively' the reciprocity test"
+  "justification_17": "reciprocal pairs among positive ratings over reciprocal pairs overall \u2014 filtering to positives first makes 'both rated the other positively' the reciprocity test",
+  "class_18": 2,
+  "need_or_ops_18": "aggregate_events+aggregate_events+percent",
+  "justification_18": ""
  },
  {
   "dataset": "bo",
@@ -595,7 +670,10 @@
   "justification_16": "as bo-Q25",
   "class_17": 3,
   "need_or_ops_17": "PROJ",
-  "justification_17": "reciprocity is available; 'one positive and one negative' needs both directions' values in a row, and zero ratings make it not the complement of the both-positive count"
+  "justification_17": "reciprocity is available; 'one positive and one negative' needs both directions' values in a row, and zero ratings make it not the complement of the both-positive count",
+  "class_18": 3,
+  "need_or_ops_18": "PROJ",
+  "justification_18": ""
  },
  {
   "dataset": "bo",
@@ -618,7 +696,10 @@
   "justification_16": "'a different value' compares one rating with the previous one; an aggregate reduces and a predicate compares to a literal, so neither hands the value back for that",
   "class_17": 3,
   "need_or_ops_17": "PROJ,SEQ",
-  "justification_17": ""
+  "justification_17": "",
+  "class_18": 3,
+  "need_or_ops_18": "PROJ,SEQ",
+  "justification_18": ""
  },
  {
   "dataset": "bo",
@@ -641,7 +722,10 @@
   "justification_16": "",
   "class_17": 2,
   "need_or_ops_17": "aggregate_events+topk",
-  "justification_17": "pair_mode undirected sums both directions per pair, then topk(count, 1)"
+  "justification_17": "pair_mode undirected sums both directions per pair, then topk(count, 1)",
+  "class_18": 2,
+  "need_or_ops_18": "aggregate_events+topk",
+  "justification_18": ""
  },
  {
   "dataset": "bo",
@@ -664,7 +748,10 @@
   "justification_16": "as bo-Q27, plus the transpose join and the ordering",
   "class_17": 3,
   "need_or_ops_17": "PROJ,SEQ",
-  "justification_17": "reciprocity is an operator argument now"
+  "justification_17": "reciprocity is an operator argument now",
+  "class_18": 3,
+  "need_or_ops_18": "PROJ,SEQ",
+  "justification_18": ""
  },
  {
   "dataset": "bo",
@@ -687,7 +774,10 @@
   "justification_16": "the correlation is between the two ratings of a pair, so both values have to reach the same row",
   "class_17": 3,
   "need_or_ops_17": "PROJ",
-  "justification_17": "the pair set is expressible; both ratings in one row is not"
+  "justification_17": "the pair set is expressible; both ratings in one row is not",
+  "class_18": 3,
+  "need_or_ops_18": "PROJ",
+  "justification_18": ""
  },
  {
   "dataset": "bo",
@@ -710,7 +800,10 @@
   "justification_16": "",
   "class_17": 3,
   "need_or_ops_17": "NEG,PROP",
-  "justification_17": ""
+  "justification_17": "",
+  "class_18": 3,
+  "need_or_ops_18": "NEG,PROP",
+  "justification_18": ""
  },
  {
   "dataset": "bo",
@@ -733,7 +826,10 @@
   "justification_16": "",
   "class_17": 3,
   "need_or_ops_17": "PROP,CAL",
-  "justification_17": ""
+  "justification_17": "",
+  "class_18": 3,
+  "need_or_ops_18": "PROP,CAL",
+  "justification_18": ""
  },
  {
   "dataset": "bo",
@@ -756,7 +852,10 @@
   "justification_16": "positive ratings are a predicate now; 'at least 3 raters who all also rated each other' is a mutual-clique condition over a rater set",
   "class_17": 3,
   "need_or_ops_17": "SET",
-  "justification_17": ""
+  "justification_17": "",
+  "class_18": 3,
+  "need_or_ops_18": "SET",
+  "justification_18": ""
  },
  {
   "dataset": "bo",
@@ -779,7 +878,10 @@
   "justification_16": "",
   "class_17": 3,
   "need_or_ops_17": "PROP,GLOB",
-  "justification_17": ""
+  "justification_17": "",
+  "class_18": 3,
+  "need_or_ops_18": "PROP,GLOB",
+  "justification_18": ""
  },
  {
   "dataset": "bo",
@@ -802,7 +904,10 @@
   "justification_16": "",
   "class_17": 3,
   "need_or_ops_17": "PROP,NEG",
-  "justification_17": ""
+  "justification_17": "",
+  "class_18": 3,
+  "need_or_ops_18": "PROP,NEG",
+  "justification_18": ""
  },
  {
   "dataset": "bo",
@@ -825,7 +930,10 @@
   "justification_16": "the positively-rated set of one account is reachable by grouping plus a post-hoc filter; expanding a *set* by a second hop needs a uid pre-filter, i.e. a join",
   "class_17": 2,
   "need_or_ops_17": "aggregate_events+aggregate_events+count",
-  "justification_17": "endpoint_filter src=[n100] with a positive prop_filter gives X by [endpoint dst]; the same shape with endpoint_filter src=$ref X gives the second hop"
+  "justification_17": "endpoint_filter src=[n100] with a positive prop_filter gives X by [endpoint dst]; the same shape with endpoint_filter src=$ref X gives the second hop",
+  "class_18": 2,
+  "need_or_ops_18": "aggregate_events+aggregate_events+count",
+  "justification_18": ""
  },
  {
   "dataset": "bo",
@@ -848,7 +956,10 @@
   "justification_16": "",
   "class_17": 3,
   "need_or_ops_17": "PROP",
-  "justification_17": ""
+  "justification_17": "",
+  "class_18": 3,
+  "need_or_ops_18": "PROP",
+  "justification_18": ""
  },
  {
   "dataset": "bo",
@@ -871,7 +982,10 @@
   "justification_16": "",
   "class_17": 4,
   "need_or_ops_17": "",
-  "justification_17": ""
+  "justification_17": "",
+  "class_18": 4,
+  "need_or_ops_18": "",
+  "justification_18": ""
  },
  {
   "dataset": "bo",
@@ -894,7 +1008,10 @@
   "justification_16": "",
   "class_17": 5,
   "need_or_ops_17": "",
-  "justification_17": ""
+  "justification_17": "",
+  "class_18": 5,
+  "need_or_ops_18": "",
+  "justification_18": ""
  },
  {
   "dataset": "bo",
@@ -917,7 +1034,10 @@
   "justification_16": "",
   "class_17": 3,
   "need_or_ops_17": "GLOB",
-  "justification_17": ""
+  "justification_17": "",
+  "class_18": 3,
+  "need_or_ops_18": "GLOB",
+  "justification_18": ""
  },
  {
   "dataset": "bo",
@@ -940,7 +1060,10 @@
   "justification_16": "",
   "class_17": 3,
   "need_or_ops_17": "GLOB,CAL",
-  "justification_17": ""
+  "justification_17": "",
+  "class_18": 3,
+  "need_or_ops_18": "GLOB,CAL",
+  "justification_18": ""
  },
  {
   "dataset": "bo",
@@ -963,7 +1086,10 @@
   "justification_16": "",
   "class_17": 3,
   "need_or_ops_17": "ROW,JOIN",
-  "justification_17": "two as_of_tt groupings aligned per account"
+  "justification_17": "two as_of_tt groupings aligned per account",
+  "class_18": 2,
+  "need_or_ops_18": "aggregate_events+aggregate_events+join+derive+filter+count",
+  "justification_18": "two as_of_tt groupings joined per account, differenced, thresholded"
  },
  {
   "dataset": "bo",
@@ -986,7 +1112,10 @@
   "justification_16": "as_of_tt fixes the belief state, then the bo-Q12 chain over received ratings",
   "class_17": 2,
   "need_or_ops_17": "aggregate_events+filter+topk",
-  "justification_17": ""
+  "justification_17": "",
+  "class_18": 2,
+  "need_or_ops_18": "aggregate_events+filter+topk",
+  "justification_18": ""
  },
  {
   "dataset": "bo",
@@ -1009,7 +1138,10 @@
   "justification_16": "positive-rating counts are a prop_filter call per snapshot; the cross-snapshot join and per-row comparison remain",
   "class_17": 3,
   "need_or_ops_17": "ROW,JOIN",
-  "justification_17": "as bo-Q42, with a comparison"
+  "justification_17": "as bo-Q42, with a comparison",
+  "class_18": 2,
+  "need_or_ops_18": "aggregate_events+aggregate_events+join+derive+filter",
+  "justification_18": "as bo-Q42, reading the sign of the difference"
  },
  {
   "dataset": "bo",
@@ -1032,7 +1164,10 @@
   "justification_16": "",
   "class_17": 3,
   "need_or_ops_17": "GLOB",
-  "justification_17": ""
+  "justification_17": "",
+  "class_18": 3,
+  "need_or_ops_18": "GLOB",
+  "justification_18": ""
  },
  {
   "dataset": "bo",
@@ -1055,7 +1190,10 @@
   "justification_16": "per-dst min vt_s overall and among negatives are two calls, and equality between them says the first rating was negative \u2014 no property projection needed, but matching the two results per account is a join",
   "class_17": 3,
   "need_or_ops_17": "ROW,JOIN",
-  "justification_17": "'first rating was negative' compares the overall minimum with the negatives-only minimum, per account"
+  "justification_17": "'first rating was negative' compares the overall minimum with the negatives-only minimum, per account",
+  "class_18": 2,
+  "need_or_ops_18": "aggregate_events+aggregate_events+join+derive+percent",
+  "justification_18": "the overall minimum and the negatives-only minimum joined per account; equality says the first rating was negative"
  },
  {
   "dataset": "bo",
@@ -1078,7 +1216,10 @@
   "justification_16": "the means are expressible; the first-5/last-5 slices and their per-account difference are not",
   "class_17": 3,
   "need_or_ops_17": "ROW,SEQ",
-  "justification_17": ""
+  "justification_17": "",
+  "class_18": 3,
+  "need_or_ops_18": "ROW,SEQ",
+  "justification_18": ""
  },
  {
   "dataset": "bo",
@@ -1101,7 +1242,10 @@
   "justification_16": "mirror of bo-Q15 on the giving side: 'all > 0' is min_prop_rating gt 0",
   "class_17": 2,
   "need_or_ops_17": "aggregate_events+filter+filter+count",
-  "justification_17": ""
+  "justification_17": "",
+  "class_18": 2,
+  "need_or_ops_18": "aggregate_events+filter+filter+count",
+  "justification_18": ""
  },
  {
   "dataset": "bo",
@@ -1124,7 +1268,10 @@
   "justification_16": "mirror of bo-Q48 with max_prop_rating lt 0",
   "class_17": 2,
   "need_or_ops_17": "aggregate_events+filter+filter+count",
-  "justification_17": ""
+  "justification_17": "",
+  "class_18": 2,
+  "need_or_ops_18": "aggregate_events+filter+filter+count",
+  "justification_18": ""
  },
  {
   "dataset": "bo",
@@ -1147,7 +1294,10 @@
   "justification_16": "the cohort test is mean of prop rating lt 0; restricting a second grouping to that cohort needs a uid pre-filter the operator does not have",
   "class_17": 2,
   "need_or_ops_17": "aggregate_events+filter+filter+aggregate_events+aggregate_events+percent",
-  "justification_17": "the cohort is filter(mean_prop_rating lt 0) and filter(count ge 5); endpoint_filter src=$ref cohort then restricts both counts the percentage is taken over"
+  "justification_17": "the cohort is filter(mean_prop_rating lt 0) and filter(count ge 5); endpoint_filter src=$ref cohort then restricts both counts the percentage is taken over",
+  "class_18": 2,
+  "need_or_ops_18": "aggregate_events+filter+filter+aggregate_events+aggregate_events+percent",
+  "justification_18": ""
  },
  {
   "dataset": "bo",
@@ -1170,7 +1320,10 @@
   "justification_16": "",
   "class_17": 3,
   "need_or_ops_17": "ROW",
-  "justification_17": "the two per-day sets are expressible; matching them needs a derived (day, account) key"
+  "justification_17": "the two per-day sets are expressible; matching them needs a derived (day, account) key",
+  "class_18": 2,
+  "need_or_ops_18": "aggregate_events+derive+aggregate_events+derive+intersect+count",
+  "justification_18": "a (day, account) key on each side with derive concat, then the set intersection that shipped in D-054"
  },
  {
   "dataset": "bo",
@@ -1193,7 +1346,10 @@
   "justification_16": "",
   "class_17": 3,
   "need_or_ops_17": "G,SET",
-  "justification_17": ""
+  "justification_17": "",
+  "class_18": 3,
+  "need_or_ops_18": "G,SET",
+  "justification_18": ""
  },
  {
   "dataset": "bo",
@@ -1216,7 +1372,10 @@
   "justification_16": "",
   "class_17": 2,
   "need_or_ops_17": "aggregate_events+aggregate_events+difference+count",
-  "justification_17": "raters in each year window, then a set difference"
+  "justification_17": "raters in each year window, then a set difference",
+  "class_18": 2,
+  "need_or_ops_18": "aggregate_events+aggregate_events+difference+count",
+  "justification_18": ""
  },
  {
   "dataset": "bo",
@@ -1239,7 +1398,10 @@
   "justification_16": "",
   "class_17": 3,
   "need_or_ops_17": "PCT,ROW,JOIN",
-  "justification_17": "given and received counts aligned per account"
+  "justification_17": "given and received counts aligned per account",
+  "class_18": 3,
+  "need_or_ops_18": "PCT,ROW,JOIN",
+  "justification_18": ""
  },
  {
   "dataset": "bo",
@@ -1262,7 +1424,10 @@
   "justification_16": "mean of prop rating per dst in each of the two windows, the account picked out by filter(dst eq n200) post-hoc, and the sign of the diff is the answer",
   "class_17": 2,
   "need_or_ops_17": "aggregate_events+filter+aggregate_events+filter+diff",
-  "justification_17": ""
+  "justification_17": "",
+  "class_18": 2,
+  "need_or_ops_18": "aggregate_events+filter+aggregate_events+filter+diff",
+  "justification_18": ""
  },
  {
   "dataset": "cm",
@@ -1285,7 +1450,10 @@
   "justification_16": "",
   "class_17": 1,
   "need_or_ops_17": "aggregate_events",
-  "justification_17": ""
+  "justification_17": "",
+  "class_18": 1,
+  "need_or_ops_18": "aggregate_events",
+  "justification_18": ""
  },
  {
   "dataset": "cm",
@@ -1308,7 +1476,10 @@
   "justification_16": "",
   "class_17": 1,
   "need_or_ops_17": "aggregate_events",
-  "justification_17": ""
+  "justification_17": "",
+  "class_18": 1,
+  "need_or_ops_18": "aggregate_events",
+  "justification_18": ""
  },
  {
   "dataset": "cm",
@@ -1331,7 +1502,10 @@
   "justification_16": "",
   "class_17": 2,
   "need_or_ops_17": "aggregate_events+topk",
-  "justification_17": ""
+  "justification_17": "",
+  "class_18": 2,
+  "need_or_ops_18": "aggregate_events+topk",
+  "justification_18": ""
  },
  {
   "dataset": "cm",
@@ -1354,7 +1528,10 @@
   "justification_16": "",
   "class_17": 2,
   "need_or_ops_17": "aggregate_events+topk",
-  "justification_17": ""
+  "justification_17": "",
+  "class_18": 2,
+  "need_or_ops_18": "aggregate_events+topk",
+  "justification_18": ""
  },
  {
   "dataset": "cm",
@@ -1377,7 +1554,10 @@
   "justification_16": "",
   "class_17": 2,
   "need_or_ops_17": "graph_metric_timeseries+topk",
-  "justification_17": ""
+  "justification_17": "",
+  "class_18": 2,
+  "need_or_ops_18": "graph_metric_timeseries+topk",
+  "justification_18": ""
  },
  {
   "dataset": "cm",
@@ -1400,7 +1580,10 @@
   "justification_16": "",
   "class_17": 3,
   "need_or_ops_17": "GLOB",
-  "justification_17": ""
+  "justification_17": "",
+  "class_18": 3,
+  "need_or_ops_18": "GLOB",
+  "justification_18": ""
  },
  {
   "dataset": "cm",
@@ -1423,7 +1606,10 @@
   "justification_16": "",
   "class_17": 2,
   "need_or_ops_17": "aggregate_events+filter+count",
-  "justification_17": ""
+  "justification_17": "",
+  "class_18": 2,
+  "need_or_ops_18": "aggregate_events+filter+count",
+  "justification_18": ""
  },
  {
   "dataset": "cm",
@@ -1446,7 +1632,10 @@
   "justification_16": "",
   "class_17": 2,
   "need_or_ops_17": "entity_history+filter+min",
-  "justification_17": ""
+  "justification_17": "",
+  "class_18": 2,
+  "need_or_ops_18": "entity_history+filter+min",
+  "justification_18": ""
  },
  {
   "dataset": "cm",
@@ -1469,7 +1658,10 @@
   "justification_16": "",
   "class_17": 3,
   "need_or_ops_17": "SEQ",
-  "justification_17": ""
+  "justification_17": "",
+  "class_18": 3,
+  "need_or_ops_18": "SEQ",
+  "justification_18": ""
  },
  {
   "dataset": "cm",
@@ -1492,7 +1684,10 @@
   "justification_16": "",
   "class_17": 2,
   "need_or_ops_17": "aggregate_events+aggregate_events+difference+count",
-  "justification_17": "recipients minus senders over the whole log"
+  "justification_17": "recipients minus senders over the whole log",
+  "class_18": 2,
+  "need_or_ops_18": "aggregate_events+aggregate_events+difference+count",
+  "justification_18": ""
  },
  {
   "dataset": "cm",
@@ -1515,7 +1710,10 @@
   "justification_16": "",
   "class_17": 2,
   "need_or_ops_17": "aggregate_events+mean",
-  "justification_17": ""
+  "justification_17": "",
+  "class_18": 2,
+  "need_or_ops_18": "aggregate_events+mean",
+  "justification_18": ""
  },
  {
   "dataset": "cm",
@@ -1538,7 +1736,10 @@
   "justification_16": "",
   "class_17": 2,
   "need_or_ops_17": "entity_history+filter",
-  "justification_17": ""
+  "justification_17": "",
+  "class_18": 2,
+  "need_or_ops_18": "entity_history+filter",
+  "justification_18": ""
  },
  {
   "dataset": "cm",
@@ -1561,7 +1762,10 @@
   "justification_16": "",
   "class_17": 3,
   "need_or_ops_17": "SEQ",
-  "justification_17": "pair_mode reciprocal gives the pairs; 'within an hour' is the ordered-sequence part"
+  "justification_17": "pair_mode reciprocal gives the pairs; 'within an hour' is the ordered-sequence part",
+  "class_18": 3,
+  "need_or_ops_18": "SEQ",
+  "justification_18": ""
  },
  {
   "dataset": "cm",
@@ -1584,7 +1788,10 @@
   "justification_16": "",
   "class_17": 3,
   "need_or_ops_17": "SEQ",
-  "justification_17": "endpoint_filter either unions the two roles; the longest gap is sequence work"
+  "justification_17": "endpoint_filter either unions the two roles; the longest gap is sequence work",
+  "class_18": 3,
+  "need_or_ops_18": "SEQ",
+  "justification_18": ""
  },
  {
   "dataset": "cm",
@@ -1607,7 +1814,10 @@
   "justification_16": "",
   "class_17": 3,
   "need_or_ops_17": "CAL",
-  "justification_17": ""
+  "justification_17": "",
+  "class_18": 3,
+  "need_or_ops_18": "CAL",
+  "justification_18": ""
  },
  {
   "dataset": "cm",
@@ -1630,7 +1840,10 @@
   "justification_16": "",
   "class_17": 3,
   "need_or_ops_17": "ROW,JOIN",
-  "justification_17": "two per-account minima against n42, compared"
+  "justification_17": "two per-account minima against n42, compared",
+  "class_18": 2,
+  "need_or_ops_18": "aggregate_events+aggregate_events+join+derive+filter+count",
+  "justification_18": "the two per-account minima against n42, joined and compared"
  },
  {
   "dataset": "cm",
@@ -1653,7 +1866,10 @@
   "justification_16": "",
   "class_17": 3,
   "need_or_ops_17": "G",
-  "justification_17": "reciprocal pairs are one call; counting distinct partners per account regroups that result"
+  "justification_17": "reciprocal pairs are one call; counting distinct partners per account regroups that result",
+  "class_18": 3,
+  "need_or_ops_18": "G",
+  "justification_18": ""
  },
  {
   "dataset": "cm",
@@ -1676,7 +1892,10 @@
   "justification_16": "",
   "class_17": 2,
   "need_or_ops_17": "graph_metric_timeseries+sum",
-  "justification_17": ""
+  "justification_17": "",
+  "class_18": 2,
+  "need_or_ops_18": "graph_metric_timeseries+sum",
+  "justification_18": ""
  },
  {
   "dataset": "cm",
@@ -1699,7 +1918,10 @@
   "justification_16": "",
   "class_17": 3,
   "need_or_ops_17": "CAL",
-  "justification_17": ""
+  "justification_17": "",
+  "class_18": 3,
+  "need_or_ops_18": "CAL",
+  "justification_18": ""
  },
  {
   "dataset": "cm",
@@ -1722,7 +1944,10 @@
   "justification_16": "",
   "class_17": 3,
   "need_or_ops_17": "CAL",
-  "justification_17": ""
+  "justification_17": "",
+  "class_18": 3,
+  "need_or_ops_18": "CAL",
+  "justification_18": ""
  },
  {
   "dataset": "cm",
@@ -1745,7 +1970,10 @@
   "justification_16": "",
   "class_17": 3,
   "need_or_ops_17": "ROW,JOIN",
-  "justification_17": "as bo-Q22"
+  "justification_17": "as bo-Q22",
+  "class_18": 2,
+  "need_or_ops_18": "aggregate_events+aggregate_events+join+derive+derive+count",
+  "justification_18": "as bo-Q22"
  },
  {
   "dataset": "cm",
@@ -1768,7 +1996,10 @@
   "justification_16": "",
   "class_17": 3,
   "need_or_ops_17": "ROW,JOIN",
-  "justification_17": "as bo-Q20"
+  "justification_17": "as bo-Q20",
+  "class_18": 2,
+  "need_or_ops_18": "aggregate_events+derive+derive+join+derive+median",
+  "justification_18": "as bo-Q20"
  },
  {
   "dataset": "cm",
@@ -1791,7 +2022,10 @@
   "justification_16": "",
   "class_17": 2,
   "need_or_ops_17": "aggregate_events+topk",
-  "justification_17": ""
+  "justification_17": "",
+  "class_18": 2,
+  "need_or_ops_18": "aggregate_events+topk",
+  "justification_18": ""
  },
  {
   "dataset": "cm",
@@ -1814,7 +2048,10 @@
   "justification_16": "",
   "class_17": 3,
   "need_or_ops_17": "SEQ,SET",
-  "justification_17": ""
+  "justification_17": "",
+  "class_18": 3,
+  "need_or_ops_18": "SEQ,SET",
+  "justification_18": ""
  },
  {
   "dataset": "cm",
@@ -1837,7 +2074,10 @@
   "justification_16": "",
   "class_17": 3,
   "need_or_ops_17": "GLOB",
-  "justification_17": ""
+  "justification_17": "",
+  "class_18": 3,
+  "need_or_ops_18": "GLOB",
+  "justification_18": ""
  },
  {
   "dataset": "cm",
@@ -1860,7 +2100,10 @@
   "justification_16": "",
   "class_17": 2,
   "need_or_ops_17": "entity_history+min+interval_relation",
-  "justification_17": ""
+  "justification_17": "",
+  "class_18": 2,
+  "need_or_ops_18": "entity_history+min+interval_relation",
+  "justification_18": ""
  },
  {
   "dataset": "cm",
@@ -1883,7 +2126,10 @@
   "justification_16": "",
   "class_17": 2,
   "need_or_ops_17": "aggregate_events+aggregate_events+diff",
-  "justification_17": ""
+  "justification_17": "",
+  "class_18": 2,
+  "need_or_ops_18": "aggregate_events+aggregate_events+diff",
+  "justification_18": ""
  },
  {
   "dataset": "cm",
@@ -1906,7 +2152,10 @@
   "justification_16": "",
   "class_17": 2,
   "need_or_ops_17": "aggregate_events+filter+aggregate_events+difference+count",
-  "justification_17": "count_distinct dst per src with filter(distinct_dst ge 5), minus the set of accounts that received"
+  "justification_17": "count_distinct dst per src with filter(distinct_dst ge 5), minus the set of accounts that received",
+  "class_18": 2,
+  "need_or_ops_18": "aggregate_events+filter+aggregate_events+difference+count",
+  "justification_18": ""
  },
  {
   "dataset": "cm",
@@ -1929,7 +2178,10 @@
   "justification_16": "",
   "class_17": 3,
   "need_or_ops_17": "ROW,JOIN",
-  "justification_17": "sent and received counts aligned per account, then a ratio"
+  "justification_17": "sent and received counts aligned per account, then a ratio",
+  "class_18": 2,
+  "need_or_ops_18": "aggregate_events+aggregate_events+join+derive+topk",
+  "justification_18": "sent and received counts joined per account, then a ratio"
  },
  {
   "dataset": "cm",
@@ -1952,7 +2204,10 @@
   "justification_16": "",
   "class_17": 3,
   "need_or_ops_17": "CAL",
-  "justification_17": "months are not fixed strides, and seven of them plus six intersections exceeds the 12-step cap"
+  "justification_17": "months are not fixed strides, and seven of them plus six intersections exceeds the 12-step cap",
+  "class_18": 3,
+  "need_or_ops_18": "CAL",
+  "justification_18": ""
  },
  {
   "dataset": "cm",
@@ -1975,7 +2230,10 @@
   "justification_16": "",
   "class_17": 3,
   "need_or_ops_17": "SEQ",
-  "justification_17": ""
+  "justification_17": "",
+  "class_18": 3,
+  "need_or_ops_18": "SEQ",
+  "justification_18": ""
  },
  {
   "dataset": "cm",
@@ -1998,7 +2256,10 @@
   "justification_16": "",
   "class_17": 3,
   "need_or_ops_17": "CAL",
-  "justification_17": ""
+  "justification_17": "",
+  "class_18": 3,
+  "need_or_ops_18": "CAL",
+  "justification_18": ""
  },
  {
   "dataset": "cm",
@@ -2021,7 +2282,10 @@
   "justification_16": "",
   "class_17": 2,
   "need_or_ops_17": "aggregate_events+topk+median",
-  "justification_17": ""
+  "justification_17": "",
+  "class_18": 2,
+  "need_or_ops_18": "aggregate_events+topk+median",
+  "justification_18": ""
  },
  {
   "dataset": "cm",
@@ -2044,7 +2308,10 @@
   "justification_16": "",
   "class_17": 3,
   "need_or_ops_17": "ROW",
-  "justification_17": "reciprocal pairs are one call; 'more than double' compares the two directions of a row"
+  "justification_17": "reciprocal pairs are one call; 'more than double' compares the two directions of a row",
+  "class_18": 2,
+  "need_or_ops_18": "aggregate_events+derive+derive+join+derive+filter+count",
+  "justification_18": "the two directions of each pair brought into one row by a swapped concat key, then 'more than double'"
  },
  {
   "dataset": "cm",
@@ -2067,7 +2334,10 @@
   "justification_16": "",
   "class_17": 3,
   "need_or_ops_17": "SEQ",
-  "justification_17": ""
+  "justification_17": "",
+  "class_18": 3,
+  "need_or_ops_18": "SEQ",
+  "justification_18": ""
  },
  {
   "dataset": "cm",
@@ -2090,7 +2360,10 @@
   "justification_16": "",
   "class_17": 2,
   "need_or_ops_17": "aggregate_events+aggregate_events+difference+count",
-  "justification_17": "endpoint_filter pins n770 on each side; recipients from n770 minus senders to n770"
+  "justification_17": "endpoint_filter pins n770 on each side; recipients from n770 minus senders to n770",
+  "class_18": 2,
+  "need_or_ops_18": "aggregate_events+aggregate_events+difference+count",
+  "justification_18": ""
  },
  {
   "dataset": "cm",
@@ -2113,7 +2386,10 @@
   "justification_16": "",
   "class_17": 2,
   "need_or_ops_17": "aggregate_events+aggregate_events",
-  "justification_17": ""
+  "justification_17": "",
+  "class_18": 2,
+  "need_or_ops_18": "aggregate_events+aggregate_events",
+  "justification_18": ""
  },
  {
   "dataset": "cm",
@@ -2136,7 +2412,10 @@
   "justification_16": "",
   "class_17": 3,
   "need_or_ops_17": "GLOB",
-  "justification_17": ""
+  "justification_17": "",
+  "class_18": 3,
+  "need_or_ops_18": "GLOB",
+  "justification_18": ""
  },
  {
   "dataset": "cm",
@@ -2159,7 +2438,10 @@
   "justification_16": "",
   "class_17": 2,
   "need_or_ops_17": "aggregate_events+topk",
-  "justification_17": "the cm twin of bo-Q28: pair_mode undirected, topk"
+  "justification_17": "the cm twin of bo-Q28: pair_mode undirected, topk",
+  "class_18": 2,
+  "need_or_ops_18": "aggregate_events+topk",
+  "justification_18": ""
  },
  {
   "dataset": "cm",
@@ -2182,7 +2464,10 @@
   "justification_16": "",
   "class_17": 3,
   "need_or_ops_17": "SET,NEG",
-  "justification_17": ""
+  "justification_17": "",
+  "class_18": 3,
+  "need_or_ops_18": "SET,NEG",
+  "justification_18": ""
  },
  {
   "dataset": "cm",
@@ -2205,7 +2490,10 @@
   "justification_16": "",
   "class_17": 3,
   "need_or_ops_17": "SEQ",
-  "justification_17": ""
+  "justification_17": "",
+  "class_18": 3,
+  "need_or_ops_18": "SEQ",
+  "justification_18": ""
  },
  {
   "dataset": "cm",
@@ -2228,7 +2516,10 @@
   "justification_16": "",
   "class_17": 2,
   "need_or_ops_17": "aggregate_events+aggregate_events+intersect",
-  "justification_17": "one endpoint_filter grouping per named sender, then intersect the recipient sets"
+  "justification_17": "one endpoint_filter grouping per named sender, then intersect the recipient sets",
+  "class_18": 2,
+  "need_or_ops_18": "aggregate_events+aggregate_events+intersect",
+  "justification_18": ""
  },
  {
   "dataset": "cm",
@@ -2251,7 +2542,10 @@
   "justification_16": "",
   "class_17": 2,
   "need_or_ops_17": "aggregate_events+aggregate_events+diff",
-  "justification_17": ""
+  "justification_17": "",
+  "class_18": 2,
+  "need_or_ops_18": "aggregate_events+aggregate_events+diff",
+  "justification_18": ""
  },
  {
   "dataset": "cm",
@@ -2274,7 +2568,10 @@
   "justification_16": "",
   "class_17": 3,
   "need_or_ops_17": "ROW,SEQ",
-  "justification_17": ""
+  "justification_17": "",
+  "class_18": 3,
+  "need_or_ops_18": "ROW,SEQ",
+  "justification_18": ""
  },
  {
   "dataset": "cm",
@@ -2297,7 +2594,10 @@
   "justification_16": "",
   "class_17": 2,
   "need_or_ops_17": "aggregate_events+union+aggregate_events+union+difference+count",
-  "justification_17": "active = union of the src and dst sets in a window; the two windows then differ. January precedes the data extent, so the chain runs and correctly returns none (cm-Q3)"
+  "justification_17": "active = union of the src and dst sets in a window; the two windows then differ. January precedes the data extent, so the chain runs and correctly returns none (cm-Q3)",
+  "class_18": 2,
+  "need_or_ops_18": "aggregate_events+union+aggregate_events+union+difference+count",
+  "justification_18": ""
  },
  {
   "dataset": "cm",
@@ -2320,7 +2620,10 @@
   "justification_16": "",
   "class_17": 2,
   "need_or_ops_17": "graph_metric_timeseries+filter",
-  "justification_17": ""
+  "justification_17": "",
+  "class_18": 2,
+  "need_or_ops_18": "graph_metric_timeseries+filter",
+  "justification_18": ""
  },
  {
   "dataset": "cm",
@@ -2343,7 +2646,10 @@
   "justification_16": "",
   "class_17": 2,
   "need_or_ops_17": "aggregate_events+topk",
-  "justification_17": ""
+  "justification_17": "",
+  "class_18": 2,
+  "need_or_ops_18": "aggregate_events+topk",
+  "justification_18": ""
  },
  {
   "dataset": "cm",
@@ -2366,7 +2672,10 @@
   "justification_16": "",
   "class_17": 3,
   "need_or_ops_17": "ROW,JOIN",
-  "justification_17": "per-src day counts aligned to per-dst minima"
+  "justification_17": "per-src day counts aligned to per-dst minima",
+  "class_18": 2,
+  "need_or_ops_18": "aggregate_events+aggregate_events+join+derive+filter+count",
+  "justification_18": "per-src day counts joined to per-dst minima"
  },
  {
   "dataset": "cm",
@@ -2389,7 +2698,10 @@
   "justification_16": "",
   "class_17": 3,
   "need_or_ops_17": "ROW,JOIN",
-  "justification_17": "two accounts' per-recipient minima aligned on the recipient"
+  "justification_17": "two accounts' per-recipient minima aligned on the recipient",
+  "class_18": 2,
+  "need_or_ops_18": "aggregate_events+aggregate_events+join+derive+min",
+  "justification_18": "the two accounts' per-recipient minima joined on the recipient, then differenced"
  },
  {
   "dataset": "cm",
@@ -2412,7 +2724,10 @@
   "justification_16": "",
   "class_17": 2,
   "need_or_ops_17": "aggregate_events+filter+count",
-  "justification_17": ""
+  "justification_17": "",
+  "class_18": 2,
+  "need_or_ops_18": "aggregate_events+filter+count",
+  "justification_18": ""
  },
  {
   "dataset": "cm",
@@ -2435,7 +2750,10 @@
   "justification_16": "",
   "class_17": 3,
   "need_or_ops_17": "SEQ,G",
-  "justification_17": "reciprocity is available; 'new in May' is an ordering, and the argmax is a regrouping"
+  "justification_17": "reciprocity is available; 'new in May' is an ordering, and the argmax is a regrouping",
+  "class_18": 3,
+  "need_or_ops_18": "SEQ,G",
+  "justification_18": ""
  },
  {
   "dataset": "cm",
@@ -2458,7 +2776,10 @@
   "justification_16": "",
   "class_17": 3,
   "need_or_ops_17": "PCT",
-  "justification_17": ""
+  "justification_17": "",
+  "class_18": 3,
+  "need_or_ops_18": "PCT",
+  "justification_18": ""
  },
  {
   "dataset": "cm",
@@ -2481,7 +2802,10 @@
   "justification_16": "",
   "class_17": 3,
   "need_or_ops_17": "CAL,NEG",
-  "justification_17": ""
+  "justification_17": "",
+  "class_18": 3,
+  "need_or_ops_18": "CAL,NEG",
+  "justification_18": ""
  },
  {
   "dataset": "cm",
@@ -2504,7 +2828,10 @@
   "justification_16": "",
   "class_17": 3,
   "need_or_ops_17": "PCT",
-  "justification_17": ""
+  "justification_17": "",
+  "class_18": 3,
+  "need_or_ops_18": "PCT",
+  "justification_18": ""
  },
  {
   "dataset": "cm",
@@ -2527,6 +2854,9 @@
   "justification_16": "",
   "class_17": 2,
   "need_or_ops_17": "entity_history+max+interval_relation",
-  "justification_17": ""
+  "justification_17": "",
+  "class_18": 2,
+  "need_or_ops_18": "entity_history+max+interval_relation",
+  "justification_18": ""
  }
 ]
