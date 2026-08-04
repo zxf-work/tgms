@@ -71,14 +71,38 @@ from tgms.temporal.props import (
 #: in the payload the repair loop consumes.
 MAX_GROUPS = 100_000
 
+#: D-057's calendar units. All three are **cyclic**: a group is every 13:00
+#: in the window, not one interval of it. Closed at three because those are
+#: what the blocked questions ask for — an absolute `date`, `month` or
+#: `year` is the same ten lines and is wanted only by questions that stay
+#: blocked on another capability, so none is built.
+CAL_UNITS = ("hour_of_day", "day_of_week", "month_of_year")
+DAY_NAMES = ("Monday", "Tuesday", "Wednesday", "Thursday", "Friday",
+             "Saturday", "Sunday")
+MONTH_NAMES = ("January", "February", "March", "April", "May", "June",
+               "July", "August", "September", "October", "November",
+               "December")
+
 DIM_SPEC = {
     "type": "object",
     "properties": {
         "dim": {"type": "string",
-                "enum": ["time_bucket", "rel_type", "endpoint", "label"]},
+                "enum": ["time_bucket", "calendar_unit", "rel_type",
+                         "endpoint", "label"]},
         "role": {"type": ["string", "null"], "enum": ["src", "dst", None],
                  "default": None,
                  "description": "which endpoint, for endpoint/label dims"},
+        "unit": {"type": ["string", "null"], "enum": [*CAL_UNITS, None],
+                 "default": None,
+                 "description": "required by calendar_unit; the output "
+                                "column is named for it"},
+        "tz_offset_minutes": {
+            "type": ["integer", "null"], "minimum": -1440, "maximum": 1440,
+            "default": None,
+            "description": "fixed offset from UTC for calendar_unit, in "
+                           "minutes. A fixed offset and NOT a timezone: no "
+                           "DST, no tz database, and it is part of the args "
+                           "so it is part of the result digest"},
     },
     "required": ["dim"],
     "additionalProperties": False,
@@ -153,8 +177,14 @@ PAIR_MODE = {"type": ["string", "null"],
              "description": "requires group_by = [endpoint src, endpoint dst]"}
 
 
-def _dim_key(d: dict[str, Any]) -> tuple[str, str | None]:
-    return (d["dim"], d.get("role"))
+def _dim_key(d: dict[str, Any]) -> tuple[str, str | None, str | None]:
+    """What makes two dimensions the same one — and therefore a duplicate.
+
+    The unit is part of it (cm-Q32 groups by hour *and* weekday at once);
+    `tz_offset_minutes` deliberately is not, because the output column is
+    named for the unit and two offsets would collide on it.
+    """
+    return (d["dim"], d.get("role"), d.get("unit"))
 
 
 def _agg_field(a: dict[str, Any]) -> str:
@@ -183,8 +213,20 @@ def _aggregate_validators(args: dict[str, Any]) -> None:
     check_window(args)
     dims, aggs = args["group_by"], args["aggregates"]
 
-    seen: set[tuple[str, str | None]] = set()
+    seen: set[tuple[str, str | None, str | None]] = set()
     for d in dims:
+        if d.get("unit") is not None and d["dim"] != "calendar_unit":
+            raise InvalidArgError(
+                "'unit' is only meaningful on a 'calendar_unit' dimension")
+        if d.get("tz_offset_minutes") is not None and \
+                d["dim"] != "calendar_unit":
+            raise InvalidArgError(
+                "'tz_offset_minutes' is only meaningful on a "
+                "'calendar_unit' dimension")
+        if d["dim"] == "calendar_unit" and d.get("unit") is None:
+            raise InvalidArgError(
+                f"dimension 'calendar_unit' requires 'unit', one of "
+                f"{', '.join(CAL_UNITS)}")
         if d["dim"] in ("endpoint", "label"):
             if d.get("role") not in ("src", "dst"):
                 raise InvalidArgError(
@@ -247,8 +289,8 @@ def _aggregate_validators(args: dict[str, Any]) -> None:
         fields.add(f)
 
     if args.get("pair_mode") is not None and \
-            [_dim_key(d) for d in dims] != [("endpoint", "src"),
-                                            ("endpoint", "dst")]:
+            [_dim_key(d) for d in dims] != [("endpoint", "src", None),
+                                            ("endpoint", "dst", None)]:
         raise InvalidArgError(
             "pair_mode requires group_by = [endpoint src, endpoint dst]; "
             "folding or matching directions is only defined over a pair")
@@ -356,6 +398,43 @@ def _labels_at(adapter: StorageAdapter, uid_ids: np.ndarray, ts: np.ndarray,
     return out
 
 
+def _civil_from_days(z: np.ndarray) -> tuple[np.ndarray, np.ndarray]:
+    """(year, month) of a count of days since 1970-01-01, exactly.
+
+    Hinnant's `civil_from_days`, which is integer arithmetic all the way
+    down: no library, no tz database, no range limit, and identical on every
+    host — which is the property a `result_digest` needs and a `zoneinfo`
+    lookup cannot give. The day of the month is not returned because no unit
+    here asks for one.
+    """
+    z = z + 719_468
+    era = np.floor_divide(z, 146_097)
+    doe = z - era * 146_097
+    yoe = (doe - doe // 1460 + doe // 36_524 - doe // 146_096) // 365
+    y = yoe + era * 400
+    doy = doe - (365 * yoe + yoe // 4 - yoe // 100)
+    mp = (5 * doy + 2) // 153
+    m = mp + np.where(mp < 10, 3, -9)
+    return y + (m <= 2), m
+
+
+def _calendar_codes(d: dict[str, Any], vt_s: np.ndarray) -> np.ndarray:
+    """Per-event code for one calendar unit, at a fixed offset from UTC.
+
+    Codes are 0-based and ordered by the calendar, so the generic canonical
+    ordering over integer codes is already the right one — Monday before
+    Tuesday, January before February — and no `ranks` override is needed.
+    """
+    t = vt_s + int(d.get("tz_offset_minutes") or 0) * 60_000_000
+    if d["unit"] == "hour_of_day":
+        return np.floor_divide(t, 3_600_000_000) % 24
+    days = np.floor_divide(t, 86_400_000_000)
+    if d["unit"] == "day_of_week":
+        # epoch day 0 is a Thursday, so +3 puts Monday at 0
+        return (days + 3) % 7
+    return _civil_from_days(days)[1] - 1
+
+
 def _portable_dim_codes(adapter: StorageAdapter, d: dict[str, Any],
                         args: dict[str, Any], vt_s: np.ndarray,
                         src: np.ndarray, dst: np.ndarray,
@@ -376,6 +455,18 @@ def _portable_dim_codes(adapter: StorageAdapter, d: dict[str, Any],
             return {"t_a": [int(v) for v in ba], "t_b": [int(v) for v in bb]}
 
         return codes, values, lambda c: c
+    if d["dim"] == "calendar_unit":
+        codes = _calendar_codes(d, vt_s)
+        names = {"day_of_week": DAY_NAMES,
+                 "month_of_year": MONTH_NAMES}.get(d["unit"])
+
+        def values(c: np.ndarray) -> dict[str, list]:
+            return {d["unit"]: [int(v) if names is None else names[int(v)]
+                                for v in c]}
+
+        # the code IS the calendar rank, which is the point of encoding the
+        # names as ordinals rather than sorting the strings
+        return codes.astype(np.int64), values, lambda c: c
     if d["dim"] == "rel_type":
         uniq, inv = np.unique(np.asarray(rel, dtype=object), return_inverse=True)
 
@@ -771,7 +862,13 @@ def _native(adapter: StorageAdapter, args: dict[str, Any]) -> dict[str, Any]:
         "cursor": CURSOR,
     },
     "Grouped aggregation over edge events (believed edge versions with "
-    "t_a <= vt_s < t_b). Dimensions: time_bucket (with stride), rel_type, "
+    "t_a <= vt_s < t_b). Dimensions: time_bucket (with stride), "
+    "calendar_unit (with unit = hour_of_day 0-23, day_of_week Monday..Sunday "
+    "or month_of_year January..December, and an optional "
+    "tz_offset_minutes — a FIXED offset from UTC, not a timezone, so no DST; "
+    "these groups are CYCLIC, i.e. one hour_of_day group is every 13:00 in "
+    "the window rather than one interval, which a stride cannot express), "
+    "rel_type, "
     "endpoint (src|dst as uids), label (endpoint's node label valid at the "
     "event; null when none). Aggregates: count, count_distinct(src|dst), "
     "min/max/mean over vt_s or duration (= vt_e - vt_s; open-ended rows "
@@ -816,6 +913,11 @@ def aggregate_events(adapter: StorageAdapter, args: dict[str, Any]) -> dict[str,
     if (hasattr(adapter, "aggregate_events_columnar") and not _prop_keys(args)
             and args.get("pair_mode") is None
             and args.get("endpoint_filter") is None
-            and not any(a["agg"] in SEQ_AGGS for a in args["aggregates"])):
+            and not any(a["agg"] in SEQ_AGGS for a in args["aggregates"])
+            # the kernel's dimension codes are a time-bucket index, a rel
+            # code, a dense id or a label code; a calendar unit is none of
+            # those and pushing it down means teaching it civil arithmetic
+            and not any(d["dim"] == "calendar_unit"
+                        for d in args["group_by"])):
         return _native(adapter, args)
     return _portable(adapter, args)
