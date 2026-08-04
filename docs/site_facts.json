@@ -112,10 +112,10 @@
  },
  "facts": {
   "operator_count": {
-   "value": "14",
+   "value": "15",
    "kind": "architectural",
-   "prose": "verified temporal operators (O1-O14)",
-   "was": "13 before D-044 added grouped aggregation"
+   "prose": "verified temporal operators (O1-O15)",
+   "was": "13 before D-044 added grouped aggregation, 14 before D-058 added the version log"
   },
   "registry_queries": {
    "value": "13",
@@ -913,6 +913,10 @@
   }
  },
  "retired_phrases": [
+  {
+   "phrase": "14 verified temporal operators",
+   "reason": "the version log (D-058) made it 15; quote data-fact=\"operator_count\""
+  },
   {
    "phrase": "13 verified temporal operators",
    "reason": "grouped aggregation (D-044) made it 14; quote data-fact=\"operator_count\""

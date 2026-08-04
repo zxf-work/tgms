@@ -204,4 +204,5 @@ def ensure_all_registered() -> None:
         ops_paths,
         ops_series,
         ops_snapshot,
+        ops_versions,
     )

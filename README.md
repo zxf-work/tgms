@@ -18,9 +18,10 @@ to do any of them:
   distinguishes *evolution* ("the edge ended") from *correction* ("we were
   wrong"), so agents can answer *"what did we believe on March 1?"* —
   a question no snapshot or RAG system can express;
-- **14 verified temporal operators** (reachability over time-respecting
+- **15 verified temporal operators** (reachability over time-respecting
   paths, δ-motifs, snapshot diffs, burst detection, interval joins, grouped
-  aggregation over edge events, …) — typed, deterministic, bounded,
+  aggregation over edge events, and the belief log itself) — typed,
+  deterministic, bounded,
   cost-guarded, exposed as tools (MCP or in-process); identifiers must come
   from a resolver, arithmetic from a `compute` operator;
 - a **Planner–Executor–Verifier** loop: the LLM only plans and reports;
@@ -103,8 +104,8 @@ all eight cells.
 
 ## What the operators can express
 
-Fourteen operators, but the interesting growth since v0.4.0 happened
-*inside* them, driven question by question by the study above:
+Fifteen operators — fourteen of them unchanged since D-044, because the
+interesting growth since v0.4.0 happened *inside* them, driven question by question by the study above:
 
 | capability | where it lives | what it answers |
 |---|---|---|
@@ -201,7 +202,7 @@ the build rather than the review. See [CONTRIBUTING.md](CONTRIBUTING.md).
 ```
 tgms/core       clock, bi-temporal data model, error taxonomy
 tgms/storage    StorageAdapter ABC, native + DuckDB backends, event log, TCSR index
-tgms/temporal   operator algebra O1–O14 + brute-force oracle
+tgms/temporal   operator algebra O1–O15 + brute-force oracle
 tgms/tools      tool schemas, MCP server / ToolRouter, trace viewer, demo GUI
 tgms/agent      plan IR, planner, executor, verifier, reporter, memory
 tgms/data       dataset loaders (SHA-256 pinned) + synthetic generator

@@ -2,6 +2,9 @@
 outputs, so plans never need LLM arithmetic. Functions: count, sum, min, max,
 mean(field), median(field), topk(field, k), filter(field, cmp, value),
 ratio(x, y), diff(x, y), percent(x, y), interval_relation(a, b).
+`filter` compares a field to a literal `value` or to a second field
+`field2` — exactly one of the two, the rule `derive` has carried since
+D-055 — which is how a row-wise `src == dst` is written (D-058).
 
 The `input` list arrives via $ref from a prior step, as do the scalar
 operands `x` and `y`; the operator itself never touches the store.
@@ -67,7 +70,9 @@ ARGS = {
     "value": {"default": None,
               "description": "comparison value for filter"},
     "field2": {"type": ["string", "null"], "default": None,
-               "description": "second field for derive (with `field`)"},
+               "description": "second field, for derive or for a filter that "
+                              "compares two columns of the same row "
+                              "(e.g. src eq dst); exclusive with `value`"},
     "op": {"type": ["string", "null"], "enum": DERIVE_OPS + [None],
            "default": None, "description": "row-wise operation for derive"},
     "into": {"type": ["string", "null"], "default": None, "minLength": 1,
@@ -383,7 +388,25 @@ def compute(adapter: StorageAdapter, args: dict[str, Any]) -> dict[str, Any]:
     if fn == "filter":
         if args["cmp"] is None:
             raise InvalidArgError("filter requires cmp")
+        f2, presence = args["field2"], args["cmp"] in ("is_null", "not_null")
+        if f2 is not None and args["value"] is not None:
+            raise InvalidArgError(
+                "compute filter takes exactly one of field2 or value — the "
+                "same rule derive has")
         vals = _values(rows, args["field"])
-        kept = [r for r, v in zip(rows, vals) if _cmp(v, args["cmp"], args["value"])]
+        if f2 is None:
+            kept = [r for r, v in zip(rows, vals)
+                    if _cmp(v, args["cmp"], args["value"])]
+        else:
+            if presence:
+                raise InvalidArgError(
+                    f"compute filter: cmp {args['cmp']!r} tests one value "
+                    f"for presence and takes no field2")
+            for r in rows:
+                if not isinstance(r, dict) or f2 not in r:
+                    raise InvalidArgError(
+                        f"compute filter: field {f2!r} missing from input row")
+            kept = [r for r, v in zip(rows, vals)
+                    if _cmp(v, args["cmp"], r[f2])]
         return paginate(kept, args["limit"], None)
     raise InvalidArgError(f"unknown compute fn {fn}")
