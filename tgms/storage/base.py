@@ -142,6 +142,12 @@ class StorageAdapter(ABC):
 
     EDGE_INT_COLS = ("src_id", "dst_id", "vt_s", "vt_e")
     EDGE_STR_COLS = ("eid", "vid", "rel_type")
+    #: Columns materialized ONLY when named explicitly — never by a bare
+    #: `columns=None` scan. `props` is the whole canonical-JSON blob per row,
+    #: the single most expensive thing the scan can produce, and the
+    #: projection-pushdown work exists precisely because it used to be built
+    #: for every call that never asked for it (D-052).
+    EDGE_OPT_COLS = ("props",)
 
     @abstractmethod
     def edges_columnar(

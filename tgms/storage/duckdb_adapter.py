@@ -216,6 +216,9 @@ class DuckDBAdapter(StorageAdapter):
                          if columns is None or c in columns)
         str_cols = tuple(c for c in self.EDGE_STR_COLS
                          if columns is None or c in columns)
+        # opt-in only: a bare scan must never pay for the props blob
+        str_cols += tuple(c for c in self.EDGE_OPT_COLS
+                          if columns is not None and c in columns)
         where = ["tt_s <= ? AND ? < tt_e"]
         params: list[Any] = [as_of_tt, as_of_tt]
         if vt_min is not None:

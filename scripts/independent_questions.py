@@ -62,6 +62,23 @@ That split is the session's main finding and it is why the measured delta
 (4 questions) came in below the +7 the handoff projected from the
 sole-blocker count.
 
+`C16` is the fourth table, the re-audit after D-052's property typing shipped
+in `aggregate_events`: `prop_filter` (a predicate on an edge property) and
+min/max/mean over `of: "prop"`, each under the rule that a value participates
+only if its JSON type fits, that text is never parsed into a number, and that
+excluded rows are counted per property. **Ten questions moved, 28 -> 38 of
+110** — nine of the thirteen `PROP` was the sole blocker of, plus bo-Q8. One
+tag is new:
+  PROJ projecting a property *value* into output rows so two rows' values can
+       be compared with each other. An aggregate reduces a property to one
+       number per group and a predicate compares it to a literal; neither
+       hands the value back.
+`PROP` survives on only five entries, and all five want the predicate *inside
+another operator* — the motif catalogue or the path operators, which this
+work did not touch. That is a far more specific claim than the tag carried
+before, and it is the third time in a row that building a capability showed
+its tag had been naming the first obstacle rather than the set.
+
 Usage:
   python3 scripts/independent_questions.py report  # tables only, no stores
   python3 scripts/independent_questions.py build   # writes suites + gold;
@@ -758,6 +775,111 @@ def _needs(cls: int, tags: str) -> list[str]:
     return [t for t in tags.split(",") if t and "+" not in t]
 
 
+# --------------------------------------------------------------------------- #
+# re-audit after D-052's property typing shipped (the D-053 session)          #
+# --------------------------------------------------------------------------- #
+# Chains onto C15. What shipped: `aggregate_events` gained `prop_filter` (a
+# predicate on an edge property) and min/max/mean over `of: "prop"`, both
+# under D-052's rule — a value participates only if its JSON type fits, text
+# is never parsed into a number, and excluded rows are counted per property
+# in `prop_coercion`.
+#
+# What did NOT ship, and the tag it leaves behind:
+#   PROJ *new* — projecting a property *value* into output rows, so that two
+#        rows' values can be compared with each other. The aggregates reduce
+#        a property to one number per group and the predicate compares it to
+#        a literal; neither hands the value back.
+#   PROP survives only where the predicate is needed *inside another
+#        operator* — the motif catalogue and the path operators, which this
+#        work did not touch. That is a smaller and much more specific claim
+#        than `PROP` carried before, and it is the same lesson as `AR`: the
+#        tag named the first obstacle, not the set.
+C16: dict[tuple[str, int], tuple[int, str, str]] = {
+    # ---- became expressible ---- #
+    ("bo", 4): (1, "aggregate_events",
+                "one call: group_by [], prop_filter(rating eq 0), count"),
+    ("bo", 6): (2, "aggregate_events+aggregate_events+percent",
+                "positives via prop_filter(rating gt 0) count, all ratings "
+                "via a second group_by [] count, then percent(x, y)"),
+    ("bo", 8): (2, "aggregate_events+aggregate_events",
+                "one group_by [] with mean of prop rating per year window — "
+                "five literal windows, the distinction bo-Q2 already turned "
+                "on ('a window, not a calendar bucket'), so no calendar "
+                "bucketing is required"),
+    ("bo", 12): (2, "aggregate_events+filter+topk",
+                 "group_by [endpoint src] with count and mean of prop "
+                 "rating, filter(count ge 10), topk(mean_prop_rating, 1)"),
+    ("bo", 13): (2, "aggregate_events+aggregate_events",
+                 "s1 group_by [] min of prop rating; s2 group_by [endpoint "
+                 "src, endpoint dst] with prop_filter(rating eq $ref s1) — "
+                 "the window-reselect idiom C14 found for cm-Q37, now "
+                 "reselecting on a property instead of a time"),
+    ("bo", 15): (2, "aggregate_events+filter+filter+count",
+                 "'all ratings <= 0' is max_prop_rating le 0: group_by "
+                 "[endpoint dst] with count and max of prop rating, "
+                 "filter(count ge 3), filter(max_prop_rating le 0), count"),
+    ("bo", 43): (2, "aggregate_events+filter+topk",
+                 "as_of_tt fixes the belief state, then the bo-Q12 chain "
+                 "over received ratings"),
+    ("bo", 48): (2, "aggregate_events+filter+filter+count",
+                 "mirror of bo-Q15 on the giving side: 'all > 0' is "
+                 "min_prop_rating gt 0"),
+    ("bo", 49): (2, "aggregate_events+filter+filter+count",
+                 "mirror of bo-Q48 with max_prop_rating lt 0"),
+    ("bo", 55): (2, "aggregate_events+filter+aggregate_events+filter+diff",
+                 "mean of prop rating per dst in each of the two windows, "
+                 "the account picked out by filter(dst eq n200) post-hoc, "
+                 "and the sign of the diff is the answer"),
+    # ---- the property need is met; the other tags are not ---- #
+    ("bo", 14): (3, "ROW,SET",
+                 "positive and negative counts are now two prop_filter "
+                 "calls; joining them per account and differencing per row "
+                 "is what is left"),
+    ("bo", 25): (3, "SET",
+                 "rating signs are a predicate now; the reciprocal-pair "
+                 "join is not, and percent closes the readout"),
+    ("bo", 26): (3, "SET", "as bo-Q25"),
+    ("bo", 44): (3, "ROW,SET",
+                 "positive-rating counts are a prop_filter call per "
+                 "snapshot; the cross-snapshot join and per-row comparison "
+                 "remain"),
+    ("bo", 46): (3, "SET",
+                 "per-dst min vt_s overall and among negatives are two "
+                 "calls, and equality between them says the first rating "
+                 "was negative — no property projection needed, but "
+                 "matching the two results per account is a join"),
+    ("bo", 47): (3, "ROW,SEQ",
+                 "the means are expressible; the first-5/last-5 slices and "
+                 "their per-account difference are not"),
+    ("bo", 50): (3, "SET",
+                 "the cohort test is mean of prop rating lt 0; restricting "
+                 "a second grouping to that cohort needs a uid pre-filter "
+                 "the operator does not have"),
+    # ---- what the property tag was actually hiding ---- #
+    ("bo", 27): (3, "PROJ,SEQ",
+                 "'a different value' compares one rating with the previous "
+                 "one; an aggregate reduces and a predicate compares to a "
+                 "literal, so neither hands the value back for that"),
+    ("bo", 29): (3, "PROJ,SET,SEQ",
+                 "as bo-Q27, plus the transpose join and the ordering"),
+    ("bo", 30): (3, "PROJ,SET",
+                 "the correlation is between the two ratings of a pair, so "
+                 "both values have to reach the same row"),
+    ("bo", 11): (3, "PCT",
+                 "count and mean of prop rating per dst are one call and "
+                 "filter(count ge N) the cohort; the *lowest* mean is a "
+                 "bottom-k selection, and topk only ranks from the top"),
+    ("bo", 33): (3, "SET",
+                 "positive ratings are a predicate now; 'at least 3 raters "
+                 "who all also rated each other' is a mutual-clique "
+                 "condition over a rater set"),
+    ("bo", 36): (3, "SET",
+                 "the positively-rated set of one account is reachable by "
+                 "grouping plus a post-hoc filter; expanding a *set* by a "
+                 "second hop needs a uid pre-filter, i.e. a join"),
+}
+
+
 def _verdict(table: dict, base, k):
     """A re-audit table's verdict for `k`, falling back to the table it
     chains onto. `base` is a callable so the chain composes."""
@@ -791,8 +913,12 @@ def report():
     def v15(k):
         return _verdict(C15, v14, k)
 
+    def v16(k):
+        return _verdict(C16, v15, k)
+
     _check_diff(C14, v13, "C14")
     _check_diff(C15, v14, "C15")
+    _check_diff(C16, v15, "C16")
     # AR is retired by C15: the capability shipped, and what is left of it
     # was never AR. Guard it so a later edit cannot quietly reintroduce the
     # tag without deciding what it now means.
@@ -801,7 +927,8 @@ def report():
 
     stages = [("13 ops, pre-registered", v13),
               ("14 ops, D-044 re-audit", v14),
-              ("15th capability, D-051 session re-audit", v15)]
+              ("15th capability, D-051 session re-audit", v15),
+              ("property typing, D-052 session re-audit", v16)]
     for label, v in stages:
         print(f"class distribution ({label}):",
               dict(sorted(Counter(v(k)[0] for k in q).items())))
@@ -811,7 +938,8 @@ def report():
 
     for label, prev, cur, table in [
             ("D-044 aggregate_events", v13, v14, C14),
-            ("D-051 compute arithmetic", v14, v15, C15)]:
+            ("D-051 compute arithmetic", v14, v15, C15),
+            ("D-052 property typing", v15, v16, C16)]:
         moved = sorted(k for k in q if cur(k)[0] != prev(k)[0])
         by_move = Counter((prev(k)[0], cur(k)[0]) for k in moved)
         print(f"\nbecame expressible under {label}: {len(moved)} of {len(q)} "
@@ -822,7 +950,7 @@ def report():
         print(f"class-3 entries whose need-tags were re-audited: "
               f"{len([k for k in table if table[k][0] == 3])}")
 
-    expressible = sum(1 for k in q if v15(k)[0] in (1, 2))
+    expressible = sum(1 for k in q if v16(k)[0] in (1, 2))
     print(f"\nexpressible now: {expressible} of {len(q)}")
     print("runnable:", [f"{d}-Q{n}" for (d, n) in sorted(C)
                         if C[(d, n)][2]])
@@ -832,7 +960,9 @@ def report():
              "class_14": v14((d, n))[0], "need_or_ops_14": v14((d, n))[1],
              "justification_14": C14[(d, n)][2] if (d, n) in C14 else "",
              "class_15": v15((d, n))[0], "need_or_ops_15": v15((d, n))[1],
-             "justification_15": C15[(d, n)][2] if (d, n) in C15 else ""}
+             "justification_15": C15[(d, n)][2] if (d, n) in C15 else "",
+             "class_16": v16((d, n))[0], "need_or_ops_16": v16((d, n))[1],
+             "justification_16": C16[(d, n)][2] if (d, n) in C16 else ""}
             for (d, n) in sorted(q)]
     out = Path("benchmarks/independent-v1/classification.json")
     out.parent.mkdir(parents=True, exist_ok=True)

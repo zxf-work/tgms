@@ -1,6 +1,6 @@
 [
  {
-  "description": "Grouped aggregation over edge events (believed edge versions with t_a <= vt_s < t_b). Dimensions: time_bucket (with stride), rel_type, endpoint (src|dst as uids), label (endpoint's node label valid at the event; null when none). Aggregates: count, count_distinct(src|dst), min/max/mean over vt_s or duration (= vt_e - vt_s; open-ended rows excluded). Non-empty groups only; group_by [] returns one global row. Rows ordered by dimension values (numeric order / code-point order, null labels first).\nOutput fields: rows, rows_total, truncated, cursor.",
+  "description": "Grouped aggregation over edge events (believed edge versions with t_a <= vt_s < t_b). Dimensions: time_bucket (with stride), rel_type, endpoint (src|dst as uids), label (endpoint's node label valid at the event; null when none). Aggregates: count, count_distinct(src|dst), min/max/mean over vt_s or duration (= vt_e - vt_s; open-ended rows excluded). Non-empty groups only; group_by [] returns one global row. Rows ordered by dimension values (numeric order / code-point order, null labels first). Properties (D-052): min/max/mean over of='prop' with a `prop` key, and `prop_filter` to select on one; a value participates only if its JSON type fits \u2014 text is never parsed into a number and a boolean is not one \u2014 and every excluded row is counted per property in `prop_coercion`.\nOutput fields: rows, rows_total, truncated, cursor, prop_coercion.",
   "input_schema": {
    "additionalProperties": false,
    "properties": {
@@ -20,14 +20,24 @@
        },
        "of": {
         "default": null,
-        "description": "src|dst for count_distinct; vt_s|duration for min/max/mean",
+        "description": "src|dst for count_distinct; vt_s|duration|prop for min/max/mean",
         "enum": [
          "src",
          "dst",
          "vt_s",
          "duration",
+         "prop",
          null
         ],
+        "type": [
+         "string",
+         "null"
+        ]
+       },
+       "prop": {
+        "default": null,
+        "description": "property key, required when of = 'prop'",
+        "minLength": 1,
         "type": [
          "string",
          "null"
@@ -99,6 +109,38 @@
      "maximum": 10000,
      "minimum": 1,
      "type": "integer"
+    },
+    "prop_filter": {
+     "additionalProperties": false,
+     "default": null,
+     "description": "keep only events whose property compares as stated; rows whose value is absent or of another JSON type are excluded and counted in `prop_coercion` (D-052)",
+     "properties": {
+      "cmp": {
+       "enum": [
+        "eq",
+        "ne",
+        "lt",
+        "le",
+        "gt",
+        "ge"
+       ],
+       "type": "string"
+      },
+      "prop": {
+       "minLength": 1,
+       "type": "string"
+      },
+      "value": {}
+     },
+     "required": [
+      "prop",
+      "cmp",
+      "value"
+     ],
+     "type": [
+      "object",
+      "null"
+     ]
     },
     "rel_types": {
      "default": null,

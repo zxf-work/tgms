@@ -1,890 +1,908 @@
 {
-  "_comment": "Single source of truth for every number the public site asserts. Pages carry data-fact=\"<key>\" spans; scripts/site_facts.py verifies each one against this file and CI fails on drift. Add a fact here before quoting it on a page. Numbers that belong to one measured run carry that run's snapshot id, because a fact without a snapshot cannot be re-checked.",
-  "updated": "2026-08-03",
-  "tgms_version": "0.4.0",
-  "snapshots": {
-    "registry-v2-200k-6sys": {
-      "commit": "03a678c",
-      "date": "2026-08-02",
-      "scale": "200,000 events",
-      "systems": [
-        "native",
-        "duckdb",
-        "postgres",
-        "clickhouse",
-        "neo4j",
-        "memgraph"
-      ],
-      "record": "benchmarks/results-v1/eval-200k-6sys.json"
-    },
-    "registry-v2-1m-4sys": {
-      "commit": "d12b30f",
-      "date": "2026-08-02",
-      "scale": "1,000,000 events",
-      "systems": [
-        "native",
-        "duckdb",
-        "postgres",
-        "clickhouse"
-      ],
-      "record": "benchmarks/results-v1/eval-1m-agg.json"
-    },
-    "registry-v2-10m-3sys": {
-      "commit": "7842a1f",
-      "date": "2026-08-03",
-      "scale": "10,000,000 events",
-      "systems": [
-        "native",
-        "duckdb",
-        "clickhouse"
-      ],
-      "note": "Refreshed after D-047. PostgreSQL's 10M column is a July measurement carried forward, marked in the table.",
-      "record": "benchmarks/results-v1/eval-10m-d047.json"
-    },
-    "scale-sweep-collegemsg-94": {
-      "commit": "paper tab:scale",
-      "date": "2026-07-24",
-      "scale": "94-task frozen CollegeMsg test split",
-      "systems": [
-        "native",
-        "static-graph RAG",
-        "text-to-Cypher"
-      ],
-      "note": "Temperature 0, ONE SEED per cell, no confidence interval - unlike the primary campaign, which pools three seeds and reports paired bootstrap CIs. 7B/14B/32B are fp16; the 72B row is AWQ 4-bit, so it varies precision as well as size and is not a controlled scale point. Accuracy cells are 94ths (one task = 1.1 points); probe cells are 13ths (one probe = 7.7 points).",
-      "record": "paper/main.tex tab:scale"
-    },
-    "rag-breadth-h100": {
-      "commit": "paper main.tex",
-      "date": "2026-07-24",
-      "scale": "94-task frozen CollegeMsg test split, 59,835-event corpus",
-      "systems": [
-        "native",
-        "vector-RAG k=1",
-        "vector-RAG k=20"
-      ],
-      "note": "Secondary experiment: retrieval breadth at full 32k context on an H100, single seed. Not a model-scale point.",
-      "record": "paper/main.tex"
-    },
-    "primary-campaign-collegemsg": {
-      "commit": "paper main.tex",
-      "date": "2026-07-24",
-      "scale": "282-task dev campaign",
-      "systems": [
-        "native",
-        "vector-RAG",
-        "static-graph RAG",
-        "text-to-Cypher"
-      ],
-      "note": "Three seeds pooled, paired bootstrap CIs over 10k resamples. Source of the baseline correction-probe numbers.",
-      "record": "paper/main.tex"
-    },
-    "retention-1m-density": {
-      "commit": "1e81393",
-      "date": "2026-08-01",
-      "scale": "1,000,000 events, correction density 0 to 20 percent",
-      "systems": [
-        "native full store",
-        "native current-only store"
-      ],
-      "note": "Host xzgpu. Latency is a median of 30 reps (10 above 1 s); storage, memory and replay are single observations. The close-cache rerun is commit 96ea135.",
-      "record": "benchmarks/results-v1/eval-1m-bitemporal.json"
-    },
-    "retention-10m-resources": {
-      "commit": "f841738",
-      "date": "2026-08-01",
-      "scale": "10,000,000 events",
-      "systems": [
-        "native"
-      ],
-      "note": "Memory caps enforced with docker --memory. Thread recalibration at 88b18d3, original sweep at 6fb7cb1. Memory-cap cells are warmup 2, reps 5; cold-start is a median of firsts over 5 trials.",
-      "record": "benchmarks/results-v1/eval-resources-memcap-budget-10m.json"
-    },
-    "concurrency-1m-d049": {
-      "commit": "cb3248e",
-      "date": "2026-08-03",
-      "scale": "1,000,000 events",
-      "systems": [
-        "native"
-      ],
-      "note": "D-049 concurrency run; the write-path cells were re-measured on the same host and are within the +/-20% band of their previous values.",
-      "record": "docs/eval_concurrency.md"
-    }
+ "_comment": "Single source of truth for every number the public site asserts. Pages carry data-fact=\"<key>\" spans; scripts/site_facts.py verifies each one against this file and CI fails on drift. Add a fact here before quoting it on a page. Numbers that belong to one measured run carry that run's snapshot id, because a fact without a snapshot cannot be re-checked.",
+ "updated": "2026-08-04",
+ "tgms_version": "0.4.0",
+ "snapshots": {
+  "registry-v2-200k-6sys": {
+   "commit": "03a678c",
+   "date": "2026-08-02",
+   "scale": "200,000 events",
+   "systems": [
+    "native",
+    "duckdb",
+    "postgres",
+    "clickhouse",
+    "neo4j",
+    "memgraph"
+   ],
+   "record": "benchmarks/results-v1/eval-200k-6sys.json"
   },
-  "facts": {
-    "operator_count": {
-      "value": "14",
-      "kind": "architectural",
-      "prose": "verified temporal operators (O1-O14)",
-      "was": "13 before D-044 added grouped aggregation"
-    },
-    "registry_queries": {
-      "value": "13",
-      "kind": "benchmark",
-      "prose": "registry queries, each answered by every system and hash-verified before timing",
-      "was": "12 before D-044"
-    },
-    "system_count": {
-      "value": "6",
-      "kind": "benchmark",
-      "prose": "systems answering the same registry: TGMS native, TGMS-on-DuckDB, PostgreSQL, ClickHouse, Neo4j, Memgraph"
-    },
-    "coverage_current": {
-      "value": "28",
-      "kind": "benchmark",
-      "prose": "of 110 independently written questions expressible in the current operator set",
-      "snapshot": "coverage re-audit 2026-08-03 (C15 in scripts/independent_questions.py)"
-    },
-    "coverage_after_grouping": {
-      "value": "24",
-      "kind": "benchmark",
-      "prose": "of 110 expressible immediately after grouped aggregation shipped — the endpoint of the D-044 episode, not the current number",
-      "label_required": "after grouping shipped",
-      "snapshot": "coverage re-audit 2026-08-02 (C14 in scripts/independent_questions.py)"
-    },
-    "coverage_original": {
-      "value": "10",
-      "kind": "benchmark",
-      "prose": "of 110 expressible in the pre-registered 13-operator study (D-026, July 2026)",
-      "label_required": "original study"
-    },
-    "coverage_total_questions": {
-      "value": "110",
-      "kind": "benchmark"
-    },
-    "storage_bytes_per_row": {
-      "value": "24.6",
-      "kind": "benchmark",
-      "prose": "bytes per edge version, segments after compaction and generation collection, at 1M rows",
-      "snapshot": "registry-v2-1m-4sys"
-    },
-    "storage_whole_store_bytes_per_row": {
-      "value": "25.1",
-      "kind": "benchmark",
-      "prose": "bytes per edge version for the whole store after generation collection"
-    },
-    "memory_10m_suite": {
-      "value": "1.76",
-      "kind": "benchmark",
-      "prose": "GB peak RSS for the full 10M query suite under a 2 GB cap"
-    },
-    "traversal_200k_native_ms": {
-      "value": "14.7",
-      "kind": "benchmark",
-      "prose": "ms, temporal reachability at 200k events",
-      "snapshot": "registry-v2-200k-6sys"
-    },
-    "traversal_200k_graph_engines": {
-      "value": "3.9-7.3",
-      "kind": "benchmark",
-      "prose": "seconds for the same reachability query on Memgraph and Neo4j",
-      "snapshot": "registry-v2-200k-6sys"
-    },
-    "clickhouse_agg_lead_10m": {
-      "value": "2.2",
-      "kind": "benchmark",
-      "prose": "times faster than TGMS on whole-window aggregation at 10M (37.9 vs 84.7 ms) \u2014 the same ratio at 1M, and a tie at 200k, so it is a constant of the shape rather than something that grows with scale",
-      "snapshot": "registry-v2-10m-3sys",
-      "history": "12x, then 8.7x after D-044, then 4.6x after D-046's scan work, then 2.2x after D-047 routed the metric through the aggregation kernel"
-    },
-    "agg_native_lead_200k": {
-      "value": "2.2",
-      "kind": "benchmark",
-      "prose": "times faster than ClickHouse on grouped aggregation at 200k (14.5 vs 32.6 ms)",
-      "snapshot": "registry-v2-200k-6sys"
-    },
-    "reproducibility_band": {
-      "value": "20",
-      "kind": "benchmark",
-      "prose": "percent - single latency cells reproduce to about this band between days on the measurement host"
-    },
-    "unsupported_claims": {
-      "value": "0",
-      "kind": "tested",
-      "prose": "emitted answers containing an unsupported claim, with gating \u2014 0 of 199 on the frozen CollegeMsg campaign; before gating it was 21 of 220",
-      "scope_required": "always state the denominator (199 emitted, of 282 task runs) and never as a universal guarantee; coverage is 199/282, so part of the zero is bought by declining"
-    },
-    "answer_accuracy_tgms": {
-      "value": "41",
-      "kind": "benchmark",
-      "prose": "percent, normalized typed-answer accuracy (the paper's metric: counts and values exact, interval answers credited at IoU >= 0.5) \u2014 pooled dev split, Qwen2.5-14B",
-      "exact": "0.41"
-    },
-    "scale_tasks": {
-      "value": "94",
-      "kind": "benchmark",
-      "prose": "tasks in the frozen CollegeMsg test split (48 one-hop, 20 three-hop, 13 correction probes, 13 four-hop)",
-      "snapshot": "scale-sweep-collegemsg-94"
-    },
-    "scale_probe_tasks": {
-      "value": "13",
-      "kind": "benchmark",
-      "prose": "correction probes inside the 94-task split; one probe is 7.7 percentage points",
-      "snapshot": "scale-sweep-collegemsg-94"
-    },
-    "scale_acc_7b": {
-      "value": "13.8",
-      "kind": "benchmark",
-      "prose": "percent answer accuracy, Qwen2.5-7B fp16 (13 of 94, single seed)",
-      "snapshot": "scale-sweep-collegemsg-94"
-    },
-    "scale_acc_14b": {
-      "value": "34.0",
-      "kind": "benchmark",
-      "prose": "percent answer accuracy, Qwen2.5-14B fp16 (32 of 94, single seed)",
-      "snapshot": "scale-sweep-collegemsg-94"
-    },
-    "scale_acc_32b": {
-      "value": "62.8",
-      "kind": "benchmark",
-      "prose": "percent answer accuracy, Qwen2.5-32B fp16 (59 of 94, single seed)",
-      "snapshot": "scale-sweep-collegemsg-94"
-    },
-    "scale_acc_72b_awq": {
-      "value": "51.1",
-      "kind": "benchmark",
-      "prose": "percent answer accuracy, Qwen2.5-72B AWQ 4-bit (48 of 94, single seed) - different precision, not a controlled scale point",
-      "snapshot": "scale-sweep-collegemsg-94",
-      "scope_required": "must never be drawn on one continuous line with the fp16 points"
-    },
-    "scale_gain_7b_32b": {
-      "value": "4.5",
-      "kind": "benchmark",
-      "prose": "times higher answer accuracy at 32B than at 7B, both fp16 (62.8 over 13.8; 59 of 94 over 13 of 94)",
-      "snapshot": "scale-sweep-collegemsg-94",
-      "was": "published as 4.6x, which rounded 4.55 up"
-    },
-    "scale_probe_7b": {
-      "value": "38",
-      "kind": "benchmark",
-      "prose": "percent of the 13 correction probes answered exactly, 7B fp16 (5 of 13)",
-      "snapshot": "scale-sweep-collegemsg-94"
-    },
-    "scale_probe_14b": {
-      "value": "77",
-      "kind": "benchmark",
-      "prose": "percent of the 13 correction probes answered exactly, 14B fp16 (10 of 13)",
-      "snapshot": "scale-sweep-collegemsg-94"
-    },
-    "scale_probe_32b": {
-      "value": "100",
-      "kind": "benchmark",
-      "prose": "percent of the 13 correction probes answered exactly, 32B fp16 (13 of 13, single seed)",
-      "snapshot": "scale-sweep-collegemsg-94",
-      "scope_required": "must be stated with its denominator of 13 and its single seed"
-    },
-    "scale_probe_72b_awq": {
-      "value": "31",
-      "kind": "benchmark",
-      "prose": "percent of the 13 correction probes answered exactly, 72B AWQ 4-bit (4 of 13)",
-      "snapshot": "scale-sweep-collegemsg-94"
-    },
-    "scale_cypher_7b": {
-      "value": "9.6",
-      "kind": "benchmark",
-      "prose": "percent answer accuracy, text-to-Cypher baseline at 7B fp16",
-      "snapshot": "scale-sweep-collegemsg-94"
-    },
-    "scale_cypher_32b": {
-      "value": "27.7",
-      "kind": "benchmark",
-      "prose": "percent answer accuracy, text-to-Cypher baseline at 32B fp16 - the best any evaluated baseline reached at any size",
-      "snapshot": "scale-sweep-collegemsg-94"
-    },
-    "baseline_probe_best": {
-      "value": "15.4",
-      "kind": "benchmark",
-      "prose": "percent of correction probes answered exactly by the best evaluated baseline (vector-RAG); static-graph RAG and text-to-Cypher scored 0",
-      "snapshot": "primary-campaign-collegemsg"
-    },
-    "rag_k1_acc": {
-      "value": "10.6",
-      "kind": "benchmark",
-      "prose": "percent answer accuracy, vector-RAG at k=1 over 256-event chunks on a 24 GB card",
-      "snapshot": "rag-breadth-h100"
-    },
-    "rag_k20_acc": {
-      "value": "2.1",
-      "kind": "benchmark",
-      "prose": "percent answer accuracy, vector-RAG at k=20 over 24-event chunks at full 32k context (2 of 94)",
-      "snapshot": "rag-breadth-h100"
-    },
-    "rag_k20_tokens": {
-      "value": "32,475",
-      "kind": "benchmark",
-      "prose": "prompt tokens per task, vector-RAG at k=20",
-      "snapshot": "rag-breadth-h100"
-    },
-    "rag_k20_exposure": {
-      "value": "0.8",
-      "kind": "benchmark",
-      "prose": "percent of the 59,835-event CollegeMsg corpus visible to the k=20 configuration in total (20 chunks x 24 events = 480 events)",
-      "snapshot": "rag-breadth-h100",
-      "was": "published as '0.8% x 20 sites', which read as 16% and overstated exposure twentyfold"
-    },
-    "tgms_same_run_tokens": {
-      "value": "6,521",
-      "kind": "benchmark",
-      "prose": "prompt tokens per task, TGMS on the same run and model as the k=20 comparison",
-      "snapshot": "rag-breadth-h100"
-    },
-    "tgms_same_run_acc": {
-      "value": "36.2",
-      "kind": "benchmark",
-      "prose": "percent answer accuracy, TGMS on the same run and model as the k=20 comparison (34 of 94)",
-      "snapshot": "rag-breadth-h100"
-    },
-    "indep_blocked": {
-      "value": "98",
-      "kind": "benchmark",
-      "prose": "of 110 questions blocked by a capability that did not exist in the original 13-operator set"
-    },
-    "indep_g_blocked": {
-      "value": "76",
-      "kind": "benchmark",
-      "prose": "questions whose blockers include grouped or distinct aggregation, somewhere in the chain"
-    },
-    "indep_g_alone": {
-      "value": "30",
-      "kind": "benchmark",
-      "prose": "questions for which grouped aggregation was the only recorded blocker"
-    },
-    "indep_delivered": {
-      "value": "14",
-      "kind": "benchmark",
-      "prose": "questions that actually became expressible once grouped aggregation shipped, against 30 predicted",
-      "snapshot": "coverage re-audit 2026-08-02 (C14 in scripts/independent_questions.py)"
-    },
-    "indep_still_blocked": {
-      "value": "17",
-      "kind": "benchmark",
-      "prose": "of the 30 predicted questions that stayed blocked, on a capability the tag concealed",
-      "snapshot": "coverage re-audit 2026-08-02 (C14 in scripts/independent_questions.py)"
-    },
-    "indep_ar_predicted": {
-      "value": "7",
-      "kind": "benchmark",
-      "prose": "questions the second histogram said arithmetic would unlock on its own"
-    },
-    "indep_ar_delivered": {
-      "value": "4",
-      "kind": "benchmark",
-      "prose": "questions that actually became expressible once the arithmetic shipped, against 7 predicted",
-      "snapshot": "coverage re-audit 2026-08-03 (C15 in scripts/independent_questions.py)"
-    },
-    "indep_multi_blocker": {
-      "value": "55",
-      "kind": "benchmark",
-      "prose": "of the 98 blocked questions that need two or more missing capabilities at once"
-    },
-    "indep_scoreable": {
-      "value": "5",
-      "kind": "benchmark",
-      "prose": "of the 10 originally expressible questions whose answer kind was scoreable enough to run verbatim"
-    },
-    "zero_density_latency_spread": {
-      "value": "3.4",
-      "kind": "benchmark",
-      "prose": "percent - the widest latency gap between the full bi-temporal store and a current-only store at zero corrections, sign varying by query, against a 20 percent day-to-day reproducibility band"
-    },
-    "storage_overhead_1pct": {
-      "value": "2.1",
-      "kind": "benchmark",
-      "prose": "percent storage overhead over a current-only store at 1 percent correction density, 1M events"
-    },
-    "storage_overhead_5pct": {
-      "value": "8.8",
-      "kind": "benchmark",
-      "prose": "percent storage overhead at 5 percent correction density, 1M events"
-    },
-    "storage_overhead_20pct": {
-      "value": "30.1",
-      "kind": "benchmark",
-      "prose": "percent storage overhead at 20 percent correction density, 1M events"
-    },
-    "density_10m_interval_join": {
-      "value": "4.0",
-      "kind": "benchmark",
-      "prose": "times slower on the interval-join query at 10M events with only 0.1 percent correction density (1,102.6 vs 272.7 ms)"
-    },
-    "memory_10m_before": {
-      "value": "5.93",
-      "kind": "benchmark",
-      "prose": "GB peak RSS for the 10M suite before the statistics warm-up fix, whatever the query; OOM-killed under a 4 GB cap"
-    },
-    "memory_10m_smallbudget": {
-      "value": "1.61",
-      "kind": "benchmark",
-      "prose": "GB peak RSS for the 10M suite with a 256 MiB segment-cache budget"
-    },
-    "memory_cache_measured": {
-      "value": "794",
-      "kind": "benchmark",
-      "prose": "MB the segment cache actually held - far too little to explain a 5.93 GB peak, which is what refuted the cache diagnosis"
-    },
-    "evictions_smallbudget": {
-      "value": "32,615",
-      "kind": "benchmark",
-      "prose": "cache evictions under the 256 MiB budget, with every answer still hash-identical"
-    },
-    "threads_10m_speedup": {
-      "value": "4.4-5.4",
-      "kind": "benchmark",
-      "prose": "times faster on the interval-join query at 10M events going from 1 to 16 and 32 threads; at 1M the same sweep is flat within 1.4 percent"
-    },
-    "readers_1m_throughput": {
-      "value": "13.1",
-      "kind": "benchmark",
-      "prose": "times aggregate query throughput at 16 concurrent readers versus 1, at 1M events (173.1 vs 13.21 queries per second)"
-    },
-    "readers_10m_throughput": {
-      "value": "10.2",
-      "kind": "benchmark",
-      "prose": "times aggregate query throughput at 16 concurrent readers at 10M events, with 2 of the 16 readers OOM-killed"
-    },
-    "readers_latency_worst": {
-      "value": "53",
-      "kind": "benchmark",
-      "prose": "percent worse per-query latency for the slowest query at 16 readers (snap.hop2, 100.7 to 154.1 ms) - throughput scaling is not latency parity"
-    },
-    "coldstart_10m": {
-      "value": "27-31",
-      "kind": "benchmark",
-      "prose": "seconds to first answer at 10M events on a fresh process, whichever query runs first (median of firsts, 5 trials)"
-    },
-    "replay_20pct_before_min": {
-      "value": "47.6",
-      "kind": "benchmark",
-      "prose": "minutes to replay the event log at 20 percent correction density before the close-cache fix (2,856.8 s)"
-    },
-    "replay_20pct_after_min": {
-      "value": "6.0",
-      "kind": "benchmark",
-      "prose": "minutes to replay the same log after the per-generation close cache (361.1 s), a 7.9x reduction"
-    },
-    "series_10m_native_ms": {
-      "value": "84.7",
-      "kind": "benchmark",
-      "prose": "ms, whole-window bucketed count at 10M",
-      "snapshot": "registry-v2-10m-3sys"
-    },
-    "series_10m_clickhouse_ms": {
-      "value": "37.9",
-      "kind": "benchmark",
-      "prose": "ms, the same query on ClickHouse",
-      "snapshot": "registry-v2-10m-3sys"
-    },
-    "point_lookup_200k_native_ms": {
-      "value": "0.1",
-      "kind": "benchmark",
-      "prose": "ms, entity history by identity at 200k",
-      "snapshot": "registry-v2-200k-6sys"
-    },
-    "point_lookup_200k_postgres_ms": {
-      "value": "0.3",
-      "kind": "benchmark",
-      "prose": "ms, the same lookup on PostgreSQL with a covering index",
-      "snapshot": "registry-v2-200k-6sys"
-    },
-    "motif_200k_native_ms": {
-      "value": "28.7",
-      "kind": "benchmark",
-      "prose": "ms, closed-triangle temporal motif at 200k",
-      "snapshot": "registry-v2-200k-6sys"
-    },
-    "motif_200k_graph_engines": {
-      "value": "2.1-5.5",
-      "kind": "benchmark",
-      "prose": "seconds for the same motif on Memgraph and Neo4j",
-      "snapshot": "registry-v2-200k-6sys"
-    },
-    "storage_duckdb_bytes_per_row": {
-      "value": "187.7",
-      "kind": "benchmark",
-      "prose": "bytes per relationship version on DuckDB for the same 1M event log, uncompressed columnar, no secondary indexes",
-      "snapshot": "registry-v2-1m-4sys"
-    },
-    "storage_clickhouse_bytes_per_row": {
-      "value": "78.4",
-      "kind": "benchmark",
-      "prose": "bytes per relationship version on ClickHouse, lz4 MergeTree, no secondary indexes",
-      "snapshot": "registry-v2-1m-4sys"
-    },
-    "storage_postgres_bytes_per_row": {
-      "value": "549.7",
-      "kind": "benchmark",
-      "prose": "bytes per relationship version on PostgreSQL including the eight covering indexes its lookup speed is made of",
-      "snapshot": "registry-v2-1m-4sys"
-    },
-    "scan_10m_parallel_null_before_ms": {
-      "value": "811",
-      "kind": "benchmark",
-      "prose": "ms, the 10M scan before materialization was parallelised",
-      "snapshot": "D-045 stage probe, August 2026"
-    },
-    "scan_10m_parallel_null_after_ms": {
-      "value": "819",
-      "kind": "benchmark",
-      "prose": "ms, the same scan after parallel materialization landed - the null result that started the probe",
-      "snapshot": "D-045 stage probe, August 2026"
-    },
-    "scan_10m_clusterwise_ms": {
-      "value": "330",
-      "kind": "benchmark",
-      "prose": "ms, the same scan once selections were merged cluster-wise so the parallel path could fire",
-      "snapshot": "D-045 stage probe, August 2026"
-    },
-    "series_10m_clusterwise_ms": {
-      "value": "434",
-      "kind": "benchmark",
-      "prose": "ms, series.count at 10M immediately after cluster-wise merging - an August 2026 waypoint, not the current figure; later projection work took the same query to 183.7 ms",
-      "snapshot": "D-045, superseded by registry-v2-10m-3sys",
-      "label_required": "historical waypoint"
-    },
-    "append_batch1000_ev_s": {
-      "value": "44874",
-      "kind": "benchmark",
-      "prose": "events per second on sustained appends at batch size 1000; the same durable commit floor gives 95 ev/s at batch 1",
-      "snapshot": "concurrency-1m-d049"
-    },
-    "correction_latency_p50_ms": {
-      "value": "4.66",
-      "kind": "benchmark",
-      "prose": "ms median for a single-operation correction against a 100k-row store",
-      "snapshot": "concurrency-1m-d049"
-    },
-    "correction_growth_kb": {
-      "value": "64",
-      "kind": "benchmark",
-      "prose": "KB of store growth per single-op correction, almost all of it a fresh full manifest rather than the corrected data",
-      "snapshot": "eval-writes.json, commit caa5246"
-    },
-    "compaction_100k_s": {
-      "value": "0.41",
-      "kind": "benchmark",
-      "prose": "seconds to compact a 100k-row store with 250 corrections folded, 253 segments to 2, answer digest preserved",
-      "snapshot": "eval-writes.json, commit caa5246"
-    },
-    "warmup_first_query_10m_s": {
-      "value": "28",
-      "kind": "benchmark",
-      "prose": "seconds for the first query in a fresh process against a 10M store - the in-memory warm-up, paid whatever the query asks for",
-      "snapshot": "eval-resources coldwarm sweep, commit 6fb7cb1"
-    },
-    "warmup_first_query_1m_s": {
-      "value": "2.5",
-      "kind": "benchmark",
-      "prose": "seconds for the first query in a fresh process against a 1M store",
-      "snapshot": "eval-resources coldwarm sweep, commit 6fb7cb1"
-    },
-    "resident_index_tax_pct": {
-      "value": "18",
-      "kind": "benchmark",
-      "prose": "percent that an unrelated scan slows by while the traversal index built by an earlier query stays resident in the same process",
-      "snapshot": "D-045 four-condition probe, 1M store"
-    },
-    "betweenday_drift_pct": {
-      "value": "18",
-      "kind": "benchmark",
-      "prose": "percent drift on scan-bound queries when the same commits are re-measured on a later day - distinct from the resident-index tax, and the reason the published band is 20 percent",
-      "snapshot": "D-045 re-measurement of July commits"
-    },
-    "resident_probe_nothing_ms": {
-      "value": "68.4",
-      "kind": "benchmark",
-      "prose": "ms, series.count at 1M with nothing resident",
-      "snapshot": "D-045 four-condition probe, 1M store"
-    },
-    "resident_probe_plain_columns_ms": {
-      "value": "71.7",
-      "kind": "benchmark",
-      "prose": "ms, the same query while 1M rows of plain integer columns are held",
-      "snapshot": "D-045 four-condition probe, 1M store"
-    },
-    "resident_probe_index_columns_ms": {
-      "value": "71.1",
-      "kind": "benchmark",
-      "prose": "ms, the same query while the traversal index's own source columns are held",
-      "snapshot": "D-045 four-condition probe, 1M store"
-    },
-    "resident_probe_index_built_ms": {
-      "value": "80.7",
-      "kind": "benchmark",
-      "prose": "ms, the same query while the built traversal index is held - the 18 percent",
-      "snapshot": "D-045 four-condition probe, 1M store"
-    },
-    "resident_probe_released_ms": {
-      "value": "68.3",
-      "kind": "benchmark",
-      "prose": "ms, the same query after the index is released - the time comes back",
-      "snapshot": "D-045 four-condition probe, 1M store"
-    },
-    "parallel_gate_ab_default_ms": {
-      "value": "84.4",
-      "kind": "benchmark",
-      "prose": "ms, series.count at 1M with the scan-parallelism gate at its default - the reading that would not reproduce",
-      "snapshot": "D-045 parallelism A/B"
-    },
-    "parallel_gate_ab_forced_ms": {
-      "value": "83.1",
-      "kind": "benchmark",
-      "prose": "ms, the same query with the parallel path forced on - the hypothesis measured false",
-      "snapshot": "D-045 parallelism A/B"
-    },
-    "series_1m_july_published_ms": {
-      "value": "59.0",
-      "kind": "benchmark",
-      "prose": "ms, the July 2026 published figure for series.count at 1M that a later run could not reproduce",
-      "snapshot": "July 2026 sweep, superseded",
-      "label_required": "historical"
-    },
-    "bisect_builds": {
-      "value": "5",
-      "kind": "benchmark",
-      "prose": "engine builds bisected, one 1M run each, to locate the step change"
-    },
-    "dev_task_count": {
-      "value": "22",
-      "kind": "benchmark",
-      "prose": "development-split tasks every system answers under identical models, seeds, temperature 0 and repair budget",
-      "snapshot": "matrix-dev-oss-14b (Qwen2.5-14B-Instruct-AWQ, single 24 GB GPU)"
-    },
-    "dev_probe_task_count": {
-      "value": "3",
-      "kind": "benchmark",
-      "prose": "of the development tasks are correction probes: the same question asked of the belief before a correction and of the belief after it",
-      "snapshot": "matrix-dev-oss-14b"
-    },
-    "answer_accuracy_cypher_dev": {
-      "value": "18",
-      "kind": "benchmark",
-      "prose": "percent typed-answer accuracy for text-to-Cypher over the same events in a plain property graph (dev split)",
-      "snapshot": "matrix-dev-oss-14b"
-    },
-    "answer_accuracy_vector_rag_dev": {
-      "value": "9",
-      "kind": "benchmark",
-      "prose": "percent typed-answer accuracy for vector-RAG over serialised events (dev split)",
-      "snapshot": "matrix-dev-oss-14b"
-    },
-    "answer_accuracy_static_rag_dev": {
-      "value": "5",
-      "kind": "benchmark",
-      "prose": "percent typed-answer accuracy for static-graph RAG over the latest snapshot (dev split)",
-      "snapshot": "matrix-dev-oss-14b"
-    },
-    "probe_accuracy_tgms_dev": {
-      "value": "67",
-      "kind": "benchmark",
-      "prose": "percent typed-answer accuracy on the correction probes, TGMS, Qwen2.5-14B (2 of 3 dev probe tasks)",
-      "scope_required": "3 tasks; state the count beside the percentage",
-      "snapshot": "matrix-dev-oss-14b"
-    },
-    "probe_accuracy_baselines_dev": {
-      "value": "0",
-      "kind": "benchmark",
-      "prose": "percent typed-answer accuracy on the correction probes for all three baselines at 14B on the dev split",
-      "scope_required": "dev split only; on the frozen split vector-RAG scores 15.4 percent on CollegeMsg probes, from current-belief halves",
-      "snapshot": "matrix-dev-oss-14b"
-    },
-    "exec_success_probes_before": {
-      "value": "0",
-      "kind": "benchmark",
-      "prose": "percent execution success on the 3 dev correction-probe tasks with output-field validation disabled (0 of 3), Qwen2.5-7B",
-      "snapshot": "E1 output-contract ablation, matrix-dev-oss (Qwen2.5-7B-Instruct)"
-    },
-    "exec_success_probes_after": {
-      "value": "100",
-      "kind": "benchmark",
-      "prose": "percent execution success on the same 3 tasks with output-field validation enabled (3 of 3), Qwen2.5-7B",
-      "scope_required": "3 tasks, execution success only - never state as overall system accuracy",
-      "snapshot": "E1 output-contract ablation, matrix-dev-oss (Qwen2.5-7B-Instruct)"
-    },
-    "exec_success_overall_before": {
-      "value": "0",
-      "kind": "benchmark",
-      "prose": "of 22 tasks executed successfully before declared output fields existed, in the controlled re-run of paper/main.tex:737 (it rose to 12 of 22). Not to be confused with the separate dev-split ablation at main.tex:537, where disabling contract checking took execution success 0.55 -> 0.23 at 7B \u2014 a different experiment on a different question",
-      "snapshot": "E1 output-contract ablation, matrix-dev-oss (Qwen2.5-7B-Instruct)"
-    },
-    "exec_success_overall_after": {
-      "value": "55",
-      "kind": "benchmark",
-      "prose": "percent execution success across all 22 dev tasks after output contracts (12 of 22)",
-      "snapshot": "E1 output-contract ablation, matrix-dev-oss (Qwen2.5-7B-Instruct)"
-    },
-    "plan_validity_7b": {
-      "value": "23",
-      "kind": "benchmark",
-      "prose": "percent of first-emitted plans that pass validation at Qwen2.5-7B on the dev split",
-      "snapshot": "matrix-dev-oss"
-    },
-    "plan_validity_14b": {
-      "value": "50",
-      "kind": "benchmark",
-      "prose": "percent of first-emitted plans that pass validation at Qwen2.5-14B on the dev split",
-      "snapshot": "matrix-dev-oss-14b"
-    },
-    "default_page_limit": {
-      "value": "100",
-      "kind": "architectural",
-      "prose": "rows returned by default from any paginated operator, maximum 10,000"
-    },
-    "incident_page_rows": {
-      "value": "100",
-      "kind": "benchmark",
-      "prose": "rows on the page the model counted during the D-015 live demo"
-    },
-    "incident_total_rows": {
-      "value": "343",
-      "kind": "benchmark",
-      "prose": "rows the complete result actually held during the D-015 live demo"
-    },
-    "mutation_truncated_cases": {
-      "value": "15",
-      "kind": "tested",
-      "prose": "generated correct-arithmetic-over-truncated-evidence cases, all refused full support when completeness propagation is on",
-      "snapshot": "E2 truncation-taint ablation"
-    },
-    "mutation_truncated_without_taint": {
-      "value": "0",
-      "kind": "tested",
-      "prose": "of the 15 truncated-page counts are caught when completeness propagation is disabled",
-      "snapshot": "E2 truncation-taint ablation"
-    },
-    "mutation_belief_cases": {
-      "value": "60",
-      "kind": "tested",
-      "prose": "wrong-belief-state cases, all detected by re-checking claims against the transaction time the trace was pinned to"
-    },
-    "mutation_uncited_entity_cases": {
-      "value": "100",
-      "kind": "tested",
-      "prose": "cases adding a real entity the cited evidence never mentioned, all detected"
-    },
-    "mutation_unit_confusion_cases": {
-      "value": "100",
-      "kind": "tested",
-      "prose": "cases reading microseconds as milliseconds, all detected"
-    },
-    "mutation_member_dropped_cases": {
-      "value": "100",
-      "kind": "tested",
-      "prose": "cases dropping a member from a reported entity set"
-    },
-    "mutation_member_dropped_detected": {
-      "value": "0",
-      "kind": "limitation",
-      "prose": "of the dropped-member cases are detected - under-claiming is invisible to trace grounding by construction"
-    },
-    "mutation_clean_pool": {
-      "value": "202",
-      "kind": "tested",
-      "prose": "clean answers in the database-semantics pool, on which the checks raised no false positives"
-    },
-    "accuracy_ungated": {
-      "value": "41.8",
-      "kind": "benchmark",
-      "prose": "percent typed-answer accuracy with claim gating off"
-    },
-    "accuracy_gated": {
-      "value": "40.8",
-      "kind": "benchmark",
-      "prose": "percent typed-answer accuracy with claim gating on - the cost of the gate is this one point"
-    },
-    "agg_10m_native_ms": {
-      "value": "96.1",
-      "kind": "benchmark",
-      "prose": "ms, grouped aggregation (count + distinct recipients by type and bucket) at 10M",
-      "snapshot": "registry-v2-10m-3sys"
-    },
-    "agg_10m_clickhouse_ms": {
-      "value": "138.0",
-      "kind": "benchmark",
-      "prose": "ms, the same grouped aggregation on ClickHouse",
-      "snapshot": "registry-v2-10m-3sys"
-    },
-    "agg_native_lead_10m": {
-      "value": "1.4",
-      "kind": "benchmark",
-      "prose": "times faster than ClickHouse on grouped aggregation at 10M, after D-047 \u2014 outside this run's noise but only just outside a doubled between-day band",
-      "snapshot": "registry-v2-10m-3sys"
-    },
-    "writer_cost_to_readers_pct": {
-      "value": "0-3",
-      "kind": "benchmark",
-      "prose": "percent of per-query latency that a live writer costs concurrent readers at 1M (0.3-1.5% of aggregate throughput)",
-      "snapshot": "concurrency-1m-d049"
-    },
-    "readers_cost_to_writer_pct": {
-      "value": "1.0",
-      "kind": "benchmark",
-      "prose": "percent of commit latency that concurrent readers cost the writer, across 1 to 8 readers at 1M",
-      "snapshot": "concurrency-1m-d049"
-    },
-    "group_commit_speedup_16": {
-      "value": "39.3",
-      "kind": "benchmark",
-      "prose": "times more rows per second at 16 concurrent single writers when queued writes share one fsync; opt-in, because it costs the single-writer case 56% latency",
-      "snapshot": "concurrency-1m-d049"
-    },
-    "append_batch1_ev_s": {
-      "value": "95",
-      "kind": "benchmark",
-      "prose": "events per second appending one event per commit \u2014 the durable commit floor, several fsyncs and a fresh manifest per event",
-      "snapshot": "concurrency-1m-d049",
-      "was": "96 in the earlier eval-writes run at caa5246, inside the +/-20% band"
-    },
-    "probe_accuracy_frozen_suites": {
-      "value": "85-90",
-      "kind": "benchmark",
-      "prose": "percent of correction-probe questions TGMS answers on the two frozen suites (0.846 email-EU, 0.897 CollegeMsg, Qwen2.5-14B-AWQ)",
-      "snapshot": "paper/main.tex tab:main, and the paragraph at main.tex:495",
-      "scope_required": "these are TGMS's own scores; the 0.846-0.923 range in the paper's discussion spans TGMS and the equal-information SQL baseline together, so it must not be quoted as TGMS alone"
-    }
+  "registry-v2-1m-4sys": {
+   "commit": "d12b30f",
+   "date": "2026-08-02",
+   "scale": "1,000,000 events",
+   "systems": [
+    "native",
+    "duckdb",
+    "postgres",
+    "clickhouse"
+   ],
+   "record": "benchmarks/results-v1/eval-1m-agg.json"
   },
-  "retired_phrases": [
-    {
-      "phrase": "13 verified temporal operators",
-      "reason": "grouped aggregation (D-044) made it 14; quote data-fact=\"operator_count\""
-    },
-    {
-      "phrase": "twelve registry queries",
-      "reason": "the registry has 13 since D-044; quote data-fact=\"registry_queries\""
-    },
-    {
-      "phrase": "twelve logical queries",
-      "reason": "same registry change (D-044)"
-    },
-    {
-      "phrase": "Grouping is free",
-      "reason": "retracted by D-046 \u2014 aggregate_events never materializes, so its scan is 38.8 of 334.7 ms and count_distinct is ~232; say what the profile says instead"
-    },
-    {
-      "phrase": "the residual gap to ClickHouse is entirely the scan",
-      "reason": "retracted by D-046; true of series.count, false of agg.rel_bucket"
-    },
-    {
-      "phrase": "lead grows 2\u00d7 \u2192 3.5\u00d7 \u2192 12\u00d7",
-      "reason": "the 10M aggregation lead is 4.6x after D-046; regenerate the figure and its alt text from the snapshot"
-    },
-    {
-      "phrase": "graph engines lose their home turf",
-      "reason": "overgeneralises from a bi-temporal traversal workload; say which workload was measured"
-    },
-    {
-      "phrase": "exact match",
-      "reason": "the paper explicitly rejects this name \u2014 interval answers are credited at IoU >= 0.5, so the metric is normalized typed-answer accuracy; see paper/main.tex 'Metric'"
-    },
-    {
-      "phrase": "aggregation lead grows with scale",
-      "reason": "retired by D-047 \u2014 it is 2.2x at both 1M and 10M and a tie at 200k"
-    },
-    {
-      "phrase": "the crossover sits between 200k and 1M",
-      "reason": "retired by D-047 \u2014 native is ahead at 200k, behind at 1M, ahead again at 10M"
-    },
-    {
-      "phrase": "268 evaluated answers",
-      "reason": "the denominator appears nowhere in paper/main.tex, which reports 282 task runs, 270 measurable, 220 ungated-emitted and 0 of 199 gated-emitted; 268 traces only to a superseded review response"
-    }
-  ]
+  "registry-v2-10m-3sys": {
+   "commit": "7842a1f",
+   "date": "2026-08-03",
+   "scale": "10,000,000 events",
+   "systems": [
+    "native",
+    "duckdb",
+    "clickhouse"
+   ],
+   "note": "Refreshed after D-047. PostgreSQL's 10M column is a July measurement carried forward, marked in the table.",
+   "record": "benchmarks/results-v1/eval-10m-d047.json"
+  },
+  "scale-sweep-collegemsg-94": {
+   "commit": "paper tab:scale",
+   "date": "2026-07-24",
+   "scale": "94-task frozen CollegeMsg test split",
+   "systems": [
+    "native",
+    "static-graph RAG",
+    "text-to-Cypher"
+   ],
+   "note": "Temperature 0, ONE SEED per cell, no confidence interval - unlike the primary campaign, which pools three seeds and reports paired bootstrap CIs. 7B/14B/32B are fp16; the 72B row is AWQ 4-bit, so it varies precision as well as size and is not a controlled scale point. Accuracy cells are 94ths (one task = 1.1 points); probe cells are 13ths (one probe = 7.7 points).",
+   "record": "paper/main.tex tab:scale"
+  },
+  "rag-breadth-h100": {
+   "commit": "paper main.tex",
+   "date": "2026-07-24",
+   "scale": "94-task frozen CollegeMsg test split, 59,835-event corpus",
+   "systems": [
+    "native",
+    "vector-RAG k=1",
+    "vector-RAG k=20"
+   ],
+   "note": "Secondary experiment: retrieval breadth at full 32k context on an H100, single seed. Not a model-scale point.",
+   "record": "paper/main.tex"
+  },
+  "primary-campaign-collegemsg": {
+   "commit": "paper main.tex",
+   "date": "2026-07-24",
+   "scale": "282-task dev campaign",
+   "systems": [
+    "native",
+    "vector-RAG",
+    "static-graph RAG",
+    "text-to-Cypher"
+   ],
+   "note": "Three seeds pooled, paired bootstrap CIs over 10k resamples. Source of the baseline correction-probe numbers.",
+   "record": "paper/main.tex"
+  },
+  "retention-1m-density": {
+   "commit": "1e81393",
+   "date": "2026-08-01",
+   "scale": "1,000,000 events, correction density 0 to 20 percent",
+   "systems": [
+    "native full store",
+    "native current-only store"
+   ],
+   "note": "Host xzgpu. Latency is a median of 30 reps (10 above 1 s); storage, memory and replay are single observations. The close-cache rerun is commit 96ea135.",
+   "record": "benchmarks/results-v1/eval-1m-bitemporal.json"
+  },
+  "retention-10m-resources": {
+   "commit": "f841738",
+   "date": "2026-08-01",
+   "scale": "10,000,000 events",
+   "systems": [
+    "native"
+   ],
+   "note": "Memory caps enforced with docker --memory. Thread recalibration at 88b18d3, original sweep at 6fb7cb1. Memory-cap cells are warmup 2, reps 5; cold-start is a median of firsts over 5 trials.",
+   "record": "benchmarks/results-v1/eval-resources-memcap-budget-10m.json"
+  },
+  "concurrency-1m-d049": {
+   "commit": "cb3248e",
+   "date": "2026-08-03",
+   "scale": "1,000,000 events",
+   "systems": [
+    "native"
+   ],
+   "note": "D-049 concurrency run; the write-path cells were re-measured on the same host and are within the +/-20% band of their previous values.",
+   "record": "docs/eval_concurrency.md"
+  }
+ },
+ "facts": {
+  "operator_count": {
+   "value": "14",
+   "kind": "architectural",
+   "prose": "verified temporal operators (O1-O14)",
+   "was": "13 before D-044 added grouped aggregation"
+  },
+  "registry_queries": {
+   "value": "13",
+   "kind": "benchmark",
+   "prose": "registry queries, each answered by every system and hash-verified before timing",
+   "was": "12 before D-044"
+  },
+  "system_count": {
+   "value": "6",
+   "kind": "benchmark",
+   "prose": "systems answering the same registry: TGMS native, TGMS-on-DuckDB, PostgreSQL, ClickHouse, Neo4j, Memgraph"
+  },
+  "coverage_current": {
+   "value": "38",
+   "kind": "benchmark",
+   "prose": "of 110 independently written questions expressible in the current operator set",
+   "snapshot": "coverage re-audit 2026-08-04 (C16 in scripts/independent_questions.py)"
+  },
+  "coverage_after_grouping": {
+   "value": "24",
+   "kind": "benchmark",
+   "prose": "of 110 expressible immediately after grouped aggregation shipped \u2014 the endpoint of the D-044 episode, not the current number",
+   "label_required": "after grouping shipped",
+   "snapshot": "coverage re-audit 2026-08-02 (C14 in scripts/independent_questions.py)"
+  },
+  "coverage_after_arithmetic": {
+   "value": "28",
+   "kind": "benchmark",
+   "prose": "of 110 expressible immediately after the compute arithmetic shipped \u2014 the endpoint of the D-051 episode, not the current number",
+   "label_required": "after the arithmetic shipped",
+   "snapshot": "coverage re-audit 2026-08-03 (C15 in scripts/independent_questions.py)"
+  },
+  "coverage_original": {
+   "value": "10",
+   "kind": "benchmark",
+   "prose": "of 110 expressible in the pre-registered 13-operator study (D-026, July 2026)",
+   "label_required": "original study"
+  },
+  "coverage_total_questions": {
+   "value": "110",
+   "kind": "benchmark"
+  },
+  "storage_bytes_per_row": {
+   "value": "24.6",
+   "kind": "benchmark",
+   "prose": "bytes per edge version, segments after compaction and generation collection, at 1M rows",
+   "snapshot": "registry-v2-1m-4sys"
+  },
+  "storage_whole_store_bytes_per_row": {
+   "value": "25.1",
+   "kind": "benchmark",
+   "prose": "bytes per edge version for the whole store after generation collection"
+  },
+  "memory_10m_suite": {
+   "value": "1.76",
+   "kind": "benchmark",
+   "prose": "GB peak RSS for the full 10M query suite under a 2 GB cap"
+  },
+  "traversal_200k_native_ms": {
+   "value": "14.7",
+   "kind": "benchmark",
+   "prose": "ms, temporal reachability at 200k events",
+   "snapshot": "registry-v2-200k-6sys"
+  },
+  "traversal_200k_graph_engines": {
+   "value": "3.9-7.3",
+   "kind": "benchmark",
+   "prose": "seconds for the same reachability query on Memgraph and Neo4j",
+   "snapshot": "registry-v2-200k-6sys"
+  },
+  "clickhouse_agg_lead_10m": {
+   "value": "2.2",
+   "kind": "benchmark",
+   "prose": "times faster than TGMS on whole-window aggregation at 10M (37.9 vs 84.7 ms) \u2014 the same ratio at 1M, and a tie at 200k, so it is a constant of the shape rather than something that grows with scale",
+   "snapshot": "registry-v2-10m-3sys",
+   "history": "12x, then 8.7x after D-044, then 4.6x after D-046's scan work, then 2.2x after D-047 routed the metric through the aggregation kernel"
+  },
+  "agg_native_lead_200k": {
+   "value": "2.2",
+   "kind": "benchmark",
+   "prose": "times faster than ClickHouse on grouped aggregation at 200k (14.5 vs 32.6 ms)",
+   "snapshot": "registry-v2-200k-6sys"
+  },
+  "reproducibility_band": {
+   "value": "20",
+   "kind": "benchmark",
+   "prose": "percent - single latency cells reproduce to about this band between days on the measurement host"
+  },
+  "unsupported_claims": {
+   "value": "0",
+   "kind": "tested",
+   "prose": "emitted answers containing an unsupported claim, with gating \u2014 0 of 199 on the frozen CollegeMsg campaign; before gating it was 21 of 220",
+   "scope_required": "always state the denominator (199 emitted, of 282 task runs) and never as a universal guarantee; coverage is 199/282, so part of the zero is bought by declining"
+  },
+  "answer_accuracy_tgms": {
+   "value": "41",
+   "kind": "benchmark",
+   "prose": "percent, normalized typed-answer accuracy (the paper's metric: counts and values exact, interval answers credited at IoU >= 0.5) \u2014 pooled dev split, Qwen2.5-14B",
+   "exact": "0.41"
+  },
+  "scale_tasks": {
+   "value": "94",
+   "kind": "benchmark",
+   "prose": "tasks in the frozen CollegeMsg test split (48 one-hop, 20 three-hop, 13 correction probes, 13 four-hop)",
+   "snapshot": "scale-sweep-collegemsg-94"
+  },
+  "scale_probe_tasks": {
+   "value": "13",
+   "kind": "benchmark",
+   "prose": "correction probes inside the 94-task split; one probe is 7.7 percentage points",
+   "snapshot": "scale-sweep-collegemsg-94"
+  },
+  "scale_acc_7b": {
+   "value": "13.8",
+   "kind": "benchmark",
+   "prose": "percent answer accuracy, Qwen2.5-7B fp16 (13 of 94, single seed)",
+   "snapshot": "scale-sweep-collegemsg-94"
+  },
+  "scale_acc_14b": {
+   "value": "34.0",
+   "kind": "benchmark",
+   "prose": "percent answer accuracy, Qwen2.5-14B fp16 (32 of 94, single seed)",
+   "snapshot": "scale-sweep-collegemsg-94"
+  },
+  "scale_acc_32b": {
+   "value": "62.8",
+   "kind": "benchmark",
+   "prose": "percent answer accuracy, Qwen2.5-32B fp16 (59 of 94, single seed)",
+   "snapshot": "scale-sweep-collegemsg-94"
+  },
+  "scale_acc_72b_awq": {
+   "value": "51.1",
+   "kind": "benchmark",
+   "prose": "percent answer accuracy, Qwen2.5-72B AWQ 4-bit (48 of 94, single seed) - different precision, not a controlled scale point",
+   "snapshot": "scale-sweep-collegemsg-94",
+   "scope_required": "must never be drawn on one continuous line with the fp16 points"
+  },
+  "scale_gain_7b_32b": {
+   "value": "4.5",
+   "kind": "benchmark",
+   "prose": "times higher answer accuracy at 32B than at 7B, both fp16 (62.8 over 13.8; 59 of 94 over 13 of 94)",
+   "snapshot": "scale-sweep-collegemsg-94",
+   "was": "published as 4.6x, which rounded 4.55 up"
+  },
+  "scale_probe_7b": {
+   "value": "38",
+   "kind": "benchmark",
+   "prose": "percent of the 13 correction probes answered exactly, 7B fp16 (5 of 13)",
+   "snapshot": "scale-sweep-collegemsg-94"
+  },
+  "scale_probe_14b": {
+   "value": "77",
+   "kind": "benchmark",
+   "prose": "percent of the 13 correction probes answered exactly, 14B fp16 (10 of 13)",
+   "snapshot": "scale-sweep-collegemsg-94"
+  },
+  "scale_probe_32b": {
+   "value": "100",
+   "kind": "benchmark",
+   "prose": "percent of the 13 correction probes answered exactly, 32B fp16 (13 of 13, single seed)",
+   "snapshot": "scale-sweep-collegemsg-94",
+   "scope_required": "must be stated with its denominator of 13 and its single seed"
+  },
+  "scale_probe_72b_awq": {
+   "value": "31",
+   "kind": "benchmark",
+   "prose": "percent of the 13 correction probes answered exactly, 72B AWQ 4-bit (4 of 13)",
+   "snapshot": "scale-sweep-collegemsg-94"
+  },
+  "scale_cypher_7b": {
+   "value": "9.6",
+   "kind": "benchmark",
+   "prose": "percent answer accuracy, text-to-Cypher baseline at 7B fp16",
+   "snapshot": "scale-sweep-collegemsg-94"
+  },
+  "scale_cypher_32b": {
+   "value": "27.7",
+   "kind": "benchmark",
+   "prose": "percent answer accuracy, text-to-Cypher baseline at 32B fp16 - the best any evaluated baseline reached at any size",
+   "snapshot": "scale-sweep-collegemsg-94"
+  },
+  "baseline_probe_best": {
+   "value": "15.4",
+   "kind": "benchmark",
+   "prose": "percent of correction probes answered exactly by the best evaluated baseline (vector-RAG); static-graph RAG and text-to-Cypher scored 0",
+   "snapshot": "primary-campaign-collegemsg"
+  },
+  "rag_k1_acc": {
+   "value": "10.6",
+   "kind": "benchmark",
+   "prose": "percent answer accuracy, vector-RAG at k=1 over 256-event chunks on a 24 GB card",
+   "snapshot": "rag-breadth-h100"
+  },
+  "rag_k20_acc": {
+   "value": "2.1",
+   "kind": "benchmark",
+   "prose": "percent answer accuracy, vector-RAG at k=20 over 24-event chunks at full 32k context (2 of 94)",
+   "snapshot": "rag-breadth-h100"
+  },
+  "rag_k20_tokens": {
+   "value": "32,475",
+   "kind": "benchmark",
+   "prose": "prompt tokens per task, vector-RAG at k=20",
+   "snapshot": "rag-breadth-h100"
+  },
+  "rag_k20_exposure": {
+   "value": "0.8",
+   "kind": "benchmark",
+   "prose": "percent of the 59,835-event CollegeMsg corpus visible to the k=20 configuration in total (20 chunks x 24 events = 480 events)",
+   "snapshot": "rag-breadth-h100",
+   "was": "published as '0.8% x 20 sites', which read as 16% and overstated exposure twentyfold"
+  },
+  "tgms_same_run_tokens": {
+   "value": "6,521",
+   "kind": "benchmark",
+   "prose": "prompt tokens per task, TGMS on the same run and model as the k=20 comparison",
+   "snapshot": "rag-breadth-h100"
+  },
+  "tgms_same_run_acc": {
+   "value": "36.2",
+   "kind": "benchmark",
+   "prose": "percent answer accuracy, TGMS on the same run and model as the k=20 comparison (34 of 94)",
+   "snapshot": "rag-breadth-h100"
+  },
+  "indep_blocked": {
+   "value": "98",
+   "kind": "benchmark",
+   "prose": "of 110 questions blocked by a capability that did not exist in the original 13-operator set"
+  },
+  "indep_g_blocked": {
+   "value": "76",
+   "kind": "benchmark",
+   "prose": "questions whose blockers include grouped or distinct aggregation, somewhere in the chain"
+  },
+  "indep_g_alone": {
+   "value": "30",
+   "kind": "benchmark",
+   "prose": "questions for which grouped aggregation was the only recorded blocker"
+  },
+  "indep_delivered": {
+   "value": "14",
+   "kind": "benchmark",
+   "prose": "questions that actually became expressible once grouped aggregation shipped, against 30 predicted",
+   "snapshot": "coverage re-audit 2026-08-02 (C14 in scripts/independent_questions.py)"
+  },
+  "indep_still_blocked": {
+   "value": "17",
+   "kind": "benchmark",
+   "prose": "of the 30 predicted questions that stayed blocked, on a capability the tag concealed",
+   "snapshot": "coverage re-audit 2026-08-02 (C14 in scripts/independent_questions.py)"
+  },
+  "indep_ar_predicted": {
+   "value": "7",
+   "kind": "benchmark",
+   "prose": "questions the second histogram said arithmetic would unlock on its own"
+  },
+  "indep_ar_delivered": {
+   "value": "4",
+   "kind": "benchmark",
+   "prose": "questions that actually became expressible once the arithmetic shipped, against 7 predicted",
+   "snapshot": "coverage re-audit 2026-08-03 (C15 in scripts/independent_questions.py)"
+  },
+  "indep_prop_predicted": {
+   "value": "13",
+   "kind": "benchmark",
+   "prose": "questions the third histogram said property typing would unlock on its own"
+  },
+  "indep_prop_delivered": {
+   "value": "10",
+   "kind": "benchmark",
+   "prose": "questions that actually became expressible once property typing shipped, against 13 predicted",
+   "snapshot": "coverage re-audit 2026-08-04 (C16 in scripts/independent_questions.py)"
+  },
+  "indep_multi_blocker": {
+   "value": "55",
+   "kind": "benchmark",
+   "prose": "of the 98 blocked questions that need two or more missing capabilities at once"
+  },
+  "indep_scoreable": {
+   "value": "5",
+   "kind": "benchmark",
+   "prose": "of the 10 originally expressible questions whose answer kind was scoreable enough to run verbatim"
+  },
+  "zero_density_latency_spread": {
+   "value": "3.4",
+   "kind": "benchmark",
+   "prose": "percent - the widest latency gap between the full bi-temporal store and a current-only store at zero corrections, sign varying by query, against a 20 percent day-to-day reproducibility band"
+  },
+  "storage_overhead_1pct": {
+   "value": "2.1",
+   "kind": "benchmark",
+   "prose": "percent storage overhead over a current-only store at 1 percent correction density, 1M events"
+  },
+  "storage_overhead_5pct": {
+   "value": "8.8",
+   "kind": "benchmark",
+   "prose": "percent storage overhead at 5 percent correction density, 1M events"
+  },
+  "storage_overhead_20pct": {
+   "value": "30.1",
+   "kind": "benchmark",
+   "prose": "percent storage overhead at 20 percent correction density, 1M events"
+  },
+  "density_10m_interval_join": {
+   "value": "4.0",
+   "kind": "benchmark",
+   "prose": "times slower on the interval-join query at 10M events with only 0.1 percent correction density (1,102.6 vs 272.7 ms)"
+  },
+  "memory_10m_before": {
+   "value": "5.93",
+   "kind": "benchmark",
+   "prose": "GB peak RSS for the 10M suite before the statistics warm-up fix, whatever the query; OOM-killed under a 4 GB cap"
+  },
+  "memory_10m_smallbudget": {
+   "value": "1.61",
+   "kind": "benchmark",
+   "prose": "GB peak RSS for the 10M suite with a 256 MiB segment-cache budget"
+  },
+  "memory_cache_measured": {
+   "value": "794",
+   "kind": "benchmark",
+   "prose": "MB the segment cache actually held - far too little to explain a 5.93 GB peak, which is what refuted the cache diagnosis"
+  },
+  "evictions_smallbudget": {
+   "value": "32,615",
+   "kind": "benchmark",
+   "prose": "cache evictions under the 256 MiB budget, with every answer still hash-identical"
+  },
+  "threads_10m_speedup": {
+   "value": "4.4-5.4",
+   "kind": "benchmark",
+   "prose": "times faster on the interval-join query at 10M events going from 1 to 16 and 32 threads; at 1M the same sweep is flat within 1.4 percent"
+  },
+  "readers_1m_throughput": {
+   "value": "13.1",
+   "kind": "benchmark",
+   "prose": "times aggregate query throughput at 16 concurrent readers versus 1, at 1M events (173.1 vs 13.21 queries per second)"
+  },
+  "readers_10m_throughput": {
+   "value": "10.2",
+   "kind": "benchmark",
+   "prose": "times aggregate query throughput at 16 concurrent readers at 10M events, with 2 of the 16 readers OOM-killed"
+  },
+  "readers_latency_worst": {
+   "value": "53",
+   "kind": "benchmark",
+   "prose": "percent worse per-query latency for the slowest query at 16 readers (snap.hop2, 100.7 to 154.1 ms) - throughput scaling is not latency parity"
+  },
+  "coldstart_10m": {
+   "value": "27-31",
+   "kind": "benchmark",
+   "prose": "seconds to first answer at 10M events on a fresh process, whichever query runs first (median of firsts, 5 trials)"
+  },
+  "replay_20pct_before_min": {
+   "value": "47.6",
+   "kind": "benchmark",
+   "prose": "minutes to replay the event log at 20 percent correction density before the close-cache fix (2,856.8 s)"
+  },
+  "replay_20pct_after_min": {
+   "value": "6.0",
+   "kind": "benchmark",
+   "prose": "minutes to replay the same log after the per-generation close cache (361.1 s), a 7.9x reduction"
+  },
+  "series_10m_native_ms": {
+   "value": "84.7",
+   "kind": "benchmark",
+   "prose": "ms, whole-window bucketed count at 10M",
+   "snapshot": "registry-v2-10m-3sys"
+  },
+  "series_10m_clickhouse_ms": {
+   "value": "37.9",
+   "kind": "benchmark",
+   "prose": "ms, the same query on ClickHouse",
+   "snapshot": "registry-v2-10m-3sys"
+  },
+  "point_lookup_200k_native_ms": {
+   "value": "0.1",
+   "kind": "benchmark",
+   "prose": "ms, entity history by identity at 200k",
+   "snapshot": "registry-v2-200k-6sys"
+  },
+  "point_lookup_200k_postgres_ms": {
+   "value": "0.3",
+   "kind": "benchmark",
+   "prose": "ms, the same lookup on PostgreSQL with a covering index",
+   "snapshot": "registry-v2-200k-6sys"
+  },
+  "motif_200k_native_ms": {
+   "value": "28.7",
+   "kind": "benchmark",
+   "prose": "ms, closed-triangle temporal motif at 200k",
+   "snapshot": "registry-v2-200k-6sys"
+  },
+  "motif_200k_graph_engines": {
+   "value": "2.1-5.5",
+   "kind": "benchmark",
+   "prose": "seconds for the same motif on Memgraph and Neo4j",
+   "snapshot": "registry-v2-200k-6sys"
+  },
+  "storage_duckdb_bytes_per_row": {
+   "value": "187.7",
+   "kind": "benchmark",
+   "prose": "bytes per relationship version on DuckDB for the same 1M event log, uncompressed columnar, no secondary indexes",
+   "snapshot": "registry-v2-1m-4sys"
+  },
+  "storage_clickhouse_bytes_per_row": {
+   "value": "78.4",
+   "kind": "benchmark",
+   "prose": "bytes per relationship version on ClickHouse, lz4 MergeTree, no secondary indexes",
+   "snapshot": "registry-v2-1m-4sys"
+  },
+  "storage_postgres_bytes_per_row": {
+   "value": "549.7",
+   "kind": "benchmark",
+   "prose": "bytes per relationship version on PostgreSQL including the eight covering indexes its lookup speed is made of",
+   "snapshot": "registry-v2-1m-4sys"
+  },
+  "scan_10m_parallel_null_before_ms": {
+   "value": "811",
+   "kind": "benchmark",
+   "prose": "ms, the 10M scan before materialization was parallelised",
+   "snapshot": "D-045 stage probe, August 2026"
+  },
+  "scan_10m_parallel_null_after_ms": {
+   "value": "819",
+   "kind": "benchmark",
+   "prose": "ms, the same scan after parallel materialization landed - the null result that started the probe",
+   "snapshot": "D-045 stage probe, August 2026"
+  },
+  "scan_10m_clusterwise_ms": {
+   "value": "330",
+   "kind": "benchmark",
+   "prose": "ms, the same scan once selections were merged cluster-wise so the parallel path could fire",
+   "snapshot": "D-045 stage probe, August 2026"
+  },
+  "series_10m_clusterwise_ms": {
+   "value": "434",
+   "kind": "benchmark",
+   "prose": "ms, series.count at 10M immediately after cluster-wise merging - an August 2026 waypoint, not the current figure; later projection work took the same query to 183.7 ms",
+   "snapshot": "D-045, superseded by registry-v2-10m-3sys",
+   "label_required": "historical waypoint"
+  },
+  "append_batch1000_ev_s": {
+   "value": "44874",
+   "kind": "benchmark",
+   "prose": "events per second on sustained appends at batch size 1000; the same durable commit floor gives 95 ev/s at batch 1",
+   "snapshot": "concurrency-1m-d049"
+  },
+  "correction_latency_p50_ms": {
+   "value": "4.66",
+   "kind": "benchmark",
+   "prose": "ms median for a single-operation correction against a 100k-row store",
+   "snapshot": "concurrency-1m-d049"
+  },
+  "correction_growth_kb": {
+   "value": "64",
+   "kind": "benchmark",
+   "prose": "KB of store growth per single-op correction, almost all of it a fresh full manifest rather than the corrected data",
+   "snapshot": "eval-writes.json, commit caa5246"
+  },
+  "compaction_100k_s": {
+   "value": "0.41",
+   "kind": "benchmark",
+   "prose": "seconds to compact a 100k-row store with 250 corrections folded, 253 segments to 2, answer digest preserved",
+   "snapshot": "eval-writes.json, commit caa5246"
+  },
+  "warmup_first_query_10m_s": {
+   "value": "28",
+   "kind": "benchmark",
+   "prose": "seconds for the first query in a fresh process against a 10M store - the in-memory warm-up, paid whatever the query asks for",
+   "snapshot": "eval-resources coldwarm sweep, commit 6fb7cb1"
+  },
+  "warmup_first_query_1m_s": {
+   "value": "2.5",
+   "kind": "benchmark",
+   "prose": "seconds for the first query in a fresh process against a 1M store",
+   "snapshot": "eval-resources coldwarm sweep, commit 6fb7cb1"
+  },
+  "resident_index_tax_pct": {
+   "value": "18",
+   "kind": "benchmark",
+   "prose": "percent that an unrelated scan slows by while the traversal index built by an earlier query stays resident in the same process",
+   "snapshot": "D-045 four-condition probe, 1M store"
+  },
+  "betweenday_drift_pct": {
+   "value": "18",
+   "kind": "benchmark",
+   "prose": "percent drift on scan-bound queries when the same commits are re-measured on a later day - distinct from the resident-index tax, and the reason the published band is 20 percent",
+   "snapshot": "D-045 re-measurement of July commits"
+  },
+  "resident_probe_nothing_ms": {
+   "value": "68.4",
+   "kind": "benchmark",
+   "prose": "ms, series.count at 1M with nothing resident",
+   "snapshot": "D-045 four-condition probe, 1M store"
+  },
+  "resident_probe_plain_columns_ms": {
+   "value": "71.7",
+   "kind": "benchmark",
+   "prose": "ms, the same query while 1M rows of plain integer columns are held",
+   "snapshot": "D-045 four-condition probe, 1M store"
+  },
+  "resident_probe_index_columns_ms": {
+   "value": "71.1",
+   "kind": "benchmark",
+   "prose": "ms, the same query while the traversal index's own source columns are held",
+   "snapshot": "D-045 four-condition probe, 1M store"
+  },
+  "resident_probe_index_built_ms": {
+   "value": "80.7",
+   "kind": "benchmark",
+   "prose": "ms, the same query while the built traversal index is held - the 18 percent",
+   "snapshot": "D-045 four-condition probe, 1M store"
+  },
+  "resident_probe_released_ms": {
+   "value": "68.3",
+   "kind": "benchmark",
+   "prose": "ms, the same query after the index is released - the time comes back",
+   "snapshot": "D-045 four-condition probe, 1M store"
+  },
+  "parallel_gate_ab_default_ms": {
+   "value": "84.4",
+   "kind": "benchmark",
+   "prose": "ms, series.count at 1M with the scan-parallelism gate at its default - the reading that would not reproduce",
+   "snapshot": "D-045 parallelism A/B"
+  },
+  "parallel_gate_ab_forced_ms": {
+   "value": "83.1",
+   "kind": "benchmark",
+   "prose": "ms, the same query with the parallel path forced on - the hypothesis measured false",
+   "snapshot": "D-045 parallelism A/B"
+  },
+  "series_1m_july_published_ms": {
+   "value": "59.0",
+   "kind": "benchmark",
+   "prose": "ms, the July 2026 published figure for series.count at 1M that a later run could not reproduce",
+   "snapshot": "July 2026 sweep, superseded",
+   "label_required": "historical"
+  },
+  "bisect_builds": {
+   "value": "5",
+   "kind": "benchmark",
+   "prose": "engine builds bisected, one 1M run each, to locate the step change"
+  },
+  "dev_task_count": {
+   "value": "22",
+   "kind": "benchmark",
+   "prose": "development-split tasks every system answers under identical models, seeds, temperature 0 and repair budget",
+   "snapshot": "matrix-dev-oss-14b (Qwen2.5-14B-Instruct-AWQ, single 24 GB GPU)"
+  },
+  "dev_probe_task_count": {
+   "value": "3",
+   "kind": "benchmark",
+   "prose": "of the development tasks are correction probes: the same question asked of the belief before a correction and of the belief after it",
+   "snapshot": "matrix-dev-oss-14b"
+  },
+  "answer_accuracy_cypher_dev": {
+   "value": "18",
+   "kind": "benchmark",
+   "prose": "percent typed-answer accuracy for text-to-Cypher over the same events in a plain property graph (dev split)",
+   "snapshot": "matrix-dev-oss-14b"
+  },
+  "answer_accuracy_vector_rag_dev": {
+   "value": "9",
+   "kind": "benchmark",
+   "prose": "percent typed-answer accuracy for vector-RAG over serialised events (dev split)",
+   "snapshot": "matrix-dev-oss-14b"
+  },
+  "answer_accuracy_static_rag_dev": {
+   "value": "5",
+   "kind": "benchmark",
+   "prose": "percent typed-answer accuracy for static-graph RAG over the latest snapshot (dev split)",
+   "snapshot": "matrix-dev-oss-14b"
+  },
+  "probe_accuracy_tgms_dev": {
+   "value": "67",
+   "kind": "benchmark",
+   "prose": "percent typed-answer accuracy on the correction probes, TGMS, Qwen2.5-14B (2 of 3 dev probe tasks)",
+   "scope_required": "3 tasks; state the count beside the percentage",
+   "snapshot": "matrix-dev-oss-14b"
+  },
+  "probe_accuracy_baselines_dev": {
+   "value": "0",
+   "kind": "benchmark",
+   "prose": "percent typed-answer accuracy on the correction probes for all three baselines at 14B on the dev split",
+   "scope_required": "dev split only; on the frozen split vector-RAG scores 15.4 percent on CollegeMsg probes, from current-belief halves",
+   "snapshot": "matrix-dev-oss-14b"
+  },
+  "exec_success_probes_before": {
+   "value": "0",
+   "kind": "benchmark",
+   "prose": "percent execution success on the 3 dev correction-probe tasks with output-field validation disabled (0 of 3), Qwen2.5-7B",
+   "snapshot": "E1 output-contract ablation, matrix-dev-oss (Qwen2.5-7B-Instruct)"
+  },
+  "exec_success_probes_after": {
+   "value": "100",
+   "kind": "benchmark",
+   "prose": "percent execution success on the same 3 tasks with output-field validation enabled (3 of 3), Qwen2.5-7B",
+   "scope_required": "3 tasks, execution success only - never state as overall system accuracy",
+   "snapshot": "E1 output-contract ablation, matrix-dev-oss (Qwen2.5-7B-Instruct)"
+  },
+  "exec_success_overall_before": {
+   "value": "0",
+   "kind": "benchmark",
+   "prose": "of 22 tasks executed successfully before declared output fields existed, in the controlled re-run of paper/main.tex:737 (it rose to 12 of 22). Not to be confused with the separate dev-split ablation at main.tex:537, where disabling contract checking took execution success 0.55 -> 0.23 at 7B \u2014 a different experiment on a different question",
+   "snapshot": "E1 output-contract ablation, matrix-dev-oss (Qwen2.5-7B-Instruct)"
+  },
+  "exec_success_overall_after": {
+   "value": "55",
+   "kind": "benchmark",
+   "prose": "percent execution success across all 22 dev tasks after output contracts (12 of 22)",
+   "snapshot": "E1 output-contract ablation, matrix-dev-oss (Qwen2.5-7B-Instruct)"
+  },
+  "plan_validity_7b": {
+   "value": "23",
+   "kind": "benchmark",
+   "prose": "percent of first-emitted plans that pass validation at Qwen2.5-7B on the dev split",
+   "snapshot": "matrix-dev-oss"
+  },
+  "plan_validity_14b": {
+   "value": "50",
+   "kind": "benchmark",
+   "prose": "percent of first-emitted plans that pass validation at Qwen2.5-14B on the dev split",
+   "snapshot": "matrix-dev-oss-14b"
+  },
+  "default_page_limit": {
+   "value": "100",
+   "kind": "architectural",
+   "prose": "rows returned by default from any paginated operator, maximum 10,000"
+  },
+  "incident_page_rows": {
+   "value": "100",
+   "kind": "benchmark",
+   "prose": "rows on the page the model counted during the D-015 live demo"
+  },
+  "incident_total_rows": {
+   "value": "343",
+   "kind": "benchmark",
+   "prose": "rows the complete result actually held during the D-015 live demo"
+  },
+  "mutation_truncated_cases": {
+   "value": "15",
+   "kind": "tested",
+   "prose": "generated correct-arithmetic-over-truncated-evidence cases, all refused full support when completeness propagation is on",
+   "snapshot": "E2 truncation-taint ablation"
+  },
+  "mutation_truncated_without_taint": {
+   "value": "0",
+   "kind": "tested",
+   "prose": "of the 15 truncated-page counts are caught when completeness propagation is disabled",
+   "snapshot": "E2 truncation-taint ablation"
+  },
+  "mutation_belief_cases": {
+   "value": "60",
+   "kind": "tested",
+   "prose": "wrong-belief-state cases, all detected by re-checking claims against the transaction time the trace was pinned to"
+  },
+  "mutation_uncited_entity_cases": {
+   "value": "100",
+   "kind": "tested",
+   "prose": "cases adding a real entity the cited evidence never mentioned, all detected"
+  },
+  "mutation_unit_confusion_cases": {
+   "value": "100",
+   "kind": "tested",
+   "prose": "cases reading microseconds as milliseconds, all detected"
+  },
+  "mutation_member_dropped_cases": {
+   "value": "100",
+   "kind": "tested",
+   "prose": "cases dropping a member from a reported entity set"
+  },
+  "mutation_member_dropped_detected": {
+   "value": "0",
+   "kind": "limitation",
+   "prose": "of the dropped-member cases are detected - under-claiming is invisible to trace grounding by construction"
+  },
+  "mutation_clean_pool": {
+   "value": "202",
+   "kind": "tested",
+   "prose": "clean answers in the database-semantics pool, on which the checks raised no false positives"
+  },
+  "accuracy_ungated": {
+   "value": "41.8",
+   "kind": "benchmark",
+   "prose": "percent typed-answer accuracy with claim gating off"
+  },
+  "accuracy_gated": {
+   "value": "40.8",
+   "kind": "benchmark",
+   "prose": "percent typed-answer accuracy with claim gating on - the cost of the gate is this one point"
+  },
+  "agg_10m_native_ms": {
+   "value": "96.1",
+   "kind": "benchmark",
+   "prose": "ms, grouped aggregation (count + distinct recipients by type and bucket) at 10M",
+   "snapshot": "registry-v2-10m-3sys"
+  },
+  "agg_10m_clickhouse_ms": {
+   "value": "138.0",
+   "kind": "benchmark",
+   "prose": "ms, the same grouped aggregation on ClickHouse",
+   "snapshot": "registry-v2-10m-3sys"
+  },
+  "agg_native_lead_10m": {
+   "value": "1.4",
+   "kind": "benchmark",
+   "prose": "times faster than ClickHouse on grouped aggregation at 10M, after D-047 \u2014 outside this run's noise but only just outside a doubled between-day band",
+   "snapshot": "registry-v2-10m-3sys"
+  },
+  "writer_cost_to_readers_pct": {
+   "value": "0-3",
+   "kind": "benchmark",
+   "prose": "percent of per-query latency that a live writer costs concurrent readers at 1M (0.3-1.5% of aggregate throughput)",
+   "snapshot": "concurrency-1m-d049"
+  },
+  "readers_cost_to_writer_pct": {
+   "value": "1.0",
+   "kind": "benchmark",
+   "prose": "percent of commit latency that concurrent readers cost the writer, across 1 to 8 readers at 1M",
+   "snapshot": "concurrency-1m-d049"
+  },
+  "group_commit_speedup_16": {
+   "value": "39.3",
+   "kind": "benchmark",
+   "prose": "times more rows per second at 16 concurrent single writers when queued writes share one fsync; opt-in, because it costs the single-writer case 56% latency",
+   "snapshot": "concurrency-1m-d049"
+  },
+  "append_batch1_ev_s": {
+   "value": "95",
+   "kind": "benchmark",
+   "prose": "events per second appending one event per commit \u2014 the durable commit floor, several fsyncs and a fresh manifest per event",
+   "snapshot": "concurrency-1m-d049",
+   "was": "96 in the earlier eval-writes run at caa5246, inside the +/-20% band"
+  },
+  "probe_accuracy_frozen_suites": {
+   "value": "85-90",
+   "kind": "benchmark",
+   "prose": "percent of correction-probe questions TGMS answers on the two frozen suites (0.846 email-EU, 0.897 CollegeMsg, Qwen2.5-14B-AWQ)",
+   "snapshot": "paper/main.tex tab:main, and the paragraph at main.tex:495",
+   "scope_required": "these are TGMS's own scores; the 0.846-0.923 range in the paper's discussion spans TGMS and the equal-information SQL baseline together, so it must not be quoted as TGMS alone"
+  }
+ },
+ "retired_phrases": [
+  {
+   "phrase": "13 verified temporal operators",
+   "reason": "grouped aggregation (D-044) made it 14; quote data-fact=\"operator_count\""
+  },
+  {
+   "phrase": "twelve registry queries",
+   "reason": "the registry has 13 since D-044; quote data-fact=\"registry_queries\""
+  },
+  {
+   "phrase": "twelve logical queries",
+   "reason": "same registry change (D-044)"
+  },
+  {
+   "phrase": "Grouping is free",
+   "reason": "retracted by D-046 \u2014 aggregate_events never materializes, so its scan is 38.8 of 334.7 ms and count_distinct is ~232; say what the profile says instead"
+  },
+  {
+   "phrase": "the residual gap to ClickHouse is entirely the scan",
+   "reason": "retracted by D-046; true of series.count, false of agg.rel_bucket"
+  },
+  {
+   "phrase": "lead grows 2\u00d7 \u2192 3.5\u00d7 \u2192 12\u00d7",
+   "reason": "the 10M aggregation lead is 4.6x after D-046; regenerate the figure and its alt text from the snapshot"
+  },
+  {
+   "phrase": "graph engines lose their home turf",
+   "reason": "overgeneralises from a bi-temporal traversal workload; say which workload was measured"
+  },
+  {
+   "phrase": "exact match",
+   "reason": "the paper explicitly rejects this name \u2014 interval answers are credited at IoU >= 0.5, so the metric is normalized typed-answer accuracy; see paper/main.tex 'Metric'"
+  },
+  {
+   "phrase": "aggregation lead grows with scale",
+   "reason": "retired by D-047 \u2014 it is 2.2x at both 1M and 10M and a tie at 200k"
+  },
+  {
+   "phrase": "the crossover sits between 200k and 1M",
+   "reason": "retired by D-047 \u2014 native is ahead at 200k, behind at 1M, ahead again at 10M"
+  },
+  {
+   "phrase": "268 evaluated answers",
+   "reason": "the denominator appears nowhere in paper/main.tex, which reports 282 task runs, 270 measurable, 220 ungated-emitted and 0 of 199 gated-emitted; 268 traces only to a superseded review response"
+  }
+ ]
 }

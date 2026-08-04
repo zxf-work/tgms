@@ -373,6 +373,10 @@ class NativeAdapter(StorageAdapter):
         for c in self.EDGE_STR_COLS:
             if columns is None or c in columns:
                 out[c] = np.asarray(got[c], dtype=object)
+        # opt-in only (D-052); the engine already knows how to project these
+        for c in self.EDGE_OPT_COLS:
+            if columns is not None and c in columns:
+                out[c] = np.asarray(got[c], dtype=object)
         # physical row addresses (native only, explicit request only): the
         # ticket for coming back to the engine for derived fields of a few
         # surviving rows without materializing them for the whole scan
