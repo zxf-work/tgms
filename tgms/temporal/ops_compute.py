@@ -36,7 +36,10 @@ from tgms.temporal.algebra import LIMIT, operator, paginate, required
 
 FNS = ["count", "sum", "min", "max", "mean", "median", "topk", "filter",
        "ratio", "diff", "percent", "intersect", "difference", "union",
-       "interval_relation"]
+       "derive", "join", "interval_relation"]
+#: row-wise ops for `derive`. Closed on purpose: these are what the blocked
+#: questions ask for, and an expression language is a façade decision.
+DERIVE_OPS = ["add", "sub", "mul", "div", "floordiv", "concat"]
 #: set operations over two lists of scalars (uids, in practice)
 SET_FNS = ("intersect", "difference", "union")
 #: aggregate a group of rows down to one number
@@ -61,6 +64,24 @@ ARGS = {
     "cmp": {"type": ["string", "null"], "enum": CMPS + [None], "default": None},
     "value": {"default": None,
               "description": "comparison value for filter"},
+    "field2": {"type": ["string", "null"], "default": None,
+               "description": "second field for derive (with `field`)"},
+    "op": {"type": ["string", "null"], "enum": DERIVE_OPS + [None],
+           "default": None, "description": "row-wise operation for derive"},
+    "into": {"type": ["string", "null"], "default": None, "minLength": 1,
+             "description": "name of the column derive adds"},
+    "on": {"type": ["string", "null"], "default": None,
+           "description": "join key in `input`"},
+    "other_on": {"type": ["string", "null"], "default": None,
+                 "description": "join key in `other`; defaults to `on`"},
+    "how": {"type": "string", "enum": ["inner", "left"], "default": "inner",
+            "description": "inner keeps matched keys only; left keeps every "
+                           "left row and fills the right side"},
+    "fill": {"default": None,
+             "description": "value for the right side on an unmatched left "
+                            "row (how = left)"},
+    "other_prefix": {"type": "string", "default": "r_", "minLength": 1,
+                     "description": "prefix for the right side's columns"},
     "other": {"type": ["array", "null"], "maxItems": 50_000, "default": None,
               "description": "second list for intersect/difference/union ($ref)"},
     "other_field": {"type": ["string", "null"], "default": None,
@@ -145,6 +166,55 @@ def _sorted_members(s: set[Any]) -> list[Any]:
     return sorted(s, key=lambda v: (type(v).__name__, v))
 
 
+def _derive_one(a: Any, b: Any, op: str) -> Any:
+    """One row's derived value. `concat` is the only op that takes
+    non-numbers, because its purpose is building a composite *key*."""
+    if op == "concat":
+        return f"{a}|{b}"
+    for v in (a, b):
+        if not isinstance(v, (int, float)) or isinstance(v, bool):
+            raise InvalidArgError(
+                f"compute derive {op}: non-numeric operand {v!r}")
+    if op in ("div", "floordiv") and b == 0:
+        raise InvalidArgError(f"compute derive {op}: division by zero")
+    if op == "div":
+        return _quotient(a, b, "derive")        # D-051's rule, unchanged
+    if op == "floordiv":
+        return a // b
+    return {"add": a + b, "sub": a - b, "mul": a * b}[op]
+
+
+def _rows_of(rows: list[Any], fn: str) -> list[dict[str, Any]]:
+    for r in rows:
+        if not isinstance(r, dict):
+            raise InvalidArgError(
+                f"compute {fn}: expected rows with named fields, got "
+                f"{type(r).__name__}")
+    return rows
+
+
+def _keyed(rows: list[Any], key: str, fn: str, side: str) -> dict[Any, dict]:
+    """Index a row set by `key`, refusing duplicates.
+
+    Uniqueness is the join's *bound*: a grouped result has one row per group
+    and always satisfies it, and requiring it caps the output at
+    min(|left|, |right|) rather than their product. Enforcing it here means
+    the join needs no cost model at all.
+    """
+    out: dict[Any, dict] = {}
+    for r in _rows_of(rows, fn):
+        if key not in r:
+            raise InvalidArgError(
+                f"compute {fn}: {side} rows have no field {key!r}")
+        if r[key] in out:
+            raise InvalidArgError(
+                f"compute {fn}: duplicate key {r[key]!r} on the {side} side; "
+                f"join keys must be unique (group first, or pick a key that "
+                f"is)")
+        out[r[key]] = r
+    return out
+
+
 def _cmp(x: Any, cmp: str, v: Any) -> bool:
     if cmp == "contains":
         return isinstance(x, (str, list)) and v in x
@@ -189,7 +259,11 @@ def allen_relation(a: dict[str, int], b: dict[str, int]) -> str:
     "steps: ratio(x, y) = x/y, diff(x, y) = x-y, percent(x, y) = 100*x/y; "
     "set operations over two lists (`input` and `other`, optionally "
     "projected with `field`/`other_field`): intersect, difference, union — "
-    "deduplicated and canonically ordered; "
+    "deduplicated and canonically ordered; row work: "
+    "derive(field, field2|value, op, into) adds one computed column "
+    "(add/sub/mul/div/floordiv/concat) and join(other, on, other_on, how, "
+    "fill) aligns two prior steps on a key whose values must be unique on "
+    "both sides; "
     "or interval_relation(a, b) -> Allen relation name. Never do arithmetic "
     "in prose — use this.",
     output_fields=("value", "rows", "rows_total", "truncated", "cursor"),
@@ -203,6 +277,51 @@ def compute(adapter: StorageAdapter, args: dict[str, Any]) -> dict[str, Any]:
             if not (iv["start"] < iv["end"]):
                 raise InvalidArgError(f"invalid interval {iv}")
         return {"value": allen_relation(args["a"], args["b"]), "truncated": False}
+    if fn == "derive":
+        rows, f, f2, val = args["input"], args["field"], args["field2"], args["value"]
+        op, into = args["op"], args["into"]
+        if rows is None or f is None or op is None or into is None:
+            raise InvalidArgError(
+                "compute derive requires input, field, op and into")
+        if (f2 is None) == (val is None):
+            raise InvalidArgError(
+                "compute derive takes exactly one of field2 or value")
+        out = []
+        for r in _rows_of(rows, "derive"):
+            if into in r:
+                raise InvalidArgError(
+                    f"compute derive: {into!r} already exists; derive adds a "
+                    f"column and never replaces one")
+            b = r[f2] if f2 is not None else val
+            if f2 is not None and f2 not in r:
+                raise InvalidArgError(f"compute derive: field {f2!r} missing")
+            out.append({**r, into: _derive_one(_values([r], f)[0], b, op)})
+        return paginate(out, args["limit"], None)
+    if fn == "join":
+        rows, other, on = args["input"], args["other"], args["on"]
+        if rows is None or other is None or on is None:
+            raise InvalidArgError("compute join requires input, other and on")
+        other_on, pre, how = args["other_on"] or on, args["other_prefix"], args["how"]
+        right = _keyed(other, other_on, "join", "right")
+        left = _keyed(rows, on, "join", "left")
+        merged = []
+        for k in sorted(left, key=lambda v: (type(v).__name__, v)):
+            r = right.get(k)
+            if r is None:
+                if how == "inner":
+                    continue
+                r = {c: args["fill"] for c in
+                     {c for row in other for c in row} | {other_on}}
+            row = dict(left[k])
+            for c, v in r.items():
+                name = f"{pre}{c}"
+                if name in row:
+                    raise InvalidArgError(
+                        f"compute join: {name!r} collides with a left column; "
+                        f"choose a different other_prefix")
+                row[name] = v
+            merged.append(row)
+        return paginate(merged, args["limit"], None)
     if fn in SET_FNS:
         rows, other = args["input"], args["other"]
         if rows is None or other is None:
