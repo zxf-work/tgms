@@ -135,7 +135,7 @@ here at their most natural rather than handicapped.</p>
   <text x="62" y="124" font-size="12" fill="var(--mut)">parity with ClickHouse</text>
   <rect x="140" y="130" width="70" height="72" rx="4" fill="var(--ok)" opacity=".85"/>
   <text x="175" y="220" font-size="13" fill="var(--mut)" text-anchor="middle">200k</text>
-  <text x="175" y="172" font-size="14" class="m" fill="#fff" text-anchor="middle">2.2×</text>
+  <text x="175" y="172" font-size="14" class="m" fill="#fff" text-anchor="middle"><tspan data-fact="agg_native_lead_200k">2.2</tspan>×</text>
   <text x="175" y="190" font-size="11" fill="#fff" text-anchor="middle" opacity=".9">faster</text>
   <rect x="330" y="86" width="70" height="44" rx="4" fill="var(--amber)" opacity=".9"/>
   <text x="365" y="220" font-size="13" fill="var(--mut)" text-anchor="middle">1M</text>
@@ -143,9 +143,9 @@ here at their most natural rather than handicapped.</p>
   <text x="365" y="123" font-size="11" fill="#fff" text-anchor="middle" opacity=".9">slower</text>
   <rect x="520" y="130" width="70" height="46" rx="4" fill="var(--ok)" opacity=".85"/>
   <text x="555" y="220" font-size="13" fill="var(--mut)" text-anchor="middle">10M</text>
-  <text x="555" y="150" font-size="14" class="m" fill="#fff" text-anchor="middle">1.4×</text>
+  <text x="555" y="150" font-size="14" class="m" fill="#fff" text-anchor="middle"><tspan data-fact="agg_native_lead_10m">1.4</tspan>×</text>
   <text x="555" y="167" font-size="11" fill="#fff" text-anchor="middle" opacity=".9">faster</text>
-  <text x="60" y="34" font-size="13" fill="var(--ink)">14.5 / 32.6 ms · 50.4 / 36.6 ms · 96.1 / 138.0 ms
+  <text x="60" y="34" font-size="13" fill="var(--ink)">14.5 / 32.6 ms · 50.4 / 37.0 ms · <tspan data-fact="agg_10m_native_ms">96.1</tspan> / <tspan data-fact="agg_10m_clickhouse_ms">138.0</tspan> ms
   <tspan fill="var(--mut)" font-size="12">(TGMS / ClickHouse, lower is better)</tspan></text>
 </svg>
 <figcaption>Grouped aggregation against the specialist, after the profiling
@@ -156,7 +156,7 @@ run's noise, and lead again at 10M. The 10M column is where the work
 described below landed: one aggregate, from 240.7 ms to 9.6.</figcaption>
 </figure>
 
-<p>Against the row stores it was never close: 37× faster than tuned
+<p>Against the row stores it was never close: 47× faster than tuned
 PostgreSQL at a million events, on a query PostgreSQL answers with a plain
 <code>GROUP BY</code>. Against the specialist we were second, by 2.4× at
 ten million, and that is what this post said when it was published.</p>
@@ -180,7 +180,7 @@ aggregate</b>, the exact count of distinct recipients per group.</p>
 
 <figure>
 <svg viewBox="0 0 720 150" width="100%" role="img"
-     aria-label="Breakdown of the 10M grouped-aggregation query, 331 ms total: 38.8 ms selecting rows, 232 ms exact distinct counting, about 60 ms grouping and merge. ClickHouse answers the same query in 134 ms.">
+     aria-label="Breakdown of the 10M grouped-aggregation query, about 331 ms total: 38.8 ms selecting rows, 232 ms exact distinct counting, about 60 ms grouping and merge. ClickHouse answers the same query in 138.0 ms.">
   <g font-size="12.5" fill="var(--mut)"><text x="16" y="42">TGMS</text>
     <text x="16" y="112">ClickHouse</text></g>
   <rect x="100" y="26" width="70" height="26" rx="3" fill="var(--blue)"/>
@@ -189,17 +189,18 @@ aggregate</b>, the exact count of distinct recipients per group.</p>
   <g font-size="12" class="m" fill="#fff">
     <text x="106" y="44">39</text><text x="330" y="44">232 ms — exact distinct count</text>
     <text x="600" y="44">60</text></g>
-  <rect x="100" y="96" width="242" height="26" rx="3" fill="var(--ok)" opacity=".75"/>
-  <text x="110" y="114" font-size="12" class="m" fill="#fff">134 ms, whole query</text>
+  <rect x="100" y="96" width="249" height="26" rx="3" fill="var(--ok)" opacity=".75"/>
+  <text x="110" y="114" font-size="12" class="m" fill="#fff"><tspan data-fact="agg_10m_clickhouse_ms">138.0</tspan> ms, whole query</text>
   <g font-size="11.5" fill="var(--mut)">
     <text x="100" y="72">select rows</text>
     <text x="592" y="72">group + merge</text></g>
 </svg>
-<figcaption>Where 331 ms goes on the 10M grouped-aggregation query
-(<code>registry-v2-10m-3sys</code>, median of 10 runs, lower is better).
-One aggregate — the exact distinct count — is more than twice ClickHouse's
-entire answer. Selection, the part we assumed was the problem, is 12% of
-it. This does not say our scan is fast in general; a different query,
+<figcaption>Where about 331 ms went on the 10M grouped-aggregation query
+before the fix (stage split from the D-046 profile run; ClickHouse's total
+from <code>registry-v2-10m-3sys</code>, median of 10 runs, lower is better).
+One aggregate — the exact distinct count — cost two thirds more than
+ClickHouse's entire answer. Selection, the part we assumed was the problem,
+is 12% of it. This does not say our scan is fast in general; a different query,
 <code>series.count</code>, is still scan-bound and is where the next
 session's work went.</figcaption>
 </figure>
@@ -236,8 +237,10 @@ anything.</div>
 
 <p>One cell in that comparison is ours and it is bad, so it is published
 too: the portable fallback — the same operator running on our DuckDB
-backend — takes <b>34.5 seconds</b> at ten million, a hundred times the
-native kernel. It groups relationship types as ten million Python strings,
+backend — takes <b>36.5 seconds</b> at ten million, three hundred and
+eighty times the native kernel, and it has not moved while the native path
+got 3.5× faster.
+It groups relationship types as ten million Python strings,
 which is precisely the dictionary-coding lesson the native path was careful
 to obey. Anyone using that backend for grouped aggregation is paying for it
 today.</p>

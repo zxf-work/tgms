@@ -112,8 +112,7 @@ roughly half a minute and a memory floor that has to be budgeted.</p>
 
 <div class="meta"><b>Status: Current.</b> TGMS 0.4.0 · snapshots
 <code>retention-1m-density</code> and <code>retention-10m-resources</code> ·
-~7 min · substantially revised 3 August 2026, see the
-<a href="#changelog">changelog</a>.</div>
+~7 min.</div>
 
 <h2>Decide this first</h2>
 
@@ -190,7 +189,9 @@ partial carve, or a retraction.</li>
 <li><b>Metrics.</b> Storage bytes and latency, lower better; peak resident
 memory; seconds to first answer; seconds to replay the log.</li>
 <li><b>Runs.</b> Latency is a median of 30 repetitions (10 above one
-second); storage, memory and replay are <b>single observations</b>. Cells
+second); storage, memory and replay are <b>single observations</b>. The
+memory-cap cells are 2 warm-ups and 5 repetitions, and cold start is a
+median of first queries over 5 trials. Cells
 reproduce to about <span data-fact="reproducibility_band">20</span>%
 between days.</li>
 </ul></div>
@@ -200,7 +201,8 @@ between days.</li>
 <p>At zero corrections we could not measure a penalty. The widest latency
 gap was <span data-fact="zero_density_latency_spread">3.4</span>%, its sign
 varying query to query — the full store was <i>faster</i> on 6 of 11 — with
-bytes differing by 0.002% and peak memory by 0.2%, all far inside the
+bytes differing by 0.002% and resident memory by 0.2% (peak memory by
+0.02%), all far inside the
 ±<span data-fact="reproducibility_band">20</span>% band a single cell
 reproduces to across days. So: <b>no measurable overhead in the tested
 zero-correction configuration</b>, not "zero overhead".</p>
@@ -228,9 +230,9 @@ zero-correction configuration</b>, not "zero overhead".</p>
   </g>
   <g font-size="12.5" class="m" text-anchor="middle">
     <text x="140" y="189" fill="var(--ok)">none measurable</text>
-    <text x="290" y="181" fill="var(--blue)">+2.1</text>
-    <text x="440" y="148" fill="var(--blue)">+8.8</text>
-    <text x="590" y="42" fill="var(--amber)">+30.1</text>
+    <text x="290" y="181" fill="var(--blue)">+<tspan data-fact="storage_overhead_1pct">2.1</tspan></text>
+    <text x="440" y="148" fill="var(--blue)">+<tspan data-fact="storage_overhead_5pct">8.8</tspan></text>
+    <text x="590" y="42" fill="var(--amber)">+<tspan data-fact="storage_overhead_20pct">30.1</tspan></text>
   </g>
   <g font-size="13" fill="var(--mut)" text-anchor="middle">
     <text x="140" y="220">0%</text><text x="290" y="220">1%</text>
@@ -257,10 +259,12 @@ queries are 33–47% slower and one neighbourhood query is 3.4× slower. After
 that, growth is roughly linear in each <i>tenfold</i> increase of density
 rather than in density itself.</p>
 
-<p>Scale sharpens it. At ten million events, 0.1% density makes the
-interval-join query
-<span data-fact="density_10m_interval_join">4.0</span>× slower; at 20% one
-full-store query is <b>refused outright</b> by the cost guardrail — the
+<p>Scale sharpens it. At ten million events, a correction density of only
+0.1% makes the interval-join query
+<span data-fact="density_10m_interval_join">4.0</span>× slower — that is
+the one density the 10M sweep was run at. Back at a million events, where
+the full density sweep lives, the 20% cell has one full-store query
+<b>refused outright</b> by the cost guardrail — the
 limit that declines work predicted to be too expensive — where the stripped
 store answers in 35.6 ms. Retention can cost answerability, not just
 time.</p>
@@ -289,7 +293,7 @@ published that attribution before testing it. The fix's acceptance run
 refuted it: with the cache capped the suite <i>still</i> exceeded a 2 GB
 limit, because the cache only ever held
 <span data-fact="memory_cache_measured">794</span> MB — far too little to
-explain a 5.93 GB peak. The dominant term was the statistics warm-up,
+explain a <span data-fact="memory_10m_before">5.93</span> GB peak. The dominant term was the statistics warm-up,
 materialising all ten million rows, each with strings and a hash, as one
 transient allocation; the fix was to fold it segment by segment. Entry #10
 in our running misdiagnosis table in
@@ -318,7 +322,8 @@ readers OOM-killed. Concurrency is bounded by memory, not locks.</p>
 <h2>Axis 5 — recovery</h2>
 
 <p>Rebuilding state by replaying the event log was superlinear in
-correction density. At 20% it took 2,856.8 seconds — <b>about 47.6
+correction density. At 20% it took 2,856.8 seconds — <b>about
+<span data-fact="replay_20pct_before_min">47.6</span>
 minutes</b> — before a per-generation close-version cache and a faster
 version lookup brought the same replay to 361.1 seconds, or
 <span data-fact="replay_20pct_after_min">6.0</span> minutes: 7.9×
@@ -354,7 +359,7 @@ is why they are published in this shape, not a claim that none exists.</p>
 <div class="wrap"><table>
 <tr><th>Profile</th><th>What you pay</th><th>Verdict</th></tr>
 <tr><td><b>Current-only workload</b> — never corrected</td><td>no measurable storage, latency or memory overhead; still the warm-up and memory floor</td><td class="win">good fit — effectively free</td></tr>
-<tr><td><b>Moderate corrections</b> — about 1% of events</td><td>+<span data-fact="storage_overhead_1pct">2.1</span>% storage; scans a third slower</td><td class="win">good fit</td></tr>
+<tr><td><b>Moderate corrections</b> — about 1% of events</td><td>+<span data-fact="storage_overhead_1pct">2.1</span>% storage; scan queries roughly twice as slow as on a current-only store</td><td class="win">good fit</td></tr>
 <tr><td><b>Correction-heavy audit store</b> — 5–20%</td><td>+<span data-fact="storage_overhead_5pct">8.8</span>% to +<span data-fact="storage_overhead_20pct">30.1</span>% storage; multi-fold latency at scale; one query refused at 20%</td><td class="amber">budget memory and rebuild time deliberately</td></tr>
 <tr><td><b>Short-lived process</b> — CLI, serverless, per-request</td><td>the full <span data-fact="coldstart_10m">27-31</span> s warm-up every invocation</td><td class="miss">consider another approach</td></tr>
 </table></div>

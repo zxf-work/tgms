@@ -113,8 +113,7 @@ all — a number that is <span data-fact="coverage_current">24</span> today,
 and that taught us more by missing its own forecast than by hitting it.</p>
 
 <div class="meta"><b>Status: Current.</b> TGMS 0.4.0 · study July
-2026, pre-registered as D-026 · re-audit 2 August 2026 · ~6 min · see the
-<a href="#changelog">changelog</a>.</div>
+2026, pre-registered as D-026 · re-audit 2 August 2026 · ~6 min.</div>
 
 <h2>Why this matters</h2>
 
@@ -185,7 +184,7 @@ second tells you what shipping it would buy.</p>
 <svg viewBox="0 0 720 336" width="100%" role="img"
      aria-label="Grouped aggregation blocks 76 of 98 questions somewhere in the chain but is the sole blocker on 30. Arithmetic blocks 27, sole blocker on 2; property filters 20 and 2; calendar semantics 18 and 2; global scan-select 10 and 6; set operations 7 and 1; absence 3 and 0.">
   <text x="12" y="22" font-size="13" fill="var(--ink)">questions blocked, of
-  98 · light bar = blocked by this somewhere · solid = <tspan
+  <tspan data-fact="indep_blocked">98</tspan> · light bar = blocked by this somewhere · solid = <tspan
   font-weight="700">sole blocker</tspan></text>
   <g font-size="12.5" fill="var(--mut)" text-anchor="end">
     <text x="168" y="72">grouped aggregation</text>
@@ -212,8 +211,8 @@ second tells you what shipping it would buy.</p>
     <rect x="180" y="272" width="20" height="11" rx="3" opacity=".28"/>
   </g>
   <g font-size="12" class="m" fill="var(--mut)">
-    <text x="698" y="66" text-anchor="end">76</text>
-    <text x="389" y="80" font-weight="700">30</text>
+    <text x="698" y="66" text-anchor="end" data-fact="indep_g_blocked">76</text>
+    <text x="389" y="80" font-weight="700" data-fact="indep_g_alone">30</text>
     <text x="369" y="102">27</text><text x="201" y="116">2</text>
     <text x="322" y="138">20</text><text x="201" y="152">2</text>
     <text x="309" y="174">18</text><text x="201" y="188">2</text>
@@ -263,7 +262,7 @@ us a re-audit of all 110 against the new algebra, without touching the
 pre-registered table.</p>
 
 <div class="duo">
-<div class="cell"><b>Predicted, July</b><div class="big">30</div>
+<div class="cell"><b>Predicted, July</b><div class="big"><span data-fact="indep_g_alone">30</span></div>
 questions the histogram said grouping would unlock on its own.</div>
 <div class="cell"><b>Measured, August</b>
 <div class="big amber"><span data-fact="indep_delivered">14</span></div>
@@ -289,7 +288,7 @@ operation happened to unlock</td><td class="win">1</td></tr>
 <p>With grouping in hand, what the seventeen had been waiting for became
 legible: <b>11</b> want a set or pair join, <b>10</b> want ordered sequences
 inside a group, and <b>4 want both</b> — 11 + 10 − 4 = 17, with no third
-group. Two also touch rating properties or division, but sit inside those
+group. Three also touch rating properties or division, but sit inside those
 counts rather than beside them.</p>
 
 <div class="pull">A capability tag assigned before the capability exists
@@ -324,20 +323,24 @@ uncertainty.</p>
 <h2>What this means in practice: the roadmap</h2>
 
 <div class="wrap"><table>
-<tr><th>Capability</th><th>Sole blocker on</th><th>Difficulty</th><th>Composes</th><th>Status</th></tr>
-<tr><td>Grouped / distinct aggregation</td><td><span data-fact="indep_g_alone">30</span> predicted</td><td>medium</td><td>high</td><td class="win">shipped — delivered <span data-fact="indep_delivered">14</span></td></tr>
-<tr><td>Set / pair join (reciprocity, transpose)</td><td>11</td><td>high</td><td>high</td><td class="amber">next</td></tr>
-<tr><td>Ordered sequences in a group (gaps, sliding windows)</td><td>10</td><td>high</td><td>high</td><td class="amber">next</td></tr>
-<tr><td>Global scan-select</td><td>6</td><td>low</td><td>medium</td><td class="amber">cheapest remaining</td></tr>
-<tr><td>Calendar semantics (weekday, hour-of-day)</td><td>2</td><td>low</td><td>low</td><td>queued</td></tr>
-<tr><td>Arithmetic beyond count / sum / min / max</td><td>2</td><td>low</td><td>medium</td><td>queued</td></tr>
-<tr><td>Property-filtered patterns</td><td>2</td><td>medium</td><td>medium</td><td>queued</td></tr>
+<tr><th>Capability</th><th>Questions waiting on it</th><th>Difficulty</th><th>Composes</th><th>Status</th></tr>
+<tr><td>Grouped / distinct aggregation</td><td><span data-fact="indep_g_alone">30</span> predicted, July</td><td>medium</td><td>high</td><td class="win">shipped — delivered <span data-fact="indep_delivered">14</span></td></tr>
+<tr><td>Set / pair join (reciprocity, transpose)</td><td>11 of the 17 re-audited</td><td>high</td><td>high</td><td class="amber">next</td></tr>
+<tr><td>Ordered sequences in a group (gaps, sliding windows)</td><td>10 of the 17 re-audited</td><td>high</td><td>high</td><td class="amber">next</td></tr>
+<tr><td>Global scan-select</td><td>6 sole blocker, July</td><td>low</td><td>medium</td><td class="amber">cheapest remaining</td></tr>
+<tr><td>Calendar semantics (weekday, hour-of-day)</td><td>2 sole blocker, July</td><td>low</td><td>low</td><td>queued</td></tr>
+<tr><td>Arithmetic beyond count / sum / min / max</td><td>2 sole blocker, July</td><td>low</td><td>medium</td><td>queued</td></tr>
+<tr><td>Property-filtered patterns</td><td>2 sole blocker, July</td><td>medium</td><td>medium</td><td>queued</td></tr>
 </table></div>
 
-<p>Difficulty and composability are engineering judgment, not measurement,
-and the sole-blocker column is exactly the quantity this study showed to be
-an upper bound. Read the ordering, not the arithmetic — only the first row
-is measured.</p>
+<p>Two measurement bases share that column, and the labels say which. Rows
+one and four to seven are July sole-blocker counts from the pre-registered
+table; rows two and three come from the August re-audit of the seventeen
+that stayed blocked, and they overlap by the four questions that want both,
+so they do not sum. Difficulty and composability are engineering judgment,
+not measurement, and the sole-blocker counts are exactly the quantity this
+study showed to be an upper bound. Read the ordering, not the arithmetic —
+only the first row has been tested against reality.</p>
 
 <p>One item did not come from the histogram at all. Four questions anchor
 <b>transaction time</b> to event years — asking what the database believed

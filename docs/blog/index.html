@@ -93,7 +93,7 @@ before it.</p>
 <span class="trk c">Engineering case study</span>
 <h2>How a resident index slowed an unrelated scan by 18%</h2>
 <p class="q">A published number stopped reproducing. What broke — the code, the machine, or the measurement?</p>
-<p>The obvious hypothesis measured false, a five-build bisect landed on a commit touching no scan path, and a four-condition probe found an index costing 18% just by being resident — including in our own benchmark table.</p>
+<p>The obvious hypothesis measured false, a <span data-fact="bisect_builds">5</span>-build bisect landed on a commit touching no scan path, and a four-condition probe found an index costing <span data-fact="resident_index_tax_pct">18</span>% just by being resident — including in our own benchmark table.</p>
 </a>
 
 <a class="post" href="racing-the-specialist.html">
@@ -117,7 +117,7 @@ before it.</p>
 <span class="trk e">Evidence & capability</span>
 <h2>Where TGMS is fast — and where specialists still win</h2>
 <p class="q">Which system should answer which shape of query?</p>
-<p>Thirteen queries on six systems, every cell hash-verified before it was timed: TGMS owns the shapes combining history with graph structure, ClickHouse owns large-scale aggregation, and building the baselines honestly fixed two defects in our own engine.</p>
+<p><span data-fact="registry_queries">13</span> queries on <span data-fact="system_count">6</span> systems, every cell hash-verified before it was timed: TGMS owns the shapes combining history with graph structure, ClickHouse owns large-scale aggregation, and building the baselines honestly fixed two defects in our own engine.</p>
 </a>
 
 <a class="post" href="building-the-engine.html">
@@ -125,7 +125,7 @@ before it.</p>
 <span class="trk u">Understand TGMS</span>
 <h2>Why TGMS needed a native storage engine</h2>
 <p class="q">Why write a storage engine instead of using one that exists?</p>
-<p>Four properties had to hold at once and no adoptable backend delivered the conjunction. On immutable segments plus append-only corrections, 25.1 bytes per relationship version, and a fast path that never once ran.</p>
+<p>Four properties had to hold at once and no adoptable backend delivered the conjunction. On immutable segments plus append-only corrections, <span data-fact="storage_whole_store_bytes_per_row">25.1</span> bytes per relationship version, and a fast path that never once ran.</p>
 </a>
 
 <a class="post" href="independent-questions.html">
@@ -133,7 +133,7 @@ before it.</p>
 <span class="trk e">Evidence &amp; capability</span>
 <h2>We let users define the workload</h2>
 <p class="q">What do people ask a temporal graph store, when nobody shows them the manual?</p>
-<p>Ten of 110 independently written questions were expressible; after building the capability the study ranked first, 24 are. The gap between 30 predicted and 14 delivered is the useful part.</p>
+<p><span data-fact="coverage_original">10</span> of <span data-fact="coverage_total_questions">110</span> independently written questions were expressible; after building the capability the study ranked first, <span data-fact="coverage_current">24</span> are. The gap between <span data-fact="indep_g_alone">30</span> predicted and <span data-fact="indep_delivered">14</span> delivered is the useful part.</p>
 </a>
 
 <a class="post" href="scaling-the-planner.html">
@@ -141,7 +141,7 @@ before it.</p>
 <span class="trk e">Evidence &amp; capability</span>
 <h2>Bigger models help only when the data interface can use them</h2>
 <p class="q">Does a stronger model make a temporal system better, or is the interface the limit?</p>
-<p>Changing only the model, answer accuracy rose from 13.8% at 7B to 62.8% at 32B through an operator interface, and from 9.6% to 27.7% through the strongest retrieval baseline. The 72B point varies precision as well as size, so it is reported detached rather than as the end of the curve.</p>
+<p>Changing only the model, answer accuracy rose from <span data-fact="scale_acc_7b">13.8</span>% at 7B to <span data-fact="scale_acc_32b">62.8</span>% at 32B through an operator interface, and from <span data-fact="scale_cypher_7b">9.6</span>% to <span data-fact="scale_cypher_32b">27.7</span>% through the strongest retrieval baseline. The 72B point varies precision as well as size, so it is reported detached rather than as the end of the curve.</p>
 </a>
 
 <a class="post" href="incomplete-evidence.html">

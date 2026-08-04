@@ -61,6 +61,7 @@ tr:last-child td{border-bottom:0}
 td.win{color:var(--ok);font-weight:700}
 td.miss{color:var(--bad);font-weight:700}
 td.amber{color:var(--amber);font-weight:700}
+.wrap{overflow-x:auto}
 a{color:var(--blue)}
 code{font-family:var(--mono);background:#1c64d914;border-radius:5px;
      padding:1px 6px;font-size:.9em}
@@ -105,14 +106,17 @@ published July 2026 ·
 
 <p><b>In one sentence:</b> changing only the model and leaving the data,
 tasks and prompts alone, the system that hands the model a set of verified
-data operations went from answering 13.8% of tasks to 62.8%, while the best
-system that hands it retrieved text went from 9.6% to 27.7% — model quality
+data operations went from answering
+<span data-fact="scale_acc_7b">13.8</span>% of tasks to
+<span data-fact="scale_acc_32b">62.8</span>%, while the best
+system that hands it retrieved text went from
+<span data-fact="scale_cypher_7b">9.6</span>% to
+<span data-fact="scale_cypher_32b">27.7</span>% — model quality
 converts into answer quality at very different rates depending on what the
 model is allowed to do with the data.</p>
 
 <div class="meta"><b>Status: Current.</b> TGMS 0.4.0 · snapshot
-<code>scale-sweep-collegemsg-94</code> · ~7 min · substantially revised
-3 August 2026, see the <a href="#changelog">changelog</a>.</div>
+<code>scale-sweep-collegemsg-94</code> · ~7 min.</div>
 
 <h2>Why this matters</h2>
 
@@ -155,8 +159,9 @@ log, SHA-pinned before measurement, against a store rebuilt byte-identically
 from its event log.</li>
 <li><b>Systems.</b> TGMS, a static-graph RAG baseline and a text-to-Cypher
 baseline, each driven by the same model at each size.</li>
-<li><b>Metric.</b> <b>Answer accuracy</b> — the share of tasks whose
-structured answer exactly matched the reference; higher is better. One task
+<li><b>Metric.</b> <b>Normalized typed-answer accuracy</b> — the share of
+tasks whose structured answer matches the reference, with counts and values
+exact and interval answers credited at IoU ≥ 0.5; higher is better. One task
 is worth 1.1 points.</li>
 <li><b>Held constant.</b> Store, tasks, prompts, temperature 0, operator
 set. Only the model changes.</li>
@@ -178,7 +183,7 @@ iTiger cluster.</li>
 text-to-Cypher, rose from <span data-fact="scale_cypher_7b">9.6</span>% to
 <span data-fact="scale_cypher_32b">27.7</span>% — nearly tripling in
 relative terms, but gaining about 18 points where TGMS gained 49, and never
-passing 27.7% at any size we ran.</p>
+passing <span data-fact="scale_cypher_32b">27.7</span>% at any size we ran.</p>
 
 <figure>
 <svg viewBox="0 0 720 372" width="100%" role="img"
@@ -246,7 +251,7 @@ passing 27.7% at any size we ran.</p>
   <circle cx="630" cy="132" r="6.5" fill="none" stroke="var(--amber)"
           stroke-width="3"/>
   <text x="630" y="120" font-size="12" class="m" fill="var(--amber)"
-        text-anchor="middle" font-weight="700">51.1</text>
+        text-anchor="middle" font-weight="700" data-fact="scale_acc_72b_awq">51.1</text>
   <text x="630" y="324" font-size="13" fill="var(--mut)"
         text-anchor="middle">72B · 4-bit</text>
   <text x="630" y="346" font-size="11.5" fill="var(--mut)"
@@ -254,9 +259,11 @@ passing 27.7% at any size we ran.</p>
   <text x="630" y="361" font-size="11.5" fill="var(--mut)"
         text-anchor="middle">varies size and precision</text>
 </svg>
-<figcaption><b>Takeaway.</b> On the 94-task frozen CollegeMsg split
+<figcaption><b>Takeaway.</b> On the
+<span data-fact="scale_tasks">94</span>-task frozen CollegeMsg split
 (<code>scale-sweep-collegemsg-94</code>, single run, one seed, temperature
-0), answer accuracy under an operator interface rises about 4.5× from 7B to
+0), answer accuracy under an operator interface rises about
+<span data-fact="scale_gain_7b_32b">4.5</span>× from 7B to
 32B at 16-bit, while the strongest retrieval baseline gains about 18 points
 and stays below 28%. <b>Boundary.</b> The 72B point is detached and
 unconnected because it is 4-bit: it differs in precision as well as size, so
@@ -303,12 +310,12 @@ the vector-RAG baseline retrieved one chunk only because its GPU was small.
 On an H100 at full 32k context we re-ran it at the intended breadth of 20
 chunks — a separate question from model scale, on a separate snapshot
 (<code>rag-breadth-h100</code>), single run, same 94 tasks and model.</p>
-<table>
+<div class="wrap"><table>
 <tr><th>vector-RAG configuration</th><th>corpus seen</th><th>tokens/task</th><th>accuracy</th></tr>
 <tr><td>k=1 × 256-event chunks (24 GB card)</td><td>0.4%</td><td>~19k</td><td><span data-fact="rag_k1_acc">10.6</span>%</td></tr>
 <tr><td>k=20 × 24-event chunks (H100, 32k ctx)</td><td><span data-fact="rag_k20_exposure">0.8</span>%</td><td><span data-fact="rag_k20_tokens">32,475</span></td><td class="miss"><span data-fact="rag_k20_acc">2.1</span>%</td></tr>
 <tr><td>TGMS, same run, same model</td><td>—</td><td><span data-fact="tgms_same_run_tokens">6,521</span></td><td class="win"><span data-fact="tgms_same_run_acc">36.2</span>%</td></tr>
-</table>
+</table></div>
 <p style="margin:10px 0 0">Twenty chunks of 24 events is 480 of 59,835 —
 0.8% of the corpus in total, not 0.8% at each of twenty sites. Widening
 retrieval lowered accuracy while multiplying the prompt roughly fivefold.
@@ -322,10 +329,11 @@ composing a temporal join. Both retrieval cells are single runs and 2.1% is
 
 <p>Across every cell here, and two further model families on the same
 operator set, the number of emitted claims that failed verification against
-the execution trace was <span data-fact="unsupported_claims">0</span>.
+the execution trace was <span data-fact="unsupported_claims">0</span> — 0 of
+the 199 answers the gated system emitted across 282 task runs.
 Weaker models answered fewer questions rather than more of them wrongly —
 partly by declining to answer: in the primary campaign the gated system
-answered 70.6% of tasks and was right 54.8% of the time on those. What
+answered 70.6% of tasks (199 of 282) and was right 54.8% of the time on those. What
 ships is checked; not everything gets an answer.</p>
 
 <h2>What this result does not show</h2>

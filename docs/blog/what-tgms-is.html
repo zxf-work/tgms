@@ -164,7 +164,7 @@ be arithmetically correct and the evidence still incomplete.</p>
         stroke="var(--blue)" stroke-opacity=".55"/>
   <text x="275" y="76" font-size="13" fill="var(--ink)" text-anchor="middle">verified</text>
   <text x="275" y="93" font-size="13" fill="var(--ink)" text-anchor="middle">operations</text>
-  <text x="275" y="109" font-size="11" fill="var(--mut)" text-anchor="middle">14, contract-checked</text>
+  <text x="275" y="109" font-size="11" fill="var(--mut)" text-anchor="middle"><tspan data-fact="operator_count">14</tspan>, contract-checked</text>
 
   <rect x="388" y="52" width="150" height="66" rx="10" fill="var(--blue)" opacity=".16"
         stroke="var(--blue)" stroke-opacity=".55"/>
@@ -208,7 +208,7 @@ that belief time.</li>
 <li><b>The operations</b> do the work: select the March valid-time window,
 group by region, count distinct recipients. Each is a named operation with a
 contract, so the plan is checkable before it runs — and the result carries a
-fingerprint, which is how we verify that four other systems answering the same
+fingerprint, which is how we verify that five other systems answering the same
 question get byte-identical results.</li>
 <li><b>The verifier</b> checks the final claim against what came back. If the
 result had been truncated by a row limit, the distinct count would rest on
@@ -223,7 +223,8 @@ whole point.</p>
 figure quoted below is measured on one 40-core host with
 <span data-fact="registry_queries">13</span> registry queries run against
 <span data-fact="system_count">6</span> systems, on a synthetic bi-temporal
-event log containing corrections, at 200k to 10M events. Every cell is
+event log containing corrections — all six at 200,000 events, four of them at
+a million and three at ten million. Every cell is
 hash-verified to return the identical answer before it is timed. Latency cells
 reproduce to about ±<span data-fact="reproducibility_band">20</span>% between
 days. Snapshot <code>registry-v2</code>; full tables and records in
@@ -243,15 +244,17 @@ lookups the two are close and the ordering depends on scale —
 PostgreSQL's <span data-fact="point_lookup_200k_postgres_ms">0.3</span> at
 200k events, with PostgreSQL ahead again at 10M.</li>
 <li><b>Not a replacement for ClickHouse.</b> Large whole-window aggregation is
-a column store's home ground and the gap grows with scale: at 10M events
+a column store's home ground, and above a few hundred thousand events it holds
+a steady factor of two: at 10M events
 ClickHouse answers the bucketed count in
 <span data-fact="series_10m_clickhouse_ms">37.9</span> ms against our
 <span data-fact="series_10m_native_ms">84.7</span>, a factor of
-<span data-fact="clickhouse_agg_lead_10m">2.2</span>. If nightly rollups over
+<span data-fact="clickhouse_agg_lead_10m">2.2</span> — the same ratio at a
+million, and a tie at 200k. If nightly rollups over
 tens of millions of events are the job, use a column store; our own numbers
 say so.</li>
 <li><b>Not a replacement for Neo4j or a general graph database.</b> TGMS is
-faster on <i>bi-temporal</i> traversal by one to two orders of magnitude —
+faster on <i>bi-temporal</i> traversal by about two orders of magnitude —
 <span data-fact="traversal_200k_native_ms">14.7</span> ms against
 <span data-fact="traversal_200k_graph_engines">3.9-7.3</span> seconds at 200k
 events — because every hop re-filters by validity and belief, which no index
@@ -294,13 +297,14 @@ frozen real dataset, warm caches, single client. They do not cover OLTP,
 distributed operation, or cold start.</li>
 <li>Answer-quality figures elsewhere in this series come from specific models
 on specific task sets — for example
-<span data-fact="answer_accuracy_tgms">41</span>% of tasks whose structured
-answer exactly matched the reference (pooled, Qwen2.5-14B). They are not
+<span data-fact="answer_accuracy_tgms">41</span>% normalized typed-answer
+accuracy — the share of answers matching the reference, counts and values
+exact and interval answers credited at IoU ≥ 0.5 (pooled, Qwen2.5-14B). They are not
 claims about language models in general.</li>
 <li>Where this series reports that a campaign produced
 <span data-fact="unsupported_claims">0</span> unsupported claims, that is
-among the 268 evaluated answers of that campaign — a result on a task set, not
-a guarantee.</li>
+among the 199 answers it emitted across 282 task runs — a result on a task
+set, and part of the zero is bought by declining to answer the other 83.</li>
 </ul>
 
 <h2>Takeaway</h2>
@@ -327,7 +331,7 @@ costs</a>.</li>
 <li><b>If you like watching measurements overturn beliefs:</b>
 <a href="racing-the-specialist.html">racing the specialist</a> and
 <a href="resident-index.html">how a resident index slowed an unrelated scan by
-18%</a>.</li>
+<span data-fact="resident_index_tax_pct">18</span>%</a>.</li>
 </ul>
 
 </article>
