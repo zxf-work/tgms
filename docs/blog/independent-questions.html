@@ -109,11 +109,11 @@ artifact</a> · <a href="https://github.com/zxf-work/tgms">code</a></div>
 list to write the questions they actually wanted answered, and only
 <span data-fact="coverage_original">10</span> of
 <span data-fact="coverage_total_questions">110</span> could be expressed at
-all — a number that is <span data-fact="coverage_current">24</span> today,
+all — a number that is <span data-fact="coverage_current">28</span> today,
 and that taught us more by missing its own forecast than by hitting it.</p>
 
 <div class="meta"><b>Status: Current.</b> TGMS 0.4.0 · study July
-2026, pre-registered as D-026 · re-audit 2 August 2026 · ~6 min.</div>
+2026, pre-registered as D-026 · re-audits 2 and 3 August 2026 · ~7 min.</div>
 
 <h2>Why this matters</h2>
 
@@ -267,7 +267,7 @@ questions the histogram said grouping would unlock on its own.</div>
 <div class="cell"><b>Measured, August</b>
 <div class="big amber"><span data-fact="indep_delivered">14</span></div>
 that actually became expressible — coverage
-<span data-fact="coverage_current">24</span> of 110, up from
+<span data-fact="coverage_after_grouping">24</span> of 110, up from
 <span data-fact="coverage_original">10</span>.</div>
 </div>
 
@@ -282,7 +282,7 @@ add up to thirty, so here is the full accounting:</p>
 <tr><td>Plus one question tagged for a different capability that the new
 operation happened to unlock</td><td class="win">1</td></tr>
 <tr><td><b>Delivered</b></td><td class="win"><b><span data-fact="indep_delivered">14</span></b></td></tr>
-<tr><td>Coverage: 10 originally expressible + 14</td><td class="win"><b><span data-fact="coverage_current">24</span> of 110</b></td></tr>
+<tr><td>Coverage: 10 originally expressible + 14</td><td class="win"><b><span data-fact="coverage_after_grouping">24</span> of 110</b></td></tr>
 </table>
 
 <p>With grouping in hand, what the seventeen had been waiting for became
@@ -302,6 +302,21 @@ questions. But a number attached to a tag is an upper bound, not a
 forecast, and the fix is cheap: make every tag name the operation that
 would satisfy it, and the tags that cannot name one are the ones hiding a
 second capability.</p>
+
+<p>That prediction has since been tested a second time, on the tag the
+histogram ranked next: arithmetic beyond counting — averages, medians,
+ratios, differences, percentages — was going to unlock
+<span data-fact="indep_ar_predicted">7</span> questions on its own. It
+unlocked <span data-fact="indep_ar_delivered">4</span>, taking coverage to
+<span data-fact="coverage_current">28</span> of
+<span data-fact="coverage_total_questions">110</span>, and the shortfall has
+the same shape: of the questions that stayed blocked, most do not want a
+number computed from a result — they want a number computed <i>per row of
+one</i>, like the span between an account's first and last rating before
+those spans are averaged. Three more want a rank the operator cannot
+express, such as the top 1% of accounts. One tag, three capabilities, found
+the same way as the first: by building one of them and re-classifying
+everything it touched.</p>
 
 <h2>What this result does not show</h2>
 

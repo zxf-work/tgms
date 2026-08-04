@@ -129,9 +129,16 @@
       "prose": "systems answering the same registry: TGMS native, TGMS-on-DuckDB, PostgreSQL, ClickHouse, Neo4j, Memgraph"
     },
     "coverage_current": {
-      "value": "24",
+      "value": "28",
       "kind": "benchmark",
       "prose": "of 110 independently written questions expressible in the current operator set",
+      "snapshot": "coverage re-audit 2026-08-03 (C15 in scripts/independent_questions.py)"
+    },
+    "coverage_after_grouping": {
+      "value": "24",
+      "kind": "benchmark",
+      "prose": "of 110 expressible immediately after grouped aggregation shipped — the endpoint of the D-044 episode, not the current number",
+      "label_required": "after grouping shipped",
       "snapshot": "coverage re-audit 2026-08-02 (C14 in scripts/independent_questions.py)"
     },
     "coverage_original": {
@@ -352,6 +359,17 @@
       "kind": "benchmark",
       "prose": "of the 30 predicted questions that stayed blocked, on a capability the tag concealed",
       "snapshot": "coverage re-audit 2026-08-02 (C14 in scripts/independent_questions.py)"
+    },
+    "indep_ar_predicted": {
+      "value": "7",
+      "kind": "benchmark",
+      "prose": "questions the second histogram said arithmetic would unlock on its own"
+    },
+    "indep_ar_delivered": {
+      "value": "4",
+      "kind": "benchmark",
+      "prose": "questions that actually became expressible once the arithmetic shipped, against 7 predicted",
+      "snapshot": "coverage re-audit 2026-08-03 (C15 in scripts/independent_questions.py)"
     },
     "indep_multi_blocker": {
       "value": "55",

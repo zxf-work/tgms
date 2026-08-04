@@ -257,6 +257,64 @@ L: dict[str, tuple[int, str, bool, str, str]] = {
              "Dijkstra over a projection built from STUDY_AT attributes"),
 }
 
+# --------------------------------------------------------------------------- #
+# re-audit after the D-051 session extended O13 `compute` with arithmetic      #
+# --------------------------------------------------------------------------- #
+# A diff, not a rewrite: `L` stays as D-050 published it and an entry absent
+# here keeps its verdict. Same shape and same discipline as `C15` in
+# scripts/independent_questions.py, and the same finding — `AR` was three
+# capabilities under one label, and the two that remain here are `ROW`
+# (row-wise arithmetic over a prior step's rows: a derived column, a
+# per-group score, a weighted sum) and nothing else. **No template changes
+# class**: every one of these is also gated by `PAT` or `SP`, so the LDBC
+# number is unchanged at 3 of 41, exactly as the handoff predicted.
+# value = (class, need tags, justification)
+L15: dict[str, tuple[int, str, str]] = {
+    "IC3": (3, "PAT,PROP,SET,ROW,NEG",
+            "the two per-country counts are summed per friend once the sets "
+            "are joined — a derived column, not a scalar quotient"),
+    "IC7": (3, "PAT,PROP,ROW,NEG",
+            "latency in minutes is (like time - message creation) per row, "
+            "then a divide — a derived column, not a scalar quotient"),
+    "IC10": (3, "PAT,PROP,CAL,ROW,SET",
+             "the common-minus-non-common score is per candidate friend"),
+    "IC14": (3, "SP,PAT,ROW",
+             "the path weight is summed per path from interaction counts"),
+    "BI1": (3, "G,CAL,ROW,PROP",
+            "both remaining numbers are per bucket — the average message "
+            "length within the group and that group's share of the global "
+            "total — so a whole-input mean and a two-scalar percent reach "
+            "neither"),
+    "BI2": (3, "PAT,SET,ROW,PROP",
+            "the two windows are differenced per tag, with abs()"),
+    "BI5": (3, "PAT,PROP,ROW,SET",
+            "1*m + 2*r + 10*l is a weighted sum per person"),
+    "BI8": (3, "PAT,PROP,ROW,SET",
+            "100*i + m is a weighted sum per person"),
+    "BI9": (3, "PAT,PROP,G",
+            "AR was over-tagged here: counts and sums are original-13 "
+            "aggregates, and what blocks the template is reaching message "
+            "length (a prop) under a grouping over a variable-length walk"),
+    "BI12": (3, "PROP,G",
+             "AR was over-tagged here too: a histogram of persons by their "
+             "message count is a grouping over a grouping, and the "
+             "threshold is `filter(count ge k)`, which shipped with the "
+             "original thirteen"),
+    "BI13": (3, "PAT,PROP,CAL,ROW,SET",
+             "the zombie rate is per person: messages over months since "
+             "that person's own account creation"),
+    "BI14": (3, "PAT,PROP,ROW,SET,G",
+             "the 4/1/10/1 score is per city-pair row"),
+    "BI15": (3, "SP,PAT,ROW",
+             "1/(interaction count + 1) is a derived edge weight"),
+    "BI16": (3, "PAT,PROP,CAL,SET,ROW",
+             "the two tag counts are summed per person"),
+    "BI19": (3, "SP,PAT,ROW",
+             "a derived weighted projection, as BI15"),
+    "BI20": (3, "SP,PAT,ROW,PROP",
+             "the weight is the difference of study years, per edge"),
+}
+
 WORKLOADS = {"IS": "Interactive Short", "IC": "Interactive Complex (v1)",
              "BI": "Business Intelligence"}
 
@@ -285,11 +343,23 @@ CHAIN_VOCAB = {
     "find_temporal_motif_instances", "temporal_reachability",
     "temporal_paths", "compute", "aggregate_events",
     "count", "sum", "min", "max", "topk", "filter", "interval_relation",
+    # O13 `compute` arithmetic, added by the D-051 session
+    "mean", "median", "ratio", "diff", "percent",
 }
 
-#: Every tag a class-3 entry may carry.
-TAG_VOCAB = {"G", "AR", "PROP", "CAL", "SET", "NEG", "GLOB", "SEQ",
-             "PAT", "SP"}
+#: Every tag a class-3 entry may carry. `AR` is retired by `L15` (it named
+#: three capabilities); `PCT` is in the vocabulary because the companion
+#: study needs it, and the fact that **no LDBC template needs it** is itself
+#: a difference between the two workloads worth being able to state.
+TAG_VOCAB = {"G", "PROP", "CAL", "SET", "NEG", "GLOB", "SEQ",
+             "PAT", "SP", "ROW", "PCT"}
+#: Retired tags: still legal in `L`, never legal in a re-audit.
+RETIRED_TAGS = {"AR"}
+
+
+def verdict(qid: str) -> tuple[int, str]:
+    """The current verdict: `L15` if it re-audited the template, else `L`."""
+    return (L15[qid][0], L15[qid][1]) if qid in L15 else (L[qid][0], L[qid][1])
 
 
 def _check() -> None:
@@ -298,30 +368,49 @@ def _check() -> None:
         assert cls in (1, 2, 3), f"{qid}: class {cls} cannot arise here"
         assert title and why, f"{qid} is missing a title or justification"
         if cls == 3:
-            unknown = set(tags.split(",")) - TAG_VOCAB
+            unknown = set(tags.split(",")) - TAG_VOCAB - RETIRED_TAGS
             assert not unknown, f"{qid}: unknown need tag(s) {unknown}"
         else:
             unknown = set(tags.split("+")) - CHAIN_VOCAB
             assert not unknown, f"{qid}: chain names non-operator {unknown}"
             assert (cls == 1) == ("+" not in tags), (
                 f"{qid}: class 1 is a single operator, class 2 a chain")
+    for qid, (cls, tags, why) in L15.items():
+        assert qid in L, f"L15 {qid} is not an LDBC template"
+        assert why, f"L15 {qid} has no justification"
+        assert (cls, tags) != (L[qid][0], L[qid][1]), f"L15 {qid} is not a change"
+        assert cls <= L[qid][0], f"L15 {qid} moved backwards"
+        unknown = set(tags.split(",")) - TAG_VOCAB if cls == 3 \
+            else set(tags.split("+")) - CHAIN_VOCAB
+        assert not unknown, f"L15 {qid}: unknown tag(s) {unknown}"
+    assert not [q for q in L if set(_needs(*verdict(q))) & RETIRED_TAGS], \
+        "a retired tag survived the L15 re-audit"
 
 
 def report() -> None:
     _check()
-    dist = Counter(L[q][0] for q in L)
-    print("class distribution (14 ops, 41 read templates):",
-          dict(sorted(dist.items())))
-    expressible = sorted(q for q in L if L[q][0] <= 2)
+    print("class distribution (D-050, 14 ops):",
+          dict(sorted(Counter(L[q][0] for q in L).items())))
+    print("class distribution (D-051 session re-audit):",
+          dict(sorted(Counter(verdict(q)[0] for q in L).items())))
+    expressible = sorted(q for q in L if verdict(q)[0] <= 2)
     print(f"expressible: {len(expressible)} of {len(L)} — "
           f"{', '.join(expressible)}")
     for pfx, name in WORKLOADS.items():
         qs = [q for q in L if workload(q) == pfx]
-        ok = [q for q in qs if L[q][0] <= 2]
+        ok = [q for q in qs if verdict(q)[0] <= 2]
         print(f"  {name:<26} {len(ok)}/{len(qs)}")
 
-    need = Counter(t for q in L for t in _needs(L[q][0], L[q][1]))
-    print("missing capabilities (class 3):", dict(need.most_common()))
+    print("missing capabilities (class 3, D-050):",
+          dict(Counter(t for q in L
+                       for t in _needs(L[q][0], L[q][1])).most_common()))
+    print("missing capabilities (class 3, after the re-audit):",
+          dict(Counter(t for q in L
+                       for t in _needs(*verdict(q))).most_common()))
+    moved = [q for q in L if verdict(q)[0] != L[q][0]]
+    print(f"templates that changed class: {len(moved) or 'none'}"
+          f"{' — ' + ', '.join(moved) if moved else ''}; "
+          f"{len(L15)} re-audited tag strings")
     tp = sum(1 for q in L if L[q][2])
     print(f"templates with a predicate on a temporal attribute: {tp} of {len(L)}")
     print(f"templates referencing a second clock (belief/as-of): 0 of {len(L)}")
@@ -329,6 +418,8 @@ def report() -> None:
     rows = [{"id": q, "workload": WORKLOADS[workload(q)],
              "source": SOURCES[workload(q)], "title": L[q][3],
              "class": L[q][0], "need_or_ops": L[q][1],
+             "class_15": verdict(q)[0], "need_or_ops_15": verdict(q)[1],
+             "justification_15": L15[q][2] if q in L15 else "",
              "temporal_predicate": L[q][2], "belief_clock": False,
              "justification": L[q][4]}
             for q in sorted(L, key=lambda k: (list(WORKLOADS).index(workload(k)),
