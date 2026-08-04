@@ -255,9 +255,13 @@ def _mean(s: int, n: int) -> float:
 
 
 def _too_many_groups(n: int) -> LimitError:
+    # The repair loop consumes these levers, so a lever that exists and is
+    # not named here is a lever no planner can reach. `endpoint_filter` and
+    # `pair_mode: undirected` both narrow (D-054) and were missing.
     return LimitError(
         f"group count {n} exceeds cap {MAX_GROUPS}; narrow the window, add a "
-        f"rel_types filter, or use coarser dimensions")
+        f"rel_types filter, restrict to a cohort with endpoint_filter, fold "
+        f"directions with pair_mode 'undirected', or use coarser dimensions")
 
 
 # --------------------------------------------------------------------------- #
