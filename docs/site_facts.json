@@ -129,10 +129,10 @@
    "prose": "systems answering the same registry: TGMS native, TGMS-on-DuckDB, PostgreSQL, ClickHouse, Neo4j, Memgraph"
   },
   "coverage_current": {
-   "value": "52",
+   "value": "67",
    "kind": "benchmark",
    "prose": "of 110 independently written questions expressible in the current operator set",
-   "snapshot": "coverage re-audit 2026-08-04 (C17 in scripts/independent_questions.py)"
+   "snapshot": "coverage re-audit 2026-08-04 (C18 in scripts/independent_questions.py)"
   },
   "coverage_after_grouping": {
    "value": "24",
@@ -406,6 +406,17 @@
    "kind": "benchmark",
    "prose": "questions that actually became expressible once set operations shipped, against 16 predicted",
    "snapshot": "coverage re-audit 2026-08-04 (C17 in scripts/independent_questions.py)"
+  },
+  "indep_rowjoin_predicted": {
+   "value": "15",
+   "kind": "benchmark",
+   "prose": "questions the fifth histogram said row arithmetic and the keyed join would unlock together"
+  },
+  "indep_rowjoin_delivered": {
+   "value": "15",
+   "kind": "benchmark",
+   "prose": "questions that actually became expressible once they shipped, against 15 predicted \u2014 the first exact forecast",
+   "snapshot": "coverage re-audit 2026-08-04 (C18 in scripts/independent_questions.py)"
   },
   "indep_multi_blocker": {
    "value": "55",

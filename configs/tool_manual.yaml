@@ -132,6 +132,16 @@ compute:
     (intersect), "X but never Y" (difference) and "either" (union) over uid
     sets from two groupings. The answer is a deduplicated, canonically
     ordered list in `rows`, with `rows_total` its size.
+    Row work: derive(`field`, `field2` or `value`, `op`, `into`) adds ONE
+    computed column to the rows — op in add/sub/mul/div/floordiv/concat —
+    e.g. a per-group span {"fn":"derive","field":"max_vt_s",
+    "field2":"min_vt_s","op":"sub","into":"span"}, then floordiv by 86400000000
+    for days. join(`other`, `on`, `other_on`, `how`, `fill`) aligns two prior
+    steps on a key; the right side's columns arrive prefixed `r_`. Keys must
+    be UNIQUE on both sides (group first). how=inner keeps matched keys only,
+    how=left keeps every left row and fills the right with `fill`. The pair
+    derive+join is how you compare two groupings: join them, then derive the
+    difference or ratio.
     Also interval_relation (`a`, `b` half-open intervals -> Allen relation
     name).
     Integer inputs give exact integer answers; anything inexact is rounded
