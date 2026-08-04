@@ -292,7 +292,8 @@ tasks, same repair budget.</dd>
 <h2>What we found</h2>
 
 <p>On the three correction-probe tasks the change is total: none of them ran
-before, all of them ran after. Across the full 22-task split the same check
+before, all of them ran after. Across the full
+<span data-fact="dev_task_count">22</span>-task split the same check
 moves execution success from nothing to just over half. Both numbers describe
 the same check; they differ because the rest of the split contains tasks a 7B
 model fails to plan for other reasons.</p>
@@ -303,22 +304,25 @@ model fails to plan for other reasons.</p>
   <text x="8" y="18" font-size="12" font-weight="700" fill="var(--mut)">EXECUTION SUCCESS — output-field validation OFF ▸ ON</text>
   <text x="8" y="36" font-size="11.5" fill="var(--mut)">Qwen2.5-7B-Instruct · temperature 0 · same tasks, same prompts · higher is better</text>
 
-  <text x="8" y="72" font-size="12.5" font-weight="650" fill="var(--ink)">The 3 correction-probe tasks</text>
+  <text x="8" y="72" font-size="12.5" font-weight="650" fill="var(--ink)">The <tspan data-fact="dev_probe_task_count">3</tspan> correction-probe tasks</text>
   <rect x="8" y="82" width="330" height="26" rx="4" fill="var(--line)"/>
   <text x="18" y="100" font-size="12" class="m" fill="var(--mut)">OFF · <tspan data-fact="exec_success_probes_before">0</tspan>% — 0 of 3</text>
   <rect x="348" y="82" width="330" height="26" rx="4" fill="var(--ok)" opacity=".85"/>
   <text x="358" y="100" font-size="12" class="m" fill="#fff">ON · <tspan data-fact="exec_success_probes_after">100</tspan>% — 3 of 3</text>
 
-  <text x="8" y="140" font-size="12.5" font-weight="650" fill="var(--ink)">All 22 development tasks</text>
+  <text x="8" y="140" font-size="12.5" font-weight="650" fill="var(--ink)">All <tspan data-fact="dev_task_count">22</tspan> development tasks</text>
   <rect x="8" y="150" width="330" height="26" rx="4" fill="var(--line)"/>
   <text x="18" y="168" font-size="12" class="m" fill="var(--mut)">OFF · <tspan data-fact="exec_success_overall_before">0</tspan>% — 0 of 22</text>
   <rect x="348" y="150" width="330" height="26" rx="4" fill="var(--line)"/>
   <rect x="348" y="150" width="182" height="26" rx="4" fill="var(--blue)" opacity=".85"/>
   <text x="358" y="168" font-size="12" class="m" fill="#fff">ON · <tspan data-fact="exec_success_overall_after">55</tspan>% — 12 of 22</text>
 </svg>
-<figcaption>The headline 0% → 100% is <b>3 of 3 tasks</b> on the probe subset,
+<figcaption>The headline <span data-fact="exec_success_probes_before">0</span>%
+→ <span data-fact="exec_success_probes_after">100</span>% is
+<b><span data-fact="dev_probe_task_count">3</span> of 3 tasks</b> on the probe subset,
 and it is execution success — whether the plan ran — not whether the answer was
-right. On the full 22-task split the same check yields 12 of 22. A three-task
+right. On the full <span data-fact="dev_task_count">22</span>-task split the
+same check yields 12 of 22. A three-task
 subset cannot support a rate; it shows that a specific, total failure was
 removed.</figcaption>
 </figure>

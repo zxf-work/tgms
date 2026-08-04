@@ -110,7 +110,7 @@ the table still say what it said? It did not. Our bucketed-count query at one
 million events read 84 ms against a published
 <span data-fact="series_1m_july_published_ms">59.0</span>. Same dataset, same
 code path, byte-identical answer — a number that had been printed to the tenth
-of a millisecond, and it had moved by 40%.</p>
+of a millisecond, and it had moved by 42%.</p>
 
 <p>A benchmark number that will not reproduce is worse than a slow one,
 because every conclusion resting on it is now unpinned. And the reason turned
@@ -215,8 +215,9 @@ minutes apart in one process. Records:
 <h2>What we found</h2>
 
 <p>Holding the built index costs the unrelated query
-<span data-fact="resident_index_tax_pct">18</span>%. Holding merely the
-columns the index is built from costs 4–5%. Releasing the index returns the
+<span data-fact="resident_index_tax_pct">18</span>%. Holding a
+comparable weight of plain columns costs 5%, and holding the index's own
+source columns 4%. Releasing the index returns the
 time — to within a tenth of a millisecond of where it started. That
 reversibility is what makes it a residency effect rather than damage, and a
 second query measured in the same process does not move at all.</p>
@@ -259,12 +260,13 @@ second query measured in the same process does not move at all.</p>
     <text x="586" y="235" fill="var(--ok)">again</text>
   </g>
   <text x="62" y="258" font-size="11.5" fill="var(--mut)">series.count, 1M events,
-  one process, one warm store · +18% held, and all of it returned on release.</text>
+  one process, one warm store · +<tspan data-fact="resident_index_tax_pct">18</tspan>% held, and all of it returned on release.</text>
 </svg>
-<figcaption>The axis starts at zero, so the 18% gap is drawn as 18%. Amber
+<figcaption>The axis starts at zero, so the
+<span data-fact="resident_index_tax_pct">18</span>% gap is drawn as 18%. Amber
 marks the condition where TGMS is slower — a cost, not a failure; green marks
 the release that hands the time back. The four-condition design is the whole
-argument: holding the index's <i>source columns</i> costs 4–5%, so most of the
+argument: holding the index's <i>source columns</i> costs about 4%, so most of the
 18% belongs to the built structure rather than to the raw bytes.
 <code>series.count</code> at 1M, median of repeated runs, all conditions in a
 single process minutes apart.</figcaption>
