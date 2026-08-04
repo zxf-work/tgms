@@ -1,6 +1,6 @@
 [
  {
-  "description": "Grouped aggregation over edge events (believed edge versions with t_a <= vt_s < t_b). Dimensions: time_bucket (with stride), rel_type, endpoint (src|dst as uids), label (endpoint's node label valid at the event; null when none). Aggregates: count, count_distinct(src|dst), min/max/mean over vt_s or duration (= vt_e - vt_s; open-ended rows excluded). Non-empty groups only; group_by [] returns one global row. Rows ordered by dimension values (numeric order / code-point order, null labels first). Properties (D-052): min/max/mean over of='prop' with a `prop` key, and `prop_filter` to select on one; a value participates only if its JSON type fits \u2014 text is never parsed into a number and a boolean is not one \u2014 and every excluded row is counted per property in `prop_coercion`. Sets (D-054): `endpoint_filter` {role: src|dst|either, uids} restricts events to a cohort from an earlier step; `pair_mode` over a [endpoint src, endpoint dst] grouping folds A->B with B->A (`undirected`) or additionally keeps only pairs that occurred both ways (`reciprocal`).\nOutput fields: rows, rows_total, truncated, cursor, prop_coercion.",
+  "description": "Grouped aggregation over edge events (believed edge versions with t_a <= vt_s < t_b). Dimensions: time_bucket (with stride), rel_type, endpoint (src|dst as uids), label (endpoint's node label valid at the event; null when none). Aggregates: count, count_distinct(src|dst), min/max/mean over vt_s or duration (= vt_e - vt_s; open-ended rows excluded). Non-empty groups only; group_by [] returns one global row. Rows ordered by dimension values (numeric order / code-point order, null labels first). Properties (D-052): min/max/mean over of='prop' with a `prop` key, and `prop_filter` to select on one; a value participates only if its JSON type fits \u2014 text is never parsed into a number and a boolean is not one \u2014 and every excluded row is counted per property in `prop_coercion`. Sets (D-054): `endpoint_filter` {role: src|dst|either, uids} restricts events to a cohort from an earlier step; `pair_mode` over a [endpoint src, endpoint dst] grouping folds A->B with B->A (`undirected`) or additionally keeps only pairs that occurred both ways (`reciprocal`). Sequences (D-056), each over the group's events in vt_s order and taking no 'of': `max_gap` is the longest hole between two consecutive events (null below two events, 0 for simultaneous ones); `max_in_window` with `span` is the largest number of events in ANY window [t, t+span) \u2014 a sliding window, not the fixed stride a time_bucket dimension gives, and 0 over an empty group; `max_session_span` with `gap` is the longest run of events no two of which are more than `gap` apart, measured first to last. One `span` and one `gap` per call.\nOutput fields: rows, rows_total, truncated, cursor, prop_coercion.",
   "input_schema": {
    "additionalProperties": false,
    "properties": {
@@ -14,13 +14,25 @@
          "count_distinct",
          "min",
          "max",
-         "mean"
+         "mean",
+         "max_gap",
+         "max_in_window",
+         "max_session_span"
         ],
         "type": "string"
        },
+       "gap": {
+        "default": null,
+        "description": "session-splitting threshold, required by max_session_span; a run continues while consecutive events are at most this apart",
+        "minimum": 1,
+        "type": [
+         "integer",
+         "null"
+        ]
+       },
        "of": {
         "default": null,
-        "description": "src|dst for count_distinct; vt_s|duration|prop for min/max/mean",
+        "description": "src|dst for count_distinct; vt_s|duration|prop for min/max/mean; the sequence aggregates take none",
         "enum": [
          "src",
          "dst",
@@ -40,6 +52,15 @@
         "minLength": 1,
         "type": [
          "string",
+         "null"
+        ]
+       },
+       "span": {
+        "default": null,
+        "description": "sliding-window width, required by max_in_window; the window is [t, t + span)",
+        "minimum": 1,
+        "type": [
+         "integer",
          "null"
         ]
        }
@@ -482,7 +503,7 @@
   "name": "co_active"
  },
  {
-  "description": "Deterministic computation \u2014 never do arithmetic yourself.\nOver a prior step's rows (`input`, normally {\"$ref\": \"sN.rows\"}, with an\noptional numeric `field`): count, sum, min, max, mean, median; topk\n(`field`, `k` -> best rows); filter (`field`, `cmp` in\neq/ne/lt/le/gt/ge/contains, `value`).\nOver two scalars from earlier steps, passed as `x` and `y` (each normally\n{\"$ref\": \"sN.value\"} or {\"$ref\": \"sN.rows[0].count\"}): ratio -> x/y,\ndiff -> x-y, percent -> 100*x/y. Use these to compare or combine two\nresults; they take no `input`.\nOver two lists, passed as `input` and `other` (each normally\n{\"$ref\": \"sN.rows\"}, with `field`/`other_field` naming the column to take\nfrom each): intersect, difference, union. Use these for \"both X and Y\"\n(intersect), \"X but never Y\" (difference) and \"either\" (union) over uid\nsets from two groupings. The answer is a deduplicated, canonically\nordered list in `rows`, with `rows_total` its size.\nRow work: derive(`field`, `field2` or `value`, `op`, `into`) adds ONE\ncomputed column to the rows \u2014 op in add/sub/mul/div/floordiv/concat \u2014\ne.g. a per-group span {\"fn\":\"derive\",\"field\":\"max_vt_s\",\n\"field2\":\"min_vt_s\",\"op\":\"sub\",\"into\":\"span\"}, then floordiv by 86400000000\nfor days. join(`other`, `on`, `other_on`, `how`, `fill`) aligns two prior\nsteps on a key; the right side's columns arrive prefixed `r_`. Keys must\nbe UNIQUE on both sides (group first). how=inner keeps matched keys only,\nhow=left keeps every left row and fills the right with `fill`. The pair\nderive+join is how you compare two groupings: join them, then derive the\ndifference or ratio.\nAlso interval_relation (`a`, `b` half-open intervals -> Allen relation\nname).\nInteger inputs give exact integer answers; anything inexact is rounded\nonce. Cost: trivial.\nExamples: {\"fn\": \"topk\", \"input\": {\"$ref\": \"s2.rows\"}, \"field\": \"value\",\n\"k\": 3} \u00b7 {\"fn\": \"mean\", \"input\": {\"$ref\": \"s1.rows\"}, \"field\": \"count\"} \u00b7\n{\"fn\": \"diff\", \"x\": {\"$ref\": \"s1.rows[0].count\"},\n\"y\": {\"$ref\": \"s2.rows[0].count\"}}\nOutput fields: value, rows, rows_total, truncated, cursor.",
+  "description": "Deterministic computation \u2014 never do arithmetic yourself.\nOver a prior step's rows (`input`, normally {\"$ref\": \"sN.rows\"}, with an\noptional numeric `field`): count, sum, min, max, mean, median; topk\n(`field`, `k` -> best rows); filter (`field`, `cmp` in\neq/ne/lt/le/gt/ge/contains, `value`).\nA grouped result may hold null cells \u2014 max_gap for an account with one\nevent, mean_duration for a group with no closed interval \u2014 and the\nreducers refuse them. Drop them first with filter (`cmp`: not_null, no\n`value`), or select exactly those rows with is_null.\nOver two scalars from earlier steps, passed as `x` and `y` (each normally\n{\"$ref\": \"sN.value\"} or {\"$ref\": \"sN.rows[0].count\"}): ratio -> x/y,\ndiff -> x-y, percent -> 100*x/y. Use these to compare or combine two\nresults; they take no `input`.\nOver two lists, passed as `input` and `other` (each normally\n{\"$ref\": \"sN.rows\"}, with `field`/`other_field` naming the column to take\nfrom each): intersect, difference, union. Use these for \"both X and Y\"\n(intersect), \"X but never Y\" (difference) and \"either\" (union) over uid\nsets from two groupings. The answer is a deduplicated, canonically\nordered list in `rows`, with `rows_total` its size.\nRow work: derive(`field`, `field2` or `value`, `op`, `into`) adds ONE\ncomputed column to the rows \u2014 op in add/sub/mul/div/floordiv/concat \u2014\ne.g. a per-group span {\"fn\":\"derive\",\"field\":\"max_vt_s\",\n\"field2\":\"min_vt_s\",\"op\":\"sub\",\"into\":\"span\"}, then floordiv by 86400000000\nfor days. join(`other`, `on`, `other_on`, `how`, `fill`) aligns two prior\nsteps on a key; the right side's columns arrive prefixed `r_`. Keys must\nbe UNIQUE on both sides (group first). how=inner keeps matched keys only,\nhow=left keeps every left row and fills the right with `fill`. The pair\nderive+join is how you compare two groupings: join them, then derive the\ndifference or ratio.\nAlso interval_relation (`a`, `b` half-open intervals -> Allen relation\nname).\nInteger inputs give exact integer answers; anything inexact is rounded\nonce. Cost: trivial.\nExamples: {\"fn\": \"topk\", \"input\": {\"$ref\": \"s2.rows\"}, \"field\": \"value\",\n\"k\": 3} \u00b7 {\"fn\": \"mean\", \"input\": {\"$ref\": \"s1.rows\"}, \"field\": \"count\"} \u00b7\n{\"fn\": \"diff\", \"x\": {\"$ref\": \"s1.rows[0].count\"},\n\"y\": {\"$ref\": \"s2.rows[0].count\"}}\nOutput fields: value, rows, rows_total, truncated, cursor.",
   "input_schema": {
    "additionalProperties": false,
    "properties": {
@@ -536,6 +557,8 @@
       "gt",
       "ge",
       "contains",
+      "is_null",
+      "not_null",
       null
      ],
      "type": [

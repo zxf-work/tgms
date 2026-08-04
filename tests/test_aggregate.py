@@ -142,6 +142,12 @@ AGGS = [
     {"agg": "min", "of": "duration"},
     {"agg": "max", "of": "duration"},
     {"agg": "mean", "of": "duration"},
+    # D-056's sequence aggregates: the two parameterized ones get their span
+    # drawn in `aggregates()` below, so the whole span range is exercised
+    # against the same ground truth as everything else here.
+    {"agg": "max_gap"},
+    {"agg": "max_in_window"},
+    {"agg": "max_session_span"},
 ]
 
 
@@ -161,7 +167,15 @@ def group_by(draw):
 def aggregates(draw):
     idx = draw(st.lists(st.sampled_from(range(len(AGGS))), min_size=1,
                         max_size=4, unique=True))
-    return [AGGS[i] for i in idx]
+    out = []
+    for i in idx:
+        a = dict(AGGS[i])
+        if a["agg"] == "max_in_window":
+            a["span"] = draw(st.integers(1, T_MAX))
+        elif a["agg"] == "max_session_span":
+            a["gap"] = draw(st.integers(1, T_MAX))
+        out.append(a)
+    return out
 
 
 @st.composite

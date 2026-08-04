@@ -22,7 +22,12 @@ Contract highlights (full rationale in DECISIONS.md D-044):
   always a float because its source is a typed column, while a property
   holds whatever JSON held, so an integer property gives an exact integer.
   The two live in one row on purpose and the difference is the source, not
-  an inconsistency.
+  an inconsistency;
+- *sequence* aggregates arrived with D-056 and are the first ones that need
+  a group's events in order rather than folded into an accumulator:
+  `max_gap`, `max_in_window` (with a `span`) and `max_session_span` (with a
+  `gap`). Their absent value follows one rule — a count is 0 over an empty
+  population, a duration between events that do not exist is null.
 
 This module holds the operator plus the portable vectorized fallback over
 adapter columnar scans. The native engine answers through one PyO3 crossing
@@ -78,19 +83,35 @@ DIM_SPEC = {
     "required": ["dim"],
     "additionalProperties": False,
 }
+#: D-056. Three walks over a group's event times, in valid-time order. They
+#: take no `of`: the only ordering this operator has is `vt_s`, so naming it
+#: would be a single legal value and one more thing to get wrong.
+SEQ_AGGS = ("max_gap", "max_in_window", "max_session_span")
 AGG_SPEC = {
     "type": "object",
     "properties": {
         "agg": {"type": "string",
-                "enum": ["count", "count_distinct", "min", "max", "mean"]},
+                "enum": ["count", "count_distinct", "min", "max", "mean",
+                         *SEQ_AGGS]},
         "of": {"type": ["string", "null"],
                "enum": ["src", "dst", "vt_s", "duration", "prop", None],
                "default": None,
                "description": "src|dst for count_distinct; "
-                              "vt_s|duration|prop for min/max/mean"},
+                              "vt_s|duration|prop for min/max/mean; the "
+                              "sequence aggregates take none"},
         "prop": {"type": ["string", "null"], "default": None,
                  "minLength": 1,
                  "description": "property key, required when of = 'prop'"},
+        # deliberately not called `window`: that name is taken by the
+        # operator's own valid-time bounds, and a planner that confuses the
+        # two writes a {t_a, t_b} object here
+        "span": {"type": ["integer", "null"], "minimum": 1, "default": None,
+                 "description": "sliding-window width, required by "
+                                "max_in_window; the window is [t, t + span)"},
+        "gap": {"type": ["integer", "null"], "minimum": 1, "default": None,
+                "description": "session-splitting threshold, required by "
+                               "max_session_span; a run continues while "
+                               "consecutive events are at most this apart"},
     },
     "required": ["agg"],
     "additionalProperties": False,
@@ -140,6 +161,12 @@ def _agg_field(a: dict[str, Any]) -> str:
     """Deterministic output field name for one aggregate spec."""
     if a["agg"] == "count":
         return "count"
+    if a["agg"] in SEQ_AGGS:
+        # the span stays out of the field name on purpose: a planner has to
+        # reproduce this string in a later `filter` step, and
+        # `max_in_window_86400000000` is a thing to get wrong. The price is
+        # one span per call, refused explicitly rather than as a duplicate.
+        return a["agg"]
     if a["agg"] == "count_distinct":
         return f"distinct_{a['of']}"
     if a.get("of") == "prop":
@@ -174,7 +201,26 @@ def _aggregate_validators(args: dict[str, Any]) -> None:
         if a.get("prop") is not None and a.get("of") != "prop":
             raise InvalidArgError(
                 "'prop' is only meaningful with of 'prop'")
-        if a["agg"] == "count":
+        if a.get("span") is not None and a["agg"] != "max_in_window":
+            raise InvalidArgError(
+                "'span' is only meaningful with 'max_in_window'")
+        if a.get("gap") is not None and a["agg"] != "max_session_span":
+            raise InvalidArgError(
+                "'gap' is only meaningful with 'max_session_span'")
+        if a["agg"] in SEQ_AGGS:
+            if a.get("of") is not None:
+                raise InvalidArgError(
+                    f"aggregate {a['agg']!r} takes no 'of'; a sequence is "
+                    f"always ordered by vt_s")
+            if a["agg"] == "max_in_window" and a.get("span") is None:
+                raise InvalidArgError(
+                    "aggregate 'max_in_window' requires 'span', the window "
+                    "width in the same units as vt_s")
+            if a["agg"] == "max_session_span" and a.get("gap") is None:
+                raise InvalidArgError(
+                    "aggregate 'max_session_span' requires 'gap', the "
+                    "largest hole a single run may contain")
+        elif a["agg"] == "count":
             if a.get("of") is not None:
                 raise InvalidArgError("aggregate 'count' takes no 'of'")
         elif a["agg"] == "count_distinct":
@@ -191,6 +237,12 @@ def _aggregate_validators(args: dict[str, Any]) -> None:
                     "of 'prop' requires a property name in 'prop'")
         f = _agg_field(a)
         if f in fields:
+            if a["agg"] in SEQ_AGGS:
+                # two spans would want one column; name the actual repair
+                raise InvalidArgError(
+                    f"only one {a['agg']!r} per call, because the output "
+                    f"column is named for the aggregate and not for its "
+                    f"span; a second span needs a second call")
             raise InvalidArgError(f"duplicate aggregate {f!r}")
         fields.add(f)
 
@@ -367,6 +419,73 @@ def _portable_dim_codes(adapter: StorageAdapter, d: dict[str, Any],
     return codes, values, lambda c: c
 
 
+def _sequence_agg(a: dict[str, Any], inv: np.ndarray, vt_s: np.ndarray,
+                  g: int, t_a: int, t_b: int) -> list[Any]:
+    """One of D-056's sequence aggregates, over every group at once.
+
+    Sort the events by (group, vt_s) once and each group becomes a
+    contiguous run of non-decreasing times; the three aggregates are then
+    array arithmetic on adjacent pairs. `np.maximum.at` reduces per group,
+    with -1 as the sentinel for "this group produced no value" — legal
+    because every quantity here is a non-negative duration or count.
+
+    Spans are clamped to the valid-time window first. That is exact — a
+    window at least as wide as the window itself always covers the whole
+    group, and a hole threshold that wide can never be exceeded — and it is
+    what keeps `t + span` inside int64 for a `span` that arrived as an
+    arbitrary JSON integer.
+    """
+    kind, n = a["agg"], len(vt_s)
+    if n == 0:
+        # every window over no events holds none; a duration between events
+        # that do not exist is not zero, it is absent
+        return [0 if kind == "max_in_window" else None] * g
+    order = np.lexsort((vt_s, inv))
+    gi, t = inv[order], vt_s[order]
+
+    if kind == "max_in_window":
+        span = min(int(a["span"]), t_b - t_a)
+        # Rank-compress the times so that (group, rank) is one monotone
+        # int64 key: searching for `t + span` in the *global* array is only
+        # valid because the group prefix confines the answer to this group's
+        # block, and falls through to the next block's first index — which
+        # is this block's end — when the whole group fits in the window.
+        #
+        # `sort`, not `unique`. Duplicates change nothing: the rank of a
+        # value is the count of elements below it, that is monotone either
+        # way, and `t_j >= t_i + span` iff their ranks compare the same way
+        # because `t_j` is itself one of the elements counted. Measured at
+        # 10M events, `np.unique` cost 7,593 ms against `np.sort`'s 132 —
+        # 57x, for a distinction this never needed.
+        srt = np.sort(t)
+        base = n + 1
+        key = gi * base + np.searchsorted(srt, t)
+        query = gi * base + np.searchsorted(srt, t + span, side="left")
+        counts = np.searchsorted(key, query, side="left") - np.arange(n)
+        out = np.zeros(g, dtype=np.int64)
+        np.maximum.at(out, gi, counts)
+        return [int(v) for v in out]
+
+    same = gi[1:] == gi[:-1]            # an adjacent pair inside one group
+    d = t[1:] - t[:-1]
+    out = np.full(g, -1, dtype=np.int64)
+    if kind == "max_gap":
+        if same.any():
+            np.maximum.at(out, gi[1:][same], d[same])
+        # -1 survives for a group of fewer than two events: no pair, no gap
+        return [None if v < 0 else int(v) for v in out]
+
+    gap = min(int(a["gap"]), t_b - t_a)
+    starts = np.empty(n, dtype=bool)     # first event of a group, or of a run
+    starts[0] = True
+    starts[1:] = ~same | (d > gap)
+    si = np.flatnonzero(starts)
+    ei = np.append(si[1:], n) - 1
+    np.maximum.at(out, gi[si], t[ei] - t[si])
+    # a lone event is a run whose span is 0; only an empty group stays -1
+    return [None if v < 0 else int(v) for v in out]
+
+
 def _portable(adapter: StorageAdapter, args: dict[str, Any]) -> dict[str, Any]:
     t_a, t_b = args["window"]["t_a"], args["window"]["t_b"]
     dims, aggs = args["group_by"], args["aggregates"]
@@ -490,6 +609,8 @@ def _portable(adapter: StorageAdapter, args: dict[str, Any]) -> dict[str, Any]:
         field = _agg_field(a)
         if a["agg"] == "count":
             agg_cols[field] = [int(v) for v in counts]
+        elif a["agg"] in SEQ_AGGS:
+            agg_cols[field] = _sequence_agg(a, inv, vt_s, g, t_a, t_b)
         elif a["agg"] == "count_distinct":
             ids = src if a["of"] == "src" else dst
             if n:
@@ -665,7 +786,15 @@ def _native(adapter: StorageAdapter, args: dict[str, Any]) -> dict[str, Any]:
     "cohort from an earlier step; `pair_mode` over a "
     "[endpoint src, endpoint dst] grouping folds A->B with B->A "
     "(`undirected`) or additionally keeps only pairs that occurred both "
-    "ways (`reciprocal`).",
+    "ways (`reciprocal`). Sequences (D-056), each over the group's events "
+    "in vt_s order and taking no 'of': `max_gap` is the longest hole "
+    "between two consecutive events (null below two events, 0 for "
+    "simultaneous ones); `max_in_window` with `span` is the largest number "
+    "of events in ANY window [t, t+span) — a sliding window, not the fixed "
+    "stride a time_bucket dimension gives, and 0 over an empty group; "
+    "`max_session_span` with `gap` is the longest run of events no two of "
+    "which are more than `gap` apart, measured first to last. One `span` "
+    "and one `gap` per call.",
     cost_fn=scan_estimate,
     validators=[_aggregate_validators],
     output_fields=("rows", "rows_total", "truncated", "cursor",
@@ -678,8 +807,15 @@ def aggregate_events(adapter: StorageAdapter, args: dict[str, Any]) -> dict[str,
     # correctness first and made the typed column conditional on a
     # measurement; this is where that trade is actually paid, and the
     # measurement that would justify the column is a measurement of this.
+    # D-056's sequence aggregates are portable-only for a different reason:
+    # the two-phase kernel reduces each event into a running accumulator and
+    # never holds a group's events in order, which is the one thing a gap, a
+    # sliding window and a session all need. Pushing them down is a kernel
+    # design question, and the measurement that would justify it is a
+    # measurement of this.
     if (hasattr(adapter, "aggregate_events_columnar") and not _prop_keys(args)
             and args.get("pair_mode") is None
-            and args.get("endpoint_filter") is None):
+            and args.get("endpoint_filter") is None
+            and not any(a["agg"] in SEQ_AGGS for a in args["aggregates"])):
         return _native(adapter, args)
     return _portable(adapter, args)

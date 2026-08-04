@@ -46,7 +46,9 @@ SET_FNS = ("intersect", "difference", "union")
 REDUCERS = ("sum", "min", "max", "mean", "median")
 #: combine two scalars from earlier steps
 BINARY = ("ratio", "diff", "percent")
-CMPS = ["eq", "ne", "lt", "le", "gt", "ge", "contains"]
+#: `is_null`/`not_null` read no `value`: they select on presence, which is
+#: the only comparison a null cell takes part in (D-056).
+CMPS = ["eq", "ne", "lt", "le", "gt", "ge", "contains", "is_null", "not_null"]
 
 INTERVAL = {
     "type": "object",
@@ -216,8 +218,20 @@ def _keyed(rows: list[Any], key: str, fn: str, side: str) -> dict[Any, dict]:
 
 
 def _cmp(x: Any, cmp: str, v: Any) -> bool:
+    if cmp in ("is_null", "not_null"):
+        # presence is the only comparison a null takes part in; `value` is
+        # not read, so a plan that supplies one is not wrong, just verbose
+        return (x is None) if cmp == "is_null" else (x is not None)
     if cmp == "contains":
         return isinstance(x, (str, list)) and v in x
+    if x is None or v is None:
+        # D-052's rule, in `compute`'s dialect: a null is not a value of the
+        # other operand's type, so this is not a comparison that returned
+        # False. Dropping the row silently would be that decision's
+        # shrunken denominator with nobody told about it.
+        raise InvalidArgError(
+            "compute: cannot compare a null; select the rows that have a "
+            "value with cmp 'not_null' first, or test for it with 'is_null'")
     try:
         return {"eq": x == v, "ne": x != v, "lt": x < v, "le": x <= v,
                 "gt": x > v, "ge": x >= v}[cmp]

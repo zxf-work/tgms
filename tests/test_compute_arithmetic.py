@@ -401,3 +401,54 @@ def test_binary_operands_accept_a_prior_step_scalar():
     assert value(fn="diff", x=a, y=b) == 2
     assert value(fn="ratio", x=a, y=b) == 2
     assert value(fn="percent", x=b, y=a) == 50
+
+
+# --- nulls in a column a plan then reduces (D-056) -------------------------- #
+#
+# `aggregate_events` has emitted null cells since D-044 — a group with no
+# duration row has a null `mean_duration`, and D-056's `max_gap` is null for
+# an account with a single event. Reducing such a column is the ordinary
+# next step ("the longest gap of any account"), and until this session there
+# was no way to write it: `min`/`max`/`mean` refuse a non-numeric value, and
+# `filter` could not remove one either, because `_cmp` evaluated all six
+# comparisons before selecting one and `None < 0` raises. The capability was
+# unreachable by a defect in the step *after* it.
+
+ROWS_WITH_NULLS = [{"src": "a", "max_gap": 30}, {"src": "b", "max_gap": None},
+                   {"src": "c", "max_gap": 7}, {"src": "d", "max_gap": None}]
+
+
+def test_a_null_column_can_be_narrowed_to_the_rows_that_have_a_value():
+    rows = call_operator(adapter(), "compute",
+                         {"fn": "filter", "input": ROWS_WITH_NULLS,
+                          "field": "max_gap", "cmp": "not_null"})["rows"]
+    assert [r["src"] for r in rows] == ["a", "c"]
+    assert value(fn="max", input=rows, field="max_gap") == 30
+    # and the complement, because "which accounts sent exactly once" is a
+    # question about the same column
+    holes = call_operator(adapter(), "compute",
+                          {"fn": "filter", "input": ROWS_WITH_NULLS,
+                           "field": "max_gap", "cmp": "is_null"})["rows"]
+    assert [r["src"] for r in holes] == ["b", "d"]
+
+
+def test_an_ordering_comparison_against_a_null_names_its_own_repair():
+    """Silently dropping the nulls under `gt` would be D-052's mistake in a
+    new place: a shrunken denominator nobody was told about. It stays an
+    error — one that says which cmp to reach for."""
+    with pytest.raises(InvalidArgError, match="not_null"):
+        call_operator(adapter(), "compute",
+                      {"fn": "filter", "input": ROWS_WITH_NULLS,
+                       "field": "max_gap", "cmp": "gt", "value": 10})
+
+
+def test_the_null_comparisons_are_advertised():
+    from tgms.temporal.algebra import REGISTRY
+    from tgms.tools.schemas import anthropic_tools
+
+    spec = REGISTRY["compute"]
+    enum = spec.args_schema["properties"]["cmp"]["enum"]
+    shown = [t for t in anthropic_tools() if t["name"] == "compute"][0]
+    for cmp in ("is_null", "not_null"):
+        assert cmp in enum
+        assert cmp in shown["description"], f"{cmp} is missing from the manual"

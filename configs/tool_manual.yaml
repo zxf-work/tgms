@@ -122,6 +122,10 @@ compute:
     optional numeric `field`): count, sum, min, max, mean, median; topk
     (`field`, `k` -> best rows); filter (`field`, `cmp` in
     eq/ne/lt/le/gt/ge/contains, `value`).
+    A grouped result may hold null cells — max_gap for an account with one
+    event, mean_duration for a group with no closed interval — and the
+    reducers refuse them. Drop them first with filter (`cmp`: not_null, no
+    `value`), or select exactly those rows with is_null.
     Over two scalars from earlier steps, passed as `x` and `y` (each normally
     {"$ref": "sN.value"} or {"$ref": "sN.rows[0].count"}): ratio -> x/y,
     diff -> x-y, percent -> 100*x/y. Use these to compare or combine two

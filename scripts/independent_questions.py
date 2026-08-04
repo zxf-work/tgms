@@ -93,6 +93,34 @@ moved, 38 -> 52 of 110** — the closest any prediction has come, 14 against
 G hid SET and SEQ, AR hid ROW and PCT, PROP hid PROJ, SET hid JOIN — and the
 board is now flat: ROW 18, SEQ 14, JOIN 13, then a long tail.
 
+`C18` is the sixth table, after D-055 shipped `derive` and `join`. Fifteen
+questions moved, 52 -> 67, against fifteen predicted — the first exact
+forecast of the campaign. It re-audited **no class-3 entry**, and C19 below
+is where that shows.
+
+`C19` is the seventh, after D-056's sequence aggregates: `max_gap`,
+`max_in_window` over a sliding span, and `max_session_span`. Five questions
+moved, 67 -> 72 — but only **four** on the capability. The fifth, cm-Q41,
+moved because the earlier verdict was wrong, and `REREAD` below keeps that
+kind of correction out of any capability's delta. Two tags are new and two
+retire:
+  EGO  *new* — an account's events **in either role, in one group**. D-054's
+       `endpoint_filter` unions the two roles in the population; grouping is
+       still by `src` or `dst`, so "no messages sent or received" cannot be
+       asked of every account at once. cm-Q14 and cm-Q24 carried `SEQ` and a
+       gap aggregate was never their obstacle.
+  GMEAN *new* — a reducer taken per group over a prior step's rows. `ROW`
+       has covered this since C15 ("or a mean taken per group") and only its
+       derived-column half shipped.
+  ROW  retired, and JOIN with it: both named capabilities that shipped in
+       D-055, and both kept appearing on the board for a whole session
+       because C18 re-audited nothing. `ROW` read as blocking 3 questions
+       and `JOIN` 1 when the honest counts were 0.
+`SEQ` survives on seven entries and is four distinct residual shapes, none
+of them what shipped: a lag between events of *opposite directions* within a
+pair, a *distinct* count inside a sliding window, a first-k/last-k slice per
+group, and a gap whose two ends must both be sends.
+
 Usage:
   python3 scripts/independent_questions.py report  # tables only, no stores
   python3 scripts/independent_questions.py build   # writes suites + gold;
@@ -1056,6 +1084,103 @@ C18: dict[tuple[str, int], tuple[int, str, str]] = {
                  "recipient, then differenced"),
 }
 
+# --------------------------------------------------------------------------- #
+# re-audit after the sequence aggregates shipped (D-056)                       #
+# --------------------------------------------------------------------------- #
+# `aggregate_events` gained three aggregates that walk a group's events in
+# vt_s order: `max_gap`, `max_in_window` (a *sliding* window of a given span,
+# not the fixed stride a time_bucket dimension gives) and `max_session_span`.
+# `compute filter` gained `is_null`/`not_null`, without which a null cell
+# made the whole column unreducible and `max_gap` was not reachable at all.
+#
+# **Four questions moved on the capability and a fifth moved on a re-reading.**
+# They are marked apart below and the report counts them separately, because
+# a coverage delta that quietly absorbs a correction to an earlier verdict is
+# not measuring what it says it measures.
+#
+# What the re-audit found, none of which the session's own forecast had:
+#   EGO  *new* — an account's events **in either role, in one group**.
+#        `endpoint_filter` unions the two roles in the *population* (D-054)
+#        but grouping is still by `src` or by `dst`, so "no messages sent or
+#        received" cannot be asked of every account at once. cm-Q14 and
+#        cm-Q24 were tagged `SEQ` and the gap was never their obstacle.
+#   GMEAN *new* — a reducer taken **per group** over a prior step's rows.
+#        `ROW` covered this from C15 ("or a mean taken per group") and only
+#        the derived-column half shipped in D-055.
+#   ROW  retired: after cm-Q44 takes `GMEAN` and bo-Q47 turns out to want a
+#        per-group *slice* rather than arithmetic, no entry needs it.
+#   JOIN retired: it named a capability that shipped in D-055, and bo-Q54
+#        kept carrying both tags because D-055 re-audited no class-3 entry.
+# `SEQ` survives on seven entries and is now four distinct shapes, none of
+# them the three that shipped: a lag between events of *opposite directions*
+# in a pair (cm-Q13, cm-Q44), a *distinct* count inside a sliding window
+# (cm-Q31), a first-k/last-k slice per group (bo-Q47, and bo-Q27's
+# consecutive-pair comparison), and a gap whose two ends must both be sends
+# (cm-Q24).
+#: Entries that changed class because the *earlier verdict* was wrong, not
+#: because a capability shipped. Kept out of every capability's delta, in
+#: this table and in any that follows it.
+REREAD: set[tuple[str, int]] = {("cm", 41)}
+
+C19: dict[tuple[str, int], tuple[int, str, str]] = {
+    # ---- became expressible, on the capability ---- #
+    ("bo", 17): (2, "aggregate_events+filter+max+ratio",
+                 "max_gap per rater; the accounts that rated once have a "
+                 "null gap and `filter not_null` drops them, which is why "
+                 "that cmp shipped in the same session"),
+    ("bo", 18): (2, "aggregate_events+filter+count",
+                 "max_in_window with a 24h span per rated account, then "
+                 "'more than 5' and 'was there any'"),
+    ("cm", 9): (2, "aggregate_events+filter+count",
+                "as bo-Q18, per sender and over 100; the busiest 24 hours "
+                "in the store hold 179 messages from one account"),
+    ("cm", 35): (2, "aggregate_events+max",
+                 "max_session_span with a 60-minute gap over an undirected "
+                 "pair grouping. The D-055 study read this one as a "
+                 "traversal and forecast it would stay blocked; read again, "
+                 "'a sequence of messages between the same two accounts' is "
+                 "sessionization inside one group and nothing more"),
+    # ---- became expressible on a re-reading, NOT on this session's work ---- #
+    ("cm", 41): (2, "aggregate_events+diff+ratio+ratio",
+                 "not a D-056 capability. Every contact is new in exactly "
+                 "one week, so the mean of the weekly counts is the "
+                 "contacts divided by the weeks — one endpoint_filter call "
+                 "for count_distinct dst and min vt_s, then arithmetic. It "
+                 "was expressible before this session and the `SEQ` tag was "
+                 "simply wrong"),
+    # ---- re-tagged, still class 3 ---- #
+    ("cm", 14): (3, "EGO",
+                 "the gap shipped; the grouping did not. 'No messages sent "
+                 "or received' is one stream per account across both roles, "
+                 "and asking it of every account at once is the missing "
+                 "dimension, not the missing aggregate"),
+    ("cm", 24): (3, "EGO,SEQ",
+                 "as cm-Q14, and additionally the two ends of the gap must "
+                 "both be *sends* while the events in between are of either "
+                 "role — a role-aware gap, which max_gap is not. `SET` was "
+                 "never the obstacle"),
+    ("cm", 51): (3, "G",
+                 "min vt_s per directed pair, self-joined on the swapped "
+                 "key, gives who initiated and whether B replied; counting "
+                 "those per initiator is a regrouping of a result"),
+    ("bo", 47): (3, "SEQ",
+                 "`ROW` is not the obstacle: with a first-5/last-5 slice "
+                 "per account the two means are `mean of prop` inside the "
+                 "operator and the difference is `derive`. The slice is the "
+                 "whole of it"),
+    ("cm", 44): (3, "SEQ,GMEAN",
+                 "first-reply latency is a lag between events of opposite "
+                 "directions, and the average is over each receiver's "
+                 "senders — a reducer per group, which is the half of `ROW` "
+                 "that did not ship"),
+    ("bo", 54): (3, "PCT",
+                 "stale tags, found by re-reading rather than by building: "
+                 "`ROW` and `JOIN` both shipped in D-055 and the two "
+                 "per-account counts join and divide today. Only the top "
+                 "10% selection is still missing"),
+}
+
+
 def _verdict(table: dict, base, k):
     """A re-audit table's verdict for `k`, falling back to the table it
     chains onto. `base` is a callable so the chain composes."""
@@ -1098,23 +1223,36 @@ def report():
     def v18(k):
         return _verdict(C18, v17, k)
 
+    def v19(k):
+        return _verdict(C19, v18, k)
+
     _check_diff(C14, v13, "C14")
     _check_diff(C15, v14, "C15")
     _check_diff(C16, v15, "C16")
     _check_diff(C17, v16, "C17")
     _check_diff(C18, v17, "C18")
+    _check_diff(C19, v18, "C19")
     # AR is retired by C15: the capability shipped, and what is left of it
     # was never AR. Guard it so a later edit cannot quietly reintroduce the
     # tag without deciding what it now means.
     assert not [k for k in q if "AR" in _needs(*v15(k))], \
         "AR survived the C15 re-audit; it should have split into ROW and PCT"
+    # ROW and JOIN are retired by C19 on the same terms. JOIN's capability
+    # shipped in D-055 and the tag simply outlived it; ROW's shipped in half,
+    # and the surviving half is GMEAN. A tag that outlives its capability
+    # inflates the board — `ROW` read as blocking 3 questions for a session
+    # after `derive` landed — so guard both.
+    for tag, split in (("ROW", "GMEAN"), ("JOIN", "nothing")):
+        assert not [k for k in q if tag in _needs(*v19(k))], \
+            f"{tag} survived the C19 re-audit; what is left of it is {split}"
 
     stages = [("13 ops, pre-registered", v13),
               ("14 ops, D-044 re-audit", v14),
               ("15th capability, D-051 session re-audit", v15),
               ("property typing, D-052 session re-audit", v16),
               ("sets, D-054 session re-audit", v17),
-              ("row + join, D-055 session re-audit", v18)]
+              ("row + join, D-055 session re-audit", v18),
+              ("sequences, D-056 session re-audit", v19)]
     for label, v in stages:
         print(f"class distribution ({label}):",
               dict(sorted(Counter(v(k)[0] for k in q).items())))
@@ -1127,18 +1265,29 @@ def report():
             ("D-051 compute arithmetic", v14, v15, C15),
             ("D-052 property typing", v15, v16, C16),
             ("D-054 sets", v16, v17, C17),
-            ("D-055 row + join", v17, v18, C18)]:
+            ("D-055 row + join", v17, v18, C18),
+            ("D-056 sequences", v18, v19, C19)]:
         moved = sorted(k for k in q if cur(k)[0] != prev(k)[0])
         by_move = Counter((prev(k)[0], cur(k)[0]) for k in moved)
         print(f"\nbecame expressible under {label}: {len(moved)} of {len(q)} "
               f"({', '.join(f'{a}->{b}: {n}' for (a, b), n in sorted(by_move.items()))})")
         for d, n in moved:
+            mark = "  (re-read)" if (d, n) in REREAD else ""
             print(f"  {d}-Q{n:<2} {prev((d, n))[0]} -> {cur((d, n))[0]}  "
-                  f"{cur((d, n))[1]}")
+                  f"{cur((d, n))[1]}{mark}")
+        reread = [k for k in moved if k in REREAD]
+        if reread:
+            # a delta that absorbs a correction to an earlier verdict is not
+            # measuring the capability it claims to measure
+            print(f"  of which {len(reread)} moved on a re-reading and not on "
+                  f"this session's work: "
+                  f"{', '.join(f'{d}-Q{n}' for d, n in reread)} — "
+                  f"delta attributable to the capability: "
+                  f"{len(moved) - len(reread)}")
         print(f"class-3 entries whose need-tags were re-audited: "
               f"{len([k for k in table if table[k][0] == 3])}")
 
-    expressible = sum(1 for k in q if v18(k)[0] in (1, 2))
+    expressible = sum(1 for k in q if v19(k)[0] in (1, 2))
     print(f"\nexpressible now: {expressible} of {len(q)}")
     print("runnable:", [f"{d}-Q{n}" for (d, n) in sorted(C)
                         if C[(d, n)][2]])
@@ -1154,7 +1303,10 @@ def report():
              "class_17": v17((d, n))[0], "need_or_ops_17": v17((d, n))[1],
              "justification_17": C17[(d, n)][2] if (d, n) in C17 else "",
              "class_18": v18((d, n))[0], "need_or_ops_18": v18((d, n))[1],
-             "justification_18": C18[(d, n)][2] if (d, n) in C18 else ""}
+             "justification_18": C18[(d, n)][2] if (d, n) in C18 else "",
+             "class_19": v19((d, n))[0], "need_or_ops_19": v19((d, n))[1],
+             "justification_19": C19[(d, n)][2] if (d, n) in C19 else "",
+             "reread_not_capability": (d, n) in REREAD}
             for (d, n) in sorted(q)]
     out = Path("benchmarks/independent-v1/classification.json")
     out.parent.mkdir(parents=True, exist_ok=True)
