@@ -482,7 +482,7 @@
   "name": "co_active"
  },
  {
-  "description": "Deterministic computation \u2014 never do arithmetic yourself.\nOver a prior step's rows (`input`, normally {\"$ref\": \"sN.rows\"}, with an\noptional numeric `field`): count, sum, min, max, mean, median; topk\n(`field`, `k` -> best rows); filter (`field`, `cmp` in\neq/ne/lt/le/gt/ge/contains, `value`).\nOver two scalars from earlier steps, passed as `x` and `y` (each normally\n{\"$ref\": \"sN.value\"} or {\"$ref\": \"sN.rows[0].count\"}): ratio -> x/y,\ndiff -> x-y, percent -> 100*x/y. Use these to compare or combine two\nresults; they take no `input`.\nOver two lists, passed as `input` and `other` (each normally\n{\"$ref\": \"sN.rows\"}, with `field`/`other_field` naming the column to take\nfrom each): intersect, difference, union. Use these for \"both X and Y\"\n(intersect), \"X but never Y\" (difference) and \"either\" (union) over uid\nsets from two groupings. The answer is a deduplicated, canonically\nordered list in `rows`, with `rows_total` its size.\nAlso interval_relation (`a`, `b` half-open intervals -> Allen relation\nname).\nInteger inputs give exact integer answers; anything inexact is rounded\nonce. Cost: trivial.\nExamples: {\"fn\": \"topk\", \"input\": {\"$ref\": \"s2.rows\"}, \"field\": \"value\",\n\"k\": 3} \u00b7 {\"fn\": \"mean\", \"input\": {\"$ref\": \"s1.rows\"}, \"field\": \"count\"} \u00b7\n{\"fn\": \"diff\", \"x\": {\"$ref\": \"s1.rows[0].count\"},\n\"y\": {\"$ref\": \"s2.rows[0].count\"}}\nOutput fields: value, rows, rows_total, truncated, cursor.",
+  "description": "Deterministic computation \u2014 never do arithmetic yourself.\nOver a prior step's rows (`input`, normally {\"$ref\": \"sN.rows\"}, with an\noptional numeric `field`): count, sum, min, max, mean, median; topk\n(`field`, `k` -> best rows); filter (`field`, `cmp` in\neq/ne/lt/le/gt/ge/contains, `value`).\nOver two scalars from earlier steps, passed as `x` and `y` (each normally\n{\"$ref\": \"sN.value\"} or {\"$ref\": \"sN.rows[0].count\"}): ratio -> x/y,\ndiff -> x-y, percent -> 100*x/y. Use these to compare or combine two\nresults; they take no `input`.\nOver two lists, passed as `input` and `other` (each normally\n{\"$ref\": \"sN.rows\"}, with `field`/`other_field` naming the column to take\nfrom each): intersect, difference, union. Use these for \"both X and Y\"\n(intersect), \"X but never Y\" (difference) and \"either\" (union) over uid\nsets from two groupings. The answer is a deduplicated, canonically\nordered list in `rows`, with `rows_total` its size.\nRow work: derive(`field`, `field2` or `value`, `op`, `into`) adds ONE\ncomputed column to the rows \u2014 op in add/sub/mul/div/floordiv/concat \u2014\ne.g. a per-group span {\"fn\":\"derive\",\"field\":\"max_vt_s\",\n\"field2\":\"min_vt_s\",\"op\":\"sub\",\"into\":\"span\"}, then floordiv by 86400000000\nfor days. join(`other`, `on`, `other_on`, `how`, `fill`) aligns two prior\nsteps on a key; the right side's columns arrive prefixed `r_`. Keys must\nbe UNIQUE on both sides (group first). how=inner keeps matched keys only,\nhow=left keeps every left row and fills the right with `fill`. The pair\nderive+join is how you compare two groupings: join them, then derive the\ndifference or ratio.\nAlso interval_relation (`a`, `b` half-open intervals -> Allen relation\nname).\nInteger inputs give exact integer answers; anything inexact is rounded\nonce. Cost: trivial.\nExamples: {\"fn\": \"topk\", \"input\": {\"$ref\": \"s2.rows\"}, \"field\": \"value\",\n\"k\": 3} \u00b7 {\"fn\": \"mean\", \"input\": {\"$ref\": \"s1.rows\"}, \"field\": \"count\"} \u00b7\n{\"fn\": \"diff\", \"x\": {\"$ref\": \"s1.rows[0].count\"},\n\"y\": {\"$ref\": \"s2.rows[0].count\"}}\nOutput fields: value, rows, rows_total, truncated, cursor.",
   "input_schema": {
    "additionalProperties": false,
    "properties": {
@@ -551,6 +551,18 @@
       "null"
      ]
     },
+    "field2": {
+     "default": null,
+     "description": "second field for derive (with `field`)",
+     "type": [
+      "string",
+      "null"
+     ]
+    },
+    "fill": {
+     "default": null,
+     "description": "value for the right side on an unmatched left row (how = left)"
+    },
     "fn": {
      "enum": [
       "count",
@@ -567,7 +579,18 @@
       "intersect",
       "difference",
       "union",
+      "derive",
+      "join",
       "interval_relation"
+     ],
+     "type": "string"
+    },
+    "how": {
+     "default": "inner",
+     "description": "inner keeps matched keys only; left keeps every left row and fills the right side",
+     "enum": [
+      "inner",
+      "left"
      ],
      "type": "string"
     },
@@ -577,6 +600,15 @@
      "maxItems": 50000,
      "type": [
       "array",
+      "null"
+     ]
+    },
+    "into": {
+     "default": null,
+     "description": "name of the column derive adds",
+     "minLength": 1,
+     "type": [
+      "string",
       "null"
      ]
     },
@@ -595,6 +627,31 @@
      "minimum": 1,
      "type": "integer"
     },
+    "on": {
+     "default": null,
+     "description": "join key in `input`",
+     "type": [
+      "string",
+      "null"
+     ]
+    },
+    "op": {
+     "default": null,
+     "description": "row-wise operation for derive",
+     "enum": [
+      "add",
+      "sub",
+      "mul",
+      "div",
+      "floordiv",
+      "concat",
+      null
+     ],
+     "type": [
+      "string",
+      "null"
+     ]
+    },
     "other": {
      "default": null,
      "description": "second list for intersect/difference/union ($ref)",
@@ -611,6 +668,20 @@
       "string",
       "null"
      ]
+    },
+    "other_on": {
+     "default": null,
+     "description": "join key in `other`; defaults to `on`",
+     "type": [
+      "string",
+      "null"
+     ]
+    },
+    "other_prefix": {
+     "default": "r_",
+     "description": "prefix for the right side's columns",
+     "minLength": 1,
+     "type": "string"
     },
     "value": {
      "default": null,
