@@ -16,8 +16,13 @@ Contract highlights (full rationale in DECISIONS.md D-044):
 - `mean` = exact integer sum, then `q, r = divmod(s, n)`;
   `float(q) + r / n` — bit-identical across kernel, fallback, oracle, and
   SQL twins, because float accumulation order never participates;
-- numeric-*prop* aggregates are deliberately absent: props are untyped JSON
-  and an aggregate over them needs a typing story first (D-044).
+- numeric-*prop* aggregates arrived with D-052 and are typed per call, not
+  per store: `of: "prop"` with a `prop` key, plus `prop_filter`. Their
+  arithmetic is D-051's rather than the `_mean` above — `mean_duration` is
+  always a float because its source is a typed column, while a property
+  holds whatever JSON held, so an integer property gives an exact integer.
+  The two live in one row on purpose and the difference is the source, not
+  an inconsistency.
 
 This module holds the operator plus the portable vectorized fallback over
 adapter columnar scans. The native engine answers through one PyO3 crossing
@@ -45,7 +50,16 @@ from tgms.temporal.algebra import (
     required,
 )
 from tgms.temporal.guardrails import scan_estimate
+from tgms.temporal.ops_compute import _mean as _blessed_mean
 from tgms.temporal.ops_series import MAX_BUCKETS
+from tgms.temporal.props import (
+    PROP_CMPS,
+    SKIP,
+    matches,
+    numeric_value,
+    parse_props,
+    prop_keys,
+)
 
 #: Runtime cap on emitted groups. Pagination bounds the *page*, not the
 #: aggregation state; this bounds the state, with the narrowing levers named
@@ -70,13 +84,30 @@ AGG_SPEC = {
         "agg": {"type": "string",
                 "enum": ["count", "count_distinct", "min", "max", "mean"]},
         "of": {"type": ["string", "null"],
-               "enum": ["src", "dst", "vt_s", "duration", None],
+               "enum": ["src", "dst", "vt_s", "duration", "prop", None],
                "default": None,
                "description": "src|dst for count_distinct; "
-                              "vt_s|duration for min/max/mean"},
+                              "vt_s|duration|prop for min/max/mean"},
+        "prop": {"type": ["string", "null"], "default": None,
+                 "minLength": 1,
+                 "description": "property key, required when of = 'prop'"},
     },
     "required": ["agg"],
     "additionalProperties": False,
+}
+PROP_FILTER = {
+    "type": ["object", "null"],
+    "default": None,
+    "properties": {
+        "prop": {"type": "string", "minLength": 1},
+        "cmp": {"type": "string", "enum": PROP_CMPS},
+        "value": {},
+    },
+    "required": ["prop", "cmp", "value"],
+    "additionalProperties": False,
+    "description": "keep only events whose property compares as stated; "
+                   "rows whose value is absent or of another JSON type are "
+                   "excluded and counted in `prop_coercion` (D-052)",
 }
 
 
@@ -90,7 +121,14 @@ def _agg_field(a: dict[str, Any]) -> str:
         return "count"
     if a["agg"] == "count_distinct":
         return f"distinct_{a['of']}"
+    if a.get("of") == "prop":
+        # `prop_` keeps a property called `vt_s` from colliding with the
+        # built-in source of the same name
+        return f"{a['agg']}_prop_{a['prop']}"
     return f"{a['agg']}_{a['of']}"
+
+
+_prop_keys = prop_keys      # the shared definition lives in props.py
 
 
 def _aggregate_validators(args: dict[str, Any]) -> None:
@@ -112,6 +150,9 @@ def _aggregate_validators(args: dict[str, Any]) -> None:
 
     fields: set[str] = set()
     for a in aggs:
+        if a.get("prop") is not None and a.get("of") != "prop":
+            raise InvalidArgError(
+                "'prop' is only meaningful with of 'prop'")
         if a["agg"] == "count":
             if a.get("of") is not None:
                 raise InvalidArgError("aggregate 'count' takes no 'of'")
@@ -120,9 +161,13 @@ def _aggregate_validators(args: dict[str, Any]) -> None:
                 raise InvalidArgError(
                     "aggregate 'count_distinct' requires of 'src' or 'dst'")
         else:
-            if a.get("of") not in ("vt_s", "duration"):
+            if a.get("of") not in ("vt_s", "duration", "prop"):
                 raise InvalidArgError(
-                    f"aggregate {a['agg']!r} requires of 'vt_s' or 'duration'")
+                    f"aggregate {a['agg']!r} requires of "
+                    f"'vt_s', 'duration' or 'prop'")
+            if a["of"] == "prop" and not a.get("prop"):
+                raise InvalidArgError(
+                    "of 'prop' requires a property name in 'prop'")
         f = _agg_field(a)
         if f in fields:
             raise InvalidArgError(f"duplicate aggregate {f!r}")
@@ -271,7 +316,10 @@ def _portable(adapter: StorageAdapter, args: dict[str, Any]) -> dict[str, Any]:
     t_a, t_b = args["window"]["t_a"], args["window"]["t_b"]
     dims, aggs = args["group_by"], args["aggregates"]
     need_rel = any(d["dim"] == "rel_type" for d in dims)
+    prop_keys = _prop_keys(args)
     cols = ["src_id", "dst_id", "vt_s", "vt_e"] + (["rel_type"] if need_rel else [])
+    if prop_keys:
+        cols.append("props")            # opt-in; never on a bare scan
     e = adapter.edges_columnar(
         as_of_tt=args["as_of_tt"], vt_min=t_a, vt_max=t_b,
         rel_types=args["rel_types"], columns=tuple(cols))
@@ -280,6 +328,26 @@ def _portable(adapter: StorageAdapter, args: dict[str, Any]) -> dict[str, Any]:
     vt_s, vt_e = e["vt_s"][m], e["vt_e"][m]
     src, dst = e["src_id"][m], e["dst_id"][m]
     rel = e["rel_type"][m] if need_rel else None
+
+    # --- property typing (D-052) ------------------------------------------ #
+    # One parse per surviving row, reused by the filter and every aggregate.
+    # This is the per-row JSON cost the decision knowingly accepted; the
+    # typed column is what removes it, once a measurement asks for it.
+    skipped: dict[str, int] = {k: 0 for k in prop_keys}
+    bags: list[dict[str, Any]] = []
+    if prop_keys:
+        bags = [parse_props(p) for p in e["props"][m]]
+        pf = args.get("prop_filter")
+        if pf is not None:
+            verdicts = [matches(b, pf["prop"], pf["cmp"], pf["value"])
+                        for b in bags]
+            skipped[pf["prop"]] += sum(1 for v in verdicts if v is SKIP)
+            keep = np.array([v is not SKIP and bool(v) for v in verdicts],
+                            dtype=bool)
+            vt_s, vt_e, src, dst = vt_s[keep], vt_e[keep], src[keep], dst[keep]
+            if rel is not None:
+                rel = rel[keep]
+            bags = [b for b, k in zip(bags, keep) if k]
     n = len(vt_s)
 
     dim_cols = [_portable_dim_codes(adapter, d, args, vt_s, src, dst, rel)
@@ -331,6 +399,21 @@ def _portable(adapter: StorageAdapter, args: dict[str, Any]) -> dict[str, Any]:
             else:
                 dist = np.zeros(g, dtype=np.int64)
             agg_cols[field] = [int(v) for v in dist]
+        elif a["of"] == "prop":
+            # a Python loop on purpose: the values are arbitrary JSON
+            # numbers, int and float mixed, and the exactness rule is stated
+            # over Python ints rather than over any numpy dtype
+            key = a["prop"]
+            per_group: list[list[Any]] = [[] for _ in range(g)]
+            for i, b in enumerate(bags):
+                v = numeric_value(b, key)
+                if v is SKIP:
+                    skipped[key] += 1
+                else:
+                    per_group[int(inv[i])].append(v)
+            fn = {"min": min, "max": max, "mean": _blessed_mean}[a["agg"]]
+            agg_cols[field] = [fn(vals) if vals else None for vals in per_group]
+            continue
         else:
             if a["of"] == "vt_s":
                 vals, sub = vt_s, np.ones(n, dtype=bool)
@@ -365,7 +448,12 @@ def _portable(adapter: StorageAdapter, args: dict[str, Any]) -> dict[str, Any]:
     rows = [{**{k: col[i] for k, col in dim_value_cols.items()},
              **{k: col[i] for k, col in agg_cols.items()}}
             for i in range(g)]
-    return paginate(rows, args["limit"], args["cursor"])
+    out = paginate(rows, args["limit"], args["cursor"])
+    if prop_keys:
+        # inside the payload, therefore inside result_digest: an answer
+        # cannot rest on a shrunken denominator without saying so
+        out["prop_coercion"] = {k: skipped[k] for k in prop_keys}
+    return out
 
 
 # --------------------------------------------------------------------------- #
@@ -454,6 +542,7 @@ def _native(adapter: StorageAdapter, args: dict[str, Any]) -> dict[str, Any]:
                                   "time_bucket dimension (cap 2000 buckets)"},
         "rel_types": {"type": ["array", "null"], "items": {"type": "string"},
                       "default": None},
+        "prop_filter": PROP_FILTER,
         "as_of_tt": AS_OF_TT,
         "limit": LIMIT,
         "cursor": CURSOR,
@@ -465,11 +554,23 @@ def _native(adapter: StorageAdapter, args: dict[str, Any]) -> dict[str, Any]:
     "min/max/mean over vt_s or duration (= vt_e - vt_s; open-ended rows "
     "excluded). Non-empty groups only; group_by [] returns one global row. "
     "Rows ordered by dimension values (numeric order / code-point order, "
-    "null labels first).",
+    "null labels first). Properties (D-052): min/max/mean over "
+    "of='prop' with a `prop` key, and `prop_filter` to select on one; a "
+    "value participates only if its JSON type fits — text is never parsed "
+    "into a number and a boolean is not one — and every excluded row is "
+    "counted per property in `prop_coercion`.",
     cost_fn=scan_estimate,
     validators=[_aggregate_validators],
+    output_fields=("rows", "rows_total", "truncated", "cursor",
+                   "prop_coercion"),
 )
 def aggregate_events(adapter: StorageAdapter, args: dict[str, Any]) -> dict[str, Any]:
-    if hasattr(adapter, "aggregate_events_columnar"):
+    # A property-touching call takes the portable path on every backend: the
+    # two-phase kernel aggregates fixed-width codes and has no notion of a
+    # JSON blob, so there is nothing for it to be fast about yet. D-052 took
+    # correctness first and made the typed column conditional on a
+    # measurement; this is where that trade is actually paid, and the
+    # measurement that would justify the column is a measurement of this.
+    if hasattr(adapter, "aggregate_events_columnar") and not _prop_keys(args):
         return _native(adapter, args)
     return _portable(adapter, args)
