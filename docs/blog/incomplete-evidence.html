@@ -100,8 +100,10 @@ svg .m{font-family:var(--mono)}
 <div class="inner">
 <span class="kicker">Post #3 · Understand TGMS</span>
 <h1>A correct number can<br>still be unsupported</h1>
-<p class="sub">The model counted 100 returned rows correctly, but the database
-contained 343.</p>
+<p class="sub">The model counted
+<span data-fact="incident_page_rows">100</span> returned rows correctly, but
+the database contained
+<span data-fact="incident_total_rows">343</span>.</p>
 <div class="byline">Xiaofei Zhang · University of Memphis ·
 <a href="https://github.com/zxf-work/tgms/blob/main/paper/main.pdf">paper</a> ·
 <a href="https://github.com/zxf-work/tgms">code</a></div>
@@ -162,16 +164,16 @@ check can recover it.</p>
 <svg viewBox="0 0 720 268" width="100%" role="img"
      aria-label="A funnel. 343 rows exist in the database; one page of 100 is returned carrying a truncated marker; a count over that page produces 100; the claim reports 100. Without propagation the marker is dropped at the counting step and the claim looks fully supported. With propagation the marker survives to the claim, which is capped at weakly supported.">
   <g font-size="12.5" fill="var(--ink)">
-    <text x="10" y="26" font-weight="700">343 rows match</text>
-    <text x="196" y="26" font-weight="700">a page of 100</text>
+    <text x="10" y="26" font-weight="700"><tspan data-fact="incident_total_rows">343</tspan> rows match</text>
+    <text x="196" y="26" font-weight="700">a page of <tspan data-fact="incident_page_rows">100</tspan></text>
     <text x="378" y="26" font-weight="700">a count</text>
     <text x="540" y="26" font-weight="700">a claim</text></g>
 
   <rect x="10" y="38" width="150" height="58" rx="8" fill="var(--blue)" opacity=".85"/>
-  <text x="85" y="73" text-anchor="middle" font-size="14" class="m" fill="#fff">343</text>
+  <text x="85" y="73" text-anchor="middle" font-size="14" class="m" fill="#fff" data-fact="incident_total_rows">343</text>
   <path d="M164 67 H192" stroke="var(--mut)" stroke-width="1.6"/><polygon points="194,67 185,62 185,72" fill="var(--mut)"/>
   <rect x="196" y="48" width="150" height="38" rx="8" fill="var(--blue)" opacity=".55"/>
-  <text x="271" y="72" text-anchor="middle" font-size="14" class="m" fill="#fff">100</text>
+  <text x="271" y="72" text-anchor="middle" font-size="14" class="m" fill="#fff" data-fact="incident_page_rows">100</text>
   <text x="271" y="104" text-anchor="middle" font-size="11" fill="var(--amber)">truncated: true</text>
   <path d="M350 67 H374" stroke="var(--mut)" stroke-width="1.6"/><polygon points="376,67 367,62 367,72" fill="var(--mut)"/>
   <rect x="378" y="48" width="140" height="38" rx="8" fill="var(--card)" stroke="var(--line)"/>
@@ -226,14 +228,14 @@ reader sees changes accordingly:</p>
   <rect x="8" y="14" width="344" height="104" rx="12" fill="var(--ok)" opacity=".07"/>
   <rect x="8" y="14" width="344" height="104" rx="12" fill="none" stroke="var(--ok)" opacity=".5"/>
   <text x="28" y="42" font-size="12" font-weight="700" fill="var(--mut)">COMPLETE EVIDENCE</text>
-  <text x="28" y="64" font-size="12.5" class="m" fill="var(--ink)">343 of 343 rows seen</text>
+  <text x="28" y="64" font-size="12.5" class="m" fill="var(--ink)"><tspan data-fact="incident_total_rows">343</tspan> of 343 rows seen</text>
   <rect x="28" y="78" width="122" height="24" rx="12" fill="var(--ok)"/>
   <text x="89" y="94" text-anchor="middle" font-size="12" fill="#fff">✓ supported</text>
 
   <rect x="368" y="14" width="344" height="104" rx="12" fill="var(--amber)" opacity=".1"/>
   <rect x="368" y="14" width="344" height="104" rx="12" fill="none" stroke="var(--amber)" opacity=".55"/>
   <text x="388" y="42" font-size="12" font-weight="700" fill="var(--mut)">PARTIAL EVIDENCE</text>
-  <text x="388" y="64" font-size="12.5" class="m" fill="var(--ink)">100 of 343 rows seen</text>
+  <text x="388" y="64" font-size="12.5" class="m" fill="var(--ink)"><tspan data-fact="incident_page_rows">100</tspan> of <tspan data-fact="incident_total_rows">343</tspan> rows seen</text>
   <rect x="388" y="78" width="176" height="24" rx="12" fill="var(--amber)"/>
   <text x="476" y="94" text-anchor="middle" font-size="12" fill="#fff">◑ weakly supported</text>
   <text x="574" y="94" font-size="11.5" fill="var(--mut)">evidence truncated</text>
@@ -304,8 +306,10 @@ documented zero.</p>
 
 <p>End to end, the effect on emitted answers is that
 <span data-fact="unsupported_claims">0</span> unsupported claims appear among the
-<span data-fact="unsupported_claims_denominator">268</span> evaluated answers of
-this campaign, against a rate of 7.8% for the same answers ungated. The gate
+199 answers this campaign emitted with the gate on, out of 282 task runs.
+Ungated, the same system emitted 220 answers and 21 of them carried an
+unsupported claim — 7.8% of the 270 task runs that produced a measurable
+report at all. The gate
 costs about one point of answer accuracy —
 <span data-fact="accuracy_ungated">41.8</span>% ungated against
 <span data-fact="accuracy_gated">40.8</span>% gated.</p>
@@ -345,8 +349,8 @@ checkable only against the database itself. That is the
 is a statement about where verification has to live rather than a bug awaiting a
 patch.</p>
 <p><b>The zero is not a guarantee.</b> It is
-<span data-fact="unsupported_claims">0</span> unsupported claims among
-<span data-fact="unsupported_claims_denominator">268</span> evaluated answers on
+<span data-fact="unsupported_claims">0</span> unsupported claims among the
+199 answers emitted across 282 task runs on
 one task set — a measured rate on a finite sample, not a property that holds for
 any question. Part of it is also bought by declining to answer: gating both
 suppresses bad claims and reduces coverage, so the honest reading is “nothing
@@ -408,8 +412,8 @@ removed.</li>
 
 <div class="next"><a href="scaling-the-planner.html">
 <div class="lbl">Next up · Evidence &amp; capability</div>
-<div class="ttl">What happens when you give the same database a model 10×
-bigger — freezing everything except model size, and what actually moved →</div></a></div>
+<div class="ttl">What happens when you give the same database a model
+4.6× bigger — freezing everything except model size, and what actually moved →</div></a></div>
 
 <script data-goatcounter="https://zxf-tgms.goatcounter.com/count" async src="https://gc.zgo.at/count.js"></script>
 </body></html>
