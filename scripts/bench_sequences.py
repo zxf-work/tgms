@@ -48,6 +48,10 @@ def main() -> None:
     p.add_argument("--condition", required=True, choices=sorted(AGGREGATES))
     p.add_argument("--frac", type=float, default=1.0,
                    help="fraction of the valid-time extent to scan")
+    p.add_argument("--group", default="src", choices=("src", "none"),
+                   help="src = many small runs (one per sender); "
+                        "none = one run holding every event, which is where "
+                        "a sort that is really per-group would show")
     p.add_argument("--reps", type=int, default=5)
     args = p.parse_args()
 
@@ -61,7 +65,8 @@ def main() -> None:
     t_b = lo + int((hi - lo) * args.frac)
     call = validate_args("aggregate_events", {
         "window": {"t_a": lo, "t_b": max(t_b, lo + 1)},
-        "group_by": [{"dim": "endpoint", "role": "src"}],
+        "group_by": ([{"dim": "endpoint", "role": "src"}]
+                     if args.group == "src" else []),
         "aggregates": [AGGREGATES[args.condition]],
         "limit": 10_000,
     })
@@ -82,6 +87,7 @@ def main() -> None:
 
     print(json.dumps({
         "store": args.store, "condition": args.condition, "frac": args.frac,
+        "group": args.group,
         "events": events, "groups": rows_total, "reps": args.reps,
         "open_ms": round(open_s * 1000, 1),
         "median_ms": round(statistics.median(times), 1),
