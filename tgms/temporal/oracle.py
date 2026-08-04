@@ -14,7 +14,7 @@ from collections import deque
 from datetime import datetime, timedelta, timezone
 from typing import Any
 
-from tgms.core.model import OPEN_END, EdgeVersion, NodeVersion
+from tgms.core.model import OPEN_END, EdgeVersion, NodeVersion, clamp_tt
 from tgms.temporal.algebra import paginate
 from tgms.temporal.ops_compute import _mean as blessed_mean
 from tgms.temporal.props import SKIP, matches, numeric_value, prop_keys
@@ -101,6 +101,43 @@ class Oracle:
                 dist[u] = h
             frontier = sorted(nxt)
         return dist
+
+    # ------------------------------------------------------------------ #
+    # O15 version_history                                                  #
+    # ------------------------------------------------------------------ #
+
+    def version_history(self, args: dict[str, Any]) -> dict[str, Any]:
+        as_of = clamp_tt(args["as_of_tt"])
+        t_a, t_b = args["window"]["t_a"], args["window"]["t_b"]
+        belief, kind = args["belief"], args["kind"]
+        versions = self.nv if kind == "node" else self.ev
+
+        rows = []
+        for v in versions:
+            # nothing written after `as_of` exists yet, in any belief mode:
+            # that is what makes a pinned result immutable under later writes
+            if v.tt_s > as_of:
+                continue
+            superseded = v.tt_e <= as_of
+            if belief == "current" and superseded:
+                continue
+            if belief == "superseded" and not superseded:
+                continue
+            if not (v.vt_s < t_b and t_a < v.vt_e):   # interval overlap
+                continue
+            if kind == "edge" and args["rel_types"] is not None and \
+                    v.rel_type not in args["rel_types"]:
+                continue
+            r = v.to_json()
+            del r["props"], r["source"], r["provenance_ref"]
+            # a belief that ends after `as_of` has not ended yet, as far as
+            # `as_of` can know — the same censoring entity_history applies
+            if not superseded:
+                r["tt_e"] = OPEN_END
+            rows.append(r)
+
+        rows.sort(key=lambda r: (r["tt_s"], r["vid"]))
+        return paginate(rows, args["limit"], args["cursor"])
 
     # ------------------------------------------------------------------ #
     # O1 entity_history                                                    #

@@ -18,9 +18,10 @@ to do any of them:
   distinguishes *evolution* ("the edge ended") from *correction* ("we were
   wrong"), so agents can answer *"what did we believe on March 1?"* —
   a question no snapshot or RAG system can express;
-- **14 verified temporal operators** (reachability over time-respecting
+- **15 verified temporal operators** (reachability over time-respecting
   paths, δ-motifs, snapshot diffs, burst detection, interval joins, grouped
-  aggregation over edge events, …) — typed, deterministic, bounded,
+  aggregation over edge events, and the belief log itself) — typed,
+  deterministic, bounded,
   cost-guarded, exposed as tools (MCP or in-process); identifiers must come
   from a resolver, arithmetic from a `compute` operator;
 - a **Planner–Executor–Verifier** loop: the LLM only plans and reports;
@@ -87,9 +88,9 @@ writer costs those readers **0–3%** of per-query latency.
 **3. Can it answer the questions people actually ask?** This is the honest
 one. 110 questions were written by people who saw a plain-language
 description of two public datasets and **never saw the operator list**. Of
-those, **79 are expressible today** — 10 were expressible when the study was
+those, **83 are expressible today** — 10 were expressible when the study was
 pre-registered. Of LDBC SNB's 41 read templates, **3**, and that number has
-not moved in seven sessions because 35 of the 38 misses need labelled
+not moved in eight sessions because 35 of the 38 misses need labelled
 multi-way pattern matching, which is a deliberately deferred design
 decision rather than a missing operator.
 
@@ -97,14 +98,14 @@ The store is good and the surface is narrow. Both instruments live in the
 repo (`scripts/independent_questions.py`, `scripts/ldbc_fit.py`), they
 re-run in seconds, and each capability shipped since has been scored
 against a forecast made *before* it was built — delivered/predicted has run
-14/30, 4/7, 10/13, 14/16, 15/15, 4/8 and 5/5. The last was the first
-forecast made per question rather than in aggregate, and it was right in
-all eight cells.
+14/30, 4/7, 10/13, 14/16, 15/15, 4/8, 5/5 and 4/5. The last two were the
+first forecasts made per question rather than in aggregate, and they were
+right in every cell.
 
 ## What the operators can express
 
-Fourteen operators, but the interesting growth since v0.4.0 happened
-*inside* them, driven question by question by the study above:
+Fifteen operators — fourteen of them unchanged since D-044, because the
+interesting growth since v0.4.0 happened *inside* them, driven question by question by the study above:
 
 | capability | where it lives | what it answers |
 |---|---|---|
@@ -115,6 +116,7 @@ Fourteen operators, but the interesting growth since v0.4.0 happened
 | row arithmetic and joins | `compute` | `derive` adds one computed column; `join` aligns two grouped results on a key unique on both sides |
 | ordered sequences | `aggregate_events` | longest gap between consecutive events, busiest sliding window of a given span, longest run with no gap over a threshold |
 | calendar units | `aggregate_events` | grouping by hour of day, day of week or month of year, at a fixed offset from UTC that is an argument rather than a default |
+| the belief log | `version_history` | which beliefs were revised and when — the only operator that reads the correction record rather than a state derived from it |
 
 Every one of these is verified against the same brute-force oracle as the
 operators themselves, and every one is measured in the session that shipped
@@ -201,7 +203,7 @@ the build rather than the review. See [CONTRIBUTING.md](CONTRIBUTING.md).
 ```
 tgms/core       clock, bi-temporal data model, error taxonomy
 tgms/storage    StorageAdapter ABC, native + DuckDB backends, event log, TCSR index
-tgms/temporal   operator algebra O1–O14 + brute-force oracle
+tgms/temporal   operator algebra O1–O15 + brute-force oracle
 tgms/tools      tool schemas, MCP server / ToolRouter, trace viewer, demo GUI
 tgms/agent      plan IR, planner, executor, verifier, reporter, memory
 tgms/data       dataset loaders (SHA-256 pinned) + synthetic generator

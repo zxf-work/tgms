@@ -21,7 +21,7 @@ def test_tool_schema_snapshot():
     """Generated schemas are part of the research artifact — any change must
     be deliberate. Regenerate with TGMS_UPDATE_SNAPSHOTS=1."""
     tools = anthropic_tools()
-    assert len(tools) == 14
+    assert len(tools) == 15   # O15 version_history arrived with D-058
     current = json.dumps(tools, indent=1, sort_keys=True)
     if os.environ.get("TGMS_UPDATE_SNAPSHOTS") or not SNAPSHOT.exists():
         SNAPSHOT.parent.mkdir(exist_ok=True)
