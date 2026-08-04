@@ -381,3 +381,42 @@ def test_a_closed_version_is_not_believed_midway_through_its_own_batch():
     with tempfile.TemporaryDirectory() as tmp:
         assert believed_midway(NativeAdapter(tmp)) == \
             believed_midway(DuckDBAdapter(":memory:"))
+
+
+# ---- the cost model, which the measurement said was wrong ------------------ #
+
+def test_the_version_scan_is_priced_as_materialization_not_a_scan():
+    """Measured at 10M versions: 153.9 s and 13.3 GB, against 1.3 s and
+    2.3 GB for the columnar count over the same population — 116x the time
+    and 54x the bytes per row, because `all_*_versions` builds one Python
+    object per version and no columnar version scan exists.
+
+    `scan_estimate` would price that as an ordinary scan and let it through,
+    so this operator carries its own: no window pruning, because there is no
+    pushdown and the window filters the output rather than the work, and the
+    per-row cost charged as an EXPANSION, because per-row allocation is what
+    the expansion ceiling is for.
+    """
+    from tgms.temporal.ops_versions import _version_cost
+
+    stats = {"n_edge_versions": 10_000_000, "n_node_versions": 20_000,
+             "vt_min": 0, "vt_max": 1_000_000}
+    est = _version_cost({"window": {"t_a": 0, "t_b": 10}}, stats)
+    assert est["expansions_est"] == 10_020_000
+    # a narrow window must NOT make it look cheap — that is the trap
+    wide = _version_cost({"window": {"t_a": 0, "t_b": 1_000_000}}, stats)
+    assert est == wide
+
+
+def test_a_store_too_large_to_materialize_is_refused():
+    from tgms.core.errors import CostError
+    from tgms.temporal.guardrails import enforce_cost
+    from tgms.temporal.ops_versions import _version_cost
+
+    big = _version_cost({}, {"n_edge_versions": 10_000_000,
+                             "n_node_versions": 0})
+    with pytest.raises(CostError):
+        enforce_cost("version_history", big)
+    small = _version_cost({}, {"n_edge_versions": 59_835,
+                               "n_node_versions": 1_908})
+    enforce_cost("version_history", small)      # CollegeMsg still answers
