@@ -101,7 +101,7 @@ against a forecast made *before* it was built — delivered/predicted has run
 
 ## What the operators can express
 
-Fourteen operators, but the interesting growth since v0.3.0 happened
+Fourteen operators, but the interesting growth since v0.4.0 happened
 *inside* them, driven question by question by the study above:
 
 | capability | where it lives | what it answers |

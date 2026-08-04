@@ -1,6 +1,6 @@
 # Changelog
 
-## v0.4.0 — 2026-08-04
+## v0.5.0 — 2026-08-04
 
 Engine release, and the release in which the operator surface stopped
 growing while what it can express nearly tripled.
@@ -67,7 +67,36 @@ tests and the oracle out of any commit that touches the implementation they
 judge; a retired capability tag now carries an assertion that fails if it
 reappears.
 
-**Decisions D-025…D-056.**
+**Decisions D-028…D-056.**
+
+## v0.4.0 — 2026-07-26
+
+CIDR-round release: an equal-information baseline, a fourth domain, and the
+first measurement of coverage against questions nobody here wrote. (Released
+on GitHub at the time without a changelog entry; reconstructed here so the
+file is complete.)
+
+- **b6 — same-information text-to-SQL baseline.** The model writes DuckDB
+  SQL against the *identical* bi-temporal version store TGMS executes on,
+  with the schema and temporal semantics in the prompt, the same repair
+  budget and the same answer contract. It matches TGMS on correction probes
+  everywhere — history, not interface, decides probe answerability — while
+  TGMS is +0.124 on CollegeMsg (95% CI [+0.071, +0.181]) and a statistical
+  tie on Bitcoin-OTC. TGMS answers less and is right more (0.706 coverage /
+  0.548 conditional vs 0.943 / 0.301) and remains the only configuration
+  with trace-checked claims.
+- **Bitcoin-OTC** (SNAP signed trust network): fourth frozen domain, 94
+  tasks, all systems on one H100 host (D-025).
+- **Independent-question study** (D-026): 110 questions written from a data
+  description only — 10 of 110 expressible, with grouped/distinct
+  aggregation the dominant gap. Protocol, raw questions and hand-audited
+  classification in `benchmarks/independent-v1/`.
+- **Runtime-repair extension** (D-027): every structured executor refusal
+  re-enters the repair loop, and payloads name the computed legal
+  alternative. Dev execution success 7/22 → 12/22.
+- Support restated at the answer level: 21/220 emitted answers carry an
+  unsupported claim ungated, 0/199 gated.
+- Decisions D-025…D-027.
 
 ## v0.3.0 — 2026-07-24
 
