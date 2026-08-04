@@ -88,9 +88,9 @@ writer costs those readers **0–3%** of per-query latency.
 **3. Can it answer the questions people actually ask?** This is the honest
 one. 110 questions were written by people who saw a plain-language
 description of two public datasets and **never saw the operator list**. Of
-those, **79 are expressible today** — 10 were expressible when the study was
+those, **83 are expressible today** — 10 were expressible when the study was
 pre-registered. Of LDBC SNB's 41 read templates, **3**, and that number has
-not moved in seven sessions because 35 of the 38 misses need labelled
+not moved in eight sessions because 35 of the 38 misses need labelled
 multi-way pattern matching, which is a deliberately deferred design
 decision rather than a missing operator.
 
@@ -98,9 +98,9 @@ The store is good and the surface is narrow. Both instruments live in the
 repo (`scripts/independent_questions.py`, `scripts/ldbc_fit.py`), they
 re-run in seconds, and each capability shipped since has been scored
 against a forecast made *before* it was built — delivered/predicted has run
-14/30, 4/7, 10/13, 14/16, 15/15, 4/8 and 5/5. The last was the first
-forecast made per question rather than in aggregate, and it was right in
-all eight cells.
+14/30, 4/7, 10/13, 14/16, 15/15, 4/8, 5/5 and 4/5. The last two were the
+first forecasts made per question rather than in aggregate, and they were
+right in every cell.
 
 ## What the operators can express
 
@@ -116,6 +116,7 @@ interesting growth since v0.4.0 happened *inside* them, driven question by quest
 | row arithmetic and joins | `compute` | `derive` adds one computed column; `join` aligns two grouped results on a key unique on both sides |
 | ordered sequences | `aggregate_events` | longest gap between consecutive events, busiest sliding window of a given span, longest run with no gap over a threshold |
 | calendar units | `aggregate_events` | grouping by hour of day, day of week or month of year, at a fixed offset from UTC that is an argument rather than a default |
+| the belief log | `version_history` | which beliefs were revised and when — the only operator that reads the correction record rather than a state derived from it |
 
 Every one of these is verified against the same brute-force oracle as the
 operators themselves, and every one is measured in the session that shipped

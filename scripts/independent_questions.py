@@ -142,6 +142,24 @@ predicate *inside* another operator (cm-Q19, bo-Q32), or an **absolute**
 calendar unit rather than a cyclic one (bo-Q41's date). LDBC's five `CAL`
 templates are all the absolute kind, which is why none of them moved.
 
+`C21` is the ninth, after D-058 shipped O15 `version_history` — the belief
+log as rows — and `compute filter`'s `field2`. Four questions moved,
+79 -> 83, and **all four are the capability**: two each, exactly as the two
+were forecast separately. The per-question forecast was 7 of 7, the second
+session running to be right in every cell.
+
+**`GLOB` retires completely, and it is the campaign's cleanest split.** The
+tag named three unrelated things: a scan over the version log, a row-wise
+`src == dst`, and a longest time-respecting chain. Two shipped here; the
+third is `CHAIN` *new*, and is not built. bo-Q41 keeps neither half — the
+version log answers which corrections exist, and what remains is an
+absolute calendar date plus regrouping a result.
+
+The board is now 25 blocked with nothing above 7 and nothing sole above 3.
+Seven of the twelve surviving tags name a capability *inside another
+operator* or a residual shape rather than a missing operator, which is a
+different kind of board than the one this campaign started against.
+
 Usage:
   python3 scripts/independent_questions.py report  # tables only, no stores
   python3 scripts/independent_questions.py build   # writes suites + gold;
@@ -1275,6 +1293,65 @@ C20: dict[tuple[str, int], tuple[int, str, str]] = {
 }
 
 
+# --------------------------------------------------------------------------- #
+# re-audit after the version log shipped (D-058)                               #
+# --------------------------------------------------------------------------- #
+# Two capabilities, forecast and scored separately: O15 `version_history` (the
+# belief log as rows, with `belief` = current/superseded/all as of `as_of_tt`)
+# and `compute filter`'s `field2`, which compares two columns of one row.
+#
+# **`GLOB` retires completely, and it is the campaign's cleanest split.** The
+# tag covered three unrelated things and now names none of them:
+#   - the version-log scan  -> shipped here (bo-Q40, bo-Q45)
+#   - `src == dst`          -> shipped here (cm-Q25, cm-Q38)
+#   - a longest time-respecting chain -> `CHAIN` *new*, and not built
+# bo-Q41 keeps neither half: the version log answers "which corrections", and
+# what is left is bucketing them by an ABSOLUTE calendar date (which D-057
+# deliberately did not build) and regrouping a result, which is `G`.
+#
+# The forecast was 7 of 7, per question, pre-registered in the `[tests]`
+# commit — the second session running, and the second to be right in every
+# cell. Both capabilities delivered exactly what was predicted of them: two
+# questions each.
+C21: dict[tuple[str, int], tuple[int, str, str]] = {
+    # ---- became expressible, on the version log ---- #
+    ("bo", 40): (1, "version_history",
+                 "one call: `belief: superseded` over the whole window is "
+                 "the count of beliefs that were revised. Zero on a store "
+                 "nobody corrected, and one per `correct` even when it "
+                 "carves a version into three"),
+    ("bo", 45): (2, "version_history+filter+count",
+                 "the current beliefs, then `filter` comparing tt_s against "
+                 "vt_s — the record time against the event time. Needs both "
+                 "of this session's capabilities, which is why no "
+                 "`record_lag` column was invented to avoid the second"),
+    # ---- became expressible, on the two-field filter ---- #
+    ("cm", 25): (2, "aggregate_events+filter+sum",
+                 "group by (src, dst), keep the rows where the two columns "
+                 "are equal, sum the counts. Note the page cap: CollegeMsg "
+                 "has 20,296 directed pairs against a 10,000-row page, so "
+                 "the plan is expressible and its execution on that dataset "
+                 "reduces over a page — the systemic issue D-056 recorded, "
+                 "biting a claimed question for the second time"),
+    ("cm", 38): (2, "aggregate_events+filter+sum",
+                 "the corpus asks cm-Q25 twice"),
+    # ---- re-tagged, still class 3 ---- #
+    ("bo", 34): (3, "PROP,CHAIN",
+                 "the version log was never its obstacle. It wants the "
+                 "longest time-respecting chain, over all starting points, "
+                 "with a property predicate on every hop"),
+    ("cm", 6): (3, "CHAIN",
+                "the same longest chain without the predicate — a global "
+                "optimum over all sources, which is neither a scan nor a "
+                "shortest path"),
+    ("bo", 41): (3, "CAL,G",
+                 "`version_history` now says which corrections exist and "
+                 "when they were recorded; what is left is bucketing tt_s "
+                 "by an ABSOLUTE calendar date, which D-057 did not build, "
+                 "and regrouping a result to count per bucket"),
+}
+
+
 def _verdict(table: dict, base, k):
     """A re-audit table's verdict for `k`, falling back to the table it
     chains onto. `base` is a callable so the chain composes."""
@@ -1337,6 +1414,9 @@ def report():
     def v20(k):
         return _verdict(C20, v19, k)
 
+    def v21(k):
+        return _verdict(C21, v20, k)
+
     _check_diff(C14, v13, "C14")
     _check_diff(C15, v14, "C15")
     _check_diff(C16, v15, "C16")
@@ -1344,6 +1424,7 @@ def report():
     _check_diff(C18, v17, "C18")
     _check_diff(C19, v18, "C19")
     _check_diff(C20, v19, "C20")
+    _check_diff(C21, v20, "C21")
     # AR is retired by C15: the capability shipped, and what is left of it
     # was never AR. Guard it so a later edit cannot quietly reintroduce the
     # tag without deciding what it now means.
@@ -1354,8 +1435,9 @@ def report():
     # and the surviving half is GMEAN. A tag that outlives its capability
     # inflates the board — `ROW` read as blocking 3 questions for a session
     # after `derive` landed — so guard both.
-    for tag, split in (("ROW", "GMEAN"), ("JOIN", "nothing")):
-        assert not [k for k in q if tag in _needs(*v19(k))], \
+    for tag, split in (("ROW", "GMEAN"), ("JOIN", "nothing"),
+                       ("GLOB", "the version log, `src == dst`, and CHAIN")):
+        assert not [k for k in q if tag in _needs(*v21(k))], \
             f"{tag} survived the C19 re-audit; what is left of it is {split}"
 
     stages = [("13 ops, pre-registered", v13),
@@ -1365,7 +1447,8 @@ def report():
               ("sets, D-054 session re-audit", v17),
               ("row + join, D-055 session re-audit", v18),
               ("sequences, D-056 session re-audit", v19),
-              ("calendar units, D-057 session re-audit", v20)]
+              ("calendar units, D-057 session re-audit", v20),
+              ("the version log, D-058 session re-audit", v21)]
     for label, v in stages:
         print(f"class distribution ({label}):",
               dict(sorted(Counter(v(k)[0] for k in q).items())))
@@ -1380,7 +1463,8 @@ def report():
             ("D-054 sets", v16, v17, C17),
             ("D-055 row + join", v17, v18, C18),
             ("D-056 sequences", v18, v19, C19),
-            ("D-057 calendar units", v19, v20, C20)]:
+            ("D-057 calendar units", v19, v20, C20),
+            ("D-058 the version log", v20, v21, C21)]:
         moved = sorted(k for k in q if cur(k)[0] != prev(k)[0])
         by_move = Counter((prev(k)[0], cur(k)[0]) for k in moved)
         print(f"\nbecame expressible under {label}: {len(moved)} of {len(q)} "
@@ -1401,7 +1485,7 @@ def report():
         print(f"class-3 entries whose need-tags were re-audited: "
               f"{len([k for k in table if table[k][0] == 3])}")
 
-    expressible = sum(1 for k in q if v20(k)[0] in (1, 2))
+    expressible = sum(1 for k in q if v21(k)[0] in (1, 2))
     print(f"\nexpressible now: {expressible} of {len(q)}")
     print("runnable:", [f"{d}-Q{n}" for (d, n) in sorted(C)
                         if C[(d, n)][2]])
@@ -1422,6 +1506,8 @@ def report():
              "justification_19": C19[(d, n)][2] if (d, n) in C19 else "",
              "class_20": v20((d, n))[0], "need_or_ops_20": v20((d, n))[1],
              "justification_20": C20[(d, n)][2] if (d, n) in C20 else "",
+             "class_21": v21((d, n))[0], "need_or_ops_21": v21((d, n))[1],
+             "justification_21": C21[(d, n)][2] if (d, n) in C21 else "",
              "reread_not_capability": (d, n) in REREAD}
             for (d, n) in sorted(q)]
     out = Path("benchmarks/independent-v1/classification.json")

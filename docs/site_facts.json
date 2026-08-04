@@ -129,10 +129,10 @@
    "prose": "systems answering the same registry: TGMS native, TGMS-on-DuckDB, PostgreSQL, ClickHouse, Neo4j, Memgraph"
   },
   "coverage_current": {
-   "value": "79",
+   "value": "83",
    "kind": "benchmark",
    "prose": "of 110 independently written questions expressible in the current operator set",
-   "snapshot": "coverage re-audit 2026-08-04 (C20 in scripts/independent_questions.py)"
+   "snapshot": "coverage re-audit 2026-08-04 (C21 in scripts/independent_questions.py)"
   },
   "coverage_after_grouping": {
    "value": "24",
@@ -441,6 +441,18 @@
    "kind": "benchmark",
    "prose": "questions that actually became expressible once calendar units shipped, against 5 predicted \u2014 and the first forecast made per question rather than in aggregate, which came in 8 of 8 correct",
    "snapshot": "coverage re-audit 2026-08-04 (C20 in scripts/independent_questions.py)"
+  },
+  "indep_versionlog_predicted": {
+   "value": "5",
+   "kind": "benchmark",
+   "prose": "questions the eighth histogram said a global scan would unlock on its own",
+   "snapshot": "coverage re-audit 2026-08-04 (C21 in scripts/independent_questions.py)"
+  },
+  "indep_versionlog_delivered": {
+   "value": "4",
+   "kind": "benchmark",
+   "prose": "questions that actually became expressible once the version log and the two-field filter shipped \u2014 two each, exactly as the two capabilities were forecast separately, and the per-question forecast was right in all 7 cells",
+   "snapshot": "coverage re-audit 2026-08-04 (C21 in scripts/independent_questions.py)"
   },
   "indep_multi_blocker": {
    "value": "55",
