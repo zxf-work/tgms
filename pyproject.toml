@@ -17,20 +17,19 @@ classifiers = [
 ]
 dependencies = [
     "numpy>=1.26",
-    "pyarrow>=17",
-    "networkx>=3.3",
     "jsonschema>=4.23",
-    "pydantic>=2.8",
-    "pandas>=2.2",
     "pyyaml>=6.0",
-    "tenacity>=9.1.4",
 ]
 
 [project.optional-dependencies]
 # DuckDB is no longer needed at runtime (D-029): the native engine is the
 # default. It remains available for opening pre-existing DuckDB stores, as
-# the A/B reference backend, and for the b6 text-to-SQL baseline.
-duckdb = ["duckdb>=1.1"]
+# the A/B reference backend, and for the b6 text-to-SQL baseline. `pyarrow`
+# rides with it and not with the runtime: the only import in the package is
+# inside `duckdb_adapter`'s bulk loader, and requiring it of every user both
+# contradicted D-029's "no storage engine by default" and broke the
+# manylinux2014 wheel test, where pyarrow has no wheel and cannot build.
+duckdb = ["duckdb>=1.1", "pyarrow>=17"]
 # Kuzu is unavailable going forward (acquired), and was only ever a secondary
 # backend plus the b5 text-to-Cypher baseline. Pinned here for replaying the
 # frozen b5 results; nothing in the runtime needs it.
@@ -43,6 +42,8 @@ eval = [
     "clickhouse-connect>=0.8",
     # Neo4j bolt driver; Apache-2.0 (D-036, spec §8.6)
     "neo4j>=5.20",
+    # the matrix harness's table assembly, and nothing else in the package
+    "pandas>=2.2",
 ]
 
 [project.scripts]
