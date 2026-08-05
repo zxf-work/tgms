@@ -319,50 +319,54 @@ def test_field2_is_advertised():
     assert "field2" in shown["description"]
 
 
-# ---- a defect found while writing the above, pinned rather than fixed ----- #
+# ---- a defect found while writing the above, fixed in D-059 --------------- #
 #
 # Building random stores for the oracle case above raised `StateError:
 # disjointness violated` on the native backend and not on DuckDB, for
 # writes that produce byte-identical version rows on both. The root cause
-# is one line of behaviour: **mid-batch, the native backend still reports a
-# version that the same batch has already closed.**
+# was one line of behaviour: **mid-batch, the native backend still reported
+# a version that the same batch had already closed.**
 #
 #     duckdb   believed MID-batch : [(10, 15), (15, 25)]
 #     native   believed MID-batch : [(10, 15), (10, 20), (15, 25)]
 #                       after commit, both: [(10, 15), (15, 25)]
 #
-# Two consequences, and the second is the serious one:
+# Closes against rows staged in the same batch were already visible; closes
+# against rows a *previous* batch committed were not, and those are the
+# only kind an ordinary correction makes. So the read-your-own-writes
+# overlay had a hole exactly where corrections live.
 #
-#   1. `paranoid=True` — the store's own integrity checking — fails on
-#      legal writes, because `_check_disjoint` runs inside the batch. That
-#      reaches `Store.assert_edge`, not just tests.
-#   2. `_assert_edge` and `_correct` call `believed_*` to decide what to
-#      carve, so a SECOND op in the same batch carves against stale belief.
-#      Constructed directly, two overlapping asserts of one edge in one
-#      batch make DuckDB refuse the batch (primary-key collision — the
-#      fragment and the original share `_vid(identity, tt, vt_s)`) while
-#      native accepts it and stores a row whose `tt_s == tt_e`, a belief
-#      interval that was never true at any transaction time.
+# These two run under both backends explicitly, because CI runs the suite
+# once and `TGMS_TEST_BACKEND` defaults to DuckDB: a native-only regression
+# here would otherwise be invisible until someone re-ran the whole suite by
+# hand. The claim is that the two AGREE, so both are built in the test.
 #
-# The invariant suite never saw either because `_apply_sequence` calls
-# `apply_ops` UNBRACKETED, and the divergence only appears between
-# `begin()` and `commit()` — which is the bracket `Store._write` uses.
-#
-# Not fixed here. The repair is in the native read path (staged closes must
-# be visible to `believed_*`), and what to do about a multi-op batch that
-# carves is a semantics decision with derived-identity consequences —
-# `_vid` is `sha256(identity:tt_s:vt_s)`, so making that case legal changes
-# ids and every frozen store digest with them (D-023). It is D-059's.
+# The write-side half of the finding — a second op in one batch carving
+# against belief the first op changed — is D-059's semantics rule, and its
+# tests live with the other bi-temporal invariants in
+# tests/test_storage_invariants.py.
 
-@pytest.mark.xfail(strict=True, reason="D-058 finding: native reports a "
-                                       "version its own open batch has "
-                                       "already closed")
-def test_a_closed_version_is_not_believed_midway_through_its_own_batch():
-    """Differential, and deliberately not parameterised by the backend
-    under test: the claim is that the two AGREE, so both are built here."""
+
+def _both_backends(probe):
+    """Run `probe` against a fresh adapter of each backend; return both."""
+    import tempfile
+
     from tgms.storage.duckdb_adapter import DuckDBAdapter
     from tgms.storage.native import NativeAdapter
 
+    duck = DuckDBAdapter(":memory:")
+    try:
+        with tempfile.TemporaryDirectory() as tmp:
+            native = NativeAdapter(tmp)
+            try:
+                return probe(native), probe(duck)
+            finally:
+                native.close()
+    finally:
+        duck.close()
+
+
+def test_a_closed_version_is_not_believed_midway_through_its_own_batch():
     def believed_midway(adapter) -> list[tuple[int, int]]:
         e = {"op": "assert_edge", "src": "a", "dst": "b", "rel_type": "R",
              "props": {}, "disc": ""}
@@ -377,10 +381,39 @@ def test_a_closed_version_is_not_believed_midway_through_its_own_batch():
         adapter.commit()
         return mid
 
-    import tempfile
-    with tempfile.TemporaryDirectory() as tmp:
-        assert believed_midway(NativeAdapter(tmp)) == \
-            believed_midway(DuckDBAdapter(":memory:"))
+    native, duckdb = _both_backends(believed_midway)
+    assert native == duckdb == [(10, 15), (15, 25)]
+
+
+def test_the_whole_row_agrees_mid_batch_not_just_the_valid_interval():
+    """The overlay is in `close_index`, which every read shares, so the fix
+    is not scoped to `believed_*`: `all_*_versions` reports the pending
+    close as the closed row's `tt_e` inside the batch that made it, the same
+    way DuckDB's uncommitted UPDATE does. Pinning the whole row also pins
+    that nothing else about it moved."""
+    def rows_midway(adapter):
+        e = {"op": "assert_edge", "src": "a", "dst": "b", "rel_type": "R",
+             "props": {}, "disc": ""}
+        adapter.begin()
+        adapter.apply_ops([{**e, "vt_s": 10, "vt_e": 20}], 1)
+        adapter.commit()
+        adapter.begin()
+        adapter.apply_ops([{**e, "vt_s": 15, "vt_e": 25}], 2)
+        mid = sorted((v.vt_s, v.vt_e, v.tt_s, v.tt_e)
+                     for v in adapter.all_edge_versions())
+        adapter.commit()
+        after = sorted((v.vt_s, v.vt_e, v.tt_s, v.tt_e)
+                       for v in adapter.all_edge_versions())
+        return mid, after
+
+    native, duckdb = _both_backends(rows_midway)
+    assert native == duckdb
+    assert native == ([(10, 15, 2, OPEN_END),
+                       (10, 20, 1, 2),          # closed by the open batch
+                       (15, 25, 2, OPEN_END)],
+                      [(10, 15, 2, OPEN_END),
+                       (10, 20, 1, 2),
+                       (15, 25, 2, OPEN_END)])
 
 
 # ---- the cost model, which the measurement said was wrong ------------------ #

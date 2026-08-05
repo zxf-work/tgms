@@ -9,6 +9,15 @@ Invariants:
 - I4  Bi-temporal immutability: the believed state at as_of_tt = t never
       changes once t has passed, regardless of later writes.
 - I5  Props round-trip through canonical JSON.
+- I6  A row's belief interval is non-empty: tt_e > tt_s, always. A version
+      created and closed at the same transaction time was believed at no
+      transaction time at all, so it is not a row (D-059).
+
+Every test below applies its ops in one of two shapes, and both matter:
+`_apply_sequence` calls `apply_ops` bare, `_apply_batches` wraps each batch
+in the begin()/commit() bracket `Store._write` uses. D-058 found a defect
+visible only inside that bracket and only from a second op in the same
+batch, which is exactly the pair of choices this file used to make.
 """
 
 from __future__ import annotations
@@ -18,10 +27,10 @@ import json
 from hypothesis import HealthCheck, given, settings
 
 from tgms.core.errors import NotFoundError
-from tgms.core.model import OPEN_END, canonical_json
+from tgms.core.model import OPEN_END, canonical_json, edge_eid
 from tgms.storage.base import _remainder
 
-from .conftest import fresh_adapter, op_sequences
+from .conftest import fresh_adapter, op_batches, op_sequences
 
 SETTINGS = settings(max_examples=120, deadline=None,
                     suppress_health_check=[HealthCheck.too_slow])
@@ -64,6 +73,52 @@ def _apply_sequence(adapter, ops):
         except NotFoundError:
             pass
     return applied_tts
+
+
+def _apply_batches(adapter, batches):
+    """Batches at tt = 1, 2, 3, ..., each through the begin()/commit()
+    bracket. A batch is atomic: an op with no target aborts the whole batch,
+    which is what `Store._write` does, so its tt never happened.
+
+    Returns `(applied_tts, mid)` where `mid` maps each applied tt to the
+    belief the batch could see of itself just before it committed — the read
+    every op after the first one in a batch depends on.
+    """
+    applied_tts, mid = [], {}
+    for i, batch in enumerate(batches):
+        tt = i + 1
+        adapter.begin()
+        try:
+            adapter.apply_ops(batch, tt)
+        except NotFoundError:
+            adapter.rollback()
+            continue
+        mid[tt] = _believed_intervals_at(adapter, OPEN_END)
+        adapter.commit()
+        applied_tts.append(tt)
+    return applied_tts, mid
+
+
+def _believed_intervals_at(adapter, as_of_tt):
+    """Each identity's believed valid intervals at `as_of_tt`, sorted.
+
+    Identities with nothing believed are dropped rather than mapped to `[]`,
+    so a snapshot taken mid-batch compares equal to the same store read back
+    at that tt after later batches have introduced identities of their own.
+    """
+    node_ids, edge_ids = _all_identities(adapter)
+    out = {}
+    for uid in node_ids:
+        ivs = sorted((v.vt_s, v.vt_e)
+                     for v in adapter.believed_node_versions(uid, as_of_tt=as_of_tt))
+        if ivs:
+            out["node " + uid] = ivs
+    for eid in edge_ids:
+        ivs = sorted((v.vt_s, v.vt_e)
+                     for v in adapter.believed_edge_versions(eid, as_of_tt=as_of_tt))
+        if ivs:
+            out["edge " + eid] = ivs
+    return out
 
 
 @SETTINGS
@@ -122,6 +177,143 @@ def test_bitemporal_immutability(ops):
     adapter.close()
 
 
+# ---- the same invariants, inside the bracket and with batches (D-059) ----- #
+
+
+@SETTINGS
+@given(batches=op_batches)
+def test_every_invariant_survives_a_multi_op_bracketed_batch(batches):
+    """The shape `_apply_sequence` cannot make: more than one op per batch,
+    inside begin()/commit().
+
+    Three things are asserted that one op per unbracketed batch cannot see.
+    I6 — no stored row was closed at the transaction time that created it.
+    I1 — disjointness holds at every historical tt, as before. And the
+    belief a batch reports *of itself*, mid-batch, is the belief it commits:
+    every op after the first one carves against that read, so a backend that
+    still reports a version its own batch has closed carves against a
+    version that is gone (D-058, native's `believed_*`).
+    """
+    adapter = fresh_adapter(paranoid=True)  # I1 re-checked inside each batch
+    applied, mid = _apply_batches(adapter, batches)
+    for v in list(adapter.all_node_versions()) + list(adapter.all_edge_versions()):
+        assert v.tt_s in applied
+        assert v.tt_e == OPEN_END or (v.tt_e in applied and v.tt_e > v.tt_s), \
+            f"belief interval is empty or unreal: tt_s={v.tt_s} tt_e={v.tt_e}"
+    node_ids, edge_ids = _all_identities(adapter)
+    for tt in applied:
+        for uid in node_ids:
+            ivs = sorted((v.vt_s, v.vt_e)
+                         for v in adapter.believed_node_versions(uid, as_of_tt=tt))
+            assert all(e1 <= s2 for (_, e1), (s2, _) in zip(ivs, ivs[1:])), \
+                f"node {uid} overlap at tt={tt}: {ivs}"
+        for eid in edge_ids:
+            ivs = sorted((v.vt_s, v.vt_e)
+                         for v in adapter.believed_edge_versions(eid, as_of_tt=tt))
+            assert all(e1 <= s2 for (_, e1), (s2, _) in zip(ivs, ivs[1:])), \
+                f"edge {eid} overlap at tt={tt}: {ivs}"
+        assert mid[tt] == _believed_intervals_at(adapter, tt), \
+            f"batch {tt} saw a different store than it committed"
+    adapter.close()
+
+
+def _edge_rows(adapter):
+    return sorted((v.vt_s, v.vt_e, v.tt_s, v.tt_e, v.props.get("p"))
+                  for v in adapter.all_edge_versions())
+
+
+def _assert_edge_op(vt_s, vt_e, p):
+    return {"op": "assert_edge", "src": "a", "dst": "b", "rel_type": "R",
+            "props": {"p": p}, "vt_s": vt_s, "vt_e": vt_e, "disc": ""}
+
+
+def test_a_version_created_and_closed_in_one_batch_is_not_stored():
+    """I6, stated as the rule it comes from (D-059).
+
+    A version written at tt and closed at tt was believed over the empty
+    transaction interval [tt, tt) — at no transaction time at all. It is not
+    a correction, it is not a superseded belief, it is not history: it is a
+    row the batch changed its mind about before anyone could read it. So
+    closing a version at the transaction time that created it *retires* it.
+
+    That is what keeps `_vid = sha256(identity:tt_s:vt_s)` intact. The carve
+    re-emits the remainder at the same `vt_s`, which derives the same vid as
+    the version it just replaced — a collision only because both rows claim
+    to exist, and only one of them ever did.
+    """
+    for second, expect in [
+        # carve right: the remainder keeps vt_s, so it re-derives the vid of
+        # the version being replaced — the case DuckDB refused outright
+        (_assert_edge_op(15, 25, 2), [(10, 15, 1, OPEN_END, 1),
+                                      (15, 25, 1, OPEN_END, 2)]),
+        # carve left: no vid collides here, so *both* backends took this one
+        # and stored the empty-belief row. The rule, not the collision, is
+        # what removes it
+        (_assert_edge_op(5, 15, 2), [(5, 15, 1, OPEN_END, 2),
+                                     (15, 20, 1, OPEN_END, 1)]),
+        # replaced whole: no remainder at all, and the new version itself
+        # carries the retired vid
+        (_assert_edge_op(10, 30, 2), [(10, 30, 1, OPEN_END, 2)]),
+        # untouched neighbour: nothing overlaps, so nothing is retired
+        (_assert_edge_op(30, 40, 2), [(10, 20, 1, OPEN_END, 1),
+                                      (30, 40, 1, OPEN_END, 2)]),
+    ]:
+        adapter = fresh_adapter(paranoid=True)
+        adapter.begin()
+        adapter.apply_ops([_assert_edge_op(10, 20, 1), second], 1)
+        adapter.commit()
+        assert _edge_rows(adapter) == expect, second
+        adapter.close()
+
+
+def test_retract_and_correct_also_retire_their_own_batch_s_version():
+    """The rule is about closing, not about `assert_edge`: `_retract` and
+    `_correct` close the versions they replace through the same primitive."""
+    eid = edge_eid("a", "b", "R")
+
+    adapter = fresh_adapter(paranoid=True)
+    adapter.begin()
+    adapter.apply_ops([_assert_edge_op(0, 100, 1),
+                       {"op": "retract", "ref": {"kind": "edge", "src": "a",
+                                                 "dst": "b", "rel_type": "R",
+                                                 "disc": ""}, "t": 50}], 1)
+    adapter.commit()
+    assert _edge_rows(adapter) == [(0, 50, 1, OPEN_END, 1)]
+    assert [(v.vt_s, v.vt_e) for v in adapter.believed_edge_versions(eid)] == [(0, 50)]
+    adapter.close()
+
+    adapter = fresh_adapter(paranoid=True)
+    adapter.begin()
+    adapter.apply_ops([_assert_edge_op(0, 100, 1),
+                       {"op": "correct", "ref": {"kind": "edge", "src": "a",
+                                                 "dst": "b", "rel_type": "R",
+                                                 "disc": ""},
+                        "props": {"p": 2}, "vt_s": 40, "vt_e": 60}], 1)
+    adapter.commit()
+    assert _edge_rows(adapter) == [(0, 40, 1, OPEN_END, 1),
+                                   (40, 60, 1, OPEN_END, 2),
+                                   (60, 100, 1, OPEN_END, 1)]
+    adapter.close()
+
+
+def test_a_version_closed_by_a_LATER_batch_is_still_history():
+    """The other side of the rule, so it cannot be read as "same batch wins".
+    Across batches the closed version is exactly what belief history is, and
+    retiring it would be erasure — which is the property D-023 vaults."""
+    adapter = fresh_adapter(paranoid=True)
+    for tt, op in ((1, _assert_edge_op(10, 20, 1)), (2, _assert_edge_op(15, 25, 2))):
+        adapter.begin()
+        adapter.apply_ops([op], tt)
+        adapter.commit()
+    assert _edge_rows(adapter) == [(10, 15, 2, OPEN_END, 1),
+                                   (10, 20, 1, 2, 1),          # closed, kept
+                                   (15, 25, 2, OPEN_END, 2)]
+    eid = edge_eid("a", "b", "R")
+    assert [(v.vt_s, v.vt_e) for v in
+            adapter.believed_edge_versions(eid, as_of_tt=1)] == [(10, 20)]
+    adapter.close()
+
+
 def test_remainder_carving():
     assert _remainder(0, 10, 3, 7) == [(0, 3), (7, 10)]
     assert _remainder(0, 10, 0, 10) == []
@@ -139,7 +331,6 @@ def test_retract_is_evolution_not_erasure():
     adapter.apply_ops([{"op": "retract",
                         "ref": {"kind": "edge", "src": "a", "dst": "b",
                                 "rel_type": "R", "disc": ""}, "t": 100}], 2)
-    from tgms.core.model import edge_eid
     eid = edge_eid("a", "b", "R")
     old = adapter.believed_edge_versions(eid, as_of_tt=1)
     new = adapter.believed_edge_versions(eid, as_of_tt=2)
