@@ -1594,6 +1594,50 @@ REDUCING_OPS = frozenset({"count", "sum", "mean", "median", "min", "max",
                           "intersect", "difference", "union", "join"})
 
 
+def check_groupings() -> list[str]:
+    """Every declared grouping must be one the operator would actually accept.
+
+    Store-free on purpose, and that is the point: both defects this guard
+    exists for were **validation** failures, not cardinality ones. D-063
+    declared cm-Q32 as `calendar_unit x calendar_unit`, which the operator
+    rejects as a duplicate dimension, and nothing noticed until `pagecap` was
+    run by hand a session later. Asking the real validator costs nothing and
+    needs no data, so it runs wherever the tables do.
+
+    Returns a list of problems rather than raising, so a caller can report
+    all of them at once.
+    """
+    from tgms.temporal.algebra import ensure_all_registered, validate_args
+    ensure_all_registered()
+    DIM = {"src": {"dim": "endpoint", "role": "src"},
+           "dst": {"dim": "endpoint", "role": "dst"},
+           "rel_type": {"dim": "rel_type"},
+           "time_bucket": {"dim": "time_bucket"},
+           "hour_of_day": {"dim": "calendar_unit", "unit": "hour_of_day"},
+           "day_of_week": {"dim": "calendar_unit", "unit": "day_of_week"},
+           "month_of_year": {"dim": "calendar_unit", "unit": "month_of_year"}}
+    problems = []
+    for k, groupings in sorted(GROUPINGS.items()):
+        if groupings is None:
+            continue
+        for g in groupings:
+            unknown = set(g) - GROUPING_DIMS
+            if unknown:
+                problems.append(f"{k[0]}-Q{k[1]}: unknown dimension(s) "
+                                f"{sorted(unknown)} in {g}")
+                continue
+            args = {"group_by": [DIM[d] for d in g],
+                    "aggregates": [{"agg": "count"}],
+                    "window": {"t_a": 0, "t_b": 1}}
+            if "time_bucket" in g:
+                args["stride"] = 86_400_000_000
+            try:
+                validate_args("aggregate_events", args)
+            except Exception as e:      # noqa: BLE001 - report, do not raise
+                problems.append(f"{k[0]}-Q{k[1]}: {g} is not a grouping the "
+                                f"operator accepts — {str(e)[:80]}")
+    return problems
+
 def reduces_after_grouping(ops: str) -> bool:
     """Does this chain reduce something a grouping produced?"""
     if not isinstance(ops, str) or "aggregate_events" not in ops:
@@ -1818,6 +1862,9 @@ def report():
           f"{len(risky)} group an endpoint with a second dimension and so "
           f"need paging on at least one canonical dataset; "
           f"{len(undecidable)} cannot be decided from the op chain")
+    bad = check_groupings()
+    assert not bad, ("declared groupings the operator would refuse:\n  "
+                     + "\n  ".join(bad))
     unmeasured = sorted({g for gs in GROUPINGS.values() if gs for g in gs}
                         - set(MEASURED))
     assert not unmeasured, (
