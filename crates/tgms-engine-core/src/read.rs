@@ -365,15 +365,20 @@ impl NativeStore {
     /// postings ride in the same pass: they only read the `vid64` column,
     /// and one `indexed` set keeps both maps consistent.
     fn index_segments(&self, kind: RowKind) -> Result<()> {
-        let files = match kind {
-            RowKind::Edge => self.edge_files(),
-            RowKind::Node => self.node_files(),
-        };
+        // The cached map, not `edge_files()` (D-077). This runs on *every*
+        // point read to notice new segments, and rebuilding the file list
+        // here — a String clone and a filename parse per segment — was the
+        // larger half of the per-call O(segments) cost; caching only the
+        // `by_id` lookup left this one behind and bought 2.2x of a
+        // forecast 8x.
+        let files = self.segment_files();
         let pending: Vec<(String, u64)> = {
             let p = self.postings_for(kind).lock().expect("postings mutex poisoned");
             files
-                .into_iter()
-                .filter(|(_, id)| !p.indexed.contains(id))
+                .of(kind)
+                .iter()
+                .filter(|(id, _)| !p.indexed.contains(*id))
+                .map(|(id, f)| (f.clone(), *id))
                 .collect()
         };
         for (file, id) in pending {
@@ -435,12 +440,8 @@ impl NativeStore {
     /// Candidate `(file, row)` locations for one identity.
     fn locate(&self, kind: RowKind, key: u64) -> Result<Vec<(String, u32)>> {
         self.index_segments(kind)?;
-        let files = match kind {
-            RowKind::Edge => self.edge_files(),
-            RowKind::Node => self.node_files(),
-        };
-        let by_id: std::collections::HashMap<u64, String> =
-            files.into_iter().map(|(f, i)| (i, f)).collect();
+        let files = self.segment_files();
+        let by_id = files.of(kind);
         let p = self.postings_for(kind).lock().expect("postings mutex poisoned");
         Ok(p
             .by_identity
@@ -488,11 +489,8 @@ impl NativeStore {
         // nothing uncommitted may ever mutate it. Pending closes are applied
         // below as a filter instead, which a rollback simply forgets.
         let closes = self.committed_close_index()?;
-        let files = match kind {
-            RowKind::Edge => self.edge_files(),
-            RowKind::Node => self.node_files(),
-        };
-        let by_id: HashMap<u64, String> = files.into_iter().map(|(f, i)| (i, f)).collect();
+        let files = self.segment_files();
+        let by_id = files.of(kind);
         let closed_here = self.pending_closed_rows(kind);
 
         let mut p = self.postings_for(kind).lock().expect("postings mutex poisoned");
@@ -520,11 +518,8 @@ impl NativeStore {
     /// (or gc deleted) can never resolve.
     pub(crate) fn locate_vid(&self, kind: RowKind, vid: Id96) -> Result<Option<(u64, u32)>> {
         self.index_segments(kind)?;
-        let files = match kind {
-            RowKind::Edge => self.edge_files(),
-            RowKind::Node => self.node_files(),
-        };
-        let by_id: HashMap<u64, String> = files.into_iter().map(|(f, i)| (i, f)).collect();
+        let files = self.segment_files();
+        let by_id = files.of(kind);
         let candidates: Vec<(u64, u32)> = {
             let p = self.postings_for(kind).lock().expect("postings mutex poisoned");
             p.by_vid.get(&vid.hi).cloned().unwrap_or_default()

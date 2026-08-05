@@ -86,6 +86,16 @@ pub struct NativeStore {
     /// is always identical. Without this, every point read re-reads every
     /// run file, which made correction-heavy replay quadratic.
     close_cache: std::sync::Mutex<Option<(u64, std::sync::Arc<CloseIndex>)>>,
+    /// `segment id -> filename`, per lane, built once per generation (D-077).
+    ///
+    /// Every point read — `locate`, `locate_open`, `locate_vid` — needs to
+    /// turn a posting's segment id back into a file, and each was rebuilding
+    /// this from the manifest per call: a String clone *and* a filename parse
+    /// per segment, to answer a question about one identity. At 1,000
+    /// segments that was 94% of a `believed_*` call. Sound for the same
+    /// reason `close_cache` is: the segment set changes only when a commit
+    /// publishes a new manifest.
+    files_cache: std::sync::Mutex<Option<(u64, std::sync::Arc<SegmentFiles>)>>,
     /// The open batch's `pending_closes`, as a layer over the committed
     /// index, so a read inside the batch sees them (D-059). Maintained as
     /// they are recorded rather than rebuilt per read: `apply_ops` reads
@@ -190,6 +200,7 @@ impl NativeStore {
             node_postings: std::sync::Mutex::new(Postings::default()),
             verified: std::sync::Mutex::new(std::collections::HashSet::new()),
             close_cache: std::sync::Mutex::new(None),
+            files_cache: std::sync::Mutex::new(None),
             pending_overlay: None,
             segments: std::sync::Mutex::new(SegmentCache::new(cache_budget(
                 std::env::var("TGMS_SEGMENT_CACHE_BYTES").ok().as_deref(),
@@ -558,6 +569,42 @@ impl NativeStore {
     /// that generation's beliefs — never a newer correction: each handle
     /// caches against its *own* manifest generation, so a pinned older view
     /// serves its own generation's closes, not a newer handle's.
+    /// `segment id -> filename` for both lanes, for this generation (D-077).
+    ///
+    /// Returned behind an `Arc` so callers share one map instead of each
+    /// building its own; the caller looks names up rather than owning them.
+    pub(crate) fn segment_files(&self) -> std::sync::Arc<SegmentFiles> {
+        let generation = self.manifest.generation;
+        if let Some((cached_gen, files)) = self
+            .files_cache
+            .lock()
+            .expect("files-cache mutex poisoned")
+            .as_ref()
+        {
+            if *cached_gen == generation {
+                return files.clone();
+            }
+        }
+        let m = &self.manifest;
+        let files = std::sync::Arc::new(SegmentFiles {
+            edge: m
+                .edge_lanes
+                .event
+                .iter()
+                .chain(m.edge_lanes.interval.iter())
+                .map(|e| (segment_id_of(&e.file), e.file.clone()))
+                .collect(),
+            node: m
+                .node_store
+                .iter()
+                .map(|e| (segment_id_of(&e.file), e.file.clone()))
+                .collect(),
+        });
+        *self.files_cache.lock().expect("files-cache mutex poisoned") =
+            Some((generation, files.clone()));
+        files
+    }
+
     pub(crate) fn committed_close_index(&self) -> Result<std::sync::Arc<CloseIndex>> {
         if self.current_only {
             // the stripped configuration has no closes by construction; a
@@ -882,6 +929,21 @@ impl StatsAccum {
 
     pub fn max_out_degree(&self) -> u64 {
         self.out_degree.values().copied().max().unwrap_or(0)
+    }
+}
+
+/// `segment id -> filename`, per lane, for one manifest generation (D-077).
+pub(crate) struct SegmentFiles {
+    pub(crate) edge: std::collections::HashMap<u64, String>,
+    pub(crate) node: std::collections::HashMap<u64, String>,
+}
+
+impl SegmentFiles {
+    pub(crate) fn of(&self, kind: RowKind) -> &std::collections::HashMap<u64, String> {
+        match kind {
+            RowKind::Edge => &self.edge,
+            RowKind::Node => &self.node,
+        }
     }
 }
 
