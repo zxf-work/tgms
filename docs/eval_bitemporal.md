@@ -202,8 +202,12 @@ small either way. Conversion cost again equals one compaction
 
 ## A cost the sweep surfaced in passing: `close_version`'s linear scan
 
-> **Status: RESOLVED 2026-08-01**, in two parts — WP-N4 vid postings
-> (`de5071b`) and the per-generation `close_index()` cache (`96ea135`).
+> **Status: RESOLVED 2026-08-01** by a single commit, `de5071b`, carrying
+> both halves — the WP-N4 vid postings for `close_version` *and* the
+> per-generation `close_index()` cache. (`96ea135`, 40 minutes later, is the
+> **measurement** of the result, not a second fix; the update blocks below
+> are dated 2026-07-31 because that is when the work and its A/B receipts
+> were produced, the morning before they were committed.)
 > Replay is **linear** in correction volume at HEAD: ~1.6 ms per
 > correction at 1%, 5% and 20% alike. The 38.6 / 233.1 / 2,856.8 s figures
 > below are the **pre-fix** curve and are superseded by the three dated

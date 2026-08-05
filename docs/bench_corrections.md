@@ -25,8 +25,8 @@ rather than in aggregate. Aggregates conceal compensating errors.
 
 ### F1 — density: flat per-correction cost
 
-With `de5071b` (WP-N4 postings) and `96ea135` (per-generation
-`close_index()` cache) both in, marginal cost per correction is **flat**
+With `de5071b` — one commit carrying both the WP-N4 postings and the
+per-generation `close_index()` cache — in, marginal cost per correction is **flat**
 across density; total time is linear in correction count. Predicted spread
 across 1/5/20/50% at fixed batch size: **within 2×**, dominated by noise
 and by segment-count growth rather than by any quadratic term.
