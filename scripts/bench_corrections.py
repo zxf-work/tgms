@@ -45,6 +45,7 @@ from __future__ import annotations
 import argparse
 import json
 import platform
+import shutil
 import statistics
 import subprocess
 import sys
@@ -56,6 +57,7 @@ from typing import Any
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 import tgms  # noqa: E402
+from tgms.storage.eventlog import EventLog, replay  # noqa: E402
 
 OPEN_END = 1_000_000
 
@@ -74,9 +76,17 @@ OPEN_END = 1_000_000
 # `truncated: true`, and printed — a silently capped cell reads as full
 # coverage when it is not.
 
+#
+# `depth_entities` is deliberately much smaller than `n_entities`: seeding
+# depth D means D rounds over the population, so the depth axis at the grid's
+# population would seed 20,000 x 1,000 = 20M versions to measure per-identity
+# history. Depth is a property of *one* identity, so a small population with
+# deep history is the shape that prices it.
+
 PROFILES: dict[str, dict[str, Any]] = {
     "ci": {
         "n_entities": 500,
+        "depth_entities": 100,
         "events": 20_000,
         "max_batches": 120,
         "densities": [1, 5, 20],
@@ -86,6 +96,7 @@ PROFILES: dict[str, dict[str, Any]] = {
     },
     "full": {
         "n_entities": 20_000,
+        "depth_entities": 200,
         "events": 1_000_000,
         "max_batches": 2_000,
         "densities": [1, 5, 20, 50],
@@ -188,12 +199,40 @@ def run_cell(
     ooo: int,
     measure_replay: bool,
 ) -> dict[str, Any]:
-    """One matrix cell against a fresh store."""
+    """One matrix cell against a fresh store.
+
+    The store is removed before returning: the `full` profile runs 28 cells,
+    several of which hold hundreds of thousands of versions, and keeping them
+    all would be tens of GB of temp for no reason. Everything the record needs
+    is read out first.
+    """
     work = Path(tempfile.mkdtemp(prefix="tgms-bench-corr-"))
+    try:
+        return _run_cell_in(work, n_entities=n_entities,
+                            n_corrections=n_corrections, batch_size=batch_size,
+                            depth=depth, ooo=ooo, measure_replay=measure_replay)
+    finally:
+        shutil.rmtree(work, ignore_errors=True)
+
+
+def _run_cell_in(
+    work: Path,
+    *,
+    n_entities: int,
+    n_corrections: int,
+    batch_size: int,
+    depth: int,
+    ooo: int,
+    measure_replay: bool,
+) -> dict[str, Any]:
     root = work / "store"
     store = tgms.open(root, backend="native")
     adapter = store.adapter
     adapter.paranoid = False  # the disjointness check is O(versions) per op
+
+    # only retained when replay is being timed — at 500k corrections holding
+    # every op would cost more memory than the store does
+    op_log: list[tuple[int, list[dict[str, Any]]]] = []
 
     tt = 1000
     for ops in _seed_ops(n_entities, depth):
@@ -201,6 +240,8 @@ def run_cell(
         adapter.begin()
         adapter.apply_ops(ops, tt)
         adapter.commit()
+        if measure_replay:
+            op_log.append((tt, ops))
     seed_bytes = storage_breakdown(root)["store_total"]
 
     latencies: list[float] = []
@@ -216,6 +257,8 @@ def run_cell(
         adapter.commit()
         latencies.append((time.perf_counter() - t0) * 1000)
         applied += take
+        if measure_replay:
+            op_log.append((tt, ops))
     wall = time.perf_counter() - t_start
     store.close()
 
@@ -240,17 +283,25 @@ def run_cell(
     }
 
     if measure_replay:
-        log = root / "eventlog.jsonl"
-        if log.exists():
-            replay_root = work / "replayed"
-            t0 = time.perf_counter()
-            from tgms.storage.eventlog import replay
+        # The cell writes through the *adapter*, which does not record an
+        # event log — Store._write does. So replay is timed against a log
+        # this function writes explicitly from the same op batches, rather
+        # than against the store's own (empty) one. Timing the empty log
+        # would report a replay of nothing as a replay time.
+        log_path = work / "reference.jsonl"
+        eventlog = EventLog(log_path)
+        for tt_i, ops in op_log:
+            eventlog.append(tt_i, ops)
 
-            s2 = tgms.open(replay_root, backend="native")
-            replay(log, s2.adapter)
-            s2.close()
-            rec["replay_s"] = round(time.perf_counter() - t0, 3)
-            rec["replay_storage"] = storage_breakdown(replay_root)
+        replay_root = work / "replayed"
+        t0 = time.perf_counter()
+        s2 = tgms.open(replay_root, backend="native")
+        batches = replay(log_path, s2.adapter)
+        s2.close()
+        rec["replay_s"] = round(time.perf_counter() - t0, 3)
+        rec["replay_batches"] = batches
+        rec["replay_log_bytes"] = log_path.stat().st_size
+        rec["replay_storage"] = storage_breakdown(replay_root)
 
     return rec
 
@@ -294,11 +345,15 @@ def sweep(profile: dict[str, Any], want_replay: bool) -> dict[str, Any]:
             note = f" [capped from {target}]" if cut else ""
             print(f"  density {pct}% × batch {bs} "
                   f"({corrections} corrections){note} …", flush=True)
+            t0 = time.perf_counter()
             cell = run_cell(
                 n_entities=n_ent, n_corrections=corrections, batch_size=bs,
                 depth=BASELINE_DEPTH, ooo=BASELINE_OOO,
                 measure_replay=want_replay and bs == BASELINE_BATCH and not cut,
             )
+            print(f"    → {cell['ms_per_correction']:.4f} ms/corr, "
+                  f"{cell['batches']} commits ({time.perf_counter() - t0:.0f}s)",
+                  flush=True)
             cell["density_pct"] = pct
             cell["density_target_corrections"] = target
             cell["truncated"] = cut
@@ -313,26 +368,36 @@ def sweep(profile: dict[str, Any], want_replay: bool) -> dict[str, Any]:
     # cells are comparable to each other rather than to the grid
     axis_corrections = min(events // 100, BASELINE_BATCH * max_batches)
 
+    # depth runs on its own small population — see the note on the profiles
+    depth_ent = profile.get("depth_entities", n_ent)
     depths = []
     for d in profile["depths"]:
-        print(f"  depth {d} versions/identity ({axis_corrections} corrections) …",
-              flush=True)
-        depths.append(run_cell(
-            n_entities=n_ent, n_corrections=axis_corrections,
+        print(f"  depth {d} versions/identity over {depth_ent} entities "
+              f"({axis_corrections} corrections) …", flush=True)
+        t0 = time.perf_counter()
+        cell = run_cell(
+            n_entities=depth_ent, n_corrections=axis_corrections,
             batch_size=BASELINE_BATCH, depth=d, ooo=BASELINE_OOO,
             measure_replay=False,
-        ))
+        )
+        print(f"    → {cell['ms_per_correction']:.4f} ms/corr "
+              f"({time.perf_counter() - t0:.0f}s)", flush=True)
+        depths.append(cell)
     out["axes"]["versions_per_identity"] = depths
 
     ooos = []
     for dist in profile["ooo_distances"]:
         print(f"  out-of-order distance {dist} ({axis_corrections} corrections) …",
               flush=True)
-        ooos.append(run_cell(
+        t0 = time.perf_counter()
+        cell = run_cell(
             n_entities=n_ent, n_corrections=axis_corrections,
             batch_size=BASELINE_BATCH, depth=BASELINE_DEPTH, ooo=dist,
             measure_replay=False,
-        ))
+        )
+        print(f"    → {cell['ms_per_correction']:.4f} ms/corr "
+              f"({time.perf_counter() - t0:.0f}s)", flush=True)
+        ooos.append(cell)
     out["axes"]["out_of_order_distance"] = ooos
 
     return out
