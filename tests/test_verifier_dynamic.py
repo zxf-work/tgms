@@ -89,9 +89,18 @@ def test_wrong_claims_are_unsupported(tmp_path):
 
 
 def test_truncated_evidence_caps_verdict(tmp_path):
+    """Unchanged in what it asserts (D-061 preserves it deliberately): the
+    entity IS in the page, so the claim is true and its evidence is merely
+    partial — which is what `weakly_supported` is for. Only the plan changed,
+    dropping the reducing step this test never used, because a reduction
+    over a truncated page now fails outright and would take the whole trace
+    down with it. `rows_total` is the honest answer here: it is the full
+    count, read off the truncated page rather than summed from it."""
     adapter, _, _ = build_store(2)
     plan_json = _reach_plan()
     plan_json["steps"][0]["args"]["limit"] = 1  # force truncation
+    plan_json["steps"] = plan_json["steps"][:1]
+    plan_json["answer_spec"] = {"kind": "count", "from": "s1.rows_total"}
     plan, trace, results = _run(adapter, tmp_path, plan_json)
     assert trace.steps[0]["truncated"]
     v = ClaimVerifier(trace, results, adapter)
@@ -161,19 +170,76 @@ def test_fault_injection_detection_and_fp(tmp_path):
     assert stats["detection_rate"] >= 0.95, stats
 
 
-def test_upstream_truncation_taints_dependent_claims(tmp_path):
-    """[tests] a count computed over a truncated page must not verify as
-    fully supported (D-015 live-demo finding: 14B counted a 100-row page of
-    a 343-row result and the claim showed 'supported')."""
+def test_a_reduction_over_a_truncated_page_fails_rather_than_downgrades(tmp_path):
+    """D-015's finding, enforced one step earlier (D-061).
+
+    D-015 found it live — "14B counted a 100-row page of a 343-row result
+    and the claim showed supported" — and the answer then was to taint the
+    dependent and cap its verdict at `weakly_supported`. Measured since: a
+    sum over the first of three pages of CollegeMsg's directed pairs is
+    29,612 against 59,835, **50.5% low**. That is not thin evidence, it is a
+    wrong number, and no verdict downstream recovers it.
+
+    So the reducing step now fails instead, and this asserts the strictly
+    stronger property the original test was written to protect: not "the
+    claim reads as qualified" but "there is no number to claim". Editing a
+    pinned test needs a precedent and a reason; the reason is that the
+    guarantee only got tighter, and D-031 is the precedent (§6).
+    """
     adapter, _, _ = build_store(2)
     plan_json = _reach_plan()
     plan_json["steps"][0]["args"]["limit"] = 1          # truncate upstream
-    plan, trace, results = _run(adapter, tmp_path, plan_json)
+    results = ResultStore(tmp_path / "results")
+    trace = Executor(ToolRouter(adapter), results).run(Plan.from_json(plan_json))
+
     by = {s["step_id"]: s for s in trace.steps}
-    assert by["s1"]["truncated"] and by["s2"]["upstream_truncated"]
+    assert by["s1"]["truncated"], "the grouping still reports its own truncation"
+    assert by["s2"]["status"] == "failed", "the count must not have run"
+    assert by["s2"]["error"]["error"] == "E_LIMIT"
+    assert "truncated" in by["s2"]["error"]["message"]
+    assert not trace.ok, "a plan whose answer step failed is not ok"
+
+
+def test_a_row_returning_step_still_runs_on_a_truncated_page(tmp_path):
+    """Reductions only (D-061). `filter`/`derive`/`join`/the set ops hand
+    back rows, and the caller can still see `truncated` on them — refusing
+    those would break paging plans and preview listings, which are
+    legitimate readings of page 1. Taint is transitive, so a chain that ends
+    in a number still fails at the number."""
+    adapter, _, _ = build_store(2)
+    plan_json = _reach_plan()
+    plan_json["steps"][0]["args"]["limit"] = 1
+    plan_json["steps"][1] = {
+        "id": "s2", "op": "compute",
+        "args": {"fn": "filter", "input": {"$ref": "s1.rows"},
+                 "field": "uid", "cmp": "not_null"},
+        "depends_on": ["s1"]}
+    plan_json["steps"].append(
+        {"id": "s3", "op": "compute",
+         "args": {"fn": "count", "input": {"$ref": "s2.rows"}},
+         "depends_on": ["s2"]})
+    plan_json["answer_spec"] = {"kind": "count", "from": "s3.value"}
+    results = ResultStore(tmp_path / "results")
+    trace = Executor(ToolRouter(adapter), results).run(Plan.from_json(plan_json))
+
+    by = {s["step_id"]: s for s in trace.steps}
+    assert by["s2"]["status"] == "ok", "filter over a page is allowed"
+    assert by["s2"]["upstream_truncated"], "and is still marked tainted"
+    assert by["s3"]["status"] == "failed", "the count two steps down is not"
+    assert by["s3"]["error"]["error"] == "E_LIMIT"
+
+
+def test_an_untruncated_reduction_is_untouched(tmp_path):
+    """The guard fires on truncation, not on reduction: the same plan with a
+    page big enough for the whole result runs exactly as before."""
+    adapter, _, _ = build_store(2)
+    plan, trace, results = _run(adapter, tmp_path, _reach_plan())
+    by = {s["step_id"]: s for s in trace.steps}
+    assert by["s1"]["truncated"] is False
+    assert by["s2"]["status"] == "ok"
     v = ClaimVerifier(trace, results, adapter)
     report = v.verify({"text": f"{trace.answer} nodes.",
                        "claims": [{"id": "c1", "type": "count",
                                    "value": trace.answer, "from": "s2.value",
                                    "evidence": ["s2"]}]})
-    assert report["claims"][0]["verdict"] == "weakly_supported"
+    assert report["claims"][0]["verdict"] == "supported"

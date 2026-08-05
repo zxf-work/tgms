@@ -30,6 +30,19 @@ MAX_WALL_S = 60.0
 MAX_TOTAL_ROWS = 50_000
 MAX_REF_ITEMS = 10_000  # [*] projections truncate to the largest arg maxItems
 
+#: `compute` functions that reduce their input to one number. Running one of
+#: these over a truncated page produces a wrong number rather than a partial
+#: one — measured at 50.5% low on CollegeMsg's directed pairs — so the step
+#: is refused instead of tainted (D-061).
+#:
+#: Only the scalar-producing functions. `filter`, `derive`, `join` and the
+#: set operations hand back rows that still carry `truncated`, and paging
+#: plans and preview listings are legitimate readings of page 1. Nothing
+#: escapes by that door: the taint is transitive, so a chain ending in a
+#: number fails at the number.
+REDUCING_FNS = frozenset({"count", "sum", "min", "max", "mean", "median",
+                          "ratio", "diff", "percent", "topk"})
+
 
 @dataclass
 class Trace:
@@ -121,6 +134,20 @@ class Executor:
                 or next((s2 for s2 in trace.steps
                          if s2["step_id"] == d), {}).get("upstream_truncated")
                 for d in step.depends_on)
+
+            if upstream_truncated and step.op == "compute" \
+                    and resolved.get("fn") in REDUCING_FNS:
+                rec.update(status="failed", upstream_truncated=True,
+                           error=LimitError(
+                               f"compute {resolved['fn']} would reduce a "
+                               f"truncated result to one number, which is a "
+                               f"wrong answer rather than a partial one. Page "
+                               f"through with `cursor` and combine, or narrow "
+                               f"the window or grouping so the result fits "
+                               f"one page.").to_payload())
+                trace.steps.append(rec)
+                failed.add(sid)
+                continue
 
             t0 = time.perf_counter()
             res = self.router.call(step.op, resolved)
