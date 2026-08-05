@@ -53,6 +53,13 @@ def write_op(draw) -> dict[str, Any]:
 
 op_sequences = st.lists(write_op(), min_size=1, max_size=25)
 
+#: The same ops grouped into *batches*. A batch is the unit `Store._write`
+#: brackets with begin()/commit(), and more than one op in it is the case
+#: `op_sequences` cannot express: a second op that reads belief the first op
+#: has already changed, inside a transaction neither has committed (D-059).
+op_batches = st.lists(st.lists(write_op(), min_size=1, max_size=3),
+                      min_size=1, max_size=8)
+
 
 def fresh_adapter(paranoid: bool = True):
     """The adapter every suite runs against.

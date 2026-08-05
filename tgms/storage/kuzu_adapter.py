@@ -139,6 +139,19 @@ class KuzuAdapter(StorageAdapter):
                 "MATCH ()-[e:EdgeVersion {vid: $vid}]->() SET e.tt_e = $tt",
                 parameters={"vid": vid, "tt": tt_e})
 
+    def retire_node_versions(self, vids: Sequence[str]) -> None:
+        # DETACH: a node version carries an OF_ENTITY edge to its entity, and
+        # Kùzu refuses to delete a node that still has one. The entity itself
+        # stays — it is registered by `ensure_entities`, not by the version.
+        for vid in vids:
+            self.conn.execute("MATCH (v:NodeVersion {vid: $vid}) DETACH DELETE v",
+                              parameters={"vid": vid})
+
+    def retire_edge_versions(self, vids: Sequence[str]) -> None:
+        for vid in vids:
+            self.conn.execute("MATCH ()-[e:EdgeVersion {vid: $vid}]->() DELETE e",
+                              parameters={"vid": vid})
+
     # --- version reads --------------------------------------------------------- #
 
     def believed_node_versions(self, uid: str, as_of_tt: int = OPEN_END) -> list[NodeVersion]:

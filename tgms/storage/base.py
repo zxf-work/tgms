@@ -20,6 +20,15 @@ Version ids: the spec defines vid = hash(identity, tt_s), which collides when
 one batch splits a version into two fragments at the same tt. We therefore use
 vid = hash(identity, tt_s, vt_s) — a strict refinement (unique because believed
 valid intervals of one identity are disjoint).
+
+Superseding within one batch (D-059): all three ops above stop believing the
+versions they replace, and *when* the replaced version was written decides
+what that means. One an earlier batch wrote is closed — its tt interval ends,
+and the row stays, because that is belief history. One this same batch wrote
+is retired: it would be believed over [tt, tt), which is no transaction time
+at all, so it is not a row. That is what makes a second op in a batch safe on
+the vid above — the carve re-derives the vid of the version it replaces, and
+the replaced version is gone rather than colliding.
 """
 
 from __future__ import annotations
@@ -102,6 +111,19 @@ class StorageAdapter(ABC):
 
     @abstractmethod
     def close_edge_versions(self, vids: Sequence[str], tt_e: int) -> None: ...
+
+    @abstractmethod
+    def retire_node_versions(self, vids: Sequence[str]) -> None:
+        """Discard versions the *current* batch inserted and has since
+        replaced — never a version an earlier batch committed.
+
+        A retired version was believed over an empty transaction interval, so
+        no read at any as_of_tt could ever have returned it and nothing in the
+        store may refer to it. Its vid becomes free again, which is what the
+        replacing fragment needs (D-059)."""
+
+    @abstractmethod
+    def retire_edge_versions(self, vids: Sequence[str]) -> None: ...
 
     @abstractmethod
     def believed_node_versions(self, uid: str, as_of_tt: int = OPEN_END) -> list[NodeVersion]: ...
@@ -221,6 +243,28 @@ class StorageAdapter(ABC):
             for eid in touched_edges:
                 self._check_disjoint([v for v in self.believed_edge_versions(eid)], f"edge {eid}")
 
+    def _supersede_nodes(self, versions: list, tt: int) -> None:
+        """Stop believing `versions`, which a write at `tt` is replacing.
+
+        Written by an earlier batch: closed, and kept, because a belief that
+        was held and then revised is exactly what this store is for. Written
+        by this batch: retired, because [tt, tt) is no transaction time and
+        the version was therefore never believed (D-059)."""
+        retired = [v.vid for v in versions if v.tt_s == tt]
+        closed = [v.vid for v in versions if v.tt_s != tt]
+        if retired:
+            self.retire_node_versions(retired)
+        if closed:
+            self.close_node_versions(closed, tt)
+
+    def _supersede_edges(self, versions: list, tt: int) -> None:
+        retired = [v.vid for v in versions if v.tt_s == tt]
+        closed = [v.vid for v in versions if v.tt_s != tt]
+        if retired:
+            self.retire_edge_versions(retired)
+        if closed:
+            self.close_edge_versions(closed, tt)
+
     @staticmethod
     def _check_disjoint(versions: list, label: str) -> None:
         ivs = sorted((v.vt_s, v.vt_e) for v in versions)
@@ -236,7 +280,6 @@ class StorageAdapter(ABC):
         self.ensure_entities([(uid, label)])
         existing = [v for v in self.believed_node_versions(uid)
                     if Interval(v.vt_s, v.vt_e).overlaps(vt)]
-        to_close = [v.vid for v in existing]
         fragments: list[NodeVersion] = []
         for v in existing:
             for fs, fe in _remainder(v.vt_s, v.vt_e, vt.start, vt.end):
@@ -244,8 +287,7 @@ class StorageAdapter(ABC):
                     vid=_vid(uid, tt, fs), uid=uid, label=v.label,
                     vt_s=fs, vt_e=fe, tt_s=tt, tt_e=OPEN_END, props=v.props,
                     source=v.source, provenance_ref=v.provenance_ref))
-        if to_close:
-            self.close_node_versions(to_close, tt)
+        self._supersede_nodes(existing, tt)
         new = NodeVersion(vid=_vid(uid, tt, vt.start), uid=uid, label=label,
                           vt_s=vt.start, vt_e=vt.end, tt_s=tt, tt_e=OPEN_END, props=props,
                           source=op.get("source", "ingest"),
@@ -262,7 +304,6 @@ class StorageAdapter(ABC):
         self.ensure_entities([(src, op.get("src_label", "")), (dst, op.get("dst_label", ""))])
         existing = [v for v in self.believed_edge_versions(eid)
                     if Interval(v.vt_s, v.vt_e).overlaps(vt)]
-        to_close = [v.vid for v in existing]
         fragments: list[EdgeVersion] = []
         for v in existing:
             for fs, fe in _remainder(v.vt_s, v.vt_e, vt.start, vt.end):
@@ -270,8 +311,7 @@ class StorageAdapter(ABC):
                     eid=eid, vid=_vid(eid, tt, fs), src=src, dst=dst, rel_type=rel_type,
                     disc=disc, vt_s=fs, vt_e=fe, tt_s=tt, tt_e=OPEN_END, props=v.props,
                     source=v.source, provenance_ref=v.provenance_ref))
-        if to_close:
-            self.close_edge_versions(to_close, tt)
+        self._supersede_edges(existing, tt)
         new = EdgeVersion(eid=eid, vid=_vid(eid, tt, vt.start), src=src, dst=dst,
                           rel_type=rel_type, disc=disc, vt_s=vt.start, vt_e=vt.end,
                           tt_s=tt, tt_e=OPEN_END, props=props,
@@ -289,7 +329,7 @@ class StorageAdapter(ABC):
             hits = [v for v in self.believed_node_versions(ref.identity) if v.valid_at(t)]
             if not hits:
                 raise NotFoundError(f"no believed node version of {ref.identity} valid at {t}")
-            self.close_node_versions([v.vid for v in hits], tt)
+            self._supersede_nodes(hits, tt)
             repl = [NodeVersion(vid=_vid(v.uid, tt, v.vt_s), uid=v.uid, label=v.label,
                                 vt_s=v.vt_s, vt_e=t, tt_s=tt, tt_e=OPEN_END, props=v.props,
                                 source=v.source, provenance_ref=v.provenance_ref)
@@ -299,7 +339,7 @@ class StorageAdapter(ABC):
             hits = [v for v in self.believed_edge_versions(ref.identity) if v.valid_at(t)]
             if not hits:
                 raise NotFoundError(f"no believed edge version of {ref.identity} valid at {t}")
-            self.close_edge_versions([v.vid for v in hits], tt)
+            self._supersede_edges(hits, tt)
             repl = [EdgeVersion(eid=v.eid, vid=_vid(v.eid, tt, v.vt_s), src=v.src, dst=v.dst,
                                 rel_type=v.rel_type, disc=v.disc, vt_s=v.vt_s, vt_e=t,
                                 tt_s=tt, tt_e=OPEN_END, props=v.props,
@@ -316,7 +356,7 @@ class StorageAdapter(ABC):
             hits = [v for v in versions if Interval(v.vt_s, v.vt_e).overlaps(vt)]
             if not hits:
                 raise NotFoundError(f"no believed node version of {ref.identity} overlaps vt")
-            self.close_node_versions([v.vid for v in hits], tt)
+            self._supersede_nodes(hits, tt)
             rows: list[NodeVersion] = []
             for v in hits:
                 for fs, fe in _remainder(v.vt_s, v.vt_e, vt.start, vt.end):
@@ -336,7 +376,7 @@ class StorageAdapter(ABC):
             hits = [v for v in versions if Interval(v.vt_s, v.vt_e).overlaps(vt)]
             if not hits:
                 raise NotFoundError(f"no believed edge version of {ref.identity} overlaps vt")
-            self.close_edge_versions([v.vid for v in hits], tt)
+            self._supersede_edges(hits, tt)
             proto = hits[0]
             rows_e: list[EdgeVersion] = []
             for v in hits:

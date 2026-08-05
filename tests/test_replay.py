@@ -100,6 +100,48 @@ def test_kuzu_live_write_path_matches_duckdb(tmp_path):
     s2.close()
 
 
+def test_every_backend_agrees_on_a_batch_that_carves_its_own_write(tmp_path):
+    """D-059's rule reaches all three adapters, so all three are checked.
+
+    The suite runs against DuckDB and native; Kùzu is only ever exercised
+    here, and its `retire` is the one implementation the invariant suite
+    cannot reach — a node version there is a node with an OF_ENTITY edge
+    hanging off it, which is its own way to get a delete wrong.
+    """
+    from tgms.core.model import OPEN_END
+    from tgms.storage.kuzu_adapter import KuzuAdapter
+    from tgms.storage.native import NativeAdapter
+
+    ops = [
+        {"op": "assert_node", "uid": "x", "label": "N", "props": {"p": 1},
+         "vt_s": 0, "vt_e": 100},
+        {"op": "assert_node", "uid": "x", "label": "N", "props": {"p": 2},
+         "vt_s": 50, "vt_e": 150},
+        {"op": "assert_edge", "src": "x", "dst": "y", "rel_type": "R",
+         "props": {"w": 1}, "vt_s": 10, "vt_e": 20, "disc": ""},
+        {"op": "assert_edge", "src": "x", "dst": "y", "rel_type": "R",
+         "props": {"w": 2}, "vt_s": 5, "vt_e": 15, "disc": ""},
+    ]
+
+    def rows(adapter):
+        adapter.paranoid = True
+        adapter.begin()
+        adapter.apply_ops(ops, 1)
+        adapter.commit()
+        got = (sorted((v.uid, v.vt_s, v.vt_e, v.tt_s, v.tt_e, v.props["p"])
+                      for v in adapter.all_node_versions()),
+               sorted((v.vt_s, v.vt_e, v.tt_s, v.tt_e, v.props["w"])
+                      for v in adapter.all_edge_versions()))
+        adapter.close()
+        return got
+
+    expected = ([("x", 0, 50, 1, OPEN_END, 1), ("x", 50, 150, 1, OPEN_END, 2)],
+                [(5, 15, 1, OPEN_END, 2), (15, 20, 1, OPEN_END, 1)])
+    assert rows(DuckDBAdapter(":memory:")) == expected
+    assert rows(NativeAdapter(str(tmp_path / "native"))) == expected
+    assert rows(KuzuAdapter(tmp_path / "k.kuzu")) == expected
+
+
 def test_reopen_continues_clock(tmp_path):
     store = tgms.open(tmp_path / "s2")
     tt1 = store.assert_node("a", "N")

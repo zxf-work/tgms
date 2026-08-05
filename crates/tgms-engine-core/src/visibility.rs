@@ -134,10 +134,21 @@ pub fn read_close_run(path: &Path) -> Result<Vec<CloseRecord>> {
 ///
 /// A later close of the same row wins: corrections are applied in transaction
 /// order, and replay must reach the same state as the live path.
+///
+/// An index may also **layer** over another one. The open batch's closes are
+/// not in any run file yet, but a read inside that batch must see them — the
+/// bi-temporal ops read belief to decide what to carve, so a batch that
+/// cannot see its own corrections carves against a version it has already
+/// stopped believing (D-059). Layering rather than merging keeps the
+/// committed index shared and untouched: the overlay is the size of the open
+/// batch, not of the store's correction history.
 #[derive(Default, Debug, Clone)]
 pub struct CloseIndex {
     by_row: HashMap<(u64, u32), i64>,
     segments: std::collections::HashSet<u64>,
+    /// Committed closes this index sits on top of. `None` for a committed
+    /// index, which is every index outside an open batch.
+    base: Option<std::sync::Arc<CloseIndex>>,
 }
 
 impl CloseIndex {
@@ -150,12 +161,49 @@ impl CloseIndex {
         idx
     }
 
-    pub fn is_empty(&self) -> bool {
-        self.by_row.is_empty()
+    /// An empty index layered over `base`, to be filled by `close_row` as
+    /// the batch records closes. Anything added wins over `base`: it is the
+    /// later close, applied in transaction order like any other.
+    pub fn layered_over(base: std::sync::Arc<CloseIndex>) -> Self {
+        Self {
+            base: Some(base),
+            ..Self::default()
+        }
     }
 
+    /// Record one close in this layer.
+    pub fn close_row(&mut self, segment: u64, row: u32, tt_e: i64) {
+        self.by_row.insert((segment, row), tt_e);
+        self.segments.insert(segment);
+    }
+
+    pub fn is_empty(&self) -> bool {
+        self.by_row.is_empty() && self.base.as_ref().is_none_or(|b| b.is_empty())
+    }
+
+    /// Rows closed by this index, counting a row layered over its base once.
     pub fn len(&self) -> usize {
-        self.by_row.len()
+        match &self.base {
+            None => self.by_row.len(),
+            Some(b) => {
+                self.by_row.len()
+                    + b.rows()
+                        .filter(|k| !self.by_row.contains_key(k))
+                        .count()
+            }
+        }
+    }
+
+    fn rows(&self) -> Box<dyn Iterator<Item = (u64, u32)> + '_> {
+        match &self.base {
+            None => Box::new(self.by_row.keys().copied()),
+            Some(b) => Box::new(
+                self.by_row
+                    .keys()
+                    .copied()
+                    .chain(b.rows().filter(|k| !self.by_row.contains_key(k))),
+            ),
+        }
     }
 
     /// Does any close in this generation touch the given segment? Lets a scan
@@ -163,23 +211,26 @@ impl CloseIndex {
     /// which, for event-stream data, is nearly all of them.
     pub fn touches(&self, segment: u64) -> bool {
         self.segments.contains(&segment)
+            || self.base.as_ref().is_some_and(|b| b.touches(segment))
     }
 
     /// Transaction-time end of one row: the close if there is one, else open.
     #[inline]
     pub fn tt_e(&self, segment: u64, row: u32) -> i64 {
-        self.by_row
-            .get(&(segment, row))
-            .copied()
-            .unwrap_or(OPEN_END)
+        match self.by_row.get(&(segment, row)) {
+            Some(tt_e) => *tt_e,
+            None => match &self.base {
+                Some(b) => b.tt_e(segment, row),
+                None => OPEN_END,
+            },
+        }
     }
 
     pub fn records_for(&self, segment: u64) -> Vec<(u32, i64)> {
         let mut v: Vec<(u32, i64)> = self
-            .by_row
-            .iter()
-            .filter(|((s, _), _)| *s == segment)
-            .map(|((_, r), tt)| (*r, *tt))
+            .rows()
+            .filter(|(s, _)| *s == segment)
+            .map(|(_, r)| (r, self.tt_e(segment, r)))
             .collect();
         v.sort_unstable();
         v
@@ -324,5 +375,31 @@ mod tests {
         assert_eq!(idx.records_for(1), vec![(4, 1), (40, 3)]);
         assert_eq!(idx.records_for(2), vec![(7, 2)]);
         assert!(idx.records_for(99).is_empty());
+    }
+
+    #[test]
+    fn a_layer_answers_for_its_base_and_wins_where_they_overlap() {
+        let base = std::sync::Arc::new(CloseIndex::from_records([rec(1, 4, 1), rec(2, 7, 2)]));
+        let mut top = CloseIndex::layered_over(base.clone());
+        top.close_row(1, 4, 9); // re-close: the open batch's tt_e is the later one
+        top.close_row(3, 5, 8); // and a segment the base never touched
+
+        assert_eq!(top.tt_e(1, 4), 9, "the layer wins");
+        assert_eq!(top.tt_e(2, 7), 2, "the base still answers");
+        assert_eq!(top.tt_e(3, 5), 8);
+        assert_eq!(top.tt_e(9, 9), OPEN_END);
+
+        // a scan skips visibility work per segment, so `touches` must see
+        // through the layer in both directions
+        for seg in [1, 2, 3] {
+            assert!(top.touches(seg), "segment {seg}");
+        }
+        assert!(!top.touches(4));
+
+        // three distinct rows, not four: (1, 4) is closed twice, by both
+        assert_eq!(top.len(), 3);
+        assert!(!top.is_empty());
+        assert!(CloseIndex::layered_over(std::sync::Arc::new(CloseIndex::default())).is_empty());
+        assert_eq!(top.records_for(1), vec![(4, 9)]);
     }
 }

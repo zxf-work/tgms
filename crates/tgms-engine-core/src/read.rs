@@ -1174,6 +1174,100 @@ mod tests {
     }
 
     #[test]
+    fn reads_inside_an_open_batch_see_closes_against_committed_rows() {
+        // the other half of read-your-own-writes, and the half D-058 found
+        // missing: an ordinary correction closes a row a *previous* batch
+        // committed, and `apply_ops` reads belief again before it carves
+        let (_root, mut s, rows) = seeded("pending-closes");
+        let eid = {
+            let r = &rows[0];
+            edge_eid("n1", "n2", "R", &r.disc).to_hex()
+        };
+        s.begin(200).unwrap();
+        s.close_version(RowKind::Edge, rows[0].vid, 200).unwrap();
+
+        assert!(
+            s.believed_edge_versions(&eid, OPEN_END).unwrap().is_empty(),
+            "a version this batch closed is not believed inside it"
+        );
+        // the row is still there, reported with the tt_e the batch gave it
+        let all = s.all_edge_versions().unwrap();
+        let closed = all.iter().find(|r| r.vid == rows[0].vid.to_hex()).unwrap();
+        assert_eq!(closed.tt_e, 200);
+        // and the belief it had before this batch is untouched
+        assert_eq!(s.believed_edge_versions(&eid, 150).unwrap().len(), 1);
+
+        s.commit(EventLogRef::default()).unwrap();
+        assert!(s.believed_edge_versions(&eid, OPEN_END).unwrap().is_empty());
+    }
+
+    #[test]
+    fn an_abandoned_batch_s_closes_do_not_reach_the_next_one() {
+        // the overlay is cached under (generation, closes so far), and a
+        // rollback moves neither — so the cache must be dropped with it
+        let (_root, mut s, rows) = seeded("rolled-back-closes");
+        let eid = edge_eid("n1", "n2", "R", &rows[0].disc).to_hex();
+        let other = edge_eid("n2", "n1", "R", &rows[1].disc).to_hex();
+
+        s.begin(200).unwrap();
+        s.close_version(RowKind::Edge, rows[0].vid, 200).unwrap();
+        assert!(s.believed_edge_versions(&eid, OPEN_END).unwrap().is_empty());
+        s.rollback().unwrap();
+        assert_eq!(s.believed_edge_versions(&eid, OPEN_END).unwrap().len(), 1);
+
+        // same generation, same number of pending closes, different row
+        s.begin(200).unwrap();
+        s.close_version(RowKind::Edge, rows[1].vid, 200).unwrap();
+        assert_eq!(
+            s.believed_edge_versions(&eid, OPEN_END).unwrap().len(),
+            1,
+            "the abandoned batch's close came back"
+        );
+        assert!(s.believed_edge_versions(&other, OPEN_END).unwrap().is_empty());
+        s.rollback().unwrap();
+    }
+
+    #[test]
+    fn a_retired_row_leaves_no_trace_of_having_been_staged() {
+        // D-059: a version created and closed by one batch was believed over
+        // [tt, tt) — no transaction time at all — so the batch commits as
+        // though it had never staged it, and its vid is free to be reused
+        let (_root, mut s, _) = seeded("retire");
+        s.begin(200).unwrap();
+        let c = s.ensure_entity("n3", "Node").unwrap();
+        let first = edge(c, c, "n3", "n3", 30, 200, 9);
+        let eid = edge_eid("n3", "n3", "R", &first.disc).to_hex();
+        s.stage_edge(first.clone()).unwrap();
+        s.retire_version(RowKind::Edge, first.vid).unwrap();
+        assert!(s.believed_edge_versions(&eid, OPEN_END).unwrap().is_empty());
+
+        // the replacement derives the same vid, which is only sound because
+        // the row it replaces is gone rather than closed
+        let mut replacement = first.clone();
+        replacement.vt_e = 40;
+        s.stage_edge(replacement.clone()).unwrap();
+        s.commit(EventLogRef::default()).unwrap();
+
+        let believed = s.believed_edge_versions(&eid, OPEN_END).unwrap();
+        assert_eq!(believed.len(), 1);
+        assert_eq!(believed[0].vt_e, 40);
+        assert_eq!(
+            s.all_edge_versions()
+                .unwrap()
+                .iter()
+                .filter(|r| r.vid == first.vid.to_hex())
+                .count(),
+            1,
+            "the retired row must not be sealed alongside its replacement"
+        );
+
+        // retiring something no batch staged is an error, not a silent no-op
+        s.begin(300).unwrap();
+        assert!(s.retire_version(RowKind::Edge, first.vid).is_err());
+        s.rollback().unwrap();
+    }
+
+    #[test]
     fn stats_fold_matches_the_materializing_definition() {
         // the column fold must agree with the old all_edge_versions walk —
         // same counts, extents, rel histogram, and degrees — including rows

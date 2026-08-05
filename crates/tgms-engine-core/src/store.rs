@@ -86,6 +86,18 @@ pub struct NativeStore {
     /// is always identical. Without this, every point read re-reads every
     /// run file, which made correction-heavy replay quadratic.
     close_cache: std::sync::Mutex<Option<(u64, std::sync::Arc<CloseIndex>)>>,
+    /// The open batch's `pending_closes`, as a layer over the committed
+    /// index, so a read inside the batch sees them (D-059). Maintained as
+    /// they are recorded rather than rebuilt per read: `apply_ops` reads
+    /// belief once per op, and rebuilding a K-close overlay on each of K
+    /// reads is the "small lookup rebuilding the whole store" shape this
+    /// engine has now met six times.
+    ///
+    /// `Arc::make_mut` is what keeps it cheap *and* honest: the layer is
+    /// updated in place while this handle holds the only reference, and
+    /// copied if a reader is still holding one — so no reader ever sees a
+    /// close appear underneath it.
+    pending_overlay: Option<std::sync::Arc<CloseIndex>>,
     /// Open segments, by file name. Sound because segment files are
     /// immutable — closes live in separate .tgc files and compaction writes
     /// new files — so a cached entry can never be stale. This is also what
@@ -178,6 +190,7 @@ impl NativeStore {
             node_postings: std::sync::Mutex::new(Postings::default()),
             verified: std::sync::Mutex::new(std::collections::HashSet::new()),
             close_cache: std::sync::Mutex::new(None),
+            pending_overlay: None,
             segments: std::sync::Mutex::new(SegmentCache::new(cache_budget(
                 std::env::var("TGMS_SEGMENT_CACHE_BYTES").ok().as_deref(),
                 detected_ram_bytes(),
@@ -506,12 +519,33 @@ impl NativeStore {
         Ok(report)
     }
 
+    /// Closes every read in this handle must honour: the committed ones, plus
+    /// the open batch's, which are not durable yet but are this writer's own.
+    ///
+    /// Read-your-own-writes is not a convenience here. `apply_ops` asks what
+    /// is believed *between* its ops to decide what to carve, so a batch that
+    /// could not see its own corrections would carve against a version it had
+    /// already stopped believing and write a fragment over the top of it
+    /// (D-058's divergence: DuckDB's uncommitted `UPDATE` was visible to the
+    /// same connection, and this was not). Staged rows and closes against
+    /// them were already visible; closes against *committed* rows — the only
+    /// kind an ordinary correction makes — were the hole.
+    ///
+    /// Nothing leaks the other way: `pending_closes` belongs to the writing
+    /// handle, and a second handle cannot have an open batch (single-writer).
+    pub fn close_index(&self) -> Result<std::sync::Arc<CloseIndex>> {
+        match &self.pending_overlay {
+            Some(idx) => Ok(idx.clone()),
+            None => self.committed_close_index(),
+        }
+    }
+
     /// Closes this generation makes visible, resolved for scanning. A reader
     /// on an older generation loads that generation's runs and therefore sees
     /// that generation's beliefs — never a newer correction: each handle
     /// caches against its *own* manifest generation, so a pinned older view
     /// serves its own generation's closes, not a newer handle's.
-    pub fn close_index(&self) -> Result<std::sync::Arc<CloseIndex>> {
+    fn committed_close_index(&self) -> Result<std::sync::Arc<CloseIndex>> {
         if self.current_only {
             // the stripped configuration has no closes by construction; a
             // run appearing anyway means the marker and the manifest
@@ -632,6 +666,13 @@ impl NativeStore {
                     row,
                     tt_e,
                 });
+                if self.pending_overlay.is_none() {
+                    let committed = self.committed_close_index()?;
+                    self.pending_overlay =
+                        Some(std::sync::Arc::new(CloseIndex::layered_over(committed)));
+                }
+                let overlay = self.pending_overlay.as_mut().expect("just set");
+                std::sync::Arc::make_mut(overlay).close_row(segment, row, tt_e);
                 Ok(())
             }
             None => Err(EngineError::not_found(format!(
@@ -639,6 +680,29 @@ impl NativeStore {
                 vid.to_hex()
             ))),
         }
+    }
+
+    /// Discard a version this batch staged and has already replaced.
+    ///
+    /// Closing it would record a belief that ran from `tt` to `tt` — held at
+    /// no transaction time at all — and there is no such thing, so the row
+    /// goes instead (D-059). Only staging is reachable: a committed row was
+    /// written by an earlier transaction time and is closed, never retired,
+    /// which is also why this can never touch a sealed segment.
+    pub fn retire_version(&mut self, kind: RowKind, vid: Id96) -> Result<()> {
+        self.require_batch()?;
+        let removed = match kind {
+            RowKind::Edge => self.staging.retire_edge(vid),
+            RowKind::Node => self.staging.retire_node(vid),
+        };
+        if !removed {
+            return Err(EngineError::not_found(format!(
+                "no version {} staged in this batch to retire",
+                vid.to_hex()
+            )));
+        }
+        self.staged_closes.remove(&vid);
+        Ok(())
     }
 
     /// Physical location of a committed version, through the vid postings.
@@ -745,6 +809,7 @@ impl NativeStore {
         self.staging.clear();
         self.staged_closes.clear();
         self.pending_closes.clear();
+        self.pending_overlay = None;
         self.batch_tt = None;
         phases.total_us = commit_start.elapsed().as_micros() as u64;
         self.last_commit = Some(phases);
@@ -759,6 +824,7 @@ impl NativeStore {
         self.staging.clear();
         self.staged_closes.clear();
         self.pending_closes.clear();
+        self.pending_overlay = None;
         self.batch_tt = None;
         Ok(())
     }
