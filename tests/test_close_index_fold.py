@@ -18,13 +18,15 @@ first read; a later read in the same generation hits the cache. Their ratio
 isolates the rebuild from the fixed seal-and-fsync cost of a commit, and
 being a ratio it holds on any host.
 
-Calibrated against the pre-fold engine, where the rebuild is real:
+Calibrated against the pre-fold engine, where the rebuild is real, and then
+re-run against the fold. The pre-fold column *grows with run count*, which is
+the quadratic shape; the post-fold column is flat, which is the point:
 
-    close runs   first read   subsequent   ratio
-            50    2272 us       12.9 us     176x
-           100    4307          12.6        342x
-           200    5954          11.5        519x
-           300    5751           8.2        698x
+    close runs   pre-fold first   ratio     post-fold first   ratio
+            50      2272 us        176x         631 us         30.8x
+           100      4307           342x         418           18.6x
+           200      5954           519x         571           21.8x
+           300      5751           698x         528           20.1x
 
 Correctness comes first in this file, and the two maintenance tests matter
 most: `close_runs` is *not* append-only across compaction, which folds runs
@@ -47,9 +49,16 @@ N_ENTITIES = 40
 PER_BATCH = 20
 RUNS = 100
 
-# Pre-fold this reads 342x at RUNS=100 (table above); with the fold the first
-# read costs one run plus a copy-on-write extend. 40x sits well clear of both.
-MAX_FIRST_READ_RATIO = 40.0
+# Pre-fold this reads 342x at RUNS=100 (table above). With the fold it reads
+# 18.6x, and the whole sweep flattens — 30.8 / 18.6 / 21.8 / 20.1 at 50 / 100
+# / 200 / 300 runs, against 176 / 342 / 519 / 698 before.
+#
+# 80x, not 40x: the denominator is a ~20 µs cached read, small enough that a
+# loaded runner can halve it and double the ratio on its own. 80 keeps 4.3x
+# of headroom over the measured 18.6x and still fires 4.2x below the 338x
+# this file was verified to catch. A threshold that only fires on the defect
+# it was calibrated against is worth less than one that survives CI.
+MAX_FIRST_READ_RATIO = 80.0
 
 
 def _seed(adapter, tt):

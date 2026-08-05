@@ -85,7 +85,7 @@ pub struct NativeStore {
     /// publishes a new manifest — so within one generation the rebuilt index
     /// is always identical. Without this, every point read re-reads every
     /// run file, which made correction-heavy replay quadratic.
-    close_cache: std::sync::Mutex<Option<(u64, std::sync::Arc<CloseIndex>)>>,
+    close_cache: std::sync::Mutex<Option<CloseCacheEntry>>,
     /// `segment id -> filename`, per lane, built once per generation (D-077).
     ///
     /// Every point read — `locate`, `locate_open`, `locate_vid` — needs to
@@ -619,23 +619,75 @@ impl NativeStore {
             return Ok(std::sync::Arc::new(CloseIndex::default()));
         }
         let generation = self.manifest.generation;
-        if let Some((cached_gen, idx)) = self
+        let runs = &self.manifest.close_runs;
+
+        // Reuse the cached index when this generation only *appended* runs to
+        // the one it was built from (D-079). Close-run files are immutable and
+        // the manifest normally appends, so the cached index is a valid prefix
+        // of the answer and only the new runs need reading — rather than all
+        // of them, which was 37 ms at 999 runs and quadratic over a run of
+        // corrections (D-078).
+        //
+        // The prefix check is deliberately strict, because a wrong answer here
+        // is a silently wrong belief: `close_runs` is **not** append-only
+        // across compaction, which folds runs into sidecars and empties the
+        // list. Length, plus the file name *and* its sha at the last folded
+        // index, must all still match; anything else falls back to a rebuild.
+        // Everything the cache is consulted for is copied out and the guard
+        // dropped before anything else runs. The mutex is not reentrant, and
+        // an earlier draft held this guard across the write below, which
+        // deadlocked the whole suite rather than failing a test.
+        let cached: Option<CloseCacheEntry> = self
             .close_cache
             .lock()
             .expect("close-cache mutex poisoned")
-            .as_ref()
-        {
-            if *cached_gen == generation {
-                return Ok(idx.clone());
+            .clone();
+
+        let mut reuse: Option<(std::sync::Arc<CloseIndex>, usize)> = None;
+        if let Some((cached_gen, folded, last, idx)) = cached {
+            if cached_gen == generation {
+                return Ok(idx);
+            }
+            let extends = runs.len() >= folded
+                && match (folded, &last) {
+                    (0, _) => true,
+                    (n, Some((file, sha))) => runs
+                        .get(n - 1)
+                        .is_some_and(|r| &r.file == file && &r.sha == sha),
+                    _ => false,
+                };
+            if extends {
+                if folded == runs.len() {
+                    // same run set, newer generation (a commit that closed
+                    // nothing): the index is already the answer
+                    *self.close_cache.lock().expect("close-cache mutex poisoned") =
+                        Some((generation, folded, last, idx.clone()));
+                    return Ok(idx);
+                }
+                reuse = Some((idx, folded));
             }
         }
-        let mut records = Vec::new();
-        for r in &self.manifest.close_runs {
-            records.extend(read_close_run(&self.root.join(&r.file))?);
+
+        let (mut idx, from) = match reuse {
+            Some((cached, folded)) => (cached, folded),
+            None => (std::sync::Arc::new(CloseIndex::default()), 0),
+        };
+        {
+            // copy-on-write: mutates in place when nothing else holds this
+            // index, so the common case costs the new records only. A reader
+            // pinned to an older generation still holds its own Arc, and
+            // `make_mut` clones rather than disturbing it — the pin is what
+            // makes in-place extension safe, not an assumption about callers.
+            let target = std::sync::Arc::make_mut(&mut idx);
+            for r in &runs[from..] {
+                for rec in read_close_run(&self.root.join(&r.file))? {
+                    target.close_row(rec.segment, rec.row, rec.tt_e);
+                }
+            }
         }
-        let idx = std::sync::Arc::new(CloseIndex::from_records(records));
+        let last = runs.last().map(|r| (r.file.clone(), r.sha.clone()));
         *self.close_cache.lock().expect("close-cache mutex poisoned") =
-            Some((generation, idx.clone()));
+            Some((generation, runs.len(), last, idx.clone()));
         Ok(idx)
     }
 
@@ -931,6 +983,17 @@ impl StatsAccum {
         self.out_degree.values().copied().max().unwrap_or(0)
     }
 }
+
+/// What `close_cache` holds (D-079): the generation the index is valid for,
+/// how many close runs are folded into it, the last folded run's
+/// `(file, sha)` — which is what proves the manifest still *starts* with what
+/// was folded and has merely appended — and the index itself.
+type CloseCacheEntry = (
+    u64,
+    usize,
+    Option<(String, String)>,
+    std::sync::Arc<CloseIndex>,
+);
 
 /// `segment id -> filename`, per lane, for one manifest generation (D-077).
 pub(crate) struct SegmentFiles {
