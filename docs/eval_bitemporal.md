@@ -202,18 +202,27 @@ small either way. Conversion cost again equals one compaction
 
 ## A cost the sweep surfaced in passing: `close_version`'s linear scan
 
-The build/replay times are themselves a finding. Replay is flat while
-ingest dominates (15.9 s → 18.1 s across 0–0.1%), then turns superlinear
+> **Status: RESOLVED 2026-08-01**, in two parts — WP-N4 vid postings
+> (`de5071b`) and the per-generation `close_index()` cache (`96ea135`).
+> Replay is **linear** in correction volume at HEAD: ~1.6 ms per
+> correction at 1%, 5% and 20% alike. The 38.6 / 233.1 / 2,856.8 s figures
+> below are the **pre-fix** curve and are superseded by the three dated
+> updates that follow; they are kept because the sweep that found the
+> defect is the record. Do not quote them as current. Re-confirmed at
+> `4481997` (D-072).
+
+The build/replay times were themselves a finding. Replay was flat while
+ingest dominated (15.9 s → 18.1 s across 0–0.1%), then turned superlinear
 with correction volume: 38.6 s at 1%, 233.1 s at 5%, 2,856.8 s at 20%
-(and the reference build pays the same again). The mechanism is on record
+(and the reference build paid the same again). The mechanism was on record
 in the engine
-(`store.rs::close_version`): closing a *committed* row locates it by
-**linear scan** — the O(1) identity-postings path (WP-N4) is wired into
-reads but not into closes. At low density that scan is invisible; at
-backfill densities it is the write path. This experiment only needed to
+(`store.rs::close_version`): closing a *committed* row located it by
+**linear scan** — the O(1) identity-postings path (WP-N4) was wired into
+reads but not into closes. At low density that scan was invisible; at
+backfill densities it was the write path. This experiment only needed to
 pay the cost once per dataset, but any real correction-heavy workload
-would pay it continuously — worth a line in the engine's unsolved list
-beside TCSR persistence.
+would have paid it continuously — worth a line in the engine's unsolved
+list beside TCSR persistence.
 
 **Update (2026-07-31):** resolved — `close_version` now locates committed
 rows through the WP-N4 vid postings (`read.rs::locate_vid`): candidates
@@ -263,6 +272,17 @@ same refusal as the original sweep) is recorded as `partial` by the
 fixed gate instead of miscounting as disagreement. Query latencies and
 storage reproduce the original sweep's shape, so the tables above
 stand; only the build/replay column is superseded.
+
+**Update (2026-08-05, D-072):** re-confirmed at HEAD `4481997` on the dev
+M-series host, 200k scale, densities 0/1/5/20 (receipt
+`eval-200k-bitemporal-d072.json`): replay 1.9 / 3.2 / 11.5 / 37.6 s, i.e.
+**0.65 / 0.96 / 0.84 ms per correction** over the density-0 floor. Hash
+gates agree at every density. Flat per-correction cost is the linearity
+test — a surviving quadratic term would have grown this column ~20× from
+1% to 20%. This rerun exists because the pre-fix figures above were
+quoted as current in the technical report and the handoff for four days
+after the fix landed, and were echoed back by an external review that had
+been given them (D-072). The defect was in the record, not the engine.
 
 ## Honest limits
 
