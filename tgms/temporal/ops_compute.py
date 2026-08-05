@@ -113,8 +113,10 @@ ARGS = {
     "group_by": {"type": ["string", "null"], "default": None,
                  "description": "column of `input` to group by: the reducer "
                                 "runs per group and the answer is one row "
-                                "per group, ordered by key. Only for "
-                                "count/sum/min/max/mean/median"},
+                                "per group, ordered by key. "
+                                "count/sum/min/max/mean/median reduce each "
+                                "group to a number; topk slices each group "
+                                "and keeps its rows"},
     "limit": LIMIT,
 }
 
@@ -189,6 +191,53 @@ def _cut(n: int, k: int | None, pct: int | float | None, side: str) -> int:
     return min(k, n) if k is not None else _pct_rows(n, pct)
 
 
+def _rank_and_cut(rows: list[Any], args: dict[str, Any],
+                  k: int | None, pct: int | float | None) -> list[Any]:
+    """`topk`'s ranking and cut over one row set — the whole input, or one
+    group of it. Factored out so the grouped path cannot drift from the
+    ungrouped one: same order, same tiebreak, same rounding (D-068)."""
+    vals = _values(rows, args["field"])
+    order = sorted(range(len(rows)),
+                   key=lambda i: (-(vals[i] if isinstance(vals[i], (int, float))
+                                    else 0), str(rows[i])))
+    cut = _cut(len(rows), k, pct, args["side"])
+    sel = order[cut:] if args["side"] == "bottom" else order[:cut]
+    return [rows[i] for i in sel]
+
+
+def _sliced_per_group(rows: list[Any], args: dict[str, Any],
+                      k: int | None, pct: int | float | None) -> list[Any]:
+    """`topk` within each group of `group_by` (D-068).
+
+    The slice half of grouping a result: D-067 reduces a group to a number,
+    this one keeps rows. That is what lets the two chain — slice each
+    account's first five ratings, then reduce them with a grouped mean —
+    and what makes a per-group argmin fall out of `side: bottom, k: 1`
+    carrying every column the row had.
+
+    `pct` is `ceil` of each group's *own* size, so a slice is proportional
+    to the group rather than shared out of one global count. Groups come out
+    in key order and rows within a group in rank order, so the answer never
+    depends on the order rows arrived in.
+    """
+    key = args["group_by"]
+    buckets: dict[Any, list[Any]] = {}
+    for r in rows:
+        if not isinstance(r, dict) or key not in r:
+            raise InvalidArgError(
+                f"compute: group_by column {key!r} missing from input row")
+        g = r[key]
+        if isinstance(g, (dict, list)):
+            raise InvalidArgError(
+                f"compute: group_by column {key!r} holds a "
+                f"{type(g).__name__}; a group key must be a scalar")
+        buckets.setdefault(g, []).append(r)
+    out: list[Any] = []
+    for g in sorted(buckets, key=lambda v: (type(v).__name__, v)):
+        out.extend(_rank_and_cut(buckets[g], args, k, pct))
+    return out
+
+
 def _mean(vals: list[int | float]) -> int | float:
     if all(isinstance(v, int) for v in vals):
         return _quotient(sum(vals), len(vals), "mean")
@@ -198,6 +247,9 @@ def _mean(vals: list[int | float]) -> int | float:
 #: reducers that `group_by` may run per group. `count` is not in REDUCERS
 #: because it needs no field, but it groups like the rest.
 GROUPABLE = ("count",) + REDUCERS
+#: `topk` also takes `group_by`, but it *slices* each group rather than
+#: reducing it, so it is not in GROUPABLE and takes the topk path (D-068).
+GROUP_SLICERS = ("topk",)
 
 
 def _reduce(vals: list[Any], fn: str) -> int | float:
@@ -400,12 +452,14 @@ def allen_relation(a: dict[str, int], b: dict[str, int]) -> str:
 )
 def compute(adapter: StorageAdapter, args: dict[str, Any]) -> dict[str, Any]:
     fn = args["fn"]
-    if args["group_by"] is not None and fn not in GROUPABLE:
+    if args["group_by"] is not None \
+            and fn not in GROUPABLE + GROUP_SLICERS:
         # checked before any dispatch: `derive` and `interval_relation` are
         # handled above the row path and would otherwise ignore it silently
         raise InvalidArgError(
             f"compute {fn}: group_by reduces each group to one number, and "
-            f"{fn} does not reduce — it is only for {'/'.join(GROUPABLE)}")
+            f"{fn} neither reduces nor slices — it is only for "
+            f"{'/'.join(GROUPABLE + GROUP_SLICERS)}")
     if fn == "interval_relation":
         if args["a"] is None or args["b"] is None:
             raise InvalidArgError("interval_relation requires a and b")
@@ -475,7 +529,9 @@ def compute(adapter: StorageAdapter, args: dict[str, Any]) -> dict[str, Any]:
     rows = args["input"]
     if rows is None:
         raise InvalidArgError(f"compute fn={fn} requires input")
-    if args["group_by"] is not None:
+    if args["group_by"] is not None and fn in GROUPABLE:
+        # the reducers; `topk` also groups but slices, and falls through to
+        # its own branch below (D-068)
         return _grouped(rows, args, fn)
     if fn == "count":
         return {"value": len(rows), "truncated": False}
@@ -503,13 +559,10 @@ def compute(adapter: StorageAdapter, args: dict[str, Any]) -> dict[str, Any]:
                 "percentage of the row count, never both")
         if args["field"] is None:
             raise InvalidArgError("topk requires field to rank by")
-        vals = _values(rows, args["field"])
-        order = sorted(range(len(rows)),
-                       key=lambda i: (-(vals[i] if isinstance(vals[i], (int, float))
-                                        else 0), str(rows[i])))
-        cut = _cut(len(rows), k, pct, args["side"])
-        sel = order[cut:] if args["side"] == "bottom" else order[:cut]
-        return paginate([rows[i] for i in sel], args["limit"], None)
+        if args["group_by"] is not None:
+            return paginate(_sliced_per_group(rows, args, k, pct),
+                            args["limit"], None)
+        return paginate(_rank_and_cut(rows, args, k, pct), args["limit"], None)
     if fn == "filter":
         if args["cmp"] is None:
             raise InvalidArgError("filter requires cmp")
