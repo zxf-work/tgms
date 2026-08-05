@@ -89,9 +89,18 @@ def test_wrong_claims_are_unsupported(tmp_path):
 
 
 def test_truncated_evidence_caps_verdict(tmp_path):
+    """Unchanged in what it asserts (D-061 preserves it deliberately): the
+    entity IS in the page, so the claim is true and its evidence is merely
+    partial — which is what `weakly_supported` is for. Only the plan changed,
+    dropping the reducing step this test never used, because a reduction
+    over a truncated page now fails outright and would take the whole trace
+    down with it. `rows_total` is the honest answer here: it is the full
+    count, read off the truncated page rather than summed from it."""
     adapter, _, _ = build_store(2)
     plan_json = _reach_plan()
     plan_json["steps"][0]["args"]["limit"] = 1  # force truncation
+    plan_json["steps"] = plan_json["steps"][:1]
+    plan_json["answer_spec"] = {"kind": "count", "from": "s1.rows_total"}
     plan, trace, results = _run(adapter, tmp_path, plan_json)
     assert trace.steps[0]["truncated"]
     v = ClaimVerifier(trace, results, adapter)
