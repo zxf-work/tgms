@@ -666,10 +666,12 @@ impl NativeStore {
                     row,
                     tt_e,
                 });
-                let committed = self.committed_close_index()?;
-                let overlay = self
-                    .pending_overlay
-                    .get_or_insert_with(|| std::sync::Arc::new(CloseIndex::layered_over(committed)));
+                if self.pending_overlay.is_none() {
+                    let committed = self.committed_close_index()?;
+                    self.pending_overlay =
+                        Some(std::sync::Arc::new(CloseIndex::layered_over(committed)));
+                }
+                let overlay = self.pending_overlay.as_mut().expect("just set");
                 std::sync::Arc::make_mut(overlay).close_row(segment, row, tt_e);
                 Ok(())
             }

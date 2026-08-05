@@ -376,4 +376,30 @@ mod tests {
         assert_eq!(idx.records_for(2), vec![(7, 2)]);
         assert!(idx.records_for(99).is_empty());
     }
+
+    #[test]
+    fn a_layer_answers_for_its_base_and_wins_where_they_overlap() {
+        let base = std::sync::Arc::new(CloseIndex::from_records([rec(1, 4, 1), rec(2, 7, 2)]));
+        let mut top = CloseIndex::layered_over(base.clone());
+        top.close_row(1, 4, 9); // re-close: the open batch's tt_e is the later one
+        top.close_row(3, 5, 8); // and a segment the base never touched
+
+        assert_eq!(top.tt_e(1, 4), 9, "the layer wins");
+        assert_eq!(top.tt_e(2, 7), 2, "the base still answers");
+        assert_eq!(top.tt_e(3, 5), 8);
+        assert_eq!(top.tt_e(9, 9), OPEN_END);
+
+        // a scan skips visibility work per segment, so `touches` must see
+        // through the layer in both directions
+        for seg in [1, 2, 3] {
+            assert!(top.touches(seg), "segment {seg}");
+        }
+        assert!(!top.touches(4));
+
+        // three distinct rows, not four: (1, 4) is closed twice, by both
+        assert_eq!(top.len(), 3);
+        assert!(!top.is_empty());
+        assert!(CloseIndex::layered_over(std::sync::Arc::new(CloseIndex::default())).is_empty());
+        assert_eq!(top.records_for(1), vec![(4, 9)]);
+    }
 }
