@@ -36,7 +36,11 @@ from hypothesis import HealthCheck, given, settings
 from hypothesis import strategies as st
 
 from tgms.core.errors import InvalidArgError, SchemaError
-from tgms.temporal.algebra import call_operator, ensure_all_registered
+from tgms.temporal.algebra import (
+    _canonicalize_floats,
+    call_operator,
+    ensure_all_registered,
+)
 
 from .conftest import fresh_adapter
 
@@ -84,7 +88,10 @@ def ref_group(rows: list[dict], key: str, fn: str, field: str | None):
         members = list(grp)
         vals = [m[field] for m in members] if field else members
         out.append({key: k, fn: reduce(vals)})
-    return out
+    # the operator's output passes through `_canonicalize_floats` so a digest
+    # is stable across platforms; anything compared against it must too, as
+    # `test_compute_arithmetic.py` does
+    return _canonicalize_floats(out)
 
 
 def rows_of(*pairs) -> list[dict]:
