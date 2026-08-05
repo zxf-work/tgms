@@ -1436,6 +1436,14 @@ C22: dict[tuple[str, int], tuple[int, str, str]] = {
 # flagged AT RISK anyway, because the structure is what ages well.
 ENDPOINT_DIMS = frozenset({"src", "dst"})
 
+#: Grouping vocabulary. A calendar dimension is named by its *unit* rather
+#: than by `calendar_unit`, because two of them can appear in one grouping
+#: (cm-Q32 groups hour_of_day x day_of_week) and the operator rejects two
+#: dimensions that are literally identical. Naming the unit is also what lets
+#: the measurement build the real `group_by` from the declaration.
+GROUPING_DIMS = frozenset({"src", "dst", "rel_type", "time_bucket",
+                           "hour_of_day", "day_of_week", "month_of_year"})
+
 #: Per verdict, the grouping of each `aggregate_events` call in its chain.
 #: `None` means the chain cannot be reconstructed from the op string alone —
 #: which is the finding that motivated this table, not a gap in it. Those are
@@ -1479,9 +1487,9 @@ GROUPINGS: dict[tuple[str, int], tuple[tuple[str, ...], ...] | None] = {
     ("cm", 9): (("src",),),
     ("cm", 10): (("dst",), ("src",)),
     ("cm", 11): (("src", "time_bucket"),),
-    ("cm", 15): (("calendar_unit",),),
+    ("cm", 15): (("hour_of_day",),),
     ("cm", 16): (("src",), ("dst",)),
-    ("cm", 20): (("calendar_unit",),),
+    ("cm", 20): (("day_of_week",),),
     ("cm", 21): (("src",), ("dst",)),
     ("cm", 22): (("src", "dst"),),
     ("cm", 23): (("src",),),
@@ -1493,7 +1501,7 @@ GROUPINGS: dict[tuple[str, int], tuple[tuple[str, ...], ...] | None] = {
                              # monthly buckets: 3,061 rows, fits. Six windows
                              # x two roles would be 12 calls = MAX_STEPS with
                              # nothing left for the union (D-063)
-    ("cm", 32): (("calendar_unit", "calendar_unit"),),  # it does allow it:
+    ("cm", 32): (("hour_of_day", "day_of_week"),),  # it does allow it:
                              # hour_of_day x day_of_week = 168 rows (D-063)
     ("cm", 33): (("src",), ("src",)),   # count_distinct(of=dst) grouped by
                              # src is ONE dimension: 1,350 rows. Declaring
@@ -1520,9 +1528,63 @@ GROUPINGS: dict[tuple[str, int], tuple[tuple[str, ...], ...] | None] = {
     ("cm", 49): (("src",),),
     ("cm", 50): (("src", "dst"),),
     ("cm", 52): (("src",),),
-    ("cm", 53): (("src", "calendar_unit"),),
+    ("cm", 53): (("src", "hour_of_day"),),
     ("cm", 54): (("src",),),
 }
+
+#: Rows each declared grouping actually produces, per canonical store,
+#: refreshed by `pagecap`. Recorded so `report()` can name the real exposure
+#: while staying store-free, and so the structural guard and the measurement
+#: can be seen to disagree rather than one quietly standing in for the other.
+PAGE = 10_000
+MEASURED: dict[tuple[str, ...], dict[str, int]] = {
+    (): {"collegemsg": 1, "bitcoinotc": 1},
+    ("day_of_week",): {"collegemsg": 7, "bitcoinotc": 7},
+    ("dst",): {"collegemsg": 1_862, "bitcoinotc": 5_858},
+    ("dst", "time_bucket"): {"collegemsg": 18_287, "bitcoinotc": 28_361},
+    ("hour_of_day",): {"collegemsg": 24, "bitcoinotc": 24},
+    ("hour_of_day", "day_of_week"): {"collegemsg": 168, "bitcoinotc": 168},
+    ("src",): {"collegemsg": 1_350, "bitcoinotc": 4_814},
+    ("src", "dst"): {"collegemsg": 20_296, "bitcoinotc": 35_592},
+    ("src", "hour_of_day"): {"collegemsg": 10_965, "bitcoinotc": 17_272},
+    ("src", "time_bucket"): {"collegemsg": 14_633, "bitcoinotc": 25_716},
+    ("time_bucket",): {"collegemsg": 192, "bitcoinotc": 1_770},
+}
+
+#: Verdicts whose question names particular accounts, so `endpoint_filter`
+#: bounds the grouping long before its unscoped size matters. Measured, not
+#: assumed: cm-Q42 is 1 row and cm-Q41 is 0, against the 18,287 their
+#: grouping produces unscoped. The structural rule cannot see a filter, which
+#: is the price of a guard that survives a new dataset.
+SCOPED_BY_FILTER: dict[tuple[str, int], int] = {
+    ("cm", 41): 0,
+    ("cm", 42): 1,
+}
+
+#: Measured with an argument that shrinks the population below the page even
+#: unscoped. `pair_mode: reciprocal` keeps only pairs that answered each
+#: other — 6,458 of CollegeMsg's 20,296 directed pairs.
+NARROWED_BY_ARG: dict[tuple[str, int], int] = {
+    ("cm", 34): 6_458,
+    ("bo", 25): 14_100,
+}
+
+
+#: A question belongs to one dataset, so its exposure is that dataset's.
+STORE_OF = {"cm": "collegemsg", "bo": "bitcoinotc"}
+
+
+def measured_max(k, grouping) -> tuple[int, str]:
+    """Rows this verdict really produces on ITS OWN dataset, and where the
+    number came from. Reading the other corpus's count here would inflate a
+    CollegeMsg question with Bitcoin-OTC's pair count."""
+    if k in SCOPED_BY_FILTER:
+        return SCOPED_BY_FILTER[k], "scoped by endpoint_filter"
+    if k in NARROWED_BY_ARG:
+        return NARROWED_BY_ARG[k], "narrowed by pair_mode"
+    store = STORE_OF[k[0]]
+    return max((MEASURED[g][store] for g in grouping if g in MEASURED),
+               default=-1), f"unscoped, on {store}"
 
 #: `compute` functions that reduce to one number. Mirrors the executor's
 #: REDUCING_FNS (D-061) — a chain ending in one of these over a page is a
@@ -1531,6 +1593,50 @@ REDUCING_OPS = frozenset({"count", "sum", "mean", "median", "min", "max",
                           "percent", "ratio", "diff", "topk",
                           "intersect", "difference", "union", "join"})
 
+
+def check_groupings() -> list[str]:
+    """Every declared grouping must be one the operator would actually accept.
+
+    Store-free on purpose, and that is the point: both defects this guard
+    exists for were **validation** failures, not cardinality ones. D-063
+    declared cm-Q32 as `calendar_unit x calendar_unit`, which the operator
+    rejects as a duplicate dimension, and nothing noticed until `pagecap` was
+    run by hand a session later. Asking the real validator costs nothing and
+    needs no data, so it runs wherever the tables do.
+
+    Returns a list of problems rather than raising, so a caller can report
+    all of them at once.
+    """
+    from tgms.temporal.algebra import ensure_all_registered, validate_args
+    ensure_all_registered()
+    DIM = {"src": {"dim": "endpoint", "role": "src"},
+           "dst": {"dim": "endpoint", "role": "dst"},
+           "rel_type": {"dim": "rel_type"},
+           "time_bucket": {"dim": "time_bucket"},
+           "hour_of_day": {"dim": "calendar_unit", "unit": "hour_of_day"},
+           "day_of_week": {"dim": "calendar_unit", "unit": "day_of_week"},
+           "month_of_year": {"dim": "calendar_unit", "unit": "month_of_year"}}
+    problems = []
+    for k, groupings in sorted(GROUPINGS.items()):
+        if groupings is None:
+            continue
+        for g in groupings:
+            unknown = set(g) - GROUPING_DIMS
+            if unknown:
+                problems.append(f"{k[0]}-Q{k[1]}: unknown dimension(s) "
+                                f"{sorted(unknown)} in {g}")
+                continue
+            args = {"group_by": [DIM[d] for d in g],
+                    "aggregates": [{"agg": "count"}],
+                    "window": {"t_a": 0, "t_b": 1}}
+            if "time_bucket" in g:
+                args["stride"] = 86_400_000_000
+            try:
+                validate_args("aggregate_events", args)
+            except Exception as e:      # noqa: BLE001 - report, do not raise
+                problems.append(f"{k[0]}-Q{k[1]}: {g} is not a grouping the "
+                                f"operator accepts — {str(e)[:80]}")
+    return problems
 
 def reduces_after_grouping(ops: str) -> bool:
     """Does this chain reduce something a grouping produced?"""
@@ -1756,8 +1862,25 @@ def report():
           f"{len(risky)} group an endpoint with a second dimension and so "
           f"need paging on at least one canonical dataset; "
           f"{len(undecidable)} cannot be decided from the op chain")
+    bad = check_groupings()
+    assert not bad, ("declared groupings the operator would refuse:\n  "
+                     + "\n  ".join(bad))
+    unmeasured = sorted({g for gs in GROUPINGS.values() if gs for g in gs}
+                        - set(MEASURED))
+    assert not unmeasured, (
+        f"declared groupings with no recorded measurement: {unmeasured}. "
+        f"Run `pagecap` and record them — the structural rule is the guard, "
+        f"but it must be able to be contradicted.")
+    over = []
     for k in sorted(risky):
-        print(f"  AT RISK      {k[0]}-Q{k[1]:<3} {risky[k]}")
+        n, how = measured_max(k, risky[k])
+        verdict = "NEEDS PAGING" if n > PAGE else f"fits today ({how})"
+        if n > PAGE:
+            over.append(k)
+        print(f"  at risk  {k[0]}-Q{k[1]:<3} {str(risky[k]):44s} "
+              f"measured {n:>6,d}  {verdict}")
+    print(f"  -> {len(risky)} at risk by shape, {len(over)} of them measured "
+          f"over the {PAGE:,}-row page on a canonical store")
     for k in undecidable:
         print(f"  UNDECIDABLE  {k[0]}-Q{k[1]:<3} chain does not say")
 
@@ -1810,7 +1933,8 @@ def pagecap():
            "dst": {"dim": "endpoint", "role": "dst"},
            "rel_type": {"dim": "rel_type"},
            "time_bucket": {"dim": "time_bucket"},
-           "calendar_unit": {"dim": "calendar_unit", "unit": "hour_of_day"}}
+           "hour_of_day": {"dim": "calendar_unit", "unit": "hour_of_day"},
+           "day_of_week": {"dim": "calendar_unit", "unit": "day_of_week"}}
     declared = sorted({g for gs in GROUPINGS.values() if gs for g in gs})
     stores = [n for n in ("collegemsg", "bitcoinotc")
               if Path(f"stores/{n}").exists()]
