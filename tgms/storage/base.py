@@ -171,6 +171,42 @@ class StorageAdapter(ABC):
     #: for every call that never asked for it (D-052).
     EDGE_OPT_COLS = ("props",)
 
+    #: Exactly the columns `version_history` emits, per kind — which is
+    #: `to_json()` minus the three it drops. `props` is the blob D-058
+    #: refused on a whole-store scan; `source` and `provenance_ref` are
+    #: dropped by the operator, so fetching them was pure waste (D-069).
+    VERSION_COLS = {
+        "node": ("vid", "uid", "label", "vt_s", "vt_e", "tt_s", "tt_e"),
+        "edge": ("vid", "eid", "src", "dst", "rel_type", "disc",
+                 "vt_s", "vt_e", "tt_s", "tt_e"),
+    }
+    VERSION_INT_COLS = ("vt_s", "vt_e", "tt_s", "tt_e")
+
+    def versions_columnar(self, kind: str) -> dict[str, np.ndarray]:
+        """Struct-of-arrays over EVERY version ever written, of one kind.
+
+        This exists because `version_history` was materializing the whole
+        population to return a page: one object and one dict per version,
+        profiled at 72% of its runtime and 64 s of object construction alone
+        at 10M, to hand back at most `limit` rows (D-069).
+
+        A backend that can hand its columns over overrides this; the default
+        below keeps every other backend correct at the old cost, so the
+        operator has one path and no backend diverges semantically — which
+        is the property D-059 was about.
+        """
+        rows = (self.all_node_versions() if kind == "node"
+                else self.all_edge_versions())
+        names = self.VERSION_COLS[kind]
+        cols: dict[str, list] = {c: [] for c in names}
+        for v in rows:
+            for c in names:
+                cols[c].append(getattr(v, c))
+        return {c: np.asarray(vals,
+                              dtype=np.int64 if c in self.VERSION_INT_COLS
+                              else object)
+                for c, vals in cols.items()}
+
     @abstractmethod
     def edges_columnar(
         self,
