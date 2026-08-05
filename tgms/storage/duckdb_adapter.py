@@ -209,6 +209,22 @@ class DuckDBAdapter(StorageAdapter):
 
     # --- columnar read path ------------------------------------------------ #
 
+    def versions_columnar(self, kind: str) -> dict[str, np.ndarray]:
+        """One SELECT of the columns a version scan emits (D-069).
+
+        The ABC default builds an object per row and reads attributes off it;
+        this reads the columns. `props`, `source` and `provenance_ref` are
+        never in the projection — the operator drops all three — which is the
+        same pushdown D-052 added to `edges_columnar` for the same reason.
+        """
+        names = self.VERSION_COLS[kind]
+        table = "node_versions" if kind == "node" else "edge_versions"
+        str_cols = tuple(c for c in names if c not in self.VERSION_INT_COLS)
+        tbl = self.conn.execute(
+            f"SELECT {', '.join(names)} FROM {table}").to_arrow_table()
+        return _arrow_to_soa(tbl, int_cols=self.VERSION_INT_COLS,
+                             str_cols=str_cols)
+
     def edges_columnar(
         self,
         as_of_tt: int = OPEN_END,

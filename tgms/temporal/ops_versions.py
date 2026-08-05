@@ -37,6 +37,8 @@ and a props column would put a JSON blob on every row of a whole-store scan.
 
 from __future__ import annotations
 
+import numpy as np
+
 from typing import Any
 
 from tgms.core.errors import InvalidArgError
@@ -77,7 +79,6 @@ def _version_cost(args: dict[str, Any], stats: dict[str, Any]) -> dict[str, int]
 #: Columns dropped from the version row. `props` is a blob and this
 #: operator is a whole-store scan; `source`/`provenance_ref` are reserved
 #: for Phase-3 write-back and are constant for every row written so far.
-_DROP = ("props", "source", "provenance_ref")
 
 
 def _version_validators(args: dict[str, Any]) -> None:
@@ -129,26 +130,32 @@ def version_history(adapter: StorageAdapter, args: dict[str, Any]) -> dict[str, 
     belief, kind = args["belief"], args["kind"]
     rel_types = set(args["rel_types"]) if args["rel_types"] is not None else None
 
-    versions = (adapter.all_node_versions() if kind == "node"
-                else adapter.all_edge_versions())
-    rows = []
-    for v in versions:
-        if v.tt_s > as_of:
-            continue                       # not written yet, at this as_of
-        superseded = v.tt_e <= as_of
-        if (belief == "current" and superseded) or \
-                (belief == "superseded" and not superseded):
-            continue
-        if not (v.vt_s < t_b and t_a < v.vt_e):
-            continue
-        if rel_types is not None and v.rel_type not in rel_types:
-            continue
-        r = v.to_json()
-        for c in _DROP:
-            del r[c]
-        if not superseded:
-            r["tt_e"] = OPEN_END
-        rows.append(r)
+    # Columns, not objects: the censoring and the window are masks, the
+    # ordering is a lexsort over two of them, and only the page is ever
+    # built into rows. The old path materialized the whole population —
+    # 64 s of object construction at 10M — to return at most `limit` rows
+    # (D-069). `rows_total` is still exact because the mask counts.
+    cols = adapter.versions_columnar(kind)
+    tt_s, tt_e, vt_s, vt_e = (cols["tt_s"], cols["tt_e"],
+                              cols["vt_s"], cols["vt_e"])
+    superseded = tt_e <= as_of
+    keep = (tt_s <= as_of) & (vt_s < t_b) & (t_a < vt_e)
+    if belief == "current":
+        keep &= ~superseded
+    elif belief == "superseded":
+        keep &= superseded
+    if rel_types is not None:
+        keep &= np.isin(cols["rel_type"], list(rel_types))
+    idx = np.flatnonzero(keep)
+    # (tt_s, vid) — the last key to lexsort is the primary one
+    idx = idx[np.lexsort((cols["vid"][idx], tt_s[idx]))]
 
-    rows.sort(key=lambda r: (r["tt_s"], r["vid"]))
-    return paginate(rows, args["limit"], args["cursor"])
+    names = [c for c in adapter.VERSION_COLS[kind]]
+    page = paginate(idx.tolist(), args["limit"], args["cursor"])
+    page["rows"] = [
+        {**{c: (int(cols[c][i]) if c in adapter.VERSION_INT_COLS
+                else cols[c][i]) for c in names},
+         "tt_e": int(tt_e[i]) if superseded[i] else OPEN_END}
+        for i in page["rows"]
+    ]
+    return page
