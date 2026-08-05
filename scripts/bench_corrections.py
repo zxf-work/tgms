@@ -16,7 +16,10 @@ Four axes, because density alone conflates them:
 - **versions per identity** — how deep one entity's belief history is. A
   correction resolves its target through `believed_*_versions(identity)`,
   which returns *every* version of that identity, so this axis prices
-  per-entity history depth rather than store size.
+  per-entity history depth rather than store size. It holds **seed batches
+  fixed** across depths (D-075): seeding depth D with D rounds would vary
+  segment count with depth and charge manifest growth to history depth,
+  which is what made D-074's first reading of this axis 9x too large.
 - **out-of-order distance** — how far back in valid time a correction lands.
   Lookup is keyed by identity rather than time, so this should price
   interval carving (`base.py::_remainder`) and not the lookup.
@@ -156,18 +159,45 @@ def percentiles(xs: list[float]) -> dict[str, float]:
             "p99": round(pick(0.99), 3)}
 
 
-def _seed_ops(n_entities: int, depth: int) -> list[list[dict[str, Any]]]:
-    """Initial history: `depth` versions per identity before the sweep starts.
+def _seed_ops(
+    n_entities: int, depth: int, seed_batches: int | None = None,
+) -> list[list[dict[str, Any]]]:
+    """Initial history before the sweep starts.
 
     Depth is built by overwriting the whole interval, so each round leaves one
     believed version and `depth` retained ones — the shape a long-lived entity
     reaches, not a synthetic pile of disjoint intervals.
+
+    **`seed_batches` is what makes the depth axis mean anything (D-075).** The
+    naive construction — `depth` rounds over the whole population — commits
+    `depth` batches, so it moves *two* variables at once: versions per
+    identity, and the number of segments (hence manifest size, which is
+    O(segments)). D-074 reported 18.8x on that construction; a control holding
+    segments fixed measured the depth-only effect at 2.02x. The rest was
+    manifest growth, which the batch-size axis already prices.
+
+    With `seed_batches` fixed, every depth commits the same number of batches
+    over the same number of rows, and only their *distribution* over
+    identities changes: a population of `seed_batches * n_entities / depth`
+    is cycled so each identity ends up with exactly `depth` versions.
     """
+    if seed_batches is None:
+        rounds = []
+        for d in range(depth):
+            rounds.append([
+                {"op": "assert_node", "uid": f"e{i}", "label": "N",
+                 "props": {"v": d}, "vt_s": 0, "vt_e": OPEN_END}
+                for i in range(n_entities)
+            ])
+        return rounds
+
+    population = max(1, seed_batches * n_entities // max(1, depth))
     rounds = []
-    for d in range(depth):
+    for b in range(seed_batches):
+        base = (b * n_entities) % population
         rounds.append([
-            {"op": "assert_node", "uid": f"e{i}", "label": "N",
-             "props": {"v": d}, "vt_s": 0, "vt_e": OPEN_END}
+            {"op": "assert_node", "uid": f"e{(base + i) % population}",
+             "label": "N", "props": {"v": b}, "vt_s": 0, "vt_e": OPEN_END}
             for i in range(n_entities)
         ])
     return rounds
@@ -198,6 +228,7 @@ def run_cell(
     depth: int,
     ooo: int,
     measure_replay: bool,
+    seed_batches: int | None = None,
 ) -> dict[str, Any]:
     """One matrix cell against a fresh store.
 
@@ -210,7 +241,8 @@ def run_cell(
     try:
         return _run_cell_in(work, n_entities=n_entities,
                             n_corrections=n_corrections, batch_size=batch_size,
-                            depth=depth, ooo=ooo, measure_replay=measure_replay)
+                            depth=depth, ooo=ooo, measure_replay=measure_replay,
+                            seed_batches=seed_batches)
     finally:
         shutil.rmtree(work, ignore_errors=True)
 
@@ -224,6 +256,7 @@ def _run_cell_in(
     depth: int,
     ooo: int,
     measure_replay: bool,
+    seed_batches: int | None = None,
 ) -> dict[str, Any]:
     root = work / "store"
     store = tgms.open(root, backend="native")
@@ -235,7 +268,7 @@ def _run_cell_in(
     op_log: list[tuple[int, list[dict[str, Any]]]] = []
 
     tt = 1000
-    for ops in _seed_ops(n_entities, depth):
+    for ops in _seed_ops(n_entities, depth, seed_batches):
         tt += 1
         adapter.begin()
         adapter.apply_ops(ops, tt)
@@ -266,6 +299,7 @@ def _run_cell_in(
     rec: dict[str, Any] = {
         "batch_size": batch_size,
         "depth": depth,
+        "seed_batches": seed_batches,
         "ooo": ooo,
         "n_entities": n_entities,
         "corrections": n_corrections,
@@ -368,18 +402,25 @@ def sweep(profile: dict[str, Any], want_replay: bool) -> dict[str, Any]:
     # cells are comparable to each other rather than to the grid
     axis_corrections = min(events // 100, BASELINE_BATCH * max_batches)
 
-    # depth runs on its own small population — see the note on the profiles
+    # Depth runs on its own small population, and — critically — every depth
+    # commits the SAME number of batches (D-075). Seeding depth D with D
+    # rounds would vary segment count alongside depth and price manifest
+    # growth as if it were history depth, which is what D-074 did.
     depth_ent = profile.get("depth_entities", n_ent)
+    depth_seed_batches = max(profile["depths"])
     depths = []
     for d in profile["depths"]:
-        print(f"  depth {d} versions/identity over {depth_ent} entities "
+        population = max(1, depth_seed_batches * depth_ent // max(1, d))
+        print(f"  depth {d} versions/identity over {population} entities, "
+              f"{depth_seed_batches} seed batches held fixed "
               f"({axis_corrections} corrections) …", flush=True)
         t0 = time.perf_counter()
         cell = run_cell(
             n_entities=depth_ent, n_corrections=axis_corrections,
             batch_size=BASELINE_BATCH, depth=d, ooo=BASELINE_OOO,
-            measure_replay=False,
+            measure_replay=False, seed_batches=depth_seed_batches,
         )
+        cell["seed_population"] = population
         print(f"    → {cell['ms_per_correction']:.4f} ms/corr "
               f"({time.perf_counter() - t0:.0f}s)", flush=True)
         depths.append(cell)

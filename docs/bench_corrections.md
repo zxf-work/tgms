@@ -130,6 +130,25 @@ Batch 10,000's cost is not waste, it is a trade: its p50 **commit latency is
 At batch 1 the store **is** its manifests — 99.6%, at every density. Large
 batches dissolve the problem entirely.
 
+> **Correction (D-075): the depth column below is ~9× too large, and the
+> harness that produced it has been fixed.** Seeding depth D committed D
+> batches, so this axis moved *two* variables at once — versions per identity
+> **and** segment count, hence manifest size, which is O(segments). A control
+> holding batches fixed at 1,000 and varying only how the same 200,000 rows
+> distribute over identities measures the depth-only effect at **2.02×**, not
+> 18.8×:
+>
+> | arm (1,000 batches, 200,000 rows both) | ms/corr | `believed_*` |
+> |---|---:|---:|
+> | depth 1 over 200,000 entities | 1.027 | 0.151 |
+> | depth 1,000 over 200 entities | 2.075 | 1.199 |
+>
+> The two deltas agree to three decimals — **1.048 ms of extra correction
+> cost, 1.048 ms of it inside `believed_*_versions`** — so the effect is real
+> and entirely attributable to the identity lookup. Only its magnitude was
+> inflated. `_seed_ops` now takes `seed_batches` and holds it fixed across
+> depths. The numbers below are kept as the record of the confounded run.
+
 ### versions per identity — the axis the `ci` profile could not reach
 
 | depth | ms/corr | bytes/corr | p99 commit | manifest share |
