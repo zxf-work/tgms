@@ -405,9 +405,17 @@ impl NativeStore {
                 }
             }
             let vid_hi = seg.u64_column("vid64")?;
+            // the sidecar carries the closes folded in at seal time, so a row
+            // born already closed (a same-batch carve) never enters the
+            // open-version index; closes that arrive later as close runs are
+            // pruned by `locate_open` (D-076)
+            let sidecar = seg.sidecar();
             let mut p = self.postings_for(kind).lock().expect("postings mutex poisoned");
             for (key, row) in entries {
                 p.by_identity.entry(key).or_default().push((id, row));
+                if sidecar.tt_e(row) == OPEN_END {
+                    p.open_rows.entry(key).or_default().push((id, row));
+                }
             }
             for (i, &hi) in vid_hi.iter().enumerate() {
                 p.by_vid.entry(hi).or_default().push((id, i as u32));
@@ -443,6 +451,64 @@ impl NativeStore {
                     .collect()
             })
             .unwrap_or_default())
+    }
+
+    /// Does this `as_of_tt` ask about *current* belief? (D-076)
+    ///
+    /// Only the current-belief question has a standing answer worth indexing:
+    /// "which rows are open now". Every historical `as_of` is a different
+    /// question per tt and keeps the walk.
+    fn is_current_belief(as_of_tt: i64) -> bool {
+        crate::clamp_tt(as_of_tt) >= OPEN_END - 1
+    }
+
+    /// Currently-open `(file, row)` locations for one identity (D-076).
+    ///
+    /// **`open_rows` is a superset, and that is the design.** Maintaining an
+    /// exact set would mean removing a row the moment something closed it,
+    /// which needs a `(segment, row) -> identity` reverse map the store does
+    /// not have — closes name physical addresses, not identities. Instead the
+    /// index is append-only like `by_identity` (rows join it at index time if
+    /// their segment's sidecar says they are open), and closes are discovered
+    /// *here*, against the in-memory `CloseIndex`, then **pruned in place**.
+    ///
+    /// So each row is examined exactly once more after it closes, and never
+    /// again. For the correction workload — one row closed and one opened per
+    /// correction, with a read before each — the list stays at ~2 entries
+    /// however deep the identity's history gets, which is the whole point.
+    ///
+    /// Rows closed by the *open batch* are dropped too but not pruned: the
+    /// committed index still rightly thinks they are open, and the batch may
+    /// yet roll back.
+    fn locate_open(&self, kind: RowKind, key: u64) -> Result<Vec<(String, u32)>> {
+        self.index_segments(kind)?;
+        // **Committed closes only.** Pruning against `close_index()` would use
+        // the open batch's pending overlay and permanently delete rows an
+        // abandoned batch must give back — the index is not transactional, so
+        // nothing uncommitted may ever mutate it. Pending closes are applied
+        // below as a filter instead, which a rollback simply forgets.
+        let closes = self.committed_close_index()?;
+        let files = match kind {
+            RowKind::Edge => self.edge_files(),
+            RowKind::Node => self.node_files(),
+        };
+        let by_id: HashMap<u64, String> = files.into_iter().map(|(f, i)| (i, f)).collect();
+        let closed_here = self.pending_closed_rows(kind);
+
+        let mut p = self.postings_for(kind).lock().expect("postings mutex poisoned");
+        let Some(candidates) = p.open_rows.get_mut(&key) else {
+            return Ok(Vec::new());
+        };
+        // prune anything a committed close has since closed, and anything the
+        // current manifest no longer lists (compaction dropped its segment)
+        candidates.retain(|(seg, row)| {
+            by_id.contains_key(seg) && closes.tt_e(*seg, *row) == OPEN_END
+        });
+        Ok(candidates
+            .iter()
+            .filter(|(seg, row)| !closed_here.contains(&(*seg, *row)))
+            .filter_map(|(seg, row)| by_id.get(seg).map(|f| (f.clone(), *row)))
+            .collect())
     }
 
     /// Physical location of one committed version, or None (WP-N4).
@@ -507,7 +573,13 @@ impl NativeStore {
         let mut out = Vec::new();
         // group candidate rows by file so each segment is opened once
         let mut by_file: std::collections::BTreeMap<String, Vec<u32>> = Default::default();
-        for (file, row) in self.locate(RowKind::Edge, key)? {
+        // see believed_node_versions: current belief through the index (D-076)
+        let located = if Self::is_current_belief(as_of_tt) {
+            self.locate_open(RowKind::Edge, key)?
+        } else {
+            self.locate(RowKind::Edge, key)?
+        };
+        for (file, row) in located {
             by_file.entry(file).or_default().push(row);
         }
         for (file, rows) in by_file {
@@ -533,7 +605,15 @@ impl NativeStore {
         let closes = self.close_index()?;
         let mut out = Vec::new();
         let mut by_file: std::collections::BTreeMap<String, Vec<u32>> = Default::default();
-        for (file, row) in self.locate(RowKind::Node, uid_key(uid))? {
+        // current belief goes through the open-version index, which returns
+        // the ~1 row still open instead of every version this identity has
+        // ever had (D-076); any historical as_of keeps the walk
+        let located = if Self::is_current_belief(as_of_tt) {
+            self.locate_open(RowKind::Node, uid_key(uid))?
+        } else {
+            self.locate(RowKind::Node, uid_key(uid))?
+        };
+        for (file, row) in located {
             by_file.entry(file).or_default().push(row);
         }
         for (file, rows) in by_file {

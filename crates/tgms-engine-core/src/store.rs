@@ -375,6 +375,19 @@ impl NativeStore {
         &self.stats
     }
 
+    /// Rows this open batch has closed, as physical addresses (D-076).
+    ///
+    /// The open-version index is built per committed generation and does not
+    /// know about an in-flight batch, so a mid-batch read subtracts these.
+    /// Bounded by the batch, not the store.
+    pub(crate) fn pending_closed_rows(&self, kind: RowKind) -> std::collections::HashSet<(u64, u32)> {
+        self.pending_closes
+            .iter()
+            .filter(|c| c.kind == kind)
+            .map(|c| (c.segment, c.row))
+            .collect()
+    }
+
     pub(crate) fn edge_postings(&self) -> &std::sync::Mutex<Postings> {
         &self.edge_postings
     }
@@ -545,7 +558,7 @@ impl NativeStore {
     /// that generation's beliefs — never a newer correction: each handle
     /// caches against its *own* manifest generation, so a pinned older view
     /// serves its own generation's closes, not a newer handle's.
-    fn committed_close_index(&self) -> Result<std::sync::Arc<CloseIndex>> {
+    pub(crate) fn committed_close_index(&self) -> Result<std::sync::Arc<CloseIndex>> {
         if self.current_only {
             // the stripped configuration has no closes by construction; a
             // run appearing anyway means the marker and the manifest
@@ -885,6 +898,27 @@ pub(crate) struct Postings {
     pub(crate) by_vid: std::collections::HashMap<u64, Vec<(u64, u32)>>,
     /// Segment ids already folded in.
     pub(crate) indexed: std::collections::HashSet<u64>,
+    /// The open-version index (D-076): identity prefix -> the rows of that
+    /// identity that are *currently believed*, i.e. `tt_e == OPEN_END`.
+    ///
+    /// `by_identity` above answers "where does this identity live", which is
+    /// every version it has ever had; the correction path only ever wants the
+    /// one or two still open, and paid O(depth) to find them (D-075 measured
+    /// that walk at 58% of a correction at batch 100). This map answers the
+    /// hot question directly.
+    ///
+    /// **It is a superset, and it is append-only, which is what keeps it
+    /// cheap.** A row joins when its segment is indexed, if that segment's
+    /// sidecar says it is open. Later closes arrive as close *runs*, which
+    /// name physical addresses rather than identities, so removing them
+    /// eagerly would need a `(segment, row) -> identity` reverse map. Instead
+    /// `read.rs::locate_open` discovers them against the `CloseIndex` and
+    /// prunes in place — each row examined exactly once after it closes.
+    ///
+    /// Compaction needs no special handling: its fresh segments are indexed
+    /// like any other, and entries naming segments the manifest no longer
+    /// lists are dropped by the same prune.
+    pub(crate) open_rows: std::collections::HashMap<u64, Vec<(u64, u32)>>,
 }
 
 /// The store's open-segment cache, accounted in bytes (D-041).
@@ -1499,6 +1533,56 @@ mod tests {
             let expected = if closed.contains(&r.vid) { 500 } else { OPEN_END };
             assert_eq!(r.tt_e, expected, "vid {}", r.vid);
         }
+    }
+
+    #[test]
+    fn the_open_index_shrinks_to_what_is_still_believed() {
+        // D-076 regression gate. The index must (a) get built at all, (b) hold
+        // only rows a segment sealed open, and (c) *prune* on lookup as closes
+        // arrive — without pruning it degenerates back into `by_identity` and
+        // the O(depth) walk it replaced comes back with extra memory.
+        let root = tmp_root("open-index");
+        let mut s = NativeStore::open(&root).unwrap();
+        let depth = 40usize;
+        let mut vids = Vec::new();
+        for d in 0..depth {
+            let tt = 100 + d as i64;
+            s.begin(tt).unwrap();
+            let a = s.ensure_entity("n1", "Node").unwrap();
+            let b = s.ensure_entity("n2", "Node").unwrap();
+            let r = edge_row(a, b, 0, tt, 0);
+            vids.push(r.vid);
+            s.stage_edge(r).unwrap();
+            // supersede the previous version, exactly as the correction path
+            // does: closed, not retired, because it was believed at an
+            // earlier transaction time
+            if d > 0 {
+                s.close_version(RowKind::Edge, vids[d - 1], tt).unwrap();
+            }
+            s.commit(EventLogRef::default()).unwrap();
+        }
+
+        // one identity, `depth` versions, exactly one of them still believed.
+        // The lookup is also what triggers the prune, so it must come first.
+        let eid = s.all_edge_versions().unwrap()[0].eid.clone();
+        let believed = s.believed_edge_versions(&eid, OPEN_END).unwrap();
+        assert_eq!(believed.len(), 1, "exactly one version of the identity is open");
+        assert_eq!(believed[0].vid, vids[depth - 1].to_hex(), "the newest one");
+
+        let held = {
+            let p = s.edge_postings().lock().unwrap();
+            assert_eq!(
+                p.by_identity.values().map(Vec::len).sum::<usize>(),
+                depth,
+                "every version is still reachable by identity"
+            );
+            p.open_rows.values().map(Vec::len).sum::<usize>()
+        };
+        assert_eq!(
+            held, 1,
+            "the open index must prune closed rows on lookup: it holds {held} \
+             of {depth} versions, so it is tracking history rather than belief"
+        );
     }
 
     #[test]
