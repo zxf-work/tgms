@@ -1469,6 +1469,10 @@ GROUPINGS: dict[tuple[str, int], tuple[tuple[str, ...], ...] | None] = {
     ("bo", 23): (("src",),),
     ("bo", 25): (("src", "dst"),),
     ("bo", 28): (("src", "dst"),),
+    ("bo", 26): (("src", "dst"),),   # the mirror join: one grouping, joined
+    ("bo", 27): (("src", "dst"),),   # to itself on the swapped key (D-065)
+    ("bo", 29): (("src", "dst"),),
+    ("bo", 30): (("src", "dst"),),
     ("bo", 36): (("src",), ("src",)),
     ("bo", 42): (("dst",), ("dst",)),
     ("bo", 43): (("dst",),),
@@ -1682,6 +1686,66 @@ C23: dict[tuple[str, int], tuple[int, str, str]] = {
                  "before this one executed it"),
 }
 
+# --------------------------------------------------------------------------- #
+# re-audit before building PROJ, which turned out not to need building (D-065) #
+# --------------------------------------------------------------------------- #
+# The session opened to build `PROJ` — "projecting a property value into output
+# rows so two rows' values can be compared" — and ran the four blocked
+# questions first, per §6. All four already run.
+#
+# The capability arrived in pieces and nobody re-read the tag: D-052 put a
+# property value in the output row as a column (`min of prop`), D-055 gave
+# `derive concat` for a join key and `join` for the mirror, and D-058 gave
+# `filter` a `field2` so two columns of one row can be compared. Composed,
+# they are exactly what `PROJ` names. Each session checked the questions its
+# own capability was aimed at; none re-read this one.
+#
+# Run against stores/bitcoinotc, not argued:
+#   bo-Q26  58 reciprocal pairs with one positive and one negative rating
+#   bo-Q27  0 — and legitimately: the corpus has ONE rating per directed pair
+#           (35,592 pairs for 35,592 edges), so no account ever re-rated. The
+#           chain is min(prop) != max(prop) on a pair rated twice, which needs
+#           no lag: all ratings equal <=> min == max
+#   bo-Q29  246 pairs that received first and gave a lower rating back
+#   bo-Q30  1,993 both-positive and 23 both-negative, of 2,074 A-rated-B-first
+#
+# **PROJ retires, and SEQ loses two entries with it.** bo-Q27 and bo-Q29 were
+# tagged `PROJ,SEQ`; neither needs a sequence, only a comparison between two
+# values that now reach one row. Eighth instance of §2(a2) — a tag naming the
+# first obstacle rather than the set — and the largest re-read gain in the
+# campaign: four questions, no code.
+#
+# Every one of these chains groups by (src, dst), which is 35,592 rows on
+# Bitcoin-OTC. All four join the needs-paging set the moment they become
+# class 2 (D-061/D-064).
+C24: dict[tuple[str, int], tuple[int, str, str]] = {
+    ("bo", 26): (2, "aggregate_events+derive+derive+join+filter+filter+count",
+                 "the mirror join puts both directions' ratings in one row and "
+                 "`field2` compares them; PROJ was answered by D-052 + D-055 + "
+                 "D-058 and nobody re-read it. Runs: 58"),
+    ("bo", 27): (2, "aggregate_events+filter+filter+count",
+                 "'rated again with a different value' is min(prop) != "
+                 "max(prop) on a pair rated twice — all ratings equal iff min "
+                 "== max, so no lag and no SEQ. Runs: 0, because the corpus "
+                 "holds one rating per directed pair"),
+    ("bo", 29): (2, "aggregate_events+derive+derive+join+filter+filter+count",
+                 "as bo-Q30 with two field-to-field comparisons instead of "
+                 "one: received first, and gave lower back. Runs: 246. `SEQ` "
+                 "was never its obstacle"),
+    # ---- re-tagged, still class 3 ---- #
+    ("cm", 44): (3, "GMEAN",
+                 "`SEQ` was not its obstacle either. First-reply latency is "
+                 "the mirror join again — min(vt_s) each direction, keep the "
+                 "pairs that received first, subtract — and it runs: 1,739 "
+                 "pairs, mean 82.0 hours over all of them. What is missing is "
+                 "the mean PER RECEIVER, which is `GMEAN`: `compute mean` "
+                 "reduces a row set, never its groups"),
+    ("bo", 30): (2, "aggregate_events+derive+derive+join+filter+filter+count",
+                 "min(vt_s) per direction orders the pair and min(prop) per "
+                 "direction gives the two signs, both compared with `field2`. "
+                 "Runs: 1,993 both-positive, 23 both-negative"),
+}
+
 def _verdict(table: dict, base, k):
     """A re-audit table's verdict for `k`, falling back to the table it
     chains onto. `base` is a callable so the chain composes."""
@@ -1768,6 +1832,9 @@ def report():
     def v23(k):
         return _verdict(C23, v22, k)
 
+    def v24(k):
+        return _verdict(C24, v23, k)
+
     _check_diff(C14, v13, "C14")
     _check_diff(C15, v14, "C15")
     _check_diff(C16, v15, "C16")
@@ -1778,6 +1845,7 @@ def report():
     _check_diff(C21, v20, "C21")
     _check_diff(C22, v21, "C22")
     _check_diff(C23, v22, "C23")
+    _check_diff(C24, v23, "C24")
     # AR is retired by C15: the capability shipped, and what is left of it
     # was never AR. Guard it so a later edit cannot quietly reintroduce the
     # tag without deciding what it now means.
@@ -1790,8 +1858,10 @@ def report():
     # after `derive` landed — so guard both.
     for tag, split in (("ROW", "GMEAN"), ("JOIN", "nothing"),
                        ("GLOB", "the version log, `src == dst`, and CHAIN"),
-                       ("PCT", "nothing — it delivered all three")):
-        assert not [k for k in q if tag in _needs(*v22(k))], \
+                       ("PCT", "nothing — it delivered all three"),
+                       ("PROJ", "nothing — D-052, D-055 and D-058 had already "
+                                "built it between them")):
+        assert not [k for k in q if tag in _needs(*v24(k))], \
             f"{tag} survived the re-audit; what is left of it is {split}"
 
     stages = [("13 ops, pre-registered", v13),
@@ -1804,7 +1874,8 @@ def report():
               ("calendar units, D-057 session re-audit", v20),
               ("the version log, D-058 session re-audit", v21),
               ("the percentile slice, D-060 session re-audit", v22),
-              ("running the chains, D-063 session re-audit", v23)]
+              ("running the chains, D-063 session re-audit", v23),
+              ("PROJ re-read, D-065 session re-audit", v24)]
     for label, v in stages:
         print(f"class distribution ({label}):",
               dict(sorted(Counter(v(k)[0] for k in q).items())))
@@ -1822,7 +1893,8 @@ def report():
             ("D-057 calendar units", v19, v20, C20),
             ("D-058 the version log", v20, v21, C21),
             ("D-060 the percentile slice", v21, v22, C22),
-            ("D-063 running the chains", v22, v23, C23)]:
+            ("D-063 running the chains", v22, v23, C23),
+            ("D-065 PROJ, which did not need building", v23, v24, C24)]:
         moved = sorted(k for k in q if cur(k)[0] != prev(k)[0])
         by_move = Counter((prev(k)[0], cur(k)[0]) for k in moved)
         print(f"\nbecame expressible under {label}: {len(moved)} of {len(q)} "
@@ -1846,8 +1918,8 @@ def report():
     # D-062: every chain that reduces a grouping must say what it grouped by.
     # Without it the page-cap exposure is unknowable from the tables, and a
     # capability session could add one silently.
-    needs = {k for k in q if v23(k)[0] in (1, 2)
-             and reduces_after_grouping(v23(k)[1])}
+    needs = {k for k in q if v24(k)[0] in (1, 2)
+             and reduces_after_grouping(v24(k)[1])}
     missing = sorted(needs - set(GROUPINGS))
     assert not missing, (
         f"{len(missing)} verdict(s) reduce a grouping and declare no "
@@ -1884,7 +1956,7 @@ def report():
     for k in undecidable:
         print(f"  UNDECIDABLE  {k[0]}-Q{k[1]:<3} chain does not say")
 
-    expressible = sum(1 for k in q if v23(k)[0] in (1, 2))
+    expressible = sum(1 for k in q if v24(k)[0] in (1, 2))
     print(f"\nexpressible now: {expressible} of {len(q)}")
     print("runnable:", [f"{d}-Q{n}" for (d, n) in sorted(C)
                         if C[(d, n)][2]])
