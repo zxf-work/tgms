@@ -93,6 +93,77 @@ term is back. That is what the CI gate asserts, and it is asserted as a
 
 ---
 
+## Results — `full` profile, xzgpu, HEAD `4481997`
+
+20,000 entities over a 1M-event base, ≤2,000 commits per cell, replay timed,
+**100.8 minutes**. Receipt `benchmarks/results-v1/bench-corrections-full-d073.json`.
+Eight cells hit the commit budget and are flagged `truncated` in the record.
+(The run manifest says `dirty: true`: the tree carried exactly one
+uncommitted file, this harness, scp'd onto a scratch branch fetched from
+GitHub. The engine was rebuilt and verified newer than `crates/` first.)
+
+### ms per correction — density × batch size
+
+| density | batch 1 | batch 10 | batch 100 | batch 1,000 | batch 10,000 |
+|---:|---:|---:|---:|---:|---:|
+| 1% | 15.18 † | 1.19 | **0.123** | 0.273 | 2.451 |
+| 5% | 15.39 † | 2.17 † | **0.281** | 0.291 | 2.451 |
+| 20% | 16.08 † | 2.17 † | 0.952 | **0.355** | 2.471 |
+| 50% | 16.25 † | 2.16 † | 0.955 † | **0.498** | 2.523 |
+
+† capped at the commit budget. **The curve is U-shaped, not monotone.** The
+optimum is batch 100–1,000; batch 10,000 is 5–20× *worse* than the optimum.
+Worst-to-best across a row is **45× at 20% density and 123× at 1%**.
+
+Batch 10,000's cost is not waste, it is a trade: its p50 **commit latency is
+24.7 seconds**. Amortized cost is fine, but nothing else can commit for 25 s.
+
+### manifest share of the store (%)
+
+| density | batch 1 | batch 10 | batch 100 | batch 1,000 | batch 10,000 |
+|---:|---:|---:|---:|---:|---:|
+| 1% | 99.6 | 98.9 | 70.4 | 4.0 | 0.3 |
+| 5% | 99.6 | 99.5 | 95.0 | 21.3 | 0.6 |
+| 20% | 99.6 | 99.5 | 98.8 | 54.5 | 1.5 |
+| 50% | 99.6 | 99.5 | 98.8 | 75.4 | 3.3 |
+
+At batch 1 the store **is** its manifests — 99.6%, at every density. Large
+batches dissolve the problem entirely.
+
+### versions per identity — the axis the `ci` profile could not reach
+
+| depth | ms/corr | bytes/corr | p99 commit | manifest share |
+|---:|---:|---:|---:|---:|
+| 1 | 0.1485 | 327 | 21.7 ms | 82.3% |
+| 10 | 0.1622 | 373 | 22.1 ms | 82.9% |
+| 100 | 0.3458 | 836 | 42.2 ms | 87.9% |
+| 1,000 | **2.7947** | **5,462** | **294.4 ms** | 97.1% |
+
+**18.8× from depth 1 to 1,000**, with the last decade of depth costing 8.1×
+— i.e. linear in depth past a knee between 10 and 100.
+
+### out-of-order valid-time distance, and replay
+
+Distance 0 / 100 / 10,000 / 1,000,000 → 0.121 / 0.158 / 0.155 / 0.158 ms per
+correction: **1.30×** end to end, with the cost in bytes (327 → 355) rather
+than latency. Replay, timed against a reference log written from the same op
+batches: 93.7 s / 109.5 s / 296.8 s at 1 / 5 / 20% density — 9.37 → 2.19 →
+1.48 ms per correction, i.e. fixed overhead amortizing, not superlinear
+growth.
+
+### A statistic that needs a caveat
+
+`marginal_ratio` (late batches over early ones) reaches **6.14** at 20% ×
+batch 100. That is **not** the D-072 close-index defect returning — it is
+manifest growth *within* the cell, since the manifest is O(segments) and that
+cell commits 2,000 times. The two mechanisms have the same signature and are
+separated only by scale: `tests/test_correction_scaling.py` runs 120 batches,
+where manifest growth is negligible and the measured ratio is 1.03. **A
+future reader must not treat a high marginal ratio in this matrix as the
+defect returning.**
+
+---
+
 ## Results — `ci` profile, HEAD `4481997`, dev M-series host
 
 500 entities over a 20,000-event base, ≤120 commits per cell, 23.3 s total.
@@ -131,10 +202,57 @@ Read down a column for density (flat) and across a row for batch size
 
 ---
 
-## Scoring the forecast (D-073)
+## Scoring the forecast (D-073) — final, against the `full` profile
 
-Per cell, not in aggregate. **Two clean hits, one hit whose magnitude was
-badly understated, one sub-claim wrong, one untested.**
+Per cell, not in aggregate. **F1 and F4 confirmed. F3 confirmed exactly,
+including the knee it predicted. F2 right about the shape's existence and
+wrong about where it turns. F5 confirmed and exceeded.**
+
+- **F1 — density flat: CONFIRMED.** Holding batch size fixed, 1 → 50%
+  density moves per-correction cost **1.07×** at batch 1 and **1.03×** at
+  batch 10,000. Density is close to irrelevant to the write path.
+
+- **F2 — batch size dominant: CONFIRMED, but the shape was wrong in both
+  directions.** Predicted "batch 1 >10× worse than batch 1,000, flattening
+  by ~100, essentially flat from 1,000 to 10,000". Measured: the spread is
+  **45–123×**, far past ">10×"; it does *not* flatten by 100; and 1,000 →
+  10,000 is not flat but a **5–9× regression**, making the curve U-shaped
+  with an optimum at 100–1,000. The forecast did name the mechanism —
+  "staging memory starts to trade against it" — so the direction of the
+  right-hand rise was anticipated even though "flat" was the stated
+  prediction. **A forecast that names a mechanism and then predicts the
+  wrong sign for it should be scored as wrong, not as half-right.**
+
+- **F3 — versions per identity linear, knee at 100+: CONFIRMED, and it is
+  the largest single effect found.** 0.149 → 0.162 → 0.346 → **2.795** ms
+  per correction at depths 1 / 10 / 100 / 1,000: flat to 10, the knee
+  between 10 and 100 exactly as forecast, and **linear beyond it** (10×
+  more depth costs 8.1×). Bytes per correction grows 16.7× over the same
+  range. The predicted consequence stands measured: the correction path is
+  linear in *corrections* and linear-per-correction in *per-entity history
+  depth*, so a long-lived entity's corrections get steadily more expensive.
+
+- **F4 — out-of-order mild: CONFIRMED**, now out to a distance of 1,000,000:
+  **1.30×**, against a predicted "under 1.5×", with the cost appearing as
+  bytes rather than latency exactly as predicted.
+
+- **F5 — manifests a "double-digit percentage" at batch 1: CONFIRMED and
+  far exceeded — 99.6%**, at every density.
+
+### Earlier scoring against the `ci` profile
+
+Kept because the two profiles disagree in a way that matters: at `ci` scale
+F3 measured **flat** (0.259 / 0.284 / 0.294 ms over depths 1–20) and was
+recorded as *untested rather than falsified*, on the grounds that the
+forecast put the knee at 100+ and the profile stopped at 20. The `full`
+profile shows the knee is real and sits exactly there. **Calling that cell
+"untested" rather than "disconfirmed" was the right call, and it was only
+right because the forecast had named a threshold the small profile could not
+reach.** A forecast without a stated threshold would have been scored
+"confirmed flat" and been wrong.
+
+*(the paragraphs below score the `ci` run only; the `full` scoring above
+supersedes them where they differ.)*
 
 - **F1 — density flat: CONFIRMED.** Across 1/5/20% the spread is **1.09×**
   at batch 10 and **1.03×** at batch 100, against a predicted "within 2×".
@@ -169,28 +287,42 @@ badly understated, one sub-claim wrong, one untested.**
   almost entirely manifests. Even at batch 100, 20% density leaves them at
   **65.6%**.
 
-### What the matrix says the next engine item is
+### What the matrix says the next engine items are
 
-Not the correction *lookup*, which D-072 established is already linear —
-but **manifest write amplification**, which no one had measured because no
-one had swept batch size. A correction-heavy store committed in small
-batches is 94% manifest bytes, and the per-correction cost gap between
-batch 1 and batch 100 is 96×. That is a larger, better-evidenced effect
-than anything remaining on the correction-lookup path.
+Not the correction *lookup*, which D-072 established is already linear. The
+`full` profile names **two** successors, and they are independent.
 
-Two things follow, and they are different in kind:
+**1. Per-entity history depth (F3) — the larger and less avoidable one.**
+A correction to an entity with 1,000 prior versions costs **18.8×** one to a
+fresh entity, growing linearly past a knee at ~100. Unlike the batch-size
+effect, a user cannot configure their way out of it: history depth is what
+the store is *for*, and it accumulates on exactly the long-lived entities a
+bi-temporal system exists to track. `believed_*_versions(identity)` reaches
+its rows through the identity postings, but then returns and filters every
+version of that identity. **This is where the open-version index the D-072
+handoff described would actually have paid** — not on the vid→location
+lookup, which was already done, but keyed by `(identity, belief state)` so a
+correction can reach the open version without walking the identity's history.
+The handoff named a real structure for the wrong reason.
 
-1. **Guidance, now, free** — correction-heavy ingest must batch. The gap is
-   two orders of magnitude and it costs nothing to document.
-2. **An engine question, sized before it is built** — whether the manifest
-   can be made incremental (a delta per generation rather than a full
-   rewrite), which is a real design change and should be forecast and
-   measured the same way. It is *not* claimed here as a defect: a full
-   manifest per generation is what makes a generation atomic and
-   independently readable, and that is load-bearing for the pinned-belief
-   guarantee.
+**2. Manifest write amplification (F5) — larger in ratio, but configurable.**
+A correction-heavy store committed one at a time is **99.6% manifest bytes**
+and costs 45–123× the same work at the optimum batch size. Two things follow,
+different in kind:
+
+- **Guidance, now, free** — correction-heavy ingest must batch, at
+  **100–1,000**, and *not* larger: batch 10,000 is 5–9× worse per correction
+  and pays a 24.7 s p50 commit latency. This costs nothing to document and is
+  the highest-leverage thing a user can be told about the write path.
+- **An engine question, only sized** — whether the manifest can become
+  incremental (a delta per generation rather than a full rewrite). This is
+  **not** claimed as a defect: a full manifest per generation is what makes a
+  generation atomic and independently readable, which is load-bearing for the
+  pinned-belief guarantee. It gets a forecast and a measurement before it
+  gets an implementation.
 
 **Optimizing the correction path moved the bottleneck, and this is where it
-moved** — from the close-run scan to the manifest write, and from the
-correction itself to the batch it is committed in.
+moved** — from the close-run scan to the manifest write and to per-entity
+history depth; from the correction itself to the batch it is committed in and
+the history it lands on.
 

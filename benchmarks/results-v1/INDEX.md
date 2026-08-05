@@ -58,6 +58,16 @@ supersessions are part of the record:
   batch size. One correction per commit costs **~100x** the same work at
   batch 100, and leaves the store **93.9% manifest bytes**. Capped cells
   are flagged `truncated` in the record — see docs/bench_corrections.md
+- bench-corrections-full-d073.json — the same matrix at release scale on
+  **xzgpu** at `4481997` (100.8 min, 20k entities over a 1M-event base,
+  replay timed). Resolves the two axes the ci profile could not: the
+  batch-size curve is **U-shaped** with an optimum at 100–1,000 and a 5–9x
+  regression at 10,000 (p50 commit latency 24.7 s there), spread 45–123x
+  across a density row; and per-identity history depth costs **18.8x** from
+  depth 1 to 1,000, linear past a knee at ~100. Manifests are 99.6% of a
+  batch-1 store at every density. 8 capped cells flagged `truncated`; the
+  manifest records `dirty: true` for the one uncommitted file, the harness
+  itself — see docs/bench_corrections.md
 
 - eval-resources-threads-{1m,10m}.json — §14.3 thread-scaling curves
   (native via TGMS_SCAN_THREADS, DuckDB via SET threads; 1–32 workers;

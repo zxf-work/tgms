@@ -1,0 +1,850 @@
+{
+  "axes": {
+    "density_x_batch": [
+      {
+        "batch_size": 1,
+        "depth": 1,
+        "ooo": 0,
+        "n_entities": 20000,
+        "corrections": 2000,
+        "batches": 2000,
+        "wall_s": 30.357,
+        "throughput_per_s": 65.9,
+        "ms_per_correction": 15.1785,
+        "commit_latency_ms": {
+          "p50": 15.134,
+          "p95": 25.972,
+          "p99": 28.323
+        },
+        "storage": {
+          "segments": 4079386,
+          "manifests": 1022592303,
+          "close_runs": 82000,
+          "dict": 288890,
+          "other": 22,
+          "store_total": 1027042601
+        },
+        "bytes_per_correction": 513238.3,
+        "marginal_ratio": 3.96,
+        "density_pct": 1,
+        "density_target_corrections": 10000,
+        "truncated": true
+      },
+      {
+        "batch_size": 10,
+        "depth": 1,
+        "ooo": 0,
+        "n_entities": 20000,
+        "corrections": 10000,
+        "batches": 1000,
+        "wall_s": 11.901,
+        "throughput_per_s": 840.3,
+        "ms_per_correction": 1.1901,
+        "commit_latency_ms": {
+          "p50": 12.137,
+          "p95": 20.055,
+          "p99": 21.846
+        },
+        "storage": {
+          "segments": 2298612,
+          "manifests": 257296303,
+          "close_runs": 230000,
+          "dict": 288890,
+          "other": 22,
+          "store_total": 260113827
+        },
+        "bytes_per_correction": 25954.8,
+        "marginal_ratio": 3.599,
+        "density_pct": 1,
+        "density_target_corrections": 10000,
+        "truncated": false
+      },
+      {
+        "batch_size": 100,
+        "depth": 1,
+        "ooo": 0,
+        "n_entities": 20000,
+        "corrections": 10000,
+        "batches": 100,
+        "wall_s": 1.23,
+        "throughput_per_s": 8131.1,
+        "ms_per_correction": 0.123,
+        "commit_latency_ms": {
+          "p50": 12.096,
+          "p95": 15.723,
+          "p99": 18.348
+        },
+        "storage": {
+          "segments": 635277,
+          "manifests": 2700898,
+          "close_runs": 212000,
+          "dict": 288890,
+          "other": 21,
+          "store_total": 3837086
+        },
+        "bytes_per_correction": 327.1,
+        "marginal_ratio": 1.61,
+        "replay_s": 93.661,
+        "replay_batches": 101,
+        "replay_log_bytes": 2653869,
+        "replay_storage": {
+          "segments": 635277,
+          "manifests": 2700898,
+          "close_runs": 212000,
+          "dict": 288890,
+          "other": 21,
+          "store_total": 3837086
+        },
+        "density_pct": 1,
+        "density_target_corrections": 10000,
+        "truncated": false
+      },
+      {
+        "batch_size": 1000,
+        "depth": 1,
+        "ooo": 0,
+        "n_entities": 20000,
+        "corrections": 10000,
+        "batches": 10,
+        "wall_s": 2.731,
+        "throughput_per_s": 3661.4,
+        "ms_per_correction": 0.2731,
+        "commit_latency_ms": {
+          "p50": 270.905,
+          "p95": 279.875,
+          "p99": 279.875
+        },
+        "storage": {
+          "segments": 477876,
+          "manifests": 40333,
+          "close_runs": 210200,
+          "dict": 288890,
+          "other": 20,
+          "store_total": 1017319
+        },
+        "bytes_per_correction": 45.1,
+        "marginal_ratio": 1.002,
+        "density_pct": 1,
+        "density_target_corrections": 10000,
+        "truncated": false
+      },
+      {
+        "batch_size": 10000,
+        "depth": 1,
+        "ooo": 0,
+        "n_entities": 20000,
+        "corrections": 10000,
+        "batches": 1,
+        "wall_s": 24.511,
+        "throughput_per_s": 408.0,
+        "ms_per_correction": 2.4511,
+        "commit_latency_ms": {
+          "p50": 24485.805,
+          "p95": 24485.805,
+          "p99": 24485.805
+        },
+        "storage": {
+          "segments": 474477,
+          "manifests": 3169,
+          "close_runs": 210020,
+          "dict": 288890,
+          "other": 19,
+          "store_total": 976575
+        },
+        "bytes_per_correction": 41.1,
+        "marginal_ratio": null,
+        "density_pct": 1,
+        "density_target_corrections": 10000,
+        "truncated": false
+      },
+      {
+        "batch_size": 1,
+        "depth": 1,
+        "ooo": 0,
+        "n_entities": 20000,
+        "corrections": 2000,
+        "batches": 2000,
+        "wall_s": 30.782,
+        "throughput_per_s": 65.0,
+        "ms_per_correction": 15.391,
+        "commit_latency_ms": {
+          "p50": 15.148,
+          "p95": 27.006,
+          "p99": 29.649
+        },
+        "storage": {
+          "segments": 4079386,
+          "manifests": 1022592303,
+          "close_runs": 82000,
+          "dict": 288890,
+          "other": 22,
+          "store_total": 1027042601
+        },
+        "bytes_per_correction": 513238.3,
+        "marginal_ratio": 4.289,
+        "density_pct": 5,
+        "density_target_corrections": 50000,
+        "truncated": true
+      },
+      {
+        "batch_size": 10,
+        "depth": 1,
+        "ooo": 0,
+        "n_entities": 20000,
+        "corrections": 20000,
+        "batches": 2000,
+        "wall_s": 43.34,
+        "throughput_per_s": 461.5,
+        "ms_per_correction": 2.167,
+        "commit_latency_ms": {
+          "p50": 21.121,
+          "p95": 39.271,
+          "p99": 40.689
+        },
+        "storage": {
+          "segments": 4322749,
+          "manifests": 1026594303,
+          "close_runs": 460000,
+          "dict": 288890,
+          "other": 22,
+          "store_total": 1031665964
+        },
+        "bytes_per_correction": 51555.0,
+        "marginal_ratio": 4.243,
+        "density_pct": 5,
+        "density_target_corrections": 50000,
+        "truncated": true
+      },
+      {
+        "batch_size": 100,
+        "depth": 1,
+        "ooo": 0,
+        "n_entities": 20000,
+        "corrections": 50000,
+        "batches": 500,
+        "wall_s": 14.049,
+        "throughput_per_s": 3559.0,
+        "ms_per_correction": 0.281,
+        "commit_latency_ms": {
+          "p50": 27.991,
+          "p95": 45.325,
+          "p99": 48.021
+        },
+        "storage": {
+          "segments": 2081242,
+          "manifests": 64899298,
+          "close_runs": 1060000,
+          "dict": 288890,
+          "other": 21,
+          "store_total": 68329451
+        },
+        "bytes_per_correction": 1355.3,
+        "marginal_ratio": 3.067,
+        "replay_s": 109.449,
+        "replay_batches": 501,
+        "replay_log_bytes": 6331649,
+        "replay_storage": {
+          "segments": 2081242,
+          "manifests": 64899298,
+          "close_runs": 1060000,
+          "dict": 288890,
+          "other": 21,
+          "store_total": 68329451
+        },
+        "density_pct": 5,
+        "density_target_corrections": 50000,
+        "truncated": false
+      },
+      {
+        "batch_size": 1000,
+        "depth": 1,
+        "ooo": 0,
+        "n_entities": 20000,
+        "corrections": 50000,
+        "batches": 50,
+        "wall_s": 14.536,
+        "throughput_per_s": 3439.8,
+        "ms_per_correction": 0.2907,
+        "commit_latency_ms": {
+          "p50": 289.203,
+          "p95": 306.456,
+          "p99": 309.876
+        },
+        "storage": {
+          "segments": 1289796,
+          "manifests": 711293,
+          "close_runs": 1051000,
+          "dict": 288890,
+          "other": 20,
+          "store_total": 3340999
+        },
+        "bytes_per_correction": 55.5,
+        "marginal_ratio": 1.106,
+        "density_pct": 5,
+        "density_target_corrections": 50000,
+        "truncated": false
+      },
+      {
+        "batch_size": 10000,
+        "depth": 1,
+        "ooo": 0,
+        "n_entities": 20000,
+        "corrections": 50000,
+        "batches": 5,
+        "wall_s": 122.537,
+        "throughput_per_s": 408.0,
+        "ms_per_correction": 2.4507,
+        "commit_latency_ms": {
+          "p50": 24381.348,
+          "p95": 24835.714,
+          "p99": 24835.714
+        },
+        "storage": {
+          "segments": 1272207,
+          "manifests": 14553,
+          "close_runs": 1050100,
+          "dict": 288890,
+          "other": 19,
+          "store_total": 2625769
+        },
+        "bytes_per_correction": 41.2,
+        "marginal_ratio": null,
+        "density_pct": 5,
+        "density_target_corrections": 50000,
+        "truncated": false
+      },
+      {
+        "batch_size": 1,
+        "depth": 1,
+        "ooo": 0,
+        "n_entities": 20000,
+        "corrections": 2000,
+        "batches": 2000,
+        "wall_s": 32.151,
+        "throughput_per_s": 62.2,
+        "ms_per_correction": 16.0757,
+        "commit_latency_ms": {
+          "p50": 15.888,
+          "p95": 27.855,
+          "p99": 30.091
+        },
+        "storage": {
+          "segments": 4079386,
+          "manifests": 1022592303,
+          "close_runs": 82000,
+          "dict": 288890,
+          "other": 22,
+          "store_total": 1027042601
+        },
+        "bytes_per_correction": 513238.3,
+        "marginal_ratio": 3.619,
+        "density_pct": 20,
+        "density_target_corrections": 200000,
+        "truncated": true
+      },
+      {
+        "batch_size": 10,
+        "depth": 1,
+        "ooo": 0,
+        "n_entities": 20000,
+        "corrections": 20000,
+        "batches": 2000,
+        "wall_s": 43.35,
+        "throughput_per_s": 461.4,
+        "ms_per_correction": 2.1675,
+        "commit_latency_ms": {
+          "p50": 21.071,
+          "p95": 38.934,
+          "p99": 40.562
+        },
+        "storage": {
+          "segments": 4322749,
+          "manifests": 1026594303,
+          "close_runs": 460000,
+          "dict": 288890,
+          "other": 22,
+          "store_total": 1031665964
+        },
+        "bytes_per_correction": 51555.0,
+        "marginal_ratio": 4.145,
+        "density_pct": 20,
+        "density_target_corrections": 200000,
+        "truncated": true
+      },
+      {
+        "batch_size": 100,
+        "depth": 1,
+        "ooo": 0,
+        "n_entities": 20000,
+        "corrections": 200000,
+        "batches": 2000,
+        "wall_s": 190.328,
+        "throughput_per_s": 1050.8,
+        "ms_per_correction": 0.9516,
+        "commit_latency_ms": {
+          "p50": 90.417,
+          "p95": 186.114,
+          "p99": 198.879
+        },
+        "storage": {
+          "segments": 7502095,
+          "manifests": 1030597504,
+          "close_runs": 4240000,
+          "dict": 288890,
+          "other": 22,
+          "store_total": 1042628511
+        },
+        "bytes_per_correction": 5210.3,
+        "marginal_ratio": 6.141,
+        "replay_s": 296.806,
+        "replay_batches": 2001,
+        "replay_log_bytes": 20229879,
+        "replay_storage": {
+          "segments": 7502095,
+          "manifests": 1030597504,
+          "close_runs": 4240000,
+          "dict": 288890,
+          "other": 22,
+          "store_total": 1042628511
+        },
+        "density_pct": 20,
+        "density_target_corrections": 200000,
+        "truncated": false
+      },
+      {
+        "batch_size": 1000,
+        "depth": 1,
+        "ooo": 0,
+        "n_entities": 20000,
+        "corrections": 200000,
+        "batches": 200,
+        "wall_s": 71.065,
+        "throughput_per_s": 2814.3,
+        "ms_per_correction": 0.3553,
+        "commit_latency_ms": {
+          "p50": 349.594,
+          "p95": 438.086,
+          "p99": 443.683
+        },
+        "storage": {
+          "segments": 4332006,
+          "manifests": 10580819,
+          "close_runs": 4204000,
+          "dict": 288890,
+          "other": 21,
+          "store_total": 19405736
+        },
+        "bytes_per_correction": 94.2,
+        "marginal_ratio": 1.439,
+        "density_pct": 20,
+        "density_target_corrections": 200000,
+        "truncated": false
+      },
+      {
+        "batch_size": 10000,
+        "depth": 1,
+        "ooo": 0,
+        "n_entities": 20000,
+        "corrections": 200000,
+        "batches": 20,
+        "wall_s": 494.216,
+        "throughput_per_s": 404.7,
+        "ms_per_correction": 2.4711,
+        "commit_latency_ms": {
+          "p50": 24677.866,
+          "p95": 25046.907,
+          "p99": 25079.943
+        },
+        "storage": {
+          "segments": 4264348,
+          "manifests": 131106,
+          "close_runs": 4200400,
+          "dict": 288890,
+          "other": 20,
+          "store_total": 8884764
+        },
+        "bytes_per_correction": 41.6,
+        "marginal_ratio": 1.016,
+        "density_pct": 20,
+        "density_target_corrections": 200000,
+        "truncated": false
+      },
+      {
+        "batch_size": 1,
+        "depth": 1,
+        "ooo": 0,
+        "n_entities": 20000,
+        "corrections": 2000,
+        "batches": 2000,
+        "wall_s": 32.495,
+        "throughput_per_s": 61.5,
+        "ms_per_correction": 16.2473,
+        "commit_latency_ms": {
+          "p50": 16.002,
+          "p95": 28.04,
+          "p99": 30.483
+        },
+        "storage": {
+          "segments": 4079386,
+          "manifests": 1022592303,
+          "close_runs": 82000,
+          "dict": 288890,
+          "other": 22,
+          "store_total": 1027042601
+        },
+        "bytes_per_correction": 513238.3,
+        "marginal_ratio": 3.64,
+        "density_pct": 50,
+        "density_target_corrections": 500000,
+        "truncated": true
+      },
+      {
+        "batch_size": 10,
+        "depth": 1,
+        "ooo": 0,
+        "n_entities": 20000,
+        "corrections": 20000,
+        "batches": 2000,
+        "wall_s": 43.242,
+        "throughput_per_s": 462.5,
+        "ms_per_correction": 2.1621,
+        "commit_latency_ms": {
+          "p50": 20.973,
+          "p95": 38.321,
+          "p99": 40.667
+        },
+        "storage": {
+          "segments": 4322749,
+          "manifests": 1026594303,
+          "close_runs": 460000,
+          "dict": 288890,
+          "other": 22,
+          "store_total": 1031665964
+        },
+        "bytes_per_correction": 51555.0,
+        "marginal_ratio": 4.145,
+        "density_pct": 50,
+        "density_target_corrections": 500000,
+        "truncated": true
+      },
+      {
+        "batch_size": 100,
+        "depth": 1,
+        "ooo": 0,
+        "n_entities": 20000,
+        "corrections": 200000,
+        "batches": 2000,
+        "wall_s": 191.042,
+        "throughput_per_s": 1046.9,
+        "ms_per_correction": 0.9552,
+        "commit_latency_ms": {
+          "p50": 88.558,
+          "p95": 186.094,
+          "p99": 194.252
+        },
+        "storage": {
+          "segments": 7502095,
+          "manifests": 1030597504,
+          "close_runs": 4240000,
+          "dict": 288890,
+          "other": 22,
+          "store_total": 1042628511
+        },
+        "bytes_per_correction": 5210.3,
+        "marginal_ratio": 6.112,
+        "density_pct": 50,
+        "density_target_corrections": 500000,
+        "truncated": true
+      },
+      {
+        "batch_size": 1000,
+        "depth": 1,
+        "ooo": 0,
+        "n_entities": 20000,
+        "corrections": 500000,
+        "batches": 500,
+        "wall_s": 249.101,
+        "throughput_per_s": 2007.2,
+        "ms_per_correction": 0.4982,
+        "commit_latency_ms": {
+          "p50": 495.12,
+          "p95": 712.261,
+          "p99": 729.525
+        },
+        "storage": {
+          "segments": 10413999,
+          "manifests": 65150219,
+          "close_runs": 10510000,
+          "dict": 288890,
+          "other": 21,
+          "store_total": 86363129
+        },
+        "bytes_per_correction": 171.6,
+        "marginal_ratio": 2.097,
+        "density_pct": 50,
+        "density_target_corrections": 500000,
+        "truncated": false
+      },
+      {
+        "batch_size": 10000,
+        "depth": 1,
+        "ooo": 0,
+        "n_entities": 20000,
+        "corrections": 500000,
+        "batches": 50,
+        "wall_s": 1261.396,
+        "throughput_per_s": 396.4,
+        "ms_per_correction": 2.5228,
+        "commit_latency_ms": {
+          "p50": 25174.658,
+          "p95": 26092.984,
+          "p99": 26497.172
+        },
+        "storage": {
+          "segments": 10248417,
+          "manifests": 713886,
+          "close_runs": 10501000,
+          "dict": 288890,
+          "other": 20,
+          "store_total": 21752213
+        },
+        "bytes_per_correction": 42.4,
+        "marginal_ratio": 1.06,
+        "density_pct": 50,
+        "density_target_corrections": 500000,
+        "truncated": false
+      }
+    ],
+    "versions_per_identity": [
+      {
+        "batch_size": 100,
+        "depth": 1,
+        "ooo": 0,
+        "n_entities": 200,
+        "corrections": 10000,
+        "batches": 100,
+        "wall_s": 1.485,
+        "throughput_per_s": 6734.3,
+        "ms_per_correction": 0.1485,
+        "commit_latency_ms": {
+          "p50": 15.293,
+          "p95": 20.53,
+          "p99": 21.699
+        },
+        "storage": {
+          "segments": 364280,
+          "manifests": 2699984,
+          "close_runs": 212000,
+          "dict": 2490,
+          "other": 21,
+          "store_total": 3278775
+        },
+        "bytes_per_correction": 327.0,
+        "marginal_ratio": 1.987
+      },
+      {
+        "batch_size": 100,
+        "depth": 10,
+        "ooo": 0,
+        "n_entities": 200,
+        "corrections": 10000,
+        "batches": 100,
+        "wall_s": 1.622,
+        "throughput_per_s": 6164.7,
+        "ms_per_correction": 0.1622,
+        "commit_latency_ms": {
+          "p50": 15.906,
+          "p95": 21.68,
+          "p99": 22.086
+        },
+        "storage": {
+          "segments": 404470,
+          "manifests": 3195006,
+          "close_runs": 249980,
+          "dict": 2490,
+          "other": 21,
+          "store_total": 3851967
+        },
+        "bytes_per_correction": 373.3,
+        "marginal_ratio": 1.815
+      },
+      {
+        "batch_size": 100,
+        "depth": 100,
+        "ooo": 0,
+        "n_entities": 200,
+        "corrections": 10000,
+        "batches": 100,
+        "wall_s": 3.458,
+        "throughput_per_s": 2891.5,
+        "ms_per_correction": 0.3458,
+        "commit_latency_ms": {
+          "p50": 33.932,
+          "p95": 41.664,
+          "p99": 42.197
+        },
+        "storage": {
+          "segments": 805864,
+          "manifests": 10435006,
+          "close_runs": 629780,
+          "dict": 2490,
+          "other": 21,
+          "store_total": 11873161
+        },
+        "bytes_per_correction": 835.9,
+        "marginal_ratio": 1.389
+      },
+      {
+        "batch_size": 100,
+        "depth": 1000,
+        "ooo": 0,
+        "n_entities": 200,
+        "corrections": 10000,
+        "batches": 100,
+        "wall_s": 27.947,
+        "throughput_per_s": 357.8,
+        "ms_per_correction": 2.7947,
+        "commit_latency_ms": {
+          "p50": 279.238,
+          "p95": 285.879,
+          "p99": 294.366
+        },
+        "storage": {
+          "segments": 4820674,
+          "manifests": 311822509,
+          "close_runs": 4427780,
+          "dict": 2490,
+          "other": 22,
+          "store_total": 321073475
+        },
+        "bytes_per_correction": 5462.0,
+        "marginal_ratio": 1.023
+      }
+    ],
+    "out_of_order_distance": [
+      {
+        "batch_size": 100,
+        "depth": 1,
+        "ooo": 0,
+        "n_entities": 20000,
+        "corrections": 10000,
+        "batches": 100,
+        "wall_s": 1.212,
+        "throughput_per_s": 8250.0,
+        "ms_per_correction": 0.1212,
+        "commit_latency_ms": {
+          "p50": 11.96,
+          "p95": 15.435,
+          "p99": 17.286
+        },
+        "storage": {
+          "segments": 635277,
+          "manifests": 2700898,
+          "close_runs": 212000,
+          "dict": 288890,
+          "other": 21,
+          "store_total": 3837086
+        },
+        "bytes_per_correction": 327.1,
+        "marginal_ratio": 1.603
+      },
+      {
+        "batch_size": 100,
+        "depth": 1,
+        "ooo": 100,
+        "n_entities": 20000,
+        "corrections": 10000,
+        "batches": 100,
+        "wall_s": 1.576,
+        "throughput_per_s": 6346.7,
+        "ms_per_correction": 0.1576,
+        "commit_latency_ms": {
+          "p50": 15.504,
+          "p95": 19.519,
+          "p99": 22.595
+        },
+        "storage": {
+          "segments": 825179,
+          "manifests": 2710998,
+          "close_runs": 212000,
+          "dict": 288890,
+          "other": 21,
+          "store_total": 4037088
+        },
+        "bytes_per_correction": 347.1,
+        "marginal_ratio": 1.389
+      },
+      {
+        "batch_size": 100,
+        "depth": 1,
+        "ooo": 10000,
+        "n_entities": 20000,
+        "corrections": 10000,
+        "batches": 100,
+        "wall_s": 1.553,
+        "throughput_per_s": 6437.3,
+        "ms_per_correction": 0.1553,
+        "commit_latency_ms": {
+          "p50": 15.222,
+          "p95": 18.619,
+          "p99": 20.743
+        },
+        "storage": {
+          "segments": 844841,
+          "manifests": 2731198,
+          "close_runs": 212000,
+          "dict": 288890,
+          "other": 21,
+          "store_total": 4076950
+        },
+        "bytes_per_correction": 351.1,
+        "marginal_ratio": 1.423
+      },
+      {
+        "batch_size": 100,
+        "depth": 1,
+        "ooo": 1000000,
+        "n_entities": 20000,
+        "corrections": 10000,
+        "batches": 100,
+        "wall_s": 1.58,
+        "throughput_per_s": 6330.6,
+        "ms_per_correction": 0.158,
+        "commit_latency_ms": {
+          "p50": 15.502,
+          "p95": 20.443,
+          "p99": 23.352
+        },
+        "storage": {
+          "segments": 862589,
+          "manifests": 2751398,
+          "close_runs": 212000,
+          "dict": 288890,
+          "other": 21,
+          "store_total": 4114898
+        },
+        "bytes_per_correction": 354.9,
+        "marginal_ratio": 1.53
+      }
+    ]
+  },
+  "truncated_cells": [
+    "density 1% \u00d7 batch 1: ran 2000 of 10000",
+    "density 5% \u00d7 batch 1: ran 2000 of 50000",
+    "density 5% \u00d7 batch 10: ran 20000 of 50000",
+    "density 20% \u00d7 batch 1: ran 2000 of 200000",
+    "density 20% \u00d7 batch 10: ran 20000 of 200000",
+    "density 50% \u00d7 batch 1: ran 2000 of 500000",
+    "density 50% \u00d7 batch 10: ran 20000 of 500000",
+    "density 50% \u00d7 batch 100: ran 200000 of 500000"
+  ],
+  "manifest": {
+    "commit": "44819979ac41942d317fa6cd492589f6462749fc",
+    "dirty": true,
+    "host": "xzgpu",
+    "platform": "Linux-5.4.0-216-generic-x86_64-with-glibc2.31",
+    "python": "3.12.13",
+    "profile": "full",
+    "total_s": 6049.5
+  }
+}
