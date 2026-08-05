@@ -1473,6 +1473,8 @@ GROUPINGS: dict[tuple[str, int], tuple[tuple[str, ...], ...] | None] = {
     ("bo", 27): (("src", "dst"),),   # to itself on the swapped key (D-065)
     ("bo", 29): (("src", "dst"),),
     ("bo", 30): (("src", "dst"),),
+    ("bo", 47): (("src", "dst"),),   # rated pairs, sliced per rater (D-068)
+    ("bo", 52): (("dst",), ("src", "dst")),
     ("bo", 36): (("src",), ("src",)),
     ("bo", 42): (("dst",), ("dst",)),
     ("bo", 43): (("dst",),),
@@ -1796,6 +1798,44 @@ C25: dict[tuple[str, int], tuple[int, str, str]] = {
                  "means are grouped `mean` and the difference is `derive`"),
 }
 
+# --------------------------------------------------------------------------- #
+# re-audit after topk gained group_by (D-068)                                  #
+# --------------------------------------------------------------------------- #
+# The slice half of D-067, and the last capability the campaign could name
+# that buys more than one question. Both landed, run on stores/bitcoinotc:
+#   bo-Q52  n35 was rated 535 times and n143 rated it first; the same for
+#           every one of the top ten
+#   bo-Q47  1,070 accounts with a first-five and a last-five, most flipped
+#           n167 by +5.60
+#
+# `GSLICE` retires having delivered both, which makes it the second tag after
+# `PCT` to deliver its full sole-blocker count — and both times the tag was
+# small, named one primitive, and had been read from the questions rather
+# than assumed from the label.
+C26: dict[tuple[str, int], tuple[int, str, str]] = {
+    ("bo", 52): (2, "aggregate_events+topk+aggregate_events+topk_group",
+                 "`side: bottom, k: 1` per rated account is the earliest "
+                 "rater's row, carrying `src` — the argmin returning a "
+                 "sibling column falls out of the slice instead of needing a "
+                 "reducer that knows how. Runs: n143 first rated n35"),
+    ("bo", 47): (2, "aggregate_events+topk_group+topk_group+compute_group+"
+                    "compute_group+join+derive+topk",
+                 "bottom 5 and top 5 by vt_s per rater are the first and last "
+                 "five ratings; D-067's grouped mean reduces each, and the "
+                 "difference is `derive`. The two halves of grouping a result "
+                 "chaining, which is why they were built as one capability. "
+                 "Runs: n167 flipped by +5.60 over 1,070 accounts"),
+    # ---- re-tagged, still class 3 ---- #
+    ("cm", 13): (3, "SEQPAIR",
+                 "re-read because a per-group slice could plausibly have "
+                 "reached it, and it does not: 'A sent to B and B sent to A "
+                 "within the same hour' is a proximity between two events of "
+                 "opposite direction, not a rank within a group. The mirror "
+                 "join compares only the FIRST of each direction, and the "
+                 "motif catalogue has no 2-edge shape (D-066). Its blocker is "
+                 "sharper than `SEQ`: a delta between paired events"),
+}
+
 def _verdict(table: dict, base, k):
     """A re-audit table's verdict for `k`, falling back to the table it
     chains onto. `base` is a callable so the chain composes."""
@@ -1888,6 +1928,9 @@ def report():
     def v25(k):
         return _verdict(C25, v24, k)
 
+    def v26(k):
+        return _verdict(C26, v25, k)
+
     _check_diff(C14, v13, "C14")
     _check_diff(C15, v14, "C15")
     _check_diff(C16, v15, "C16")
@@ -1900,6 +1943,7 @@ def report():
     _check_diff(C23, v22, "C23")
     _check_diff(C24, v23, "C24")
     _check_diff(C25, v24, "C25")
+    _check_diff(C26, v25, "C26")
     # AR is retired by C15: the capability shipped, and what is left of it
     # was never AR. Guard it so a later edit cannot quietly reintroduce the
     # tag without deciding what it now means.
@@ -1915,8 +1959,9 @@ def report():
                        ("PCT", "nothing — it delivered all three"),
                        ("PROJ", "nothing — D-052, D-055 and D-058 had already "
                                 "built it between them"),
-                       ("GMEAN", "nothing — compute group_by is it")):
-        assert not [k for k in q if tag in _needs(*v25(k))], \
+                       ("GMEAN", "nothing — compute group_by is it"),
+                       ("GSLICE", "nothing — it delivered both")):
+        assert not [k for k in q if tag in _needs(*v26(k))], \
             f"{tag} survived the re-audit; what is left of it is {split}"
 
     stages = [("13 ops, pre-registered", v13),
@@ -1931,7 +1976,8 @@ def report():
               ("the percentile slice, D-060 session re-audit", v22),
               ("running the chains, D-063 session re-audit", v23),
               ("PROJ re-read, D-065 session re-audit", v24),
-              ("grouping a result, D-067 session re-audit", v25)]
+              ("grouping a result, D-067 session re-audit", v25),
+              ("slicing a group, D-068 session re-audit", v26)]
     for label, v in stages:
         print(f"class distribution ({label}):",
               dict(sorted(Counter(v(k)[0] for k in q).items())))
@@ -1951,7 +1997,8 @@ def report():
             ("D-060 the percentile slice", v21, v22, C22),
             ("D-063 running the chains", v22, v23, C23),
             ("D-065 PROJ, which did not need building", v23, v24, C24),
-            ("D-067 compute group_by", v24, v25, C25)]:
+            ("D-067 compute group_by", v24, v25, C25),
+            ("D-068 topk group_by", v25, v26, C26)]:
         moved = sorted(k for k in q if cur(k)[0] != prev(k)[0])
         by_move = Counter((prev(k)[0], cur(k)[0]) for k in moved)
         print(f"\nbecame expressible under {label}: {len(moved)} of {len(q)} "
@@ -1975,8 +2022,8 @@ def report():
     # D-062: every chain that reduces a grouping must say what it grouped by.
     # Without it the page-cap exposure is unknowable from the tables, and a
     # capability session could add one silently.
-    needs = {k for k in q if v25(k)[0] in (1, 2)
-             and reduces_after_grouping(v25(k)[1])}
+    needs = {k for k in q if v26(k)[0] in (1, 2)
+             and reduces_after_grouping(v26(k)[1])}
     missing = sorted(needs - set(GROUPINGS))
     assert not missing, (
         f"{len(missing)} verdict(s) reduce a grouping and declare no "
@@ -2013,7 +2060,7 @@ def report():
     for k in undecidable:
         print(f"  UNDECIDABLE  {k[0]}-Q{k[1]:<3} chain does not say")
 
-    expressible = sum(1 for k in q if v25(k)[0] in (1, 2))
+    expressible = sum(1 for k in q if v26(k)[0] in (1, 2))
     print(f"\nexpressible now: {expressible} of {len(q)}")
     print("runnable:", [f"{d}-Q{n}" for (d, n) in sorted(C)
                         if C[(d, n)][2]])
