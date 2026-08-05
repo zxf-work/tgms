@@ -1,6 +1,7 @@
 """O13 `compute` (WP2.1): deterministic post-processing over prior step
 outputs, so plans never need LLM arithmetic. Functions: count, sum, min, max,
-mean(field), median(field), topk(field, k | pct, side), filter(field, cmp, value),
+mean(field), median(field) — over the whole input or per
+`group_by` column — topk(field, k | pct, side), filter(field, cmp, value),
 ratio(x, y), diff(x, y), percent(x, y), interval_relation(a, b).
 `filter` compares a field to a literal `value` or to a second field
 `field2` — exactly one of the two, the rule `derive` has carried since
@@ -109,6 +110,11 @@ ARGS = {
           "description": "second operand of ratio/diff/percent ($ref)"},
     "a": {**INTERVAL, "type": ["object", "null"], "default": None},
     "b": {**INTERVAL, "type": ["object", "null"], "default": None},
+    "group_by": {"type": ["string", "null"], "default": None,
+                 "description": "column of `input` to group by: the reducer "
+                                "runs per group and the answer is one row "
+                                "per group, ordered by key. Only for "
+                                "count/sum/min/max/mean/median"},
     "limit": LIMIT,
 }
 
@@ -187,6 +193,58 @@ def _mean(vals: list[int | float]) -> int | float:
     if all(isinstance(v, int) for v in vals):
         return _quotient(sum(vals), len(vals), "mean")
     return math.fsum(vals) / len(vals)
+
+
+#: reducers that `group_by` may run per group. `count` is not in REDUCERS
+#: because it needs no field, but it groups like the rest.
+GROUPABLE = ("count",) + REDUCERS
+
+
+def _reduce(vals: list[Any], fn: str) -> int | float:
+    """One reducer over one group's values, under the blessed rule."""
+    if fn == "count":
+        return len(vals)
+    if fn in ("sum", "min", "max"):
+        return {"sum": sum, "min": min, "max": max}[fn](vals) if vals else 0
+    if fn == "mean":
+        return _mean(vals)
+    s = sorted(vals)                       # median, as ungrouped
+    n = len(s)
+    return s[n // 2] if n % 2 else _mean([s[n // 2 - 1], s[n // 2]])
+
+
+def _grouped(rows: list[Any], args: dict[str, Any], fn: str) -> dict[str, Any]:
+    """`fn` per group of `input`, keyed by one of its own columns (D-067).
+
+    `aggregate_events` groups the store; this groups a *result*, which is
+    what `G`, `GMEAN` and one `SEQ` entry were each naming separately.
+
+    One row per group, ordered by key so the digest never depends on the
+    order rows arrived in — the same reason `_sorted_members` exists. Pages
+    are pages **of groups**, so a truncated grouped answer is missing groups
+    rather than missing members of one, and the executor's D-061 guard
+    already refuses to reduce such a page to a scalar.
+    """
+    key = args["group_by"]
+    buckets: dict[Any, list[Any]] = {}
+    for r in rows:
+        if not isinstance(r, dict) or key not in r:
+            raise InvalidArgError(
+                f"compute: group_by column {key!r} missing from input row")
+        k = r[key]
+        if isinstance(k, (dict, list)):
+            raise InvalidArgError(
+                f"compute: group_by column {key!r} holds a "
+                f"{type(k).__name__}; a group key must be a scalar")
+        buckets.setdefault(k, []).append(r)
+    out = []
+    for k in sorted(buckets, key=lambda v: (type(v).__name__, v)):
+        members = buckets[k]
+        vals = members if fn == "count" else _numbers(members, args["field"], fn)
+        if not vals and fn not in ("sum", "count"):
+            raise InvalidArgError(f"compute {fn}: empty group {k!r}")
+        out.append({key: k, fn: _reduce(vals, fn)})
+    return paginate(out, args["limit"], None)
 
 
 def _operands(args: dict[str, Any], fn: str) -> tuple[int | float, int | float]:
@@ -342,6 +400,12 @@ def allen_relation(a: dict[str, int], b: dict[str, int]) -> str:
 )
 def compute(adapter: StorageAdapter, args: dict[str, Any]) -> dict[str, Any]:
     fn = args["fn"]
+    if args["group_by"] is not None and fn not in GROUPABLE:
+        # checked before any dispatch: `derive` and `interval_relation` are
+        # handled above the row path and would otherwise ignore it silently
+        raise InvalidArgError(
+            f"compute {fn}: group_by reduces each group to one number, and "
+            f"{fn} does not reduce — it is only for {'/'.join(GROUPABLE)}")
     if fn == "interval_relation":
         if args["a"] is None or args["b"] is None:
             raise InvalidArgError("interval_relation requires a and b")
@@ -411,6 +475,8 @@ def compute(adapter: StorageAdapter, args: dict[str, Any]) -> dict[str, Any]:
     rows = args["input"]
     if rows is None:
         raise InvalidArgError(f"compute fn={fn} requires input")
+    if args["group_by"] is not None:
+        return _grouped(rows, args, fn)
     if fn == "count":
         return {"value": len(rows), "truncated": False}
     if fn in REDUCERS:

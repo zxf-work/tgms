@@ -123,6 +123,13 @@ compute:
     (`field`, and exactly one of `k` -> best rows, or `pct` -> that
     percentage of the rows); filter (`field`, `cmp` in
     eq/ne/lt/le/gt/ge/contains, `value`).
+    `group_by` names a column of `input` and the reducer runs PER GROUP,
+    answering one row per group ordered by key: {"fn":"mean","input":{"$ref":
+    "s2.rows"},"group_by":"receiver","field":"latency"} is the average
+    latency for each receiver. `aggregate_events` groups the store; this
+    groups a RESULT, which is how you reduce something a join or a derive
+    produced. Only count/sum/min/max/mean/median take it — the functions
+    that return rows do not.
     `pct` is how you write "the top 10%" or "the top 1%": the row count is
     rounded UP, so a positive percentage of a non-empty input is never an
     empty page. `side` picks the end — "top" (default) or "bottom" — and

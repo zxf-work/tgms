@@ -67,15 +67,23 @@ def test_SEQ_a_sliding_window_cannot_count_distinct(tools):
         not in aggs, "a distinct-within-window aggregate arrived — see cm-Q31"
 
 
-def test_SEQ_topk_still_slices_a_result_and_not_its_groups(tools):
-    """bo-Q47 wants each account's first 5 and last 5 ratings — a slice per
-    group. D-060 gave `topk` a fraction and a `side`, both still over one
-    flat result. `group_by` on compute would be the arriving capability."""
+def test_GSLICE_grouping_reduces_but_still_cannot_slice(tools):
+    """This assertion fired one session after it was written, which is what
+    it was for. D-066 pinned "compute has no grouping"; D-067 gave it one —
+    and re-reading bo-Q47 under the new capability showed the reduction half
+    does not reach it. Its blocker is now `GSLICE`: a first-k/last-k slice
+    *within* each group, ordered by a field, which is also the argmin
+    returning a sibling column that bo-Q52 wants.
+
+    `topk` still slices one flat result, and `group_by` still reduces rather
+    than slices. When either changes, bo-Q47 and bo-Q52 want re-reading."""
     args = _props(tools, "compute")
     assert "pct" in args and "side" in args, "D-060's fraction is gone?"
-    assert "group_by" not in args and "per_group" not in args, (
-        "compute gained a grouping — bo-Q47's per-group slice may be "
-        "expressible now")
+    assert "group_by" in args, "D-067's grouping is gone?"
+    reduce_only = "count/sum/min/max/mean/median" in args["group_by"]["description"]
+    assert reduce_only, (
+        "compute's group_by no longer says it is reduction-only — if it "
+        "slices per group now, bo-Q47 and bo-Q52 may be expressible")
 
 
 def test_EGO_grouping_is_still_by_one_endpoint_role(tools):

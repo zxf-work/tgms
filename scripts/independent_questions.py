@@ -1493,6 +1493,8 @@ GROUPINGS: dict[tuple[str, int], tuple[tuple[str, ...], ...] | None] = {
     ("cm", 11): (("src", "time_bucket"),),
     ("cm", 15): (("hour_of_day",),),
     ("cm", 16): (("src",), ("dst",)),
+    ("cm", 17): (("src", "dst"),),   # reciprocal pairs, then grouped by
+                             # account (D-067)
     ("cm", 20): (("day_of_week",),),
     ("cm", 21): (("src",), ("dst",)),
     ("cm", 22): (("src", "dst"),),
@@ -1522,6 +1524,8 @@ GROUPINGS: dict[tuple[str, int], tuple[tuple[str, ...], ...] | None] = {
     ("cm", 41): (("dst", "time_bucket"),),  # endpoint_filter to the one
                              # account the question names: 0 rows. A 2-dim
                              # grouping scoped to one account is not big
+    ("cm", 44): (("src", "dst"),),   # the mirror join, then grouped by
+    ("cm", 51): (("src", "dst"),),   # receiver / initiator (D-067)
     ("cm", 42): (("dst", "time_bucket"),),  # MEASURED 1 row: the question
                              # names two senders, and endpoint_filter shrinks
                              # the grouping to nothing
@@ -1569,6 +1573,7 @@ SCOPED_BY_FILTER: dict[tuple[str, int], int] = {
 #: unscoped. `pair_mode: reciprocal` keeps only pairs that answered each
 #: other — 6,458 of CollegeMsg's 20,296 directed pairs.
 NARROWED_BY_ARG: dict[tuple[str, int], int] = {
+    ("cm", 17): 6_458,
     ("cm", 34): 6_458,
     ("bo", 25): 14_100,
 }
@@ -1746,6 +1751,51 @@ C24: dict[tuple[str, int], tuple[int, str, str]] = {
                  "Runs: 1,993 both-positive, 23 both-negative"),
 }
 
+# --------------------------------------------------------------------------- #
+# re-audit after compute gained group_by (D-067)                               #
+# --------------------------------------------------------------------------- #
+# `compute` reduces per group now, so a *result* can be grouped and not only
+# the store. That capability was named by three different tags — `G`
+# ("regrouping a result"), `GMEAN` ("a reducer per group") and one `SEQ` entry
+# — and stayed invisible because every session re-read the questions its own
+# capability aimed at, and none asked which blocked questions wanted the same
+# thing. §2(a2) inverted: three tags, one capability.
+#
+# The forecast was 3 of 5 and it landed. Run against the canonical stores:
+#   cm-Q17  n32, 107 distinct partners, over 6,458 reciprocal pairs
+#   cm-Q44  n255, 2,096.2 hours average first-reply latency, over 517 receivers
+#   cm-Q51  n42, 49 initiations in May 2004, over 500 initiators
+#
+# **GMEAN retires** — it named exactly this and nothing else. `G` keeps
+# bo-Q52, which wants the `src` that achieved a per-group minimum: an argmin
+# returning a sibling column, which is the *slice* half of this capability
+# and is deliberately deferred. bo-Q47 wants the same slice by time.
+C25: dict[tuple[str, int], tuple[int, str, str]] = {
+    ("cm", 17): (2, "aggregate_events+compute_group+topk",
+                 "reciprocal pairs are one call and each row is already a "
+                 "distinct pair, so partners per account is a grouped count "
+                 "over that result. Runs: n32 with 107"),
+    ("cm", 44): (2, "aggregate_events+derive+derive+join+filter+derive+"
+                    "compute_group+topk",
+                 "the latency rows ran in D-065; the mean PER RECEIVER is "
+                 "what was missing and it is `GMEAN` exactly. Runs: n255 at "
+                 "2,096.2 hours"),
+    ("cm", 51): (2, "aggregate_events+derive+derive+join+filter+"
+                    "compute_group+topk",
+                 "the mirror join says who initiated; counting those per "
+                 "initiator is the regrouping. Runs: n42 with 49 in May 2004"),
+    # ---- re-tagged, still class 3 ---- #
+    ("bo", 52): (3, "GSLICE",
+                 "the reduction half does not reach it: it wants the `src` "
+                 "that achieved a per-group minimum, not the minimum. That "
+                 "is an argmin returning a sibling column — the slice half of "
+                 "D-067, deferred, and the same thing bo-Q47 wants by time"),
+    ("bo", 47): (3, "GSLICE",
+                 "first 5 and last 5 per account, ordered by time: the slice "
+                 "half. `SEQ` was never its obstacle — with the slice the two "
+                 "means are grouped `mean` and the difference is `derive`"),
+}
+
 def _verdict(table: dict, base, k):
     """A re-audit table's verdict for `k`, falling back to the table it
     chains onto. `base` is a callable so the chain composes."""
@@ -1835,6 +1885,9 @@ def report():
     def v24(k):
         return _verdict(C24, v23, k)
 
+    def v25(k):
+        return _verdict(C25, v24, k)
+
     _check_diff(C14, v13, "C14")
     _check_diff(C15, v14, "C15")
     _check_diff(C16, v15, "C16")
@@ -1846,6 +1899,7 @@ def report():
     _check_diff(C22, v21, "C22")
     _check_diff(C23, v22, "C23")
     _check_diff(C24, v23, "C24")
+    _check_diff(C25, v24, "C25")
     # AR is retired by C15: the capability shipped, and what is left of it
     # was never AR. Guard it so a later edit cannot quietly reintroduce the
     # tag without deciding what it now means.
@@ -1860,8 +1914,9 @@ def report():
                        ("GLOB", "the version log, `src == dst`, and CHAIN"),
                        ("PCT", "nothing — it delivered all three"),
                        ("PROJ", "nothing — D-052, D-055 and D-058 had already "
-                                "built it between them")):
-        assert not [k for k in q if tag in _needs(*v24(k))], \
+                                "built it between them"),
+                       ("GMEAN", "nothing — compute group_by is it")):
+        assert not [k for k in q if tag in _needs(*v25(k))], \
             f"{tag} survived the re-audit; what is left of it is {split}"
 
     stages = [("13 ops, pre-registered", v13),
@@ -1875,7 +1930,8 @@ def report():
               ("the version log, D-058 session re-audit", v21),
               ("the percentile slice, D-060 session re-audit", v22),
               ("running the chains, D-063 session re-audit", v23),
-              ("PROJ re-read, D-065 session re-audit", v24)]
+              ("PROJ re-read, D-065 session re-audit", v24),
+              ("grouping a result, D-067 session re-audit", v25)]
     for label, v in stages:
         print(f"class distribution ({label}):",
               dict(sorted(Counter(v(k)[0] for k in q).items())))
@@ -1894,7 +1950,8 @@ def report():
             ("D-058 the version log", v20, v21, C21),
             ("D-060 the percentile slice", v21, v22, C22),
             ("D-063 running the chains", v22, v23, C23),
-            ("D-065 PROJ, which did not need building", v23, v24, C24)]:
+            ("D-065 PROJ, which did not need building", v23, v24, C24),
+            ("D-067 compute group_by", v24, v25, C25)]:
         moved = sorted(k for k in q if cur(k)[0] != prev(k)[0])
         by_move = Counter((prev(k)[0], cur(k)[0]) for k in moved)
         print(f"\nbecame expressible under {label}: {len(moved)} of {len(q)} "
@@ -1918,8 +1975,8 @@ def report():
     # D-062: every chain that reduces a grouping must say what it grouped by.
     # Without it the page-cap exposure is unknowable from the tables, and a
     # capability session could add one silently.
-    needs = {k for k in q if v24(k)[0] in (1, 2)
-             and reduces_after_grouping(v24(k)[1])}
+    needs = {k for k in q if v25(k)[0] in (1, 2)
+             and reduces_after_grouping(v25(k)[1])}
     missing = sorted(needs - set(GROUPINGS))
     assert not missing, (
         f"{len(missing)} verdict(s) reduce a grouping and declare no "
@@ -1956,7 +2013,7 @@ def report():
     for k in undecidable:
         print(f"  UNDECIDABLE  {k[0]}-Q{k[1]:<3} chain does not say")
 
-    expressible = sum(1 for k in q if v24(k)[0] in (1, 2))
+    expressible = sum(1 for k in q if v25(k)[0] in (1, 2))
     print(f"\nexpressible now: {expressible} of {len(q)}")
     print("runnable:", [f"{d}-Q{n}" for (d, n) in sorted(C)
                         if C[(d, n)][2]])
