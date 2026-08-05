@@ -152,6 +152,14 @@ class DuckDBAdapter(StorageAdapter):
         self.conn.executemany(
             "UPDATE edge_versions SET tt_e = ? WHERE vid = ?", [(tt_e, v) for v in vids])
 
+    def retire_node_versions(self, vids: Sequence[str]) -> None:
+        self.conn.executemany(
+            "DELETE FROM node_versions WHERE vid = ?", [(v,) for v in vids])
+
+    def retire_edge_versions(self, vids: Sequence[str]) -> None:
+        self.conn.executemany(
+            "DELETE FROM edge_versions WHERE vid = ?", [(v,) for v in vids])
+
     # --- version reads ---------------------------------------------------- #
 
     _NODE_COLS = ("vid, uid, label, vt_s, vt_e, tt_s, tt_e, props, "

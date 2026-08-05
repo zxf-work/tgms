@@ -114,6 +114,26 @@ impl Staging {
         &self.nodes
     }
 
+    /// Remove a staged row by vid, reporting whether it was there. Used only
+    /// when the same batch replaces a version it staged: that version was
+    /// believed over no transaction time, so it is not sealed at all (D-059).
+    ///
+    /// Linear, and deliberately: it runs once per superseded version, and
+    /// only for the versions a batch wrote and then replaced itself. A staged
+    /// vid index would be built for every batch to serve the batches that
+    /// carve twice.
+    pub fn retire_edge(&mut self, vid: Id96) -> bool {
+        let before = self.edges.len();
+        self.edges.retain(|r| r.vid != vid);
+        self.edges.len() != before
+    }
+
+    pub fn retire_node(&mut self, vid: Id96) -> bool {
+        let before = self.nodes.len();
+        self.nodes.retain(|r| r.vid != vid);
+        self.nodes.len() != before
+    }
+
     pub fn clear(&mut self) {
         self.edges.clear();
         self.nodes.clear();

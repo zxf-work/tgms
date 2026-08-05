@@ -260,6 +260,24 @@ class NativeAdapter(StorageAdapter):
         except Exception as e:
             raise _translate(e) from None
 
+    def retire_node_versions(self, vids: Sequence[str]) -> None:
+        self._retire("node", vids)
+
+    def retire_edge_versions(self, vids: Sequence[str]) -> None:
+        self._retire("edge", vids)
+
+    def _retire(self, kind: str, vids: Sequence[str]) -> None:
+        """Drop rows the open batch staged and has since replaced. They only
+        ever exist in staging — a committed row belongs to an earlier
+        transaction time and is closed, never retired — so this cannot reach
+        a sealed segment."""
+        if not vids:
+            return
+        try:
+            self._store.stage_retires(kind, list(vids))
+        except Exception as e:
+            raise _translate(e) from None
+
     # --- version reads -------------------------------------------------------- #
 
     @staticmethod

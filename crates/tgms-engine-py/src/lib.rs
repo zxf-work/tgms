@@ -353,6 +353,15 @@ impl NativeStore {
         Ok(())
     }
 
+    /// Drop versions this batch staged and has already replaced (D-059).
+    fn stage_retires(&mut self, kind: &str, vids: Vec<String>) -> Res<()> {
+        let k = kind_of(kind)?;
+        for v in &vids {
+            self.inner.retire_version(k, id96(v)?).map_err(err)?;
+        }
+        Ok(())
+    }
+
     // --- reads ----------------------------------------------------------- //
 
     fn all_versions(&self, py: Python<'_>, kind: &str) -> Res<Py<PyDict>> {
