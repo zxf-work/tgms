@@ -1452,7 +1452,10 @@ GROUPINGS: dict[tuple[str, int], tuple[tuple[str, ...], ...] | None] = {
     ("bo", 16): (("dst",),),
     ("bo", 17): (("src",),),
     ("bo", 18): (("src",),),
-    ("bo", 19): None,        # three yearly cohorts; the chain shows one call
+    ("bo", 19): (("src",), ("src",), ("src",)),   # three yearly cohorts,
+                             # one call each: 4,814 rows. The recorded chain
+                             # shows ONE aggregate_events and no filter, so
+                             # it matches no executable plan (D-063)
     ("bo", 20): (("src", "dst"),),
     ("bo", 22): (("src",), ("dst",)),
     ("bo", 23): (("src",),),
@@ -1486,19 +1489,30 @@ GROUPINGS: dict[tuple[str, int], tuple[tuple[str, ...], ...] | None] = {
     ("cm", 27): ((), ()),
     ("cm", 28): (("src",), ("dst",)),
     ("cm", 29): (("src",), ("dst",)),
-    ("cm", 30): None,        # "active every month" — per-account-per-month or
-                             # six windowed cohorts; the chain does not say
-    ("cm", 32): None,        # two calendar units at once, which group_by's
-                             # two-dimension budget may not even allow
-    ("cm", 33): (("src",), ("src", "dst")),
+    ("cm", 30): (("src", "time_bucket"), ("dst", "time_bucket")),
+                             # monthly buckets: 3,061 rows, fits. Six windows
+                             # x two roles would be 12 calls = MAX_STEPS with
+                             # nothing left for the union (D-063)
+    ("cm", 32): (("calendar_unit", "calendar_unit"),),  # it does allow it:
+                             # hour_of_day x day_of_week = 168 rows (D-063)
+    ("cm", 33): (("src",), ("src",)),   # count_distinct(of=dst) grouped by
+                             # src is ONE dimension: 1,350 rows. Declaring
+                             # (src,dst) here was the re-read being wrong
+                             # about the operator, not about the question
     ("cm", 34): (("src", "dst"),),
-    ("cm", 35): None,        # "conversation chain" is not a grouping
+    ("cm", 35): (("src", "dst"),),  # it is one: max_session_span with
+                             # gap=1h per pair, 20,296 rows (D-063)
     ("cm", 36): (("dst",), ("src",)),
     ("cm", 38): (("src", "dst"),),
-    ("cm", 39): None,        # pair AND day is three dimensions
+    # cm-39 is gone: three dimensions is not expressible, so it is class 3
+    # now (C23) and no longer reduces a grouping at all
     ("cm", 40): (("src",), ("dst",)),
-    ("cm", 41): None,        # one account, weekly — filtered before or after?
-    ("cm", 42): (("dst", "time_bucket"),),
+    ("cm", 41): (("dst", "time_bucket"),),  # endpoint_filter to the one
+                             # account the question names: 0 rows. A 2-dim
+                             # grouping scoped to one account is not big
+    ("cm", 42): (("dst", "time_bucket"),),  # MEASURED 1 row: the question
+                             # names two senders, and endpoint_filter shrinks
+                             # the grouping to nothing
     ("cm", 43): (("time_bucket",),),
     ("cm", 45): (("src",), ("src",)),
     ("cm", 47): (("src",),),
@@ -1532,6 +1546,36 @@ def at_risk(grouping: tuple[str, ...]) -> bool:
     return len(grouping) >= 2 and bool(ENDPOINT_DIMS & set(grouping))
 
 
+# --------------------------------------------------------------------------- #
+# re-audit by RUNNING the chains, not reading them (D-063)                      #
+# --------------------------------------------------------------------------- #
+# D-062 recorded each chain's grouping by re-reading the questions. This table
+# is what happened when the chains were executed against both canonical stores
+# instead. Six of the sixty-five could not be reconstructed from their op
+# string at all, and running them found one verdict that is simply wrong.
+#
+# **cm-Q39 is not expressible, and was published as class 2 for nine
+# sessions.** "Which pair exchanged the most messages in a single day, and
+# what day" needs (src, dst, time_bucket). Every route is closed, and each was
+# closed by running it: three dimensions is a SchemaError because `group_by`
+# caps at two; `pair_mode: undirected` refuses to free the slot because it
+# "requires group_by = [endpoint src, endpoint dst]"; and one call per day is
+# 194 calls against MAX_STEPS = 12. Its recorded chain, `aggregate_events+
+# topk`, cannot be executed.
+#
+# Coverage therefore goes 86 -> 85. It is the first correction in this
+# campaign that *lowers* the number, and it was only reachable by execution:
+# nine re-audits read this entry and none of them tried it.
+C23: dict[tuple[str, int], tuple[int, str, str]] = {
+    ("cm", 39): (3, "DIM3",
+                 "not expressible, found by running it: pair AND day is three "
+                 "grouping dimensions, `group_by` takes two, `pair_mode` "
+                 "cannot free the slot because it requires exactly "
+                 "[src, dst], and per-day windows are 194 calls against a "
+                 "12-step plan budget. Published class 2 since C; no re-audit "
+                 "before this one executed it"),
+}
+
 def _verdict(table: dict, base, k):
     """A re-audit table's verdict for `k`, falling back to the table it
     chains onto. `base` is a callable so the chain composes."""
@@ -1548,6 +1592,18 @@ def _verdict(table: dict, base, k):
 NO_CLASS3_AUDIT = frozenset({"C18"})
 
 
+#: Entries whose earlier verdict was **wrong**, not superseded by a shipped
+#: capability. `_check_diff` lets only these move backwards.
+#:
+#: Until D-063 there was no such set, and that is a finding about the
+#: instrument rather than a gap in it: nine re-audits could record a
+#: capability arriving and could not record a verdict being mistaken, so the
+#: coverage number could only ever rise. An instrument whose entire job is
+#: honesty about what the system cannot do should be able to say "we were
+#: wrong about this one", and this one could not until it had to.
+CORRECTED = frozenset({("cm", 39)})
+
+
 def _check_diff(table: dict, base, name: str) -> None:
     """A re-audit is a diff, not a rewrite: guard the invariants that make it
     one. `base` returns the (class, tags) each entry is a diff against."""
@@ -1562,7 +1618,10 @@ def _check_diff(table: dict, base, name: str) -> None:
             f"{name} must not touch class-{cls} {k}: a new capability cannot "
             f"repair an ambiguous or non-computational question")
         assert (cls_new, tags_new) != (cls, tags), f"{name} {k} is not a change"
-        assert cls_new <= cls, f"{name} {k} moved backwards: {cls} -> {cls_new}"
+        assert cls_new <= cls or k in CORRECTED, (
+            f"{name} {k} moved backwards: {cls} -> {cls_new}. A re-audit "
+            f"records a capability arriving; a verdict that was wrong goes "
+            f"in CORRECTED, with the run that proved it.")
         assert why, f"{name} {k} has no justification"
 
 
@@ -1600,6 +1659,9 @@ def report():
     def v22(k):
         return _verdict(C22, v21, k)
 
+    def v23(k):
+        return _verdict(C23, v22, k)
+
     _check_diff(C14, v13, "C14")
     _check_diff(C15, v14, "C15")
     _check_diff(C16, v15, "C16")
@@ -1609,6 +1671,7 @@ def report():
     _check_diff(C20, v19, "C20")
     _check_diff(C21, v20, "C21")
     _check_diff(C22, v21, "C22")
+    _check_diff(C23, v22, "C23")
     # AR is retired by C15: the capability shipped, and what is left of it
     # was never AR. Guard it so a later edit cannot quietly reintroduce the
     # tag without deciding what it now means.
@@ -1634,7 +1697,8 @@ def report():
               ("sequences, D-056 session re-audit", v19),
               ("calendar units, D-057 session re-audit", v20),
               ("the version log, D-058 session re-audit", v21),
-              ("the percentile slice, D-060 session re-audit", v22)]
+              ("the percentile slice, D-060 session re-audit", v22),
+              ("running the chains, D-063 session re-audit", v23)]
     for label, v in stages:
         print(f"class distribution ({label}):",
               dict(sorted(Counter(v(k)[0] for k in q).items())))
@@ -1651,7 +1715,8 @@ def report():
             ("D-056 sequences", v18, v19, C19),
             ("D-057 calendar units", v19, v20, C20),
             ("D-058 the version log", v20, v21, C21),
-            ("D-060 the percentile slice", v21, v22, C22)]:
+            ("D-060 the percentile slice", v21, v22, C22),
+            ("D-063 running the chains", v22, v23, C23)]:
         moved = sorted(k for k in q if cur(k)[0] != prev(k)[0])
         by_move = Counter((prev(k)[0], cur(k)[0]) for k in moved)
         print(f"\nbecame expressible under {label}: {len(moved)} of {len(q)} "
@@ -1675,8 +1740,8 @@ def report():
     # D-062: every chain that reduces a grouping must say what it grouped by.
     # Without it the page-cap exposure is unknowable from the tables, and a
     # capability session could add one silently.
-    needs = {k for k in q if v22(k)[0] in (1, 2)
-             and reduces_after_grouping(v22(k)[1])}
+    needs = {k for k in q if v23(k)[0] in (1, 2)
+             and reduces_after_grouping(v23(k)[1])}
     missing = sorted(needs - set(GROUPINGS))
     assert not missing, (
         f"{len(missing)} verdict(s) reduce a grouping and declare no "
@@ -1696,7 +1761,7 @@ def report():
     for k in undecidable:
         print(f"  UNDECIDABLE  {k[0]}-Q{k[1]:<3} chain does not say")
 
-    expressible = sum(1 for k in q if v22(k)[0] in (1, 2))
+    expressible = sum(1 for k in q if v23(k)[0] in (1, 2))
     print(f"\nexpressible now: {expressible} of {len(q)}")
     print("runnable:", [f"{d}-Q{n}" for (d, n) in sorted(C)
                         if C[(d, n)][2]])
