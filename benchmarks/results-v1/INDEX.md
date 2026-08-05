@@ -44,6 +44,20 @@ supersessions are part of the record:
   in corrections (~1.6 ms each), 2,856.8 s → 361.1 s at 20%; hash gates
   green at every density, motif.filtered's one-sided 20% refusal
   recorded as `partial` — see eval_bitemporal.md
+- eval-200k-bitemporal-d072.json — 200k density sweep at HEAD `4481997`
+  (dev M-series host), re-confirming the correction path is linear:
+  0.65 / 0.96 / 0.84 ms per correction at 1/5/20%, hash gates green at
+  every density. Run because the **pre-fix** figures were still being
+  quoted as current in the report and handoff four days after the fix
+  landed (D-072) — the receipt exists to close a record defect, not an
+  engine one
+- bench-corrections-ci-d073.json — the correction-density matrix at its
+  `ci` profile (`scripts/bench_corrections.py`), HEAD `4481997`, dev
+  M-series host: density × batch size as a grid, plus versions-per-identity
+  and out-of-order distance. The finding is on the axis §13 never swept —
+  batch size. One correction per commit costs **~100x** the same work at
+  batch 100, and leaves the store **93.9% manifest bytes**. Capped cells
+  are flagged `truncated` in the record — see docs/bench_corrections.md
 
 - eval-resources-threads-{1m,10m}.json — §14.3 thread-scaling curves
   (native via TGMS_SCAN_THREADS, DuckDB via SET threads; 1–32 workers;
