@@ -120,8 +120,19 @@ compute:
     Deterministic computation — never do arithmetic yourself.
     Over a prior step's rows (`input`, normally {"$ref": "sN.rows"}, with an
     optional numeric `field`): count, sum, min, max, mean, median; topk
-    (`field`, `k` -> best rows); filter (`field`, `cmp` in
+    (`field`, and exactly one of `k` -> best rows, or `pct` -> that
+    percentage of the rows); filter (`field`, `cmp` in
     eq/ne/lt/le/gt/ge/contains, `value`).
+    `pct` is how you write "the top 10%" or "the top 1%": the row count is
+    rounded UP, so a positive percentage of a non-empty input is never an
+    empty page. `side` picks the end — "top" (default) or "bottom" — and
+    bottom is the exact complement of the matching top, so top `p`% and
+    bottom `100-p`% cover every row exactly once. That is what makes a ratio
+    between the two halves a ratio over one population. Do NOT write "the
+    bottom half" as a `derive mul -1` in front of a top-half topk: both
+    sides then round up and an odd row count falls in both.
+    Rows tied on `field` are split by rank, not by value, so two rows with
+    the same value can land on opposite sides of a `pct` boundary.
     A grouped result may hold null cells — max_gap for an account with one
     event, mean_duration for a group with no closed interval — and the
     reducers refuse them. Drop them first with filter (`cmp`: not_null, no
@@ -151,7 +162,11 @@ compute:
     Integer inputs give exact integer answers; anything inexact is rounded
     once. Cost: trivial.
     Examples: {"fn": "topk", "input": {"$ref": "s2.rows"}, "field": "value",
-    "k": 3} · {"fn": "mean", "input": {"$ref": "s1.rows"}, "field": "count"} ·
+    "k": 3} · the top 1% by volume: {"fn": "topk", "input": {"$ref":
+    "s1.rows"}, "field": "count", "pct": 1} · the bottom half of the same
+    ranking: {"fn": "topk", "input": {"$ref": "s1.rows"}, "field": "count",
+    "pct": 50, "side": "bottom"} ·
+    {"fn": "mean", "input": {"$ref": "s1.rows"}, "field": "count"} ·
     {"fn": "diff", "x": {"$ref": "s1.rows[0].count"},
     "y": {"$ref": "s2.rows[0].count"}}
 

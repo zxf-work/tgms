@@ -1,6 +1,6 @@
 """O13 `compute` (WP2.1): deterministic post-processing over prior step
 outputs, so plans never need LLM arithmetic. Functions: count, sum, min, max,
-mean(field), median(field), topk(field, k), filter(field, cmp, value),
+mean(field), median(field), topk(field, k | pct, side), filter(field, cmp, value),
 ratio(x, y), diff(x, y), percent(x, y), interval_relation(a, b).
 `filter` compares a field to a literal `value` or to a second field
 `field2` — exactly one of the two, the rule `derive` has carried since
@@ -31,6 +31,7 @@ Type follows the data here, as it already did for `sum`.
 from __future__ import annotations
 
 import math
+from fractions import Fraction
 from typing import Any
 
 from tgms.core.errors import InvalidArgError
@@ -66,6 +67,14 @@ ARGS = {
     "field": {"type": ["string", "null"], "default": None,
               "description": "object field to aggregate/compare on"},
     "k": {"type": ["integer", "null"], "minimum": 1, "maximum": 1000, "default": None},
+    "pct": {"type": ["number", "null"], "exclusiveMinimum": 0, "maximum": 100,
+            "default": None,
+            "description": "topk's k as a percentage of the row count, "
+                           "rounded up; exclusive with `k`"},
+    "side": {"type": "string", "enum": ["top", "bottom"], "default": "top",
+             "description": "which end of the ranking to take. `bottom` is "
+                            "the exact complement of the matching `top`, so "
+                            "top p% and bottom (100-p)% partition the rows"},
     "cmp": {"type": ["string", "null"], "enum": CMPS + [None], "default": None},
     "value": {"default": None,
               "description": "comparison value for filter"},
@@ -135,6 +144,43 @@ def _quotient(num: int | float, den: int | float, fn: str) -> int | float:
         q, r = divmod(num, den)
         return q if r == 0 else float(q) + r / den
     return num / den
+
+
+def _pct_rows(n: int, pct: int | float) -> int:
+    """How many of `n` rows a `pct` percentage takes: `ceil(n * pct/100)`,
+    formed exactly (D-060).
+
+    In binary floating point that product lands just above an integer often
+    enough to matter — 25 rows at 28% is 7.000000000000001, which ceils to 8
+    — and the boundary is the whole subject of a percentile slice, so the
+    arithmetic is done over rationals and rounded once, deliberately, at the
+    end. Same reason the quotients above are formed with `divmod`.
+
+    Rounding **up**: a positive fraction of a non-empty input is never
+    nothing. `floor` would answer "the top 1%" of any store under a hundred
+    groups with an empty page, which is a wrong answer wearing a right shape.
+    """
+    exact = pct if isinstance(pct, Fraction) else Fraction(str(pct))
+    num = exact * n / 100
+    return -((-num.numerator) // num.denominator)   # ceil, in integers
+
+
+def _cut(n: int, k: int | None, pct: int | float | None, side: str) -> int:
+    """The index that splits the ranking. `top` keeps `[:cut]`, `bottom`
+    keeps `[cut:]`, and the two are complements *of one cut* — which is what
+    makes top p% and bottom (100-p)% partition the rows for every n and
+    every tie pattern (D-060).
+
+    Getting there by ranking twice does not work: the top half of `x` and
+    the top half of `-x` are both `ceil(n/2)` rows, so an odd n puts one row
+    on both sides, and cm-Q52 divides one of these slices by the other.
+    """
+    if side == "bottom":
+        # bottom q% is everything the top (100-q)% did not take
+        if k is not None:
+            return max(0, n - k)
+        return _pct_rows(n, 100 - Fraction(str(pct)))
+    return min(k, n) if k is not None else _pct_rows(n, pct)
 
 
 def _mean(vals: list[int | float]) -> int | float:
@@ -273,7 +319,14 @@ def allen_relation(a: dict[str, int], b: dict[str, int]) -> str:
     "compute",
     ARGS,
     "Deterministic computation over a prior step's rows: count/sum/min/max/"
-    "mean/median (optionally over `field`), topk(field, k), "
+    "mean/median (optionally over `field`), "
+    "topk(field, k | pct, side) — rank by `field` and take either a count "
+    "`k` or a percentage `pct` of the rows (rounded up, so a positive "
+    "percentage of a non-empty input is never empty), from the top or the "
+    "`bottom`; bottom is the exact complement, so top p% and bottom "
+    "(100-p)% partition the rows and a ratio between them is over one "
+    "population. Rows tied on `field` are split by rank, not by value: two "
+    "equal rows can land on opposite sides of a boundary. "
     "filter(field, cmp, value); arithmetic over two scalars from earlier "
     "steps: ratio(x, y) = x/y, diff(x, y) = x-y, percent(x, y) = 100*x/y; "
     "set operations over two lists (`input` and `other`, optionally "
@@ -377,14 +430,20 @@ def compute(adapter: StorageAdapter, args: dict[str, Any]) -> dict[str, Any]:
             val = s[n // 2] if n % 2 else _mean([s[n // 2 - 1], s[n // 2]])
         return {"value": val, "truncated": False}
     if fn == "topk":
-        if args["field"] is None or args["k"] is None:
-            raise InvalidArgError("topk requires field and k")
+        k, pct = args["k"], args["pct"]
+        if (k is None) == (pct is None):
+            raise InvalidArgError(
+                "topk takes exactly one of k or pct — a count or a "
+                "percentage of the row count, never both")
+        if args["field"] is None:
+            raise InvalidArgError("topk requires field to rank by")
         vals = _values(rows, args["field"])
         order = sorted(range(len(rows)),
                        key=lambda i: (-(vals[i] if isinstance(vals[i], (int, float))
                                         else 0), str(rows[i])))
-        return paginate([rows[i] for i in order[: args["k"]]],
-                        args["limit"], None)
+        cut = _cut(len(rows), k, pct, args["side"])
+        sel = order[cut:] if args["side"] == "bottom" else order[:cut]
+        return paginate([rows[i] for i in sel], args["limit"], None)
     if fn == "filter":
         if args["cmp"] is None:
             raise InvalidArgError("filter requires cmp")
