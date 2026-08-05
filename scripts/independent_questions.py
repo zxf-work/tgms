@@ -1407,6 +1407,131 @@ C22: dict[tuple[str, int], tuple[int, str, str]] = {
 }
 
 
+# --------------------------------------------------------------------------- #
+# what each chain groups by, and the page it has to fit in (D-062)             #
+# --------------------------------------------------------------------------- #
+# D-061 fixed the correctness half of the page cap and left this half open: a
+# verdict says which *operators* a chain uses and never which `group_by` they
+# ran with, and the exposure is entirely a property of the grouping. Measured
+# on both canonical stores, every single-dimension grouping fits a 10,000-row
+# page and **every endpoint x second-dimension grouping overflows at least one
+# of them**:
+#
+#     grouping                 collegemsg   bitcoinotc
+#     (src,) (dst,) (bucket,)   <= 1,862     <= 5,858    fit
+#     (src, rel_type)              1,350        4,814    fits DEGENERATELY -
+#                                                        one rel_type in each
+#     (src, day_of_week)           5,727       11,720    overflows bo
+#     (src, hour_of_day)          10,965       17,272    overflows both
+#     (src, time_bucket/day)      14,633       25,716    overflows both
+#     (src, dst)                  20,296       35,592    overflows both
+#
+# So the rule is structural, not a list: pairing an endpoint with anything
+# else multiplies by that account's activity, and account counts are within
+# one order of magnitude of the page on both datasets. A list of exposed
+# verdicts would go stale on the next dataset; this does not.
+#
+# `(src, rel_type)` is the exception that proves it — it fits only because
+# both corpora carry exactly one rel_type, so it collapses to `(src,)`. It is
+# flagged AT RISK anyway, because the structure is what ages well.
+ENDPOINT_DIMS = frozenset({"src", "dst"})
+
+#: Per verdict, the grouping of each `aggregate_events` call in its chain.
+#: `None` means the chain cannot be reconstructed from the op string alone —
+#: which is the finding that motivated this table, not a gap in it. Those are
+#: reported by `pagecap` as undecidable rather than silently treated as safe.
+GROUPINGS: dict[tuple[str, int], tuple[tuple[str, ...], ...] | None] = {
+    ("bo", 6): ((), ()),
+    ("bo", 7): (("src",), ("dst",)),
+    ("bo", 9): (("src",),),
+    ("bo", 10): (("dst",),),
+    ("bo", 11): (("dst",),),
+    ("bo", 12): (("src",),),
+    ("bo", 14): (("dst",), ("dst",)),
+    ("bo", 15): (("dst",),),
+    ("bo", 16): (("dst",),),
+    ("bo", 17): (("src",),),
+    ("bo", 18): (("src",),),
+    ("bo", 19): None,        # three yearly cohorts; the chain shows one call
+    ("bo", 20): (("src", "dst"),),
+    ("bo", 22): (("src",), ("dst",)),
+    ("bo", 23): (("src",),),
+    ("bo", 25): (("src", "dst"),),
+    ("bo", 28): (("src", "dst"),),
+    ("bo", 36): (("src",), ("src",)),
+    ("bo", 42): (("dst",), ("dst",)),
+    ("bo", 43): (("dst",),),
+    ("bo", 44): (("dst",), ("dst",)),
+    ("bo", 46): (("dst",), ("dst",)),
+    ("bo", 48): (("src",),),
+    ("bo", 49): (("src",),),
+    ("bo", 50): (("dst",), ("src",)),
+    ("bo", 51): (("src", "time_bucket"), ("dst", "time_bucket")),
+    ("bo", 53): (("src",), ("src",)),
+    ("bo", 54): (("src",), ("dst",)),
+    ("bo", 55): ((), ()),
+    ("cm", 3): (("src",),),
+    ("cm", 4): (("dst",),),
+    ("cm", 7): (("src",),),
+    ("cm", 9): (("src",),),
+    ("cm", 10): (("dst",), ("src",)),
+    ("cm", 11): (("src", "time_bucket"),),
+    ("cm", 15): (("calendar_unit",),),
+    ("cm", 16): (("src",), ("dst",)),
+    ("cm", 20): (("calendar_unit",),),
+    ("cm", 21): (("src",), ("dst",)),
+    ("cm", 22): (("src", "dst"),),
+    ("cm", 23): (("src",),),
+    ("cm", 25): (("src", "dst"),),
+    ("cm", 27): ((), ()),
+    ("cm", 28): (("src",), ("dst",)),
+    ("cm", 29): (("src",), ("dst",)),
+    ("cm", 30): None,        # "active every month" — per-account-per-month or
+                             # six windowed cohorts; the chain does not say
+    ("cm", 32): None,        # two calendar units at once, which group_by's
+                             # two-dimension budget may not even allow
+    ("cm", 33): (("src",), ("src", "dst")),
+    ("cm", 34): (("src", "dst"),),
+    ("cm", 35): None,        # "conversation chain" is not a grouping
+    ("cm", 36): (("dst",), ("src",)),
+    ("cm", 38): (("src", "dst"),),
+    ("cm", 39): None,        # pair AND day is three dimensions
+    ("cm", 40): (("src",), ("dst",)),
+    ("cm", 41): None,        # one account, weekly — filtered before or after?
+    ("cm", 42): (("dst", "time_bucket"),),
+    ("cm", 43): (("time_bucket",),),
+    ("cm", 45): (("src",), ("src",)),
+    ("cm", 47): (("src",),),
+    ("cm", 48): (("src", "time_bucket"), ("dst", "time_bucket")),
+    ("cm", 49): (("src",),),
+    ("cm", 50): (("src", "dst"),),
+    ("cm", 52): (("src",),),
+    ("cm", 53): (("src", "calendar_unit"),),
+    ("cm", 54): (("src",),),
+}
+
+#: `compute` functions that reduce to one number. Mirrors the executor's
+#: REDUCING_FNS (D-061) — a chain ending in one of these over a page is a
+#: wrong number, which is what makes the grouping's cardinality matter.
+REDUCING_OPS = frozenset({"count", "sum", "mean", "median", "min", "max",
+                          "percent", "ratio", "diff", "topk",
+                          "intersect", "difference", "union", "join"})
+
+
+def reduces_after_grouping(ops: str) -> bool:
+    """Does this chain reduce something a grouping produced?"""
+    if not isinstance(ops, str) or "aggregate_events" not in ops:
+        return False
+    steps = ops.split("+")
+    after = steps[steps.index("aggregate_events") + 1:]
+    return any(s in REDUCING_OPS for s in after)
+
+
+def at_risk(grouping: tuple[str, ...]) -> bool:
+    """An endpoint paired with any second dimension. See the table above."""
+    return len(grouping) >= 2 and bool(ENDPOINT_DIMS & set(grouping))
+
+
 def _verdict(table: dict, base, k):
     """A re-audit table's verdict for `k`, falling back to the table it
     chains onto. `base` is a callable so the chain composes."""
@@ -1547,6 +1672,30 @@ def report():
         print(f"class-3 entries whose need-tags were re-audited: "
               f"{len([k for k in table if table[k][0] == 3])}")
 
+    # D-062: every chain that reduces a grouping must say what it grouped by.
+    # Without it the page-cap exposure is unknowable from the tables, and a
+    # capability session could add one silently.
+    needs = {k for k in q if v22(k)[0] in (1, 2)
+             and reduces_after_grouping(v22(k)[1])}
+    missing = sorted(needs - set(GROUPINGS))
+    assert not missing, (
+        f"{len(missing)} verdict(s) reduce a grouping and declare no "
+        f"group_by: {['%s-Q%d' % m for m in missing]}. Add them to "
+        f"GROUPINGS — the page-cap exposure cannot be read off the op chain.")
+    stale = sorted(set(GROUPINGS) - needs)
+    assert not stale, f"GROUPINGS has entries that no longer reduce: {stale}"
+    risky = {k: g for k, g in GROUPINGS.items()
+             if g is not None and any(at_risk(x) for x in g)}
+    undecidable = sorted(k for k, g in GROUPINGS.items() if g is None)
+    print(f"\npage cap (D-062): {len(needs)} verdicts reduce a grouping; "
+          f"{len(risky)} group an endpoint with a second dimension and so "
+          f"need paging on at least one canonical dataset; "
+          f"{len(undecidable)} cannot be decided from the op chain")
+    for k in sorted(risky):
+        print(f"  AT RISK      {k[0]}-Q{k[1]:<3} {risky[k]}")
+    for k in undecidable:
+        print(f"  UNDECIDABLE  {k[0]}-Q{k[1]:<3} chain does not say")
+
     expressible = sum(1 for k in q if v22(k)[0] in (1, 2))
     print(f"\nexpressible now: {expressible} of {len(q)}")
     print("runnable:", [f"{d}-Q{n}" for (d, n) in sorted(C)
@@ -1580,6 +1729,51 @@ def report():
     print("wrote", out)
 
 
+def pagecap():
+    """Measure every declared grouping on both canonical stores.
+
+    The structural rule (`at_risk`) is the guard because it survives a new
+    dataset; this is the evidence under it, and the one place the two can
+    disagree — `(src, rel_type)` is at risk structurally and fits today,
+    because both corpora carry exactly one rel_type.
+    """
+    import tgms
+    from tgms.temporal.algebra import call_operator, ensure_all_registered
+    ensure_all_registered()
+
+    DIM = {"src": {"dim": "endpoint", "role": "src"},
+           "dst": {"dim": "endpoint", "role": "dst"},
+           "rel_type": {"dim": "rel_type"},
+           "time_bucket": {"dim": "time_bucket"},
+           "calendar_unit": {"dim": "calendar_unit", "unit": "hour_of_day"}}
+    declared = sorted({g for gs in GROUPINGS.values() if gs for g in gs})
+    stores = [n for n in ("collegemsg", "bitcoinotc")
+              if Path(f"stores/{n}").exists()]
+    if not stores:
+        print("no canonical store present; nothing to measure")
+        return
+    print(f"{'grouping':30s}" + "".join(f"{n:>13s}" for n in stores)
+          + "   structural")
+    for g in declared:
+        counts = []
+        for name in stores:
+            st = tgms.open(f"stores/{name}", read_only=True)
+            ext = st.stats()
+            args = {"group_by": [DIM[d] for d in g],
+                    "aggregates": [{"agg": "count"}],
+                    "window": {"t_a": ext["vt_min"], "t_b": ext["vt_max"] + 1},
+                    "limit": 10_000}
+            if "time_bucket" in g:
+                args["stride"] = 86_400_000_000
+            r = call_operator(st.adapter, "aggregate_events", args)
+            counts.append((r["rows_total"], r["truncated"]))
+            st.close()
+        cells = "".join(f"{n:>12,d}{'*' if t else ' '}" for n, t in counts)
+        print(f"{str(g):30s}{cells}   "
+              f"{'AT RISK' if at_risk(g) else 'fits by shape'}")
+    print("* = overflows the 10,000-row page on that dataset")
+
+
 if __name__ == "__main__":
-    {"report": report, "build": build}[sys.argv[1] if len(sys.argv) > 1
-                                       else "report"]()
+    {"report": report, "build": build,
+     "pagecap": pagecap}[sys.argv[1] if len(sys.argv) > 1 else "report"]()
