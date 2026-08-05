@@ -128,8 +128,13 @@ compute:
     "s2.rows"},"group_by":"receiver","field":"latency"} is the average
     latency for each receiver. `aggregate_events` groups the store; this
     groups a RESULT, which is how you reduce something a join or a derive
-    produced. Only count/sum/min/max/mean/median take it — the functions
-    that return rows do not.
+    produced. count/sum/min/max/mean/median REDUCE each group to a number;
+    `topk` SLICES each group and keeps its rows, so {"fn":"topk","input":
+    {"$ref":"s1.rows"},"group_by":"dst","field":"t","k":1,"side":"bottom"} is
+    the earliest row of each group WITH all its columns — which is how you
+    ask "who was first" rather than "when was first". `pct` is that group's
+    own size, so a slice is proportional to each group. Slice then reduce to
+    get "the mean of each account's first five".
     `pct` is how you write "the top 10%" or "the top 1%": the row count is
     rounded UP, so a positive percentage of a non-empty input is never an
     empty page. `side` picks the end — "top" (default) or "bottom" — and
