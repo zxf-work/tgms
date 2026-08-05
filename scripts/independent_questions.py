@@ -1352,6 +1352,61 @@ C21: dict[tuple[str, int], tuple[int, str, str]] = {
 }
 
 
+# --------------------------------------------------------------------------- #
+# re-audit after the percentile slice shipped (D-060)                          #
+# --------------------------------------------------------------------------- #
+# `compute topk` gained `pct` — k as a percentage of the row count, rounded up
+# — and `side`, where `bottom` is the exact complement of the matching `top`.
+#
+# **`PCT` retires, and it is the first tag in the campaign to deliver its full
+# sole-blocker count.** Three entries, three moves, forecast per question in
+# the `[tests]` commit. Seven sessions of evidence say a tag names the first
+# obstacle rather than the set; this is the exception, and one clean case does
+# not overturn seven.
+#
+# The re-read that mattered was of the *capability*, not of the questions.
+# bo-Q11 left `PCT` in C20 because `derive mul -1` in front of `topk` ranks
+# ascending, so "lowest" needed nothing new. That trick does NOT extend to
+# cm-Q52: the top half of `x` and the top half of `-x` are both ceil(n/2)
+# rows, so an odd row count lands in both and the ratio is over a population
+# that does not add up. Hence `side` as a complement rather than a second
+# ranking — a decision (D-060), not an implementation detail.
+#
+# Re-read and NOT moved, because the word "slice" is in its need string:
+# bo-Q47 wants the first 5 and last 5 ratings *per account*, by position in
+# that account's own sequence. `pct` slices one flat result by rank on a
+# field, which is a different operation and always was — `SEQ` is right and
+# `PCT` was never its obstacle. Recorded here rather than as a table row
+# because nothing about its verdict changes.
+C22: dict[tuple[str, int], tuple[int, str, str]] = {
+    # ---- became expressible, on the percentile slice ---- #
+    ("bo", 54): (2, "aggregate_events+aggregate_events+join+topk+sum+sum+ratio",
+                 "given and received counts per account join on the account "
+                 "(D-055), `topk pct: 10` takes the most active tenth by "
+                 "given, and the two sums close the ratio over that cohort"),
+    ("cm", 52): (2, "aggregate_events+topk+sum+topk+sum+ratio",
+                 "one ranking, both ends: `k: 10` for the top senders and "
+                 "`pct: 50, side: bottom` for the other half. The two "
+                 "populations partition, which is the whole reason the ratio "
+                 "means anything. Note the window: the corpus asks for March "
+                 "2004 and CollegeMsg starts April 15 — the same empty month "
+                 "`C` already annotates on cm-Q3. Expressible here, and "
+                 "empty on this dataset"),
+    ("cm", 54): (2, "aggregate_events+topk+sum+sum+percent",
+                 "`pct: 1` over per-sender counts, then `percent` against "
+                 "the total. Run: 14 of 1,350 accounts, 8,952 of 59,835 "
+                 "messages, 14.96%"),
+    # ---- re-tagged, still class 3 ---- #
+    ("bo", 52): (3, "G",
+                 "re-read because rank selection is in its need string, and "
+                 "`SET` turned out to be stale: 'joined back to that list' "
+                 "is D-055's `join`, and the top 10 was already `topk`. What "
+                 "is left is one thing — the first rater per rated account "
+                 "is an argmin over a pair-level grouping that has to report "
+                 "the group's label, which is regrouping a result"),
+}
+
+
 def _verdict(table: dict, base, k):
     """A re-audit table's verdict for `k`, falling back to the table it
     chains onto. `base` is a callable so the chain composes."""
@@ -1417,6 +1472,9 @@ def report():
     def v21(k):
         return _verdict(C21, v20, k)
 
+    def v22(k):
+        return _verdict(C22, v21, k)
+
     _check_diff(C14, v13, "C14")
     _check_diff(C15, v14, "C15")
     _check_diff(C16, v15, "C16")
@@ -1425,6 +1483,7 @@ def report():
     _check_diff(C19, v18, "C19")
     _check_diff(C20, v19, "C20")
     _check_diff(C21, v20, "C21")
+    _check_diff(C22, v21, "C22")
     # AR is retired by C15: the capability shipped, and what is left of it
     # was never AR. Guard it so a later edit cannot quietly reintroduce the
     # tag without deciding what it now means.
@@ -1436,9 +1495,10 @@ def report():
     # inflates the board — `ROW` read as blocking 3 questions for a session
     # after `derive` landed — so guard both.
     for tag, split in (("ROW", "GMEAN"), ("JOIN", "nothing"),
-                       ("GLOB", "the version log, `src == dst`, and CHAIN")):
-        assert not [k for k in q if tag in _needs(*v21(k))], \
-            f"{tag} survived the C19 re-audit; what is left of it is {split}"
+                       ("GLOB", "the version log, `src == dst`, and CHAIN"),
+                       ("PCT", "nothing — it delivered all three")):
+        assert not [k for k in q if tag in _needs(*v22(k))], \
+            f"{tag} survived the re-audit; what is left of it is {split}"
 
     stages = [("13 ops, pre-registered", v13),
               ("14 ops, D-044 re-audit", v14),
@@ -1448,7 +1508,8 @@ def report():
               ("row + join, D-055 session re-audit", v18),
               ("sequences, D-056 session re-audit", v19),
               ("calendar units, D-057 session re-audit", v20),
-              ("the version log, D-058 session re-audit", v21)]
+              ("the version log, D-058 session re-audit", v21),
+              ("the percentile slice, D-060 session re-audit", v22)]
     for label, v in stages:
         print(f"class distribution ({label}):",
               dict(sorted(Counter(v(k)[0] for k in q).items())))
@@ -1464,7 +1525,8 @@ def report():
             ("D-055 row + join", v17, v18, C18),
             ("D-056 sequences", v18, v19, C19),
             ("D-057 calendar units", v19, v20, C20),
-            ("D-058 the version log", v20, v21, C21)]:
+            ("D-058 the version log", v20, v21, C21),
+            ("D-060 the percentile slice", v21, v22, C22)]:
         moved = sorted(k for k in q if cur(k)[0] != prev(k)[0])
         by_move = Counter((prev(k)[0], cur(k)[0]) for k in moved)
         print(f"\nbecame expressible under {label}: {len(moved)} of {len(q)} "
@@ -1485,7 +1547,7 @@ def report():
         print(f"class-3 entries whose need-tags were re-audited: "
               f"{len([k for k in table if table[k][0] == 3])}")
 
-    expressible = sum(1 for k in q if v21(k)[0] in (1, 2))
+    expressible = sum(1 for k in q if v22(k)[0] in (1, 2))
     print(f"\nexpressible now: {expressible} of {len(q)}")
     print("runnable:", [f"{d}-Q{n}" for (d, n) in sorted(C)
                         if C[(d, n)][2]])
@@ -1508,6 +1570,8 @@ def report():
              "justification_20": C20[(d, n)][2] if (d, n) in C20 else "",
              "class_21": v21((d, n))[0], "need_or_ops_21": v21((d, n))[1],
              "justification_21": C21[(d, n)][2] if (d, n) in C21 else "",
+             "class_22": v22((d, n))[0], "need_or_ops_22": v22((d, n))[1],
+             "justification_22": C22[(d, n)][2] if (d, n) in C22 else "",
              "reread_not_capability": (d, n) in REREAD}
             for (d, n) in sorted(q)]
     out = Path("benchmarks/independent-v1/classification.json")
