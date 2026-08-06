@@ -1,9 +1,24 @@
 # Changelog
 
-## Unreleased (v0.6.0 draft)
+## v0.6.0 — 2026-08-06
 
-The correction-path release: the write path is now flat on every measured
-axis except batch size, which is the user's choice.
+The correction-path release — and the first with a semantic competitor: the
+write path is now flat on every measured axis except batch size, which is
+the user's choice, and the bi-temporal claims are checked against the
+system whose identity they inherit from.
+
+**Measured against XTDB, and the competitor agrees (D-083/D-084).**
+Bi-temporality is inherited — SQL:2011, four decades of temporal-database
+research, XTDB in production — not invented here. One event log replayed
+op-level into both systems, XTDB doing its own SQL:2011 supersession: 400
+believed-state probes at 1M events across 5% and 20% correction density,
+**zero disagreements**, including a 140-probe crafted scenario on in-batch
+supersession. TGMS is 3.9–4.7× faster at correction-heavy ingest, 2.4× at
+belief-state diff, on 23–27× less disk; point-lookup ratios are larger but
+partly reflect embedded-versus-server deployment, and both systems are flat
+in correction density. Harness, receipts, forecast and per-cell scoring are
+in the repo, including the places the harness was corrected in both
+directions.
 
 **Restart recovery halved under correction load.** Replaying an event log at
 20% correction density: 296.8 s → 137.5 s at 1M scale. The close index now
