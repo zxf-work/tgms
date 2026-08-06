@@ -68,6 +68,16 @@ supersessions are part of the record:
   batch-1 store at every density. 8 capped cells flagged `truncated`; the
   manifest records `dirty: true` for the one uncommitted file, the harness
   itself — see docs/bench_corrections.md
+- eval-1m-bitemporal-d081.json — the §13 sweep re-run on **xzgpu** at
+  `f1498e4`, after the D-076…D-081 write-path arc. Replay **reproduces**
+  the closecache numbers within 0.4–5% at every density (362.6 vs 361.1 s
+  at 20%) — a control across four engine changes, and the run that split a
+  review's staleness verdict in half (D-082): the matrix's 2.2× replay gain
+  (bench-corrections-full-d079) is a different, many-small-commits log
+  shape. What did change: cold-process time-to-first-query 198 → **0.48 s**
+  at 20% density (0.29 s at density 0) and probe peak memory **−70%**,
+  which staled the published warm-up facts instead of the replay ones.
+  Hash gates green at every density.
 - bench-corrections-full-d079.json — the same matrix on **xzgpu** at
   `d5620bf`, after the open-version index (D-076), the segment-name cache
   (D-077) and the close-index fold (D-079). 89.2 min. Per-identity depth is

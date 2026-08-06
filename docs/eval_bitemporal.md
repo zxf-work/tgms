@@ -192,13 +192,19 @@ small either way. Conversion cost again equals one compaction
   polluted by the parent — VmRSS/VmHWM are the numbers of record.)
 - **open time** — **zero at every density**: `tgms.open` is 3.3–3.8 ms in
   both variants across the sweep; open is manifest-parse + dict-load and
-  never touches closes. What does grow is *time-to-first-query* in a cold
-  process (in-memory index warm-up): 2.5 s at density 0 in both variants,
-  226 s (full) vs 176 s (current-only) at 20% — the full store warms over
-  every retained version, ~29% more of them at that density. The growth
-  itself tracks correction volume in *both* variants and is not further
-  attributed here; the honest bi-temporal share is the delta between the
-  columns.
+  never touches closes.
+  **The cold-process warm-up this bullet used to describe is gone
+  (re-measured 2026-08-06 at `f1498e4`, receipt
+  `eval-1m-bitemporal-d081.json`).** Time-to-first-query was 2.5 s at
+  density 0 and ~198–226 s (full) at 20% — growing with correction volume —
+  when this sweep first ran; at HEAD it is **0.29 s at density 0 and 0.48 s
+  at 20%**, essentially flat in density. The warm-up's growth was the
+  first read paying O(all close runs) and O(segments) per point read, both
+  removed by D-077/D-079/D-081; what remains is the postings build proper.
+  Peak memory over the probe's query suite fell ~70% at every density
+  (e.g. 861 → 258 MB at density 0), which is the same removal seen as
+  allocation rather than time. The superseded figures stay in the record
+  below; do not quote them as current.
 
 ## A cost the sweep surfaced in passing: `close_version`'s linear scan
 
@@ -287,6 +293,25 @@ test — a surviving quadratic term would have grown this column ~20× from
 quoted as current in the technical report and the handoff for four days
 after the fix landed, and were echoed back by an external review that had
 been given them (D-072). The defect was in the record, not the engine.
+
+**Update (2026-08-06, D-082):** full sweep re-run on xzgpu at `f1498e4`,
+after the D-076…D-081 write-path arc (receipt
+`eval-1m-bitemporal-d081.json`): replay 16.2 / 18.9 / 19.3 / 33.2 / 100.2 /
+362.6 s across 0–20% — **within 0.4–5% of the 2026-08-01 numbers at every
+density**, hash gates green. Two things follow, and they pull in opposite
+directions. First, the 361.1 s figure and its published derivatives
+**reproduce and stand**: a project review had flagged them as stale on the
+strength of the correction *matrix* improving its replay 2.2× (D-080), and
+the re-run shows those are different workloads — the matrix's log commits
+its corrections in many small batches and was bottlenecked on the per-commit
+close-run rebuild D-079 removed; this sweep's log uses large batched write
+calls, was never rebuild-bound, and its ~1.6 ms per correction is the
+correction *op* itself (carve, derived ids, staging), untouched by the arc.
+Second, the same receipt shows where the arc actually landed on this
+workload: **cold-process time-to-first-query collapsed** (198 s → 0.48 s at
+20%; see the open-time bullet above) and peak probe memory fell ~70%. The
+re-run was launched to correct a number and instead confirmed it — and found
+the improvement nobody had claimed.
 
 ## Honest limits
 
