@@ -189,16 +189,26 @@ def test_rewritten_applied_prefix_refuses_to_open(tmp_path):
         tgms.open(root)
 
 
-def test_cursor_not_on_a_record_boundary_refuses_to_open(tmp_path):
+def test_a_torn_tail_past_the_cursor_recovers_instead_of_refusing(tmp_path):
+    """Contract changed by D-086, deliberately. This test used to assert
+    that a torn final record refuses to open — injected-crash trials showed
+    that turns a routine power cut mid-append into an outage. The torn
+    record was never acknowledged (append fsyncs, then returns), so the
+    right recovery is: truncate the tail, replay the sound suffix, stay
+    writable. Damage that is NOT the tail still refuses — that case is
+    pinned by tests/test_torn_wal.py alongside the three torn signatures."""
     root = tmp_path / "s"
-    build(root).close()
-    # grow the log by a partial record (a torn append with no newline would
-    # also land here): the cursor still verifies, the tail must not parse
+    store = build(root)
+    before = store.digest()
+    store.close()
     with open(log_path(root), "ab") as f:
         f.write(b'{"batch_id": "torn", "tt": 9')
 
-    with pytest.raises(StateError, match="not readable|boundary"):
-        tgms.open(root)
+    store = tgms.open(root)
+    assert store.digest() == before, "recovery must not change applied state"
+    with open(log_path(root), "rb") as f:
+        assert b'"torn"' not in f.read(), "the torn bytes must be truncated"
+    store.close()
 
 
 # --- missing cursor: degrade to not-replaying, never to guessing ----------- #
