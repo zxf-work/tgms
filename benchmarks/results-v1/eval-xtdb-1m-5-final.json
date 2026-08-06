@@ -1,0 +1,61 @@
+{
+ "corrections": {
+  "whole": 40000,
+  "carve": 1924,
+  "retract": 9616,
+  "node": 1,
+  "total": 51541
+ },
+ "s5_ingest": {
+  "xtdb": {
+   "wall_s": 411.23,
+   "batches": 48,
+   "ops": 51562,
+   "batch_ms_p50": 5495.37,
+   "batch_ms_p99": 16015.94
+  },
+  "native_replay_s": 104.53
+ },
+ "d059_targeted_identities": 0,
+ "agreement": {
+  "probes": 200,
+  "disagreements": 0,
+  "sample": []
+ },
+ "ops": {
+  "s1_current": {
+   "xtdb_ms": 2.145,
+   "native_ms": 0.037
+  },
+  "s2_vt_asof": {
+   "xtdb_ms": 2.129,
+   "native_ms": 0.028
+  },
+  "s3_tt_asof": {
+   "xtdb_ms": 2.437,
+   "native_ms": 0.026
+  },
+  "s4_history": {
+   "xtdb_ms": 5.447,
+   "native_ms": 0.137
+  },
+  "s6_diff": {
+   "xtdb_ms": 51.503,
+   "native_ms": 21.069
+  }
+ },
+ "storage_bytes": {
+  "xtdb": 750833336,
+  "native": 27992064
+ },
+ "manifest": {
+  "commit": "a340d6e1e5cc189bac70042721cecfac81d0affb",
+  "host": "xzgpu",
+  "image": "ghcr.io/xtdb/xtdb",
+  "image_id": "sha256:6dc8aa2c5e06c59eb3655adc3891d2c89b9034d34f00b67c7c94e7cfd152a061",
+  "scale": 1000000,
+  "density_pct": 5.0,
+  "commit_mode": "sync (default)",
+  "wire": "pgwire+psycopg"
+ }
+}

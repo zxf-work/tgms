@@ -78,6 +78,16 @@ supersessions are part of the record:
   at 20% density (0.29 s at density 0) and probe peak memory **−70%**,
   which staled the published warm-up facts instead of the replay ones.
   Hash gates green at every density.
+- eval-xtdb-1m-{5,20}-final.json — the first semantic competitor
+  (D-083/D-084): XTDB 2 via pgwire, **op-level** replay of the reference
+  log on **xzgpu** at `a340d6e`, 1M events at 5% and 20% correction
+  density. **400 believed-state probes, zero disagreements** — XTDB's own
+  SQL:2011 supersession reproduces our belief semantics at every probe.
+  Point ops 28–389× native, ingest 3.9–4.7×, diff 2.4×, storage 23–27×;
+  both systems flat in density. Two earlier receipts
+  (xtdb-1m-{5,20}.json, kept on the host) carried a non-idiomatic native
+  S4 and are superseded. Forecast scored per cell in docs/eval_xtdb.md:
+  2 of 8 confirmed, and every miss but one erred against our own engine.
 - eval-resources-coldwarm-{1m,10m}-d082.json — the §15 cold/warm sweep
   re-run on **xzgpu** at `f1498e4`, the protocol-matched refresh for the
   published warm-up facts. Native first-query in a fresh process: 2.4–2.9 →
