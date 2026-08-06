@@ -37,6 +37,21 @@ use crate::staging::{PartitionMap, Staging};
 use crate::visibility::{read_close_run, write_close_run, CloseIndex, CloseRecord};
 
 const CURRENT: &str = "CURRENT";
+
+/// Durability-injection point (D-086). A no-op unless `TGMS_CRASH_POINT`
+/// names this exact point, in which case the process aborts — no unwinding,
+/// no destructors — so the on-disk state is what a power cut at this line
+/// would leave. The env read costs one lookup per call on the write path
+/// only; the harness (`scripts/eval_durability.py`) is the only intended
+/// setter.
+pub(crate) fn crash_point(name: &str) {
+    if let Ok(v) = std::env::var("TGMS_CRASH_POINT") {
+        if v == name {
+            eprintln!("TGMS_CRASH_POINT hit: {name}");
+            std::process::abort();
+        }
+    }
+}
 const DICT: &str = "dict.log";
 const SUBDIRS: [&str; 4] = ["manifests", "seg", "close", "idx"];
 /// Marker written by `compact_current_only` (plan §13). A store carrying it
@@ -311,11 +326,13 @@ impl NativeStore {
         let t = std::time::Instant::now();
         write_atomic(&m_path, &json)?;
         let manifest_us = t.elapsed().as_micros() as u64;
+        crash_point("after_manifest");
         let t = std::time::Instant::now();
         write_atomic(
             &root.join(CURRENT),
             &format!("{} {}\n", manifest.generation, manifest.manifest_sha),
         )?;
+        crash_point("after_current");
         Ok((manifest_us, t.elapsed().as_micros() as u64, json.len() as u64))
     }
 
@@ -880,6 +897,7 @@ impl NativeStore {
             next.node_store.push(entry);
         }
         phases.seal_us = phase.elapsed().as_micros() as u64;
+        crash_point("after_seal");
 
         // close run for corrections landing on already-committed rows,
         // durable before the manifest that lists it
@@ -895,6 +913,7 @@ impl NativeStore {
             });
         }
         phases.closes_us = phase.elapsed().as_micros() as u64;
+        crash_point("after_close_runs");
 
         // fold this batch into the running statistics rather than
         // invalidating them; staging is still intact here
@@ -914,6 +933,7 @@ impl NativeStore {
         let phase = std::time::Instant::now();
         let (records, bytes) = self.dict.commit_to_disk()?;
         phases.dict_us = phase.elapsed().as_micros() as u64;
+        crash_point("after_dict");
         next.event_log = event_log;
         next.dict.records = records;
         next.dict.bytes = bytes;

@@ -147,6 +147,7 @@ impl NativeStore {
 
         let segments_after =
             next.edge_lanes.event.len() + next.edge_lanes.interval.len() + next.node_store.len();
+        crate::store::crash_point("compact_before_install");
         self.install(next)?;
 
         Ok(CompactionReport {

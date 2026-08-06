@@ -78,6 +78,12 @@ supersessions are part of the record:
   at 20% density (0.29 s at density 0) and probe peak memory **−70%**,
   which staled the published warm-up facts instead of the replay ones.
   Hash gates green at every density.
+- eval-durability-injection.json — injected crashes at ten write-path
+  boundaries (D-086): real aborts mid-commit via TGMS_CRASH_POINT plus
+  harness-side WAL tears, 3 trials each, four machine-checked questions
+  per trial. First run: 9/10 clean and one real finding at the forecast
+  boundary — a torn final WAL record made the store refuse to open.
+  After EventLog.trim_torn_tail (tests-first): **30/30 trials clean**.
 - eval-xtdb-footprints-1m.json — the XTDB cells for normalized resource
   reporting (D-085): container RSS after a warm query pass **3.78 GB**,
   after a cold boot + one query 935 MB; stop/start cold boot **12.66 s to

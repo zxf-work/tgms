@@ -209,6 +209,7 @@ fn list_dir(dir: &Path) -> Result<Vec<String>> {
 /// Unlink one file, returning the bytes it held.
 fn remove(path: &Path) -> Result<u64> {
     let bytes = fs::metadata(path).map(|m| m.len()).unwrap_or(0);
+    crate::store::crash_point("gc_mid_delete");
     fs::remove_file(path).map_err(|e| EngineError::from(e).at_file(path))?;
     Ok(bytes)
 }
