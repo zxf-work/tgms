@@ -103,6 +103,13 @@ class Store:
                 f"replay onto it. Rebuild the store with `tgms replay`."
             )
         self._chain = chain
+        # a crash mid-append can leave a torn final record; it was never
+        # acknowledged, so recovery trims it before replaying the suffix
+        # (D-086). Anything torn that is *not* the tail keeps failing loudly
+        # in the replay loop below.
+        trimmed = self.eventlog.trim_torn_tail(offset)
+        if trimmed is not None:
+            size = self.eventlog.size()
         if offset == size:
             return  # clean shutdown: nothing to do
         for batch, end, raw in self.eventlog.batches_from(offset):

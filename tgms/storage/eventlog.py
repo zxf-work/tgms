@@ -83,6 +83,55 @@ class EventLog:
         for batch, _end, _raw in self.batches_from(0):
             yield batch
 
+
+    def trim_torn_tail(self, applied_offset: int) -> int | None:
+        """Truncate a torn *final* record left by a crash mid-append (D-086).
+
+        A record the append call produced ends in a newline and carries a
+        `batch_id` that is the hash of its own content, so three signatures
+        at end-of-file mark a tail the crash tore: bytes that do not parse,
+        a record with no terminating newline, and a parseable record whose
+        id does not match its content. Such a record was never acknowledged
+        — `append` fsyncs and *then* returns — so truncating it breaks no
+        promise a caller ever received.
+
+        The boundary is as important as the trim: only defects whose bytes
+        run to end-of-file qualify. Damage with records after it, and any
+        defect at or before `applied_offset` (the cursor's applied prefix),
+        is corruption and stays an error for the callers that read those
+        ranges. Returns the truncation offset, or None if the tail is sound.
+        """
+        size = self.size()
+        with open(self.path, "rb") as f:
+            f.seek(applied_offset or len(f.readline()))
+            while True:
+                start = f.tell()
+                raw = f.readline()
+                if not raw:
+                    return None
+                if not raw.strip():
+                    continue
+                torn = False
+                if not raw.endswith(b"\n"):
+                    torn = True
+                else:
+                    try:
+                        batch = json.loads(raw)
+                        expect = sha256_hex(canonical_json(
+                            {"tt": batch["tt"], "ops": batch["ops"]}))[:16]
+                        if batch.get("batch_id") != expect:
+                            torn = True
+                    except (json.JSONDecodeError, KeyError, TypeError):
+                        torn = True
+                if torn:
+                    if f.tell() != size:
+                        return None  # not the tail: leave it for the loud path
+                    with open(self.path, "r+b") as w:
+                        w.truncate(start)
+                        w.flush()
+                        os.fsync(w.fileno())
+                    return start
+
     def batches_from(self, offset: int) -> Iterator[tuple[dict[str, Any], int, bytes]]:
         """Batches whose records start at or after `offset`, as
         `(batch, end_offset, record_bytes)`.
