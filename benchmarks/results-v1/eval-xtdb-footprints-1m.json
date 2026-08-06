@@ -1,0 +1,23 @@
+{
+ "scale": 1000000,
+ "density_pct": 5.0,
+ "replay": {
+  "wall_s": 393.07,
+  "batches": 48,
+  "ops": 51562,
+  "batch_ms_p50": 4634.0,
+  "batch_ms_p99": 14848.72
+ },
+ "store_bytes": 750833336,
+ "mem_after_suite_bytes": 3783866187,
+ "cold_start_s": {
+  "to_ready": 12.66,
+  "first_query_ms": 84.93,
+  "total_to_first_answer": 12.75
+ },
+ "mem_after_cold_query_bytes": 935120076,
+ "manifest": {
+  "commit": "b5bdcdadb1535c1d40722f3cca08d9ca2f9743aa",
+  "image": "ghcr.io/xtdb/xtdb"
+ }
+}

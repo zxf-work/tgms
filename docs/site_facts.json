@@ -947,6 +947,18 @@
    "kind": "observed benchmark result",
    "prose": "x smaller on-disk store for TGMS native vs XTDB holding the same replayed log at 1M",
    "snapshot": "eval-xtdb-1m-{5,20}-final.json, commit a340d6e"
+  },
+  "xtdb_cold_start_s": {
+   "value": "12.75",
+   "kind": "observed benchmark result",
+   "prose": "seconds from container start to first answered query for XTDB 2 at 1M (12.66 s boot-to-ready + 85 ms query); TGMS native reads 0.29-0.62 s on the same host",
+   "snapshot": "eval-xtdb-footprints-1m.json, commit b5bdcda"
+  },
+  "xtdb_mem_warm_gb": {
+   "value": "3.8",
+   "kind": "observed benchmark result",
+   "prose": "GB container-resident memory for XTDB 2 after a warm query pass at 1M; TGMS native's suite peak on the same host is 176 MB",
+   "snapshot": "eval-xtdb-footprints-1m.json, commit b5bdcda"
   }
  },
  "retired_phrases": [

@@ -449,3 +449,35 @@ here; the reader sweep is unchanged since §14.4.
 - Single store per scale, ~0.5% correction density (the harness
   baseline). §13 shows correction density moves scan latencies; these
   axes were not crossed with it.
+
+## §19 Normalized footprints across systems (D-085)
+
+The three footprints D-070 requires, at the same workload — 1M events at 5%
+correction density, one reference log, xzgpu — so that no system's headline
+number hides what another system's includes. TGMS and DuckDB cells from
+`eval-resources-coldwarm-1m-d082.json` and the store receipts; XTDB cells
+from `eval-xtdb-footprints-1m.json` (container RSS and stop/start cold
+boot, which is what a deployment actually pays for a JVM server).
+
+| system | store on disk | query-ready memory | cold start → first answer |
+|---|---:|---:|---:|
+| TGMS native (embedded) | 28.0 MB | 176 MB | 0.29–0.62 s |
+| DuckDB (embedded) | 187.7 MB¹ | 602 MB | 0.27–0.86 s |
+| XTDB 2 (server, JVM) | 750.8 MB | 3,784 MB warm² | 12.75 s³ |
+
+¹ DuckDB disk from the 1M harness-family measurement of record
+(`eval-1m` receipts); the other cells are same-run.
+² Container RSS after a warm query pass; after a cold boot and one query it
+reads 935 MB and grows toward the warm figure with use. For a JVM server
+the container RSS *is* the deployment floor — that is the point of
+normalized accounting, not a criticism of the JVM.
+³ 12.66 s of that is boot-to-pgwire-ready; the first query itself takes
+85 ms. TGMS's cold number, by contrast, is almost entirely its in-process
+index warm-up (§15, post-D-082).
+
+Reading it honestly in both directions: XTDB's replay of the same log
+reproduced within 4.4% of the record run (393 vs 411 s), the deployment
+models differ by design (embedded library against wire-protocol server),
+and the normalized table is precisely where that difference stops hiding —
+27× on disk, 21× on resident memory, and 20–40× on cold start are the cost
+of the server generality TGMS deliberately does not have.

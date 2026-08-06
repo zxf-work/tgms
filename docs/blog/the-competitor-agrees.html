@@ -218,9 +218,15 @@ temporal operations rather than open-ended SQL.</div>
 <h2>What this result does not show</h2>
 
 <p>It does not show general superiority, and several cells remain
-unmeasured: cold-start comparison, edge-heavy operation timings, XTDB
-under configuration tuning beyond its recommended single-node image, and
-scale beyond one million events. The agreement result is bounded by the
+unmeasured: edge-heavy operation timings, XTDB under configuration tuning
+beyond its recommended single-node image, and scale beyond one million
+events. The resource footprints were measured after the head-to-head and
+point the same way — XTDB reaches its first answer
+<span data-fact="xtdb_cold_start_s">12.75</span> s after container start
+(nearly all JVM-and-node boot) and holds
+<span data-fact="xtdb_mem_warm_gb">3.8</span> GB resident when warm,
+against 0.3–0.6 s and 176 MB for the embedded TGMS engine — but a server's
+boot and heap are the cost of being a server, not an engine verdict. The agreement result is bounded by the
 400 + 140 probe points actually checked — probes are samples, not proofs.
 And the six operations here are storage semantics only: no graph
 traversal, no operator algebra, none of the agent-facing machinery. Those

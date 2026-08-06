@@ -78,6 +78,13 @@ supersessions are part of the record:
   at 20% density (0.29 s at density 0) and probe peak memory **−70%**,
   which staled the published warm-up facts instead of the replay ones.
   Hash gates green at every density.
+- eval-xtdb-footprints-1m.json — the XTDB cells for normalized resource
+  reporting (D-085): container RSS after a warm query pass **3.78 GB**,
+  after a cold boot + one query 935 MB; stop/start cold boot **12.66 s to
+  pgwire-ready** + 85 ms first query; store 750.8 MB (reproduces the
+  record receipt); replay 393 s (within 4.4% of the record run). Feeds
+  eval_resources.md §19's three-footprint table alongside the D-082
+  coldwarm cells for native and DuckDB.
 - eval-xtdb-1m-{5,20}-final.json — the first semantic competitor
   (D-083/D-084): XTDB 2 via pgwire, **op-level** replay of the reference
   log on **xzgpu** at `a340d6e`, 1M events at 5% and 20% correction
