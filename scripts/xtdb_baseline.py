@@ -202,28 +202,42 @@ def _apply(cur, op: dict[str, Any], seen_nodes: set[str]) -> None:
             f"SET props = %s, source = %s WHERE _id = %s",
             (ts(vt_s), canonical_json(op["props"]), op.get("source", "ingest"), ident))
     elif kind == "ingest_events":
+        # bulk load through executemany, which psycopg pipelines: one
+        # prepared per-row statement, many bindings, few round trips. The
+        # obvious alternative — multi-row VALUES chunks — was measured 4.7x
+        # SLOWER on xtdb (36.9 s -> 172.5 s at 20k/20%): its SQL layer pays
+        # per parameter in the statement text, so the fat statements lose to
+        # the prepared thin one. D-030 says idioms written to win; this one
+        # was chosen by measurement, not taste.
         offset = op.get("offset", 0)
         label = op.get("node_label", "Node")
+        source = op.get("source", "ingest")
+        prov = op.get("provenance_ref")
         first_seen: dict[str, int] = {}
+        rows: list[tuple] = []
         for i, ev in enumerate(op["events"]):
             disc = ev.get("disc", f"#{offset + i}")
             vt_s = ev["vt_s"]
             vt_e = ev.get("vt_e") or vt_s + 1
             eid = edge_eid(ev["src"], ev["dst"], ev["rel_type"], disc)
-            cur.execute(
-                "INSERT INTO edges (_id, src, dst, rel_type, disc, props, source, "
-                "provenance_ref, _valid_from, _valid_to) VALUES "
-                "(%s,%s,%s,%s,%s,%s,"
-                "%s,%s,%s,%s)",
-                (eid, ev["src"], ev["dst"], ev["rel_type"], disc,
-                 canonical_json(ev.get("props", {})), op.get("source", "ingest"),
-                 op.get("provenance_ref"), ts(vt_s), ts(vt_e)))
+            rows.append((eid, ev["src"], ev["dst"], ev["rel_type"], disc,
+                         canonical_json(ev.get("props", {})), source, prov,
+                         ts(vt_s), ts(vt_e)))
             for u in (ev["src"], ev["dst"]):
                 if u not in first_seen or vt_s < first_seen[u]:
                     first_seen[u] = vt_s
-        for u in sorted(u for u in first_seen if u not in seen_nodes):
-            _insert_node(cur, u, label, {}, op.get("source", "ingest"), None,
-                         first_seen[u], OPEN_END, seen_nodes)
+        cur.executemany(
+            "INSERT INTO edges (_id, src, dst, rel_type, disc, props, "
+            "source, provenance_ref, _valid_from, _valid_to) VALUES "
+            "(%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)", rows)
+        node_rows = [(u, label, canonical_json({}), source, prov,
+                      ts(first_seen[u]))
+                     for u in sorted(u for u in first_seen if u not in seen_nodes)]
+        if node_rows:
+            cur.executemany(
+                "INSERT INTO nodes (_id, label, props, source, provenance_ref, "
+                "_valid_from) VALUES (%s,%s,%s,%s,%s,%s)", node_rows)
+        seen_nodes.update(u for u, *_ in node_rows)
     else:
         raise ValueError(f"unknown op kind {kind}")
 
@@ -238,13 +252,41 @@ def _table_ident(op: dict[str, Any]) -> tuple[str, str]:
 # --- probes and the six operations ----------------------------------------- #
 
 
-def probe_points(adapter, n_identities: int, final_tt: int) -> list[dict[str, Any]]:
+def multi_touch_uids(log_path: Path, limit: int) -> list[str]:
+    """Identities written more than once inside a single batch.
+
+    The D-059 shape — a second op reading belief the first has already
+    changed, inside one transaction — is where our semantics and a competitor
+    are likeliest to diverge (F1), and uniform sampling rarely lands on it.
+    """
+    hits: list[str] = []
+    with open(log_path) as f:
+        for line in f:
+            batch = json.loads(line)
+            if "tt" not in batch:
+                continue
+            touched: dict[str, int] = {}
+            for op in batch["ops"]:
+                uid = op.get("uid") or (op.get("ref", {}).get("uid"))
+                if uid:
+                    touched[uid] = touched.get(uid, 0) + 1
+            hits.extend(u for u, n in touched.items() if n > 1)
+            if len(hits) >= limit:
+                break
+    return sorted(set(hits))[:limit]
+
+
+def probe_points(adapter, n_identities: int, final_tt: int,
+                 must_include: list[str] | None = None) -> list[dict[str, Any]]:
     """Believed-state probes from the native store's own boundaries."""
     import random
 
     rnd = random.Random(83)
     uids = sorted({v.uid for v in adapter.all_node_versions()})
     picks = rnd.sample(uids, min(n_identities, len(uids)))
+    for u in must_include or []:
+        if u in set(uids) and u not in picks:
+            picks.append(u)
     probes = []
     for uid in picks:
         versions = [v for v in adapter.all_node_versions() if v.uid == uid]
@@ -324,7 +366,10 @@ def main() -> int:
               f"(native {native_replay_s:.2f}s)", flush=True)
 
         print("agreement: believed-state probes …", flush=True)
-        probes = probe_points(adapter, args.probes, final_tt)
+        d059_uids = multi_touch_uids(Path(data.log), limit=10)
+        probes = probe_points(adapter, args.probes, final_tt,
+                              must_include=d059_uids)
+        rec["d059_targeted_identities"] = len(d059_uids)
         disagreements = []
         for p in probes:
             ours = native_believed(adapter, p["uid"], p["vt"], p["tt"])
@@ -372,11 +417,21 @@ def main() -> int:
         def n3(): return adapter.believed_node_versions(sample_uid, mid_tt)
         def n4(): return [v for v in adapter.all_node_versions() if v.uid == sample_uid]
         def n6():
-            old = {v.uid: v.props for v in adapter.all_node_versions()
-                   if v.tt_s <= mid_tt < v.tt_e and v.vt_s <= mid_vt < v.vt_e}
-            new = {v.uid: v.props for v in adapter.all_node_versions()
-                   if v.tt_e >= OPEN_END and v.vt_s <= mid_vt < v.vt_e}
-            return [u for u in old.keys() & new.keys() if old[u] != new[u]]
+            # the native diff idiom (diff.global's shape): columnar scans at
+            # each tt, vid comparison first, props materialized only for
+            # identities whose believed version changed. The earlier draft
+            # full-scanned all_node_versions twice, which is not our idiom
+            # and would have flattered XTDB.
+            def believed_at(tt):
+                c = adapter.nodes_columnar(as_of_tt=tt, vt_min=mid_vt,
+                                           vt_max=mid_vt + 1)
+                return dict(zip(c["uid"].tolist(), c["vid"].tolist()))
+            old, new = believed_at(mid_tt), believed_at(OPEN_END)
+            changed = [u for u in old.keys() & new.keys() if old[u] != new[u]]
+            vids = [old[u] for u in changed] + [new[u] for u in changed]
+            props = adapter.props_for_vids("node", vids)
+            return [u for u in changed
+                    if props.get(old[u]) != props.get(new[u])]
 
         rec["ops"] = {}
         for label, xf, nf in (("s1_current", s1, n1), ("s2_vt_asof", s2, n2),
@@ -386,6 +441,19 @@ def main() -> int:
             nt, _ = timed(nf)
             rec["ops"][label] = {"xtdb_ms": round(xt, 3), "native_ms": round(nt, 3)}
             print(f"  {label}: xtdb {xt:.2f} ms  native {nt:.2f} ms", flush=True)
+
+        # F7 — storage, as D-070's footprints allow at this stage: bytes on
+        # disk for each system's store of the same log. XTDB's is read from
+        # inside the container (its /var/lib/xtdb); ours is the store dir.
+        xdu = subprocess.run(
+            ["docker", "exec", name, "du", "-sb", "/var/lib/xtdb"],
+            capture_output=True, text=True)
+        ndu = subprocess.run(["du", "-sk", str(native_path)],
+                             capture_output=True, text=True)
+        rec["storage_bytes"] = {
+            "xtdb": int(xdu.stdout.split()[0]) if xdu.returncode == 0 and xdu.stdout else None,
+            "native": int(ndu.stdout.split()[0]) * 1024 if ndu.stdout else None,
+        }
 
         rec["manifest"] = {
             "commit": subprocess.run(["git", "rev-parse", "HEAD"],
