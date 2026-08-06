@@ -58,6 +58,69 @@ reachability, `entity_history` point reads. Axes: window fraction
   some cells at 20%: the seed anecdote (`motif.filtered` refused at 20%
   only) becomes a measured region of the frontier, not a story.
 
-## Results
+## Results — 90 cells, five stores, zero timeouts (xzgpu, `70bc31f`)
 
-*(scored per cell after the runs — see D-086)*
+Receipt `eval-guardrail-frontier.json`. The frontier at the default
+ceilings:
+
+| budget | false admissions | false rejections | best multiplier | FA/FR at best |
+|---:|---:|---:|---:|---:|
+| 0.5 s | 2 | 9 | 0.5× | 0 / 11 |
+| 2 s | **0** | **16** | **256×** | 0 / 3 |
+| 10 s | 0 | 18 | 256× | 0 / 5 |
+
+**The guardrail never admits anything over budget, and pays for that safety
+by refusing 16–18 of 90 finishable calls (18–20%) — with the 2 s optimum a
+factor of 256 above the default ceilings.** The defaults are roughly two
+orders of magnitude too conservative for these workloads on this host,
+because the estimates are systematically inflated (below) and because the
+engine under the cost models has been through the D-047 kernels and the
+D-076…D-081 arc since anything was calibrated.
+
+Two cells deserve names:
+
+- **`entity_history` estimates a full-store scan (1,015,199 rows at 1M) for
+  a 0.13 ms point read** — seven orders of magnitude of estimate error. Its
+  cost model predates both the identity postings (WP-N4) and the
+  open-version index (D-076). Harmless at the default ceiling, and the
+  first thing any tightened ceiling would wrongly refuse.
+- **`motif.unfiltered` at 1M estimates 10.1 billion expansions and runs in
+  2.9 s.** The E_COST demo refusal — the founding anecdote of the guardrail
+  — refuses a call that finishes in under three seconds on the measurement
+  host.
+
+## Scoring the forecast (D-086)
+
+- **F1 — row estimates within 2× on scan shapes: UNSCOREABLE, instrument
+  gap.** The harness records actual wall time, not actual rows scanned;
+  time-linearity across window fractions is consistent with accurate scan
+  estimates, but that is a proxy, not the measurement F1 named. Adding an
+  actual-rows column is the harness backlog item, and F1 stays open rather
+  than being scored on the proxy.
+- **F2 — skew produces a ≥5× motif *under*-estimate: WRONG, in the safe
+  direction.** Every motif estimate at every store — skewed CollegeMsg
+  included — is a large **over**-estimate (1M: est 10.1 B expansions,
+  actual 2.9 s of work). The dangerous direction never appeared, which is
+  exactly why false admissions are zero everywhere. The D-030-era reprice
+  overcorrected, and the frontier now quantifies by how much.
+- **F3 — false rejections dominate at the defaults: CONFIRMED,
+  overwhelmingly.** FR:FA is 16:0 at 2 s against a forecast of ≥3:1.
+- **F4 — time is the weak axis, rows→time varies ≥10× across shapes:
+  CONFIRMED at 50–100× the forecast magnitude.** Milliseconds per million
+  estimated units at 1M span 0.29 (unfiltered motif) to 166.6
+  (reachability) — **574×** across shapes with honest estimates, ~1,200×
+  including the broken `entity_history` model. A single ceiling pair
+  cannot encode that spread; per-operator time coefficients can.
+- **F5 — density moves estimates <1.5× and actuals more: CONFIRMED.**
+  Estimates shift 1.21–1.48× from 0.5% to 20%; actuals shift 1.02–2.12×
+  (`motif.filtered` the largest, the §13 anecdote now a measured region).
+
+## What follows (queued, not done here)
+
+The characterization says the fix is a **cost-model refresh**, not a
+ceiling tweak: retire `entity_history`'s pre-postings estimate, recalibrate
+the motif expansion model against these 90 receipts, and attach
+per-operator rows→time coefficients so budgets stated in seconds stop
+inheriting a 574× spread. Each change re-runs this harness as its
+validation — the frontier is now the standing instrument the guardrail
+never had.

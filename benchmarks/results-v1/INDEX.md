@@ -78,6 +78,15 @@ supersessions are part of the record:
   at 20% density (0.29 s at density 0) and probe peak memory **−70%**,
   which staled the published warm-up facts instead of the replay ones.
   Hash gates green at every density.
+- eval-guardrail-frontier.json — the cost guardrail scored as a classifier
+  (D-086): 90 cells across five stores (200k/1M × two densities +
+  CollegeMsg), estimates from each operator's own cost_fn, ground truth
+  with the check skipped, zero timeouts. At a 2 s budget the defaults give
+  **0 false admissions / 16 false rejections**, optimum at **256× the
+  default ceilings**; rows→time spans **574×** across operator shapes; and
+  `entity_history` estimates a full-store scan for a 0.13 ms point read —
+  its cost model predates two eras of engine work. See
+  docs/eval_guardrail.md.
 - eval-durability-injection.json — injected crashes at ten write-path
   boundaries (D-086): real aborts mid-commit via TGMS_CRASH_POINT plus
   harness-side WAL tears, 3 trials each, four machine-checked questions
