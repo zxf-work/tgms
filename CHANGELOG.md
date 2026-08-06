@@ -1,5 +1,33 @@
 # Changelog
 
+## Unreleased (v0.6.0 draft)
+
+The correction-path release: the write path is now flat on every measured
+axis except batch size, which is the user's choice.
+
+**Restart recovery halved under correction load.** Replaying an event log at
+20% correction density: 296.8 s → 137.5 s at 1M scale. The close index now
+*extends* across a commit with the one run the commit added instead of
+rebuilding from every accumulated close-run file, so the first read after a
+commit costs the same over 999 accumulated runs as over none (36,998 µs →
+431 µs on the standing probe).
+
+**Corrections to long-lived entities stop paying for their history.** An
+in-memory open-version index (`identity → currently-open rows`) plus a
+per-generation segment-name cache make `believed_*` flat in per-identity
+depth: 1.18× across 1 to 1,000 retained versions, where the same walk was
+linear in depth before. Same-binary A/B at depth 1,000: 63.9× on the lookup.
+
+**A standing correction matrix, and the guidance it produced.** Density ×
+batch size × versions-per-identity × out-of-order distance, small in CI and
+full-scale in release evaluation, with regression gates calibrated against
+rebuilt defective engines and verified to fail on them. The headline for
+users: **batch correction-heavy ingest at ~100 ops per commit** — the
+optimum at every density; one-per-commit costs ~50× more per correction, and
+10,000-per-commit is 12–26× worse *and* holds a 27-second p50 commit
+latency. Known cost of this release: index maintenance adds ~8–10% commit
+latency at batch 10,000 (and nothing measurable at the recommended size).
+
 ## v0.5.0 — 2026-08-04
 
 Engine release, and the release in which the operator surface stopped
