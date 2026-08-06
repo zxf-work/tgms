@@ -80,6 +80,17 @@ def grid_cells(store, key: str) -> list[dict[str, Any]]:
     qs = {q.id: q for q in H.registry(t0, t1, tt_epoch1=t0 + 1,
                                        filter_uids=tuple(f"n{i}" for i in range(40)))}
     cells = []
+    # the would-be-refused class: motifs with no node filter, the E_COST
+    # demo shape — without it the frontier has no positive class at the
+    # default ceilings
+    unfiltered = json.loads(json.dumps(qs["motif.filtered"].args))
+    unfiltered.pop("node_filter", None)
+    for frac in WINDOW_FRACS:
+        a = json.loads(json.dumps(unfiltered))
+        if "window" in a:
+            a["window"] = {"t_a": t0, "t_b": t0 + max(1, int(span * frac))}
+        cells.append({"store": key, "qid": "motif.unfiltered",
+                      "op": qs["motif.filtered"].op, "frac": frac, "args": a})
     for op_qid in OPS:
         q = qs[op_qid]
         for frac in WINDOW_FRACS:
