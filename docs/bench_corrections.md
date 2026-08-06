@@ -93,7 +93,77 @@ term is back. That is what the CI gate asserts, and it is asserted as a
 
 ---
 
-## Results — `full` profile, xzgpu, HEAD `4481997`
+## Results — `full` profile, xzgpu, HEAD `d5620bf` (current)
+
+The same matrix after the open-version index (D-076), the segment-name cache
+(D-077) and the close-index fold (D-079). 89.2 minutes, receipt
+`bench-corrections-full-d079.json`. The grid below is directly comparable to
+the `4481997` run further down; **the depth axis is not**, because D-075
+changed its construction.
+
+### ms per correction — old → new
+
+| density | batch 1 | batch 10 | batch 100 | batch 1,000 | batch 10,000 |
+|---:|---:|---:|---:|---:|---:|
+| 1% | 15.18→11.98 | 1.19→0.86 | **0.123→0.103** | 0.273→0.303 | 2.45→2.69 |
+| 5% | 15.39→12.20 | 2.17→1.28 | **0.281→0.130** | 0.291→0.307 | 2.45→2.70 |
+| 20% | 16.08→12.01 | 2.17→1.28 | **0.952→0.230** | 0.355→0.312 | 2.47→2.70 |
+| 50% | 16.25→11.09 | 2.16→1.19 | **0.955→0.231** | 0.498→0.341 | 2.52→2.72 |
+
+**The optimum moved to batch 100 at every density**, where before it was 100
+at low density and 1,000 at high. The best achievable per-correction cost
+falls 0.355→0.230 ms at 20% and 0.498→0.231 ms at 50%.
+
+### Per-identity history depth is now flat
+
+| depth | 1 | 10 | 100 | 1,000 |
+|---:|---:|---:|---:|---:|
+| ms/corr | 0.207 | 0.238 | 0.240 | 0.244 |
+
+**1.18× across a 1,000× range**, with seed batches held fixed so the axis
+measures depth and nothing else. This is the axis that opened Session AC at a
+claimed 18.8×.
+
+### Replay — the restart path
+
+| density | 1% | 5% | 20% |
+|---:|---:|---:|---:|
+| before | 93.66 s | 109.45 s | 296.81 s |
+| after | 91.01 s | 98.82 s | **137.50 s** |
+
+At 20% correction density replay is **2.2× faster** (1.484 → 0.688 ms per
+correction). Recovery time is what a user actually waits for after a crash.
+
+### What got worse, and why it is a real trade
+
+**Batch 10,000 regressed 8–10%**, consistently at every density — and it is
+not noise, it is commit latency:
+
+| cell | commits | p50 commit before | after | |
+|---|---:|---:|---:|---|
+| 20% × batch 100 | 2,000 | 90.42 ms | 22.35 ms | **4× better** |
+| 20% × batch 1,000 | 200 | 349.59 | 307.95 | better |
+| 20% × batch 10,000 | 20 | 24,677.87 | 26,965.03 | **9% worse** |
+
+The open-version index does per-row work at index time. That is repaid by
+cheaper lookups *per generation* — so it pays when there are many generations
+and loses when there are very few. At batch 10,000 a cell commits 20 times
+and never recovers the cost. **This scores D-076's F5, which was left
+unscored: commit overhead is ~8–10% at batch 10,000, against a forecast of
+≤5%.** At batch 100 it is overwhelmed several times over by the fold's gains.
+
+Storage is unchanged — the manifest share table below still holds exactly, to
+the tenth of a percent, since none of these changes touch what is written.
+
+### Guidance, revised
+
+**Batch corrections at 100.** Not 1,000, and emphatically not 10,000: the
+largest batch is now 12–26× worse per correction than the optimum *and* pays
+a 27-second p50 commit latency, during which nothing else can commit.
+
+---
+
+## Results — `full` profile, xzgpu, HEAD `4481997` (superseded)
 
 20,000 entities over a 1M-event base, ≤2,000 commits per cell, replay timed,
 **100.8 minutes**. Receipt `benchmarks/results-v1/bench-corrections-full-d073.json`.

@@ -68,6 +68,16 @@ supersessions are part of the record:
   batch-1 store at every density. 8 capped cells flagged `truncated`; the
   manifest records `dirty: true` for the one uncommitted file, the harness
   itself — see docs/bench_corrections.md
+- bench-corrections-full-d079.json — the same matrix on **xzgpu** at
+  `d5620bf`, after the open-version index (D-076), the segment-name cache
+  (D-077) and the close-index fold (D-079). 89.2 min. Per-identity depth is
+  now **flat — 1.18x across depths 1 to 1,000** with seed batches held fixed,
+  the axis that opened the session at a claimed 18.8x. Best per-correction
+  cost 0.355 -> 0.230 ms at 20% density, and the optimum batch size moves to
+  100 at every density. Replay at 20% density 296.81 -> 137.50 s (2.2x).
+  Batch 10,000 regressed 8-10%, which is commit-latency overhead from the
+  index's per-row maintenance and is the honest cost of the trade — see
+  docs/bench_corrections.md
 
 - eval-resources-threads-{1m,10m}.json — §14.3 thread-scaling curves
   (native via TGMS_SCAN_THREADS, DuckDB via SET threads; 1–32 workers;
