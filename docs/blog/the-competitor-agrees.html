@@ -1,0 +1,260 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>The bi-temporal competitor agrees — TGMS blog</title>
+<meta name="description" content="Bi-temporality is not our idea — it is SQL:2011, decades of temporal-database research, and production systems like XTDB. So we replayed one op stream into XTDB and TGMS: 400 belief probes, zero disagreements, and an honest cost comparison.">
+<style>
+:root{--ink:#1a2534;--mut:#5b6b7c;--blue:#1c64d9;--blue2:#3b82f6;--line:#e3e8ef;
+      --bg:#fbfcfe;--card:#fff;--codebg:#0e1c30;--codetx:#dce7f5;--ok:#0a7d33;
+      --amber:#b58900;--bad:#c0392b;
+      --mono:ui-monospace,'SF Mono',Menlo,monospace}
+@media (prefers-color-scheme: dark){
+:root{--ink:#e6edf6;--mut:#95a6ba;--blue:#6ea8ff;--blue2:#8bbcff;--line:#243244;
+      --bg:#0b1420;--card:#121e2e;--codebg:#0a1017;--codetx:#cfe0f2;--ok:#4ade80;
+      --amber:#e3b341;--bad:#f87171}}
+*{box-sizing:border-box}
+body{margin:0;font-family:-apple-system,'Segoe UI',Roboto,sans-serif;
+     color:var(--ink);background:var(--bg);-webkit-font-smoothing:antialiased}
+.hero{background:linear-gradient(150deg,#0e1c30 0%,#173863 62%,#1c64d9 130%);
+      color:#fff;padding:30px 24px 44px}
+.hero .nav{max-width:760px;margin:0 auto 30px;font-size:14px}
+.hero .nav a{color:#c9d8ef;text-decoration:none;margin-right:14px}
+.hero .inner{max-width:760px;margin:0 auto}
+.kicker{display:inline-block;background:#ffffff22;border:1px solid #ffffff33;
+        border-radius:14px;padding:3px 12px;font-size:12px;letter-spacing:.08em;
+        text-transform:uppercase;color:#dbe7f8}
+h1{font-size:clamp(26px,4.6vw,38px);line-height:1.16;letter-spacing:-.7px;
+   margin:14px 0 10px;color:#fff}
+.byline{color:#a9c0e2;font-size:14.5px}
+.byline a{color:#dbe7f8}
+article{max-width:760px;margin:0 auto;padding:40px 24px 30px;line-height:1.72;
+        font-size:17px}
+article>p:first-of-type{font-size:19px;color:var(--mut)}
+h2{font-size:23px;letter-spacing:-.3px;margin:44px 0 12px;position:relative;
+   padding-top:18px}
+h2::before{content:"";position:absolute;top:0;left:0;width:44px;height:4px;
+   border-radius:2px;background:linear-gradient(90deg,var(--blue),var(--blue2))}
+.pull{font-size:22px;line-height:1.45;font-weight:600;letter-spacing:-.2px;
+      border:0;margin:30px 0;padding:0 0 0 22px;position:relative;color:var(--ink)}
+.pull::before{content:"";position:absolute;left:0;top:6px;bottom:6px;width:5px;
+      border-radius:3px;background:linear-gradient(180deg,var(--blue),var(--blue2))}
+.duo{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin:22px 0}
+@media(max-width:640px){.duo{grid-template-columns:1fr}}
+.duo .cell{background:var(--card);border:1px solid var(--line);border-radius:12px;
+     padding:14px 16px}
+.duo .cell b{display:block;font-size:13px;text-transform:uppercase;
+     letter-spacing:.06em;color:var(--mut);margin-bottom:6px}
+.duo .big{font-size:30px;font-weight:700;color:var(--blue)}
+.duo .big.bad{color:var(--bad)}
+figure{margin:26px 0;background:var(--card);border:1px solid var(--line);
+       border-radius:14px;padding:18px 18px 8px}
+figcaption{color:var(--mut);font-size:13.5px;line-height:1.5;padding:8px 4px 10px}
+table{border-collapse:collapse;width:100%;font-size:15px;margin:20px 0;
+      background:var(--card);border-radius:12px;overflow:hidden;
+      border:1px solid var(--line)}
+th,td{padding:11px 12px;text-align:right;border-bottom:1px solid var(--line)}
+th{background:#1c64d90d;font-size:13px;text-transform:uppercase;
+   letter-spacing:.04em;color:var(--mut)}
+th:first-child,td:first-child{text-align:left}
+tr:last-child td{border-bottom:0}
+td.win{color:var(--ok);font-weight:700}
+td.miss{color:var(--bad);font-weight:700}
+a{color:var(--blue)}
+code{font-family:var(--mono);background:#1c64d914;border-radius:5px;
+     padding:1px 6px;font-size:.9em}
+.note{background:#1c64d90e;border:1px solid #1c64d930;border-radius:12px;
+      padding:14px 18px;font-size:15px;margin:24px 0;line-height:1.6}
+.next{max-width:760px;margin:0 auto;padding:0 24px 70px}
+.next a{display:block;background:var(--card);border:1px solid var(--line);
+        border-radius:14px;padding:18px 22px;text-decoration:none;color:var(--ink);
+        transition:transform .12s, box-shadow .12s}
+.next a:hover{transform:translateY(-2px);box-shadow:0 10px 26px #0e1c301f}
+.next .lbl{font-size:12px;color:var(--mut);text-transform:uppercase;letter-spacing:.07em}
+.next .ttl{color:var(--blue);font-weight:650;font-size:17px;margin-top:4px}
+.sub{color:#c9d8ef;font-size:16.5px;line-height:1.5;margin:6px 0 10px;max-width:56ch}
+.lede{margin:0 0 26px;padding:16px 20px;border-left:5px solid var(--blue);
+      background:var(--card);border-radius:0 12px 12px 0;font-size:18px;
+      line-height:1.6;color:var(--ink)}
+article ul{padding-left:22px;margin:16px 0}
+article li{margin:7px 0}
+svg text{font-family:-apple-system,'Segoe UI',Roboto,sans-serif}
+svg .m{font-family:var(--mono)}
+</style></head><body>
+
+<div class="hero">
+<div class="nav"><a href="../">← TGMS</a><a href="./">blog</a>
+<a href="https://github.com/zxf-work/tgms">github</a></div>
+<div class="inner">
+<span class="kicker">Post #11 · Evidence &amp; capability</span>
+<h1>The bi-temporal competitor agrees — and that is the headline</h1>
+<div class="sub">How do we know TGMS’s two clocks mean the same thing
+everyone else means by bi-temporality?</div>
+<div class="byline">Xiaofei Zhang · University of Memphis · August 2026 · TGMS 0.6.0-dev ·
+snapshot <span class="m">eval-xtdb-1m</span> · 8 min read · Status: Current</div>
+</div></div>
+
+<article>
+
+<p>TGMS keeps two clocks on every fact: when it was true, and when the
+system believed it. That idea is not ours. It has a forty-year literature,
+a place in the SQL:2011 standard, and production databases built around it
+— <a href="https://xtdb.com">XTDB</a> being the clearest example. Which
+raises the question this post answers: when we say <em>bi-temporal</em>, do
+we mean what they mean? We fed the same operation stream to both systems
+and probed their beliefs at four hundred points. They disagreed at none of
+them.</p>
+
+<h2>In one sentence</h2>
+
+<p>XTDB — a mature bi-temporal SQL database, doing its own SQL:2011
+supersession over our raw operations — returns the same believed state as
+the TGMS native engine at
+<span data-fact="xtdb_probes">400</span> of
+<span data-fact="xtdb_probes">400</span> probe points across two correction
+densities at one million events; TGMS is
+<span data-fact="xtdb_ingest_ratio">3.9–4.7</span>× faster at
+correction-heavy ingest and
+<span data-fact="xtdb_storage_ratio">23–27</span>× smaller on disk, and the
+agreement matters more than either ratio.</p>
+
+<h2>Why this matters</h2>
+
+<p>Bi-temporality is easy to claim and easy to get subtly wrong. A
+correction that arrives mid-transaction, a retraction that should truncate
+one version but not its later neighbours, a valid-interval carve that
+leaves a sliver believed that never should have been — every one of these
+is a place where two implementations can silently diverge while both
+calling themselves bi-temporal. Comparing against DuckDB or PostgreSQL
+cannot catch that: they execute the SQL we write, so they inherit whatever
+our semantics already say. Only a system with its <em>own</em> independent
+notion of the two clocks can contest ours.</p>
+
+<p>That is also why this comparison exists at all. An external review of
+our evaluation said, correctly, that the bi-temporal claims had never faced
+a competitor that contests them. XTDB is that competitor: its whole
+identity is the thing we borrow.</p>
+
+<h2>The idea in plain language</h2>
+
+<p>The test discipline is the same one we use between our own backends:
+<b>one operation stream, two systems, compare what they end up
+believing</b> — never compare row layouts, because two correct bi-temporal
+stores may legitimately cut the same history into different fragments.</p>
+
+<p>Two design choices make the comparison honest rather than decorative.
+First, XTDB receives our <em>operations</em>, not our resolved versions —
+it performs its own supersession, portion carving, and retraction handling
+in its own SQL dialect. Feeding it pre-resolved rows would test nothing but
+its B-trees. Second, our transaction clock maps onto XTDB's system time
+<em>directly</em>: XTDB's backfill mode accepts an explicit system time per
+transaction provided it never decreases, and our event log guarantees
+strictly increasing transaction times by construction. So "what did you
+believe at time T" is asked of both systems with no translation layer.</p>
+
+<h2>What we measured</h2>
+
+<div class="note"><b>Evidence.</b> One reference event log per density
+(1,000,000 events at 5% and 20% correction density), replayed op-level into
+both systems on the same host (xzgpu, 40 cores). 200 believed-state probes
+per density at valid-time and transaction-time boundaries drawn from the
+native store's own version history, plus a 140-probe crafted scenario
+targeting in-batch supersession — the shape our own test suite once found
+hardest. Latencies per §16.3 protocol (warm-ups, then median of 5); XTDB
+timings include the Postgres-wire round trip, as PostgreSQL's and
+ClickHouse's did. Receipts
+<span class="m">eval-xtdb-1m-{5,20}-final.json</span>, harness
+<span class="m">scripts/xtdb_baseline.py</span>, commit
+<span class="m">a340d6e</span>.</div>
+
+<h2>What we found</h2>
+
+<p><b>Semantics first: zero disagreements.</b> Every probe — current
+belief, valid-time as-of, transaction-time as-of, across corrections,
+carves, retractions, and the crafted in-batch scenario — returned the same
+believed state from both systems. The number we care most about in this
+whole comparison is that
+<span data-fact="xtdb_probes_disagree">0</span>.</p>
+
+<table>
+<tr><th>operation</th><th>XTDB (5% / 20%)</th><th>TGMS native</th><th>ratio</th></tr>
+<tr><td>current entity lookup</td><td>2.15 / 2.80 ms</td><td>0.037 / 0.014 ms</td><td class="win">58–200× TGMS</td></tr>
+<tr><td>valid-time as-of</td><td>2.13 / 3.89 ms</td><td>0.028 / 0.010 ms</td><td class="win">76–389× TGMS</td></tr>
+<tr><td>transaction-time as-of</td><td>2.44 / 2.79 ms</td><td>0.026 / 0.023 ms</td><td class="win">94–121× TGMS</td></tr>
+<tr><td>one identity's full history</td><td>5.45 / 3.46 ms</td><td>0.137 / 0.126 ms</td><td class="win">28–40× TGMS</td></tr>
+<tr><td>correction-heavy ingest (replay)</td><td>411 / 1,788 s</td><td>105 / 379 s</td><td class="win">3.9–4.7× TGMS</td></tr>
+<tr><td>snapshot diff between two belief states</td><td>51.5 / 49.1 ms</td><td>21.1 / 20.7 ms</td><td class="win">2.4× TGMS</td></tr>
+<tr><td>store on disk</td><td>750.8 / 939.0 MB</td><td>28.0 / 40.8 MB</td><td class="win">23–27× TGMS</td></tr>
+</table>
+
+<p>Two results we did not expect and report because they cut against easy
+narratives. XTDB is <b>flat in correction density</b>, just as we are —
+the "corrections degrade the competitor" story we might have hoped for is
+not true, and knowing that is worth as much as a win. And the point-lookup
+gap is partly deployment model rather than engine: TGMS runs embedded in
+the client process while XTDB serves a wire protocol from a JVM, so its
+~2 ms floor includes costs an embedded library never pays. The ingest,
+diff, and storage ratios survive that caveat; the 389× does not deserve to
+be read at face value.</p>
+
+<p>The comparison also audited us. While building it, two drafts of the
+harness accidentally timed non-idiomatic TGMS code paths that made XTDB
+look relatively better, and one idiom choice went the other way — the
+textbook bulk-insert pattern turned out 4.7× <em>slower</em> for XTDB than
+per-row prepared statements, so XTDB keeps the faster one. All three
+corrections are in the public commit history.</p>
+
+<h2>What this means in practice</h2>
+
+<div class="duo">
+<div class="cell"><b>Reach for XTDB when</b>
+you want bi-temporality inside a SQL ecosystem, over documents and
+relational shapes, with a mature server, a standard wire protocol, and a
+query language your tools already speak.</div>
+<div class="cell"><b>Reach for TGMS when</b>
+the data is a graph, corrections are frequent, storage and restart budgets
+are tight, or the consumer is an AI agent that must be handed verified
+temporal operations rather than open-ended SQL.</div>
+</div>
+
+<h2>What this result does not show</h2>
+
+<p>It does not show general superiority, and several cells remain
+unmeasured: cold-start comparison, edge-heavy operation timings, XTDB
+under configuration tuning beyond its recommended single-node image, and
+scale beyond one million events. The agreement result is bounded by the
+400 + 140 probe points actually checked — probes are samples, not proofs.
+And the six operations here are storage semantics only: no graph
+traversal, no operator algebra, none of the agent-facing machinery. Those
+claims have different competitor classes and are evaluated separately.</p>
+
+<h2>Takeaway</h2>
+
+<p class="pull">Bi-temporality is inherited, not invented here — and the
+inheritance is faithful: the system whose identity is bi-temporality
+agrees with ours at every point we probed, while TGMS holds a 4× ingest,
+2.4× diff, and 25× storage advantage on graph-shaped correction
+workloads.</p>
+
+<h2>Evidence and reproduction</h2>
+
+<p>Receipts <span class="m">benchmarks/results-v1/eval-xtdb-1m-{5,20}-final.json</span>;
+harness <span class="m">scripts/xtdb_baseline.py</span> (container
+lifecycle, op-level replay, probes, and the crafted in-batch scenario via
+<span class="m">--scenario d059</span>); plan and per-cell forecast scoring
+in <span class="m">docs/eval_xtdb.md</span>. XTDB image
+<span class="m">ghcr.io/xtdb/xtdb</span> at the digest recorded in each
+receipt's manifest.</p>
+
+<h2>Continue reading</h2>
+
+<p>Prerequisite: <a href="two-kinds-of-time.html">why a correction is not
+an update</a> — the two-clock model this whole comparison rests on.
+Next: <a href="evaluating-the-engine.html">where TGMS is fast and where
+specialists still win</a> — the same correctness-gated discipline against
+five non-bi-temporal systems.</p>
+
+</article>
+<footer>
+<div class="inner">TGMS · <a href="index.html">blog</a> ·
+<a href="https://github.com/zxf-work/tgms">github.com/zxf-work/tgms</a></div>
+</footer>
+</body></html>

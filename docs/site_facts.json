@@ -923,6 +923,30 @@
    "prose": "percent of correction-probe questions TGMS answers on the two frozen suites (0.846 email-EU, 0.897 CollegeMsg, Qwen2.5-14B-AWQ)",
    "snapshot": "paper/main.tex tab:main, and the paragraph at main.tex:495",
    "scope_required": "these are TGMS's own scores; the 0.846-0.923 range in the paper's discussion spans TGMS and the equal-information SQL baseline together, so it must not be quoted as TGMS alone"
+  },
+  "xtdb_probes": {
+   "value": "400",
+   "kind": "observed benchmark result",
+   "prose": "believed-state probes at 1M events (5% and 20% correction density) where XTDB and the TGMS native engine were compared point-for-point",
+   "snapshot": "eval-xtdb-1m-{5,20}-final.json, commit a340d6e"
+  },
+  "xtdb_probes_disagree": {
+   "value": "0",
+   "kind": "observed benchmark result",
+   "prose": "disagreements between XTDB and TGMS across all believed-state probes, including the 140-probe crafted in-batch scenario",
+   "snapshot": "eval-xtdb-1m-{5,20}-final.json, commit a340d6e"
+  },
+  "xtdb_ingest_ratio": {
+   "value": "3.9–4.7",
+   "kind": "observed benchmark result",
+   "prose": "x faster correction-heavy ingest (op-level replay of the same event log) for TGMS native vs XTDB at 1M, across 5-20% density",
+   "snapshot": "eval-xtdb-1m-{5,20}-final.json, commit a340d6e"
+  },
+  "xtdb_storage_ratio": {
+   "value": "23–27",
+   "kind": "observed benchmark result",
+   "prose": "x smaller on-disk store for TGMS native vs XTDB holding the same replayed log at 1M",
+   "snapshot": "eval-xtdb-1m-{5,20}-final.json, commit a340d6e"
   }
  },
  "retired_phrases": [

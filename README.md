@@ -16,8 +16,15 @@ to do any of them:
 
 - a **bi-temporal property graph** (valid time × transaction time) that
   distinguishes *evolution* ("the edge ended") from *correction* ("we were
-  wrong"), so agents can answer *"what did we believe on March 1?"* —
-  a question no snapshot or RAG system can express;
+  wrong"), so agents can answer *"what did we believe on March 1?"* — a
+  question latest-state snapshots and the RAG configurations we evaluated
+  cannot express. Bi-temporality itself is inherited, not invented here —
+  it has a four-decade literature, a place in SQL:2011, and production
+  databases built around it. We measure against the clearest of those,
+  [XTDB](https://xtdb.com): fed the same operation stream, the two systems
+  agree on believed state at 400 of 400 probe points, with TGMS 3.9–4.7×
+  faster at correction-heavy ingest on 23–27× less disk
+  ([the head-to-head](https://zxf-work.github.io/tgms/blog/the-competitor-agrees.html));
 - **15 verified temporal operators** (reachability over time-respecting
   paths, δ-motifs, snapshot diffs, burst detection, interval joins, grouped
   aggregation over edge events, and the belief log itself) — typed,

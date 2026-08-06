@@ -180,6 +180,21 @@ have given on 1 March — including the part that later turned out to be wrong.
 This clock is <b>transaction time</b>, and the state it lets you recover is a
 <b>past belief state</b>.</p>
 
+<p>None of this is our invention, and pretending otherwise would be both
+wrong and strategically foolish. Two-clock records have been studied since
+the 1980s — Richard Snodgrass's temporal-database work is the standard
+starting point — the SQL:2011 standard added bi-temporal tables to SQL
+itself, and production systems exist whose whole identity is
+bi-temporality: <a href="https://xtdb.com">XTDB</a> is the one we measure
+against, and its SQL dialect implements exactly the two clocks described
+above. What TGMS adds sits <em>on top of</em> that inheritance: a graph
+data model over both clocks, a physical design that makes correction-aware
+graph queries cheap, and an operator surface an AI agent can be handed
+without being able to fabricate history. The evidence that we and XTDB
+mean the same thing by these words is in
+<a href="the-competitor-agrees.html">the head-to-head</a>: four hundred
+belief probes, zero disagreements.</p>
+
 <figure>
 <svg viewBox="0 0 720 240" width="100%" role="img"
      aria-label="A correction closes the old belief row and opens a new one that carves out only the corrected interval, leaving the surrounding stretches intact. Both belief rows stay readable.">
