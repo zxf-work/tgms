@@ -633,20 +633,31 @@ impl NativeStore {
         // across compaction, which folds runs into sidecars and empties the
         // list. Length, plus the file name *and* its sha at the last folded
         // index, must all still match; anything else falls back to a rebuild.
-        // Everything the cache is consulted for is copied out and the guard
-        // dropped before anything else runs. The mutex is not reentrant, and
-        // an earlier draft held this guard across the write below, which
-        // deadlocked the whole suite rather than failing a test.
+        // The entry is *taken*, not cloned, and the guard dropped before
+        // anything else runs — both halves matter (D-081). The mutex is not
+        // reentrant, and an earlier draft held the guard across the write
+        // below, which deadlocked the whole suite. And a draft that *cloned*
+        // the entry left the cache holding a second Arc, so `make_mut` below
+        // cloned the whole map on every extend — O(all closes) memcpy per
+        // commit, quietly contradicting the "in place" design. Taking the
+        // entry makes this handle's copy the only one (unless a reader holds
+        // a pinned Arc, which is exactly when a copy is correct). Every
+        // return path below restores the cache. A concurrent reader that
+        // finds the cache empty mid-flight rebuilds redundantly, which is
+        // wasted work, never a wrong answer.
         let cached: Option<CloseCacheEntry> = self
             .close_cache
             .lock()
             .expect("close-cache mutex poisoned")
-            .clone();
+            .take();
 
         let mut reuse: Option<(std::sync::Arc<CloseIndex>, usize)> = None;
         if let Some((cached_gen, folded, last, idx)) = cached {
             if cached_gen == generation {
-                return Ok(idx);
+                let out = idx.clone();
+                *self.close_cache.lock().expect("close-cache mutex poisoned") =
+                    Some((cached_gen, folded, last, idx));
+                return Ok(out);
             }
             let extends = runs.len() >= folded
                 && match (folded, &last) {
@@ -673,11 +684,11 @@ impl NativeStore {
             None => (std::sync::Arc::new(CloseIndex::default()), 0),
         };
         {
-            // copy-on-write: mutates in place when nothing else holds this
-            // index, so the common case costs the new records only. A reader
-            // pinned to an older generation still holds its own Arc, and
-            // `make_mut` clones rather than disturbing it — the pin is what
-            // makes in-place extension safe, not an assumption about callers.
+            // copy-on-write, and — after D-081 — genuinely in place in the
+            // common case: the cache's Arc was taken above, so this handle
+            // holds the only reference unless a reader is pinned to this very
+            // index, and that pin is precisely when `make_mut`'s clone is
+            // correct rather than waste.
             let target = std::sync::Arc::make_mut(&mut idx);
             for r in &runs[from..] {
                 for rec in read_close_run(&self.root.join(&r.file))? {
