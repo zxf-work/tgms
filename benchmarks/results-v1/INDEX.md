@@ -78,6 +78,15 @@ supersessions are part of the record:
   at 20% density (0.29 s at density 0) and probe peak memory **−70%**,
   which staled the published warm-up facts instead of the replay ones.
   Hash gates green at every density.
+- eval-10m-bitemporal-d081.json — §13 at 10M, 0.1% density, **xzgpu** at
+  `f1498e4`. Against the `8136ecb` receipt (which predates even the D-072
+  close cache, so this delta spans D-041 + D-072 + the D-076…D-081 arc):
+  suite VmHWM **6,108 → 2,428 MB (−60%)**, first query 42.6 → **3.3 s**,
+  replay 290 → 261 s, and the old run's `agree:false` is now `agree:true`.
+  The floor number feeding the 100M costing was corrected from this receipt
+  plus eval_resources §18 (D-082) — and `open_rows`' addition (the D-076
+  index) is invisible inside the reduction, answering the review's memory
+  question.
 - bench-corrections-full-d079.json — the same matrix on **xzgpu** at
   `d5620bf`, after the open-version index (D-076), the segment-name cache
   (D-077) and the close-index fold (D-079). 89.2 min. Per-identity depth is
