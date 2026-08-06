@@ -77,8 +77,11 @@ def grid_cells(store, key: str) -> list[dict[str, Any]]:
     stats = adapter.stats()
     t0, t1 = stats["vt_min"], stats["vt_max"]
     span = max(1, t1 - t0)
+    # filter uids must exist in THIS store — CollegeMsg's identities are
+    # not the synthetic n0..n39 (the first record run died on exactly that)
+    uids = sorted({v.uid for v in adapter.all_node_versions()})[:40]
     qs = {q.id: q for q in H.registry(t0, t1, tt_epoch1=t0 + 1,
-                                       filter_uids=tuple(f"n{i}" for i in range(40)))}
+                                       filter_uids=tuple(uids))}
     cells = []
     # the would-be-refused class: motifs with no node filter, the E_COST
     # demo shape — without it the frontier has no positive class at the
@@ -212,6 +215,9 @@ def main() -> int:
         for c in cells:
             r = measure_cell(store_path, store, c)
             all_cells.append(r)
+            if args.json:  # incremental: a late crash keeps earlier stores
+                args.json.write_text(json.dumps({"cells": all_cells,
+                                                 "partial": True}, indent=1))
             e = r["estimate"]
             print(f"  {key} {r['qid']:>15} frac={r['frac']:<5} "
                   f"est_rows={e.get('rows_scanned_est', 0):>12,} "
