@@ -107,6 +107,20 @@ monotone gains to 8 threads, mild regression past that.)
 
 ## §15 Cold versus warm cache
 
+> **The cold columns below are superseded (re-run 2026-08-06 at `f1498e4`,
+> receipts `eval-resources-coldwarm-{1m,10m}-d082.json`, D-082).** After
+> the D-076…D-081 write-path arc, native's fresh-process first query is
+> **0.29–0.62 s at 1M** (was 2.4–2.9) and **3.1–8.0 s at 10M** (was
+> 27–32) — 5–9× per query in both cold states. Two of this section's four
+> conclusions flip: the warm-up is no longer "whatever the query" (it
+> shrank below per-query differences, so `diff.global` now stands out at
+> ~7 s while a point lookup pays ~3.1 s at 10M), and the first-query race
+> against DuckDB is no longer lost 5.3–71.9× — it is **parity at 1M
+> (0.8–1.6×)** and 1.2–8.8× at 10M. Conclusions 2 and 3 (page cache is
+> the minor term; `open()` stays milliseconds) still hold. The tables and
+> prose below are kept as the record of the pre-arc engine; do not quote
+> them as current.
+
 Three cache states per query, coldest last:
 
 - **warm** — in-process repetition; exactly the published protocol.
@@ -175,6 +189,20 @@ on a 28 s quantity, not a signal.)
    warm-up; one-shot scripts pay it in full every time.
 
 ## §14.2 Working set versus RAM
+
+> **The floor this section measures is superseded twice over — read §18
+> and then D-082 before quoting any number here.** §18 (the byte-budget
+> cache + streamed stats fold, commit `f841738`) brought the uncapped
+> suite VmHWM to **1.82 GB** with the whole suite *completing* under the
+> 2 GB cap that this section records as OOM-killed; the D-082 re-probe on
+> the bi-temporal suite reads **2.43 GB** at `f1498e4` (was 6.1 on the
+> same probe). Conclusion 1's "~6 GB per process" and conclusion 2's "no
+> degradation region" describe the pre-§18 engine — §18 measured the
+> degradation region that this sweep found missing. This section stays as
+> the record of what the unbounded design cost, and of why the budget
+> exists. **D-071's 100M costing quoted this section's floor four days
+> after §18 had superseded it; the D-082 correction to that costing is
+> why this banner is here.**
 
 The representative suite inside a Docker container with a hard
 `--memory` cap against the bind-mounted 10M native store; uncapped
