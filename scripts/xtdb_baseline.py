@@ -486,7 +486,17 @@ def main() -> int:
         def n2(): return [v for v in adapter.believed_node_versions(sample_uid)
                           if v.vt_s <= mid_vt < v.vt_e]
         def n3(): return adapter.believed_node_versions(sample_uid, mid_tt)
-        def n4(): return [v for v in adapter.all_node_versions() if v.uid == sample_uid]
+        # S4's native side is the entity_history operator — the same idiom
+        # the registry's hist.single times — not a full-store scan filtered
+        # in Python. The 1M/5% receipt at 7445c42 carried the scan (51.6 ms
+        # where the operator answers in well under a millisecond) and its s4
+        # native number is not of record; it flattered XTDB and is
+        # superseded by receipts at this commit onward.
+        from tgms.temporal.algebra import call_operator, ensure_all_registered
+        ensure_all_registered()
+
+        def n4():
+            return call_operator(adapter, "entity_history", {"uid": sample_uid})
         def n6():
             # the native diff idiom (diff.global's shape): columnar scans at
             # each tt, vid comparison first, props materialized only for
