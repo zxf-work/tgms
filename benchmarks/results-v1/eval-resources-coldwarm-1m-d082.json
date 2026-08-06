@@ -1,0 +1,4177 @@
+{
+  "eviction": "posix_fadvise(fd,0,0,POSIX_FADV_DONTNEED) per store file (user-space; no root on the host)",
+  "manifest": {
+    "cache_state": "warm",
+    "commit": "f1498e4",
+    "cpu_count": 40,
+    "dataset": "synth",
+    "dirty": false,
+    "measurement_host": "xzgpu",
+    "on_measurement_host": true,
+    "platform": "Linux 5.4.0-216-generic x86_64",
+    "protocol": {
+      "reps_fast": 30,
+      "reps_slow": 10,
+      "resource_mode": "coldwarm",
+      "stats": "median and p95 over measured reps",
+      "warmup": 5
+    },
+    "python": "3.12.13",
+    "rustc": "unknown",
+    "scale_events": 1000000,
+    "systems": [
+      "native"
+    ]
+  },
+  "mode": "coldwarm",
+  "queries": [
+    "hist.single",
+    "snap.hop2",
+    "series.count",
+    "coactive.narrow",
+    "diff.global",
+    "motif.filtered"
+  ],
+  "records": [
+    {
+      "backend": "native",
+      "open_ms": 6.635,
+      "queries_done": 180,
+      "results": [
+        {
+          "first_ms": 0.148,
+          "hash": "117a3248fa45c0bed588809844134434",
+          "ok": true,
+          "p50_ms": 0.129,
+          "p95_ms": 0.148,
+          "query": "hist.single",
+          "rows": 2,
+          "timings_ms": [
+            0.148,
+            0.139,
+            0.137,
+            0.135,
+            0.134,
+            0.144,
+            0.136,
+            0.132,
+            0.14,
+            0.143,
+            0.129,
+            0.268,
+            0.135,
+            0.127,
+            0.128,
+            0.124,
+            0.125,
+            0.122,
+            0.121,
+            0.121,
+            0.121,
+            0.123,
+            0.122,
+            0.14,
+            0.13,
+            0.128,
+            0.127,
+            0.127,
+            0.129,
+            0.128
+          ]
+        },
+        {
+          "first_ms": 95.407,
+          "hash": "b9c3141a267602f05f8089de8e270582",
+          "ok": true,
+          "p50_ms": 95.687,
+          "p95_ms": 99.036,
+          "query": "snap.hop2",
+          "rows": 135,
+          "timings_ms": [
+            95.407,
+            95.815,
+            95.753,
+            94.151,
+            94.146,
+            94.614,
+            97.213,
+            97.405,
+            99.036,
+            97.326,
+            103.006,
+            95.375,
+            95.028,
+            94.266,
+            95.31,
+            95.044,
+            97.279,
+            97.524,
+            95.62,
+            95.554,
+            95.875,
+            94.93,
+            95.794,
+            95.21,
+            96.146,
+            94.992,
+            97.561,
+            97.652,
+            96.848,
+            94.686
+          ]
+        },
+        {
+          "first_ms": 50.158,
+          "hash": "091344cc76d81babfa083f4bed1ab8cd",
+          "ok": true,
+          "p50_ms": 49.747,
+          "p95_ms": 52.008,
+          "query": "series.count",
+          "rows": 100,
+          "timings_ms": [
+            50.158,
+            52.008,
+            51.126,
+            49.412,
+            49.339,
+            49.64,
+            49.754,
+            49.739,
+            50.373,
+            50.945,
+            51.453,
+            49.957,
+            51.191,
+            50.424,
+            49.774,
+            49.072,
+            51.789,
+            52.983,
+            49.44,
+            49.033,
+            49.362,
+            49.038,
+            49.303,
+            49.239,
+            49.504,
+            48.855,
+            49.367,
+            49.727,
+            50.644,
+            51.337
+          ]
+        },
+        {
+          "first_ms": 109.109,
+          "hash": "7e64b230a9855343c4e973c2e5889fdc",
+          "ok": true,
+          "p50_ms": 106.201,
+          "p95_ms": 109.816,
+          "query": "coactive.narrow",
+          "rows": 401,
+          "timings_ms": [
+            109.109,
+            105.771,
+            106.085,
+            107.212,
+            108.258,
+            105.71,
+            106.083,
+            107.659,
+            109.8,
+            113.654,
+            107.106,
+            105.742,
+            107.252,
+            108.529,
+            106.203,
+            106.044,
+            105.774,
+            105.854,
+            106.198,
+            109.816,
+            109.794,
+            106.658,
+            107.671,
+            107.32,
+            105.801,
+            105.902,
+            106.074,
+            105.758,
+            106.087,
+            105.605
+          ]
+        },
+        {
+          "first_ms": 305.053,
+          "hash": "1302008dbe499cc1a2ef467c5d843316",
+          "ok": true,
+          "p50_ms": 308.08,
+          "p95_ms": 317.673,
+          "query": "diff.global",
+          "rows": 74999,
+          "timings_ms": [
+            305.053,
+            306.722,
+            309.165,
+            305.554,
+            305.592,
+            316.005,
+            307.928,
+            308.72,
+            308.506,
+            317.405,
+            307.173,
+            308.795,
+            315.034,
+            303.99,
+            306.514,
+            306.785,
+            309.164,
+            306.451,
+            308.748,
+            313.043,
+            305.454,
+            308.233,
+            305.142,
+            305.219,
+            318.559,
+            309.679,
+            317.673,
+            308.429,
+            306.502,
+            304.587
+          ]
+        },
+        {
+          "first_ms": 43.219,
+          "hash": "92af8a07bad5516ee7b6a41d297fb7ea",
+          "ok": true,
+          "p50_ms": 43.521,
+          "p95_ms": 45.772,
+          "query": "motif.filtered",
+          "rows": 385,
+          "timings_ms": [
+            43.219,
+            42.748,
+            44.914,
+            43.878,
+            44.356,
+            43.452,
+            42.824,
+            42.661,
+            42.946,
+            42.966,
+            42.71,
+            43.354,
+            42.913,
+            43.07,
+            43.058,
+            42.768,
+            42.837,
+            44.786,
+            45.772,
+            45.89,
+            45.752,
+            44.366,
+            43.591,
+            43.64,
+            42.591,
+            45.194,
+            44.146,
+            44.544,
+            45.195,
+            44.218
+          ]
+        }
+      ],
+      "segment_cache": {
+        "budget": 49947099136,
+        "bytes": 78127600,
+        "entries": 283,
+        "evictions": 0
+      },
+      "state": "warm",
+      "vmhwm_kb": 179984,
+      "vmrss_kb": 160864,
+      "vmsize_kb": 1848792,
+      "wall_s": null
+    },
+    {
+      "backend": "native",
+      "first_ms": [
+        290.752,
+        291.782,
+        293.9,
+        295.104,
+        295.415
+      ],
+      "median_first_ms": 293.9,
+      "median_open_ms": 6.691,
+      "open_ms": [
+        6.612,
+        6.626,
+        6.691,
+        6.705,
+        6.731
+      ],
+      "query": "hist.single",
+      "state": "process_cold",
+      "trials": [
+        {
+          "open_ms": 6.691,
+          "queries_done": 1,
+          "results": [
+            {
+              "first_ms": 295.104,
+              "hash": "117a3248fa45c0bed588809844134434",
+              "ok": true,
+              "p50_ms": 295.104,
+              "p95_ms": 295.104,
+              "query": "hist.single",
+              "rows": 2,
+              "timings_ms": [
+                295.104
+              ]
+            }
+          ],
+          "segment_cache": {
+            "budget": 49947099136,
+            "bytes": 78127600,
+            "entries": 283,
+            "evictions": 0
+          },
+          "vmhwm_kb": 125348,
+          "vmrss_kb": 125348,
+          "vmsize_kb": 1815492,
+          "wall_s": null
+        },
+        {
+          "open_ms": 6.705,
+          "queries_done": 1,
+          "results": [
+            {
+              "first_ms": 295.415,
+              "hash": "117a3248fa45c0bed588809844134434",
+              "ok": true,
+              "p50_ms": 295.415,
+              "p95_ms": 295.415,
+              "query": "hist.single",
+              "rows": 2,
+              "timings_ms": [
+                295.415
+              ]
+            }
+          ],
+          "segment_cache": {
+            "budget": 49947099136,
+            "bytes": 78127600,
+            "entries": 283,
+            "evictions": 0
+          },
+          "vmhwm_kb": 125256,
+          "vmrss_kb": 125256,
+          "vmsize_kb": 1815496,
+          "wall_s": null
+        },
+        {
+          "open_ms": 6.731,
+          "queries_done": 1,
+          "results": [
+            {
+              "first_ms": 293.9,
+              "hash": "117a3248fa45c0bed588809844134434",
+              "ok": true,
+              "p50_ms": 293.9,
+              "p95_ms": 293.9,
+              "query": "hist.single",
+              "rows": 2,
+              "timings_ms": [
+                293.9
+              ]
+            }
+          ],
+          "segment_cache": {
+            "budget": 49947099136,
+            "bytes": 78127600,
+            "entries": 283,
+            "evictions": 0
+          },
+          "vmhwm_kb": 125348,
+          "vmrss_kb": 125348,
+          "vmsize_kb": 1815492,
+          "wall_s": null
+        },
+        {
+          "open_ms": 6.612,
+          "queries_done": 1,
+          "results": [
+            {
+              "first_ms": 291.782,
+              "hash": "117a3248fa45c0bed588809844134434",
+              "ok": true,
+              "p50_ms": 291.782,
+              "p95_ms": 291.782,
+              "query": "hist.single",
+              "rows": 2,
+              "timings_ms": [
+                291.782
+              ]
+            }
+          ],
+          "segment_cache": {
+            "budget": 49947099136,
+            "bytes": 78127600,
+            "entries": 283,
+            "evictions": 0
+          },
+          "vmhwm_kb": 125364,
+          "vmrss_kb": 125364,
+          "vmsize_kb": 1815504,
+          "wall_s": null
+        },
+        {
+          "open_ms": 6.626,
+          "queries_done": 1,
+          "results": [
+            {
+              "first_ms": 290.752,
+              "hash": "117a3248fa45c0bed588809844134434",
+              "ok": true,
+              "p50_ms": 290.752,
+              "p95_ms": 290.752,
+              "query": "hist.single",
+              "rows": 2,
+              "timings_ms": [
+                290.752
+              ]
+            }
+          ],
+          "segment_cache": {
+            "budget": 49947099136,
+            "bytes": 78127600,
+            "entries": 283,
+            "evictions": 0
+          },
+          "vmhwm_kb": 125580,
+          "vmrss_kb": 125580,
+          "vmsize_kb": 1815496,
+          "wall_s": null
+        }
+      ]
+    },
+    {
+      "backend": "native",
+      "first_ms": [
+        399.642,
+        401.077,
+        406.252,
+        408.208,
+        410.181
+      ],
+      "median_first_ms": 406.252,
+      "median_open_ms": 6.699,
+      "open_ms": [
+        6.622,
+        6.633,
+        6.699,
+        6.888,
+        6.933
+      ],
+      "query": "snap.hop2",
+      "state": "process_cold",
+      "trials": [
+        {
+          "open_ms": 6.933,
+          "queries_done": 1,
+          "results": [
+            {
+              "first_ms": 406.252,
+              "hash": "b9c3141a267602f05f8089de8e270582",
+              "ok": true,
+              "p50_ms": 406.252,
+              "p95_ms": 406.252,
+              "query": "snap.hop2",
+              "rows": 135,
+              "timings_ms": [
+                406.252
+              ]
+            }
+          ],
+          "segment_cache": {
+            "budget": 49947099136,
+            "bytes": 78127600,
+            "entries": 283,
+            "evictions": 0
+          },
+          "vmhwm_kb": 150968,
+          "vmrss_kb": 144588,
+          "vmsize_kb": 1833504,
+          "wall_s": null
+        },
+        {
+          "open_ms": 6.888,
+          "queries_done": 1,
+          "results": [
+            {
+              "first_ms": 410.181,
+              "hash": "b9c3141a267602f05f8089de8e270582",
+              "ok": true,
+              "p50_ms": 410.181,
+              "p95_ms": 410.181,
+              "query": "snap.hop2",
+              "rows": 135,
+              "timings_ms": [
+                410.181
+              ]
+            }
+          ],
+          "segment_cache": {
+            "budget": 49947099136,
+            "bytes": 78127600,
+            "entries": 283,
+            "evictions": 0
+          },
+          "vmhwm_kb": 150924,
+          "vmrss_kb": 144656,
+          "vmsize_kb": 1833500,
+          "wall_s": null
+        },
+        {
+          "open_ms": 6.622,
+          "queries_done": 1,
+          "results": [
+            {
+              "first_ms": 399.642,
+              "hash": "b9c3141a267602f05f8089de8e270582",
+              "ok": true,
+              "p50_ms": 399.642,
+              "p95_ms": 399.642,
+              "query": "snap.hop2",
+              "rows": 135,
+              "timings_ms": [
+                399.642
+              ]
+            }
+          ],
+          "segment_cache": {
+            "budget": 49947099136,
+            "bytes": 78127600,
+            "entries": 283,
+            "evictions": 0
+          },
+          "vmhwm_kb": 151160,
+          "vmrss_kb": 144844,
+          "vmsize_kb": 1833504,
+          "wall_s": null
+        },
+        {
+          "open_ms": 6.633,
+          "queries_done": 1,
+          "results": [
+            {
+              "first_ms": 401.077,
+              "hash": "b9c3141a267602f05f8089de8e270582",
+              "ok": true,
+              "p50_ms": 401.077,
+              "p95_ms": 401.077,
+              "query": "snap.hop2",
+              "rows": 135,
+              "timings_ms": [
+                401.077
+              ]
+            }
+          ],
+          "segment_cache": {
+            "budget": 49947099136,
+            "bytes": 78127600,
+            "entries": 283,
+            "evictions": 0
+          },
+          "vmhwm_kb": 151064,
+          "vmrss_kb": 144812,
+          "vmsize_kb": 1833496,
+          "wall_s": null
+        },
+        {
+          "open_ms": 6.699,
+          "queries_done": 1,
+          "results": [
+            {
+              "first_ms": 408.208,
+              "hash": "b9c3141a267602f05f8089de8e270582",
+              "ok": true,
+              "p50_ms": 408.208,
+              "p95_ms": 408.208,
+              "query": "snap.hop2",
+              "rows": 135,
+              "timings_ms": [
+                408.208
+              ]
+            }
+          ],
+          "segment_cache": {
+            "budget": 49947099136,
+            "bytes": 78127600,
+            "entries": 283,
+            "evictions": 0
+          },
+          "vmhwm_kb": 150964,
+          "vmrss_kb": 144588,
+          "vmsize_kb": 1833504,
+          "wall_s": null
+        }
+      ]
+    },
+    {
+      "backend": "native",
+      "first_ms": [
+        338.611,
+        338.633,
+        338.919,
+        340.513,
+        349.427
+      ],
+      "median_first_ms": 338.919,
+      "median_open_ms": 6.789,
+      "open_ms": [
+        6.62,
+        6.761,
+        6.789,
+        6.974,
+        7.281
+      ],
+      "query": "series.count",
+      "state": "process_cold",
+      "trials": [
+        {
+          "open_ms": 6.62,
+          "queries_done": 1,
+          "results": [
+            {
+              "first_ms": 338.633,
+              "hash": "091344cc76d81babfa083f4bed1ab8cd",
+              "ok": true,
+              "p50_ms": 338.633,
+              "p95_ms": 338.633,
+              "query": "series.count",
+              "rows": 100,
+              "timings_ms": [
+                338.633
+              ]
+            }
+          ],
+          "segment_cache": {
+            "budget": 49947099136,
+            "bytes": 77568651,
+            "entries": 279,
+            "evictions": 0
+          },
+          "vmhwm_kb": 125356,
+          "vmrss_kb": 121568,
+          "vmsize_kb": 1811208,
+          "wall_s": null
+        },
+        {
+          "open_ms": 6.761,
+          "queries_done": 1,
+          "results": [
+            {
+              "first_ms": 340.513,
+              "hash": "091344cc76d81babfa083f4bed1ab8cd",
+              "ok": true,
+              "p50_ms": 340.513,
+              "p95_ms": 340.513,
+              "query": "series.count",
+              "rows": 100,
+              "timings_ms": [
+                340.513
+              ]
+            }
+          ],
+          "segment_cache": {
+            "budget": 49947099136,
+            "bytes": 77568651,
+            "entries": 279,
+            "evictions": 0
+          },
+          "vmhwm_kb": 124736,
+          "vmrss_kb": 121144,
+          "vmsize_kb": 1811208,
+          "wall_s": null
+        },
+        {
+          "open_ms": 6.789,
+          "queries_done": 1,
+          "results": [
+            {
+              "first_ms": 349.427,
+              "hash": "091344cc76d81babfa083f4bed1ab8cd",
+              "ok": true,
+              "p50_ms": 349.427,
+              "p95_ms": 349.427,
+              "query": "series.count",
+              "rows": 100,
+              "timings_ms": [
+                349.427
+              ]
+            }
+          ],
+          "segment_cache": {
+            "budget": 49947099136,
+            "bytes": 77568651,
+            "entries": 279,
+            "evictions": 0
+          },
+          "vmhwm_kb": 125444,
+          "vmrss_kb": 121652,
+          "vmsize_kb": 1811212,
+          "wall_s": null
+        },
+        {
+          "open_ms": 7.281,
+          "queries_done": 1,
+          "results": [
+            {
+              "first_ms": 338.919,
+              "hash": "091344cc76d81babfa083f4bed1ab8cd",
+              "ok": true,
+              "p50_ms": 338.919,
+              "p95_ms": 338.919,
+              "query": "series.count",
+              "rows": 100,
+              "timings_ms": [
+                338.919
+              ]
+            }
+          ],
+          "segment_cache": {
+            "budget": 49947099136,
+            "bytes": 77568651,
+            "entries": 279,
+            "evictions": 0
+          },
+          "vmhwm_kb": 124980,
+          "vmrss_kb": 121188,
+          "vmsize_kb": 1811208,
+          "wall_s": null
+        },
+        {
+          "open_ms": 6.974,
+          "queries_done": 1,
+          "results": [
+            {
+              "first_ms": 338.611,
+              "hash": "091344cc76d81babfa083f4bed1ab8cd",
+              "ok": true,
+              "p50_ms": 338.611,
+              "p95_ms": 338.611,
+              "query": "series.count",
+              "rows": 100,
+              "timings_ms": [
+                338.611
+              ]
+            }
+          ],
+          "segment_cache": {
+            "budget": 49947099136,
+            "bytes": 77568651,
+            "entries": 279,
+            "evictions": 0
+          },
+          "vmhwm_kb": 125388,
+          "vmrss_kb": 121596,
+          "vmsize_kb": 1811208,
+          "wall_s": null
+        }
+      ]
+    },
+    {
+      "backend": "native",
+      "first_ms": [
+        397.094,
+        399.714,
+        400.874,
+        401.608,
+        405.017
+      ],
+      "median_first_ms": 400.874,
+      "median_open_ms": 6.82,
+      "open_ms": [
+        6.546,
+        6.598,
+        6.82,
+        7.204,
+        8.347
+      ],
+      "query": "coactive.narrow",
+      "state": "process_cold",
+      "trials": [
+        {
+          "open_ms": 6.546,
+          "queries_done": 1,
+          "results": [
+            {
+              "first_ms": 397.094,
+              "hash": "7e64b230a9855343c4e973c2e5889fdc",
+              "ok": true,
+              "p50_ms": 397.094,
+              "p95_ms": 397.094,
+              "query": "coactive.narrow",
+              "rows": 401,
+              "timings_ms": [
+                397.094
+              ]
+            }
+          ],
+          "segment_cache": {
+            "budget": 49947099136,
+            "bytes": 77568651,
+            "entries": 279,
+            "evictions": 0
+          },
+          "vmhwm_kb": 121988,
+          "vmrss_kb": 121988,
+          "vmsize_kb": 1811204,
+          "wall_s": null
+        },
+        {
+          "open_ms": 6.598,
+          "queries_done": 1,
+          "results": [
+            {
+              "first_ms": 401.608,
+              "hash": "7e64b230a9855343c4e973c2e5889fdc",
+              "ok": true,
+              "p50_ms": 401.608,
+              "p95_ms": 401.608,
+              "query": "coactive.narrow",
+              "rows": 401,
+              "timings_ms": [
+                401.608
+              ]
+            }
+          ],
+          "segment_cache": {
+            "budget": 49947099136,
+            "bytes": 77568651,
+            "entries": 279,
+            "evictions": 0
+          },
+          "vmhwm_kb": 122232,
+          "vmrss_kb": 122232,
+          "vmsize_kb": 1811340,
+          "wall_s": null
+        },
+        {
+          "open_ms": 8.347,
+          "queries_done": 1,
+          "results": [
+            {
+              "first_ms": 399.714,
+              "hash": "7e64b230a9855343c4e973c2e5889fdc",
+              "ok": true,
+              "p50_ms": 399.714,
+              "p95_ms": 399.714,
+              "query": "coactive.narrow",
+              "rows": 401,
+              "timings_ms": [
+                399.714
+              ]
+            }
+          ],
+          "segment_cache": {
+            "budget": 49947099136,
+            "bytes": 77568651,
+            "entries": 279,
+            "evictions": 0
+          },
+          "vmhwm_kb": 122088,
+          "vmrss_kb": 122088,
+          "vmsize_kb": 1811216,
+          "wall_s": null
+        },
+        {
+          "open_ms": 7.204,
+          "queries_done": 1,
+          "results": [
+            {
+              "first_ms": 400.874,
+              "hash": "7e64b230a9855343c4e973c2e5889fdc",
+              "ok": true,
+              "p50_ms": 400.874,
+              "p95_ms": 400.874,
+              "query": "coactive.narrow",
+              "rows": 401,
+              "timings_ms": [
+                400.874
+              ]
+            }
+          ],
+          "segment_cache": {
+            "budget": 49947099136,
+            "bytes": 77568651,
+            "entries": 279,
+            "evictions": 0
+          },
+          "vmhwm_kb": 121960,
+          "vmrss_kb": 121960,
+          "vmsize_kb": 1811340,
+          "wall_s": null
+        },
+        {
+          "open_ms": 6.82,
+          "queries_done": 1,
+          "results": [
+            {
+              "first_ms": 405.017,
+              "hash": "7e64b230a9855343c4e973c2e5889fdc",
+              "ok": true,
+              "p50_ms": 405.017,
+              "p95_ms": 405.017,
+              "query": "coactive.narrow",
+              "rows": 401,
+              "timings_ms": [
+                405.017
+              ]
+            }
+          ],
+          "segment_cache": {
+            "budget": 49947099136,
+            "bytes": 77568651,
+            "entries": 279,
+            "evictions": 0
+          },
+          "vmhwm_kb": 121920,
+          "vmrss_kb": 121920,
+          "vmsize_kb": 1811208,
+          "wall_s": null
+        }
+      ]
+    },
+    {
+      "backend": "native",
+      "first_ms": [
+        612.229,
+        614.855,
+        615.333,
+        617.051,
+        623.521
+      ],
+      "median_first_ms": 615.333,
+      "median_open_ms": 6.703,
+      "open_ms": [
+        6.599,
+        6.642,
+        6.703,
+        6.718,
+        6.861
+      ],
+      "query": "diff.global",
+      "state": "process_cold",
+      "trials": [
+        {
+          "open_ms": 6.703,
+          "queries_done": 1,
+          "results": [
+            {
+              "first_ms": 612.229,
+              "hash": "1302008dbe499cc1a2ef467c5d843316",
+              "ok": true,
+              "p50_ms": 612.229,
+              "p95_ms": 612.229,
+              "query": "diff.global",
+              "rows": 74999,
+              "timings_ms": [
+                612.229
+              ]
+            }
+          ],
+          "segment_cache": {
+            "budget": 49947099136,
+            "bytes": 78127600,
+            "entries": 283,
+            "evictions": 0
+          },
+          "vmhwm_kb": 173352,
+          "vmrss_kb": 158568,
+          "vmsize_kb": 1848308,
+          "wall_s": null
+        },
+        {
+          "open_ms": 6.718,
+          "queries_done": 1,
+          "results": [
+            {
+              "first_ms": 615.333,
+              "hash": "1302008dbe499cc1a2ef467c5d843316",
+              "ok": true,
+              "p50_ms": 615.333,
+              "p95_ms": 615.333,
+              "query": "diff.global",
+              "rows": 74999,
+              "timings_ms": [
+                615.333
+              ]
+            }
+          ],
+          "segment_cache": {
+            "budget": 49947099136,
+            "bytes": 78127600,
+            "entries": 283,
+            "evictions": 0
+          },
+          "vmhwm_kb": 173612,
+          "vmrss_kb": 158764,
+          "vmsize_kb": 1848308,
+          "wall_s": null
+        },
+        {
+          "open_ms": 6.599,
+          "queries_done": 1,
+          "results": [
+            {
+              "first_ms": 617.051,
+              "hash": "1302008dbe499cc1a2ef467c5d843316",
+              "ok": true,
+              "p50_ms": 617.051,
+              "p95_ms": 617.051,
+              "query": "diff.global",
+              "rows": 74999,
+              "timings_ms": [
+                617.051
+              ]
+            }
+          ],
+          "segment_cache": {
+            "budget": 49947099136,
+            "bytes": 78127600,
+            "entries": 283,
+            "evictions": 0
+          },
+          "vmhwm_kb": 173256,
+          "vmrss_kb": 159288,
+          "vmsize_kb": 1849324,
+          "wall_s": null
+        },
+        {
+          "open_ms": 6.861,
+          "queries_done": 1,
+          "results": [
+            {
+              "first_ms": 614.855,
+              "hash": "1302008dbe499cc1a2ef467c5d843316",
+              "ok": true,
+              "p50_ms": 614.855,
+              "p95_ms": 614.855,
+              "query": "diff.global",
+              "rows": 74999,
+              "timings_ms": [
+                614.855
+              ]
+            }
+          ],
+          "segment_cache": {
+            "budget": 49947099136,
+            "bytes": 78127600,
+            "entries": 283,
+            "evictions": 0
+          },
+          "vmhwm_kb": 173624,
+          "vmrss_kb": 158780,
+          "vmsize_kb": 1848308,
+          "wall_s": null
+        },
+        {
+          "open_ms": 6.642,
+          "queries_done": 1,
+          "results": [
+            {
+              "first_ms": 623.521,
+              "hash": "1302008dbe499cc1a2ef467c5d843316",
+              "ok": true,
+              "p50_ms": 623.521,
+              "p95_ms": 623.521,
+              "query": "diff.global",
+              "rows": 74999,
+              "timings_ms": [
+                623.521
+              ]
+            }
+          ],
+          "segment_cache": {
+            "budget": 49947099136,
+            "bytes": 78127600,
+            "entries": 283,
+            "evictions": 0
+          },
+          "vmhwm_kb": 173216,
+          "vmrss_kb": 158360,
+          "vmsize_kb": 1848308,
+          "wall_s": null
+        }
+      ]
+    },
+    {
+      "backend": "native",
+      "first_ms": [
+        331.817,
+        332.689,
+        333.314,
+        333.486,
+        335.78
+      ],
+      "median_first_ms": 333.314,
+      "median_open_ms": 6.621,
+      "open_ms": [
+        6.507,
+        6.575,
+        6.621,
+        6.711,
+        6.817
+      ],
+      "query": "motif.filtered",
+      "state": "process_cold",
+      "trials": [
+        {
+          "open_ms": 6.507,
+          "queries_done": 1,
+          "results": [
+            {
+              "first_ms": 331.817,
+              "hash": "92af8a07bad5516ee7b6a41d297fb7ea",
+              "ok": true,
+              "p50_ms": 331.817,
+              "p95_ms": 331.817,
+              "query": "motif.filtered",
+              "rows": 385,
+              "timings_ms": [
+                331.817
+              ]
+            }
+          ],
+          "segment_cache": {
+            "budget": 49947099136,
+            "bytes": 77568651,
+            "entries": 279,
+            "evictions": 0
+          },
+          "vmhwm_kb": 126064,
+          "vmrss_kb": 125608,
+          "vmsize_kb": 1814476,
+          "wall_s": null
+        },
+        {
+          "open_ms": 6.817,
+          "queries_done": 1,
+          "results": [
+            {
+              "first_ms": 333.486,
+              "hash": "92af8a07bad5516ee7b6a41d297fb7ea",
+              "ok": true,
+              "p50_ms": 333.486,
+              "p95_ms": 333.486,
+              "query": "motif.filtered",
+              "rows": 385,
+              "timings_ms": [
+                333.486
+              ]
+            }
+          ],
+          "segment_cache": {
+            "budget": 49947099136,
+            "bytes": 77568651,
+            "entries": 279,
+            "evictions": 0
+          },
+          "vmhwm_kb": 125864,
+          "vmrss_kb": 125408,
+          "vmsize_kb": 1814468,
+          "wall_s": null
+        },
+        {
+          "open_ms": 6.575,
+          "queries_done": 1,
+          "results": [
+            {
+              "first_ms": 333.314,
+              "hash": "92af8a07bad5516ee7b6a41d297fb7ea",
+              "ok": true,
+              "p50_ms": 333.314,
+              "p95_ms": 333.314,
+              "query": "motif.filtered",
+              "rows": 385,
+              "timings_ms": [
+                333.314
+              ]
+            }
+          ],
+          "segment_cache": {
+            "budget": 49947099136,
+            "bytes": 77568651,
+            "entries": 279,
+            "evictions": 0
+          },
+          "vmhwm_kb": 126020,
+          "vmrss_kb": 125568,
+          "vmsize_kb": 1814468,
+          "wall_s": null
+        },
+        {
+          "open_ms": 6.711,
+          "queries_done": 1,
+          "results": [
+            {
+              "first_ms": 332.689,
+              "hash": "92af8a07bad5516ee7b6a41d297fb7ea",
+              "ok": true,
+              "p50_ms": 332.689,
+              "p95_ms": 332.689,
+              "query": "motif.filtered",
+              "rows": 385,
+              "timings_ms": [
+                332.689
+              ]
+            }
+          ],
+          "segment_cache": {
+            "budget": 49947099136,
+            "bytes": 77568651,
+            "entries": 279,
+            "evictions": 0
+          },
+          "vmhwm_kb": 126052,
+          "vmrss_kb": 125592,
+          "vmsize_kb": 1814472,
+          "wall_s": null
+        },
+        {
+          "open_ms": 6.621,
+          "queries_done": 1,
+          "results": [
+            {
+              "first_ms": 335.78,
+              "hash": "92af8a07bad5516ee7b6a41d297fb7ea",
+              "ok": true,
+              "p50_ms": 335.78,
+              "p95_ms": 335.78,
+              "query": "motif.filtered",
+              "rows": 385,
+              "timings_ms": [
+                335.78
+              ]
+            }
+          ],
+          "segment_cache": {
+            "budget": 49947099136,
+            "bytes": 77568651,
+            "entries": 279,
+            "evictions": 0
+          },
+          "vmhwm_kb": 125796,
+          "vmrss_kb": 125340,
+          "vmsize_kb": 1814476,
+          "wall_s": null
+        }
+      ]
+    },
+    {
+      "backend": "native",
+      "first_ms": [
+        441.673,
+        444.891,
+        450.503,
+        451.427,
+        455.54
+      ],
+      "median_first_ms": 450.503,
+      "median_open_ms": 9.34,
+      "open_ms": [
+        8.999,
+        9.158,
+        9.34,
+        10.108,
+        10.241
+      ],
+      "query": "hist.single",
+      "state": "cold",
+      "trials": [
+        {
+          "open_ms": 10.108,
+          "queries_done": 1,
+          "results": [
+            {
+              "first_ms": 451.427,
+              "hash": "117a3248fa45c0bed588809844134434",
+              "ok": true,
+              "p50_ms": 451.427,
+              "p95_ms": 451.427,
+              "query": "hist.single",
+              "rows": 2,
+              "timings_ms": [
+                451.427
+              ]
+            }
+          ],
+          "segment_cache": {
+            "budget": 49947099136,
+            "bytes": 78127600,
+            "entries": 283,
+            "evictions": 0
+          },
+          "vmhwm_kb": 126084,
+          "vmrss_kb": 126084,
+          "vmsize_kb": 1815480,
+          "wall_s": null
+        },
+        {
+          "open_ms": 9.158,
+          "queries_done": 1,
+          "results": [
+            {
+              "first_ms": 441.673,
+              "hash": "117a3248fa45c0bed588809844134434",
+              "ok": true,
+              "p50_ms": 441.673,
+              "p95_ms": 441.673,
+              "query": "hist.single",
+              "rows": 2,
+              "timings_ms": [
+                441.673
+              ]
+            }
+          ],
+          "segment_cache": {
+            "budget": 49947099136,
+            "bytes": 78127600,
+            "entries": 283,
+            "evictions": 0
+          },
+          "vmhwm_kb": 126020,
+          "vmrss_kb": 126020,
+          "vmsize_kb": 1815480,
+          "wall_s": null
+        },
+        {
+          "open_ms": 8.999,
+          "queries_done": 1,
+          "results": [
+            {
+              "first_ms": 455.54,
+              "hash": "117a3248fa45c0bed588809844134434",
+              "ok": true,
+              "p50_ms": 455.54,
+              "p95_ms": 455.54,
+              "query": "hist.single",
+              "rows": 2,
+              "timings_ms": [
+                455.54
+              ]
+            }
+          ],
+          "segment_cache": {
+            "budget": 49947099136,
+            "bytes": 78127600,
+            "entries": 283,
+            "evictions": 0
+          },
+          "vmhwm_kb": 126084,
+          "vmrss_kb": 126084,
+          "vmsize_kb": 1815480,
+          "wall_s": null
+        },
+        {
+          "open_ms": 10.241,
+          "queries_done": 1,
+          "results": [
+            {
+              "first_ms": 450.503,
+              "hash": "117a3248fa45c0bed588809844134434",
+              "ok": true,
+              "p50_ms": 450.503,
+              "p95_ms": 450.503,
+              "query": "hist.single",
+              "rows": 2,
+              "timings_ms": [
+                450.503
+              ]
+            }
+          ],
+          "segment_cache": {
+            "budget": 49947099136,
+            "bytes": 78127600,
+            "entries": 283,
+            "evictions": 0
+          },
+          "vmhwm_kb": 126128,
+          "vmrss_kb": 126128,
+          "vmsize_kb": 1815484,
+          "wall_s": null
+        },
+        {
+          "open_ms": 9.34,
+          "queries_done": 1,
+          "results": [
+            {
+              "first_ms": 444.891,
+              "hash": "117a3248fa45c0bed588809844134434",
+              "ok": true,
+              "p50_ms": 444.891,
+              "p95_ms": 444.891,
+              "query": "hist.single",
+              "rows": 2,
+              "timings_ms": [
+                444.891
+              ]
+            }
+          ],
+          "segment_cache": {
+            "budget": 49947099136,
+            "bytes": 78127600,
+            "entries": 283,
+            "evictions": 0
+          },
+          "vmhwm_kb": 126288,
+          "vmrss_kb": 126288,
+          "vmsize_kb": 1815484,
+          "wall_s": null
+        }
+      ]
+    },
+    {
+      "backend": "native",
+      "first_ms": [
+        556.621,
+        559.144,
+        559.41,
+        561.63,
+        564.269
+      ],
+      "median_first_ms": 559.41,
+      "median_open_ms": 9.205,
+      "open_ms": [
+        8.775,
+        8.908,
+        9.205,
+        9.489,
+        9.947
+      ],
+      "query": "snap.hop2",
+      "state": "cold",
+      "trials": [
+        {
+          "open_ms": 8.775,
+          "queries_done": 1,
+          "results": [
+            {
+              "first_ms": 559.41,
+              "hash": "b9c3141a267602f05f8089de8e270582",
+              "ok": true,
+              "p50_ms": 559.41,
+              "p95_ms": 559.41,
+              "query": "snap.hop2",
+              "rows": 135,
+              "timings_ms": [
+                559.41
+              ]
+            }
+          ],
+          "segment_cache": {
+            "budget": 49947099136,
+            "bytes": 78127600,
+            "entries": 283,
+            "evictions": 0
+          },
+          "vmhwm_kb": 151324,
+          "vmrss_kb": 142584,
+          "vmsize_kb": 1831136,
+          "wall_s": null
+        },
+        {
+          "open_ms": 9.947,
+          "queries_done": 1,
+          "results": [
+            {
+              "first_ms": 561.63,
+              "hash": "b9c3141a267602f05f8089de8e270582",
+              "ok": true,
+              "p50_ms": 561.63,
+              "p95_ms": 561.63,
+              "query": "snap.hop2",
+              "rows": 135,
+              "timings_ms": [
+                561.63
+              ]
+            }
+          ],
+          "segment_cache": {
+            "budget": 49947099136,
+            "bytes": 78127600,
+            "entries": 283,
+            "evictions": 0
+          },
+          "vmhwm_kb": 151084,
+          "vmrss_kb": 142464,
+          "vmsize_kb": 1831148,
+          "wall_s": null
+        },
+        {
+          "open_ms": 9.205,
+          "queries_done": 1,
+          "results": [
+            {
+              "first_ms": 564.269,
+              "hash": "b9c3141a267602f05f8089de8e270582",
+              "ok": true,
+              "p50_ms": 564.269,
+              "p95_ms": 564.269,
+              "query": "snap.hop2",
+              "rows": 135,
+              "timings_ms": [
+                564.269
+              ]
+            }
+          ],
+          "segment_cache": {
+            "budget": 49947099136,
+            "bytes": 78127600,
+            "entries": 283,
+            "evictions": 0
+          },
+          "vmhwm_kb": 151256,
+          "vmrss_kb": 144824,
+          "vmsize_kb": 1833492,
+          "wall_s": null
+        },
+        {
+          "open_ms": 8.908,
+          "queries_done": 1,
+          "results": [
+            {
+              "first_ms": 556.621,
+              "hash": "b9c3141a267602f05f8089de8e270582",
+              "ok": true,
+              "p50_ms": 556.621,
+              "p95_ms": 556.621,
+              "query": "snap.hop2",
+              "rows": 135,
+              "timings_ms": [
+                556.621
+              ]
+            }
+          ],
+          "segment_cache": {
+            "budget": 49947099136,
+            "bytes": 78127600,
+            "entries": 283,
+            "evictions": 0
+          },
+          "vmhwm_kb": 151300,
+          "vmrss_kb": 144676,
+          "vmsize_kb": 1833488,
+          "wall_s": null
+        },
+        {
+          "open_ms": 9.489,
+          "queries_done": 1,
+          "results": [
+            {
+              "first_ms": 559.144,
+              "hash": "b9c3141a267602f05f8089de8e270582",
+              "ok": true,
+              "p50_ms": 559.144,
+              "p95_ms": 559.144,
+              "query": "snap.hop2",
+              "rows": 135,
+              "timings_ms": [
+                559.144
+              ]
+            }
+          ],
+          "segment_cache": {
+            "budget": 49947099136,
+            "bytes": 78127600,
+            "entries": 283,
+            "evictions": 0
+          },
+          "vmhwm_kb": 151288,
+          "vmrss_kb": 144572,
+          "vmsize_kb": 1833492,
+          "wall_s": null
+        }
+      ]
+    },
+    {
+      "backend": "native",
+      "first_ms": [
+        492.854,
+        493.625,
+        494.397,
+        498.865,
+        508.798
+      ],
+      "median_first_ms": 494.397,
+      "median_open_ms": 8.668,
+      "open_ms": [
+        8.495,
+        8.561,
+        8.668,
+        8.824,
+        9.563
+      ],
+      "query": "series.count",
+      "state": "cold",
+      "trials": [
+        {
+          "open_ms": 8.668,
+          "queries_done": 1,
+          "results": [
+            {
+              "first_ms": 494.397,
+              "hash": "091344cc76d81babfa083f4bed1ab8cd",
+              "ok": true,
+              "p50_ms": 494.397,
+              "p95_ms": 494.397,
+              "query": "series.count",
+              "rows": 100,
+              "timings_ms": [
+                494.397
+              ]
+            }
+          ],
+          "segment_cache": {
+            "budget": 49947099136,
+            "bytes": 77568651,
+            "entries": 279,
+            "evictions": 0
+          },
+          "vmhwm_kb": 125832,
+          "vmrss_kb": 122284,
+          "vmsize_kb": 1811196,
+          "wall_s": null
+        },
+        {
+          "open_ms": 8.561,
+          "queries_done": 1,
+          "results": [
+            {
+              "first_ms": 498.865,
+              "hash": "091344cc76d81babfa083f4bed1ab8cd",
+              "ok": true,
+              "p50_ms": 498.865,
+              "p95_ms": 498.865,
+              "query": "series.count",
+              "rows": 100,
+              "timings_ms": [
+                498.865
+              ]
+            }
+          ],
+          "segment_cache": {
+            "budget": 49947099136,
+            "bytes": 77568651,
+            "entries": 279,
+            "evictions": 0
+          },
+          "vmhwm_kb": 125656,
+          "vmrss_kb": 122108,
+          "vmsize_kb": 1811200,
+          "wall_s": null
+        },
+        {
+          "open_ms": 8.824,
+          "queries_done": 1,
+          "results": [
+            {
+              "first_ms": 493.625,
+              "hash": "091344cc76d81babfa083f4bed1ab8cd",
+              "ok": true,
+              "p50_ms": 493.625,
+              "p95_ms": 493.625,
+              "query": "series.count",
+              "rows": 100,
+              "timings_ms": [
+                493.625
+              ]
+            }
+          ],
+          "segment_cache": {
+            "budget": 49947099136,
+            "bytes": 77568651,
+            "entries": 279,
+            "evictions": 0
+          },
+          "vmhwm_kb": 125872,
+          "vmrss_kb": 122324,
+          "vmsize_kb": 1811196,
+          "wall_s": null
+        },
+        {
+          "open_ms": 8.495,
+          "queries_done": 1,
+          "results": [
+            {
+              "first_ms": 508.798,
+              "hash": "091344cc76d81babfa083f4bed1ab8cd",
+              "ok": true,
+              "p50_ms": 508.798,
+              "p95_ms": 508.798,
+              "query": "series.count",
+              "rows": 100,
+              "timings_ms": [
+                508.798
+              ]
+            }
+          ],
+          "segment_cache": {
+            "budget": 49947099136,
+            "bytes": 77568651,
+            "entries": 279,
+            "evictions": 0
+          },
+          "vmhwm_kb": 125980,
+          "vmrss_kb": 122220,
+          "vmsize_kb": 1811200,
+          "wall_s": null
+        },
+        {
+          "open_ms": 9.563,
+          "queries_done": 1,
+          "results": [
+            {
+              "first_ms": 492.854,
+              "hash": "091344cc76d81babfa083f4bed1ab8cd",
+              "ok": true,
+              "p50_ms": 492.854,
+              "p95_ms": 492.854,
+              "query": "series.count",
+              "rows": 100,
+              "timings_ms": [
+                492.854
+              ]
+            }
+          ],
+          "segment_cache": {
+            "budget": 49947099136,
+            "bytes": 77568651,
+            "entries": 279,
+            "evictions": 0
+          },
+          "vmhwm_kb": 125960,
+          "vmrss_kb": 122220,
+          "vmsize_kb": 1811200,
+          "wall_s": null
+        }
+      ]
+    },
+    {
+      "backend": "native",
+      "first_ms": [
+        548.399,
+        552.389,
+        554.688,
+        565.892,
+        568.331
+      ],
+      "median_first_ms": 554.688,
+      "median_open_ms": 9.039,
+      "open_ms": [
+        8.452,
+        8.837,
+        9.039,
+        9.238,
+        10.386
+      ],
+      "query": "coactive.narrow",
+      "state": "cold",
+      "trials": [
+        {
+          "open_ms": 9.039,
+          "queries_done": 1,
+          "results": [
+            {
+              "first_ms": 565.892,
+              "hash": "7e64b230a9855343c4e973c2e5889fdc",
+              "ok": true,
+              "p50_ms": 565.892,
+              "p95_ms": 565.892,
+              "query": "coactive.narrow",
+              "rows": 401,
+              "timings_ms": [
+                565.892
+              ]
+            }
+          ],
+          "segment_cache": {
+            "budget": 49947099136,
+            "bytes": 77568651,
+            "entries": 279,
+            "evictions": 0
+          },
+          "vmhwm_kb": 122628,
+          "vmrss_kb": 122628,
+          "vmsize_kb": 1811200,
+          "wall_s": null
+        },
+        {
+          "open_ms": 8.452,
+          "queries_done": 1,
+          "results": [
+            {
+              "first_ms": 554.688,
+              "hash": "7e64b230a9855343c4e973c2e5889fdc",
+              "ok": true,
+              "p50_ms": 554.688,
+              "p95_ms": 554.688,
+              "query": "coactive.narrow",
+              "rows": 401,
+              "timings_ms": [
+                554.688
+              ]
+            }
+          ],
+          "segment_cache": {
+            "budget": 49947099136,
+            "bytes": 77568651,
+            "entries": 279,
+            "evictions": 0
+          },
+          "vmhwm_kb": 122336,
+          "vmrss_kb": 122336,
+          "vmsize_kb": 1811192,
+          "wall_s": null
+        },
+        {
+          "open_ms": 10.386,
+          "queries_done": 1,
+          "results": [
+            {
+              "first_ms": 568.331,
+              "hash": "7e64b230a9855343c4e973c2e5889fdc",
+              "ok": true,
+              "p50_ms": 568.331,
+              "p95_ms": 568.331,
+              "query": "coactive.narrow",
+              "rows": 401,
+              "timings_ms": [
+                568.331
+              ]
+            }
+          ],
+          "segment_cache": {
+            "budget": 49947099136,
+            "bytes": 77568651,
+            "entries": 279,
+            "evictions": 0
+          },
+          "vmhwm_kb": 122012,
+          "vmrss_kb": 122012,
+          "vmsize_kb": 1811188,
+          "wall_s": null
+        },
+        {
+          "open_ms": 9.238,
+          "queries_done": 1,
+          "results": [
+            {
+              "first_ms": 552.389,
+              "hash": "7e64b230a9855343c4e973c2e5889fdc",
+              "ok": true,
+              "p50_ms": 552.389,
+              "p95_ms": 552.389,
+              "query": "coactive.narrow",
+              "rows": 401,
+              "timings_ms": [
+                552.389
+              ]
+            }
+          ],
+          "segment_cache": {
+            "budget": 49947099136,
+            "bytes": 77568651,
+            "entries": 279,
+            "evictions": 0
+          },
+          "vmhwm_kb": 122428,
+          "vmrss_kb": 122428,
+          "vmsize_kb": 1811196,
+          "wall_s": null
+        },
+        {
+          "open_ms": 8.837,
+          "queries_done": 1,
+          "results": [
+            {
+              "first_ms": 548.399,
+              "hash": "7e64b230a9855343c4e973c2e5889fdc",
+              "ok": true,
+              "p50_ms": 548.399,
+              "p95_ms": 548.399,
+              "query": "coactive.narrow",
+              "rows": 401,
+              "timings_ms": [
+                548.399
+              ]
+            }
+          ],
+          "segment_cache": {
+            "budget": 49947099136,
+            "bytes": 77568651,
+            "entries": 279,
+            "evictions": 0
+          },
+          "vmhwm_kb": 122156,
+          "vmrss_kb": 122156,
+          "vmsize_kb": 1811196,
+          "wall_s": null
+        }
+      ]
+    },
+    {
+      "backend": "native",
+      "first_ms": [
+        758.642,
+        763.474,
+        767.164,
+        770.511,
+        779.871
+      ],
+      "median_first_ms": 767.164,
+      "median_open_ms": 9.05,
+      "open_ms": [
+        8.603,
+        8.881,
+        9.05,
+        9.614,
+        10.024
+      ],
+      "query": "diff.global",
+      "state": "cold",
+      "trials": [
+        {
+          "open_ms": 8.881,
+          "queries_done": 1,
+          "results": [
+            {
+              "first_ms": 767.164,
+              "hash": "1302008dbe499cc1a2ef467c5d843316",
+              "ok": true,
+              "p50_ms": 767.164,
+              "p95_ms": 767.164,
+              "query": "diff.global",
+              "rows": 74999,
+              "timings_ms": [
+                767.164
+              ]
+            }
+          ],
+          "segment_cache": {
+            "budget": 49947099136,
+            "bytes": 78127600,
+            "entries": 283,
+            "evictions": 0
+          },
+          "vmhwm_kb": 173500,
+          "vmrss_kb": 157600,
+          "vmsize_kb": 1847268,
+          "wall_s": null
+        },
+        {
+          "open_ms": 9.05,
+          "queries_done": 1,
+          "results": [
+            {
+              "first_ms": 779.871,
+              "hash": "1302008dbe499cc1a2ef467c5d843316",
+              "ok": true,
+              "p50_ms": 779.871,
+              "p95_ms": 779.871,
+              "query": "diff.global",
+              "rows": 74999,
+              "timings_ms": [
+                779.871
+              ]
+            }
+          ],
+          "segment_cache": {
+            "budget": 49947099136,
+            "bytes": 78127600,
+            "entries": 283,
+            "evictions": 0
+          },
+          "vmhwm_kb": 173588,
+          "vmrss_kb": 158708,
+          "vmsize_kb": 1848288,
+          "wall_s": null
+        },
+        {
+          "open_ms": 8.603,
+          "queries_done": 1,
+          "results": [
+            {
+              "first_ms": 763.474,
+              "hash": "1302008dbe499cc1a2ef467c5d843316",
+              "ok": true,
+              "p50_ms": 763.474,
+              "p95_ms": 763.474,
+              "query": "diff.global",
+              "rows": 74999,
+              "timings_ms": [
+                763.474
+              ]
+            }
+          ],
+          "segment_cache": {
+            "budget": 49947099136,
+            "bytes": 78127600,
+            "entries": 283,
+            "evictions": 0
+          },
+          "vmhwm_kb": 173576,
+          "vmrss_kb": 158636,
+          "vmsize_kb": 1848292,
+          "wall_s": null
+        },
+        {
+          "open_ms": 9.614,
+          "queries_done": 1,
+          "results": [
+            {
+              "first_ms": 770.511,
+              "hash": "1302008dbe499cc1a2ef467c5d843316",
+              "ok": true,
+              "p50_ms": 770.511,
+              "p95_ms": 770.511,
+              "query": "diff.global",
+              "rows": 74999,
+              "timings_ms": [
+                770.511
+              ]
+            }
+          ],
+          "segment_cache": {
+            "budget": 49947099136,
+            "bytes": 78127600,
+            "entries": 283,
+            "evictions": 0
+          },
+          "vmhwm_kb": 173868,
+          "vmrss_kb": 159792,
+          "vmsize_kb": 1849320,
+          "wall_s": null
+        },
+        {
+          "open_ms": 10.024,
+          "queries_done": 1,
+          "results": [
+            {
+              "first_ms": 758.642,
+              "hash": "1302008dbe499cc1a2ef467c5d843316",
+              "ok": true,
+              "p50_ms": 758.642,
+              "p95_ms": 758.642,
+              "query": "diff.global",
+              "rows": 74999,
+              "timings_ms": [
+                758.642
+              ]
+            }
+          ],
+          "segment_cache": {
+            "budget": 49947099136,
+            "bytes": 78127600,
+            "entries": 283,
+            "evictions": 0
+          },
+          "vmhwm_kb": 173920,
+          "vmrss_kb": 158832,
+          "vmsize_kb": 1848416,
+          "wall_s": null
+        }
+      ]
+    },
+    {
+      "backend": "native",
+      "first_ms": [
+        490.369,
+        492.503,
+        493.873,
+        494.837,
+        501.254
+      ],
+      "median_first_ms": 493.873,
+      "median_open_ms": 9.217,
+      "open_ms": [
+        8.442,
+        8.617,
+        9.217,
+        9.228,
+        9.308
+      ],
+      "query": "motif.filtered",
+      "state": "cold",
+      "trials": [
+        {
+          "open_ms": 8.442,
+          "queries_done": 1,
+          "results": [
+            {
+              "first_ms": 493.873,
+              "hash": "92af8a07bad5516ee7b6a41d297fb7ea",
+              "ok": true,
+              "p50_ms": 493.873,
+              "p95_ms": 493.873,
+              "query": "motif.filtered",
+              "rows": 385,
+              "timings_ms": [
+                493.873
+              ]
+            }
+          ],
+          "segment_cache": {
+            "budget": 49947099136,
+            "bytes": 77568651,
+            "entries": 279,
+            "evictions": 0
+          },
+          "vmhwm_kb": 126216,
+          "vmrss_kb": 125764,
+          "vmsize_kb": 1814468,
+          "wall_s": null
+        },
+        {
+          "open_ms": 9.308,
+          "queries_done": 1,
+          "results": [
+            {
+              "first_ms": 492.503,
+              "hash": "92af8a07bad5516ee7b6a41d297fb7ea",
+              "ok": true,
+              "p50_ms": 492.503,
+              "p95_ms": 492.503,
+              "query": "motif.filtered",
+              "rows": 385,
+              "timings_ms": [
+                492.503
+              ]
+            }
+          ],
+          "segment_cache": {
+            "budget": 49947099136,
+            "bytes": 77568651,
+            "entries": 279,
+            "evictions": 0
+          },
+          "vmhwm_kb": 126384,
+          "vmrss_kb": 125936,
+          "vmsize_kb": 1814460,
+          "wall_s": null
+        },
+        {
+          "open_ms": 8.617,
+          "queries_done": 1,
+          "results": [
+            {
+              "first_ms": 490.369,
+              "hash": "92af8a07bad5516ee7b6a41d297fb7ea",
+              "ok": true,
+              "p50_ms": 490.369,
+              "p95_ms": 490.369,
+              "query": "motif.filtered",
+              "rows": 385,
+              "timings_ms": [
+                490.369
+              ]
+            }
+          ],
+          "segment_cache": {
+            "budget": 49947099136,
+            "bytes": 77568651,
+            "entries": 279,
+            "evictions": 0
+          },
+          "vmhwm_kb": 126028,
+          "vmrss_kb": 125576,
+          "vmsize_kb": 1814456,
+          "wall_s": null
+        },
+        {
+          "open_ms": 9.228,
+          "queries_done": 1,
+          "results": [
+            {
+              "first_ms": 494.837,
+              "hash": "92af8a07bad5516ee7b6a41d297fb7ea",
+              "ok": true,
+              "p50_ms": 494.837,
+              "p95_ms": 494.837,
+              "query": "motif.filtered",
+              "rows": 385,
+              "timings_ms": [
+                494.837
+              ]
+            }
+          ],
+          "segment_cache": {
+            "budget": 49947099136,
+            "bytes": 77568651,
+            "entries": 279,
+            "evictions": 0
+          },
+          "vmhwm_kb": 126288,
+          "vmrss_kb": 125832,
+          "vmsize_kb": 1814456,
+          "wall_s": null
+        },
+        {
+          "open_ms": 9.217,
+          "queries_done": 1,
+          "results": [
+            {
+              "first_ms": 501.254,
+              "hash": "92af8a07bad5516ee7b6a41d297fb7ea",
+              "ok": true,
+              "p50_ms": 501.254,
+              "p95_ms": 501.254,
+              "query": "motif.filtered",
+              "rows": 385,
+              "timings_ms": [
+                501.254
+              ]
+            }
+          ],
+          "segment_cache": {
+            "budget": 49947099136,
+            "bytes": 77568651,
+            "entries": 279,
+            "evictions": 0
+          },
+          "vmhwm_kb": 126344,
+          "vmrss_kb": 125896,
+          "vmsize_kb": 1814456,
+          "wall_s": null
+        }
+      ]
+    },
+    {
+      "backend": "duckdb",
+      "open_ms": 70.174,
+      "queries_done": 180,
+      "results": [
+        {
+          "first_ms": 22.434,
+          "hash": "117a3248fa45c0bed588809844134434",
+          "ok": true,
+          "p50_ms": 23.623,
+          "p95_ms": 29.381,
+          "query": "hist.single",
+          "rows": 2,
+          "timings_ms": [
+            22.434,
+            29.381,
+            27.44,
+            21.259,
+            19.146,
+            27.575,
+            23.372,
+            20.357,
+            28.188,
+            25.543,
+            23.522,
+            21.33,
+            26.514,
+            24.093,
+            23.724,
+            29.833,
+            24.889,
+            24.277,
+            24.285,
+            23.451,
+            21.756,
+            28.644,
+            22.598,
+            24.344,
+            22.352,
+            22.215,
+            28.16,
+            23.373,
+            22.398,
+            23.014
+          ]
+        },
+        {
+          "first_ms": 201.501,
+          "hash": "b9c3141a267602f05f8089de8e270582",
+          "ok": true,
+          "p50_ms": 199.583,
+          "p95_ms": 227.034,
+          "query": "snap.hop2",
+          "rows": 135,
+          "timings_ms": [
+            201.501,
+            197.124,
+            203.505,
+            195.555,
+            195.188,
+            203.065,
+            195.999,
+            197.613,
+            204.048,
+            198.5,
+            199.643,
+            198.498,
+            199.279,
+            195.303,
+            203.804,
+            194.966,
+            205.506,
+            196.352,
+            199.36,
+            194.866,
+            196.191,
+            204.933,
+            200.305,
+            227.034,
+            230.853,
+            204.081,
+            206.259,
+            211.336,
+            199.523,
+            201.077
+          ]
+        },
+        {
+          "first_ms": 102.302,
+          "hash": "091344cc76d81babfa083f4bed1ab8cd",
+          "ok": true,
+          "p50_ms": 116.084,
+          "p95_ms": 126.513,
+          "query": "series.count",
+          "rows": 100,
+          "timings_ms": [
+            102.302,
+            119.45,
+            118.584,
+            103.25,
+            104.432,
+            109.791,
+            120.247,
+            120.042,
+            106.826,
+            102.066,
+            120.142,
+            111.323,
+            115.893,
+            124.816,
+            116.275,
+            108.955,
+            117.907,
+            115.858,
+            129.777,
+            111.462,
+            126.513,
+            111.469,
+            109.243,
+            125.142,
+            102.013,
+            122.995,
+            121.494,
+            117.824,
+            118.358,
+            105.5
+          ]
+        },
+        {
+          "first_ms": 111.788,
+          "hash": "7e64b230a9855343c4e973c2e5889fdc",
+          "ok": true,
+          "p50_ms": 110.509,
+          "p95_ms": 120.05,
+          "query": "coactive.narrow",
+          "rows": 401,
+          "timings_ms": [
+            111.788,
+            112.264,
+            114.72,
+            108.632,
+            101.913,
+            116.152,
+            103.283,
+            103.133,
+            98.263,
+            113.411,
+            122.81,
+            103.864,
+            110.787,
+            115.005,
+            96.27,
+            105.279,
+            110.23,
+            109.748,
+            107.232,
+            109.46,
+            113.978,
+            102.472,
+            113.311,
+            110.924,
+            111.192,
+            119.224,
+            99.468,
+            112.633,
+            106.252,
+            120.05
+          ]
+        },
+        {
+          "first_ms": 536.358,
+          "hash": "1302008dbe499cc1a2ef467c5d843316",
+          "ok": true,
+          "p50_ms": 539.007,
+          "p95_ms": 585.829,
+          "query": "diff.global",
+          "rows": 74999,
+          "timings_ms": [
+            536.358,
+            538.552,
+            577.009,
+            535.331,
+            550.51,
+            543.476,
+            531.06,
+            585.829,
+            587.57,
+            550.206,
+            527.05,
+            530.511,
+            539.461,
+            543.101,
+            544.971,
+            551.005,
+            535.265,
+            534.34,
+            533.59,
+            513.71,
+            548.679,
+            523.395,
+            538.227,
+            541.861,
+            543.913,
+            537.876,
+            531.37,
+            540.419,
+            529.275,
+            540.31
+          ]
+        },
+        {
+          "first_ms": 84.26,
+          "hash": "92af8a07bad5516ee7b6a41d297fb7ea",
+          "ok": true,
+          "p50_ms": 88.688,
+          "p95_ms": 98.856,
+          "query": "motif.filtered",
+          "rows": 385,
+          "timings_ms": [
+            84.26,
+            94.501,
+            91.921,
+            86.409,
+            91.352,
+            89.399,
+            99.894,
+            98.856,
+            87.469,
+            86.044,
+            83.403,
+            84.609,
+            81.118,
+            89.829,
+            84.127,
+            86.714,
+            92.293,
+            93.271,
+            89.71,
+            89.268,
+            91.752,
+            91.158,
+            85.299,
+            90.931,
+            85.671,
+            83.978,
+            85.7,
+            88.316,
+            88.571,
+            88.805
+          ]
+        }
+      ],
+      "segment_cache": null,
+      "state": "warm",
+      "vmhwm_kb": 616420,
+      "vmrss_kb": 485352,
+      "vmsize_kb": 9742560,
+      "wall_s": null
+    },
+    {
+      "backend": "duckdb",
+      "first_ms": [
+        271.266,
+        273.384,
+        273.768,
+        277.859,
+        313.469
+      ],
+      "median_first_ms": 273.768,
+      "median_open_ms": 75.226,
+      "open_ms": [
+        73.819,
+        73.939,
+        75.226,
+        75.695,
+        77.577
+      ],
+      "query": "hist.single",
+      "state": "process_cold",
+      "trials": [
+        {
+          "open_ms": 75.226,
+          "queries_done": 1,
+          "results": [
+            {
+              "first_ms": 313.469,
+              "hash": "117a3248fa45c0bed588809844134434",
+              "ok": true,
+              "p50_ms": 313.469,
+              "p95_ms": 313.469,
+              "query": "hist.single",
+              "rows": 2,
+              "timings_ms": [
+                313.469
+              ]
+            }
+          ],
+          "segment_cache": null,
+          "vmhwm_kb": 165424,
+          "vmrss_kb": 165424,
+          "vmsize_kb": 5292032,
+          "wall_s": null
+        },
+        {
+          "open_ms": 73.819,
+          "queries_done": 1,
+          "results": [
+            {
+              "first_ms": 277.859,
+              "hash": "117a3248fa45c0bed588809844134434",
+              "ok": true,
+              "p50_ms": 277.859,
+              "p95_ms": 277.859,
+              "query": "hist.single",
+              "rows": 2,
+              "timings_ms": [
+                277.859
+              ]
+            }
+          ],
+          "segment_cache": null,
+          "vmhwm_kb": 165892,
+          "vmrss_kb": 165892,
+          "vmsize_kb": 5216260,
+          "wall_s": null
+        },
+        {
+          "open_ms": 73.939,
+          "queries_done": 1,
+          "results": [
+            {
+              "first_ms": 273.768,
+              "hash": "117a3248fa45c0bed588809844134434",
+              "ok": true,
+              "p50_ms": 273.768,
+              "p95_ms": 273.768,
+              "query": "hist.single",
+              "rows": 2,
+              "timings_ms": [
+                273.768
+              ]
+            }
+          ],
+          "segment_cache": null,
+          "vmhwm_kb": 165164,
+          "vmrss_kb": 165164,
+          "vmsize_kb": 5217284,
+          "wall_s": null
+        },
+        {
+          "open_ms": 75.695,
+          "queries_done": 1,
+          "results": [
+            {
+              "first_ms": 273.384,
+              "hash": "117a3248fa45c0bed588809844134434",
+              "ok": true,
+              "p50_ms": 273.384,
+              "p95_ms": 273.384,
+              "query": "hist.single",
+              "rows": 2,
+              "timings_ms": [
+                273.384
+              ]
+            }
+          ],
+          "segment_cache": null,
+          "vmhwm_kb": 165752,
+          "vmrss_kb": 165752,
+          "vmsize_kb": 5281792,
+          "wall_s": null
+        },
+        {
+          "open_ms": 77.577,
+          "queries_done": 1,
+          "results": [
+            {
+              "first_ms": 271.266,
+              "hash": "117a3248fa45c0bed588809844134434",
+              "ok": true,
+              "p50_ms": 271.266,
+              "p95_ms": 271.266,
+              "query": "hist.single",
+              "rows": 2,
+              "timings_ms": [
+                271.266
+              ]
+            }
+          ],
+          "segment_cache": null,
+          "vmhwm_kb": 167636,
+          "vmrss_kb": 167636,
+          "vmsize_kb": 5150720,
+          "wall_s": null
+        }
+      ]
+    },
+    {
+      "backend": "duckdb",
+      "first_ms": [
+        451.717,
+        453.355,
+        453.99,
+        461.787,
+        464.035
+      ],
+      "median_first_ms": 453.99,
+      "median_open_ms": 73.615,
+      "open_ms": [
+        72.413,
+        73.308,
+        73.615,
+        74.369,
+        74.991
+      ],
+      "query": "snap.hop2",
+      "state": "process_cold",
+      "trials": [
+        {
+          "open_ms": 74.991,
+          "queries_done": 1,
+          "results": [
+            {
+              "first_ms": 461.787,
+              "hash": "b9c3141a267602f05f8089de8e270582",
+              "ok": true,
+              "p50_ms": 461.787,
+              "p95_ms": 461.787,
+              "query": "snap.hop2",
+              "rows": 135,
+              "timings_ms": [
+                461.787
+              ]
+            }
+          ],
+          "segment_cache": null,
+          "vmhwm_kb": 200928,
+          "vmrss_kb": 191608,
+          "vmsize_kb": 7797592,
+          "wall_s": null
+        },
+        {
+          "open_ms": 74.369,
+          "queries_done": 1,
+          "results": [
+            {
+              "first_ms": 464.035,
+              "hash": "b9c3141a267602f05f8089de8e270582",
+              "ok": true,
+              "p50_ms": 464.035,
+              "p95_ms": 464.035,
+              "query": "snap.hop2",
+              "rows": 135,
+              "timings_ms": [
+                464.035
+              ]
+            }
+          ],
+          "segment_cache": null,
+          "vmhwm_kb": 199408,
+          "vmrss_kb": 189992,
+          "vmsize_kb": 7952468,
+          "wall_s": null
+        },
+        {
+          "open_ms": 72.413,
+          "queries_done": 1,
+          "results": [
+            {
+              "first_ms": 453.355,
+              "hash": "b9c3141a267602f05f8089de8e270582",
+              "ok": true,
+              "p50_ms": 453.355,
+              "p95_ms": 453.355,
+              "query": "snap.hop2",
+              "rows": 135,
+              "timings_ms": [
+                453.355
+              ]
+            }
+          ],
+          "segment_cache": null,
+          "vmhwm_kb": 200336,
+          "vmrss_kb": 191884,
+          "vmsize_kb": 5384268,
+          "wall_s": null
+        },
+        {
+          "open_ms": 73.308,
+          "queries_done": 1,
+          "results": [
+            {
+              "first_ms": 453.99,
+              "hash": "b9c3141a267602f05f8089de8e270582",
+              "ok": true,
+              "p50_ms": 453.99,
+              "p95_ms": 453.99,
+              "query": "snap.hop2",
+              "rows": 135,
+              "timings_ms": [
+                453.99
+              ]
+            }
+          ],
+          "segment_cache": null,
+          "vmhwm_kb": 200616,
+          "vmrss_kb": 192188,
+          "vmsize_kb": 5241056,
+          "wall_s": null
+        },
+        {
+          "open_ms": 73.615,
+          "queries_done": 1,
+          "results": [
+            {
+              "first_ms": 451.717,
+              "hash": "b9c3141a267602f05f8089de8e270582",
+              "ok": true,
+              "p50_ms": 451.717,
+              "p95_ms": 451.717,
+              "query": "snap.hop2",
+              "rows": 135,
+              "timings_ms": [
+                451.717
+              ]
+            }
+          ],
+          "segment_cache": null,
+          "vmhwm_kb": 202732,
+          "vmrss_kb": 194436,
+          "vmsize_kb": 5317460,
+          "wall_s": null
+        }
+      ]
+    },
+    {
+      "backend": "duckdb",
+      "first_ms": [
+        363.565,
+        371.452,
+        371.82,
+        373.73,
+        385.667
+      ],
+      "median_first_ms": 371.82,
+      "median_open_ms": 73.68,
+      "open_ms": [
+        73.269,
+        73.316,
+        73.68,
+        75.821,
+        76.494
+      ],
+      "query": "series.count",
+      "state": "process_cold",
+      "trials": [
+        {
+          "open_ms": 75.821,
+          "queries_done": 1,
+          "results": [
+            {
+              "first_ms": 371.82,
+              "hash": "091344cc76d81babfa083f4bed1ab8cd",
+              "ok": true,
+              "p50_ms": 371.82,
+              "p95_ms": 371.82,
+              "query": "series.count",
+              "rows": 100,
+              "timings_ms": [
+                371.82
+              ]
+            }
+          ],
+          "segment_cache": null,
+          "vmhwm_kb": 271008,
+          "vmrss_kb": 271008,
+          "vmsize_kb": 6422168,
+          "wall_s": null
+        },
+        {
+          "open_ms": 73.269,
+          "queries_done": 1,
+          "results": [
+            {
+              "first_ms": 363.565,
+              "hash": "091344cc76d81babfa083f4bed1ab8cd",
+              "ok": true,
+              "p50_ms": 363.565,
+              "p95_ms": 363.565,
+              "query": "series.count",
+              "rows": 100,
+              "timings_ms": [
+                363.565
+              ]
+            }
+          ],
+          "segment_cache": null,
+          "vmhwm_kb": 269976,
+          "vmrss_kb": 269976,
+          "vmsize_kb": 6434588,
+          "wall_s": null
+        },
+        {
+          "open_ms": 76.494,
+          "queries_done": 1,
+          "results": [
+            {
+              "first_ms": 385.667,
+              "hash": "091344cc76d81babfa083f4bed1ab8cd",
+              "ok": true,
+              "p50_ms": 385.667,
+              "p95_ms": 385.667,
+              "query": "series.count",
+              "rows": 100,
+              "timings_ms": [
+                385.667
+              ]
+            }
+          ],
+          "segment_cache": null,
+          "vmhwm_kb": 272448,
+          "vmrss_kb": 272448,
+          "vmsize_kb": 6573840,
+          "wall_s": null
+        },
+        {
+          "open_ms": 73.316,
+          "queries_done": 1,
+          "results": [
+            {
+              "first_ms": 371.452,
+              "hash": "091344cc76d81babfa083f4bed1ab8cd",
+              "ok": true,
+              "p50_ms": 371.452,
+              "p95_ms": 371.452,
+              "query": "series.count",
+              "rows": 100,
+              "timings_ms": [
+                371.452
+              ]
+            }
+          ],
+          "segment_cache": null,
+          "vmhwm_kb": 270508,
+          "vmrss_kb": 270508,
+          "vmsize_kb": 6491800,
+          "wall_s": null
+        },
+        {
+          "open_ms": 73.68,
+          "queries_done": 1,
+          "results": [
+            {
+              "first_ms": 373.73,
+              "hash": "091344cc76d81babfa083f4bed1ab8cd",
+              "ok": true,
+              "p50_ms": 373.73,
+              "p95_ms": 373.73,
+              "query": "series.count",
+              "rows": 100,
+              "timings_ms": [
+                373.73
+              ]
+            }
+          ],
+          "segment_cache": null,
+          "vmhwm_kb": 269344,
+          "vmrss_kb": 269344,
+          "vmsize_kb": 6420636,
+          "wall_s": null
+        }
+      ]
+    },
+    {
+      "backend": "duckdb",
+      "first_ms": [
+        356.676,
+        356.875,
+        357.242,
+        360.045,
+        364.241
+      ],
+      "median_first_ms": 357.242,
+      "median_open_ms": 74.869,
+      "open_ms": [
+        73.155,
+        74.527,
+        74.869,
+        76.191,
+        78.031
+      ],
+      "query": "coactive.narrow",
+      "state": "process_cold",
+      "trials": [
+        {
+          "open_ms": 76.191,
+          "queries_done": 1,
+          "results": [
+            {
+              "first_ms": 356.875,
+              "hash": "7e64b230a9855343c4e973c2e5889fdc",
+              "ok": true,
+              "p50_ms": 356.875,
+              "p95_ms": 356.875,
+              "query": "coactive.narrow",
+              "rows": 401,
+              "timings_ms": [
+                356.875
+              ]
+            }
+          ],
+          "segment_cache": null,
+          "vmhwm_kb": 217276,
+          "vmrss_kb": 217276,
+          "vmsize_kb": 5479632,
+          "wall_s": null
+        },
+        {
+          "open_ms": 78.031,
+          "queries_done": 1,
+          "results": [
+            {
+              "first_ms": 357.242,
+              "hash": "7e64b230a9855343c4e973c2e5889fdc",
+              "ok": true,
+              "p50_ms": 357.242,
+              "p95_ms": 357.242,
+              "query": "coactive.narrow",
+              "rows": 401,
+              "timings_ms": [
+                357.242
+              ]
+            }
+          ],
+          "segment_cache": null,
+          "vmhwm_kb": 216092,
+          "vmrss_kb": 216092,
+          "vmsize_kb": 5461076,
+          "wall_s": null
+        },
+        {
+          "open_ms": 73.155,
+          "queries_done": 1,
+          "results": [
+            {
+              "first_ms": 360.045,
+              "hash": "7e64b230a9855343c4e973c2e5889fdc",
+              "ok": true,
+              "p50_ms": 360.045,
+              "p95_ms": 360.045,
+              "query": "coactive.narrow",
+              "rows": 401,
+              "timings_ms": [
+                360.045
+              ]
+            }
+          ],
+          "segment_cache": null,
+          "vmhwm_kb": 215268,
+          "vmrss_kb": 215268,
+          "vmsize_kb": 5476056,
+          "wall_s": null
+        },
+        {
+          "open_ms": 74.869,
+          "queries_done": 1,
+          "results": [
+            {
+              "first_ms": 364.241,
+              "hash": "7e64b230a9855343c4e973c2e5889fdc",
+              "ok": true,
+              "p50_ms": 364.241,
+              "p95_ms": 364.241,
+              "query": "coactive.narrow",
+              "rows": 401,
+              "timings_ms": [
+                364.241
+              ]
+            }
+          ],
+          "segment_cache": null,
+          "vmhwm_kb": 216536,
+          "vmrss_kb": 216536,
+          "vmsize_kb": 5478228,
+          "wall_s": null
+        },
+        {
+          "open_ms": 74.527,
+          "queries_done": 1,
+          "results": [
+            {
+              "first_ms": 356.676,
+              "hash": "7e64b230a9855343c4e973c2e5889fdc",
+              "ok": true,
+              "p50_ms": 356.676,
+              "p95_ms": 356.676,
+              "query": "coactive.narrow",
+              "rows": 401,
+              "timings_ms": [
+                356.676
+              ]
+            }
+          ],
+          "segment_cache": null,
+          "vmhwm_kb": 216828,
+          "vmrss_kb": 216828,
+          "vmsize_kb": 5491412,
+          "wall_s": null
+        }
+      ]
+    },
+    {
+      "backend": "duckdb",
+      "first_ms": [
+        799.622,
+        801.903,
+        802.607,
+        822.467,
+        850.662
+      ],
+      "median_first_ms": 802.607,
+      "median_open_ms": 74.705,
+      "open_ms": [
+        69.744,
+        72.643,
+        74.705,
+        74.976,
+        76.64
+      ],
+      "query": "diff.global",
+      "state": "process_cold",
+      "trials": [
+        {
+          "open_ms": 76.64,
+          "queries_done": 1,
+          "results": [
+            {
+              "first_ms": 802.607,
+              "hash": "1302008dbe499cc1a2ef467c5d843316",
+              "ok": true,
+              "p50_ms": 802.607,
+              "p95_ms": 802.607,
+              "query": "diff.global",
+              "rows": 74999,
+              "timings_ms": [
+                802.607
+              ]
+            }
+          ],
+          "segment_cache": null,
+          "vmhwm_kb": 247060,
+          "vmrss_kb": 210972,
+          "vmsize_kb": 8039004,
+          "wall_s": null
+        },
+        {
+          "open_ms": 74.976,
+          "queries_done": 1,
+          "results": [
+            {
+              "first_ms": 822.467,
+              "hash": "1302008dbe499cc1a2ef467c5d843316",
+              "ok": true,
+              "p50_ms": 822.467,
+              "p95_ms": 822.467,
+              "query": "diff.global",
+              "rows": 74999,
+              "timings_ms": [
+                822.467
+              ]
+            }
+          ],
+          "segment_cache": null,
+          "vmhwm_kb": 250680,
+          "vmrss_kb": 219324,
+          "vmsize_kb": 8070104,
+          "wall_s": null
+        },
+        {
+          "open_ms": 72.643,
+          "queries_done": 1,
+          "results": [
+            {
+              "first_ms": 801.903,
+              "hash": "1302008dbe499cc1a2ef467c5d843316",
+              "ok": true,
+              "p50_ms": 801.903,
+              "p95_ms": 801.903,
+              "query": "diff.global",
+              "rows": 74999,
+              "timings_ms": [
+                801.903
+              ]
+            }
+          ],
+          "segment_cache": null,
+          "vmhwm_kb": 248252,
+          "vmrss_kb": 217588,
+          "vmsize_kb": 8063460,
+          "wall_s": null
+        },
+        {
+          "open_ms": 74.705,
+          "queries_done": 1,
+          "results": [
+            {
+              "first_ms": 850.662,
+              "hash": "1302008dbe499cc1a2ef467c5d843316",
+              "ok": true,
+              "p50_ms": 850.662,
+              "p95_ms": 850.662,
+              "query": "diff.global",
+              "rows": 74999,
+              "timings_ms": [
+                850.662
+              ]
+            }
+          ],
+          "segment_cache": null,
+          "vmhwm_kb": 253316,
+          "vmrss_kb": 217340,
+          "vmsize_kb": 7908908,
+          "wall_s": null
+        },
+        {
+          "open_ms": 69.744,
+          "queries_done": 1,
+          "results": [
+            {
+              "first_ms": 799.622,
+              "hash": "1302008dbe499cc1a2ef467c5d843316",
+              "ok": true,
+              "p50_ms": 799.622,
+              "p95_ms": 799.622,
+              "query": "diff.global",
+              "rows": 74999,
+              "timings_ms": [
+                799.622
+              ]
+            }
+          ],
+          "segment_cache": null,
+          "vmhwm_kb": 247760,
+          "vmrss_kb": 212852,
+          "vmsize_kb": 7965740,
+          "wall_s": null
+        }
+      ]
+    },
+    {
+      "backend": "duckdb",
+      "first_ms": [
+        341.5,
+        341.859,
+        342.001,
+        346.163,
+        347.822
+      ],
+      "median_first_ms": 342.001,
+      "median_open_ms": 74.976,
+      "open_ms": [
+        74.408,
+        74.969,
+        74.976,
+        74.995,
+        75.63
+      ],
+      "query": "motif.filtered",
+      "state": "process_cold",
+      "trials": [
+        {
+          "open_ms": 74.969,
+          "queries_done": 1,
+          "results": [
+            {
+              "first_ms": 342.001,
+              "hash": "92af8a07bad5516ee7b6a41d297fb7ea",
+              "ok": true,
+              "p50_ms": 342.001,
+              "p95_ms": 342.001,
+              "query": "motif.filtered",
+              "rows": 385,
+              "timings_ms": [
+                342.001
+              ]
+            }
+          ],
+          "segment_cache": null,
+          "vmhwm_kb": 216236,
+          "vmrss_kb": 216236,
+          "vmsize_kb": 5433504,
+          "wall_s": null
+        },
+        {
+          "open_ms": 74.995,
+          "queries_done": 1,
+          "results": [
+            {
+              "first_ms": 341.5,
+              "hash": "92af8a07bad5516ee7b6a41d297fb7ea",
+              "ok": true,
+              "p50_ms": 341.5,
+              "p95_ms": 341.5,
+              "query": "motif.filtered",
+              "rows": 385,
+              "timings_ms": [
+                341.5
+              ]
+            }
+          ],
+          "segment_cache": null,
+          "vmhwm_kb": 218228,
+          "vmrss_kb": 218228,
+          "vmsize_kb": 5516952,
+          "wall_s": null
+        },
+        {
+          "open_ms": 75.63,
+          "queries_done": 1,
+          "results": [
+            {
+              "first_ms": 341.859,
+              "hash": "92af8a07bad5516ee7b6a41d297fb7ea",
+              "ok": true,
+              "p50_ms": 341.859,
+              "p95_ms": 341.859,
+              "query": "motif.filtered",
+              "rows": 385,
+              "timings_ms": [
+                341.859
+              ]
+            }
+          ],
+          "segment_cache": null,
+          "vmhwm_kb": 216464,
+          "vmrss_kb": 216464,
+          "vmsize_kb": 5378216,
+          "wall_s": null
+        },
+        {
+          "open_ms": 74.976,
+          "queries_done": 1,
+          "results": [
+            {
+              "first_ms": 347.822,
+              "hash": "92af8a07bad5516ee7b6a41d297fb7ea",
+              "ok": true,
+              "p50_ms": 347.822,
+              "p95_ms": 347.822,
+              "query": "motif.filtered",
+              "rows": 385,
+              "timings_ms": [
+                347.822
+              ]
+            }
+          ],
+          "segment_cache": null,
+          "vmhwm_kb": 217524,
+          "vmrss_kb": 217524,
+          "vmsize_kb": 5299516,
+          "wall_s": null
+        },
+        {
+          "open_ms": 74.408,
+          "queries_done": 1,
+          "results": [
+            {
+              "first_ms": 346.163,
+              "hash": "92af8a07bad5516ee7b6a41d297fb7ea",
+              "ok": true,
+              "p50_ms": 346.163,
+              "p95_ms": 346.163,
+              "query": "motif.filtered",
+              "rows": 385,
+              "timings_ms": [
+                346.163
+              ]
+            }
+          ],
+          "segment_cache": null,
+          "vmhwm_kb": 217948,
+          "vmrss_kb": 217948,
+          "vmsize_kb": 5233808,
+          "wall_s": null
+        }
+      ]
+    },
+    {
+      "backend": "duckdb",
+      "first_ms": [
+        280.93,
+        282.483,
+        282.919,
+        283.548,
+        286.052
+      ],
+      "median_first_ms": 282.919,
+      "median_open_ms": 81.205,
+      "open_ms": [
+        79.614,
+        80.383,
+        81.205,
+        85.304,
+        87.655
+      ],
+      "query": "hist.single",
+      "state": "cold",
+      "trials": [
+        {
+          "open_ms": 87.655,
+          "queries_done": 1,
+          "results": [
+            {
+              "first_ms": 283.548,
+              "hash": "117a3248fa45c0bed588809844134434",
+              "ok": true,
+              "p50_ms": 283.548,
+              "p95_ms": 283.548,
+              "query": "hist.single",
+              "rows": 2,
+              "timings_ms": [
+                283.548
+              ]
+            }
+          ],
+          "segment_cache": null,
+          "vmhwm_kb": 166608,
+          "vmrss_kb": 166608,
+          "vmsize_kb": 5011448,
+          "wall_s": null
+        },
+        {
+          "open_ms": 80.383,
+          "queries_done": 1,
+          "results": [
+            {
+              "first_ms": 286.052,
+              "hash": "117a3248fa45c0bed588809844134434",
+              "ok": true,
+              "p50_ms": 286.052,
+              "p95_ms": 286.052,
+              "query": "hist.single",
+              "rows": 2,
+              "timings_ms": [
+                286.052
+              ]
+            }
+          ],
+          "segment_cache": null,
+          "vmhwm_kb": 164908,
+          "vmrss_kb": 164908,
+          "vmsize_kb": 5078016,
+          "wall_s": null
+        },
+        {
+          "open_ms": 85.304,
+          "queries_done": 1,
+          "results": [
+            {
+              "first_ms": 282.919,
+              "hash": "117a3248fa45c0bed588809844134434",
+              "ok": true,
+              "p50_ms": 282.919,
+              "p95_ms": 282.919,
+              "query": "hist.single",
+              "rows": 2,
+              "timings_ms": [
+                282.919
+              ]
+            }
+          ],
+          "segment_cache": null,
+          "vmhwm_kb": 166304,
+          "vmrss_kb": 166304,
+          "vmsize_kb": 5084168,
+          "wall_s": null
+        },
+        {
+          "open_ms": 79.614,
+          "queries_done": 1,
+          "results": [
+            {
+              "first_ms": 282.483,
+              "hash": "117a3248fa45c0bed588809844134434",
+              "ok": true,
+              "p50_ms": 282.483,
+              "p95_ms": 282.483,
+              "query": "hist.single",
+              "rows": 2,
+              "timings_ms": [
+                282.483
+              ]
+            }
+          ],
+          "segment_cache": null,
+          "vmhwm_kb": 164872,
+          "vmrss_kb": 164872,
+          "vmsize_kb": 4807680,
+          "wall_s": null
+        },
+        {
+          "open_ms": 81.205,
+          "queries_done": 1,
+          "results": [
+            {
+              "first_ms": 280.93,
+              "hash": "117a3248fa45c0bed588809844134434",
+              "ok": true,
+              "p50_ms": 280.93,
+              "p95_ms": 280.93,
+              "query": "hist.single",
+              "rows": 2,
+              "timings_ms": [
+                280.93
+              ]
+            }
+          ],
+          "segment_cache": null,
+          "vmhwm_kb": 166444,
+          "vmrss_kb": 166444,
+          "vmsize_kb": 5003256,
+          "wall_s": null
+        }
+      ]
+    },
+    {
+      "backend": "duckdb",
+      "first_ms": [
+        469.632,
+        476.882,
+        480.001,
+        481.418,
+        487.937
+      ],
+      "median_first_ms": 480.001,
+      "median_open_ms": 79.557,
+      "open_ms": [
+        74.858,
+        79.273,
+        79.557,
+        81.494,
+        82.272
+      ],
+      "query": "snap.hop2",
+      "state": "cold",
+      "trials": [
+        {
+          "open_ms": 74.858,
+          "queries_done": 1,
+          "results": [
+            {
+              "first_ms": 481.418,
+              "hash": "b9c3141a267602f05f8089de8e270582",
+              "ok": true,
+              "p50_ms": 481.418,
+              "p95_ms": 481.418,
+              "query": "snap.hop2",
+              "rows": 135,
+              "timings_ms": [
+                481.418
+              ]
+            }
+          ],
+          "segment_cache": null,
+          "vmhwm_kb": 199640,
+          "vmrss_kb": 191556,
+          "vmsize_kb": 7870572,
+          "wall_s": null
+        },
+        {
+          "open_ms": 79.557,
+          "queries_done": 1,
+          "results": [
+            {
+              "first_ms": 480.001,
+              "hash": "b9c3141a267602f05f8089de8e270582",
+              "ok": true,
+              "p50_ms": 480.001,
+              "p95_ms": 480.001,
+              "query": "snap.hop2",
+              "rows": 135,
+              "timings_ms": [
+                480.001
+              ]
+            }
+          ],
+          "segment_cache": null,
+          "vmhwm_kb": 199612,
+          "vmrss_kb": 191268,
+          "vmsize_kb": 7884360,
+          "wall_s": null
+        },
+        {
+          "open_ms": 81.494,
+          "queries_done": 1,
+          "results": [
+            {
+              "first_ms": 476.882,
+              "hash": "b9c3141a267602f05f8089de8e270582",
+              "ok": true,
+              "p50_ms": 476.882,
+              "p95_ms": 476.882,
+              "query": "snap.hop2",
+              "rows": 135,
+              "timings_ms": [
+                476.882
+              ]
+            }
+          ],
+          "segment_cache": null,
+          "vmhwm_kb": 198964,
+          "vmrss_kb": 190608,
+          "vmsize_kb": 7809604,
+          "wall_s": null
+        },
+        {
+          "open_ms": 82.272,
+          "queries_done": 1,
+          "results": [
+            {
+              "first_ms": 469.632,
+              "hash": "b9c3141a267602f05f8089de8e270582",
+              "ok": true,
+              "p50_ms": 469.632,
+              "p95_ms": 469.632,
+              "query": "snap.hop2",
+              "rows": 135,
+              "timings_ms": [
+                469.632
+              ]
+            }
+          ],
+          "segment_cache": null,
+          "vmhwm_kb": 198960,
+          "vmrss_kb": 190920,
+          "vmsize_kb": 7677276,
+          "wall_s": null
+        },
+        {
+          "open_ms": 79.273,
+          "queries_done": 1,
+          "results": [
+            {
+              "first_ms": 487.937,
+              "hash": "b9c3141a267602f05f8089de8e270582",
+              "ok": true,
+              "p50_ms": 487.937,
+              "p95_ms": 487.937,
+              "query": "snap.hop2",
+              "rows": 135,
+              "timings_ms": [
+                487.937
+              ]
+            }
+          ],
+          "segment_cache": null,
+          "vmhwm_kb": 198956,
+          "vmrss_kb": 190868,
+          "vmsize_kb": 7817508,
+          "wall_s": null
+        }
+      ]
+    },
+    {
+      "backend": "duckdb",
+      "first_ms": [
+        386.333,
+        390.117,
+        392.506,
+        393.871,
+        394.574
+      ],
+      "median_first_ms": 392.506,
+      "median_open_ms": 80.405,
+      "open_ms": [
+        78.485,
+        79.961,
+        80.405,
+        81.714,
+        88.573
+      ],
+      "query": "series.count",
+      "state": "cold",
+      "trials": [
+        {
+          "open_ms": 80.405,
+          "queries_done": 1,
+          "results": [
+            {
+              "first_ms": 386.333,
+              "hash": "091344cc76d81babfa083f4bed1ab8cd",
+              "ok": true,
+              "p50_ms": 386.333,
+              "p95_ms": 386.333,
+              "query": "series.count",
+              "rows": 100,
+              "timings_ms": [
+                386.333
+              ]
+            }
+          ],
+          "segment_cache": null,
+          "vmhwm_kb": 272540,
+          "vmrss_kb": 272540,
+          "vmsize_kb": 6504600,
+          "wall_s": null
+        },
+        {
+          "open_ms": 79.961,
+          "queries_done": 1,
+          "results": [
+            {
+              "first_ms": 393.871,
+              "hash": "091344cc76d81babfa083f4bed1ab8cd",
+              "ok": true,
+              "p50_ms": 393.871,
+              "p95_ms": 393.871,
+              "query": "series.count",
+              "rows": 100,
+              "timings_ms": [
+                393.871
+              ]
+            }
+          ],
+          "segment_cache": null,
+          "vmhwm_kb": 270404,
+          "vmrss_kb": 270404,
+          "vmsize_kb": 6504604,
+          "wall_s": null
+        },
+        {
+          "open_ms": 78.485,
+          "queries_done": 1,
+          "results": [
+            {
+              "first_ms": 390.117,
+              "hash": "091344cc76d81babfa083f4bed1ab8cd",
+              "ok": true,
+              "p50_ms": 390.117,
+              "p95_ms": 390.117,
+              "query": "series.count",
+              "rows": 100,
+              "timings_ms": [
+                390.117
+              ]
+            }
+          ],
+          "segment_cache": null,
+          "vmhwm_kb": 270712,
+          "vmrss_kb": 270712,
+          "vmsize_kb": 6497436,
+          "wall_s": null
+        },
+        {
+          "open_ms": 88.573,
+          "queries_done": 1,
+          "results": [
+            {
+              "first_ms": 394.574,
+              "hash": "091344cc76d81babfa083f4bed1ab8cd",
+              "ok": true,
+              "p50_ms": 394.574,
+              "p95_ms": 394.574,
+              "query": "series.count",
+              "rows": 100,
+              "timings_ms": [
+                394.574
+              ]
+            }
+          ],
+          "segment_cache": null,
+          "vmhwm_kb": 270040,
+          "vmrss_kb": 270040,
+          "vmsize_kb": 6426256,
+          "wall_s": null
+        },
+        {
+          "open_ms": 81.714,
+          "queries_done": 1,
+          "results": [
+            {
+              "first_ms": 392.506,
+              "hash": "091344cc76d81babfa083f4bed1ab8cd",
+              "ok": true,
+              "p50_ms": 392.506,
+              "p95_ms": 392.506,
+              "query": "series.count",
+              "rows": 100,
+              "timings_ms": [
+                392.506
+              ]
+            }
+          ],
+          "segment_cache": null,
+          "vmhwm_kb": 271616,
+          "vmrss_kb": 271616,
+          "vmsize_kb": 6579480,
+          "wall_s": null
+        }
+      ]
+    },
+    {
+      "backend": "duckdb",
+      "first_ms": [
+        405.088,
+        409.279,
+        411.521,
+        415.069,
+        423.799
+      ],
+      "median_first_ms": 411.521,
+      "median_open_ms": 79.941,
+      "open_ms": [
+        78.895,
+        79.367,
+        79.941,
+        80.979,
+        81.071
+      ],
+      "query": "coactive.narrow",
+      "state": "cold",
+      "trials": [
+        {
+          "open_ms": 79.941,
+          "queries_done": 1,
+          "results": [
+            {
+              "first_ms": 415.069,
+              "hash": "7e64b230a9855343c4e973c2e5889fdc",
+              "ok": true,
+              "p50_ms": 415.069,
+              "p95_ms": 415.069,
+              "query": "coactive.narrow",
+              "rows": 401,
+              "timings_ms": [
+                415.069
+              ]
+            }
+          ],
+          "segment_cache": null,
+          "vmhwm_kb": 215732,
+          "vmrss_kb": 215732,
+          "vmsize_kb": 5347140,
+          "wall_s": null
+        },
+        {
+          "open_ms": 81.071,
+          "queries_done": 1,
+          "results": [
+            {
+              "first_ms": 423.799,
+              "hash": "7e64b230a9855343c4e973c2e5889fdc",
+              "ok": true,
+              "p50_ms": 423.799,
+              "p95_ms": 423.799,
+              "query": "coactive.narrow",
+              "rows": 401,
+              "timings_ms": [
+                423.799
+              ]
+            }
+          ],
+          "segment_cache": null,
+          "vmhwm_kb": 216164,
+          "vmrss_kb": 216164,
+          "vmsize_kb": 5481284,
+          "wall_s": null
+        },
+        {
+          "open_ms": 79.367,
+          "queries_done": 1,
+          "results": [
+            {
+              "first_ms": 409.279,
+              "hash": "7e64b230a9855343c4e973c2e5889fdc",
+              "ok": true,
+              "p50_ms": 409.279,
+              "p95_ms": 409.279,
+              "query": "coactive.narrow",
+              "rows": 401,
+              "timings_ms": [
+                409.279
+              ]
+            }
+          ],
+          "segment_cache": null,
+          "vmhwm_kb": 215652,
+          "vmrss_kb": 215652,
+          "vmsize_kb": 5464148,
+          "wall_s": null
+        },
+        {
+          "open_ms": 80.979,
+          "queries_done": 1,
+          "results": [
+            {
+              "first_ms": 405.088,
+              "hash": "7e64b230a9855343c4e973c2e5889fdc",
+              "ok": true,
+              "p50_ms": 405.088,
+              "p95_ms": 405.088,
+              "query": "coactive.narrow",
+              "rows": 401,
+              "timings_ms": [
+                405.088
+              ]
+            }
+          ],
+          "segment_cache": null,
+          "vmhwm_kb": 216628,
+          "vmrss_kb": 216628,
+          "vmsize_kb": 5527120,
+          "wall_s": null
+        },
+        {
+          "open_ms": 78.895,
+          "queries_done": 1,
+          "results": [
+            {
+              "first_ms": 411.521,
+              "hash": "7e64b230a9855343c4e973c2e5889fdc",
+              "ok": true,
+              "p50_ms": 411.521,
+              "p95_ms": 411.521,
+              "query": "coactive.narrow",
+              "rows": 401,
+              "timings_ms": [
+                411.521
+              ]
+            }
+          ],
+          "segment_cache": null,
+          "vmhwm_kb": 216088,
+          "vmrss_kb": 216088,
+          "vmsize_kb": 5483848,
+          "wall_s": null
+        }
+      ]
+    },
+    {
+      "backend": "duckdb",
+      "first_ms": [
+        847.639,
+        850.595,
+        858.646,
+        860.119,
+        863.422
+      ],
+      "median_first_ms": 858.646,
+      "median_open_ms": 82.61,
+      "open_ms": [
+        76.641,
+        79.116,
+        82.61,
+        85.995,
+        86.233
+      ],
+      "query": "diff.global",
+      "state": "cold",
+      "trials": [
+        {
+          "open_ms": 86.233,
+          "queries_done": 1,
+          "results": [
+            {
+              "first_ms": 860.119,
+              "hash": "1302008dbe499cc1a2ef467c5d843316",
+              "ok": true,
+              "p50_ms": 860.119,
+              "p95_ms": 860.119,
+              "query": "diff.global",
+              "rows": 74999,
+              "timings_ms": [
+                860.119
+              ]
+            }
+          ],
+          "segment_cache": null,
+          "vmhwm_kb": 243644,
+          "vmrss_kb": 230760,
+          "vmsize_kb": 8152160,
+          "wall_s": null
+        },
+        {
+          "open_ms": 76.641,
+          "queries_done": 1,
+          "results": [
+            {
+              "first_ms": 850.595,
+              "hash": "1302008dbe499cc1a2ef467c5d843316",
+              "ok": true,
+              "p50_ms": 850.595,
+              "p95_ms": 850.595,
+              "query": "diff.global",
+              "rows": 74999,
+              "timings_ms": [
+                850.595
+              ]
+            }
+          ],
+          "segment_cache": null,
+          "vmhwm_kb": 250100,
+          "vmrss_kb": 219484,
+          "vmsize_kb": 8064064,
+          "wall_s": null
+        },
+        {
+          "open_ms": 82.61,
+          "queries_done": 1,
+          "results": [
+            {
+              "first_ms": 858.646,
+              "hash": "1302008dbe499cc1a2ef467c5d843316",
+              "ok": true,
+              "p50_ms": 858.646,
+              "p95_ms": 858.646,
+              "query": "diff.global",
+              "rows": 74999,
+              "timings_ms": [
+                858.646
+              ]
+            }
+          ],
+          "segment_cache": null,
+          "vmhwm_kb": 243200,
+          "vmrss_kb": 212500,
+          "vmsize_kb": 8050224,
+          "wall_s": null
+        },
+        {
+          "open_ms": 85.995,
+          "queries_done": 1,
+          "results": [
+            {
+              "first_ms": 863.422,
+              "hash": "1302008dbe499cc1a2ef467c5d843316",
+              "ok": true,
+              "p50_ms": 863.422,
+              "p95_ms": 863.422,
+              "query": "diff.global",
+              "rows": 74999,
+              "timings_ms": [
+                863.422
+              ]
+            }
+          ],
+          "segment_cache": null,
+          "vmhwm_kb": 249952,
+          "vmrss_kb": 237072,
+          "vmsize_kb": 8151448,
+          "wall_s": null
+        },
+        {
+          "open_ms": 79.116,
+          "queries_done": 1,
+          "results": [
+            {
+              "first_ms": 847.639,
+              "hash": "1302008dbe499cc1a2ef467c5d843316",
+              "ok": true,
+              "p50_ms": 847.639,
+              "p95_ms": 847.639,
+              "query": "diff.global",
+              "rows": 74999,
+              "timings_ms": [
+                847.639
+              ]
+            }
+          ],
+          "segment_cache": null,
+          "vmhwm_kb": 242916,
+          "vmrss_kb": 209516,
+          "vmsize_kb": 8028772,
+          "wall_s": null
+        }
+      ]
+    },
+    {
+      "backend": "duckdb",
+      "first_ms": [
+        394.362,
+        399.264,
+        403.262,
+        403.631,
+        412.105
+      ],
+      "median_first_ms": 403.262,
+      "median_open_ms": 78.863,
+      "open_ms": [
+        75.402,
+        77.891,
+        78.863,
+        79.066,
+        81.305
+      ],
+      "query": "motif.filtered",
+      "state": "cold",
+      "trials": [
+        {
+          "open_ms": 77.891,
+          "queries_done": 1,
+          "results": [
+            {
+              "first_ms": 403.262,
+              "hash": "92af8a07bad5516ee7b6a41d297fb7ea",
+              "ok": true,
+              "p50_ms": 403.262,
+              "p95_ms": 403.262,
+              "query": "motif.filtered",
+              "rows": 385,
+              "timings_ms": [
+                403.262
+              ]
+            }
+          ],
+          "segment_cache": null,
+          "vmhwm_kb": 216928,
+          "vmrss_kb": 216928,
+          "vmsize_kb": 5373624,
+          "wall_s": null
+        },
+        {
+          "open_ms": 79.066,
+          "queries_done": 1,
+          "results": [
+            {
+              "first_ms": 412.105,
+              "hash": "92af8a07bad5516ee7b6a41d297fb7ea",
+              "ok": true,
+              "p50_ms": 412.105,
+              "p95_ms": 412.105,
+              "query": "motif.filtered",
+              "rows": 385,
+              "timings_ms": [
+                412.105
+              ]
+            }
+          ],
+          "segment_cache": null,
+          "vmhwm_kb": 216572,
+          "vmrss_kb": 216572,
+          "vmsize_kb": 5436088,
+          "wall_s": null
+        },
+        {
+          "open_ms": 78.863,
+          "queries_done": 1,
+          "results": [
+            {
+              "first_ms": 399.264,
+              "hash": "92af8a07bad5516ee7b6a41d297fb7ea",
+              "ok": true,
+              "p50_ms": 399.264,
+              "p95_ms": 399.264,
+              "query": "motif.filtered",
+              "rows": 385,
+              "timings_ms": [
+                399.264
+              ]
+            }
+          ],
+          "segment_cache": null,
+          "vmhwm_kb": 216144,
+          "vmrss_kb": 216144,
+          "vmsize_kb": 5363476,
+          "wall_s": null
+        },
+        {
+          "open_ms": 81.305,
+          "queries_done": 1,
+          "results": [
+            {
+              "first_ms": 394.362,
+              "hash": "92af8a07bad5516ee7b6a41d297fb7ea",
+              "ok": true,
+              "p50_ms": 394.362,
+              "p95_ms": 394.362,
+              "query": "motif.filtered",
+              "rows": 385,
+              "timings_ms": [
+                394.362
+              ]
+            }
+          ],
+          "segment_cache": null,
+          "vmhwm_kb": 217516,
+          "vmrss_kb": 217516,
+          "vmsize_kb": 5313848,
+          "wall_s": null
+        },
+        {
+          "open_ms": 75.402,
+          "queries_done": 1,
+          "results": [
+            {
+              "first_ms": 403.631,
+              "hash": "92af8a07bad5516ee7b6a41d297fb7ea",
+              "ok": true,
+              "p50_ms": 403.631,
+              "p95_ms": 403.631,
+              "query": "motif.filtered",
+              "rows": 385,
+              "timings_ms": [
+                403.631
+              ]
+            }
+          ],
+          "segment_cache": null,
+          "vmhwm_kb": 217140,
+          "vmrss_kb": 217140,
+          "vmsize_kb": 5373200,
+          "wall_s": null
+        }
+      ]
+    }
+  ],
+  "systems": [
+    "native",
+    "duckdb"
+  ],
+  "trials": 5
+}

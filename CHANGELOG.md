@@ -18,6 +18,14 @@ per-generation segment-name cache make `believed_*` flat in per-identity
 depth: 1.18× across 1 to 1,000 retained versions, where the same walk was
 linear in depth before. Same-binary A/B at depth 1,000: 63.9× on the lookup.
 
+**Cold start collapsed, and the memory floor with it.** The first query in a
+fresh process fell from 2.5 s to 0.3 s at 1M events — parity with an
+embedded database's own open — and from ~28 s to 3–8 s at 10M; peak memory
+over a query suite at 10M fell 6.1 → 2.4 GB. Neither was forecast: the
+per-read costs the correction-path work removed turned out to be what the
+warm-up was made of. Short-lived processes (CLI, serverless) move from
+"consider another approach" to workable at small scale.
+
 **A standing correction matrix, and the guidance it produced.** Density ×
 batch size × versions-per-identity × out-of-order distance, small in CI and
 full-scale in release evaluation, with regression gates calibrated against

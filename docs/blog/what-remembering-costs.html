@@ -302,12 +302,14 @@ in our running misdiagnosis table in
 <h2>Axis 4 — service lifecycle and concurrency</h2>
 
 <p>The cost most likely to disqualify this design is not correction-related
-at all. On a fresh process at ten million events, the first query of any
-kind takes <span data-fact="coldstart_10m">27-31</span> seconds — a
-per-process warm-up rather than a disk-reading story, since evicting the
-page cache barely changes it. A short-lived client gets its first answer
-from DuckDB roughly 5–70× sooner. <b>The engine assumes a resident
-process</b>, and so does every other number here.</p>
+at all — and it shrank 7–9× since this post first ran. On a fresh process
+at ten million events, the first query takes
+<span data-fact="coldstart_10m">3-8</span> seconds — a per-process warm-up
+rather than a disk-reading story, since evicting the page cache barely
+changes it. A short-lived client gets its first answer from DuckDB
+1.2–8.8× sooner at 10M, and at 1M the two are at parity. <b>The engine
+still rewards a resident process</b>, and the steady-state numbers here
+assume one.</p>
 
 <p>Concurrency is the happier axis, with one clarification this post
 previously owed its readers. Sixteen readers deliver
@@ -361,7 +363,7 @@ is why they are published in this shape, not a claim that none exists.</p>
 <tr><td><b>Current-only workload</b> — never corrected</td><td>no measurable storage, latency or memory overhead; still the warm-up and memory floor</td><td class="win">good fit — effectively free</td></tr>
 <tr><td><b>Moderate corrections</b> — about 1% of events</td><td>+<span data-fact="storage_overhead_1pct">2.1</span>% storage; scan queries roughly twice as slow as on a current-only store</td><td class="win">good fit</td></tr>
 <tr><td><b>Correction-heavy audit store</b> — 5–20%</td><td>+<span data-fact="storage_overhead_5pct">8.8</span>% to +<span data-fact="storage_overhead_20pct">30.1</span>% storage; multi-fold latency at scale; one query refused at 20%</td><td class="amber">budget memory and rebuild time deliberately</td></tr>
-<tr><td><b>Short-lived process</b> — CLI, serverless, per-request</td><td>the full <span data-fact="coldstart_10m">27-31</span> s warm-up every invocation</td><td class="miss">consider another approach</td></tr>
+<tr><td><b>Short-lived process</b> — CLI, serverless, per-request</td><td>the full <span data-fact="coldstart_10m">3-8</span> s warm-up every invocation at 10M; near-parity at 1M</td><td class="miss">workable at small scale; weigh it above</td></tr>
 </table></div>
 
 <h2>Takeaway</h2>

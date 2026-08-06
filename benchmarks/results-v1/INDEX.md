@@ -78,6 +78,14 @@ supersessions are part of the record:
   at 20% density (0.29 s at density 0) and probe peak memory **−70%**,
   which staled the published warm-up facts instead of the replay ones.
   Hash gates green at every density.
+- eval-resources-coldwarm-{1m,10m}-d082.json — the §15 cold/warm sweep
+  re-run on **xzgpu** at `f1498e4`, the protocol-matched refresh for the
+  published warm-up facts. Native first-query in a fresh process: 2.4–2.9 →
+  **0.29–0.62 s** at 1M, 27–32 → **3.1–8.0 s** at 10M (5–9× per query,
+  both cache states). At 1M native cold start is now at **parity with
+  DuckDB** (0.8–1.6×); at 10M the gap is 1.2–8.8×, down from the published
+  "5–70×". Native/duckdb hashes agree within the run at both scales;
+  cross-run hashes differ by construction (independent builds, D-023).
 - eval-10m-bitemporal-d081.json — §13 at 10M, 0.1% density, **xzgpu** at
   `f1498e4`. Against the `8136ecb` receipt (which predates even the D-072
   close cache, so this delta spans D-041 + D-072 + the D-076…D-081 arc):

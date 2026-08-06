@@ -137,21 +137,21 @@
   "coverage_after_grouping": {
    "value": "24",
    "kind": "benchmark",
-   "prose": "of 110 expressible immediately after grouped aggregation shipped \u2014 the endpoint of the D-044 episode, not the current number",
+   "prose": "of 110 expressible immediately after grouped aggregation shipped — the endpoint of the D-044 episode, not the current number",
    "label_required": "after grouping shipped",
    "snapshot": "coverage re-audit 2026-08-02 (C14 in scripts/independent_questions.py)"
   },
   "coverage_after_arithmetic": {
    "value": "28",
    "kind": "benchmark",
-   "prose": "of 110 expressible immediately after the compute arithmetic shipped \u2014 the endpoint of the D-051 episode, not the current number",
+   "prose": "of 110 expressible immediately after the compute arithmetic shipped — the endpoint of the D-051 episode, not the current number",
    "label_required": "after the arithmetic shipped",
    "snapshot": "coverage re-audit 2026-08-03 (C15 in scripts/independent_questions.py)"
   },
   "coverage_after_properties": {
    "value": "38",
    "kind": "benchmark",
-   "prose": "of 110 expressible immediately after property typing shipped \u2014 the endpoint of the D-053 episode, not the current number",
+   "prose": "of 110 expressible immediately after property typing shipped — the endpoint of the D-053 episode, not the current number",
    "label_required": "after property typing shipped",
    "snapshot": "coverage re-audit 2026-08-04 (C16 in scripts/independent_questions.py)"
   },
@@ -196,7 +196,7 @@
   "clickhouse_agg_lead_10m": {
    "value": "2.2",
    "kind": "benchmark",
-   "prose": "times faster than TGMS on whole-window aggregation at 10M (37.9 vs 84.7 ms) \u2014 the same ratio at 1M, and a tie at 200k, so it is a constant of the shape rather than something that grows with scale",
+   "prose": "times faster than TGMS on whole-window aggregation at 10M (37.9 vs 84.7 ms) — the same ratio at 1M, and a tie at 200k, so it is a constant of the shape rather than something that grows with scale",
    "snapshot": "registry-v2-10m-3sys",
    "history": "12x, then 8.7x after D-044, then 4.6x after D-046's scan work, then 2.2x after D-047 routed the metric through the aggregation kernel"
   },
@@ -214,13 +214,13 @@
   "unsupported_claims": {
    "value": "0",
    "kind": "tested",
-   "prose": "emitted answers containing an unsupported claim, with gating \u2014 0 of 199 on the frozen CollegeMsg campaign; before gating it was 21 of 220",
+   "prose": "emitted answers containing an unsupported claim, with gating — 0 of 199 on the frozen CollegeMsg campaign; before gating it was 21 of 220",
    "scope_required": "always state the denominator (199 emitted, of 282 task runs) and never as a universal guarantee; coverage is 199/282, so part of the zero is bought by declining"
   },
   "answer_accuracy_tgms": {
    "value": "41",
    "kind": "benchmark",
-   "prose": "percent, normalized typed-answer accuracy (the paper's metric: counts and values exact, interval answers credited at IoU >= 0.5) \u2014 pooled dev split, Qwen2.5-14B",
+   "prose": "percent, normalized typed-answer accuracy (the paper's metric: counts and values exact, interval answers credited at IoU >= 0.5) — pooled dev split, Qwen2.5-14B",
    "exact": "0.41"
   },
   "scale_tasks": {
@@ -415,7 +415,7 @@
   "indep_rowjoin_delivered": {
    "value": "15",
    "kind": "benchmark",
-   "prose": "questions that actually became expressible once they shipped, against 15 predicted \u2014 the first exact forecast",
+   "prose": "questions that actually became expressible once they shipped, against 15 predicted — the first exact forecast",
    "snapshot": "coverage re-audit 2026-08-04 (C18 in scripts/independent_questions.py)"
   },
   "indep_seq_predicted": {
@@ -439,7 +439,7 @@
   "indep_cal_delivered": {
    "value": "5",
    "kind": "benchmark",
-   "prose": "questions that actually became expressible once calendar units shipped, against 5 predicted \u2014 and the first forecast made per question rather than in aggregate, which came in 8 of 8 correct",
+   "prose": "questions that actually became expressible once calendar units shipped, against 5 predicted — and the first forecast made per question rather than in aggregate, which came in 8 of 8 correct",
    "snapshot": "coverage re-audit 2026-08-04 (C20 in scripts/independent_questions.py)"
   },
   "indep_versionlog_predicted": {
@@ -451,7 +451,7 @@
   "indep_versionlog_delivered": {
    "value": "4",
    "kind": "benchmark",
-   "prose": "questions that actually became expressible once the version log and the two-field filter shipped \u2014 two each, exactly as the two capabilities were forecast separately, and the per-question forecast was right in all 7 cells",
+   "prose": "questions that actually became expressible once the version log and the two-field filter shipped — two each, exactly as the two capabilities were forecast separately, and the per-question forecast was right in all 7 cells",
    "snapshot": "coverage re-audit 2026-08-04 (C21 in scripts/independent_questions.py)"
   },
   "indep_multi_blocker": {
@@ -530,9 +530,10 @@
    "prose": "percent worse per-query latency for the slowest query at 16 readers (snap.hop2, 100.7 to 154.1 ms) - throughput scaling is not latency parity"
   },
   "coldstart_10m": {
-   "value": "27-31",
+   "value": "3-8",
    "kind": "benchmark",
-   "prose": "seconds to first answer at 10M events on a fresh process, whichever query runs first (median of firsts, 5 trials)"
+   "prose": "seconds to first answer at 10M events on a fresh process, whichever query runs first (median of firsts, 5 trials); was 27-31 before the D-076..D-081 arc",
+   "snapshot": "eval-resources-coldwarm-10m-d082.json, commit f1498e4"
   },
   "replay_20pct_before_min": {
    "value": "47.6",
@@ -648,16 +649,16 @@
    "snapshot": "eval-writes.json, commit caa5246"
   },
   "warmup_first_query_10m_s": {
-   "value": "28",
+   "value": "3.1",
    "kind": "benchmark",
-   "prose": "seconds for the first query in a fresh process against a 10M store - the in-memory warm-up, paid whatever the query asks for",
-   "snapshot": "eval-resources coldwarm sweep, commit 6fb7cb1"
+   "prose": "seconds for the cheapest first query in a fresh process against a 10M store (heavier queries reach ~7 s) - the in-memory warm-up, down from 28 s",
+   "snapshot": "eval-resources-coldwarm-10m-d082.json, commit f1498e4"
   },
   "warmup_first_query_1m_s": {
-   "value": "2.5",
+   "value": "0.3",
    "kind": "benchmark",
-   "prose": "seconds for the first query in a fresh process against a 1M store",
-   "snapshot": "eval-resources coldwarm sweep, commit 6fb7cb1"
+   "prose": "seconds for the first query in a fresh process against a 1M store - at parity with DuckDB since the D-076..D-081 write-path arc",
+   "snapshot": "eval-resources-coldwarm-1m-d082.json, commit f1498e4"
   },
   "resident_index_tax_pct": {
    "value": "18",
@@ -785,7 +786,7 @@
   "exec_success_overall_before": {
    "value": "0",
    "kind": "benchmark",
-   "prose": "of 22 tasks executed successfully before declared output fields existed, in the controlled re-run of paper/main.tex:737 (it rose to 12 of 22). Not to be confused with the separate dev-split ablation at main.tex:537, where disabling contract checking took execution success 0.55 -> 0.23 at 7B \u2014 a different experiment on a different question",
+   "prose": "of 22 tasks executed successfully before declared output fields existed, in the controlled re-run of paper/main.tex:737 (it rose to 12 of 22). Not to be confused with the separate dev-split ablation at main.tex:537, where disabling contract checking took execution success 0.55 -> 0.23 at 7B — a different experiment on a different question",
    "snapshot": "E1 output-contract ablation, matrix-dev-oss (Qwen2.5-7B-Instruct)"
   },
   "exec_success_overall_after": {
@@ -888,7 +889,7 @@
   "agg_native_lead_10m": {
    "value": "1.4",
    "kind": "benchmark",
-   "prose": "times faster than ClickHouse on grouped aggregation at 10M, after D-047 \u2014 outside this run's noise but only just outside a doubled between-day band",
+   "prose": "times faster than ClickHouse on grouped aggregation at 10M, after D-047 — outside this run's noise but only just outside a doubled between-day band",
    "snapshot": "registry-v2-10m-3sys"
   },
   "writer_cost_to_readers_pct": {
@@ -912,7 +913,7 @@
   "append_batch1_ev_s": {
    "value": "95",
    "kind": "benchmark",
-   "prose": "events per second appending one event per commit \u2014 the durable commit floor, several fsyncs and a fresh manifest per event",
+   "prose": "events per second appending one event per commit — the durable commit floor, several fsyncs and a fresh manifest per event",
    "snapshot": "concurrency-1m-d049",
    "was": "96 in the earlier eval-writes run at caa5246, inside the +/-20% band"
   },
@@ -943,14 +944,14 @@
   },
   {
    "phrase": "Grouping is free",
-   "reason": "retracted by D-046 \u2014 aggregate_events never materializes, so its scan is 38.8 of 334.7 ms and count_distinct is ~232; say what the profile says instead"
+   "reason": "retracted by D-046 — aggregate_events never materializes, so its scan is 38.8 of 334.7 ms and count_distinct is ~232; say what the profile says instead"
   },
   {
    "phrase": "the residual gap to ClickHouse is entirely the scan",
    "reason": "retracted by D-046; true of series.count, false of agg.rel_bucket"
   },
   {
-   "phrase": "lead grows 2\u00d7 \u2192 3.5\u00d7 \u2192 12\u00d7",
+   "phrase": "lead grows 2× → 3.5× → 12×",
    "reason": "the 10M aggregation lead is 4.6x after D-046; regenerate the figure and its alt text from the snapshot"
   },
   {
@@ -959,19 +960,27 @@
   },
   {
    "phrase": "exact match",
-   "reason": "the paper explicitly rejects this name \u2014 interval answers are credited at IoU >= 0.5, so the metric is normalized typed-answer accuracy; see paper/main.tex 'Metric'"
+   "reason": "the paper explicitly rejects this name — interval answers are credited at IoU >= 0.5, so the metric is normalized typed-answer accuracy; see paper/main.tex 'Metric'"
   },
   {
    "phrase": "aggregation lead grows with scale",
-   "reason": "retired by D-047 \u2014 it is 2.2x at both 1M and 10M and a tie at 200k"
+   "reason": "retired by D-047 — it is 2.2x at both 1M and 10M and a tie at 200k"
   },
   {
    "phrase": "the crossover sits between 200k and 1M",
-   "reason": "retired by D-047 \u2014 native is ahead at 200k, behind at 1M, ahead again at 10M"
+   "reason": "retired by D-047 — native is ahead at 200k, behind at 1M, ahead again at 10M"
   },
   {
    "phrase": "268 evaluated answers",
    "reason": "the denominator appears nowhere in paper/main.tex, which reports 282 task runs, 270 measurable, 220 ungated-emitted and 0 of 199 gated-emitted; 268 traces only to a superseded review response"
+  },
+  {
+   "phrase": "27-31 seconds",
+   "reason": "cold start at 10M is 3-8 s since the D-076..D-081 arc (D-082); quote data-fact=\"coldstart_10m\""
+  },
+  {
+   "phrase": "5–70× sooner",
+   "reason": "the DuckDB cold-start gap is 1.2-8.8x at 10M and parity at 1M since D-082; recompute from the coldwarm receipts"
   }
  ]
 }

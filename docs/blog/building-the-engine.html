@@ -365,9 +365,10 @@ correction also grows the store by about
 <span data-fact="correction_growth_kb">64</span> KB, nearly all manifest.</li>
 <li><b>Warm-up.</b> Query indexes are built in memory on first read, so the
 first query in a fresh process costs about
-<span data-fact="warmup_first_query_1m_s">2.5</span> s at 1M events and
-<span data-fact="warmup_first_query_10m_s">28</span> s at 10M — even a point
-lookup. Long-lived processes amortise it; one-shot scripts do not.</li>
+<span data-fact="warmup_first_query_1m_s">0.3</span> s at 1M events and
+<span data-fact="warmup_first_query_10m_s">3.1</span> s at 10M — even a point
+lookup. Long-lived processes amortise it; one-shot scripts pay it once per
+run, which at 1M is now no worse than an embedded database's own open.</li>
 <li><b>Compaction.</b> Folding corrections into fresh segments is fast
 (<span data-fact="compaction_100k_s">0.41</span> s for a 100k-row store) but
 writes new files and deletes none, so the store grows until generation
