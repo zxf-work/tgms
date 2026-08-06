@@ -329,6 +329,72 @@ def timed(fn, *args) -> tuple[float, Any]:
 # --- main ------------------------------------------------------------------ #
 
 
+def scenario_d059(port: int) -> int:
+    """The in-batch supersession shape, crafted — F1's untested cell.
+
+    The §13-style log contains no identity written twice inside one batch
+    (`d059_targeted_identities: 0`), so the shape D-059 found — a second op
+    reading belief the first op of the same batch already changed — goes
+    unprobed by the record runs. This scenario builds it directly:
+
+      tt1  assert  n1 [0,100)  v1
+      tt2  assert  n1 [0,100)  v2  THEN  assert n1 [40,60) v3   (one batch —
+           the v2 version is carved by an op in its own transaction, so its
+           middle never existed as a belief, D-059)
+      tt3  correct n1 [0,20)   v4  THEN  retract n1 at 50       (one batch —
+           the retract must truncate [40,60) to [40,50) and leave [60,100)
+           believed, which is exactly the `_valid_from <= t` filter's job)
+      tt4  assert  n2 (control)
+
+    Probes cover every fragment and every batch boundary on both systems.
+    """
+    from tgms.storage.eventlog import EventLog
+
+    work = Path(tempfile.mkdtemp(prefix="tgms-xtdb-d059-"))
+    log_path = work / "eventlog.jsonl"
+    log = EventLog(log_path)
+    t1, t2, t3, t4 = 1_000_000, 2_000_000, 3_000_000, 4_000_000
+    log.append(t1, [{"op": "assert_node", "uid": "n1", "label": "N",
+                     "props": {"v": 1}, "vt_s": 0, "vt_e": 100}])
+    log.append(t2, [{"op": "assert_node", "uid": "n1", "label": "N",
+                     "props": {"v": 2}, "vt_s": 0, "vt_e": 100},
+                    {"op": "assert_node", "uid": "n1", "label": "N",
+                     "props": {"v": 3}, "vt_s": 40, "vt_e": 60}])
+    log.append(t3, [{"op": "correct", "ref": {"kind": "node", "uid": "n1"},
+                     "props": {"v": 4}, "vt_s": 0, "vt_e": 20},
+                    {"op": "retract", "ref": {"kind": "node", "uid": "n1"},
+                     "t": 50}])
+    log.append(t4, [{"op": "assert_node", "uid": "n2", "label": "N",
+                     "props": {"v": 9}, "vt_s": 0, "vt_e": 100}])
+
+    native_path = work / "store"
+    H.load_store(native_path, "native", log_path)
+    store = tgms.open(native_path, backend="native")
+    adapter = store.adapter
+
+    name = start_container(port)
+    try:
+        conn = wait_ready(port)
+        cur = conn.cursor()
+        replay(conn, log_path)
+        bad = 0
+        for uid in ("n1", "n2"):
+            for vt in (0, 10, 19, 20, 39, 40, 45, 49, 50, 55, 59, 60, 70, 99):
+                for tt in (t1, t2, t3, t4, t4 + 1):
+                    ours = native_believed(adapter, uid, vt, tt)
+                    theirs = xtdb_believed(cur, uid, vt, tt)
+                    if ours != theirs:
+                        bad += 1
+                        print(f"  DISAGREE {uid} vt={vt} tt={tt}: "
+                              f"native={ours} xtdb={theirs}", flush=True)
+        total = 2 * 14 * 5
+        print(f"d059 scenario: {total} probes, {bad} disagreements", flush=True)
+        return 0 if bad == 0 else 1
+    finally:
+        subprocess.run(["docker", "rm", "-f", name], capture_output=True)
+        store.close()
+
+
 def main() -> int:
     ap = argparse.ArgumentParser()
     ap.add_argument("--scale", type=int, default=10_000)
@@ -337,7 +403,12 @@ def main() -> int:
     ap.add_argument("--probes", type=int, default=25, help="identities probed")
     ap.add_argument("--json", type=Path)
     ap.add_argument("--keep", action="store_true")
+    ap.add_argument("--scenario", choices=["d059"],
+                    help="run a crafted semantic scenario instead of the sweep")
     args = ap.parse_args()
+
+    if args.scenario == "d059":
+        return scenario_d059(args.port)
 
     print(f"reference log: {args.scale} events at {args.density}% corrections …",
           flush=True)
