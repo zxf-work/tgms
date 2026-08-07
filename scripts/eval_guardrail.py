@@ -19,6 +19,8 @@ from __future__ import annotations
 
 import argparse
 import json
+import os
+import platform
 import statistics
 import subprocess
 import sys
@@ -240,12 +242,21 @@ def main() -> int:
               f"FA={row['best']['false_admissions']} "
               f"FR={row['best']['false_rejections']}")
     if args.json:
+        # compute-node images may lack git (it cost one probe run its
+        # receipt); prefer the COMMIT env a job passes via sbatch --export
+        commit = os.environ.get("COMMIT", "")
+        if not commit:
+            try:
+                commit = subprocess.run(
+                    ["git", "rev-parse", "HEAD"], capture_output=True,
+                    text=True).stdout.strip()
+            except OSError:
+                commit = "unknown"
         args.json.write_text(json.dumps(
             {"cells": all_cells, "frontier": fr,
-             "manifest": {"commit": subprocess.run(
-                 ["git", "rev-parse", "HEAD"], capture_output=True,
-                 text=True).stdout.strip(),
-                 "child_cap_s": CHILD_CAP_S}}, indent=1) + "\n")
+             "manifest": {"commit": commit,
+                          "host": platform.node(),
+                          "child_cap_s": CHILD_CAP_S}}, indent=1) + "\n")
         print(f"record → {args.json}")
     return 0
 
