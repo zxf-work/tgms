@@ -78,6 +78,14 @@ supersessions are part of the record:
   at 20% density (0.29 s at density 0) and probe peak memory **−70%**,
   which staled the published warm-up facts instead of the replay ones.
   Hash gates green at every density.
+- eval-guardrail-frontier-d087.json — the frontier re-run after the
+  cost-model refresh (D-087): time as the primary axis via receipt-measured
+  per-operator coefficients. At a 2 s budget FR falls **16 → 3** with FA
+  still 0, and the optimum ceiling moves from 256× the defaults to 4×;
+  at 10 s, m = 16 reaches **FA 0 / FR 0**. `entity_history` estimates 2
+  rows where it estimated a full store. An earlier receipt of this run is
+  superseded: it lacked the production time-attach step and read
+  time_est_ms = 0 for every non-motif cell.
 - eval-guardrail-frontier.json — the cost guardrail scored as a classifier
   (D-086): 90 cells across five stores (200k/1M × two densities +
   CollegeMsg), estimates from each operator's own cost_fn, ground truth

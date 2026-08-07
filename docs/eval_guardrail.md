@@ -153,3 +153,48 @@ relative to the filtered one per unit of actual work.
 - **R5 — the guardrail still guards at scale** (design intent, not measured
   here): the 10M unfiltered motif extrapolates to ~30 s of estimated time,
   refused at the 10 s default.
+
+## Refresh results (D-087) — the frontier re-run, and the scoring
+
+Receipt `eval-guardrail-frontier-d087.json` (same five stores, same 90
+cells, xzgpu at `361880b`). One instrument defect en route: the first
+post-refresh receipt recorded raw `cost_fn` output without the
+`add_time_estimate` step production applies, so every non-motif cell read
+`time_est_ms = 0` — all four of its 0.5 s false admissions were that gap,
+not the model. Superseded; the numbers below are from the corrected run.
+
+| budget | before (default) | after (default) | after (best m) |
+|---:|---:|---:|---:|
+| 0.5 s | FA 2 / FR 9 | FA 4 / FR 1 | FA 0 / FR 6 at m = 1/16 |
+| 2 s | FA 0 / FR 16 | **FA 0 / FR 3** | FA 0 / FR 1 at m = 4 |
+| 10 s | FA 0 / FR 18 | **FA 0 / FR 5** | **FA 0 / FR 0** at m = 16 |
+
+False rejections at a 2 s budget fall **16 → 3** with false admissions
+still zero, and the optimum moves from 256× the defaults to 4×. The 0.5 s
+row is the design working, not failing: a 10 s *default* is not a 0.5 s
+budget, and the sweep shows a caller passing `time_est_ms ≈ 625` gets
+FA 0 — per-call budgets now map directly onto the ceiling, which is the
+point of pricing in milliseconds.
+
+- **R1 — FR ≤ 4 and FA ≤ 1 at 2 s: CONFIRMED** (3 and 0).
+- **R2 — `entity_history` within 3× of its result: CONFIRMED** — estimates
+  2 rows against ~1 returned, from seven orders of magnitude off.
+- **R3 — time within 3× for ≥80% of 1M cells: WRONG, narrowly** — 76%
+  in-sample (69% at 200k/CollegeMsg). The residual has two named shapes:
+  small-window motif cells over-estimate up to 57× (the model floors at
+  the full row-scan term while tiny windows do almost nothing), and the
+  reachability coefficient does not transfer across scale (its fixpoint
+  cost is super-linear in store size, so one ms/M number fit at 1M reads
+  12× high on CollegeMsg). A per-op constant was always going to be a
+  first-order model; the frontier now says which second-order terms matter.
+- **R4 — no pinned test changes: WRONG** — three tests moved to the new
+  contract (their discriminative intent preserved), and one of them caught
+  a real coefficient error in the refresh's first draft: `version_history`
+  fell to a 170 ms/M fallback when D-058 measured it at 15,400 ms/M.
+- **R5 — still guards at scale: design intent restated**, now consistent:
+  the 10M unfiltered motif prices at ~30 s against the 10 s default.
+
+The instrument audited its operator three times in one session: the
+missing would-be-refused class, the uid-hardcoded grid, and the missing
+time-attach — each caught by the receipts disagreeing with themselves, none
+by inspection.
