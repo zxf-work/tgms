@@ -390,6 +390,31 @@ def t1_history_count(rng, ctx, q):
     return question, _p("t1-history", steps, "count", "s2.value", question), [x]
 
 
+@_register_t1("rel_type_count", "easy", [
+    "How many {r}-type events occurred {w}?",
+    "Count the events with relation type {r} {w}.",
+    "Of the interactions recorded {w}, how many were of type {r}?"])
+def t1_rel_type_count(rng, ctx, q):
+    # only meaningful where the graph has a real type vocabulary (sx-*);
+    # on single-type datasets this is t1_event_count wearing a costume
+    rels = sorted(ctx.store.stats().get("rel_type_counts", {}))
+    if len(rels) < 2:
+        return None
+    r = rng.choice(rels)
+    t_a, t_b = _window(rng, ctx)
+    question = q.format(r=r, w=fmt_w(t_a, t_b))
+    steps = [
+        {"id": "s1", "op": "aggregate_events",
+         "args": {"window": {"t_a": t_a, "t_b": t_b},
+                  "group_by": [{"dim": "rel_type"}],
+                  "aggregates": [{"agg": "count"}],
+                  "rel_types": [r], "limit": 10000},
+         "depends_on": []},
+    ]
+    return question, _p("t1-rel-count", steps, "count", "s1.rows[0].count",
+                        question), []
+
+
 # --------------------------------------------------------------------------- #
 # T3 — evolution QA                                                            #
 # --------------------------------------------------------------------------- #
@@ -714,15 +739,21 @@ def gen_t2(ctx: Ctx, manifest: dict[str, Any]) -> list[Task]:
 
 def _gen_family(store: Store, ctx: Ctx, rng: random.Random,
                 templates: list[dict], family: str, n: int,
-                max_tries: int = 6) -> list[Task]:
+                max_tries: int = 6,
+                census: dict[str, dict[str, int]] | None = None) -> list[Task]:
     tasks: list[Task] = []
     i = 0
     while len(tasks) < n and i < n * max_tries:
         tpl = templates[i % len(templates)]
         para = tpl["paraphrases"][(i // len(templates)) % 3]
         i += 1
+        c = None if census is None else census.setdefault(
+            tpl["name"], {"kept": 0, "not_applicable": 0, "gold_failed": 0,
+                          "empty_set": 0})
         built = tpl["build"](rng, ctx, para)
         if built is None:
+            if c is not None:
+                c["not_applicable"] += 1
             continue
         question, plan, input_uids = built
         try:
@@ -730,10 +761,19 @@ def _gen_family(store: Store, ctx: Ctx, rng: random.Random,
         except ValueError:
             raise  # invalid oracle plan is a generator bug — fail loudly
         if g is None:
+            # gold execution failed — commonly a guardrail refusal or a
+            # truncated-reduce refusal at scale; the census makes the
+            # composition shift visible instead of silent (no silent caps)
+            if c is not None:
+                c["gold_failed"] += 1
             continue
         gold, gold_obj = g
         if plan["answer_spec"]["kind"] == "entity_set" and not gold:
+            if c is not None:
+                c["empty_set"] += 1
             continue  # skip trivial empty-set tasks
+        if c is not None:
+            c["kept"] += 1
         tasks.append(Task(
             id=f"{ctx.dataset}-{family}-{tpl['name']}-{len(tasks):03d}",
             family=family, dataset=ctx.dataset, question_text=question,
@@ -763,9 +803,13 @@ def generate_suite(store: Store, dataset: str, seed: int = 0,
     ctx = build_context(store, dataset, random.Random(seed))  # extent may grow
 
     tasks: list[Task] = []
-    tasks += _gen_family(store, ctx, rng, T1_TEMPLATES, "t1", sizes["t1"])
-    tasks += _gen_family(store, ctx, rng, T3_TEMPLATES, "t3", sizes["t3"])
-    tasks += _gen_family(store, ctx, rng, T4_TEMPLATES, "t4", sizes["t4"])
+    census: dict[str, dict[str, int]] = {}
+    tasks += _gen_family(store, ctx, rng, T1_TEMPLATES, "t1", sizes["t1"],
+                         census=census)
+    tasks += _gen_family(store, ctx, rng, T3_TEMPLATES, "t3", sizes["t3"],
+                         census=census)
+    tasks += _gen_family(store, ctx, rng, T4_TEMPLATES, "t4", sizes["t4"],
+                         census=census)
     tasks += gen_probes(store, ctx, records, rng)
     if manifest is not None:
         tasks += gen_t2(ctx, manifest)
@@ -794,4 +838,8 @@ def generate_suite(store: Store, dataset: str, seed: int = 0,
         "dev": [t.to_json() for t in dev],
         "test": test_json,
         "test_split_sha": sha256_hex(canonical_json(test_json)),
+        # per-template generation outcomes (spec: no silent caps) — at scale,
+        # gold_failed is dominated by guardrail/truncation refusals and is
+        # itself a finding about which templates survive which store
+        "generation_census": census,
     }
