@@ -78,6 +78,12 @@ def test_cost_guardrail_rejects_with_suggestions():
     assert "count" in ok
 
 
+#: the demo-scale "answerable now" budget both cost tests discriminate
+#: against since D-087 — refusal moved from raw unit ceilings (retired to
+#: 256x memory backstops) to the attached time estimate
+INTERACTIVE_MS = 100
+
+
 def test_motif_cost_prices_skew_by_filter_not_by_max_degree():
     """The motif estimate must not explode on skewed degree distributions.
 
@@ -88,10 +94,8 @@ def test_motif_cost_prices_skew_by_filter_not_by_max_degree():
     whose ~30k filtered events pair 18.7M times within delta and must stay
     refused. The old `max_out_degree**2` form refused both.
     """
-    from tgms.temporal.guardrails import DEFAULT_CEILINGS
+    from tgms.temporal.guardrails import add_time_estimate
     from tgms.temporal.ops_motifs import _motif_cost
-
-    ceiling = DEFAULT_CEILINGS["expansions_est"]
 
     collegemsg = {"n_edge_versions": 59_835, "n_entities": 1_899,
                   "max_out_degree": 1_091, "vt_min": 0, "vt_max": 16_736_181}
@@ -100,7 +104,10 @@ def test_motif_cost_prices_skew_by_filter_not_by_max_degree():
         {"delta": span // 50, "window": {"t_a": 0, "t_b": span + 1},
          "node_filter": [f"n{i}" for i in range(200)]},
         collegemsg)
-    assert skewed["expansions_est"] < ceiling
+    skewed_t = add_time_estimate("count_temporal_motifs", skewed)
+    assert skewed_t["time_est_ms"] < INTERACTIVE_MS, (
+        "CollegeMsg-shaped skew must stay answerable under an interactive "
+        "budget — pricing skew as explosion was the D-030 false positive")
 
     synth200k = {"n_edge_versions": 200_269, "n_entities": 2_000,
                  "max_out_degree": 142, "vt_min": 0, "vt_max": 210_000}
@@ -108,14 +115,18 @@ def test_motif_cost_prices_skew_by_filter_not_by_max_degree():
         {"delta": 4_000, "window": {"t_a": 0, "t_b": 200_000},
          "node_filter": [f"n{i}" for i in range(400)]},
         synth200k)
-    assert explosive["expansions_est"] > ceiling
+    explosive_t = add_time_estimate("count_temporal_motifs", explosive)
+    assert explosive_t["time_est_ms"] > INTERACTIVE_MS, (
+        "the genuinely heavy filtered case must still price past an "
+        "interactive budget")
 
     # same log, no filter at all: the whole window pairs with itself
     unfiltered = _motif_cost(
         {"delta": 4_000, "window": {"t_a": 0, "t_b": 200_000},
          "node_filter": None},
         synth200k)
-    assert unfiltered["expansions_est"] > explosive["expansions_est"] > ceiling
+    assert unfiltered["expansions_est"] > explosive["expansions_est"], (
+        "candidate-count ordering must survive recalibration")
 
 
 def test_paths_cost_prices_the_frontier_not_the_scan():
@@ -130,10 +141,8 @@ def test_paths_cost_prices_the_frontier_not_the_scan():
     (mean degree ~100) over the full window at 4 hops, are genuine
     frontier explosions and must stay refused.
     """
-    from tgms.temporal.guardrails import DEFAULT_CEILINGS
+    from tgms.temporal.guardrails import add_time_estimate
     from tgms.temporal.ops_paths import _paths_cost
-
-    ceiling = DEFAULT_CEILINGS["expansions_est"]
 
     synth10m = {"n_edge_versions": 10_000_000, "n_entities": 100_000,
                 "vt_min": 0, "vt_max": 10_500_000}
@@ -141,23 +150,27 @@ def test_paths_cost_prices_the_frontier_not_the_scan():
     registry = _paths_cost(
         {"window": {"t_a": 0, "t_b": span // 4}, "k": 3, "max_hops": 3},
         synth10m)
-    assert registry["expansions_est"] < ceiling
+    assert add_time_estimate("temporal_paths", registry)["time_est_ms"] \
+        < 10_000, "the answerable 10M registry shape must stay admitted"
 
     deep = _paths_cost(
         {"window": {"t_a": 0, "t_b": span + 1}, "max_hops": 6}, synth10m)
-    assert deep["expansions_est"] > ceiling
+    assert add_time_estimate("temporal_paths", deep)["time_est_ms"] \
+        > 10_000, "the 6-hop full-window explosion must stay refused"
 
     synth200k = {"n_edge_versions": 200_269, "n_entities": 2_000,
                  "vt_min": 0, "vt_max": 210_000}
     dense = _paths_cost(
         {"window": {"t_a": 0, "t_b": 200_000}, "max_hops": 4}, synth200k)
-    assert dense["expansions_est"] > ceiling
+    assert add_time_estimate("temporal_paths", dense)["time_est_ms"] \
+        > 10_000, "the dense 200k explosion must stay refused"
 
     # the 200k registry shape keeps answering: narrowing the window or
     # the hop budget must be an effective repair suggestion
     narrowed = _paths_cost(
         {"window": {"t_a": 0, "t_b": 210_000 // 4}, "max_hops": 3}, synth200k)
-    assert narrowed["expansions_est"] < ceiling
+    assert add_time_estimate("temporal_paths", narrowed)["time_est_ms"] \
+        < 10_000, "narrowing must remain an effective repair"
 
 
 def test_mcp_round_trip(tmp_path):

@@ -443,13 +443,20 @@ def test_the_version_scan_is_priced_as_materialization_not_a_scan():
 
 def test_a_store_too_large_to_materialize_is_refused():
     from tgms.core.errors import CostError
-    from tgms.temporal.guardrails import enforce_cost
+    from tgms.temporal.guardrails import add_time_estimate, enforce_cost
     from tgms.temporal.ops_versions import _version_cost
 
-    big = _version_cost({}, {"n_edge_versions": 10_000_000,
-                             "n_node_versions": 0})
+    # refusal moved to the attached time estimate (D-087): version_history
+    # carries its own measured coefficient — 15,400 ms per million rows, the
+    # D-058 116x off-class rate — so 10M rows prices at ~154 s against the
+    # 10 s default and must refuse, while CollegeMsg's 61k rows price at
+    # under a second and must answer
+    big = add_time_estimate("version_history",
+                            _version_cost({}, {"n_edge_versions": 10_000_000,
+                                               "n_node_versions": 0}))
     with pytest.raises(CostError):
         enforce_cost("version_history", big)
-    small = _version_cost({}, {"n_edge_versions": 59_835,
-                               "n_node_versions": 1_908})
+    small = add_time_estimate("version_history",
+                              _version_cost({}, {"n_edge_versions": 59_835,
+                                                 "n_node_versions": 1_908}))
     enforce_cost("version_history", small)      # CollegeMsg still answers
