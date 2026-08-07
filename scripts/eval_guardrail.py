@@ -37,6 +37,7 @@ import tgms  # noqa: E402
 from tgms.temporal.algebra import (  # noqa: E402
     REGISTRY, _fill_defaults, call_operator, ensure_all_registered,
 )
+from tgms.temporal.guardrails import add_time_estimate  # noqa: E402
 
 WINDOW_FRACS = [0.01, 0.1, 0.5, 1.0]
 #: operator shapes under test: scan, interval-join, motif (expansion),
@@ -113,7 +114,12 @@ def measure_cell(store_path: Path, store, cell: dict[str, Any]) -> dict[str, Any
     adapter = store.adapter
     spec = REGISTRY[cell["op"]]
     filled = _fill_defaults(spec.args_schema, cell["args"])
+    # exactly what the production guardrail sees: the cost_fn output with
+    # the time estimate attached (call_operator's pipeline; the first d087
+    # receipt missed this and carried time only for the motif op, which
+    # embeds its own — every reach/scan cell read time_est_ms = 0)
     est = spec.cost_fn(filled, adapter.stats()) if spec.cost_fn else {}
+    est = add_time_estimate(cell["op"], est)
     cell = {**cell, "estimate": est}
 
     dangerous = any(est.get(k, 0) > CHILD_MARGIN * v
