@@ -67,6 +67,20 @@ data-emaileu:
 	$(UV) run python -c "from tgms.data.loaders import ingest_dataset; \
 	  print(ingest_dataset('email-eu', 'data_raw', 'stores/emaileu'))"
 
+# The agent-interface scale ladder (native stores; wiki-talk is ~7.8M events
+# — build it on a server, not a laptop)
+data-mathoverflow:
+	$(UV) run python -c "from tgms.data.loaders import ingest_dataset; \
+	  print(ingest_dataset('sx-mathoverflow', 'data_raw', 'stores/sx-mathoverflow', backend='native'))"
+
+data-superuser:
+	$(UV) run python -c "from tgms.data.loaders import ingest_dataset; \
+	  print(ingest_dataset('sx-superuser', 'data_raw', 'stores/sx-superuser', backend='native'))"
+
+data-wikitalk:
+	$(UV) run python -c "from tgms.data.loaders import ingest_dataset; \
+	  print(ingest_dataset('wiki-talk', 'data_raw', 'stores/wiki-talk', backend='native'))"
+
 suite-emaileu:
 	mkdir -p stores/suite-emaileu
 	$(UV) run tgms tasks --store stores/emaileu --dataset email-eu \
