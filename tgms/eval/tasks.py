@@ -19,7 +19,10 @@ construction, which is the bi-temporal differentiator no baseline can answer.
 
 from __future__ import annotations
 
+import os
+import platform
 import random
+import time
 from dataclasses import asdict, dataclass, field
 from datetime import datetime, timezone
 from typing import Any, Callable
@@ -116,20 +119,116 @@ def _stride_for(t_a: int, t_b: int, target_buckets: int = 20) -> int:
 
 
 # --------------------------------------------------------------------------- #
-# gold computation (the engine executes the oracle plan)                       #
+# gold computation — two lanes (plan v4 §2c, D-098)                            #
+#                                                                              #
+# The production lane runs under the frozen admission policy and the 60 s      #
+# wall; the oracle lane bypasses admission under its own declared budget.      #
+# Production runs FIRST: executor and engine are deterministic, so an          #
+# admitted production run's result IS the oracle gold; the oracle pass runs    #
+# only where production yielded none. Every draw becomes a task record         #
+# regardless of outcome — nothing is deleted (§2b).                            #
 # --------------------------------------------------------------------------- #
 
-def compute_gold(store: Store, plan_json: dict[str, Any],
-                 input_uids: list[str]) -> tuple[Any, dict[str, Any]] | None:
+ORACLE_BUDGET_S = 120.0
+POLICY_VERSION = "guardrail-policy-v1"
+CLAIM_TYPE = {"count": "exact_count", "value": "scalar",
+              "entity_set": "complete_set", "interval": "scalar_interval"}
+
+
+def _validate(store: Store, plan_json: dict[str, Any],
+              input_uids: list[str]) -> None:
     verdict = validate_static(plan_json, adapter=store.adapter,
                               task_input_uids=set(input_uids))
     if not verdict["valid"]:
         raise ValueError(f"oracle plan invalid: {verdict['violations']}")
+
+
+def _classify_trace(trace) -> tuple[str, dict[str, Any] | None]:
+    """(outcome, first_error): ok | cost_refused | timeout | failed."""
+    first_err = next((s.get("error") for s in trace.steps
+                      if s.get("status") != "ok" and s.get("error")), None)
+    if trace.ok and trace.answer is not None:
+        return "ok", None
+    code = (first_err or {}).get("error")
+    if code == "E_COST":
+        return "cost_refused", first_err
+    if code == "E_LIMIT" and "wall clock" in str(
+            (first_err or {}).get("message", "")):
+        return "timeout", first_err
+    return "failed", first_err or (
+        {"error": "E_ANSWER", "message": str(trace.answer_error)}
+        if trace.answer_error else None)
+
+
+def _run_lane(store: Store, plan_json: dict[str, Any], lane: str,
+              budget_s: float) -> dict[str, Any]:
     plan = Plan.from_json(plan_json)
-    trace = Executor(ToolRouter(store.adapter)).run(plan)
-    if not trace.ok or trace.answer is None:
+    if lane == "oracle":
+        ex = Executor(ToolRouter(store.adapter, skip_cost_check=True),
+                      max_wall_s=budget_s)
+    else:
+        ex = Executor(ToolRouter(store.adapter))
+    t0 = time.perf_counter()
+    try:
+        trace = ex.run(plan)
+    except MemoryError:
+        return {"outcome": "resource_exhausted", "error": None,
+                "answer": None, "answer_obj": None,
+                "wall_s": round(time.perf_counter() - t0, 3)}
+    outcome, err = _classify_trace(trace)
+    return {"outcome": outcome, "error": err,
+            "answer": trace.answer if outcome == "ok" else None,
+            "answer_obj": mechanical_answer(plan, trace)
+            if outcome == "ok" else None,
+            "wall_s": round(time.perf_counter() - t0, 3)}
+
+
+def resolve_gold(store: Store, plan_json: dict[str, Any],
+                 input_uids: list[str],
+                 oracle_budget_s: float = ORACLE_BUDGET_S) -> dict[str, Any]:
+    """Two-pass gold resolution; returns the record fragment for a draw."""
+    _validate(store, plan_json, input_uids)
+    prod = _run_lane(store, plan_json, "production", 0)
+    admission = {
+        "outcome": {"ok": "admitted", "cost_refused": "refused",
+                    "timeout": "timeout", "failed": "failed",
+                    "resource_exhausted": "failed"}[prod["outcome"]],
+        "error": prod["error"], "wall_s": prod["wall_s"],
+        "policy_version": POLICY_VERSION,
+        "time_coeff_scale": float(os.environ.get(
+            "TGMS_TIME_COEFF_SCALE", "1.0")),
+    }
+    if prod["outcome"] == "ok":
+        # deterministic engine: the admitted production result is the gold
+        return {"oracle_status": "resolved", "oracle_gold": prod["answer"],
+                "gold_answer_object": prod["answer_obj"],
+                "oracle_receipt": {"lane": "shared-with-production",
+                                   "budget_s": None,
+                                   "wall_s": prod["wall_s"],
+                                   "host": platform.node()},
+                "production_admission": admission}
+    orc = _run_lane(store, plan_json, "oracle", oracle_budget_s)
+    status = {"ok": "resolved", "timeout": "timeout",
+              "resource_exhausted": "resource_exhausted",
+              "cost_refused": "oracle_unsupported",  # unreachable: no gate
+              "failed": "oracle_unsupported"}[orc["outcome"]]
+    return {"oracle_status": status, "oracle_gold": orc["answer"],
+            "gold_answer_object": orc["answer_obj"],
+            "oracle_receipt": {"lane": "oracle", "budget_s": oracle_budget_s,
+                               "wall_s": orc["wall_s"],
+                               "host": platform.node(),
+                               "error": orc["error"]},
+            "production_admission": admission}
+
+
+def compute_gold(store: Store, plan_json: dict[str, Any],
+                 input_uids: list[str]) -> tuple[Any, dict[str, Any]] | None:
+    """Legacy production-lane view, kept for probe generation."""
+    _validate(store, plan_json, input_uids)
+    prod = _run_lane(store, plan_json, "production", 0)
+    if prod["outcome"] != "ok":
         return None
-    return trace.answer, mechanical_answer(plan, trace)
+    return prod["answer"], prod["answer_obj"]
 
 
 # --------------------------------------------------------------------------- #
@@ -739,56 +838,93 @@ def gen_t2(ctx: Ctx, manifest: dict[str, Any]) -> list[Task]:
 
 def _gen_family(store: Store, ctx: Ctx, rng: random.Random,
                 templates: list[dict], family: str, n: int,
-                max_tries: int = 6,
-                census: dict[str, dict[str, int]] | None = None) -> list[Task]:
-    tasks: list[Task] = []
-    i = 0
-    while len(tasks) < n and i < n * max_tries:
+                oracle_budget_s: float = ORACLE_BUDGET_S
+                ) -> list[dict[str, Any]]:
+    """A FIXED universe of n draws, every draw a task record (oracle-v3,
+    D-098). The old draw-until-n-kept retry loop was itself the
+    composition-shifting mechanism (D-091): a failed draw was replaced by a
+    fresh one, so hard templates silently vanished from hard stores. Here
+    the draw sequence is identical at every scale; outcomes vary, the
+    universe does not."""
+    records: list[dict[str, Any]] = []
+    for i in range(n):
         tpl = templates[i % len(templates)]
         para = tpl["paraphrases"][(i // len(templates)) % 3]
-        i += 1
-        c = None if census is None else census.setdefault(
-            tpl["name"], {"kept": 0, "not_applicable": 0, "gold_failed": 0,
-                          "empty_set": 0})
+        rec: dict[str, Any] = {
+            "task_id": f"{ctx.dataset}-{family}-{tpl['name']}-{i:03d}",
+            "dataset": ctx.dataset, "source": "template", "family": family,
+            "template": tpl["name"], "difficulty": tpl["difficulty"],
+            "answerability": "yes",
+        }
         built = tpl["build"](rng, ctx, para)
         if built is None:
-            if c is not None:
-                c["not_applicable"] += 1
+            rec.update(question_text=None, requested_claim_type=None,
+                       oracle_plan=None, input_uids=[],
+                       expressibility="no",
+                       expressibility_blocker="template_not_applicable",
+                       oracle_status="oracle_unsupported", oracle_gold=None,
+                       gold_answer_object=None, oracle_receipt=None,
+                       production_admission=None, suite_eligible=False,
+                       ineligible_reason="template_not_applicable")
+            records.append(rec)
             continue
         question, plan, input_uids = built
-        try:
-            g = compute_gold(store, plan, input_uids)
-        except ValueError:
-            raise  # invalid oracle plan is a generator bug — fail loudly
-        if g is None:
-            # gold execution failed — commonly a guardrail refusal or a
-            # truncated-reduce refusal at scale; the census makes the
-            # composition shift visible instead of silent (no silent caps)
-            if c is not None:
-                c["gold_failed"] += 1
+        kind = plan["answer_spec"]["kind"]
+        rec.update(question_text=question, oracle_plan=plan,
+                   answer_kind=kind,
+                   requested_claim_type=CLAIM_TYPE.get(kind, kind),
+                   input_uids=input_uids, expressibility="yes",
+                   expressibility_blocker=None)
+        rec.update(resolve_gold(store, plan, input_uids, oracle_budget_s))
+        eligible = rec["oracle_status"] == "resolved"
+        reason = None if eligible else "gold_unresolved"
+        if eligible and kind == "entity_set" and not rec["oracle_gold"]:
+            # empty-set golds stay in the inventory but out of the LLM
+            # suites (a trivial task, and historically excluded)
+            eligible, reason = False, "empty_set"
+        rec.update(suite_eligible=eligible, ineligible_reason=reason)
+        records.append(rec)
+    return records
+
+
+def _census_view(records: list[dict[str, Any]]) -> dict[str, dict[str, int]]:
+    """The census is a view over records now, never a side artifact."""
+    census: dict[str, dict[str, int]] = {}
+    for r in records:
+        if r.get("source") != "template":
             continue
-        gold, gold_obj = g
-        if plan["answer_spec"]["kind"] == "entity_set" and not gold:
-            if c is not None:
-                c["empty_set"] += 1
-            continue  # skip trivial empty-set tasks
-        if c is not None:
+        c = census.setdefault(r["template"], {
+            "kept": 0, "not_applicable": 0, "gold_failed": 0, "empty_set": 0})
+        if r.get("ineligible_reason") == "template_not_applicable":
+            c["not_applicable"] += 1
+        elif r["oracle_status"] != "resolved":
+            c["gold_failed"] += 1
+        elif r.get("ineligible_reason") == "empty_set":
+            c["empty_set"] += 1
+        else:
             c["kept"] += 1
-        tasks.append(Task(
-            id=f"{ctx.dataset}-{family}-{tpl['name']}-{len(tasks):03d}",
-            family=family, dataset=ctx.dataset, question_text=question,
-            oracle_plan=plan, answer_kind=plan["answer_spec"]["kind"],
-            gold=gold, gold_answer_object=gold_obj, input_uids=input_uids,
-            difficulty=tpl["difficulty"]))
-    return tasks
+    return census
+
+
+def _record_to_task(rec: dict[str, Any]) -> Task:
+    return Task(
+        id=rec["task_id"], family=rec["family"], dataset=rec["dataset"],
+        question_text=rec["question_text"], oracle_plan=rec["oracle_plan"],
+        answer_kind=rec["answer_kind"], gold=rec["oracle_gold"],
+        gold_answer_object=rec["gold_answer_object"],
+        input_uids=rec["input_uids"], difficulty=rec["difficulty"])
 
 
 def generate_suite(store: Store, dataset: str, seed: int = 0,
                    sizes: dict[str, int] | None = None,
-                   manifest: dict[str, Any] | None = None) -> dict[str, Any]:
-    """Full pipeline: inject corrections -> generate all families with
-    engine-executed gold -> 20/80 dev/test split -> hash the frozen test
-    split. Deterministic given (store content, dataset, seed, sizes)."""
+                   manifest: dict[str, Any] | None = None,
+                   oracle_budget_s: float = ORACLE_BUDGET_S) -> dict[str, Any]:
+    """Oracle-v3 pipeline (D-098): inject corrections -> a FIXED draw
+    universe per family, every draw a task record with two-lane gold
+    resolution -> the LLM suites are the resolved+eligible view, split
+    20/80 and hashed. Deterministic given (store content, dataset, seed,
+    sizes); receipts carry walls and hosts, which are excluded from the
+    split hash by construction (the hash covers task JSON only)."""
     sizes = sizes or {"t1": 60, "t3": 24, "t4": 16, "probes": 8}
     # independent rng streams: the correction-injection path consumes draws
     # only on first run (reuse recovers from the event log), so task sampling
@@ -799,22 +935,46 @@ def generate_suite(store: Store, dataset: str, seed: int = 0,
 
     # corrections first: they become part of the belief history all gold
     # answers are computed under
-    records = inject_corrections(store, ctx, rng_corr, sizes.get("probes", 8))
+    corr = inject_corrections(store, ctx, rng_corr, sizes.get("probes", 8))
     ctx = build_context(store, dataset, random.Random(seed))  # extent may grow
 
-    tasks: list[Task] = []
-    census: dict[str, dict[str, int]] = {}
-    tasks += _gen_family(store, ctx, rng, T1_TEMPLATES, "t1", sizes["t1"],
-                         census=census)
-    tasks += _gen_family(store, ctx, rng, T3_TEMPLATES, "t3", sizes["t3"],
-                         census=census)
-    tasks += _gen_family(store, ctx, rng, T4_TEMPLATES, "t4", sizes["t4"],
-                         census=census)
-    tasks += gen_probes(store, ctx, records, rng)
-    if manifest is not None:
-        tasks += gen_t2(ctx, manifest)
+    records: list[dict[str, Any]] = []
+    records += _gen_family(store, ctx, rng, T1_TEMPLATES, "t1", sizes["t1"],
+                           oracle_budget_s)
+    records += _gen_family(store, ctx, rng, T3_TEMPLATES, "t3", sizes["t3"],
+                           oracle_budget_s)
+    records += _gen_family(store, ctx, rng, T4_TEMPLATES, "t4", sizes["t4"],
+                           oracle_budget_s)
 
-    # deterministic 20/80 split, stratified by family
+    tasks: list[Task] = [
+        _record_to_task(r) for r in records if r["suite_eligible"]]
+    # probes and planted-manifest tasks keep their existing generators (gold
+    # is a point read / known by construction); they enter the inventory as
+    # resolved records so the corpus stays one artifact
+    probe_tasks = gen_probes(store, ctx, corr, rng)
+    t2_tasks = gen_t2(ctx, manifest) if manifest is not None else []
+    for t in probe_tasks + t2_tasks:
+        records.append({
+            "task_id": t.id, "dataset": t.dataset,
+            "source": "constructed" if t.family == "t2" else "template",
+            "family": t.family, "template": t.family,
+            "difficulty": t.difficulty, "answerability": "yes",
+            "question_text": t.question_text, "oracle_plan": t.oracle_plan,
+            "answer_kind": t.answer_kind,
+            "requested_claim_type": CLAIM_TYPE.get(
+                t.answer_kind, t.answer_kind),
+            "input_uids": t.input_uids, "expressibility": "yes",
+            "expressibility_blocker": None, "oracle_status": "resolved",
+            "oracle_gold": t.gold, "gold_answer_object": t.gold_answer_object,
+            "oracle_receipt": {"lane": "constructed" if t.family == "t2"
+                               else "shared-with-production",
+                               "budget_s": None, "wall_s": None,
+                               "host": platform.node()},
+            "production_admission": None, "suite_eligible": True,
+            "ineligible_reason": None})
+    tasks += probe_tasks + t2_tasks
+
+    # deterministic 20/80 split over eligible tasks, stratified by family
     dev, test = [], []
     by_family: dict[str, list[Task]] = {}
     for t in tasks:
@@ -831,6 +991,7 @@ def generate_suite(store: Store, dataset: str, seed: int = 0,
 
     test_json = [t.to_json() for t in test]
     return {
+        "schema": "oracle-v3",
         "dataset": dataset,
         "seed": seed,
         "n_dev": len(dev),
@@ -838,8 +999,8 @@ def generate_suite(store: Store, dataset: str, seed: int = 0,
         "dev": [t.to_json() for t in dev],
         "test": test_json,
         "test_split_sha": sha256_hex(canonical_json(test_json)),
-        # per-template generation outcomes (spec: no silent caps) — at scale,
-        # gold_failed is dominated by guardrail/truncation refusals and is
-        # itself a finding about which templates survive which store
-        "generation_census": census,
+        # the full inventory: every draw, including refused, unresolved,
+        # not-applicable, and empty-set outcomes (§2b: nothing is deleted)
+        "records": records,
+        "generation_census": _census_view(records),
     }

@@ -59,6 +59,9 @@ def main(argv: list[str] | None = None) -> int:
                          help="JSON dict of per-family task counts, e.g. "
                               "'{\"t1\":60,\"probes\":60}'")
     p_tasks.add_argument("--out", required=True)
+    p_tasks.add_argument("--oracle-budget", type=float, default=None,
+                         help="oracle-lane wall budget in seconds per task "
+                              "(D-098 two-lane gold; default 120)")
 
     p_ask = sub.add_parser("ask", help="ask one question against a store")
     p_ask.add_argument("question")
@@ -168,8 +171,11 @@ def main(argv: list[str] | None = None) -> int:
             with open(args.manifest) as f:
                 manifest = json.load(f)
         sizes = json.loads(args.sizes) if args.sizes else None
+        kw = {}
+        if args.oracle_budget is not None:
+            kw["oracle_budget_s"] = args.oracle_budget
         suite = generate_suite(store, args.dataset, seed=args.seed,
-                               sizes=sizes,
+                               sizes=sizes, **kw,
                                manifest=manifest)
         with open(args.out, "w") as f:
             json.dump(suite, f, indent=1, sort_keys=True)

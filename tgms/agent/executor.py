@@ -82,9 +82,14 @@ class ResultStore:
 
 
 class Executor:
-    def __init__(self, router: ToolRouter, result_store: ResultStore | None = None) -> None:
+    def __init__(self, router: ToolRouter, result_store: ResultStore | None = None,
+                 max_wall_s: float = MAX_WALL_S) -> None:
         self.router = router
         self.results = result_store
+        #: production keeps the 60 s default; the benchmark oracle lane
+        #: passes its own declared budget (plan §2c) — the wall is part of
+        #: the lane's envelope, not a constant of the machine
+        self.max_wall_s = max_wall_s
 
     def run(self, plan: Plan) -> Trace:
         if len(plan.steps) > MAX_STEPS:
@@ -103,9 +108,9 @@ class Executor:
             step = by_id[sid]
             rec: dict[str, Any] = {"step_id": sid, "op": step.op}
             elapsed = time.perf_counter() - t_start
-            if elapsed > MAX_WALL_S:
+            if elapsed > self.max_wall_s:
                 rec.update(status="skipped", error={"error": "E_LIMIT",
-                           "message": f"plan wall clock {elapsed:.1f}s > {MAX_WALL_S}s"})
+                           "message": f"plan wall clock {elapsed:.1f}s > {self.max_wall_s}s"})
                 trace.steps.append(rec)
                 failed.add(sid)
                 continue
