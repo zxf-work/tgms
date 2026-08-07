@@ -1,5 +1,21 @@
 # frozen-v2 — the scale-ladder task suites (D-091)
 
+> **Status (2026-08-07, D-094): legacy development / regression corpus —
+> known guardrail-conditioned task-selection bias.** Gold for these
+> suites was generated through the production guardrail, so the system
+> itself influenced which hard tasks received gold (the
+> `generation_census` in each suite records the per-template losses; the
+> discarded draws themselves were not retained). These suites remain
+> valid for reproducing the Session-4 results, regression checks, and
+> mechanism validation on the surviving tasks — the surviving gold is
+> not wrong; the defect is selection. They must NOT support population
+> claims ("answers X% of the workload at scale"), refusal-behavior
+> measurements, or cross-scale coverage comparisons. The successor is
+> the oracle-lane corpus (oracle-v3, M1 of the evidence-semantics
+> program): full task inventory, every draw a row, oracle-lane gold
+> where obtainable, explicit `oracle_status` and admission labels.
+> This directory is preserved permanently and never overwritten.
+
 Canonical task suites for the agent-interface campaign, generated
 2026-08-07 on the iTiger canonical stores at commit `b2207e4`, seed 0:
 
