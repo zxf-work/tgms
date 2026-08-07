@@ -97,10 +97,12 @@ class DemoApp:
                       "window": {"t_a": t0, "t_b": t1},
                       "stride": max(1, span // 60), "limit": 5}},
             {"label": "count_temporal_motifs — E_COST guardrail demo "
-                      "(no node_filter at full window)",
+                      "(no node_filter at full window, against an agent's "
+                      "explicit 5 ms per-call budget)",
              "op": "count_temporal_motifs",
              "args": {"motif": "M_triangle_cyclic", "delta": span // 30,
-                      "window": {"t_a": t0, "t_b": t1}}},
+                      "window": {"t_a": t0, "t_b": t1}},
+             "cost_ceilings": {"time_est_ms": 5}},
             {"label": "diff_snapshots — what changed between two instants",
              "op": "diff_snapshots",
              "args": {"t1": t0 + span // 4, "t2": t0 + 3 * span // 4,
@@ -109,8 +111,19 @@ class DemoApp:
 
     # ---------------- actions ------------------------------------------------ #
 
-    def run_op(self, op: str, args: dict[str, Any]) -> dict[str, Any]:
+    def run_op(self, op: str, args: dict[str, Any],
+               cost_ceilings: dict[str, int] | None = None) -> dict[str, Any]:
         with self.lock:
+            if cost_ceilings:
+                # a per-call budget (the guardrail demo preset): same error
+                # envelope the router produces, explicit ceiling honoured
+                from tgms.core.errors import TgmsError
+                from tgms.temporal.algebra import call_operator
+                try:
+                    return call_operator(self.store.adapter, op, args,
+                                         cost_ceilings=cost_ceilings)
+                except TgmsError as e:
+                    return e.to_payload()
             return self.router.call(op, args)
 
     def ask(self, question: str, input_uids: list[str]) -> dict[str, Any]:
@@ -265,7 +278,8 @@ def make_handler(app: DemoApp):
                 return self._json({"error": "bad json"}, 400)
             try:
                 if self.path == "/api/op":
-                    self._json(app.run_op(body["op"], body.get("args", {})))
+                    self._json(app.run_op(body["op"], body.get("args", {}),
+                                          body.get("cost_ceilings")))
                 elif self.path == "/api/ask":
                     self._json(app.ask(body["question"],
                                        body.get("input_uids", [])))
@@ -405,7 +419,7 @@ async function runOp(){
   const p=INFO.presets[$('preset').value];
   $('opspin').style.display='inline';$('opout').textContent='';
   try{const res=await j('/api/op',{method:'POST',headers:{'Content-Type':'application/json'},
-    body:JSON.stringify({op:p.op,args:JSON.parse($('opargs').value)})});
+    body:JSON.stringify({op:p.op,args:JSON.parse($('opargs').value),cost_ceilings:p.cost_ceilings||null})});
     $('opout').textContent=JSON.stringify(res,null,1);}
   catch(e){$('opout').textContent=String(e);}
   $('opspin').style.display='none';

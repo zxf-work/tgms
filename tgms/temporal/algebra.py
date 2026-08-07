@@ -148,8 +148,11 @@ def call_operator(adapter: StorageAdapter, name: str, args: dict[str, Any],
     spec = REGISTRY[name]
     stats = adapter.stats()
     if spec.cost_fn is not None and not skip_cost_check:
-        from tgms.temporal.guardrails import enforce_cost  # local import: avoid cycle
-        enforce_cost(name, spec.cost_fn(filled, stats), cost_ceilings)
+        from tgms.temporal.guardrails import (  # local import: avoid cycle
+            add_time_estimate, enforce_cost,
+        )
+        enforce_cost(name, add_time_estimate(name, spec.cost_fn(filled, stats)),
+                     cost_ceilings)
     payload = spec.fn(adapter, filled)
     payload = _canonicalize_floats(payload)
     envelope = {

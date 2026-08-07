@@ -93,8 +93,18 @@ def _motif_cost(args: dict[str, Any], stats: dict[str, Any]) -> dict[str, int]:
     span = int((vt_max - vt_min) * wf) if vt_min is not None \
         and vt_max is not None and vt_max > vt_min else 0
     density = min(1.0, args["delta"] / span) if span > 0 else 1.0
+    expansions = min(int(e_f * e_f * density / 2), 2**40)
+    # The candidate count over-states the kernel's actual work very
+    # differently by mode: the structural join prunes the unfiltered case
+    # ~70x deeper per candidate than the filtered one (measured, D-086/87
+    # admission frontier — 0.29 vs 19.95 ms per million candidates). One
+    # coefficient cannot serve both, so this cost_fn supplies its own
+    # time_est_ms and `add_time_estimate` leaves it alone.
+    coeff_ms_per_m = 20.0 if args.get("node_filter") else 0.3
     return {"rows_scanned_est": n_ev,
-            "expansions_est": min(int(e_f * e_f * density / 2), 2**40)}
+            "expansions_est": expansions,
+            "time_est_ms": int((n_ev * 55.0 + expansions * coeff_ms_per_m)
+                               / 1_000_000)}
 
 
 #: Everything the matcher and the instance formatter read, and nothing else.

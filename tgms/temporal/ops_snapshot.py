@@ -27,7 +27,7 @@ from tgms.temporal.algebra import (
     paginate,
     required,
 )
-from tgms.temporal.guardrails import scan_estimate
+from tgms.temporal.guardrails import point_read_estimate, scan_estimate
 
 MAX_HOPS = 3
 
@@ -95,7 +95,7 @@ def _edge_rows(adapter: StorageAdapter, edges: dict[str, np.ndarray],
     },
     "Ordered version list of a node (optionally with incident edge versions): "
     "all versions of `uid` believed at `as_of_tt`, ordered by vt_s.",
-    cost_fn=scan_estimate,
+    cost_fn=point_read_estimate,
     output_fields=("rows", "rows_total", "truncated", "cursor",
                    "edges", "edges_truncated"),
 )
