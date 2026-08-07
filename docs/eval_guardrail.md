@@ -124,3 +124,32 @@ per-operator rows→time coefficients so budgets stated in seconds stop
 inheriting a 574× spread. Each change re-runs this harness as its
 validation — the frontier is now the standing instrument the guardrail
 never had.
+
+## The refresh (D-087), forecast before implementing
+
+Design: every estimate gains `time_est_ms` — per-operator coefficients
+measured from this document's own 90-cell receipt (xzgpu-calibrated,
+recorded as such; a deployment on other hardware scales them with one env
+variable) — and `enforce_cost` refuses on a time ceiling (default 10 s)
+first, with the old unit ceilings raised ×256 per the measured optimum to
+serve as memory backstops. `entity_history` moves from `scan_estimate` to a
+point-read model: average versions per entity, which is what the operator
+actually returns. The motif coefficient branches on `node_filter` presence,
+because the receipt shows the unfiltered candidate count inflated ~70×
+relative to the filtered one per unit of actual work.
+
+- **R1 — the frontier at a 2 s budget improves to FR ≤ 4 and FA ≤ 1** (from
+  16 / 0), sweeping the time ceiling. *Same five stores, same cell grid.*
+- **R2 — `entity_history`'s estimate lands within 3× of its actual result
+  rows** (avg versions per entity ≈ what the version list returns), from
+  seven orders of magnitude off.
+- **R3 — time estimates within 3× of actual for ≥80% of cells at 1M.**
+  In-sample at 1M (the coefficients come from these receipts); the 200k and
+  CollegeMsg cells are the honest quasi-out-of-sample check and are scored
+  separately.
+- **R4 — no pinned test changes** except the webapp guardrail preset, which
+  gains an explicit per-call budget (the demo demonstrates a budget refusal
+  honestly instead of relying on ceilings the refresh retires).
+- **R5 — the guardrail still guards at scale** (design intent, not measured
+  here): the 10M unfiltered motif extrapolates to ~30 s of estimated time,
+  refused at the 10 s default.
