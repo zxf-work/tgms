@@ -125,8 +125,24 @@ def validate_args(name: str, args: dict[str, Any]) -> dict[str, Any]:
     # the one `jsonschema.validate` would have chosen
     error = jsonschema.exceptions.best_match(spec._validator.iter_errors(args))
     if error is not None:
+        # The failing subschema rides in the payload: the message names what
+        # broke, `expected` shows the shape that passes. Message-only payloads
+        # measurably fail to repair the same arg-shape mistake three rounds
+        # running (Session 4: 14 of 23 E_SCHEMA rows were one aggregates
+        # confusion), so the repair loop gets the contract, not just the
+        # violation. Trimmed to the discriminating keys — a full subschema
+        # can be pages long.
+        sub = error.schema if isinstance(error.schema, dict) else {}
+        expected = {k: sub[k] for k in ("type", "required", "enum",
+                                        "additionalProperties") if k in sub}
+        if isinstance(sub.get("properties"), dict):
+            expected["properties"] = {
+                p: {k: v for k, v in (ps or {}).items()
+                    if k in ("type", "enum", "default")}
+                for p, ps in sub["properties"].items()}
         raise SchemaError(f"invalid args for {name}: {error.message}",
-                          path=list(error.absolute_path)) from None
+                          path=list(error.absolute_path),
+                          expected=expected) from None
     filled = _fill_defaults(spec.args_schema, args)
     for v in spec.validators:
         v(filled)

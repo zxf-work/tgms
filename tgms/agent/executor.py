@@ -137,14 +137,24 @@ class Executor:
 
             if upstream_truncated and step.op == "compute" \
                     and resolved.get("fn") in REDUCING_FNS:
+                # The old message advised paging with `cursor`, which a
+                # single-shot plan DAG cannot express — Session 4 measured
+                # 10 of 10 such repairs failing to converge. Advise only
+                # what a plan can actually do.
                 rec.update(status="failed", upstream_truncated=True,
                            error=LimitError(
                                f"compute {resolved['fn']} would reduce a "
                                f"truncated result to one number, which is a "
-                               f"wrong answer rather than a partial one. Page "
-                               f"through with `cursor` and combine, or narrow "
-                               f"the window or grouping so the result fits "
-                               f"one page.").to_payload())
+                               f"wrong answer rather than a partial one. "
+                               f"Plans cannot loop over `cursor`. Expressible "
+                               f"fixes: for a count, read the producing "
+                               f"step's `rows_total` field directly (it is "
+                               f"exact even when the page truncates); for "
+                               f"grouped or filtered counts, use "
+                               f"`aggregate_events`, which aggregates inside "
+                               f"the engine without a page limit; otherwise "
+                               f"narrow the window or grouping so the result "
+                               f"fits one page.").to_payload())
                 trace.steps.append(rec)
                 failed.add(sid)
                 continue

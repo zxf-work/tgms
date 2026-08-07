@@ -69,6 +69,16 @@ class Agent:
             runtime_error = next(
                 (s["error"] for s in trace.steps
                  if s.get("error", {}).get("error") in REPAIRABLE), None)
+            if runtime_error is None and trace.answer_error is not None:
+                # Answer extraction failed on a plan whose steps all ran: the
+                # same repair budget applies — the payload names the broken
+                # reference so the planner can re-point the answer_spec or
+                # re-shape the producing step. Measured before this branch
+                # existed: such rows died at 1-2 LLM calls because nothing
+                # routed them into the loop.
+                runtime_error = {"error": "E_ANSWER",
+                                 "message": trace.answer_error,
+                                 "details": {"failed_at": "answer_spec"}}
             if runtime_error is None or \
                     len(result.attempts) > self.planner.max_repairs:
                 break
