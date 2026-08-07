@@ -1,0 +1,17 @@
+# Session 4 gap-finding matrix (dev split, one seed): does the contract
+# advantage survive scale, and where do systems break? b1 fairness settings
+# from fair-baselines-14b.yaml (k=20 x 24-event chunks fits the 32k window).
+suite_path: stores/suite-sx-superuser/suite.json
+store_path: stores/sx-superuser
+out_dir: runs/dev-sx-superuser-14b
+split: dev
+systems: [ours, ours-noverify, b1, b2]
+models: ["openai/Qwen/Qwen2.5-14B-Instruct-AWQ"]
+seeds: [0]
+max_repairs: 3
+b1_k: 20
+b1_chunk_events: 24
+b2_max_edges: 2000
+memory_db: stores/sx-superuser/memory.sqlite
+llm_api_base: "http://localhost:8000/v1"
+llm_api_key: "EMPTY"
