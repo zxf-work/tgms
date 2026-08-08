@@ -11,7 +11,8 @@
    "wrong_extremum",
    "wrong_top_k",
    "wrong_ordering",
-   "dropped_partition"
+   "dropped_partition",
+   "silent_semantic_substitution"
   ],
   "denominators": "cells are constructed verifier cases (fault injections + clean controls), NOT task runs; the CP bound is over the must-not-certify cells only"
  },
@@ -301,7 +302,7 @@
   "denominators": "dev split, ours only, seed 0; em over all rows at the level; em_given_expressible over rows whose oracle plan touches no op excluded at the level (D-107 oracle-plan-ops rule); a4p = A4 + disambiguated descriptions, all else identical"
  },
  "manifest": {
-  "commit": "55726eb3610829906dbe93c6bda5136aa77722ad",
+  "commit": "bea15e24e3a599597c6a51660ce6882e3ac724d2",
   "host": "itiger"
  }
 }
