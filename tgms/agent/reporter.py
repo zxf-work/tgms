@@ -126,6 +126,70 @@ def mechanical_answer(plan: Plan, trace: Trace) -> dict[str, Any]:
     return {"text": text, "claims": [claim]}
 
 
+def certified_answer(plan: Plan, trace: Trace,
+                     results: ResultStore | None) -> dict[str, Any]:
+    """Option A rendering (EVIDENCE_MODEL §, D-102): execution → certified
+    structured claims → presentation. Deterministic — no LLM anywhere.
+
+    The claims are mechanical_answer's (derived from answer_spec, never
+    generated); each is verified against its cited step's ECQR before a
+    single word is rendered, through the same conservative mapping the
+    gate's observational column uses (one mapping, not two). Text is
+    rendered only from certified claims; an uncertified claim is stated
+    as an abstention with its verdict, never as a fact. The guarantee
+    boundary is explicit in the object: every factual sentence maps to a
+    certified claim id, and free prose does not exist on this path.
+    """
+    from tgms.agent.verifier import ClaimVerifier
+
+    base = mechanical_answer(plan, trace)
+    judge = ClaimVerifier(trace, results)
+    sentences: list[str] = []
+    cert_claims: list[dict[str, Any]] = []
+    kept_claims: list[dict[str, Any]] = []
+    for claim in base["claims"]:
+        j = judge._ecqr_judgment(claim)
+        verdict = j.get("ecqr_verdict")
+        certified = verdict == "SUPPORTED"
+        cert_claims.append({"id": claim["id"], "certified": certified,
+                            "ecqr_verdict": verdict,
+                            "ecqr_reason": j.get("ecqr_reason")})
+        if certified:
+            kept_claims.append(claim)  # schema-clean, unchanged
+            if claim["type"] in ("count", "value"):
+                sentences.append(f"[{claim['id']}] The answer is "
+                                 f"{claim['value']}.")
+            elif claim["type"] == "entity":
+                uids = claim.get("uids", [])
+                sentences.append(
+                    f"[{claim['id']}] The entities are: "
+                    f"{', '.join(uids) if uids else '(none)'}.")
+            else:
+                sentences.append(f"[{claim['id']}] {json.dumps(claim)[:200]}")
+        else:
+            reason = j.get("ecqr_reason") or \
+                "no evidence descriptor on the cited step"
+            sentences.append(
+                f"[{claim['id']}] This value could not be certified against "
+                f"its execution evidence ({verdict or 'NO_DESCRIPTOR'}: "
+                f"{reason}); it is not asserted.")
+    if not base["claims"]:
+        sentences.append("No certifiable claims were produced.")
+    # the answer object stays contract-conformant (only certified claims,
+    # schema-clean) so it can flow through the legacy gate unchanged; the
+    # certification record travels beside it
+    return {
+        "answer_object": {"text": " ".join(sentences), "claims": kept_claims},
+        "certification": {
+            "certified_rendering": True,
+            "claims": cert_claims,
+            "guarantee": "every factual sentence maps to the certified "
+                         "claim id it is prefixed with; nothing else is "
+                         "asserted on this path",
+        },
+    }
+
+
 class Reporter:
     def __init__(self, model: str, llm_fn: Callable[..., str],
                  temperature: float = 0.0, seed: int = 0,
