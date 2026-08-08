@@ -1,168 +1,144 @@
 {
  "table": {
   "sx-mathoverflow|ours": {
-   "n_rows": 216,
+   "n_rows": 72,
    "seeds": [
-    0,
-    1,
-    2
+    0
    ],
-   "em": 0.4861,
-   "probe_em": 0.6923,
+   "em": 0.3472,
+   "probe_em": 0.0,
    "ucr": 0.0,
-   "ucr_pre_gate": 0.2391,
+   "ucr_pre_gate": 0.0909,
    "ucr_pre_gate_e": null
   },
   "sx-mathoverflow|ours-noverify": {
-   "n_rows": 216,
+   "n_rows": 72,
    "seeds": [
-    0,
-    1,
-    2
+    0
    ],
-   "em": 0.4861,
-   "probe_em": 0.6923,
-   "ucr": 0.2391,
+   "em": 0.3472,
+   "probe_em": 0.0,
+   "ucr": 0.0909,
    "ucr_pre_gate": null,
    "ucr_pre_gate_e": null
   },
   "sx-mathoverflow|b6": {
-   "n_rows": 216,
+   "n_rows": 72,
    "seeds": [
-    0,
-    1,
-    2
+    0
    ],
-   "em": 0.3611,
-   "probe_em": 0.7692,
+   "em": 0.3889,
+   "probe_em": 1.0,
    "ucr": null,
    "ucr_pre_gate": null,
    "ucr_pre_gate_e": null
   },
   "sx-mathoverflow|b6e": {
-   "n_rows": 216,
+   "n_rows": 72,
    "seeds": [
-    0,
-    1,
-    2
+    0
    ],
-   "em": 0.3611,
-   "probe_em": 0.7692,
+   "em": 0.3889,
+   "probe_em": 1.0,
    "ucr": null,
    "ucr_pre_gate": null,
-   "ucr_pre_gate_e": 0.1176
+   "ucr_pre_gate_e": 0.0667
   },
   "sx-superuser|ours": {
-   "n_rows": 204,
+   "n_rows": 68,
    "seeds": [
-    0,
-    1,
-    2
+    0
    ],
-   "em": 0.4559,
-   "probe_em": 0.6154,
+   "em": 0.2941,
+   "probe_em": 0.0,
    "ucr": 0.0,
-   "ucr_pre_gate": 0.1885,
+   "ucr_pre_gate": 0.1058,
    "ucr_pre_gate_e": null
   },
   "sx-superuser|ours-noverify": {
-   "n_rows": 204,
+   "n_rows": 68,
    "seeds": [
-    0,
-    1,
-    2
+    0
    ],
-   "em": 0.4559,
-   "probe_em": 0.6154,
-   "ucr": 0.1885,
+   "em": 0.2941,
+   "probe_em": 0.0,
+   "ucr": 0.1058,
    "ucr_pre_gate": null,
    "ucr_pre_gate_e": null
   },
   "sx-superuser|b6": {
-   "n_rows": 204,
+   "n_rows": 68,
    "seeds": [
-    0,
-    1,
-    2
+    0
    ],
-   "em": 0.3676,
-   "probe_em": 0.8462,
+   "em": 0.4118,
+   "probe_em": 1.0,
    "ucr": null,
    "ucr_pre_gate": null,
    "ucr_pre_gate_e": null
   },
   "sx-superuser|b6e": {
-   "n_rows": 204,
+   "n_rows": 68,
    "seeds": [
-    0,
-    1,
-    2
+    0
    ],
-   "em": 0.3676,
-   "probe_em": 0.8462,
+   "em": 0.3971,
+   "probe_em": 1.0,
    "ucr": null,
    "ucr_pre_gate": null,
-   "ucr_pre_gate_e": 0.125
+   "ucr_pre_gate_e": 0.0244
   },
   "wiki-talk|ours": {
-   "n_rows": 186,
+   "n_rows": 62,
    "seeds": [
-    0,
-    1,
-    2
+    0
    ],
-   "em": 0.4032,
-   "probe_em": 0.5385,
+   "em": 0.371,
+   "probe_em": 0.1538,
    "ucr": 0.0,
-   "ucr_pre_gate": 0.2,
+   "ucr_pre_gate": 0.066,
    "ucr_pre_gate_e": null
   },
   "wiki-talk|ours-noverify": {
-   "n_rows": 186,
+   "n_rows": 62,
    "seeds": [
-    0,
-    1,
-    2
+    0
    ],
-   "em": 0.4032,
-   "probe_em": 0.5385,
-   "ucr": 0.2,
+   "em": 0.371,
+   "probe_em": 0.1538,
+   "ucr": 0.066,
    "ucr_pre_gate": null,
    "ucr_pre_gate_e": null
   },
   "wiki-talk|b6": {
-   "n_rows": 186,
+   "n_rows": 62,
    "seeds": [
-    0,
-    1,
-    2
+    0
    ],
-   "em": 0.4194,
-   "probe_em": 0.7692,
+   "em": 0.4516,
+   "probe_em": 1.0,
    "ucr": null,
    "ucr_pre_gate": null,
    "ucr_pre_gate_e": null
   },
   "wiki-talk|b6e": {
-   "n_rows": 186,
+   "n_rows": 62,
    "seeds": [
-    0,
-    1,
-    2
+    0
    ],
-   "em": 0.4032,
-   "probe_em": 0.7436,
+   "em": 0.4516,
+   "probe_em": 1.0,
    "ucr": null,
    "ucr_pre_gate": null,
-   "ucr_pre_gate_e": 0.129
+   "ucr_pre_gate_e": 0.0676
   }
  },
  "contrasts": {
   "sx-mathoverflow | interface: b6e - ours": {
-   "delta_em": -0.125,
+   "delta_em": 0.0417,
    "ci95": [
-    -0.25,
-    0.0
+    -0.125,
+    0.2083
    ],
    "n_tasks": 72
   },
@@ -183,17 +159,17 @@
    "n_tasks": 72
   },
   "sx-superuser | interface: b6e - ours": {
-   "delta_em": -0.0882,
+   "delta_em": 0.1029,
    "ci95": [
-    -0.2059,
-    0.0294
+    -0.0735,
+    0.2647
    ],
    "n_tasks": 68
   },
   "sx-superuser | evidence(sql): b6e - b6": {
-   "delta_em": 0.0,
+   "delta_em": -0.0147,
    "ci95": [
-    0.0,
+    -0.0441,
     0.0
    ],
    "n_tasks": 68
@@ -207,17 +183,17 @@
    "n_tasks": 68
   },
   "wiki-talk | interface: b6e - ours": {
-   "delta_em": -0.0,
+   "delta_em": 0.0806,
    "ci95": [
-    -0.1398,
-    0.1398
+    -0.0968,
+    0.2581
    ],
    "n_tasks": 62
   },
   "wiki-talk | evidence(sql): b6e - b6": {
-   "delta_em": -0.0161,
+   "delta_em": 0.0,
    "ci95": [
-    -0.043,
+    0.0,
     0.0
    ],
    "n_tasks": 62
@@ -234,6 +210,6 @@
  "manifest": {
   "commit": "e14d24f",
   "host": "itiger",
-  "n_rows": 2424
+  "n_rows": 808
  }
 }
