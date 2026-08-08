@@ -324,10 +324,15 @@ def run_matrix(cfg: dict[str, Any], llm_fn: Callable[..., str],
                                 row = run_task_baseline(system, task,
                                                         systems[system], seed)
                         except Exception as e:  # one bad task must not kill
-                            row = {"first_emission_valid": None,   # the matrix
+                            import traceback                       # the matrix
+                            tb = traceback.format_exception(e)
+                            row = {"first_emission_valid": None,
                                    "executed_ok": 0.0, "em": 0.0, "f1": 0.0,
                                    "task_error": f"{type(e).__name__}: "
-                                                 f"{str(e)[:300]}"}
+                                                 f"{str(e)[:300]}",
+                                   # last frames: a deterministic error must
+                                   # be diagnosable from the cached row
+                                   "task_error_tb": "".join(tb[-4:])[-900:]}
                         if usage_log is not None:
                             new = usage_log[u0:]
                             row["tokens_in"] = sum(x["tokens_in"] for x in new)
