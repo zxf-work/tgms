@@ -87,7 +87,7 @@ def frozen_2x2() -> dict:
 
 def model_axis() -> dict:
     out = {}
-    for tag in ("7b", "32b"):
+    for tag in ("7b", "32b", "32bfp16"):
         d = _load(RES / f"m8-{tag}" / "m8-tables.json")
         if d is None:
             continue
@@ -98,10 +98,11 @@ def model_axis() -> dict:
             if f"{ds}|{arm}" in d["table"]}
     out["denominators"] = ("seed 0 only, test splits; '7b' = "
                            "Qwen2.5-7B-Instruct fp16, '32b' = "
-                           "Qwen2.5-32B-Instruct-AWQ — model "
-                           "CONFIGURATIONS, not a size-only axis; July's "
-                           "frozen 32B number was fp16 and is not "
-                           "comparable")
+                           "Qwen2.5-32B-Instruct-AWQ, '32bfp16' = "
+                           "Qwen2.5-32B-Instruct fp16 (the D-119 "
+                           "quantization control: same weights family as "
+                           "'32b', quantization removed) — model "
+                           "CONFIGURATIONS, not a size-only axis")
     return out
 
 
