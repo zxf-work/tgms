@@ -13,15 +13,15 @@ from __future__ import annotations
 import pytest
 
 from tgms.core.errors import InvalidArgError
-from tgms.temporal.algebra import call_operator
+from tgms.temporal.algebra import REGISTRY, validate_args
 from tgms.tools.server import ensure_all_registered
 
 
 def test_derive_missing_field2_raises_invalid_arg():
     ensure_all_registered()
     rows = [{"t_a": 1, "t_b": 2, "value": 3}]
+    filled = validate_args("compute", {
+        "fn": "derive", "input": rows, "field": "value",
+        "field2": "bucket_end", "op": "sub", "into": "d", "limit": 100})
     with pytest.raises(InvalidArgError, match="'bucket_end' missing"):
-        call_operator(None, "compute", {
-            "fn": "derive", "input": rows, "field": "value",
-            "field2": "bucket_end", "op": "sub", "into": "d",
-            "limit": 100})
+        REGISTRY["compute"].fn(None, filled)
