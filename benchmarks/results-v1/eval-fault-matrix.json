@@ -1,0 +1,281 @@
+{
+ "cells": [
+  {
+   "claim": "membership",
+   "fault": "clean",
+   "verdict": "SUPPORTED",
+   "reason": "witness in cited result",
+   "expectation": "must_certify",
+   "ok": true,
+   "note": ""
+  },
+  {
+   "claim": "membership",
+   "fault": "clean",
+   "verdict": "SUPPORTED",
+   "reason": "witness in cited result",
+   "expectation": "must_certify",
+   "ok": true,
+   "note": "witness rule: a delivered witness survives truncation"
+  },
+  {
+   "claim": "scalar",
+   "fault": "clean",
+   "verdict": "SUPPORTED",
+   "reason": "cited value matches",
+   "expectation": "must_certify",
+   "ok": true,
+   "note": ""
+  },
+  {
+   "claim": "exact_count",
+   "fault": "clean",
+   "verdict": "SUPPORTED",
+   "reason": "certified cardinality matches",
+   "expectation": "must_certify",
+   "ok": true,
+   "note": ""
+  },
+  {
+   "claim": "exact_count",
+   "fault": "clean",
+   "verdict": "SUPPORTED",
+   "reason": "certified cardinality matches",
+   "expectation": "must_certify",
+   "ok": true,
+   "note": "the flagship: a certificate survives incomplete delivery"
+  },
+  {
+   "claim": "complete_set",
+   "fault": "clean",
+   "verdict": "SUPPORTED",
+   "reason": "set equals complete result",
+   "expectation": "must_certify",
+   "ok": true,
+   "note": ""
+  },
+  {
+   "claim": "existence",
+   "fault": "clean",
+   "verdict": "SUPPORTED",
+   "reason": "witness row exists",
+   "expectation": "must_certify",
+   "ok": true,
+   "note": ""
+  },
+  {
+   "claim": "nonexistence",
+   "fault": "clean",
+   "verdict": "SUPPORTED",
+   "reason": "certified zero cardinality",
+   "expectation": "must_certify",
+   "ok": true,
+   "note": ""
+  },
+  {
+   "claim": "historical_basis",
+   "fault": "clean",
+   "verdict": "SUPPORTED",
+   "reason": "certified cardinality matches",
+   "expectation": "must_certify",
+   "ok": true,
+   "note": ""
+  },
+  {
+   "claim": "exact_count",
+   "fault": "page_truncation",
+   "verdict": "UNSUPPORTED_MISSING_CERTIFICATE",
+   "reason": "no cardinality certificate and delivery/execution incomplete \u2014 a page count would be a wrong number",
+   "expectation": "must_not_certify",
+   "ok": true,
+   "note": "the page count is a wrong number"
+  },
+  {
+   "claim": "complete_set",
+   "fault": "page_truncation",
+   "verdict": "UNSUPPORTED_INCOMPLETE",
+   "reason": "complete-set claims need delivery and execution completeness over the cited domain",
+   "expectation": "must_not_certify",
+   "ok": true,
+   "note": ""
+  },
+  {
+   "claim": "nonexistence",
+   "fault": "page_truncation",
+   "verdict": "UNSUPPORTED_INCOMPLETE",
+   "reason": "incomplete delivery cannot prove absence",
+   "expectation": "must_not_certify",
+   "ok": true,
+   "note": "an empty page of an incomplete result"
+  },
+  {
+   "claim": "exact_count",
+   "fault": "execution_incomplete",
+   "verdict": "UNSUPPORTED_MISSING_CERTIFICATE",
+   "reason": "no cardinality certificate and delivery/execution incomplete \u2014 a page count would be a wrong number",
+   "expectation": "must_not_certify",
+   "ok": true,
+   "note": "rows-so-far is not a certificate"
+  },
+  {
+   "claim": "complete_set",
+   "fault": "execution_incomplete",
+   "verdict": "UNSUPPORTED_INCOMPLETE",
+   "reason": "complete-set claims need delivery and execution completeness over the cited domain",
+   "expectation": "must_not_certify",
+   "ok": true,
+   "note": ""
+  },
+  {
+   "claim": "nonexistence",
+   "fault": "execution_incomplete",
+   "verdict": "UNSUPPORTED_INCOMPLETE",
+   "reason": "nonexistence needs a completed execution",
+   "expectation": "must_not_certify",
+   "ok": true,
+   "note": "an interrupted search that found nothing proves nothing"
+  },
+  {
+   "claim": "exact_count",
+   "fault": "wrong_count",
+   "verdict": "UNSUPPORTED_VALUE_MISMATCH",
+   "reason": "certified cardinality is 8",
+   "expectation": "must_not_certify",
+   "ok": true,
+   "note": ""
+  },
+  {
+   "claim": "scalar",
+   "fault": "wrong_scalar",
+   "verdict": "UNSUPPORTED_VALUE_MISMATCH",
+   "reason": "cited value is 'n0', claim says 'nX'",
+   "expectation": "must_not_certify",
+   "ok": true,
+   "note": ""
+  },
+  {
+   "claim": "complete_set",
+   "fault": "omitted_member",
+   "verdict": "UNSUPPORTED_VALUE_MISMATCH",
+   "reason": "claimed set differs from complete result",
+   "expectation": "must_not_certify",
+   "ok": true,
+   "note": ""
+  },
+  {
+   "claim": "complete_set",
+   "fault": "fabricated_member",
+   "verdict": "UNSUPPORTED_VALUE_MISMATCH",
+   "reason": "claimed set differs from complete result",
+   "expectation": "must_not_certify",
+   "ok": true,
+   "note": ""
+  },
+  {
+   "claim": "membership",
+   "fault": "false_membership",
+   "verdict": "UNSUPPORTED_NO_WITNESS",
+   "reason": "value not in cited result",
+   "expectation": "must_not_certify",
+   "ok": true,
+   "note": ""
+  },
+  {
+   "claim": "existence",
+   "fault": "false_existence",
+   "verdict": "UNSUPPORTED_NO_WITNESS",
+   "reason": "complete result is empty",
+   "expectation": "must_not_certify",
+   "ok": true,
+   "note": ""
+  },
+  {
+   "claim": "nonexistence",
+   "fault": "false_nonexistence",
+   "verdict": "UNSUPPORTED_VALUE_MISMATCH",
+   "reason": "cited result contains rows",
+   "expectation": "must_not_certify",
+   "ok": true,
+   "note": ""
+  },
+  {
+   "claim": "historical_basis",
+   "fault": "wrong_snapshot",
+   "verdict": "UNSUPPORTED_BASIS_MISMATCH",
+   "reason": "claim is about pinned basis tt=101; evidence basis is pinned tt=100",
+   "expectation": "must_not_certify",
+   "ok": true,
+   "note": ""
+  },
+  {
+   "claim": "historical_basis",
+   "fault": "unpinned_snapshot",
+   "verdict": "UNSUPPORTED_BASIS_MISMATCH",
+   "reason": "claim is about pinned basis tt=100; evidence basis is unpinned tt=4611686018427387904",
+   "expectation": "must_not_certify",
+   "ok": true,
+   "note": "current-beliefs evidence cannot ground a pinned claim"
+  },
+  {
+   "claim": "scalar",
+   "fault": "uncited_value",
+   "verdict": "UNSUPPORTED_NO_WITNESS",
+   "reason": "path 'value' not in cited result",
+   "expectation": "must_not_certify",
+   "ok": true,
+   "note": "the cited result has no such path"
+  },
+  {
+   "claim": "membership",
+   "fault": "digest_mismatch",
+   "verdict": "REJECTED_INTEGRITY",
+   "reason": "result bytes do not match the descriptor's result_id (A4)",
+   "expectation": "must_not_certify",
+   "ok": true,
+   "note": ""
+  },
+  {
+   "claim": "complete_set",
+   "fault": "digest_mismatch",
+   "verdict": "REJECTED_INTEGRITY",
+   "reason": "result bytes do not match the descriptor's result_id (A4)",
+   "expectation": "must_not_certify",
+   "ok": true,
+   "note": ""
+  }
+ ],
+ "summary": {
+  "n_cells": 27,
+  "per_fault": {
+   "clean": 9,
+   "page_truncation": 3,
+   "execution_incomplete": 3,
+   "wrong_count": 1,
+   "wrong_scalar": 1,
+   "omitted_member": 1,
+   "fabricated_member": 1,
+   "false_membership": 1,
+   "false_existence": 1,
+   "false_nonexistence": 1,
+   "wrong_snapshot": 1,
+   "unpinned_snapshot": 1,
+   "uncited_value": 1,
+   "digest_mismatch": 2
+  },
+  "false_certifications": 0,
+  "false_rejections": 0
+ },
+ "not_covered": [
+  "sampling",
+  "approximate_as_exact",
+  "mixed_snapshots_across_steps",
+  "wrong_extremum",
+  "wrong_top_k",
+  "wrong_ordering",
+  "dropped_partition"
+ ],
+ "manifest": {
+  "commit": "823c7250dbe5cea6f04af890df335f053094391a",
+  "host": "Xiaofeis-Mac-mini.local"
+ }
+}

@@ -118,7 +118,11 @@ def verify(claim: Claim, evidence: ECQR, result: Any = None) -> Judgment:
                         f"cited value is {got!r}, claim says {claim.value!r}")
 
     if isinstance(claim, ExactCount):
-        if s.exact_cardinality is not None:
+        # the certificate path itself requires a completed execution: a
+        # rows-so-far counter from an interrupted computation must never
+        # certify (defense in depth beside the adapters' issuance rule —
+        # the M4 matrix found exactly this hole on its first run, D-104)
+        if s.exact_cardinality is not None and s.execution_complete:
             if s.exact_cardinality == claim.n:
                 return Judgment(Verdict.SUPPORTED,
                                 "certified cardinality matches")
