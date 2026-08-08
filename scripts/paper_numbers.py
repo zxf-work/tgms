@@ -163,23 +163,55 @@ def overhead() -> dict:
 
 
 def oracle_v3() -> dict:
-    out = {}
+    """Reads the v3.1 inventories when present, else v3 — the fixed
+    universe and split hashes are identical by construction (D-116);
+    v3.1 adds gold_source and the labeled residue."""
+    root = Path("benchmarks/oracle-v3.1")
+    if not (root / f"suite-{DATASETS[0]}.json").exists():
+        root = Path("benchmarks/oracle-v3")
+    out = {"schema": None}
     for ds in DATASETS:
-        s = _load(Path("benchmarks/oracle-v3") / f"suite-{ds}.json")
+        s = _load(root / f"suite-{ds}.json")
         recs = s["records"]
-        resolved = sum(1 for r in recs if r["oracle_status"] == "resolved")
+        out["schema"] = s.get("schema", "oracle-v3")
+        by_status = collections.Counter(r["oracle_status"] for r in recs)
+        resolved = by_status["resolved"]
+        rule = sum(1 for r in recs
+                   if r.get("gold_source") == "empty_result_rule")
         key = sum(1 for r in recs
                   if (r.get("production_admission") or {}).get("outcome")
                   in ("refused", "timeout", "failed")
                   and r["oracle_status"] == "resolved")
         out[ds] = {"records": len(recs), "resolved": resolved,
+                   "resolved_by_empty_rule": rule,
+                   "budget_exceeded": by_status.get("budget_exceeded", 0),
+                   "oracle_unsupported": by_status.get(
+                       "oracle_unsupported", 0),
+                   "not_attempted": by_status.get("not_attempted", 0),
                    "resolution_coverage": round(resolved / len(recs), 3),
                    "answerable_not_admitted": key,
                    "test_split_sha": s["test_split_sha"][:16]}
     out["denominators"] = ("records = fixed 116-draw universe per dataset "
                            "(every draw, incl. not-applicable templates); "
-                           "coverage = resolved/all records")
+                           "coverage = resolved/all records — under v3.1 "
+                           "'resolved' includes empty-rule resolutions, "
+                           "which stay OUT of the LLM suites")
     return out
+
+
+def _level_excludes(ds: str, lvl: str) -> set[str] | None:
+    """The level's excluded operators, from the campaign config that ran
+    it — expressibility at a level is 'the oracle plan touches no
+    excluded op', the same rule as the D-107 oracle-plan-ops check."""
+    p = Path("configs/campaign") / f"m6-{ds}-{lvl}.yaml"
+    if not p.exists():
+        return None
+    for line in p.read_text().splitlines():
+        if line.startswith("exclude_ops:"):
+            body = line.split(":", 1)[1].strip()
+            return {s.strip().strip("'\"") for s in
+                    body.strip("[]").split(",") if s.strip()}
+    return set()
 
 
 def m6_frontier(runs: Path) -> dict | None:
@@ -194,11 +226,16 @@ def m6_frontier(runs: Path) -> dict | None:
                               (t.get("oracle_plan") or {}).get("steps", [])}
     out = {}
     for lvl in ("a1", "a2", "a3", "a4", "a4p"):
-        rows = []
+        rows, expr_rows = [], []
         for ds in DATASETS:
-            rows += [json.loads(Path(f).read_text()) for f in glob.glob(
+            ds_rows = [json.loads(Path(f).read_text()) for f in glob.glob(
                 str(runs / f"m6-{ds}-{lvl}" / "results" / "*.json"))]
-        rows = [r for r in rows if r.get("system") == "ours"]
+            ds_rows = [r for r in ds_rows if r.get("system") == "ours"]
+            rows += ds_rows
+            excl = _level_excludes(ds, lvl)
+            if excl is not None:
+                expr_rows += [r for r in ds_rows
+                              if not (suites.get(r["task_id"], set()) & excl)]
         if not rows:
             continue
         n = len(rows)
@@ -211,6 +248,10 @@ def m6_frontier(runs: Path) -> dict | None:
                     "exec_ok": round(
                         sum(1 for r in rows if r.get("executed_ok")) / n,
                         3)}
+        if expr_rows:
+            out[lvl]["n_expressible"] = len(expr_rows)
+            out[lvl]["em_given_expressible"] = round(
+                sum(r.get("em") or 0 for r in expr_rows) / len(expr_rows), 4)
         confusions = collections.Counter()
         for r in rows:
             want = suites.get(r["task_id"], set())
@@ -220,8 +261,11 @@ def m6_frontier(runs: Path) -> dict | None:
             v for k, v in confusions.items()
             if k in ("aggregate_events", "graph_metric_timeseries"))
     out["denominators"] = ("dev split, ours only, seed 0; em over all "
-                           "rows at the level; a4p = A4 + disambiguated "
-                           "descriptions, all else identical")
+                           "rows at the level; em_given_expressible over "
+                           "rows whose oracle plan touches no op excluded "
+                           "at the level (D-107 oracle-plan-ops rule); "
+                           "a4p = A4 + disambiguated descriptions, all "
+                           "else identical")
     return out
 
 

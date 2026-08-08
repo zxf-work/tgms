@@ -18,9 +18,6 @@ Numbers deliberately NOT bound (hand-carried literals, provenance in
 the tex comments where they appear):
   - the 50.5% CollegeMsg page-undercount (D-061 measurement note;
     no committed receipt on this branch)
-  - RQ5's EM-given-expressible pair at the a1/a2 surfaces (D-107
-    expressible-subset analysis; paper_numbers.json carries only
-    all-row metrics — queued for the oracle-v3.1 regeneration)
   - public dataset scale constants (facts of the datasets, validated
     at load, not measurements)
 """
@@ -79,6 +76,9 @@ def macros(pn: dict, fm: dict) -> str:
 
     cov = "/".join(f2(o3[d]["resolution_coverage"]) for d in DS)
     ana = "/".join(str(o3[d]["answerable_not_admitted"]) for d in DS)
+    empty_rule = "/".join(str(o3[d].get("resolved_by_empty_rule", 0))
+                          for d in DS)
+    budget_exc = "/".join(str(o3[d].get("budget_exceeded", 0)) for d in DS)
 
     m = [
         ("pnPrimaryRows", f"{fz['primary_rows']:,}".replace(",", "{,}")),
@@ -106,6 +106,8 @@ def macros(pn: dict, fm: dict) -> str:
         # oracle ladder
         ("pnOracleCov", cov),
         ("pnAnaLadder", ana),
+        ("pnEmptyRuleLadder", empty_rule),
+        ("pnBudgetExcLadder", budget_exc),
         # overhead
         ("pnDescUsSmall", f"{ov['descriptor_us']['small_envelope']:g}"),
         ("pnDescUsLarge", f"{ov['descriptor_us']['large_envelope']:g}"),
@@ -119,7 +121,9 @@ def macros(pn: dict, fm: dict) -> str:
         ("pnGrFaIt", str(gr["itiger_scaled_at_2s"]["FA"])),
         ("pnGrNIt", str(gr["itiger_scaled_at_2s"]["n"])),
         ("pnHostScale", f2(gr["host_scale_median"])),
-        # M6 frontier (all-row metrics; prose subset numbers stay literal)
+        # M6 frontier
+        ("pnEmExprAi", f3(m6["a1"]["em_given_expressible"])),
+        ("pnEmExprAii", f3(m6["a2"]["em_given_expressible"])),
         ("pnFpvAi", f2(m6["a1"]["first_plan_valid"])),
         ("pnFpvAii", f2(m6["a2"]["first_plan_valid"])),
         ("pnEmAiii", f3(m6["a3"]["em"])),
