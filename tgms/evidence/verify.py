@@ -61,6 +61,9 @@ def _row_matches(row: Any, value: Any, fld: str | None) -> bool:
         return isinstance(row, dict) and row.get(fld) == value
     if isinstance(row, dict):
         return value in row.values()
+    if isinstance(row, (list, tuple)):
+        # positional rows (SQL tuples): a witness is a matching cell
+        return value in row
     return row == value
 
 

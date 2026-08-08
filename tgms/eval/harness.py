@@ -31,7 +31,7 @@ from tgms.eval.metrics import extract_pred, rates, score_answer
 from tgms.store import Store
 
 OURS_SYSTEMS = ("ours", "ours-noverify", "ours-nomem")
-BASELINE_SYSTEMS = ("b1", "b2", "b5", "b6")
+BASELINE_SYSTEMS = ("b1", "b2", "b5", "b6", "b6e")
 
 
 # --------------------------------------------------------------------------- #
@@ -229,8 +229,8 @@ def build_systems(cfg: dict[str, Any], store: Store, model: str,
                                        db_path=str(vk_path),
                                        max_repairs=cfg.get("max_repairs", 3),
                                        seed=seed)
-        elif system == "b6":
-            from tgms.eval.baselines import BiTemporalSQL
+        elif system in ("b6", "b6e"):
+            from tgms.eval.baselines import BiTemporalSQL, BiTemporalSQLEvidence
             src_db = Path(cfg["store_path"]) / "store.duckdb"
             bt_path = Path(cfg["out_dir"]) / f"bitemporal-{suite_tag(cfg)}.duckdb"
             if not bt_path.exists():
@@ -240,9 +240,10 @@ def build_systems(cfg: dict[str, Any], store: Store, model: str,
                 import shutil
                 bt_path.parent.mkdir(parents=True, exist_ok=True)
                 shutil.copy2(src_db, bt_path)
-            out[system] = BiTemporalSQL(llm_fn, model, db_path=bt_path,
-                                        max_repairs=cfg.get("max_repairs", 3),
-                                        seed=seed)
+            cls = BiTemporalSQLEvidence if system == "b6e" else BiTemporalSQL
+            out[system] = cls(llm_fn, model, db_path=bt_path,
+                              max_repairs=cfg.get("max_repairs", 3),
+                              seed=seed)
         else:
             raise ValueError(f"unknown system {system}")
     return out

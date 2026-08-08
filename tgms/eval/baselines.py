@@ -480,4 +480,79 @@ class BiTemporalSQL:
                                    self.seed)
         return {"answer_object": obj,
                 "meta": {"sql": query, "n_rows": len(rows or []),
-                         "repairs": repairs, "failed": rows is None}}
+                         "repairs": repairs, "failed": rows is None,
+                         # the delivered page, for the +E subclass's
+                         # evidence checks (strings, already sanitized)
+                         "rows_sample": out_rows}}
+
+
+class BiTemporalSQLEvidence(BiTemporalSQL):
+    """B6+E — the SQL+E arm of the M5 factorization (D-105): identical SQL
+    generation over identical stored information, plus evidence
+    descriptors and typed claim gating through the SAME generic verifier
+    TGMS uses.
+
+    The evidence mechanism is SQL's own: an unlimited COUNT over the
+    generated query certifies the result's cardinality; the delivered
+    page is truncation-aware (the child fetches at most max_rows). Claims
+    are checked by witness against the delivered page — the same
+    conservative mapping the TGMS gate's observational column uses — and
+    the gate drops claims the evidence contradicts or cannot witness,
+    mirroring the `ours` gate's drop-unsupported semantics. Honest
+    limitation, recorded: the basis is unpinned (the model's SQL chooses
+    its own temporal predicates), so pinned-basis claims are not
+    certifiable on this arm.
+    """
+
+    #: verdicts the gate drops — the analogues of the legacy gate's
+    #: "unsupported"; INCOMPLETE and MISSING_CERTIFICATE are kept, as the
+    #: legacy gate keeps weakly_supported/unverifiable
+    _DROP = {"UNSUPPORTED_NO_WITNESS", "UNSUPPORTED_VALUE_MISMATCH",
+             "UNSUPPORTED_BASIS_MISMATCH"}
+
+    def _certificate(self, query: str) -> int | None:
+        rows, err = self._run_sql(
+            f"SELECT COUNT(*) FROM ({query}) AS _ecqr_count")
+        if err is None and rows and rows[0] and isinstance(rows[0][0], int):
+            return int(rows[0][0])
+        return None
+
+    def answer(self, question: str, input_uids: list[str] | None = None
+               ) -> dict[str, Any]:
+        from tgms.evidence import Membership
+        from tgms.evidence import verify as ecqr_verify
+        from tgms.evidence.adapter_sql import build_sql_ecqr
+
+        out = super().answer(question, input_uids)
+        meta, obj = out["meta"], out["answer_object"]
+        page = meta.pop("rows_sample", [])
+        if meta.get("failed") or not meta.get("sql"):
+            meta.update(ecqr=None, ucr_pre_gate_e=None)
+            return out
+        total = self._certificate(meta["sql"])
+        ecqr = build_sql_ecqr(
+            rows=page, sql=meta["sql"], store_id=self.db_path,
+            total_count=total, limited=meta["n_rows"] >= self.max_rows)
+        result = {"rows": page}
+        verdicts = []
+        kept = []
+        for claim in obj.get("claims", []):
+            values = ([claim.get("value")] if claim.get("type") in
+                      ("count", "value") else claim.get("uids", []))
+            misses = [v for v in values
+                      if ecqr_verify(Membership(value=str(v)), ecqr,
+                                     result).verdict.value != "SUPPORTED"]
+            v = "UNSUPPORTED_NO_WITNESS" if misses else "SUPPORTED"
+            verdicts.append({"id": claim.get("id"), "ecqr_verdict": v,
+                             "misses": [str(m)[:40] for m in misses[:3]]})
+            if v not in self._DROP:
+                kept.append(claim)
+        n = len(obj.get("claims", []))
+        meta.update(
+            ecqr=ecqr.to_json(), claim_verdicts=verdicts,
+            ucr_pre_gate_e=(sum(1 for v in verdicts
+                                if v["ecqr_verdict"] in self._DROP) / n
+                            if n else 0.0),
+            pre_gate_answer=obj)
+        out["answer_object"] = {**obj, "claims": kept}
+        return out
