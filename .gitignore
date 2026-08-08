@@ -55,3 +55,7 @@ PHASE3_SPEC.md
 TGMS_NATIVE_ENGINE_*.md
 HANDOFF-*.md
 docs/first_oss_matrix_devrun.md
+
+# blind corpus raw submissions + receipts: internal tree only until
+# release (BLIND_CORPUS_PROTOCOL.md) — never on the public branch
+benchmarks/blind-v1/
