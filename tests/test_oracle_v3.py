@@ -61,7 +61,9 @@ def test_not_applicable_draws_are_records(v3_env):
     assert na, "expected not-applicable records on a single-type store"
     for r in na:
         assert r["question_text"] is None
-        assert r["oracle_status"] == "oracle_unsupported"
+        # ground-truth change (oracle-v3.1, D-116): a template that does
+        # not apply was never attempted; v3 mislabeled it oracle_unsupported
+        assert r["oracle_status"] == "not_attempted"
         assert r["suite_eligible"] is False
 
 
