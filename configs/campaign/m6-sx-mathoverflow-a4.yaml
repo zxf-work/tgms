@@ -1,0 +1,16 @@
+# M6 Study A: nested algebra level a4 (15 of 15 ops), causal
+# frontier experiment (D-107). Same runtime/model/seed/repair budget at
+# every level; only the surface differs — and the excluded ops vanish from
+# the planner manual, not just the router.
+suite_path: stores/suite-sx-mathoverflow/suite-v3.json
+store_path: stores/sx-mathoverflow
+out_dir: runs/m6-sx-mathoverflow-a4
+split: dev
+systems: [ours]
+models: ["openai/Qwen/Qwen2.5-14B-Instruct-AWQ"]
+seeds: [0]
+max_repairs: 3
+exclude_ops: []
+memory_db: stores/sx-mathoverflow/memory.sqlite
+llm_api_base: "http://localhost:8000/v1"
+llm_api_key: "EMPTY"

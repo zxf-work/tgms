@@ -52,7 +52,8 @@ def run_task_ours(system: str, task: dict[str, Any], store: Store,
                   model: str, llm_fn: Callable[..., str], seed: int,
                   memory=None, guided: bool = False,
                   ablate_output_contracts: bool = False,
-                  ablate_truncation_taint: bool = False) -> dict[str, Any]:
+                  ablate_truncation_taint: bool = False,
+                  exclude_ops: tuple[str, ...] = ()) -> dict[str, Any]:
     from tgms.agent.agent import Agent
     from tgms.agent.reporter import Reporter
     from tgms.agent.verifier import ClaimVerifier
@@ -64,7 +65,8 @@ def run_task_ours(system: str, task: dict[str, Any], store: Store,
             notes = [n["text"] for n in memory.retrieve(w[0], w[1], k=3)]
 
     agent = Agent(store, model=model, llm_fn=llm_fn, seed=seed, guided=guided,
-                  ablate_output_contracts=ablate_output_contracts)
+                  ablate_output_contracts=ablate_output_contracts,
+                  exclude_ops=exclude_ops)
     t0 = time.perf_counter()
     out = agent.ask(task["question_text"],
                     task_input_uids=set(task["input_uids"]),
@@ -75,6 +77,10 @@ def run_task_ours(system: str, task: dict[str, Any], store: Store,
         "executed_ok": float(bool(trace and trace.ok)),
         "n_llm_calls": len(out["plan_result"].calls),
         "wall_s": round(time.perf_counter() - t0, 3),
+        # the planned operator sequence, for the M6 operator-selection
+        # confusion analysis (oracle ops live in the task record)
+        "plan_ops": [s_.op for s_ in out["plan_result"].plan.steps]
+        if out["plan_result"].plan is not None else None,
     }
     if trace is not None and not trace.ok:
         # first failed step's error payload — makes exec failures diagnosable
@@ -311,7 +317,9 @@ def run_matrix(cfg: dict[str, Any], llm_fn: Callable[..., str],
                                     ablate_output_contracts=bool(
                                         cfg.get("ablate_output_contracts")),
                                     ablate_truncation_taint=bool(
-                                        cfg.get("ablate_truncation_taint")))
+                                        cfg.get("ablate_truncation_taint")),
+                                    exclude_ops=tuple(
+                                        cfg.get("exclude_ops") or ()))
                             else:
                                 row = run_task_baseline(system, task,
                                                         systems[system], seed)

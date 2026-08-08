@@ -39,11 +39,16 @@ class Agent:
                  cache_dir: str | Path | None = None,
                  max_repairs: int = 3, seed: int = 0,
                  guided: bool = False,
-                 ablate_output_contracts: bool = False) -> None:
+                 ablate_output_contracts: bool = False,
+                 exclude_ops: tuple[str, ...] = ()) -> None:
         from tgms.tools.schemas import tool_description
 
         self.store = store
-        self.router = ToolRouter(store.adapter)
+        # exclude_ops restricts the whole surface in one move: the router
+        # refuses the op AND the planner's tool manual never mentions it —
+        # the M6 nested-algebra experiment's lever (a restriction only at
+        # the router would measure error recovery, not interface size)
+        self.router = ToolRouter(store.adapter, exclude=exclude_ops)
         manual = "\n".join(f"### {name}\n{tool_description(name)}"
                            for name in self.router.tools())
         self.planner = Planner(model=model, tool_manual=manual, llm_fn=llm_fn,
