@@ -182,6 +182,25 @@ class Executor:
                            rows_returned=rows,
                            truncated=res.get("truncated", False),
                            upstream_truncated=upstream_truncated)
+                # every successful step carries its evidence descriptor;
+                # capability inheritance runs over the dependency edges, so
+                # a certificate can never be laundered through a step whose
+                # inputs were delivery-incomplete (M2, D-100)
+                try:
+                    from tgms.evidence.adapter_tgms import build_ecqr
+                    from tgms.evidence.ecqr import ECQR as _ECQR
+                    inputs = []
+                    for d in step.depends_on:
+                        drec = next((s for s in trace.steps
+                                     if s["step_id"] == d), None)
+                        if drec and drec.get("ecqr"):
+                            inputs.append(_ECQR.from_json(drec["ecqr"]))
+                    rec["ecqr"] = build_ecqr(
+                        res, store_id=str(getattr(
+                            self.router.adapter, "path", "store")),
+                        input_ecqrs=inputs).to_json()
+                except Exception:  # descriptor failure must never fail a step
+                    rec["ecqr"] = None
                 outputs[sid] = res
                 if self.results is not None:
                     self.results.put(res)

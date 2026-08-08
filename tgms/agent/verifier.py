@@ -467,6 +467,59 @@ class ClaimVerifier:
 
     # -- entry point ---------------------------------------------------------- #
 
+    def _ecqr_judgment(self, claim: dict[str, Any]) -> dict[str, Any]:
+        """The new evidence verifier's view of a legacy claim, mapped
+        conservatively: count/value → Scalar (plus ExactCount when the
+        cited descriptor carries a cardinality certificate), entity →
+        per-member witness. Returns {} when no cited step carries a
+        descriptor, so old traces verify exactly as before."""
+        try:
+            from tgms.evidence import (
+                ECQR, ExactCount, Membership, Scalar, verify as ecqr_verify,
+            )
+            pairs = []
+            for sid in claim.get("evidence", []):
+                rec = self._steps.get(sid)
+                if not rec or not rec.get("ecqr") or self.results is None \
+                        or "result_digest" not in rec:
+                    continue
+                payload = self.results.get(rec["result_digest"])
+                if payload is not None:
+                    pairs.append((ECQR.from_json(rec["ecqr"]), payload))
+            if not pairs:
+                return {}
+            ctype = claim.get("type")
+            if ctype in ("count", "value"):
+                frm = str(claim.get("from") or "")
+                path = frm.split(".", 1)[1] if "." in frm else "value"
+                js = [ecqr_verify(Scalar(path=path, value=claim.get("value")),
+                                  e, p) for e, p in pairs]
+                for e, p in pairs:
+                    if ctype == "count" and \
+                            e.scope.exact_cardinality is not None:
+                        js.append(ecqr_verify(
+                            ExactCount(n=claim.get("value")), e, p))
+                best = next((j for j in js
+                             if j.verdict.value == "SUPPORTED"), js[0])
+                return {"ecqr_verdict": best.verdict.value,
+                        "ecqr_reason": best.reason}
+            if ctype == "entity":
+                misses = []
+                for uid in claim.get("uids", []):
+                    if not any(ecqr_verify(Membership(value=uid), e, p)
+                               .verdict.value == "SUPPORTED"
+                               for e, p in pairs):
+                        misses.append(uid)
+                if misses:
+                    return {"ecqr_verdict": "UNSUPPORTED_NO_WITNESS",
+                            "ecqr_reason": f"no witness for {misses[:3]}"}
+                return {"ecqr_verdict": "SUPPORTED",
+                        "ecqr_reason": "every member witnessed"}
+            return {}
+        except Exception:
+            # the observational column must never break legacy verification
+            return {}
+
     def verify(self, answer_object: dict[str, Any]) -> dict[str, Any]:
         try:
             jsonschema.validate(answer_object, ANSWER_SCHEMA)
@@ -504,8 +557,14 @@ class ClaimVerifier:
                         and self.honor_truncation:
                     verdict, reason = "weakly_supported", \
                         reason + " (evidence truncated)"
-            results.append({"id": claim["id"], "type": claim["type"],
-                            "verdict": verdict, "reason": reason})
+            entry = {"id": claim["id"], "type": claim["type"],
+                     "verdict": verdict, "reason": reason}
+            # Observational A/B (M2, D-101): the ECQR verifier's judgment
+            # rides beside the legacy verdict. It never gates — metrics and
+            # gating read `verdict` only; M4/M5 compare the columns before
+            # anything is replaced.
+            entry.update(self._ecqr_judgment(claim))
+            results.append(entry)
 
         uncovered = self._uncovered_assertions(answer_object)
         n = len(results)
