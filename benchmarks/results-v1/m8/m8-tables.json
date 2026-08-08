@@ -1,0 +1,239 @@
+{
+ "table": {
+  "sx-mathoverflow|ours": {
+   "n_rows": 216,
+   "seeds": [
+    0,
+    1,
+    2
+   ],
+   "em": 0.4861,
+   "probe_em": 0.6923,
+   "ucr": 0.0,
+   "ucr_pre_gate": 0.2391,
+   "ucr_pre_gate_e": null
+  },
+  "sx-mathoverflow|ours-noverify": {
+   "n_rows": 216,
+   "seeds": [
+    0,
+    1,
+    2
+   ],
+   "em": 0.4861,
+   "probe_em": 0.6923,
+   "ucr": 0.2391,
+   "ucr_pre_gate": null,
+   "ucr_pre_gate_e": null
+  },
+  "sx-mathoverflow|b6": {
+   "n_rows": 216,
+   "seeds": [
+    0,
+    1,
+    2
+   ],
+   "em": 0.3611,
+   "probe_em": 0.7692,
+   "ucr": null,
+   "ucr_pre_gate": null,
+   "ucr_pre_gate_e": null
+  },
+  "sx-mathoverflow|b6e": {
+   "n_rows": 216,
+   "seeds": [
+    0,
+    1,
+    2
+   ],
+   "em": 0.3611,
+   "probe_em": 0.7692,
+   "ucr": null,
+   "ucr_pre_gate": null,
+   "ucr_pre_gate_e": 0.1176
+  },
+  "sx-superuser|ours": {
+   "n_rows": 204,
+   "seeds": [
+    0,
+    1,
+    2
+   ],
+   "em": 0.4559,
+   "probe_em": 0.6154,
+   "ucr": 0.0,
+   "ucr_pre_gate": 0.1885,
+   "ucr_pre_gate_e": null
+  },
+  "sx-superuser|ours-noverify": {
+   "n_rows": 204,
+   "seeds": [
+    0,
+    1,
+    2
+   ],
+   "em": 0.4559,
+   "probe_em": 0.6154,
+   "ucr": 0.1885,
+   "ucr_pre_gate": null,
+   "ucr_pre_gate_e": null
+  },
+  "sx-superuser|b6": {
+   "n_rows": 204,
+   "seeds": [
+    0,
+    1,
+    2
+   ],
+   "em": 0.3676,
+   "probe_em": 0.8462,
+   "ucr": null,
+   "ucr_pre_gate": null,
+   "ucr_pre_gate_e": null
+  },
+  "sx-superuser|b6e": {
+   "n_rows": 204,
+   "seeds": [
+    0,
+    1,
+    2
+   ],
+   "em": 0.3676,
+   "probe_em": 0.8462,
+   "ucr": null,
+   "ucr_pre_gate": null,
+   "ucr_pre_gate_e": 0.125
+  },
+  "wiki-talk|ours": {
+   "n_rows": 186,
+   "seeds": [
+    0,
+    1,
+    2
+   ],
+   "em": 0.4032,
+   "probe_em": 0.5385,
+   "ucr": 0.0,
+   "ucr_pre_gate": 0.2,
+   "ucr_pre_gate_e": null
+  },
+  "wiki-talk|ours-noverify": {
+   "n_rows": 186,
+   "seeds": [
+    0,
+    1,
+    2
+   ],
+   "em": 0.4032,
+   "probe_em": 0.5385,
+   "ucr": 0.2,
+   "ucr_pre_gate": null,
+   "ucr_pre_gate_e": null
+  },
+  "wiki-talk|b6": {
+   "n_rows": 186,
+   "seeds": [
+    0,
+    1,
+    2
+   ],
+   "em": 0.4194,
+   "probe_em": 0.7692,
+   "ucr": null,
+   "ucr_pre_gate": null,
+   "ucr_pre_gate_e": null
+  },
+  "wiki-talk|b6e": {
+   "n_rows": 186,
+   "seeds": [
+    0,
+    1,
+    2
+   ],
+   "em": 0.4032,
+   "probe_em": 0.7436,
+   "ucr": null,
+   "ucr_pre_gate": null,
+   "ucr_pre_gate_e": 0.129
+  }
+ },
+ "contrasts": {
+  "sx-mathoverflow | interface: b6e - ours": {
+   "delta_em": -0.125,
+   "ci95": [
+    -0.25,
+    0.0
+   ],
+   "n_tasks": 72
+  },
+  "sx-mathoverflow | evidence(sql): b6e - b6": {
+   "delta_em": 0.0,
+   "ci95": [
+    0.0,
+    0.0
+   ],
+   "n_tasks": 72
+  },
+  "sx-mathoverflow | evidence(tgms): ours - ours-noverify": {
+   "delta_em": 0.0,
+   "ci95": [
+    0.0,
+    0.0
+   ],
+   "n_tasks": 72
+  },
+  "sx-superuser | interface: b6e - ours": {
+   "delta_em": -0.0882,
+   "ci95": [
+    -0.2059,
+    0.0294
+   ],
+   "n_tasks": 68
+  },
+  "sx-superuser | evidence(sql): b6e - b6": {
+   "delta_em": 0.0,
+   "ci95": [
+    0.0,
+    0.0
+   ],
+   "n_tasks": 68
+  },
+  "sx-superuser | evidence(tgms): ours - ours-noverify": {
+   "delta_em": 0.0,
+   "ci95": [
+    0.0,
+    0.0
+   ],
+   "n_tasks": 68
+  },
+  "wiki-talk | interface: b6e - ours": {
+   "delta_em": -0.0,
+   "ci95": [
+    -0.1398,
+    0.1398
+   ],
+   "n_tasks": 62
+  },
+  "wiki-talk | evidence(sql): b6e - b6": {
+   "delta_em": -0.0161,
+   "ci95": [
+    -0.043,
+    0.0
+   ],
+   "n_tasks": 62
+  },
+  "wiki-talk | evidence(tgms): ours - ours-noverify": {
+   "delta_em": 0.0,
+   "ci95": [
+    0.0,
+    0.0
+   ],
+   "n_tasks": 62
+  }
+ },
+ "manifest": {
+  "commit": "266e5b0",
+  "host": "itiger",
+  "n_rows": 2424
+ }
+}
