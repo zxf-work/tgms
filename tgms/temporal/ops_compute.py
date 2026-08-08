@@ -482,9 +482,12 @@ def compute(adapter: StorageAdapter, args: dict[str, Any]) -> dict[str, Any]:
                 raise InvalidArgError(
                     f"compute derive: {into!r} already exists; derive adds a "
                     f"column and never replaces one")
-            b = r[f2] if f2 is not None else val
+            # the guard must precede the access: a model-supplied field2
+            # that is absent used to escape as a raw KeyError past the
+            # TgmsError wrapper and kill the whole task row (M8, D-111)
             if f2 is not None and f2 not in r:
                 raise InvalidArgError(f"compute derive: field {f2!r} missing")
+            b = r[f2] if f2 is not None else val
             out.append({**r, into: _derive_one(_values([r], f)[0], b, op)})
         return paginate(out, args["limit"], None)
     if fn == "join":
