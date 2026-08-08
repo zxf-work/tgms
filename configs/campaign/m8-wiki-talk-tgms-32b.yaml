@@ -1,0 +1,14 @@
+# M8 wave 2, model axis (D-110): 32b, seed 0, oracle-v3 TEST split.
+# Note: July's frozen 32B number was fp16; this arm is AWQ and is
+# labelled as such wherever reported.
+suite_path: stores/suite-wiki-talk/suite-v3.json
+store_path: stores/wiki-talk
+out_dir: runs/m8-wiki-talk-tgms-32b
+split: test
+systems: [ours, ours-noverify]
+models: ["openai/Qwen/Qwen2.5-32B-Instruct-AWQ"]
+seeds: [0]
+max_repairs: 3
+memory_db: stores/wiki-talk/memory.sqlite
+llm_api_base: "http://localhost:8000/v1"
+llm_api_key: "EMPTY"
