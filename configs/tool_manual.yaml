@@ -81,6 +81,11 @@ graph_metric_timeseries:
     (bucket count <= 2000). Metrics: node_count / active_edge_count /
     mean_out_degree sample the bucket start; edge_event_count /
     new_node_rate / reciprocity aggregate events inside the bucket.
+    CHOOSING vs aggregate_events: use THIS operator whenever the only
+    grouping is time — metric evolution, whole-window event totals
+    (stride = window width gives one bucket), busiest-bucket and rate
+    questions. Use aggregate_events only to group BY rel_type, endpoint,
+    label, or calendar unit, or for count_distinct / min / max / mean.
     Cost: one interval-pruned scan — cheap.
     Example: {"metric": "edge_event_count", "window": {...},
               "stride": 604800000000}  # weekly buckets
