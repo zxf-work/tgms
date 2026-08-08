@@ -1,0 +1,284 @@
+{
+ "fault_matrix": {
+  "cells": 27,
+  "false_certifications": 0,
+  "false_rejections": 0,
+  "fc_cp95_upper": 0.1853,
+  "not_covered": [
+   "sampling",
+   "approximate_as_exact",
+   "mixed_snapshots_across_steps",
+   "wrong_extremum",
+   "wrong_top_k",
+   "wrong_ordering",
+   "dropped_partition"
+  ],
+  "denominators": "cells are constructed verifier cases (fault injections + clean controls), NOT task runs; the CP bound is over the must-not-certify cells only"
+ },
+ "frozen_2x2": {
+  "primary_rows": 2424,
+  "em": {
+   "sx-mathoverflow|ours": 0.4861,
+   "sx-mathoverflow|b6e": 0.3611,
+   "sx-superuser|ours": 0.4559,
+   "sx-superuser|b6e": 0.3676,
+   "wiki-talk|ours": 0.4032,
+   "wiki-talk|b6e": 0.4032
+  },
+  "interface_contrasts": {
+   "sx-mathoverflow | interface: b6e - ours": {
+    "delta_em": -0.125,
+    "ci95": [
+     -0.25,
+     0.0
+    ],
+    "n_tasks": 72
+   },
+   "sx-superuser | interface: b6e - ours": {
+    "delta_em": -0.0882,
+    "ci95": [
+     -0.2059,
+     0.0294
+    ],
+    "n_tasks": 68
+   },
+   "wiki-talk | interface: b6e - ours": {
+    "delta_em": -0.0,
+    "ci95": [
+     -0.1398,
+     0.1398
+    ],
+    "n_tasks": 62
+   }
+  },
+  "evidence_em_deltas": {
+   "sx-mathoverflow | evidence(sql): b6e - b6": {
+    "delta_em": 0.0,
+    "ci95": [
+     0.0,
+     0.0
+    ],
+    "n_tasks": 72
+   },
+   "sx-mathoverflow | evidence(tgms): ours - ours-noverify": {
+    "delta_em": 0.0,
+    "ci95": [
+     0.0,
+     0.0
+    ],
+    "n_tasks": 72
+   },
+   "sx-superuser | evidence(sql): b6e - b6": {
+    "delta_em": 0.0,
+    "ci95": [
+     0.0,
+     0.0
+    ],
+    "n_tasks": 68
+   },
+   "sx-superuser | evidence(tgms): ours - ours-noverify": {
+    "delta_em": 0.0,
+    "ci95": [
+     0.0,
+     0.0
+    ],
+    "n_tasks": 68
+   },
+   "wiki-talk | evidence(sql): b6e - b6": {
+    "delta_em": -0.0161,
+    "ci95": [
+     -0.043,
+     0.0
+    ],
+    "n_tasks": 62
+   },
+   "wiki-talk | evidence(tgms): ours - ours-noverify": {
+    "delta_em": 0.0,
+    "ci95": [
+     0.0,
+     0.0
+    ],
+    "n_tasks": 62
+   }
+  },
+  "max_evidence_em_cost": -0.0161,
+  "ucr_pre_gate_tgms": [
+   0.2391,
+   0.1885,
+   0.2
+  ],
+  "ucr_pre_gate_sql": [
+   0.1176,
+   0.125,
+   0.129
+  ],
+  "ucr_pre_range_all": [
+   0.1176,
+   0.2391
+  ],
+  "ucr_gated": [
+   0.0,
+   0.0,
+   0.0
+  ],
+  "denominators": "primary_rows = end-to-end task runs (test splits x 4 arms x 3 seeds x 3 datasets). ucr values are MEANS OVER TASK-RUNS of the per-answer fraction of emitted claims judged unsupported (harness 'ucr' counts all claim types; b6e's pre-gate uses the ECQR witness mapping). Gated rates exist only for evidence-enabled arms (ours, b6e). EM deltas are per-task seed-averaged paired differences."
+ },
+ "model_axis_robustness": {
+  "7b": {
+   "sx-mathoverflow|ours": {
+    "em": 0.125,
+    "probes": 0.0
+   },
+   "sx-mathoverflow|b6e": {
+    "em": 0.3056,
+    "probes": 0.9231
+   },
+   "sx-superuser|ours": {
+    "em": 0.1176,
+    "probes": 0.0
+   },
+   "sx-superuser|b6e": {
+    "em": 0.3088,
+    "probes": 0.9231
+   },
+   "wiki-talk|ours": {
+    "em": 0.1452,
+    "probes": 0.0
+   },
+   "wiki-talk|b6e": {
+    "em": 0.3871,
+    "probes": 0.9231
+   }
+  },
+  "32b": {
+   "sx-mathoverflow|ours": {
+    "em": 0.3472,
+    "probes": 0.0
+   },
+   "sx-mathoverflow|b6e": {
+    "em": 0.3889,
+    "probes": 1.0
+   },
+   "sx-superuser|ours": {
+    "em": 0.2941,
+    "probes": 0.0
+   },
+   "sx-superuser|b6e": {
+    "em": 0.3971,
+    "probes": 1.0
+   },
+   "wiki-talk|ours": {
+    "em": 0.371,
+    "probes": 0.1538
+   },
+   "wiki-talk|b6e": {
+    "em": 0.4516,
+    "probes": 1.0
+   }
+  },
+  "denominators": "seed 0 only, test splits; '7b' = Qwen2.5-7B-Instruct fp16, '32b' = Qwen2.5-32B-Instruct-AWQ \u2014 model CONFIGURATIONS, not a size-only axis; July's frozen 32B number was fp16 and is not comparable"
+ },
+ "guardrail": {
+  "xzgpu_at_2s": {
+   "FA": 0,
+   "FR": 3,
+   "n": 90
+  },
+  "xzgpu_fa_cp95_upper": 0.0402,
+  "itiger_scaled_at_2s": {
+   "FA": 0,
+   "FR": 1,
+   "n": 54
+  },
+  "itiger_scaled_at_10s": {
+   "FA": 0,
+   "FR": 2,
+   "n": 54
+  },
+  "itiger_fa_cp95_upper_54": 0.066,
+  "host_scale_median": 0.72,
+  "host_scale_n_cells": 13,
+  "denominators": "cells are guardrail frontier calls (operator x window-fraction grids), not task runs; FA/FR at the DEFAULT ceilings for the stated budget; host scale = median per-cell actual-time ratio over paired CollegeMsg cells above timer noise"
+ },
+ "overhead": {
+  "descriptor_us": {
+   "small_envelope": 2.5,
+   "large_envelope": 3.0
+  },
+  "plan_overhead_ms": 0.056,
+  "plan_overhead_note": "fixed cost on a ~0.8 ms two-step microplan (6.72% of THAT plan; negligible on real plans)",
+  "sql_certificate_over_page": 0.95,
+  "denominators": "medians over repeated in-process calls on the stated host; certificate ratio = COUNT-wrapped query time / page query time on the superuser replica's distinct-src shape"
+ },
+ "oracle_v3": {
+  "sx-mathoverflow": {
+   "records": 116,
+   "resolved": 104,
+   "resolution_coverage": 0.897,
+   "answerable_not_admitted": 2,
+   "test_split_sha": "b3e15475242696ba"
+  },
+  "sx-superuser": {
+   "records": 116,
+   "resolved": 97,
+   "resolution_coverage": 0.836,
+   "answerable_not_admitted": 1,
+   "test_split_sha": "916765f965037ca1"
+  },
+  "wiki-talk": {
+   "records": 116,
+   "resolved": 92,
+   "resolution_coverage": 0.793,
+   "answerable_not_admitted": 2,
+   "test_split_sha": "eb4b89d4e0cb131f"
+  },
+  "denominators": "records = fixed 116-draw universe per dataset (every draw, incl. not-applicable templates); coverage = resolved/all records"
+ },
+ "m6_frontier": {
+  "a1": {
+   "n": 46,
+   "ops": 5,
+   "em": 0.2174,
+   "first_plan_valid": 0.326,
+   "exec_ok": 0.413,
+   "agg_series_confusions": 5
+  },
+  "a2": {
+   "n": 46,
+   "ops": 11,
+   "em": 0.2174,
+   "first_plan_valid": 0.239,
+   "exec_ok": 0.457,
+   "agg_series_confusions": 0
+  },
+  "a3": {
+   "n": 46,
+   "ops": 13,
+   "em": 0.3043,
+   "first_plan_valid": 0.391,
+   "exec_ok": 0.522,
+   "agg_series_confusions": 0
+  },
+  "a4": {
+   "n": 46,
+   "ops": 15,
+   "em": 0.2609,
+   "first_plan_valid": 0.413,
+   "exec_ok": 0.609,
+   "agg_series_confusions": 7
+  },
+  "a4p": {
+   "n": 46,
+   "ops": 15,
+   "em": 0.2174,
+   "first_plan_valid": 0.457,
+   "exec_ok": 0.63,
+   "agg_series_confusions": 6
+  },
+  "denominators": "dev split, ours only, seed 0; em over all rows at the level; a4p = A4 + disambiguated descriptions, all else identical"
+ },
+ "manifest": {
+  "commit": "db5ed37",
+  "host": "itiger"
+ }
+}
