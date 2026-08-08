@@ -272,10 +272,11 @@
   "wrong_extremum",
   "wrong_top_k",
   "wrong_ordering",
-  "dropped_partition"
+  "dropped_partition",
+  "silent_semantic_substitution"
  ],
  "manifest": {
-  "commit": "823c7250dbe5cea6f04af890df335f053094391a",
+  "commit": "df3779097cdb896c4aee2b67932f7963b941a6df",
   "host": "Xiaofeis-Mac-mini.local"
  }
 }

@@ -212,6 +212,8 @@ NOT_YET_COVERED = [
     "wrong_extremum", "wrong_top_k",          # claim types outside fragment
     "wrong_ordering",                          # ordering claims deferred
     "dropped_partition",                       # subsumed by execution_incomplete
+    "silent_semantic_substitution",            # repair-class scoring post-v1
+                                               # (EVIDENCE_MODEL v1.0 §5)
 ]
 
 
