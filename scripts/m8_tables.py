@@ -23,11 +23,11 @@ DATASETS = ["sx-mathoverflow", "sx-superuser", "wiki-talk"]
 ARMS = ["ours", "ours-noverify", "b6", "b6e"]
 
 
-def _load(runs: Path, prefix: str) -> list[dict]:
+def _load(runs: Path, prefix: str, suffix: str = "") -> list[dict]:
     rows = []
     for ds in DATASETS:
         for kind in ("tgms", "sql"):
-            for f in glob.glob(str(runs / f"{prefix}-{ds}-{kind}" /
+            for f in glob.glob(str(runs / f"{prefix}-{ds}-{kind}{suffix}" /
                                    "results" / "*.json")):
                 r = json.load(open(f))
                 r["_dataset"] = ds
@@ -58,8 +58,10 @@ def main() -> int:
     ap.add_argument("--runs", type=Path, default=Path("runs"))
     ap.add_argument("--out", type=Path, required=True)
     ap.add_argument("--prefix", default="m8")
+    ap.add_argument("--suffix", default="",
+                    help="model-axis out_dir suffix, e.g. -7b or -32b")
     args = ap.parse_args()
-    rows = _load(args.runs, args.prefix)
+    rows = _load(args.runs, args.prefix, args.suffix)
     if not rows:
         print("no rows found")
         return 1
