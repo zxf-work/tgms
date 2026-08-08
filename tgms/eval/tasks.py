@@ -22,6 +22,7 @@ from __future__ import annotations
 import os
 import platform
 import random
+import re
 import time
 from dataclasses import asdict, dataclass, field
 from datetime import datetime, timezone
@@ -130,9 +131,18 @@ def _stride_for(t_a: int, t_b: int, target_buckets: int = 20) -> int:
 # --------------------------------------------------------------------------- #
 
 ORACLE_BUDGET_S = 120.0
+#: the oracle lane's materialized-row cap — a declared envelope parameter
+#: since oracle-v3.1, not an inherited module constant. The default equals
+#: the production cap so v3 suites regenerate split-identical; raising it
+#: is a corpus-version decision, never a silent one.
+ORACLE_MAX_ROWS = 50_000
 POLICY_VERSION = "guardrail-policy-v1"
 CLAIM_TYPE = {"count": "exact_count", "value": "scalar",
               "entity_set": "complete_set", "interval": "scalar_interval"}
+
+#: the empty-result rule's gold per answer kind: what "no qualifying
+#: entity in the window" means for each claim shape
+EMPTY_GOLD = {"entity_set": [], "count": 0, "value": None, "interval": None}
 
 
 def _validate(store: Store, plan_json: dict[str, Any],
@@ -160,12 +170,49 @@ def _classify_trace(trace) -> tuple[str, dict[str, Any] | None]:
         if trace.answer_error else None)
 
 
+_EMPTY_REF_RE = re.compile(r"\$ref '([A-Za-z_][A-Za-z0-9_]*)\.")
+
+
+def _empty_result_evidence(trace, err: dict[str, Any] | None
+                           ) -> dict[str, Any] | None:
+    """The empty-result rule's evidence check (oracle-v3.1, D-116).
+
+    A draw whose sampled window contains no qualifying entity fails with a
+    `$ref ... index 0 out of range (0 rows)` when a downstream step
+    dereferences the first row of an empty producing step. The emptiness is
+    established by the ENGINE's own evidence, not judged: the rule fires
+    only when the producing step ran to completion and delivered every row
+    (its descriptor shows execution_complete and delivery_complete with
+    rows_returned == 0). A truncated or failed producer never qualifies —
+    that is a budget problem, not an empty window."""
+    msg = str((err or {}).get("message", ""))
+    if "index 0 out of range (0 rows)" not in msg:
+        return None
+    m = _EMPTY_REF_RE.search(msg)
+    if not m:
+        return None
+    sid = m.group(1)
+    step = next((s for s in trace.steps if s.get("step_id") == sid), None)
+    if step is None or step.get("status") != "ok":
+        return None
+    scope = ((step.get("ecqr") or {}).get("scope") or {})
+    if not (scope.get("execution_complete") and scope.get("delivery_complete")
+            and scope.get("rows_returned") == 0):
+        return None
+    return {"producing_step": sid,
+            "result_id": (step.get("ecqr") or {}).get("result_id"),
+            "scope": {k: scope.get(k) for k in
+                      ("execution_complete", "delivery_complete",
+                       "rows_returned")}}
+
+
 def _run_lane(store: Store, plan_json: dict[str, Any], lane: str,
-              budget_s: float) -> dict[str, Any]:
+              budget_s: float,
+              max_rows: int = ORACLE_MAX_ROWS) -> dict[str, Any]:
     plan = Plan.from_json(plan_json)
     if lane == "oracle":
         ex = Executor(ToolRouter(store.adapter, skip_cost_check=True),
-                      max_wall_s=budget_s)
+                      max_wall_s=budget_s, max_total_rows=max_rows)
     else:
         ex = Executor(ToolRouter(store.adapter))
     t0 = time.perf_counter()
@@ -173,20 +220,50 @@ def _run_lane(store: Store, plan_json: dict[str, Any], lane: str,
         trace = ex.run(plan)
     except MemoryError:
         return {"outcome": "resource_exhausted", "error": None,
-                "answer": None, "answer_obj": None,
+                "answer": None, "answer_obj": None, "empty_result": None,
                 "wall_s": round(time.perf_counter() - t0, 3)}
     outcome, err = _classify_trace(trace)
     return {"outcome": outcome, "error": err,
             "answer": trace.answer if outcome == "ok" else None,
             "answer_obj": mechanical_answer(plan, trace)
             if outcome == "ok" else None,
+            "empty_result": _empty_result_evidence(trace, err)
+            if outcome == "failed" else None,
             "wall_s": round(time.perf_counter() - t0, 3)}
+
+
+def _budget_detail(outcome: str, err: dict[str, Any] | None) -> str | None:
+    """Which envelope cap a non-ok oracle outcome hit, if any.
+
+    Everything here is a resource ceiling of the oracle envelope — distinct
+    from data unanswerability (oracle-v3.1 relabel, D-116): the wall clock,
+    the MemoryError guard, the materialized-row cap and its downstream
+    reduce-refusal, and kernel-level caps surfacing as E_COST with the
+    admission gate off."""
+    if outcome == "timeout":
+        return "wall_clock"
+    if outcome == "resource_exhausted":
+        return "memory"
+    if outcome == "cost_refused":
+        return "kernel_cap"
+    msg = str((err or {}).get("message", ""))
+    if (err or {}).get("error") == "E_LIMIT" and (
+            "materialized rows" in msg or "truncated result" in msg):
+        return "row_cap"
+    return None
 
 
 def resolve_gold(store: Store, plan_json: dict[str, Any],
                  input_uids: list[str],
-                 oracle_budget_s: float = ORACLE_BUDGET_S) -> dict[str, Any]:
-    """Two-pass gold resolution; returns the record fragment for a draw."""
+                 oracle_budget_s: float = ORACLE_BUDGET_S,
+                 oracle_max_rows: int = ORACLE_MAX_ROWS) -> dict[str, Any]:
+    """Two-pass gold resolution; returns the record fragment for a draw.
+
+    oracle-v3.1 (D-116): every fragment carries `gold_source`
+    (production | oracle | empty_result_rule | None); oracle-envelope caps
+    resolve to `budget_exceeded` instead of hiding inside
+    `oracle_unsupported`; and the empty-result rule resolves draws whose
+    window positively contains no qualifying entity."""
     _validate(store, plan_json, input_uids)
     prod = _run_lane(store, plan_json, "production", 0)
     admission = {
@@ -201,24 +278,40 @@ def resolve_gold(store: Store, plan_json: dict[str, Any],
     if prod["outcome"] == "ok":
         # deterministic engine: the admitted production result is the gold
         return {"oracle_status": "resolved", "oracle_gold": prod["answer"],
+                "gold_source": "production",
                 "gold_answer_object": prod["answer_obj"],
                 "oracle_receipt": {"lane": "shared-with-production",
                                    "budget_s": None,
                                    "wall_s": prod["wall_s"],
                                    "host": platform.node()},
                 "production_admission": admission}
-    orc = _run_lane(store, plan_json, "oracle", oracle_budget_s)
-    status = {"ok": "resolved", "timeout": "timeout",
-              "resource_exhausted": "resource_exhausted",
-              "cost_refused": "oracle_unsupported",  # unreachable: no gate
-              "failed": "oracle_unsupported"}[orc["outcome"]]
-    return {"oracle_status": status, "oracle_gold": orc["answer"],
-            "gold_answer_object": orc["answer_obj"],
-            "oracle_receipt": {"lane": "oracle", "budget_s": oracle_budget_s,
-                               "wall_s": orc["wall_s"],
-                               "host": platform.node(),
-                               "error": orc["error"]},
-            "production_admission": admission}
+    orc = _run_lane(store, plan_json, "oracle", oracle_budget_s,
+                    oracle_max_rows)
+    receipt = {"lane": "oracle", "budget_s": oracle_budget_s,
+               "max_rows": oracle_max_rows, "wall_s": orc["wall_s"],
+               "host": platform.node(), "error": orc["error"]}
+    if orc["outcome"] == "ok":
+        return {"oracle_status": "resolved", "oracle_gold": orc["answer"],
+                "gold_source": "oracle",
+                "gold_answer_object": orc["answer_obj"],
+                "oracle_receipt": receipt, "production_admission": admission}
+    if orc["empty_result"] is not None:
+        kind = plan_json["answer_spec"]["kind"]
+        receipt["empty_result_evidence"] = orc["empty_result"]
+        return {"oracle_status": "resolved",
+                "oracle_gold": EMPTY_GOLD.get(kind),
+                "gold_source": "empty_result_rule",
+                "gold_answer_object": None,
+                "oracle_receipt": receipt, "production_admission": admission}
+    detail = _budget_detail(orc["outcome"], orc["error"])
+    if detail is not None:
+        receipt["budget_detail"] = detail
+        status = "budget_exceeded"
+    else:
+        status = "oracle_unsupported"
+    return {"oracle_status": status, "oracle_gold": None,
+            "gold_source": None, "gold_answer_object": None,
+            "oracle_receipt": receipt, "production_admission": admission}
 
 
 def compute_gold(store: Store, plan_json: dict[str, Any],
@@ -838,14 +931,20 @@ def gen_t2(ctx: Ctx, manifest: dict[str, Any]) -> list[Task]:
 
 def _gen_family(store: Store, ctx: Ctx, rng: random.Random,
                 templates: list[dict], family: str, n: int,
-                oracle_budget_s: float = ORACLE_BUDGET_S
+                oracle_budget_s: float = ORACLE_BUDGET_S,
+                oracle_max_rows: int = ORACLE_MAX_ROWS
                 ) -> list[dict[str, Any]]:
     """A FIXED universe of n draws, every draw a task record (oracle-v3,
     D-098). The old draw-until-n-kept retry loop was itself the
     composition-shifting mechanism (D-091): a failed draw was replaced by a
     fresh one, so hard templates silently vanished from hard stores. Here
     the draw sequence is identical at every scale; outcomes vary, the
-    universe does not."""
+    universe does not.
+
+    oracle-v3.1 (D-116) relabels outcomes without touching the universe or
+    eligibility: records the empty-result rule resolves stay OUT of the
+    LLM suites (like empty_set golds), so the frozen split hashes are
+    invariant across v3 -> v3.1 by construction."""
     records: list[dict[str, Any]] = []
     for i in range(n):
         tpl = templates[i % len(templates)]
@@ -858,11 +957,14 @@ def _gen_family(store: Store, ctx: Ctx, rng: random.Random,
         }
         built = tpl["build"](rng, ctx, para)
         if built is None:
+            # v3.1: a template that does not apply to this store was never
+            # attempted — v3 mislabeled these as oracle_unsupported
             rec.update(question_text=None, requested_claim_type=None,
                        oracle_plan=None, input_uids=[],
                        expressibility="no",
                        expressibility_blocker="template_not_applicable",
-                       oracle_status="oracle_unsupported", oracle_gold=None,
+                       oracle_status="not_attempted", oracle_gold=None,
+                       gold_source=None,
                        gold_answer_object=None, oracle_receipt=None,
                        production_admission=None, suite_eligible=False,
                        ineligible_reason="template_not_applicable")
@@ -875,10 +977,16 @@ def _gen_family(store: Store, ctx: Ctx, rng: random.Random,
                    requested_claim_type=CLAIM_TYPE.get(kind, kind),
                    input_uids=input_uids, expressibility="yes",
                    expressibility_blocker=None)
-        rec.update(resolve_gold(store, plan, input_uids, oracle_budget_s))
+        rec.update(resolve_gold(store, plan, input_uids, oracle_budget_s,
+                                oracle_max_rows))
         eligible = rec["oracle_status"] == "resolved"
         reason = None if eligible else "gold_unresolved"
-        if eligible and kind == "entity_set" and not rec["oracle_gold"]:
+        if eligible and rec["gold_source"] == "empty_result_rule":
+            # rule-resolved golds stay in the inventory but out of the LLM
+            # suites: including them would change the frozen splits, and
+            # "the answer is none" tasks were historically excluded
+            eligible, reason = False, "empty_result"
+        elif eligible and kind == "entity_set" and not rec["oracle_gold"]:
             # empty-set golds stay in the inventory but out of the LLM
             # suites (a trivial task, and historically excluded)
             eligible, reason = False, "empty_set"
@@ -894,11 +1002,16 @@ def _census_view(records: list[dict[str, Any]]) -> dict[str, dict[str, int]]:
         if r.get("source") != "template":
             continue
         c = census.setdefault(r["template"], {
-            "kept": 0, "not_applicable": 0, "gold_failed": 0, "empty_set": 0})
+            "kept": 0, "not_applicable": 0, "budget_exceeded": 0,
+            "gold_failed": 0, "empty_result": 0, "empty_set": 0})
         if r.get("ineligible_reason") == "template_not_applicable":
             c["not_applicable"] += 1
+        elif r["oracle_status"] == "budget_exceeded":
+            c["budget_exceeded"] += 1
         elif r["oracle_status"] != "resolved":
             c["gold_failed"] += 1
+        elif r.get("ineligible_reason") == "empty_result":
+            c["empty_result"] += 1
         elif r.get("ineligible_reason") == "empty_set":
             c["empty_set"] += 1
         else:
@@ -918,13 +1031,19 @@ def _record_to_task(rec: dict[str, Any]) -> Task:
 def generate_suite(store: Store, dataset: str, seed: int = 0,
                    sizes: dict[str, int] | None = None,
                    manifest: dict[str, Any] | None = None,
-                   oracle_budget_s: float = ORACLE_BUDGET_S) -> dict[str, Any]:
-    """Oracle-v3 pipeline (D-098): inject corrections -> a FIXED draw
-    universe per family, every draw a task record with two-lane gold
+                   oracle_budget_s: float = ORACLE_BUDGET_S,
+                   oracle_max_rows: int = ORACLE_MAX_ROWS) -> dict[str, Any]:
+    """Oracle-v3.1 pipeline (D-098, D-116): inject corrections -> a FIXED
+    draw universe per family, every draw a task record with two-lane gold
     resolution -> the LLM suites are the resolved+eligible view, split
     20/80 and hashed. Deterministic given (store content, dataset, seed,
     sizes); receipts carry walls and hosts, which are excluded from the
-    split hash by construction (the hash covers task JSON only)."""
+    split hash by construction (the hash covers task JSON only).
+
+    v3.1 over v3: gold_source on every record; budget_exceeded and
+    not_attempted statuses; the empty-result rule; the oracle row cap as
+    a declared parameter. Eligibility is unchanged, so a v3.1 run over a
+    v3 store yields byte-identical dev/test splits and split hashes."""
     sizes = sizes or {"t1": 60, "t3": 24, "t4": 16, "probes": 8}
     # independent rng streams: the correction-injection path consumes draws
     # only on first run (reuse recovers from the event log), so task sampling
@@ -940,11 +1059,11 @@ def generate_suite(store: Store, dataset: str, seed: int = 0,
 
     records: list[dict[str, Any]] = []
     records += _gen_family(store, ctx, rng, T1_TEMPLATES, "t1", sizes["t1"],
-                           oracle_budget_s)
+                           oracle_budget_s, oracle_max_rows)
     records += _gen_family(store, ctx, rng, T3_TEMPLATES, "t3", sizes["t3"],
-                           oracle_budget_s)
+                           oracle_budget_s, oracle_max_rows)
     records += _gen_family(store, ctx, rng, T4_TEMPLATES, "t4", sizes["t4"],
-                           oracle_budget_s)
+                           oracle_budget_s, oracle_max_rows)
 
     tasks: list[Task] = [
         _record_to_task(r) for r in records if r["suite_eligible"]]
@@ -965,6 +1084,7 @@ def generate_suite(store: Store, dataset: str, seed: int = 0,
                 t.answer_kind, t.answer_kind),
             "input_uids": t.input_uids, "expressibility": "yes",
             "expressibility_blocker": None, "oracle_status": "resolved",
+            "gold_source": "manifest" if t.family == "t2" else "production",
             "oracle_gold": t.gold, "gold_answer_object": t.gold_answer_object,
             "oracle_receipt": {"lane": "constructed" if t.family == "t2"
                                else "shared-with-production",
@@ -991,7 +1111,9 @@ def generate_suite(store: Store, dataset: str, seed: int = 0,
 
     test_json = [t.to_json() for t in test]
     return {
-        "schema": "oracle-v3",
+        "schema": "oracle-v3.1",
+        "oracle_envelope": {"budget_s": oracle_budget_s,
+                            "max_rows": oracle_max_rows},
         "dataset": dataset,
         "seed": seed,
         "n_dev": len(dev),

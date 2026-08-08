@@ -83,13 +83,18 @@ class ResultStore:
 
 class Executor:
     def __init__(self, router: ToolRouter, result_store: ResultStore | None = None,
-                 max_wall_s: float = MAX_WALL_S) -> None:
+                 max_wall_s: float = MAX_WALL_S,
+                 max_total_rows: int = MAX_TOTAL_ROWS) -> None:
         self.router = router
         self.results = result_store
         #: production keeps the 60 s default; the benchmark oracle lane
         #: passes its own declared budget (plan §2c) — the wall is part of
         #: the lane's envelope, not a constant of the machine
         self.max_wall_s = max_wall_s
+        #: same principle for the materialized-row cap (oracle-v3.1): the
+        #: lane declares its cap instead of inheriting the module constant
+        #: silently
+        self.max_total_rows = max_total_rows
 
     def run(self, plan: Plan) -> Trace:
         if len(plan.steps) > MAX_STEPS:
@@ -204,10 +209,10 @@ class Executor:
                 outputs[sid] = res
                 if self.results is not None:
                     self.results.put(res)
-                if total_rows > MAX_TOTAL_ROWS:
+                if total_rows > self.max_total_rows:
                     rec["error"] = {"error": "E_LIMIT",
                                     "message": f"materialized rows {total_rows} "
-                                               f"> {MAX_TOTAL_ROWS}"}
+                                               f"> {self.max_total_rows}"}
                     rec["status"] = "failed"
                     failed.add(sid)
             trace.steps.append(rec)
