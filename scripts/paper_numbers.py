@@ -178,10 +178,17 @@ def oracle_v3() -> dict:
         resolved = by_status["resolved"]
         rule = sum(1 for r in recs
                    if r.get("gold_source") == "empty_result_rule")
+        # answerable-but-not-admitted = the ORACLE LANE resolved real gold
+        # where production yielded none (the D-091 lost class). Empty-rule
+        # resolutions don't qualify: their production runs failed on the
+        # same empty window, which is not a policy shadow. v3 files carry
+        # no gold_source; there, resolved + non-admitted implies the
+        # oracle lane by construction.
         key = sum(1 for r in recs
                   if (r.get("production_admission") or {}).get("outcome")
                   in ("refused", "timeout", "failed")
-                  and r["oracle_status"] == "resolved")
+                  and r["oracle_status"] == "resolved"
+                  and r.get("gold_source", "oracle") == "oracle")
         out[ds] = {"records": len(recs), "resolved": resolved,
                    "resolved_by_empty_rule": rule,
                    "budget_exceeded": by_status.get("budget_exceeded", 0),
