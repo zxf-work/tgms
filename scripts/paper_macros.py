@@ -234,9 +234,9 @@ def table_frozen(pn: dict) -> str:
 \textbf{{\shortstack{{pre-gate\\UCR}}}} &
 \textbf{{\shortstack{{post-gate\\UCR}}}} &
 \textbf{{\shortstack{{total claim\\survival}}}} &
-\textbf{{\shortstack{{claim-carrying\\gated / ungated}}}} &
-\textbf{{\shortstack{{EM\\(gated $=$ ungated)}}}} &
-\textbf{{\shortstack{{$\Delta$EM gated$-$ungated\\(95\% CI)}}}} &
+\textbf{{\shortstack{{claim-carrying\\enf.\ / unenf.}}}} &
+\textbf{{\shortstack{{EM (enf.\ $=$\\unenf.)}}}} &
+\textbf{{\shortstack{{$\Delta$EM enforced$-$\\unenforced (95\% CI)}}}} &
 \textbf{{\shortstack{{EM, strict\\certified-only}}}} \\
 \midrule
 {rows}
@@ -245,13 +245,13 @@ def table_frozen(pn: dict) -> str:
 \caption{{The frozen evidence experiment (test splits, 3 seeds,
 \pnPrimaryRows\ task-runs; metrics per \S\ref{{sec:metrics}}; receipts:
 \texttt{{m8/m8-tables.json}}, \texttt{{eval-gate-counterfactual.json}}).
-Supported-claim retention is 1.0 by construction; total claim survival
-$= 1 - $ pre-gate UCR exactly. Answered rate is identical between
-gated and ungated arms in the scoring mode (text renders in all arms);
-the last column prices the STRICT certified-only rendering mode, in
-which uncertified answers abstain. SQL pre-gate UCR is a lower bound
-(mapped witness-claim subset); cross-interface UCR magnitudes are not
-comparable.}}
+Supported-claim retention is 1.0 by construction, and total claim
+survival equals one minus pre-gate UCR exactly. The answered rate is
+identical between enforced and unenforced arms in the scoring mode,
+where text renders in every arm. The last column prices the strict
+certified-only rendering mode, in which uncertified answers abstain.
+SQL pre-gate UCR is a lower bound under the mapped witness-claim
+subset, so cross-interface UCR magnitudes are not comparable.}}
 \label{{tab:frozen}}
 \end{{table*}}
 
@@ -265,8 +265,8 @@ comparable.}}
 {ic_row}
 \bottomrule
 \end{{tabular}}
-\caption{{The secondary interface contrast between the two gated arms
-(per-task seed-averaged paired bootstrap).}}
+\caption{{The secondary interface contrast between the two enforced
+arms, per-task seed-averaged paired bootstrap.}}
 \label{{tab:interface}}
 \end{{table}}
 
@@ -302,14 +302,14 @@ def table_census(pn: dict) -> str:
 {body}
 \bottomrule
 \end{{tabular}}
-\caption{{Oracle terminal-status census (mutually exclusive; each row
-sums to its draw count). exact = policy-lane or oracle-lane gold;
-empty = the separately specified empty-result rule
-(suite-ineligible); budget = oracle-envelope ceiling, named per
-receipt; n/a = template not applicable to the store; unres.\ = the one
-draw whose emptiness the rule correctly declined to certify (its
-zero-row step inherits delivery-uncertified from a truncated
-upstream page).}}
+\caption{{Oracle terminal-status census. Statuses are mutually
+exclusive and each row sums to its draw count. Here exact means
+policy-lane or oracle-lane gold, empty means the separately specified
+empty-result rule whose resolutions are suite-ineligible, budget
+means an oracle-envelope ceiling named per receipt, n/a means the
+template does not apply to the store, and unres.\ is the one draw
+whose emptiness the rule declined to certify because its zero-row
+step inherits uncertified delivery from a truncated upstream page.}}
 \label{{tab:census}}
 \end{{table}}
 """
