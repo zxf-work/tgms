@@ -132,13 +132,24 @@ FAULT_AB = {"clean": "clean", "page_truncation": "trunc",
 
 
 def fig_conformance(bc: dict, fm: dict) -> str:
-    """Horizontal decision strip: 27 cells x 3 checkers."""
+    """Horizontal decision strip: 27 cells x 3 checkers, grouped."""
     def classify(c):
         if c["ok"]:
             return "okc"
         if c["expectation"] == "must_not_certify":
             return "fac"          # certified an injected fault
         return "frc"              # rejected a clean control
+
+    GROUP = {"clean": "controls", "page_truncation": "completeness",
+             "execution_incomplete": "execution",
+             "wrong_count": "value/witness", "wrong_scalar":
+             "value/witness", "omitted_member": "value/witness",
+             "fabricated_member": "value/witness", "false_membership":
+             "value/witness", "false_existence": "value/witness",
+             "false_nonexistence": "value/witness",
+             "wrong_snapshot": "basis", "unpinned_snapshot": "basis",
+             "uncited_value": "citation",
+             "digest_mismatch": "integrity"}
 
     ecqr = [dict(c, ok=c["ok"]) for c in fm["cells"]]
     b1 = bc["b1_value_only"]["cells"]
@@ -150,14 +161,14 @@ def fig_conformance(bc: dict, fm: dict) -> str:
     for c in ecqr:
         key = (c["claim"], c["fault"])
         seen[key] = seen.get(key, 0) + 1
-        lab = f"{CLAIM_AB[c['claim']]} {FAULT_AB[c['fault']]}"
+        lab = CLAIM_AB[c["claim"]]
         if c["fault"] == "clean" and seen[key] == 2:
-            lab = f"{CLAIM_AB[c['claim']]} w/trunc"
+            lab = f"{CLAIM_AB[c['claim']]}*"
         labels.append(lab)
 
     rows = [("value-only", b1), ("incompl.\\ taint", b2),
             ("ECQR", ecqr)]
-    cw, ch = 0.29, 0.30
+    cw, ch = 0.29, 0.32
     cells_tex = []
     for ri, (_, cells) in enumerate(rows):
         for xi, c in enumerate(cells):
@@ -167,12 +178,35 @@ def fig_conformance(bc: dict, fm: dict) -> str:
                 rf"{-ri*ch+ch-0.05:.2f});")
     body = "\n".join(cells_tex)
     labs = "\n".join(
-        rf"\node[rotate=64, anchor=east, font=\fontsize{{4.6}}{{5.2}}"
-        rf"\selectfont] at ({xi*cw+0.12:.2f},-0.68) {{{lab}}};"
+        rf"\node[anchor=north, font=\fontsize{{5.2}}{{5.6}}"
+        rf"\selectfont] at ({xi*cw+0.12:.2f},-0.70) {{{lab}}};"
         for xi, lab in enumerate(labels))
+    # group brackets above the strip
+    groups, start = [], 0
+    for i in range(1, n + 1):
+        if i == n or GROUP[ecqr[i]["fault"]] != GROUP[ecqr[start]["fault"]]:
+            groups.append((GROUP[ecqr[start]["fault"]], start, i - 1))
+            start = i
+    gtex = []
+    for gname, a, b in groups:
+        x0, x1 = a * cw, (b + 1) * cw - 0.04
+        xm = (x0 + x1) / 2
+        gtex.append(
+            rf"\draw[black!60] ({x0:.2f},0.42) -- ({x0:.2f},0.50) -- "
+            rf"({x1:.2f},0.50) -- ({x1:.2f},0.42);")
+        if (x1 - x0) < 0.85:
+            gtex.append(
+                rf"\node[anchor=south west, rotate=35, "
+                rf"font=\fontsize{{5.2}}{{5.6}}\selectfont] at "
+                rf"({xm - 0.06:.2f},0.52) {{{gname}}};")
+        else:
+            gtex.append(
+                rf"\node[anchor=south, font=\fontsize{{5.6}}{{6}}"
+                rf"\selectfont] at ({xm:.2f},0.52) {{{gname}}};")
+    gbody = "\n".join(gtex)
     rownames = "\n".join(
-        rf"\node[anchor=east, font=\tiny] at (-0.08,{-ri*ch+0.12:.2f}) "
-        rf"{{{rname}}};"
+        rf"\node[anchor=east, font=\scriptsize] at "
+        rf"(-0.08,{-ri*ch+0.13:.2f}) {{{rname}}};"
         for ri, (rname, _) in enumerate(rows))
     return rf"""% F-conformance — generated from eval-baseline-checkers.json +
 % eval-fault-matrix.json; do not edit
@@ -184,19 +218,21 @@ def fig_conformance(bc: dict, fm: dict) -> str:
 \definecolor{{frcol}}{{RGB}}{{230,159,0}}
 \tikzset{{okc/.style={{fill=okcol}}, fac/.style={{fill=facol}},
   frc/.style={{fill=frcol}}}}
+{gbody}
 {body}
 {rownames}
 {labs}
-\node[anchor=west, font=\tiny] at (0.4,0.5)
+\node[anchor=west, font=\scriptsize] at (0.2,-1.15)
   {{\tikz{{\fill[okc] (0,0) rectangle (0.18,0.18);}} correct\quad
    \tikz{{\fill[fac] (0,0) rectangle (0.18,0.18);}} false accept\quad
    \tikz{{\fill[frc] (0,0) rectangle (0.18,0.18);}} false reject}};
 \end{{tikzpicture}}
 \caption{{Conformance decisions over the \pnCells\ EvidenceBench
-cells. Columns are claim/fault cells in matrix order; \emph{{w/trunc}}
-marks the two controls whose evidence is truncated yet sufficient.
-The simple checkers fail in opposite directions; the verifier makes
-no error.}}
+cells, grouped by fault family; column labels give the claim form
+(mem, scl, cnt, set, ext, nex, bas), and * marks the two controls
+whose evidence is truncated yet sufficient. The simple checkers fail
+in opposite directions; the verifier matches every expected
+verdict.}}
 \label{{fig:conformance}}
 \end{{figure}}
 """
@@ -208,16 +244,19 @@ def fig_reasons(uc: dict) -> str:
              "sx-superuser": "SuperUser", "wiki-talk": "wiki-talk"}
     rows = []
     for ds in DS:
-        k = comp[f"{ds}|operators"]["unsupported_claims_by_kind"]
+        c = comp[f"{ds}|operators"]
+        k = c["unsupported_claims_by_kind"]
         rows.append((f"{dsrow[ds]} / Ops", k.get("count", 0),
-                     k.get("entity", 0), k.get("value", 0), 0))
+                     k.get("entity", 0), k.get("value", 0),
+                     c.get("unsupported_claims_undetermined_kind", 0), 0))
     for ds in DS:
         v = comp[f"{ds}|sql"]["claim_verdicts"]
         nw = sum(x for kk, x in v.items() if kk != "SUPPORTED")
-        rows.append((f"{dsrow[ds]} / SQL", 0, 0, 0, nw))
+        rows.append((f"{dsrow[ds]} / SQL", 0, 0, 0, 0, nw))
     sym = ",".join(r[0] for r in reversed(rows))
     series = [("exact count", 1), ("entity witness", 2),
-              ("cited value", 3), ("witness (SQL)", 4)]
+              ("cited value", 3), ("undetermined", 4),
+              ("witness (SQL)", 5)]
     plots = "\n".join(
         rf"\addplot coordinates {{"
         + " ".join(f"({r[si]},{r[0]})" for r in rows) + "};"
@@ -239,10 +278,10 @@ def fig_reasons(uc: dict) -> str:
 \legend{{{legend}}}
 \end{{axis}}
 \end{{tikzpicture}}
-\caption{{Composition of unsupported pre-gate proposals: operator
-rows by proposed-claim kind over the determinate runs, SQL rows by
-verdict. Six operator runs with fractional per-run UCR are excluded
-rather than allocated.}}
+\caption{{Composition of unsupported pre-gate proposals. Every
+unsupported claim is counted: operator rows by proposed-claim kind,
+with the six claims from fractional-UCR runs shown as undetermined
+rather than allocated; SQL rows by verdict.}}
 \label{{fig:reasons}}
 \end{{figure}}
 """
@@ -266,27 +305,34 @@ def fig_efficiency(sc: dict, ov: dict) -> str:
 \begin{{figure}}[t]
 \centering
 \begin{{tikzpicture}}
-\begin{{loglogaxis}}[name=a, width=0.58\linewidth, height=4.2cm,
-  xlabel={{\scriptsize delivered rows}},
-  ylabel={{\scriptsize ms}},
-  x tick label style={{font=\tiny}}, y tick label style={{font=\tiny}},
-  label style={{font=\scriptsize}},
-  legend style={{font=\tiny, at={{(0.02,0.98)}}, anchor=north west}},
+\begin{{loglogaxis}}[name=a, width=0.58\linewidth, height=4.4cm,
+  xlabel={{delivered rows}},
+  ylabel={{ms}},
+  x tick label style={{font=\scriptsize}},
+  y tick label style={{font=\scriptsize}},
+  label style={{font=\small}},
+  legend style={{font=\scriptsize, at={{(0.02,0.98)}},
+    anchor=north west, draw=none, fill=none}},
   legend cell align=left,
-  every axis plot/.append style={{mark size=1.3pt}}]
+  every axis plot/.append style={{mark size=1.5pt}}]
 \addplot+[mark=*] coordinates {{{canon}}};
 \addplot+[mark=square*] coordinates {{{mem}}};
 \addplot+[mark=triangle*] coordinates {{{cset}}};
-\addplot+[mark=o, dashed] coordinates {{{cert}}};
-\legend{{canon.+digest, membership, complete set, count cert.}}
+\addplot+[mark=o, dashed, thick] coordinates {{{cert}}};
+\legend{{canon.+digest, membership, complete set}}
+\node[font=\scriptsize, anchor=west]
+  at (axis cs:20,0.0004) {{count certificate (flat)}};
 \end{{loglogaxis}}
 \begin{{axis}}[at={{(a.outer east)}}, anchor=outer west, xshift=1mm,
-  width=0.40\linewidth, height=4.2cm, ybar, ymode=log,
+  width=0.40\linewidth, height=4.4cm, ybar, ymode=log,
   symbolic x coords={{page query,certificate,descriptors}},
-  xtick=data, x tick label style={{font=\tiny, rotate=25,
-  anchor=east}}, y tick label style={{font=\tiny}},
-  ylabel={{\scriptsize ms (log)}}, label style={{font=\scriptsize}},
-  bar width=9pt, log origin=infty, enlarge x limits=0.3]
+  xtick=data, x tick label style={{font=\scriptsize, rotate=25,
+  anchor=east}}, y tick label style={{font=\scriptsize}},
+  ylabel={{ms (log)}}, label style={{font=\small}},
+  bar width=10pt, log origin=infty, enlarge x limits=0.3,
+  nodes near coords, every node near coord/.append style={{
+    font=\scriptsize, anchor=south}},
+  point meta=rawy]
 \addplot coordinates {{(page query,{page_ms}) (certificate,{cert_ms})
   (descriptors,{plan_ms})}};
 \end{{axis}}

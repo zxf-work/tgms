@@ -7,9 +7,10 @@
     "count": 30,
     "entity": 12
    },
+   "unsupported_claims_undetermined_kind": 3,
+   "total_unsupported_claims": 51,
    "runs_all_supported": 138,
    "runs_all_unsupported": 48,
-   "runs_ambiguous_fraction": 3,
    "runs_without_claims": 27
   },
   "sx-superuser|operators": {
@@ -18,9 +19,10 @@
     "value": 6,
     "entity": 3
    },
+   "unsupported_claims_undetermined_kind": 3,
+   "total_unsupported_claims": 36,
    "runs_all_supported": 138,
    "runs_all_unsupported": 33,
-   "runs_ambiguous_fraction": 3,
    "runs_without_claims": 30
   },
   "wiki-talk|operators": {
@@ -29,9 +31,10 @@
     "count": 24,
     "entity": 3
    },
+   "unsupported_claims_undetermined_kind": 0,
+   "total_unsupported_claims": 33,
    "runs_all_supported": 120,
    "runs_all_unsupported": 33,
-   "runs_ambiguous_fraction": 0,
    "runs_without_claims": 33
   },
   "sx-mathoverflow|sql": {
@@ -114,7 +117,12 @@
   "p95": 545,
   "tokenizer": "Qwen/Qwen2.5-14B-Instruct-AWQ"
  },
+ "descriptor_bytes_sql_frozen": {
+  "n": 421,
+  "median": 691,
+  "p95": 1339
+ },
  "verifier_model_tokens": 0,
  "verifier_model_calls": 0,
- "commit": "1bd6b578db81c8dec95179d22bab5981ff8c171e"
+ "commit": "2380dc9"
 }
