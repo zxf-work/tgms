@@ -198,11 +198,8 @@ def table_frozen(pn: dict) -> str:
     carry = fz["claim_carrying_rate"]
     surv = fz["total_claim_survival"]
     emc = fz["em_given_claims"]
-    icon = fz["interface_contrasts"]
     ev = fz["evidence_em_deltas"]
 
-    # one row per dataset x interface, public arm names (review §19):
-    # Operators(+ECQR) = ours/ours-noverify, SQL(+ECQR) = b6e/b6
     body = []
     pre_by = {"Operators": dict(zip(DS, tg)), "SQL": dict(zip(DS, sq))}
     arm_of = {"Operators": ("ours", "ours-noverify"),
@@ -213,27 +210,28 @@ def table_frozen(pn: dict) -> str:
         for iface in ("Operators", "SQL"):
             g, u = arm_of[iface]
             e = ev[f"{d} | {ev_key[iface]}"]
-            em_strict = emc[f"{d}|{g}"] * carry[f"{d}|{g}"]
+            ccc = emc[f"{d}|{g}"] * carry[f"{d}|{g}"]
             body.append(" & ".join([
                 DS_SHORT[d] if iface == "Operators" else "",
                 iface,
                 f3(pre_by[iface][d]),
-                r"\textbf{0.000}",
                 f2(surv[f"{d}|{g}"]),
-                f"{f2(carry[f'{d}|{g}'])} / {f2(carry[f'{d}|{u}'])}",
+                f2(carry[f"{d}|{g}"]),
+                f3(emc[f"{d}|{g}"]),
+                f3(ccc),
                 f3(em[f"{d}|{g}"]),
                 rf"${f3(e['delta_em'])}$ \scriptsize${ci2(e['ci95'])}$",
-                f3(em_strict),
             ]) + r" \\")
         body.append(r"\addlinespace[1pt]")
     rows = "\n".join(body[:-1])
 
-    ic = [icon[f"{d} | interface: b6e - ours"] for d in DS]
+    ic = [fz["interface_contrasts"][f"{d} | interface: b6e - ours"]
+          for d in DS]
     ic_row = " & ".join(
         [r"$\Delta$EM (SQL$-$Op.)"] +
         [rf"${f3(c['delta_em'])}$ \scriptsize${ci2(c['ci95'])}$"
          for c in ic]) + r" \\"
-    return rf"""% T3 — the frozen 2x2, from paper_numbers.json:frozen_2x2
+    frozen = rf"""% T-frozen — certified-output framing (review round 3)
 \begin{{table*}}[t]
 \centering\small
 \setlength{{\tabcolsep}}{{4pt}}
@@ -241,30 +239,30 @@ def table_frozen(pn: dict) -> str:
 \toprule
 \textbf{{Dataset}} & \textbf{{Interface}} &
 \textbf{{\shortstack{{pre-gate\\UCR}}}} &
-\textbf{{\shortstack{{post-gate\\UCR}}}} &
-\textbf{{\shortstack{{total claim\\survival}}}} &
-\textbf{{\shortstack{{claim-carrying\\enf.\ / unenf.}}}} &
-\textbf{{\shortstack{{EM (enf.\ $=$\\unenf.)}}}} &
-\textbf{{\shortstack{{$\Delta$EM enforced$-$\\unenforced (95\% CI)}}}} &
-\textbf{{\shortstack{{EM, strict\\certified-only}}}} \\
+\textbf{{\shortstack{{mean claim\\survival}}}} &
+\textbf{{\shortstack{{certified-output\\coverage}}}} &
+\textbf{{\shortstack{{conditional\\accuracy}}}} &
+\textbf{{\shortstack{{correct-certified\\coverage}}}} &
+\textbf{{\shortstack{{EM,\\audit mode}}}} &
+\textbf{{\shortstack{{$\Delta$EM audit, enforced$-$\\unenforced (95\% CI)}}}} \\
 \midrule
 {rows}
 \bottomrule
 \end{{tabular}}
-\caption{{The frozen evidence experiment (test splits, 3 seeds,
-\pnPrimaryRows\ task-runs; metrics per \S\ref{{sec:metrics}}; receipts:
-\texttt{{m8/m8-tables.json}}, \texttt{{eval-gate-counterfactual.json}}).
-Supported-claim retention is 1.0 by construction, and total claim
-survival equals one minus pre-gate UCR exactly. The answered rate is
-identical between enforced and unenforced arms in the scoring mode,
-where text renders in every arm. The last column prices the strict
-certified-only rendering mode, in which uncertified answers abstain.
-SQL pre-gate UCR is a lower bound under the mapped witness-claim
-subset, so cross-interface UCR magnitudes are not comparable.}}
+\caption{{The frozen evidence experiment over test splits, three
+seeds, and \pnPrimaryRows\ task-runs, with metrics as defined in
+\S\ref{{sec:metrics}}. Certified-output coverage, conditional
+accuracy among certified outputs, and correct-certified coverage
+describe certified-output mode. EM and its paired contrast describe
+audit mode, in which answer text renders in every arm. Post-gate UCR
+is 0.000 everywhere and supported-claim retention is 1.0 by
+construction, so neither is tabulated. SQL pre-gate UCR is a lower
+bound under the mapped witness-claim subset, so cross-interface UCR
+magnitudes are not comparable.}}
 \label{{tab:frozen}}
 \end{{table*}}
 
-% T3b — interface contrast, separate as secondary
+% T-interface — secondary contrast
 \begin{{table}}[t]
 \centering\small
 \begin{{tabular}}{{lccc}}
@@ -278,9 +276,8 @@ subset, so cross-interface UCR magnitudes are not comparable.}}
 arms, per-task seed-averaged paired bootstrap.}}
 \label{{tab:interface}}
 \end{{table}}
-
-% T5 — oracle terminal-status census, from paper_numbers.json:oracle_v3
 """
+    return frozen
 
 
 def table_census(pn: dict) -> str:
@@ -313,7 +310,7 @@ def table_census(pn: dict) -> str:
 \end{{tabular}}
 \caption{{Oracle terminal-status census. Statuses are mutually
 exclusive and each row sums to its draw count. Here exact means
-policy-lane or oracle-lane gold, empty means the separately specified
+policy-lane or oracle-lane gold, empty means the backend-certified
 empty-result rule whose resolutions are suite-ineligible, budget
 means an oracle-envelope ceiling named per receipt, n/a means the
 template does not apply to the store, and unres.\ is the one draw
@@ -359,6 +356,34 @@ share one claim-construction surface.}
 """
 
 
+def table_guardrail(pn: dict) -> str:
+    gr = pn["guardrail"]
+    rows = []
+    for label, key in (("0.5\\,s", "itiger_scaled_at_500ms"),
+                       ("2\\,s", "itiger_scaled_at_2s"),
+                       ("10\\,s", "itiger_scaled_at_10s")):
+        v = gr[key]
+        rows.append(f"{label} & {v['FA']} & {v['FR']} \\\\")
+    body = "\n".join(rows)
+    return rf"""\begin{{table}}[t]
+\centering\small
+\begin{{tabular}}{{lcc}}
+\toprule
+\textbf{{budget}} & \textbf{{false adm.\ / 54}} &
+\textbf{{false rej.\ / 54}} \\
+\midrule
+{body}
+\bottomrule
+\end{{tabular}}
+\caption{{Transferred admission policy re-measured end to end on the
+evaluation cluster at three budgets. The three operating points are
+reported as measured, including the 0.5\,s false admission; no
+functional characterization beyond them is claimed.}}
+\label{{tab:guardrail}}
+\end{{table}}
+"""
+
+
 def table_cost(pn: dict) -> str:
     return r"""% T4 — evidence economics, from paper_numbers.json:overhead
 \begin{table}[t]
@@ -394,11 +419,15 @@ def main() -> int:
     pn = json.loads((RES / "paper_numbers.json").read_text())
     fm = json.loads((RES / "eval-fault-matrix.json").read_text())
     (args.outdir / "pn-macros.tex").write_text(macros(pn, fm))
-    (args.outdir / "tab-data.tex").write_text(
-        "% tab-data.tex — GENERATED by scripts/paper_macros.py; never "
-        "hand-edit.\n\n" + table_fault(fm) + "\n" + table_frozen(pn) +
-        "\n" + table_census(pn) + "\n" + table_sql_surface() +
-        "\n" + table_cost(pn))
+    hdr = ("% GENERATED by scripts/paper_macros.py; never hand-edit.\n\n")
+    (args.outdir / "tab-fault.tex").write_text(hdr + table_fault(fm))
+    (args.outdir / "tab-frozen.tex").write_text(hdr + table_frozen(pn))
+    (args.outdir / "tab-census.tex").write_text(hdr + table_census(pn))
+    (args.outdir / "tab-sqlsurface.tex").write_text(
+        hdr + table_sql_surface())
+    (args.outdir / "tab-guardrail.tex").write_text(
+        hdr + table_guardrail(pn))
+    (args.outdir / "tab-cost.tex").write_text(hdr + table_cost(pn))
     print(f"wrote {args.outdir}/pn-macros.tex, {args.outdir}/tab-data.tex")
     return 0
 

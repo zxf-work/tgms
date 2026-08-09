@@ -28,46 +28,57 @@ def fig5(pn: dict) -> str:
     fz = pn["frozen_2x2"]
     pre_t = fz["ucr_pre_gate_tgms"]
     pre_s = fz["ucr_pre_gate_sql"]
-    em = fz["em"]
+    carry = fz["claim_carrying_rate"]
+    emc = fz["em_given_claims"]
     bars_t = " ".join(f"({DS_SHORT[d]},{v})" for d, v in zip(DS, pre_t))
     bars_s = " ".join(f"({DS_SHORT[d]},{v})" for d, v in zip(DS, pre_s))
-    zeros = " ".join(f"({DS_SHORT[d]},0.0)" for d in DS)
-    em_o = " ".join(f"({DS_SHORT[d]},{em[f'{d}|ours']})" for d in DS)
-    em_b = " ".join(f"({DS_SHORT[d]},{em[f'{d}|b6e']})" for d in DS)
-    return rf"""% F5 — generated from paper_numbers.json; do not edit
-\begin{{figure}}[t]
+    cov_o = " ".join(f"({DS_SHORT[d]},{carry[f'{d}|ours']})" for d in DS)
+    cov_s = " ".join(f"({DS_SHORT[d]},{carry[f'{d}|b6e']})" for d in DS)
+    ccc_o = " ".join(
+        f"({DS_SHORT[d]},{round(carry[f'{d}|ours']*emc[f'{d}|ours'],4)})"
+        for d in DS)
+    ccc_s = " ".join(
+        f"({DS_SHORT[d]},{round(carry[f'{d}|b6e']*emc[f'{d}|b6e'],4)})"
+        for d in DS)
+    ax = ("symbolic x coords={{MathOverflow,SuperUser,wiki-talk}}, "
+          "xtick=data, x tick label style={{font=\\tiny, rotate=25, "
+          "anchor=east}}, bar width=4.5pt, ybar, width=0.36\\linewidth, "
+          "height=3.6cm, ymin=0")
+    return rf"""% F-main — need / safety-coverage / utility (round-3 review)
+\begin{{figure*}}[t]
 \centering
 \begin{{tikzpicture}}
-\begin{{axis}}[name=left, ybar, width=0.52\linewidth, height=4.2cm,
-  bar width=5pt, ymin=0, ymax=0.3,
-  symbolic x coords={{MathOverflow,SuperUser,wiki-talk}}, xtick=data,
-  x tick label style={{font=\scriptsize, rotate=20, anchor=east}},
-  ylabel={{\scriptsize unsupported-claim rate}},
-  legend style={{font=\tiny, at={{(0.02,0.98)}}, anchor=north west}}]
+\begin{{axis}}[name=a, {ax}, ymax=0.3,
+  ylabel={{\scriptsize pre-gate UCR}},
+  legend style={{font=\\tiny, at={{(0.02,0.98)}}, anchor=north west}}]
 \addplot coordinates {{{bars_t}}};
 \addplot coordinates {{{bars_s}}};
-\addplot coordinates {{{zeros}}};
-\legend{{Operators, SQL, with ECQR (both)}}
+\legend{{Operators, SQL}}
 \end{{axis}}
-\begin{{axis}}[at={{(left.outer east)}}, anchor=outer west, xshift=2mm,
-  ybar, width=0.52\linewidth, height=4.2cm, bar width=5pt,
-  ymin=0, ymax=0.6,
-  symbolic x coords={{MathOverflow,SuperUser,wiki-talk}}, xtick=data,
-  x tick label style={{font=\scriptsize, rotate=20, anchor=east}},
-  ylabel={{\scriptsize exact match (gated)}},
-  legend style={{font=\tiny, at={{(0.02,0.98)}}, anchor=north west}}]
-\addplot coordinates {{{em_o}}};
-\addplot coordinates {{{em_b}}};
+\begin{{axis}}[at={{(a.outer east)}}, anchor=outer west, xshift=2mm,
+  {ax}, ymax=1.0,
+  ylabel={{\scriptsize certified-output coverage}},
+  legend style={{font=\\tiny, at={{(0.02,0.3)}}, anchor=north west}}]
+\addplot coordinates {{{cov_o}}};
+\addplot coordinates {{{cov_s}}};
 \legend{{Operators+ECQR, SQL+ECQR}}
 \end{{axis}}
+\begin{{axis}}[at={{(a.outer east)}}, anchor=outer west, xshift=0.66\\linewidth,
+  {ax}, ymax=0.6,
+  ylabel={{\scriptsize correct-certified coverage}}]
+\addplot coordinates {{{ccc_o}}};
+\addplot coordinates {{{ccc_s}}};
+\end{{axis}}
 \end{{tikzpicture}}
-\caption{{The frozen evidence result over test splits, 3 seeds, and
-2{{,}}424 runs. Left: mean per-answer unsupported-claim fraction
-without enforcement and with it. Enforcement takes both interfaces to
-zero. Right: exact-match accuracy of the enforced arms, which changes
-on three task-runs relative to the unenforced twins.}}
+\caption{{The main evidence result in three panels: need, safety
+with coverage, and utility. Left: mean per-run unsupported fractions
+among proposed claims, without enforcement. Middle: the fraction of
+runs whose certified output carries at least one supported claim.
+Right: the fraction of runs with a correct certified output.
+Post-gate UCR is 0.000 everywhere and is architectural rather than
+empirical, so it is not plotted.}}
 \label{{fig:frozen}}
-\end{{figure}}
+\end{{figure*}}
 """
 
 
@@ -114,8 +125,10 @@ def main() -> int:
     ap.add_argument("--out", type=Path, required=True)
     args = ap.parse_args()
     pn = json.loads((RES / "paper_numbers.json").read_text())
-    args.out.write_text(fig5(pn) + "\n" + fig6(pn))
-    print(f"wrote {args.out}")
+    outdir = args.out if args.out.is_dir() else args.out.parent
+    (outdir / "fig-main.tex").write_text(fig5(pn))
+    (outdir / "fig-frontier.tex").write_text(fig6(pn))
+    print(f"wrote {outdir}/fig-main.tex, {outdir}/fig-frontier.tex")
     return 0
 
 
