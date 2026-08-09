@@ -47,7 +47,7 @@ def fig5(pn: dict) -> str:
 \addplot coordinates {{{bars_t}}};
 \addplot coordinates {{{bars_s}}};
 \addplot coordinates {{{zeros}}};
-\legend{{operators ungated, SQL ungated, gated (both)}}
+\legend{{Operators, SQL, with ECQR (both)}}
 \end{{axis}}
 \begin{{axis}}[at={{(left.outer east)}}, anchor=outer west, xshift=2mm,
   ybar, width=0.52\linewidth, height=4.2cm, bar width=5pt,
@@ -58,14 +58,14 @@ def fig5(pn: dict) -> str:
   legend style={{font=\tiny, at={{(0.02,0.98)}}, anchor=north west}}]
 \addplot coordinates {{{em_o}}};
 \addplot coordinates {{{em_b}}};
-\legend{{operators, SQL}}
+\legend{{Operators+ECQR, SQL+ECQR}}
 \end{{axis}}
 \end{{tikzpicture}}
-\caption{{The frozen evidence result (test splits, 3 seeds, 2{{,}}424
-runs). Left: mean per-answer unsupported-claim fraction, ungated vs
-gated --- enforcement takes both interfaces to zero. Right: gated
-exact-match accuracy; the accuracy cost of gating is at most one
-changed outcome.}}
+\caption{{The frozen evidence result over test splits, 3 seeds, and
+2{{,}}424 runs. Left: mean per-answer unsupported-claim fraction
+without enforcement and with it. Enforcement takes both interfaces to
+zero. Right: exact-match accuracy of the enforced arms, which changes
+on three task-runs relative to the unenforced twins.}}
 \label{{fig:frozen}}
 \end{{figure}}
 """
@@ -99,11 +99,11 @@ def fig6(pn: dict) -> str:
   exact match}}
 \end{{axis}}
 \end{{tikzpicture}}
-\caption{{The interface frontier (nested surfaces, identical runtime).
-Expressibility and execution success rise monotonically with surface
-size; accuracy does not --- the curves diverge, and the dip at the full
-surface coincides with the one operator pair whose capabilities
-structurally overlap.}}
+\caption{{The interface frontier over nested surfaces at identical
+runtime, from a one-seed exploratory study. Expressibility and
+execution success rise monotonically with surface size. Accuracy does
+not, and the dip at the full surface coincides with the one operator
+pair whose capabilities structurally overlap.}}
 \label{{fig:frontier}}
 \end{{figure}}
 """
