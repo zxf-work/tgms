@@ -9,7 +9,10 @@
    "probe_em": 0.0,
    "ucr": 0.0,
    "ucr_pre_gate": 0.0909,
-   "ucr_pre_gate_e": null
+   "ucr_pre_gate_e": null,
+   "certified_answer_coverage": 0.5833,
+   "abstention_rate": 0.4167,
+   "claim_retention": 0.9762
   },
   "sx-mathoverflow|ours-noverify": {
    "n_rows": 72,
@@ -20,7 +23,10 @@
    "probe_em": 0.0,
    "ucr": 0.0909,
    "ucr_pre_gate": null,
-   "ucr_pre_gate_e": null
+   "ucr_pre_gate_e": null,
+   "certified_answer_coverage": 0.6389,
+   "abstention_rate": 0.3611,
+   "claim_retention": null
   },
   "sx-mathoverflow|b6": {
    "n_rows": 72,
@@ -31,7 +37,10 @@
    "probe_em": 1.0,
    "ucr": null,
    "ucr_pre_gate": null,
-   "ucr_pre_gate_e": null
+   "ucr_pre_gate_e": null,
+   "certified_answer_coverage": 0.9583,
+   "abstention_rate": 0.0417,
+   "claim_retention": null
   },
   "sx-mathoverflow|b6e": {
    "n_rows": 72,
@@ -42,7 +51,10 @@
    "probe_em": 1.0,
    "ucr": null,
    "ucr_pre_gate": null,
-   "ucr_pre_gate_e": 0.0667
+   "ucr_pre_gate_e": 0.0667,
+   "certified_answer_coverage": 0.9167,
+   "abstention_rate": 0.0833,
+   "claim_retention": 1.0
   },
   "sx-superuser|ours": {
    "n_rows": 68,
@@ -53,7 +65,10 @@
    "probe_em": 0.0,
    "ucr": 0.0,
    "ucr_pre_gate": 0.1058,
-   "ucr_pre_gate_e": null
+   "ucr_pre_gate_e": null,
+   "certified_answer_coverage": 0.5294,
+   "abstention_rate": 0.4706,
+   "claim_retention": 0.9861
   },
   "sx-superuser|ours-noverify": {
    "n_rows": 68,
@@ -64,7 +79,10 @@
    "probe_em": 0.0,
    "ucr": 0.1058,
    "ucr_pre_gate": null,
-   "ucr_pre_gate_e": null
+   "ucr_pre_gate_e": null,
+   "certified_answer_coverage": 0.6029,
+   "abstention_rate": 0.3971,
+   "claim_retention": null
   },
   "sx-superuser|b6": {
    "n_rows": 68,
@@ -75,7 +93,10 @@
    "probe_em": 1.0,
    "ucr": null,
    "ucr_pre_gate": null,
-   "ucr_pre_gate_e": null
+   "ucr_pre_gate_e": null,
+   "certified_answer_coverage": 0.9118,
+   "abstention_rate": 0.0882,
+   "claim_retention": null
   },
   "sx-superuser|b6e": {
    "n_rows": 68,
@@ -86,7 +107,10 @@
    "probe_em": 1.0,
    "ucr": null,
    "ucr_pre_gate": null,
-   "ucr_pre_gate_e": 0.0244
+   "ucr_pre_gate_e": 0.0244,
+   "certified_answer_coverage": 0.9118,
+   "abstention_rate": 0.0882,
+   "claim_retention": 1.0
   },
   "wiki-talk|ours": {
    "n_rows": 62,
@@ -97,7 +121,10 @@
    "probe_em": 0.1538,
    "ucr": 0.0,
    "ucr_pre_gate": 0.066,
-   "ucr_pre_gate_e": null
+   "ucr_pre_gate_e": null,
+   "certified_answer_coverage": 0.6452,
+   "abstention_rate": 0.3548,
+   "claim_retention": 0.9875
   },
   "wiki-talk|ours-noverify": {
    "n_rows": 62,
@@ -108,7 +135,10 @@
    "probe_em": 0.1538,
    "ucr": 0.066,
    "ucr_pre_gate": null,
-   "ucr_pre_gate_e": null
+   "ucr_pre_gate_e": null,
+   "certified_answer_coverage": 0.6935,
+   "abstention_rate": 0.3065,
+   "claim_retention": null
   },
   "wiki-talk|b6": {
    "n_rows": 62,
@@ -119,7 +149,10 @@
    "probe_em": 1.0,
    "ucr": null,
    "ucr_pre_gate": null,
-   "ucr_pre_gate_e": null
+   "ucr_pre_gate_e": null,
+   "certified_answer_coverage": 0.9677,
+   "abstention_rate": 0.0323,
+   "claim_retention": null
   },
   "wiki-talk|b6e": {
    "n_rows": 62,
@@ -130,7 +163,10 @@
    "probe_em": 1.0,
    "ucr": null,
    "ucr_pre_gate": null,
-   "ucr_pre_gate_e": 0.0676
+   "ucr_pre_gate_e": 0.0676,
+   "certified_answer_coverage": 0.9355,
+   "abstention_rate": 0.0645,
+   "claim_retention": 0.9857
   }
  },
  "contrasts": {
@@ -208,7 +244,7 @@
   }
  },
  "manifest": {
-  "commit": "e14d24f",
+  "commit": "fe872d25edcf841a78d1a18b8899280281706946",
   "host": "itiger",
   "n_rows": 808
  }

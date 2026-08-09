@@ -17,6 +17,14 @@
   "denominators": "cells are constructed verifier cases (fault injections + clean controls), NOT task runs; the CP bound is over the must-not-certify cells only"
  },
  "frozen_2x2": {
+  "changed_outcome_audit": {
+   "wiki-talk|sql": {
+    "tasks_changed": 2,
+    "rows_changed": 3,
+    "n_tasks": 62,
+    "paired_rows": 186
+   }
+  },
   "primary_rows": 2424,
   "em": {
    "sx-mathoverflow|ours": 0.4861,
@@ -177,7 +185,7 @@
     "probes": 1.0
    }
   },
-  "denominators": "seed 0 only, test splits; '7b' = Qwen2.5-7B-Instruct fp16, '32b' = Qwen2.5-32B-Instruct-AWQ \u2014 model CONFIGURATIONS, not a size-only axis; July's frozen 32B number was fp16 and is not comparable"
+  "denominators": "seed 0 only, test splits; '7b' = Qwen2.5-7B-Instruct fp16, '32b' = Qwen2.5-32B-Instruct-AWQ, '32bfp16' = Qwen2.5-32B-Instruct fp16 (the D-119 quantization control: same weights family as '32b', quantization removed) \u2014 model CONFIGURATIONS, not a size-only axis"
  },
  "guardrail": {
   "xzgpu_at_2s": {
@@ -186,6 +194,11 @@
    "n": 90
   },
   "xzgpu_fa_cp95_upper": 0.0402,
+  "itiger_scaled_at_500ms": {
+   "FA": 1,
+   "FR": 0,
+   "n": 54
+  },
   "itiger_scaled_at_2s": {
    "FA": 0,
    "FR": 1,
@@ -302,7 +315,7 @@
   "denominators": "dev split, ours only, seed 0; em over all rows at the level; em_given_expressible over rows whose oracle plan touches no op excluded at the level (D-107 oracle-plan-ops rule); a4p = A4 + disambiguated descriptions, all else identical"
  },
  "manifest": {
-  "commit": "bea15e24e3a599597c6a51660ce6882e3ac724d2",
+  "commit": "fe872d25edcf841a78d1a18b8899280281706946",
   "host": "itiger"
  }
 }
