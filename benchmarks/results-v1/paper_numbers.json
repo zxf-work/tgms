@@ -40,56 +40,10 @@
    "wiki-talk|b6e": 0.4032,
    "wiki-talk|b6": 0.4194
   },
-  "answered_rate": {
-   "sx-mathoverflow|ours": 0.9583,
-   "sx-mathoverflow|ours-noverify": 0.9583,
-   "sx-mathoverflow|b6e": 1.0,
-   "sx-mathoverflow|b6": 1.0,
-   "sx-superuser|ours": 0.8971,
-   "sx-superuser|ours-noverify": 0.8971,
-   "sx-superuser|b6e": 1.0,
-   "sx-superuser|b6": 1.0,
-   "wiki-talk|ours": 0.8871,
-   "wiki-talk|ours-noverify": 0.8871,
-   "wiki-talk|b6e": 1.0,
-   "wiki-talk|b6": 1.0
-  },
-  "claim_carrying_rate": {
-   "sx-mathoverflow|ours": 0.6528,
-   "sx-mathoverflow|ours-noverify": 0.875,
-   "sx-mathoverflow|b6e": 0.8194,
-   "sx-mathoverflow|b6": 0.9074,
-   "sx-superuser|ours": 0.6912,
-   "sx-superuser|ours-noverify": 0.8529,
-   "sx-superuser|b6e": 0.8235,
-   "sx-superuser|b6": 0.9167,
-   "wiki-talk|ours": 0.6452,
-   "wiki-talk|ours-noverify": 0.8226,
-   "wiki-talk|b6e": 0.8333,
-   "wiki-talk|b6": 0.9247
-  },
-  "total_claim_survival": {
-   "sx-mathoverflow|ours": 0.7609,
-   "sx-mathoverflow|b6e": 0.8824,
-   "sx-superuser|ours": 0.8115,
-   "sx-superuser|b6e": 0.875,
-   "wiki-talk|ours": 0.8,
-   "wiki-talk|b6e": 0.871
-  },
-  "em_given_claims": {
-   "sx-mathoverflow|ours": 0.5532,
-   "sx-mathoverflow|ours-noverify": 0.5556,
-   "sx-mathoverflow|b6e": 0.4407,
-   "sx-mathoverflow|b6": 0.398,
-   "sx-superuser|ours": 0.5106,
-   "sx-superuser|ours-noverify": 0.5172,
-   "sx-superuser|b6e": 0.4464,
-   "sx-superuser|b6": 0.4011,
-   "wiki-talk|ours": 0.475,
-   "wiki-talk|ours-noverify": 0.4902,
-   "wiki-talk|b6e": 0.4839,
-   "wiki-talk|b6": 0.4535
-  },
+  "answered_rate": {},
+  "claim_carrying_rate": {},
+  "total_claim_survival": {},
+  "em_given_claims": {},
   "gate_counterfactual": {
    "note": "deterministic gate applied counterfactually to the ungated arms' own claims; planning/execution/values held fixed; per-claim ambiguity bounded, not guessed",
    "cells": {
@@ -291,6 +245,32 @@
    },
    "wiki-talk|ours": {
     "em": 0.371,
+    "probes": 0.1538
+   },
+   "wiki-talk|b6e": {
+    "em": 0.4516,
+    "probes": 1.0
+   }
+  },
+  "32bfp16": {
+   "sx-mathoverflow|ours": {
+    "em": 0.3056,
+    "probes": 0.0
+   },
+   "sx-mathoverflow|b6e": {
+    "em": 0.3472,
+    "probes": 1.0
+   },
+   "sx-superuser|ours": {
+    "em": 0.3529,
+    "probes": 0.0769
+   },
+   "sx-superuser|b6e": {
+    "em": 0.3824,
+    "probes": 1.0
+   },
+   "wiki-talk|ours": {
+    "em": 0.3871,
     "probes": 0.1538
    },
    "wiki-talk|b6e": {

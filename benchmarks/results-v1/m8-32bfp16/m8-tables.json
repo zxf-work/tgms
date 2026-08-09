@@ -1,0 +1,275 @@
+{
+ "table": {
+  "sx-mathoverflow|ours": {
+   "n_rows": 72,
+   "seeds": [
+    0
+   ],
+   "em": 0.3056,
+   "probe_em": 0.0,
+   "ucr": 0.0,
+   "ucr_pre_gate": 0.1224,
+   "ucr_pre_gate_e": null,
+   "answered_rate": 0.6806,
+   "claim_carrying_rate": 0.4583,
+   "total_claim_survival": 0.8776,
+   "em_given_answered": 0.449,
+   "em_given_claims": 0.5455
+  },
+  "sx-mathoverflow|ours-noverify": {
+   "n_rows": 72,
+   "seeds": [
+    0
+   ],
+   "em": 0.3056,
+   "probe_em": 0.0,
+   "ucr": 0.125,
+   "ucr_pre_gate": null,
+   "ucr_pre_gate_e": null,
+   "answered_rate": 0.6667,
+   "claim_carrying_rate": 0.5139,
+   "total_claim_survival": null,
+   "em_given_answered": 0.4583,
+   "em_given_claims": 0.5946
+  },
+  "sx-mathoverflow|b6": {
+   "n_rows": 72,
+   "seeds": [
+    0
+   ],
+   "em": 0.3472,
+   "probe_em": 1.0,
+   "ucr": null,
+   "ucr_pre_gate": null,
+   "ucr_pre_gate_e": null,
+   "answered_rate": 1.0,
+   "claim_carrying_rate": 0.9167,
+   "total_claim_survival": null,
+   "em_given_answered": 0.3472,
+   "em_given_claims": 0.3788
+  },
+  "sx-mathoverflow|b6e": {
+   "n_rows": 72,
+   "seeds": [
+    0
+   ],
+   "em": 0.3472,
+   "probe_em": 1.0,
+   "ucr": null,
+   "ucr_pre_gate": null,
+   "ucr_pre_gate_e": 0.0795,
+   "answered_rate": 1.0,
+   "claim_carrying_rate": 0.8889,
+   "total_claim_survival": 0.9205,
+   "em_given_answered": 0.3472,
+   "em_given_claims": 0.3906
+  },
+  "sx-superuser|ours": {
+   "n_rows": 68,
+   "seeds": [
+    0
+   ],
+   "em": 0.3529,
+   "probe_em": 0.0769,
+   "ucr": 0.0,
+   "ucr_pre_gate": 0.1132,
+   "ucr_pre_gate_e": null,
+   "answered_rate": 0.7794,
+   "claim_carrying_rate": 0.4853,
+   "total_claim_survival": 0.8868,
+   "em_given_answered": 0.4528,
+   "em_given_claims": 0.6364
+  },
+  "sx-superuser|ours-noverify": {
+   "n_rows": 68,
+   "seeds": [
+    0
+   ],
+   "em": 0.3824,
+   "probe_em": 0.2308,
+   "ucr": 0.0962,
+   "ucr_pre_gate": null,
+   "ucr_pre_gate_e": null,
+   "answered_rate": 0.7647,
+   "claim_carrying_rate": 0.6029,
+   "total_claim_survival": null,
+   "em_given_answered": 0.4808,
+   "em_given_claims": 0.6098
+  },
+  "sx-superuser|b6": {
+   "n_rows": 68,
+   "seeds": [
+    0
+   ],
+   "em": 0.3676,
+   "probe_em": 1.0,
+   "ucr": null,
+   "ucr_pre_gate": null,
+   "ucr_pre_gate_e": null,
+   "answered_rate": 1.0,
+   "claim_carrying_rate": 0.9265,
+   "total_claim_survival": null,
+   "em_given_answered": 0.3676,
+   "em_given_claims": 0.3968
+  },
+  "sx-superuser|b6e": {
+   "n_rows": 68,
+   "seeds": [
+    0
+   ],
+   "em": 0.3824,
+   "probe_em": 1.0,
+   "ucr": null,
+   "ucr_pre_gate": null,
+   "ucr_pre_gate_e": 0.0811,
+   "answered_rate": 1.0,
+   "claim_carrying_rate": 0.8971,
+   "total_claim_survival": 0.9189,
+   "em_given_answered": 0.3824,
+   "em_given_claims": 0.4262
+  },
+  "wiki-talk|ours": {
+   "n_rows": 62,
+   "seeds": [
+    0
+   ],
+   "em": 0.3871,
+   "probe_em": 0.1538,
+   "ucr": 0.0,
+   "ucr_pre_gate": 0.1047,
+   "ucr_pre_gate_e": null,
+   "answered_rate": 0.6935,
+   "claim_carrying_rate": 0.4839,
+   "total_claim_survival": 0.8953,
+   "em_given_answered": 0.5581,
+   "em_given_claims": 0.7333
+  },
+  "wiki-talk|ours-noverify": {
+   "n_rows": 62,
+   "seeds": [
+    0
+   ],
+   "em": 0.3387,
+   "probe_em": 0.0769,
+   "ucr": 0.1279,
+   "ucr_pre_gate": null,
+   "ucr_pre_gate_e": null,
+   "answered_rate": 0.6935,
+   "claim_carrying_rate": 0.5,
+   "total_claim_survival": null,
+   "em_given_answered": 0.4884,
+   "em_given_claims": 0.6774
+  },
+  "wiki-talk|b6": {
+   "n_rows": 62,
+   "seeds": [
+    0
+   ],
+   "em": 0.4516,
+   "probe_em": 1.0,
+   "ucr": null,
+   "ucr_pre_gate": null,
+   "ucr_pre_gate_e": null,
+   "answered_rate": 1.0,
+   "claim_carrying_rate": 0.9516,
+   "total_claim_survival": null,
+   "em_given_answered": 0.4516,
+   "em_given_claims": 0.4746
+  },
+  "wiki-talk|b6e": {
+   "n_rows": 62,
+   "seeds": [
+    0
+   ],
+   "em": 0.4516,
+   "probe_em": 1.0,
+   "ucr": null,
+   "ucr_pre_gate": null,
+   "ucr_pre_gate_e": 0.0781,
+   "answered_rate": 1.0,
+   "claim_carrying_rate": 0.9194,
+   "total_claim_survival": 0.9219,
+   "em_given_answered": 0.4516,
+   "em_given_claims": 0.4912
+  }
+ },
+ "contrasts": {
+  "sx-mathoverflow | interface: b6e - ours": {
+   "delta_em": 0.0417,
+   "ci95": [
+    -0.1111,
+    0.2083
+   ],
+   "n_tasks": 72
+  },
+  "sx-mathoverflow | evidence(sql): b6e - b6": {
+   "delta_em": 0.0,
+   "ci95": [
+    0.0,
+    0.0
+   ],
+   "n_tasks": 72
+  },
+  "sx-mathoverflow | evidence(tgms): ours - ours-noverify": {
+   "delta_em": 0.0,
+   "ci95": [
+    0.0,
+    0.0
+   ],
+   "n_tasks": 72
+  },
+  "sx-superuser | interface: b6e - ours": {
+   "delta_em": 0.0294,
+   "ci95": [
+    -0.1324,
+    0.1912
+   ],
+   "n_tasks": 68
+  },
+  "sx-superuser | evidence(sql): b6e - b6": {
+   "delta_em": 0.0147,
+   "ci95": [
+    0.0,
+    0.0441
+   ],
+   "n_tasks": 68
+  },
+  "sx-superuser | evidence(tgms): ours - ours-noverify": {
+   "delta_em": -0.0294,
+   "ci95": [
+    -0.0882,
+    0.0294
+   ],
+   "n_tasks": 68
+  },
+  "wiki-talk | interface: b6e - ours": {
+   "delta_em": 0.0645,
+   "ci95": [
+    -0.0968,
+    0.2258
+   ],
+   "n_tasks": 62
+  },
+  "wiki-talk | evidence(sql): b6e - b6": {
+   "delta_em": 0.0,
+   "ci95": [
+    0.0,
+    0.0
+   ],
+   "n_tasks": 62
+  },
+  "wiki-talk | evidence(tgms): ours - ours-noverify": {
+   "delta_em": 0.0484,
+   "ci95": [
+    0.0,
+    0.1129
+   ],
+   "n_tasks": 62
+  }
+ },
+ "manifest": {
+  "commit": "ffe238bdecfeb6de28a8258ab7e3ec4fd8f8ace4",
+  "host": "itiger",
+  "n_rows": 808
+ }
+}
