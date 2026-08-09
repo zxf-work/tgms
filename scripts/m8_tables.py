@@ -85,6 +85,23 @@ def main() -> int:
                      for r in sel
                      if (r.get("meta") or {}).get("ucr_pre_gate_e")
                      is not None]
+            # coverage/retention/abstention (review P1.2): an answer is
+            # "certified" when its final object carries >=1 claim; in
+            # gated arms every carried claim is verifier-SUPPORTED, so
+            # this is certified-answer coverage. Retention is per-answer
+            # 1 - pre-gate-unsupported-fraction over rows that emitted an
+            # answer (the gate drops exactly the unsupported claims);
+            # answers gated to nothing count as abstentions, never in
+            # the retention mean.
+            n_final = [len(((r.get("answer_object") or {}).get("claims"))
+                           or []) for r in sel]
+            abstain = sum(1 for k in n_final if k == 0)
+            pre_rows = [r for r in sel
+                        if r.get("ucr_pre_gate") is not None
+                        and len(((r.get("answer_object") or {})
+                                 .get("claims")) or [])]
+            retention = ([1 - r["ucr_pre_gate"] for r in pre_rows]
+                         if pre_rows else [])
             table[(ds, arm)] = {
                 "n_rows": n, "seeds": seeds, "em": round(em, 4),
                 "probe_em": round(sum(r.get("em") or 0 for r in probes)
@@ -94,6 +111,10 @@ def main() -> int:
                 if pre else None,
                 "ucr_pre_gate_e": round(sum(pre_e) / len(pre_e), 4)
                 if pre_e else None,
+                "certified_answer_coverage": round(1 - abstain / n, 4),
+                "abstention_rate": round(abstain / n, 4),
+                "claim_retention": round(sum(retention) / len(retention),
+                                         4) if retention else None,
             }
 
     # paired contrasts (per task, seed-averaged): the two M5 questions
