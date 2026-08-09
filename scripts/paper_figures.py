@@ -55,8 +55,8 @@ def fig5(pn: dict) -> str:
 \addplot coordinates {{{bars_s}}};
 \legend{{Operators, SQL}}
 \end{{axis}}
-\begin{{axis}}[at={{(a.outer east)}}, anchor=outer west, xshift=2mm,
-  {ax}, ymax=1.0,
+\begin{{axis}}[name=b, at={{(a.outer east)}}, anchor=outer west,
+  xshift=2mm, {ax}, ymax=1.0,
   ylabel={{\scriptsize certified-output coverage}},
   legend style={{font=\scriptsize, at={{(0.02,0.3)}}, anchor=north west}}]
 \addplot coordinates {{{cov_o}}};
