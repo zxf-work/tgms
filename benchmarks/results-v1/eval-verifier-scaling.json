@@ -1,0 +1,88 @@
+{
+ "host": "itiger07",
+ "sizes": [
+  10,
+  100,
+  1000,
+  10000,
+  100000
+ ],
+ "timing": [
+  {
+   "rows": 10,
+   "canonical_bytes": 329,
+   "canonicalize_ms": 0.00577,
+   "digest_ms": 0.00067,
+   "build_ecqr_ms": 0.00233,
+   "verify_membership_ms": 0.00233,
+   "verify_completeset_ms": 0.00239,
+   "verify_count_cert_ms": 0.0007,
+   "verify_nonexist_ms": 0.00067,
+   "multiclaim_per_claim_ms": 0.00104
+  },
+  {
+   "rows": 100,
+   "canonical_bytes": 2939,
+   "canonicalize_ms": 0.03611,
+   "digest_ms": 0.00226,
+   "build_ecqr_ms": 0.00235,
+   "verify_membership_ms": 0.01262,
+   "verify_completeset_ms": 0.01459,
+   "verify_count_cert_ms": 0.0007,
+   "verify_nonexist_ms": 0.00067,
+   "multiclaim_per_claim_ms": 0.00112
+  },
+  {
+   "rows": 1000,
+   "canonical_bytes": 29939,
+   "canonicalize_ms": 0.33372,
+   "digest_ms": 0.01766,
+   "build_ecqr_ms": 0.00241,
+   "verify_membership_ms": 0.11523,
+   "verify_completeset_ms": 0.12229,
+   "verify_count_cert_ms": 0.00072,
+   "verify_nonexist_ms": 0.00069,
+   "multiclaim_per_claim_ms": 0.00113
+  },
+  {
+   "rows": 10000,
+   "canonical_bytes": 308939,
+   "canonicalize_ms": 3.27675,
+   "digest_ms": 0.1781,
+   "build_ecqr_ms": 0.00247,
+   "verify_membership_ms": 1.1587,
+   "verify_completeset_ms": 1.51103,
+   "verify_count_cert_ms": 0.00073,
+   "verify_nonexist_ms": 0.00071,
+   "multiclaim_per_claim_ms": 0.00114
+  },
+  {
+   "rows": 100000,
+   "canonical_bytes": 3188939,
+   "canonicalize_ms": 33.6521,
+   "digest_ms": 1.86618,
+   "build_ecqr_ms": 0.00337,
+   "verify_membership_ms": 11.39516,
+   "verify_completeset_ms": 20.9375,
+   "verify_count_cert_ms": 0.0008,
+   "verify_nonexist_ms": 0.00085,
+   "multiclaim_per_claim_ms": 0.00245
+  }
+ ],
+ "space": {
+  "tgms_operator": {
+   "total_bytes": 495,
+   "query_domain_bytes": 49,
+   "provenance_semantics_bytes": 97,
+   "semantic_core_bytes": 349
+  },
+  "sql_adapter": {
+   "total_bytes": 648,
+   "query_domain_bytes": 160,
+   "provenance_semantics_bytes": 139,
+   "semantic_core_bytes": 349
+  },
+  "result_bytes_100_rows": 2891
+ },
+ "commit": "56e91f9"
+}

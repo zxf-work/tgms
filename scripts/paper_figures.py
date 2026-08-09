@@ -43,7 +43,7 @@ def fig5(pn: dict) -> str:
     ax = ("symbolic x coords={MathOverflow,SuperUser,wiki-talk}, "
           "xtick=data, x tick label style={font=\\tiny, rotate=25, "
           "anchor=east}, bar width=4.5pt, ybar, width=0.36\\linewidth, "
-          "height=3.6cm, ymin=0")
+          "height=3.1cm, ymin=0")
     return rf"""% F-main — need / safety-coverage / utility (round-3 review)
 \begin{{figure*}}[t]
 \centering
