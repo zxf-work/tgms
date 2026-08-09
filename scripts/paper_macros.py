@@ -186,8 +186,9 @@ implementation against the declared fault families.}}
 def table_frozen(pn: dict) -> str:
     fz = pn["frozen_2x2"]
     em, tg, sq = fz["em"], fz["ucr_pre_gate_tgms"], fz["ucr_pre_gate_sql"]
-    cov = fz["certified_answer_coverage"]
-    ret = fz["claim_retention"]
+    carry = fz["claim_carrying_rate"]
+    surv = fz["total_claim_survival"]
+    emc = fz["em_given_claims"]
     icon = fz["interface_contrasts"]
     ev = fz["evidence_em_deltas"]
 
@@ -203,16 +204,17 @@ def table_frozen(pn: dict) -> str:
         for iface in ("Operators", "SQL"):
             g, u = arm_of[iface]
             e = ev[f"{d} | {ev_key[iface]}"]
+            em_strict = emc[f"{d}|{g}"] * carry[f"{d}|{g}"]
             body.append(" & ".join([
                 DS_SHORT[d] if iface == "Operators" else "",
                 iface,
                 f3(pre_by[iface][d]),
                 r"\textbf{0.000}",
-                f2(ret[f"{d}|{g}"]),
-                f"{f2(cov[f'{d}|{g}'])} / {f2(cov[f'{d}|{u}'])}",
-                f3(em[f"{d}|{u}"]),
+                f2(surv[f"{d}|{g}"]),
+                f"{f2(carry[f'{d}|{g}'])} / {f2(carry[f'{d}|{u}'])}",
                 f3(em[f"{d}|{g}"]),
                 rf"${f3(e['delta_em'])}$ \scriptsize${ci2(e['ci95'])}$",
+                f3(em_strict),
             ]) + r" \\")
         body.append(r"\addlinespace[1pt]")
     rows = "\n".join(body[:-1])
@@ -231,23 +233,24 @@ def table_frozen(pn: dict) -> str:
 \textbf{{Dataset}} & \textbf{{Interface}} &
 \textbf{{\shortstack{{pre-gate\\UCR}}}} &
 \textbf{{\shortstack{{post-gate\\UCR}}}} &
-\textbf{{\shortstack{{claim\\retention}}}} &
-\textbf{{\shortstack{{cert.\ answer cov.\\gated / ungated}}}} &
-\textbf{{\shortstack{{EM\\ungated}}}} &
-\textbf{{\shortstack{{EM\\gated}}}} &
-\textbf{{\shortstack{{$\Delta$EM gated$-$ungated\\(95\% CI)}}}} \\
+\textbf{{\shortstack{{total claim\\survival}}}} &
+\textbf{{\shortstack{{claim-carrying\\gated / ungated}}}} &
+\textbf{{\shortstack{{EM\\(gated $=$ ungated)}}}} &
+\textbf{{\shortstack{{$\Delta$EM gated$-$ungated\\(95\% CI)}}}} &
+\textbf{{\shortstack{{EM, strict\\certified-only}}}} \\
 \midrule
 {rows}
 \bottomrule
 \end{{tabular}}
 \caption{{The frozen evidence experiment (test splits, 3 seeds,
-\pnPrimaryRows\ task-runs; metrics per \S\ref{{sec:metrics}}; receipt:
-\texttt{{m8/m8-tables.json}}). Enforcement removes every measured
-unsupported claim from emitted answers, retains
-$\geq$99\% of supported claims, converts uncertifiable answers into
-explicit abstentions, and changes task accuracy by at most 3 of 186
-paired runs on one cell. SQL pre-gate UCR is a lower bound (mapped
-witness-claim subset); cross-interface UCR magnitudes are not
+\pnPrimaryRows\ task-runs; metrics per \S\ref{{sec:metrics}}; receipts:
+\texttt{{m8/m8-tables.json}}, \texttt{{eval-gate-counterfactual.json}}).
+Supported-claim retention is 1.0 by construction; total claim survival
+$= 1 - $ pre-gate UCR exactly. Answered rate is identical between
+gated and ungated arms in the scoring mode (text renders in all arms);
+the last column prices the STRICT certified-only rendering mode, in
+which uncertified answers abstain. SQL pre-gate UCR is a lower bound
+(mapped witness-claim subset); cross-interface UCR magnitudes are not
 comparable.}}
 \label{{tab:frozen}}
 \end{{table*}}
@@ -266,6 +269,84 @@ comparable.}}
 (per-task seed-averaged paired bootstrap).}}
 \label{{tab:interface}}
 \end{{table}}
+
+% T5 — oracle terminal-status census, from paper_numbers.json:oracle_v3
+"""
+
+
+def table_census(pn: dict) -> str:
+    o3 = pn["oracle_v3"]
+    rows = []
+    for d in DS:
+        v = o3[d]
+        exact = v["resolved"] - v["resolved_by_empty_rule"]
+        total = (exact + v["resolved_by_empty_rule"] +
+                 v["budget_exceeded"] + v["not_attempted"] +
+                 v["oracle_unsupported"])
+        assert total == v["records"], (d, total)
+        rows.append(" & ".join([
+            DS_SHORT[d], str(v["records"]), str(exact),
+            str(v["resolved_by_empty_rule"]), str(v["budget_exceeded"]),
+            str(v["not_attempted"]), str(v["oracle_unsupported"]),
+            f2(v["resolution_coverage"])]) + r" \\")
+    body = "\n".join(rows)
+    return rf"""\begin{{table}}[t]
+\centering\small
+\setlength{{\tabcolsep}}{{3.5pt}}
+\begin{{tabular}}{{lccccccc}}
+\toprule
+ & \textbf{{draws}} & \textbf{{exact}} & \textbf{{empty}} &
+\textbf{{budget}} & \textbf{{n/a}} & \textbf{{unres.}} &
+\textbf{{cov.}} \\
+\midrule
+{body}
+\bottomrule
+\end{{tabular}}
+\caption{{Oracle terminal-status census (mutually exclusive; each row
+sums to its draw count). exact = policy-lane or oracle-lane gold;
+empty = the separately specified empty-result rule
+(suite-ineligible); budget = oracle-envelope ceiling, named per
+receipt; n/a = template not applicable to the store; unres.\ = the one
+draw whose emptiness the rule correctly declined to certify (its
+zero-row step inherits delivery-uncertified from a truncated
+upstream page).}}
+\label{{tab:census}}
+\end{{table}}
+"""
+
+
+def table_sql_surface() -> str:
+    # Static architecture facts (which claim forms each adapter can
+    # establish, and what the end-to-end SQL arm constructs) — from
+    # tgms/evidence/adapter_sql.py and tgms/eval/baselines.py
+    # (BiTemporalSQLEvidence.answer: every proposed claim, counts and
+    # values included, is mapped to Membership witness checks over the
+    # certified page).
+    return r"""\begin{table}[t]
+\centering\small
+\begin{tabular}{lccc}
+\toprule
+\textbf{Claim form} & \textbf{Op.\ adapter} & \textbf{SQL adapter} &
+\textbf{SQL arm} \\
+\midrule
+Membership   & \yes & \yes & \yes\ (all forms map here) \\
+Scalar       & \yes & \yes & mapped to witness \\
+Exact count  & \yes & \yes\ (certificate) & portability suite \\
+Complete set & \yes & \yes & --- \\
+Exists       & \yes & \yes & mapped to witness \\
+NotExists    & \yes & \yes & --- \\
+$\mathsf{AtBasis}$ & \yes & \yes\ (tt replica) & probes \\
+\bottomrule
+\end{tabular}
+\caption{Claim-construction surfaces. The verifier and both adapters
+support every form; the end-to-end SQL arm maps \emph{every} proposed
+claim---counts and values included---to witness (Membership) checks
+over the certificate-bearing page, the conservative mapping. This is
+why SQL pre-gate UCR is a lower bound and cross-interface UCR
+magnitudes are never compared; within-interface contrasts always share
+one claim-construction surface.}
+\label{tab:sqlsurface}
+\end{table}
 """
 
 
@@ -282,13 +363,16 @@ descriptor construction (per envelope) &
 descriptor production (per 2-step plan) & $\sim$$\pnPlanUs\,\mu$s \\
 verification (per claim) & $<1$\,ms \\
 \midrule
-SQL cardinality certificate / page query & $\pnSqlCertRatio\times$ \\
+page query & $14.4$\,ms \\
+SQL cardinality certificate & $13.7$\,ms \\
+\quad ratio (certificate / page) & $\pnSqlCertRatio\times$ \\
 \quad$\Rightarrow$ certified answer vs uncertified & $\approx 2\times$ \\
 \bottomrule
 \end{tabular}
 \caption{The economics of evidence (receipt:
-\texttt{evidence-overhead-itiger.json}): bookkeeping is free;
-certificates cost real query work.}
+\texttt{evidence-overhead-itiger.json}): ECQR bookkeeping has
+microsecond-scale absolute overhead; strong certificate production can
+cost query-scale work.}
 \label{tab:cost}
 \end{table}
 """
@@ -304,6 +388,7 @@ def main() -> int:
     (args.outdir / "tab-data.tex").write_text(
         "% tab-data.tex — GENERATED by scripts/paper_macros.py; never "
         "hand-edit.\n\n" + table_fault(fm) + "\n" + table_frozen(pn) +
+        "\n" + table_census(pn) + "\n" + table_sql_surface() +
         "\n" + table_cost(pn))
     print(f"wrote {args.outdir}/pn-macros.tex, {args.outdir}/tab-data.tex")
     return 0
