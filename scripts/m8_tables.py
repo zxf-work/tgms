@@ -96,11 +96,16 @@ def main() -> int:
             n_final = [len(((r.get("answer_object") or {}).get("claims"))
                            or []) for r in sel]
             abstain = sum(1 for k in n_final if k == 0)
+            def _pre(r):
+                v = r.get("ucr_pre_gate")
+                if v is None:
+                    v = (r.get("meta") or {}).get("ucr_pre_gate_e")
+                return v
             pre_rows = [r for r in sel
-                        if r.get("ucr_pre_gate") is not None
+                        if _pre(r) is not None
                         and len(((r.get("answer_object") or {})
                                  .get("claims")) or [])]
-            retention = ([1 - r["ucr_pre_gate"] for r in pre_rows]
+            retention = ([1 - _pre(r) for r in pre_rows]
                          if pre_rows else [])
             table[(ds, arm)] = {
                 "n_rows": n, "seeds": seeds, "em": round(em, 4),

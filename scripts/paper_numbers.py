@@ -53,7 +53,46 @@ def fault_matrix() -> dict:
     }
 
 
-def frozen_2x2() -> dict:
+def _changed_outcome_audit(runs: Path) -> dict | None:
+    """The unit audit the P0.15 review demanded: for every nonzero
+    evidence contrast, count changed TASKS (seed-averaged) and changed
+    TASK-RUNS (rows) explicitly, from the raw run rows."""
+    out = {}
+    pairs = {"sql": ("b6e", "b6"), "tgms": ("ours", "ours-noverify")}
+    for ds in DATASETS:
+        for iface, (a_sys, b_sys) in pairs.items():
+            sub = "sql" if iface == "sql" else "tgms"
+            files = glob.glob(str(runs / f"m8-{ds}-{sub}" / "results"
+                                  / "*.json"))
+            if not files:
+                return None
+            per: dict = {}
+            for f in files:
+                r = json.loads(Path(f).read_text())
+                if r["system"] in (a_sys, b_sys):
+                    per.setdefault((r["task_id"], r["system"]),
+                                   {})[r["seed"]] = r.get("em") or 0
+            tasks = sorted({t for t, _ in per})
+            rows_changed = tasks_changed = paired_rows = 0
+            for tk in tasks:
+                a = per.get((tk, a_sys), {})
+                b = per.get((tk, b_sys), {})
+                seeds = sorted(set(a) & set(b))
+                paired_rows += len(seeds)
+                diff = [s for s in seeds if a[s] != b[s]]
+                rows_changed += len(diff)
+                if seeds and (sum(a[s] for s in seeds) !=
+                              sum(b[s] for s in seeds)):
+                    tasks_changed += 1
+            if rows_changed:
+                out[f"{ds}|{iface}"] = {
+                    "tasks_changed": tasks_changed,
+                    "rows_changed": rows_changed,
+                    "n_tasks": len(tasks), "paired_rows": paired_rows}
+    return out
+
+
+def frozen_2x2(runs: Path) -> dict:
     d = _load(RES / "m8" / "m8-tables.json")
     t, c = d["table"], d["contrasts"]
     pre_tgms = [t[f"{ds}|ours"]["ucr_pre_gate"] for ds in DATASETS]
@@ -61,6 +100,7 @@ def frozen_2x2() -> dict:
     gated = [t[f"{ds}|ours"]["ucr"] for ds in DATASETS]
     ev_deltas = {k: v for k, v in c.items() if "evidence" in k}
     return {
+        "changed_outcome_audit": _changed_outcome_audit(runs),
         "primary_rows": d["manifest"]["n_rows"],
         "em": {f"{ds}|{arm}": t[f"{ds}|{arm}"]["em"]
                for ds in DATASETS for arm in ("ours", "b6e")},
@@ -130,6 +170,7 @@ def guardrail() -> dict:
     return {
         "xzgpu_at_2s": xz2,
         "xzgpu_fa_cp95_upper": round(cp_upper_zero(xz2["n"]), 4),
+        "itiger_scaled_at_500ms": fr_row(it, 500),
         "itiger_scaled_at_2s": fr_row(it, 2000),
         "itiger_scaled_at_10s": fr_row(it, 10000),
         "itiger_fa_cp95_upper_54": round(cp_upper_zero(54), 4),
@@ -292,7 +333,7 @@ def main() -> int:
             commit = "unknown"
     payload = {
         "fault_matrix": fault_matrix(),
-        "frozen_2x2": frozen_2x2(),
+        "frozen_2x2": frozen_2x2(args.runs),
         "model_axis_robustness": model_axis(),
         "guardrail": guardrail(),
         "overhead": overhead(),
