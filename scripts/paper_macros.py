@@ -139,6 +139,8 @@ def macros(pn: dict, fm: dict) -> str:
         ("pnProbesAwqOurs", "/".join(
             f2(ma["32b"][f"{d}|ours"]["probes"]) for d in DS)
          if "32b" in ma else "TBD"),
+        ("pnSurvLo", f2(min(fz["total_claim_survival"].values()))),
+        ("pnSurvHi", f2(max(fz["total_claim_survival"].values()))),
         ("pnCertCovLo", f2(min(
             fz["claim_carrying_rate"][f"{d}|{a}"] for d in DS
             for a in ("ours", "b6e")))),
@@ -342,35 +344,33 @@ step inherits uncertified delivery from a truncated upstream page.}}
 
 
 def table_sql_surface() -> str:
-    # Static architecture facts (which claim forms each adapter can
-    # establish, and what the end-to-end SQL arm constructs) — from
-    # tgms/evidence/adapter_sql.py and tgms/eval/baselines.py
-    # (BiTemporalSQLEvidence.answer: every proposed claim, counts and
-    # values included, is mapped to Membership witness checks over the
-    # certified page).
+    # Three layers (review §3.4): adapter capability support, and what
+    # the end-to-end SQL benchmark agent constructs — from
+    # tgms/evidence/adapter_sql.py and tgms/eval/baselines.py.
     return r"""\begin{table}[t]
 \centering\small
-\begin{tabular}{lccc}
+\setlength{\tabcolsep}{3.5pt}
+\begin{tabular}{lccl}
 \toprule
-\textbf{Claim form} & \textbf{Op.\ adapter} & \textbf{SQL adapter} &
-\textbf{SQL arm} \\
+\textbf{Claim form} & \textbf{TGMS ad.} & \textbf{SQL ad.} &
+\textbf{SQL benchmark constructs} \\
 \midrule
-Membership   & \yes & \yes & \yes\ (all forms map here) \\
-Scalar       & \yes & \yes & mapped to witness \\
-Exact count  & \yes & \yes\ (certificate) & portability suite \\
-Complete set & \yes & \yes & not used \\
-Exists       & \yes & \yes & mapped to witness \\
-NotExists    & \yes & \yes & not used \\
-$\mathsf{AtBasis}$ & \yes & \yes\ (tt replica) & probes \\
+Membership   & \yes & \yes & membership \\
+Scalar       & \yes & \yes & witness over cited value \\
+Exact count  & \yes & \yes & witness over cited value \\
+Complete set & \yes & \yes & not constructed \\
+Exists       & \yes & \yes & witness over cited value \\
+Nonexistence & \yes & \yes & not constructed \\
+Basis-qualified & \yes & \yes & probe tasks \\
 \bottomrule
 \end{tabular}
-\caption{Claim-construction surfaces. The verifier and both adapters
-support every form. The end-to-end SQL arm maps every proposed claim,
-counts and values included, to witness checks over the
-certificate-bearing page, which is the conservative mapping. SQL
-pre-gate UCR is therefore a lower bound, cross-interface UCR
-magnitudes are never compared, and within-interface contrasts always
-share one claim-construction surface.}
+\caption{Claim-form support by layer. Both adapters can establish
+every capability, and the verifier supports every form. The
+end-to-end SQL benchmark agent constructs a conservative evidence
+mapping: each value a proposed claim cites, including a count value,
+is checked as a membership witness over the certificate-bearing
+page. SQL therefore tests semantic portability of ECQR, and
+unsupported-claim prevalence is never compared across interfaces.}
 \label{tab:sqlsurface}
 \end{table}
 """
