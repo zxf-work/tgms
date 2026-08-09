@@ -105,21 +105,25 @@ def frozen_2x2(runs: Path) -> dict:
         "em": {f"{ds}|{arm}": t[f"{ds}|{arm}"]["em"]
                for ds in DATASETS
                for arm in ("ours", "ours-noverify", "b6e", "b6")},
-        "certified_answer_coverage": {
-            f"{ds}|{arm}": t[f"{ds}|{arm}"]["certified_answer_coverage"]
+        "answered_rate": {
+            f"{ds}|{arm}": t[f"{ds}|{arm}"]["answered_rate"]
             for ds in DATASETS
             for arm in ("ours", "ours-noverify", "b6e", "b6")
-            if "certified_answer_coverage" in t[f"{ds}|{arm}"]},
+            if "answered_rate" in t[f"{ds}|{arm}"]},
+        "claim_carrying_rate": {
+            f"{ds}|{arm}": t[f"{ds}|{arm}"]["claim_carrying_rate"]
+            for ds in DATASETS
+            for arm in ("ours", "ours-noverify", "b6e", "b6")
+            if "claim_carrying_rate" in t[f"{ds}|{arm}"]},
         "total_claim_survival": {
             f"{ds}|{arm}": t[f"{ds}|{arm}"]["total_claim_survival"]
-            for ds in DATASETS
-            for arm in ("ours", "ours-noverify", "b6e", "b6")
+            for ds in DATASETS for arm in ("ours", "b6e")
             if t[f"{ds}|{arm}"].get("total_claim_survival") is not None},
-        "em_given_answer": {
-            f"{ds}|{arm}": t[f"{ds}|{arm}"]["em_given_answer"]
+        "em_given_claims": {
+            f"{ds}|{arm}": t[f"{ds}|{arm}"]["em_given_claims"]
             for ds in DATASETS
             for arm in ("ours", "ours-noverify", "b6e", "b6")
-            if t[f"{ds}|{arm}"].get("em_given_answer") is not None},
+            if t[f"{ds}|{arm}"].get("em_given_claims") is not None},
         "gate_counterfactual": _load(
             RES / "eval-gate-counterfactual.json"),
         "interface_contrasts": {k: v for k, v in c.items()

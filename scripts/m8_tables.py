@@ -85,47 +85,46 @@ def main() -> int:
                      for r in sel
                      if (r.get("meta") or {}).get("ucr_pre_gate_e")
                      is not None]
-            # coverage/survival metrics (round-2 review §5/§20).
-            # SUPPORTED-claim retention is 1.0 BY CONSTRUCTION (the gate
-            # drops exactly the unsupported claims) and is therefore
-            # stated in prose, never tabulated as a measurement. What is
-            # measured here:
-            #   total_claim_survival — per-answer mean of the fraction
-            #     of PROPOSED claims that survive to emission: rows with
-            #     a proposal contribute 1 - u_pre if an answer is
-            #     emitted and 0 if the gate abstained.
-            #   claim_survival_given_answer — the same mean restricted
-            #     to rows that emitted an answer.
-            #   certified_answer_coverage / abstention_rate — >=1 claim
-            #     in the final object, and its complement (abstention
-            #     includes plan-failure rows; ungated arms isolate that
-            #     component).
-            #   em_given_answer — conditional accuracy P(correct |
-            #     answer emitted).
-            n_final = [len(((r.get("answer_object") or {}).get("claims"))
-                           or []) for r in sel]
-            abstain = sum(1 for k in n_final if k == 0)
+            # answer/claim decomposition (round-2 review §5/§6/§20,
+            # corrected against the rows themselves — D-121). Three
+            # distinct facts a single "coverage" conflated:
+            #   answered_rate — the answer object carries non-empty
+            #     TEXT. In these evaluation arms text renders in every
+            #     arm for scoring comparability, so gating does not
+            #     change this rate; plan failure does.
+            #   claim_carrying_rate — the final object carries >=1
+            #     typed claim. In gated arms every carried claim is
+            #     verifier-SUPPORTED (certified-claim coverage); in
+            #     ungated arms carried claims are unvetted. Text-only
+            #     answers are answer kinds outside the typed fragment
+            #     or answers whose claims the gate withheld.
+            #   total_claim_survival (gated arms only) — mean over
+            #     proposal-carrying rows of 1 - u_pre: the fraction of
+            #     proposed claims that survive the gate. SUPPORTED-claim
+            #     retention is 1.0 by construction and is stated in
+            #     prose, never tabulated.
+            # em_given_answered / em_given_claims give conditional
+            # accuracy under the lenient (text) and strict (certified
+            # claims only) reading.
+            def _txt(r):
+                return bool(((r.get("answer_object") or {})
+                             .get("text") or "").strip())
 
-            def _pre(r):
-                v = r.get("ucr_pre_gate")
-                if v is None:
-                    v = (r.get("meta") or {}).get("ucr_pre_gate_e")
-                if v is None:
-                    v = r.get("ucr")  # ungated arms: observational col
-                return v
-            surv_all, surv_ans = [], []
-            for r in sel:
-                p = _pre(r)
-                if p is None:
-                    continue
-                emitted = len(((r.get("answer_object") or {})
-                               .get("claims")) or []) > 0
-                surv_all.append((1 - p) if emitted else 0.0)
-                if emitted:
-                    surv_ans.append(1 - p)
-            answered = [r for r in sel
-                        if len(((r.get("answer_object") or {})
-                                .get("claims")) or [])]
+            def _ncl(r):
+                return len(((r.get("answer_object") or {})
+                            .get("claims")) or [])
+            answered = [r for r in sel if _txt(r)]
+            carrying = [r for r in sel if _ncl(r) > 0]
+            gated_arm = arm in ("ours", "b6e")
+            surv = None
+            if gated_arm:
+                def _pre(r):
+                    v = r.get("ucr_pre_gate")
+                    if v is None:
+                        v = (r.get("meta") or {}).get("ucr_pre_gate_e")
+                    return v
+                ps = [1 - _pre(r) for r in sel if _pre(r) is not None]
+                surv = round(sum(ps) / len(ps), 4) if ps else None
             table[(ds, arm)] = {
                 "n_rows": n, "seeds": seeds, "em": round(em, 4),
                 "probe_em": round(sum(r.get("em") or 0 for r in probes)
@@ -135,17 +134,15 @@ def main() -> int:
                 if pre else None,
                 "ucr_pre_gate_e": round(sum(pre_e) / len(pre_e), 4)
                 if pre_e else None,
-                "certified_answer_coverage": round(1 - abstain / n, 4),
-                "abstention_rate": round(abstain / n, 4),
-                "total_claim_survival": round(
-                    sum(surv_all) / len(surv_all), 4) if surv_all
-                else None,
-                "claim_survival_given_answer": round(
-                    sum(surv_ans) / len(surv_ans), 4) if surv_ans
-                else None,
-                "em_given_answer": round(
+                "answered_rate": round(len(answered) / n, 4),
+                "claim_carrying_rate": round(len(carrying) / n, 4),
+                "total_claim_survival": surv,
+                "em_given_answered": round(
                     sum(r.get("em") or 0 for r in answered)
                     / len(answered), 4) if answered else None,
+                "em_given_claims": round(
+                    sum(r.get("em") or 0 for r in carrying)
+                    / len(carrying), 4) if carrying else None,
             }
 
     # paired contrasts (per task, seed-averaged): the two M5 questions
