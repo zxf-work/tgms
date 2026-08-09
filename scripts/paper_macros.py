@@ -139,6 +139,20 @@ def macros(pn: dict, fm: dict) -> str:
         ("pnProbesAwqOurs", "/".join(
             f2(ma["32b"][f"{d}|ours"]["probes"]) for d in DS)
          if "32b" in ma else "TBD"),
+        ("pnCondAccLo", f2(min(
+            fz["em_given_claims"][f"{d}|{a}"] for d in DS
+            for a in ("ours", "b6e")))),
+        ("pnCondAccHi", f2(max(
+            fz["em_given_claims"][f"{d}|{a}"] for d in DS
+            for a in ("ours", "b6e")))),
+        ("pnCorrCertLo", f2(min(
+            fz["em_given_claims"][f"{d}|{a}"] *
+            fz["claim_carrying_rate"][f"{d}|{a}"] for d in DS
+            for a in ("ours", "b6e")))),
+        ("pnCorrCertHi", f2(max(
+            fz["em_given_claims"][f"{d}|{a}"] *
+            fz["claim_carrying_rate"][f"{d}|{a}"] for d in DS
+            for a in ("ours", "b6e")))),
         ("pnProbesFpOurs", "/".join(
             f2(ma["32bfp16"][f"{d}|ours"]["probes"]) for d in DS)
          if "32bfp16" in ma else "TBD"),
