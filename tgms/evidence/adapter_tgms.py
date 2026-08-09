@@ -27,7 +27,8 @@ _NON_DOMAIN_ARGS = ("limit", "cursor")
 
 
 def build_ecqr(envelope: dict[str, Any], store_id: str,
-               input_ecqrs: list[ECQR] | None = None) -> ECQR:
+               input_ecqrs: list[ECQR] | None = None,
+               execution_context: str | None = None) -> ECQR:
     """Descriptor for one successful operator envelope."""
     if "error" in envelope:
         raise ValueError("failed calls produce outcome certificates, "
@@ -53,7 +54,9 @@ def build_ecqr(envelope: dict[str, Any], store_id: str,
     return ECQR(
         result_id=str(envelope.get("result_digest", "")),
         basis=Basis(store=store_id, as_of_tt=as_of,
-                    pinned=as_of != OPEN_END),
+                    pinned=as_of != OPEN_END,
+                    execution_context=(None if as_of != OPEN_END
+                                       else execution_context)),
         scope=Scope(domain=domain,
                     execution_complete=True,  # registry ops are atomic
                     delivery_complete=(not truncated) and inputs_complete,

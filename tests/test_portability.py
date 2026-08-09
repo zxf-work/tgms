@@ -91,7 +91,7 @@ def test_complete_set_refused_on_truncated_pages_on_both_backends(env):
             (t_ecqr, t_env, t_members, "src"),
             (s_ecqr, {"rows": s_rows}, s_rows, None)):
         j = verify(CompleteSet(members=members, field=fld), ecqr, result)
-        assert j.verdict == Verdict.UNSUPPORTED_INCOMPLETE
+        assert j.verdict == Verdict.UNSUPPORTED_COMPLETENESS_NOT_CERTIFIED
 
 
 def test_membership_witnessed_on_both_backends(env):

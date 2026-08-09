@@ -29,6 +29,11 @@ class Basis:
     store: str
     as_of_tt: int
     pinned: bool  # False = current-beliefs sentinel: identified, not replayable
+    #: execution-context token for Current (unpinned) bases: two
+    #: current-basis descriptors are comparable iff they share it
+    #: (round-3 review §8 — the basis travels IN the descriptor, never
+    #: in ambient trace state). None on pinned bases.
+    execution_context: str | None = None
 
 
 @dataclass

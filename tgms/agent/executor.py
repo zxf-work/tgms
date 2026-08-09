@@ -17,6 +17,7 @@ from __future__ import annotations
 import graphlib
 import json
 import time
+import uuid
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
@@ -104,6 +105,10 @@ class Executor:
         by_id = {s.id: s for s in plan.steps}
 
         trace = Trace(plan_id=plan.plan_id)
+        # execution-context token: current-basis descriptors from this run
+        # are mutually comparable and never comparable across runs (round-3
+        # review §8 — the token travels in the descriptor itself)
+        ctx_token = uuid.uuid4().hex[:16]
         outputs: dict[str, Any] = {}
         failed: set[str] = set()
         total_rows = 0
@@ -203,7 +208,8 @@ class Executor:
                     rec["ecqr"] = build_ecqr(
                         res, store_id=str(getattr(
                             self.router.adapter, "path", "store")),
-                        input_ecqrs=inputs).to_json()
+                        input_ecqrs=inputs,
+                        execution_context=ctx_token).to_json()
                 except Exception:  # descriptor failure must never fail a step
                     rec["ecqr"] = None
                 outputs[sid] = res

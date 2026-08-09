@@ -35,7 +35,7 @@ from tgms.evidence.ecqr import ECQR
 
 class Verdict(Enum):
     SUPPORTED = "SUPPORTED"
-    UNSUPPORTED_INCOMPLETE = "UNSUPPORTED_INCOMPLETE"
+    UNSUPPORTED_COMPLETENESS_NOT_CERTIFIED = "UNSUPPORTED_COMPLETENESS_NOT_CERTIFIED"
     UNSUPPORTED_BASIS_MISMATCH = "UNSUPPORTED_BASIS_MISMATCH"
     UNSUPPORTED_MISSING_CERTIFICATE = "UNSUPPORTED_MISSING_CERTIFICATE"
     UNSUPPORTED_VALUE_MISMATCH = "UNSUPPORTED_VALUE_MISMATCH"
@@ -144,7 +144,7 @@ def verify(claim: Claim, evidence: ECQR, result: Any = None) -> Judgment:
 
     if isinstance(claim, CompleteSet):
         if not (s.delivery_complete and s.execution_complete):
-            return Judgment(Verdict.UNSUPPORTED_INCOMPLETE,
+            return Judgment(Verdict.UNSUPPORTED_COMPLETENESS_NOT_CERTIFIED,
                             "complete-set claims need delivery and "
                             "execution completeness over the cited domain")
         want = {v if not isinstance(v, dict) else str(v)
@@ -166,12 +166,12 @@ def verify(claim: Claim, evidence: ECQR, result: Any = None) -> Judgment:
         if s.delivery_complete and s.execution_complete:
             return Judgment(Verdict.UNSUPPORTED_NO_WITNESS,
                             "complete result is empty")
-        return Judgment(Verdict.UNSUPPORTED_INCOMPLETE,
+        return Judgment(Verdict.UNSUPPORTED_COMPLETENESS_NOT_CERTIFIED,
                         "empty page of an incomplete result proves nothing")
 
     if isinstance(claim, Nonexistence):
         if not s.execution_complete:
-            return Judgment(Verdict.UNSUPPORTED_INCOMPLETE,
+            return Judgment(Verdict.UNSUPPORTED_COMPLETENESS_NOT_CERTIFIED,
                             "nonexistence needs a completed execution")
         if s.exact_cardinality == 0:
             return Judgment(Verdict.SUPPORTED, "certified zero cardinality")
@@ -181,7 +181,7 @@ def verify(claim: Claim, evidence: ECQR, result: Any = None) -> Judgment:
         if _rows(result):
             return Judgment(Verdict.UNSUPPORTED_VALUE_MISMATCH,
                             "cited result contains rows")
-        return Judgment(Verdict.UNSUPPORTED_INCOMPLETE,
+        return Judgment(Verdict.UNSUPPORTED_COMPLETENESS_NOT_CERTIFIED,
                         "incomplete delivery cannot prove absence")
 
     return Judgment(Verdict.OUTSIDE_VERIFIED_FRAGMENT,

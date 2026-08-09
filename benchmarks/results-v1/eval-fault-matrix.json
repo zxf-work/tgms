@@ -93,7 +93,7 @@
   {
    "claim": "complete_set",
    "fault": "page_truncation",
-   "verdict": "UNSUPPORTED_INCOMPLETE",
+   "verdict": "UNSUPPORTED_COMPLETENESS_NOT_CERTIFIED",
    "reason": "complete-set claims need delivery and execution completeness over the cited domain",
    "expectation": "must_not_certify",
    "ok": true,
@@ -102,7 +102,7 @@
   {
    "claim": "nonexistence",
    "fault": "page_truncation",
-   "verdict": "UNSUPPORTED_INCOMPLETE",
+   "verdict": "UNSUPPORTED_COMPLETENESS_NOT_CERTIFIED",
    "reason": "incomplete delivery cannot prove absence",
    "expectation": "must_not_certify",
    "ok": true,
@@ -120,7 +120,7 @@
   {
    "claim": "complete_set",
    "fault": "execution_incomplete",
-   "verdict": "UNSUPPORTED_INCOMPLETE",
+   "verdict": "UNSUPPORTED_COMPLETENESS_NOT_CERTIFIED",
    "reason": "complete-set claims need delivery and execution completeness over the cited domain",
    "expectation": "must_not_certify",
    "ok": true,
@@ -129,7 +129,7 @@
   {
    "claim": "nonexistence",
    "fault": "execution_incomplete",
-   "verdict": "UNSUPPORTED_INCOMPLETE",
+   "verdict": "UNSUPPORTED_COMPLETENESS_NOT_CERTIFIED",
    "reason": "nonexistence needs a completed execution",
    "expectation": "must_not_certify",
    "ok": true,
@@ -276,7 +276,7 @@
   "silent_semantic_substitution"
  ],
  "manifest": {
-  "commit": "df3779097cdb896c4aee2b67932f7963b941a6df",
+  "commit": "befd71c840460abe3aee66853f7b7b1679285702",
   "host": "Xiaofeis-Mac-mini.local"
  }
 }

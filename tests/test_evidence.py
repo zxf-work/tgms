@@ -51,7 +51,7 @@ def test_one_ecqr_three_verdicts():
                   ROWS).verdict == Verdict.SUPPORTED
     assert verify(ExactCount(n=343), e, ROWS).verdict == Verdict.SUPPORTED
     assert verify(CompleteSet(members=["n1", "n2", "n3"], field="uid"), e,
-                  ROWS).verdict == Verdict.UNSUPPORTED_INCOMPLETE
+                  ROWS).verdict == Verdict.UNSUPPORTED_COMPLETENESS_NOT_CERTIFIED
 
 
 # ---- the cardinality rule, both directions (Gate A constraint 1) ---------- #
@@ -120,7 +120,7 @@ def test_existence_and_nonexistence():
                   {"rows": []}).verdict == Verdict.SUPPORTED
     trunc = _ecqr(delivery=False)
     assert verify(Nonexistence(), trunc,
-                  {"rows": []}).verdict == Verdict.UNSUPPORTED_INCOMPLETE
+                  {"rows": []}).verdict == Verdict.UNSUPPORTED_COMPLETENESS_NOT_CERTIFIED
     zero_cert = _ecqr(delivery=False, cardinality=0)
     assert verify(Nonexistence(), zero_cert,
                   {"rows": []}).verdict == Verdict.SUPPORTED
@@ -176,7 +176,7 @@ def test_adapter_certifies_rows_total_across_truncation(store):
         full = CompleteSet(members=[r["src"] for r in env["rows"]],
                            field="src")
         assert verify(full, e,
-                      env).verdict == Verdict.UNSUPPORTED_INCOMPLETE
+                      env).verdict == Verdict.UNSUPPORTED_COMPLETENESS_NOT_CERTIFIED
 
 
 def test_adapter_refuses_to_launder_certificates(store):
