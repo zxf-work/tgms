@@ -1,0 +1,424 @@
+{
+ "b1_value_only": {
+  "baseline": "b1_value_only",
+  "n_cells": 27,
+  "false_certifications": 8,
+  "fc_cells": [
+   "exact_count/page_truncation",
+   "complete_set/page_truncation",
+   "nonexistence/page_truncation",
+   "exact_count/execution_incomplete",
+   "complete_set/execution_incomplete",
+   "nonexistence/execution_incomplete",
+   "historical_basis/wrong_snapshot",
+   "historical_basis/unpinned_snapshot"
+  ],
+  "false_rejections": 0,
+  "fr_cells": [],
+  "cells": [
+   {
+    "claim": "membership",
+    "fault": "clean",
+    "certified": true,
+    "expectation": "must_certify",
+    "ok": true
+   },
+   {
+    "claim": "membership",
+    "fault": "clean",
+    "certified": true,
+    "expectation": "must_certify",
+    "ok": true
+   },
+   {
+    "claim": "scalar",
+    "fault": "clean",
+    "certified": true,
+    "expectation": "must_certify",
+    "ok": true
+   },
+   {
+    "claim": "exact_count",
+    "fault": "clean",
+    "certified": true,
+    "expectation": "must_certify",
+    "ok": true
+   },
+   {
+    "claim": "exact_count",
+    "fault": "clean",
+    "certified": true,
+    "expectation": "must_certify",
+    "ok": true
+   },
+   {
+    "claim": "complete_set",
+    "fault": "clean",
+    "certified": true,
+    "expectation": "must_certify",
+    "ok": true
+   },
+   {
+    "claim": "existence",
+    "fault": "clean",
+    "certified": true,
+    "expectation": "must_certify",
+    "ok": true
+   },
+   {
+    "claim": "nonexistence",
+    "fault": "clean",
+    "certified": true,
+    "expectation": "must_certify",
+    "ok": true
+   },
+   {
+    "claim": "historical_basis",
+    "fault": "clean",
+    "certified": true,
+    "expectation": "must_certify",
+    "ok": true
+   },
+   {
+    "claim": "exact_count",
+    "fault": "page_truncation",
+    "certified": true,
+    "expectation": "must_not_certify",
+    "ok": false
+   },
+   {
+    "claim": "complete_set",
+    "fault": "page_truncation",
+    "certified": true,
+    "expectation": "must_not_certify",
+    "ok": false
+   },
+   {
+    "claim": "nonexistence",
+    "fault": "page_truncation",
+    "certified": true,
+    "expectation": "must_not_certify",
+    "ok": false
+   },
+   {
+    "claim": "exact_count",
+    "fault": "execution_incomplete",
+    "certified": true,
+    "expectation": "must_not_certify",
+    "ok": false
+   },
+   {
+    "claim": "complete_set",
+    "fault": "execution_incomplete",
+    "certified": true,
+    "expectation": "must_not_certify",
+    "ok": false
+   },
+   {
+    "claim": "nonexistence",
+    "fault": "execution_incomplete",
+    "certified": true,
+    "expectation": "must_not_certify",
+    "ok": false
+   },
+   {
+    "claim": "exact_count",
+    "fault": "wrong_count",
+    "certified": false,
+    "expectation": "must_not_certify",
+    "ok": true
+   },
+   {
+    "claim": "scalar",
+    "fault": "wrong_scalar",
+    "certified": false,
+    "expectation": "must_not_certify",
+    "ok": true
+   },
+   {
+    "claim": "complete_set",
+    "fault": "omitted_member",
+    "certified": false,
+    "expectation": "must_not_certify",
+    "ok": true
+   },
+   {
+    "claim": "complete_set",
+    "fault": "fabricated_member",
+    "certified": false,
+    "expectation": "must_not_certify",
+    "ok": true
+   },
+   {
+    "claim": "membership",
+    "fault": "false_membership",
+    "certified": false,
+    "expectation": "must_not_certify",
+    "ok": true
+   },
+   {
+    "claim": "existence",
+    "fault": "false_existence",
+    "certified": false,
+    "expectation": "must_not_certify",
+    "ok": true
+   },
+   {
+    "claim": "nonexistence",
+    "fault": "false_nonexistence",
+    "certified": false,
+    "expectation": "must_not_certify",
+    "ok": true
+   },
+   {
+    "claim": "historical_basis",
+    "fault": "wrong_snapshot",
+    "certified": true,
+    "expectation": "must_not_certify",
+    "ok": false
+   },
+   {
+    "claim": "historical_basis",
+    "fault": "unpinned_snapshot",
+    "certified": true,
+    "expectation": "must_not_certify",
+    "ok": false
+   },
+   {
+    "claim": "scalar",
+    "fault": "uncited_value",
+    "certified": false,
+    "expectation": "must_not_certify",
+    "ok": true
+   },
+   {
+    "claim": "membership",
+    "fault": "digest_mismatch",
+    "certified": false,
+    "expectation": "must_not_certify",
+    "ok": true
+   },
+   {
+    "claim": "complete_set",
+    "fault": "digest_mismatch",
+    "certified": false,
+    "expectation": "must_not_certify",
+    "ok": true
+   }
+  ]
+ },
+ "b2_taint_all": {
+  "baseline": "b2_taint_all",
+  "n_cells": 27,
+  "false_certifications": 2,
+  "fc_cells": [
+   "historical_basis/wrong_snapshot",
+   "historical_basis/unpinned_snapshot"
+  ],
+  "false_rejections": 2,
+  "fr_cells": [
+   "membership/clean",
+   "exact_count/clean"
+  ],
+  "cells": [
+   {
+    "claim": "membership",
+    "fault": "clean",
+    "certified": true,
+    "expectation": "must_certify",
+    "ok": true
+   },
+   {
+    "claim": "membership",
+    "fault": "clean",
+    "certified": false,
+    "expectation": "must_certify",
+    "ok": false
+   },
+   {
+    "claim": "scalar",
+    "fault": "clean",
+    "certified": true,
+    "expectation": "must_certify",
+    "ok": true
+   },
+   {
+    "claim": "exact_count",
+    "fault": "clean",
+    "certified": true,
+    "expectation": "must_certify",
+    "ok": true
+   },
+   {
+    "claim": "exact_count",
+    "fault": "clean",
+    "certified": false,
+    "expectation": "must_certify",
+    "ok": false
+   },
+   {
+    "claim": "complete_set",
+    "fault": "clean",
+    "certified": true,
+    "expectation": "must_certify",
+    "ok": true
+   },
+   {
+    "claim": "existence",
+    "fault": "clean",
+    "certified": true,
+    "expectation": "must_certify",
+    "ok": true
+   },
+   {
+    "claim": "nonexistence",
+    "fault": "clean",
+    "certified": true,
+    "expectation": "must_certify",
+    "ok": true
+   },
+   {
+    "claim": "historical_basis",
+    "fault": "clean",
+    "certified": true,
+    "expectation": "must_certify",
+    "ok": true
+   },
+   {
+    "claim": "exact_count",
+    "fault": "page_truncation",
+    "certified": false,
+    "expectation": "must_not_certify",
+    "ok": true
+   },
+   {
+    "claim": "complete_set",
+    "fault": "page_truncation",
+    "certified": false,
+    "expectation": "must_not_certify",
+    "ok": true
+   },
+   {
+    "claim": "nonexistence",
+    "fault": "page_truncation",
+    "certified": false,
+    "expectation": "must_not_certify",
+    "ok": true
+   },
+   {
+    "claim": "exact_count",
+    "fault": "execution_incomplete",
+    "certified": false,
+    "expectation": "must_not_certify",
+    "ok": true
+   },
+   {
+    "claim": "complete_set",
+    "fault": "execution_incomplete",
+    "certified": false,
+    "expectation": "must_not_certify",
+    "ok": true
+   },
+   {
+    "claim": "nonexistence",
+    "fault": "execution_incomplete",
+    "certified": false,
+    "expectation": "must_not_certify",
+    "ok": true
+   },
+   {
+    "claim": "exact_count",
+    "fault": "wrong_count",
+    "certified": false,
+    "expectation": "must_not_certify",
+    "ok": true
+   },
+   {
+    "claim": "scalar",
+    "fault": "wrong_scalar",
+    "certified": false,
+    "expectation": "must_not_certify",
+    "ok": true
+   },
+   {
+    "claim": "complete_set",
+    "fault": "omitted_member",
+    "certified": false,
+    "expectation": "must_not_certify",
+    "ok": true
+   },
+   {
+    "claim": "complete_set",
+    "fault": "fabricated_member",
+    "certified": false,
+    "expectation": "must_not_certify",
+    "ok": true
+   },
+   {
+    "claim": "membership",
+    "fault": "false_membership",
+    "certified": false,
+    "expectation": "must_not_certify",
+    "ok": true
+   },
+   {
+    "claim": "existence",
+    "fault": "false_existence",
+    "certified": false,
+    "expectation": "must_not_certify",
+    "ok": true
+   },
+   {
+    "claim": "nonexistence",
+    "fault": "false_nonexistence",
+    "certified": false,
+    "expectation": "must_not_certify",
+    "ok": true
+   },
+   {
+    "claim": "historical_basis",
+    "fault": "wrong_snapshot",
+    "certified": true,
+    "expectation": "must_not_certify",
+    "ok": false
+   },
+   {
+    "claim": "historical_basis",
+    "fault": "unpinned_snapshot",
+    "certified": true,
+    "expectation": "must_not_certify",
+    "ok": false
+   },
+   {
+    "claim": "scalar",
+    "fault": "uncited_value",
+    "certified": false,
+    "expectation": "must_not_certify",
+    "ok": true
+   },
+   {
+    "claim": "membership",
+    "fault": "digest_mismatch",
+    "certified": false,
+    "expectation": "must_not_certify",
+    "ok": true
+   },
+   {
+    "claim": "complete_set",
+    "fault": "digest_mismatch",
+    "certified": false,
+    "expectation": "must_not_certify",
+    "ok": true
+   }
+  ]
+ },
+ "ecqr_reference": {
+  "false_certifications": 0,
+  "false_rejections": 0,
+  "receipt": "eval-fault-matrix.json"
+ },
+ "manifest": {
+  "commit": "5a061e8",
+  "host": "Xiaofeis-Mac-mini.local"
+ }
+}
