@@ -110,10 +110,18 @@ def frozen_2x2(runs: Path) -> dict:
             for ds in DATASETS
             for arm in ("ours", "ours-noverify", "b6e", "b6")
             if "certified_answer_coverage" in t[f"{ds}|{arm}"]},
-        "claim_retention": {
-            f"{ds}|{arm}": t[f"{ds}|{arm}"]["claim_retention"]
-            for ds in DATASETS for arm in ("ours", "b6e")
-            if t[f"{ds}|{arm}"].get("claim_retention") is not None},
+        "total_claim_survival": {
+            f"{ds}|{arm}": t[f"{ds}|{arm}"]["total_claim_survival"]
+            for ds in DATASETS
+            for arm in ("ours", "ours-noverify", "b6e", "b6")
+            if t[f"{ds}|{arm}"].get("total_claim_survival") is not None},
+        "em_given_answer": {
+            f"{ds}|{arm}": t[f"{ds}|{arm}"]["em_given_answer"]
+            for ds in DATASETS
+            for arm in ("ours", "ours-noverify", "b6e", "b6")
+            if t[f"{ds}|{arm}"].get("em_given_answer") is not None},
+        "gate_counterfactual": _load(
+            RES / "eval-gate-counterfactual.json"),
         "interface_contrasts": {k: v for k, v in c.items()
                                 if "interface" in k},
         "evidence_em_deltas": ev_deltas,

@@ -85,28 +85,47 @@ def main() -> int:
                      for r in sel
                      if (r.get("meta") or {}).get("ucr_pre_gate_e")
                      is not None]
-            # coverage/retention/abstention (review P1.2): an answer is
-            # "certified" when its final object carries >=1 claim; in
-            # gated arms every carried claim is verifier-SUPPORTED, so
-            # this is certified-answer coverage. Retention is per-answer
-            # 1 - pre-gate-unsupported-fraction over rows that emitted an
-            # answer (the gate drops exactly the unsupported claims);
-            # answers gated to nothing count as abstentions, never in
-            # the retention mean.
+            # coverage/survival metrics (round-2 review §5/§20).
+            # SUPPORTED-claim retention is 1.0 BY CONSTRUCTION (the gate
+            # drops exactly the unsupported claims) and is therefore
+            # stated in prose, never tabulated as a measurement. What is
+            # measured here:
+            #   total_claim_survival — per-answer mean of the fraction
+            #     of PROPOSED claims that survive to emission: rows with
+            #     a proposal contribute 1 - u_pre if an answer is
+            #     emitted and 0 if the gate abstained.
+            #   claim_survival_given_answer — the same mean restricted
+            #     to rows that emitted an answer.
+            #   certified_answer_coverage / abstention_rate — >=1 claim
+            #     in the final object, and its complement (abstention
+            #     includes plan-failure rows; ungated arms isolate that
+            #     component).
+            #   em_given_answer — conditional accuracy P(correct |
+            #     answer emitted).
             n_final = [len(((r.get("answer_object") or {}).get("claims"))
                            or []) for r in sel]
             abstain = sum(1 for k in n_final if k == 0)
+
             def _pre(r):
                 v = r.get("ucr_pre_gate")
                 if v is None:
                     v = (r.get("meta") or {}).get("ucr_pre_gate_e")
+                if v is None:
+                    v = r.get("ucr")  # ungated arms: observational col
                 return v
-            pre_rows = [r for r in sel
-                        if _pre(r) is not None
-                        and len(((r.get("answer_object") or {})
-                                 .get("claims")) or [])]
-            retention = ([1 - _pre(r) for r in pre_rows]
-                         if pre_rows else [])
+            surv_all, surv_ans = [], []
+            for r in sel:
+                p = _pre(r)
+                if p is None:
+                    continue
+                emitted = len(((r.get("answer_object") or {})
+                               .get("claims")) or []) > 0
+                surv_all.append((1 - p) if emitted else 0.0)
+                if emitted:
+                    surv_ans.append(1 - p)
+            answered = [r for r in sel
+                        if len(((r.get("answer_object") or {})
+                                .get("claims")) or [])]
             table[(ds, arm)] = {
                 "n_rows": n, "seeds": seeds, "em": round(em, 4),
                 "probe_em": round(sum(r.get("em") or 0 for r in probes)
@@ -118,8 +137,15 @@ def main() -> int:
                 if pre_e else None,
                 "certified_answer_coverage": round(1 - abstain / n, 4),
                 "abstention_rate": round(abstain / n, 4),
-                "claim_retention": round(sum(retention) / len(retention),
-                                         4) if retention else None,
+                "total_claim_survival": round(
+                    sum(surv_all) / len(surv_all), 4) if surv_all
+                else None,
+                "claim_survival_given_answer": round(
+                    sum(surv_ans) / len(surv_ans), 4) if surv_ans
+                else None,
+                "em_given_answer": round(
+                    sum(r.get("em") or 0 for r in answered)
+                    / len(answered), 4) if answered else None,
             }
 
     # paired contrasts (per task, seed-averaged): the two M5 questions
