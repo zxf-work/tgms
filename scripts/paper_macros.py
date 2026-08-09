@@ -174,9 +174,10 @@ def table_fault(fm: dict) -> str:
 \multicolumn{{4}}{{l}}{{\scriptsize {nc2.replace('_', ' ')}}}\\
 \bottomrule
 \end{{tabular}}
-\caption{{The fault $\times$ claim conformance matrix (receipt:
-\texttt{{eval-fault-matrix.json}}). The verified fragment is what this
-table certifies.}}
+\caption{{Implementation-conformance coverage of the verified
+fragment (receipt: \texttt{{eval-fault-matrix.json}}): the formal
+rules define the fragment; this matrix tests the shipped
+implementation against the declared fault families.}}
 \label{{tab:faultmatrix}}
 \end{{table}}
 """
@@ -185,61 +186,85 @@ table certifies.}}
 def table_frozen(pn: dict) -> str:
     fz = pn["frozen_2x2"]
     em, tg, sq = fz["em"], fz["ucr_pre_gate_tgms"], fz["ucr_pre_gate_sql"]
+    cov = fz["certified_answer_coverage"]
+    ret = fz["claim_retention"]
     icon = fz["interface_contrasts"]
     ev = fz["evidence_em_deltas"]
 
-    def row(vals: list[str]) -> str:
-        return " & ".join(vals) + r" \\"
+    # one row per dataset x interface, public arm names (review §19):
+    # Operators(+ECQR) = ours/ours-noverify, SQL(+ECQR) = b6e/b6
+    body = []
+    pre_by = {"Operators": dict(zip(DS, tg)), "SQL": dict(zip(DS, sq))}
+    arm_of = {"Operators": ("ours", "ours-noverify"),
+              "SQL": ("b6e", "b6")}
+    ev_key = {"Operators": "evidence(tgms): ours - ours-noverify",
+              "SQL": "evidence(sql): b6e - b6"}
+    for d in DS:
+        for iface in ("Operators", "SQL"):
+            g, u = arm_of[iface]
+            e = ev[f"{d} | {ev_key[iface]}"]
+            body.append(" & ".join([
+                DS_SHORT[d] if iface == "Operators" else "",
+                iface,
+                f3(pre_by[iface][d]),
+                r"\textbf{0.000}",
+                f2(ret[f"{d}|{g}"]),
+                f"{f2(cov[f'{d}|{g}'])} / {f2(cov[f'{d}|{u}'])}",
+                f3(em[f"{d}|{u}"]),
+                f3(em[f"{d}|{g}"]),
+                rf"${f3(e['delta_em'])}$ \scriptsize${ci2(e['ci95'])}$",
+            ]) + r" \\")
+        body.append(r"\addlinespace[1pt]")
+    rows = "\n".join(body[:-1])
 
-    ucr_t = row(["operators, ungated"] + [f3(v) for v in tg])
-    ucr_s = row(["SQL, ungated (witness map)"] + [f3(v) for v in sq])
-    gated = row(["both, gated"] +
-                [rf"\textbf{{{f3(v)}}}" for v in fz["ucr_gated"]])
-    em_o = row(["operators"] + [f3(em[f"{d}|ours"]) for d in DS])
-    em_s = row(["SQL"] + [f3(em[f"{d}|b6e"]) for d in DS])
     ic = [icon[f"{d} | interface: b6e - ours"] for d in DS]
-    d_em = row([r"$\Delta$EM"] + [f"${f3(c['delta_em'])}$" for c in ic])
-    d_ci = row([""] + [rf"\scriptsize${ci2(c['ci95'])}$" for c in ic])
-    ev_o = row(["operators"] +
-               [f"${f3(ev[f'{d} | evidence(tgms): ours - ours-noverify']
-                   ['delta_em'])}$" for d in DS])
-    ev_s = row(["SQL"] +
-               [f"${f3(ev[f'{d} | evidence(sql): b6e - b6']['delta_em'])}$"
-                for d in DS])
-    heads = " & ".join([""] + [rf"\textbf{{{DS_SHORT[d]}}}" for d in DS])
+    ic_row = " & ".join(
+        [r"$\Delta$EM (SQL$-$Op.)"] +
+        [rf"${f3(c['delta_em'])}$ \scriptsize${ci2(c['ci95'])}$"
+         for c in ic]) + r" \\"
     return rf"""% T3 — the frozen 2x2, from paper_numbers.json:frozen_2x2
-\begin{{table}}[t]
+\begin{{table*}}[t]
 \centering\small
-\setlength{{\tabcolsep}}{{2.5pt}}
-\begin{{tabular}}{{lccc}}
+\setlength{{\tabcolsep}}{{4pt}}
+\begin{{tabular}}{{llccccccc}}
 \toprule
-{heads} \\
+\textbf{{Dataset}} & \textbf{{Interface}} &
+\textbf{{\shortstack{{pre-gate\\UCR}}}} &
+\textbf{{\shortstack{{post-gate\\UCR}}}} &
+\textbf{{\shortstack{{claim\\retention}}}} &
+\textbf{{\shortstack{{cert.\ answer cov.\\gated / ungated}}}} &
+\textbf{{\shortstack{{EM\\ungated}}}} &
+\textbf{{\shortstack{{EM\\gated}}}} &
+\textbf{{\shortstack{{$\Delta$EM gated$-$ungated\\(95\% CI)}}}} \\
 \midrule
-\multicolumn{{4}}{{l}}{{\emph{{unsupported-claim rate (mean per-answer
-  fraction)}}}}\\
-{ucr_t}
-{ucr_s}
-{gated}
-\midrule
-\multicolumn{{4}}{{l}}{{\emph{{exact match, gated arms}}}}\\
-{em_o}
-{em_s}
-\midrule
-\multicolumn{{4}}{{l}}{{\emph{{interface contrast (SQL $-$ operators),
-  95\% CI}}}}\\
-{d_em}
-{d_ci}
-\midrule
-\multicolumn{{4}}{{l}}{{\emph{{evidence contrast (gated $-$ ungated),
-  $\Delta$EM}}}}\\
-{ev_o}
-{ev_s}
+{rows}
 \bottomrule
 \end{{tabular}}
-\caption{{The frozen 2$\times$2 (test splits, 3 seeds, \pnPrimaryRows\
-runs; receipt: \texttt{{m8/m8-tables.json}}). Enforcement removes every
-measured unsupported claim at the cost of one changed outcome.}}
+\caption{{The frozen evidence experiment (test splits, 3 seeds,
+\pnPrimaryRows\ task-runs; metrics per \S\ref{{sec:metrics}}; receipt:
+\texttt{{m8/m8-tables.json}}). Enforcement removes every measured
+unsupported claim from emitted answers, retains
+$\geq$99\% of supported claims, converts uncertifiable answers into
+explicit abstentions, and changes task accuracy by at most 3 of 186
+paired runs on one cell. SQL pre-gate UCR is a lower bound (mapped
+witness-claim subset); cross-interface UCR magnitudes are not
+comparable.}}
 \label{{tab:frozen}}
+\end{{table*}}
+
+% T3b — interface contrast, separate as secondary
+\begin{{table}}[t]
+\centering\small
+\begin{{tabular}}{{lccc}}
+\toprule
+ & \textbf{{MathOverflow}} & \textbf{{SuperUser}} & \textbf{{wiki-talk}} \\
+\midrule
+{ic_row}
+\bottomrule
+\end{{tabular}}
+\caption{{The secondary interface contrast between the two gated arms
+(per-task seed-averaged paired bootstrap).}}
+\label{{tab:interface}}
 \end{{table}}
 """
 

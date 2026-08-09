@@ -103,7 +103,17 @@ def frozen_2x2(runs: Path) -> dict:
         "changed_outcome_audit": _changed_outcome_audit(runs),
         "primary_rows": d["manifest"]["n_rows"],
         "em": {f"{ds}|{arm}": t[f"{ds}|{arm}"]["em"]
-               for ds in DATASETS for arm in ("ours", "b6e")},
+               for ds in DATASETS
+               for arm in ("ours", "ours-noverify", "b6e", "b6")},
+        "certified_answer_coverage": {
+            f"{ds}|{arm}": t[f"{ds}|{arm}"]["certified_answer_coverage"]
+            for ds in DATASETS
+            for arm in ("ours", "ours-noverify", "b6e", "b6")
+            if "certified_answer_coverage" in t[f"{ds}|{arm}"]},
+        "claim_retention": {
+            f"{ds}|{arm}": t[f"{ds}|{arm}"]["claim_retention"]
+            for ds in DATASETS for arm in ("ours", "b6e")
+            if t[f"{ds}|{arm}"].get("claim_retention") is not None},
         "interface_contrasts": {k: v for k, v in c.items()
                                 if "interface" in k},
         "evidence_em_deltas": ev_deltas,

@@ -9,8 +9,9 @@ cell is a (claim, evidence, result) triple with a ground-truth expectation:
                        truth; a SUPPORTED verdict is a **false
                        certification**, the critical safety failure.
 
-The published verified fragment is what this matrix certifies, not what
-anyone asserts (D-098/plan §M4). The catalog is backend-independent:
+The formal rules define the verified fragment; this matrix tests the
+shipped implementation's conformance to them over the declared fault
+families (D-098/plan §M4, review P1.8). The catalog is backend-independent:
 cases are constructed descriptors + results, so the same matrix can run
 over any adapter's output; integrity (result bytes vs result_id) is
 checked by the harness before verification, implementing trust
