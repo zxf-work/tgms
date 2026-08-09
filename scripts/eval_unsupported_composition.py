@@ -7,10 +7,14 @@ the frozen m8 run records without new inference:
 1. COMPOSITION — what kinds of claims are proposed without support?
    The SQL enforced arm (b6e) stores per-claim verdicts in
    meta.claim_verdicts, so its breakdown is verdict-exact. The
-   operator arms store only per-run observational UCR, so their
-   breakdown is by proposed-claim kind over the determinate runs
-   (u == 0 or u == 1); runs with fractional u are counted separately
-   as ambiguous, never allocated.
+   operator arms store only per-run observational UCR, so the TOTAL
+   unsupported count per run is exact (u * |K|), and the kind
+   breakdown comes from the runs whose run-level verdict determines
+   every claim (u == 0 or u == 1); the few claims from
+   fractional-u runs are counted in an explicit "undetermined"
+   category rather than excluded or allocated (D-128: run-level UCR
+   does not treat out-of-fragment claims uniformly enough to
+   allocate them deterministically).
 
 2. DEPTH — does unsupported incidence grow with plan depth?
    Mean per-run pre-gate unsupported fraction by len(plan_ops)
@@ -72,13 +76,16 @@ def main() -> int:
     for ds in DS:
         rows = rows_for(args.runs, ds, "tgms", "ours-noverify")
         kinds: dict[str, int] = {}
-        det_u1 = det_u0 = ambiguous = no_claims = 0
+        undetermined = 0.0
+        det_u1 = det_u0 = no_claims = 0
+        total_unsupported = 0.0
         for r in rows:
             u = r.get("ucr")
             cl = (r.get("answer_object") or {}).get("claims") or []
             if u is None or not cl:
                 no_claims += 1
                 continue
+            total_unsupported += u * len(cl)
             if u == 0:
                 det_u0 += 1
             elif u == 1:
@@ -87,12 +94,13 @@ def main() -> int:
                     k = c.get("type", "?")
                     kinds[k] = kinds.get(k, 0) + 1
             else:
-                ambiguous += 1
+                undetermined += u * len(cl)
         comp[f"{ds}|operators"] = {
             "unsupported_claims_by_kind": kinds,
+            "unsupported_claims_undetermined_kind": round(undetermined),
+            "total_unsupported_claims": round(total_unsupported),
             "runs_all_supported": det_u0,
             "runs_all_unsupported": det_u1,
-            "runs_ambiguous_fraction": ambiguous,
             "runs_without_claims": no_claims,
         }
 
@@ -150,18 +158,24 @@ def main() -> int:
                 "p95": pct(xs, 0.95)}
     out["run_input_tokens"] = toks_in
 
-    desc_tokens = []
+    desc_tokens, desc_bytes = [], []
     for ds in DS:
         for r in rows_for(args.runs, ds, "sql", "b6e"):
             e = (r.get("meta") or {}).get("ecqr")
             if e:
-                desc_tokens.append(len(tok.encode(
-                    json.dumps(e, sort_keys=True, separators=(",", ":")))))
+                blob = json.dumps(e, sort_keys=True,
+                                  separators=(",", ":"))
+                desc_tokens.append(len(tok.encode(blob)))
+                desc_bytes.append(len(blob.encode("utf-8")))
     out["descriptor_tokens_sql_frozen"] = {
         "n": len(desc_tokens),
         "median": statistics.median(desc_tokens) if desc_tokens else None,
         "p95": pct(desc_tokens, 0.95),
         "tokenizer": "Qwen/Qwen2.5-14B-Instruct-AWQ"}
+    out["descriptor_bytes_sql_frozen"] = {
+        "n": len(desc_bytes),
+        "median": statistics.median(desc_bytes) if desc_bytes else None,
+        "p95": pct(desc_bytes, 0.95)}
     out["verifier_model_tokens"] = 0
     out["verifier_model_calls"] = 0
 
