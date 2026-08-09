@@ -50,6 +50,16 @@ def _t(fn, reps):
     return statistics.median(xs)
 
 
+def _t95(fn, reps):
+    xs = []
+    for _ in range(reps):
+        t0 = time.perf_counter()
+        fn()
+        xs.append((time.perf_counter() - t0) * 1e3)
+    xs.sort()
+    return xs[min(len(xs) - 1, int(round(0.95 * (len(xs) - 1))))]
+
+
 def _reps(n: int) -> int:
     return {10: 400, 100: 400, 1_000: 100, 10_000: 20, 100_000: 5}[n]
 
@@ -102,6 +112,19 @@ def main() -> int:
                 lambda: verify(ExactCount(n=n), e, payload), reps),
             "verify_nonexist_ms": _t(
                 lambda: verify(Nonexistence(), e_zero, {"rows": []}), reps),
+            # p95 companions for the linear and headline flat columns
+            # (review D-127: report p95 in the artifact even where the
+            # main text plots medians)
+            "canonicalize_ms_p95": _t95(lambda: canonical_json(payload),
+                                        reps),
+            "verify_membership_ms_p95": _t95(
+                lambda: verify(Membership(value=last, field="uid"),
+                               e, payload), reps),
+            "verify_completeset_ms_p95": _t95(
+                lambda: verify(CompleteSet(members=members, field="uid"),
+                               e, payload), reps),
+            "verify_count_cert_ms_p95": _t95(
+                lambda: verify(ExactCount(n=n), e, payload), reps),
         }
         # sanity: every timed verdict is the expected one
         assert verify(Membership(value=last, field="uid"),
