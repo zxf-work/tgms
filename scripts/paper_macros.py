@@ -332,19 +332,19 @@ def table_sql_surface() -> str:
 Membership   & \yes & \yes & \yes\ (all forms map here) \\
 Scalar       & \yes & \yes & mapped to witness \\
 Exact count  & \yes & \yes\ (certificate) & portability suite \\
-Complete set & \yes & \yes & --- \\
+Complete set & \yes & \yes & not used \\
 Exists       & \yes & \yes & mapped to witness \\
-NotExists    & \yes & \yes & --- \\
+NotExists    & \yes & \yes & not used \\
 $\mathsf{AtBasis}$ & \yes & \yes\ (tt replica) & probes \\
 \bottomrule
 \end{tabular}
 \caption{Claim-construction surfaces. The verifier and both adapters
-support every form; the end-to-end SQL arm maps \emph{every} proposed
-claim---counts and values included---to witness (Membership) checks
-over the certificate-bearing page, the conservative mapping. This is
-why SQL pre-gate UCR is a lower bound and cross-interface UCR
-magnitudes are never compared; within-interface contrasts always share
-one claim-construction surface.}
+support every form. The end-to-end SQL arm maps every proposed claim,
+counts and values included, to witness checks over the
+certificate-bearing page, which is the conservative mapping. SQL
+pre-gate UCR is therefore a lower bound, cross-interface UCR
+magnitudes are never compared, and within-interface contrasts always
+share one claim-construction surface.}
 \label{tab:sqlsurface}
 \end{table}
 """
