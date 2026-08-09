@@ -1,0 +1,120 @@
+{
+ "host": "itiger",
+ "composition": {
+  "sx-mathoverflow|operators": {
+   "unsupported_claims_by_kind": {
+    "value": 6,
+    "count": 30,
+    "entity": 12
+   },
+   "runs_all_supported": 138,
+   "runs_all_unsupported": 48,
+   "runs_ambiguous_fraction": 3,
+   "runs_without_claims": 27
+  },
+  "sx-superuser|operators": {
+   "unsupported_claims_by_kind": {
+    "count": 24,
+    "value": 6,
+    "entity": 3
+   },
+   "runs_all_supported": 138,
+   "runs_all_unsupported": 33,
+   "runs_ambiguous_fraction": 3,
+   "runs_without_claims": 30
+  },
+  "wiki-talk|operators": {
+   "unsupported_claims_by_kind": {
+    "value": 6,
+    "count": 24,
+    "entity": 3
+   },
+   "runs_all_supported": 120,
+   "runs_all_unsupported": 33,
+   "runs_ambiguous_fraction": 0,
+   "runs_without_claims": 33
+  },
+  "sx-mathoverflow|sql": {
+   "claim_verdicts": {
+    "SUPPORTED": 129,
+    "UNSUPPORTED_NO_WITNESS": 18
+   },
+   "unsupported_claims_by_kind": {
+    "?": 18
+   }
+  },
+  "sx-superuser|sql": {
+   "claim_verdicts": {
+    "UNSUPPORTED_NO_WITNESS": 18,
+    "SUPPORTED": 117
+   },
+   "unsupported_claims_by_kind": {
+    "?": 18
+   }
+  },
+  "wiki-talk|sql": {
+   "claim_verdicts": {
+    "SUPPORTED": 102,
+    "UNSUPPORTED_NO_WITNESS": 16
+   },
+   "unsupported_claims_by_kind": {
+    "?": 16
+   }
+  }
+ },
+ "depth_operators_pooled": {
+  "1": {
+   "n": 258,
+   "mean_pre_gate_ucr": 0.32
+  },
+  "2": {
+   "n": 234,
+   "mean_pre_gate_ucr": 0.147
+  },
+  "3+": {
+   "n": 63,
+   "mean_pre_gate_ucr": 0.0
+  }
+ },
+ "run_input_tokens": {
+  "sx-mathoverflow|operators": {
+   "n": 216,
+   "median": 12768.0,
+   "p95": 25539
+  },
+  "sx-mathoverflow|sql": {
+   "n": 216,
+   "median": 2027.5,
+   "p95": 8015
+  },
+  "sx-superuser|operators": {
+   "n": 204,
+   "median": 13817.5,
+   "p95": 24921
+  },
+  "sx-superuser|sql": {
+   "n": 204,
+   "median": 2037.5,
+   "p95": 6360
+  },
+  "wiki-talk|operators": {
+   "n": 186,
+   "median": 13407.0,
+   "p95": 24642
+  },
+  "wiki-talk|sql": {
+   "n": 186,
+   "median": 1859.0,
+   "p95": 7301
+  }
+ },
+ "descriptor_tokens_sql_frozen": {
+  "n": 421,
+  "median": 299,
+  "p95": 545,
+  "tokenizer": "Qwen/Qwen2.5-14B-Instruct-AWQ"
+ },
+ "verifier_model_tokens": 0,
+ "verifier_model_calls": 0,
+ "commit": "1bd6b578db81c8dec95179d22bab5981ff8c171e"
+}
