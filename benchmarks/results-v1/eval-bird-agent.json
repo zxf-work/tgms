@@ -1,9 +1,10 @@
 {
- "adjudication": "D-132 intent-primary + D-133 multiplicity audit",
+ "adjudication": "D-132 intent-primary + D-133 multiplicity + D-134/D-135 metric separation",
  "by_form": {
   "COMPLETE_SET": {
    "certified": 150,
    "certified_and_correct": 67,
+   "certified_full_contract": 120,
    "claim_constructed": 150,
    "em": 67,
    "executable": 150,
@@ -12,6 +13,7 @@
   "EXISTS": {
    "certified": 0,
    "certified_and_correct": 0,
+   "certified_full_contract": 0,
    "claim_constructed": 0,
    "em": 0,
    "executable": 2,
@@ -20,6 +22,7 @@
   "OUTSIDE_FRAGMENT": {
    "certified": 0,
    "certified_and_correct": 0,
+   "certified_full_contract": 0,
    "claim_constructed": 0,
    "em": 0,
    "executable": 1,
@@ -28,6 +31,7 @@
   "SCALAR": {
    "certified": 240,
    "certified_and_correct": 139,
+   "certified_full_contract": 240,
    "claim_constructed": 240,
    "em": 144,
    "executable": 289,
@@ -36,6 +40,7 @@
   "SCALAR_TUPLE": {
    "certified": 41,
    "certified_and_correct": 17,
+   "certified_full_contract": 41,
    "claim_constructed": 41,
    "em": 17,
    "executable": 52,
@@ -44,6 +49,7 @@
   "SET_AND_COUNT": {
    "certified": 1,
    "certified_and_correct": 0,
+   "certified_full_contract": 1,
    "claim_constructed": 1,
    "em": 0,
    "executable": 1,
@@ -53,12 +59,13 @@
  "certified": 432,
  "certified_and_correct": 223,
  "certified_full_contract": 402,
+ "certified_partial_contract": 30,
  "claim_kind_census": {
   "complete_set": 151,
   "exact_count": 1,
   "scalar": 341
  },
- "commit": "ac210d1861f721730eb38f8ce39e89b468e32788",
+ "commit": "4cf6815af4b57dbb5b0ff47da02d76ad1ac7459e",
  "descriptor_bytes_median": 614,
  "duplicate_bearing_reference": 27,
  "em_overall": 228,
@@ -80,9 +87,16 @@
   "executable_sql": 495,
   "universe": 500
  },
+ "gold_match_any_claim": 223,
+ "gold_match_full_contract": 210,
  "host": "itiger01 (model inference); Xiaofeis-Mac-mini.local (post-run replay)",
  "n": 500,
  "outside_fragment": 1,
+ "partial_contract_reasons": {
+  "duplicate_bearing_reference": 27,
+  "multipart_partially_answered": 2,
+  "ordered_output_demanded": 1
+ },
  "question_gold_mismatch": 11,
  "repair_used": 78,
  "slurm_job": 185542,

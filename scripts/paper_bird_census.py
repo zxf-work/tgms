@@ -32,7 +32,10 @@ def main() -> int:
     args = ap.parse_args()
     r = json.loads(REC.read_text())
     bf, cc = r["by_form"], r["claim_kind_census"]
-    qrows = [(LABEL[k], bf[k]["n"], bf[k]["certified"])
+    full = json.loads(Path("external_workloads/bird/agent_run/"
+                           "receipt.json").read_text()) if False else None
+    qrows = [(LABEL[k], bf[k]["n"], bf[k]["certified"],
+              bf[k].get("certified_full_contract", 0))
              for k in ORDER if k in bf]
     assert sum(x[1] for x in qrows) == r["n"], "questions must sum to n"
     crows = [("\\textsf{Scalar}", cc["scalar"]),
@@ -47,25 +50,31 @@ def main() -> int:
         r"requests. \emph{Right}: the typed claims those questions",
         r"instantiate. The units differ --- a one-row $k$-column answer",
         r"is one question and $k$ \textsf{Scalar} claims --- so the two",
-        r"blocks are not expected to agree.}",
+        r"blocks are not expected to agree. \emph{any cert.} counts",
+        r"questions with at least one supported typed claim;",
+        r"\emph{full} counts those whose entire adjudicated contract is",
+        r"represented and supported.}",
         r"\label{tab:birdcensus}",
         r"\small",
-        r"\begin{tabular}{@{}lrr@{\hspace{1.4em}}lr@{}}",
+        r"\begin{tabular}{@{}lrrr@{\hspace{1.2em}}lr@{}}",
         r"\toprule",
-        r"Intent contract & Qs & cert. & Claim form & Claims \\",
+        r"Intent contract & Qs & any cert. & full & Claim form"
+        r" & Claims \\",
         r"\midrule",
     ])
     body = []
     for i in range(max(len(qrows), len(crows))):
         left = (f"{qrows[i][0]} & {qrows[i][1]} & {qrows[i][2]}"
-                if i < len(qrows) else " & & ")
+                f" & {qrows[i][3]}"
+                if i < len(qrows) else " & & & ")
         right = (f"{crows[i][0]} & {crows[i][1]}"
                  if i < len(crows) else " & ")
         body.append(f"{left} & {right} \\\\")
     tex += "\n" + "\n".join(body) + "\n" + "\n".join([
         r"\midrule",
         rf"\textbf{{All}} & \textbf{{{r['n']}}} & "
-        rf"\textbf{{{r['certified']}}} & &"
+        rf"\textbf{{{r['certified']}}} & "
+        rf"\textbf{{{r['certified_full_contract']}}} & &"
         rf" \textbf{{{sum(c[1] for c in crows)}}} \\",
         r"\bottomrule",
         r"\end{tabular}",

@@ -491,6 +491,28 @@ def main() -> int:
               f" em={item.get('em')}", flush=True)
 
     # ------------------------------------------------------- aggregate
+    def _partial_reasons(items, adj, dupfree):
+        """Disjoint reasons a certified item does not cover its full
+        requested contract, in a fixed precedence so the counts sum."""
+        out = {}
+        for it in items:
+            if it["stage"] != "certified":
+                continue
+            if it.get("full_question_contract_covered", True):
+                continue
+            q = it["question_id"]
+            a = adj.get(q, {})
+            if dupfree.get(q) is False:
+                k = "duplicate_bearing_reference"
+            elif "ORDERED_TOP_K" in (a.get("semantic_properties") or []):
+                k = "ordered_output_demanded"
+            elif a.get("mismatch_kind") == "MULTIPART_INCOMPLETE":
+                k = "multipart_partially_answered"
+            else:
+                k = "other"
+            out[k] = out.get(k, 0) + 1
+        return out
+
     items = [json.loads((args.out / f"q{r['question_id']}.json")
                         .read_text()) for r in frozen
              if (args.out / f"q{r['question_id']}.json").exists()]
@@ -551,6 +573,17 @@ def main() -> int:
         "certified_full_contract": sum(
             1 for it in items if it["stage"] == "certified"
             and it.get("full_question_contract_covered", True)),
+        "certified_partial_contract": sum(
+            1 for it in items if it["stage"] == "certified"
+            and not it.get("full_question_contract_covered", True)),
+        "gold_match_any_claim": sum(
+            1 for it in items
+            if it["stage"] == "certified" and it.get("em")),
+        "gold_match_full_contract": sum(
+            1 for it in items if it["stage"] == "certified"
+            and it.get("full_question_contract_covered", True)
+            and it.get("em")),
+        "partial_contract_reasons": _partial_reasons(items, adj, dupfree),
         "claim_kind_census": {
             k: sum(it.get("claim_kinds", []).count(k) for it in items)
             for k in ("scalar", "exact_count", "complete_set")},

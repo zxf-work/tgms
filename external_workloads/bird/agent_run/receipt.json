@@ -12,69 +12,93 @@
   "seed": 0
  },
  "stage_counts": {
-  "certified": 440,
-  "shape_mismatch": 55,
-  "no_executable_sql": 5
+  "certified": 432,
+  "shape_mismatch": 62,
+  "no_executable_sql": 5,
+  "outside_fragment": 1
  },
  "by_form": {
   "SCALAR": {
-   "n": 210,
-   "executable": 208,
-   "claim_constructed": 166,
-   "certified": 166,
-   "certified_and_correct": 100,
-   "em": 104
+   "n": 292,
+   "executable": 289,
+   "claim_constructed": 240,
+   "certified": 240,
+   "certified_and_correct": 139,
+   "em": 144
   },
   "SCALAR_TUPLE": {
-   "n": 55,
-   "executable": 53,
-   "claim_constructed": 42,
-   "certified": 42,
-   "certified_and_correct": 18,
-   "em": 18
+   "n": 54,
+   "executable": 52,
+   "claim_constructed": 41,
+   "certified": 41,
+   "certified_and_correct": 17,
+   "em": 17
   },
   "COMPLETE_SET": {
-   "n": 160,
-   "executable": 160,
-   "claim_constructed": 160,
-   "certified": 160,
+   "n": 150,
+   "executable": 150,
+   "claim_constructed": 150,
+   "certified": 150,
    "certified_and_correct": 67,
    "em": 67
   },
-  "EXACT_COUNT": {
-   "n": 75,
-   "executable": 74,
-   "claim_constructed": 72,
-   "certified": 72,
-   "certified_and_correct": 39,
-   "em": 39
+  "OUTSIDE_FRAGMENT": {
+   "n": 1,
+   "executable": 1,
+   "claim_constructed": 0,
+   "certified": 0,
+   "certified_and_correct": 0,
+   "em": 0
+  },
+  "EXISTS": {
+   "n": 2,
+   "executable": 2,
+   "claim_constructed": 0,
+   "certified": 0,
+   "certified_and_correct": 0,
+   "em": 0
+  },
+  "SET_AND_COUNT": {
+   "n": 1,
+   "executable": 1,
+   "claim_constructed": 1,
+   "certified": 1,
+   "certified_and_correct": 0,
+   "em": 0
   }
  },
  "unsupported_verdict_counts": {},
  "funnel": {
   "universe": 500,
   "executable_sql": 495,
-  "claim_constructed": 440,
-  "certified": 440,
-  "certified_and_correct": 224
+  "claim_constructed": 432,
+  "certified": 432,
+  "certified_and_correct": 223
  },
  "em_overall": 228,
- "certified": 440,
- "certified_and_correct": 224,
- "exact_count_typing": {
-  "certified_exact_count_claims": 72,
-  "over_validated_counted_domain": 72,
-  "fell_back_to_scalar": 0,
-  "rule": "ExactCount(n) asserts |R*(Q)| = n for the descriptor's OWN domain Q, so Q is the counted domain (a projection-only rewrite of the agent's aggregate query), validated by an unlimited count over that domain equalling n; otherwise the claim is a Scalar over the one-row aggregate result"
+ "certified": 432,
+ "certified_and_correct": 223,
+ "outside_fragment": 1,
+ "question_gold_mismatch": 11,
+ "full_contract_not_covered": 31,
+ "duplicate_bearing_reference": 27,
+ "certified_full_contract": 402,
+ "certified_partial_contract": 30,
+ "gold_match_any_claim": 223,
+ "gold_match_full_contract": 210,
+ "partial_contract_reasons": {
+  "duplicate_bearing_reference": 27,
+  "multipart_partially_answered": 2,
+  "ordered_output_demanded": 1
  },
  "claim_kind_census": {
-  "scalar": 269,
-  "exact_count": 72,
-  "complete_set": 160
+  "scalar": 341,
+  "exact_count": 1,
+  "complete_set": 151
  },
  "tokens_in_total": 617487,
  "tokens_out_total": 43399,
- "descriptor_bytes_median": 615,
+ "descriptor_bytes_median": 614,
  "repair_used": 78,
  "sqlite_version": "3.53.1"
 }

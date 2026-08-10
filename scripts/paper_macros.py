@@ -251,7 +251,13 @@ def macros(pn: dict, fm: dict, sc: dict, uc: dict) -> str:
         osm = json.loads(os_p.read_text())
         m += [("pnBirdOracleCert", str(osm["certified"])),
               ("pnBirdOracleFail",
-               str(len(osm.get("gold_contract_failures", []))))]
+               str(len(osm.get("gold_contract_failures", [])))),
+              ("pnBirdMismatchShapeFail",
+               str(len(osm.get("mismatch_fail_gold_shape_gate", [])))),
+              ("pnBirdMismatchCompat",
+               str(len(osm.get("mismatch_shape_compatible", [])))),
+              ("pnBirdOracleOutside",
+               str(len(osm.get("gold_failure_not_a_mismatch", []))))]
     ba_p = RES / "eval-bird-agent.json"
     ex_p = RES / "eval-bird-official-ex.json"
     if ex_p.exists():
@@ -294,6 +300,20 @@ def macros(pn: dict, fm: dict, sc: dict, uc: dict) -> str:
                  - (ba["em_overall"] - fu["certified_and_correct"]))),
             ("pnBirdOutside", str(ba["outside_fragment"])),
             ("pnBirdCertFull", str(ba["certified_full_contract"])),
+            ("pnBirdCertPartial",
+             str(ba["certified_partial_contract"])),
+            ("pnBirdGoldFull", str(ba["gold_match_full_contract"])),
+            ("pnBirdPartialDup",
+             str(ba["partial_contract_reasons"].get(
+                 "duplicate_bearing_reference", 0))),
+            ("pnBirdPartialMulti",
+             str(ba["partial_contract_reasons"].get(
+                 "multipart_partially_answered", 0))),
+            ("pnBirdPartialOrder",
+             str(ba["partial_contract_reasons"].get(
+                 "ordered_output_demanded", 0))),
+            ("pnBirdCertFullPct",
+             pc(ba["certified_full_contract"], fu["universe"])),
             ("pnBirdDupBearing",
              str(ba["duplicate_bearing_reference"])),
             ("pnBirdGoldMismatch", str(ba["question_gold_mismatch"])),

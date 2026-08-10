@@ -30,15 +30,17 @@ def main() -> int:
         ("universe", fu["universe"], None),
         ("executable SQL", fu["executable_sql"],
          f"$-{fu['universe'] - fu['executable_sql']}$ no SQL"),
-        ("typed claim", fu["claim_constructed"],
+        ("any typed claim", fu["claim_constructed"],
          f"$-{r['stage_counts'].get('shape_mismatch', 0)}$ shape, "
          f"$-{r.get('outside_fragment', 0)}$ outside"),
-        ("certified", fu["certified"],
+        ("any claim certified", fu["certified"],
          f"$-{fu['claim_constructed'] - fu['certified']}$ withheld"),
-        ("+ correct", fu["certified_and_correct"],
+        ("+ gold match", fu["certified_and_correct"],
          f"$-{fu['certified'] - fu['certified_and_correct']}$ "
          "gold mismatch"),
     ]
+    stages.insert(4, ("full contract certified", r["certified_full_contract"],
+                      f"$-{r['certified_partial_contract']}$ partial"))
     names = [s[0] for s in stages]
     ycoords = ",".join(reversed(names))
     bars = " ".join(f"({v},{n})" for n, v, _ in stages)
