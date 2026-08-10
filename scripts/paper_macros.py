@@ -243,6 +243,9 @@ def macros(pn: dict, fm: dict, sc: dict, uc: dict) -> str:
              str(cl.get("REQUIRES_PATH_CERTIFICATE", 0))),
             ("pnLdbcFlatProj",
              str(lc["flat_projection_in_fragment"])),
+            ("pnLdbcUncovered",
+             str(lc["n_templates"]
+                 - cl.get("CURRENT_ECQR_FRAGMENT", 0))),
             ("pnLdbcProjExcluded",
              ", ".join(lc["projection_excluded"])),
         ]

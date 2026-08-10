@@ -35,12 +35,9 @@ def main() -> int:
          f"$-{r.get('outside_fragment', 0)}$ outside"),
         ("any claim certified", fu["certified"],
          f"$-{fu['claim_constructed'] - fu['certified']}$ withheld"),
-        ("+ gold match", fu["certified_and_correct"],
-         f"$-{fu['certified'] - fu['certified_and_correct']}$ "
-         "gold mismatch"),
     ]
-    stages.insert(4, ("full contract certified", r["certified_full_contract"],
-                      f"$-{r['certified_partial_contract']}$ partial"))
+    stages.append(("strict full contract", r["certified_full_contract"],
+                   f"$-{r['certified_partial_contract']}$ partial"))
     names = [s[0] for s in stages]
     ycoords = ",".join(reversed(names))
     bars = " ".join(f"({v},{n})" for n, v, _ in stages)
@@ -50,6 +47,10 @@ def main() -> int:
         rf"\node[anchor=west, font=\tiny, text=black!55] at "
         rf"(axis cs:{note_x},{{{name}}}) {{{note}}};"
         for name, _v, note in stages if note is not None]
+    drops.append(
+        rf"\node[anchor=west, font=\tiny, text=black!45] at "
+        rf"(axis cs:{note_x},{{strict full contract}}) "
+        rf"{{({r['gold_match_full_contract']} also gold-match)}};")
     # support x correctness: the paper's central boundary in four cells
     cc = fu["certified_and_correct"]
     cw = fu["certified"] - cc
@@ -100,14 +101,17 @@ def main() -> int:
         r"{none};",
         r"\end{scope}",
         r"\end{tikzpicture}",
-        r"\caption{BIRD Mini-Dev, frozen 500-question universe and a "
-        r"single frozen configuration. \emph{Top}: the certification "
-        r"funnel; each drop is an exit the contract makes explicit. "
-        r"\emph{Bottom}: support against correctness. The right-hand "
-        r"column is not certification failure --- those values are "
-        r"supported by the query that ran, whose result disagrees with "
-        r"benchmark gold --- and the bottom-left cell is the "
-        r"correct-answer cost of the contract.}",
+        r"\caption{BIRD Mini-Dev under the frozen 500-question "
+        r"universe. \emph{Left}: contract coverage, from executable "
+        r"SQL to any supported typed claim and then to the stricter "
+        r"full-contract criterion. \emph{Right}: any-claim "
+        r"certification against agreement with the published gold "
+        r"result. The two panels use different denominators --- of "
+        r"the 432 certified runs 223 match gold, while 210 runs "
+        r"satisfy both the strict criterion and gold agreement --- "
+        r"so the right panel is not a continuation of the left. The "
+        r"lower-left cell holds the five gold-matching runs whose "
+        r"adjudicated shape produced no certifiable claim.}",
         r"\label{fig:birdfunnel}",
         r"\end{figure}",
         ""])

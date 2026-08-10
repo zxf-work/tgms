@@ -50,16 +50,17 @@ def main() -> int:
         r"requests. \emph{Right}: the typed claims those questions",
         r"instantiate. The units differ --- a one-row $k$-column answer",
         r"is one question and $k$ \textsf{Scalar} claims --- so the two",
-        r"blocks are not expected to agree. \emph{any cert.} counts",
-        r"questions with at least one supported typed claim;",
-        r"\emph{full} counts those whose entire adjudicated contract is",
-        r"represented and supported.}",
+        r"blocks are not expected to agree. \emph{any cert.} means at",
+        r"least one typed claim is supported; \emph{strict full} means",
+        r"the complete requested result contract is representable under",
+        r"the conservative multiplicity and ordering policy of",
+        r"\S\ref{sec:eval-blind} and all of its claims are supported.}",
         r"\label{tab:birdcensus}",
         r"\small",
         r"\begin{tabular}{@{}lrrr@{\hspace{1.2em}}lr@{}}",
         r"\toprule",
-        r"Intent contract & Qs & any cert. & full & Claim form"
-        r" & Claims \\",
+        r"Intent contract & Qs & any cert. & strict full"
+        r" & Instantiated claim form & count \\",
         r"\midrule",
     ])
     body = []

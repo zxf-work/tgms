@@ -337,12 +337,13 @@ def fig_efficiency(sc: dict, ov: dict) -> str:
   (descriptors,{plan_ms})}};
 \end{{axis}}
 \end{{tikzpicture}}
-\caption{{Checking is result-local and cheap; strong evidence is
-query-scale. Left: median verification cost against delivered-result
-size; the certificate path stays flat at
-\pnCertVerifyUsFlat\,$\mu$s. Right: the SQL cardinality certificate
-costs about one page query, while whole-plan descriptor production
-costs {plan_ms}\,ms.}}
+\caption{{Cost of checking versus producing evidence.
+\emph{{Left}}: result-local verification scales with delivered
+output size, while certificate-path checks stay flat at
+\pnCertVerifyUsFlat\,$\mu$s after binding. \emph{{Right}}: in the
+measured SQL path, producing an exact-cardinality certificate
+costs approximately one additional query, while whole-plan
+descriptor production costs {plan_ms}\,ms.}}
 \label{{fig:efficiency}}
 \end{{figure}}
 """
