@@ -242,6 +242,12 @@ def macros(pn: dict, fm: dict, sc: dict, uc: dict) -> str:
              str(cl.get("REQUIRES_PATH_CERTIFICATE", 0))),
             ("pnLdbcSetProj", str(lc["set_projection_in_fragment"])),
         ]
+    os_p = RES / "eval-bird-oracle-smoke.json"
+    if os_p.exists():
+        osm = json.loads(os_p.read_text())
+        m += [("pnBirdOracleCert", str(osm["certified"])),
+              ("pnBirdOracleFail",
+               str(len(osm.get("gold_contract_failures", []))))]
     ba_p = RES / "eval-bird-agent.json"
     ex_p = RES / "eval-bird-official-ex.json"
     if ex_p.exists():
@@ -272,7 +278,7 @@ def macros(pn: dict, fm: dict, sc: dict, uc: dict) -> str:
             ("pnBirdNoSql",
              str(fu["universe"] - fu["executable_sql"])),
             ("pnBirdShapeMismatch",
-             str(fu["executable_sql"] - fu["claim_constructed"])),
+             str(ba["stage_counts"].get("shape_mismatch", 0))),
             ("pnBirdWithheld",
              str(fu["claim_constructed"] - fu["certified"])),
             ("pnBirdCertWrong",
@@ -282,8 +288,16 @@ def macros(pn: dict, fm: dict, sc: dict, uc: dict) -> str:
             ("pnBirdNoClaimWrong",
              str(fu["universe"] - fu["certified"]
                  - (ba["em_overall"] - fu["certified_and_correct"]))),
-            ("pnBirdExactCountTyped",
-             str(ba["exact_count_typing"]["over_validated_counted_domain"])),
+            ("pnBirdOutside", str(ba["outside_fragment"])),
+            ("pnBirdGoldMismatch", str(ba["question_gold_mismatch"])),
+            ("pnBirdFullNotCovered",
+             str(ba["full_contract_not_covered"])),
+            ("pnBirdExactCountEarned",
+             str(ba["claim_kind_census"]["exact_count"])),
+            ("pnBirdScalarClaims",
+             str(ba["claim_kind_census"]["scalar"])),
+            ("pnBirdSetClaims",
+             str(ba["claim_kind_census"]["complete_set"])),
             ("pnBirdRepairUsed", str(ba["repair_used"])),
             ("pnBirdDescBytesMed",
              str(ba["descriptor_bytes_median"])),

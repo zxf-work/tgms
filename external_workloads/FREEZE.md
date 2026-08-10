@@ -163,37 +163,84 @@ median descriptor 617 bytes. The funnel therefore has no
 infrastructure floor: every exit the agent run shows is a property
 of the agent's SQL or of the contract, not of the harness.
 
-### ExactCount typing correction (post-run, 2026-08-10)
+### D-132 adjudication protocol (PI, 2026-08-10)
 
-Prompted by review of the formal definition, not by results.
-`ExactCount(n)` asserts |R*(Q)| = n for the descriptor's OWN domain
-Q. The first run recorded the agent's aggregate query as Q while
-setting `exact_cardinality = n` — but that query's result has ONE
-row holding n, so the descriptor misdescribed its own domain's
-cardinality and the certificate was of the wrong type, even though
-the number was right.
+The governing principle, adopted on PI adjudication of the 52-item
+queue: **natural-language intent determines the requested claim
+contract**; gold SQL and result shape disambiguate that intent but
+do not override an unambiguous question where the benchmark is
+internally inconsistent. RQ3 measures coverage of independently
+authored *questions*, not of BIRD's result shapes. Every record
+therefore carries two contracts and their disagreement:
 
-The correction: for an EXACT_COUNT item the domain is the COUNTED
-domain, derived from the agent's query by a projection-only rewrite
-(`COUNT(*)` -> `SELECT *`; `COUNT(x)` / `COUNT(DISTINCT x)` -> the
-x-projection with the NULL and DISTINCT semantics COUNT itself
-applies; `SUM(0/1 expr)` -> the rows where the summand is nonzero),
-and the certificate is an unlimited count over THAT domain. Each
-rewrite is validated against the database — the count over the
-derived domain must equal n, and for the SUM form the summand must
-be 0/1-valued — and an item whose rewrite cannot be validated falls
-back to a `Scalar` over the one-row aggregate result, which is the
-honest claim about a result whose cardinality is 1. Delivered rows
-for these descriptors are zero: the answer is the cardinality, and
-the rows were never delivered, which is exactly the certificate-
-without-delivery case the adapter exists for.
+    intent_contract | gold_result_contract | question_gold_mismatch
 
-Applied by replaying the recorded SQL (`--replay-from`); no model
-inference. Result: all 72 certified EXACT_COUNT items carry a
-validated counted domain, 0 fell back. Every funnel count, every
-by-form count, and every EM value is IDENTICAL to the original run
-(500/495/440/440/224, EM 228) — the repair changes descriptor
-typing, not results.
+The primary external-validity result is defined on
+`intent_contract`; the gold-shape reading is retained as a
+sensitivity view in the artifact. No item is removed from the fixed
+500 denominator.
+
+**Rule 1 (supersedes the D-130 R1a erratum and the counted-domain
+construction).** `ExactCount(n)` asserts |R*(Q,B)| = n for the
+descriptor's own domain. `SELECT COUNT(*) ...` has a logical result
+of ONE row holding n, so its cardinality is 1: a count-VALUED
+aggregate is a **Scalar** claim tagged `CARDINALITY_VALUE`, never an
+ExactCount. The same holds a fortiori for `SUM(CASE ...)`. R1a is
+retired as "single aggregate => ExactCount" and reinterpreted as
+"a single aggregate may denote a count-valued scalar; only an
+explicit counted-domain mapping could produce ExactCount, and that
+machinery is deliberately NOT introduced." The counted-domain
+rewrite built in D-131 is removed. All 76 auto-annotated
+EXACT_COUNT items and 4 queued ones (q92, q260, q479, q977) become
+SCALAR + CARDINALITY_VALUE.
+
+ExactCount survives where it is formally earned: q1187 asks how
+many patients AND to list them, its result IS the 63 patient rows,
+so |R*(Q,B)| = 63 and the record carries a claim bundle
+`CompleteSet(IDs) + ExactCount(63)`. The contrast with q92 --- a
+one-row result holding a count, encoded as Scalar --- is the
+clearest statement of why count-valued data and result cardinality
+are different concepts.
+
+**Rule 2.** `SCALAR_TUPLE` is a workload answer-shape category, not
+a seventh ECQR claim form: it is implemented as a bundle of Scalar
+claims over the same single result row. The formal vocabulary stays
+at six forms.
+
+**Rule 3.** `CompleteSet(S,f)`'s projection f is a deterministic
+map from a row to a canonical value, **possibly tuple-valued**, so
+pi_f(R) may be a set of canonical tuples (q27, q128, q518, q587,
+q978, q1457). This is a clarification of the existing form, not a
+new one, and it is what makes the LDBC unordered-projection result
+well defined too.
+
+**Rule 4.** Where a question demands an ordering the fragment
+cannot certify (q128, "by descending order, from the highest to the
+lowest"), the record certifies the unordered projection and sets
+`full_question_contract_covered = false` with
+`missing_semantics = ORDERED_TOP_K` --- the same distinction the
+LDBC analysis already draws between a certifiable unordered
+projection and the full ordered contract. Where the fragment cannot
+express the answer at all (q1338: per-row booleans with no key in
+the projection, so set semantics collapse {YES, NO}), the encoding
+is `OUTSIDE_CURRENT_FRAGMENT` and no claim is constructed.
+
+**Rule 5 (EXISTS shape).** For existence-intent questions (q469,
+q1399) the claim is about witnesses, so a single boolean-valued
+cell is a shape mismatch: an agent that computes a truth value
+rather than exhibiting evidence has not answered in the requested
+form.
+
+Adjudication of the 52 (annotator-1 proposal, PI as annotator-2) is
+in `bird/adjudication_final.jsonl`: 32 Scalar, 7 Scalar bundles, 7
+CompleteSet, 2 Existence, 1 CompleteSet+ExactCount, 1 outside the
+fragment; 10 items carry `question_gold_mismatch = true` and 3 have
+`full_question_contract_covered = false`.
+
+### ExactCount typing correction (post-run, 2026-08-10) --- SUPERSEDED
+
+Retained for the record; the counted-domain construction described
+here was removed by D-132 rule 1 above.
 
 ### R1a refinement erratum (pre-run, 2026-08-09)
 

@@ -34,17 +34,23 @@ bird:
   gold_validation_result: "500/500 GOLD_VALID at 600 s ceiling, 0 empty results, sqlite 3.53.4"
   claim_annotation: "bird/claim_annotation.jsonl"
   claim_annotation_sha256: "f5925cac7a102e16f0364cfc31dbaebf13bce64b7e1e92f2e97d64f5758d6a2b"
-  claim_annotation_state: "auto stage complete (448 auto, 52 queued); annotator-1 adjudication proposed for all 52; annotator-2 (PI) confirmation pending"
+  claim_annotation_state: "auto stage complete (448 auto, 52 queued); adjudicated by the PI as annotator-2 (D-132)"
   adjudication_proposed: "bird/adjudication_proposed.jsonl"
   adjudication_proposed_sha256: "efc2cd2cdaadb0b64da98364993eb43beb81fddc2adaa00687661dc92fcb3c9e"
+  adjudication_proposed_note: "annotator-1 proposal, retained for the record; superseded by adjudication_final"
+  adjudication_final: "bird/adjudication_final.jsonl"
+  adjudication_final_sha256: "75d180d1883ae1d69031bec6f8a06b7ac2ffbc0b45f1c76039273f1f14f10ea8"
+  adjudication_final_note: "PI adjudication (D-132): intent_contract primary, gold_result_contract recorded beside it, question_gold_mismatch on 10 items"
   annotation_errata: "bird/annotation_errata.jsonl"
-  annotation_errata_sha256: "baccdf0901de51b0157bedcebcc75bddc0bcb08e1ac5ffc137b3bfacbcdb6544"
-  annotation_errata_note: "R1a refinement, 5 relabels EXACT_COUNT->SCALAR from gold AST only, pre-run (FREEZE.md erratum section)"
-  final_claim_form_distribution_pending_confirmation:
-    SCALAR: 210
-    COMPLETE_SET: 160
-    EXACT_COUNT: 75
+  annotation_errata_sha256: "dcfb1ceff65f9675d0202125c35bf67fd43ee7623abcbaf947d671abb53c9c58"
+  annotation_errata_note: "D-132 rule 1: all 76 auto EXACT_COUNT items become SCALAR+CARDINALITY_VALUE; a count-VALUED aggregate has |R*(Q,B)|=1, not n"
+  final_claim_encodings:   # canonical runner forms over all 500
+    SCALAR: 292
+    COMPLETE_SET: 149
     SCALAR_TUPLE: 55
+    EXISTS: 2
+    SET_AND_COUNT: 1
+    OUTSIDE_FRAGMENT: 1
 
 ldbc:
   docs_repo: "https://github.com/ldbc/ldbc_snb_docs"

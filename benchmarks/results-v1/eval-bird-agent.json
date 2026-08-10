@@ -1,28 +1,37 @@
 {
+ "adjudication": "D-132: intent_contract primary, gold_result_contract recorded separately; count-valued aggregates are Scalars, not ExactCounts",
  "by_form": {
   "COMPLETE_SET": {
-   "certified": 160,
-   "certified_and_correct": 67,
-   "claim_constructed": 160,
-   "em": 67,
-   "executable": 160,
-   "n": 160
+   "certified": 149,
+   "certified_and_correct": 66,
+   "claim_constructed": 149,
+   "em": 66,
+   "executable": 149,
+   "n": 149
   },
-  "EXACT_COUNT": {
-   "certified": 72,
-   "certified_and_correct": 39,
-   "claim_constructed": 72,
-   "em": 39,
-   "executable": 74,
-   "n": 75
+  "EXISTS": {
+   "certified": 0,
+   "certified_and_correct": 0,
+   "claim_constructed": 0,
+   "em": 0,
+   "executable": 2,
+   "n": 2
+  },
+  "OUTSIDE_FRAGMENT": {
+   "certified": 0,
+   "certified_and_correct": 0,
+   "claim_constructed": 0,
+   "em": 0,
+   "executable": 1,
+   "n": 1
   },
   "SCALAR": {
-   "certified": 166,
-   "certified_and_correct": 100,
-   "claim_constructed": 166,
-   "em": 104,
-   "executable": 208,
-   "n": 210
+   "certified": 240,
+   "certified_and_correct": 139,
+   "claim_constructed": 240,
+   "em": 144,
+   "executable": 289,
+   "n": 292
   },
   "SCALAR_TUPLE": {
    "certified": 42,
@@ -31,25 +40,27 @@
    "em": 18,
    "executable": 53,
    "n": 55
+  },
+  "SET_AND_COUNT": {
+   "certified": 1,
+   "certified_and_correct": 0,
+   "claim_constructed": 1,
+   "em": 0,
+   "executable": 1,
+   "n": 1
   }
  },
- "certified": 440,
- "certified_and_correct": 224,
+ "certified": 432,
+ "certified_and_correct": 223,
+ "certified_full_contract": 430,
  "claim_kind_census": {
-  "complete_set": 160,
-  "exact_count": 72,
-  "scalar": 269
+  "complete_set": 150,
+  "exact_count": 1,
+  "scalar": 343
  },
- "commit": "a617bd1425432cc960e34060904e92f357372f2d",
- "constructor_correction": "D-131: ExactCount descriptors were rebuilt over the counted domain; agent SQL and model outputs unchanged; every funnel count, EM value and by_form count identical to the original run",
- "descriptor_bytes_median": 615,
+ "commit": "5f07a11231846b0d1877f357a73c148a420e8702",
+ "descriptor_bytes_median": 614,
  "em_overall": 228,
- "exact_count_typing": {
-  "certified_exact_count_claims": 72,
-  "fell_back_to_scalar": 0,
-  "over_validated_counted_domain": 72,
-  "rule": "ExactCount(n) asserts |R*(Q)| = n for the descriptor's OWN domain Q, so Q is the counted domain (a projection-only rewrite of the agent's aggregate query), validated by an unlimited count over that domain equalling n; otherwise the claim is a Scalar over the one-row aggregate result"
- },
  "freeze": {
   "ceiling_s": 600,
   "max_new_tokens": 1024,
@@ -60,23 +71,26 @@
   "seed": 0,
   "temperature": 0.0
  },
+ "full_contract_not_covered": 3,
  "funnel": {
-  "certified": 440,
-  "certified_and_correct": 224,
-  "claim_constructed": 440,
+  "certified": 432,
+  "certified_and_correct": 223,
+  "claim_constructed": 432,
   "executable_sql": 495,
   "universe": 500
  },
- "gpu": "itiger01 (bigTiger partition)",
  "host": "itiger01 (model inference); Xiaofeis-Mac-mini.local (post-run constructor replay)",
  "n": 500,
+ "outside_fragment": 1,
+ "question_gold_mismatch": 10,
  "repair_used": 78,
  "slurm_job": 185542,
  "sqlite_version": "3.53.1",
  "stage_counts": {
-  "certified": 440,
+  "certified": 432,
   "no_executable_sql": 5,
-  "shape_mismatch": 55
+  "outside_fragment": 1,
+  "shape_mismatch": 62
  },
  "tokens_in_total": 617487,
  "tokens_out_total": 43399,

@@ -1,28 +1,36 @@
 {
  "by_form": {
   "COMPLETE_SET": {
-   "certified": 160,
-   "certified_and_correct": 160,
-   "claim_constructed": 160,
-   "em": 160,
-   "executable": 160,
-   "n": 160
+   "certified": 149,
+   "certified_and_correct": 149,
+   "claim_constructed": 149,
+   "em": 149,
+   "executable": 149,
+   "n": 149
   },
-  "EXACT_COUNT": {
-   "certified": 75,
-   "certified_and_correct": 75,
-   "claim_constructed": 75,
-   "em": 75,
-   "executable": 75,
-   "n": 75
+  "EXISTS": {
+   "certified": 2,
+   "certified_and_correct": 2,
+   "claim_constructed": 2,
+   "em": 2,
+   "executable": 2,
+   "n": 2
+  },
+  "OUTSIDE_FRAGMENT": {
+   "certified": 0,
+   "certified_and_correct": 0,
+   "claim_constructed": 0,
+   "em": 1,
+   "executable": 1,
+   "n": 1
   },
   "SCALAR": {
-   "certified": 210,
-   "certified_and_correct": 210,
-   "claim_constructed": 210,
-   "em": 210,
-   "executable": 210,
-   "n": 210
+   "certified": 285,
+   "certified_and_correct": 285,
+   "claim_constructed": 285,
+   "em": 292,
+   "executable": 292,
+   "n": 292
   },
   "SCALAR_TUPLE": {
    "certified": 55,
@@ -31,12 +39,26 @@
    "em": 55,
    "executable": 55,
    "n": 55
+  },
+  "SET_AND_COUNT": {
+   "certified": 1,
+   "certified_and_correct": 1,
+   "claim_constructed": 1,
+   "em": 1,
+   "executable": 1,
+   "n": 1
   }
  },
- "certified": 500,
- "certified_and_correct": 500,
- "commit": "89ae5c4cdf94cc5b2811cbf6335b4735268a3eea",
- "descriptor_bytes_median": 617,
+ "certified": 492,
+ "certified_and_correct": 492,
+ "certified_full_contract": 490,
+ "claim_kind_census": {
+  "complete_set": 150,
+  "exact_count": 1,
+  "scalar": 422
+ },
+ "commit": "5f07a11231846b0d1877f357a73c148a420e8702",
+ "descriptor_bytes_median": 621,
  "em_overall": 500,
  "freeze": {
   "ceiling_s": 600,
@@ -48,20 +70,35 @@
   "seed": 0,
   "temperature": 0.0
  },
+ "full_contract_not_covered": 3,
  "funnel": {
-  "certified": 500,
-  "certified_and_correct": 500,
-  "claim_constructed": 500,
+  "certified": 492,
+  "certified_and_correct": 492,
+  "claim_constructed": 492,
   "executable_sql": 500,
   "universe": 500
  },
+ "gold_contract_failures": [
+  72,
+  473,
+  861,
+  959,
+  1141,
+  1205,
+  1322,
+  1338
+ ],
  "host": "Xiaofeis-Mac-mini.local",
  "n": 500,
+ "outside_fragment": 1,
+ "question_gold_mismatch": 10,
  "repair_used": 0,
- "role": "pipeline validation only (FREEZE.md): gold SQL substituted for the agent; conditions nothing on model results",
+ "role": "pipeline validation (FREEZE.md): gold SQL substituted for the agent. Under the D-132 intent-primary adjudication this is NOT 500/500: the gold result contract is inconsistent with the adjudicated question contract on 8 items, which is a property of the benchmark, not of the harness.",
  "sqlite_version": "3.53.1",
  "stage_counts": {
-  "certified": 500
+  "certified": 492,
+  "outside_fragment": 1,
+  "shape_mismatch": 7
  },
  "tokens_in_total": 0,
  "tokens_out_total": 0,

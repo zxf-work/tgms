@@ -27,15 +27,15 @@ def main() -> int:
     r = json.loads(REC.read_text())
     fu = r["funnel"]
     stages = [
-        ("Frozen universe", fu["universe"], None),
-        ("Executable SQL", fu["executable_sql"],
+        ("universe", fu["universe"], None),
+        ("executable SQL", fu["executable_sql"],
          f"$-{fu['universe'] - fu['executable_sql']}$ no SQL"),
-        ("Typed claim constructed", fu["claim_constructed"],
-         f"$-{fu['executable_sql'] - fu['claim_constructed']}$ "
-         "shape mismatch"),
-        ("Certified", fu["certified"],
+        ("typed claim", fu["claim_constructed"],
+         f"$-{r['stage_counts'].get('shape_mismatch', 0)}$ shape, "
+         f"$-{r.get('outside_fragment', 0)}$ outside"),
+        ("certified", fu["certified"],
          f"$-{fu['claim_constructed'] - fu['certified']}$ withheld"),
-        ("Certified and correct", fu["certified_and_correct"],
+        ("+ correct", fu["certified_and_correct"],
          f"$-{fu['certified'] - fu['certified_and_correct']}$ "
          "wrong query"),
     ]
@@ -43,7 +43,7 @@ def main() -> int:
     ycoords = ",".join(reversed(names))
     bars = " ".join(f"({v},{n})" for n, v, _ in stages)
     # annotations are column-aligned to the right of the longest bar
-    note_x = int(fu["universe"] * 1.12)
+    note_x = int(fu["universe"] * 1.06)
     drops = [
         rf"\node[anchor=west, font=\tiny, text=black!55] at "
         rf"(axis cs:{note_x},{{{name}}}) {{{note}}};"
@@ -60,10 +60,10 @@ def main() -> int:
     matrix = []
     for x, y, v, fill in cells:
         matrix.append(
-            rf"\draw[fill={fill}, draw=black!45] ({x*1.5},{y*0.85}) "
-            rf"rectangle ({x*1.5+1.5},{y*0.85+0.85});")
+            rf"\draw[fill={fill}, draw=black!45] ({x*1.15},{y*0.72}) "
+            rf"rectangle ({x*1.15+1.15},{y*0.72+0.72});")
         matrix.append(
-            rf"\node[font=\small] at ({x*1.5+0.75},{y*0.85+0.42}) "
+            rf"\node[font=\scriptsize] at ({x*1.15+0.58},{y*0.72+0.36}) "
             rf"{{{v}}};")
 
     tex = "\n".join([
@@ -72,10 +72,10 @@ def main() -> int:
         r"\begin{figure}[t]",
         r"\centering",
         r"\begin{tikzpicture}",
-        r"\begin{axis}[xbar, width=0.94\linewidth, height=3.9cm,",
+        r"\begin{axis}[xbar, width=0.60\linewidth, height=3.4cm,",
         rf"  symbolic y coords={{{ycoords}}}, ytick=data,",
-        r"  xmin=0, xmax=" + str(int(fu["universe"] * 1.62)) + ",",
-        r"  xtick={0,250,500},",
+        r"  xmin=0, xmax=" + str(int(fu["universe"] * 2.35)) + ",",
+        r"  xtick={0,500},",
         r"  y tick label style={font=\scriptsize},",
         r"  x tick label style={font=\tiny},",
         r"  bar width=7pt, nodes near coords,",
@@ -86,16 +86,16 @@ def main() -> int:
         *drops,
         r"\end{axis}",
         # lower panel: support x correctness
-        r"\begin{scope}[yshift=-2.55cm, xshift=1.75cm]",
+        r"\begin{scope}[shift={($(current axis.south east)+(0.35cm,0.25cm)$)}]",
         *matrix,
-        r"\node[font=\scriptsize, anchor=south] at (0.75,1.74) "
-        r"{gold-correct};",
-        r"\node[font=\scriptsize, anchor=south] at (2.25,1.74) "
-        r"{gold-mismatch};",
-        r"\node[font=\scriptsize, anchor=east] at (-0.10,1.27) "
-        r"{certified};",
-        r"\node[font=\scriptsize, anchor=east] at (-0.10,0.42) "
-        r"{no claim};",
+        r"\node[font=\tiny, anchor=south] at (0.58,1.47) "
+        r"{correct};",
+        r"\node[font=\tiny, anchor=south] at (1.73,1.47) "
+        r"{mismatch};",
+        r"\node[font=\tiny, anchor=east] at (-0.06,1.08) "
+        r"{cert.};",
+        r"\node[font=\tiny, anchor=east] at (-0.06,0.36) "
+        r"{none};",
         r"\end{scope}",
         r"\end{tikzpicture}",
         r"\caption{BIRD Mini-Dev, frozen 500-question universe and a "

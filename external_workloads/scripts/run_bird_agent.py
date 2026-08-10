@@ -69,7 +69,8 @@ from sqlglot import expressions as exp
 
 from tgms.core.model import canonical_json
 from tgms.evidence.adapter_sql import build_sql_ecqr
-from tgms.evidence.claims import CompleteSet, ExactCount, Scalar
+from tgms.evidence.claims import (CompleteSet, ExactCount,
+                                  Existence, Scalar)
 from tgms.evidence.verify import Verdict, verify
 
 CEILING_S = 600            # non-tunable; FREEZE.md gold-validation ceiling
@@ -228,114 +229,52 @@ def integral(v):
     return None
 
 
-def _is_sum_shaped(sql: str) -> bool:
-    """Outer projection is SUM(...) — a count in disguise only if the
-    summand is 0/1-valued, which the caller checks against the data."""
-    try:
-        tree = sqlglot.parse_one(sql, read="sqlite")
-    except Exception:
+def boolean_cell(rows) -> bool:
+    if len(rows) != 1 or len(rows[0]) != 1:
         return False
-    outer = tree
-    while isinstance(outer, exp.Subquery):
-        outer = outer.this
-    if not isinstance(outer, exp.Select) or len(outer.expressions) != 1:
-        return False
-    node = outer.expressions[0]
-    while isinstance(node, exp.Alias):
-        node = node.this
-    return isinstance(node, exp.Sum)
-
-
-def counted_domain_sql(sql: str) -> str | None:
-    """The query whose result set is exactly what `sql`'s aggregate
-    counts, derived by replacing ONLY the projection.
-
-    `ExactCount(n)` means |R*(Q)| = n for the descriptor's own domain
-    Q. A count query's result has one row holding n, so a descriptor
-    whose domain is `SELECT COUNT(*) FROM t WHERE p` must NOT carry
-    exact_cardinality = n: its cardinality is 1. The cardinality
-    claim belongs to the counted domain `SELECT * FROM t WHERE p`,
-    which is what this derives and what the adapter's A2 obligation
-    ("an unlimited count over the *same* predicate") already
-    requires. Returns None when the shape is not derivable; the
-    caller then falls back to a Scalar claim.
-    """
-    try:
-        tree = sqlglot.parse_one(sql, read="sqlite")
-    except Exception:
-        return None
-    outer = tree
-    while isinstance(outer, exp.Subquery):
-        outer = outer.this
-    if not isinstance(outer, exp.Select) or len(outer.expressions) != 1:
-        return None
-    node = outer.expressions[0]
-    while isinstance(node, exp.Alias):
-        node = node.this
-
-    inner = outer.copy()
-    # a SELECT-level DISTINCT over a single ungrouped aggregate is a
-    # no-op on the count but would wrongly dedupe the counted rows
-    inner.set("distinct", None)
-
-    if isinstance(node, exp.Count):
-        arg = node.this
-        distinct = False
-        if isinstance(arg, exp.Distinct):
-            distinct = True
-            if len(arg.expressions) != 1:
-                return None
-            arg = arg.expressions[0]
-        if isinstance(arg, exp.Star) or arg is None:
-            if distinct:
-                return None
-            inner.set("expressions", [exp.Star()])
-            return inner.sql(dialect="sqlite")
-        inner.set("expressions", [exp.alias_(arg.copy(), "c")])
-        kw = "DISTINCT " if distinct else ""
-        # COUNT(x) ignores NULLs; the counted domain must too
-        return (f"SELECT {kw}c FROM ({inner.sql(dialect='sqlite')}) _d "
-                f"WHERE c IS NOT NULL")
-
-    if isinstance(node, exp.Sum):
-        # SUM(CASE WHEN p THEN 1 ELSE 0 END) and SUM(IIF(p,1,0)) are
-        # counts in disguise; the caller validates that the summand is
-        # 0/1-valued and that the domain size equals the sum.
-        inner.set("expressions", [exp.alias_(node.this.copy(), "c")])
-        return (f"SELECT c FROM ({inner.sql(dialect='sqlite')}) _d "
-                f"WHERE c <> 0")
-
-    return None
+    v = rows[0][0]
+    if isinstance(v, bool):
+        return True
+    if isinstance(v, (int, float)) and v in (0, 1):
+        return True
+    return isinstance(v, str) and v.strip().upper() in (
+        "YES", "NO", "TRUE", "FALSE", "Y", "N")
 
 
 def construct(form: str, rows: list, sql: str):
-    """(claims, exit_reason, count_value). Predeclared form applied to
-    the agent's own executed result."""
+    """(claims, exit_reason). The predeclared per-question encoding is
+    applied to the agent's own executed result; a shape divergence
+    exits the funnel rather than re-fitting the form.
+
+    ExactCount(n) is emitted ONLY where the descriptor's own result
+    has cardinality n (D-132 rule 1). A count-VALUED aggregate is a
+    Scalar: `SELECT COUNT(*) ...` has |R*(Q,B)| = 1 whatever number
+    that single row holds.
+    """
+    if form == "OUTSIDE_FRAGMENT":
+        return None, "outside_fragment"
     if form == "SCALAR":
         if len(rows) != 1 or len(rows[0]) != 1:
-            return None, "shape_mismatch", None
-        return [Scalar(path="rows[0][0]", value=rows[0][0])], None, None
+            return None, "shape_mismatch"
+        return [Scalar(path="rows[0][0]", value=rows[0][0])], None
     if form == "SCALAR_TUPLE":
         if len(rows) != 1 or not rows[0]:
-            return None, "shape_mismatch", None
-        return [Scalar(path=f"rows[0][{j}]", value=v)
-                for j, v in enumerate(rows[0])], None, None
-    if form == "EXACT_COUNT":
-        if len(rows) != 1 or len(rows[0]) != 1:
-            return None, "shape_mismatch", None
-        n = integral(rows[0][0])
-        if n is None or n < 0:
-            return None, "shape_mismatch", None
-        if not count_shaped(sql):
-            return None, "shape_mismatch", None
-        # the claim is decided here; whether it can be an ExactCount
-        # over a properly typed domain is decided by the caller, which
-        # must validate the derived domain against the database
-        return [ExactCount(n=n)], None, n
+            return None, "shape_mismatch"
+        return [Scalar(path=f"rows[0][{k}]", value=v)
+                for k, v in enumerate(rows[0])], None
     if form == "COMPLETE_SET":
         return [CompleteSet(
-            members=[canonical_json(r) for r in rows])], None, None
-    return None, "unknown_form", None
+            members=[canonical_json(r) for r in rows])], None
+    if form == "EXISTS":
+        # the claim is about witnesses, so a computed truth value is
+        # not the requested answer shape
+        if boolean_cell(rows):
+            return None, "shape_mismatch"
+        return [Existence()], None
+    if form == "SET_AND_COUNT":
+        return [CompleteSet(members=[canonical_json(r) for r in rows]),
+                ExactCount(n=len(rows))], None
+    return None, "unknown_form"
 
 
 def has_outer_limit(sql: str) -> bool:
@@ -374,15 +313,28 @@ def main() -> int:
              for l in open(args.annotation)}
     sem = {json.loads(l)["question_id"]: json.loads(l)["semantic_property"]
            for l in open(args.annotation)}
-    for l in open(args.adjudication):
-        r = json.loads(l)
-        forms[r["question_id"]] = r["adjudicated_claim"]
+    # rule-1 errata first (count-VALUED aggregates are Scalars), then
+    # the PI-adjudicated encodings for the queue
     for l in open(args.errata):
         r = json.loads(l)
         assert forms[r["question_id"]] == r["from"]
         forms[r["question_id"]] = r["to"]
-    assert all(f in {"SCALAR", "SCALAR_TUPLE", "EXACT_COUNT",
-                     "COMPLETE_SET"} for f in forms.values())
+    ENC = {"Scalar": "SCALAR", "Scalar (Boolean)": "SCALAR",
+           "Scalar bundle over one row": "SCALAR_TUPLE",
+           "CompleteSet": "COMPLETE_SET",
+           "CompleteSet (tuple projection)": "COMPLETE_SET",
+           "CompleteSet (unordered projection)": "COMPLETE_SET",
+           "Existence": "EXISTS",
+           "CompleteSet + ExactCount": "SET_AND_COUNT",
+           "OUTSIDE_CURRENT_FRAGMENT": "OUTSIDE_FRAGMENT"}
+    adj = {}
+    for l in open(args.adjudication):
+        r = json.loads(l)
+        forms[r["question_id"]] = ENC[r["ecqr_encoding"]]
+        adj[r["question_id"]] = r
+    assert all(f in {"SCALAR", "SCALAR_TUPLE", "COMPLETE_SET", "EXISTS",
+                     "SET_AND_COUNT", "OUTSIDE_FRAGMENT"}
+               for f in forms.values()), set(forms.values())
 
     args.out.mkdir(parents=True, exist_ok=True)
     schemas: dict[str, str] = {}
@@ -399,10 +351,15 @@ def main() -> int:
         db = args.db_root / db_id / f"{db_id}.sqlite"
         if db_id not in schemas:
             schemas[db_id] = schema_dump(db)
+        a = adj.get(qid, {})
         item = {"question_id": qid, "db_id": db_id,
                 "difficulty": rec.get("difficulty"),
                 "claim_form": forms[qid],
                 "semantic_property": sem.get(qid),
+                "question_gold_mismatch": a.get(
+                    "question_gold_mismatch", False),
+                "full_question_contract_covered": a.get(
+                    "full_question_contract_covered", True),
                 "tokens_in": 0, "tokens_out": 0, "attempts": []}
         t_start = time.monotonic()
 
@@ -457,70 +414,33 @@ def main() -> int:
         else:
             item.update({"sql": sql, "n_rows": len(rows),
                          "n_cols": len(cols)})
-            claims, exit_reason, count_val = construct(
-                forms[qid], rows, sql)
+            claims, exit_reason = construct(forms[qid], rows, sql)
             if claims is None:
                 item["stage"] = exit_reason
             else:
                 # evidence descriptor over the completed execution
-                domain_sql, ser_rows = sql, rows
-                if forms[qid] == "EXACT_COUNT":
-                    # An ExactCount is about the CARDINALITY of the
-                    # descriptor's own domain, so the domain must be
-                    # the counted rows, not the one-row aggregate.
-                    # Derive it, then certify it with an unlimited
-                    # count over that very domain; if the derivation
-                    # cannot be validated, the honest claim about a
-                    # one-row aggregate result is a Scalar.
-                    total, limited = None, True
-                    cand = counted_domain_sql(sql)
-                    ok = False
-                    if cand is not None:
-                        try:
-                            (vr, _v) = execute_sql(
-                                db, f"SELECT COUNT(*) FROM ({cand}) _v")
-                            ok = integral(vr[0][0]) == count_val
-                            if ok and _is_sum_shaped(sql):
-                                (br, _b) = execute_sql(
-                                    db, "SELECT COUNT(*) FROM "
-                                        f"({cand}) _v WHERE c <> 1")
-                                ok = integral(br[0][0]) == 0
-                        except Exception as e:
-                            item["domain_error"] = \
-                                f"{type(e).__name__}: {e}"[:200]
-                    if ok:
-                        domain_sql, ser_rows = cand, []
-                        total = count_val
-                        item["count_domain_sql"] = cand
-                    else:
-                        # fall back: Scalar over the aggregate result
-                        claims = [Scalar(path="rows[0][0]",
-                                         value=rows[0][0])]
-                        item["exact_count_fallback"] = "scalar"
-                        limited = False
-                else:
-                    limited = has_outer_limit(sql)
-                    total = None
-                    if limited:
-                        # the delivered page equals the semantic
-                        # result only if certified: count the FULL
-                        # semantic query (the LIMIT is semantic under
-                        # Interpretation 1)
-                        try:
-                            (crows, _c) = execute_sql(
-                                db, f"SELECT COUNT(*) FROM ({sql}) t")
-                            total = integral(crows[0][0])
-                        except Exception as e:
-                            item["certificate_error"] = \
-                                f"{type(e).__name__}: {e}"[:200]
-                    # unlimited completed statements are
-                    # delivery-complete by construction; no
-                    # certificate execution is needed
-                    ser_rows = ([canonical_json(r) for r in rows]
-                                if forms[qid] == "COMPLETE_SET" else rows)
+                limited = has_outer_limit(sql)
+                total = None
+                if limited:
+                    # a completed unlimited statement delivers its
+                    # whole result; when the semantic query carries an
+                    # outer LIMIT (semantic under Interpretation 1) the
+                    # delivered page is complete only if it equals the
+                    # count of the FULL semantic query
+                    try:
+                        (crows, _c) = execute_sql(
+                            db, f"SELECT COUNT(*) FROM ({sql}) t")
+                        total = integral(crows[0][0])
+                    except Exception as e:
+                        item["certificate_error"] = \
+                            f"{type(e).__name__}: {e}"[:200]
+                ser_rows = ([canonical_json(r) for r in rows]
+                            if forms[qid] in ("COMPLETE_SET",
+                                              "SET_AND_COUNT")
+                            else rows)
                 item["claim_kinds"] = [c.kind for c in claims]
                 evidence = build_sql_ecqr(
-                    rows=ser_rows, sql=domain_sql,
+                    rows=ser_rows, sql=sql,
                     store_id=f"bird:{db_id}",
                     engine="sqlite",
                     engine_version=sqlite3.sqlite_version,
@@ -608,21 +528,16 @@ def main() -> int:
         "certified": sum(it["stage"] == "certified" for it in items),
         "certified_and_correct": sum(
             it["stage"] == "certified" and it.get("em") for it in items),
-        "exact_count_typing": {
-            "certified_exact_count_claims": sum(
-                1 for it in items
-                if "exact_count" in it.get("claim_kinds", [])),
-            "over_validated_counted_domain": sum(
-                1 for it in items if it.get("count_domain_sql")),
-            "fell_back_to_scalar": sum(
-                1 for it in items if it.get("exact_count_fallback")),
-            "rule": "ExactCount(n) asserts |R*(Q)| = n for the "
-                    "descriptor's OWN domain Q, so Q is the counted "
-                    "domain (a projection-only rewrite of the agent's "
-                    "aggregate query), validated by an unlimited count "
-                    "over that domain equalling n; otherwise the claim "
-                    "is a Scalar over the one-row aggregate result",
-        },
+        "outside_fragment": sum(
+            it["stage"] == "outside_fragment" for it in items),
+        "question_gold_mismatch": sum(
+            1 for it in items if it.get("question_gold_mismatch")),
+        "full_contract_not_covered": sum(
+            1 for it in items
+            if not it.get("full_question_contract_covered", True)),
+        "certified_full_contract": sum(
+            1 for it in items if it["stage"] == "certified"
+            and it.get("full_question_contract_covered", True)),
         "claim_kind_census": {
             k: sum(it.get("claim_kinds", []).count(k) for it in items)
             for k in ("scalar", "exact_count", "complete_set")},
