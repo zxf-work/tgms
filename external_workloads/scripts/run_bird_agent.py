@@ -293,6 +293,9 @@ def main() -> int:
     ap.add_argument("--annotation", type=Path, required=True)
     ap.add_argument("--adjudication", type=Path, required=True)
     ap.add_argument("--errata", type=Path, required=True)
+    ap.add_argument("--multiplicity", type=Path, default=None,
+                    help="bag-vs-set audit; duplicate-bearing reference "
+                         "results mark the full contract uncovered")
     ap.add_argument("--db-root", type=Path, required=True)
     ap.add_argument("--api", default="http://127.0.0.1:8000/v1")
     ap.add_argument("--out", type=Path, required=True)
@@ -336,6 +339,12 @@ def main() -> int:
                      "SET_AND_COUNT", "OUTSIDE_FRAGMENT"}
                for f in forms.values()), set(forms.values())
 
+    dupfree = {}
+    if args.multiplicity is not None and args.multiplicity.exists():
+        for l in open(args.multiplicity):
+            r = json.loads(l)
+            dupfree[r["question_id"]] = r["duplicate_free_reference"]
+
     args.out.mkdir(parents=True, exist_ok=True)
     schemas: dict[str, str] = {}
     n_done = 0
@@ -358,8 +367,10 @@ def main() -> int:
                 "semantic_property": sem.get(qid),
                 "question_gold_mismatch": a.get(
                     "question_gold_mismatch", False),
-                "full_question_contract_covered": a.get(
-                    "full_question_contract_covered", True),
+                "full_question_contract_covered": (
+                    a.get("full_question_contract_covered", True)
+                    and dupfree.get(qid, True)),
+                "duplicate_free_reference": dupfree.get(qid),
                 "tokens_in": 0, "tokens_out": 0, "attempts": []}
         t_start = time.monotonic()
 
@@ -535,6 +546,8 @@ def main() -> int:
         "full_contract_not_covered": sum(
             1 for it in items
             if not it.get("full_question_contract_covered", True)),
+        "duplicate_bearing_reference": sum(
+            1 for it in items if it.get("duplicate_free_reference") is False),
         "certified_full_contract": sum(
             1 for it in items if it["stage"] == "certified"
             and it.get("full_question_contract_covered", True)),

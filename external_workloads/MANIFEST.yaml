@@ -39,15 +39,19 @@ bird:
   adjudication_proposed_sha256: "efc2cd2cdaadb0b64da98364993eb43beb81fddc2adaa00687661dc92fcb3c9e"
   adjudication_proposed_note: "annotator-1 proposal, retained for the record; superseded by adjudication_final"
   adjudication_final: "bird/adjudication_final.jsonl"
-  adjudication_final_sha256: "75d180d1883ae1d69031bec6f8a06b7ac2ffbc0b45f1c76039273f1f14f10ea8"
-  adjudication_final_note: "PI adjudication (D-132): intent_contract primary, gold_result_contract recorded beside it, question_gold_mismatch on 10 items"
+  adjudication_final_sha256: "a7ff3735ba52f47f2f5f2e68805f23769e0d64ecf15aa9ba7bf35248a17a71bf"
+  adjudication_final_note: "PI adjudication (D-132) + review repairs (D-133): intent_contract primary, gold_result_contract beside it, question_gold_mismatch on 11 items each carrying a mismatch_kind"
+  multiplicity_audit: "bird/multiplicity_audit.jsonl"
+  multiplicity_audit_sha256: "1eca79eac4ce25976b1ca1e08ccfde48d95ad6676285c0471cd72b836f00773f"
+  multiplicity_audit_note: "bag-vs-set audit of all 151 set-encoded items: 124 duplicate-free, 27 duplicate-bearing (max 10898 rows lost to set semantics), which mark the full contract uncovered"
+  adjudication_chronology: "universes, vocabulary, mapping rules, system boundary and prompt hashes fixed pre-inference; FINAL labels adjudicated post-run from benchmark source fields only, replayed without further inference; both result sets retained"
   annotation_errata: "bird/annotation_errata.jsonl"
   annotation_errata_sha256: "dcfb1ceff65f9675d0202125c35bf67fd43ee7623abcbaf947d671abb53c9c58"
   annotation_errata_note: "D-132 rule 1: all 76 auto EXACT_COUNT items become SCALAR+CARDINALITY_VALUE; a count-VALUED aggregate has |R*(Q,B)|=1, not n"
   final_claim_encodings:   # canonical runner forms over all 500
     SCALAR: 292
-    COMPLETE_SET: 149
-    SCALAR_TUPLE: 55
+    COMPLETE_SET: 150
+    SCALAR_TUPLE: 54
     EXISTS: 2
     SET_AND_COUNT: 1
     OUTSIDE_FRAGMENT: 1

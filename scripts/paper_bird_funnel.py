@@ -37,7 +37,7 @@ def main() -> int:
          f"$-{fu['claim_constructed'] - fu['certified']}$ withheld"),
         ("+ correct", fu["certified_and_correct"],
          f"$-{fu['certified'] - fu['certified_and_correct']}$ "
-         "wrong query"),
+         "gold mismatch"),
     ]
     names = [s[0] for s in stages]
     ycoords = ",".join(reversed(names))
@@ -88,10 +88,10 @@ def main() -> int:
         # lower panel: support x correctness
         r"\begin{scope}[shift={($(current axis.south east)+(0.35cm,0.25cm)$)}]",
         *matrix,
-        r"\node[font=\tiny, anchor=south] at (0.58,1.47) "
-        r"{correct};",
-        r"\node[font=\tiny, anchor=south] at (1.73,1.47) "
-        r"{mismatch};",
+        r"\node[font=\tiny, anchor=south] at (0.58,1.50) "
+        r"{gold match};",
+        r"\node[font=\tiny, anchor=south] at (1.73,1.50) "
+        r"{gold mismatch};",
         r"\node[font=\tiny, anchor=east] at (-0.06,1.08) "
         r"{cert.};",
         r"\node[font=\tiny, anchor=east] at (-0.06,0.36) "

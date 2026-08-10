@@ -1,13 +1,13 @@
 {
- "adjudication": "D-132: intent_contract primary, gold_result_contract recorded separately; count-valued aggregates are Scalars, not ExactCounts",
+ "adjudication": "D-132 intent-primary + D-133 multiplicity audit",
  "by_form": {
   "COMPLETE_SET": {
-   "certified": 149,
-   "certified_and_correct": 66,
-   "claim_constructed": 149,
-   "em": 66,
-   "executable": 149,
-   "n": 149
+   "certified": 150,
+   "certified_and_correct": 67,
+   "claim_constructed": 150,
+   "em": 67,
+   "executable": 150,
+   "n": 150
   },
   "EXISTS": {
    "certified": 0,
@@ -34,12 +34,12 @@
    "n": 292
   },
   "SCALAR_TUPLE": {
-   "certified": 42,
-   "certified_and_correct": 18,
-   "claim_constructed": 42,
-   "em": 18,
-   "executable": 53,
-   "n": 55
+   "certified": 41,
+   "certified_and_correct": 17,
+   "claim_constructed": 41,
+   "em": 17,
+   "executable": 52,
+   "n": 54
   },
   "SET_AND_COUNT": {
    "certified": 1,
@@ -52,14 +52,15 @@
  },
  "certified": 432,
  "certified_and_correct": 223,
- "certified_full_contract": 430,
+ "certified_full_contract": 402,
  "claim_kind_census": {
-  "complete_set": 150,
+  "complete_set": 151,
   "exact_count": 1,
-  "scalar": 343
+  "scalar": 341
  },
- "commit": "5f07a11231846b0d1877f357a73c148a420e8702",
+ "commit": "ac210d1861f721730eb38f8ce39e89b468e32788",
  "descriptor_bytes_median": 614,
+ "duplicate_bearing_reference": 27,
  "em_overall": 228,
  "freeze": {
   "ceiling_s": 600,
@@ -71,7 +72,7 @@
   "seed": 0,
   "temperature": 0.0
  },
- "full_contract_not_covered": 3,
+ "full_contract_not_covered": 31,
  "funnel": {
   "certified": 432,
   "certified_and_correct": 223,
@@ -79,10 +80,10 @@
   "executable_sql": 495,
   "universe": 500
  },
- "host": "itiger01 (model inference); Xiaofeis-Mac-mini.local (post-run constructor replay)",
+ "host": "itiger01 (model inference); Xiaofeis-Mac-mini.local (post-run replay)",
  "n": 500,
  "outside_fragment": 1,
- "question_gold_mismatch": 10,
+ "question_gold_mismatch": 11,
  "repair_used": 78,
  "slurm_job": 185542,
  "sqlite_version": "3.53.1",

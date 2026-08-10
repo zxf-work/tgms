@@ -1,0 +1,8 @@
+{
+ "n_set_encoded": 151,
+ "duplicate_free": 124,
+ "duplicate_bearing": 27,
+ "max_rows_lost": 10898,
+ "rule": "CompleteSet certifies an unordered duplicate-insensitive projection; a duplicate-bearing reference result means the full result contract is not covered, and the item is recorded with full_question_contract_covered = false",
+ "commit": "ac210d1861f721730eb38f8ce39e89b468e32788"
+}

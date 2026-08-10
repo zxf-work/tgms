@@ -163,6 +163,72 @@ median descriptor 617 bytes. The funnel therefore has no
 infrastructure floor: every exit the agent run shows is a property
 of the agent's SQL or of the contract, not of the harness.
 
+### D-133 review repairs (2026-08-10)
+
+**Projection generality.** `CompleteSet(S,f)` and `Membership(v,f)`
+take f to be a deterministic projection from a canonical row to a
+canonical value that may be scalar OR TUPLE-valued, so
+pi_f(R) = {f(r) : r in R} may be a set of tuples. This legitimizes
+the multi-column complete sets the adjudication already uses
+without adding a claim form; the paper's formal text is corrected
+to match.
+
+**Bag versus set (multiplicity audit).** pi_f(R) is compared as a
+SET, so a complete-set claim certifies an unordered,
+DUPLICATE-INSENSITIVE projection. `bird/multiplicity_audit.jsonl`
+records, for all 151 set-encoded items, whether the reference
+result is duplicate-free: 124 are, 27 are not, and in the worst
+case a set projection would drop 11,446 rows to 548 distinct ones.
+Those claims stay true of the result but do not carry multiplicity
+the contract may need, so the items keep
+`full_question_contract_covered = false` --- the same treatment
+q128 already gets for demanding an order the fragment cannot
+certify. Duplicate-sensitive bags remain outside the fragment; no
+`CompleteBag` form is added.
+
+**q83 relabelled.** "how many schools ... for each city" is
+collection-valued by intent. Actual result cardinality must not
+turn a set-valued question into a scalar one, so the encoding is
+`CompleteSet (tuple projection)` with `GROUPED_RESULT`, and the
+item is a question/gold mismatch because the gold answers only one
+part of a three-part request.
+
+**Mismatch kinds.** Each of the 11 question/gold disagreements now
+carries `mismatch_kind` (ENTITY_AMBIGUITY, MULTIPART_INCOMPLETE,
+PREDICATE_SEMANTICS, SEMANTIC_SCOPE, TEMPORAL_AMBIGUITY,
+GROUPED_VS_COUNT) with a per-item note, so they are not described
+as if they were one kind of annotation defect. q1205 is recorded as
+PREDICATE_SEMANTICS: BIRD's own evidence field defines "within a
+normal range" as the value EXCEEDING the sex-specific threshold, so
+its gold is consistent with its declared evidence while the
+natural-language reading is the opposite. Annotated, not repaired.
+
+**Chronology, stated precisely.** The universes, claim vocabulary,
+mapping rules, system boundary, and prompt/repair hashes were fixed
+and committed before any model inference. The FINAL labels were
+not: after the single frozen run, ambiguous items were adjudicated
+by a second annotator and two mapping rules were corrected, so the
+final adjudication is a POST-RUN SEMANTIC AUDIT. Every relabelling
+is justified from benchmark source fields alone (question, gold SQL
+AST, gold result shape); no system component was changed to improve
+a measured outcome; the agent's stored SQL is independent of the
+labels, so affected records were replayed without further
+inference. The pre-run proposal, the final adjudication, and BOTH
+result sets ship with the artifact.
+
+**q32.** Kept as a complete set: its five reference rates are
+verified distinct. The projection carries the rate but not school
+identity, so the general contract would lose multiplicity; recorded
+as a limitation on the item.
+
+**LDBC duplicate-insensitivity.** Of the 38 templates whose
+unordered projection is in the fragment, 27 carry an entity
+identifier in the result schema and the remaining 11 are grouped or
+scalar results whose group key is itself projected, so uniqueness
+follows from the grouping. This is derived from the pinned result
+schemas and is part of the pending second-annotator review of the
+LDBC annotation.
+
 ### D-132 adjudication protocol (PI, 2026-08-10)
 
 The governing principle, adopted on PI adjudication of the 52-item

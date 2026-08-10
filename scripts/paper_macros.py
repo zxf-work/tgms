@@ -289,6 +289,9 @@ def macros(pn: dict, fm: dict, sc: dict, uc: dict) -> str:
              str(fu["universe"] - fu["certified"]
                  - (ba["em_overall"] - fu["certified_and_correct"]))),
             ("pnBirdOutside", str(ba["outside_fragment"])),
+            ("pnBirdCertFull", str(ba["certified_full_contract"])),
+            ("pnBirdDupBearing",
+             str(ba["duplicate_bearing_reference"])),
             ("pnBirdGoldMismatch", str(ba["question_gold_mismatch"])),
             ("pnBirdFullNotCovered",
              str(ba["full_contract_not_covered"])),
