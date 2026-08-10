@@ -243,6 +243,11 @@ def macros(pn: dict, fm: dict, sc: dict, uc: dict) -> str:
             ("pnLdbcSetProj", str(lc["set_projection_in_fragment"])),
         ]
     ba_p = RES / "eval-bird-agent.json"
+    ex_p = RES / "eval-bird-official-ex.json"
+    if ex_p.exists():
+        ex = json.loads(ex_p.read_text())
+        m += [("pnBirdExPinned", f"{ex['ex_vs_pinned_gold_pct']:.2f}"),
+              ("pnBirdExZip", f"{ex['ex_vs_zip_gold_pct']:.2f}")]
     if ba_p.exists():
         ba = json.loads(ba_p.read_text())
         fu = ba["funnel"]
@@ -272,6 +277,13 @@ def macros(pn: dict, fm: dict, sc: dict, uc: dict) -> str:
              str(fu["claim_constructed"] - fu["certified"])),
             ("pnBirdCertWrong",
              str(fu["certified"] - fu["certified_and_correct"])),
+            ("pnBirdRetentionPct",
+             pc(fu["certified_and_correct"], ba["em_overall"])),
+            ("pnBirdNoClaimWrong",
+             str(fu["universe"] - fu["certified"]
+                 - (ba["em_overall"] - fu["certified_and_correct"]))),
+            ("pnBirdExactCountTyped",
+             str(ba["exact_count_typing"]["over_validated_counted_domain"])),
             ("pnBirdRepairUsed", str(ba["repair_used"])),
             ("pnBirdDescBytesMed",
              str(ba["descriptor_bytes_median"])),

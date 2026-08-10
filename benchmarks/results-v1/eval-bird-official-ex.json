@@ -1,0 +1,26 @@
+{
+ "agreement": "our order-insensitive set EM equals the official EX aggregate exactly under the pinned gold",
+ "artifact_defects_worked_around": [
+  "the shipped mini_dev_sqlite_gold.sql separates some SQL from its db_id with spaces rather than a tab, which crashes the official package_sqls(); the gold file was regenerated verbatim from the same package's mini_dev_sqlite.json (SQL text unchanged, tab separator restored)",
+  "the official runner expects a .jsonl difficulty file; the package ships a JSON array, converted format-only"
+ ],
+ "by_difficulty_pinned_gold_pct": {
+  "challenging": 30.39,
+  "moderate": 40.8,
+  "simple": 64.19
+ },
+ "commit": "a617bd1425432cc960e34060904e92f357372f2d",
+ "counts_by_difficulty": {
+  "challenging": 102,
+  "moderate": 250,
+  "simple": 148
+ },
+ "ex_vs_pinned_gold_pct": 45.6,
+ "ex_vs_zip_gold_pct": 45.8,
+ "gold_variants": "the distribution zip's mini_dev_sqlite.json and the pinned HF revision f65faf4 differ on exactly one record (question_id 879: the pinned revision wraps fastestLapSpeed in CAST(... AS REAL))",
+ "host": "Xiaofeis-Mac-mini.local",
+ "metric": "official BIRD Mini-Dev EX (evaluation_ex.py, set comparison, 30 s per-pair timeout, 8 workers)",
+ "our_em_count": 228,
+ "our_em_pct": 45.6,
+ "predictions": "the same 500 agent SQL statements as eval-bird-agent.json (Slurm job 185542)"
+}

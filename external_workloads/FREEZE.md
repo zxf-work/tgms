@@ -128,11 +128,8 @@ adjudication) is applied to the agent's OWN executed result:
   returned column.
 - EXACT_COUNT: requires a 1x1 integer-valued result whose outer
   projection is a single aggregate with no outer LIMIT and no GROUP
-  BY; `ExactCount(n)`. The completed, unlimited count execution IS
-  the cardinality certificate: the descriptor records
-  `exact_cardinality = n` for the counted predicate named by the
-  recorded count query. This is the SQL analogue of an unlimited
-  `COUNT(*)` certificate (adapter A2 obligation), never a page count.
+  BY; `ExactCount(n)` over the COUNTED DOMAIN (see the post-run
+  correction below).
 - COMPLETE_SET: any row count; `CompleteSet` over canonical-JSON
   row serializations (set semantics, per rule R3; ordering
   assertions remain in `semantic_property`).
@@ -165,6 +162,38 @@ certified and 500/500 exact-match, across all four claim forms
 median descriptor 617 bytes. The funnel therefore has no
 infrastructure floor: every exit the agent run shows is a property
 of the agent's SQL or of the contract, not of the harness.
+
+### ExactCount typing correction (post-run, 2026-08-10)
+
+Prompted by review of the formal definition, not by results.
+`ExactCount(n)` asserts |R*(Q)| = n for the descriptor's OWN domain
+Q. The first run recorded the agent's aggregate query as Q while
+setting `exact_cardinality = n` — but that query's result has ONE
+row holding n, so the descriptor misdescribed its own domain's
+cardinality and the certificate was of the wrong type, even though
+the number was right.
+
+The correction: for an EXACT_COUNT item the domain is the COUNTED
+domain, derived from the agent's query by a projection-only rewrite
+(`COUNT(*)` -> `SELECT *`; `COUNT(x)` / `COUNT(DISTINCT x)` -> the
+x-projection with the NULL and DISTINCT semantics COUNT itself
+applies; `SUM(0/1 expr)` -> the rows where the summand is nonzero),
+and the certificate is an unlimited count over THAT domain. Each
+rewrite is validated against the database — the count over the
+derived domain must equal n, and for the SUM form the summand must
+be 0/1-valued — and an item whose rewrite cannot be validated falls
+back to a `Scalar` over the one-row aggregate result, which is the
+honest claim about a result whose cardinality is 1. Delivered rows
+for these descriptors are zero: the answer is the cardinality, and
+the rows were never delivered, which is exactly the certificate-
+without-delivery case the adapter exists for.
+
+Applied by replaying the recorded SQL (`--replay-from`); no model
+inference. Result: all 72 certified EXACT_COUNT items carry a
+validated counted domain, 0 fell back. Every funnel count, every
+by-form count, and every EM value is IDENTICAL to the original run
+(500/495/440/440/224, EM 228) — the repair changes descriptor
+typing, not results.
 
 ### R1a refinement erratum (pre-run, 2026-08-09)
 

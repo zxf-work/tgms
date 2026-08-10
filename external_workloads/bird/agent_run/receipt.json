@@ -1,5 +1,5 @@
 {
- "host": "itiger01",
+ "host": "Xiaofeis-Mac-mini.local",
  "n": 500,
  "freeze": {
   "prompt_template_sha256": "1790a36a0dc2a386ac4485cd4406974e88320d217f61d76325ba96a58cc287b4",
@@ -61,9 +61,20 @@
  "em_overall": 228,
  "certified": 440,
  "certified_and_correct": 224,
+ "exact_count_typing": {
+  "certified_exact_count_claims": 72,
+  "over_validated_counted_domain": 72,
+  "fell_back_to_scalar": 0,
+  "rule": "ExactCount(n) asserts |R*(Q)| = n for the descriptor's OWN domain Q, so Q is the counted domain (a projection-only rewrite of the agent's aggregate query), validated by an unlimited count over that domain equalling n; otherwise the claim is a Scalar over the one-row aggregate result"
+ },
+ "claim_kind_census": {
+  "scalar": 269,
+  "exact_count": 72,
+  "complete_set": 160
+ },
  "tokens_in_total": 617487,
  "tokens_out_total": 43399,
- "descriptor_bytes_median": 612,
+ "descriptor_bytes_median": 615,
  "repair_used": 78,
  "sqlite_version": "3.53.1"
 }

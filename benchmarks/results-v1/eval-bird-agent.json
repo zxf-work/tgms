@@ -35,9 +35,21 @@
  },
  "certified": 440,
  "certified_and_correct": 224,
- "commit": "a7c6e6dc628129134729bbd2b2cd67298543447c",
- "descriptor_bytes_median": 612,
+ "claim_kind_census": {
+  "complete_set": 160,
+  "exact_count": 72,
+  "scalar": 269
+ },
+ "commit": "a617bd1425432cc960e34060904e92f357372f2d",
+ "constructor_correction": "D-131: ExactCount descriptors were rebuilt over the counted domain; agent SQL and model outputs unchanged; every funnel count, EM value and by_form count identical to the original run",
+ "descriptor_bytes_median": 615,
  "em_overall": 228,
+ "exact_count_typing": {
+  "certified_exact_count_claims": 72,
+  "fell_back_to_scalar": 0,
+  "over_validated_counted_domain": 72,
+  "rule": "ExactCount(n) asserts |R*(Q)| = n for the descriptor's OWN domain Q, so Q is the counted domain (a projection-only rewrite of the agent's aggregate query), validated by an unlimited count over that domain equalling n; otherwise the claim is a Scalar over the one-row aggregate result"
+ },
  "freeze": {
   "ceiling_s": 600,
   "max_new_tokens": 1024,
@@ -56,7 +68,7 @@
   "universe": 500
  },
  "gpu": "itiger01 (bigTiger partition)",
- "host": "itiger01",
+ "host": "itiger01 (model inference); Xiaofeis-Mac-mini.local (post-run constructor replay)",
  "n": 500,
  "repair_used": 78,
  "slurm_job": 185542,

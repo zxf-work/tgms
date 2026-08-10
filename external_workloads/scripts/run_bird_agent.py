@@ -228,6 +228,86 @@ def integral(v):
     return None
 
 
+def _is_sum_shaped(sql: str) -> bool:
+    """Outer projection is SUM(...) — a count in disguise only if the
+    summand is 0/1-valued, which the caller checks against the data."""
+    try:
+        tree = sqlglot.parse_one(sql, read="sqlite")
+    except Exception:
+        return False
+    outer = tree
+    while isinstance(outer, exp.Subquery):
+        outer = outer.this
+    if not isinstance(outer, exp.Select) or len(outer.expressions) != 1:
+        return False
+    node = outer.expressions[0]
+    while isinstance(node, exp.Alias):
+        node = node.this
+    return isinstance(node, exp.Sum)
+
+
+def counted_domain_sql(sql: str) -> str | None:
+    """The query whose result set is exactly what `sql`'s aggregate
+    counts, derived by replacing ONLY the projection.
+
+    `ExactCount(n)` means |R*(Q)| = n for the descriptor's own domain
+    Q. A count query's result has one row holding n, so a descriptor
+    whose domain is `SELECT COUNT(*) FROM t WHERE p` must NOT carry
+    exact_cardinality = n: its cardinality is 1. The cardinality
+    claim belongs to the counted domain `SELECT * FROM t WHERE p`,
+    which is what this derives and what the adapter's A2 obligation
+    ("an unlimited count over the *same* predicate") already
+    requires. Returns None when the shape is not derivable; the
+    caller then falls back to a Scalar claim.
+    """
+    try:
+        tree = sqlglot.parse_one(sql, read="sqlite")
+    except Exception:
+        return None
+    outer = tree
+    while isinstance(outer, exp.Subquery):
+        outer = outer.this
+    if not isinstance(outer, exp.Select) or len(outer.expressions) != 1:
+        return None
+    node = outer.expressions[0]
+    while isinstance(node, exp.Alias):
+        node = node.this
+
+    inner = outer.copy()
+    # a SELECT-level DISTINCT over a single ungrouped aggregate is a
+    # no-op on the count but would wrongly dedupe the counted rows
+    inner.set("distinct", None)
+
+    if isinstance(node, exp.Count):
+        arg = node.this
+        distinct = False
+        if isinstance(arg, exp.Distinct):
+            distinct = True
+            if len(arg.expressions) != 1:
+                return None
+            arg = arg.expressions[0]
+        if isinstance(arg, exp.Star) or arg is None:
+            if distinct:
+                return None
+            inner.set("expressions", [exp.Star()])
+            return inner.sql(dialect="sqlite")
+        inner.set("expressions", [exp.alias_(arg.copy(), "c")])
+        kw = "DISTINCT " if distinct else ""
+        # COUNT(x) ignores NULLs; the counted domain must too
+        return (f"SELECT {kw}c FROM ({inner.sql(dialect='sqlite')}) _d "
+                f"WHERE c IS NOT NULL")
+
+    if isinstance(node, exp.Sum):
+        # SUM(CASE WHEN p THEN 1 ELSE 0 END) and SUM(IIF(p,1,0)) are
+        # counts in disguise; the caller validates that the summand is
+        # 0/1-valued and that the domain size equals the sum.
+        inner.set("expressions", [exp.alias_(node.this.copy(), "c")])
+        return (f"SELECT c FROM ({inner.sql(dialect='sqlite')}) _d "
+                f"WHERE c <> 0")
+
+    return None
+
+
 def construct(form: str, rows: list, sql: str):
     """(claims, exit_reason, count_value). Predeclared form applied to
     the agent's own executed result."""
@@ -248,6 +328,9 @@ def construct(form: str, rows: list, sql: str):
             return None, "shape_mismatch", None
         if not count_shaped(sql):
             return None, "shape_mismatch", None
+        # the claim is decided here; whether it can be an ExactCount
+        # over a properly typed domain is decided by the caller, which
+        # must validate the derived domain against the database
         return [ExactCount(n=n)], None, n
     if form == "COMPLETE_SET":
         return [CompleteSet(
@@ -276,6 +359,10 @@ def main() -> int:
     ap.add_argument("--out", type=Path, required=True)
     ap.add_argument("--limit", type=int, default=0)
     ap.add_argument("--print-freeze", action="store_true")
+    ap.add_argument("--replay-from", type=Path, default=None,
+                    help="re-run the claim constructor, adapter and "
+                         "verifier over the SQL already recorded in a "
+                         "completed run directory; no model inference")
     args = ap.parse_args()
 
     if args.print_freeze:
@@ -319,37 +406,51 @@ def main() -> int:
                 "tokens_in": 0, "tokens_out": 0, "attempts": []}
         t_start = time.monotonic()
 
-        messages = [{"role": "user", "content": PROMPT_TEMPLATE.format(
-            schema=schemas[db_id], evidence=rec.get("evidence") or "",
-            question=rec["question"])}]
         rows = cols = sql = None
-        for attempt in range(1 + REPAIR_ROUNDS):
-            try:
-                text, usage = chat(args.api, messages)
-            except Exception as e:  # endpoint failure is a run error
-                raise SystemExit(f"model endpoint failure at q{qid}: {e}")
-            item["tokens_in"] += usage["tokens_in"]
-            item["tokens_out"] += usage["tokens_out"]
-            cand = extract_sql(text)
-            if cand is None:
-                err = "no SQL SELECT statement found in the reply"
-            else:
+        if args.replay_from is not None:
+            prior_p = args.replay_from / f"q{qid}.json"
+            if not prior_p.exists():
+                continue
+            prior = json.loads(prior_p.read_text())
+            item.update({"tokens_in": prior["tokens_in"],
+                         "tokens_out": prior["tokens_out"],
+                         "attempts": prior["attempts"],
+                         "replayed_from": str(args.replay_from)})
+            if prior.get("sql"):
+                sql, cols_ = prior["sql"], None
+                rows, cols = execute_sql(db, sql)
+                del cols_
+        else:
+            messages = [{"role": "user", "content": PROMPT_TEMPLATE.format(
+                schema=schemas[db_id], evidence=rec.get("evidence") or "",
+                question=rec["question"])}]
+            for attempt in range(1 + REPAIR_ROUNDS):
                 try:
-                    t0 = time.monotonic()
-                    rows, cols = execute_sql(db, cand)
-                    item["attempts"].append(
-                        {"n": attempt, "ok": True,
-                         "exec_s": round(time.monotonic() - t0, 3)})
-                    sql = cand
-                    break
-                except Exception as e:
-                    err = f"{type(e).__name__}: {e}"[:400]
-            item["attempts"].append({"n": attempt, "ok": False,
-                                     "error": err})
-            messages += [
-                {"role": "assistant", "content": text},
-                {"role": "user", "content": REPAIR_TEMPLATE.format(
-                    error=err, sql=cand or "(none)")}]
+                    text, usage = chat(args.api, messages)
+                except Exception as e:  # endpoint failure is a run error
+                    raise SystemExit(f"model endpoint failure at q{qid}: {e}")
+                item["tokens_in"] += usage["tokens_in"]
+                item["tokens_out"] += usage["tokens_out"]
+                cand = extract_sql(text)
+                if cand is None:
+                    err = "no SQL SELECT statement found in the reply"
+                else:
+                    try:
+                        t0 = time.monotonic()
+                        rows, cols = execute_sql(db, cand)
+                        item["attempts"].append(
+                            {"n": attempt, "ok": True,
+                             "exec_s": round(time.monotonic() - t0, 3)})
+                        sql = cand
+                        break
+                    except Exception as e:
+                        err = f"{type(e).__name__}: {e}"[:400]
+                item["attempts"].append({"n": attempt, "ok": False,
+                                         "error": err})
+                messages += [
+                    {"role": "assistant", "content": text},
+                    {"role": "user", "content": REPAIR_TEMPLATE.format(
+                        error=err, sql=cand or "(none)")}]
 
         if sql is None:
             item["stage"] = "no_executable_sql"
@@ -362,8 +463,41 @@ def main() -> int:
                 item["stage"] = exit_reason
             else:
                 # evidence descriptor over the completed execution
+                domain_sql, ser_rows = sql, rows
                 if forms[qid] == "EXACT_COUNT":
-                    total, limited = count_val, False
+                    # An ExactCount is about the CARDINALITY of the
+                    # descriptor's own domain, so the domain must be
+                    # the counted rows, not the one-row aggregate.
+                    # Derive it, then certify it with an unlimited
+                    # count over that very domain; if the derivation
+                    # cannot be validated, the honest claim about a
+                    # one-row aggregate result is a Scalar.
+                    total, limited = None, True
+                    cand = counted_domain_sql(sql)
+                    ok = False
+                    if cand is not None:
+                        try:
+                            (vr, _v) = execute_sql(
+                                db, f"SELECT COUNT(*) FROM ({cand}) _v")
+                            ok = integral(vr[0][0]) == count_val
+                            if ok and _is_sum_shaped(sql):
+                                (br, _b) = execute_sql(
+                                    db, "SELECT COUNT(*) FROM "
+                                        f"({cand}) _v WHERE c <> 1")
+                                ok = integral(br[0][0]) == 0
+                        except Exception as e:
+                            item["domain_error"] = \
+                                f"{type(e).__name__}: {e}"[:200]
+                    if ok:
+                        domain_sql, ser_rows = cand, []
+                        total = count_val
+                        item["count_domain_sql"] = cand
+                    else:
+                        # fall back: Scalar over the aggregate result
+                        claims = [Scalar(path="rows[0][0]",
+                                         value=rows[0][0])]
+                        item["exact_count_fallback"] = "scalar"
+                        limited = False
                 else:
                     limited = has_outer_limit(sql)
                     total = None
@@ -382,10 +516,12 @@ def main() -> int:
                     # unlimited completed statements are
                     # delivery-complete by construction; no
                     # certificate execution is needed
-                ser_rows = ([canonical_json(r) for r in rows]
-                            if forms[qid] == "COMPLETE_SET" else rows)
+                    ser_rows = ([canonical_json(r) for r in rows]
+                                if forms[qid] == "COMPLETE_SET" else rows)
+                item["claim_kinds"] = [c.kind for c in claims]
                 evidence = build_sql_ecqr(
-                    rows=ser_rows, sql=sql, store_id=f"bird:{db_id}",
+                    rows=ser_rows, sql=domain_sql,
+                    store_id=f"bird:{db_id}",
                     engine="sqlite",
                     engine_version=sqlite3.sqlite_version,
                     total_count=total, limited=limited)
@@ -472,6 +608,24 @@ def main() -> int:
         "certified": sum(it["stage"] == "certified" for it in items),
         "certified_and_correct": sum(
             it["stage"] == "certified" and it.get("em") for it in items),
+        "exact_count_typing": {
+            "certified_exact_count_claims": sum(
+                1 for it in items
+                if "exact_count" in it.get("claim_kinds", [])),
+            "over_validated_counted_domain": sum(
+                1 for it in items if it.get("count_domain_sql")),
+            "fell_back_to_scalar": sum(
+                1 for it in items if it.get("exact_count_fallback")),
+            "rule": "ExactCount(n) asserts |R*(Q)| = n for the "
+                    "descriptor's OWN domain Q, so Q is the counted "
+                    "domain (a projection-only rewrite of the agent's "
+                    "aggregate query), validated by an unlimited count "
+                    "over that domain equalling n; otherwise the claim "
+                    "is a Scalar over the one-row aggregate result",
+        },
+        "claim_kind_census": {
+            k: sum(it.get("claim_kinds", []).count(k) for it in items)
+            for k in ("scalar", "exact_count", "complete_set")},
         "tokens_in_total": sum(it["tokens_in"] for it in items),
         "tokens_out_total": sum(it["tokens_out"] for it in items),
         "descriptor_bytes_median": (med[len(med) // 2] if med else None),
