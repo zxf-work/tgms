@@ -1,0 +1,19 @@
+{
+ "n_templates": 41,
+ "exec_coverage_counts": {
+  "SQL_ONLY": 24,
+  "DECOMPOSABLE_TGMS": 9,
+  "UNSUPPORTED_EXECUTION": 4,
+  "DIRECT_TGMS": 4
+ },
+ "claim_full_contract_counts": {
+  "REQUIRES_ORDERED_RESULT": 12,
+  "REQUIRES_TOP_K": 19,
+  "REQUIRES_RANKING": 2,
+  "CURRENT_ECQR_FRAGMENT": 7,
+  "REQUIRES_PATH_CERTIFICATE": 1
+ },
+ "set_projection_in_fragment": 38,
+ "manifest_sha256": "52963dc03839ba21a2cc3749ef963ccb70d91c24c323d6ed369db6f879dadc48",
+ "status": "draft-single-annotator; adjudication pending"
+}

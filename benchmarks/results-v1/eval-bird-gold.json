@@ -1,0 +1,12 @@
+{
+ "host": "Xiaofeis-Mac-mini.local",
+ "frozen_jsonl_sha256": "a256187cf57479ec51d62585da0395edcbc75141cfbb948642f9f2ef659515d0",
+ "n_records": 500,
+ "status_counts": {
+  "GOLD_VALID": 500
+ },
+ "gold_valid_empty_result": 0,
+ "timeout_s": 600,
+ "sqlite_version": "3.53.4",
+ "commit": "a3f27128b8141c9753c14753e528e30275e27074"
+}

@@ -1,0 +1,60 @@
+# External workload pins and digests (D-129). Every artifact used by
+# the external-benchmark evaluation is identified here; the frozen
+# JSONL universes are committed in this repository, the large source
+# packages are identified by digest and re-fetchable from the pinned
+# sources.
+created_at: "2026-08-09"
+
+bird:
+  source: "BIRD Mini-Dev SELECT-only SQLite split, 500 instances"
+  github_repo: "https://github.com/bird-bench/mini_dev"
+  github_commit: "b3d4bcbbae9a96934ad812551eb400c7a3b23c12"
+  huggingface_dataset: "birdsql/bird_mini_dev"
+  huggingface_revision: "f65faf4ae3b638c1fa6df1d3370c8d92c8366301"
+  split: "mini_dev_sqlite"
+  frozen_records: 500
+  frozen_jsonl: "bird/bird_500_select_sqlite.jsonl"
+  frozen_jsonl_sha256: "a256187cf57479ec51d62585da0395edcbc75141cfbb948642f9f2ef659515d0"
+  database_package: "minidev_0703.zip (Google Drive id 13VLWIwpw5E3d5DUkMvzw7hvHE67a4XkG, via mini_dev README)"
+  database_package_sha256: "aeb211c0e39010bbdae3838bb5e8bd27dc446ed77495b1709f85ccc9bf67f2be"
+  database_sha256:
+    california_schools: "c0903eec662e63068fd1d14403d3d6c1d473287fc10c4356333ea58f878db983"
+    card_games: "c98bdb57fe7474da798b407785544b9af0daaad5d61fd21e2a73309493bc1227"
+    codebase_community: "92101be6d2a9f6adceea59d38f6d1c556087f9eea1432432a21268cb1348036d"
+    debit_card_specializing: "b3d149ad05746dbbe5116e229e17e18f09c39db43cf117d9ef3441753608b691"
+    european_football_2: "f72f5c9b990371417288a67b27a02e601ef904d45525c2c9f7931fb01001c536"
+    financial: "d15d89cdb068a202b6f2b99342af44dffc1d52545b39ceaf62efdc0ba570101e"
+    formula_1: "79770caf966707e35516fa566e24b40ae515c74ec1ec4631235245645b87b24d"
+    student_club: "eb89bcfe97eefa386a27904ec5aa15159811a7eac894ec659a36e48fa9f76b77"
+    superhero: "75e94a2c3236ee3bb2c01fb97a1c4b4c1c269bcefd4eab1d04be323d2d0825b1"
+    thrombosis_prediction: "87583183c3dc472fba04de702965560a9d7c0a548836613f242317e0eeb83f00"
+    toxicology: "35ef27ae6bdfda530e125ed369666ac0abb8bc8c0bcc0ad09407f547ecb61a93"
+  gold_validation: "bird/gold_validation.jsonl"
+  gold_validation_sha256: "7588e52e57b81a46590f2b03e5ec8b41c05e996587fd69c8dc6c38f4dc022cde"
+  gold_validation_result: "500/500 GOLD_VALID at 600 s ceiling, 0 empty results, sqlite 3.53.4"
+  claim_annotation: "bird/claim_annotation.jsonl"
+  claim_annotation_sha256: "f5925cac7a102e16f0364cfc31dbaebf13bce64b7e1e92f2e97d64f5758d6a2b"
+  claim_annotation_state: "auto stage complete (448 auto, 52 queued); manual adjudication pending"
+
+ldbc:
+  docs_repo: "https://github.com/ldbc/ldbc_snb_docs"
+  docs_commit: "b2269610f433da72e7c97041f01680aae369a903"
+  interactive_v1_impls_repo: "https://github.com/ldbc/ldbc_snb_interactive_v1_impls"
+  interactive_v1_impls_commit: "11db98cc2ba14c33492f6c0c34e68c8be7e22e5f"
+  bi_repo: "https://github.com/ldbc/ldbc_snb_bi"
+  bi_commit: "47dd38b40844ecdb0e42e5a610c369535304786d"
+  interactive_read_templates: 21   # IC1-13, IC14-v1, IS1-7
+  bi_read_templates: 20
+  frozen_manifest: "ldbc/ldbc_read_templates.jsonl"
+  frozen_manifest_sha256: "52963dc03839ba21a2cc3749ef963ccb70d91c24c323d6ed369db6f879dadc48"
+  coverage_annotation: "ldbc/coverage_annotation.jsonl"
+  coverage_annotation_sha256: "386cb90923396006a9f31eee924e7f57d5ba2d7943f82b3f5aad79f58ea017b6"
+  coverage_annotation_state: "draft-single-annotator; adjudication pending"
+
+ecqr:
+  repo_branch: "agent-interface"
+  freeze_base_commit: "a3f27128b8141c9753c14753e528e30275e27074"
+  claim_grammar: "ECQR/0.1 (tgms/evidence/claims.py at the freeze commit)"
+  verifier: "tgms/evidence/verify.py at the freeze commit"
+  sql_adapter: "tgms/evidence/adapter_sql.py at the freeze commit"
+  evidence_model_doc: "docs/design/EVIDENCE_MODEL.md v1.0.1 (frozen, fragment tag evidence-fragment-v1.0)"
