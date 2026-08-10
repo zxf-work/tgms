@@ -57,6 +57,18 @@ only the three declared inputs; disagreements and their resolution
 are recorded in `claim_annotation.jsonl`. Auto stage: 448 of 500
 classified, 52 queued.
 
+Adjudication state (2026-08-09): annotator-1 proposals for all 52
+queued items are in `bird/adjudication_proposed.jsonl` (23 SCALAR,
+18 COMPLETE_SET, 7 SCALAR_TUPLE, 4 EXACT_COUNT; final distribution
+pending confirmation: 205/160/80/55). Items whose gold result shape
+diverges from the question's wording (e.g. yes/no questions whose
+gold enumerates per-row flags) are classified BY GOLD SHAPE under
+Interpretation 1 with the quirk recorded in the rationale — the gold
+query is the trusted semantic query, so its answer shape is the
+claim's subject. Annotator-2 (PI) confirmation pending; any label
+the PI changes will be recorded as a disagreement in the same file
+BEFORE results are read against those items.
+
 ## LDBC coverage protocol
 
 Two independent dimensions per template, judged from the pinned
@@ -91,8 +103,89 @@ before any paper number is derived.
   completion (no artificial delivery pagination); the
   exact-cardinality certificate wraps the ORIGINAL semantic query
   (`SELECT COUNT(*) FROM (<bird sql>) t`), never a page of it.
-- Prompt template and repair policy hashes are added here before
-  the first agent run.
+- Prompt template and repair policy (frozen, hashes over the
+  verbatim template strings in
+  `external_workloads/scripts/run_bird_agent.py`; reprintable via
+  `--print-freeze`):
+  - prompt_template_sha256 =
+    `1790a36a0dc2a386ac4485cd4406974e88320d217f61d76325ba96a58cc287b4`
+  - repair_template_sha256 =
+    `0bd398b4ff27c457ef2efef45ffe7dbbb344b6b7f8e0ac9b1068b21deccb2637`
+  - schema prompt = the database's verbatim `sqlite_master` CREATE
+    statements + BIRD external-knowledge string + question; at most
+    3 repair rounds, each fed only the sqlite error text of the
+    failed attempt; temperature 0, seed 0, max 1024 new tokens;
+    agent SQL executes read-only under the same non-tunable 600 s
+    ceiling as gold validation.
+
+## Claim constructor for the agent arm (frozen before the first run)
+
+The predeclared per-question claim form (auto annotation +
+adjudication) is applied to the agent's OWN executed result:
+
+- SCALAR: requires a 1x1 result; `Scalar(path="rows[0][0]")`.
+- SCALAR_TUPLE: requires a single-row result; one `Scalar` per
+  returned column.
+- EXACT_COUNT: requires a 1x1 integer-valued result whose outer
+  projection is a single aggregate with no outer LIMIT and no GROUP
+  BY; `ExactCount(n)`. The completed, unlimited count execution IS
+  the cardinality certificate: the descriptor records
+  `exact_cardinality = n` for the counted predicate named by the
+  recorded count query. This is the SQL analogue of an unlimited
+  `COUNT(*)` certificate (adapter A2 obligation), never a page count.
+- COMPLETE_SET: any row count; `CompleteSet` over canonical-JSON
+  row serializations (set semantics, per rule R3; ordering
+  assertions remain in `semantic_property`).
+
+Any shape divergence from the predeclared form exits the funnel at
+`shape_mismatch` and the item is uncertified — no form is re-fitted
+to what the agent returned. For non-count forms, delivery
+completeness follows the adapter rule: a completed sqlite statement
+with no outer LIMIT delivers its complete result by construction;
+when the semantic query DOES carry an outer LIMIT (semantic under
+Interpretation 1 — gold top-k queries carry LIMIT), the runner
+executes `SELECT COUNT(*) FROM (<agent sql>) t` over the FULL
+semantic query and delivery is complete iff the delivered page
+equals that count. A certificate execution failure leaves the
+descriptor without a cardinality and the verifier withholds
+completeness-bearing claims — never a crash, never a guess.
+Exact-match (EM) is order-insensitive SET equality of result rows
+against the re-executed gold — the official BIRD evaluator's
+comparison — computed for every executed item independently of
+certification.
+
+Pipeline validation (declared): before the first model call, the
+full runner path (constructor + adapter + verifier + EM) is
+exercised once with gold SQL substituted for the agent ("oracle
+smoke"); this validates infrastructure only and conditions nothing
+on model results. Result (receipt
+`benchmarks/results-v1/eval-bird-oracle-smoke.json`): 500/500
+certified and 500/500 exact-match, across all four claim forms
+(210 SCALAR, 160 COMPLETE_SET, 75 EXACT_COUNT, 55 SCALAR_TUPLE),
+median descriptor 617 bytes. The funnel therefore has no
+infrastructure floor: every exit the agent run shows is a property
+of the agent's SQL or of the contract, not of the harness.
+
+### R1a refinement erratum (pre-run, 2026-08-09)
+
+The oracle smoke exposed that rule R1a (COUNT projection + how-many
+wording -> EXACT_COUNT) is coarser than the certificate shape the
+constructor requires: five gold queries are count-VALUED but not
+domain cardinalities — two arithmetic-over-count monthly averages
+(qids 47, 665: `COUNT(..)/12`), and three counts of a
+grouped/ranked-selected entity (qids 687, 951, 1003). R1a is
+refined: EXACT_COUNT additionally requires the outer projection to
+BE a single Count/Sum aggregate over an ungrouped, unlimited outer
+query; count-valued queries failing this are SCALAR (machinery in
+`semantic_property`). The five relabels are recorded in
+`bird/annotation_errata.jsonl`. Decided from gold SQL ASTs only —
+declared annotation inputs — before any model inference; the frozen
+auto-stage file is left byte-identical, the erratum layers on top.
+Without this refinement, qid 47 would have produced a formally
+certified "exact count" claim for a monthly average whose
+count-over-twelve happened to be integral — precisely the
+constructor unsoundness the certificate-shape rule exists to
+prevent.
 
 ## Interpretation limits (declared)
 

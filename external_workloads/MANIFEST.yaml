@@ -34,7 +34,17 @@ bird:
   gold_validation_result: "500/500 GOLD_VALID at 600 s ceiling, 0 empty results, sqlite 3.53.4"
   claim_annotation: "bird/claim_annotation.jsonl"
   claim_annotation_sha256: "f5925cac7a102e16f0364cfc31dbaebf13bce64b7e1e92f2e97d64f5758d6a2b"
-  claim_annotation_state: "auto stage complete (448 auto, 52 queued); manual adjudication pending"
+  claim_annotation_state: "auto stage complete (448 auto, 52 queued); annotator-1 adjudication proposed for all 52; annotator-2 (PI) confirmation pending"
+  adjudication_proposed: "bird/adjudication_proposed.jsonl"
+  adjudication_proposed_sha256: "efc2cd2cdaadb0b64da98364993eb43beb81fddc2adaa00687661dc92fcb3c9e"
+  annotation_errata: "bird/annotation_errata.jsonl"
+  annotation_errata_sha256: "baccdf0901de51b0157bedcebcc75bddc0bcb08e1ac5ffc137b3bfacbcdb6544"
+  annotation_errata_note: "R1a refinement, 5 relabels EXACT_COUNT->SCALAR from gold AST only, pre-run (FREEZE.md erratum section)"
+  final_claim_form_distribution_pending_confirmation:
+    SCALAR: 210
+    COMPLETE_SET: 160
+    EXACT_COUNT: 75
+    SCALAR_TUPLE: 55
 
 ldbc:
   docs_repo: "https://github.com/ldbc/ldbc_snb_docs"

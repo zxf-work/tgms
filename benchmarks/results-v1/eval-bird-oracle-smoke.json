@@ -1,0 +1,69 @@
+{
+ "by_form": {
+  "COMPLETE_SET": {
+   "certified": 160,
+   "certified_and_correct": 160,
+   "claim_constructed": 160,
+   "em": 160,
+   "executable": 160,
+   "n": 160
+  },
+  "EXACT_COUNT": {
+   "certified": 75,
+   "certified_and_correct": 75,
+   "claim_constructed": 75,
+   "em": 75,
+   "executable": 75,
+   "n": 75
+  },
+  "SCALAR": {
+   "certified": 210,
+   "certified_and_correct": 210,
+   "claim_constructed": 210,
+   "em": 210,
+   "executable": 210,
+   "n": 210
+  },
+  "SCALAR_TUPLE": {
+   "certified": 55,
+   "certified_and_correct": 55,
+   "claim_constructed": 55,
+   "em": 55,
+   "executable": 55,
+   "n": 55
+  }
+ },
+ "certified": 500,
+ "certified_and_correct": 500,
+ "commit": "89ae5c4cdf94cc5b2811cbf6335b4735268a3eea",
+ "descriptor_bytes_median": 617,
+ "em_overall": 500,
+ "freeze": {
+  "ceiling_s": 600,
+  "max_new_tokens": 1024,
+  "model": "Qwen/Qwen2.5-14B-Instruct-AWQ",
+  "prompt_template_sha256": "1790a36a0dc2a386ac4485cd4406974e88320d217f61d76325ba96a58cc287b4",
+  "repair_rounds": 3,
+  "repair_template_sha256": "0bd398b4ff27c457ef2efef45ffe7dbbb344b6b7f8e0ac9b1068b21deccb2637",
+  "seed": 0,
+  "temperature": 0.0
+ },
+ "funnel": {
+  "certified": 500,
+  "certified_and_correct": 500,
+  "claim_constructed": 500,
+  "executable_sql": 500,
+  "universe": 500
+ },
+ "host": "Xiaofeis-Mac-mini.local",
+ "n": 500,
+ "repair_used": 0,
+ "role": "pipeline validation only (FREEZE.md): gold SQL substituted for the agent; conditions nothing on model results",
+ "sqlite_version": "3.53.1",
+ "stage_counts": {
+  "certified": 500
+ },
+ "tokens_in_total": 0,
+ "tokens_out_total": 0,
+ "unsupported_verdict_counts": {}
+}
