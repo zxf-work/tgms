@@ -1,0 +1,72 @@
+{
+ "by_form": {
+  "COMPLETE_SET": {
+   "certified": 160,
+   "certified_and_correct": 67,
+   "claim_constructed": 160,
+   "em": 67,
+   "executable": 160,
+   "n": 160
+  },
+  "EXACT_COUNT": {
+   "certified": 72,
+   "certified_and_correct": 39,
+   "claim_constructed": 72,
+   "em": 39,
+   "executable": 74,
+   "n": 75
+  },
+  "SCALAR": {
+   "certified": 166,
+   "certified_and_correct": 100,
+   "claim_constructed": 166,
+   "em": 104,
+   "executable": 208,
+   "n": 210
+  },
+  "SCALAR_TUPLE": {
+   "certified": 42,
+   "certified_and_correct": 18,
+   "claim_constructed": 42,
+   "em": 18,
+   "executable": 53,
+   "n": 55
+  }
+ },
+ "certified": 440,
+ "certified_and_correct": 224,
+ "commit": "a7c6e6dc628129134729bbd2b2cd67298543447c",
+ "descriptor_bytes_median": 612,
+ "em_overall": 228,
+ "freeze": {
+  "ceiling_s": 600,
+  "max_new_tokens": 1024,
+  "model": "Qwen/Qwen2.5-14B-Instruct-AWQ",
+  "prompt_template_sha256": "1790a36a0dc2a386ac4485cd4406974e88320d217f61d76325ba96a58cc287b4",
+  "repair_rounds": 3,
+  "repair_template_sha256": "0bd398b4ff27c457ef2efef45ffe7dbbb344b6b7f8e0ac9b1068b21deccb2637",
+  "seed": 0,
+  "temperature": 0.0
+ },
+ "funnel": {
+  "certified": 440,
+  "certified_and_correct": 224,
+  "claim_constructed": 440,
+  "executable_sql": 495,
+  "universe": 500
+ },
+ "gpu": "itiger01 (bigTiger partition)",
+ "host": "itiger01",
+ "n": 500,
+ "repair_used": 78,
+ "slurm_job": 185542,
+ "sqlite_version": "3.53.1",
+ "stage_counts": {
+  "certified": 440,
+  "no_executable_sql": 5,
+  "shape_mismatch": 55
+ },
+ "tokens_in_total": 617487,
+ "tokens_out_total": 43399,
+ "unsupported_verdict_counts": {}
+}

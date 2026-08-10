@@ -1,0 +1,1 @@
+{"attempts": [{"exec_s": 0.026, "n": 0, "ok": true}], "claim_form": "SCALAR", "db_id": "card_games", "difficulty": "simple", "em": true, "n_cols": 1, "n_rows": 4, "question_id": 358, "semantic_property": "plain", "sql": "SELECT borderColor FROM cards WHERE name = 'Ancestor''s Chosen'", "stage": "shape_mismatch", "tokens_in": 1071, "tokens_out": 20, "wall_s": 0.197}

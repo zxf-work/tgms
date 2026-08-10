@@ -1,0 +1,1 @@
+{"attempts": [{"exec_s": 0.02, "n": 0, "ok": true}], "claim_form": "SCALAR", "db_id": "codebase_community", "difficulty": "simple", "em": false, "n_cols": 1, "n_rows": 0, "question_id": 576, "semantic_property": "plain", "sql": "SELECT UserDisplayName FROM comments WHERE Text = 'thank you user93'", "stage": "shape_mismatch", "tokens_in": 1000, "tokens_out": 20, "wall_s": 0.185}

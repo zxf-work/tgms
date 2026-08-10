@@ -1,0 +1,69 @@
+{
+ "host": "itiger01",
+ "n": 500,
+ "freeze": {
+  "prompt_template_sha256": "1790a36a0dc2a386ac4485cd4406974e88320d217f61d76325ba96a58cc287b4",
+  "repair_template_sha256": "0bd398b4ff27c457ef2efef45ffe7dbbb344b6b7f8e0ac9b1068b21deccb2637",
+  "repair_rounds": 3,
+  "ceiling_s": 600,
+  "max_new_tokens": 1024,
+  "model": "Qwen/Qwen2.5-14B-Instruct-AWQ",
+  "temperature": 0.0,
+  "seed": 0
+ },
+ "stage_counts": {
+  "certified": 440,
+  "shape_mismatch": 55,
+  "no_executable_sql": 5
+ },
+ "by_form": {
+  "SCALAR": {
+   "n": 210,
+   "executable": 208,
+   "claim_constructed": 166,
+   "certified": 166,
+   "certified_and_correct": 100,
+   "em": 104
+  },
+  "SCALAR_TUPLE": {
+   "n": 55,
+   "executable": 53,
+   "claim_constructed": 42,
+   "certified": 42,
+   "certified_and_correct": 18,
+   "em": 18
+  },
+  "COMPLETE_SET": {
+   "n": 160,
+   "executable": 160,
+   "claim_constructed": 160,
+   "certified": 160,
+   "certified_and_correct": 67,
+   "em": 67
+  },
+  "EXACT_COUNT": {
+   "n": 75,
+   "executable": 74,
+   "claim_constructed": 72,
+   "certified": 72,
+   "certified_and_correct": 39,
+   "em": 39
+  }
+ },
+ "unsupported_verdict_counts": {},
+ "funnel": {
+  "universe": 500,
+  "executable_sql": 495,
+  "claim_constructed": 440,
+  "certified": 440,
+  "certified_and_correct": 224
+ },
+ "em_overall": 228,
+ "certified": 440,
+ "certified_and_correct": 224,
+ "tokens_in_total": 617487,
+ "tokens_out_total": 43399,
+ "descriptor_bytes_median": 612,
+ "repair_used": 78,
+ "sqlite_version": "3.53.1"
+}
