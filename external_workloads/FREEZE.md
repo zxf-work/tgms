@@ -69,19 +69,69 @@ claim's subject. Annotator-2 (PI) confirmation pending; any label
 the PI changes will be recorded as a disagreement in the same file
 BEFORE results are read against those items.
 
-## LDBC coverage protocol
+## LDBC coverage protocol (D-134, second-annotator adjudicated)
 
-Two independent dimensions per template, judged from the pinned
-official specifications: `exec_coverage` (DIRECT_TGMS /
-DECOMPOSABLE_TGMS / SQL_ONLY / UNSUPPORTED_EXECUTION) against the
-frozen 15-operator TGMS surface, and `claim_full_contract`
-(CURRENT_ECQR_FRAGMENT / REQUIRES_ORDERED_RESULT / REQUIRES_TOP_K /
-REQUIRES_RANKING / REQUIRES_PATH_CERTIFICATE) for the FULL LDBC
-result contract including its sort specification, plus
-`set_projection_in_fragment` for the unordered projection. Same
-Interpretation-1 rule as BIRD. Current state: single-annotator
-draft with per-template rationale; second-annotator adjudication
-before any paper number is derived.
+Two independent axes, each with a mechanical rule.
+
+EXECUTION, against the frozen registry (O1-O15 as returned by
+`tgms.temporal.algebra.REGISTRY`): DIRECT_TGMS = one registered
+operator invocation computes the required relation, with field
+selection or renaming for presentation not counting as a second
+operator; DECOMPOSABLE_TGMS = an explicit DAG over registered
+operators and the deterministic `compute` vocabulary only, with no
+hidden database reads and no unregistered recursion, graph
+algorithm, or group-by; SQL_ONLY = no such DAG but the SQL path
+expresses it; UNSUPPORTED_EXECUTION = neither surface implements a
+needed primitive. Every DIRECT/DECOMPOSABLE row carries an
+`exec_witness` plan naming operators, every SQL_ONLY row names the
+missing TGMS capability, and every UNSUPPORTED row names the
+primitive missing from both. Witnesses are CONSTRUCTED against the
+frozen operator schemas and are not executed against an LDBC
+instance; they make the classification auditable, not benchmarked.
+
+Four draft labels were reclassified to SQL_ONLY on second review
+because the frozen registry does not expose what the draft assumed:
+IC13 (no static variable-length shortest path --- snapshot_subgraph
+stops at hops<=3, temporal_reachability is earliest-arrival over
+time-respecting paths, temporal_paths enumerates bounded
+time-respecting paths), IS2 and IS6 (no unbounded replyOf root
+closure, and LDBC does not bound thread depth), and BI1 (three
+grouping dimensions including a derived content-length category,
+while `aggregate_events` groups edge events by at most two
+dimensions from the closed set time_bucket / calendar_unit /
+rel_type / endpoint / label). Totals: 4 direct, 5 decomposable, 28
+SQL-only, 4 unsupported.
+
+CLAIMS, a mutually exclusive partition by the FIRST contract
+feature the grammar lacks, in the precedence path certificate >
+groupwise extremum > top-k > ordered result > in fragment.
+REQUIRES_TOP_K means a global sort or rank followed by a finite
+semantic LIMIT selecting k rows of a larger relation;
+REQUIRES_ORDERED_RESULT means every qualifying row is returned but
+the contract fixes their sequence; REQUIRES_GROUPWISE_EXTREMUM
+(renamed from REQUIRES_RANKING, which overlapped top-k almost
+entirely) is reserved for an extremum per group before global
+presentation, which is BI14 alone. Totals: 7 in fragment, 5
+ordered, 27 top-k, 1 groupwise extremum, 1 path.
+
+The audit classifies the RETURNED CONTRACT, not every operation
+inside trusted Q. A scalar produced by a trusted shortest-path
+query is a Scalar and ECQR does not independently establish path
+optimality (IC13, BI15); a returned path sequence is outside the
+vocabulary because the user-visible object itself has path
+structure (IC14). The two readings are not mixed.
+
+PROJECTION, Policy A: a complete-set projection carries a scalar
+atom or a flat tuple of scalar atoms, never a nested list, set, or
+path sequence. `flat_projection_in_fragment` is 38/41; the three
+exceptions are IC1 and IC12 (nested collections: universities,
+companies, tagNames) and IC14 (a path sequence). Execution
+difficulty is irrelevant to this axis, so BI19 and BI20 --- whose
+execution is unsupported but whose returned rows are the flat
+tuples (id, id, weight) and (id, weight) --- are projection-
+compatible. `duplicate_safe` records why the set comparison is
+faithful per template: 25 guaranteed by an entity key, 6 by the
+grouping, 7 single-row.
 
 ## System boundary frozen for the agent stage
 

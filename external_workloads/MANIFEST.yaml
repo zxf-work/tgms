@@ -68,8 +68,8 @@ ldbc:
   frozen_manifest: "ldbc/ldbc_read_templates.jsonl"
   frozen_manifest_sha256: "52963dc03839ba21a2cc3749ef963ccb70d91c24c323d6ed369db6f879dadc48"
   coverage_annotation: "ldbc/coverage_annotation.jsonl"
-  coverage_annotation_sha256: "386cb90923396006a9f31eee924e7f57d5ba2d7943f82b3f5aad79f58ea017b6"
-  coverage_annotation_state: "draft-single-annotator; adjudication pending"
+  coverage_annotation_sha256: "b64dc58d31241bf21e9ddea1ef01f3be5b635e8aa9afe9d756183f265e2cf6ca"
+  coverage_annotation_state: "second-annotator adjudicated (D-134): exec 4 direct / 5 decomposable / 28 SQL-only / 4 unsupported with per-row operator witnesses; claims partitioned 7 fragment / 5 ordered / 27 top-k / 1 groupwise-extremum / 1 path; flat projection 38/41 under Policy A, excluding IC1, IC12, IC14"
 
 ecqr:
   repo_branch: "agent-interface"

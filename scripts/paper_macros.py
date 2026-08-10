@@ -237,10 +237,14 @@ def macros(pn: dict, fm: dict, sc: dict, uc: dict) -> str:
             ("pnLdbcClaimOrdered",
              str(cl.get("REQUIRES_ORDERED_RESULT", 0))),
             ("pnLdbcClaimTopK", str(cl.get("REQUIRES_TOP_K", 0))),
-            ("pnLdbcClaimRank", str(cl.get("REQUIRES_RANKING", 0))),
+            ("pnLdbcClaimGext",
+             str(cl.get("REQUIRES_GROUPWISE_EXTREMUM", 0))),
             ("pnLdbcClaimPath",
              str(cl.get("REQUIRES_PATH_CERTIFICATE", 0))),
-            ("pnLdbcSetProj", str(lc["set_projection_in_fragment"])),
+            ("pnLdbcFlatProj",
+             str(lc["flat_projection_in_fragment"])),
+            ("pnLdbcProjExcluded",
+             ", ".join(lc["projection_excluded"])),
         ]
     os_p = RES / "eval-bird-oracle-smoke.json"
     if os_p.exists():

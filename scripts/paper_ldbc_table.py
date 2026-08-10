@@ -24,7 +24,7 @@ GROUPS = [("IC1--14", "IC"), ("IS1--7", "IS"), ("BI1--20", "BI")]
 EXEC_COLS = ["DIRECT_TGMS", "DECOMPOSABLE_TGMS", "SQL_ONLY",
              "UNSUPPORTED_EXECUTION"]
 CLAIM_COLS = ["CURRENT_ECQR_FRAGMENT", "REQUIRES_ORDERED_RESULT",
-              "REQUIRES_TOP_K", "REQUIRES_RANKING",
+              "REQUIRES_TOP_K", "REQUIRES_GROUPWISE_EXTREMUM",
               "REQUIRES_PATH_CERTIFICATE"]
 
 
@@ -51,7 +51,7 @@ def main() -> int:
               for v in EXEC_COLS]
         cl = [sum(1 for r in sub if r["claim_full_contract"] == v)
               for v in CLAIM_COLS]
-        sp = sum(1 for r in sub if r["set_projection_in_fragment"])
+        sp = sum(1 for r in sub if r["flat_projection_in_fragment"])
         cells = [label] + [str(v) for v in ex + cl] + [
             f"{sp}/{len(sub)}"]
         return " & ".join(cells) + r" \\"
@@ -76,11 +76,14 @@ def main() -> int:
         r"coverage is against the frozen 15-operator surface. The claim",
         r"columns are a \emph{partition} of the 41 templates by the",
         r"first claim feature the current grammar lacks, in the",
-        r"precedence order path certificate, ranking, top-$k$, ordered",
-        r"result --- so a top-$k$ template that also requires ordering",
-        r"is counted once, under top-$k$. The last column counts",
-        r"templates whose \emph{unordered, duplicate-insensitive}",
-        r"projection is certifiable.}",
+        r"precedence order path certificate, groupwise extremum,",
+        r"top-$k$, ordered result --- so a top-$k$ template that also",
+        r"fixes an order is counted once, under top-$k$. The last",
+        r"column counts templates whose unordered, duplicate-insensitive",
+        r"\emph{flat} projection is certifiable: under the declared",
+        r"policy a complete-set projection carries a scalar atom or a",
+        r"flat tuple of atoms, so the three templates returning nested",
+        r"collections or a path sequence fall outside it.}",
         r"\label{tab:ldbc}",
         r"\footnotesize",
         r"\setlength{\tabcolsep}{2.6pt}",
@@ -88,10 +91,10 @@ def main() -> int:
         r"\toprule",
         r" & \multicolumn{4}{c}{Execution coverage}"
         r" & \multicolumn{5}{c}{Claim coverage (full contract)}"
-        r" & Set \\",
+        r" & Flat \\",
         r"\cmidrule(lr){2-5}\cmidrule(lr){6-10}",
         r"Template group & Dir. & Dec. & SQL & Uns."
-        r" & Frag. & Ord. & Top-$k$ & Rank & Path & proj. \\",
+        r" & Frag. & Ord. & Top-$k$ & G-ext & Path & proj. \\",
         r"\midrule",
         *body,
         r"\midrule",

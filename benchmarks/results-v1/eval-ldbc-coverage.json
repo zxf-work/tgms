@@ -1,19 +1,38 @@
 {
  "n_templates": 41,
  "exec_coverage_counts": {
-  "SQL_ONLY": 24,
-  "DECOMPOSABLE_TGMS": 9,
+  "SQL_ONLY": 28,
+  "DECOMPOSABLE_TGMS": 5,
   "UNSUPPORTED_EXECUTION": 4,
   "DIRECT_TGMS": 4
  },
  "claim_full_contract_counts": {
-  "REQUIRES_ORDERED_RESULT": 12,
-  "REQUIRES_TOP_K": 19,
-  "REQUIRES_RANKING": 2,
+  "REQUIRES_TOP_K": 27,
   "CURRENT_ECQR_FRAGMENT": 7,
-  "REQUIRES_PATH_CERTIFICATE": 1
+  "REQUIRES_PATH_CERTIFICATE": 1,
+  "REQUIRES_ORDERED_RESULT": 5,
+  "REQUIRES_GROUPWISE_EXTREMUM": 1
  },
- "set_projection_in_fragment": 38,
+ "flat_projection_in_fragment": 38,
+ "projection_policy": "Policy A: CompleteSet carries a scalar atom or a flat tuple of scalar atoms; nested lists, sets, and path sequences are outside the projection grammar",
+ "projection_excluded": [
+  "IC1",
+  "IC12",
+  "IC14"
+ ],
+ "duplicate_safe_counts": {
+  "GUARANTEED_BY_KEY": 25,
+  "GUARANTEED_BY_GROUP": 6,
+  "SINGLE_ROW": 7
+ },
+ "claim_partition_precedence": [
+  "REQUIRES_PATH_CERTIFICATE",
+  "REQUIRES_GROUPWISE_EXTREMUM",
+  "REQUIRES_TOP_K",
+  "REQUIRES_ORDERED_RESULT",
+  "CURRENT_ECQR_FRAGMENT"
+ ],
+ "exec_witness_status": "plans constructed against the frozen operator schemas; not executed against an LDBC instance",
  "manifest_sha256": "52963dc03839ba21a2cc3749ef963ccb70d91c24c323d6ed369db6f879dadc48",
- "status": "draft-single-annotator; adjudication pending"
+ "status": "second-annotator adjudicated (D-134)"
 }
