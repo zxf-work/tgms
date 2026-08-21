@@ -28,7 +28,7 @@ from tgms.tgir import (
     adapter_for, anchor_of_var, comparable, compute_node_digest, le, leaf_scope,
     meet, meet_all, meet_exactness, scope_of, union_all, vt_closed, vt_from,
 )
-from tgms.tgir.depscope import FULL_SCAN_CHECKPOINTS, K_DENSE_ID, UNANCHORED
+from tgms.tgir.depscope import FULL_SCAN_CHECKPOINTS, UNANCHORED
 
 BASIS = ScopeBasis(store="store-a", tt_q=1_000, checkpoints=(Checkpoint(500, "aa" * 8),))
 
@@ -546,12 +546,34 @@ def test_scope_requires_a_store_and_mandatory_checkpoints():
     assert DependencyScope(store="s", tt_q=1).checkpoints == FULL_SCAN_CHECKPOINTS
 
 
-def test_store_identity_is_the_event_log_header_digest():
+def test_store_identity_is_the_header_and_first_batch_digest():
+    """Coordinator ruling (M2.1): the header alone is a constant and
+    discriminates nothing, so the identity is `digest(header ‖ first batch)` —
+    distinct between stores, identical across replays of one history."""
     from tgms.storage.eventlog import HEADER
     from tgms.tgir import store_identity
-    assert store_identity(HEADER) == store_identity(canonical_json(HEADER))
-    assert store_identity(HEADER) == store_identity(canonical_json(HEADER).encode())
-    assert UNANCHORED == "unanchored"
+
+    b1 = {"batch_id": "aaaa", "tt": 10, "ops": [{"op": "assert_node", "uid": "a"}]}
+    b2 = {"batch_id": "bbbb", "tt": 11, "ops": [{"op": "assert_node", "uid": "b"}]}
+    ident = store_identity(HEADER, b1)
+    assert ident == store_identity(canonical_json(HEADER), canonical_json(b1))
+    assert ident == store_identity(canonical_json(HEADER).encode(),
+                                   canonical_json(b1).encode())
+    assert ident != store_identity(HEADER, b2)      # two stores, two identities
+    # a log with no batches has no identity to state — until its first write
+    assert store_identity(HEADER, None) == UNANCHORED == "unanchored"
+
+
+def test_a_kinds_set_naming_every_kind_canonicalizes_to_top():
+    """D13.5's one-spelling rule, applied at construction so `==` and the
+    round-trip agree."""
+    from tgms.tgir.depscope import KINDS
+
+    assert ScopeTerm(kinds=KINDS).kinds is TOP
+    assert ScopeTerm(kinds=tuple(reversed(KINDS))) == ScopeTerm(kinds=TOP)
+    assert ScopeTerm(kinds=KINDS).to_json()["kinds"] == "*"
+    partial = ScopeTerm(kinds=KINDS[:-1])
+    assert partial.kinds is not TOP and len(partial.kinds) == 4
 
 
 # ---------------------------------------------------------------------------
@@ -633,7 +655,10 @@ def test_node_scan_scope_carries_both_arms_when_uids_are_bound():
     arm over the same uids, or `𝒟`'s presence is inert."""
     scope = leaf_scope(NodeScan("p", uids=("u1", "u2")), BASIS)
     term = scope.terms[0]
-    assert set(K_DENSE_ID) <= set(term.kinds)
+    # `𝒩 ∪ 𝒟` names every kind, and a kinds set equal to all five *is* ⊤, which
+    # has exactly one spelling (D13.5) — so the derivation's `𝒟` reach shows up
+    # as `"*"` rather than as an enumeration that means the same thing
+    assert term.kinds is TOP
     assert term.targets.nodes == ("u1", "u2")
     assert term.targets.incident == Incident("either", ("u1", "u2"))
     # an unrestricted scan is ⊤-targeted
