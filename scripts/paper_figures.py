@@ -51,7 +51,7 @@ def fig5(pn: dict, uc: dict) -> str:
         for d in DS)
     ax = ("symbolic x coords={MathOverflow,SuperUser,wiki-talk}, "
           "xtick=data, x tick label style={font=\\tiny, rotate=25, "
-          "anchor=east}, bar width=4.5pt, ybar, width=0.36\\linewidth, "
+          "anchor=east}, bar width=4.5pt, ybar, width=0.34\\linewidth, "
           "height=3.1cm, ymin=0")
 
     # row 2: unsupported-claim composition (former fig-reasons body)
