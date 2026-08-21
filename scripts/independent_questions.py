@@ -2064,29 +2064,27 @@ def report():
     print(f"\nexpressible now: {expressible} of {len(q)}")
     print("runnable:", [f"{d}-Q{n}" for (d, n) in sorted(C)
                         if C[(d, n)][2]])
-    rows = [{"dataset": d, "q": n, **q[(d, n)],
-             "class": C[(d, n)][0], "need_or_ops": C[(d, n)][1],
-             "run": C[(d, n)][2], "note": C[(d, n)][3],
-             "class_14": v14((d, n))[0], "need_or_ops_14": v14((d, n))[1],
-             "justification_14": C14[(d, n)][2] if (d, n) in C14 else "",
-             "class_15": v15((d, n))[0], "need_or_ops_15": v15((d, n))[1],
-             "justification_15": C15[(d, n)][2] if (d, n) in C15 else "",
-             "class_16": v16((d, n))[0], "need_or_ops_16": v16((d, n))[1],
-             "justification_16": C16[(d, n)][2] if (d, n) in C16 else "",
-             "class_17": v17((d, n))[0], "need_or_ops_17": v17((d, n))[1],
-             "justification_17": C17[(d, n)][2] if (d, n) in C17 else "",
-             "class_18": v18((d, n))[0], "need_or_ops_18": v18((d, n))[1],
-             "justification_18": C18[(d, n)][2] if (d, n) in C18 else "",
-             "class_19": v19((d, n))[0], "need_or_ops_19": v19((d, n))[1],
-             "justification_19": C19[(d, n)][2] if (d, n) in C19 else "",
-             "class_20": v20((d, n))[0], "need_or_ops_20": v20((d, n))[1],
-             "justification_20": C20[(d, n)][2] if (d, n) in C20 else "",
-             "class_21": v21((d, n))[0], "need_or_ops_21": v21((d, n))[1],
-             "justification_21": C21[(d, n)][2] if (d, n) in C21 else "",
-             "class_22": v22((d, n))[0], "need_or_ops_22": v22((d, n))[1],
-             "justification_22": C22[(d, n)][2] if (d, n) in C22 else "",
-             "reread_not_capability": (d, n) in REREAD}
-            for (d, n) in sorted(q)]
+    # Every re-audit layer gets its own class_N / need_or_ops_N /
+    # justification_N triple in the export (the pre-registered v13 is
+    # already carried by the plain `class` / `need_or_ops` columns). Add a
+    # layer here — and nowhere else — when a new C-table lands; the export
+    # cannot go stale behind the verdict chain again.
+    layers = [(14, v14, C14), (15, v15, C15), (16, v16, C16), (17, v17, C17),
+              (18, v18, C18), (19, v19, C19), (20, v20, C20), (21, v21, C21),
+              (22, v22, C22), (23, v23, C23), (24, v24, C24), (25, v25, C25),
+              (26, v26, C26)]
+    rows = []
+    for (d, n) in sorted(q):
+        row = {"dataset": d, "q": n, **q[(d, n)],
+               "class": C[(d, n)][0], "need_or_ops": C[(d, n)][1],
+               "run": C[(d, n)][2], "note": C[(d, n)][3]}
+        for num, v, table in layers:
+            cls, need = v((d, n))
+            row[f"class_{num}"] = cls
+            row[f"need_or_ops_{num}"] = need
+            row[f"justification_{num}"] = table[(d, n)][2] if (d, n) in table else ""
+        row["reread_not_capability"] = (d, n) in REREAD
+        rows.append(row)
     out = Path("benchmarks/independent-v1/classification.json")
     out.parent.mkdir(parents=True, exist_ok=True)
     out.write_text(json.dumps(rows, indent=1))
