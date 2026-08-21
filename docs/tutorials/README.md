@@ -20,5 +20,5 @@ have a store and just want one piece.
 
 See also: [`docs/STABILITY.md`](../STABILITY.md) (what's durable across
 upgrades), [`docs/PUBLIC_ROADMAP.md`](../PUBLIC_ROADMAP.md) (what's next),
-and [`docs/design/EVIDENCE_MODEL.md`](../design/EVIDENCE_MODEL.md) (the
-formal model behind tutorial 3, for readers who want full precision).
+and [the paper](../../paper/main.pdf) (the formal model behind tutorial 3,
+for readers who want full precision).

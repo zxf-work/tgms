@@ -186,6 +186,6 @@ end, including what happens when evidence is truncated.
   verified, and what TGMS explicitly does not guarantee.
 - [Bring your own data](bring-your-own-data.md) — build the store this
   tutorial's examples query against.
-- [`docs/design/EVIDENCE_MODEL.md`](../design/EVIDENCE_MODEL.md) — the
-  formal model behind the verification layer, if you want the full
-  precision (written for a reviewer, not a first read).
+- [The paper](../../paper/main.pdf) — the formal model behind the
+  verification layer, if you want the full precision (written for a
+  reviewer, not a first read).

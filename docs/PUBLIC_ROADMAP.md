@@ -1,6 +1,8 @@
 # TGMS Public Roadmap
 
-For detailed internal planning and research direction, see [`docs/ROADMAP.md`](./ROADMAP.md) and [`docs/design/`](./design/).
+This is the public view of where TGMS is going; the detailed milestone
+planning and research-direction documents live in the maintainers'
+internal notes. Questions about any item are welcome as issues.
 
 ---
 

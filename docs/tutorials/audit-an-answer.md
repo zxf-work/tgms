@@ -197,8 +197,7 @@ them is a common way to over-trust a result:
   engine computed the whole thing, then handed you a page of it) — which
   is exactly why an *exact count* can still be certified from `rows_total`
   even when the *rows themselves* were paginated (see
-  [`EVIDENCE_MODEL.md`](../design/EVIDENCE_MODEL.md) §4 if you want the
-  precise rule).
+  [the paper](../../paper/main.pdf) if you want the precise rule).
 - **Domain completeness** — completeness is always relative to the query
   you actually declared (this window, these seeds, this filter) — never
   to the world. "Complete" never means "every fact that exists"; it means
@@ -207,10 +206,8 @@ them is a common way to over-trust a result:
 
 ## What TGMS does not guarantee
 
-Stated as plainly as the implementation states it
-([`EVIDENCE_MODEL.md`](../design/EVIDENCE_MODEL.md) §8, "Non-goals"),
-because this project reports what it doesn't do as deliberately as what
-it does:
+Stated as plainly as the implementation states them — this project
+reports what it doesn't do as deliberately as what it does:
 
 1. **That the agent understood you.** A verified claim is verified against
    the query that actually ran — not against what you meant. If the agent
@@ -255,6 +252,7 @@ means *trace-faithful*, and trace-faithful is not the same claim as
   the queries this tutorial's trace is drawn from.
 - [Give TGMS to an agent](agent-setup.md) — the MCP surface an agent calls
   to produce the steps this tutorial audits.
-- [`docs/design/EVIDENCE_MODEL.md`](../design/EVIDENCE_MODEL.md) — the
-  full formal model (claim types, proof obligations, soundness statement)
-  if you want the precise version of everything above.
+- [The paper](../../paper/main.pdf) — the full formal treatment (claim
+  types, verification semantics, soundness) plus the measured evidence,
+  if you want the precise version of everything above; the semantics
+  receipts live in [`docs/eval_semantics.md`](../eval_semantics.md).
