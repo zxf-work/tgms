@@ -101,17 +101,12 @@ def main() -> int:
         r"{none};",
         r"\end{scope}",
         r"\end{tikzpicture}",
-        r"\caption{BIRD Mini-Dev under the frozen 500-question "
-        r"universe. \emph{Left}: contract coverage, from executable "
-        r"SQL to any supported typed claim and then to the stricter "
-        r"full-contract criterion. \emph{Right}: any-claim "
-        r"certification against agreement with the published gold "
-        r"result. The two panels use different denominators --- of "
-        r"the 432 certified runs 223 match gold, while 210 runs "
-        r"satisfy both the strict criterion and gold agreement --- "
-        r"so the right panel is not a continuation of the left. The "
-        r"lower-left cell holds the five gold-matching runs whose "
-        r"adjudicated shape produced no certifiable claim.}",
+        rf"\caption{{BIRD Mini-Dev. \emph{{Left}}: contract coverage "
+        rf"over {fu['universe']} questions. \emph{{Right}}: any-claim "
+        rf"certification versus published-gold agreement; "
+        rf"{cc}/{fu['certified']} certified runs match gold, and "
+        rf"{r['gold_match_full_contract']} also satisfy the strict "
+        rf"full-contract criterion.}}",
         r"\label{fig:birdfunnel}",
         r"\end{figure}",
         ""])

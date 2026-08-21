@@ -24,7 +24,16 @@ LEVEL_EXPR = {"a1": 0.59, "a2": 0.83, "a3": 1.00, "a4": 1.00}
 LEVEL_OPS = {"a1": 5, "a2": 11, "a3": 13, "a4": 15}
 
 
-def fig5(pn: dict) -> str:
+def fig5(pn: dict, uc: dict) -> str:
+    """Merged RQ2 figure: row 1 is the three need/coverage/utility ybar
+    panels (former fig-main); row 2 is the unsupported-claim
+    composition stacked xbar (former fig-reasons), placed beneath via
+    a plain node-anchor offset from panel a. One shared caption; the
+    figure carries BOTH \\label{fig:frozen} and \\label{fig:reasons}
+    so existing \\ref{fig:frozen} and \\ref{fig:reasons} uses in
+    hand-written prose (owned by other agents, not edited here) keep
+    resolving to this merged figure. fig-reasons.tex becomes an
+    empty-safe stub (see fig_reasons_stub below)."""
     fz = pn["frozen_2x2"]
     pre_t = fz["ucr_pre_gate_tgms"]
     pre_s = fz["ucr_pre_gate_sql"]
@@ -44,7 +53,34 @@ def fig5(pn: dict) -> str:
           "xtick=data, x tick label style={font=\\tiny, rotate=25, "
           "anchor=east}, bar width=4.5pt, ybar, width=0.36\\linewidth, "
           "height=3.1cm, ymin=0")
-    return rf"""% F-main — need / safety-coverage / utility (round-3 review)
+
+    # row 2: unsupported-claim composition (former fig-reasons body)
+    comp = uc["composition"]
+    dsrow = {"sx-mathoverflow": "MathOverflow",
+             "sx-superuser": "SuperUser", "wiki-talk": "wiki-talk"}
+    rows = []
+    for d in DS:
+        c = comp[f"{d}|operators"]
+        k = c["unsupported_claims_by_kind"]
+        rows.append((f"{dsrow[d]} / Ops", k.get("count", 0),
+                     k.get("entity", 0), k.get("value", 0),
+                     c.get("unsupported_claims_undetermined_kind", 0), 0))
+    for d in DS:
+        v = comp[f"{d}|sql"]["claim_verdicts"]
+        nw = sum(x for kk, x in v.items() if kk != "SUPPORTED")
+        rows.append((f"{dsrow[d]} / SQL", 0, 0, 0, 0, nw))
+    sym = ",".join(r[0] for r in reversed(rows))
+    series = [("exact count", 1), ("entity witness", 2),
+              ("cited value", 3), ("undetermined", 4),
+              ("witness (SQL)", 5)]
+    plots = "\n".join(
+        rf"\addplot coordinates {{"
+        + " ".join(f"({r[si]},{r[0]})" for r in rows) + "};"
+        for _, si in series)
+    legend = ", ".join(lab for lab, _ in series)
+
+    return rf"""% F-main — merged need/coverage/utility (row 1) + unsupported-claim
+% composition (row 2); generated, do not edit.
 \begin{{figure*}}[t]
 \centering
 \begin{{tikzpicture}}
@@ -63,22 +99,43 @@ def fig5(pn: dict) -> str:
 \addplot coordinates {{{cov_s}}};
 \legend{{Operators+ECQR, SQL+ECQR}}
 \end{{axis}}
-\begin{{axis}}[at={{(b.outer east)}}, anchor=outer west,
+\begin{{axis}}[name=c, at={{(b.outer east)}}, anchor=outer west,
   xshift=2mm, {ax}, ymax=0.6,
   ylabel={{\scriptsize correct-certified coverage}}]
 \addplot coordinates {{{ccc_o}}};
 \addplot coordinates {{{ccc_s}}};
 \end{{axis}}
+\begin{{axis}}[name=d, at={{(a.south west)}}, anchor=north west,
+  yshift=-1.55cm, xbar stacked, width=0.92\linewidth, height=3.2cm,
+  symbolic y coords={{{sym}}}, ytick=data,
+  y tick label style={{font=\tiny}}, xmin=0,
+  x tick label style={{font=\tiny}},
+  xlabel={{\scriptsize unsupported proposed claims}},
+  bar width=4.5pt,
+  legend style={{font=\tiny, at={{(0.98,0.03)}}, anchor=south east}},
+  legend cell align=left]
+{plots}
+\legend{{{legend}}}
+\end{{axis}}
 \end{{tikzpicture}}
-\caption{{Evidence need and certified-output tradeoff. Pre-gate UCR
-measures unsupported proposed claims; certified-output coverage
-measures answer availability after enforcement; correct-certified
-coverage measures useful certified output. SQL UCR is defined within
-the SQL-conservative claim surface and is not compared with operator
-UCR.}}
+\caption{{Evidence need and enforcement effect. Unsupported claims
+occur under both interfaces; operator failures span cardinality,
+witness, and cited-value support. Certified output trades answer
+availability for support while leaving audit-mode task accuracy
+nearly unchanged.}}
 \label{{fig:frozen}}
+\label{{fig:reasons}}
 \end{{figure*}}
 """
+
+
+def fig_reasons_stub() -> str:
+    """fig-reasons.tex is merged into fig-main.tex (label fig:frozen);
+    this file is now an empty-safe stub so a stale \\input{{fig-reasons}}
+    is harmless."""
+    return ("% fig-reasons merged into fig-main.tex (see fig:frozen).\n"
+            "% This file is intentionally empty -- a stale "
+            "\\input{fig-reasons} is a no-op.\n")
 
 
 def fig6(pn: dict) -> str:
@@ -238,55 +295,6 @@ verdict.}}
 """
 
 
-def fig_reasons(uc: dict) -> str:
-    comp = uc["composition"]
-    dsrow = {"sx-mathoverflow": "MathOverflow",
-             "sx-superuser": "SuperUser", "wiki-talk": "wiki-talk"}
-    rows = []
-    for ds in DS:
-        c = comp[f"{ds}|operators"]
-        k = c["unsupported_claims_by_kind"]
-        rows.append((f"{dsrow[ds]} / Ops", k.get("count", 0),
-                     k.get("entity", 0), k.get("value", 0),
-                     c.get("unsupported_claims_undetermined_kind", 0), 0))
-    for ds in DS:
-        v = comp[f"{ds}|sql"]["claim_verdicts"]
-        nw = sum(x for kk, x in v.items() if kk != "SUPPORTED")
-        rows.append((f"{dsrow[ds]} / SQL", 0, 0, 0, 0, nw))
-    sym = ",".join(r[0] for r in reversed(rows))
-    series = [("exact count", 1), ("entity witness", 2),
-              ("cited value", 3), ("undetermined", 4),
-              ("witness (SQL)", 5)]
-    plots = "\n".join(
-        rf"\addplot coordinates {{"
-        + " ".join(f"({r[si]},{r[0]})" for r in rows) + "};"
-        for _, si in series)
-    legend = ", ".join(lab for lab, _ in series)
-    return rf"""% F-reasons — generated from eval-unsupported-composition.json
-\begin{{figure}}[t]
-\centering
-\begin{{tikzpicture}}
-\begin{{axis}}[xbar stacked, width=0.80\linewidth, height=3.4cm,
-  symbolic y coords={{{sym}}}, ytick=data,
-  y tick label style={{font=\tiny}}, xmin=0,
-  x tick label style={{font=\tiny}},
-  xlabel={{\scriptsize unsupported proposed claims}},
-  bar width=4.5pt,
-  legend style={{font=\tiny, at={{(0.98,0.03)}}, anchor=south east}},
-  legend cell align=left]
-{plots}
-\legend{{{legend}}}
-\end{{axis}}
-\end{{tikzpicture}}
-\caption{{Composition of unsupported pre-gate proposals. Every
-unsupported claim is counted: operator rows by proposed-claim kind,
-with the six claims from fractional-UCR runs shown as undetermined
-rather than allocated; SQL rows by verdict.}}
-\label{{fig:reasons}}
-\end{{figure}}
-"""
-
-
 def fig_efficiency(sc: dict, ov: dict) -> str:
     t = sc["timing"]
     canon = " ".join(
@@ -361,13 +369,14 @@ def main() -> int:
     sc = json.loads((RES / "eval-verifier-scaling.json").read_text())
     ov = json.loads((RES / "evidence-overhead-itiger.json").read_text())
     outdir = args.out if args.out.is_dir() else args.out.parent
-    (outdir / "fig-main.tex").write_text(fig5(pn))
+    (outdir / "fig-main.tex").write_text(fig5(pn, uc))
     (outdir / "fig-frontier.tex").write_text(fig6(pn))
     (outdir / "fig-conformance.tex").write_text(fig_conformance(bc, fm))
-    (outdir / "fig-reasons.tex").write_text(fig_reasons(uc))
+    (outdir / "fig-reasons.tex").write_text(fig_reasons_stub())
     (outdir / "fig-efficiency.tex").write_text(fig_efficiency(sc, ov))
-    print(f"wrote fig-main, fig-frontier, fig-conformance, "
-          f"fig-reasons, fig-efficiency to {outdir}")
+    print(f"wrote fig-main (merged with former fig-reasons), "
+          f"fig-frontier, fig-conformance, fig-reasons (stub), "
+          f"fig-efficiency to {outdir}")
     return 0
 
 
