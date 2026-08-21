@@ -24,7 +24,13 @@ from typing import Any
 from tgms.core.errors import InvalidArgError, LimitError
 from tgms.core.model import canonical_json, digest, sha256_hex
 from tgms.agent.ir import MAX_STEPS, Plan, substitute_refs
+from tgms.temporal.algebra import ENVELOPE_META_FIELDS
 from tgms.tools.server import ToolRouter
+
+#: The freshness metadata a step carries (TGIR_SPEC §5.6, §5.5). Digest-excluded
+#: on the envelope, and likewise absent from the step's content addressing:
+#: `result_digest` is the kernel payload's digest and nothing here enters it.
+FRESHNESS_KEYS = ("tt_q", "pinned", "clamped", "dependency")
 
 MAX_WALL_S = 60.0
 MAX_TOTAL_ROWS = 50_000
@@ -60,7 +66,37 @@ class Trace:
     def to_json(self) -> dict[str, Any]:
         return {"plan_id": self.plan_id, "steps": self.steps, "answer": self.answer,
                 "answer_error": self.answer_error, "wall_ms": round(self.wall_ms, 3),
-                "ok": self.ok}
+                "ok": self.ok, **self.plan_basis()}
+
+    def plan_basis(self) -> dict[str, Any]:
+        """The plan record's `(tt_q, pinned, clamped)` and `dependency`.
+
+        **Derived by `⊎` over the steps' own scopes, never captured when the
+        plan finishes** (FRESHNESS_SEMANTICS D13.17b). A completion-time capture
+        would report a frontier later than the one each step actually read from,
+        certifying as fresh a plan whose early steps ran against older
+        results — exactly the false freshness D13.17 exists to forbid, one level
+        up. The union takes the triple of whichever operand has the smaller
+        minimum checkpoint offset and keeps **every** operand's checkpoint
+        (D13.8, D13.8a, D13.8b), so no step's tamper-evidence is discarded.
+
+        A plan whose steps all failed before any basis was recorded has nothing
+        to union and carries no plan-level basis rather than an invented one.
+        """
+        from tgms.tgir.depscope import DependencyScope, union_all
+
+        scopes = [DependencyScope.from_json(s["dependency"]) for s in self.steps
+                  if isinstance(s.get("dependency"), dict)]
+        if not scopes:
+            return {}
+        try:
+            plan_scope = union_all(scopes)
+        except InvalidArgError:
+            # two steps over different stores do not union (D13.8 refuses at
+            # construction); the plan then has no single basis to state
+            return {}
+        return {"tt_q": plan_scope.tt_q, "pinned": plan_scope.pinned,
+                "clamped": plan_scope.clamped, "dependency": plan_scope.to_json()}
 
 
 class ResultStore:
@@ -71,6 +107,19 @@ class ResultStore:
         self.root.mkdir(parents=True, exist_ok=True)
 
     def put(self, payload: dict[str, Any]) -> str:
+        """Keyed by `result_digest`, and written only once.
+
+        **Invariant, recorded because it is sound by accident** (M2 plan §6.4):
+        two runs producing an identical payload at different times share one
+        file, so the **first** write's `tt_q` is the one that persists. Because
+        `tt` is monotonic, first = earliest = rounded down = sound. The
+        authoritative `tt_q` for a given execution is the **trace step's**, not
+        the stored blob's — and a blob written before M2.1 carries no `tt_q` at
+        all, which D13.24 step 4 already rules as `UNDECIDABLE("no-tt_q")`,
+        i.e. it degrades to `POSSIBLY_STALE` and never to a false `FRESH`.
+        Back-filling one would look like a kindness and would be a
+        false-freshness bug; readers must not default it either.
+        """
         d = payload.get("result_digest") or digest(payload)
         path = self.root / f"{d}.json"
         if not path.exists():
@@ -85,6 +134,18 @@ class Executor:
     def __init__(self, router: ToolRouter, result_store: ResultStore | None = None) -> None:
         self.router = router
         self.results = result_store
+
+    def _basis(self, op: str) -> dict[str, Any]:
+        """The freshness metadata for a step, recorded **before** it runs.
+
+        A step that fails, is skipped, or is refused never produces an
+        envelope, yet it still contributes its dependency scope — a correction
+        can make it succeed (FRESHNESS_SEMANTICS D13.14, prohibition 3), and
+        the plan-level `⊎` would otherwise silently omit it. A successful step
+        overwrites this with its own capture.
+        """
+        ask = getattr(self.router, "read_basis", None)
+        return ask(op) if ask is not None else {}
 
     def run(self, plan: Plan) -> Trace:
         if len(plan.steps) > MAX_STEPS:
@@ -101,7 +162,7 @@ class Executor:
 
         for sid in order:
             step = by_id[sid]
-            rec: dict[str, Any] = {"step_id": sid, "op": step.op}
+            rec: dict[str, Any] = {"step_id": sid, "op": step.op, **self._basis(step.op)}
             elapsed = time.perf_counter() - t_start
             if elapsed > MAX_WALL_S:
                 rec.update(status="skipped", error={"error": "E_LIMIT",
@@ -163,6 +224,9 @@ class Executor:
             else:
                 rows = res.get("rows_total", len(res.get("rows", [])) or 0)
                 total_rows += int(rows or 0)
+                # the read's own capture supersedes the pre-call basis: it is
+                # the frontier this step was actually served from (D13.16)
+                rec.update({k: res[k] for k in FRESHNESS_KEYS if k in res})
                 rec.update(status="ok", result_digest=res["result_digest"],
                            rows_returned=rows,
                            truncated=res.get("truncated", False),
@@ -198,6 +262,6 @@ class Executor:
                 if src not in outputs:
                     raise InvalidArgError(f"answer source step {src} did not complete")
                 trace.answer = {k: v for k, v in outputs[src].items()
-                                if k not in ("op", "args_echo", "dataset_extent")}
+                                if k not in ENVELOPE_META_FIELDS}
         except InvalidArgError as e:
             trace.answer_error = str(e)

@@ -83,6 +83,24 @@ class EventLog:
         for batch, _end, _raw in self.batches_from(0):
             yield batch
 
+    def header(self) -> dict[str, Any]:
+        """The first line — the header record, which is outside the chain."""
+        with open(self.path, "r", encoding="utf-8") as f:
+            return json.loads(f.readline())
+
+    def first_batch(self) -> dict[str, Any] | None:
+        """The log's genesis record, or None while the log holds no batches.
+
+        Together with the header this is the store's identity (D13.2's
+        `store`): the batch carries a content-addressed `batch_id` and this
+        history's own `tt`, so the pair distinguishes two stores while staying
+        **identical across replays of one history** — which `store_digest()`,
+        being content-dependent, does not.
+        """
+        for batch, _end, _raw in self.batches_from(0):
+            return batch
+        return None
+
 
     def trim_torn_tail(self, applied_offset: int) -> int | None:
         """Truncate a torn *final* record left by a crash mid-append (D-086).

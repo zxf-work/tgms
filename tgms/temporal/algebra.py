@@ -49,6 +49,16 @@ UID_LIST = {"type": "array", "items": UID, "minItems": 1, "maxItems": 10_000}
 
 PAGINATED_FIELDS = ("rows", "rows_total", "truncated", "cursor")
 
+#: Envelope keys that are call metadata or provenance rather than the answer:
+#: every consumer that projects an *answer* out of an envelope strips exactly
+#: these (`Executor._resolve_answer`), and the human-owned comparators strip the
+#: same set plus `result_digest` (`tests/conftest.py::ENVELOPE_META_KEYS`). The
+#: last four are M2.1's freshness metadata (TGIR_SPEC §5.6, §5.5); they are
+#: digest-excluded because they live here, on the envelope, and never inside a
+#: kernel's payload.
+ENVELOPE_META_FIELDS = ("op", "args_echo", "dataset_extent",
+                        "tt_q", "pinned", "clamped", "dependency")
+
 
 @dataclass
 class OperatorSpec:
@@ -141,9 +151,16 @@ def check_window(args: dict[str, Any]) -> None:
 
 def call_operator(adapter: StorageAdapter, name: str, args: dict[str, Any],
                   skip_cost_check: bool = False,
-                  cost_ceilings: dict[str, int] | None = None) -> dict[str, Any]:
+                  cost_ceilings: dict[str, int] | None = None,
+                  tt_source: Any = None) -> dict[str, Any]:
     """Validate, execute, and wrap an operator call in the self-describing
-    envelope. All agent-facing surfaces (ToolRouter, MCP) go through here."""
+    envelope. All agent-facing surfaces (ToolRouter, MCP) go through here.
+
+    `tt_source` is the authoritative frontier for `tt_q` when the caller has a
+    `Store` (which knows what its backend has *applied*); with none, the
+    adapter's own applied frontier is used, which every backend maintains
+    through the shared `apply_ops`.
+    """
     filled = validate_args(name, args)
     spec = REGISTRY[name]
     stats = adapter.stats()
@@ -153,6 +170,13 @@ def call_operator(adapter: StorageAdapter, name: str, args: dict[str, Any],
         )
         enforce_cost(name, add_time_estimate(name, spec.cost_fn(filled, stats)),
                      cost_ceilings)
+    # Captured **before** the read is issued, which is how "round down, never
+    # up" (FRESHNESS_SEMANTICS D13.17) is satisfied by construction: anything
+    # applied after this instant has tt > tt_q and will be checked, never
+    # assumed away. Local import: `tgms.tgir` reads this module's registry from
+    # M2.2 on, and the cycle is avoided here exactly as it is for guardrails.
+    from tgms.tgir.ttq import as_of_tt_of, envelope_metadata
+    freshness = envelope_metadata(adapter, name, as_of_tt_of(filled), tt_source)
     payload = spec.fn(adapter, filled)
     payload = _canonicalize_floats(payload)
     envelope = {
@@ -164,6 +188,14 @@ def call_operator(adapter: StorageAdapter, name: str, args: dict[str, Any],
         "dataset_extent": {"vt_min": stats.get("vt_min"), "vt_max": stats.get("vt_max")},
         "truncated": payload.get("truncated", False),
         **payload,
+        # `tt_q`, `pinned`, `clamped` and `dependency` (TGIR_SPEC §5.6, §5.5;
+        # D13.16's placement). They sit **after** `**payload` for the same
+        # reason `result_digest` does — the envelope's own value wins — and
+        # they are digest-excluded *structurally*: `digest()` covers `payload`,
+        # which they are not part of. A metadata field returned by a kernel
+        # instead would silently rewrite every digest in the tree
+        # (scripts/check_digest_stability.py is the guard).
+        **freshness,
         "result_digest": digest(payload),
     }
     return envelope

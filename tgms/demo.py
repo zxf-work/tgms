@@ -223,7 +223,7 @@ def _arc(store: Any, root: Path, n: _Narrator, t_start: float,
 
     # -- beat 3: today's beliefs ------------------------------------------- #
 
-    router = ToolRouter(store.adapter)
+    router = ToolRouter(store.adapter, tt_source=store)
 
     n.head("Ask the graph what it believes NOW")
     n.ask(f"What is the status history of {SUBJECT}?")
@@ -386,7 +386,7 @@ def _run_plan(store: Any, root: Path,
         ],
         "answer_spec": {"kind": "count", "from": "s3.rows_total"},
     })
-    executor = Executor(ToolRouter(store.adapter),
+    executor = Executor(ToolRouter(store.adapter, tt_source=store),
                         ResultStore(root / "demo-results"))
     trace = executor.run(plan)
     if not trace.ok:

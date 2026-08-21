@@ -70,6 +70,26 @@ class StorageAdapter(ABC):
     paranoid: bool = False  # re-check disjointness invariant after every batch
     _tcsr = None  # lazily built current-belief TemporalCSR + its columnar arrays
 
+    #: Highest transaction time this adapter has **applied** — the belief-time
+    #: frontier a read is served from (`tt_q`, FRESHNESS_SEMANTICS D13.16).
+    #: Maintained by `apply_ops` below, so all three backends get it from one
+    #: line and no Rust changes. It is deliberately *not* the event log's tail
+    #: and not `Store.clock.last_tt`: the log is fsynced **before** the batch is
+    #: applied, so both over-report what a reader is being served, and a `tt_q`
+    #: rounded *up* is the false-freshness direction D13.17 forbids by name.
+    _frontier_tt: int = 0
+
+    def frontier_tt(self) -> int:
+        """The applied transaction-time frontier (0 on a store this process has
+        neither written nor been told about — `Store` seeds it at open)."""
+        return self._frontier_tt
+
+    def note_frontier_tt(self, tt: int) -> None:
+        """Advance the frontier. Monotone: it never moves backwards, so a
+        seeded value cannot be lowered by a stale caller."""
+        if tt > self._frontier_tt:
+            self._frontier_tt = int(tt)
+
     def tcsr(self):
         """Current-belief TemporalCSR (+ the columnar arrays it was built
         from), built lazily and invalidated by apply_ops."""
@@ -273,6 +293,11 @@ class StorageAdapter(ABC):
             else:
                 raise InvalidArgError(f"unknown op kind: {kind}")
         self._tcsr = None  # writes invalidate the current-belief index
+        # The batch applied in full — every op above either landed or raised,
+        # and a raising batch never reaches here, so the frontier advances only
+        # over applied state (D13.16). Replay maintains it identically, which is
+        # what makes a rebuilt store report the same frontier as the original.
+        self.note_frontier_tt(tt)
         if self.paranoid:
             for uid in touched_nodes:
                 self._check_disjoint([v for v in self.believed_node_versions(uid)], f"node {uid}")

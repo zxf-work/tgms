@@ -180,7 +180,10 @@ def main(argv: list[str] | None = None) -> int:
         import tgms
         from tgms.tools.server import ToolRouter
         store = tgms.open(args.store)
-        res = ToolRouter(store.adapter).call(args.op, json.loads(args.args_json))
+        # the store is the `tt_q` source: it knows the frontier its backend has
+        # applied, which a bare adapter cannot answer for (TGIR_SPEC §5.6)
+        res = ToolRouter(store.adapter, tt_source=store).call(
+            args.op, json.loads(args.args_json))
         print(json.dumps(res, indent=1))
         store.close()
         if "error" in res:

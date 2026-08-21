@@ -108,7 +108,7 @@ def c2_readout_from_suite(store: Any, suite: dict[str, Any],
 
     scratch = Path(scratch_dir or tempfile.mkdtemp(prefix="tgms-c2-"))
     results = ResultStore(scratch / "results")
-    executor = Executor(ToolRouter(store.adapter), results)
+    executor = Executor(ToolRouter(store.adapter, tt_source=store), results)
     answers: list[tuple[dict[str, Any], ClaimVerifier]] = []
     for task in suite["dev"] + suite["test"]:
         if task.get("gold_source") != "oracle_plan":

@@ -53,10 +53,16 @@ class ScopeBasis:
     pinned: bool = False
     clamped: bool = False
     checkpoints: tuple[Checkpoint, ...] = FULL_SCAN_CHECKPOINTS
+    tt_q_verified: bool = True
 
     def scope(self, *terms: ScopeTerm) -> DependencyScope:
         return DependencyScope(self.store, self.tt_q, tuple(terms), self.checkpoints,
-                               self.pinned, self.clamped)
+                               self.pinned, self.clamped,
+                               tt_q_verified=self.tt_q_verified)
+
+    def empty_scope(self) -> DependencyScope:
+        """∅ — `terms: []`, over this same basis."""
+        return self.scope()
 
 
 def _union_kinds(*groups: tuple[str, ...]) -> tuple[str, ...]:
@@ -138,9 +144,7 @@ def leaf_scope(node: Node, basis: ScopeBasis) -> DependencyScope:
     if isinstance(node, OpaqueLeaf):
         if not node.reads_store:
             # `compute` — `terms: []`, the empty scope ∅ (§6 #15, D13.2).
-            return DependencyScope.empty(basis.store, basis.tt_q,
-                                         checkpoints=basis.checkpoints,
-                                         pinned=basis.pinned, clamped=basis.clamped)
+            return basis.empty_scope()
         return basis.scope(TOP_TERM)
 
     # `Filter`, `PropertyPredicate`, `TypeConstraint`, `Project`, `Join`,
@@ -148,8 +152,7 @@ def leaf_scope(node: Node, basis: ScopeBasis) -> DependencyScope:
     # declared *domain* and never the scope (D13.12), and the rule is
     # self-enforcing: every selection operator is `∅`-scoped and scopes only
     # ever union, so no code path exists in which a predicate could narrow one.
-    return DependencyScope.empty(basis.store, basis.tt_q, checkpoints=basis.checkpoints,
-                                 pinned=basis.pinned, clamped=basis.clamped)
+    return basis.empty_scope()
 
 
 def _expand_term(node: Expand) -> ScopeTerm:

@@ -52,7 +52,80 @@ class Store:
         if not read_only:
             self._recover()
         self.clock = HybridLogicalClock(last_tt=self.eventlog.last_tt())
+        #: False when this handle could not establish its frontier against the
+        #: **applied** prefix — see `_seed_frontier`. Rides into the dependency
+        #: scope as `tt_q_verified`, never as a flat envelope key.
+        self.frontier_verified = True
+        self._store_identity: str | None = None
+        self._seed_frontier()
         self._memories: list[Any] = []  # EvolutionMemory hooks (spec v1.1 WP2.4)
+
+    # --- the read basis (M2.1; FRESHNESS_SEMANTICS D13.16) ---------------- #
+
+    def _seed_frontier(self) -> None:
+        """Tell the adapter which transaction times it is already serving.
+
+        `apply_ops` maintains the frontier for everything this process applies,
+        but a store opened on existing state has applied nothing yet, so the
+        frontier has to be seeded — and **not** from `self.clock.last_tt`.
+        The clock is seeded from the log's tail, the log is fsynced *before* the
+        batch is applied, and a read-only handle therefore inherits a frontier
+        strictly ahead of what it is being served. That is `tt_q` rounded **up**,
+        which FRESHNESS_SEMANTICS D13.17 forbids by name as a false-freshness
+        hazard.
+
+        So the seed is the **applied** prefix's own tt, read Python-side from
+        the backend's event cursor: `(offset, chain)` names the log prefix the
+        current generation applied, and the last record ending at or before
+        `offset` carries the tt that prefix reaches. Exact, and no PyO3 accessor
+        (`Manifest.created_tt` is still not exposed — deferred to M4).
+
+        A backend that keeps no cursor — DuckDB, Kuzu, or a native store written
+        before cursors existed, which reports chain `""` — cannot answer the
+        question at all. Such a handle falls back to the log's tail and records
+        `frontier_verified = False`, which travels as `tt_q_verified: false`
+        inside the dependency scope so a reader knows the value was not rounded
+        down against anything.
+        """
+        cursor = getattr(self.adapter, "event_cursor", None)
+        if cursor is not None:
+            offset, chain = cursor()
+            if chain:
+                self.adapter.note_frontier_tt(self._tt_at_offset(int(offset)))
+                return
+        self.frontier_verified = False
+        self.adapter.note_frontier_tt(self.eventlog.last_tt())
+
+    def _tt_at_offset(self, offset: int) -> int:
+        """The tt of the last log record ending at or before `offset` (0 for an
+        empty applied prefix)."""
+        tt = 0
+        for batch, end, _raw in self.eventlog.batches_from(0):
+            if end > offset:
+                break
+            tt = batch["tt"]
+        return tt
+
+    def frontier_tt(self) -> int:
+        """The belief-time frontier this handle serves reads from."""
+        return self.adapter.frontier_tt()
+
+    @property
+    def store_identity(self) -> str:
+        """D13.2's `store` — the identity `⊎` refuses to union across.
+
+        `digest(header record ‖ first batch record)`: stable across every replay
+        of one history, distinct between stores, and available without reading
+        the backend. A log with no batches yet has no identity to state and
+        takes the `"unanchored"` sentinel until its first write, so the value is
+        re-derived while it is still unanchored.
+        """
+        from tgms.tgir.depscope import UNANCHORED, store_identity  # local: import cost
+
+        if self._store_identity in (None, UNANCHORED):
+            self._store_identity = store_identity(
+                self.eventlog.header(), self.eventlog.first_batch())
+        return self._store_identity
 
     def _recover(self) -> None:
         """Apply the event-log suffix the backend has not seen (D-042).
@@ -220,6 +293,9 @@ class Store:
         if note_cursor is not None:
             note_cursor(end_offset, self._chain)
         self.adapter.commit()
+        # this handle applied the batch itself, so its frontier is established
+        # by observation from here on, whatever it could establish at open
+        self.frontier_verified = True
         return tt
 
     # --- introspection ------------------------------------------------------ #

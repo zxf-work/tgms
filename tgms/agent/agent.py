@@ -43,7 +43,7 @@ class Agent:
         from tgms.tools.schemas import tool_description
 
         self.store = store
-        self.router = ToolRouter(store.adapter)
+        self.router = ToolRouter(store.adapter, tt_source=store)
         manual = "\n".join(f"### {name}\n{tool_description(name)}"
                            for name in self.router.tools())
         self.planner = Planner(model=model, tool_manual=manual, llm_fn=llm_fn,

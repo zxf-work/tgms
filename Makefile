@@ -32,8 +32,19 @@ rust-lint:
 derive-vectors:
 	$(UV) run python scripts/gen_derive_vectors.py
 
-ci: lint rust-lint hygiene rust-test
+ci: lint rust-lint hygiene rust-test digest-stability ttq-semantics
 	TGMS_HYP_EXAMPLES=50 $(UV) run pytest tests/ -q
+
+# M2 §8.4: a suite proves the payload matches the oracle; a frozen digest
+# proves it matches yesterday. Catches an envelope field that lands in a
+# kernel's payload and silently rewrites every result_digest in the tree.
+digest-stability:
+	$(UV) run python scripts/check_digest_stability.py
+
+# M2.1's gate: tt_q monotonicity, the pinned/clamped truth table, and the
+# plan record's ⊎ — all digest-excluded, hence invisible to the suites.
+ttq-semantics:
+	$(UV) run python scripts/check_ttq_semantics.py
 
 # spec §8.1: no commit may mix tests//oracle.py with implementation changes
 hygiene:

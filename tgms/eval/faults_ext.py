@@ -217,7 +217,7 @@ def _executor(store: Any, scratch: Any):
     from tgms.tools.server import ToolRouter
 
     results = ResultStore(Path(scratch) / "results")
-    return Executor(ToolRouter(store.adapter), results), results
+    return Executor(ToolRouter(store.adapter, tt_source=store), results), results
 
 
 def truncated_count_cases(store: Any, suite: dict[str, Any],
@@ -355,7 +355,7 @@ def c2_extended_readout(store: Any, suite: dict[str, Any],
 
     scratch = Path(scratch_dir or tempfile.mkdtemp(prefix="tgms-c2x-"))
     results = ResultStore(scratch / "results")
-    executor = Executor(ToolRouter(store.adapter), results)
+    executor = Executor(ToolRouter(store.adapter, tt_source=store), results)
     rng = random.Random(seed)
 
     # clean pool: mechanical answers enriched with factory claims

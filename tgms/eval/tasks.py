@@ -126,7 +126,7 @@ def compute_gold(store: Store, plan_json: dict[str, Any],
     if not verdict["valid"]:
         raise ValueError(f"oracle plan invalid: {verdict['violations']}")
     plan = Plan.from_json(plan_json)
-    trace = Executor(ToolRouter(store.adapter)).run(plan)
+    trace = Executor(ToolRouter(store.adapter, tt_source=store)).run(plan)
     if not trace.ok or trace.answer is None:
         return None
     return trace.answer, mechanical_answer(plan, trace)

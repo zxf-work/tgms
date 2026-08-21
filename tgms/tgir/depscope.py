@@ -292,6 +292,13 @@ class ScopeTerm:
             unknown = [k for k in self.kinds if k not in KINDS]  # type: ignore[union-attr]
             if unknown:
                 raise InvalidArgError(f"unknown op kind(s): {unknown}", allowed=list(KINDS))
+            if set(self.kinds) == set(KINDS):  # type: ignore[arg-type]
+                # D13.5's one-spelling rule: a set naming every kind *is* ⊤, and
+                # ⊤ has exactly one encoding. Canonicalizing at construction
+                # rather than at serialization keeps `==` and the round-trip
+                # agreeing — `𝒩 ∪ 𝒟` is all five, so this fires on every
+                # `NodeScan` and `Expand` term (coordinator ruling, M2.1).
+                object.__setattr__(self, "kinds", TOP)
         if self.vt_mode not in VT_MODES:
             raise InvalidArgError(f"unknown vt_mode: {self.vt_mode!r}", allowed=list(VT_MODES))
         if self.vt is not TOP:
@@ -386,6 +393,14 @@ class DependencyScope:
     pinned: bool = False
     clamped: bool = False
     version: int = SCHEMA_VERSION
+    #: **Additive to D13.2, and emitted only when false** (coordinator ruling,
+    #: M2.1): the read's `tt_q` could not be established against the applied
+    #: prefix — a legacy store whose backend keeps no event cursor, where the
+    #: log's tail is an upper bound on what was applied rather than a statement
+    #: about it. A reader that ignores the key sees exactly D13.2's object; one
+    #: that honours it knows this `tt_q` was not rounded down against a cursor
+    #: and must not be trusted in the `FRESH` direction.
+    tt_q_verified: bool = True
 
     def __post_init__(self) -> None:
         if not self.store:
@@ -469,6 +484,9 @@ class DependencyScope:
             pinned=basis.pinned,
             clamped=basis.clamped,
             version=self.version,
+            # the verification flag belongs to the `tt_q` it describes, so it
+            # moves with the triple rather than being combined
+            tt_q_verified=basis.tt_q_verified,
         )
 
     def with_terms(self, terms: Iterable[ScopeTerm]) -> "DependencyScope":
@@ -476,7 +494,7 @@ class DependencyScope:
 
     # -- serialization ---------------------------------------------------
     def to_json(self) -> dict[str, Any]:
-        return {
+        out = {
             "schema": SCHEMA_NAME,
             "version": self.version,
             "store": self.store,
@@ -486,6 +504,9 @@ class DependencyScope:
             "checkpoints": [c.to_json() for c in self.checkpoints],
             "terms": [t.to_json() for t in self.terms],
         }
+        if not self.tt_q_verified:
+            out["tt_q_verified"] = False
+        return out
 
     def canonical(self) -> str:
         return canonical_json(self.to_json())
@@ -507,6 +528,7 @@ class DependencyScope:
             pinned=bool(obj["pinned"]),
             clamped=bool(obj["clamped"]),
             version=int(obj["version"]),
+            tt_q_verified=bool(obj.get("tt_q_verified", True)),
         )
 
 
@@ -523,30 +545,35 @@ def union_all(scopes: Iterable[DependencyScope]) -> DependencyScope:
     return acc
 
 
-def store_identity(header_record: Any) -> str:
+def store_identity(header_record: Any, first_batch_record: Any = None) -> str:
     """The store identity `⊎` refuses across (D13.2's `store`).
 
-    **Coordinator ruling (M2.0): the digest of the event log's header
-    record** — stable across replays of the same history, unlike
-    `store_digest()`, which is content-dependent and would make every
-    cross-time union refuse. `header_record` is the parsed first line of the
-    log, or its raw bytes.
+    **Coordinator ruling (M2.1): the digest of the event log's header record
+    concatenated with its FIRST BATCH record.** The header alone is the
+    constant `{"format": "tgms-eventlog", "version": 1}`
+    (`tgms/storage/eventlog.py:31`) and discriminates nothing; the first batch
+    carries a content-addressed `batch_id` and that history's own `tt`, so the
+    pair is **discriminating between stores and stable across replays of one
+    history** — which `store_digest()` is not, being content-dependent and
+    therefore changing on every write.
 
-    Adapter-only contexts — an in-memory adapter with no event log behind it —
-    use `UNANCHORED` instead.
+    A log with **no batches yet** has no identity to state, so it takes the
+    `UNANCHORED` sentinel until its first write. Adapter-only contexts — an
+    in-memory adapter with no event log at all — take it too.
 
-    **Flagged for adjudication (M2.0):** today's header record is the constant
-    `{"format": "tgms-eventlog", "version": 1}` (`tgms/storage/eventlog.py:31`),
-    which carries nothing store-specific — so every store on this format digests
-    to the *same* identity and D13.8's store-mismatch refusal can never fire.
-    This function is the ruling implemented literally, and becomes discriminating
-    the moment the header gains a store id; until then the refusal is inert.
+    Records may be passed parsed, as raw JSON text, or as raw bytes.
     """
-    if isinstance(header_record, (bytes, bytearray)):
-        header_record = header_record.decode("utf-8")
-    if isinstance(header_record, str):
-        header_record = json.loads(header_record)
-    return digest(header_record)
+    if first_batch_record is None:
+        return UNANCHORED
+    return digest([_as_record(header_record), _as_record(first_batch_record)])
+
+
+def _as_record(record: Any) -> Any:
+    if isinstance(record, (bytes, bytearray)):
+        record = record.decode("utf-8")
+    if isinstance(record, str):
+        record = json.loads(record)
+    return record
 
 
 __all__ = [

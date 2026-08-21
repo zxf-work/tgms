@@ -51,7 +51,11 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 #: Fields that describe the *call* rather than the answer. They legitimately
 #: differ between systems and runs, so they are excluded from the hash: the
 #: dataset extent moves as a store grows, and the digest is itself derived.
-VOLATILE = ("op", "args_echo", "dataset_extent", "result_digest", "cursor")
+#: The last four are M2.1's freshness metadata (TGIR_SPEC §5.6, §5.5) — `tt_q`
+#: is *by construction* the moment of the read, so a cross-run hash that
+#: included it would never agree with itself.
+VOLATILE = ("op", "args_echo", "dataset_extent", "result_digest", "cursor",
+            "tt_q", "pinned", "clamped", "dependency")
 
 
 @dataclass(frozen=True)

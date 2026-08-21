@@ -13,6 +13,7 @@ from pathlib import Path
 from typing import Any
 
 from tgms.core.errors import TgmsError
+from tgms.core.model import OPEN_END
 from tgms.storage.base import StorageAdapter
 from tgms.temporal.algebra import REGISTRY, call_operator, ensure_all_registered
 
@@ -22,11 +23,17 @@ class ToolRouter:
 
     def __init__(self, adapter: StorageAdapter,
                  cost_ceilings: dict[str, int] | None = None,
-                 exclude: tuple[str, ...] = ()) -> None:
+                 exclude: tuple[str, ...] = (),
+                 tt_source: Any = None) -> None:
         ensure_all_registered()
         self.adapter = adapter
         self.cost_ceilings = cost_ceilings
         self.exclude = set(exclude)
+        #: The `Store` behind `adapter`, when the caller has one. It knows the
+        #: **applied** frontier and the store's own identity, neither of which
+        #: a bare adapter can answer for (TGIR_SPEC §5.6). Optional by design:
+        #: every oracle-family test constructs an adapter with no store at all.
+        self.tt_source = tt_source
 
     def tools(self) -> list[str]:
         return sorted(n for n in REGISTRY if n not in self.exclude)
@@ -39,9 +46,28 @@ class ToolRouter:
                     "details": {}}
         try:
             return call_operator(self.adapter, name, args,
-                                 cost_ceilings=self.cost_ceilings)
+                                 cost_ceilings=self.cost_ceilings,
+                                 tt_source=self.tt_source)
         except TgmsError as e:
             return e.to_payload()
+
+    def read_basis(self, op: str) -> dict[str, Any]:
+        """The freshness metadata a call to `op` would carry, without calling.
+
+        A step that **failed or was refused still contributes its scope**
+        (FRESHNESS_SEMANTICS D13.14, prohibition 3) — a correction can make it
+        succeed — but an error payload is a frozen shape that must not grow new
+        keys. So the executor asks for the basis separately and records it on
+        the trace step. `tt_q` is captured at the moment of the ask, which is
+        after the failed attempt and therefore still a lower bound.
+
+        The basis is the **unpinned** one (`OPEN_END`): a step that never ran
+        has no resolved `as_of_tt` to pin to — its `$ref`s may be exactly what
+        failed — and reporting the frontier is the conservative reading.
+        """
+        from tgms.tgir.ttq import envelope_metadata
+
+        return envelope_metadata(self.adapter, op, OPEN_END, self.tt_source)
 
 
 def build_mcp_server(store_path: str | Path, readonly: bool = True):
@@ -52,7 +78,10 @@ def build_mcp_server(store_path: str | Path, readonly: bool = True):
     import tgms
 
     store = tgms.open(store_path)
-    router = ToolRouter(store.adapter)
+    # the store, not just its adapter: `tt_q` is the frontier the backend has
+    # **applied**, and only the store can say what that is (§5.6). The store
+    # used to be opened and then discarded here.
+    router = ToolRouter(store.adapter, tt_source=store)
     mcp = FastMCP("tgms")
 
     from tgms.tools.schemas import tool_description

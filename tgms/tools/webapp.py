@@ -41,7 +41,7 @@ class DemoApp:
         self.suite = suite
         self.model = model
         self.llm_fn = llm_fn
-        self.router = ToolRouter(store.adapter)
+        self.router = ToolRouter(store.adapter, tt_source=store)
         self.results = ResultStore(results_dir)
         self.records: dict[str, dict[str, Any]] = {}
         self.lock = threading.Lock()  # DuckDB conn + agent are not thread-safe

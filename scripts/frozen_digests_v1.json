@@ -1,0 +1,282 @@
+{
+ "cases": {
+  "aggregate_events": {
+   "args": {
+    "aggregates": [
+     {
+      "agg": "count"
+     }
+    ],
+    "group_by": [
+     {
+      "dim": "time_bucket"
+     }
+    ],
+    "limit": 50,
+    "stride": 86400000000,
+    "window": {
+     "t_a": 1082000000000000,
+     "t_b": 1086000000000000
+    }
+   },
+   "op": "aggregate_events"
+  },
+  "aggregate_events_endpoint": {
+   "args": {
+    "aggregates": [
+     {
+      "agg": "count"
+     },
+     {
+      "agg": "mean",
+      "of": "vt_s"
+     }
+    ],
+    "group_by": [
+     {
+      "dim": "endpoint",
+      "role": "src"
+     }
+    ],
+    "limit": 50,
+    "window": {
+     "t_a": 1082000000000000,
+     "t_b": 1086000000000000
+    }
+   },
+   "op": "aggregate_events"
+  },
+  "burst_detection": {
+   "args": {
+    "limit": 50,
+    "stride": 86400000000,
+    "target": {
+     "kind": "edge_event_rate"
+    },
+    "window": {
+     "t_a": 1082000000000000,
+     "t_b": 1086000000000000
+    }
+   },
+   "op": "burst_detection"
+  },
+  "co_active": {
+   "args": {
+    "a_spec": {
+     "src": "n1"
+    },
+    "allen_relation": {
+     "relation": "overlaps"
+    },
+    "b_spec": {
+     "src": "n2"
+    },
+    "limit": 20
+   },
+   "op": "co_active"
+  },
+  "compute": {
+   "args": {
+    "fn": "count",
+    "input": [
+     {
+      "x": 1
+     },
+     {
+      "x": 2
+     },
+     {
+      "x": 3
+     }
+    ]
+   },
+   "op": "compute"
+  },
+  "count_temporal_motifs": {
+   "args": {
+    "delta": 3600000000,
+    "motif": "M_2node_pingpong",
+    "window": {
+     "t_a": 1082000000000000,
+     "t_b": 1086000000000000
+    }
+   },
+   "op": "count_temporal_motifs"
+  },
+  "diff_snapshots": {
+   "args": {
+    "limit": 50,
+    "t1": 1083000000000000,
+    "t2": 1084000000000000
+   },
+   "op": "diff_snapshots"
+  },
+  "entity_history": {
+   "args": {
+    "limit": 50,
+    "uid": "n1"
+   },
+   "op": "entity_history"
+  },
+  "entity_history_edges": {
+   "args": {
+    "include_edges": true,
+    "limit": 50,
+    "uid": "n1"
+   },
+   "op": "entity_history"
+  },
+  "entity_history_pinned": {
+   "args": {
+    "as_of_tt": 4611686018427387903,
+    "limit": 50,
+    "uid": "n1"
+   },
+   "op": "entity_history"
+  },
+  "find_temporal_motif_instances": {
+   "args": {
+    "delta": 3600000000,
+    "limit": 20,
+    "motif": "M_2node_pingpong",
+    "window": {
+     "t_a": 1082000000000000,
+     "t_b": 1086000000000000
+    }
+   },
+   "op": "find_temporal_motif_instances"
+  },
+  "graph_metric_timeseries": {
+   "args": {
+    "limit": 50,
+    "metric": "edge_event_count",
+    "stride": 86400000000,
+    "window": {
+     "t_a": 1082000000000000,
+     "t_b": 1086000000000000
+    }
+   },
+   "op": "graph_metric_timeseries"
+  },
+  "neighborhood_evolution": {
+   "args": {
+    "limit": 50,
+    "t1": 1083000000000000,
+    "t2": 1084000000000000,
+    "uid": "n1"
+   },
+   "op": "neighborhood_evolution"
+  },
+  "resolve_entities": {
+   "args": {
+    "limit": 20,
+    "query": "n1"
+   },
+   "op": "resolve_entities"
+  },
+  "snapshot_subgraph": {
+   "args": {
+    "hops": 2,
+    "limit": 50,
+    "seeds": [
+     "n1"
+    ],
+    "t_valid": 1083000000000000
+   },
+   "op": "snapshot_subgraph"
+  },
+  "temporal_paths": {
+   "args": {
+    "dst": "n2",
+    "k": 3,
+    "max_hops": 2,
+    "src": "n1",
+    "window": {
+     "t_a": 1082000000000000,
+     "t_b": 1086000000000000
+    }
+   },
+   "op": "temporal_paths"
+  },
+  "temporal_paths_refused": {
+   "args": {
+    "dst": "n2",
+    "k": 3,
+    "max_hops": 4,
+    "src": "n1",
+    "window": {
+     "t_a": 1082000000000000,
+     "t_b": 1086000000000000
+    }
+   },
+   "op": "temporal_paths"
+  },
+  "temporal_reachability": {
+   "args": {
+    "limit": 50,
+    "src": "n1",
+    "window": {
+     "t_a": 1082000000000000,
+     "t_b": 1086000000000000
+    }
+   },
+   "op": "temporal_reachability"
+  },
+  "version_history": {
+   "args": {
+    "kind": "edge",
+    "limit": 50,
+    "window": {
+     "t_a": 1082000000000000,
+     "t_b": 1086000000000000
+    }
+   },
+   "op": "version_history"
+  }
+ },
+ "digests": {
+  "duckdb": {
+   "aggregate_events": "5c307382b243488545619f001084099ffff304c930d7a31926f9c65942ea52e8",
+   "aggregate_events_endpoint": "b8a87e980c7e7481dda1204c17f3dff935dc776b011009e3fc7a5899b6275563",
+   "burst_detection": "4ab1ae704ac1ebc0399af636215df7c5b617a3791f3515e916e1c9524969a740",
+   "co_active": "5aa6671c762a729801a2c98a87dbc41230f4c93b1bea0c82c8f37f6bf2535c6c",
+   "compute": "e7981ec31eef8f3c5494c3d5cf68bda7187cec9ad3f99363f9adaef47bbf317f",
+   "count_temporal_motifs": "34b758091f664b24d10fff0613d212f364d0bd9505129531214c1f8e152779a9",
+   "diff_snapshots": "a103963120f5ef1e7b79ed89360e23c77afee53c7c0a9503fc89b619a3be21d7",
+   "entity_history": "35c93ff8a522c22bc3f36aca6bb4b5611ab4328954d7d350d776ce838d1587e9",
+   "entity_history_edges": "46b45c16115103707e92b191581e472ba92eb72793c2538796456e4aee716c1e",
+   "entity_history_pinned": "35c93ff8a522c22bc3f36aca6bb4b5611ab4328954d7d350d776ce838d1587e9",
+   "find_temporal_motif_instances": "b3564616786440de369aa344e90ad058a255841ac4c08d08103ae8ba9ddf5a9c",
+   "graph_metric_timeseries": "f9af5729cd29126f0e4756cd359eea16ebee20d9c0a2ec83c3285889d3fb301a",
+   "neighborhood_evolution": "3d146f5a845fb88bb9944ece402d375935d4127550fc63060a4f63591192268c",
+   "resolve_entities": "efcdd8d1fce94b93c0ec606b2e39283678fda420bc1be911ea16a32464e04f95",
+   "snapshot_subgraph": "2cecfa3eb13cc3da5d1ea093834287d70dcb9d67ac4125fd290bffd44e7234eb",
+   "temporal_paths": "7bcb92d5690da64435fac9129cabc8add4cbe9ca218ffb15a480a650b54d1c16",
+   "temporal_paths_refused": "!E_COST",
+   "temporal_reachability": "e7d59ac2d11daeec7f23ca558bd8b6f6ba6addbb662d21970dbcd330eddbd408",
+   "version_history": "84e8853c5d6732deb6d3e4329b46fd5f03770eff399b1099a6b68409be78fbfd"
+  },
+  "native": {
+   "aggregate_events": "5c307382b243488545619f001084099ffff304c930d7a31926f9c65942ea52e8",
+   "aggregate_events_endpoint": "b8a87e980c7e7481dda1204c17f3dff935dc776b011009e3fc7a5899b6275563",
+   "burst_detection": "4ab1ae704ac1ebc0399af636215df7c5b617a3791f3515e916e1c9524969a740",
+   "co_active": "5aa6671c762a729801a2c98a87dbc41230f4c93b1bea0c82c8f37f6bf2535c6c",
+   "compute": "e7981ec31eef8f3c5494c3d5cf68bda7187cec9ad3f99363f9adaef47bbf317f",
+   "count_temporal_motifs": "34b758091f664b24d10fff0613d212f364d0bd9505129531214c1f8e152779a9",
+   "diff_snapshots": "a103963120f5ef1e7b79ed89360e23c77afee53c7c0a9503fc89b619a3be21d7",
+   "entity_history": "35c93ff8a522c22bc3f36aca6bb4b5611ab4328954d7d350d776ce838d1587e9",
+   "entity_history_edges": "46b45c16115103707e92b191581e472ba92eb72793c2538796456e4aee716c1e",
+   "entity_history_pinned": "35c93ff8a522c22bc3f36aca6bb4b5611ab4328954d7d350d776ce838d1587e9",
+   "find_temporal_motif_instances": "b3564616786440de369aa344e90ad058a255841ac4c08d08103ae8ba9ddf5a9c",
+   "graph_metric_timeseries": "f9af5729cd29126f0e4756cd359eea16ebee20d9c0a2ec83c3285889d3fb301a",
+   "neighborhood_evolution": "3d146f5a845fb88bb9944ece402d375935d4127550fc63060a4f63591192268c",
+   "resolve_entities": "efcdd8d1fce94b93c0ec606b2e39283678fda420bc1be911ea16a32464e04f95",
+   "snapshot_subgraph": "2cecfa3eb13cc3da5d1ea093834287d70dcb9d67ac4125fd290bffd44e7234eb",
+   "temporal_paths": "7bcb92d5690da64435fac9129cabc8add4cbe9ca218ffb15a480a650b54d1c16",
+   "temporal_paths_refused": "!E_COST",
+   "temporal_reachability": "e7d59ac2d11daeec7f23ca558bd8b6f6ba6addbb662d21970dbcd330eddbd408",
+   "version_history": "84e8853c5d6732deb6d3e4329b46fd5f03770eff399b1099a6b68409be78fbfd"
+  }
+ },
+ "store": "benchmarks/frozen-v1/collegemsg.eventlog.jsonl"
+}

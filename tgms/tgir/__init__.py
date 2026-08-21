@@ -29,10 +29,13 @@ What is here:
 - `scope_of` — D13.10's `leaf_scope ⊎ ⊎ ins`.
 - `guard` — the `∅`-kernel `NullAdapter`, which turns §2.0's classification into
   a checkable property.
+- `ttq` — M2.1's read basis: the frontier capture, §6.2's clamp table, and the
+  four envelope keys `tt_q` / `pinned` / `clamped` / `dependency`. This is the
+  one module the live call path uses, through a local import in
+  `call_operator`; everything else is still unwired.
 
-Still to come: `leaves.py` (M2.3's fifteen derivations), `ttq.py` (M2.1's
-frontier clamp), `plan.py`/`evaluate.py` (M2.2), `compiled/` and `rollout.py`
-(M2.4).
+Still to come: `leaves.py` (M2.3's fifteen derivations), `plan.py`/`evaluate.py`
+(M2.2), `compiled/` and `rollout.py` (M2.4).
 """
 
 from tgms.tgir.anchor import Anchor, anchor_of, anchor_of_var, anchors_of
@@ -60,6 +63,10 @@ from tgms.tgir.node import (
     Source, TypeConstraint, Unbounded,
 )
 from tgms.tgir.scope_of import ScopeBasis, leaf_scope, scope_of
+from tgms.tgir.ttq import (
+    Frontier, TtQ, as_of_tt_of, basis_of, checkpoints_of, clamp, dependency_of,
+    envelope_metadata, frontier_of, store_identity_of,
+)
 from tgms.tgir.types import (
     BELIEF_MODES, DEFAULT_SIGMA, SCALAR_TAUS, VT_MODES, Column, Schema, Sigma, Tau,
     edge_schema, node_schema,
@@ -71,7 +78,9 @@ __all__ = [
     "Checkpoint", "Cmp", "Coalesce", "Col", "Column", "Completeness",
     "DEFAULT_SIGMA", "DIRECTIONS", "DependencyScope", "EMPTY_SCOPE_OPS",
     "EdgeKey", "EdgePat", "EdgeScan", "Endpoints", "Exact", "Exactness",
-    "Expand", "Expr", "FULL_SCAN_CHECKPOINTS", "Filter", "HopSpec", "INCIDENT_ROLES",
+    "Expand", "Expr", "FULL_SCAN_CHECKPOINTS", "Filter", "Frontier", "HopSpec",
+    "INCIDENT_ROLES", "TtQ", "as_of_tt_of", "basis_of", "checkpoints_of", "clamp",
+    "dependency_of", "envelope_metadata", "frontier_of", "store_identity_of",
     "If", "Incident", "IsNull", "JOIN_TYPES", "Join", "KINDS", "K_DENSE_ID",
     "K_EDGE", "K_NODE", "Limit", "Lit", "MIDDLE", "MathFn", "Node", "NodePat",
     "NodeScan", "Not", "NullAdapter", "OpaqueLeaf", "Order", "PSEUDO_PROPS",
