@@ -44,6 +44,31 @@ to do any of them:
   version, versus 78.4 on ClickHouse and 549.7 on PostgreSQL for the same
   1M-event log.
 
+## Quickstart
+
+```bash
+pip install tgms
+tgms demo
+```
+
+No GPU, no API key, no dataset download. `tgms demo` builds a small store of
+its own in a temp directory and runs the arc every TGMS answer follows: what
+the graph currently believes, what it believed *before* a correction landed,
+and the trace that backs both claims up. Clean environment to first temporal
+result: under 5 minutes.
+
+Once you want your own graph data, the native test suite, the MCP server, or
+an agent wired to a real LLM, see [Full setup](#full-setup-from-source)
+below — this quickstart is deliberately the smallest possible first step,
+not a tour of the operator surface.
+
+Next steps, in the order most people need them:
+[bring your own temporal graph data](docs/tutorials/bring-your-own-data.md) ·
+[give TGMS to an agent over MCP](docs/tutorials/agent-setup.md) ·
+[audit an answer](docs/tutorials/audit-an-answer.md) ·
+[what you can rely on across versions](docs/STABILITY.md) ·
+[what's coming](docs/PUBLIC_ROADMAP.md)
+
 ## Does it work?
 
 Three different questions, three different answers. All three are reported
@@ -132,7 +157,11 @@ re-audit tables of `scripts/independent_questions.py` and
 `scripts/ldbc_fit.py` — both of which print the current blocked-capability
 board on `report`.
 
-## Quickstart
+## Full setup (from source)
+
+Everything below builds TGMS from a checkout instead of the PyPI wheel:
+real dataset loaders, the native-engine test suite, the MCP server, and an
+agent loop wired to an actual LLM.
 
 ```bash
 # macOS note: if this repo sits in an iCloud-synced folder, keep the venv
@@ -178,7 +207,7 @@ bash scripts/run_webapp.sh    # interactive guided demo at localhost:8080
 |---|---|---|
 | Python library | `tgms.open(...)`, `Agent(store, model=…).ask(…)` | research code, notebooks |
 | MCP server | `tgms serve --store PATH` | hand the verified toolbox to any MCP-capable agent |
-| CLI | `tgms ingest/synth/tasks/call/ask/bench/memory/eval` | reproducibility |
+| CLI | `tgms demo/ingest/synth/tasks/call/ask/bench/memory/eval` | reproducibility |
 | Trace viewer | `tgms ask … --html trace.html` | *ask → answer → audit the evidence* (static, self-contained HTML) |
 | Demo GUI | `tgms webapp …` / `scripts/run_webapp.sh` | guided tour: operators → agent → tamper demo → time travel |
 

@@ -8,23 +8,51 @@ import sys
 from typing import Any
 
 
-def main(argv: list[str] | None = None) -> int:
+#: What `--backend` means when it is not given: nothing, so `tgms.open`
+#: decides — an existing store keeps the layout it was written with, and a
+#: new one gets `DEFAULT_BACKEND` (native, D-028). This used to be the
+#: literal "duckdb", which made the documented first command of a clean
+#: `pip install tgms` fail with "this store uses the duckdb backend, which
+#: is now an optional extra" — the CLI asked for a backend the wheel no
+#: longer ships. Naming "native" here instead would fix that and break the
+#: other direction: an ingest into a pre-existing DuckDB store would create
+#: an empty native store beside it and read as data loss, which is exactly
+#: what `detect_backend` exists to prevent. Deferring is the only default
+#: that is right in both cases.
+BACKEND_DEFAULT: str | None = None
+BACKENDS = ["native", "duckdb", "kuzu"]
+BACKEND_HELP = ("storage backend; default: the existing store's layout, or "
+                "the native engine for a new store. duckdb and kuzu are "
+                "optional extras (`pip install tgms[duckdb]`).")
+
+
+def build_parser() -> argparse.ArgumentParser:
+    """The full argument parser, separate from `main` so tests can inspect
+    the defaults a clean install actually gets."""
     p = argparse.ArgumentParser(prog="tgms")
     sub = p.add_subparsers(dest="cmd", required=True)
+
+    p_demo = sub.add_parser("demo", help="run the sixty-second guided demo: a "
+                            "tiny bi-temporal graph, a correction, and the "
+                            "same question asked of two belief states")
+    p_demo.add_argument("--store", default=None,
+                        help="where to build the demo store (default: a fresh "
+                             "directory under the system temp, left in place "
+                             "so its rendered trace can be opened)")
 
     p_ing = sub.add_parser("ingest", help="ingest an event JSONL file into a store")
     p_ing.add_argument("events_jsonl")
     p_ing.add_argument("--store", required=True)
-    p_ing.add_argument("--backend", default="duckdb",
-                       choices=["native", "duckdb", "kuzu"])
+    p_ing.add_argument("--backend", default=BACKEND_DEFAULT,
+                       choices=BACKENDS, help=BACKEND_HELP)
 
     p_rep = sub.add_parser("replay", help="rebuild a store from a recorded "
                            "event log (byte-identical; preserves transaction "
                            "times, unlike a fresh ingest)")
     p_rep.add_argument("eventlog_jsonl")
     p_rep.add_argument("--store", required=True)
-    p_rep.add_argument("--backend", default="duckdb",
-                       choices=["native", "duckdb", "kuzu"])
+    p_rep.add_argument("--backend", default=BACKEND_DEFAULT,
+                       choices=BACKENDS, help=BACKEND_HELP)
 
     p_synth = sub.add_parser("synth", help="generate a synthetic dataset")
     p_synth.add_argument("out_dir")
@@ -108,9 +136,16 @@ def main(argv: list[str] | None = None) -> int:
     p_mem.add_argument("--stride-days", type=int, default=7)
     p_mem.add_argument("--refresh-stale", action="store_true")
 
-    args = p.parse_args(argv)
+    return p
 
-    if args.cmd == "ingest":
+
+def main(argv: list[str] | None = None) -> int:
+    args = build_parser().parse_args(argv)
+
+    if args.cmd == "demo":
+        from tgms.demo import run_demo
+        run_demo(args.store)
+    elif args.cmd == "ingest":
         import tgms
         store = tgms.open(args.store, backend=args.backend)
         with open(args.events_jsonl) as f:

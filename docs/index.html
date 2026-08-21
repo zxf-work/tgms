@@ -714,7 +714,7 @@
     <section class="hero">
       <div class="container hero-grid">
         <div>
-          <div class="eyebrow">Research prototype · v0.4</div>
+          <div class="eyebrow">Research prototype · v<span data-fact="site_version">0.6.1</span></div>
           <h1>Verified temporal reasoning for LLM agents.</h1>
           <p class="hero-lede">
             <strong>TGMS</strong> is an agent-native bi-temporal graph management system.
@@ -830,9 +830,10 @@
             </div>
             <h3>Verified operator toolbox</h3>
             <p>
-              Thirteen typed tools cover temporal reachability, motifs, diffs, bursts,
-              interval joins, and related operations. Each tool is deterministic,
-              bounded, and tested against an independent oracle.
+              <span data-fact="operator_count">15</span> typed tools cover temporal
+              reachability, motifs, diffs, bursts, interval joins, grouped aggregation,
+              and the belief log itself. Each tool is deterministic, bounded, and
+              tested against an independent oracle.
             </p>
           </article>
 
@@ -1004,6 +1005,15 @@
             Detailed experiments, frozen splits, determinism receipts, and current
             coverage limitations are documented in the paper and the evaluation report.
           </p>
+          <p class="note">
+            Three hands-on tutorials cover the rest of the path:
+            <a href="https://github.com/zxf-work/tgms/blob/main/docs/tutorials/bring-your-own-data.md">bring your own temporal graph data</a>,
+            <a href="https://github.com/zxf-work/tgms/blob/main/docs/tutorials/agent-setup.md">give TGMS to an agent over MCP</a>, and
+            <a href="https://github.com/zxf-work/tgms/blob/main/docs/tutorials/audit-an-answer.md">audit an answer</a>.
+            The <a href="https://github.com/zxf-work/tgms/blob/main/docs/STABILITY.md">stability contract</a>
+            states what you can rely on across versions;
+            the <a href="https://github.com/zxf-work/tgms/blob/main/docs/PUBLIC_ROADMAP.md">public roadmap</a> states what's next.
+          </p>
           <div class="hero-actions" style="margin-top:24px">
             <a class="button button-primary" style="color:#fff;background:var(--blue-700)" href="https://github.com/zxf-work/tgms/tree/main/docs/eval">Evaluation report</a>
             <a class="button button-secondary" style="color:var(--ink);border-color:var(--line);background:#fff" href="blog/">Project blog</a>
@@ -1015,17 +1025,19 @@
             <span>terminal</span>
             <span>quickstart</span>
           </div>
-          <pre>git clone https://github.com/zxf-work/tgms
+          <pre><span class="comment"># Two commands: install, then the guided arc —
+# current belief, pre-correction belief, and the trace</span>
+pip install tgms
+<span class="accent">tgms demo</span>
+
+<span class="comment"># Working from source instead (tests, frozen store, web UI)</span>
+git clone https://github.com/zxf-work/tgms
 cd tgms
 uv sync --extra agent
-
-<span class="comment"># Run tests and build the frozen demo store</span>
 make test
 uv run tgms replay \
   benchmarks/frozen-v1/collegemsg.eventlog.jsonl \
   --store stores/collegemsg
-
-<span class="comment"># Launch the guided interface</span>
 <span class="accent">bash scripts/run_webapp.sh</span></pre>
         </div>
       </div>
