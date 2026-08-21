@@ -83,7 +83,11 @@ def operator(name: str, args_schema: dict[str, Any], description: str,
     envelope is added by `call_operator`."""
 
     def deco(fn: Callable) -> Callable:
-        schema = {"type": "object", "properties": dict(args_schema),
+        # copy each fragment dict so stripping "_required" below never mutates
+        # the caller's (possibly shared) fragment objects
+        properties = {k: (dict(v) if isinstance(v, dict) else v)
+                      for k, v in args_schema.items()}
+        schema = {"type": "object", "properties": properties,
                   "additionalProperties": False,
                   "required": [k for k, v in args_schema.items()
                                if isinstance(v, dict) and v.get("_required")]}
