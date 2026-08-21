@@ -120,7 +120,7 @@ writer costs those readers **0–3%** of per-query latency.
 **3. Can it answer the questions people actually ask?** This is the honest
 one. 110 questions were written by people who saw a plain-language
 description of two public datasets and **never saw the operator list**. Of
-those, **83 are expressible today** — 10 were expressible when the study was
+those, **94 are expressible today** — 10 were expressible when the study was
 pre-registered. Of LDBC SNB's 41 read templates, **3**, and that number has
 not moved in eight sessions because 35 of the 38 misses need labelled
 multi-way pattern matching, which is a deliberately deferred design
