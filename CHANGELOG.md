@@ -1,5 +1,14 @@
 # Changelog
 
+## v0.6.2 — 2026-08-21
+
+MCP Registry housekeeping, no functional change: the README now carries
+the `mcp-name: io.github.zxf-work/tgms` ownership marker the registry
+requires on the PyPI page, and `server.json` moved from the 2025-07-09
+snake_case schema to the current 2025-12-11 camelCase schema
+(`registryType`, `runtimeArguments`, …) that the registry API actually
+accepts.
+
 ## v0.6.1 — 2026-08-21
 
 The adoption release: nothing in the engine changed; everything about

@@ -254,3 +254,7 @@ for design, positioning, measurements, and roadmap.
 ## License
 
 Apache-2.0 — see [LICENSE](LICENSE). Cite via [CITATION.cff](CITATION.cff).
+
+---
+
+<sub>mcp-name: io.github.zxf-work/tgms</sub>

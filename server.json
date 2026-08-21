@@ -1,22 +1,22 @@
 {
-  "$schema": "https://static.modelcontextprotocol.io/schemas/2025-07-09/server.schema.json",
+  "$schema": "https://static.modelcontextprotocol.io/schemas/2025-12-11/server.schema.json",
   "name": "io.github.zxf-work/tgms",
   "description": "Bi-temporal graph store with 15 verified temporal operators as typed, deterministic MCP tools.",
   "repository": {
     "url": "https://github.com/zxf-work/tgms",
     "source": "github"
   },
-  "version": "0.6.1",
+  "version": "0.6.2",
   "packages": [
     {
-      "registry_type": "pypi",
+      "registryType": "pypi",
       "identifier": "tgms",
-      "version": "0.6.1",
+      "version": "0.6.2",
       "transport": {
         "type": "stdio"
       },
-      "runtime_hint": "uvx",
-      "runtime_arguments": [
+      "runtimeHint": "uvx",
+      "runtimeArguments": [
         {
           "type": "named",
           "name": "--from",
@@ -24,7 +24,7 @@
           "value": "tgms[agent]"
         }
       ],
-      "package_arguments": [
+      "packageArguments": [
         {
           "type": "positional",
           "value": "serve"
@@ -33,9 +33,9 @@
           "type": "named",
           "name": "--store",
           "description": "Path to a TGMS store directory (create one with `tgms ingest` or `tgms synth`)",
-          "is_required": true,
+          "isRequired": true,
           "format": "string",
-          "value_hint": "/path/to/store"
+          "valueHint": "/path/to/store"
         }
       ]
     }

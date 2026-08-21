@@ -1,7 +1,7 @@
 {
  "_comment": "Single source of truth for every number the public site asserts. Pages carry data-fact=\"<key>\" spans; scripts/site_facts.py verifies each one against this file and CI fails on drift. Add a fact here before quoting it on a page. Numbers that belong to one measured run carry that run's snapshot id, because a fact without a snapshot cannot be re-checked.",
  "updated": "2026-08-21",
- "tgms_version": "0.6.1",
+ "tgms_version": "0.6.2",
  "snapshots": {
   "registry-v2-200k-6sys": {
    "commit": "03a678c",
@@ -112,7 +112,7 @@
  },
  "facts": {
   "site_version": {
-   "value": "0.6.1",
+   "value": "0.6.2",
    "kind": "architectural",
    "prose": "current released package version (matches pyproject.toml and the PyPI release)"
   },
