@@ -72,12 +72,19 @@ class ToolRouter:
 
 def build_mcp_server(store_path: str | Path, readonly: bool = True):
     """FastMCP server over a TGMS store. Import is deferred so the core
-    library works without the `agent` extra installed."""
+    library works without the `agent` extra installed.
+
+    `readonly=True` (the default) opens the store in reader-process mode
+    (`tgms.open(..., read_only=True)`): no crash recovery, no write API, and
+    the store must already exist — see `tgms.store.open` for why a second
+    recovering handle is unsafe alongside a live writer. Pass
+    `readonly=False` only when this server is the single writer for the
+    store."""
     from fastmcp import FastMCP
 
     import tgms
 
-    store = tgms.open(store_path)
+    store = tgms.open(store_path, read_only=readonly)
     # the store, not just its adapter: `tt_q` is the frontier the backend has
     # **applied**, and only the store can say what that is (§5.6). The store
     # used to be opened and then discarded here.

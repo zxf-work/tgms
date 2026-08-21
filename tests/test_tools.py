@@ -201,3 +201,15 @@ def test_mcp_round_trip(tmp_path):
     res = asyncio.run(res)
     payload = json.loads(res.content[0].text)
     assert [r["uid"] for r in payload["rows"]] == ["b", "c"]
+
+
+def test_mcp_server_opens_read_only(tmp_path):
+    """`readonly` defaults True and is honoured: opening against a store
+    path that does not exist must raise, not silently create one — a
+    writer-mode open would create an empty store instead (store.py:31-32)."""
+    pytest.importorskip("fastmcp")
+    from tgms.core.errors import StateError
+    from tgms.tools.server import build_mcp_server
+
+    with pytest.raises(StateError):
+        build_mcp_server(tmp_path / "absent")

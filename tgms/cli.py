@@ -75,7 +75,12 @@ def build_parser() -> argparse.ArgumentParser:
 
     p_serve = sub.add_parser("serve", help="serve the store over MCP")
     p_serve.add_argument("--store", required=True)
-    p_serve.add_argument("--readonly", action="store_true", default=True)
+    p_serve.add_argument("--readonly", action=argparse.BooleanOptionalAction,
+                         default=True,
+                         help="open the store in reader-process mode: no crash "
+                              "recovery, no write API (default). Use "
+                              "--no-readonly only when this server is the "
+                              "store's single writer.")
 
     p_tasks = sub.add_parser("tasks", help="generate a task suite with oracle gold")
     p_tasks.add_argument("--store", required=True)
@@ -196,7 +201,7 @@ def main(argv: list[str] | None = None) -> int:
         print(report)
     elif args.cmd == "serve":
         from tgms.tools.server import build_mcp_server
-        build_mcp_server(args.store).run()
+        build_mcp_server(args.store, readonly=args.readonly).run()
     elif args.cmd == "tasks":
         import tgms
         from tgms.eval.tasks import generate_suite
