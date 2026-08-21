@@ -1,5 +1,43 @@
 # Changelog
 
+## v0.6.1 — 2026-08-21
+
+The adoption release: nothing in the engine changed; everything about
+meeting the system for the first time did.
+
+**`tgms demo`.** `pip install tgms && tgms demo` now walks the whole
+argument in about a third of a second, against the real engine: build a
+tiny bi-temporal graph, land a correction, ask the graph what it believes
+now, ask what it believed before the audit, and show the content-addressed
+trace that backs both answers. No GPU, no API key, no network, no dataset.
+
+**Three tutorials** (`docs/tutorials/`): bring your own temporal graph
+data, give TGMS to an agent over MCP, and audit an answer — every command
+and output in them produced by actually running it, including the
+tutorial that demonstrates a certified answer is not the same claim as a
+correct one.
+
+**A stability contract** (`docs/STABILITY.md`): event logs are stable and
+stores are rebuildable across incompatible versions; what is atomic, what
+suffix-replay recovery does after a crash, and what the oracle and
+metamorphic suites pin about operator semantics — with the two things we
+cannot yet promise stated as gaps rather than promises. Plus a public
+roadmap (`docs/PUBLIC_ROADMAP.md`) and concrete contribution entry points
+in `CONTRIBUTING.md`.
+
+**Two first-contact bugs fixed.** `tgms ingest`/`tgms replay` no longer
+default to the `duckdb` backend (an optional extra a plain pip install
+does not carry — a fresh-install crash); the flag now defers to the
+store's own backend detection, and a regression test pins every future
+`--backend` default to something the base wheel ships. `server.json`'s
+MCP launch command now assembles as `uvx --from tgms[agent] tgms serve`,
+which is the form that actually works against the published package.
+
+**Public surfaces reconciled.** The website, README, and registry
+manifest now describe the same system: version 0.6.1 everywhere, and the
+operator count adjudicated from the registry itself — 15, counted from
+`ensure_all_registered()`, not from whichever document was written last.
+
 ## v0.6.0 — 2026-08-06
 
 The correction-path release — and the first with a semantic competitor: the
