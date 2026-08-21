@@ -7,7 +7,7 @@ authors:
     given-names: Xiaofei
     affiliation: University of Memphis
 license: Apache-2.0
-version: 0.6.0
+version: 0.6.2
 date-released: 2026-08-06
 abstract: >-
   A bi-temporal property graph store whose query surface is a small algebra
