@@ -13,6 +13,20 @@ from tgms.storage.duckdb_adapter import DuckDBAdapter
 UIDS = ["a", "b", "c", "d"]
 RELS = ["R", "S"]
 
+#: Envelope keys that are call metadata or provenance rather than the answer
+#: payload: excluded whenever test code compares an operator envelope to an
+#: independent reference (the oracle) or hashes it for cross-process
+#: agreement. The last four are not yet emitted by any operator — they are
+#: M2's reserved envelope names (`tt_q`, `dependency`, `pinned`, `clamped`;
+#: docs/design/M2_IMPLEMENTATION_PLAN.md §11.5, §11.4) — pre-listed here so
+#: that landing them later needs no further edit to this human-owned
+#: directory (scripts/check_commit_hygiene.py). Excluding an absent key is a
+#: no-op, so this tuple's shape does not change today's comparisons.
+ENVELOPE_META_KEYS = (
+    "op", "args_echo", "dataset_extent", "result_digest",
+    "tt_q", "dependency", "pinned", "clamped",
+)
+
 # small dense time domain so intervals collide often (stress for carving logic)
 times = st.integers(min_value=0, max_value=50)
 props = st.fixed_dictionaries({}, optional={"p": st.integers(0, 3), "q": st.booleans()})

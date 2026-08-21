@@ -42,7 +42,7 @@ from tgms.temporal.algebra import (
     ensure_all_registered,
 )
 
-from .conftest import fresh_adapter
+from .conftest import ENVELOPE_META_KEYS, fresh_adapter
 
 ensure_all_registered()
 
@@ -70,8 +70,7 @@ def payload(**args) -> str:
     """Canonical bytes of everything the digest is taken over."""
     r = call_operator(adapter(), "compute", args)
     return canonical_json({k: v for k, v in r.items()
-                           if k not in ("op", "args_echo", "dataset_extent",
-                                        "result_digest")})
+                           if k not in ENVELOPE_META_KEYS})
 
 
 # --- the reference ---------------------------------------------------------- #

@@ -43,7 +43,7 @@ from tgms.core.errors import InvalidArgError, SchemaError
 from tgms.core.model import canonical_json
 from tgms.temporal.algebra import call_operator, ensure_all_registered
 
-from .conftest import fresh_adapter
+from .conftest import ENVELOPE_META_KEYS, fresh_adapter
 
 ensure_all_registered()
 
@@ -68,8 +68,7 @@ def slice_(**args) -> list[dict]:
 def payload(**args) -> str:
     r = call_operator(adapter(), "compute", {"fn": "topk", **args})
     return canonical_json({k: v for k, v in r.items()
-                           if k not in ("op", "args_echo", "dataset_extent",
-                                        "result_digest")})
+                           if k not in ENVELOPE_META_KEYS})
 
 
 # --- the reference ---------------------------------------------------------- #

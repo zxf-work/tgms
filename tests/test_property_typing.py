@@ -42,7 +42,7 @@ from tgms.temporal.algebra import (
 )
 from tgms.temporal.oracle import Oracle
 
-from .conftest import fresh_adapter
+from .conftest import ENVELOPE_META_KEYS, fresh_adapter
 
 ensure_all_registered()
 
@@ -150,7 +150,7 @@ def test_the_count_is_inside_the_digest():
     answer; this is what stops that."""
     res = agg(aggregates=[{"agg": "mean", "of": "prop", "prop": "rating"}])
     payload = {k: v for k, v in res.items()
-               if k not in ("op", "args_echo", "dataset_extent", "result_digest")}
+               if k not in ENVELOPE_META_KEYS}
     assert "prop_coercion" in payload
     assert "prop_coercion" in canonical_json(payload)
 
@@ -227,7 +227,7 @@ def test_matches_the_oracle(a, cmp, v):
     got = call_operator(adapter, "aggregate_events", args)
     expected = _canonicalize_floats(oracle.aggregate_events(got["args_echo"]))
     payload = {k: v2 for k, v2 in got.items()
-               if k not in ("op", "args_echo", "dataset_extent", "result_digest")}
+               if k not in ENVELOPE_META_KEYS}
     assert canonical_json(payload) == canonical_json(expected)
 
 
@@ -241,7 +241,7 @@ def test_grouped_property_aggregates_match_the_oracle(a):
     got = call_operator(adapter, "aggregate_events", args)
     expected = _canonicalize_floats(oracle.aggregate_events(got["args_echo"]))
     payload = {k: v for k, v in got.items()
-               if k not in ("op", "args_echo", "dataset_extent", "result_digest")}
+               if k not in ENVELOPE_META_KEYS}
     assert canonical_json(payload) == canonical_json(expected)
 
 

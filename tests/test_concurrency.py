@@ -42,6 +42,8 @@ import pytest
 from tgms.core.errors import TgmsError
 from tgms.core.model import EntityRef
 
+from .conftest import ENVELOPE_META_KEYS
+
 pytest.importorskip("tgms._engine", reason="native engine extension not built")
 
 #: Rows per writer batch. Any count a reader sees must be a whole multiple of
@@ -98,7 +100,7 @@ def edge_count(store) -> int:
 
 #: Answer keys that carry call metadata rather than the answer (harness
 #: `VOLATILE`): comparing them would report agreement as disagreement.
-VOLATILE = ("op", "args_echo", "dataset_extent", "result_digest", "cursor")
+VOLATILE = ENVELOPE_META_KEYS + ("cursor",)
 
 
 def _answer_hash(payload: dict) -> str:

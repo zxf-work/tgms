@@ -24,7 +24,7 @@ from tgms.temporal.algebra import (
 )
 from tgms.temporal.oracle import Oracle
 
-from .conftest import fresh_adapter
+from .conftest import ENVELOPE_META_KEYS, fresh_adapter
 
 ensure_all_registered()
 
@@ -112,8 +112,7 @@ def check_against_oracle(args: dict[str, Any], seed: int) -> None:
     expected = _canonicalize_floats(
         oracle.aggregate_events(engine["args_echo"]))
     payload = {k: v for k, v in engine.items()
-               if k not in ("op", "args_echo", "dataset_extent",
-                            "result_digest")}
+               if k not in ENVELOPE_META_KEYS}
     assert canonical_json(payload) == canonical_json(expected), \
         f"aggregate_events mismatch for args={args}"
 
@@ -346,8 +345,7 @@ def test_result_is_immutable_under_a_pinned_as_of(seed):
     expected = _canonicalize_floats(
         oracle.aggregate_events(engine["args_echo"]))
     payload = {k: v for k, v in engine.items()
-               if k not in ("op", "args_echo", "dataset_extent",
-                            "result_digest")}
+               if k not in ENVELOPE_META_KEYS}
     assert canonical_json(payload) == canonical_json(expected)
 
 

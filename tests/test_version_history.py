@@ -47,7 +47,7 @@ from tgms.temporal.algebra import (
 )
 from tgms.temporal.oracle import Oracle
 
-from .conftest import fresh_adapter
+from .conftest import ENVELOPE_META_KEYS, fresh_adapter
 
 ensure_all_registered()
 
@@ -264,8 +264,7 @@ def test_matches_the_oracle(seed, belief, as_of, kind):
     engine = call_operator(a, "version_history", args)
     expected = _canonicalize_floats(oracle.version_history(engine["args_echo"]))
     payload = {k: v for k, v in engine.items()
-               if k not in ("op", "args_echo", "dataset_extent",
-                            "result_digest")}
+               if k not in ENVELOPE_META_KEYS}
     assert canonical_json(payload) == canonical_json(expected)
 
 

@@ -19,6 +19,8 @@ from tgms.storage.duckdb_adapter import DuckDBAdapter
 from tgms.temporal.algebra import _canonicalize_floats, call_operator, ensure_all_registered
 from tgms.temporal.oracle import Oracle
 
+from .conftest import ENVELOPE_META_KEYS
+
 ensure_all_registered()
 
 N_EXAMPLES = int(os.environ.get("TGMS_HYP_EXAMPLES", "25"))
@@ -84,7 +86,7 @@ def check_against_oracle(op: str, args: dict[str, Any], seed: int) -> None:
     engine = call_operator(adapter, op, args)
     expected = _canonicalize_floats(getattr(oracle, op)(engine["args_echo"]))
     payload = {k: v for k, v in engine.items()
-               if k not in ("op", "args_echo", "dataset_extent", "result_digest")}
+               if k not in ENVELOPE_META_KEYS}
     assert canonical_json(payload) == canonical_json(expected), \
         f"{op} mismatch for args={args}"
 
