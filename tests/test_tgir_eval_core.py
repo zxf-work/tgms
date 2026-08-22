@@ -510,8 +510,8 @@ def test_the_not_yet_built_nodes_name_their_phase(store):
     """`evaluate.py`'s `NotImplementedError` shrank to exactly the node kinds
     M3.0 does not build."""
     seed = NodeScan("p", uids=("u1",))
-    with pytest.raises(NotImplementedError, match="M3.1"):
-        evaluate_core(Expand(seed, "p", "q", Exact(1)), store)
+    # `Expand` landed in M3.1, so it no longer raises — the seam shrank again
+    assert evaluate_core(Expand(seed, "p", "q", Exact(1)), store) is not None
     with pytest.raises(NotImplementedError, match="M3.2"):
         evaluate_core(Aggregate(seed, (), (Agg("count", "n"),)), store)
     with pytest.raises(NotImplementedError, match="M3.2"):

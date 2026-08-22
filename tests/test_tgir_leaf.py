@@ -242,10 +242,12 @@ def test_the_leaf_evaluator_routes_core_nodes_elsewhere():
     and the not-yet-built node kinds name their own phase (M3 plan §4.1)."""
     with pytest.raises(NotImplementedError, match="evaluate_core"):
         evaluate(NodeScan("p"), None)
-    from tgms.tgir.node import Exact, Expand
+    from tgms.tgir.node import Agg, Aggregate
 
-    with pytest.raises(NotImplementedError, match="M3.1"):
-        evaluate(Expand(NodeScan("p", uids=("u1",)), "p", "q", Exact(1)), None)
+    # the seam shrinks phase by phase: M3.0 built the scans and selections,
+    # M3.1 `Expand`, and what is left names the phase that owns it
+    with pytest.raises(NotImplementedError, match="M3.2"):
+        evaluate(Aggregate(NodeScan("p"), (), (Agg("count", "n"),)), None)
 
 
 # ---------------------------------------------------------------------------
