@@ -2,6 +2,9 @@
 (canonical-JSON equality) across randomized stores and args.
 
 Run with TGMS_HYP_EXAMPLES=500 for the full milestone acceptance sweep.
+
+Runs against the backend `TGMS_TEST_BACKEND` selects (conftest.fresh_adapter),
+so the same ground truth judges the portable fallback and the native kernel.
 """
 
 from __future__ import annotations
@@ -15,11 +18,10 @@ from hypothesis import strategies as st
 
 from tgms.core.errors import NotFoundError
 from tgms.core.model import canonical_json
-from tgms.storage.duckdb_adapter import DuckDBAdapter
 from tgms.temporal.algebra import _canonicalize_floats, call_operator, ensure_all_registered
 from tgms.temporal.oracle import Oracle
 
-from .conftest import ENVELOPE_META_KEYS
+from .conftest import ENVELOPE_META_KEYS, fresh_adapter
 
 ensure_all_registered()
 
@@ -32,16 +34,16 @@ T_MAX = 60  # small dense time domain
 UIDS = [f"u{i}" for i in range(8)]
 RELS = ["R", "S", "MSG"]
 
-_store_cache: dict[int, tuple[DuckDBAdapter, Oracle, list[str]]] = {}
+_store_cache: dict[int, tuple[Any, Oracle, list[str]]] = {}
 
 
-def build_store(seed: int) -> tuple[DuckDBAdapter, Oracle, list[str]]:
+def build_store(seed: int) -> tuple[Any, Oracle, list[str]]:
     """Deterministic random bi-temporal store: interval edges via the update
     path (asserts/retracts/corrections) plus instantaneous events."""
     if seed in _store_cache:
         return _store_cache[seed]
     rng = random.Random(seed)
-    a = DuckDBAdapter(":memory:")
+    a = fresh_adapter()
     tt = 0
     for _ in range(40):
         tt += 1
