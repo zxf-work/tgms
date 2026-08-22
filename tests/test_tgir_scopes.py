@@ -76,22 +76,26 @@ def footprints(op: dict[str, Any]) -> list[FP]:
     `ingest_events` emits two value arms and no carve arm, because it
     supersedes nothing."""
     kind = op["op"]
+    # Coordinator adjudication (M4.1 oracle-vs-production diff, 2026-08-22):
+    # D13.20 requires totality over the *log*, and the appliers read
+    # `op.get("vt_e", OPEN_END)` — a missing vt_e is a legitimate record, so
+    # the oracle must derive, not raise. Contract-derived, not copied.
     if kind == "assert_node":
         value = FP(kind, "node", {"uid": op["uid"]}, None,
-                   vt_closed(op["vt_s"], op["vt_e"]), STAR)
+                   vt_closed(op["vt_s"], op.get("vt_e", OPEN_END)), STAR)
     elif kind == "assert_edge":
         value = FP(kind, "edge", _edge_identity(op), op["rel_type"],
-                   vt_closed(op["vt_s"], op["vt_e"]), STAR)
+                   vt_closed(op["vt_s"], op.get("vt_e", OPEN_END)), STAR)
     elif kind == "correct":
         ref = op["ref"]
         keys = tuple(op.get("props", {}))
         if ref["kind"] == "node":
             value = FP(kind, "node", {"uid": ref["uid"]}, None,
-                       vt_closed(op["vt_s"], op["vt_e"]),
+                       vt_closed(op["vt_s"], op.get("vt_e", OPEN_END)),
                        keys + ("@label", "@extent", "@event_key"))
         else:
             value = FP(kind, "edge", _edge_identity(ref), ref["rel_type"],
-                       vt_closed(op["vt_s"], op["vt_e"]),
+                       vt_closed(op["vt_s"], op.get("vt_e", OPEN_END)),
                        keys + ("@extent", "@event_key"))
     elif kind == "retract":
         ref = op["ref"]
@@ -103,8 +107,28 @@ def footprints(op: dict[str, Any]) -> list[FP]:
                        vt_from(op["t"]), ("@extent", "@event_key"))
     elif kind == "ingest_events":
         events = op["events"]
+        if not events:
+            # The applier writes nothing; a vacuous "*"-shaped arm would
+            # match every scope (adjudicated with the vt_e rule above).
+            return []
+
+        def _eff_end(e: dict[str, Any]) -> int:
+            # The applier treats a falsy vt_e as instantaneous (vt_s + 1).
+            # A present, non-falsy vt_e that does not exceed vt_s has no
+            # defined applier interval: the oracle widens to OPEN_END —
+            # widening keeps the oracle sound (D13.1), and the inverted
+            # interval the old max() built here overlapped nothing at all,
+            # the false-negative direction in the file meant to be the
+            # independent check.
+            ve = e.get("vt_e")
+            if not ve:
+                return e["vt_s"] + 1
+            if ve <= e["vt_s"]:
+                return OPEN_END
+            return ve
+
         lo = min(e["vt_s"] for e in events)
-        hi = max(e.get("vt_e", e["vt_s"] + 1) for e in events)
+        hi = max(_eff_end(e) for e in events)
         edge_arm = FP(kind, "edge",
                       {"src": tuple(e["src"] for e in events),
                        "dst": tuple(e["dst"] for e in events)},
