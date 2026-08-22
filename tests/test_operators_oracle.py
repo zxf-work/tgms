@@ -37,6 +37,19 @@ RELS = ["R", "S", "MSG"]
 _store_cache: dict[int, tuple[Any, Oracle, list[str]]] = {}
 
 
+def _apply(adapter, ops, tt):
+    """Bracket one batch the way Store._write does: the native engine
+    publishes a generation at commit, and columnar scans read published
+    generations only."""
+    adapter.begin()
+    try:
+        adapter.apply_ops(ops, tt)
+    except Exception:
+        adapter.rollback()
+        raise
+    adapter.commit()
+
+
 def build_store(seed: int) -> tuple[Any, Oracle, list[str]]:
     """Deterministic random bi-temporal store: interval edges via the update
     path (asserts/retracts/corrections) plus instantaneous events."""
@@ -53,30 +66,30 @@ def build_store(seed: int) -> tuple[Any, Oracle, list[str]]:
         e = s + rng.randrange(1, T_MAX - s)
         try:
             if kind == "an":
-                a.apply_ops([{"op": "assert_node", "uid": u, "label": "N",
-                              "props": {"name": f"Name {u}", "p": rng.randrange(3)},
-                              "vt_s": s, "vt_e": e}], tt)
+                _apply(a, [{"op": "assert_node", "uid": u, "label": "N",
+                            "props": {"name": f"Name {u}", "p": rng.randrange(3)},
+                            "vt_s": s, "vt_e": e}], tt)
             elif kind == "ae":
-                a.apply_ops([{"op": "assert_edge", "src": u, "dst": v,
-                              "rel_type": rng.choice(RELS[:2]),
-                              "props": {"w": rng.randrange(4)},
-                              "vt_s": s, "vt_e": e, "disc": ""}], tt)
+                _apply(a, [{"op": "assert_edge", "src": u, "dst": v,
+                            "rel_type": rng.choice(RELS[:2]),
+                            "props": {"w": rng.randrange(4)},
+                            "vt_s": s, "vt_e": e, "disc": ""}], tt)
             elif kind == "rt":
-                a.apply_ops([{"op": "retract",
-                              "ref": {"kind": "edge", "src": u, "dst": v,
-                                      "rel_type": "R", "disc": ""},
-                              "t": rng.randrange(0, T_MAX)}], tt)
+                _apply(a, [{"op": "retract",
+                            "ref": {"kind": "edge", "src": u, "dst": v,
+                                    "rel_type": "R", "disc": ""},
+                            "t": rng.randrange(0, T_MAX)}], tt)
             else:
-                a.apply_ops([{"op": "correct", "ref": {"kind": "node", "uid": u},
-                              "props": {"name": f"Name {u} v2", "p": 9},
-                              "vt_s": s, "vt_e": e}], tt)
+                _apply(a, [{"op": "correct", "ref": {"kind": "node", "uid": u},
+                            "props": {"name": f"Name {u} v2", "p": 9},
+                            "vt_s": s, "vt_e": e}], tt)
         except NotFoundError:
             pass
     tt += 1
     events = [{"src": rng.choice(UIDS), "dst": rng.choice(UIDS), "rel_type": "MSG",
                "vt_s": rng.randrange(0, T_MAX)} for _ in range(120)]
-    a.apply_ops([{"op": "ingest_events", "events": events, "offset": 0,
-                  "node_label": "Node"}], tt)
+    _apply(a, [{"op": "ingest_events", "events": events, "offset": 0,
+                "node_label": "Node"}], tt)
     oracle = Oracle(list(a.all_node_versions()), list(a.all_edge_versions()))
     known = a.uids_for(list(range(a.num_entities())))
     _store_cache[seed] = (a, oracle, known)
