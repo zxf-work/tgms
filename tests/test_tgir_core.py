@@ -26,8 +26,12 @@ from tgms.tgir import (
     Provenance, ResultMeta, Schema, ScopeBasis, ScopeTerm, Sigma, SortKey,
     Source, TOP, TOP_TERM, Targets, Tau, TupleExpr, TypeConstraint, Unbounded,
     adapter_for, anchor_of_var, comparable, compute_node_digest, le, leaf_scope,
-    meet, meet_all, meet_exactness, scope_of, union_all, vt_closed, vt_from,
+    meet, meet_all, meet_exactness, union_all, vt_closed, vt_from,
 )
+# `tgms.tgir.scope_of` is the *module*; the function of the same name is not
+# re-exported at package level, because binding it there would shadow the
+# module and make `tgms.tgir.scope_of.leaf_scope` an AttributeError.
+from tgms.tgir.scope_of import scope_of
 from tgms.tgir.depscope import FULL_SCAN_CHECKPOINTS, UNANCHORED
 
 BASIS = ScopeBasis(store="store-a", tt_q=1_000, checkpoints=(Checkpoint(500, "aa" * 8),))
@@ -764,7 +768,12 @@ def test_scope_of_unions_every_input_including_seeds_only_ones():
 
 
 def test_opaque_leaves_get_the_coarse_top_term_and_compute_gets_empty():
-    leaf = OpaqueLeaf.build("entity_history", {"uid": "u1"}, ("rows",))
+    """The coarse default, for the twelve operators M2.3 left on `"*"`. The
+    three it derived are `tests/test_tgir_scopes.py`'s subject; `compute` is ∅
+    from day one."""
+    leaf = OpaqueLeaf.build("version_history",
+                            {"kind": "node", "window": {"t_a": 0, "t_b": 10}},
+                            ("rows",))
     assert scope_of(leaf, BASIS).terms == (TOP_TERM,)
     assert scope_of(OpaqueLeaf.build("compute", {}, ("value",)), BASIS).is_empty
 
