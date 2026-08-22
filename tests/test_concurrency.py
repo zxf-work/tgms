@@ -34,6 +34,7 @@ from __future__ import annotations
 
 import json
 import multiprocessing as mp
+import os
 import subprocess
 import sys
 import time
@@ -532,10 +533,16 @@ def test_duckdb_read_only_handles_coexist_across_processes(tmp_path):
     )
     assert got_a == expected
 
+    # The subprocess must see the same tgms the test imported — sys.executable
+    # alone is not enough when the package is on the parent's path rather than
+    # installed into the interpreter (the editable-install layout here).
+    env = dict(os.environ)
+    tgms_root = str(Path(tgms.__file__).resolve().parent.parent)
+    env["PYTHONPATH"] = tgms_root + os.pathsep + env.get("PYTHONPATH", "")
     proc = subprocess.Popen(
         [sys.executable, str(script), str(store_path)],
         stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.PIPE,
-        text=True,
+        text=True, env=env,
     )
     try:
         ready = proc.stdout.readline().strip()
