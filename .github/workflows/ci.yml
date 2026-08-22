@@ -36,5 +36,17 @@ jobs:
         run: uv run python scripts/site_facts.py check
       - name: blog structure (docs/BLOG_STYLE.md §3)
         run: uv run python scripts/check_blog_structure.py
+      # M2/M3 receipt gates (M3 plan §9.14): `make ci` runs these locally, and
+      # a frozen receipt can regress while the suites stay green, so the
+      # workflow must run them too. digest-stability covers both backends
+      # (native + duckdb; duckdb comes with the dev group uv sync installs).
+      - name: digest stability (M2 §8.4)
+        run: uv run python scripts/check_digest_stability.py
+      - name: ttq semantics (M2.1 gate)
+        run: uv run python scripts/check_ttq_semantics.py
+      - name: tgir leaf totality (M2.2 gate)
+        run: uv run python scripts/check_tgir_leaf_totality.py
+      - name: scope shape (M2.3 gate)
+        run: uv run python scripts/check_scope_shape.py
       - name: tests (fast property profile)
         run: TGMS_HYP_EXAMPLES=25 uv run pytest tests/ -q
