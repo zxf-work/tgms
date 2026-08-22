@@ -417,6 +417,16 @@ class StorageAdapter(ABC):
             hits = [v for v in versions if Interval(v.vt_s, v.vt_e).overlaps(vt)]
             if not hits:
                 raise NotFoundError(f"no believed node version of {ref.identity} overlaps vt")
+            # `correct` carries no label argument, so the corrected version can only
+            # inherit one. Disagreeing labels among the hits leave that choice to the
+            # order of an unordered scan, so refuse — before any mutation (D-140).
+            if len({v.label for v in hits}) > 1:
+                raise InvalidArgError(
+                    f"correct of {ref.identity} over [{vt.start}, {vt.end}) spans versions "
+                    f"with disagreeing labels; split it at the label boundaries",
+                    uid=ref.identity, vt_s=vt.start, vt_e=vt.end,
+                    hits=[[v.label, v.vt_s, v.vt_e]
+                          for v in sorted(hits, key=lambda v: v.vt_s)])
             self._supersede_nodes(hits, tt)
             rows: list[NodeVersion] = []
             for v in hits:

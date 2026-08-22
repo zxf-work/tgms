@@ -24,9 +24,10 @@ from __future__ import annotations
 
 import json
 
+import pytest
 from hypothesis import HealthCheck, given, settings
 
-from tgms.core.errors import NotFoundError
+from tgms.core.errors import InvalidArgError, NotFoundError
 from tgms.core.model import OPEN_END, canonical_json, edge_eid
 from tgms.storage.base import _remainder
 
@@ -351,6 +352,49 @@ def test_correct_preserves_remainder_and_replaces_props():
     # the erroneous belief is still visible at the old as_of_tt
     old = adapter.believed_node_versions("a", as_of_tt=1)
     assert [(v.vt_s, v.vt_e, v.props["p"]) for v in old] == [(0, 100, 1)]
+    adapter.close()
+
+
+def test_correct_refuses_interval_spanning_disagreeing_labels():
+    """The L2.2 hazard, ruled on by D-140: two believed versions of one uid can
+    carry different labels, and the old node branch took `hits[0].label` off an
+    unordered scan — silently reassigning the label over part of the corrected
+    interval. `correct` takes no label argument, so it now refuses instead, and
+    refuses before mutating. This file runs under both TGMS_TEST_BACKEND values,
+    so this body is the cross-backend pin."""
+    adapter = fresh_adapter()
+    adapter.apply_ops([{"op": "assert_node", "uid": "a", "label": "A",
+                        "props": {"p": 1}, "vt_s": 0, "vt_e": 10}], 1)
+    adapter.apply_ops([{"op": "assert_node", "uid": "a", "label": "B",
+                        "props": {"p": 2}, "vt_s": 10, "vt_e": 20}], 2)
+    with pytest.raises(InvalidArgError) as exc:
+        adapter.apply_ops([{"op": "correct", "ref": {"kind": "node", "uid": "a"},
+                            "props": {"p": 9}, "vt_s": 5, "vt_e": 15}], 3)
+    details = exc.value.details
+    assert details["uid"] == "a"
+    assert (details["vt_s"], details["vt_e"]) == (5, 15)
+    assert [list(h) for h in details["hits"]] == [["A", 0, 10], ["B", 10, 20]]
+    # refused before any mutation: the store is exactly as batch 2 left it
+    now = adapter.believed_node_versions("a", as_of_tt=3)
+    assert {(v.vt_s, v.vt_e): (v.label, v.props["p"]) for v in now} == {
+        (0, 10): ("A", 1), (10, 20): ("B", 2)}
+    adapter.close()
+
+
+def test_correct_across_two_hits_with_unanimous_label_preserves_it():
+    """Unanimous labels are unchanged by D-140: the correct carves across both
+    hits and every surviving version keeps the one label."""
+    adapter = fresh_adapter()
+    adapter.apply_ops([{"op": "assert_node", "uid": "a", "label": "A",
+                        "props": {"p": 1}, "vt_s": 0, "vt_e": 10}], 1)
+    adapter.apply_ops([{"op": "assert_node", "uid": "a", "label": "A",
+                        "props": {"p": 2}, "vt_s": 10, "vt_e": 20}], 2)
+    adapter.apply_ops([{"op": "correct", "ref": {"kind": "node", "uid": "a"},
+                        "props": {"p": 9}, "vt_s": 5, "vt_e": 15}], 3)
+    now = adapter.believed_node_versions("a", as_of_tt=3)
+    assert {(v.vt_s, v.vt_e): v.props["p"] for v in now} == {
+        (0, 5): 1, (5, 15): 9, (15, 20): 2}
+    assert {v.label for v in now} == {"A"}
     adapter.close()
 
 
