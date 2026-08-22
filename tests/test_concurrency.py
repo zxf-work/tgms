@@ -34,12 +34,14 @@ from __future__ import annotations
 
 import json
 import multiprocessing as mp
+import subprocess
+import sys
 import time
 from pathlib import Path
 
 import pytest
 
-from tgms.core.errors import TgmsError
+from tgms.core.errors import StateError, TgmsError
 from tgms.core.model import EntityRef
 
 from .conftest import ENVELOPE_META_KEYS
@@ -463,3 +465,106 @@ def test_readers_opening_throughout_a_write_run_never_damage_the_store(tmp_path:
     assert fresh.store_digest() == digest, (
         "the store no longer matches its own event log")
     fresh.close()
+
+
+# --------------------------------------------------------------------------- #
+# 5. DuckDB read-only handles do not fight over the exclusive file lock       #
+# --------------------------------------------------------------------------- #
+#
+# Unlike the native engine (immutable segments, atomic manifest swap: no OS
+# lock at all — see properties 1-4 above), DuckDB takes an exclusive lock on
+# `duckdb.connect(path)` unless `read_only=True` is passed. `_make_adapter`
+# used to drop `read_only` on the floor, so *every* handle — including one
+# `Store` opened with `read_only=True` — connected read-write and took the
+# lock, making two reader processes of one DuckDB store impossible. This
+# reproduces that with a real second OS process: DuckDB's Python client
+# caches connections per path *within* one process, so a second `tgms.open`
+# in this same process would not exercise the file lock at all.
+
+#: Run in a fresh interpreter via `subprocess` (not `multiprocessing`) so the
+#: reader is unambiguously a separate process, holding its own `duckdb`
+#: connection rather than sharing this process's per-path connection cache.
+_DUCKDB_READER_SUBPROCESS = """
+import json
+import sys
+
+import tgms
+
+path = sys.argv[1]
+s = tgms.open(path, backend="duckdb", read_only=True)
+rows = sorted(
+    (v.uid, v.label, json.dumps(v.props, sort_keys=True))
+    for v in s.adapter.all_node_versions()
+)
+# Signal the parent only once this handle is open and has read: the parent's
+# own overlapping read (below) is only a real test of concurrency if it lands
+# while this handle is still open.
+print("READY", flush=True)
+sys.stdin.readline()  # wait for the parent's go-ahead before closing
+print(json.dumps(rows), flush=True)
+s.close()
+"""
+
+
+def test_duckdb_read_only_handles_coexist_across_processes(tmp_path):
+    """Two read-only DuckDB handles on one store, in two OS processes, must
+    both succeed and see the same data (the bug this fixes), and a read-only
+    handle must still refuse writes (store.py:263)."""
+    import tgms
+
+    store_path = tmp_path / "s"
+    w = tgms.open(store_path, backend="duckdb")
+    for i in range(5):
+        w.assert_node(f"n{i}", "N", {"i": i})
+    w.close()
+
+    expected = sorted((f"n{i}", "N", json.dumps({"i": i}, sort_keys=True)) for i in range(5))
+
+    script = tmp_path / "duckdb_reader.py"
+    script.write_text(_DUCKDB_READER_SUBPROCESS)
+
+    # Handle A: this process, read-only, held open across the subprocess's
+    # whole lifetime.
+    a = tgms.open(store_path, backend="duckdb", read_only=True)
+    got_a = sorted(
+        (v.uid, v.label, json.dumps(v.props, sort_keys=True))
+        for v in a.adapter.all_node_versions()
+    )
+    assert got_a == expected
+
+    proc = subprocess.Popen(
+        [sys.executable, str(script), str(store_path)],
+        stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.PIPE,
+        text=True,
+    )
+    try:
+        ready = proc.stdout.readline().strip()
+        assert ready == "READY", (
+            f"handle B (subprocess) failed to open read-only while handle A "
+            f"was still open: stdout={ready!r} stderr={proc.stderr.read()!r}")
+
+        # Handle A reads again here, overlapping in time with handle B, which
+        # is parked mid-script waiting on stdin — exactly the window the file
+        # lock would have broken.
+        got_a_again = sorted(
+            (v.uid, v.label, json.dumps(v.props, sort_keys=True))
+            for v in a.adapter.all_node_versions()
+        )
+        assert got_a_again == expected
+
+        proc.stdin.write("go\n")
+        proc.stdin.flush()
+        out, err = proc.communicate(timeout=30)
+    finally:
+        if proc.poll() is None:
+            proc.kill()
+            proc.communicate()
+
+    assert proc.returncode == 0, f"handle B (subprocess) failed: {err}"
+    got_b = sorted(tuple(row) for row in json.loads(out.strip().splitlines()[-1]))
+    assert got_b == expected, "the two processes saw different content"
+
+    with pytest.raises(StateError):
+        a.assert_node("nope", "N")
+
+    a.close()
