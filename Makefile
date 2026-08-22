@@ -33,7 +33,7 @@ derive-vectors:
 	$(UV) run python scripts/gen_derive_vectors.py
 
 ci: lint rust-lint hygiene rust-test digest-stability ttq-semantics leaf-totality \
-    scope-shape
+    scope-shape core-equivalence
 	TGMS_HYP_EXAMPLES=50 $(UV) run pytest tests/ -q
 
 # M2 §8.4: a suite proves the payload matches the oracle; a frozen digest
@@ -58,6 +58,13 @@ leaf-totality:
 # which is why they are checked by a machine rather than by a reviewer.
 scope-shape:
 	$(UV) run python scripts/check_scope_shape.py
+
+# M3.0's gate: the core evaluators against operators that already have an
+# oracle — scan+filter+project versus entity_history/version_history, and
+# Join{inner} versus `compute join`. Without it the phase's only check would be
+# the evaluators agreeing with themselves.
+core-equivalence:
+	$(UV) run python scripts/check_core_equivalence.py
 
 # spec §8.1: no commit may mix tests//oracle.py with implementation changes
 hygiene:

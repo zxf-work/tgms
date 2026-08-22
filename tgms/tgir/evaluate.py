@@ -58,12 +58,26 @@ class Evaluation:
 
 
 def evaluate(node: Node, adapter: Any, **kwargs: Any) -> Evaluation:
-    """Dispatch a node to its runtime."""
+    """Dispatch an **opaque leaf** to its runtime.
+
+    The compositional core evaluates to a `Relation` rather than to a payload
+    envelope, so it has its own entry point: `tgms.tgir.eval.evaluate_core`.
+    Keeping them separate is deliberate — a leaf's result is the kernel's own
+    payload dict (C4 makes its field names the contract), while a core plan's
+    result is an ordered bag of typed rows that only becomes a payload at the
+    plan's output boundary.
+    """
     if isinstance(node, OpaqueLeaf):
         return evaluate_leaf(node, adapter, **kwargs)
+    from tgms.tgir.eval import PENDING
+
+    if node.op in PENDING:
+        raise NotImplementedError(
+            f"{node.op} has no evaluator yet — it is {PENDING[node.op]}'s "
+            f"(docs/design/M3_IMPLEMENTATION_PLAN.md §4.1)")
     raise NotImplementedError(
-        f"the compositional core has no evaluator in M2 — {node.op} is M3's "
-        f"(TGIR_SPEC §2); only the fifteen opaque leaves evaluate here")
+        f"{node.op} is a compositional core node: evaluate it with "
+        f"`tgms.tgir.eval.evaluate_core`, which returns a Relation")
 
 
 def evaluate_leaf(leaf: OpaqueLeaf, adapter: Any) -> Evaluation:
