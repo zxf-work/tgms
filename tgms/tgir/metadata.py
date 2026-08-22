@@ -22,7 +22,7 @@ from dataclasses import dataclass, field
 from enum import Enum
 from typing import Any
 
-from tgms.core.errors import InvalidArgError
+from tgms.core.errors import InvalidArgError, LimitError
 from tgms.core.model import digest
 from tgms.tgir.depscope import DependencyScope
 from tgms.tgir.types import Schema, Sigma
@@ -260,6 +260,61 @@ def compute_node_digest(op: str, canonical_args: dict[str, Any], sigma: Sigma,
 
 
 @dataclass(frozen=True, slots=True)
+class IncompletenessRefusal:
+    """`⟨node_digest, reason, offending_input_digest, that input's σ⟩` (§5.2).
+
+    **A different shape from `RefusalCertificate`, and deliberately so.** That
+    one is for *policy/ceiling* refusals decided at admission; every field of it
+    except the digest is inapplicable here — there is no ceiling, no estimate
+    and no calibration reference, because nothing was over budget. What
+    happened is that an operator deriving rows from *absence* was handed an
+    input it could not prove complete.
+
+    Auditing the two is correspondingly different: a `RefusalCertificate` is
+    audited by re-running the estimator at its pinned policy version, an
+    `IncompletenessRefusal` by re-reading the offending input's scope triple.
+    Conflating them would make `audit()` unsound on one of the two.
+    """
+
+    node_digest: str
+    op: str
+    reason: str
+    offending: str
+    offending_completeness: str
+    offending_sigma: dict[str, Any]
+
+    def to_json(self) -> dict[str, Any]:
+        return {
+            "node_digest": self.node_digest,
+            "op": self.op,
+            "reason": self.reason,
+            "offending_input": self.offending,
+            "offending_completeness": self.offending_completeness,
+            "offending_sigma": self.offending_sigma,
+        }
+
+    @staticmethod
+    def error(node_digest: str, op: str, reason: str, offending: str,
+              offending_meta: "ResultMeta") -> LimitError:
+        """Raise-ready `E_INCOMPLETE`.
+
+        `E_LIMIT`'s class carries it: §5.2 names the error `E_INCOMPLETE` and
+        the frozen taxonomy (`tgms/core/errors.py`) has no such code. Adding one
+        is a public-surface change (`docs/STABILITY.md` §3), so M3 reports the
+        refusal *shape* under the nearest existing code and flags the gap
+        rather than minting a code silently.
+        """
+        refusal = IncompletenessRefusal(
+            node_digest=node_digest, op=op, reason=reason, offending=offending,
+            offending_completeness=offending_meta.completeness.value,
+            offending_sigma=offending_meta.sigma.to_json())
+        return LimitError(
+            f"{op} refuses: {reason}",
+            incompleteness_refusal=refusal.to_json(),
+            error_class="E_INCOMPLETE")
+
+
+@dataclass(frozen=True, slots=True)
 class ResultMeta:
     """`R` minus `value` and `schema` — plus `schema` itself, which is cheap to
     carry and is what makes a step record self-describing.
@@ -274,6 +329,12 @@ class ResultMeta:
     provenance: Provenance | None = None
     dependency: DependencyScope | None = None
     schema: Schema | None = None
+    #: The **declared domain** — what the result is *about* (§5.2). Carried
+    #: beside `completeness` because a completeness claim is meaningless
+    #: without it, and because §5.3 rule 3's single exception is stated
+    #: entirely in its terms. `None` on an opaque leaf, whose domain is its
+    #: operator's own arguments rather than a plan's narrowings.
+    domain: Any = None
 
     @property
     def t_v(self) -> list[list[int]]:
@@ -299,11 +360,13 @@ class ResultMeta:
             "provenance": self.provenance.to_json() if self.provenance else None,
             "dependency": self.dependency.to_json() if self.dependency else None,
             "schema": self.schema.to_json() if self.schema else None,
+            **({"domain": self.domain.to_json()} if self.domain is not None else {}),
         }
 
 
 __all__ = [
-    "CERTIFICATION_LAYER", "Completeness", "Exactness", "MIDDLE", "Provenance",
+    "CERTIFICATION_LAYER", "Completeness", "Exactness", "IncompletenessRefusal",
+    "MIDDLE", "Provenance",
     "ResultMeta", "ScanDescriptor", "VidSet", "comparable", "compute_node_digest",
     "le", "meet", "meet_all", "meet_exactness",
 ]

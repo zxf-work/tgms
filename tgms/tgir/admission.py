@@ -99,13 +99,33 @@ class RefusalCertificate:
         )
 
 
+#: The runtime backstop's default, **measured rather than guessed**.
+#:
+#: `ops_paths.MAX_EXPANSIONS = 500_000` is the precedent, and it is the wrong
+#: size for this unit: bo33's nine-edge motif over bitcoin-otc — the largest
+#: real pattern in the corpus, and one `TGIR_SPEC.md` §7.2 explicitly says the
+#: `rating > 0` pushdown "keeps admissible" — charges **12.1 million** candidate
+#: bindings and completes in ~27 s. A 500k backstop would refuse the corpus
+#: instead of catching a runaway.
+#:
+#: So the default sits ~4× above that measurement. The backstop exists to turn
+#: an OOM into a policy-certified refusal, not to second-guess a workload the
+#: spec names admissible; a genuine blow-up (a cross product) passes this in
+#: seconds.
+DEFAULT_EXPANSION_BUDGET = 50_000_000
+
+
 @dataclass
 class Budget:
     """The runtime backstop. Today's precedent is `ops_paths.MAX_EXPANSIONS`
-    raising `CostError` mid-execution; this is that, with a certificate."""
+    raising `CostError` mid-execution; this is that, with a certificate.
+
+    The unit is one *candidate*: a neighbour visited by an expansion, or a
+    partial binding considered by a pattern search.
+    """
 
     plan_digest: str
-    limit: int = 500_000
+    limit: int = DEFAULT_EXPANSION_BUDGET
     spent: int = 0
     ceilings: dict[str, int] = field(default_factory=dict)
 
@@ -203,5 +223,6 @@ def has_core_node(root: Node) -> bool:
     return walk(root)
 
 
-__all__ = ["Budget", "CALIBRATION_REF", "POLICY_VERSION", "RefusalCertificate",
+__all__ = ["Budget", "CALIBRATION_REF", "DEFAULT_EXPANSION_BUDGET",
+           "POLICY_VERSION", "RefusalCertificate",
            "admit", "admit_node", "has_core_node", "plan_estimate"]

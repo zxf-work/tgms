@@ -56,10 +56,36 @@ def _walk(node: Node, demanded: set[str], live: dict[str, set[str]]) -> None:
     live.setdefault(key, set()).update(wanted)
 
     own = _own_reads(node)
-    for i in node.inputs:
+    for position, i in enumerate(node.inputs):
         available = set(i.out_schema.names)
-        # what this node passes through, plus what it reads itself
-        _walk(i, (live[key] | own) & available, live)
+        # what this node passes through, plus what it reads itself, plus what
+        # it reads *from this particular input* — `PatternMatch` is the one
+        # node whose demand is per-input, because `sources` rebinds and each
+        # source relation carries the identity columns under its own prefix
+        demand = (live[key] | own | _input_reads(node, position)) & available
+        _walk(i, demand, live)
+
+
+def _input_reads(node: Node, position: int) -> set[str]:
+    """What a node reads from **one specific** input.
+
+    Only `PatternMatch` has such a thing: its `sources` are rebindings, so the
+    columns it needs live under whatever prefix the source relation happens to
+    use, and the search binds on the identity columns whether or not the plan
+    projects them.
+    """
+    if not isinstance(node, PatternMatch) or position >= len(node.sources):
+        return set()
+    source = node.sources[position]
+    is_edge = any(p.var == source.var for p in node.pattern.edge_pats)
+    names = source.relation.out_schema.names
+    if is_edge:
+        prefix = next((n[: -len("eid")] for n in names if n.endswith(".eid")), None)
+        if prefix is None:
+            return set()
+        return {f"{prefix}{c}" for c in ("eid", "src", "dst", "vt_s", "vid")}
+    prefix = next((n[: -len("uid")] for n in names if n.endswith(".uid")), None)
+    return {f"{prefix}uid"} if prefix else set()
 
 
 def _own_reads(node: Node) -> set[str]:

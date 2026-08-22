@@ -27,27 +27,30 @@ from __future__ import annotations
 from typing import Any
 
 from tgms.tgir.eval.adjacency import AdjacencyCache
+from tgms.tgir.eval.aggregate import eval_aggregate
 from tgms.tgir.eval.expand import eval_expand
 from tgms.tgir.eval.expr_eval import eval_expr, eval_predicate
 from tgms.tgir.eval.join import eval_join
 from tgms.tgir.eval.order import eval_limit, eval_order, limit_truncated
+from tgms.tgir.eval.pattern import eval_pattern, label_filter
 from tgms.tgir.eval.scan import scan_edges, scan_nodes
 from tgms.tgir.eval.select import (
     eval_filter, eval_project, eval_property_predicate, eval_type_constraint,
 )
 from tgms.tgir.guard import adapter_for
+from tgms.tgir.metadata import ResultMeta
 from tgms.tgir.node import (
-    EdgeScan, Expand, Filter, Join, Limit, Node, NodeScan, Order, Project,
-    PropertyPredicate, TypeConstraint,
+    Aggregate, EdgeScan, Expand, Filter, Join, Limit, Node, NodeScan, Order,
+    PatternMatch, Project, PropertyPredicate, TypeConstraint,
 )
+from tgms.tgir.propagate import meta_for
 from tgms.tgir.prune import LiveMap, live_columns
 from tgms.tgir.relation import Relation
 
 #: Which phase owns each not-yet-built node kind, so the error names the seam.
-PENDING: dict[str, str] = {
-    "PatternMatch": "M3.2",
-    "Aggregate": "M3.2",
-}
+#: Node kinds with no evaluator yet. Empty since M3.2 — every one of §2's
+#: twelve compositional operators now evaluates.
+PENDING: dict[str, str] = {}
 
 
 class Execution:
@@ -78,6 +81,10 @@ class Execution:
         #: `prop_coercion` counts per node digest (§2.5) — the disclosed
         #: denominator, which rides out on the result metadata.
         self.coercion: dict[str, dict[str, Any]] = {}
+        #: §5's `R` minus value, **per node** — "at every node, not only at the
+        #: plan's root". Computed *before* the node runs, so a precondition
+        #: refusal costs no work and leaves no partial relation.
+        self.meta: dict[str, ResultMeta] = {}
 
     def run(self, node: Node) -> Relation:
         key = node.node_digest
@@ -85,6 +92,12 @@ class Execution:
         if cached is not None:
             return cached
         inputs = tuple(self.run(i) for i in node.inputs)
+        input_meta = tuple(self.meta[i.node_digest] for i in node.inputs)
+        # §5.3, before the work: `Join{left_outer, anti}` and `Aggregate` refuse
+        # on an input they cannot prove execution-complete, and a refusal that
+        # arrived after the join had run would have built a relation nobody may
+        # use.
+        self.meta[key] = meta_for(node, input_meta)
         if self.stats is not None:
             # stage 2: the same estimate against the inputs' *realized*
             # cardinality, immediately before this node runs. It can only ever
@@ -126,6 +139,13 @@ class Execution:
                                self.budget)
         if isinstance(node, Join):
             return eval_join(node, inputs[0], inputs[1])
+        if isinstance(node, Aggregate):
+            return eval_aggregate(node, inputs[0])
+        if isinstance(node, PatternMatch):
+            sources = {s.var: inputs[i] for i, s in enumerate(node.sources)}
+            return label_filter(node,
+                                eval_pattern(node, sources, adapter, live,
+                                             self.budget))
         raise NotImplementedError(
             f"{node.op} has no evaluator yet — it is "
             f"{PENDING.get(node.op, 'a later phase')}'s "
@@ -157,8 +177,9 @@ def evaluate_core(node: Node, adapter: Any, *, admit_plan: bool = False,
 
 
 __all__ = [
-    "AdjacencyCache", "Execution", "PENDING", "eval_expand", "eval_expr",
-    "eval_filter", "eval_join", "eval_limit", "eval_order", "eval_predicate",
-    "eval_project", "eval_property_predicate", "eval_type_constraint",
-    "evaluate_core", "limit_truncated", "scan_edges", "scan_nodes",
+    "AdjacencyCache", "Execution", "PENDING", "eval_aggregate", "eval_expand",
+    "eval_expr", "eval_filter", "eval_join", "eval_limit", "eval_order",
+    "eval_pattern", "eval_predicate", "eval_project", "eval_property_predicate",
+    "eval_type_constraint", "evaluate_core", "limit_truncated", "scan_edges",
+    "scan_nodes",
 ]

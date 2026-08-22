@@ -32,11 +32,13 @@ from tgms.tgir.relation import Relation
 
 
 def eval_join(node: Join, left: Relation, right: Relation) -> Relation:
-    if node.join_type != "inner":
-        raise NotImplementedError(
-            f"Join{{{node.join_type}}} derives rows from absence on the right and "
-            f"must refuse E_INCOMPLETE unless the probe is execution-complete "
-            f"(§2.8); that precondition is M3.2's")
+    """All three join types. The execution-completeness precondition for the two
+    absence-deriving ones is enforced by `propagate.meta_for` **before** this
+    runs, so a refusal costs no work and no partial relation exists."""
+    if node.join_type == "left_outer":
+        return _left_outer(node, left, right)
+    if node.join_type == "anti":
+        return _anti(node, left, right)
 
     left_keys = tuple(pair[0] for pair in node.on)
     right_keys = tuple(pair[1] for pair in node.on)
@@ -63,6 +65,92 @@ def eval_join(node: Join, left: Relation, right: Relation) -> Relation:
     if out.schema.names != node.out_schema.names:  # pragma: no cover - guard
         raise InternalError("join output schema drifted from the plan's")
     return out
+
+
+def _left_outer(node: Join, left: Relation, right: Relation) -> Relation:
+    """`inner ∪ { l ⧺ null_R | l ∈ L, ¬∃ r ∈ R. key(r) = key(l) }`.
+
+    **Duplicate probe keys multiply** (§8.4 CLOSED): a left row matching three
+    probe rows yields three output rows. That differs from today's
+    `compute join`, whose keys must be unique on both sides, and the divergence
+    is deliberate — it is load-bearing for bo31 and BI18 on any *corrected*
+    store, where several believed versions per identity is the normal case.
+    Ruling "reject" instead would turn two `yes` rows into refusals.
+
+    The fill side is `Relation.nullable_copy()` plus an all-null row — the same
+    construction §9.1's version-less `into` uses, which is why both landed in
+    the relation rather than in either caller.
+    """
+    left_keys = tuple(pair[0] for pair in node.on)
+    right_keys = tuple(pair[1] for pair in node.on)
+    check_join_keys(left, left_keys, "left")
+    check_join_keys(right, right_keys, "right")
+
+    index: dict[Any, list[int]] = defaultdict(list)
+    for i, key in enumerate(_keys(right, right_keys)):
+        index[key].append(i)
+
+    left_idx: list[int] = []
+    right_idx: list[int] = []
+    unmatched: list[int] = []
+    for i, key in enumerate(_keys(left, left_keys)):
+        matches = index.get(key)
+        if matches:
+            left_idx.extend([i] * len(matches))
+            right_idx.extend(matches)
+        else:
+            unmatched.append(i)
+
+    nullable = right.nullable_copy()
+    matched = left.take(np.array(left_idx, dtype=np.int64)).with_columns(
+        nullable.schema, nullable.take(np.array(right_idx, dtype=np.int64)).cols,
+        nullable.take(np.array(right_idx, dtype=np.int64)).nulls)
+    if not unmatched:
+        return matched
+    fill_left = left.take(np.array(unmatched, dtype=np.int64))
+    fill = Relation(nullable.schema,
+                    {c.name: _null_column(nullable, c.name, len(unmatched))
+                     for c in nullable.schema},
+                    len(unmatched),
+                    {c.name: np.ones(len(unmatched), dtype=bool)
+                     for c in nullable.schema})
+    filled = fill_left.with_columns(fill.schema, fill.cols, fill.nulls)
+    # left row order is the contract, and the two halves were built by
+    # partitioning it — so the concatenation is re-sorted back into it
+    out = matched.concat_rows(filled)
+    order = np.concatenate([np.array(left_idx, dtype=np.int64),
+                            np.array(unmatched, dtype=np.int64)])
+    return out.take(np.argsort(order, kind="stable"))
+
+
+def _anti(node: Join, left: Relation, right: Relation) -> Relation:
+    """`{ l | l ∈ L, ¬∃ r ∈ R. key(r) = key(l) }`.
+
+    The right relation contributes **no columns** — it is a *probe*. Duplicate
+    probe keys are accepted without a second thought: duplicates cannot change
+    an absence test, so the result is unaffected (§8.4 CLOSED).
+    """
+    left_keys = tuple(pair[0] for pair in node.on)
+    right_keys = tuple(pair[1] for pair in node.on)
+    check_join_keys(left, left_keys, "left")
+    check_join_keys(right, right_keys, "right")
+
+    probe = set(_keys(right, right_keys))
+    keep = np.array([key not in probe for key in _keys(left, left_keys)], dtype=bool)
+    return left.filter(keep) if left.n else left
+
+
+def _null_column(rel: Relation, name: str, n: int) -> np.ndarray:
+    """A fill column of the right storage type: the values are unspecified
+    under a null mask, so what matters is only that the dtype matches."""
+    template = rel.cols[name]
+    if template.dtype.kind in "iu":
+        return np.zeros(n, dtype=template.dtype)
+    if template.dtype.kind == "f":
+        return np.zeros(n, dtype=template.dtype)
+    if template.dtype == bool:
+        return np.zeros(n, dtype=bool)
+    return np.full(n, None, dtype=object)
 
 
 def _keys(rel: Relation, names: tuple[str, ...]) -> list[Any]:
