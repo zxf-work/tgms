@@ -244,9 +244,9 @@ def test_the_leaf_evaluator_routes_core_nodes_elsewhere():
         evaluate(NodeScan("p"), None)
     from tgms.tgir.node import Agg, Aggregate
 
-    # the seam shrinks phase by phase: M3.0 built the scans and selections,
-    # M3.1 `Expand`, and what is left names the phase that owns it
-    with pytest.raises(NotImplementedError, match="M3.2"):
+    # the seam closed in M3.2: every core node kind evaluates, and `evaluate`
+    # routes all of them to `evaluate_core` rather than naming a pending phase
+    with pytest.raises(NotImplementedError, match="evaluate_core"):
         evaluate(Aggregate(NodeScan("p"), (), (Agg("count", "n"),)), None)
 
 

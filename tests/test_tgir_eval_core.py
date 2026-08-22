@@ -506,21 +506,23 @@ def test_the_empty_scope_guard_is_live_for_the_core(store):
         NullAdapter().nodes_columnar()
 
 
-def test_the_not_yet_built_nodes_name_their_phase(store):
-    """`evaluate.py`'s `NotImplementedError` shrank to exactly the node kinds
-    M3.0 does not build."""
+def test_every_core_node_kind_now_evaluates(store):
+    """The seam closed. `evaluate.py` raised `NotImplementedError` for the whole
+    compositional core in M2; M3.0 took the scans and selections, M3.1
+    `Expand`, M3.2 the rest — and `PENDING` is now empty, which is the
+    machine-checkable form of "all twelve of §2 evaluate"."""
+    from tgms.tgir.eval import PENDING
+
+    assert PENDING == {}, "no core node kind is left unimplemented"
     seed = NodeScan("p", uids=("u1",))
-    # `Expand` landed in M3.1, so it no longer raises — the seam shrank again
     assert evaluate_core(Expand(seed, "p", "q", Exact(1)), store) is not None
-    with pytest.raises(NotImplementedError, match="M3.2"):
-        evaluate_core(Aggregate(seed, (), (Agg("count", "n"),)), store)
-    with pytest.raises(NotImplementedError, match="M3.2"):
-        evaluate_core(PatternMatch(Pattern((NodePat("a"), NodePat("b")),
-                                           (_edge_pat(),))), store)
+    assert evaluate_core(Aggregate(seed, (), (Agg("count", "n"),)), store).n == 1
+    assert evaluate_core(PatternMatch(Pattern((NodePat("a"), NodePat("b")),
+                                              (_edge_pat(),))), store) is not None
     left = Project(seed, (("k", Col("p.uid")),))
     right = Project(NodeScan("q", uids=("u1",)), (("k2", Col("q.uid")),))
-    with pytest.raises(NotImplementedError, match="E_INCOMPLETE"):
-        evaluate_core(Join(left, right, (("k", "k2"),), join_type="anti"), store)
+    assert evaluate_core(Join(left, right, (("k", "k2"),), join_type="anti"),
+                         store) is not None
 
 
 def _edge_pat():
