@@ -47,6 +47,19 @@ TIME_COEFF_MS_PER_M = {
     # the "conservative" fallback below, which is 90x too cheap for it; the
     # pinned refusal test caught that immediately.
     "version_history": 15_400.0,
+    # The TGIR core's unbounded `Expand` — not an operator, which is why the
+    # key is a node name. Measured on CollegeMsg (native, replay-built) at
+    # M3.1: 183.3 ms per million expansions from ten bound anchors and
+    # 156.8 ms/M hoisted over the whole population; the dearer shape is taken
+    # so the estimate over-refuses rather than over-admits on the shape it was
+    # not measured against. Receipt:
+    # docs/tgir/calib/expand-unbounded-2026-08-21.md
+    #
+    # Worth noting against `_MAX_COEFF` below: the "conservative" columnar-class
+    # fallback (170) is **8% too cheap** for this node, so an uncalibrated
+    # unbounded expansion was over-admitting rather than over-refusing — which
+    # is the direction §2.13 says a fallback must not fail in.
+    "tgir_expand_unbounded": 183.3,
 }
 #: Fallback for uncalibrated operators: the dearest *columnar-class* rate,
 #: not the global max — version_history's 15,400 would refuse any unlisted
