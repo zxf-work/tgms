@@ -1864,6 +1864,91 @@ NO_CLASS3_AUDIT = frozenset({"C18"})
 CORRECTED = frozenset({("cm", 39)})
 
 
+
+# --------------------------------------------------------------------------- #
+# C27 — the TGIR-v1 re-audit (M3.5)                                            #
+# --------------------------------------------------------------------------- #
+# The re-run TGIR_FORECAST_FREEZE.md §4 fixes and its ADDENDUM 1 (§10.1)
+# specifies: one append-only diff table, every entry derived mechanically from
+# `benchmarks/tgir-v1/measured.yaml` by `scripts/gen_instrument_layers.py`.
+# No earlier table is edited and no earlier verdict is rewritten.
+#
+# A question TGIR-v1 expresses becomes **class 2** with the chain read off its
+# own plan artifact, and never class 1. A question that stays blocked is
+# re-tagged where its residual NARROWED — its pattern and property halves ship,
+# so what survives is the frozen forecast's own `missing_primitives_if_no`
+# list. cm6 and cm31 are deliberately absent: TGIR narrows neither, and a diff
+# table records changes.
+
+C27: dict[tuple[str, int], tuple[int, str, str]] = {
+    # ---- freed by TGIR-v1: class 3 -> class 2 ---- #
+    ("bo", 31): (2, "EdgeScan+PropertyPredicate+EdgeScan+PropertyPredicate+PatternMatch+Filter+EdgeScan+Project+Join+Aggregate",
+            "TGIR-v1 compiles this question; the chain is the plan's own "
+            "node sequence, read off benchmarks/tgir-v1/plans/bo31.json "
+            "(evidence L4-matches-gold). Runs: the answer equals the "
+            "double-keyed gold (1814906)."),
+    ("bo", 33): (2, "EdgeScan+PropertyPredicate+EdgeScan+PropertyPredicate+EdgeScan+PropertyPredicate+EdgeScan+PropertyPredicate+EdgeScan+PropertyPredicate+EdgeScan+PropertyPredicate+EdgeScan+PropertyPredicate+EdgeScan+PropertyPredicate+EdgeScan+PropertyPredicate+PatternMatch+Project+Aggregate",
+            "TGIR-v1 compiles this question; the chain is the plan's own "
+            "node sequence, read off benchmarks/tgir-v1/plans/bo33.json "
+            "(evidence L4-matches-gold). Runs: the answer equals the "
+            "double-keyed gold (711)."),
+    ("bo", 35): (2, "EdgeScan+PropertyPredicate+EdgeScan+PropertyPredicate+EdgeScan+PropertyPredicate+PatternMatch+EdgeScan+Project+Join+Aggregate",
+            "TGIR-v1 compiles this question; the chain is the plan's own "
+            "node sequence, read off benchmarks/tgir-v1/plans/bo35.json "
+            "(evidence L4-matches-gold). Runs: the answer equals the "
+            "double-keyed gold (761)."),
+    ("bo", 37): (2, "EdgeScan+PropertyPredicate+EdgeScan+PropertyPredicate+EdgeScan+PropertyPredicate+PatternMatch+Filter+Limit",
+            "TGIR-v1 compiles this question; the chain is the plan's own "
+            "node sequence, read off benchmarks/tgir-v1/plans/bo37.json "
+            "(evidence L4-matches-gold). Runs: the answer equals the "
+            "double-keyed gold (True)."),
+    ("bo", 41): (2, "EdgeScan+Project+Aggregate+Order+Limit",
+            "TGIR-v1 compiles this question; the chain is the plan's own "
+            "node sequence, read off benchmarks/tgir-v1/plans/bo41.json "
+            "(evidence L3-executes)."),
+    ("cm", 13): (2, "EdgeScan+PatternMatch+Filter+Project+Aggregate",
+            "TGIR-v1 compiles this question; the chain is the plan's own "
+            "node sequence, read off benchmarks/tgir-v1/plans/cm13.json "
+            "(evidence L4-matches-gold). Runs: the answer equals the "
+            "double-keyed gold (3784)."),
+    ("cm", 19): (2, "EdgeScan+PatternMatch+Filter+Project+Filter+Limit",
+            "TGIR-v1 compiles this question; the chain is the plan's own "
+            "node sequence, read off benchmarks/tgir-v1/plans/cm19.json "
+            "(evidence L4-matches-gold). Runs: the answer equals the "
+            "double-keyed gold (True)."),
+    ("cm", 39): (2, "EdgeScan+Project+Aggregate+Order+Limit",
+            "TGIR-v1 compiles this question; the chain is the plan's own "
+            "node sequence, read off benchmarks/tgir-v1/plans/cm39.json "
+            "(evidence L4-matches-gold). Runs: the answer equals the "
+            "double-keyed gold ({'count': 91, 'day': 12685, 'pair': "
+            "['n1168', 'n1624'], 'tied_cells': 1})."),
+    # ---- re-audited, still class 3: the residual narrowed ---- #
+    # bo32: CAL (emitted)
+    ("bo", 32): (3, "CAL",
+            "re-read against TGIR-v1: its pattern and property halves ship, "
+            "and what survives is calendar-unit-extraction — the tags are "
+            "the frozen forecast's own residual list."),
+    # bo34: CHAIN (emitted)
+    ("bo", 34): (3, "CHAIN",
+            "re-read against TGIR-v1: its pattern and property halves ship, "
+            "and what survives is path-longest-chain, "
+            "path-temporal-ordering — the tags are the frozen forecast's "
+            "own residual list."),
+    # cm14: SEQPAIR (emitted)
+    ("cm", 14): (3, "SEQPAIR",
+            "re-read against TGIR-v1: its pattern and property halves ship, "
+            "and what survives is seq-consecutive-pair — the tags are the "
+            "frozen forecast's own residual list."),
+    # cm24: SEQPAIR (emitted)
+    ("cm", 24): (3, "SEQPAIR",
+            "re-read against TGIR-v1: its pattern and property halves ship, "
+            "and what survives is seq-consecutive-pair — the tags are the "
+            "frozen forecast's own residual list."),
+    # cm31: unchanged (left out: not a change)
+    # cm6: unchanged (left out: not a change)
+}
+
+
 def _check_diff(table: dict, base, name: str) -> None:
     """A re-audit is a diff, not a rewrite: guard the invariants that make it
     one. `base` returns the (class, tags) each entry is a diff against."""
@@ -1931,6 +2016,9 @@ def report():
     def v26(k):
         return _verdict(C26, v25, k)
 
+    def v27(k):
+        return _verdict(C27, v26, k)
+
     _check_diff(C14, v13, "C14")
     _check_diff(C15, v14, "C15")
     _check_diff(C16, v15, "C16")
@@ -1944,6 +2032,7 @@ def report():
     _check_diff(C24, v23, "C24")
     _check_diff(C25, v24, "C25")
     _check_diff(C26, v25, "C26")
+    _check_diff(C27, v26, "C27")
     # AR is retired by C15: the capability shipped, and what is left of it
     # was never AR. Guard it so a later edit cannot quietly reintroduce the
     # tag without deciding what it now means.
@@ -1961,7 +2050,7 @@ def report():
                                 "built it between them"),
                        ("GMEAN", "nothing — compute group_by is it"),
                        ("GSLICE", "nothing — it delivered both")):
-        assert not [k for k in q if tag in _needs(*v26(k))], \
+        assert not [k for k in q if tag in _needs(*v27(k))], \
             f"{tag} survived the re-audit; what is left of it is {split}"
 
     stages = [("13 ops, pre-registered", v13),
@@ -1998,7 +2087,8 @@ def report():
             ("D-063 running the chains", v22, v23, C23),
             ("D-065 PROJ, which did not need building", v23, v24, C24),
             ("D-067 compute group_by", v24, v25, C25),
-            ("D-068 topk group_by", v25, v26, C26)]:
+            ("D-068 topk group_by", v25, v26, C26),
+            ("TGIR-v1, the compositional IR (M3.5)", v26, v27, C27)]:
         moved = sorted(k for k in q if cur(k)[0] != prev(k)[0])
         by_move = Counter((prev(k)[0], cur(k)[0]) for k in moved)
         print(f"\nbecame expressible under {label}: {len(moved)} of {len(q)} "
@@ -2022,6 +2112,12 @@ def report():
     # D-062: every chain that reduces a grouping must say what it grouped by.
     # Without it the page-cap exposure is unknowable from the tables, and a
     # capability session could add one silently.
+    # deliberately `v26`, not the newest layer: this is the `aggregate_events`
+    # page-cap analysis, and it reads OPERATOR chains. A TGIR class-2 chain
+    # names plan nodes, and a TGIR plan has no page to overflow — §2.10 puts a
+    # page cut at the plan's output boundary and nowhere else, and `Aggregate`
+    # consumes relations rather than pages. Feeding it node names would produce
+    # UNDECIDABLE noise about a risk the compositional path does not carry.
     needs = {k for k in q if v26(k)[0] in (1, 2)
              and reduces_after_grouping(v26(k)[1])}
     missing = sorted(needs - set(GROUPINGS))
@@ -2060,7 +2156,11 @@ def report():
     for k in undecidable:
         print(f"  UNDECIDABLE  {k[0]}-Q{k[1]:<3} chain does not say")
 
-    expressible = sum(1 for k in q if v26(k)[0] in (1, 2))
+    # the NEWEST layer, never a hardcoded one: this line read `v26` through
+    # the C27 re-audit and reported 94 while the instrument's own tables said
+    # 102. The same staleness `class_15` shows in `ldbc_fit.py` and that
+    # freeze ADDENDUM 1 §10.1 (vii) records — fixed here at the same time.
+    expressible = sum(1 for k in q if v27(k)[0] in (1, 2))
     print(f"\nexpressible now: {expressible} of {len(q)}")
     print("runnable:", [f"{d}-Q{n}" for (d, n) in sorted(C)
                         if C[(d, n)][2]])
@@ -2072,7 +2172,7 @@ def report():
     layers = [(14, v14, C14), (15, v15, C15), (16, v16, C16), (17, v17, C17),
               (18, v18, C18), (19, v19, C19), (20, v20, C20), (21, v21, C21),
               (22, v22, C22), (23, v23, C23), (24, v24, C24), (25, v25, C25),
-              (26, v26, C26)]
+              (26, v26, C26), (27, v27, C27)]
     rows = []
     for (d, n) in sorted(q):
         row = {"dataset": d, "q": n, **q[(d, n)],

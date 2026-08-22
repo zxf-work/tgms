@@ -1,0 +1,750 @@
+measured_id: TGIR-v1-M3
+measured_date: '2026-08-22'
+forecast: docs/design/tgir_b1/forecast.yaml
+addendum: docs/design/TGIR_FORECAST_FREEZE_ADDENDUM_1.md
+scoring_rule: delivered iff measured verdict >= predicted level in no < partial-rows < partial-columns
+  < yes
+totals:
+  rows: 52
+  predicted_unlocked: 29
+  delivered: 29
+  over_delivered: 0
+  scoreable_rows: 51
+  excluded_rows:
+  - bo41
+  evidence:
+    L0-attempted: 23
+    L3-executes: 22
+    L4-matches-gold: 7
+rows:
+- id: BI1
+  suite: ldbc-bi
+  predicted: 'no'
+  predicted_detail: partial-rows
+  scoreable: true
+  route_note: "FREEZE \xA77.3: atomic `mean` absorbs one residual and the verdict does not move \u2014\
+    \ the row stays blocked on its other residuals."
+  measured: 'no'
+  measured_detail: partial-rows
+  evidence: L0-attempted
+  residuals:
+  - calendar-unit-extraction
+  - arithmetic-over-aggregates
+  note: attempted compilation records the blocking residual; no executable plan is claimed
+  delivered: true
+- id: BI10
+  suite: ldbc-bi
+  predicted: 'yes'
+  predicted_detail: 'yes'
+  scoreable: true
+  route_note: "FREEZE \xA77.5: `bounded(a,b)` is not a min-distance band \u2014 it keeps the minimum j\
+    \ WITHIN [a,b] \u2014 so the far-minus-near shape is two expansions joined by `Join{anti}`, not one\
+    \ banded expansion."
+  plan_digest: 4742cb11414e
+  chain: NodeScan+Expand+NodeScan+Expand+Project+Join+TypeConstraint+Expand+PropertyPredicate+Expand+TypeConstraint+Project+NodeScan+PropertyPredicate+Expand+Aggregate+Join+Expand+Aggregate+Order+Limit
+  evidence: L3-executes
+  rows: 1
+  completeness: top-k
+  measured: 'yes'
+  measured_detail: 'yes'
+  delivered: true
+- id: BI11
+  suite: ldbc-bi
+  predicted: 'yes'
+  predicted_detail: 'yes'
+  scoreable: true
+  plan_digest: d2ea50884f1e
+  chain: NodeScan+Expand+PropertyPredicate+Aggregate+NodeScan+Expand+PropertyPredicate+Aggregate+NodeScan+Expand+PropertyPredicate+Aggregate+PatternMatch+Filter+Aggregate
+  evidence: L3-executes
+  rows: 1
+  completeness: complete
+  measured: 'yes'
+  measured_detail: 'yes'
+  delivered: true
+- id: BI12
+  suite: ldbc-bi
+  predicted: 'yes'
+  predicted_detail: 'yes'
+  scoreable: true
+  route_note: "FREEZE \xA77.6: the zero bucket is the pre-registered shape \u2014 aggregate the inner\
+    \ join, `Join{left_outer}` back, then `coalesce(\xB7, 0)` \u2014 never null-skipping aggregates."
+  plan_digest: a4e703072f33
+  chain: NodeScan+Aggregate+NodeScan+Expand+TypeConstraint+Filter+PropertyPredicate+Expand+TypeConstraint+Filter+Aggregate+Join+Project+Aggregate+Order
+  evidence: L3-executes
+  rows: 3
+  completeness: complete
+  measured: 'yes'
+  measured_detail: 'yes'
+  delivered: true
+- id: BI13
+  suite: ldbc-bi
+  predicted: 'no'
+  predicted_detail: partial-rows
+  scoreable: true
+  measured: 'no'
+  measured_detail: partial-rows
+  evidence: L0-attempted
+  residuals:
+  - calendar-unit-extraction
+  - arithmetic-over-aggregates
+  note: attempted compilation records the blocking residual; no executable plan is claimed
+  delivered: true
+- id: BI14
+  suite: ldbc-bi
+  predicted: 'no'
+  predicted_detail: 'no'
+  scoreable: true
+  measured: 'no'
+  measured_detail: 'no'
+  evidence: L0-attempted
+  residuals:
+  - per-group-top-k
+  note: attempted compilation records the blocking residual; no executable plan is claimed
+  delivered: true
+- id: BI15
+  suite: ldbc-bi
+  predicted: 'no'
+  predicted_detail: 'no'
+  scoreable: true
+  measured: 'no'
+  measured_detail: 'no'
+  evidence: L0-attempted
+  residuals:
+  - path-weighted-shortest
+  - path-derived-weight
+  note: attempted compilation records the blocking residual; no executable plan is claimed
+  delivered: true
+- id: BI16
+  suite: ldbc-bi
+  predicted: 'no'
+  predicted_detail: partial-rows
+  scoreable: true
+  measured: 'no'
+  measured_detail: partial-rows
+  evidence: L0-attempted
+  residuals:
+  - arithmetic-over-aggregates
+  note: attempted compilation records the blocking residual; no executable plan is claimed
+  delivered: true
+- id: BI17
+  suite: ldbc-bi
+  predicted: 'yes'
+  predicted_detail: 'yes'
+  scoreable: true
+  plan_digest: 0b0b9e18463d
+  chain: NodeScan+PropertyPredicate+Expand+TypeConstraint+Expand+TypeConstraint+Expand+TypeConstraint+Project+NodeScan+PropertyPredicate+Expand+TypeConstraint+Expand+TypeConstraint+Expand+TypeConstraint+Expand+PropertyPredicate+Expand+TypeConstraint+Expand+TypeConstraint+Expand+TypeConstraint+Project+EdgeScan+Project+Join+Project+Join+Filter+EdgeScan+Project+Join+Aggregate+Order+Limit
+  evidence: L3-executes
+  rows: 0
+  completeness: top-k
+  fixture_zero: no Comment in the fixture shares a Tag with the message it replies to, so the pattern
+    has nothing to match
+  measured: 'yes'
+  measured_detail: 'yes'
+  delivered: true
+- id: BI18
+  suite: ldbc-bi
+  predicted: 'yes'
+  predicted_detail: 'yes'
+  scoreable: true
+  plan_digest: 454e19d7c7bd
+  chain: NodeScan+PropertyPredicate+PatternMatch+PropertyPredicate+Filter+Project+EdgeScan+Project+Join+Aggregate+Order+Limit
+  evidence: L3-executes
+  rows: 0
+  completeness: top-k
+  measured: 'yes'
+  measured_detail: 'yes'
+  delivered: true
+- id: BI19
+  suite: ldbc-bi
+  predicted: 'no'
+  predicted_detail: 'no'
+  scoreable: true
+  measured: 'no'
+  measured_detail: 'no'
+  evidence: L0-attempted
+  residuals:
+  - path-weighted-shortest
+  - path-derived-weight
+  note: attempted compilation records the blocking residual; no executable plan is claimed
+  delivered: true
+- id: BI2
+  suite: ldbc-bi
+  predicted: 'no'
+  predicted_detail: partial-rows
+  scoreable: true
+  measured: 'no'
+  measured_detail: partial-rows
+  evidence: L0-attempted
+  residuals:
+  - arithmetic-over-aggregates
+  note: attempted compilation records the blocking residual; no executable plan is claimed
+  delivered: true
+- id: BI20
+  suite: ldbc-bi
+  predicted: 'no'
+  predicted_detail: 'no'
+  scoreable: true
+  measured: 'no'
+  measured_detail: 'no'
+  evidence: L0-attempted
+  residuals:
+  - path-weighted-shortest
+  - path-derived-weight
+  note: attempted compilation records the blocking residual; no executable plan is claimed
+  delivered: true
+- id: BI3
+  suite: ldbc-bi
+  predicted: 'yes'
+  predicted_detail: 'yes'
+  scoreable: true
+  plan_digest: a3a544279293
+  chain: NodeScan+PropertyPredicate+Expand+TypeConstraint+Expand+TypeConstraint+Project+NodeScan+PropertyPredicate+Expand+Aggregate+Join+Aggregate+Order+Limit
+  evidence: L3-executes
+  rows: 2
+  completeness: top-k
+  measured: 'yes'
+  measured_detail: 'yes'
+  delivered: true
+- id: BI4
+  suite: ldbc-bi
+  predicted: 'yes'
+  predicted_detail: 'yes'
+  scoreable: true
+  route_note: "SEVENTH ROUTE DIVERGENCE (coordinator ruling, M3.5): the friend cohort's semi-join sits\
+    \ ABOVE the count `Aggregate` rather than below it. Below, the plan refuses `E_INCOMPLETE` \u2014\
+    \ `Join{inner}` drops to `unknown` unless both inputs are `complete` (\xA75.3), and a mid-plan top-k\
+    \ `Limit` makes one input `top-k`. The relation is unchanged by the move; the trigger is \xA75.3's\
+    \ Join rule doing its job, not a \xA72.12 reading."
+  plan_digest: ac5177ede427
+  chain: NodeScan+Expand+TypeConstraint+Expand+PropertyPredicate+Aggregate+Order+Limit+Expand+TypeConstraint+Aggregate+NodeScan+Expand+TypeConstraint+Expand+PropertyPredicate+Aggregate+Order+Limit+Expand+TypeConstraint+Expand+TypeConstraint+Project+Aggregate+NodeScan+Expand+TypeConstraint+Expand+PropertyPredicate+Aggregate+Order+Limit+Expand+TypeConstraint+Aggregate+Join+Project+Join+Project+Order+Limit
+  evidence: L3-executes
+  rows: 4
+  completeness: top-k
+  measured: 'yes'
+  measured_detail: 'yes'
+  delivered: true
+- id: BI5
+  suite: ldbc-bi
+  predicted: 'no'
+  predicted_detail: partial-rows
+  scoreable: true
+  measured: 'no'
+  measured_detail: partial-rows
+  evidence: L0-attempted
+  residuals:
+  - arithmetic-over-aggregates
+  note: attempted compilation records the blocking residual; no executable plan is claimed
+  delivered: true
+- id: BI6
+  suite: ldbc-bi
+  predicted: 'yes'
+  predicted_detail: 'yes'
+  scoreable: true
+  plan_digest: 57bfd58e3e10
+  chain: NodeScan+PropertyPredicate+Expand+TypeConstraint+NodeScan+Expand+TypeConstraint+Project+Join+NodeScan+Expand+TypeConstraint+Expand+Project+Join+Aggregate+Order+Limit
+  evidence: L3-executes
+  rows: 2
+  completeness: top-k
+  measured: 'yes'
+  measured_detail: 'yes'
+  delivered: true
+- id: BI7
+  suite: ldbc-bi
+  predicted: 'yes'
+  predicted_detail: 'yes'
+  scoreable: true
+  plan_digest: a3aad748462b
+  chain: NodeScan+PropertyPredicate+Expand+TypeConstraint+NodeScan+PropertyPredicate+Expand+Project+Join+Expand+Aggregate+Order+Limit
+  evidence: L3-executes
+  rows: 1
+  completeness: top-k
+  measured: 'yes'
+  measured_detail: 'yes'
+  delivered: true
+- id: BI8
+  suite: ldbc-bi
+  predicted: 'no'
+  predicted_detail: 'no'
+  scoreable: true
+  measured: 'no'
+  measured_detail: 'no'
+  evidence: L0-attempted
+  residuals:
+  - set-ops
+  - arithmetic-over-aggregates
+  note: attempted compilation records the blocking residual; no executable plan is claimed
+  delivered: true
+- id: BI9
+  suite: ldbc-bi
+  predicted: 'yes'
+  predicted_detail: 'yes'
+  scoreable: true
+  plan_digest: 1f627e18782c
+  chain: NodeScan+Expand+TypeConstraint+PropertyPredicate+Expand+PropertyPredicate+Aggregate+Order+Limit
+  evidence: L3-executes
+  rows: 3
+  completeness: top-k
+  measured: 'yes'
+  measured_detail: 'yes'
+  delivered: true
+- id: IC1
+  suite: ldbc-ic
+  predicted: 'no'
+  predicted_detail: 'no'
+  scoreable: true
+  measured: 'no'
+  measured_detail: 'no'
+  evidence: L0-attempted
+  residuals:
+  - path-shortest-length
+  - list-aggregation
+  note: attempted compilation records the blocking residual; no executable plan is claimed
+  delivered: true
+- id: IC10
+  suite: ldbc-ic
+  predicted: 'no'
+  predicted_detail: partial-rows
+  scoreable: true
+  measured: 'no'
+  measured_detail: partial-rows
+  evidence: L0-attempted
+  residuals:
+  - calendar-unit-extraction
+  - list-aggregation
+  - conditional-aggregate
+  - arithmetic-over-aggregates
+  note: attempted compilation records the blocking residual; no executable plan is claimed
+  delivered: true
+- id: IC11
+  suite: ldbc-ic
+  predicted: 'yes'
+  predicted_detail: 'yes'
+  scoreable: true
+  plan_digest: 5ea98485c032
+  chain: NodeScan+Expand+TypeConstraint+Expand+PropertyPredicate+Project+Order+Limit
+  evidence: L3-executes
+  rows: 1
+  completeness: top-k
+  measured: 'yes'
+  measured_detail: 'yes'
+  delivered: true
+- id: IC12
+  suite: ldbc-ic
+  predicted: partial-columns
+  predicted_detail: partial-columns
+  scoreable: true
+  route_note: "FREEZE \xA77.1: `Expand.rel_type` is singular and this row needs a set, so the two relationship\
+    \ types are two expansions unioned by the plan. This is the row predicted `partial-columns` rather\
+    \ than `yes`."
+  plan_digest: 4d01651cb55d
+  chain: NodeScan+Expand+TypeConstraint+Expand+TypeConstraint+Expand+TypeConstraint+Expand+NodeScan+PropertyPredicate+Expand+Aggregate+Join+Filter+Aggregate+Order+Limit
+  evidence: L3-executes
+  rows: 1
+  completeness: top-k
+  measured: partial-columns
+  measured_detail: partial-columns
+  delivered: true
+- id: IC13
+  suite: ldbc-ic
+  predicted: 'no'
+  predicted_detail: 'no'
+  scoreable: true
+  measured: 'no'
+  measured_detail: 'no'
+  evidence: L0-attempted
+  residuals:
+  - path-shortest-length
+  note: attempted compilation records the blocking residual; no executable plan is claimed
+  delivered: true
+- id: IC14
+  suite: ldbc-ic
+  predicted: 'no'
+  predicted_detail: 'no'
+  scoreable: true
+  measured: 'no'
+  measured_detail: 'no'
+  evidence: L0-attempted
+  residuals:
+  - path-all-shortest
+  - path-weight-aggregation
+  - list-aggregation
+  note: attempted compilation records the blocking residual; no executable plan is claimed
+  delivered: true
+- id: IC2
+  suite: ldbc-ic
+  predicted: 'yes'
+  predicted_detail: 'yes'
+  scoreable: true
+  plan_digest: 3831e2162650
+  chain: NodeScan+Expand+TypeConstraint+Expand+TypeConstraint+Filter+Project+Order+Limit
+  evidence: L3-executes
+  rows: 4
+  completeness: top-k
+  measured: 'yes'
+  measured_detail: 'yes'
+  delivered: true
+- id: IC3
+  suite: ldbc-ic
+  predicted: 'no'
+  predicted_detail: partial-rows
+  scoreable: true
+  measured: 'no'
+  measured_detail: partial-rows
+  evidence: L0-attempted
+  residuals:
+  - conditional-aggregate
+  - arithmetic-over-aggregates
+  note: attempted compilation records the blocking residual; no executable plan is claimed
+  delivered: true
+- id: IC4
+  suite: ldbc-ic
+  predicted: 'no'
+  predicted_detail: partial-rows
+  scoreable: true
+  measured: 'no'
+  measured_detail: partial-rows
+  evidence: L0-attempted
+  residuals:
+  - conditional-aggregate
+  note: attempted compilation records the blocking residual; no executable plan is claimed
+  delivered: true
+- id: IC5
+  suite: ldbc-ic
+  predicted: 'yes'
+  predicted_detail: 'yes'
+  scoreable: true
+  plan_digest: e17a45895cc1
+  chain: NodeScan+Expand+PropertyPredicate+Aggregate+NodeScan+Expand+PropertyPredicate+Aggregate+Expand+TypeConstraint+Expand+Project+NodeScan+Expand+PropertyPredicate+Aggregate+Join+Aggregate+Join+Project+Order+Limit
+  evidence: L3-executes
+  rows: 2
+  completeness: top-k
+  measured: 'yes'
+  measured_detail: 'yes'
+  delivered: true
+- id: IC6
+  suite: ldbc-ic
+  predicted: 'yes'
+  predicted_detail: 'yes'
+  scoreable: true
+  plan_digest: 06f3f114f80e
+  chain: NodeScan+Expand+TypeConstraint+PatternMatch+PropertyPredicate+Filter+Aggregate+Order+Limit
+  evidence: L3-executes
+  rows: 0
+  completeness: top-k
+  fixture_zero: no fixture node carries two HAS_TAG edges, so the two-tag branch has nothing to match
+  measured: 'yes'
+  measured_detail: 'yes'
+  delivered: true
+- id: IC7
+  suite: ldbc-ic
+  predicted: 'no'
+  predicted_detail: 'no'
+  scoreable: true
+  measured: 'no'
+  measured_detail: 'no'
+  evidence: L0-attempted
+  residuals:
+  - per-group-top-k
+  note: attempted compilation records the blocking residual; no executable plan is claimed
+  delivered: true
+- id: IC8
+  suite: ldbc-ic
+  predicted: 'yes'
+  predicted_detail: 'yes'
+  scoreable: true
+  plan_digest: 2e271f4c9152
+  chain: NodeScan+Expand+TypeConstraint+Expand+TypeConstraint+Expand+Project+Order+Limit
+  evidence: L3-executes
+  rows: 1
+  completeness: top-k
+  measured: 'yes'
+  measured_detail: 'yes'
+  delivered: true
+- id: IC9
+  suite: ldbc-ic
+  predicted: 'yes'
+  predicted_detail: 'yes'
+  scoreable: true
+  plan_digest: 9907d775a5b2
+  chain: NodeScan+Expand+TypeConstraint+PropertyPredicate+Project+Order+Limit
+  evidence: L3-executes
+  rows: 5
+  completeness: top-k
+  measured: 'yes'
+  measured_detail: 'yes'
+  delivered: true
+- id: IS2
+  suite: ldbc-is
+  predicted: 'yes'
+  predicted_detail: 'yes'
+  scoreable: true
+  route_note: "FREEZE \xA77.4 corrects \xA72.6/\xA78.17's row list: IS2 is NOT a `Message`-supertype row\
+    \ (its message node is unlabelled and the plan uses the concrete `Post`). Certification is `top-k`,\
+    \ not `complete` (\xA77.3, \xA75.2.1)."
+  plan_digest: cf9f5c9a1e55
+  chain: NodeScan+Expand+Order+Limit+Expand+TypeConstraint+Expand+Project
+  evidence: L3-executes
+  rows: 2
+  completeness: top-k
+  measured: 'yes'
+  measured_detail: 'yes'
+  delivered: true
+- id: IS3
+  suite: ldbc-is
+  predicted: 'yes'
+  predicted_detail: 'yes'
+  scoreable: true
+  plan_digest: 333ed48c996a
+  chain: NodeScan+Expand+Project+Order
+  evidence: L3-executes
+  rows: 2
+  completeness: complete
+  measured: 'yes'
+  measured_detail: 'yes'
+  delivered: true
+- id: IS6
+  suite: ldbc-is
+  predicted: 'yes'
+  predicted_detail: 'yes'
+  scoreable: true
+  plan_digest: 24e252a9cf5b
+  chain: NodeScan+Expand+TypeConstraint+Expand+Project
+  evidence: L3-executes
+  rows: 1
+  completeness: complete
+  measured: 'yes'
+  measured_detail: 'yes'
+  delivered: true
+- id: IS7
+  suite: ldbc-is
+  predicted: 'yes'
+  predicted_detail: 'yes'
+  scoreable: true
+  plan_digest: 629fd9357ac4
+  chain: NodeScan+Expand+TypeConstraint+Expand+NodeScan+Expand+Aggregate+Join+Project
+  evidence: L3-executes
+  rows: 1
+  completeness: complete
+  measured: 'yes'
+  measured_detail: 'yes'
+  delivered: true
+- id: bo31
+  suite: independent-bo
+  predicted: 'yes'
+  predicted_detail: 'yes'
+  scoreable: true
+  plan_digest: df027bbab22f
+  chain: EdgeScan+PropertyPredicate+EdgeScan+PropertyPredicate+PatternMatch+Filter+EdgeScan+Project+Join+Aggregate
+  evidence: L4-matches-gold
+  rows: 1
+  completeness: complete
+  gold:
+    expected: 1814906
+    measured: 1814906
+    matches: true
+  measured: 'yes'
+  measured_detail: 'yes'
+  delivered: true
+- id: bo32
+  suite: independent-bo
+  predicted: 'no'
+  predicted_detail: partial-rows
+  scoreable: true
+  measured: 'no'
+  measured_detail: partial-rows
+  evidence: L0-attempted
+  residuals:
+  - calendar-unit-extraction
+  note: attempted compilation records the blocking residual; no executable plan is claimed
+  delivered: true
+- id: bo33
+  suite: independent-bo
+  predicted: 'yes'
+  predicted_detail: 'yes'
+  scoreable: true
+  plan_digest: ba40d6736928
+  chain: EdgeScan+PropertyPredicate+EdgeScan+PropertyPredicate+EdgeScan+PropertyPredicate+EdgeScan+PropertyPredicate+EdgeScan+PropertyPredicate+EdgeScan+PropertyPredicate+EdgeScan+PropertyPredicate+EdgeScan+PropertyPredicate+EdgeScan+PropertyPredicate+PatternMatch+Project+Aggregate
+  evidence: L4-matches-gold
+  rows: 1
+  completeness: complete
+  gold:
+    expected: 711
+    measured: 711
+    matches: true
+  measured: 'yes'
+  measured_detail: 'yes'
+  delivered: true
+- id: bo34
+  suite: independent-bo
+  predicted: 'no'
+  predicted_detail: 'no'
+  scoreable: true
+  measured: 'no'
+  measured_detail: 'no'
+  evidence: L0-attempted
+  residuals:
+  - path-longest-chain
+  - path-temporal-ordering
+  note: attempted compilation records the blocking residual; no executable plan is claimed
+  delivered: true
+- id: bo35
+  suite: independent-bo
+  predicted: 'yes'
+  predicted_detail: 'yes'
+  scoreable: true
+  plan_digest: 611d29d80f01
+  chain: EdgeScan+PropertyPredicate+EdgeScan+PropertyPredicate+EdgeScan+PropertyPredicate+PatternMatch+EdgeScan+Project+Join+Aggregate
+  evidence: L4-matches-gold
+  rows: 1
+  completeness: complete
+  gold:
+    expected: 761
+    measured: 761
+    matches: true
+  measured: 'yes'
+  measured_detail: 'yes'
+  delivered: true
+- id: bo37
+  suite: independent-bo
+  predicted: 'yes'
+  predicted_detail: 'yes'
+  scoreable: true
+  plan_digest: 45930529e17a
+  chain: EdgeScan+PropertyPredicate+EdgeScan+PropertyPredicate+EdgeScan+PropertyPredicate+PatternMatch+Filter+Limit
+  evidence: L4-matches-gold
+  rows: 1
+  completeness: paginated
+  gold:
+    expected: true
+    measured: true
+    matches: true
+  measured: 'yes'
+  measured_detail: 'yes'
+  delivered: true
+- id: bo41
+  suite: independent-bo
+  predicted: 'yes'
+  predicted_detail: 'yes'
+  scoreable: false
+  route_note: "FREEZE \xA77.2: B1's sketch is not expressible; the freeze supplies the `belief: superseded`\
+    \ route, which this artifact takes. EXCLUDED FROM SCORING IN ADVANCE (spec \xA78.13): the canonical\
+    \ bitcoin-otc store carries zero corrections, so the row is degenerate on its own substrate."
+  plan_digest: fd1ec37eec9f
+  chain: EdgeScan+Project+Aggregate+Order+Limit
+  evidence: L3-executes
+  rows: 0
+  completeness: top-k
+  measured: 'yes'
+  measured_detail: 'yes'
+  delivered: true
+- id: cm13
+  suite: independent-cm
+  predicted: 'yes'
+  predicted_detail: 'yes'
+  scoreable: true
+  plan_digest: 1c893fd135c9
+  chain: EdgeScan+PatternMatch+Filter+Project+Aggregate
+  evidence: L4-matches-gold
+  rows: 1
+  completeness: complete
+  gold:
+    expected: 3784
+    measured: 3784
+    matches: true
+  measured: 'yes'
+  measured_detail: 'yes'
+  delivered: true
+- id: cm14
+  suite: independent-cm
+  predicted: 'no'
+  predicted_detail: 'no'
+  scoreable: true
+  measured: 'no'
+  measured_detail: 'no'
+  evidence: L0-attempted
+  residuals:
+  - seq-consecutive-pair
+  note: attempted compilation records the blocking residual; no executable plan is claimed
+  delivered: true
+- id: cm19
+  suite: independent-cm
+  predicted: 'yes'
+  predicted_detail: 'yes'
+  scoreable: true
+  plan_digest: ea6e25c6c9cd
+  chain: EdgeScan+PatternMatch+Filter+Project+Filter+Limit
+  evidence: L4-matches-gold
+  rows: 1
+  completeness: paginated
+  gold:
+    expected: true
+    measured: true
+    matches: true
+  measured: 'yes'
+  measured_detail: 'yes'
+  delivered: true
+- id: cm24
+  suite: independent-cm
+  predicted: 'no'
+  predicted_detail: 'no'
+  scoreable: true
+  measured: 'no'
+  measured_detail: 'no'
+  evidence: L0-attempted
+  residuals:
+  - seq-consecutive-pair
+  note: attempted compilation records the blocking residual; no executable plan is claimed
+  delivered: true
+- id: cm31
+  suite: independent-cm
+  predicted: 'no'
+  predicted_detail: 'no'
+  scoreable: true
+  measured: 'no'
+  measured_detail: 'no'
+  evidence: L0-attempted
+  residuals:
+  - seq-sliding-window-aggregate
+  note: attempted compilation records the blocking residual; no executable plan is claimed
+  delivered: true
+- id: cm39
+  suite: independent-cm
+  predicted: 'yes'
+  predicted_detail: 'yes'
+  scoreable: true
+  plan_digest: e3bd9894f0bc
+  chain: EdgeScan+Project+Aggregate+Order+Limit
+  evidence: L4-matches-gold
+  rows: 1
+  completeness: top-k
+  gold:
+    expected:
+      count: 91
+      day: 12685
+      pair:
+      - n1168
+      - n1624
+      tied_cells: 1
+    measured:
+      pair:
+      - n1168
+      - n1624
+      day: 12685
+      count: 91
+    matches: true
+  measured: 'yes'
+  measured_detail: 'yes'
+  delivered: true
+- id: cm6
+  suite: independent-cm
+  predicted: 'no'
+  predicted_detail: 'no'
+  scoreable: true
+  measured: 'no'
+  measured_detail: 'no'
+  evidence: L0-attempted
+  residuals:
+  - path-longest-chain
+  - path-temporal-ordering
+  note: attempted compilation records the blocking residual; no executable plan is claimed
+  delivered: true

@@ -442,6 +442,226 @@ WORKLOADS = {"IS": "Interactive Short", "IC": "Interactive Complex (v1)",
              "BI": "Business Intelligence"}
 
 
+
+# --------------------------------------------------------------------------- #
+# L19 — the TGIR-v1 re-audit (M3.5)                                            #
+# --------------------------------------------------------------------------- #
+# The re-run TGIR_FORECAST_FREEZE.md §4 fixes and its ADDENDUM 1 (§10.1)
+# specifies: one append-only diff table, every entry derived mechanically from
+# `benchmarks/tgir-v1/measured.yaml` by `scripts/gen_instrument_layers.py`.
+# No earlier table is edited and no earlier verdict is rewritten.
+#
+# Two kinds of entry. A row TGIR-v1 expresses becomes **class 2**, with the
+# chain read off its own plan artifact — and **never class 1**, because a TGIR
+# compilation is several nodes by construction and `_check` asserts class 1 is
+# a single operator (addendum §10.1 (iii)). A row that stays blocked is
+# re-tagged where its residual NARROWED: the pattern, property, negation and
+# projection halves ship, so what survives is the frozen forecast's own
+# `missing_primitives_if_no` list and nothing invented here. A row whose tags
+# do not change is left out, because a diff table records changes.
+
+L19: dict[str, tuple[int, str, str]] = {
+    # ---- freed by TGIR-v1: class 3 -> class 2 ---- #
+    "BI10": (2, "NodeScan+Expand+NodeScan+Expand+Project+Join+TypeConstraint+Expand+PropertyPredicate+Expand+TypeConstraint+Project+NodeScan+PropertyPredicate+Expand+Aggregate+Join+Expand+Aggregate+Order+Limit",
+            "TGIR-v1 compiles this row; the chain is the plan's own node "
+            "sequence, read off benchmarks/tgir-v1/plans/BI10.json "
+            "(evidence L3-executes). Class 2 and never 1: a TGIR "
+            "compilation is several nodes by construction."),
+    "BI11": (2, "NodeScan+Expand+PropertyPredicate+Aggregate+NodeScan+Expand+PropertyPredicate+Aggregate+NodeScan+Expand+PropertyPredicate+Aggregate+PatternMatch+Filter+Aggregate",
+            "TGIR-v1 compiles this row; the chain is the plan's own node "
+            "sequence, read off benchmarks/tgir-v1/plans/BI11.json "
+            "(evidence L3-executes). Class 2 and never 1: a TGIR "
+            "compilation is several nodes by construction."),
+    "BI12": (2, "NodeScan+Aggregate+NodeScan+Expand+TypeConstraint+Filter+PropertyPredicate+Expand+TypeConstraint+Filter+Aggregate+Join+Project+Aggregate+Order",
+            "TGIR-v1 compiles this row; the chain is the plan's own node "
+            "sequence, read off benchmarks/tgir-v1/plans/BI12.json "
+            "(evidence L3-executes). Class 2 and never 1: a TGIR "
+            "compilation is several nodes by construction."),
+    "BI17": (2, "NodeScan+PropertyPredicate+Expand+TypeConstraint+Expand+TypeConstraint+Expand+TypeConstraint+Project+NodeScan+PropertyPredicate+Expand+TypeConstraint+Expand+TypeConstraint+Expand+TypeConstraint+Expand+PropertyPredicate+Expand+TypeConstraint+Expand+TypeConstraint+Expand+TypeConstraint+Project+EdgeScan+Project+Join+Project+Join+Filter+EdgeScan+Project+Join+Aggregate+Order+Limit",
+            "TGIR-v1 compiles this row; the chain is the plan's own node "
+            "sequence, read off benchmarks/tgir-v1/plans/BI17.json "
+            "(evidence L3-executes). Class 2 and never 1: a TGIR "
+            "compilation is several nodes by construction."),
+    "BI18": (2, "NodeScan+PropertyPredicate+PatternMatch+PropertyPredicate+Filter+Project+EdgeScan+Project+Join+Aggregate+Order+Limit",
+            "TGIR-v1 compiles this row; the chain is the plan's own node "
+            "sequence, read off benchmarks/tgir-v1/plans/BI18.json "
+            "(evidence L3-executes). Class 2 and never 1: a TGIR "
+            "compilation is several nodes by construction."),
+    "BI3": (2, "NodeScan+PropertyPredicate+Expand+TypeConstraint+Expand+TypeConstraint+Project+NodeScan+PropertyPredicate+Expand+Aggregate+Join+Aggregate+Order+Limit",
+            "TGIR-v1 compiles this row; the chain is the plan's own node "
+            "sequence, read off benchmarks/tgir-v1/plans/BI3.json (evidence "
+            "L3-executes). Class 2 and never 1: a TGIR compilation is "
+            "several nodes by construction."),
+    "BI4": (2, "NodeScan+Expand+TypeConstraint+Expand+PropertyPredicate+Aggregate+Order+Limit+Expand+TypeConstraint+Aggregate+NodeScan+Expand+TypeConstraint+Expand+PropertyPredicate+Aggregate+Order+Limit+Expand+TypeConstraint+Expand+TypeConstraint+Project+Aggregate+NodeScan+Expand+TypeConstraint+Expand+PropertyPredicate+Aggregate+Order+Limit+Expand+TypeConstraint+Aggregate+Join+Project+Join+Project+Order+Limit",
+            "TGIR-v1 compiles this row; the chain is the plan's own node "
+            "sequence, read off benchmarks/tgir-v1/plans/BI4.json (evidence "
+            "L3-executes). Class 2 and never 1: a TGIR compilation is "
+            "several nodes by construction."),
+    "BI6": (2, "NodeScan+PropertyPredicate+Expand+TypeConstraint+NodeScan+Expand+TypeConstraint+Project+Join+NodeScan+Expand+TypeConstraint+Expand+Project+Join+Aggregate+Order+Limit",
+            "TGIR-v1 compiles this row; the chain is the plan's own node "
+            "sequence, read off benchmarks/tgir-v1/plans/BI6.json (evidence "
+            "L3-executes). Class 2 and never 1: a TGIR compilation is "
+            "several nodes by construction."),
+    "BI7": (2, "NodeScan+PropertyPredicate+Expand+TypeConstraint+NodeScan+PropertyPredicate+Expand+Project+Join+Expand+Aggregate+Order+Limit",
+            "TGIR-v1 compiles this row; the chain is the plan's own node "
+            "sequence, read off benchmarks/tgir-v1/plans/BI7.json (evidence "
+            "L3-executes). Class 2 and never 1: a TGIR compilation is "
+            "several nodes by construction."),
+    "BI9": (2, "NodeScan+Expand+TypeConstraint+PropertyPredicate+Expand+PropertyPredicate+Aggregate+Order+Limit",
+            "TGIR-v1 compiles this row; the chain is the plan's own node "
+            "sequence, read off benchmarks/tgir-v1/plans/BI9.json (evidence "
+            "L3-executes). Class 2 and never 1: a TGIR compilation is "
+            "several nodes by construction."),
+    "IC11": (2, "NodeScan+Expand+TypeConstraint+Expand+PropertyPredicate+Project+Order+Limit",
+            "TGIR-v1 compiles this row; the chain is the plan's own node "
+            "sequence, read off benchmarks/tgir-v1/plans/IC11.json "
+            "(evidence L3-executes). Class 2 and never 1: a TGIR "
+            "compilation is several nodes by construction."),
+    "IC12": (2, "NodeScan+Expand+TypeConstraint+Expand+TypeConstraint+Expand+TypeConstraint+Expand+NodeScan+PropertyPredicate+Expand+Aggregate+Join+Filter+Aggregate+Order+Limit",
+            "TGIR-v1 compiles this row; the chain is the plan's own node "
+            "sequence, read off benchmarks/tgir-v1/plans/IC12.json "
+            "(evidence L3-executes). Class 2 and never 1: a TGIR "
+            "compilation is several nodes by construction."),
+    "IC2": (2, "NodeScan+Expand+TypeConstraint+Expand+TypeConstraint+Filter+Project+Order+Limit",
+            "TGIR-v1 compiles this row; the chain is the plan's own node "
+            "sequence, read off benchmarks/tgir-v1/plans/IC2.json (evidence "
+            "L3-executes). Class 2 and never 1: a TGIR compilation is "
+            "several nodes by construction."),
+    "IC5": (2, "NodeScan+Expand+PropertyPredicate+Aggregate+NodeScan+Expand+PropertyPredicate+Aggregate+Expand+TypeConstraint+Expand+Project+NodeScan+Expand+PropertyPredicate+Aggregate+Join+Aggregate+Join+Project+Order+Limit",
+            "TGIR-v1 compiles this row; the chain is the plan's own node "
+            "sequence, read off benchmarks/tgir-v1/plans/IC5.json (evidence "
+            "L3-executes). Class 2 and never 1: a TGIR compilation is "
+            "several nodes by construction."),
+    "IC6": (2, "NodeScan+Expand+TypeConstraint+PatternMatch+PropertyPredicate+Filter+Aggregate+Order+Limit",
+            "TGIR-v1 compiles this row; the chain is the plan's own node "
+            "sequence, read off benchmarks/tgir-v1/plans/IC6.json (evidence "
+            "L3-executes). Class 2 and never 1: a TGIR compilation is "
+            "several nodes by construction."),
+    "IC8": (2, "NodeScan+Expand+TypeConstraint+Expand+TypeConstraint+Expand+Project+Order+Limit",
+            "TGIR-v1 compiles this row; the chain is the plan's own node "
+            "sequence, read off benchmarks/tgir-v1/plans/IC8.json (evidence "
+            "L3-executes). Class 2 and never 1: a TGIR compilation is "
+            "several nodes by construction."),
+    "IC9": (2, "NodeScan+Expand+TypeConstraint+PropertyPredicate+Project+Order+Limit",
+            "TGIR-v1 compiles this row; the chain is the plan's own node "
+            "sequence, read off benchmarks/tgir-v1/plans/IC9.json (evidence "
+            "L3-executes). Class 2 and never 1: a TGIR compilation is "
+            "several nodes by construction."),
+    "IS2": (2, "NodeScan+Expand+Order+Limit+Expand+TypeConstraint+Expand+Project",
+            "TGIR-v1 compiles this row; the chain is the plan's own node "
+            "sequence, read off benchmarks/tgir-v1/plans/IS2.json (evidence "
+            "L3-executes). Class 2 and never 1: a TGIR compilation is "
+            "several nodes by construction."),
+    "IS3": (2, "NodeScan+Expand+Project+Order",
+            "TGIR-v1 compiles this row; the chain is the plan's own node "
+            "sequence, read off benchmarks/tgir-v1/plans/IS3.json (evidence "
+            "L3-executes). Class 2 and never 1: a TGIR compilation is "
+            "several nodes by construction."),
+    "IS6": (2, "NodeScan+Expand+TypeConstraint+Expand+Project",
+            "TGIR-v1 compiles this row; the chain is the plan's own node "
+            "sequence, read off benchmarks/tgir-v1/plans/IS6.json (evidence "
+            "L3-executes). Class 2 and never 1: a TGIR compilation is "
+            "several nodes by construction."),
+    "IS7": (2, "NodeScan+Expand+TypeConstraint+Expand+NodeScan+Expand+Aggregate+Join+Project",
+            "TGIR-v1 compiles this row; the chain is the plan's own node "
+            "sequence, read off benchmarks/tgir-v1/plans/IS7.json (evidence "
+            "L3-executes). Class 2 and never 1: a TGIR compilation is "
+            "several nodes by construction."),
+    # ---- re-audited, still class 3: the residual narrowed ---- #
+    "BI1": (3, "CAL,ROW",
+            "re-read against TGIR-v1: the pattern, property, negation and "
+            "projection halves ship, and what survives is "
+            "calendar-unit-extraction, arithmetic-over-aggregates — the "
+            "tags are the frozen forecast's own residual list, not a fresh "
+            "reading."),
+    "BI13": (3, "CAL,ROW",
+            "re-read against TGIR-v1: the pattern, property, negation and "
+            "projection halves ship, and what survives is "
+            "calendar-unit-extraction, arithmetic-over-aggregates — the "
+            "tags are the frozen forecast's own residual list, not a fresh "
+            "reading."),
+    "BI14": (3, "G",
+            "re-read against TGIR-v1: the pattern, property, negation and "
+            "projection halves ship, and what survives is per-group-top-k — "
+            "the tags are the frozen forecast's own residual list, not a "
+            "fresh reading."),
+    "BI15": (3, "SP",
+            "re-read against TGIR-v1: the pattern, property, negation and "
+            "projection halves ship, and what survives is "
+            "path-weighted-shortest, path-derived-weight — the tags are the "
+            "frozen forecast's own residual list, not a fresh reading."),
+    "BI16": (3, "ROW",
+            "re-read against TGIR-v1: the pattern, property, negation and "
+            "projection halves ship, and what survives is "
+            "arithmetic-over-aggregates — the tags are the frozen "
+            "forecast's own residual list, not a fresh reading."),
+    "BI19": (3, "SP",
+            "re-read against TGIR-v1: the pattern, property, negation and "
+            "projection halves ship, and what survives is "
+            "path-weighted-shortest, path-derived-weight — the tags are the "
+            "frozen forecast's own residual list, not a fresh reading."),
+    "BI2": (3, "ROW",
+            "re-read against TGIR-v1: the pattern, property, negation and "
+            "projection halves ship, and what survives is "
+            "arithmetic-over-aggregates — the tags are the frozen "
+            "forecast's own residual list, not a fresh reading."),
+    "BI20": (3, "SP",
+            "re-read against TGIR-v1: the pattern, property, negation and "
+            "projection halves ship, and what survives is "
+            "path-weighted-shortest, path-derived-weight — the tags are the "
+            "frozen forecast's own residual list, not a fresh reading."),
+    "BI5": (3, "ROW",
+            "re-read against TGIR-v1: the pattern, property, negation and "
+            "projection halves ship, and what survives is "
+            "arithmetic-over-aggregates — the tags are the frozen "
+            "forecast's own residual list, not a fresh reading."),
+    "BI8": (3, "ROW,SET",
+            "re-read against TGIR-v1: the pattern, property, negation and "
+            "projection halves ship, and what survives is set-ops, "
+            "arithmetic-over-aggregates — the tags are the frozen "
+            "forecast's own residual list, not a fresh reading."),
+    "IC1": (3, "G,SP",
+            "re-read against TGIR-v1: the pattern, property, negation and "
+            "projection halves ship, and what survives is "
+            "path-shortest-length, list-aggregation — the tags are the "
+            "frozen forecast's own residual list, not a fresh reading."),
+    "IC10": (3, "CAL,G,ROW",
+            "re-read against TGIR-v1: the pattern, property, negation and "
+            "projection halves ship, and what survives is "
+            "calendar-unit-extraction, list-aggregation, "
+            "conditional-aggregate, arithmetic-over-aggregates — the tags "
+            "are the frozen forecast's own residual list, not a fresh "
+            "reading."),
+    "IC13": (3, "SP",
+            "re-read against TGIR-v1: the pattern, property, negation and "
+            "projection halves ship, and what survives is "
+            "path-shortest-length — the tags are the frozen forecast's own "
+            "residual list, not a fresh reading."),
+    "IC14": (3, "G,SP",
+            "re-read against TGIR-v1: the pattern, property, negation and "
+            "projection halves ship, and what survives is "
+            "path-all-shortest, path-weight-aggregation, list-aggregation — "
+            "the tags are the frozen forecast's own residual list, not a "
+            "fresh reading."),
+    "IC3": (3, "G,ROW",
+            "re-read against TGIR-v1: the pattern, property, negation and "
+            "projection halves ship, and what survives is "
+            "conditional-aggregate, arithmetic-over-aggregates — the tags "
+            "are the frozen forecast's own residual list, not a fresh "
+            "reading."),
+    "IC4": (3, "G",
+            "re-read against TGIR-v1: the pattern, property, negation and "
+            "projection halves ship, and what survives is "
+            "conditional-aggregate — the tags are the frozen forecast's own "
+            "residual list, not a fresh reading."),
+    "IC7": (3, "G",
+            "re-read against TGIR-v1: the pattern, property, negation and "
+            "projection halves ship, and what survives is per-group-top-k — "
+            "the tags are the frozen forecast's own residual list, not a "
+            "fresh reading."),
+}
+
+
 def workload(qid: str) -> str:
     return "IS" if qid.startswith("IS") else ("IC" if qid.startswith("IC")
                                               else "BI")
@@ -468,6 +688,13 @@ CHAIN_VOCAB = {
     "count", "sum", "min", "max", "topk", "filter", "interval_relation",
     # O13 `compute` arithmetic, added by the D-051 session
     "mean", "median", "ratio", "diff", "percent",
+    # TGIR-v1's twelve compositional primitives (TGIR_SPEC.md §2), added by
+    # the M3.5 re-audit under freeze ADDENDUM 1 §10.1 (ii). Exactly §2's core
+    # and no more; the fifteen operators keep their own entries above, since
+    # R7 makes them opaque leaves and no row is unlocked *by* a leaf.
+    "NodeScan", "EdgeScan", "Expand", "Filter", "PropertyPredicate",
+    "TypeConstraint", "Project", "Join", "PatternMatch", "Aggregate",
+    "Order", "Limit",
 }
 
 #: Every tag a class-3 entry may carry. `AR` is retired by `L15` (it named
@@ -495,9 +722,15 @@ def verdict17(qid: str) -> tuple[int, str]:
     return (L17[qid][0], L17[qid][1]) if qid in L17 else verdict16(qid)
 
 
-def verdict(qid: str) -> tuple[int, str]:
-    """The current verdict: `L18` if it re-audited, else the `L17` one."""
+def verdict18(qid: str) -> tuple[int, str]:
+    """The D-055 verdict: `L18` if it re-audited, else the `L17` one."""
     return (L18[qid][0], L18[qid][1]) if qid in L18 else verdict17(qid)
+
+
+def verdict(qid: str) -> tuple[int, str]:
+    """The current verdict: `L19` if the TGIR-v1 re-audit touched it, else the
+    `L18` one."""
+    return (L19[qid][0], L19[qid][1]) if qid in L19 else verdict18(qid)
 
 
 def _check() -> None:
@@ -516,7 +749,8 @@ def _check() -> None:
     for name, table, base in (("L15", L15, lambda q: (L[q][0], L[q][1])),
                               ("L16", L16, verdict15),
                               ("L17", L17, verdict16),
-                              ("L18", L18, verdict17)):
+                              ("L18", L18, verdict17),
+                              ("L19", L19, verdict18)):
       for qid, (cls, tags, why) in table.items():
         assert qid in L, f"{name} {qid} is not an LDBC template"
         assert why, f"{name} {qid} has no justification"
@@ -556,7 +790,7 @@ def report() -> None:
     moved = [q for q in L if verdict(q)[0] != L[q][0]]
     print(f"templates that changed class: {len(moved) or 'none'}"
           f"{' — ' + ', '.join(moved) if moved else ''}; "
-          f"{len(L15)} + {len(L16)} + {len(L17)} + {len(L18)} "
+          f"{len(L15)} + {len(L16)} + {len(L17)} + {len(L18)} + {len(L19)} "
           f"re-audited tag strings")
     tp = sum(1 for q in L if L[q][2])
     print(f"templates with a predicate on a temporal attribute: {tp} of {len(L)}")
@@ -565,10 +799,17 @@ def report() -> None:
     rows = [{"id": q, "workload": WORKLOADS[workload(q)],
              "source": SOURCES[workload(q)], "title": L[q][3],
              "class": L[q][0], "need_or_ops": L[q][1],
-             "class_15": verdict(q)[0], "need_or_ops_15": verdict(q)[1],
+             "class_15": verdict18(q)[0], "need_or_ops_15": verdict18(q)[1],
              "justification_15": L15[q][2] if q in L15 else "",
              "justification_17": L17[q][2] if q in L17 else "",
              "justification_18": L18[q][2] if q in L18 else "",
+             # ADDENDUM 1 §10.1 (vii): `class_15`/`need_or_ops_15` stopped
+             # tracking the last table applied several re-audits ago. `_19` is
+             # a consistent triple carrying the FINAL verdict; every earlier
+             # key keeps exactly the value it had, so an existing consumer
+             # reading `class_15` reads what it read before.
+             "class_19": verdict(q)[0], "need_or_ops_19": verdict(q)[1],
+             "justification_19": L19[q][2] if q in L19 else "",
              "temporal_predicate": L[q][2], "belief_clock": False,
              "justification": L[q][4]}
             for q in sorted(L, key=lambda k: (list(WORKLOADS).index(workload(k)),
