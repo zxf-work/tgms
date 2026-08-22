@@ -33,7 +33,8 @@ derive-vectors:
 	$(UV) run python scripts/gen_derive_vectors.py
 
 ci: lint rust-lint hygiene rust-test digest-stability ttq-semantics leaf-totality \
-    scope-shape core-equivalence compile-equivalence
+    scope-shape core-equivalence compile-equivalence freshness-preconditions \
+    freshness-boundary
 	TGMS_HYP_EXAMPLES=50 $(UV) run pytest tests/ -q
 
 # M2 §8.4: a suite proves the payload matches the oracle; a frozen digest
@@ -71,6 +72,19 @@ core-equivalence:
 # store, so unlike the plan-artifact validator it needs nothing gitignored.
 compile-equivalence:
 	$(UV) run python scripts/tgir_equiv.py
+
+# M4.0's gate: D13.19's eleven preconditions, executed rather than trusted.
+# §3.0 audited them by hand and found all eleven met; this re-runs that audit,
+# because "the precondition was met four weeks ago" is what D-072 taught this
+# project not to carry forward unchecked.
+freshness-preconditions:
+	$(UV) run python scripts/check_freshness_preconditions.py
+
+# M4's import boundary: the footprint builder and the checker read a log and a
+# scope, never a store (D13.20). Without this the claim that a checker runs
+# against a foreign log is untestable, and breaking it looks clean.
+freshness-boundary:
+	$(UV) run python scripts/check_freshness_boundary.py
 
 # spec §8.1: no commit may mix tests//oracle.py with implementation changes
 hygiene:
