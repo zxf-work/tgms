@@ -1,0 +1,68 @@
+{
+ "bo31": {
+  "agrees": true,
+  "gold": 1814906,
+  "python": 1814906,
+  "sql": 1814906
+ },
+ "bo33": {
+  "agrees": true,
+  "gold": 711,
+  "python": 711,
+  "sql": 711
+ },
+ "bo35": {
+  "agrees": true,
+  "gold": 761,
+  "python": 761,
+  "sql": 761
+ },
+ "bo37": {
+  "agrees": true,
+  "gold": true,
+  "python": true,
+  "sql": true
+ },
+ "cm13": {
+  "agrees": true,
+  "gold": 3784,
+  "python": 3784,
+  "sql": 3784
+ },
+ "cm19": {
+  "agrees": true,
+  "gold": true,
+  "python": true,
+  "sql": true
+ },
+ "cm39": {
+  "agrees": true,
+  "gold": {
+   "count": 91,
+   "day": 12685,
+   "pair": [
+    "n1168",
+    "n1624"
+   ],
+   "tied_cells": 1
+  },
+  "python": {
+   "count": 91,
+   "day": 12685,
+   "pair": [
+    "n1168",
+    "n1624"
+   ],
+   "tied_cells": 1
+  },
+  "sql": {
+   "count": 91,
+   "day": 12685,
+   "pair": [
+    "n1168",
+    "n1624"
+   ],
+   "tied_cells": 1
+  }
+ }
+}

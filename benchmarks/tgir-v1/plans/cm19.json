@@ -1,0 +1,205 @@
+{
+ "plan_format": 1,
+ "plan_id": "cm19",
+ "row": {
+  "suite": "independent-cm",
+  "predicted_v1_support": "yes",
+  "predicted_verdict_detail": "yes",
+  "compilation_source": "forecast.yaml cm19 (DERIVED; frozen 2026-08-21)",
+  "note": "EdgeScan(MSG) → PatternMatch((a1)-[m1]->(a2)-[m2]->(a3)) with BOTH edge variables sourced (R1) → Filter with THREE EXPLICIT ≠ tests (`all_distinct` is not a §2.7 form, so the forecast requires them spelled out) → Project(d1, d2 := floor_div(vt_s, 86_400_000_000)) with keep=all, so the bound vt_s columns survive for the next Filter → Filter(m2.vt_s ≥ m1.vt_s ∧ m2.vt_s − m1.vt_s ≤ 600_000_000 ∧ d1 = d2) → Limit(1). The same-day clause is floor_div EQUALITY (R2), not calendar semantics — that is the row's upheld `CAL` disagreement, and it is why cm19 is unlocked where bo32's non-uniform calendar YEAR is not. CERTIFICATION: as bo37, `Limit` without `Order` yields `paginated` (§2.12); scored on the answer with the certification recorded."
+ },
+ "params": {
+  "rel": "MSG",
+  "ten_min_us": 600000000,
+  "day_us": 86400000000,
+  "store": "stores/collegemsg",
+  "store_facts": "59835 MSG edge versions, ~9.1M two-hop instances before the distinctness and window filters; vt_s spans 1082040961000000..1098777142000000 µs (UTC days 12523..12717)",
+  "sample_uid_src": "n1",
+  "sample_uid_dst": "n2"
+ },
+ "sigma": {
+  "t_v": [
+   [
+    0,
+    4611686018427387904
+   ]
+  ],
+  "t_b": 4611686018427387904
+ },
+ "root": {
+  "op": "Limit",
+  "n": 1,
+  "inputs": [
+   {
+    "op": "Filter",
+    "pred": {
+     "bool": "and",
+     "l": {
+      "bool": "and",
+      "l": {
+       "cmp": ">=",
+       "l": {
+        "col": "m2.vt_s"
+       },
+       "r": {
+        "col": "m1.vt_s"
+       }
+      },
+      "r": {
+       "cmp": "<=",
+       "l": {
+        "arith": "-",
+        "l": {
+         "col": "m2.vt_s"
+        },
+        "r": {
+         "col": "m1.vt_s"
+        }
+       },
+       "r": {
+        "lit": "$ten_min_us"
+       }
+      }
+     },
+     "r": {
+      "cmp": "=",
+      "l": {
+       "col": "d1"
+      },
+      "r": {
+       "col": "d2"
+      }
+     }
+    },
+    "inputs": [
+     {
+      "op": "Project",
+      "keep": "all",
+      "bindings": [
+       [
+        "d1",
+        {
+         "arith": "floor_div",
+         "l": {
+          "col": "m1.vt_s"
+         },
+         "r": {
+          "lit": "$day_us"
+         }
+        }
+       ],
+       [
+        "d2",
+        {
+         "arith": "floor_div",
+         "l": {
+          "col": "m2.vt_s"
+         },
+         "r": {
+          "lit": "$day_us"
+         }
+        }
+       ]
+      ],
+      "inputs": [
+       {
+        "op": "Filter",
+        "pred": {
+         "bool": "and",
+         "l": {
+          "bool": "and",
+          "l": {
+           "cmp": "!=",
+           "l": {
+            "col": "a1.uid"
+           },
+           "r": {
+            "col": "a2.uid"
+           }
+          },
+          "r": {
+           "cmp": "!=",
+           "l": {
+            "col": "a2.uid"
+           },
+           "r": {
+            "col": "a3.uid"
+           }
+          }
+         },
+         "r": {
+          "cmp": "!=",
+          "l": {
+           "col": "a1.uid"
+          },
+          "r": {
+           "col": "a3.uid"
+          }
+         }
+        },
+        "inputs": [
+         {
+          "op": "PatternMatch",
+          "pattern": {
+           "nodes": [
+            {
+             "var": "a1"
+            },
+            {
+             "var": "a2"
+            },
+            {
+             "var": "a3"
+            }
+           ],
+           "edges": [
+            {
+             "var": "m1",
+             "src": "a1",
+             "dst": "a2",
+             "rel_type": "$rel"
+            },
+            {
+             "var": "m2",
+             "src": "a2",
+             "dst": "a3",
+             "rel_type": "$rel"
+            }
+           ]
+          },
+          "sources": [
+           {
+            "var": "m1",
+            "relation": {
+             "op": "EdgeScan",
+             "as": "e",
+             "rel_types": [
+              "$rel"
+             ],
+             "belief": "current",
+             "vt_mode": "overlap"
+            }
+           },
+           {
+            "var": "m2",
+            "relation": {
+             "op": "EdgeScan",
+             "as": "e",
+             "rel_types": [
+              "$rel"
+             ],
+             "belief": "current",
+             "vt_mode": "overlap"
+            }
+           }
+          ]
+         }
+        ]
+       }
+      ]
+     }
+    ]
+   }
+  ]
+ }
+}

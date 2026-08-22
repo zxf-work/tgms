@@ -1,0 +1,129 @@
+{
+ "plan_format": 1,
+ "plan_id": "BI12",
+ "row": {
+  "suite": "ldbc-bi",
+  "predicted_v1_support": "yes",
+  "predicted_verdict_detail": "yes",
+  "compilation_source": "forecast.yaml BI12 (DERIVED) + TGIR_FORECAST_FREEZE.md §7.6",
+  "note": "Expand(REPLY_OF, out, unbounded(0)) -> TypeConstraint([Post]) reaches each Message's thread-root Post, whose language is the filter; `post.language IN $languages` is a bind-time disjunction of `=` under §2.7's boolean-or (the grammar excludes an `in` FORM, not a bind-time-expanded disjunction over a known parameter list, §4.3). The messageCount = 0 bucket — the LARGEST row of the answer — is the pre-registered shape of FREEZE §7.6: **aggregate the inner join first, then Join{left_outer} back onto the full Person relation, then coalesce(·,0) in a row-local Project**, NOT a null-skipping aggregate, since §2.10 defines none. The histogram is a SECOND Aggregate whose group key is the first's output column — a bare Col, not arithmetic over aggregates. B1 App-A's `missing PAT` omission is upheld: the walk is required."
+ },
+ "params": {
+  "lengthThreshold": 25,
+  "startDate": 1400000000000000,
+  "language1": "en",
+  "language2": "fr"
+ },
+ "sigma": {"t_v": [[0, 4611686018427387904]], "t_b": 4611686018427387904},
+ "root": {
+  "op": "Order",
+  "keys": [
+   {"key": {"col": "personCount"}, "dir": "desc", "nulls": "nulls_last"},
+   {"key": {"col": "messageCount"}, "dir": "desc", "nulls": "nulls_last"}
+  ],
+  "inputs": [
+   {
+    "op": "Aggregate",
+    "group_by": [["messageCount", {"col": "messageCount"}]],
+    "aggregates": [{"fn": "count", "alias": "personCount"}],
+    "inputs": [
+     {
+      "op": "Project",
+      "keep": "listed",
+      "bindings": [
+       ["personId", {"col": "everyPersonId"}],
+       ["messageCount", {"coalesce": [{"col": "rawMessageCount"}, {"lit": 0}]}]
+      ],
+      "inputs": [
+       {
+        "op": "Join",
+        "type": "left_outer",
+        "on": [["everyPersonId", "creatorId"]],
+        "inputs": [
+         {
+          "op": "Aggregate",
+          "group_by": [["everyPersonId", {"col": "everyPerson.uid"}]],
+          "aggregates": [],
+          "inputs": [
+           {"op": "NodeScan", "as": "everyPerson", "labels": ["Person"],
+            "belief": "current", "vt_mode": "overlap"}
+          ]
+         },
+         {
+          "op": "Aggregate",
+          "group_by": [["creatorId", {"col": "person.uid"}]],
+          "aggregates": [
+           {"fn": "count_distinct", "alias": "rawMessageCount", "of": {"col": "message.uid"}}
+          ],
+          "inputs": [
+           {
+            "op": "Filter",
+            "pred": {
+             "bool": "or",
+             "l": {"cmp": "=", "l": {"prop": ["post.props", "language"]},
+                   "r": {"lit": "$language1"}},
+             "r": {"cmp": "=", "l": {"prop": ["post.props", "language"]},
+                   "r": {"lit": "$language2"}}
+            },
+            "inputs": [
+             {
+              "op": "TypeConstraint",
+              "var": "post", "labels": ["Post"],
+              "inputs": [
+               {
+                "op": "Expand",
+                "from": "message", "into": "post", "dir": "out",
+                "hops": {"unbounded": 0}, "rel_type": "REPLY_OF",
+                "inputs": [
+                 {
+                  "op": "PropertyPredicate",
+                  "var": "message", "prop": "creationDate", "cmp": ">",
+                  "value": "$startDate",
+                  "inputs": [
+                   {
+                    "op": "PropertyPredicate",
+                    "var": "message", "prop": "length", "cmp": "<",
+                    "value": "$lengthThreshold",
+                    "inputs": [
+                     {
+                      "op": "Filter",
+                      "pred": {"not": {"is_null": {"prop": ["message.props", "content"]}}},
+                      "inputs": [
+                       {
+                        "op": "TypeConstraint",
+                        "var": "message", "labels": ["Post", "Comment"],
+                        "inputs": [
+                         {
+                          "op": "Expand",
+                          "from": "person", "into": "message", "dir": "in",
+                          "hops": {"exact": 1}, "rel_type": "HAS_CREATOR",
+                          "inputs": [
+                           {"op": "NodeScan", "as": "person", "labels": ["Person"],
+                            "belief": "current", "vt_mode": "overlap"}
+                          ]
+                         }
+                        ]
+                       }
+                      ]
+                     }
+                    ]
+                   }
+                  ]
+                 }
+                ]
+               }
+              ]
+             }
+            ]
+           }
+          ]
+         }
+        ]
+       }
+      ]
+     }
+    ]
+   }
+  ]
+ }
+}

@@ -1,0 +1,210 @@
+{
+ "plan_format": 1,
+ "plan_id": "bo31",
+ "row": {
+  "suite": "independent-bo",
+  "predicted_v1_support": "yes",
+  "predicted_verdict_detail": "yes",
+  "compilation_source": "forecast.yaml bo31 (GATE-COMPILED, §2.1; frozen 2026-08-21)",
+  "note": "PatternMatch((A)-[r1]->(B), (B)-[r2]->(C)) with BOTH edge variables sourced from the `rating > 0` EdgeScan (R1/§2.9), a distinctness Filter, Join{anti} on tuple(A.uid, C.uid) against Project(EdgeScan(TRUST), [tuple(src, dst)]), then Aggregate([], [count_distinct(tuple(A,B,C))]). The probe is the WHOLE UNWINDOWED TRUST relation — any rating, any time — which is what the row's temporal_scope explicitly requires; Σ is the full extent, so the probe scan carries no narrowing of its own. §8.4's duplicate-probe-key ruling keeps the row unlocked on a corrected store. TWO DEVIATIONS OF FORM, NOT OF SEMANTICS: (i) the `tuple` join key is written as the two-column key pair [(A.uid, probe_src), (C.uid, probe_dst)] because §2.8's `on` is a list of column pairs and `eval/join.py::_keys` hashes several key columns exactly as one tuple; (ii) the forecast's singular 'distinctness Filter' is written as all three ≠ tests, matching the row's 'three different accounts'. On this corpus only A ≠ C is load-bearing (B1's sketch writes just that one): bitcoinotc holds no self-ratings, so A ≠ B and B ≠ C already fall out of the edges."
+ },
+ "params": {
+  "rel": "TRUST",
+  "rating_min": 0,
+  "store": "stores/bitcoinotc",
+  "store_facts": "5881 entities, 35592 TRUST edge versions, 35592 distinct eids (one version per identity), 32029 with rating > 0, no self-ratings",
+  "sample_uid_src": "n6",
+  "sample_uid_dst": "n2"
+ },
+ "sigma": {
+  "t_v": [
+   [
+    0,
+    4611686018427387904
+   ]
+  ],
+  "t_b": 4611686018427387904
+ },
+ "root": {
+  "op": "Aggregate",
+  "group_by": [],
+  "aggregates": [
+   {
+    "fn": "count_distinct",
+    "alias": "n",
+    "of": {
+     "tuple": [
+      {
+       "col": "A.uid"
+      },
+      {
+       "col": "B.uid"
+      },
+      {
+       "col": "C.uid"
+      }
+     ]
+    }
+   }
+  ],
+  "inputs": [
+   {
+    "op": "Join",
+    "type": "anti",
+    "on": [
+     [
+      "A.uid",
+      "probe_src"
+     ],
+     [
+      "C.uid",
+      "probe_dst"
+     ]
+    ],
+    "inputs": [
+     {
+      "op": "Filter",
+      "pred": {
+       "bool": "and",
+       "l": {
+        "bool": "and",
+        "l": {
+         "cmp": "!=",
+         "l": {
+          "col": "A.uid"
+         },
+         "r": {
+          "col": "B.uid"
+         }
+        },
+        "r": {
+         "cmp": "!=",
+         "l": {
+          "col": "B.uid"
+         },
+         "r": {
+          "col": "C.uid"
+         }
+        }
+       },
+       "r": {
+        "cmp": "!=",
+        "l": {
+         "col": "A.uid"
+        },
+        "r": {
+         "col": "C.uid"
+        }
+       }
+      },
+      "inputs": [
+       {
+        "op": "PatternMatch",
+        "pattern": {
+         "nodes": [
+          {
+           "var": "A"
+          },
+          {
+           "var": "B"
+          },
+          {
+           "var": "C"
+          }
+         ],
+         "edges": [
+          {
+           "var": "r1",
+           "src": "A",
+           "dst": "B",
+           "rel_type": "$rel"
+          },
+          {
+           "var": "r2",
+           "src": "B",
+           "dst": "C",
+           "rel_type": "$rel"
+          }
+         ]
+        },
+        "sources": [
+         {
+          "var": "r1",
+          "relation": {
+           "op": "PropertyPredicate",
+           "var": "e",
+           "prop": "rating",
+           "cmp": ">",
+           "value": "$rating_min",
+           "inputs": [
+            {
+             "op": "EdgeScan",
+             "as": "e",
+             "rel_types": [
+              "$rel"
+             ],
+             "belief": "current",
+             "vt_mode": "overlap"
+            }
+           ]
+          }
+         },
+         {
+          "var": "r2",
+          "relation": {
+           "op": "PropertyPredicate",
+           "var": "e",
+           "prop": "rating",
+           "cmp": ">",
+           "value": "$rating_min",
+           "inputs": [
+            {
+             "op": "EdgeScan",
+             "as": "e",
+             "rel_types": [
+              "$rel"
+             ],
+             "belief": "current",
+             "vt_mode": "overlap"
+            }
+           ]
+          }
+         }
+        ]
+       }
+      ]
+     },
+     {
+      "op": "Project",
+      "keep": "listed",
+      "bindings": [
+       [
+        "probe_src",
+        {
+         "col": "ac.src"
+        }
+       ],
+       [
+        "probe_dst",
+        {
+         "col": "ac.dst"
+        }
+       ]
+      ],
+      "inputs": [
+       {
+        "op": "EdgeScan",
+        "as": "ac",
+        "rel_types": [
+         "$rel"
+        ],
+        "belief": "current",
+        "vt_mode": "overlap"
+       }
+      ]
+     }
+    ]
+   }
+  ]
+ }
+}

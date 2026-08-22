@@ -1,0 +1,20 @@
+{
+ "plan_format": 1,
+ "plan_id": "BI5",
+ "row": {
+  "suite": "ldbc-bi",
+  "predicted_v1_support": "no",
+  "predicted_verdict_detail": "partial-rows",
+  "compilation_source": "forecast.yaml BI5 (frozen 2026-08-21)"
+ },
+ "root": null,
+ "blocked_by": {
+  "residuals": [
+   "arithmetic-over-aggregates"
+  ],
+  "verdict_detail": "partial-rows",
+  "why": "score = 1*messageCount + 2*replyCount + 10*likeCount combines three aggregate columns (\u00a72.7's excluded case) and is ORDER BY score DESC under Limit(100) \u2192 row-determining under R4. The two OPTIONAL MATCHes themselves are R3.",
+  "attempted": "",
+  "notes": ""
+ }
+}

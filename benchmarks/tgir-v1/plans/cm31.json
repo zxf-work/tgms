@@ -1,0 +1,20 @@
+{
+ "plan_format": 1,
+ "plan_id": "cm31",
+ "row": {
+  "suite": "independent-cm",
+  "predicted_v1_support": "no",
+  "predicted_verdict_detail": "no",
+  "compilation_source": "forecast.yaml cm31 (frozen 2026-08-21)"
+ },
+ "root": null,
+ "blocked_by": {
+  "residuals": [
+   "seq-sliding-window-aggregate"
+  ],
+  "verdict_detail": "no",
+  "why": "An aggregate evaluated over every sliding-window PLACEMENT inside a group's ordered stream, then optimized over placements. \u00a72.10 aggregates over groups, not over window placements; \u00a71.4 non-goal. (The aggregate payload itself \u2014 a distinct count \u2014 is ordinary v1.)",
+  "attempted": "",
+  "notes": ""
+ }
+}

@@ -1,0 +1,20 @@
+{
+ "plan_format": 1,
+ "plan_id": "IC13",
+ "row": {
+  "suite": "ldbc-ic",
+  "predicted_v1_support": "no",
+  "predicted_verdict_detail": "no",
+  "compilation_source": "forecast.yaml IC13 (frozen 2026-08-21)"
+ },
+ "root": null,
+ "blocked_by": {
+  "residuals": [
+   "path-shortest-length"
+  ],
+  "verdict_detail": "no",
+  "why": "R6 supplies the unbounded closure, but the ANSWER is the minimum hop count. \u00a72.3 restriction 2 makes unbounded Expand structural closure only, and `<into>.depth` on an `unbounded(a)` from one anchor is the min depth to each node \u2014 but the template needs the distance to a second BOUND node as the returned scalar, which is `path-shortest-length`, a \u00a71.4 non-goal. B1 App-A upholds that SP alone is the blocker.",
+  "attempted": "",
+  "notes": ""
+ }
+}

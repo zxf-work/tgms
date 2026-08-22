@@ -1,0 +1,74 @@
+{
+ "plan_format": 1,
+ "plan_id": "IC8",
+ "row": {
+  "suite": "ldbc-ic",
+  "predicted_v1_support": "yes",
+  "predicted_verdict_detail": "yes",
+  "compilation_source": "forecast.yaml IC8 (DERIVED)",
+  "note": "NodeScan(uids=[$personId], labels=[Person]) -> exact(1) HAS_CREATOR dir=in -> TypeConstraint(message,[Post,Comment]) (§8.17) -> exact(1) REPLY_OF dir=in -> TypeConstraint(reply,[Comment]) -> exact(1) HAS_CREATOR dir=out -> Project -> Order -> Limit(20), exactly as the forecast writes it. Zero residuals before or after the rulings; a rooted fixed-length chain, so **no PatternMatch is needed** — one live edge binding at a time."
+ },
+ "params": {"personId": "1"},
+ "sigma": {"t_v": [[0, 4611686018427387904]], "t_b": 4611686018427387904},
+ "root": {
+  "op": "Limit", "n": 20,
+  "inputs": [
+   {
+    "op": "Order",
+    "keys": [
+     {"key": {"col": "commentCreationDate"}, "dir": "desc", "nulls": "nulls_last"},
+     {"key": {"cast": {"col": "commentId"}, "to": "int"}, "dir": "asc", "nulls": "nulls_last"}
+    ],
+    "inputs": [
+     {
+      "op": "Project",
+      "keep": "listed",
+      "bindings": [
+       ["personId", {"col": "replyAuthor.uid"}],
+       ["personFirstName", {"prop": ["replyAuthor.props", "firstName"]}],
+       ["personLastName", {"prop": ["replyAuthor.props", "lastName"]}],
+       ["commentId", {"col": "reply.uid"}],
+       ["commentCreationDate", {"prop": ["reply.props", "creationDate"]}],
+       ["commentContent", {"prop": ["reply.props", "content"]}]
+      ],
+      "inputs": [
+       {
+        "op": "Expand",
+        "from": "reply", "into": "replyAuthor", "dir": "out",
+        "hops": {"exact": 1}, "rel_type": "HAS_CREATOR",
+        "inputs": [
+         {
+          "op": "TypeConstraint", "var": "reply", "labels": ["Comment"],
+          "inputs": [
+           {
+            "op": "Expand",
+            "from": "message", "into": "reply", "dir": "in",
+            "hops": {"exact": 1}, "rel_type": "REPLY_OF",
+            "inputs": [
+             {
+              "op": "TypeConstraint", "var": "message", "labels": ["Post", "Comment"],
+              "inputs": [
+               {
+                "op": "Expand",
+                "from": "p", "into": "message", "dir": "in",
+                "hops": {"exact": 1}, "rel_type": "HAS_CREATOR",
+                "inputs": [
+                 {"op": "NodeScan", "as": "p", "uids": ["$personId"], "labels": ["Person"],
+                  "belief": "current", "vt_mode": "overlap"}
+                ]
+               }
+              ]
+             }
+            ]
+           }
+          ]
+         }
+        ]
+       }
+      ]
+     }
+    ]
+   }
+  ]
+ }
+}

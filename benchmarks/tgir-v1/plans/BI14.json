@@ -1,0 +1,20 @@
+{
+ "plan_format": 1,
+ "plan_id": "BI14",
+ "row": {
+  "suite": "ldbc-bi",
+  "predicted_v1_support": "no",
+  "predicted_verdict_detail": "no",
+  "compilation_source": "forecast.yaml BI14 (frozen 2026-08-21)"
+ },
+ "root": null,
+ "blocked_by": {
+  "residuals": [
+   "per-group-top-k"
+  ],
+  "verdict_detail": "no",
+  "why": "The single highest-scoring pair PER CITY is `collect({...})[0]` after an order \u2014 per-group-top-k, an explicit \u00a71.4 non-goal (\u00a78.2 CLOSED: topk is global-only). Everything else compiles: the four existence tests are R3 left_outers and the score is a row-local constant-weighted sum under R2.",
+  "attempted": "",
+  "notes": ""
+ }
+}

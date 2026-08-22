@@ -1,0 +1,75 @@
+{
+ "plan_format": 1,
+ "plan_id": "IC2",
+ "row": {
+  "suite": "ldbc-ic",
+  "predicted_v1_support": "yes",
+  "predicted_verdict_detail": "yes",
+  "compilation_source": "forecast.yaml IC2 (GATE-COMPILED, §2.1)",
+  "note": "The IS3 shape — NodeScan(uids=[$personId], labels=[Person]) -> Expand(KNOWS, dir=both, exact(1), into=friend) — plus TypeConstraint(friend,[Person]), a second exact(1) HAS_CREATOR dir=in into `message`, Filter(message.vt_s <= $maxDate), the coalesce Project, Order and Limit(20), exactly as the forecast writes it. Zero residuals. The `Message` supertype is the bind-time `labels: [Post, Comment]` union under §8.17/§2.6 — FREEZE §7.4 names IC2 as one of the thirteen rows that ruling is load-bearing for — carried here as TypeConstraint(message,[Post,Comment]). §2.7's cast(uid,int) is row-determining: it is the secondary sort key under the Limit(20)."
+ },
+ "params": {"personId": "1", "maxDate": 1402592000000000},
+ "sigma": {"t_v": [[0, 4611686018427387904]], "t_b": 4611686018427387904},
+ "root": {
+  "op": "Limit", "n": 20,
+  "inputs": [
+   {
+    "op": "Order",
+    "keys": [
+     {"key": {"col": "messageCreationDate"}, "dir": "desc", "nulls": "nulls_last"},
+     {"key": {"cast": {"col": "messageId"}, "to": "int"}, "dir": "asc", "nulls": "nulls_last"}
+    ],
+    "inputs": [
+     {
+      "op": "Project",
+      "keep": "listed",
+      "bindings": [
+       ["personId", {"col": "friend.uid"}],
+       ["personFirstName", {"prop": ["friend.props", "firstName"]}],
+       ["personLastName", {"prop": ["friend.props", "lastName"]}],
+       ["messageId", {"col": "message.uid"}],
+       ["messageContent", {"coalesce": [{"prop": ["message.props", "content"]},
+                                        {"prop": ["message.props", "imageFile"]}]}],
+       ["messageCreationDate", {"prop": ["message.props", "creationDate"]}]
+      ],
+      "inputs": [
+       {
+        "op": "Filter",
+        "pred": {"cmp": "<=", "l": {"col": "message.vt_s"},
+                 "r": {"lit": "$maxDate", "tau": "ts"}},
+        "inputs": [
+         {
+          "op": "TypeConstraint", "var": "message", "labels": ["Post", "Comment"],
+          "inputs": [
+           {
+            "op": "Expand",
+            "from": "friend", "into": "message", "dir": "in",
+            "hops": {"exact": 1}, "rel_type": "HAS_CREATOR",
+            "inputs": [
+             {
+              "op": "TypeConstraint", "var": "friend", "labels": ["Person"],
+              "inputs": [
+               {
+                "op": "Expand",
+                "from": "p", "into": "friend", "dir": "both",
+                "hops": {"exact": 1}, "rel_type": "KNOWS",
+                "inputs": [
+                 {"op": "NodeScan", "as": "p", "uids": ["$personId"], "labels": ["Person"],
+                  "belief": "current", "vt_mode": "overlap"}
+                ]
+               }
+              ]
+             }
+            ]
+           }
+          ]
+         }
+        ]
+       }
+      ]
+     }
+    ]
+   }
+  ]
+ }
+}

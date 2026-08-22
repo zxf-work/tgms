@@ -1,0 +1,130 @@
+{
+ "plan_format": 1,
+ "plan_id": "IC12",
+ "row": {
+  "suite": "ldbc-ic",
+  "predicted_v1_support": "partial-columns",
+  "predicted_verdict_detail": "partial-columns",
+  "compilation_source": "forecast.yaml IC12 (DERIVED, and NOT the row's own sketch) + TGIR_FORECAST_FREEZE.md §7.1",
+  "note": "§2.3's `rel_type?: RelType` is SINGULAR, so `[:HAS_TYPE|IS_SUBCLASS_OF*0..]` is not one Expand (FREEZE §7.1 — the only row in the 52 whose compilation route diverges structurally from B1's sketch). The class branch is NodeScan(labels=[TagClass]) + PropertyPredicate(name = $tagClassName) -> Expand(IS_SUBCLASS_OF, in, unbounded(0)) -> Expand(HAS_TYPE, in, exact(1)) -> Aggregate(group_by=[probeTagId], aggregates=[]) as a DISTINCT probe; the main branch is the KNOWS/HAS_CREATOR/REPLY_OF/HAS_TAG chain, then Join{left_outer} on tag identity + Filter(tag.props.name = $tagClassName OR ¬is_null(probe)) (R3b + §2.7's ∨). The distinct probe also prevents §8.4's left_outer multiplication. §2.7's cast(uid,int) is row-determining (secondary sort key under the Limit(20)) — FREEZE §7 records IC12 as one of the two rows CP-5's list omits. PARTIAL-COLUMNS: `collect(DISTINCT tag.name)` is dropped — §4.1 has no list type — and it is OUTPUT-ONLY, the sort key being replyCount, so R4 reads partial-columns i.e. UNLOCKED."
+ },
+ "params": {"personId": "1", "tagClassName": "Class1"},
+ "sigma": {"t_v": [[0, 4611686018427387904]], "t_b": 4611686018427387904},
+ "root": {
+  "op": "Limit", "n": 20,
+  "inputs": [
+   {
+    "op": "Order",
+    "keys": [
+     {"key": {"col": "replyCount"}, "dir": "desc", "nulls": "nulls_last"},
+     {"key": {"cast": {"col": "personId"}, "to": "int"}, "dir": "asc", "nulls": "nulls_last"}
+    ],
+    "inputs": [
+     {
+      "op": "Aggregate",
+      "group_by": [
+       ["personId", {"col": "friend.uid"}],
+       ["personFirstName", {"prop": ["friend.props", "firstName"]}],
+       ["personLastName", {"prop": ["friend.props", "lastName"]}]
+      ],
+      "aggregates": [
+       {"fn": "count_distinct", "alias": "replyCount", "of": {"col": "comment.uid"}}
+      ],
+      "inputs": [
+       {
+        "op": "Filter",
+        "pred": {"bool": "or",
+                 "l": {"cmp": "=", "l": {"prop": ["tag.props", "name"]},
+                       "r": {"lit": "$tagClassName"}},
+                 "r": {"not": {"is_null": {"col": "probeTagId"}}}},
+        "inputs": [
+         {
+          "op": "Join", "type": "left_outer",
+          "on": [["tag.uid", "probeTagId"]],
+          "inputs": [
+           {
+            "op": "Expand",
+            "from": "post", "into": "tag", "dir": "out",
+            "hops": {"exact": 1}, "rel_type": "HAS_TAG",
+            "inputs": [
+             {
+              "op": "TypeConstraint", "var": "post", "labels": ["Post"],
+              "inputs": [
+               {
+                "op": "Expand",
+                "from": "comment", "into": "post", "dir": "out",
+                "hops": {"exact": 1}, "rel_type": "REPLY_OF",
+                "inputs": [
+                 {
+                  "op": "TypeConstraint", "var": "comment", "labels": ["Comment"],
+                  "inputs": [
+                   {
+                    "op": "Expand",
+                    "from": "friend", "into": "comment", "dir": "in",
+                    "hops": {"exact": 1}, "rel_type": "HAS_CREATOR",
+                    "inputs": [
+                     {
+                      "op": "TypeConstraint", "var": "friend", "labels": ["Person"],
+                      "inputs": [
+                       {
+                        "op": "Expand",
+                        "from": "p", "into": "friend", "dir": "both",
+                        "hops": {"exact": 1}, "rel_type": "KNOWS",
+                        "inputs": [
+                         {"op": "NodeScan", "as": "p", "uids": ["$personId"],
+                          "labels": ["Person"], "belief": "current", "vt_mode": "overlap"}
+                        ]
+                       }
+                      ]
+                     }
+                    ]
+                   }
+                  ]
+                 }
+                ]
+               }
+              ]
+             }
+            ]
+           },
+           {
+            "op": "Aggregate",
+            "group_by": [["probeTagId", {"col": "probeTag.uid"}]],
+            "aggregates": [],
+            "inputs": [
+             {
+              "op": "Expand",
+              "from": "subClass", "into": "probeTag", "dir": "in",
+              "hops": {"exact": 1}, "rel_type": "HAS_TYPE",
+              "inputs": [
+               {
+                "op": "Expand",
+                "from": "baseTagClass", "into": "subClass", "dir": "in",
+                "hops": {"unbounded": 0}, "rel_type": "IS_SUBCLASS_OF",
+                "inputs": [
+                 {
+                  "op": "PropertyPredicate",
+                  "var": "baseTagClass", "prop": "name", "cmp": "=",
+                  "value": "$tagClassName",
+                  "inputs": [
+                   {"op": "NodeScan", "as": "baseTagClass", "labels": ["TagClass"],
+                    "belief": "current", "vt_mode": "overlap"}
+                  ]
+                 }
+                ]
+               }
+              ]
+             }
+            ]
+           }
+          ]
+         }
+        ]
+       }
+      ]
+     }
+    ]
+   }
+  ]
+ }
+}

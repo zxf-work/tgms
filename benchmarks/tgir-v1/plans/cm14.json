@@ -1,0 +1,20 @@
+{
+ "plan_format": 1,
+ "plan_id": "cm14",
+ "row": {
+  "suite": "independent-cm",
+  "predicted_v1_support": "no",
+  "predicted_verdict_detail": "no",
+  "compilation_source": "forecast.yaml cm14 (frozen 2026-08-21)"
+ },
+ "root": null,
+ "blocked_by": {
+  "residuals": [
+   "seq-consecutive-pair"
+  ],
+  "verdict_detail": "no",
+  "why": "A maximum over the differences of an ordered per-account event stream needs adjacency in that stream with both elements bound to one row. \u00a72.10's fn list has no ordered-stream reducer and \u00a71.4 lists it as a non-goal (cm14, cm24, cm31; the `aggregate_events` leaf serves them opaquely under R7 but adds no core expressibility).",
+  "attempted": "",
+  "notes": ""
+ }
+}

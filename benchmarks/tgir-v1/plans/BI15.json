@@ -1,0 +1,21 @@
+{
+ "plan_format": 1,
+ "plan_id": "BI15",
+ "row": {
+  "suite": "ldbc-bi",
+  "predicted_v1_support": "no",
+  "predicted_verdict_detail": "no",
+  "compilation_source": "forecast.yaml BI15 (frozen 2026-08-21)"
+ },
+ "root": null,
+ "blocked_by": {
+  "residuals": [
+   "path-weighted-shortest",
+   "path-derived-weight"
+  ],
+  "verdict_detail": "no",
+  "why": "Cheapest-path search under numeric weights that are themselves produced by aggregation over a graph pattern and consumed INSIDE the search \u2014 two \u00a71.4 path-family labels. \u00a72.3's unbounded Expand is structural closure with no semiring.",
+  "attempted": "",
+  "notes": ""
+ }
+}

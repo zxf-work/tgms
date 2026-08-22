@@ -1,0 +1,71 @@
+{
+ "plan_format": 1,
+ "plan_id": "IS2",
+ "row": {
+  "suite": "ldbc-is",
+  "predicted_v1_support": "yes",
+  "predicted_verdict_detail": "yes",
+  "compilation_source": "forecast.yaml IS2 (GATE-COMPILED, B2C_GATE_REVIEW §2.1; spec §7.3 works it in full)",
+  "note": "NodeScan(uids=[$personId], labels=[Person]) -> exact(1) HAS_CREATOR dir=in -> Order+Limit(10) -> unbounded(0) REPLY_OF dir=out -> TypeConstraint(post,[Post]) -> exact(1) HAS_CREATOR dir=out -> Project, exactly as the forecast writes it. R6 supplies the unbounded hop (§2.3 `unbounded(0)`, whose 0-hop case keeps a message that is already the root Post); §2.7's cast(uid,int) is row-determining here because it is the tie-break under the Limit(10). NOT a `Message`-supertype row: interactive-short-2.cypher's message node is UNLABELLED and only `(post:Post)` is a label constraint — TGIR_FORECAST_FREEZE.md §7.4 corrects §2.6/§8.17's row list on exactly this point, so the message scan carries no labels. Completeness is `top-k`, not `complete` (§7.3, §5.2.1): the Limit(10) makes the relation top-k and the unbounded Expand above it inherits that (§5.3). Gold rests on the REPLY_OF-chain assumption (one parent per message)."
+ },
+ "params": {"personId": "1"},
+ "sigma": {"t_v": [[0, 4611686018427387904]], "t_b": 4611686018427387904},
+ "root": {
+  "op": "Project",
+  "keep": "listed",
+  "bindings": [
+   ["messageId", {"col": "message.uid"}],
+   ["messageContent", {"coalesce": [{"prop": ["message.props", "content"]},
+                                    {"prop": ["message.props", "imageFile"]}]}],
+   ["messageCreationDate", {"prop": ["message.props", "creationDate"]}],
+   ["originalPostId", {"col": "post.uid"}],
+   ["originalPostAuthorId", {"col": "postAuthor.uid"}],
+   ["originalPostAuthorFirstName", {"prop": ["postAuthor.props", "firstName"]}],
+   ["originalPostAuthorLastName", {"prop": ["postAuthor.props", "lastName"]}]
+  ],
+  "inputs": [
+   {
+    "op": "Expand",
+    "from": "post", "into": "postAuthor", "dir": "out",
+    "hops": {"exact": 1}, "rel_type": "HAS_CREATOR",
+    "inputs": [
+     {
+      "op": "TypeConstraint", "var": "post", "labels": ["Post"],
+      "inputs": [
+       {
+        "op": "Expand",
+        "from": "message", "into": "post", "dir": "out",
+        "hops": {"unbounded": 0}, "rel_type": "REPLY_OF",
+        "inputs": [
+         {
+          "op": "Limit", "n": 10,
+          "inputs": [
+           {
+            "op": "Order",
+            "keys": [
+             {"key": {"prop": ["message.props", "creationDate"]}, "dir": "desc", "nulls": "nulls_last"},
+             {"key": {"cast": {"col": "message.uid"}, "to": "int"}, "dir": "desc", "nulls": "nulls_last"}
+            ],
+            "inputs": [
+             {
+              "op": "Expand",
+              "from": "p", "into": "message", "dir": "in",
+              "hops": {"exact": 1}, "rel_type": "HAS_CREATOR",
+              "inputs": [
+               {"op": "NodeScan", "as": "p", "uids": ["$personId"], "labels": ["Person"],
+                "belief": "current", "vt_mode": "overlap"}
+              ]
+             }
+            ]
+           }
+          ]
+         }
+        ]
+       }
+      ]
+     }
+    ]
+   }
+  ]
+ }
+}

@@ -1,0 +1,168 @@
+{
+ "plan_format": 1,
+ "plan_id": "BI11",
+ "row": {
+  "suite": "ldbc-bi",
+  "predicted_v1_support": "yes",
+  "predicted_verdict_detail": "yes",
+  "compilation_source": "forecast.yaml BI11 (WORKED EXAMPLE, TGIR_SPEC §7.1, verified by the gate §2.2)",
+  "note": "The only BI row whose `yes` never depended on a coordinator ruling. Cohort by NodeScan + two exact(1) hops + PropertyPredicate + DISTINCT (an `aggregates = []` Aggregate), then a 3-cycle PatternMatch with `sources` on ALL THREE node variables, an edge-time Filter on k1/k2/k3.vt_s (R1 — a bound edge exposes its vt_s to §2.4), an `a.uid < b.uid < c.uid` Filter supplying node distinctness explicitly (§2.9 does not make node variables implicitly distinct), and a global count (group_by = []). Result: complete, exact, @ExactCardinality.",
+  "implementation_note": "The three KNOWS edge patterns carry `directed: false`, which is the reference query's undirected `(a)-[:KNOWS]-(b)`; the fixture stores one edge per friendship, and `tgms/tgir/eval/pattern.py` binds `src`/`dst` positionally without consulting `directed`, so the three patterns are written in the store's own orientation (a->b, b->c, a->c). Node-variable `sources` are likewise not consulted by that evaluator (only edge-variable ones are), so the cohort pushdown is recorded in the plan but does not narrow the search here; it is not row-determining on this fixture, where every Person is located in the one Country."
+ },
+ "params": {
+  "country": "Countryland",
+  "startDate": 1400000000000000,
+  "endDate": 1400864000000000
+ },
+ "sigma": {"t_v": [[0, 4611686018427387904]], "t_b": 4611686018427387904},
+ "root": {
+  "op": "Aggregate",
+  "group_by": [],
+  "aggregates": [{"fn": "count", "alias": "triangleCount"}],
+  "inputs": [
+   {
+    "op": "Filter",
+    "pred": {
+     "bool": "and",
+     "l": {"cmp": "<", "l": {"col": "a.uid"}, "r": {"col": "b.uid"}},
+     "r": {"cmp": "<", "l": {"col": "b.uid"}, "r": {"col": "c.uid"}}
+    },
+    "inputs": [
+     {
+      "op": "Filter",
+      "pred": {
+       "bool": "and",
+       "l": {
+        "bool": "and",
+        "l": {"cmp": ">=", "l": {"col": "k1.vt_s"}, "r": {"lit": "$startDate"}},
+        "r": {"cmp": "<=", "l": {"col": "k1.vt_s"}, "r": {"lit": "$endDate"}}
+       },
+       "r": {
+        "bool": "and",
+        "l": {
+         "bool": "and",
+         "l": {"cmp": ">=", "l": {"col": "k2.vt_s"}, "r": {"lit": "$startDate"}},
+         "r": {"cmp": "<=", "l": {"col": "k2.vt_s"}, "r": {"lit": "$endDate"}}
+        },
+        "r": {
+         "bool": "and",
+         "l": {"cmp": ">=", "l": {"col": "k3.vt_s"}, "r": {"lit": "$startDate"}},
+         "r": {"cmp": "<=", "l": {"col": "k3.vt_s"}, "r": {"lit": "$endDate"}}
+        }
+       }
+      },
+      "inputs": [
+       {
+        "op": "PatternMatch",
+        "pattern": {
+         "nodes": [
+          {"var": "a", "label": "Person"},
+          {"var": "b", "label": "Person"},
+          {"var": "c", "label": "Person"}
+         ],
+         "edges": [
+          {"var": "k1", "src": "a", "dst": "b", "rel_type": "KNOWS", "directed": false},
+          {"var": "k2", "src": "b", "dst": "c", "rel_type": "KNOWS", "directed": false},
+          {"var": "k3", "src": "a", "dst": "c", "rel_type": "KNOWS", "directed": false}
+         ]
+        },
+        "sources": [
+         {"var": "a", "column": "cohortPersonId",
+          "relation": {
+           "op": "Aggregate",
+           "group_by": [["cohortPersonId", {"col": "cohortPerson.uid"}]],
+           "aggregates": [],
+           "inputs": [
+            {
+             "op": "PropertyPredicate",
+             "var": "cohortCountry", "prop": "name", "cmp": "=", "value": "$country",
+             "inputs": [
+              {
+               "op": "Expand",
+               "from": "cohortCity", "into": "cohortCountry", "dir": "out",
+               "hops": {"exact": 1}, "rel_type": "IS_PART_OF",
+               "inputs": [
+                {
+                 "op": "Expand",
+                 "from": "cohortPerson", "into": "cohortCity", "dir": "out",
+                 "hops": {"exact": 1}, "rel_type": "IS_LOCATED_IN",
+                 "inputs": [
+                  {"op": "NodeScan", "as": "cohortPerson", "labels": ["Person"],
+                   "belief": "current", "vt_mode": "overlap"}
+                 ]
+                }
+               ]
+              }
+             ]
+            }
+           ]
+          }},
+         {"var": "b", "column": "cohortPersonId",
+          "relation": {
+           "op": "Aggregate",
+           "group_by": [["cohortPersonId", {"col": "cohortPerson.uid"}]],
+           "aggregates": [],
+           "inputs": [
+            {
+             "op": "PropertyPredicate",
+             "var": "cohortCountry", "prop": "name", "cmp": "=", "value": "$country",
+             "inputs": [
+              {
+               "op": "Expand",
+               "from": "cohortCity", "into": "cohortCountry", "dir": "out",
+               "hops": {"exact": 1}, "rel_type": "IS_PART_OF",
+               "inputs": [
+                {
+                 "op": "Expand",
+                 "from": "cohortPerson", "into": "cohortCity", "dir": "out",
+                 "hops": {"exact": 1}, "rel_type": "IS_LOCATED_IN",
+                 "inputs": [
+                  {"op": "NodeScan", "as": "cohortPerson", "labels": ["Person"],
+                   "belief": "current", "vt_mode": "overlap"}
+                 ]
+                }
+               ]
+              }
+             ]
+            }
+           ]
+          }},
+         {"var": "c", "column": "cohortPersonId",
+          "relation": {
+           "op": "Aggregate",
+           "group_by": [["cohortPersonId", {"col": "cohortPerson.uid"}]],
+           "aggregates": [],
+           "inputs": [
+            {
+             "op": "PropertyPredicate",
+             "var": "cohortCountry", "prop": "name", "cmp": "=", "value": "$country",
+             "inputs": [
+              {
+               "op": "Expand",
+               "from": "cohortCity", "into": "cohortCountry", "dir": "out",
+               "hops": {"exact": 1}, "rel_type": "IS_PART_OF",
+               "inputs": [
+                {
+                 "op": "Expand",
+                 "from": "cohortPerson", "into": "cohortCity", "dir": "out",
+                 "hops": {"exact": 1}, "rel_type": "IS_LOCATED_IN",
+                 "inputs": [
+                  {"op": "NodeScan", "as": "cohortPerson", "labels": ["Person"],
+                   "belief": "current", "vt_mode": "overlap"}
+                 ]
+                }
+               ]
+              }
+             ]
+            }
+           ]
+          }}
+        ]
+       }
+      ]
+     }
+    ]
+   }
+  ]
+ }
+}

@@ -1,0 +1,175 @@
+{
+ "plan_format": 1,
+ "plan_id": "cm13",
+ "row": {
+  "suite": "independent-cm",
+  "predicted_v1_support": "yes",
+  "predicted_verdict_detail": "yes",
+  "compilation_source": "forecast.yaml cm13 (GATE-COMPILED, §2.1; frozen 2026-08-21)",
+  "note": "PatternMatch((A)-[m1]->(B), (B)-[m2]->(A)) with both edge variables sourced from EdgeScan(MSG) (R1), Filter(A.uid ≠ B.uid ∧ abs(m1.vt_s − m2.vt_s) ≤ 3_600_000_000), a canonical-pair Project, Aggregate([], count_distinct(pair)). B1's `unordered_key(A, B)` is NOT a §2.7 form and is written, as the forecast requires, as the `if`/`tuple` expression if(A.uid < B.uid, tuple(A.uid, B.uid), tuple(B.uid, A.uid)) — which is what makes the count symmetric, since every qualifying exchange matches under both variable assignments. WORDING (Appendix B): pairs are UNORDERED (the exchange is one phenomenon, counted once) and 'within the same hour' is a 60-MINUTE DELTA IN EITHER DIRECTION — hence `abs` and no ordering constraint — not a shared clock-hour bucket. The explicit A ≠ B is kept because the row's temporal_scope asks for it; this store in fact holds no self-directed rows, so it removes nothing."
+ },
+ "params": {
+  "rel": "MSG",
+  "hour_us": 3600000000,
+  "store": "stores/collegemsg",
+  "store_facts": "1899 entities, 59835 MSG edge versions = 59835 distinct eids, 20296 distinct ordered pairs, no self-messages; 470266 mutual 2-edge instances before the delta filter",
+  "sample_uid_src": "n1",
+  "sample_uid_dst": "n2"
+ },
+ "sigma": {
+  "t_v": [
+   [
+    0,
+    4611686018427387904
+   ]
+  ],
+  "t_b": 4611686018427387904
+ },
+ "root": {
+  "op": "Aggregate",
+  "group_by": [],
+  "aggregates": [
+   {
+    "fn": "count_distinct",
+    "alias": "n",
+    "of": {
+     "col": "pair"
+    }
+   }
+  ],
+  "inputs": [
+   {
+    "op": "Project",
+    "keep": "listed",
+    "bindings": [
+     [
+      "pair",
+      {
+       "if": [
+        {
+         "cmp": "<",
+         "l": {
+          "col": "A.uid"
+         },
+         "r": {
+          "col": "B.uid"
+         }
+        },
+        {
+         "tuple": [
+          {
+           "col": "A.uid"
+          },
+          {
+           "col": "B.uid"
+          }
+         ]
+        },
+        {
+         "tuple": [
+          {
+           "col": "B.uid"
+          },
+          {
+           "col": "A.uid"
+          }
+         ]
+        }
+       ]
+      }
+     ]
+    ],
+    "inputs": [
+     {
+      "op": "Filter",
+      "pred": {
+       "bool": "and",
+       "l": {
+        "cmp": "!=",
+        "l": {
+         "col": "A.uid"
+        },
+        "r": {
+         "col": "B.uid"
+        }
+       },
+       "r": {
+        "cmp": "<=",
+        "l": {
+         "fn": "abs",
+         "arg": {
+          "arith": "-",
+          "l": {
+           "col": "m1.vt_s"
+          },
+          "r": {
+           "col": "m2.vt_s"
+          }
+         }
+        },
+        "r": {
+         "lit": "$hour_us"
+        }
+       }
+      },
+      "inputs": [
+       {
+        "op": "PatternMatch",
+        "pattern": {
+         "nodes": [
+          {
+           "var": "A"
+          },
+          {
+           "var": "B"
+          }
+         ],
+         "edges": [
+          {
+           "var": "m1",
+           "src": "A",
+           "dst": "B",
+           "rel_type": "$rel"
+          },
+          {
+           "var": "m2",
+           "src": "B",
+           "dst": "A",
+           "rel_type": "$rel"
+          }
+         ]
+        },
+        "sources": [
+         {
+          "var": "m1",
+          "relation": {
+           "op": "EdgeScan",
+           "as": "e",
+           "rel_types": [
+            "$rel"
+           ],
+           "belief": "current",
+           "vt_mode": "overlap"
+          }
+         },
+         {
+          "var": "m2",
+          "relation": {
+           "op": "EdgeScan",
+           "as": "e",
+           "rel_types": [
+            "$rel"
+           ],
+           "belief": "current",
+           "vt_mode": "overlap"
+          }
+         }
+        ]
+       }
+      ]
+     }
+    ]
+   }
+  ]
+ }
+}

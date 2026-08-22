@@ -1,0 +1,173 @@
+{
+ "plan_format": 1,
+ "plan_id": "cm39",
+ "row": {
+  "suite": "independent-cm",
+  "predicted_v1_support": "yes",
+  "predicted_verdict_detail": "yes",
+  "compilation_source": "forecast.yaml cm39 (DERIVED; frozen 2026-08-21)",
+  "note": "EdgeScan(MSG) → Project(lo := if(src < dst, src, dst), hi := if(src < dst, dst, src), day := floor_div(vt_s, 86_400_000_000)) → Aggregate(group_by=[lo, hi, day], [count]) → Order(count DESC, day ASC, lo ASC, hi ASC) → Limit(1). The canonical pair is carried as TWO SCALAR COLUMNS rather than one `tuple`, exactly as the forecast requires: §4.1 defines no order over tuple-typed values and §2.11 needs a total order for the tie-break. Three group-by keys is the point of the row — §2.10's key list is UNRESTRICTED IN ARITY, so `DIM3` names today's two-slot `aggregate_events` cap rather than a semantic gap. Summing both directions into one cell is the canonical key's doing, not a pair-mode flag. WORDING (Appendix B): ties for the maximum (pair, day) cell are UNSPECIFIED by the question; the gold reports the cell this tie-break selects and a differing tie choice is not scored as a miss."
+ },
+ "params": {
+  "rel": "MSG",
+  "day_us": 86400000000,
+  "store": "stores/collegemsg",
+  "store_facts": "1899 entities, 59835 MSG edge versions, 20296 distinct ordered pairs; vt_s spans UTC days 12523..12717",
+  "sample_uid_src": "n1",
+  "sample_uid_dst": "n2"
+ },
+ "sigma": {
+  "t_v": [
+   [
+    0,
+    4611686018427387904
+   ]
+  ],
+  "t_b": 4611686018427387904
+ },
+ "root": {
+  "op": "Limit",
+  "n": 1,
+  "inputs": [
+   {
+    "op": "Order",
+    "keys": [
+     {
+      "key": {
+       "col": "n"
+      },
+      "dir": "desc",
+      "nulls": "nulls_last"
+     },
+     {
+      "key": {
+       "col": "day"
+      },
+      "dir": "asc",
+      "nulls": "nulls_last"
+     },
+     {
+      "key": {
+       "col": "lo"
+      },
+      "dir": "asc",
+      "nulls": "nulls_last"
+     },
+     {
+      "key": {
+       "col": "hi"
+      },
+      "dir": "asc",
+      "nulls": "nulls_last"
+     }
+    ],
+    "inputs": [
+     {
+      "op": "Aggregate",
+      "group_by": [
+       [
+        "lo",
+        {
+         "col": "lo"
+        }
+       ],
+       [
+        "hi",
+        {
+         "col": "hi"
+        }
+       ],
+       [
+        "day",
+        {
+         "col": "day"
+        }
+       ]
+      ],
+      "aggregates": [
+       {
+        "fn": "count",
+        "alias": "n"
+       }
+      ],
+      "inputs": [
+       {
+        "op": "Project",
+        "keep": "listed",
+        "bindings": [
+         [
+          "lo",
+          {
+           "if": [
+            {
+             "cmp": "<",
+             "l": {
+              "col": "e.src"
+             },
+             "r": {
+              "col": "e.dst"
+             }
+            },
+            {
+             "col": "e.src"
+            },
+            {
+             "col": "e.dst"
+            }
+           ]
+          }
+         ],
+         [
+          "hi",
+          {
+           "if": [
+            {
+             "cmp": "<",
+             "l": {
+              "col": "e.src"
+             },
+             "r": {
+              "col": "e.dst"
+             }
+            },
+            {
+             "col": "e.dst"
+            },
+            {
+             "col": "e.src"
+            }
+           ]
+          }
+         ],
+         [
+          "day",
+          {
+           "arith": "floor_div",
+           "l": {
+            "col": "e.vt_s"
+           },
+           "r": {
+            "lit": "$day_us"
+           }
+          }
+         ]
+        ],
+        "inputs": [
+         {
+          "op": "EdgeScan",
+          "as": "e",
+          "rel_types": [
+           "$rel"
+          ],
+          "belief": "current",
+          "vt_mode": "overlap"
+         }
+        ]
+       }
+      ]
+     }
+    ]
+   }
+  ]
+ }
+}

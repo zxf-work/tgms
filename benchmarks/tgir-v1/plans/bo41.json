@@ -1,0 +1,105 @@
+{
+ "plan_format": 1,
+ "plan_id": "bo41",
+ "row": {
+  "suite": "independent-bo",
+  "predicted_v1_support": "yes",
+  "predicted_verdict_detail": "yes",
+  "compilation_source": "forecast.yaml bo41 + TGIR_FORECAST_FREEZE.md §7.2 (route divergence — the FREEZE governs)",
+  "note": "NOT the row's own B1 sketch. B1 writes Filter(v, revises_an_earlier_version) and Project(day := floor_div(tt_s, …)); neither compiles — no §2.7 row-local expression can test whether one version supersedes another. FREEZE §7.2 and spec §3.3 supply the route instead: EdgeScan(as=v, rel_types=[TRUST], belief=superseded) → Project(day := floor_div(v.tt_e, 86_400_000_000)) → Aggregate(group_by=[day], [count]) → Order(count DESC, day ASC) → Limit(1). This is the `belief: superseded` row the task names, and the only row of 52 whose primary axis is TRANSACTION time. GOLD (FREEZE §5): a correction is a SUPERSEDED row — a belief that was revised — bucketed by its OWN tt_e, the instant the revision was recorded; counting superseding versions by tt_s would count carve fragments, which are the same belief re-expressed rather than a revision. §3.4's censoring does not bite: a superseded row's tt_e is already ≤ T_b."
+ },
+ "params": {
+  "rel": "TRUST",
+  "day_us": 86400000000,
+  "store": "stores/bitcoinotc",
+  "store_facts": "35592 TRUST edge versions = 35592 distinct eids, i.e. ZERO superseded rows — the canonical corpus carries no corrections (bo40 runs to 0)",
+  "sample_uid_src": "n6",
+  "sample_uid_dst": "n2"
+ },
+ "sigma": {
+  "t_v": [
+   [
+    0,
+    4611686018427387904
+   ]
+  ],
+  "t_b": 4611686018427387904
+ },
+ "root": {
+  "op": "Limit",
+  "n": 1,
+  "inputs": [
+   {
+    "op": "Order",
+    "keys": [
+     {
+      "key": {
+       "col": "n"
+      },
+      "dir": "desc",
+      "nulls": "nulls_last"
+     },
+     {
+      "key": {
+       "col": "day"
+      },
+      "dir": "asc",
+      "nulls": "nulls_last"
+     }
+    ],
+    "inputs": [
+     {
+      "op": "Aggregate",
+      "group_by": [
+       [
+        "day",
+        {
+         "col": "day"
+        }
+       ]
+      ],
+      "aggregates": [
+       {
+        "fn": "count",
+        "alias": "n"
+       }
+      ],
+      "inputs": [
+       {
+        "op": "Project",
+        "keep": "listed",
+        "bindings": [
+         [
+          "day",
+          {
+           "arith": "floor_div",
+           "l": {
+            "col": "v.tt_e"
+           },
+           "r": {
+            "lit": "$day_us"
+           }
+          }
+         ]
+        ],
+        "inputs": [
+         {
+          "op": "EdgeScan",
+          "as": "v",
+          "rel_types": [
+           "$rel"
+          ],
+          "belief": "superseded",
+          "vt_mode": "overlap"
+         }
+        ]
+       }
+      ]
+     }
+    ]
+   }
+  ]
+ },
+ "scoreable": false,
+ "scoreable_note": "EXCLUDED FROM SCORING IN ADVANCE (forecast bo41 `scoreable: false`; FREEZE §6; spec §8.13 CLOSED). bitcoinotc carries zero corrections, so the `belief: superseded` scan returns NO rows and the plan returns ZERO rows — the expected, degenerate outcome. That is a property of the corpus, not of the capability: the artifact executes, which is what the row's `yes` prediction claims. bo41 re-enters the scoring denominator if M4's correction-injection store supplies a corrected corpus."
+}

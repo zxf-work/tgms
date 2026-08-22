@@ -1,0 +1,20 @@
+{
+ "plan_format": 1,
+ "plan_id": "bo32",
+ "row": {
+  "suite": "independent-bo",
+  "predicted_v1_support": "no",
+  "predicted_verdict_detail": "partial-rows",
+  "compilation_source": "forecast.yaml bo32 (frozen 2026-08-21)"
+ },
+ "root": null,
+ "blocked_by": {
+  "residuals": [
+   "calendar-unit-extraction"
+  ],
+  "verdict_detail": "partial-rows",
+  "why": "A calendar YEAR is not a fixed stride from the epoch, so `year(e.vt_s)` is genuine calendar semantics and \u00a72.7 excludes it (unlike the UTC-day floor_div of bo41/cm19/cm39). bo32 is a yes/no question and the year equality DECIDES the answer, so R4 calls it row-determining.",
+  "attempted": "",
+  "notes": ""
+ }
+}

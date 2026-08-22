@@ -1,0 +1,147 @@
+{
+ "plan_format": 1,
+ "plan_id": "BI3",
+ "row": {
+  "suite": "ldbc-bi",
+  "predicted_v1_support": "yes",
+  "predicted_verdict_detail": "yes",
+  "compilation_source": "forecast.yaml BI3 (GATE-COMPILED, §2.1)",
+  "note": "Rooted exact(1) chain from the $country Country — IS_PART_OF in -> city, IS_LOCATED_IN in -> person (TypeConstraint([Person]), because a University also IS_LOCATED_IN the city), HAS_MODERATOR in -> forum, CONTAINER_OF out -> post — then Expand(REPLY_OF, in, unbounded(0)) -> message with TypeConstraint([Post, Comment]), which is §8.17's union list standing in for LDBC's `Message` supertype. The TagClass -> Tag -> message branch is made DISTINCT by an `aggregates = []` Aggregate first, so Join{inner} on the message identity acts as a semi-join without multiplying. Aggregate over FOUR group keys — §2.10's unrestricted key arity is load-bearing — then Order, Limit(20). The R6 residual is the single unbounded Expand.",
+  "implementation_note": "The Join{inner} inputs are Project(keep='listed') relations. `eval_join`'s inner branch asserts `out.schema.names == node.out_schema.names`, which a column-pruned scan never satisfies; a Project realizes its whole declared schema, so the assertion holds. This is a plan-authoring workaround for tgms/tgir/eval/join.py:65, not a change of shape."
+ },
+ "params": {"country": "Countryland", "tagClass": "Class1"},
+ "sigma": {"t_v": [[0, 4611686018427387904]], "t_b": 4611686018427387904},
+ "root": {
+  "op": "Limit",
+  "n": 20,
+  "inputs": [
+   {
+    "op": "Order",
+    "keys": [
+     {"key": {"col": "messageCount"}, "dir": "desc", "nulls": "nulls_last"},
+     {"key": {"cast": {"col": "forumId"}, "to": "int"}, "dir": "asc", "nulls": "nulls_last"}
+    ],
+    "inputs": [
+     {
+      "op": "Aggregate",
+      "group_by": [
+       ["forumId", {"col": "forumId"}],
+       ["forumTitle", {"col": "forumTitle"}],
+       ["forumCreationDate", {"col": "forumCreationDate"}],
+       ["moderatorId", {"col": "moderatorId"}]
+      ],
+      "aggregates": [
+       {"fn": "count_distinct", "alias": "messageCount", "of": {"col": "messageId"}}
+      ],
+      "inputs": [
+       {
+        "op": "Join",
+        "type": "inner",
+        "on": [["messageId", "taggedMessageId"]],
+        "inputs": [
+         {
+          "op": "Project",
+          "keep": "listed",
+          "bindings": [
+           ["forumId", {"col": "forum.uid"}],
+           ["forumTitle", {"prop": ["forum.props", "title"]}],
+           ["forumCreationDate", {"prop": ["forum.props", "creationDate"]}],
+           ["moderatorId", {"col": "person.uid"}],
+           ["messageId", {"col": "message.uid"}]
+          ],
+          "inputs": [
+           {
+            "op": "TypeConstraint",
+            "var": "message", "labels": ["Post", "Comment"],
+            "inputs": [
+             {
+              "op": "Expand",
+              "from": "post", "into": "message", "dir": "in",
+              "hops": {"unbounded": 0}, "rel_type": "REPLY_OF",
+              "inputs": [
+               {
+                "op": "Expand",
+                "from": "forum", "into": "post", "dir": "out",
+                "hops": {"exact": 1}, "rel_type": "CONTAINER_OF",
+                "inputs": [
+                 {
+                  "op": "Expand",
+                  "from": "person", "into": "forum", "dir": "in",
+                  "hops": {"exact": 1}, "rel_type": "HAS_MODERATOR",
+                  "inputs": [
+                   {
+                    "op": "TypeConstraint",
+                    "var": "person", "labels": ["Person"],
+                    "inputs": [
+                     {
+                      "op": "Expand",
+                      "from": "city", "into": "person", "dir": "in",
+                      "hops": {"exact": 1}, "rel_type": "IS_LOCATED_IN",
+                      "inputs": [
+                       {
+                        "op": "Expand",
+                        "from": "country", "into": "city", "dir": "in",
+                        "hops": {"exact": 1}, "rel_type": "IS_PART_OF",
+                        "inputs": [
+                         {
+                          "op": "PropertyPredicate",
+                          "var": "country", "prop": "name", "cmp": "=", "value": "$country",
+                          "inputs": [
+                           {"op": "NodeScan", "as": "country", "labels": ["Country"],
+                            "belief": "current", "vt_mode": "overlap"}
+                          ]
+                         }
+                        ]
+                       }
+                      ]
+                     }
+                    ]
+                   }
+                  ]
+                 }
+                ]
+               }
+              ]
+             }
+            ]
+           }
+          ]
+         },
+         {
+          "op": "Aggregate",
+          "group_by": [["taggedMessageId", {"col": "taggedMessage.uid"}]],
+          "aggregates": [],
+          "inputs": [
+           {
+            "op": "Expand",
+            "from": "tag", "into": "taggedMessage", "dir": "in",
+            "hops": {"exact": 1}, "rel_type": "HAS_TAG",
+            "inputs": [
+             {
+              "op": "Expand",
+              "from": "tagClass", "into": "tag", "dir": "in",
+              "hops": {"exact": 1}, "rel_type": "HAS_TYPE",
+              "inputs": [
+               {
+                "op": "PropertyPredicate",
+                "var": "tagClass", "prop": "name", "cmp": "=", "value": "$tagClass",
+                "inputs": [
+                 {"op": "NodeScan", "as": "tagClass", "labels": ["TagClass"],
+                  "belief": "current", "vt_mode": "overlap"}
+                ]
+               }
+              ]
+             }
+            ]
+           }
+          ]
+         }
+        ]
+       }
+      ]
+     }
+    ]
+   }
+  ]
+ }
+}

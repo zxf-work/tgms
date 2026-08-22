@@ -1,0 +1,20 @@
+{
+ "plan_format": 1,
+ "plan_id": "IC4",
+ "row": {
+  "suite": "ldbc-ic",
+  "predicted_v1_support": "no",
+  "predicted_verdict_detail": "partial-rows",
+  "compilation_source": "forecast.yaml IC4 (frozen 2026-08-21)"
+ },
+ "root": null,
+ "blocked_by": {
+  "residuals": [
+   "conditional-aggregate"
+  ],
+  "verdict_detail": "partial-rows",
+  "why": "`sum(CASE ...)` inside the aggregate decides tag membership in a WHERE; \u00a72.7 excludes predicates inside aggregates and \u00a72.10's fn list has no conditional form. Row-determining \u2192 BLOCKED under R4.",
+  "attempted": "",
+  "notes": ""
+ }
+}

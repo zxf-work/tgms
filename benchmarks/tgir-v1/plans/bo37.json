@@ -1,0 +1,199 @@
+{
+ "plan_format": 1,
+ "plan_id": "bo37",
+ "row": {
+  "suite": "independent-bo",
+  "predicted_v1_support": "yes",
+  "predicted_verdict_detail": "yes",
+  "compilation_source": "forecast.yaml bo37 (GATE-COMPILED, §2.1; frozen 2026-08-21)",
+  "note": "PatternMatch of the 3-cycle (A)-[e1]->(B)-[e2]->(C)-[e3]->(A) with all three edge variables sourced from the `rating > 0` EdgeScan, an EXPLICIT A ≠ B ≠ C Filter — §2.9's edge-isomorphism over identities does not supply node distinctness once self-loops are possible, and the forecast names this requirement — then Filter(e1.vt_s < e2.vt_s ∧ e2.vt_s < e3.vt_s), then Limit(1). WORDING (Appendix B): the ordering is STRICT ON vt_s ALONE; the question is silent on simultaneous ratings and this gold does not break vt_s ties by eid the way the existing engine's motif ordering does. CERTIFICATION (gate §2.1 note ii): `Limit` without `Order` yields completeness = `paginated` (§2.12); the YES answer is a membership claim, and the NO answer's certification would depend on the input being execution-complete. Scored on the answer, with the certification recorded. The two Filters are written as separate nodes so the distinctness requirement is visible on its own; conjoining them is the same relation."
+ },
+ "params": {
+  "rel": "TRUST",
+  "rating_min": 0,
+  "store": "stores/bitcoinotc",
+  "store_facts": "35592 TRUST edge versions, 32029 positive, vt_s spans 1289241911728360..1453684323757280 µs",
+  "sample_uid_src": "n6",
+  "sample_uid_dst": "n2"
+ },
+ "sigma": {
+  "t_v": [
+   [
+    0,
+    4611686018427387904
+   ]
+  ],
+  "t_b": 4611686018427387904
+ },
+ "root": {
+  "op": "Limit",
+  "n": 1,
+  "inputs": [
+   {
+    "op": "Filter",
+    "pred": {
+     "bool": "and",
+     "l": {
+      "cmp": "<",
+      "l": {
+       "col": "e1.vt_s"
+      },
+      "r": {
+       "col": "e2.vt_s"
+      }
+     },
+     "r": {
+      "cmp": "<",
+      "l": {
+       "col": "e2.vt_s"
+      },
+      "r": {
+       "col": "e3.vt_s"
+      }
+     }
+    },
+    "inputs": [
+     {
+      "op": "Filter",
+      "pred": {
+       "bool": "and",
+       "l": {
+        "bool": "and",
+        "l": {
+         "cmp": "!=",
+         "l": {
+          "col": "A.uid"
+         },
+         "r": {
+          "col": "B.uid"
+         }
+        },
+        "r": {
+         "cmp": "!=",
+         "l": {
+          "col": "B.uid"
+         },
+         "r": {
+          "col": "C.uid"
+         }
+        }
+       },
+       "r": {
+        "cmp": "!=",
+        "l": {
+         "col": "A.uid"
+        },
+        "r": {
+         "col": "C.uid"
+        }
+       }
+      },
+      "inputs": [
+       {
+        "op": "PatternMatch",
+        "pattern": {
+         "nodes": [
+          {
+           "var": "A"
+          },
+          {
+           "var": "B"
+          },
+          {
+           "var": "C"
+          }
+         ],
+         "edges": [
+          {
+           "var": "e1",
+           "src": "A",
+           "dst": "B",
+           "rel_type": "$rel"
+          },
+          {
+           "var": "e2",
+           "src": "B",
+           "dst": "C",
+           "rel_type": "$rel"
+          },
+          {
+           "var": "e3",
+           "src": "C",
+           "dst": "A",
+           "rel_type": "$rel"
+          }
+         ]
+        },
+        "sources": [
+         {
+          "var": "e1",
+          "relation": {
+           "op": "PropertyPredicate",
+           "var": "e",
+           "prop": "rating",
+           "cmp": ">",
+           "value": "$rating_min",
+           "inputs": [
+            {
+             "op": "EdgeScan",
+             "as": "e",
+             "rel_types": [
+              "$rel"
+             ],
+             "belief": "current",
+             "vt_mode": "overlap"
+            }
+           ]
+          }
+         },
+         {
+          "var": "e2",
+          "relation": {
+           "op": "PropertyPredicate",
+           "var": "e",
+           "prop": "rating",
+           "cmp": ">",
+           "value": "$rating_min",
+           "inputs": [
+            {
+             "op": "EdgeScan",
+             "as": "e",
+             "rel_types": [
+              "$rel"
+             ],
+             "belief": "current",
+             "vt_mode": "overlap"
+            }
+           ]
+          }
+         },
+         {
+          "var": "e3",
+          "relation": {
+           "op": "PropertyPredicate",
+           "var": "e",
+           "prop": "rating",
+           "cmp": ">",
+           "value": "$rating_min",
+           "inputs": [
+            {
+             "op": "EdgeScan",
+             "as": "e",
+             "rel_types": [
+              "$rel"
+             ],
+             "belief": "current",
+             "vt_mode": "overlap"
+            }
+           ]
+          }
+         }
+        ]
+       }
+      ]
+     }
+    ]
+   }
+  ]
+ }
+}

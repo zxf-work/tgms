@@ -1,0 +1,127 @@
+{
+ "plan_format": 1,
+ "plan_id": "IC6",
+ "row": {
+  "suite": "ldbc-ic",
+  "predicted_v1_support": "yes",
+  "predicted_verdict_detail": "yes",
+  "compilation_source": "forecast.yaml IC6 (DERIVED)",
+  "note": "bounded(1,2) KNOWS (dedup at minimum depth; the a=1 floor drops the start person, so `NOT person = friend` needs no Filter) -> exact(1) HAS_CREATOR dir=in -> TypeConstraint(post,[Post]) -> PatternMatch with two HAS_TAG edges branching from one bound post (R1/§2.9 — the case R1's normalized rule adds) -> PropertyPredicate(knownTag.name = $tagName) -> Filter(tag != knownTag) -> Aggregate(group_by=[tagName], count) -> Order -> Limit(10), exactly as the forecast writes it. All inner joins, no null aggregands. Sole residual was `var-length-bounded`, in v1 under R6 (§2.3). §8.5's edge-isomorphism over identities already forbids the two HAS_TAG edge variables binding one eid; the Filter is the reference's `NOT tag = knownTag` on the *nodes*.",
+  "compilation_note": "COHORT PUSHDOWN IS BOUND ON THE TWO EDGE VARIABLES, NOT ON THE NODE VARIABLE. The forecast says 'one bound post'; §2.9 and `PatternMatch.__post_init__` both admit a node-variable `sources` entry, but `tgms/tgir/eval/pattern.py::_domain` consults `sources` only by *edge* variable (`sources.get(edge.var)`), so `Source(var='post', ...)` loads and validates and is then silently ignored — the pattern would fall back to a full HAS_TAG EdgeScan and match every post in the store. Binding both HAS_TAG edge variables to the cohort's own HAS_TAG expansion (Expand(HAS_TAG, out, exact(1), edge_var=tagEdge) over the friends' posts) restricts the identical relation: both pattern edges share `post`, so `post` in the friend cohort holds exactly when both edges lie in that domain. Semantics unchanged (§2.9: 'the pushed and un-pushed forms must be semantically identical'); the binding site moves."
+ },
+ "params": {"personId": "1", "tagName": "Tag1"},
+ "sigma": {"t_v": [[0, 4611686018427387904]], "t_b": 4611686018427387904},
+ "root": {
+  "op": "Limit", "n": 10,
+  "inputs": [
+   {
+    "op": "Order",
+    "keys": [
+     {"key": {"col": "postCount"}, "dir": "desc", "nulls": "nulls_last"},
+     {"key": {"col": "tagName"}, "dir": "asc", "nulls": "nulls_last"}
+    ],
+    "inputs": [
+     {
+      "op": "Aggregate",
+      "group_by": [["tagName", {"prop": ["tag.props", "name"]}]],
+      "aggregates": [{"fn": "count", "alias": "postCount", "of": null}],
+      "inputs": [
+       {
+        "op": "Filter",
+        "pred": {"cmp": "!=", "l": {"col": "tag.uid"}, "r": {"col": "knownTag.uid"}},
+        "inputs": [
+         {
+          "op": "PropertyPredicate",
+          "var": "knownTag", "prop": "name", "cmp": "=", "value": "$tagName",
+          "inputs": [
+           {
+            "op": "PatternMatch",
+            "pattern": {
+             "nodes": [
+              {"var": "post", "label": "Post"},
+              {"var": "knownTag", "label": "Tag"},
+              {"var": "tag", "label": "Tag"}
+             ],
+             "edges": [
+              {"var": "kt", "src": "post", "dst": "knownTag", "rel_type": "HAS_TAG", "directed": true},
+              {"var": "ht", "src": "post", "dst": "tag", "rel_type": "HAS_TAG", "directed": true}
+             ]
+            },
+            "sources": [
+             {
+              "var": "kt",
+              "column": "tagEdge.eid",
+              "relation": {
+               "op": "Expand",
+               "from": "post", "into": "cohortTag", "dir": "out",
+               "hops": {"exact": 1}, "rel_type": "HAS_TAG", "edge_var": "tagEdge",
+               "inputs": [
+                {
+                 "op": "TypeConstraint", "var": "post", "labels": ["Post"],
+                 "inputs": [
+                  {
+                   "op": "Expand",
+                   "from": "friend", "into": "post", "dir": "in",
+                   "hops": {"exact": 1}, "rel_type": "HAS_CREATOR",
+                   "inputs": [
+                    {
+                     "op": "Expand",
+                     "from": "p", "into": "friend", "dir": "both",
+                     "hops": {"bounded": [1, 2]}, "rel_type": "KNOWS",
+                     "inputs": [
+                      {"op": "NodeScan", "as": "p", "uids": ["$personId"], "labels": ["Person"],
+                       "belief": "current", "vt_mode": "overlap"}
+                     ]
+                    }
+                   ]
+                  }
+                 ]
+                }
+               ]
+              }
+             },
+             {
+              "var": "ht",
+              "column": "tagEdge.eid",
+              "relation": {
+               "op": "Expand",
+               "from": "post", "into": "cohortTag", "dir": "out",
+               "hops": {"exact": 1}, "rel_type": "HAS_TAG", "edge_var": "tagEdge",
+               "inputs": [
+                {
+                 "op": "TypeConstraint", "var": "post", "labels": ["Post"],
+                 "inputs": [
+                  {
+                   "op": "Expand",
+                   "from": "friend", "into": "post", "dir": "in",
+                   "hops": {"exact": 1}, "rel_type": "HAS_CREATOR",
+                   "inputs": [
+                    {
+                     "op": "Expand",
+                     "from": "p", "into": "friend", "dir": "both",
+                     "hops": {"bounded": [1, 2]}, "rel_type": "KNOWS",
+                     "inputs": [
+                      {"op": "NodeScan", "as": "p", "uids": ["$personId"], "labels": ["Person"],
+                       "belief": "current", "vt_mode": "overlap"}
+                     ]
+                    }
+                   ]
+                  }
+                 ]
+                }
+               ]
+              }
+             }
+            ]
+           }
+          ]
+         }
+        ]
+       }
+      ]
+     }
+    ]
+   }
+  ]
+ }
+}

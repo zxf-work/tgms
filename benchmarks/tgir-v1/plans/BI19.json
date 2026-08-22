@@ -1,0 +1,21 @@
+{
+ "plan_format": 1,
+ "plan_id": "BI19",
+ "row": {
+  "suite": "ldbc-bi",
+  "predicted_v1_support": "no",
+  "predicted_verdict_detail": "no",
+  "compilation_source": "forecast.yaml BI19 (frozen 2026-08-21)"
+ },
+ "root": null,
+ "blocked_by": {
+  "residuals": [
+   "path-weighted-shortest",
+   "path-derived-weight"
+  ],
+  "verdict_detail": "no",
+  "why": "Weighted shortest path over weights derived by aggregation over a pattern \u2014 two \u00a71.4 path-family labels, neither reducible to \u00a72.3's structural closure.",
+  "attempted": "",
+  "notes": ""
+ }
+}

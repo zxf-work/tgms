@@ -1,0 +1,101 @@
+{
+ "plan_format": 1,
+ "plan_id": "BI7",
+ "row": {
+  "suite": "ldbc-bi",
+  "predicted_v1_support": "yes",
+  "predicted_verdict_detail": "yes",
+  "compilation_source": "forecast.yaml BI7 (GATE-COMPILED, §2.1)",
+  "note": "The $tag node feeds both the main branch and the probe. HAS_TAG in -> message; REPLY_OF in -> comment; TypeConstraint([Comment]); Join{anti} on comment.uid against the same tag's own tagged-message set (R3 absorbs `WHERE NOT (comment)-[:HAS_TAG]->(tag)`); HAS_TAG out -> relatedTag; Aggregate(group_by=[relatedTag.props.name], [count_distinct(comment.uid)]); Order; Limit(100). §2.8's completeness precondition on the probe is satisfied — no Limit below it."
+ },
+ "params": {"tagName": "Tag1"},
+ "sigma": {"t_v": [[0, 4611686018427387904]], "t_b": 4611686018427387904},
+ "root": {
+  "op": "Limit",
+  "n": 100,
+  "inputs": [
+   {
+    "op": "Order",
+    "keys": [
+     {"key": {"col": "relatedTagCount"}, "dir": "desc", "nulls": "nulls_last"},
+     {"key": {"col": "relatedTagName"}, "dir": "asc", "nulls": "nulls_last"}
+    ],
+    "inputs": [
+     {
+      "op": "Aggregate",
+      "group_by": [["relatedTagName", {"prop": ["relatedTag.props", "name"]}]],
+      "aggregates": [
+       {"fn": "count_distinct", "alias": "relatedTagCount", "of": {"col": "comment.uid"}}
+      ],
+      "inputs": [
+       {
+        "op": "Expand",
+        "from": "comment", "into": "relatedTag", "dir": "out",
+        "hops": {"exact": 1}, "rel_type": "HAS_TAG",
+        "inputs": [
+         {
+          "op": "Join",
+          "type": "anti",
+          "on": [["comment.uid", "taggedMessageId"]],
+          "inputs": [
+           {
+            "op": "TypeConstraint",
+            "var": "comment", "labels": ["Comment"],
+            "inputs": [
+             {
+              "op": "Expand",
+              "from": "message", "into": "comment", "dir": "in",
+              "hops": {"exact": 1}, "rel_type": "REPLY_OF",
+              "inputs": [
+               {
+                "op": "Expand",
+                "from": "tag", "into": "message", "dir": "in",
+                "hops": {"exact": 1}, "rel_type": "HAS_TAG",
+                "inputs": [
+                 {
+                  "op": "PropertyPredicate",
+                  "var": "tag", "prop": "name", "cmp": "=", "value": "$tagName",
+                  "inputs": [
+                   {"op": "NodeScan", "as": "tag", "labels": ["Tag"],
+                    "belief": "current", "vt_mode": "overlap"}
+                  ]
+                 }
+                ]
+               }
+              ]
+             }
+            ]
+           },
+           {
+            "op": "Project",
+            "keep": "listed",
+            "bindings": [["taggedMessageId", {"col": "probeMessage.uid"}]],
+            "inputs": [
+             {
+              "op": "Expand",
+              "from": "probeTag", "into": "probeMessage", "dir": "in",
+              "hops": {"exact": 1}, "rel_type": "HAS_TAG",
+              "inputs": [
+               {
+                "op": "PropertyPredicate",
+                "var": "probeTag", "prop": "name", "cmp": "=", "value": "$tagName",
+                "inputs": [
+                 {"op": "NodeScan", "as": "probeTag", "labels": ["Tag"],
+                  "belief": "current", "vt_mode": "overlap"}
+                ]
+               }
+              ]
+             }
+            ]
+           }
+          ]
+         }
+        ]
+       }
+      ]
+     }
+    ]
+   }
+  ]
+ }
+}

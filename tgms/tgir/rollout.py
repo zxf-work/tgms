@@ -47,10 +47,38 @@ def plan_path_enabled() -> bool:
 
 Mode = Literal["leaf", "shadow", "compiled"]
 
-#: M2.4's per-operator rollout table. Every operator is `leaf` in M2, which is
-#: §8.12's ruling and a legitimate exit state: M2.4 exists to *prove* the core
-#: end-to-end, not to ship it.
-COMPILE_MODE: dict[str, Mode] = {}
+#: The per-operator rollout table. **Every operator is `leaf`**, which is
+#: §8.12's ruling and a legitimate exit state: a compiled path exists to *prove*
+#: the core is expressive enough, not to ship it.
+#:
+#: **Coordinator ruling (M3.3, cut to a two-operator minimum).** Only
+#: `entity_history` and `version_history` were compiled. `snapshot_subgraph`,
+#: `diff_snapshots` and the `aggregate_events` fragment **stay `leaf`
+#: permanently** — the decision, and its reason:
+#:
+#: - They deliver **no forecast row**. §6's five COMPILE rows were about proving
+#:   the core end-to-end; M3.0–M3.2 proved that against `entity_history`,
+#:   `version_history`, `bfs_node_set`, `compute join` and bo33's nine-edge
+#:   motif on real data, so a further three compilations would re-prove a
+#:   settled point at an estimated 7–9 days.
+#: - §6's **safety valve** (§8.12) blesses the outcome in as many words: falling
+#:   back to the leaf is "a *recorded deviation with a D-entry*, never a silent
+#:   substitution". This comment plus the D-entry is that record.
+#: - Each carries a specific cost the valve exists for: `diff_snapshots`
+#:   compiled is **carve-reachable while its leaf is not** (§6 #4), so compiling
+#:   it would *lose freshness precision* to gain nothing; `snapshot_subgraph`
+#:   needs a per-hop `Join{inner}` against `NodeScan @ instant($t)` plus a
+#:   two-root reassembly of two independently-capped lists with one merged
+#:   truncation signal (§9.1); `aggregate_events` has a five-item opaque residue
+#:   whose default-deny allowlist is a semantics switch where a mis-route costs
+#:   a wrong answer.
+#:
+#: Promoting an entry to `shadow` or `compiled` requires an equivalence receipt
+#: **plus** a D-entry **plus** a non-gating scope-diff receipt.
+COMPILE_MODE: dict[str, Mode] = {
+    "entity_history": "leaf",
+    "version_history": "leaf",
+}
 
 
 def compile_mode(op: str) -> Mode:

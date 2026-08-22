@@ -1,0 +1,21 @@
+{
+ "plan_format": 1,
+ "plan_id": "BI13",
+ "row": {
+  "suite": "ldbc-bi",
+  "predicted_v1_support": "no",
+  "predicted_verdict_detail": "partial-rows",
+  "compilation_source": "forecast.yaml BI13 (frozen 2026-08-21)"
+ },
+ "root": null,
+ "blocked_by": {
+  "residuals": [
+   "calendar-unit-extraction",
+   "arithmetic-over-aggregates"
+  ],
+  "verdict_detail": "partial-rows",
+  "why": "Both residuals are row-determining: the calendar MONTH count feeds `WHERE messageCount/months < 1`, which decides zombie membership and then feeds a semi-join, and zombieScore (a ratio of two aggregates) is the sort key under Limit(100). \u00a72.7 excludes non-uniform calendar units and two-aggregate arithmetic.",
+  "attempted": "",
+  "notes": ""
+ }
+}

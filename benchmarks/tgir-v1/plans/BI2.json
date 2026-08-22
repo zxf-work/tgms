@@ -1,0 +1,20 @@
+{
+ "plan_format": 1,
+ "plan_id": "BI2",
+ "row": {
+  "suite": "ldbc-bi",
+  "predicted_v1_support": "no",
+  "predicted_verdict_detail": "partial-rows",
+  "compilation_source": "forecast.yaml BI2 (frozen 2026-08-21)"
+ },
+ "root": null,
+ "blocked_by": {
+  "residuals": [
+   "arithmetic-over-aggregates"
+  ],
+  "verdict_detail": "partial-rows",
+  "why": "`abs(countWindow1 \u2212 countWindow2)` combines two aggregate output columns \u2014 \u00a72.7's explicitly excluded case \u2014 and it is ORDER BY diff DESC under Limit(100), so R4 calls it row-determining. The underlying (tag, count1, count2) relation is exactly right; only the top-100 selection breaks.",
+  "attempted": "",
+  "notes": ""
+ }
+}

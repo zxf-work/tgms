@@ -33,7 +33,7 @@ derive-vectors:
 	$(UV) run python scripts/gen_derive_vectors.py
 
 ci: lint rust-lint hygiene rust-test digest-stability ttq-semantics leaf-totality \
-    scope-shape core-equivalence
+    scope-shape core-equivalence compile-equivalence
 	TGMS_HYP_EXAMPLES=50 $(UV) run pytest tests/ -q
 
 # M2 §8.4: a suite proves the payload matches the oracle; a frozen digest
@@ -65,6 +65,12 @@ scope-shape:
 # the evaluators agreeing with themselves.
 core-equivalence:
 	$(UV) run python scripts/check_core_equivalence.py
+
+# M3.3's gate: the two compiled operators against their leaves, byte-identical
+# by `canonical_json(payload_of(envelope))` on both backends. It builds its own
+# store, so unlike the plan-artifact validator it needs nothing gitignored.
+compile-equivalence:
+	$(UV) run python scripts/tgir_equiv.py
 
 # spec §8.1: no commit may mix tests//oracle.py with implementation changes
 hygiene:

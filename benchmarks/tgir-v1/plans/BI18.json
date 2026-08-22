@@ -1,0 +1,124 @@
+{
+ "plan_format": 1,
+ "plan_id": "BI18",
+ "row": {
+  "suite": "ldbc-bi",
+  "predicted_v1_support": "yes",
+  "predicted_verdict_detail": "yes",
+  "compilation_source": "forecast.yaml BI18 (GATE-COMPILED, §2.1)",
+  "note": "A fixed-length cyclic PatternMatch — (tag)<-[HAS_INTEREST]-(person1)-[KNOWS]-(mutualFriend)-[KNOWS]-(person2)-[HAS_INTEREST]->(tag) — plus one anti-join, through a construction the row's own sketch does not contain: the undirected `NOT (person1)-[:KNOWS]-(person2)` cannot be a union of two orientations (that would be set-ops), so the probe is **CANONICALIZED** — Project(EdgeScan(KNOWS), [pk := if(src < dst, tuple(src,dst), tuple(dst,src))]) and the same expression on the pair — using §2.7's `if`, `tuple` and `<` on identity types under §4.1's code-point order, with §2.8 admitting tuple join keys. §8.4's ruling that `anti` ACCEPTS duplicate probe keys is what keeps this row unlocked on a corrected store. If a future revision narrows §2.7 (dropping `if`, or `tuple` outside Project), BI18 flips to blocked.",
+  "implementation_note": "The two KNOWS edge patterns carry `directed: false` (the reference's undirected KNOWS) but are oriented person1->mutualFriend and person2->mutualFriend, because tgms/tgir/eval/pattern.py binds src/dst positionally and never consults `directed`, and the fixture stores one edge per friendship. The `tag` cohort is given both as a §2.9 `sources` pushdown and as a PropertyPredicate above the match, because that evaluator consults `sources` only for EDGE variables."
+ },
+ "params": {"tagName": "Tag1"},
+ "sigma": {"t_v": [[0, 4611686018427387904]], "t_b": 4611686018427387904},
+ "root": {
+  "op": "Limit",
+  "n": 20,
+  "inputs": [
+   {
+    "op": "Order",
+    "keys": [
+     {"key": {"col": "mutualFriendCount"}, "dir": "desc", "nulls": "nulls_last"},
+     {"key": {"cast": {"col": "person1Id"}, "to": "int"}, "dir": "asc", "nulls": "nulls_last"},
+     {"key": {"cast": {"col": "person2Id"}, "to": "int"}, "dir": "asc", "nulls": "nulls_last"}
+    ],
+    "inputs": [
+     {
+      "op": "Aggregate",
+      "group_by": [
+       ["person1Id", {"col": "person1.uid"}],
+       ["person2Id", {"col": "person2.uid"}]
+      ],
+      "aggregates": [
+       {"fn": "count_distinct", "alias": "mutualFriendCount",
+        "of": {"col": "mutualFriend.uid"}}
+      ],
+      "inputs": [
+       {
+        "op": "Join",
+        "type": "anti",
+        "on": [["pairKey", "knownPairKey"]],
+        "inputs": [
+         {
+          "op": "Project",
+          "keep": "all",
+          "bindings": [
+           ["pairKey",
+            {"if": [
+              {"cmp": "<", "l": {"col": "person1.uid"}, "r": {"col": "person2.uid"}},
+              {"tuple": [{"col": "person1.uid"}, {"col": "person2.uid"}]},
+              {"tuple": [{"col": "person2.uid"}, {"col": "person1.uid"}]}
+            ]}]
+          ],
+          "inputs": [
+           {
+            "op": "Filter",
+            "pred": {"cmp": "!=", "l": {"col": "person1.uid"}, "r": {"col": "person2.uid"}},
+            "inputs": [
+             {
+              "op": "PropertyPredicate",
+              "var": "tag", "prop": "name", "cmp": "=", "value": "$tagName",
+              "inputs": [
+               {
+                "op": "PatternMatch",
+                "pattern": {
+                 "nodes": [
+                  {"var": "tag", "label": "Tag"},
+                  {"var": "person1", "label": "Person"},
+                  {"var": "mutualFriend", "label": "Person"},
+                  {"var": "person2", "label": "Person"}
+                 ],
+                 "edges": [
+                  {"var": "hi1", "src": "person1", "dst": "tag",
+                   "rel_type": "HAS_INTEREST", "directed": true},
+                  {"var": "k1", "src": "person1", "dst": "mutualFriend",
+                   "rel_type": "KNOWS", "directed": false},
+                  {"var": "k2", "src": "person2", "dst": "mutualFriend",
+                   "rel_type": "KNOWS", "directed": false},
+                  {"var": "hi2", "src": "person2", "dst": "tag",
+                   "rel_type": "HAS_INTEREST", "directed": true}
+                 ]
+                },
+                "sources": [
+                 {"var": "tag", "column": "tag.uid",
+                  "relation": {
+                   "op": "PropertyPredicate",
+                   "var": "tag", "prop": "name", "cmp": "=", "value": "$tagName",
+                   "inputs": [
+                    {"op": "NodeScan", "as": "tag", "labels": ["Tag"],
+                     "belief": "current", "vt_mode": "overlap"}
+                   ]
+                  }}
+                ]
+               }
+              ]
+             }
+            ]
+           }
+          ]
+         },
+         {
+          "op": "Project",
+          "keep": "listed",
+          "bindings": [
+           ["knownPairKey",
+            {"if": [
+              {"cmp": "<", "l": {"col": "knows.src"}, "r": {"col": "knows.dst"}},
+              {"tuple": [{"col": "knows.src"}, {"col": "knows.dst"}]},
+              {"tuple": [{"col": "knows.dst"}, {"col": "knows.src"}]}
+            ]}]
+          ],
+          "inputs": [
+           {"op": "EdgeScan", "as": "knows", "rel_types": ["KNOWS"],
+            "belief": "current", "vt_mode": "overlap"}
+          ]
+         }
+        ]
+       }
+      ]
+     }
+    ]
+   }
+  ]
+ }
+}

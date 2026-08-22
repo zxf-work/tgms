@@ -1,0 +1,189 @@
+{
+ "plan_format": 1,
+ "plan_id": "bo35",
+ "row": {
+  "suite": "independent-bo",
+  "predicted_v1_support": "yes",
+  "predicted_verdict_detail": "yes",
+  "compilation_source": "forecast.yaml bo35 (DERIVED; frozen 2026-08-21)",
+  "note": "EdgeScan(TRUST) → PropertyPredicate(rating > 0) → PatternMatch of the positive 3-cycle (X)-[e1]->(Z)-[e2]->(Y)-[e3]->(X) with ALL THREE edge variables sourced (R1/§2.9) → Join{anti} on tuple(X.uid, Y.uid) against an UNWINDOWED TRUST scan (the absent chord X→Y is an absence over the full valid-time extent, any rating) → Aggregate([], count_distinct(X)). Node distinctness is forced by the cycle plus the absence of self-ratings, so no Filter is written — the forecast says so in terms. Duplicate probe keys are harmless on `anti` (§8.4). DEVIATION OF FORM ONLY: the tuple probe key is the two-column key pair [(X.uid, probe_src), (Y.uid, probe_dst)], since §2.8's `on` is a list of column pairs and the evaluator hashes several key columns as one tuple."
+ },
+ "params": {
+  "rel": "TRUST",
+  "rating_min": 0,
+  "store": "stores/bitcoinotc",
+  "store_facts": "35592 TRUST edge versions, 32029 positive, no self-ratings",
+  "sample_uid_src": "n6",
+  "sample_uid_dst": "n2"
+ },
+ "sigma": {
+  "t_v": [
+   [
+    0,
+    4611686018427387904
+   ]
+  ],
+  "t_b": 4611686018427387904
+ },
+ "root": {
+  "op": "Aggregate",
+  "group_by": [],
+  "aggregates": [
+   {
+    "fn": "count_distinct",
+    "alias": "n",
+    "of": {
+     "col": "X.uid"
+    }
+   }
+  ],
+  "inputs": [
+   {
+    "op": "Join",
+    "type": "anti",
+    "on": [
+     [
+      "X.uid",
+      "probe_src"
+     ],
+     [
+      "Y.uid",
+      "probe_dst"
+     ]
+    ],
+    "inputs": [
+     {
+      "op": "PatternMatch",
+      "pattern": {
+       "nodes": [
+        {
+         "var": "X"
+        },
+        {
+         "var": "Z"
+        },
+        {
+         "var": "Y"
+        }
+       ],
+       "edges": [
+        {
+         "var": "e1",
+         "src": "X",
+         "dst": "Z",
+         "rel_type": "$rel"
+        },
+        {
+         "var": "e2",
+         "src": "Z",
+         "dst": "Y",
+         "rel_type": "$rel"
+        },
+        {
+         "var": "e3",
+         "src": "Y",
+         "dst": "X",
+         "rel_type": "$rel"
+        }
+       ]
+      },
+      "sources": [
+       {
+        "var": "e1",
+        "relation": {
+         "op": "PropertyPredicate",
+         "var": "e",
+         "prop": "rating",
+         "cmp": ">",
+         "value": "$rating_min",
+         "inputs": [
+          {
+           "op": "EdgeScan",
+           "as": "e",
+           "rel_types": [
+            "$rel"
+           ],
+           "belief": "current",
+           "vt_mode": "overlap"
+          }
+         ]
+        }
+       },
+       {
+        "var": "e2",
+        "relation": {
+         "op": "PropertyPredicate",
+         "var": "e",
+         "prop": "rating",
+         "cmp": ">",
+         "value": "$rating_min",
+         "inputs": [
+          {
+           "op": "EdgeScan",
+           "as": "e",
+           "rel_types": [
+            "$rel"
+           ],
+           "belief": "current",
+           "vt_mode": "overlap"
+          }
+         ]
+        }
+       },
+       {
+        "var": "e3",
+        "relation": {
+         "op": "PropertyPredicate",
+         "var": "e",
+         "prop": "rating",
+         "cmp": ">",
+         "value": "$rating_min",
+         "inputs": [
+          {
+           "op": "EdgeScan",
+           "as": "e",
+           "rel_types": [
+            "$rel"
+           ],
+           "belief": "current",
+           "vt_mode": "overlap"
+          }
+         ]
+        }
+       }
+      ]
+     },
+     {
+      "op": "Project",
+      "keep": "listed",
+      "bindings": [
+       [
+        "probe_src",
+        {
+         "col": "xy.src"
+        }
+       ],
+       [
+        "probe_dst",
+        {
+         "col": "xy.dst"
+        }
+       ]
+      ],
+      "inputs": [
+       {
+        "op": "EdgeScan",
+        "as": "xy",
+        "rel_types": [
+         "$rel"
+        ],
+        "belief": "current",
+        "vt_mode": "overlap"
+       }
+      ]
+     }
+    ]
+   }
+  ]
+ }
+}

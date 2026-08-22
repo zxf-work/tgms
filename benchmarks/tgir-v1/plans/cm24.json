@@ -1,0 +1,20 @@
+{
+ "plan_format": 1,
+ "plan_id": "cm24",
+ "row": {
+  "suite": "independent-cm",
+  "predicted_v1_support": "no",
+  "predicted_verdict_detail": "no",
+  "compilation_source": "forecast.yaml cm24 (frozen 2026-08-21)"
+ },
+ "root": null,
+ "blocked_by": {
+  "residuals": [
+   "seq-consecutive-pair"
+  ],
+  "verdict_detail": "no",
+  "why": "As cm14: adjacency in a vt_s-ordered per-group stream with both elements' attributes bound to one row. \u00a71.4 non-goal.",
+  "attempted": "",
+  "notes": ""
+ }
+}

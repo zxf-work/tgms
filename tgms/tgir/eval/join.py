@@ -25,7 +25,6 @@ from typing import Any
 
 import numpy as np
 
-from tgms.core.errors import InternalError
 from tgms.tgir.eval.select import check_join_keys
 from tgms.tgir.node import Join
 from tgms.tgir.relation import Relation
@@ -60,11 +59,15 @@ def eval_join(node: Join, left: Relation, right: Relation) -> Relation:
 
     taken_left = left.take(np.array(left_idx, dtype=np.int64))
     taken_right = right.take(np.array(right_idx, dtype=np.int64))
-    out = taken_left.with_columns(taken_right.schema, taken_right.cols,
-                                  taken_right.nulls)
-    if out.schema.names != node.out_schema.names:  # pragma: no cover - guard
-        raise InternalError("join output schema drifted from the plan's")
-    return out
+    # No assertion against `node.out_schema` here: that is the *declared*
+    # schema, and column pruning (`tgms/tgir/prune.py`) legitimately realizes a
+    # subset of it. An equality check fired on any pruned join — declared 49
+    # columns, realized 11 — which made pruning look like a defect when it is
+    # the design. The output's shape is guaranteed structurally instead: it is
+    # the concatenation of the two inputs' realized schemas, and `concat`
+    # already refuses a collision.
+    return taken_left.with_columns(taken_right.schema, taken_right.cols,
+                                   taken_right.nulls)
 
 
 def _left_outer(node: Join, left: Relation, right: Relation) -> Relation:

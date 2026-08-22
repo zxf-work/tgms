@@ -49,15 +49,46 @@ def eval_pattern(node: PatternMatch, sources: dict[str, Relation], adapter: Any,
                  budget: Any = None) -> Relation:
     domains = {edge.var: _domain(node, edge, sources, adapter)
                for edge in node.pattern.edge_pats}
+    node_domains = _node_domains(node, sources)
 
     order = _search_order(node, domains)
-    bindings = _Bindings()
+    bindings = _Bindings(node_domains)
     for edge in order:
         bindings.extend(edge, domains[edge.var])
         if budget is not None:
             budget.charge(bindings.n)
 
     return _materialize(node, bindings, adapter, live)
+
+
+def _node_domains(node: PatternMatch,
+                  sources: dict[str, Relation]) -> dict[str, set]:
+    """`sources` on a **node** variable restricts that variable's uids.
+
+    §2.9 makes the pushed and un-pushed forms semantically identical, so a node
+    cohort has to actually restrict: without this the entry was validated,
+    evaluated and then ignored, and a plan naming an empty cohort still
+    returned matches. BI11's cohort (`a, b, c IN personsInCountry`) is exactly
+    this shape.
+    """
+    edge_vars = {p.var for p in node.pattern.edge_pats}
+    out: dict[str, set] = {}
+    for source in node.sources:
+        if source.var in edge_vars:
+            continue
+        relation = sources.get(source.var)
+        if relation is None:
+            continue
+        column = source.column or _sole_uid_column(relation)
+        if column is None:
+            continue
+        out[source.var] = set(relation.column(column).tolist())
+    return out
+
+
+def _sole_uid_column(relation: Relation) -> str | None:
+    columns = [c.name for c in relation.schema if c.tau.base == "uid"]
+    return columns[0] if len(columns) == 1 else None
 
 
 # ---------------------------------------------------------------------------
@@ -139,7 +170,9 @@ class _Bindings:
     schema is assembled once at the end, in declaration order.
     """
 
-    def __init__(self) -> None:
+    def __init__(self, node_domains: dict[str, set] | None = None) -> None:
+        #: `sources` restrictions on node variables, applied as each one binds
+        self.node_domains = node_domains or {}
         self.node_vars: list[str] = []
         self.edge_vars: list[str] = []
         self.nodes: dict[str, list[Any]] = {}
@@ -150,6 +183,7 @@ class _Bindings:
     def extend(self, edge: EdgePat, domain: dict[str, np.ndarray]) -> None:
         if not self._seeded:
             self._seed(edge, domain)
+            self._restrict()
             return
         shared = [v for v in (edge.src, edge.dst) if v in self.nodes]
         index: dict[Any, list[int]] = defaultdict(list)
@@ -170,6 +204,25 @@ class _Bindings:
                 left_idx.append(row)
                 right_idx.append(i)
         self._apply(edge, domain, left_idx, right_idx)
+        self._restrict()
+
+    def _restrict(self) -> None:
+        """Drop rows whose bound node variables fall outside their `sources`
+        cohort. Applied after every stage rather than once at the end, so a
+        cohort prunes the search instead of only filtering its output."""
+        if not self.node_domains:
+            return
+        keep = [i for i in range(self.n)
+                if all(self.nodes[var][i] in allowed
+                       for var, allowed in self.node_domains.items()
+                       if var in self.nodes)]
+        if len(keep) == self.n:
+            return
+        self.nodes = {var: [values[i] for i in keep]
+                      for var, values in self.nodes.items()}
+        self.edges = {var: {c: [values[c][i] for i in keep] for c in _KEY_COLUMNS}
+                      for var, values in self.edges.items()}
+        self.n = len(keep)
 
     def _seed(self, edge: EdgePat, domain: dict[str, np.ndarray]) -> None:
         size = len(domain["eid"])

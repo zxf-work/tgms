@@ -1,0 +1,21 @@
+{
+ "plan_format": 1,
+ "plan_id": "cm6",
+ "row": {
+  "suite": "independent-cm",
+  "predicted_v1_support": "no",
+  "predicted_verdict_detail": "no",
+  "compilation_source": "forecast.yaml cm6 (frozen 2026-08-21)"
+ },
+ "root": null,
+ "blocked_by": {
+  "residuals": [
+   "path-longest-chain",
+   "path-temporal-ordering"
+  ],
+  "verdict_detail": "no",
+  "why": "As bo34: \u00a72.3 restriction 2 makes R6's unbounded Expand structural only, so time-respecting expansion and the global longest chain both stay outside (\u00a71.4).",
+  "attempted": "",
+  "notes": ""
+ }
+}

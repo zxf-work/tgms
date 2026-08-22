@@ -1,0 +1,23 @@
+{
+ "plan_format": 1,
+ "plan_id": "IC10",
+ "row": {
+  "suite": "ldbc-ic",
+  "predicted_v1_support": "no",
+  "predicted_verdict_detail": "partial-rows",
+  "compilation_source": "forecast.yaml IC10 (frozen 2026-08-21)"
+ },
+ "root": null,
+ "blocked_by": {
+  "residuals": [
+   "calendar-unit-extraction",
+   "list-aggregation",
+   "conditional-aggregate",
+   "arithmetic-over-aggregates"
+  ],
+  "verdict_detail": "partial-rows",
+  "why": "All four scalar residuals are row-determining: the birthday month/day window is a WHERE (\u00a72.7 excludes non-uniform calendar units), and collect(post)/size(...)/ the score chain is the sort key under Limit(10) (\u00a74.1: no list type). The exemplar R4 names. `KNOWS*2..2` itself is fixed-length under R1 and costs nothing.",
+  "attempted": "",
+  "notes": ""
+ }
+}

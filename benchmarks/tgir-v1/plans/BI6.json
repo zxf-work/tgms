@@ -1,0 +1,136 @@
+{
+ "plan_format": 1,
+ "plan_id": "BI6",
+ "row": {
+  "suite": "ldbc-bi",
+  "predicted_v1_support": "yes",
+  "predicted_verdict_detail": "yes",
+  "compilation_source": "forecast.yaml BI6 (DERIVED)",
+  "note": "A five-hop typed expansion closed by count_distinct over the LIKES **edge identity**. The two OPTIONAL MATCHes compile as Join{left_outer} against separately computed Expand relations — §2.3's frozen `Expand` signature carries NO `optional` form, so B1's `Expand(..., optional)` shorthand is read as R3's join. §8.4's left_outer multiplication is harmless because the aggregate is count_distinct over `eid`, and no coalesce is needed because count_distinct over an all-null group is 0 rather than null (§2.10's empty-live-set rule). §2.8's completeness precondition holds on both probes — no Limit below either."
+ },
+ "params": {"tagName": "Tag1"},
+ "sigma": {"t_v": [[0, 4611686018427387904]], "t_b": 4611686018427387904},
+ "root": {
+  "op": "Limit",
+  "n": 100,
+  "inputs": [
+   {
+    "op": "Order",
+    "keys": [
+     {"key": {"col": "authorityScore"}, "dir": "desc", "nulls": "nulls_last"},
+     {"key": {"cast": {"col": "personId"}, "to": "int"}, "dir": "asc", "nulls": "nulls_last"}
+    ],
+    "inputs": [
+     {
+      "op": "Aggregate",
+      "group_by": [["personId", {"col": "person1.uid"}]],
+      "aggregates": [
+       {"fn": "count_distinct", "alias": "authorityScore", "of": {"col": "likeEid"}}
+      ],
+      "inputs": [
+       {
+        "op": "Join",
+        "type": "left_outer",
+        "on": [["likerId", "likedPersonId"]],
+        "inputs": [
+         {
+          "op": "Join",
+          "type": "left_outer",
+          "on": [["message1.uid", "likedMessageId"]],
+          "inputs": [
+           {
+            "op": "TypeConstraint",
+            "var": "person1", "labels": ["Person"],
+            "inputs": [
+             {
+              "op": "Expand",
+              "from": "message1", "into": "person1", "dir": "out",
+              "hops": {"exact": 1}, "rel_type": "HAS_CREATOR",
+              "inputs": [
+               {
+                "op": "Expand",
+                "from": "tag", "into": "message1", "dir": "in",
+                "hops": {"exact": 1}, "rel_type": "HAS_TAG",
+                "inputs": [
+                 {
+                  "op": "PropertyPredicate",
+                  "var": "tag", "prop": "name", "cmp": "=", "value": "$tagName",
+                  "inputs": [
+                   {"op": "NodeScan", "as": "tag", "labels": ["Tag"],
+                    "belief": "current", "vt_mode": "overlap"}
+                  ]
+                 }
+                ]
+               }
+              ]
+             }
+            ]
+           },
+           {
+            "op": "Project",
+            "keep": "listed",
+            "bindings": [
+             ["likedMessageId", {"col": "likedMessage.uid"}],
+             ["likerId", {"col": "liker.uid"}]
+            ],
+            "inputs": [
+             {
+              "op": "TypeConstraint",
+              "var": "liker", "labels": ["Person"],
+              "inputs": [
+               {
+                "op": "Expand",
+                "from": "likedMessage", "into": "liker", "dir": "in",
+                "hops": {"exact": 1}, "rel_type": "LIKES",
+                "inputs": [
+                 {"op": "NodeScan", "as": "likedMessage", "labels": ["Post", "Comment"],
+                  "belief": "current", "vt_mode": "overlap"}
+                ]
+               }
+              ]
+             }
+            ]
+           }
+          ]
+         },
+         {
+          "op": "Project",
+          "keep": "listed",
+          "bindings": [
+           ["likedPersonId", {"col": "author2.uid"}],
+           ["likeEid", {"col": "likeEdge.eid"}]
+          ],
+          "inputs": [
+           {
+            "op": "Expand",
+            "from": "message2", "into": "liker3", "dir": "in",
+            "hops": {"exact": 1}, "rel_type": "LIKES", "edge_var": "likeEdge",
+            "inputs": [
+             {
+              "op": "TypeConstraint",
+              "var": "message2", "labels": ["Post", "Comment"],
+              "inputs": [
+               {
+                "op": "Expand",
+                "from": "author2", "into": "message2", "dir": "in",
+                "hops": {"exact": 1}, "rel_type": "HAS_CREATOR",
+                "inputs": [
+                 {"op": "NodeScan", "as": "author2", "labels": ["Person"],
+                  "belief": "current", "vt_mode": "overlap"}
+                ]
+               }
+              ]
+             }
+            ]
+           }
+          ]
+         }
+        ]
+       }
+      ]
+     }
+    ]
+   }
+  ]
+ }
+}

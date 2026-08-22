@@ -1,0 +1,54 @@
+{
+ "plan_format": 1,
+ "plan_id": "IS6",
+ "row": {
+  "suite": "ldbc-is",
+  "predicted_v1_support": "yes",
+  "predicted_verdict_detail": "yes",
+  "compilation_source": "forecast.yaml IS6 (DERIVED)",
+  "note": "NodeScan(labels=[Post,Comment], uids=[$messageId]) -> Expand(REPLY_OF, out, unbounded(0)) -> TypeConstraint(post,[Post]) (§2.6) -> exact(1) CONTAINER_OF dir=in -> exact(1) HAS_MODERATOR dir=out -> Project, exactly as the forecast writes it. The sole residual was `var-length-unbounded`, in v1 under R6 (§2.3); the 0-hop case keeps a message that is already the root Post. `Message` is the bind-time labels union [Post, Comment] (§8.17 / FREEZE §7.4, which lists IS6 among the thirteen rows that ruling is load-bearing for)."
+ },
+ "params": {"messageId": "203"},
+ "sigma": {"t_v": [[0, 4611686018427387904]], "t_b": 4611686018427387904},
+ "root": {
+  "op": "Project",
+  "keep": "listed",
+  "bindings": [
+   ["forumId", {"col": "forum.uid"}],
+   ["forumTitle", {"prop": ["forum.props", "title"]}],
+   ["moderatorId", {"col": "moderator.uid"}],
+   ["moderatorFirstName", {"prop": ["moderator.props", "firstName"]}],
+   ["moderatorLastName", {"prop": ["moderator.props", "lastName"]}]
+  ],
+  "inputs": [
+   {
+    "op": "Expand",
+    "from": "forum", "into": "moderator", "dir": "out",
+    "hops": {"exact": 1}, "rel_type": "HAS_MODERATOR",
+    "inputs": [
+     {
+      "op": "Expand",
+      "from": "post", "into": "forum", "dir": "in",
+      "hops": {"exact": 1}, "rel_type": "CONTAINER_OF",
+      "inputs": [
+       {
+        "op": "TypeConstraint", "var": "post", "labels": ["Post"],
+        "inputs": [
+         {
+          "op": "Expand",
+          "from": "m", "into": "post", "dir": "out",
+          "hops": {"unbounded": 0}, "rel_type": "REPLY_OF",
+          "inputs": [
+           {"op": "NodeScan", "as": "m", "uids": ["$messageId"],
+            "labels": ["Post", "Comment"], "belief": "current", "vt_mode": "overlap"}
+          ]
+         }
+        ]
+       }
+      ]
+     }
+    ]
+   }
+  ]
+ }
+}

@@ -1,0 +1,21 @@
+{
+ "plan_format": 1,
+ "plan_id": "IC3",
+ "row": {
+  "suite": "ldbc-ic",
+  "predicted_v1_support": "no",
+  "predicted_verdict_detail": "partial-rows",
+  "compilation_source": "forecast.yaml IC3 (frozen 2026-08-21)"
+ },
+ "root": null,
+ "blocked_by": {
+  "residuals": [
+   "conditional-aggregate",
+   "arithmetic-over-aggregates"
+  ],
+  "verdict_detail": "partial-rows",
+  "why": "R6 clears the `var-length-bounded` residual, which is exactly why IC3 moves from `no` to `partial-rows` \u2014 but both scalar residuals are row-determining (`WHERE xCount>0 AND yCount>0`; `xCount+yCount` as sort key under Limit(20)), and \u00a72.7 excludes any expression combining two aggregate output columns. R4 \u2192 BLOCKED.",
+  "attempted": "",
+  "notes": ""
+ }
+}

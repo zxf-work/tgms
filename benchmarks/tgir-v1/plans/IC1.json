@@ -1,0 +1,21 @@
+{
+ "plan_format": 1,
+ "plan_id": "IC1",
+ "row": {
+  "suite": "ldbc-ic",
+  "predicted_v1_support": "no",
+  "predicted_verdict_detail": "no",
+  "compilation_source": "forecast.yaml IC1 (frozen 2026-08-21)"
+ },
+ "root": null,
+ "blocked_by": {
+  "residuals": [
+   "path-shortest-length",
+   "list-aggregation"
+  ],
+  "verdict_detail": "no",
+  "why": "R6 supplies the `var-length-bounded` hop, but the friend distance is the MINIMUM hop count used as a ranking key (`path-shortest-length`, \u00a71.4 non-goal) \u2014 \u00a72.3's bounded Expand reports `<into>.depth` at minimum j within [a,b], not a global min-distance; and the university/company collections are `list-aggregation` (\u00a74.1: no list type).",
+  "attempted": "",
+  "notes": ""
+ }
+}

@@ -1,0 +1,174 @@
+{
+ "plan_format": 1,
+ "plan_id": "BI10",
+ "row": {
+  "suite": "ldbc-bi",
+  "predicted_v1_support": "yes",
+  "predicted_verdict_detail": "yes",
+  "compilation_source": "forecast.yaml BI10 (DERIVED) + TGIR_FORECAST_FREEZE.md §7.5",
+  "note": "TWO expansions differenced by Join{anti} on node identity: Expand(KNOWS, both, bounded(1, $nearMaxHops)) is the near set, Expand(KNOWS, both, bounded(1, $maxPathDistance)) the far set, and the candidate set is far minus near. **The difference construction is REQUIRED, not an optimization** (FREEZE §7.5, and tgms/tgir/eval/expand.py's `_node_set` says the same): §2.3 deduplicates a `bounded(a,b)` at the minimum j WITHIN [a,b], so a single `bounded($min,$max)` would admit a node whose true minimum distance is below $min — it is not a min-distance band. Then exact(1) IS_LOCATED_IN / IS_PART_OF with a PropertyPredicate on the country, HAS_CREATOR in -> message, a semi-join against the DISTINCT set of messages whose Tag has $tagClass (§2.8), HAS_TAG out -> tag, Aggregate(group_by=[candidate, tag], count_distinct(message)), Order, Limit(100).",
+  "implementation_note": "R5 makes both apoc bounds bind-time known (§4.3), so `$nearMaxHops` is $minPathDistance - 1 resolved at bind time; with $minPathDistance = 2 it is 1. The Join{inner} semi-join takes Project/Aggregate inputs because `eval_join`'s inner branch asserts the realized schema equals the declared one, which a column-pruned scan never satisfies (tgms/tgir/eval/join.py:65)."
+ },
+ "params": {
+  "personId": "6",
+  "nearMaxHops": 1,
+  "maxPathDistance": 3,
+  "country": "Countryland",
+  "tagClass": "Class1"
+ },
+ "sigma": {"t_v": [[0, 4611686018427387904]], "t_b": 4611686018427387904},
+ "root": {
+  "op": "Limit",
+  "n": 100,
+  "inputs": [
+   {
+    "op": "Order",
+    "keys": [
+     {"key": {"col": "messageCount"}, "dir": "desc", "nulls": "nulls_last"},
+     {"key": {"col": "tagName"}, "dir": "asc", "nulls": "nulls_last"},
+     {"key": {"cast": {"col": "candidateId"}, "to": "int"}, "dir": "asc", "nulls": "nulls_last"}
+    ],
+    "inputs": [
+     {
+      "op": "Aggregate",
+      "group_by": [
+       ["candidateId", {"col": "candidateId"}],
+       ["tagName", {"prop": ["tag.props", "name"]}]
+      ],
+      "aggregates": [
+       {"fn": "count_distinct", "alias": "messageCount", "of": {"col": "messageId"}}
+      ],
+      "inputs": [
+       {
+        "op": "Expand",
+        "from": "messageId", "into": "tag", "dir": "out",
+        "hops": {"exact": 1}, "rel_type": "HAS_TAG",
+        "inputs": [
+         {
+          "op": "Join",
+          "type": "inner",
+          "on": [["messageId", "qualifyingMessageId"]],
+          "inputs": [
+           {
+            "op": "Project",
+            "keep": "listed",
+            "bindings": [
+             ["candidateId", {"col": "candidate.uid"}],
+             ["messageId", {"col": "message.uid"}]
+            ],
+            "inputs": [
+             {
+              "op": "TypeConstraint",
+              "var": "message", "labels": ["Post", "Comment"],
+              "inputs": [
+               {
+                "op": "Expand",
+                "from": "candidate", "into": "message", "dir": "in",
+                "hops": {"exact": 1}, "rel_type": "HAS_CREATOR",
+                "inputs": [
+                 {
+                  "op": "PropertyPredicate",
+                  "var": "country", "prop": "name", "cmp": "=", "value": "$country",
+                  "inputs": [
+                   {
+                    "op": "Expand",
+                    "from": "city", "into": "country", "dir": "out",
+                    "hops": {"exact": 1}, "rel_type": "IS_PART_OF",
+                    "inputs": [
+                     {
+                      "op": "Expand",
+                      "from": "candidate", "into": "city", "dir": "out",
+                      "hops": {"exact": 1}, "rel_type": "IS_LOCATED_IN",
+                      "inputs": [
+                       {
+                        "op": "TypeConstraint",
+                        "var": "candidate", "labels": ["Person"],
+                        "inputs": [
+                         {
+                          "op": "Join",
+                          "type": "anti",
+                          "on": [["candidate.uid", "nearId"]],
+                          "inputs": [
+                           {
+                            "op": "Expand",
+                            "from": "start", "into": "candidate", "dir": "both",
+                            "hops": {"bounded": [1, "$maxPathDistance"]}, "rel_type": "KNOWS",
+                            "inputs": [
+                             {"op": "NodeScan", "as": "start", "labels": ["Person"],
+                              "uids": ["$personId"], "belief": "current",
+                              "vt_mode": "overlap"}
+                            ]
+                           },
+                           {
+                            "op": "Project",
+                            "keep": "listed",
+                            "bindings": [["nearId", {"col": "near.uid"}]],
+                            "inputs": [
+                             {
+                              "op": "Expand",
+                              "from": "nearStart", "into": "near", "dir": "both",
+                              "hops": {"bounded": [1, "$nearMaxHops"]}, "rel_type": "KNOWS",
+                              "inputs": [
+                               {"op": "NodeScan", "as": "nearStart", "labels": ["Person"],
+                                "uids": ["$personId"], "belief": "current",
+                                "vt_mode": "overlap"}
+                              ]
+                             }
+                            ]
+                           }
+                          ]
+                         }
+                        ]
+                       }
+                      ]
+                     }
+                    ]
+                   }
+                  ]
+                 }
+                ]
+               }
+              ]
+             }
+            ]
+           },
+           {
+            "op": "Aggregate",
+            "group_by": [["qualifyingMessageId", {"col": "qualifyingMessage.uid"}]],
+            "aggregates": [],
+            "inputs": [
+             {
+              "op": "Expand",
+              "from": "qualifyingTag", "into": "qualifyingMessage", "dir": "in",
+              "hops": {"exact": 1}, "rel_type": "HAS_TAG",
+              "inputs": [
+               {
+                "op": "Expand",
+                "from": "tagClass", "into": "qualifyingTag", "dir": "in",
+                "hops": {"exact": 1}, "rel_type": "HAS_TYPE",
+                "inputs": [
+                 {
+                  "op": "PropertyPredicate",
+                  "var": "tagClass", "prop": "name", "cmp": "=", "value": "$tagClass",
+                  "inputs": [
+                   {"op": "NodeScan", "as": "tagClass", "labels": ["TagClass"],
+                    "belief": "current", "vt_mode": "overlap"}
+                  ]
+                 }
+                ]
+               }
+              ]
+             }
+            ]
+           }
+          ]
+         }
+        ]
+       }
+      ]
+     }
+    ]
+   }
+  ]
+ }
+}

@@ -1,0 +1,21 @@
+{
+ "plan_format": 1,
+ "plan_id": "BI1",
+ "row": {
+  "suite": "ldbc-bi",
+  "predicted_v1_support": "no",
+  "predicted_verdict_detail": "partial-rows",
+  "compilation_source": "forecast.yaml BI1 (frozen 2026-08-21)"
+ },
+ "root": null,
+ "blocked_by": {
+  "residuals": [
+   "calendar-unit-extraction",
+   "arithmetic-over-aggregates"
+  ],
+  "verdict_detail": "partial-rows",
+  "why": "`creationDate.year` is a GROUP KEY and a calendar year is not a fixed stride from the epoch, so \u00a72.7's exclusion of non-uniform calendar units is row-determining: without it the answer has no year dimension at all. R4 \u2192 BLOCKED.",
+  "attempted": "",
+  "notes": "SPEC DELTA, verdict unchanged: \u00a78.3's ATOMIC `mean` absorbs `sum(length)/toFloat(count(message))` \u2014 bi-1.cypher's averageMessageLength \u2014 which B1 counted as `arithmetic-over-aggregates`. The label survives on `messageCount / totalMessageCount`, an aggregate broadcast from a different relation, and it was never the row-determining residual anyway. See FREEZE \u00a77.3."
+ }
+}

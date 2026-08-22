@@ -1,0 +1,20 @@
+{
+ "plan_format": 1,
+ "plan_id": "BI16",
+ "row": {
+  "suite": "ldbc-bi",
+  "predicted_v1_support": "no",
+  "predicted_verdict_detail": "partial-rows",
+  "compilation_source": "forecast.yaml BI16 (frozen 2026-08-21)"
+ },
+ "root": null,
+ "blocked_by": {
+  "residuals": [
+   "arithmetic-over-aggregates"
+  ],
+  "verdict_detail": "partial-rows",
+  "why": "ORDER BY messageCountA + messageCountB under Limit(20) combines two aggregate columns (\u00a72.7) and is row-determining under R4. The calendar-day equality is NOT a blocker \u2014 it is an epoch-anchored floor_div bucket absorbed by R2.",
+  "attempted": "",
+  "notes": ""
+ }
+}

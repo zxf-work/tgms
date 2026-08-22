@@ -1,0 +1,81 @@
+{
+ "plan_format": 1,
+ "plan_id": "IC11",
+ "row": {
+  "suite": "ldbc-ic",
+  "predicted_v1_support": "yes",
+  "predicted_verdict_detail": "yes",
+  "compilation_source": "forecast.yaml IC11 (DERIVED)",
+  "note": "bounded(1,2) KNOWS (the a=1 floor drops the start person, so `NOT person = friend` needs no Filter) -> exact(1) WORK_AT dir=out with edge_var=workAt -> TypeConstraint(company,[Company]) -> exact(1) IS_LOCATED_IN dir=out -> two PropertyPredicates (country.name = $countryName, workAt.workFrom < $workFromYear) -> Order(workFrom asc, cast(personId,int) asc, organizationName desc) -> Limit(10), exactly as the forecast writes it. Sole residual was `var-length-bounded`, in v1 under R6 (§2.3). The `CAL` tag is over-tagged (B1 App-A): workFrom is an integer year compared with `<`, not a calendar extraction. **§2.7's cast(uid,int) ruling is row-determining here too** — a secondary sort key under a Limit — which the spec's CP-5 discussion (IS3/IC2/IS2) does not list; FREEZE §7 records IC11 and IC12 as the two extra rows."
+ },
+ "params": {"personId": "1", "countryName": "Countryland", "workFromYear": 2020},
+ "sigma": {"t_v": [[0, 4611686018427387904]], "t_b": 4611686018427387904},
+ "root": {
+  "op": "Limit", "n": 10,
+  "inputs": [
+   {
+    "op": "Order",
+    "keys": [
+     {"key": {"col": "organizationWorkFromYear"}, "dir": "asc", "nulls": "nulls_last"},
+     {"key": {"cast": {"col": "personId"}, "to": "int"}, "dir": "asc", "nulls": "nulls_last"},
+     {"key": {"col": "organizationName"}, "dir": "desc", "nulls": "nulls_last"}
+    ],
+    "inputs": [
+     {
+      "op": "Project",
+      "keep": "listed",
+      "bindings": [
+       ["personId", {"col": "friend.uid"}],
+       ["personFirstName", {"prop": ["friend.props", "firstName"]}],
+       ["personLastName", {"prop": ["friend.props", "lastName"]}],
+       ["organizationName", {"prop": ["company.props", "name"]}],
+       ["organizationWorkFromYear", {"prop": ["workAt.props", "workFrom"]}]
+      ],
+      "inputs": [
+       {
+        "op": "PropertyPredicate",
+        "var": "workAt", "prop": "workFrom", "cmp": "<", "value": "$workFromYear",
+        "inputs": [
+         {
+          "op": "PropertyPredicate",
+          "var": "country", "prop": "name", "cmp": "=", "value": "$countryName",
+          "inputs": [
+           {
+            "op": "Expand",
+            "from": "company", "into": "country", "dir": "out",
+            "hops": {"exact": 1}, "rel_type": "IS_LOCATED_IN",
+            "inputs": [
+             {
+              "op": "TypeConstraint", "var": "company", "labels": ["Company"],
+              "inputs": [
+               {
+                "op": "Expand",
+                "from": "friend", "into": "company", "dir": "out",
+                "hops": {"exact": 1}, "rel_type": "WORK_AT", "edge_var": "workAt",
+                "inputs": [
+                 {
+                  "op": "Expand",
+                  "from": "p", "into": "friend", "dir": "both",
+                  "hops": {"bounded": [1, 2]}, "rel_type": "KNOWS",
+                  "inputs": [
+                   {"op": "NodeScan", "as": "p", "uids": ["$personId"], "labels": ["Person"],
+                    "belief": "current", "vt_mode": "overlap"}
+                  ]
+                 }
+                ]
+               }
+              ]
+             }
+            ]
+           }
+          ]
+         }
+        ]
+       }
+      ]
+     }
+    ]
+   }
+  ]
+ }
+}

@@ -1,0 +1,69 @@
+{
+ "plan_format": 1,
+ "plan_id": "IC9",
+ "row": {
+  "suite": "ldbc-ic",
+  "predicted_v1_support": "yes",
+  "predicted_verdict_detail": "yes",
+  "compilation_source": "forecast.yaml IC9 (DERIVED)",
+  "note": "bounded(1,2) KNOWS Expand (dedup at minimum depth = the reference's `WITH collect(distinct friend)`; the a=1 floor is also what drops the start person, so `NOT friend = root` needs no separate Filter) -> exact(1) HAS_CREATOR dir=in -> TypeConstraint(message,[Post,Comment]) -> PropertyPredicate(creationDate < $maxDate) -> Project(coalesce(content, imageFile)) (R2/§2.7) -> Order -> Limit(20), exactly as the forecast writes it. Sole residual was `var-length-bounded`, in v1 under R6 (§2.3); null-coalescing is R2."
+ },
+ "params": {"personId": "1", "maxDate": 1402592000000000},
+ "sigma": {"t_v": [[0, 4611686018427387904]], "t_b": 4611686018427387904},
+ "root": {
+  "op": "Limit", "n": 20,
+  "inputs": [
+   {
+    "op": "Order",
+    "keys": [
+     {"key": {"col": "messageCreationDate"}, "dir": "desc", "nulls": "nulls_last"},
+     {"key": {"cast": {"col": "messageId"}, "to": "int"}, "dir": "asc", "nulls": "nulls_last"}
+    ],
+    "inputs": [
+     {
+      "op": "Project",
+      "keep": "listed",
+      "bindings": [
+       ["personId", {"col": "friend.uid"}],
+       ["personFirstName", {"prop": ["friend.props", "firstName"]}],
+       ["personLastName", {"prop": ["friend.props", "lastName"]}],
+       ["messageId", {"col": "message.uid"}],
+       ["messageContent", {"coalesce": [{"prop": ["message.props", "content"]},
+                                        {"prop": ["message.props", "imageFile"]}]}],
+       ["messageCreationDate", {"prop": ["message.props", "creationDate"]}]
+      ],
+      "inputs": [
+       {
+        "op": "PropertyPredicate",
+        "var": "message", "prop": "creationDate", "cmp": "<", "value": "$maxDate",
+        "inputs": [
+         {
+          "op": "TypeConstraint", "var": "message", "labels": ["Post", "Comment"],
+          "inputs": [
+           {
+            "op": "Expand",
+            "from": "friend", "into": "message", "dir": "in",
+            "hops": {"exact": 1}, "rel_type": "HAS_CREATOR",
+            "inputs": [
+             {
+              "op": "Expand",
+              "from": "p", "into": "friend", "dir": "both",
+              "hops": {"bounded": [1, 2]}, "rel_type": "KNOWS",
+              "inputs": [
+               {"op": "NodeScan", "as": "p", "uids": ["$personId"], "labels": ["Person"],
+                "belief": "current", "vt_mode": "overlap"}
+              ]
+             }
+            ]
+           }
+          ]
+         }
+        ]
+       }
+      ]
+     }
+    ]
+   }
+  ]
+ }
+}

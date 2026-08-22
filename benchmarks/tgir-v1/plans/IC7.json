@@ -1,0 +1,20 @@
+{
+ "plan_format": 1,
+ "plan_id": "IC7",
+ "row": {
+  "suite": "ldbc-ic",
+  "predicted_v1_support": "no",
+  "predicted_verdict_detail": "no",
+  "compilation_source": "forecast.yaml IC7 (frozen 2026-08-21)"
+ },
+ "root": null,
+ "blocked_by": {
+  "residuals": [
+   "per-group-top-k"
+  ],
+  "verdict_detail": "no",
+  "why": "The most-recent like PER LIKER is an argmax within a group. \u00a72.10 rules `topk` global-only, sugar for Order+Limit (\u00a78.2 CLOSED), and \u00a71.4 lists per-group-top-k as a non-goal (IC7, BI14 \u2014 the cheapest structural capability left out, and deliberately).",
+  "attempted": "",
+  "notes": ""
+ }
+}

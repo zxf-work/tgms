@@ -1,0 +1,78 @@
+{
+ "plan_format": 1,
+ "plan_id": "IS7",
+ "row": {
+  "suite": "ldbc-is",
+  "predicted_v1_support": "yes",
+  "predicted_verdict_detail": "yes",
+  "compilation_source": "forecast.yaml IS7 (DERIVED)",
+  "note": "NodeScan(labels=[Post,Comment], uids=[$messageId]) -> exact(1) REPLY_OF dir=in -> TypeConstraint(reply,[Comment]) -> exact(1) HAS_CREATOR dir=out -> Join{left_outer} against the KNOWS probe -> Project(¬is_null(...)) (R3b), exactly as the forecast writes it. The only residual was existence-as-a-projected-boolean, absorbed by R3b (§2.8 + §2.7's is_null). **The probe is made DISTINCT first** — Aggregate(group_by=[knownPersonId], aggregates=[]), §2.8's stated remedy — because §8.4 rules that left_outer accepts duplicate probe keys WITH MULTIPLICATION, and one KNOWS identity with several believed versions would otherwise duplicate reply rows. The probe is the original message's author's KNOWS neighbourhood, so the projected boolean is exactly `replyAuthorKnowsOriginalMessageAuthor`."
+ },
+ "params": {"messageId": "101"},
+ "sigma": {"t_v": [[0, 4611686018427387904]], "t_b": 4611686018427387904},
+ "root": {
+  "op": "Project",
+  "keep": "listed",
+  "bindings": [
+   ["commentId", {"col": "reply.uid"}],
+   ["commentContent", {"prop": ["reply.props", "content"]}],
+   ["commentCreationDate", {"prop": ["reply.props", "creationDate"]}],
+   ["replyAuthorId", {"col": "replyAuthor.uid"}],
+   ["replyAuthorFirstName", {"prop": ["replyAuthor.props", "firstName"]}],
+   ["replyAuthorLastName", {"prop": ["replyAuthor.props", "lastName"]}],
+   ["replyAuthorKnowsOriginalMessageAuthor", {"not": {"is_null": {"col": "knownPersonId"}}}]
+  ],
+  "inputs": [
+   {
+    "op": "Join", "type": "left_outer",
+    "on": [["replyAuthor.uid", "knownPersonId"]],
+    "inputs": [
+     {
+      "op": "Expand",
+      "from": "reply", "into": "replyAuthor", "dir": "out",
+      "hops": {"exact": 1}, "rel_type": "HAS_CREATOR",
+      "inputs": [
+       {
+        "op": "TypeConstraint", "var": "reply", "labels": ["Comment"],
+        "inputs": [
+         {
+          "op": "Expand",
+          "from": "m", "into": "reply", "dir": "in",
+          "hops": {"exact": 1}, "rel_type": "REPLY_OF",
+          "inputs": [
+           {"op": "NodeScan", "as": "m", "uids": ["$messageId"],
+            "labels": ["Post", "Comment"], "belief": "current", "vt_mode": "overlap"}
+          ]
+         }
+        ]
+       }
+      ]
+     },
+     {
+      "op": "Aggregate",
+      "group_by": [["knownPersonId", {"col": "known.uid"}]],
+      "aggregates": [],
+      "inputs": [
+       {
+        "op": "Expand",
+        "from": "originalAuthor", "into": "known", "dir": "both",
+        "hops": {"exact": 1}, "rel_type": "KNOWS",
+        "inputs": [
+         {
+          "op": "Expand",
+          "from": "m2", "into": "originalAuthor", "dir": "out",
+          "hops": {"exact": 1}, "rel_type": "HAS_CREATOR",
+          "inputs": [
+           {"op": "NodeScan", "as": "m2", "uids": ["$messageId"],
+            "labels": ["Post", "Comment"], "belief": "current", "vt_mode": "overlap"}
+          ]
+         }
+        ]
+       }
+      ]
+     }
+    ]
+   }
+  ]
+ }
+}

@@ -1,0 +1,305 @@
+{
+ "plan_format": 1,
+ "plan_id": "BI17",
+ "row": {
+  "suite": "ldbc-bi",
+  "predicted_v1_support": "yes",
+  "predicted_verdict_detail": "yes",
+  "compilation_source": "forecast.yaml BI17 (DERIVED) + TGIR_FORECAST_FREEZE.md §7.6 closing note",
+  "note": "The largest plan in the forecast, and its shape is FORCED by R1: `PatternMatch` is FIXED-LENGTH ONLY (§2.9), so the two `REPLY_OF*0..` walks inside B1's single nine-node pattern are split out as `unbounded(0)` Expands (message1 -> post1, message2 -> post2) and the cycle on forum1 is re-closed with Join{inner} on forum1.uid — `sources` restricts a variable's domain but carries no other columns (§2.9), so the reconnection must be an explicit join. The forum1-membership of person3 is a second Join{inner} against the HAS_MEMBER EdgeScan; then Filter(message2.vt_s >= message1.vt_s + $delta*3.6e9) (R1/§2.4 — a bound node exposes its vt_s to a row-local predicate, which is what absorbs `temporal-duration-arithmetic`), Join{anti} for person1's non-membership in forum2, Aggregate(count_distinct(message2)), Order, Limit(10). Its risk is ADMISSION under §2.13, not expressibility; recorded on the secondary axis.",
+  "implementation_note": "Every Join{inner} input is a Project — `eval_join`'s inner branch asserts the realized schema equals the declared one, which a column-pruned scan never satisfies (tgms/tgir/eval/join.py:65). Fixture caveat: scripts/build_ldbc_fixture.py writes every NODE version at vt_s = 0, so the two-entity offset predicate on node vt_s is unsatisfiable on this substrate. It is not row-determining here — BI17's nine-node shape has no instance in the fixture at all (no Comment carries the same Tag as the message it replies to), so the row returns 0 either way."
+ },
+ "params": {"tagName": "Tag2", "deltaMicros": 3600000000},
+ "sigma": {"t_v": [[0, 4611686018427387904]], "t_b": 4611686018427387904},
+ "root": {
+  "op": "Limit",
+  "n": 10,
+  "inputs": [
+   {
+    "op": "Order",
+    "keys": [
+     {"key": {"col": "messageCount"}, "dir": "desc", "nulls": "nulls_last"},
+     {"key": {"cast": {"col": "personId"}, "to": "int"}, "dir": "asc", "nulls": "nulls_last"}
+    ],
+    "inputs": [
+     {
+      "op": "Aggregate",
+      "group_by": [["personId", {"col": "person1Id"}]],
+      "aggregates": [
+       {"fn": "count_distinct", "alias": "messageCount", "of": {"col": "message2Id"}}
+      ],
+      "inputs": [
+       {
+        "op": "Join",
+        "type": "anti",
+        "on": [["forum2Id", "antiForumId"], ["person1Id", "antiPersonId"]],
+        "inputs": [
+         {
+          "op": "Filter",
+          "pred": {
+           "bool": "and",
+           "l": {
+            "bool": "and",
+            "l": {"cmp": "!=", "l": {"col": "person2Id"}, "r": {"col": "person3Id"}},
+            "r": {"cmp": "!=", "l": {"col": "forum1Id"}, "r": {"col": "forum2Id"}}
+           },
+           "r": {"cmp": ">=", "l": {"col": "message2Vts"},
+                 "r": {"arith": "+", "l": {"col": "message1Vts"},
+                       "r": {"lit": "$deltaMicros"}}}
+          },
+          "inputs": [
+           {
+            "op": "Join",
+            "type": "inner",
+            "on": [["forum1Id", "forumBId"]],
+            "inputs": [
+             {
+              "op": "Project",
+              "keep": "listed",
+              "bindings": [
+               ["person1Id", {"col": "person1.uid"}],
+               ["forum1Id", {"col": "forum1.uid"}],
+               ["message1Vts", {"col": "message1.vt_s"}]
+              ],
+              "inputs": [
+               {
+                "op": "TypeConstraint",
+                "var": "forum1", "labels": ["Forum"],
+                "inputs": [
+                 {
+                  "op": "Expand",
+                  "from": "post1", "into": "forum1", "dir": "in",
+                  "hops": {"exact": 1}, "rel_type": "CONTAINER_OF",
+                  "inputs": [
+                   {
+                    "op": "TypeConstraint",
+                    "var": "post1", "labels": ["Post"],
+                    "inputs": [
+                     {
+                      "op": "Expand",
+                      "from": "message1", "into": "post1", "dir": "out",
+                      "hops": {"unbounded": 0}, "rel_type": "REPLY_OF",
+                      "inputs": [
+                       {
+                        "op": "TypeConstraint",
+                        "var": "person1", "labels": ["Person"],
+                        "inputs": [
+                         {
+                          "op": "Expand",
+                          "from": "message1", "into": "person1", "dir": "out",
+                          "hops": {"exact": 1}, "rel_type": "HAS_CREATOR",
+                          "inputs": [
+                           {
+                            "op": "Expand",
+                            "from": "tag1", "into": "message1", "dir": "in",
+                            "hops": {"exact": 1}, "rel_type": "HAS_TAG",
+                            "inputs": [
+                             {
+                              "op": "PropertyPredicate",
+                              "var": "tag1", "prop": "name", "cmp": "=",
+                              "value": "$tagName",
+                              "inputs": [
+                               {"op": "NodeScan", "as": "tag1", "labels": ["Tag"],
+                                "belief": "current", "vt_mode": "overlap"}
+                              ]
+                             }
+                            ]
+                           }
+                          ]
+                         }
+                        ]
+                       }
+                      ]
+                     }
+                    ]
+                   }
+                  ]
+                 }
+                ]
+               }
+              ]
+             },
+             {
+              "op": "Project",
+              "keep": "listed",
+              "bindings": [
+               ["forumBId", {"col": "forumBId"}],
+               ["person2Id", {"col": "person2Id"}],
+               ["person3Id", {"col": "person3Id"}],
+               ["message2Id", {"col": "message2Id"}],
+               ["message2Vts", {"col": "message2Vts"}],
+               ["forum2Id", {"col": "forum2Id"}]
+              ],
+              "inputs": [
+               {
+                "op": "Join",
+                "type": "inner",
+                "on": [["forumBId", "memberForumId"], ["person3Id", "memberPersonId"]],
+                "inputs": [
+                 {
+                  "op": "Project",
+                  "keep": "listed",
+                  "bindings": [
+                   ["forumBId", {"col": "forumB.uid"}],
+                   ["person2Id", {"col": "person2.uid"}],
+                   ["person3Id", {"col": "person3.uid"}],
+                   ["message2Id", {"col": "message2.uid"}],
+                   ["message2Vts", {"col": "message2.vt_s"}],
+                   ["forum2Id", {"col": "forum2.uid"}]
+                  ],
+                  "inputs": [
+                   {
+                    "op": "TypeConstraint",
+                    "var": "forum2", "labels": ["Forum"],
+                    "inputs": [
+                     {
+                      "op": "Expand",
+                      "from": "post2", "into": "forum2", "dir": "in",
+                      "hops": {"exact": 1}, "rel_type": "CONTAINER_OF",
+                      "inputs": [
+                       {
+                        "op": "TypeConstraint",
+                        "var": "post2", "labels": ["Post"],
+                        "inputs": [
+                         {
+                          "op": "Expand",
+                          "from": "message2", "into": "post2", "dir": "out",
+                          "hops": {"unbounded": 0}, "rel_type": "REPLY_OF",
+                          "inputs": [
+                           {
+                            "op": "TypeConstraint",
+                            "var": "person3", "labels": ["Person"],
+                            "inputs": [
+                             {
+                              "op": "Expand",
+                              "from": "message2", "into": "person3", "dir": "out",
+                              "hops": {"exact": 1}, "rel_type": "HAS_CREATOR",
+                              "inputs": [
+                               {
+                                "op": "PropertyPredicate",
+                                "var": "message2Tag", "prop": "name", "cmp": "=",
+                                "value": "$tagName",
+                                "inputs": [
+                                 {
+                                  "op": "Expand",
+                                  "from": "message2", "into": "message2Tag", "dir": "out",
+                                  "hops": {"exact": 1}, "rel_type": "HAS_TAG",
+                                  "inputs": [
+                                   {
+                                    "op": "Expand",
+                                    "from": "comment", "into": "message2", "dir": "out",
+                                    "hops": {"exact": 1}, "rel_type": "REPLY_OF",
+                                    "inputs": [
+                                     {
+                                      "op": "TypeConstraint",
+                                      "var": "forumB", "labels": ["Forum"],
+                                      "inputs": [
+                                       {
+                                        "op": "Expand",
+                                        "from": "person2", "into": "forumB", "dir": "in",
+                                        "hops": {"exact": 1}, "rel_type": "HAS_MEMBER",
+                                        "inputs": [
+                                         {
+                                          "op": "TypeConstraint",
+                                          "var": "person2", "labels": ["Person"],
+                                          "inputs": [
+                                           {
+                                            "op": "Expand",
+                                            "from": "comment", "into": "person2",
+                                            "dir": "out", "hops": {"exact": 1},
+                                            "rel_type": "HAS_CREATOR",
+                                            "inputs": [
+                                             {
+                                              "op": "TypeConstraint",
+                                              "var": "comment", "labels": ["Comment"],
+                                              "inputs": [
+                                               {
+                                                "op": "Expand",
+                                                "from": "tag2", "into": "comment",
+                                                "dir": "in", "hops": {"exact": 1},
+                                                "rel_type": "HAS_TAG",
+                                                "inputs": [
+                                                 {
+                                                  "op": "PropertyPredicate",
+                                                  "var": "tag2", "prop": "name",
+                                                  "cmp": "=", "value": "$tagName",
+                                                  "inputs": [
+                                                   {"op": "NodeScan", "as": "tag2",
+                                                    "labels": ["Tag"],
+                                                    "belief": "current",
+                                                    "vt_mode": "overlap"}
+                                                  ]
+                                                 }
+                                                ]
+                                               }
+                                              ]
+                                             }
+                                            ]
+                                           }
+                                          ]
+                                         }
+                                        ]
+                                       }
+                                      ]
+                                     }
+                                    ]
+                                   }
+                                  ]
+                                 }
+                                ]
+                               }
+                              ]
+                             }
+                            ]
+                           }
+                          ]
+                         }
+                        ]
+                       }
+                      ]
+                     }
+                    ]
+                   }
+                  ]
+                 },
+                 {
+                  "op": "Project",
+                  "keep": "listed",
+                  "bindings": [
+                   ["memberForumId", {"col": "member1.src"}],
+                   ["memberPersonId", {"col": "member1.dst"}]
+                  ],
+                  "inputs": [
+                   {"op": "EdgeScan", "as": "member1", "rel_types": ["HAS_MEMBER"],
+                    "belief": "current", "vt_mode": "overlap"}
+                  ]
+                 }
+                ]
+               }
+              ]
+             }
+            ]
+           }
+          ]
+         },
+         {
+          "op": "Project",
+          "keep": "listed",
+          "bindings": [
+           ["antiForumId", {"col": "member2.src"}],
+           ["antiPersonId", {"col": "member2.dst"}]
+          ],
+          "inputs": [
+           {"op": "EdgeScan", "as": "member2", "rel_types": ["HAS_MEMBER"],
+            "belief": "current", "vt_mode": "overlap"}
+          ]
+         }
+        ]
+       }
+      ]
+     }
+    ]
+   }
+  ]
+ }
+}

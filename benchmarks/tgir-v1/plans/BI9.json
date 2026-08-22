@@ -1,0 +1,88 @@
+{
+ "plan_format": 1,
+ "plan_id": "BI9",
+ "row": {
+  "suite": "ldbc-bi",
+  "predicted_v1_support": "yes",
+  "predicted_verdict_detail": "yes",
+  "compilation_source": "forecast.yaml BI9 (DERIVED)",
+  "note": "NodeScan(Person) -> exact(1) HAS_CREATOR in -> TypeConstraint([Post]) -> PropertyPredicate window on the root Post -> Expand(REPLY_OF, in, unbounded(0)) -> PropertyPredicate window on the reply -> Aggregate(group_by=[person], [count_distinct(post), count_distinct(reply)]) -> Order -> Limit(100). The 0-hop case of the unbounded Expand keeps a reply-less Post in the reply relation, so no left_outer and no null aggregand arises. B1 App-A's stale `justification_15` (message length) is upheld as stale: both aggregates are plain counts. R6's unbounded Expand is the sole residual."
+ },
+ "params": {"startDate": 1400000000000000, "endDate": 1402592000000000},
+ "sigma": {"t_v": [[0, 4611686018427387904]], "t_b": 4611686018427387904},
+ "root": {
+  "op": "Limit",
+  "n": 100,
+  "inputs": [
+   {
+    "op": "Order",
+    "keys": [
+     {"key": {"col": "messageCount"}, "dir": "desc", "nulls": "nulls_last"},
+     {"key": {"cast": {"col": "personId"}, "to": "int"}, "dir": "asc", "nulls": "nulls_last"}
+    ],
+    "inputs": [
+     {
+      "op": "Aggregate",
+      "group_by": [
+       ["personId", {"col": "person.uid"}],
+       ["personFirstName", {"prop": ["person.props", "firstName"]}],
+       ["personLastName", {"prop": ["person.props", "lastName"]}]
+      ],
+      "aggregates": [
+       {"fn": "count_distinct", "alias": "threadCount", "of": {"col": "post.uid"}},
+       {"fn": "count_distinct", "alias": "messageCount", "of": {"col": "reply.uid"}}
+      ],
+      "inputs": [
+       {
+        "op": "PropertyPredicate",
+        "var": "reply", "prop": "creationDate", "cmp": "<=", "value": "$endDate",
+        "inputs": [
+         {
+          "op": "PropertyPredicate",
+          "var": "reply", "prop": "creationDate", "cmp": ">=", "value": "$startDate",
+          "inputs": [
+           {
+            "op": "Expand",
+            "from": "post", "into": "reply", "dir": "in",
+            "hops": {"unbounded": 0}, "rel_type": "REPLY_OF",
+            "inputs": [
+             {
+              "op": "PropertyPredicate",
+              "var": "post", "prop": "creationDate", "cmp": "<=", "value": "$endDate",
+              "inputs": [
+               {
+                "op": "PropertyPredicate",
+                "var": "post", "prop": "creationDate", "cmp": ">=", "value": "$startDate",
+                "inputs": [
+                 {
+                  "op": "TypeConstraint",
+                  "var": "post", "labels": ["Post"],
+                  "inputs": [
+                   {
+                    "op": "Expand",
+                    "from": "person", "into": "post", "dir": "in",
+                    "hops": {"exact": 1}, "rel_type": "HAS_CREATOR",
+                    "inputs": [
+                     {"op": "NodeScan", "as": "person", "labels": ["Person"],
+                      "belief": "current", "vt_mode": "overlap"}
+                    ]
+                   }
+                  ]
+                 }
+                ]
+               }
+              ]
+             }
+            ]
+           }
+          ]
+         }
+        ]
+       }
+      ]
+     }
+    ]
+   }
+  ]
+ }
+}

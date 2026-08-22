@@ -1,0 +1,21 @@
+{
+ "plan_format": 1,
+ "plan_id": "bo34",
+ "row": {
+  "suite": "independent-bo",
+  "predicted_v1_support": "no",
+  "predicted_verdict_detail": "no",
+  "compilation_source": "forecast.yaml bo34 (frozen 2026-08-21)"
+ },
+ "root": null,
+ "blocked_by": {
+  "residuals": [
+   "path-longest-chain",
+   "path-temporal-ordering"
+  ],
+  "verdict_detail": "no",
+  "why": "R6 supplies the unbounded closure but \u00a72.3 restriction 2 makes it STRUCTURAL ONLY \u2014 there is no constraint that hop i+1's vt_s exceed hop i's, which is exactly `path-temporal-ordering`; and a global maximum-length chain is an optimization, not a scan. Both are \u00a71.4 path-family non-goals. \u00a72.3 states in terms that R6's unbounded Expand is deliberately NOT `temporal_reachability`.",
+  "attempted": "",
+  "notes": ""
+ }
+}

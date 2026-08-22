@@ -1,0 +1,352 @@
+{
+ "plan_format": 1,
+ "plan_id": "BI4",
+ "row": {
+  "suite": "ldbc-bi",
+  "predicted_v1_support": "yes",
+  "predicted_verdict_detail": "yes",
+  "compilation_source": "forecast.yaml BI4 (DERIVED)",
+  "note": "Rooted exact(1) hops (Country -> city -> person -> forum by HAS_MEMBER, PropertyPredicate on forum.creationDate) -> Aggregate(group_by=[country, forum], count) -> Order -> Limit(100) as a §2.12 TOP-K, whose narrowed domain is the declared domain of everything downstream -> CONTAINER_OF -> Expand(REPLY_OF, in, unbounded(0)) -> HAS_CREATOR -> semi-join against the DISTINCT members of those same top forums -> Aggregate(count_distinct(message)) -> Join{left_outer} onto ALL members -> coalesce(·,0) (R2, FREEZE §7.6). R3 dissolves the reference query's UNION ALL: it exists only so zero-message members appear, which is left_outer + coalesce, not a union of independent relations. The R6 residual is the unbounded REPLY_OF thread walk.",
+  "deviation": "The semi-join sits ABOVE the count Aggregate rather than below it. Placed below, §5.3's rule that `Join{inner}` drops to `unknown` *below the meet* (tgms/tgir/propagate.py:_join_meta — no ranking key survives a join) meets the mid-plan TOP-K Limit: the join's inputs are `top-k` and `complete`, never both `complete`, so the join reports `unknown`, and §2.10's precondition then makes the Aggregate refuse E_INCOMPLETE. Verified by running that shape. The relation is unchanged by the swap — the semi-join restricts WHICH persons appear, not which messages each person's count ranges over, and `count_distinct` is insensitive to the multiplication a member of several top forums would otherwise cause. This is exactly the risk forecast BI4's own `notes` flagged (\"the one predicted-yes row with a mid-plan Limit feeding a downstream Aggregate\"), though the trigger is §5.3's Join rule rather than a stricter reading of §2.12."
+ },
+ "params": {"date": 1399000000000000},
+ "sigma": {"t_v": [[0, 4611686018427387904]], "t_b": 4611686018427387904},
+ "root": {
+  "op": "Limit",
+  "n": 100,
+  "inputs": [
+   {
+    "op": "Order",
+    "keys": [
+     {"key": {"col": "messageCount"}, "dir": "desc", "nulls": "nulls_last"},
+     {"key": {"cast": {"col": "personId"}, "to": "int"}, "dir": "asc", "nulls": "nulls_last"}
+    ],
+    "inputs": [
+     {
+      "op": "Project",
+      "keep": "listed",
+      "bindings": [
+       ["personId", {"col": "memberId"}],
+       ["messageCount", {"coalesce": [{"col": "rawMessageCount"}, {"lit": 0}]}]
+      ],
+      "inputs": [
+       {
+        "op": "Join",
+        "type": "left_outer",
+        "on": [["memberId", "creatorId"]],
+        "inputs": [
+         {
+          "op": "Aggregate",
+          "group_by": [["memberId", {"col": "member.uid"}]],
+          "aggregates": [],
+          "inputs": [
+           {
+            "op": "TypeConstraint",
+            "var": "member", "labels": ["Person"],
+            "inputs": [
+             {
+              "op": "Expand",
+              "from": "forumId", "into": "member", "dir": "out",
+              "hops": {"exact": 1}, "rel_type": "HAS_MEMBER",
+              "inputs": [
+               {
+                "op": "Limit",
+                "n": 100,
+                "inputs": [
+                 {
+                  "op": "Order",
+                  "keys": [
+                   {"key": {"col": "numberOfMembers"}, "dir": "desc", "nulls": "nulls_last"},
+                   {"key": {"cast": {"col": "forumId"}, "to": "int"}, "dir": "asc",
+                    "nulls": "nulls_last"},
+                   {"key": {"cast": {"col": "countryId"}, "to": "int"}, "dir": "asc",
+                    "nulls": "nulls_last"}
+                  ],
+                  "inputs": [
+                   {
+                    "op": "Aggregate",
+                    "group_by": [
+                     ["countryId", {"col": "country.uid"}],
+                     ["forumId", {"col": "forum.uid"}]
+                    ],
+                    "aggregates": [{"fn": "count", "alias": "numberOfMembers"}],
+                    "inputs": [
+                     {
+                      "op": "PropertyPredicate",
+                      "var": "forum", "prop": "creationDate", "cmp": ">", "value": "$date",
+                      "inputs": [
+                       {
+                        "op": "Expand",
+                        "from": "person", "into": "forum", "dir": "in",
+                        "hops": {"exact": 1}, "rel_type": "HAS_MEMBER",
+                        "inputs": [
+                         {
+                          "op": "TypeConstraint",
+                          "var": "person", "labels": ["Person"],
+                          "inputs": [
+                           {
+                            "op": "Expand",
+                            "from": "city", "into": "person", "dir": "in",
+                            "hops": {"exact": 1}, "rel_type": "IS_LOCATED_IN",
+                            "inputs": [
+                             {
+                              "op": "Expand",
+                              "from": "country", "into": "city", "dir": "in",
+                              "hops": {"exact": 1}, "rel_type": "IS_PART_OF",
+                              "inputs": [
+                               {"op": "NodeScan", "as": "country", "labels": ["Country"],
+                                "belief": "current", "vt_mode": "overlap"}
+                              ]
+                             }
+                            ]
+                           }
+                          ]
+                         }
+                        ]
+                       }
+                      ]
+                     }
+                    ]
+                   }
+                  ]
+                 }
+                ]
+               }
+              ]
+             }
+            ]
+           }
+          ]
+         },
+         {
+          "op": "Project",
+          "keep": "listed",
+          "bindings": [
+           ["creatorId", {"col": "creatorId"}],
+           ["rawMessageCount", {"col": "rawMessageCount"}]
+          ],
+          "inputs": [
+           {
+            "op": "Join",
+            "type": "inner",
+            "on": [["creatorId", "memberId"]],
+            "inputs": [
+             {
+              "op": "Aggregate",
+              "group_by": [["creatorId", {"col": "authorId"}]],
+              "aggregates": [
+               {"fn": "count_distinct", "alias": "rawMessageCount",
+                "of": {"col": "threadMessageId"}}
+              ],
+              "inputs": [
+               {
+                "op": "Project",
+                "keep": "listed",
+                "bindings": [
+                 ["authorId", {"col": "author.uid"}],
+                 ["threadMessageId", {"col": "threadMessage.uid"}]
+                ],
+                "inputs": [
+                 {
+                  "op": "TypeConstraint",
+                  "var": "author", "labels": ["Person"],
+                  "inputs": [
+                   {
+                    "op": "Expand",
+                    "from": "threadMessage", "into": "author", "dir": "out",
+                    "hops": {"exact": 1}, "rel_type": "HAS_CREATOR",
+                    "inputs": [
+                     {
+                      "op": "TypeConstraint",
+                      "var": "threadMessage", "labels": ["Post", "Comment"],
+                      "inputs": [
+                       {
+                        "op": "Expand",
+                        "from": "post", "into": "threadMessage", "dir": "in",
+                        "hops": {"unbounded": 0}, "rel_type": "REPLY_OF",
+                        "inputs": [
+                         {
+                          "op": "Expand",
+                          "from": "forumId", "into": "post", "dir": "out",
+                          "hops": {"exact": 1}, "rel_type": "CONTAINER_OF",
+                          "inputs": [
+                           {
+                            "op": "Limit",
+                            "n": 100,
+                            "inputs": [
+                             {
+                              "op": "Order",
+                              "keys": [
+                               {"key": {"col": "numberOfMembers"}, "dir": "desc",
+                                "nulls": "nulls_last"},
+                               {"key": {"cast": {"col": "forumId"}, "to": "int"},
+                                "dir": "asc", "nulls": "nulls_last"},
+                               {"key": {"cast": {"col": "countryId"}, "to": "int"},
+                                "dir": "asc", "nulls": "nulls_last"}
+                              ],
+                              "inputs": [
+                               {
+                                "op": "Aggregate",
+                                "group_by": [
+                                 ["countryId", {"col": "country.uid"}],
+                                 ["forumId", {"col": "forum.uid"}]
+                                ],
+                                "aggregates": [
+                                 {"fn": "count", "alias": "numberOfMembers"}
+                                ],
+                                "inputs": [
+                                 {
+                                  "op": "PropertyPredicate",
+                                  "var": "forum", "prop": "creationDate", "cmp": ">",
+                                  "value": "$date",
+                                  "inputs": [
+                                   {
+                                    "op": "Expand",
+                                    "from": "person", "into": "forum", "dir": "in",
+                                    "hops": {"exact": 1}, "rel_type": "HAS_MEMBER",
+                                    "inputs": [
+                                     {
+                                      "op": "TypeConstraint",
+                                      "var": "person", "labels": ["Person"],
+                                      "inputs": [
+                                       {
+                                        "op": "Expand",
+                                        "from": "city", "into": "person", "dir": "in",
+                                        "hops": {"exact": 1}, "rel_type": "IS_LOCATED_IN",
+                                        "inputs": [
+                                         {
+                                          "op": "Expand",
+                                          "from": "country", "into": "city", "dir": "in",
+                                          "hops": {"exact": 1}, "rel_type": "IS_PART_OF",
+                                          "inputs": [
+                                           {"op": "NodeScan", "as": "country",
+                                            "labels": ["Country"], "belief": "current",
+                                            "vt_mode": "overlap"}
+                                          ]
+                                         }
+                                        ]
+                                       }
+                                      ]
+                                     }
+                                    ]
+                                   }
+                                  ]
+                                 }
+                                ]
+                               }
+                              ]
+                             }
+                            ]
+                           }
+                          ]
+                         }
+                        ]
+                       }
+                      ]
+                     }
+                    ]
+                   }
+                  ]
+                 }
+                ]
+               }
+              ]
+             },
+             {
+              "op": "Aggregate",
+              "group_by": [["memberId", {"col": "member.uid"}]],
+              "aggregates": [],
+              "inputs": [
+               {
+                "op": "TypeConstraint",
+                "var": "member", "labels": ["Person"],
+                "inputs": [
+                 {
+                  "op": "Expand",
+                  "from": "forumId", "into": "member", "dir": "out",
+                  "hops": {"exact": 1}, "rel_type": "HAS_MEMBER",
+                  "inputs": [
+                   {
+                    "op": "Limit",
+                    "n": 100,
+                    "inputs": [
+                     {
+                      "op": "Order",
+                      "keys": [
+                       {"key": {"col": "numberOfMembers"}, "dir": "desc",
+                        "nulls": "nulls_last"},
+                       {"key": {"cast": {"col": "forumId"}, "to": "int"}, "dir": "asc",
+                        "nulls": "nulls_last"},
+                       {"key": {"cast": {"col": "countryId"}, "to": "int"}, "dir": "asc",
+                        "nulls": "nulls_last"}
+                      ],
+                      "inputs": [
+                       {
+                        "op": "Aggregate",
+                        "group_by": [
+                         ["countryId", {"col": "country.uid"}],
+                         ["forumId", {"col": "forum.uid"}]
+                        ],
+                        "aggregates": [{"fn": "count", "alias": "numberOfMembers"}],
+                        "inputs": [
+                         {
+                          "op": "PropertyPredicate",
+                          "var": "forum", "prop": "creationDate", "cmp": ">",
+                          "value": "$date",
+                          "inputs": [
+                           {
+                            "op": "Expand",
+                            "from": "person", "into": "forum", "dir": "in",
+                            "hops": {"exact": 1}, "rel_type": "HAS_MEMBER",
+                            "inputs": [
+                             {
+                              "op": "TypeConstraint",
+                              "var": "person", "labels": ["Person"],
+                              "inputs": [
+                               {
+                                "op": "Expand",
+                                "from": "city", "into": "person", "dir": "in",
+                                "hops": {"exact": 1}, "rel_type": "IS_LOCATED_IN",
+                                "inputs": [
+                                 {
+                                  "op": "Expand",
+                                  "from": "country", "into": "city", "dir": "in",
+                                  "hops": {"exact": 1}, "rel_type": "IS_PART_OF",
+                                  "inputs": [
+                                   {"op": "NodeScan", "as": "country", "labels": ["Country"],
+                                    "belief": "current", "vt_mode": "overlap"}
+                                  ]
+                                 }
+                                ]
+                               }
+                              ]
+                             }
+                            ]
+                           }
+                          ]
+                         }
+                        ]
+                       }
+                      ]
+                     }
+                    ]
+                   }
+                  ]
+                 }
+                ]
+               }
+              ]
+             }
+            ]
+           }
+          ]
+         }
+        ]
+       }
+      ]
+     }
+    ]
+   }
+  ]
+ }
+}

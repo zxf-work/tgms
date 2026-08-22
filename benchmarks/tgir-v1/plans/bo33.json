@@ -1,0 +1,323 @@
+{
+ "plan_format": 1,
+ "plan_id": "bo33",
+ "row": {
+  "suite": "independent-bo",
+  "predicted_v1_support": "yes",
+  "predicted_verdict_detail": "yes",
+  "compilation_source": "forecast.yaml bo33 (WORKED EXAMPLE, TGIR_SPEC.md §7.2, gate-verified §2.2)",
+  "note": "§7.2 verbatim: s1 EdgeScan(as=e, rel_types=[TRUST]) → s2 PropertyPredicate(e.rating > 0) → s3 PatternMatch with NINE edge variables (e12 e21 e13 e31 e23 e32 f1 f2 f3) over FOUR node variables, every one of them sourced from s2 (R1 — a bigger motif than any fixed shape catalogue) → s4 Project(x := x.uid) → s5 Aggregate([], count_distinct(x)). Mirrors tests/test_tgir_eval_pattern.py::bo33_plan() node for node. WORDING (Appendix B): 'rated each other' is MUTUAL, which is what collapses 'at least 3' to the fixed 4-node/9-edge motif. STORE CAVEAT (§2.9/§7.2, §8.5 CLOSED): node distinctness among r1, r2, r3, x is DERIVED, not asserted — with one TRUST identity per ordered pair, x = r1 would force f2 and e21 onto one eid, which identity-isomorphism forbids. Checked on this store: 35592 edge versions carry 35592 distinct eids, so the derivation holds and no distinctness Filter is written."
+ },
+ "params": {
+  "rel": "TRUST",
+  "rating_min": 0,
+  "store": "stores/bitcoinotc",
+  "store_facts": "5881 entities, 35592 TRUST edge versions = 35592 distinct eids (no disc-discriminated duplicates), 32029 positive",
+  "sample_uid_src": "n6",
+  "sample_uid_dst": "n2"
+ },
+ "sigma": {
+  "t_v": [
+   [
+    0,
+    4611686018427387904
+   ]
+  ],
+  "t_b": 4611686018427387904
+ },
+ "root": {
+  "op": "Aggregate",
+  "group_by": [],
+  "aggregates": [
+   {
+    "fn": "count_distinct",
+    "alias": "n",
+    "of": {
+     "col": "x"
+    }
+   }
+  ],
+  "inputs": [
+   {
+    "op": "Project",
+    "keep": "listed",
+    "bindings": [
+     [
+      "x",
+      {
+       "col": "x.uid"
+      }
+     ]
+    ],
+    "inputs": [
+     {
+      "op": "PatternMatch",
+      "pattern": {
+       "nodes": [
+        {
+         "var": "r1"
+        },
+        {
+         "var": "r2"
+        },
+        {
+         "var": "r3"
+        },
+        {
+         "var": "x"
+        }
+       ],
+       "edges": [
+        {
+         "var": "e12",
+         "src": "r1",
+         "dst": "r2",
+         "rel_type": "$rel"
+        },
+        {
+         "var": "e21",
+         "src": "r2",
+         "dst": "r1",
+         "rel_type": "$rel"
+        },
+        {
+         "var": "e13",
+         "src": "r1",
+         "dst": "r3",
+         "rel_type": "$rel"
+        },
+        {
+         "var": "e31",
+         "src": "r3",
+         "dst": "r1",
+         "rel_type": "$rel"
+        },
+        {
+         "var": "e23",
+         "src": "r2",
+         "dst": "r3",
+         "rel_type": "$rel"
+        },
+        {
+         "var": "e32",
+         "src": "r3",
+         "dst": "r2",
+         "rel_type": "$rel"
+        },
+        {
+         "var": "f1",
+         "src": "r1",
+         "dst": "x",
+         "rel_type": "$rel"
+        },
+        {
+         "var": "f2",
+         "src": "r2",
+         "dst": "x",
+         "rel_type": "$rel"
+        },
+        {
+         "var": "f3",
+         "src": "r3",
+         "dst": "x",
+         "rel_type": "$rel"
+        }
+       ]
+      },
+      "sources": [
+       {
+        "var": "e12",
+        "relation": {
+         "op": "PropertyPredicate",
+         "var": "e",
+         "prop": "rating",
+         "cmp": ">",
+         "value": "$rating_min",
+         "inputs": [
+          {
+           "op": "EdgeScan",
+           "as": "e",
+           "rel_types": [
+            "$rel"
+           ],
+           "belief": "current",
+           "vt_mode": "overlap"
+          }
+         ]
+        }
+       },
+       {
+        "var": "e21",
+        "relation": {
+         "op": "PropertyPredicate",
+         "var": "e",
+         "prop": "rating",
+         "cmp": ">",
+         "value": "$rating_min",
+         "inputs": [
+          {
+           "op": "EdgeScan",
+           "as": "e",
+           "rel_types": [
+            "$rel"
+           ],
+           "belief": "current",
+           "vt_mode": "overlap"
+          }
+         ]
+        }
+       },
+       {
+        "var": "e13",
+        "relation": {
+         "op": "PropertyPredicate",
+         "var": "e",
+         "prop": "rating",
+         "cmp": ">",
+         "value": "$rating_min",
+         "inputs": [
+          {
+           "op": "EdgeScan",
+           "as": "e",
+           "rel_types": [
+            "$rel"
+           ],
+           "belief": "current",
+           "vt_mode": "overlap"
+          }
+         ]
+        }
+       },
+       {
+        "var": "e31",
+        "relation": {
+         "op": "PropertyPredicate",
+         "var": "e",
+         "prop": "rating",
+         "cmp": ">",
+         "value": "$rating_min",
+         "inputs": [
+          {
+           "op": "EdgeScan",
+           "as": "e",
+           "rel_types": [
+            "$rel"
+           ],
+           "belief": "current",
+           "vt_mode": "overlap"
+          }
+         ]
+        }
+       },
+       {
+        "var": "e23",
+        "relation": {
+         "op": "PropertyPredicate",
+         "var": "e",
+         "prop": "rating",
+         "cmp": ">",
+         "value": "$rating_min",
+         "inputs": [
+          {
+           "op": "EdgeScan",
+           "as": "e",
+           "rel_types": [
+            "$rel"
+           ],
+           "belief": "current",
+           "vt_mode": "overlap"
+          }
+         ]
+        }
+       },
+       {
+        "var": "e32",
+        "relation": {
+         "op": "PropertyPredicate",
+         "var": "e",
+         "prop": "rating",
+         "cmp": ">",
+         "value": "$rating_min",
+         "inputs": [
+          {
+           "op": "EdgeScan",
+           "as": "e",
+           "rel_types": [
+            "$rel"
+           ],
+           "belief": "current",
+           "vt_mode": "overlap"
+          }
+         ]
+        }
+       },
+       {
+        "var": "f1",
+        "relation": {
+         "op": "PropertyPredicate",
+         "var": "e",
+         "prop": "rating",
+         "cmp": ">",
+         "value": "$rating_min",
+         "inputs": [
+          {
+           "op": "EdgeScan",
+           "as": "e",
+           "rel_types": [
+            "$rel"
+           ],
+           "belief": "current",
+           "vt_mode": "overlap"
+          }
+         ]
+        }
+       },
+       {
+        "var": "f2",
+        "relation": {
+         "op": "PropertyPredicate",
+         "var": "e",
+         "prop": "rating",
+         "cmp": ">",
+         "value": "$rating_min",
+         "inputs": [
+          {
+           "op": "EdgeScan",
+           "as": "e",
+           "rel_types": [
+            "$rel"
+           ],
+           "belief": "current",
+           "vt_mode": "overlap"
+          }
+         ]
+        }
+       },
+       {
+        "var": "f3",
+        "relation": {
+         "op": "PropertyPredicate",
+         "var": "e",
+         "prop": "rating",
+         "cmp": ">",
+         "value": "$rating_min",
+         "inputs": [
+          {
+           "op": "EdgeScan",
+           "as": "e",
+           "rel_types": [
+            "$rel"
+           ],
+           "belief": "current",
+           "vt_mode": "overlap"
+          }
+         ]
+        }
+       }
+      ]
+     }
+    ]
+   }
+  ]
+ }
+}

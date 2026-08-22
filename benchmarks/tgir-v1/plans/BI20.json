@@ -1,0 +1,21 @@
+{
+ "plan_format": 1,
+ "plan_id": "BI20",
+ "row": {
+  "suite": "ldbc-bi",
+  "predicted_v1_support": "no",
+  "predicted_verdict_detail": "no",
+  "compilation_source": "forecast.yaml BI20 (frozen 2026-08-21)"
+ },
+ "root": null,
+ "blocked_by": {
+  "residuals": [
+   "path-weighted-shortest",
+   "path-derived-weight"
+  ],
+  "verdict_detail": "no",
+  "why": "As BI19. Separately flagged by B1 \u00a78 for the metadata model: `STUDY_AT.classYear` is a temporal ATTRIBUTE used as a plain scalar inside the weight, not as valid time \u2014 a mapping caveat, not a capability.",
+  "attempted": "",
+  "notes": ""
+ }
+}

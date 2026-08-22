@@ -1,0 +1,43 @@
+{
+ "plan_format": 1,
+ "plan_id": "IS3",
+ "row": {
+  "suite": "ldbc-is",
+  "predicted_v1_support": "yes",
+  "predicted_verdict_detail": "yes",
+  "compilation_source": "forecast.yaml IS3 (GATE-COMPILED, B2C_GATE_REVIEW §2.1)",
+  "note": "NodeScan(uids=[$personId], labels=[Person]) -> Expand(dir=both, exact(1), into=friend, edge_var=r) -> Project(r.vt_s as friendshipCreationDate) -> Order. §2.3 grants the k=1 edge binding; §4.2 puts the edge's vt_s in the row. The cast(uid,int) tie-break is not row-determining here (no Limit)."
+ },
+ "params": {"personId": "1"},
+ "sigma": {"t_v": [[0, 4611686018427387904]], "t_b": 4611686018427387904},
+ "root": {
+  "op": "Order",
+  "keys": [
+   {"key": {"col": "friendshipCreationDate"}, "dir": "desc", "nulls": "nulls_last"},
+   {"key": {"cast": {"col": "friendId"}, "to": "int"}, "dir": "asc", "nulls": "nulls_last"}
+  ],
+  "inputs": [
+   {
+    "op": "Project",
+    "keep": "listed",
+    "bindings": [
+     ["friendId", {"col": "friend.uid"}],
+     ["friendFirstName", {"prop": ["friend.props", "firstName"]}],
+     ["friendLastName", {"prop": ["friend.props", "lastName"]}],
+     ["friendshipCreationDate", {"col": "r.vt_s"}]
+    ],
+    "inputs": [
+     {
+      "op": "Expand",
+      "from": "p", "into": "friend", "dir": "both",
+      "hops": {"exact": 1}, "rel_type": "KNOWS", "edge_var": "r",
+      "inputs": [
+       {"op": "NodeScan", "as": "p", "uids": ["$personId"], "labels": ["Person"],
+        "belief": "current", "vt_mode": "overlap"}
+      ]
+     }
+    ]
+   }
+  ]
+ }
+}

@@ -1,0 +1,22 @@
+{
+ "plan_format": 1,
+ "plan_id": "IC14",
+ "row": {
+  "suite": "ldbc-ic",
+  "predicted_v1_support": "no",
+  "predicted_verdict_detail": "no",
+  "compilation_source": "forecast.yaml IC14 (frozen 2026-08-21)"
+ },
+ "root": null,
+ "blocked_by": {
+  "residuals": [
+   "path-all-shortest",
+   "path-weight-aggregation",
+   "list-aggregation"
+  ],
+  "verdict_detail": "no",
+  "why": "Enumerates every minimum-length path AS A VALUE with a weight summed along it. Three independent v1 exclusions: \u00a71.4's path family twice over, and \u00a74.1's absence of a list type. \u00a72.3 restriction 1 (no edge bindings on variable-length forms) is the structural statement of why.",
+  "attempted": "",
+  "notes": ""
+ }
+}

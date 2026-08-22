@@ -1,0 +1,21 @@
+{
+ "plan_format": 1,
+ "plan_id": "BI8",
+ "row": {
+  "suite": "ldbc-bi",
+  "predicted_v1_support": "no",
+  "predicted_verdict_detail": "no",
+  "compilation_source": "forecast.yaml BI8 (frozen 2026-08-21)"
+ },
+ "root": null,
+ "blocked_by": {
+  "residuals": [
+   "set-ops",
+   "arithmetic-over-aggregates"
+  ],
+  "verdict_detail": "no",
+  "why": "The only genuine union in the 52: `interestedPersons + collect(person)` unions two independently derived Person sets and a person may sit in either or both, so R3's {inner, left_outer, anti} has no full outer to absorb it (\u00a72.8, \u00a71.4). Also carries a row-determining `score + friendsScore` sort key under Limit(100).",
+  "attempted": "",
+  "notes": ""
+ }
+}

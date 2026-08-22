@@ -1,0 +1,187 @@
+{
+ "plan_format": 1,
+ "plan_id": "IC5",
+ "row": {
+  "suite": "ldbc-ic",
+  "predicted_v1_support": "yes",
+  "predicted_verdict_detail": "yes",
+  "compilation_source": "forecast.yaml IC5 (DERIVED) + TGIR_FORECAST_FREEZE.md §7.6",
+  "note": "bounded(1,2) KNOWS Expand — a NODE relation deduplicated at minimum depth (§2.3), which is exactly the reference's `WITH DISTINCT friend`, and whose a=1 floor is also what drops the start person -> exact(1) HAS_MEMBER dir=in with edge_var=membership -> PropertyPredicate(joinDate > $minDate). That membership relation is folded two ways: a DISTINCT forum set (Aggregate(group_by=[forumId, forumTitle], aggregates=[])) and a DISTINCT (forum, friend) cohort probe. The post branch expands CONTAINER_OF/HAS_CREATOR off the forum set, semi-joins the friend cohort (§2.8, Join{inner} on (forum, creator)), and Aggregate(group_by=[forum], count) counts it; then Join{left_outer} back onto the forum set and Project(postCount := coalesce(pc, 0)) (R2). **The coalesce rewrite is required**: §2.10 defines no null-skipping aggregate, so a bare `count` over a left_outer null would return 1 where the reference returns 0 — and postCount is the sort key under the Limit(20). FREEZE §7.6 declares this shape in advance (aggregate the inner join first, then left_outer back onto the full left side, then coalesce in a row-local Project) as the predicted plan for the four rows that depend on it. Sole residual was `var-length-bounded`, in v1 under R6/R5 (§2.3 `bounded(1,2)`, §4.3 bind-time).",
+  "compilation_note": "The Project directly beneath the Join{inner} is a key projection, not a semantic step: `tgms/tgir/eval/join.py::eval_join` guards `out.schema.names != node.out_schema.names` for the inner join only, while `tgms/tgir/prune.py` prunes the realized left relation — so any Join{inner} that is not the plan root raises E_INTERNAL unless its inputs' realized schemas equal their declared ones. A Project (whose realized schema is always its bindings) and an Aggregate satisfy that. No row and no column of the answer changes."
+ },
+ "params": {"personId": "1", "minDate": 1400000000000000},
+ "sigma": {"t_v": [[0, 4611686018427387904]], "t_b": 4611686018427387904},
+ "root": {
+  "op": "Limit", "n": 20,
+  "inputs": [
+   {
+    "op": "Order",
+    "keys": [
+     {"key": {"col": "postCount"}, "dir": "desc", "nulls": "nulls_last"},
+     {"key": {"cast": {"col": "forumId"}, "to": "int"}, "dir": "asc", "nulls": "nulls_last"}
+    ],
+    "inputs": [
+     {
+      "op": "Project",
+      "keep": "listed",
+      "bindings": [
+       ["forumId", {"col": "forumId"}],
+       ["forumTitle", {"col": "forumTitle"}],
+       ["postCount", {"coalesce": [{"col": "pc"}, {"lit": 0, "tau": "int"}]}]
+      ],
+      "inputs": [
+       {
+        "op": "Join", "type": "left_outer",
+        "on": [["forumId", "pcForumId"]],
+        "inputs": [
+         {
+          "op": "Aggregate",
+          "group_by": [
+           ["forumId", {"col": "forum.uid"}],
+           ["forumTitle", {"prop": ["forum.props", "title"]}]
+          ],
+          "aggregates": [],
+          "inputs": [
+           {
+            "op": "PropertyPredicate",
+            "var": "membership", "prop": "joinDate", "cmp": ">", "value": "$minDate",
+            "inputs": [
+             {
+              "op": "Expand",
+              "from": "friend", "into": "forum", "dir": "in",
+              "hops": {"exact": 1}, "rel_type": "HAS_MEMBER", "edge_var": "membership",
+              "inputs": [
+               {
+                "op": "Expand",
+                "from": "p", "into": "friend", "dir": "both",
+                "hops": {"bounded": [1, 2]}, "rel_type": "KNOWS",
+                "inputs": [
+                 {"op": "NodeScan", "as": "p", "uids": ["$personId"], "labels": ["Person"],
+                  "belief": "current", "vt_mode": "overlap"}
+                ]
+               }
+              ]
+             }
+            ]
+           }
+          ]
+         },
+         {
+          "op": "Aggregate",
+          "group_by": [["pcForumId", {"col": "postForumId"}]],
+          "aggregates": [{"fn": "count", "alias": "pc", "of": null}],
+          "inputs": [
+           {
+            "op": "Join", "type": "inner",
+            "on": [["postForumId", "cohortForumId"], ["postCreatorId", "cohortFriendId"]],
+            "inputs": [
+             {
+              "op": "Project",
+              "keep": "listed",
+              "bindings": [
+               ["postForumId", {"col": "forumId"}],
+               ["postId", {"col": "post.uid"}],
+               ["postCreatorId", {"col": "creator.uid"}]
+              ],
+              "inputs": [
+               {
+                "op": "Expand",
+                "from": "post", "into": "creator", "dir": "out",
+                "hops": {"exact": 1}, "rel_type": "HAS_CREATOR",
+                "inputs": [
+                 {
+                  "op": "TypeConstraint", "var": "post", "labels": ["Post"],
+                  "inputs": [
+                   {
+                    "op": "Expand",
+                    "from": "forumId", "into": "post", "dir": "out",
+                    "hops": {"exact": 1}, "rel_type": "CONTAINER_OF",
+                    "inputs": [
+                     {
+                      "op": "Aggregate",
+                      "group_by": [
+                       ["forumId", {"col": "forum.uid"}],
+                       ["forumTitle", {"prop": ["forum.props", "title"]}]
+                      ],
+                      "aggregates": [],
+                      "inputs": [
+                       {
+                        "op": "PropertyPredicate",
+                        "var": "membership", "prop": "joinDate", "cmp": ">",
+                        "value": "$minDate",
+                        "inputs": [
+                         {
+                          "op": "Expand",
+                          "from": "friend", "into": "forum", "dir": "in",
+                          "hops": {"exact": 1}, "rel_type": "HAS_MEMBER",
+                          "edge_var": "membership",
+                          "inputs": [
+                           {
+                            "op": "Expand",
+                            "from": "p", "into": "friend", "dir": "both",
+                            "hops": {"bounded": [1, 2]}, "rel_type": "KNOWS",
+                            "inputs": [
+                             {"op": "NodeScan", "as": "p", "uids": ["$personId"],
+                              "labels": ["Person"], "belief": "current",
+                              "vt_mode": "overlap"}
+                            ]
+                           }
+                          ]
+                         }
+                        ]
+                       }
+                      ]
+                     }
+                    ]
+                   }
+                  ]
+                 }
+                ]
+               }
+              ]
+             },
+             {
+              "op": "Aggregate",
+              "group_by": [
+               ["cohortForumId", {"col": "forum.uid"}],
+               ["cohortFriendId", {"col": "friend.uid"}]
+              ],
+              "aggregates": [],
+              "inputs": [
+               {
+                "op": "PropertyPredicate",
+                "var": "membership", "prop": "joinDate", "cmp": ">", "value": "$minDate",
+                "inputs": [
+                 {
+                  "op": "Expand",
+                  "from": "friend", "into": "forum", "dir": "in",
+                  "hops": {"exact": 1}, "rel_type": "HAS_MEMBER", "edge_var": "membership",
+                  "inputs": [
+                   {
+                    "op": "Expand",
+                    "from": "p", "into": "friend", "dir": "both",
+                    "hops": {"bounded": [1, 2]}, "rel_type": "KNOWS",
+                    "inputs": [
+                     {"op": "NodeScan", "as": "p", "uids": ["$personId"], "labels": ["Person"],
+                      "belief": "current", "vt_mode": "overlap"}
+                    ]
+                   }
+                  ]
+                 }
+                ]
+               }
+              ]
+             }
+            ]
+           }
+          ]
+         }
+        ]
+       }
+      ]
+     }
+    ]
+   }
+  ]
+ }
+}
