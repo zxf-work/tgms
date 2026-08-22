@@ -24,7 +24,7 @@ RELS = ["R", "S"]
 #: no-op, so this tuple's shape does not change today's comparisons.
 ENVELOPE_META_KEYS = (
     "op", "args_echo", "dataset_extent", "result_digest",
-    "tt_q", "dependency", "pinned", "clamped",
+    "tt_q", "dependency", "pinned", "clamped", "tgir",
 )
 
 # small dense time domain so intervals collide often (stress for carving logic)
