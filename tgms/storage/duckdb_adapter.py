@@ -44,13 +44,18 @@ CREATE TABLE IF NOT EXISTS edge_versions(
 
 
 class DuckDBAdapter(StorageAdapter):
-    def __init__(self, path: str | Path = ":memory:", threads: int | None = None) -> None:
-        self.conn = duckdb.connect(str(path))
+    def __init__(self, path: str | Path = ":memory:", threads: int | None = None,
+                 read_only: bool = False) -> None:
+        self.conn = duckdb.connect(str(path), read_only=read_only)
         if threads:
             self.conn.execute(f"SET threads = {int(threads)}")
-        for stmt in _DDL.strip().split(";"):
-            if stmt.strip():
-                self.conn.execute(stmt)
+        # A read-only connection rejects CREATE, even IF NOT EXISTS on a table
+        # that already exists. A read-only store is guaranteed to exist (see
+        # Store.__init__), so the DDL has nothing to do here.
+        if not read_only:
+            for stmt in _DDL.strip().split(";"):
+                if stmt.strip():
+                    self.conn.execute(stmt)
         # dense-id dictionary cache (uid <-> int64), loaded once at open
         rows = self.conn.execute("SELECT uid, dense_id FROM entities ORDER BY dense_id").fetchall()
         self._ids: dict[str, int] = {u: i for u, i in rows}

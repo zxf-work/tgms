@@ -41,11 +41,17 @@ _EDGE_RET = ("e.eid, e.vid, a.uid, b.uid, e.rel_type, e.disc, "
 
 
 class KuzuAdapter(StorageAdapter):
-    def __init__(self, path: str | Path) -> None:
-        self.db = kuzu.Database(str(path), buffer_pool_size=4 * 1024**3)
+    def __init__(self, path: str | Path, read_only: bool = False) -> None:
+        self.db = kuzu.Database(str(path), buffer_pool_size=4 * 1024**3,
+                                read_only=read_only)
         self.conn = kuzu.Connection(self.db)
-        for stmt in _DDL:
-            self.conn.execute(stmt)
+        # A read-only connection refuses any write operation, DDL included,
+        # even CREATE TABLE IF NOT EXISTS on a table that already exists
+        # (verified empirically). A read-only store is guaranteed to exist
+        # (see Store.__init__), so the DDL has nothing to do here.
+        if not read_only:
+            for stmt in _DDL:
+                self.conn.execute(stmt)
         rows = self._rows("MATCH (e:Entity) RETURN e.uid, e.dense_id ORDER BY e.dense_id")
         self._ids: dict[str, int] = {u: i for u, i in rows}
         self._uid_list: list[str] = [u for u, _ in rows]

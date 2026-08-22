@@ -34,7 +34,7 @@ class Store:
         backend = backend or detect_backend(self.path)
         self.backend = backend
         self.eventlog = EventLog(self.path / "eventlog.jsonl")
-        self.adapter = _make_adapter(backend, self.path)
+        self.adapter = _make_adapter(backend, self.path, self.read_only)
         self.adapter.paranoid = paranoid
         #: Rolling chain over the log prefix the backend has applied; None on
         #: backends without a cursor and on legacy stores until their next
@@ -348,15 +348,25 @@ def open(path: str | Path, backend: str | None = None, paranoid: bool = False,
     return Store(path, backend=backend, paranoid=paranoid, read_only=read_only)
 
 
-def _make_adapter(backend: str, path: Path) -> StorageAdapter:
+def _make_adapter(backend: str, path: Path, read_only: bool = False) -> StorageAdapter:
     if backend == "native":
+        # No OS-level lock to contend with: the native engine's on-disk
+        # format is immutable segments plus an atomic manifest swap, so a
+        # second reader never blocks on a first (verified empirically — see
+        # test_concurrency.py). `NativeAdapter` takes no read_only parameter;
+        # Store's own write refusal (read_only) is what makes this handle a
+        # reader.
         from tgms.storage.native import NativeAdapter
         return NativeAdapter(path / "native")
     if backend in ("duckdb", "memory"):
         DuckDBAdapter = _optional_backend("duckdb")
-        return DuckDBAdapter(":memory:" if backend == "memory" else path / "store.duckdb")
+        if backend == "memory":
+            # DuckDB cannot open `:memory:` read-only at all; Store-level
+            # write refusal still applies to a read-only in-memory handle.
+            return DuckDBAdapter(":memory:")
+        return DuckDBAdapter(path / "store.duckdb", read_only=read_only)
     if backend == "kuzu":
-        return _optional_backend("kuzu")(path / "store.kuzu")
+        return _optional_backend("kuzu")(path / "store.kuzu", read_only=read_only)
     raise ValueError(f"unknown backend: {backend}")
 
 
