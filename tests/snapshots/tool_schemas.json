@@ -1075,7 +1075,11 @@
      "type": "object"
     }
    },
-   "required": [],
+   "required": [
+    "motif",
+    "delta",
+    "window"
+   ],
    "type": "object"
   },
   "name": "find_temporal_motif_instances"
