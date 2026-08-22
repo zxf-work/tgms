@@ -298,6 +298,60 @@ class Store:
         self.frontier_verified = True
         return tt
 
+    # --- freshness (M4.4; FRESHNESS_SEMANTICS D13.24) ----------------------- #
+
+    def check_scope(self, scope: Any, *, tt_now: int = OPEN_END,
+                    chain_cache: Any = None) -> Any:
+        """*"Could anything written since have changed this?"* — asked of a
+        stored `DependencyScope`, answered without recomputing anything.
+
+        Thin by design: it supplies this store's event log and forwards. **No
+        new state, no persistence, and no envelope key** — a verdict is computed
+        on demand and stored nowhere, which is what keeps every comparator's
+        shape and every frozen digest untouched by this milestone.
+
+        `tt_now` defaults to `OPEN_END`, i.e. scan the whole suffix. The
+        rounding direction is the *opposite* of `tt_q`'s (D-M4a): the log is
+        fsynced before apply, so it leads the frontier, and passing this
+        store's frontier here would exclude batches every recomputing reader
+        can already see. A caller passing a smaller `tt_now` is asking an
+        "as of" question and owns it.
+
+        Accepts a `DependencyScope` or the JSON object off an envelope's
+        `dependency` key.
+        """
+        from tgms.tgir.check import check
+
+        return check(scope, self.eventlog, tt_now, chain_cache=chain_cache)
+
+    def check_result(self, envelope: dict[str, Any], *, tt_now: int = OPEN_END,
+                     chain_cache: Any = None) -> Any:
+        """The same question asked of a result envelope, which carries its own
+        scope on `dependency` (D13.19).
+
+        An envelope with no `dependency` is one produced before M2.1 placed the
+        key, or by a path that bypassed `envelope_metadata`. There is no basis
+        to compare against, so it refuses — never `FRESH`.
+        """
+        from tgms.tgir.check import UNDECIDABLE
+
+        scope = envelope.get("dependency")
+        if not isinstance(scope, dict):
+            return UNDECIDABLE("no-tt_q")
+        return self.check_scope(scope, tt_now=tt_now, chain_cache=chain_cache)
+
+    def check_trace(self, record: dict[str, Any], *, tt_now: int = OPEN_END,
+                    chain_cache: Any = None) -> Any:
+        """A saved plan/trace record — where the interesting answer is.
+
+        Each step is checked against **its own scope and its own `tt_q`** and
+        the results fold (D-M4e), so the verdict carries per-step attribution
+        alongside the one bit D5.4 says a plan reports.
+        """
+        from tgms.tgir.check import check_trace
+
+        return check_trace(record, self.eventlog, tt_now, chain_cache=chain_cache)
+
     # --- introspection ------------------------------------------------------ #
 
     def digest(self) -> str:

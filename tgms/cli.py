@@ -112,10 +112,26 @@ def build_parser() -> argparse.ArgumentParser:
     p_web.add_argument("--host", default="127.0.0.1")
     p_web.add_argument("--port", type=int, default=8080)
 
-    p_trace = sub.add_parser("trace", help="render a saved ask record")
-    p_trace.add_argument("action", choices=["render"])
+    # `check` is a **second action on the existing parser**, not a new command:
+    # additive, so every `tgms trace render …` invocation keeps working
+    # verbatim (STABILITY.md — a non-breaking addition). `-o/--out` is required
+    # for `render` and meaningless for `check`, so the requirement moves out of
+    # argparse and into the dispatch, where it can name the action.
+    p_trace = sub.add_parser(
+        "trace", help="render a saved ask record, or check whether it is stale")
+    p_trace.add_argument("action", choices=["render", "check"])
     p_trace.add_argument("record_json")
-    p_trace.add_argument("-o", "--out", required=True)
+    p_trace.add_argument("-o", "--out", default=None,
+                         help="output path (required for `render`)")
+    p_trace.add_argument("--store", default=None,
+                         help="store the record was produced against "
+                              "(required for `check`)")
+    p_trace.add_argument("--json", action="store_true",
+                         help="emit the verdict as JSON instead of prose")
+    p_trace.add_argument("--as-of", type=int, default=None, metavar="TT",
+                         help="ask the narrower question 'was it fresh as of "
+                              "this transaction time?'; the default scans the "
+                              "whole log suffix")
 
     p_eval = sub.add_parser("eval", help="run the experiment matrix / C2 readout")
     p_eval.add_argument("action", choices=["run", "c2"])
@@ -145,7 +161,8 @@ def build_parser() -> argparse.ArgumentParser:
 
 
 def main(argv: list[str] | None = None) -> int:
-    args = build_parser().parse_args(argv)
+    parser = build_parser()
+    args = parser.parse_args(argv)
 
     if args.cmd == "demo":
         from tgms.demo import run_demo
@@ -270,10 +287,52 @@ def main(argv: list[str] | None = None) -> int:
         serve(store, suite, args.model, make_llm_fn(api_base=args.api_base),
               results_dir=f"{args.store}/demo-results",
               host=args.host, port=args.port)
+    elif args.cmd == "trace" and args.action == "check":
+        # **Opens the event log, not the store.** D13.20's whole point is that a
+        # checker runs against a log it did not produce: the check reads the
+        # record's scopes and the log suffix and touches no backend at all. So
+        # this verb takes no database lock, needs no optional backend extra
+        # installed, and runs happily while a writer holds the store — which
+        # opening a `Store` here would forbid, read-only or not (DuckDB refuses
+        # a second connection with a different configuration).
+        from pathlib import Path as _Path
+
+        from tgms.core.model import OPEN_END
+        from tgms.storage.eventlog import EventLog
+        from tgms.tgir.check import check_trace
+        from tgms.tgir.explain import render_steps
+        with open(args.record_json) as f:
+            record = json.load(f)
+        # `tgms ask --save-record` writes `{question, plan, trace, …}` and
+        # `trace render` consumes that envelope; a bare `TraceRecord.to_json()`
+        # is the inner object. Accept either, so the same file works with both
+        # actions and a caller never has to know which shape they hold.
+        if isinstance(record.get("trace"), dict):
+            record = record["trace"]
+        if not args.store:
+            parser.error("trace check needs --store: a verdict is a question "
+                         "about a record AND the log it was produced against")
+        log_path = _Path(args.store)
+        if log_path.is_dir():
+            log_path = log_path / "eventlog.jsonl"
+        if not log_path.exists():
+            parser.error(f"no event log at {log_path}")
+        verdict = check_trace(record, EventLog(log_path),
+                              OPEN_END if args.as_of is None else args.as_of)
+        if args.json:
+            print(json.dumps(verdict.to_json(), indent=1))
+        else:
+            print(render_steps(verdict, produced_tt=record.get("tt_q")))
+        # exit 0 for FRESH, 1 for anything else — `UNDECIDABLE` is not a third
+        # contract (D13.25), so a script that branches on the status code gets
+        # the conservative answer without having to know that
+        return 0 if verdict.actionable_fresh else 1
     elif args.cmd == "trace":
         from tgms.tools.trace_viewer import render_trace_html
         with open(args.record_json) as f:
             record = json.load(f)
+        if not args.out:
+            parser.error("trace render needs -o/--out")
         with open(args.out, "w") as f:
             f.write(render_trace_html(record))
         print(json.dumps({"html": args.out}))

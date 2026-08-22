@@ -411,6 +411,18 @@ def main() -> int:
     min_demand = min(demand.values())
     eq(min_demand, 12, "least-demanded primitive")
     m.add("tgMinDemand", min_demand, "merged.yaml: least-demanded primitive's row count")
+    # R4's published sensitivity: what the core rung becomes if either
+    # adjudication is reversed.  Pinned to the decomposition's own sentence.
+    alt = re.search(r"moves\s*\n?v1-core unlocked from 16 to (\d+) or (\d+) respectively",
+                    DECOMP.read_text(encoding="utf-8"))
+    require(alt is not None, "decomposition states R4's reversal sensitivity")
+    if alt:
+        m.add("tgLadderCoreAltSort", alt.group(1),
+              "TGIR_WORKLOAD_DECOMPOSITION.md §3: core rung if a sort key under a LIMIT "
+              "is not row-determining")
+        m.add("tgLadderCoreAltGroup", alt.group(2),
+              "TGIR_WORKLOAD_DECOMPOSITION.md §3: core rung if a GROUP key is not "
+              "row-determining")
     m.add("tgLeastDemanded", ", ".join(sorted(k for k, v in demand.items() if v == min_demand)),
           "merged.yaml: which primitive that is")
     for p in core:
@@ -637,9 +649,12 @@ def main() -> int:
         return 1
 
     print(f"tgir_paper_macros: {len(m.items)} macros, {CHECKS} verifications, all passed.")
-    print("  wrote " + ", ".join(p.name for p in outputs))
-    if changed and not args.check:
-        print("  changed: " + ", ".join(changed))
+    if args.check:
+        print("  up to date: " + ", ".join(p.name for p in outputs))
+    else:
+        print("  wrote " + ", ".join(p.name for p in outputs))
+        if changed:
+            print("  changed: " + ", ".join(changed))
     return 0
 
 

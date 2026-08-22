@@ -190,3 +190,54 @@ deprecation note. There is also no automated tooling today that enforces
 "deprecate before break" (e.g., no CI check that a semantics-affecting diff
 carries a changelog entry) — it is a process commitment, not a machine-
 checked one, until further work makes it one.
+
+---
+
+## 4. The freshness check (added M4, 2026-08-22)
+
+**`tgms trace check <record.json> --store <path>`** answers *"could anything
+written since have changed this?"* about a saved answer, without recomputing
+it. It is a **non-breaking addition** under §3's rule: a second action on
+the existing `tgms trace` parser, so every `tgms trace render … -o …`
+invocation keeps working verbatim. The only change to `render` is that
+`-o/--out` is now enforced in the dispatch rather than by argparse, which
+turns a missing `-o` from an argparse usage error into a named one.
+
+**What you can rely on:**
+
+- **It never says an answer is fresh when it might not be.** The verdict is
+  `FRESH` / `POSSIBLY_STALE` / `UNDECIDABLE`; a caller asks
+  `.actionable_fresh`, and `UNDECIDABLE` is *not* a third answer — every
+  consumer treats it as `POSSIBLY_STALE`. The CLI exits `0` for fresh and
+  `1` for everything else, so a script that branches on the status code gets
+  the conservative answer without having to know that.
+- **It reads the event log, not the store.** The verb takes no database
+  lock, needs no optional backend extra installed, and runs while a writer
+  holds the store. `--store` may name a store directory or an
+  `eventlog.jsonl` directly. Since §1 makes the event log the stable format,
+  a record stays checkable across a backend change.
+- **It writes nothing.** A verdict is computed on demand and persisted
+  nowhere — no new field on any result, no cache, no index. Nothing about a
+  stored answer's bytes changes because you asked about it.
+- **It accepts either record shape** — the `tgms ask --save-record`
+  envelope, or a bare trace record.
+
+**What is not stable, and is not claimed:**
+
+- **Precision.** The mechanism over-approximates deliberately: a
+  `POSSIBLY_STALE` verdict does not mean the answer *did* change, and the
+  rate of such false invalidations will move as the per-operator dependency
+  derivations improve. Only the soundness direction is a promise.
+- **The witness list's contents.** Which writes are reported, in what order,
+  and how many (they are capped, with the true total carried alongside) are
+  presentation choices and may change.
+- **The prose.** The rendered sentence is for humans; parse `--json`
+  instead, and even there the per-step map's shape is v0.x.
+- **The library API** (`Store.check_scope` / `check_result` /
+  `check_trace`) is newer than the CLI verb and correspondingly less
+  settled.
+
+The contract this implements is `docs/design/FRESHNESS_SEMANTICS.md`
+(sections 1–14 frozen 2026-08-21, §15 an append-only errata register). The
+wire format a result carries is versioned: a reader that does not recognize
+a dependency record's version returns `UNDECIDABLE`, never `FRESH`.

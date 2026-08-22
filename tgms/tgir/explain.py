@@ -79,8 +79,14 @@ def render_identity(identity: dict[str, Any]) -> str:
     return f"the edge {one(src)}→{one(dst)}{kind}"
 
 
-def render_witness(w: Witness, *, produced_tt: int | None = None) -> str:
-    """D13.27's sentence, from one witness."""
+def render_witness(w: Witness, *, produced_tt: int | None = None,
+                   name_step: bool = True) -> str:
+    """D13.27's sentence, from one witness.
+
+    `name_step` is off when the caller has already said which step this is —
+    `render_steps` prefixes each line with the step id, and repeating it inside
+    the sentence reads like a stutter rather than like attribution.
+    """
     what = render_identity(w.identity)
     verb = {"assert_node": "revised", "assert_edge": "revised",
             "correct": "corrected", "retract": "retracted",
@@ -90,12 +96,13 @@ def render_witness(w: Witness, *, produced_tt: int | None = None) -> str:
              else "in a way whose valid-time reach this store cannot bound")
     lead = (f"This answer was produced on {render_tt(produced_tt)}. "
             if produced_tt is not None else "")
-    step = f" (step {w.step_id})" if w.step_id else ""
+    step = f" (step {w.step_id})" if w.step_id and name_step else ""
     return (f"{lead}A write received on {render_tt(w.tt)} {verb} {what} "
             f"{where}{step}. Reconsider.")
 
 
-def render(verdict: Verdict, *, produced_tt: int | None = None) -> str:
+def render(verdict: Verdict, *, produced_tt: int | None = None,
+           name_step: bool = True) -> str:
     """One paragraph for a whole verdict.
 
     `UNDECIDABLE` renders as *may be stale* with its reason attached — never as
@@ -113,7 +120,8 @@ def render(verdict: Verdict, *, produced_tt: int | None = None) -> str:
         return (f"This answer may be stale and could not be checked: {why}. "
                 f"Treat it as unverified.")
 
-    lines = [render_witness(w, produced_tt=produced_tt if i == 0 else None)
+    lines = [render_witness(w, produced_tt=produced_tt if i == 0 else None,
+                            name_step=name_step)
              for i, w in enumerate(verdict.witnesses)]
     if verdict.total > len(verdict.witnesses):
         lines.append(f"{verdict.total - len(verdict.witnesses)} further writes "
@@ -137,7 +145,7 @@ def render_steps(verdict: StepsVerdict, *, produced_tt: int | None = None) -> st
     for sid, v in verdict.per_step:
         if v.actionable_fresh:
             continue
-        detail = render(v).replace("\n", "\n    ")
+        detail = render(v, name_step=False).replace("\n", "\n    ")
         body.append(f"  {sid}: {detail}")
     return "\n".join([head, *body])
 
