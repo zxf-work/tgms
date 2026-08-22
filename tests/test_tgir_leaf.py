@@ -235,11 +235,17 @@ def test_only_compute_is_empty_scope_classified():
     assert EMPTY_SCOPE_OPS <= set(REGISTRY)
 
 
-def test_the_core_has_no_evaluator_in_m2():
-    """M3's, and asking for it says so rather than returning an empty
-    relation."""
-    with pytest.raises(NotImplementedError, match="M3"):
+def test_the_leaf_evaluator_routes_core_nodes_elsewhere():
+    """`evaluate` is the **opaque leaf's** entry point: it returns a payload
+    envelope, while a core node returns a `Relation`. M3.0 built the core
+    evaluators, so this no longer says "not implemented" — it says where to go,
+    and the not-yet-built node kinds name their own phase (M3 plan §4.1)."""
+    with pytest.raises(NotImplementedError, match="evaluate_core"):
         evaluate(NodeScan("p"), None)
+    from tgms.tgir.node import Exact, Expand
+
+    with pytest.raises(NotImplementedError, match="M3.1"):
+        evaluate(Expand(NodeScan("p", uids=("u1",)), "p", "q", Exact(1)), None)
 
 
 # ---------------------------------------------------------------------------
