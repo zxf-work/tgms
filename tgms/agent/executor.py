@@ -147,6 +147,11 @@ class Executor:
         ask = getattr(self.router, "read_basis", None)
         return ask(op) if ask is not None else {}
 
+    def _leaf_meta(self, op: str, envelope: dict[str, Any]) -> dict[str, Any]:
+        """The step's TGIR plan record, when the router can build one."""
+        ask = getattr(self.router, "leaf_meta", None)
+        return ask(op, envelope) if ask is not None else {}
+
     def run(self, plan: Plan) -> Trace:
         if len(plan.steps) > MAX_STEPS:
             raise LimitError(f"plan exceeds {MAX_STEPS} steps")
@@ -227,6 +232,11 @@ class Executor:
                 # the read's own capture supersedes the pre-call basis: it is
                 # the frontier this step was actually served from (D13.16)
                 rec.update({k: res[k] for k in FRESHNESS_KEYS if k in res})
+                # M2.2: the step record *is* a TGIR plan record — one node,
+                # content-addressed, with the rest of `R` beside it
+                tgir = self._leaf_meta(step.op, res)
+                if tgir:
+                    rec["tgir"] = tgir
                 rec.update(status="ok", result_digest=res["result_digest"],
                            rows_returned=rows,
                            truncated=res.get("truncated", False),

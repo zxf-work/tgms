@@ -8,11 +8,13 @@ three *and* must import the registry. So it sits above `temporal` and below
 `tools`/`agent`; putting it inside `temporal/` would create the import cycle
 `algebra → tgir → algebra`.
 
-**Phase M2.0 is data structures only.** Nothing in this package is wired into
-the live call path: `call_operator` does not import it, no operator kernel is
-touched, and the four existing suites do not import it either. That zero blast
-radius *is* the deliverable — the rollback for this phase is deleting the
-directory.
+**What is wired, as of M2.2.** `call_operator` builds a single-leaf plan for
+every operator call and evaluates it here, so `leaf`, `evaluate`, `guard`,
+`rollout` and `ttq` are on the live path; `node`, `types`, `expr`, `metadata`,
+`depscope`, `anchor`, `scope_of` and `plan` support them. **No operator kernel
+is touched** (M2 rule 1.3) — the leaf delegates to `REGISTRY[op].fn` with the
+same arguments, which is why every `result_digest` in the tree is unchanged.
+`TGIR_PLAN_PATH=off` restores the pre-M2.2 direct call.
 
 What is here:
 
@@ -29,13 +31,14 @@ What is here:
 - `scope_of` — D13.10's `leaf_scope ⊎ ⊎ ins`.
 - `guard` — the `∅`-kernel `NullAdapter`, which turns §2.0's classification into
   a checkable property.
+- `leaf` / `evaluate` / `plan` — M2.2's opaque-leaf path: Σ per §5.2, the
+  kernel delegation, the `R` tuple, and the single-node plan every call becomes.
+- `rollout` — the `TGIR_PLAN_PATH` escape hatch, and M2.4's `COMPILE_MODE`.
 - `ttq` — M2.1's read basis: the frontier capture, §6.2's clamp table, and the
-  four envelope keys `tt_q` / `pinned` / `clamped` / `dependency`. This is the
-  one module the live call path uses, through a local import in
-  `call_operator`; everything else is still unwired.
+  four envelope keys `tt_q` / `pinned` / `clamped` / `dependency`.
 
-Still to come: `leaves.py` (M2.3's fifteen derivations), `plan.py`/`evaluate.py`
-(M2.2), `compiled/` and `rollout.py` (M2.4).
+Still to come: `leaves.py` (M2.3's fifteen per-operator scope derivations) and
+`compiled/` (M2.4's core expansions, all default-off).
 """
 
 from tgms.tgir.anchor import Anchor, anchor_of, anchor_of_var, anchors_of
@@ -62,7 +65,20 @@ from tgms.tgir.node import (
     OpaqueLeaf, Order, Pattern, PatternMatch, Project, PropertyPredicate, SortKey,
     Source, TypeConstraint, Unbounded,
 )
-from tgms.tgir.scope_of import ScopeBasis, leaf_scope, scope_of
+#: `evaluate` and `scope_of` are **modules**, and the functions of the same
+#: name inside them are deliberately *not* re-exported here: binding the
+#: function to the package attribute shadows the submodule, so
+#: `from tgms.tgir import evaluate` would hand back a function and
+#: `tgms.tgir.evaluate.evaluate_leaf` would raise `AttributeError`. Import them
+#: from their module (`from tgms.tgir.evaluate import evaluate`).
+from tgms.tgir.evaluate import (
+    Evaluation, evaluate_leaf, leaf_completeness, leaf_meta, leaf_provenance,
+    meta_for, meta_json,
+)
+from tgms.tgir.leaf import LEAF_VT_MODE, build_leaf, sigma_for
+from tgms.tgir.plan import Plan
+from tgms.tgir.rollout import COMPILE_MODE, PLAN_PATH_ENV, compile_mode, plan_path_enabled
+from tgms.tgir.scope_of import ScopeBasis, leaf_scope
 from tgms.tgir.ttq import (
     Frontier, TtQ, as_of_tt_of, basis_of, checkpoints_of, clamp, dependency_of,
     envelope_metadata, frontier_of, store_identity_of,
@@ -73,24 +89,25 @@ from tgms.tgir.types import (
 )
 
 __all__ = [
-    "AGG_FNS", "Agg", "Aggregate", "Anchor", "Arith", "BELIEF_MODES", "BoolOp",
-    "Bounded", "CARVE_PROPS", "CERTIFICATION_LAYER", "CORE_NODE_TYPES", "Cast",
-    "Checkpoint", "Cmp", "Coalesce", "Col", "Column", "Completeness",
-    "DEFAULT_SIGMA", "DIRECTIONS", "DependencyScope", "EMPTY_SCOPE_OPS",
-    "EdgeKey", "EdgePat", "EdgeScan", "Endpoints", "Exact", "Exactness",
-    "Expand", "Expr", "FULL_SCAN_CHECKPOINTS", "Filter", "Frontier", "HopSpec",
-    "INCIDENT_ROLES", "TtQ", "as_of_tt_of", "basis_of", "checkpoints_of", "clamp",
-    "dependency_of", "envelope_metadata", "frontier_of", "store_identity_of",
-    "If", "Incident", "IsNull", "JOIN_TYPES", "Join", "KINDS", "K_DENSE_ID",
-    "K_EDGE", "K_NODE", "Limit", "Lit", "MIDDLE", "MathFn", "Node", "NodePat",
-    "NodeScan", "Not", "NullAdapter", "OpaqueLeaf", "Order", "PSEUDO_PROPS",
-    "Pattern", "PatternMatch", "Project", "PropRef", "PropertyPredicate",
-    "Provenance", "ResultMeta", "SCALAR_TAUS", "SCHEMA_NAME", "SCHEMA_VERSION",
-    "STORE_READING_CORE", "ScanDescriptor", "Schema", "ScopeBasis", "ScopeTerm",
-    "Sigma", "SortKey", "Source", "TOP", "TOP_TERM", "Targets", "Tau",
-    "TupleExpr", "TypeConstraint", "UNANCHORED", "Unbounded", "VT_MODES",
-    "VidSet", "adapter_for", "anchor_of", "anchor_of_var", "anchors_of",
-    "comparable", "compute_node_digest", "edge_schema", "is_empty_scope_op",
-    "le", "leaf_scope", "meet", "meet_all", "meet_exactness", "node_schema",
-    "scope_of", "store_identity", "union_all", "vt_carve", "vt_closed", "vt_from",
+    "adapter_for", "Agg", "AGG_FNS", "Aggregate", "Anchor", "anchor_of", "anchor_of_var",
+    "anchors_of", "Arith", "as_of_tt_of", "basis_of", "BELIEF_MODES", "BoolOp", "Bounded",
+    "build_leaf", "CARVE_PROPS", "Cast", "CERTIFICATION_LAYER", "Checkpoint",
+    "checkpoints_of", "clamp", "Cmp", "Coalesce", "Col", "Column", "comparable",
+    "COMPILE_MODE", "compile_mode", "Completeness", "compute_node_digest",
+    "CORE_NODE_TYPES", "DEFAULT_SIGMA", "dependency_of", "DependencyScope", "DIRECTIONS",
+    "edge_schema", "EdgeKey", "EdgePat", "EdgeScan", "EMPTY_SCOPE_OPS", "Endpoints",
+    "envelope_metadata", "evaluate_leaf", "Evaluation", "Exact", "Exactness",
+    "Expand", "Expr", "Filter", "Frontier", "frontier_of", "FULL_SCAN_CHECKPOINTS",
+    "HopSpec", "If", "Incident", "INCIDENT_ROLES", "is_empty_scope_op", "IsNull", "Join",
+    "JOIN_TYPES", "K_DENSE_ID", "K_EDGE", "K_NODE", "KINDS", "le", "leaf_completeness",
+    "leaf_meta", "leaf_provenance", "leaf_scope", "LEAF_VT_MODE", "Limit", "Lit", "MathFn",
+    "meet", "meet_all", "meet_exactness", "meta_for", "meta_json", "MIDDLE", "Node",
+    "node_schema", "NodePat", "NodeScan", "Not", "NullAdapter", "OpaqueLeaf", "Order",
+    "Pattern", "PatternMatch", "Plan", "plan_path_enabled", "PLAN_PATH_ENV", "Project",
+    "PropertyPredicate", "PropRef", "Provenance", "PSEUDO_PROPS", "ResultMeta",
+    "SCALAR_TAUS", "ScanDescriptor", "Schema", "SCHEMA_NAME", "SCHEMA_VERSION",
+    "ScopeBasis", "ScopeTerm", "Sigma", "sigma_for", "SortKey", "Source", "store_identity",
+    "store_identity_of", "STORE_READING_CORE", "Targets", "Tau", "TOP", "TOP_TERM", "TtQ",
+    "TupleExpr", "TypeConstraint", "UNANCHORED", "Unbounded", "union_all", "VidSet",
+    "vt_carve", "vt_closed", "vt_from", "VT_MODES"
 ]

@@ -32,7 +32,7 @@ rust-lint:
 derive-vectors:
 	$(UV) run python scripts/gen_derive_vectors.py
 
-ci: lint rust-lint hygiene rust-test digest-stability ttq-semantics
+ci: lint rust-lint hygiene rust-test digest-stability ttq-semantics leaf-totality
 	TGMS_HYP_EXAMPLES=50 $(UV) run pytest tests/ -q
 
 # M2 §8.4: a suite proves the payload matches the oracle; a frozen digest
@@ -45,6 +45,12 @@ digest-stability:
 # plan record's ⊎ — all digest-excluded, hence invisible to the suites.
 ttq-semantics:
 	$(UV) run python scripts/check_ttq_semantics.py
+
+# M2.2's gate: all fifteen operators reach execution as opaque leaves, the
+# ∅-classified kernel never receives a live adapter, and the escape hatch is
+# the only way past the plan path.
+leaf-totality:
+	$(UV) run python scripts/check_tgir_leaf_totality.py
 
 # spec §8.1: no commit may mix tests//oracle.py with implementation changes
 hygiene:

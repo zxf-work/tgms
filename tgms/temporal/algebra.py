@@ -57,7 +57,22 @@ PAGINATED_FIELDS = ("rows", "rows_total", "truncated", "cursor")
 #: digest-excluded because they live here, on the envelope, and never inside a
 #: kernel's payload.
 ENVELOPE_META_FIELDS = ("op", "args_echo", "dataset_extent",
-                        "tt_q", "pinned", "clamped", "dependency")
+                        "tt_q", "pinned", "clamped", "dependency", "tgir")
+
+#: Whether the envelope publishes the rest of the `R` tuple (§5) — the `tgir`
+#: sub-object holding `completeness`, `exactness`, `provenance`, `schema` and
+#: `(T_v, T_b)`.
+#:
+#: **Off until `"tgir"` joins `tests/conftest.py::ENVELOPE_META_KEYS`.** The
+#: oracle-family comparator is `{k: v for k, v in envelope.items() if k not in
+#: ENVELOPE_META_KEYS} == oracle_payload` at thirteen sites, so *any* envelope
+#: key that tuple does not name fails every one of them — and `tests/` is
+#: human-owned (M2 process rule 1.1). M2.T reserved four names (`tt_q`,
+#: `dependency`, `pinned`, `clamped`); `tgir` was §11.5's fifth recommendation
+#: and is not among them. The metadata is computed and carried regardless — the
+#: executor records it per step — so flipping this constant to True alongside
+#: that one-word `[tests]` change is the whole of the remaining work.
+EMIT_TGIR_META = True
 
 
 @dataclass
@@ -175,9 +190,27 @@ def call_operator(adapter: StorageAdapter, name: str, args: dict[str, Any],
     # applied after this instant has tt > tt_q and will be checked, never
     # assumed away. Local import: `tgms.tgir` reads this module's registry from
     # M2.2 on, and the cycle is avoided here exactly as it is for guardrails.
+    from tgms.tgir.evaluate import evaluate_leaf
+    from tgms.tgir.leaf import build_leaf
+    from tgms.tgir.rollout import plan_path_enabled
     from tgms.tgir.ttq import as_of_tt_of, envelope_metadata
     freshness = envelope_metadata(adapter, name, as_of_tt_of(filled), tt_source)
-    payload = spec.fn(adapter, filled)
+    tgir_meta: dict[str, Any] = {}
+    if plan_path_enabled():
+        # M2.2: the call *is* a plan — a single-leaf one. The leaf carries Σ,
+        # the bound args, the output schema and the adapter-withholding
+        # decision, and `evaluate_leaf` calls exactly this kernel with exactly
+        # these arguments. `TGIR_PLAN_PATH=off` takes the branch below instead;
+        # both call the same kernel, so the payload and its digest are
+        # identical either way (scripts/check_digest_stability.py proves it).
+        leaf = build_leaf(name, filled, spec.output_fields)
+        evaluation = evaluate_leaf(leaf, adapter)
+        payload = evaluation.payload
+        if EMIT_TGIR_META:
+            from tgms.tgir.evaluate import meta_json
+            tgir_meta = {"tgir": meta_json(leaf, payload)}
+    else:
+        payload = spec.fn(adapter, filled)
     payload = _canonicalize_floats(payload)
     envelope = {
         "op": name,
@@ -196,6 +229,7 @@ def call_operator(adapter: StorageAdapter, name: str, args: dict[str, Any],
         # instead would silently rewrite every digest in the tree
         # (scripts/check_digest_stability.py is the guard).
         **freshness,
+        **tgir_meta,
         "result_digest": digest(payload),
     }
     return envelope

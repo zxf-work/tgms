@@ -51,6 +51,22 @@ class ToolRouter:
         except TgmsError as e:
             return e.to_payload()
 
+    def leaf_meta(self, op: str, envelope: dict[str, Any]) -> dict[str, Any]:
+        """The TGIR plan record for a completed call: `node_digest` /
+        `plan_digest`, `completeness`, `exactness`, `provenance`, the output
+        schema and `(T_v, T_b)` (TGIR_SPEC §5).
+
+        Rebuilt from the envelope's own `args_echo` — which *is* the filled
+        argument set the leaf was constructed from — so this costs one leaf
+        construction and no re-validation, and cannot disagree with what ran.
+        """
+        from tgms.tgir.evaluate import meta_for
+
+        spec = REGISTRY.get(op)
+        if spec is None or "args_echo" not in envelope:
+            return {}
+        return meta_for(op, envelope["args_echo"], envelope, spec.output_fields)
+
     def read_basis(self, op: str) -> dict[str, Any]:
         """The freshness metadata a call to `op` would carry, without calling.
 
