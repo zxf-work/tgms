@@ -32,7 +32,8 @@ rust-lint:
 derive-vectors:
 	$(UV) run python scripts/gen_derive_vectors.py
 
-ci: lint rust-lint hygiene rust-test digest-stability ttq-semantics leaf-totality
+ci: lint rust-lint hygiene rust-test digest-stability ttq-semantics leaf-totality \
+    scope-shape
 	TGMS_HYP_EXAMPLES=50 $(UV) run pytest tests/ -q
 
 # M2 §8.4: a suite proves the payload matches the oracle; a frozen digest
@@ -51,6 +52,12 @@ ttq-semantics:
 # the only way past the plan path.
 leaf-totality:
 	$(UV) run python scripts/check_tgir_leaf_totality.py
+
+# M2.3's gate: §2.0's two targets-shape obligations, over every emitted scope.
+# Both are failures of a term's *second* conjunct while the first looks right,
+# which is why they are checked by a machine rather than by a reviewer.
+scope-shape:
+	$(UV) run python scripts/check_scope_shape.py
 
 # spec §8.1: no commit may mix tests//oracle.py with implementation changes
 hygiene:

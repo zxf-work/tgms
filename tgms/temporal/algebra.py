@@ -197,8 +197,8 @@ def call_operator(adapter: StorageAdapter, name: str, args: dict[str, Any],
     from tgms.tgir.evaluate import evaluate_leaf
     from tgms.tgir.leaf import build_leaf
     from tgms.tgir.rollout import plan_path_enabled
-    from tgms.tgir.ttq import as_of_tt_of, envelope_metadata
-    freshness = envelope_metadata(adapter, name, as_of_tt_of(filled), tt_source)
+    from tgms.tgir.ttq import envelope_metadata
+    freshness = envelope_metadata(adapter, name, filled, tt_source)
     tgir_meta: dict[str, Any] = {}
     if plan_path_enabled():
         # M2.2: the call *is* a plan — a single-leaf one. The leaf carries Σ,

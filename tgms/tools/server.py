@@ -13,7 +13,6 @@ from pathlib import Path
 from typing import Any
 
 from tgms.core.errors import TgmsError
-from tgms.core.model import OPEN_END
 from tgms.storage.base import StorageAdapter
 from tgms.temporal.algebra import REGISTRY, call_operator, ensure_all_registered
 
@@ -77,13 +76,14 @@ class ToolRouter:
         the trace step. `tt_q` is captured at the moment of the ask, which is
         after the failed attempt and therefore still a lower bound.
 
-        The basis is the **unpinned** one (`OPEN_END`): a step that never ran
-        has no resolved `as_of_tt` to pin to — its `$ref`s may be exactly what
-        failed — and reporting the frontier is the conservative reading.
+        The basis is the **unpinned** one, over the coarse `"*"` scope: a step
+        that never ran has no resolved arguments to pin an `as_of_tt` or a
+        derivation to — its `$ref`s may be exactly what failed — and reporting
+        the frontier over ⊤ is the conservative reading of both.
         """
         from tgms.tgir.ttq import envelope_metadata
 
-        return envelope_metadata(self.adapter, op, OPEN_END, self.tt_source)
+        return envelope_metadata(self.adapter, op, None, self.tt_source)
 
 
 def build_mcp_server(store_path: str | Path, readonly: bool = True):

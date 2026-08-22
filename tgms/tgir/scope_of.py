@@ -20,12 +20,14 @@ from D13.14, because a plan-level implementation must not shortcut them:
    correction can make it succeed. This is the opposite of how `completeness`
    behaves, and it is deliberate.
 
-M2.0 implements the four core store-reading nodes (D13.15) and gives every
-opaque leaf the coarse `"*"` term — explicitly legal under §5.5.4 constraint 1
-("`\"*\"` everywhere is a valid v1 answer for any operator whose derivation is
-not yet written"), with `compute`'s `∅` as the one exception from day one. The
-fifteen per-operator derivations are M2.3 (`leaves.py`), and D13.1 makes every
-later narrowing a strict improvement rather than a compatibility event.
+The four core store-reading nodes are D13.15's rows, implemented here. The
+fifteen opaque leaves delegate to `leaves.terms_for`, which is the same
+derivation the live envelope uses — so a plan node and a call can never
+disagree about one operator's scope. Operators without a derivation take the
+coarse `"*"` term, explicitly legal under §5.5.4 constraint 1 ("`\"*\"`
+everywhere is a valid v1 answer for any operator whose derivation is not yet
+written"), with `compute`'s `∅` as the one exception from day one. D13.1 makes
+every later narrowing a strict improvement rather than a compatibility event.
 """
 
 from __future__ import annotations
@@ -34,7 +36,7 @@ from dataclasses import dataclass
 
 from tgms.tgir.anchor import anchor_of_var, anchors_of
 from tgms.tgir.depscope import (
-    FULL_SCAN_CHECKPOINTS, K_DENSE_ID, K_EDGE, K_NODE, TOP, TOP_TERM, Checkpoint,
+    FULL_SCAN_CHECKPOINTS, K_DENSE_ID, K_EDGE, K_NODE, TOP, Checkpoint,
     DependencyScope, Incident, ScopeTerm, Targets, _Top,
 )
 from tgms.tgir.node import (
@@ -145,7 +147,10 @@ def leaf_scope(node: Node, basis: ScopeBasis) -> DependencyScope:
         if not node.reads_store:
             # `compute` — `terms: []`, the empty scope ∅ (§6 #15, D13.2).
             return basis.empty_scope()
-        return basis.scope(TOP_TERM)
+        # the same derivation the live envelope uses (`ttq.dependency_of`), so
+        # a plan node and a call can never disagree about one operator's scope
+        from tgms.tgir.leaves import terms_for
+        return basis.scope(*terms_for(node.op, node.args, node.sigma))
 
     # `Filter`, `PropertyPredicate`, `TypeConstraint`, `Project`, `Join`,
     # `Aggregate`, `Order`, `Limit` — `∅` (D13.11). A filter narrows the

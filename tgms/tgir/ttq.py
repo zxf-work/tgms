@@ -159,31 +159,45 @@ def basis_of(adapter: Any, as_of_tt: int, tt_source: Any = None) -> ScopeBasis:
     )
 
 
-def dependency_of(op: str, basis: ScopeBasis) -> DependencyScope:
-    """The M2.1 day-one scope: the single all-`"*"` term, which §5.5.4
-    constraint 1 makes explicitly legal for any operator whose derivation is
-    not yet written, and D13.1 makes a strict improvement to narrow later.
+def dependency_of(op: str, basis: ScopeBasis, args: dict[str, Any] | None = None,
+                  sigma: Any = None) -> DependencyScope:
+    """The scope for one call: `leaves.terms_for` where a derivation exists,
+    the coarse all-`"*"` term where it does not.
+
+    `"*"` stays explicitly legal for any operator whose derivation is not yet
+    written (§5.5.4 constraint 1), and D13.1 makes every later narrowing a
+    strict improvement rather than a compatibility event.
 
     `compute` is the exception **from day one**: `terms: []`, the empty scope
     ∅, "the correct, non-degenerate value for a `compute` node over literal
-    inputs" (D13.2, §6 #15). M2.3 replaces the rest, per operator.
+    inputs" (D13.2, §6 #15).
     """
+    from tgms.tgir.leaf import sigma_for
+    from tgms.tgir.leaves import terms_for
+
     if op in EMPTY_SCOPE_OPS:
         return basis.empty_scope()
-    return basis.scope(TOP_TERM)
+    if args is None:
+        return basis.scope(TOP_TERM)
+    return basis.scope(*terms_for(op, args, sigma or sigma_for(op, args)))
 
 
-def envelope_metadata(adapter: Any, op: str, as_of_tt: int,
+def envelope_metadata(adapter: Any, op: str, args: dict[str, Any] | None = None,
                       tt_source: Any = None) -> dict[str, Any]:
     """The four flat envelope keys plus the dependency object, for one call.
 
     Every one of them lands on the **envelope**, never in the kernel's
     `payload`, so digest exclusion is structural rather than a denylist
     (§5.4's ruling; the M2 plan's §6.3).
+
+    `args` are the *filled* arguments the leaf was built from; with none — a
+    step that never ran, and so has none — the scope falls back to `"*"`, which
+    is the widening a failed step's mandatory contribution should be.
     """
-    basis = basis_of(adapter, as_of_tt, tt_source)
+    basis = basis_of(adapter, as_of_tt_of(args or {}), tt_source)
     triple = TtQ(basis.tt_q, basis.pinned, basis.clamped, basis.tt_q_verified)
-    return {**triple.to_envelope(), "dependency": dependency_of(op, basis).to_json()}
+    return {**triple.to_envelope(),
+            "dependency": dependency_of(op, basis, args).to_json()}
 
 
 def as_of_tt_of(args: dict[str, Any]) -> int:

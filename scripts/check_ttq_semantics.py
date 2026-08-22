@@ -41,7 +41,7 @@ from tgms.agent.executor import Executor
 from tgms.agent.ir import Plan
 from tgms.core.model import OPEN_END
 from tgms.storage.eventlog import EventLog
-from tgms.tgir.depscope import DependencyScope, union_all
+from tgms.tgir.depscope import TOP, TOP_TERM, DependencyScope, union_all
 from tgms.tgir.ttq import Frontier, clamp
 from tgms.tools.server import ToolRouter
 
@@ -117,9 +117,18 @@ def check_store(backend: str) -> None:
     scope = DependencyScope.from_json(open_end["dependency"])
     check(f"{backend}: the scope carries this store's identity and tt_q",
           scope.store == identity and scope.tt_q == open_end["tt_q"])
-    check(f"{backend}: the day-one scope is the single all-'*' term",
-          len(scope.terms) == 1 and scope.terms[0].targets is not None
-          and scope.canonical().count('"*"') >= 5)
+    # M2.3 derived this operator's scope, so the coarse default is checked on
+    # one that still carries it. `entity_history`'s own shape is
+    # `tests/test_tgir_scopes.py`'s subject.
+    coarse = DependencyScope.from_json(
+        router.call("version_history",
+                    {"kind": "node", "window": {"t_a": 0, "t_b": 100}})["dependency"])
+    check(f"{backend}: an underived operator still carries the all-'*' term",
+          coarse.terms == (TOP_TERM,))
+    check(f"{backend}: a derived operator narrows instead",
+          bool(scope.terms) and all(t != TOP_TERM for t in scope.terms)
+          and all(t.targets is not TOP for t in scope.terms),
+          "entity_history is one of M2.3's three, and every term targets it")
     empty = router.call("compute", {"fn": "count", "input": [{"x": 1}]})
     check(f"{backend}: compute carries the empty scope ∅ from day one",
           empty["dependency"]["terms"] == [])
