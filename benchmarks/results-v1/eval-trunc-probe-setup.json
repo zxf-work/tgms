@@ -1,0 +1,893 @@
+{
+  "N_stats": {
+    "gt_100": 53,
+    "le_100": 58,
+    "max": 29936,
+    "min": 11
+  },
+  "eligible_by_db": {
+    "california_schools": 7,
+    "card_games": 21,
+    "codebase_community": 7,
+    "debit_card_specializing": 5,
+    "european_football_2": 9,
+    "financial": 12,
+    "formula_1": 9,
+    "student_club": 3,
+    "superhero": 17,
+    "thrombosis_prediction": 16,
+    "toxicology": 5
+  },
+  "eligible_total": 111,
+  "exclusion_counts": {
+    "gold_count_le_k": 29,
+    "not_count_shaped": 5,
+    "reference_rows_le_k": 82
+  },
+  "exclusions": [
+    {
+      "db_id": "california_schools",
+      "detail": "gold count=4 <= k=10",
+      "family": "COUNT",
+      "question_id": 5,
+      "reason": "gold_count_le_k"
+    },
+    {
+      "db_id": "california_schools",
+      "detail": "outer projection is not a single ungrouped, unlimited Count/Sum",
+      "family": "COUNT",
+      "question_id": 47,
+      "reason": "not_count_shaped"
+    },
+    {
+      "db_id": "california_schools",
+      "detail": "gold count=1 <= k=10",
+      "family": "COUNT",
+      "question_id": 62,
+      "reason": "gold_count_le_k"
+    },
+    {
+      "db_id": "financial",
+      "detail": "gold count=8 <= k=10",
+      "family": "COUNT",
+      "question_id": 100,
+      "reason": "gold_count_le_k"
+    },
+    {
+      "db_id": "card_games",
+      "detail": "gold count=3 <= k=10",
+      "family": "COUNT",
+      "question_id": 377,
+      "reason": "gold_count_le_k"
+    },
+    {
+      "db_id": "card_games",
+      "detail": "gold count=7 <= k=10",
+      "family": "COUNT",
+      "question_id": 405,
+      "reason": "gold_count_le_k"
+    },
+    {
+      "db_id": "card_games",
+      "detail": "gold count=1 <= k=10",
+      "family": "COUNT",
+      "question_id": 472,
+      "reason": "gold_count_le_k"
+    },
+    {
+      "db_id": "codebase_community",
+      "detail": "gold count=1 <= k=10",
+      "family": "COUNT",
+      "question_id": 547,
+      "reason": "gold_count_le_k"
+    },
+    {
+      "db_id": "codebase_community",
+      "detail": "gold count=2 <= k=10",
+      "family": "COUNT",
+      "question_id": 567,
+      "reason": "gold_count_le_k"
+    },
+    {
+      "db_id": "codebase_community",
+      "detail": "outer projection is not a single ungrouped, unlimited Count/Sum",
+      "family": "COUNT",
+      "question_id": 665,
+      "reason": "not_count_shaped"
+    },
+    {
+      "db_id": "codebase_community",
+      "detail": "outer projection is not a single ungrouped, unlimited Count/Sum",
+      "family": "COUNT",
+      "question_id": 687,
+      "reason": "not_count_shaped"
+    },
+    {
+      "db_id": "superhero",
+      "detail": "gold count=2 <= k=10",
+      "family": "COUNT",
+      "question_id": 733,
+      "reason": "gold_count_le_k"
+    },
+    {
+      "db_id": "superhero",
+      "detail": "gold count=6 <= k=10",
+      "family": "COUNT",
+      "question_id": 822,
+      "reason": "gold_count_le_k"
+    },
+    {
+      "db_id": "formula_1",
+      "detail": "gold count=1 <= k=10",
+      "family": "COUNT",
+      "question_id": 945,
+      "reason": "gold_count_le_k"
+    },
+    {
+      "db_id": "formula_1",
+      "detail": "outer projection is not a single ungrouped, unlimited Count/Sum",
+      "family": "COUNT",
+      "question_id": 951,
+      "reason": "not_count_shaped"
+    },
+    {
+      "db_id": "formula_1",
+      "detail": "gold count=1 <= k=10",
+      "family": "COUNT",
+      "question_id": 967,
+      "reason": "gold_count_le_k"
+    },
+    {
+      "db_id": "formula_1",
+      "detail": "outer projection is not a single ungrouped, unlimited Count/Sum",
+      "family": "COUNT",
+      "question_id": 1003,
+      "reason": "not_count_shaped"
+    },
+    {
+      "db_id": "european_football_2",
+      "detail": "gold count=9 <= k=10",
+      "family": "COUNT",
+      "question_id": 1133,
+      "reason": "gold_count_le_k"
+    },
+    {
+      "db_id": "european_football_2",
+      "detail": "gold count=3 <= k=10",
+      "family": "COUNT",
+      "question_id": 1136,
+      "reason": "gold_count_le_k"
+    },
+    {
+      "db_id": "thrombosis_prediction",
+      "detail": "gold count=1 <= k=10",
+      "family": "COUNT",
+      "question_id": 1164,
+      "reason": "gold_count_le_k"
+    },
+    {
+      "db_id": "thrombosis_prediction",
+      "detail": "gold count=1 <= k=10",
+      "family": "COUNT",
+      "question_id": 1171,
+      "reason": "gold_count_le_k"
+    },
+    {
+      "db_id": "thrombosis_prediction",
+      "detail": "gold count=1 <= k=10",
+      "family": "COUNT",
+      "question_id": 1189,
+      "reason": "gold_count_le_k"
+    },
+    {
+      "db_id": "thrombosis_prediction",
+      "detail": "gold count=2 <= k=10",
+      "family": "COUNT",
+      "question_id": 1231,
+      "reason": "gold_count_le_k"
+    },
+    {
+      "db_id": "thrombosis_prediction",
+      "detail": "gold count=9 <= k=10",
+      "family": "COUNT",
+      "question_id": 1251,
+      "reason": "gold_count_le_k"
+    },
+    {
+      "db_id": "thrombosis_prediction",
+      "detail": "gold count=4 <= k=10",
+      "family": "COUNT",
+      "question_id": 1252,
+      "reason": "gold_count_le_k"
+    },
+    {
+      "db_id": "thrombosis_prediction",
+      "detail": "gold count=4 <= k=10",
+      "family": "COUNT",
+      "question_id": 1257,
+      "reason": "gold_count_le_k"
+    },
+    {
+      "db_id": "thrombosis_prediction",
+      "detail": "gold count=7 <= k=10",
+      "family": "COUNT",
+      "question_id": 1267,
+      "reason": "gold_count_le_k"
+    },
+    {
+      "db_id": "thrombosis_prediction",
+      "detail": "gold count=2 <= k=10",
+      "family": "COUNT",
+      "question_id": 1270,
+      "reason": "gold_count_le_k"
+    },
+    {
+      "db_id": "thrombosis_prediction",
+      "detail": "gold count=1 <= k=10",
+      "family": "COUNT",
+      "question_id": 1275,
+      "reason": "gold_count_le_k"
+    },
+    {
+      "db_id": "thrombosis_prediction",
+      "detail": "gold count=7 <= k=10",
+      "family": "COUNT",
+      "question_id": 1302,
+      "reason": "gold_count_le_k"
+    },
+    {
+      "db_id": "student_club",
+      "detail": "gold count=7 <= k=10",
+      "family": "COUNT",
+      "question_id": 1317,
+      "reason": "gold_count_le_k"
+    },
+    {
+      "db_id": "student_club",
+      "detail": "gold count=1 <= k=10",
+      "family": "COUNT",
+      "question_id": 1352,
+      "reason": "gold_count_le_k"
+    },
+    {
+      "db_id": "student_club",
+      "detail": "gold count=7 <= k=10",
+      "family": "COUNT",
+      "question_id": 1362,
+      "reason": "gold_count_le_k"
+    },
+    {
+      "db_id": "student_club",
+      "detail": "gold count=1 <= k=10",
+      "family": "COUNT",
+      "question_id": 1394,
+      "reason": "gold_count_le_k"
+    },
+    {
+      "db_id": "california_schools",
+      "detail": "reference_rows=6 <= k=10",
+      "family": "SET",
+      "question_id": 25,
+      "reason": "reference_rows_le_k"
+    },
+    {
+      "db_id": "california_schools",
+      "detail": "reference_rows=5 <= k=10",
+      "family": "SET",
+      "question_id": 26,
+      "reason": "reference_rows_le_k"
+    },
+    {
+      "db_id": "california_schools",
+      "detail": "reference_rows=2 <= k=10",
+      "family": "SET",
+      "question_id": 31,
+      "reason": "reference_rows_le_k"
+    },
+    {
+      "db_id": "california_schools",
+      "detail": "reference_rows=5 <= k=10",
+      "family": "SET",
+      "question_id": 32,
+      "reason": "reference_rows_le_k"
+    },
+    {
+      "db_id": "california_schools",
+      "detail": "reference_rows=2 <= k=10",
+      "family": "SET",
+      "question_id": 77,
+      "reason": "reference_rows_le_k"
+    },
+    {
+      "db_id": "california_schools",
+      "detail": "reference_rows=1 <= k=10",
+      "family": "SET",
+      "question_id": 83,
+      "reason": "reference_rows_le_k"
+    },
+    {
+      "db_id": "financial",
+      "detail": "reference_rows=9 <= k=10",
+      "family": "SET",
+      "question_id": 128,
+      "reason": "reference_rows_le_k"
+    },
+    {
+      "db_id": "financial",
+      "detail": "reference_rows=10 <= k=10",
+      "family": "SET",
+      "question_id": 129,
+      "reason": "reference_rows_le_k"
+    },
+    {
+      "db_id": "toxicology",
+      "detail": "reference_rows=2 <= k=10",
+      "family": "SET",
+      "question_id": 200,
+      "reason": "reference_rows_le_k"
+    },
+    {
+      "db_id": "toxicology",
+      "detail": "reference_rows=2 <= k=10",
+      "family": "SET",
+      "question_id": 213,
+      "reason": "reference_rows_le_k"
+    },
+    {
+      "db_id": "toxicology",
+      "detail": "reference_rows=3 <= k=10",
+      "family": "SET",
+      "question_id": 220,
+      "reason": "reference_rows_le_k"
+    },
+    {
+      "db_id": "toxicology",
+      "detail": "reference_rows=5 <= k=10",
+      "family": "SET",
+      "question_id": 230,
+      "reason": "reference_rows_le_k"
+    },
+    {
+      "db_id": "toxicology",
+      "detail": "reference_rows=3 <= k=10",
+      "family": "SET",
+      "question_id": 232,
+      "reason": "reference_rows_le_k"
+    },
+    {
+      "db_id": "toxicology",
+      "detail": "reference_rows=2 <= k=10",
+      "family": "SET",
+      "question_id": 236,
+      "reason": "reference_rows_le_k"
+    },
+    {
+      "db_id": "toxicology",
+      "detail": "reference_rows=6 <= k=10",
+      "family": "SET",
+      "question_id": 240,
+      "reason": "reference_rows_le_k"
+    },
+    {
+      "db_id": "toxicology",
+      "detail": "reference_rows=6 <= k=10",
+      "family": "SET",
+      "question_id": 243,
+      "reason": "reference_rows_le_k"
+    },
+    {
+      "db_id": "toxicology",
+      "detail": "reference_rows=3 <= k=10",
+      "family": "SET",
+      "question_id": 247,
+      "reason": "reference_rows_le_k"
+    },
+    {
+      "db_id": "toxicology",
+      "detail": "reference_rows=4 <= k=10",
+      "family": "SET",
+      "question_id": 248,
+      "reason": "reference_rows_le_k"
+    },
+    {
+      "db_id": "toxicology",
+      "detail": "reference_rows=2 <= k=10",
+      "family": "SET",
+      "question_id": 249,
+      "reason": "reference_rows_le_k"
+    },
+    {
+      "db_id": "toxicology",
+      "detail": "reference_rows=4 <= k=10",
+      "family": "SET",
+      "question_id": 253,
+      "reason": "reference_rows_le_k"
+    },
+    {
+      "db_id": "toxicology",
+      "detail": "reference_rows=2 <= k=10",
+      "family": "SET",
+      "question_id": 268,
+      "reason": "reference_rows_le_k"
+    },
+    {
+      "db_id": "toxicology",
+      "detail": "reference_rows=8 <= k=10",
+      "family": "SET",
+      "question_id": 281,
+      "reason": "reference_rows_le_k"
+    },
+    {
+      "db_id": "card_games",
+      "detail": "reference_rows=5 <= k=10",
+      "family": "SET",
+      "question_id": 344,
+      "reason": "reference_rows_le_k"
+    },
+    {
+      "db_id": "card_games",
+      "detail": "reference_rows=3 <= k=10",
+      "family": "SET",
+      "question_id": 345,
+      "reason": "reference_rows_le_k"
+    },
+    {
+      "db_id": "card_games",
+      "detail": "reference_rows=8 <= k=10",
+      "family": "SET",
+      "question_id": 391,
+      "reason": "reference_rows_le_k"
+    },
+    {
+      "db_id": "card_games",
+      "detail": "reference_rows=10 <= k=10",
+      "family": "SET",
+      "question_id": 414,
+      "reason": "reference_rows_le_k"
+    },
+    {
+      "db_id": "card_games",
+      "detail": "reference_rows=10 <= k=10",
+      "family": "SET",
+      "question_id": 427,
+      "reason": "reference_rows_le_k"
+    },
+    {
+      "db_id": "card_games",
+      "detail": "reference_rows=2 <= k=10",
+      "family": "SET",
+      "question_id": 462,
+      "reason": "reference_rows_le_k"
+    },
+    {
+      "db_id": "card_games",
+      "detail": "reference_rows=2 <= k=10",
+      "family": "SET",
+      "question_id": 477,
+      "reason": "reference_rows_le_k"
+    },
+    {
+      "db_id": "card_games",
+      "detail": "reference_rows=2 <= k=10",
+      "family": "SET",
+      "question_id": 480,
+      "reason": "reference_rows_le_k"
+    },
+    {
+      "db_id": "card_games",
+      "detail": "reference_rows=2 <= k=10",
+      "family": "SET",
+      "question_id": 522,
+      "reason": "reference_rows_le_k"
+    },
+    {
+      "db_id": "codebase_community",
+      "detail": "reference_rows=5 <= k=10",
+      "family": "SET",
+      "question_id": 573,
+      "reason": "reference_rows_le_k"
+    },
+    {
+      "db_id": "codebase_community",
+      "detail": "reference_rows=8 <= k=10",
+      "family": "SET",
+      "question_id": 584,
+      "reason": "reference_rows_le_k"
+    },
+    {
+      "db_id": "codebase_community",
+      "detail": "reference_rows=2 <= k=10",
+      "family": "SET",
+      "question_id": 586,
+      "reason": "reference_rows_le_k"
+    },
+    {
+      "db_id": "codebase_community",
+      "detail": "reference_rows=9 <= k=10",
+      "family": "SET",
+      "question_id": 587,
+      "reason": "reference_rows_le_k"
+    },
+    {
+      "db_id": "codebase_community",
+      "detail": "reference_rows=5 <= k=10",
+      "family": "SET",
+      "question_id": 637,
+      "reason": "reference_rows_le_k"
+    },
+    {
+      "db_id": "codebase_community",
+      "detail": "reference_rows=10 <= k=10",
+      "family": "SET",
+      "question_id": 694,
+      "reason": "reference_rows_le_k"
+    },
+    {
+      "db_id": "superhero",
+      "detail": "reference_rows=4 <= k=10",
+      "family": "SET",
+      "question_id": 717,
+      "reason": "reference_rows_le_k"
+    },
+    {
+      "db_id": "superhero",
+      "detail": "reference_rows=7 <= k=10",
+      "family": "SET",
+      "question_id": 739,
+      "reason": "reference_rows_le_k"
+    },
+    {
+      "db_id": "superhero",
+      "detail": "reference_rows=5 <= k=10",
+      "family": "SET",
+      "question_id": 751,
+      "reason": "reference_rows_le_k"
+    },
+    {
+      "db_id": "superhero",
+      "detail": "reference_rows=5 <= k=10",
+      "family": "SET",
+      "question_id": 758,
+      "reason": "reference_rows_le_k"
+    },
+    {
+      "db_id": "superhero",
+      "detail": "reference_rows=4 <= k=10",
+      "family": "SET",
+      "question_id": 764,
+      "reason": "reference_rows_le_k"
+    },
+    {
+      "db_id": "superhero",
+      "detail": "reference_rows=5 <= k=10",
+      "family": "SET",
+      "question_id": 772,
+      "reason": "reference_rows_le_k"
+    },
+    {
+      "db_id": "superhero",
+      "detail": "reference_rows=3 <= k=10",
+      "family": "SET",
+      "question_id": 781,
+      "reason": "reference_rows_le_k"
+    },
+    {
+      "db_id": "superhero",
+      "detail": "reference_rows=8 <= k=10",
+      "family": "SET",
+      "question_id": 792,
+      "reason": "reference_rows_le_k"
+    },
+    {
+      "db_id": "superhero",
+      "detail": "reference_rows=6 <= k=10",
+      "family": "SET",
+      "question_id": 796,
+      "reason": "reference_rows_le_k"
+    },
+    {
+      "db_id": "superhero",
+      "detail": "reference_rows=3 <= k=10",
+      "family": "SET",
+      "question_id": 798,
+      "reason": "reference_rows_le_k"
+    },
+    {
+      "db_id": "superhero",
+      "detail": "reference_rows=3 <= k=10",
+      "family": "SET",
+      "question_id": 824,
+      "reason": "reference_rows_le_k"
+    },
+    {
+      "db_id": "formula_1",
+      "detail": "reference_rows=5 <= k=10",
+      "family": "SET",
+      "question_id": 846,
+      "reason": "reference_rows_le_k"
+    },
+    {
+      "db_id": "formula_1",
+      "detail": "reference_rows=3 <= k=10",
+      "family": "SET",
+      "question_id": 850,
+      "reason": "reference_rows_le_k"
+    },
+    {
+      "db_id": "formula_1",
+      "detail": "reference_rows=9 <= k=10",
+      "family": "SET",
+      "question_id": 866,
+      "reason": "reference_rows_le_k"
+    },
+    {
+      "db_id": "formula_1",
+      "detail": "reference_rows=3 <= k=10",
+      "family": "SET",
+      "question_id": 884,
+      "reason": "reference_rows_le_k"
+    },
+    {
+      "db_id": "formula_1",
+      "detail": "reference_rows=3 <= k=10",
+      "family": "SET",
+      "question_id": 901,
+      "reason": "reference_rows_le_k"
+    },
+    {
+      "db_id": "formula_1",
+      "detail": "reference_rows=6 <= k=10",
+      "family": "SET",
+      "question_id": 950,
+      "reason": "reference_rows_le_k"
+    },
+    {
+      "db_id": "formula_1",
+      "detail": "reference_rows=2 <= k=10",
+      "family": "SET",
+      "question_id": 978,
+      "reason": "reference_rows_le_k"
+    },
+    {
+      "db_id": "formula_1",
+      "detail": "reference_rows=3 <= k=10",
+      "family": "SET",
+      "question_id": 988,
+      "reason": "reference_rows_le_k"
+    },
+    {
+      "db_id": "european_football_2",
+      "detail": "reference_rows=4 <= k=10",
+      "family": "SET",
+      "question_id": 1029,
+      "reason": "reference_rows_le_k"
+    },
+    {
+      "db_id": "european_football_2",
+      "detail": "reference_rows=10 <= k=10",
+      "family": "SET",
+      "question_id": 1040,
+      "reason": "reference_rows_le_k"
+    },
+    {
+      "db_id": "european_football_2",
+      "detail": "reference_rows=4 <= k=10",
+      "family": "SET",
+      "question_id": 1044,
+      "reason": "reference_rows_le_k"
+    },
+    {
+      "db_id": "european_football_2",
+      "detail": "reference_rows=4 <= k=10",
+      "family": "SET",
+      "question_id": 1092,
+      "reason": "reference_rows_le_k"
+    },
+    {
+      "db_id": "european_football_2",
+      "detail": "reference_rows=4 <= k=10",
+      "family": "SET",
+      "question_id": 1135,
+      "reason": "reference_rows_le_k"
+    },
+    {
+      "db_id": "european_football_2",
+      "detail": "reference_rows=4 <= k=10",
+      "family": "SET",
+      "question_id": 1145,
+      "reason": "reference_rows_le_k"
+    },
+    {
+      "db_id": "thrombosis_prediction",
+      "detail": "reference_rows=7 <= k=10",
+      "family": "SET",
+      "question_id": 1156,
+      "reason": "reference_rows_le_k"
+    },
+    {
+      "db_id": "thrombosis_prediction",
+      "detail": "reference_rows=3 <= k=10",
+      "family": "SET",
+      "question_id": 1157,
+      "reason": "reference_rows_le_k"
+    },
+    {
+      "db_id": "thrombosis_prediction",
+      "detail": "reference_rows=6 <= k=10",
+      "family": "SET",
+      "question_id": 1192,
+      "reason": "reference_rows_le_k"
+    },
+    {
+      "db_id": "thrombosis_prediction",
+      "detail": "reference_rows=10 <= k=10",
+      "family": "SET",
+      "question_id": 1225,
+      "reason": "reference_rows_le_k"
+    },
+    {
+      "db_id": "thrombosis_prediction",
+      "detail": "reference_rows=3 <= k=10",
+      "family": "SET",
+      "question_id": 1239,
+      "reason": "reference_rows_le_k"
+    },
+    {
+      "db_id": "student_club",
+      "detail": "reference_rows=8 <= k=10",
+      "family": "SET",
+      "question_id": 1323,
+      "reason": "reference_rows_le_k"
+    },
+    {
+      "db_id": "student_club",
+      "detail": "reference_rows=3 <= k=10",
+      "family": "SET",
+      "question_id": 1334,
+      "reason": "reference_rows_le_k"
+    },
+    {
+      "db_id": "student_club",
+      "detail": "reference_rows=2 <= k=10",
+      "family": "SET",
+      "question_id": 1357,
+      "reason": "reference_rows_le_k"
+    },
+    {
+      "db_id": "student_club",
+      "detail": "reference_rows=5 <= k=10",
+      "family": "SET",
+      "question_id": 1375,
+      "reason": "reference_rows_le_k"
+    },
+    {
+      "db_id": "student_club",
+      "detail": "reference_rows=4 <= k=10",
+      "family": "SET",
+      "question_id": 1387,
+      "reason": "reference_rows_le_k"
+    },
+    {
+      "db_id": "student_club",
+      "detail": "reference_rows=4 <= k=10",
+      "family": "SET",
+      "question_id": 1405,
+      "reason": "reference_rows_le_k"
+    },
+    {
+      "db_id": "student_club",
+      "detail": "reference_rows=4 <= k=10",
+      "family": "SET",
+      "question_id": 1422,
+      "reason": "reference_rows_le_k"
+    },
+    {
+      "db_id": "student_club",
+      "detail": "reference_rows=2 <= k=10",
+      "family": "SET",
+      "question_id": 1426,
+      "reason": "reference_rows_le_k"
+    },
+    {
+      "db_id": "student_club",
+      "detail": "reference_rows=4 <= k=10",
+      "family": "SET",
+      "question_id": 1427,
+      "reason": "reference_rows_le_k"
+    },
+    {
+      "db_id": "student_club",
+      "detail": "reference_rows=2 <= k=10",
+      "family": "SET",
+      "question_id": 1435,
+      "reason": "reference_rows_le_k"
+    },
+    {
+      "db_id": "student_club",
+      "detail": "reference_rows=3 <= k=10",
+      "family": "SET",
+      "question_id": 1457,
+      "reason": "reference_rows_le_k"
+    },
+    {
+      "db_id": "student_club",
+      "detail": "reference_rows=2 <= k=10",
+      "family": "SET",
+      "question_id": 1464,
+      "reason": "reference_rows_le_k"
+    },
+    {
+      "db_id": "debit_card_specializing",
+      "detail": "reference_rows=2 <= k=10",
+      "family": "SET",
+      "question_id": 1501,
+      "reason": "reference_rows_le_k"
+    },
+    {
+      "db_id": "debit_card_specializing",
+      "detail": "reference_rows=2 <= k=10",
+      "family": "SET",
+      "question_id": 1507,
+      "reason": "reference_rows_le_k"
+    },
+    {
+      "db_id": "debit_card_specializing",
+      "detail": "reference_rows=10 <= k=10",
+      "family": "SET",
+      "question_id": 1533,
+      "reason": "reference_rows_le_k"
+    }
+  ],
+  "families": {
+    "COUNT": {
+      "candidates": 76,
+      "eligible": 42,
+      "excluded": 34,
+      "rule": "(a) counted domain derivable by the D-131 projection-only rewrite and validated against the database; (b) gold count > k"
+    },
+    "SET": {
+      "candidates": 151,
+      "eligible": 69,
+      "excluded": 82,
+      "rule": "multiplicity_audit reference_rows > k"
+    }
+  },
+  "freeze": "external_workloads/probe/PROBE_FREEZE.md",
+  "freeze_sha256": "0115dd71c2d1bac1794cf836d0ddd0e9395e800b447845783277e089f07ac282",
+  "k": 10,
+  "manifest": "/Users/xz/.tgms-worktrees/agent-interface/external_workloads/probe/probe_manifest.jsonl",
+  "manifest_pg": "/Users/xz/.tgms-worktrees/agent-interface/external_workloads/probe/probe_manifest_pg.jsonl",
+  "max_page0_bytes": 22927,
+  "pagination_check": {
+    "checked": 111,
+    "failures": []
+  },
+  "pg_leg": {
+    "built": true,
+    "databases": [
+      "superhero",
+      "student_club"
+    ],
+    "eligible": 19,
+    "excluded": 1,
+    "exclusions": [
+      {
+        "N": 29,
+        "db_id": "student_club",
+        "detail": "GroupingError: column \"t1.first_name\" must appear in the GROUP BY clause or be used in an aggregate function\nLINE 1: ...LECT ROW_NUMBER() OVER () AS _ord, * FROM (SELECT T1.first_n...\n                ",
+        "family": "SET",
+        "question_id": 1381,
+        "reason": "pg_execution_error"
+      }
+    ]
+  },
+  "probe": "established-interface truncation probe (D-142)",
+  "sqlglot_version": "30.15.0",
+  "sqlite_version": "3.53.1",
+  "tool_call_budget": 10,
+  "universe": {
+    "audit": "external_workloads/bird/multiplicity_audit.jsonl",
+    "errata": "external_workloads/bird/annotation_errata.jsonl",
+    "frozen_questions": "external_workloads/bird/bird_500_select_sqlite.jsonl"
+  }
+}
