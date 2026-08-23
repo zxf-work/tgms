@@ -44,10 +44,35 @@ from tgms.temporal.guardrails import DEFAULT_CEILINGS, SUGGESTIONS
 from tgms.tgir.cost import cost_of, scale, time_estimate
 from tgms.tgir.node import Node, OpaqueLeaf
 
-#: EVIDENCE_MODEL §9's frozen policy, and the receipt its coefficients were
+#: EVIDENCE_MODEL §9's frozen policy, and the receipts its coefficients were
 #: measured from. Both are constants of the *policy*, not of a call.
-POLICY_VERSION = "guardrail-policy-v1"
-CALIBRATION_REF = "docs/eval_guardrail.md#frontier"
+#:
+#: **v2 (2026-08-23)** — v1 with exactly one coefficient changed:
+#: `tgir_expand_unbounded` 183.3 -> 343.8 ms/M. The ceilings, the axes, the
+#: sum-over-nodes rule and every operator coefficient are v1's, untouched. The
+#: cause is a host discrepancy, not a model change: v1's value was measured on
+#: macOS-arm64 while every other coefficient in the table is xzgpu-calibrated
+#: (D-087/D-096), and the same store and the same two shapes measure 1.88x
+#: dearer on Linux x86_64 — so the guard was over-ADMITTING on the only host
+#: whose numbers this project publishes. See the table in
+#: `tgms/temporal/guardrails.py` for the full reasoning.
+#:
+#: The identifier is bumped rather than silently re-calibrated because
+#: `policy_version` is what a `RefusalCertificate` certifies *against*: a
+#: refusal recorded under v1 and one recorded under v2 are not comparable, and
+#: the certificate has to say which. **M3's measurements were scored under v1
+#: and are not re-scored** (`TGIR_M3_MEASURED_REPORT.md`); M4's freshness
+#: campaign likewise. Only work from 2026-08-23 forward runs under v2.
+#:
+#: Known divergence, recorded rather than silently repaired: `TGIR_SPEC.md`
+#: §2.13 and `EVIDENCE_MODEL.md` §9 both name "guardrail-policy-v1" as the
+#: frozen policy. Both are frozen documents owned elsewhere; per
+#: `TGIR_FORECAST_FREEZE.md` §9 a spec revision needs its own §8-style question
+#: and a release-noted revision, which this change does not attempt. The
+#: divergence is registered in `docs/design/PAPER_A_EVIDENCE_FREEZE.md` §D3.
+POLICY_VERSION = "guardrail-policy-v2"
+CALIBRATION_REF = ("docs/eval_guardrail.md#frontier"
+                   " + docs/tgir/calib/expand-unbounded-2026-08-22.md")
 
 
 @dataclass(frozen=True, slots=True)

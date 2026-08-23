@@ -1,0 +1,265 @@
+# Paper A evidence campaign — machine-readable forecast (paper-a-v1)
+#
+# NORMATIVE for the per-row predictions. docs/design/PAPER_A_EVIDENCE_FREEZE.md
+# is normative for the protocol, the mapping rules, the denominators and the
+# discipline. APPEND-ONLY after commit: a changed prediction requires a dated
+# addendum in the freeze, never an edit here.
+#
+# Reproduce the derived_admission block (machine-independent, no store needed):
+#   for each plan in benchmarks/tgir-v1/plans/*.json with suite ldbc-* and
+#   predicted_v1_support in {yes, partial-columns}: substitute the artifact's own
+#   `params` block into itself, tgms.tgir.loader.load(), then
+#   tgms.tgir.admission.plan_estimate(plan, sf1_stats) with sf1_stats below.
+#   Compare each axis against tgms.temporal.guardrails.DEFAULT_CEILINGS.
+
+freeze_id: paper-a-v1
+date: '2026-08-23'
+code_anchor: PENDING            # set to the commit that lands guardrail-policy-v2
+#   (working tree at authoring: public HEAD e02845f46201 + the uncommitted v2
+#    coefficient change in tgms/temporal/guardrails.py and tgms/tgir/admission.py)
+plan_of_record: docs/design/PAPER_A_EVIDENCE_PLAN.md
+freeze_of_record: docs/design/PAPER_A_EVIDENCE_FREEZE.md
+discharges: [E13, E14]          # M6_BRANCH_DECISION_MEMO.md §1 inventory, §6 R3
+
+policy:
+  version: guardrail-policy-v2
+  # v1 with exactly one coefficient re-calibrated on the measurement host.
+  changed_coefficient:
+    key: tgir_expand_unbounded
+    v1_ms_per_m: 183.3      # macOS-arm64, docs/tgir/calib/expand-unbounded-2026-08-21.md
+    v2_ms_per_m: 343.8      # Linux x86_64, docs/tgir/calib/expand-unbounded-2026-08-22.md
+    ratio: 1.876
+  ceilings:
+    rows_scanned_est: 5120000000
+    expansions_est: 1280000000
+    time_est_ms: 10000
+  unchanged_from_v1: [ceilings, axes, sum-over-nodes rule, every operator coefficient]
+  not_rescored: [TGIR-v1-M3, M4-freshness]   # both measured under v1; they stand as v1 facts
+
+substrate:
+  name: LDBC SNB SF1, BI initial data set (static snapshot)
+  acquisition: pre-generated CSVs; datagen NOT used
+  download_gated_on: VERIFY-2 (licence), resolved by the coordinator at G1
+  assumed_stats:      # LDBC's published SF1 entity counts; NOT measured here
+    n_entities: 2997352
+    n_node_versions: 2997352
+    n_edge_versions: 17369790   # 17196776 published + 173014 M7 KNOWS doubling
+    rel_type_counts:
+      HAS_TAG: 3256648
+      HAS_MEMBER: 2909768
+      IS_LOCATED_IN: 2878914
+      HAS_CREATOR: 2860664
+      LIKES: 1870268
+      REPLY_OF: 1739438
+      CONTAINER_OF: 1121226
+      KNOWS: 346028
+      HAS_INTEREST: 238052
+      HAS_MODERATOR: 100827
+      WORK_AT: 22044
+      HAS_TYPE: 16080
+      STUDY_AT: 8309
+      IS_PART_OF: 1454
+      IS_SUBCLASS_OF: 70
+  # G2 obligation: re-derive the table below from the BUILT store's stats()
+  # and commit it as a dated addendum BEFORE the first plan executes.
+
+derived_admission:
+  # A COMPUTATION, not a forecast: given the statistics and the frozen plans,
+  # the admission outcome is arithmetic. The falsifiable claims are in
+  # `predictions` below.
+  refuse: 10
+  admit: 11
+  total: 21
+  verdict_changes_v1_to_v2: 0    # the split does not depend on the coefficient ruling
+  dearest_admit: {id: BI18, time_est_ms: 5918, margin_under_ceiling: 1.69}
+  cheapest_refuse: {id: BI9, time_est_ms: 31811, margin_over_ceiling: 3.18}
+  rows:
+    - id: BI17
+      suite: ldbc-bi
+      predicted_v1_support: yes
+      params: [deltaMicros, tagName]
+      time_est_ms: 1278984344
+      rows_scanned_est: 8394021205225
+      expansions_est: 909379487187
+      derived_admission: refuse
+      ceilings_hit: [rows_scanned_est, expansions_est, time_est_ms]
+    - id: BI3
+      suite: ldbc-bi
+      predicted_v1_support: yes
+      params: [country, tagClass]
+      time_est_ms: 5580034
+      rows_scanned_est: 24600654498
+      expansions_est: 7580131056
+      derived_admission: refuse
+      ceilings_hit: [rows_scanned_est, expansions_est, time_est_ms]
+    - id: BI4
+      suite: ldbc-bi
+      predicted_v1_support: yes
+      params: [date]
+      time_est_ms: 471369
+      rows_scanned_est: 2713999849
+      expansions_est: 819379968
+      derived_admission: refuse
+      ceilings_hit: [time_est_ms]
+    - id: BI7
+      suite: ldbc-bi
+      predicted_v1_support: yes
+      params: [tagName]
+      time_est_ms: 303037
+      rows_scanned_est: 1622002152
+      expansions_est: 718720094
+      derived_admission: refuse
+      ceilings_hit: [time_est_ms]
+    - id: BI10
+      suite: ldbc-bi
+      predicted_v1_support: yes
+      params: [country, maxPathDistance, nearMaxHops, personId, tagClass]
+      time_est_ms: 169520
+      rows_scanned_est: 862202687
+      expansions_est: 410129089
+      derived_admission: refuse
+      ceilings_hit: [time_est_ms]
+    - id: BI6
+      suite: ldbc-bi
+      predicted_v1_support: yes
+      params: [tagName]
+      time_est_ms: 161120
+      rows_scanned_est: 913100142
+      expansions_est: 253426802
+      derived_admission: refuse
+      ceilings_hit: [time_est_ms]
+    - id: BI11
+      suite: ldbc-bi
+      predicted_v1_support: yes
+      params: [country, endDate, startDate]
+      time_est_ms: 97927
+      rows_scanned_est: 425999358
+      expansions_est: 269016580
+      derived_admission: refuse
+      ceilings_hit: [time_est_ms]
+    - id: IC12
+      suite: ldbc-ic
+      predicted_v1_support: partial-columns
+      params: [personId, tagClassName]
+      time_est_ms: 69265
+      rows_scanned_est: 378671074
+      expansions_est: 118039289
+      derived_admission: refuse
+      ceilings_hit: [time_est_ms]
+    - id: BI12
+      suite: ldbc-bi
+      predicted_v1_support: yes
+      params: [language1, language2, lengthThreshold, startDate]
+      time_est_ms: 33254
+      rows_scanned_est: 190029755
+      expansions_est: 34739580
+      derived_admission: refuse
+      ceilings_hit: [time_est_ms]
+    - id: BI9
+      suite: ldbc-bi
+      predicted_v1_support: yes
+      params: [endDate, startDate]
+      time_est_ms: 31811
+      rows_scanned_est: 144953024
+      expansions_est: 34739580
+      derived_admission: refuse
+      ceilings_hit: [time_est_ms]
+    - id: BI18
+      suite: ldbc-bi
+      predicted_v1_support: yes
+      params: [tagName]
+      time_est_ms: 5918
+      rows_scanned_est: 30665576
+      expansions_est: 11989408
+      derived_admission: admit
+      ceilings_hit: []
+    - id: IS6
+      suite: ldbc-is
+      predicted_v1_support: yes
+      params: [messageId]
+      time_est_ms: 3669
+      rows_scanned_est: 12537050
+      expansions_est: 12234043
+      derived_admission: admit
+      ceilings_hit: []
+    - id: IS2
+      suite: ldbc-is
+      predicted_v1_support: yes
+      params: [personId]
+      time_est_ms: 840
+      rows_scanned_est: 2952405
+      expansions_est: 2573594
+      derived_admission: admit
+      ceilings_hit: []
+    - id: IC5
+      suite: ldbc-ic
+      predicted_v1_support: yes
+      params: [minDate, personId]
+      time_est_ms: 35
+      rows_scanned_est: 216357
+      expansions_est: 38051
+      derived_admission: admit
+      ceilings_hit: []
+    - id: IC11
+      suite: ldbc-ic
+      predicted_v1_support: yes
+      params: [countryName, personId, workFromYear]
+      time_est_ms: 9
+      rows_scanned_est: 56856
+      expansions_est: 12715
+      derived_admission: admit
+      ceilings_hit: []
+    - id: IC6
+      suite: ldbc-ic
+      predicted_v1_support: yes
+      params: [personId, tagName]
+      time_est_ms: 2
+      rows_scanned_est: 11280
+      expansions_est: 5790
+      derived_admission: admit
+      ceilings_hit: []
+    - id: IC9
+      suite: ldbc-ic
+      predicted_v1_support: yes
+      params: [maxDate, personId]
+      time_est_ms: 1
+      rows_scanned_est: 9456
+      expansions_est: 2140
+      derived_admission: admit
+      ceilings_hit: []
+    - id: IC2
+      suite: ldbc-ic
+      predicted_v1_support: yes
+      params: [maxDate, personId]
+      time_est_ms: 0
+      rows_scanned_est: 1438
+      expansions_est: 312
+      derived_admission: admit
+      ceilings_hit: []
+    - id: IC8
+      suite: ldbc-ic
+      predicted_v1_support: yes
+      params: [personId]
+      time_est_ms: 0
+      rows_scanned_est: 5263
+      expansions_est: 1853
+      derived_admission: admit
+      ceilings_hit: []
+    - id: IS3
+      suite: ldbc-is
+      predicted_v1_support: yes
+      params: [personId]
+      time_est_ms: 0
+      rows_scanned_est: 108
+      expansions_est: 46
+      derived_admission: admit
+      ceilings_hit: []
+    - id: IS7
+      suite: ldbc-is
+      predicted_v1_support: yes
+      params: [messageId]
+      time_est_ms: 0
+      rows_scanned_est: 1234
+      expansions_est: 624
+      derived_admission: admit
+      ceilings_hit: []

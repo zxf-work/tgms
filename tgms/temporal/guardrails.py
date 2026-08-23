@@ -48,18 +48,41 @@ TIME_COEFF_MS_PER_M = {
     # pinned refusal test caught that immediately.
     "version_history": 15_400.0,
     # The TGIR core's unbounded `Expand` — not an operator, which is why the
-    # key is a node name. Measured on CollegeMsg (native, replay-built) at
-    # M3.1: 183.3 ms per million expansions from ten bound anchors and
-    # 156.8 ms/M hoisted over the whole population; the dearer shape is taken
-    # so the estimate over-refuses rather than over-admits on the shape it was
-    # not measured against. Receipt:
-    # docs/tgir/calib/expand-unbounded-2026-08-21.md
+    # key is a node name. Measured on CollegeMsg (native, replay-built), same
+    # store digest 7efd7f4f0ec02cb8 and the same two shapes, on two hosts:
+    #
+    #   host             ten anchors   hoisted    receipt
+    #   macOS-arm64        183.3       156.8      calib/expand-unbounded-2026-08-21.md
+    #   Linux x86_64       343.8       269.3      calib/expand-unbounded-2026-08-22.md
+    #
+    # **343.8 is the shipped value (guardrail-policy-v2).** The dearer of the
+    # two *shapes* is taken, as before, so the estimate over-refuses rather than
+    # over-admits on the shape it was not measured against — §2.13's own
+    # instruction for an uncalibrated operator, applied to a calibrated one at
+    # its worst measured shape.
+    #
+    # Why the host, not the shape, decided this. Every other coefficient in
+    # this table is xzgpu-calibrated (D-087's 90-cell frontier; D-096 froze the
+    # policy on that basis and set TGMS_TIME_COEFF_SCALE as the *host* knob,
+    # e.g. 0.6 for iTiger). This entry, added at M3.1, was the one row measured
+    # somewhere else — and 183.3/343.8 means it was 1.88x too cheap on the only
+    # host whose numbers this project may publish. A coefficient that is too
+    # cheap over-ADMITS, which is the one direction §2.13 says the guard must
+    # not fail in, so the macOS value was not a conservative choice on Linux;
+    # it was the unsafe one. Landing 343.8 makes the table host-consistent for
+    # the first time.
+    #
+    # M3 was measured and scored under guardrail-policy-v1, i.e. under 183.3.
+    # Its result — no row refused by the cost guard at the frozen policy, on
+    # bitcoin-otc and CollegeMsg (TGIR_M3_MEASURED_REPORT.md "Honest
+    # disclosure") — stands as a **v1 fact** and is not re-scored here. Nothing
+    # in benchmarks/tgir-v1/ is rewritten by this change.
     #
     # Worth noting against `_MAX_COEFF` below: the "conservative" columnar-class
-    # fallback (170) is **8% too cheap** for this node, so an uncalibrated
-    # unbounded expansion was over-admitting rather than over-refusing — which
-    # is the direction §2.13 says a fallback must not fail in.
-    "tgir_expand_unbounded": 183.3,
+    # fallback (170) is now **2.0x too cheap** for this node (it was 8% too
+    # cheap against the macOS value), so an uncalibrated unbounded expansion
+    # over-admits by twice as much as the old comment claimed.
+    "tgir_expand_unbounded": 343.8,
 }
 #: Fallback for uncalibrated operators: the dearest *columnar-class* rate,
 #: not the global max — version_history's 15,400 would refuse any unlisted

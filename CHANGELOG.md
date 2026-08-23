@@ -55,6 +55,16 @@ the pre-correction answer comes back `POSSIBLY_STALE` with the witness
 sentence naming the correction that invalidated it, and the current
 answer comes back `FRESH` — the whole argument, closed, in one command.
 
+**The admission guard recalibrated to its reference host
+(`guardrail-policy-v2`).** The unbounded-traversal coefficient shipped
+calibrated on a development laptop; measured on the reference host it is
+1.88× dearer (343.8 vs 183.3 ms/M, both receipts in
+`docs/tgir/calib/`), so the guard was over-admitting — the one direction
+a cost fallback must not err. Refusal thresholds for large unbounded
+traversals tighten accordingly; no verdict in any published measurement
+changes (re-derived and receipted), and prior results remain scored
+under the policy they ran under.
+
 **Process.** The forecast-freeze discipline this release's numbers were
 scored under (`docs/design/TGIR_FORECAST_FREEZE.md`,
 `docs/design/M4_MEASURED_REPORT.md` §1) extends `docs/bench_corrections.md`'s
