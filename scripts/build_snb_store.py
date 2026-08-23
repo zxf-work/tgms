@@ -38,10 +38,33 @@ from tgms.data.snb_loader import (  # noqa: E402
     SF1_EDGES, SF1_NODES, edge_ops, fidelity, node_ops, store_label_counts,
 )
 
-#: One event-log record per batch. Matches `Store.INGEST_CHUNK`; large enough
-#: that the per-record overhead disappears against 20.4M ops, small enough that
-#: a batch stays a readable unit in the log.
-BATCH = 50_000
+#: One event-log record per batch. **Small on purpose, and the number is
+#: measured rather than chosen.**
+#:
+#: `StorageAdapter.apply_ops` costs O(k^2) in the batch size k: `_assert_node`
+#: and `_assert_edge` each call `believed_*_versions` and `insert_*_versions`
+#: once per op, and something in that path is linear in the ops already applied
+#: *within the same batch*. The first attempt at this build used
+#: `Store.INGEST_CHUNK` (50,000) and spent 11 minutes on batch one without
+#: finishing it, having written the log record but not one segment.
+#:
+#: Measured on the same machine, one batch, native backend:
+#:
+#:     batch      500   1,000   2,000   4,000   8,000
+#:     seconds  0.063   0.147   0.477   1.751   6.888     (~4x per 2x rows)
+#:
+#: The cost is **within** a batch, not in the store: at a fixed batch of 1,000
+#: the per-batch time is flat as the store grows (1.02x over twelve batches),
+#: so small batches make the whole load linear. Steady-state throughput by
+#: batch size, projected onto SF1's 3.0M nodes + 17.4M edges:
+#:
+#:     batch      100     250     500   1,000   2,000
+#:     est.     118min  64min   66min   97min  173min
+#:
+#: 250 is the floor of that curve — below it the per-record event-log overhead
+#: takes over. Raising this back toward `INGEST_CHUNK` does not make the build
+#: faster; it makes it not finish.
+DEFAULT_BATCH = 250
 
 
 def _chunks(it: Iterator[dict[str, Any]], n: int) -> Iterator[list[dict[str, Any]]]:
@@ -64,7 +87,8 @@ def _sha() -> str:
         return "unknown"
 
 
-def build(csv_root: Path, out: Path, backend: str) -> dict[str, Any]:
+def build(csv_root: Path, out: Path, backend: str,
+          batch: int = DEFAULT_BATCH) -> dict[str, Any]:
     import tgms
 
     if out.exists():
@@ -75,11 +99,11 @@ def build(csv_root: Path, out: Path, backend: str) -> dict[str, Any]:
     t0 = time.time()
 
     def drive(stream: Iterator[dict[str, Any]], kind: str) -> None:
-        for batch in _chunks(stream, BATCH):
-            store._write(batch)                        # noqa: SLF001 — a writer
-            counts[kind] += len(batch)
+        for ops in _chunks(stream, batch):
+            store._write(ops)                          # noqa: SLF001 — a writer
+            counts[kind] += len(ops)
             counts["batches"] += 1
-            if counts["batches"] % 20 == 0:
+            if counts["batches"] % 2_000 == 0:
                 done = counts["nodes"] + counts["edges"]
                 rate = done / max(time.time() - t0, 1e-9)
                 print(f"  {done:>12,} ops  {rate:>9,.0f} ops/s  "
@@ -109,14 +133,18 @@ def main() -> int:
                     help="the initial_snapshot directory (with static/ and dynamic/)")
     ap.add_argument("--out", required=True)
     ap.add_argument("--backend", default="native", choices=("native", "duckdb"))
+    ap.add_argument("--batch", type=int, default=DEFAULT_BATCH,
+                    help="ops per event-log record; see DEFAULT_BATCH — "
+                         "apply_ops is O(k^2) in this number")
     args = ap.parse_args()
 
     csv_root, out = Path(args.csv), Path(args.out)
     sha = _sha()
     print(f"RUN_STARTED commit={sha} csv={csv_root} out={out} "
-          f"backend={args.backend} host={platform.node()}", flush=True)
+          f"backend={args.backend} batch={args.batch} "
+          f"host={platform.node()}", flush=True)
 
-    result = build(csv_root, out, args.backend)
+    result = build(csv_root, out, args.backend, args.batch)
     ok, lines = fidelity(result["labels"], result["stats"])
 
     print("\n=== mapping-fidelity gate ===")
@@ -133,6 +161,7 @@ def main() -> int:
         "host": platform.node(),
         "platform": platform.platform(),
         "backend": args.backend,
+        "batch": args.batch,
         "built_utc": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
         "wall_s": result["wall_s"],
         "ops": result["counts"],
