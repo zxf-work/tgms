@@ -1,5 +1,69 @@
 # Changelog
 
+## v0.7.0 — 2026-08-23
+
+The compositional-IR release, and freshness v1: the fixed operator surface
+stopped being the only way to grow expressiveness, and an old answer can
+now be checked instead of trusted.
+
+**TGIR (M0–M3): a 12-primitive compositional temporal-graph IR under the
+existing surface.** All 15 verified operators are now opaque leaves over
+the same IR that also *compiles* some question shapes — chiefly labelled
+multi-way pattern matching, the capability the LDBC and
+independent-question studies had been blocked on since D-038.
+Compatibility was measured before capability, deliberately, so a
+regression could not hide inside a coverage gain: the pre-existing
+oracle/metamorphic/replay/agent suites pass **572/577/572** across three
+configurations (default path, native backend, plan path disabled), **38
+frozen result digests are unmoved on both backends**, **26/26** compiled
+operators equal the originals they compile from, and `TGIR_PLAN_PATH=off`
+runs the whole suite green — a real rollback, not a formality. No
+documented operator's semantics changed.
+
+**Measured expressiveness, scored against a forecast frozen before the
+first row ran.** LDBC SNB operator-execution coverage (`class ∈ {1,2}` —
+does a plan compile, load, admit and run at all, not the stricter ECQR
+result-contract axis) moved from 3 to **24 of 41** read templates;
+independent-question coverage moved from 94 to **102 of 110**. Both landed
+at *exactly* the predicted level: delivered/predicted **29/29** on the
+full 52-row TGIR-v1 forecast, 0 over-deliveries, 0 misses (28/28 on the 51
+scoreable rows; `bo41` excluded by name in the freeze because the
+canonical bitcoin-otc corpus carries no corrections to find). **There is
+no LDBC SNB dataset in this repository**: the 21 LDBC rows run against a
+hand-built 22-entity fixture that establishes compile/load/admit/execute,
+not scale (`docs/design/TGIR_M3_MEASURED_REPORT.md`).
+
+**Freshness v1 (M4): `tgms trace check`.** A saved answer already carries
+enough (`tt_q`, a dependency scope) for TGMS to tell you whether anything
+written since could have changed it, without recomputing it. The verdict
+is `FRESH` / `POSSIBLY_STALE` / `UNDECIDABLE` — sound in one direction
+only, which is the direction that matters: across two injection campaigns
+(6,978 trials on bitcoinotc, collegemsg and an LDBC fixture), **0
+false-fresh** verdicts over 898 changed answers. The obvious cheap
+alternative — "did the correction touch a row in the stored result?" —
+gets it wrong on 212 of run 2's 447 changed trials (**47.4%**), and is
+structurally blind to corrections on identities the stored result never
+touched. `tgms trace check` reads the event log only (no store lock, no
+optional backend extra, runs beside a live writer) and writes nothing;
+it's documented as an additive CLI verb under `docs/STABILITY.md` §4 (a
+non-breaking addition under §3's policy). The contract is
+`docs/design/FRESHNESS_SEMANTICS.md`.
+
+**`tgms demo` gained a sixth beat.** After the correction arc and the
+evidence, the demo now runs the freshness check on its own saved records:
+the pre-correction answer comes back `POSSIBLY_STALE` with the witness
+sentence naming the correction that invalidated it, and the current
+answer comes back `FRESH` — the whole argument, closed, in one command.
+
+**Process.** The forecast-freeze discipline this release's numbers were
+scored under (`docs/design/TGIR_FORECAST_FREEZE.md`,
+`docs/design/M4_MEASURED_REPORT.md` §1) extends `docs/bench_corrections.md`'s
+D-073 rule to every number above: no scoring choice may be made after
+seeing a result. Published site numbers, as always, are resolved from
+`docs/site_facts.json` and gated in CI.
+
+**Decisions/milestones M0–M4 (TGIR and freshness).**
+
 ## v0.6.2 — 2026-08-21
 
 MCP Registry housekeeping, no functional change: the README now carries

@@ -19,9 +19,15 @@ Deliberate constraints:
 - **Small enough to be instant.** Four entities and eight events: the whole
   run is dominated by process start-up, not by TGMS.
 
-The narration is a fixed five-beat arc — build, correct, ask now, ask then,
-show the evidence — and not a tour of the operator set. Two operators appear,
-because two are what the story needs.
+The narration is a fixed six-beat arc — build, correct, ask now, ask then,
+show the evidence, check a saved answer — and not a tour of the operator set.
+Two operators appear, because two are what the story needs.
+
+The sixth beat is the one the rest exists to earn. Beats 3 and 4 show that a
+correction *can* be seen by someone who thinks to look; beat 6 shows that a
+reader who does **not** think to look is told anyway. An answer saved before
+the correction is checked against the log without being recomputed, and the
+verdict names the write that invalidated it.
 """
 
 from __future__ import annotations
@@ -30,6 +36,7 @@ import datetime as _dt
 import json
 import sys
 import tempfile
+import textwrap
 import time
 from pathlib import Path
 from typing import Any, TextIO
@@ -89,10 +96,10 @@ def _props(row: dict[str, Any] | None) -> str:
 
 
 class _Narrator:
-    """The five-beat script. Every beat says what is asked, what is called,
+    """The six-beat script. Every beat says what is asked, what is called,
     and what came back — in that order, so the output reads as a story."""
 
-    def __init__(self, out: TextIO, total: int = 5) -> None:
+    def __init__(self, out: TextIO, total: int = 6) -> None:
         self.out = out
         self.total = total
         self.beat = 0
@@ -194,6 +201,17 @@ def _arc(store: Any, root: Path, n: _Narrator, t_start: float,
     n.cont(f"{SUBJECT} was recorded as status=cleared, risk=low from "
            f"{_vt(T0)} onward.")
 
+    # An answer produced **before** anything is corrected, saved to disk the
+    # way `tgms ask --save-record` saves one. Beat 6 comes back to it, because
+    # this is the ordinary situation the freshness check exists for: a report
+    # somebody ran on Monday, and a correction that lands on Tuesday.
+    before_path = root / "demo-record-before.json"
+    before_record = _save_answer(store, root, before_path)
+    n.line("")
+    n.say("Before anything is corrected, an analyst asks for the vendor's")
+    n.say("history and files the answer away:")
+    n.cont(f"{before_path}")
+
     # -- beat 2: a correction ---------------------------------------------- #
 
     #: The belief state a reader of this store had one moment ago -- before
@@ -292,13 +310,22 @@ def _arc(store: Any, root: Path, n: _Narrator, t_start: float,
     n.cont("re-render any saved record with: "
            "tgms trace render $STORE/demo-record.json -o trace.html")
 
+    # -- beat 6: is a saved answer still good? ------------------------------ #
+
+    stale, fresh = _beat_freshness(store, n, root, before_record)
+
     elapsed = time.perf_counter() - t_start
     n.line("")
     n.rule()
     n.line(f"Done in {elapsed:.2f}s. What you just saw: a correction to history "
            f"that did not")
-    n.line("destroy the history it corrected, and a query language that can "
-           "address both.")
+    n.line("destroy the history it corrected, a query language that can address "
+           "both, and")
+    n.line("a saved answer that told you it had gone stale. An ordinary store "
+           "would have")
+    n.line("served the first answer again, silently and forever. TGMS named the "
+           "write that")
+    n.line("invalidated it.")
     if owned:
         n.line(f"The demo store is disposable: rm -rf {root}")
         n.line("Use `tgms demo --store PATH` to build it somewhere you keep.")
@@ -318,8 +345,116 @@ def _arc(store: Any, root: Path, n: _Narrator, t_start: float,
         "trace": trace,
         "record_path": str(record_path),
         "html_path": str(html_path),
+        "before_record_path": str(before_path),
+        "verdict_before": _verdict_name(stale),
+        "verdict_after": _verdict_name(fresh),
+        "witnesses": [w.to_json() for w in stale.witnesses],
         "elapsed_s": elapsed,
     }
+
+
+def _verdict_name(verdict: Any) -> str:
+    """`FRESH` / `POSSIBLY_STALE` / `UNDECIDABLE`, as a reader should see them.
+
+    `UNDECIDABLE` is spelled out rather than folded into `POSSIBLY_STALE`: it
+    never appears in this demo, and if it ever did, that would be the single
+    most important thing on the screen.
+    """
+    if getattr(verdict, "actionable_fresh", False):
+        return "FRESH"
+    return "UNDECIDABLE" if getattr(verdict, "reasons", ()) else "POSSIBLY_STALE"
+
+
+def _beat_freshness(store: Any, n: _Narrator, root: Path,
+                    before_record: dict[str, Any]) -> tuple[Any, Any]:
+    """Beat 6 — ask two saved answers whether they still hold.
+
+    Nothing here is recomputed. `Store.check_trace` is the call
+    `tgms trace check` makes: it reads each step's recorded dependency scope
+    and walks the event-log suffix written since that step ran, and it answers
+    from the log alone. The answer that predates the correction is invalidated
+    **by name**; the answer that postdates it is certified fresh.
+    """
+    from tgms.tgir.explain import render_witness
+
+    n.head("Is a saved answer still good?")
+    n.say("The analyst's answer from beat 1 is still on disk, still readable,")
+    n.say("and its digest still checks out -- but a correction landed after it")
+    n.say("was filed. TGMS can settle whether it still holds WITHOUT rerunning")
+    n.say("it: every answer records what it depended on, and that record is")
+    n.say("checked against the writes that followed.")
+    n.line("")
+    n.call("tgms trace check $STORE/demo-record-before.json --store $STORE")
+
+    stale = store.check_trace(before_record["trace"])
+    n.answer(f"verdict {_verdict_name(stale)}")
+    for witness in stale.witnesses[:1]:
+        # the sentence `tgms trace check` prints, wrapped to the demo's column
+        # so it reads as prose rather than running off the terminal
+        sentence = render_witness(
+            witness, produced_tt=before_record["trace"].get("tt_q"),
+            name_step=False)
+        # `break_on_hyphens=False` or "valid-time" is split across two lines
+        for text in textwrap.wrap(sentence, width=WIDTH - 8,
+                                  break_on_hyphens=False):
+            n.cont(text)
+        vt = witness.vt
+        if isinstance(vt, list) and len(vt) == 2:
+            n.cont(f"the corrected belief covers valid time "
+                   f"[{_vt(vt[0])} .. {_vt(vt[1])}) --")
+            n.cont(f"inside the period this answer read of "
+                   f"{witness.identity.get('uid', '?')}.")
+        n.cont(f"the write is in the log at batch {witness.batch_id[:16]}, "
+               f"step {witness.step_id or '-'}:")
+        n.cont("a witness you can check against the log, not an assertion.")
+
+    n.line("")
+    n.say("So the analyst reconsiders -- which means asking again. The same")
+    n.say("question, re-run now that the correction is in:")
+    n.call("tgms ask ... --save-record $STORE/demo-record-after.json")
+    after_path = root / "demo-record-after.json"
+    reran = _save_answer(store, root, after_path)
+    n.call("tgms trace check $STORE/demo-record-after.json --store $STORE")
+    fresh = store.check_trace(reran["trace"])
+    n.answer(f"verdict {_verdict_name(fresh)}")
+    n.cont("nothing has been written since this one ran, so it still holds.")
+    n.cont("Freshness is not a guess about staleness -- it is a statement")
+    n.cont("about the log, and it costs one scan of the writes since the read.")
+    return stale, fresh
+
+
+def _save_answer(store: Any, root: Path, path: Path) -> dict[str, Any]:
+    """One question, executed and filed the way `tgms ask --save-record` does.
+
+    Deliberately the real executor rather than a bare operator call: the record
+    beat 6 checks has to be the shape `tgms trace check` consumes, and the only
+    way to be sure of that is to produce it the same way.
+    """
+    from tgms.agent.executor import Executor, ResultStore
+    from tgms.agent.ir import Plan
+    from tgms.tools.server import ToolRouter
+
+    question = f"What is the status history of {SUBJECT}?"
+    plan = Plan.from_json({
+        "plan_id": "demo-analyst-report",
+        "question": question,
+        "steps": [{"id": "s1", "op": "entity_history", "args": {"uid": SUBJECT}}],
+        "answer_spec": {"kind": "entity_set", "from": "s1.rows"},
+    })
+    trace = Executor(ToolRouter(store.adapter, tt_source=store),
+                     ResultStore(root / "demo-results")).run(plan)
+    if not trace.ok:
+        raise RuntimeError(f"demo pre-correction plan failed: {trace.to_json()}")
+    record = {
+        "question": question,
+        "answer": trace.answer,
+        "plan": plan.to_json(),
+        "trace": trace.to_json(),
+        "receipts": f"tgms {tgms.__version__}; store {root}; "
+                    f"produced by `tgms demo` before the correction landed",
+    }
+    path.write_text(json.dumps(record, indent=1))
+    return record
 
 
 def _fail_fast(envelope: dict[str, Any]) -> None:

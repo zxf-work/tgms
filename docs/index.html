@@ -714,7 +714,7 @@
     <section class="hero">
       <div class="container hero-grid">
         <div>
-          <div class="eyebrow">Research prototype · v<span data-fact="site_version">0.6.2</span></div>
+          <div class="eyebrow">Research prototype · v<span data-fact="site_version">0.7.0</span></div>
           <h1>Verified temporal reasoning for LLM agents.</h1>
           <p class="hero-lede">
             <strong>TGMS</strong> is an agent-native bi-temporal graph management system.
@@ -817,7 +817,11 @@
             <p>
               Every fact records when it was valid in the world and when it was known
               to the system. TGMS can distinguish change from correction and reproduce
-              a past belief state.
+              a past belief state — and if a correction lands after you already have an
+              answer, <code>tgms trace check</code> tells you: sound by construction,
+              measured at <span data-fact="freshness_false_fresh">0</span> false-fresh
+              verdicts where the naive "did the correction touch a stored row" rule is
+              wrong <span data-fact="freshness_rowtouch_false_fresh">47.4</span>% of the time.
             </p>
           </article>
 
@@ -833,7 +837,14 @@
               <span data-fact="operator_count">15</span> typed tools cover temporal
               reachability, motifs, diffs, bursts, interval joins, grouped aggregation,
               and the belief log itself. Each tool is deterministic, bounded, and
-              tested against an independent oracle.
+              tested against an independent oracle. Underneath them, a compositional IR
+              (TGIR) now compiles labelled multi-way pattern matching against the same
+              guarantees, moving measured expressiveness from 3 to
+              <span data-fact="ldbc_coverage_current">24</span> of
+              <span data-fact="ldbc_total_templates">41</span> LDBC SNB read templates and
+              from 94 to <span data-fact="independent_coverage_current">102</span> of
+              <span data-fact="coverage_total_questions">110</span> independently written
+              questions — exactly at a forecast frozen before either row was measured.
             </p>
           </article>
 

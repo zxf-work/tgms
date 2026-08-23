@@ -25,6 +25,15 @@ to do any of them:
   agree on believed state at 400 of 400 probe points, with TGMS 3.9–4.7×
   faster at correction-heavy ingest on 23–27× less disk
   ([the head-to-head](https://zxf-work.github.io/tgms/blog/the-competitor-agrees.html));
+- and because a belief can be corrected *after* you've already acted on an
+  answer, TGMS now tells you when that happened: **`tgms trace check`**
+  reads a saved answer's dependency scope against the event log — no
+  recompute, no store lock required — and returns `FRESH` /
+  `POSSIBLY_STALE` / `UNDECIDABLE`, sound in the direction that matters (it
+  never calls a stale answer fresh). Measured across two injection
+  campaigns, 6,978 trials: **0 false-fresh** verdicts of 898 changed
+  answers, where the obvious cheap check — "did the correction touch a row
+  in the stored result?" — is wrong on **47.4%** of the same trials;
 - **15 verified temporal operators** (reachability over time-respecting
   paths, δ-motifs, snapshot diffs, burst detection, interval joins, grouped
   aggregation over edge events, and the belief log itself) — typed,
@@ -118,26 +127,62 @@ At 10M events the full query suite runs inside **1.76 GB** of peak RSS,
 writer costs those readers **0–3%** of per-query latency.
 
 **3. Can it answer the questions people actually ask?** This is the honest
-one. 110 questions were written by people who saw a plain-language
-description of two public datasets and **never saw the operator list**. Of
-those, **94 are expressible today** — 10 were expressible when the study was
-pre-registered. Of LDBC SNB's 41 read templates, **3**, and that number has
-not moved in eight sessions because 35 of the 38 misses need labelled
-multi-way pattern matching, which is a deliberately deferred design
-decision rather than a missing operator.
+one, and it now has a sequel. 110 questions were written by people who saw
+a plain-language description of two public datasets and **never saw the
+operator list**. Of those, 94 were expressible under the fixed 15-operator
+catalog — 10 were expressible when the study was pre-registered. Of LDBC
+SNB's 41 read templates, **3** executed — the **operator-execution axis**
+(does a plan compile, load, admit and run at all), a lower bar than the
+stricter ECQR result-contract axis, which stood at 7 of 41 — and that
+number had not moved in eight sessions, because 35 of the 38 misses needed
+labelled multi-way pattern matching: a deliberately deferred design
+decision, not a missing operator.
 
-The store is good and the surface is narrow. Both instruments live in the
-repo (`scripts/independent_questions.py`, `scripts/ldbc_fit.py`), they
-re-run in seconds, and each capability shipped since has been scored
-against a forecast made *before* it was built — delivered/predicted has run
-14/30, 4/7, 10/13, 14/16, 15/15, 4/8, 5/5 and 4/5. The last two were the
-first forecasts made per question rather than in aggregate, and they were
-right in every cell.
+That deferred decision shipped. **TGIR**, a 12-primitive compositional
+temporal-graph IR, now runs the entire 15-operator catalog as byte-identical
+leaves and additionally *compiles* some question shapes — including
+labelled multi-way pattern matching — into chains of those primitives. Both
+axes were forecast before TGIR was built, frozen before the first row was
+measured, and moved to *exactly* the predicted level: LDBC
+operator-execution coverage **3 → 24 of 41**, independent-question coverage
+**94 → 102 of 110**, delivered/predicted **29/29** on the full 52-row
+forecast (28/28 on the 51 scoreable rows — one row was excluded by name in
+the freeze because its canonical corpus carries no corrections to find), 0
+over-deliveries, 0 misses.
+
+The store is still good and the surface is still narrower than "24 of 41"
+sounds. **There is no LDBC SNB dataset in this repository.** The 21 LDBC
+rows execute against a hand-built fixture carrying LDBC's labels,
+relationship types and multi-hop topology at a size a reviewer can read on
+one screen (`scripts/build_ldbc_fixture.py`); it establishes that a plan
+compiles, loads, admits and executes, and **nothing about scale**. The
+independent-question axis is the one measured on real data (bitcoin-otc,
+CollegeMsg), and it's where the admission/cost-guard claim is meaningful.
+Both instruments live in the repo (`scripts/independent_questions.py`,
+`scripts/ldbc_fit.py`), they re-run in seconds, and each capability shipped
+has been scored against a forecast made *before* it was built —
+delivered/predicted has now run 14/30, 4/7, 10/13, 14/16, 15/15, 4/8, 5/5,
+4/5, and **29/29**. 5/5 and 4/5 were the first forecasts made per question
+rather than in aggregate, and TGIR's 29/29 is the first forecast — made
+per row, before any row was measured — with zero misses across the whole
+universe.
 
 ## What the operators can express
 
-Fifteen operators — fourteen of them unchanged since D-044, because the
-interesting growth since v0.4.0 happened *inside* them, driven question by question by the study above:
+Fifteen operators — fourteen of them unchanged since D-044, because most of
+the growth since v0.4.0 happened *inside* them, driven question by question
+by the study above. The newest growth happened *underneath* them instead:
+**TGIR**, a 12-primitive compositional temporal-graph IR, now runs the
+entire operator set as byte-identical leaves — same semantics, digest-
+receipted, switchable off with `TGIR_PLAN_PATH=off` — and additionally
+compiles some question shapes, chiefly labelled multi-way pattern matching,
+into chains of those primitives. TGIR plans are not yet a user-facing query
+language: there is no public syntax for writing one directly, and the
+fifteen operators below are still the whole interface an agent (or you)
+calls. What changed is what happens underneath a call, and it is measured
+in [`docs/design/TGIR_M3_MEASURED_REPORT.md`](docs/design/TGIR_M3_MEASURED_REPORT.md).
+
+The pre-existing fifteen:
 
 | capability | where it lives | what it answers |
 |---|---|---|
@@ -207,9 +252,10 @@ bash scripts/run_webapp.sh    # interactive guided demo at localhost:8080
 |---|---|---|
 | Python library | `tgms.open(...)`, `Agent(store, model=…).ask(…)` | research code, notebooks |
 | MCP server | `tgms serve --store PATH` | hand the verified toolbox to any MCP-capable agent |
-| CLI | `tgms demo/ingest/synth/tasks/call/ask/bench/memory/eval` | reproducibility |
+| CLI | `tgms demo/ingest/synth/tasks/call/ask/bench/memory/eval/trace` | reproducibility |
 | Trace viewer | `tgms ask … --html trace.html` | *ask → answer → audit the evidence* (static, self-contained HTML) |
-| Demo GUI | `tgms webapp …` / `scripts/run_webapp.sh` | guided tour: operators → agent → tamper demo → time travel |
+| Freshness check | `tgms trace check record.json --store PATH` | *is this answer still fresh?* — `FRESH`/`POSSIBLY_STALE`/`UNDECIDABLE` against the event log, no recompute |
+| Demo GUI | `tgms webapp …` / `scripts/run_webapp.sh` | guided tour: operators → agent → tamper demo → time travel → freshness check |
 
 ## Correctness
 

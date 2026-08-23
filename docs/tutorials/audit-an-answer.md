@@ -204,6 +204,109 @@ them is a common way to over-trust a result:
   "every fact matching the query you asked, inside the store you asked
   it of."
 
+## 6. Is this answer still fresh?
+
+Everything above audits a trace against the store it was computed on. But a
+belief can be corrected *after* you already have the answer — so TGMS ships
+a second question, answerable without recomputing anything:
+**`tgms trace check`** reads a saved record's dependency scope against the
+event log and tells you whether anything written since could have changed
+it.
+
+Save the trace from §§1–3 above to `record.json` and check it, with nothing
+else having happened yet — real output (your own timestamp will differ, the
+shape won't):
+
+```
+$ tgms trace check record.json --store my_store
+This answer was produced on 2026-08-23 13:27:17 UTC. Nothing written since could have changed it.
+$ echo $?
+0
+```
+
+Now land a correction — the same `call-09` latency fix
+[Bring your own data](bring-your-own-data.md) walks through in its step
+5 — and check the *same saved record* again, without re-running the query.
+Real output:
+
+```
+$ tgms trace check record.json --store my_store
+This answer may be stale.
+  s1: A write received on 2026-08-23 13:27:39 UTC corrected the edge svc-orders→svc-notify (CALLS) over a valid-time region this computation read. Reconsider.
+  s2: A write received on 2026-08-23 13:27:39 UTC corrected the edge svc-orders→svc-notify (CALLS) over a valid-time region this computation read. Reconsider.
+$ echo $?
+1
+```
+
+`--json` shows the same verdict per step instead of as one flattened bit:
+
+```json
+{
+ "verdict": "possibly-stale",
+ "steps": {
+  "s1": {"verdict": "possibly-stale", "total": 1, "witnesses": [
+    {"batch_id": "89e1254e0478d8f3", "tt": 1787491659282287, "kind": "correct",
+     "identity": {"src": "svc-orders", "dst": "svc-notify", "rel_type": "CALLS", "disc": "call-09"},
+     "vt": [1767227100000000, 1767227100000002]}
+  ]},
+  "s2": {"verdict": "possibly-stale", "total": 1, "witnesses": ["…same correction…"]},
+  "s3": {"verdict": "fresh"}
+ }
+}
+```
+
+`s3` — the `compute count` step — is still `fresh`: the correction changed a
+property (`latency_ms`) that a count never reads. `s1` and `s2` (resolving
+`svc-gateway` and scanning reachability) flip to `possibly-stale` because
+both read the edge that was corrected, inside the window they scanned. Two
+verdicts on one trace, not one bit for the whole thing — the same
+per-claim-not-per-answer discipline you saw in §3.
+
+Read the three verdicts this way, and no other way:
+
+- **`FRESH` ⇒ sound.** If `tgms trace check` says fresh, nothing written
+  since could have changed the recorded result — a claim about the event
+  log, not a guess. This direction is the one that is a promise
+  ([`docs/STABILITY.md` §4](../STABILITY.md)).
+- **`POSSIBLY_STALE` may be conservative.** It means a write happened that
+  the *recorded dependency scope* could intersect, not that the answer
+  actually changed — and in this example it didn't: the reachable-service
+  count is still 3 after the correction, because `temporal_reachability`
+  never reads `latency_ms`. TGMS flagged it anyway, because the scope
+  recorded for this step is the coarse "matches anything on this edge"
+  term most operators carry today, not a precise one. That's a measured
+  trade, not a hand-wave: on real workloads, only 13.2% of
+  `POSSIBLY_STALE` verdicts turn out to be a true stale answer on
+  recomputation (`docs/design/M4_MEASURED_REPORT.md` §4) — the mechanism
+  is *sound*, not *precise*, and it buys that soundness with some false
+  alarms. What the soundness direction is worth, measured: across two
+  independent injection campaigns and 3,354 corrections, **0 false-fresh**
+  verdicts over 898 changed trials, where the obvious cheap check — "did
+  the correction touch a row in the stored result?" — is wrong on **47.4%**
+  of the same trials, and is structurally blind to a correction on an
+  identity the stored result never mentions at all.
+- **`UNDECIDABLE` is not a third answer.** It means the check itself
+  couldn't run — the record was produced against a different store, the
+  event log has been rewritten since, or the record's dependency-scope
+  version predates this build. Every caller treats it exactly like
+  `POSSIBLY_STALE` — same exit code, same "reconsider" framing — because
+  "I don't know" must never look like "yes." Real output, checking the
+  same record against an unrelated store:
+
+```
+$ tgms trace check record.json --store other_store
+This answer may be stale.
+  s1: This answer may be stale and could not be checked: this answer was not produced against this store. Treat it as unverified.
+$ echo $?
+1
+```
+
+`tgms trace check` only reads the event log: no database lock, no optional
+backend extra, and it runs safely beside a live writer. It writes nothing —
+asking the question changes none of the saved record's bytes. See
+[`docs/STABILITY.md` §4](../STABILITY.md) for the full contract, including
+what is *not* stable (the witness list's contents, the rendered prose).
+
 ## What TGMS does not guarantee
 
 Stated as plainly as the implementation states them — this project

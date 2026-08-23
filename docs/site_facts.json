@@ -1,7 +1,7 @@
 {
  "_comment": "Single source of truth for every number the public site asserts. Pages carry data-fact=\"<key>\" spans; scripts/site_facts.py verifies each one against this file and CI fails on drift. Add a fact here before quoting it on a page. Numbers that belong to one measured run carry that run's snapshot id, because a fact without a snapshot cannot be re-checked.",
- "updated": "2026-08-21",
- "tgms_version": "0.6.2",
+ "updated": "2026-08-23",
+ "tgms_version": "0.7.0",
  "snapshots": {
   "registry-v2-200k-6sys": {
    "commit": "03a678c",
@@ -108,11 +108,32 @@
    ],
    "note": "D-049 concurrency run; the write-path cells were re-measured on the same host and are within the +/-20% band of their previous values.",
    "record": "docs/eval_concurrency.md"
+  },
+  "tgir-v1-m3": {
+   "commit": "ed1bfad",
+   "date": "2026-08-22",
+   "scale": "52-row TGIR-v1 forecast: 38 LDBC SNB read templates (Interactive Short/Complex + Business Intelligence) plus 14 independent questions (7 bitcoin-otc, 7 CollegeMsg)",
+   "systems": [
+    "TGIR-compiled operator chains"
+   ],
+   "note": "Forecast frozen 2026-08-21 (docs/design/tgir_b1/forecast.yaml), addendum committed before the first measured row. Scored 29/29 delivered/predicted on the full 52-row universe, 0 over-deliveries; 28/28 on the 51 scoreable rows (bo41 excluded by name in the freeze — the canonical bitcoin-otc store carries zero corrections). No LDBC SNB dataset in this repository: the 21 LDBC rows run against a hand-built 22-entity fixture (scripts/build_ldbc_fixture.py) that establishes compile/load/admit/execute, not scale.",
+   "record": "benchmarks/tgir-v1/measured.yaml"
+  },
+  "freshness-v1-m4": {
+   "commit": "01d4984",
+   "date": "2026-08-22",
+   "scale": "3,354 injected-correction trials across bitcoinotc, collegemsg and the LDBC fixture, in two campaigns",
+   "systems": [
+    "TGIR dependency-scope freshness check",
+    "naive row-touch baseline"
+   ],
+   "note": "Forecast frozen 2026-08-22, before the first headline trial ran. false-fresh is judged on the full digest-changed set: 898 changed trials pooled across both campaigns (447 in run 2, the record of account; 451 in run 1, superseded by a correction-generator fix but kept as corroborating evidence on the soundness axis). Row-touch false-fresh (47.4%) is reported on run 2's 447 changed trials alone.",
+   "record": "benchmarks/freshness-v1/trials-full.json"
   }
  },
  "facts": {
   "site_version": {
-   "value": "0.6.2",
+   "value": "0.7.0",
    "kind": "architectural",
    "prose": "current released package version (matches pyproject.toml and the PyPI release)"
   },
@@ -169,6 +190,44 @@
   "coverage_total_questions": {
    "value": "110",
    "kind": "benchmark"
+  },
+  "independent_coverage_current": {
+   "value": "102",
+   "kind": "benchmark",
+   "prose": "of 110 independently written questions expressible today, after TGIR shipped the labelled multi-way pattern matching that was deliberately deferred rather than missing — exactly the pre-registered forecast's predicted level (delivered/predicted 29/29 on the full 52-row TGIR-v1 universe, 0 over-deliveries)",
+   "was": "94 before TGIR",
+   "snapshot": "tgir-v1-m3"
+  },
+  "ldbc_total_templates": {
+   "value": "41",
+   "kind": "benchmark",
+   "prose": "read templates across LDBC SNB's Interactive Short, Interactive Complex and Business Intelligence suites"
+  },
+  "ldbc_coverage_baseline": {
+   "value": "3",
+   "kind": "benchmark",
+   "prose": "of LDBC SNB's 41 read templates executed on the operator-execution axis (class in {1,2}), not the stricter ECQR result-contract axis (7 of 41) — unmoved for eight sessions because 35 of the 38 misses needed labelled multi-way pattern matching, a deliberately deferred design decision (D-038) rather than a missing operator",
+   "label_required": "baseline, before TGIR"
+  },
+  "ldbc_coverage_current": {
+   "value": "24",
+   "kind": "benchmark",
+   "prose": "of LDBC SNB's 41 read templates executed on the operator-execution axis once TGIR-compiled plans shipped — exactly the pre-registered forecast's predicted level (delivered/predicted 29/29 on the full 52-row universe, 28/28 on the 51 scoreable rows; bo41 excluded by name in the freeze)",
+   "was": "3 before TGIR shipped the compositional layer",
+   "snapshot": "tgir-v1-m3"
+  },
+  "freshness_false_fresh": {
+   "value": "0",
+   "kind": "tested",
+   "prose": "false-fresh verdicts from tgms trace check's dependency-scope mechanism, over 898 changed trials pooled across the two M4 injection campaigns (3,354 injected corrections total on bitcoinotc, collegemsg and the LDBC fixture) — a false-fresh event is a soundness violation, and none occurred in either campaign",
+   "scope_required": "always state the denominator: 898 changed trials pooled across both campaigns (447 in run 2, the record of account; 451 in run 1, superseded but corroborating on soundness)",
+   "snapshot": "freshness-v1-m4"
+  },
+  "freshness_rowtouch_false_fresh": {
+   "value": "47.4",
+   "kind": "benchmark",
+   "prose": "percent false-fresh rate for the naive row-touch rule (\"did the correction touch a row in the stored result?\") on run 2's 447 changed trials (212 of 447) — the dependency-scope mechanism's own false-fresh rate on the same trials is 0",
+   "snapshot": "freshness-v1-m4"
   },
   "storage_bytes_per_row": {
    "value": "24.6",

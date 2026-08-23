@@ -399,7 +399,7 @@ checksum = "adb6935a6f5c20170eeceb1a3835a49e12e19d792f6dd344ccc76a985ca5a6ca"
 
 [[package]]
 name = "tgms-engine-core"
-version = "0.6.2"
+version = "0.7.0"
 dependencies = [
  "crc32c",
  "memmap2",
@@ -411,7 +411,7 @@ dependencies = [
 
 [[package]]
 name = "tgms-engine-py"
-version = "0.6.2"
+version = "0.7.0"
 dependencies = [
  "numpy",
  "pyo3",
