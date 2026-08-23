@@ -472,6 +472,29 @@ def test_the_gate_reports_every_row_and_fails_on_any_mismatch():
     assert len(lines2) == len(lines)          # still reports every row
 
 
+def test_the_build_batch_stays_small_because_apply_ops_is_quadratic_in_it():
+    """`StorageAdapter.apply_ops` costs O(k^2) in the batch size k — the cost is
+    *within* a batch, not in the store (per-batch time is flat at 1.02x as the
+    store grows), so small batches keep the whole load linear.
+
+    The first SF1 build used `Store.INGEST_CHUNK` (50,000) and spent 11 minutes
+    on batch one without finishing it. This test exists so that the constant
+    cannot drift back toward it on the reasonable-sounding theory that bigger
+    batches are faster.
+    """
+    import importlib.util
+
+    spec = importlib.util.spec_from_file_location(
+        "build_snb_store",
+        Path(__file__).resolve().parents[1] / "scripts" / "build_snb_store.py")
+    mod = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(mod)
+    assert mod.DEFAULT_BATCH <= 1_000, (
+        "apply_ops is quadratic in the batch size; measured throughput peaks "
+        "near 250 ops per record and collapses above ~2,000"
+    )
+
+
 def test_the_expected_totals_are_ldbcs_published_ones_plus_the_declared_m7():
     """17,196,776 published edges + 173,014 doubled KNOWS; 2,997,352 nodes.
     The doubling is the single declared exception to 'exactly LDBC's counts',
