@@ -791,8 +791,8 @@ impl NativeStore {
         }
         self.require_batch()?;
         let staged_hit = match kind {
-            RowKind::Edge => self.staging.edges().iter().any(|r| r.vid == vid),
-            RowKind::Node => self.staging.nodes().iter().any(|r| r.vid == vid),
+            RowKind::Edge => self.staging.has_edge_vid(vid),
+            RowKind::Node => self.staging.has_node_vid(vid),
         };
         if staged_hit {
             self.staged_closes.insert(vid, tt_e);
@@ -864,6 +864,12 @@ impl NativeStore {
 
     pub fn staged_nodes(&self) -> &[NodeRow] {
         self.staging.nodes()
+    }
+
+    /// The staging buffers themselves, for the reads that go through the
+    /// identity index instead of walking every staged row.
+    pub(crate) fn staging(&self) -> &Staging {
+        &self.staging
     }
 
     /// Publish the open batch as a new generation. `event_log` records where
