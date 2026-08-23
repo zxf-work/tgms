@@ -471,8 +471,27 @@ class StorageAdapter(ABC):
         """Bulk path for event-stream datasets. Events are instantaneous
         (vt_e defaults to vt_s + 1) and disjoint by construction: each event
         without an explicit disc gets its batch offset as discriminator, so
-        every event is its own logical edge. Overlap checks are bypassed."""
-        events: list[dict[str, Any]] = op["events"]
+        every event is its own logical edge. Overlap checks are bypassed.
+
+        **The optional `nodes` array** carries structured node versions —
+        `[{uid, label, props?, vt_s, vt_e?}, ...]` — so a labelled, propertied
+        bulk load rides this path instead of one `assert_node` batch per node.
+        It is optional and additive: an op without it behaves **exactly** as
+        before, which the frozen digest receipt is the proof of.
+
+        Why it exists: `Store.assert_node` writes one batch per call, and a
+        batch is a log append plus a manifest commit whose cost grows with the
+        store. Loading N nodes that way costs O(N²) work *and* O(N²) bytes —
+        measured at 8,435 nodes producing 8,436 manifests and 15 GB. This path
+        writes one batch per chunk and inserts node versions as one bulk array,
+        which is why it stays flat.
+
+        **Explicit nodes may not supersede** (see `_ingest_node_rows`): a
+        collision refuses. That is what keeps this op Class A in §2's taxonomy
+        — pure append, no carve — and therefore what lets its footprint keep
+        emitting no carve arm (D13.21a).
+        """
+        events: list[dict[str, Any]] = op.get("events") or []
         node_first_seen: dict[str, int] = {}
         edge_rows: list[EdgeVersion] = []
         for i, ev in enumerate(events):
@@ -491,16 +510,77 @@ class StorageAdapter(ABC):
                 if u not in node_first_seen or vt_s < node_first_seen[u]:
                     node_first_seen[u] = vt_s
         label = op.get("node_label", "Node")
+        explicit = self._ingest_node_rows(op, tt)
+        explicit_uids = {r.uid for r in explicit}
         known = self.nodes_with_believed_versions(list(node_first_seen))
-        new_uids = [u for u in node_first_seen if u not in known]
-        self.ensure_entities([(u, label) for u in node_first_seen])
-        self.insert_node_versions([
+        # a uid the op describes explicitly is not also auto-created from an
+        # endpoint: the explicit record carries the label and props, and a
+        # second version over the same interval would violate disjointness
+        new_uids = [u for u in node_first_seen
+                    if u not in known and u not in explicit_uids]
+        self.ensure_entities(
+            [(r.uid, r.label) for r in explicit]
+            + [(u, label) for u in node_first_seen if u not in explicit_uids])
+        self.insert_node_versions(explicit + [
             NodeVersion(vid=_vid(u, tt, node_first_seen[u]), uid=u, label=label,
                         vt_s=node_first_seen[u], vt_e=OPEN_END, tt_s=tt, tt_e=OPEN_END,
                         props={}, source=op.get("source", "ingest"),
                         provenance_ref=op.get("provenance_ref"))
             for u in sorted(new_uids)])
         self.insert_edge_versions(edge_rows)
+
+    def _ingest_node_rows(self, op: dict[str, Any], tt: int) -> list[NodeVersion]:
+        """The optional `nodes` array, as version rows — or `[]` when absent.
+
+        **A collision refuses.** An explicit node whose uid already has a
+        believed version is a loader bug, not a statement of intent: bulk
+        loading is for building a store, and "supersede whatever was there"
+        is what `assert_node` is *for*. Refusing is also what keeps the
+        soundness story simple — an op that cannot supersede cannot carve, so
+        this stays Class A (D2.1) and its footprint needs no carve arm.
+
+        The check is one batched `nodes_with_believed_versions` call over the
+        whole array, not one query per node, or the refusal would reintroduce
+        the per-op term this path exists to avoid.
+        """
+        nodes = op.get("nodes")
+        if not nodes:
+            return []
+
+        seen: dict[str, int] = {}
+        for i, rec in enumerate(nodes):
+            uid = rec["uid"]
+            if uid in seen:
+                raise InvalidArgError(
+                    f"ingest_events: uid {uid!r} appears twice in one `nodes` "
+                    f"array (positions {seen[uid]} and {i}); a bulk load "
+                    f"states each node once",
+                    uid=uid)
+            seen[uid] = i
+
+        collisions = sorted(self.nodes_with_believed_versions(list(seen)))
+        if collisions:
+            shown = collisions[:8]
+            raise InvalidArgError(
+                f"ingest_events: {len(collisions)} of {len(seen)} nodes already "
+                f"have a believed version ({', '.join(shown)}"
+                f"{', ...' if len(collisions) > len(shown) else ''}). Bulk node "
+                f"ingest appends and never supersedes — use `correct` to revise "
+                f"a belief, or `assert_node` to replace one.",
+                colliding=shown, n_colliding=len(collisions))
+
+        source = op.get("source", "ingest")
+        provenance_ref = op.get("provenance_ref")
+        rows: list[NodeVersion] = []
+        for rec in nodes:
+            vt = _interval(rec["vt_s"], rec.get("vt_e", OPEN_END))
+            rows.append(NodeVersion(
+                vid=_vid(rec["uid"], tt, vt.start), uid=rec["uid"],
+                label=rec["label"], vt_s=vt.start, vt_e=vt.end,
+                tt_s=tt, tt_e=OPEN_END, props=rec.get("props") or {},
+                source=rec.get("source", source),
+                provenance_ref=rec.get("provenance_ref", provenance_ref)))
+        return rows
 
     # ------------------------------------------------------------------ #
     # digest (replay-equivalence check)                                   #

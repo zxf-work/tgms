@@ -373,7 +373,8 @@ def _ingest_events(op: dict[str, Any], seq: int) -> tuple[OpFootprint, ...]:
     false negatives silently.
     """
     events: list[dict[str, Any]] = list(op.get("events", ()))
-    if not events:
+    nodes: list[dict[str, Any]] = list(op.get("nodes") or ())
+    if not events and not nodes:
         # `_ingest_events` over an empty list writes nothing at all, so there is
         # nothing to describe. Returning () rather than a vacuous footprint
         # keeps `intersects` from matching on `"*"`-shaped emptiness.
@@ -401,6 +402,31 @@ def _ingest_events(op: dict[str, Any], seq: int) -> tuple[OpFootprint, ...]:
             if u not in first_seen or vt_s < first_seen[u]:
                 first_seen[u] = vt_s
 
+    # The optional `nodes` array writes real node versions, with their own
+    # labels, intervals and **property values** — so the node arm has to cover
+    # them or it is a false negative, which is the one direction D1.13 forbids.
+    # Three widenings, each in the safe direction:
+    #
+    #   * their uids join the identity set;
+    #   * their `vt_s` joins the hull's lower bound, since an explicit node may
+    #     start below anything the event stream mentions;
+    #   * `props` becomes `"*"`, because an explicit record sets arbitrary keys
+    #     and `{@identity, @extent, @event_key}` would miss a scope narrowed to
+    #     one of them. `"*"` is what `assert_node`'s value arm carries, and an
+    #     explicit node ingest writes the same *shape* of thing an assert does.
+    #
+    # There is still **no carve arm**, and that is not an oversight: the applier
+    # refuses an explicit node that collides with a believed version, so this op
+    # cannot supersede, so nothing can be carved. The refusal is load-bearing
+    # for soundness, not merely for tidiness.
+    node_props: PropSet = _INGEST_NODE_PSEUDO
+    for rec in nodes:
+        uid = str(rec["uid"])
+        vt_s = int(rec["vt_s"])
+        if uid not in first_seen or vt_s < first_seen[uid]:
+            first_seen[uid] = vt_s
+        node_props = TOP
+
     rel_set = _coarsen(rel_types)
     edge_arm = OpFootprint(
         seq=seq, arm="value", kind="ingest_events", cls="A", entity_kind="edge",
@@ -421,7 +447,12 @@ def _ingest_events(op: dict[str, Any], seq: int) -> tuple[OpFootprint, ...]:
         identity=Identity(uid=_coarsen(first_seen), multi=True),
         rel_type=TOP,
         vt=vt_closed(min(first_seen.values()), OPEN_END),
-        props=_INGEST_NODE_PSEUDO)
+        props=node_props)
+    if not events:
+        # a nodes-only op writes no edge at all, so there is no edge arm to
+        # emit; emitting one over empty sets would match nothing anyway, but
+        # `"*"`-shaped emptiness is exactly what `_coarsen` must not produce
+        return (node_arm,)
     return (edge_arm, node_arm)
 
 

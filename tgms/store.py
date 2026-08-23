@@ -240,10 +240,30 @@ class Store:
         return tt
 
     def ingest_events(self, events: Iterable[dict[str, Any]],
-                      node_label: str = "Node") -> int:
+                      node_label: str = "Node",
+                      nodes: Iterable[dict[str, Any]] | None = None) -> int:
         """Bulk event-stream ingestion, chunked into write batches.
-        Returns the tt of the last batch."""
+        Returns the tt of the last batch.
+
+        `nodes` is the optional structured half: `{uid, label, props?, vt_s,
+        vt_e?}` records that become real node versions with their own labels
+        and properties, instead of the bare auto-created endpoints the event
+        stream implies. It exists so a labelled, propertied load — LDBC SNB's
+        eight node types, say — rides this path rather than
+        `assert_node`-per-node, which writes one batch and one manifest each
+        and costs O(N²) in both time and bytes.
+
+        Nodes are written **before** events, in their own chunked batches: the
+        event batches then see them as already known and skip auto-creating
+        bare versions for the same uids, and a collision refuses loudly rather
+        than at the end of a long load.
+        """
         tt = self.clock.last_tt
+        if nodes is not None:
+            for chunk in _chunks(nodes, INGEST_CHUNK):
+                tt = self._write([make_op("ingest_events", events=[], nodes=chunk,
+                                          node_label=node_label,
+                                          source="ingest", provenance_ref=None)])
         offset = 0
         for chunk in _chunks(events, INGEST_CHUNK):
             tt = self._write([make_op("ingest_events", events=chunk, offset=offset,

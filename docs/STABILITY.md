@@ -66,6 +66,17 @@ reserved in the format header, but nothing currently reads a v0 store
 directly with v2 code. Until such tooling exists, "incompatible version"
 should be read as "requires a replay," not "requires a converter."
 
+**Forward compatibility is not symmetric, and this is the honest statement
+of it.** The log format is stable in the *backward* direction — a newer TGMS
+reads every older log — but op records may gain optional fields, and the
+appliers read the keys they know and ignore the rest. So an **older** TGMS
+replaying a **newer** log does not fail; it silently applies the part it
+understands. Concretely, `ingest_events` gained an optional `nodes` array in
+v0.7.0, and a pre-v0.7.0 build replaying such a log rebuilds a store missing
+those node versions, without an error. Replaying a log with the version that
+wrote it (or newer) is therefore not merely advisable — it is the only
+direction with a guarantee.
+
 ---
 
 ## 2. Crash behavior
