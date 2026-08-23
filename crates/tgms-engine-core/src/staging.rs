@@ -9,8 +9,9 @@
 //! Nothing here is durable. A rolled-back batch simply drops the buffers; the
 //! event log keeps the record and replay re-fails it identically (D-004).
 
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 use std::path::Path;
+use std::sync::Mutex;
 
 use crate::defaults::LANE_MAX_PARTITION_CROSSINGS;
 use crate::error::{EngineError, Result};
@@ -82,6 +83,47 @@ const NODE_FIXED_BYTES: usize = 8 + 4 + 8 + 4 + 4 + 4 + 4 + 4;
 pub struct Staging {
     edges: Vec<EdgeRow>,
     nodes: Vec<NodeRow>,
+    /// Which vids this batch has staged. A close naming a staged version
+    /// folds into the sidecar instead of becoming a close run, and that
+    /// question is asked once per close — a scan of the buffer would make a
+    /// carve-heavy batch quadratic in its own size.
+    edge_vids: HashSet<Id96>,
+    node_vids: HashSet<Id96>,
+    /// Identity index over the buffers, so a read-your-own-writes lookup
+    /// touches the rows of *that* identity rather than every staged row.
+    index: Mutex<StagedIndex>,
+}
+
+/// Positions in `Staging::{edges, nodes}`, grouped by identity.
+///
+/// Built lazily and only as far as the buffers have grown, because the key
+/// of an edge row is an `eid` — a sha256 over dictionary lookups the buffer
+/// cannot do for itself. A batch that only seals (compaction) never asks and
+/// never pays; a batch that reads pays once per row, not once per read.
+#[derive(Default)]
+struct StagedIndex {
+    /// `eid` prefix -> positions, ascending.
+    edges: HashMap<u64, Vec<u32>>,
+    /// Keys of `edges[..edge_keys.len()]`, which is both the indexed
+    /// watermark and what lets a retire re-key the map without deriving a
+    /// single `eid` again.
+    edge_keys: Vec<u64>,
+    /// `uid_id` -> positions, ascending. Node identity is already dense, so
+    /// there is nothing to derive and the watermark is a count.
+    nodes: HashMap<u32, Vec<u32>>,
+    nodes_upto: usize,
+}
+
+impl StagedIndex {
+    /// Re-key `edges` from `keys`, which must be the keys of the surviving
+    /// rows in buffer order.
+    fn rekey_edges(&mut self, keys: Vec<u64>) {
+        self.edges.clear();
+        for (pos, &k) in keys.iter().enumerate() {
+            self.edges.entry(k).or_default().push(pos as u32);
+        }
+        self.edge_keys = keys;
+    }
 }
 
 impl Staging {
@@ -98,10 +140,12 @@ impl Staging {
     }
 
     pub fn push_edge(&mut self, row: EdgeRow) {
+        self.edge_vids.insert(row.vid);
         self.edges.push(row);
     }
 
     pub fn push_node(&mut self, row: NodeRow) {
+        self.node_vids.insert(row.vid);
         self.nodes.push(row);
     }
 
@@ -114,29 +158,99 @@ impl Staging {
         &self.nodes
     }
 
+    pub fn has_edge_vid(&self, vid: Id96) -> bool {
+        self.edge_vids.contains(&vid)
+    }
+
+    pub fn has_node_vid(&self, vid: Id96) -> bool {
+        self.node_vids.contains(&vid)
+    }
+
+    /// Positions in `edges()` of the rows whose identity key is `key`, in
+    /// buffer order.
+    ///
+    /// `key_of` derives one row's key (the `eid` prefix, matching the
+    /// committed identity postings); it runs at most once per row per batch.
+    /// The key is a prefix, so these are *candidates* — the caller checks the
+    /// full identity, exactly as it does for a committed posting hit.
+    pub fn edge_positions(
+        &self,
+        key: u64,
+        key_of: impl Fn(&EdgeRow) -> Result<u64>,
+    ) -> Result<Vec<u32>> {
+        let mut ix = self.index.lock().expect("staging index mutex poisoned");
+        while ix.edge_keys.len() < self.edges.len() {
+            let pos = ix.edge_keys.len();
+            // derived before either structure is touched: a failure here
+            // must leave the watermark exactly where it was
+            let k = key_of(&self.edges[pos])?;
+            ix.edges.entry(k).or_default().push(pos as u32);
+            ix.edge_keys.push(k);
+        }
+        Ok(ix.edges.get(&key).cloned().unwrap_or_default())
+    }
+
+    /// Positions in `nodes()` of the rows for one dense entity id.
+    pub fn node_positions(&self, uid_id: u32) -> Vec<u32> {
+        let mut ix = self.index.lock().expect("staging index mutex poisoned");
+        while ix.nodes_upto < self.nodes.len() {
+            let pos = ix.nodes_upto;
+            ix.nodes.entry(self.nodes[pos].uid_id).or_default().push(pos as u32);
+            ix.nodes_upto = pos + 1;
+        }
+        ix.nodes.get(&uid_id).cloned().unwrap_or_default()
+    }
+
     /// Remove a staged row by vid, reporting whether it was there. Used only
     /// when the same batch replaces a version it staged: that version was
     /// believed over no transaction time, so it is not sealed at all (D-059).
     ///
-    /// Linear, and deliberately: it runs once per superseded version, and
-    /// only for the versions a batch wrote and then replaced itself. A staged
-    /// vid index would be built for every batch to serve the batches that
-    /// carve twice.
+    /// Buffer order is preserved (the survivors close up, they do not move
+    /// past one another), so the identity index only has to be re-keyed, not
+    /// rebuilt from the rows: the cached keys survive the removal in the same
+    /// order and no `eid` is derived twice.
     pub fn retire_edge(&mut self, vid: Id96) -> bool {
-        let before = self.edges.len();
-        self.edges.retain(|r| r.vid != vid);
-        self.edges.len() != before
+        if !self.edge_vids.remove(&vid) {
+            return false;
+        }
+        let ix = self.index.get_mut().expect("staging index mutex poisoned");
+        // keyed rows are a *prefix* of the buffer, and stay one: removing a
+        // row from the prefix shifts only rows behind it
+        let mut kept = Vec::with_capacity(ix.edge_keys.len());
+        let mut pos = 0usize;
+        self.edges.retain(|r| {
+            let keep = r.vid != vid;
+            if keep {
+                if let Some(&k) = ix.edge_keys.get(pos) {
+                    kept.push(k);
+                }
+            }
+            pos += 1;
+            keep
+        });
+        ix.rekey_edges(kept);
+        true
     }
 
     pub fn retire_node(&mut self, vid: Id96) -> bool {
-        let before = self.nodes.len();
+        if !self.node_vids.remove(&vid) {
+            return false;
+        }
         self.nodes.retain(|r| r.vid != vid);
-        self.nodes.len() != before
+        // node keys are read straight off the row, so dropping the index
+        // costs one integer pass at the next lookup and no derivation
+        let ix = self.index.get_mut().expect("staging index mutex poisoned");
+        ix.nodes.clear();
+        ix.nodes_upto = 0;
+        true
     }
 
     pub fn clear(&mut self) {
         self.edges.clear();
         self.nodes.clear();
+        self.edge_vids.clear();
+        self.node_vids.clear();
+        *self.index.get_mut().expect("staging index mutex poisoned") = StagedIndex::default();
     }
 
     /// Sort, route to lanes, split, and write. Returns the manifest entries
@@ -156,6 +270,9 @@ impl Staging {
         closes: &HashMap<Id96, i64>,
     ) -> Result<SealedBatch> {
         let mut out = SealedBatch::default();
+        // the sorts below permute the buffers, and the identity index holds
+        // positions in the order it was built against
+        *self.index.get_mut().expect("staging index mutex poisoned") = StagedIndex::default();
 
         self.edges.sort_by_key(|r| r.sort_key());
         for (lane, rows) in split_lanes(&self.edges, partitions, |r| (r.vt_s, r.vt_e)) {

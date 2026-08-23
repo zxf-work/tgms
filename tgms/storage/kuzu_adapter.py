@@ -161,14 +161,51 @@ class KuzuAdapter(StorageAdapter):
     # --- version reads --------------------------------------------------------- #
 
     def believed_node_versions(self, uid: str, as_of_tt: int = OPEN_END) -> list[NodeVersion]:
+        """Versions of `uid` believed at `as_of_tt`, anchored on Entity's key.
+
+        `v.uid` is an ordinary property, and Kùzu indexes only node-table
+        primary keys — so `WHERE v.uid = $uid` was a property scan of the whole
+        NodeVersion table, once per op inside `apply_ops`. Anchoring on the
+        Entity primary key instead and walking OF_ENTITY backwards turns that
+        into a key lookup plus a traversal of one entity's version list:
+        measured at 4.9 ms -> 1.3 ms per call at 50k NodeVersion rows and
+        11.5 ms -> 1.3 ms at 150k, i.e. linear-in-table-size before and flat
+        after. Row-for-row identical results on both (verified).
+
+        Anchoring is only sound because every NodeVersion has its OF_ENTITY
+        edge: `insert_node_versions` creates the two together, and every
+        base.py path that reaches it registers the Entity first (`_assert_node`
+        and `_ingest_events` call `ensure_entities`; retract/correct only
+        re-insert identities that already had a believed version). Retirement
+        DETACH-deletes the pair. `nodes_columnar` above has relied on the same
+        invariant since it was written.
+        """
         a = clamp_tt(as_of_tt)
         rows = self._rows(
-            f"MATCH (v:NodeVersion) WHERE v.uid = $uid AND v.tt_s <= $a AND $a < v.tt_e "
+            f"MATCH (ent:Entity {{uid: $uid}})<-[:OF_ENTITY]-(v:NodeVersion) "
+            f"WHERE v.tt_s <= $a AND $a < v.tt_e "
             f"RETURN {_NODE_RET} ORDER BY v.vt_s",
             {"uid": uid, "a": a})
         return [_node_from_row(r) for r in rows]
 
     def believed_edge_versions(self, eid: str, as_of_tt: int = OPEN_END) -> list[EdgeVersion]:
+        """KNOWN RESIDUAL: this one is still a property scan of every
+        EdgeVersion rel, and it is the most expensive lookup in this adapter —
+        measured 4.3 ms/call at 20k edge rows, 10.9 ms at 80k, 24.7 ms at 200k,
+        i.e. linear in the whole edge table with no floor in sight.
+
+        The node path above escapes by anchoring on a primary key; `eid` has no
+        key to anchor on, because it is a hash of (src, dst, rel_type, disc)
+        and nothing stores the inverse. Anchoring both endpoints instead —
+        `MATCH (a:Entity {uid: $src})-[e:EdgeVersion]->(b:Entity {uid: $dst})` —
+        was measured at 1.1-1.4 ms and FLAT across the same 10x growth (a 20x
+        reduction at 200k rows), but it needs src/dst passed in, which every
+        base.py caller has (`_assert_edge` computes the eid from them;
+        retract/correct carry them on the op's EntityRef) and the ABC signature
+        does not. Threading them through is a cross-file change to the shared
+        ABC, so it is deliberately NOT done here: the measurement is recorded
+        so the decision can be taken on evidence rather than re-derived.
+        """
         a = clamp_tt(as_of_tt)
         rows = self._rows(
             f"MATCH (a:Entity)-[e:EdgeVersion]->(b:Entity) "

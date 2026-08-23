@@ -305,51 +305,95 @@ impl NativeStore {
         collect_rows(vt_s.len(), rows, emit)
     }
 
+    /// One staged edge row, materialized. Deriving `eid` is a sha256 and two
+    /// dictionary lookups, which is why the callers below select their rows
+    /// first and materialize second.
+    fn staged_edge_out(&self, r: &crate::row::EdgeRow) -> Result<EdgeVersionOut> {
+        let src = self.uid_of(r.src_id)?;
+        let dst = self.uid_of(r.dst_id)?;
+        Ok(EdgeVersionOut {
+            eid: edge_eid(&src, &dst, &r.rel_type, &r.disc).to_hex(),
+            vid: r.vid.to_hex(),
+            src,
+            dst,
+            rel_type: r.rel_type.clone(),
+            disc: r.disc.clone(),
+            vt_s: r.vt_s,
+            vt_e: r.vt_e,
+            tt_s: r.tt_s,
+            tt_e: self.staged_closes().get(&r.vid).copied().unwrap_or(OPEN_END),
+            props: r.props.clone(),
+            source: r.source.clone(),
+            provenance_ref: r.provenance_ref.clone(),
+        })
+    }
+
+    fn staged_node_out(&self, r: &crate::row::NodeRow) -> Result<NodeVersionOut> {
+        Ok(NodeVersionOut {
+            vid: r.vid.to_hex(),
+            uid: self.uid_of(r.uid_id)?,
+            label: r.label.clone(),
+            vt_s: r.vt_s,
+            vt_e: r.vt_e,
+            tt_s: r.tt_s,
+            tt_e: self.staged_closes().get(&r.vid).copied().unwrap_or(OPEN_END),
+            props: r.props.clone(),
+            source: r.source.clone(),
+            provenance_ref: r.provenance_ref.clone(),
+        })
+    }
+
     /// Edge versions staged in the open batch, if any.
     fn staged_edge_versions(&self) -> Result<Vec<EdgeVersionOut>> {
-        let closes = self.staged_closes();
         self.staged_edges()
             .iter()
-            .map(|r| {
-                let src = self.uid_of(r.src_id)?;
-                let dst = self.uid_of(r.dst_id)?;
-                Ok(EdgeVersionOut {
-                    eid: edge_eid(&src, &dst, &r.rel_type, &r.disc).to_hex(),
-                    vid: r.vid.to_hex(),
-                    src,
-                    dst,
-                    rel_type: r.rel_type.clone(),
-                    disc: r.disc.clone(),
-                    vt_s: r.vt_s,
-                    vt_e: r.vt_e,
-                    tt_s: r.tt_s,
-                    tt_e: closes.get(&r.vid).copied().unwrap_or(OPEN_END),
-                    props: r.props.clone(),
-                    source: r.source.clone(),
-                    provenance_ref: r.provenance_ref.clone(),
-                })
-            })
+            .map(|r| self.staged_edge_out(r))
             .collect()
     }
 
     fn staged_node_versions(&self) -> Result<Vec<NodeVersionOut>> {
-        let closes = self.staged_closes();
         self.staged_nodes()
             .iter()
-            .map(|r| {
-                Ok(NodeVersionOut {
-                    vid: r.vid.to_hex(),
-                    uid: self.uid_of(r.uid_id)?,
-                    label: r.label.clone(),
-                    vt_s: r.vt_s,
-                    vt_e: r.vt_e,
-                    tt_s: r.tt_s,
-                    tt_e: closes.get(&r.vid).copied().unwrap_or(OPEN_END),
-                    props: r.props.clone(),
-                    source: r.source.clone(),
-                    provenance_ref: r.provenance_ref.clone(),
-                })
-            })
+            .map(|r| self.staged_node_out(r))
+            .collect()
+    }
+
+    /// Staged edge versions that may belong to one identity, through the
+    /// staging index — the read-your-own-writes half of a point read.
+    ///
+    /// A point read runs once per op and staging grows with the batch, so
+    /// materializing every staged row here (an `eid` per row per read) made
+    /// a k-op batch cost O(k²): 0.077 s at 500 asserts, 22 s at 8,000.
+    /// `key` is a prefix, so these are candidates; the caller's exact `eid`
+    /// comparison still decides, exactly as it does for committed rows.
+    fn staged_edge_versions_for(&self, key: u64) -> Result<Vec<EdgeVersionOut>> {
+        let positions = self.staging().edge_positions(key, |r| {
+            Ok(edge_eid(
+                &self.uid_of(r.src_id)?,
+                &self.uid_of(r.dst_id)?,
+                &r.rel_type,
+                &r.disc,
+            )
+            .hi)
+        })?;
+        let staged = self.staged_edges();
+        positions
+            .iter()
+            .map(|&i| self.staged_edge_out(&staged[i as usize]))
+            .collect()
+    }
+
+    /// Staged node versions for one uid. Node identity is dense, so this is
+    /// exact: a uid the dictionary does not know cannot have a staged row.
+    fn staged_node_versions_for(&self, uid: &str) -> Result<Vec<NodeVersionOut>> {
+        let Some(uid_id) = self.dict().dense_id(uid) else {
+            return Ok(Vec::new());
+        };
+        let positions = self.staging().node_positions(uid_id);
+        let staged = self.staged_nodes();
+        positions
+            .iter()
+            .map(|&i| self.staged_node_out(&staged[i as usize]))
             .collect()
     }
 
@@ -587,7 +631,7 @@ impl NativeStore {
             }
         }
         out.extend(
-            self.staged_edge_versions()?
+            self.staged_edge_versions_for(key)?
                 .into_iter()
                 .filter(|r| r.eid == eid && believed_at(r.tt_s, r.tt_e, as_of_tt)),
         );
@@ -621,7 +665,7 @@ impl NativeStore {
             }
         }
         out.extend(
-            self.staged_node_versions()?
+            self.staged_node_versions_for(uid)?
                 .into_iter()
                 .filter(|r| r.uid == uid && believed_at(r.tt_s, r.tt_e, as_of_tt)),
         );
