@@ -348,11 +348,41 @@ def test_a_plan_over_the_ceiling_is_refused_with_a_certificate(chain):
     certificate = details["refusal_certificate"]
     assert certificate["plan_digest"] == "plan-digest"
     assert certificate["stage"] == "plan"
-    assert certificate["policy_version"] == "guardrail-policy-v1"
-    assert certificate["calibration_ref"]
+    # v2 since 2026-08-23: v1 with `tgir_expand_unbounded` re-calibrated on the
+    # measurement host (183.3 -> 343.8 ms/M). The certificate names the policy
+    # it was issued under, so a v1 refusal and a v2 refusal stay distinguishable.
+    assert certificate["policy_version"] == "guardrail-policy-v2"
+    # both calibration receipts are reachable from the reference
+    assert "expand-unbounded-2026-08-22" in certificate["calibration_ref"]
     assert certificate["estimates"] and certificate["ceilings"]
     # additive: the keys the planner repair loop already consumes are intact
     assert set(details) >= {"estimate", "ceilings", "suggestions"}
+
+
+def test_the_unbounded_expand_coefficient_is_pinned_to_the_measurement_host():
+    """The gap that let a macOS-calibrated number ship in an xzgpu-calibrated
+    table for two days: nothing pinned it.
+
+    `TIME_COEFF_MS_PER_M` is host-calibrated by construction — D-087 measured
+    every operator entry on xzgpu and D-096 froze the policy on that basis,
+    with `TGMS_TIME_COEFF_SCALE` as the *host* knob. `tgir_expand_unbounded`
+    was added at M3.1 from a macOS-arm64 receipt at 183.3 ms/M; the Linux
+    x86_64 receipt for the same store digest and the same two shapes reads
+    343.8. Too-cheap over-ADMITS, which is the direction `TGIR_SPEC.md` §2.13
+    forbids, so this is pinned rather than trusted.
+
+    Receipts: docs/tgir/calib/expand-unbounded-2026-08-{21,22}.md.
+    """
+    from tgms.temporal.guardrails import _MAX_COEFF, TIME_COEFF_MS_PER_M
+    from tgms.tgir.cost import UNBOUNDED_EXPAND_COEFF
+
+    assert TIME_COEFF_MS_PER_M[UNBOUNDED_EXPAND_COEFF] == 343.8
+
+    # And the hazard the coefficient exists to close, stated as an assertion so
+    # that deleting the entry cannot pass silently: the columnar-class fallback
+    # is *cheaper* than this node's measured cost, so an unbounded expansion
+    # that fell through to `_MAX_COEFF` would be priced at half its true rate.
+    assert TIME_COEFF_MS_PER_M[UNBOUNDED_EXPAND_COEFF] > _MAX_COEFF
 
 
 def test_stage_two_can_only_refuse_more(chain):
