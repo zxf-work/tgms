@@ -17,21 +17,22 @@ from __future__ import annotations
 
 import json
 import re
+from pathlib import Path
 
 from tgms.demo import SUBJECT, run_demo
 
 DIGEST16 = re.compile(r"\b[0-9a-f]{16}\b")
 
 
-def test_the_demo_narrates_five_beats_and_shows_both_belief_states(tmp_path, capsys):
+def test_the_demo_narrates_six_beats_and_shows_both_belief_states(tmp_path, capsys):
     """The story, as a reader sees it on the terminal."""
     from tgms.cli import main
 
     assert main(["demo", "--store", str(tmp_path / "demo")]) == 0
     out = capsys.readouterr().out
 
-    for beat in range(1, 6):
-        assert f"[{beat}/5]" in out, f"beat {beat} is missing from the narration"
+    for beat in range(1, 7):
+        assert f"[{beat}/6]" in out, f"beat {beat} is missing from the narration"
 
     # the two belief states, side by side, with the row that differs marked
     assert "believed BEFORE correction" in out and "believed NOW" in out
@@ -101,6 +102,98 @@ def test_the_demo_refuses_to_build_on_top_of_an_existing_store(tmp_path):
     with pytest.raises(SystemExit) as excinfo:
         run_demo(root)
     assert excinfo.value.code == 2
+
+
+def test_beat_six_invalidates_the_saved_answer_and_certifies_the_re_run(
+        tmp_path, capsys):
+    """The beat the rest of the demo exists to earn.
+
+    A reader who never thinks to ask "is this still true?" is told anyway: the
+    answer filed before the correction comes back `POSSIBLY_STALE` with the
+    write that invalidated it **named**, and the same question re-run after the
+    correction comes back `FRESH`. The contrast is the product claim, so both
+    halves are asserted, in order.
+    """
+    from tgms.cli import main
+
+    assert main(["demo", "--store", str(tmp_path / "demo")]) == 0
+    out = capsys.readouterr().out
+
+    beat6 = out.split("[6/6]", 1)
+    assert len(beat6) == 2, "the freshness beat is missing"
+    beat6 = beat6[1]
+
+    stale_at = beat6.find("POSSIBLY_STALE")
+    fresh_at = beat6.find("FRESH")
+    assert stale_at != -1, "the pre-correction answer was not invalidated"
+    assert fresh_at != -1, "the re-run answer was not certified fresh"
+    assert stale_at < fresh_at, (
+        "the beat must land stale-then-fresh; the contrast is the point")
+    assert "UNDECIDABLE" not in beat6, (
+        "the demo store is anchored and unrewritten; UNDECIDABLE here means "
+        "the check could not read what it should have")
+
+    # the memo sentence, on its own terms: produced-when, what changed, and
+    # the instruction to reconsider rather than a repaired answer
+    assert "This answer was produced on" in beat6
+    assert "corrected node vendor-orion" in beat6
+    assert "Reconsider." in beat6
+    # and the correction's valid-time reach, which is what makes it actionable
+    assert "[2020-01-04 .. open)" in beat6
+
+    # it goes through the real verb, not a bespoke path
+    assert "tgms trace check" in beat6
+
+
+def test_beat_six_verdicts_and_witness_are_real_not_narrated(tmp_path):
+    """The claim checked on structure rather than prose: the verdicts come back
+    from `Store.check_trace` — the call `tgms trace check` makes — and the
+    witness names the actual logged correction."""
+    receipts = run_demo(tmp_path / "demo")
+
+    assert receipts["verdict_before"] == "POSSIBLY_STALE"
+    assert receipts["verdict_after"] == "FRESH"
+
+    assert receipts["witnesses"], "POSSIBLY_STALE with no witness (D1.14)"
+    w = receipts["witnesses"][0]
+    assert w["kind"] == "correct"
+    assert w["identity"] == {"uid": SUBJECT}
+    assert w["arm"] == "value"
+    assert w["matched_on"], "the witness attributes the match to no conjunct"
+    # the correction's own transaction time, not a paraphrase of it
+    assert w["tt"] == receipts["tt_after"]
+
+    # the saved record is the shape `tgms trace check` consumes, and the
+    # verdict is reproducible from it by the same public API
+    import tgms
+    record = json.loads(Path(receipts["before_record_path"]).read_text())
+    store = tgms.open(receipts["store"], read_only=True)
+    try:
+        again = store.check_trace(record["trace"])
+        assert not again.actionable_fresh
+        assert [x.to_json() for x in again.witnesses] == receipts["witnesses"]
+    finally:
+        store.close()
+
+
+def test_beat_six_costs_almost_nothing(tmp_path):
+    """Freshness is a scan of the writes since the read, not a recomputation.
+    On this store that is a fraction of a millisecond, and the beat must not be
+    what makes the demo feel slow."""
+    import time as _time
+
+    import tgms
+    receipts = run_demo(tmp_path / "demo")
+    record = json.loads(Path(receipts["before_record_path"]).read_text())
+    store = tgms.open(receipts["store"], read_only=True)
+    try:
+        t0 = _time.perf_counter()
+        for _ in range(20):
+            store.check_trace(record["trace"])
+        per_call_ms = (_time.perf_counter() - t0) / 20 * 1000
+    finally:
+        store.close()
+    assert per_call_ms < 50.0, f"check_trace took {per_call_ms:.1f} ms"
 
 
 def test_the_demo_is_fast_enough_to_watch(tmp_path):
