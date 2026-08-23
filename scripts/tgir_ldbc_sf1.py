@@ -107,9 +107,18 @@ def _time(fn: Any, reps: int) -> tuple[list[float], Any]:
     return times, out
 
 
-def run_bypassed_child(plan_id: str, store_path: str, params_root: Path,
-                       sf: str) -> dict[str, Any]:
-    """Run one refused plan in a child, guard bypassed, under a hard kill.
+def run_child(plan_id: str, store_path: str, params_root: Path,
+              sf: str) -> dict[str, Any]:
+    """Run one plan in a child under a hard kill.
+
+    **Every** plan goes through here, not only the refused ones. The first
+    bounded campaign bounded the bypassed arm and left the admitted arm
+    in-process on the reasoning that an admitted plan is predicted under 6 s —
+    which is exactly the assumption the experiment exists to test. BI18 was
+    admitted at an estimate of 5,918 ms and had run **49 minutes** when the
+    campaign was killed, so the arm that needed no bound was the arm that ran
+    away. A ceiling that only guards the cases you expect to be slow is not a
+    ceiling.
 
     The child measures `run_plan` alone; the parent allows it
     `BYPASS_CEILING_S + CHILD_OPEN_ALLOWANCE_S` of wall so that the store open
@@ -141,7 +150,7 @@ def run_bypassed_child(plan_id: str, store_path: str, params_root: Path,
 
 
 def run_one(plan_id: str, store: Any, params_root: Path, sf: str,
-            bypass: bool, store_path: str = "") -> dict[str, Any]:
+            bypass: bool) -> dict[str, Any]:
     rec: dict[str, Any] = {"plan_id": plan_id}
     try:
         root, b = _load_bound(plan_id, params_root, sf)
@@ -172,9 +181,6 @@ def run_one(plan_id: str, store: Any, params_root: Path, sf: str,
             rec["refusal_certificate"] = e.details.get("refusal_certificate")
         if not bypass:
             rec["outcome"] = "REFUSED"
-            return rec
-        if store_path:                                 # parent: hand to a child
-            rec.update(run_bypassed_child(plan_id, store_path, params_root, sf))
             return rec
         ceilings = {k: 1 << 62 for k in DEFAULT_CEILINGS}
         rec["bypassed"] = True
@@ -229,7 +235,7 @@ def main() -> int:
         store = tgms.open(args.store, read_only=True)
         try:
             rec = run_one(args.single, store, Path(args.params), args.sf,
-                          bypass=True)
+                          bypass=not args.no_bypass)
         finally:
             store.close()
         print(json.dumps(rec, default=str))
@@ -241,37 +247,44 @@ def main() -> int:
           f"plans={len(ids)} policy={POLICY_VERSION} host={platform.node()}",
           flush=True)
 
-    store = tgms.open(args.store, read_only=True)
     t0 = time.time()
-    records = []
-    try:
-        for pid in ids:
-            t = time.time()
-            rec = run_one(pid, store, Path(args.params), args.sf,
-                          not args.no_bypass, store_path=args.store)
-            records.append(rec)
-            print(f"  {pid:6s} {rec.get('derived_admission', '—'):>6} -> "
-                  f"{rec.get('outcome', '?'):<14} "
-                  f"est {rec.get('estimate', {}).get('time_est_ms', '?'):>12} ms  "
-                  f"actual {rec.get('ms', '—')!s:>12}  "
-                  f"rows {rec.get('rows', '—')!s:>8}  "
-                  f"[{time.time() - t:.1f}s]", flush=True)
-    finally:
-        store.close()
-
+    records: list[dict[str, Any]] = []
     out = Path(args.out)
     out.parent.mkdir(parents=True, exist_ok=True)
-    out.write_text(json.dumps({
-        "manifest": {"commit": sha, "host": platform.node(),
-                     "platform": platform.platform(), "store": args.store,
-                     "sf": args.sf, "policy_version": POLICY_VERSION,
-                     "ceilings": dict(DEFAULT_CEILINGS),
-                     "bypass_ceiling_s": BYPASS_CEILING_S,
-                     "protocol": f"warmups {WARMUPS}, reps {REPS} (1 when bypassed)",
-                     "utc": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
-                     "wall_s": round(time.time() - t0, 1)},
-        "records": records,
-    }, indent=1, sort_keys=True, default=str))
+
+    def flush() -> None:
+        """After every plan, not at the end. The first bounded campaign wrote
+        its record only on completion, so killing it at 2 h discarded four
+        finished measurements that had to be read back out of the log."""
+        out.write_text(json.dumps({"manifest": manifest(), "records": records},
+                                  indent=1, sort_keys=True, default=str))
+
+    def manifest() -> dict[str, Any]:
+        return {"commit": sha, "host": platform.node(),
+                "platform": platform.platform(), "store": args.store,
+                "sf": args.sf, "policy_version": POLICY_VERSION,
+                "ceilings": dict(DEFAULT_CEILINGS),
+                "bypass_ceiling_s": BYPASS_CEILING_S,
+                "child_open_allowance_s": CHILD_OPEN_ALLOWANCE_S,
+                "every_plan_in_a_child": True,
+                "protocol": f"warmups {WARMUPS}, reps {REPS} (1 when bypassed)",
+                "utc": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
+                "wall_s": round(time.time() - t0, 1),
+                "complete": len(records) == len(ids)}
+
+    for pid in ids:
+        t = time.time()
+        rec = run_child(pid, args.store, Path(args.params), args.sf)
+        records.append(rec)
+        flush()
+        print(f"  {pid:6s} {rec.get('derived_admission', '—'):>6} -> "
+              f"{rec.get('outcome', '?'):<14} "
+              f"est {rec.get('estimate', {}).get('time_est_ms', '?'):>12} ms  "
+              f"actual {rec.get('ms', '—')!s:>12}  "
+              f"rows {rec.get('rows', '—')!s:>8}  "
+              f"[{time.time() - t:.1f}s]", flush=True)
+
+    flush()
 
     admitted = [r for r in records if r.get("derived_admission") == "admit"]
     refused = [r for r in records if r.get("derived_admission") == "refuse"]
