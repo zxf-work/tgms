@@ -593,7 +593,30 @@ def main() -> int:
                     default=here / "runs" / "pgdata")
     ap.add_argument("--pg-stop", action="store_true",
                     help="stop the embedded postgres and exit")
+    ap.add_argument("--pg-load-only", action="store_true",
+                    help="load and validate the pg leg from an existing "
+                         "pg manifest into --pgdata, touching nothing else")
+    ap.add_argument("--manifest-pg", type=Path,
+                    help="existing pg manifest for --pg-load-only")
     args = ap.parse_args()
+
+    if args.pg_load_only:
+        if not (args.manifest_pg and args.db_root):
+            raise SystemExit("--pg-load-only needs --manifest-pg and "
+                             "--db-root")
+        wanted = [json.loads(l) for l in
+                  args.manifest_pg.read_text().splitlines() if l.strip()]
+        pg_kept, pg_excl, pg_dbs, _uri = build_pg(
+            wanted, args.db_root, args.pgdata)
+        kept_ids = {i["question_id"] for i in pg_kept}
+        missing = [i["question_id"] for i in wanted
+                   if i["question_id"] not in kept_ids]
+        if missing:
+            raise SystemExit(f"pg load-only: committed manifest items "
+                             f"failed to load/validate: {missing}")
+        print(f"pg load-only: {len(pg_kept)} endpoints loaded and "
+              f"validated into {args.pgdata}")
+        return 0
 
     if args.pg_stop:
         import pgserver

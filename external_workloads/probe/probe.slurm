@@ -32,6 +32,15 @@ PROBE=external_workloads/probe
 DBROOT=/project/xzhang12/minidev_pkg/minidev/MINIDEV/dev_databases
 
 # ---- universe: built and validated against the databases, no model ----
+# The universe and both manifests are committed pre-inference
+# (c3f33f5); node-side setup re-validates the sqlite endpoints only.
+# The pg data lives on NODE-LOCAL storage: initdb fails on the
+# /project parallel filesystem, and /run/user does not exist on
+# compute nodes, so both the socket dir and pgdata go under /tmp.
+export XDG_RUNTIME_DIR=/tmp/xdg_$SLURM_JOB_ID
+PGDATA_LOCAL=/tmp/probe_pg_$SLURM_JOB_ID
+mkdir -p $XDG_RUNTIME_DIR
+
 $PY $PROBE/setup_probe.py \
   --frozen external_workloads/bird/bird_500_select_sqlite.jsonl \
   --audit external_workloads/bird/multiplicity_audit.jsonl \
@@ -39,7 +48,6 @@ $PY $PROBE/setup_probe.py \
   --db-root $DBROOT \
   --out $PROBE/probe_manifest.jsonl \
   --out-pg $PROBE/probe_manifest_pg.jsonl \
-  --pg --pgdata $PROBE/runs/pgdata \
   --receipt benchmarks/results-v1/eval-trunc-probe-setup.json || exit 1
 
 $PY $PROBE/run_probe.py --print-freeze
@@ -81,13 +89,18 @@ for COND in C0 C1 C2; do
 done
 
 # ------------------------------- engine-diversity leg: postgres, C0 ----
-$PY $PROBE/run_probe.py \
-  --engine pg \
-  --manifest $PROBE/probe_manifest_pg.jsonl \
-  --pgdata $PROBE/runs/pgdata \
-  --condition C0 \
-  --api http://127.0.0.1:8000/v1 \
-  --runs-root $PROBE/runs || RC=1
+# non-fatal: an engine-diversity hiccup must not zero the sqlite legs
+($PY $PROBE/setup_probe.py --pg-load-only \
+    --manifest-pg $PROBE/probe_manifest_pg.jsonl \
+    --db-root $DBROOT --pgdata $PGDATA_LOCAL \
+ && $PY $PROBE/run_probe.py \
+    --engine pg \
+    --manifest $PROBE/probe_manifest_pg.jsonl \
+    --pgdata $PGDATA_LOCAL \
+    --condition C0 \
+    --api http://127.0.0.1:8000/v1 \
+    --runs-root $PROBE/runs) || echo "WARN: pg leg failed, continuing"
+rm -rf $PGDATA_LOCAL $XDG_RUNTIME_DIR
 
 kill $VLLM_PID 2>/dev/null
 
