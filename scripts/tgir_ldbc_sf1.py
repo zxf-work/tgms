@@ -32,6 +32,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import os
 import platform
 import subprocess
 import sys
@@ -52,7 +53,23 @@ from tgms.tgir.loader import load  # noqa: E402
 
 #: §C5. The ceiling `external_workloads/FREEZE.md` already fixed for BIRD gold
 #: validation, adopted for continuity. No plan runs unbounded.
+#:
+#: **Enforced, not observed.** The first version of this runner compared elapsed
+#: time against the ceiling *after* `run_plan` returned, which bounds nothing:
+#: the first campaign spent 870 s inside BI10 without stopping, against a plan
+#: whose estimate is 1.7e5 ms and against BI17 whose estimate is 1.3e9 ms — two
+#: weeks. A ceiling that cannot interrupt is a label.
+#:
+#: Enforcement is a subprocess per bypassed plan, because the work happens
+#: inside a Rust call that a Python-level signal cannot reliably interrupt;
+#: only killing the process is certain.
 BYPASS_CEILING_S = 600
+
+#: Extra wall the child gets on top of the ceiling, for opening the store. The
+#: SF1 warm-up is ~165 s (the in-process index build over 20.4M versions) and it
+#: is not part of what the ceiling is meant to bound, so the child measures the
+#: plan alone and the parent allows for the open.
+CHILD_OPEN_ALLOWANCE_S = 420
 
 #: §C4's protocol, reduced for plans that are seconds rather than milliseconds:
 #: the campaign is about admission and completion, not about a p95 on a scan.
@@ -90,8 +107,41 @@ def _time(fn: Any, reps: int) -> tuple[list[float], Any]:
     return times, out
 
 
+def run_bypassed_child(plan_id: str, store_path: str, params_root: Path,
+                       sf: str) -> dict[str, Any]:
+    """Run one refused plan in a child, guard bypassed, under a hard kill.
+
+    The child measures `run_plan` alone; the parent allows it
+    `BYPASS_CEILING_S + CHILD_OPEN_ALLOWANCE_S` of wall so that the store open
+    is not charged against the ceiling. A kill is recorded as `TIMEOUT`, which
+    at a 10 s budget **is** a true rejection whatever the plan would eventually
+    have done — the point of the arm is the classifier score, not the runtime.
+    """
+    cmd = [sys.executable, "-u", str(Path(__file__).resolve()),
+           "--single", plan_id, "--store", store_path,
+           "--params", str(params_root), "--sf", sf, "--out", os.devnull]
+    t0 = time.time()
+    try:
+        done = subprocess.run(cmd, capture_output=True, text=True,
+                              timeout=BYPASS_CEILING_S + CHILD_OPEN_ALLOWANCE_S,
+                              cwd=ROOT)
+    except subprocess.TimeoutExpired:
+        return {"outcome": "TIMEOUT", "bypassed": True,
+                "wall_s": round(time.time() - t0, 1),
+                "note": f"killed at the {BYPASS_CEILING_S}s ceiling "
+                        f"(+{CHILD_OPEN_ALLOWANCE_S}s store-open allowance)"}
+    for line in reversed(done.stdout.splitlines()):
+        if line.startswith("{"):
+            got = json.loads(line)
+            if got.get("ms", 0) > BYPASS_CEILING_S * 1000:
+                got["outcome"] = "TIMEOUT"
+            return got
+    return {"outcome": "ERRORED", "bypassed": True,
+            "error": (done.stderr or done.stdout)[-300:]}
+
+
 def run_one(plan_id: str, store: Any, params_root: Path, sf: str,
-            bypass: bool) -> dict[str, Any]:
+            bypass: bool, store_path: str = "") -> dict[str, Any]:
     rec: dict[str, Any] = {"plan_id": plan_id}
     try:
         root, b = _load_bound(plan_id, params_root, sf)
@@ -123,6 +173,9 @@ def run_one(plan_id: str, store: Any, params_root: Path, sf: str,
         if not bypass:
             rec["outcome"] = "REFUSED"
             return rec
+        if store_path:                                 # parent: hand to a child
+            rec.update(run_bypassed_child(plan_id, store_path, params_root, sf))
+            return rec
         ceilings = {k: 1 << 62 for k in DEFAULT_CEILINGS}
         rec["bypassed"] = True
 
@@ -150,8 +203,6 @@ def run_one(plan_id: str, store: Any, params_root: Path, sf: str,
         rec["outcome"] = "ERRORED"
         rec["error"] = f"{type(e).__name__}: {str(e)[:300]}"
     rec["wall_s"] = round(time.time() - t0, 3)
-    if rec.get("wall_s", 0) > BYPASS_CEILING_S:
-        rec["outcome"] = "TIMEOUT"
     return rec
 
 
@@ -162,6 +213,10 @@ def main() -> int:
     ap.add_argument("--sf", default="sf1")
     ap.add_argument("--out", required=True)
     ap.add_argument("--plan", default="all")
+    ap.add_argument("--single", default="",
+                    help="internal: run one plan, guard bypassed, print one "
+                         "JSON record. Used by the parent to enforce the "
+                         "ceiling with a kill.")
     ap.add_argument("--no-bypass", action="store_true",
                     help="skip the guard-bypassed re-run of refused plans")
     args = ap.parse_args()
@@ -169,6 +224,17 @@ def main() -> int:
     import tgms
 
     ensure_all_registered()
+
+    if args.single:
+        store = tgms.open(args.store, read_only=True)
+        try:
+            rec = run_one(args.single, store, Path(args.params), args.sf,
+                          bypass=True)
+        finally:
+            store.close()
+        print(json.dumps(rec, default=str))
+        return 0
+
     sha = _sha()
     ids = LDBC_PLANS if args.plan == "all" else [args.plan]
     print(f"RUN_STARTED commit={sha} store={args.store} sf={args.sf} "
@@ -182,7 +248,7 @@ def main() -> int:
         for pid in ids:
             t = time.time()
             rec = run_one(pid, store, Path(args.params), args.sf,
-                          not args.no_bypass)
+                          not args.no_bypass, store_path=args.store)
             records.append(rec)
             print(f"  {pid:6s} {rec.get('derived_admission', '—'):>6} -> "
                   f"{rec.get('outcome', '?'):<14} "
