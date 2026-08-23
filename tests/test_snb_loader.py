@@ -27,8 +27,8 @@ import pytest
 
 from tgms.data.snb_loader import (
     EDGES, HIERARCHY_TAG, LABEL_HIERARCHY, NODES, OPEN_END, SF1_EDGES,
-    SF1_NODES, all_ops, edge_ops, fidelity, node_ops, parse_date, parse_ts,
-    snb_uid, uid_to_ldbc_id,
+    SF1_NODES, all_ops, edge_events, edge_ops, fidelity, node_ops,
+    node_records, parse_date, parse_ts, snb_uid, uid_to_ldbc_id,
 )
 
 REAL = Path(__file__).parent / "fixtures" / "snb_sf1_slice"
@@ -453,6 +453,75 @@ MINI_NODE_ROWS = [r for (g, n), rows in MINI.items() if n in
                   {x.name for x in NODES} for r in rows]
 
 
+# --------------------------------------------------------------------------
+# the two write paths
+# --------------------------------------------------------------------------
+
+def test_node_records_carry_the_bulk_shape_and_nothing_else(mini):
+    """`Store.ingest_events(nodes=...)` takes `{uid, label, props?, vt_s,
+    vt_e?}`. `source`/`provenance_ref` ride the wrapping op, not the record."""
+    for rec in node_records(mini):
+        assert set(rec) == {"uid", "label", "props", "vt_s", "vt_e"}
+        assert rec["vt_e"] == OPEN_END
+
+
+def test_each_node_uid_is_emitted_exactly_once(mini):
+    """The bulk path REFUSES an explicit node whose uid already has a believed
+    version — that refusal is what keeps the op Class A and carve-free. A
+    loader that emitted a uid twice would fail the whole load."""
+    uids = [r["uid"] for r in node_records(mini)]
+    assert len(uids) == len(set(uids))
+
+
+def test_edge_events_override_both_stream_defaults(mini):
+    """`vt_e` would default to `vt_s + 1` (instantaneous) and `disc` to the
+    batch offset (every event its own logical edge). Both are right for an
+    event stream and wrong for a relationship graph, so both are set."""
+    for ev in edge_events(mini):
+        assert set(ev) == {"src", "dst", "rel_type", "props", "vt_s", "vt_e",
+                           "disc"}
+        assert ev["vt_e"] == OPEN_END, "M8: an SNB edge never stops holding"
+        assert ev["disc"] == "", "same eid as the assert path, so the A/B is real"
+
+
+def test_the_two_write_paths_describe_the_same_graph(mini):
+    """The op arms are thin wrappers over the record arms, so the mapping has
+    one source of truth and an A/B measures the vehicle, not the cargo."""
+    assert [{k: v for k, v in op.items()
+             if k not in ("op", "source", "provenance_ref")}
+            for op in node_ops(mini)] == list(node_records(mini))
+    assert [{k: v for k, v in op.items()
+             if k not in ("op", "source", "provenance_ref")}
+            for op in edge_ops(mini)] == list(edge_events(mini))
+
+
+def test_both_write_paths_build_the_same_store(mini, tmp_path):
+    """The A/B the `--write-path` flag exists for, at fixture scale: identical
+    version counts, identical relation histogram, identical label histogram."""
+    import tgms
+    from tgms.data.snb_loader import store_label_counts
+
+    def build(kind):
+        store = tgms.open(tmp_path / f"ab-{kind}")
+        if kind == "bulk":
+            store.ingest_events(edge_events(mini), nodes=node_records(mini))
+        else:
+            ops = list(all_ops(mini))
+            store._write([o for o in ops if o["op"] == "assert_node"])  # noqa: SLF001
+            store._write([o for o in ops if o["op"] == "assert_edge"])  # noqa: SLF001
+        out = (store.stats(), store_label_counts(store))
+        store.close()
+        return out
+
+    bulk, assert_ = build("bulk"), build("assert")
+    for got, want, what in ((bulk[0], assert_[0], "stats"),
+                            (bulk[1], assert_[1], "labels")):
+        for key in ("n_node_versions", "n_edge_versions", "rel_type_counts"):
+            if key in got:
+                assert got[key] == want[key], f"{what}/{key}"
+    assert bulk[1] == assert_[1]
+
+
 def test_the_gate_reports_every_row_and_fails_on_any_mismatch():
     """A gate that only speaks when it passes is not a gate."""
     good_labels = dict(SF1_NODES)
@@ -472,7 +541,7 @@ def test_the_gate_reports_every_row_and_fails_on_any_mismatch():
     assert len(lines2) == len(lines)          # still reports every row
 
 
-def test_the_build_batch_stays_small_because_apply_ops_is_quadratic_in_it():
+def test_the_build_write_tuning_stays_inside_its_two_measured_bounds():
     """`StorageAdapter.apply_ops` costs O(k^2) in the batch size k — the cost is
     *within* a batch, not in the store (per-batch time is flat at 1.02x as the
     store grows), so small batches keep the whole load linear.
@@ -492,6 +561,14 @@ def test_the_build_batch_stays_small_because_apply_ops_is_quadratic_in_it():
     assert mod.DEFAULT_BATCH <= 1_000, (
         "apply_ops is quadratic in the batch size; measured throughput peaks "
         "near 250 ops per record and collapses above ~2,000"
+    )
+    # The other half of the same trade: small batches mean many published
+    # generations, and every manifest references every live segment, so
+    # manifest bytes grow O(batches^2). Measured without compaction at 2.5M
+    # ops: 163 MB of segments against 25,451 MB of manifests. With
+    # compact()+gc() every 100k ops: 0 MB of manifests, 285 MB total at 600k.
+    assert 0 < mod.COMPACT_EVERY_OPS <= 500_000, (
+        "compaction must run often enough that manifest growth stays bounded"
     )
 
 
