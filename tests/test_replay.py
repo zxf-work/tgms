@@ -81,6 +81,12 @@ def test_kuzu_live_write_path_matches_duckdb(tmp_path):
         s.assert_edge("x", "y", "R", {"w": 2}, vt_s=10, vt_e=90)
         s.correct(ER(kind="node", uid="x"), {"p": 3}, vt_s=20, vt_e=30)
         s.retract(ER(kind="edge", src="x", dst="y", rel_type="R"), t=50)
+        # retract truncated the believed edge interval to [10, 50); correct it
+        # over a sub-range so both retract and correct of an EDGE run on kuzu
+        # here (correct exercises the anchored believed_edge_versions path in
+        # base.py's _correct, which needs ref.src/ref.dst hints — see
+        # tgms/storage/kuzu_adapter.py).
+        s.correct(ER(kind="edge", src="x", dst="y", rel_type="R"), {"w": 9}, vt_s=20, vt_e=30)
         try:
             s.retract(ER(kind="node", uid="zzz"), t=5)
         except NF:
@@ -167,4 +173,71 @@ def test_ingest_events_columnar_roundtrip(tmp_path):
     assert len(set(cols["eid"])) == 3
     ids = store.adapter.dense_ids(["a", "b", "c"])
     assert store.adapter.uids_for(ids) == ["a", "b", "c"]
+    store.close()
+
+
+def test_believed_edge_versions_anchored_matches_scan_on_kuzu(tmp_path):
+    """`KuzuAdapter.believed_edge_versions` takes an anchored query plan when
+    given src/dst hints and falls back to a scan without them (D-145's
+    residual). The hints are documented as pure performance hints that MUST
+    NOT change results, so this checks that claim directly: for every eid a
+    randomized workload produces, and at every as_of_tt a caller might ask
+    for (including historical snapshots with already-closed tt intervals),
+    the anchored call and the hint-less scan return row-for-row identical
+    EdgeVersion lists (full dataclass equality, same order).
+
+    The workload mixes several rel_types and discriminators over a small
+    uid pool so multiple eids share the same (src, dst) endpoints, and mixes
+    assert/retract/correct so both open and closed tt intervals exist.
+    """
+    from tgms.core.errors import NotFoundError as NF
+    from tgms.core.model import OPEN_END as OPEN
+    from tgms.core.model import EntityRef as ER
+
+    store = tgms.open(tmp_path / "kz_anchor", backend="kuzu")
+    rng = random.Random(41)
+    uids = [f"u{i}" for i in range(5)]
+    rel_types = ["R0", "R1", "R2"]
+    discs = ["", "alt"]
+    snapshots: list[int] = []
+    for _ in range(150):
+        kind = rng.choice(["ae", "ae", "ae", "rt", "co"])
+        src, dst = rng.sample(uids, 2)
+        rel_type = rng.choice(rel_types)
+        disc = rng.choice(discs)
+        ref = ER(kind="edge", src=src, dst=dst, rel_type=rel_type, disc=disc)
+        s = rng.randrange(0, 50)
+        e = s + rng.randrange(1, 20)
+        try:
+            if kind == "ae":
+                tt = store.assert_edge(src, dst, rel_type, {"w": rng.randrange(5)},
+                                       vt_s=s, vt_e=e, disc=disc)
+            elif kind == "rt":
+                tt = store.retract(ref, t=rng.randrange(0, 60))
+            else:
+                tt = store.correct(ref, {"w": 9}, vt_s=s, vt_e=e)
+        except NF:
+            continue
+        snapshots.append(tt)
+
+    assert snapshots, "workload produced no successful edge ops"
+    adapter = store.adapter
+    eid_endpoints: dict[str, tuple[str, str]] = {}
+    for v in adapter.all_edge_versions():
+        eid_endpoints.setdefault(v.eid, (v.src, v.dst))
+    # several distinct eids must share endpoints, by construction (multiple
+    # rel_types/discs over a 5-uid pool)
+    endpoint_pairs = [ep for ep in eid_endpoints.values()]
+    assert len(endpoint_pairs) > len(set(endpoint_pairs))
+    assert len(eid_endpoints) > 5
+
+    as_of_values = sorted(set(snapshots)) + [0, OPEN]
+    checked = 0
+    for eid, (src, dst) in eid_endpoints.items():
+        for as_of in as_of_values:
+            scan = adapter.believed_edge_versions(eid, as_of)
+            anchored = adapter.believed_edge_versions(eid, as_of, src=src, dst=dst)
+            assert scan == anchored, (eid, as_of, scan, anchored)
+            checked += 1
+    assert checked > 0
     store.close()

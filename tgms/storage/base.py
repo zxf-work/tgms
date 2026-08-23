@@ -149,7 +149,17 @@ class StorageAdapter(ABC):
     def believed_node_versions(self, uid: str, as_of_tt: int = OPEN_END) -> list[NodeVersion]: ...
 
     @abstractmethod
-    def believed_edge_versions(self, eid: str, as_of_tt: int = OPEN_END) -> list[EdgeVersion]: ...
+    def believed_edge_versions(self, eid: str, as_of_tt: int = OPEN_END, *,
+                               src: str | None = None, dst: str | None = None) -> list[EdgeVersion]:
+        """Versions of the logical edge `eid` believed at `as_of_tt`.
+
+        `src`/`dst` are pure performance hints, not part of the query: a
+        backend that can anchor on them (Kùzu — `eid` has no primary key to
+        index) may use them to avoid a full-table scan, and a backend that
+        cannot (DuckDB, native) is free to ignore them. Passing hints MUST
+        NOT change the result. Callers must pass exactly the src/dst the eid
+        was derived from (`edge_eid(src, dst, rel_type, disc)`); behavior
+        with wrong hints is undefined."""
 
     @abstractmethod
     def all_node_versions(self) -> Iterable[NodeVersion]:
@@ -275,7 +285,7 @@ class StorageAdapter(ABC):
         """Apply one write batch at transaction time `tt`. Used by both the
         live write path and event-log replay — must stay deterministic."""
         touched_nodes: set[str] = set()
-        touched_edges: set[str] = set()
+        touched_edges: dict[str, tuple[str, str]] = {}
         for op in ops:
             kind = op["op"]
             if kind == "assert_node":
@@ -283,7 +293,7 @@ class StorageAdapter(ABC):
                 touched_nodes.add(op["uid"])
             elif kind == "assert_edge":
                 eid = self._assert_edge(op, tt)
-                touched_edges.add(eid)
+                touched_edges[eid] = (op["src"], op["dst"])
             elif kind == "retract":
                 self._retract(op, tt)
             elif kind == "correct":
@@ -301,8 +311,10 @@ class StorageAdapter(ABC):
         if self.paranoid:
             for uid in touched_nodes:
                 self._check_disjoint([v for v in self.believed_node_versions(uid)], f"node {uid}")
-            for eid in touched_edges:
-                self._check_disjoint([v for v in self.believed_edge_versions(eid)], f"edge {eid}")
+            for eid, (src, dst) in touched_edges.items():
+                self._check_disjoint(
+                    [v for v in self.believed_edge_versions(eid, src=src, dst=dst)],
+                    f"edge {eid}")
 
     def _supersede_nodes(self, versions: list, tt: int) -> None:
         """Stop believing `versions`, which a write at `tt` is replacing.
@@ -363,7 +375,7 @@ class StorageAdapter(ABC):
         vt = _interval(op["vt_s"], op.get("vt_e", OPEN_END))
         eid = edge_eid(src, dst, rel_type, disc)
         self.ensure_entities([(src, op.get("src_label", "")), (dst, op.get("dst_label", ""))])
-        existing = [v for v in self.believed_edge_versions(eid)
+        existing = [v for v in self.believed_edge_versions(eid, src=src, dst=dst)
                     if Interval(v.vt_s, v.vt_e).overlaps(vt)]
         fragments: list[EdgeVersion] = []
         for v in existing:
@@ -397,7 +409,8 @@ class StorageAdapter(ABC):
                     for v in hits if v.vt_s < t]
             self.insert_node_versions(repl)
         else:
-            hits = [v for v in self.believed_edge_versions(ref.identity) if v.valid_at(t)]
+            hits = [v for v in self.believed_edge_versions(ref.identity, src=ref.src, dst=ref.dst)
+                    if v.valid_at(t)]
             if not hits:
                 raise NotFoundError(f"no believed edge version of {ref.identity} valid at {t}")
             self._supersede_edges(hits, tt)
@@ -443,7 +456,7 @@ class StorageAdapter(ABC):
                                     provenance_ref=op.get("provenance_ref")))
             self.insert_node_versions(rows)
         else:
-            versions = self.believed_edge_versions(ref.identity)
+            versions = self.believed_edge_versions(ref.identity, src=ref.src, dst=ref.dst)
             hits = [v for v in versions if Interval(v.vt_s, v.vt_e).overlaps(vt)]
             if not hits:
                 raise NotFoundError(f"no believed edge version of {ref.identity} overlaps vt")

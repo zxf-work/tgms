@@ -225,7 +225,11 @@ class DuckDBAdapter(StorageAdapter):
             (uid, as_of_tt, as_of_tt)).fetchall()
         return [_node_from_row(r) for r in rows]
 
-    def believed_edge_versions(self, eid: str, as_of_tt: int = OPEN_END) -> list[EdgeVersion]:
+    def believed_edge_versions(self, eid: str, as_of_tt: int = OPEN_END, *,
+                               src: str | None = None, dst: str | None = None) -> list[EdgeVersion]:
+        # src/dst are performance hints for backends that can anchor on them
+        # (Kùzu); this table already has an ART index on eid (idx_edge_versions_eid
+        # above), so the hints add nothing here and are ignored.
         as_of_tt = clamp_tt(as_of_tt)
         rows = self.conn.execute(
             f"SELECT {self._EDGE_COLS} FROM edge_versions "
