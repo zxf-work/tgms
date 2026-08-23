@@ -340,29 +340,66 @@ def _props(row: list[str], spec: dict[str, tuple[int, str]]) -> dict[str, Any]:
 # the two passes
 # --------------------------------------------------------------------------
 
-def node_ops(root: Path) -> Iterator[Op]:
-    """Pass 1 — every node assertion, in the frozen file order (§A8)."""
+def node_records(root: Path) -> Iterator[dict[str, Any]]:
+    """Pass 1 — every node, in the frozen file order (§A8).
+
+    This is the shape `Store.ingest_events(nodes=...)` takes:
+    `{uid, label, props, vt_s, vt_e}`. `node_ops` wraps the same records as
+    `assert_node` ops, so the two write paths differ in vehicle only — the
+    mapping has one source of truth and an A/B compares like with like.
+
+    Each uid is emitted **exactly once**, which the bulk path requires: an
+    explicit node colliding with an existing believed version refuses, by
+    design (that refusal is what keeps the op Class A and carve-free). The
+    guarantee is structural — one row per entity in the initial snapshot, one
+    record per row — and `test_the_stream_is_deterministic` plus the fidelity
+    gate's `n_node_versions` check are what hold it.
+    """
     for spec in NODES:
         paths = _parts(root, spec.group, spec.name)
         for row in _rows(paths, spec.header):
             label = row[spec.label] if isinstance(spec.label, int) else spec.label
             vt_s = 0 if spec.created_col is None else parse_ts(row[spec.created_col])
-            yield {"op": "assert_node",
-                   "uid": snb_uid(spec.hierarchy, row[spec.id_col]),
+            yield {"uid": snb_uid(spec.hierarchy, row[spec.id_col]),
                    "label": label,
                    "props": _props(row, spec.props),
-                   "vt_s": vt_s, "vt_e": OPEN_END,
-                   "source": "ldbc-snb-sf1", "provenance_ref": None}
+                   "vt_s": vt_s, "vt_e": OPEN_END}
 
 
-def edge_ops(root: Path) -> Iterator[Op]:
+def node_ops(root: Path) -> Iterator[Op]:
+    """The same records as `assert_node` ops — the A/B arm, and what the
+    fixture-scale builder has always emitted."""
+    for rec in node_records(root):
+        yield {"op": "assert_node", **rec,
+               "source": "ldbc-snb-sf1", "provenance_ref": None}
+
+
+def edge_events(root: Path) -> Iterator[dict[str, Any]]:
     """Pass 2 — the FK-merged edges in the node files' frozen order, then the
     standalone edge files alphabetically.
 
-    Nodes are asserted before any edge (rather than interleaving each node with
-    its own foreign keys) so that no edge in the log names an identity the log
-    has not yet introduced. The store tolerates the other order; the log reads
-    better in this one, and A8's order is honoured within each pass.
+    This is the shape `Store.ingest_events(events=...)` has always taken, and
+    the path measured flat at ~42.4k ev/s. Two of its defaults must be
+    overridden and both are load-bearing here:
+
+    * **`vt_e`** defaults to `vt_s + 1` — instantaneous, which is right for an
+      event stream and wrong for SNB, where an edge is a relationship that
+      never ends (M8). Every record therefore carries `vt_e = OPEN_END`
+      explicitly. Leaving it off would make every SNB edge one microsecond
+      long and silently break every temporal predicate in the 21 plans.
+    * **`disc`** defaults to the event's batch offset, making every event its
+      own logical edge — again right for a stream of repeated interactions,
+      wrong for a relationship graph. Every record carries `disc = ""`, which
+      yields exactly the `eid` the `assert_edge` path produces, so the two
+      write paths agree on edge identity and the A/B compares like with like.
+
+    `disc = ""` is safe because no `(src, dst, rel_type)` repeats in the
+    snapshot. The one place that could plausibly break is M7's doubling, and
+    it does not: at SF1 `Person_knows_Person` holds 173,014 rows, 173,014
+    distinct ordered pairs, 173,014 distinct *unordered* pairs, and **zero
+    pairs present in both directions** — each friendship is stored once,
+    one-way, so doubling produces 346,028 distinct ordered pairs and no
+    duplicate identity.
     """
     for spec in NODES:
         if not spec.fks:
@@ -382,10 +419,8 @@ def edge_ops(root: Path) -> Iterator[Op]:
                     continue
                 other = snb_uid(target, raw)
                 src, dst = (other, own) if reversed_ else (own, other)
-                yield {"op": "assert_edge", "src": src, "dst": dst,
-                       "rel_type": rel, "props": {},
-                       "vt_s": vt_s, "vt_e": OPEN_END, "disc": "",
-                       "source": "ldbc-snb-sf1", "provenance_ref": None}
+                yield {"src": src, "dst": dst, "rel_type": rel, "props": {},
+                       "vt_s": vt_s, "vt_e": OPEN_END, "disc": ""}
 
     for espec in EDGES:
         paths = _parts(root, "dynamic", espec.name)
@@ -396,15 +431,20 @@ def edge_ops(root: Path) -> Iterator[Op]:
             a = snb_uid(shier, row[scol])
             b = snb_uid(dhier, row[dcol])
             props = _props(row, espec.props)
-            yield {"op": "assert_edge", "src": a, "dst": b,
-                   "rel_type": espec.rel_type, "props": props,
-                   "vt_s": vt_s, "vt_e": OPEN_END, "disc": "",
-                   "source": "ldbc-snb-sf1", "provenance_ref": None}
+            yield {"src": a, "dst": b, "rel_type": espec.rel_type,
+                   "props": props, "vt_s": vt_s, "vt_e": OPEN_END, "disc": ""}
             if espec.both_ways:
-                yield {"op": "assert_edge", "src": b, "dst": a,
-                       "rel_type": espec.rel_type, "props": props,
-                       "vt_s": vt_s, "vt_e": OPEN_END, "disc": "",
-                       "source": "ldbc-snb-sf1", "provenance_ref": None}
+                yield {"src": b, "dst": a, "rel_type": espec.rel_type,
+                       "props": props, "vt_s": vt_s, "vt_e": OPEN_END,
+                       "disc": ""}
+
+
+def edge_ops(root: Path) -> Iterator[Op]:
+    """The same records as `assert_edge` ops — the A/B arm. `disc = ""` is
+    carried through, so both paths mint the same `eid`."""
+    for rec in edge_events(root):
+        yield {"op": "assert_edge", **rec,
+               "source": "ldbc-snb-sf1", "provenance_ref": None}
 
 
 def all_ops(root: Path) -> Iterator[Op]:
@@ -503,7 +543,7 @@ def fidelity(label_counts: dict[str, int],
 
 __all__ = [
     "EDGES", "HIERARCHY_STRIDE", "HIERARCHY_TAG", "LABEL_HIERARCHY", "NODES",
-    "OPEN_END", "SF1_EDGES", "SF1_NODES", "all_ops", "edge_ops", "fidelity",
-    "node_ops", "parse_date", "parse_ts", "snb_uid", "store_label_counts",
+    "OPEN_END", "SF1_EDGES", "SF1_NODES", "all_ops", "edge_events", "edge_ops",
+    "fidelity", "node_ops", "node_records", "parse_date", "parse_ts", "snb_uid", "store_label_counts",
     "uid_to_ldbc_id",
 ]

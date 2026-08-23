@@ -35,7 +35,8 @@ ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
 
 from tgms.data.snb_loader import (  # noqa: E402
-    SF1_EDGES, SF1_NODES, edge_ops, fidelity, node_ops, store_label_counts,
+    SF1_EDGES, SF1_NODES, edge_events, edge_ops, fidelity, node_ops,
+    node_records, store_label_counts,
 )
 
 #: One event-log record per batch. **Small on purpose, and the number is
@@ -66,6 +67,28 @@ from tgms.data.snb_loader import (  # noqa: E402
 #: faster; it makes it not finish.
 DEFAULT_BATCH = 250
 
+#: Fold segments and drop superseded manifests every this many ops.
+#:
+#: **Needed at any batch size and on any write path**, because the cost it
+#: controls is driven by the *number of published generations*, not by how the
+#: ops were spelled: every `_write` publishes a manifest that references every
+#: live segment, so manifest bytes grow as O(batches^2).
+#:
+#: Measured on xzgpu (`runs/snb-sf1-build.log`, batch=250, no compaction): at
+#: 2.5M node ops the store held 10,147 segments totalling **163 MB** and 10,147
+#: manifests totalling **25,451 MB** — 99.4% of a 27 GB store was manifests, on
+#: a trajectory to ~1.65 TB at completion. The run was killed there.
+#:
+#: With `compact()` + `gc(keep_last=2)` every 100,000 ops (`runs/calib.log`,
+#: batch=1000): manifests **0 MB** and the whole store **285 MB** at 600k node
+#: ops. That is the entire justification for this constant.
+#:
+#: **Honest gap:** that run did not isolate compaction's own time cost — there
+#: is no same-batch-size no-compaction control at 600k ops, so the 379 s it
+#: took is apply + compaction together and the split is unmeasured. The build
+#: now records `compact_s` in its receipt so the next run closes this.
+COMPACT_EVERY_OPS = 100_000
+
 
 def _chunks(it: Iterator[dict[str, Any]], n: int) -> Iterator[list[dict[str, Any]]]:
     buf: list[dict[str, Any]] = []
@@ -88,32 +111,91 @@ def _sha() -> str:
 
 
 def build(csv_root: Path, out: Path, backend: str,
-          batch: int = DEFAULT_BATCH) -> dict[str, Any]:
+          batch: int = DEFAULT_BATCH,
+          compact_every: int = COMPACT_EVERY_OPS,
+          write_path: str = "bulk") -> dict[str, Any]:
     import tgms
 
     if out.exists():
         raise SystemExit(f"{out} exists — refusing to write into a live store. "
                          f"Remove it deliberately, then re-run.")
     store = tgms.open(out, backend=backend)
-    counts = {"nodes": 0, "edges": 0, "batches": 0}
+    counts = {"nodes": 0, "edges": 0, "batches": 0, "compactions": 0}
     t0 = time.time()
+    compact_s = [0.0]
+    since_compaction = [0]
+
+    def maybe_compact(force: bool = False) -> None:
+        """Fold the small per-batch segments together and drop the manifests
+        that referenced them. Skipped silently on a backend without either
+        entry point, so this stays a native-store optimisation rather than a
+        precondition."""
+        if not compact_every:
+            return
+        if not force and since_compaction[0] < compact_every:
+            return
+        if since_compaction[0] == 0:
+            return
+        compact = getattr(store.adapter, "compact", None)
+        gc = getattr(store.adapter, "gc", None)
+        if compact is None or gc is None:
+            return
+        t = time.time()
+        compact()
+        gc(keep_last=2)
+        compact_s[0] += time.time() - t
+        counts["compactions"] += 1
+        since_compaction[0] = 0
 
     def drive(stream: Iterator[dict[str, Any]], kind: str) -> None:
         for ops in _chunks(stream, batch):
             store._write(ops)                          # noqa: SLF001 — a writer
             counts[kind] += len(ops)
             counts["batches"] += 1
+            since_compaction[0] += len(ops)
+            maybe_compact()
             if counts["batches"] % 2_000 == 0:
                 done = counts["nodes"] + counts["edges"]
                 rate = done / max(time.time() - t0, 1e-9)
                 print(f"  {done:>12,} ops  {rate:>9,.0f} ops/s  "
-                      f"({counts['nodes']:,} nodes / {counts['edges']:,} edges)",
-                      flush=True)
+                      f"({counts['nodes']:,} nodes / {counts['edges']:,} edges; "
+                      f"{counts['compactions']} compactions, "
+                      f"{compact_s[0]:,.0f}s)", flush=True)
 
-    print("pass 1/2 — nodes", flush=True)
-    drive(node_ops(csv_root), "nodes")
-    print("pass 2/2 — edges", flush=True)
-    drive(edge_ops(csv_root), "edges")
+    if write_path == "bulk":
+        # One call. `ingest_events` writes the `nodes` array first in its own
+        # chunked batches, then the event stream — the path measured flat at
+        # ~42.4k ev/s, against `assert_*`'s O(N^2). Counting has to happen
+        # inside the generators, since the store consumes them lazily.
+        print("bulk — nodes then events through ingest_events", flush=True)
+
+        def counted(stream, kind):
+            for rec in stream:
+                counts[kind] += 1
+                since_compaction[0] += 1
+                if counts[kind] % 1_000_000 == 0:
+                    done = counts["nodes"] + counts["edges"]
+                    print(f"  {done:>12,} records  "
+                          f"{done / max(time.time() - t0, 1e-9):>9,.0f} rec/s",
+                          flush=True)
+                yield rec
+
+        store.ingest_events(counted(edge_events(csv_root), "edges"),
+                            nodes=counted(node_records(csv_root), "nodes"))
+        counts["batches"] = -1                         # owned by the store
+        # No periodic compaction on this path, deliberately. The manifest
+        # problem is driven by the *number* of published generations, and
+        # `ingest_events` publishes one per 50,000-op chunk: ~408 batches for
+        # the whole of SF1 against ~81,600 at `--batch 250`. Manifest bytes go
+        # as O(batches^2), so 408 batches is ~40 MB — a rounding error rather
+        # than the 25 GB the assert path reached. The single forced fold below
+        # is enough, and mid-load compaction would only cost time.
+    else:
+        print("assert — pass 1/2 nodes", flush=True)
+        drive(node_ops(csv_root), "nodes")
+        print("assert — pass 2/2 edges", flush=True)
+        drive(edge_ops(csv_root), "edges")
+    maybe_compact(force=True)                          # leave the store folded
 
     wall = time.time() - t0
     stats = store.stats()
@@ -123,7 +205,8 @@ def build(csv_root: Path, out: Path, backend: str,
     labels = store_label_counts(store)
     store.close()
 
-    return {"counts": counts, "wall_s": round(wall, 1), "stats": stats,
+    return {"counts": counts, "wall_s": round(wall, 1),
+            "compact_s": round(compact_s[0], 1), "stats": stats,
             "digest": digest, "labels": labels}
 
 
@@ -136,15 +219,25 @@ def main() -> int:
     ap.add_argument("--batch", type=int, default=DEFAULT_BATCH,
                     help="ops per event-log record; see DEFAULT_BATCH — "
                          "apply_ops is O(k^2) in this number")
+    ap.add_argument("--write-path", default="bulk", choices=("bulk", "assert"),
+                    help="bulk: ingest_events with the nodes array (flat, the "
+                         "default). assert: assert_node/assert_edge per op — "
+                         "kept for A/B evidence; O(N^2), see DEFAULT_BATCH")
+    ap.add_argument("--compact-every", type=int, default=COMPACT_EVERY_OPS,
+                    help="fold segments and drop superseded manifests every N "
+                         "ops (0 disables); see COMPACT_EVERY_OPS — manifest "
+                         "bytes grow O(batches^2) without it")
     args = ap.parse_args()
 
     csv_root, out = Path(args.csv), Path(args.out)
     sha = _sha()
     print(f"RUN_STARTED commit={sha} csv={csv_root} out={out} "
           f"backend={args.backend} batch={args.batch} "
+          f"compact_every={args.compact_every} path={args.write_path} "
           f"host={platform.node()}", flush=True)
 
-    result = build(csv_root, out, args.backend, args.batch)
+    result = build(csv_root, out, args.backend, args.batch,
+                   args.compact_every, args.write_path)
     ok, lines = fidelity(result["labels"], result["stats"])
 
     print("\n=== mapping-fidelity gate ===")
@@ -162,8 +255,11 @@ def main() -> int:
         "platform": platform.platform(),
         "backend": args.backend,
         "batch": args.batch,
+        "compact_every": args.compact_every,
+        "write_path": args.write_path,
         "built_utc": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
         "wall_s": result["wall_s"],
+        "compact_s": result["compact_s"],
         "ops": result["counts"],
         "store_digest": result["digest"],
         "store_bytes": sum(p.stat().st_size for p in out.rglob("*") if p.is_file()),
@@ -177,6 +273,8 @@ def main() -> int:
     (out / "dataset_card.json").write_text(
         json.dumps(card, indent=1, sort_keys=True, default=str))
     print(f"\ncard: {out / 'dataset_card.json'}")
+    print(f"compaction: {result['counts']['compactions']} runs, "
+          f"{result['compact_s']}s of {result['wall_s']}s wall")
     print(f"digest: {result['digest']}  wall: {result['wall_s']}s  "
           f"bytes: {card['store_bytes']:,}")
     return 0 if ok else 1
