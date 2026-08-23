@@ -1,0 +1,34 @@
+RUN_STARTED commit=0148b41a80bce57ff2597e167b787ed600f491bf date=2026-08-22T22:01:25+00:00 host=xzgpu run=2
+PATCHED tgms/eval/corrections.py sha256=c3b084b9d5ad16a3214691e5d7e932c4af9755432ecb78fa0025d4df9d2eb9d0
+PATCH_REASON outside-window placement was mislabelled for classes B/C/D
+
+=== SUBSTRATE (unchanged from run 1; re-asserted) ===
+store bitcoinotc: digest=45ebffa167a172c6dac3da7af401ddb8273a31c2de97c4400de1dfe098d8c8c9 superseded=0 PRISTINE=True
+store collegemsg: digest=e729e3482c8355ea27d599b92cb4a8259b67610d6117dad67a944714bde2f5df superseded=0 PRISTINE=True
+store ldbc-fixture: digest=eade7fe046d8d9cdaf42347646b795502b3dc4e7c44175bd2c04e8ed0f4257c9 superseded=0 PRISTINE=True
+
+=== [1/2] fixture (soundness only) ===
+ok   ldbc-fixture temporal_paths/uid-to-uid: 34 trials
+ok   ldbc-fixture temporal_paths/uid-to-uid-shallow: 34 trials
+ok   ldbc-fixture compute/literal-count: 20 trials
+
+wrote benchmarks/freshness-v1/trials-fixture.json  (889 trials in 8.8s)
+changed 124 (value 124, digest-only 0); unchanged 765
+FALSE-FRESH: 0  (value-changed subset: 0)
+denominator floor met: False  {'changed': 124, 'operators': 10, 'classes': 5, 'outside_window': 39, 'new_identity': 23, 'value_changed': 124}
+
+=== [2/2] FULL (the headline) ===
+ok   ldbc-fixture temporal_reachability/out: 34 trials
+ok   ldbc-fixture temporal_reachability/in: 34 trials
+ok   ldbc-fixture temporal_reachability/out-half: 34 trials
+ok   ldbc-fixture temporal_paths/uid-to-uid: 34 trials
+ok   ldbc-fixture temporal_paths/uid-to-uid-shallow: 34 trials
+ok   ldbc-fixture compute/literal-count: 20 trials
+
+wrote benchmarks/freshness-v1/trials-full.json  (2465 trials in 3645.7s)
+changed 323 (value 323, digest-only 0); unchanged 2142
+FALSE-FRESH: 0  (value-changed subset: 0)
+invalidation precision: 0.132 over 1536 POSSIBLY_STALE trials
+denominator floor met: False  {'changed': 323, 'operators': 9, 'classes': 5, 'outside_window': 90, 'new_identity': 66, 'value_changed': 323}
+
+RUN_FINISHED date=2026-08-22T23:02:49+00:00

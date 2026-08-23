@@ -201,6 +201,43 @@ def _fresh_uid(rng: random.Random) -> str:
     return f"__inj{rng.randrange(10 ** 9):09d}"
 
 
+def _outside(target: Target, placement: str) -> bool:
+    """Is this placement genuinely outside a real window?
+
+    An operator that takes no window has no outside, and saying otherwise is
+    how a cell gets mislabelled.
+    """
+    return target.window is not None and placement.startswith("outside-window")
+
+
+def _version_for(believed: Sequence[Any], target: Target, placement: str,
+                 vt_s: int, vt_e: int, rng: random.Random) -> Any | None:
+    """Pick a believed version the correction can legally address **without
+    abandoning its placement**.
+
+    This is the function whose absence invalidated the first campaign's
+    carve-arm measurement. `correct` and `retract` must hit a believed version
+    or the write path refuses, and the obvious way to guarantee that — clamp
+    the correction back onto the version's own interval — silently drags every
+    outside-window Class B/C/D correction *inside* the query window. The cell
+    then reports precision for corrections that were never outside anything,
+    and the carve arm, whose entire purpose is to catch what the value arm's
+    `vt` misses, never gets its chance to fire.
+
+    So for an outside-window placement the version must genuinely reach past
+    the window's right edge — which the event-stream shape `[first_seen, ∞)`
+    does — and if none does, the cell is **not realizable** and returns `None`
+    rather than a mislabelled substitute.
+    """
+    if not believed:
+        return None
+    if not _outside(target, placement):
+        hits = [v for v in believed if v.vt_s < vt_e and vt_s < v.vt_e]
+        return rng.choice(hits) if hits else rng.choice(list(believed))
+    reaching = [v for v in believed if v.vt_e > target.window[1] and v.vt_s < vt_e]
+    return rng.choice(reaching) if reaching else None
+
+
 def _believed_nodes(store: Any, uid: str) -> list[Any]:
     try:
         return list(store.adapter.believed_node_versions(uid))
@@ -289,13 +326,21 @@ def _b_overwrite(store, sub, target, placement, rng) -> Correction | None:
     vt_s, vt_e = _interval(sub, target, placement, rng)
     believed = _believed_nodes(store, uid)
     if believed:
-        v = rng.choice(believed)
-        # land INSIDE a believed interval, so the write really carves
-        lo = max(v.vt_s, vt_s)
-        hi = min(v.vt_e if v.vt_e < OPEN_END else lo + sub.span, vt_e)
-        if hi <= lo:
-            lo, hi = v.vt_s, v.vt_s + max(2, sub.span // 20)
-        vt_s, vt_e = lo, hi
+        v = _version_for(believed, target, placement, vt_s, vt_e, rng)
+        if v is None:
+            return None
+        # overlap the chosen version, but NEVER at the cost of the placement:
+        # for outside-window the wanted interval is used as-is, which is legal
+        # precisely because the version reaches OPEN_END
+        if _outside(target, placement):
+            if not (v.vt_s < vt_e and vt_s < v.vt_e):
+                return None
+        else:
+            lo = max(v.vt_s, vt_s)
+            hi = min(v.vt_e if v.vt_e < OPEN_END else lo + sub.span, vt_e)
+            if hi <= lo:
+                lo, hi = v.vt_s, v.vt_s + max(2, sub.span // 20)
+            vt_s, vt_e = lo, hi
     return Correction(
         "B", "b_overwrite", placement,
         (make_op("assert_node", uid=uid, label=sub.node_label,
@@ -317,8 +362,28 @@ def _correct(store, sub, target, placement, rng, *, whole: bool) -> Correction |
     if not believed:
         return None
     want_s, want_e = _interval(sub, target, placement, rng)
-    hits = [v for v in believed if v.vt_s < want_e and want_s < v.vt_e]
-    v = rng.choice(hits) if hits else rng.choice(believed)
+    v = _version_for(believed, target, placement, want_s, want_e, rng)
+    if v is None:
+        return None
+    if _outside(target, placement):
+        # the placement is the point: correct a sub-range that lies wholly
+        # above the query window, which the version reaching OPEN_END makes
+        # legal. Never clamped back onto the version's own start.
+        vt_s = max(want_s, v.vt_s + 1 if v.vt_s >= want_s else want_s)
+        vt_e = max(vt_s + 1, want_e if whole else vt_s + max(2, (want_e - want_s) // 2))
+        vt_e = min(vt_e, v.vt_e)
+        if vt_e <= vt_s:
+            return None
+        return Correction(
+            "C", "c1_whole" if whole else "c2_sub", placement,
+            (make_op("correct", ref={"kind": "node", "uid": uid},
+                     props={"injected": "c", "revised": True},
+                     vt_s=vt_s, vt_e=vt_e, source="inject", provenance_ref=None),),
+            note=("whole-interval property correction, above the query window"
+                  if whole else
+                  "sub-interval property correction above the query window; "
+                  "re-keys events (CE-5)"),
+            identities=(uid,))
     # Stay inside ONE believed version. `_correct` refuses a multi-hit whose
     # versions disagree on `label` (D-140), and it is right to: `correct`
     # carries no label argument, so the corrected version can only inherit one
@@ -366,9 +431,21 @@ def _retract(store, sub, target, placement, rng, *, truncate: bool) -> Correctio
     believed = _believed_nodes(store, uid)
     if not believed:
         return None
-    v = rng.choice(believed)
+    want_s, want_e = _interval(sub, target, placement, rng)
+    v = _version_for(believed, target, placement, want_s, want_e, rng)
+    if v is None:
+        return None
     top = v.vt_e if v.vt_e < OPEN_END else v.vt_s + max(4, sub.span // 2)
-    if truncate:
+    if _outside(target, placement):
+        # `t` above the window's right edge. `d2_full` has no outside form: its
+        # whole definition is `t <= vt_s`, and a `vt_s` above the window would
+        # mean the version never intersected the query at all.
+        if not truncate:
+            return None
+        t = max(want_s, v.vt_s + 1)
+        if not (v.vt_s < t < v.vt_e):
+            return None
+    elif truncate:
         t = v.vt_s + max(1, (top - v.vt_s) // 2)
         if not (v.vt_s < t < top):
             return None

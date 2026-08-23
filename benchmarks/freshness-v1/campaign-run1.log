@@ -1,0 +1,113 @@
+RUN_STARTED commit=0148b41a80bce57ff2597e167b787ed600f491bf date=2026-08-22T20:37:21+00:00 host=xzgpu
+RUN_STARTED_EXPECTED commit=0148b41a80bce57ff2597e167b787ed600f491bf
+
+=== SUBSTRATE VERIFICATION ===
+raw CollegeMsg.txt.gz sha256=50ae2d98ed3bad9ddb18dbd495a89e5e10cfb8f7e86932827db29fc41b41f9fa
+raw CollegeMsg.txt.gz pinned=50ae2d98ed3bad9ddb18dbd495a89e5e10cfb8f7e86932827db29fc41b41f9fa
+raw soc-sign-bitcoinotc.csv.gz sha256=6424ac981dad3a019f697fc1b9fcd85c19d8d9f039797758e9ffb6fea100c373
+raw soc-sign-bitcoinotc.csv.gz pinned=6424ac981dad3a019f697fc1b9fcd85c19d8d9f039797758e9ffb6fea100c373
+store bitcoinotc: digest=45ebffa167a172c6dac3da7af401ddb8273a31c2de97c4400de1dfe098d8c8c9
+store bitcoinotc: node_versions=5881 edge_versions=35592 superseded=0
+store bitcoinotc: card n_entities=5881 n_edge_versions=35592 agrees=True
+store bitcoinotc: PRISTINE=True
+store collegemsg: digest=e729e3482c8355ea27d599b92cb4a8259b67610d6117dad67a944714bde2f5df
+store collegemsg: node_versions=1899 edge_versions=59835 superseded=0
+store collegemsg: card n_entities=1899 n_edge_versions=59835 agrees=True
+store collegemsg: PRISTINE=True
+store ldbc-fixture: digest=eade7fe046d8d9cdaf42347646b795502b3dc4e7c44175bd2c04e8ed0f4257c9
+store ldbc-fixture: node_versions=22 edge_versions=57 superseded=0
+store ldbc-fixture: no dataset_card (constructed fixture)
+store ldbc-fixture: PRISTINE=True
+=== END SUBSTRATE VERIFICATION ===
+
+=== [1/4] bo41 demonstration (premise: zero superseded on canonical) ===
+ "requested": 150,
+ "canonical": {
+  "rows_returned": 0,
+  "rows": [],
+  "result_digest": "5aa6671c762a729801a2c98a87dbc41230f4c93b1bea0c82c8f37f6bf2535c6c"
+ },
+ "injected": 150,
+ "store_digest_after": "ed522d37fd600fd90387ea577e04ed1bd93b4d42dac2edcbb60f9e6bc6c88aa1",
+ "superseded_trust_versions": 150,
+ "corrected": {
+  "rows_returned": 1,
+  "rows": [
+   {
+    "day": 20687,
+    "n": 150
+   }
+  ],
+  "result_digest": "d841bf6ece716d849cba5f0edbbf2a6c1c06336c00cf213cff9821d71b11f315"
+ }
+}
+
+bo41 on the canonical corpus: 0 rows (zero corrections — degenerate, which is why it is excluded)
+bo41 on the corrected corpus: 1 rows from 150 superseded TRUST versions
+
+DEMONSTRATED, NOT RE-SCORED: M3's denominator is unchanged (D-M4i).
+
+=== [2/4] freshness sweep: fixture (soundness only) ===
+ok   ldbc-fixture find_temporal_motif_instances/pingpong: 20 trials
+ok   ldbc-fixture temporal_reachability/out: 36 trials
+ok   ldbc-fixture temporal_reachability/in: 36 trials
+ok   ldbc-fixture temporal_reachability/out-half: 36 trials
+ok   ldbc-fixture temporal_paths/uid-to-uid: 36 trials
+ok   ldbc-fixture temporal_paths/uid-to-uid-shallow: 36 trials
+ok   ldbc-fixture compute/literal-count: 20 trials
+
+wrote benchmarks/freshness-v1/trials-fixture.json  (916 trials in 8.9s)
+changed 125 (value 125, digest-only 0); unchanged 791
+FALSE-FRESH: 0  (value-changed subset: 0)
+denominator floor met: False  {'changed': 125, 'operators': 10, 'classes': 5, 'outside_window': 41, 'new_identity': 21, 'value_changed': 125}
+
+=== [3/4] freshness sweep: FULL (the headline) ===
+ok   ldbc-fixture burst_detection/edge-rate: 20 trials
+ok   ldbc-fixture burst_detection/edge-rate-typed: 20 trials
+ok   ldbc-fixture burst_detection/node-activity: 20 trials
+ok   ldbc-fixture co_active/before: 20 trials
+ok   ldbc-fixture co_active/overlaps: 20 trials
+ok   ldbc-fixture count_temporal_motifs/pingpong: 20 trials
+ok   ldbc-fixture count_temporal_motifs/path3: 20 trials
+ok   ldbc-fixture find_temporal_motif_instances/pingpong: 20 trials
+ok   ldbc-fixture temporal_reachability/out: 36 trials
+ok   ldbc-fixture temporal_reachability/in: 36 trials
+ok   ldbc-fixture temporal_reachability/out-half: 36 trials
+ok   ldbc-fixture temporal_paths/uid-to-uid: 36 trials
+ok   ldbc-fixture temporal_paths/uid-to-uid-shallow: 36 trials
+ok   ldbc-fixture compute/literal-count: 20 trials
+
+wrote benchmarks/freshness-v1/trials-full.json  (2708 trials in 4306.1s)
+changed 326 (value 326, digest-only 0); unchanged 2382
+FALSE-FRESH: 0  (value-changed subset: 0)
+invalidation precision: 0.115 over 1752 POSSIBLY_STALE trials
+denominator floor met: True  {'changed': 326, 'operators': 10, 'classes': 5, 'outside_window': 90, 'new_identity': 64, 'value_changed': 326}
+
+=== [4/4] Expand calibration receipt (xzgpu, beside the mac one) ===
+  "median_ms": 411.353,
+  "ms_per_million": 343.8,
+  "samples": [
+   427.457,
+   411.353,
+   411.264
+  ]
+ },
+ {
+  "shape": "hoisted over the whole population",
+  "seeds": 1899,
+  "rows": 3611834,
+  "expansions": 228434774,
+  "median_ms": 61510.293,
+  "ms_per_million": 269.3,
+  "samples": [
+   61449.236,
+   61510.293,
+   61539.539
+  ]
+ }
+]
+
+coefficient (ms per million expansions): 343.8
+receipt: docs/tgir/calib/expand-unbounded-2026-08-22.md
+
+RUN_FINISHED date=2026-08-22T21:52:58+00:00 rc=0

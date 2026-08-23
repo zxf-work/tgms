@@ -85,6 +85,69 @@ def test_the_carve_cell_is_populated_for_every_class_that_can_reach_it(
     assert {c.cls for c in outside} >= {"A", "B", "C", "D"}
 
 
+def test_an_outside_window_correction_really_lands_outside_the_window(
+        substrate_store):
+    """The regression that invalidated a whole campaign's carve-arm number.
+
+    `correct` and `retract` must hit a believed version or the write path
+    refuses, and the obvious way to guarantee that — clamp the correction onto
+    the version's own interval — silently drags every outside-window Class
+    B/C/D correction **inside** the query window. The cell then reports
+    precision for corrections that were never outside anything, and the carve
+    arm, whose whole purpose is to catch what the value arm's `vt` misses,
+    never fires. Every op in an outside-window cell must therefore describe a
+    valid-time region disjoint from the query window.
+    """
+    rng = random.Random(31)
+    sub = probe_substrate(substrate_store, rng=rng)
+    window = (0, 200)
+    outside = [c for c in generate(substrate_store, sub,
+                                   Target(read_uids=("n0", "n1"), window=window),
+                                   rng=rng)
+               if c.placement.startswith("outside-window")]
+    assert outside, "the outside-window cell is empty"
+    for c in outside:
+        for op in c.ops:
+            if op["op"] == "retract":
+                assert op["t"] >= window[1], (
+                    f"{c.generator}: retract at t={op['t']} is inside "
+                    f"[{window[0]}, {window[1]})")
+            elif "vt_s" in op:
+                assert op["vt_s"] >= window[1], (
+                    f"{c.generator}: op over [{op['vt_s']}, "
+                    f"{op.get('vt_e')}) is inside [{window[0]}, {window[1]})")
+            elif op["op"] == "ingest_events":
+                for ev in op["events"]:
+                    assert ev["vt_s"] >= window[1], f"{c.generator}: event inside"
+
+
+def test_outside_window_classes_bcd_are_present_not_silently_dropped(
+        substrate_store):
+    """The other half: the fix must not achieve correctness by emptying the
+    cell. Classes B, C and D all have a legal outside-window form against a
+    version reaching `OPEN_END`, and §8.2's whole prediction is about them."""
+    rng = random.Random(32)
+    sub = probe_substrate(substrate_store, rng=rng)
+    outside = [c for c in generate(substrate_store, sub,
+                                   Target(read_uids=("n8",), window=(0, 200)),
+                                   rng=rng)
+               if c.placement.startswith("outside-window")]
+    assert {c.cls for c in outside} >= {"B", "C", "D"}, \
+        f"missing classes: {sorted({'B', 'C', 'D'} - {c.cls for c in outside})}"
+
+
+def test_an_operator_with_no_window_has_no_outside_window_arithmetic(
+        substrate_store):
+    """An operator taking no window has no outside, and saying otherwise is how
+    a cell gets mislabelled. `entity_history` is the case (§9.1)."""
+    rng = random.Random(33)
+    sub = probe_substrate(substrate_store, rng=rng)
+    cs = generate(substrate_store, sub, Target(read_uids=("n0",), window=None),
+                  rng=rng)
+    # they still generate — they are just not claiming to be outside anything
+    assert [c for c in cs if c.placement.startswith("outside-window")]
+
+
 def test_the_new_identity_cell_names_identities_that_do_not_exist(
         substrate_store):
     """CE-1/CE-2/CE-3 — the class the row-touch baseline cannot see, because

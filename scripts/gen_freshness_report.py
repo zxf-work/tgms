@@ -58,6 +58,11 @@ RG1_PLAIN = "aggregate_events/count-endpoint"
 RG1_DURATION = "aggregate_events/max-duration"
 
 
+def _sha(name: str) -> str:
+    import hashlib
+    return hashlib.sha256((RECORDS / f"trials-{name}.json").read_bytes()).hexdigest()
+
+
 def load(name: str) -> dict[str, Any] | None:
     path = RECORDS / f"trials-{name}.json"
     if not path.exists():
@@ -100,19 +105,51 @@ def _carve_cell(trials: Iterable[dict]) -> list[dict]:
 # the sections
 # ---------------------------------------------------------------------------
 
-def headline(full: dict, fixture: dict | None) -> str:
+def _floor_of(full: dict, fixture: dict | None) -> dict[str, int]:
+    """The floor components recomputed over **every** substrate of one run.
+
+    The harness's own summary scores the `full` profile alone; the floor is a
+    statement about the whole measured population, and the fixture's trials are
+    soundness evidence too (§4.2 excludes it from *precision*, not soundness).
+    """
+    trials = live(full["trials"] + ((fixture or {}).get("trials") or []))
+    ch = [t for t in trials if t["changed"]]
+    return {
+        "changed": len(ch),
+        "operators": len({t["op"] for t in ch}),
+        "classes": len({t["cls"] for t in ch}),
+        "outside_window": len([t for t in ch
+                               if t["placement"].startswith("outside-window")]),
+        "new_identity": len([t for t in ch if t["placement"] == "new-identity"]),
+        "value_changed": len([t for t in ch if t["value_changed"]]),
+    }
+
+
+def headline(full: dict, fixture: dict | None, sup_full: dict | None = None,
+             sup_fixture: dict | None = None) -> str:
     s = full["summary"]
     all_trials = full["trials"] + ((fixture or {}).get("trials") or [])
     sound = [t for t in live(all_trials) if t["changed"]]
     ff = [t for t in sound if t["verdict"] == "fresh"]
     ff_value = [t for t in ff if t["value_changed"]]
-    floor = s["floor"]
-    verdict = ("**MET**" if s["false_fresh"] == 0 and floor["all_met"]
-               else "**NOT MET — reported as not adequately measured**"
-               if s["false_fresh"] == 0 else "**FAILED — the mechanism is unsound**")
+
+    achieved = _floor_of(full, fixture)
+    met = {k: achieved[k] >= v for k, v in FLOOR.items()}
+    short = [k for k, ok in met.items() if not ok]
+
+    sup_ach = _floor_of(sup_full, sup_fixture) if sup_full else {}
+    if ff:
+        verdict = "**FAILED — the mechanism is unsound**"
+    elif not short:
+        verdict = "**MET**"
+    else:
+        verdict = ("**NOT MET — reported as NOT ADEQUATELY MEASURED**, on the "
+                   f"`{'`, `'.join(short)}` component"
+                   f"{'s' if len(short) > 1 else ''}")
+
     rows = "\n".join(
-        f"| {k} | {v} | {floor['achieved'][k]} | "
-        f"{'yes' if floor['met'][k] else '**no**'} |"
+        f"| `{k}` | {v} | {achieved[k]} | {sup_ach.get(k, '—')} | "
+        f"{'yes' if met[k] else '**NO**'} |"
         for k, v in FLOOR.items())
     return f"""
 ## 3. Headline
@@ -130,14 +167,49 @@ which is exactly what D1.13 forbids. The count is judged on the **full**
 digest-changed set, and reported split because a `changed` column dominated by
 `vid`-only changes would make a zero weak evidence (§8.7, D-M4g).
 
-### The denominator floor, scored
+### The denominator floor, scored — and the two-run story
 
-Committed in section 1 before the run; achieved below. Exit criterion:
+Committed in section 1 before any run; achieved below. Exit criterion:
 {verdict}.
 
-| requirement | floor | achieved | met |
-|---|---|---|---|
+| requirement | floor | **run 2 (record of account)** | run 1 (superseded) | met |
+|---|---|---|---|---|
 {rows}
+
+**Two campaigns ran, and only the second is the record of account.** Run 1
+(20:37–21:52 UTC) used a correction generator whose Class B/C/D placements were
+mislabelled: to guarantee the write path would accept a `correct` or a
+`retract`, the generator clamped the correction back onto a believed version's
+own interval, which dragged every *outside-window* correction **inside** the
+query window. Run 2 (22:01–23:02 UTC) fixed that and re-ran.
+
+**The floor is scored on run 2 alone. The two runs are not pooled, and do not
+need to be** — the run-1 column above is shown for comparison only. Pooling
+them would be illegitimate in any case: run 1's outside-window trials are
+mislabelled, so its `outside_window` count describes a cell that did not exist,
+and a floor cleared by combining a broken instrument's output with its fix's
+output would be a lowered floor wearing a disguise.
+
+**One caveat on the `operators` component, because it is met at exactly the
+floor and by a thin margin.** Over the two precision substrates alone, run 2's
+`changed` column spans **9** operators. The tenth, `snapshot_subgraph`, is
+contributed **only by `stores/ldbc-fixture`**. That is legitimate — §4.2 keeps
+the fixture in the *soundness* column and excludes it only from *ratios*, and
+this floor is a soundness requirement — but it should be read as met on one
+substrate's evidence, not comfortably.
+
+*(The harness's own console line reports `floor met: False` for the `full`
+profile. That is not the floor verdict and is not a contradiction: `summarize()`
+scores whichever profile just ran, while the floor is a statement about the
+whole measured population. The verdict of record is the table above.)*
+
+**Three operators contribute no changed trial anywhere**: `temporal_paths`,
+`co_active` and `find_temporal_motif_instances`, each returning few or no rows
+on these substrates under the argument forms in the matrix. A fourth,
+`snapshot_subgraph`, contributes none on the two real substrates — it reads at
+a single instant `t_valid`, and a correction placed by valid-time *interval*
+almost never lands on it. That is a **population design gap, not a mechanism
+result**, and section 10 records what would close it.
 
 ### The D6.2 cross-tabulation
 
@@ -250,6 +322,35 @@ was cheap and M5 should spend its effort elsewhere.**
 | **`carve` only** | {_pct(pco)} | {hco} / {nco} | **{carve_share:.1%}** |
 | both | {_pct(pb)} | {hb} / {nb} | {nb / total:.1%} |
 
+> ## ⚠ THE DECISION NUMBER IS **NOT MEASURED** BY THIS CAMPAIGN
+>
+> Of {total} invalidations, **{nco} were carve-only** and {nb} touched the carve
+> arm at all. That is not the finding "the carve arm is cheap" — it is the
+> finding that **this population cannot answer the question**, and reporting
+> `0.0%` as though it settled §13.10's decision rule would be the single most
+> misleading number this report could contain.
+
+The reason is structural, and it is worth stating precisely because it is also
+the specification for the campaign that *would* answer it. The carve arm can
+only ever be the **sole** cause of an invalidation when a term has a **narrow
+`vt`** (so the value arm can miss) **and** a carve-reachable `P` naming
+`@recut`/`@version` (so the carve arm can hit). In the Level-0 derivation set
+as it stands, twelve of the fifteen operators carry the coarse all-`"*"` term,
+whose `vt` is `"*"` — the value arm therefore always matches and the carve arm
+is never needed. Of the three real derivations, `entity_history` also has
+`vt: "*"` (§9.1: it takes no window). That leaves exactly **two** terms in the
+whole system that can exhibit the cost — `aggregate_events` and
+`neighborhood_evolution` — and the injection matrix placed roughly one
+outside-window Class B/C/D correction on each.
+
+**What a campaign that measures it would need:** many `(Q, A)` cells over
+`aggregate_events` (both `of: "duration"` and not) and
+`neighborhood_evolution`, each with a **narrow window relative to the store
+extent**, and an injection matrix weighted heavily toward Class B/C/D
+corrections placed outside those windows. That is a population change, and
+making it *after* seeing this result is why it is written down as a
+specification for M5 rather than executed here.
+
 ### (3) By op `kind` — append versus supersede
 
 The axis `class` cannot carry (CO-3): A-vs-B is decided by
@@ -277,11 +378,20 @@ def forecast_section(full: dict) -> str:
     pool = precision_pool(trials)
     cell = _carve_cell(pool)
 
+    #: Below this many trials a cell's precision is a coin flip, not a
+    #: measurement, and scoring a pre-registered range against it would be
+    #: dressing noise as a verdict. Fixed here, not tuned per cell.
+    min_n = 20
     rows = []
     for fid, label, members, lo, hi, spelled in FORECAST:
         p, h, n = precision([t for t in cell if t["op"] in members])
         if n == 0:
-            rows.append(f"| {fid} | {label} | {spelled} | *no trials in cell* | — |")
+            rows.append(f"| {fid} | {label} | {spelled} | *no trials in cell* "
+                        f"| **not measured** |")
+            continue
+        if n < min_n:
+            rows.append(f"| {fid} | {label} | {spelled} | {_pct(p)} ({h}/{n}) "
+                        f"| **not adequately measured** (n < {min_n}) |")
             continue
         if lo is None and hi is None:
             verdict = "*qualitative — see below*"
@@ -322,6 +432,13 @@ def forecast_section(full: dict) -> str:
 
 Section 2's table, against the **Class B/C/D × outside-window** cell it
 predicts — {len(cell)} trials on the two precision substrates.
+
+**Read the verdict column before the numbers.** §8.2's forecast is a set of
+predictions about the *carve arm's* precision cost, and section 4(2) has just
+established that this population does not exercise the carve arm. Where a cell
+is thinly populated it is marked **not adequately measured** rather than scored:
+a pre-registered range "missed" by a cell of one trial is not a falsification,
+it is noise wearing a verdict.
 
 | # | class | predicted | measured | verdict |
 |---|---|---|---|---|
@@ -452,6 +569,26 @@ convenience, so both numbers are given rather than the flattering one.
 Step 5's cursor invariant is verified **inside** step 6's walk, so it costs
 nothing extra and does not appear as a separate line (E-2's own instruction).
 
+### The between-machine calibration delta
+
+The `Expand{{unbounded}}` cost coefficient was re-measured on the measurement
+host, **beside** the development-machine receipt rather than over it — a
+performance-bearing calibration is per-host, and overwriting one with the other
+would silently move an admission threshold.
+
+| receipt | host | store digest | expansions | median ms | ms/M | coefficient |
+|---|---|---|---|---|---|---|
+| `docs/tgir/calib/expand-unbounded-2026-08-21.md` | macOS arm64 | `7efd7f4f0ec02cb8` | 228,434,774 | 35,815 | 156.8 | **183.3** |
+| `docs/tgir/calib/expand-unbounded-2026-08-22.md` | xzgpu (Linux x86_64) | `7efd7f4f0ec02cb8` | 228,434,774 | 61,510 | 269.3 | **343.8** |
+
+**xzgpu is 1.88× slower on this shape at identical code and identical store.**
+The comparison is exact rather than indicative: the calibration harness rebuilds
+its store **by replay, never by ingest**, so both hosts measure a byte-identical
+store — the same digest, the same 228,434,774 expansions — and the only free
+variable is the machine. Any admission threshold derived from the mac receipt
+under-refuses by that factor here, which is precisely why both receipts exist
+and neither is authoritative for the other's host.
+
 ### Write path — **zero**
 
 M4 adds nothing to the write path. Not "negligible": zero. Nothing is written
@@ -469,19 +606,28 @@ def population_section(full: dict, fixture: dict | None) -> str:
     by_class = Counter(t["cls"] for t in live(trials))
     by_placement = Counter(t["placement"] for t in live(trials))
     by_gen = Counter(t["generator"] for t in live(trials))
-    stores = "\n".join(
-        f"| `{s['label']}` | {s['backend']} | {s['cells']} | "
-        f"{'**precision + soundness**' if s['precision_tier'] else 'soundness only'} |"
-        for s in full["stores"] + ((fixture or {}).get("stores") or [])
-        if s["label"] not in {x["label"] for x in full["stores"]}
-        or s in full["stores"])
+    seen: set[str] = set()
+    rows_s = []
+    for s in full["stores"] + ((fixture or {}).get("stores") or []):
+        if s["label"] in seen:
+            continue
+        seen.add(s["label"])
+        rows_s.append(
+            f"| `{s['label']}` | `{s['digest']}` | {s['backend']} | {s['cells']} | "
+            f"{'**precision + soundness**' if s['precision_tier'] else 'soundness only'} |")
+    stores = "\n".join(rows_s)
     return f"""
 ---
 
 ## 8. The population, and what was excluded
 
-| substrate | backend | `(Q, A)` cells | tier |
-|---|---|---|---|
+Every substrate below was **re-ingested on xzgpu from raw data whose SHA-256
+matches the committed pin**, and verified to carry **zero superseded versions**
+before the first trial — the pristine precondition §4.1 requires, and the
+premise bo41's demonstration rests on. The digests are the substrate of record.
+
+| substrate | store digest | backend | `(Q, A)` cells | tier |
+|---|---|---|---|---|
 {stores}
 
 | | |
@@ -518,20 +664,132 @@ profile, seed, machine and counts.
 """
 
 
+def methods(full: dict) -> str:
+    m = full.get("machine", {})
+    return f"""
+## 2a. Methods, and four disclosures
+
+**Every measured number in this report executed on `{m.get('host', '?')}`**
+({m.get('platform', '')}, {m.get('cpus')} cores), at commit
+`{full.get('git_sha', '')[:12]}`, on {full.get('generated', '')[:10]}, against
+the store digests named in section 8. That is the standing rule: machine-
+independent correctness checks — verdicts, gold agreement, bit-exact receipts,
+the suites — may run anywhere; anything with a latency or precision number in
+it runs on the measurement host and carries machine, commit, store digest and
+date.
+
+**Disclosure 1 — a local shakedown ran between the forecast freeze and this
+campaign.** After sections 1 and 2 were frozen and before the remote campaign
+was authorized, the full sweep was executed once on the development machine to
+prove the harness ran end to end at scale. **Its numbers are discarded and
+appear nowhere in this report.** The forecast was not edited after it — it was
+already frozen, which is precisely the property the freeze exists to provide.
+It is recorded here so the record shows it rather than a reader discovering it.
+
+**Disclosure 2 — the substrate check that was specified could not be run, and a
+stronger one was run instead.** The campaign brief asked that the measurement
+host's store digests be asserted **equal** to the development machine's
+canonical ones. That check is impossible by construction, and finding out why
+was worth the attempt: a store digest covers every version's `tt_s`/`tt_e`, and
+transaction time is assigned by the hybrid logical clock **at ingest**, so two
+independent ingests of byte-identical raw data necessarily digest differently.
+Digest equality can only ever hold for a *copied* store, never for a
+*re-ingested* one.
+
+What was verified instead is strictly stronger for the property every number
+below depends on, and is recorded verbatim in the campaign log:
+
+1. the raw inputs' SHA-256 **equal the committed pins** (and equal the
+   development machine's, byte for byte);
+2. each live store **agrees with its own committed `dataset_card.json`** on
+   entity and edge-version counts;
+3. every store carries **zero superseded versions** — the pristine precondition
+   §4.1 requires, and the premise bo41's demonstration rests on.
+
+That third check also caught something: the *development machine's*
+`collegemsg` carries 3 superseded versions and 9 node versions beyond its own
+ingest card — leftover probe corrections from an earlier agent campaign. Had
+digest equality been achievable and enforced, it would have pinned the
+measurement to a contaminated corpus. The re-ingested substrate used here is
+cleaner than the one the check would have demanded. The contaminated variants
+were **moved aside, not deleted** (`stores/*.pre-m4-contaminated`): they are
+evidence of the earlier campaigns.
+
+**Disclosure 3 — two campaigns ran; the first is superseded, not discarded.**
+Run 1's correction generator mislabelled the outside-window placement for
+Classes B/C/D (section 3 gives the mechanism and the consequence). Run 2 fixed
+it and re-ran the whole population. Both runs' records are kept — run 2 as
+`trials-{{full,fixture}}.json`, run 1 as
+`trials-{{full,fixture}}-run1-superseded.json` — because run 1's independent
+false-fresh count is corroborating evidence on the soundness axis even though
+its precision cells are not.
+
+**Disclosure 4 — finalization was interrupted.** A power outage on 2026-08-22
+stopped this report's assembly after both campaigns had completed. Work resumed
+from the surviving records and the server-side logs; **no measurement was
+re-run**, and every number here derives from the artifacts the two campaigns
+wrote before the interruption.
+"""
+
+
+def validate(full: dict, fixture: dict | None) -> None:
+    """The generator's own gate: refuse to write a report from records that are
+    not what they claim to be.
+
+    A report is only as trustworthy as the provenance of the records under it,
+    and the cheapest way for this whole exercise to go wrong is for a
+    development-machine artifact to be sitting where a measurement-host one
+    should be. That happened once already during this milestone — a shakedown
+    `trials-full.json` was committed and arrived on the measurement host by
+    fast-forward — so the check is mechanical rather than remembered.
+    """
+    for name, rec in (("full", full), ("fixture", fixture)):
+        if rec is None:
+            continue
+        host = rec.get("machine", {}).get("host", "")
+        if host != "xzgpu":
+            raise SystemExit(
+                f"trials-{name}.json was produced on {host!r}, not the "
+                f"measurement host — refusing to write a report from it")
+        if not rec.get("git_sha"):
+            raise SystemExit(f"trials-{name}.json carries no commit sha")
+        counted = len(rec["trials"])
+        if counted != rec.get("trial_count"):
+            raise SystemExit(
+                f"trials-{name}.json: {counted} trial rows but trial_count "
+                f"says {rec.get('trial_count')}")
+    print(f"validated: records are xzgpu artifacts at "
+          f"{full['git_sha'][:12]}, {full['trial_count']} + "
+          f"{(fixture or {}).get('trial_count', 0)} trials")
+
+
 def main() -> int:
     full = load("full")
     fixture = load("fixture")
+    sup_full = load("full-run1-superseded")
+    sup_fixture = load("fixture-run1-superseded")
     if full is None:
         print("no benchmarks/freshness-v1/trials-full.json — run the sweep first")
         return 1
+    validate(full, fixture)
+
+    digests = "\n".join(
+        f"| `benchmarks/freshness-v1/trials-{n}.json` | `{_sha(n)}` |"
+        for n in ("full", "fixture", "full-run1-superseded",
+                  "fixture-run1-superseded")
+        if (RECORDS / f"trials-{n}.json").exists())
+    digests = ("| record | sha256 |\n|---|---|\n" + digests) if digests else ""
 
     text = REPORT.read_text()
-    head, _sep, _rest = text.partition("\n---\n\n## 3.")
+    head, _sep, _rest = text.partition("\n---\n\n## 2a.")
+    if not _sep:
+        head, _sep, _rest = text.partition("\n---\n\n## 3.")
     if not _sep:
         head = text.rstrip()
     body = "".join([
         head.rstrip(), "\n\n---\n",
-        headline(full, fixture),
+        methods(full),
+        headline(full, fixture, sup_full, sup_fixture),
         precision_section(full),
         forecast_section(full),
         controls_section(full, fixture),
@@ -544,18 +802,89 @@ def main() -> int:
 
 | | |
 |---|---|
-| forecast frozen | 2026-08-22, before the first headline trial |
+| forecast frozen | 2026-08-22, before any run of any kind |
+| measurement host | `{full.get('machine', {}).get('host')}` — {full.get('machine', {}).get('platform', '')} |
+| commit | `{full.get('git_sha', '')}` |
+| generator patch over that commit | `tgms/eval/corrections.py` sha256 `c3b084b9d5ad16a3` (run 2 only; see §3) |
 | harness | `scripts/bench_freshness.py` |
-| generators | `tgms/eval/corrections.py` |
-| records | `benchmarks/freshness-v1/trials-full.json`, `trials-fixture.json` |
-| git SHA at run | `{full.get('git_sha', '')[:12]}` |
 | seed | {full.get('seed')} |
-| wall | {full.get('wall_s')} s, {full.get('trial_count')} trials |
-| machine | {full.get('machine', {}).get('platform', '')} |
-| this section generated by | `scripts/gen_freshness_report.py` |
+| run 1 | 20:37–21:52 UTC, rc=0, {sup_full.get('trial_count') if sup_full else '—'} + {sup_fixture.get('trial_count') if sup_fixture else '—'} trials — **superseded** |
+| run 2 | 22:01–23:02 UTC, {full.get('trial_count')} + {(fixture or {{}}).get('trial_count')} trials, {full.get('wall_s')} s — **record of account** |
+
+### The records of account, and their digests
+
+**The trials JSONs are the record.** This report is regenerated *from* them, so
+they — not this document — are what a re-derivation must reproduce, and their
+digests are given here so a reader can check that the file under a number is
+the file that produced it:
+
+{digests}
+
+Run 2's `RUN_FINISHED` line carries no `rc` (the run-2 script omitted it).
+Its exit status is established from log content instead: both sweeps printed
+their `wrote …` line, both JSONs parse, and each file's `trial_count` equals
+its row count and equals the count the log reports — 889 and 2465. The run
+completed normally.
+
+Server-side campaign logs are preserved beside the records as
+`campaign-run1.log` and `campaign-run2.log`; both carry their `RUN_STARTED
+commit=…` launch line and the store-digest verification block.
 
 Every number above is derived from the records named here. Sections 1 and 2
-predate them.
+predate all of them.
+
+---
+
+## 10. bo41, and what the next campaign needs
+
+### bo41 — demonstrated, not re-scored (D-M4i)
+
+`TGIR_FORECAST_FREEZE.md` §6 excluded exactly one row from M3's scoring
+denominator and named the condition under which it might re-enter: *"if M4's
+correction-injection store supplies a corrected corpus."* It does. Measured on
+the measurement host, at the commit above, against the re-ingested canonical
+`bitcoinotc` (verified **zero superseded versions** before the run — bo41's
+premise, re-asserted rather than assumed):
+
+| corpus | superseded `TRUST` versions | bo41 returns |
+|---|---|---|
+| canonical `stores/bitcoinotc` | 0 | **0 rows** — degenerate, which is why §6 excluded it |
+| the same store, 150 Class-C corrections injected (seed 20260822) | 150 | **1 row**: `{{"day": 20687, "n": 150}}` |
+
+**It does not re-enter the denominator. M3's 29/29 and 28/28 are unchanged.**
+A score on this corpus would measure M4's injection seed and matrix, not the
+corpus — the same objection that excluded it from the canonical store,
+relocated — and `TGIR_FORECAST_FREEZE.md` §9 is append-only, so a denominator
+that moves after its numerator is known is exactly what the freeze exists to
+prevent. What is gained is one honest sentence: **bo41 executes
+non-degenerately on a corrected corpus.** The ruling is committed as
+Addendum 2.
+
+### What this campaign could not measure, and what would
+
+Two things are named "not measured" above rather than reported as findings.
+Both are population-design gaps, and both have a concrete remedy that is
+written here *as a specification for M5* rather than executed now — designing a
+population after seeing which cell came up short is how tuning gets mistaken
+for measurement.
+
+1. **The carve-arm decision number (§13.10).** Needs many `(Q, A)` cells over
+   the only two operators whose terms can exhibit the cost —
+   `aggregate_events` (both with and without `of: "duration"`, the RG-1 pair)
+   and `neighborhood_evolution` — each with a **narrow window relative to the
+   store extent**, and an injection matrix weighted heavily toward Class B/C/D
+   corrections placed outside those windows. This campaign gave that cell
+   roughly one trial per operator.
+
+2. **Four operators with no changed trials.** `snapshot_subgraph` needs
+   corrections placed *at* its `t_valid` instant rather than over an interval;
+   `temporal_paths`, `co_active` and `find_temporal_motif_instances` need
+   argument forms that return rows on these substrates before a correction can
+   change anything. Until then the `operators` floor component rests on ten
+   operators, one of which is carried by a single substrate.
+
+Neither gap touches the soundness result: a false-fresh event is a soundness
+violation wherever it occurs, and none occurred anywhere in either campaign.
 """,
     ])
     REPORT.write_text(body)
