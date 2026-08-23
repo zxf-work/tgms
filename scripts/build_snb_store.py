@@ -35,8 +35,8 @@ ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
 
 from tgms.data.snb_loader import (  # noqa: E402
-    SF1_EDGES, SF1_NODES, edge_events, edge_ops, fidelity, node_ops,
-    node_records, store_label_counts,
+    LABEL_ROLLUP, SF1_EDGES, SF1_NODES, edge_events, edge_ops, fidelity,
+    node_ops, node_records,
 )
 
 #: One event-log record per batch. **Small on purpose, and the number is
@@ -110,10 +110,44 @@ def _sha() -> str:
         return "unknown"
 
 
+def _identity(store: Any, mode: str) -> dict[str, Any]:
+    """How to name this store in a receipt.
+
+    `full` is `Store.digest()` — the backend-independent digest of the whole
+    logical content, and a **replay-equivalence check**, which is what it was
+    written for. It sorts one Python dict per version and canonical-JSON-hashes
+    the lot: at SF1 that is 20.4M dicts, 15.6 GB resident, and it had not
+    returned after 50 minutes when the first build was killed in it. It is the
+    right tool for a store small enough to compare against a replay, and the
+    wrong one here.
+
+    `manifest` is the default: the generation counter plus the manifest sha the
+    engine already stamps its own verify walks with, plus `store_identity`.
+    Cheap, stable, and a real identity for a receipt.
+    """
+    if mode == "none":
+        return {"mode": "none"}
+    if mode == "full":
+        return {"mode": "full", "store_digest": store.digest()}
+    out: dict[str, Any] = {"mode": "manifest",
+                           "store_identity": store.store_identity}
+    for name in ("generation",):
+        try:
+            out[name] = getattr(store.adapter, name)
+        except Exception:                              # noqa: BLE001
+            pass
+    try:
+        out["manifest_sha"] = store.adapter._store.manifest_sha()  # noqa: SLF001
+    except Exception:                                  # noqa: BLE001
+        pass
+    return out
+
+
 def build(csv_root: Path, out: Path, backend: str,
           batch: int = DEFAULT_BATCH,
           compact_every: int = COMPACT_EVERY_OPS,
-          write_path: str = "bulk") -> dict[str, Any]:
+          write_path: str = "bulk",
+          digest_mode: str = "manifest") -> dict[str, Any]:
     import tgms
 
     if out.exists():
@@ -121,6 +155,17 @@ def build(csv_root: Path, out: Path, backend: str,
                          f"Remove it deliberately, then re-run.")
     store = tgms.open(out, backend=backend)
     counts = {"nodes": 0, "edges": 0, "batches": 0, "compactions": 0}
+    #: Labels tallied as records are emitted. The store exposes no label
+    #: histogram, and materialising one costs >50 min at SF1 by either
+    #: available route (`all_node_versions` and `nodes_columnar` both build a
+    #: Python object per version). Counting here is free, and `fidelity()`
+    #: cross-checks the total against the store's own `n_node_versions`, so a
+    #: loader that emitted the right count with the wrong labels still fails.
+    label_counts: dict[str, int] = {}
+
+    def tally(label: str) -> None:
+        key = LABEL_ROLLUP.get(label, label)
+        label_counts[key] = label_counts.get(key, 0) + 1
     t0 = time.time()
     compact_s = [0.0]
     since_compaction = [0]
@@ -149,6 +194,9 @@ def build(csv_root: Path, out: Path, backend: str,
 
     def drive(stream: Iterator[dict[str, Any]], kind: str) -> None:
         for ops in _chunks(stream, batch):
+            if kind == "nodes":
+                for op in ops:
+                    tally(op["label"])
             store._write(ops)                          # noqa: SLF001 — a writer
             counts[kind] += len(ops)
             counts["batches"] += 1
@@ -171,6 +219,8 @@ def build(csv_root: Path, out: Path, backend: str,
 
         def counted(stream, kind):
             for rec in stream:
+                if kind == "nodes":
+                    tally(rec["label"])
                 counts[kind] += 1
                 since_compaction[0] += 1
                 if counts[kind] % 1_000_000 == 0:
@@ -199,15 +249,12 @@ def build(csv_root: Path, out: Path, backend: str,
 
     wall = time.time() - t0
     stats = store.stats()
-    digest = store.digest()
-    print(f"\nstreaming label histogram over {stats['n_node_versions']:,} "
-          f"node versions", flush=True)
-    labels = store_label_counts(store)
+    digest = _identity(store, digest_mode)
     store.close()
 
     return {"counts": counts, "wall_s": round(wall, 1),
             "compact_s": round(compact_s[0], 1), "stats": stats,
-            "digest": digest, "labels": labels}
+            "digest": digest, "labels": label_counts}
 
 
 def main() -> int:
@@ -219,6 +266,11 @@ def main() -> int:
     ap.add_argument("--batch", type=int, default=DEFAULT_BATCH,
                     help="ops per event-log record; see DEFAULT_BATCH — "
                          "apply_ops is O(k^2) in this number")
+    ap.add_argument("--digest", default="manifest",
+                    choices=("none", "manifest", "full"), dest="digest_mode",
+                    help="store identity for the receipt; see _identity — "
+                         "'full' is the replay-equivalence digest and is "
+                         "impractical above a few million versions")
     ap.add_argument("--write-path", default="bulk", choices=("bulk", "assert"),
                     help="bulk: ingest_events with the nodes array (flat, the "
                          "default). assert: assert_node/assert_edge per op — "
@@ -234,10 +286,12 @@ def main() -> int:
     print(f"RUN_STARTED commit={sha} csv={csv_root} out={out} "
           f"backend={args.backend} batch={args.batch} "
           f"compact_every={args.compact_every} path={args.write_path} "
+          f"digest={args.digest_mode} "
           f"host={platform.node()}", flush=True)
 
     result = build(csv_root, out, args.backend, args.batch,
-                   args.compact_every, args.write_path)
+                   args.compact_every, args.write_path,
+                   args.digest_mode)
     ok, lines = fidelity(result["labels"], result["stats"])
 
     print("\n=== mapping-fidelity gate ===")
@@ -261,7 +315,7 @@ def main() -> int:
         "wall_s": result["wall_s"],
         "compact_s": result["compact_s"],
         "ops": result["counts"],
-        "store_digest": result["digest"],
+        "store_identity": result["digest"],
         "store_bytes": sum(p.stat().st_size for p in out.rglob("*") if p.is_file()),
         "stats": result["stats"],
         "label_counts": result["labels"],
@@ -275,7 +329,7 @@ def main() -> int:
     print(f"\ncard: {out / 'dataset_card.json'}")
     print(f"compaction: {result['counts']['compactions']} runs, "
           f"{result['compact_s']}s of {result['wall_s']}s wall")
-    print(f"digest: {result['digest']}  wall: {result['wall_s']}s  "
+    print(f"identity: {result['digest']}  wall: {result['wall_s']}s  "
           f"bytes: {card['store_bytes']:,}")
     return 0 if ok else 1
 
