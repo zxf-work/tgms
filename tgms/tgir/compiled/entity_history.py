@@ -32,9 +32,17 @@ import numpy as np
 from tgms.core.model import OPEN_END
 from tgms.temporal.algebra import paginate
 from tgms.tgir.eval import evaluate_core
+
 from tgms.tgir.expr import Col
 from tgms.tgir.node import EdgeScan, Endpoints, NodeScan, Order, Project, SortKey
 from tgms.tgir.types import Sigma
+
+#: This module is an operator *implementation*: `call_operator` has already run
+#: `enforce_cost` with this operator's own `cost_fn` before dispatching here.
+#: Re-admitting the expansion as a plan would add a second refusal point to a
+#: frozen leaf and move where it refuses, which C5 forbids. The bypass is
+#: labeled so the claim "already guarded" is visible rather than assumed.
+LEAF_GUARDED = "leaf-guarded: call_operator enforced this operator's cost_fn (C5)"
 
 #: `NodeVersion.to_json()`'s field list, minus the two §2.1 cannot express.
 ROW_COLS = ("vid", "uid", "label", "vt_s", "vt_e", "tt_s", "tt_e", "props")
@@ -86,7 +94,8 @@ def edges_plan(args: dict[str, Any]):
 
 def run(adapter: Any, args: dict[str, Any]) -> dict[str, Any]:
     """Evaluate both roots and assemble the payload."""
-    rows = evaluate_core(rows_plan(args), adapter).rows()
+    rows = evaluate_core(rows_plan(args), adapter,
+                          bypass_admission=LEAF_GUARDED).rows()
     for row in rows:
         row["vt_s"], row["vt_e"] = int(row["vt_s"]), int(row["vt_e"])
         row["tt_s"] = int(row["tt_s"])
@@ -94,7 +103,8 @@ def run(adapter: Any, args: dict[str, Any]) -> dict[str, Any]:
     out = paginate(rows, args["limit"], args["cursor"])
 
     if args["include_edges"]:
-        edges = evaluate_core(edges_plan(args), adapter).rows()
+        edges = evaluate_core(edges_plan(args), adapter,
+                               bypass_admission=LEAF_GUARDED).rows()
         for edge in edges:
             edge["vt_s"], edge["vt_e"] = int(edge["vt_s"]), int(edge["vt_e"])
         limit = args["limit"]

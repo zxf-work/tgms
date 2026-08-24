@@ -21,7 +21,7 @@ from typing import Any
 
 from tgms.core.model import digest
 from tgms.temporal.algebra import _canonicalize_floats, paginate
-from tgms.tgir.admission import admit, has_core_node
+from tgms.tgir.admission import Budget, admit, has_core_node
 from tgms.tgir.eval import Execution
 from tgms.tgir.plan import Plan
 from tgms.tgir.propagate import summary
@@ -48,8 +48,16 @@ def run_plan(plan: Plan | Any, adapter: Any, *, tt_source: Any = None,
     if has_core_node(root):
         admit(root, stats, wrapped.plan_digest, cost_ceilings)
 
+    # §2.13 arms three refusal points, not one. Stage 1 is `admit` above;
+    # stage 2 is the per-node re-check, which needs `stats`; the runtime
+    # `Budget` is the backstop for an expansion whose realized fan-out exceeds
+    # what any estimate saw. `run_plan` used to pass the first two and leave
+    # the third unarmed, so a plan that priced acceptably could still run
+    # without a ceiling — the same shape as F1, one level down.
     execution = Execution(adapter, live_columns(root), stats=stats,
-                          plan_digest=wrapped.plan_digest, ceilings=cost_ceilings)
+                          plan_digest=wrapped.plan_digest, ceilings=cost_ceilings,
+                          budget=Budget(wrapped.plan_digest) if has_core_node(root)
+                          else None)
     relation = execution.run(root)
 
     payload = _canonicalize_floats(paginate(relation.rows(), limit, cursor))
@@ -96,6 +104,10 @@ def _tgir(plan: Plan, root: Any, relation: Relation,
     if execution.coercion:
         # §2.5's disclosed denominator, keyed by the node that shrank it
         out["prop_coercion"] = dict(execution.coercion)
+    if getattr(execution, "admission_bypass", None):
+        # emitted **only** when admission was skipped, so the default envelope
+        # is unchanged and the exception is the thing that shows up
+        out["admission_bypass"] = execution.admission_bypass
     return out
 
 

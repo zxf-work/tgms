@@ -28,9 +28,17 @@ from typing import Any
 from tgms.core.model import OPEN_END
 from tgms.temporal.algebra import paginate
 from tgms.tgir.eval import evaluate_core
+
 from tgms.tgir.expr import Col
 from tgms.tgir.node import EdgeScan, NodeScan, Order, Project, SortKey
 from tgms.tgir.types import Sigma
+
+#: This module is an operator *implementation*: `call_operator` has already run
+#: `enforce_cost` with this operator's own `cost_fn` before dispatching here.
+#: Re-admitting the expansion as a plan would add a second refusal point to a
+#: frozen leaf and move where it refuses, which C5 forbids. The bypass is
+#: labeled so the claim "already guarded" is visible rather than assumed.
+LEAF_GUARDED = "leaf-guarded: call_operator enforced this operator's cost_fn (C5)"
 
 #: Exactly the operator's own output columns, per kind.
 VERSION_COLS = {
@@ -70,7 +78,8 @@ def run(adapter: Any, args: dict[str, Any]) -> dict[str, Any]:
     C6 froze — applied at the plan's output boundary, which is where §2.12 puts
     a page cut.
     """
-    relation = evaluate_core(plan(args), adapter)
+    relation = evaluate_core(plan(args), adapter,
+                              bypass_admission=LEAF_GUARDED)
     rows = relation.rows()
     for row in rows:
         # the censoring rule the scan already applied, restated as the

@@ -26,6 +26,7 @@ from __future__ import annotations
 
 from typing import Any
 
+from tgms.core.errors import InvalidArgError
 from tgms.tgir.eval.adjacency import AdjacencyCache
 from tgms.tgir.eval.aggregate import eval_aggregate
 from tgms.tgir.eval.expand import eval_expand
@@ -83,6 +84,10 @@ class Execution:
         self.plan_digest = plan_digest
         self.ceilings = ceilings
         self.budget = budget
+        #: The reason admission was skipped, or `None` when it ran. Recorded
+        #: rather than merely permitted: a bypass is a claim that some other
+        #: guard covers this execution, and a claim should be inspectable.
+        self.admission_bypass: str | None = None
         #: `prop_coercion` counts per node digest (§2.5) — the disclosed
         #: denominator, which rides out on the result metadata.
         self.coercion: dict[str, dict[str, Any]] = {}
@@ -157,28 +162,57 @@ class Execution:
             f"(docs/design/M3_IMPLEMENTATION_PLAN.md §4.1)")
 
 
-def evaluate_core(node: Node, adapter: Any, *, admit_plan: bool = False,
-                  ceilings: dict[str, int] | None = None) -> Relation:
+def evaluate_core(node: Node, adapter: Any, *, admit_plan: bool = True,
+                  ceilings: dict[str, int] | None = None,
+                  bypass_admission: str | None = None) -> Relation:
     """Evaluate a compositional plan rooted at `node`.
 
     Column pruning runs once, before execution, over the whole reachable plan.
-    With `admit_plan`, §2.13's plan-level admission runs first and the two
-    later refusal points (stage 2 and the runtime budget) are armed — which is
-    what `run_plan` will pass in M3.4. It is **off** by default so that
-    evaluating a node in a test or a receipt is not also a policy decision.
+
+    **Admission is on by default, and that is the fix for F1.** This function
+    is a public entry point: a harness, a script or a compiled operator can
+    reach the evaluator without going through `call_operator`, and until this
+    default flipped, everything that did ran unguarded. The measured symptom
+    was `version_history` — refused by the cost guard at 1M through its kernel,
+    running to completion through its compiled form. *A route that executes
+    what the policy refuses is a hole in the admission story*, so the default
+    is now the guarded one and skipping it takes a reason.
+
+    §2.13's three refusal points all arm together: stage 1 (`admit`) prices the
+    plan before a row is read, stage 2 re-checks per node against realized
+    cardinalities (`stats`), and the runtime `Budget` is the backstop.
+
+    **The fifteen leaves' refusal points do not move** (C5). `admit` returns
+    immediately for a plan with no core node — "a single-leaf plan is every
+    `call_operator` call, and its admission stays at `algebra.py`'s site with
+    the operator's own `cost_fn`" — so an `OpaqueLeaf` is priced exactly where
+    it always was, by its own estimator, once.
+
+    `bypass_admission` is the **labeled** escape: a caller that is already
+    guarded elsewhere passes the reason, which is recorded on the `Execution`
+    and surfaced by `run_plan`. An unlabeled bypass is refused, because a
+    silent `admit_plan=False` is how the hole opened in the first place.
     """
     from tgms.tgir.admission import Budget, admit
+
+    if not admit_plan and bypass_admission is None:
+        raise InvalidArgError(
+            "admission cannot be disabled without a reason: pass "
+            "bypass_admission='<why this caller is already guarded>'. "
+            "An unguarded compositional route is finding F1.")
 
     stats = None
     budget = None
     plan_digest = node.node_digest
-    if admit_plan:
+    if bypass_admission is None:
         stats = adapter.stats()
         admit(node, stats, plan_digest, ceilings)
         budget = Budget(plan_digest)
-    return Execution(adapter, live_columns(node), stats=stats,
-                     plan_digest=plan_digest, ceilings=ceilings,
-                     budget=budget).run(node)
+    execution = Execution(adapter, live_columns(node), stats=stats,
+                          plan_digest=plan_digest, ceilings=ceilings,
+                          budget=budget)
+    execution.admission_bypass = bypass_admission
+    return execution.run(node)
 
 
 __all__ = [
