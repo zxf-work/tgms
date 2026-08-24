@@ -1,7 +1,7 @@
 #!/bin/bash
 #SBATCH --job-name=trunc-probe
 #SBATCH --partition=bigTiger
-#SBATCH --gres=gpu:1
+#SBATCH --gres=gpu:h100_80gb:1
 #SBATCH --cpus-per-task=8
 #SBATCH --mem=64G
 #SBATCH --time=24:00:00
@@ -73,7 +73,7 @@ for i in $(seq 1 180); do
   fi
   sleep 5
 done
-curl -s http://127.0.0.1:8000/v1/models || { echo "server never came up"; kill $VLLM_PID; exit 1; }
+curl -s http://127.0.0.1:8000/v1/models || { echo "server never came up"; kill -9 $VLLM_PID 2>/dev/null; exit 1; }
 echo "server up after ${i}0-ish seconds"
 
 RC=0
@@ -102,7 +102,7 @@ done
     --runs-root $PROBE/runs) || echo "WARN: pg leg failed, continuing"
 rm -rf $PGDATA_LOCAL $XDG_RUNTIME_DIR
 
-kill $VLLM_PID 2>/dev/null
+kill $VLLM_PID 2>/dev/null; sleep 5; kill -9 $VLLM_PID 2>/dev/null
 
 # ------------------------------------------------------------ scoring --
 $PY $PROBE/score_probe.py \
