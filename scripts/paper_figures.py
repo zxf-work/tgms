@@ -267,7 +267,7 @@ def fig_conformance(bc: dict, fm: dict) -> str:
         for ri, (rname, _) in enumerate(rows))
     return rf"""% F-conformance — generated from eval-baseline-checkers.json +
 % eval-fault-matrix.json; do not edit
-\begin{{figure}}[t]
+\begin{{figure*}}[t]
 \centering
 \begin{{tikzpicture}}
 \definecolor{{okcol}}{{RGB}}{{223,232,223}}
@@ -291,7 +291,7 @@ whose evidence is truncated yet sufficient. The simple checkers fail
 in opposite directions; the verifier matches every expected
 verdict.}}
 \label{{fig:conformance}}
-\end{{figure}}
+\end{{figure*}}
 """
 
 
