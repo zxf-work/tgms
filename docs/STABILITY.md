@@ -252,3 +252,42 @@ The contract this implements is `docs/design/FRESHNESS_SEMANTICS.md`
 (sections 1–14 frozen 2026-08-21, §15 an append-only errata register). The
 wire format a result carries is versioned: a reader that does not recognize
 a dependency record's version returns `UNDECIDABLE`, never `FRESH`.
+
+---
+
+## 5. Compaction layout and disk retention (fixed 2026-08-24, unreleased — post-v0.7.0 main)
+
+A `compact()` call reorganizes a store's on-disk segments; `gc()` (default
+`keep_last=2`) is the separate step that reclaims space no longer
+referenced. Two things about this pair are worth stating precisely.
+
+**What is fixed:** a store built by many live ingest batches and then
+compacted could scan far slower than a store rebuilt from scratch via
+`tgms replay` off the identical event log — same rows, same answers, no
+correctness issue, but scan latency that degraded badly with how many
+small batches had gone into the store before compaction (measured over
+100x slower on one such store, to the point a full scan did not finish in
+a reasonable timeout). This was a read-path cost internal to how a
+compacted segment tracks transaction-time metadata, not a property of the
+data itself. It is fixed on `main` as of 2026-08-24 — v0.7.0 predates the
+fix, and it has not yet shipped in a tagged release. No store rebuild is
+required: an existing store on disk gets the fix automatically the next
+time it is opened with a build that has it.
+
+**What you can check:** the `tgms store verify` report (§2) carries two
+layout-quality counters: `tt_s_runs` (summed over live segments) and
+`max_tt_s_runs` (the single worst segment). A value near 1 per segment
+means an ingest-shaped layout; a value approaching a segment's row count
+means a heavily compacted, interleaved one. With the fix in place, both
+shapes scan at the same order of speed — these counters are diagnostic,
+not a health check you need to act on.
+
+**Disk retention is not immediate after `compact()` + `gc()`.** `gc()`'s
+default `keep_last=2` keeps the current manifest generation and its
+parent. Immediately after `compact()` publishes a new generation, the
+parent — the pre-compaction one — is still one of the two retained
+generations, and it still references every pre-compaction segment file,
+so those files are not deleted yet. Expect disk usage to stay elevated
+(potentially higher than before compaction, since the new compacted
+segments now sit alongside the still-referenced old ones) until a later
+commit+gc cycle advances the retained window past that generation.

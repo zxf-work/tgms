@@ -115,13 +115,35 @@ impl SegmentHeader {
         self.columns.iter().find(|c| c.name == name)
     }
 
+    /// Transaction time of one row, from the run-length encoding.
+    ///
+    /// Run starts ascend, so this is a binary search for the last run at or
+    /// before `row` — the same run the reverse linear scan used to find. The
+    /// distinction is not academic: a batch writes one run, but compaction
+    /// re-sorts rows from every generation into global `(vt_s, vid)` order
+    /// while each row keeps its origin `tt_s`, and a compacted segment has
+    /// been measured at 2.1M runs over 3.0M rows. This is called once per
+    /// materialized row.
     pub fn tt_s_at(&self, row: u32) -> Result<i64> {
         self.tt_s_runs
-            .iter()
-            .rev()
-            .find(|(start, _)| *start <= row)
-            .map(|(_, tt)| *tt)
+            .partition_point(|(start, _)| *start <= row)
+            .checked_sub(1)
+            .map(|i| self.tt_s_runs[i].1)
             .ok_or_else(|| EngineError::corrupt(format!("no tt_s run covers row {row}")))
+    }
+
+    /// `(min, max)` transaction time over the runs, or `(i64::MAX, i64::MIN)`
+    /// when there are none — an empty header believes nothing at any `as_of`,
+    /// which is what those sentinels give the belief predicate for free.
+    ///
+    /// O(runs); fold it once (see [`Segment::tt_s_bounds`]) rather than per
+    /// scan.
+    pub fn tt_s_bounds(&self) -> (i64, i64) {
+        self.tt_s_runs
+            .iter()
+            .fold((i64::MAX, i64::MIN), |(lo, hi), (_, tt)| {
+                (lo.min(*tt), hi.max(*tt))
+            })
     }
 }
 
@@ -695,6 +717,12 @@ pub struct Segment<S: SegmentSource> {
     decoded: Vec<Option<(Vec<u64>, usize)>>,
     /// The string heap in raw layout, when the file stores it packed.
     decoded_strings: Option<Vec<u8>>,
+    /// `header.tt_s_bounds()`, folded once here. Every scan asks whether this
+    /// segment is believed at some `as_of`, and a compacted segment's run
+    /// list is long enough (millions) that answering it by walking the runs
+    /// is the scan.
+    tt_s_min: i64,
+    tt_s_max: i64,
 }
 
 impl<S: SegmentSource> Segment<S> {
@@ -750,6 +778,7 @@ impl<S: SegmentSource> Segment<S> {
             )));
         }
 
+        let (tt_s_min, tt_s_max) = header.tt_s_bounds();
         let mut seg = Self {
             source,
             header,
@@ -757,6 +786,8 @@ impl<S: SegmentSource> Segment<S> {
             path,
             decoded: Vec::new(),
             decoded_strings: None,
+            tt_s_min,
+            tt_s_max,
         };
         if verify_checksums {
             seg.verify(&footer, footer_start)?;
@@ -849,6 +880,14 @@ impl<S: SegmentSource> Segment<S> {
 
     pub fn rows(&self) -> u32 {
         self.header.rows
+    }
+
+    /// `(min, max)` transaction time over this segment's rows, folded at open.
+    /// `tt_min > as_of` means nothing here is believed yet; `tt_max <= as_of`
+    /// means all of it is — the two answers a scan needs before it looks at
+    /// any run.
+    pub fn tt_s_bounds(&self) -> (i64, i64) {
+        (self.tt_s_min, self.tt_s_max)
     }
 
     pub fn path(&self) -> &Path {
@@ -984,6 +1023,33 @@ impl<S: SegmentSource> Segment<S> {
             hi: self.u64_column("vid64")?[row],
             lo: self.u32_column("vid_lo32")?[row],
         })
+    }
+}
+
+/// A header carrying nothing but a run list — enough to exercise the belief
+/// predicate, which reads no column bytes. Shared with `scan`'s tests, which
+/// need multi-run headers that no writable batch can produce.
+#[cfg(test)]
+pub(crate) fn header_with_runs(runs: Vec<(u32, i64)>, rows: u32) -> SegmentHeader {
+    SegmentHeader {
+        format: FORMAT_VERSION,
+        kind: RowKind::Edge,
+        lane: Lane::Event,
+        rows,
+        block_rows: crate::defaults::BLOCK_ROWS,
+        key_lo: (0, String::new()),
+        key_hi: (0, String::new()),
+        vt_min: 0,
+        vt_max: 0,
+        vt_e_max: 0,
+        tt_s_runs: runs,
+        rel_types: Vec::new(),
+        columns: Vec::new(),
+        vt_e_elided: true,
+        strings_offset: 0,
+        strings_bytes: 0,
+        strings_count: 0,
+        closed_rows: Vec::new(),
     }
 }
 
@@ -1166,6 +1232,70 @@ mod tests {
             1,
             "one batch writes one transaction time"
         );
+    }
+
+    /// The reference `tt_s_at`: the reverse linear scan the binary search
+    /// replaced. Kept here so the equivalence is checked rather than argued.
+    fn tt_s_at_linear(h: &SegmentHeader, row: u32) -> Option<i64> {
+        h.tt_s_runs
+            .iter()
+            .rev()
+            .find(|(start, _)| *start <= row)
+            .map(|(_, tt)| *tt)
+    }
+
+    #[test]
+    fn tt_s_at_binary_search_matches_the_linear_scan() {
+        // Compaction's shape, which no batch can write: hundreds of runs at
+        // irregular starts, each carrying its origin transaction time.
+        let mut seed = 0x2026_0824_u64;
+        let mut rng = || {
+            seed ^= seed << 13;
+            seed ^= seed >> 7;
+            seed ^= seed << 17;
+            seed
+        };
+        for case in 0..25 {
+            let rows = 1 + (rng() % 400) as u32;
+            let mut runs: Vec<(u32, i64)> = Vec::new();
+            let mut at = if case % 5 == 0 { 1 } else { 0 }; // sometimes leave row 0 uncovered
+            while at < rows {
+                runs.push((at, (rng() % 50) as i64));
+                at += 1 + (rng() % 6) as u32;
+            }
+            let h = header_with_runs(runs, rows);
+            // every row, and the boundaries explicitly: row 0, each run start,
+            // the last row, and one past the end
+            let mut probes: Vec<u32> = (0..rows).collect();
+            probes.extend(h.tt_s_runs.iter().map(|(s, _)| *s));
+            probes.extend([0, rows.saturating_sub(1), rows, rows + 7]);
+            for row in probes {
+                assert_eq!(
+                    h.tt_s_at(row).ok(),
+                    tt_s_at_linear(&h, row),
+                    "case {case}, row {row}, runs {:?}",
+                    h.tt_s_runs
+                );
+            }
+        }
+    }
+
+    #[test]
+    fn tt_s_bounds_fold_the_runs() {
+        let h = header_with_runs(vec![(0, 30), (4, 10), (9, 20)], 12);
+        assert_eq!(h.tt_s_bounds(), (10, 30));
+        // no runs believes nothing at any as_of, which is what these
+        // sentinels give `min > as_of` for free
+        assert_eq!(header_with_runs(Vec::new(), 0).tt_s_bounds(), (i64::MAX, i64::MIN));
+    }
+
+    #[test]
+    fn a_segment_caches_its_tt_s_bounds_at_open() {
+        let path = tmp("ttbounds");
+        write_edge_segment(&path, &sorted_edges(64), &SegmentSpec::default()).unwrap();
+        let seg = open(&path);
+        assert_eq!(seg.tt_s_bounds(), (42, 42));
+        assert_eq!(seg.tt_s_bounds(), seg.header().tt_s_bounds());
     }
 
     #[test]

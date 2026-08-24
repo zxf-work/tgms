@@ -264,8 +264,11 @@ impl<'a, S: SegmentSource> ScanSet<'a, S> {
     fn prunes(&self, seg: &Segment<S>, req: &ScanRequest) -> bool {
         let h = seg.header();
         let as_of = clamp_tt(req.as_of_tt);
-        // nothing in this segment was believed yet at as_of
-        if h.tt_s_runs.iter().all(|(_, tt)| *tt > as_of) {
+        // nothing in this segment was believed yet at as_of. From the folded
+        // bound, not a pass over `tt_s_runs`: that pass is O(runs) per segment
+        // per scan, and a compacted segment carries one run per generation
+        // boundary — millions of them, for an answer that never varies.
+        if seg.tt_s_bounds().0 > as_of {
             return true;
         }
         if let Some(vt_min) = req.vt_min {
@@ -411,7 +414,7 @@ impl<'a, S: SegmentSource> ScanSet<'a, S> {
                 needs_vt_e_test || rel_allowed.is_some() || touching.is_some() || has_closes;
 
             let mut rows: Vec<u32> = Vec::new();
-            for (rs, re) in believed_ranges(h, as_of, vt_s.len()) {
+            for (rs, re) in believed_ranges(h, seg.tt_s_bounds(), as_of, vt_s.len()) {
                 let (a, b) = (rs.max(lo), re.min(hi));
                 if a >= b {
                     continue;
@@ -1000,21 +1003,54 @@ impl IdSet {
 /// `tt_s` is run-length encoded, so a batch collapses to one range and the
 /// belief predicate costs a couple of comparisons per segment rather than one
 /// per row.
+///
+/// Compaction breaks that assumption: it re-sorts rows from every generation
+/// into global `(vt_s, vid)` order while each keeps its origin `tt_s`, so the
+/// runs interleave and a measured compacted node segment held 2.1M of them.
+/// Two things follow, and both are load-bearing. `tt_bounds` (the segment's
+/// folded `(min, max)` tt_s) answers the all-visible and none-visible cases
+/// without touching the runs at all — and current belief, the overwhelmingly
+/// common query, is always the all-visible case. When the answer really is
+/// mixed, adjacent runs sharing a verdict coalesce, so the output is one
+/// range per verdict *change* rather than one per run: `select_range` walks
+/// what comes back, and its contiguous-extend fast path only ever sees whole
+/// ranges.
 fn believed_ranges(
     h: &crate::segment::SegmentHeader,
+    tt_bounds: (i64, i64),
     as_of: i64,
     rows: usize,
 ) -> Vec<(usize, usize)> {
     let runs = &h.tt_s_runs;
-    let mut out = Vec::with_capacity(runs.len());
+    let Some(&(first, _)) = runs.first() else {
+        return Vec::new();
+    };
+    let (tt_min, tt_max) = tt_bounds;
+    if tt_min > as_of {
+        return Vec::new();
+    }
+    if tt_max <= as_of {
+        let first = first as usize;
+        return if first < rows {
+            vec![(first, rows)]
+        } else {
+            Vec::new()
+        };
+    }
+    let mut out: Vec<(usize, usize)> = Vec::new();
     for (i, (start, tt)) in runs.iter().enumerate() {
         let end = runs
             .get(i + 1)
             .map(|(s, _)| *s as usize)
             .unwrap_or(rows)
             .min(rows);
-        if *tt <= as_of && (*start as usize) < end {
-            out.push((*start as usize, end));
+        let start = *start as usize;
+        if *tt > as_of || start >= end {
+            continue;
+        }
+        match out.last_mut() {
+            Some(last) if last.1 == start => last.1 = end,
+            _ => out.push((start, end)),
         }
     }
     out
@@ -1682,6 +1718,165 @@ mod tests {
         // the materialize form: clusters >= 4
         assert!(parallel_gate(16, 4, 4, ROWS));
         assert!(!parallel_gate(16, 3, 4, ROWS));
+    }
+
+    // ------------------------------------------------------------------ //
+    // the belief predicate on a compacted layout                          //
+    // ------------------------------------------------------------------ //
+
+    /// The pre-coalescing `believed_ranges`: one output range per run. Kept
+    /// as the reference the coalescing version must agree with row for row.
+    fn ranges_reference(
+        h: &crate::segment::SegmentHeader,
+        as_of: i64,
+        rows: usize,
+    ) -> Vec<(usize, usize)> {
+        let runs = &h.tt_s_runs;
+        let mut out = Vec::new();
+        for (i, (start, tt)) in runs.iter().enumerate() {
+            let end = runs
+                .get(i + 1)
+                .map(|(s, _)| *s as usize)
+                .unwrap_or(rows)
+                .min(rows);
+            if *tt <= as_of && (*start as usize) < end {
+                out.push((*start as usize, end));
+            }
+        }
+        out
+    }
+
+    fn flatten(ranges: &[(usize, usize)]) -> Vec<usize> {
+        ranges.iter().flat_map(|&(a, b)| a..b).collect()
+    }
+
+    #[test]
+    fn believed_ranges_coalesce_without_changing_the_rows() {
+        let mut seed = 0x2026_0824_u64;
+        let mut rng = || {
+            seed ^= seed << 13;
+            seed ^= seed >> 7;
+            seed ^= seed << 17;
+            seed
+        };
+        for case in 0..40 {
+            let rows = 1 + (rng() % 300) as u32;
+            // Compaction's shape: many short runs whose transaction times
+            // alternate, so verdicts flip repeatedly across the segment.
+            let mut runs: Vec<(u32, i64)> = Vec::new();
+            let mut at = 0u32;
+            while at < rows {
+                runs.push((at, (rng() % 6) as i64 * 10));
+                at += 1 + (rng() % 4) as u32;
+            }
+            let h = crate::segment::header_with_runs(runs, rows);
+            let bounds = h.tt_s_bounds();
+            for as_of in [-1i64, 0, 5, 10, 25, 30, 50, 99] {
+                let got = believed_ranges(&h, bounds, as_of, rows as usize);
+                assert_eq!(
+                    flatten(&got),
+                    flatten(&ranges_reference(&h, as_of, rows as usize)),
+                    "case {case} at as_of {as_of}"
+                );
+                for w in got.windows(2) {
+                    assert!(
+                        w[0].1 < w[1].0,
+                        "case {case}: adjacent ranges {:?} and {:?} were not coalesced",
+                        w[0],
+                        w[1]
+                    );
+                }
+            }
+        }
+    }
+
+    #[test]
+    fn a_fully_believed_segment_yields_one_range_however_many_runs() {
+        // The measured pathology: a compacted node segment with a run per
+        // generation boundary. Current belief sees all of them, and the
+        // output must be one range rather than one per run — `select_range`
+        // iterates what comes back, and its contiguous-extend fast path only
+        // ever fires on whole ranges.
+        let rows = 5_000u32;
+        let runs: Vec<(u32, i64)> = (0..rows).map(|i| (i, 100 + (i % 3) as i64)).collect();
+        let h = crate::segment::header_with_runs(runs, rows);
+        let bounds = h.tt_s_bounds();
+        assert_eq!(bounds, (100, 102));
+
+        let all = believed_ranges(&h, bounds, 102, rows as usize);
+        assert_eq!(all, vec![(0, rows as usize)]);
+        assert_eq!(
+            believed_ranges(&h, bounds, i64::MAX - 1, rows as usize),
+            vec![(0, rows as usize)]
+        );
+        // and nothing at all below the minimum
+        assert!(believed_ranges(&h, bounds, 99, rows as usize).is_empty());
+        // the mixed case still agrees with the reference, row for row
+        for as_of in [100, 101] {
+            assert_eq!(
+                flatten(&believed_ranges(&h, bounds, as_of, rows as usize)),
+                flatten(&ranges_reference(&h, as_of, rows as usize)),
+                "as_of {as_of}"
+            );
+        }
+    }
+
+    #[test]
+    fn believed_ranges_handle_the_degenerate_headers() {
+        // no runs: nothing is believed, at any as_of
+        let empty = crate::segment::header_with_runs(Vec::new(), 4);
+        assert!(believed_ranges(&empty, empty.tt_s_bounds(), OPEN_END, 4).is_empty());
+        // no rows: a run exists but covers nothing
+        let none = crate::segment::header_with_runs(vec![(0, 7)], 0);
+        assert!(believed_ranges(&none, none.tt_s_bounds(), OPEN_END, 0).is_empty());
+        // runs past the row count are ignored, as the reference ignored them
+        let over = crate::segment::header_with_runs(vec![(0, 7), (9, 8)], 3);
+        assert_eq!(
+            believed_ranges(&over, over.tt_s_bounds(), OPEN_END, 3),
+            vec![(0, 3)]
+        );
+    }
+
+    /// End to end on a real segment whose transaction times alternate row by
+    /// row — the layout compaction produces and no batch can write. Selection
+    /// must match the brute-force reference at every belief time.
+    #[test]
+    fn a_segment_with_interleaved_transaction_times_selects_correctly() {
+        let dir = tmp("interleaved-tt");
+        let mut rows: Vec<EdgeRow> = (0..300u32)
+            .map(|i| edge(1_000 + i as i64, i, 10 + (i % 3) as i64 * 10, "SENT", i % 5, (i + 2) % 5))
+            .collect();
+        rows.sort_by_key(|r| r.sort_key());
+        let path = dir.join("mixed.tgs");
+        write_edge_segment(&path, &rows, &SegmentSpec::default()).unwrap();
+        let seg = Segment::open(&path, MemorySource::load(&path).unwrap(), true).unwrap();
+        assert!(
+            seg.header().tt_s_runs.len() > 200,
+            "the fixture must actually interleave: {} runs",
+            seg.header().tt_s_runs.len()
+        );
+        assert_eq!(seg.tt_s_bounds(), (10, 30));
+
+        let f = Fixture { rows, segs: vec![seg] };
+        for as_of in [5i64, 10, 15, 20, 25, 30, OPEN_END] {
+            for window in [None, Some((1_050i64, 1_200i64))] {
+                let mut req = ScanRequest::current();
+                req.as_of_tt = as_of;
+                if let Some((a, b)) = window {
+                    req = req.window(a, b);
+                }
+                assert_eq!(
+                    run(&f, &req),
+                    expected(&f.rows, &req),
+                    "as_of {as_of}, window {window:?}"
+                );
+            }
+        }
+        // nothing is believed before the first transaction: the segment prunes
+        let mut early = ScanRequest::current();
+        early.as_of_tt = 9;
+        let (_, stats) = f.set().select(&early).unwrap();
+        assert_eq!(stats.segments_pruned, 1);
     }
 
     #[test]
