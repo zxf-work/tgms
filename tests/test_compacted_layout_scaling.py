@@ -56,7 +56,6 @@ here vacuously.
 from __future__ import annotations
 
 import statistics
-import tempfile
 import time
 from pathlib import Path
 
