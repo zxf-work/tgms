@@ -1,0 +1,491 @@
+{
+ "arms": {
+  "characterization-interactive": {
+   "best": {
+    "ceiling_ms": 100.0,
+    "false-admission": 7,
+    "false-rejection": 0,
+    "multiplier": 0.01,
+    "true-admission": 1,
+    "true-rejection": 3
+   },
+   "estimate_over_actual": {
+    "max": 4.121245354087731,
+    "median": 5.069383486843803e-05,
+    "min": 0.0,
+    "spread": null,
+    "spread_note": "unbounded: some estimates are 0 ms",
+    "under_estimates": [
+     "IC11",
+     "IC2",
+     "IC5",
+     "IC6",
+     "IC8",
+     "IC9",
+     "IS2",
+     "IS3",
+     "IS6",
+     "IS7"
+    ],
+    "zero_estimates": [
+     "IC2",
+     "IC8",
+     "IS3",
+     "IS7"
+    ]
+   },
+   "excluded": [],
+   "of": 11,
+   "per_plan": [
+    {
+     "actual_ms": 10160.143375396729,
+     "classifier": "false-admission",
+     "derived_admission": "admit",
+     "est_ms": 9,
+     "plan_id": "IC11",
+     "rows": 0
+    },
+    {
+     "actual_ms": 16806.81300163269,
+     "classifier": "true-rejection",
+     "derived_admission": "refuse",
+     "est_ms": 69265,
+     "plan_id": "IC12",
+     "rows": 5
+    },
+    {
+     "actual_ms": 11205.631971359253,
+     "classifier": "false-admission",
+     "derived_admission": "admit",
+     "est_ms": 0,
+     "plan_id": "IC2",
+     "rows": 20
+    },
+    {
+     "actual_ms": 18451.916456222534,
+     "classifier": "false-admission",
+     "derived_admission": "admit",
+     "est_ms": 35,
+     "plan_id": "IC5",
+     "rows": 0
+    },
+    {
+     "actual_ms": 39452.529191970825,
+     "classifier": "false-admission",
+     "derived_admission": "admit",
+     "est_ms": 2,
+     "plan_id": "IC6",
+     "rows": 10
+    },
+    {
+     "actual_ms": 12510.17165184021,
+     "classifier": "false-admission",
+     "derived_admission": "admit",
+     "est_ms": 0,
+     "plan_id": "IC8",
+     "rows": 11
+    },
+    {
+     "actual_ms": 35442.89708137512,
+     "classifier": "false-admission",
+     "derived_admission": "admit",
+     "est_ms": 1,
+     "plan_id": "IC9",
+     "rows": 20
+    },
+    {
+     "actual_ms": 12306.841373443604,
+     "classifier": "false-admission",
+     "derived_admission": "admit",
+     "est_ms": 840,
+     "plan_id": "IS2",
+     "rows": 10
+    },
+    {
+     "actual_ms": 7746.513605117798,
+     "classifier": "true-admission",
+     "derived_admission": "admit",
+     "est_ms": 0,
+     "plan_id": "IS3",
+     "rows": 48
+    },
+    {
+     "actual_ms": 10239.221096038818,
+     "classifier": "false-admission",
+     "derived_admission": "admit",
+     "est_ms": 3669,
+     "plan_id": "IS6",
+     "rows": 1
+    },
+    {
+     "actual_ms": 13366.448163986206,
+     "classifier": "false-admission",
+     "derived_admission": "admit",
+     "est_ms": 0,
+     "plan_id": "IS7",
+     "rows": 1
+    }
+   ],
+   "scoreable": 11,
+   "sweep": [
+    {
+     "ceiling_ms": 100.0,
+     "false-admission": 7,
+     "false-rejection": 0,
+     "multiplier": 0.01,
+     "true-admission": 1,
+     "true-rejection": 3
+    },
+    {
+     "ceiling_ms": 500.0,
+     "false-admission": 7,
+     "false-rejection": 0,
+     "multiplier": 0.05,
+     "true-admission": 1,
+     "true-rejection": 3
+    },
+    {
+     "ceiling_ms": 1000.0,
+     "false-admission": 8,
+     "false-rejection": 0,
+     "multiplier": 0.1,
+     "true-admission": 1,
+     "true-rejection": 2
+    },
+    {
+     "ceiling_ms": 2500.0,
+     "false-admission": 8,
+     "false-rejection": 0,
+     "multiplier": 0.25,
+     "true-admission": 1,
+     "true-rejection": 2
+    },
+    {
+     "ceiling_ms": 5000.0,
+     "false-admission": 9,
+     "false-rejection": 0,
+     "multiplier": 0.5,
+     "true-admission": 1,
+     "true-rejection": 1
+    },
+    {
+     "ceiling_ms": 5900.0,
+     "false-admission": 9,
+     "false-rejection": 0,
+     "multiplier": 0.59,
+     "true-admission": 1,
+     "true-rejection": 1
+    },
+    {
+     "ceiling_ms": 7500.0,
+     "false-admission": 9,
+     "false-rejection": 0,
+     "multiplier": 0.75,
+     "true-admission": 1,
+     "true-rejection": 1
+    },
+    {
+     "ceiling_ms": 10000.0,
+     "false-admission": 9,
+     "false-rejection": 0,
+     "multiplier": 1.0,
+     "true-admission": 1,
+     "true-rejection": 1
+    },
+    {
+     "ceiling_ms": 20000.0,
+     "false-admission": 9,
+     "false-rejection": 0,
+     "multiplier": 2.0,
+     "true-admission": 1,
+     "true-rejection": 1
+    },
+    {
+     "ceiling_ms": 40000.0,
+     "false-admission": 9,
+     "false-rejection": 0,
+     "multiplier": 4.0,
+     "true-admission": 1,
+     "true-rejection": 1
+    },
+    {
+     "ceiling_ms": 80000.0,
+     "false-admission": 10,
+     "false-rejection": 0,
+     "multiplier": 8.0,
+     "true-admission": 1,
+     "true-rejection": 0
+    },
+    {
+     "ceiling_ms": 160000.0,
+     "false-admission": 10,
+     "false-rejection": 0,
+     "multiplier": 16.0,
+     "true-admission": 1,
+     "true-rejection": 0
+    },
+    {
+     "ceiling_ms": 640000.0,
+     "false-admission": 10,
+     "false-rejection": 0,
+     "multiplier": 64.0,
+     "true-admission": 1,
+     "true-rejection": 0
+    },
+    {
+     "ceiling_ms": 2560000.0,
+     "false-admission": 10,
+     "false-rejection": 0,
+     "multiplier": 256.0,
+     "true-admission": 1,
+     "true-rejection": 0
+    },
+    {
+     "ceiling_ms": 10240000.0,
+     "false-admission": 10,
+     "false-rejection": 0,
+     "multiplier": 1024.0,
+     "true-admission": 1,
+     "true-rejection": 0
+    }
+   ]
+  },
+  "scored-bi": {
+   "best": {
+    "ceiling_ms": 5900.0,
+    "false-admission": 0,
+    "false-rejection": 0,
+    "multiplier": 0.59,
+    "true-admission": 0,
+    "true-rejection": 9
+   },
+   "estimate_over_actual": {
+    "max": 24600.213281108892,
+    "median": 8.872363105454061,
+    "min": 0.1990278724034745,
+    "spread": 123601.8502536102,
+    "spread_note": null,
+    "under_estimates": [
+     "BI12",
+     "BI18",
+     "BI9"
+    ],
+    "zero_estimates": []
+   },
+   "excluded": [
+    "BI6"
+   ],
+   "of": 10,
+   "per_plan": [
+    {
+     "actual_ms": 19193.984508514404,
+     "classifier": "true-rejection",
+     "derived_admission": "refuse",
+     "est_ms": 170296,
+     "plan_id": "BI10",
+     "rows": 100
+    },
+    {
+     "actual_ms": 28782.920360565186,
+     "classifier": "true-rejection",
+     "derived_admission": "refuse",
+     "est_ms": 97927,
+     "plan_id": "BI11",
+     "rows": 1
+    },
+    {
+     "actual_ms": 122200.7782459259,
+     "classifier": "true-rejection",
+     "derived_admission": "refuse",
+     "est_ms": 33254,
+     "plan_id": "BI12",
+     "rows": 166
+    },
+    {
+     "actual_ms": 51990.78273773193,
+     "classifier": "true-rejection",
+     "derived_admission": "refuse",
+     "est_ms": 1278984344,
+     "plan_id": "BI17",
+     "rows": 0
+    },
+    {
+     "actual_ms": 29734.52877998352,
+     "classifier": "false-admission",
+     "derived_admission": "admit",
+     "est_ms": 5918,
+     "plan_id": "BI18",
+     "rows": 20
+    },
+    {
+     "actual_ms": 22765.509366989136,
+     "classifier": "true-rejection",
+     "derived_admission": "refuse",
+     "est_ms": 5580034,
+     "plan_id": "BI3",
+     "rows": 20
+    },
+    {
+     "actual_ms": 44509.54818725586,
+     "classifier": "true-rejection",
+     "derived_admission": "refuse",
+     "est_ms": 471369,
+     "plan_id": "BI4",
+     "rows": 100
+    },
+    {
+     "actual_ms": 13075.624227523804,
+     "classifier": "true-rejection",
+     "derived_admission": "refuse",
+     "est_ms": 303037,
+     "plan_id": "BI7",
+     "rows": 100
+    },
+    {
+     "actual_ms": 66036.57650947571,
+     "classifier": "true-rejection",
+     "derived_admission": "refuse",
+     "est_ms": 31811,
+     "plan_id": "BI9",
+     "rows": 100
+    }
+   ],
+   "scoreable": 9,
+   "sweep": [
+    {
+     "ceiling_ms": 100.0,
+     "false-admission": 0,
+     "false-rejection": 0,
+     "multiplier": 0.01,
+     "true-admission": 0,
+     "true-rejection": 9
+    },
+    {
+     "ceiling_ms": 500.0,
+     "false-admission": 0,
+     "false-rejection": 0,
+     "multiplier": 0.05,
+     "true-admission": 0,
+     "true-rejection": 9
+    },
+    {
+     "ceiling_ms": 1000.0,
+     "false-admission": 0,
+     "false-rejection": 0,
+     "multiplier": 0.1,
+     "true-admission": 0,
+     "true-rejection": 9
+    },
+    {
+     "ceiling_ms": 2500.0,
+     "false-admission": 0,
+     "false-rejection": 0,
+     "multiplier": 0.25,
+     "true-admission": 0,
+     "true-rejection": 9
+    },
+    {
+     "ceiling_ms": 5000.0,
+     "false-admission": 0,
+     "false-rejection": 0,
+     "multiplier": 0.5,
+     "true-admission": 0,
+     "true-rejection": 9
+    },
+    {
+     "ceiling_ms": 5900.0,
+     "false-admission": 0,
+     "false-rejection": 0,
+     "multiplier": 0.59,
+     "true-admission": 0,
+     "true-rejection": 9
+    },
+    {
+     "ceiling_ms": 7500.0,
+     "false-admission": 1,
+     "false-rejection": 0,
+     "multiplier": 0.75,
+     "true-admission": 0,
+     "true-rejection": 8
+    },
+    {
+     "ceiling_ms": 10000.0,
+     "false-admission": 1,
+     "false-rejection": 0,
+     "multiplier": 1.0,
+     "true-admission": 0,
+     "true-rejection": 8
+    },
+    {
+     "ceiling_ms": 20000.0,
+     "false-admission": 1,
+     "false-rejection": 0,
+     "multiplier": 2.0,
+     "true-admission": 0,
+     "true-rejection": 8
+    },
+    {
+     "ceiling_ms": 40000.0,
+     "false-admission": 3,
+     "false-rejection": 0,
+     "multiplier": 4.0,
+     "true-admission": 0,
+     "true-rejection": 6
+    },
+    {
+     "ceiling_ms": 80000.0,
+     "false-admission": 3,
+     "false-rejection": 0,
+     "multiplier": 8.0,
+     "true-admission": 0,
+     "true-rejection": 6
+    },
+    {
+     "ceiling_ms": 160000.0,
+     "false-admission": 4,
+     "false-rejection": 0,
+     "multiplier": 16.0,
+     "true-admission": 0,
+     "true-rejection": 5
+    },
+    {
+     "ceiling_ms": 640000.0,
+     "false-admission": 7,
+     "false-rejection": 0,
+     "multiplier": 64.0,
+     "true-admission": 0,
+     "true-rejection": 2
+    },
+    {
+     "ceiling_ms": 2560000.0,
+     "false-admission": 7,
+     "false-rejection": 0,
+     "multiplier": 256.0,
+     "true-admission": 0,
+     "true-rejection": 2
+    },
+    {
+     "ceiling_ms": 10240000.0,
+     "false-admission": 7,
+     "false-rejection": 0,
+     "multiplier": 1024.0,
+     "true-admission": 0,
+     "true-rejection": 2
+    }
+   ]
+  }
+ },
+ "manifest": {
+  "arms_never_merged": true,
+  "budget_ms": 10000.0,
+  "definitions": "D-086's: false admission = estimate passed the ceiling but actual exceeded T; false rejection = refused but actual within T. T fixed, ceiling swept.",
+  "derived_from": "/Users/xz/Documents/TGMS/benchmarks/results-v1/ldbc-sf1-campaign.json",
+  "host": "xzgpu",
+  "policy_version": "guardrail-policy-v2",
+  "source_commit": "8fd1581a6ad2",
+  "unit_backstops": {
+   "expansions_est": 1280000000.0,
+   "rows_scanned_est": 5120000000.0
+  }
+ }
+}

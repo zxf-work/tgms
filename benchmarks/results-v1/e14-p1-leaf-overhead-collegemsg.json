@@ -1,0 +1,379 @@
+{
+ "manifest": {
+  "backend": "native",
+  "band": "leaf/direct within 0.8-1.2 (the +/-20% between-day band)",
+  "call_ceiling_s": 300,
+  "commit": "fb0df1e81cd8",
+  "host": "xzgpu",
+  "platform": "Linux-5.4.0-216-generic-x86_64-with-glibc2.31",
+  "protocol": "warmups 5, reps 30 under 1000 ms else 10; median and p95; one condition per process",
+  "store": "stores/collegemsg",
+  "store_stats": {
+   "max_out_degree": 1091,
+   "n_edge_versions": 59835,
+   "n_entities": 1899,
+   "n_node_versions": 1899,
+   "rel_type_counts": {
+    "MSG": 59835
+   },
+   "vt_max": 1098777142000001,
+   "vt_min": 1082040961000000
+  },
+  "utc": "2026-08-24T17:05:16Z",
+  "wall_s": 120.2
+ },
+ "rows": [
+  {
+   "case": "entity_history",
+   "direct": {
+    "case": "entity_history",
+    "max_ms": 12.36271858215332,
+    "min_ms": 5.973339080810547,
+    "outcome": "OK",
+    "p50_ms": 7.709264755249023,
+    "p95_ms": 11.67440414428711,
+    "reps": 30
+   },
+   "leaf": {
+    "case": "entity_history",
+    "max_ms": 11.14511489868164,
+    "min_ms": 6.267786026000977,
+    "outcome": "OK",
+    "p50_ms": 8.016347885131836,
+    "p95_ms": 10.715484619140625,
+    "reps": 30
+   },
+   "leaf_over_direct": 1.0398329982990568
+  },
+  {
+   "case": "entity_history_edges",
+   "direct": {
+    "case": "entity_history_edges",
+    "max_ms": 23.37360382080078,
+    "min_ms": 13.111591339111328,
+    "outcome": "OK",
+    "p50_ms": 14.84227180480957,
+    "p95_ms": 22.42875099182129,
+    "reps": 30
+   },
+   "leaf": {
+    "case": "entity_history_edges",
+    "max_ms": 22.754669189453125,
+    "min_ms": 12.23897933959961,
+    "outcome": "OK",
+    "p50_ms": 13.18216323852539,
+    "p95_ms": 20.354270935058594,
+    "reps": 30
+   },
+   "leaf_over_direct": 0.8881499686762083
+  },
+  {
+   "case": "version_history",
+   "direct": {
+    "case": "version_history",
+    "max_ms": 381.4725875854492,
+    "min_ms": 348.2203483581543,
+    "outcome": "OK",
+    "p50_ms": 354.386568069458,
+    "p95_ms": 365.5123710632324,
+    "reps": 30
+   },
+   "leaf": {
+    "case": "version_history",
+    "max_ms": 391.9823169708252,
+    "min_ms": 358.51025581359863,
+    "outcome": "OK",
+    "p50_ms": 371.3374137878418,
+    "p95_ms": 380.7544708251953,
+    "reps": 30
+   },
+   "leaf_over_direct": 1.0478315129456641
+  },
+  {
+   "case": "snapshot_subgraph",
+   "direct": {
+    "case": "snapshot_subgraph",
+    "max_ms": 21.193981170654297,
+    "min_ms": 12.476444244384766,
+    "outcome": "OK",
+    "p50_ms": 14.447212219238281,
+    "p95_ms": 21.108388900756836,
+    "reps": 30
+   },
+   "leaf": {
+    "case": "snapshot_subgraph",
+    "max_ms": 23.579120635986328,
+    "min_ms": 12.728452682495117,
+    "outcome": "OK",
+    "p50_ms": 14.384031295776367,
+    "p95_ms": 20.895004272460938,
+    "reps": 30
+   },
+   "leaf_over_direct": 0.9956267740444914
+  },
+  {
+   "case": "diff_snapshots",
+   "direct": {
+    "case": "diff_snapshots",
+    "max_ms": 33.91838073730469,
+    "min_ms": 18.985748291015625,
+    "outcome": "OK",
+    "p50_ms": 19.70505714416504,
+    "p95_ms": 27.35757827758789,
+    "reps": 30
+   },
+   "leaf": {
+    "case": "diff_snapshots",
+    "max_ms": 34.42263603210449,
+    "min_ms": 20.354509353637695,
+    "outcome": "OK",
+    "p50_ms": 25.192975997924805,
+    "p95_ms": 31.10527992248535,
+    "reps": 30
+   },
+   "leaf_over_direct": 1.2785030671877458
+  },
+  {
+   "case": "neighborhood_evolution",
+   "direct": {
+    "case": "neighborhood_evolution",
+    "max_ms": 19.972562789916992,
+    "min_ms": 10.163545608520508,
+    "outcome": "OK",
+    "p50_ms": 11.73090934753418,
+    "p95_ms": 18.409252166748047,
+    "reps": 30
+   },
+   "leaf": {
+    "case": "neighborhood_evolution",
+    "max_ms": 20.373106002807617,
+    "min_ms": 10.385751724243164,
+    "outcome": "OK",
+    "p50_ms": 12.39633560180664,
+    "p95_ms": 18.402099609375,
+    "reps": 30
+   },
+   "leaf_over_direct": 1.056724183484747
+  },
+  {
+   "case": "resolve_entities",
+   "direct": {
+    "case": "resolve_entities",
+    "max_ms": 38.6509895324707,
+    "min_ms": 16.22772216796875,
+    "outcome": "OK",
+    "p50_ms": 17.246723175048828,
+    "p95_ms": 26.320219039916992,
+    "reps": 30
+   },
+   "leaf": {
+    "case": "resolve_entities",
+    "max_ms": 39.469242095947266,
+    "min_ms": 16.144514083862305,
+    "outcome": "OK",
+    "p50_ms": 17.65131950378418,
+    "p95_ms": 28.249263763427734,
+    "reps": 30
+   },
+   "leaf_over_direct": 1.02345931598883
+  },
+  {
+   "case": "aggregate_events",
+   "direct": {
+    "case": "aggregate_events",
+    "max_ms": 34.0573787689209,
+    "min_ms": 21.589994430541992,
+    "outcome": "OK",
+    "p50_ms": 22.584199905395508,
+    "p95_ms": 30.742168426513672,
+    "reps": 30
+   },
+   "leaf": {
+    "case": "aggregate_events",
+    "max_ms": 36.28420829772949,
+    "min_ms": 22.05061912536621,
+    "outcome": "OK",
+    "p50_ms": 23.392915725708008,
+    "p95_ms": 34.45577621459961,
+    "reps": 30
+   },
+   "leaf_over_direct": 1.0358089205595145
+  },
+  {
+   "case": "graph_metric_timeseries",
+   "direct": {
+    "case": "graph_metric_timeseries",
+    "max_ms": 30.66849708557129,
+    "min_ms": 16.299962997436523,
+    "outcome": "OK",
+    "p50_ms": 17.017364501953125,
+    "p95_ms": 26.02553367614746,
+    "reps": 30
+   },
+   "leaf": {
+    "case": "graph_metric_timeseries",
+    "max_ms": 27.85491943359375,
+    "min_ms": 16.355037689208984,
+    "outcome": "OK",
+    "p50_ms": 17.8070068359375,
+    "p95_ms": 27.452468872070312,
+    "reps": 30
+   },
+   "leaf_over_direct": 1.0464021519838602
+  },
+  {
+   "case": "burst_detection",
+   "direct": {
+    "case": "burst_detection",
+    "max_ms": 29.326200485229492,
+    "min_ms": 16.80731773376465,
+    "outcome": "OK",
+    "p50_ms": 17.810583114624023,
+    "p95_ms": 20.276546478271484,
+    "reps": 30
+   },
+   "leaf": {
+    "case": "burst_detection",
+    "max_ms": 27.96196937561035,
+    "min_ms": 17.341136932373047,
+    "outcome": "OK",
+    "p50_ms": 18.264055252075195,
+    "p95_ms": 27.318477630615234,
+    "reps": 30
+   },
+   "leaf_over_direct": 1.0254608248664712
+  },
+  {
+   "case": "count_temporal_motifs",
+   "direct": {
+    "case": "count_temporal_motifs",
+    "max_ms": 167.91367530822754,
+    "min_ms": 147.60088920593262,
+    "outcome": "OK",
+    "p50_ms": 151.58605575561523,
+    "p95_ms": 166.89205169677734,
+    "reps": 30
+   },
+   "leaf": {
+    "case": "count_temporal_motifs",
+    "max_ms": 158.14828872680664,
+    "min_ms": 144.87338066101074,
+    "outcome": "OK",
+    "p50_ms": 149.78933334350586,
+    "p95_ms": 157.28092193603516,
+    "reps": 30
+   },
+   "leaf_over_direct": 0.9881471788209463
+  },
+  {
+   "case": "find_temporal_motif_instances",
+   "direct": {
+    "case": "find_temporal_motif_instances",
+    "max_ms": 1343.5897827148438,
+    "min_ms": 1313.5480880737305,
+    "outcome": "OK",
+    "p50_ms": 1328.8702964782715,
+    "p95_ms": 1343.5897827148438,
+    "reps": 10
+   },
+   "leaf": {
+    "case": "find_temporal_motif_instances",
+    "max_ms": 1359.1904640197754,
+    "min_ms": 1323.4074115753174,
+    "outcome": "OK",
+    "p50_ms": 1342.7259922027588,
+    "p95_ms": 1359.1904640197754,
+    "reps": 10
+   },
+   "leaf_over_direct": 1.0104266727619748
+  },
+  {
+   "case": "temporal_reachability",
+   "direct": {
+    "case": "temporal_reachability",
+    "max_ms": 41.49150848388672,
+    "min_ms": 26.067256927490234,
+    "outcome": "OK",
+    "p50_ms": 27.079105377197266,
+    "p95_ms": 37.13631629943848,
+    "reps": 30
+   },
+   "leaf": {
+    "case": "temporal_reachability",
+    "max_ms": 39.63446617126465,
+    "min_ms": 26.504993438720703,
+    "outcome": "OK",
+    "p50_ms": 27.927160263061523,
+    "p95_ms": 36.72456741333008,
+    "reps": 30
+   },
+   "leaf_over_direct": 1.0313176847628942
+  },
+  {
+   "case": "temporal_paths",
+   "direct": {
+    "case": "temporal_paths",
+    "max_ms": 36.24916076660156,
+    "min_ms": 22.65644073486328,
+    "outcome": "OK",
+    "p50_ms": 23.58245849609375,
+    "p95_ms": 35.20393371582031,
+    "reps": 30
+   },
+   "leaf": {
+    "case": "temporal_paths",
+    "max_ms": 33.59246253967285,
+    "min_ms": 23.674488067626953,
+    "outcome": "OK",
+    "p50_ms": 24.945735931396484,
+    "p95_ms": 33.07700157165527,
+    "reps": 30
+   },
+   "leaf_over_direct": 1.0578089615011323
+  },
+  {
+   "case": "co_active",
+   "direct": {
+    "case": "co_active",
+    "max_ms": 30.03978729248047,
+    "min_ms": 13.632774353027344,
+    "outcome": "OK",
+    "p50_ms": 14.976024627685547,
+    "p95_ms": 17.062664031982422,
+    "reps": 30
+   },
+   "leaf": {
+    "case": "co_active",
+    "max_ms": 20.51067352294922,
+    "min_ms": 12.614727020263672,
+    "outcome": "OK",
+    "p50_ms": 13.82303237915039,
+    "p95_ms": 15.58542251586914,
+    "reps": 30
+   },
+   "leaf_over_direct": 0.923010793772089
+  },
+  {
+   "case": "compute",
+   "direct": {
+    "case": "compute",
+    "max_ms": 11.305093765258789,
+    "min_ms": 4.549264907836914,
+    "outcome": "OK",
+    "p50_ms": 5.756139755249023,
+    "p95_ms": 9.746789932250977,
+    "reps": 30
+   },
+   "leaf": {
+    "case": "compute",
+    "max_ms": 10.373353958129883,
+    "min_ms": 4.904270172119141,
+    "outcome": "OK",
+    "p50_ms": 7.190227508544922,
+    "p95_ms": 9.897470474243164,
+    "reps": 30
+   },
+   "leaf_over_direct": 1.249140537629955
+  }
+ ]
+}
