@@ -1,0 +1,76 @@
+{
+ "manifest": {
+  "backend": "native",
+  "band": "compiled/kernel <= 3",
+  "commit": "5841e3012f35",
+  "host": "xzgpu",
+  "platform": "Linux-5.4.0-216-generic-x86_64-with-glibc2.31",
+  "population": "the two operators in COMPILED; the other thirteen have no compiled form and are excluded, not failed",
+  "protocol": "warmups 5, reps 30 under 1000 ms else 10, cut at 120s of measured wall with a floor of 3; median and p95; one arm per process. The time cut is a disclosed deviation from C4, which assumed millisecond operators; the actual rep count is on every row.",
+  "store": "stores/synth-1m-native",
+  "store_stats": {
+   "max_out_degree": 77,
+   "n_edge_versions": 1000000,
+   "n_entities": 20000,
+   "n_node_versions": 20000,
+   "rel_type_counts": {
+    "MSG": 1000000
+   },
+   "vt_max": 1585612796552152,
+   "vt_min": 1577836804185892
+  },
+  "utc": "2026-08-24T17:34:05Z",
+  "wall_s": 268.7
+ },
+ "rows": [
+  {
+   "compiled": {
+    "arm": "compiled",
+    "max_ms": 139.0817165374756,
+    "min_ms": 117.08927154541016,
+    "op": "entity_history",
+    "outcome": "OK",
+    "p50_ms": 124.41635131835938,
+    "p95_ms": 138.18907737731934,
+    "reps": 30,
+    "rows": 1
+   },
+   "compiled_over_kernel": 292.6752664049355,
+   "kernel": {
+    "arm": "kernel",
+    "max_ms": 0.43964385986328125,
+    "min_ms": 0.41937828063964844,
+    "op": "entity_history",
+    "outcome": "OK",
+    "p50_ms": 0.42510032653808594,
+    "p95_ms": 0.43582916259765625,
+    "reps": 30,
+    "rows": 1
+   },
+   "op": "entity_history",
+   "row_counts_agree": true
+  },
+  {
+   "compiled": {
+    "arm": "compiled",
+    "max_ms": 23288.052558898926,
+    "min_ms": 22427.748680114746,
+    "op": "version_history",
+    "outcome": "OK",
+    "p50_ms": 23034.916639328003,
+    "p95_ms": 23288.052558898926,
+    "reps": 6,
+    "rows": 50
+   },
+   "compiled_over_kernel": null,
+   "kernel": {
+    "arm": "kernel",
+    "code": null,
+    "op": "version_history",
+    "outcome": "REFUSED_OR_ERRORED"
+   },
+   "op": "version_history",
+   "row_counts_agree": null
+  }
+ ]
+}

@@ -1,0 +1,70 @@
+{
+ "manifest": {
+  "backend": "native",
+  "band": "compiled/kernel <= 3",
+  "commit": "5841e3012f35",
+  "host": "xzgpu",
+  "platform": "Linux-5.4.0-216-generic-x86_64-with-glibc2.31",
+  "population": "the two operators in COMPILED; the other thirteen have no compiled form and are excluded, not failed",
+  "protocol": "warmups 5, reps 30 under 1000 ms else 10, cut at 120s of measured wall with a floor of 3; median and p95; one arm per process. The time cut is a disclosed deviation from C4, which assumed millisecond operators; the actual rep count is on every row.",
+  "store": "stores/synth-10m-native",
+  "store_stats": {
+   "max_out_degree": 222,
+   "n_edge_versions": 10000000,
+   "n_entities": 60000,
+   "n_node_versions": 60000,
+   "rel_type_counts": {
+    "MSG": 10000000
+   },
+   "vt_max": 1585612799979265,
+   "vt_min": 1577836800240718
+  },
+  "utc": "2026-08-24T17:50:53Z",
+  "wall_s": 985.0
+ },
+ "rows": [
+  {
+   "compiled": {
+    "arm": "compiled",
+    "max_ms": 428.9126396179199,
+    "min_ms": 393.70131492614746,
+    "op": "entity_history",
+    "outcome": "OK",
+    "p50_ms": 405.75718879699707,
+    "p95_ms": 425.89664459228516,
+    "reps": 30,
+    "rows": 1
+   },
+   "compiled_over_kernel": 446.91938025210084,
+   "kernel": {
+    "arm": "kernel",
+    "max_ms": 1.031637191772461,
+    "min_ms": 0.8754730224609375,
+    "op": "entity_history",
+    "outcome": "OK",
+    "p50_ms": 0.90789794921875,
+    "p95_ms": 1.0123252868652344,
+    "reps": 30,
+    "rows": 1
+   },
+   "op": "entity_history",
+   "row_counts_agree": true
+  },
+  {
+   "compiled": {
+    "arm": "compiled",
+    "op": "version_history",
+    "outcome": "TIMEOUT"
+   },
+   "compiled_over_kernel": null,
+   "kernel": {
+    "arm": "kernel",
+    "code": null,
+    "op": "version_history",
+    "outcome": "REFUSED_OR_ERRORED"
+   },
+   "op": "version_history",
+   "row_counts_agree": null
+  }
+ ]
+}
