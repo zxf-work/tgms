@@ -36,6 +36,7 @@ from __future__ import annotations
 
 import argparse
 import calendar
+import hashlib
 import json
 import sys
 from pathlib import Path
@@ -212,6 +213,69 @@ def expand_or_list(node: Any, prefix: str, values: list[str]) -> Any:
     return rebuild(node)
 
 
+# --------------------------------------------------------------------------
+# §E addendum 4 — the secondary (characterization) arm
+# --------------------------------------------------------------------------
+
+#: The campaign seed. The freeze fixed no seed, so it is derived here from the
+#: freeze id itself rather than chosen: any other constant would be a number
+#: somebody picked, and a picked seed is a knob. Recorded per plan alongside
+#: the drawn index so the whole draw replays from this file plus the CSVs.
+CAMPAIGN_SEED_SOURCE = "paper-a-v1"
+CAMPAIGN_SEED = int.from_bytes(
+    hashlib.sha256(CAMPAIGN_SEED_SOURCE.encode()).digest()[:8], "big")
+
+#: Which id space each Interactive id-valued parameter is drawn from.
+#: `messageId` draws from the Message hierarchy, which is Post ∪ Comment — the
+#: same union IS6/IS7 traverse and the same one LDBC guarantees disjoint.
+SAMPLE_POPULATION = {"personId": ("Person",), "messageId": ("Post", "Comment")}
+
+_POP_CACHE: dict[tuple[str, ...], list[int]] = {}
+
+
+def population(csv_root: Path, files: tuple[str, ...]) -> list[int]:
+    """Every LDBC id of the given node files, in the frozen file order.
+
+    Read from the CSVs rather than the store because the store exposes no way
+    to enumerate entities of a label cheaply — `nodes_columnar` and
+    `all_node_versions` both build a Python object per version and take ~50 min
+    at SF1. The CSVs are the artifact the store was built from, and every drawn
+    anchor is verified against the store anyway.
+    """
+    if files in _POP_CACHE:
+        return _POP_CACHE[files]
+    from tgms.data.snb_loader import NODES, _parts, _rows
+
+    ids: list[int] = []
+    for name in files:
+        spec = next(n for n in NODES if n.name == name)
+        for row in _rows(_parts(csv_root, spec.group, spec.name), spec.header):
+            ids.append(int(row[spec.id_col]))
+    _POP_CACHE[files] = ids
+    return ids
+
+
+def sample_anchor(plan_id: str, param: str, csv_root: Path,
+                  seed: int = CAMPAIGN_SEED) -> dict[str, Any]:
+    """Draw one anchor, deterministically and blind.
+
+    **The rule, fixed before any draw:** the anchor is the element at index
+    `k = H(seed, plan_id, param) mod |population|` of the population listed in
+    the frozen file order, where `H` is SHA-256 of the three joined by NUL. It
+    depends on nothing but the seed, the plan, the parameter and the corpus —
+    in particular not on any result, any row count, or whether the plan returns
+    anything. Re-drawing on an empty result would be choosing.
+    """
+    files = SAMPLE_POPULATION[param]
+    ids = population(csv_root, files)
+    key = b"\0".join([str(seed).encode(), plan_id.encode(), param.encode()])
+    k = int.from_bytes(hashlib.sha256(key).digest()[:8], "big") % len(ids)
+    hierarchy = "Person" if files == ("Person",) else "Message"
+    return {"param": param, "population": "+".join(files), "size": len(ids),
+            "index": k, "ldbc_id": ids[k], "seed": seed,
+            "uid": snb_uid(hierarchy, ids[k])}
+
+
 class PhantomAnchor(LookupError):
     """A bound id-valued parameter names an entity the store does not have."""
 
@@ -241,7 +305,8 @@ def verify_anchors(bound: dict[str, Any], adapter: Any) -> list[str]:
 
 
 def bind(plan_id: str, params_root: Path, sf: str = "sf1",
-         adapter: Any = None) -> dict[str, Any]:
+         adapter: Any = None, csv_root: Path | None = None,
+         seed: int = CAMPAIGN_SEED) -> dict[str, Any]:
     """Return the bound plan document plus a record of what was bound.
 
     Pass `adapter` to have every id-valued parameter checked for existence; a
@@ -287,6 +352,20 @@ def bind(plan_id: str, params_root: Path, sf: str = "sf1",
         for k in [k for k in frozen if k.startswith("language")]:
             frozen.pop(k, None)
 
+    #: §E addendum 4: the Interactive rows have no valid third-party parameter
+    #: source against this substrate (their ids come from the separately
+    #: generated Interactive dataset), so their anchors are sampled from the
+    #: store's own corpus. This arm is **characterization only** and is
+    #: excluded from every third-party-parameter claim.
+    sampled: dict[str, Any] = {}
+    if csv_root is not None and plan_id in IV_SOURCES:
+        for key in [k for k in bound if k in SAMPLE_POPULATION]:
+            draw = sample_anchor(plan_id, key, csv_root, seed)
+            bound[key] = draw["uid"]
+            sampled[key] = draw
+        source = (f"SAMPLED anchors (seed {seed}) + "
+                  f"non-id parameters from {source}")
+
     phantom: list[str] = []
     if adapter is not None:
         phantom = verify_anchors(bound, adapter)
@@ -300,6 +379,9 @@ def bind(plan_id: str, params_root: Path, sf: str = "sf1",
     missing = [k for k in frozen if k not in bound]
     return {"plan_id": plan_id, "root": root, "params": bound,
             "phantom_anchors": phantom,
+            "sampled_anchors": sampled,
+            "arm": ("characterization-interactive" if plan_id in IV_SOURCES
+                    else "scored-bi"),
             "plan_format": doc.get("plan_format"),
             "frozen_params": doc.get("params", {}), "source": source,
             "or_expansion": expanded, "unbound_frozen_params": missing,

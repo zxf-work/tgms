@@ -44,7 +44,8 @@ ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
 
 from ldbc_snb_params import (  # noqa: E402
-    LDBC_PLANS, PhantomAnchor, bind, substitute,
+    CAMPAIGN_SEED, CAMPAIGN_SEED_SOURCE, LDBC_PLANS, PhantomAnchor, bind,
+    substitute,
 )
 from tgms.core.errors import CostError, TgmsError  # noqa: E402
 from tgms.temporal.algebra import ensure_all_registered  # noqa: E402
@@ -89,8 +90,9 @@ def _sha() -> str:
 
 
 def _load_bound(plan_id: str, params_root: Path, sf: str,
-                adapter: Any = None) -> tuple[Any, dict[str, Any]]:
-    b = bind(plan_id, params_root, sf, adapter)
+                adapter: Any = None,
+                csv_root: Path | None = None) -> tuple[Any, dict[str, Any]]:
+    b = bind(plan_id, params_root, sf, adapter, csv_root)
     document = substitute({"root": b["root"], "sigma": b["sigma"]}, b["params"])
     # `plan_format` is the reader's version gate; the bound document is the
     # frozen artifact re-parameterised, so it carries the artifact's own.
@@ -133,7 +135,7 @@ def _last_json(text: str, phase: str | None) -> dict[str, Any]:
 
 
 def run_child(plan_id: str, store_path: str, params_root: Path,
-              sf: str) -> dict[str, Any]:
+              sf: str, csv_root: Path | None = None) -> dict[str, Any]:
     """Run one plan in a child under a hard kill.
 
     **Every** plan goes through here, not only the refused ones. The first
@@ -154,6 +156,8 @@ def run_child(plan_id: str, store_path: str, params_root: Path,
     cmd = [sys.executable, "-u", str(Path(__file__).resolve()),
            "--single", plan_id, "--store", store_path,
            "--params", str(params_root), "--sf", sf, "--out", os.devnull]
+    if csv_root is not None:
+        cmd += ["--csv", str(csv_root)]
     t0 = time.time()
     try:
         done = subprocess.run(cmd, capture_output=True, text=True,
@@ -177,10 +181,11 @@ def run_child(plan_id: str, store_path: str, params_root: Path,
 
 
 def run_one(plan_id: str, store: Any, params_root: Path, sf: str,
-            bypass: bool, emit_pre: bool = False) -> dict[str, Any]:
+            bypass: bool, emit_pre: bool = False,
+            csv_root: Path | None = None) -> dict[str, Any]:
     rec: dict[str, Any] = {"plan_id": plan_id}
     try:
-        root, b = _load_bound(plan_id, params_root, sf, store.adapter)
+        root, b = _load_bound(plan_id, params_root, sf, store.adapter, csv_root)
     except PhantomAnchor as e:
         rec.update(outcome="BIND_FAILED", phantom_anchor=True, error=str(e))
         if emit_pre:
@@ -194,6 +199,8 @@ def run_one(plan_id: str, store: Any, params_root: Path, sf: str,
     rec["params"] = b["params"]
     rec["param_source"] = b["source"]
     rec["or_expansion"] = b["or_expansion"]
+    rec["arm"] = b["arm"]
+    rec["sampled_anchors"] = b["sampled_anchors"]
 
     stats = store.stats()
     est = plan_estimate(root, stats)
@@ -257,6 +264,12 @@ def main() -> int:
     ap = argparse.ArgumentParser()
     ap.add_argument("--store", required=True)
     ap.add_argument("--params", required=True)
+    ap.add_argument("--csv", default="",
+                    help="the initial_snapshot directory. Enables the §E "
+                         "addendum 4 characterization arm: the Interactive "
+                         "rows, whose LDBC parameters name entities of a "
+                         "different dataset, get seeded anchors sampled from "
+                         "this corpus. Omit and they fail as BIND_FAILED.")
     ap.add_argument("--sf", default="sf1")
     ap.add_argument("--out", required=True)
     ap.add_argument("--plan", default="all")
@@ -276,7 +289,8 @@ def main() -> int:
         store = tgms.open(args.store, read_only=True)
         try:
             rec = run_one(args.single, store, Path(args.params), args.sf,
-                          bypass=not args.no_bypass, emit_pre=True)
+                          bypass=not args.no_bypass, emit_pre=True,
+                          csv_root=Path(args.csv) if args.csv else None)
         finally:
             store.close()
         print(json.dumps({"phase": "final", **rec}, default=str))
@@ -308,6 +322,20 @@ def main() -> int:
                 "bypass_ceiling_s": BYPASS_CEILING_S,
                 "child_open_allowance_s": CHILD_OPEN_ALLOWANCE_S,
                 "every_plan_in_a_child": True,
+                "campaign_seed": CAMPAIGN_SEED,
+                "campaign_seed_source": CAMPAIGN_SEED_SOURCE,
+                "csv_root": args.csv,
+                "arms": {
+                    "scored-bi": "the 10 BI rows, bound to LDBC's own SF1 "
+                                 "parameters. The only arm that carries a "
+                                 "third-party-parameter claim.",
+                    "characterization-interactive":
+                        "the 11 Interactive rows, whose LDBC parameters name "
+                        "entities of the separately generated Interactive "
+                        "dataset (§E addendum 4). Anchors are seeded draws "
+                        "from this corpus; execution-at-scale characterization "
+                        "only. Never summed with the scored arm.",
+                },
                 "protocol": f"warmups {WARMUPS}, reps {REPS} (1 when bypassed)",
                 "utc": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
                 "wall_s": round(time.time() - t0, 1),
@@ -315,7 +343,8 @@ def main() -> int:
 
     for pid in ids:
         t = time.time()
-        rec = run_child(pid, args.store, Path(args.params), args.sf)
+        rec = run_child(pid, args.store, Path(args.params), args.sf,
+                        Path(args.csv) if args.csv else None)
         records.append(rec)
         flush()
         print(f"  {pid:6s} {rec.get('derived_admission', '—'):>6} -> "
@@ -327,15 +356,27 @@ def main() -> int:
 
     flush()
 
-    admitted = [r for r in records if r.get("derived_admission") == "admit"]
-    refused = [r for r in records if r.get("derived_admission") == "refuse"]
-    print(f"\nderived: {len(refused)} refuse / {len(admitted)} admit "
-          f"of {len(records)}")
-    for name in ("COMPLETED", "REFUSED", "REFUSED_ON_RUN", "TIMEOUT",
-                 "ERRORED", "BIND_FAILED"):
-        n = sum(1 for r in records if r.get("outcome") == name)
-        if n:
-            print(f"  {name:<16} {n}")
+    # The two arms are reported apart and never added together: one carries a
+    # third-party-parameter claim and the other cannot.
+    for arm, title in (("scored-bi", "SCORED — BI rows, LDBC parameters"),
+                       ("characterization-interactive",
+                        "CHARACTERIZATION — Interactive rows, sampled anchors")):
+        rows = [r for r in records if r.get("arm") == arm]
+        if not rows:
+            continue
+        ref = sum(1 for r in rows if r.get("derived_admission") == "refuse")
+        adm = sum(1 for r in rows if r.get("derived_admission") == "admit")
+        print(f"\n{title}  ({len(rows)} plans)")
+        print(f"  derived: {ref} refuse / {adm} admit")
+        for name in ("COMPLETED", "REFUSED", "REFUSED_ON_RUN", "TIMEOUT",
+                     "ERRORED", "BIND_FAILED"):
+            n = sum(1 for r in rows if r.get("outcome") == name)
+            if n:
+                print(f"    {name:<16} {n}")
+    orphan = [r for r in records if not r.get("arm")]
+    if orphan:
+        print(f"\nno arm recorded: {len(orphan)} "
+              f"(bind failed before the arm was known)")
     print(f"record: {out}")
     return 0
 
