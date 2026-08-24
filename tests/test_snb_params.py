@@ -186,6 +186,54 @@ def test_the_expansion_leaves_unrelated_or_nodes_alone(params_root):
 
 
 # --------------------------------------------------------------------------
+# phantom anchors — the defect that cost a whole campaign
+# --------------------------------------------------------------------------
+
+class _Adapter:
+    """Stands in for a store: knows a fixed set of uids."""
+
+    def __init__(self, known):
+        self.known = set(known)
+
+    def dense_ids(self, uids):
+        for u in uids:
+            if str(u) not in self.known:
+                raise LookupError(f"no entity {u}")
+        return [0] * len(uids)
+
+
+def test_a_bound_id_that_names_no_entity_fails_loudly(params_root):
+    """`NodeScan(uids=[...])` on an unknown uid is not an error — it is an empty
+    domain, so the plan degrades to a full scan that returns nothing, slowly.
+    The first SF1 campaign spent hours that way because the Interactive
+    parameters came from a different LDBC dataset. A phantom anchor has to be a
+    bind failure, naming the id."""
+    with pytest.raises(P.PhantomAnchor) as e:
+        P.bind("BI10", params_root, adapter=_Adapter([]))
+    assert snb_uid("Person", 6597069770479) in str(e.value)
+    assert "BI10" in str(e.value)
+
+
+def test_a_bound_id_that_exists_binds_normally(params_root):
+    ok = _Adapter([snb_uid("Person", 6597069770479)])
+    b = P.bind("BI10", params_root, adapter=ok)
+    assert b["params"]["personId"] == snb_uid("Person", 6597069770479)
+    assert b["phantom_anchors"] == []
+
+
+def test_plans_without_id_parameters_are_unaffected(params_root):
+    """BI4 takes only a date; there is nothing to probe and nothing to fail."""
+    b = P.bind("BI4", params_root, adapter=_Adapter([]))
+    assert b["params"]["date"] == P.date_to_us("2010-02-12")
+
+
+def test_no_adapter_means_no_probe(params_root):
+    """Binding without a store still works — the probe is opt-in, so the binder
+    stays usable for inspection and for tests that have no store."""
+    assert P.bind("BI10", params_root)["params"]["personId"]
+
+
+# --------------------------------------------------------------------------
 # the artifacts themselves are not edited
 # --------------------------------------------------------------------------
 
