@@ -43,7 +43,9 @@ from typing import Any
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
 
-from ldbc_snb_params import LDBC_PLANS, bind, substitute  # noqa: E402
+from ldbc_snb_params import (  # noqa: E402
+    LDBC_PLANS, PhantomAnchor, bind, substitute,
+)
 from tgms.core.errors import CostError, TgmsError  # noqa: E402
 from tgms.temporal.algebra import ensure_all_registered  # noqa: E402
 from tgms.temporal.guardrails import DEFAULT_CEILINGS  # noqa: E402
@@ -86,8 +88,9 @@ def _sha() -> str:
         return "unknown"
 
 
-def _load_bound(plan_id: str, params_root: Path, sf: str) -> tuple[Any, dict[str, Any]]:
-    b = bind(plan_id, params_root, sf)
+def _load_bound(plan_id: str, params_root: Path, sf: str,
+                adapter: Any = None) -> tuple[Any, dict[str, Any]]:
+    b = bind(plan_id, params_root, sf, adapter)
     document = substitute({"root": b["root"], "sigma": b["sigma"]}, b["params"])
     # `plan_format` is the reader's version gate; the bound document is the
     # frozen artifact re-parameterised, so it carries the artifact's own.
@@ -105,6 +108,28 @@ def _time(fn: Any, reps: int) -> tuple[list[float], Any]:
         out = fn()
         times.append((time.time() - t) * 1000.0)
     return times, out
+
+
+def _last_json(text: str, phase: str | None) -> dict[str, Any]:
+    """The last JSON line of a child, optionally restricted to one phase.
+
+    `TimeoutExpired` carries whatever the child managed to write, which is why
+    the child emits its identity and estimate up front.
+    """
+    out: dict[str, Any] = {}
+    for line in text.splitlines():
+        if not line.startswith("{"):
+            continue
+        try:
+            got = json.loads(line)
+        except json.JSONDecodeError:
+            continue
+        if phase is None and got.get("phase") == "pre":
+            continue
+        if phase is not None and got.get("phase") != phase:
+            continue
+        out = {k: v for k, v in got.items() if k != "phase"}
+    return out
 
 
 def run_child(plan_id: str, store_path: str, params_root: Path,
@@ -134,28 +159,37 @@ def run_child(plan_id: str, store_path: str, params_root: Path,
         done = subprocess.run(cmd, capture_output=True, text=True,
                               timeout=BYPASS_CEILING_S + CHILD_OPEN_ALLOWANCE_S,
                               cwd=ROOT)
-    except subprocess.TimeoutExpired:
-        return {"outcome": "TIMEOUT", "bypassed": True,
+    except subprocess.TimeoutExpired as e:
+        pre = _last_json(e.stdout or "", phase="pre")
+        return {**pre, "plan_id": plan_id, "outcome": "TIMEOUT",
                 "wall_s": round(time.time() - t0, 1),
                 "note": f"killed at the {BYPASS_CEILING_S}s ceiling "
                         f"(+{CHILD_OPEN_ALLOWANCE_S}s store-open allowance)"}
-    for line in reversed(done.stdout.splitlines()):
-        if line.startswith("{"):
-            got = json.loads(line)
-            if got.get("ms", 0) > BYPASS_CEILING_S * 1000:
-                got["outcome"] = "TIMEOUT"
-            return got
-    return {"outcome": "ERRORED", "bypassed": True,
+    final = _last_json(done.stdout, phase=None)
+    if final:
+        if final.get("ms", 0) > BYPASS_CEILING_S * 1000:
+            final["outcome"] = "TIMEOUT"
+        final.pop("phase", None)
+        return final
+    pre = _last_json(done.stdout, phase="pre")
+    return {**pre, "plan_id": plan_id, "outcome": "ERRORED",
             "error": (done.stderr or done.stdout)[-300:]}
 
 
 def run_one(plan_id: str, store: Any, params_root: Path, sf: str,
-            bypass: bool) -> dict[str, Any]:
+            bypass: bool, emit_pre: bool = False) -> dict[str, Any]:
     rec: dict[str, Any] = {"plan_id": plan_id}
     try:
-        root, b = _load_bound(plan_id, params_root, sf)
+        root, b = _load_bound(plan_id, params_root, sf, store.adapter)
+    except PhantomAnchor as e:
+        rec.update(outcome="BIND_FAILED", phantom_anchor=True, error=str(e))
+        if emit_pre:
+            print(json.dumps({"phase": "pre", **rec}, default=str), flush=True)
+        return rec
     except Exception as e:                             # noqa: BLE001
         rec.update(outcome="BIND_FAILED", error=f"{type(e).__name__}: {e}")
+        if emit_pre:
+            print(json.dumps({"phase": "pre", **rec}, default=str), flush=True)
         return rec
     rec["params"] = b["params"]
     rec["param_source"] = b["source"]
@@ -169,6 +203,13 @@ def run_one(plan_id: str, store: Any, params_root: Path, sf: str,
     rec["ceilings_hit"] = hits
     rec["derived_admission"] = "refuse" if hits else "admit"
     rec["policy_version"] = POLICY_VERSION
+    # Emitted before a single row is read, so that a child killed at the
+    # ceiling still leaves an attributable record. The first bounded campaign
+    # produced thirteen rows of {bypassed, note, outcome, wall_s} with no
+    # plan_id and no estimate, because the parent stopped computing anything
+    # when every plan moved into a child.
+    if emit_pre:
+        print(json.dumps({"phase": "pre", **rec}, default=str), flush=True)
 
     ceilings = None
     if hits:
@@ -235,10 +276,10 @@ def main() -> int:
         store = tgms.open(args.store, read_only=True)
         try:
             rec = run_one(args.single, store, Path(args.params), args.sf,
-                          bypass=not args.no_bypass)
+                          bypass=not args.no_bypass, emit_pre=True)
         finally:
             store.close()
-        print(json.dumps(rec, default=str))
+        print(json.dumps({"phase": "final", **rec}, default=str))
         return 0
 
     sha = _sha()

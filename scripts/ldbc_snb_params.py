@@ -212,8 +212,42 @@ def expand_or_list(node: Any, prefix: str, values: list[str]) -> Any:
     return rebuild(node)
 
 
-def bind(plan_id: str, params_root: Path, sf: str = "sf1") -> dict[str, Any]:
-    """Return the bound plan document plus a record of what was bound."""
+class PhantomAnchor(LookupError):
+    """A bound id-valued parameter names an entity the store does not have."""
+
+
+def verify_anchors(bound: dict[str, Any], adapter: Any) -> list[str]:
+    """Probe every id-valued parameter against the store. Cheap — one
+    `dense_ids` call over a handful of uids.
+
+    **Why this exists.** `NodeScan(uids=[...])` on a uid the store never saw is
+    not an error: it is an empty domain, so the plan degrades to a full scan
+    that returns nothing, slowly. The first SF1 campaign spent hours that way —
+    every Interactive plan anchored on an id from a *different* LDBC dataset
+    (§A9's parameter-source defect), and the result was indistinguishable from
+    "this plan is expensive". A phantom anchor must fail loudly at bind time,
+    naming the id, or it silently becomes a performance measurement of nothing.
+    """
+    uids = [str(v) for k, v in bound.items() if k in ID_HIERARCHY]
+    if not uids:
+        return []
+    missing = []
+    for uid in uids:                       # one at a time: we want the name
+        try:
+            adapter.dense_ids([uid])
+        except Exception:                  # noqa: BLE001 — NotFoundError et al
+            missing.append(uid)
+    return missing
+
+
+def bind(plan_id: str, params_root: Path, sf: str = "sf1",
+         adapter: Any = None) -> dict[str, Any]:
+    """Return the bound plan document plus a record of what was bound.
+
+    Pass `adapter` to have every id-valued parameter checked for existence; a
+    miss raises `PhantomAnchor` rather than producing a plan that scans the
+    whole store to find nothing.
+    """
     doc = json.loads((PLANS_DIR / f"{plan_id}.json").read_text())
     frozen = dict(doc.get("params", {}))
 
@@ -253,8 +287,19 @@ def bind(plan_id: str, params_root: Path, sf: str = "sf1") -> dict[str, Any]:
         for k in [k for k in frozen if k.startswith("language")]:
             frozen.pop(k, None)
 
+    phantom: list[str] = []
+    if adapter is not None:
+        phantom = verify_anchors(bound, adapter)
+        if phantom:
+            raise PhantomAnchor(
+                f"{plan_id}: bound id(s) {phantom} name no entity in the store "
+                f"(source: {source}). Binding them would make the plan scan the "
+                f"whole store and return nothing."
+            )
+
     missing = [k for k in frozen if k not in bound]
     return {"plan_id": plan_id, "root": root, "params": bound,
+            "phantom_anchors": phantom,
             "plan_format": doc.get("plan_format"),
             "frozen_params": doc.get("params", {}), "source": source,
             "or_expansion": expanded, "unbound_frozen_params": missing,
