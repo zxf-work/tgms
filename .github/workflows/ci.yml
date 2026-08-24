@@ -27,7 +27,12 @@ jobs:
       - name: rust core tests
         run: cargo test -p tgms-engine-core
       - name: rust lint
-        run: cargo clippy --all-targets -- -D warnings
+        # -A chunks-exact-to-as-chunks: new in clippy 1.98 (runner toolchain
+        # drift, 2026-08-24); it flags long-standing codec/segment iteration
+        # that predates the lint. Allowed here rather than rewritten so a
+        # toolchain update cannot force an unreviewed engine refactor; the
+        # mechanical as_chunks migration is queued for the next engine pass.
+        run: cargo clippy --all-targets -- -D warnings -A clippy::chunks-exact-to-as-chunks
       - name: lint
         run: uv run ruff check tgms/ tests/ scripts/
       - name: commit hygiene (spec §8.1)
