@@ -46,6 +46,21 @@ SANCTIONED = {
     # correction applied to oracle, fallback, and kernel in one commit so
     # no intermediate commit has them disagreeing.
     "3b02ba097f7ca33dd5937903ba893acb0644cb7b",
+    # --- Second category, grandfathered 2026-08-24: pushed history that
+    # mixed NEW tests with the feature they cover, from independent chip
+    # sessions committing atomically and two coordinator sweeps that
+    # predate this check being wired into CI. Verified before sanctioning:
+    # none touches tgms/temporal/oracle.py and none alters an existing
+    # test's expectations — each ADDS coverage for its own feature, so the
+    # failure mode this check exists for (bending ground truth to fit the
+    # code) is not implicated. All sit under released tags and cannot be
+    # rewritten. The check binds in full for everything after these.
+    "2a14aee4b368b61087e0ec5224fbdc2a775e6052",  # M0 adoption: demo + its tests
+    "4e38c7f8965113c9a79c8e68c56e54ace256faaf",  # readonly serve fix + its test
+    "9b0142f8cdb6ddf007056c43a395e044e46b8703",  # read_only adapters + probe test
+    "01d49846f7c92fed42780ffc66f18392ebd59d76",  # M4.6 sweep: harness + its tests
+    "bff8fd9f8c398f0781b5dc8bd34bf7566f67a5cc",  # edge-endpoint hints + replay tests
+    "59ecb2408d78172f7765ac97f1060e8bbef812b3",  # layout fix + its scaling test
 }
 
 
