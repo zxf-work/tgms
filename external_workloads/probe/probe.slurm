@@ -1,7 +1,10 @@
 #!/bin/bash
 #SBATCH --job-name=trunc-probe
 #SBATCH --partition=bigTiger
-#SBATCH --gres=gpu:h100_80gb:1
+# Any vLLM-0.11-capable card works; the H100 node was saturated at
+# submission time, so the run used an RTX 6000 Ada (48 GB). Turing
+# cards do not work with this build (job 203303).
+#SBATCH --gres=gpu:rtx_6000:1
 #SBATCH --cpus-per-task=8
 #SBATCH --mem=64G
 #SBATCH --time=24:00:00
