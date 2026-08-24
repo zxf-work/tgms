@@ -325,7 +325,11 @@ class NativeAdapter(StorageAdapter):
         except Exception as e:
             raise _translate(e) from None
 
-    def believed_edge_versions(self, eid: str, as_of_tt: int = OPEN_END) -> list[EdgeVersion]:
+    def believed_edge_versions(self, eid: str, as_of_tt: int = OPEN_END, *,
+                               src: str | None = None, dst: str | None = None) -> list[EdgeVersion]:
+        # src/dst are performance hints for backends that can anchor on them
+        # (Kùzu); the native engine's `eid` lookup is already a hash-map hit,
+        # so there is nothing to anchor and the hints are ignored.
         try:
             return self._edges(self._store.believed("edge", eid, clamp_tt(as_of_tt)))
         except Exception as e:

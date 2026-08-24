@@ -40,7 +40,52 @@ CREATE TABLE IF NOT EXISTS edge_versions(
   props VARCHAR,
   source VARCHAR DEFAULT 'ingest',
   provenance_ref VARCHAR);
+CREATE INDEX IF NOT EXISTS idx_node_versions_uid ON node_versions(uid);
+CREATE INDEX IF NOT EXISTS idx_edge_versions_eid ON edge_versions(eid);
 """
+# These two indexes fix a STORE-SIZE cost, not a batch-size one, and the
+# distinction is the whole reason they are here rather than somewhere else.
+#
+# `apply_ops` calls `believed_node_versions(uid)` / `believed_edge_versions(eid)`
+# once per assert/retract/correct op. The only index these tables carried was
+# the vid PRIMARY KEY, which neither predicate can use, so every one of those
+# calls scanned the whole table. That does NOT make a batch quadratic here the
+# way it does on the native engine: DuckDB's scan of the few thousand rows the
+# open transaction has staged is vectorized and costs ~1-2 ns/row, so per-op
+# cost measured flat (±10%) from 500 to 8000 ops. What it does is make every
+# op pay for every row already committed. Per call, against a ~0.2 ms fixed
+# Python↔DuckDB round-trip floor:
+#
+#   edge_versions rows     200k     800k     3.2M
+#   unindexed             0.72 ms  1.21 ms  2.62 ms
+#   indexed                  —        —     0.44 ms   (flat; 0.38-0.58 ms at 50k-800k)
+#
+# with node lookups on a node_versions table deliberately held at 50k rows
+# through that same run as the control: 0.60 / 0.57 / 0.58 ms, i.e. unmoved.
+# Extrapolating the unindexed curve to SF1 scale (~20M rows) puts one lookup
+# near 8 ms, which is seconds per 1000-op batch — that is the number that
+# justifies the index.
+#
+# Measure this with a probe key INSIDE the column's value range. A key above
+# every stored value reads ~0.2 ms at every store size because DuckDB's zone
+# maps skip every row group without touching it; a real sha256-derived eid
+# never gets that discount, so an out-of-range probe reports a fixed cost that
+# the actual workload does not enjoy.
+#
+# Cost of keeping them: bulk `ingest_events` of 500k events, three interleaved
+# A/B pairs, came out +1.7% — well inside the budget. An existing store file
+# builds both indexes once on its first open after this change (3.4 s at 3.2M
+# edge rows); `IF NOT EXISTS` makes every later open a no-op, and a read-only
+# open never reaches the DDL at all.
+#
+# What the index does NOT cover is rows the open transaction has written and
+# not yet committed — but that is a step, not a slope. Once a transaction has
+# any local writes each lookup costs ~0.3-0.45 ms more, and then holds flat:
+# measured at 0.49 ms with nothing uncommitted and 0.89 / 0.80 / 0.87 / 0.76 /
+# 0.93 ms at 1k / 2k / 4k / 8k / 16k uncommitted rows (400k committed, two
+# independent runs agreeing). So there is no in-batch quadratic term to remove
+# here, and a write-behind identity cache in this adapter would buy a constant
+# at the price of its own rollback semantics.
 
 
 class DuckDBAdapter(StorageAdapter):
@@ -180,7 +225,11 @@ class DuckDBAdapter(StorageAdapter):
             (uid, as_of_tt, as_of_tt)).fetchall()
         return [_node_from_row(r) for r in rows]
 
-    def believed_edge_versions(self, eid: str, as_of_tt: int = OPEN_END) -> list[EdgeVersion]:
+    def believed_edge_versions(self, eid: str, as_of_tt: int = OPEN_END, *,
+                               src: str | None = None, dst: str | None = None) -> list[EdgeVersion]:
+        # src/dst are performance hints for backends that can anchor on them
+        # (Kùzu); this table already has an ART index on eid (idx_edge_versions_eid
+        # above), so the hints add nothing here and are ignored.
         as_of_tt = clamp_tt(as_of_tt)
         rows = self.conn.execute(
             f"SELECT {self._EDGE_COLS} FROM edge_versions "

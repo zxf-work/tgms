@@ -161,20 +161,90 @@ class KuzuAdapter(StorageAdapter):
     # --- version reads --------------------------------------------------------- #
 
     def believed_node_versions(self, uid: str, as_of_tt: int = OPEN_END) -> list[NodeVersion]:
+        """Versions of `uid` believed at `as_of_tt`, anchored on Entity's key.
+
+        `v.uid` is an ordinary property, and Kùzu indexes only node-table
+        primary keys — so `WHERE v.uid = $uid` was a property scan of the whole
+        NodeVersion table, once per op inside `apply_ops`. Anchoring on the
+        Entity primary key instead and walking OF_ENTITY backwards turns that
+        into a key lookup plus a traversal of one entity's version list:
+        measured at 4.9 ms -> 1.3 ms per call at 50k NodeVersion rows and
+        11.5 ms -> 1.3 ms at 150k, i.e. linear-in-table-size before and flat
+        after. Row-for-row identical results on both (verified).
+
+        Anchoring is only sound because every NodeVersion has its OF_ENTITY
+        edge: `insert_node_versions` creates the two together, and every
+        base.py path that reaches it registers the Entity first (`_assert_node`
+        and `_ingest_events` call `ensure_entities`; retract/correct only
+        re-insert identities that already had a believed version). Retirement
+        DETACH-deletes the pair. `nodes_columnar` above has relied on the same
+        invariant since it was written.
+        """
         a = clamp_tt(as_of_tt)
         rows = self._rows(
-            f"MATCH (v:NodeVersion) WHERE v.uid = $uid AND v.tt_s <= $a AND $a < v.tt_e "
+            f"MATCH (ent:Entity {{uid: $uid}})<-[:OF_ENTITY]-(v:NodeVersion) "
+            f"WHERE v.tt_s <= $a AND $a < v.tt_e "
             f"RETURN {_NODE_RET} ORDER BY v.vt_s",
             {"uid": uid, "a": a})
         return [_node_from_row(r) for r in rows]
 
-    def believed_edge_versions(self, eid: str, as_of_tt: int = OPEN_END) -> list[EdgeVersion]:
+    def believed_edge_versions(self, eid: str, as_of_tt: int = OPEN_END, *,
+                               src: str | None = None, dst: str | None = None) -> list[EdgeVersion]:
+        """Versions of `eid` believed at `as_of_tt`, anchored on both Entity
+        endpoints when the caller supplies them.
+
+        `eid` is a hash of (src, dst, rel_type, disc) and nothing stores its
+        inverse, so unlike the uid path above there is no primary key to
+        anchor on from `eid` alone — `WHERE e.eid = $eid` against a bare
+        `MATCH (a:Entity)-[e:EdgeVersion]->(b:Entity)` is a property scan of
+        the whole EdgeVersion rel table. When `src` and `dst` are both given,
+        anchoring the match on their Entity primary keys instead —
+        `MATCH (a:Entity {uid: $src})-[e:EdgeVersion]->(b:Entity {uid: $dst})`
+        — turns that into a key lookup plus a scan of just the (src, dst)
+        adjacency (`e.eid = $eid` stays in the WHERE because one (src, dst)
+        pair can carry several logical edges — different rel_type or disc —
+        each its own eid). Measured on the same growing store (single probe
+        eid, one open version, median of 300 calls after 20 calls warmup):
+
+          edge rows      scan ms/call   anchored ms/call   ratio
+          ~20k                 2.40               1.02      2.4x
+          ~80k                 6.93               1.01      6.9x
+          ~200k               15.86               1.37      11.6x
+
+        scan is linear in table size with no floor in sight; anchored stays
+        close to flat (~1.0-1.4 ms) across the same 10x growth. Row-for-row
+        identical results on both, checked at every eid and several as_of_tt
+        values including historical ones (tests/test_replay.py;
+        scripts/bench_believed_edges.py).
+
+        Anchoring is only sound because every EdgeVersion has both endpoints
+        registered as Entity nodes before the row exists: `insert_edge_versions`
+        matches `(a:Entity {uid: $src}), (b:Entity {uid: $dst})` and every
+        base.py path that reaches it registers both first — `_assert_edge` and
+        `_ingest_events` call `ensure_entities` on (src, dst) before inserting;
+        `_retract`/`_correct` only re-insert fragments of versions that were
+        already believed, whose endpoints were therefore already registered
+        when the edge was first asserted.
+
+        The anchored plan runs only when both `src` and `dst` are supplied;
+        hint-less callers (tests, external code that only has the `eid`) get
+        the original scan. Correctness of supplied hints is the caller's
+        contract, not this method's to check — see the ABC docstring in
+        `tgms/storage/base.py` for what a wrong hint does (undefined).
+        """
         a = clamp_tt(as_of_tt)
-        rows = self._rows(
-            f"MATCH (a:Entity)-[e:EdgeVersion]->(b:Entity) "
-            f"WHERE e.eid = $eid AND e.tt_s <= $a AND $a < e.tt_e "
-            f"RETURN {_EDGE_RET} ORDER BY e.vt_s",
-            {"eid": eid, "a": a})
+        if src is not None and dst is not None:
+            rows = self._rows(
+                f"MATCH (a:Entity {{uid: $src}})-[e:EdgeVersion]->(b:Entity {{uid: $dst}}) "
+                f"WHERE e.eid = $eid AND e.tt_s <= $a AND $a < e.tt_e "
+                f"RETURN {_EDGE_RET} ORDER BY e.vt_s",
+                {"eid": eid, "src": src, "dst": dst, "a": a})
+        else:
+            rows = self._rows(
+                f"MATCH (a:Entity)-[e:EdgeVersion]->(b:Entity) "
+                f"WHERE e.eid = $eid AND e.tt_s <= $a AND $a < e.tt_e "
+                f"RETURN {_EDGE_RET} ORDER BY e.vt_s",
+                {"eid": eid, "a": a})
         return [_edge_from_row(r) for r in rows]
 
     def all_node_versions(self) -> Iterable[NodeVersion]:
