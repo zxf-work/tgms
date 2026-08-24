@@ -434,6 +434,146 @@ mod tests {
         }
     }
 
+    /// Generations whose valid times interleave, which is what a live ingest
+    /// stream produces and what `examples/scan_probe.rs` (one transaction
+    /// time per segment) cannot. Compaction re-sorts these into global
+    /// `(vt_s, vid)` order while each row keeps its origin `tt_s`, so the
+    /// run list ends up interleaved too.
+    fn interleaved(name: &str) -> (PathBuf, NativeStore) {
+        let root = tmp_root(name);
+        let mut s = NativeStore::open(&root).unwrap();
+        for batch in 0..4u32 {
+            let tt = 100 + batch as i64;
+            s.begin(tt).unwrap();
+            let a = s.ensure_entity("n1", "Node").unwrap();
+            let b = s.ensure_entity("n2", "Node").unwrap();
+            if batch == 0 {
+                // one version per node identity, so a node point read has an
+                // unambiguous answer either side of the compaction
+                for (uid_id, uid) in [(a, "n1"), (b, "n2")] {
+                    s.stage_node(NodeRow {
+                        vid: version_vid(uid, tt, 0),
+                        uid_id,
+                        label: "Node".into(),
+                        vt_s: 0,
+                        vt_e: OPEN_END,
+                        tt_s: tt,
+                        props: "{}".into(),
+                        source: "ingest".into(),
+                        provenance_ref: None,
+                    })
+                    .unwrap();
+                }
+            }
+            for i in 0..6u32 {
+                // stride by the batch count so successive batches interleave
+                let vt_s = (i * 4 + batch) as i64;
+                s.stage_edge(edge(a, b, "n1", "n2", vt_s, tt, i * 4 + batch))
+                    .unwrap();
+            }
+            s.commit(EventLogRef::default()).unwrap();
+        }
+        (root, s)
+    }
+
+    fn edge_run_counts(s: &NativeStore) -> Vec<usize> {
+        s.manifest()
+            .edge_lanes
+            .event
+            .iter()
+            .chain(s.manifest().edge_lanes.interval.iter())
+            .map(|e| s.open_segment(&e.file).unwrap().header().tt_s_runs.len())
+            .collect()
+    }
+
+    /// The read-path pathology, reproduced small: compaction really does
+    /// produce a multi-run segment, and every answer is unchanged by it.
+    #[test]
+    fn compaction_interleaves_transaction_times_without_changing_answers() {
+        let (_root, mut s) = interleaved("interleaved");
+        assert!(
+            edge_run_counts(&s).iter().all(|&n| n == 1),
+            "a batch writes exactly one transaction time per segment"
+        );
+        let sample = [99i64, 100, 101, 102, 103, OPEN_END];
+        let believed = |s: &NativeStore| -> Vec<Vec<String>> {
+            sample
+                .iter()
+                .map(|&as_of| {
+                    let mut v: Vec<String> = s
+                        .all_edge_versions()
+                        .unwrap()
+                        .into_iter()
+                        .filter(|r| crate::believed_at(r.tt_s, r.tt_e, as_of))
+                        .map(|r| r.vid)
+                        .collect();
+                    v.sort();
+                    v
+                })
+                .collect()
+        };
+        let full_before = sorted(s.all_edge_versions().unwrap());
+        let believed_before = believed(&s);
+
+        s.compact().unwrap();
+
+        assert_eq!(
+            sorted(s.all_edge_versions().unwrap()),
+            full_before,
+            "compaction changed the full listing"
+        );
+        assert_eq!(believed(&s), believed_before, "compaction changed a belief");
+        let runs = edge_run_counts(&s);
+        assert_eq!(runs.len(), 1, "24 rows compact into one segment");
+        assert!(
+            // strictly more than the four generations that fed it: the runs
+            // interleave, they were not merely concatenated in tt order
+            runs[0] > 4,
+            "the repro is not real: the compacted segment has {} run(s) over \
+             {} rows",
+            runs[0],
+            full_before.len()
+        );
+        // and verify surfaces it as a layout metric rather than a problem
+        let report = s.verify().unwrap();
+        assert!(report.is_healthy());
+        assert_eq!(report.max_tt_s_runs as usize, runs.iter().copied().max().unwrap());
+        assert!(report.tt_s_runs >= report.max_tt_s_runs as u64);
+    }
+
+    /// Compaction replaces every live segment file and leaves the old ones on
+    /// disk (an older generation still names them), and `install` does not
+    /// clear the identity postings. It does not have to: every candidate is
+    /// filtered through the current generation's `segment id -> file` map
+    /// before a file is opened, that map is rebuilt whenever the generation
+    /// changes, and segment ids are never reused. So a point read after a
+    /// compaction returns the new rows exactly once.
+    #[test]
+    fn point_reads_after_compaction_return_exactly_the_live_rows() {
+        let (_root, mut s) = interleaved("postings-after-compact");
+        let eid = edge_eid("n1", "n2", "R", "#5").to_hex();
+        // warm the postings against the pre-compaction segments
+        let before = s.believed_edge_versions(&eid, OPEN_END).unwrap();
+        assert_eq!(before.len(), 1);
+        let before_uid = s.believed_node_versions("n1", OPEN_END).unwrap();
+        assert_eq!(before_uid.len(), 1);
+
+        s.compact().unwrap();
+
+        let after = s.believed_edge_versions(&eid, OPEN_END).unwrap();
+        assert_eq!(after, before, "the identity resolved to different rows");
+        assert_eq!(
+            s.believed_node_versions("n1", OPEN_END).unwrap(),
+            before_uid
+        );
+        // every identity, not just the warmed one, and never twice
+        for r in sorted(s.all_edge_versions().unwrap()) {
+            let got = s.believed_edge_versions(&r.eid, OPEN_END).unwrap();
+            assert_eq!(got.len(), 1, "eid {} resolved to {} rows", r.eid, got.len());
+            assert_eq!(got[0], r);
+        }
+    }
+
     #[test]
     fn closes_are_folded_into_sidecars_and_the_runs_retire() {
         let (_root, mut s, _) = seeded("fold");

@@ -380,6 +380,8 @@ def main(argv: list[str] | None = None) -> int:
                   f"({r['rows']} rows), {r['close_runs_checked']} close runs "
                   f"({r['closes']} closes), {r['dict_records']} dictionary "
                   f"records")
+            print(f"layout:     {r['tt_s_runs']} tt_s runs across live "
+                  f"segments, {r['max_tt_s_runs']} in the worst one")
             if r["problems"]:
                 print(f"\nPROBLEMS ({len(r['problems'])}):")
                 for p in r["problems"]:

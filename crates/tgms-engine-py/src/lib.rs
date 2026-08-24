@@ -784,17 +784,21 @@ impl NativeStore {
         vt_max: Option<i64>,
     ) -> Res<Bound<'py, PyDict>> {
         self.inner.assert_full_belief(as_of_tt).map_err(err)?;
-        let mut rows: Vec<NodeVersionOut> = self
-            .inner
-            .all_node_versions()
-            .map_err(err)?
+        let t_mat = std::time::Instant::now();
+        let listed = self.inner.all_node_versions().map_err(err)?;
+        let rows_examined = listed.len();
+        let mut rows: Vec<NodeVersionOut> = listed
             .into_iter()
             .filter(|r| tgms_engine_core::believed_at(r.tt_s, r.tt_e, as_of_tt))
             .filter(|r| vt_min.is_none_or(|t| r.vt_e > t))
             .filter(|r| vt_max.is_none_or(|t| r.vt_s < t))
             .collect();
+        let materialize_ns = t_mat.elapsed().as_nanos() as u64;
+        let t_sort = std::time::Instant::now();
         rows.sort_by(|a, b| (a.vt_s, &a.vid).cmp(&(b.vt_s, &b.vid)));
+        let sort_ns = t_sort.elapsed().as_nanos() as u64;
 
+        let t_conv = std::time::Instant::now();
         let d = PyDict::new(py);
         d.set_item(
             "uid_id",
@@ -814,6 +818,19 @@ impl NativeStore {
         d.set_item("uid", PyList::new(py, rows.iter().map(|r| r.uid.clone()))?)?;
         d.set_item("vid", PyList::new(py, rows.iter().map(|r| r.vid.clone()))?)?;
         d.set_item("label", PyList::new(py, rows.iter().map(|r| r.label.clone()))?)?;
+        // Counters and stage times, in `scan_edges`' style. This path does
+        // not drive the segment cursor (nodes are few and identity-clustered)
+        // so it has no pruning to report — but it does walk every stored node
+        // version, and "the node scan is the cost" was until now a
+        // subtraction against a Python wall clock. `rows_examined` counts the
+        // full listing, `rows` what survived the filters.
+        let ms = |ns: u64| ns as f64 / 1e6;
+        d.set_item("segments_total", self.inner.manifest().node_store.len())?;
+        d.set_item("rows", rows.len())?;
+        d.set_item("rows_examined", rows_examined)?;
+        d.set_item("t_materialize_ms", ms(materialize_ns))?;
+        d.set_item("t_sort_ms", ms(sort_ns))?;
+        d.set_item("t_convert_ms", ms(t_conv.elapsed().as_nanos() as u64))?;
         Ok(d)
     }
 
@@ -850,6 +867,10 @@ impl NativeStore {
         d.set_item("rows", r.rows)?;
         d.set_item("closes", r.closes)?;
         d.set_item("dict_records", r.dict_records)?;
+        // layout quality, not integrity: one tt_s run per segment is what
+        // ingest writes, and compaction's global re-sort is what inflates it
+        d.set_item("tt_s_runs", r.tt_s_runs)?;
+        d.set_item("max_tt_s_runs", r.max_tt_s_runs)?;
         d.set_item("problems", PyList::new(py, &r.problems)?)?;
         d.set_item("healthy", r.is_healthy())?;
         Ok(d.into())

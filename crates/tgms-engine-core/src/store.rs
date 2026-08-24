@@ -519,6 +519,15 @@ impl NativeStore {
                 Ok(seg) => {
                     report.segments_checked += 1;
                     report.rows += seg.rows() as u64;
+                    // Layout quality, not integrity: a batch-written segment
+                    // holds exactly one tt_s run, and compaction's global
+                    // re-sort can leave nearly one per row. Nothing about
+                    // that is corrupt, so it is not a problem — but it is
+                    // what the read path pays per materialized row, so it
+                    // belongs somewhere a regression can be seen.
+                    let runs = seg.header().tt_s_runs.len() as u32;
+                    report.max_tt_s_runs = report.max_tt_s_runs.max(runs);
+                    report.tt_s_runs += runs as u64;
                     if seg.rows() != claimed_rows {
                         report.problems.push(format!(
                             "{file}: manifest claims {claimed_rows} rows, segment holds {}",
@@ -1236,6 +1245,16 @@ pub struct VerifyReport {
     pub rows: u64,
     pub closes: u64,
     pub dict_records: u32,
+    /// Layout quality: `tt_s` runs summed over every live segment,
+    /// and the worst single segment. `max_tt_s_runs == 1` per segment is what
+    /// batch ingest writes; compaction re-sorts rows from all generations
+    /// into global key order while each row keeps its origin `tt_s`, so it
+    /// can leave this near the row count. Read cost per materialized row is
+    /// logarithmic in it, and the whole-segment belief fast paths depend on
+    /// it staying small, so it is reported rather than left to be inferred
+    /// from a wall clock.
+    pub tt_s_runs: u64,
+    pub max_tt_s_runs: u32,
     pub problems: Vec<String>,
 }
 
