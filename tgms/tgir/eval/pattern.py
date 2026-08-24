@@ -46,7 +46,7 @@ _KEY_COLUMNS = ("eid", "src", "dst", "vt_s", "vid")
 
 def eval_pattern(node: PatternMatch, sources: dict[str, Relation], adapter: Any,
                  live: frozenset[str] | None = None,
-                 budget: Any = None) -> Relation:
+                 budget: Any = None, scans: Any = None) -> Relation:
     domains = {edge.var: _domain(node, edge, sources, adapter)
                for edge in node.pattern.edge_pats}
     node_domains = _node_domains(node, sources)
@@ -58,7 +58,7 @@ def eval_pattern(node: PatternMatch, sources: dict[str, Relation], adapter: Any,
         if budget is not None:
             budget.charge(bindings.n)
 
-    return _materialize(node, bindings, adapter, live)
+    return _materialize(node, bindings, adapter, live, scans)
 
 
 def _node_domains(node: PatternMatch,
@@ -268,7 +268,7 @@ class _Bindings:
 # ---------------------------------------------------------------------------
 
 def _materialize(node: PatternMatch, bindings: _Bindings, adapter: Any,
-                 live: frozenset[str] | None) -> Relation:
+                 live: frozenset[str] | None, scans: Any = None) -> Relation:
     """Node-variable columns then edge-variable columns, **in pattern
     declaration order** (§4.2), then §2.9's canonical order.
 
@@ -285,7 +285,7 @@ def _materialize(node: PatternMatch, bindings: _Bindings, adapter: Any,
     for pat in node.pattern.node_pats:
         uids = np.array([bindings.nodes[pat.var][i] for i in order], dtype=object) \
             if bindings.n else np.array([], dtype=object)
-        version = _versions(node, pat.var, adapter, uids, live)
+        version = _versions(node, pat.var, adapter, uids, live, scans)
         for column in PATTERN_NODE_COLUMNS:
             name = f"{pat.var}.{column.name}"
             if live is not None and name not in live:
@@ -334,7 +334,8 @@ def _canonical_order(node: PatternMatch, bindings: _Bindings) -> list[int]:
 
 
 def _versions(node: PatternMatch, var: str, adapter: Any, uids: np.ndarray,
-              live: frozenset[str] | None) -> dict[str, dict[str, Any]]:
+              live: frozenset[str] | None,
+              scans: Any = None) -> dict[str, dict[str, Any]]:
     distinct = tuple(dict.fromkeys(str(u) for u in uids.tolist()))
     if not distinct:
         return {}
@@ -342,7 +343,7 @@ def _versions(node: PatternMatch, var: str, adapter: Any, uids: np.ndarray,
                        if live is None or f"{var}.{c.name}" in live)
     scan = NodeScan(var, uids=distinct, belief="current", vt_mode="overlap",
                     sigma_=node.sigma)
-    rel = scan_nodes(scan, adapter, wanted | {f"{var}.uid"})
+    rel = scan_nodes(scan, adapter, wanted | {f"{var}.uid"}, scans)
     out: dict[str, dict[str, Any]] = {}
     uid_col = rel.column(f"{var}.uid")
     for i in range(rel.n):

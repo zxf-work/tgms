@@ -56,7 +56,7 @@ from tgms.tgir.types import EDGE_COLUMNS, NODE_COLUMNS, Column, Schema, T_INT
 
 def eval_expand(node: Expand, rel: Relation, adapter: Any,
                 cache: AdjacencyCache, live: frozenset[str] | None = None,
-                budget: Any = None) -> Relation:
+                budget: Any = None, scans: Any = None) -> Relation:
     """One `Expand`, over an already-evaluated input relation."""
     from_uids = rel.column(node.from_column)
     dense = _dense_map(adapter, from_uids)
@@ -73,7 +73,7 @@ def eval_expand(node: Expand, rel: Relation, adapter: Any,
         edge_rows = None
 
     out = rel.take(np.asarray(rows, dtype=np.int64))
-    out = _with_into(out, node, targets, adapter, live)
+    out = _with_into(out, node, targets, adapter, live, scans)
     if edge_rows is not None and node.edge_var is not None:
         out = _with_edge(out, node, adjacency, np.asarray(edge_rows, dtype=np.int64),
                          adapter, live)
@@ -195,7 +195,8 @@ def _order_node_set(rows: list[int], targets: list[int],
 # ---------------------------------------------------------------------------
 
 def _with_into(rel: Relation, node: Expand, targets: list[int | None],
-               adapter: Any, live: frozenset[str] | None) -> Relation:
+               adapter: Any, live: frozenset[str] | None,
+               scans: Any = None) -> Relation:
     """Bind `into`'s node columns, with §9.1's nulls where no version is
     visible under Σ.
 
@@ -207,7 +208,7 @@ def _with_into(rel: Relation, node: Expand, targets: list[int | None],
     uids = np.array(adapter.uids_for([int(t) for t in targets]) if targets else [],
                     dtype=object)
     wanted = _into_columns(node, live)
-    version = _versions_by_uid(node, adapter, uids, wanted)
+    version = _versions_by_uid(node, adapter, uids, wanted, scans)
 
     cols: dict[str, np.ndarray] = {}
     nulls: dict[str, np.ndarray] = {}
@@ -247,7 +248,8 @@ def _into_columns(node: Expand, live: frozenset[str] | None) -> frozenset[str]:
 
 
 def _versions_by_uid(node: Expand, adapter: Any, uids: np.ndarray,
-                     wanted: frozenset[str]) -> dict[str, dict[str, Any]]:
+                     wanted: frozenset[str],
+                     scans: Any = None) -> dict[str, dict[str, Any]]:
     """The Σ-visible node version per uid, as `{uid: {column: value}}`.
 
     A uid with **several** visible versions (a window Σ, where one identity can
@@ -261,7 +263,7 @@ def _versions_by_uid(node: Expand, adapter: Any, uids: np.ndarray,
         return {}
     scan = NodeScan(node.into, uids=distinct, belief="current",
                     vt_mode="overlap", sigma_=node.sigma)
-    rel = scan_nodes(scan, adapter, frozenset(wanted))
+    rel = scan_nodes(scan, adapter, frozenset(wanted), scans)
     out: dict[str, dict[str, Any]] = {}
     uid_col = rel.column(f"{node.into}.uid")
     for i in range(rel.n):

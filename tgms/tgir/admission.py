@@ -147,6 +147,15 @@ class Budget:
 
     The unit is one *candidate*: a neighbour visited by an expansion, or a
     partial binding considered by a pattern search.
+
+    **This is a work ceiling, not a wall-clock one, and it cannot be made into
+    one with `signal.alarm`.** A charge is only levied between candidates, so a
+    single adapter call that runs long is never interrupted — the signal
+    handler needs the interpreter, and these calls sit inside the Rust
+    extension. A diagnostic run at SF1 set a 240 s in-process alarm and was
+    still inside one `scan_nodes` twenty-five minutes later. Anything that must
+    bound elapsed time has to do it from outside the process (`timeout(1)`, a
+    supervising harness), not from a handler this loop would have to reach.
     """
 
     plan_digest: str

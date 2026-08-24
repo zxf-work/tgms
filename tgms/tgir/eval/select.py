@@ -15,6 +15,7 @@ import numpy as np
 from tgms.core.errors import InvalidArgError
 from tgms.temporal import props as props_module
 from tgms.tgir.eval.expr_eval import eval_expr, eval_predicate
+from tgms.tgir.eval.masks import mask_in
 from tgms.tgir.node import Filter, Project, PropertyPredicate, TypeConstraint
 from tgms.tgir.relation import Relation, array_for
 from tgms.tgir.types import Column, Schema
@@ -50,7 +51,7 @@ def eval_type_constraint(node: TypeConstraint, rel: Relation) -> Relation:
         column = f"{node.var}.rel_type"
         wanted = np.array([node.rel_type], dtype=object)
     values = rel.column(column)
-    keep = np.isin(values, wanted)
+    keep = mask_in(values, wanted)
     mask = rel.null_mask(column)
     if mask is not None:
         keep &= ~mask

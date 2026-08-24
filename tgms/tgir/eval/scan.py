@@ -37,6 +37,7 @@ import numpy as np
 from tgms.core.errors import NotFoundError
 from tgms.core.model import OPEN_END, clamp_tt
 from tgms.temporal.props import parse_props
+from tgms.tgir.eval.masks import mask_in
 from tgms.tgir.node import EdgeScan, NodeScan
 from tgms.tgir.relation import Relation
 from tgms.tgir.types import Schema, Sigma
@@ -50,7 +51,8 @@ EDGE_FAST_COLUMNS: frozenset[str] = frozenset({"eid", "vid", "src", "dst", "rel_
                                                "vt_s", "vt_e", "props"})
 
 
-def scan_nodes(node: NodeScan, adapter: Any, live: frozenset[str] | None) -> Relation:
+def scan_nodes(node: NodeScan, adapter: Any, live: frozenset[str] | None,
+               scans: "ScanCache | None" = None) -> Relation:
     """§2.1. Emits one row per believed node **version**, not per entity: under
     an instant scope that is at most one row per uid, under a window scope it is
     every version overlapping the window — which is what makes `entity_history`
@@ -60,14 +62,14 @@ def scan_nodes(node: NodeScan, adapter: Any, live: frozenset[str] | None) -> Rel
     if fallback:
         cols = _versions_fallback(adapter, "node", node.belief, node.sigma)
     else:
-        cols = _nodes_fast(adapter, node.sigma)
+        cols = _nodes_fast(adapter, node.sigma, scans)
 
     keep = _sigma_mask(cols, node.sigma, node.vt_mode)
     if node.labels is not None:
         # §9.3: a post-filter, because no backend has a label predicate
-        keep &= np.isin(cols["label"], np.array(node.labels, dtype=object))
+        keep &= mask_in(cols["label"], np.array(node.labels, dtype=object))
     if node.uids is not None:
-        keep &= np.isin(cols["uid"], np.array(node.uids, dtype=object))
+        keep &= mask_in(cols["uid"], np.array(node.uids, dtype=object))
     cols = {k: v[keep] for k, v in cols.items()}
     cols = _canonical_order(cols, node.belief, fallback)
     return _assemble(node.as_, node.out_schema, cols, wanted, adapter, "node",
@@ -84,7 +86,7 @@ def scan_edges(node: EdgeScan, adapter: Any, live: frozenset[str] | None) -> Rel
     if fallback:
         cols = _versions_fallback(adapter, "edge", node.belief, node.sigma)
         if node.rel_types is not None:
-            keep = np.isin(cols["rel_type"], np.array(node.rel_types, dtype=object))
+            keep = mask_in(cols["rel_type"], np.array(node.rel_types, dtype=object))
             cols = {k: v[keep] for k, v in cols.items()}
         if node.endpoints is not None:
             cols = _endpoint_filter_by_uid(cols, node)
@@ -129,12 +131,55 @@ def needs_fallback(node: NodeScan | EdgeScan, wanted: frozenset[str],
     return node.belief != "current" or bool(wanted - fast)
 
 
-def _nodes_fast(adapter: Any, sigma: Sigma) -> dict[str, np.ndarray]:
+class ScanCache:
+    """Per-execution memo of full columnar **node** reads.
+
+    A plan reads the whole node table once per `NodeScan`, and again once per
+    `Expand`/`PatternMatch` that binds `into` — because version resolution goes
+    back through `scan_nodes` (deliberately, so `into`'s columns come through
+    the same Σ predicate and the same routing as any other scan). At SF1 that
+    is the same 3M-row materialization three times for one IC2 execution:
+    8,992,056 rows, ~24 s of the run.
+
+    The key is exactly the arguments `nodes_columnar` is called with, so two
+    scans share an entry only when they would have issued the identical read.
+    Lifetime is one `Execution`, matching `AdjacencyCache`: the adapter is not
+    written during a plan run, and nothing survives to a later one.
+
+    Cached arrays are **never handed out for mutation** — every caller
+    immediately rebuilds a filtered copy (`{k: v[keep] ...}`), and boolean
+    indexing always copies.
+    """
+
+    def __init__(self) -> None:
+        self._nodes: dict[tuple[int, int, int], dict[str, np.ndarray]] = {}
+        self.hits = 0
+        self.misses = 0
+
+    def nodes(self, adapter: Any, sigma: Sigma) -> dict[str, np.ndarray]:
+        hull = sigma.hull
+        key = (int(sigma.t_b), int(hull.start), int(hull.end))
+        hit = self._nodes.get(key)
+        if hit is None:
+            self.misses += 1
+            hit = _nodes_read(adapter, sigma)
+            self._nodes[key] = hit
+        else:
+            self.hits += 1
+        return hit
+
+
+def _nodes_read(adapter: Any, sigma: Sigma) -> dict[str, np.ndarray]:
     hull = sigma.hull
     cols = adapter.nodes_columnar(as_of_tt=sigma.t_b, vt_min=hull.start,
                                   vt_max=hull.end)
     return {"uid": cols["uid"], "vid": cols["vid"], "label": cols["label"],
             "vt_s": cols["vt_s"], "vt_e": cols["vt_e"]}
+
+
+def _nodes_fast(adapter: Any, sigma: Sigma,
+                scans: "ScanCache | None" = None) -> dict[str, np.ndarray]:
+    return _nodes_read(adapter, sigma) if scans is None else scans.nodes(adapter, sigma)
 
 
 def _edges_fast(adapter: Any, node: EdgeScan,
@@ -158,6 +203,8 @@ def _edges_fast(adapter: Any, node: EdgeScan,
         # needs the numpy post-mask the plan's §3.2 table calls for
         ids = np.array(_dense(adapter, node.endpoints.uids), dtype=np.int64)
         side = out["src_id"] if node.endpoints.role == "src" else out["dst_id"]
+        # int64 on both sides: `np.isin` sorts and merges here, which is the
+        # right algorithm. Only the object columns need `mask_in`.
         keep = np.isin(side, ids)
         out = {k: v[keep] for k, v in out.items()}
     return out
@@ -196,8 +243,8 @@ def _endpoint_filter_by_uid(cols: dict[str, np.ndarray],
     strings rather than dense ids."""
     assert node.endpoints is not None
     uids = np.array(node.endpoints.uids, dtype=object)
-    in_src = np.isin(cols["src"], uids)
-    in_dst = np.isin(cols["dst"], uids)
+    in_src = mask_in(cols["src"], uids)
+    in_dst = mask_in(cols["dst"], uids)
     role = node.endpoints.role
     keep = {"src": in_src, "dst": in_dst, "either": in_src | in_dst,
             "both": in_src & in_dst}[role]

@@ -33,7 +33,7 @@ from tgms.tgir.eval.expr_eval import eval_expr, eval_predicate
 from tgms.tgir.eval.join import eval_join
 from tgms.tgir.eval.order import eval_limit, eval_order, limit_truncated
 from tgms.tgir.eval.pattern import eval_pattern, label_filter
-from tgms.tgir.eval.scan import scan_edges, scan_nodes
+from tgms.tgir.eval.scan import ScanCache, scan_edges, scan_nodes
 from tgms.tgir.eval.select import (
     eval_filter, eval_project, eval_property_predicate, eval_type_constraint,
 )
@@ -72,6 +72,11 @@ class Execution:
         #: Adjacency indexes, shared across every `Expand` in one execution —
         #: a multi-hop chain builds its index once, not once per hop.
         self.adjacency = AdjacencyCache(adapter)
+        #: Full columnar node reads, shared across every scan in one execution.
+        #: `Expand`/`PatternMatch` resolve `into`'s version columns by going
+        #: back through `scan_nodes`, so without this the whole node table is
+        #: materialized once per binding node as well as once per `NodeScan`.
+        self.scans = ScanCache()
         #: Stage-2 admission inputs. With no `stats` the re-check is skipped,
         #: which is what a bare `evaluate_core` outside a plan wants.
         self.stats = stats
@@ -117,7 +122,7 @@ class Execution:
         live = self.live.get(node.node_digest)
 
         if isinstance(node, NodeScan):
-            return scan_nodes(node, adapter, live)
+            return scan_nodes(node, adapter, live, self.scans)
         if isinstance(node, EdgeScan):
             return scan_edges(node, adapter, live)
         if isinstance(node, Filter):
@@ -136,7 +141,7 @@ class Execution:
             return eval_limit(node, inputs[0])
         if isinstance(node, Expand):
             return eval_expand(node, inputs[0], adapter, self.adjacency, live,
-                               self.budget)
+                               self.budget, self.scans)
         if isinstance(node, Join):
             return eval_join(node, inputs[0], inputs[1])
         if isinstance(node, Aggregate):
@@ -145,7 +150,7 @@ class Execution:
             sources = {s.var: inputs[i] for i, s in enumerate(node.sources)}
             return label_filter(node,
                                 eval_pattern(node, sources, adapter, live,
-                                             self.budget))
+                                             self.budget, self.scans))
         raise NotImplementedError(
             f"{node.op} has no evaluator yet — it is "
             f"{PENDING.get(node.op, 'a later phase')}'s "
@@ -177,7 +182,8 @@ def evaluate_core(node: Node, adapter: Any, *, admit_plan: bool = False,
 
 
 __all__ = [
-    "AdjacencyCache", "Execution", "PENDING", "eval_aggregate", "eval_expand",
+    "AdjacencyCache", "Execution", "PENDING", "ScanCache", "eval_aggregate",
+    "eval_expand",
     "eval_expr", "eval_filter", "eval_join", "eval_limit", "eval_order",
     "eval_pattern", "eval_predicate", "eval_project", "eval_property_predicate",
     "eval_type_constraint", "evaluate_core", "limit_truncated", "scan_edges",
