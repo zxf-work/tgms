@@ -234,6 +234,87 @@ def test_no_adapter_means_no_probe(params_root):
 
 
 # --------------------------------------------------------------------------
+# §E addendum 4 — the characterization arm's sampled anchors
+# --------------------------------------------------------------------------
+
+@pytest.fixture
+def fake_pop(monkeypatch):
+    """A stand-in corpus, so the rule is tested without reading 2.9M ids."""
+    monkeypatch.setattr(P, "population",
+                        lambda root, files: list(range(1000, 1000 + 500)))
+    return None
+
+
+def test_the_draw_is_deterministic_in_seed_plan_and_parameter(fake_pop, tmp_path):
+    a = P.sample_anchor("IC2", "personId", tmp_path)
+    b = P.sample_anchor("IC2", "personId", tmp_path)
+    assert a == b, "the same seed and plan must draw the same anchor"
+    assert a["seed"] == P.CAMPAIGN_SEED
+
+
+def test_different_plans_draw_independently(fake_pop, tmp_path):
+    drawn = {pid: P.sample_anchor(pid, "personId", tmp_path)["index"]
+             for pid in ("IC2", "IC5", "IC6", "IC8", "IC9", "IS2", "IS3")}
+    assert len(set(drawn.values())) > 1, "all plans drew the same index"
+
+
+def test_a_different_seed_moves_the_draw(fake_pop, tmp_path):
+    base = P.sample_anchor("IC2", "personId", tmp_path)["index"]
+    other = P.sample_anchor("IC2", "personId", tmp_path, seed=1)["index"]
+    assert base != other
+
+
+def test_the_draw_is_inside_the_population_and_records_its_provenance(fake_pop, tmp_path):
+    d = P.sample_anchor("IC2", "personId", tmp_path)
+    assert 0 <= d["index"] < d["size"] == 500
+    assert d["ldbc_id"] == 1000 + d["index"]
+    assert d["uid"] == snb_uid("Person", d["ldbc_id"])
+    assert set(d) == {"param", "population", "size", "index", "ldbc_id",
+                      "seed", "uid"}
+
+
+def test_the_seed_is_derived_from_the_freeze_id_not_chosen():
+    """A picked seed is a knob. This one replays from the freeze id alone."""
+    import hashlib
+    want = int.from_bytes(
+        hashlib.sha256(P.CAMPAIGN_SEED_SOURCE.encode()).digest()[:8], "big")
+    assert P.CAMPAIGN_SEED == want
+    assert P.CAMPAIGN_SEED_SOURCE == "paper-a-v1"
+
+
+def test_message_anchors_draw_from_the_whole_message_hierarchy():
+    """IS6/IS7 traverse Post and Comment as one population, so the draw must
+    too — and both encode through the same Message id space."""
+    assert P.SAMPLE_POPULATION["messageId"] == ("Post", "Comment")
+    assert P.SAMPLE_POPULATION["personId"] == ("Person",)
+
+
+def test_sampling_only_touches_the_interactive_arm(params_root, tmp_path, monkeypatch):
+    """The BI rows keep LDBC's own parameters; sampling them would forfeit the
+    third-party-definedness that is the whole point of the scored arm."""
+    monkeypatch.setattr(P, "population",
+                        lambda root, files: list(range(1000, 1500)))
+    bi = P.bind("BI10", params_root, csv_root=tmp_path)
+    assert bi["sampled_anchors"] == {}
+    assert bi["arm"] == "scored-bi"
+    assert bi["params"]["personId"] == snb_uid("Person", 6597069770479)
+
+    ic = P.bind("IC2", params_root, csv_root=tmp_path)
+    assert set(ic["sampled_anchors"]) == {"personId"}
+    assert ic["arm"] == "characterization-interactive"
+    assert "SAMPLED" in ic["source"]
+
+
+def test_without_a_csv_root_the_interactive_rows_keep_their_phantom_ids(params_root):
+    """Sampling is opt-in: omit `--csv` and the Interactive rows bind to LDBC's
+    own (wrong-dataset) ids and fail the anchor probe, which is the honest
+    default rather than a silent substitution."""
+    ic = P.bind("IC2", params_root)
+    assert ic["sampled_anchors"] == {}
+    assert ic["params"]["personId"] == snb_uid("Person", 17592186052613)
+
+
+# --------------------------------------------------------------------------
 # the artifacts themselves are not edited
 # --------------------------------------------------------------------------
 
