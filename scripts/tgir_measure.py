@@ -21,12 +21,18 @@ verdict reaches or exceeds its predicted level in
 `no < partial-rows < partial-columns < yes`. An over-delivery is reported in its
 own column and never netted against a miss.
 
+**`measured_date` defaults to today** but is overridable via
+`TGMS_MEASURED_DATE=YYYY-MM-DD` — a re-run must stay byte-identical, and
+`date.today()` alone breaks that across a day boundary.
+
     uv run python scripts/tgir_measure.py
 """
 
 from __future__ import annotations
 
 import json
+import os
+import re
 import sys
 from datetime import date
 from pathlib import Path
@@ -46,6 +52,24 @@ GOLD = ROOT / "benchmarks/tgir-v1/gold.json"
 OUT = ROOT / "benchmarks/tgir-v1/measured.yaml"
 
 LEVELS = ["no", "partial-rows", "partial-columns", "yes"]
+
+_DATE_RE = re.compile(r"^\d{4}-\d{2}-\d{2}$")
+
+
+def _measured_date() -> str:
+    """The §3.3 finding-7 gate ("re-running rewrites `measured.yaml`
+    byte-identically") holds only within a day, since `date.today()` moves the
+    stamp on its own. `TGMS_MEASURED_DATE` pins it so a re-run — including one
+    that reproduces a frozen record — stays byte-identical across days too."""
+    raw = os.environ.get("TGMS_MEASURED_DATE")
+    if raw is None:
+        return date.today().isoformat()
+    if not _DATE_RE.match(raw):
+        raise ValueError(
+            f"TGMS_MEASURED_DATE must be YYYY-MM-DD, got {raw!r}")
+    date.fromisoformat(raw)  # rejects e.g. 2026-13-40
+    return raw
+
 
 SUBSTRATE = {
     "ldbc-is": ROOT / "stores/ldbc-fixture",
@@ -266,7 +290,7 @@ def main() -> int:
     delivered = [r for r in unlocked if r["delivered"]]
     document = {
         "measured_id": "TGIR-v1-M3",
-        "measured_date": date.today().isoformat(),
+        "measured_date": _measured_date(),
         "forecast": "docs/design/tgir_b1/forecast.yaml",
         "addendum": "docs/design/TGIR_FORECAST_FREEZE_ADDENDUM_1.md",
         "scoring_rule": "delivered iff measured verdict >= predicted level in "

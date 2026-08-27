@@ -206,25 +206,35 @@ def git_sha() -> str:
     return ref[:12]
 
 
+def _display_path(path: Path) -> str:
+    """`--out` is not guaranteed to sit under ROOT, so `relative_to(ROOT)`
+    cannot be the print path unconditionally — it raises ValueError on a
+    relative or out-of-tree `--out`."""
+    try:
+        return str(path.relative_to(ROOT))
+    except ValueError:
+        return str(path)
+
+
 def main() -> int:
     ap = argparse.ArgumentParser()
     ap.add_argument("--op", choices=sorted(COMPILED) + ["all"], default="all")
     ap.add_argument("--out", default=str(ROOT / "docs/tgir/equiv"))
     args = ap.parse_args()
     only = None if args.op == "all" else args.op
+    out_dir = Path(args.out).resolve()
 
     results: list[dict[str, Any]] = []
     for backend in BACKENDS:
         results.extend(compare(backend, only))
 
     ops = sorted({r["op"] for r in results})
-    out_dir = Path(args.out)
     out_dir.mkdir(parents=True, exist_ok=True)
     for op in ops:
         rows = [r for r in results if r["op"] == op]
         path = out_dir / f"{op}-{date.today().isoformat()}.md"
         path.write_text(_receipt(op, rows))
-        print(f"receipt: {path.relative_to(ROOT)}")
+        print(f"receipt: {_display_path(path)}")
 
     for row in results:
         flag = "ok  " if row["as_expected"] else "FAIL"
