@@ -22,6 +22,32 @@ legitimately thin (microsecond intervals); the belief probe pins
 mid-ingestion state; degree skew is what exposed the motif cost-model
 false positive.
 
+## sx-mathoverflow / sx-superuser (Stack-Exchange, typed edges)
+
+SNAP Stack-Exchange interaction networks, three raw files per dataset
+(one per edge type: `A2Q` answer-to-question, `C2Q` comment-to-question,
+`C2A` comment-to-answer), streamed in that fixed order — so the recorded
+event log is deterministic but valid time interleaves across types, a
+real tt≠vt workload the single-file datasets don't produce. Verified at
+load against SNAP's published stats:
+
+- **sx-mathoverflow**: 506,550 events / 24,818 nodes / 2,350 days
+  (A2Q 107,581 · C2Q 203,639 · C2A 195,330)
+- **sx-superuser**: 1,443,339 events / 194,085 nodes / 2,773 days
+  (A2Q 430,033 · C2Q 479,067 · C2A 534,239)
+
+The typed edges make `rel_types`-filtered operators meaningful on real
+data for the first time (CollegeMsg and wiki-talk are single-type).
+
+## wiki-talk (temporal)
+
+SNAP `wiki-talk-temporal`: 7,833,140 events / 1,140,149 nodes / 2,320
+days, single edge type `TALK`, instantaneous. The 10M-class real graph
+with extreme hub skew (admins and bots) — selected as the guardrail
+stressor: the D-086 frontier's skew forecasts (F2) were written against
+synthetic skew, and this is the real thing. Build the store on a server;
+the raw file alone is 7.8M lines.
+
 ## Loading rule (all datasets, all systems)
 
 One recorded event log per dataset; every system loads *that* (TGMS
