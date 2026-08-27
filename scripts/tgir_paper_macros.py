@@ -19,6 +19,12 @@ Sources of record (nothing else is read for a number):
   docs/design/TGIR_WORKLOAD_DECOMPOSITION.md  normalized primitive demand
   docs/design/TGIR_SPEC.md                    frozen-spec structural counts
   tests/test_tgir_*.py                        the TGIR test receipt
+  benchmarks/results-v1/e14-p3-frontier.json  the plan-scope admission frontier (P3)
+  benchmarks/results-v1/eval-guardrail-frontier.json  D-086's operator-scope frontier
+  benchmarks/results-v1/e14-p2-compiled-{1m,10m}[-after].json  the P2 before/after pair
+  benchmarks/freshness-v1/trials-{full,fixture}.json  the M4 record-of-account trial pool
+  docs/design/TECHNICAL_REPORT_2026-08-24.md  prose receipts for P2/P3 (regex-checked)
+  docs/design/M4_MEASURED_REPORT.md           prose receipts for M4 (regex-checked)
 
 Discipline: **assert, do not trust.**  Every value is recomputed from the
 row-level data where the row-level data can produce it, and then checked against
@@ -66,6 +72,16 @@ DECOMP = ROOT / "docs" / "design" / "TGIR_WORKLOAD_DECOMPOSITION.md"
 SPEC = ROOT / "docs" / "design" / "TGIR_SPEC.md"
 GATE = ROOT / "docs" / "design" / "tgir_b1" / "B2C_GATE_REVIEW.md"
 TESTS_GLOB = "test_tgir_*.py"
+FRONTIER = ROOT / "benchmarks" / "results-v1" / "e14-p3-frontier.json"
+GUARDRAIL_FRONTIER = ROOT / "benchmarks" / "results-v1" / "eval-guardrail-frontier.json"
+P2_ONE_M = ROOT / "benchmarks" / "results-v1" / "e14-p2-compiled-1m.json"
+P2_ONE_M_AFTER = ROOT / "benchmarks" / "results-v1" / "e14-p2-compiled-1m-after.json"
+P2_TEN_M = ROOT / "benchmarks" / "results-v1" / "e14-p2-compiled-10m.json"
+P2_TEN_M_AFTER = ROOT / "benchmarks" / "results-v1" / "e14-p2-compiled-10m-after.json"
+FRESH_FULL = ROOT / "benchmarks" / "freshness-v1" / "trials-full.json"
+FRESH_FIXTURE = ROOT / "benchmarks" / "freshness-v1" / "trials-fixture.json"
+TECH_REPORT = ROOT / "docs" / "design" / "TECHNICAL_REPORT_2026-08-24.md"
+M4_REPORT = ROOT / "docs" / "design" / "M4_MEASURED_REPORT.md"
 
 
 # --------------------------------------------------------------------------
@@ -622,6 +638,259 @@ def main() -> int:
     require("9 of 9 tested B1 rows and 3 of 3 worked examples compile, and no" in
             SPEC.read_text(encoding="utf-8"),
             "spec header restates the gate's 9-of-9 compilation headline")
+
+    # ------------------------------------------ P3: the admission inversion
+    frontier = json.loads(FRONTIER.read_text(encoding="utf-8"))
+    bi_arm = frontier["arms"]["scored-bi"]
+    per_plan = bi_arm["per_plan"]
+    eoa = bi_arm["estimate_over_actual"]
+
+    eq(bi_arm["of"], 10, "plan-scope BI arm: total cells attempted")
+    eq(bi_arm["excluded"], ["BI6"], "plan-scope BI arm: BI6 excluded (frozen artifact defect, E-k)")
+    eq(bi_arm["scoreable"], 9, "plan-scope BI arm: scoreable cell count")
+    eq(len(per_plan), bi_arm["scoreable"], "plan-scope BI arm: per_plan rows == scoreable count")
+    m.add("tgAdmCells", bi_arm["scoreable"],
+          "e14-p3-frontier.json arms.scored-bi.scoreable: the plan-scope admission frontier")
+
+    under_est = eoa["under_estimates"]
+    eq(sorted(under_est), ["BI12", "BI18", "BI9"], "plan-scope BI arm: under-estimate rows")
+    m.add("tgAdmUnderEst", len(under_est),
+          "e14-p3-frontier.json arms.scored-bi.estimate_over_actual.under_estimates: count")
+
+    budget_ms = frontier["manifest"]["budget_ms"]
+    eq(budget_ms, 10000.0, "plan-scope frontier: budget T fixed at 10 s (the policy's declared budget)")
+    live_sweep = next(s for s in bi_arm["sweep"] if s["ceiling_ms"] == budget_ms)
+    eq(live_sweep["multiplier"], 1.0,
+       "plan-scope BI arm: the live policy point is multiplier 1.0 (ceiling == budget)")
+    fa_rows = [p for p in per_plan if p["classifier"] == "false-admission"]
+    fr_rows = [p for p in per_plan if p["classifier"] == "false-rejection"]
+    eq(len(fa_rows), live_sweep["false-admission"],
+       "plan-scope BI arm: false-admission count matches the live-ceiling sweep bucket")
+    eq(len(fr_rows), live_sweep["false-rejection"],
+       "plan-scope BI arm: false-rejection count matches the live-ceiling sweep bucket")
+    eq(len(fa_rows), 1, "plan-scope BI arm: exactly one false admission")
+    eq(len(fr_rows), 0, "plan-scope BI arm: zero false rejections")
+    eq(fa_rows[0]["plan_id"], "BI18", "plan-scope BI arm: the false admission is BI18")
+    eq(fa_rows[0]["est_ms"], 5918, "BI18 estimated cost, ms")
+    eq(round(fa_rows[0]["actual_ms"], 1), 29734.5, "BI18 actual cost, ms (rounded to 1dp)")
+    m.add("tgAdmFalseAdm", len(fa_rows),
+          "e14-p3-frontier.json arms.scored-bi.per_plan at the live ceiling: false-admission count")
+    m.add("tgAdmFalseRej", len(fr_rows),
+          "e14-p3-frontier.json arms.scored-bi.per_plan at the live ceiling: false-rejection count")
+    m.add("tgAdmFalseAdmRow", fa_rows[0]["plan_id"], "e14-p3-frontier.json: which plan is the false admission")
+    m.add("tgAdmFalseAdmEstMs", tex_num(fa_rows[0]["est_ms"]), "e14-p3-frontier.json: BI18 estimated cost")
+    m.add("tgAdmFalseAdmActualMs", f"{fa_rows[0]['actual_ms']:,.1f}".replace(",", "{,}"),
+          "e14-p3-frontier.json: BI18 actual cost")
+
+    eq(bi_arm["best"]["multiplier"], 0.59, "plan-scope BI arm: optimal ceiling multiplier")
+    eq(bi_arm["best"]["false-admission"], 0, "plan-scope BI arm at its optimal ceiling: false admissions")
+    eq(bi_arm["best"]["false-rejection"], 0, "plan-scope BI arm at its optimal ceiling: false rejections")
+    m.add("tgAdmOptCeiling", "0.59",
+          "e14-p3-frontier.json arms.scored-bi.best.multiplier: optimal ceiling, times the default")
+
+    eq(round(eoa["min"], 3), 0.199, "plan-scope BI arm: estimate/actual min rounds to 0.199")
+    eq(round(eoa["median"], 2), 8.87, "plan-scope BI arm: estimate/actual median rounds to 8.87")
+    eq(round(eoa["max"]), 24600, "plan-scope BI arm: estimate/actual max rounds to 24,600")
+    eq(round(eoa["spread"]), 123602, "plan-scope BI arm: estimate/actual spread rounds to 123,602")
+    m.add("tgAdmRatioMin", "0.199", "e14-p3-frontier.json estimate_over_actual.min")
+    m.add("tgAdmRatioMedian", "8.87", "e14-p3-frontier.json estimate_over_actual.median")
+    m.add("tgAdmRatioMax", tex_num(round(eoa["max"])), "e14-p3-frontier.json estimate_over_actual.max")
+    m.add("tgAdmRatioSpread", tex_num(round(eoa["spread"])), "e14-p3-frontier.json estimate_over_actual.spread")
+
+    # D-086's operator-scope contrast, paired against the plan-scope frontier above
+    guardrail = json.loads(GUARDRAIL_FRONTIER.read_text(encoding="utf-8"))
+    eq(len(guardrail["cells"]), 90, "D-086 operator-scope frontier: cell count")
+    b2000 = guardrail["frontier"]["budget_2000ms"]
+    eq(b2000["n_cells"], 90, "D-086 2 s-budget bucket: cell count")
+    eq(b2000["at_default"]["multiplier"], 1, "D-086 2 s budget: default multiplier is 1x")
+    eq(b2000["at_default"]["false_admissions"], 0, "D-086 2 s budget, default ceiling: false admissions")
+    eq(b2000["at_default"]["false_rejections"], 16, "D-086 2 s budget, default ceiling: false rejections")
+    eq(b2000["best"]["multiplier"], 256, "D-086 2 s budget: optimal ceiling multiplier")
+    m.add("tgAdmOpCells", len(guardrail["cells"]),
+          "eval-guardrail-frontier.json cells: D-086's operator-scope frontier")
+    m.add("tgAdmOpFalseAdm", b2000["at_default"]["false_admissions"],
+          "eval-guardrail-frontier.json frontier.budget_2000ms.at_default: false admissions")
+    m.add("tgAdmOpFalseRej", b2000["at_default"]["false_rejections"],
+          "eval-guardrail-frontier.json frontier.budget_2000ms.at_default: false rejections")
+    m.add("tgAdmOpOptCeiling", tex_num(b2000["best"]["multiplier"]),
+          "eval-guardrail-frontier.json frontier.budget_2000ms.best.multiplier: optimal ceiling")
+
+    # cross-check every derived number in this section against the report's own table
+    tr_txt = TECH_REPORT.read_text(encoding="utf-8")
+    require("| estimate direction | **every estimate an over-estimate** | "
+            "**3 of 9 under-estimates** (BI12, BI18, BI9) |" in tr_txt,
+            "TECHNICAL_REPORT_2026-08-24 §3.1(c): estimate-direction row")
+    require("| false admissions | **0 at every budget** | "
+            "**1** (BI18: admitted at 5,918 ms est, ran 29,734.5 ms) |" in tr_txt,
+            "TECHNICAL_REPORT_2026-08-24 §3.1(c): false-admissions row")
+    require("| false rejections | 16 of 90 | 0 of 9 |" in tr_txt,
+            "TECHNICAL_REPORT_2026-08-24 §3.1(c): false-rejections row")
+    require("| optimal ceiling | **256× above** the default | "
+            "**0.59× — below** the default |" in tr_txt,
+            "TECHNICAL_REPORT_2026-08-24 §3.1(c): optimal-ceiling row")
+    require("| estimate/actual | — | min 0.199× · median 8.87× · "
+            "max 24,600× · **spread 123,602×** |" in tr_txt,
+            "TECHNICAL_REPORT_2026-08-24 §3.1(c): estimate/actual row")
+
+    # ------------------------------------------------- P2: before / after
+    p2_one_m = json.loads(P2_ONE_M.read_text(encoding="utf-8"))
+    p2_one_m_after = json.loads(P2_ONE_M_AFTER.read_text(encoding="utf-8"))
+    p2_ten_m = json.loads(P2_TEN_M.read_text(encoding="utf-8"))
+    p2_ten_m_after = json.loads(P2_TEN_M_AFTER.read_text(encoding="utf-8"))
+
+    def p2_numbers(doc):
+        """Scan every numeric leaf so the D-149 190x figure can never hide in here."""
+        def walk(obj):
+            if isinstance(obj, dict):
+                for v in obj.values():
+                    yield from walk(v)
+            elif isinstance(obj, list):
+                for v in obj:
+                    yield from walk(v)
+            elif isinstance(obj, (int, float)) and not isinstance(obj, bool):
+                yield obj
+        return list(walk(doc))
+
+    for label, doc in (("1m", p2_one_m), ("1m-after", p2_one_m_after),
+                       ("10m", p2_ten_m), ("10m-after", p2_ten_m_after)):
+        suspects = [n for n in p2_numbers(doc) if 188.0 <= n <= 192.0]
+        require(not suspects,
+                f"P2 record e14-p2-compiled-{label}.json carries a value near 190 "
+                f"(D-149's figure, not P2's): {suspects}")
+
+    def p2_entity_row(doc):
+        row = next(r for r in doc["rows"] if r["op"] == "entity_history")
+        require(row["row_counts_agree"] is True,
+                "P2 entity_history row: kernel and compiled row counts agree")
+        kernel_ms = row["kernel"]["p50_ms"]
+        compiled_ms = row["compiled"]["p50_ms"]
+        ratio = compiled_ms / kernel_ms
+        require(abs(ratio - row["compiled_over_kernel"]) < 1e-6,
+                "P2 entity_history row: recomputed ratio disagrees with recorded compiled_over_kernel")
+        return kernel_ms, compiled_ms, ratio
+
+    k_one_m, c_one_m, ratio_pre_one_m = p2_entity_row(p2_one_m)
+    k_one_m_after, c_one_m_after, ratio_post_one_m = p2_entity_row(p2_one_m_after)
+    k_ten_m, c_ten_m, ratio_pre_ten_m = p2_entity_row(p2_ten_m)
+    k_ten_m_after, c_ten_m_after, ratio_post_ten_m = p2_entity_row(p2_ten_m_after)
+
+    eq(round(ratio_pre_one_m, 1), 292.7, "P2 1M pre-fix ratio")
+    eq(round(ratio_pre_ten_m, 1), 446.9, "P2 10M pre-fix ratio")
+    eq(round(ratio_post_one_m, 3), 2.701, "P2 1M post-fix ratio")
+    eq(round(ratio_post_ten_m, 3), 1.816, "P2 10M post-fix ratio")
+    eq(round(k_one_m, 3), 0.425, "P2 1M pre-fix kernel p50")
+    eq(round(c_one_m, 3), 124.416, "P2 1M pre-fix compiled p50")
+    eq(round(k_ten_m, 3), 0.908, "P2 10M pre-fix kernel p50")
+    eq(round(c_ten_m, 3), 405.757, "P2 10M pre-fix compiled p50")
+
+    m.add("tgPTwoKernelOneM", "0.425", "e14-p2-compiled-1m.json rows[entity_history].kernel.p50_ms")
+    m.add("tgPTwoCompiledOneM", "124.416", "e14-p2-compiled-1m.json rows[entity_history].compiled.p50_ms")
+    m.add("tgPTwoRatioPreOneM", "292.7", "e14-p2-compiled-1m.json rows[entity_history].compiled_over_kernel")
+    m.add("tgPTwoKernelTenM", "0.908", "e14-p2-compiled-10m.json rows[entity_history].kernel.p50_ms")
+    m.add("tgPTwoCompiledTenM", "405.757", "e14-p2-compiled-10m.json rows[entity_history].compiled.p50_ms")
+    m.add("tgPTwoRatioPreTenM", "446.9", "e14-p2-compiled-10m.json rows[entity_history].compiled_over_kernel")
+    m.add("tgPTwoKernelOneMAfter", f"{k_one_m_after:.3f}",
+          "e14-p2-compiled-1m-after.json rows[entity_history].kernel.p50_ms")
+    m.add("tgPTwoCompiledOneMAfter", f"{c_one_m_after:.3f}",
+          "e14-p2-compiled-1m-after.json rows[entity_history].compiled.p50_ms")
+    m.add("tgPTwoRatioPostOneM", "2.701",
+          "e14-p2-compiled-1m-after.json rows[entity_history].compiled_over_kernel")
+    m.add("tgPTwoKernelTenMAfter", f"{k_ten_m_after:.3f}",
+          "e14-p2-compiled-10m-after.json rows[entity_history].kernel.p50_ms")
+    m.add("tgPTwoCompiledTenMAfter", f"{c_ten_m_after:.3f}",
+          "e14-p2-compiled-10m-after.json rows[entity_history].compiled.p50_ms")
+    m.add("tgPTwoRatioPostTenM", "1.816",
+          "e14-p2-compiled-10m-after.json rows[entity_history].compiled_over_kernel")
+
+    require("| 1M | **0.425 ms** | **124.416 ms** | **292.7×** | 1/1 |" in tr_txt,
+            "TECHNICAL_REPORT_2026-08-24 §3.1(e): P2 1M pre-fix row")
+    require("| 10M | **0.908 ms** | **405.757 ms** | **446.9×** | 1/1 |" in tr_txt,
+            "TECHNICAL_REPORT_2026-08-24 §3.1(e): P2 10M pre-fix row")
+    require("xzgpu at **2.701× (1M)** and **1.816× (10M)**" in tr_txt,
+            "TECHNICAL_REPORT_2026-08-24 Postscript: P2 re-scored 2.701x/1.816x")
+
+    # ------------------------------------------- M4: the freshness headline
+    fresh_full = json.loads(FRESH_FULL.read_text(encoding="utf-8"))
+    fresh_fixture = json.loads(FRESH_FIXTURE.read_text(encoding="utf-8"))
+    m4_trials = fresh_full["trials"] + fresh_fixture["trials"]
+    eq(len(m4_trials), fresh_full["trial_count"] + fresh_fixture["trial_count"],
+       "M4: combined trial pool size matches each file's own trial_count")
+    eq(len(m4_trials), 3354, "M4: the record-of-account trial pool (both campaigns)")
+    require(all(t["outcome"] == "OK" for t in m4_trials),
+            "M4: every trial in the record-of-account pool completed OK")
+
+    m4_changed = [t for t in m4_trials if t["changed"]]
+    eq(len(m4_changed), 447, "M4: changed-column trials")
+    m4_false_fresh = sum(1 for t in m4_changed if t["verdict"] == "fresh")
+    eq(m4_false_fresh, 0, "M4: dependency-scope mechanism's false-fresh count")
+    eq(m4_false_fresh, fresh_full["summary"]["false_fresh"] + fresh_fixture["summary"]["false_fresh"],
+       "M4: recomputed false-fresh matches the sum of each file's own summary.false_fresh")
+    m.add("tgMFourChanged", len(m4_changed),
+          "freshness-v1/trials-{full,fixture}.json: changed trials, combined record-of-account pool")
+    m.add("tgMFourFalseFresh", m4_false_fresh,
+          "freshness-v1: changed trials where the dependency-scope verdict is fresh")
+
+    m4_rt_false_fresh = sum(1 for t in m4_changed if t.get("rowtouch_verdict") == "fresh")
+    eq(m4_rt_false_fresh, 212, "M4: naive row-touch false-fresh count")
+    eq(round(m4_rt_false_fresh / len(m4_changed) * 1000) / 10, 47.4,
+       "M4: naive row-touch false-fresh rate rounds to 47.4%")
+    m.add("tgMFourRtFalseFresh", m4_rt_false_fresh,
+          "freshness-v1: changed trials where rowtouch_verdict is fresh")
+    m.add("tgMFourRtFalseFreshPct", "47.4",
+          "freshness-v1: naive row-touch false-fresh rate, 212/447")
+
+    m4_newid_changed = [t for t in m4_changed if t["placement"] == "new-identity"]
+    eq(len(m4_newid_changed), 89, "M4: new-identity changed trials")
+    m4_newid_missed = sum(1 for t in m4_newid_changed if t.get("rowtouch_verdict") == "fresh")
+    eq(m4_newid_missed, 89, "M4: every new-identity changed trial is missed by naive row-touch")
+    m.add("tgMFourNewIdentity", len(m4_newid_changed),
+          "freshness-v1: changed trials in the new-identity placement")
+    m.add("tgMFourNewIdentityMissed", m4_newid_missed,
+          "freshness-v1: new-identity changed trials the row-touch rule calls fresh")
+
+    prec_stores = {"bitcoinotc", "collegemsg"}
+    prec_pool = [t for t in fresh_full["trials"] if t["store"] in prec_stores and t["outcome"] == "OK"]
+    den_main = sum(1 for t in prec_pool if t["verdict"] == "possibly-stale")
+    tp_main = sum(1 for t in prec_pool if t["verdict"] == "possibly-stale" and t["value_changed"])
+    eq(den_main, fresh_full["summary"]["precision_denominator"],
+       "M4: recomputed precision denominator matches trials-full.json summary.precision_denominator")
+    eq(den_main, 1536, "M4: precision denominator, POSSIBLY_STALE over bitcoinotc+collegemsg")
+    eq(tp_main, 203, "M4: true-stale trials within the precision denominator")
+    require(abs(tp_main / den_main - fresh_full["summary"]["precision"]) < 1e-9,
+            "M4: recomputed precision matches trials-full.json summary.precision")
+    m.add("tgMFourPrecision", "0.132", "freshness-v1/trials-full.json: overall precision, 203/1536")
+    m.add("tgMFourPrecisionTrue", tp_main, "freshness-v1: true-stale trials within the precision denominator")
+    m.add("tgMFourPrecisionDen", den_main, "freshness-v1: POSSIBLY_STALE trials over bitcoinotc+collegemsg")
+
+    den_top = sum(1 for t in prec_pool if t["top_verdict"] == "possibly-stale")
+    tp_top = sum(1 for t in prec_pool if t["top_verdict"] == "possibly-stale" and t["value_changed"])
+    eq(den_top, 1576, "M4: all-\"*\" control denominator")
+    eq(tp_top, tp_main, "M4: all-\"*\" control shares the real derivation's true-stale numerator")
+    eq(tp_top, 203, "M4: all-\"*\" control true-stale count")
+    m.add("tgMFourPrecisionControl", "0.129",
+          "freshness-v1/trials-full.json: all-\"*\" control precision, 203/1576")
+    m.add("tgMFourPrecisionCtrlDen", den_top, "freshness-v1: all-\"*\" control POSSIBLY_STALE trials")
+
+    m4_txt = M4_REPORT.read_text(encoding="utf-8")
+    require("**false-fresh = 0** over a `changed` column of **447**\n"
+            "> across every substrate, of which **447**\n"
+            "> are value-changed and **0**\n"
+            "> are digest-only." in m4_txt,
+            "M4_MEASURED_REPORT §3 headline: false-fresh 0 / changed 447")
+    require("**overall precision = 0.132** (203 true stale / 1536\n"
+            "> `POSSIBLY_STALE`), on `bitcoinotc` and `collegemsg`." in m4_txt,
+            "M4_MEASURED_REPORT §4: overall precision 0.132 (203/1536)")
+    require("**row-touch false-fresh = 212 of 447 changed trials\n"
+            "> (47.4%).** The dependency-scope mechanism's own count on the same\n"
+            "> trials is **0**." in m4_txt,
+            "M4_MEASURED_REPORT: row-touch false-fresh 212/447 (47.4%)")
+    require("Of the 89 changed trials in the **new-identity** placement — a\n"
+            "correction on an identity the stored result has no row for — the row-touch rule\n"
+            "called **89** fresh." in m4_txt,
+            "M4_MEASURED_REPORT: new-identity 89/89 missed by row-touch")
+    require("**all-`\"*\"` precision = 0.129** (203/1576) versus the real\n"
+            "> derivations' **0.132**." in m4_txt,
+            "M4_MEASURED_REPORT: all-\"*\" control precision 0.129 (203/1576)")
 
     # ---------------------------------------------------------------- write
     if FAILURES:
