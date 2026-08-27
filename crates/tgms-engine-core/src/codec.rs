@@ -211,8 +211,10 @@ pub fn pack_heap(raw: &[u8]) -> Option<Vec<u8>> {
         return None;
     }
     let offsets: Vec<i64> = raw[4..off_end]
-        .chunks_exact(4)
-        .map(|c| u32::from_le_bytes(c.try_into().unwrap()) as i64)
+        .as_chunks::<4>()
+        .0
+        .iter()
+        .map(|c| u32::from_le_bytes(*c) as i64)
         .collect();
     let packed_offsets = encode_i64(&offsets);
     let deflated = miniz_oxide::deflate::compress_to_vec(&raw[off_end..], 6);

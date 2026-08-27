@@ -517,23 +517,23 @@ fn extent_values(dtype: DType, bytes: &[u8]) -> Vec<i64> {
     let mut out = Vec::with_capacity(bytes.len() / dtype.size());
     match dtype {
         DType::I64 => {
-            for c in bytes.chunks_exact(8) {
-                out.push(i64::from_le_bytes(c.try_into().unwrap()));
+            for c in bytes.as_chunks::<8>().0 {
+                out.push(i64::from_le_bytes(*c));
             }
         }
         DType::U64 => {
-            for c in bytes.chunks_exact(8) {
-                out.push(u64::from_le_bytes(c.try_into().unwrap()) as i64);
+            for c in bytes.as_chunks::<8>().0 {
+                out.push(u64::from_le_bytes(*c) as i64);
             }
         }
         DType::U32 => {
-            for c in bytes.chunks_exact(4) {
-                out.push(u32::from_le_bytes(c.try_into().unwrap()) as i64);
+            for c in bytes.as_chunks::<4>().0 {
+                out.push(u32::from_le_bytes(*c) as i64);
             }
         }
         DType::U16 => {
-            for c in bytes.chunks_exact(2) {
-                out.push(u16::from_le_bytes(c.try_into().unwrap()) as i64);
+            for c in bytes.as_chunks::<2>().0 {
+                out.push(u16::from_le_bytes(*c) as i64);
             }
         }
     }
