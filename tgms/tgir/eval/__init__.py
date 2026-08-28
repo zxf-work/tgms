@@ -196,10 +196,20 @@ class Execution:
         if isinstance(node, Aggregate):
             return eval_aggregate(node, inputs[0])
         if isinstance(node, PatternMatch):
+            # §7.4's annotations channel, `"scan_region"` key (P1.3;
+            # `M5_LEVEL1_SOUNDNESS.md` §4.2). `label_filter` wraps
+            # `eval_pattern`, so the region has to be captured from
+            # `eval_pattern` itself via `region_sink` — after `label_filter`
+            # the pre-filter `distinct` uid sets PO-P2 depends on are gone.
             sources = {s.var: inputs[i] for i, s in enumerate(node.sources)}
-            return label_filter(node,
-                                eval_pattern(node, sources, adapter, live,
-                                             self.budget, self.scans))
+            sink: dict[str, Any] = {}
+            out = label_filter(node,
+                               eval_pattern(node, sources, adapter, live,
+                                            self.budget, self.scans,
+                                            region_sink=sink))
+            if sink:  # empty on every widening path (W-P1..W-P6) — no lie recorded
+                self.annotations.setdefault(node.node_digest, {})["scan_region"] = sink
+            return out
         raise NotImplementedError(
             f"{node.op} has no evaluator yet — it is "
             f"{PENDING.get(node.op, 'a later phase')}'s "

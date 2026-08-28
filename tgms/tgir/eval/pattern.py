@@ -38,6 +38,7 @@ import numpy as np
 from tgms.tgir.eval.scan import scan_nodes
 from tgms.tgir.node import EdgePat, EdgeScan, NodeScan, PatternMatch
 from tgms.tgir.relation import Relation
+from tgms.tgir.scan_region import EdgeDomain, pattern_match_region
 from tgms.tgir.types import EDGE_COLUMNS, PATTERN_NODE_COLUMNS, Column, Schema
 
 #: The edge columns the search itself needs, whatever the plan projects.
@@ -46,8 +47,19 @@ _KEY_COLUMNS = ("eid", "src", "dst", "vt_s", "vid")
 
 def eval_pattern(node: PatternMatch, sources: dict[str, Relation], adapter: Any,
                  live: frozenset[str] | None = None,
-                 budget: Any = None, scans: Any = None) -> Relation:
-    domains = {edge.var: _domain(node, edge, sources, adapter)
+                 budget: Any = None, scans: Any = None,
+                 region_sink: dict[str, Any] | None = None) -> Relation:
+    """`region_sink`, `M5_LEVEL1_SOUNDNESS.md` §1.2/§4.2 — an optional keyword
+    the recorder fills **only on this function's normal return**, mirroring
+    `budget`'s own precedent (`:58-59`): every raise (a bad arg, `_edge_prefix`'s
+    `AssertionError`, a budget raise) or D-155 refusal unwinds before the fill
+    site is reached, so `region_sink` stays `{}` and `scan_region_terms(())`
+    on the empty dict is the fail-safe — the caller (`tgms/tgir/eval/
+    __init__.py`) treats an empty sink exactly like no scan region at all
+    (W-P1/W-P2)."""
+    edge_meta: dict[str, EdgeDomain] | None = {} if region_sink is not None else None
+    belief_sink: list[str] | None = [] if region_sink is not None else None
+    domains = {edge.var: _domain(node, edge, sources, adapter, edge_meta, belief_sink)
                for edge in node.pattern.edge_pats}
     node_domains = _node_domains(node, sources)
 
@@ -58,7 +70,33 @@ def eval_pattern(node: PatternMatch, sources: dict[str, Relation], adapter: Any,
         if budget is not None:
             budget.charge(bindings.n)
 
-    return _materialize(node, bindings, adapter, live, scans)
+    uid_sink: dict[str, tuple[str, ...]] | None = {} if region_sink is not None else None
+    out = _materialize(node, bindings, adapter, live, scans, uid_sink, belief_sink)
+
+    if region_sink is not None and edge_meta is not None and uid_sink is not None \
+            and belief_sink is not None and not _region_widened(belief_sink):
+        region_sink.update(pattern_match_region(
+            node_digest=node.node_digest,
+            t_v=((iv.start, iv.end) for iv in node.sigma.t_v), t_b=node.sigma.t_b,
+            edge_domains=(edge_meta[e.var] for e in node.pattern.edge_pats),
+            node_uids=uid_sink,
+            node_cohorts=node_domains).to_json())
+
+    return out
+
+
+def _region_widened(beliefs: list[str]) -> bool:
+    """§1.7's W-P3: any store read behind this execution ran under
+    `belief != "current"` (`types.py:346-349`'s `BELIEF_MODES`). Both scans
+    `eval_pattern` itself issues hardcode `belief="current"` (`:114`'s
+    `EdgeScan` default, `:_versions`'s explicit `NodeScan(..., belief=
+    "current", ...)`), so this is structurally always `False` on the real
+    call path today — kept as a real, independently testable check rather
+    than an assumption, so a future change to either default cannot silently
+    turn a `superseded`/`all` read into a narrowed Level-1 region: a
+    non-current belief depends on tt-history no `ScopeTerm` arm describes
+    (`M5_LEVEL1_SOUNDNESS.md` §1.7 W-P3)."""
+    return any(b != "current" for b in beliefs)
 
 
 def _node_domains(node: PatternMatch,
@@ -96,7 +134,8 @@ def _sole_uid_column(relation: Relation) -> str | None:
 # ---------------------------------------------------------------------------
 
 def _domain(node: PatternMatch, edge: EdgePat, sources: dict[str, Relation],
-            adapter: Any) -> dict[str, np.ndarray]:
+            adapter: Any, edge_meta: dict[str, "EdgeDomain"] | None = None,
+            belief_sink: list[str] | None = None) -> dict[str, np.ndarray]:
     """One edge variable's candidate set, as plain arrays.
 
     "The pushed and un-pushed forms must be semantically identical; only their
@@ -105,9 +144,20 @@ def _domain(node: PatternMatch, edge: EdgePat, sources: dict[str, Relation],
     "not an optimization but a *precondition for admission*", which is why an
     unrestricted variable falls back to a full typed scan rather than to a
     cross product.
+
+    `edge_meta`, when given, records `M5_LEVEL1_SOUNDNESS.md` §1.2's
+    intensional descriptor for this variable: `"bound"` when `sources`
+    supplied it (no store read at all) and `"scan"` when an `EdgeScan` was
+    actually issued — the distinction `scan_region_terms` needs even though
+    both sources end up with the same `targets.edges = TOP` (W-P4).
+    `belief_sink`, when given, collects the actual `EdgeScan.belief` a
+    `"scan"` domain ran under (`_region_widened`'s W-P3 check reads it); a
+    `"bound"` domain issues no scan, so it contributes nothing.
     """
     bound = sources.get(edge.var)
     if bound is not None:
+        if edge_meta is not None:
+            edge_meta[edge.var] = EdgeDomain(edge.var, "bound", edge.rel_type)
         return _columns_from(bound, edge)
     scan = EdgeScan("__e", rel_types=(edge.rel_type,) if edge.rel_type else None,
                     sigma_=node.sigma)
@@ -115,6 +165,10 @@ def _domain(node: PatternMatch, edge: EdgePat, sources: dict[str, Relation],
     from tgms.tgir.eval.scan import scan_edges
 
     scanned = scan_edges(rel, adapter, frozenset(f"__e.{c}" for c in _KEY_COLUMNS))
+    if edge_meta is not None:
+        edge_meta[edge.var] = EdgeDomain(edge.var, "scan", edge.rel_type)
+    if belief_sink is not None:
+        belief_sink.append(scan.belief)
     return {c: scanned.column(f"__e.{c}") for c in _KEY_COLUMNS}
 
 
@@ -268,7 +322,9 @@ class _Bindings:
 # ---------------------------------------------------------------------------
 
 def _materialize(node: PatternMatch, bindings: _Bindings, adapter: Any,
-                 live: frozenset[str] | None, scans: Any = None) -> Relation:
+                 live: frozenset[str] | None, scans: Any = None,
+                 uid_sink: dict[str, tuple[str, ...]] | None = None,
+                 belief_sink: list[str] | None = None) -> Relation:
     """Node-variable columns then edge-variable columns, **in pattern
     declaration order** (§4.2), then §2.9's canonical order.
 
@@ -276,6 +332,13 @@ def _materialize(node: PatternMatch, bindings: _Bindings, adapter: Any,
     — and their version columns come through `scan_nodes` under Σ, so a node
     with no visible version binds `uid` and nulls exactly as `Expand`'s `into`
     does.
+
+    `uid_sink`, when given, records each node variable's `distinct` uid set
+    (`M5_LEVEL1_SOUNDNESS.md` §1.2's `node_uids`) **before** `label_filter`
+    runs on the caller's side (PO-P2): this function's return is
+    `eval_pattern`'s own return, and `label_filter` wraps that call, so
+    capturing `distinct` here is capturing it pre-filter by construction —
+    the site the PO-P2 un-drop test pins.
     """
     order = _canonical_order(node, bindings)
     columns: list[Column] = []
@@ -285,7 +348,7 @@ def _materialize(node: PatternMatch, bindings: _Bindings, adapter: Any,
     for pat in node.pattern.node_pats:
         uids = np.array([bindings.nodes[pat.var][i] for i in order], dtype=object) \
             if bindings.n else np.array([], dtype=object)
-        version = _versions(node, pat.var, adapter, uids, live, scans)
+        version = _versions(node, pat.var, adapter, uids, live, scans, uid_sink, belief_sink)
         for column in PATTERN_NODE_COLUMNS:
             name = f"{pat.var}.{column.name}"
             if live is not None and name not in live:
@@ -334,15 +397,27 @@ def _canonical_order(node: PatternMatch, bindings: _Bindings) -> list[int]:
 
 
 def _versions(node: PatternMatch, var: str, adapter: Any, uids: np.ndarray,
-              live: frozenset[str] | None,
-              scans: Any = None) -> dict[str, dict[str, Any]]:
+              live: frozenset[str] | None, scans: Any = None,
+              uid_sink: dict[str, tuple[str, ...]] | None = None,
+              belief_sink: list[str] | None = None) -> dict[str, dict[str, Any]]:
+    """`distinct` — the deduplicated uid list this variable binds across
+    *every* surviving row — is `M5_LEVEL1_SOUNDNESS.md` §1.2's `node_uids[var]`
+    verbatim; recorded into `uid_sink` **before** the empty-`distinct` early
+    return, so a variable that bound nothing is still an honest empty entry
+    rather than a missing one (FM-7: an empty binding relation legitimately
+    yields `Targets(nodes=())`, and that is sound only because the edge terms
+    still accompany it — see `scan_region.py`'s module docstring)."""
     distinct = tuple(dict.fromkeys(str(u) for u in uids.tolist()))
+    if uid_sink is not None:
+        uid_sink[var] = distinct
     if not distinct:
         return {}
     wanted = frozenset(f"{var}.{c.name}" for c in PATTERN_NODE_COLUMNS
                        if live is None or f"{var}.{c.name}" in live)
     scan = NodeScan(var, uids=distinct, belief="current", vt_mode="overlap",
                     sigma_=node.sigma)
+    if belief_sink is not None:
+        belief_sink.append(scan.belief)
     rel = scan_nodes(scan, adapter, wanted | {f"{var}.uid"}, scans)
     out: dict[str, dict[str, Any]] = {}
     uid_col = rel.column(f"{var}.uid")

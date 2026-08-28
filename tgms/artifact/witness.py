@@ -26,9 +26,11 @@ from typing import Any
 from tgms.core.model import OPEN_END
 from tgms.storage.eventlog import EventLog
 from tgms.tgir.check import (
-    WITNESS_CAP, ChainCache, StepsVerdict, UNDECIDABLE, Witness, check_trace,
+    WITNESS_CAP, ChainCache, StepsVerdict, UNDECIDABLE, Verdict, Witness, check_trace,
 )
 from tgms.tgir.explain import render_steps
+from tgms.tgir.level1 import refine as level1_refine
+from tgms.tgir.scan_region import scan_region_terms
 
 from tgms.artifact.record import SCHEMA_VERSION, ArtifactId, ArtifactRecord
 
@@ -44,10 +46,15 @@ KNOWN_PLAN_FORMATS: frozenset[int] = frozenset({1})
 class TermRef:
     """§5.3 — a `Witness.matched_term` index, resolved to the actual term.
 
-    `level` disaggregates a Level-0 witness from a scan-region-derived one.
-    `tgms.tgir.level1` (P1.3) does not exist in this tree yet, so every
-    `TermRef` this module produces is `"level-0"` — see `check_artifact`'s
-    `level1` parameter below.
+    `level` disaggregates a Level-0 witness from a scan-region-derived one
+    (P1.3, `tgms.tgir.level1`). A witness belonging to a step whose
+    `StepDependency.scan_region` produced at least one usable `ScopeTerm`
+    (`scan_region_terms(...)` non-empty) is `"level-1"`, and `term` is that
+    narrower, region-derived `ScopeTerm` — never the step's stored Level-0
+    term, which would misdescribe *why* the op still matters once a narrower
+    explanation exists. Every other witness — no region recorded, a region
+    the fail-safe could not interpret, or `level1=False` on `check_artifact`
+    — is `"level-0"`, exactly as before P1.3 landed.
     """
 
     step_id: str | None
@@ -138,13 +145,51 @@ def _term_map(record: ArtifactRecord) -> dict[str | None, tuple[dict[str, Any], 
     return {}
 
 
-def _resolve(term_map: dict[str | None, tuple[dict[str, Any], ...]], w: Witness) -> TermRef:
+def _resolve(term_map: dict[str | None, tuple[dict[str, Any], ...]],
+            region_terms: dict[str | None, tuple[Any, ...]], w: Witness) -> TermRef:
+    """A witness whose `step_id` appears in `region_terms` came out of
+    `level1.refine` against a non-empty scan region — `w.matched_term` then
+    indexes *that* term list (`level1.refine` rewrites it on every witness it
+    keeps, never trusting the Level-0 index once a narrower one is on hand),
+    and the term shown is the region-derived one, `level="level-1"`. Every
+    other witness resolves against the stored Level-0 scope exactly as
+    before P1.3 (`level="level-0"`)."""
+    region = region_terms.get(w.step_id)
+    if region is not None:
+        term = region[w.matched_term].to_json() if 0 <= w.matched_term < len(region) else {}
+        return TermRef(step_id=w.step_id, index=w.matched_term, term=term,
+                       matched_on=w.matched_on, level="level-1")
     terms = term_map.get(w.step_id, ())
     term = terms[w.matched_term] if 0 <= w.matched_term < len(terms) else {}
-    # Every term this module resolves came straight off the stored scope —
-    # no `tgms.tgir.level1` refinement has run (see `check_artifact` below).
     return TermRef(step_id=w.step_id, index=w.matched_term, term=term,
                    matched_on=w.matched_on, level="level-0")
+
+
+def _apply_level1(steps_verdict: StepsVerdict, record: ArtifactRecord, log: EventLog,
+                  ) -> tuple[StepsVerdict, dict[str | None, tuple[Any, ...]]]:
+    """The `level1` wiring seam (`M5_DESIGN.md` §6.2; `M5_LEVEL1_SOUNDNESS.md`
+    §4.2). Per step: if `StepDependency.scan_region` is absent, or present but
+    `scan_region_terms` cannot read a single term out of it (the fail-safe —
+    W-P1..W-P6, or a future/unrecognized schema), the step's `Verdict` passes
+    through **completely untouched** — not even re-constructed — which is
+    what makes the absent-region case byte-identical to `level1=False`
+    (M5_LEVEL1_SOUNDNESS.md §1.8 test 9). Otherwise `level1.refine` runs,
+    strictly downstream of the `check`/`check_steps` call that already
+    produced `steps_verdict` — this function never re-derives a verdict, it
+    only narrows one that already exists.
+    """
+    regions = {s.step_id: s.scan_region for s in record.steps}
+    region_terms: dict[str | None, tuple[Any, ...]] = {}
+    refined: list[tuple[str, Verdict]] = []
+    for sid, verdict in steps_verdict.per_step:
+        region = regions.get(sid)
+        terms = scan_region_terms(region) if region is not None else ()
+        if not terms:
+            refined.append((sid, verdict))
+            continue
+        region_terms[sid] = terms
+        refined.append((sid, level1_refine(verdict, region, log)))
+    return StepsVerdict(tuple(refined)), region_terms
 
 
 def _refresh_handle(record: ArtifactRecord) -> RefreshHandle | None:
@@ -171,17 +216,22 @@ def check_artifact(record: ArtifactRecord, log: EventLog, tt_now: int = OPEN_END
     non-executing refresh handle, and D-153's exemption receipt — mandatory,
     present-but-empty when nothing was exempted.
 
-    **`level1`, sequencing fail-safe (flagged — analogous to §5.4's D-153
-    fail-safe, but for P1.3).** §5.1 decides the signature takes a `level1`
-    flag; P1.3's `tgms.tgir.level1` module (§6.2) does not exist in this
-    tree. Rather than import a module that is not there, or guess at an API
-    no written proof has fixed yet, this parameter is accepted for forward
-    compatibility and is currently a no-op: every witness and term this
-    function returns is Level-0. §4.3 licenses exactly this direction —
-    "an absent scan region means no narrowing" — so refining nothing is
-    always sound, never false-fresh, regardless of what the caller passed.
-    The moment `tgms.tgir.level1` lands, this is the one seam that needs to
-    change.
+    **`level1` (P1.3, `tgms.tgir.level1.refine`, wired here).** `level1=True`
+    (the default) runs every step's `Verdict` through `_apply_level1` *after*
+    `check_trace` has already produced it — strictly downstream of `check`,
+    per `M5_DESIGN.md` §6.2, and this function never re-derives a verdict on
+    its own account. A step with no recorded `scan_region`, or one
+    `scan_region_terms` cannot read a term out of, passes through completely
+    untouched (§4.3's fail-safe: "an absent scan region means no narrowing"),
+    which is what makes `level1=True` and `level1=False` produce
+    byte-identical output whenever no step carries a usable region —
+    verified for the always-no-region case by
+    `tests/test_artifact_check.py::
+    test_level1_flag_is_wired_and_absent_region_is_a_no_op`,
+    and for the PatternMatch case by `tests/test_scan_region_pattern.py`.
+    `level1=False` skips `_apply_level1` outright, so every witness and term
+    resolves as Level-0 regardless of what was recorded — the caller's own
+    opt-out, independent of the fail-safe.
 
     A record whose own schema `version` is unrecognized is refused outright
     (§1.3's "a reader that does not recognize the version must refuse, never
@@ -195,8 +245,12 @@ def check_artifact(record: ArtifactRecord, log: EventLog, tt_now: int = OPEN_END
         steps_verdict = check_trace(record.to_json(), log, tt_now,
                                     chain_cache=chain_cache, witness_cap=witness_cap)
 
+    region_terms: dict[str | None, tuple[Any, ...]] = {}
+    if level1 and record.version == SCHEMA_VERSION:
+        steps_verdict, region_terms = _apply_level1(steps_verdict, record, log)
+
     term_map = _term_map(record) if record.version == SCHEMA_VERSION else {}
-    terms = tuple(_resolve(term_map, w) for w in steps_verdict.witnesses)
+    terms = tuple(_resolve(term_map, region_terms, w) for w in steps_verdict.witnesses)
     exempt = tuple(
         ExemptReceipt(step_id=sid, basis=v.exempt["basis"], batches=v.exempt["batches"],
                      tt_range=(v.exempt["tt_range"][0], v.exempt["tt_range"][1]),
