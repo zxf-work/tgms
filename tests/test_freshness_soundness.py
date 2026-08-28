@@ -721,14 +721,22 @@ def test_ff4_sibling_a_genuine_pin_is_stable_and_still_scanned(stores):
     """**FF-4's other half, and T1's boundary.**
 
     A pin at or below the frontier *is* stable (T1, Corollary C1 as amended), so
-    its recompute is byte-identical. The check still walks the suffix and
-    returns `POSSIBLY_STALE` — a **false invalidation**, permitted by D1.13 and
-    counted against precision by D6.2.
+    its recompute is byte-identical. Before **§15's 2026-08-27 entry E-10** the
+    check still walked the suffix and returned `POSSIBLY_STALE` regardless — a
+    **false invalidation**, permitted by D1.13 and counted against precision by
+    D6.2. E-10's step 8a narrows exactly this: a batch with `batch.tt >
+    scope.as_of_tt` cannot have changed a result read at `as_of_tt` (T1's proof
+    restricted to one batch, D-153), so it is now adjudicated `FRESH` with a
+    mandatory receipt naming what it exempted, rather than false-invalidated
+    forever.
 
-    That is deliberate: *"No step is skippable on the strength of
-    `pinned = true`"* (D13.24). A genuinely pinned scope scans a suffix that is
-    empty **because the log says so**, not because a flag said to skip the scan
-    — and the shortcut Corollary C1 used to license is what FF-4 exploited.
+    This is still not FF-4's shortcut: *"No step is skippable on the strength
+    of `pinned = true`"* (D13.24) still holds — step 8a is a **per-item test**
+    against the batch's own logged `tt`, run inside a walk that enumerates
+    every batch in the suffix, not a verdict computed from the caller's
+    `pinned` argument. FF-4's own scenario (the sibling test above,
+    above-frontier / clamped) is still caught: its damaging batch has
+    `tt <= as_of_tt` and is scanned and matched, `POSSIBLY_STALE`.
     """
     s = stores("ff4b")
     s.assert_node("A", "L", {"p": 1}, 0, OPEN_END)
@@ -738,15 +746,25 @@ def test_ff4_sibling_a_genuine_pin_is_stable_and_still_scanned(stores):
     before = fx.call(s, "entity_history", q)
     assert before["pinned"] is True and before["clamped"] is False
     scope = DependencyScope.from_json(before["dependency"])
+    assert scope.as_of_tt == frontier, "E-10: the pin rides on the scope"
 
     s.assert_node("A", "L", {"tier": "gold"}, 0, OPEN_END)
 
     assert fx.digest_of(s, "entity_history", q) == before["result_digest"], (
         "T1: bi-temporal immutability at or below the frontier")
     verdict = fx.check_scope(s, scope)
-    assert not fx.is_fresh(verdict), (
-        "the suffix is scanned regardless of `pinned` (D13.24) — "
+    assert fx.is_fresh(verdict), (
+        "E-10 step 8a: the later batch cannot have changed a result read at "
+        f"the pin, and is exempted rather than false-invalidated — "
         f"{fx.describe(verdict)}")
+    exempt = verdict.exempt
+    assert exempt is not None, "E-10: the exemption receipt is mandatory"
+    assert exempt["basis"] == frontier, "the receipt names the pin it exempted under"
+    assert exempt["batches"] >= 1, "at least the one later batch was exempted"
+    lo, hi = exempt["tt_range"]
+    assert lo is not None and hi is not None and frontier < lo <= hi, (
+        "tt_range: sane and strictly after the pin")
+    assert exempt["theorem"] == "T1"
 
 
 def test_ff5_role_either_yields_a_top_anchor_so_the_narrowing_is_refused(stores):
@@ -903,13 +921,23 @@ def test_ff7b_a_pinned_basis_paired_with_a_read_time_cursor(stores):
     The cursor invariant (D13.8a): *the minimum offset in `scope.checkpoints` is
     at or before the offset of the first batch with `tt > scope.tt_q`.* A pin
     into the past, checkpointed at the read, breaks it — and every batch between
-    the pinned instant and the read would be skipped.
+    the pinned instant and the read would be skipped **if nothing widened**.
 
     Two dispositions are permitted and both are sound: `UNDECIDABLE(
     "cursor-invariant")`, or the sanctioned widening `start := 0` — *"a full-log
-    scan, which is widening and therefore sound. Slow, never wrong."* What is
-    **not** permitted is `FRESH`. D1.10's clamp removes the pairing at source
-    for the above-frontier case, which is why FF-4 and FF-7 b are one fix.
+    scan, which is widening and therefore sound. Slow, never wrong."* This test
+    pins the second: the widening fires (`degraded` carries
+    `"cursor-invariant"`) and the full log — both intervening batches — is
+    enumerated, not skipped.
+
+    **§15's 2026-08-27 entry E-10** changes only what happens to what gets
+    enumerated: both batches have `tt > scope.as_of_tt` (the pin), so T1's
+    per-batch proof exempts them, and the verdict is `FRESH` **with a receipt**
+    naming both. What is still **not** permitted is a bare `FRESH` with no
+    receipt, or a `FRESH` that skipped the widening — D1.10's clamp removes the
+    pairing at source for the above-frontier case, which is why FF-4 and FF-7 b
+    are one fix; this is the genuine-pin sibling of that fix, exempted rather
+    than skipped.
     """
     s = stores("ff7b")
     s.assert_node("A", "L", {"p": 1}, 0, OPEN_END)
@@ -923,11 +951,20 @@ def test_ff7b_a_pinned_basis_paired_with_a_read_time_cursor(stores):
     live = fx.call(s, "entity_history", {"uid": "A", "as_of_tt": pinned_at})
     scope = DependencyScope.from_json(live["dependency"])
     assert scope.pinned is True and scope.tt_q == pinned_at
+    assert scope.as_of_tt == pinned_at, "E-10: the pin rides on the scope"
 
     verdict = fx.check_scope(s, scope)
-    assert not fx.is_fresh(verdict), (
-        "FF-7 b: a past `tt_q` with a read-time cursor must never be FRESH — "
-        f"{fx.describe(verdict)}")
+    assert "cursor-invariant" in verdict.degraded, (
+        "D13.8a: the pairing must still trigger the widening, not a silent "
+        f"skip — {fx.describe(verdict)}")
+    assert fx.is_fresh(verdict), (
+        "E-10 step 8a: both intervening batches were enumerated by the "
+        f"widened scan and exempted under the pin — {fx.describe(verdict)}")
+    exempt = verdict.exempt
+    assert exempt is not None, "E-10: the exemption receipt is mandatory"
+    assert exempt["basis"] == pinned_at
+    assert exempt["batches"] == 2, "both intervening batches, enumerated and exempted"
+    assert exempt["theorem"] == "T1"
 
 
 def test_ff7c_a_plan_basis_is_the_union_of_its_steps_never_a_completion_capture(
@@ -1677,20 +1714,25 @@ def test_undecidable_is_never_downgraded_to_fresh(stores):
     assert fx.verdict_name(verdict) == "UNDECIDABLE", fx.describe(verdict)
 
 
-def test_a_pinned_result_still_gets_its_suffix_scanned(stores):
-    """**T1 does not exempt a pinned result from the scan** (D13.24's closing
-    note; Corollary C1 as amended).
+def test_a_pinned_result_is_enumerated_and_exempted_with_a_receipt(stores):
+    """**T1 does not exempt a pinned result from *enumeration*** (D13.24's
+    closing note; Corollary C1 as amended; narrowed by **§15's 2026-08-27
+    entry E-10**).
 
     *"No step is skippable on the strength of `pinned = true`. D1.10 clamps an
     above-frontier `as_of_tt` down to the frontier, so a genuinely pinned scope
     scans a suffix that is empty **because the log says so**, not because a flag
     said to skip the scan. The shortcut Corollary C1 used to license is what
-    FF-4 exploited."*
+    FF-4 exploited."* That much is unchanged: step 8a runs *inside* the walk,
+    after every batch in the suffix is already being enumerated — nothing is
+    skipped.
 
-    Asserted structurally: a pinned scope whose `tt_q` predates a later batch
-    reports that batch as a witness. The recompute is stable (T1), so this is a
-    false invalidation — the permitted direction, and the price of not carrying
-    a `pinned` short-circuit at any level.
+    What E-10 changes is the verdict a *genuinely* pinned, later batch earns:
+    T1's proof restricted to one batch says a batch with `batch.tt >
+    scope.as_of_tt` cannot have changed a result read at the pin, so it is
+    exempted rather than reported as a witness. The proof that enumeration
+    still happened is now the **receipt**, not a witness list: `exempt.batches`
+    equals the number of later batches actually walked.
     """
     s = stores("pinned")
     s.assert_node("A", "L", {"p": 1}, 0, OPEN_END)
@@ -1706,10 +1748,16 @@ def test_a_pinned_result_still_gets_its_suffix_scanned(stores):
 
     assert fx.digest_of(s, "entity_history", q) == before["result_digest"], "T1"
     verdict = fx.check_scope(s, scope)
-    assert not fx.is_fresh(verdict), (
-        "the pinned scope must still walk the suffix — "
-        f"{fx.describe(verdict)}")
-    assert fx.witnesses(verdict), "and report what it found"
+    assert fx.is_fresh(verdict), (
+        "E-10 step 8a: the one later batch is exempted, not false-invalidated "
+        f"— {fx.describe(verdict)}")
+    exempt = verdict.exempt
+    assert exempt is not None, "E-10: the exemption receipt is mandatory"
+    assert exempt["basis"] == frontier
+    assert exempt["batches"] == 1, (
+        "the receipt's batch count is the proof the suffix was enumerated: "
+        "exactly the one later batch, found and exempted, not skipped")
+    assert exempt["theorem"] == "T1"
 
 
 def test_tt_now_defaults_to_open_end_and_scans_the_whole_suffix(stores):

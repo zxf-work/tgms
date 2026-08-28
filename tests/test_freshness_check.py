@@ -483,7 +483,7 @@ def test_every_declared_reason_is_reachable():
 
 
 # ---------------------------------------------------------------------------
-# (c) the empty scope, and (d) the pinned scope
+# (c) the empty scope, and (d) the pinned scope / E-10's per-batch exemption
 # ---------------------------------------------------------------------------
 
 def test_the_empty_scope_is_fresh_forever():
@@ -503,16 +503,67 @@ def test_the_empty_scope_still_refuses_over_a_rewritten_log():
     assert check(scope, log).reason == "log-rewritten"
 
 
-def test_a_pinned_scope_still_scans_the_suffix():
-    """FF-4, and the shortcut D13.24 forbids by name. D1.10 clamps an
-    above-frontier `as_of_tt` down to the frontier, so a genuinely pinned scope
-    scans a suffix that is empty *because the log says so*, not because a flag
-    said to skip the scan."""
+def test_ff4_scenario_still_returns_possibly_stale_the_batch_is_tested_not_exempt():
+    """§15 2026-08-27 entry **E-10**, run through FF-4's own numbers: a scope
+    pinned at `as_of_tt = 5000` against a damaging batch at `tt = 1500`.
+    `1500 > 5000` is false, so step 8a does not exempt this batch — it is
+    built and tested like any other, and it hits `T1a`. FF-4 was `if pinned:
+    return FRESH`, a verdict with no evidence; step 8a is `if batch.tt > α:
+    continue`, a per-item test against the batch's own logged `tt`. Run FF-4
+    through it and it is still caught."""
+    log = _log((900, [NODE_A]), (1500, [OP0]))
+    scope = _scope(log, T1a, tt_q=1000, pinned=True, as_of_tt=5000)
+    verdict = check(scope, log)
+    assert verdict.state == "possibly-stale"
+    assert verdict.exempt is None       # nothing was exempted — this one was tested
+
+
+def test_a_genuine_pin_is_exempted_per_batch_with_a_receipt():
+    """A genuine pin has `as_of_tt == tt_q` (D1.10's clamp), so every batch in
+    the suffix satisfies `tt_q < tt` and therefore `batch.tt > as_of_tt` too —
+    step 8a exempts the whole suffix, and the verdict carries the mandatory
+    receipt naming the basis, the count and the `tt`-range it exempted."""
+    log = _log((900, [NODE_A]), (2000, [OP0]), (3000, [OP0]))
+    scope = _scope(log, T1a, tt_q=1000, pinned=True, as_of_tt=1000)
+    verdict = check(scope, log)
+    assert verdict.state == "fresh"
+    assert verdict.exempt == {"basis": 1000, "batches": 2,
+                              "tt_range": [2000, 3000], "theorem": "T1"}
+
+
+def test_absence_of_as_of_tt_reduces_to_pre_entry_behavior():
+    """The fail-safe default (E-10): `as_of_tt` absent means no exemption, so
+    a scope written before this entry — including a genuinely pinned one that
+    simply carries no `as_of_tt` — behaves byte-for-byte as it did before step
+    8a existed. `pinned = true` alone earns no exemption; only `as_of_tt`
+    does. This is the property `test_a_pinned_scope_still_scans_the_suffix`
+    used to assert; E-10 replaces the *behaviour* (a genuine pin now can be
+    exempted) but this absence case is exactly what the replacement must not
+    change."""
     log = _log((900, [NODE_A]), (2000, [OP0]))
-    pinned = _scope(log, T1a, tt_q=1000, pinned=True)
+    pinned = _scope(log, T1a, tt_q=1000, pinned=True)          # no as_of_tt
     unpinned = _scope(log, T1a, tt_q=1000, pinned=False)
-    assert check(pinned, log).state == "possibly-stale"
-    assert check(pinned, log).total == check(unpinned, log).total
+    assert pinned.as_of_tt is None
+    verdict_pinned = check(pinned, log)
+    verdict_unpinned = check(unpinned, log)
+    assert verdict_pinned.state == "possibly-stale"
+    assert verdict_pinned.exempt is None
+    assert verdict_pinned.total == verdict_unpinned.total
+    assert verdict_pinned.to_json() == verdict_unpinned.to_json()
+
+
+def test_an_unverified_tt_q_suppresses_the_exemption_even_with_as_of_tt_set():
+    """D-153 point 3, restated in E-10: `tt_q_verified: false` suppresses the
+    exemption entirely, whatever `as_of_tt` says — an unverified basis is
+    exactly the case where `as_of_tt`'s relationship to the log is unknown,
+    and E-5's widening (`tt_q := 0`) and this narrowing would otherwise
+    fight."""
+    log = _log((900, [NODE_A]), (2000, [OP0]))
+    scope = _scope(log, T1a, tt_q=1000, as_of_tt=1000, tt_q_verified=False)
+    verdict = check(scope, log)
+    assert verdict.state == "possibly-stale"    # tested, not exempted
+    assert verdict.exempt is None
+    assert "tt_q-unverified" in verdict.degraded
 
 
 def test_a_clamped_scope_still_scans_the_suffix():
@@ -522,14 +573,112 @@ def test_a_clamped_scope_still_scans_the_suffix():
 
 
 def test_the_source_carries_no_pinned_short_circuit():
-    """Belt and braces: the property above would still hold if a shortcut were
-    added behind a flag this test does not set."""
-    import inspect
+    """Re-expressed per E-10's own instruction: *"re-expressed as its actual
+    intent — no whole-scope short-circuit on any basis flag — rather than as
+    the absence of a string."* A string-grep would not survive step 8a's
+    addition (the word `pinned` legitimately appears nowhere near it, but
+    `as_of_tt` now plays exactly `pinned`'s old role and a grep on it would be
+    just as cosmetic). The actual property is behavioural: a scope carrying
+    every basis flag that *could* license a shortcut — `pinned = true`,
+    `clamped = true`, an `as_of_tt` that would exempt the whole suffix if
+    step 8a were ever reached — still refuses over a *rewritten* log. Steps
+    1-7 run in full regardless of any basis flag; step 8a is reachable only
+    per-batch, inside step 8's enumeration, never as a top-of-function
+    return."""
+    log = _log((900, [NODE_A]), (2000, [OP0]))
+    scope = _scope(log, T1a, tt_q=1000, pinned=True, clamped=True, as_of_tt=1000,
+                   checkpoints=(Checkpoint(0, "deadbeefdeadbeef"),))
+    verdict = check(scope, log)
+    assert verdict.reason == "log-rewritten"
+    assert verdict.exempt is None
 
-    from tgms.tgir import check as check_mod
-    body = inspect.getsource(check_mod.check)
-    assert "pinned" not in body.replace("`pinned`", "").replace(
-        "pinned scope", "").replace("pinned` = true", "")
+
+# ---------------------------------------------------------------------------
+# as_of_tt — the DependencyScope object itself (E-10)
+# ---------------------------------------------------------------------------
+
+def test_as_of_tt_round_trips_through_json_and_is_absent_by_default():
+    """Additive, on `tt_q_verified`'s (E-5) pattern: absent from the wire when
+    `None`, present as an int64 µs value when set, and a v1 reader that never
+    looks for the key sees exactly D13.2's object."""
+    log = _log((900, [NODE_A]))
+    store = _identity(log)
+    absent = DependencyScope(store, tt_q=1000)
+    assert absent.as_of_tt is None
+    assert "as_of_tt" not in absent.to_json()
+    assert DependencyScope.from_json(absent.to_json()).as_of_tt is None
+
+    pinned = DependencyScope(store, tt_q=1000, as_of_tt=1000)
+    assert pinned.to_json()["as_of_tt"] == 1000
+    assert DependencyScope.from_json(pinned.to_json()).as_of_tt == 1000
+
+
+def test_union_takes_the_max_of_as_of_tt_the_opposite_direction_from_tt_q():
+    """E-10: `⊎` takes `max`, not `min` — the opposite direction from `tt_q`'s
+    earliest-wins union (D13.8), and for the same reason: both choices widen.
+    The merged scope may exempt only what BOTH operands would have exempted,
+    and `max(α₁, α₂)` is the value for which `batch.tt > α` implies both."""
+    log = _log((900, [NODE_A]))
+    store = _identity(log)
+    a = DependencyScope(store, tt_q=1000, as_of_tt=3000)
+    b = DependencyScope(store, tt_q=1000, as_of_tt=5000)
+    assert a.union(b).as_of_tt == 5000
+    assert b.union(a).as_of_tt == 5000          # commutative regardless of order
+
+
+def test_union_with_either_operand_absent_has_no_exemption():
+    """Absence in either operand means the merged scope has no exemption: an
+    operand with no `as_of_tt` exempts nothing, so the merge — which may
+    exempt only what every operand would have — exempts nothing either."""
+    log = _log((900, [NODE_A]))
+    store = _identity(log)
+    pinned = DependencyScope(store, tt_q=1000, as_of_tt=3000)
+    unpinned = DependencyScope(store, tt_q=1000)
+    assert pinned.union(unpinned).as_of_tt is None
+    assert unpinned.union(pinned).as_of_tt is None
+
+
+def test_union_as_of_tt_is_independent_of_which_operand_supplies_tt_q():
+    """The `(tt_q, pinned, clamped)` triple moves **as a unit**, from
+    whichever operand has the smaller checkpoint offset (D13.8). `as_of_tt`
+    does **not** follow that operand — it is `max` over both regardless of
+    which one is "basis". Conflating the two rules would be FF-7 a's shape one
+    level up: a fix that pairs the wrong fields correctly for one axis and
+    wrongly for the other."""
+    log = _log((900, [NODE_A]))
+    store = _identity(log)
+    basis_operand = DependencyScope(store, tt_q=500, checkpoints=(Checkpoint(0, "a"),),
+                                    as_of_tt=3000)
+    other_operand = DependencyScope(store, tt_q=9000, checkpoints=(Checkpoint(50, "b"),),
+                                    as_of_tt=7000)
+    merged = basis_operand.union(other_operand)
+    assert merged.tt_q == 500          # the smaller-offset operand's tt_q ...
+    assert merged.as_of_tt == 7000     # ... but as_of_tt is the max of both anyway
+
+
+def test_producer_emission_rule_row_by_row_against_clamp():
+    """`ttq.clamp`'s wire corner (E-10; the memo's derivation of the
+    emission rule). Row 2 (a genuine pin, `as_of_tt <= frontier`) emits
+    `as_of_tt == tt_q` — redundant with `tt_q` in exactly the case the
+    exemption fires. Row 3 (an above-frontier pin, clamped) emits the
+    originally *requested* value, which differs from — and carries real
+    information beyond — the served `tt_q`. Rows 1 (unpinned, the default)
+    and 4 (frontier unavailable) emit nothing. Row 4 is this module's one
+    genuinely ambiguous corner and is resolved fail-safe here: a frontier
+    that could not be established at all is not a basis `check`'s per-batch
+    proof can be trusted against, so it is treated like the unpinned row
+    rather than trusting whatever the caller happened to request."""
+    from tgms.tgir.ttq import Frontier, clamp
+
+    frontier = Frontier(tt=4000)
+    assert clamp(OPEN_END, frontier).as_of_tt is None            # row 1
+    row2 = clamp(2000, frontier)
+    assert row2.pinned and row2.as_of_tt == 2000 == row2.tt_q    # row 2
+    row3 = clamp(6000, frontier)
+    assert row3.clamped and not row3.pinned
+    assert row3.as_of_tt == 6000 and row3.tt_q == 4000           # row 3
+    assert clamp(6000, Frontier(tt=None)).as_of_tt is None       # row 4 — fail-safe
+    assert clamp(OPEN_END, Frontier(tt=None)).as_of_tt is None
 
 
 # ---------------------------------------------------------------------------
