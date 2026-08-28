@@ -1,0 +1,176 @@
+# M5 campaign — machine-readable companion (§A9 of the freeze names this
+# file). FROZEN 2026-08-27, per docs/design/M5_CAMPAIGN_FREEZE_2026-08-27.md.
+#
+# WHAT THIS FILE IS
+#   The single source of truth for every ratified number §J lists. scripts/
+#   bench_m5.py READS these values rather than hard-coding them, so a change
+#   to the population, a window fraction, or a gate bar is a diff to this
+#   file and to the freeze document TOGETHER, never to the harness alone.
+#
+# THE DIGEST GUARD — now two-way (2026-08-27, Addendum 3)
+#   `freeze_sha256` below is the SHA-256 of
+#   docs/design/M5_CAMPAIGN_FREEZE_2026-08-27.md AS RATIFIED, INCLUDING
+#   Addendum 3 (the last change before P2.3 launch). scripts/bench_m5.py
+#   recomputes that digest at every run and refuses — before touching a
+#   store, before writing a record — if it disagrees with the value
+#   recorded here (check (a): catches THIS file's freeze document drifting).
+#
+#   Coordinator re-verification found the guard was originally
+#   ONE-DIRECTIONAL: nothing pinned THIS file's own bytes, so a change to a
+#   frozen parameter inside it (e.g. R-13's bar, sed'd from 10.0 to 9.9)
+#   passed silently. scripts/bench_m5.py now ALSO checks (b): this file's
+#   own current SHA-256 against `campaign_yaml_sha256` recorded in
+#   `benchmarks/m5-v1/FREEZE_BINDING`, refusing on a mismatch by name.
+#
+#   The binding is a THIRD file, not embedded in either document directly,
+#   because a literal two-way embedding — this file's hash inside the
+#   freeze document, the freeze document's hash inside this file — is a
+#   SHA-256 self-referential fixpoint, i.e. as hard as a preimage search;
+#   Addendum 3 in the freeze document explains this in full and is the
+#   normative account. `FREEZE_BINDING` is written last, after both this
+#   file and the freeze document are final, and depends on both; neither
+#   of them depends on it, so there is no cycle.
+#
+# G1 (§G): population, denominators, windows, argument forms, classes,
+#   controls, gate thresholds and arm assignment are FIXED at ratification.
+#   A change after any measurement is a post-hoc revision (§H) and must say
+#   so in those words — an edit to this file after launch is exactly that.
+
+schema: tgms-m5-campaign
+version: 1
+campaign_id: M5-v1
+frozen_date: '2026-08-27'
+
+freeze_document: docs/design/M5_CAMPAIGN_FREEZE_2026-08-27.md
+freeze_sha256: 8b8184ed40ba97d5adecf001eb30ab13463d4e8e4b9bfd60c6942806db942a3e
+freeze_binding: benchmarks/m5-v1/FREEZE_BINDING
+freeze_status: 'FROZEN 2026-08-27. RELEASED FOR EXECUTION.'
+
+anchor:
+  baseline_freeze: docs/design/BASELINE_FREEZE_2026-08-27.md
+  measurement_branching_public: 3f8fed0   # §I addendum 1/2 — the ratified anchor
+  code_anchor_at_drafting_public: 85851f0
+
+# ---------------------------------------------------------------- R-1 (§A1)
+backend:
+  allowed: [native]
+  reason: >
+    DuckDB has no replay cursor (tests/test_artifact_refresh.py:51-67), so
+    every scope rides tt_q_verified:false -- a confound, not a population
+    member. The harness refuses outright on any other backend.
+
+# ---------------------------------------------------------- R-2/R-3 (§A2)
+stores:
+  scored:
+    - {label: bitcoinotc, path: stores/bitcoinotc, role: carve-continuity, single_typed: true}
+    - {label: collegemsg, path: stores/collegemsg, role: carve-continuity, single_typed: true}
+    - {label: sx-mathoverflow, path: stores/sx-mathoverflow, role: level1-mixed,
+       single_typed: false, rel_types: [A2Q, C2Q, C2A]}
+  soundness_only:
+    # [INHERITED] M4_MEASURED_REPORT.md §1/§8 — 22 entities, no ratio.
+    - {label: ldbc-fixture, path: stores/ldbc-fixture, note: 'precision undefined; soundness column only'}
+  characterization:
+    - {label: sx-superuser, path: stores/sx-superuser}
+    - {label: wiki-talk, path: stores/wiki-talk}
+    - {label: snb-sf1, path: stores/snb-sf1}
+  build_budget_wall_s: 2700   # R-4: <= 45 min wall per scored store, server-side, with receipt
+
+# ------------------------------------------------------------- R-5..R-8 (§A3)
+carve_arm:
+  forms: [aggregate_events_duration, aggregate_events_plain, neighborhood_evolution]
+  rg1_pair: [aggregate_events_plain, aggregate_events_duration]   # F4's ratio needs both halves
+  min_cells_per_store_form: 60          # R-5 -> >= 360 over bitcoinotc + collegemsg
+  window_fractions: [0.001, 0.01, 0.05]  # R-6: 0.1% / 1% / 5% of store vt extent
+  min_fraction_share_le_1pct: 0.40       # R-6
+  injection:
+    min_bcd_share: 0.70                  # R-7
+    min_outside_window_share_of_bcd: 0.60  # R-7
+  floor:
+    min_changed_trials: 200              # R-8
+    min_changed_trials_per_rg1_half: 100  # R-8
+
+# ---------------------------------------------------------------- R-11 (§A4)
+pattern_l1:
+  min_cells: 80                # R-11
+  min_mixed_cells: 40          # R-11, mixed declared/undeclared only
+  mixed_requires_multi_typed_store: true   # sx-mathoverflow is the only scored store that qualifies
+  classes:
+    l1_pm_node: 'T_node uid-set win, any scored store, anchored and unanchored'
+    l1_pm_reltype: 'the >= 40 mixed declared/undeclared cells ONLY (2026-08-27 correction)'
+
+# ---------------------------------------------------------------- R-10 (§A5)
+zero_changed_ops:
+  operators: [snapshot_subgraph, temporal_paths, co_active, find_temporal_motif_instances]
+  min_operators_floor: 14      # R-10, of 15
+  min_changed_trials_each: 20  # R-10
+  snapshot_subgraph_placement: at_t_valid_instant   # not over an interval
+
+# ---------------------------------------------------------------- R-19 (§A6)
+resolve_entities:
+  arm: characterization
+  scored_denominator: false
+  d_number: D-157
+  preconditions:
+    - residual_probe    # (i): kernel promoted `name` column vs. the portable loop agree
+    - corpus_probe       # A-3: non-degenerate answers on the scored inventory?
+  characterization_corpus_if_degenerate: snb-sf1   # carries real Person.firstName
+
+# ---------------------------------------------------------------- R-12 (§B2)
+propagation:
+  min_decisions: 100                      # R-12
+  min_decisions_after_payload_change: 30  # R-12
+  edge: tgms.artifact.propagate.parent_recheck   # public dc6941d
+
+# ------------------------------------------------------------- R-16 (§A7/C4)
+pinned:
+  min_trials: 100   # R-16, reported not passed
+
+# --------------------------------------------------------------- FLOOR (§B1)
+# [INHERITED] bench_freshness.py::FLOOR verbatim, with R-10's operators bump.
+floor:
+  changed: 300
+  operators: 14
+  classes: 4
+  outside_window: 50
+  new_identity: 50
+  value_changed: 100
+
+# ------------------------------------------------------------------ §F Gates
+gates:
+  gate_a:
+    false_fresh_max: 0
+    false_safe_propagation_max: 0
+    operators_floor: 14          # R-10
+    propagation_floor: 100       # R-12
+  gate_b:
+    l1_pm_node: {ratio_min: 10.0, absolute_min: 0.30}     # R-13 AMENDED at ratification (was >=3.0x)
+    carve_elig: {ratio_min: 1.5}                           # R-14
+    avoided_recomputation: {min_pct: 60.0, min_pts_above_control: 30.0}  # R-15
+    pinned: {measurability_only: true, min_trials: 100}    # R-16 -- reported, not passed
+    carve_dominance_threshold_pct: 25.0                    # R-14a
+  gate_c:
+    binary: true
+    criteria:
+      - A_payload_byte_identical_to_recompute
+      - B_recheck_verdict_correct_against_recompute
+      - deterministic_replay_identical_record_digest_chains
+      - zero_false_safe_propagation_decisions_at_r12_floor
+    propagation_decision_floor: 100   # R-12
+  gate_c3:
+    cut_threshold_pct: 20.0     # R-17
+    default_if_unmeasured_or_over_threshold: not-cut
+    instrument_dependency: 'snapshot_subgraph scan-region + F1 union accumulator (K-3: not landed at drafting anchor)'
+
+# ---------------------------------------------------------------- R-18 (§D2)
+index_trigger:
+  median_intersects_calls_threshold: 50000
+  median_wall_pct_of_apply_threshold: 10.0
+
+# ----------------------------------------------------------- §A10 discipline
+wall_ceiling_s_per_cell: 600   # hard per-cell wall ceiling; TIMEOUT, never unbounded
+
+# ------------------------------------------------------- §C5 / R-14a mapping
+carve_dominance:
+  denominator: CARVE-elig
+  numerator: carve_only_invalidations
+  unpinned_population_only: true

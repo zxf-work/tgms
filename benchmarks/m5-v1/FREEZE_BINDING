@@ -1,0 +1,48 @@
+# FREEZE_BINDING — the two-way digest binding for the M5 campaign freeze
+# and its machine-readable companion.
+#
+# WHAT THIS IS
+#   `docs/design/M5_CAMPAIGN_FREEZE_2026-08-27.md` (the freeze, "D") and
+#   `benchmarks/m5-v1/campaign.yaml` (the companion, "Y") each pin the
+#   other's identity. Y already carries D's hash directly (its own
+#   `freeze_sha256` field). D cannot carry Y's hash directly without
+#   creating a self-referential fixpoint — see Addendum 3 in the freeze
+#   document for the full account of why that specific idea doesn't work.
+#   This file exists to carry the missing half instead: it is written
+#   LAST, after both D and Y are final, and it depends on both of them;
+#   neither of them depends on it, so there is no cycle.
+#
+# WHAT scripts/bench_m5.py CHECKS, AT EVERY RUN, BEFORE TOUCHING A STORE
+#   (a) sha256(D) == campaign.yaml's own `freeze_sha256` field
+#       — catches the FREEZE DOCUMENT drifting or being tampered.
+#   (b) sha256(Y) == this file's `campaign_yaml_sha256` line below
+#       — catches THE COMPANION (any frozen parameter inside it — a gate
+#         threshold, a window fraction, a floor) drifting or being
+#         tampered, INCLUDING a copy of campaign.yaml passed via
+#         --campaign-yaml that a legitimate `freeze_sha256` field was
+#         copied into verbatim but some OTHER line was edited. This is
+#         the exact gap coordinator re-verification found: a `sed` of
+#         R-13's bar (10.0 -> 9.9) leaves `freeze_sha256` untouched and
+#         only (b) catches it.
+#   A mismatch on either refuses the run outright, by name, before any
+#   store is opened or any record is written.
+#
+# HOW TO REGENERATE (only ever as part of a ratified, dated addendum —
+# never casually; this file's own bytes are not append-only the way the
+# freeze document's are, but a change to it outside a dated addendum
+# process is itself a post-hoc revision under §H and must say so)
+#   1. Finalize the freeze document (with its new addendum, if any).
+#   2. sha256 it; write that value into campaign.yaml's `freeze_sha256`.
+#   3. Finalize campaign.yaml (both edits done).
+#   4. sha256 IT; write that value into this file's `campaign_yaml_sha256`.
+#   5. sha256 the freeze document again to confirm step 2's value is still
+#      correct (it is, since this file was written after the freeze
+#      document and never fed back into it) and record it below too, for
+#      a reader auditing this file without re-deriving from campaign.yaml.
+
+freeze_document: docs/design/M5_CAMPAIGN_FREEZE_2026-08-27.md
+freeze_document_sha256: 8b8184ed40ba97d5adecf001eb30ab13463d4e8e4b9bfd60c6942806db942a3e
+campaign_yaml: benchmarks/m5-v1/campaign.yaml
+campaign_yaml_sha256: 1096b37abd8e77639009888be939dfb99465636b2976de2af8684ffcb943624d
+recorded: 2026-08-27
+recorded_by: coordinator-authorized Addendum 3, P2.3 harness digest-guard fix
