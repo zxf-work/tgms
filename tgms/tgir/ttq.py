@@ -24,7 +24,7 @@ is being served — exactly the direction D13.17 forbids.
 
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from typing import Any, Callable
 
 from tgms.core.model import OPEN_END
@@ -58,6 +58,11 @@ class TtQ:
     pinned: bool = False
     clamped: bool = False
     verified: bool = True
+    #: **E-10's emission value** — the `as_of_tt` `check`'s step 8a should be
+    #: handed, or `None` when this read earns no exemption. Not part of
+    #: `to_envelope()`: it does not ride flat on the envelope, it rides on the
+    #: `DependencyScope` (D13.2's pattern for every additive field so far).
+    as_of_tt: int | None = None
 
     def to_envelope(self) -> dict[str, Any]:
         """The flat envelope keys (D13.16's placement). `verified` is **not**
@@ -69,25 +74,39 @@ class TtQ:
 def clamp(as_of_tt: int, frontier: Frontier) -> TtQ:
     """§6.2's four cases, which are D13.16's clamp and D1.9a's `pinned` rule.
 
-    | `as_of_tt` | `tt_q` | `pinned` | `clamped` |
-    |---|---|---|---|
-    | `OPEN_END` (the default) | frontier | false | false |
-    | `<= frontier` | `as_of_tt` | **true** | false |
-    | `> frontier`, `< OPEN_END` | frontier | **false** | **true** |
-    | frontier unavailable | `0` | false | **true** |
+    | `as_of_tt` | `tt_q` | `pinned` | `clamped` | E-10 `as_of_tt` |
+    |---|---|---|---|---|
+    | `OPEN_END` (the default) | frontier | false | false | *absent* |
+    | `<= frontier` | `as_of_tt` | **true** | false | `as_of_tt` (= `tt_q`) |
+    | `> frontier`, `< OPEN_END` | frontier | **false** | **true** | `as_of_tt` |
+    | frontier unavailable | `0` | false | **true** | *absent* |
 
-    The third row is the one an implementer gets wrong: an above-frontier pin
-    is `pinned = false`, because `pinned` describes the basis *requested* and
-    that basis was not served. The fourth is maximally conservative and
-    therefore always sound.
+    The third row is the one an implementer gets wrong on `pinned`: an
+    above-frontier pin is `pinned = false`, because `pinned` describes the
+    basis *requested* and that basis was not served. It is nonetheless the
+    row E-10's wire corner calls out as carrying "real information" for the
+    exemption — `α = as_of_tt > tt_q` there, unlike row two where the field
+    would be redundant with `tt_q`.
+
+    **Row four is this function's one genuinely ambiguous corner, resolved
+    fail-safe.** `frontier.tt is None` means the frontier could not be
+    established at all — not merely that it is small — so there is no basis
+    on which to trust *any* requested `as_of_tt` as the predicate the read
+    actually applied; T1's per-batch proof needs exactly that trust. Emitting
+    the caller's requested value there would be sound only if the read truly
+    served it, which this function cannot know, so this entry treats the row
+    identically to the unpinned row: no exemption. (E-10 itself does not
+    spell out this row; the memo's derivation covers only rows two and three
+    explicitly. This is the chosen fail-safe reading, flagged here rather
+    than assumed.)
     """
     if frontier.tt is None:
-        return TtQ(0, False, True, frontier.verified)
+        return TtQ(0, False, True, frontier.verified, None)
     if as_of_tt >= OPEN_END:
-        return TtQ(frontier.tt, False, False, frontier.verified)
+        return TtQ(frontier.tt, False, False, frontier.verified, None)
     if as_of_tt <= frontier.tt:
-        return TtQ(as_of_tt, True, False, frontier.verified)
-    return TtQ(frontier.tt, False, True, frontier.verified)
+        return TtQ(as_of_tt, True, False, frontier.verified, as_of_tt)
+    return TtQ(frontier.tt, False, True, frontier.verified, as_of_tt)
 
 
 def frontier_of(adapter: Any, tt_source: Any = None) -> Frontier:
@@ -193,11 +212,22 @@ def envelope_metadata(adapter: Any, op: str, args: dict[str, Any] | None = None,
     `args` are the *filled* arguments the leaf was built from; with none — a
     step that never ran, and so has none — the scope falls back to `"*"`, which
     is the widening a failed step's mandatory contribution should be.
+
+    **E-10's `as_of_tt` is stamped here, on the `DependencyScope` `basis.scope`
+    built.** `ScopeBasis` (`scope_of.py`) is not this entry's file to widen, so
+    the emission value is derived a second time, from the same `clamp` this
+    function's own `basis_of` call already ran — `clamp` is pure, so the two
+    calls agree by construction — and applied with `dataclasses.replace`
+    after the scope object exists. Absent (the unpinned and frontier-
+    unavailable rows of `clamp`'s table) leaves the scope exactly as `check`
+    saw it before this entry.
     """
     basis = basis_of(adapter, as_of_tt_of(args or {}), tt_source)
-    triple = TtQ(basis.tt_q, basis.pinned, basis.clamped, basis.tt_q_verified)
-    return {**triple.to_envelope(),
-            "dependency": dependency_of(op, basis, args).to_json()}
+    triple = clamp(as_of_tt_of(args or {}), frontier_of(adapter, tt_source))
+    scope = dependency_of(op, basis, args)
+    if triple.as_of_tt is not None:
+        scope = replace(scope, as_of_tt=triple.as_of_tt)
+    return {**triple.to_envelope(), "dependency": scope.to_json()}
 
 
 def as_of_tt_of(args: dict[str, Any]) -> int:

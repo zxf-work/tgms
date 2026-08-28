@@ -17,10 +17,18 @@ Three shapes govern this module:
   conservative verdict. `Verdict` therefore exposes `.actionable_fresh` rather
   than inviting a caller to compare against an enum, because `verdict !=
   POSSIBLY_STALE` is the shape of the bug.
-- **No step is skippable on the strength of `pinned = true`** (D13.24, FF-4).
-  A genuinely pinned scope scans a suffix that is empty *because the log says
-  so*, not because a flag said to skip the scan. There is no `pinned`
-  short-circuit at any level of this file, and a test asserts its absence.
+- **No *whole-scope* short-circuit is licensed by `pinned = true`** (D13.24,
+  FF-4). A genuinely pinned scope scans a suffix that is empty *because the
+  log says so*, not because a flag said to skip the scan. No step 1-7 is ever
+  skipped on the strength of `pinned`, and a test asserts it.
+- **Step 8a (§15 2026-08-27 entry E-10) is a per-batch exemption, not a
+  scope-level short-circuit.** Inside step 8's loop, before a batch's
+  footprints are built, a batch is exempted from testing — recorded in a
+  receipt, never silently — when the scope carries `as_of_tt` (opt-in,
+  additive; absent means no exemption), `tt_q_verified` is true, and
+  `batch.tt > as_of_tt` (T1's four-step proof restricted to one batch). Every
+  batch is still enumerated and every other step still runs in full; this is
+  what distinguishes it from FF-4's `if pinned: return FRESH`.
 
 **This module reads a log and a scope. It never reads a store** — D13.20's
 restriction, enforced by `scripts/check_freshness_boundary.py`.
@@ -377,6 +385,12 @@ class Verdict:
     #: hold. The verdict is sound either way; the harness reports the cell
     #: separately so a degraded `FRESH` is never counted as a narrow one.
     degraded: tuple[str, ...] = ()
+    #: **E-10's mandatory receipt.** `None` unless step 8a exempted at least
+    #: one batch, in which case `{"basis": α, "batches": n, "tt_range": [lo,
+    #: hi], "theorem": "T1"}` — an exemption that does not say what it
+    #: exempted and on what basis is indistinguishable from the bug (FF-4) it
+    #: is distinguished from.
+    exempt: dict[str, Any] | None = None
 
     @property
     def actionable_fresh(self) -> bool:
@@ -393,16 +407,19 @@ class Verdict:
             out["total"] = self.total
         if self.degraded:
             out["degraded"] = list(self.degraded)
+        if self.exempt is not None:
+            out["exempt"] = self.exempt
         return out
 
 
-def FRESH(degraded: tuple[str, ...] = ()) -> Verdict:
-    return Verdict("fresh", degraded=degraded)
+def FRESH(degraded: tuple[str, ...] = (), exempt: dict[str, Any] | None = None) -> Verdict:
+    return Verdict("fresh", degraded=degraded, exempt=exempt)
 
 
 def POSSIBLY_STALE(witnesses: Sequence[Witness], total: int,
-                   degraded: tuple[str, ...] = ()) -> Verdict:
-    return Verdict("possibly-stale", tuple(witnesses), total, degraded=degraded)
+                   degraded: tuple[str, ...] = (),
+                   exempt: dict[str, Any] | None = None) -> Verdict:
+    return Verdict("possibly-stale", tuple(witnesses), total, degraded=degraded, exempt=exempt)
 
 
 def UNDECIDABLE(reason: str, degraded: tuple[str, ...] = ()) -> Verdict:
@@ -572,6 +589,18 @@ def check(scope: DependencyScope | dict[str, Any], log: EventLog,
     Refusing would be equally sound and strictly less useful — `UNDECIDABLE` is
     read as `POSSIBLY_STALE` by every consumer, so it can only ever say "don't
     know". The widening is recorded as `degraded: ["tt_q-unverified"]`.
+
+    **Step 8a (§15 2026-08-27 entry E-10) exempts a batch, per-item, when the
+    scope carries `as_of_tt` and `batch.tt > as_of_tt`.** `as_of_tt` is
+    additive and opt-in (absent means no exemption — every scope written
+    before E-10 gets byte-identical verdicts); `tt_q_verified: false`
+    suppresses it entirely, whatever `as_of_tt` says, because an unverified
+    basis is exactly the case where `as_of_tt`'s relationship to the log is
+    unknown. Nothing is skipped: every batch in the suffix is still
+    enumerated and individually adjudicated, and steps 1-7 are unaffected.
+    The verdict carries `exempt: {basis, batches, tt_range, theorem}` whenever
+    at least one batch was exempted — the receipt is mandatory, never a silent
+    skip.
     """
     parsed = _parse(scope)
     if isinstance(parsed, str):
@@ -648,10 +677,31 @@ def check(scope: DependencyScope | dict[str, Any], log: EventLog,
     witnesses: list[Witness] = []
     seen: set[tuple[str | None, str, int]] = set()
     total = 0
+    #: Step 8a's tally (E-10) — `None` unless at least one batch is exempted.
+    exempt_count = 0
+    exempt_lo: int | None = None
+    exempt_hi: int | None = None
+    #: The exemption is licensed only for a **verified** basis (D-153 point 3):
+    #: an unverified `tt_q` is exactly the case where `as_of_tt`'s relationship
+    #: to the log is unknown, and it must suppress the exemption entirely,
+    #: whatever `as_of_tt` says.
+    exemption_active = scope.as_of_tt is not None and scope.tt_q_verified
     try:
         for batch, _end, _raw in log.batches_from(start):
             tt = int(batch["tt"])
             if not (tt_q < tt <= tt_now):
+                continue
+            # 8a — the per-batch pinned exemption (E-10), BEFORE footprint
+            # construction. A per-item test against this batch's own logged
+            # `tt`, not a verdict computed from an unverified flag: T1's proof
+            # restricted to one batch says `B` cannot change a result read at
+            # `as_of_tt = α` when `B.tt > α`, so the batch is adjudicated —
+            # exempted, not skipped-without-evidence — and enumeration
+            # continues exactly as it does for every other batch.
+            if exemption_active and tt > scope.as_of_tt:  # type: ignore[operator]
+                exempt_count += 1
+                exempt_lo = tt if exempt_lo is None else min(exempt_lo, tt)
+                exempt_hi = tt if exempt_hi is None else max(exempt_hi, tt)
                 continue
             try:
                 fps = footprints_of_batch(batch)
@@ -673,9 +723,14 @@ def check(scope: DependencyScope | dict[str, Any], log: EventLog,
         return UNDECIDABLE("log-unreadable", tuple(degraded))
 
     # 9
+    receipt = (
+        {"basis": scope.as_of_tt, "batches": exempt_count,
+         "tt_range": [exempt_lo, exempt_hi], "theorem": "T1"}
+        if exempt_count > 0 else None
+    )
     if not witnesses:
-        return FRESH(tuple(degraded))
-    return POSSIBLY_STALE(witnesses, total, tuple(degraded))
+        return FRESH(tuple(degraded), receipt)
+    return POSSIBLY_STALE(witnesses, total, tuple(degraded), receipt)
 
 
 def _scan_batch(fps: BatchFootprint, scope: DependencyScope, step_id: str | None,

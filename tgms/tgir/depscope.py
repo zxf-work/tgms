@@ -401,12 +401,23 @@ class DependencyScope:
     #: that honours it knows this `tt_q` was not rounded down against a cursor
     #: and must not be trusted in the `FRESH` direction.
     tt_q_verified: bool = True
+    #: **Additive to D13.2, on `tt_q_verified`'s (E-5) pattern — §15's
+    #: 2026-08-27 entry E-10.** The `as_of_tt` the read actually applied, an
+    #: int64 µs value, emitted **only when the producer wants the per-batch
+    #: exemption of `check` step 8a** (D13.24). **Absent means no exemption** —
+    #: the fail-safe default, so every scope written before E-10 behaves
+    #: exactly as it did before it (byte-identical verdicts) and the feature is
+    #: opt-in per scope. Not a version bump for the same reason: a v1 reader
+    #: that ignores this key computes today's verdict, which is sound.
+    as_of_tt: int | None = None
 
     def __post_init__(self) -> None:
         if not self.store:
             raise InvalidArgError("a dependency scope needs a store identity")
         if not (0 <= self.tt_q <= OPEN_END):
             raise InvalidArgError(f"tt_q out of range: {self.tt_q}")
+        if self.as_of_tt is not None and not (0 <= self.as_of_tt <= OPEN_END):
+            raise InvalidArgError(f"as_of_tt out of range: {self.as_of_tt}")
         if not self.checkpoints:
             # D13.2 makes `checkpoints` mandatory and D13.24 makes it
             # load-bearing as the scan's starting point; an empty list has no
@@ -487,6 +498,15 @@ class DependencyScope:
             # the verification flag belongs to the `tt_q` it describes, so it
             # moves with the triple rather than being combined
             tt_q_verified=basis.tt_q_verified,
+            # E-10: `max`, not the `tt_q`/`pinned`/`clamped` triple's "moves as
+            # a unit from whichever operand is basis" rule. The merged scope
+            # may exempt only what BOTH operands would have exempted — the
+            # opposite direction from `tt_q`'s earliest-wins union, and for the
+            # same reason both choices widen. Absent on either operand means
+            # that operand exempts nothing, so the merge exempts nothing.
+            as_of_tt=(max(self.as_of_tt, other.as_of_tt)
+                     if self.as_of_tt is not None and other.as_of_tt is not None
+                     else None),
         )
 
     def with_terms(self, terms: Iterable[ScopeTerm]) -> "DependencyScope":
@@ -506,6 +526,8 @@ class DependencyScope:
         }
         if not self.tt_q_verified:
             out["tt_q_verified"] = False
+        if self.as_of_tt is not None:
+            out["as_of_tt"] = self.as_of_tt
         return out
 
     def canonical(self) -> str:
@@ -529,6 +551,7 @@ class DependencyScope:
             clamped=bool(obj["clamped"]),
             version=int(obj["version"]),
             tt_q_verified=bool(obj.get("tt_q_verified", True)),
+            as_of_tt=(int(obj["as_of_tt"]) if obj.get("as_of_tt") is not None else None),
         )
 
 
