@@ -48,5 +48,10 @@ jobs:
         run: uv run python scripts/check_tgir_leaf_totality.py
       - name: scope shape (M2.3 gate)
         run: uv run python scripts/check_scope_shape.py
+      # M5 §0.2-4 / §7.1: this gate was a `make ci` target but absent from
+      # CI, so a contributor could break the freshness import boundary
+      # invisibly. M5 leans on it (P1.2-e).
+      - name: freshness import boundary (M5 §7.1)
+        run: uv run python scripts/check_freshness_boundary.py
       - name: tests (fast property profile)
         run: TGMS_HYP_EXAMPLES=25 uv run pytest tests/ -q
