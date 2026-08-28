@@ -145,7 +145,9 @@ def build_parser() -> argparse.ArgumentParser:
     # refresh was refused and nothing was published — the printed message
     # (or, with --json, the `"reason"` field) names one of refresh.py's
     # closed taxonomy: not-found, generation-mismatch, no-refresh-handle,
-    # unknown-refresh-kind, ref-not-found, unknown-plan-format, or
+    # unknown-refresh-kind, ref-not-found, unknown-plan-format,
+    # parent-vanished (a parents entry names an artifact absent from the
+    # live fold — nothing to advance it to), or
     # execution-refused (the re-execution itself raised or errored, e.g. a
     # D-155 admission/budget refusal). The old generation is left
     # byte-identical on disk in every refusal case (§1.1).
@@ -166,7 +168,9 @@ def build_parser() -> argparse.ArgumentParser:
                     "one), no-refresh-handle (plan_format unrecognized), "
                     "handle-mismatch, unknown-refresh-kind, ref-not-found "
                     "(the plan/operator blob is missing), "
-                    "unknown-plan-format (the blob itself disagrees), or "
+                    "unknown-plan-format (the blob itself disagrees), "
+                    "parent-vanished (a parents entry no longer resolves "
+                    "in the registry), or "
                     "execution-refused (the re-execution raised or "
                     "errored, e.g. a D-155 admission/budget refusal). The "
                     "old generation is left byte-identical on disk in "

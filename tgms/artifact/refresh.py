@@ -42,7 +42,7 @@ from tgms.tgir.execute import run_plan
 from tgms.tgir.loader import load as load_plan
 from tgms.tgir.plan import Plan
 
-from tgms.artifact.record import ArtifactRecord
+from tgms.artifact.record import ArtifactId, ArtifactRecord
 from tgms.artifact.registry import Registry
 from tgms.artifact.witness import KNOWN_PLAN_FORMATS, RefreshHandle
 
@@ -63,6 +63,10 @@ REFUSAL_REASONS: tuple[str, ...] = (
     "unknown-plan-format",  # the blob's own plan_format disagrees with what is known
     "execution-refused",    # the re-execution itself raised or returned an error
                             # (D-155 admission/budget refusal, or an operator error)
+    "parent-vanished",      # a name in record.parents has no registration at all in
+                            # the registry's current fold — advancing it to "current
+                            # generation" is not answerable, so publish refuses rather
+                            # than silently carrying the stale entry forward
 )
 
 
@@ -239,8 +243,11 @@ def _publish(record: ArtifactRecord, envelope: dict[str, Any], meta: dict[str, A
     envelope. Every freshness-bearing field below — `basis`, `dependency`
     — comes from `envelope`; nothing is copied from `record` except the
     things that are properties of the *artifact's identity*, not of one
-    execution: `kind`, `refresh` (the same blob refreshes it again next
-    time), and `parents`.
+    execution: `kind` and `refresh` (the same blob refreshes it again next
+    time). `parents` names the same set of parent *artifacts* as `record`'s
+    — that set is identity too — but not the same generations: see
+    `_advance_parents`, which re-reads each parent's live current generation
+    from `registry` rather than copying `record.parents` verbatim.
     """
     dep_json = envelope.get("dependency")
     if dep_json is None:
@@ -299,8 +306,38 @@ def _publish(record: ArtifactRecord, envelope: dict[str, Any], meta: dict[str, A
     return registry.register(
         name=record.name, kind=record.kind, plan=plan_field, basis=basis,
         state=state_field, refresh=dict(record.refresh), dependency=dependency,
-        parents=record.parents, payload=payload_field,
+        parents=_advance_parents(record, registry), payload=payload_field,
     )
+
+
+def _advance_parents(record: ArtifactRecord, registry: Registry) -> tuple[ArtifactId, ...]:
+    """§1.3's `parents` names the generation each parent stood at when *this*
+    registration happened — never a fixed fact about the child, but a
+    snapshot taken fresh each time a generation of it is written. Copying
+    `record.parents` verbatim (the old generation's snapshot) forward into a
+    refresh would misdate that snapshot: a refresh that runs after a parent
+    has advanced is honestly described only by the parent's generation *at
+    the moment this refresh executes*, read from `registry`'s live fold —
+    the same fold `propagate.parent_recheck` reads back later, which is what
+    keeps a refreshed child from being re-flagged forever (`parent_recheck`
+    compares against `registry.current(parent.name)`, not against whatever
+    generation the child happened to record before).
+
+    A parent name no longer present in the registry at all cannot be
+    advanced to anything — refused as `"parent-vanished"` rather than
+    silently carrying the stale entry forward, which is the same discipline
+    every other refusal in this module follows: named, and nothing
+    published."""
+    advanced: list[ArtifactId] = []
+    for parent in record.parents:
+        current = registry.current(parent.name)
+        if current is None:
+            raise RefreshRefused(
+                f"refresh cannot advance parent {parent.name!r}: it is no longer "
+                f"registered at all",
+                reason="parent-vanished", name=record.name, parent=parent.name)
+        advanced.append(current.id)
+    return tuple(advanced)
 
 
 def _results_dir(registry: Registry) -> Path:
