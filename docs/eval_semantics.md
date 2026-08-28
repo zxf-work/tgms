@@ -274,16 +274,50 @@ Three needed more than a translation:
   so three events sharing a `vt_s` can still form a motif with `eid` deciding
   their roles.
 
-**`resolve_entities`: the two TGMS implementations disagree with each other.**
-Porting it surfaced a divergence that has nothing to do with PostgreSQL. The
-oracle and portable fallback update the per-uid canonical version for *every*
-believed version before the match test, so `label` and `name` come from the
-latest version overall; the Rust kernel reaches that update only for
-*matching* versions, so they come from the latest matching one. The two also
-break `vt_s` ties in opposite directions — the oracle keeps the earlier-scanned
-version, the kernel the later — and neither is order-independent. The SQL
-follows the oracle. The synthetic data does not currently distinguish them, so
-nothing fails; a uid whose newest version does not itself match would.
+**`resolve_entities`: the divergence porting surfaced, and its repair.**
+Porting it surfaced a divergence that had nothing to do with PostgreSQL — and
+that divergence is **closed**. What it was, kept on the record because several
+documents were written against it:
+
+> ~~The oracle and portable fallback update the per-uid canonical version for
+> *every* believed version before the match test, so `label` and `name` come
+> from the latest version overall; the Rust kernel reaches that update only for
+> *matching* versions, so they come from the latest matching one. The two also
+> break `vt_s` ties in opposite directions — the oracle keeps the
+> earlier-scanned version, the kernel the later — and neither is
+> order-independent. The SQL follows the oracle. The synthetic data does not
+> currently distinguish them, so nothing fails; a uid whose newest version does
+> not itself match would.~~
+
+**Correction (2026-08-27). The paragraph above was already false when this
+section was last touched: D-031 repaired it on 2026-07-30**, and the D-031
+commit updated §6 without reaching §7. Current behaviour, identical on every
+path:
+
+- **Canonical `label`/`name` come from the latest believed version by
+  `(vt_s, vid)`, matched or not.** An entity found by a superseded name resolves
+  to what it is now. This was the oracle's behaviour and **the Rust kernel was
+  fixed to it**; the kernel also now reads staged rows, so a batch sees its own
+  writes.
+- **The `vt_s` tiebreak is `vid`, on every path**, so all three
+  implementations are order-independent by construction. (The tiebreak is in
+  fact unreachable for believed versions of one uid, whose valid intervals are
+  disjoint; it is stated so no implementation may depend on scan order.)
+- **Name matching participates only when `name` is a non-empty JSON string** —
+  the kernel's typed-column behaviour, to which the oracle, the portable
+  fallback and this section's SQL were narrowed. The oracle's old `str()`
+  coercion let a JSON null match `"None"` and a number match `"42"`; that was an
+  accident, not a semantics.
+
+`tests/test_resolve_semantics.py` pins all three behaviours on both backends,
+and the output `name` field keeps its raw JSON type either way. §6's "current-
+canonical" bullet carries the string-only half.
+
+**Documents written against the stale paragraph.** Three cite it, and all three
+are corrected as of 2026-08-27: `docs/design/FRESHNESS_SEMANTICS.md` §9.5 (§15
+errata entry **E-9**), and `docs/design/TGIR_SPEC.md` §6 row 14 and its Note (b)
+(§9 addendum **A-3**, which retires the "M2 must preserve that divergence"
+directive and refers the M4 workload exclusion back to the coordinator).
 
 Three details did the work in getting those six to match, and each would have
 produced a wrong-but-plausible answer on its own:
