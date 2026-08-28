@@ -185,15 +185,26 @@ def test_refresh_handle_for_an_operator_kind_opaque_leaf() -> None:
 
 
 # ---------------------------------------------------------------------------
-# the level1 seam — a documented no-op until tgms.tgir.level1 exists
+# the level1 seam — wired to tgms.tgir.level1 (P1.3); absent-region fail-safe
 # ---------------------------------------------------------------------------
 
 
-def test_level1_flag_is_currently_a_no_op() -> None:
+def test_level1_flag_is_wired_and_absent_region_is_a_no_op() -> None:
+    """`tgms.tgir.level1` now exists and `check_artifact`'s `level1` flag is
+    wired to it (`tgms/artifact/witness.py::_apply_level1`) — this test used
+    to assert the module did not exist yet; P1.3 landed it, per its own
+    original docstring ("check_artifact's level1 no-op fail-safe ... needs to
+    be wired up to it").
+
+    None of this record's steps carries a `scan_region` (`_register` never
+    sets one), so `M5_DESIGN.md` §4.3's fail-safe — "an absent scan region
+    means no narrowing" — applies: `level1=True` and `level1=False` must
+    still produce byte-identical verdicts, and every resolved term stays
+    `"level-0"`. The PatternMatch case where a scan region *is* present, and
+    actually narrows something, is `tests/test_scan_region_pattern.py`'s.
+    """
     import importlib.util
-    assert importlib.util.find_spec("tgms.tgir.level1") is None, (
-        "tgms.tgir.level1 now exists — check_artifact's level1 no-op fail-safe "
-        "in tgms/artifact/witness.py needs to be wired up to it (P1.3)")
+    assert importlib.util.find_spec("tgms.tgir.level1") is not None
 
     log = _log((10, [NODE_A]))
     scope = _scope(log, ScopeTerm(targets=Targets(nodes=("A",))))
@@ -203,7 +214,8 @@ def test_level1_flag_is_currently_a_no_op() -> None:
     with_level1 = check_artifact(record, log, level1=True)
     without_level1 = check_artifact(record, log, level1=False)
     assert with_level1.to_json() == without_level1.to_json()
-    assert all(t.level == "level-0" for t in with_level1.terms)
+    assert not with_level1.actionable_fresh  # the correction still invalidates
+    assert with_level1.terms and all(t.level == "level-0" for t in with_level1.terms)
 
 
 # ---------------------------------------------------------------------------
