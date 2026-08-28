@@ -124,12 +124,17 @@ def _open_and_replay(store_dir: Path) -> tgms.Store:
 
 
 def _register_plan_artifact(store_dir: Path, store: Any, registry: Registry,
-                            name: str = "wmc") -> ArtifactRecord:
+                            name: str = "wmc",
+                            parents: tuple[ArtifactId, ...] = ()) -> ArtifactRecord:
     """Register a real, re-executable `"tgir_plan"` artifact: a `NodeScan`
     over uid `"A"`, its own blob under `plans/`, and a record built from
     exactly the `run_plan` envelope shape `refresh._publish` itself
     consumes — the fixture exercises the production seam, not a
-    hand-typed stand-in for it."""
+    hand-typed stand-in for it.
+
+    `parents` defaults to `()` (every existing call site's behavior is
+    unchanged); passing it registers a record whose `parents` names other
+    artifacts, for the parent-generation-advancement tests below."""
     scan = NodeScan("p", uids=("A",))
     env = run_plan(Plan(scan), store.adapter, tt_source=store)
     tgir = env["tgir"]
@@ -149,6 +154,7 @@ def _register_plan_artifact(store_dir: Path, store: Any, registry: Registry,
         refresh={"kind": "tgir_plan", "ref": f"plans/{tgir['plan_digest']}.json",
                 "basis_policy": "open"},
         dependency=dependency,
+        parents=parents,
     )
 
 
@@ -368,8 +374,108 @@ def test_refusal_reasons_are_a_closed_taxonomy() -> None:
     assert set(REFUSAL_REASONS) == {
         "not-found", "generation-mismatch", "no-refresh-handle", "handle-mismatch",
         "unknown-refresh-kind", "ref-not-found", "unknown-plan-format",
-        "execution-refused",
+        "execution-refused", "parent-vanished",
     }
+
+
+# ---------------------------------------------------------------------------
+# 2b — parent-generation advancement (the P2.2-lane gap: `_publish` used to
+# copy `record.parents` verbatim from the old generation, so a refreshed
+# child kept recording the parent generation it was *originally* registered
+# against; `propagate.parent_recheck` would then re-flag it forever, never
+# unsoundly but at an unbounded precision cost on chains)
+# ---------------------------------------------------------------------------
+
+
+def test_refresh_advances_parent_to_its_current_generation() -> None:
+    store_dir = _store_dir()
+    log = EventLog(store_dir / "eventlog.jsonl")
+    log.append(10, [NODE_A])
+    store = _open_and_replay(store_dir)
+    registry = Registry(store_dir)
+
+    parent0 = _register_plan_artifact(store_dir, store, registry, name="daily-agg")
+    child0 = _register_plan_artifact(store_dir, store, registry, name="B",
+                                     parents=(parent0.id,))
+    assert child0.parents == (ArtifactId("daily-agg", 0),)
+
+    # advance the parent to generation 1
+    _apply(store, log, 20, _correct_a({"x": 1}))
+    verdict_parent = check_artifact(parent0, EventLog(store_dir / "eventlog.jsonl"))
+    parent1 = refresh(parent0, verdict_parent.refresh, store, registry)
+    assert parent1.generation == 1
+
+    # refreshing the child now records the parent's *current* generation —
+    # not the generation 0 it was registered against, verbatim-copied
+    verdict_child = check_artifact(child0, EventLog(store_dir / "eventlog.jsonl"))
+    child1 = refresh(child0, verdict_child.refresh, store, registry)
+    assert child1.generation == 1
+    assert child1.parents == (ArtifactId("daily-agg", 1),)
+    # generation 0's own record is untouched — the old snapshot is still
+    # exactly what it always was, on disk
+    assert registry.at("B", 0).parents == (ArtifactId("daily-agg", 0),)
+    store.close()
+
+
+def test_parent_recheck_no_longer_flags_a_refreshed_child() -> None:
+    """`propagate.parent_recheck` (read-only import here — this test does
+    not touch propagate.py) is the exact consumer the P2.2 lane's report
+    named: before this fix, a refreshed child's stale `parents` snapshot
+    would make it show up as a recheck candidate forever, even though it
+    had just been refreshed *because* the parent moved."""
+    from tgms.artifact.propagate import parent_recheck
+
+    store_dir = _store_dir()
+    log = EventLog(store_dir / "eventlog.jsonl")
+    log.append(10, [NODE_A])
+    store = _open_and_replay(store_dir)
+    registry = Registry(store_dir)
+
+    parent0 = _register_plan_artifact(store_dir, store, registry, name="daily-agg")
+    child0 = _register_plan_artifact(store_dir, store, registry, name="B",
+                                     parents=(parent0.id,))
+
+    _apply(store, log, 20, _correct_a({"x": 1}))
+    verdict_parent = check_artifact(parent0, EventLog(store_dir / "eventlog.jsonl"))
+    parent1 = refresh(parent0, verdict_parent.refresh, store, registry)
+
+    # before B is refreshed: it still names daily-agg@0, which the fold has
+    # left behind — parent_recheck flags it
+    before = parent_recheck(parent1.id, registry)
+    assert [c.record.id for c in before.candidates] == [ArtifactId("B", 0)]
+
+    verdict_child = check_artifact(child0, EventLog(store_dir / "eventlog.jsonl"))
+    child1 = refresh(child0, verdict_child.refresh, store, registry)
+    assert child1.parents == (parent1.id,)
+
+    # after: B's current generation names daily-agg@1, which matches the
+    # parent's live current generation exactly — no longer a candidate
+    after = parent_recheck(parent1.id, registry)
+    assert after.candidates == ()
+    store.close()
+
+
+def test_refuses_parent_vanished() -> None:
+    """A `parents` entry naming an artifact the registry has no
+    registration for at all (never registered in this store, as opposed to
+    merely superseded) cannot be advanced to "its current generation" —
+    refresh refuses by name rather than silently carrying the stale entry
+    forward."""
+    store_dir = _store_dir()
+    log = EventLog(store_dir / "eventlog.jsonl")
+    log.append(10, [NODE_A])
+    store = _open_and_replay(store_dir)
+    registry = Registry(store_dir)
+
+    child0 = _register_plan_artifact(store_dir, store, registry, name="B",
+                                     parents=(ArtifactId("ghost", 0),))
+    verdict = check_artifact(child0, EventLog(store_dir / "eventlog.jsonl"))
+    with pytest.raises(RefreshRefused) as ei:
+        refresh(child0, verdict.refresh, store, registry)
+    assert ei.value.reason == "parent-vanished"
+    # nothing was published
+    assert registry.current("B").generation == 0
+    store.close()
 
 
 # ---------------------------------------------------------------------------
