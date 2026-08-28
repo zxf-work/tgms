@@ -232,6 +232,12 @@ def load_campaign(path: Path = CAMPAIGN_YAML) -> dict[str, Any]:
 # ---------------------------------------------------------------------------
 
 def _git_sha() -> str:
+    # Slurm compute nodes may lack git (or refuse /project ownership); the
+    # submitter stamps TGMS_COMMIT from the login node so records never
+    # carry "unknown".
+    env = os.environ.get("TGMS_COMMIT")
+    if env:
+        return env
     try:
         return subprocess.run(["git", "rev-parse", "HEAD"], cwd=ROOT,
                               capture_output=True, text=True,
