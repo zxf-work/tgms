@@ -36,6 +36,14 @@ lookup,witness}.py` (P1.2, this package). `tgms/artifact/refresh.py`
 **deliberately does not join** — refresh recomputes, so a module that opens a
 store and runs a kernel cannot carry this allowlist's claim (§2.2).
 
+P2.2 (`docs/design/M5_EXECUTION_PLAN_2026-08-27.md` §5, the two-hop
+propagation demo) adds a sixth: `tgms/artifact/propagate.py` reads only the
+registry's own in-memory fold (`Registry.current_generations`,
+`Registry.current`) to answer "who names this artifact among their
+`parents`, at a generation the registry has since left behind" — no store,
+no event log, not even `tgms.tgir.check`'s machinery. It joins as a sibling
+of the four P1.2 modules.
+
 Checked by walking the AST rather than by grepping lines, so a deferred import
 inside a function body — the usual way this rule gets broken while looking
 clean — is caught too.
@@ -109,6 +117,12 @@ ALLOWED: dict[str, frozenset[str]] = {
     "tgms/artifact/lookup.py": _ARTIFACT_ALLOWED,
     "tgms/artifact/witness.py": _ARTIFACT_ALLOWED,
     "tgms/artifact/__init__.py": _ARTIFACT_SIBLINGS,
+
+    # P2.2 — the parent-edge recheck. Reads only `record.py`/`registry.py`;
+    # granted the same sibling set as `__init__.py` rather than a bespoke
+    # narrower one, so a future addition to what it reads (still within the
+    # artifact package) does not need a second edit here.
+    "tgms/artifact/propagate.py": _ARTIFACT_SIBLINGS,
 }
 
 GUARDED: tuple[str, ...] = tuple(ALLOWED)
