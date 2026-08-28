@@ -137,25 +137,58 @@ def build_parser() -> argparse.ArgumentParser:
     # posture exactly — opens the event log, not the store; exit 0 on
     # FRESH, 1 otherwise. `register`/`list` open the registry (which is
     # itself opened beside the event log, never a live backend connection).
+    #
+    # `refresh` (P2.1, `docs/design/M5_EXECUTION_PLAN_2026-08-27.md` §5) is
+    # the one action that *does* open a live store — it re-executes the
+    # named artifact's stored plan and publishes a new generation. Exit
+    # codes: 0 the refresh ran and a new generation was published; 2 the
+    # refresh was refused and nothing was published — the printed message
+    # (or, with --json, the `"reason"` field) names one of refresh.py's
+    # closed taxonomy: not-found, generation-mismatch, no-refresh-handle,
+    # unknown-refresh-kind, ref-not-found, unknown-plan-format, or
+    # execution-refused (the re-execution itself raised or errored, e.g. a
+    # D-155 admission/budget refusal). The old generation is left
+    # byte-identical on disk in every refusal case (§1.1).
     p_artifact = sub.add_parser(
         "artifact", help="the artifact registry: register a derived result, "
-                          "list registrations, or check whether one may be stale")
-    p_artifact.add_argument("action", choices=["register", "list", "check"])
+                          "list registrations, check whether one may be "
+                          "stale, or refresh it",
+        description="the artifact registry: register a derived result, list "
+                    "registrations, check whether one may be stale, or "
+                    "refresh it (P2.1). check: exit 0 FRESH, 1 otherwise "
+                    "(POSSIBLY_STALE or UNDECIDABLE — not a third contract). "
+                    "refresh: exit 0 the refresh ran and a new generation "
+                    "was published, exit 2 the refresh was refused and "
+                    "nothing was published — the printed message, or with "
+                    "--json the details.reason field, names one of: "
+                    "not-found (no such artifact), generation-mismatch "
+                    "(--generation named something other than the current "
+                    "one), no-refresh-handle (plan_format unrecognized), "
+                    "handle-mismatch, unknown-refresh-kind, ref-not-found "
+                    "(the plan/operator blob is missing), "
+                    "unknown-plan-format (the blob itself disagrees), or "
+                    "execution-refused (the re-execution raised or "
+                    "errored, e.g. a D-155 admission/budget refusal). The "
+                    "old generation is left byte-identical on disk in "
+                    "every refusal case.")
+    p_artifact.add_argument("action", choices=["register", "list", "check", "refresh"])
     p_artifact.add_argument("store", help="store directory (holds eventlog.jsonl "
                                           "and artifacts.jsonl)")
     p_artifact.add_argument("--name", default=None,
-                            help="artifact name (required for check; list shows "
-                                 "one artifact's history if given, else every "
-                                 "current generation)")
+                            help="artifact name (required for check and refresh; "
+                                 "list shows one artifact's history if given, else "
+                                 "every current generation)")
     p_artifact.add_argument("--generation", type=int, default=None,
-                            help="a specific generation; default is the current one")
+                            help="a specific generation; default is the current one. "
+                                 "refresh refuses a generation that is not current "
+                                 "(exit 2, reason generation-mismatch)")
     p_artifact.add_argument("--record-json", default=None,
                             help="register: path to a JSON document with the "
                                  "Registry.register() fields (name, kind, plan, "
                                  "basis, state, refresh, and optionally steps, "
                                  "dependency, parents, payload, provenance, store)")
     p_artifact.add_argument("--json", action="store_true",
-                            help="list/check: emit JSON instead of prose")
+                            help="list/check/refresh: emit JSON instead of prose")
     p_artifact.add_argument("--as-of", type=int, default=None, metavar="TT",
                             help="check: ask the narrower question 'was it fresh "
                                  "as of this transaction time?'; the default scans "
@@ -413,6 +446,46 @@ def main(argv: list[str] | None = None) -> int:
             # `render_verdict` already includes it unconditionally.
             print(render_verdict(verdict, produced_tt=record.registered_tt))
         return 0 if verdict.actionable_fresh else 1
+    elif args.cmd == "artifact" and args.action == "refresh":
+        # P2.1 (M5 execution plan §5). Selectivity stays the caller's: this
+        # branch is what decides *whether* to refresh, by calling
+        # `check_artifact` for the handle exactly the way `artifact check`
+        # already does above — `tgms.artifact.refresh.refresh` itself never
+        # imports `check_artifact` and never asks "is this stale" (§5.6).
+        from pathlib import Path as _Path
+
+        import tgms
+        from tgms.artifact.refresh import RefreshRefused, refresh, resolve_current
+        from tgms.artifact.registry import Registry
+        from tgms.artifact.witness import check_artifact
+        from tgms.storage.eventlog import EventLog
+        if not args.name:
+            parser.error("artifact refresh needs --name")
+        registry = Registry(args.store)
+        try:
+            record = resolve_current(registry, args.name, args.generation)
+            log = EventLog(_Path(args.store) / "eventlog.jsonl")
+            verdict = check_artifact(record, log)
+            live = tgms.open(args.store)
+            try:
+                new_record = refresh(record, verdict.refresh, live, registry)
+            finally:
+                live.close()
+        except RefreshRefused as e:
+            if args.json:
+                print(json.dumps(e.to_payload(), indent=1))
+            else:
+                print(f"refused ({e.reason}): {e.message}")
+            return 2
+        if args.json:
+            print(json.dumps({"name": new_record.name, "generation": new_record.generation,
+                              "supersedes": (new_record.supersedes.to_json()
+                                            if new_record.supersedes else None),
+                              "record_digest": new_record.record_digest}, indent=1))
+        else:
+            print(f"{new_record.name}@{new_record.generation} "
+                  f"(supersedes @{record.generation})  {new_record.record_digest[:12]}")
+        return 0
     elif args.cmd == "trace":
         from tgms.tools.trace_viewer import render_trace_html
         with open(args.record_json) as f:
