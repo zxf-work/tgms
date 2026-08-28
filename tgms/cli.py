@@ -133,6 +133,34 @@ def build_parser() -> argparse.ArgumentParser:
                               "this transaction time?'; the default scans the "
                               "whole log suffix")
 
+    # M5 design memo §8 P1.2-f: `artifact check` follows `trace check`'s
+    # posture exactly — opens the event log, not the store; exit 0 on
+    # FRESH, 1 otherwise. `register`/`list` open the registry (which is
+    # itself opened beside the event log, never a live backend connection).
+    p_artifact = sub.add_parser(
+        "artifact", help="the artifact registry: register a derived result, "
+                          "list registrations, or check whether one may be stale")
+    p_artifact.add_argument("action", choices=["register", "list", "check"])
+    p_artifact.add_argument("store", help="store directory (holds eventlog.jsonl "
+                                          "and artifacts.jsonl)")
+    p_artifact.add_argument("--name", default=None,
+                            help="artifact name (required for check; list shows "
+                                 "one artifact's history if given, else every "
+                                 "current generation)")
+    p_artifact.add_argument("--generation", type=int, default=None,
+                            help="a specific generation; default is the current one")
+    p_artifact.add_argument("--record-json", default=None,
+                            help="register: path to a JSON document with the "
+                                 "Registry.register() fields (name, kind, plan, "
+                                 "basis, state, refresh, and optionally steps, "
+                                 "dependency, parents, payload, provenance, store)")
+    p_artifact.add_argument("--json", action="store_true",
+                            help="list/check: emit JSON instead of prose")
+    p_artifact.add_argument("--as-of", type=int, default=None, metavar="TT",
+                            help="check: ask the narrower question 'was it fresh "
+                                 "as of this transaction time?'; the default scans "
+                                 "the whole log suffix")
+
     p_eval = sub.add_parser("eval", help="run the experiment matrix / C2 readout")
     p_eval.add_argument("action", choices=["run", "c2"])
     p_eval.add_argument("--extended", action="store_true",
@@ -326,6 +354,64 @@ def main(argv: list[str] | None = None) -> int:
         # exit 0 for FRESH, 1 for anything else — `UNDECIDABLE` is not a third
         # contract (D13.25), so a script that branches on the status code gets
         # the conservative answer without having to know that
+        return 0 if verdict.actionable_fresh else 1
+    elif args.cmd == "artifact" and args.action == "register":
+        from tgms.artifact.record import ArtifactId, StepDependency
+        from tgms.artifact.registry import Registry
+        from tgms.tgir.depscope import DependencyScope
+        if not args.record_json:
+            parser.error("artifact register needs --record-json")
+        with open(args.record_json) as f:
+            fields = json.load(f)
+        # `--record-json` carries the wire (JSON) shape; `Registry.register`
+        # takes the typed objects `ArtifactRecord` stores internally.
+        if "steps" in fields:
+            fields["steps"] = [StepDependency.from_json(s) for s in fields["steps"]]
+        if fields.get("dependency") is not None:
+            fields["dependency"] = DependencyScope.from_json(fields["dependency"])
+        if "parents" in fields:
+            fields["parents"] = [ArtifactId.from_json(p) for p in fields["parents"]]
+        registry = Registry(args.store)
+        record = registry.register(**fields)
+        print(json.dumps({"name": record.name, "generation": record.generation,
+                          "record_digest": record.record_digest}, indent=1))
+    elif args.cmd == "artifact" and args.action == "list":
+        from tgms.artifact.registry import Registry
+        registry = Registry(args.store)
+        records = (registry.history(args.name) if args.name
+                  else registry.current_generations())
+        if args.json:
+            print(json.dumps([r.to_json() for r in records], indent=1))
+        else:
+            for r in records:
+                print(f"{r.name}@{r.generation}  {r.kind}  {r.record_digest[:12]}")
+    elif args.cmd == "artifact" and args.action == "check":
+        # Same posture as `trace check` (§8 P1.2-f): opens the event log, not
+        # the store. The registry itself is also just a file read beside it —
+        # neither takes a database lock.
+        from pathlib import Path as _ArtifactPath
+
+        from tgms.artifact.registry import Registry
+        from tgms.artifact.witness import check_artifact, render_verdict
+        from tgms.core.model import OPEN_END
+        from tgms.storage.eventlog import EventLog
+        if not args.name:
+            parser.error("artifact check needs --name")
+        registry = Registry(args.store)
+        record = (registry.at(args.name, args.generation) if args.generation is not None
+                 else registry.current(args.name))
+        if record is None:
+            who = f"{args.name}@{args.generation}" if args.generation is not None else args.name
+            parser.error(f"no such artifact: {who}")
+        verdict = check_artifact(
+            record, EventLog(_ArtifactPath(args.store) / "eventlog.jsonl"),
+            OPEN_END if args.as_of is None else args.as_of)
+        if args.json:
+            print(json.dumps(verdict.to_json(), indent=1))
+        else:
+            # §5.4 point 2: the exemption receipt prints even on FRESH —
+            # `render_verdict` already includes it unconditionally.
+            print(render_verdict(verdict, produced_tt=record.registered_tt))
         return 0 if verdict.actionable_fresh else 1
     elif args.cmd == "trace":
         from tgms.tools.trace_viewer import render_trace_html
