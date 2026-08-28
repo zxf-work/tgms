@@ -26,10 +26,14 @@ own column and never netted against a miss.
 `date.today()` alone breaks that across a day boundary.
 
     uv run python scripts/tgir_measure.py
+
+A terminal invocation asks for confirmation before running; `--write` skips
+the prompt (non-interactive callers, e.g. CI, are never prompted).
 """
 
 from __future__ import annotations
 
+import argparse
 import json
 import os
 import re
@@ -273,7 +277,34 @@ def _gold_match(row_id: str, answer: Any, expected: Any) -> bool:
     return answer == expected
 
 
-def main() -> int:
+def _confirmed(args: argparse.Namespace) -> bool:
+    """The documented bare command (`uv run python scripts/tgir_measure.py`)
+    must keep rewriting `measured.yaml` byte-identically for non-interactive
+    reproducibility runs — `gen_measured_report.py`'s recipe depends on it. But
+    a person sitting at a terminal gets asked before an expensive full run
+    starts, so a 2026-08-27 `--help` invocation (killed mid-run, before this
+    guard existed) can never again slip past into real store queries."""
+    if args.write or not sys.stdin.isatty():
+        return True
+    try:
+        reply = input(f"run all rows and rewrite "
+                       f"{OUT.relative_to(ROOT)}? [y/N] ")
+    except EOFError:
+        reply = ""
+    if reply.strip().lower() in ("y", "yes"):
+        return True
+    print("aborted; nothing written")
+    return False
+
+
+def main(argv: list[str] | None = None) -> int:
+    ap = argparse.ArgumentParser()
+    ap.add_argument("--write", action="store_true",
+                     help="proceeds without the interactive confirmation")
+    args = ap.parse_args(argv)
+    if not _confirmed(args):
+        return 2
+
     ensure_all_registered()
     rows = forecast_rows()
     gold = json.loads(GOLD.read_text()) if GOLD.exists() else {}
