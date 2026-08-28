@@ -52,11 +52,18 @@ EDGE_FAST_COLUMNS: frozenset[str] = frozenset({"eid", "vid", "src", "dst", "rel_
 
 
 def scan_nodes(node: NodeScan, adapter: Any, live: frozenset[str] | None,
-               scans: "ScanCache | None" = None) -> Relation:
+               scans: "ScanCache | None" = None, *,
+               route_out: dict[str, str] | None = None) -> Relation:
     """§2.1. Emits one row per believed node **version**, not per entity: under
     an instant scope that is at most one row per uid, under a window scope it is
     every version overlapping the window — which is what makes `entity_history`
-    and `version_history` core-expressible."""
+    and `version_history` core-expressible.
+
+    `route_out`, when given, is filled with `{"route": "postings" | "scan" |
+    "fallback"}` — the physical route this call actually took, for P3.1's
+    telemetry (`tgms/tgir/eval/__init__.py`). `None` by default so every other
+    caller (`expand.py`, `pattern.py`, tests) is unaffected.
+    """
     wanted = _wanted(node, live)
     fallback = needs_fallback(node, wanted, NODE_FAST_COLUMNS)
     anchored = _anchored(node, adapter)
@@ -67,10 +74,15 @@ def scan_nodes(node: NodeScan, adapter: Any, live: frozenset[str] | None,
         # `entity_history` (whose rows carry them) was on `versions_columnar`
         # reading every version ever written.
         cols = _nodes_by_uid(adapter, node)
+        route = "postings"
     elif fallback:
         cols = _versions_fallback(adapter, "node", node.belief, node.sigma)
+        route = "fallback"
     else:
         cols = _nodes_fast(adapter, node.sigma, scans)
+        route = "scan"
+    if route_out is not None:
+        route_out["route"] = route
 
     keep = _sigma_mask(cols, node.sigma, node.vt_mode)
     if node.labels is not None:

@@ -17,6 +17,7 @@ like every other envelope field.
 
 from __future__ import annotations
 
+from dataclasses import replace
 from typing import Any
 
 from tgms.core.model import digest
@@ -28,7 +29,7 @@ from tgms.tgir.propagate import summary
 from tgms.tgir.prune import live_columns
 from tgms.tgir.relation import Relation
 from tgms.tgir.scope_of import ScopeBasis, scope_of
-from tgms.tgir.ttq import basis_of, dependency_of
+from tgms.tgir.ttq import basis_of, clamp, dependency_of, frontier_of
 
 
 def run_plan(plan: Plan | Any, adapter: Any, *, tt_source: Any = None,
@@ -45,8 +46,15 @@ def run_plan(plan: Plan | Any, adapter: Any, *, tt_source: Any = None,
     wrapped = plan if isinstance(plan, Plan) else Plan.of(root, plan_id)
 
     stats = adapter.stats()
+    estimate: dict[str, Any] = {}
     if has_core_node(root):
-        admit(root, stats, wrapped.plan_digest, cost_ceilings)
+        # Stage 1's per-node dict (`admission.plan_estimate`,
+        # `{rows_scanned_est, expansions_est, out_card, time_est_ms}` keyed by
+        # `node_digest`) used to be computed here and thrown away — `admit`'s
+        # return value was never bound. P3.1 captures it and threads it into
+        # the §7.4 annotations channel below, under `"telemetry"` ->
+        # `"estimates"`. Capture only: no admission decision changes.
+        estimate = admit(root, stats, wrapped.plan_digest, cost_ceilings)
 
     # §2.13 arms three refusal points, not one. Stage 1 is `admit` above;
     # stage 2 is the per-node re-check, which needs `stats`; the runtime
@@ -58,6 +66,9 @@ def run_plan(plan: Plan | Any, adapter: Any, *, tt_source: Any = None,
                           plan_digest=wrapped.plan_digest, ceilings=cost_ceilings,
                           budget=Budget(wrapped.plan_digest) if has_core_node(root)
                           else None)
+    for node_digest, per_node in estimate.get("per_node", {}).items():
+        execution.annotations.setdefault(node_digest, {}) \
+            .setdefault("telemetry", {})["estimates"] = dict(per_node)
     relation = execution.run(root)
 
     payload = _canonicalize_floats(paginate(relation.rows(), limit, cursor))
@@ -82,9 +93,24 @@ def _freshness(root: Any, adapter: Any, tt_source: Any) -> dict[str, Any]:
     **every** node's scope entering the union including nodes whose rows never
     reach the answer (D13.14 prohibition 1). M3 changes nothing about that
     derivation; it consumes it.
+
+    **`as_of_tt` (E-10 / D-153) closes the plan-level emission gap on record**
+    (`docs/design/BASELINE_FREEZE_2026-08-27.md` §5 item 1; commit `2744f2a`'s
+    message: "the plan-level scope path deliberately does not emit yet
+    (follow-up on record)"). `ScopeBasis` carries no `as_of_tt` field, so this
+    mirrors `ttq.envelope_metadata`'s own approach exactly rather than widening
+    `ScopeBasis`: `clamp` is pure, so re-deriving the triple from the same
+    `(root.sigma.t_b, frontier_of(adapter, tt_source))` pair `basis_of` already
+    consumed agrees with it by construction, and the four-row clamp table
+    (`ttq.clamp`) decides whether anything is stamped — a genuine pin emits
+    `tt_q`'s value, a clamped pin emits the originally requested value,
+    unpinned and frontier-unavailable emit nothing.
     """
     basis: ScopeBasis = basis_of(adapter, root.sigma.t_b, tt_source)
     scope = scope_of(root, basis)
+    triple = clamp(root.sigma.t_b, frontier_of(adapter, tt_source))
+    if triple.as_of_tt is not None:
+        scope = replace(scope, as_of_tt=triple.as_of_tt)
     return {"tt_q": basis.tt_q, "pinned": basis.pinned, "clamped": basis.clamped,
             "dependency": scope.to_json()}
 
@@ -104,6 +130,8 @@ def _tgir(plan: Plan, root: Any, relation: Relation,
     if execution.coercion:
         # §2.5's disclosed denominator, keyed by the node that shrank it
         out["prop_coercion"] = dict(execution.coercion)
+    if execution.annotations:
+        out["annotations"] = {k: dict(v) for k, v in execution.annotations.items()}
     if getattr(execution, "admission_bypass", None):
         # emitted **only** when admission was skipped, so the default envelope
         # is unchanged and the exception is the thing that shows up

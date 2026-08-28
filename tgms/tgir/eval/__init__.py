@@ -24,6 +24,8 @@ phase that owns each rather than the whole core.
 
 from __future__ import annotations
 
+import os
+from time import perf_counter
 from typing import Any
 
 from tgms.core.errors import InvalidArgError
@@ -52,6 +54,16 @@ from tgms.tgir.relation import Relation
 #: Node kinds with no evaluator yet. Empty since M3.2 — every one of §2's
 #: twelve compositional operators now evaluates.
 PENDING: dict[str, str] = {}
+
+#: P3.1's wall-clock instrumentation is cheap but not free (measured: see
+#: `docs/design/M5_EXECUTION_PLAN_2026-08-27.md` §6 P3.1's overhead report).
+#: Default-on; set to "0" to skip the `perf_counter` pair around `apply` while
+#: still recording `rows_out`/`rows_in`/`route`, which cost nothing extra.
+TELEMETRY_TIMING_ENV = "TGMS_PLAN_TELEMETRY_TIMING"
+
+
+def _timing_enabled() -> bool:
+    return os.environ.get(TELEMETRY_TIMING_ENV, "1") != "0"
 
 
 class Execution:
@@ -91,6 +103,10 @@ class Execution:
         #: `prop_coercion` counts per node digest (§2.5) — the disclosed
         #: denominator, which rides out on the result metadata.
         self.coercion: dict[str, dict[str, Any]] = {}
+        #: Per-node side annotations, keyed by node_digest, namespaced by lane.
+        #: "telemetry" (P3.1) and "scan_region" (P1.3) are the two keys in v1; a lane
+        #: reads only its own. Digest-excluded — it rides in the `tgir` sub-object.
+        self.annotations: dict[str, dict[str, Any]] = {}
         #: §5's `R` minus value, **per node** — "at every node, not only at the
         #: plan's root". Computed *before* the node runs, so a precondition
         #: refusal costs no work and leaves no partial relation.
@@ -115,9 +131,28 @@ class Execution:
             from tgms.tgir.admission import admit_node
             admit_node(node, self.stats, self.plan_digest,
                        max((i.n for i in inputs), default=0), self.ceilings)
+        # P3.1's runtime telemetry: the first timing anywhere in this runtime.
+        # `rows_out`/`rows_in` cost nothing beyond an attribute read and a sum
+        # over already-materialized relations, so they are always recorded;
+        # only the `perf_counter` pair is gated by `TELEMETRY_TIMING_ENV`.
+        timing = _timing_enabled()
+        started = perf_counter() if timing else None
         out = self.apply(node, inputs)
+        fields: dict[str, Any] = {"rows_out": out.n,
+                                  "rows_in": sum(i.n for i in inputs)}
+        if started is not None:
+            fields["wall_ms"] = (perf_counter() - started) * 1000.0
+        self._annotate(key, **fields)
         self.memo[key] = out
         return out
+
+    def _annotate(self, node_digest: str, **fields: Any) -> None:
+        """Merge `fields` into `annotations[node_digest]["telemetry"]`,
+        without disturbing another lane's key or an already-written field
+        (`route`, written from `apply`'s `NodeScan` branch, and `estimates`,
+        pre-populated by `execute.py::run_plan` before `run` is called)."""
+        telemetry = self.annotations.setdefault(node_digest, {}).setdefault("telemetry", {})
+        telemetry.update(fields)
 
     def apply(self, node: Node, inputs: tuple[Relation, ...]) -> Relation:
         """One node, over already-evaluated inputs."""
@@ -127,7 +162,16 @@ class Execution:
         live = self.live.get(node.node_digest)
 
         if isinstance(node, NodeScan):
-            return scan_nodes(node, adapter, live, self.scans)
+            # the physical route `scan.py::_anchored` chose — postings/scan/
+            # fallback — surfaced for the one node kind the executor actually
+            # knows it for (§6 P3.1). `EdgeScan` and every opaque leaf stay
+            # undisclosed (`evaluate.py`'s `kind="opaque"` comment; do not
+            # pierce it — that is a deliberate non-disclosure, not a gap).
+            route_out: dict[str, str] = {}
+            out = scan_nodes(node, adapter, live, self.scans, route_out=route_out)
+            if "route" in route_out:
+                self._annotate(node.node_digest, route=route_out["route"])
+            return out
         if isinstance(node, EdgeScan):
             return scan_edges(node, adapter, live)
         if isinstance(node, Filter):
