@@ -41,8 +41,8 @@
 #      a reader auditing this file without re-deriving from campaign.yaml.
 
 freeze_document: docs/design/M5_CAMPAIGN_FREEZE_2026-08-27.md
-freeze_document_sha256: 8b8184ed40ba97d5adecf001eb30ab13463d4e8e4b9bfd60c6942806db942a3e
+freeze_document_sha256: e94ecc1692c55f18e8d8837d81f7f0f1106f057b1024a1b08b5b3fac392bf6d0
 campaign_yaml: benchmarks/m5-v1/campaign.yaml
-campaign_yaml_sha256: 1096b37abd8e77639009888be939dfb99465636b2976de2af8684ffcb943624d
-recorded: 2026-08-27
-recorded_by: coordinator-authorized Addendum 3, P2.3 harness digest-guard fix
+campaign_yaml_sha256: 60a10e1ca68ca6d33cc7ea293aed2d9db2f2f67907a5ae0c029d2f93318c500b
+recorded: 2026-08-28
+recorded_by: coordinator, Addendum 4 host move (regeneration per this file header)
