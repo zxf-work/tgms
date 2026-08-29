@@ -55,3 +55,23 @@ backends by replay, baselines from the canonical rows a native store
 produces). Independently built stores of the same data legitimately differ
 in tt and every derived id — the first differential run failed exactly
 this way (D-023).
+
+## synth-iv-60k (interval-valid-time synth)
+
+Deterministic interval-valid-time synth, adopted 2026-08-28
+(M5_CARVE_POPULATION_PROPOSAL, DECISION 5 ratified by the owner) to
+answer §13.10's carve-arm question, which bitcoinotc/collegemsg cannot:
+both are instantaneous-event stores (every believed interval `[t, t+1)`),
+so no outside-window correction can ever carve a version their windows
+read — measured twice (M4 §10, M5 Addendum 5).
+`scripts/build_synth_iv_store.py` reuses the synth community/degree
+structure (600 nodes, avg degree ~10, one burst band) and replaces the
+constant 5%-of-extent edge lifetime with a log-uniform interval-length
+distribution spanning 0.5%–50% of the extent, drawn from an independent
+splitmix64 stream per event. 60,000 events / 600 nodes, epoch-1 only.
+Event-log op payloads are byte-identical across independent builds;
+`store_identity` is not (HLC tt, D-023). The builder self-verifies a
+fitness probe at build time: one seeded outside-window correction must
+change an `aggregate_events` duration answer, printed in the card.
+Scored population for the carve arm only, per the M5 campaign freeze's
+Addendum 6.

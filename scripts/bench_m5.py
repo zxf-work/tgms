@@ -248,6 +248,7 @@ def _git_sha() -> str:
 
 def receipt(*, profile: str, store_label: str | None, backend: str,
            store_identity: str | None = None, run: str | None = None,
+           edge_sampling: str = "head",
            extra: dict[str, Any] | None = None) -> dict[str, Any]:
     """The four-key record shape (`eval_harness.py`'s pattern, restated by
     the freeze's §A10): **machine + sha + store identity + date** per file.
@@ -261,7 +262,12 @@ def receipt(*, profile: str, store_label: str | None, backend: str,
     `"topup-1"`) — `None` (the key is simply absent) for the run of record
     itself, so the scored-alone rule §H names is mechanically visible in
     every top-up record without a reader having to infer it from the
-    filename alone."""
+    filename alone. `edge_sampling` (`Profile.edge_sampling`, always
+    present, never conditional the way `run` is) is the
+    `_sample_edges` strategy this record's arm ran under — stamped on
+    EVERY record, `full`/`smoke` included, so a reader never has to trust
+    a profile name's own convention and can instead read the actual
+    sampling strategy a given file was produced under."""
     out = {
         "generated": time.strftime("%Y-%m-%dT%H:%M:%S%z"),
         "measured_date": measured_date(),
@@ -272,6 +278,7 @@ def receipt(*, profile: str, store_label: str | None, backend: str,
         "backend": backend,
         "store": store_label,
         "store_identity": store_identity,
+        "edge_sampling": edge_sampling,
         "machine": {"host": socket.gethostname(), "platform": platform.platform(),
                     "python": platform.python_version(), "cpus": os.cpu_count()},
         **(extra or {}),
@@ -709,12 +716,83 @@ _EDGE_BUILDERS: dict[str, Callable[..., Correction | None]] = {
 }
 
 
-def _sample_edges(store: Any, cap: int = 300) -> list[Any]:
+def _sample_edges(store: Any, cap: int = 300, *, strategy: str = "head",
+                  rng: random.Random | None = None) -> list[Any]:
+    """The carve/propagation/pinned arms' shared edge-identity pool for
+    Class B/C/D corrections (`_weighted_corrections`'s `edges=` argument).
+    `strategy` is a `Profile.edge_sampling` value, threaded down from
+    `main()` through each `*_sweep` function.
+
+    **`"head"`** — the ORIGINAL, unchanged behavior: the first `cap` edges
+    in the adapter's own iteration order. This is what `full`/`smoke` use,
+    so a re-run of the run-of-record's own procedure (Addendum 5, iTiger
+    job 205995) draws byte-for-byte the same population it always did —
+    run-1's scoring is closed and its procedure must stay reproducible.
+
+    **`"uniform"`** — a seeded uniform sample of `cap` edges over the
+    ENTIRE edge population, deterministic from the caller's own seeded
+    `rng` (never a fresh/wall-clock source). This is the fix for the
+    STOP-flagged finding building `synth-iv-60k`'s top-up surfaced:
+    `"head"` on a store whose adapter iterates in roughly insertion order
+    draws a pool clustered in the first ~0.5% of valid time (measured:
+    `vt_s` in `[0, 299]` out of a 60,000-tick extent), and only a
+    carve-arm window that happens to land there can ever see it. Two
+    paths, chosen at call time on what the adapter can tell us:
+
+    - **the count is known** (`store.stats()["n_edge_versions"]`, which
+      every backend reports today): draw `cap` distinct indices from
+      `range(count)` via `rng.sample` (or take everything if
+      `count <= cap`), then one pass over `all_edge_versions()` keeping
+      only the selected indices — one scan, exact uniformity.
+    - **the count is unreachable** (a `stats()` that raises or omits the
+      key — no current backend does this, but the fallback does not
+      assume one never will): reservoir sampling (Algorithm R) over the
+      same one-pass iterator, using the identical `rng` — every edge has
+      probability `cap/n` of survival regardless of `n`, one scan either
+      way, O(cap) space.
+
+    `strategy="uniform"` with `rng=None` is a caller bug, refused outright
+    rather than silently falling back to a fresh `random.Random()` — a
+    profile that forgot to thread its own seeded rng through would
+    otherwise draw a wall-clock-seeded sample and get a byte-different
+    population on every nominally-identical-seed run.
+    """
+    if strategy == "head":
+        out = []
+        for e in store.adapter.all_edge_versions():
+            out.append(e)
+            if len(out) >= cap:
+                break
+        return out
+    if strategy != "uniform":
+        raise ValueError(f"_sample_edges: unknown strategy {strategy!r}, "
+                         f"want 'head' or 'uniform'")
+    if rng is None:
+        raise ValueError("_sample_edges(strategy='uniform') needs a seeded rng "
+                         "-- refusing a silent wall-clock fallback")
+    count: int | None = None
+    try:
+        count = int(store.stats()["n_edge_versions"])
+    except Exception:  # noqa: BLE001 -- any failure here means "count unknown"
+        count = None
+    if count is not None and count > 0:
+        if count <= cap:
+            return list(store.adapter.all_edge_versions())
+        chosen = set(rng.sample(range(count), cap))
+        out = []
+        for idx, e in enumerate(store.adapter.all_edge_versions()):
+            if idx in chosen:
+                out.append(e)
+        return out
+    # Reservoir sampling (Algorithm R): the count-unreachable fallback.
     out = []
-    for e in store.adapter.all_edge_versions():
-        out.append(e)
-        if len(out) >= cap:
-            break
+    for idx, e in enumerate(store.adapter.all_edge_versions()):
+        if idx < cap:
+            out.append(e)
+        else:
+            j = rng.randrange(idx + 1)
+            if j < cap:
+                out[j] = e
     return out
 
 
@@ -821,7 +899,7 @@ def _run_carve_trial(pristine: Path, cell: dict[str, Any], before_env: dict[str,
 
 def carve_arm_sweep(store_label: str, path: Path, cfg: dict[str, Any], *,
                     backend: str, cells_per_form: int, corrections_cap: int,
-                    rng: random.Random) -> list[CarveTrial]:
+                    rng: random.Random, edge_sampling: str = "head") -> list[CarveTrial]:
     """§A3 / §C5. Only the M4-continuity stores (`bitcoinotc`, `collegemsg`)
     carry R-5's population per the freeze's own table under R-5 ("over
     bitcoinotc + collegemsg"); a caller naming another store gets an empty
@@ -846,7 +924,7 @@ def carve_arm_sweep(store_label: str, path: Path, cfg: dict[str, Any], *,
             target = Target(read_uids=(cell.get("uid"),) if cell.get("uid") else (),
                             window=cell["window"])
             probe = tgms.open(path, backend=backend)
-            edge_pool = _sample_edges(probe)
+            edge_pool = _sample_edges(probe, strategy=edge_sampling, rng=rng)
             corrections, shares = _weighted_corrections(
                 probe, sub, target, rng,
                 min_bcd_share=cfg["carve_arm"]["injection"]["min_bcd_share"],
@@ -1435,8 +1513,9 @@ def _register_operator_artifact(store_dir: Path, store: Any, registry: Any, *,
 
 
 def propagation_sweep(store_label: str, path: Path, sub: Substrate, *, backend: str,
-                      n_pairs: int, n_rounds: int,
-                      rng: random.Random) -> tuple[list[PropagationDecision], dict[str, Any]]:
+                      n_pairs: int, n_rounds: int, rng: random.Random,
+                      edge_sampling: str = "head"
+                      ) -> tuple[list[PropagationDecision], dict[str, Any]]:
     """§B2 / §E. `base -> A (temporal aggregate) -> B` (E1's chain shape),
     built as `"operator"`-kind registrations so no TGIR plan blob is needed.
     Each round injects a correction batch, refreshes every parent
@@ -1501,7 +1580,7 @@ def propagation_sweep(store_label: str, path: Path, sub: Substrate, *, backend: 
     #: uniformly over the store's own extent (`corrections._interval`'s own
     #: fallback), covering the many small per-pair windows above.
     target = Target(read_uids=tuple(uids), window=None)
-    edge_pool = _sample_edges(store)
+    edge_pool = _sample_edges(store, strategy=edge_sampling, rng=rng)
     for round_i in range(n_rounds):
         corrections, _shares = _weighted_corrections(
             store, sub, target, rng, min_bcd_share=0.7, min_outside_share_of_bcd=0.6,
@@ -1703,7 +1782,7 @@ PINNABLE_OPS = ("entity_history", "version_history", "snapshot_subgraph", "diff_
 
 
 def pinned_sweep(store_label: str, path: Path, *, backend: str, n_trials: int,
-                 rng: random.Random) -> list[PinnedTrial]:
+                 rng: random.Random, edge_sampling: str = "head") -> list[PinnedTrial]:
     """§A7 / §C4. `as_of_tt` is passed as a leaf-level argument (14 of 15
     operators take it, per `algebra.as_of_tt_of`'s own docstring), which is
     the leaf/basis path §A7 says the pinned line is measured on — the
@@ -1737,7 +1816,8 @@ def pinned_sweep(store_label: str, path: Path, *, backend: str, n_trials: int,
         probe = tgms.open(path, backend=backend)
         corrections, _s = _weighted_corrections(probe, sub, target, rng,
                                                  min_bcd_share=0.7, min_outside_share_of_bcd=0.6,
-                                                 edges=_sample_edges(probe))
+                                                 edges=_sample_edges(
+                                                     probe, strategy=edge_sampling, rng=rng))
         probe.close()
         correction = next((c for c in corrections if c.placement.startswith("outside-window")),
                           corrections[0] if corrections else None)
@@ -2015,6 +2095,17 @@ class Profile:
     #: enforce the `topup-` filename prefix (Addendum 5's remedy: "a
     #: propagation-arm top-up run ... scored alone").
     run_tag: str | None = None
+    #: `_sample_edges`'s strategy (`"head"` or `"uniform"`) — see that
+    #: function's own docstring. `"head"` is the value on `full` (hence
+    #: also on plain `--smoke`, which scales `full`'s own numbers): a
+    #: re-run of the run-of-record's procedure must draw byte-for-byte the
+    #: same edge population it always did, since run-1's scoring is closed.
+    #: A profile that changes this is naming a coordinator-authorized,
+    #: profile-scoped §H revision (the coming Addendum 6), never a change
+    #: to `full`/`smoke`'s own behavior. Stamped into every record's
+    #: receipt (`receipt()`'s `edge_sampling` field) so the scored-alone
+    #: rule stays mechanically auditable, not just true by convention.
+    edge_sampling: str = "head"
     seed: int = 20260827
 
 
@@ -2038,10 +2129,19 @@ def topup_propagation_profile(cfg: dict[str, Any]) -> Profile:
     scored stores (Addendum 5: "over 26 payload-changing refresh decisions
     against the frozen floor of 30"), so 3x targets ~78, a comfortable
     margin over R-12's floor of 30. Only the propagation arm runs; the
-    frozen 100/30 floor and every other arm's population are untouched."""
+    frozen 100/30 floor and every other arm's population are untouched.
+
+    **`edge_sampling="uniform"`**: `propagation_sweep` DOES consume
+    `_sample_edges` (its own `edge_pool`, used by `_weighted_corrections`
+    for the B/C/D correction stream) — checked directly against the
+    source, not assumed. The same "head" pool clustering that starved the
+    carve arm's outside-window cell on an interval-valid substrate would
+    equally starve this arm's correction stream once it runs against one,
+    so this profile carries the same fix."""
     return Profile("topup-propagation", scorable=True, arms=frozenset({"propagation"}),
                    record_prefix={"propagation": "topup-propagation"},
-                   propagation_pairs=90, propagation_rounds=30, run_tag="topup-1")
+                   propagation_pairs=90, propagation_rounds=30, run_tag="topup-1",
+                   edge_sampling="uniform")
 
 
 def topup_pattern_profile(cfg: dict[str, Any]) -> Profile:
@@ -2051,7 +2151,17 @@ def topup_pattern_profile(cfg: dict[str, Any]) -> Profile:
     the frozen 80/40 targets — no floor moves; the population this
     profile can now *reach* toward those floors is what changed (see
     `_mixed_cells`/`_t_node_cells`, plural full-anchoring, and the two new
-    correction kinds in `_pattern_correction_probes`)."""
+    correction kinds in `_pattern_correction_probes`).
+
+    **`edge_sampling` left at the default (`"head"`), deliberately**:
+    `pattern_l1_sweep` does not call `_sample_edges` anywhere — checked
+    directly against the source, not assumed. Its corrections come from
+    `_pattern_correction_probes`' own node/edge writers (anchored to each
+    cell's own `Source` uids), never from `_weighted_corrections`'
+    edge-pool mechanism. There is therefore nothing for this profile's
+    `edge_sampling` field to change, and leaving it untouched at "head" is
+    the honest reflection of that rather than a symbolic override with no
+    effect."""
     return Profile("topup-pattern", scorable=True, arms=frozenset({"pattern"}),
                    record_prefix={"pattern": "topup-pattern"},
                    pattern_min_cells=cfg["pattern_l1"]["min_cells"],
@@ -2059,11 +2169,75 @@ def topup_pattern_profile(cfg: dict[str, Any]) -> Profile:
                    run_tag="topup-1")
 
 
+def topup_carve_profile(cfg: dict[str, Any]) -> Profile:
+    """`docs/design/M5_CARVE_POPULATION_PROPOSAL_2026-08-28.md` §5/§9
+    (DECISION 5/7/8, unratified at the time this profile was written — see
+    that memo's own header) — the carve-arm top-up run against a new
+    interval-valid-time substrate (`synth-iv-60k`,
+    `scripts/build_synth_iv_store.py`), because `bitcoinotc`/`collegemsg`
+    are instantaneous-event stores on which the outside-window B/C/D cell
+    is structurally empty (memo §1/§2) — not an injection-matrix defect.
+
+    Only the carve arm runs, at the SAME frozen population this profile's
+    settings are copied from `full_profile` verbatim
+    (`carve_cells_per_form`/`carve_corrections_cap`) — R-5-R-8 and R-14a are
+    unchanged per the memo's own DECISION 7 ("No floor moves"). This
+    function changes WHICH SUBSTRATE the frozen arm runs against, never the
+    arm's own logic, cell menu, or scoring.
+
+    **Eligibility note the memo's own addendum will carry (its finding
+    4/§2a, §8d)**: of the three frozen "carve-eligible" forms
+    (`aggregate_events` with/without `of: "duration"`, `neighborhood_evolution`),
+    `FRESHNESS_SEMANTICS.md` licenses only `aggregate_events` **with**
+    `of: "duration"` as carve-**reachable** (`P` includes `@recut` only for
+    that form — L9.1 and the plain-aggregate `P = Pᵥ` note both exclude the
+    other two). **This profile still runs all three forms unchanged** —
+    the population is defined by the frozen freeze text, not by this
+    harness's own reading of which third of it is expected to yield a
+    changed carve-arm trial; the other two forms remain the RG-1
+    ratio's/F4's controls. Sizing the ≥200 floor against "one third of the
+    trials" is the addendum's scoring interpretation to draw, not a reason
+    to prune this harness's own population.
+
+    **`edge_sampling="uniform"`, coordinator-authorized (the coming
+    Addendum 6, a named §H revision, profile-scoped only): the fix for the
+    STOP-flagged finding.** `carve_arm_sweep`'s `"head"` pool (the first
+    300 edges in adapter iteration order) measured `vt_s` in `[0, 299]`
+    out of `synth-iv-60k`'s 60,000-tick extent — under 0.5% of it — so a
+    carve window placed almost anywhere else in the store could never see
+    a pool edge at all. `full`/`smoke` keep `"head"` unchanged (see
+    `_sample_edges`'s own docstring): run-1's scoring is closed and its
+    procedure must stay byte-reproducible; this is a profile-scoped
+    change, not a change to what `bitcoinotc`/`collegemsg` measured."""
+    return Profile("topup-carve", scorable=True, arms=frozenset({"carve"}),
+                   record_prefix={"carve": "topup-carve"},
+                   carve_cells_per_form=cfg["carve_arm"]["min_cells_per_store_form"],
+                   carve_corrections_cap=40, run_tag="topup-1", edge_sampling="uniform")
+
+
 PROFILE_BUILDERS: dict[str, Callable[[dict[str, Any]], Profile]] = {
     "full": full_profile,
     "topup-propagation": topup_propagation_profile,
     "topup-pattern": topup_pattern_profile,
+    "topup-carve": topup_carve_profile,
 }
+
+
+#: Smoke-scale carve caps for a `"uniform"`-sampling profile — larger than
+#: the `"head"` default (6/6) on purpose. `bitcoinotc`/`collegemsg` (always
+#: `"head"`, per `full`/`smoke`) can never produce an outside-window
+#: carve-only trial at ANY scale — they are instantaneous-event stores, so
+#: more cells/corrections would only spend more wall time confirming the
+#: same structural zero. A `"uniform"`-sampling profile's substrate
+#: (`synth-iv-60k`) genuinely can, but the per-witnessed-edge hit rate is
+#: low (verified empirically while re-checking this fix: 6/6 gives 0,
+#: 12/15 gives 6, all `carve`-only, all `aggregate_events_duration`), so a
+#: `"head"`-sized smoke sample would misreport a working substrate as if
+#: the fix had done nothing. This is a smoke-scale-only knob — `carve`'s
+#: own frozen R-5/R-8 numbers (60 cells/form, 40 corrections) are
+#: untouched in `campaign.yaml` and in `full_profile`/`topup_carve_profile`.
+_UNIFORM_SMOKE_CARVE_CELLS = 12
+_UNIFORM_SMOKE_CARVE_CORRECTIONS = 15
 
 
 def _smoke_scale(profile: Profile) -> Profile:
@@ -2073,10 +2247,12 @@ def _smoke_scale(profile: Profile) -> Profile:
     every count is capped small, `scorable` goes false. Never touches the
     frozen floors in `cfg` themselves — `--smoke` scales what this run
     *attempts*, never what a later scored run must clear."""
+    carve_cap = (_UNIFORM_SMOKE_CARVE_CELLS if profile.edge_sampling == "uniform" else 6)
+    corrections_cap = (_UNIFORM_SMOKE_CARVE_CORRECTIONS if profile.edge_sampling == "uniform" else 6)
     return dataclasses.replace(
         profile, scorable=False,
-        carve_cells_per_form=min(profile.carve_cells_per_form, 6) if "carve" in profile.arms else 0,
-        carve_corrections_cap=min(profile.carve_corrections_cap, 6) if "carve" in profile.arms else 0,
+        carve_cells_per_form=min(profile.carve_cells_per_form, carve_cap) if "carve" in profile.arms else 0,
+        carve_corrections_cap=min(profile.carve_corrections_cap, corrections_cap) if "carve" in profile.arms else 0,
         zero_changed_n_per_op=min(profile.zero_changed_n_per_op, 4) if "zero_changed" in profile.arms else 0,
         propagation_pairs=min(profile.propagation_pairs, 4) if "propagation" in profile.arms else 0,
         propagation_rounds=min(profile.propagation_rounds, 6) if "propagation" in profile.arms else 0,
@@ -2149,6 +2325,28 @@ def main() -> int:
 
     for label in store_labels:
         meta = store_index.get(label)
+        if meta is None and profile.run_tag is not None:
+            # Ad-hoc top-up store resolution — `campaign.yaml` is FROZEN
+            # (Addendum 3's two-way digest guard refuses on any drift) and
+            # amending it to register a new substrate is a ratified-addendum
+            # act this harness does not perform on its own (the carve
+            # top-up's own substrate, `synth-iv-60k`, is proposed by
+            # `M5_CARVE_POPULATION_PROPOSAL_2026-08-28.md` but UNRATIFIED at
+            # the time this fallback was written). A top-up profile's own
+            # store — never a `full`/scored-arm store, which must always be
+            # discoverable through `campaign.yaml` — resolves by the
+            # repo's own `stores/<label>` convention instead of being
+            # silently skipped. `role: "carve-continuity"` is set
+            # unconditionally here because the only arm any current
+            # top-up profile runs against an ad-hoc store is "carve"; a
+            # future top-up arm that needs `single_typed`/`rel_types`
+            # metadata this fallback does not have would need its own,
+            # named resolution rather than silently defaulting one.
+            candidate = ROOT / "stores" / label
+            if candidate.exists():
+                meta = {"label": label, "path": f"stores/{label}", "role": "carve-continuity"}
+                log_line(f"  {label}: not in campaign.yaml -- resolved by convention "
+                        f"at {candidate} for this top-up profile (run={profile.run_tag})")
         if meta is None:
             log_line(f"SKIP {label}: not in campaign.yaml's store inventory")
             continue
@@ -2167,13 +2365,15 @@ def main() -> int:
 
         def _receipt() -> dict[str, Any]:
             return receipt(profile=profile.name, store_label=label, backend=args.backend,
-                           store_identity=store_digest, run=profile.run_tag)
+                           store_identity=store_digest, run=profile.run_tag,
+                           edge_sampling=profile.edge_sampling)
 
         if "carve" in profile.arms and is_carve_store:
             carve_trials = carve_arm_sweep(
                 label, path, cfg, backend=args.backend,
                 cells_per_form=profile.carve_cells_per_form,
-                corrections_cap=profile.carve_corrections_cap, rng=rng)
+                corrections_cap=profile.carve_corrections_cap, rng=rng,
+                edge_sampling=profile.edge_sampling)
             carve_summary = summarize_carve(carve_trials, cfg)
             if carve_summary["control_invariant_violations"]:
                 log_line(f"C1 INVARIANT VIOLATED on {label}: "
@@ -2201,7 +2401,8 @@ def main() -> int:
 
         if "pinned" in profile.arms:
             pinned_trials_ = pinned_sweep(label, path, backend=args.backend,
-                                          n_trials=profile.pinned_trials, rng=rng)
+                                          n_trials=profile.pinned_trials, rng=rng,
+                                          edge_sampling=profile.edge_sampling)
             _write_record(out_dir, f"{profile.record_prefix['pinned']}-{label}", _receipt(),
                          summarize_pinned(pinned_trials_, cfg), pinned_trials_,
                          scorable=profile.scorable)
@@ -2212,7 +2413,8 @@ def main() -> int:
             store.close()
             decisions, lookup_extra = propagation_sweep(
                 label, path, sub, backend=args.backend, n_pairs=profile.propagation_pairs,
-                n_rounds=profile.propagation_rounds, rng=rng)
+                n_rounds=profile.propagation_rounds, rng=rng,
+                edge_sampling=profile.edge_sampling)
             determinism = propagation_determinism_check(path, sub, backend=args.backend)
             prop_summary = summarize_propagation(decisions, determinism, cfg)
             prop_summary["lookup_counters"] = lookup_extra
