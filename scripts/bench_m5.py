@@ -331,6 +331,16 @@ OUTCOME_TIMEOUT = "TIMEOUT"
 #: generator's own shortfall rather than to a measured population).
 OUTCOME_UNCONSTRUCTIBLE = "UNCONSTRUCTIBLE_BY_CORPUS"
 
+#: `docs/design/M5_PATTERN_ADJUDICATION_2026-08-29.md` root cause 1: a
+#: cell whose recorded `ScanRegion` node arm is empty has no in-region uid
+#: to write to at all -- `in-region-node-write` used to fall back to a
+#: Source-input-cohort uid (or an unrelated sampled uid), which is not
+#: "in region" in the sense the correction kind's own name claims and is
+#: exactly what made every one of the 57 adjudicated rows look like a
+#: real L0->L1 win. Recorded per slot, honestly, rather than silently
+#: degenerating to an out-of-region probe under an in-region label.
+OUTCOME_NO_IN_REGION_PROBE = "NO_IN_REGION_PROBE"
+
 #: §A10 [INHERITED, `PAPER_A_EVIDENCE_FREEZE.md` §C5]: "Hard per-cell wall
 #: ceiling: 600 s ... recorded as TIMEOUT. No cell runs unbounded; no
 #: timeout is reported as a completion." Overridable only for local,
@@ -960,6 +970,21 @@ class PatternL1Trial:
     level1_witnesses: int
     level1_terms_level0: int
     level1_terms_level1: int
+    #: Fix 2 (adjudication root cause 2) -- REAL ground truth: `True` iff
+    #: re-executing this cell's plan against the corrected store copy
+    #: produced a different `result_digest` than the pre-correction
+    #: baseline. `False` by default -- unset on any trial the correction
+    #: loop never reaches a re-execution for (`NO_IN_REGION_PROBE`,
+    #: `UNCONSTRUCTIBLE_BY_CORPUS`, `REFUSED_ON_RECOMPUTE`, `TIMEOUT`
+    #: rows), where "did the result change" was never measured.
+    result_changed: bool = False
+    #: The cell's own pre-correction `result["rows_total"]` (the same
+    #: `execute.py::paginate` field the adjudication's own report speaks
+    #: of: "L1 fresh <=> rows_total==0 <=> region node arm empty"). Read
+    #: back verbatim, never recomputed -- one baseline execution's row
+    #: count, repeated across every correction-kind trial that baseline
+    #: fans out to. Observability only, not itself part of any gate.
+    rows_total: int = 0
     outcome: str = OUTCOME_OK
     note: str = ""
 
@@ -1048,8 +1073,64 @@ def _t_node_cells(rng: random.Random, uids: Sequence[str], rel_types: Sequence[s
     return out
 
 
+def _seed_edge(edge_pool: Sequence[Any], rng: random.Random) -> Any | None:
+    """One real `EdgeVersion`, drawn uniformly from `edge_pool`
+    (`_sample_edges(store, strategy="uniform", rng=rng)` -- reused, never
+    duplicated). `None` on an empty pool: the caller's signal to fall back
+    to the old independent-uid anchoring, still recorded honestly by the
+    `NO_IN_REGION_PROBE`/empty-result-set machinery rather than silently
+    mis-measured."""
+    return rng.choice(edge_pool) if edge_pool else None
+
+
+def _seed_two_edge_path(edge_pool: Sequence[Any],
+                        rng: random.Random) -> tuple[Any, str, Any] | None:
+    """A real, DIRECTED 2-hop path `a --e_ab--> b --e_bc--> c`: two edges
+    from `edge_pool` where one's `dst` is the other's `src` at a shared
+    node `b` -- never just "any two edges touching the same node" (a
+    fork or confluence at a shared node does not satisfy a directed
+    `EdgePat`'s own `src`/`dst` requirement in either assignment).
+    Returns `(e_ab, b_uid, e_bc)`, or `None` if the sampled pool holds no
+    such directed pair.
+
+    Tries every hinge candidate (shuffled), not just one: a node whose
+    only incoming/outgoing edges in the pool are the SAME self-loop
+    (`src == dst == node`) looks like a hinge but can never yield
+    `e_in.eid != e_out.eid` -- on a real store this is a small minority
+    of hinges, but giving up after the first unlucky pick (verified
+    empirically against `sx-mathoverflow`: a single-hinge attempt missed
+    a pool that a multi-hinge search found ~50% of the time) would
+    silently reintroduce root cause 3's own near-zero-match-probability
+    failure mode for the 3edge shape specifically."""
+    incoming: dict[str, list[Any]] = {}
+    outgoing: dict[str, list[Any]] = {}
+    for e in edge_pool:
+        incoming.setdefault(e.dst, []).append(e)
+        outgoing.setdefault(e.src, []).append(e)
+    hinges = [node for node in outgoing if node in incoming]
+    rng.shuffle(hinges)
+    for node in hinges:
+        for _ in range(4):
+            e_in, e_out = rng.choice(incoming[node]), rng.choice(outgoing[node])
+            if e_in.eid != e_out.eid:
+                return e_in, node, e_out
+    return None
+
+
+def _seed_outgoing_edge(edge_pool: Sequence[Any], node: str, rng: random.Random,
+                        exclude: frozenset = frozenset()) -> Any | None:
+    """A real edge `node --e--> other`, none of whose `eid`s is in
+    `exclude` -- extends a real 2-edge path to a third real hop when the
+    sampled pool happens to offer one. `None` if it does not; the 3-edge
+    chain's last hop then falls back to a plain uid draw (the cell may
+    legitimately end up empty at that hop -- no longer masked, see
+    `OUTCOME_NO_IN_REGION_PROBE`'s own honesty precedent)."""
+    candidates = [e for e in edge_pool if e.src == node and e.eid not in exclude]
+    return rng.choice(candidates) if candidates else None
+
+
 def _mixed_cells(rng: random.Random, uids: Sequence[str], rel_types: Sequence[str],
-                 n: int) -> list[CellSpec]:
+                 n: int, edge_pool: Sequence[Any] = ()) -> list[CellSpec]:
     """`n` mixed declared/undeclared cells (§A4's 2026-08-27 correction —
     R-11's own definition, restated by the coordinator's follow-up: "a
     PatternMatch whose edge variables include at least one with a declared
@@ -1063,7 +1144,27 @@ def _mixed_cells(rng: random.Random, uids: Sequence[str], rel_types: Sequence[st
     `rel_types`, so two chains with the same undeclared position still
     differ in their declared types). Every node variable is fully
     anchored (see `_anchor`), which is what keeps each cell well under the
-    600s wall on a real-scale store."""
+    600s wall on a real-scale store.
+
+    **2026-08-29 fix** (`docs/design/M5_PATTERN_ADJUDICATION_2026-08-29.md`
+    root cause 3): the original generator anchored every node variable on
+    an INDEPENDENT uniform draw from the sampled uid pool -- on a
+    real-scale store (tens of thousands of uids) the odds that two
+    independently-drawn uids happen to be edge-connected are essentially
+    zero, so 43/83 floor-satisfying cells bound zero rows by construction,
+    not by any property of Level 0 or Level 1. Fixed by seeding each cell
+    from REAL edges in `edge_pool` (`_sample_edges(..., strategy=
+    "uniform")`, reused rather than duplicated) and anchoring variables on
+    those edges' own endpoints: a `2edge` cell draws one real edge per
+    pattern edge, using the sampled edge's own `rel_type` as the declared
+    side's type (guaranteed to match); a `3edge` chain draws a real
+    directed 2-hop path for its first two hops and tries to extend it with
+    a third real outgoing edge for the last hop, falling back to a plain
+    uid when the sampled pool offers no such edge. A cell can still
+    legitimately end up empty after Sigma/type narrowing -- that is no
+    longer masked (the `in-region-node-write` fix above), so it is fine to
+    report that honestly here rather than chase a 100% non-empty
+    guarantee."""
     from tgms.tgir.node import EdgePat, NodePat, Pattern
     rels = list(rel_types)
     out: list[CellSpec] = []
@@ -1073,26 +1174,57 @@ def _mixed_cells(rng: random.Random, uids: Sequence[str], rel_types: Sequence[st
     while len(out) < n:
         if i % 2 == 0:
             declared_first = (i % 4) < 2
-            decl_rel = rels[i % len(rels)]
+            e_decl, e_undecl = _seed_edge(edge_pool, rng), _seed_edge(edge_pool, rng)
+            if e_decl is not None and e_undecl is not None:
+                decl_rel = e_decl.rel_type
+                d_src, d_dst = e_decl.src, e_decl.dst
+                u_src, u_dst = e_undecl.src, e_undecl.dst
+            else:
+                decl_rel = rels[i % len(rels)]
+                anchor_pool = (rng.sample(uids, 4) if len(uids) >= 4
+                              else [uids[j % len(uids)] for j in range(4)])
+                d_src, d_dst, u_src, u_dst = anchor_pool
             if declared_first:
                 edges = (EdgePat("e1", "x", "y", decl_rel), EdgePat("e2", "u", "v", None))
+                anchor_map = {"x": d_src, "y": d_dst, "u": u_src, "v": u_dst}
             else:
                 edges = (EdgePat("e1", "x", "y", None), EdgePat("e2", "u", "v", decl_rel))
+                anchor_map = {"x": u_src, "y": u_dst, "u": d_src, "v": d_dst}
             pattern = Pattern((NodePat("x"), NodePat("y"), NodePat("u"), NodePat("v")), edges)
             vs = ("x", "y", "u", "v")
             shape = "2edge"
         else:
             which_undeclared = i % 3
+            path = _seed_two_edge_path(edge_pool, rng)
+            real_rel: dict[int, str] = {}
+            if path is not None:
+                e_ab, b_uid, e_bc = path
+                a_uid, c_uid = e_ab.src, e_bc.dst
+                real_rel[0], real_rel[1] = e_ab.rel_type, e_bc.rel_type
+                e_cd = _seed_outgoing_edge(edge_pool, c_uid, rng,
+                                           exclude=frozenset({e_ab.eid, e_bc.eid}))
+                if e_cd is not None:
+                    d_uid = e_cd.dst
+                    real_rel[2] = e_cd.rel_type
+                else:
+                    d_uid = rng.choice(uids)
+                anchor_map = {"a": a_uid, "b": b_uid, "c": c_uid, "d": d_uid}
+            else:
+                anchor_uids = (rng.sample(uids, 4) if len(uids) >= 4
+                              else [uids[j % len(uids)] for j in range(4)])
+                anchor_map = dict(zip(("a", "b", "c", "d"), anchor_uids))
+
+            def _rel_for(idx: int, _real: dict[int, str] = real_rel) -> str:
+                return _real.get(idx, rels[(i + idx) % len(rels)])
+
             edges = tuple(
-                EdgePat(evar, a, b, None if idx == which_undeclared else rels[(i + idx) % len(rels)])
+                EdgePat(evar, a, b, None if idx == which_undeclared else _rel_for(idx))
                 for idx, (evar, a, b) in enumerate(
                     (("e1", "a", "b"), ("e2", "b", "c"), ("e3", "c", "d"))))
             pattern = Pattern((NodePat("a"), NodePat("b"), NodePat("c"), NodePat("d")), edges)
             vs = ("a", "b", "c", "d")
             shape = "3edge"
-        anchor_uids = (rng.sample(uids, len(vs)) if len(uids) >= len(vs)
-                      else [uids[j % len(uids)] for j in range(len(vs))])
-        sources = tuple(_anchor(v, u) for v, u in zip(vs, anchor_uids))
+        sources = tuple(_anchor(v, anchor_map[v]) for v in vs)
         out.append((f"mixed-{shape}-{i}", pattern, sources, True, True))
         i += 1
     return out[:n]
@@ -1158,7 +1290,21 @@ def pattern_l1_sweep(store_label: str, path: Path, cfg: dict[str, Any], *,
                        (), False, False))
 
     if not single_typed and len(rel_types) >= 2 and len(uids) >= 4:
-        cell_specs += _mixed_cells(rng, uids, rel_types, min_mixed_cells)
+        # Fix 3 (adjudication root cause 3): the mixed-cell generator needs
+        # real edges to anchor on, drawn uniformly over the WHOLE edge
+        # population (never "head", which clusters) -- `_sample_edges`'s
+        # own uniform strategy, reused rather than duplicated. `cap=8000`
+        # (over the default 300): the 3edge chain's real-path extension
+        # (`_seed_outgoing_edge`, one specific node's own out-edge) needs a
+        # much bigger pool to have a fair chance of a hit than the
+        # 2-edge-sharing-ANY-node hinge search does -- measured empirically
+        # against `sx-mathoverflow` (506,550 edge versions) while building
+        # this fix: 300 found a 3rd real hop ~35% of the time, 8000 ~65%,
+        # and the store's one linear log scan (`_sample_edges`'s own cost,
+        # not cap-dependent) stayed ~2s at every cap tried up to 25,000 --
+        # so the larger pool is close to free here.
+        edge_pool = _sample_edges(store, cap=8000, strategy="uniform", rng=rng)
+        cell_specs += _mixed_cells(rng, uids, rel_types, min_mixed_cells, edge_pool)
         n_more = max(0, min_cells - len(cell_specs))
         cell_specs += _t_node_cells(rng, uids, rel_types, n_more, anchored=True)
         cell_specs += _all_declared_cells(rng, uids, rel_types, 3)
@@ -1180,14 +1326,17 @@ def pattern_l1_sweep(store_label: str, path: Path, cfg: dict[str, Any], *,
         log_line(f"UNCONSTRUCTIBLE pattern-l1 {store_label}: {min_mixed_cells} mixed slots "
                 f"({reason})")
 
+    def _run_pattern_plan(root: Any, on_store: Any) -> dict[str, Any]:
+        return run_plan(root, on_store.adapter, tt_source=on_store,
+                        cost_ceilings={"rows_scanned_est": 10 ** 9,
+                                      "expansions_est": 10 ** 9,
+                                      "time_est_ms": 10 ** 8})
+
     for name, pattern, sources, mixed, anchored in cell_specs:
         root = PatternMatch(pattern, sources=sources, sigma_=Sigma.default())
 
-        def _run() -> dict[str, Any]:
-            return run_plan(root, store.adapter, tt_source=store,
-                            cost_ceilings={"rows_scanned_est": 10 ** 9,
-                                          "expansions_est": 10 ** 9,
-                                          "time_est_ms": 10 ** 8})
+        def _run(root: Any = root) -> dict[str, Any]:
+            return _run_pattern_plan(root, store)
         try:
             result, timed_out = _with_timeout(_run, seconds=CELL_TIMEOUT_S)
         except TgmsError as e:
@@ -1214,13 +1363,37 @@ def pattern_l1_sweep(store_label: str, path: Path, cfg: dict[str, Any], *,
             continue
         record = _pattern_record(store, root, result, name)
         anchor_uids = _anchor_uids_of(sources)
+        # Fix 1 (adjudication root cause 1): draw the in-region-node-write
+        # probe's uid from the executed cell's own RECORDED ScanRegion node
+        # arm -- never from `anchor_uids` (Source input cohorts), which is
+        # not the join's bound region and is what made every one of the 57
+        # adjudicated rows look like a real L0->L1 win. Union across every
+        # pattern variable's node arm; an empty union means this cell has
+        # no in-region node probe at all, recorded honestly below rather
+        # than falling back to an out-of-region uid under an "in-region"
+        # label.
+        region = record.steps[0].scan_region if record.steps else None
+        region_node_uids = tuple(sorted(
+            {u for uids_ in (region or {}).get("node_uids", {}).values() for u in uids_}))
         for kind, corrector in _pattern_correction_probes(
-                sub, rel_types if mixed else (), anchor_uids):
+                sub, rel_types if mixed else (), anchor_uids, region_node_uids):
             work = _isolated_copy(path)
             wstore = tgms.open(work, backend=backend)
             try:
                 ok = corrector(wstore)
                 if not ok:
+                    trials.append(PatternL1Trial(
+                        store=store_label, cell=name, mixed=mixed, anchored=anchored,
+                        node_digest=root.node_digest, correction_kind=kind,
+                        level0_verdict="", level1_verdict="",
+                        level0_witnesses=0, level1_witnesses=0,
+                        level1_terms_level0=0, level1_terms_level1=0,
+                        result_changed=False, rows_total=result.get("rows_total", 0),
+                        outcome=OUTCOME_NO_IN_REGION_PROBE,
+                        note="this cell's recorded ScanRegion node arm is empty -- no "
+                             "in-region node probe is constructible for it; recorded "
+                             "per-slot (UNCONSTRUCTIBLE_BY_CORPUS's own precedent) "
+                             "rather than silently degenerating to an out-of-region uid"))
                     continue
                 # One log walk, not two: level0/level1 read the identical
                 # log state here, and `ChainCache` is keyed on
@@ -1231,6 +1404,25 @@ def pattern_l1_sweep(store_label: str, path: Path, cfg: dict[str, Any], *,
                 cache = ChainCache()
                 v0 = check_artifact(record, wstore.eventlog, level1=False, chain_cache=cache)
                 v1 = check_artifact(record, wstore.eventlog, level1=True, chain_cache=cache)
+                # Fix 2 (adjudication root cause 2): real ground truth for
+                # this trial -- re-execute the SAME plan against the
+                # already-built corrected copy (`wstore`, reused, never a
+                # second isolated copy) and compare result digests, rather
+                # than trusting either verdict as its own ground truth.
+                outcome = OUTCOME_OK
+                rc_note = ""
+                after_result, after_timed_out = _with_timeout(
+                    lambda root=root, wstore=wstore: _run_pattern_plan(root, wstore),
+                    seconds=CELL_TIMEOUT_S)
+                if after_timed_out:
+                    outcome = OUTCOME_TIMEOUT
+                    result_changed = False
+                    rc_note = (f"result re-execution against the corrected copy exceeded "
+                              f"the {CELL_TIMEOUT_S}s wall ceiling; result_changed is "
+                              f"unknown, not a measured 'no change', and is recorded "
+                              f"False only because the field has no other value")
+                else:
+                    result_changed = after_result["result_digest"] != result["result_digest"]
                 trials.append(PatternL1Trial(
                     store=store_label, cell=name, mixed=mixed, anchored=anchored,
                     node_digest=root.node_digest, correction_kind=kind,
@@ -1238,7 +1430,9 @@ def pattern_l1_sweep(store_label: str, path: Path, cfg: dict[str, Any], *,
                     level1_verdict=v1.steps.to_json()["verdict"],
                     level0_witnesses=len(v0.steps.witnesses), level1_witnesses=len(v1.steps.witnesses),
                     level1_terms_level0=len([t for t in v1.terms if t.level == "level-0"]),
-                    level1_terms_level1=len([t for t in v1.terms if t.level == "level-1"])))
+                    level1_terms_level1=len([t for t in v1.terms if t.level == "level-1"]),
+                    result_changed=result_changed, rows_total=result.get("rows_total", 0),
+                    outcome=outcome, note=rc_note))
             finally:
                 wstore.close()
                 shutil.rmtree(work.parent, ignore_errors=True)
@@ -1250,7 +1444,8 @@ def pattern_l1_sweep(store_label: str, path: Path, cfg: dict[str, Any], *,
 
 def _pattern_correction_probes(sub: Substrate,
                                rel_types: Sequence[str] = (),
-                               anchor_uids: Sequence[str] = ()
+                               anchor_uids: Sequence[str] = (),
+                               region_node_uids: Sequence[str] = ()
                                ) -> list[tuple[str, Callable[[Any], bool]]]:
     """The correction shapes §1.8's tests exercise: a node write on a
     plausibly-matched uid ('in-region'), and a node write on an uid unlikely
@@ -1260,6 +1455,18 @@ def _pattern_correction_probes(sub: Substrate,
     the unit-test suite has fixed scenarios); this harness's own choice,
     recorded here rather than assumed, is to reuse the two shapes the
     soundness suite already proved distinguish Level 0 from Level 1.
+
+    **2026-08-29 fix** (`docs/design/M5_PATTERN_ADJUDICATION_2026-08-29.md`
+    root cause 1): `in_region` used to draw its uid from `anchor_uids` —
+    the cell's Source INPUT cohorts — never the join's own BOUND uids, so
+    every "in-region" write actually landed wherever the *inputs* happened
+    to be, not where the executed cell's `ScanRegion` node arm says the
+    region actually is (`pattern.py:410-412`, `scan_region.py:267`). Fixed
+    to draw from `region_node_uids` — the caller's own union of the
+    recorded `ScanRegion.node_uids` values — instead. `anchor_uids` is
+    kept only for `declared_edge_write` below, which deliberately targets
+    the cell's own anchor identities (a different, correct use — see that
+    function's own note) and is untouched by this fix.
 
     On a **mixed** cell (`rel_types` non-empty), two more correction kinds
     are added — per the coordinator's follow-up ask for more "correction
@@ -1278,7 +1485,15 @@ def _pattern_correction_probes(sub: Substrate,
     uids = list(sub.uids) or ["n0"]
 
     def in_region(store: Any) -> bool:
-        uid = anchor_uids[0] if anchor_uids else uids[0]
+        if not region_node_uids:
+            # An empty recorded region node arm: this cell has no
+            # in-region node probe to construct at all. Returning `False`
+            # tells the caller to record the trial slot honestly
+            # (`OUTCOME_NO_IN_REGION_PROBE`) instead of writing anywhere —
+            # never a silent fall-back to an out-of-region uid under an
+            # "in-region" label.
+            return False
+        uid = region_node_uids[0]
         store.assert_node(uid, sub.node_label, {"injected": "l1-in"}, sub.vt_lo, sub.vt_hi)
         return True
 
@@ -1954,19 +2169,35 @@ def summarize_pattern_l1(trials: Sequence[PatternL1Trial], cfg: dict[str, Any]) 
     live = [t for t in trials if t.outcome == OUTCOME_OK]
     cells = {t.cell for t in live}
     mixed_cells = {t.cell for t in live if t.mixed}
+    mixed_cells_nonempty = {t.cell for t in live if t.mixed and t.rows_total > 0}
     lift = [t for t in live if t.level0_verdict == "possibly-stale" and t.level1_verdict == "fresh"]
-    regression = [t for t in live if t.level0_verdict == "fresh" and t.level1_verdict == "possibly-stale"]
+    # `docs/design/M5_PATTERN_ADJUDICATION_2026-08-29.md` root cause 2:
+    # `level1_unsound_regressions` used to count only L0-fresh -> L1-stale,
+    # which `level1.py:89-90` makes structurally unreachable -- a
+    # tautological zero, never a soundness measurement. Kept here under an
+    # honest name (it is still a real monotonicity invariant), but it is
+    # no longer what Gate A reads.
+    level1_monotonicity_violations = [
+        t for t in live if t.level0_verdict == "fresh" and t.level1_verdict == "possibly-stale"]
+    # The REAL false-fresh count (Fix 2): Level 1 said "fresh" on a trial
+    # whose own re-executed result actually changed under the correction.
+    # This is Gate A now -- MUST be 0.
+    level1_false_fresh = [t for t in live if t.result_changed and t.level1_verdict == "fresh"]
     unconstructible = {t.cell for t in trials if t.outcome == OUTCOME_UNCONSTRUCTIBLE}
     timed_out = {t.cell for t in trials if t.outcome == OUTCOME_TIMEOUT}
+    no_in_region_probe = {t.cell for t in trials if t.outcome == OUTCOME_NO_IN_REGION_PROBE}
     req = cfg["pattern_l1"]
     met = {"min_cells": len(cells) >= req["min_cells"],
           "min_mixed_cells": len(mixed_cells) >= req["min_mixed_cells"]}
     return {
         "trials": len(trials), "live": len(live), "cells": len(cells),
-        "mixed_cells": len(mixed_cells), "level1_lift_trials": len(lift),
-        "level1_unsound_regressions": len(regression),   # MUST be 0 -- Gate A
+        "mixed_cells": len(mixed_cells), "mixed_cells_binding_ge1_row": len(mixed_cells_nonempty),
+        "level1_lift_trials": len(lift),
+        "level1_false_fresh": len(level1_false_fresh),   # MUST be 0 -- Gate A
+        "level1_monotonicity_violations": len(level1_monotonicity_violations),
         "unconstructible_by_corpus_slots": len(unconstructible),
         "timed_out_cells": len(timed_out),
+        "no_in_region_probe_cells": len(no_in_region_probe),
         "floor": {"required": {"min_cells": req["min_cells"], "min_mixed_cells": req["min_mixed_cells"]},
                  "achieved": {"min_cells": len(cells), "min_mixed_cells": len(mixed_cells)},
                  "met": met, "all_met": all(met.values())},
@@ -2153,20 +2384,53 @@ def topup_pattern_profile(cfg: dict[str, Any]) -> Profile:
     `_mixed_cells`/`_t_node_cells`, plural full-anchoring, and the two new
     correction kinds in `_pattern_correction_probes`).
 
-    **`edge_sampling` left at the default (`"head"`), deliberately**:
-    `pattern_l1_sweep` does not call `_sample_edges` anywhere — checked
-    directly against the source, not assumed. Its corrections come from
-    `_pattern_correction_probes`' own node/edge writers (anchored to each
-    cell's own `Source` uids), never from `_weighted_corrections`'
-    edge-pool mechanism. There is therefore nothing for this profile's
-    `edge_sampling` field to change, and leaving it untouched at "head" is
-    the honest reflection of that rather than a symbolic override with no
-    effect."""
+    **`edge_sampling` left at the default (`"head"`), deliberately**: this
+    profile's own `run_tag="topup-1"` population is closed (its record
+    file already exists), so nothing here re-derives it. **Stale as of the
+    2026-08-29 fix** (checked directly against the source, not assumed):
+    `pattern_l1_sweep` NOW calls `_sample_edges(store, strategy=
+    "uniform", ...)` internally to seed `_mixed_cells`' real-edge anchors
+    (root cause 3) — hardcoded to `"uniform"`, not threaded through this
+    field, so `edge_sampling` still has nothing to change on this profile;
+    its corrections still come from `_pattern_correction_probes`' own
+    node/edge writers, never from `_weighted_corrections`' edge-pool
+    mechanism. Leaving it at "head" remains the honest reflection of
+    that — this field just no longer means "no `_sample_edges` call at
+    all", the way it did before the fix."""
     return Profile("topup-pattern", scorable=True, arms=frozenset({"pattern"}),
                    record_prefix={"pattern": "topup-pattern"},
                    pattern_min_cells=cfg["pattern_l1"]["min_cells"],
                    pattern_min_mixed_cells=cfg["pattern_l1"]["min_mixed_cells"],
                    run_tag="topup-1")
+
+
+def topup_pattern2_profile(cfg: dict[str, Any]) -> Profile:
+    """`docs/design/M5_PATTERN_ADJUDICATION_2026-08-29.md`'s own "Scoring
+    consequence": job 206956 (the `topup-pattern`/`run=topup-1` population)
+    met R-11's 83/40 floors in letter but the mixed class measured only
+    the empty-region path — a labeling bug (root cause 1), a tautological
+    soundness counter (root cause 2) and a ~0-match-probability mixed-cell
+    generator (root cause 3), not a real corpus limitation. `run-1` and
+    `topup-1`'s own record files are CLOSED (adjudicated, not
+    re-generated) — this is a fresh, separately-tagged re-measurement of
+    the pattern arm alone, over the SAME frozen 80/40 floors
+    (`cfg["pattern_l1"]`; the adjudication authorizes a corrected
+    measurement, never a raised or lowered bar), against the now-fixed
+    `_pattern_correction_probes`/`_mixed_cells`/`summarize_pattern_l1`.
+
+    `run_tag="topup-2"` (never `"topup-1"`) so `_write_record`'s collision
+    guard places it under `topup-pattern2-<store>.json` — a name that can
+    never collide with either `run-1`'s own 14 files or `topup-1`'s
+    `topup-pattern-<store>.json`. `edge_sampling` is left at the default
+    (`"head"`) for the same reason `topup_pattern_profile` leaves it
+    there: this arm's own new `_sample_edges` use (root cause 3's fix) is
+    hardcoded to `"uniform"` internally, not threaded through this field,
+    so there is nothing here for `edge_sampling` to change either."""
+    return Profile("topup-pattern-2", scorable=True, arms=frozenset({"pattern"}),
+                   record_prefix={"pattern": "topup-pattern2"},
+                   pattern_min_cells=cfg["pattern_l1"]["min_cells"],
+                   pattern_min_mixed_cells=cfg["pattern_l1"]["min_mixed_cells"],
+                   run_tag="topup-2")
 
 
 def topup_carve_profile(cfg: dict[str, Any]) -> Profile:
@@ -2215,11 +2479,54 @@ def topup_carve_profile(cfg: dict[str, Any]) -> Profile:
                    carve_corrections_cap=40, run_tag="topup-1", edge_sampling="uniform")
 
 
+def topup_carve2_profile(cfg: dict[str, Any]) -> Profile:
+    """`topup-carve`'s own remedy taken further, coordinator-authorized.
+    `topup-carve` (`run_tag="topup-1"`, 60 cells/form, 40 corrections cap)
+    yielded 122 outside-window B/C/D changed `aggregate_events_duration`
+    trials against the frozen `>= 200` floor (`campaign.yaml`'s
+    `carve_arm.floor.min_changed_trials`) — short of it by population
+    size, not by any generator defect (the `edge_sampling="uniform"` fix
+    that unblocked `topup-carve` in the first place already landed there
+    and is carried forward unchanged below). Doubling
+    `carve_cells_per_form` (60 -> 120) targets `122 * 2 = 244` changed
+    trials by simple linear scaling of run-1's own observed 122/60 yield —
+    no new mechanism, no floor moved (per this file's own `topup-*`
+    precedent: `topup_propagation_profile`'s 3x is likewise a scalar
+    multiple of run-1's own pairs/rounds, never a fresh number chosen
+    independently of what run-1 actually measured).
+
+    `carve_corrections_cap` scales by the SAME ratio `topup-carve` itself
+    fixed (40 corrections per 60 cells = 2/3) rather than as an
+    independent choice: doubling the cell population without doubling the
+    per-cell correction budget in step would silently change what
+    fraction of each cell's correction menu gets sampled — exactly the
+    kind of procedural drift a `topup-*` profile must not introduce into a
+    frozen arm's own machinery.
+
+    Otherwise identical to `topup_carve_profile`: same `synth-iv-60k`
+    substrate intent, same `edge_sampling="uniform"` fix, same three
+    carve-eligible forms unchanged, same `R-5`-`R-8`/`R-14a` arm logic
+    untouched. `run_tag="topup-2"` (never `"topup-1"`) so
+    `_write_record`'s collision guard places it under
+    `topup-carve2-<store>.json` — distinct from both run-1's own 14 files
+    and `topup-carve`'s own `topup-carve-<store>.json`."""
+    base_cells = cfg["carve_arm"]["min_cells_per_store_form"]  # 60, R-5
+    doubled_cells = base_cells * 2
+    scaled_corrections_cap = doubled_cells * 40 // base_cells  # topup-carve's own 40:60 ratio
+    return Profile("topup-carve-2", scorable=True, arms=frozenset({"carve"}),
+                   record_prefix={"carve": "topup-carve2"},
+                   carve_cells_per_form=doubled_cells,
+                   carve_corrections_cap=scaled_corrections_cap,
+                   run_tag="topup-2", edge_sampling="uniform")
+
+
 PROFILE_BUILDERS: dict[str, Callable[[dict[str, Any]], Profile]] = {
     "full": full_profile,
     "topup-propagation": topup_propagation_profile,
     "topup-pattern": topup_pattern_profile,
+    "topup-pattern-2": topup_pattern2_profile,
     "topup-carve": topup_carve_profile,
+    "topup-carve-2": topup_carve2_profile,
 }
 
 
@@ -2273,7 +2580,10 @@ def main() -> int:
                     help="'full' is every arm at the frozen floors (the run of "
                         "record shape); 'topup-propagation'/'topup-pattern' run "
                         "ONLY that one arm, at raised population, tagged run=topup-1, "
-                        "writing topup-<arm>-<store>.json (never the run-of-record names)")
+                        "writing topup-<arm>-<store>.json (never the run-of-record names); "
+                        "'topup-pattern-2' is the adjudication's corrected pattern-arm "
+                        "re-measurement, same floors, tagged run=topup-2, writing "
+                        "topup-pattern2-<store>.json (never topup-1's or run-1's names)")
     ap.add_argument("--smoke", action="store_true",
                     help="scale down whichever --profile names to a tiny, throwaway "
                         "population; records are marked scorable=false and never land "
