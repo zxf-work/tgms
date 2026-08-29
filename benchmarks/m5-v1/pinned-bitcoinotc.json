@@ -1,0 +1,6095 @@
+{
+ "generated": "2026-08-28T17:56:19+0000",
+ "measured_date": "2026-08-27",
+ "git_sha": "41c4066d9863775034ce44b76f9826642fc62680",
+ "campaign_yaml_sha256": "60a10e1ca68ca6d33cc7ea293aed2d9db2f2f67907a5ae0c029d2f93318c500b",
+ "freeze_document_sha256": "e94ecc1692c55f18e8d8837d81f7f0f1106f057b1024a1b08b5b3fac392bf6d0",
+ "profile": "full",
+ "backend": "native",
+ "store": "bitcoinotc",
+ "store_identity": "474dafe4e792a9af01fc2d6caa6d71882ab6de682bc758a1f15660aa49524c76",
+ "machine": {
+  "host": "itiger02",
+  "platform": "Linux-5.14.0-427.31.1.el9_4.x86_64-x86_64-with-glibc2.34",
+  "python": "3.12.13",
+  "cpus": 64
+ },
+ "arm": "pinned-bitcoinotc",
+ "scorable": true,
+ "summary": {
+  "trials": 200,
+  "invalidations_avoided_by_exemption": 200,
+  "exemption_receipts_present": 200,
+  "exemption_receipts_present_but_empty": 0,
+  "floor": {
+   "required": 100,
+   "achieved": 200,
+   "met": true,
+   "note": "reported, not passed (R-16)"
+  }
+ },
+ "row_count": 200,
+ "rows": [
+  {
+   "store": "bitcoinotc",
+   "op": "version_history",
+   "args_form": {
+    "as_of_tt": 1538584982905437,
+    "kind": "node",
+    "window": {
+     "t_a": 1289241911728360,
+     "t_b": 1306965920141401
+    }
+   },
+   "as_of_tt": 1538584982905437,
+   "frontier_tt": 1787928054082514,
+   "correction_tt": 1787939451277224,
+   "pinned": true,
+   "exempted_verdict": "fresh",
+   "stripped_verdict": "possibly-stale",
+   "avoided_by_exemption": true,
+   "exempt_receipt": {
+    "basis": 1538584982905437,
+    "batches": 11,
+    "tt_range": [
+     1784939612733735,
+     1787939451277224
+    ],
+    "theorem": "T1"
+   },
+   "scope_path": "leaf-basis"
+  },
+  {
+   "store": "bitcoinotc",
+   "op": "snapshot_subgraph",
+   "args_form": {
+    "as_of_tt": 1538584982905437,
+    "seeds": [
+     "n1009"
+    ],
+    "t_valid": 1298103915934880,
+    "hops": 1
+   },
+   "as_of_tt": 1538584982905437,
+   "frontier_tt": 1787928054082514,
+   "correction_tt": 1787939452882953,
+   "pinned": true,
+   "exempted_verdict": "fresh",
+   "stripped_verdict": "possibly-stale",
+   "avoided_by_exemption": true,
+   "exempt_receipt": {
+    "basis": 1538584982905437,
+    "batches": 11,
+    "tt_range": [
+     1784939612733735,
+     1787939452882953
+    ],
+    "theorem": "T1"
+   },
+   "scope_path": "leaf-basis"
+  },
+  {
+   "store": "bitcoinotc",
+   "op": "diff_snapshots",
+   "args_form": {
+    "as_of_tt": 1538584982905437,
+    "t1": 1289241911728361,
+    "t2": 1298103915934880
+   },
+   "as_of_tt": 1538584982905437,
+   "frontier_tt": 1787928054082514,
+   "correction_tt": 1787939454525594,
+   "pinned": true,
+   "exempted_verdict": "fresh",
+   "stripped_verdict": "possibly-stale",
+   "avoided_by_exemption": true,
+   "exempt_receipt": {
+    "basis": 1538584982905437,
+    "batches": 11,
+    "tt_range": [
+     1784939612733735,
+     1787939454525594
+    ],
+    "theorem": "T1"
+   },
+   "scope_path": "leaf-basis"
+  },
+  {
+   "store": "bitcoinotc",
+   "op": "neighborhood_evolution",
+   "args_form": {
+    "as_of_tt": 1538584982905437,
+    "uid": "n1031",
+    "t1": 1289241911728360,
+    "t2": 1306965920141401,
+    "stride": 2215501051630
+   },
+   "as_of_tt": 1538584982905437,
+   "frontier_tt": 1787928054082514,
+   "correction_tt": 1787939456164919,
+   "pinned": true,
+   "exempted_verdict": "fresh",
+   "stripped_verdict": "possibly-stale",
+   "avoided_by_exemption": true,
+   "exempt_receipt": {
+    "basis": 1538584982905437,
+    "batches": 11,
+    "tt_range": [
+     1784939612733735,
+     1787939456164919
+    ],
+    "theorem": "T1"
+   },
+   "scope_path": "leaf-basis"
+  },
+  {
+   "store": "bitcoinotc",
+   "op": "aggregate_events",
+   "args_form": {
+    "as_of_tt": 1538584982905437,
+    "group_by": [
+     {
+      "dim": "endpoint",
+      "role": "src"
+     }
+    ],
+    "aggregates": [
+     {
+      "agg": "count"
+     }
+    ],
+    "window": {
+     "t_a": 1289241911728360,
+     "t_b": 1306965920141401
+    }
+   },
+   "as_of_tt": 1538584982905437,
+   "frontier_tt": 1787928054082514,
+   "correction_tt": 1787939457820725,
+   "pinned": true,
+   "exempted_verdict": "fresh",
+   "stripped_verdict": "possibly-stale",
+   "avoided_by_exemption": true,
+   "exempt_receipt": {
+    "basis": 1538584982905437,
+    "batches": 11,
+    "tt_range": [
+     1784939612733735,
+     1787939457820725
+    ],
+    "theorem": "T1"
+   },
+   "scope_path": "leaf-basis"
+  },
+  {
+   "store": "bitcoinotc",
+   "op": "graph_metric_timeseries",
+   "args_form": {
+    "as_of_tt": 1538584982905437,
+    "metric": "node_count",
+    "window": {
+     "t_a": 1289241911728360,
+     "t_b": 1306965920141401
+    },
+    "stride": 2215501051630
+   },
+   "as_of_tt": 1538584982905437,
+   "frontier_tt": 1787928054082514,
+   "correction_tt": 1787939459439775,
+   "pinned": true,
+   "exempted_verdict": "fresh",
+   "stripped_verdict": "possibly-stale",
+   "avoided_by_exemption": true,
+   "exempt_receipt": {
+    "basis": 1538584982905437,
+    "batches": 11,
+    "tt_range": [
+     1784939612733735,
+     1787939459439775
+    ],
+    "theorem": "T1"
+   },
+   "scope_path": "leaf-basis"
+  },
+  {
+   "store": "bitcoinotc",
+   "op": "burst_detection",
+   "args_form": {
+    "as_of_tt": 1538584982905437,
+    "target": {
+     "kind": "node_activity",
+     "uid": "n1055"
+    },
+    "window": {
+     "t_a": 1289241911728360,
+     "t_b": 1306965920141401
+    },
+    "stride": 1107750525815
+   },
+   "as_of_tt": 1538584982905437,
+   "frontier_tt": 1787928054082514,
+   "correction_tt": 1787939461086196,
+   "pinned": true,
+   "exempted_verdict": "fresh",
+   "stripped_verdict": "possibly-stale",
+   "avoided_by_exemption": true,
+   "exempt_receipt": {
+    "basis": 1538584982905437,
+    "batches": 11,
+    "tt_range": [
+     1784939612733735,
+     1787939461086196
+    ],
+    "theorem": "T1"
+   },
+   "scope_path": "leaf-basis"
+  },
+  {
+   "store": "bitcoinotc",
+   "op": "co_active",
+   "args_form": {
+    "as_of_tt": 1538584982905437,
+    "a_spec": {
+     "rel_type": "TRUST"
+    },
+    "b_spec": {
+     "rel_type": "TRUST"
+    },
+    "allen_relation": {
+     "relation": "overlaps"
+    },
+    "limit": 200
+   },
+   "as_of_tt": 1538584982905437,
+   "frontier_tt": 1787928054082514,
+   "correction_tt": 1787939462728995,
+   "pinned": true,
+   "exempted_verdict": "fresh",
+   "stripped_verdict": "possibly-stale",
+   "avoided_by_exemption": true,
+   "exempt_receipt": {
+    "basis": 1538584982905437,
+    "batches": 11,
+    "tt_range": [
+     1784939612733735,
+     1787939462728995
+    ],
+    "theorem": "T1"
+   },
+   "scope_path": "leaf-basis"
+  },
+  {
+   "store": "bitcoinotc",
+   "op": "count_temporal_motifs",
+   "args_form": {
+    "as_of_tt": 1538584982905437,
+    "motif": "M_2node_pingpong",
+    "window": {
+     "t_a": 1289241911728360,
+     "t_b": 1306965920141401
+    },
+    "delta": 2215501051630
+   },
+   "as_of_tt": 1538584982905437,
+   "frontier_tt": 1787928054082514,
+   "correction_tt": 1787939464339385,
+   "pinned": true,
+   "exempted_verdict": "fresh",
+   "stripped_verdict": "possibly-stale",
+   "avoided_by_exemption": true,
+   "exempt_receipt": {
+    "basis": 1538584982905437,
+    "batches": 11,
+    "tt_range": [
+     1784939612733735,
+     1787939464339385
+    ],
+    "theorem": "T1"
+   },
+   "scope_path": "leaf-basis"
+  },
+  {
+   "store": "bitcoinotc",
+   "op": "find_temporal_motif_instances",
+   "args_form": {
+    "as_of_tt": 1538584982905437,
+    "motif": "M_2node_pingpong",
+    "window": {
+     "t_a": 1289241911728360,
+     "t_b": 1306965920141401
+    },
+    "delta": 2215501051630,
+    "limit": 50
+   },
+   "as_of_tt": 1538584982905437,
+   "frontier_tt": 1787928054082514,
+   "correction_tt": 1787939465966590,
+   "pinned": true,
+   "exempted_verdict": "fresh",
+   "stripped_verdict": "possibly-stale",
+   "avoided_by_exemption": true,
+   "exempt_receipt": {
+    "basis": 1538584982905437,
+    "batches": 11,
+    "tt_range": [
+     1784939612733735,
+     1787939465966590
+    ],
+    "theorem": "T1"
+   },
+   "scope_path": "leaf-basis"
+  },
+  {
+   "store": "bitcoinotc",
+   "op": "temporal_reachability",
+   "args_form": {
+    "as_of_tt": 1538584982905437,
+    "src": "n1087",
+    "window": {
+     "t_a": 1289241911728360,
+     "t_b": 1306965920141401
+    }
+   },
+   "as_of_tt": 1538584982905437,
+   "frontier_tt": 1787928054082514,
+   "correction_tt": 1787939467601709,
+   "pinned": true,
+   "exempted_verdict": "fresh",
+   "stripped_verdict": "possibly-stale",
+   "avoided_by_exemption": true,
+   "exempt_receipt": {
+    "basis": 1538584982905437,
+    "batches": 11,
+    "tt_range": [
+     1784939612733735,
+     1787939467601709
+    ],
+    "theorem": "T1"
+   },
+   "scope_path": "leaf-basis"
+  },
+  {
+   "store": "bitcoinotc",
+   "op": "temporal_paths",
+   "args_form": {
+    "as_of_tt": 1538584982905437,
+    "src": "n1088",
+    "dst": "n1088",
+    "window": {
+     "t_a": 1289241911728360,
+     "t_b": 1306965920141401
+    },
+    "k": 2
+   },
+   "as_of_tt": 1538584982905437,
+   "frontier_tt": 1787928054082514,
+   "correction_tt": 1787939469215364,
+   "pinned": true,
+   "exempted_verdict": "fresh",
+   "stripped_verdict": "possibly-stale",
+   "avoided_by_exemption": true,
+   "exempt_receipt": {
+    "basis": 1538584982905437,
+    "batches": 11,
+    "tt_range": [
+     1784939612733735,
+     1787939469215364
+    ],
+    "theorem": "T1"
+   },
+   "scope_path": "leaf-basis"
+  },
+  {
+   "store": "bitcoinotc",
+   "op": "entity_history",
+   "args_form": {
+    "as_of_tt": 1538584982905437,
+    "uid": "n1095"
+   },
+   "as_of_tt": 1538584982905437,
+   "frontier_tt": 1787928054082514,
+   "correction_tt": 1787939470845280,
+   "pinned": true,
+   "exempted_verdict": "fresh",
+   "stripped_verdict": "possibly-stale",
+   "avoided_by_exemption": true,
+   "exempt_receipt": {
+    "basis": 1538584982905437,
+    "batches": 11,
+    "tt_range": [
+     1784939612733735,
+     1787939470845280
+    ],
+    "theorem": "T1"
+   },
+   "scope_path": "leaf-basis"
+  },
+  {
+   "store": "bitcoinotc",
+   "op": "version_history",
+   "args_form": {
+    "as_of_tt": 1538584982905437,
+    "kind": "node",
+    "window": {
+     "t_a": 1289241911728360,
+     "t_b": 1306965920141401
+    }
+   },
+   "as_of_tt": 1538584982905437,
+   "frontier_tt": 1787928054082514,
+   "correction_tt": 1787939472501985,
+   "pinned": true,
+   "exempted_verdict": "fresh",
+   "stripped_verdict": "possibly-stale",
+   "avoided_by_exemption": true,
+   "exempt_receipt": {
+    "basis": 1538584982905437,
+    "batches": 11,
+    "tt_range": [
+     1784939612733735,
+     1787939472501985
+    ],
+    "theorem": "T1"
+   },
+   "scope_path": "leaf-basis"
+  },
+  {
+   "store": "bitcoinotc",
+   "op": "snapshot_subgraph",
+   "args_form": {
+    "as_of_tt": 1538584982905437,
+    "seeds": [
+     "n1102"
+    ],
+    "t_valid": 1298103915934880,
+    "hops": 1
+   },
+   "as_of_tt": 1538584982905437,
+   "frontier_tt": 1787928054082514,
+   "correction_tt": 1787939474141445,
+   "pinned": true,
+   "exempted_verdict": "fresh",
+   "stripped_verdict": "possibly-stale",
+   "avoided_by_exemption": true,
+   "exempt_receipt": {
+    "basis": 1538584982905437,
+    "batches": 11,
+    "tt_range": [
+     1784939612733735,
+     1787939474141445
+    ],
+    "theorem": "T1"
+   },
+   "scope_path": "leaf-basis"
+  },
+  {
+   "store": "bitcoinotc",
+   "op": "diff_snapshots",
+   "args_form": {
+    "as_of_tt": 1538584982905437,
+    "t1": 1289241911728361,
+    "t2": 1298103915934880
+   },
+   "as_of_tt": 1538584982905437,
+   "frontier_tt": 1787928054082514,
+   "correction_tt": 1787939475745896,
+   "pinned": true,
+   "exempted_verdict": "fresh",
+   "stripped_verdict": "possibly-stale",
+   "avoided_by_exemption": true,
+   "exempt_receipt": {
+    "basis": 1538584982905437,
+    "batches": 11,
+    "tt_range": [
+     1784939612733735,
+     1787939475745896
+    ],
+    "theorem": "T1"
+   },
+   "scope_path": "leaf-basis"
+  },
+  {
+   "store": "bitcoinotc",
+   "op": "neighborhood_evolution",
+   "args_form": {
+    "as_of_tt": 1538584982905437,
+    "uid": "n1112",
+    "t1": 1289241911728360,
+    "t2": 1306965920141401,
+    "stride": 2215501051630
+   },
+   "as_of_tt": 1538584982905437,
+   "frontier_tt": 1787928054082514,
+   "correction_tt": 1787939477373453,
+   "pinned": true,
+   "exempted_verdict": "fresh",
+   "stripped_verdict": "possibly-stale",
+   "avoided_by_exemption": true,
+   "exempt_receipt": {
+    "basis": 1538584982905437,
+    "batches": 11,
+    "tt_range": [
+     1784939612733735,
+     1787939477373453
+    ],
+    "theorem": "T1"
+   },
+   "scope_path": "leaf-basis"
+  },
+  {
+   "store": "bitcoinotc",
+   "op": "aggregate_events",
+   "args_form": {
+    "as_of_tt": 1538584982905437,
+    "group_by": [
+     {
+      "dim": "endpoint",
+      "role": "src"
+     }
+    ],
+    "aggregates": [
+     {
+      "agg": "count"
+     }
+    ],
+    "window": {
+     "t_a": 1289241911728360,
+     "t_b": 1306965920141401
+    }
+   },
+   "as_of_tt": 1538584982905437,
+   "frontier_tt": 1787928054082514,
+   "correction_tt": 1787939479012338,
+   "pinned": true,
+   "exempted_verdict": "fresh",
+   "stripped_verdict": "possibly-stale",
+   "avoided_by_exemption": true,
+   "exempt_receipt": {
+    "basis": 1538584982905437,
+    "batches": 11,
+    "tt_range": [
+     1784939612733735,
+     1787939479012338
+    ],
+    "theorem": "T1"
+   },
+   "scope_path": "leaf-basis"
+  },
+  {
+   "store": "bitcoinotc",
+   "op": "graph_metric_timeseries",
+   "args_form": {
+    "as_of_tt": 1538584982905437,
+    "metric": "node_count",
+    "window": {
+     "t_a": 1289241911728360,
+     "t_b": 1306965920141401
+    },
+    "stride": 2215501051630
+   },
+   "as_of_tt": 1538584982905437,
+   "frontier_tt": 1787928054082514,
+   "correction_tt": 1787939480662653,
+   "pinned": true,
+   "exempted_verdict": "fresh",
+   "stripped_verdict": "possibly-stale",
+   "avoided_by_exemption": true,
+   "exempt_receipt": {
+    "basis": 1538584982905437,
+    "batches": 11,
+    "tt_range": [
+     1784939612733735,
+     1787939480662653
+    ],
+    "theorem": "T1"
+   },
+   "scope_path": "leaf-basis"
+  },
+  {
+   "store": "bitcoinotc",
+   "op": "burst_detection",
+   "args_form": {
+    "as_of_tt": 1538584982905437,
+    "target": {
+     "kind": "node_activity",
+     "uid": "n1130"
+    },
+    "window": {
+     "t_a": 1289241911728360,
+     "t_b": 1306965920141401
+    },
+    "stride": 1107750525815
+   },
+   "as_of_tt": 1538584982905437,
+   "frontier_tt": 1787928054082514,
+   "correction_tt": 1787939482261200,
+   "pinned": true,
+   "exempted_verdict": "fresh",
+   "stripped_verdict": "possibly-stale",
+   "avoided_by_exemption": true,
+   "exempt_receipt": {
+    "basis": 1538584982905437,
+    "batches": 11,
+    "tt_range": [
+     1784939612733735,
+     1787939482261200
+    ],
+    "theorem": "T1"
+   },
+   "scope_path": "leaf-basis"
+  },
+  {
+   "store": "bitcoinotc",
+   "op": "co_active",
+   "args_form": {
+    "as_of_tt": 1538584982905437,
+    "a_spec": {
+     "rel_type": "TRUST"
+    },
+    "b_spec": {
+     "rel_type": "TRUST"
+    },
+    "allen_relation": {
+     "relation": "overlaps"
+    },
+    "limit": 200
+   },
+   "as_of_tt": 1538584982905437,
+   "frontier_tt": 1787928054082514,
+   "correction_tt": 1787939483895563,
+   "pinned": true,
+   "exempted_verdict": "fresh",
+   "stripped_verdict": "possibly-stale",
+   "avoided_by_exemption": true,
+   "exempt_receipt": {
+    "basis": 1538584982905437,
+    "batches": 11,
+    "tt_range": [
+     1784939612733735,
+     1787939483895563
+    ],
+    "theorem": "T1"
+   },
+   "scope_path": "leaf-basis"
+  },
+  {
+   "store": "bitcoinotc",
+   "op": "count_temporal_motifs",
+   "args_form": {
+    "as_of_tt": 1538584982905437,
+    "motif": "M_2node_pingpong",
+    "window": {
+     "t_a": 1289241911728360,
+     "t_b": 1306965920141401
+    },
+    "delta": 2215501051630
+   },
+   "as_of_tt": 1538584982905437,
+   "frontier_tt": 1787928054082514,
+   "correction_tt": 1787939485540014,
+   "pinned": true,
+   "exempted_verdict": "fresh",
+   "stripped_verdict": "possibly-stale",
+   "avoided_by_exemption": true,
+   "exempt_receipt": {
+    "basis": 1538584982905437,
+    "batches": 11,
+    "tt_range": [
+     1784939612733735,
+     1787939485540014
+    ],
+    "theorem": "T1"
+   },
+   "scope_path": "leaf-basis"
+  },
+  {
+   "store": "bitcoinotc",
+   "op": "find_temporal_motif_instances",
+   "args_form": {
+    "as_of_tt": 1538584982905437,
+    "motif": "M_2node_pingpong",
+    "window": {
+     "t_a": 1289241911728360,
+     "t_b": 1306965920141401
+    },
+    "delta": 2215501051630,
+    "limit": 50
+   },
+   "as_of_tt": 1538584982905437,
+   "frontier_tt": 1787928054082514,
+   "correction_tt": 1787939487143710,
+   "pinned": true,
+   "exempted_verdict": "fresh",
+   "stripped_verdict": "possibly-stale",
+   "avoided_by_exemption": true,
+   "exempt_receipt": {
+    "basis": 1538584982905437,
+    "batches": 11,
+    "tt_range": [
+     1784939612733735,
+     1787939487143710
+    ],
+    "theorem": "T1"
+   },
+   "scope_path": "leaf-basis"
+  },
+  {
+   "store": "bitcoinotc",
+   "op": "temporal_reachability",
+   "args_form": {
+    "as_of_tt": 1538584982905437,
+    "src": "n1156",
+    "window": {
+     "t_a": 1289241911728360,
+     "t_b": 1306965920141401
+    }
+   },
+   "as_of_tt": 1538584982905437,
+   "frontier_tt": 1787928054082514,
+   "correction_tt": 1787939488787230,
+   "pinned": true,
+   "exempted_verdict": "fresh",
+   "stripped_verdict": "possibly-stale",
+   "avoided_by_exemption": true,
+   "exempt_receipt": {
+    "basis": 1538584982905437,
+    "batches": 11,
+    "tt_range": [
+     1784939612733735,
+     1787939488787230
+    ],
+    "theorem": "T1"
+   },
+   "scope_path": "leaf-basis"
+  },
+  {
+   "store": "bitcoinotc",
+   "op": "temporal_paths",
+   "args_form": {
+    "as_of_tt": 1538584982905437,
+    "src": "n1171",
+    "dst": "n1171",
+    "window": {
+     "t_a": 1289241911728360,
+     "t_b": 1306965920141401
+    },
+    "k": 2
+   },
+   "as_of_tt": 1538584982905437,
+   "frontier_tt": 1787928054082514,
+   "correction_tt": 1787939490433618,
+   "pinned": true,
+   "exempted_verdict": "fresh",
+   "stripped_verdict": "possibly-stale",
+   "avoided_by_exemption": true,
+   "exempt_receipt": {
+    "basis": 1538584982905437,
+    "batches": 11,
+    "tt_range": [
+     1784939612733735,
+     1787939490433618
+    ],
+    "theorem": "T1"
+   },
+   "scope_path": "leaf-basis"
+  },
+  {
+   "store": "bitcoinotc",
+   "op": "entity_history",
+   "args_form": {
+    "as_of_tt": 1538584982905437,
+    "uid": "n1173"
+   },
+   "as_of_tt": 1538584982905437,
+   "frontier_tt": 1787928054082514,
+   "correction_tt": 1787939492059318,
+   "pinned": true,
+   "exempted_verdict": "fresh",
+   "stripped_verdict": "possibly-stale",
+   "avoided_by_exemption": true,
+   "exempt_receipt": {
+    "basis": 1538584982905437,
+    "batches": 11,
+    "tt_range": [
+     1784939612733735,
+     1787939492059318
+    ],
+    "theorem": "T1"
+   },
+   "scope_path": "leaf-basis"
+  },
+  {
+   "store": "bitcoinotc",
+   "op": "version_history",
+   "args_form": {
+    "as_of_tt": 1538584982905437,
+    "kind": "node",
+    "window": {
+     "t_a": 1289241911728360,
+     "t_b": 1306965920141401
+    }
+   },
+   "as_of_tt": 1538584982905437,
+   "frontier_tt": 1787928054082514,
+   "correction_tt": 1787939493692435,
+   "pinned": true,
+   "exempted_verdict": "fresh",
+   "stripped_verdict": "possibly-stale",
+   "avoided_by_exemption": true,
+   "exempt_receipt": {
+    "basis": 1538584982905437,
+    "batches": 11,
+    "tt_range": [
+     1784939612733735,
+     1787939493692435
+    ],
+    "theorem": "T1"
+   },
+   "scope_path": "leaf-basis"
+  },
+  {
+   "store": "bitcoinotc",
+   "op": "snapshot_subgraph",
+   "args_form": {
+    "as_of_tt": 1538584982905437,
+    "seeds": [
+     "n1210"
+    ],
+    "t_valid": 1298103915934880,
+    "hops": 1
+   },
+   "as_of_tt": 1538584982905437,
+   "frontier_tt": 1787928054082514,
+   "correction_tt": 1787939495341850,
+   "pinned": true,
+   "exempted_verdict": "fresh",
+   "stripped_verdict": "possibly-stale",
+   "avoided_by_exemption": true,
+   "exempt_receipt": {
+    "basis": 1538584982905437,
+    "batches": 11,
+    "tt_range": [
+     1784939612733735,
+     1787939495341850
+    ],
+    "theorem": "T1"
+   },
+   "scope_path": "leaf-basis"
+  },
+  {
+   "store": "bitcoinotc",
+   "op": "diff_snapshots",
+   "args_form": {
+    "as_of_tt": 1538584982905437,
+    "t1": 1289241911728361,
+    "t2": 1298103915934880
+   },
+   "as_of_tt": 1538584982905437,
+   "frontier_tt": 1787928054082514,
+   "correction_tt": 1787939497001722,
+   "pinned": true,
+   "exempted_verdict": "fresh",
+   "stripped_verdict": "possibly-stale",
+   "avoided_by_exemption": true,
+   "exempt_receipt": {
+    "basis": 1538584982905437,
+    "batches": 11,
+    "tt_range": [
+     1784939612733735,
+     1787939497001722
+    ],
+    "theorem": "T1"
+   },
+   "scope_path": "leaf-basis"
+  },
+  {
+   "store": "bitcoinotc",
+   "op": "neighborhood_evolution",
+   "args_form": {
+    "as_of_tt": 1538584982905437,
+    "uid": "n1231",
+    "t1": 1289241911728360,
+    "t2": 1306965920141401,
+    "stride": 2215501051630
+   },
+   "as_of_tt": 1538584982905437,
+   "frontier_tt": 1787928054082514,
+   "correction_tt": 1787939498623936,
+   "pinned": true,
+   "exempted_verdict": "fresh",
+   "stripped_verdict": "possibly-stale",
+   "avoided_by_exemption": true,
+   "exempt_receipt": {
+    "basis": 1538584982905437,
+    "batches": 11,
+    "tt_range": [
+     1784939612733735,
+     1787939498623936
+    ],
+    "theorem": "T1"
+   },
+   "scope_path": "leaf-basis"
+  },
+  {
+   "store": "bitcoinotc",
+   "op": "aggregate_events",
+   "args_form": {
+    "as_of_tt": 1538584982905437,
+    "group_by": [
+     {
+      "dim": "endpoint",
+      "role": "src"
+     }
+    ],
+    "aggregates": [
+     {
+      "agg": "count"
+     }
+    ],
+    "window": {
+     "t_a": 1289241911728360,
+     "t_b": 1306965920141401
+    }
+   },
+   "as_of_tt": 1538584982905437,
+   "frontier_tt": 1787928054082514,
+   "correction_tt": 1787939500258672,
+   "pinned": true,
+   "exempted_verdict": "fresh",
+   "stripped_verdict": "possibly-stale",
+   "avoided_by_exemption": true,
+   "exempt_receipt": {
+    "basis": 1538584982905437,
+    "batches": 11,
+    "tt_range": [
+     1784939612733735,
+     1787939500258672
+    ],
+    "theorem": "T1"
+   },
+   "scope_path": "leaf-basis"
+  },
+  {
+   "store": "bitcoinotc",
+   "op": "graph_metric_timeseries",
+   "args_form": {
+    "as_of_tt": 1538584982905437,
+    "metric": "node_count",
+    "window": {
+     "t_a": 1289241911728360,
+     "t_b": 1306965920141401
+    },
+    "stride": 2215501051630
+   },
+   "as_of_tt": 1538584982905437,
+   "frontier_tt": 1787928054082514,
+   "correction_tt": 1787939501893884,
+   "pinned": true,
+   "exempted_verdict": "fresh",
+   "stripped_verdict": "possibly-stale",
+   "avoided_by_exemption": true,
+   "exempt_receipt": {
+    "basis": 1538584982905437,
+    "batches": 11,
+    "tt_range": [
+     1784939612733735,
+     1787939501893884
+    ],
+    "theorem": "T1"
+   },
+   "scope_path": "leaf-basis"
+  },
+  {
+   "store": "bitcoinotc",
+   "op": "burst_detection",
+   "args_form": {
+    "as_of_tt": 1538584982905437,
+    "target": {
+     "kind": "node_activity",
+     "uid": "n1258"
+    },
+    "window": {
+     "t_a": 1289241911728360,
+     "t_b": 1306965920141401
+    },
+    "stride": 1107750525815
+   },
+   "as_of_tt": 1538584982905437,
+   "frontier_tt": 1787928054082514,
+   "correction_tt": 1787939503554748,
+   "pinned": true,
+   "exempted_verdict": "fresh",
+   "stripped_verdict": "possibly-stale",
+   "avoided_by_exemption": true,
+   "exempt_receipt": {
+    "basis": 1538584982905437,
+    "batches": 11,
+    "tt_range": [
+     1784939612733735,
+     1787939503554748
+    ],
+    "theorem": "T1"
+   },
+   "scope_path": "leaf-basis"
+  },
+  {
+   "store": "bitcoinotc",
+   "op": "co_active",
+   "args_form": {
+    "as_of_tt": 1538584982905437,
+    "a_spec": {
+     "rel_type": "TRUST"
+    },
+    "b_spec": {
+     "rel_type": "TRUST"
+    },
+    "allen_relation": {
+     "relation": "overlaps"
+    },
+    "limit": 200
+   },
+   "as_of_tt": 1538584982905437,
+   "frontier_tt": 1787928054082514,
+   "correction_tt": 1787939505170360,
+   "pinned": true,
+   "exempted_verdict": "fresh",
+   "stripped_verdict": "possibly-stale",
+   "avoided_by_exemption": true,
+   "exempt_receipt": {
+    "basis": 1538584982905437,
+    "batches": 11,
+    "tt_range": [
+     1784939612733735,
+     1787939505170360
+    ],
+    "theorem": "T1"
+   },
+   "scope_path": "leaf-basis"
+  },
+  {
+   "store": "bitcoinotc",
+   "op": "count_temporal_motifs",
+   "args_form": {
+    "as_of_tt": 1538584982905437,
+    "motif": "M_2node_pingpong",
+    "window": {
+     "t_a": 1289241911728360,
+     "t_b": 1306965920141401
+    },
+    "delta": 2215501051630
+   },
+   "as_of_tt": 1538584982905437,
+   "frontier_tt": 1787928054082514,
+   "correction_tt": 1787939506815340,
+   "pinned": true,
+   "exempted_verdict": "fresh",
+   "stripped_verdict": "possibly-stale",
+   "avoided_by_exemption": true,
+   "exempt_receipt": {
+    "basis": 1538584982905437,
+    "batches": 11,
+    "tt_range": [
+     1784939612733735,
+     1787939506815340
+    ],
+    "theorem": "T1"
+   },
+   "scope_path": "leaf-basis"
+  },
+  {
+   "store": "bitcoinotc",
+   "op": "find_temporal_motif_instances",
+   "args_form": {
+    "as_of_tt": 1538584982905437,
+    "motif": "M_2node_pingpong",
+    "window": {
+     "t_a": 1289241911728360,
+     "t_b": 1306965920141401
+    },
+    "delta": 2215501051630,
+    "limit": 50
+   },
+   "as_of_tt": 1538584982905437,
+   "frontier_tt": 1787928054082514,
+   "correction_tt": 1787939508459798,
+   "pinned": true,
+   "exempted_verdict": "fresh",
+   "stripped_verdict": "possibly-stale",
+   "avoided_by_exemption": true,
+   "exempt_receipt": {
+    "basis": 1538584982905437,
+    "batches": 11,
+    "tt_range": [
+     1784939612733735,
+     1787939508459798
+    ],
+    "theorem": "T1"
+   },
+   "scope_path": "leaf-basis"
+  },
+  {
+   "store": "bitcoinotc",
+   "op": "temporal_reachability",
+   "args_form": {
+    "as_of_tt": 1538584982905437,
+    "src": "n1289",
+    "window": {
+     "t_a": 1289241911728360,
+     "t_b": 1306965920141401
+    }
+   },
+   "as_of_tt": 1538584982905437,
+   "frontier_tt": 1787928054082514,
+   "correction_tt": 1787939510062795,
+   "pinned": true,
+   "exempted_verdict": "fresh",
+   "stripped_verdict": "possibly-stale",
+   "avoided_by_exemption": true,
+   "exempt_receipt": {
+    "basis": 1538584982905437,
+    "batches": 11,
+    "tt_range": [
+     1784939612733735,
+     1787939510062795
+    ],
+    "theorem": "T1"
+   },
+   "scope_path": "leaf-basis"
+  },
+  {
+   "store": "bitcoinotc",
+   "op": "temporal_paths",
+   "args_form": {
+    "as_of_tt": 1538584982905437,
+    "src": "n1292",
+    "dst": "n1292",
+    "window": {
+     "t_a": 1289241911728360,
+     "t_b": 1306965920141401
+    },
+    "k": 2
+   },
+   "as_of_tt": 1538584982905437,
+   "frontier_tt": 1787928054082514,
+   "correction_tt": 1787939511736368,
+   "pinned": true,
+   "exempted_verdict": "fresh",
+   "stripped_verdict": "possibly-stale",
+   "avoided_by_exemption": true,
+   "exempt_receipt": {
+    "basis": 1538584982905437,
+    "batches": 11,
+    "tt_range": [
+     1784939612733735,
+     1787939511736368
+    ],
+    "theorem": "T1"
+   },
+   "scope_path": "leaf-basis"
+  },
+  {
+   "store": "bitcoinotc",
+   "op": "entity_history",
+   "args_form": {
+    "as_of_tt": 1538584982905437,
+    "uid": "n1297"
+   },
+   "as_of_tt": 1538584982905437,
+   "frontier_tt": 1787928054082514,
+   "correction_tt": 1787939513384674,
+   "pinned": true,
+   "exempted_verdict": "fresh",
+   "stripped_verdict": "possibly-stale",
+   "avoided_by_exemption": true,
+   "exempt_receipt": {
+    "basis": 1538584982905437,
+    "batches": 11,
+    "tt_range": [
+     1784939612733735,
+     1787939513384674
+    ],
+    "theorem": "T1"
+   },
+   "scope_path": "leaf-basis"
+  },
+  {
+   "store": "bitcoinotc",
+   "op": "version_history",
+   "args_form": {
+    "as_of_tt": 1538584982905437,
+    "kind": "node",
+    "window": {
+     "t_a": 1289241911728360,
+     "t_b": 1306965920141401
+    }
+   },
+   "as_of_tt": 1538584982905437,
+   "frontier_tt": 1787928054082514,
+   "correction_tt": 1787939515065965,
+   "pinned": true,
+   "exempted_verdict": "fresh",
+   "stripped_verdict": "possibly-stale",
+   "avoided_by_exemption": true,
+   "exempt_receipt": {
+    "basis": 1538584982905437,
+    "batches": 11,
+    "tt_range": [
+     1784939612733735,
+     1787939515065965
+    ],
+    "theorem": "T1"
+   },
+   "scope_path": "leaf-basis"
+  },
+  {
+   "store": "bitcoinotc",
+   "op": "snapshot_subgraph",
+   "args_form": {
+    "as_of_tt": 1538584982905437,
+    "seeds": [
+     "n1303"
+    ],
+    "t_valid": 1298103915934880,
+    "hops": 1
+   },
+   "as_of_tt": 1538584982905437,
+   "frontier_tt": 1787928054082514,
+   "correction_tt": 1787939516691010,
+   "pinned": true,
+   "exempted_verdict": "fresh",
+   "stripped_verdict": "possibly-stale",
+   "avoided_by_exemption": true,
+   "exempt_receipt": {
+    "basis": 1538584982905437,
+    "batches": 11,
+    "tt_range": [
+     1784939612733735,
+     1787939516691010
+    ],
+    "theorem": "T1"
+   },
+   "scope_path": "leaf-basis"
+  },
+  {
+   "store": "bitcoinotc",
+   "op": "diff_snapshots",
+   "args_form": {
+    "as_of_tt": 1538584982905437,
+    "t1": 1289241911728361,
+    "t2": 1298103915934880
+   },
+   "as_of_tt": 1538584982905437,
+   "frontier_tt": 1787928054082514,
+   "correction_tt": 1787939518370152,
+   "pinned": true,
+   "exempted_verdict": "fresh",
+   "stripped_verdict": "possibly-stale",
+   "avoided_by_exemption": true,
+   "exempt_receipt": {
+    "basis": 1538584982905437,
+    "batches": 11,
+    "tt_range": [
+     1784939612733735,
+     1787939518370152
+    ],
+    "theorem": "T1"
+   },
+   "scope_path": "leaf-basis"
+  },
+  {
+   "store": "bitcoinotc",
+   "op": "neighborhood_evolution",
+   "args_form": {
+    "as_of_tt": 1538584982905437,
+    "uid": "n1323",
+    "t1": 1289241911728360,
+    "t2": 1306965920141401,
+    "stride": 2215501051630
+   },
+   "as_of_tt": 1538584982905437,
+   "frontier_tt": 1787928054082514,
+   "correction_tt": 1787939520021130,
+   "pinned": true,
+   "exempted_verdict": "fresh",
+   "stripped_verdict": "possibly-stale",
+   "avoided_by_exemption": true,
+   "exempt_receipt": {
+    "basis": 1538584982905437,
+    "batches": 11,
+    "tt_range": [
+     1784939612733735,
+     1787939520021130
+    ],
+    "theorem": "T1"
+   },
+   "scope_path": "leaf-basis"
+  },
+  {
+   "store": "bitcoinotc",
+   "op": "aggregate_events",
+   "args_form": {
+    "as_of_tt": 1538584982905437,
+    "group_by": [
+     {
+      "dim": "endpoint",
+      "role": "src"
+     }
+    ],
+    "aggregates": [
+     {
+      "agg": "count"
+     }
+    ],
+    "window": {
+     "t_a": 1289241911728360,
+     "t_b": 1306965920141401
+    }
+   },
+   "as_of_tt": 1538584982905437,
+   "frontier_tt": 1787928054082514,
+   "correction_tt": 1787939521630264,
+   "pinned": true,
+   "exempted_verdict": "fresh",
+   "stripped_verdict": "possibly-stale",
+   "avoided_by_exemption": true,
+   "exempt_receipt": {
+    "basis": 1538584982905437,
+    "batches": 11,
+    "tt_range": [
+     1784939612733735,
+     1787939521630264
+    ],
+    "theorem": "T1"
+   },
+   "scope_path": "leaf-basis"
+  },
+  {
+   "store": "bitcoinotc",
+   "op": "graph_metric_timeseries",
+   "args_form": {
+    "as_of_tt": 1538584982905437,
+    "metric": "node_count",
+    "window": {
+     "t_a": 1289241911728360,
+     "t_b": 1306965920141401
+    },
+    "stride": 2215501051630
+   },
+   "as_of_tt": 1538584982905437,
+   "frontier_tt": 1787928054082514,
+   "correction_tt": 1787939523307622,
+   "pinned": true,
+   "exempted_verdict": "fresh",
+   "stripped_verdict": "possibly-stale",
+   "avoided_by_exemption": true,
+   "exempt_receipt": {
+    "basis": 1538584982905437,
+    "batches": 11,
+    "tt_range": [
+     1784939612733735,
+     1787939523307622
+    ],
+    "theorem": "T1"
+   },
+   "scope_path": "leaf-basis"
+  },
+  {
+   "store": "bitcoinotc",
+   "op": "burst_detection",
+   "args_form": {
+    "as_of_tt": 1538584982905437,
+    "target": {
+     "kind": "node_activity",
+     "uid": "n1360"
+    },
+    "window": {
+     "t_a": 1289241911728360,
+     "t_b": 1306965920141401
+    },
+    "stride": 1107750525815
+   },
+   "as_of_tt": 1538584982905437,
+   "frontier_tt": 1787928054082514,
+   "correction_tt": 1787939524956114,
+   "pinned": true,
+   "exempted_verdict": "fresh",
+   "stripped_verdict": "possibly-stale",
+   "avoided_by_exemption": true,
+   "exempt_receipt": {
+    "basis": 1538584982905437,
+    "batches": 11,
+    "tt_range": [
+     1784939612733735,
+     1787939524956114
+    ],
+    "theorem": "T1"
+   },
+   "scope_path": "leaf-basis"
+  },
+  {
+   "store": "bitcoinotc",
+   "op": "co_active",
+   "args_form": {
+    "as_of_tt": 1538584982905437,
+    "a_spec": {
+     "rel_type": "TRUST"
+    },
+    "b_spec": {
+     "rel_type": "TRUST"
+    },
+    "allen_relation": {
+     "relation": "overlaps"
+    },
+    "limit": 200
+   },
+   "as_of_tt": 1538584982905437,
+   "frontier_tt": 1787928054082514,
+   "correction_tt": 1787939526642449,
+   "pinned": true,
+   "exempted_verdict": "fresh",
+   "stripped_verdict": "possibly-stale",
+   "avoided_by_exemption": true,
+   "exempt_receipt": {
+    "basis": 1538584982905437,
+    "batches": 11,
+    "tt_range": [
+     1784939612733735,
+     1787939526642449
+    ],
+    "theorem": "T1"
+   },
+   "scope_path": "leaf-basis"
+  },
+  {
+   "store": "bitcoinotc",
+   "op": "count_temporal_motifs",
+   "args_form": {
+    "as_of_tt": 1538584982905437,
+    "motif": "M_2node_pingpong",
+    "window": {
+     "t_a": 1289241911728360,
+     "t_b": 1306965920141401
+    },
+    "delta": 2215501051630
+   },
+   "as_of_tt": 1538584982905437,
+   "frontier_tt": 1787928054082514,
+   "correction_tt": 1787939528251566,
+   "pinned": true,
+   "exempted_verdict": "fresh",
+   "stripped_verdict": "possibly-stale",
+   "avoided_by_exemption": true,
+   "exempt_receipt": {
+    "basis": 1538584982905437,
+    "batches": 11,
+    "tt_range": [
+     1784939612733735,
+     1787939528251566
+    ],
+    "theorem": "T1"
+   },
+   "scope_path": "leaf-basis"
+  },
+  {
+   "store": "bitcoinotc",
+   "op": "find_temporal_motif_instances",
+   "args_form": {
+    "as_of_tt": 1538584982905437,
+    "motif": "M_2node_pingpong",
+    "window": {
+     "t_a": 1289241911728360,
+     "t_b": 1306965920141401
+    },
+    "delta": 2215501051630,
+    "limit": 50
+   },
+   "as_of_tt": 1538584982905437,
+   "frontier_tt": 1787928054082514,
+   "correction_tt": 1787939529889946,
+   "pinned": true,
+   "exempted_verdict": "fresh",
+   "stripped_verdict": "possibly-stale",
+   "avoided_by_exemption": true,
+   "exempt_receipt": {
+    "basis": 1538584982905437,
+    "batches": 11,
+    "tt_range": [
+     1784939612733735,
+     1787939529889946
+    ],
+    "theorem": "T1"
+   },
+   "scope_path": "leaf-basis"
+  },
+  {
+   "store": "bitcoinotc",
+   "op": "temporal_reachability",
+   "args_form": {
+    "as_of_tt": 1538584982905437,
+    "src": "n1391",
+    "window": {
+     "t_a": 1289241911728360,
+     "t_b": 1306965920141401
+    }
+   },
+   "as_of_tt": 1538584982905437,
+   "frontier_tt": 1787928054082514,
+   "correction_tt": 1787939531552509,
+   "pinned": true,
+   "exempted_verdict": "fresh",
+   "stripped_verdict": "possibly-stale",
+   "avoided_by_exemption": true,
+   "exempt_receipt": {
+    "basis": 1538584982905437,
+    "batches": 11,
+    "tt_range": [
+     1784939612733735,
+     1787939531552509
+    ],
+    "theorem": "T1"
+   },
+   "scope_path": "leaf-basis"
+  },
+  {
+   "store": "bitcoinotc",
+   "op": "temporal_paths",
+   "args_form": {
+    "as_of_tt": 1538584982905437,
+    "src": "n1400",
+    "dst": "n1400",
+    "window": {
+     "t_a": 1289241911728360,
+     "t_b": 1306965920141401
+    },
+    "k": 2
+   },
+   "as_of_tt": 1538584982905437,
+   "frontier_tt": 1787928054082514,
+   "correction_tt": 1787939533165721,
+   "pinned": true,
+   "exempted_verdict": "fresh",
+   "stripped_verdict": "possibly-stale",
+   "avoided_by_exemption": true,
+   "exempt_receipt": {
+    "basis": 1538584982905437,
+    "batches": 11,
+    "tt_range": [
+     1784939612733735,
+     1787939533165721
+    ],
+    "theorem": "T1"
+   },
+   "scope_path": "leaf-basis"
+  },
+  {
+   "store": "bitcoinotc",
+   "op": "entity_history",
+   "args_form": {
+    "as_of_tt": 1538584982905437,
+    "uid": "n1403"
+   },
+   "as_of_tt": 1538584982905437,
+   "frontier_tt": 1787928054082514,
+   "correction_tt": 1787939534801987,
+   "pinned": true,
+   "exempted_verdict": "fresh",
+   "stripped_verdict": "possibly-stale",
+   "avoided_by_exemption": true,
+   "exempt_receipt": {
+    "basis": 1538584982905437,
+    "batches": 11,
+    "tt_range": [
+     1784939612733735,
+     1787939534801987
+    ],
+    "theorem": "T1"
+   },
+   "scope_path": "leaf-basis"
+  },
+  {
+   "store": "bitcoinotc",
+   "op": "version_history",
+   "args_form": {
+    "as_of_tt": 1538584982905437,
+    "kind": "node",
+    "window": {
+     "t_a": 1289241911728360,
+     "t_b": 1306965920141401
+    }
+   },
+   "as_of_tt": 1538584982905437,
+   "frontier_tt": 1787928054082514,
+   "correction_tt": 1787939536517391,
+   "pinned": true,
+   "exempted_verdict": "fresh",
+   "stripped_verdict": "possibly-stale",
+   "avoided_by_exemption": true,
+   "exempt_receipt": {
+    "basis": 1538584982905437,
+    "batches": 11,
+    "tt_range": [
+     1784939612733735,
+     1787939536517391
+    ],
+    "theorem": "T1"
+   },
+   "scope_path": "leaf-basis"
+  },
+  {
+   "store": "bitcoinotc",
+   "op": "snapshot_subgraph",
+   "args_form": {
+    "as_of_tt": 1538584982905437,
+    "seeds": [
+     "n1427"
+    ],
+    "t_valid": 1298103915934880,
+    "hops": 1
+   },
+   "as_of_tt": 1538584982905437,
+   "frontier_tt": 1787928054082514,
+   "correction_tt": 1787939538185818,
+   "pinned": true,
+   "exempted_verdict": "fresh",
+   "stripped_verdict": "possibly-stale",
+   "avoided_by_exemption": true,
+   "exempt_receipt": {
+    "basis": 1538584982905437,
+    "batches": 11,
+    "tt_range": [
+     1784939612733735,
+     1787939538185818
+    ],
+    "theorem": "T1"
+   },
+   "scope_path": "leaf-basis"
+  },
+  {
+   "store": "bitcoinotc",
+   "op": "diff_snapshots",
+   "args_form": {
+    "as_of_tt": 1538584982905437,
+    "t1": 1289241911728361,
+    "t2": 1298103915934880
+   },
+   "as_of_tt": 1538584982905437,
+   "frontier_tt": 1787928054082514,
+   "correction_tt": 1787939539807693,
+   "pinned": true,
+   "exempted_verdict": "fresh",
+   "stripped_verdict": "possibly-stale",
+   "avoided_by_exemption": true,
+   "exempt_receipt": {
+    "basis": 1538584982905437,
+    "batches": 11,
+    "tt_range": [
+     1784939612733735,
+     1787939539807693
+    ],
+    "theorem": "T1"
+   },
+   "scope_path": "leaf-basis"
+  },
+  {
+   "store": "bitcoinotc",
+   "op": "neighborhood_evolution",
+   "args_form": {
+    "as_of_tt": 1538584982905437,
+    "uid": "n1437",
+    "t1": 1289241911728360,
+    "t2": 1306965920141401,
+    "stride": 2215501051630
+   },
+   "as_of_tt": 1538584982905437,
+   "frontier_tt": 1787928054082514,
+   "correction_tt": 1787939541460534,
+   "pinned": true,
+   "exempted_verdict": "fresh",
+   "stripped_verdict": "possibly-stale",
+   "avoided_by_exemption": true,
+   "exempt_receipt": {
+    "basis": 1538584982905437,
+    "batches": 11,
+    "tt_range": [
+     1784939612733735,
+     1787939541460534
+    ],
+    "theorem": "T1"
+   },
+   "scope_path": "leaf-basis"
+  },
+  {
+   "store": "bitcoinotc",
+   "op": "aggregate_events",
+   "args_form": {
+    "as_of_tt": 1538584982905437,
+    "group_by": [
+     {
+      "dim": "endpoint",
+      "role": "src"
+     }
+    ],
+    "aggregates": [
+     {
+      "agg": "count"
+     }
+    ],
+    "window": {
+     "t_a": 1289241911728360,
+     "t_b": 1306965920141401
+    }
+   },
+   "as_of_tt": 1538584982905437,
+   "frontier_tt": 1787928054082514,
+   "correction_tt": 1787939543110272,
+   "pinned": true,
+   "exempted_verdict": "fresh",
+   "stripped_verdict": "possibly-stale",
+   "avoided_by_exemption": true,
+   "exempt_receipt": {
+    "basis": 1538584982905437,
+    "batches": 11,
+    "tt_range": [
+     1784939612733735,
+     1787939543110272
+    ],
+    "theorem": "T1"
+   },
+   "scope_path": "leaf-basis"
+  },
+  {
+   "store": "bitcoinotc",
+   "op": "graph_metric_timeseries",
+   "args_form": {
+    "as_of_tt": 1538584982905437,
+    "metric": "node_count",
+    "window": {
+     "t_a": 1289241911728360,
+     "t_b": 1306965920141401
+    },
+    "stride": 2215501051630
+   },
+   "as_of_tt": 1538584982905437,
+   "frontier_tt": 1787928054082514,
+   "correction_tt": 1787939544785195,
+   "pinned": true,
+   "exempted_verdict": "fresh",
+   "stripped_verdict": "possibly-stale",
+   "avoided_by_exemption": true,
+   "exempt_receipt": {
+    "basis": 1538584982905437,
+    "batches": 11,
+    "tt_range": [
+     1784939612733735,
+     1787939544785195
+    ],
+    "theorem": "T1"
+   },
+   "scope_path": "leaf-basis"
+  },
+  {
+   "store": "bitcoinotc",
+   "op": "burst_detection",
+   "args_form": {
+    "as_of_tt": 1538584982905437,
+    "target": {
+     "kind": "node_activity",
+     "uid": "n1453"
+    },
+    "window": {
+     "t_a": 1289241911728360,
+     "t_b": 1306965920141401
+    },
+    "stride": 1107750525815
+   },
+   "as_of_tt": 1538584982905437,
+   "frontier_tt": 1787928054082514,
+   "correction_tt": 1787939546432640,
+   "pinned": true,
+   "exempted_verdict": "fresh",
+   "stripped_verdict": "possibly-stale",
+   "avoided_by_exemption": true,
+   "exempt_receipt": {
+    "basis": 1538584982905437,
+    "batches": 11,
+    "tt_range": [
+     1784939612733735,
+     1787939546432640
+    ],
+    "theorem": "T1"
+   },
+   "scope_path": "leaf-basis"
+  },
+  {
+   "store": "bitcoinotc",
+   "op": "co_active",
+   "args_form": {
+    "as_of_tt": 1538584982905437,
+    "a_spec": {
+     "rel_type": "TRUST"
+    },
+    "b_spec": {
+     "rel_type": "TRUST"
+    },
+    "allen_relation": {
+     "relation": "overlaps"
+    },
+    "limit": 200
+   },
+   "as_of_tt": 1538584982905437,
+   "frontier_tt": 1787928054082514,
+   "correction_tt": 1787939548134330,
+   "pinned": true,
+   "exempted_verdict": "fresh",
+   "stripped_verdict": "possibly-stale",
+   "avoided_by_exemption": true,
+   "exempt_receipt": {
+    "basis": 1538584982905437,
+    "batches": 11,
+    "tt_range": [
+     1784939612733735,
+     1787939548134330
+    ],
+    "theorem": "T1"
+   },
+   "scope_path": "leaf-basis"
+  },
+  {
+   "store": "bitcoinotc",
+   "op": "count_temporal_motifs",
+   "args_form": {
+    "as_of_tt": 1538584982905437,
+    "motif": "M_2node_pingpong",
+    "window": {
+     "t_a": 1289241911728360,
+     "t_b": 1306965920141401
+    },
+    "delta": 2215501051630
+   },
+   "as_of_tt": 1538584982905437,
+   "frontier_tt": 1787928054082514,
+   "correction_tt": 1787939549793231,
+   "pinned": true,
+   "exempted_verdict": "fresh",
+   "stripped_verdict": "possibly-stale",
+   "avoided_by_exemption": true,
+   "exempt_receipt": {
+    "basis": 1538584982905437,
+    "batches": 11,
+    "tt_range": [
+     1784939612733735,
+     1787939549793231
+    ],
+    "theorem": "T1"
+   },
+   "scope_path": "leaf-basis"
+  },
+  {
+   "store": "bitcoinotc",
+   "op": "find_temporal_motif_instances",
+   "args_form": {
+    "as_of_tt": 1538584982905437,
+    "motif": "M_2node_pingpong",
+    "window": {
+     "t_a": 1289241911728360,
+     "t_b": 1306965920141401
+    },
+    "delta": 2215501051630,
+    "limit": 50
+   },
+   "as_of_tt": 1538584982905437,
+   "frontier_tt": 1787928054082514,
+   "correction_tt": 1787939551418350,
+   "pinned": true,
+   "exempted_verdict": "fresh",
+   "stripped_verdict": "possibly-stale",
+   "avoided_by_exemption": true,
+   "exempt_receipt": {
+    "basis": 1538584982905437,
+    "batches": 11,
+    "tt_range": [
+     1784939612733735,
+     1787939551418350
+    ],
+    "theorem": "T1"
+   },
+   "scope_path": "leaf-basis"
+  },
+  {
+   "store": "bitcoinotc",
+   "op": "temporal_reachability",
+   "args_form": {
+    "as_of_tt": 1538584982905437,
+    "src": "n149",
+    "window": {
+     "t_a": 1289241911728360,
+     "t_b": 1306965920141401
+    }
+   },
+   "as_of_tt": 1538584982905437,
+   "frontier_tt": 1787928054082514,
+   "correction_tt": 1787939553068440,
+   "pinned": true,
+   "exempted_verdict": "fresh",
+   "stripped_verdict": "possibly-stale",
+   "avoided_by_exemption": true,
+   "exempt_receipt": {
+    "basis": 1538584982905437,
+    "batches": 11,
+    "tt_range": [
+     1784939612733735,
+     1787939553068440
+    ],
+    "theorem": "T1"
+   },
+   "scope_path": "leaf-basis"
+  },
+  {
+   "store": "bitcoinotc",
+   "op": "temporal_paths",
+   "args_form": {
+    "as_of_tt": 1538584982905437,
+    "src": "n1498",
+    "dst": "n1498",
+    "window": {
+     "t_a": 1289241911728360,
+     "t_b": 1306965920141401
+    },
+    "k": 2
+   },
+   "as_of_tt": 1538584982905437,
+   "frontier_tt": 1787928054082514,
+   "correction_tt": 1787939554716999,
+   "pinned": true,
+   "exempted_verdict": "fresh",
+   "stripped_verdict": "possibly-stale",
+   "avoided_by_exemption": true,
+   "exempt_receipt": {
+    "basis": 1538584982905437,
+    "batches": 11,
+    "tt_range": [
+     1784939612733735,
+     1787939554716999
+    ],
+    "theorem": "T1"
+   },
+   "scope_path": "leaf-basis"
+  },
+  {
+   "store": "bitcoinotc",
+   "op": "entity_history",
+   "args_form": {
+    "as_of_tt": 1538584982905437,
+    "uid": "n15"
+   },
+   "as_of_tt": 1538584982905437,
+   "frontier_tt": 1787928054082514,
+   "correction_tt": 1787939556331037,
+   "pinned": true,
+   "exempted_verdict": "fresh",
+   "stripped_verdict": "possibly-stale",
+   "avoided_by_exemption": true,
+   "exempt_receipt": {
+    "basis": 1538584982905437,
+    "batches": 11,
+    "tt_range": [
+     1784939612733735,
+     1787939556331037
+    ],
+    "theorem": "T1"
+   },
+   "scope_path": "leaf-basis"
+  },
+  {
+   "store": "bitcoinotc",
+   "op": "version_history",
+   "args_form": {
+    "as_of_tt": 1538584982905437,
+    "kind": "node",
+    "window": {
+     "t_a": 1289241911728360,
+     "t_b": 1306965920141401
+    }
+   },
+   "as_of_tt": 1538584982905437,
+   "frontier_tt": 1787928054082514,
+   "correction_tt": 1787939557988963,
+   "pinned": true,
+   "exempted_verdict": "fresh",
+   "stripped_verdict": "possibly-stale",
+   "avoided_by_exemption": true,
+   "exempt_receipt": {
+    "basis": 1538584982905437,
+    "batches": 11,
+    "tt_range": [
+     1784939612733735,
+     1787939557988963
+    ],
+    "theorem": "T1"
+   },
+   "scope_path": "leaf-basis"
+  },
+  {
+   "store": "bitcoinotc",
+   "op": "snapshot_subgraph",
+   "args_form": {
+    "as_of_tt": 1538584982905437,
+    "seeds": [
+     "n1505"
+    ],
+    "t_valid": 1298103915934880,
+    "hops": 1
+   },
+   "as_of_tt": 1538584982905437,
+   "frontier_tt": 1787928054082514,
+   "correction_tt": 1787939559637672,
+   "pinned": true,
+   "exempted_verdict": "fresh",
+   "stripped_verdict": "possibly-stale",
+   "avoided_by_exemption": true,
+   "exempt_receipt": {
+    "basis": 1538584982905437,
+    "batches": 11,
+    "tt_range": [
+     1784939612733735,
+     1787939559637672
+    ],
+    "theorem": "T1"
+   },
+   "scope_path": "leaf-basis"
+  },
+  {
+   "store": "bitcoinotc",
+   "op": "diff_snapshots",
+   "args_form": {
+    "as_of_tt": 1538584982905437,
+    "t1": 1289241911728361,
+    "t2": 1298103915934880
+   },
+   "as_of_tt": 1538584982905437,
+   "frontier_tt": 1787928054082514,
+   "correction_tt": 1787939561296489,
+   "pinned": true,
+   "exempted_verdict": "fresh",
+   "stripped_verdict": "possibly-stale",
+   "avoided_by_exemption": true,
+   "exempt_receipt": {
+    "basis": 1538584982905437,
+    "batches": 11,
+    "tt_range": [
+     1784939612733735,
+     1787939561296489
+    ],
+    "theorem": "T1"
+   },
+   "scope_path": "leaf-basis"
+  },
+  {
+   "store": "bitcoinotc",
+   "op": "neighborhood_evolution",
+   "args_form": {
+    "as_of_tt": 1538584982905437,
+    "uid": "n1526",
+    "t1": 1289241911728360,
+    "t2": 1306965920141401,
+    "stride": 2215501051630
+   },
+   "as_of_tt": 1538584982905437,
+   "frontier_tt": 1787928054082514,
+   "correction_tt": 1787939562913324,
+   "pinned": true,
+   "exempted_verdict": "fresh",
+   "stripped_verdict": "possibly-stale",
+   "avoided_by_exemption": true,
+   "exempt_receipt": {
+    "basis": 1538584982905437,
+    "batches": 11,
+    "tt_range": [
+     1784939612733735,
+     1787939562913324
+    ],
+    "theorem": "T1"
+   },
+   "scope_path": "leaf-basis"
+  },
+  {
+   "store": "bitcoinotc",
+   "op": "aggregate_events",
+   "args_form": {
+    "as_of_tt": 1538584982905437,
+    "group_by": [
+     {
+      "dim": "endpoint",
+      "role": "src"
+     }
+    ],
+    "aggregates": [
+     {
+      "agg": "count"
+     }
+    ],
+    "window": {
+     "t_a": 1289241911728360,
+     "t_b": 1306965920141401
+    }
+   },
+   "as_of_tt": 1538584982905437,
+   "frontier_tt": 1787928054082514,
+   "correction_tt": 1787939564567317,
+   "pinned": true,
+   "exempted_verdict": "fresh",
+   "stripped_verdict": "possibly-stale",
+   "avoided_by_exemption": true,
+   "exempt_receipt": {
+    "basis": 1538584982905437,
+    "batches": 11,
+    "tt_range": [
+     1784939612733735,
+     1787939564567317
+    ],
+    "theorem": "T1"
+   },
+   "scope_path": "leaf-basis"
+  },
+  {
+   "store": "bitcoinotc",
+   "op": "graph_metric_timeseries",
+   "args_form": {
+    "as_of_tt": 1538584982905437,
+    "metric": "node_count",
+    "window": {
+     "t_a": 1289241911728360,
+     "t_b": 1306965920141401
+    },
+    "stride": 2215501051630
+   },
+   "as_of_tt": 1538584982905437,
+   "frontier_tt": 1787928054082514,
+   "correction_tt": 1787939566231193,
+   "pinned": true,
+   "exempted_verdict": "fresh",
+   "stripped_verdict": "possibly-stale",
+   "avoided_by_exemption": true,
+   "exempt_receipt": {
+    "basis": 1538584982905437,
+    "batches": 11,
+    "tt_range": [
+     1784939612733735,
+     1787939566231193
+    ],
+    "theorem": "T1"
+   },
+   "scope_path": "leaf-basis"
+  },
+  {
+   "store": "bitcoinotc",
+   "op": "burst_detection",
+   "args_form": {
+    "as_of_tt": 1538584982905437,
+    "target": {
+     "kind": "node_activity",
+     "uid": "n1562"
+    },
+    "window": {
+     "t_a": 1289241911728360,
+     "t_b": 1306965920141401
+    },
+    "stride": 1107750525815
+   },
+   "as_of_tt": 1538584982905437,
+   "frontier_tt": 1787928054082514,
+   "correction_tt": 1787939567868178,
+   "pinned": true,
+   "exempted_verdict": "fresh",
+   "stripped_verdict": "possibly-stale",
+   "avoided_by_exemption": true,
+   "exempt_receipt": {
+    "basis": 1538584982905437,
+    "batches": 11,
+    "tt_range": [
+     1784939612733735,
+     1787939567868178
+    ],
+    "theorem": "T1"
+   },
+   "scope_path": "leaf-basis"
+  },
+  {
+   "store": "bitcoinotc",
+   "op": "co_active",
+   "args_form": {
+    "as_of_tt": 1538584982905437,
+    "a_spec": {
+     "rel_type": "TRUST"
+    },
+    "b_spec": {
+     "rel_type": "TRUST"
+    },
+    "allen_relation": {
+     "relation": "overlaps"
+    },
+    "limit": 200
+   },
+   "as_of_tt": 1538584982905437,
+   "frontier_tt": 1787928054082514,
+   "correction_tt": 1787939569490528,
+   "pinned": true,
+   "exempted_verdict": "fresh",
+   "stripped_verdict": "possibly-stale",
+   "avoided_by_exemption": true,
+   "exempt_receipt": {
+    "basis": 1538584982905437,
+    "batches": 11,
+    "tt_range": [
+     1784939612733735,
+     1787939569490528
+    ],
+    "theorem": "T1"
+   },
+   "scope_path": "leaf-basis"
+  },
+  {
+   "store": "bitcoinotc",
+   "op": "count_temporal_motifs",
+   "args_form": {
+    "as_of_tt": 1538584982905437,
+    "motif": "M_2node_pingpong",
+    "window": {
+     "t_a": 1289241911728360,
+     "t_b": 1306965920141401
+    },
+    "delta": 2215501051630
+   },
+   "as_of_tt": 1538584982905437,
+   "frontier_tt": 1787928054082514,
+   "correction_tt": 1787939571185077,
+   "pinned": true,
+   "exempted_verdict": "fresh",
+   "stripped_verdict": "possibly-stale",
+   "avoided_by_exemption": true,
+   "exempt_receipt": {
+    "basis": 1538584982905437,
+    "batches": 11,
+    "tt_range": [
+     1784939612733735,
+     1787939571185077
+    ],
+    "theorem": "T1"
+   },
+   "scope_path": "leaf-basis"
+  },
+  {
+   "store": "bitcoinotc",
+   "op": "find_temporal_motif_instances",
+   "args_form": {
+    "as_of_tt": 1538584982905437,
+    "motif": "M_2node_pingpong",
+    "window": {
+     "t_a": 1289241911728360,
+     "t_b": 1306965920141401
+    },
+    "delta": 2215501051630,
+    "limit": 50
+   },
+   "as_of_tt": 1538584982905437,
+   "frontier_tt": 1787928054082514,
+   "correction_tt": 1787939572843976,
+   "pinned": true,
+   "exempted_verdict": "fresh",
+   "stripped_verdict": "possibly-stale",
+   "avoided_by_exemption": true,
+   "exempt_receipt": {
+    "basis": 1538584982905437,
+    "batches": 11,
+    "tt_range": [
+     1784939612733735,
+     1787939572843976
+    ],
+    "theorem": "T1"
+   },
+   "scope_path": "leaf-basis"
+  },
+  {
+   "store": "bitcoinotc",
+   "op": "temporal_reachability",
+   "args_form": {
+    "as_of_tt": 1538584982905437,
+    "src": "n1591",
+    "window": {
+     "t_a": 1289241911728360,
+     "t_b": 1306965920141401
+    }
+   },
+   "as_of_tt": 1538584982905437,
+   "frontier_tt": 1787928054082514,
+   "correction_tt": 1787939574468449,
+   "pinned": true,
+   "exempted_verdict": "fresh",
+   "stripped_verdict": "possibly-stale",
+   "avoided_by_exemption": true,
+   "exempt_receipt": {
+    "basis": 1538584982905437,
+    "batches": 11,
+    "tt_range": [
+     1784939612733735,
+     1787939574468449
+    ],
+    "theorem": "T1"
+   },
+   "scope_path": "leaf-basis"
+  },
+  {
+   "store": "bitcoinotc",
+   "op": "temporal_paths",
+   "args_form": {
+    "as_of_tt": 1538584982905437,
+    "src": "n1593",
+    "dst": "n1593",
+    "window": {
+     "t_a": 1289241911728360,
+     "t_b": 1306965920141401
+    },
+    "k": 2
+   },
+   "as_of_tt": 1538584982905437,
+   "frontier_tt": 1787928054082514,
+   "correction_tt": 1787939576161368,
+   "pinned": true,
+   "exempted_verdict": "fresh",
+   "stripped_verdict": "possibly-stale",
+   "avoided_by_exemption": true,
+   "exempt_receipt": {
+    "basis": 1538584982905437,
+    "batches": 11,
+    "tt_range": [
+     1784939612733735,
+     1787939576161368
+    ],
+    "theorem": "T1"
+   },
+   "scope_path": "leaf-basis"
+  },
+  {
+   "store": "bitcoinotc",
+   "op": "entity_history",
+   "args_form": {
+    "as_of_tt": 1538584982905437,
+    "uid": "n1613"
+   },
+   "as_of_tt": 1538584982905437,
+   "frontier_tt": 1787928054082514,
+   "correction_tt": 1787939577826150,
+   "pinned": true,
+   "exempted_verdict": "fresh",
+   "stripped_verdict": "possibly-stale",
+   "avoided_by_exemption": true,
+   "exempt_receipt": {
+    "basis": 1538584982905437,
+    "batches": 11,
+    "tt_range": [
+     1784939612733735,
+     1787939577826150
+    ],
+    "theorem": "T1"
+   },
+   "scope_path": "leaf-basis"
+  },
+  {
+   "store": "bitcoinotc",
+   "op": "version_history",
+   "args_form": {
+    "as_of_tt": 1538584982905437,
+    "kind": "node",
+    "window": {
+     "t_a": 1289241911728360,
+     "t_b": 1306965920141401
+    }
+   },
+   "as_of_tt": 1538584982905437,
+   "frontier_tt": 1787928054082514,
+   "correction_tt": 1787939579564734,
+   "pinned": true,
+   "exempted_verdict": "fresh",
+   "stripped_verdict": "possibly-stale",
+   "avoided_by_exemption": true,
+   "exempt_receipt": {
+    "basis": 1538584982905437,
+    "batches": 11,
+    "tt_range": [
+     1784939612733735,
+     1787939579564734
+    ],
+    "theorem": "T1"
+   },
+   "scope_path": "leaf-basis"
+  },
+  {
+   "store": "bitcoinotc",
+   "op": "snapshot_subgraph",
+   "args_form": {
+    "as_of_tt": 1538584982905437,
+    "seeds": [
+     "n1621"
+    ],
+    "t_valid": 1298103915934880,
+    "hops": 1
+   },
+   "as_of_tt": 1538584982905437,
+   "frontier_tt": 1787928054082514,
+   "correction_tt": 1787939581187644,
+   "pinned": true,
+   "exempted_verdict": "fresh",
+   "stripped_verdict": "possibly-stale",
+   "avoided_by_exemption": true,
+   "exempt_receipt": {
+    "basis": 1538584982905437,
+    "batches": 11,
+    "tt_range": [
+     1784939612733735,
+     1787939581187644
+    ],
+    "theorem": "T1"
+   },
+   "scope_path": "leaf-basis"
+  },
+  {
+   "store": "bitcoinotc",
+   "op": "diff_snapshots",
+   "args_form": {
+    "as_of_tt": 1538584982905437,
+    "t1": 1289241911728361,
+    "t2": 1298103915934880
+   },
+   "as_of_tt": 1538584982905437,
+   "frontier_tt": 1787928054082514,
+   "correction_tt": 1787939582841941,
+   "pinned": true,
+   "exempted_verdict": "fresh",
+   "stripped_verdict": "possibly-stale",
+   "avoided_by_exemption": true,
+   "exempt_receipt": {
+    "basis": 1538584982905437,
+    "batches": 11,
+    "tt_range": [
+     1784939612733735,
+     1787939582841941
+    ],
+    "theorem": "T1"
+   },
+   "scope_path": "leaf-basis"
+  },
+  {
+   "store": "bitcoinotc",
+   "op": "neighborhood_evolution",
+   "args_form": {
+    "as_of_tt": 1538584982905437,
+    "uid": "n1628",
+    "t1": 1289241911728360,
+    "t2": 1306965920141401,
+    "stride": 2215501051630
+   },
+   "as_of_tt": 1538584982905437,
+   "frontier_tt": 1787928054082514,
+   "correction_tt": 1787939584543098,
+   "pinned": true,
+   "exempted_verdict": "fresh",
+   "stripped_verdict": "possibly-stale",
+   "avoided_by_exemption": true,
+   "exempt_receipt": {
+    "basis": 1538584982905437,
+    "batches": 11,
+    "tt_range": [
+     1784939612733735,
+     1787939584543098
+    ],
+    "theorem": "T1"
+   },
+   "scope_path": "leaf-basis"
+  },
+  {
+   "store": "bitcoinotc",
+   "op": "aggregate_events",
+   "args_form": {
+    "as_of_tt": 1538584982905437,
+    "group_by": [
+     {
+      "dim": "endpoint",
+      "role": "src"
+     }
+    ],
+    "aggregates": [
+     {
+      "agg": "count"
+     }
+    ],
+    "window": {
+     "t_a": 1289241911728360,
+     "t_b": 1306965920141401
+    }
+   },
+   "as_of_tt": 1538584982905437,
+   "frontier_tt": 1787928054082514,
+   "correction_tt": 1787939586160446,
+   "pinned": true,
+   "exempted_verdict": "fresh",
+   "stripped_verdict": "possibly-stale",
+   "avoided_by_exemption": true,
+   "exempt_receipt": {
+    "basis": 1538584982905437,
+    "batches": 11,
+    "tt_range": [
+     1784939612733735,
+     1787939586160446
+    ],
+    "theorem": "T1"
+   },
+   "scope_path": "leaf-basis"
+  },
+  {
+   "store": "bitcoinotc",
+   "op": "graph_metric_timeseries",
+   "args_form": {
+    "as_of_tt": 1538584982905437,
+    "metric": "node_count",
+    "window": {
+     "t_a": 1289241911728360,
+     "t_b": 1306965920141401
+    },
+    "stride": 2215501051630
+   },
+   "as_of_tt": 1538584982905437,
+   "frontier_tt": 1787928054082514,
+   "correction_tt": 1787939587842530,
+   "pinned": true,
+   "exempted_verdict": "fresh",
+   "stripped_verdict": "possibly-stale",
+   "avoided_by_exemption": true,
+   "exempt_receipt": {
+    "basis": 1538584982905437,
+    "batches": 11,
+    "tt_range": [
+     1784939612733735,
+     1787939587842530
+    ],
+    "theorem": "T1"
+   },
+   "scope_path": "leaf-basis"
+  },
+  {
+   "store": "bitcoinotc",
+   "op": "burst_detection",
+   "args_form": {
+    "as_of_tt": 1538584982905437,
+    "target": {
+     "kind": "node_activity",
+     "uid": "n1657"
+    },
+    "window": {
+     "t_a": 1289241911728360,
+     "t_b": 1306965920141401
+    },
+    "stride": 1107750525815
+   },
+   "as_of_tt": 1538584982905437,
+   "frontier_tt": 1787928054082514,
+   "correction_tt": 1787939589504714,
+   "pinned": true,
+   "exempted_verdict": "fresh",
+   "stripped_verdict": "possibly-stale",
+   "avoided_by_exemption": true,
+   "exempt_receipt": {
+    "basis": 1538584982905437,
+    "batches": 11,
+    "tt_range": [
+     1784939612733735,
+     1787939589504714
+    ],
+    "theorem": "T1"
+   },
+   "scope_path": "leaf-basis"
+  },
+  {
+   "store": "bitcoinotc",
+   "op": "co_active",
+   "args_form": {
+    "as_of_tt": 1538584982905437,
+    "a_spec": {
+     "rel_type": "TRUST"
+    },
+    "b_spec": {
+     "rel_type": "TRUST"
+    },
+    "allen_relation": {
+     "relation": "overlaps"
+    },
+    "limit": 200
+   },
+   "as_of_tt": 1538584982905437,
+   "frontier_tt": 1787928054082514,
+   "correction_tt": 1787939591126869,
+   "pinned": true,
+   "exempted_verdict": "fresh",
+   "stripped_verdict": "possibly-stale",
+   "avoided_by_exemption": true,
+   "exempt_receipt": {
+    "basis": 1538584982905437,
+    "batches": 11,
+    "tt_range": [
+     1784939612733735,
+     1787939591126869
+    ],
+    "theorem": "T1"
+   },
+   "scope_path": "leaf-basis"
+  },
+  {
+   "store": "bitcoinotc",
+   "op": "count_temporal_motifs",
+   "args_form": {
+    "as_of_tt": 1538584982905437,
+    "motif": "M_2node_pingpong",
+    "window": {
+     "t_a": 1289241911728360,
+     "t_b": 1306965920141401
+    },
+    "delta": 2215501051630
+   },
+   "as_of_tt": 1538584982905437,
+   "frontier_tt": 1787928054082514,
+   "correction_tt": 1787939592743785,
+   "pinned": true,
+   "exempted_verdict": "fresh",
+   "stripped_verdict": "possibly-stale",
+   "avoided_by_exemption": true,
+   "exempt_receipt": {
+    "basis": 1538584982905437,
+    "batches": 11,
+    "tt_range": [
+     1784939612733735,
+     1787939592743785
+    ],
+    "theorem": "T1"
+   },
+   "scope_path": "leaf-basis"
+  },
+  {
+   "store": "bitcoinotc",
+   "op": "find_temporal_motif_instances",
+   "args_form": {
+    "as_of_tt": 1538584982905437,
+    "motif": "M_2node_pingpong",
+    "window": {
+     "t_a": 1289241911728360,
+     "t_b": 1306965920141401
+    },
+    "delta": 2215501051630,
+    "limit": 50
+   },
+   "as_of_tt": 1538584982905437,
+   "frontier_tt": 1787928054082514,
+   "correction_tt": 1787939594427610,
+   "pinned": true,
+   "exempted_verdict": "fresh",
+   "stripped_verdict": "possibly-stale",
+   "avoided_by_exemption": true,
+   "exempt_receipt": {
+    "basis": 1538584982905437,
+    "batches": 11,
+    "tt_range": [
+     1784939612733735,
+     1787939594427610
+    ],
+    "theorem": "T1"
+   },
+   "scope_path": "leaf-basis"
+  },
+  {
+   "store": "bitcoinotc",
+   "op": "temporal_reachability",
+   "args_form": {
+    "as_of_tt": 1538584982905437,
+    "src": "n1672",
+    "window": {
+     "t_a": 1289241911728360,
+     "t_b": 1306965920141401
+    }
+   },
+   "as_of_tt": 1538584982905437,
+   "frontier_tt": 1787928054082514,
+   "correction_tt": 1787939596104614,
+   "pinned": true,
+   "exempted_verdict": "fresh",
+   "stripped_verdict": "possibly-stale",
+   "avoided_by_exemption": true,
+   "exempt_receipt": {
+    "basis": 1538584982905437,
+    "batches": 11,
+    "tt_range": [
+     1784939612733735,
+     1787939596104614
+    ],
+    "theorem": "T1"
+   },
+   "scope_path": "leaf-basis"
+  },
+  {
+   "store": "bitcoinotc",
+   "op": "temporal_paths",
+   "args_form": {
+    "as_of_tt": 1538584982905437,
+    "src": "n1677",
+    "dst": "n1677",
+    "window": {
+     "t_a": 1289241911728360,
+     "t_b": 1306965920141401
+    },
+    "k": 2
+   },
+   "as_of_tt": 1538584982905437,
+   "frontier_tt": 1787928054082514,
+   "correction_tt": 1787939597727957,
+   "pinned": true,
+   "exempted_verdict": "fresh",
+   "stripped_verdict": "possibly-stale",
+   "avoided_by_exemption": true,
+   "exempt_receipt": {
+    "basis": 1538584982905437,
+    "batches": 11,
+    "tt_range": [
+     1784939612733735,
+     1787939597727957
+    ],
+    "theorem": "T1"
+   },
+   "scope_path": "leaf-basis"
+  },
+  {
+   "store": "bitcoinotc",
+   "op": "entity_history",
+   "args_form": {
+    "as_of_tt": 1538584982905437,
+    "uid": "n1703"
+   },
+   "as_of_tt": 1538584982905437,
+   "frontier_tt": 1787928054082514,
+   "correction_tt": 1787939599370987,
+   "pinned": true,
+   "exempted_verdict": "fresh",
+   "stripped_verdict": "possibly-stale",
+   "avoided_by_exemption": true,
+   "exempt_receipt": {
+    "basis": 1538584982905437,
+    "batches": 11,
+    "tt_range": [
+     1784939612733735,
+     1787939599370987
+    ],
+    "theorem": "T1"
+   },
+   "scope_path": "leaf-basis"
+  },
+  {
+   "store": "bitcoinotc",
+   "op": "version_history",
+   "args_form": {
+    "as_of_tt": 1538584982905437,
+    "kind": "node",
+    "window": {
+     "t_a": 1289241911728360,
+     "t_b": 1306965920141401
+    }
+   },
+   "as_of_tt": 1538584982905437,
+   "frontier_tt": 1787928054082514,
+   "correction_tt": 1787939601030947,
+   "pinned": true,
+   "exempted_verdict": "fresh",
+   "stripped_verdict": "possibly-stale",
+   "avoided_by_exemption": true,
+   "exempt_receipt": {
+    "basis": 1538584982905437,
+    "batches": 11,
+    "tt_range": [
+     1784939612733735,
+     1787939601030947
+    ],
+    "theorem": "T1"
+   },
+   "scope_path": "leaf-basis"
+  },
+  {
+   "store": "bitcoinotc",
+   "op": "snapshot_subgraph",
+   "args_form": {
+    "as_of_tt": 1538584982905437,
+    "seeds": [
+     "n171"
+    ],
+    "t_valid": 1298103915934880,
+    "hops": 1
+   },
+   "as_of_tt": 1538584982905437,
+   "frontier_tt": 1787928054082514,
+   "correction_tt": 1787939602677113,
+   "pinned": true,
+   "exempted_verdict": "fresh",
+   "stripped_verdict": "possibly-stale",
+   "avoided_by_exemption": true,
+   "exempt_receipt": {
+    "basis": 1538584982905437,
+    "batches": 11,
+    "tt_range": [
+     1784939612733735,
+     1787939602677113
+    ],
+    "theorem": "T1"
+   },
+   "scope_path": "leaf-basis"
+  },
+  {
+   "store": "bitcoinotc",
+   "op": "diff_snapshots",
+   "args_form": {
+    "as_of_tt": 1538584982905437,
+    "t1": 1289241911728361,
+    "t2": 1298103915934880
+   },
+   "as_of_tt": 1538584982905437,
+   "frontier_tt": 1787928054082514,
+   "correction_tt": 1787939604299046,
+   "pinned": true,
+   "exempted_verdict": "fresh",
+   "stripped_verdict": "possibly-stale",
+   "avoided_by_exemption": true,
+   "exempt_receipt": {
+    "basis": 1538584982905437,
+    "batches": 11,
+    "tt_range": [
+     1784939612733735,
+     1787939604299046
+    ],
+    "theorem": "T1"
+   },
+   "scope_path": "leaf-basis"
+  },
+  {
+   "store": "bitcoinotc",
+   "op": "neighborhood_evolution",
+   "args_form": {
+    "as_of_tt": 1538584982905437,
+    "uid": "n1718",
+    "t1": 1289241911728360,
+    "t2": 1306965920141401,
+    "stride": 2215501051630
+   },
+   "as_of_tt": 1538584982905437,
+   "frontier_tt": 1787928054082514,
+   "correction_tt": 1787939605937518,
+   "pinned": true,
+   "exempted_verdict": "fresh",
+   "stripped_verdict": "possibly-stale",
+   "avoided_by_exemption": true,
+   "exempt_receipt": {
+    "basis": 1538584982905437,
+    "batches": 11,
+    "tt_range": [
+     1784939612733735,
+     1787939605937518
+    ],
+    "theorem": "T1"
+   },
+   "scope_path": "leaf-basis"
+  },
+  {
+   "store": "bitcoinotc",
+   "op": "aggregate_events",
+   "args_form": {
+    "as_of_tt": 1538584982905437,
+    "group_by": [
+     {
+      "dim": "endpoint",
+      "role": "src"
+     }
+    ],
+    "aggregates": [
+     {
+      "agg": "count"
+     }
+    ],
+    "window": {
+     "t_a": 1289241911728360,
+     "t_b": 1306965920141401
+    }
+   },
+   "as_of_tt": 1538584982905437,
+   "frontier_tt": 1787928054082514,
+   "correction_tt": 1787939607630100,
+   "pinned": true,
+   "exempted_verdict": "fresh",
+   "stripped_verdict": "possibly-stale",
+   "avoided_by_exemption": true,
+   "exempt_receipt": {
+    "basis": 1538584982905437,
+    "batches": 11,
+    "tt_range": [
+     1784939612733735,
+     1787939607630100
+    ],
+    "theorem": "T1"
+   },
+   "scope_path": "leaf-basis"
+  },
+  {
+   "store": "bitcoinotc",
+   "op": "graph_metric_timeseries",
+   "args_form": {
+    "as_of_tt": 1538584982905437,
+    "metric": "node_count",
+    "window": {
+     "t_a": 1289241911728360,
+     "t_b": 1306965920141401
+    },
+    "stride": 2215501051630
+   },
+   "as_of_tt": 1538584982905437,
+   "frontier_tt": 1787928054082514,
+   "correction_tt": 1787939609259444,
+   "pinned": true,
+   "exempted_verdict": "fresh",
+   "stripped_verdict": "possibly-stale",
+   "avoided_by_exemption": true,
+   "exempt_receipt": {
+    "basis": 1538584982905437,
+    "batches": 11,
+    "tt_range": [
+     1784939612733735,
+     1787939609259444
+    ],
+    "theorem": "T1"
+   },
+   "scope_path": "leaf-basis"
+  },
+  {
+   "store": "bitcoinotc",
+   "op": "burst_detection",
+   "args_form": {
+    "as_of_tt": 1538584982905437,
+    "target": {
+     "kind": "node_activity",
+     "uid": "n1743"
+    },
+    "window": {
+     "t_a": 1289241911728360,
+     "t_b": 1306965920141401
+    },
+    "stride": 1107750525815
+   },
+   "as_of_tt": 1538584982905437,
+   "frontier_tt": 1787928054082514,
+   "correction_tt": 1787939610897629,
+   "pinned": true,
+   "exempted_verdict": "fresh",
+   "stripped_verdict": "possibly-stale",
+   "avoided_by_exemption": true,
+   "exempt_receipt": {
+    "basis": 1538584982905437,
+    "batches": 11,
+    "tt_range": [
+     1784939612733735,
+     1787939610897629
+    ],
+    "theorem": "T1"
+   },
+   "scope_path": "leaf-basis"
+  },
+  {
+   "store": "bitcoinotc",
+   "op": "co_active",
+   "args_form": {
+    "as_of_tt": 1538584982905437,
+    "a_spec": {
+     "rel_type": "TRUST"
+    },
+    "b_spec": {
+     "rel_type": "TRUST"
+    },
+    "allen_relation": {
+     "relation": "overlaps"
+    },
+    "limit": 200
+   },
+   "as_of_tt": 1538584982905437,
+   "frontier_tt": 1787928054082514,
+   "correction_tt": 1787939612548701,
+   "pinned": true,
+   "exempted_verdict": "fresh",
+   "stripped_verdict": "possibly-stale",
+   "avoided_by_exemption": true,
+   "exempt_receipt": {
+    "basis": 1538584982905437,
+    "batches": 11,
+    "tt_range": [
+     1784939612733735,
+     1787939612548701
+    ],
+    "theorem": "T1"
+   },
+   "scope_path": "leaf-basis"
+  },
+  {
+   "store": "bitcoinotc",
+   "op": "count_temporal_motifs",
+   "args_form": {
+    "as_of_tt": 1538584982905437,
+    "motif": "M_2node_pingpong",
+    "window": {
+     "t_a": 1289241911728360,
+     "t_b": 1306965920141401
+    },
+    "delta": 2215501051630
+   },
+   "as_of_tt": 1538584982905437,
+   "frontier_tt": 1787928054082514,
+   "correction_tt": 1787939614173189,
+   "pinned": true,
+   "exempted_verdict": "fresh",
+   "stripped_verdict": "possibly-stale",
+   "avoided_by_exemption": true,
+   "exempt_receipt": {
+    "basis": 1538584982905437,
+    "batches": 11,
+    "tt_range": [
+     1784939612733735,
+     1787939614173189
+    ],
+    "theorem": "T1"
+   },
+   "scope_path": "leaf-basis"
+  },
+  {
+   "store": "bitcoinotc",
+   "op": "find_temporal_motif_instances",
+   "args_form": {
+    "as_of_tt": 1538584982905437,
+    "motif": "M_2node_pingpong",
+    "window": {
+     "t_a": 1289241911728360,
+     "t_b": 1306965920141401
+    },
+    "delta": 2215501051630,
+    "limit": 50
+   },
+   "as_of_tt": 1538584982905437,
+   "frontier_tt": 1787928054082514,
+   "correction_tt": 1787939615782774,
+   "pinned": true,
+   "exempted_verdict": "fresh",
+   "stripped_verdict": "possibly-stale",
+   "avoided_by_exemption": true,
+   "exempt_receipt": {
+    "basis": 1538584982905437,
+    "batches": 11,
+    "tt_range": [
+     1784939612733735,
+     1787939615782774
+    ],
+    "theorem": "T1"
+   },
+   "scope_path": "leaf-basis"
+  },
+  {
+   "store": "bitcoinotc",
+   "op": "temporal_reachability",
+   "args_form": {
+    "as_of_tt": 1538584982905437,
+    "src": "n1755",
+    "window": {
+     "t_a": 1289241911728360,
+     "t_b": 1306965920141401
+    }
+   },
+   "as_of_tt": 1538584982905437,
+   "frontier_tt": 1787928054082514,
+   "correction_tt": 1787939617415849,
+   "pinned": true,
+   "exempted_verdict": "fresh",
+   "stripped_verdict": "possibly-stale",
+   "avoided_by_exemption": true,
+   "exempt_receipt": {
+    "basis": 1538584982905437,
+    "batches": 11,
+    "tt_range": [
+     1784939612733735,
+     1787939617415849
+    ],
+    "theorem": "T1"
+   },
+   "scope_path": "leaf-basis"
+  },
+  {
+   "store": "bitcoinotc",
+   "op": "temporal_paths",
+   "args_form": {
+    "as_of_tt": 1538584982905437,
+    "src": "n1757",
+    "dst": "n1757",
+    "window": {
+     "t_a": 1289241911728360,
+     "t_b": 1306965920141401
+    },
+    "k": 2
+   },
+   "as_of_tt": 1538584982905437,
+   "frontier_tt": 1787928054082514,
+   "correction_tt": 1787939619066453,
+   "pinned": true,
+   "exempted_verdict": "fresh",
+   "stripped_verdict": "possibly-stale",
+   "avoided_by_exemption": true,
+   "exempt_receipt": {
+    "basis": 1538584982905437,
+    "batches": 11,
+    "tt_range": [
+     1784939612733735,
+     1787939619066453
+    ],
+    "theorem": "T1"
+   },
+   "scope_path": "leaf-basis"
+  },
+  {
+   "store": "bitcoinotc",
+   "op": "entity_history",
+   "args_form": {
+    "as_of_tt": 1538584982905437,
+    "uid": "n1760"
+   },
+   "as_of_tt": 1538584982905437,
+   "frontier_tt": 1787928054082514,
+   "correction_tt": 1787939620678060,
+   "pinned": true,
+   "exempted_verdict": "fresh",
+   "stripped_verdict": "possibly-stale",
+   "avoided_by_exemption": true,
+   "exempt_receipt": {
+    "basis": 1538584982905437,
+    "batches": 11,
+    "tt_range": [
+     1784939612733735,
+     1787939620678060
+    ],
+    "theorem": "T1"
+   },
+   "scope_path": "leaf-basis"
+  },
+  {
+   "store": "bitcoinotc",
+   "op": "version_history",
+   "args_form": {
+    "as_of_tt": 1538584982905437,
+    "kind": "node",
+    "window": {
+     "t_a": 1289241911728360,
+     "t_b": 1306965920141401
+    }
+   },
+   "as_of_tt": 1538584982905437,
+   "frontier_tt": 1787928054082514,
+   "correction_tt": 1787939622327645,
+   "pinned": true,
+   "exempted_verdict": "fresh",
+   "stripped_verdict": "possibly-stale",
+   "avoided_by_exemption": true,
+   "exempt_receipt": {
+    "basis": 1538584982905437,
+    "batches": 11,
+    "tt_range": [
+     1784939612733735,
+     1787939622327645
+    ],
+    "theorem": "T1"
+   },
+   "scope_path": "leaf-basis"
+  },
+  {
+   "store": "bitcoinotc",
+   "op": "snapshot_subgraph",
+   "args_form": {
+    "as_of_tt": 1538584982905437,
+    "seeds": [
+     "n1770"
+    ],
+    "t_valid": 1298103915934880,
+    "hops": 1
+   },
+   "as_of_tt": 1538584982905437,
+   "frontier_tt": 1787928054082514,
+   "correction_tt": 1787939623968008,
+   "pinned": true,
+   "exempted_verdict": "fresh",
+   "stripped_verdict": "possibly-stale",
+   "avoided_by_exemption": true,
+   "exempt_receipt": {
+    "basis": 1538584982905437,
+    "batches": 11,
+    "tt_range": [
+     1784939612733735,
+     1787939623968008
+    ],
+    "theorem": "T1"
+   },
+   "scope_path": "leaf-basis"
+  },
+  {
+   "store": "bitcoinotc",
+   "op": "diff_snapshots",
+   "args_form": {
+    "as_of_tt": 1538584982905437,
+    "t1": 1289241911728361,
+    "t2": 1298103915934880
+   },
+   "as_of_tt": 1538584982905437,
+   "frontier_tt": 1787928054082514,
+   "correction_tt": 1787939625621722,
+   "pinned": true,
+   "exempted_verdict": "fresh",
+   "stripped_verdict": "possibly-stale",
+   "avoided_by_exemption": true,
+   "exempt_receipt": {
+    "basis": 1538584982905437,
+    "batches": 11,
+    "tt_range": [
+     1784939612733735,
+     1787939625621722
+    ],
+    "theorem": "T1"
+   },
+   "scope_path": "leaf-basis"
+  },
+  {
+   "store": "bitcoinotc",
+   "op": "neighborhood_evolution",
+   "args_form": {
+    "as_of_tt": 1538584982905437,
+    "uid": "n1789",
+    "t1": 1289241911728360,
+    "t2": 1306965920141401,
+    "stride": 2215501051630
+   },
+   "as_of_tt": 1538584982905437,
+   "frontier_tt": 1787928054082514,
+   "correction_tt": 1787939627226406,
+   "pinned": true,
+   "exempted_verdict": "fresh",
+   "stripped_verdict": "possibly-stale",
+   "avoided_by_exemption": true,
+   "exempt_receipt": {
+    "basis": 1538584982905437,
+    "batches": 11,
+    "tt_range": [
+     1784939612733735,
+     1787939627226406
+    ],
+    "theorem": "T1"
+   },
+   "scope_path": "leaf-basis"
+  },
+  {
+   "store": "bitcoinotc",
+   "op": "aggregate_events",
+   "args_form": {
+    "as_of_tt": 1538584982905437,
+    "group_by": [
+     {
+      "dim": "endpoint",
+      "role": "src"
+     }
+    ],
+    "aggregates": [
+     {
+      "agg": "count"
+     }
+    ],
+    "window": {
+     "t_a": 1289241911728360,
+     "t_b": 1306965920141401
+    }
+   },
+   "as_of_tt": 1538584982905437,
+   "frontier_tt": 1787928054082514,
+   "correction_tt": 1787939628920958,
+   "pinned": true,
+   "exempted_verdict": "fresh",
+   "stripped_verdict": "possibly-stale",
+   "avoided_by_exemption": true,
+   "exempt_receipt": {
+    "basis": 1538584982905437,
+    "batches": 11,
+    "tt_range": [
+     1784939612733735,
+     1787939628920958
+    ],
+    "theorem": "T1"
+   },
+   "scope_path": "leaf-basis"
+  },
+  {
+   "store": "bitcoinotc",
+   "op": "graph_metric_timeseries",
+   "args_form": {
+    "as_of_tt": 1538584982905437,
+    "metric": "node_count",
+    "window": {
+     "t_a": 1289241911728360,
+     "t_b": 1306965920141401
+    },
+    "stride": 2215501051630
+   },
+   "as_of_tt": 1538584982905437,
+   "frontier_tt": 1787928054082514,
+   "correction_tt": 1787939630576768,
+   "pinned": true,
+   "exempted_verdict": "fresh",
+   "stripped_verdict": "possibly-stale",
+   "avoided_by_exemption": true,
+   "exempt_receipt": {
+    "basis": 1538584982905437,
+    "batches": 11,
+    "tt_range": [
+     1784939612733735,
+     1787939630576768
+    ],
+    "theorem": "T1"
+   },
+   "scope_path": "leaf-basis"
+  },
+  {
+   "store": "bitcoinotc",
+   "op": "burst_detection",
+   "args_form": {
+    "as_of_tt": 1538584982905437,
+    "target": {
+     "kind": "node_activity",
+     "uid": "n1811"
+    },
+    "window": {
+     "t_a": 1289241911728360,
+     "t_b": 1306965920141401
+    },
+    "stride": 1107750525815
+   },
+   "as_of_tt": 1538584982905437,
+   "frontier_tt": 1787928054082514,
+   "correction_tt": 1787939632182646,
+   "pinned": true,
+   "exempted_verdict": "fresh",
+   "stripped_verdict": "possibly-stale",
+   "avoided_by_exemption": true,
+   "exempt_receipt": {
+    "basis": 1538584982905437,
+    "batches": 11,
+    "tt_range": [
+     1784939612733735,
+     1787939632182646
+    ],
+    "theorem": "T1"
+   },
+   "scope_path": "leaf-basis"
+  },
+  {
+   "store": "bitcoinotc",
+   "op": "co_active",
+   "args_form": {
+    "as_of_tt": 1538584982905437,
+    "a_spec": {
+     "rel_type": "TRUST"
+    },
+    "b_spec": {
+     "rel_type": "TRUST"
+    },
+    "allen_relation": {
+     "relation": "overlaps"
+    },
+    "limit": 200
+   },
+   "as_of_tt": 1538584982905437,
+   "frontier_tt": 1787928054082514,
+   "correction_tt": 1787939633820540,
+   "pinned": true,
+   "exempted_verdict": "fresh",
+   "stripped_verdict": "possibly-stale",
+   "avoided_by_exemption": true,
+   "exempt_receipt": {
+    "basis": 1538584982905437,
+    "batches": 11,
+    "tt_range": [
+     1784939612733735,
+     1787939633820540
+    ],
+    "theorem": "T1"
+   },
+   "scope_path": "leaf-basis"
+  },
+  {
+   "store": "bitcoinotc",
+   "op": "count_temporal_motifs",
+   "args_form": {
+    "as_of_tt": 1538584982905437,
+    "motif": "M_2node_pingpong",
+    "window": {
+     "t_a": 1289241911728360,
+     "t_b": 1306965920141401
+    },
+    "delta": 2215501051630
+   },
+   "as_of_tt": 1538584982905437,
+   "frontier_tt": 1787928054082514,
+   "correction_tt": 1787939635469072,
+   "pinned": true,
+   "exempted_verdict": "fresh",
+   "stripped_verdict": "possibly-stale",
+   "avoided_by_exemption": true,
+   "exempt_receipt": {
+    "basis": 1538584982905437,
+    "batches": 11,
+    "tt_range": [
+     1784939612733735,
+     1787939635469072
+    ],
+    "theorem": "T1"
+   },
+   "scope_path": "leaf-basis"
+  },
+  {
+   "store": "bitcoinotc",
+   "op": "find_temporal_motif_instances",
+   "args_form": {
+    "as_of_tt": 1538584982905437,
+    "motif": "M_2node_pingpong",
+    "window": {
+     "t_a": 1289241911728360,
+     "t_b": 1306965920141401
+    },
+    "delta": 2215501051630,
+    "limit": 50
+   },
+   "as_of_tt": 1538584982905437,
+   "frontier_tt": 1787928054082514,
+   "correction_tt": 1787939637118437,
+   "pinned": true,
+   "exempted_verdict": "fresh",
+   "stripped_verdict": "possibly-stale",
+   "avoided_by_exemption": true,
+   "exempt_receipt": {
+    "basis": 1538584982905437,
+    "batches": 11,
+    "tt_range": [
+     1784939612733735,
+     1787939637118437
+    ],
+    "theorem": "T1"
+   },
+   "scope_path": "leaf-basis"
+  },
+  {
+   "store": "bitcoinotc",
+   "op": "temporal_reachability",
+   "args_form": {
+    "as_of_tt": 1538584982905437,
+    "src": "n1856",
+    "window": {
+     "t_a": 1289241911728360,
+     "t_b": 1306965920141401
+    }
+   },
+   "as_of_tt": 1538584982905437,
+   "frontier_tt": 1787928054082514,
+   "correction_tt": 1787939638730547,
+   "pinned": true,
+   "exempted_verdict": "fresh",
+   "stripped_verdict": "possibly-stale",
+   "avoided_by_exemption": true,
+   "exempt_receipt": {
+    "basis": 1538584982905437,
+    "batches": 11,
+    "tt_range": [
+     1784939612733735,
+     1787939638730547
+    ],
+    "theorem": "T1"
+   },
+   "scope_path": "leaf-basis"
+  },
+  {
+   "store": "bitcoinotc",
+   "op": "temporal_paths",
+   "args_form": {
+    "as_of_tt": 1538584982905437,
+    "src": "n1866",
+    "dst": "n1866",
+    "window": {
+     "t_a": 1289241911728360,
+     "t_b": 1306965920141401
+    },
+    "k": 2
+   },
+   "as_of_tt": 1538584982905437,
+   "frontier_tt": 1787928054082514,
+   "correction_tt": 1787939640384116,
+   "pinned": true,
+   "exempted_verdict": "fresh",
+   "stripped_verdict": "possibly-stale",
+   "avoided_by_exemption": true,
+   "exempt_receipt": {
+    "basis": 1538584982905437,
+    "batches": 11,
+    "tt_range": [
+     1784939612733735,
+     1787939640384116
+    ],
+    "theorem": "T1"
+   },
+   "scope_path": "leaf-basis"
+  },
+  {
+   "store": "bitcoinotc",
+   "op": "entity_history",
+   "args_form": {
+    "as_of_tt": 1538584982905437,
+    "uid": "n1869"
+   },
+   "as_of_tt": 1538584982905437,
+   "frontier_tt": 1787928054082514,
+   "correction_tt": 1787939642039189,
+   "pinned": true,
+   "exempted_verdict": "fresh",
+   "stripped_verdict": "possibly-stale",
+   "avoided_by_exemption": true,
+   "exempt_receipt": {
+    "basis": 1538584982905437,
+    "batches": 11,
+    "tt_range": [
+     1784939612733735,
+     1787939642039189
+    ],
+    "theorem": "T1"
+   },
+   "scope_path": "leaf-basis"
+  },
+  {
+   "store": "bitcoinotc",
+   "op": "version_history",
+   "args_form": {
+    "as_of_tt": 1538584982905437,
+    "kind": "node",
+    "window": {
+     "t_a": 1289241911728360,
+     "t_b": 1306965920141401
+    }
+   },
+   "as_of_tt": 1538584982905437,
+   "frontier_tt": 1787928054082514,
+   "correction_tt": 1787939643684780,
+   "pinned": true,
+   "exempted_verdict": "fresh",
+   "stripped_verdict": "possibly-stale",
+   "avoided_by_exemption": true,
+   "exempt_receipt": {
+    "basis": 1538584982905437,
+    "batches": 11,
+    "tt_range": [
+     1784939612733735,
+     1787939643684780
+    ],
+    "theorem": "T1"
+   },
+   "scope_path": "leaf-basis"
+  },
+  {
+   "store": "bitcoinotc",
+   "op": "snapshot_subgraph",
+   "args_form": {
+    "as_of_tt": 1538584982905437,
+    "seeds": [
+     "n1882"
+    ],
+    "t_valid": 1298103915934880,
+    "hops": 1
+   },
+   "as_of_tt": 1538584982905437,
+   "frontier_tt": 1787928054082514,
+   "correction_tt": 1787939645327232,
+   "pinned": true,
+   "exempted_verdict": "fresh",
+   "stripped_verdict": "possibly-stale",
+   "avoided_by_exemption": true,
+   "exempt_receipt": {
+    "basis": 1538584982905437,
+    "batches": 11,
+    "tt_range": [
+     1784939612733735,
+     1787939645327232
+    ],
+    "theorem": "T1"
+   },
+   "scope_path": "leaf-basis"
+  },
+  {
+   "store": "bitcoinotc",
+   "op": "diff_snapshots",
+   "args_form": {
+    "as_of_tt": 1538584982905437,
+    "t1": 1289241911728361,
+    "t2": 1298103915934880
+   },
+   "as_of_tt": 1538584982905437,
+   "frontier_tt": 1787928054082514,
+   "correction_tt": 1787939646980386,
+   "pinned": true,
+   "exempted_verdict": "fresh",
+   "stripped_verdict": "possibly-stale",
+   "avoided_by_exemption": true,
+   "exempt_receipt": {
+    "basis": 1538584982905437,
+    "batches": 11,
+    "tt_range": [
+     1784939612733735,
+     1787939646980386
+    ],
+    "theorem": "T1"
+   },
+   "scope_path": "leaf-basis"
+  },
+  {
+   "store": "bitcoinotc",
+   "op": "neighborhood_evolution",
+   "args_form": {
+    "as_of_tt": 1538584982905437,
+    "uid": "n1904",
+    "t1": 1289241911728360,
+    "t2": 1306965920141401,
+    "stride": 2215501051630
+   },
+   "as_of_tt": 1538584982905437,
+   "frontier_tt": 1787928054082514,
+   "correction_tt": 1787939648683570,
+   "pinned": true,
+   "exempted_verdict": "fresh",
+   "stripped_verdict": "possibly-stale",
+   "avoided_by_exemption": true,
+   "exempt_receipt": {
+    "basis": 1538584982905437,
+    "batches": 11,
+    "tt_range": [
+     1784939612733735,
+     1787939648683570
+    ],
+    "theorem": "T1"
+   },
+   "scope_path": "leaf-basis"
+  },
+  {
+   "store": "bitcoinotc",
+   "op": "aggregate_events",
+   "args_form": {
+    "as_of_tt": 1538584982905437,
+    "group_by": [
+     {
+      "dim": "endpoint",
+      "role": "src"
+     }
+    ],
+    "aggregates": [
+     {
+      "agg": "count"
+     }
+    ],
+    "window": {
+     "t_a": 1289241911728360,
+     "t_b": 1306965920141401
+    }
+   },
+   "as_of_tt": 1538584982905437,
+   "frontier_tt": 1787928054082514,
+   "correction_tt": 1787939650303647,
+   "pinned": true,
+   "exempted_verdict": "fresh",
+   "stripped_verdict": "possibly-stale",
+   "avoided_by_exemption": true,
+   "exempt_receipt": {
+    "basis": 1538584982905437,
+    "batches": 11,
+    "tt_range": [
+     1784939612733735,
+     1787939650303647
+    ],
+    "theorem": "T1"
+   },
+   "scope_path": "leaf-basis"
+  },
+  {
+   "store": "bitcoinotc",
+   "op": "graph_metric_timeseries",
+   "args_form": {
+    "as_of_tt": 1538584982905437,
+    "metric": "node_count",
+    "window": {
+     "t_a": 1289241911728360,
+     "t_b": 1306965920141401
+    },
+    "stride": 2215501051630
+   },
+   "as_of_tt": 1538584982905437,
+   "frontier_tt": 1787928054082514,
+   "correction_tt": 1787939651950162,
+   "pinned": true,
+   "exempted_verdict": "fresh",
+   "stripped_verdict": "possibly-stale",
+   "avoided_by_exemption": true,
+   "exempt_receipt": {
+    "basis": 1538584982905437,
+    "batches": 11,
+    "tt_range": [
+     1784939612733735,
+     1787939651950162
+    ],
+    "theorem": "T1"
+   },
+   "scope_path": "leaf-basis"
+  },
+  {
+   "store": "bitcoinotc",
+   "op": "burst_detection",
+   "args_form": {
+    "as_of_tt": 1538584982905437,
+    "target": {
+     "kind": "node_activity",
+     "uid": "n192"
+    },
+    "window": {
+     "t_a": 1289241911728360,
+     "t_b": 1306965920141401
+    },
+    "stride": 1107750525815
+   },
+   "as_of_tt": 1538584982905437,
+   "frontier_tt": 1787928054082514,
+   "correction_tt": 1787939653606113,
+   "pinned": true,
+   "exempted_verdict": "fresh",
+   "stripped_verdict": "possibly-stale",
+   "avoided_by_exemption": true,
+   "exempt_receipt": {
+    "basis": 1538584982905437,
+    "batches": 11,
+    "tt_range": [
+     1784939612733735,
+     1787939653606113
+    ],
+    "theorem": "T1"
+   },
+   "scope_path": "leaf-basis"
+  },
+  {
+   "store": "bitcoinotc",
+   "op": "co_active",
+   "args_form": {
+    "as_of_tt": 1538584982905437,
+    "a_spec": {
+     "rel_type": "TRUST"
+    },
+    "b_spec": {
+     "rel_type": "TRUST"
+    },
+    "allen_relation": {
+     "relation": "overlaps"
+    },
+    "limit": 200
+   },
+   "as_of_tt": 1538584982905437,
+   "frontier_tt": 1787928054082514,
+   "correction_tt": 1787939655221871,
+   "pinned": true,
+   "exempted_verdict": "fresh",
+   "stripped_verdict": "possibly-stale",
+   "avoided_by_exemption": true,
+   "exempt_receipt": {
+    "basis": 1538584982905437,
+    "batches": 11,
+    "tt_range": [
+     1784939612733735,
+     1787939655221871
+    ],
+    "theorem": "T1"
+   },
+   "scope_path": "leaf-basis"
+  },
+  {
+   "store": "bitcoinotc",
+   "op": "count_temporal_motifs",
+   "args_form": {
+    "as_of_tt": 1538584982905437,
+    "motif": "M_2node_pingpong",
+    "window": {
+     "t_a": 1289241911728360,
+     "t_b": 1306965920141401
+    },
+    "delta": 2215501051630
+   },
+   "as_of_tt": 1538584982905437,
+   "frontier_tt": 1787928054082514,
+   "correction_tt": 1787939656859493,
+   "pinned": true,
+   "exempted_verdict": "fresh",
+   "stripped_verdict": "possibly-stale",
+   "avoided_by_exemption": true,
+   "exempt_receipt": {
+    "basis": 1538584982905437,
+    "batches": 11,
+    "tt_range": [
+     1784939612733735,
+     1787939656859493
+    ],
+    "theorem": "T1"
+   },
+   "scope_path": "leaf-basis"
+  },
+  {
+   "store": "bitcoinotc",
+   "op": "find_temporal_motif_instances",
+   "args_form": {
+    "as_of_tt": 1538584982905437,
+    "motif": "M_2node_pingpong",
+    "window": {
+     "t_a": 1289241911728360,
+     "t_b": 1306965920141401
+    },
+    "delta": 2215501051630,
+    "limit": 50
+   },
+   "as_of_tt": 1538584982905437,
+   "frontier_tt": 1787928054082514,
+   "correction_tt": 1787939658510773,
+   "pinned": true,
+   "exempted_verdict": "fresh",
+   "stripped_verdict": "possibly-stale",
+   "avoided_by_exemption": true,
+   "exempt_receipt": {
+    "basis": 1538584982905437,
+    "batches": 11,
+    "tt_range": [
+     1784939612733735,
+     1787939658510773
+    ],
+    "theorem": "T1"
+   },
+   "scope_path": "leaf-basis"
+  },
+  {
+   "store": "bitcoinotc",
+   "op": "temporal_reachability",
+   "args_form": {
+    "as_of_tt": 1538584982905437,
+    "src": "n1942",
+    "window": {
+     "t_a": 1289241911728360,
+     "t_b": 1306965920141401
+    }
+   },
+   "as_of_tt": 1538584982905437,
+   "frontier_tt": 1787928054082514,
+   "correction_tt": 1787939660211625,
+   "pinned": true,
+   "exempted_verdict": "fresh",
+   "stripped_verdict": "possibly-stale",
+   "avoided_by_exemption": true,
+   "exempt_receipt": {
+    "basis": 1538584982905437,
+    "batches": 11,
+    "tt_range": [
+     1784939612733735,
+     1787939660211625
+    ],
+    "theorem": "T1"
+   },
+   "scope_path": "leaf-basis"
+  },
+  {
+   "store": "bitcoinotc",
+   "op": "temporal_paths",
+   "args_form": {
+    "as_of_tt": 1538584982905437,
+    "src": "n1945",
+    "dst": "n1945",
+    "window": {
+     "t_a": 1289241911728360,
+     "t_b": 1306965920141401
+    },
+    "k": 2
+   },
+   "as_of_tt": 1538584982905437,
+   "frontier_tt": 1787928054082514,
+   "correction_tt": 1787939661835071,
+   "pinned": true,
+   "exempted_verdict": "fresh",
+   "stripped_verdict": "possibly-stale",
+   "avoided_by_exemption": true,
+   "exempt_receipt": {
+    "basis": 1538584982905437,
+    "batches": 11,
+    "tt_range": [
+     1784939612733735,
+     1787939661835071
+    ],
+    "theorem": "T1"
+   },
+   "scope_path": "leaf-basis"
+  },
+  {
+   "store": "bitcoinotc",
+   "op": "entity_history",
+   "args_form": {
+    "as_of_tt": 1538584982905437,
+    "uid": "n1947"
+   },
+   "as_of_tt": 1538584982905437,
+   "frontier_tt": 1787928054082514,
+   "correction_tt": 1787939663521764,
+   "pinned": true,
+   "exempted_verdict": "fresh",
+   "stripped_verdict": "possibly-stale",
+   "avoided_by_exemption": true,
+   "exempt_receipt": {
+    "basis": 1538584982905437,
+    "batches": 11,
+    "tt_range": [
+     1784939612733735,
+     1787939663521764
+    ],
+    "theorem": "T1"
+   },
+   "scope_path": "leaf-basis"
+  },
+  {
+   "store": "bitcoinotc",
+   "op": "version_history",
+   "args_form": {
+    "as_of_tt": 1538584982905437,
+    "kind": "node",
+    "window": {
+     "t_a": 1289241911728360,
+     "t_b": 1306965920141401
+    }
+   },
+   "as_of_tt": 1538584982905437,
+   "frontier_tt": 1787928054082514,
+   "correction_tt": 1787939665211374,
+   "pinned": true,
+   "exempted_verdict": "fresh",
+   "stripped_verdict": "possibly-stale",
+   "avoided_by_exemption": true,
+   "exempt_receipt": {
+    "basis": 1538584982905437,
+    "batches": 11,
+    "tt_range": [
+     1784939612733735,
+     1787939665211374
+    ],
+    "theorem": "T1"
+   },
+   "scope_path": "leaf-basis"
+  },
+  {
+   "store": "bitcoinotc",
+   "op": "snapshot_subgraph",
+   "args_form": {
+    "as_of_tt": 1538584982905437,
+    "seeds": [
+     "n1956"
+    ],
+    "t_valid": 1298103915934880,
+    "hops": 1
+   },
+   "as_of_tt": 1538584982905437,
+   "frontier_tt": 1787928054082514,
+   "correction_tt": 1787939666850901,
+   "pinned": true,
+   "exempted_verdict": "fresh",
+   "stripped_verdict": "possibly-stale",
+   "avoided_by_exemption": true,
+   "exempt_receipt": {
+    "basis": 1538584982905437,
+    "batches": 11,
+    "tt_range": [
+     1784939612733735,
+     1787939666850901
+    ],
+    "theorem": "T1"
+   },
+   "scope_path": "leaf-basis"
+  },
+  {
+   "store": "bitcoinotc",
+   "op": "diff_snapshots",
+   "args_form": {
+    "as_of_tt": 1538584982905437,
+    "t1": 1289241911728361,
+    "t2": 1298103915934880
+   },
+   "as_of_tt": 1538584982905437,
+   "frontier_tt": 1787928054082514,
+   "correction_tt": 1787939668475961,
+   "pinned": true,
+   "exempted_verdict": "fresh",
+   "stripped_verdict": "possibly-stale",
+   "avoided_by_exemption": true,
+   "exempt_receipt": {
+    "basis": 1538584982905437,
+    "batches": 11,
+    "tt_range": [
+     1784939612733735,
+     1787939668475961
+    ],
+    "theorem": "T1"
+   },
+   "scope_path": "leaf-basis"
+  },
+  {
+   "store": "bitcoinotc",
+   "op": "neighborhood_evolution",
+   "args_form": {
+    "as_of_tt": 1538584982905437,
+    "uid": "n1975",
+    "t1": 1289241911728360,
+    "t2": 1306965920141401,
+    "stride": 2215501051630
+   },
+   "as_of_tt": 1538584982905437,
+   "frontier_tt": 1787928054082514,
+   "correction_tt": 1787939670172425,
+   "pinned": true,
+   "exempted_verdict": "fresh",
+   "stripped_verdict": "possibly-stale",
+   "avoided_by_exemption": true,
+   "exempt_receipt": {
+    "basis": 1538584982905437,
+    "batches": 11,
+    "tt_range": [
+     1784939612733735,
+     1787939670172425
+    ],
+    "theorem": "T1"
+   },
+   "scope_path": "leaf-basis"
+  },
+  {
+   "store": "bitcoinotc",
+   "op": "aggregate_events",
+   "args_form": {
+    "as_of_tt": 1538584982905437,
+    "group_by": [
+     {
+      "dim": "endpoint",
+      "role": "src"
+     }
+    ],
+    "aggregates": [
+     {
+      "agg": "count"
+     }
+    ],
+    "window": {
+     "t_a": 1289241911728360,
+     "t_b": 1306965920141401
+    }
+   },
+   "as_of_tt": 1538584982905437,
+   "frontier_tt": 1787928054082514,
+   "correction_tt": 1787939671844611,
+   "pinned": true,
+   "exempted_verdict": "fresh",
+   "stripped_verdict": "possibly-stale",
+   "avoided_by_exemption": true,
+   "exempt_receipt": {
+    "basis": 1538584982905437,
+    "batches": 11,
+    "tt_range": [
+     1784939612733735,
+     1787939671844611
+    ],
+    "theorem": "T1"
+   },
+   "scope_path": "leaf-basis"
+  },
+  {
+   "store": "bitcoinotc",
+   "op": "graph_metric_timeseries",
+   "args_form": {
+    "as_of_tt": 1538584982905437,
+    "metric": "node_count",
+    "window": {
+     "t_a": 1289241911728360,
+     "t_b": 1306965920141401
+    },
+    "stride": 2215501051630
+   },
+   "as_of_tt": 1538584982905437,
+   "frontier_tt": 1787928054082514,
+   "correction_tt": 1787939673458158,
+   "pinned": true,
+   "exempted_verdict": "fresh",
+   "stripped_verdict": "possibly-stale",
+   "avoided_by_exemption": true,
+   "exempt_receipt": {
+    "basis": 1538584982905437,
+    "batches": 11,
+    "tt_range": [
+     1784939612733735,
+     1787939673458158
+    ],
+    "theorem": "T1"
+   },
+   "scope_path": "leaf-basis"
+  },
+  {
+   "store": "bitcoinotc",
+   "op": "burst_detection",
+   "args_form": {
+    "as_of_tt": 1538584982905437,
+    "target": {
+     "kind": "node_activity",
+     "uid": "n2008"
+    },
+    "window": {
+     "t_a": 1289241911728360,
+     "t_b": 1306965920141401
+    },
+    "stride": 1107750525815
+   },
+   "as_of_tt": 1538584982905437,
+   "frontier_tt": 1787928054082514,
+   "correction_tt": 1787939675101918,
+   "pinned": true,
+   "exempted_verdict": "fresh",
+   "stripped_verdict": "possibly-stale",
+   "avoided_by_exemption": true,
+   "exempt_receipt": {
+    "basis": 1538584982905437,
+    "batches": 11,
+    "tt_range": [
+     1784939612733735,
+     1787939675101918
+    ],
+    "theorem": "T1"
+   },
+   "scope_path": "leaf-basis"
+  },
+  {
+   "store": "bitcoinotc",
+   "op": "co_active",
+   "args_form": {
+    "as_of_tt": 1538584982905437,
+    "a_spec": {
+     "rel_type": "TRUST"
+    },
+    "b_spec": {
+     "rel_type": "TRUST"
+    },
+    "allen_relation": {
+     "relation": "overlaps"
+    },
+    "limit": 200
+   },
+   "as_of_tt": 1538584982905437,
+   "frontier_tt": 1787928054082514,
+   "correction_tt": 1787939676751459,
+   "pinned": true,
+   "exempted_verdict": "fresh",
+   "stripped_verdict": "possibly-stale",
+   "avoided_by_exemption": true,
+   "exempt_receipt": {
+    "basis": 1538584982905437,
+    "batches": 11,
+    "tt_range": [
+     1784939612733735,
+     1787939676751459
+    ],
+    "theorem": "T1"
+   },
+   "scope_path": "leaf-basis"
+  },
+  {
+   "store": "bitcoinotc",
+   "op": "count_temporal_motifs",
+   "args_form": {
+    "as_of_tt": 1538584982905437,
+    "motif": "M_2node_pingpong",
+    "window": {
+     "t_a": 1289241911728360,
+     "t_b": 1306965920141401
+    },
+    "delta": 2215501051630
+   },
+   "as_of_tt": 1538584982905437,
+   "frontier_tt": 1787928054082514,
+   "correction_tt": 1787939678362317,
+   "pinned": true,
+   "exempted_verdict": "fresh",
+   "stripped_verdict": "possibly-stale",
+   "avoided_by_exemption": true,
+   "exempt_receipt": {
+    "basis": 1538584982905437,
+    "batches": 11,
+    "tt_range": [
+     1784939612733735,
+     1787939678362317
+    ],
+    "theorem": "T1"
+   },
+   "scope_path": "leaf-basis"
+  },
+  {
+   "store": "bitcoinotc",
+   "op": "find_temporal_motif_instances",
+   "args_form": {
+    "as_of_tt": 1538584982905437,
+    "motif": "M_2node_pingpong",
+    "window": {
+     "t_a": 1289241911728360,
+     "t_b": 1306965920141401
+    },
+    "delta": 2215501051630,
+    "limit": 50
+   },
+   "as_of_tt": 1538584982905437,
+   "frontier_tt": 1787928054082514,
+   "correction_tt": 1787939679999861,
+   "pinned": true,
+   "exempted_verdict": "fresh",
+   "stripped_verdict": "possibly-stale",
+   "avoided_by_exemption": true,
+   "exempt_receipt": {
+    "basis": 1538584982905437,
+    "batches": 11,
+    "tt_range": [
+     1784939612733735,
+     1787939679999861
+    ],
+    "theorem": "T1"
+   },
+   "scope_path": "leaf-basis"
+  },
+  {
+   "store": "bitcoinotc",
+   "op": "temporal_reachability",
+   "args_form": {
+    "as_of_tt": 1538584982905437,
+    "src": "n2021",
+    "window": {
+     "t_a": 1289241911728360,
+     "t_b": 1306965920141401
+    }
+   },
+   "as_of_tt": 1538584982905437,
+   "frontier_tt": 1787928054082514,
+   "correction_tt": 1787939681644682,
+   "pinned": true,
+   "exempted_verdict": "fresh",
+   "stripped_verdict": "possibly-stale",
+   "avoided_by_exemption": true,
+   "exempt_receipt": {
+    "basis": 1538584982905437,
+    "batches": 11,
+    "tt_range": [
+     1784939612733735,
+     1787939681644682
+    ],
+    "theorem": "T1"
+   },
+   "scope_path": "leaf-basis"
+  },
+  {
+   "store": "bitcoinotc",
+   "op": "temporal_paths",
+   "args_form": {
+    "as_of_tt": 1538584982905437,
+    "src": "n2025",
+    "dst": "n2025",
+    "window": {
+     "t_a": 1289241911728360,
+     "t_b": 1306965920141401
+    },
+    "k": 2
+   },
+   "as_of_tt": 1538584982905437,
+   "frontier_tt": 1787928054082514,
+   "correction_tt": 1787939683301378,
+   "pinned": true,
+   "exempted_verdict": "fresh",
+   "stripped_verdict": "possibly-stale",
+   "avoided_by_exemption": true,
+   "exempt_receipt": {
+    "basis": 1538584982905437,
+    "batches": 11,
+    "tt_range": [
+     1784939612733735,
+     1787939683301378
+    ],
+    "theorem": "T1"
+   },
+   "scope_path": "leaf-basis"
+  },
+  {
+   "store": "bitcoinotc",
+   "op": "entity_history",
+   "args_form": {
+    "as_of_tt": 1538584982905437,
+    "uid": "n2029"
+   },
+   "as_of_tt": 1538584982905437,
+   "frontier_tt": 1787928054082514,
+   "correction_tt": 1787939684915186,
+   "pinned": true,
+   "exempted_verdict": "fresh",
+   "stripped_verdict": "possibly-stale",
+   "avoided_by_exemption": true,
+   "exempt_receipt": {
+    "basis": 1538584982905437,
+    "batches": 11,
+    "tt_range": [
+     1784939612733735,
+     1787939684915186
+    ],
+    "theorem": "T1"
+   },
+   "scope_path": "leaf-basis"
+  },
+  {
+   "store": "bitcoinotc",
+   "op": "version_history",
+   "args_form": {
+    "as_of_tt": 1538584982905437,
+    "kind": "node",
+    "window": {
+     "t_a": 1289241911728360,
+     "t_b": 1306965920141401
+    }
+   },
+   "as_of_tt": 1538584982905437,
+   "frontier_tt": 1787928054082514,
+   "correction_tt": 1787939686574627,
+   "pinned": true,
+   "exempted_verdict": "fresh",
+   "stripped_verdict": "possibly-stale",
+   "avoided_by_exemption": true,
+   "exempt_receipt": {
+    "basis": 1538584982905437,
+    "batches": 11,
+    "tt_range": [
+     1784939612733735,
+     1787939686574627
+    ],
+    "theorem": "T1"
+   },
+   "scope_path": "leaf-basis"
+  },
+  {
+   "store": "bitcoinotc",
+   "op": "snapshot_subgraph",
+   "args_form": {
+    "as_of_tt": 1538584982905437,
+    "seeds": [
+     "n2048"
+    ],
+    "t_valid": 1298103915934880,
+    "hops": 1
+   },
+   "as_of_tt": 1538584982905437,
+   "frontier_tt": 1787928054082514,
+   "correction_tt": 1787939688229031,
+   "pinned": true,
+   "exempted_verdict": "fresh",
+   "stripped_verdict": "possibly-stale",
+   "avoided_by_exemption": true,
+   "exempt_receipt": {
+    "basis": 1538584982905437,
+    "batches": 11,
+    "tt_range": [
+     1784939612733735,
+     1787939688229031
+    ],
+    "theorem": "T1"
+   },
+   "scope_path": "leaf-basis"
+  },
+  {
+   "store": "bitcoinotc",
+   "op": "diff_snapshots",
+   "args_form": {
+    "as_of_tt": 1538584982905437,
+    "t1": 1289241911728361,
+    "t2": 1298103915934880
+   },
+   "as_of_tt": 1538584982905437,
+   "frontier_tt": 1787928054082514,
+   "correction_tt": 1787939689874199,
+   "pinned": true,
+   "exempted_verdict": "fresh",
+   "stripped_verdict": "possibly-stale",
+   "avoided_by_exemption": true,
+   "exempt_receipt": {
+    "basis": 1538584982905437,
+    "batches": 11,
+    "tt_range": [
+     1784939612733735,
+     1787939689874199
+    ],
+    "theorem": "T1"
+   },
+   "scope_path": "leaf-basis"
+  },
+  {
+   "store": "bitcoinotc",
+   "op": "neighborhood_evolution",
+   "args_form": {
+    "as_of_tt": 1538584982905437,
+    "uid": "n208",
+    "t1": 1289241911728360,
+    "t2": 1306965920141401,
+    "stride": 2215501051630
+   },
+   "as_of_tt": 1538584982905437,
+   "frontier_tt": 1787928054082514,
+   "correction_tt": 1787939691501957,
+   "pinned": true,
+   "exempted_verdict": "fresh",
+   "stripped_verdict": "possibly-stale",
+   "avoided_by_exemption": true,
+   "exempt_receipt": {
+    "basis": 1538584982905437,
+    "batches": 11,
+    "tt_range": [
+     1784939612733735,
+     1787939691501957
+    ],
+    "theorem": "T1"
+   },
+   "scope_path": "leaf-basis"
+  },
+  {
+   "store": "bitcoinotc",
+   "op": "aggregate_events",
+   "args_form": {
+    "as_of_tt": 1538584982905437,
+    "group_by": [
+     {
+      "dim": "endpoint",
+      "role": "src"
+     }
+    ],
+    "aggregates": [
+     {
+      "agg": "count"
+     }
+    ],
+    "window": {
+     "t_a": 1289241911728360,
+     "t_b": 1306965920141401
+    }
+   },
+   "as_of_tt": 1538584982905437,
+   "frontier_tt": 1787928054082514,
+   "correction_tt": 1787939693145432,
+   "pinned": true,
+   "exempted_verdict": "fresh",
+   "stripped_verdict": "possibly-stale",
+   "avoided_by_exemption": true,
+   "exempt_receipt": {
+    "basis": 1538584982905437,
+    "batches": 11,
+    "tt_range": [
+     1784939612733735,
+     1787939693145432
+    ],
+    "theorem": "T1"
+   },
+   "scope_path": "leaf-basis"
+  },
+  {
+   "store": "bitcoinotc",
+   "op": "graph_metric_timeseries",
+   "args_form": {
+    "as_of_tt": 1538584982905437,
+    "metric": "node_count",
+    "window": {
+     "t_a": 1289241911728360,
+     "t_b": 1306965920141401
+    },
+    "stride": 2215501051630
+   },
+   "as_of_tt": 1538584982905437,
+   "frontier_tt": 1787928054082514,
+   "correction_tt": 1787939694815291,
+   "pinned": true,
+   "exempted_verdict": "fresh",
+   "stripped_verdict": "possibly-stale",
+   "avoided_by_exemption": true,
+   "exempt_receipt": {
+    "basis": 1538584982905437,
+    "batches": 11,
+    "tt_range": [
+     1784939612733735,
+     1787939694815291
+    ],
+    "theorem": "T1"
+   },
+   "scope_path": "leaf-basis"
+  },
+  {
+   "store": "bitcoinotc",
+   "op": "burst_detection",
+   "args_form": {
+    "as_of_tt": 1538584982905437,
+    "target": {
+     "kind": "node_activity",
+     "uid": "n2088"
+    },
+    "window": {
+     "t_a": 1289241911728360,
+     "t_b": 1306965920141401
+    },
+    "stride": 1107750525815
+   },
+   "as_of_tt": 1538584982905437,
+   "frontier_tt": 1787928054082514,
+   "correction_tt": 1787939696439062,
+   "pinned": true,
+   "exempted_verdict": "fresh",
+   "stripped_verdict": "possibly-stale",
+   "avoided_by_exemption": true,
+   "exempt_receipt": {
+    "basis": 1538584982905437,
+    "batches": 11,
+    "tt_range": [
+     1784939612733735,
+     1787939696439062
+    ],
+    "theorem": "T1"
+   },
+   "scope_path": "leaf-basis"
+  },
+  {
+   "store": "bitcoinotc",
+   "op": "co_active",
+   "args_form": {
+    "as_of_tt": 1538584982905437,
+    "a_spec": {
+     "rel_type": "TRUST"
+    },
+    "b_spec": {
+     "rel_type": "TRUST"
+    },
+    "allen_relation": {
+     "relation": "overlaps"
+    },
+    "limit": 200
+   },
+   "as_of_tt": 1538584982905437,
+   "frontier_tt": 1787928054082514,
+   "correction_tt": 1787939698080461,
+   "pinned": true,
+   "exempted_verdict": "fresh",
+   "stripped_verdict": "possibly-stale",
+   "avoided_by_exemption": true,
+   "exempt_receipt": {
+    "basis": 1538584982905437,
+    "batches": 11,
+    "tt_range": [
+     1784939612733735,
+     1787939698080461
+    ],
+    "theorem": "T1"
+   },
+   "scope_path": "leaf-basis"
+  },
+  {
+   "store": "bitcoinotc",
+   "op": "count_temporal_motifs",
+   "args_form": {
+    "as_of_tt": 1538584982905437,
+    "motif": "M_2node_pingpong",
+    "window": {
+     "t_a": 1289241911728360,
+     "t_b": 1306965920141401
+    },
+    "delta": 2215501051630
+   },
+   "as_of_tt": 1538584982905437,
+   "frontier_tt": 1787928054082514,
+   "correction_tt": 1787939699733168,
+   "pinned": true,
+   "exempted_verdict": "fresh",
+   "stripped_verdict": "possibly-stale",
+   "avoided_by_exemption": true,
+   "exempt_receipt": {
+    "basis": 1538584982905437,
+    "batches": 11,
+    "tt_range": [
+     1784939612733735,
+     1787939699733168
+    ],
+    "theorem": "T1"
+   },
+   "scope_path": "leaf-basis"
+  },
+  {
+   "store": "bitcoinotc",
+   "op": "find_temporal_motif_instances",
+   "args_form": {
+    "as_of_tt": 1538584982905437,
+    "motif": "M_2node_pingpong",
+    "window": {
+     "t_a": 1289241911728360,
+     "t_b": 1306965920141401
+    },
+    "delta": 2215501051630,
+    "limit": 50
+   },
+   "as_of_tt": 1538584982905437,
+   "frontier_tt": 1787928054082514,
+   "correction_tt": 1787939701360066,
+   "pinned": true,
+   "exempted_verdict": "fresh",
+   "stripped_verdict": "possibly-stale",
+   "avoided_by_exemption": true,
+   "exempt_receipt": {
+    "basis": 1538584982905437,
+    "batches": 11,
+    "tt_range": [
+     1784939612733735,
+     1787939701360066
+    ],
+    "theorem": "T1"
+   },
+   "scope_path": "leaf-basis"
+  },
+  {
+   "store": "bitcoinotc",
+   "op": "temporal_reachability",
+   "args_form": {
+    "as_of_tt": 1538584982905437,
+    "src": "n2152",
+    "window": {
+     "t_a": 1289241911728360,
+     "t_b": 1306965920141401
+    }
+   },
+   "as_of_tt": 1538584982905437,
+   "frontier_tt": 1787928054082514,
+   "correction_tt": 1787939703002211,
+   "pinned": true,
+   "exempted_verdict": "fresh",
+   "stripped_verdict": "possibly-stale",
+   "avoided_by_exemption": true,
+   "exempt_receipt": {
+    "basis": 1538584982905437,
+    "batches": 11,
+    "tt_range": [
+     1784939612733735,
+     1787939703002211
+    ],
+    "theorem": "T1"
+   },
+   "scope_path": "leaf-basis"
+  },
+  {
+   "store": "bitcoinotc",
+   "op": "temporal_paths",
+   "args_form": {
+    "as_of_tt": 1538584982905437,
+    "src": "n2163",
+    "dst": "n2163",
+    "window": {
+     "t_a": 1289241911728360,
+     "t_b": 1306965920141401
+    },
+    "k": 2
+   },
+   "as_of_tt": 1538584982905437,
+   "frontier_tt": 1787928054082514,
+   "correction_tt": 1787939704663890,
+   "pinned": true,
+   "exempted_verdict": "fresh",
+   "stripped_verdict": "possibly-stale",
+   "avoided_by_exemption": true,
+   "exempt_receipt": {
+    "basis": 1538584982905437,
+    "batches": 11,
+    "tt_range": [
+     1784939612733735,
+     1787939704663890
+    ],
+    "theorem": "T1"
+   },
+   "scope_path": "leaf-basis"
+  },
+  {
+   "store": "bitcoinotc",
+   "op": "entity_history",
+   "args_form": {
+    "as_of_tt": 1538584982905437,
+    "uid": "n2164"
+   },
+   "as_of_tt": 1538584982905437,
+   "frontier_tt": 1787928054082514,
+   "correction_tt": 1787939706329565,
+   "pinned": true,
+   "exempted_verdict": "fresh",
+   "stripped_verdict": "possibly-stale",
+   "avoided_by_exemption": true,
+   "exempt_receipt": {
+    "basis": 1538584982905437,
+    "batches": 11,
+    "tt_range": [
+     1784939612733735,
+     1787939706329565
+    ],
+    "theorem": "T1"
+   },
+   "scope_path": "leaf-basis"
+  },
+  {
+   "store": "bitcoinotc",
+   "op": "version_history",
+   "args_form": {
+    "as_of_tt": 1538584982905437,
+    "kind": "node",
+    "window": {
+     "t_a": 1289241911728360,
+     "t_b": 1306965920141401
+    }
+   },
+   "as_of_tt": 1538584982905437,
+   "frontier_tt": 1787928054082514,
+   "correction_tt": 1787939708026162,
+   "pinned": true,
+   "exempted_verdict": "fresh",
+   "stripped_verdict": "possibly-stale",
+   "avoided_by_exemption": true,
+   "exempt_receipt": {
+    "basis": 1538584982905437,
+    "batches": 11,
+    "tt_range": [
+     1784939612733735,
+     1787939708026162
+    ],
+    "theorem": "T1"
+   },
+   "scope_path": "leaf-basis"
+  },
+  {
+   "store": "bitcoinotc",
+   "op": "snapshot_subgraph",
+   "args_form": {
+    "as_of_tt": 1538584982905437,
+    "seeds": [
+     "n2175"
+    ],
+    "t_valid": 1298103915934880,
+    "hops": 1
+   },
+   "as_of_tt": 1538584982905437,
+   "frontier_tt": 1787928054082514,
+   "correction_tt": 1787939709690739,
+   "pinned": true,
+   "exempted_verdict": "fresh",
+   "stripped_verdict": "possibly-stale",
+   "avoided_by_exemption": true,
+   "exempt_receipt": {
+    "basis": 1538584982905437,
+    "batches": 11,
+    "tt_range": [
+     1784939612733735,
+     1787939709690739
+    ],
+    "theorem": "T1"
+   },
+   "scope_path": "leaf-basis"
+  },
+  {
+   "store": "bitcoinotc",
+   "op": "diff_snapshots",
+   "args_form": {
+    "as_of_tt": 1538584982905437,
+    "t1": 1289241911728361,
+    "t2": 1298103915934880
+   },
+   "as_of_tt": 1538584982905437,
+   "frontier_tt": 1787928054082514,
+   "correction_tt": 1787939711355228,
+   "pinned": true,
+   "exempted_verdict": "fresh",
+   "stripped_verdict": "possibly-stale",
+   "avoided_by_exemption": true,
+   "exempt_receipt": {
+    "basis": 1538584982905437,
+    "batches": 11,
+    "tt_range": [
+     1784939612733735,
+     1787939711355228
+    ],
+    "theorem": "T1"
+   },
+   "scope_path": "leaf-basis"
+  },
+  {
+   "store": "bitcoinotc",
+   "op": "neighborhood_evolution",
+   "args_form": {
+    "as_of_tt": 1538584982905437,
+    "uid": "n2211",
+    "t1": 1289241911728360,
+    "t2": 1306965920141401,
+    "stride": 2215501051630
+   },
+   "as_of_tt": 1538584982905437,
+   "frontier_tt": 1787928054082514,
+   "correction_tt": 1787939712997149,
+   "pinned": true,
+   "exempted_verdict": "fresh",
+   "stripped_verdict": "possibly-stale",
+   "avoided_by_exemption": true,
+   "exempt_receipt": {
+    "basis": 1538584982905437,
+    "batches": 11,
+    "tt_range": [
+     1784939612733735,
+     1787939712997149
+    ],
+    "theorem": "T1"
+   },
+   "scope_path": "leaf-basis"
+  },
+  {
+   "store": "bitcoinotc",
+   "op": "aggregate_events",
+   "args_form": {
+    "as_of_tt": 1538584982905437,
+    "group_by": [
+     {
+      "dim": "endpoint",
+      "role": "src"
+     }
+    ],
+    "aggregates": [
+     {
+      "agg": "count"
+     }
+    ],
+    "window": {
+     "t_a": 1289241911728360,
+     "t_b": 1306965920141401
+    }
+   },
+   "as_of_tt": 1538584982905437,
+   "frontier_tt": 1787928054082514,
+   "correction_tt": 1787939714617027,
+   "pinned": true,
+   "exempted_verdict": "fresh",
+   "stripped_verdict": "possibly-stale",
+   "avoided_by_exemption": true,
+   "exempt_receipt": {
+    "basis": 1538584982905437,
+    "batches": 11,
+    "tt_range": [
+     1784939612733735,
+     1787939714617027
+    ],
+    "theorem": "T1"
+   },
+   "scope_path": "leaf-basis"
+  },
+  {
+   "store": "bitcoinotc",
+   "op": "graph_metric_timeseries",
+   "args_form": {
+    "as_of_tt": 1538584982905437,
+    "metric": "node_count",
+    "window": {
+     "t_a": 1289241911728360,
+     "t_b": 1306965920141401
+    },
+    "stride": 2215501051630
+   },
+   "as_of_tt": 1538584982905437,
+   "frontier_tt": 1787928054082514,
+   "correction_tt": 1787939716267928,
+   "pinned": true,
+   "exempted_verdict": "fresh",
+   "stripped_verdict": "possibly-stale",
+   "avoided_by_exemption": true,
+   "exempt_receipt": {
+    "basis": 1538584982905437,
+    "batches": 11,
+    "tt_range": [
+     1784939612733735,
+     1787939716267928
+    ],
+    "theorem": "T1"
+   },
+   "scope_path": "leaf-basis"
+  },
+  {
+   "store": "bitcoinotc",
+   "op": "burst_detection",
+   "args_form": {
+    "as_of_tt": 1538584982905437,
+    "target": {
+     "kind": "node_activity",
+     "uid": "n2226"
+    },
+    "window": {
+     "t_a": 1289241911728360,
+     "t_b": 1306965920141401
+    },
+    "stride": 1107750525815
+   },
+   "as_of_tt": 1538584982905437,
+   "frontier_tt": 1787928054082514,
+   "correction_tt": 1787939717921021,
+   "pinned": true,
+   "exempted_verdict": "fresh",
+   "stripped_verdict": "possibly-stale",
+   "avoided_by_exemption": true,
+   "exempt_receipt": {
+    "basis": 1538584982905437,
+    "batches": 11,
+    "tt_range": [
+     1784939612733735,
+     1787939717921021
+    ],
+    "theorem": "T1"
+   },
+   "scope_path": "leaf-basis"
+  },
+  {
+   "store": "bitcoinotc",
+   "op": "co_active",
+   "args_form": {
+    "as_of_tt": 1538584982905437,
+    "a_spec": {
+     "rel_type": "TRUST"
+    },
+    "b_spec": {
+     "rel_type": "TRUST"
+    },
+    "allen_relation": {
+     "relation": "overlaps"
+    },
+    "limit": 200
+   },
+   "as_of_tt": 1538584982905437,
+   "frontier_tt": 1787928054082514,
+   "correction_tt": 1787939719539502,
+   "pinned": true,
+   "exempted_verdict": "fresh",
+   "stripped_verdict": "possibly-stale",
+   "avoided_by_exemption": true,
+   "exempt_receipt": {
+    "basis": 1538584982905437,
+    "batches": 11,
+    "tt_range": [
+     1784939612733735,
+     1787939719539502
+    ],
+    "theorem": "T1"
+   },
+   "scope_path": "leaf-basis"
+  },
+  {
+   "store": "bitcoinotc",
+   "op": "count_temporal_motifs",
+   "args_form": {
+    "as_of_tt": 1538584982905437,
+    "motif": "M_2node_pingpong",
+    "window": {
+     "t_a": 1289241911728360,
+     "t_b": 1306965920141401
+    },
+    "delta": 2215501051630
+   },
+   "as_of_tt": 1538584982905437,
+   "frontier_tt": 1787928054082514,
+   "correction_tt": 1787939721186716,
+   "pinned": true,
+   "exempted_verdict": "fresh",
+   "stripped_verdict": "possibly-stale",
+   "avoided_by_exemption": true,
+   "exempt_receipt": {
+    "basis": 1538584982905437,
+    "batches": 11,
+    "tt_range": [
+     1784939612733735,
+     1787939721186716
+    ],
+    "theorem": "T1"
+   },
+   "scope_path": "leaf-basis"
+  },
+  {
+   "store": "bitcoinotc",
+   "op": "find_temporal_motif_instances",
+   "args_form": {
+    "as_of_tt": 1538584982905437,
+    "motif": "M_2node_pingpong",
+    "window": {
+     "t_a": 1289241911728360,
+     "t_b": 1306965920141401
+    },
+    "delta": 2215501051630,
+    "limit": 50
+   },
+   "as_of_tt": 1538584982905437,
+   "frontier_tt": 1787928054082514,
+   "correction_tt": 1787939722835941,
+   "pinned": true,
+   "exempted_verdict": "fresh",
+   "stripped_verdict": "possibly-stale",
+   "avoided_by_exemption": true,
+   "exempt_receipt": {
+    "basis": 1538584982905437,
+    "batches": 11,
+    "tt_range": [
+     1784939612733735,
+     1787939722835941
+    ],
+    "theorem": "T1"
+   },
+   "scope_path": "leaf-basis"
+  },
+  {
+   "store": "bitcoinotc",
+   "op": "temporal_reachability",
+   "args_form": {
+    "as_of_tt": 1538584982905437,
+    "src": "n2270",
+    "window": {
+     "t_a": 1289241911728360,
+     "t_b": 1306965920141401
+    }
+   },
+   "as_of_tt": 1538584982905437,
+   "frontier_tt": 1787928054082514,
+   "correction_tt": 1787939724455833,
+   "pinned": true,
+   "exempted_verdict": "fresh",
+   "stripped_verdict": "possibly-stale",
+   "avoided_by_exemption": true,
+   "exempt_receipt": {
+    "basis": 1538584982905437,
+    "batches": 11,
+    "tt_range": [
+     1784939612733735,
+     1787939724455833
+    ],
+    "theorem": "T1"
+   },
+   "scope_path": "leaf-basis"
+  },
+  {
+   "store": "bitcoinotc",
+   "op": "temporal_paths",
+   "args_form": {
+    "as_of_tt": 1538584982905437,
+    "src": "n2277",
+    "dst": "n2277",
+    "window": {
+     "t_a": 1289241911728360,
+     "t_b": 1306965920141401
+    },
+    "k": 2
+   },
+   "as_of_tt": 1538584982905437,
+   "frontier_tt": 1787928054082514,
+   "correction_tt": 1787939726094103,
+   "pinned": true,
+   "exempted_verdict": "fresh",
+   "stripped_verdict": "possibly-stale",
+   "avoided_by_exemption": true,
+   "exempt_receipt": {
+    "basis": 1538584982905437,
+    "batches": 11,
+    "tt_range": [
+     1784939612733735,
+     1787939726094103
+    ],
+    "theorem": "T1"
+   },
+   "scope_path": "leaf-basis"
+  },
+  {
+   "store": "bitcoinotc",
+   "op": "entity_history",
+   "args_form": {
+    "as_of_tt": 1538584982905437,
+    "uid": "n2292"
+   },
+   "as_of_tt": 1538584982905437,
+   "frontier_tt": 1787928054082514,
+   "correction_tt": 1787939727748576,
+   "pinned": true,
+   "exempted_verdict": "fresh",
+   "stripped_verdict": "possibly-stale",
+   "avoided_by_exemption": true,
+   "exempt_receipt": {
+    "basis": 1538584982905437,
+    "batches": 11,
+    "tt_range": [
+     1784939612733735,
+     1787939727748576
+    ],
+    "theorem": "T1"
+   },
+   "scope_path": "leaf-basis"
+  },
+  {
+   "store": "bitcoinotc",
+   "op": "version_history",
+   "args_form": {
+    "as_of_tt": 1538584982905437,
+    "kind": "node",
+    "window": {
+     "t_a": 1289241911728360,
+     "t_b": 1306965920141401
+    }
+   },
+   "as_of_tt": 1538584982905437,
+   "frontier_tt": 1787928054082514,
+   "correction_tt": 1787939729436262,
+   "pinned": true,
+   "exempted_verdict": "fresh",
+   "stripped_verdict": "possibly-stale",
+   "avoided_by_exemption": true,
+   "exempt_receipt": {
+    "basis": 1538584982905437,
+    "batches": 11,
+    "tt_range": [
+     1784939612733735,
+     1787939729436262
+    ],
+    "theorem": "T1"
+   },
+   "scope_path": "leaf-basis"
+  },
+  {
+   "store": "bitcoinotc",
+   "op": "snapshot_subgraph",
+   "args_form": {
+    "as_of_tt": 1538584982905437,
+    "seeds": [
+     "n2317"
+    ],
+    "t_valid": 1298103915934880,
+    "hops": 1
+   },
+   "as_of_tt": 1538584982905437,
+   "frontier_tt": 1787928054082514,
+   "correction_tt": 1787939731071735,
+   "pinned": true,
+   "exempted_verdict": "fresh",
+   "stripped_verdict": "possibly-stale",
+   "avoided_by_exemption": true,
+   "exempt_receipt": {
+    "basis": 1538584982905437,
+    "batches": 11,
+    "tt_range": [
+     1784939612733735,
+     1787939731071735
+    ],
+    "theorem": "T1"
+   },
+   "scope_path": "leaf-basis"
+  },
+  {
+   "store": "bitcoinotc",
+   "op": "diff_snapshots",
+   "args_form": {
+    "as_of_tt": 1538584982905437,
+    "t1": 1289241911728361,
+    "t2": 1298103915934880
+   },
+   "as_of_tt": 1538584982905437,
+   "frontier_tt": 1787928054082514,
+   "correction_tt": 1787939732713849,
+   "pinned": true,
+   "exempted_verdict": "fresh",
+   "stripped_verdict": "possibly-stale",
+   "avoided_by_exemption": true,
+   "exempt_receipt": {
+    "basis": 1538584982905437,
+    "batches": 11,
+    "tt_range": [
+     1784939612733735,
+     1787939732713849
+    ],
+    "theorem": "T1"
+   },
+   "scope_path": "leaf-basis"
+  },
+  {
+   "store": "bitcoinotc",
+   "op": "neighborhood_evolution",
+   "args_form": {
+    "as_of_tt": 1538584982905437,
+    "uid": "n2327",
+    "t1": 1289241911728360,
+    "t2": 1306965920141401,
+    "stride": 2215501051630
+   },
+   "as_of_tt": 1538584982905437,
+   "frontier_tt": 1787928054082514,
+   "correction_tt": 1787939734414044,
+   "pinned": true,
+   "exempted_verdict": "fresh",
+   "stripped_verdict": "possibly-stale",
+   "avoided_by_exemption": true,
+   "exempt_receipt": {
+    "basis": 1538584982905437,
+    "batches": 11,
+    "tt_range": [
+     1784939612733735,
+     1787939734414044
+    ],
+    "theorem": "T1"
+   },
+   "scope_path": "leaf-basis"
+  },
+  {
+   "store": "bitcoinotc",
+   "op": "aggregate_events",
+   "args_form": {
+    "as_of_tt": 1538584982905437,
+    "group_by": [
+     {
+      "dim": "endpoint",
+      "role": "src"
+     }
+    ],
+    "aggregates": [
+     {
+      "agg": "count"
+     }
+    ],
+    "window": {
+     "t_a": 1289241911728360,
+     "t_b": 1306965920141401
+    }
+   },
+   "as_of_tt": 1538584982905437,
+   "frontier_tt": 1787928054082514,
+   "correction_tt": 1787939736102298,
+   "pinned": true,
+   "exempted_verdict": "fresh",
+   "stripped_verdict": "possibly-stale",
+   "avoided_by_exemption": true,
+   "exempt_receipt": {
+    "basis": 1538584982905437,
+    "batches": 11,
+    "tt_range": [
+     1784939612733735,
+     1787939736102298
+    ],
+    "theorem": "T1"
+   },
+   "scope_path": "leaf-basis"
+  },
+  {
+   "store": "bitcoinotc",
+   "op": "graph_metric_timeseries",
+   "args_form": {
+    "as_of_tt": 1538584982905437,
+    "metric": "node_count",
+    "window": {
+     "t_a": 1289241911728360,
+     "t_b": 1306965920141401
+    },
+    "stride": 2215501051630
+   },
+   "as_of_tt": 1538584982905437,
+   "frontier_tt": 1787928054082514,
+   "correction_tt": 1787939737726048,
+   "pinned": true,
+   "exempted_verdict": "fresh",
+   "stripped_verdict": "possibly-stale",
+   "avoided_by_exemption": true,
+   "exempt_receipt": {
+    "basis": 1538584982905437,
+    "batches": 11,
+    "tt_range": [
+     1784939612733735,
+     1787939737726048
+    ],
+    "theorem": "T1"
+   },
+   "scope_path": "leaf-basis"
+  },
+  {
+   "store": "bitcoinotc",
+   "op": "burst_detection",
+   "args_form": {
+    "as_of_tt": 1538584982905437,
+    "target": {
+     "kind": "node_activity",
+     "uid": "n2386"
+    },
+    "window": {
+     "t_a": 1289241911728360,
+     "t_b": 1306965920141401
+    },
+    "stride": 1107750525815
+   },
+   "as_of_tt": 1538584982905437,
+   "frontier_tt": 1787928054082514,
+   "correction_tt": 1787939739369569,
+   "pinned": true,
+   "exempted_verdict": "fresh",
+   "stripped_verdict": "possibly-stale",
+   "avoided_by_exemption": true,
+   "exempt_receipt": {
+    "basis": 1538584982905437,
+    "batches": 11,
+    "tt_range": [
+     1784939612733735,
+     1787939739369569
+    ],
+    "theorem": "T1"
+   },
+   "scope_path": "leaf-basis"
+  },
+  {
+   "store": "bitcoinotc",
+   "op": "co_active",
+   "args_form": {
+    "as_of_tt": 1538584982905437,
+    "a_spec": {
+     "rel_type": "TRUST"
+    },
+    "b_spec": {
+     "rel_type": "TRUST"
+    },
+    "allen_relation": {
+     "relation": "overlaps"
+    },
+    "limit": 200
+   },
+   "as_of_tt": 1538584982905437,
+   "frontier_tt": 1787928054082514,
+   "correction_tt": 1787939741032877,
+   "pinned": true,
+   "exempted_verdict": "fresh",
+   "stripped_verdict": "possibly-stale",
+   "avoided_by_exemption": true,
+   "exempt_receipt": {
+    "basis": 1538584982905437,
+    "batches": 11,
+    "tt_range": [
+     1784939612733735,
+     1787939741032877
+    ],
+    "theorem": "T1"
+   },
+   "scope_path": "leaf-basis"
+  },
+  {
+   "store": "bitcoinotc",
+   "op": "count_temporal_motifs",
+   "args_form": {
+    "as_of_tt": 1538584982905437,
+    "motif": "M_2node_pingpong",
+    "window": {
+     "t_a": 1289241911728360,
+     "t_b": 1306965920141401
+    },
+    "delta": 2215501051630
+   },
+   "as_of_tt": 1538584982905437,
+   "frontier_tt": 1787928054082514,
+   "correction_tt": 1787939742653636,
+   "pinned": true,
+   "exempted_verdict": "fresh",
+   "stripped_verdict": "possibly-stale",
+   "avoided_by_exemption": true,
+   "exempt_receipt": {
+    "basis": 1538584982905437,
+    "batches": 11,
+    "tt_range": [
+     1784939612733735,
+     1787939742653636
+    ],
+    "theorem": "T1"
+   },
+   "scope_path": "leaf-basis"
+  },
+  {
+   "store": "bitcoinotc",
+   "op": "find_temporal_motif_instances",
+   "args_form": {
+    "as_of_tt": 1538584982905437,
+    "motif": "M_2node_pingpong",
+    "window": {
+     "t_a": 1289241911728360,
+     "t_b": 1306965920141401
+    },
+    "delta": 2215501051630,
+    "limit": 50
+   },
+   "as_of_tt": 1538584982905437,
+   "frontier_tt": 1787928054082514,
+   "correction_tt": 1787939744294876,
+   "pinned": true,
+   "exempted_verdict": "fresh",
+   "stripped_verdict": "possibly-stale",
+   "avoided_by_exemption": true,
+   "exempt_receipt": {
+    "basis": 1538584982905437,
+    "batches": 11,
+    "tt_range": [
+     1784939612733735,
+     1787939744294876
+    ],
+    "theorem": "T1"
+   },
+   "scope_path": "leaf-basis"
+  },
+  {
+   "store": "bitcoinotc",
+   "op": "temporal_reachability",
+   "args_form": {
+    "as_of_tt": 1538584982905437,
+    "src": "n2434",
+    "window": {
+     "t_a": 1289241911728360,
+     "t_b": 1306965920141401
+    }
+   },
+   "as_of_tt": 1538584982905437,
+   "frontier_tt": 1787928054082514,
+   "correction_tt": 1787939745946430,
+   "pinned": true,
+   "exempted_verdict": "fresh",
+   "stripped_verdict": "possibly-stale",
+   "avoided_by_exemption": true,
+   "exempt_receipt": {
+    "basis": 1538584982905437,
+    "batches": 11,
+    "tt_range": [
+     1784939612733735,
+     1787939745946430
+    ],
+    "theorem": "T1"
+   },
+   "scope_path": "leaf-basis"
+  },
+  {
+   "store": "bitcoinotc",
+   "op": "temporal_paths",
+   "args_form": {
+    "as_of_tt": 1538584982905437,
+    "src": "n2443",
+    "dst": "n2443",
+    "window": {
+     "t_a": 1289241911728360,
+     "t_b": 1306965920141401
+    },
+    "k": 2
+   },
+   "as_of_tt": 1538584982905437,
+   "frontier_tt": 1787928054082514,
+   "correction_tt": 1787939747585330,
+   "pinned": true,
+   "exempted_verdict": "fresh",
+   "stripped_verdict": "possibly-stale",
+   "avoided_by_exemption": true,
+   "exempt_receipt": {
+    "basis": 1538584982905437,
+    "batches": 11,
+    "tt_range": [
+     1784939612733735,
+     1787939747585330
+    ],
+    "theorem": "T1"
+   },
+   "scope_path": "leaf-basis"
+  },
+  {
+   "store": "bitcoinotc",
+   "op": "entity_history",
+   "args_form": {
+    "as_of_tt": 1538584982905437,
+    "uid": "n2444"
+   },
+   "as_of_tt": 1538584982905437,
+   "frontier_tt": 1787928054082514,
+   "correction_tt": 1787939749206002,
+   "pinned": true,
+   "exempted_verdict": "fresh",
+   "stripped_verdict": "possibly-stale",
+   "avoided_by_exemption": true,
+   "exempt_receipt": {
+    "basis": 1538584982905437,
+    "batches": 11,
+    "tt_range": [
+     1784939612733735,
+     1787939749206002
+    ],
+    "theorem": "T1"
+   },
+   "scope_path": "leaf-basis"
+  },
+  {
+   "store": "bitcoinotc",
+   "op": "version_history",
+   "args_form": {
+    "as_of_tt": 1538584982905437,
+    "kind": "node",
+    "window": {
+     "t_a": 1289241911728360,
+     "t_b": 1306965920141401
+    }
+   },
+   "as_of_tt": 1538584982905437,
+   "frontier_tt": 1787928054082514,
+   "correction_tt": 1787939750882520,
+   "pinned": true,
+   "exempted_verdict": "fresh",
+   "stripped_verdict": "possibly-stale",
+   "avoided_by_exemption": true,
+   "exempt_receipt": {
+    "basis": 1538584982905437,
+    "batches": 11,
+    "tt_range": [
+     1784939612733735,
+     1787939750882520
+    ],
+    "theorem": "T1"
+   },
+   "scope_path": "leaf-basis"
+  },
+  {
+   "store": "bitcoinotc",
+   "op": "snapshot_subgraph",
+   "args_form": {
+    "as_of_tt": 1538584982905437,
+    "seeds": [
+     "n2450"
+    ],
+    "t_valid": 1298103915934880,
+    "hops": 1
+   },
+   "as_of_tt": 1538584982905437,
+   "frontier_tt": 1787928054082514,
+   "correction_tt": 1787939752588440,
+   "pinned": true,
+   "exempted_verdict": "fresh",
+   "stripped_verdict": "possibly-stale",
+   "avoided_by_exemption": true,
+   "exempt_receipt": {
+    "basis": 1538584982905437,
+    "batches": 11,
+    "tt_range": [
+     1784939612733735,
+     1787939752588440
+    ],
+    "theorem": "T1"
+   },
+   "scope_path": "leaf-basis"
+  },
+  {
+   "store": "bitcoinotc",
+   "op": "diff_snapshots",
+   "args_form": {
+    "as_of_tt": 1538584982905437,
+    "t1": 1289241911728361,
+    "t2": 1298103915934880
+   },
+   "as_of_tt": 1538584982905437,
+   "frontier_tt": 1787928054082514,
+   "correction_tt": 1787939754258556,
+   "pinned": true,
+   "exempted_verdict": "fresh",
+   "stripped_verdict": "possibly-stale",
+   "avoided_by_exemption": true,
+   "exempt_receipt": {
+    "basis": 1538584982905437,
+    "batches": 11,
+    "tt_range": [
+     1784939612733735,
+     1787939754258556
+    ],
+    "theorem": "T1"
+   },
+   "scope_path": "leaf-basis"
+  },
+  {
+   "store": "bitcoinotc",
+   "op": "neighborhood_evolution",
+   "args_form": {
+    "as_of_tt": 1538584982905437,
+    "uid": "n2458",
+    "t1": 1289241911728360,
+    "t2": 1306965920141401,
+    "stride": 2215501051630
+   },
+   "as_of_tt": 1538584982905437,
+   "frontier_tt": 1787928054082514,
+   "correction_tt": 1787939755920812,
+   "pinned": true,
+   "exempted_verdict": "fresh",
+   "stripped_verdict": "possibly-stale",
+   "avoided_by_exemption": true,
+   "exempt_receipt": {
+    "basis": 1538584982905437,
+    "batches": 11,
+    "tt_range": [
+     1784939612733735,
+     1787939755920812
+    ],
+    "theorem": "T1"
+   },
+   "scope_path": "leaf-basis"
+  },
+  {
+   "store": "bitcoinotc",
+   "op": "aggregate_events",
+   "args_form": {
+    "as_of_tt": 1538584982905437,
+    "group_by": [
+     {
+      "dim": "endpoint",
+      "role": "src"
+     }
+    ],
+    "aggregates": [
+     {
+      "agg": "count"
+     }
+    ],
+    "window": {
+     "t_a": 1289241911728360,
+     "t_b": 1306965920141401
+    }
+   },
+   "as_of_tt": 1538584982905437,
+   "frontier_tt": 1787928054082514,
+   "correction_tt": 1787939757588337,
+   "pinned": true,
+   "exempted_verdict": "fresh",
+   "stripped_verdict": "possibly-stale",
+   "avoided_by_exemption": true,
+   "exempt_receipt": {
+    "basis": 1538584982905437,
+    "batches": 11,
+    "tt_range": [
+     1784939612733735,
+     1787939757588337
+    ],
+    "theorem": "T1"
+   },
+   "scope_path": "leaf-basis"
+  },
+  {
+   "store": "bitcoinotc",
+   "op": "graph_metric_timeseries",
+   "args_form": {
+    "as_of_tt": 1538584982905437,
+    "metric": "node_count",
+    "window": {
+     "t_a": 1289241911728360,
+     "t_b": 1306965920141401
+    },
+    "stride": 2215501051630
+   },
+   "as_of_tt": 1538584982905437,
+   "frontier_tt": 1787928054082514,
+   "correction_tt": 1787939759262950,
+   "pinned": true,
+   "exempted_verdict": "fresh",
+   "stripped_verdict": "possibly-stale",
+   "avoided_by_exemption": true,
+   "exempt_receipt": {
+    "basis": 1538584982905437,
+    "batches": 11,
+    "tt_range": [
+     1784939612733735,
+     1787939759262950
+    ],
+    "theorem": "T1"
+   },
+   "scope_path": "leaf-basis"
+  },
+  {
+   "store": "bitcoinotc",
+   "op": "burst_detection",
+   "args_form": {
+    "as_of_tt": 1538584982905437,
+    "target": {
+     "kind": "node_activity",
+     "uid": "n2463"
+    },
+    "window": {
+     "t_a": 1289241911728360,
+     "t_b": 1306965920141401
+    },
+    "stride": 1107750525815
+   },
+   "as_of_tt": 1538584982905437,
+   "frontier_tt": 1787928054082514,
+   "correction_tt": 1787939760918305,
+   "pinned": true,
+   "exempted_verdict": "fresh",
+   "stripped_verdict": "possibly-stale",
+   "avoided_by_exemption": true,
+   "exempt_receipt": {
+    "basis": 1538584982905437,
+    "batches": 11,
+    "tt_range": [
+     1784939612733735,
+     1787939760918305
+    ],
+    "theorem": "T1"
+   },
+   "scope_path": "leaf-basis"
+  },
+  {
+   "store": "bitcoinotc",
+   "op": "co_active",
+   "args_form": {
+    "as_of_tt": 1538584982905437,
+    "a_spec": {
+     "rel_type": "TRUST"
+    },
+    "b_spec": {
+     "rel_type": "TRUST"
+    },
+    "allen_relation": {
+     "relation": "overlaps"
+    },
+    "limit": 200
+   },
+   "as_of_tt": 1538584982905437,
+   "frontier_tt": 1787928054082514,
+   "correction_tt": 1787939762569472,
+   "pinned": true,
+   "exempted_verdict": "fresh",
+   "stripped_verdict": "possibly-stale",
+   "avoided_by_exemption": true,
+   "exempt_receipt": {
+    "basis": 1538584982905437,
+    "batches": 11,
+    "tt_range": [
+     1784939612733735,
+     1787939762569472
+    ],
+    "theorem": "T1"
+   },
+   "scope_path": "leaf-basis"
+  },
+  {
+   "store": "bitcoinotc",
+   "op": "count_temporal_motifs",
+   "args_form": {
+    "as_of_tt": 1538584982905437,
+    "motif": "M_2node_pingpong",
+    "window": {
+     "t_a": 1289241911728360,
+     "t_b": 1306965920141401
+    },
+    "delta": 2215501051630
+   },
+   "as_of_tt": 1538584982905437,
+   "frontier_tt": 1787928054082514,
+   "correction_tt": 1787939764218169,
+   "pinned": true,
+   "exempted_verdict": "fresh",
+   "stripped_verdict": "possibly-stale",
+   "avoided_by_exemption": true,
+   "exempt_receipt": {
+    "basis": 1538584982905437,
+    "batches": 11,
+    "tt_range": [
+     1784939612733735,
+     1787939764218169
+    ],
+    "theorem": "T1"
+   },
+   "scope_path": "leaf-basis"
+  },
+  {
+   "store": "bitcoinotc",
+   "op": "find_temporal_motif_instances",
+   "args_form": {
+    "as_of_tt": 1538584982905437,
+    "motif": "M_2node_pingpong",
+    "window": {
+     "t_a": 1289241911728360,
+     "t_b": 1306965920141401
+    },
+    "delta": 2215501051630,
+    "limit": 50
+   },
+   "as_of_tt": 1538584982905437,
+   "frontier_tt": 1787928054082514,
+   "correction_tt": 1787939765836168,
+   "pinned": true,
+   "exempted_verdict": "fresh",
+   "stripped_verdict": "possibly-stale",
+   "avoided_by_exemption": true,
+   "exempt_receipt": {
+    "basis": 1538584982905437,
+    "batches": 11,
+    "tt_range": [
+     1784939612733735,
+     1787939765836168
+    ],
+    "theorem": "T1"
+   },
+   "scope_path": "leaf-basis"
+  },
+  {
+   "store": "bitcoinotc",
+   "op": "temporal_reachability",
+   "args_form": {
+    "as_of_tt": 1538584982905437,
+    "src": "n2504",
+    "window": {
+     "t_a": 1289241911728360,
+     "t_b": 1306965920141401
+    }
+   },
+   "as_of_tt": 1538584982905437,
+   "frontier_tt": 1787928054082514,
+   "correction_tt": 1787939767470210,
+   "pinned": true,
+   "exempted_verdict": "fresh",
+   "stripped_verdict": "possibly-stale",
+   "avoided_by_exemption": true,
+   "exempt_receipt": {
+    "basis": 1538584982905437,
+    "batches": 11,
+    "tt_range": [
+     1784939612733735,
+     1787939767470210
+    ],
+    "theorem": "T1"
+   },
+   "scope_path": "leaf-basis"
+  },
+  {
+   "store": "bitcoinotc",
+   "op": "temporal_paths",
+   "args_form": {
+    "as_of_tt": 1538584982905437,
+    "src": "n2514",
+    "dst": "n2514",
+    "window": {
+     "t_a": 1289241911728360,
+     "t_b": 1306965920141401
+    },
+    "k": 2
+   },
+   "as_of_tt": 1538584982905437,
+   "frontier_tt": 1787928054082514,
+   "correction_tt": 1787939769114599,
+   "pinned": true,
+   "exempted_verdict": "fresh",
+   "stripped_verdict": "possibly-stale",
+   "avoided_by_exemption": true,
+   "exempt_receipt": {
+    "basis": 1538584982905437,
+    "batches": 11,
+    "tt_range": [
+     1784939612733735,
+     1787939769114599
+    ],
+    "theorem": "T1"
+   },
+   "scope_path": "leaf-basis"
+  },
+  {
+   "store": "bitcoinotc",
+   "op": "entity_history",
+   "args_form": {
+    "as_of_tt": 1538584982905437,
+    "uid": "n2517"
+   },
+   "as_of_tt": 1538584982905437,
+   "frontier_tt": 1787928054082514,
+   "correction_tt": 1787939770735385,
+   "pinned": true,
+   "exempted_verdict": "fresh",
+   "stripped_verdict": "possibly-stale",
+   "avoided_by_exemption": true,
+   "exempt_receipt": {
+    "basis": 1538584982905437,
+    "batches": 11,
+    "tt_range": [
+     1784939612733735,
+     1787939770735385
+    ],
+    "theorem": "T1"
+   },
+   "scope_path": "leaf-basis"
+  },
+  {
+   "store": "bitcoinotc",
+   "op": "version_history",
+   "args_form": {
+    "as_of_tt": 1538584982905437,
+    "kind": "node",
+    "window": {
+     "t_a": 1289241911728360,
+     "t_b": 1306965920141401
+    }
+   },
+   "as_of_tt": 1538584982905437,
+   "frontier_tt": 1787928054082514,
+   "correction_tt": 1787939772376305,
+   "pinned": true,
+   "exempted_verdict": "fresh",
+   "stripped_verdict": "possibly-stale",
+   "avoided_by_exemption": true,
+   "exempt_receipt": {
+    "basis": 1538584982905437,
+    "batches": 11,
+    "tt_range": [
+     1784939612733735,
+     1787939772376305
+    ],
+    "theorem": "T1"
+   },
+   "scope_path": "leaf-basis"
+  },
+  {
+   "store": "bitcoinotc",
+   "op": "snapshot_subgraph",
+   "args_form": {
+    "as_of_tt": 1538584982905437,
+    "seeds": [
+     "n2528"
+    ],
+    "t_valid": 1298103915934880,
+    "hops": 1
+   },
+   "as_of_tt": 1538584982905437,
+   "frontier_tt": 1787928054082514,
+   "correction_tt": 1787939774069932,
+   "pinned": true,
+   "exempted_verdict": "fresh",
+   "stripped_verdict": "possibly-stale",
+   "avoided_by_exemption": true,
+   "exempt_receipt": {
+    "basis": 1538584982905437,
+    "batches": 11,
+    "tt_range": [
+     1784939612733735,
+     1787939774069932
+    ],
+    "theorem": "T1"
+   },
+   "scope_path": "leaf-basis"
+  },
+  {
+   "store": "bitcoinotc",
+   "op": "diff_snapshots",
+   "args_form": {
+    "as_of_tt": 1538584982905437,
+    "t1": 1289241911728361,
+    "t2": 1298103915934880
+   },
+   "as_of_tt": 1538584982905437,
+   "frontier_tt": 1787928054082514,
+   "correction_tt": 1787939775732761,
+   "pinned": true,
+   "exempted_verdict": "fresh",
+   "stripped_verdict": "possibly-stale",
+   "avoided_by_exemption": true,
+   "exempt_receipt": {
+    "basis": 1538584982905437,
+    "batches": 11,
+    "tt_range": [
+     1784939612733735,
+     1787939775732761
+    ],
+    "theorem": "T1"
+   },
+   "scope_path": "leaf-basis"
+  },
+  {
+   "store": "bitcoinotc",
+   "op": "neighborhood_evolution",
+   "args_form": {
+    "as_of_tt": 1538584982905437,
+    "uid": "n2540",
+    "t1": 1289241911728360,
+    "t2": 1306965920141401,
+    "stride": 2215501051630
+   },
+   "as_of_tt": 1538584982905437,
+   "frontier_tt": 1787928054082514,
+   "correction_tt": 1787939777350393,
+   "pinned": true,
+   "exempted_verdict": "fresh",
+   "stripped_verdict": "possibly-stale",
+   "avoided_by_exemption": true,
+   "exempt_receipt": {
+    "basis": 1538584982905437,
+    "batches": 11,
+    "tt_range": [
+     1784939612733735,
+     1787939777350393
+    ],
+    "theorem": "T1"
+   },
+   "scope_path": "leaf-basis"
+  },
+  {
+   "store": "bitcoinotc",
+   "op": "aggregate_events",
+   "args_form": {
+    "as_of_tt": 1538584982905437,
+    "group_by": [
+     {
+      "dim": "endpoint",
+      "role": "src"
+     }
+    ],
+    "aggregates": [
+     {
+      "agg": "count"
+     }
+    ],
+    "window": {
+     "t_a": 1289241911728360,
+     "t_b": 1306965920141401
+    }
+   },
+   "as_of_tt": 1538584982905437,
+   "frontier_tt": 1787928054082514,
+   "correction_tt": 1787939779031865,
+   "pinned": true,
+   "exempted_verdict": "fresh",
+   "stripped_verdict": "possibly-stale",
+   "avoided_by_exemption": true,
+   "exempt_receipt": {
+    "basis": 1538584982905437,
+    "batches": 11,
+    "tt_range": [
+     1784939612733735,
+     1787939779031865
+    ],
+    "theorem": "T1"
+   },
+   "scope_path": "leaf-basis"
+  }
+ ]
+}

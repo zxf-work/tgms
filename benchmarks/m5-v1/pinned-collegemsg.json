@@ -1,0 +1,6095 @@
+{
+ "generated": "2026-08-28T23:13:47+0000",
+ "measured_date": "2026-08-27",
+ "git_sha": "41c4066d9863775034ce44b76f9826642fc62680",
+ "campaign_yaml_sha256": "60a10e1ca68ca6d33cc7ea293aed2d9db2f2f67907a5ae0c029d2f93318c500b",
+ "freeze_document_sha256": "e94ecc1692c55f18e8d8837d81f7f0f1106f057b1024a1b08b5b3fac392bf6d0",
+ "profile": "full",
+ "backend": "native",
+ "store": "collegemsg",
+ "store_identity": "42e019ae7b670006aa20215917555c1c21986f7292ade42cd3b0e37cc176be3c",
+ "machine": {
+  "host": "itiger02",
+  "platform": "Linux-5.14.0-427.31.1.el9_4.x86_64-x86_64-with-glibc2.34",
+  "python": "3.12.13",
+  "cpus": 64
+ },
+ "arm": "pinned-collegemsg",
+ "scorable": true,
+ "summary": {
+  "trials": 200,
+  "invalidations_avoided_by_exemption": 200,
+  "exemption_receipts_present": 200,
+  "exemption_receipts_present_but_empty": 0,
+  "floor": {
+   "required": 100,
+   "achieved": 200,
+   "met": true,
+   "note": "reported, not passed (R-16)"
+  }
+ },
+ "row_count": 200,
+ "rows": [
+  {
+   "store": "collegemsg",
+   "op": "version_history",
+   "args_form": {
+    "as_of_tt": 1434984508663412,
+    "kind": "node",
+    "window": {
+     "t_a": 1082040961000000,
+     "t_b": 1092222028450631
+    }
+   },
+   "as_of_tt": 1434984508663412,
+   "frontier_tt": 1787928056326825,
+   "correction_tt": 1787958375222878,
+   "pinned": true,
+   "exempted_verdict": "fresh",
+   "stripped_verdict": "possibly-stale",
+   "avoided_by_exemption": true,
+   "exempt_receipt": {
+    "basis": 1434984508663412,
+    "batches": 13,
+    "tt_range": [
+     1783612865737377,
+     1787958375222878
+    ],
+    "theorem": "T1"
+   },
+   "scope_path": "leaf-basis"
+  },
+  {
+   "store": "collegemsg",
+   "op": "snapshot_subgraph",
+   "args_form": {
+    "as_of_tt": 1434984508663412,
+    "seeds": [
+     "n1008"
+    ],
+    "t_valid": 1087131494725315,
+    "hops": 1
+   },
+   "as_of_tt": 1434984508663412,
+   "frontier_tt": 1787928056326825,
+   "correction_tt": 1787958377400550,
+   "pinned": true,
+   "exempted_verdict": "fresh",
+   "stripped_verdict": "possibly-stale",
+   "avoided_by_exemption": true,
+   "exempt_receipt": {
+    "basis": 1434984508663412,
+    "batches": 13,
+    "tt_range": [
+     1783612865737377,
+     1787958377400550
+    ],
+    "theorem": "T1"
+   },
+   "scope_path": "leaf-basis"
+  },
+  {
+   "store": "collegemsg",
+   "op": "diff_snapshots",
+   "args_form": {
+    "as_of_tt": 1434984508663412,
+    "t1": 1082040961000001,
+    "t2": 1087131494725315
+   },
+   "as_of_tt": 1434984508663412,
+   "frontier_tt": 1787928056326825,
+   "correction_tt": 1787958379550713,
+   "pinned": true,
+   "exempted_verdict": "fresh",
+   "stripped_verdict": "possibly-stale",
+   "avoided_by_exemption": true,
+   "exempt_receipt": {
+    "basis": 1434984508663412,
+    "batches": 13,
+    "tt_range": [
+     1783612865737377,
+     1787958379550713
+    ],
+    "theorem": "T1"
+   },
+   "scope_path": "leaf-basis"
+  },
+  {
+   "store": "collegemsg",
+   "op": "neighborhood_evolution",
+   "args_form": {
+    "as_of_tt": 1434984508663412,
+    "uid": "n1026",
+    "t1": 1082040961000000,
+    "t2": 1092222028450631,
+    "stride": 1272633431328
+   },
+   "as_of_tt": 1434984508663412,
+   "frontier_tt": 1787928056326825,
+   "correction_tt": 1787958381699509,
+   "pinned": true,
+   "exempted_verdict": "fresh",
+   "stripped_verdict": "possibly-stale",
+   "avoided_by_exemption": true,
+   "exempt_receipt": {
+    "basis": 1434984508663412,
+    "batches": 13,
+    "tt_range": [
+     1783612865737377,
+     1787958381699509
+    ],
+    "theorem": "T1"
+   },
+   "scope_path": "leaf-basis"
+  },
+  {
+   "store": "collegemsg",
+   "op": "aggregate_events",
+   "args_form": {
+    "as_of_tt": 1434984508663412,
+    "group_by": [
+     {
+      "dim": "endpoint",
+      "role": "src"
+     }
+    ],
+    "aggregates": [
+     {
+      "agg": "count"
+     }
+    ],
+    "window": {
+     "t_a": 1082040961000000,
+     "t_b": 1092222028450631
+    }
+   },
+   "as_of_tt": 1434984508663412,
+   "frontier_tt": 1787928056326825,
+   "correction_tt": 1787958383940021,
+   "pinned": true,
+   "exempted_verdict": "fresh",
+   "stripped_verdict": "possibly-stale",
+   "avoided_by_exemption": true,
+   "exempt_receipt": {
+    "basis": 1434984508663412,
+    "batches": 13,
+    "tt_range": [
+     1783612865737377,
+     1787958383940021
+    ],
+    "theorem": "T1"
+   },
+   "scope_path": "leaf-basis"
+  },
+  {
+   "store": "collegemsg",
+   "op": "graph_metric_timeseries",
+   "args_form": {
+    "as_of_tt": 1434984508663412,
+    "metric": "node_count",
+    "window": {
+     "t_a": 1082040961000000,
+     "t_b": 1092222028450631
+    },
+    "stride": 1272633431328
+   },
+   "as_of_tt": 1434984508663412,
+   "frontier_tt": 1787928056326825,
+   "correction_tt": 1787958386204500,
+   "pinned": true,
+   "exempted_verdict": "fresh",
+   "stripped_verdict": "possibly-stale",
+   "avoided_by_exemption": true,
+   "exempt_receipt": {
+    "basis": 1434984508663412,
+    "batches": 13,
+    "tt_range": [
+     1783612865737377,
+     1787958386204500
+    ],
+    "theorem": "T1"
+   },
+   "scope_path": "leaf-basis"
+  },
+  {
+   "store": "collegemsg",
+   "op": "burst_detection",
+   "args_form": {
+    "as_of_tt": 1434984508663412,
+    "target": {
+     "kind": "node_activity",
+     "uid": "n1037"
+    },
+    "window": {
+     "t_a": 1082040961000000,
+     "t_b": 1092222028450631
+    },
+    "stride": 636316715664
+   },
+   "as_of_tt": 1434984508663412,
+   "frontier_tt": 1787928056326825,
+   "correction_tt": 1787958388469122,
+   "pinned": true,
+   "exempted_verdict": "fresh",
+   "stripped_verdict": "possibly-stale",
+   "avoided_by_exemption": true,
+   "exempt_receipt": {
+    "basis": 1434984508663412,
+    "batches": 13,
+    "tt_range": [
+     1783612865737377,
+     1787958388469122
+    ],
+    "theorem": "T1"
+   },
+   "scope_path": "leaf-basis"
+  },
+  {
+   "store": "collegemsg",
+   "op": "co_active",
+   "args_form": {
+    "as_of_tt": 1434984508663412,
+    "a_spec": {
+     "rel_type": "MSG"
+    },
+    "b_spec": {
+     "rel_type": "MSG"
+    },
+    "allen_relation": {
+     "relation": "overlaps"
+    },
+    "limit": 200
+   },
+   "as_of_tt": 1434984508663412,
+   "frontier_tt": 1787928056326825,
+   "correction_tt": 1787958390762667,
+   "pinned": true,
+   "exempted_verdict": "fresh",
+   "stripped_verdict": "possibly-stale",
+   "avoided_by_exemption": true,
+   "exempt_receipt": {
+    "basis": 1434984508663412,
+    "batches": 13,
+    "tt_range": [
+     1783612865737377,
+     1787958390762667
+    ],
+    "theorem": "T1"
+   },
+   "scope_path": "leaf-basis"
+  },
+  {
+   "store": "collegemsg",
+   "op": "count_temporal_motifs",
+   "args_form": {
+    "as_of_tt": 1434984508663412,
+    "motif": "M_2node_pingpong",
+    "window": {
+     "t_a": 1082040961000000,
+     "t_b": 1092222028450631
+    },
+    "delta": 1272633431328
+   },
+   "as_of_tt": 1434984508663412,
+   "frontier_tt": 1787928056326825,
+   "correction_tt": 1787958393055587,
+   "pinned": true,
+   "exempted_verdict": "fresh",
+   "stripped_verdict": "possibly-stale",
+   "avoided_by_exemption": true,
+   "exempt_receipt": {
+    "basis": 1434984508663412,
+    "batches": 13,
+    "tt_range": [
+     1783612865737377,
+     1787958393055587
+    ],
+    "theorem": "T1"
+   },
+   "scope_path": "leaf-basis"
+  },
+  {
+   "store": "collegemsg",
+   "op": "find_temporal_motif_instances",
+   "args_form": {
+    "as_of_tt": 1434984508663412,
+    "motif": "M_2node_pingpong",
+    "window": {
+     "t_a": 1082040961000000,
+     "t_b": 1092222028450631
+    },
+    "delta": 1272633431328,
+    "limit": 50
+   },
+   "as_of_tt": 1434984508663412,
+   "frontier_tt": 1787928056326825,
+   "correction_tt": 1787958395301024,
+   "pinned": true,
+   "exempted_verdict": "fresh",
+   "stripped_verdict": "possibly-stale",
+   "avoided_by_exemption": true,
+   "exempt_receipt": {
+    "basis": 1434984508663412,
+    "batches": 13,
+    "tt_range": [
+     1783612865737377,
+     1787958395301024
+    ],
+    "theorem": "T1"
+   },
+   "scope_path": "leaf-basis"
+  },
+  {
+   "store": "collegemsg",
+   "op": "temporal_reachability",
+   "args_form": {
+    "as_of_tt": 1434984508663412,
+    "src": "n1054",
+    "window": {
+     "t_a": 1082040961000000,
+     "t_b": 1092222028450631
+    }
+   },
+   "as_of_tt": 1434984508663412,
+   "frontier_tt": 1787928056326825,
+   "correction_tt": 1787958397591835,
+   "pinned": true,
+   "exempted_verdict": "fresh",
+   "stripped_verdict": "possibly-stale",
+   "avoided_by_exemption": true,
+   "exempt_receipt": {
+    "basis": 1434984508663412,
+    "batches": 13,
+    "tt_range": [
+     1783612865737377,
+     1787958397591835
+    ],
+    "theorem": "T1"
+   },
+   "scope_path": "leaf-basis"
+  },
+  {
+   "store": "collegemsg",
+   "op": "temporal_paths",
+   "args_form": {
+    "as_of_tt": 1434984508663412,
+    "src": "n1060",
+    "dst": "n1060",
+    "window": {
+     "t_a": 1082040961000000,
+     "t_b": 1092222028450631
+    },
+    "k": 2
+   },
+   "as_of_tt": 1434984508663412,
+   "frontier_tt": 1787928056326825,
+   "correction_tt": 1787958399848938,
+   "pinned": true,
+   "exempted_verdict": "fresh",
+   "stripped_verdict": "possibly-stale",
+   "avoided_by_exemption": true,
+   "exempt_receipt": {
+    "basis": 1434984508663412,
+    "batches": 13,
+    "tt_range": [
+     1783612865737377,
+     1787958399848938
+    ],
+    "theorem": "T1"
+   },
+   "scope_path": "leaf-basis"
+  },
+  {
+   "store": "collegemsg",
+   "op": "entity_history",
+   "args_form": {
+    "as_of_tt": 1434984508663412,
+    "uid": "n1062"
+   },
+   "as_of_tt": 1434984508663412,
+   "frontier_tt": 1787928056326825,
+   "correction_tt": 1787958402096118,
+   "pinned": true,
+   "exempted_verdict": "fresh",
+   "stripped_verdict": "possibly-stale",
+   "avoided_by_exemption": true,
+   "exempt_receipt": {
+    "basis": 1434984508663412,
+    "batches": 13,
+    "tt_range": [
+     1783612865737377,
+     1787958402096118
+    ],
+    "theorem": "T1"
+   },
+   "scope_path": "leaf-basis"
+  },
+  {
+   "store": "collegemsg",
+   "op": "version_history",
+   "args_form": {
+    "as_of_tt": 1434984508663412,
+    "kind": "node",
+    "window": {
+     "t_a": 1082040961000000,
+     "t_b": 1092222028450631
+    }
+   },
+   "as_of_tt": 1434984508663412,
+   "frontier_tt": 1787928056326825,
+   "correction_tt": 1787958404372883,
+   "pinned": true,
+   "exempted_verdict": "fresh",
+   "stripped_verdict": "possibly-stale",
+   "avoided_by_exemption": true,
+   "exempt_receipt": {
+    "basis": 1434984508663412,
+    "batches": 13,
+    "tt_range": [
+     1783612865737377,
+     1787958404372883
+    ],
+    "theorem": "T1"
+   },
+   "scope_path": "leaf-basis"
+  },
+  {
+   "store": "collegemsg",
+   "op": "snapshot_subgraph",
+   "args_form": {
+    "as_of_tt": 1434984508663412,
+    "seeds": [
+     "n1070"
+    ],
+    "t_valid": 1087131494725315,
+    "hops": 1
+   },
+   "as_of_tt": 1434984508663412,
+   "frontier_tt": 1787928056326825,
+   "correction_tt": 1787958406623485,
+   "pinned": true,
+   "exempted_verdict": "fresh",
+   "stripped_verdict": "possibly-stale",
+   "avoided_by_exemption": true,
+   "exempt_receipt": {
+    "basis": 1434984508663412,
+    "batches": 13,
+    "tt_range": [
+     1783612865737377,
+     1787958406623485
+    ],
+    "theorem": "T1"
+   },
+   "scope_path": "leaf-basis"
+  },
+  {
+   "store": "collegemsg",
+   "op": "diff_snapshots",
+   "args_form": {
+    "as_of_tt": 1434984508663412,
+    "t1": 1082040961000001,
+    "t2": 1087131494725315
+   },
+   "as_of_tt": 1434984508663412,
+   "frontier_tt": 1787928056326825,
+   "correction_tt": 1787958408868446,
+   "pinned": true,
+   "exempted_verdict": "fresh",
+   "stripped_verdict": "possibly-stale",
+   "avoided_by_exemption": true,
+   "exempt_receipt": {
+    "basis": 1434984508663412,
+    "batches": 13,
+    "tt_range": [
+     1783612865737377,
+     1787958408868446
+    ],
+    "theorem": "T1"
+   },
+   "scope_path": "leaf-basis"
+  },
+  {
+   "store": "collegemsg",
+   "op": "neighborhood_evolution",
+   "args_form": {
+    "as_of_tt": 1434984508663412,
+    "uid": "n1073",
+    "t1": 1082040961000000,
+    "t2": 1092222028450631,
+    "stride": 1272633431328
+   },
+   "as_of_tt": 1434984508663412,
+   "frontier_tt": 1787928056326825,
+   "correction_tt": 1787958411159399,
+   "pinned": true,
+   "exempted_verdict": "fresh",
+   "stripped_verdict": "possibly-stale",
+   "avoided_by_exemption": true,
+   "exempt_receipt": {
+    "basis": 1434984508663412,
+    "batches": 13,
+    "tt_range": [
+     1783612865737377,
+     1787958411159399
+    ],
+    "theorem": "T1"
+   },
+   "scope_path": "leaf-basis"
+  },
+  {
+   "store": "collegemsg",
+   "op": "aggregate_events",
+   "args_form": {
+    "as_of_tt": 1434984508663412,
+    "group_by": [
+     {
+      "dim": "endpoint",
+      "role": "src"
+     }
+    ],
+    "aggregates": [
+     {
+      "agg": "count"
+     }
+    ],
+    "window": {
+     "t_a": 1082040961000000,
+     "t_b": 1092222028450631
+    }
+   },
+   "as_of_tt": 1434984508663412,
+   "frontier_tt": 1787928056326825,
+   "correction_tt": 1787958413451840,
+   "pinned": true,
+   "exempted_verdict": "fresh",
+   "stripped_verdict": "possibly-stale",
+   "avoided_by_exemption": true,
+   "exempt_receipt": {
+    "basis": 1434984508663412,
+    "batches": 13,
+    "tt_range": [
+     1783612865737377,
+     1787958413451840
+    ],
+    "theorem": "T1"
+   },
+   "scope_path": "leaf-basis"
+  },
+  {
+   "store": "collegemsg",
+   "op": "graph_metric_timeseries",
+   "args_form": {
+    "as_of_tt": 1434984508663412,
+    "metric": "node_count",
+    "window": {
+     "t_a": 1082040961000000,
+     "t_b": 1092222028450631
+    },
+    "stride": 1272633431328
+   },
+   "as_of_tt": 1434984508663412,
+   "frontier_tt": 1787928056326825,
+   "correction_tt": 1787958415693691,
+   "pinned": true,
+   "exempted_verdict": "fresh",
+   "stripped_verdict": "possibly-stale",
+   "avoided_by_exemption": true,
+   "exempt_receipt": {
+    "basis": 1434984508663412,
+    "batches": 13,
+    "tt_range": [
+     1783612865737377,
+     1787958415693691
+    ],
+    "theorem": "T1"
+   },
+   "scope_path": "leaf-basis"
+  },
+  {
+   "store": "collegemsg",
+   "op": "burst_detection",
+   "args_form": {
+    "as_of_tt": 1434984508663412,
+    "target": {
+     "kind": "node_activity",
+     "uid": "n1099"
+    },
+    "window": {
+     "t_a": 1082040961000000,
+     "t_b": 1092222028450631
+    },
+    "stride": 636316715664
+   },
+   "as_of_tt": 1434984508663412,
+   "frontier_tt": 1787928056326825,
+   "correction_tt": 1787958417950077,
+   "pinned": true,
+   "exempted_verdict": "fresh",
+   "stripped_verdict": "possibly-stale",
+   "avoided_by_exemption": true,
+   "exempt_receipt": {
+    "basis": 1434984508663412,
+    "batches": 13,
+    "tt_range": [
+     1783612865737377,
+     1787958417950077
+    ],
+    "theorem": "T1"
+   },
+   "scope_path": "leaf-basis"
+  },
+  {
+   "store": "collegemsg",
+   "op": "co_active",
+   "args_form": {
+    "as_of_tt": 1434984508663412,
+    "a_spec": {
+     "rel_type": "MSG"
+    },
+    "b_spec": {
+     "rel_type": "MSG"
+    },
+    "allen_relation": {
+     "relation": "overlaps"
+    },
+    "limit": 200
+   },
+   "as_of_tt": 1434984508663412,
+   "frontier_tt": 1787928056326825,
+   "correction_tt": 1787958420232146,
+   "pinned": true,
+   "exempted_verdict": "fresh",
+   "stripped_verdict": "possibly-stale",
+   "avoided_by_exemption": true,
+   "exempt_receipt": {
+    "basis": 1434984508663412,
+    "batches": 13,
+    "tt_range": [
+     1783612865737377,
+     1787958420232146
+    ],
+    "theorem": "T1"
+   },
+   "scope_path": "leaf-basis"
+  },
+  {
+   "store": "collegemsg",
+   "op": "count_temporal_motifs",
+   "args_form": {
+    "as_of_tt": 1434984508663412,
+    "motif": "M_2node_pingpong",
+    "window": {
+     "t_a": 1082040961000000,
+     "t_b": 1092222028450631
+    },
+    "delta": 1272633431328
+   },
+   "as_of_tt": 1434984508663412,
+   "frontier_tt": 1787928056326825,
+   "correction_tt": 1787958422526808,
+   "pinned": true,
+   "exempted_verdict": "fresh",
+   "stripped_verdict": "possibly-stale",
+   "avoided_by_exemption": true,
+   "exempt_receipt": {
+    "basis": 1434984508663412,
+    "batches": 13,
+    "tt_range": [
+     1783612865737377,
+     1787958422526808
+    ],
+    "theorem": "T1"
+   },
+   "scope_path": "leaf-basis"
+  },
+  {
+   "store": "collegemsg",
+   "op": "find_temporal_motif_instances",
+   "args_form": {
+    "as_of_tt": 1434984508663412,
+    "motif": "M_2node_pingpong",
+    "window": {
+     "t_a": 1082040961000000,
+     "t_b": 1092222028450631
+    },
+    "delta": 1272633431328,
+    "limit": 50
+   },
+   "as_of_tt": 1434984508663412,
+   "frontier_tt": 1787928056326825,
+   "correction_tt": 1787958424761086,
+   "pinned": true,
+   "exempted_verdict": "fresh",
+   "stripped_verdict": "possibly-stale",
+   "avoided_by_exemption": true,
+   "exempt_receipt": {
+    "basis": 1434984508663412,
+    "batches": 13,
+    "tt_range": [
+     1783612865737377,
+     1787958424761086
+    ],
+    "theorem": "T1"
+   },
+   "scope_path": "leaf-basis"
+  },
+  {
+   "store": "collegemsg",
+   "op": "temporal_reachability",
+   "args_form": {
+    "as_of_tt": 1434984508663412,
+    "src": "n1108",
+    "window": {
+     "t_a": 1082040961000000,
+     "t_b": 1092222028450631
+    }
+   },
+   "as_of_tt": 1434984508663412,
+   "frontier_tt": 1787928056326825,
+   "correction_tt": 1787958427035827,
+   "pinned": true,
+   "exempted_verdict": "fresh",
+   "stripped_verdict": "possibly-stale",
+   "avoided_by_exemption": true,
+   "exempt_receipt": {
+    "basis": 1434984508663412,
+    "batches": 13,
+    "tt_range": [
+     1783612865737377,
+     1787958427035827
+    ],
+    "theorem": "T1"
+   },
+   "scope_path": "leaf-basis"
+  },
+  {
+   "store": "collegemsg",
+   "op": "temporal_paths",
+   "args_form": {
+    "as_of_tt": 1434984508663412,
+    "src": "n1111",
+    "dst": "n1111",
+    "window": {
+     "t_a": 1082040961000000,
+     "t_b": 1092222028450631
+    },
+    "k": 2
+   },
+   "as_of_tt": 1434984508663412,
+   "frontier_tt": 1787928056326825,
+   "correction_tt": 1787958429325434,
+   "pinned": true,
+   "exempted_verdict": "fresh",
+   "stripped_verdict": "possibly-stale",
+   "avoided_by_exemption": true,
+   "exempt_receipt": {
+    "basis": 1434984508663412,
+    "batches": 13,
+    "tt_range": [
+     1783612865737377,
+     1787958429325434
+    ],
+    "theorem": "T1"
+   },
+   "scope_path": "leaf-basis"
+  },
+  {
+   "store": "collegemsg",
+   "op": "entity_history",
+   "args_form": {
+    "as_of_tt": 1434984508663412,
+    "uid": "n1119"
+   },
+   "as_of_tt": 1434984508663412,
+   "frontier_tt": 1787928056326825,
+   "correction_tt": 1787958431620996,
+   "pinned": true,
+   "exempted_verdict": "fresh",
+   "stripped_verdict": "possibly-stale",
+   "avoided_by_exemption": true,
+   "exempt_receipt": {
+    "basis": 1434984508663412,
+    "batches": 13,
+    "tt_range": [
+     1783612865737377,
+     1787958431620996
+    ],
+    "theorem": "T1"
+   },
+   "scope_path": "leaf-basis"
+  },
+  {
+   "store": "collegemsg",
+   "op": "version_history",
+   "args_form": {
+    "as_of_tt": 1434984508663412,
+    "kind": "node",
+    "window": {
+     "t_a": 1082040961000000,
+     "t_b": 1092222028450631
+    }
+   },
+   "as_of_tt": 1434984508663412,
+   "frontier_tt": 1787928056326825,
+   "correction_tt": 1787958433865953,
+   "pinned": true,
+   "exempted_verdict": "fresh",
+   "stripped_verdict": "possibly-stale",
+   "avoided_by_exemption": true,
+   "exempt_receipt": {
+    "basis": 1434984508663412,
+    "batches": 13,
+    "tt_range": [
+     1783612865737377,
+     1787958433865953
+    ],
+    "theorem": "T1"
+   },
+   "scope_path": "leaf-basis"
+  },
+  {
+   "store": "collegemsg",
+   "op": "snapshot_subgraph",
+   "args_form": {
+    "as_of_tt": 1434984508663412,
+    "seeds": [
+     "n1124"
+    ],
+    "t_valid": 1087131494725315,
+    "hops": 1
+   },
+   "as_of_tt": 1434984508663412,
+   "frontier_tt": 1787928056326825,
+   "correction_tt": 1787958436147740,
+   "pinned": true,
+   "exempted_verdict": "fresh",
+   "stripped_verdict": "possibly-stale",
+   "avoided_by_exemption": true,
+   "exempt_receipt": {
+    "basis": 1434984508663412,
+    "batches": 13,
+    "tt_range": [
+     1783612865737377,
+     1787958436147740
+    ],
+    "theorem": "T1"
+   },
+   "scope_path": "leaf-basis"
+  },
+  {
+   "store": "collegemsg",
+   "op": "diff_snapshots",
+   "args_form": {
+    "as_of_tt": 1434984508663412,
+    "t1": 1082040961000001,
+    "t2": 1087131494725315
+   },
+   "as_of_tt": 1434984508663412,
+   "frontier_tt": 1787928056326825,
+   "correction_tt": 1787958438444750,
+   "pinned": true,
+   "exempted_verdict": "fresh",
+   "stripped_verdict": "possibly-stale",
+   "avoided_by_exemption": true,
+   "exempt_receipt": {
+    "basis": 1434984508663412,
+    "batches": 13,
+    "tt_range": [
+     1783612865737377,
+     1787958438444750
+    ],
+    "theorem": "T1"
+   },
+   "scope_path": "leaf-basis"
+  },
+  {
+   "store": "collegemsg",
+   "op": "neighborhood_evolution",
+   "args_form": {
+    "as_of_tt": 1434984508663412,
+    "uid": "n1131",
+    "t1": 1082040961000000,
+    "t2": 1092222028450631,
+    "stride": 1272633431328
+   },
+   "as_of_tt": 1434984508663412,
+   "frontier_tt": 1787928056326825,
+   "correction_tt": 1787958440694301,
+   "pinned": true,
+   "exempted_verdict": "fresh",
+   "stripped_verdict": "possibly-stale",
+   "avoided_by_exemption": true,
+   "exempt_receipt": {
+    "basis": 1434984508663412,
+    "batches": 13,
+    "tt_range": [
+     1783612865737377,
+     1787958440694301
+    ],
+    "theorem": "T1"
+   },
+   "scope_path": "leaf-basis"
+  },
+  {
+   "store": "collegemsg",
+   "op": "aggregate_events",
+   "args_form": {
+    "as_of_tt": 1434984508663412,
+    "group_by": [
+     {
+      "dim": "endpoint",
+      "role": "src"
+     }
+    ],
+    "aggregates": [
+     {
+      "agg": "count"
+     }
+    ],
+    "window": {
+     "t_a": 1082040961000000,
+     "t_b": 1092222028450631
+    }
+   },
+   "as_of_tt": 1434984508663412,
+   "frontier_tt": 1787928056326825,
+   "correction_tt": 1787958442971088,
+   "pinned": true,
+   "exempted_verdict": "fresh",
+   "stripped_verdict": "possibly-stale",
+   "avoided_by_exemption": true,
+   "exempt_receipt": {
+    "basis": 1434984508663412,
+    "batches": 13,
+    "tt_range": [
+     1783612865737377,
+     1787958442971088
+    ],
+    "theorem": "T1"
+   },
+   "scope_path": "leaf-basis"
+  },
+  {
+   "store": "collegemsg",
+   "op": "graph_metric_timeseries",
+   "args_form": {
+    "as_of_tt": 1434984508663412,
+    "metric": "node_count",
+    "window": {
+     "t_a": 1082040961000000,
+     "t_b": 1092222028450631
+    },
+    "stride": 1272633431328
+   },
+   "as_of_tt": 1434984508663412,
+   "frontier_tt": 1787928056326825,
+   "correction_tt": 1787958445222924,
+   "pinned": true,
+   "exempted_verdict": "fresh",
+   "stripped_verdict": "possibly-stale",
+   "avoided_by_exemption": true,
+   "exempt_receipt": {
+    "basis": 1434984508663412,
+    "batches": 13,
+    "tt_range": [
+     1783612865737377,
+     1787958445222924
+    ],
+    "theorem": "T1"
+   },
+   "scope_path": "leaf-basis"
+  },
+  {
+   "store": "collegemsg",
+   "op": "burst_detection",
+   "args_form": {
+    "as_of_tt": 1434984508663412,
+    "target": {
+     "kind": "node_activity",
+     "uid": "n1142"
+    },
+    "window": {
+     "t_a": 1082040961000000,
+     "t_b": 1092222028450631
+    },
+    "stride": 636316715664
+   },
+   "as_of_tt": 1434984508663412,
+   "frontier_tt": 1787928056326825,
+   "correction_tt": 1787958447458636,
+   "pinned": true,
+   "exempted_verdict": "fresh",
+   "stripped_verdict": "possibly-stale",
+   "avoided_by_exemption": true,
+   "exempt_receipt": {
+    "basis": 1434984508663412,
+    "batches": 13,
+    "tt_range": [
+     1783612865737377,
+     1787958447458636
+    ],
+    "theorem": "T1"
+   },
+   "scope_path": "leaf-basis"
+  },
+  {
+   "store": "collegemsg",
+   "op": "co_active",
+   "args_form": {
+    "as_of_tt": 1434984508663412,
+    "a_spec": {
+     "rel_type": "MSG"
+    },
+    "b_spec": {
+     "rel_type": "MSG"
+    },
+    "allen_relation": {
+     "relation": "overlaps"
+    },
+    "limit": 200
+   },
+   "as_of_tt": 1434984508663412,
+   "frontier_tt": 1787928056326825,
+   "correction_tt": 1787958449714059,
+   "pinned": true,
+   "exempted_verdict": "fresh",
+   "stripped_verdict": "possibly-stale",
+   "avoided_by_exemption": true,
+   "exempt_receipt": {
+    "basis": 1434984508663412,
+    "batches": 13,
+    "tt_range": [
+     1783612865737377,
+     1787958449714059
+    ],
+    "theorem": "T1"
+   },
+   "scope_path": "leaf-basis"
+  },
+  {
+   "store": "collegemsg",
+   "op": "count_temporal_motifs",
+   "args_form": {
+    "as_of_tt": 1434984508663412,
+    "motif": "M_2node_pingpong",
+    "window": {
+     "t_a": 1082040961000000,
+     "t_b": 1092222028450631
+    },
+    "delta": 1272633431328
+   },
+   "as_of_tt": 1434984508663412,
+   "frontier_tt": 1787928056326825,
+   "correction_tt": 1787958451975618,
+   "pinned": true,
+   "exempted_verdict": "fresh",
+   "stripped_verdict": "possibly-stale",
+   "avoided_by_exemption": true,
+   "exempt_receipt": {
+    "basis": 1434984508663412,
+    "batches": 13,
+    "tt_range": [
+     1783612865737377,
+     1787958451975618
+    ],
+    "theorem": "T1"
+   },
+   "scope_path": "leaf-basis"
+  },
+  {
+   "store": "collegemsg",
+   "op": "find_temporal_motif_instances",
+   "args_form": {
+    "as_of_tt": 1434984508663412,
+    "motif": "M_2node_pingpong",
+    "window": {
+     "t_a": 1082040961000000,
+     "t_b": 1092222028450631
+    },
+    "delta": 1272633431328,
+    "limit": 50
+   },
+   "as_of_tt": 1434984508663412,
+   "frontier_tt": 1787928056326825,
+   "correction_tt": 1787958454234467,
+   "pinned": true,
+   "exempted_verdict": "fresh",
+   "stripped_verdict": "possibly-stale",
+   "avoided_by_exemption": true,
+   "exempt_receipt": {
+    "basis": 1434984508663412,
+    "batches": 13,
+    "tt_range": [
+     1783612865737377,
+     1787958454234467
+    ],
+    "theorem": "T1"
+   },
+   "scope_path": "leaf-basis"
+  },
+  {
+   "store": "collegemsg",
+   "op": "temporal_reachability",
+   "args_form": {
+    "as_of_tt": 1434984508663412,
+    "src": "n1161",
+    "window": {
+     "t_a": 1082040961000000,
+     "t_b": 1092222028450631
+    }
+   },
+   "as_of_tt": 1434984508663412,
+   "frontier_tt": 1787928056326825,
+   "correction_tt": 1787958456509558,
+   "pinned": true,
+   "exempted_verdict": "fresh",
+   "stripped_verdict": "possibly-stale",
+   "avoided_by_exemption": true,
+   "exempt_receipt": {
+    "basis": 1434984508663412,
+    "batches": 13,
+    "tt_range": [
+     1783612865737377,
+     1787958456509558
+    ],
+    "theorem": "T1"
+   },
+   "scope_path": "leaf-basis"
+  },
+  {
+   "store": "collegemsg",
+   "op": "temporal_paths",
+   "args_form": {
+    "as_of_tt": 1434984508663412,
+    "src": "n1177",
+    "dst": "n1177",
+    "window": {
+     "t_a": 1082040961000000,
+     "t_b": 1092222028450631
+    },
+    "k": 2
+   },
+   "as_of_tt": 1434984508663412,
+   "frontier_tt": 1787928056326825,
+   "correction_tt": 1787958458801161,
+   "pinned": true,
+   "exempted_verdict": "fresh",
+   "stripped_verdict": "possibly-stale",
+   "avoided_by_exemption": true,
+   "exempt_receipt": {
+    "basis": 1434984508663412,
+    "batches": 13,
+    "tt_range": [
+     1783612865737377,
+     1787958458801161
+    ],
+    "theorem": "T1"
+   },
+   "scope_path": "leaf-basis"
+  },
+  {
+   "store": "collegemsg",
+   "op": "entity_history",
+   "args_form": {
+    "as_of_tt": 1434984508663412,
+    "uid": "n118"
+   },
+   "as_of_tt": 1434984508663412,
+   "frontier_tt": 1787928056326825,
+   "correction_tt": 1787958461037850,
+   "pinned": true,
+   "exempted_verdict": "fresh",
+   "stripped_verdict": "possibly-stale",
+   "avoided_by_exemption": true,
+   "exempt_receipt": {
+    "basis": 1434984508663412,
+    "batches": 13,
+    "tt_range": [
+     1783612865737377,
+     1787958461037850
+    ],
+    "theorem": "T1"
+   },
+   "scope_path": "leaf-basis"
+  },
+  {
+   "store": "collegemsg",
+   "op": "version_history",
+   "args_form": {
+    "as_of_tt": 1434984508663412,
+    "kind": "node",
+    "window": {
+     "t_a": 1082040961000000,
+     "t_b": 1092222028450631
+    }
+   },
+   "as_of_tt": 1434984508663412,
+   "frontier_tt": 1787928056326825,
+   "correction_tt": 1787958463300114,
+   "pinned": true,
+   "exempted_verdict": "fresh",
+   "stripped_verdict": "possibly-stale",
+   "avoided_by_exemption": true,
+   "exempt_receipt": {
+    "basis": 1434984508663412,
+    "batches": 13,
+    "tt_range": [
+     1783612865737377,
+     1787958463300114
+    ],
+    "theorem": "T1"
+   },
+   "scope_path": "leaf-basis"
+  },
+  {
+   "store": "collegemsg",
+   "op": "snapshot_subgraph",
+   "args_form": {
+    "as_of_tt": 1434984508663412,
+    "seeds": [
+     "n12"
+    ],
+    "t_valid": 1087131494725315,
+    "hops": 1
+   },
+   "as_of_tt": 1434984508663412,
+   "frontier_tt": 1787928056326825,
+   "correction_tt": 1787958465561353,
+   "pinned": true,
+   "exempted_verdict": "fresh",
+   "stripped_verdict": "possibly-stale",
+   "avoided_by_exemption": true,
+   "exempt_receipt": {
+    "basis": 1434984508663412,
+    "batches": 13,
+    "tt_range": [
+     1783612865737377,
+     1787958465561353
+    ],
+    "theorem": "T1"
+   },
+   "scope_path": "leaf-basis"
+  },
+  {
+   "store": "collegemsg",
+   "op": "diff_snapshots",
+   "args_form": {
+    "as_of_tt": 1434984508663412,
+    "t1": 1082040961000001,
+    "t2": 1087131494725315
+   },
+   "as_of_tt": 1434984508663412,
+   "frontier_tt": 1787928056326825,
+   "correction_tt": 1787958467845831,
+   "pinned": true,
+   "exempted_verdict": "fresh",
+   "stripped_verdict": "possibly-stale",
+   "avoided_by_exemption": true,
+   "exempt_receipt": {
+    "basis": 1434984508663412,
+    "batches": 13,
+    "tt_range": [
+     1783612865737377,
+     1787958467845831
+    ],
+    "theorem": "T1"
+   },
+   "scope_path": "leaf-basis"
+  },
+  {
+   "store": "collegemsg",
+   "op": "neighborhood_evolution",
+   "args_form": {
+    "as_of_tt": 1434984508663412,
+    "uid": "n1202",
+    "t1": 1082040961000000,
+    "t2": 1092222028450631,
+    "stride": 1272633431328
+   },
+   "as_of_tt": 1434984508663412,
+   "frontier_tt": 1787928056326825,
+   "correction_tt": 1787958470148133,
+   "pinned": true,
+   "exempted_verdict": "fresh",
+   "stripped_verdict": "possibly-stale",
+   "avoided_by_exemption": true,
+   "exempt_receipt": {
+    "basis": 1434984508663412,
+    "batches": 13,
+    "tt_range": [
+     1783612865737377,
+     1787958470148133
+    ],
+    "theorem": "T1"
+   },
+   "scope_path": "leaf-basis"
+  },
+  {
+   "store": "collegemsg",
+   "op": "aggregate_events",
+   "args_form": {
+    "as_of_tt": 1434984508663412,
+    "group_by": [
+     {
+      "dim": "endpoint",
+      "role": "src"
+     }
+    ],
+    "aggregates": [
+     {
+      "agg": "count"
+     }
+    ],
+    "window": {
+     "t_a": 1082040961000000,
+     "t_b": 1092222028450631
+    }
+   },
+   "as_of_tt": 1434984508663412,
+   "frontier_tt": 1787928056326825,
+   "correction_tt": 1787958472388240,
+   "pinned": true,
+   "exempted_verdict": "fresh",
+   "stripped_verdict": "possibly-stale",
+   "avoided_by_exemption": true,
+   "exempt_receipt": {
+    "basis": 1434984508663412,
+    "batches": 13,
+    "tt_range": [
+     1783612865737377,
+     1787958472388240
+    ],
+    "theorem": "T1"
+   },
+   "scope_path": "leaf-basis"
+  },
+  {
+   "store": "collegemsg",
+   "op": "graph_metric_timeseries",
+   "args_form": {
+    "as_of_tt": 1434984508663412,
+    "metric": "node_count",
+    "window": {
+     "t_a": 1082040961000000,
+     "t_b": 1092222028450631
+    },
+    "stride": 1272633431328
+   },
+   "as_of_tt": 1434984508663412,
+   "frontier_tt": 1787928056326825,
+   "correction_tt": 1787958474670166,
+   "pinned": true,
+   "exempted_verdict": "fresh",
+   "stripped_verdict": "possibly-stale",
+   "avoided_by_exemption": true,
+   "exempt_receipt": {
+    "basis": 1434984508663412,
+    "batches": 13,
+    "tt_range": [
+     1783612865737377,
+     1787958474670166
+    ],
+    "theorem": "T1"
+   },
+   "scope_path": "leaf-basis"
+  },
+  {
+   "store": "collegemsg",
+   "op": "burst_detection",
+   "args_form": {
+    "as_of_tt": 1434984508663412,
+    "target": {
+     "kind": "node_activity",
+     "uid": "n1211"
+    },
+    "window": {
+     "t_a": 1082040961000000,
+     "t_b": 1092222028450631
+    },
+    "stride": 636316715664
+   },
+   "as_of_tt": 1434984508663412,
+   "frontier_tt": 1787928056326825,
+   "correction_tt": 1787958476921857,
+   "pinned": true,
+   "exempted_verdict": "fresh",
+   "stripped_verdict": "possibly-stale",
+   "avoided_by_exemption": true,
+   "exempt_receipt": {
+    "basis": 1434984508663412,
+    "batches": 13,
+    "tt_range": [
+     1783612865737377,
+     1787958476921857
+    ],
+    "theorem": "T1"
+   },
+   "scope_path": "leaf-basis"
+  },
+  {
+   "store": "collegemsg",
+   "op": "co_active",
+   "args_form": {
+    "as_of_tt": 1434984508663412,
+    "a_spec": {
+     "rel_type": "MSG"
+    },
+    "b_spec": {
+     "rel_type": "MSG"
+    },
+    "allen_relation": {
+     "relation": "overlaps"
+    },
+    "limit": 200
+   },
+   "as_of_tt": 1434984508663412,
+   "frontier_tt": 1787928056326825,
+   "correction_tt": 1787958479159550,
+   "pinned": true,
+   "exempted_verdict": "fresh",
+   "stripped_verdict": "possibly-stale",
+   "avoided_by_exemption": true,
+   "exempt_receipt": {
+    "basis": 1434984508663412,
+    "batches": 13,
+    "tt_range": [
+     1783612865737377,
+     1787958479159550
+    ],
+    "theorem": "T1"
+   },
+   "scope_path": "leaf-basis"
+  },
+  {
+   "store": "collegemsg",
+   "op": "count_temporal_motifs",
+   "args_form": {
+    "as_of_tt": 1434984508663412,
+    "motif": "M_2node_pingpong",
+    "window": {
+     "t_a": 1082040961000000,
+     "t_b": 1092222028450631
+    },
+    "delta": 1272633431328
+   },
+   "as_of_tt": 1434984508663412,
+   "frontier_tt": 1787928056326825,
+   "correction_tt": 1787958481415112,
+   "pinned": true,
+   "exempted_verdict": "fresh",
+   "stripped_verdict": "possibly-stale",
+   "avoided_by_exemption": true,
+   "exempt_receipt": {
+    "basis": 1434984508663412,
+    "batches": 13,
+    "tt_range": [
+     1783612865737377,
+     1787958481415112
+    ],
+    "theorem": "T1"
+   },
+   "scope_path": "leaf-basis"
+  },
+  {
+   "store": "collegemsg",
+   "op": "find_temporal_motif_instances",
+   "args_form": {
+    "as_of_tt": 1434984508663412,
+    "motif": "M_2node_pingpong",
+    "window": {
+     "t_a": 1082040961000000,
+     "t_b": 1092222028450631
+    },
+    "delta": 1272633431328,
+    "limit": 50
+   },
+   "as_of_tt": 1434984508663412,
+   "frontier_tt": 1787928056326825,
+   "correction_tt": 1787958483662265,
+   "pinned": true,
+   "exempted_verdict": "fresh",
+   "stripped_verdict": "possibly-stale",
+   "avoided_by_exemption": true,
+   "exempt_receipt": {
+    "basis": 1434984508663412,
+    "batches": 13,
+    "tt_range": [
+     1783612865737377,
+     1787958483662265
+    ],
+    "theorem": "T1"
+   },
+   "scope_path": "leaf-basis"
+  },
+  {
+   "store": "collegemsg",
+   "op": "temporal_reachability",
+   "args_form": {
+    "as_of_tt": 1434984508663412,
+    "src": "n1233",
+    "window": {
+     "t_a": 1082040961000000,
+     "t_b": 1092222028450631
+    }
+   },
+   "as_of_tt": 1434984508663412,
+   "frontier_tt": 1787928056326825,
+   "correction_tt": 1787958485937478,
+   "pinned": true,
+   "exempted_verdict": "fresh",
+   "stripped_verdict": "possibly-stale",
+   "avoided_by_exemption": true,
+   "exempt_receipt": {
+    "basis": 1434984508663412,
+    "batches": 13,
+    "tt_range": [
+     1783612865737377,
+     1787958485937478
+    ],
+    "theorem": "T1"
+   },
+   "scope_path": "leaf-basis"
+  },
+  {
+   "store": "collegemsg",
+   "op": "temporal_paths",
+   "args_form": {
+    "as_of_tt": 1434984508663412,
+    "src": "n1243",
+    "dst": "n1243",
+    "window": {
+     "t_a": 1082040961000000,
+     "t_b": 1092222028450631
+    },
+    "k": 2
+   },
+   "as_of_tt": 1434984508663412,
+   "frontier_tt": 1787928056326825,
+   "correction_tt": 1787958488227459,
+   "pinned": true,
+   "exempted_verdict": "fresh",
+   "stripped_verdict": "possibly-stale",
+   "avoided_by_exemption": true,
+   "exempt_receipt": {
+    "basis": 1434984508663412,
+    "batches": 13,
+    "tt_range": [
+     1783612865737377,
+     1787958488227459
+    ],
+    "theorem": "T1"
+   },
+   "scope_path": "leaf-basis"
+  },
+  {
+   "store": "collegemsg",
+   "op": "entity_history",
+   "args_form": {
+    "as_of_tt": 1434984508663412,
+    "uid": "n1246"
+   },
+   "as_of_tt": 1434984508663412,
+   "frontier_tt": 1787928056326825,
+   "correction_tt": 1787958490456616,
+   "pinned": true,
+   "exempted_verdict": "fresh",
+   "stripped_verdict": "possibly-stale",
+   "avoided_by_exemption": true,
+   "exempt_receipt": {
+    "basis": 1434984508663412,
+    "batches": 13,
+    "tt_range": [
+     1783612865737377,
+     1787958490456616
+    ],
+    "theorem": "T1"
+   },
+   "scope_path": "leaf-basis"
+  },
+  {
+   "store": "collegemsg",
+   "op": "version_history",
+   "args_form": {
+    "as_of_tt": 1434984508663412,
+    "kind": "node",
+    "window": {
+     "t_a": 1082040961000000,
+     "t_b": 1092222028450631
+    }
+   },
+   "as_of_tt": 1434984508663412,
+   "frontier_tt": 1787928056326825,
+   "correction_tt": 1787958492746237,
+   "pinned": true,
+   "exempted_verdict": "fresh",
+   "stripped_verdict": "possibly-stale",
+   "avoided_by_exemption": true,
+   "exempt_receipt": {
+    "basis": 1434984508663412,
+    "batches": 13,
+    "tt_range": [
+     1783612865737377,
+     1787958492746237
+    ],
+    "theorem": "T1"
+   },
+   "scope_path": "leaf-basis"
+  },
+  {
+   "store": "collegemsg",
+   "op": "snapshot_subgraph",
+   "args_form": {
+    "as_of_tt": 1434984508663412,
+    "seeds": [
+     "n125"
+    ],
+    "t_valid": 1087131494725315,
+    "hops": 1
+   },
+   "as_of_tt": 1434984508663412,
+   "frontier_tt": 1787928056326825,
+   "correction_tt": 1787958495044545,
+   "pinned": true,
+   "exempted_verdict": "fresh",
+   "stripped_verdict": "possibly-stale",
+   "avoided_by_exemption": true,
+   "exempt_receipt": {
+    "basis": 1434984508663412,
+    "batches": 13,
+    "tt_range": [
+     1783612865737377,
+     1787958495044545
+    ],
+    "theorem": "T1"
+   },
+   "scope_path": "leaf-basis"
+  },
+  {
+   "store": "collegemsg",
+   "op": "diff_snapshots",
+   "args_form": {
+    "as_of_tt": 1434984508663412,
+    "t1": 1082040961000001,
+    "t2": 1087131494725315
+   },
+   "as_of_tt": 1434984508663412,
+   "frontier_tt": 1787928056326825,
+   "correction_tt": 1787958497285135,
+   "pinned": true,
+   "exempted_verdict": "fresh",
+   "stripped_verdict": "possibly-stale",
+   "avoided_by_exemption": true,
+   "exempt_receipt": {
+    "basis": 1434984508663412,
+    "batches": 13,
+    "tt_range": [
+     1783612865737377,
+     1787958497285135
+    ],
+    "theorem": "T1"
+   },
+   "scope_path": "leaf-basis"
+  },
+  {
+   "store": "collegemsg",
+   "op": "neighborhood_evolution",
+   "args_form": {
+    "as_of_tt": 1434984508663412,
+    "uid": "n126",
+    "t1": 1082040961000000,
+    "t2": 1092222028450631,
+    "stride": 1272633431328
+   },
+   "as_of_tt": 1434984508663412,
+   "frontier_tt": 1787928056326825,
+   "correction_tt": 1787958499550312,
+   "pinned": true,
+   "exempted_verdict": "fresh",
+   "stripped_verdict": "possibly-stale",
+   "avoided_by_exemption": true,
+   "exempt_receipt": {
+    "basis": 1434984508663412,
+    "batches": 13,
+    "tt_range": [
+     1783612865737377,
+     1787958499550312
+    ],
+    "theorem": "T1"
+   },
+   "scope_path": "leaf-basis"
+  },
+  {
+   "store": "collegemsg",
+   "op": "aggregate_events",
+   "args_form": {
+    "as_of_tt": 1434984508663412,
+    "group_by": [
+     {
+      "dim": "endpoint",
+      "role": "src"
+     }
+    ],
+    "aggregates": [
+     {
+      "agg": "count"
+     }
+    ],
+    "window": {
+     "t_a": 1082040961000000,
+     "t_b": 1092222028450631
+    }
+   },
+   "as_of_tt": 1434984508663412,
+   "frontier_tt": 1787928056326825,
+   "correction_tt": 1787958501829191,
+   "pinned": true,
+   "exempted_verdict": "fresh",
+   "stripped_verdict": "possibly-stale",
+   "avoided_by_exemption": true,
+   "exempt_receipt": {
+    "basis": 1434984508663412,
+    "batches": 13,
+    "tt_range": [
+     1783612865737377,
+     1787958501829191
+    ],
+    "theorem": "T1"
+   },
+   "scope_path": "leaf-basis"
+  },
+  {
+   "store": "collegemsg",
+   "op": "graph_metric_timeseries",
+   "args_form": {
+    "as_of_tt": 1434984508663412,
+    "metric": "node_count",
+    "window": {
+     "t_a": 1082040961000000,
+     "t_b": 1092222028450631
+    },
+    "stride": 1272633431328
+   },
+   "as_of_tt": 1434984508663412,
+   "frontier_tt": 1787928056326825,
+   "correction_tt": 1787958504131958,
+   "pinned": true,
+   "exempted_verdict": "fresh",
+   "stripped_verdict": "possibly-stale",
+   "avoided_by_exemption": true,
+   "exempt_receipt": {
+    "basis": 1434984508663412,
+    "batches": 13,
+    "tt_range": [
+     1783612865737377,
+     1787958504131958
+    ],
+    "theorem": "T1"
+   },
+   "scope_path": "leaf-basis"
+  },
+  {
+   "store": "collegemsg",
+   "op": "burst_detection",
+   "args_form": {
+    "as_of_tt": 1434984508663412,
+    "target": {
+     "kind": "node_activity",
+     "uid": "n1264"
+    },
+    "window": {
+     "t_a": 1082040961000000,
+     "t_b": 1092222028450631
+    },
+    "stride": 636316715664
+   },
+   "as_of_tt": 1434984508663412,
+   "frontier_tt": 1787928056326825,
+   "correction_tt": 1787958506373486,
+   "pinned": true,
+   "exempted_verdict": "fresh",
+   "stripped_verdict": "possibly-stale",
+   "avoided_by_exemption": true,
+   "exempt_receipt": {
+    "basis": 1434984508663412,
+    "batches": 13,
+    "tt_range": [
+     1783612865737377,
+     1787958506373486
+    ],
+    "theorem": "T1"
+   },
+   "scope_path": "leaf-basis"
+  },
+  {
+   "store": "collegemsg",
+   "op": "co_active",
+   "args_form": {
+    "as_of_tt": 1434984508663412,
+    "a_spec": {
+     "rel_type": "MSG"
+    },
+    "b_spec": {
+     "rel_type": "MSG"
+    },
+    "allen_relation": {
+     "relation": "overlaps"
+    },
+    "limit": 200
+   },
+   "as_of_tt": 1434984508663412,
+   "frontier_tt": 1787928056326825,
+   "correction_tt": 1787958508639590,
+   "pinned": true,
+   "exempted_verdict": "fresh",
+   "stripped_verdict": "possibly-stale",
+   "avoided_by_exemption": true,
+   "exempt_receipt": {
+    "basis": 1434984508663412,
+    "batches": 13,
+    "tt_range": [
+     1783612865737377,
+     1787958508639590
+    ],
+    "theorem": "T1"
+   },
+   "scope_path": "leaf-basis"
+  },
+  {
+   "store": "collegemsg",
+   "op": "count_temporal_motifs",
+   "args_form": {
+    "as_of_tt": 1434984508663412,
+    "motif": "M_2node_pingpong",
+    "window": {
+     "t_a": 1082040961000000,
+     "t_b": 1092222028450631
+    },
+    "delta": 1272633431328
+   },
+   "as_of_tt": 1434984508663412,
+   "frontier_tt": 1787928056326825,
+   "correction_tt": 1787958510920037,
+   "pinned": true,
+   "exempted_verdict": "fresh",
+   "stripped_verdict": "possibly-stale",
+   "avoided_by_exemption": true,
+   "exempt_receipt": {
+    "basis": 1434984508663412,
+    "batches": 13,
+    "tt_range": [
+     1783612865737377,
+     1787958510920037
+    ],
+    "theorem": "T1"
+   },
+   "scope_path": "leaf-basis"
+  },
+  {
+   "store": "collegemsg",
+   "op": "find_temporal_motif_instances",
+   "args_form": {
+    "as_of_tt": 1434984508663412,
+    "motif": "M_2node_pingpong",
+    "window": {
+     "t_a": 1082040961000000,
+     "t_b": 1092222028450631
+    },
+    "delta": 1272633431328,
+    "limit": 50
+   },
+   "as_of_tt": 1434984508663412,
+   "frontier_tt": 1787928056326825,
+   "correction_tt": 1787958513208686,
+   "pinned": true,
+   "exempted_verdict": "fresh",
+   "stripped_verdict": "possibly-stale",
+   "avoided_by_exemption": true,
+   "exempt_receipt": {
+    "basis": 1434984508663412,
+    "batches": 13,
+    "tt_range": [
+     1783612865737377,
+     1787958513208686
+    ],
+    "theorem": "T1"
+   },
+   "scope_path": "leaf-basis"
+  },
+  {
+   "store": "collegemsg",
+   "op": "temporal_reachability",
+   "args_form": {
+    "as_of_tt": 1434984508663412,
+    "src": "n128",
+    "window": {
+     "t_a": 1082040961000000,
+     "t_b": 1092222028450631
+    }
+   },
+   "as_of_tt": 1434984508663412,
+   "frontier_tt": 1787928056326825,
+   "correction_tt": 1787958515453652,
+   "pinned": true,
+   "exempted_verdict": "fresh",
+   "stripped_verdict": "possibly-stale",
+   "avoided_by_exemption": true,
+   "exempt_receipt": {
+    "basis": 1434984508663412,
+    "batches": 13,
+    "tt_range": [
+     1783612865737377,
+     1787958515453652
+    ],
+    "theorem": "T1"
+   },
+   "scope_path": "leaf-basis"
+  },
+  {
+   "store": "collegemsg",
+   "op": "temporal_paths",
+   "args_form": {
+    "as_of_tt": 1434984508663412,
+    "src": "n1282",
+    "dst": "n1282",
+    "window": {
+     "t_a": 1082040961000000,
+     "t_b": 1092222028450631
+    },
+    "k": 2
+   },
+   "as_of_tt": 1434984508663412,
+   "frontier_tt": 1787928056326825,
+   "correction_tt": 1787958517712652,
+   "pinned": true,
+   "exempted_verdict": "fresh",
+   "stripped_verdict": "possibly-stale",
+   "avoided_by_exemption": true,
+   "exempt_receipt": {
+    "basis": 1434984508663412,
+    "batches": 13,
+    "tt_range": [
+     1783612865737377,
+     1787958517712652
+    ],
+    "theorem": "T1"
+   },
+   "scope_path": "leaf-basis"
+  },
+  {
+   "store": "collegemsg",
+   "op": "entity_history",
+   "args_form": {
+    "as_of_tt": 1434984508663412,
+    "uid": "n1285"
+   },
+   "as_of_tt": 1434984508663412,
+   "frontier_tt": 1787928056326825,
+   "correction_tt": 1787958520014269,
+   "pinned": true,
+   "exempted_verdict": "fresh",
+   "stripped_verdict": "possibly-stale",
+   "avoided_by_exemption": true,
+   "exempt_receipt": {
+    "basis": 1434984508663412,
+    "batches": 13,
+    "tt_range": [
+     1783612865737377,
+     1787958520014269
+    ],
+    "theorem": "T1"
+   },
+   "scope_path": "leaf-basis"
+  },
+  {
+   "store": "collegemsg",
+   "op": "version_history",
+   "args_form": {
+    "as_of_tt": 1434984508663412,
+    "kind": "node",
+    "window": {
+     "t_a": 1082040961000000,
+     "t_b": 1092222028450631
+    }
+   },
+   "as_of_tt": 1434984508663412,
+   "frontier_tt": 1787928056326825,
+   "correction_tt": 1787958522316541,
+   "pinned": true,
+   "exempted_verdict": "fresh",
+   "stripped_verdict": "possibly-stale",
+   "avoided_by_exemption": true,
+   "exempt_receipt": {
+    "basis": 1434984508663412,
+    "batches": 13,
+    "tt_range": [
+     1783612865737377,
+     1787958522316541
+    ],
+    "theorem": "T1"
+   },
+   "scope_path": "leaf-basis"
+  },
+  {
+   "store": "collegemsg",
+   "op": "snapshot_subgraph",
+   "args_form": {
+    "as_of_tt": 1434984508663412,
+    "seeds": [
+     "n1290"
+    ],
+    "t_valid": 1087131494725315,
+    "hops": 1
+   },
+   "as_of_tt": 1434984508663412,
+   "frontier_tt": 1787928056326825,
+   "correction_tt": 1787958524567081,
+   "pinned": true,
+   "exempted_verdict": "fresh",
+   "stripped_verdict": "possibly-stale",
+   "avoided_by_exemption": true,
+   "exempt_receipt": {
+    "basis": 1434984508663412,
+    "batches": 13,
+    "tt_range": [
+     1783612865737377,
+     1787958524567081
+    ],
+    "theorem": "T1"
+   },
+   "scope_path": "leaf-basis"
+  },
+  {
+   "store": "collegemsg",
+   "op": "diff_snapshots",
+   "args_form": {
+    "as_of_tt": 1434984508663412,
+    "t1": 1082040961000001,
+    "t2": 1087131494725315
+   },
+   "as_of_tt": 1434984508663412,
+   "frontier_tt": 1787928056326825,
+   "correction_tt": 1787958526842391,
+   "pinned": true,
+   "exempted_verdict": "fresh",
+   "stripped_verdict": "possibly-stale",
+   "avoided_by_exemption": true,
+   "exempt_receipt": {
+    "basis": 1434984508663412,
+    "batches": 13,
+    "tt_range": [
+     1783612865737377,
+     1787958526842391
+    ],
+    "theorem": "T1"
+   },
+   "scope_path": "leaf-basis"
+  },
+  {
+   "store": "collegemsg",
+   "op": "neighborhood_evolution",
+   "args_form": {
+    "as_of_tt": 1434984508663412,
+    "uid": "n1307",
+    "t1": 1082040961000000,
+    "t2": 1092222028450631,
+    "stride": 1272633431328
+   },
+   "as_of_tt": 1434984508663412,
+   "frontier_tt": 1787928056326825,
+   "correction_tt": 1787958529109982,
+   "pinned": true,
+   "exempted_verdict": "fresh",
+   "stripped_verdict": "possibly-stale",
+   "avoided_by_exemption": true,
+   "exempt_receipt": {
+    "basis": 1434984508663412,
+    "batches": 13,
+    "tt_range": [
+     1783612865737377,
+     1787958529109982
+    ],
+    "theorem": "T1"
+   },
+   "scope_path": "leaf-basis"
+  },
+  {
+   "store": "collegemsg",
+   "op": "aggregate_events",
+   "args_form": {
+    "as_of_tt": 1434984508663412,
+    "group_by": [
+     {
+      "dim": "endpoint",
+      "role": "src"
+     }
+    ],
+    "aggregates": [
+     {
+      "agg": "count"
+     }
+    ],
+    "window": {
+     "t_a": 1082040961000000,
+     "t_b": 1092222028450631
+    }
+   },
+   "as_of_tt": 1434984508663412,
+   "frontier_tt": 1787928056326825,
+   "correction_tt": 1787958531348177,
+   "pinned": true,
+   "exempted_verdict": "fresh",
+   "stripped_verdict": "possibly-stale",
+   "avoided_by_exemption": true,
+   "exempt_receipt": {
+    "basis": 1434984508663412,
+    "batches": 13,
+    "tt_range": [
+     1783612865737377,
+     1787958531348177
+    ],
+    "theorem": "T1"
+   },
+   "scope_path": "leaf-basis"
+  },
+  {
+   "store": "collegemsg",
+   "op": "graph_metric_timeseries",
+   "args_form": {
+    "as_of_tt": 1434984508663412,
+    "metric": "node_count",
+    "window": {
+     "t_a": 1082040961000000,
+     "t_b": 1092222028450631
+    },
+    "stride": 1272633431328
+   },
+   "as_of_tt": 1434984508663412,
+   "frontier_tt": 1787928056326825,
+   "correction_tt": 1787958533611695,
+   "pinned": true,
+   "exempted_verdict": "fresh",
+   "stripped_verdict": "possibly-stale",
+   "avoided_by_exemption": true,
+   "exempt_receipt": {
+    "basis": 1434984508663412,
+    "batches": 13,
+    "tt_range": [
+     1783612865737377,
+     1787958533611695
+    ],
+    "theorem": "T1"
+   },
+   "scope_path": "leaf-basis"
+  },
+  {
+   "store": "collegemsg",
+   "op": "burst_detection",
+   "args_form": {
+    "as_of_tt": 1434984508663412,
+    "target": {
+     "kind": "node_activity",
+     "uid": "n131"
+    },
+    "window": {
+     "t_a": 1082040961000000,
+     "t_b": 1092222028450631
+    },
+    "stride": 636316715664
+   },
+   "as_of_tt": 1434984508663412,
+   "frontier_tt": 1787928056326825,
+   "correction_tt": 1787958535885300,
+   "pinned": true,
+   "exempted_verdict": "fresh",
+   "stripped_verdict": "possibly-stale",
+   "avoided_by_exemption": true,
+   "exempt_receipt": {
+    "basis": 1434984508663412,
+    "batches": 13,
+    "tt_range": [
+     1783612865737377,
+     1787958535885300
+    ],
+    "theorem": "T1"
+   },
+   "scope_path": "leaf-basis"
+  },
+  {
+   "store": "collegemsg",
+   "op": "co_active",
+   "args_form": {
+    "as_of_tt": 1434984508663412,
+    "a_spec": {
+     "rel_type": "MSG"
+    },
+    "b_spec": {
+     "rel_type": "MSG"
+    },
+    "allen_relation": {
+     "relation": "overlaps"
+    },
+    "limit": 200
+   },
+   "as_of_tt": 1434984508663412,
+   "frontier_tt": 1787928056326825,
+   "correction_tt": 1787958538159477,
+   "pinned": true,
+   "exempted_verdict": "fresh",
+   "stripped_verdict": "possibly-stale",
+   "avoided_by_exemption": true,
+   "exempt_receipt": {
+    "basis": 1434984508663412,
+    "batches": 13,
+    "tt_range": [
+     1783612865737377,
+     1787958538159477
+    ],
+    "theorem": "T1"
+   },
+   "scope_path": "leaf-basis"
+  },
+  {
+   "store": "collegemsg",
+   "op": "count_temporal_motifs",
+   "args_form": {
+    "as_of_tt": 1434984508663412,
+    "motif": "M_2node_pingpong",
+    "window": {
+     "t_a": 1082040961000000,
+     "t_b": 1092222028450631
+    },
+    "delta": 1272633431328
+   },
+   "as_of_tt": 1434984508663412,
+   "frontier_tt": 1787928056326825,
+   "correction_tt": 1787958540453405,
+   "pinned": true,
+   "exempted_verdict": "fresh",
+   "stripped_verdict": "possibly-stale",
+   "avoided_by_exemption": true,
+   "exempt_receipt": {
+    "basis": 1434984508663412,
+    "batches": 13,
+    "tt_range": [
+     1783612865737377,
+     1787958540453405
+    ],
+    "theorem": "T1"
+   },
+   "scope_path": "leaf-basis"
+  },
+  {
+   "store": "collegemsg",
+   "op": "find_temporal_motif_instances",
+   "args_form": {
+    "as_of_tt": 1434984508663412,
+    "motif": "M_2node_pingpong",
+    "window": {
+     "t_a": 1082040961000000,
+     "t_b": 1092222028450631
+    },
+    "delta": 1272633431328,
+    "limit": 50
+   },
+   "as_of_tt": 1434984508663412,
+   "frontier_tt": 1787928056326825,
+   "correction_tt": 1787958542756064,
+   "pinned": true,
+   "exempted_verdict": "fresh",
+   "stripped_verdict": "possibly-stale",
+   "avoided_by_exemption": true,
+   "exempt_receipt": {
+    "basis": 1434984508663412,
+    "batches": 13,
+    "tt_range": [
+     1783612865737377,
+     1787958542756064
+    ],
+    "theorem": "T1"
+   },
+   "scope_path": "leaf-basis"
+  },
+  {
+   "store": "collegemsg",
+   "op": "temporal_reachability",
+   "args_form": {
+    "as_of_tt": 1434984508663412,
+    "src": "n1318",
+    "window": {
+     "t_a": 1082040961000000,
+     "t_b": 1092222028450631
+    }
+   },
+   "as_of_tt": 1434984508663412,
+   "frontier_tt": 1787928056326825,
+   "correction_tt": 1787958544998151,
+   "pinned": true,
+   "exempted_verdict": "fresh",
+   "stripped_verdict": "possibly-stale",
+   "avoided_by_exemption": true,
+   "exempt_receipt": {
+    "basis": 1434984508663412,
+    "batches": 13,
+    "tt_range": [
+     1783612865737377,
+     1787958544998151
+    ],
+    "theorem": "T1"
+   },
+   "scope_path": "leaf-basis"
+  },
+  {
+   "store": "collegemsg",
+   "op": "temporal_paths",
+   "args_form": {
+    "as_of_tt": 1434984508663412,
+    "src": "n1329",
+    "dst": "n1329",
+    "window": {
+     "t_a": 1082040961000000,
+     "t_b": 1092222028450631
+    },
+    "k": 2
+   },
+   "as_of_tt": 1434984508663412,
+   "frontier_tt": 1787928056326825,
+   "correction_tt": 1787958547261391,
+   "pinned": true,
+   "exempted_verdict": "fresh",
+   "stripped_verdict": "possibly-stale",
+   "avoided_by_exemption": true,
+   "exempt_receipt": {
+    "basis": 1434984508663412,
+    "batches": 13,
+    "tt_range": [
+     1783612865737377,
+     1787958547261391
+    ],
+    "theorem": "T1"
+   },
+   "scope_path": "leaf-basis"
+  },
+  {
+   "store": "collegemsg",
+   "op": "entity_history",
+   "args_form": {
+    "as_of_tt": 1434984508663412,
+    "uid": "n133"
+   },
+   "as_of_tt": 1434984508663412,
+   "frontier_tt": 1787928056326825,
+   "correction_tt": 1787958549529128,
+   "pinned": true,
+   "exempted_verdict": "fresh",
+   "stripped_verdict": "possibly-stale",
+   "avoided_by_exemption": true,
+   "exempt_receipt": {
+    "basis": 1434984508663412,
+    "batches": 13,
+    "tt_range": [
+     1783612865737377,
+     1787958549529128
+    ],
+    "theorem": "T1"
+   },
+   "scope_path": "leaf-basis"
+  },
+  {
+   "store": "collegemsg",
+   "op": "version_history",
+   "args_form": {
+    "as_of_tt": 1434984508663412,
+    "kind": "node",
+    "window": {
+     "t_a": 1082040961000000,
+     "t_b": 1092222028450631
+    }
+   },
+   "as_of_tt": 1434984508663412,
+   "frontier_tt": 1787928056326825,
+   "correction_tt": 1787958551811901,
+   "pinned": true,
+   "exempted_verdict": "fresh",
+   "stripped_verdict": "possibly-stale",
+   "avoided_by_exemption": true,
+   "exempt_receipt": {
+    "basis": 1434984508663412,
+    "batches": 13,
+    "tt_range": [
+     1783612865737377,
+     1787958551811901
+    ],
+    "theorem": "T1"
+   },
+   "scope_path": "leaf-basis"
+  },
+  {
+   "store": "collegemsg",
+   "op": "snapshot_subgraph",
+   "args_form": {
+    "as_of_tt": 1434984508663412,
+    "seeds": [
+     "n1336"
+    ],
+    "t_valid": 1087131494725315,
+    "hops": 1
+   },
+   "as_of_tt": 1434984508663412,
+   "frontier_tt": 1787928056326825,
+   "correction_tt": 1787958554117903,
+   "pinned": true,
+   "exempted_verdict": "fresh",
+   "stripped_verdict": "possibly-stale",
+   "avoided_by_exemption": true,
+   "exempt_receipt": {
+    "basis": 1434984508663412,
+    "batches": 13,
+    "tt_range": [
+     1783612865737377,
+     1787958554117903
+    ],
+    "theorem": "T1"
+   },
+   "scope_path": "leaf-basis"
+  },
+  {
+   "store": "collegemsg",
+   "op": "diff_snapshots",
+   "args_form": {
+    "as_of_tt": 1434984508663412,
+    "t1": 1082040961000001,
+    "t2": 1087131494725315
+   },
+   "as_of_tt": 1434984508663412,
+   "frontier_tt": 1787928056326825,
+   "correction_tt": 1787958556369566,
+   "pinned": true,
+   "exempted_verdict": "fresh",
+   "stripped_verdict": "possibly-stale",
+   "avoided_by_exemption": true,
+   "exempt_receipt": {
+    "basis": 1434984508663412,
+    "batches": 13,
+    "tt_range": [
+     1783612865737377,
+     1787958556369566
+    ],
+    "theorem": "T1"
+   },
+   "scope_path": "leaf-basis"
+  },
+  {
+   "store": "collegemsg",
+   "op": "neighborhood_evolution",
+   "args_form": {
+    "as_of_tt": 1434984508663412,
+    "uid": "n1347",
+    "t1": 1082040961000000,
+    "t2": 1092222028450631,
+    "stride": 1272633431328
+   },
+   "as_of_tt": 1434984508663412,
+   "frontier_tt": 1787928056326825,
+   "correction_tt": 1787958558652631,
+   "pinned": true,
+   "exempted_verdict": "fresh",
+   "stripped_verdict": "possibly-stale",
+   "avoided_by_exemption": true,
+   "exempt_receipt": {
+    "basis": 1434984508663412,
+    "batches": 13,
+    "tt_range": [
+     1783612865737377,
+     1787958558652631
+    ],
+    "theorem": "T1"
+   },
+   "scope_path": "leaf-basis"
+  },
+  {
+   "store": "collegemsg",
+   "op": "aggregate_events",
+   "args_form": {
+    "as_of_tt": 1434984508663412,
+    "group_by": [
+     {
+      "dim": "endpoint",
+      "role": "src"
+     }
+    ],
+    "aggregates": [
+     {
+      "agg": "count"
+     }
+    ],
+    "window": {
+     "t_a": 1082040961000000,
+     "t_b": 1092222028450631
+    }
+   },
+   "as_of_tt": 1434984508663412,
+   "frontier_tt": 1787928056326825,
+   "correction_tt": 1787958560895961,
+   "pinned": true,
+   "exempted_verdict": "fresh",
+   "stripped_verdict": "possibly-stale",
+   "avoided_by_exemption": true,
+   "exempt_receipt": {
+    "basis": 1434984508663412,
+    "batches": 13,
+    "tt_range": [
+     1783612865737377,
+     1787958560895961
+    ],
+    "theorem": "T1"
+   },
+   "scope_path": "leaf-basis"
+  },
+  {
+   "store": "collegemsg",
+   "op": "graph_metric_timeseries",
+   "args_form": {
+    "as_of_tt": 1434984508663412,
+    "metric": "node_count",
+    "window": {
+     "t_a": 1082040961000000,
+     "t_b": 1092222028450631
+    },
+    "stride": 1272633431328
+   },
+   "as_of_tt": 1434984508663412,
+   "frontier_tt": 1787928056326825,
+   "correction_tt": 1787958563139833,
+   "pinned": true,
+   "exempted_verdict": "fresh",
+   "stripped_verdict": "possibly-stale",
+   "avoided_by_exemption": true,
+   "exempt_receipt": {
+    "basis": 1434984508663412,
+    "batches": 13,
+    "tt_range": [
+     1783612865737377,
+     1787958563139833
+    ],
+    "theorem": "T1"
+   },
+   "scope_path": "leaf-basis"
+  },
+  {
+   "store": "collegemsg",
+   "op": "burst_detection",
+   "args_form": {
+    "as_of_tt": 1434984508663412,
+    "target": {
+     "kind": "node_activity",
+     "uid": "n1368"
+    },
+    "window": {
+     "t_a": 1082040961000000,
+     "t_b": 1092222028450631
+    },
+    "stride": 636316715664
+   },
+   "as_of_tt": 1434984508663412,
+   "frontier_tt": 1787928056326825,
+   "correction_tt": 1787958565391655,
+   "pinned": true,
+   "exempted_verdict": "fresh",
+   "stripped_verdict": "possibly-stale",
+   "avoided_by_exemption": true,
+   "exempt_receipt": {
+    "basis": 1434984508663412,
+    "batches": 13,
+    "tt_range": [
+     1783612865737377,
+     1787958565391655
+    ],
+    "theorem": "T1"
+   },
+   "scope_path": "leaf-basis"
+  },
+  {
+   "store": "collegemsg",
+   "op": "co_active",
+   "args_form": {
+    "as_of_tt": 1434984508663412,
+    "a_spec": {
+     "rel_type": "MSG"
+    },
+    "b_spec": {
+     "rel_type": "MSG"
+    },
+    "allen_relation": {
+     "relation": "overlaps"
+    },
+    "limit": 200
+   },
+   "as_of_tt": 1434984508663412,
+   "frontier_tt": 1787928056326825,
+   "correction_tt": 1787958567655607,
+   "pinned": true,
+   "exempted_verdict": "fresh",
+   "stripped_verdict": "possibly-stale",
+   "avoided_by_exemption": true,
+   "exempt_receipt": {
+    "basis": 1434984508663412,
+    "batches": 13,
+    "tt_range": [
+     1783612865737377,
+     1787958567655607
+    ],
+    "theorem": "T1"
+   },
+   "scope_path": "leaf-basis"
+  },
+  {
+   "store": "collegemsg",
+   "op": "count_temporal_motifs",
+   "args_form": {
+    "as_of_tt": 1434984508663412,
+    "motif": "M_2node_pingpong",
+    "window": {
+     "t_a": 1082040961000000,
+     "t_b": 1092222028450631
+    },
+    "delta": 1272633431328
+   },
+   "as_of_tt": 1434984508663412,
+   "frontier_tt": 1787928056326825,
+   "correction_tt": 1787958569942297,
+   "pinned": true,
+   "exempted_verdict": "fresh",
+   "stripped_verdict": "possibly-stale",
+   "avoided_by_exemption": true,
+   "exempt_receipt": {
+    "basis": 1434984508663412,
+    "batches": 13,
+    "tt_range": [
+     1783612865737377,
+     1787958569942297
+    ],
+    "theorem": "T1"
+   },
+   "scope_path": "leaf-basis"
+  },
+  {
+   "store": "collegemsg",
+   "op": "find_temporal_motif_instances",
+   "args_form": {
+    "as_of_tt": 1434984508663412,
+    "motif": "M_2node_pingpong",
+    "window": {
+     "t_a": 1082040961000000,
+     "t_b": 1092222028450631
+    },
+    "delta": 1272633431328,
+    "limit": 50
+   },
+   "as_of_tt": 1434984508663412,
+   "frontier_tt": 1787928056326825,
+   "correction_tt": 1787958572265453,
+   "pinned": true,
+   "exempted_verdict": "fresh",
+   "stripped_verdict": "possibly-stale",
+   "avoided_by_exemption": true,
+   "exempt_receipt": {
+    "basis": 1434984508663412,
+    "batches": 13,
+    "tt_range": [
+     1783612865737377,
+     1787958572265453
+    ],
+    "theorem": "T1"
+   },
+   "scope_path": "leaf-basis"
+  },
+  {
+   "store": "collegemsg",
+   "op": "temporal_reachability",
+   "args_form": {
+    "as_of_tt": 1434984508663412,
+    "src": "n1389",
+    "window": {
+     "t_a": 1082040961000000,
+     "t_b": 1092222028450631
+    }
+   },
+   "as_of_tt": 1434984508663412,
+   "frontier_tt": 1787928056326825,
+   "correction_tt": 1787958574518875,
+   "pinned": true,
+   "exempted_verdict": "fresh",
+   "stripped_verdict": "possibly-stale",
+   "avoided_by_exemption": true,
+   "exempt_receipt": {
+    "basis": 1434984508663412,
+    "batches": 13,
+    "tt_range": [
+     1783612865737377,
+     1787958574518875
+    ],
+    "theorem": "T1"
+   },
+   "scope_path": "leaf-basis"
+  },
+  {
+   "store": "collegemsg",
+   "op": "temporal_paths",
+   "args_form": {
+    "as_of_tt": 1434984508663412,
+    "src": "n1405",
+    "dst": "n1405",
+    "window": {
+     "t_a": 1082040961000000,
+     "t_b": 1092222028450631
+    },
+    "k": 2
+   },
+   "as_of_tt": 1434984508663412,
+   "frontier_tt": 1787928056326825,
+   "correction_tt": 1787958576803080,
+   "pinned": true,
+   "exempted_verdict": "fresh",
+   "stripped_verdict": "possibly-stale",
+   "avoided_by_exemption": true,
+   "exempt_receipt": {
+    "basis": 1434984508663412,
+    "batches": 13,
+    "tt_range": [
+     1783612865737377,
+     1787958576803080
+    ],
+    "theorem": "T1"
+   },
+   "scope_path": "leaf-basis"
+  },
+  {
+   "store": "collegemsg",
+   "op": "entity_history",
+   "args_form": {
+    "as_of_tt": 1434984508663412,
+    "uid": "n1406"
+   },
+   "as_of_tt": 1434984508663412,
+   "frontier_tt": 1787928056326825,
+   "correction_tt": 1787958579053826,
+   "pinned": true,
+   "exempted_verdict": "fresh",
+   "stripped_verdict": "possibly-stale",
+   "avoided_by_exemption": true,
+   "exempt_receipt": {
+    "basis": 1434984508663412,
+    "batches": 13,
+    "tt_range": [
+     1783612865737377,
+     1787958579053826
+    ],
+    "theorem": "T1"
+   },
+   "scope_path": "leaf-basis"
+  },
+  {
+   "store": "collegemsg",
+   "op": "version_history",
+   "args_form": {
+    "as_of_tt": 1434984508663412,
+    "kind": "node",
+    "window": {
+     "t_a": 1082040961000000,
+     "t_b": 1092222028450631
+    }
+   },
+   "as_of_tt": 1434984508663412,
+   "frontier_tt": 1787928056326825,
+   "correction_tt": 1787958581316159,
+   "pinned": true,
+   "exempted_verdict": "fresh",
+   "stripped_verdict": "possibly-stale",
+   "avoided_by_exemption": true,
+   "exempt_receipt": {
+    "basis": 1434984508663412,
+    "batches": 13,
+    "tt_range": [
+     1783612865737377,
+     1787958581316159
+    ],
+    "theorem": "T1"
+   },
+   "scope_path": "leaf-basis"
+  },
+  {
+   "store": "collegemsg",
+   "op": "snapshot_subgraph",
+   "args_form": {
+    "as_of_tt": 1434984508663412,
+    "seeds": [
+     "n1421"
+    ],
+    "t_valid": 1087131494725315,
+    "hops": 1
+   },
+   "as_of_tt": 1434984508663412,
+   "frontier_tt": 1787928056326825,
+   "correction_tt": 1787958583559318,
+   "pinned": true,
+   "exempted_verdict": "fresh",
+   "stripped_verdict": "possibly-stale",
+   "avoided_by_exemption": true,
+   "exempt_receipt": {
+    "basis": 1434984508663412,
+    "batches": 13,
+    "tt_range": [
+     1783612865737377,
+     1787958583559318
+    ],
+    "theorem": "T1"
+   },
+   "scope_path": "leaf-basis"
+  },
+  {
+   "store": "collegemsg",
+   "op": "diff_snapshots",
+   "args_form": {
+    "as_of_tt": 1434984508663412,
+    "t1": 1082040961000001,
+    "t2": 1087131494725315
+   },
+   "as_of_tt": 1434984508663412,
+   "frontier_tt": 1787928056326825,
+   "correction_tt": 1787958585819930,
+   "pinned": true,
+   "exempted_verdict": "fresh",
+   "stripped_verdict": "possibly-stale",
+   "avoided_by_exemption": true,
+   "exempt_receipt": {
+    "basis": 1434984508663412,
+    "batches": 13,
+    "tt_range": [
+     1783612865737377,
+     1787958585819930
+    ],
+    "theorem": "T1"
+   },
+   "scope_path": "leaf-basis"
+  },
+  {
+   "store": "collegemsg",
+   "op": "neighborhood_evolution",
+   "args_form": {
+    "as_of_tt": 1434984508663412,
+    "uid": "n1426",
+    "t1": 1082040961000000,
+    "t2": 1092222028450631,
+    "stride": 1272633431328
+   },
+   "as_of_tt": 1434984508663412,
+   "frontier_tt": 1787928056326825,
+   "correction_tt": 1787958588105676,
+   "pinned": true,
+   "exempted_verdict": "fresh",
+   "stripped_verdict": "possibly-stale",
+   "avoided_by_exemption": true,
+   "exempt_receipt": {
+    "basis": 1434984508663412,
+    "batches": 13,
+    "tt_range": [
+     1783612865737377,
+     1787958588105676
+    ],
+    "theorem": "T1"
+   },
+   "scope_path": "leaf-basis"
+  },
+  {
+   "store": "collegemsg",
+   "op": "aggregate_events",
+   "args_form": {
+    "as_of_tt": 1434984508663412,
+    "group_by": [
+     {
+      "dim": "endpoint",
+      "role": "src"
+     }
+    ],
+    "aggregates": [
+     {
+      "agg": "count"
+     }
+    ],
+    "window": {
+     "t_a": 1082040961000000,
+     "t_b": 1092222028450631
+    }
+   },
+   "as_of_tt": 1434984508663412,
+   "frontier_tt": 1787928056326825,
+   "correction_tt": 1787958590402364,
+   "pinned": true,
+   "exempted_verdict": "fresh",
+   "stripped_verdict": "possibly-stale",
+   "avoided_by_exemption": true,
+   "exempt_receipt": {
+    "basis": 1434984508663412,
+    "batches": 13,
+    "tt_range": [
+     1783612865737377,
+     1787958590402364
+    ],
+    "theorem": "T1"
+   },
+   "scope_path": "leaf-basis"
+  },
+  {
+   "store": "collegemsg",
+   "op": "graph_metric_timeseries",
+   "args_form": {
+    "as_of_tt": 1434984508663412,
+    "metric": "node_count",
+    "window": {
+     "t_a": 1082040961000000,
+     "t_b": 1092222028450631
+    },
+    "stride": 1272633431328
+   },
+   "as_of_tt": 1434984508663412,
+   "frontier_tt": 1787928056326825,
+   "correction_tt": 1787958592699365,
+   "pinned": true,
+   "exempted_verdict": "fresh",
+   "stripped_verdict": "possibly-stale",
+   "avoided_by_exemption": true,
+   "exempt_receipt": {
+    "basis": 1434984508663412,
+    "batches": 13,
+    "tt_range": [
+     1783612865737377,
+     1787958592699365
+    ],
+    "theorem": "T1"
+   },
+   "scope_path": "leaf-basis"
+  },
+  {
+   "store": "collegemsg",
+   "op": "burst_detection",
+   "args_form": {
+    "as_of_tt": 1434984508663412,
+    "target": {
+     "kind": "node_activity",
+     "uid": "n1436"
+    },
+    "window": {
+     "t_a": 1082040961000000,
+     "t_b": 1092222028450631
+    },
+    "stride": 636316715664
+   },
+   "as_of_tt": 1434984508663412,
+   "frontier_tt": 1787928056326825,
+   "correction_tt": 1787958594951525,
+   "pinned": true,
+   "exempted_verdict": "fresh",
+   "stripped_verdict": "possibly-stale",
+   "avoided_by_exemption": true,
+   "exempt_receipt": {
+    "basis": 1434984508663412,
+    "batches": 13,
+    "tt_range": [
+     1783612865737377,
+     1787958594951525
+    ],
+    "theorem": "T1"
+   },
+   "scope_path": "leaf-basis"
+  },
+  {
+   "store": "collegemsg",
+   "op": "co_active",
+   "args_form": {
+    "as_of_tt": 1434984508663412,
+    "a_spec": {
+     "rel_type": "MSG"
+    },
+    "b_spec": {
+     "rel_type": "MSG"
+    },
+    "allen_relation": {
+     "relation": "overlaps"
+    },
+    "limit": 200
+   },
+   "as_of_tt": 1434984508663412,
+   "frontier_tt": 1787928056326825,
+   "correction_tt": 1787958597213584,
+   "pinned": true,
+   "exempted_verdict": "fresh",
+   "stripped_verdict": "possibly-stale",
+   "avoided_by_exemption": true,
+   "exempt_receipt": {
+    "basis": 1434984508663412,
+    "batches": 13,
+    "tt_range": [
+     1783612865737377,
+     1787958597213584
+    ],
+    "theorem": "T1"
+   },
+   "scope_path": "leaf-basis"
+  },
+  {
+   "store": "collegemsg",
+   "op": "count_temporal_motifs",
+   "args_form": {
+    "as_of_tt": 1434984508663412,
+    "motif": "M_2node_pingpong",
+    "window": {
+     "t_a": 1082040961000000,
+     "t_b": 1092222028450631
+    },
+    "delta": 1272633431328
+   },
+   "as_of_tt": 1434984508663412,
+   "frontier_tt": 1787928056326825,
+   "correction_tt": 1787958599499491,
+   "pinned": true,
+   "exempted_verdict": "fresh",
+   "stripped_verdict": "possibly-stale",
+   "avoided_by_exemption": true,
+   "exempt_receipt": {
+    "basis": 1434984508663412,
+    "batches": 13,
+    "tt_range": [
+     1783612865737377,
+     1787958599499491
+    ],
+    "theorem": "T1"
+   },
+   "scope_path": "leaf-basis"
+  },
+  {
+   "store": "collegemsg",
+   "op": "find_temporal_motif_instances",
+   "args_form": {
+    "as_of_tt": 1434984508663412,
+    "motif": "M_2node_pingpong",
+    "window": {
+     "t_a": 1082040961000000,
+     "t_b": 1092222028450631
+    },
+    "delta": 1272633431328,
+    "limit": 50
+   },
+   "as_of_tt": 1434984508663412,
+   "frontier_tt": 1787928056326825,
+   "correction_tt": 1787958601822607,
+   "pinned": true,
+   "exempted_verdict": "fresh",
+   "stripped_verdict": "possibly-stale",
+   "avoided_by_exemption": true,
+   "exempt_receipt": {
+    "basis": 1434984508663412,
+    "batches": 13,
+    "tt_range": [
+     1783612865737377,
+     1787958601822607
+    ],
+    "theorem": "T1"
+   },
+   "scope_path": "leaf-basis"
+  },
+  {
+   "store": "collegemsg",
+   "op": "temporal_reachability",
+   "args_form": {
+    "as_of_tt": 1434984508663412,
+    "src": "n145",
+    "window": {
+     "t_a": 1082040961000000,
+     "t_b": 1092222028450631
+    }
+   },
+   "as_of_tt": 1434984508663412,
+   "frontier_tt": 1787928056326825,
+   "correction_tt": 1787958604071007,
+   "pinned": true,
+   "exempted_verdict": "fresh",
+   "stripped_verdict": "possibly-stale",
+   "avoided_by_exemption": true,
+   "exempt_receipt": {
+    "basis": 1434984508663412,
+    "batches": 13,
+    "tt_range": [
+     1783612865737377,
+     1787958604071007
+    ],
+    "theorem": "T1"
+   },
+   "scope_path": "leaf-basis"
+  },
+  {
+   "store": "collegemsg",
+   "op": "temporal_paths",
+   "args_form": {
+    "as_of_tt": 1434984508663412,
+    "src": "n1454",
+    "dst": "n1454",
+    "window": {
+     "t_a": 1082040961000000,
+     "t_b": 1092222028450631
+    },
+    "k": 2
+   },
+   "as_of_tt": 1434984508663412,
+   "frontier_tt": 1787928056326825,
+   "correction_tt": 1787958606367166,
+   "pinned": true,
+   "exempted_verdict": "fresh",
+   "stripped_verdict": "possibly-stale",
+   "avoided_by_exemption": true,
+   "exempt_receipt": {
+    "basis": 1434984508663412,
+    "batches": 13,
+    "tt_range": [
+     1783612865737377,
+     1787958606367166
+    ],
+    "theorem": "T1"
+   },
+   "scope_path": "leaf-basis"
+  },
+  {
+   "store": "collegemsg",
+   "op": "entity_history",
+   "args_form": {
+    "as_of_tt": 1434984508663412,
+    "uid": "n1474"
+   },
+   "as_of_tt": 1434984508663412,
+   "frontier_tt": 1787928056326825,
+   "correction_tt": 1787958608654632,
+   "pinned": true,
+   "exempted_verdict": "fresh",
+   "stripped_verdict": "possibly-stale",
+   "avoided_by_exemption": true,
+   "exempt_receipt": {
+    "basis": 1434984508663412,
+    "batches": 13,
+    "tt_range": [
+     1783612865737377,
+     1787958608654632
+    ],
+    "theorem": "T1"
+   },
+   "scope_path": "leaf-basis"
+  },
+  {
+   "store": "collegemsg",
+   "op": "version_history",
+   "args_form": {
+    "as_of_tt": 1434984508663412,
+    "kind": "node",
+    "window": {
+     "t_a": 1082040961000000,
+     "t_b": 1092222028450631
+    }
+   },
+   "as_of_tt": 1434984508663412,
+   "frontier_tt": 1787928056326825,
+   "correction_tt": 1787958610959651,
+   "pinned": true,
+   "exempted_verdict": "fresh",
+   "stripped_verdict": "possibly-stale",
+   "avoided_by_exemption": true,
+   "exempt_receipt": {
+    "basis": 1434984508663412,
+    "batches": 13,
+    "tt_range": [
+     1783612865737377,
+     1787958610959651
+    ],
+    "theorem": "T1"
+   },
+   "scope_path": "leaf-basis"
+  },
+  {
+   "store": "collegemsg",
+   "op": "snapshot_subgraph",
+   "args_form": {
+    "as_of_tt": 1434984508663412,
+    "seeds": [
+     "n149"
+    ],
+    "t_valid": 1087131494725315,
+    "hops": 1
+   },
+   "as_of_tt": 1434984508663412,
+   "frontier_tt": 1787928056326825,
+   "correction_tt": 1787958613219064,
+   "pinned": true,
+   "exempted_verdict": "fresh",
+   "stripped_verdict": "possibly-stale",
+   "avoided_by_exemption": true,
+   "exempt_receipt": {
+    "basis": 1434984508663412,
+    "batches": 13,
+    "tt_range": [
+     1783612865737377,
+     1787958613219064
+    ],
+    "theorem": "T1"
+   },
+   "scope_path": "leaf-basis"
+  },
+  {
+   "store": "collegemsg",
+   "op": "diff_snapshots",
+   "args_form": {
+    "as_of_tt": 1434984508663412,
+    "t1": 1082040961000001,
+    "t2": 1087131494725315
+   },
+   "as_of_tt": 1434984508663412,
+   "frontier_tt": 1787928056326825,
+   "correction_tt": 1787958615531162,
+   "pinned": true,
+   "exempted_verdict": "fresh",
+   "stripped_verdict": "possibly-stale",
+   "avoided_by_exemption": true,
+   "exempt_receipt": {
+    "basis": 1434984508663412,
+    "batches": 13,
+    "tt_range": [
+     1783612865737377,
+     1787958615531162
+    ],
+    "theorem": "T1"
+   },
+   "scope_path": "leaf-basis"
+  },
+  {
+   "store": "collegemsg",
+   "op": "neighborhood_evolution",
+   "args_form": {
+    "as_of_tt": 1434984508663412,
+    "uid": "n1508",
+    "t1": 1082040961000000,
+    "t2": 1092222028450631,
+    "stride": 1272633431328
+   },
+   "as_of_tt": 1434984508663412,
+   "frontier_tt": 1787928056326825,
+   "correction_tt": 1787958617798175,
+   "pinned": true,
+   "exempted_verdict": "fresh",
+   "stripped_verdict": "possibly-stale",
+   "avoided_by_exemption": true,
+   "exempt_receipt": {
+    "basis": 1434984508663412,
+    "batches": 13,
+    "tt_range": [
+     1783612865737377,
+     1787958617798175
+    ],
+    "theorem": "T1"
+   },
+   "scope_path": "leaf-basis"
+  },
+  {
+   "store": "collegemsg",
+   "op": "aggregate_events",
+   "args_form": {
+    "as_of_tt": 1434984508663412,
+    "group_by": [
+     {
+      "dim": "endpoint",
+      "role": "src"
+     }
+    ],
+    "aggregates": [
+     {
+      "agg": "count"
+     }
+    ],
+    "window": {
+     "t_a": 1082040961000000,
+     "t_b": 1092222028450631
+    }
+   },
+   "as_of_tt": 1434984508663412,
+   "frontier_tt": 1787928056326825,
+   "correction_tt": 1787958620045080,
+   "pinned": true,
+   "exempted_verdict": "fresh",
+   "stripped_verdict": "possibly-stale",
+   "avoided_by_exemption": true,
+   "exempt_receipt": {
+    "basis": 1434984508663412,
+    "batches": 13,
+    "tt_range": [
+     1783612865737377,
+     1787958620045080
+    ],
+    "theorem": "T1"
+   },
+   "scope_path": "leaf-basis"
+  },
+  {
+   "store": "collegemsg",
+   "op": "graph_metric_timeseries",
+   "args_form": {
+    "as_of_tt": 1434984508663412,
+    "metric": "node_count",
+    "window": {
+     "t_a": 1082040961000000,
+     "t_b": 1092222028450631
+    },
+    "stride": 1272633431328
+   },
+   "as_of_tt": 1434984508663412,
+   "frontier_tt": 1787928056326825,
+   "correction_tt": 1787958622294181,
+   "pinned": true,
+   "exempted_verdict": "fresh",
+   "stripped_verdict": "possibly-stale",
+   "avoided_by_exemption": true,
+   "exempt_receipt": {
+    "basis": 1434984508663412,
+    "batches": 13,
+    "tt_range": [
+     1783612865737377,
+     1787958622294181
+    ],
+    "theorem": "T1"
+   },
+   "scope_path": "leaf-basis"
+  },
+  {
+   "store": "collegemsg",
+   "op": "burst_detection",
+   "args_form": {
+    "as_of_tt": 1434984508663412,
+    "target": {
+     "kind": "node_activity",
+     "uid": "n1525"
+    },
+    "window": {
+     "t_a": 1082040961000000,
+     "t_b": 1092222028450631
+    },
+    "stride": 636316715664
+   },
+   "as_of_tt": 1434984508663412,
+   "frontier_tt": 1787928056326825,
+   "correction_tt": 1787958624555112,
+   "pinned": true,
+   "exempted_verdict": "fresh",
+   "stripped_verdict": "possibly-stale",
+   "avoided_by_exemption": true,
+   "exempt_receipt": {
+    "basis": 1434984508663412,
+    "batches": 13,
+    "tt_range": [
+     1783612865737377,
+     1787958624555112
+    ],
+    "theorem": "T1"
+   },
+   "scope_path": "leaf-basis"
+  },
+  {
+   "store": "collegemsg",
+   "op": "co_active",
+   "args_form": {
+    "as_of_tt": 1434984508663412,
+    "a_spec": {
+     "rel_type": "MSG"
+    },
+    "b_spec": {
+     "rel_type": "MSG"
+    },
+    "allen_relation": {
+     "relation": "overlaps"
+    },
+    "limit": 200
+   },
+   "as_of_tt": 1434984508663412,
+   "frontier_tt": 1787928056326825,
+   "correction_tt": 1787958626821761,
+   "pinned": true,
+   "exempted_verdict": "fresh",
+   "stripped_verdict": "possibly-stale",
+   "avoided_by_exemption": true,
+   "exempt_receipt": {
+    "basis": 1434984508663412,
+    "batches": 13,
+    "tt_range": [
+     1783612865737377,
+     1787958626821761
+    ],
+    "theorem": "T1"
+   },
+   "scope_path": "leaf-basis"
+  },
+  {
+   "store": "collegemsg",
+   "op": "count_temporal_motifs",
+   "args_form": {
+    "as_of_tt": 1434984508663412,
+    "motif": "M_2node_pingpong",
+    "window": {
+     "t_a": 1082040961000000,
+     "t_b": 1092222028450631
+    },
+    "delta": 1272633431328
+   },
+   "as_of_tt": 1434984508663412,
+   "frontier_tt": 1787928056326825,
+   "correction_tt": 1787958629099929,
+   "pinned": true,
+   "exempted_verdict": "fresh",
+   "stripped_verdict": "possibly-stale",
+   "avoided_by_exemption": true,
+   "exempt_receipt": {
+    "basis": 1434984508663412,
+    "batches": 13,
+    "tt_range": [
+     1783612865737377,
+     1787958629099929
+    ],
+    "theorem": "T1"
+   },
+   "scope_path": "leaf-basis"
+  },
+  {
+   "store": "collegemsg",
+   "op": "find_temporal_motif_instances",
+   "args_form": {
+    "as_of_tt": 1434984508663412,
+    "motif": "M_2node_pingpong",
+    "window": {
+     "t_a": 1082040961000000,
+     "t_b": 1092222028450631
+    },
+    "delta": 1272633431328,
+    "limit": 50
+   },
+   "as_of_tt": 1434984508663412,
+   "frontier_tt": 1787928056326825,
+   "correction_tt": 1787958631389006,
+   "pinned": true,
+   "exempted_verdict": "fresh",
+   "stripped_verdict": "possibly-stale",
+   "avoided_by_exemption": true,
+   "exempt_receipt": {
+    "basis": 1434984508663412,
+    "batches": 13,
+    "tt_range": [
+     1783612865737377,
+     1787958631389006
+    ],
+    "theorem": "T1"
+   },
+   "scope_path": "leaf-basis"
+  },
+  {
+   "store": "collegemsg",
+   "op": "temporal_reachability",
+   "args_form": {
+    "as_of_tt": 1434984508663412,
+    "src": "n1535",
+    "window": {
+     "t_a": 1082040961000000,
+     "t_b": 1092222028450631
+    }
+   },
+   "as_of_tt": 1434984508663412,
+   "frontier_tt": 1787928056326825,
+   "correction_tt": 1787958633632674,
+   "pinned": true,
+   "exempted_verdict": "fresh",
+   "stripped_verdict": "possibly-stale",
+   "avoided_by_exemption": true,
+   "exempt_receipt": {
+    "basis": 1434984508663412,
+    "batches": 13,
+    "tt_range": [
+     1783612865737377,
+     1787958633632674
+    ],
+    "theorem": "T1"
+   },
+   "scope_path": "leaf-basis"
+  },
+  {
+   "store": "collegemsg",
+   "op": "temporal_paths",
+   "args_form": {
+    "as_of_tt": 1434984508663412,
+    "src": "n1538",
+    "dst": "n1538",
+    "window": {
+     "t_a": 1082040961000000,
+     "t_b": 1092222028450631
+    },
+    "k": 2
+   },
+   "as_of_tt": 1434984508663412,
+   "frontier_tt": 1787928056326825,
+   "correction_tt": 1787958635898071,
+   "pinned": true,
+   "exempted_verdict": "fresh",
+   "stripped_verdict": "possibly-stale",
+   "avoided_by_exemption": true,
+   "exempt_receipt": {
+    "basis": 1434984508663412,
+    "batches": 13,
+    "tt_range": [
+     1783612865737377,
+     1787958635898071
+    ],
+    "theorem": "T1"
+   },
+   "scope_path": "leaf-basis"
+  },
+  {
+   "store": "collegemsg",
+   "op": "entity_history",
+   "args_form": {
+    "as_of_tt": 1434984508663412,
+    "uid": "n154"
+   },
+   "as_of_tt": 1434984508663412,
+   "frontier_tt": 1787928056326825,
+   "correction_tt": 1787958638149582,
+   "pinned": true,
+   "exempted_verdict": "fresh",
+   "stripped_verdict": "possibly-stale",
+   "avoided_by_exemption": true,
+   "exempt_receipt": {
+    "basis": 1434984508663412,
+    "batches": 13,
+    "tt_range": [
+     1783612865737377,
+     1787958638149582
+    ],
+    "theorem": "T1"
+   },
+   "scope_path": "leaf-basis"
+  },
+  {
+   "store": "collegemsg",
+   "op": "version_history",
+   "args_form": {
+    "as_of_tt": 1434984508663412,
+    "kind": "node",
+    "window": {
+     "t_a": 1082040961000000,
+     "t_b": 1092222028450631
+    }
+   },
+   "as_of_tt": 1434984508663412,
+   "frontier_tt": 1787928056326825,
+   "correction_tt": 1787958640437425,
+   "pinned": true,
+   "exempted_verdict": "fresh",
+   "stripped_verdict": "possibly-stale",
+   "avoided_by_exemption": true,
+   "exempt_receipt": {
+    "basis": 1434984508663412,
+    "batches": 13,
+    "tt_range": [
+     1783612865737377,
+     1787958640437425
+    ],
+    "theorem": "T1"
+   },
+   "scope_path": "leaf-basis"
+  },
+  {
+   "store": "collegemsg",
+   "op": "snapshot_subgraph",
+   "args_form": {
+    "as_of_tt": 1434984508663412,
+    "seeds": [
+     "n1548"
+    ],
+    "t_valid": 1087131494725315,
+    "hops": 1
+   },
+   "as_of_tt": 1434984508663412,
+   "frontier_tt": 1787928056326825,
+   "correction_tt": 1787958642737817,
+   "pinned": true,
+   "exempted_verdict": "fresh",
+   "stripped_verdict": "possibly-stale",
+   "avoided_by_exemption": true,
+   "exempt_receipt": {
+    "basis": 1434984508663412,
+    "batches": 13,
+    "tt_range": [
+     1783612865737377,
+     1787958642737817
+    ],
+    "theorem": "T1"
+   },
+   "scope_path": "leaf-basis"
+  },
+  {
+   "store": "collegemsg",
+   "op": "diff_snapshots",
+   "args_form": {
+    "as_of_tt": 1434984508663412,
+    "t1": 1082040961000001,
+    "t2": 1087131494725315
+   },
+   "as_of_tt": 1434984508663412,
+   "frontier_tt": 1787928056326825,
+   "correction_tt": 1787958644975601,
+   "pinned": true,
+   "exempted_verdict": "fresh",
+   "stripped_verdict": "possibly-stale",
+   "avoided_by_exemption": true,
+   "exempt_receipt": {
+    "basis": 1434984508663412,
+    "batches": 13,
+    "tt_range": [
+     1783612865737377,
+     1787958644975601
+    ],
+    "theorem": "T1"
+   },
+   "scope_path": "leaf-basis"
+  },
+  {
+   "store": "collegemsg",
+   "op": "neighborhood_evolution",
+   "args_form": {
+    "as_of_tt": 1434984508663412,
+    "uid": "n1569",
+    "t1": 1082040961000000,
+    "t2": 1092222028450631,
+    "stride": 1272633431328
+   },
+   "as_of_tt": 1434984508663412,
+   "frontier_tt": 1787928056326825,
+   "correction_tt": 1787958647264825,
+   "pinned": true,
+   "exempted_verdict": "fresh",
+   "stripped_verdict": "possibly-stale",
+   "avoided_by_exemption": true,
+   "exempt_receipt": {
+    "basis": 1434984508663412,
+    "batches": 13,
+    "tt_range": [
+     1783612865737377,
+     1787958647264825
+    ],
+    "theorem": "T1"
+   },
+   "scope_path": "leaf-basis"
+  },
+  {
+   "store": "collegemsg",
+   "op": "aggregate_events",
+   "args_form": {
+    "as_of_tt": 1434984508663412,
+    "group_by": [
+     {
+      "dim": "endpoint",
+      "role": "src"
+     }
+    ],
+    "aggregates": [
+     {
+      "agg": "count"
+     }
+    ],
+    "window": {
+     "t_a": 1082040961000000,
+     "t_b": 1092222028450631
+    }
+   },
+   "as_of_tt": 1434984508663412,
+   "frontier_tt": 1787928056326825,
+   "correction_tt": 1787958649505467,
+   "pinned": true,
+   "exempted_verdict": "fresh",
+   "stripped_verdict": "possibly-stale",
+   "avoided_by_exemption": true,
+   "exempt_receipt": {
+    "basis": 1434984508663412,
+    "batches": 13,
+    "tt_range": [
+     1783612865737377,
+     1787958649505467
+    ],
+    "theorem": "T1"
+   },
+   "scope_path": "leaf-basis"
+  },
+  {
+   "store": "collegemsg",
+   "op": "graph_metric_timeseries",
+   "args_form": {
+    "as_of_tt": 1434984508663412,
+    "metric": "node_count",
+    "window": {
+     "t_a": 1082040961000000,
+     "t_b": 1092222028450631
+    },
+    "stride": 1272633431328
+   },
+   "as_of_tt": 1434984508663412,
+   "frontier_tt": 1787928056326825,
+   "correction_tt": 1787958651751579,
+   "pinned": true,
+   "exempted_verdict": "fresh",
+   "stripped_verdict": "possibly-stale",
+   "avoided_by_exemption": true,
+   "exempt_receipt": {
+    "basis": 1434984508663412,
+    "batches": 13,
+    "tt_range": [
+     1783612865737377,
+     1787958651751579
+    ],
+    "theorem": "T1"
+   },
+   "scope_path": "leaf-basis"
+  },
+  {
+   "store": "collegemsg",
+   "op": "burst_detection",
+   "args_form": {
+    "as_of_tt": 1434984508663412,
+    "target": {
+     "kind": "node_activity",
+     "uid": "n1578"
+    },
+    "window": {
+     "t_a": 1082040961000000,
+     "t_b": 1092222028450631
+    },
+    "stride": 636316715664
+   },
+   "as_of_tt": 1434984508663412,
+   "frontier_tt": 1787928056326825,
+   "correction_tt": 1787958654016075,
+   "pinned": true,
+   "exempted_verdict": "fresh",
+   "stripped_verdict": "possibly-stale",
+   "avoided_by_exemption": true,
+   "exempt_receipt": {
+    "basis": 1434984508663412,
+    "batches": 13,
+    "tt_range": [
+     1783612865737377,
+     1787958654016075
+    ],
+    "theorem": "T1"
+   },
+   "scope_path": "leaf-basis"
+  },
+  {
+   "store": "collegemsg",
+   "op": "co_active",
+   "args_form": {
+    "as_of_tt": 1434984508663412,
+    "a_spec": {
+     "rel_type": "MSG"
+    },
+    "b_spec": {
+     "rel_type": "MSG"
+    },
+    "allen_relation": {
+     "relation": "overlaps"
+    },
+    "limit": 200
+   },
+   "as_of_tt": 1434984508663412,
+   "frontier_tt": 1787928056326825,
+   "correction_tt": 1787958656273757,
+   "pinned": true,
+   "exempted_verdict": "fresh",
+   "stripped_verdict": "possibly-stale",
+   "avoided_by_exemption": true,
+   "exempt_receipt": {
+    "basis": 1434984508663412,
+    "batches": 13,
+    "tt_range": [
+     1783612865737377,
+     1787958656273757
+    ],
+    "theorem": "T1"
+   },
+   "scope_path": "leaf-basis"
+  },
+  {
+   "store": "collegemsg",
+   "op": "count_temporal_motifs",
+   "args_form": {
+    "as_of_tt": 1434984508663412,
+    "motif": "M_2node_pingpong",
+    "window": {
+     "t_a": 1082040961000000,
+     "t_b": 1092222028450631
+    },
+    "delta": 1272633431328
+   },
+   "as_of_tt": 1434984508663412,
+   "frontier_tt": 1787928056326825,
+   "correction_tt": 1787958658546277,
+   "pinned": true,
+   "exempted_verdict": "fresh",
+   "stripped_verdict": "possibly-stale",
+   "avoided_by_exemption": true,
+   "exempt_receipt": {
+    "basis": 1434984508663412,
+    "batches": 13,
+    "tt_range": [
+     1783612865737377,
+     1787958658546277
+    ],
+    "theorem": "T1"
+   },
+   "scope_path": "leaf-basis"
+  },
+  {
+   "store": "collegemsg",
+   "op": "find_temporal_motif_instances",
+   "args_form": {
+    "as_of_tt": 1434984508663412,
+    "motif": "M_2node_pingpong",
+    "window": {
+     "t_a": 1082040961000000,
+     "t_b": 1092222028450631
+    },
+    "delta": 1272633431328,
+    "limit": 50
+   },
+   "as_of_tt": 1434984508663412,
+   "frontier_tt": 1787928056326825,
+   "correction_tt": 1787958660859003,
+   "pinned": true,
+   "exempted_verdict": "fresh",
+   "stripped_verdict": "possibly-stale",
+   "avoided_by_exemption": true,
+   "exempt_receipt": {
+    "basis": 1434984508663412,
+    "batches": 13,
+    "tt_range": [
+     1783612865737377,
+     1787958660859003
+    ],
+    "theorem": "T1"
+   },
+   "scope_path": "leaf-basis"
+  },
+  {
+   "store": "collegemsg",
+   "op": "temporal_reachability",
+   "args_form": {
+    "as_of_tt": 1434984508663412,
+    "src": "n1587",
+    "window": {
+     "t_a": 1082040961000000,
+     "t_b": 1092222028450631
+    }
+   },
+   "as_of_tt": 1434984508663412,
+   "frontier_tt": 1787928056326825,
+   "correction_tt": 1787958663103388,
+   "pinned": true,
+   "exempted_verdict": "fresh",
+   "stripped_verdict": "possibly-stale",
+   "avoided_by_exemption": true,
+   "exempt_receipt": {
+    "basis": 1434984508663412,
+    "batches": 13,
+    "tt_range": [
+     1783612865737377,
+     1787958663103388
+    ],
+    "theorem": "T1"
+   },
+   "scope_path": "leaf-basis"
+  },
+  {
+   "store": "collegemsg",
+   "op": "temporal_paths",
+   "args_form": {
+    "as_of_tt": 1434984508663412,
+    "src": "n1597",
+    "dst": "n1597",
+    "window": {
+     "t_a": 1082040961000000,
+     "t_b": 1092222028450631
+    },
+    "k": 2
+   },
+   "as_of_tt": 1434984508663412,
+   "frontier_tt": 1787928056326825,
+   "correction_tt": 1787958665390130,
+   "pinned": true,
+   "exempted_verdict": "fresh",
+   "stripped_verdict": "possibly-stale",
+   "avoided_by_exemption": true,
+   "exempt_receipt": {
+    "basis": 1434984508663412,
+    "batches": 13,
+    "tt_range": [
+     1783612865737377,
+     1787958665390130
+    ],
+    "theorem": "T1"
+   },
+   "scope_path": "leaf-basis"
+  },
+  {
+   "store": "collegemsg",
+   "op": "entity_history",
+   "args_form": {
+    "as_of_tt": 1434984508663412,
+    "uid": "n1602"
+   },
+   "as_of_tt": 1434984508663412,
+   "frontier_tt": 1787928056326825,
+   "correction_tt": 1787958667639941,
+   "pinned": true,
+   "exempted_verdict": "fresh",
+   "stripped_verdict": "possibly-stale",
+   "avoided_by_exemption": true,
+   "exempt_receipt": {
+    "basis": 1434984508663412,
+    "batches": 13,
+    "tt_range": [
+     1783612865737377,
+     1787958667639941
+    ],
+    "theorem": "T1"
+   },
+   "scope_path": "leaf-basis"
+  },
+  {
+   "store": "collegemsg",
+   "op": "version_history",
+   "args_form": {
+    "as_of_tt": 1434984508663412,
+    "kind": "node",
+    "window": {
+     "t_a": 1082040961000000,
+     "t_b": 1092222028450631
+    }
+   },
+   "as_of_tt": 1434984508663412,
+   "frontier_tt": 1787928056326825,
+   "correction_tt": 1787958669895688,
+   "pinned": true,
+   "exempted_verdict": "fresh",
+   "stripped_verdict": "possibly-stale",
+   "avoided_by_exemption": true,
+   "exempt_receipt": {
+    "basis": 1434984508663412,
+    "batches": 13,
+    "tt_range": [
+     1783612865737377,
+     1787958669895688
+    ],
+    "theorem": "T1"
+   },
+   "scope_path": "leaf-basis"
+  },
+  {
+   "store": "collegemsg",
+   "op": "snapshot_subgraph",
+   "args_form": {
+    "as_of_tt": 1434984508663412,
+    "seeds": [
+     "n1607"
+    ],
+    "t_valid": 1087131494725315,
+    "hops": 1
+   },
+   "as_of_tt": 1434984508663412,
+   "frontier_tt": 1787928056326825,
+   "correction_tt": 1787958672150226,
+   "pinned": true,
+   "exempted_verdict": "fresh",
+   "stripped_verdict": "possibly-stale",
+   "avoided_by_exemption": true,
+   "exempt_receipt": {
+    "basis": 1434984508663412,
+    "batches": 13,
+    "tt_range": [
+     1783612865737377,
+     1787958672150226
+    ],
+    "theorem": "T1"
+   },
+   "scope_path": "leaf-basis"
+  },
+  {
+   "store": "collegemsg",
+   "op": "diff_snapshots",
+   "args_form": {
+    "as_of_tt": 1434984508663412,
+    "t1": 1082040961000001,
+    "t2": 1087131494725315
+   },
+   "as_of_tt": 1434984508663412,
+   "frontier_tt": 1787928056326825,
+   "correction_tt": 1787958674418749,
+   "pinned": true,
+   "exempted_verdict": "fresh",
+   "stripped_verdict": "possibly-stale",
+   "avoided_by_exemption": true,
+   "exempt_receipt": {
+    "basis": 1434984508663412,
+    "batches": 13,
+    "tt_range": [
+     1783612865737377,
+     1787958674418749
+    ],
+    "theorem": "T1"
+   },
+   "scope_path": "leaf-basis"
+  },
+  {
+   "store": "collegemsg",
+   "op": "neighborhood_evolution",
+   "args_form": {
+    "as_of_tt": 1434984508663412,
+    "uid": "n1612",
+    "t1": 1082040961000000,
+    "t2": 1092222028450631,
+    "stride": 1272633431328
+   },
+   "as_of_tt": 1434984508663412,
+   "frontier_tt": 1787928056326825,
+   "correction_tt": 1787958676683543,
+   "pinned": true,
+   "exempted_verdict": "fresh",
+   "stripped_verdict": "possibly-stale",
+   "avoided_by_exemption": true,
+   "exempt_receipt": {
+    "basis": 1434984508663412,
+    "batches": 13,
+    "tt_range": [
+     1783612865737377,
+     1787958676683543
+    ],
+    "theorem": "T1"
+   },
+   "scope_path": "leaf-basis"
+  },
+  {
+   "store": "collegemsg",
+   "op": "aggregate_events",
+   "args_form": {
+    "as_of_tt": 1434984508663412,
+    "group_by": [
+     {
+      "dim": "endpoint",
+      "role": "src"
+     }
+    ],
+    "aggregates": [
+     {
+      "agg": "count"
+     }
+    ],
+    "window": {
+     "t_a": 1082040961000000,
+     "t_b": 1092222028450631
+    }
+   },
+   "as_of_tt": 1434984508663412,
+   "frontier_tt": 1787928056326825,
+   "correction_tt": 1787958678952714,
+   "pinned": true,
+   "exempted_verdict": "fresh",
+   "stripped_verdict": "possibly-stale",
+   "avoided_by_exemption": true,
+   "exempt_receipt": {
+    "basis": 1434984508663412,
+    "batches": 13,
+    "tt_range": [
+     1783612865737377,
+     1787958678952714
+    ],
+    "theorem": "T1"
+   },
+   "scope_path": "leaf-basis"
+  },
+  {
+   "store": "collegemsg",
+   "op": "graph_metric_timeseries",
+   "args_form": {
+    "as_of_tt": 1434984508663412,
+    "metric": "node_count",
+    "window": {
+     "t_a": 1082040961000000,
+     "t_b": 1092222028450631
+    },
+    "stride": 1272633431328
+   },
+   "as_of_tt": 1434984508663412,
+   "frontier_tt": 1787928056326825,
+   "correction_tt": 1787958681253030,
+   "pinned": true,
+   "exempted_verdict": "fresh",
+   "stripped_verdict": "possibly-stale",
+   "avoided_by_exemption": true,
+   "exempt_receipt": {
+    "basis": 1434984508663412,
+    "batches": 13,
+    "tt_range": [
+     1783612865737377,
+     1787958681253030
+    ],
+    "theorem": "T1"
+   },
+   "scope_path": "leaf-basis"
+  },
+  {
+   "store": "collegemsg",
+   "op": "burst_detection",
+   "args_form": {
+    "as_of_tt": 1434984508663412,
+    "target": {
+     "kind": "node_activity",
+     "uid": "n1621"
+    },
+    "window": {
+     "t_a": 1082040961000000,
+     "t_b": 1092222028450631
+    },
+    "stride": 636316715664
+   },
+   "as_of_tt": 1434984508663412,
+   "frontier_tt": 1787928056326825,
+   "correction_tt": 1787958683500380,
+   "pinned": true,
+   "exempted_verdict": "fresh",
+   "stripped_verdict": "possibly-stale",
+   "avoided_by_exemption": true,
+   "exempt_receipt": {
+    "basis": 1434984508663412,
+    "batches": 13,
+    "tt_range": [
+     1783612865737377,
+     1787958683500380
+    ],
+    "theorem": "T1"
+   },
+   "scope_path": "leaf-basis"
+  },
+  {
+   "store": "collegemsg",
+   "op": "co_active",
+   "args_form": {
+    "as_of_tt": 1434984508663412,
+    "a_spec": {
+     "rel_type": "MSG"
+    },
+    "b_spec": {
+     "rel_type": "MSG"
+    },
+    "allen_relation": {
+     "relation": "overlaps"
+    },
+    "limit": 200
+   },
+   "as_of_tt": 1434984508663412,
+   "frontier_tt": 1787928056326825,
+   "correction_tt": 1787958685775269,
+   "pinned": true,
+   "exempted_verdict": "fresh",
+   "stripped_verdict": "possibly-stale",
+   "avoided_by_exemption": true,
+   "exempt_receipt": {
+    "basis": 1434984508663412,
+    "batches": 13,
+    "tt_range": [
+     1783612865737377,
+     1787958685775269
+    ],
+    "theorem": "T1"
+   },
+   "scope_path": "leaf-basis"
+  },
+  {
+   "store": "collegemsg",
+   "op": "count_temporal_motifs",
+   "args_form": {
+    "as_of_tt": 1434984508663412,
+    "motif": "M_2node_pingpong",
+    "window": {
+     "t_a": 1082040961000000,
+     "t_b": 1092222028450631
+    },
+    "delta": 1272633431328
+   },
+   "as_of_tt": 1434984508663412,
+   "frontier_tt": 1787928056326825,
+   "correction_tt": 1787958688051469,
+   "pinned": true,
+   "exempted_verdict": "fresh",
+   "stripped_verdict": "possibly-stale",
+   "avoided_by_exemption": true,
+   "exempt_receipt": {
+    "basis": 1434984508663412,
+    "batches": 13,
+    "tt_range": [
+     1783612865737377,
+     1787958688051469
+    ],
+    "theorem": "T1"
+   },
+   "scope_path": "leaf-basis"
+  },
+  {
+   "store": "collegemsg",
+   "op": "find_temporal_motif_instances",
+   "args_form": {
+    "as_of_tt": 1434984508663412,
+    "motif": "M_2node_pingpong",
+    "window": {
+     "t_a": 1082040961000000,
+     "t_b": 1092222028450631
+    },
+    "delta": 1272633431328,
+    "limit": 50
+   },
+   "as_of_tt": 1434984508663412,
+   "frontier_tt": 1787928056326825,
+   "correction_tt": 1787958690346302,
+   "pinned": true,
+   "exempted_verdict": "fresh",
+   "stripped_verdict": "possibly-stale",
+   "avoided_by_exemption": true,
+   "exempt_receipt": {
+    "basis": 1434984508663412,
+    "batches": 13,
+    "tt_range": [
+     1783612865737377,
+     1787958690346302
+    ],
+    "theorem": "T1"
+   },
+   "scope_path": "leaf-basis"
+  },
+  {
+   "store": "collegemsg",
+   "op": "temporal_reachability",
+   "args_form": {
+    "as_of_tt": 1434984508663412,
+    "src": "n1631",
+    "window": {
+     "t_a": 1082040961000000,
+     "t_b": 1092222028450631
+    }
+   },
+   "as_of_tt": 1434984508663412,
+   "frontier_tt": 1787928056326825,
+   "correction_tt": 1787958692583156,
+   "pinned": true,
+   "exempted_verdict": "fresh",
+   "stripped_verdict": "possibly-stale",
+   "avoided_by_exemption": true,
+   "exempt_receipt": {
+    "basis": 1434984508663412,
+    "batches": 13,
+    "tt_range": [
+     1783612865737377,
+     1787958692583156
+    ],
+    "theorem": "T1"
+   },
+   "scope_path": "leaf-basis"
+  },
+  {
+   "store": "collegemsg",
+   "op": "temporal_paths",
+   "args_form": {
+    "as_of_tt": 1434984508663412,
+    "src": "n1636",
+    "dst": "n1636",
+    "window": {
+     "t_a": 1082040961000000,
+     "t_b": 1092222028450631
+    },
+    "k": 2
+   },
+   "as_of_tt": 1434984508663412,
+   "frontier_tt": 1787928056326825,
+   "correction_tt": 1787958694846324,
+   "pinned": true,
+   "exempted_verdict": "fresh",
+   "stripped_verdict": "possibly-stale",
+   "avoided_by_exemption": true,
+   "exempt_receipt": {
+    "basis": 1434984508663412,
+    "batches": 13,
+    "tt_range": [
+     1783612865737377,
+     1787958694846324
+    ],
+    "theorem": "T1"
+   },
+   "scope_path": "leaf-basis"
+  },
+  {
+   "store": "collegemsg",
+   "op": "entity_history",
+   "args_form": {
+    "as_of_tt": 1434984508663412,
+    "uid": "n1639"
+   },
+   "as_of_tt": 1434984508663412,
+   "frontier_tt": 1787928056326825,
+   "correction_tt": 1787958697119813,
+   "pinned": true,
+   "exempted_verdict": "fresh",
+   "stripped_verdict": "possibly-stale",
+   "avoided_by_exemption": true,
+   "exempt_receipt": {
+    "basis": 1434984508663412,
+    "batches": 13,
+    "tt_range": [
+     1783612865737377,
+     1787958697119813
+    ],
+    "theorem": "T1"
+   },
+   "scope_path": "leaf-basis"
+  },
+  {
+   "store": "collegemsg",
+   "op": "version_history",
+   "args_form": {
+    "as_of_tt": 1434984508663412,
+    "kind": "node",
+    "window": {
+     "t_a": 1082040961000000,
+     "t_b": 1092222028450631
+    }
+   },
+   "as_of_tt": 1434984508663412,
+   "frontier_tt": 1787928056326825,
+   "correction_tt": 1787958699440577,
+   "pinned": true,
+   "exempted_verdict": "fresh",
+   "stripped_verdict": "possibly-stale",
+   "avoided_by_exemption": true,
+   "exempt_receipt": {
+    "basis": 1434984508663412,
+    "batches": 13,
+    "tt_range": [
+     1783612865737377,
+     1787958699440577
+    ],
+    "theorem": "T1"
+   },
+   "scope_path": "leaf-basis"
+  },
+  {
+   "store": "collegemsg",
+   "op": "snapshot_subgraph",
+   "args_form": {
+    "as_of_tt": 1434984508663412,
+    "seeds": [
+     "n1647"
+    ],
+    "t_valid": 1087131494725315,
+    "hops": 1
+   },
+   "as_of_tt": 1434984508663412,
+   "frontier_tt": 1787928056326825,
+   "correction_tt": 1787958701688087,
+   "pinned": true,
+   "exempted_verdict": "fresh",
+   "stripped_verdict": "possibly-stale",
+   "avoided_by_exemption": true,
+   "exempt_receipt": {
+    "basis": 1434984508663412,
+    "batches": 13,
+    "tt_range": [
+     1783612865737377,
+     1787958701688087
+    ],
+    "theorem": "T1"
+   },
+   "scope_path": "leaf-basis"
+  },
+  {
+   "store": "collegemsg",
+   "op": "diff_snapshots",
+   "args_form": {
+    "as_of_tt": 1434984508663412,
+    "t1": 1082040961000001,
+    "t2": 1087131494725315
+   },
+   "as_of_tt": 1434984508663412,
+   "frontier_tt": 1787928056326825,
+   "correction_tt": 1787958703970184,
+   "pinned": true,
+   "exempted_verdict": "fresh",
+   "stripped_verdict": "possibly-stale",
+   "avoided_by_exemption": true,
+   "exempt_receipt": {
+    "basis": 1434984508663412,
+    "batches": 13,
+    "tt_range": [
+     1783612865737377,
+     1787958703970184
+    ],
+    "theorem": "T1"
+   },
+   "scope_path": "leaf-basis"
+  },
+  {
+   "store": "collegemsg",
+   "op": "neighborhood_evolution",
+   "args_form": {
+    "as_of_tt": 1434984508663412,
+    "uid": "n1658",
+    "t1": 1082040961000000,
+    "t2": 1092222028450631,
+    "stride": 1272633431328
+   },
+   "as_of_tt": 1434984508663412,
+   "frontier_tt": 1787928056326825,
+   "correction_tt": 1787958706220335,
+   "pinned": true,
+   "exempted_verdict": "fresh",
+   "stripped_verdict": "possibly-stale",
+   "avoided_by_exemption": true,
+   "exempt_receipt": {
+    "basis": 1434984508663412,
+    "batches": 13,
+    "tt_range": [
+     1783612865737377,
+     1787958706220335
+    ],
+    "theorem": "T1"
+   },
+   "scope_path": "leaf-basis"
+  },
+  {
+   "store": "collegemsg",
+   "op": "aggregate_events",
+   "args_form": {
+    "as_of_tt": 1434984508663412,
+    "group_by": [
+     {
+      "dim": "endpoint",
+      "role": "src"
+     }
+    ],
+    "aggregates": [
+     {
+      "agg": "count"
+     }
+    ],
+    "window": {
+     "t_a": 1082040961000000,
+     "t_b": 1092222028450631
+    }
+   },
+   "as_of_tt": 1434984508663412,
+   "frontier_tt": 1787928056326825,
+   "correction_tt": 1787958708456382,
+   "pinned": true,
+   "exempted_verdict": "fresh",
+   "stripped_verdict": "possibly-stale",
+   "avoided_by_exemption": true,
+   "exempt_receipt": {
+    "basis": 1434984508663412,
+    "batches": 13,
+    "tt_range": [
+     1783612865737377,
+     1787958708456382
+    ],
+    "theorem": "T1"
+   },
+   "scope_path": "leaf-basis"
+  },
+  {
+   "store": "collegemsg",
+   "op": "graph_metric_timeseries",
+   "args_form": {
+    "as_of_tt": 1434984508663412,
+    "metric": "node_count",
+    "window": {
+     "t_a": 1082040961000000,
+     "t_b": 1092222028450631
+    },
+    "stride": 1272633431328
+   },
+   "as_of_tt": 1434984508663412,
+   "frontier_tt": 1787928056326825,
+   "correction_tt": 1787958710717285,
+   "pinned": true,
+   "exempted_verdict": "fresh",
+   "stripped_verdict": "possibly-stale",
+   "avoided_by_exemption": true,
+   "exempt_receipt": {
+    "basis": 1434984508663412,
+    "batches": 13,
+    "tt_range": [
+     1783612865737377,
+     1787958710717285
+    ],
+    "theorem": "T1"
+   },
+   "scope_path": "leaf-basis"
+  },
+  {
+   "store": "collegemsg",
+   "op": "burst_detection",
+   "args_form": {
+    "as_of_tt": 1434984508663412,
+    "target": {
+     "kind": "node_activity",
+     "uid": "n1664"
+    },
+    "window": {
+     "t_a": 1082040961000000,
+     "t_b": 1092222028450631
+    },
+    "stride": 636316715664
+   },
+   "as_of_tt": 1434984508663412,
+   "frontier_tt": 1787928056326825,
+   "correction_tt": 1787958713013990,
+   "pinned": true,
+   "exempted_verdict": "fresh",
+   "stripped_verdict": "possibly-stale",
+   "avoided_by_exemption": true,
+   "exempt_receipt": {
+    "basis": 1434984508663412,
+    "batches": 13,
+    "tt_range": [
+     1783612865737377,
+     1787958713013990
+    ],
+    "theorem": "T1"
+   },
+   "scope_path": "leaf-basis"
+  },
+  {
+   "store": "collegemsg",
+   "op": "co_active",
+   "args_form": {
+    "as_of_tt": 1434984508663412,
+    "a_spec": {
+     "rel_type": "MSG"
+    },
+    "b_spec": {
+     "rel_type": "MSG"
+    },
+    "allen_relation": {
+     "relation": "overlaps"
+    },
+    "limit": 200
+   },
+   "as_of_tt": 1434984508663412,
+   "frontier_tt": 1787928056326825,
+   "correction_tt": 1787958715280432,
+   "pinned": true,
+   "exempted_verdict": "fresh",
+   "stripped_verdict": "possibly-stale",
+   "avoided_by_exemption": true,
+   "exempt_receipt": {
+    "basis": 1434984508663412,
+    "batches": 13,
+    "tt_range": [
+     1783612865737377,
+     1787958715280432
+    ],
+    "theorem": "T1"
+   },
+   "scope_path": "leaf-basis"
+  },
+  {
+   "store": "collegemsg",
+   "op": "count_temporal_motifs",
+   "args_form": {
+    "as_of_tt": 1434984508663412,
+    "motif": "M_2node_pingpong",
+    "window": {
+     "t_a": 1082040961000000,
+     "t_b": 1092222028450631
+    },
+    "delta": 1272633431328
+   },
+   "as_of_tt": 1434984508663412,
+   "frontier_tt": 1787928056326825,
+   "correction_tt": 1787958717561324,
+   "pinned": true,
+   "exempted_verdict": "fresh",
+   "stripped_verdict": "possibly-stale",
+   "avoided_by_exemption": true,
+   "exempt_receipt": {
+    "basis": 1434984508663412,
+    "batches": 13,
+    "tt_range": [
+     1783612865737377,
+     1787958717561324
+    ],
+    "theorem": "T1"
+   },
+   "scope_path": "leaf-basis"
+  },
+  {
+   "store": "collegemsg",
+   "op": "find_temporal_motif_instances",
+   "args_form": {
+    "as_of_tt": 1434984508663412,
+    "motif": "M_2node_pingpong",
+    "window": {
+     "t_a": 1082040961000000,
+     "t_b": 1092222028450631
+    },
+    "delta": 1272633431328,
+    "limit": 50
+   },
+   "as_of_tt": 1434984508663412,
+   "frontier_tt": 1787928056326825,
+   "correction_tt": 1787958719856947,
+   "pinned": true,
+   "exempted_verdict": "fresh",
+   "stripped_verdict": "possibly-stale",
+   "avoided_by_exemption": true,
+   "exempt_receipt": {
+    "basis": 1434984508663412,
+    "batches": 13,
+    "tt_range": [
+     1783612865737377,
+     1787958719856947
+    ],
+    "theorem": "T1"
+   },
+   "scope_path": "leaf-basis"
+  },
+  {
+   "store": "collegemsg",
+   "op": "temporal_reachability",
+   "args_form": {
+    "as_of_tt": 1434984508663412,
+    "src": "n168",
+    "window": {
+     "t_a": 1082040961000000,
+     "t_b": 1092222028450631
+    }
+   },
+   "as_of_tt": 1434984508663412,
+   "frontier_tt": 1787928056326825,
+   "correction_tt": 1787958722103293,
+   "pinned": true,
+   "exempted_verdict": "fresh",
+   "stripped_verdict": "possibly-stale",
+   "avoided_by_exemption": true,
+   "exempt_receipt": {
+    "basis": 1434984508663412,
+    "batches": 13,
+    "tt_range": [
+     1783612865737377,
+     1787958722103293
+    ],
+    "theorem": "T1"
+   },
+   "scope_path": "leaf-basis"
+  },
+  {
+   "store": "collegemsg",
+   "op": "temporal_paths",
+   "args_form": {
+    "as_of_tt": 1434984508663412,
+    "src": "n1695",
+    "dst": "n1695",
+    "window": {
+     "t_a": 1082040961000000,
+     "t_b": 1092222028450631
+    },
+    "k": 2
+   },
+   "as_of_tt": 1434984508663412,
+   "frontier_tt": 1787928056326825,
+   "correction_tt": 1787958724359540,
+   "pinned": true,
+   "exempted_verdict": "fresh",
+   "stripped_verdict": "possibly-stale",
+   "avoided_by_exemption": true,
+   "exempt_receipt": {
+    "basis": 1434984508663412,
+    "batches": 13,
+    "tt_range": [
+     1783612865737377,
+     1787958724359540
+    ],
+    "theorem": "T1"
+   },
+   "scope_path": "leaf-basis"
+  },
+  {
+   "store": "collegemsg",
+   "op": "entity_history",
+   "args_form": {
+    "as_of_tt": 1434984508663412,
+    "uid": "n1701"
+   },
+   "as_of_tt": 1434984508663412,
+   "frontier_tt": 1787928056326825,
+   "correction_tt": 1787958726624999,
+   "pinned": true,
+   "exempted_verdict": "fresh",
+   "stripped_verdict": "possibly-stale",
+   "avoided_by_exemption": true,
+   "exempt_receipt": {
+    "basis": 1434984508663412,
+    "batches": 13,
+    "tt_range": [
+     1783612865737377,
+     1787958726624999
+    ],
+    "theorem": "T1"
+   },
+   "scope_path": "leaf-basis"
+  },
+  {
+   "store": "collegemsg",
+   "op": "version_history",
+   "args_form": {
+    "as_of_tt": 1434984508663412,
+    "kind": "node",
+    "window": {
+     "t_a": 1082040961000000,
+     "t_b": 1092222028450631
+    }
+   },
+   "as_of_tt": 1434984508663412,
+   "frontier_tt": 1787928056326825,
+   "correction_tt": 1787958728918158,
+   "pinned": true,
+   "exempted_verdict": "fresh",
+   "stripped_verdict": "possibly-stale",
+   "avoided_by_exemption": true,
+   "exempt_receipt": {
+    "basis": 1434984508663412,
+    "batches": 13,
+    "tt_range": [
+     1783612865737377,
+     1787958728918158
+    ],
+    "theorem": "T1"
+   },
+   "scope_path": "leaf-basis"
+  },
+  {
+   "store": "collegemsg",
+   "op": "snapshot_subgraph",
+   "args_form": {
+    "as_of_tt": 1434984508663412,
+    "seeds": [
+     "n1708"
+    ],
+    "t_valid": 1087131494725315,
+    "hops": 1
+   },
+   "as_of_tt": 1434984508663412,
+   "frontier_tt": 1787928056326825,
+   "correction_tt": 1787958731227923,
+   "pinned": true,
+   "exempted_verdict": "fresh",
+   "stripped_verdict": "possibly-stale",
+   "avoided_by_exemption": true,
+   "exempt_receipt": {
+    "basis": 1434984508663412,
+    "batches": 13,
+    "tt_range": [
+     1783612865737377,
+     1787958731227923
+    ],
+    "theorem": "T1"
+   },
+   "scope_path": "leaf-basis"
+  },
+  {
+   "store": "collegemsg",
+   "op": "diff_snapshots",
+   "args_form": {
+    "as_of_tt": 1434984508663412,
+    "t1": 1082040961000001,
+    "t2": 1087131494725315
+   },
+   "as_of_tt": 1434984508663412,
+   "frontier_tt": 1787928056326825,
+   "correction_tt": 1787958733477888,
+   "pinned": true,
+   "exempted_verdict": "fresh",
+   "stripped_verdict": "possibly-stale",
+   "avoided_by_exemption": true,
+   "exempt_receipt": {
+    "basis": 1434984508663412,
+    "batches": 13,
+    "tt_range": [
+     1783612865737377,
+     1787958733477888
+    ],
+    "theorem": "T1"
+   },
+   "scope_path": "leaf-basis"
+  },
+  {
+   "store": "collegemsg",
+   "op": "neighborhood_evolution",
+   "args_form": {
+    "as_of_tt": 1434984508663412,
+    "uid": "n1712",
+    "t1": 1082040961000000,
+    "t2": 1092222028450631,
+    "stride": 1272633431328
+   },
+   "as_of_tt": 1434984508663412,
+   "frontier_tt": 1787928056326825,
+   "correction_tt": 1787958735763243,
+   "pinned": true,
+   "exempted_verdict": "fresh",
+   "stripped_verdict": "possibly-stale",
+   "avoided_by_exemption": true,
+   "exempt_receipt": {
+    "basis": 1434984508663412,
+    "batches": 13,
+    "tt_range": [
+     1783612865737377,
+     1787958735763243
+    ],
+    "theorem": "T1"
+   },
+   "scope_path": "leaf-basis"
+  },
+  {
+   "store": "collegemsg",
+   "op": "aggregate_events",
+   "args_form": {
+    "as_of_tt": 1434984508663412,
+    "group_by": [
+     {
+      "dim": "endpoint",
+      "role": "src"
+     }
+    ],
+    "aggregates": [
+     {
+      "agg": "count"
+     }
+    ],
+    "window": {
+     "t_a": 1082040961000000,
+     "t_b": 1092222028450631
+    }
+   },
+   "as_of_tt": 1434984508663412,
+   "frontier_tt": 1787928056326825,
+   "correction_tt": 1787958738015583,
+   "pinned": true,
+   "exempted_verdict": "fresh",
+   "stripped_verdict": "possibly-stale",
+   "avoided_by_exemption": true,
+   "exempt_receipt": {
+    "basis": 1434984508663412,
+    "batches": 13,
+    "tt_range": [
+     1783612865737377,
+     1787958738015583
+    ],
+    "theorem": "T1"
+   },
+   "scope_path": "leaf-basis"
+  },
+  {
+   "store": "collegemsg",
+   "op": "graph_metric_timeseries",
+   "args_form": {
+    "as_of_tt": 1434984508663412,
+    "metric": "node_count",
+    "window": {
+     "t_a": 1082040961000000,
+     "t_b": 1092222028450631
+    },
+    "stride": 1272633431328
+   },
+   "as_of_tt": 1434984508663412,
+   "frontier_tt": 1787928056326825,
+   "correction_tt": 1787958740250114,
+   "pinned": true,
+   "exempted_verdict": "fresh",
+   "stripped_verdict": "possibly-stale",
+   "avoided_by_exemption": true,
+   "exempt_receipt": {
+    "basis": 1434984508663412,
+    "batches": 13,
+    "tt_range": [
+     1783612865737377,
+     1787958740250114
+    ],
+    "theorem": "T1"
+   },
+   "scope_path": "leaf-basis"
+  },
+  {
+   "store": "collegemsg",
+   "op": "burst_detection",
+   "args_form": {
+    "as_of_tt": 1434984508663412,
+    "target": {
+     "kind": "node_activity",
+     "uid": "n1724"
+    },
+    "window": {
+     "t_a": 1082040961000000,
+     "t_b": 1092222028450631
+    },
+    "stride": 636316715664
+   },
+   "as_of_tt": 1434984508663412,
+   "frontier_tt": 1787928056326825,
+   "correction_tt": 1787958742501004,
+   "pinned": true,
+   "exempted_verdict": "fresh",
+   "stripped_verdict": "possibly-stale",
+   "avoided_by_exemption": true,
+   "exempt_receipt": {
+    "basis": 1434984508663412,
+    "batches": 13,
+    "tt_range": [
+     1783612865737377,
+     1787958742501004
+    ],
+    "theorem": "T1"
+   },
+   "scope_path": "leaf-basis"
+  },
+  {
+   "store": "collegemsg",
+   "op": "co_active",
+   "args_form": {
+    "as_of_tt": 1434984508663412,
+    "a_spec": {
+     "rel_type": "MSG"
+    },
+    "b_spec": {
+     "rel_type": "MSG"
+    },
+    "allen_relation": {
+     "relation": "overlaps"
+    },
+    "limit": 200
+   },
+   "as_of_tt": 1434984508663412,
+   "frontier_tt": 1787928056326825,
+   "correction_tt": 1787958744759309,
+   "pinned": true,
+   "exempted_verdict": "fresh",
+   "stripped_verdict": "possibly-stale",
+   "avoided_by_exemption": true,
+   "exempt_receipt": {
+    "basis": 1434984508663412,
+    "batches": 13,
+    "tt_range": [
+     1783612865737377,
+     1787958744759309
+    ],
+    "theorem": "T1"
+   },
+   "scope_path": "leaf-basis"
+  },
+  {
+   "store": "collegemsg",
+   "op": "count_temporal_motifs",
+   "args_form": {
+    "as_of_tt": 1434984508663412,
+    "motif": "M_2node_pingpong",
+    "window": {
+     "t_a": 1082040961000000,
+     "t_b": 1092222028450631
+    },
+    "delta": 1272633431328
+   },
+   "as_of_tt": 1434984508663412,
+   "frontier_tt": 1787928056326825,
+   "correction_tt": 1787958747040820,
+   "pinned": true,
+   "exempted_verdict": "fresh",
+   "stripped_verdict": "possibly-stale",
+   "avoided_by_exemption": true,
+   "exempt_receipt": {
+    "basis": 1434984508663412,
+    "batches": 13,
+    "tt_range": [
+     1783612865737377,
+     1787958747040820
+    ],
+    "theorem": "T1"
+   },
+   "scope_path": "leaf-basis"
+  },
+  {
+   "store": "collegemsg",
+   "op": "find_temporal_motif_instances",
+   "args_form": {
+    "as_of_tt": 1434984508663412,
+    "motif": "M_2node_pingpong",
+    "window": {
+     "t_a": 1082040961000000,
+     "t_b": 1092222028450631
+    },
+    "delta": 1272633431328,
+    "limit": 50
+   },
+   "as_of_tt": 1434984508663412,
+   "frontier_tt": 1787928056326825,
+   "correction_tt": 1787958749349697,
+   "pinned": true,
+   "exempted_verdict": "fresh",
+   "stripped_verdict": "possibly-stale",
+   "avoided_by_exemption": true,
+   "exempt_receipt": {
+    "basis": 1434984508663412,
+    "batches": 13,
+    "tt_range": [
+     1783612865737377,
+     1787958749349697
+    ],
+    "theorem": "T1"
+   },
+   "scope_path": "leaf-basis"
+  },
+  {
+   "store": "collegemsg",
+   "op": "temporal_reachability",
+   "args_form": {
+    "as_of_tt": 1434984508663412,
+    "src": "n1745",
+    "window": {
+     "t_a": 1082040961000000,
+     "t_b": 1092222028450631
+    }
+   },
+   "as_of_tt": 1434984508663412,
+   "frontier_tt": 1787928056326825,
+   "correction_tt": 1787958751597976,
+   "pinned": true,
+   "exempted_verdict": "fresh",
+   "stripped_verdict": "possibly-stale",
+   "avoided_by_exemption": true,
+   "exempt_receipt": {
+    "basis": 1434984508663412,
+    "batches": 13,
+    "tt_range": [
+     1783612865737377,
+     1787958751597976
+    ],
+    "theorem": "T1"
+   },
+   "scope_path": "leaf-basis"
+  },
+  {
+   "store": "collegemsg",
+   "op": "temporal_paths",
+   "args_form": {
+    "as_of_tt": 1434984508663412,
+    "src": "n175",
+    "dst": "n175",
+    "window": {
+     "t_a": 1082040961000000,
+     "t_b": 1092222028450631
+    },
+    "k": 2
+   },
+   "as_of_tt": 1434984508663412,
+   "frontier_tt": 1787928056326825,
+   "correction_tt": 1787958753870278,
+   "pinned": true,
+   "exempted_verdict": "fresh",
+   "stripped_verdict": "possibly-stale",
+   "avoided_by_exemption": true,
+   "exempt_receipt": {
+    "basis": 1434984508663412,
+    "batches": 13,
+    "tt_range": [
+     1783612865737377,
+     1787958753870278
+    ],
+    "theorem": "T1"
+   },
+   "scope_path": "leaf-basis"
+  },
+  {
+   "store": "collegemsg",
+   "op": "entity_history",
+   "args_form": {
+    "as_of_tt": 1434984508663412,
+    "uid": "n1753"
+   },
+   "as_of_tt": 1434984508663412,
+   "frontier_tt": 1787928056326825,
+   "correction_tt": 1787958756115988,
+   "pinned": true,
+   "exempted_verdict": "fresh",
+   "stripped_verdict": "possibly-stale",
+   "avoided_by_exemption": true,
+   "exempt_receipt": {
+    "basis": 1434984508663412,
+    "batches": 13,
+    "tt_range": [
+     1783612865737377,
+     1787958756115988
+    ],
+    "theorem": "T1"
+   },
+   "scope_path": "leaf-basis"
+  },
+  {
+   "store": "collegemsg",
+   "op": "version_history",
+   "args_form": {
+    "as_of_tt": 1434984508663412,
+    "kind": "node",
+    "window": {
+     "t_a": 1082040961000000,
+     "t_b": 1092222028450631
+    }
+   },
+   "as_of_tt": 1434984508663412,
+   "frontier_tt": 1787928056326825,
+   "correction_tt": 1787958758379139,
+   "pinned": true,
+   "exempted_verdict": "fresh",
+   "stripped_verdict": "possibly-stale",
+   "avoided_by_exemption": true,
+   "exempt_receipt": {
+    "basis": 1434984508663412,
+    "batches": 13,
+    "tt_range": [
+     1783612865737377,
+     1787958758379139
+    ],
+    "theorem": "T1"
+   },
+   "scope_path": "leaf-basis"
+  },
+  {
+   "store": "collegemsg",
+   "op": "snapshot_subgraph",
+   "args_form": {
+    "as_of_tt": 1434984508663412,
+    "seeds": [
+     "n1760"
+    ],
+    "t_valid": 1087131494725315,
+    "hops": 1
+   },
+   "as_of_tt": 1434984508663412,
+   "frontier_tt": 1787928056326825,
+   "correction_tt": 1787958760618211,
+   "pinned": true,
+   "exempted_verdict": "fresh",
+   "stripped_verdict": "possibly-stale",
+   "avoided_by_exemption": true,
+   "exempt_receipt": {
+    "basis": 1434984508663412,
+    "batches": 13,
+    "tt_range": [
+     1783612865737377,
+     1787958760618211
+    ],
+    "theorem": "T1"
+   },
+   "scope_path": "leaf-basis"
+  },
+  {
+   "store": "collegemsg",
+   "op": "diff_snapshots",
+   "args_form": {
+    "as_of_tt": 1434984508663412,
+    "t1": 1082040961000001,
+    "t2": 1087131494725315
+   },
+   "as_of_tt": 1434984508663412,
+   "frontier_tt": 1787928056326825,
+   "correction_tt": 1787958762882651,
+   "pinned": true,
+   "exempted_verdict": "fresh",
+   "stripped_verdict": "possibly-stale",
+   "avoided_by_exemption": true,
+   "exempt_receipt": {
+    "basis": 1434984508663412,
+    "batches": 13,
+    "tt_range": [
+     1783612865737377,
+     1787958762882651
+    ],
+    "theorem": "T1"
+   },
+   "scope_path": "leaf-basis"
+  },
+  {
+   "store": "collegemsg",
+   "op": "neighborhood_evolution",
+   "args_form": {
+    "as_of_tt": 1434984508663412,
+    "uid": "n1762",
+    "t1": 1082040961000000,
+    "t2": 1092222028450631,
+    "stride": 1272633431328
+   },
+   "as_of_tt": 1434984508663412,
+   "frontier_tt": 1787928056326825,
+   "correction_tt": 1787958765151626,
+   "pinned": true,
+   "exempted_verdict": "fresh",
+   "stripped_verdict": "possibly-stale",
+   "avoided_by_exemption": true,
+   "exempt_receipt": {
+    "basis": 1434984508663412,
+    "batches": 13,
+    "tt_range": [
+     1783612865737377,
+     1787958765151626
+    ],
+    "theorem": "T1"
+   },
+   "scope_path": "leaf-basis"
+  },
+  {
+   "store": "collegemsg",
+   "op": "aggregate_events",
+   "args_form": {
+    "as_of_tt": 1434984508663412,
+    "group_by": [
+     {
+      "dim": "endpoint",
+      "role": "src"
+     }
+    ],
+    "aggregates": [
+     {
+      "agg": "count"
+     }
+    ],
+    "window": {
+     "t_a": 1082040961000000,
+     "t_b": 1092222028450631
+    }
+   },
+   "as_of_tt": 1434984508663412,
+   "frontier_tt": 1787928056326825,
+   "correction_tt": 1787958767445016,
+   "pinned": true,
+   "exempted_verdict": "fresh",
+   "stripped_verdict": "possibly-stale",
+   "avoided_by_exemption": true,
+   "exempt_receipt": {
+    "basis": 1434984508663412,
+    "batches": 13,
+    "tt_range": [
+     1783612865737377,
+     1787958767445016
+    ],
+    "theorem": "T1"
+   },
+   "scope_path": "leaf-basis"
+  },
+  {
+   "store": "collegemsg",
+   "op": "graph_metric_timeseries",
+   "args_form": {
+    "as_of_tt": 1434984508663412,
+    "metric": "node_count",
+    "window": {
+     "t_a": 1082040961000000,
+     "t_b": 1092222028450631
+    },
+    "stride": 1272633431328
+   },
+   "as_of_tt": 1434984508663412,
+   "frontier_tt": 1787928056326825,
+   "correction_tt": 1787958769748838,
+   "pinned": true,
+   "exempted_verdict": "fresh",
+   "stripped_verdict": "possibly-stale",
+   "avoided_by_exemption": true,
+   "exempt_receipt": {
+    "basis": 1434984508663412,
+    "batches": 13,
+    "tt_range": [
+     1783612865737377,
+     1787958769748838
+    ],
+    "theorem": "T1"
+   },
+   "scope_path": "leaf-basis"
+  },
+  {
+   "store": "collegemsg",
+   "op": "burst_detection",
+   "args_form": {
+    "as_of_tt": 1434984508663412,
+    "target": {
+     "kind": "node_activity",
+     "uid": "n1772"
+    },
+    "window": {
+     "t_a": 1082040961000000,
+     "t_b": 1092222028450631
+    },
+    "stride": 636316715664
+   },
+   "as_of_tt": 1434984508663412,
+   "frontier_tt": 1787928056326825,
+   "correction_tt": 1787958771993212,
+   "pinned": true,
+   "exempted_verdict": "fresh",
+   "stripped_verdict": "possibly-stale",
+   "avoided_by_exemption": true,
+   "exempt_receipt": {
+    "basis": 1434984508663412,
+    "batches": 13,
+    "tt_range": [
+     1783612865737377,
+     1787958771993212
+    ],
+    "theorem": "T1"
+   },
+   "scope_path": "leaf-basis"
+  },
+  {
+   "store": "collegemsg",
+   "op": "co_active",
+   "args_form": {
+    "as_of_tt": 1434984508663412,
+    "a_spec": {
+     "rel_type": "MSG"
+    },
+    "b_spec": {
+     "rel_type": "MSG"
+    },
+    "allen_relation": {
+     "relation": "overlaps"
+    },
+    "limit": 200
+   },
+   "as_of_tt": 1434984508663412,
+   "frontier_tt": 1787928056326825,
+   "correction_tt": 1787958774277170,
+   "pinned": true,
+   "exempted_verdict": "fresh",
+   "stripped_verdict": "possibly-stale",
+   "avoided_by_exemption": true,
+   "exempt_receipt": {
+    "basis": 1434984508663412,
+    "batches": 13,
+    "tt_range": [
+     1783612865737377,
+     1787958774277170
+    ],
+    "theorem": "T1"
+   },
+   "scope_path": "leaf-basis"
+  },
+  {
+   "store": "collegemsg",
+   "op": "count_temporal_motifs",
+   "args_form": {
+    "as_of_tt": 1434984508663412,
+    "motif": "M_2node_pingpong",
+    "window": {
+     "t_a": 1082040961000000,
+     "t_b": 1092222028450631
+    },
+    "delta": 1272633431328
+   },
+   "as_of_tt": 1434984508663412,
+   "frontier_tt": 1787928056326825,
+   "correction_tt": 1787958776575140,
+   "pinned": true,
+   "exempted_verdict": "fresh",
+   "stripped_verdict": "possibly-stale",
+   "avoided_by_exemption": true,
+   "exempt_receipt": {
+    "basis": 1434984508663412,
+    "batches": 13,
+    "tt_range": [
+     1783612865737377,
+     1787958776575140
+    ],
+    "theorem": "T1"
+   },
+   "scope_path": "leaf-basis"
+  },
+  {
+   "store": "collegemsg",
+   "op": "find_temporal_motif_instances",
+   "args_form": {
+    "as_of_tt": 1434984508663412,
+    "motif": "M_2node_pingpong",
+    "window": {
+     "t_a": 1082040961000000,
+     "t_b": 1092222028450631
+    },
+    "delta": 1272633431328,
+    "limit": 50
+   },
+   "as_of_tt": 1434984508663412,
+   "frontier_tt": 1787928056326825,
+   "correction_tt": 1787958778880021,
+   "pinned": true,
+   "exempted_verdict": "fresh",
+   "stripped_verdict": "possibly-stale",
+   "avoided_by_exemption": true,
+   "exempt_receipt": {
+    "basis": 1434984508663412,
+    "batches": 13,
+    "tt_range": [
+     1783612865737377,
+     1787958778880021
+    ],
+    "theorem": "T1"
+   },
+   "scope_path": "leaf-basis"
+  },
+  {
+   "store": "collegemsg",
+   "op": "temporal_reachability",
+   "args_form": {
+    "as_of_tt": 1434984508663412,
+    "src": "n1786",
+    "window": {
+     "t_a": 1082040961000000,
+     "t_b": 1092222028450631
+    }
+   },
+   "as_of_tt": 1434984508663412,
+   "frontier_tt": 1787928056326825,
+   "correction_tt": 1787958781131155,
+   "pinned": true,
+   "exempted_verdict": "fresh",
+   "stripped_verdict": "possibly-stale",
+   "avoided_by_exemption": true,
+   "exempt_receipt": {
+    "basis": 1434984508663412,
+    "batches": 13,
+    "tt_range": [
+     1783612865737377,
+     1787958781131155
+    ],
+    "theorem": "T1"
+   },
+   "scope_path": "leaf-basis"
+  },
+  {
+   "store": "collegemsg",
+   "op": "temporal_paths",
+   "args_form": {
+    "as_of_tt": 1434984508663412,
+    "src": "n1789",
+    "dst": "n1789",
+    "window": {
+     "t_a": 1082040961000000,
+     "t_b": 1092222028450631
+    },
+    "k": 2
+   },
+   "as_of_tt": 1434984508663412,
+   "frontier_tt": 1787928056326825,
+   "correction_tt": 1787958783406989,
+   "pinned": true,
+   "exempted_verdict": "fresh",
+   "stripped_verdict": "possibly-stale",
+   "avoided_by_exemption": true,
+   "exempt_receipt": {
+    "basis": 1434984508663412,
+    "batches": 13,
+    "tt_range": [
+     1783612865737377,
+     1787958783406989
+    ],
+    "theorem": "T1"
+   },
+   "scope_path": "leaf-basis"
+  },
+  {
+   "store": "collegemsg",
+   "op": "entity_history",
+   "args_form": {
+    "as_of_tt": 1434984508663412,
+    "uid": "n1791"
+   },
+   "as_of_tt": 1434984508663412,
+   "frontier_tt": 1787928056326825,
+   "correction_tt": 1787958785696066,
+   "pinned": true,
+   "exempted_verdict": "fresh",
+   "stripped_verdict": "possibly-stale",
+   "avoided_by_exemption": true,
+   "exempt_receipt": {
+    "basis": 1434984508663412,
+    "batches": 13,
+    "tt_range": [
+     1783612865737377,
+     1787958785696066
+    ],
+    "theorem": "T1"
+   },
+   "scope_path": "leaf-basis"
+  },
+  {
+   "store": "collegemsg",
+   "op": "version_history",
+   "args_form": {
+    "as_of_tt": 1434984508663412,
+    "kind": "node",
+    "window": {
+     "t_a": 1082040961000000,
+     "t_b": 1092222028450631
+    }
+   },
+   "as_of_tt": 1434984508663412,
+   "frontier_tt": 1787928056326825,
+   "correction_tt": 1787958788014310,
+   "pinned": true,
+   "exempted_verdict": "fresh",
+   "stripped_verdict": "possibly-stale",
+   "avoided_by_exemption": true,
+   "exempt_receipt": {
+    "basis": 1434984508663412,
+    "batches": 13,
+    "tt_range": [
+     1783612865737377,
+     1787958788014310
+    ],
+    "theorem": "T1"
+   },
+   "scope_path": "leaf-basis"
+  },
+  {
+   "store": "collegemsg",
+   "op": "snapshot_subgraph",
+   "args_form": {
+    "as_of_tt": 1434984508663412,
+    "seeds": [
+     "n1793"
+    ],
+    "t_valid": 1087131494725315,
+    "hops": 1
+   },
+   "as_of_tt": 1434984508663412,
+   "frontier_tt": 1787928056326825,
+   "correction_tt": 1787958790280620,
+   "pinned": true,
+   "exempted_verdict": "fresh",
+   "stripped_verdict": "possibly-stale",
+   "avoided_by_exemption": true,
+   "exempt_receipt": {
+    "basis": 1434984508663412,
+    "batches": 13,
+    "tt_range": [
+     1783612865737377,
+     1787958790280620
+    ],
+    "theorem": "T1"
+   },
+   "scope_path": "leaf-basis"
+  },
+  {
+   "store": "collegemsg",
+   "op": "diff_snapshots",
+   "args_form": {
+    "as_of_tt": 1434984508663412,
+    "t1": 1082040961000001,
+    "t2": 1087131494725315
+   },
+   "as_of_tt": 1434984508663412,
+   "frontier_tt": 1787928056326825,
+   "correction_tt": 1787958792575889,
+   "pinned": true,
+   "exempted_verdict": "fresh",
+   "stripped_verdict": "possibly-stale",
+   "avoided_by_exemption": true,
+   "exempt_receipt": {
+    "basis": 1434984508663412,
+    "batches": 13,
+    "tt_range": [
+     1783612865737377,
+     1787958792575889
+    ],
+    "theorem": "T1"
+   },
+   "scope_path": "leaf-basis"
+  },
+  {
+   "store": "collegemsg",
+   "op": "neighborhood_evolution",
+   "args_form": {
+    "as_of_tt": 1434984508663412,
+    "uid": "n1802",
+    "t1": 1082040961000000,
+    "t2": 1092222028450631,
+    "stride": 1272633431328
+   },
+   "as_of_tt": 1434984508663412,
+   "frontier_tt": 1787928056326825,
+   "correction_tt": 1787958794847747,
+   "pinned": true,
+   "exempted_verdict": "fresh",
+   "stripped_verdict": "possibly-stale",
+   "avoided_by_exemption": true,
+   "exempt_receipt": {
+    "basis": 1434984508663412,
+    "batches": 13,
+    "tt_range": [
+     1783612865737377,
+     1787958794847747
+    ],
+    "theorem": "T1"
+   },
+   "scope_path": "leaf-basis"
+  },
+  {
+   "store": "collegemsg",
+   "op": "aggregate_events",
+   "args_form": {
+    "as_of_tt": 1434984508663412,
+    "group_by": [
+     {
+      "dim": "endpoint",
+      "role": "src"
+     }
+    ],
+    "aggregates": [
+     {
+      "agg": "count"
+     }
+    ],
+    "window": {
+     "t_a": 1082040961000000,
+     "t_b": 1092222028450631
+    }
+   },
+   "as_of_tt": 1434984508663412,
+   "frontier_tt": 1787928056326825,
+   "correction_tt": 1787958797094878,
+   "pinned": true,
+   "exempted_verdict": "fresh",
+   "stripped_verdict": "possibly-stale",
+   "avoided_by_exemption": true,
+   "exempt_receipt": {
+    "basis": 1434984508663412,
+    "batches": 13,
+    "tt_range": [
+     1783612865737377,
+     1787958797094878
+    ],
+    "theorem": "T1"
+   },
+   "scope_path": "leaf-basis"
+  },
+  {
+   "store": "collegemsg",
+   "op": "graph_metric_timeseries",
+   "args_form": {
+    "as_of_tt": 1434984508663412,
+    "metric": "node_count",
+    "window": {
+     "t_a": 1082040961000000,
+     "t_b": 1092222028450631
+    },
+    "stride": 1272633431328
+   },
+   "as_of_tt": 1434984508663412,
+   "frontier_tt": 1787928056326825,
+   "correction_tt": 1787958799358148,
+   "pinned": true,
+   "exempted_verdict": "fresh",
+   "stripped_verdict": "possibly-stale",
+   "avoided_by_exemption": true,
+   "exempt_receipt": {
+    "basis": 1434984508663412,
+    "batches": 13,
+    "tt_range": [
+     1783612865737377,
+     1787958799358148
+    ],
+    "theorem": "T1"
+   },
+   "scope_path": "leaf-basis"
+  },
+  {
+   "store": "collegemsg",
+   "op": "burst_detection",
+   "args_form": {
+    "as_of_tt": 1434984508663412,
+    "target": {
+     "kind": "node_activity",
+     "uid": "n1817"
+    },
+    "window": {
+     "t_a": 1082040961000000,
+     "t_b": 1092222028450631
+    },
+    "stride": 636316715664
+   },
+   "as_of_tt": 1434984508663412,
+   "frontier_tt": 1787928056326825,
+   "correction_tt": 1787958801637507,
+   "pinned": true,
+   "exempted_verdict": "fresh",
+   "stripped_verdict": "possibly-stale",
+   "avoided_by_exemption": true,
+   "exempt_receipt": {
+    "basis": 1434984508663412,
+    "batches": 13,
+    "tt_range": [
+     1783612865737377,
+     1787958801637507
+    ],
+    "theorem": "T1"
+   },
+   "scope_path": "leaf-basis"
+  },
+  {
+   "store": "collegemsg",
+   "op": "co_active",
+   "args_form": {
+    "as_of_tt": 1434984508663412,
+    "a_spec": {
+     "rel_type": "MSG"
+    },
+    "b_spec": {
+     "rel_type": "MSG"
+    },
+    "allen_relation": {
+     "relation": "overlaps"
+    },
+    "limit": 200
+   },
+   "as_of_tt": 1434984508663412,
+   "frontier_tt": 1787928056326825,
+   "correction_tt": 1787958803913154,
+   "pinned": true,
+   "exempted_verdict": "fresh",
+   "stripped_verdict": "possibly-stale",
+   "avoided_by_exemption": true,
+   "exempt_receipt": {
+    "basis": 1434984508663412,
+    "batches": 13,
+    "tt_range": [
+     1783612865737377,
+     1787958803913154
+    ],
+    "theorem": "T1"
+   },
+   "scope_path": "leaf-basis"
+  },
+  {
+   "store": "collegemsg",
+   "op": "count_temporal_motifs",
+   "args_form": {
+    "as_of_tt": 1434984508663412,
+    "motif": "M_2node_pingpong",
+    "window": {
+     "t_a": 1082040961000000,
+     "t_b": 1092222028450631
+    },
+    "delta": 1272633431328
+   },
+   "as_of_tt": 1434984508663412,
+   "frontier_tt": 1787928056326825,
+   "correction_tt": 1787958806204567,
+   "pinned": true,
+   "exempted_verdict": "fresh",
+   "stripped_verdict": "possibly-stale",
+   "avoided_by_exemption": true,
+   "exempt_receipt": {
+    "basis": 1434984508663412,
+    "batches": 13,
+    "tt_range": [
+     1783612865737377,
+     1787958806204567
+    ],
+    "theorem": "T1"
+   },
+   "scope_path": "leaf-basis"
+  },
+  {
+   "store": "collegemsg",
+   "op": "find_temporal_motif_instances",
+   "args_form": {
+    "as_of_tt": 1434984508663412,
+    "motif": "M_2node_pingpong",
+    "window": {
+     "t_a": 1082040961000000,
+     "t_b": 1092222028450631
+    },
+    "delta": 1272633431328,
+    "limit": 50
+   },
+   "as_of_tt": 1434984508663412,
+   "frontier_tt": 1787928056326825,
+   "correction_tt": 1787958808546557,
+   "pinned": true,
+   "exempted_verdict": "fresh",
+   "stripped_verdict": "possibly-stale",
+   "avoided_by_exemption": true,
+   "exempt_receipt": {
+    "basis": 1434984508663412,
+    "batches": 13,
+    "tt_range": [
+     1783612865737377,
+     1787958808546557
+    ],
+    "theorem": "T1"
+   },
+   "scope_path": "leaf-basis"
+  },
+  {
+   "store": "collegemsg",
+   "op": "temporal_reachability",
+   "args_form": {
+    "as_of_tt": 1434984508663412,
+    "src": "n1838",
+    "window": {
+     "t_a": 1082040961000000,
+     "t_b": 1092222028450631
+    }
+   },
+   "as_of_tt": 1434984508663412,
+   "frontier_tt": 1787928056326825,
+   "correction_tt": 1787958810804725,
+   "pinned": true,
+   "exempted_verdict": "fresh",
+   "stripped_verdict": "possibly-stale",
+   "avoided_by_exemption": true,
+   "exempt_receipt": {
+    "basis": 1434984508663412,
+    "batches": 13,
+    "tt_range": [
+     1783612865737377,
+     1787958810804725
+    ],
+    "theorem": "T1"
+   },
+   "scope_path": "leaf-basis"
+  },
+  {
+   "store": "collegemsg",
+   "op": "temporal_paths",
+   "args_form": {
+    "as_of_tt": 1434984508663412,
+    "src": "n1840",
+    "dst": "n1840",
+    "window": {
+     "t_a": 1082040961000000,
+     "t_b": 1092222028450631
+    },
+    "k": 2
+   },
+   "as_of_tt": 1434984508663412,
+   "frontier_tt": 1787928056326825,
+   "correction_tt": 1787958813077521,
+   "pinned": true,
+   "exempted_verdict": "fresh",
+   "stripped_verdict": "possibly-stale",
+   "avoided_by_exemption": true,
+   "exempt_receipt": {
+    "basis": 1434984508663412,
+    "batches": 13,
+    "tt_range": [
+     1783612865737377,
+     1787958813077521
+    ],
+    "theorem": "T1"
+   },
+   "scope_path": "leaf-basis"
+  },
+  {
+   "store": "collegemsg",
+   "op": "entity_history",
+   "args_form": {
+    "as_of_tt": 1434984508663412,
+    "uid": "n1843"
+   },
+   "as_of_tt": 1434984508663412,
+   "frontier_tt": 1787928056326825,
+   "correction_tt": 1787958815348804,
+   "pinned": true,
+   "exempted_verdict": "fresh",
+   "stripped_verdict": "possibly-stale",
+   "avoided_by_exemption": true,
+   "exempt_receipt": {
+    "basis": 1434984508663412,
+    "batches": 13,
+    "tt_range": [
+     1783612865737377,
+     1787958815348804
+    ],
+    "theorem": "T1"
+   },
+   "scope_path": "leaf-basis"
+  },
+  {
+   "store": "collegemsg",
+   "op": "version_history",
+   "args_form": {
+    "as_of_tt": 1434984508663412,
+    "kind": "node",
+    "window": {
+     "t_a": 1082040961000000,
+     "t_b": 1092222028450631
+    }
+   },
+   "as_of_tt": 1434984508663412,
+   "frontier_tt": 1787928056326825,
+   "correction_tt": 1787958817642379,
+   "pinned": true,
+   "exempted_verdict": "fresh",
+   "stripped_verdict": "possibly-stale",
+   "avoided_by_exemption": true,
+   "exempt_receipt": {
+    "basis": 1434984508663412,
+    "batches": 13,
+    "tt_range": [
+     1783612865737377,
+     1787958817642379
+    ],
+    "theorem": "T1"
+   },
+   "scope_path": "leaf-basis"
+  },
+  {
+   "store": "collegemsg",
+   "op": "snapshot_subgraph",
+   "args_form": {
+    "as_of_tt": 1434984508663412,
+    "seeds": [
+     "n1861"
+    ],
+    "t_valid": 1087131494725315,
+    "hops": 1
+   },
+   "as_of_tt": 1434984508663412,
+   "frontier_tt": 1787928056326825,
+   "correction_tt": 1787958819956790,
+   "pinned": true,
+   "exempted_verdict": "fresh",
+   "stripped_verdict": "possibly-stale",
+   "avoided_by_exemption": true,
+   "exempt_receipt": {
+    "basis": 1434984508663412,
+    "batches": 13,
+    "tt_range": [
+     1783612865737377,
+     1787958819956790
+    ],
+    "theorem": "T1"
+   },
+   "scope_path": "leaf-basis"
+  },
+  {
+   "store": "collegemsg",
+   "op": "diff_snapshots",
+   "args_form": {
+    "as_of_tt": 1434984508663412,
+    "t1": 1082040961000001,
+    "t2": 1087131494725315
+   },
+   "as_of_tt": 1434984508663412,
+   "frontier_tt": 1787928056326825,
+   "correction_tt": 1787958822209743,
+   "pinned": true,
+   "exempted_verdict": "fresh",
+   "stripped_verdict": "possibly-stale",
+   "avoided_by_exemption": true,
+   "exempt_receipt": {
+    "basis": 1434984508663412,
+    "batches": 13,
+    "tt_range": [
+     1783612865737377,
+     1787958822209743
+    ],
+    "theorem": "T1"
+   },
+   "scope_path": "leaf-basis"
+  },
+  {
+   "store": "collegemsg",
+   "op": "neighborhood_evolution",
+   "args_form": {
+    "as_of_tt": 1434984508663412,
+    "uid": "n1868",
+    "t1": 1082040961000000,
+    "t2": 1092222028450631,
+    "stride": 1272633431328
+   },
+   "as_of_tt": 1434984508663412,
+   "frontier_tt": 1787928056326825,
+   "correction_tt": 1787958824494956,
+   "pinned": true,
+   "exempted_verdict": "fresh",
+   "stripped_verdict": "possibly-stale",
+   "avoided_by_exemption": true,
+   "exempt_receipt": {
+    "basis": 1434984508663412,
+    "batches": 13,
+    "tt_range": [
+     1783612865737377,
+     1787958824494956
+    ],
+    "theorem": "T1"
+   },
+   "scope_path": "leaf-basis"
+  },
+  {
+   "store": "collegemsg",
+   "op": "aggregate_events",
+   "args_form": {
+    "as_of_tt": 1434984508663412,
+    "group_by": [
+     {
+      "dim": "endpoint",
+      "role": "src"
+     }
+    ],
+    "aggregates": [
+     {
+      "agg": "count"
+     }
+    ],
+    "window": {
+     "t_a": 1082040961000000,
+     "t_b": 1092222028450631
+    }
+   },
+   "as_of_tt": 1434984508663412,
+   "frontier_tt": 1787928056326825,
+   "correction_tt": 1787958826765392,
+   "pinned": true,
+   "exempted_verdict": "fresh",
+   "stripped_verdict": "possibly-stale",
+   "avoided_by_exemption": true,
+   "exempt_receipt": {
+    "basis": 1434984508663412,
+    "batches": 13,
+    "tt_range": [
+     1783612865737377,
+     1787958826765392
+    ],
+    "theorem": "T1"
+   },
+   "scope_path": "leaf-basis"
+  }
+ ]
+}

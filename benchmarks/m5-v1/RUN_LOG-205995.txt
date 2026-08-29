@@ -1,0 +1,51 @@
+[14:45:16] RUN_STARTED commit=41c4066d9863775034ce44b76f9826642fc62680 profile=full backend=native host=itiger02 campaign_yaml_sha256=60a10e1ca68c
+[14:45:16] pidfile runs/m5-itiger.pid pid=266374
+[14:45:16] === bitcoinotc ===
+[15:45:41] ok  carve bitcoinotc aggregate_events_duration: 60 cells, 2293 trials so far
+[16:48:10] ok  carve bitcoinotc aggregate_events_plain: 60 cells, 2314 trials so far
+[17:50:23] ok  carve bitcoinotc neighborhood_evolution: 60 cells, 2283 trials so far
+[17:50:24] wrote benchmarks/m5-v1/carve-arm-bitcoinotc.json (6890 rows, scorable=True)
+[17:50:26] ok  pattern-l1 bitcoinotc t_node-anchored: 2 trials
+[17:50:28] ok  pattern-l1 bitcoinotc t_node-unanchored: 2 trials
+[17:50:28] wrote benchmarks/m5-v1/pattern-l1-bitcoinotc.json (4 rows, scorable=True)
+[17:50:32] ok  zero-changed bitcoinotc snapshot_subgraph: rows_baseline=0 trials=6
+[17:50:40] ok  zero-changed bitcoinotc temporal_paths: rows_baseline=0 trials=16
+[17:50:46] ok  zero-changed bitcoinotc co_active: rows_baseline=0 trials=11
+[17:50:49] ok  zero-changed bitcoinotc find_temporal_motif_instances: rows_baseline=0 trials=7
+[17:50:49] wrote benchmarks/m5-v1/zero-changed-ops-bitcoinotc.json (40 rows, scorable=True)
+[17:56:19] wrote benchmarks/m5-v1/pinned-bitcoinotc.json (200 rows, scorable=True)
+[17:58:14] Gate C not satisfied on bitcoinotc at this profile's population (see propagation-bitcoinotc.json)
+[17:58:14] wrote benchmarks/m5-v1/propagation-bitcoinotc.json (62 rows, scorable=True)
+[17:58:14] === collegemsg ===
+[19:34:38] ok  carve collegemsg aggregate_events_duration: 60 cells, 2398 trials so far
+[21:15:18] ok  carve collegemsg aggregate_events_plain: 60 cells, 2395 trials so far
+[22:58:28] ok  carve collegemsg neighborhood_evolution: 60 cells, 2400 trials so far
+[22:58:28] wrote benchmarks/m5-v1/carve-arm-collegemsg.json (7193 rows, scorable=True)
+[22:58:32] ok  pattern-l1 collegemsg t_node-anchored: 2 trials
+[22:58:34] ok  pattern-l1 collegemsg t_node-unanchored: 2 trials
+[22:58:34] wrote benchmarks/m5-v1/pattern-l1-collegemsg.json (4 rows, scorable=True)
+[22:58:44] ok  zero-changed collegemsg snapshot_subgraph: rows_baseline=0 trials=9
+[22:58:54] ok  zero-changed collegemsg temporal_paths: rows_baseline=0 trials=19
+[22:59:01] ok  zero-changed collegemsg co_active: rows_baseline=0 trials=11
+[23:06:13] ok  zero-changed collegemsg find_temporal_motif_instances: rows_baseline=50 trials=10
+[23:06:13] wrote benchmarks/m5-v1/zero-changed-ops-collegemsg.json (49 rows, scorable=True)
+[23:13:47] wrote benchmarks/m5-v1/pinned-collegemsg.json (200 rows, scorable=True)
+[23:15:48] Gate C not satisfied on collegemsg at this profile's population (see propagation-collegemsg.json)
+[23:15:48] wrote benchmarks/m5-v1/propagation-collegemsg.json (72 rows, scorable=True)
+[23:15:48] === sx-mathoverflow ===
+[23:16:07] ok  pattern-l1 sx-mathoverflow t_node-anchored: 2 trials
+[23:16:18] ok  pattern-l1 sx-mathoverflow t_node-unanchored: 2 trials
+[23:26:23] TIMEOUT pattern-l1 sx-mathoverflow mixed-A2Q: run_plan exceeded 600s
+[23:36:28] TIMEOUT pattern-l1 sx-mathoverflow mixed-C2Q: run_plan exceeded 600s
+[23:46:34] TIMEOUT pattern-l1 sx-mathoverflow mixed-C2A: run_plan exceeded 600s
+[23:56:40] TIMEOUT pattern-l1 sx-mathoverflow all-declared: run_plan exceeded 600s
+[23:56:40] wrote benchmarks/m5-v1/pattern-l1-sx-mathoverflow.json (8 rows, scorable=True)
+[23:56:58] ok  zero-changed sx-mathoverflow snapshot_subgraph: rows_baseline=0 trials=6
+[23:57:25] ok  zero-changed sx-mathoverflow temporal_paths: rows_baseline=0 trials=13
+[23:57:47] ok  zero-changed sx-mathoverflow co_active: rows_baseline=0 trials=11
+[23:58:04] ok  zero-changed sx-mathoverflow find_temporal_motif_instances: rows_baseline=50 trials=8
+[23:58:04] wrote benchmarks/m5-v1/zero-changed-ops-sx-mathoverflow.json (38 rows, scorable=True)
+[00:33:35] wrote benchmarks/m5-v1/pinned-sx-mathoverflow.json (200 rows, scorable=True)
+[00:39:50] Gate C not satisfied on sx-mathoverflow at this profile's population (see propagation-sx-mathoverflow.json)
+[00:39:50] wrote benchmarks/m5-v1/propagation-sx-mathoverflow.json (62 rows, scorable=True)
+[00:39:50] DONE profile=full out=benchmarks/m5-v1 ok=True

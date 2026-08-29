@@ -1,0 +1,6095 @@
+{
+ "generated": "2026-08-29T00:33:35+0000",
+ "measured_date": "2026-08-27",
+ "git_sha": "41c4066d9863775034ce44b76f9826642fc62680",
+ "campaign_yaml_sha256": "60a10e1ca68ca6d33cc7ea293aed2d9db2f2f67907a5ae0c029d2f93318c500b",
+ "freeze_document_sha256": "e94ecc1692c55f18e8d8837d81f7f0f1106f057b1024a1b08b5b3fac392bf6d0",
+ "profile": "full",
+ "backend": "native",
+ "store": "sx-mathoverflow",
+ "store_identity": "0ac40f2fe5dee32c25ec733b11daf061b15177299c858e29ce01e2d75124623e",
+ "machine": {
+  "host": "itiger02",
+  "platform": "Linux-5.14.0-427.31.1.el9_4.x86_64-x86_64-with-glibc2.34",
+  "python": "3.12.13",
+  "cpus": 64
+ },
+ "arm": "pinned-sx-mathoverflow",
+ "scorable": true,
+ "summary": {
+  "trials": 200,
+  "invalidations_avoided_by_exemption": 200,
+  "exemption_receipts_present": 200,
+  "exemption_receipts_present_but_empty": 0,
+  "floor": {
+   "required": 100,
+   "achieved": 200,
+   "met": true,
+   "note": "reported, not passed (R-16)"
+  }
+ },
+ "row_count": 200,
+ "rows": [
+  {
+   "store": "sx-mathoverflow",
+   "op": "version_history",
+   "args_form": {
+    "as_of_tt": 1521060544674582,
+    "kind": "node",
+    "window": {
+     "t_a": 1254192988000000,
+     "t_b": 1256430052000001
+    }
+   },
+   "as_of_tt": 1521060544674582,
+   "frontier_tt": 1787928101349165,
+   "correction_tt": 1787961494965531,
+   "pinned": true,
+   "exempted_verdict": "fresh",
+   "stripped_verdict": "possibly-stale",
+   "avoided_by_exemption": true,
+   "exempt_receipt": {
+    "basis": 1521060544674582,
+    "batches": 12,
+    "tt_range": [
+     1787928094554054,
+     1787961494965531
+    ],
+    "theorem": "T1"
+   },
+   "scope_path": "leaf-basis"
+  },
+  {
+   "store": "sx-mathoverflow",
+   "op": "snapshot_subgraph",
+   "args_form": {
+    "as_of_tt": 1521060544674582,
+    "seeds": [
+     "n1040"
+    ],
+    "t_valid": 1255311520000000,
+    "hops": 1
+   },
+   "as_of_tt": 1521060544674582,
+   "frontier_tt": 1787928101349165,
+   "correction_tt": 1787961505013949,
+   "pinned": true,
+   "exempted_verdict": "fresh",
+   "stripped_verdict": "possibly-stale",
+   "avoided_by_exemption": true,
+   "exempt_receipt": {
+    "basis": 1521060544674582,
+    "batches": 12,
+    "tt_range": [
+     1787928094554054,
+     1787961505013949
+    ],
+    "theorem": "T1"
+   },
+   "scope_path": "leaf-basis"
+  },
+  {
+   "store": "sx-mathoverflow",
+   "op": "diff_snapshots",
+   "args_form": {
+    "as_of_tt": 1521060544674582,
+    "t1": 1254192988000001,
+    "t2": 1255311520000000
+   },
+   "as_of_tt": 1521060544674582,
+   "frontier_tt": 1787928101349165,
+   "correction_tt": 1787961515069191,
+   "pinned": true,
+   "exempted_verdict": "fresh",
+   "stripped_verdict": "possibly-stale",
+   "avoided_by_exemption": true,
+   "exempt_receipt": {
+    "basis": 1521060544674582,
+    "batches": 12,
+    "tt_range": [
+     1787928094554054,
+     1787961515069191
+    ],
+    "theorem": "T1"
+   },
+   "scope_path": "leaf-basis"
+  },
+  {
+   "store": "sx-mathoverflow",
+   "op": "neighborhood_evolution",
+   "args_form": {
+    "as_of_tt": 1521060544674582,
+    "uid": "n1086",
+    "t1": 1254192988000000,
+    "t2": 1256430052000001,
+    "stride": 279633000000
+   },
+   "as_of_tt": 1521060544674582,
+   "frontier_tt": 1787928101349165,
+   "correction_tt": 1787961525846937,
+   "pinned": true,
+   "exempted_verdict": "fresh",
+   "stripped_verdict": "possibly-stale",
+   "avoided_by_exemption": true,
+   "exempt_receipt": {
+    "basis": 1521060544674582,
+    "batches": 12,
+    "tt_range": [
+     1787928094554054,
+     1787961525846937
+    ],
+    "theorem": "T1"
+   },
+   "scope_path": "leaf-basis"
+  },
+  {
+   "store": "sx-mathoverflow",
+   "op": "aggregate_events",
+   "args_form": {
+    "as_of_tt": 1521060544674582,
+    "group_by": [
+     {
+      "dim": "endpoint",
+      "role": "src"
+     }
+    ],
+    "aggregates": [
+     {
+      "agg": "count"
+     }
+    ],
+    "window": {
+     "t_a": 1254192988000000,
+     "t_b": 1256430052000001
+    }
+   },
+   "as_of_tt": 1521060544674582,
+   "frontier_tt": 1787928101349165,
+   "correction_tt": 1787961535774110,
+   "pinned": true,
+   "exempted_verdict": "fresh",
+   "stripped_verdict": "possibly-stale",
+   "avoided_by_exemption": true,
+   "exempt_receipt": {
+    "basis": 1521060544674582,
+    "batches": 12,
+    "tt_range": [
+     1787928094554054,
+     1787961535774110
+    ],
+    "theorem": "T1"
+   },
+   "scope_path": "leaf-basis"
+  },
+  {
+   "store": "sx-mathoverflow",
+   "op": "graph_metric_timeseries",
+   "args_form": {
+    "as_of_tt": 1521060544674582,
+    "metric": "node_count",
+    "window": {
+     "t_a": 1254192988000000,
+     "t_b": 1256430052000001
+    },
+    "stride": 279633000000
+   },
+   "as_of_tt": 1521060544674582,
+   "frontier_tt": 1787928101349165,
+   "correction_tt": 1787961545896021,
+   "pinned": true,
+   "exempted_verdict": "fresh",
+   "stripped_verdict": "possibly-stale",
+   "avoided_by_exemption": true,
+   "exempt_receipt": {
+    "basis": 1521060544674582,
+    "batches": 12,
+    "tt_range": [
+     1787928094554054,
+     1787961545896021
+    ],
+    "theorem": "T1"
+   },
+   "scope_path": "leaf-basis"
+  },
+  {
+   "store": "sx-mathoverflow",
+   "op": "burst_detection",
+   "args_form": {
+    "as_of_tt": 1521060544674582,
+    "target": {
+     "kind": "node_activity",
+     "uid": "n1116"
+    },
+    "window": {
+     "t_a": 1254192988000000,
+     "t_b": 1256430052000001
+    },
+    "stride": 139816500000
+   },
+   "as_of_tt": 1521060544674582,
+   "frontier_tt": 1787928101349165,
+   "correction_tt": 1787961555751221,
+   "pinned": true,
+   "exempted_verdict": "fresh",
+   "stripped_verdict": "possibly-stale",
+   "avoided_by_exemption": true,
+   "exempt_receipt": {
+    "basis": 1521060544674582,
+    "batches": 12,
+    "tt_range": [
+     1787928094554054,
+     1787961555751221
+    ],
+    "theorem": "T1"
+   },
+   "scope_path": "leaf-basis"
+  },
+  {
+   "store": "sx-mathoverflow",
+   "op": "co_active",
+   "args_form": {
+    "as_of_tt": 1521060544674582,
+    "a_spec": {
+     "rel_type": "A2Q"
+    },
+    "b_spec": {
+     "rel_type": "A2Q"
+    },
+    "allen_relation": {
+     "relation": "overlaps"
+    },
+    "limit": 200
+   },
+   "as_of_tt": 1521060544674582,
+   "frontier_tt": 1787928101349165,
+   "correction_tt": 1787961565733121,
+   "pinned": true,
+   "exempted_verdict": "fresh",
+   "stripped_verdict": "possibly-stale",
+   "avoided_by_exemption": true,
+   "exempt_receipt": {
+    "basis": 1521060544674582,
+    "batches": 12,
+    "tt_range": [
+     1787928094554054,
+     1787961565733121
+    ],
+    "theorem": "T1"
+   },
+   "scope_path": "leaf-basis"
+  },
+  {
+   "store": "sx-mathoverflow",
+   "op": "count_temporal_motifs",
+   "args_form": {
+    "as_of_tt": 1521060544674582,
+    "motif": "M_2node_pingpong",
+    "window": {
+     "t_a": 1254192988000000,
+     "t_b": 1256430052000001
+    },
+    "delta": 279633000000
+   },
+   "as_of_tt": 1521060544674582,
+   "frontier_tt": 1787928101349165,
+   "correction_tt": 1787961575781991,
+   "pinned": true,
+   "exempted_verdict": "fresh",
+   "stripped_verdict": "possibly-stale",
+   "avoided_by_exemption": true,
+   "exempt_receipt": {
+    "basis": 1521060544674582,
+    "batches": 12,
+    "tt_range": [
+     1787928094554054,
+     1787961575781991
+    ],
+    "theorem": "T1"
+   },
+   "scope_path": "leaf-basis"
+  },
+  {
+   "store": "sx-mathoverflow",
+   "op": "find_temporal_motif_instances",
+   "args_form": {
+    "as_of_tt": 1521060544674582,
+    "motif": "M_2node_pingpong",
+    "window": {
+     "t_a": 1254192988000000,
+     "t_b": 1256430052000001
+    },
+    "delta": 279633000000,
+    "limit": 50
+   },
+   "as_of_tt": 1521060544674582,
+   "frontier_tt": 1787928101349165,
+   "correction_tt": 1787961585826576,
+   "pinned": true,
+   "exempted_verdict": "fresh",
+   "stripped_verdict": "possibly-stale",
+   "avoided_by_exemption": true,
+   "exempt_receipt": {
+    "basis": 1521060544674582,
+    "batches": 12,
+    "tt_range": [
+     1787928094554054,
+     1787961585826576
+    ],
+    "theorem": "T1"
+   },
+   "scope_path": "leaf-basis"
+  },
+  {
+   "store": "sx-mathoverflow",
+   "op": "temporal_reachability",
+   "args_form": {
+    "as_of_tt": 1521060544674582,
+    "src": "n1144",
+    "window": {
+     "t_a": 1254192988000000,
+     "t_b": 1256430052000001
+    }
+   },
+   "as_of_tt": 1521060544674582,
+   "frontier_tt": 1787928101349165,
+   "correction_tt": 1787961595890207,
+   "pinned": true,
+   "exempted_verdict": "fresh",
+   "stripped_verdict": "possibly-stale",
+   "avoided_by_exemption": true,
+   "exempt_receipt": {
+    "basis": 1521060544674582,
+    "batches": 12,
+    "tt_range": [
+     1787928094554054,
+     1787961595890207
+    ],
+    "theorem": "T1"
+   },
+   "scope_path": "leaf-basis"
+  },
+  {
+   "store": "sx-mathoverflow",
+   "op": "temporal_paths",
+   "args_form": {
+    "as_of_tt": 1521060544674582,
+    "src": "n1165",
+    "dst": "n1165",
+    "window": {
+     "t_a": 1254192988000000,
+     "t_b": 1256430052000001
+    },
+    "k": 2
+   },
+   "as_of_tt": 1521060544674582,
+   "frontier_tt": 1787928101349165,
+   "correction_tt": 1787961605914544,
+   "pinned": true,
+   "exempted_verdict": "fresh",
+   "stripped_verdict": "possibly-stale",
+   "avoided_by_exemption": true,
+   "exempt_receipt": {
+    "basis": 1521060544674582,
+    "batches": 12,
+    "tt_range": [
+     1787928094554054,
+     1787961605914544
+    ],
+    "theorem": "T1"
+   },
+   "scope_path": "leaf-basis"
+  },
+  {
+   "store": "sx-mathoverflow",
+   "op": "entity_history",
+   "args_form": {
+    "as_of_tt": 1521060544674582,
+    "uid": "n1176"
+   },
+   "as_of_tt": 1521060544674582,
+   "frontier_tt": 1787928101349165,
+   "correction_tt": 1787961616027959,
+   "pinned": true,
+   "exempted_verdict": "fresh",
+   "stripped_verdict": "possibly-stale",
+   "avoided_by_exemption": true,
+   "exempt_receipt": {
+    "basis": 1521060544674582,
+    "batches": 12,
+    "tt_range": [
+     1787928094554054,
+     1787961616027959
+    ],
+    "theorem": "T1"
+   },
+   "scope_path": "leaf-basis"
+  },
+  {
+   "store": "sx-mathoverflow",
+   "op": "version_history",
+   "args_form": {
+    "as_of_tt": 1521060544674582,
+    "kind": "node",
+    "window": {
+     "t_a": 1254192988000000,
+     "t_b": 1256430052000001
+    }
+   },
+   "as_of_tt": 1521060544674582,
+   "frontier_tt": 1787928101349165,
+   "correction_tt": 1787961626256933,
+   "pinned": true,
+   "exempted_verdict": "fresh",
+   "stripped_verdict": "possibly-stale",
+   "avoided_by_exemption": true,
+   "exempt_receipt": {
+    "basis": 1521060544674582,
+    "batches": 12,
+    "tt_range": [
+     1787928094554054,
+     1787961626256933
+    ],
+    "theorem": "T1"
+   },
+   "scope_path": "leaf-basis"
+  },
+  {
+   "store": "sx-mathoverflow",
+   "op": "snapshot_subgraph",
+   "args_form": {
+    "as_of_tt": 1521060544674582,
+    "seeds": [
+     "n1195"
+    ],
+    "t_valid": 1255311520000000,
+    "hops": 1
+   },
+   "as_of_tt": 1521060544674582,
+   "frontier_tt": 1787928101349165,
+   "correction_tt": 1787961636138175,
+   "pinned": true,
+   "exempted_verdict": "fresh",
+   "stripped_verdict": "possibly-stale",
+   "avoided_by_exemption": true,
+   "exempt_receipt": {
+    "basis": 1521060544674582,
+    "batches": 12,
+    "tt_range": [
+     1787928094554054,
+     1787961636138175
+    ],
+    "theorem": "T1"
+   },
+   "scope_path": "leaf-basis"
+  },
+  {
+   "store": "sx-mathoverflow",
+   "op": "diff_snapshots",
+   "args_form": {
+    "as_of_tt": 1521060544674582,
+    "t1": 1254192988000001,
+    "t2": 1255311520000000
+   },
+   "as_of_tt": 1521060544674582,
+   "frontier_tt": 1787928101349165,
+   "correction_tt": 1787961646884774,
+   "pinned": true,
+   "exempted_verdict": "fresh",
+   "stripped_verdict": "possibly-stale",
+   "avoided_by_exemption": true,
+   "exempt_receipt": {
+    "basis": 1521060544674582,
+    "batches": 12,
+    "tt_range": [
+     1787928094554054,
+     1787961646884774
+    ],
+    "theorem": "T1"
+   },
+   "scope_path": "leaf-basis"
+  },
+  {
+   "store": "sx-mathoverflow",
+   "op": "neighborhood_evolution",
+   "args_form": {
+    "as_of_tt": 1521060544674582,
+    "uid": "n1222",
+    "t1": 1254192988000000,
+    "t2": 1256430052000001,
+    "stride": 279633000000
+   },
+   "as_of_tt": 1521060544674582,
+   "frontier_tt": 1787928101349165,
+   "correction_tt": 1787961656906799,
+   "pinned": true,
+   "exempted_verdict": "fresh",
+   "stripped_verdict": "possibly-stale",
+   "avoided_by_exemption": true,
+   "exempt_receipt": {
+    "basis": 1521060544674582,
+    "batches": 12,
+    "tt_range": [
+     1787928094554054,
+     1787961656906799
+    ],
+    "theorem": "T1"
+   },
+   "scope_path": "leaf-basis"
+  },
+  {
+   "store": "sx-mathoverflow",
+   "op": "aggregate_events",
+   "args_form": {
+    "as_of_tt": 1521060544674582,
+    "group_by": [
+     {
+      "dim": "endpoint",
+      "role": "src"
+     }
+    ],
+    "aggregates": [
+     {
+      "agg": "count"
+     }
+    ],
+    "window": {
+     "t_a": 1254192988000000,
+     "t_b": 1256430052000001
+    }
+   },
+   "as_of_tt": 1521060544674582,
+   "frontier_tt": 1787928101349165,
+   "correction_tt": 1787961667513647,
+   "pinned": true,
+   "exempted_verdict": "fresh",
+   "stripped_verdict": "possibly-stale",
+   "avoided_by_exemption": true,
+   "exempt_receipt": {
+    "basis": 1521060544674582,
+    "batches": 12,
+    "tt_range": [
+     1787928094554054,
+     1787961667513647
+    ],
+    "theorem": "T1"
+   },
+   "scope_path": "leaf-basis"
+  },
+  {
+   "store": "sx-mathoverflow",
+   "op": "graph_metric_timeseries",
+   "args_form": {
+    "as_of_tt": 1521060544674582,
+    "metric": "node_count",
+    "window": {
+     "t_a": 1254192988000000,
+     "t_b": 1256430052000001
+    },
+    "stride": 279633000000
+   },
+   "as_of_tt": 1521060544674582,
+   "frontier_tt": 1787928101349165,
+   "correction_tt": 1787961677555112,
+   "pinned": true,
+   "exempted_verdict": "fresh",
+   "stripped_verdict": "possibly-stale",
+   "avoided_by_exemption": true,
+   "exempt_receipt": {
+    "basis": 1521060544674582,
+    "batches": 12,
+    "tt_range": [
+     1787928094554054,
+     1787961677555112
+    ],
+    "theorem": "T1"
+   },
+   "scope_path": "leaf-basis"
+  },
+  {
+   "store": "sx-mathoverflow",
+   "op": "burst_detection",
+   "args_form": {
+    "as_of_tt": 1521060544674582,
+    "target": {
+     "kind": "node_activity",
+     "uid": "n1330"
+    },
+    "window": {
+     "t_a": 1254192988000000,
+     "t_b": 1256430052000001
+    },
+    "stride": 139816500000
+   },
+   "as_of_tt": 1521060544674582,
+   "frontier_tt": 1787928101349165,
+   "correction_tt": 1787961687580813,
+   "pinned": true,
+   "exempted_verdict": "fresh",
+   "stripped_verdict": "possibly-stale",
+   "avoided_by_exemption": true,
+   "exempt_receipt": {
+    "basis": 1521060544674582,
+    "batches": 12,
+    "tt_range": [
+     1787928094554054,
+     1787961687580813
+    ],
+    "theorem": "T1"
+   },
+   "scope_path": "leaf-basis"
+  },
+  {
+   "store": "sx-mathoverflow",
+   "op": "co_active",
+   "args_form": {
+    "as_of_tt": 1521060544674582,
+    "a_spec": {
+     "rel_type": "A2Q"
+    },
+    "b_spec": {
+     "rel_type": "A2Q"
+    },
+    "allen_relation": {
+     "relation": "overlaps"
+    },
+    "limit": 200
+   },
+   "as_of_tt": 1521060544674582,
+   "frontier_tt": 1787928101349165,
+   "correction_tt": 1787961698379026,
+   "pinned": true,
+   "exempted_verdict": "fresh",
+   "stripped_verdict": "possibly-stale",
+   "avoided_by_exemption": true,
+   "exempt_receipt": {
+    "basis": 1521060544674582,
+    "batches": 12,
+    "tt_range": [
+     1787928094554054,
+     1787961698379026
+    ],
+    "theorem": "T1"
+   },
+   "scope_path": "leaf-basis"
+  },
+  {
+   "store": "sx-mathoverflow",
+   "op": "count_temporal_motifs",
+   "args_form": {
+    "as_of_tt": 1521060544674582,
+    "motif": "M_2node_pingpong",
+    "window": {
+     "t_a": 1254192988000000,
+     "t_b": 1256430052000001
+    },
+    "delta": 279633000000
+   },
+   "as_of_tt": 1521060544674582,
+   "frontier_tt": 1787928101349165,
+   "correction_tt": 1787961708353476,
+   "pinned": true,
+   "exempted_verdict": "fresh",
+   "stripped_verdict": "possibly-stale",
+   "avoided_by_exemption": true,
+   "exempt_receipt": {
+    "basis": 1521060544674582,
+    "batches": 12,
+    "tt_range": [
+     1787928094554054,
+     1787961708353476
+    ],
+    "theorem": "T1"
+   },
+   "scope_path": "leaf-basis"
+  },
+  {
+   "store": "sx-mathoverflow",
+   "op": "find_temporal_motif_instances",
+   "args_form": {
+    "as_of_tt": 1521060544674582,
+    "motif": "M_2node_pingpong",
+    "window": {
+     "t_a": 1254192988000000,
+     "t_b": 1256430052000001
+    },
+    "delta": 279633000000,
+    "limit": 50
+   },
+   "as_of_tt": 1521060544674582,
+   "frontier_tt": 1787928101349165,
+   "correction_tt": 1787961719028594,
+   "pinned": true,
+   "exempted_verdict": "fresh",
+   "stripped_verdict": "possibly-stale",
+   "avoided_by_exemption": true,
+   "exempt_receipt": {
+    "basis": 1521060544674582,
+    "batches": 12,
+    "tt_range": [
+     1787928094554054,
+     1787961719028594
+    ],
+    "theorem": "T1"
+   },
+   "scope_path": "leaf-basis"
+  },
+  {
+   "store": "sx-mathoverflow",
+   "op": "temporal_reachability",
+   "args_form": {
+    "as_of_tt": 1521060544674582,
+    "src": "n1389",
+    "window": {
+     "t_a": 1254192988000000,
+     "t_b": 1256430052000001
+    }
+   },
+   "as_of_tt": 1521060544674582,
+   "frontier_tt": 1787928101349165,
+   "correction_tt": 1787961729063139,
+   "pinned": true,
+   "exempted_verdict": "fresh",
+   "stripped_verdict": "possibly-stale",
+   "avoided_by_exemption": true,
+   "exempt_receipt": {
+    "basis": 1521060544674582,
+    "batches": 12,
+    "tt_range": [
+     1787928094554054,
+     1787961729063139
+    ],
+    "theorem": "T1"
+   },
+   "scope_path": "leaf-basis"
+  },
+  {
+   "store": "sx-mathoverflow",
+   "op": "temporal_paths",
+   "args_form": {
+    "as_of_tt": 1521060544674582,
+    "src": "n1392",
+    "dst": "n1392",
+    "window": {
+     "t_a": 1254192988000000,
+     "t_b": 1256430052000001
+    },
+    "k": 2
+   },
+   "as_of_tt": 1521060544674582,
+   "frontier_tt": 1787928101349165,
+   "correction_tt": 1787961739017905,
+   "pinned": true,
+   "exempted_verdict": "fresh",
+   "stripped_verdict": "possibly-stale",
+   "avoided_by_exemption": true,
+   "exempt_receipt": {
+    "basis": 1521060544674582,
+    "batches": 12,
+    "tt_range": [
+     1787928094554054,
+     1787961739017905
+    ],
+    "theorem": "T1"
+   },
+   "scope_path": "leaf-basis"
+  },
+  {
+   "store": "sx-mathoverflow",
+   "op": "entity_history",
+   "args_form": {
+    "as_of_tt": 1521060544674582,
+    "uid": "n14"
+   },
+   "as_of_tt": 1521060544674582,
+   "frontier_tt": 1787928101349165,
+   "correction_tt": 1787961749666896,
+   "pinned": true,
+   "exempted_verdict": "fresh",
+   "stripped_verdict": "possibly-stale",
+   "avoided_by_exemption": true,
+   "exempt_receipt": {
+    "basis": 1521060544674582,
+    "batches": 12,
+    "tt_range": [
+     1787928094554054,
+     1787961749666896
+    ],
+    "theorem": "T1"
+   },
+   "scope_path": "leaf-basis"
+  },
+  {
+   "store": "sx-mathoverflow",
+   "op": "version_history",
+   "args_form": {
+    "as_of_tt": 1521060544674582,
+    "kind": "node",
+    "window": {
+     "t_a": 1254192988000000,
+     "t_b": 1256430052000001
+    }
+   },
+   "as_of_tt": 1521060544674582,
+   "frontier_tt": 1787928101349165,
+   "correction_tt": 1787961759796740,
+   "pinned": true,
+   "exempted_verdict": "fresh",
+   "stripped_verdict": "possibly-stale",
+   "avoided_by_exemption": true,
+   "exempt_receipt": {
+    "basis": 1521060544674582,
+    "batches": 12,
+    "tt_range": [
+     1787928094554054,
+     1787961759796740
+    ],
+    "theorem": "T1"
+   },
+   "scope_path": "leaf-basis"
+  },
+  {
+   "store": "sx-mathoverflow",
+   "op": "snapshot_subgraph",
+   "args_form": {
+    "as_of_tt": 1521060544674582,
+    "seeds": [
+     "n1423"
+    ],
+    "t_valid": 1255311520000000,
+    "hops": 1
+   },
+   "as_of_tt": 1521060544674582,
+   "frontier_tt": 1787928101349165,
+   "correction_tt": 1787961769930606,
+   "pinned": true,
+   "exempted_verdict": "fresh",
+   "stripped_verdict": "possibly-stale",
+   "avoided_by_exemption": true,
+   "exempt_receipt": {
+    "basis": 1521060544674582,
+    "batches": 12,
+    "tt_range": [
+     1787928094554054,
+     1787961769930606
+    ],
+    "theorem": "T1"
+   },
+   "scope_path": "leaf-basis"
+  },
+  {
+   "store": "sx-mathoverflow",
+   "op": "diff_snapshots",
+   "args_form": {
+    "as_of_tt": 1521060544674582,
+    "t1": 1254192988000001,
+    "t2": 1255311520000000
+   },
+   "as_of_tt": 1521060544674582,
+   "frontier_tt": 1787928101349165,
+   "correction_tt": 1787961780624130,
+   "pinned": true,
+   "exempted_verdict": "fresh",
+   "stripped_verdict": "possibly-stale",
+   "avoided_by_exemption": true,
+   "exempt_receipt": {
+    "basis": 1521060544674582,
+    "batches": 12,
+    "tt_range": [
+     1787928094554054,
+     1787961780624130
+    ],
+    "theorem": "T1"
+   },
+   "scope_path": "leaf-basis"
+  },
+  {
+   "store": "sx-mathoverflow",
+   "op": "neighborhood_evolution",
+   "args_form": {
+    "as_of_tt": 1521060544674582,
+    "uid": "n1469",
+    "t1": 1254192988000000,
+    "t2": 1256430052000001,
+    "stride": 279633000000
+   },
+   "as_of_tt": 1521060544674582,
+   "frontier_tt": 1787928101349165,
+   "correction_tt": 1787961790555200,
+   "pinned": true,
+   "exempted_verdict": "fresh",
+   "stripped_verdict": "possibly-stale",
+   "avoided_by_exemption": true,
+   "exempt_receipt": {
+    "basis": 1521060544674582,
+    "batches": 12,
+    "tt_range": [
+     1787928094554054,
+     1787961790555200
+    ],
+    "theorem": "T1"
+   },
+   "scope_path": "leaf-basis"
+  },
+  {
+   "store": "sx-mathoverflow",
+   "op": "aggregate_events",
+   "args_form": {
+    "as_of_tt": 1521060544674582,
+    "group_by": [
+     {
+      "dim": "endpoint",
+      "role": "src"
+     }
+    ],
+    "aggregates": [
+     {
+      "agg": "count"
+     }
+    ],
+    "window": {
+     "t_a": 1254192988000000,
+     "t_b": 1256430052000001
+    }
+   },
+   "as_of_tt": 1521060544674582,
+   "frontier_tt": 1787928101349165,
+   "correction_tt": 1787961800563818,
+   "pinned": true,
+   "exempted_verdict": "fresh",
+   "stripped_verdict": "possibly-stale",
+   "avoided_by_exemption": true,
+   "exempt_receipt": {
+    "basis": 1521060544674582,
+    "batches": 12,
+    "tt_range": [
+     1787928094554054,
+     1787961800563818
+    ],
+    "theorem": "T1"
+   },
+   "scope_path": "leaf-basis"
+  },
+  {
+   "store": "sx-mathoverflow",
+   "op": "graph_metric_timeseries",
+   "args_form": {
+    "as_of_tt": 1521060544674582,
+    "metric": "node_count",
+    "window": {
+     "t_a": 1254192988000000,
+     "t_b": 1256430052000001
+    },
+    "stride": 279633000000
+   },
+   "as_of_tt": 1521060544674582,
+   "frontier_tt": 1787928101349165,
+   "correction_tt": 1787961811317393,
+   "pinned": true,
+   "exempted_verdict": "fresh",
+   "stripped_verdict": "possibly-stale",
+   "avoided_by_exemption": true,
+   "exempt_receipt": {
+    "basis": 1521060544674582,
+    "batches": 12,
+    "tt_range": [
+     1787928094554054,
+     1787961811317393
+    ],
+    "theorem": "T1"
+   },
+   "scope_path": "leaf-basis"
+  },
+  {
+   "store": "sx-mathoverflow",
+   "op": "burst_detection",
+   "args_form": {
+    "as_of_tt": 1521060544674582,
+    "target": {
+     "kind": "node_activity",
+     "uid": "n1519"
+    },
+    "window": {
+     "t_a": 1254192988000000,
+     "t_b": 1256430052000001
+    },
+    "stride": 139816500000
+   },
+   "as_of_tt": 1521060544674582,
+   "frontier_tt": 1787928101349165,
+   "correction_tt": 1787961821278450,
+   "pinned": true,
+   "exempted_verdict": "fresh",
+   "stripped_verdict": "possibly-stale",
+   "avoided_by_exemption": true,
+   "exempt_receipt": {
+    "basis": 1521060544674582,
+    "batches": 12,
+    "tt_range": [
+     1787928094554054,
+     1787961821278450
+    ],
+    "theorem": "T1"
+   },
+   "scope_path": "leaf-basis"
+  },
+  {
+   "store": "sx-mathoverflow",
+   "op": "co_active",
+   "args_form": {
+    "as_of_tt": 1521060544674582,
+    "a_spec": {
+     "rel_type": "A2Q"
+    },
+    "b_spec": {
+     "rel_type": "A2Q"
+    },
+    "allen_relation": {
+     "relation": "overlaps"
+    },
+    "limit": 200
+   },
+   "as_of_tt": 1521060544674582,
+   "frontier_tt": 1787928101349165,
+   "correction_tt": 1787961832003932,
+   "pinned": true,
+   "exempted_verdict": "fresh",
+   "stripped_verdict": "possibly-stale",
+   "avoided_by_exemption": true,
+   "exempt_receipt": {
+    "basis": 1521060544674582,
+    "batches": 12,
+    "tt_range": [
+     1787928094554054,
+     1787961832003932
+    ],
+    "theorem": "T1"
+   },
+   "scope_path": "leaf-basis"
+  },
+  {
+   "store": "sx-mathoverflow",
+   "op": "count_temporal_motifs",
+   "args_form": {
+    "as_of_tt": 1521060544674582,
+    "motif": "M_2node_pingpong",
+    "window": {
+     "t_a": 1254192988000000,
+     "t_b": 1256430052000001
+    },
+    "delta": 279633000000
+   },
+   "as_of_tt": 1521060544674582,
+   "frontier_tt": 1787928101349165,
+   "correction_tt": 1787961841944370,
+   "pinned": true,
+   "exempted_verdict": "fresh",
+   "stripped_verdict": "possibly-stale",
+   "avoided_by_exemption": true,
+   "exempt_receipt": {
+    "basis": 1521060544674582,
+    "batches": 12,
+    "tt_range": [
+     1787928094554054,
+     1787961841944370
+    ],
+    "theorem": "T1"
+   },
+   "scope_path": "leaf-basis"
+  },
+  {
+   "store": "sx-mathoverflow",
+   "op": "find_temporal_motif_instances",
+   "args_form": {
+    "as_of_tt": 1521060544674582,
+    "motif": "M_2node_pingpong",
+    "window": {
+     "t_a": 1254192988000000,
+     "t_b": 1256430052000001
+    },
+    "delta": 279633000000,
+    "limit": 50
+   },
+   "as_of_tt": 1521060544674582,
+   "frontier_tt": 1787928101349165,
+   "correction_tt": 1787961852546874,
+   "pinned": true,
+   "exempted_verdict": "fresh",
+   "stripped_verdict": "possibly-stale",
+   "avoided_by_exemption": true,
+   "exempt_receipt": {
+    "basis": 1521060544674582,
+    "batches": 12,
+    "tt_range": [
+     1787928094554054,
+     1787961852546874
+    ],
+    "theorem": "T1"
+   },
+   "scope_path": "leaf-basis"
+  },
+  {
+   "store": "sx-mathoverflow",
+   "op": "temporal_reachability",
+   "args_form": {
+    "as_of_tt": 1521060544674582,
+    "src": "n1557",
+    "window": {
+     "t_a": 1254192988000000,
+     "t_b": 1256430052000001
+    }
+   },
+   "as_of_tt": 1521060544674582,
+   "frontier_tt": 1787928101349165,
+   "correction_tt": 1787961863168359,
+   "pinned": true,
+   "exempted_verdict": "fresh",
+   "stripped_verdict": "possibly-stale",
+   "avoided_by_exemption": true,
+   "exempt_receipt": {
+    "basis": 1521060544674582,
+    "batches": 12,
+    "tt_range": [
+     1787928094554054,
+     1787961863168359
+    ],
+    "theorem": "T1"
+   },
+   "scope_path": "leaf-basis"
+  },
+  {
+   "store": "sx-mathoverflow",
+   "op": "temporal_paths",
+   "args_form": {
+    "as_of_tt": 1521060544674582,
+    "src": "n1577",
+    "dst": "n1577",
+    "window": {
+     "t_a": 1254192988000000,
+     "t_b": 1256430052000001
+    },
+    "k": 2
+   },
+   "as_of_tt": 1521060544674582,
+   "frontier_tt": 1787928101349165,
+   "correction_tt": 1787961873841584,
+   "pinned": true,
+   "exempted_verdict": "fresh",
+   "stripped_verdict": "possibly-stale",
+   "avoided_by_exemption": true,
+   "exempt_receipt": {
+    "basis": 1521060544674582,
+    "batches": 12,
+    "tt_range": [
+     1787928094554054,
+     1787961873841584
+    ],
+    "theorem": "T1"
+   },
+   "scope_path": "leaf-basis"
+  },
+  {
+   "store": "sx-mathoverflow",
+   "op": "entity_history",
+   "args_form": {
+    "as_of_tt": 1521060544674582,
+    "uid": "n158"
+   },
+   "as_of_tt": 1521060544674582,
+   "frontier_tt": 1787928101349165,
+   "correction_tt": 1787961884446419,
+   "pinned": true,
+   "exempted_verdict": "fresh",
+   "stripped_verdict": "possibly-stale",
+   "avoided_by_exemption": true,
+   "exempt_receipt": {
+    "basis": 1521060544674582,
+    "batches": 12,
+    "tt_range": [
+     1787928094554054,
+     1787961884446419
+    ],
+    "theorem": "T1"
+   },
+   "scope_path": "leaf-basis"
+  },
+  {
+   "store": "sx-mathoverflow",
+   "op": "version_history",
+   "args_form": {
+    "as_of_tt": 1521060544674582,
+    "kind": "node",
+    "window": {
+     "t_a": 1254192988000000,
+     "t_b": 1256430052000001
+    }
+   },
+   "as_of_tt": 1521060544674582,
+   "frontier_tt": 1787928101349165,
+   "correction_tt": 1787961894646391,
+   "pinned": true,
+   "exempted_verdict": "fresh",
+   "stripped_verdict": "possibly-stale",
+   "avoided_by_exemption": true,
+   "exempt_receipt": {
+    "basis": 1521060544674582,
+    "batches": 12,
+    "tt_range": [
+     1787928094554054,
+     1787961894646391
+    ],
+    "theorem": "T1"
+   },
+   "scope_path": "leaf-basis"
+  },
+  {
+   "store": "sx-mathoverflow",
+   "op": "snapshot_subgraph",
+   "args_form": {
+    "as_of_tt": 1521060544674582,
+    "seeds": [
+     "n1593"
+    ],
+    "t_valid": 1255311520000000,
+    "hops": 1
+   },
+   "as_of_tt": 1521060544674582,
+   "frontier_tt": 1787928101349165,
+   "correction_tt": 1787961904490136,
+   "pinned": true,
+   "exempted_verdict": "fresh",
+   "stripped_verdict": "possibly-stale",
+   "avoided_by_exemption": true,
+   "exempt_receipt": {
+    "basis": 1521060544674582,
+    "batches": 12,
+    "tt_range": [
+     1787928094554054,
+     1787961904490136
+    ],
+    "theorem": "T1"
+   },
+   "scope_path": "leaf-basis"
+  },
+  {
+   "store": "sx-mathoverflow",
+   "op": "diff_snapshots",
+   "args_form": {
+    "as_of_tt": 1521060544674582,
+    "t1": 1254192988000001,
+    "t2": 1255311520000000
+   },
+   "as_of_tt": 1521060544674582,
+   "frontier_tt": 1787928101349165,
+   "correction_tt": 1787961915109414,
+   "pinned": true,
+   "exempted_verdict": "fresh",
+   "stripped_verdict": "possibly-stale",
+   "avoided_by_exemption": true,
+   "exempt_receipt": {
+    "basis": 1521060544674582,
+    "batches": 12,
+    "tt_range": [
+     1787928094554054,
+     1787961915109414
+    ],
+    "theorem": "T1"
+   },
+   "scope_path": "leaf-basis"
+  },
+  {
+   "store": "sx-mathoverflow",
+   "op": "neighborhood_evolution",
+   "args_form": {
+    "as_of_tt": 1521060544674582,
+    "uid": "n1612",
+    "t1": 1254192988000000,
+    "t2": 1256430052000001,
+    "stride": 279633000000
+   },
+   "as_of_tt": 1521060544674582,
+   "frontier_tt": 1787928101349165,
+   "correction_tt": 1787961925749407,
+   "pinned": true,
+   "exempted_verdict": "fresh",
+   "stripped_verdict": "possibly-stale",
+   "avoided_by_exemption": true,
+   "exempt_receipt": {
+    "basis": 1521060544674582,
+    "batches": 12,
+    "tt_range": [
+     1787928094554054,
+     1787961925749407
+    ],
+    "theorem": "T1"
+   },
+   "scope_path": "leaf-basis"
+  },
+  {
+   "store": "sx-mathoverflow",
+   "op": "aggregate_events",
+   "args_form": {
+    "as_of_tt": 1521060544674582,
+    "group_by": [
+     {
+      "dim": "endpoint",
+      "role": "src"
+     }
+    ],
+    "aggregates": [
+     {
+      "agg": "count"
+     }
+    ],
+    "window": {
+     "t_a": 1254192988000000,
+     "t_b": 1256430052000001
+    }
+   },
+   "as_of_tt": 1521060544674582,
+   "frontier_tt": 1787928101349165,
+   "correction_tt": 1787961936372681,
+   "pinned": true,
+   "exempted_verdict": "fresh",
+   "stripped_verdict": "possibly-stale",
+   "avoided_by_exemption": true,
+   "exempt_receipt": {
+    "basis": 1521060544674582,
+    "batches": 12,
+    "tt_range": [
+     1787928094554054,
+     1787961936372681
+    ],
+    "theorem": "T1"
+   },
+   "scope_path": "leaf-basis"
+  },
+  {
+   "store": "sx-mathoverflow",
+   "op": "graph_metric_timeseries",
+   "args_form": {
+    "as_of_tt": 1521060544674582,
+    "metric": "node_count",
+    "window": {
+     "t_a": 1254192988000000,
+     "t_b": 1256430052000001
+    },
+    "stride": 279633000000
+   },
+   "as_of_tt": 1521060544674582,
+   "frontier_tt": 1787928101349165,
+   "correction_tt": 1787961946295481,
+   "pinned": true,
+   "exempted_verdict": "fresh",
+   "stripped_verdict": "possibly-stale",
+   "avoided_by_exemption": true,
+   "exempt_receipt": {
+    "basis": 1521060544674582,
+    "batches": 12,
+    "tt_range": [
+     1787928094554054,
+     1787961946295481
+    ],
+    "theorem": "T1"
+   },
+   "scope_path": "leaf-basis"
+  },
+  {
+   "store": "sx-mathoverflow",
+   "op": "burst_detection",
+   "args_form": {
+    "as_of_tt": 1521060544674582,
+    "target": {
+     "kind": "node_activity",
+     "uid": "n1649"
+    },
+    "window": {
+     "t_a": 1254192988000000,
+     "t_b": 1256430052000001
+    },
+    "stride": 139816500000
+   },
+   "as_of_tt": 1521060544674582,
+   "frontier_tt": 1787928101349165,
+   "correction_tt": 1787961956812071,
+   "pinned": true,
+   "exempted_verdict": "fresh",
+   "stripped_verdict": "possibly-stale",
+   "avoided_by_exemption": true,
+   "exempt_receipt": {
+    "basis": 1521060544674582,
+    "batches": 12,
+    "tt_range": [
+     1787928094554054,
+     1787961956812071
+    ],
+    "theorem": "T1"
+   },
+   "scope_path": "leaf-basis"
+  },
+  {
+   "store": "sx-mathoverflow",
+   "op": "co_active",
+   "args_form": {
+    "as_of_tt": 1521060544674582,
+    "a_spec": {
+     "rel_type": "A2Q"
+    },
+    "b_spec": {
+     "rel_type": "A2Q"
+    },
+    "allen_relation": {
+     "relation": "overlaps"
+    },
+    "limit": 200
+   },
+   "as_of_tt": 1521060544674582,
+   "frontier_tt": 1787928101349165,
+   "correction_tt": 1787961967376415,
+   "pinned": true,
+   "exempted_verdict": "fresh",
+   "stripped_verdict": "possibly-stale",
+   "avoided_by_exemption": true,
+   "exempt_receipt": {
+    "basis": 1521060544674582,
+    "batches": 12,
+    "tt_range": [
+     1787928094554054,
+     1787961967376415
+    ],
+    "theorem": "T1"
+   },
+   "scope_path": "leaf-basis"
+  },
+  {
+   "store": "sx-mathoverflow",
+   "op": "count_temporal_motifs",
+   "args_form": {
+    "as_of_tt": 1521060544674582,
+    "motif": "M_2node_pingpong",
+    "window": {
+     "t_a": 1254192988000000,
+     "t_b": 1256430052000001
+    },
+    "delta": 279633000000
+   },
+   "as_of_tt": 1521060544674582,
+   "frontier_tt": 1787928101349165,
+   "correction_tt": 1787961977916668,
+   "pinned": true,
+   "exempted_verdict": "fresh",
+   "stripped_verdict": "possibly-stale",
+   "avoided_by_exemption": true,
+   "exempt_receipt": {
+    "basis": 1521060544674582,
+    "batches": 12,
+    "tt_range": [
+     1787928094554054,
+     1787961977916668
+    ],
+    "theorem": "T1"
+   },
+   "scope_path": "leaf-basis"
+  },
+  {
+   "store": "sx-mathoverflow",
+   "op": "find_temporal_motif_instances",
+   "args_form": {
+    "as_of_tt": 1521060544674582,
+    "motif": "M_2node_pingpong",
+    "window": {
+     "t_a": 1254192988000000,
+     "t_b": 1256430052000001
+    },
+    "delta": 279633000000,
+    "limit": 50
+   },
+   "as_of_tt": 1521060544674582,
+   "frontier_tt": 1787928101349165,
+   "correction_tt": 1787961987804334,
+   "pinned": true,
+   "exempted_verdict": "fresh",
+   "stripped_verdict": "possibly-stale",
+   "avoided_by_exemption": true,
+   "exempt_receipt": {
+    "basis": 1521060544674582,
+    "batches": 12,
+    "tt_range": [
+     1787928094554054,
+     1787961987804334
+    ],
+    "theorem": "T1"
+   },
+   "scope_path": "leaf-basis"
+  },
+  {
+   "store": "sx-mathoverflow",
+   "op": "temporal_reachability",
+   "args_form": {
+    "as_of_tt": 1521060544674582,
+    "src": "n1703",
+    "window": {
+     "t_a": 1254192988000000,
+     "t_b": 1256430052000001
+    }
+   },
+   "as_of_tt": 1521060544674582,
+   "frontier_tt": 1787928101349165,
+   "correction_tt": 1787961997817576,
+   "pinned": true,
+   "exempted_verdict": "fresh",
+   "stripped_verdict": "possibly-stale",
+   "avoided_by_exemption": true,
+   "exempt_receipt": {
+    "basis": 1521060544674582,
+    "batches": 12,
+    "tt_range": [
+     1787928094554054,
+     1787961997817576
+    ],
+    "theorem": "T1"
+   },
+   "scope_path": "leaf-basis"
+  },
+  {
+   "store": "sx-mathoverflow",
+   "op": "temporal_paths",
+   "args_form": {
+    "as_of_tt": 1521060544674582,
+    "src": "n1706",
+    "dst": "n1706",
+    "window": {
+     "t_a": 1254192988000000,
+     "t_b": 1256430052000001
+    },
+    "k": 2
+   },
+   "as_of_tt": 1521060544674582,
+   "frontier_tt": 1787928101349165,
+   "correction_tt": 1787962007795140,
+   "pinned": true,
+   "exempted_verdict": "fresh",
+   "stripped_verdict": "possibly-stale",
+   "avoided_by_exemption": true,
+   "exempt_receipt": {
+    "basis": 1521060544674582,
+    "batches": 12,
+    "tt_range": [
+     1787928094554054,
+     1787962007795140
+    ],
+    "theorem": "T1"
+   },
+   "scope_path": "leaf-basis"
+  },
+  {
+   "store": "sx-mathoverflow",
+   "op": "entity_history",
+   "args_form": {
+    "as_of_tt": 1521060544674582,
+    "uid": "n1790"
+   },
+   "as_of_tt": 1521060544674582,
+   "frontier_tt": 1787928101349165,
+   "correction_tt": 1787962017880068,
+   "pinned": true,
+   "exempted_verdict": "fresh",
+   "stripped_verdict": "possibly-stale",
+   "avoided_by_exemption": true,
+   "exempt_receipt": {
+    "basis": 1521060544674582,
+    "batches": 12,
+    "tt_range": [
+     1787928094554054,
+     1787962017880068
+    ],
+    "theorem": "T1"
+   },
+   "scope_path": "leaf-basis"
+  },
+  {
+   "store": "sx-mathoverflow",
+   "op": "version_history",
+   "args_form": {
+    "as_of_tt": 1521060544674582,
+    "kind": "node",
+    "window": {
+     "t_a": 1254192988000000,
+     "t_b": 1256430052000001
+    }
+   },
+   "as_of_tt": 1521060544674582,
+   "frontier_tt": 1787928101349165,
+   "correction_tt": 1787962028044274,
+   "pinned": true,
+   "exempted_verdict": "fresh",
+   "stripped_verdict": "possibly-stale",
+   "avoided_by_exemption": true,
+   "exempt_receipt": {
+    "basis": 1521060544674582,
+    "batches": 12,
+    "tt_range": [
+     1787928094554054,
+     1787962028044274
+    ],
+    "theorem": "T1"
+   },
+   "scope_path": "leaf-basis"
+  },
+  {
+   "store": "sx-mathoverflow",
+   "op": "snapshot_subgraph",
+   "args_form": {
+    "as_of_tt": 1521060544674582,
+    "seeds": [
+     "n1809"
+    ],
+    "t_valid": 1255311520000000,
+    "hops": 1
+   },
+   "as_of_tt": 1521060544674582,
+   "frontier_tt": 1787928101349165,
+   "correction_tt": 1787962038461766,
+   "pinned": true,
+   "exempted_verdict": "fresh",
+   "stripped_verdict": "possibly-stale",
+   "avoided_by_exemption": true,
+   "exempt_receipt": {
+    "basis": 1521060544674582,
+    "batches": 12,
+    "tt_range": [
+     1787928094554054,
+     1787962038461766
+    ],
+    "theorem": "T1"
+   },
+   "scope_path": "leaf-basis"
+  },
+  {
+   "store": "sx-mathoverflow",
+   "op": "diff_snapshots",
+   "args_form": {
+    "as_of_tt": 1521060544674582,
+    "t1": 1254192988000001,
+    "t2": 1255311520000000
+   },
+   "as_of_tt": 1521060544674582,
+   "frontier_tt": 1787928101349165,
+   "correction_tt": 1787962048498076,
+   "pinned": true,
+   "exempted_verdict": "fresh",
+   "stripped_verdict": "possibly-stale",
+   "avoided_by_exemption": true,
+   "exempt_receipt": {
+    "basis": 1521060544674582,
+    "batches": 12,
+    "tt_range": [
+     1787928094554054,
+     1787962048498076
+    ],
+    "theorem": "T1"
+   },
+   "scope_path": "leaf-basis"
+  },
+  {
+   "store": "sx-mathoverflow",
+   "op": "neighborhood_evolution",
+   "args_form": {
+    "as_of_tt": 1521060544674582,
+    "uid": "n1828",
+    "t1": 1254192988000000,
+    "t2": 1256430052000001,
+    "stride": 279633000000
+   },
+   "as_of_tt": 1521060544674582,
+   "frontier_tt": 1787928101349165,
+   "correction_tt": 1787962058405243,
+   "pinned": true,
+   "exempted_verdict": "fresh",
+   "stripped_verdict": "possibly-stale",
+   "avoided_by_exemption": true,
+   "exempt_receipt": {
+    "basis": 1521060544674582,
+    "batches": 12,
+    "tt_range": [
+     1787928094554054,
+     1787962058405243
+    ],
+    "theorem": "T1"
+   },
+   "scope_path": "leaf-basis"
+  },
+  {
+   "store": "sx-mathoverflow",
+   "op": "aggregate_events",
+   "args_form": {
+    "as_of_tt": 1521060544674582,
+    "group_by": [
+     {
+      "dim": "endpoint",
+      "role": "src"
+     }
+    ],
+    "aggregates": [
+     {
+      "agg": "count"
+     }
+    ],
+    "window": {
+     "t_a": 1254192988000000,
+     "t_b": 1256430052000001
+    }
+   },
+   "as_of_tt": 1521060544674582,
+   "frontier_tt": 1787928101349165,
+   "correction_tt": 1787962069145738,
+   "pinned": true,
+   "exempted_verdict": "fresh",
+   "stripped_verdict": "possibly-stale",
+   "avoided_by_exemption": true,
+   "exempt_receipt": {
+    "basis": 1521060544674582,
+    "batches": 12,
+    "tt_range": [
+     1787928094554054,
+     1787962069145738
+    ],
+    "theorem": "T1"
+   },
+   "scope_path": "leaf-basis"
+  },
+  {
+   "store": "sx-mathoverflow",
+   "op": "graph_metric_timeseries",
+   "args_form": {
+    "as_of_tt": 1521060544674582,
+    "metric": "node_count",
+    "window": {
+     "t_a": 1254192988000000,
+     "t_b": 1256430052000001
+    },
+    "stride": 279633000000
+   },
+   "as_of_tt": 1521060544674582,
+   "frontier_tt": 1787928101349165,
+   "correction_tt": 1787962079059584,
+   "pinned": true,
+   "exempted_verdict": "fresh",
+   "stripped_verdict": "possibly-stale",
+   "avoided_by_exemption": true,
+   "exempt_receipt": {
+    "basis": 1521060544674582,
+    "batches": 12,
+    "tt_range": [
+     1787928094554054,
+     1787962079059584
+    ],
+    "theorem": "T1"
+   },
+   "scope_path": "leaf-basis"
+  },
+  {
+   "store": "sx-mathoverflow",
+   "op": "burst_detection",
+   "args_form": {
+    "as_of_tt": 1521060544674582,
+    "target": {
+     "kind": "node_activity",
+     "uid": "n1870"
+    },
+    "window": {
+     "t_a": 1254192988000000,
+     "t_b": 1256430052000001
+    },
+    "stride": 139816500000
+   },
+   "as_of_tt": 1521060544674582,
+   "frontier_tt": 1787928101349165,
+   "correction_tt": 1787962089147760,
+   "pinned": true,
+   "exempted_verdict": "fresh",
+   "stripped_verdict": "possibly-stale",
+   "avoided_by_exemption": true,
+   "exempt_receipt": {
+    "basis": 1521060544674582,
+    "batches": 12,
+    "tt_range": [
+     1787928094554054,
+     1787962089147760
+    ],
+    "theorem": "T1"
+   },
+   "scope_path": "leaf-basis"
+  },
+  {
+   "store": "sx-mathoverflow",
+   "op": "co_active",
+   "args_form": {
+    "as_of_tt": 1521060544674582,
+    "a_spec": {
+     "rel_type": "A2Q"
+    },
+    "b_spec": {
+     "rel_type": "A2Q"
+    },
+    "allen_relation": {
+     "relation": "overlaps"
+    },
+    "limit": 200
+   },
+   "as_of_tt": 1521060544674582,
+   "frontier_tt": 1787928101349165,
+   "correction_tt": 1787962099865185,
+   "pinned": true,
+   "exempted_verdict": "fresh",
+   "stripped_verdict": "possibly-stale",
+   "avoided_by_exemption": true,
+   "exempt_receipt": {
+    "basis": 1521060544674582,
+    "batches": 12,
+    "tt_range": [
+     1787928094554054,
+     1787962099865185
+    ],
+    "theorem": "T1"
+   },
+   "scope_path": "leaf-basis"
+  },
+  {
+   "store": "sx-mathoverflow",
+   "op": "count_temporal_motifs",
+   "args_form": {
+    "as_of_tt": 1521060544674582,
+    "motif": "M_2node_pingpong",
+    "window": {
+     "t_a": 1254192988000000,
+     "t_b": 1256430052000001
+    },
+    "delta": 279633000000
+   },
+   "as_of_tt": 1521060544674582,
+   "frontier_tt": 1787928101349165,
+   "correction_tt": 1787962109962206,
+   "pinned": true,
+   "exempted_verdict": "fresh",
+   "stripped_verdict": "possibly-stale",
+   "avoided_by_exemption": true,
+   "exempt_receipt": {
+    "basis": 1521060544674582,
+    "batches": 12,
+    "tt_range": [
+     1787928094554054,
+     1787962109962206
+    ],
+    "theorem": "T1"
+   },
+   "scope_path": "leaf-basis"
+  },
+  {
+   "store": "sx-mathoverflow",
+   "op": "find_temporal_motif_instances",
+   "args_form": {
+    "as_of_tt": 1521060544674582,
+    "motif": "M_2node_pingpong",
+    "window": {
+     "t_a": 1254192988000000,
+     "t_b": 1256430052000001
+    },
+    "delta": 279633000000,
+    "limit": 50
+   },
+   "as_of_tt": 1521060544674582,
+   "frontier_tt": 1787928101349165,
+   "correction_tt": 1787962120241586,
+   "pinned": true,
+   "exempted_verdict": "fresh",
+   "stripped_verdict": "possibly-stale",
+   "avoided_by_exemption": true,
+   "exempt_receipt": {
+    "basis": 1521060544674582,
+    "batches": 12,
+    "tt_range": [
+     1787928094554054,
+     1787962120241586
+    ],
+    "theorem": "T1"
+   },
+   "scope_path": "leaf-basis"
+  },
+  {
+   "store": "sx-mathoverflow",
+   "op": "temporal_reachability",
+   "args_form": {
+    "as_of_tt": 1521060544674582,
+    "src": "n1902",
+    "window": {
+     "t_a": 1254192988000000,
+     "t_b": 1256430052000001
+    }
+   },
+   "as_of_tt": 1521060544674582,
+   "frontier_tt": 1787928101349165,
+   "correction_tt": 1787962130885177,
+   "pinned": true,
+   "exempted_verdict": "fresh",
+   "stripped_verdict": "possibly-stale",
+   "avoided_by_exemption": true,
+   "exempt_receipt": {
+    "basis": 1521060544674582,
+    "batches": 12,
+    "tt_range": [
+     1787928094554054,
+     1787962130885177
+    ],
+    "theorem": "T1"
+   },
+   "scope_path": "leaf-basis"
+  },
+  {
+   "store": "sx-mathoverflow",
+   "op": "temporal_paths",
+   "args_form": {
+    "as_of_tt": 1521060544674582,
+    "src": "n1924",
+    "dst": "n1924",
+    "window": {
+     "t_a": 1254192988000000,
+     "t_b": 1256430052000001
+    },
+    "k": 2
+   },
+   "as_of_tt": 1521060544674582,
+   "frontier_tt": 1787928101349165,
+   "correction_tt": 1787962141344243,
+   "pinned": true,
+   "exempted_verdict": "fresh",
+   "stripped_verdict": "possibly-stale",
+   "avoided_by_exemption": true,
+   "exempt_receipt": {
+    "basis": 1521060544674582,
+    "batches": 12,
+    "tt_range": [
+     1787928094554054,
+     1787962141344243
+    ],
+    "theorem": "T1"
+   },
+   "scope_path": "leaf-basis"
+  },
+  {
+   "store": "sx-mathoverflow",
+   "op": "entity_history",
+   "args_form": {
+    "as_of_tt": 1521060544674582,
+    "uid": "n1930"
+   },
+   "as_of_tt": 1521060544674582,
+   "frontier_tt": 1787928101349165,
+   "correction_tt": 1787962152454731,
+   "pinned": true,
+   "exempted_verdict": "fresh",
+   "stripped_verdict": "possibly-stale",
+   "avoided_by_exemption": true,
+   "exempt_receipt": {
+    "basis": 1521060544674582,
+    "batches": 12,
+    "tt_range": [
+     1787928094554054,
+     1787962152454731
+    ],
+    "theorem": "T1"
+   },
+   "scope_path": "leaf-basis"
+  },
+  {
+   "store": "sx-mathoverflow",
+   "op": "version_history",
+   "args_form": {
+    "as_of_tt": 1521060544674582,
+    "kind": "node",
+    "window": {
+     "t_a": 1254192988000000,
+     "t_b": 1256430052000001
+    }
+   },
+   "as_of_tt": 1521060544674582,
+   "frontier_tt": 1787928101349165,
+   "correction_tt": 1787962163544672,
+   "pinned": true,
+   "exempted_verdict": "fresh",
+   "stripped_verdict": "possibly-stale",
+   "avoided_by_exemption": true,
+   "exempt_receipt": {
+    "basis": 1521060544674582,
+    "batches": 12,
+    "tt_range": [
+     1787928094554054,
+     1787962163544672
+    ],
+    "theorem": "T1"
+   },
+   "scope_path": "leaf-basis"
+  },
+  {
+   "store": "sx-mathoverflow",
+   "op": "snapshot_subgraph",
+   "args_form": {
+    "as_of_tt": 1521060544674582,
+    "seeds": [
+     "n1949"
+    ],
+    "t_valid": 1255311520000000,
+    "hops": 1
+   },
+   "as_of_tt": 1521060544674582,
+   "frontier_tt": 1787928101349165,
+   "correction_tt": 1787962173952699,
+   "pinned": true,
+   "exempted_verdict": "fresh",
+   "stripped_verdict": "possibly-stale",
+   "avoided_by_exemption": true,
+   "exempt_receipt": {
+    "basis": 1521060544674582,
+    "batches": 12,
+    "tt_range": [
+     1787928094554054,
+     1787962173952699
+    ],
+    "theorem": "T1"
+   },
+   "scope_path": "leaf-basis"
+  },
+  {
+   "store": "sx-mathoverflow",
+   "op": "diff_snapshots",
+   "args_form": {
+    "as_of_tt": 1521060544674582,
+    "t1": 1254192988000001,
+    "t2": 1255311520000000
+   },
+   "as_of_tt": 1521060544674582,
+   "frontier_tt": 1787928101349165,
+   "correction_tt": 1787962184578831,
+   "pinned": true,
+   "exempted_verdict": "fresh",
+   "stripped_verdict": "possibly-stale",
+   "avoided_by_exemption": true,
+   "exempt_receipt": {
+    "basis": 1521060544674582,
+    "batches": 12,
+    "tt_range": [
+     1787928094554054,
+     1787962184578831
+    ],
+    "theorem": "T1"
+   },
+   "scope_path": "leaf-basis"
+  },
+  {
+   "store": "sx-mathoverflow",
+   "op": "neighborhood_evolution",
+   "args_form": {
+    "as_of_tt": 1521060544674582,
+    "uid": "n1983",
+    "t1": 1254192988000000,
+    "t2": 1256430052000001,
+    "stride": 279633000000
+   },
+   "as_of_tt": 1521060544674582,
+   "frontier_tt": 1787928101349165,
+   "correction_tt": 1787962195682726,
+   "pinned": true,
+   "exempted_verdict": "fresh",
+   "stripped_verdict": "possibly-stale",
+   "avoided_by_exemption": true,
+   "exempt_receipt": {
+    "basis": 1521060544674582,
+    "batches": 12,
+    "tt_range": [
+     1787928094554054,
+     1787962195682726
+    ],
+    "theorem": "T1"
+   },
+   "scope_path": "leaf-basis"
+  },
+  {
+   "store": "sx-mathoverflow",
+   "op": "aggregate_events",
+   "args_form": {
+    "as_of_tt": 1521060544674582,
+    "group_by": [
+     {
+      "dim": "endpoint",
+      "role": "src"
+     }
+    ],
+    "aggregates": [
+     {
+      "agg": "count"
+     }
+    ],
+    "window": {
+     "t_a": 1254192988000000,
+     "t_b": 1256430052000001
+    }
+   },
+   "as_of_tt": 1521060544674582,
+   "frontier_tt": 1787928101349165,
+   "correction_tt": 1787962206800685,
+   "pinned": true,
+   "exempted_verdict": "fresh",
+   "stripped_verdict": "possibly-stale",
+   "avoided_by_exemption": true,
+   "exempt_receipt": {
+    "basis": 1521060544674582,
+    "batches": 12,
+    "tt_range": [
+     1787928094554054,
+     1787962206800685
+    ],
+    "theorem": "T1"
+   },
+   "scope_path": "leaf-basis"
+  },
+  {
+   "store": "sx-mathoverflow",
+   "op": "graph_metric_timeseries",
+   "args_form": {
+    "as_of_tt": 1521060544674582,
+    "metric": "node_count",
+    "window": {
+     "t_a": 1254192988000000,
+     "t_b": 1256430052000001
+    },
+    "stride": 279633000000
+   },
+   "as_of_tt": 1521060544674582,
+   "frontier_tt": 1787928101349165,
+   "correction_tt": 1787962217090892,
+   "pinned": true,
+   "exempted_verdict": "fresh",
+   "stripped_verdict": "possibly-stale",
+   "avoided_by_exemption": true,
+   "exempt_receipt": {
+    "basis": 1521060544674582,
+    "batches": 12,
+    "tt_range": [
+     1787928094554054,
+     1787962217090892
+    ],
+    "theorem": "T1"
+   },
+   "scope_path": "leaf-basis"
+  },
+  {
+   "store": "sx-mathoverflow",
+   "op": "burst_detection",
+   "args_form": {
+    "as_of_tt": 1521060544674582,
+    "target": {
+     "kind": "node_activity",
+     "uid": "n2047"
+    },
+    "window": {
+     "t_a": 1254192988000000,
+     "t_b": 1256430052000001
+    },
+    "stride": 139816500000
+   },
+   "as_of_tt": 1521060544674582,
+   "frontier_tt": 1787928101349165,
+   "correction_tt": 1787962228188991,
+   "pinned": true,
+   "exempted_verdict": "fresh",
+   "stripped_verdict": "possibly-stale",
+   "avoided_by_exemption": true,
+   "exempt_receipt": {
+    "basis": 1521060544674582,
+    "batches": 12,
+    "tt_range": [
+     1787928094554054,
+     1787962228188991
+    ],
+    "theorem": "T1"
+   },
+   "scope_path": "leaf-basis"
+  },
+  {
+   "store": "sx-mathoverflow",
+   "op": "co_active",
+   "args_form": {
+    "as_of_tt": 1521060544674582,
+    "a_spec": {
+     "rel_type": "A2Q"
+    },
+    "b_spec": {
+     "rel_type": "A2Q"
+    },
+    "allen_relation": {
+     "relation": "overlaps"
+    },
+    "limit": 200
+   },
+   "as_of_tt": 1521060544674582,
+   "frontier_tt": 1787928101349165,
+   "correction_tt": 1787962238616527,
+   "pinned": true,
+   "exempted_verdict": "fresh",
+   "stripped_verdict": "possibly-stale",
+   "avoided_by_exemption": true,
+   "exempt_receipt": {
+    "basis": 1521060544674582,
+    "batches": 12,
+    "tt_range": [
+     1787928094554054,
+     1787962238616527
+    ],
+    "theorem": "T1"
+   },
+   "scope_path": "leaf-basis"
+  },
+  {
+   "store": "sx-mathoverflow",
+   "op": "count_temporal_motifs",
+   "args_form": {
+    "as_of_tt": 1521060544674582,
+    "motif": "M_2node_pingpong",
+    "window": {
+     "t_a": 1254192988000000,
+     "t_b": 1256430052000001
+    },
+    "delta": 279633000000
+   },
+   "as_of_tt": 1521060544674582,
+   "frontier_tt": 1787928101349165,
+   "correction_tt": 1787962249587509,
+   "pinned": true,
+   "exempted_verdict": "fresh",
+   "stripped_verdict": "possibly-stale",
+   "avoided_by_exemption": true,
+   "exempt_receipt": {
+    "basis": 1521060544674582,
+    "batches": 12,
+    "tt_range": [
+     1787928094554054,
+     1787962249587509
+    ],
+    "theorem": "T1"
+   },
+   "scope_path": "leaf-basis"
+  },
+  {
+   "store": "sx-mathoverflow",
+   "op": "find_temporal_motif_instances",
+   "args_form": {
+    "as_of_tt": 1521060544674582,
+    "motif": "M_2node_pingpong",
+    "window": {
+     "t_a": 1254192988000000,
+     "t_b": 1256430052000001
+    },
+    "delta": 279633000000,
+    "limit": 50
+   },
+   "as_of_tt": 1521060544674582,
+   "frontier_tt": 1787928101349165,
+   "correction_tt": 1787962260629453,
+   "pinned": true,
+   "exempted_verdict": "fresh",
+   "stripped_verdict": "possibly-stale",
+   "avoided_by_exemption": true,
+   "exempt_receipt": {
+    "basis": 1521060544674582,
+    "batches": 12,
+    "tt_range": [
+     1787928094554054,
+     1787962260629453
+    ],
+    "theorem": "T1"
+   },
+   "scope_path": "leaf-basis"
+  },
+  {
+   "store": "sx-mathoverflow",
+   "op": "temporal_reachability",
+   "args_form": {
+    "as_of_tt": 1521060544674582,
+    "src": "n2099",
+    "window": {
+     "t_a": 1254192988000000,
+     "t_b": 1256430052000001
+    }
+   },
+   "as_of_tt": 1521060544674582,
+   "frontier_tt": 1787928101349165,
+   "correction_tt": 1787962271552075,
+   "pinned": true,
+   "exempted_verdict": "fresh",
+   "stripped_verdict": "possibly-stale",
+   "avoided_by_exemption": true,
+   "exempt_receipt": {
+    "basis": 1521060544674582,
+    "batches": 12,
+    "tt_range": [
+     1787928094554054,
+     1787962271552075
+    ],
+    "theorem": "T1"
+   },
+   "scope_path": "leaf-basis"
+  },
+  {
+   "store": "sx-mathoverflow",
+   "op": "temporal_paths",
+   "args_form": {
+    "as_of_tt": 1521060544674582,
+    "src": "n2111",
+    "dst": "n2111",
+    "window": {
+     "t_a": 1254192988000000,
+     "t_b": 1256430052000001
+    },
+    "k": 2
+   },
+   "as_of_tt": 1521060544674582,
+   "frontier_tt": 1787928101349165,
+   "correction_tt": 1787962282449176,
+   "pinned": true,
+   "exempted_verdict": "fresh",
+   "stripped_verdict": "possibly-stale",
+   "avoided_by_exemption": true,
+   "exempt_receipt": {
+    "basis": 1521060544674582,
+    "batches": 12,
+    "tt_range": [
+     1787928094554054,
+     1787962282449176
+    ],
+    "theorem": "T1"
+   },
+   "scope_path": "leaf-basis"
+  },
+  {
+   "store": "sx-mathoverflow",
+   "op": "entity_history",
+   "args_form": {
+    "as_of_tt": 1521060544674582,
+    "uid": "n2113"
+   },
+   "as_of_tt": 1521060544674582,
+   "frontier_tt": 1787928101349165,
+   "correction_tt": 1787962293362176,
+   "pinned": true,
+   "exempted_verdict": "fresh",
+   "stripped_verdict": "possibly-stale",
+   "avoided_by_exemption": true,
+   "exempt_receipt": {
+    "basis": 1521060544674582,
+    "batches": 12,
+    "tt_range": [
+     1787928094554054,
+     1787962293362176
+    ],
+    "theorem": "T1"
+   },
+   "scope_path": "leaf-basis"
+  },
+  {
+   "store": "sx-mathoverflow",
+   "op": "version_history",
+   "args_form": {
+    "as_of_tt": 1521060544674582,
+    "kind": "node",
+    "window": {
+     "t_a": 1254192988000000,
+     "t_b": 1256430052000001
+    }
+   },
+   "as_of_tt": 1521060544674582,
+   "frontier_tt": 1787928101349165,
+   "correction_tt": 1787962304741605,
+   "pinned": true,
+   "exempted_verdict": "fresh",
+   "stripped_verdict": "possibly-stale",
+   "avoided_by_exemption": true,
+   "exempt_receipt": {
+    "basis": 1521060544674582,
+    "batches": 12,
+    "tt_range": [
+     1787928094554054,
+     1787962304741605
+    ],
+    "theorem": "T1"
+   },
+   "scope_path": "leaf-basis"
+  },
+  {
+   "store": "sx-mathoverflow",
+   "op": "snapshot_subgraph",
+   "args_form": {
+    "as_of_tt": 1521060544674582,
+    "seeds": [
+     "n2148"
+    ],
+    "t_valid": 1255311520000000,
+    "hops": 1
+   },
+   "as_of_tt": 1521060544674582,
+   "frontier_tt": 1787928101349165,
+   "correction_tt": 1787962315126152,
+   "pinned": true,
+   "exempted_verdict": "fresh",
+   "stripped_verdict": "possibly-stale",
+   "avoided_by_exemption": true,
+   "exempt_receipt": {
+    "basis": 1521060544674582,
+    "batches": 12,
+    "tt_range": [
+     1787928094554054,
+     1787962315126152
+    ],
+    "theorem": "T1"
+   },
+   "scope_path": "leaf-basis"
+  },
+  {
+   "store": "sx-mathoverflow",
+   "op": "diff_snapshots",
+   "args_form": {
+    "as_of_tt": 1521060544674582,
+    "t1": 1254192988000001,
+    "t2": 1255311520000000
+   },
+   "as_of_tt": 1521060544674582,
+   "frontier_tt": 1787928101349165,
+   "correction_tt": 1787962325320787,
+   "pinned": true,
+   "exempted_verdict": "fresh",
+   "stripped_verdict": "possibly-stale",
+   "avoided_by_exemption": true,
+   "exempt_receipt": {
+    "basis": 1521060544674582,
+    "batches": 12,
+    "tt_range": [
+     1787928094554054,
+     1787962325320787
+    ],
+    "theorem": "T1"
+   },
+   "scope_path": "leaf-basis"
+  },
+  {
+   "store": "sx-mathoverflow",
+   "op": "neighborhood_evolution",
+   "args_form": {
+    "as_of_tt": 1521060544674582,
+    "uid": "n2170",
+    "t1": 1254192988000000,
+    "t2": 1256430052000001,
+    "stride": 279633000000
+   },
+   "as_of_tt": 1521060544674582,
+   "frontier_tt": 1787928101349165,
+   "correction_tt": 1787962335882403,
+   "pinned": true,
+   "exempted_verdict": "fresh",
+   "stripped_verdict": "possibly-stale",
+   "avoided_by_exemption": true,
+   "exempt_receipt": {
+    "basis": 1521060544674582,
+    "batches": 12,
+    "tt_range": [
+     1787928094554054,
+     1787962335882403
+    ],
+    "theorem": "T1"
+   },
+   "scope_path": "leaf-basis"
+  },
+  {
+   "store": "sx-mathoverflow",
+   "op": "aggregate_events",
+   "args_form": {
+    "as_of_tt": 1521060544674582,
+    "group_by": [
+     {
+      "dim": "endpoint",
+      "role": "src"
+     }
+    ],
+    "aggregates": [
+     {
+      "agg": "count"
+     }
+    ],
+    "window": {
+     "t_a": 1254192988000000,
+     "t_b": 1256430052000001
+    }
+   },
+   "as_of_tt": 1521060544674582,
+   "frontier_tt": 1787928101349165,
+   "correction_tt": 1787962346888441,
+   "pinned": true,
+   "exempted_verdict": "fresh",
+   "stripped_verdict": "possibly-stale",
+   "avoided_by_exemption": true,
+   "exempt_receipt": {
+    "basis": 1521060544674582,
+    "batches": 12,
+    "tt_range": [
+     1787928094554054,
+     1787962346888441
+    ],
+    "theorem": "T1"
+   },
+   "scope_path": "leaf-basis"
+  },
+  {
+   "store": "sx-mathoverflow",
+   "op": "graph_metric_timeseries",
+   "args_form": {
+    "as_of_tt": 1521060544674582,
+    "metric": "node_count",
+    "window": {
+     "t_a": 1254192988000000,
+     "t_b": 1256430052000001
+    },
+    "stride": 279633000000
+   },
+   "as_of_tt": 1521060544674582,
+   "frontier_tt": 1787928101349165,
+   "correction_tt": 1787962357466300,
+   "pinned": true,
+   "exempted_verdict": "fresh",
+   "stripped_verdict": "possibly-stale",
+   "avoided_by_exemption": true,
+   "exempt_receipt": {
+    "basis": 1521060544674582,
+    "batches": 12,
+    "tt_range": [
+     1787928094554054,
+     1787962357466300
+    ],
+    "theorem": "T1"
+   },
+   "scope_path": "leaf-basis"
+  },
+  {
+   "store": "sx-mathoverflow",
+   "op": "burst_detection",
+   "args_form": {
+    "as_of_tt": 1521060544674582,
+    "target": {
+     "kind": "node_activity",
+     "uid": "n2192"
+    },
+    "window": {
+     "t_a": 1254192988000000,
+     "t_b": 1256430052000001
+    },
+    "stride": 139816500000
+   },
+   "as_of_tt": 1521060544674582,
+   "frontier_tt": 1787928101349165,
+   "correction_tt": 1787962368317820,
+   "pinned": true,
+   "exempted_verdict": "fresh",
+   "stripped_verdict": "possibly-stale",
+   "avoided_by_exemption": true,
+   "exempt_receipt": {
+    "basis": 1521060544674582,
+    "batches": 12,
+    "tt_range": [
+     1787928094554054,
+     1787962368317820
+    ],
+    "theorem": "T1"
+   },
+   "scope_path": "leaf-basis"
+  },
+  {
+   "store": "sx-mathoverflow",
+   "op": "co_active",
+   "args_form": {
+    "as_of_tt": 1521060544674582,
+    "a_spec": {
+     "rel_type": "A2Q"
+    },
+    "b_spec": {
+     "rel_type": "A2Q"
+    },
+    "allen_relation": {
+     "relation": "overlaps"
+    },
+    "limit": 200
+   },
+   "as_of_tt": 1521060544674582,
+   "frontier_tt": 1787928101349165,
+   "correction_tt": 1787962378533731,
+   "pinned": true,
+   "exempted_verdict": "fresh",
+   "stripped_verdict": "possibly-stale",
+   "avoided_by_exemption": true,
+   "exempt_receipt": {
+    "basis": 1521060544674582,
+    "batches": 12,
+    "tt_range": [
+     1787928094554054,
+     1787962378533731
+    ],
+    "theorem": "T1"
+   },
+   "scope_path": "leaf-basis"
+  },
+  {
+   "store": "sx-mathoverflow",
+   "op": "count_temporal_motifs",
+   "args_form": {
+    "as_of_tt": 1521060544674582,
+    "motif": "M_2node_pingpong",
+    "window": {
+     "t_a": 1254192988000000,
+     "t_b": 1256430052000001
+    },
+    "delta": 279633000000
+   },
+   "as_of_tt": 1521060544674582,
+   "frontier_tt": 1787928101349165,
+   "correction_tt": 1787962388985330,
+   "pinned": true,
+   "exempted_verdict": "fresh",
+   "stripped_verdict": "possibly-stale",
+   "avoided_by_exemption": true,
+   "exempt_receipt": {
+    "basis": 1521060544674582,
+    "batches": 12,
+    "tt_range": [
+     1787928094554054,
+     1787962388985330
+    ],
+    "theorem": "T1"
+   },
+   "scope_path": "leaf-basis"
+  },
+  {
+   "store": "sx-mathoverflow",
+   "op": "find_temporal_motif_instances",
+   "args_form": {
+    "as_of_tt": 1521060544674582,
+    "motif": "M_2node_pingpong",
+    "window": {
+     "t_a": 1254192988000000,
+     "t_b": 1256430052000001
+    },
+    "delta": 279633000000,
+    "limit": 50
+   },
+   "as_of_tt": 1521060544674582,
+   "frontier_tt": 1787928101349165,
+   "correction_tt": 1787962399861107,
+   "pinned": true,
+   "exempted_verdict": "fresh",
+   "stripped_verdict": "possibly-stale",
+   "avoided_by_exemption": true,
+   "exempt_receipt": {
+    "basis": 1521060544674582,
+    "batches": 12,
+    "tt_range": [
+     1787928094554054,
+     1787962399861107
+    ],
+    "theorem": "T1"
+   },
+   "scope_path": "leaf-basis"
+  },
+  {
+   "store": "sx-mathoverflow",
+   "op": "temporal_reachability",
+   "args_form": {
+    "as_of_tt": 1521060544674582,
+    "src": "n2229",
+    "window": {
+     "t_a": 1254192988000000,
+     "t_b": 1256430052000001
+    }
+   },
+   "as_of_tt": 1521060544674582,
+   "frontier_tt": 1787928101349165,
+   "correction_tt": 1787962410453938,
+   "pinned": true,
+   "exempted_verdict": "fresh",
+   "stripped_verdict": "possibly-stale",
+   "avoided_by_exemption": true,
+   "exempt_receipt": {
+    "basis": 1521060544674582,
+    "batches": 12,
+    "tt_range": [
+     1787928094554054,
+     1787962410453938
+    ],
+    "theorem": "T1"
+   },
+   "scope_path": "leaf-basis"
+  },
+  {
+   "store": "sx-mathoverflow",
+   "op": "temporal_paths",
+   "args_form": {
+    "as_of_tt": 1521060544674582,
+    "src": "n2269",
+    "dst": "n2269",
+    "window": {
+     "t_a": 1254192988000000,
+     "t_b": 1256430052000001
+    },
+    "k": 2
+   },
+   "as_of_tt": 1521060544674582,
+   "frontier_tt": 1787928101349165,
+   "correction_tt": 1787962421364696,
+   "pinned": true,
+   "exempted_verdict": "fresh",
+   "stripped_verdict": "possibly-stale",
+   "avoided_by_exemption": true,
+   "exempt_receipt": {
+    "basis": 1521060544674582,
+    "batches": 12,
+    "tt_range": [
+     1787928094554054,
+     1787962421364696
+    ],
+    "theorem": "T1"
+   },
+   "scope_path": "leaf-basis"
+  },
+  {
+   "store": "sx-mathoverflow",
+   "op": "entity_history",
+   "args_form": {
+    "as_of_tt": 1521060544674582,
+    "uid": "n2305"
+   },
+   "as_of_tt": 1521060544674582,
+   "frontier_tt": 1787928101349165,
+   "correction_tt": 1787962431873228,
+   "pinned": true,
+   "exempted_verdict": "fresh",
+   "stripped_verdict": "possibly-stale",
+   "avoided_by_exemption": true,
+   "exempt_receipt": {
+    "basis": 1521060544674582,
+    "batches": 12,
+    "tt_range": [
+     1787928094554054,
+     1787962431873228
+    ],
+    "theorem": "T1"
+   },
+   "scope_path": "leaf-basis"
+  },
+  {
+   "store": "sx-mathoverflow",
+   "op": "version_history",
+   "args_form": {
+    "as_of_tt": 1521060544674582,
+    "kind": "node",
+    "window": {
+     "t_a": 1254192988000000,
+     "t_b": 1256430052000001
+    }
+   },
+   "as_of_tt": 1521060544674582,
+   "frontier_tt": 1787928101349165,
+   "correction_tt": 1787962442284525,
+   "pinned": true,
+   "exempted_verdict": "fresh",
+   "stripped_verdict": "possibly-stale",
+   "avoided_by_exemption": true,
+   "exempt_receipt": {
+    "basis": 1521060544674582,
+    "batches": 12,
+    "tt_range": [
+     1787928094554054,
+     1787962442284525
+    ],
+    "theorem": "T1"
+   },
+   "scope_path": "leaf-basis"
+  },
+  {
+   "store": "sx-mathoverflow",
+   "op": "snapshot_subgraph",
+   "args_form": {
+    "as_of_tt": 1521060544674582,
+    "seeds": [
+     "n2330"
+    ],
+    "t_valid": 1255311520000000,
+    "hops": 1
+   },
+   "as_of_tt": 1521060544674582,
+   "frontier_tt": 1787928101349165,
+   "correction_tt": 1787962452490836,
+   "pinned": true,
+   "exempted_verdict": "fresh",
+   "stripped_verdict": "possibly-stale",
+   "avoided_by_exemption": true,
+   "exempt_receipt": {
+    "basis": 1521060544674582,
+    "batches": 12,
+    "tt_range": [
+     1787928094554054,
+     1787962452490836
+    ],
+    "theorem": "T1"
+   },
+   "scope_path": "leaf-basis"
+  },
+  {
+   "store": "sx-mathoverflow",
+   "op": "diff_snapshots",
+   "args_form": {
+    "as_of_tt": 1521060544674582,
+    "t1": 1254192988000001,
+    "t2": 1255311520000000
+   },
+   "as_of_tt": 1521060544674582,
+   "frontier_tt": 1787928101349165,
+   "correction_tt": 1787962463812711,
+   "pinned": true,
+   "exempted_verdict": "fresh",
+   "stripped_verdict": "possibly-stale",
+   "avoided_by_exemption": true,
+   "exempt_receipt": {
+    "basis": 1521060544674582,
+    "batches": 12,
+    "tt_range": [
+     1787928094554054,
+     1787962463812711
+    ],
+    "theorem": "T1"
+   },
+   "scope_path": "leaf-basis"
+  },
+  {
+   "store": "sx-mathoverflow",
+   "op": "neighborhood_evolution",
+   "args_form": {
+    "as_of_tt": 1521060544674582,
+    "uid": "n2347",
+    "t1": 1254192988000000,
+    "t2": 1256430052000001,
+    "stride": 279633000000
+   },
+   "as_of_tt": 1521060544674582,
+   "frontier_tt": 1787928101349165,
+   "correction_tt": 1787962474702398,
+   "pinned": true,
+   "exempted_verdict": "fresh",
+   "stripped_verdict": "possibly-stale",
+   "avoided_by_exemption": true,
+   "exempt_receipt": {
+    "basis": 1521060544674582,
+    "batches": 12,
+    "tt_range": [
+     1787928094554054,
+     1787962474702398
+    ],
+    "theorem": "T1"
+   },
+   "scope_path": "leaf-basis"
+  },
+  {
+   "store": "sx-mathoverflow",
+   "op": "aggregate_events",
+   "args_form": {
+    "as_of_tt": 1521060544674582,
+    "group_by": [
+     {
+      "dim": "endpoint",
+      "role": "src"
+     }
+    ],
+    "aggregates": [
+     {
+      "agg": "count"
+     }
+    ],
+    "window": {
+     "t_a": 1254192988000000,
+     "t_b": 1256430052000001
+    }
+   },
+   "as_of_tt": 1521060544674582,
+   "frontier_tt": 1787928101349165,
+   "correction_tt": 1787962485885452,
+   "pinned": true,
+   "exempted_verdict": "fresh",
+   "stripped_verdict": "possibly-stale",
+   "avoided_by_exemption": true,
+   "exempt_receipt": {
+    "basis": 1521060544674582,
+    "batches": 12,
+    "tt_range": [
+     1787928094554054,
+     1787962485885452
+    ],
+    "theorem": "T1"
+   },
+   "scope_path": "leaf-basis"
+  },
+  {
+   "store": "sx-mathoverflow",
+   "op": "graph_metric_timeseries",
+   "args_form": {
+    "as_of_tt": 1521060544674582,
+    "metric": "node_count",
+    "window": {
+     "t_a": 1254192988000000,
+     "t_b": 1256430052000001
+    },
+    "stride": 279633000000
+   },
+   "as_of_tt": 1521060544674582,
+   "frontier_tt": 1787928101349165,
+   "correction_tt": 1787962496691155,
+   "pinned": true,
+   "exempted_verdict": "fresh",
+   "stripped_verdict": "possibly-stale",
+   "avoided_by_exemption": true,
+   "exempt_receipt": {
+    "basis": 1521060544674582,
+    "batches": 12,
+    "tt_range": [
+     1787928094554054,
+     1787962496691155
+    ],
+    "theorem": "T1"
+   },
+   "scope_path": "leaf-basis"
+  },
+  {
+   "store": "sx-mathoverflow",
+   "op": "burst_detection",
+   "args_form": {
+    "as_of_tt": 1521060544674582,
+    "target": {
+     "kind": "node_activity",
+     "uid": "n2386"
+    },
+    "window": {
+     "t_a": 1254192988000000,
+     "t_b": 1256430052000001
+    },
+    "stride": 139816500000
+   },
+   "as_of_tt": 1521060544674582,
+   "frontier_tt": 1787928101349165,
+   "correction_tt": 1787962507018981,
+   "pinned": true,
+   "exempted_verdict": "fresh",
+   "stripped_verdict": "possibly-stale",
+   "avoided_by_exemption": true,
+   "exempt_receipt": {
+    "basis": 1521060544674582,
+    "batches": 12,
+    "tt_range": [
+     1787928094554054,
+     1787962507018981
+    ],
+    "theorem": "T1"
+   },
+   "scope_path": "leaf-basis"
+  },
+  {
+   "store": "sx-mathoverflow",
+   "op": "co_active",
+   "args_form": {
+    "as_of_tt": 1521060544674582,
+    "a_spec": {
+     "rel_type": "A2Q"
+    },
+    "b_spec": {
+     "rel_type": "A2Q"
+    },
+    "allen_relation": {
+     "relation": "overlaps"
+    },
+    "limit": 200
+   },
+   "as_of_tt": 1521060544674582,
+   "frontier_tt": 1787928101349165,
+   "correction_tt": 1787962518028125,
+   "pinned": true,
+   "exempted_verdict": "fresh",
+   "stripped_verdict": "possibly-stale",
+   "avoided_by_exemption": true,
+   "exempt_receipt": {
+    "basis": 1521060544674582,
+    "batches": 12,
+    "tt_range": [
+     1787928094554054,
+     1787962518028125
+    ],
+    "theorem": "T1"
+   },
+   "scope_path": "leaf-basis"
+  },
+  {
+   "store": "sx-mathoverflow",
+   "op": "count_temporal_motifs",
+   "args_form": {
+    "as_of_tt": 1521060544674582,
+    "motif": "M_2node_pingpong",
+    "window": {
+     "t_a": 1254192988000000,
+     "t_b": 1256430052000001
+    },
+    "delta": 279633000000
+   },
+   "as_of_tt": 1521060544674582,
+   "frontier_tt": 1787928101349165,
+   "correction_tt": 1787962528830159,
+   "pinned": true,
+   "exempted_verdict": "fresh",
+   "stripped_verdict": "possibly-stale",
+   "avoided_by_exemption": true,
+   "exempt_receipt": {
+    "basis": 1521060544674582,
+    "batches": 12,
+    "tt_range": [
+     1787928094554054,
+     1787962528830159
+    ],
+    "theorem": "T1"
+   },
+   "scope_path": "leaf-basis"
+  },
+  {
+   "store": "sx-mathoverflow",
+   "op": "find_temporal_motif_instances",
+   "args_form": {
+    "as_of_tt": 1521060544674582,
+    "motif": "M_2node_pingpong",
+    "window": {
+     "t_a": 1254192988000000,
+     "t_b": 1256430052000001
+    },
+    "delta": 279633000000,
+    "limit": 50
+   },
+   "as_of_tt": 1521060544674582,
+   "frontier_tt": 1787928101349165,
+   "correction_tt": 1787962540275202,
+   "pinned": true,
+   "exempted_verdict": "fresh",
+   "stripped_verdict": "possibly-stale",
+   "avoided_by_exemption": true,
+   "exempt_receipt": {
+    "basis": 1521060544674582,
+    "batches": 12,
+    "tt_range": [
+     1787928094554054,
+     1787962540275202
+    ],
+    "theorem": "T1"
+   },
+   "scope_path": "leaf-basis"
+  },
+  {
+   "store": "sx-mathoverflow",
+   "op": "temporal_reachability",
+   "args_form": {
+    "as_of_tt": 1521060544674582,
+    "src": "n2510",
+    "window": {
+     "t_a": 1254192988000000,
+     "t_b": 1256430052000001
+    }
+   },
+   "as_of_tt": 1521060544674582,
+   "frontier_tt": 1787928101349165,
+   "correction_tt": 1787962550554733,
+   "pinned": true,
+   "exempted_verdict": "fresh",
+   "stripped_verdict": "possibly-stale",
+   "avoided_by_exemption": true,
+   "exempt_receipt": {
+    "basis": 1521060544674582,
+    "batches": 12,
+    "tt_range": [
+     1787928094554054,
+     1787962550554733
+    ],
+    "theorem": "T1"
+   },
+   "scope_path": "leaf-basis"
+  },
+  {
+   "store": "sx-mathoverflow",
+   "op": "temporal_paths",
+   "args_form": {
+    "as_of_tt": 1521060544674582,
+    "src": "n2525",
+    "dst": "n2525",
+    "window": {
+     "t_a": 1254192988000000,
+     "t_b": 1256430052000001
+    },
+    "k": 2
+   },
+   "as_of_tt": 1521060544674582,
+   "frontier_tt": 1787928101349165,
+   "correction_tt": 1787962561720308,
+   "pinned": true,
+   "exempted_verdict": "fresh",
+   "stripped_verdict": "possibly-stale",
+   "avoided_by_exemption": true,
+   "exempt_receipt": {
+    "basis": 1521060544674582,
+    "batches": 12,
+    "tt_range": [
+     1787928094554054,
+     1787962561720308
+    ],
+    "theorem": "T1"
+   },
+   "scope_path": "leaf-basis"
+  },
+  {
+   "store": "sx-mathoverflow",
+   "op": "entity_history",
+   "args_form": {
+    "as_of_tt": 1521060544674582,
+    "uid": "n2532"
+   },
+   "as_of_tt": 1521060544674582,
+   "frontier_tt": 1787928101349165,
+   "correction_tt": 1787962572543408,
+   "pinned": true,
+   "exempted_verdict": "fresh",
+   "stripped_verdict": "possibly-stale",
+   "avoided_by_exemption": true,
+   "exempt_receipt": {
+    "basis": 1521060544674582,
+    "batches": 12,
+    "tt_range": [
+     1787928094554054,
+     1787962572543408
+    ],
+    "theorem": "T1"
+   },
+   "scope_path": "leaf-basis"
+  },
+  {
+   "store": "sx-mathoverflow",
+   "op": "version_history",
+   "args_form": {
+    "as_of_tt": 1521060544674582,
+    "kind": "node",
+    "window": {
+     "t_a": 1254192988000000,
+     "t_b": 1256430052000001
+    }
+   },
+   "as_of_tt": 1521060544674582,
+   "frontier_tt": 1787928101349165,
+   "correction_tt": 1787962582987571,
+   "pinned": true,
+   "exempted_verdict": "fresh",
+   "stripped_verdict": "possibly-stale",
+   "avoided_by_exemption": true,
+   "exempt_receipt": {
+    "basis": 1521060544674582,
+    "batches": 12,
+    "tt_range": [
+     1787928094554054,
+     1787962582987571
+    ],
+    "theorem": "T1"
+   },
+   "scope_path": "leaf-basis"
+  },
+  {
+   "store": "sx-mathoverflow",
+   "op": "snapshot_subgraph",
+   "args_form": {
+    "as_of_tt": 1521060544674582,
+    "seeds": [
+     "n2579"
+    ],
+    "t_valid": 1255311520000000,
+    "hops": 1
+   },
+   "as_of_tt": 1521060544674582,
+   "frontier_tt": 1787928101349165,
+   "correction_tt": 1787962593579420,
+   "pinned": true,
+   "exempted_verdict": "fresh",
+   "stripped_verdict": "possibly-stale",
+   "avoided_by_exemption": true,
+   "exempt_receipt": {
+    "basis": 1521060544674582,
+    "batches": 12,
+    "tt_range": [
+     1787928094554054,
+     1787962593579420
+    ],
+    "theorem": "T1"
+   },
+   "scope_path": "leaf-basis"
+  },
+  {
+   "store": "sx-mathoverflow",
+   "op": "diff_snapshots",
+   "args_form": {
+    "as_of_tt": 1521060544674582,
+    "t1": 1254192988000001,
+    "t2": 1255311520000000
+   },
+   "as_of_tt": 1521060544674582,
+   "frontier_tt": 1787928101349165,
+   "correction_tt": 1787962604638757,
+   "pinned": true,
+   "exempted_verdict": "fresh",
+   "stripped_verdict": "possibly-stale",
+   "avoided_by_exemption": true,
+   "exempt_receipt": {
+    "basis": 1521060544674582,
+    "batches": 12,
+    "tt_range": [
+     1787928094554054,
+     1787962604638757
+    ],
+    "theorem": "T1"
+   },
+   "scope_path": "leaf-basis"
+  },
+  {
+   "store": "sx-mathoverflow",
+   "op": "neighborhood_evolution",
+   "args_form": {
+    "as_of_tt": 1521060544674582,
+    "uid": "n2605",
+    "t1": 1254192988000000,
+    "t2": 1256430052000001,
+    "stride": 279633000000
+   },
+   "as_of_tt": 1521060544674582,
+   "frontier_tt": 1787928101349165,
+   "correction_tt": 1787962615766056,
+   "pinned": true,
+   "exempted_verdict": "fresh",
+   "stripped_verdict": "possibly-stale",
+   "avoided_by_exemption": true,
+   "exempt_receipt": {
+    "basis": 1521060544674582,
+    "batches": 12,
+    "tt_range": [
+     1787928094554054,
+     1787962615766056
+    ],
+    "theorem": "T1"
+   },
+   "scope_path": "leaf-basis"
+  },
+  {
+   "store": "sx-mathoverflow",
+   "op": "aggregate_events",
+   "args_form": {
+    "as_of_tt": 1521060544674582,
+    "group_by": [
+     {
+      "dim": "endpoint",
+      "role": "src"
+     }
+    ],
+    "aggregates": [
+     {
+      "agg": "count"
+     }
+    ],
+    "window": {
+     "t_a": 1254192988000000,
+     "t_b": 1256430052000001
+    }
+   },
+   "as_of_tt": 1521060544674582,
+   "frontier_tt": 1787928101349165,
+   "correction_tt": 1787962626656552,
+   "pinned": true,
+   "exempted_verdict": "fresh",
+   "stripped_verdict": "possibly-stale",
+   "avoided_by_exemption": true,
+   "exempt_receipt": {
+    "basis": 1521060544674582,
+    "batches": 12,
+    "tt_range": [
+     1787928094554054,
+     1787962626656552
+    ],
+    "theorem": "T1"
+   },
+   "scope_path": "leaf-basis"
+  },
+  {
+   "store": "sx-mathoverflow",
+   "op": "graph_metric_timeseries",
+   "args_form": {
+    "as_of_tt": 1521060544674582,
+    "metric": "node_count",
+    "window": {
+     "t_a": 1254192988000000,
+     "t_b": 1256430052000001
+    },
+    "stride": 279633000000
+   },
+   "as_of_tt": 1521060544674582,
+   "frontier_tt": 1787928101349165,
+   "correction_tt": 1787962637349323,
+   "pinned": true,
+   "exempted_verdict": "fresh",
+   "stripped_verdict": "possibly-stale",
+   "avoided_by_exemption": true,
+   "exempt_receipt": {
+    "basis": 1521060544674582,
+    "batches": 12,
+    "tt_range": [
+     1787928094554054,
+     1787962637349323
+    ],
+    "theorem": "T1"
+   },
+   "scope_path": "leaf-basis"
+  },
+  {
+   "store": "sx-mathoverflow",
+   "op": "burst_detection",
+   "args_form": {
+    "as_of_tt": 1521060544674582,
+    "target": {
+     "kind": "node_activity",
+     "uid": "n2664"
+    },
+    "window": {
+     "t_a": 1254192988000000,
+     "t_b": 1256430052000001
+    },
+    "stride": 139816500000
+   },
+   "as_of_tt": 1521060544674582,
+   "frontier_tt": 1787928101349165,
+   "correction_tt": 1787962647574313,
+   "pinned": true,
+   "exempted_verdict": "fresh",
+   "stripped_verdict": "possibly-stale",
+   "avoided_by_exemption": true,
+   "exempt_receipt": {
+    "basis": 1521060544674582,
+    "batches": 12,
+    "tt_range": [
+     1787928094554054,
+     1787962647574313
+    ],
+    "theorem": "T1"
+   },
+   "scope_path": "leaf-basis"
+  },
+  {
+   "store": "sx-mathoverflow",
+   "op": "co_active",
+   "args_form": {
+    "as_of_tt": 1521060544674582,
+    "a_spec": {
+     "rel_type": "A2Q"
+    },
+    "b_spec": {
+     "rel_type": "A2Q"
+    },
+    "allen_relation": {
+     "relation": "overlaps"
+    },
+    "limit": 200
+   },
+   "as_of_tt": 1521060544674582,
+   "frontier_tt": 1787928101349165,
+   "correction_tt": 1787962658647685,
+   "pinned": true,
+   "exempted_verdict": "fresh",
+   "stripped_verdict": "possibly-stale",
+   "avoided_by_exemption": true,
+   "exempt_receipt": {
+    "basis": 1521060544674582,
+    "batches": 12,
+    "tt_range": [
+     1787928094554054,
+     1787962658647685
+    ],
+    "theorem": "T1"
+   },
+   "scope_path": "leaf-basis"
+  },
+  {
+   "store": "sx-mathoverflow",
+   "op": "count_temporal_motifs",
+   "args_form": {
+    "as_of_tt": 1521060544674582,
+    "motif": "M_2node_pingpong",
+    "window": {
+     "t_a": 1254192988000000,
+     "t_b": 1256430052000001
+    },
+    "delta": 279633000000
+   },
+   "as_of_tt": 1521060544674582,
+   "frontier_tt": 1787928101349165,
+   "correction_tt": 1787962669737387,
+   "pinned": true,
+   "exempted_verdict": "fresh",
+   "stripped_verdict": "possibly-stale",
+   "avoided_by_exemption": true,
+   "exempt_receipt": {
+    "basis": 1521060544674582,
+    "batches": 12,
+    "tt_range": [
+     1787928094554054,
+     1787962669737387
+    ],
+    "theorem": "T1"
+   },
+   "scope_path": "leaf-basis"
+  },
+  {
+   "store": "sx-mathoverflow",
+   "op": "find_temporal_motif_instances",
+   "args_form": {
+    "as_of_tt": 1521060544674582,
+    "motif": "M_2node_pingpong",
+    "window": {
+     "t_a": 1254192988000000,
+     "t_b": 1256430052000001
+    },
+    "delta": 279633000000,
+    "limit": 50
+   },
+   "as_of_tt": 1521060544674582,
+   "frontier_tt": 1787928101349165,
+   "correction_tt": 1787962679897502,
+   "pinned": true,
+   "exempted_verdict": "fresh",
+   "stripped_verdict": "possibly-stale",
+   "avoided_by_exemption": true,
+   "exempt_receipt": {
+    "basis": 1521060544674582,
+    "batches": 12,
+    "tt_range": [
+     1787928094554054,
+     1787962679897502
+    ],
+    "theorem": "T1"
+   },
+   "scope_path": "leaf-basis"
+  },
+  {
+   "store": "sx-mathoverflow",
+   "op": "temporal_reachability",
+   "args_form": {
+    "as_of_tt": 1521060544674582,
+    "src": "n2743",
+    "window": {
+     "t_a": 1254192988000000,
+     "t_b": 1256430052000001
+    }
+   },
+   "as_of_tt": 1521060544674582,
+   "frontier_tt": 1787928101349165,
+   "correction_tt": 1787962691229274,
+   "pinned": true,
+   "exempted_verdict": "fresh",
+   "stripped_verdict": "possibly-stale",
+   "avoided_by_exemption": true,
+   "exempt_receipt": {
+    "basis": 1521060544674582,
+    "batches": 12,
+    "tt_range": [
+     1787928094554054,
+     1787962691229274
+    ],
+    "theorem": "T1"
+   },
+   "scope_path": "leaf-basis"
+  },
+  {
+   "store": "sx-mathoverflow",
+   "op": "temporal_paths",
+   "args_form": {
+    "as_of_tt": 1521060544674582,
+    "src": "n2784",
+    "dst": "n2784",
+    "window": {
+     "t_a": 1254192988000000,
+     "t_b": 1256430052000001
+    },
+    "k": 2
+   },
+   "as_of_tt": 1521060544674582,
+   "frontier_tt": 1787928101349165,
+   "correction_tt": 1787962701583225,
+   "pinned": true,
+   "exempted_verdict": "fresh",
+   "stripped_verdict": "possibly-stale",
+   "avoided_by_exemption": true,
+   "exempt_receipt": {
+    "basis": 1521060544674582,
+    "batches": 12,
+    "tt_range": [
+     1787928094554054,
+     1787962701583225
+    ],
+    "theorem": "T1"
+   },
+   "scope_path": "leaf-basis"
+  },
+  {
+   "store": "sx-mathoverflow",
+   "op": "entity_history",
+   "args_form": {
+    "as_of_tt": 1521060544674582,
+    "uid": "n2785"
+   },
+   "as_of_tt": 1521060544674582,
+   "frontier_tt": 1787928101349165,
+   "correction_tt": 1787962712822261,
+   "pinned": true,
+   "exempted_verdict": "fresh",
+   "stripped_verdict": "possibly-stale",
+   "avoided_by_exemption": true,
+   "exempt_receipt": {
+    "basis": 1521060544674582,
+    "batches": 12,
+    "tt_range": [
+     1787928094554054,
+     1787962712822261
+    ],
+    "theorem": "T1"
+   },
+   "scope_path": "leaf-basis"
+  },
+  {
+   "store": "sx-mathoverflow",
+   "op": "version_history",
+   "args_form": {
+    "as_of_tt": 1521060544674582,
+    "kind": "node",
+    "window": {
+     "t_a": 1254192988000000,
+     "t_b": 1256430052000001
+    }
+   },
+   "as_of_tt": 1521060544674582,
+   "frontier_tt": 1787928101349165,
+   "correction_tt": 1787962723840928,
+   "pinned": true,
+   "exempted_verdict": "fresh",
+   "stripped_verdict": "possibly-stale",
+   "avoided_by_exemption": true,
+   "exempt_receipt": {
+    "basis": 1521060544674582,
+    "batches": 12,
+    "tt_range": [
+     1787928094554054,
+     1787962723840928
+    ],
+    "theorem": "T1"
+   },
+   "scope_path": "leaf-basis"
+  },
+  {
+   "store": "sx-mathoverflow",
+   "op": "snapshot_subgraph",
+   "args_form": {
+    "as_of_tt": 1521060544674582,
+    "seeds": [
+     "n2836"
+    ],
+    "t_valid": 1255311520000000,
+    "hops": 1
+   },
+   "as_of_tt": 1521060544674582,
+   "frontier_tt": 1787928101349165,
+   "correction_tt": 1787962734028111,
+   "pinned": true,
+   "exempted_verdict": "fresh",
+   "stripped_verdict": "possibly-stale",
+   "avoided_by_exemption": true,
+   "exempt_receipt": {
+    "basis": 1521060544674582,
+    "batches": 12,
+    "tt_range": [
+     1787928094554054,
+     1787962734028111
+    ],
+    "theorem": "T1"
+   },
+   "scope_path": "leaf-basis"
+  },
+  {
+   "store": "sx-mathoverflow",
+   "op": "diff_snapshots",
+   "args_form": {
+    "as_of_tt": 1521060544674582,
+    "t1": 1254192988000001,
+    "t2": 1255311520000000
+   },
+   "as_of_tt": 1521060544674582,
+   "frontier_tt": 1787928101349165,
+   "correction_tt": 1787962745065817,
+   "pinned": true,
+   "exempted_verdict": "fresh",
+   "stripped_verdict": "possibly-stale",
+   "avoided_by_exemption": true,
+   "exempt_receipt": {
+    "basis": 1521060544674582,
+    "batches": 12,
+    "tt_range": [
+     1787928094554054,
+     1787962745065817
+    ],
+    "theorem": "T1"
+   },
+   "scope_path": "leaf-basis"
+  },
+  {
+   "store": "sx-mathoverflow",
+   "op": "neighborhood_evolution",
+   "args_form": {
+    "as_of_tt": 1521060544674582,
+    "uid": "n2867",
+    "t1": 1254192988000000,
+    "t2": 1256430052000001,
+    "stride": 279633000000
+   },
+   "as_of_tt": 1521060544674582,
+   "frontier_tt": 1787928101349165,
+   "correction_tt": 1787962756059718,
+   "pinned": true,
+   "exempted_verdict": "fresh",
+   "stripped_verdict": "possibly-stale",
+   "avoided_by_exemption": true,
+   "exempt_receipt": {
+    "basis": 1521060544674582,
+    "batches": 12,
+    "tt_range": [
+     1787928094554054,
+     1787962756059718
+    ],
+    "theorem": "T1"
+   },
+   "scope_path": "leaf-basis"
+  },
+  {
+   "store": "sx-mathoverflow",
+   "op": "aggregate_events",
+   "args_form": {
+    "as_of_tt": 1521060544674582,
+    "group_by": [
+     {
+      "dim": "endpoint",
+      "role": "src"
+     }
+    ],
+    "aggregates": [
+     {
+      "agg": "count"
+     }
+    ],
+    "window": {
+     "t_a": 1254192988000000,
+     "t_b": 1256430052000001
+    }
+   },
+   "as_of_tt": 1521060544674582,
+   "frontier_tt": 1787928101349165,
+   "correction_tt": 1787962766627467,
+   "pinned": true,
+   "exempted_verdict": "fresh",
+   "stripped_verdict": "possibly-stale",
+   "avoided_by_exemption": true,
+   "exempt_receipt": {
+    "basis": 1521060544674582,
+    "batches": 12,
+    "tt_range": [
+     1787928094554054,
+     1787962766627467
+    ],
+    "theorem": "T1"
+   },
+   "scope_path": "leaf-basis"
+  },
+  {
+   "store": "sx-mathoverflow",
+   "op": "graph_metric_timeseries",
+   "args_form": {
+    "as_of_tt": 1521060544674582,
+    "metric": "node_count",
+    "window": {
+     "t_a": 1254192988000000,
+     "t_b": 1256430052000001
+    },
+    "stride": 279633000000
+   },
+   "as_of_tt": 1521060544674582,
+   "frontier_tt": 1787928101349165,
+   "correction_tt": 1787962777490689,
+   "pinned": true,
+   "exempted_verdict": "fresh",
+   "stripped_verdict": "possibly-stale",
+   "avoided_by_exemption": true,
+   "exempt_receipt": {
+    "basis": 1521060544674582,
+    "batches": 12,
+    "tt_range": [
+     1787928094554054,
+     1787962777490689
+    ],
+    "theorem": "T1"
+   },
+   "scope_path": "leaf-basis"
+  },
+  {
+   "store": "sx-mathoverflow",
+   "op": "burst_detection",
+   "args_form": {
+    "as_of_tt": 1521060544674582,
+    "target": {
+     "kind": "node_activity",
+     "uid": "n2929"
+    },
+    "window": {
+     "t_a": 1254192988000000,
+     "t_b": 1256430052000001
+    },
+    "stride": 139816500000
+   },
+   "as_of_tt": 1521060544674582,
+   "frontier_tt": 1787928101349165,
+   "correction_tt": 1787962788600423,
+   "pinned": true,
+   "exempted_verdict": "fresh",
+   "stripped_verdict": "possibly-stale",
+   "avoided_by_exemption": true,
+   "exempt_receipt": {
+    "basis": 1521060544674582,
+    "batches": 12,
+    "tt_range": [
+     1787928094554054,
+     1787962788600423
+    ],
+    "theorem": "T1"
+   },
+   "scope_path": "leaf-basis"
+  },
+  {
+   "store": "sx-mathoverflow",
+   "op": "co_active",
+   "args_form": {
+    "as_of_tt": 1521060544674582,
+    "a_spec": {
+     "rel_type": "A2Q"
+    },
+    "b_spec": {
+     "rel_type": "A2Q"
+    },
+    "allen_relation": {
+     "relation": "overlaps"
+    },
+    "limit": 200
+   },
+   "as_of_tt": 1521060544674582,
+   "frontier_tt": 1787928101349165,
+   "correction_tt": 1787962799591672,
+   "pinned": true,
+   "exempted_verdict": "fresh",
+   "stripped_verdict": "possibly-stale",
+   "avoided_by_exemption": true,
+   "exempt_receipt": {
+    "basis": 1521060544674582,
+    "batches": 12,
+    "tt_range": [
+     1787928094554054,
+     1787962799591672
+    ],
+    "theorem": "T1"
+   },
+   "scope_path": "leaf-basis"
+  },
+  {
+   "store": "sx-mathoverflow",
+   "op": "count_temporal_motifs",
+   "args_form": {
+    "as_of_tt": 1521060544674582,
+    "motif": "M_2node_pingpong",
+    "window": {
+     "t_a": 1254192988000000,
+     "t_b": 1256430052000001
+    },
+    "delta": 279633000000
+   },
+   "as_of_tt": 1521060544674582,
+   "frontier_tt": 1787928101349165,
+   "correction_tt": 1787962810671587,
+   "pinned": true,
+   "exempted_verdict": "fresh",
+   "stripped_verdict": "possibly-stale",
+   "avoided_by_exemption": true,
+   "exempt_receipt": {
+    "basis": 1521060544674582,
+    "batches": 12,
+    "tt_range": [
+     1787928094554054,
+     1787962810671587
+    ],
+    "theorem": "T1"
+   },
+   "scope_path": "leaf-basis"
+  },
+  {
+   "store": "sx-mathoverflow",
+   "op": "find_temporal_motif_instances",
+   "args_form": {
+    "as_of_tt": 1521060544674582,
+    "motif": "M_2node_pingpong",
+    "window": {
+     "t_a": 1254192988000000,
+     "t_b": 1256430052000001
+    },
+    "delta": 279633000000,
+    "limit": 50
+   },
+   "as_of_tt": 1521060544674582,
+   "frontier_tt": 1787928101349165,
+   "correction_tt": 1787962821698993,
+   "pinned": true,
+   "exempted_verdict": "fresh",
+   "stripped_verdict": "possibly-stale",
+   "avoided_by_exemption": true,
+   "exempt_receipt": {
+    "basis": 1521060544674582,
+    "batches": 12,
+    "tt_range": [
+     1787928094554054,
+     1787962821698993
+    ],
+    "theorem": "T1"
+   },
+   "scope_path": "leaf-basis"
+  },
+  {
+   "store": "sx-mathoverflow",
+   "op": "temporal_reachability",
+   "args_form": {
+    "as_of_tt": 1521060544674582,
+    "src": "n3000",
+    "window": {
+     "t_a": 1254192988000000,
+     "t_b": 1256430052000001
+    }
+   },
+   "as_of_tt": 1521060544674582,
+   "frontier_tt": 1787928101349165,
+   "correction_tt": 1787962832695428,
+   "pinned": true,
+   "exempted_verdict": "fresh",
+   "stripped_verdict": "possibly-stale",
+   "avoided_by_exemption": true,
+   "exempt_receipt": {
+    "basis": 1521060544674582,
+    "batches": 12,
+    "tt_range": [
+     1787928094554054,
+     1787962832695428
+    ],
+    "theorem": "T1"
+   },
+   "scope_path": "leaf-basis"
+  },
+  {
+   "store": "sx-mathoverflow",
+   "op": "temporal_paths",
+   "args_form": {
+    "as_of_tt": 1521060544674582,
+    "src": "n3023",
+    "dst": "n3023",
+    "window": {
+     "t_a": 1254192988000000,
+     "t_b": 1256430052000001
+    },
+    "k": 2
+   },
+   "as_of_tt": 1521060544674582,
+   "frontier_tt": 1787928101349165,
+   "correction_tt": 1787962843126203,
+   "pinned": true,
+   "exempted_verdict": "fresh",
+   "stripped_verdict": "possibly-stale",
+   "avoided_by_exemption": true,
+   "exempt_receipt": {
+    "basis": 1521060544674582,
+    "batches": 12,
+    "tt_range": [
+     1787928094554054,
+     1787962843126203
+    ],
+    "theorem": "T1"
+   },
+   "scope_path": "leaf-basis"
+  },
+  {
+   "store": "sx-mathoverflow",
+   "op": "entity_history",
+   "args_form": {
+    "as_of_tt": 1521060544674582,
+    "uid": "n3061"
+   },
+   "as_of_tt": 1521060544674582,
+   "frontier_tt": 1787928101349165,
+   "correction_tt": 1787962853461951,
+   "pinned": true,
+   "exempted_verdict": "fresh",
+   "stripped_verdict": "possibly-stale",
+   "avoided_by_exemption": true,
+   "exempt_receipt": {
+    "basis": 1521060544674582,
+    "batches": 12,
+    "tt_range": [
+     1787928094554054,
+     1787962853461951
+    ],
+    "theorem": "T1"
+   },
+   "scope_path": "leaf-basis"
+  },
+  {
+   "store": "sx-mathoverflow",
+   "op": "version_history",
+   "args_form": {
+    "as_of_tt": 1521060544674582,
+    "kind": "node",
+    "window": {
+     "t_a": 1254192988000000,
+     "t_b": 1256430052000001
+    }
+   },
+   "as_of_tt": 1521060544674582,
+   "frontier_tt": 1787928101349165,
+   "correction_tt": 1787962864368290,
+   "pinned": true,
+   "exempted_verdict": "fresh",
+   "stripped_verdict": "possibly-stale",
+   "avoided_by_exemption": true,
+   "exempt_receipt": {
+    "basis": 1521060544674582,
+    "batches": 12,
+    "tt_range": [
+     1787928094554054,
+     1787962864368290
+    ],
+    "theorem": "T1"
+   },
+   "scope_path": "leaf-basis"
+  },
+  {
+   "store": "sx-mathoverflow",
+   "op": "snapshot_subgraph",
+   "args_form": {
+    "as_of_tt": 1521060544674582,
+    "seeds": [
+     "n3074"
+    ],
+    "t_valid": 1255311520000000,
+    "hops": 1
+   },
+   "as_of_tt": 1521060544674582,
+   "frontier_tt": 1787928101349165,
+   "correction_tt": 1787962874812709,
+   "pinned": true,
+   "exempted_verdict": "fresh",
+   "stripped_verdict": "possibly-stale",
+   "avoided_by_exemption": true,
+   "exempt_receipt": {
+    "basis": 1521060544674582,
+    "batches": 12,
+    "tt_range": [
+     1787928094554054,
+     1787962874812709
+    ],
+    "theorem": "T1"
+   },
+   "scope_path": "leaf-basis"
+  },
+  {
+   "store": "sx-mathoverflow",
+   "op": "diff_snapshots",
+   "args_form": {
+    "as_of_tt": 1521060544674582,
+    "t1": 1254192988000001,
+    "t2": 1255311520000000
+   },
+   "as_of_tt": 1521060544674582,
+   "frontier_tt": 1787928101349165,
+   "correction_tt": 1787962885398535,
+   "pinned": true,
+   "exempted_verdict": "fresh",
+   "stripped_verdict": "possibly-stale",
+   "avoided_by_exemption": true,
+   "exempt_receipt": {
+    "basis": 1521060544674582,
+    "batches": 12,
+    "tt_range": [
+     1787928094554054,
+     1787962885398535
+    ],
+    "theorem": "T1"
+   },
+   "scope_path": "leaf-basis"
+  },
+  {
+   "store": "sx-mathoverflow",
+   "op": "neighborhood_evolution",
+   "args_form": {
+    "as_of_tt": 1521060544674582,
+    "uid": "n3096",
+    "t1": 1254192988000000,
+    "t2": 1256430052000001,
+    "stride": 279633000000
+   },
+   "as_of_tt": 1521060544674582,
+   "frontier_tt": 1787928101349165,
+   "correction_tt": 1787962896416730,
+   "pinned": true,
+   "exempted_verdict": "fresh",
+   "stripped_verdict": "possibly-stale",
+   "avoided_by_exemption": true,
+   "exempt_receipt": {
+    "basis": 1521060544674582,
+    "batches": 12,
+    "tt_range": [
+     1787928094554054,
+     1787962896416730
+    ],
+    "theorem": "T1"
+   },
+   "scope_path": "leaf-basis"
+  },
+  {
+   "store": "sx-mathoverflow",
+   "op": "aggregate_events",
+   "args_form": {
+    "as_of_tt": 1521060544674582,
+    "group_by": [
+     {
+      "dim": "endpoint",
+      "role": "src"
+     }
+    ],
+    "aggregates": [
+     {
+      "agg": "count"
+     }
+    ],
+    "window": {
+     "t_a": 1254192988000000,
+     "t_b": 1256430052000001
+    }
+   },
+   "as_of_tt": 1521060544674582,
+   "frontier_tt": 1787928101349165,
+   "correction_tt": 1787962907520111,
+   "pinned": true,
+   "exempted_verdict": "fresh",
+   "stripped_verdict": "possibly-stale",
+   "avoided_by_exemption": true,
+   "exempt_receipt": {
+    "basis": 1521060544674582,
+    "batches": 12,
+    "tt_range": [
+     1787928094554054,
+     1787962907520111
+    ],
+    "theorem": "T1"
+   },
+   "scope_path": "leaf-basis"
+  },
+  {
+   "store": "sx-mathoverflow",
+   "op": "graph_metric_timeseries",
+   "args_form": {
+    "as_of_tt": 1521060544674582,
+    "metric": "node_count",
+    "window": {
+     "t_a": 1254192988000000,
+     "t_b": 1256430052000001
+    },
+    "stride": 279633000000
+   },
+   "as_of_tt": 1521060544674582,
+   "frontier_tt": 1787928101349165,
+   "correction_tt": 1787962918073357,
+   "pinned": true,
+   "exempted_verdict": "fresh",
+   "stripped_verdict": "possibly-stale",
+   "avoided_by_exemption": true,
+   "exempt_receipt": {
+    "basis": 1521060544674582,
+    "batches": 12,
+    "tt_range": [
+     1787928094554054,
+     1787962918073357
+    ],
+    "theorem": "T1"
+   },
+   "scope_path": "leaf-basis"
+  },
+  {
+   "store": "sx-mathoverflow",
+   "op": "burst_detection",
+   "args_form": {
+    "as_of_tt": 1521060544674582,
+    "target": {
+     "kind": "node_activity",
+     "uid": "n3118"
+    },
+    "window": {
+     "t_a": 1254192988000000,
+     "t_b": 1256430052000001
+    },
+    "stride": 139816500000
+   },
+   "as_of_tt": 1521060544674582,
+   "frontier_tt": 1787928101349165,
+   "correction_tt": 1787962929185084,
+   "pinned": true,
+   "exempted_verdict": "fresh",
+   "stripped_verdict": "possibly-stale",
+   "avoided_by_exemption": true,
+   "exempt_receipt": {
+    "basis": 1521060544674582,
+    "batches": 12,
+    "tt_range": [
+     1787928094554054,
+     1787962929185084
+    ],
+    "theorem": "T1"
+   },
+   "scope_path": "leaf-basis"
+  },
+  {
+   "store": "sx-mathoverflow",
+   "op": "co_active",
+   "args_form": {
+    "as_of_tt": 1521060544674582,
+    "a_spec": {
+     "rel_type": "A2Q"
+    },
+    "b_spec": {
+     "rel_type": "A2Q"
+    },
+    "allen_relation": {
+     "relation": "overlaps"
+    },
+    "limit": 200
+   },
+   "as_of_tt": 1521060544674582,
+   "frontier_tt": 1787928101349165,
+   "correction_tt": 1787962939658247,
+   "pinned": true,
+   "exempted_verdict": "fresh",
+   "stripped_verdict": "possibly-stale",
+   "avoided_by_exemption": true,
+   "exempt_receipt": {
+    "basis": 1521060544674582,
+    "batches": 12,
+    "tt_range": [
+     1787928094554054,
+     1787962939658247
+    ],
+    "theorem": "T1"
+   },
+   "scope_path": "leaf-basis"
+  },
+  {
+   "store": "sx-mathoverflow",
+   "op": "count_temporal_motifs",
+   "args_form": {
+    "as_of_tt": 1521060544674582,
+    "motif": "M_2node_pingpong",
+    "window": {
+     "t_a": 1254192988000000,
+     "t_b": 1256430052000001
+    },
+    "delta": 279633000000
+   },
+   "as_of_tt": 1521060544674582,
+   "frontier_tt": 1787928101349165,
+   "correction_tt": 1787962950583297,
+   "pinned": true,
+   "exempted_verdict": "fresh",
+   "stripped_verdict": "possibly-stale",
+   "avoided_by_exemption": true,
+   "exempt_receipt": {
+    "basis": 1521060544674582,
+    "batches": 12,
+    "tt_range": [
+     1787928094554054,
+     1787962950583297
+    ],
+    "theorem": "T1"
+   },
+   "scope_path": "leaf-basis"
+  },
+  {
+   "store": "sx-mathoverflow",
+   "op": "find_temporal_motif_instances",
+   "args_form": {
+    "as_of_tt": 1521060544674582,
+    "motif": "M_2node_pingpong",
+    "window": {
+     "t_a": 1254192988000000,
+     "t_b": 1256430052000001
+    },
+    "delta": 279633000000,
+    "limit": 50
+   },
+   "as_of_tt": 1521060544674582,
+   "frontier_tt": 1787928101349165,
+   "correction_tt": 1787962961357639,
+   "pinned": true,
+   "exempted_verdict": "fresh",
+   "stripped_verdict": "possibly-stale",
+   "avoided_by_exemption": true,
+   "exempt_receipt": {
+    "basis": 1521060544674582,
+    "batches": 12,
+    "tt_range": [
+     1787928094554054,
+     1787962961357639
+    ],
+    "theorem": "T1"
+   },
+   "scope_path": "leaf-basis"
+  },
+  {
+   "store": "sx-mathoverflow",
+   "op": "temporal_reachability",
+   "args_form": {
+    "as_of_tt": 1521060544674582,
+    "src": "n3253",
+    "window": {
+     "t_a": 1254192988000000,
+     "t_b": 1256430052000001
+    }
+   },
+   "as_of_tt": 1521060544674582,
+   "frontier_tt": 1787928101349165,
+   "correction_tt": 1787962972241097,
+   "pinned": true,
+   "exempted_verdict": "fresh",
+   "stripped_verdict": "possibly-stale",
+   "avoided_by_exemption": true,
+   "exempt_receipt": {
+    "basis": 1521060544674582,
+    "batches": 12,
+    "tt_range": [
+     1787928094554054,
+     1787962972241097
+    ],
+    "theorem": "T1"
+   },
+   "scope_path": "leaf-basis"
+  },
+  {
+   "store": "sx-mathoverflow",
+   "op": "temporal_paths",
+   "args_form": {
+    "as_of_tt": 1521060544674582,
+    "src": "n3281",
+    "dst": "n3281",
+    "window": {
+     "t_a": 1254192988000000,
+     "t_b": 1256430052000001
+    },
+    "k": 2
+   },
+   "as_of_tt": 1521060544674582,
+   "frontier_tt": 1787928101349165,
+   "correction_tt": 1787962983453467,
+   "pinned": true,
+   "exempted_verdict": "fresh",
+   "stripped_verdict": "possibly-stale",
+   "avoided_by_exemption": true,
+   "exempt_receipt": {
+    "basis": 1521060544674582,
+    "batches": 12,
+    "tt_range": [
+     1787928094554054,
+     1787962983453467
+    ],
+    "theorem": "T1"
+   },
+   "scope_path": "leaf-basis"
+  },
+  {
+   "store": "sx-mathoverflow",
+   "op": "entity_history",
+   "args_form": {
+    "as_of_tt": 1521060544674582,
+    "uid": "n3287"
+   },
+   "as_of_tt": 1521060544674582,
+   "frontier_tt": 1787928101349165,
+   "correction_tt": 1787962993815374,
+   "pinned": true,
+   "exempted_verdict": "fresh",
+   "stripped_verdict": "possibly-stale",
+   "avoided_by_exemption": true,
+   "exempt_receipt": {
+    "basis": 1521060544674582,
+    "batches": 12,
+    "tt_range": [
+     1787928094554054,
+     1787962993815374
+    ],
+    "theorem": "T1"
+   },
+   "scope_path": "leaf-basis"
+  },
+  {
+   "store": "sx-mathoverflow",
+   "op": "version_history",
+   "args_form": {
+    "as_of_tt": 1521060544674582,
+    "kind": "node",
+    "window": {
+     "t_a": 1254192988000000,
+     "t_b": 1256430052000001
+    }
+   },
+   "as_of_tt": 1521060544674582,
+   "frontier_tt": 1787928101349165,
+   "correction_tt": 1787963004827709,
+   "pinned": true,
+   "exempted_verdict": "fresh",
+   "stripped_verdict": "possibly-stale",
+   "avoided_by_exemption": true,
+   "exempt_receipt": {
+    "basis": 1521060544674582,
+    "batches": 12,
+    "tt_range": [
+     1787928094554054,
+     1787963004827709
+    ],
+    "theorem": "T1"
+   },
+   "scope_path": "leaf-basis"
+  },
+  {
+   "store": "sx-mathoverflow",
+   "op": "snapshot_subgraph",
+   "args_form": {
+    "as_of_tt": 1521060544674582,
+    "seeds": [
+     "n3318"
+    ],
+    "t_valid": 1255311520000000,
+    "hops": 1
+   },
+   "as_of_tt": 1521060544674582,
+   "frontier_tt": 1787928101349165,
+   "correction_tt": 1787963015488238,
+   "pinned": true,
+   "exempted_verdict": "fresh",
+   "stripped_verdict": "possibly-stale",
+   "avoided_by_exemption": true,
+   "exempt_receipt": {
+    "basis": 1521060544674582,
+    "batches": 12,
+    "tt_range": [
+     1787928094554054,
+     1787963015488238
+    ],
+    "theorem": "T1"
+   },
+   "scope_path": "leaf-basis"
+  },
+  {
+   "store": "sx-mathoverflow",
+   "op": "diff_snapshots",
+   "args_form": {
+    "as_of_tt": 1521060544674582,
+    "t1": 1254192988000001,
+    "t2": 1255311520000000
+   },
+   "as_of_tt": 1521060544674582,
+   "frontier_tt": 1787928101349165,
+   "correction_tt": 1787963025828483,
+   "pinned": true,
+   "exempted_verdict": "fresh",
+   "stripped_verdict": "possibly-stale",
+   "avoided_by_exemption": true,
+   "exempt_receipt": {
+    "basis": 1521060544674582,
+    "batches": 12,
+    "tt_range": [
+     1787928094554054,
+     1787963025828483
+    ],
+    "theorem": "T1"
+   },
+   "scope_path": "leaf-basis"
+  },
+  {
+   "store": "sx-mathoverflow",
+   "op": "neighborhood_evolution",
+   "args_form": {
+    "as_of_tt": 1521060544674582,
+    "uid": "n333",
+    "t1": 1254192988000000,
+    "t2": 1256430052000001,
+    "stride": 279633000000
+   },
+   "as_of_tt": 1521060544674582,
+   "frontier_tt": 1787928101349165,
+   "correction_tt": 1787963036805342,
+   "pinned": true,
+   "exempted_verdict": "fresh",
+   "stripped_verdict": "possibly-stale",
+   "avoided_by_exemption": true,
+   "exempt_receipt": {
+    "basis": 1521060544674582,
+    "batches": 12,
+    "tt_range": [
+     1787928094554054,
+     1787963036805342
+    ],
+    "theorem": "T1"
+   },
+   "scope_path": "leaf-basis"
+  },
+  {
+   "store": "sx-mathoverflow",
+   "op": "aggregate_events",
+   "args_form": {
+    "as_of_tt": 1521060544674582,
+    "group_by": [
+     {
+      "dim": "endpoint",
+      "role": "src"
+     }
+    ],
+    "aggregates": [
+     {
+      "agg": "count"
+     }
+    ],
+    "window": {
+     "t_a": 1254192988000000,
+     "t_b": 1256430052000001
+    }
+   },
+   "as_of_tt": 1521060544674582,
+   "frontier_tt": 1787928101349165,
+   "correction_tt": 1787963047223939,
+   "pinned": true,
+   "exempted_verdict": "fresh",
+   "stripped_verdict": "possibly-stale",
+   "avoided_by_exemption": true,
+   "exempt_receipt": {
+    "basis": 1521060544674582,
+    "batches": 12,
+    "tt_range": [
+     1787928094554054,
+     1787963047223939
+    ],
+    "theorem": "T1"
+   },
+   "scope_path": "leaf-basis"
+  },
+  {
+   "store": "sx-mathoverflow",
+   "op": "graph_metric_timeseries",
+   "args_form": {
+    "as_of_tt": 1521060544674582,
+    "metric": "node_count",
+    "window": {
+     "t_a": 1254192988000000,
+     "t_b": 1256430052000001
+    },
+    "stride": 279633000000
+   },
+   "as_of_tt": 1521060544674582,
+   "frontier_tt": 1787928101349165,
+   "correction_tt": 1787963057900321,
+   "pinned": true,
+   "exempted_verdict": "fresh",
+   "stripped_verdict": "possibly-stale",
+   "avoided_by_exemption": true,
+   "exempt_receipt": {
+    "basis": 1521060544674582,
+    "batches": 12,
+    "tt_range": [
+     1787928094554054,
+     1787963057900321
+    ],
+    "theorem": "T1"
+   },
+   "scope_path": "leaf-basis"
+  },
+  {
+   "store": "sx-mathoverflow",
+   "op": "burst_detection",
+   "args_form": {
+    "as_of_tt": 1521060544674582,
+    "target": {
+     "kind": "node_activity",
+     "uid": "n337"
+    },
+    "window": {
+     "t_a": 1254192988000000,
+     "t_b": 1256430052000001
+    },
+    "stride": 139816500000
+   },
+   "as_of_tt": 1521060544674582,
+   "frontier_tt": 1787928101349165,
+   "correction_tt": 1787963068813824,
+   "pinned": true,
+   "exempted_verdict": "fresh",
+   "stripped_verdict": "possibly-stale",
+   "avoided_by_exemption": true,
+   "exempt_receipt": {
+    "basis": 1521060544674582,
+    "batches": 12,
+    "tt_range": [
+     1787928094554054,
+     1787963068813824
+    ],
+    "theorem": "T1"
+   },
+   "scope_path": "leaf-basis"
+  },
+  {
+   "store": "sx-mathoverflow",
+   "op": "co_active",
+   "args_form": {
+    "as_of_tt": 1521060544674582,
+    "a_spec": {
+     "rel_type": "A2Q"
+    },
+    "b_spec": {
+     "rel_type": "A2Q"
+    },
+    "allen_relation": {
+     "relation": "overlaps"
+    },
+    "limit": 200
+   },
+   "as_of_tt": 1521060544674582,
+   "frontier_tt": 1787928101349165,
+   "correction_tt": 1787963079289733,
+   "pinned": true,
+   "exempted_verdict": "fresh",
+   "stripped_verdict": "possibly-stale",
+   "avoided_by_exemption": true,
+   "exempt_receipt": {
+    "basis": 1521060544674582,
+    "batches": 12,
+    "tt_range": [
+     1787928094554054,
+     1787963079289733
+    ],
+    "theorem": "T1"
+   },
+   "scope_path": "leaf-basis"
+  },
+  {
+   "store": "sx-mathoverflow",
+   "op": "count_temporal_motifs",
+   "args_form": {
+    "as_of_tt": 1521060544674582,
+    "motif": "M_2node_pingpong",
+    "window": {
+     "t_a": 1254192988000000,
+     "t_b": 1256430052000001
+    },
+    "delta": 279633000000
+   },
+   "as_of_tt": 1521060544674582,
+   "frontier_tt": 1787928101349165,
+   "correction_tt": 1787963090470896,
+   "pinned": true,
+   "exempted_verdict": "fresh",
+   "stripped_verdict": "possibly-stale",
+   "avoided_by_exemption": true,
+   "exempt_receipt": {
+    "basis": 1521060544674582,
+    "batches": 12,
+    "tt_range": [
+     1787928094554054,
+     1787963090470896
+    ],
+    "theorem": "T1"
+   },
+   "scope_path": "leaf-basis"
+  },
+  {
+   "store": "sx-mathoverflow",
+   "op": "find_temporal_motif_instances",
+   "args_form": {
+    "as_of_tt": 1521060544674582,
+    "motif": "M_2node_pingpong",
+    "window": {
+     "t_a": 1254192988000000,
+     "t_b": 1256430052000001
+    },
+    "delta": 279633000000,
+    "limit": 50
+   },
+   "as_of_tt": 1521060544674582,
+   "frontier_tt": 1787928101349165,
+   "correction_tt": 1787963101437176,
+   "pinned": true,
+   "exempted_verdict": "fresh",
+   "stripped_verdict": "possibly-stale",
+   "avoided_by_exemption": true,
+   "exempt_receipt": {
+    "basis": 1521060544674582,
+    "batches": 12,
+    "tt_range": [
+     1787928094554054,
+     1787963101437176
+    ],
+    "theorem": "T1"
+   },
+   "scope_path": "leaf-basis"
+  },
+  {
+   "store": "sx-mathoverflow",
+   "op": "temporal_reachability",
+   "args_form": {
+    "as_of_tt": 1521060544674582,
+    "src": "n3413",
+    "window": {
+     "t_a": 1254192988000000,
+     "t_b": 1256430052000001
+    }
+   },
+   "as_of_tt": 1521060544674582,
+   "frontier_tt": 1787928101349165,
+   "correction_tt": 1787963112735111,
+   "pinned": true,
+   "exempted_verdict": "fresh",
+   "stripped_verdict": "possibly-stale",
+   "avoided_by_exemption": true,
+   "exempt_receipt": {
+    "basis": 1521060544674582,
+    "batches": 12,
+    "tt_range": [
+     1787928094554054,
+     1787963112735111
+    ],
+    "theorem": "T1"
+   },
+   "scope_path": "leaf-basis"
+  },
+  {
+   "store": "sx-mathoverflow",
+   "op": "temporal_paths",
+   "args_form": {
+    "as_of_tt": 1521060544674582,
+    "src": "n3421",
+    "dst": "n3421",
+    "window": {
+     "t_a": 1254192988000000,
+     "t_b": 1256430052000001
+    },
+    "k": 2
+   },
+   "as_of_tt": 1521060544674582,
+   "frontier_tt": 1787928101349165,
+   "correction_tt": 1787963123065119,
+   "pinned": true,
+   "exempted_verdict": "fresh",
+   "stripped_verdict": "possibly-stale",
+   "avoided_by_exemption": true,
+   "exempt_receipt": {
+    "basis": 1521060544674582,
+    "batches": 12,
+    "tt_range": [
+     1787928094554054,
+     1787963123065119
+    ],
+    "theorem": "T1"
+   },
+   "scope_path": "leaf-basis"
+  },
+  {
+   "store": "sx-mathoverflow",
+   "op": "entity_history",
+   "args_form": {
+    "as_of_tt": 1521060544674582,
+    "uid": "n3452"
+   },
+   "as_of_tt": 1521060544674582,
+   "frontier_tt": 1787928101349165,
+   "correction_tt": 1787963134364341,
+   "pinned": true,
+   "exempted_verdict": "fresh",
+   "stripped_verdict": "possibly-stale",
+   "avoided_by_exemption": true,
+   "exempt_receipt": {
+    "basis": 1521060544674582,
+    "batches": 12,
+    "tt_range": [
+     1787928094554054,
+     1787963134364341
+    ],
+    "theorem": "T1"
+   },
+   "scope_path": "leaf-basis"
+  },
+  {
+   "store": "sx-mathoverflow",
+   "op": "version_history",
+   "args_form": {
+    "as_of_tt": 1521060544674582,
+    "kind": "node",
+    "window": {
+     "t_a": 1254192988000000,
+     "t_b": 1256430052000001
+    }
+   },
+   "as_of_tt": 1521060544674582,
+   "frontier_tt": 1787928101349165,
+   "correction_tt": 1787963145664570,
+   "pinned": true,
+   "exempted_verdict": "fresh",
+   "stripped_verdict": "possibly-stale",
+   "avoided_by_exemption": true,
+   "exempt_receipt": {
+    "basis": 1521060544674582,
+    "batches": 12,
+    "tt_range": [
+     1787928094554054,
+     1787963145664570
+    ],
+    "theorem": "T1"
+   },
+   "scope_path": "leaf-basis"
+  },
+  {
+   "store": "sx-mathoverflow",
+   "op": "snapshot_subgraph",
+   "args_form": {
+    "as_of_tt": 1521060544674582,
+    "seeds": [
+     "n3475"
+    ],
+    "t_valid": 1255311520000000,
+    "hops": 1
+   },
+   "as_of_tt": 1521060544674582,
+   "frontier_tt": 1787928101349165,
+   "correction_tt": 1787963156429626,
+   "pinned": true,
+   "exempted_verdict": "fresh",
+   "stripped_verdict": "possibly-stale",
+   "avoided_by_exemption": true,
+   "exempt_receipt": {
+    "basis": 1521060544674582,
+    "batches": 12,
+    "tt_range": [
+     1787928094554054,
+     1787963156429626
+    ],
+    "theorem": "T1"
+   },
+   "scope_path": "leaf-basis"
+  },
+  {
+   "store": "sx-mathoverflow",
+   "op": "diff_snapshots",
+   "args_form": {
+    "as_of_tt": 1521060544674582,
+    "t1": 1254192988000001,
+    "t2": 1255311520000000
+   },
+   "as_of_tt": 1521060544674582,
+   "frontier_tt": 1787928101349165,
+   "correction_tt": 1787963167473621,
+   "pinned": true,
+   "exempted_verdict": "fresh",
+   "stripped_verdict": "possibly-stale",
+   "avoided_by_exemption": true,
+   "exempt_receipt": {
+    "basis": 1521060544674582,
+    "batches": 12,
+    "tt_range": [
+     1787928094554054,
+     1787963167473621
+    ],
+    "theorem": "T1"
+   },
+   "scope_path": "leaf-basis"
+  },
+  {
+   "store": "sx-mathoverflow",
+   "op": "neighborhood_evolution",
+   "args_form": {
+    "as_of_tt": 1521060544674582,
+    "uid": "n3494",
+    "t1": 1254192988000000,
+    "t2": 1256430052000001,
+    "stride": 279633000000
+   },
+   "as_of_tt": 1521060544674582,
+   "frontier_tt": 1787928101349165,
+   "correction_tt": 1787963178523155,
+   "pinned": true,
+   "exempted_verdict": "fresh",
+   "stripped_verdict": "possibly-stale",
+   "avoided_by_exemption": true,
+   "exempt_receipt": {
+    "basis": 1521060544674582,
+    "batches": 12,
+    "tt_range": [
+     1787928094554054,
+     1787963178523155
+    ],
+    "theorem": "T1"
+   },
+   "scope_path": "leaf-basis"
+  },
+  {
+   "store": "sx-mathoverflow",
+   "op": "aggregate_events",
+   "args_form": {
+    "as_of_tt": 1521060544674582,
+    "group_by": [
+     {
+      "dim": "endpoint",
+      "role": "src"
+     }
+    ],
+    "aggregates": [
+     {
+      "agg": "count"
+     }
+    ],
+    "window": {
+     "t_a": 1254192988000000,
+     "t_b": 1256430052000001
+    }
+   },
+   "as_of_tt": 1521060544674582,
+   "frontier_tt": 1787928101349165,
+   "correction_tt": 1787963189531390,
+   "pinned": true,
+   "exempted_verdict": "fresh",
+   "stripped_verdict": "possibly-stale",
+   "avoided_by_exemption": true,
+   "exempt_receipt": {
+    "basis": 1521060544674582,
+    "batches": 12,
+    "tt_range": [
+     1787928094554054,
+     1787963189531390
+    ],
+    "theorem": "T1"
+   },
+   "scope_path": "leaf-basis"
+  },
+  {
+   "store": "sx-mathoverflow",
+   "op": "graph_metric_timeseries",
+   "args_form": {
+    "as_of_tt": 1521060544674582,
+    "metric": "node_count",
+    "window": {
+     "t_a": 1254192988000000,
+     "t_b": 1256430052000001
+    },
+    "stride": 279633000000
+   },
+   "as_of_tt": 1521060544674582,
+   "frontier_tt": 1787928101349165,
+   "correction_tt": 1787963200540315,
+   "pinned": true,
+   "exempted_verdict": "fresh",
+   "stripped_verdict": "possibly-stale",
+   "avoided_by_exemption": true,
+   "exempt_receipt": {
+    "basis": 1521060544674582,
+    "batches": 12,
+    "tt_range": [
+     1787928094554054,
+     1787963200540315
+    ],
+    "theorem": "T1"
+   },
+   "scope_path": "leaf-basis"
+  },
+  {
+   "store": "sx-mathoverflow",
+   "op": "burst_detection",
+   "args_form": {
+    "as_of_tt": 1521060544674582,
+    "target": {
+     "kind": "node_activity",
+     "uid": "n3532"
+    },
+    "window": {
+     "t_a": 1254192988000000,
+     "t_b": 1256430052000001
+    },
+    "stride": 139816500000
+   },
+   "as_of_tt": 1521060544674582,
+   "frontier_tt": 1787928101349165,
+   "correction_tt": 1787963211241559,
+   "pinned": true,
+   "exempted_verdict": "fresh",
+   "stripped_verdict": "possibly-stale",
+   "avoided_by_exemption": true,
+   "exempt_receipt": {
+    "basis": 1521060544674582,
+    "batches": 12,
+    "tt_range": [
+     1787928094554054,
+     1787963211241559
+    ],
+    "theorem": "T1"
+   },
+   "scope_path": "leaf-basis"
+  },
+  {
+   "store": "sx-mathoverflow",
+   "op": "co_active",
+   "args_form": {
+    "as_of_tt": 1521060544674582,
+    "a_spec": {
+     "rel_type": "A2Q"
+    },
+    "b_spec": {
+     "rel_type": "A2Q"
+    },
+    "allen_relation": {
+     "relation": "overlaps"
+    },
+    "limit": 200
+   },
+   "as_of_tt": 1521060544674582,
+   "frontier_tt": 1787928101349165,
+   "correction_tt": 1787963222250920,
+   "pinned": true,
+   "exempted_verdict": "fresh",
+   "stripped_verdict": "possibly-stale",
+   "avoided_by_exemption": true,
+   "exempt_receipt": {
+    "basis": 1521060544674582,
+    "batches": 12,
+    "tt_range": [
+     1787928094554054,
+     1787963222250920
+    ],
+    "theorem": "T1"
+   },
+   "scope_path": "leaf-basis"
+  },
+  {
+   "store": "sx-mathoverflow",
+   "op": "count_temporal_motifs",
+   "args_form": {
+    "as_of_tt": 1521060544674582,
+    "motif": "M_2node_pingpong",
+    "window": {
+     "t_a": 1254192988000000,
+     "t_b": 1256430052000001
+    },
+    "delta": 279633000000
+   },
+   "as_of_tt": 1521060544674582,
+   "frontier_tt": 1787928101349165,
+   "correction_tt": 1787963232880109,
+   "pinned": true,
+   "exempted_verdict": "fresh",
+   "stripped_verdict": "possibly-stale",
+   "avoided_by_exemption": true,
+   "exempt_receipt": {
+    "basis": 1521060544674582,
+    "batches": 12,
+    "tt_range": [
+     1787928094554054,
+     1787963232880109
+    ],
+    "theorem": "T1"
+   },
+   "scope_path": "leaf-basis"
+  },
+  {
+   "store": "sx-mathoverflow",
+   "op": "find_temporal_motif_instances",
+   "args_form": {
+    "as_of_tt": 1521060544674582,
+    "motif": "M_2node_pingpong",
+    "window": {
+     "t_a": 1254192988000000,
+     "t_b": 1256430052000001
+    },
+    "delta": 279633000000,
+    "limit": 50
+   },
+   "as_of_tt": 1521060544674582,
+   "frontier_tt": 1787928101349165,
+   "correction_tt": 1787963243878106,
+   "pinned": true,
+   "exempted_verdict": "fresh",
+   "stripped_verdict": "possibly-stale",
+   "avoided_by_exemption": true,
+   "exempt_receipt": {
+    "basis": 1521060544674582,
+    "batches": 12,
+    "tt_range": [
+     1787928094554054,
+     1787963243878106
+    ],
+    "theorem": "T1"
+   },
+   "scope_path": "leaf-basis"
+  },
+  {
+   "store": "sx-mathoverflow",
+   "op": "temporal_reachability",
+   "args_form": {
+    "as_of_tt": 1521060544674582,
+    "src": "n3582",
+    "window": {
+     "t_a": 1254192988000000,
+     "t_b": 1256430052000001
+    }
+   },
+   "as_of_tt": 1521060544674582,
+   "frontier_tt": 1787928101349165,
+   "correction_tt": 1787963254890170,
+   "pinned": true,
+   "exempted_verdict": "fresh",
+   "stripped_verdict": "possibly-stale",
+   "avoided_by_exemption": true,
+   "exempt_receipt": {
+    "basis": 1521060544674582,
+    "batches": 12,
+    "tt_range": [
+     1787928094554054,
+     1787963254890170
+    ],
+    "theorem": "T1"
+   },
+   "scope_path": "leaf-basis"
+  },
+  {
+   "store": "sx-mathoverflow",
+   "op": "temporal_paths",
+   "args_form": {
+    "as_of_tt": 1521060544674582,
+    "src": "n3588",
+    "dst": "n3588",
+    "window": {
+     "t_a": 1254192988000000,
+     "t_b": 1256430052000001
+    },
+    "k": 2
+   },
+   "as_of_tt": 1521060544674582,
+   "frontier_tt": 1787928101349165,
+   "correction_tt": 1787963265261530,
+   "pinned": true,
+   "exempted_verdict": "fresh",
+   "stripped_verdict": "possibly-stale",
+   "avoided_by_exemption": true,
+   "exempt_receipt": {
+    "basis": 1521060544674582,
+    "batches": 12,
+    "tt_range": [
+     1787928094554054,
+     1787963265261530
+    ],
+    "theorem": "T1"
+   },
+   "scope_path": "leaf-basis"
+  },
+  {
+   "store": "sx-mathoverflow",
+   "op": "entity_history",
+   "args_form": {
+    "as_of_tt": 1521060544674582,
+    "uid": "n3592"
+   },
+   "as_of_tt": 1521060544674582,
+   "frontier_tt": 1787928101349165,
+   "correction_tt": 1787963276389804,
+   "pinned": true,
+   "exempted_verdict": "fresh",
+   "stripped_verdict": "possibly-stale",
+   "avoided_by_exemption": true,
+   "exempt_receipt": {
+    "basis": 1521060544674582,
+    "batches": 12,
+    "tt_range": [
+     1787928094554054,
+     1787963276389804
+    ],
+    "theorem": "T1"
+   },
+   "scope_path": "leaf-basis"
+  },
+  {
+   "store": "sx-mathoverflow",
+   "op": "version_history",
+   "args_form": {
+    "as_of_tt": 1521060544674582,
+    "kind": "node",
+    "window": {
+     "t_a": 1254192988000000,
+     "t_b": 1256430052000001
+    }
+   },
+   "as_of_tt": 1521060544674582,
+   "frontier_tt": 1787928101349165,
+   "correction_tt": 1787963287098488,
+   "pinned": true,
+   "exempted_verdict": "fresh",
+   "stripped_verdict": "possibly-stale",
+   "avoided_by_exemption": true,
+   "exempt_receipt": {
+    "basis": 1521060544674582,
+    "batches": 12,
+    "tt_range": [
+     1787928094554054,
+     1787963287098488
+    ],
+    "theorem": "T1"
+   },
+   "scope_path": "leaf-basis"
+  },
+  {
+   "store": "sx-mathoverflow",
+   "op": "snapshot_subgraph",
+   "args_form": {
+    "as_of_tt": 1521060544674582,
+    "seeds": [
+     "n3621"
+    ],
+    "t_valid": 1255311520000000,
+    "hops": 1
+   },
+   "as_of_tt": 1521060544674582,
+   "frontier_tt": 1787928101349165,
+   "correction_tt": 1787963297931987,
+   "pinned": true,
+   "exempted_verdict": "fresh",
+   "stripped_verdict": "possibly-stale",
+   "avoided_by_exemption": true,
+   "exempt_receipt": {
+    "basis": 1521060544674582,
+    "batches": 12,
+    "tt_range": [
+     1787928094554054,
+     1787963297931987
+    ],
+    "theorem": "T1"
+   },
+   "scope_path": "leaf-basis"
+  },
+  {
+   "store": "sx-mathoverflow",
+   "op": "diff_snapshots",
+   "args_form": {
+    "as_of_tt": 1521060544674582,
+    "t1": 1254192988000001,
+    "t2": 1255311520000000
+   },
+   "as_of_tt": 1521060544674582,
+   "frontier_tt": 1787928101349165,
+   "correction_tt": 1787963308601762,
+   "pinned": true,
+   "exempted_verdict": "fresh",
+   "stripped_verdict": "possibly-stale",
+   "avoided_by_exemption": true,
+   "exempt_receipt": {
+    "basis": 1521060544674582,
+    "batches": 12,
+    "tt_range": [
+     1787928094554054,
+     1787963308601762
+    ],
+    "theorem": "T1"
+   },
+   "scope_path": "leaf-basis"
+  },
+  {
+   "store": "sx-mathoverflow",
+   "op": "neighborhood_evolution",
+   "args_form": {
+    "as_of_tt": 1521060544674582,
+    "uid": "n3639",
+    "t1": 1254192988000000,
+    "t2": 1256430052000001,
+    "stride": 279633000000
+   },
+   "as_of_tt": 1521060544674582,
+   "frontier_tt": 1787928101349165,
+   "correction_tt": 1787963318956955,
+   "pinned": true,
+   "exempted_verdict": "fresh",
+   "stripped_verdict": "possibly-stale",
+   "avoided_by_exemption": true,
+   "exempt_receipt": {
+    "basis": 1521060544674582,
+    "batches": 12,
+    "tt_range": [
+     1787928094554054,
+     1787963318956955
+    ],
+    "theorem": "T1"
+   },
+   "scope_path": "leaf-basis"
+  },
+  {
+   "store": "sx-mathoverflow",
+   "op": "aggregate_events",
+   "args_form": {
+    "as_of_tt": 1521060544674582,
+    "group_by": [
+     {
+      "dim": "endpoint",
+      "role": "src"
+     }
+    ],
+    "aggregates": [
+     {
+      "agg": "count"
+     }
+    ],
+    "window": {
+     "t_a": 1254192988000000,
+     "t_b": 1256430052000001
+    }
+   },
+   "as_of_tt": 1521060544674582,
+   "frontier_tt": 1787928101349165,
+   "correction_tt": 1787963330306188,
+   "pinned": true,
+   "exempted_verdict": "fresh",
+   "stripped_verdict": "possibly-stale",
+   "avoided_by_exemption": true,
+   "exempt_receipt": {
+    "basis": 1521060544674582,
+    "batches": 12,
+    "tt_range": [
+     1787928094554054,
+     1787963330306188
+    ],
+    "theorem": "T1"
+   },
+   "scope_path": "leaf-basis"
+  },
+  {
+   "store": "sx-mathoverflow",
+   "op": "graph_metric_timeseries",
+   "args_form": {
+    "as_of_tt": 1521060544674582,
+    "metric": "node_count",
+    "window": {
+     "t_a": 1254192988000000,
+     "t_b": 1256430052000001
+    },
+    "stride": 279633000000
+   },
+   "as_of_tt": 1521060544674582,
+   "frontier_tt": 1787928101349165,
+   "correction_tt": 1787963340714120,
+   "pinned": true,
+   "exempted_verdict": "fresh",
+   "stripped_verdict": "possibly-stale",
+   "avoided_by_exemption": true,
+   "exempt_receipt": {
+    "basis": 1521060544674582,
+    "batches": 12,
+    "tt_range": [
+     1787928094554054,
+     1787963340714120
+    ],
+    "theorem": "T1"
+   },
+   "scope_path": "leaf-basis"
+  },
+  {
+   "store": "sx-mathoverflow",
+   "op": "burst_detection",
+   "args_form": {
+    "as_of_tt": 1521060544674582,
+    "target": {
+     "kind": "node_activity",
+     "uid": "n3649"
+    },
+    "window": {
+     "t_a": 1254192988000000,
+     "t_b": 1256430052000001
+    },
+    "stride": 139816500000
+   },
+   "as_of_tt": 1521060544674582,
+   "frontier_tt": 1787928101349165,
+   "correction_tt": 1787963351888179,
+   "pinned": true,
+   "exempted_verdict": "fresh",
+   "stripped_verdict": "possibly-stale",
+   "avoided_by_exemption": true,
+   "exempt_receipt": {
+    "basis": 1521060544674582,
+    "batches": 12,
+    "tt_range": [
+     1787928094554054,
+     1787963351888179
+    ],
+    "theorem": "T1"
+   },
+   "scope_path": "leaf-basis"
+  },
+  {
+   "store": "sx-mathoverflow",
+   "op": "co_active",
+   "args_form": {
+    "as_of_tt": 1521060544674582,
+    "a_spec": {
+     "rel_type": "A2Q"
+    },
+    "b_spec": {
+     "rel_type": "A2Q"
+    },
+    "allen_relation": {
+     "relation": "overlaps"
+    },
+    "limit": 200
+   },
+   "as_of_tt": 1521060544674582,
+   "frontier_tt": 1787928101349165,
+   "correction_tt": 1787963362987017,
+   "pinned": true,
+   "exempted_verdict": "fresh",
+   "stripped_verdict": "possibly-stale",
+   "avoided_by_exemption": true,
+   "exempt_receipt": {
+    "basis": 1521060544674582,
+    "batches": 12,
+    "tt_range": [
+     1787928094554054,
+     1787963362987017
+    ],
+    "theorem": "T1"
+   },
+   "scope_path": "leaf-basis"
+  },
+  {
+   "store": "sx-mathoverflow",
+   "op": "count_temporal_motifs",
+   "args_form": {
+    "as_of_tt": 1521060544674582,
+    "motif": "M_2node_pingpong",
+    "window": {
+     "t_a": 1254192988000000,
+     "t_b": 1256430052000001
+    },
+    "delta": 279633000000
+   },
+   "as_of_tt": 1521060544674582,
+   "frontier_tt": 1787928101349165,
+   "correction_tt": 1787963373759353,
+   "pinned": true,
+   "exempted_verdict": "fresh",
+   "stripped_verdict": "possibly-stale",
+   "avoided_by_exemption": true,
+   "exempt_receipt": {
+    "basis": 1521060544674582,
+    "batches": 12,
+    "tt_range": [
+     1787928094554054,
+     1787963373759353
+    ],
+    "theorem": "T1"
+   },
+   "scope_path": "leaf-basis"
+  },
+  {
+   "store": "sx-mathoverflow",
+   "op": "find_temporal_motif_instances",
+   "args_form": {
+    "as_of_tt": 1521060544674582,
+    "motif": "M_2node_pingpong",
+    "window": {
+     "t_a": 1254192988000000,
+     "t_b": 1256430052000001
+    },
+    "delta": 279633000000,
+    "limit": 50
+   },
+   "as_of_tt": 1521060544674582,
+   "frontier_tt": 1787928101349165,
+   "correction_tt": 1787963385044883,
+   "pinned": true,
+   "exempted_verdict": "fresh",
+   "stripped_verdict": "possibly-stale",
+   "avoided_by_exemption": true,
+   "exempt_receipt": {
+    "basis": 1521060544674582,
+    "batches": 12,
+    "tt_range": [
+     1787928094554054,
+     1787963385044883
+    ],
+    "theorem": "T1"
+   },
+   "scope_path": "leaf-basis"
+  },
+  {
+   "store": "sx-mathoverflow",
+   "op": "temporal_reachability",
+   "args_form": {
+    "as_of_tt": 1521060544674582,
+    "src": "n3687",
+    "window": {
+     "t_a": 1254192988000000,
+     "t_b": 1256430052000001
+    }
+   },
+   "as_of_tt": 1521060544674582,
+   "frontier_tt": 1787928101349165,
+   "correction_tt": 1787963395488688,
+   "pinned": true,
+   "exempted_verdict": "fresh",
+   "stripped_verdict": "possibly-stale",
+   "avoided_by_exemption": true,
+   "exempt_receipt": {
+    "basis": 1521060544674582,
+    "batches": 12,
+    "tt_range": [
+     1787928094554054,
+     1787963395488688
+    ],
+    "theorem": "T1"
+   },
+   "scope_path": "leaf-basis"
+  },
+  {
+   "store": "sx-mathoverflow",
+   "op": "temporal_paths",
+   "args_form": {
+    "as_of_tt": 1521060544674582,
+    "src": "n371",
+    "dst": "n371",
+    "window": {
+     "t_a": 1254192988000000,
+     "t_b": 1256430052000001
+    },
+    "k": 2
+   },
+   "as_of_tt": 1521060544674582,
+   "frontier_tt": 1787928101349165,
+   "correction_tt": 1787963406767237,
+   "pinned": true,
+   "exempted_verdict": "fresh",
+   "stripped_verdict": "possibly-stale",
+   "avoided_by_exemption": true,
+   "exempt_receipt": {
+    "basis": 1521060544674582,
+    "batches": 12,
+    "tt_range": [
+     1787928094554054,
+     1787963406767237
+    ],
+    "theorem": "T1"
+   },
+   "scope_path": "leaf-basis"
+  },
+  {
+   "store": "sx-mathoverflow",
+   "op": "entity_history",
+   "args_form": {
+    "as_of_tt": 1521060544674582,
+    "uid": "n3710"
+   },
+   "as_of_tt": 1521060544674582,
+   "frontier_tt": 1787928101349165,
+   "correction_tt": 1787963417267579,
+   "pinned": true,
+   "exempted_verdict": "fresh",
+   "stripped_verdict": "possibly-stale",
+   "avoided_by_exemption": true,
+   "exempt_receipt": {
+    "basis": 1521060544674582,
+    "batches": 12,
+    "tt_range": [
+     1787928094554054,
+     1787963417267579
+    ],
+    "theorem": "T1"
+   },
+   "scope_path": "leaf-basis"
+  },
+  {
+   "store": "sx-mathoverflow",
+   "op": "version_history",
+   "args_form": {
+    "as_of_tt": 1521060544674582,
+    "kind": "node",
+    "window": {
+     "t_a": 1254192988000000,
+     "t_b": 1256430052000001
+    }
+   },
+   "as_of_tt": 1521060544674582,
+   "frontier_tt": 1787928101349165,
+   "correction_tt": 1787963428546222,
+   "pinned": true,
+   "exempted_verdict": "fresh",
+   "stripped_verdict": "possibly-stale",
+   "avoided_by_exemption": true,
+   "exempt_receipt": {
+    "basis": 1521060544674582,
+    "batches": 12,
+    "tt_range": [
+     1787928094554054,
+     1787963428546222
+    ],
+    "theorem": "T1"
+   },
+   "scope_path": "leaf-basis"
+  },
+  {
+   "store": "sx-mathoverflow",
+   "op": "snapshot_subgraph",
+   "args_form": {
+    "as_of_tt": 1521060544674582,
+    "seeds": [
+     "n375"
+    ],
+    "t_valid": 1255311520000000,
+    "hops": 1
+   },
+   "as_of_tt": 1521060544674582,
+   "frontier_tt": 1787928101349165,
+   "correction_tt": 1787963439105020,
+   "pinned": true,
+   "exempted_verdict": "fresh",
+   "stripped_verdict": "possibly-stale",
+   "avoided_by_exemption": true,
+   "exempt_receipt": {
+    "basis": 1521060544674582,
+    "batches": 12,
+    "tt_range": [
+     1787928094554054,
+     1787963439105020
+    ],
+    "theorem": "T1"
+   },
+   "scope_path": "leaf-basis"
+  },
+  {
+   "store": "sx-mathoverflow",
+   "op": "diff_snapshots",
+   "args_form": {
+    "as_of_tt": 1521060544674582,
+    "t1": 1254192988000001,
+    "t2": 1255311520000000
+   },
+   "as_of_tt": 1521060544674582,
+   "frontier_tt": 1787928101349165,
+   "correction_tt": 1787963449526466,
+   "pinned": true,
+   "exempted_verdict": "fresh",
+   "stripped_verdict": "possibly-stale",
+   "avoided_by_exemption": true,
+   "exempt_receipt": {
+    "basis": 1521060544674582,
+    "batches": 12,
+    "tt_range": [
+     1787928094554054,
+     1787963449526466
+    ],
+    "theorem": "T1"
+   },
+   "scope_path": "leaf-basis"
+  },
+  {
+   "store": "sx-mathoverflow",
+   "op": "neighborhood_evolution",
+   "args_form": {
+    "as_of_tt": 1521060544674582,
+    "uid": "n3775",
+    "t1": 1254192988000000,
+    "t2": 1256430052000001,
+    "stride": 279633000000
+   },
+   "as_of_tt": 1521060544674582,
+   "frontier_tt": 1787928101349165,
+   "correction_tt": 1787963460326959,
+   "pinned": true,
+   "exempted_verdict": "fresh",
+   "stripped_verdict": "possibly-stale",
+   "avoided_by_exemption": true,
+   "exempt_receipt": {
+    "basis": 1521060544674582,
+    "batches": 12,
+    "tt_range": [
+     1787928094554054,
+     1787963460326959
+    ],
+    "theorem": "T1"
+   },
+   "scope_path": "leaf-basis"
+  },
+  {
+   "store": "sx-mathoverflow",
+   "op": "aggregate_events",
+   "args_form": {
+    "as_of_tt": 1521060544674582,
+    "group_by": [
+     {
+      "dim": "endpoint",
+      "role": "src"
+     }
+    ],
+    "aggregates": [
+     {
+      "agg": "count"
+     }
+    ],
+    "window": {
+     "t_a": 1254192988000000,
+     "t_b": 1256430052000001
+    }
+   },
+   "as_of_tt": 1521060544674582,
+   "frontier_tt": 1787928101349165,
+   "correction_tt": 1787963470465504,
+   "pinned": true,
+   "exempted_verdict": "fresh",
+   "stripped_verdict": "possibly-stale",
+   "avoided_by_exemption": true,
+   "exempt_receipt": {
+    "basis": 1521060544674582,
+    "batches": 12,
+    "tt_range": [
+     1787928094554054,
+     1787963470465504
+    ],
+    "theorem": "T1"
+   },
+   "scope_path": "leaf-basis"
+  },
+  {
+   "store": "sx-mathoverflow",
+   "op": "graph_metric_timeseries",
+   "args_form": {
+    "as_of_tt": 1521060544674582,
+    "metric": "node_count",
+    "window": {
+     "t_a": 1254192988000000,
+     "t_b": 1256430052000001
+    },
+    "stride": 279633000000
+   },
+   "as_of_tt": 1521060544674582,
+   "frontier_tt": 1787928101349165,
+   "correction_tt": 1787963481305746,
+   "pinned": true,
+   "exempted_verdict": "fresh",
+   "stripped_verdict": "possibly-stale",
+   "avoided_by_exemption": true,
+   "exempt_receipt": {
+    "basis": 1521060544674582,
+    "batches": 12,
+    "tt_range": [
+     1787928094554054,
+     1787963481305746
+    ],
+    "theorem": "T1"
+   },
+   "scope_path": "leaf-basis"
+  },
+  {
+   "store": "sx-mathoverflow",
+   "op": "burst_detection",
+   "args_form": {
+    "as_of_tt": 1521060544674582,
+    "target": {
+     "kind": "node_activity",
+     "uid": "n3790"
+    },
+    "window": {
+     "t_a": 1254192988000000,
+     "t_b": 1256430052000001
+    },
+    "stride": 139816500000
+   },
+   "as_of_tt": 1521060544674582,
+   "frontier_tt": 1787928101349165,
+   "correction_tt": 1787963491715434,
+   "pinned": true,
+   "exempted_verdict": "fresh",
+   "stripped_verdict": "possibly-stale",
+   "avoided_by_exemption": true,
+   "exempt_receipt": {
+    "basis": 1521060544674582,
+    "batches": 12,
+    "tt_range": [
+     1787928094554054,
+     1787963491715434
+    ],
+    "theorem": "T1"
+   },
+   "scope_path": "leaf-basis"
+  },
+  {
+   "store": "sx-mathoverflow",
+   "op": "co_active",
+   "args_form": {
+    "as_of_tt": 1521060544674582,
+    "a_spec": {
+     "rel_type": "A2Q"
+    },
+    "b_spec": {
+     "rel_type": "A2Q"
+    },
+    "allen_relation": {
+     "relation": "overlaps"
+    },
+    "limit": 200
+   },
+   "as_of_tt": 1521060544674582,
+   "frontier_tt": 1787928101349165,
+   "correction_tt": 1787963502500968,
+   "pinned": true,
+   "exempted_verdict": "fresh",
+   "stripped_verdict": "possibly-stale",
+   "avoided_by_exemption": true,
+   "exempt_receipt": {
+    "basis": 1521060544674582,
+    "batches": 12,
+    "tt_range": [
+     1787928094554054,
+     1787963502500968
+    ],
+    "theorem": "T1"
+   },
+   "scope_path": "leaf-basis"
+  },
+  {
+   "store": "sx-mathoverflow",
+   "op": "count_temporal_motifs",
+   "args_form": {
+    "as_of_tt": 1521060544674582,
+    "motif": "M_2node_pingpong",
+    "window": {
+     "t_a": 1254192988000000,
+     "t_b": 1256430052000001
+    },
+    "delta": 279633000000
+   },
+   "as_of_tt": 1521060544674582,
+   "frontier_tt": 1787928101349165,
+   "correction_tt": 1787963513024797,
+   "pinned": true,
+   "exempted_verdict": "fresh",
+   "stripped_verdict": "possibly-stale",
+   "avoided_by_exemption": true,
+   "exempt_receipt": {
+    "basis": 1521060544674582,
+    "batches": 12,
+    "tt_range": [
+     1787928094554054,
+     1787963513024797
+    ],
+    "theorem": "T1"
+   },
+   "scope_path": "leaf-basis"
+  },
+  {
+   "store": "sx-mathoverflow",
+   "op": "find_temporal_motif_instances",
+   "args_form": {
+    "as_of_tt": 1521060544674582,
+    "motif": "M_2node_pingpong",
+    "window": {
+     "t_a": 1254192988000000,
+     "t_b": 1256430052000001
+    },
+    "delta": 279633000000,
+    "limit": 50
+   },
+   "as_of_tt": 1521060544674582,
+   "frontier_tt": 1787928101349165,
+   "correction_tt": 1787963524079144,
+   "pinned": true,
+   "exempted_verdict": "fresh",
+   "stripped_verdict": "possibly-stale",
+   "avoided_by_exemption": true,
+   "exempt_receipt": {
+    "basis": 1521060544674582,
+    "batches": 12,
+    "tt_range": [
+     1787928094554054,
+     1787963524079144
+    ],
+    "theorem": "T1"
+   },
+   "scope_path": "leaf-basis"
+  },
+  {
+   "store": "sx-mathoverflow",
+   "op": "temporal_reachability",
+   "args_form": {
+    "as_of_tt": 1521060544674582,
+    "src": "n3872",
+    "window": {
+     "t_a": 1254192988000000,
+     "t_b": 1256430052000001
+    }
+   },
+   "as_of_tt": 1521060544674582,
+   "frontier_tt": 1787928101349165,
+   "correction_tt": 1787963535230703,
+   "pinned": true,
+   "exempted_verdict": "fresh",
+   "stripped_verdict": "possibly-stale",
+   "avoided_by_exemption": true,
+   "exempt_receipt": {
+    "basis": 1521060544674582,
+    "batches": 12,
+    "tt_range": [
+     1787928094554054,
+     1787963535230703
+    ],
+    "theorem": "T1"
+   },
+   "scope_path": "leaf-basis"
+  },
+  {
+   "store": "sx-mathoverflow",
+   "op": "temporal_paths",
+   "args_form": {
+    "as_of_tt": 1521060544674582,
+    "src": "n3903",
+    "dst": "n3903",
+    "window": {
+     "t_a": 1254192988000000,
+     "t_b": 1256430052000001
+    },
+    "k": 2
+   },
+   "as_of_tt": 1521060544674582,
+   "frontier_tt": 1787928101349165,
+   "correction_tt": 1787963546343261,
+   "pinned": true,
+   "exempted_verdict": "fresh",
+   "stripped_verdict": "possibly-stale",
+   "avoided_by_exemption": true,
+   "exempt_receipt": {
+    "basis": 1521060544674582,
+    "batches": 12,
+    "tt_range": [
+     1787928094554054,
+     1787963546343261
+    ],
+    "theorem": "T1"
+   },
+   "scope_path": "leaf-basis"
+  },
+  {
+   "store": "sx-mathoverflow",
+   "op": "entity_history",
+   "args_form": {
+    "as_of_tt": 1521060544674582,
+    "uid": "n3920"
+   },
+   "as_of_tt": 1521060544674582,
+   "frontier_tt": 1787928101349165,
+   "correction_tt": 1787963557014727,
+   "pinned": true,
+   "exempted_verdict": "fresh",
+   "stripped_verdict": "possibly-stale",
+   "avoided_by_exemption": true,
+   "exempt_receipt": {
+    "basis": 1521060544674582,
+    "batches": 12,
+    "tt_range": [
+     1787928094554054,
+     1787963557014727
+    ],
+    "theorem": "T1"
+   },
+   "scope_path": "leaf-basis"
+  },
+  {
+   "store": "sx-mathoverflow",
+   "op": "version_history",
+   "args_form": {
+    "as_of_tt": 1521060544674582,
+    "kind": "node",
+    "window": {
+     "t_a": 1254192988000000,
+     "t_b": 1256430052000001
+    }
+   },
+   "as_of_tt": 1521060544674582,
+   "frontier_tt": 1787928101349165,
+   "correction_tt": 1787963568145481,
+   "pinned": true,
+   "exempted_verdict": "fresh",
+   "stripped_verdict": "possibly-stale",
+   "avoided_by_exemption": true,
+   "exempt_receipt": {
+    "basis": 1521060544674582,
+    "batches": 12,
+    "tt_range": [
+     1787928094554054,
+     1787963568145481
+    ],
+    "theorem": "T1"
+   },
+   "scope_path": "leaf-basis"
+  },
+  {
+   "store": "sx-mathoverflow",
+   "op": "snapshot_subgraph",
+   "args_form": {
+    "as_of_tt": 1521060544674582,
+    "seeds": [
+     "n393"
+    ],
+    "t_valid": 1255311520000000,
+    "hops": 1
+   },
+   "as_of_tt": 1521060544674582,
+   "frontier_tt": 1787928101349165,
+   "correction_tt": 1787963579413399,
+   "pinned": true,
+   "exempted_verdict": "fresh",
+   "stripped_verdict": "possibly-stale",
+   "avoided_by_exemption": true,
+   "exempt_receipt": {
+    "basis": 1521060544674582,
+    "batches": 12,
+    "tt_range": [
+     1787928094554054,
+     1787963579413399
+    ],
+    "theorem": "T1"
+   },
+   "scope_path": "leaf-basis"
+  },
+  {
+   "store": "sx-mathoverflow",
+   "op": "diff_snapshots",
+   "args_form": {
+    "as_of_tt": 1521060544674582,
+    "t1": 1254192988000001,
+    "t2": 1255311520000000
+   },
+   "as_of_tt": 1521060544674582,
+   "frontier_tt": 1787928101349165,
+   "correction_tt": 1787963589877377,
+   "pinned": true,
+   "exempted_verdict": "fresh",
+   "stripped_verdict": "possibly-stale",
+   "avoided_by_exemption": true,
+   "exempt_receipt": {
+    "basis": 1521060544674582,
+    "batches": 12,
+    "tt_range": [
+     1787928094554054,
+     1787963589877377
+    ],
+    "theorem": "T1"
+   },
+   "scope_path": "leaf-basis"
+  },
+  {
+   "store": "sx-mathoverflow",
+   "op": "neighborhood_evolution",
+   "args_form": {
+    "as_of_tt": 1521060544674582,
+    "uid": "n3944",
+    "t1": 1254192988000000,
+    "t2": 1256430052000001,
+    "stride": 279633000000
+   },
+   "as_of_tt": 1521060544674582,
+   "frontier_tt": 1787928101349165,
+   "correction_tt": 1787963601206261,
+   "pinned": true,
+   "exempted_verdict": "fresh",
+   "stripped_verdict": "possibly-stale",
+   "avoided_by_exemption": true,
+   "exempt_receipt": {
+    "basis": 1521060544674582,
+    "batches": 12,
+    "tt_range": [
+     1787928094554054,
+     1787963601206261
+    ],
+    "theorem": "T1"
+   },
+   "scope_path": "leaf-basis"
+  },
+  {
+   "store": "sx-mathoverflow",
+   "op": "aggregate_events",
+   "args_form": {
+    "as_of_tt": 1521060544674582,
+    "group_by": [
+     {
+      "dim": "endpoint",
+      "role": "src"
+     }
+    ],
+    "aggregates": [
+     {
+      "agg": "count"
+     }
+    ],
+    "window": {
+     "t_a": 1254192988000000,
+     "t_b": 1256430052000001
+    }
+   },
+   "as_of_tt": 1521060544674582,
+   "frontier_tt": 1787928101349165,
+   "correction_tt": 1787963611567737,
+   "pinned": true,
+   "exempted_verdict": "fresh",
+   "stripped_verdict": "possibly-stale",
+   "avoided_by_exemption": true,
+   "exempt_receipt": {
+    "basis": 1521060544674582,
+    "batches": 12,
+    "tt_range": [
+     1787928094554054,
+     1787963611567737
+    ],
+    "theorem": "T1"
+   },
+   "scope_path": "leaf-basis"
+  }
+ ]
+}

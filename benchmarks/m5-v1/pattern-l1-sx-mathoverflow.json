@@ -1,0 +1,173 @@
+{
+ "generated": "2026-08-28T23:56:40+0000",
+ "measured_date": "2026-08-27",
+ "git_sha": "41c4066d9863775034ce44b76f9826642fc62680",
+ "campaign_yaml_sha256": "60a10e1ca68ca6d33cc7ea293aed2d9db2f2f67907a5ae0c029d2f93318c500b",
+ "freeze_document_sha256": "e94ecc1692c55f18e8d8837d81f7f0f1106f057b1024a1b08b5b3fac392bf6d0",
+ "profile": "full",
+ "backend": "native",
+ "store": "sx-mathoverflow",
+ "store_identity": "0ac40f2fe5dee32c25ec733b11daf061b15177299c858e29ce01e2d75124623e",
+ "machine": {
+  "host": "itiger02",
+  "platform": "Linux-5.14.0-427.31.1.el9_4.x86_64-x86_64-with-glibc2.34",
+  "python": "3.12.13",
+  "cpus": 64
+ },
+ "arm": "pattern-l1-sx-mathoverflow",
+ "scorable": true,
+ "summary": {
+  "trials": 8,
+  "live": 4,
+  "cells": 2,
+  "mixed_cells": 0,
+  "level1_lift_trials": 2,
+  "level1_unsound_regressions": 0,
+  "floor": {
+   "required": {
+    "min_cells": 80,
+    "min_mixed_cells": 40
+   },
+   "achieved": {
+    "min_cells": 2,
+    "min_mixed_cells": 0
+   },
+   "met": {
+    "min_cells": false,
+    "min_mixed_cells": false
+   },
+   "all_met": false
+  }
+ },
+ "row_count": 8,
+ "rows": [
+  {
+   "store": "sx-mathoverflow",
+   "cell": "t_node-anchored",
+   "mixed": false,
+   "anchored": true,
+   "node_digest": "5ab2c3ebbb94febcbfc49a4123ae252eed8164ef99743e980ab961bfeb0b890a",
+   "correction_kind": "in-region-node-write",
+   "level0_verdict": "possibly-stale",
+   "level1_verdict": "possibly-stale",
+   "level0_witnesses": 1,
+   "level1_witnesses": 1,
+   "level1_terms_level0": 0,
+   "level1_terms_level1": 1,
+   "outcome": "OK",
+   "note": ""
+  },
+  {
+   "store": "sx-mathoverflow",
+   "cell": "t_node-anchored",
+   "mixed": false,
+   "anchored": true,
+   "node_digest": "5ab2c3ebbb94febcbfc49a4123ae252eed8164ef99743e980ab961bfeb0b890a",
+   "correction_kind": "out-of-region-node-write",
+   "level0_verdict": "possibly-stale",
+   "level1_verdict": "fresh",
+   "level0_witnesses": 1,
+   "level1_witnesses": 0,
+   "level1_terms_level0": 0,
+   "level1_terms_level1": 0,
+   "outcome": "OK",
+   "note": ""
+  },
+  {
+   "store": "sx-mathoverflow",
+   "cell": "t_node-unanchored",
+   "mixed": false,
+   "anchored": true,
+   "node_digest": "3de1295adfa61b21b5da52d00688af949c6156f6e34b8f0f47176ffa9a3f886b",
+   "correction_kind": "in-region-node-write",
+   "level0_verdict": "possibly-stale",
+   "level1_verdict": "possibly-stale",
+   "level0_witnesses": 1,
+   "level1_witnesses": 1,
+   "level1_terms_level0": 0,
+   "level1_terms_level1": 1,
+   "outcome": "OK",
+   "note": ""
+  },
+  {
+   "store": "sx-mathoverflow",
+   "cell": "t_node-unanchored",
+   "mixed": false,
+   "anchored": true,
+   "node_digest": "3de1295adfa61b21b5da52d00688af949c6156f6e34b8f0f47176ffa9a3f886b",
+   "correction_kind": "out-of-region-node-write",
+   "level0_verdict": "possibly-stale",
+   "level1_verdict": "fresh",
+   "level0_witnesses": 1,
+   "level1_witnesses": 0,
+   "level1_terms_level0": 0,
+   "level1_terms_level1": 0,
+   "outcome": "OK",
+   "note": ""
+  },
+  {
+   "store": "sx-mathoverflow",
+   "cell": "mixed-A2Q",
+   "mixed": true,
+   "anchored": false,
+   "node_digest": "1ee641194ae52f773b561be2aa7f26b8ab6ad9cec79b27e3d730b5cfb93e5d09",
+   "correction_kind": "",
+   "level0_verdict": "",
+   "level1_verdict": "",
+   "level0_witnesses": 0,
+   "level1_witnesses": 0,
+   "level1_terms_level0": 0,
+   "level1_terms_level1": 0,
+   "outcome": "TIMEOUT",
+   "note": "run_plan exceeded the 600s per-cell wall ceiling"
+  },
+  {
+   "store": "sx-mathoverflow",
+   "cell": "mixed-C2Q",
+   "mixed": true,
+   "anchored": false,
+   "node_digest": "70ba7a7dfa14e705c3e4e345a5a6c593245a9f4d5d584fa3214bc52a237511f0",
+   "correction_kind": "",
+   "level0_verdict": "",
+   "level1_verdict": "",
+   "level0_witnesses": 0,
+   "level1_witnesses": 0,
+   "level1_terms_level0": 0,
+   "level1_terms_level1": 0,
+   "outcome": "TIMEOUT",
+   "note": "run_plan exceeded the 600s per-cell wall ceiling"
+  },
+  {
+   "store": "sx-mathoverflow",
+   "cell": "mixed-C2A",
+   "mixed": true,
+   "anchored": false,
+   "node_digest": "6a6cb90547c55abcad3dd5cc029e26c965905ab0ad29c06f534bf1c584df9013",
+   "correction_kind": "",
+   "level0_verdict": "",
+   "level1_verdict": "",
+   "level0_witnesses": 0,
+   "level1_witnesses": 0,
+   "level1_terms_level0": 0,
+   "level1_terms_level1": 0,
+   "outcome": "TIMEOUT",
+   "note": "run_plan exceeded the 600s per-cell wall ceiling"
+  },
+  {
+   "store": "sx-mathoverflow",
+   "cell": "all-declared",
+   "mixed": false,
+   "anchored": false,
+   "node_digest": "6b578626520a688a99d6349bad9cb1b9c1d5ffcec0cb873163dc4fde725a6015",
+   "correction_kind": "",
+   "level0_verdict": "",
+   "level1_verdict": "",
+   "level0_witnesses": 0,
+   "level1_witnesses": 0,
+   "level1_terms_level0": 0,
+   "level1_terms_level1": 0,
+   "outcome": "TIMEOUT",
+   "note": "run_plan exceeded the 600s per-cell wall ceiling"
+  }
+ ]
+}

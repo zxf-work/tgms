@@ -1,0 +1,109 @@
+{
+ "generated": "2026-08-28T22:58:34+0000",
+ "measured_date": "2026-08-27",
+ "git_sha": "41c4066d9863775034ce44b76f9826642fc62680",
+ "campaign_yaml_sha256": "60a10e1ca68ca6d33cc7ea293aed2d9db2f2f67907a5ae0c029d2f93318c500b",
+ "freeze_document_sha256": "e94ecc1692c55f18e8d8837d81f7f0f1106f057b1024a1b08b5b3fac392bf6d0",
+ "profile": "full",
+ "backend": "native",
+ "store": "collegemsg",
+ "store_identity": "42e019ae7b670006aa20215917555c1c21986f7292ade42cd3b0e37cc176be3c",
+ "machine": {
+  "host": "itiger02",
+  "platform": "Linux-5.14.0-427.31.1.el9_4.x86_64-x86_64-with-glibc2.34",
+  "python": "3.12.13",
+  "cpus": 64
+ },
+ "arm": "pattern-l1-collegemsg",
+ "scorable": true,
+ "summary": {
+  "trials": 4,
+  "live": 4,
+  "cells": 2,
+  "mixed_cells": 0,
+  "level1_lift_trials": 2,
+  "level1_unsound_regressions": 0,
+  "floor": {
+   "required": {
+    "min_cells": 80,
+    "min_mixed_cells": 40
+   },
+   "achieved": {
+    "min_cells": 2,
+    "min_mixed_cells": 0
+   },
+   "met": {
+    "min_cells": false,
+    "min_mixed_cells": false
+   },
+   "all_met": false
+  }
+ },
+ "row_count": 4,
+ "rows": [
+  {
+   "store": "collegemsg",
+   "cell": "t_node-anchored",
+   "mixed": false,
+   "anchored": true,
+   "node_digest": "2545794c096cf2b8da5d5035db8339964d161d28a193e0eefaa43f3d3b726a98",
+   "correction_kind": "in-region-node-write",
+   "level0_verdict": "possibly-stale",
+   "level1_verdict": "possibly-stale",
+   "level0_witnesses": 1,
+   "level1_witnesses": 1,
+   "level1_terms_level0": 0,
+   "level1_terms_level1": 1,
+   "outcome": "OK",
+   "note": ""
+  },
+  {
+   "store": "collegemsg",
+   "cell": "t_node-anchored",
+   "mixed": false,
+   "anchored": true,
+   "node_digest": "2545794c096cf2b8da5d5035db8339964d161d28a193e0eefaa43f3d3b726a98",
+   "correction_kind": "out-of-region-node-write",
+   "level0_verdict": "possibly-stale",
+   "level1_verdict": "fresh",
+   "level0_witnesses": 1,
+   "level1_witnesses": 0,
+   "level1_terms_level0": 0,
+   "level1_terms_level1": 0,
+   "outcome": "OK",
+   "note": ""
+  },
+  {
+   "store": "collegemsg",
+   "cell": "t_node-unanchored",
+   "mixed": false,
+   "anchored": true,
+   "node_digest": "3de1295adfa61b21b5da52d00688af949c6156f6e34b8f0f47176ffa9a3f886b",
+   "correction_kind": "in-region-node-write",
+   "level0_verdict": "possibly-stale",
+   "level1_verdict": "possibly-stale",
+   "level0_witnesses": 1,
+   "level1_witnesses": 1,
+   "level1_terms_level0": 0,
+   "level1_terms_level1": 1,
+   "outcome": "OK",
+   "note": ""
+  },
+  {
+   "store": "collegemsg",
+   "cell": "t_node-unanchored",
+   "mixed": false,
+   "anchored": true,
+   "node_digest": "3de1295adfa61b21b5da52d00688af949c6156f6e34b8f0f47176ffa9a3f886b",
+   "correction_kind": "out-of-region-node-write",
+   "level0_verdict": "possibly-stale",
+   "level1_verdict": "fresh",
+   "level0_witnesses": 1,
+   "level1_witnesses": 0,
+   "level1_terms_level0": 0,
+   "level1_terms_level1": 0,
+   "outcome": "OK",
+   "note": ""
+  }
+ ]
+}

@@ -1,0 +1,828 @@
+{
+ "generated": "2026-08-28T23:58:04+0000",
+ "measured_date": "2026-08-27",
+ "git_sha": "41c4066d9863775034ce44b76f9826642fc62680",
+ "campaign_yaml_sha256": "60a10e1ca68ca6d33cc7ea293aed2d9db2f2f67907a5ae0c029d2f93318c500b",
+ "freeze_document_sha256": "e94ecc1692c55f18e8d8837d81f7f0f1106f057b1024a1b08b5b3fac392bf6d0",
+ "profile": "full",
+ "backend": "native",
+ "store": "sx-mathoverflow",
+ "store_identity": "0ac40f2fe5dee32c25ec733b11daf061b15177299c858e29ce01e2d75124623e",
+ "machine": {
+  "host": "itiger02",
+  "platform": "Linux-5.14.0-427.31.1.el9_4.x86_64-x86_64-with-glibc2.34",
+  "python": "3.12.13",
+  "cpus": 64
+ },
+ "arm": "zero-changed-ops-sx-mathoverflow",
+ "scorable": true,
+ "summary": {
+  "trials": 38,
+  "live": 38,
+  "changed_per_op": {
+   "snapshot_subgraph": 0,
+   "temporal_paths": 0,
+   "co_active": 0,
+   "find_temporal_motif_instances": 0
+  },
+  "false_fresh": 0,
+  "required_per_op": 20,
+  "met": {
+   "snapshot_subgraph": false,
+   "temporal_paths": false,
+   "co_active": false,
+   "find_temporal_motif_instances": false
+  },
+  "all_met": false
+ },
+ "row_count": 38,
+ "rows": [
+  {
+   "store": "sx-mathoverflow",
+   "op": "snapshot_subgraph",
+   "args_form": {
+    "seeds": [
+     "n1000",
+     "n1018"
+    ],
+    "t_valid": 1255311520000000,
+    "hops": 1
+   },
+   "correction_class": "B",
+   "placement": "in-window-read",
+   "changed": false,
+   "verdict": "possibly-stale",
+   "rows_returned_baseline": 0,
+   "outcome": "OK",
+   "note": ""
+  },
+  {
+   "store": "sx-mathoverflow",
+   "op": "snapshot_subgraph",
+   "args_form": {
+    "seeds": [
+     "n1000",
+     "n1018"
+    ],
+    "t_valid": 1255311520000000,
+    "hops": 1
+   },
+   "correction_class": "B",
+   "placement": "new-identity",
+   "changed": false,
+   "verdict": "possibly-stale",
+   "rows_returned_baseline": 0,
+   "outcome": "OK",
+   "note": ""
+  },
+  {
+   "store": "sx-mathoverflow",
+   "op": "snapshot_subgraph",
+   "args_form": {
+    "seeds": [
+     "n1000",
+     "n1018"
+    ],
+    "t_valid": 1255311520000000,
+    "hops": 1
+   },
+   "correction_class": "C",
+   "placement": "in-window-read",
+   "changed": false,
+   "verdict": "possibly-stale",
+   "rows_returned_baseline": 0,
+   "outcome": "OK",
+   "note": ""
+  },
+  {
+   "store": "sx-mathoverflow",
+   "op": "snapshot_subgraph",
+   "args_form": {
+    "seeds": [
+     "n1000",
+     "n1018"
+    ],
+    "t_valid": 1255311520000000,
+    "hops": 1
+   },
+   "correction_class": "C",
+   "placement": "in-window-read",
+   "changed": false,
+   "verdict": "possibly-stale",
+   "rows_returned_baseline": 0,
+   "outcome": "OK",
+   "note": ""
+  },
+  {
+   "store": "sx-mathoverflow",
+   "op": "snapshot_subgraph",
+   "args_form": {
+    "seeds": [
+     "n1000",
+     "n1018"
+    ],
+    "t_valid": 1255311520000000,
+    "hops": 1
+   },
+   "correction_class": "D",
+   "placement": "in-window-read",
+   "changed": false,
+   "verdict": "possibly-stale",
+   "rows_returned_baseline": 0,
+   "outcome": "OK",
+   "note": ""
+  },
+  {
+   "store": "sx-mathoverflow",
+   "op": "snapshot_subgraph",
+   "args_form": {
+    "seeds": [
+     "n1000",
+     "n1018"
+    ],
+    "t_valid": 1255311520000000,
+    "hops": 1
+   },
+   "correction_class": "D",
+   "placement": "in-window-read",
+   "changed": false,
+   "verdict": "possibly-stale",
+   "rows_returned_baseline": 0,
+   "outcome": "OK",
+   "note": ""
+  },
+  {
+   "store": "sx-mathoverflow",
+   "op": "temporal_paths",
+   "args_form": {
+    "src": "n1000",
+    "dst": "n1018",
+    "window": {
+     "t_a": 1254192988000000,
+     "t_b": 1256430052000001
+    },
+    "k": 3
+   },
+   "correction_class": "B",
+   "placement": "in-window-read",
+   "changed": false,
+   "verdict": "possibly-stale",
+   "rows_returned_baseline": 0,
+   "outcome": "OK",
+   "note": ""
+  },
+  {
+   "store": "sx-mathoverflow",
+   "op": "temporal_paths",
+   "args_form": {
+    "src": "n1000",
+    "dst": "n1018",
+    "window": {
+     "t_a": 1254192988000000,
+     "t_b": 1256430052000001
+    },
+    "k": 3
+   },
+   "correction_class": "B",
+   "placement": "in-window-unread",
+   "changed": false,
+   "verdict": "possibly-stale",
+   "rows_returned_baseline": 0,
+   "outcome": "OK",
+   "note": ""
+  },
+  {
+   "store": "sx-mathoverflow",
+   "op": "temporal_paths",
+   "args_form": {
+    "src": "n1000",
+    "dst": "n1018",
+    "window": {
+     "t_a": 1254192988000000,
+     "t_b": 1256430052000001
+    },
+    "k": 3
+   },
+   "correction_class": "B",
+   "placement": "new-identity",
+   "changed": false,
+   "verdict": "possibly-stale",
+   "rows_returned_baseline": 0,
+   "outcome": "OK",
+   "note": ""
+  },
+  {
+   "store": "sx-mathoverflow",
+   "op": "temporal_paths",
+   "args_form": {
+    "src": "n1000",
+    "dst": "n1018",
+    "window": {
+     "t_a": 1254192988000000,
+     "t_b": 1256430052000001
+    },
+    "k": 3
+   },
+   "correction_class": "C",
+   "placement": "in-window-read",
+   "changed": false,
+   "verdict": "possibly-stale",
+   "rows_returned_baseline": 0,
+   "outcome": "OK",
+   "note": ""
+  },
+  {
+   "store": "sx-mathoverflow",
+   "op": "temporal_paths",
+   "args_form": {
+    "src": "n1000",
+    "dst": "n1018",
+    "window": {
+     "t_a": 1254192988000000,
+     "t_b": 1256430052000001
+    },
+    "k": 3
+   },
+   "correction_class": "C",
+   "placement": "in-window-unread",
+   "changed": false,
+   "verdict": "possibly-stale",
+   "rows_returned_baseline": 0,
+   "outcome": "OK",
+   "note": ""
+  },
+  {
+   "store": "sx-mathoverflow",
+   "op": "temporal_paths",
+   "args_form": {
+    "src": "n1000",
+    "dst": "n1018",
+    "window": {
+     "t_a": 1254192988000000,
+     "t_b": 1256430052000001
+    },
+    "k": 3
+   },
+   "correction_class": "C",
+   "placement": "in-window-read",
+   "changed": false,
+   "verdict": "possibly-stale",
+   "rows_returned_baseline": 0,
+   "outcome": "OK",
+   "note": ""
+  },
+  {
+   "store": "sx-mathoverflow",
+   "op": "temporal_paths",
+   "args_form": {
+    "src": "n1000",
+    "dst": "n1018",
+    "window": {
+     "t_a": 1254192988000000,
+     "t_b": 1256430052000001
+    },
+    "k": 3
+   },
+   "correction_class": "C",
+   "placement": "in-window-unread",
+   "changed": false,
+   "verdict": "possibly-stale",
+   "rows_returned_baseline": 0,
+   "outcome": "OK",
+   "note": ""
+  },
+  {
+   "store": "sx-mathoverflow",
+   "op": "temporal_paths",
+   "args_form": {
+    "src": "n1000",
+    "dst": "n1018",
+    "window": {
+     "t_a": 1254192988000000,
+     "t_b": 1256430052000001
+    },
+    "k": 3
+   },
+   "correction_class": "C",
+   "placement": "outside-window-read",
+   "changed": false,
+   "verdict": "possibly-stale",
+   "rows_returned_baseline": 0,
+   "outcome": "OK",
+   "note": ""
+  },
+  {
+   "store": "sx-mathoverflow",
+   "op": "temporal_paths",
+   "args_form": {
+    "src": "n1000",
+    "dst": "n1018",
+    "window": {
+     "t_a": 1254192988000000,
+     "t_b": 1256430052000001
+    },
+    "k": 3
+   },
+   "correction_class": "C",
+   "placement": "outside-window-unread",
+   "changed": false,
+   "verdict": "possibly-stale",
+   "rows_returned_baseline": 0,
+   "outcome": "OK",
+   "note": ""
+  },
+  {
+   "store": "sx-mathoverflow",
+   "op": "temporal_paths",
+   "args_form": {
+    "src": "n1000",
+    "dst": "n1018",
+    "window": {
+     "t_a": 1254192988000000,
+     "t_b": 1256430052000001
+    },
+    "k": 3
+   },
+   "correction_class": "D",
+   "placement": "in-window-read",
+   "changed": false,
+   "verdict": "possibly-stale",
+   "rows_returned_baseline": 0,
+   "outcome": "OK",
+   "note": ""
+  },
+  {
+   "store": "sx-mathoverflow",
+   "op": "temporal_paths",
+   "args_form": {
+    "src": "n1000",
+    "dst": "n1018",
+    "window": {
+     "t_a": 1254192988000000,
+     "t_b": 1256430052000001
+    },
+    "k": 3
+   },
+   "correction_class": "D",
+   "placement": "in-window-unread",
+   "changed": false,
+   "verdict": "possibly-stale",
+   "rows_returned_baseline": 0,
+   "outcome": "OK",
+   "note": ""
+  },
+  {
+   "store": "sx-mathoverflow",
+   "op": "temporal_paths",
+   "args_form": {
+    "src": "n1000",
+    "dst": "n1018",
+    "window": {
+     "t_a": 1254192988000000,
+     "t_b": 1256430052000001
+    },
+    "k": 3
+   },
+   "correction_class": "D",
+   "placement": "in-window-read",
+   "changed": false,
+   "verdict": "possibly-stale",
+   "rows_returned_baseline": 0,
+   "outcome": "OK",
+   "note": ""
+  },
+  {
+   "store": "sx-mathoverflow",
+   "op": "temporal_paths",
+   "args_form": {
+    "src": "n1000",
+    "dst": "n1018",
+    "window": {
+     "t_a": 1254192988000000,
+     "t_b": 1256430052000001
+    },
+    "k": 3
+   },
+   "correction_class": "D",
+   "placement": "in-window-unread",
+   "changed": false,
+   "verdict": "possibly-stale",
+   "rows_returned_baseline": 0,
+   "outcome": "OK",
+   "note": ""
+  },
+  {
+   "store": "sx-mathoverflow",
+   "op": "co_active",
+   "args_form": {
+    "a_spec": {
+     "rel_type": "A2Q"
+    },
+    "b_spec": {
+     "rel_type": "A2Q"
+    },
+    "allen_relation": {
+     "relation": "overlaps"
+    },
+    "limit": 200
+   },
+   "correction_class": "B",
+   "placement": "in-window-read",
+   "changed": false,
+   "verdict": "possibly-stale",
+   "rows_returned_baseline": 0,
+   "outcome": "OK",
+   "note": ""
+  },
+  {
+   "store": "sx-mathoverflow",
+   "op": "co_active",
+   "args_form": {
+    "a_spec": {
+     "rel_type": "A2Q"
+    },
+    "b_spec": {
+     "rel_type": "A2Q"
+    },
+    "allen_relation": {
+     "relation": "overlaps"
+    },
+    "limit": 200
+   },
+   "correction_class": "B",
+   "placement": "outside-window-read",
+   "changed": false,
+   "verdict": "possibly-stale",
+   "rows_returned_baseline": 0,
+   "outcome": "OK",
+   "note": ""
+  },
+  {
+   "store": "sx-mathoverflow",
+   "op": "co_active",
+   "args_form": {
+    "a_spec": {
+     "rel_type": "A2Q"
+    },
+    "b_spec": {
+     "rel_type": "A2Q"
+    },
+    "allen_relation": {
+     "relation": "overlaps"
+    },
+    "limit": 200
+   },
+   "correction_class": "B",
+   "placement": "new-identity",
+   "changed": false,
+   "verdict": "possibly-stale",
+   "rows_returned_baseline": 0,
+   "outcome": "OK",
+   "note": ""
+  },
+  {
+   "store": "sx-mathoverflow",
+   "op": "co_active",
+   "args_form": {
+    "a_spec": {
+     "rel_type": "A2Q"
+    },
+    "b_spec": {
+     "rel_type": "A2Q"
+    },
+    "allen_relation": {
+     "relation": "overlaps"
+    },
+    "limit": 200
+   },
+   "correction_class": "C",
+   "placement": "in-window-read",
+   "changed": false,
+   "verdict": "possibly-stale",
+   "rows_returned_baseline": 0,
+   "outcome": "OK",
+   "note": ""
+  },
+  {
+   "store": "sx-mathoverflow",
+   "op": "co_active",
+   "args_form": {
+    "a_spec": {
+     "rel_type": "A2Q"
+    },
+    "b_spec": {
+     "rel_type": "A2Q"
+    },
+    "allen_relation": {
+     "relation": "overlaps"
+    },
+    "limit": 200
+   },
+   "correction_class": "C",
+   "placement": "outside-window-read",
+   "changed": false,
+   "verdict": "possibly-stale",
+   "rows_returned_baseline": 0,
+   "outcome": "OK",
+   "note": ""
+  },
+  {
+   "store": "sx-mathoverflow",
+   "op": "co_active",
+   "args_form": {
+    "a_spec": {
+     "rel_type": "A2Q"
+    },
+    "b_spec": {
+     "rel_type": "A2Q"
+    },
+    "allen_relation": {
+     "relation": "overlaps"
+    },
+    "limit": 200
+   },
+   "correction_class": "C",
+   "placement": "in-window-read",
+   "changed": false,
+   "verdict": "possibly-stale",
+   "rows_returned_baseline": 0,
+   "outcome": "OK",
+   "note": ""
+  },
+  {
+   "store": "sx-mathoverflow",
+   "op": "co_active",
+   "args_form": {
+    "a_spec": {
+     "rel_type": "A2Q"
+    },
+    "b_spec": {
+     "rel_type": "A2Q"
+    },
+    "allen_relation": {
+     "relation": "overlaps"
+    },
+    "limit": 200
+   },
+   "correction_class": "C",
+   "placement": "outside-window-read",
+   "changed": false,
+   "verdict": "possibly-stale",
+   "rows_returned_baseline": 0,
+   "outcome": "OK",
+   "note": ""
+  },
+  {
+   "store": "sx-mathoverflow",
+   "op": "co_active",
+   "args_form": {
+    "a_spec": {
+     "rel_type": "A2Q"
+    },
+    "b_spec": {
+     "rel_type": "A2Q"
+    },
+    "allen_relation": {
+     "relation": "overlaps"
+    },
+    "limit": 200
+   },
+   "correction_class": "D",
+   "placement": "in-window-read",
+   "changed": false,
+   "verdict": "possibly-stale",
+   "rows_returned_baseline": 0,
+   "outcome": "OK",
+   "note": ""
+  },
+  {
+   "store": "sx-mathoverflow",
+   "op": "co_active",
+   "args_form": {
+    "a_spec": {
+     "rel_type": "A2Q"
+    },
+    "b_spec": {
+     "rel_type": "A2Q"
+    },
+    "allen_relation": {
+     "relation": "overlaps"
+    },
+    "limit": 200
+   },
+   "correction_class": "D",
+   "placement": "outside-window-read",
+   "changed": false,
+   "verdict": "possibly-stale",
+   "rows_returned_baseline": 0,
+   "outcome": "OK",
+   "note": ""
+  },
+  {
+   "store": "sx-mathoverflow",
+   "op": "co_active",
+   "args_form": {
+    "a_spec": {
+     "rel_type": "A2Q"
+    },
+    "b_spec": {
+     "rel_type": "A2Q"
+    },
+    "allen_relation": {
+     "relation": "overlaps"
+    },
+    "limit": 200
+   },
+   "correction_class": "D",
+   "placement": "in-window-read",
+   "changed": false,
+   "verdict": "possibly-stale",
+   "rows_returned_baseline": 0,
+   "outcome": "OK",
+   "note": ""
+  },
+  {
+   "store": "sx-mathoverflow",
+   "op": "co_active",
+   "args_form": {
+    "a_spec": {
+     "rel_type": "A2Q"
+    },
+    "b_spec": {
+     "rel_type": "A2Q"
+    },
+    "allen_relation": {
+     "relation": "overlaps"
+    },
+    "limit": 200
+   },
+   "correction_class": "D",
+   "placement": "outside-window-read",
+   "changed": false,
+   "verdict": "possibly-stale",
+   "rows_returned_baseline": 0,
+   "outcome": "OK",
+   "note": ""
+  },
+  {
+   "store": "sx-mathoverflow",
+   "op": "find_temporal_motif_instances",
+   "args_form": {
+    "motif": "M_2node_pingpong",
+    "window": {
+     "t_a": 1254192988000000,
+     "t_b": 1256430052000001
+    },
+    "delta": 279633000000,
+    "limit": 50
+   },
+   "correction_class": "B",
+   "placement": "in-window-read",
+   "changed": false,
+   "verdict": "possibly-stale",
+   "rows_returned_baseline": 50,
+   "outcome": "OK",
+   "note": ""
+  },
+  {
+   "store": "sx-mathoverflow",
+   "op": "find_temporal_motif_instances",
+   "args_form": {
+    "motif": "M_2node_pingpong",
+    "window": {
+     "t_a": 1254192988000000,
+     "t_b": 1256430052000001
+    },
+    "delta": 279633000000,
+    "limit": 50
+   },
+   "correction_class": "B",
+   "placement": "outside-window-read",
+   "changed": false,
+   "verdict": "possibly-stale",
+   "rows_returned_baseline": 50,
+   "outcome": "OK",
+   "note": ""
+  },
+  {
+   "store": "sx-mathoverflow",
+   "op": "find_temporal_motif_instances",
+   "args_form": {
+    "motif": "M_2node_pingpong",
+    "window": {
+     "t_a": 1254192988000000,
+     "t_b": 1256430052000001
+    },
+    "delta": 279633000000,
+    "limit": 50
+   },
+   "correction_class": "B",
+   "placement": "new-identity",
+   "changed": false,
+   "verdict": "possibly-stale",
+   "rows_returned_baseline": 50,
+   "outcome": "OK",
+   "note": ""
+  },
+  {
+   "store": "sx-mathoverflow",
+   "op": "find_temporal_motif_instances",
+   "args_form": {
+    "motif": "M_2node_pingpong",
+    "window": {
+     "t_a": 1254192988000000,
+     "t_b": 1256430052000001
+    },
+    "delta": 279633000000,
+    "limit": 50
+   },
+   "correction_class": "C",
+   "placement": "in-window-read",
+   "changed": false,
+   "verdict": "possibly-stale",
+   "rows_returned_baseline": 50,
+   "outcome": "OK",
+   "note": ""
+  },
+  {
+   "store": "sx-mathoverflow",
+   "op": "find_temporal_motif_instances",
+   "args_form": {
+    "motif": "M_2node_pingpong",
+    "window": {
+     "t_a": 1254192988000000,
+     "t_b": 1256430052000001
+    },
+    "delta": 279633000000,
+    "limit": 50
+   },
+   "correction_class": "C",
+   "placement": "in-window-read",
+   "changed": false,
+   "verdict": "possibly-stale",
+   "rows_returned_baseline": 50,
+   "outcome": "OK",
+   "note": ""
+  },
+  {
+   "store": "sx-mathoverflow",
+   "op": "find_temporal_motif_instances",
+   "args_form": {
+    "motif": "M_2node_pingpong",
+    "window": {
+     "t_a": 1254192988000000,
+     "t_b": 1256430052000001
+    },
+    "delta": 279633000000,
+    "limit": 50
+   },
+   "correction_class": "D",
+   "placement": "in-window-read",
+   "changed": false,
+   "verdict": "possibly-stale",
+   "rows_returned_baseline": 50,
+   "outcome": "OK",
+   "note": ""
+  },
+  {
+   "store": "sx-mathoverflow",
+   "op": "find_temporal_motif_instances",
+   "args_form": {
+    "motif": "M_2node_pingpong",
+    "window": {
+     "t_a": 1254192988000000,
+     "t_b": 1256430052000001
+    },
+    "delta": 279633000000,
+    "limit": 50
+   },
+   "correction_class": "D",
+   "placement": "outside-window-read",
+   "changed": false,
+   "verdict": "possibly-stale",
+   "rows_returned_baseline": 50,
+   "outcome": "OK",
+   "note": ""
+  },
+  {
+   "store": "sx-mathoverflow",
+   "op": "find_temporal_motif_instances",
+   "args_form": {
+    "motif": "M_2node_pingpong",
+    "window": {
+     "t_a": 1254192988000000,
+     "t_b": 1256430052000001
+    },
+    "delta": 279633000000,
+    "limit": 50
+   },
+   "correction_class": "D",
+   "placement": "in-window-read",
+   "changed": false,
+   "verdict": "possibly-stale",
+   "rows_returned_baseline": 50,
+   "outcome": "OK",
+   "note": ""
+  }
+ ]
+}
