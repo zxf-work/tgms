@@ -247,7 +247,7 @@ def _git_sha() -> str:
 
 
 def receipt(*, profile: str, store_label: str | None, backend: str,
-           store_identity: str | None = None,
+           store_identity: str | None = None, run: str | None = None,
            extra: dict[str, Any] | None = None) -> dict[str, Any]:
     """The four-key record shape (`eval_harness.py`'s pattern, restated by
     the freeze's §A10): **machine + sha + store identity + date** per file.
@@ -257,8 +257,12 @@ def receipt(*, profile: str, store_label: str | None, backend: str,
     pristine store, and pass through; this function does not open a store
     itself (`sx-mathoverflow` alone is 70+ MB, and this is called once per
     arm per store — five redundant opens per store for one digest each
-    would be pure waste)."""
-    return {
+    would be pure waste). `run` is a top-up profile's `run_tag` (e.g.
+    `"topup-1"`) — `None` (the key is simply absent) for the run of record
+    itself, so the scored-alone rule §H names is mechanically visible in
+    every top-up record without a reader having to infer it from the
+    filename alone."""
+    out = {
         "generated": time.strftime("%Y-%m-%dT%H:%M:%S%z"),
         "measured_date": measured_date(),
         "git_sha": _git_sha(),
@@ -272,6 +276,9 @@ def receipt(*, profile: str, store_label: str | None, backend: str,
                     "python": platform.python_version(), "cpus": os.cpu_count()},
         **(extra or {}),
     }
+    if run is not None:
+        out["run"] = run
+    return out
 
 
 def log_line(msg: str) -> None:
@@ -309,6 +316,13 @@ OUTCOME_REFUSED = "REFUSED_ON_RECOMPUTE"
 OUTCOME_ERRORED = "ERRORED"
 OUTCOME_NOT_INJECTED = "NOT_INJECTED"
 OUTCOME_TIMEOUT = "TIMEOUT"
+#: A population cell the generator cannot build on this store's corpus at
+#: all — e.g. a mixed declared/undeclared PatternMatch cell on a
+#: single-typed store, which needs >= 2 edge types to exist structurally
+#: (R-11's own ruling). Recorded per missing slot, by name, never a
+#: silently smaller cell count (§G3/§G5's discipline, applied to the
+#: generator's own shortfall rather than to a measured population).
+OUTCOME_UNCONSTRUCTIBLE = "UNCONSTRUCTIBLE_BY_CORPUS"
 
 #: §A10 [INHERITED, `PAPER_A_EVIDENCE_FREEZE.md` §C5]: "Hard per-cell wall
 #: ceiling: 600 s ... recorded as TIMEOUT. No cell runs unbounded; no
@@ -896,68 +910,200 @@ def _pattern_record(store: Any, root: Any, result: dict[str, Any], name: str) ->
     )
 
 
-def _t_node_patterns(rel: str) -> list[tuple[str, Any]]:
-    from tgms.tgir.node import EdgePat, NodePat, Pattern
-    return [
-        ("t_node-anchored", Pattern((NodePat("x"), NodePat("y")),
-                                    (EdgePat("e1", "x", "y", rel),))),
-        ("t_node-unanchored", Pattern((NodePat("x"), NodePat("y")),
-                                      (EdgePat("e1", "x", "y"),))),
-    ]
+#: One (name, pattern, sources, mixed, anchored) cell spec.
+CellSpec = tuple[str, Any, tuple, bool, bool]
 
 
-def _mixed_patterns(rel_types: Sequence[str]) -> list[tuple[str, Any]]:
-    """The mixed declared/undeclared population (§A4's 2026-08-27
-    correction) — needs >= 2 edge types in the store, which only
-    `sx-mathoverflow` provides among the scored stores. One `EdgePat`
-    declares a type, the other leaves `rel_type=None` (scans every type)."""
+def _anchor(var: str, uid: str) -> Any:
+    """One `Source` binding a pattern node variable to a single concrete
+    uid via a one-row `NodeScan` — the "smaller anchored sets" lever
+    (Addendum 5 / the coordinator's follow-up): fully anchoring every node
+    variable in a cell collapses what would otherwise be an unconstrained
+    join over the whole store down to a handful of concrete lookups.
+    Empirically, against the real `sx-mathoverflow` store (500k events)
+    while building this generator: a 2-edge mixed pattern with one
+    endpoint anchored per edge ran ~17s; with all four endpoints anchored,
+    ~0.8s. Four of the original (unanchored, single-anchor) mixed cells
+    hit the 600s wall in the run of record (Addendum 5) — full anchoring
+    is what fixes that, not a longer ceiling."""
+    from tgms.tgir.node import NodeScan, Source
+    return Source(var, NodeScan(var, uids=(uid,)))
+
+
+def _anchor_uids_of(sources: tuple) -> tuple[str, ...]:
+    """The concrete uids a cell's `sources` bound its node variables to —
+    read back off each `Source.relation` (a `NodeScan`), never re-derived.
+    Used to build a "declared-type edge write" correction that actually
+    lands ON a mixed cell's own anchor identities (see
+    `_pattern_correction_probes`) — a random edge between two unrelated
+    uids cannot invalidate a *fully anchored* pattern's already-narrow
+    Level-0 scope any more than it can Level-1's, so the useful in-region
+    edge probe has to target the cell's own anchors specifically."""
+    out: list[str] = []
+    for src in sources:
+        uids = getattr(getattr(src, "relation", None), "uids", None)
+        if uids:
+            out.append(uids[0])
+    return tuple(out)
+
+
+def _t_node_cells(rng: random.Random, uids: Sequence[str], rel_types: Sequence[str],
+                  n: int, *, anchored: bool) -> list[CellSpec]:
+    """`n` single-edge T_node-win cells (§A4's other class — "any scored
+    store, anchored and unanchored"), varying the anchor uid and the
+    declared rel_type draw by draw so they are not `n` copies of the same
+    query. This is the class that pads a single-typed store's cell count
+    toward R-11's 80 floor: it needs no second edge type at all."""
     from tgms.tgir.node import EdgePat, NodePat, Pattern
-    out = []
-    for declared in rel_types:
-        out.append((f"mixed-{declared}", Pattern(
-            (NodePat("x"), NodePat("y"), NodePat("u"), NodePat("v")),
-            (EdgePat("e1", "x", "y", declared), EdgePat("e2", "u", "v", None)))))
+    rels = list(rel_types) or ["R"]
+    out: list[CellSpec] = []
+    for i in range(n):
+        rel = rels[i % len(rels)]
+        pattern = Pattern((NodePat("x"), NodePat("y")), (EdgePat("e1", "x", "y", rel),))
+        if anchored and uids:
+            sources = (_anchor("x", rng.choice(uids)),)
+            name = f"t_node-anchored-{i}"
+        else:
+            sources = ()
+            name = f"t_node-unanchored-{i}"
+        out.append((name, pattern, sources, False, anchored))
     return out
 
 
-def _all_declared_patterns(rel_types: Sequence[str]) -> list[tuple[str, Any]]:
+def _mixed_cells(rng: random.Random, uids: Sequence[str], rel_types: Sequence[str],
+                 n: int) -> list[CellSpec]:
+    """`n` mixed declared/undeclared cells (§A4's 2026-08-27 correction —
+    R-11's own definition, restated by the coordinator's follow-up: "a
+    PatternMatch whose edge variables include at least one with a declared
+    rel_type and at least one without"). Needs >= 2 edge types, which only
+    `sx-mathoverflow` provides among the scored stores.
+
+    Two pattern shapes, alternated, per the coordinator's ask for shape
+    variety: a **2-edge** pair `(x,y)`/`(u,v)` with one edge declared and
+    the other not, and a **3-edge chain** `a-b-c-d` with exactly one of
+    the three edges left undeclared (the other two draw independently from
+    `rel_types`, so two chains with the same undeclared position still
+    differ in their declared types). Every node variable is fully
+    anchored (see `_anchor`), which is what keeps each cell well under the
+    600s wall on a real-scale store."""
+    from tgms.tgir.node import EdgePat, NodePat, Pattern
+    rels = list(rel_types)
+    out: list[CellSpec] = []
+    if len(rels) < 2 or len(uids) < 4:
+        return out
+    i = 0
+    while len(out) < n:
+        if i % 2 == 0:
+            declared_first = (i % 4) < 2
+            decl_rel = rels[i % len(rels)]
+            if declared_first:
+                edges = (EdgePat("e1", "x", "y", decl_rel), EdgePat("e2", "u", "v", None))
+            else:
+                edges = (EdgePat("e1", "x", "y", None), EdgePat("e2", "u", "v", decl_rel))
+            pattern = Pattern((NodePat("x"), NodePat("y"), NodePat("u"), NodePat("v")), edges)
+            vs = ("x", "y", "u", "v")
+            shape = "2edge"
+        else:
+            which_undeclared = i % 3
+            edges = tuple(
+                EdgePat(evar, a, b, None if idx == which_undeclared else rels[(i + idx) % len(rels)])
+                for idx, (evar, a, b) in enumerate(
+                    (("e1", "a", "b"), ("e2", "b", "c"), ("e3", "c", "d"))))
+            pattern = Pattern((NodePat("a"), NodePat("b"), NodePat("c"), NodePat("d")), edges)
+            vs = ("a", "b", "c", "d")
+            shape = "3edge"
+        anchor_uids = (rng.sample(uids, len(vs)) if len(uids) >= len(vs)
+                      else [uids[j % len(uids)] for j in range(len(vs))])
+        sources = tuple(_anchor(v, u) for v, u in zip(vs, anchor_uids))
+        out.append((f"mixed-{shape}-{i}", pattern, sources, True, True))
+        i += 1
+    return out[:n]
+
+
+def _all_declared_cells(rng: random.Random, uids: Sequence[str], rel_types: Sequence[str],
+                        n: int) -> list[CellSpec]:
     """The all-declared control named in §A4: structurally narrower, never
     counted toward the mixed win (per the 2026-08-27 correction and
     `tests/test_scan_region_pattern.py::
     test_ab_out_foreign_rel_type_is_fresh_at_both_levels_when_all_declared`).
     Recorded anyway — its own column, reported not gated."""
     from tgms.tgir.node import EdgePat, NodePat, Pattern
-    if len(rel_types) < 2:
-        return []
-    a, b = rel_types[0], rel_types[1]
-    return [("all-declared", Pattern(
-        (NodePat("x"), NodePat("y"), NodePat("u"), NodePat("v")),
-        (EdgePat("e1", "x", "y", a), EdgePat("e2", "u", "v", b))))]
+    rels = list(rel_types)
+    out: list[CellSpec] = []
+    if len(rels) < 2 or len(uids) < 4:
+        return out
+    for i in range(n):
+        a, b = (rng.sample(rels, 2) if len(rels) >= 2 else (rels[0], rels[0]))
+        pattern = Pattern((NodePat("x"), NodePat("y"), NodePat("u"), NodePat("v")),
+                          (EdgePat("e1", "x", "y", a), EdgePat("e2", "u", "v", b)))
+        anchor_uids = rng.sample(uids, 4) if len(uids) >= 4 else [uids[j % len(uids)] for j in range(4)]
+        sources = tuple(_anchor(v, u) for v, u in zip(("x", "y", "u", "v"), anchor_uids))
+        out.append((f"all-declared-{i}", pattern, sources, False, True))
+    return out
 
 
 def pattern_l1_sweep(store_label: str, path: Path, cfg: dict[str, Any], *,
                      backend: str, single_typed: bool, rel_types: Sequence[str],
-                     n_corrections: int, rng: random.Random) -> list[PatternL1Trial]:
+                     min_cells: int, min_mixed_cells: int,
+                     rng: random.Random) -> list[PatternL1Trial]:
     """§A4 / §C2. `mixed=True` cells only fire on a multi-typed store
     (`mixed_requires_multi_typed_store` in campaign.yaml) — a single-typed
     store contributes T_node-win cells only, per the freeze's own ruling
-    that the per-variable `rel_types` win is unconstructible there."""
+    that the per-variable `rel_types` win is unconstructible there, and
+    reports the `min_mixed_cells` shortfall as `min_mixed_cells` explicit
+    `UNCONSTRUCTIBLE_BY_CORPUS` rows rather than a silently smaller count.
+
+    `min_cells`/`min_mixed_cells` are the *targets* this sweep tries to
+    build toward, not a guarantee — a cell that times out or refuses still
+    consumes one of the population slots planned for it and is recorded by
+    name (§H2's "not adequately measured", never a lowered floor); the
+    actual achieved counts are read back from the returned trials by
+    `summarize_pattern_l1`, same as every other arm in this file.
+    """
     from tgms.tgir.execute import run_plan
     from tgms.tgir.node import PatternMatch
     from tgms.tgir.types import Sigma
     from tgms.artifact.witness import check_artifact
 
     store = tgms.open(path, backend=backend)
-    sub = probe_substrate(store, rng=rng)
-    rel = sub.rel_types[0] if sub.rel_types else "R"
-    patterns: list[tuple[str, Any, bool]] = [
-        (n, p, False) for n, p in _t_node_patterns(rel)]
-    if not single_typed and len(rel_types) >= 2:
-        patterns += [(n, p, True) for n, p in _mixed_patterns(rel_types)]
-        patterns += [(n, p, False) for n, p in _all_declared_patterns(rel_types)]
+    sub = probe_substrate(store, rng=rng, sample=400)
+    uids = list(sub.uids)
+    rel0 = rel_types[0] if rel_types else (sub.rel_types[0] if sub.rel_types else "R")
+
     trials: list[PatternL1Trial] = []
-    for name, pattern, mixed in patterns:
-        root = PatternMatch(pattern, sigma_=Sigma.default())
+    cell_specs: list[CellSpec] = []
+    from tgms.tgir.node import EdgePat, NodePat, Pattern
+    # one unanchored T_node cell kept for continuity with the original,
+    # smaller population (§1.8 test 4's own shape, no anchoring at all)
+    cell_specs.append(("t_node-unanchored",
+                       Pattern((NodePat("x"), NodePat("y")), (EdgePat("e1", "x", "y", rel0),)),
+                       (), False, False))
+
+    if not single_typed and len(rel_types) >= 2 and len(uids) >= 4:
+        cell_specs += _mixed_cells(rng, uids, rel_types, min_mixed_cells)
+        n_more = max(0, min_cells - len(cell_specs))
+        cell_specs += _t_node_cells(rng, uids, rel_types, n_more, anchored=True)
+        cell_specs += _all_declared_cells(rng, uids, rel_types, 3)
+    else:
+        n_more = max(0, min_cells - len(cell_specs))
+        cell_specs += _t_node_cells(rng, uids, (rel0,), n_more, anchored=True)
+        reason = (f"{store_label} is single-typed ({rel0!r} only)" if single_typed
+                 else f"{store_label} has too small a sampled uid pool ({len(uids)} < 4) "
+                      f"to anchor a 4-variable mixed pattern")
+        for i in range(min_mixed_cells):
+            trials.append(PatternL1Trial(
+                store=store_label, cell=f"mixed-unconstructible-{i}", mixed=True, anchored=False,
+                node_digest="", correction_kind="", level0_verdict="", level1_verdict="",
+                level0_witnesses=0, level1_witnesses=0, level1_terms_level0=0,
+                level1_terms_level1=0, outcome=OUTCOME_UNCONSTRUCTIBLE,
+                note=f"{reason} — a mixed declared/undeclared pattern needs >= 2 edge "
+                     f"types in the store (R-11's own ruling) and cannot be "
+                     f"constructed here; recorded per-slot rather than a silent shortfall"))
+        log_line(f"UNCONSTRUCTIBLE pattern-l1 {store_label}: {min_mixed_cells} mixed slots "
+                f"({reason})")
+
+    for name, pattern, sources, mixed, anchored in cell_specs:
+        root = PatternMatch(pattern, sources=sources, sigma_=Sigma.default())
 
         def _run() -> dict[str, Any]:
             return run_plan(root, store.adapter, tt_source=store,
@@ -968,19 +1114,19 @@ def pattern_l1_sweep(store_label: str, path: Path, cfg: dict[str, Any], *,
             result, timed_out = _with_timeout(_run, seconds=CELL_TIMEOUT_S)
         except TgmsError as e:
             trials.append(PatternL1Trial(
-                store=store_label, cell=name, mixed=mixed, anchored="anchored" in name,
+                store=store_label, cell=name, mixed=mixed, anchored=anchored,
                 node_digest="", correction_kind="", level0_verdict="", level1_verdict="",
                 level0_witnesses=0, level1_witnesses=0, level1_terms_level0=0,
                 level1_terms_level1=0, outcome=OUTCOME_REFUSED, note=str(e)))
             continue
         if timed_out:
-            # §A10's hard per-cell wall ceiling — a MIXED pattern's
-            # undeclared-type edge scan is the one this harness observed
-            # taking minutes on `sx-mathoverflow` (real scale) while
-            # building this file; recorded by name, never silently waited
-            # out, and never counted toward R-11's cell floor.
+            # §A10's hard per-cell wall ceiling — an unanchored (or
+            # under-anchored) mixed pattern's undeclared-type edge scan is
+            # what the run of record (Addendum 5) hit minutes on at real
+            # scale; recorded by name, never silently waited out, and
+            # never counted toward R-11's cell floor.
             trials.append(PatternL1Trial(
-                store=store_label, cell=name, mixed=mixed, anchored="anchored" in name,
+                store=store_label, cell=name, mixed=mixed, anchored=anchored,
                 node_digest=root.node_digest, correction_kind="", level0_verdict="",
                 level1_verdict="", level0_witnesses=0, level1_witnesses=0,
                 level1_terms_level0=0, level1_terms_level1=0, outcome=OUTCOME_TIMEOUT,
@@ -989,7 +1135,9 @@ def pattern_l1_sweep(store_label: str, path: Path, cfg: dict[str, Any], *,
                     f"run_plan exceeded {CELL_TIMEOUT_S}s")
             continue
         record = _pattern_record(store, root, result, name)
-        for kind, corrector in _pattern_correction_probes(sub):
+        anchor_uids = _anchor_uids_of(sources)
+        for kind, corrector in _pattern_correction_probes(
+                sub, rel_types if mixed else (), anchor_uids):
             work = _isolated_copy(path)
             wstore = tgms.open(work, backend=backend)
             try:
@@ -1006,7 +1154,7 @@ def pattern_l1_sweep(store_label: str, path: Path, cfg: dict[str, Any], *,
                 v0 = check_artifact(record, wstore.eventlog, level1=False, chain_cache=cache)
                 v1 = check_artifact(record, wstore.eventlog, level1=True, chain_cache=cache)
                 trials.append(PatternL1Trial(
-                    store=store_label, cell=name, mixed=mixed, anchored="anchored" in name,
+                    store=store_label, cell=name, mixed=mixed, anchored=anchored,
                     node_digest=root.node_digest, correction_kind=kind,
                     level0_verdict=v0.steps.to_json()["verdict"],
                     level1_verdict=v1.steps.to_json()["verdict"],
@@ -1022,7 +1170,10 @@ def pattern_l1_sweep(store_label: str, path: Path, cfg: dict[str, Any], *,
     return trials
 
 
-def _pattern_correction_probes(sub: Substrate) -> list[tuple[str, Callable[[Any], bool]]]:
+def _pattern_correction_probes(sub: Substrate,
+                               rel_types: Sequence[str] = (),
+                               anchor_uids: Sequence[str] = ()
+                               ) -> list[tuple[str, Callable[[Any], bool]]]:
     """The correction shapes §1.8's tests exercise: a node write on a
     plausibly-matched uid ('in-region'), and a node write on an uid unlikely
     to be an endpoint of any scanned edge ('out-of-region', §1.8 test 4 —
@@ -1030,11 +1181,26 @@ def _pattern_correction_probes(sub: Substrate) -> list[tuple[str, Callable[[Any]
     does not name a specific probe menu for the campaign population (only
     the unit-test suite has fixed scenarios); this harness's own choice,
     recorded here rather than assumed, is to reuse the two shapes the
-    soundness suite already proved distinguish Level 0 from Level 1."""
+    soundness suite already proved distinguish Level 0 from Level 1.
+
+    On a **mixed** cell (`rel_types` non-empty), two more correction kinds
+    are added — per the coordinator's follow-up ask for more "correction
+    kinds" alongside more cells: an edge write of a `rel_types`-declared
+    type **between two of the cell's own `anchor_uids`** (should invalidate
+    at both levels, per
+    `test_ab_in_declared_rel_type_correction_invalidates_both_levels`'s
+    shape — and must land ON an anchor: a fully-anchored cell's Level-0
+    scope is already narrow on identity, so a declared-type edge between
+    two *unrelated* uids would miss at both levels and test nothing) and an
+    edge write of a type foreign to the whole store's inventory at a
+    fresh, never-anchored identity pair — outside every cell's anchor set
+    by construction, exercising the mixed cell's identity-narrowing the
+    same way `out-of-region-node-write` does for T_node, but on an edge.
+    """
     uids = list(sub.uids) or ["n0"]
 
     def in_region(store: Any) -> bool:
-        uid = uids[0]
+        uid = anchor_uids[0] if anchor_uids else uids[0]
         store.assert_node(uid, sub.node_label, {"injected": "l1-in"}, sub.vt_lo, sub.vt_hi)
         return True
 
@@ -1043,7 +1209,27 @@ def _pattern_correction_probes(sub: Substrate) -> list[tuple[str, Callable[[Any]
         store.assert_node(uid, sub.node_label, {"injected": "l1-out"}, sub.vt_lo, sub.vt_hi)
         return True
 
-    return [("in-region-node-write", in_region), ("out-of-region-node-write", out_of_region)]
+    probes: list[tuple[str, Callable[[Any], bool]]] = [
+        ("in-region-node-write", in_region), ("out-of-region-node-write", out_of_region)]
+
+    if rel_types:
+        def declared_edge_write(store: Any) -> bool:
+            if len(anchor_uids) >= 2:
+                a, b = anchor_uids[0], anchor_uids[1]
+            else:
+                a, b = (random.sample(uids, 2) if len(uids) >= 2 else (uids[0], uids[0]))
+            store.assert_edge(a, b, rel_types[0], {"injected": "l1-declared"}, sub.vt_lo, sub.vt_hi)
+            return True
+
+        def foreign_edge_write(store: Any) -> bool:
+            a = f"__l1_probe_{random.randrange(10**9)}"
+            b = f"__l1_probe_{random.randrange(10**9)}"
+            store.assert_edge(a, b, rel_types[-1], {"injected": "l1-foreign"}, sub.vt_lo, sub.vt_hi)
+            return True
+
+        probes += [("declared-type-edge-write", declared_edge_write),
+                  ("foreign-type-edge-write", foreign_edge_write)]
+    return probes
 
 
 # ===========================================================================
@@ -1690,6 +1876,8 @@ def summarize_pattern_l1(trials: Sequence[PatternL1Trial], cfg: dict[str, Any]) 
     mixed_cells = {t.cell for t in live if t.mixed}
     lift = [t for t in live if t.level0_verdict == "possibly-stale" and t.level1_verdict == "fresh"]
     regression = [t for t in live if t.level0_verdict == "fresh" and t.level1_verdict == "possibly-stale"]
+    unconstructible = {t.cell for t in trials if t.outcome == OUTCOME_UNCONSTRUCTIBLE}
+    timed_out = {t.cell for t in trials if t.outcome == OUTCOME_TIMEOUT}
     req = cfg["pattern_l1"]
     met = {"min_cells": len(cells) >= req["min_cells"],
           "min_mixed_cells": len(mixed_cells) >= req["min_mixed_cells"]}
@@ -1697,6 +1885,8 @@ def summarize_pattern_l1(trials: Sequence[PatternL1Trial], cfg: dict[str, Any]) 
         "trials": len(trials), "live": len(live), "cells": len(cells),
         "mixed_cells": len(mixed_cells), "level1_lift_trials": len(lift),
         "level1_unsound_regressions": len(regression),   # MUST be 0 -- Gate A
+        "unconstructible_by_corpus_slots": len(unconstructible),
+        "timed_out_cells": len(timed_out),
         "floor": {"required": {"min_cells": req["min_cells"], "min_mixed_cells": req["min_mixed_cells"]},
                  "achieved": {"min_cells": len(cells), "min_mixed_cells": len(mixed_cells)},
                  "met": met, "all_met": all(met.values())},
@@ -1762,6 +1952,21 @@ def summarize_pinned(trials: Sequence[PinnedTrial], cfg: dict[str, Any]) -> dict
 
 def _write_record(out_dir: Path, name: str, receipt_obj: dict[str, Any],
                   summary: dict[str, Any], rows: Sequence[Any], *, scorable: bool) -> Path:
+    """Write one arm's record. Refuses outright, before touching disk, if a
+    run-tagged (top-up) write's `name` does not carry the `topup-` prefix
+    every top-up profile's `record_prefix` is built with — the mechanical
+    guarantee that a top-up run can never land under a run-of-record
+    filename (Addendum 5, iTiger job 205995, the 14 files already under
+    `benchmarks/m5-v1/`), independent of whether a future profile's own
+    `record_prefix` override was written correctly."""
+    if receipt_obj.get("run") and not name.startswith("topup-"):
+        raise SystemExit(
+            f"REFUSING TO WRITE: {name}.json carries no 'topup-' prefix, but this "
+            f"write is tagged run={receipt_obj['run']!r}. A top-up profile must "
+            f"never produce a record name that could collide with the run of "
+            f"record (Addendum 5, iTiger job 205995) — this is a caller bug in "
+            f"the profile's record_prefix, refused rather than risking an "
+            f"overwrite of a scored file.")
     record = {**receipt_obj, "arm": name, "scorable": scorable, "summary": summary,
              "row_count": len(rows), "rows": [r.to_json() if hasattr(r, "to_json") else r
                                               for r in rows]}
@@ -1776,23 +1981,41 @@ def _write_record(out_dir: Path, name: str, receipt_obj: dict[str, Any],
 # profiles
 # ===========================================================================
 
+#: The five arms `main()` knows how to run, and the run-of-record's own
+#: filename prefix for each (Addendum 5, iTiger job 205995 — the 14 files
+#: under `benchmarks/m5-v1/`). A top-up profile restricts `arms` to a
+#: subset and overrides the corresponding entries of `record_prefix`;
+#: `_write_record` refuses outright if a run-tagged write's name would not
+#: start with `topup-`, so a profile that forgets to override a prefix
+#: cannot silently collide with the scored population instead of merely
+#: being caught in review.
+ALL_ARMS: frozenset[str] = frozenset({"carve", "pattern", "zero_changed", "pinned", "propagation"})
+DEFAULT_PREFIXES: dict[str, str] = {
+    "carve": "carve-arm", "pattern": "pattern-l1", "zero_changed": "zero-changed-ops",
+    "pinned": "pinned", "propagation": "propagation",
+}
+
+
 @dataclass
 class Profile:
     name: str
     scorable: bool
-    carve_cells_per_form: int
-    carve_corrections_cap: int
-    zero_changed_n_per_op: int
-    propagation_pairs: int
-    propagation_rounds: int
-    pinned_trials: int
+    arms: frozenset[str] = dataclasses.field(default_factory=lambda: ALL_ARMS)
+    record_prefix: dict[str, str] = dataclasses.field(default_factory=lambda: dict(DEFAULT_PREFIXES))
+    carve_cells_per_form: int = 0
+    carve_corrections_cap: int = 0
+    zero_changed_n_per_op: int = 0
+    propagation_pairs: int = 0
+    propagation_rounds: int = 0
+    pinned_trials: int = 0
+    pattern_min_cells: int = 0
+    pattern_min_mixed_cells: int = 0
+    #: Set only for a top-up run (e.g. `"topup-1"`). Stamped into every
+    #: record's receipt as `"run"`, and what `_write_record` uses to
+    #: enforce the `topup-` filename prefix (Addendum 5's remedy: "a
+    #: propagation-arm top-up run ... scored alone").
+    run_tag: str | None = None
     seed: int = 20260827
-
-
-def smoke_profile() -> Profile:
-    return Profile("smoke", scorable=False, carve_cells_per_form=6,
-                   carve_corrections_cap=6, zero_changed_n_per_op=4,
-                   propagation_pairs=4, propagation_rounds=6, pinned_trials=6)
 
 
 def full_profile(cfg: dict[str, Any]) -> Profile:
@@ -1801,7 +2024,67 @@ def full_profile(cfg: dict[str, Any]) -> Profile:
                    carve_corrections_cap=40,
                    zero_changed_n_per_op=cfg["zero_changed_ops"]["min_changed_trials_each"] * 3,
                    propagation_pairs=30, propagation_rounds=20,
-                   pinned_trials=cfg["pinned"]["min_trials"] * 2)
+                   pinned_trials=cfg["pinned"]["min_trials"] * 2,
+                   pattern_min_cells=cfg["pattern_l1"]["min_cells"],
+                   pattern_min_mixed_cells=cfg["pattern_l1"]["min_mixed_cells"])
+
+
+def topup_propagation_profile(cfg: dict[str, Any]) -> Profile:
+    """Addendum 5, Gate C remedy: "a propagation-arm top-up run (raised
+    pairs/rounds, same frozen design, scored alone ... authorized by a
+    dated addendum before it launches)". `pairs=90, rounds=30` is 3x the
+    full profile's `pairs=30, rounds=20` — run 1 yielded 26
+    payload-changing decisions from that population across the three
+    scored stores (Addendum 5: "over 26 payload-changing refresh decisions
+    against the frozen floor of 30"), so 3x targets ~78, a comfortable
+    margin over R-12's floor of 30. Only the propagation arm runs; the
+    frozen 100/30 floor and every other arm's population are untouched."""
+    return Profile("topup-propagation", scorable=True, arms=frozenset({"propagation"}),
+                   record_prefix={"propagation": "topup-propagation"},
+                   propagation_pairs=90, propagation_rounds=30, run_tag="topup-1")
+
+
+def topup_pattern_profile(cfg: dict[str, Any]) -> Profile:
+    """Addendum 5's R-11 finding: "2 cells per store and 0 mixed cells
+    against floors of 80/40 (the cell generator underdelivers by
+    capability, not by store limitation)". Only the pattern arm runs, at
+    the frozen 80/40 targets — no floor moves; the population this
+    profile can now *reach* toward those floors is what changed (see
+    `_mixed_cells`/`_t_node_cells`, plural full-anchoring, and the two new
+    correction kinds in `_pattern_correction_probes`)."""
+    return Profile("topup-pattern", scorable=True, arms=frozenset({"pattern"}),
+                   record_prefix={"pattern": "topup-pattern"},
+                   pattern_min_cells=cfg["pattern_l1"]["min_cells"],
+                   pattern_min_mixed_cells=cfg["pattern_l1"]["min_mixed_cells"],
+                   run_tag="topup-1")
+
+
+PROFILE_BUILDERS: dict[str, Callable[[dict[str, Any]], Profile]] = {
+    "full": full_profile,
+    "topup-propagation": topup_propagation_profile,
+    "topup-pattern": topup_pattern_profile,
+}
+
+
+def _smoke_scale(profile: Profile) -> Profile:
+    """Shrink any profile's population for `--smoke` — arm selection and
+    record-name prefixes (so e.g. `--profile topup-pattern --smoke` still
+    writes `topup-pattern-<store>.json`, just a tiny one) are untouched;
+    every count is capped small, `scorable` goes false. Never touches the
+    frozen floors in `cfg` themselves — `--smoke` scales what this run
+    *attempts*, never what a later scored run must clear."""
+    return dataclasses.replace(
+        profile, scorable=False,
+        carve_cells_per_form=min(profile.carve_cells_per_form, 6) if "carve" in profile.arms else 0,
+        carve_corrections_cap=min(profile.carve_corrections_cap, 6) if "carve" in profile.arms else 0,
+        zero_changed_n_per_op=min(profile.zero_changed_n_per_op, 4) if "zero_changed" in profile.arms else 0,
+        propagation_pairs=min(profile.propagation_pairs, 4) if "propagation" in profile.arms else 0,
+        propagation_rounds=min(profile.propagation_rounds, 6) if "propagation" in profile.arms else 0,
+        pinned_trials=min(profile.pinned_trials, 6) if "pinned" in profile.arms else 0,
+        pattern_min_cells=(min(profile.pattern_min_cells, 8) or 8) if "pattern" in profile.arms else 0,
+        pattern_min_mixed_cells=(min(profile.pattern_min_mixed_cells, 4) or 4)
+        if "pattern" in profile.arms else 0,
+    )
 
 
 # ===========================================================================
@@ -1810,12 +2093,15 @@ def full_profile(cfg: dict[str, Any]) -> Profile:
 
 def main() -> int:
     ap = argparse.ArgumentParser()
-    ap.add_argument("--profile", choices=("smoke", "full"), default=None,
-                    help="overridden to 'smoke' by --smoke")
+    ap.add_argument("--profile", choices=tuple(PROFILE_BUILDERS), default="full",
+                    help="'full' is every arm at the frozen floors (the run of "
+                        "record shape); 'topup-propagation'/'topup-pattern' run "
+                        "ONLY that one arm, at raised population, tagged run=topup-1, "
+                        "writing topup-<arm>-<store>.json (never the run-of-record names)")
     ap.add_argument("--smoke", action="store_true",
-                    help="a tiny, throwaway population; records are marked "
-                        "scorable=false and never land in benchmarks/m5-v1/ "
-                        "unless --out is given explicitly")
+                    help="scale down whichever --profile names to a tiny, throwaway "
+                        "population; records are marked scorable=false and never land "
+                        "in benchmarks/m5-v1/ unless --out is given explicitly")
     ap.add_argument("--backend", default="native")
     ap.add_argument("--out", default=None)
     ap.add_argument("--stores", nargs="*", default=None,
@@ -1829,27 +2115,31 @@ def main() -> int:
 
     global CELL_TIMEOUT_S
     CELL_TIMEOUT_S = int(cfg["wall_ceiling_s_per_cell"])
-
-    profile_name = "smoke" if args.smoke else (args.profile or "full")
-    if profile_name == "smoke":
+    if args.smoke:
         override = os.environ.get("TGMS_M5_CELL_TIMEOUT_S")
         if override is not None:
             CELL_TIMEOUT_S = int(override)  # smoke-only; a scored run always uses §A10's 600s
+
+    profile = PROFILE_BUILDERS[args.profile](cfg)
+    if args.smoke:
+        profile = _smoke_scale(profile)
+    run_label = f"{args.profile}{'+smoke' if args.smoke else ''}"
+
     sha = _git_sha()
-    log_line(f"RUN_STARTED commit={sha} profile={profile_name} backend={args.backend} "
-            f"host={platform.node()} campaign_yaml_sha256={_sha256(Path(args.campaign_yaml))[:12]}")
+    log_line(f"RUN_STARTED commit={sha} profile={run_label} arms={sorted(profile.arms)} "
+            f"backend={args.backend} host={platform.node()} "
+            f"campaign_yaml_sha256={_sha256(Path(args.campaign_yaml))[:12]}"
+            + (f" run_tag={profile.run_tag}" if profile.run_tag else ""))
 
     if args.pidfile:
         write_pidfile(Path(args.pidfile))
 
-    if profile_name == "smoke":
-        profile = smoke_profile()
+    if args.smoke:
         default_out = Path(tempfile.gettempdir()) / "tgms-m5-smoke"
         out_dir = Path(args.out) if args.out else default_out
         store_labels = args.stores or ["ldbc-fixture"]
         store_index = {s["label"]: s for s in cfg["stores"]["soundness_only"] + cfg["stores"]["scored"]}
     else:
-        profile = full_profile(cfg)
         out_dir = Path(args.out) if args.out else (ROOT / "benchmarks/m5-v1")
         store_labels = args.stores or [s["label"] for s in cfg["stores"]["scored"]]
         store_index = {s["label"]: s for s in cfg["stores"]["scored"]}
@@ -1875,7 +2165,11 @@ def main() -> int:
         _s.close()
         is_carve_store = meta.get("role") == "carve-continuity"
 
-        if is_carve_store:
+        def _receipt() -> dict[str, Any]:
+            return receipt(profile=profile.name, store_label=label, backend=args.backend,
+                           store_identity=store_digest, run=profile.run_tag)
+
+        if "carve" in profile.arms and is_carve_store:
             carve_trials = carve_arm_sweep(
                 label, path, cfg, backend=args.backend,
                 cells_per_form=profile.carve_cells_per_form,
@@ -1886,49 +2180,50 @@ def main() -> int:
                         f"{carve_summary['control_invariant_violations']} trials "
                         f"-- instrument defect, blocking")
                 all_ok = False
-            _write_record(out_dir, f"carve-arm-{label}",
-                         receipt(profile=profile.name, store_label=label, backend=args.backend, store_identity=store_digest),
+            _write_record(out_dir, f"{profile.record_prefix['carve']}-{label}", _receipt(),
                          carve_summary, carve_trials, scorable=profile.scorable)
 
-        pattern_trials = pattern_l1_sweep(
-            label, path, cfg, backend=args.backend, single_typed=single_typed,
-            rel_types=rel_types, n_corrections=profile.carve_corrections_cap, rng=rng)
-        _write_record(out_dir, f"pattern-l1-{label}",
-                     receipt(profile=profile.name, store_label=label, backend=args.backend, store_identity=store_digest),
-                     summarize_pattern_l1(pattern_trials, cfg), pattern_trials,
-                     scorable=profile.scorable)
+        if "pattern" in profile.arms:
+            pattern_trials = pattern_l1_sweep(
+                label, path, cfg, backend=args.backend, single_typed=single_typed,
+                rel_types=rel_types, min_cells=profile.pattern_min_cells,
+                min_mixed_cells=profile.pattern_min_mixed_cells, rng=rng)
+            _write_record(out_dir, f"{profile.record_prefix['pattern']}-{label}", _receipt(),
+                         summarize_pattern_l1(pattern_trials, cfg), pattern_trials,
+                         scorable=profile.scorable)
 
-        zero_trials = zero_changed_ops_sweep(
-            label, path, backend=args.backend, n_per_op=profile.zero_changed_n_per_op, rng=rng)
-        _write_record(out_dir, f"zero-changed-ops-{label}",
-                     receipt(profile=profile.name, store_label=label, backend=args.backend, store_identity=store_digest),
-                     summarize_zero_changed(zero_trials, cfg), zero_trials,
-                     scorable=profile.scorable)
+        if "zero_changed" in profile.arms:
+            zero_trials = zero_changed_ops_sweep(
+                label, path, backend=args.backend, n_per_op=profile.zero_changed_n_per_op, rng=rng)
+            _write_record(out_dir, f"{profile.record_prefix['zero_changed']}-{label}", _receipt(),
+                         summarize_zero_changed(zero_trials, cfg), zero_trials,
+                         scorable=profile.scorable)
 
-        pinned_trials_ = pinned_sweep(label, path, backend=args.backend,
-                                      n_trials=profile.pinned_trials, rng=rng)
-        _write_record(out_dir, f"pinned-{label}",
-                     receipt(profile=profile.name, store_label=label, backend=args.backend, store_identity=store_digest),
-                     summarize_pinned(pinned_trials_, cfg), pinned_trials_,
-                     scorable=profile.scorable)
+        if "pinned" in profile.arms:
+            pinned_trials_ = pinned_sweep(label, path, backend=args.backend,
+                                          n_trials=profile.pinned_trials, rng=rng)
+            _write_record(out_dir, f"{profile.record_prefix['pinned']}-{label}", _receipt(),
+                         summarize_pinned(pinned_trials_, cfg), pinned_trials_,
+                         scorable=profile.scorable)
 
-        store = tgms.open(path, backend=args.backend)
-        sub = probe_substrate(store, rng=rng)
-        store.close()
-        decisions, lookup_extra = propagation_sweep(
-            label, path, sub, backend=args.backend, n_pairs=profile.propagation_pairs,
-            n_rounds=profile.propagation_rounds, rng=rng)
-        determinism = propagation_determinism_check(path, sub, backend=args.backend)
-        prop_summary = summarize_propagation(decisions, determinism, cfg)
-        prop_summary["lookup_counters"] = lookup_extra
-        if prop_summary.get("gate_c") and not prop_summary["gate_c"]["pass"]:
-            log_line(f"Gate C not satisfied on {label} at this profile's population "
-                    f"(see propagation-{label}.json)")
-        _write_record(out_dir, f"propagation-{label}",
-                     receipt(profile=profile.name, store_label=label, backend=args.backend, store_identity=store_digest),
-                     prop_summary, decisions, scorable=profile.scorable)
+        if "propagation" in profile.arms:
+            store = tgms.open(path, backend=args.backend)
+            sub = probe_substrate(store, rng=rng)
+            store.close()
+            decisions, lookup_extra = propagation_sweep(
+                label, path, sub, backend=args.backend, n_pairs=profile.propagation_pairs,
+                n_rounds=profile.propagation_rounds, rng=rng)
+            determinism = propagation_determinism_check(path, sub, backend=args.backend)
+            prop_summary = summarize_propagation(decisions, determinism, cfg)
+            prop_summary["lookup_counters"] = lookup_extra
+            prefix = profile.record_prefix["propagation"]
+            if prop_summary.get("gate_c") and not prop_summary["gate_c"]["pass"]:
+                log_line(f"Gate C not satisfied on {label} at this profile's population "
+                        f"(see {prefix}-{label}.json)")
+            _write_record(out_dir, f"{prefix}-{label}", _receipt(),
+                         prop_summary, decisions, scorable=profile.scorable)
 
-    log_line(f"DONE profile={profile_name} out={out_dir} ok={all_ok}")
+    log_line(f"DONE profile={run_label} out={out_dir} ok={all_ok}")
     return 0 if all_ok else 1
 
 
