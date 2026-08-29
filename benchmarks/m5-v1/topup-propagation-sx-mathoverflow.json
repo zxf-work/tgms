@@ -1,0 +1,575 @@
+{
+ "generated": "2026-08-29T18:31:01+0000",
+ "measured_date": "2026-08-29",
+ "git_sha": "35c8d3d1ee44202bcca76d8b9d1c5c28f4e4756e",
+ "campaign_yaml_sha256": "bcd7c9b4f838c14c6d037c4e182870e4b90447a219f91e27dbe35de0a66b5a47",
+ "freeze_document_sha256": "122d219c954d3a35288ac3278ed9874b58e0fa14753e16c1a1069a88417d1ce2",
+ "profile": "topup-propagation",
+ "backend": "native",
+ "store": "sx-mathoverflow",
+ "store_identity": "0ac40f2fe5dee32c25ec733b11daf061b15177299c858e29ce01e2d75124623e",
+ "edge_sampling": "uniform",
+ "machine": {
+  "host": "itiger02",
+  "platform": "Linux-5.14.0-427.31.1.el9_4.x86_64-x86_64-with-glibc2.34",
+  "python": "3.12.13",
+  "cpus": 64
+ },
+ "run": "topup-1",
+ "arm": "topup-propagation-sx-mathoverflow",
+ "scorable": true,
+ "summary": {
+  "decisions": 22,
+  "payload_changed": 4,
+  "false_safe": 0,
+  "floor": {
+   "required": {
+    "min_decisions": 100,
+    "min_decisions_after_payload_change": 30,
+    "edge": "tgms.artifact.propagate.parent_recheck"
+   },
+   "achieved": {
+    "min_decisions": 22,
+    "min_decisions_after_payload_change": 4
+   },
+   "met": {
+    "min_decisions": false,
+    "min_decisions_after_payload_change": false
+   },
+   "all_met": false
+  },
+  "determinism": {
+   "log_bytes_equal": true,
+   "artifacts_bytes_equal": true,
+   "checkpoints_equal": true,
+   "record_digests_equal": true,
+   "deterministic": true
+  },
+  "gate_c": {
+   "criterion_1_byte_identical_recompute": "see per-decision payload_changed comparisons",
+   "criterion_2_recheck_correct_vs_recompute": true,
+   "criterion_3_deterministic_replay": true,
+   "criterion_4_zero_false_safe_at_floor": false,
+   "pass": false
+  },
+  "lookup_counters": {
+   "batches": [
+    {
+     "round": 0,
+     "intersects_calls": 540,
+     "candidate_survivors": 0,
+     "affected": []
+    },
+    {
+     "round": 1,
+     "intersects_calls": 540,
+     "candidate_survivors": 0,
+     "affected": []
+    },
+    {
+     "round": 2,
+     "intersects_calls": 537,
+     "candidate_survivors": 1,
+     "affected": [
+      "m5-child-81"
+     ]
+    },
+    {
+     "round": 3,
+     "intersects_calls": 540,
+     "candidate_survivors": 0,
+     "affected": []
+    },
+    {
+     "round": 4,
+     "intersects_calls": 540,
+     "candidate_survivors": 0,
+     "affected": []
+    },
+    {
+     "round": 5,
+     "intersects_calls": 535,
+     "candidate_survivors": 5,
+     "affected": [
+      "m5-parent-37",
+      "m5-parent-38",
+      "m5-parent-39",
+      "m5-parent-40",
+      "m5-parent-41"
+     ]
+    },
+    {
+     "round": 6,
+     "intersects_calls": 535,
+     "candidate_survivors": 5,
+     "affected": [
+      "m5-parent-22",
+      "m5-parent-23",
+      "m5-parent-24",
+      "m5-parent-25",
+      "m5-parent-26"
+     ]
+    },
+    {
+     "round": 7,
+     "intersects_calls": 540,
+     "candidate_survivors": 0,
+     "affected": []
+    },
+    {
+     "round": 8,
+     "intersects_calls": 540,
+     "candidate_survivors": 0,
+     "affected": []
+    },
+    {
+     "round": 9,
+     "intersects_calls": 540,
+     "candidate_survivors": 0,
+     "affected": []
+    },
+    {
+     "round": 10,
+     "intersects_calls": 540,
+     "candidate_survivors": 0,
+     "affected": []
+    },
+    {
+     "round": 11,
+     "intersects_calls": 540,
+     "candidate_survivors": 0,
+     "affected": []
+    },
+    {
+     "round": 12,
+     "intersects_calls": 540,
+     "candidate_survivors": 0,
+     "affected": []
+    },
+    {
+     "round": 13,
+     "intersects_calls": 540,
+     "candidate_survivors": 0,
+     "affected": []
+    },
+    {
+     "round": 14,
+     "intersects_calls": 540,
+     "candidate_survivors": 0,
+     "affected": []
+    },
+    {
+     "round": 15,
+     "intersects_calls": 540,
+     "candidate_survivors": 0,
+     "affected": []
+    },
+    {
+     "round": 16,
+     "intersects_calls": 540,
+     "candidate_survivors": 0,
+     "affected": []
+    },
+    {
+     "round": 17,
+     "intersects_calls": 537,
+     "candidate_survivors": 1,
+     "affected": [
+      "m5-child-76"
+     ]
+    },
+    {
+     "round": 18,
+     "intersects_calls": 534,
+     "candidate_survivors": 6,
+     "affected": [
+      "m5-parent-2",
+      "m5-parent-3",
+      "m5-parent-4",
+      "m5-parent-5",
+      "m5-parent-6",
+      "m5-parent-7"
+     ]
+    },
+    {
+     "round": 19,
+     "intersects_calls": 534,
+     "candidate_survivors": 6,
+     "affected": [
+      "m5-parent-41",
+      "m5-parent-42",
+      "m5-parent-43",
+      "m5-parent-44",
+      "m5-parent-45",
+      "m5-parent-46"
+     ]
+    },
+    {
+     "round": 20,
+     "intersects_calls": 540,
+     "candidate_survivors": 0,
+     "affected": []
+    },
+    {
+     "round": 21,
+     "intersects_calls": 540,
+     "candidate_survivors": 0,
+     "affected": []
+    },
+    {
+     "round": 22,
+     "intersects_calls": 540,
+     "candidate_survivors": 0,
+     "affected": []
+    },
+    {
+     "round": 24,
+     "intersects_calls": 540,
+     "candidate_survivors": 0,
+     "affected": []
+    },
+    {
+     "round": 25,
+     "intersects_calls": 540,
+     "candidate_survivors": 0,
+     "affected": []
+    },
+    {
+     "round": 26,
+     "intersects_calls": 540,
+     "candidate_survivors": 0,
+     "affected": []
+    },
+    {
+     "round": 27,
+     "intersects_calls": 540,
+     "candidate_survivors": 0,
+     "affected": []
+    },
+    {
+     "round": 28,
+     "intersects_calls": 540,
+     "candidate_survivors": 0,
+     "affected": []
+    },
+    {
+     "round": 29,
+     "intersects_calls": 540,
+     "candidate_survivors": 0,
+     "affected": []
+    }
+   ]
+  }
+ },
+ "row_count": 22,
+ "rows": [
+  {
+   "parent_name": "m5-parent-37",
+   "child_name": "m5-child-37",
+   "parent_gen_before": 0,
+   "parent_gen_after": 1,
+   "parent_payload_changed": true,
+   "child_verdict_before": "fresh",
+   "child_flagged_by_parent_recheck": true,
+   "child_recomputed": false,
+   "child_verdict_after_refresh": "fresh",
+   "false_safe": false,
+   "intersects_calls": 535,
+   "candidate_survivors": 5
+  },
+  {
+   "parent_name": "m5-parent-38",
+   "child_name": "m5-child-38",
+   "parent_gen_before": 0,
+   "parent_gen_after": 1,
+   "parent_payload_changed": false,
+   "child_verdict_before": "fresh",
+   "child_flagged_by_parent_recheck": true,
+   "child_recomputed": false,
+   "child_verdict_after_refresh": "fresh",
+   "false_safe": false,
+   "intersects_calls": 535,
+   "candidate_survivors": 5
+  },
+  {
+   "parent_name": "m5-parent-39",
+   "child_name": "m5-child-39",
+   "parent_gen_before": 0,
+   "parent_gen_after": 1,
+   "parent_payload_changed": false,
+   "child_verdict_before": "fresh",
+   "child_flagged_by_parent_recheck": true,
+   "child_recomputed": false,
+   "child_verdict_after_refresh": "fresh",
+   "false_safe": false,
+   "intersects_calls": 535,
+   "candidate_survivors": 5
+  },
+  {
+   "parent_name": "m5-parent-40",
+   "child_name": "m5-child-40",
+   "parent_gen_before": 0,
+   "parent_gen_after": 1,
+   "parent_payload_changed": false,
+   "child_verdict_before": "fresh",
+   "child_flagged_by_parent_recheck": true,
+   "child_recomputed": false,
+   "child_verdict_after_refresh": "fresh",
+   "false_safe": false,
+   "intersects_calls": 535,
+   "candidate_survivors": 5
+  },
+  {
+   "parent_name": "m5-parent-41",
+   "child_name": "m5-child-41",
+   "parent_gen_before": 0,
+   "parent_gen_after": 1,
+   "parent_payload_changed": false,
+   "child_verdict_before": "fresh",
+   "child_flagged_by_parent_recheck": true,
+   "child_recomputed": false,
+   "child_verdict_after_refresh": "fresh",
+   "false_safe": false,
+   "intersects_calls": 535,
+   "candidate_survivors": 5
+  },
+  {
+   "parent_name": "m5-parent-22",
+   "child_name": "m5-child-22",
+   "parent_gen_before": 0,
+   "parent_gen_after": 1,
+   "parent_payload_changed": true,
+   "child_verdict_before": "fresh",
+   "child_flagged_by_parent_recheck": true,
+   "child_recomputed": false,
+   "child_verdict_after_refresh": "fresh",
+   "false_safe": false,
+   "intersects_calls": 535,
+   "candidate_survivors": 5
+  },
+  {
+   "parent_name": "m5-parent-23",
+   "child_name": "m5-child-23",
+   "parent_gen_before": 0,
+   "parent_gen_after": 1,
+   "parent_payload_changed": false,
+   "child_verdict_before": "fresh",
+   "child_flagged_by_parent_recheck": true,
+   "child_recomputed": false,
+   "child_verdict_after_refresh": "fresh",
+   "false_safe": false,
+   "intersects_calls": 535,
+   "candidate_survivors": 5
+  },
+  {
+   "parent_name": "m5-parent-24",
+   "child_name": "m5-child-24",
+   "parent_gen_before": 0,
+   "parent_gen_after": 1,
+   "parent_payload_changed": false,
+   "child_verdict_before": "fresh",
+   "child_flagged_by_parent_recheck": true,
+   "child_recomputed": false,
+   "child_verdict_after_refresh": "fresh",
+   "false_safe": false,
+   "intersects_calls": 535,
+   "candidate_survivors": 5
+  },
+  {
+   "parent_name": "m5-parent-25",
+   "child_name": "m5-child-25",
+   "parent_gen_before": 0,
+   "parent_gen_after": 1,
+   "parent_payload_changed": false,
+   "child_verdict_before": "fresh",
+   "child_flagged_by_parent_recheck": true,
+   "child_recomputed": false,
+   "child_verdict_after_refresh": "fresh",
+   "false_safe": false,
+   "intersects_calls": 535,
+   "candidate_survivors": 5
+  },
+  {
+   "parent_name": "m5-parent-26",
+   "child_name": "m5-child-26",
+   "parent_gen_before": 0,
+   "parent_gen_after": 1,
+   "parent_payload_changed": false,
+   "child_verdict_before": "fresh",
+   "child_flagged_by_parent_recheck": true,
+   "child_recomputed": false,
+   "child_verdict_after_refresh": "fresh",
+   "false_safe": false,
+   "intersects_calls": 535,
+   "candidate_survivors": 5
+  },
+  {
+   "parent_name": "m5-parent-2",
+   "child_name": "m5-child-2",
+   "parent_gen_before": 0,
+   "parent_gen_after": 1,
+   "parent_payload_changed": true,
+   "child_verdict_before": "fresh",
+   "child_flagged_by_parent_recheck": true,
+   "child_recomputed": false,
+   "child_verdict_after_refresh": "fresh",
+   "false_safe": false,
+   "intersects_calls": 534,
+   "candidate_survivors": 6
+  },
+  {
+   "parent_name": "m5-parent-3",
+   "child_name": "m5-child-3",
+   "parent_gen_before": 0,
+   "parent_gen_after": 1,
+   "parent_payload_changed": false,
+   "child_verdict_before": "fresh",
+   "child_flagged_by_parent_recheck": true,
+   "child_recomputed": false,
+   "child_verdict_after_refresh": "fresh",
+   "false_safe": false,
+   "intersects_calls": 534,
+   "candidate_survivors": 6
+  },
+  {
+   "parent_name": "m5-parent-4",
+   "child_name": "m5-child-4",
+   "parent_gen_before": 0,
+   "parent_gen_after": 1,
+   "parent_payload_changed": false,
+   "child_verdict_before": "fresh",
+   "child_flagged_by_parent_recheck": true,
+   "child_recomputed": false,
+   "child_verdict_after_refresh": "fresh",
+   "false_safe": false,
+   "intersects_calls": 534,
+   "candidate_survivors": 6
+  },
+  {
+   "parent_name": "m5-parent-5",
+   "child_name": "m5-child-5",
+   "parent_gen_before": 0,
+   "parent_gen_after": 1,
+   "parent_payload_changed": false,
+   "child_verdict_before": "fresh",
+   "child_flagged_by_parent_recheck": true,
+   "child_recomputed": false,
+   "child_verdict_after_refresh": "fresh",
+   "false_safe": false,
+   "intersects_calls": 534,
+   "candidate_survivors": 6
+  },
+  {
+   "parent_name": "m5-parent-6",
+   "child_name": "m5-child-6",
+   "parent_gen_before": 0,
+   "parent_gen_after": 1,
+   "parent_payload_changed": false,
+   "child_verdict_before": "fresh",
+   "child_flagged_by_parent_recheck": true,
+   "child_recomputed": false,
+   "child_verdict_after_refresh": "fresh",
+   "false_safe": false,
+   "intersects_calls": 534,
+   "candidate_survivors": 6
+  },
+  {
+   "parent_name": "m5-parent-7",
+   "child_name": "m5-child-7",
+   "parent_gen_before": 0,
+   "parent_gen_after": 1,
+   "parent_payload_changed": false,
+   "child_verdict_before": "fresh",
+   "child_flagged_by_parent_recheck": true,
+   "child_recomputed": false,
+   "child_verdict_after_refresh": "fresh",
+   "false_safe": false,
+   "intersects_calls": 534,
+   "candidate_survivors": 6
+  },
+  {
+   "parent_name": "m5-parent-41",
+   "child_name": "m5-child-41",
+   "parent_gen_before": 1,
+   "parent_gen_after": 2,
+   "parent_payload_changed": true,
+   "child_verdict_before": "fresh",
+   "child_flagged_by_parent_recheck": true,
+   "child_recomputed": false,
+   "child_verdict_after_refresh": "fresh",
+   "false_safe": false,
+   "intersects_calls": 534,
+   "candidate_survivors": 6
+  },
+  {
+   "parent_name": "m5-parent-42",
+   "child_name": "m5-child-42",
+   "parent_gen_before": 0,
+   "parent_gen_after": 1,
+   "parent_payload_changed": false,
+   "child_verdict_before": "fresh",
+   "child_flagged_by_parent_recheck": true,
+   "child_recomputed": false,
+   "child_verdict_after_refresh": "fresh",
+   "false_safe": false,
+   "intersects_calls": 534,
+   "candidate_survivors": 6
+  },
+  {
+   "parent_name": "m5-parent-43",
+   "child_name": "m5-child-43",
+   "parent_gen_before": 0,
+   "parent_gen_after": 1,
+   "parent_payload_changed": false,
+   "child_verdict_before": "fresh",
+   "child_flagged_by_parent_recheck": true,
+   "child_recomputed": false,
+   "child_verdict_after_refresh": "fresh",
+   "false_safe": false,
+   "intersects_calls": 534,
+   "candidate_survivors": 6
+  },
+  {
+   "parent_name": "m5-parent-44",
+   "child_name": "m5-child-44",
+   "parent_gen_before": 0,
+   "parent_gen_after": 1,
+   "parent_payload_changed": false,
+   "child_verdict_before": "fresh",
+   "child_flagged_by_parent_recheck": true,
+   "child_recomputed": false,
+   "child_verdict_after_refresh": "fresh",
+   "false_safe": false,
+   "intersects_calls": 534,
+   "candidate_survivors": 6
+  },
+  {
+   "parent_name": "m5-parent-45",
+   "child_name": "m5-child-45",
+   "parent_gen_before": 0,
+   "parent_gen_after": 1,
+   "parent_payload_changed": false,
+   "child_verdict_before": "fresh",
+   "child_flagged_by_parent_recheck": true,
+   "child_recomputed": false,
+   "child_verdict_after_refresh": "fresh",
+   "false_safe": false,
+   "intersects_calls": 534,
+   "candidate_survivors": 6
+  },
+  {
+   "parent_name": "m5-parent-46",
+   "child_name": "m5-child-46",
+   "parent_gen_before": 0,
+   "parent_gen_after": 1,
+   "parent_payload_changed": false,
+   "child_verdict_before": "fresh",
+   "child_flagged_by_parent_recheck": true,
+   "child_recomputed": false,
+   "child_verdict_after_refresh": "fresh",
+   "false_safe": false,
+   "intersects_calls": 534,
+   "candidate_survivors": 6
+  }
+ ]
+}

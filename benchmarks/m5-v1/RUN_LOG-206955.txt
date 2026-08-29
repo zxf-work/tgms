@@ -1,0 +1,10 @@
+[17:55:06] RUN_STARTED commit=35c8d3d1ee44202bcca76d8b9d1c5c28f4e4756e profile=topup-propagation arms=['propagation'] backend=native host=itiger02 campaign_yaml_sha256=bcd7c9b4f838 run_tag=topup-1
+[17:55:06] pidfile runs/m5-topup-propagation.pid pid=2494538
+[17:55:06] === bitcoinotc ===
+[18:02:33] wrote benchmarks/m5-v1/topup-propagation-bitcoinotc.json (213 rows, scorable=True)
+[18:02:33] === collegemsg ===
+[18:10:52] wrote benchmarks/m5-v1/topup-propagation-collegemsg.json (284 rows, scorable=True)
+[18:10:52] === sx-mathoverflow ===
+[18:31:01] Gate C not satisfied on sx-mathoverflow at this profile's population (see topup-propagation-sx-mathoverflow.json)
+[18:31:01] wrote benchmarks/m5-v1/topup-propagation-sx-mathoverflow.json (22 rows, scorable=True)
+[18:31:01] DONE profile=topup-propagation out=benchmarks/m5-v1 ok=True

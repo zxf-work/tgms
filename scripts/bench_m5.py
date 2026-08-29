@@ -2375,6 +2375,64 @@ def topup_propagation_profile(cfg: dict[str, Any]) -> Profile:
                    edge_sampling="uniform")
 
 
+def topup_propagation2_profile(cfg: dict[str, Any]) -> Profile:
+    """The propagation investigation's own finding (its report is
+    authoritative here; this docstring restates only the numbers this
+    profile's own settings depend on) — `topup-propagation`'s own
+    `edge_sampling="uniform"` fix was RIGHT for the carve arm's problem
+    but is strategy-INCONSISTENT for the propagation arm specifically, and
+    this profile is the deliberate reversion for THIS arm alone.
+
+    The mechanism: this arm's registered artifact windows come from
+    `probe_substrate`'s own head-truncated `[vt_lo, vt_hi]`
+    (`corrections.py` caps its scan at `sample*8 = 3200` versions) — so a
+    `"head"`-sampled correction lands inside a registered parent's window
+    BY THE SAME SHARED CONSTRUCTION that built the window in the first
+    place, while a `"uniform"` correction (drawn over the whole store,
+    unrelated to that head-truncated extent) mostly falls outside every
+    window instead. Measured overlap between the uniform pool and the
+    head-truncated window extent: 11.3% / 6.3% / 1.7% across the three
+    scored stores. Controlled A/B at this profile's own `pairs=90,
+    rounds=30` on `bitcoinotc`: `"head"` produced 331 decisions / 12
+    payload-changed; `"uniform"` produced only 29 decisions / 7
+    payload-changed from the SAME population. `edge_sampling="head"`
+    here is therefore not a return to run-1's own unfixed behavior by
+    oversight — it is this arm's own strategy being consistent with how
+    its windows are built, which `"uniform"` never was; `topup-carve`'s
+    `"uniform"` remains the correct fix for ITS arm (a real edge-identity
+    clustering problem `_sample_edges("head")` has and this one does not
+    share).
+
+    `propagation_pairs=90` (unchanged from `topup-propagation`) /
+    `propagation_rounds=200` (raised well past `topup-propagation`'s 30):
+    arithmetic from the investigation's own per-round payload-changed
+    rates under `"head"` — `sx-mathoverflow` (the worst of the three)
+    ~0.30/round -> ~60 over 200 rounds, a 2x margin over R-12's `>= 30`
+    floor (`cfg["propagation"]["min_decisions_after_payload_change"]`);
+    `bitcoinotc` ~0.40/round -> ~80; `collegemsg` ~0.43/round -> ~87. No
+    floor moved — 200 rounds is sized to comfortably clear the frozen 30,
+    never to raise it.
+
+    **Deferred, NOT fixed here**: the investigation also flagged
+    `probe_substrate`'s own fixed `sample*8` scan cap (`corrections.py`)
+    as the deeper issue — a cap that does not scale with store size is
+    what makes the registered windows head-truncated at all, on any
+    store big enough for it to matter. That is arm-logic/`corrections.py`
+    surgery, out of scope for a `bench_m5.py`-only top-up profile; this
+    profile only chooses the sampling STRATEGY consistent with the
+    windows as they exist today, and does not touch how those windows
+    are built.
+
+    `run_tag="topup-2"` (never `"topup-1"`) so `_write_record`'s
+    collision guard places it under `topup-propagation2-<store>.json` —
+    distinct from both run-1's own files and `topup-propagation`'s own
+    `topup-propagation-<store>.json`."""
+    return Profile("topup-propagation-2", scorable=True, arms=frozenset({"propagation"}),
+                   record_prefix={"propagation": "topup-propagation2"},
+                   propagation_pairs=90, propagation_rounds=200, run_tag="topup-2",
+                   edge_sampling="head")
+
+
 def topup_pattern_profile(cfg: dict[str, Any]) -> Profile:
     """Addendum 5's R-11 finding: "2 cells per store and 0 mixed cells
     against floors of 80/40 (the cell generator underdelivers by
@@ -2523,6 +2581,7 @@ def topup_carve2_profile(cfg: dict[str, Any]) -> Profile:
 PROFILE_BUILDERS: dict[str, Callable[[dict[str, Any]], Profile]] = {
     "full": full_profile,
     "topup-propagation": topup_propagation_profile,
+    "topup-propagation-2": topup_propagation2_profile,
     "topup-pattern": topup_pattern_profile,
     "topup-pattern-2": topup_pattern2_profile,
     "topup-carve": topup_carve_profile,

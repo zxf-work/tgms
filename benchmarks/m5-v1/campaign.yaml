@@ -42,7 +42,7 @@ campaign_id: M5-v1
 frozen_date: '2026-08-27'
 
 freeze_document: docs/design/M5_CAMPAIGN_FREEZE_2026-08-27.md
-freeze_sha256: 122d219c954d3a35288ac3278ed9874b58e0fa14753e16c1a1069a88417d1ce2
+freeze_sha256: 807eb779dca7f104a82381e84fb5a372dac24d9203df9e9d898cce559f937227
 freeze_binding: benchmarks/m5-v1/FREEZE_BINDING
 freeze_status: 'FROZEN 2026-08-27. RELEASED FOR EXECUTION.'
 
