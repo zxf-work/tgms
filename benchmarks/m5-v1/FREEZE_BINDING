@@ -41,8 +41,8 @@
 #      a reader auditing this file without re-deriving from campaign.yaml.
 
 freeze_document: docs/design/M5_CAMPAIGN_FREEZE_2026-08-27.md
-freeze_document_sha256: 807eb779dca7f104a82381e84fb5a372dac24d9203df9e9d898cce559f937227
+freeze_document_sha256: dd379c5832bbd9dfe8775ef505c6e7355667398d4619e2fca16e5b1fbbaf9478
 campaign_yaml: benchmarks/m5-v1/campaign.yaml
-campaign_yaml_sha256: 31ef1f3d17203f0b9731cec23a8408df8e8b1259f40bc880b84ad2d750f2121a
+campaign_yaml_sha256: a66f7a7c88692be04defc78fe63d162490ba53683958a8fcc9dfe9740a13381b
 recorded: 2026-08-28
 recorded_by: coordinator, Addendum 4 host move (regeneration per this file header)

@@ -1,0 +1,9 @@
+[22:12:16] RUN_STARTED commit=d830f1357861c55864cf7211b9fac5d0e8964cb4 profile=topup-carve-2 arms=['carve'] backend=native host=itiger02 campaign_yaml_sha256=31ef1f3d1720 run_tag=topup-2
+[22:12:16] pidfile runs/m5-topup-carve-2.pid pid=2498286
+[22:12:16]   synth-iv-60k: not in campaign.yaml -- resolved by convention at /project/xzhang12/tgms/stores/synth-iv-60k for this top-up profile (run=topup-2)
+[22:12:16] === synth-iv-60k ===
+[01:24:28] ok  carve synth-iv-60k aggregate_events_duration: 120 cells, 9331 trials so far
+[04:41:00] ok  carve synth-iv-60k aggregate_events_plain: 120 cells, 9355 trials so far
+[08:04:00] ok  carve synth-iv-60k neighborhood_evolution: 120 cells, 9358 trials so far
+[08:04:01] wrote benchmarks/m5-v1/topup-carve2-synth-iv-60k.json (28044 rows, scorable=True)
+[08:04:01] DONE profile=topup-carve-2 out=benchmarks/m5-v1 ok=True

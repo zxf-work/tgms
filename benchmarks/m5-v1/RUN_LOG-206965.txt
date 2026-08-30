@@ -1,0 +1,9 @@
+[22:12:16] RUN_STARTED commit=d830f1357861c55864cf7211b9fac5d0e8964cb4 profile=topup-propagation-2 arms=['propagation'] backend=native host=itiger02 campaign_yaml_sha256=31ef1f3d1720 run_tag=topup-2
+[22:12:16] pidfile runs/m5-topup-propagation-2.pid pid=2498285
+[22:12:16] === bitcoinotc ===
+[22:59:24] wrote benchmarks/m5-v1/topup-propagation2-bitcoinotc.json (1618 rows, scorable=True)
+[22:59:24] === collegemsg ===
+[23:54:14] wrote benchmarks/m5-v1/topup-propagation2-collegemsg.json (2411 rows, scorable=True)
+[23:54:14] === sx-mathoverflow ===
+[02:25:45] wrote benchmarks/m5-v1/topup-propagation2-sx-mathoverflow.json (1838 rows, scorable=True)
+[02:25:45] DONE profile=topup-propagation-2 out=benchmarks/m5-v1 ok=True
