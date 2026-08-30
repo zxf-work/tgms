@@ -54,3 +54,12 @@ PHASE3_SPEC.md
 TGMS_NATIVE_ENGINE_*.md
 HANDOFF-*.md
 docs/first_oss_matrix_devrun.md
+
+# papers in progress — internal repo only (tracked via `git tgi`); the ECQR
+# submission and the TGIR preprint must never reach the public remote.
+# (Added 2026-08-30 after an `add -A` swept them into a public push that
+# had to be force-rewritten — a gitignore is the structural guarantee.)
+paper/
+# internal review/handoff work products at the repo root
+ECQR_*.md
+TGMS_Contributor_Review_*.md
