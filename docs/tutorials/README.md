@@ -1,6 +1,6 @@
 # TGMS tutorials
 
-Three short, task-shaped walkthroughs. Every command and output shown in
+Four short, task-shaped walkthroughs. Every command and output shown in
 them was actually run against a real TGMS store while writing the page —
 nothing is hypothetical.
 
@@ -14,6 +14,10 @@ nothing is hypothetical.
 3. **[Audit an answer](audit-an-answer.md)** — reading a real trace end to
    end: what gets verified, what "complete" means, and — stated plainly —
    what TGMS does *not* guarantee about an answer.
+4. **[Maintain derived results](maintain-derived-results.md)** — register
+   a query result as an artifact, land a correction, see exactly which
+   artifacts are threatened and why, refresh only those, and watch a
+   dependent artifact follow — with the old generations kept for audit.
 
 Read them in order if you're new to TGMS; each stands alone if you already
 have a store and just want one piece.

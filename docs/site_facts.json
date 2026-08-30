@@ -1,7 +1,7 @@
 {
  "_comment": "Single source of truth for every number the public site asserts. Pages carry data-fact=\"<key>\" spans; scripts/site_facts.py verifies each one against this file and CI fails on drift. Add a fact here before quoting it on a page. Numbers that belong to one measured run carry that run's snapshot id, because a fact without a snapshot cannot be re-checked.",
- "updated": "2026-08-23",
- "tgms_version": "0.7.0",
+ "updated": "2026-08-30",
+ "tgms_version": "0.8.0",
  "snapshots": {
   "registry-v2-200k-6sys": {
    "commit": "03a678c",
@@ -129,11 +129,74 @@
    ],
    "note": "Forecast frozen 2026-08-22, before the first headline trial ran. false-fresh is judged on the full digest-changed set: 898 changed trials pooled across both campaigns (447 in run 2, the record of account; 451 in run 1, superseded by a correction-generator fix but kept as corroborating evidence on the soundness axis). Row-touch false-fresh (47.4%) is reported on run 2's 447 changed trials alone.",
    "record": "benchmarks/freshness-v1/trials-full.json"
+  },
+  "m5-v1-zero-false-fresh": {
+   "commit": "02228fc",
+   "date": "2026-08-30",
+   "scale": "37,371 trials pooled across four separately-scored M5 maintenance-campaign arms",
+   "systems": [
+    "artifact registry (register/check/refresh)",
+    "Level-1 PatternMatch scan regions",
+    "carve arm (synth-iv-60k + bitcoinotc/collegemsg)",
+    "propagation (parent_recheck)"
+   ],
+   "note": "Per-arm denominators, none pooled without naming its own: 1,576 changed run-1 carve-arm trials (carve-arm-bitcoinotc.json + carve-arm-collegemsg.json); 7,200 topup-carve round-1 trials + 28,044 topup-carve2 round-2 trials on synth-iv-60k; 243 pattern-arm trials on the adjudicated real counter (level1_false_fresh, topup-pattern2-*.json, after an internal labeling-bug fix between rounds); 308 propagation payload-changing decisions, round 2, powered (topup-propagation2-*.json). Campaign-wide Gate A, final round.",
+   "record": [
+    "benchmarks/m5-v1/carve-arm-bitcoinotc.json",
+    "benchmarks/m5-v1/carve-arm-collegemsg.json",
+    "benchmarks/m5-v1/topup-carve-synth-iv-60k.json",
+    "benchmarks/m5-v1/topup-carve2-synth-iv-60k.json",
+    "benchmarks/m5-v1/topup-pattern2-bitcoinotc.json",
+    "benchmarks/m5-v1/topup-pattern2-collegemsg.json",
+    "benchmarks/m5-v1/topup-pattern2-sx-mathoverflow.json",
+    "benchmarks/m5-v1/topup-propagation2-bitcoinotc.json",
+    "benchmarks/m5-v1/topup-propagation2-collegemsg.json",
+    "benchmarks/m5-v1/topup-propagation2-sx-mathoverflow.json"
+   ]
+  },
+  "m5-v1-propagation": {
+   "commit": "02228fc",
+   "date": "2026-08-30",
+   "scale": "5,867 parent_recheck decisions across bitcoinotc, collegemsg and sx-mathoverflow",
+   "systems": [
+    "tgms.artifact.propagate.parent_recheck"
+   ],
+   "note": "Round 2 (topup-propagation2), scored alone against the unchanged frozen floor per the M4 run-2 precedent; edge_sampling reverted to \"head\" for this arm only (Addendum 7's strategy-consistency finding). Gate C PASS, powered: payload-changing 122/114/72 (>=30 each), decisions 1,618/2,411/1,838 (>=100 each). Both figures recomputed here directly from each record's rows (child_recomputed field), not copied from the harness summary.",
+   "record": [
+    "benchmarks/m5-v1/topup-propagation2-bitcoinotc.json",
+    "benchmarks/m5-v1/topup-propagation2-collegemsg.json",
+    "benchmarks/m5-v1/topup-propagation2-sx-mathoverflow.json"
+   ]
+  },
+  "m5-v1-pinned": {
+   "commit": "02228fc",
+   "date": "2026-08-30",
+   "scale": "600 pinned-artifact trials, 200 each on bitcoinotc, collegemsg and sx-mathoverflow",
+   "systems": [
+    "D-153 pinned exemption"
+   ],
+   "note": "Gate B pinned (a') line, Addendum 5: reported per R-16, not a pass/fail gate on its own — every trial carries a receipt and every stripped (unexempted) counterpart is possibly-stale in the same trial.",
+   "record": [
+    "benchmarks/m5-v1/pinned-bitcoinotc.json",
+    "benchmarks/m5-v1/pinned-collegemsg.json",
+    "benchmarks/m5-v1/pinned-sx-mathoverflow.json"
+   ]
+  },
+  "m5-v1-carve-dominance": {
+   "commit": "02228fc",
+   "date": "2026-08-30",
+   "scale": "28,044 trials, 120 cells/form on synth-iv-60k (the interval population), round 2",
+   "systems": [
+    "carve arm",
+    "value arm (control)"
+   ],
+   "note": "§13.10 answered, Addendum 8: 378 outside-window B/C/D changed duration trials (floor 200 met; per-half 708 >= 100 met), every one carve-arm-only. Does not generalize to the instantaneous-event stores (bitcoinotc, collegemsg), where the same question stayed measured-unanswerable (0 outside-window B/C/D changed trials, R-8/R-14a, measured twice: M4 §10 and M5 Addendum 5).",
+   "record": "benchmarks/m5-v1/topup-carve2-synth-iv-60k.json"
   }
  },
  "facts": {
   "site_version": {
-   "value": "0.7.0",
+   "value": "0.8.0",
    "kind": "architectural",
    "prose": "current released package version (matches pyproject.toml and the PyPI release)"
   },
@@ -228,6 +291,46 @@
    "kind": "benchmark",
    "prose": "percent false-fresh rate for the naive row-touch rule (\"did the correction touch a row in the stored result?\") on run 2's 447 changed trials (212 of 447) — the dependency-scope mechanism's own false-fresh rate on the same trials is 0",
    "snapshot": "freshness-v1-m4"
+  },
+  "m5_zero_false_fresh": {
+   "value": "0",
+   "kind": "tested",
+   "prose": "false-fresh verdicts anywhere in the M5 maintenance campaign (the artifact registry's own check, Level-1 PatternMatch scan regions, the carve arm, and one-level propagation), across every separately-scored arm and round",
+   "scope_required": "never quote one pooled number without naming the arms: 0 of 1,576 changed run-1 carve-arm trials; 0 of 7,200 topup-carve round-1 trials and 0 of 28,044 topup-carve2 round-2 trials on synth-iv-60k; 0 of 243 pattern-arm trials on the adjudicated real counter (level1_false_fresh, not the mislabeled round-1 counter an internal soundness adjudication replaced); 0 of 308 propagation payload-changing decisions, round 2, powered",
+   "snapshot": "m5-v1-zero-false-fresh"
+  },
+  "m5_campaign_trials_checked": {
+   "value": "37,371",
+   "kind": "tested",
+   "prose": "trials pooled across the M5 campaign's four false-fresh-checked arms (data-fact=\"m5_zero_false_fresh\"): 1,576 + 7,200 + 28,044 + 243 + 308",
+   "scope_required": "this is a trial count, not a correction count or a store count — several arms replay the same store under different correction streams",
+   "snapshot": "m5-v1-zero-false-fresh"
+  },
+  "m5_propagation_false_safe": {
+   "value": "0",
+   "kind": "tested",
+   "prose": "false-safe parent_recheck decisions (a downstream artifact's parent-driven recheck said \"still fresh\" when a payload-changing refresh had actually happened upstream) among 308 payload-changing decisions, round 2 (topup-propagation2), pooled across bitcoinotc, collegemsg and sx-mathoverflow — 0 of 5,867 total decisions",
+   "snapshot": "m5-v1-propagation"
+  },
+  "m5_propagation_avoided_recompute": {
+   "value": "99.0",
+   "kind": "benchmark",
+   "prose": "percent of round-2 propagation decisions (5,808 of 5,867, counted directly from each record's own child_recomputed field) where parent_recheck correctly resolved a downstream artifact as still fresh without re-executing it",
+   "scope_required": "a live-workload figure from this campaign's own correction rate, not a claim about every workload's recompute ratio",
+   "snapshot": "m5-v1-propagation"
+  },
+  "m5_pinned_exemption": {
+   "value": "600",
+   "kind": "tested",
+   "prose": "of 600 pinned-artifact trials (200 each on bitcoinotc, collegemsg and sx-mathoverflow) where the D-153 pinned exemption correctly avoided an invalidation that its unexempted (stripped) counterpart flagged as possibly-stale in the same trial, every time",
+   "snapshot": "m5-v1-pinned"
+  },
+  "m5_carve_dominance": {
+   "value": "100.0",
+   "kind": "tested",
+   "prose": "percent of the 378 outside-window B/C/D changed duration trials on synth-iv-60k (120 cells/form, round 2) attributable to the carve arm alone, against the pre-registered 25% bar — floor 200 met, both halves >=100 met, at power",
+   "scope_required": "an interval-population (synth-iv-60k) result; the same question stays measured-unanswerable on the instantaneous-event stores bitcoinotc and collegemsg (0 outside-window B/C/D changed trials, R-8/R-14a)",
+   "snapshot": "m5-v1-carve-dominance"
   },
   "storage_bytes_per_row": {
    "value": "24.6",

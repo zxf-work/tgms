@@ -1,5 +1,120 @@
 # Changelog
 
+## v0.8.0 — 2026-08-30
+
+The maintenance release: a saved result stops being either "trusted forever"
+or "recomputed from scratch." It can now be registered, checked, and
+selectively refreshed — one hop through its declared dependencies —
+publishing a new generation byte-verified while the old one stays
+byte-identical on disk.
+
+**The artifact registry: `tgms artifact register/list/check/refresh`
+(M5 P1.2/P2.1).** A registered artifact is a named, generation-numbered
+result (`name@generation`) in a new store-local file
+(`<store_path>/artifacts.jsonl`), carrying the same `DependencyScope`/`tt_q`
+machinery `tgms trace check` already uses. `check` is the identical
+three-verdict contract — `FRESH` / `POSSIBLY_STALE` / `UNDECIDABLE`, sound in
+one direction, same exit codes — applied to a name instead of a bare record
+file. `refresh` re-executes the artifact's own recorded plan or operator
+call and either publishes generation `g+1` (exit 0) or refuses and changes
+nothing (exit 2, one reason from a closed taxonomy: `not-found`,
+`generation-mismatch`, `no-refresh-handle`, `handle-mismatch`,
+`unknown-refresh-kind`, `ref-not-found`, `unknown-plan-format`,
+`parent-vanished`, `execution-refused`). Selectivity is deliberately the
+caller's: `refresh` never asks "is this stale" itself, so a fixed
+refresh policy is never smuggled in as a second, unstated contract.
+Documented as an additive CLI surface under `docs/STABILITY.md` §6.
+
+**One-level propagation, library-only for now.**
+`tgms.artifact.propagate.parent_recheck` finds every artifact naming a
+just-refreshed one among its `parents` at a now-superseded generation and
+flags it for recheck — even when the dependent's *own* scope was never
+touched by anything written. Measured on round 2 (the powered run): 5,867
+`parent_recheck` decisions across bitcoinotc, collegemsg and
+sx-mathoverflow, **0 false-safe** (308 of them payload-changing), **99.0%**
+(5,808/5,867) resolved as "still fresh" without recomputing anything, and
+byte-identical deterministic replay on every store. No CLI verb exists for
+it yet — today it's `tgms.artifact.propagate.parent_recheck` called
+directly, named as future work rather than a promise about its eventual
+shape.
+
+**The D-153 pinned exemption.** A pinned (`as_of_tt`) answer's dependency
+scope can now record the instant it actually pinned to
+(`DependencyScope.as_of_tt`, §15 errata **E-10**), so `check`'s step 8a can
+exempt it from invalidations outside that instant instead of treating a
+pinned read like an ordinary widening one. The field is additive and
+opt-in — absent means no exemption, the fail-safe default, so every scope
+written before E-10 (and every scope a producer doesn't set it on today)
+verifies byte-identically to before. Measured **600/600**: every pinned
+trial (200 each on bitcoinotc, collegemsg, sx-mathoverflow) avoided the
+invalidation its unexempted counterpart flagged in the same trial.
+
+**Level-1 PatternMatch scan regions.** A multi-way pattern match now
+records the node uids *and* edge domains its execution actually touched
+(`ScanRegion`, never the node arm alone — recording only that is exactly
+the trap `burst_detection` fell into, PO-P4), so a `POSSIBLY_STALE` verdict
+can narrow to `FRESH` when a correction provably missed every recorded
+term. Fail-safe by construction: an absent or unparseable region is a
+no-op, `level1.py` may only remove witnesses, never add one, and
+`UNDECIDABLE` is never touched. A mid-campaign 57-row anomaly triggered a
+full internal soundness adjudication: verdict **labeling bug**, not a
+soundness defect — digest inversion
+re-executed 39 anchored cells directly against the run's own recovered
+uids with zero disagreements, and the harness's probe/counter logic was
+fixed for round 2. The mechanism's own soundness bar: **0 false-fresh on
+every population it ever ran**, adjudication included. The separately
+pre-registered **precision** bar — did Level-1 narrow ≥10× more precisely
+than Level-0 — **failed, honestly**: measured **1.86×** on
+sx-mathoverflow (0.773 vs 0.417 precision, floors met at 83 cells/40
+mixed), because an anchored `PatternMatch` population already makes
+Level-0 ~42–48% precise, structurally compressing how much visible lift
+Level-1 can add on top. No bar moved to accommodate the miss.
+
+**Plan telemetry: the `annotations` channel.** A `tgir_plan` execution can
+now carry per-node admission-cost telemetry (`rows_scanned_est`,
+`expansions_est`, `out_card`, `time_est_ms`, keyed by `node_digest`) in a
+new `annotations` field, captured once during admission instead of being
+computed and discarded. It sits outside the payload `result_digest`
+covers — digest-excluded structurally, not by convention — so nothing
+that ignores it sees a different result, and it is additive: no
+prior envelope shape changed.
+
+**CI: the import-boundary gate goes per-module.** `scripts/check_freshness_boundary.py`
+(M4) enforced one *global* allowlist for what the freshness-checking
+modules may import, so a checker can never quietly depend on live store
+state. M5 makes the allowlist per-module: an exception granted to
+`tgms/artifact/witness.py` no longer silently also grants it to
+`tgms/tgir/check.py`, and the guarded set grows by five
+(`tgms/artifact/{record,registry,lookup,witness,propagate}.py`) —
+`tgms/artifact/refresh.py` deliberately does not join, since refresh
+recomputes and cannot carry the "runs against a log it did not produce"
+claim.
+
+**The M5 campaign verdicts, in one paragraph.** Gate A (soundness) —
+**PASS, campaign-wide, final**: 0 false-fresh across every separately-scored
+arm and round (1,576 changed run-1 carve trials; 7,200 + 28,044 carve-2
+trials on the interval population; 243 pattern-arm trials on the
+adjudicated real counter; 308 propagation payload-changing decisions,
+powered — **37,371 trials total, 0 false-fresh in any of them**). Gate C
+(propagation) — **PASS, powered**, on round 2 (numbers above). §13.10 (does
+the carve arm dominate) — **answered**: on synth-iv-60k, 378 outside-window
+changed trials, every one carve-arm-only, dominance 100.0% against the 25%
+bar, at power. Gate B / L1-PM-node (the 10× precision bar) — **measured at
+its floor, fails honestly**: 1.86× where 10× was ratified (numbers above);
+the mechanism stayed sound throughout, and the miss is reported instead of
+re-scored. Full record and per-arm receipts: `benchmarks/m5-v1/`.
+
+**Process.** Scored under the same freeze-then-measure discipline as
+v0.7.0's TGIR/freshness numbers, pre-registered and ratified before the
+first trial ran, append-only from there: every gate, floor and denominator
+was fixed in advance, and the one amendment made after seeing a result
+(the pattern-arm probe/counter fix) is named as a post-hoc revision in
+those words, scored alone in round 2, never blended with round 1.
+Published site numbers are resolved from `docs/site_facts.json`
+and gated in CI, as always.
+
+**Decisions/milestones M5 (the maintenance campaign).**
+
 ## v0.7.0 — 2026-08-23
 
 The compositional-IR release, and freshness v1: the fixed operator surface

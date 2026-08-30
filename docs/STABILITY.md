@@ -253,9 +253,23 @@ The contract this implements is `docs/design/FRESHNESS_SEMANTICS.md`
 wire format a result carries is versioned: a reader that does not recognize
 a dependency record's version returns `UNDECIDABLE`, never `FRESH`.
 
+**`DependencyScope.as_of_tt` (added M5, §15 errata entry E-10) is additive
+and opt-in.** It carries the `as_of_tt` a read actually applied, so that a
+pinned answer can claim the D-153 pinned exemption at `check`'s step 8a
+instead of being widened like an ordinary unpinned scope. The field is
+emitted only when a producer wants that exemption; **absent means no
+exemption** — the fail-safe default — so every scope written before E-10,
+and every scope a producer chooses not to set it on today, behaves exactly
+as it did before this field existed: byte-identical verdicts. This is not a
+wire-format version bump, deliberately: a reader that does not recognize the
+key simply ignores it and computes today's (sound) verdict. Measured over
+600 pinned-artifact trials (200 each on bitcoinotc, collegemsg and
+sx-mathoverflow), the exemption avoided the invalidation its unexempted
+counterpart flagged in every trial.
+
 ---
 
-## 5. Compaction layout and disk retention (fixed 2026-08-24, unreleased — post-v0.7.0 main)
+## 5. Compaction layout and disk retention (fixed 2026-08-24, shipped v0.8.0)
 
 A `compact()` call reorganizes a store's on-disk segments; `gc()` (default
 `keep_last=2`) is the separate step that reclaims space no longer
@@ -269,10 +283,10 @@ small batches had gone into the store before compaction (measured over
 100x slower on one such store, to the point a full scan did not finish in
 a reasonable timeout). This was a read-path cost internal to how a
 compacted segment tracks transaction-time metadata, not a property of the
-data itself. It is fixed on `main` as of 2026-08-24 — v0.7.0 predates the
-fix, and it has not yet shipped in a tagged release. No store rebuild is
-required: an existing store on disk gets the fix automatically the next
-time it is opened with a build that has it.
+data itself. It was fixed on `main` as of 2026-08-24 — v0.7.0 predates the
+fix — and ships in v0.8.0. No store rebuild is required: an existing store
+on disk gets the fix automatically the next time it is opened with a build
+that has it.
 
 **What you can check:** the `tgms store verify` report (§2) carries two
 layout-quality counters: `tt_s_runs` (summed over live segments) and
@@ -291,3 +305,63 @@ so those files are not deleted yet. Expect disk usage to stay elevated
 (potentially higher than before compaction, since the new compacted
 segments now sit alongside the still-referenced old ones) until a later
 commit+gc cycle advances the retained window past that generation.
+
+---
+
+## 6. The artifact registry (added M5, 2026-08-30)
+
+**`tgms artifact register/list/check/refresh <store> ...`** is a **non-breaking
+addition** under §3's rule, on the exact pattern §4 already set for
+`tgms trace check`: a new CLI verb and a new on-disk file
+(`<store_path>/artifacts.jsonl`), touching nothing about how the event log,
+the derived store, or the fifteen operators behave. A registered artifact is
+a named, generation-numbered result (`name@generation`) that carries the
+same freshness machinery `tgms trace check` uses — a `DependencyScope` and a
+`tt_q` — plus, optionally, a `refresh` handle that says how to recompute it
+and a `parents` list naming other artifacts it was built from.
+
+**What you can rely on:**
+
+- **`artifact check` is the same three-verdict contract as `trace check`**
+  (§4): `FRESH` / `POSSIBLY_STALE` / `UNDECIDABLE`, sound in the same one
+  direction, exit `0`/`1` the same way. It opens the event log, not the
+  store — same posture, same reason.
+- **`artifact refresh` either publishes a byte-verified new generation or
+  changes nothing.** A successful refresh (exit `0`) re-executes the
+  artifact's own recorded plan or operator call and publishes generation
+  `g+1`; generation `g` is left untouched on disk. A refused refresh (exit
+  `2`) publishes nothing, and names its reason from a closed taxonomy
+  (`not-found`, `generation-mismatch`, `no-refresh-handle`,
+  `handle-mismatch`, `unknown-refresh-kind`, `ref-not-found`,
+  `unknown-plan-format`, `parent-vanished`, `execution-refused`) — printed
+  in prose, or in `details.reason` with `--json`. There is no partial or
+  silently-degraded refresh outcome.
+- **Selectivity is the caller's, not the mechanism's.** `artifact refresh`
+  does not itself decide whether an artifact needs refreshing — it re-runs
+  whatever you name, whether or not a preceding `artifact check` said
+  `FRESH`. This is deliberate: a fixed policy about *when* to refresh would
+  be a second, unstated contract on top of a mechanism whose only promise
+  is *what happens once you ask*.
+
+**What is not stable, and is not claimed:**
+
+- **One-level propagation (`parent_recheck`) has no CLI verb yet.** It
+  exists only as a library call (`tgms.artifact.propagate.parent_recheck`):
+  given a just-refreshed artifact, it finds every registered artifact
+  naming it among their `parents` at a now-superseded generation, and flags
+  them for recheck — even when their *own* dependency scope was never
+  touched (measured over 5,867 round-2 propagation decisions across three
+  stores: 0 false-safe, 99.0% resolved without recomputation, byte-identical
+  on deterministic replay — `benchmarks/m5-v1/`). A CLI surface for it is
+  future work, not yet a promise about its shape.
+- **The `annotations` envelope field is digest-excluded and additive.**
+  A `tgir_plan`-kind execution may carry a per-node `annotations` map (today,
+  admission-cost telemetry — `rows_scanned_est`, `expansions_est`,
+  `out_card`, `time_est_ms`, keyed by `node_digest`) alongside its result.
+  It sits outside the payload that `result_digest` covers — structurally,
+  not by convention — so a result recomputed byte-identically keeps the same
+  digest whether or not this field is present, and whatever it carries is
+  presentation/telemetry, not part of what a claim can be verified against.
+- **The record wire format (`tgms-artifact`) is v0.x.** Field names, the
+  refusal taxonomy's exact members, and the registry file's own layout may
+  still change; only the freshness verdict contract above is a promise.

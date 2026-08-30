@@ -714,7 +714,7 @@
     <section class="hero">
       <div class="container hero-grid">
         <div>
-          <div class="eyebrow">Research prototype · v<span data-fact="site_version">0.7.0</span></div>
+          <div class="eyebrow">Research prototype · v<span data-fact="site_version">0.8.0</span></div>
           <h1>Verified temporal reasoning for LLM agents.</h1>
           <p class="hero-lede">
             <strong>TGMS</strong> is an agent-native bi-temporal graph management system.
@@ -822,6 +822,14 @@
               measured at <span data-fact="freshness_false_fresh">0</span> false-fresh
               verdicts where the naive "did the correction touch a stored row" rule is
               wrong <span data-fact="freshness_rowtouch_false_fresh">47.4</span>% of the time.
+              Registered results go further and refresh themselves: a downstream
+              result's staleness propagates one hop through its declared dependencies,
+              <span data-fact="m5_propagation_avoided_recompute">99.0</span>% of those
+              propagation checks resolve without recomputing anything, and the
+              maintenance campaign measured
+              <span data-fact="m5_zero_false_fresh">0</span> false-fresh in
+              <span data-fact="m5_campaign_trials_checked">37,371</span> trials across
+              every arm.
             </p>
           </article>
 

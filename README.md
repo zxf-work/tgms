@@ -34,6 +34,15 @@ to do any of them:
   campaigns, 6,978 trials: **0 false-fresh** verdicts of 898 changed
   answers, where the obvious cheap check — "did the correction touch a row
   in the stored result?" — is wrong on **47.4%** of the same trials;
+- and a saved result you want to *keep*, not just check, can now maintain
+  itself: **`tgms artifact register/check/refresh`** turns it into a named,
+  generation-numbered artifact — refresh recomputes only what you ask, the
+  old generation stays byte-identical on disk, and a refresh propagates one
+  hop to whatever else was built on top of it, even when that dependent's
+  own scope was never touched. Measured across the M5 maintenance campaign:
+  **0 false-fresh** in **37,371** trials, **0 false-safe** over 5,867
+  propagation decisions (**99.0%** resolved without recomputing anything),
+  and a **600/600** pinned-answer exemption;
 - **15 verified temporal operators** (reachability over time-respecting
   paths, δ-motifs, snapshot diffs, burst detection, interval joins, grouped
   aggregation over edge events, and the belief log itself) — typed,
@@ -75,6 +84,7 @@ Next steps, in the order most people need them:
 [bring your own temporal graph data](docs/tutorials/bring-your-own-data.md) ·
 [give TGMS to an agent over MCP](docs/tutorials/agent-setup.md) ·
 [audit an answer](docs/tutorials/audit-an-answer.md) ·
+[maintain derived results](docs/tutorials/maintain-derived-results.md) ·
 [what you can rely on across versions](docs/STABILITY.md) ·
 [what's coming](docs/PUBLIC_ROADMAP.md)
 
@@ -180,7 +190,8 @@ into chains of those primitives. TGIR plans are not yet a user-facing query
 language: there is no public syntax for writing one directly, and the
 fifteen operators below are still the whole interface an agent (or you)
 calls. What changed is what happens underneath a call, and it is measured
-in [`docs/design/TGIR_M3_MEASURED_REPORT.md`](docs/design/TGIR_M3_MEASURED_REPORT.md).
+in the byte-reproducible record at
+[`benchmarks/tgir-v1/measured.yaml`](benchmarks/tgir-v1/measured.yaml).
 
 The pre-existing fifteen:
 
