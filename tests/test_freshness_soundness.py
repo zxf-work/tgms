@@ -953,6 +953,25 @@ def test_ff7b_a_pinned_basis_paired_with_a_read_time_cursor(stores):
     assert scope.pinned is True and scope.tt_q == pinned_at
     assert scope.as_of_tt == pinned_at, "E-10: the pin rides on the scope"
 
+    # The pairing this scenario needs — `scope.min_offset` genuinely *after*
+    # the first batch past `tt_q` — must be built by construction, not taken
+    # from whatever the live call's own backend happened to report. A
+    # cursorless backend (DuckDB, `freshness_fixtures.BACKEND`'s default)
+    # never reports a real `(offset, chain)`: `checkpoints_of` falls back to
+    # `FULL_SCAN_CHECKPOINTS`, offset `0`, which is already the widened state
+    # and can never satisfy step 5's `start > first_suffix` — the widening
+    # would then have nothing to trigger, not because the pairing stopped
+    # violating the invariant, but because this backend's checkpoint is
+    # trivially at the head-of-log's lower bound already. So the checkpoint is
+    # pinned explicitly here to the log's real head, offset and chain both
+    # read straight off the log (`EventLog.chain_of_prefix`, the identical
+    # hash `check`'s own walk verifies against) — a genuine, backend- and
+    # timing-independent instance of the violation, true by construction on
+    # every backend this suite runs on.
+    head_offset = s.eventlog.size()
+    scope = replace(scope, checkpoints=(
+        Checkpoint(head_offset, s.eventlog.chain_of_prefix(head_offset)),))
+
     verdict = fx.check_scope(s, scope)
     assert "cursor-invariant" in verdict.degraded, (
         "D13.8a: the pairing must still trigger the widening, not a silent "
