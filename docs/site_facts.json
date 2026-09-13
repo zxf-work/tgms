@@ -1187,7 +1187,7 @@
   },
   {
    "phrase": "898 changed",
-   "reason": "the M4 report (docs/design/M4_MEASURED_REPORT.md) holds that pooling run 1 (451 changed) and run 2 (447 changed) into one denominator is illegitimate; quote per campaign — 0/447 M4 (run 2, record of account) and 0/1,852 changed of 28,044 M5 carve-2 trials"
+   "reason": "the M4 measured report (internal record) holds that pooling run 1 (451 changed) and run 2 (447 changed) into one denominator is illegitimate; quote per campaign — 0/447 M4 (run 2, record of account) and 0/1,852 changed of 28,044 M5 carve-2 trials"
   }
  ]
 }
