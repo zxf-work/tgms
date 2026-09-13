@@ -31,9 +31,11 @@ to do any of them:
   recompute, no store lock required — and returns `FRESH` /
   `POSSIBLY_STALE` / `UNDECIDABLE`, sound in the direction that matters (it
   never calls a stale answer fresh). Measured across two injection
-  campaigns, 6,978 trials: **0 false-fresh** verdicts of 898 changed
-  answers, where the obvious cheap check — "did the correction touch a row
-  in the stored result?" — is wrong on **47.4%** of the same trials;
+  campaigns, 6,978 trials: **0 false-fresh** verdicts on 447 changed
+  answers in the M4 campaign (run 2, the record of account) and 0 more on
+  1,852 changed answers in the M5 carve-2 campaign (28,044 trials), where
+  the obvious cheap check — "did the correction touch a row in the stored
+  result?" — is wrong on **47.4%** of the M4 trials;
 - and a saved result you want to *keep*, not just check, can now maintain
   itself: **`tgms artifact register/check/refresh`** turns it into a named,
   generation-numbered artifact — refresh recomputes only what you ask, the
