@@ -20,6 +20,7 @@ pub mod error;
 pub mod gc;
 pub mod interval;
 pub mod manifest;
+pub mod manifest_chain;
 pub mod motif;
 pub mod read;
 pub mod row;
@@ -40,9 +41,27 @@ pub use error::{Category, EngineError, Result};
 /// Crate version, surfaced to Python for receipts (spec §1.4).
 pub const VERSION: &str = env!("CARGO_PKG_VERSION");
 
-/// On-disk format version. Bumped only by a breaking format change; every
-/// segment, manifest, and close-run file records it.
+/// On-disk format version for the *physical* files — segment headers and
+/// close-run headers. Bumped only by a breaking change to those bytes; every
+/// segment and close-run file records it.
+///
+/// The manifest carries its own version ([`MANIFEST_FORMAT_VERSION`]). The
+/// two were one constant until the delta-manifest change
+/// (`docs/design/INCREMENTAL_MANIFEST_FORECAST_2026-09-13.md`), which rewrote
+/// the manifest document and left every segment byte untouched — bumping the
+/// shared constant would have made `segment.rs`'s exact-match check reject
+/// every already-written segment, which is the opposite of the migration
+/// story §4 requires.
 pub const FORMAT_VERSION: u32 = 1;
+
+/// On-disk format version for `manifests/<G>.json`. Format 2 is the tagged
+/// checkpoint/delta document of the memo above; format 1 is the pre-2026-09-13
+/// full-manifest-per-generation shape, which this build opens read-only and
+/// `tgms store upgrade-manifests` converts.
+pub const MANIFEST_FORMAT_VERSION: u32 = 2;
+
+/// The manifest format this build can read but not write.
+pub const FORMAT_LEGACY: u32 = 1;
 
 /// Open-end sentinel — must equal `tgms.core.model.OPEN_END` (spec §2.1).
 pub const OPEN_END: i64 = 1 << 62;
@@ -62,6 +81,14 @@ pub mod defaults {
     pub const LANE_MAX_PARTITION_CROSSINGS: u32 = 2;
     /// TCSR switches to dense per-vertex offsets at or above this density.
     pub const TCSR_DENSE_THRESHOLD: f64 = 0.5;
+    /// Generations between full manifest checkpoints (memo §4, "Choosing K").
+    /// Retained manifest bytes at SF1 scale go as G·(h+s) + s·G²/(2K) and
+    /// worst-case open as one checkpoint parse + K delta parses; 512 puts the
+    /// measured 25,451 MB pathology at ~62 MB while keeping worst-case open
+    /// (~35 ms at G = 10,147) within 1.75× of the status quo's full-manifest
+    /// parse at the same generation. `TGMS_MANIFEST_CHECKPOINT_EVERY`
+    /// overrides, so the A/B can sweep K without a rebuild.
+    pub const MANIFEST_CHECKPOINT_EVERY: u64 = 512;
     /// Generations gc retains besides those pinned by live readers. 2 keeps
     /// one full generation of headroom behind `CURRENT` for post-incident
     /// inspection while still bounding manifest growth.
