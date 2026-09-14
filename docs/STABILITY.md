@@ -554,3 +554,80 @@ request*; a call path that never logs a `"started"` line (library code that
 bypasses `ToolRouter.call`) is invisible to it, and restarting a child is a
 mitigation for availability, not a substitute for finding why a request ran
 long.
+
+## 9. The production claim gate: `unverifiable` claims are also dropped
+## (D-160, coordinator ruling, since 2026-09-15)
+
+**Behaviour change, dated.** Since 2026-09-15 an emitted answer never
+carries an `unverifiable` claim; coverage falls; UCR semantics unchanged.
+
+Before this date, `tgms.eval.harness.run_task_ours`'s production gate
+(`system="ours"`) dropped a claim from the delivered `AnswerObject` only
+when `ClaimVerifier` verdicted it `unsupported`; a claim verdicted
+`unverifiable` (evidence missing, malformed, or a provenance pointer naming
+an uncited step — `tgms/agent/verifier.py`'s verdict vocabulary is
+`supported | weakly_supported | unsupported | unverifiable`) survived and
+was emitted to the user/record as if it were a normal claim.
+
+The pre-registered trust-boundary fault-matrix campaign
+(`benchmarks/faults-v1/fault-matrix-campaign-2026-09-13.json`, iTiger job
+211007) found this was not a theoretical gap: under the deployed
+(pre-fix) gate, 303 of 3,102 trials were `silent-violation`s of invariant
+I1 ("no emitted claim unsupported by the evidence it cites"), of which
+271 were the F1-9 wrong-step-citation fault surviving as an emitted
+`unverifiable` claim — a wrong-step citation the pipeline could not
+verify but delivered anyway. Under the secondary `--strict-gate` arm
+(which already dropped both verdicts), the same trials became
+`explicit-failure`s and the silent-violation count fell to 32 (all F2-3,
+a pre-registered stated-assumption probe outside the trust model, §3 of
+the frozen fault-matrix design memo). The finding falsified the
+pre-registered "zero silent violations" claim for the *deployed* gate.
+
+**The ruling (D-160, coordinator, 2026-09-15):** the trust boundary must
+not emit a claim it cannot verify. The production gate in
+`tgms.eval.harness.run_task_ours` — and the fault-matrix driver's own
+`gate_answer()` default in `tgms.eval.plan_faults`, which mirrors it —
+now drop `unverifiable` claims as well as `unsupported` ones. Both call
+sites read the same constant, `tgms.eval.plan_faults.GATED_VERDICTS =
+("unsupported", "unverifiable")`, so they cannot silently diverge again.
+`scripts/eval_trust_boundary_matrix.py`'s `--strict-gate` flag is kept as
+a **no-op alias**: since `unverifiable` is gated by default, `--strict-gate`
+and its absence now compute the identical drop set and produce identical
+results. `tgms/agent/reporter.py` was audited for a drop rule of its own
+and has none — claim gating has always lived only in the harness's
+delivered-answer path (`run_task_ours`), never in the reporter, so no
+change was needed there. The CLI (`tgms ask`) and the demo webapp do not
+gate at all — they print every claim beside its raw verifier verdict for
+inspection — so they are unaffected by, and out of scope for, this
+ruling.
+
+**What does and does not change.** `ucr_pre_gate` (computed by
+`ClaimVerifier.verify()` over the *raw*, un-gated `AnswerObject`, before
+either gate applied) is unchanged in meaning and unaffected by this
+ruling — it still measures what the reporter LLM produced, not what the
+gate lets through. `ucr` and `coverage` (computed by a second
+`ClaimVerifier.verify()` call over the *gated* answer) now reflect the
+new, narrower gate: a claim that used to survive as `unverifiable` is now
+counted as a withheld assertion by `coverage`'s uncovered-text accounting
+(the text can still mention the number or uid the dropped claim used to
+cover; with the claim gone, that mention becomes uncovered), so
+**coverage falls** under the new gate relative to old cached rows.
+`rates()` (`tgms/eval/metrics.py`) is untouched, as is every operator
+digest and the write/recover paths — this is a claim-presentation change
+in the agent evaluation harness, not a change to what any operator
+computes or to any persisted on-disk format; `scripts/
+check_digest_stability.py` covers that separation and is run as a gate
+on this change.
+
+**What is explicitly deferred, and why.** The CollegeMsg agent-loop
+numbers already on public surfaces (`docs/site_facts.json`'s `ucr_gated`
+0/199, coverage 0.706 at conditional accuracy 0.548; `README.md`;
+`docs/TECHNICAL_REPORT.md`) were measured under the *old* gate (drop
+`unsupported` only) and are **not** updated by this note or this commit.
+They stay as measured until a separate LLM campaign (Qwen2.5-14B-AWQ,
+three seeds, on iTiger) re-measures them under the new gate — coverage is
+expected to fall once that campaign runs, per the ruling above — and no
+public surface may cite the new numbers until that campaign lands.
+`benchmarks/faults-v1/fault-matrix-campaign-2026-09-13.json` (the pre-fix
+finding) and the `-d160` re-run record (the post-fix result, primary arm
+only) are both kept and both reported; neither supersedes the other.
