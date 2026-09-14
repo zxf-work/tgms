@@ -89,7 +89,8 @@ class Registry:
     match the log it is opened beside.
     """
 
-    def __init__(self, store: str | Path, *, log: EventLog | None = None) -> None:
+    def __init__(self, store: str | Path, *, log: EventLog | None = None,
+                 read_only: bool = False) -> None:
         self.store_dir = Path(store)
         self.path = self.store_dir / FILE_NAME
         #: Sidecar lock for `append` (never the registry file itself, so a
@@ -100,7 +101,12 @@ class Registry:
         self._by_name: dict[str, list[ArtifactRecord]] = {}
         self._chain = SEED_CHAIN
         self._checkpoint_offset = 0
-        self._load()
+        #: Invariant 1.5, extended to readers (mirrors `Store`'s
+        #: `read_only`): a `Registry` never appends through this handle, so
+        #: it never holds `_lock_path` and can open while the poller is
+        #: mid-`append` — see `_load`'s `tolerate_torn_tail`.
+        self.read_only = read_only
+        self._load(tolerate_torn_tail=read_only)
 
     # -- store identity ------------------------------------------------------
 
@@ -109,7 +115,23 @@ class Registry:
 
     # -- loading / folding ----------------------------------------------------
 
-    def _load(self) -> None:
+    def _load(self, *, tolerate_torn_tail: bool = False) -> None:
+        """Fold the whole file from byte 0, same rules as `_consume_record_line`.
+
+        `tolerate_torn_tail` (invariant 1.5, extended to readers — see
+        `EventLog.batches_from`'s parameter of the same name and shape):
+        when the last line read is unparseable or missing its terminating
+        newline *and* its bytes run to the file's current size (re-checked
+        fresh with `seek(0, 2)`, since the writer may finish the record
+        between the read that found the defect and this check), stop
+        folding before it instead of raising — a poller's `append()` is
+        mid-flight, not corrupt, and holds `_lock_path` for the whole
+        write, so this object's checkpoint simply lands before the
+        in-flight record and a later `Registry(store, read_only=True)`
+        picks up the completed one. A defect anywhere else in the file — or
+        this same defect when `tolerate_torn_tail` is False, the default a
+        writer opens with — still raises, exactly as before.
+        """
         if not self.path.exists():
             self.path.parent.mkdir(parents=True, exist_ok=True)
             header_bytes = (canonical_json(HEADER) + "\n").encode("utf-8")
@@ -136,8 +158,21 @@ class Registry:
                     break
                 if not raw.strip():
                     continue
+                end = f.tell()
+                if tolerate_torn_tail:
+                    torn = not raw.endswith(b"\n")
+                    if not torn:
+                        try:
+                            json.loads(raw)
+                        except json.JSONDecodeError:
+                            torn = True
+                    if torn:
+                        size = f.seek(0, 2)
+                        f.seek(end)  # restore position: we may not stop here
+                        if end >= size:
+                            break  # in-flight append, not yet committed
                 self._consume_record_line(raw, offset)
-                offset = f.tell()
+                offset = end
             self._checkpoint_offset = offset
 
     def _consume_record_line(self, raw: bytes, offset_for_error: int) -> None:
