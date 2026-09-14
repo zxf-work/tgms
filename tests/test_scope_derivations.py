@@ -300,3 +300,76 @@ class TestTemporalMotifs:
               f"{result.exclusion_rate:.2f} precision={result.precision:.2f} n={result.n}")
         assert result.n > 0
         assert result.exclusion_rate >= 0.3
+
+
+# ---------------------------------------------------------------------------
+# §2.9 — temporal_reachability
+# ---------------------------------------------------------------------------
+
+class TestTemporalReachability:
+    ARGS = {"src": "n0", "window": {"t_a": 0, "t_b": 900}}
+
+    MATRIX = [
+        # the positive case: I = TOP (as E), so ANY edge inside the window
+        # intersects, not only ones incident to src (CE-1's chain argument)
+        ("an edge event inside the window, unrelated to src", ARGS,
+         assert_edge("n5", "n6", vt_s=10, vt_e=11), True),
+        ("a correction to an edge overlapping the window", ARGS,
+         correct_edge("n5", "n6", vt_s=10, vt_e=20), True),
+        ("a retraction of an edge overlapping the window", ARGS,
+         retract_edge("n5", "n6", 5), True),
+        ("events ingested inside the window", ARGS, ingest("n5", "n6", 10), True),
+        # entity-kind exclusion: a node write unrelated to src
+        ("a node write, unrelated to src", ARGS, assert_node("n9"), False),
+        # V exclusion
+        ("an edge event after the window", ARGS,
+         assert_edge("n5", "n6", vt_s=1000, vt_e=1001), False),
+        # carve-arm verdict: P = Pv, not carve-reachable
+        ("a carve of an edge, entirely outside the window", ARGS,
+         correct_edge("n5", "n6", vt_s=2000, vt_e=2010), False),
+        # the existence pair, scoped to src alone
+        ("an assert_node registering src itself", ARGS, assert_node("n0"), True),
+        ("an assert_edge naming src as an endpoint, far outside the window",
+         ARGS, assert_edge("n0", "n50", vt_s=2000, vt_e=2001), True),
+        ("an assert_node registering an unrelated uid", ARGS, assert_node("n1"), False),
+    ]
+
+    @pytest.mark.parametrize("label,args,op,must", MATRIX, ids=[m[0] for m in MATRIX])
+    def test_matrix(self, label, args, op, must):
+        filled = validate_args("temporal_reachability", dict(args))
+        terms = terms_for("temporal_reachability", filled, sigma_for("temporal_reachability", filled))
+        assert hits(terms, op) is must, (
+            f"{label}: should {'intersect' if must else 'NOT intersect'}; "
+            f"arms hit: {arms_that_hit(terms, op)}")
+
+    def test_i_and_t_are_forced_to_top(self):
+        """§9.13: both unavoidable — CE-1 (a chain of new edges can connect
+        src to nodes the fixpoint never labelled) and, under delta_max_wait,
+        non-monotonicity."""
+        filled = validate_args("temporal_reachability", dict(self.ARGS))
+        read_term = terms_for("temporal_reachability", filled, sigma_for("temporal_reachability", filled))[0]
+        assert read_term.targets.edges is TOP
+        assert read_term.rel_types is TOP
+
+    def test_num_entities_is_not_in_r(self):
+        """§2.9: `adapter.num_entities()` only sizes the label array — an
+        added entity gets INF and is filtered, so the entity count is not in
+        `R` and `K = edge` stands (the read-tracing property test's
+        allowlist entry, checked structurally here as "no node term exists
+        beyond the existence pair")."""
+        filled = validate_args("temporal_reachability", dict(self.ARGS))
+        terms = terms_for("temporal_reachability", filled, sigma_for("temporal_reachability", filled))
+        # only the existence pair's node term names `nodes`, and it is scoped
+        # to `src` alone, never to `"*"` the way a num_entities dependency
+        # would require
+        node_terms = [t for t in terms if getattr(t.targets, "nodes", None) is not None]
+        assert len(node_terms) == 1
+        assert node_terms[0].targets.nodes == ("n0",)
+
+    def test_differential(self, store):
+        result = run_differential(store, "temporal_reachability", dict(self.ARGS),
+                                  read_uids=("n0",), window=(0, 900), trials=10, seed=4)
+        print(f"temporal_reachability: exclusion={result.exclusion_rate:.2f} "
+              f"precision={result.precision:.2f} n={result.n}")
+        assert result.n > 0
+        assert result.exclusion_rate >= 0.1
