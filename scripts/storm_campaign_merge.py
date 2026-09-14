@@ -251,7 +251,14 @@ def main(argv: list[str] | None = None) -> int:
     ap.add_argument("--commit", required=True)
     ap.add_argument("--out", type=Path, required=True)
     ap.add_argument("--array-job-id", default=None,
-                    help="Slurm array job id, recorded in config for provenance")
+                    help="Slurm array job id, recorded in config for provenance. "
+                         "Comma-separated if the campaign's tasks came from more than "
+                         "one sbatch submission (e.g. a resubmission of cells an earlier "
+                         "submission failed to reach) -- see --array-job-id's sibling "
+                         "config.array_job_ids below, a list form of the same value. "
+                         "Per-task job provenance is not recorded in the per-task record "
+                         "format itself; the campaign's own SUBMISSION_NOTE.txt (if any) "
+                         "names which task range came from which submission.")
     ap.add_argument("--freeze-id", default=None,
                     help="campaign.yaml's freeze_id (storm-v1 C6 freeze), stamped into "
                          "config for provenance")
@@ -298,7 +305,9 @@ def main(argv: list[str] | None = None) -> int:
         "config": {
             "harness": "scripts/bench_correction_storm.py",
             "slurm_script": "scripts/storm_campaign.slurm",
-            "array_job_id": args.array_job_id, "freeze_id": args.freeze_id,
+            "array_job_id": args.array_job_id,
+            "array_job_ids": _csv_list(args.array_job_id) if args.array_job_id else [],
+            "freeze_id": args.freeze_id,
             "freeze_sha256": args.freeze_sha256, "n_tasks": n_tasks,
             "stores": stores, "mixes": mixes, "ages": ages, "n_artifacts_list": n_list,
             "n_seeds": args.n_seeds, "base_seed": args.base_seed, "ttf_modes": ttf_modes,
