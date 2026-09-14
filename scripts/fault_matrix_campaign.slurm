@@ -54,9 +54,24 @@
 #               a fresh directory (e.g. /project/xzhang12/faults-v1-work-d160)
 #               so this re-run's raw output never collides with or
 #               overwrites the original campaign's staged files.
-#   TGMS_TAG    optional free-text tag folded into each record's filename
-#               (default: "d160"), so records staged under a shared
-#               directory are still visually distinguishable by run.
+#   TGMS_TAG    optional free-text run tag, logged on the RUN_STARTED line
+#               of each task's driver log (default: "d160") for
+#               at-a-glance provenance. NOT folded into the raw record
+#               filename: scripts/fault_matrix_campaign_merge.py's
+#               parse_records_dir() recovers each record's effective
+#               (suite, surface) by stripping a literal "-strict" suffix
+#               off the filename's "<cell>-<suite>[-strict]" remainder and
+#               comparing what's left to "ldbc-fixture" -- an extra
+#               "-<tag>" suffix there would make every surface-B record's
+#               suite_part read "ldbc-fixture-<tag>" instead, silently
+#               misclassifying it as surface A. Output-directory
+#               separation is TGMS_STAGE's job, not the filename's; the
+#               merge step renames "-d160" back out of any record where a
+#               tagged filename slipped through before merging, and cells
+#               kept in benchmarks/faults-v1/ under a separate "d160-raw/"
+#               subdirectory (never overwriting the original 2026-09-13
+#               raw files, which share these same base names) so the
+#               two campaigns' records never collide on disk.
 #   TGMS_COMMIT the commit sha stamped into every raw record via the git
 #               shim (deviation 2 below) -- the LOCAL commit that made the
 #               D-160 gate change (tgms/eval/harness.py,
@@ -219,15 +234,18 @@ ec=0
 cat "$STAGE/logs/task-${TASK_ID}.driver.log"
 
 # The driver names its output "<cell>-<suite arg>.json"; rename to the
-# "<cell>-<out-suite-label>-<tag>.json" convention benchmarks/faults-v1/
-# README.md documents (collegemsg for surface A, ldbc-fixture for surface
-# B) and copy to the shared staging area. The "-<tag>" suffix (default
-# "d160") is this script's output-tag parameterization: it keeps this
-# re-run's records visually distinct from the original campaign's
-# "<cell>-<suite>.json" files if the two ever land under the same
-# directory, without changing the driver's own on-disk naming convention.
+# "<cell>-<out-suite-label>.json" convention benchmarks/faults-v1/README.md
+# documents (collegemsg for surface A, ldbc-fixture for surface B) and copy
+# to the shared staging area. Deliberately NOT tagged: fault_matrix_
+# campaign_merge.py's parse_records_dir() recovers each record's effective
+# surface by comparing this suffix to the literal string "ldbc-fixture"
+# (see the TGMS_TAG comment above) -- a "-d160"-suffixed filename here
+# would silently misclassify every surface-B record as surface A at merge
+# time. Output separation from the original campaign's identically-named
+# records is TGMS_STAGE's job (a distinct staging directory per run), not
+# the filename's.
 SRC_NAME="${CELL_ID}-${SUITE}.json"
-DST_NAME="${CELL_ID}-${OUT_SUITE}-${TAG}.json"
+DST_NAME="${CELL_ID}-${OUT_SUITE}.json"
 if [ -f "$OUT_DIR/$SRC_NAME" ]; then
     cp "$OUT_DIR/$SRC_NAME" "$STAGE/records/task-${TASK_ID}--${DST_NAME}"
 else
