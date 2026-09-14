@@ -444,6 +444,64 @@ What the decision is *not*:
 
 ---
 
+## §24 The overload protocol (added 2026-09-13)
+
+`scripts/eval_overload.py` is the harness for a different question from
+everything above: not "what does a live writer cost readers" but "what does
+the service surface do once callers arrive faster than it can serve them" —
+does the new backpressure (`docs/STABILITY.md` §7: `ConcurrencyGate`,
+`GroupCommitWriter`'s bounded queue) actually engage, and does the system
+recover cleanly once load drops back down. **This section is protocol only
+— no numbers.** Per the task this harness was built under, a dev-host run is
+for functional verification of the mechanism, not a reported measurement;
+publishing a table from it here would misrepresent a laptop-class,
+single-run number as one of this document's calibrated, multi-trial results.
+
+**Why open-loop, not closed-loop (the same lesson §21/§22 already teach
+about coalescing, applied to admission this time).** A closed-loop client —
+issue a call, wait for it to finish, issue the next — can never apply more
+arrival pressure than its own round trip allows. N closed-loop clients
+measure whichever throughput N threads happen to sustain; the concurrency
+cap under test never actually engages, because a client blocked waiting for
+its previous call can never also be an arriving one. So each simulated
+client schedules its own call times from a token bucket at a *target* rate,
+independent of how long the previous call took — arrivals that outrun
+service are exactly what should trip the gate, and open-loop is the only
+protocol shape that can produce that condition on purpose.
+
+**What "process" means in this harness, and why it differs from §19b's.**
+§19b's readers are genuinely separate OS processes, because the thing under
+measurement there — page-cache and fsync contention — exists between
+processes. Here the thing under measurement is one shared
+`ConcurrencyGate` inside one `ToolRouter`, which by construction exists
+once per process; N separate client processes would each build their own
+gate and measure N independent limiters rather than the one a real `tgms
+serve`/`tgms webapp` enforces. So `eval_overload.py` uses threads sharing
+one router instead of separate client processes — a deliberate, documented
+deviation from a literal reading of "closed-loop clients (processes)",
+not an oversight.
+
+**What each step records:** aggregate throughput, p50/p95/p99 latency over
+successful calls, the count and kind of refusals (concurrency-cap vs. a
+result-size cap vs. an ordinary operator error), and — since this harness
+runs against a **read-only** store and therefore has no write-side queue to
+sample — a same-idea substitute on the read path: the 95th-percentile
+number of calls the gate had admitted concurrently, and how late (versus
+its own schedule) a call started once the gate or the underlying store fell
+behind. A final low-rate step after the swept range confirms throughput and
+latency return to the unloaded baseline rather than staying degraded —
+"recovery" in the sense this section's opening question asks about.
+
+**Output is one manifest per run**, conforming to
+`benchmarks/schema/result_manifest.schema.json` (validated by
+`scripts/check_result_manifest.py`) — the same schema `scripts/eval_overload.py
+--dry-run` produces and validates in `tests/` — with the per-step summary
+under `steps`/`recovery` and a `dev_host_note` field marking any given run's
+provenance, so a manifest from a laptop is never silently mistaken for one
+of this document's calibrated xzgpu numbers.
+
+---
+
 ## Honest limits
 
 - Everything here is one host and one storage stack. The commit floor is
@@ -452,7 +510,12 @@ What the decision is *not*:
   where xzgpu reads 5.76.
 - Group commit is measured with threads in one process, because that is what
   the single-writer contract permits. It says nothing about multi-process
-  writers, which remain undefined by design (D-028).
+  writers, which are refused rather than merely undefined as of 2026-09-13
+  (`Store.__init__`'s `fcntl.flock` writer lock, `docs/STABILITY.md` §7) —
+  a second writer process now fails fast at open instead of racing
+  `_recover`/`_write` against the first, but no measurement of *that*
+  exclusion's cost exists here (it is refused, not raced, so there is
+  nothing to time).
 - The mixed measurement uses a writer committing 100-row batches as fast as
   it can. That is an upper bound on writer interference, not a duty cycle any
   real workload runs.
