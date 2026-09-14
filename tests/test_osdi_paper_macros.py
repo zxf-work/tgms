@@ -69,6 +69,8 @@ def _run_all_landed(mod):
     mod.compute_c5(m)
     mod.compute_c6(m)
     mod.compute_c8(m)
+    mod.compute_c7_dag(m)
+    mod.compute_c7_r18(m)
     return m
 
 
@@ -107,6 +109,27 @@ FROZEN_LANDED_VALUES = {
     "osdiSilentPost": "0",
     "osdiFOneNineBefore": "271",
     "osdiFTwoThree": "32",
+    "osdiDagCells": "40",
+    "osdiDagV1FalseSafeCells": "20",
+    "osdiDagV2FalseSafeCells": "0",
+    "osdiDagV3FalseSafeCells": "0",
+    "osdiDagV1FalseSafePerCell": "3",
+    "osdiDagV2ExtraVisitsSeedZero": "61",
+    "osdiDagV2ExtraVisitsSeedOne": "62",
+    "osdiDagV3ExtraVisitsSeedZero": "15",
+    "osdiDagV3ExtraVisitsSeedOne": "11",
+    "osdiDagV3AllTopTerm": "0",
+    "osdiDagFalseFreshTotal": "0",
+    "osdiR18Artifacts": "10{,}000",
+    "osdiR18IntersectsCallsMedian": "13{,}009",
+    "osdiR18LookupMsMedian": "26.91",
+    "osdiR18SurvivorFraction": "71.3",
+    "osdiR18CheckSecondsMedian": "867.6",
+    "osdiR18TtfL1Seconds": "1977.6",
+    "osdiR18TtfGlobalSeconds": "1595.3",
+    "osdiR18Speedup": "0.807",
+    "osdiR18Precision": "8.51",
+    "osdiR18AvoidedRecompute": "29.9",
 }
 
 
@@ -130,6 +153,7 @@ def test_pending_macros_raise_a_latex_error_never_a_placeholder_number():
     expected_names = {
         "osdiCorruptionClasses", "osdiCorruptionDetected",
         "osdiTtfSpeedup", "osdiStormCells", "osdiStormFalseFresh",
+        "osdiStormSpeedupN1k", "osdiStormAvoidedN1k",
         "osdiLdbcExpressible", "osdiLdbcExecuted", "osdiLdbcValidated",
         "osdiLiveDays", "osdiLiveAdvisories", "osdiLiveCorrections",
     }
@@ -151,7 +175,7 @@ def test_full_macro_set_has_no_duplicate_names_and_covers_every_skeleton_claim()
     mod.add_pending_stubs(m)
     names = [name for name, _, _ in m.items]
     assert len(names) == len(set(names)), "duplicate macro name"
-    assert len(names) == len(FROZEN_LANDED_VALUES) + 11
+    assert len(names) == len(FROZEN_LANDED_VALUES) + 13
 
 
 def test_cli_check_mode_agrees_with_committed_output(tmp_path):
@@ -246,6 +270,71 @@ def test_tampered_m5_carve_record_fails_when_a_false_fresh_is_introduced(tmp_pat
     assert any("false-fresh" in f.lower() for f in mod.FAILURES)
 
 
+def test_tampered_dag_v2_record_fails_the_extra_visits_constancy_assertion(tmp_path):
+    """v2's nodes_visited delta vs v1 must be the same (+61 or +62, by seed)
+    in every one of the 20 same-seed cells; a single outlier cell must be
+    caught by the constancy assertion, not averaged away."""
+    mod = _load("osdi_paper_macros")
+    tampered = tmp_path / "storm-campaign-dag-v2-2026-09.json"
+    data = json.loads(mod.DAG_V2.read_text(encoding="utf-8"))
+    for cell in data["per_cell"]:
+        if cell["seed"] == 0:
+            cell["nodes_visited"] += 1  # breaks the uniform +61 for exactly one seed-0 cell
+            break
+    tampered.write_text(json.dumps(data), encoding="utf-8")
+
+    mod.DAG_V2 = tampered
+    m = mod.Macros()
+    mod.compute_c7_dag(m)
+    assert mod.FAILURES, "a non-uniform nodes_visited delta must not pass silently"
+    assert any("not constant" in f for f in mod.FAILURES)
+
+
+def test_tampered_dag_v1_record_fails_the_false_safe_per_cell_frozen_value(tmp_path):
+    mod = _load("osdi_paper_macros")
+    tampered = tmp_path / "storm-campaign-dag-2026-09.json"
+    data = json.loads(mod.DAG_V1.read_text(encoding="utf-8"))
+    for cell in data["per_cell"]:
+        if cell["false_safe_count"] > 0:
+            cell["false_safe_count"] = 4  # every affected cell must read exactly 3
+            break
+    tampered.write_text(json.dumps(data), encoding="utf-8")
+
+    mod.DAG_V1 = tampered
+    m = mod.Macros()
+    mod.compute_c7_dag(m)
+    assert mod.FAILURES, "an edited false_safe_count must fail the uniform-3 assertion"
+
+
+def test_tampered_r18_probe_record_fails_the_frozen_speedup(tmp_path):
+    mod = _load("osdi_paper_macros")
+    tampered = tmp_path / "storm-r18-probe-2026-09-rows.jsonl"
+    rows = [json.loads(line) for line in mod.R18_PROBE_ROWS.read_text(encoding="utf-8")
+            .splitlines() if line.strip()]
+    for row in rows:
+        if row["batch_index"] == 1:
+            row["arms"]["tgms-L1"]["ttf_ms"] = 1.0  # implausibly fast, breaks the frozen ratio
+    tampered.write_text("\n".join(json.dumps(r) for r in rows) + "\n", encoding="utf-8")
+
+    mod.R18_PROBE_ROWS = tampered
+    m = mod.Macros()
+    mod.compute_c7_r18(m)
+    assert mod.FAILURES, "a tampered ttf_ms must fail the cross-check against the record's " \
+        "own summary.arms field and/or the frozen speedup range"
+
+
+def test_r18_and_dag_pending_stubs_cite_the_main_grid_quota_block():
+    mod = _load("osdi_paper_macros")
+    m = mod.Macros()
+    mod.add_pending_stubs(m)
+    values = {name: (value, provenance) for name, value, provenance in m.items}
+    for name in ("osdiTtfSpeedup", "osdiStormCells", "osdiStormFalseFresh",
+                 "osdiStormSpeedupN1k", "osdiStormAvoidedN1k"):
+        _, provenance = values[name]
+        assert "main grid 12/36" in provenance, f"{name}: reason no longer cites the main-grid " \
+            "quota block, update it if the situation has actually changed"
+
+
 # --------------------------------------------------------------------------
 # osdi_paper_figures.py: CSV generation (no matplotlib dependency)
 # --------------------------------------------------------------------------
@@ -304,6 +393,42 @@ def test_freshness_table_csv_matches_frozen_values(tmp_path, monkeypatch):
     assert m4_row["false_fresh_or_false_safe"] == 0
     rowtouch_row = next(r for r in data["rows"] if r["population"] == "M4 naive row-touch control")
     assert rowtouch_row["false_fresh_or_false_safe"] == 212
+
+
+def test_dag_versions_csv_matches_frozen_values(tmp_path, monkeypatch):
+    fig_mod = _load_figures()
+    monkeypatch.setattr(fig_mod, "OUT_DIR", tmp_path)
+    data = fig_mod.build_dag_versions_data()
+    by_version = {r["version"]: r for r in data["rows"]}
+    assert by_version["v1"]["false_safe_cells"] == 20
+    assert by_version["v2"]["false_safe_cells"] == 0
+    assert by_version["v3"]["false_safe_cells"] == 0
+    assert by_version["v2"]["extra_visits_seed0_vs_v1"] == 61
+    assert by_version["v2"]["extra_visits_seed1_vs_v1"] == 62
+    assert by_version["v3"]["extra_visits_seed0_vs_v1"] == 15
+    assert by_version["v3"]["extra_visits_seed1_vs_v1"] == 11
+    text = fig_mod.write_dag_versions_csv(data)
+    rows = list(csv.reader(text.splitlines()))
+    assert rows[0] == ["version", "cells", "false_safe_cells", "extra_visits_seed0_vs_v1",
+                        "extra_visits_seed1_vs_v1", "commit"]
+    assert len(rows) == 4  # header + v1/v2/v3
+
+
+def test_r18_crossover_csv_has_five_batches_a_p50_row_and_a_pending_n1000_row(tmp_path, monkeypatch):
+    fig_mod = _load_figures()
+    monkeypatch.setattr(fig_mod, "OUT_DIR", tmp_path)
+    data = fig_mod.build_r18_crossover_data()
+    assert len(data["batches"]) == 5
+    assert 0.80 <= data["ttf_global_p50_s"] / data["ttf_l1_p50_s"] <= 0.82
+    text = fig_mod.write_r18_crossover_csv(data)
+    rows = list(csv.reader(text.splitlines()))
+    assert rows[0] == ["batch_index", "check_seconds_tgms_L1", "lookup_ms",
+                        "global_recompute_seconds", "ttf_tgms_L1_seconds",
+                        "ttf_global_recompute_seconds"]
+    assert len(rows) == 1 + 5 + 1 + 1  # header + 5 batches + p50 row + PENDING N=1000 row
+    pending_row = rows[-1]
+    assert pending_row[0] == "N=1000 c1 seed0"
+    assert all(cell == "PENDING" for cell in pending_row[1:])
 
 
 def test_cli_csv_only_mode_is_idempotent(tmp_path):
