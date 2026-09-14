@@ -39,13 +39,16 @@ from tgms.artifact.registry import Registry
 
 @dataclass(frozen=True, slots=True)
 class LookupResult:
-    """One batch's answer, plus the two instrumentation counters §3.2 names
-    for the campaign record: how many `intersects` calls the walk cost, and
-    how many candidates survived it."""
+    """One batch's answer, plus the instrumentation counters §3.2 names for
+    the campaign record: how many `intersects` calls the walk cost, how many
+    candidates survived it, and — of those — how many survived only because
+    `intersects` refused rather than hit (an unrecognized term/footprint
+    form, kept conservatively rather than dropped)."""
 
     affected: tuple[ArtifactRecord, ...]
     intersects_calls: int
     candidate_survivors: int
+    refused: int = 0
 
 
 def affected(batch: dict[str, Any], registry: Registry) -> LookupResult:
@@ -59,13 +62,21 @@ def affected(batch: dict[str, Any], registry: Registry) -> LookupResult:
     answers is "should `check_artifact` be asked about this one at all" —
     an over-approximation is exactly what a pre-filter is for, and every
     survivor is still adjudicated properly downstream.
+
+    A `Match.REFUSE` from `intersects` (an unrecognized term or footprint
+    form — D13.23a) also makes a record a survivor, the same way
+    `tgms.tgir.check` lifts a single `REFUSE` to `UNDECIDABLE` for a whole
+    scope: this function only decides who gets asked, and a record
+    `intersects` cannot parse must never be silently reported unaffected.
     """
     fps = footprints_of_batch(batch)
     survivors: list[ArtifactRecord] = []
     calls = 0
+    refused = 0
     for record in registry.current_generations():
         terms = record.all_terms()
         hit = False
+        refuse = False
         for fp in fps.ops:
             for term in terms:
                 calls += 1
@@ -73,11 +84,16 @@ def affected(batch: dict[str, Any], registry: Registry) -> LookupResult:
                 if m is Match.HIT:
                     hit = True
                     break
-            if hit:
+                if m is Match.REFUSE:
+                    refuse = True
+                    break
+            if hit or refuse:
                 break
-        if hit:
+        if hit or refuse:
             survivors.append(record)
-    return LookupResult(tuple(survivors), calls, len(survivors))
+            if refuse and not hit:
+                refused += 1
+    return LookupResult(tuple(survivors), calls, len(survivors), refused)
 
 
 def affected_over(batches: Iterable[dict[str, Any]],
