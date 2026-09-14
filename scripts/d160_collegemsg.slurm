@@ -28,6 +28,22 @@
 # (<out_dir>/results/*.json) makes a resubmit after a partial run pick up
 # where it left off rather than re-paying every LLM call.
 #
+# llm_direct follow-up (NOT this file's default config -- prepared, not
+# yet submitted as of this comment): the 4-arm campaign's own
+# `llm_direct` result overflowed the model's context window on 72/94
+# seed-0 tasks (whitespace-token approximation undercounting real BPE
+# tokens 3-7x on this corpus; fixed in tgms/eval/baselines.py::LLMDirect
+# -- a real tokenizer + max_model_len-aware budget cap). Re-running just
+# that arm under the fix, once the 4-arm job above has completed and its
+# record is shipped as-is (first-shipped, pre-fix llm_direct numbers
+# stay published, per the README), uses this SAME script with:
+#   cd /project/xzhang12/tgms-d160
+#   export TGMS_CFG=configs/matrix-d160-collegemsg-llm-direct.yaml
+#   export TGMS_RECORD_NAME=d160-collegemsg-llm-direct
+#   export TGMS_COMMIT=$(git rev-parse HEAD)
+#   export TGMS_FORCE="llm_direct budget fix follow-up"
+#   sbatch --export=ALL scripts/d160_collegemsg.slurm
+#
 # Postmortem across three submissions (2026-09-14):
 #  - 211581: failed after 1:13:54, exit 1:0, no signal, nothing past
 #    SERVER_UP in any log -- a hard cgroup OOM-kill (SIGKILL bypasses this
@@ -275,7 +291,7 @@ cleanup() {
         tail -c 200000 "$f" > "$STAGE/logs/$(basename "$f" .log).tail.log" 2>/dev/null
     done
     if [ -d "$OUT_DIR" ]; then
-        DEST="$STAGE/records/d160-collegemsg-4arm-${JOB_ID}"
+        DEST="$STAGE/records/${TGMS_RECORD_NAME:-d160-collegemsg-4arm}-${JOB_ID}"
         mkdir -p "$DEST"
         cp -r "$OUT_DIR"/. "$DEST"/
         echo "RECORDS_COPIED $DEST"
