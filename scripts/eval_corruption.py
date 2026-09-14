@@ -29,9 +29,15 @@ observe — never repair — through four surfaces a real caller would use:
      `_seed_frontier`'s walk never reaches at all (none observed among the
      13 classes below; every class this harness targets is walked by
      something) would pass this step for free.
-  2. `store.adapter.verify()` — the native engine's checksum walk. Native-
-     managed files only (segments, close runs, the dictionary, manifests);
-     it does not read `eventlog.jsonl` or `artifacts.jsonl`.
+  2. `store.adapter.verify(mode="full")` (`--verify-mode`, default `full`,
+     added Lane A task A9 once A3 landed `verify_full`) — the strongest
+     oracle available: the engine's own checksum walk *plus* the manifest
+     parent chain, the event log (framing/monotonicity/chain), the
+     persisted TCSR permutation, and the artifact registry
+     (`tgms/storage/native/adapter.py::NativeStoreAdapter.verify`). `--verify-
+     mode fast` reproduces the original engine-file-only walk (segments,
+     close runs, the dictionary, manifests; never `eventlog.jsonl` or
+     `artifacts.jsonl`) for A/B comparison against pre-A3 runs.
   3. two fixed read queries (`entity_history`, `snapshot_subgraph`) against
      two uids seeded into every trial's store, compared by `result_digest`
      against a pre-mutation baseline of the same queries.
@@ -466,11 +472,19 @@ def baseline_digests(store_dir: Path) -> dict[str, str]:
         store.close()
 
 
-def observe(store_dir: Path, artifact_names: list[str]) -> dict[str, Any]:
+def observe(store_dir: Path, artifact_names: list[str],
+           verify_mode: str = "full") -> dict[str, Any]:
     """Run the four A4 observations against a (possibly just-corrupted)
     store, never attempting to fix anything found. Every field defaults to
     "could not even try" shapes so a caller can classify without special-
-    casing which step first failed."""
+    casing which step first failed.
+
+    `verify_mode` selects the strength of observation 2: `"full"` (the
+    default, since A3/A8 landed) also chain-verifies the manifest parent
+    chain, the event log, the persisted TCSR permutation and the artifact
+    registry (`NativeStoreAdapter.verify(mode="full")`, `docs/eval_durability.md`
+    EXP-A3) — the strongest oracle available. `"fast"` keeps the original
+    engine-file-only walk, kept only for A/B comparison against pre-A3 runs."""
     obs: dict[str, Any] = {
         "open_ok": False, "open_error": None, "verify_problems": None,
         "query_errors": {}, "query_digests": {}, "artifact_errors": {},
@@ -485,7 +499,7 @@ def observe(store_dir: Path, artifact_names: list[str]) -> dict[str, Any]:
     obs["open_ok"] = True
 
     try:
-        v = store.adapter.verify()
+        v = store.adapter.verify(mode=verify_mode)
         obs["verify_problems"] = list(v.get("problems") or [])
     except Exception as e:  # noqa: BLE001
         obs["verify_problems"] = [f"verify() raised {type(e).__name__}: {e}"]
@@ -622,7 +636,8 @@ def derive_trial_seed(seed: int, trial: int) -> int:
     return int(digest[:16], 16)
 
 
-def run_trial(trial: int, seed: int, classes: list[str], mutations: list[str]) -> dict[str, Any]:
+def run_trial(trial: int, seed: int, classes: list[str], mutations: list[str],
+              verify_mode: str = "full") -> dict[str, Any]:
     trial_seed = derive_trial_seed(seed, trial)
     rng = random.Random(trial_seed)
     work = Path(tempfile.mkdtemp(prefix="tgms-corrupt-"))
@@ -639,7 +654,7 @@ def run_trial(trial: int, seed: int, classes: list[str], mutations: list[str]) -
         mutation = rng.choice(mutations)
 
         mut_info = apply_mutation(cls, mutation, candidates, rng, store_dir)
-        obs = observe(store_dir, build_meta["artifact_names"])
+        obs = observe(store_dir, build_meta["artifact_names"], verify_mode=verify_mode)
         tcsr = check_tcsr_rebuild(store_dir) if cls == "tcsr_file" else None
 
         verdict, reason = classify(cls, mut_info, obs, baseline, build_meta, tcsr)
@@ -731,7 +746,8 @@ def build_summary(results: list[dict[str, Any]]) -> dict[str, Any]:
 
 
 def build_manifest(results: list[dict[str, Any]], summary: dict[str, Any], seed: int,
-                   classes: list[str], mutations: list[str], record_path: str) -> dict[str, Any]:
+                   classes: list[str], mutations: list[str], record_path: str,
+                   verify_mode: str = "full") -> dict[str, Any]:
     result_src = json.dumps(
         [{k: v for k, v in r.items() if k != "wall_s"} for r in results],
         sort_keys=True, separators=(",", ":")).encode()
@@ -742,7 +758,7 @@ def build_manifest(results: list[dict[str, Any]], summary: dict[str, Any], seed:
         "timestamp_utc": datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
         "machine": _machine_info(),
         "config": {"harness": "scripts/eval_corruption.py", "classes": classes,
-                  "mutations": mutations},
+                  "mutations": mutations, "verify_mode": verify_mode},
         "seed": {"value": seed},
         "dataset": {"name": "seeded synthetic workload (scripts/eval_durability.py "
                             "generator), one tiny store per trial",
@@ -764,6 +780,10 @@ def main() -> int:
     ap.add_argument("--seed", type=int, default=1)
     ap.add_argument("--classes", default=",".join(FILE_CLASSES))
     ap.add_argument("--mutations", default=",".join(MUTATIONS))
+    ap.add_argument("--verify-mode", choices=("fast", "full"), default="full",
+                    help="strength of observation 2 (store.adapter.verify); "
+                         "'full' (default) is the A3/A8 strongest-oracle mode, "
+                         "'fast' reproduces the pre-A3 engine-file-only walk")
     ap.add_argument("--json", type=Path)
     args = ap.parse_args()
 
@@ -778,7 +798,7 @@ def main() -> int:
 
     results = []
     for t in range(args.trials):
-        r = run_trial(t, args.seed, classes, mutations)
+        r = run_trial(t, args.seed, classes, mutations, verify_mode=args.verify_mode)
         results.append(r)
         print(f"  trial {t:4d} {r['class']:20s} {r['mutation']:16s} -> "
               f"{r['verdict']:17s} {r['reason'][:90]}", flush=True)
@@ -797,7 +817,8 @@ def main() -> int:
             record_path = str(args.json.resolve().relative_to(ROOT))
         except ValueError:
             pass
-        manifest = build_manifest(results, summary, args.seed, classes, mutations, record_path)
+        manifest = build_manifest(results, summary, args.seed, classes, mutations, record_path,
+                                  verify_mode=args.verify_mode)
         args.json.parent.mkdir(parents=True, exist_ok=True)
         args.json.write_text(json.dumps(manifest, indent=1) + "\n")
         print(f"record → {args.json}")

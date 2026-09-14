@@ -9,6 +9,11 @@
 #SBATCH --error=/project/xzhang12/corruption-v1-work/logs/task-%a.err
 #
 # Lane A task A4 — the corruption-detection sweep, >=10,000 trials.
+# --verify-mode full (task A9, once A3 landed verify_full/A8 landed the
+# CURRENT-missing-open refusal): observation 2 is now the strongest oracle
+# available (manifest chain + event log + TCSR + artifact registry, not just
+# the engine's own file walk) — this is also eval_corruption.py's own
+# default, made explicit here for the record.
 # 40 array tasks x 250 trials = 10,000 trials of scripts/eval_corruption.py,
 # each task a distinct seed (BASE_SEED + SLURM_ARRAY_TASK_ID) so every trial
 # in the campaign is independently reproducible from its recorded (seed,
@@ -90,6 +95,7 @@ ec=0
 "$VENV_PY" scripts/eval_corruption.py \
     --trials "$TRIALS_PER_TASK" \
     --seed "$SEED" \
+    --verify-mode full \
     --json "$STAGE/records/task-${TASK_ID}.json" && ec=0 || ec=$?
 
 echo "TASK_DONE task=${TASK_ID} seed=${SEED} exit=${ec}"
