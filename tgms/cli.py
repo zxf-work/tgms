@@ -217,11 +217,17 @@ def build_parser() -> argparse.ArgumentParser:
                         help="rerun the frozen test split; reason is logged (§8.3)")
 
     p_store = sub.add_parser("store", help="native store maintenance")
-    p_store.add_argument("action", choices=["gc", "compact", "verify"])
+    p_store.add_argument("action", choices=["gc", "compact", "verify", "ready"])
     p_store.add_argument("--store", required=True)
     p_store.add_argument("--keep", type=int, default=2,
                          help="gc: generations to retain besides those "
                               "pinned by live readers (default 2)")
+    p_store.add_argument("--writer", action="store_true",
+                         help="ready: probe as the writer (read_only=False, "
+                              "taking the writer lock and running recovery) "
+                              "instead of the default read-only reader probe")
+    p_store.add_argument("--json", action="store_true",
+                         help="ready: emit JSON instead of prose")
 
     p_mem = sub.add_parser("memory", help="evolution-memory maintenance")
     p_mem.add_argument("action", choices=["build"])
@@ -544,6 +550,37 @@ def main(argv: list[str] | None = None) -> int:
         rows = run_matrix(cfg, llm_fn=llm_fn, force=args.force,
                           usage_log=usage)
         print(json.dumps({"rows": len(rows), "out_dir": cfg["out_dir"]}))
+    elif args.cmd == "store" and args.action == "ready":
+        # B5/F2 health surface. `--writer` opens read_only=False (taking the
+        # writer lock and running recovery, exactly like a real writer
+        # process starting up); the default opens read_only=True, which is
+        # the mode a monitoring sidecar for `tgms serve --readonly` should
+        # use. Either way, an open that *raises* (corruption, or the writer
+        # lock already held by another process) is reported as not-ready
+        # rather than letting the traceback stand in for an exit code.
+        import tgms
+        from tgms.tools.webapp import ReadinessProbe
+        try:
+            store = tgms.open(args.store, read_only=not args.writer)
+        except Exception as e:
+            result = {"ready": False, "reason": f"{type(e).__name__}: {e}"}
+            if args.json:
+                print(json.dumps(result))
+            else:
+                print(f"not ready: {result['reason']}")
+            return 2
+        result = ReadinessProbe(store).check()
+        store.close()
+        if args.json:
+            print(json.dumps(result))
+        else:
+            if result["ready"]:
+                print(f"ready: generation {result['generation']} "
+                      f"(read_only={result['read_only']}, "
+                      f"frontier_verified={result['frontier_verified']})")
+            else:
+                print(f"not ready: {result['reason']}")
+        return 0 if result["ready"] else 1
     elif args.cmd == "store":
         import tgms
         store = tgms.open(args.store, backend="native")
