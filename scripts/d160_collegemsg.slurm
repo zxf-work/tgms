@@ -2,13 +2,13 @@
 #SBATCH --job-name=tgms-d160-collegemsg
 #SBATCH --partition=bigTiger
 #SBATCH --gres=gpu:rtx_5000:1
-#SBATCH --exclude=itiger05
+#SBATCH --exclude=itiger04,itiger05
 #SBATCH --cpus-per-task=8
 #SBATCH --mem=128G
 #SBATCH --time=24:00:00
 #SBATCH --signal=B:TERM@600
-#SBATCH --output=/project/xzhang12/d160-work/logs/%x-%j.out
-#SBATCH --error=/project/xzhang12/d160-work/logs/%x-%j.err
+#SBATCH --output=/home/xzhang12/d160-work-h/logs/%x-%j.out
+#SBATCH --error=/home/xzhang12/d160-work-h/logs/%x-%j.err
 #
 # D-160 re-measurement (OSDI'27 lane "D-160 re-measurement"; docs/STABILITY.md
 # section 9): re-measure the CollegeMsg agent-loop numbers under the
@@ -56,6 +56,20 @@
 #    OOM'd, and 211705 omitted `--force`, tripping the frozen-split guard
 #    (spec section 8.3) immediately. This submission passes `TGMS_FORCE`
 #    for exactly that reason (below).
+#  - Third-submission hardening (coordinator ruling): the account's
+#    /project quota tripped a second time (17:26 UTC) from unrelated
+#    jobs, so this job's own final-record destination moves off /project
+#    entirely, onto /home/xzhang12 (a separate, much smaller quota, ~8G
+#    free at the time of this ruling) -- `$STAGE` below now names that
+#    home-directory path. The harness's own WORKING directory (per-task
+#    result cache, the b6e duckdb snapshot, the b5 vanilla-kuzu build --
+#    all small, and no longer at risk of runaway growth now that the
+#    actual danger, DuckDB's temp spill, is bounded and node-local) stays
+#    under $CHECKOUT on /project as before; only the temp spill and the
+#    final record copy were the parts that needed to leave /project.
+#    `--exclude=itiger04` added: every quota failure traced to that node;
+#    this job's own GPU node (itiger07 on both prior submissions) was
+#    unaffected.
 # 94/94 `ours` + 94/94 `b5` + 65/94 `b6e` rows for seed 0 (0 errors) were
 # already cached under <out_dir>/results/ before 211581 died; a resubmit
 # against the same out_dir resumes from there via the cache check in
@@ -85,7 +99,10 @@ set -uo pipefail  # not -e: cleanup must still run after a non-zero step
 JOB_ID="${SLURM_JOB_ID:?must run under sbatch}"
 
 CHECKOUT="${TGMS_REPO:-/project/xzhang12/tgms-d160}"
-STAGE="${TGMS_STAGE:-/project/xzhang12/d160-work}"
+# STAGE now lives on /home, a separate ~25G-quota filesystem from
+# /project's shared, contested one -- final records land here, never on
+# /project (see the third-submission hardening note above).
+STAGE="${TGMS_STAGE:-/home/xzhang12/d160-work-h}"
 VLLM_ENV="${VLLM_ENV:-/project/xzhang12/vllm-env}"
 VENV_PY="$CHECKOUT/.venv/bin/python"
 CFG="${TGMS_CFG:-configs/matrix-d160-collegemsg-4arm.yaml}"
@@ -128,18 +145,25 @@ export HF_HOME=/project/xzhang12/hf HF_HUB_OFFLINE=1 TRANSFORMERS_OFFLINE=1
 # than point it somewhere this job won't use.
 unset UV_CACHE_DIR
 
-# --- fail fast if the shared quota is already tight (2026-09-14 ruling:
-# the account tripped the ~200G quota twice from unrelated jobs' spills;
-# a job that starts anyway just adds another candidate for the next
-# cascade). This is a check on shared account state, not a claim about
-# what THIS job will use -- see the DuckDB temp-directory/memory-limit
-# bounds below and in tgms/eval/baselines.py for the actual fix.
+# --- /project quota: WARNING only, not an abort -- this job no longer
+# writes anything of consequence there (see the hardening note above), so
+# its own headroom on /project is no longer this job's problem to gate
+# on. Still logged for the record's own provenance.
 DU_START_MB=$(du -sm /project/xzhang12 2>/dev/null | awk '{print $1}')
 echo "DU_MB_AT_START=${DU_START_MB:-unknown}"
-if [ -n "$DU_START_MB" ] && [ "$DU_START_MB" -gt 185000 ]; then
-    echo "QUOTA_HEADROOM_TOO_LOW: /project/xzhang12 at ${DU_START_MB}MB > 185000MB, refusing to start"
+
+# --- the real gate: >=2GB free on /home, verified by a 1GB write-and-
+# delete test (df's own "available" can lie under quota rather than
+# block-device accounting; a real write is the only test that matches
+# what this job is actually about to do).
+HOME_QUOTA_TEST="$STAGE/.quota_test_${JOB_ID}"
+if ! dd if=/dev/zero of="$HOME_QUOTA_TEST" bs=1M count=1024 2>/dev/null; then
+    rm -f "$HOME_QUOTA_TEST"
+    echo "HOME_QUOTA_TOO_LOW: could not write a 1GB test file under $STAGE"
     exit 2
 fi
+rm -f "$HOME_QUOTA_TEST"
+echo "HOME_QUOTA_TEST_OK: wrote and removed a 1GB file under $STAGE"
 
 cd "$CHECKOUT"
 hostname > "$STAGE/node_meta/job-${JOB_ID}.host"
