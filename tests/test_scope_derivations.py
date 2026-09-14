@@ -903,3 +903,82 @@ class TestVersionHistory:
               f"precision={result.precision:.2f} n={result.n}")
         assert result.n > 0
         assert result.exclusion_rate >= 0.3
+
+
+# ---------------------------------------------------------------------------
+# §2.2 — snapshot_subgraph (last: least yield, and the induced-edge
+# argument is the easiest thing in this rollout to get wrong)
+# ---------------------------------------------------------------------------
+
+class TestSnapshotSubgraph:
+    ARGS = {"seeds": ["n0"], "t_valid": 50, "hops": 1}
+    ARGS_RELS = {**ARGS, "rel_types": ["R"]}
+
+    MATRIX = [
+        ("an edge valid at t_valid, unrelated to the seed (I = TOP: the "
+         "induced-subgraph argument)", ARGS,
+         assert_edge("n5", "n6", vt_s=10, vt_e=100), True),
+        ("a node valid at t_valid, unrelated to the seed", ARGS,
+         assert_node("n7", vt_s=10, vt_e=100), True),
+        # V only bites a non-carving op: an assert/correct/retract's carve
+        # arm (P = TOP) reaches regardless of whether the value arm covers
+        # t_valid
+        ("events ingested with an interval that does not cover t_valid "
+         "(no carve arm to rescue it)", ARGS, ingest("n5", "n6", 60), False),
+        ("an assert_edge whose interval does not cover t_valid (P = TOP: "
+         "the carve arm reaches it anyway)", ARGS,
+         assert_edge("n5", "n6", vt_s=60, vt_e=100), True),
+        ("a carve of an edge, entirely outside t_valid (P = TOP: reaches)",
+         ARGS, correct_edge("n5", "n6", vt_s=200, vt_e=210), True),
+        # T narrows the edge term only
+        ("an edge of another rel_type, with rel_types set", ARGS_RELS,
+         assert_edge("n5", "n6", rel_type="S", vt_s=10, vt_e=100), False),
+        ("an edge of the named rel_type", ARGS_RELS,
+         assert_edge("n5", "n6", rel_type="R", vt_s=10, vt_e=100), True),
+        # a node write is never rel-type-restricted, even with rel_types set
+        ("a node write, with rel_types set", ARGS_RELS,
+         assert_node("n7", vt_s=10, vt_e=100), True),
+        # the existence pair, over the seeds
+        ("the existence pair over a seed", ARGS, assert_node("n0"), True),
+        ("an assert_edge naming a seed, far outside t_valid", ARGS,
+         assert_edge("n0", "n50", vt_s=2000, vt_e=2001), True),
+    ]
+
+    @pytest.mark.parametrize("label,args,op,must", MATRIX, ids=[m[0] for m in MATRIX])
+    def test_matrix(self, label, args, op, must):
+        filled = validate_args("snapshot_subgraph", dict(args))
+        terms = terms_for("snapshot_subgraph", filled, sigma_for("snapshot_subgraph", filled))
+        assert hits(terms, op) is must, (
+            f"{label}: should {'intersect' if must else 'NOT intersect'}; "
+            f"arms hit: {arms_that_hit(terms, op)}")
+
+    def test_i_is_top_on_both_terms_even_at_hops_1(self):
+        """§2.2's own strengthening of §9.2: the operator returns the
+        INDUCED subgraph, so even at hops=1 a new edge between two existing
+        neighbours of seeds -- incident to no seed -- becomes an output row.
+        An incident("either", seeds) edge arm would miss it."""
+        filled = validate_args("snapshot_subgraph", dict(self.ARGS))
+        edge_term, node_term = terms_for("snapshot_subgraph", filled,
+                                         sigma_for("snapshot_subgraph", filled))[:2]
+        assert edge_term.targets.edges is TOP
+        assert node_term.targets.nodes is TOP
+
+    def test_v_is_the_instant(self):
+        filled = validate_args("snapshot_subgraph", dict(self.ARGS))
+        edge_term = terms_for("snapshot_subgraph", filled, sigma_for("snapshot_subgraph", filled))[0]
+        assert edge_term.vt == ((50, 51),)
+
+    def test_p_is_top(self):
+        filled = validate_args("snapshot_subgraph", dict(self.ARGS))
+        for term in terms_for("snapshot_subgraph", filled, sigma_for("snapshot_subgraph", filled))[:2]:
+            assert term.props is TOP
+
+    def test_differential(self, store):
+        result = run_differential(store, "snapshot_subgraph", dict(self.ARGS),
+                                  read_uids=("n0",), window=(50, 51), trials=10, seed=16)
+        print(f"snapshot_subgraph: exclusion={result.exclusion_rate:.2f} "
+              f"precision={result.precision:.2f} n={result.n}")
+        assert result.n > 0
+        # §2.2's own honest note: this is the rollout's weakest link; the
+        # floor here is deliberately low
+        assert result.exclusion_rate >= 0.02

@@ -568,10 +568,13 @@ def test_only_three_operators_are_derived_and_the_rest_stay_top():
         "count_temporal_motifs", "find_temporal_motif_instances",
         "temporal_reachability", "temporal_paths", "burst_detection",
         "graph_metric_timeseries", "co_active", "diff_snapshots",
-        "version_history",
+        "version_history", "snapshot_subgraph",
     }
-    for op, args in (("snapshot_subgraph", {"seeds": ["u1"], "t_valid": 10}),
-                     ("resolve_entities", {"query": "u1"})):
+    # `resolve_entities` is not designed here (§13.8.1 excludes it from the
+    # measured workload) and `compute` keeps its empty scope by construction
+    # (OpaqueLeaf.reads_store) -- the only two operators left uncovered by
+    # this rollout.
+    for op, args in (("resolve_entities", {"query": "u1"}),):
         (term,) = scope(op, args)
         assert (term.kinds, term.targets, term.rel_types, term.vt, term.props) == \
             (TOP, TOP, TOP, TOP, TOP), op
