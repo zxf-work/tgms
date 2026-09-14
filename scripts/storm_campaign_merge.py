@@ -53,11 +53,19 @@ TGMS_ARMS = ("tgms-L0", "tgms-L1")
 
 
 def _expected_cell(task_id: int, stores: list[str], mixes: list[str], ages: list[str],
-                   n_list: list[int], n_seeds: int, base_seed: int) -> dict[str, Any]:
+                   n_list: list[int], n_seeds: int, base_seed: int,
+                   ttf_modes: list[str] | None = None) -> dict[str, Any]:
     """The same in-script index decomposition `storm_campaign.slurm` uses
-    (seed varies fastest, then n_artifacts, then age, then mix, then
-    store) — restated here so a merge can cross-check that the records it
-    was handed are the cells it thinks they are, not silently shuffled."""
+    (seed varies fastest, then n_artifacts, then age, then mix, then store,
+    then ttf mode slowest) — restated here so a merge can cross-check that
+    the records it was handed are the cells it thinks they are, not
+    silently shuffled.
+
+    `ttf_modes` is additive (storm-v1 C6 freeze: the grid scores both TTF
+    modes per cell, `storm_campaign.slurm`'s own added outermost axis) —
+    default `["sum"]` keeps a pre-freeze single-mode campaign's task
+    numbering unchanged."""
+    modes = ttf_modes or ["sum"]
     rem = task_id
     seed_idx = rem % n_seeds
     rem //= n_seeds
@@ -68,15 +76,19 @@ def _expected_cell(task_id: int, stores: list[str], mixes: list[str], ages: list
     mix_idx = rem % len(mixes)
     rem //= len(mixes)
     store_idx = rem % len(stores)
+    rem //= len(stores)
+    ttf_idx = rem % len(modes)
     return {
         "store": stores[store_idx], "mix": mixes[mix_idx], "age": ages[age_idx],
         "n_artifacts": n_list[n_idx], "seed": base_seed + seed_idx,
+        "measure_ttf": modes[ttf_idx],
     }
 
 
 def load_tasks(records_dir: Path, n_tasks: int, stores: list[str], mixes: list[str],
-               ages: list[str], n_list: list[int], n_seeds: int,
-               base_seed: int) -> tuple[list[dict[str, Any]], list[dict[str, Any]]]:
+               ages: list[str], n_list: list[int], n_seeds: int, base_seed: int,
+               ttf_modes: list[str] | None = None,
+               ) -> tuple[list[dict[str, Any]], list[dict[str, Any]]]:
     """Return (task_manifests, per_task_meta). Raises on any missing task
     directory/manifest or a cell mismatch — a partial or reshuffled
     campaign must not silently merge as if it were complete and correctly
@@ -95,19 +107,21 @@ def load_tasks(records_dir: Path, n_tasks: int, stores: list[str], mixes: list[s
             raise ValueError(f"task-{task_id}: expected exactly one storm-*.json manifest, "
                              f"found {[p.name for p in candidates]}")
         manifest = json.loads(candidates[0].read_text())
-        expected = _expected_cell(task_id, stores, mixes, ages, n_list, n_seeds, base_seed)
+        expected = _expected_cell(task_id, stores, mixes, ages, n_list, n_seeds, base_seed,
+                                  ttf_modes)
         cfg = manifest.get("config", {})
         got = {
             "store": manifest.get("dataset", {}).get("name"),
             "mix": cfg.get("mix") or "c1", "age": cfg.get("age") or "none",
             "n_artifacts": cfg.get("n_artifacts"), "seed": manifest.get("seed", {}).get("value"),
+            "measure_ttf": cfg.get("measure_ttf") or "sum",
         }
         # `dataset.name` is the store's directory basename; `--store` may
         # have named a path -- compare basenames, not the raw strings.
         if Path(expected["store"]).name != got["store"]:
             raise ValueError(f"task-{task_id}: store {got['store']!r} != expected "
                              f"{expected['store']!r}")
-        for key in ("mix", "age", "n_artifacts", "seed"):
+        for key in ("mix", "age", "n_artifacts", "seed", "measure_ttf"):
             if got[key] != expected[key]:
                 raise ValueError(f"task-{task_id}: {key} {got[key]!r} != expected "
                                  f"{expected[key]!r} (cell {expected})")
@@ -168,6 +182,7 @@ def per_cell_table(manifests: list[dict[str, Any]]) -> list[dict[str, Any]]:
             "task_id": m.get("_task_id"), "store": m.get("dataset", {}).get("name"),
             "mix": cfg.get("mix") or "c1", "age": cfg.get("age") or "none",
             "n_artifacts": cfg.get("n_artifacts"), "seed": m.get("seed", {}).get("value"),
+            "measure_ttf": cfg.get("measure_ttf") or "sum",
             "batches_realized": summary.get("batches"), "wall_s": cfg.get("wall_s"),
             "g_s1_false_fresh_zero": g_s1, "g_s2_false_safe_zero": g_s2,
             "arms": {arm: {
@@ -203,13 +218,13 @@ def result_digest(manifests: list[dict[str, Any]]) -> str:
 
 
 def dataset_digest(stores: list[str], mixes: list[str], ages: list[str], n_list: list[int],
-                   n_seeds: int, base_seed: int) -> str:
+                   n_seeds: int, base_seed: int, ttf_modes: list[str]) -> str:
     """A digest of the campaign *recipe* (the grid), restated from
     `crash_campaign_merge.py::dataset_digest`'s own reasoning: there is no
     single fixed input dataset to hash across a multi-store campaign, only
     the generative parameters."""
     recipe = {"stores": stores, "mixes": mixes, "ages": ages, "n_artifacts_list": n_list,
-             "n_seeds": n_seeds, "base_seed": base_seed}
+             "n_seeds": n_seeds, "base_seed": base_seed, "ttf_modes": ttf_modes}
     blob = json.dumps(recipe, sort_keys=True, separators=(",", ":")).encode()
     return hashlib.sha256(blob).hexdigest()
 
@@ -229,10 +244,20 @@ def main(argv: list[str] | None = None) -> int:
     ap.add_argument("--n-artifacts-list", required=True)
     ap.add_argument("--n-seeds", type=int, required=True)
     ap.add_argument("--base-seed", type=int, default=0)
+    ap.add_argument("--ttf-modes", default="sum",
+                    help="comma-separated, same order/outermost-axis convention as "
+                         "storm_campaign.slurm's TGMS_MEASURE_TTF_LIST; default 'sum' "
+                         "matches a pre-freeze single-mode campaign")
     ap.add_argument("--commit", required=True)
     ap.add_argument("--out", type=Path, required=True)
     ap.add_argument("--array-job-id", default=None,
                     help="Slurm array job id, recorded in config for provenance")
+    ap.add_argument("--freeze-id", default=None,
+                    help="campaign.yaml's freeze_id (storm-v1 C6 freeze), stamped into "
+                         "config for provenance")
+    ap.add_argument("--freeze-sha256", default=None,
+                    help="campaign.yaml's own sha256, stamped into config so this record "
+                         "names exactly which frozen grid it ran")
     ap.add_argument("--ram-gb", type=float, default=16.0)
     ap.add_argument("--wall-per-task-s", type=int, default=4 * 3600)
     ap.add_argument("--concurrency", type=int, default=20)
@@ -242,10 +267,11 @@ def main(argv: list[str] | None = None) -> int:
     mixes = _csv_list(args.mixes)
     ages = _csv_list(args.ages)
     n_list = [int(x) for x in _csv_list(args.n_artifacts_list)]
-    n_tasks = len(stores) * len(mixes) * len(ages) * len(n_list) * args.n_seeds
+    ttf_modes = _csv_list(args.ttf_modes)
+    n_tasks = len(stores) * len(mixes) * len(ages) * len(n_list) * args.n_seeds * len(ttf_modes)
 
     manifests, tasks_meta = load_tasks(args.records_dir, n_tasks, stores, mixes, ages,
-                                       n_list, args.n_seeds, args.base_seed)
+                                       n_list, args.n_seeds, args.base_seed, ttf_modes)
     machine_extra = load_node_meta(args.node_meta_dir, n_tasks)
 
     cells = per_cell_table(manifests)
@@ -272,15 +298,17 @@ def main(argv: list[str] | None = None) -> int:
         "config": {
             "harness": "scripts/bench_correction_storm.py",
             "slurm_script": "scripts/storm_campaign.slurm",
-            "array_job_id": args.array_job_id, "n_tasks": n_tasks,
+            "array_job_id": args.array_job_id, "freeze_id": args.freeze_id,
+            "freeze_sha256": args.freeze_sha256, "n_tasks": n_tasks,
             "stores": stores, "mixes": mixes, "ages": ages, "n_artifacts_list": n_list,
-            "n_seeds": args.n_seeds, "base_seed": args.base_seed,
+            "n_seeds": args.n_seeds, "base_seed": args.base_seed, "ttf_modes": ttf_modes,
             "concurrency": args.concurrency, "wall_per_task_s": args.wall_per_task_s,
         },
         "seed": {"value": args.base_seed},
         "dataset": {
             "name": "correction-storm campaign grid",
-            "digest": dataset_digest(stores, mixes, ages, n_list, args.n_seeds, args.base_seed),
+            "digest": dataset_digest(stores, mixes, ages, n_list, args.n_seeds, args.base_seed,
+                                     ttf_modes),
             "digest_kind": "manifest",
         },
         "result_digest": result_digest(manifests),
