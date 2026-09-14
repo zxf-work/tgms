@@ -376,6 +376,46 @@ find_temporal_motif_instances_terms = _motif_terms
 
 
 # ---------------------------------------------------------------------------
+# §2.9 — temporal_reachability (rollout design 2026-09-14, §6 step 2)
+# ---------------------------------------------------------------------------
+
+def temporal_reachability_terms(args: dict[str, Any], sigma: Sigma) -> tuple[ScopeTerm, ...]:
+    """One edge term over the whole store, plus the existence pair over `src`.
+
+    **Reads.** `adapter.dense_ids([args["src"]])` (`ops_paths.py:111`);
+    `adapter.edges_columnar(vt_min=t_a, vt_max=t_b, columns=("src_id",
+    "dst_id","vt_s","vt_e"))` (`:113-114`); `adapter.num_entities()` (`:122`,
+    sizing the label array only — an added entity gets `INF` and is excluded,
+    so it is not in `R`); `adapter.uids_for(reached)` (`:141`).
+
+    **`I = ⊤` (as `E`), `T = ⊤`**, both unavoidable: CE-1 (a chain of new
+    edges can connect `src` to nodes the fixpoint never labelled) and, under
+    `delta_max_wait`, non-monotonicity (adding an edge can *remove* a node
+    from the reachable set).
+
+    **`V = window` holds under plain overlap**, and the argument is worth
+    writing because the scan's bounds alone do not establish it: arrivals
+    start at `t_a` and are non-decreasing, so `τ = max(a, vt_s) ≥ t_a`;
+    traversability requires `τ < vt_e`, hence `vt_e > t_a`; and `τ < t_b`
+    forces `vt_s < t_b`. So only edges whose interval overlaps `[t_a, t_b)`
+    can participate, in either the `delta`-free fixpoint or the multi-label
+    search.
+
+    **`P = Pᵥ`**: carving is *not* traversal-neutral — with `delta_max_wait`
+    set, a refinement adds arrival labels and a row can appear — but the
+    narrowing survives by the value arm rather than by neutrality, because
+    every new arrival label is `cs` or `ce`, both inside `vt_closed(cs, ce)`,
+    and every carve-capable op's value arm emits `@extent`, which `Pᵥ` meets.
+    """
+    uids = _uid_list(args, "src")
+    vt = _window_vt(args)
+    if uids is None or vt is None:
+        return (TOP_TERM,)
+    return (ScopeTerm(kinds=K_EDGE, targets=_edge_target(), rel_types=TOP,
+                      vt=vt, vt_mode="overlap", props=P_VALUE),) + _existence_terms(uids)
+
+
+# ---------------------------------------------------------------------------
 # the rollout table — one line per operator, and the rollback
 # ---------------------------------------------------------------------------
 
@@ -390,6 +430,7 @@ LEAF_SCOPES: dict[str, Derivation] = {
     "aggregate_events": aggregate_events_terms,
     "count_temporal_motifs": count_temporal_motifs_terms,
     "find_temporal_motif_instances": find_temporal_motif_instances_terms,
+    "temporal_reachability": temporal_reachability_terms,
 }
 
 #: Does this operator's output bind **node-version** columns — a label, a
@@ -411,6 +452,8 @@ BINDS_NODE_VERSIONS: dict[str, Callable[[dict[str, Any]], bool]] = {
     # column is ever bound
     "count_temporal_motifs": lambda args: False,
     "find_temporal_motif_instances": lambda args: False,
+    # rows are {uid, earliest_arrival}: a uid read off an edge endpoint
+    "temporal_reachability": lambda args: False,
 }
 
 
@@ -431,5 +474,5 @@ __all__ = [
     "BINDS_NODE_VERSIONS", "Derivation", "LEAF_SCOPES", "P_CARVE_REACHED",
     "P_VALUE", "aggregate_events_terms", "count_temporal_motifs_terms",
     "entity_history_terms", "find_temporal_motif_instances_terms",
-    "neighborhood_evolution_terms", "terms_for",
+    "neighborhood_evolution_terms", "temporal_reachability_terms", "terms_for",
 ]
