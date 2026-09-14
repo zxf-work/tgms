@@ -1,0 +1,14 @@
+# Model-axis fp16 control (D-119): 32B FP16, seed 0, oracle-v3 TEST
+# split. Identical to the -32b (AWQ) config except quantization —
+# the arm that disentangles the D-024 echo from scale.
+suite_path: stores/suite-sx-superuser/suite-v3.json
+store_path: stores/sx-superuser-duckdb
+out_dir: runs/m8-sx-superuser-sql-32bfp16
+split: test
+systems: [b6, b6e]
+models: ["openai/Qwen/Qwen2.5-32B-Instruct"]
+seeds: [0]
+max_repairs: 3
+memory_db: stores/sx-superuser/memory.sqlite
+llm_api_base: "http://localhost:8000/v1"
+llm_api_key: "EMPTY"

@@ -17,6 +17,7 @@ from __future__ import annotations
 import graphlib
 import json
 import time
+import uuid
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
@@ -131,9 +132,19 @@ class ResultStore:
 
 
 class Executor:
-    def __init__(self, router: ToolRouter, result_store: ResultStore | None = None) -> None:
+    def __init__(self, router: ToolRouter, result_store: ResultStore | None = None,
+                 max_wall_s: float = MAX_WALL_S,
+                 max_total_rows: int = MAX_TOTAL_ROWS) -> None:
         self.router = router
         self.results = result_store
+        #: production keeps the 60 s default; the benchmark oracle lane
+        #: passes its own declared budget (plan §2c) — the wall is part of
+        #: the lane's envelope, not a constant of the machine
+        self.max_wall_s = max_wall_s
+        #: same principle for the materialized-row cap (oracle-v3.1): the
+        #: lane declares its cap instead of inheriting the module constant
+        #: silently
+        self.max_total_rows = max_total_rows
 
     def _basis(self, op: str) -> dict[str, Any]:
         """The freshness metadata for a step, recorded **before** it runs.
@@ -160,6 +171,10 @@ class Executor:
         by_id = {s.id: s for s in plan.steps}
 
         trace = Trace(plan_id=plan.plan_id)
+        # execution-context token: current-basis descriptors from this run
+        # are mutually comparable and never comparable across runs (round-3
+        # review §8 — the token travels in the descriptor itself)
+        ctx_token = uuid.uuid4().hex[:16]
         outputs: dict[str, Any] = {}
         failed: set[str] = set()
         total_rows = 0
@@ -169,9 +184,9 @@ class Executor:
             step = by_id[sid]
             rec: dict[str, Any] = {"step_id": sid, "op": step.op, **self._basis(step.op)}
             elapsed = time.perf_counter() - t_start
-            if elapsed > MAX_WALL_S:
+            if elapsed > self.max_wall_s:
                 rec.update(status="skipped", error={"error": "E_LIMIT",
-                           "message": f"plan wall clock {elapsed:.1f}s > {MAX_WALL_S}s"})
+                           "message": f"plan wall clock {elapsed:.1f}s > {self.max_wall_s}s"})
                 trace.steps.append(rec)
                 failed.add(sid)
                 continue
@@ -203,14 +218,24 @@ class Executor:
 
             if upstream_truncated and step.op == "compute" \
                     and resolved.get("fn") in REDUCING_FNS:
+                # The old message advised paging with `cursor`, which a
+                # single-shot plan DAG cannot express — Session 4 measured
+                # 10 of 10 such repairs failing to converge. Advise only
+                # what a plan can actually do.
                 rec.update(status="failed", upstream_truncated=True,
                            error=LimitError(
                                f"compute {resolved['fn']} would reduce a "
                                f"truncated result to one number, which is a "
-                               f"wrong answer rather than a partial one. Page "
-                               f"through with `cursor` and combine, or narrow "
-                               f"the window or grouping so the result fits "
-                               f"one page.").to_payload())
+                               f"wrong answer rather than a partial one. "
+                               f"Plans cannot loop over `cursor`. Expressible "
+                               f"fixes: for a count, read the producing "
+                               f"step's `rows_total` field directly (it is "
+                               f"exact even when the page truncates); for "
+                               f"grouped or filtered counts, use "
+                               f"`aggregate_events`, which aggregates inside "
+                               f"the engine without a page limit; otherwise "
+                               f"narrow the window or grouping so the result "
+                               f"fits one page.").to_payload())
                 trace.steps.append(rec)
                 failed.add(sid)
                 continue
@@ -241,13 +266,33 @@ class Executor:
                            rows_returned=rows,
                            truncated=res.get("truncated", False),
                            upstream_truncated=upstream_truncated)
+                # every successful step carries its evidence descriptor;
+                # capability inheritance runs over the dependency edges, so
+                # a certificate can never be laundered through a step whose
+                # inputs were delivery-incomplete (M2, D-100)
+                try:
+                    from tgms.evidence.adapter_tgms import build_ecqr
+                    from tgms.evidence.ecqr import ECQR as _ECQR
+                    inputs = []
+                    for d in step.depends_on:
+                        drec = next((s for s in trace.steps
+                                     if s["step_id"] == d), None)
+                        if drec and drec.get("ecqr"):
+                            inputs.append(_ECQR.from_json(drec["ecqr"]))
+                    rec["ecqr"] = build_ecqr(
+                        res, store_id=str(getattr(
+                            self.router.adapter, "path", "store")),
+                        input_ecqrs=inputs,
+                        execution_context=ctx_token).to_json()
+                except Exception:  # descriptor failure must never fail a step
+                    rec["ecqr"] = None
                 outputs[sid] = res
                 if self.results is not None:
                     self.results.put(res)
-                if total_rows > MAX_TOTAL_ROWS:
+                if total_rows > self.max_total_rows:
                     rec["error"] = {"error": "E_LIMIT",
                                     "message": f"materialized rows {total_rows} "
-                                               f"> {MAX_TOTAL_ROWS}"}
+                                               f"> {self.max_total_rows}"}
                     rec["status"] = "failed"
                     failed.add(sid)
             trace.steps.append(rec)
