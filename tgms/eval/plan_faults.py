@@ -361,30 +361,52 @@ def _finalize(base: Classification, run: Run, oracle: Oracle) -> Classification:
     return base
 
 
+#: The production claim gate (D-160, coordinator ruling 2026-09-15,
+#: Addendum 2 to the frozen design). A single source of truth shared with
+#: `tgms.eval.harness.run_task_ours`, which imports this constant directly
+#: rather than re-listing the verdicts -- the two gates cannot drift apart
+#: because they are the same tuple, not a parallel-maintenance convention.
+#: See `docs/STABILITY.md` ("since 2026-09-15 an emitted answer never
+#: carries an `unverifiable` claim") for the dated behaviour-change note.
+GATED_VERDICTS: tuple[str, ...] = ("unsupported", "unverifiable")
+
+
 def gate_answer(answer_obj: dict[str, Any], report: dict[str, Any],
                 strict: bool = False) -> tuple[dict[str, Any], dict[str, Any], int]:
     """The delivered-answer reading for classification.
 
-    **Coordinator ruling, Addendum 1 to the frozen design (2026-09-13),
-    superseding this function's original docstring.** The PRIMARY arm must
-    measure the deployed boundary, so the default (`strict=False`) is
-    *exactly* `tgms.eval.harness.run_task_ours`'s own production gate
-    (`harness.py`: `kept = [c for c, r in ... if r["verdict"] !=
-    "unsupported"]`) -- `unverifiable` is **not** dropped. An emitted
-    `unverifiable` claim the cited evidence does not support therefore
-    reaches `classify`, which flags it `I1` -> `silent-violation`: that is
-    the finding the primary arm exists to surface, not a condition to
-    pre-empt by widening the gate.
+    **D-160 (coordinator, 2026-09-15, Addendum 2) supersedes Addendum 1's
+    reading below.** The campaign run under Addendum 1's gate (dropping
+    `unsupported` only) found the primary arm's headline claim falsified:
+    271/300 F1-9 wrong-step-citation trials survived the gate as an emitted
+    `unverifiable` claim the cited evidence does not support
+    (`benchmarks/faults-v1/fault-matrix-campaign-2026-09-13.json`). The
+    ruling: the trust boundary must not emit a claim it cannot verify, so
+    the production gate -- and this function's default -- now drops
+    `unverifiable` claims as well as `unsupported` ones. `strict=True` (the
+    `--strict-gate` CLI flag) becomes a **no-op alias**: with `unverifiable`
+    now gated by default, `strict=True` and `strict=False` compute the same
+    `GATED_VERDICTS` drop set and return identical results. The parameter
+    and the flag are kept purely so existing callers and scripts do not
+    need to change their invocation; neither reintroduces a laxer reading.
 
-    `strict=True` is the named **secondary** arm (`--strict-gate`): drops
-    `unsupported` *and* `unverifiable`, the classifier-parity reading this
-    function used before the ruling. Kept for contrast, never the headline.
+    **Superseded text, Addendum 1 (2026-09-13), kept for the historical
+    record.** "The PRIMARY arm must measure the deployed boundary, so the
+    default (`strict=False`) is *exactly* `tgms.eval.harness.run_task_ours`'s
+    own production gate (`harness.py`: `kept = [c for c, r in ... if
+    r['verdict'] != 'unsupported']`) -- `unverifiable` is **not** dropped.
+    An emitted `unverifiable` claim the cited evidence does not support
+    therefore reaches `classify`, which flags it `I1` -> `silent-violation`:
+    that is the finding the primary arm exists to surface, not a condition
+    to pre-empt by widening the gate." That finding is exactly what the
+    2026-09-13 campaign surfaced, and exactly what D-160 now fixes at the
+    gate rather than leaving as a standing silent-violation count.
 
     Returns `(gated_answer, gated_report, n_dropped)`; `gated_report
     ["claims"]` stays aligned with `gated_answer["claims"]`
     position-for-position, which is what `classify`'s `zip` needs.
     """
-    drop = ("unsupported", "unverifiable") if strict else ("unsupported",)
+    drop = GATED_VERDICTS  # `strict` is a no-op alias since D-160; see above
     claims = answer_obj.get("claims") or []
     reports = (report or {}).get("claims") or []
     kept_c, kept_r = [], []
@@ -1025,6 +1047,7 @@ __all__ = [
     "Classification", "EXEC_FAULTS", "FaultingRouter", "Oracle",
     "Outcome", "PLAN_MUTATORS", "PlanMutator", "Run", "SAFE_REFUSAL_REASONS",
     "TGIR_MUTATORS", "TgirMutator", "augment_report", "classify", "gate_answer",
+    "GATED_VERDICTS",
     "has_weak_support",
     "outcome_rates",
     "f2_7_stale_index_metadata_by_reference", "freshness_from_verdict",

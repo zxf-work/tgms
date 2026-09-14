@@ -401,3 +401,294 @@ bit-for-bit reproducible in its trial sequence (each cell reseeds its own
 structural shortfalls (F1-6/F1-6b/F1-8/F1-11) are all corpus-and-code
 properties, not sampling noise, and are expected to reproduce exactly
 unless the corpus, the gate ruling, or the classifier changes.
+
+---
+
+## Re-run under D-160 — 2026-09-15 (Lane E, task E3)
+
+**Headline: the 2026-09-13 finding is fixed, not explained away. F1-9's
+271/300 primary-arm silent-violations are 0 under the new gate — every one
+of those trials now classifies `explicit-failure` instead. F2-3 is
+unchanged at 32/100 (the pre-registered stated-assumption probe, outside
+the headline count, unaffected by any gate by construction). No cell
+outside F2-3 shows a nonzero silent-violation.** This is exactly the
+`fault-matrix-campaign-2026-09-13.json` record read forward through D-160
+(`docs/STABILITY.md` §9, coordinator ruling 2026-09-15): *"the trust
+boundary must not emit a claim it cannot verify... the matrix re-runs
+under the new production gate; both records are kept and both are
+reported."* Both records remain committed side by side —
+`fault-matrix-campaign-2026-09-13.json` (pre-fix, primary arm gates
+`unsupported` only) and `fault-matrix-campaign-2026-09-15-d160.json`
+(post-fix, primary arm gates `unsupported` AND `unverifiable`) — and
+neither supersedes the other.
+
+**Only the primary arm was re-run — no `--strict-gate` tasks.** D-160 made
+`gate_answer`'s `strict` parameter a no-op alias: since the default now
+already drops `unverifiable`, `strict=True` computes the identical
+`GATED_VERDICTS` drop set. Re-running the former 17-task strict arm would
+have reproduced this record's own primary-arm output byte-for-byte, so
+`scripts/fault_matrix_campaign.slurm` was re-parameterized (commit
+`f36a04d`, following `a501fce`) to a 23-task table — the original
+40-task layout's primary-arm rows only (19 surface-A + 4 surface-B),
+**identical cell identities and per-cell N** to the original — renumbered
+`--array=0-22%6`.
+
+**A cross-check the campaign wasn't designed to need, but got for free:**
+every cell that has an old strict-gate counterpart matches this new
+primary-arm record exactly — same `counts`, same `gold_mismatch`, same
+`misattributed`, same `weak_support`, same `n_cases` — because D-160 made
+the production gate behave exactly like the old secondary arm. (Surface B
+and `F1-8`/`F2-5` have no old strict counterpart: the original campaign's
+own docstring calls `--strict-gate` a no-op there and never ran it.) This
+is independent confirmation that the re-run's harness, corpus, and seed
+reproduce the original campaign faithfully and that the only thing that
+moved is the gate.
+
+### Particulars
+
+- **local commit (the D-160 gate change)**: `a501fceb45e8e53cc00fa1f8d93625564ddd5d94`
+  (`eval: the production claim gate drops unverifiable claims too (D-160)`
+  is `c38abfc`, of the three commits on top of `ea2300b`; the slurm-script
+  bugfix `f36a04d` landed after this campaign ran — see "A bug found
+  mid-run" below)
+- **remote checkout**: a **separate** worktree,
+  `/project/xzhang12/tgms-d160`, `git worktree add ... 4af2181` off the
+  existing `/project/xzhang12/tgms` (still at `4af2181`, untouched — the
+  2026-09-13 record's own checkout). No push was made (none is possible
+  without a remote branch); the three owned Python files were `scp`'d in
+  directly and sha256-verified byte-identical to the local worktree copy
+  before the campaign ran:
+
+  | file | sha256 |
+  |---|---|
+  | `tgms/eval/harness.py` | `629c1b63300e44bdb76df34d19ba80c2081de6786e7e39300602ca6ceb7095ee` |
+  | `tgms/agent/reporter.py` | `0275f81b4ea1b37d70bab38d011d6a1877a2ad85ef625eb45b5f5b755bb276ad` |
+  | `tgms/eval/plan_faults.py` | `c4d6af8e3e8d791a1dc1d7752ac55aae66e30d644a5d89a5aafd83a38253a6fc` |
+
+  (`reporter.py` is byte-identical to `4af2181`'s own copy — it carries no
+  claim-drop rule of its own, so D-160 changed nothing in it; it is listed
+  here for completeness and honesty about what was verified, not because
+  its content differs.) `git diff 4af2181 HEAD -- <these three files>` on
+  the local worktree touches only commit `c38abfc`, confirming the scp'd
+  files carry exactly the D-160 diff and nothing else that changed on
+  `main` between `4af2181` and this campaign's local branch tip.
+  `tgms/_engine.cpython-312-x86_64-linux-gnu.so` and `stores/` were **not**
+  copied — this change is Python-only, so the worktree reuses
+  `/project/xzhang12/tgms`'s own engine build (copied in directly,
+  `MANIFEST_FORMAT_VERSION == 2`, confirmed via
+  `import tgms._engine; tgms._engine.MANIFEST_FORMAT_VERSION`) and its
+  `stores/` directory (symlinked, read-only data unaffected by this
+  change).
+- **hosts**: itiger01, itiger02, itiger04 — iTiger cluster, partition
+  `bigTiger`
+- **array job**: `211059`, `--array=0-22%6`, all 23 tasks `COMPLETED`, exit
+  `0:0` — earliest task start `2026-09-13T23:22:06`, latest end
+  `2026-09-13T23:22:41`, whole array **35 seconds** wall-clock (model-free,
+  deterministic, no LLM or network call anywhere in the driver)
+- **`TGMS_COMMIT`**: set explicitly to the local D-160 commit sha above
+  (**not** the script's own `4af2181` default) via the git shim, so every
+  raw record's `git_commit` field names what actually ran, not the
+  worktree's base commit
+- **manifest**: `fault-matrix-campaign-2026-09-15-d160.json` conforms to
+  `benchmarks/schema/result_manifest.schema.json`
+  (`scripts/check_result_manifest.py` — passes)
+- **result_digest** (sha256 over the 23 constituent records'
+  `(cell, surface, strict_gate, result_digest)`):
+  `0b623c90d128ee5c307ad39d86e0ed134afd61679a01607562b8ed23df2f9ddd`
+- **dataset digest**: `c70039b579ecebe9549c420a3db9336ee73fd6cca92d8975e80cdcc3bfa373b4`
+  (identical to the 2026-09-13 record's — same corpus)
+- **file sha256** (`fault-matrix-campaign-2026-09-15-d160.json`):
+  `868c36c18270c90740f8261cb670a3d6305ebed5a8c999eddea7ad1953fe3e95`
+- **total trials**: 3,102/3,900 requested — identical to the 2026-09-13
+  primary arm's own total, cell for cell (see the shortfalls note below)
+
+### A bug found mid-run, and the fix applied after
+
+The first version of the re-parameterized `fault_matrix_campaign.slurm`
+(commit `a501fce`) folded an optional `TGMS_TAG` (default `"d160"`) into
+each copied record's filename — `<cell>-<suite>-d160.json` instead of
+`<cell>-<suite>.json`. `scripts/fault_matrix_campaign_merge.py` (not an
+owned file for this task, left unmodified) recovers each record's
+*effective* surface by stripping a `-strict` suffix off the filename and
+comparing what remains to the literal string `"ldbc-fixture"`; with an
+extra `-d160` in the way, every surface-B record's remainder read
+`"ldbc-fixture-d160"` and would have silently merged as surface A.
+
+This job (`211059`) ran under that pre-fix script — its 23 raw records on
+iTiger really were named `task-<id>--<cell>-<suite>-d160.json`. Rather
+than burn a second array job, the 23 files were `scp`'d down as-produced,
+sha256-verified against the remote copies (all 23 matched — see below),
+then renamed locally (`task-<id>--<cell>-<suite>-d160.json` →
+`task-<id>--<cell>-<suite>.json`, content untouched) before merging. The
+merge tool's `bad_commit` check and the 23-way cross-validation against
+the old strict-gate reading above are exactly what would have caught a
+silent B→A misclassification, and neither did — surface B's 4 cells
+(`F1-1`, `F1-3a`, `F1-3b`, `F1-5`) read correctly as surface `B` in the
+merged manifest and the table below. The script itself was fixed
+afterward (commit `f36a04d`) so a future re-run does not need this manual
+step: `TGMS_TAG` now only appears on the `RUN_STARTED` log line, never in
+a record's filename.
+
+### Per-cell outcome table (primary arm only — no `--strict-gate` cells)
+
+`n` is `n_cases`/`n_requested`. Same corpus, same seed, same cells as the
+2026-09-13 record's own primary arm — only the `silent-violation` column
+for `F1-9` differs (271 → 0, those 271 trials now `explicit-failure`);
+every other cell's row is bit-for-bit identical to its 2026-09-13
+counterpart.
+
+| cell | surface | suite/plans | gate | n | correct | safe-refusal | explicit-failure | silent-violation | gold_mismatch | misattributed | weak_support |
+|---|---|---|---|---:|---:|---:|---:|---:|---:|---:|---:|
+| F1-1 | A | collegemsg | primary | 100/100 | 0 | 0 | 100 | 0 | 0 | 0 | 0 |
+| F1-1 | B | ldbc-fixture | primary | 100/100 | 92 | 0 | 8 | 0 | 0 | 0 | 0 |
+| F1-2 | A | collegemsg | primary | 100/100 | 0 | 0 | 100 | 0 | 0 | 0 | 0 |
+| F1-3a | A | collegemsg | primary | 100/100 | 0 | 0 | 100 | 0 | 0 | 0 | 0 |
+| F1-3a | B | ldbc-fixture | primary | 100/100 | 0 | 0 | 100 | 0 | 0 | 0 | 0 |
+| F1-3b | A | collegemsg | primary | 100/100 | 82 | 0 | 18 | 0 | 62 | 0 | 0 |
+| F1-3b | B | ldbc-fixture | primary | 100/100 | 0 | 0 | 100 | 0 | 0 | 0 | 0 |
+| F1-4 | A | collegemsg | primary | 100/100 | 0 | 0 | 100 | 0 | 0 | 0 | 0 |
+| F1-5 | A | collegemsg | primary | 100/100 | 0 | 0 | 100 | 0 | 0 | 0 | 0 |
+| F1-5 | B | ldbc-fixture | primary | 100/100 | 0 | 0 | 100 | 0 | 0 | 0 | 0 |
+| F1-6 | A | collegemsg | primary | 0/100 | 0 | 0 | 0 | 0 | 0 | 0 | 0 |
+| F1-6b | A | collegemsg | primary | 0/100 | 0 | 0 | 0 | 0 | 0 | 0 | 0 |
+| F1-7 | A | collegemsg | primary | 300/300 | 0 | 0 | 300 | 0 | 0 | 0 | 0 |
+| F1-8 | A | collegemsg | primary | 0/300 | 0 | 0 | 0 | 0 | 0 | 0 | 0 |
+| **F1-9** | A | collegemsg | primary | 300/300 | 29 | 0 | **271** | **0** | 29 | 29 | 0 |
+| F1-10 | A | collegemsg | primary | 300/300 | 0 | 0 | 300 | 0 | 0 | 0 | 0 |
+| F1-11 | A | collegemsg | primary | 2/300 | 2 | 0 | 0 | 0 | 0 | 0 | 2 |
+| F2-1 | A | collegemsg | primary | 300/300 | 0 | 11 | 289 | 0 | 0 | 0 | 0 |
+| F2-2 | A | collegemsg | primary | 100/100 | 0 | 6 | 94 | 0 | 0 | 0 | 0 |
+| **F2-3** | A | collegemsg | primary | 100/100 | 54 | 8 | 6 | **32** | 18 | 0 | 0 |
+| F2-4 | A | collegemsg | primary | 300/300 | 201 | 57 | 42 | 0 | 27 | 0 | 18 |
+| F2-5 | A | collegemsg | primary | 100/100 | 0 | 100 | 0 | 0 | 0 | 0 | 0 |
+| F2-6 | A | collegemsg | primary | 300/300 | 174 | 18 | 108 | 0 | 21 | 0 | 0 |
+
+### Before / after, the two rows that move
+
+| cell | surface | old (2026-09-13) primary gate | new (D-160) primary gate |
+|---|---|---|---|
+| F1-9 | A | 29 correct / 0 safe-refusal / 0 explicit-failure / **271 silent-violation** | 29 correct / 0 safe-refusal / **271 explicit-failure** / **0 silent-violation** |
+| F2-3 | A | 54 correct / 8 safe-refusal / 6 explicit-failure / 32 silent-violation | 54 correct / 8 safe-refusal / 6 explicit-failure / 32 silent-violation (**unchanged**) |
+
+Every other cell in the table above is identical, count for count, to its
+2026-09-13 primary-arm row — confirmed programmatically, not by
+inspection (the 23-cell diff produced exactly one differing row, `F1-9`).
+
+### Silent violations, verbatim (none rerun)
+
+**F2-3, primary gate, non-headline (stated-assumption probe, §3/A2): 32/100.**
+`per_case` indices (`benchmarks/faults-v1/d160-raw/F2-3-collegemsg.json`),
+identical to the 2026-09-13 record's own F2-3 primary-arm indices (same
+seed, same corpus, same force-classified-from-ground-truth mechanism,
+independent of any gate):
+
+```
+0, 8, 11, 13, 14, 20, 23, 25, 26, 27, 29, 31, 37, 42, 43, 44, 49, 50, 53,
+55, 59, 62, 64, 67, 73, 78, 80, 81, 83, 85, 89, 98
+```
+
+No cell outside F2-3 has a nonzero `silent-violation` count in this
+record. There is nothing else to report verbatim.
+
+### Shortfalls (n_cases < n_requested)
+
+Identical to the 2026-09-13 record's own shortfall analysis (same corpus,
+same seed, same structural limits — see that section above for the
+per-mutator confirmation): `F1-6`/`F1-6b` 0/100 (no applicable operator-swap
+site in the corpus), `F1-8` 0/300 (no paginated-count-over-`limit`-ed-input
+plan shape in the corpus), `F1-11` 2/300 (only 2 of 116 tasks have a
+paginated-count claim shape). None is a mutator-budget artifact; none
+changed by re-running under the new gate, since none of these three cells
+ever reaches the gate at all (0 trials) or reaches it after the claim is
+already resolved (`F1-11`'s 2 trials are `weak_support: true` `correct`
+under both gates, since they never carry an `unverifiable` claim).
+
+### Companion raw files
+
+The 23 raw per-(cell, surface) records live under
+`benchmarks/faults-v1/d160-raw/`, **not** at the top level of this
+directory — the original 2026-09-13 campaign's own raw files (e.g.
+`F1-1-collegemsg.json`) share these exact base names, and this campaign's
+copies must never overwrite them. sha256 of every file under
+`d160-raw/` (unmodified copies of the sha256-verified, renamed-per-above
+records; verified equal to the as-produced-on-iTiger bytes before commit):
+
+```
+3295e16e3a42d60caaa1fb79edd50a8bb725c0f6c508cb4de7803d20786f45ab  F1-1-collegemsg.json
+238c64eeaa3244e73090052b405fd4f022e09a0eb757027ebc24bae6ca8cbc9e  F1-1-ldbc-fixture.json
+3a72ce34f6cf97f52c52b91fa504347d81c94fd6dbb84dedf05016d621a31a7d  F1-10-collegemsg.json
+6418a6fd35b0a9072bb25561eb4bb62470bd8457d7bcc9b92631d423b5e2c1b5  F1-11-collegemsg.json
+dc925cba87b8aa2e251cb61296392c67623852a7a94aa819dc909799c67c17a0  F1-2-collegemsg.json
+f1f769f9c0acdca9c2924c44b742c73cb00b4cdc86a2502b6ef0aace9d08ce1a  F1-3a-collegemsg.json
+03caca8de60625db63fdebe3a62272fdd68af60f131fbc0f74d67f04cbc26a0d  F1-3a-ldbc-fixture.json
+e14ccbf4eb02e9ef3d259b20697dec67aa85e78f32c13fe9435994ff2f2ee3dd  F1-3b-collegemsg.json
+2802dc69ec4cea02452b72669021445f865289dc65c8cdfded6bc5df4292729a  F1-3b-ldbc-fixture.json
+93eb82c599fc01ab53501df6920e895eeffed9d09f1c57de2044d99d660e43da  F1-4-collegemsg.json
+3fcbb73370bdc54cc5bde664e5c1e6f36be8c191fe9541232e226fe8da4c902f  F1-5-collegemsg.json
+b325447029c97f245b1163981be9cd2e5b5830910950390d590d92a4c0b3ca67  F1-5-ldbc-fixture.json
+06816aacf300ae669f8ca68ba7355865f240bfc99e29edbc2b59c43dd6e59fb0  F1-6-collegemsg.json
+c3cc0bcf0bdbcc15de680243e56af78f8270097379568ea73454c61ddb9b068c  F1-6b-collegemsg.json
+84d46d0ba8e14fbfc84852434a81667088344341def166311e733909370cbfd7  F1-7-collegemsg.json
+98071d19791cc44989325d3aaef6d76dc05baa5db3cb1db9267842e3fa7fd137  F1-8-collegemsg.json
+357a2301757af016171efbc614fe7b94dd5865de6ed1cabc521be0dea576872d  F1-9-collegemsg.json
+042fa1f99369defb264ed89aacf193caafaa7c23ed898b21b11c879000b329a0  F2-1-collegemsg.json
+3d75e183b35d86e4810595d5a4a0905c718ee4aaf6c029149f297c16e4930c00  F2-2-collegemsg.json
+7dbcf4b318b4b364e7766a3fc975979348878fbf25e0d732f5c2c2ceaa3c54f8  F2-3-collegemsg.json
+c70d25dfc6758c9fd2c1236d47a36b9e7e9232ebd37d42af3defb05e330ea1b6  F2-4-collegemsg.json
+9dd1dc6bc7304c87905128f3ec2ce5a46672f8f7d647cf72282ac2c96b1bda77  F2-5-collegemsg.json
+21dce76822151e1a95af2eb21cb2d15d0036c266598553c0f95df55e102eef87  F2-6-collegemsg.json
+```
+
+### Data handling
+
+The 23 raw per-task records, per-task stdout logs, and per-task
+host/uname sidecars were staged at
+`/project/xzhang12/faults-v1-work-d160/{records,logs,node_meta}/`
+(a directory distinct from the 2026-09-13 record's own
+`faults-v1-work/`, per this script's `TGMS_STAGE` parameterization),
+`scp`'d down, sha256-verified identical to the remote copies (all 23
+records matched — table above), renamed to strip the pre-fix `-d160`
+filename suffix (see "A bug found mid-run" above; content unchanged,
+verified by sha256 before and after), merged, and **the server-side
+staging directory was then deleted**
+(`rm -rf /project/xzhang12/faults-v1-work-d160` — confirmed gone). The
+separate worktree `/project/xzhang12/tgms-d160` was left in place on
+iTiger (it is code, not campaign data, and other Lane E work may reuse
+it); it is not part of this repository's own commit. As with the
+2026-09-13 record, `scripts/fault_matrix_campaign_merge.py` never
+hand-types a number: every count in this section and in the merged
+manifest is read back out of the 23 committed raw files.
+
+### Regenerating
+
+```sh
+# 1. On iTiger: create a SEPARATE worktree off the target base commit
+#    (do not touch the checkout the 2026-09-13 record depends on):
+#    git -C /project/xzhang12/tgms worktree add /project/xzhang12/tgms-d160 4af2181
+# 2. scp the D-160-owned Python files in and sha256-verify:
+#    tgms/eval/harness.py, tgms/agent/reporter.py, tgms/eval/plan_faults.py
+#    Copy in (do not rebuild) the existing engine .so and symlink stores/
+#    from /project/xzhang12/tgms -- this change is Python-only.
+# 3. Submit the primary-arm-only campaign:
+sbatch --job-name=tgms-faultmatrix-d160 \
+  --export=ALL,TGMS_REPO=/project/xzhang12/tgms-d160,\
+TGMS_STAGE=/project/xzhang12/faults-v1-work-d160,TGMS_TAG=d160,\
+TGMS_COMMIT=<local D-160 commit sha> \
+  scripts/fault_matrix_campaign.slurm
+# 4. Poll: sacct -j <jobid> --format=JobID,State,Elapsed,ExitCode -X
+# 5. Once all 23 tasks show ExitCode 0:0, scp records/ + logs/ + node_meta/
+#    down, sha256 verify, THEN delete the server-side copies.
+# 6. Merge:
+python scripts/fault_matrix_campaign_merge.py \
+    --records-dir <pulled>/records --node-meta-dir <pulled>/node_meta \
+    --commit <local D-160 commit sha> --array-job-id <jobid> \
+    --out benchmarks/faults-v1/fault-matrix-campaign-<date>-d160.json \
+    --raw-out-dir benchmarks/faults-v1/d160-raw
+# 7. Validate:
+python scripts/check_result_manifest.py \
+    benchmarks/faults-v1/fault-matrix-campaign-<date>-d160.json
+```
+
+At the same base seed, corpus, and commit this reproduces bit-for-bit:
+F1-9's 0 silent-violations (271 explicit-failure instead), F2-3's 32
+(same 32 `per_case` indices), and the same three structural shortfalls.
