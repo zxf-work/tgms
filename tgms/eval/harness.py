@@ -40,7 +40,7 @@ from tgms.eval.plan_faults import (
 from tgms.store import Store
 
 OURS_SYSTEMS = ("ours", "ours-noverify", "ours-nomem")
-BASELINE_SYSTEMS = ("b1", "b2", "b5", "b6", "b6e")
+BASELINE_SYSTEMS = ("b1", "b2", "b5", "b6", "b6e", "llm_direct")
 
 
 # --------------------------------------------------------------------------- #
@@ -299,6 +299,13 @@ def build_systems(cfg: dict[str, Any], store: Store, model: str,
             out[system] = cls(llm_fn, model, db_path=bt_path,
                               max_repairs=cfg.get("max_repairs", 3),
                               seed=seed)
+        elif system == "llm_direct":
+            from tgms.eval.baselines import LLMDirect
+            out[system] = LLMDirect(
+                store, llm_fn, model,
+                context_budget_tokens=cfg.get("llm_direct_budget_tokens",
+                                              8_000),
+                seed=seed)
         else:
             raise ValueError(f"unknown system {system}")
     return out
