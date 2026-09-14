@@ -55,8 +55,11 @@ def params_root(tmp_path: Path) -> Path:
         '{"personIdQ9":13194139542834,"maxDate":1324080000000,"limit":20}|[]',
         '{"personIdQ11":30786325583618,"countryName":"Laos","workFromYear":2010,"limit":10}|[]',
         '{"personIdQ12":17592186052613,"tagClassName":"BasketballPlayer","limit":20}|[]',
+        '{"personIdSQ1":32985348839299}|{}',
         '{"personIdSQ2":32985348839299,"limit":10}|[]',
         '{"personIdSQ3":32985348839299}|[]',
+        '{"messageIdContent":2199024038763}|{}',
+        '{"messageIdCreator":2199024038763}|{}',
         '{"messageForumId":2199024038763}|{}',
         '{"messageRepliesId":2199024038763}|[]',
         '{"personIdQ2":999,"maxDate":1,"limit":20}|[]',          # a second Q2, later
@@ -128,7 +131,12 @@ def test_the_selection_rule_takes_the_first_tuple_in_ldbc_file_order(params_root
 
 
 def test_every_frozen_plan_has_a_parameter_source(params_root):
-    assert len(P.LDBC_PLANS) == 21
+    # E13 froze 21; Lane D2 (2026-09-14) added IS1/IS4/IS5, which the capability
+    # matrix and the contracts fixture already counted inside the 24 expressible
+    # templates. The census moves when the census grows; the *rules* it guards
+    # (identity, units, selection) are unchanged and tested above.
+    assert len(P.LDBC_PLANS) == 24
+    assert set(P.POST_FREEZE_IV_PLANS) <= set(P.LDBC_PLANS)
     for pid in P.LDBC_PLANS:
         b = P.bind(pid, params_root)
         assert b["params"], pid
