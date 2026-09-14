@@ -310,7 +310,10 @@ def build_systems(cfg: dict[str, Any], store: Store, model: str,
                 store, llm_fn, model,
                 context_budget_tokens=cfg.get("llm_direct_budget_tokens",
                                               8_000),
-                seed=seed)
+                seed=seed,
+                max_model_len=cfg.get("llm_direct_max_model_len"),
+                answer_reserve_tokens=cfg.get(
+                    "llm_direct_answer_reserve_tokens", 1_500))
         else:
             raise ValueError(f"unknown system {system}")
     return out

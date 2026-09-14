@@ -1,0 +1,43 @@
+# D-160 llm_direct follow-up: same task set, model, and seeds as
+# configs/matrix-d160-collegemsg-4arm.yaml, `llm_direct` only.
+#
+# Why a separate config rather than re-running the 4-arm one: the 4-arm
+# campaign's own record (job 211581/.../212000) already shipped `ours`,
+# `b5`, `b6e` clean and `llm_direct` with a real, reportable finding (72/94
+# tasks on seed 0 overflowed the model's context window because
+# `llm_direct_budget_tokens: 8000`, counted by a whitespace approximation,
+# undercounts real BPE tokens by 3-7x on this corpus -- see
+# tgms/eval/baselines.py::LLMDirect's docstring and the commit that added
+# `max_model_len`-aware, real-tokenizer-preferring budgeting). Re-running
+# `llm_direct` under the fix belongs in its own record, naming both the
+# original campaign's job id(s) and this fix's commit in its provenance --
+# not silently overwriting the first `llm_direct` result, which stays
+# published as "first shipped, pre-fix" per the README.
+#
+# Serve first (same as the 4-arm config):
+#   vllm serve Qwen/Qwen2.5-14B-Instruct-AWQ --dtype half \
+#       --max-model-len 28672 --gpu-memory-utilization 0.92 --port 8000
+#
+# Store: reuses the same stores/collegemsg built for the 4-arm run
+# (DuckDB backend not required for this arm alone, but the store already
+# exists from that campaign -- no rebuild needed).
+suite_path: benchmarks/frozen-v1/suite-collegemsg.json
+store_path: stores/collegemsg
+out_dir: runs/d160-collegemsg-llm-direct
+split: test
+systems: [llm_direct]
+models: ["openai/Qwen/Qwen2.5-14B-Instruct-AWQ"]
+seeds: [0, 1, 2]
+max_repairs: 3
+llm_direct_budget_tokens: 8000
+# the fix (tgms/eval/baselines.py::LLMDirect): prefer a real tokenizer for
+# `model` when resolvable (HF_HOME already has Qwen2.5-14B-Instruct-AWQ's
+# tokenizer cached from vLLM's own load), and cap the effective budget at
+# max_model_len minus the measured system-prompt cost, a wrapper-text
+# margin, and answer_reserve_tokens -- must match the vLLM --max-model-len
+# above, or the cap is measuring against the wrong ceiling.
+llm_direct_max_model_len: 28672
+llm_direct_answer_reserve_tokens: 1500
+memory_db: stores/collegemsg/memory.sqlite
+llm_api_base: "http://localhost:8000/v1"
+llm_api_key: "EMPTY"

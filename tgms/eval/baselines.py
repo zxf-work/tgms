@@ -621,12 +621,55 @@ class BiTemporalSQLEvidence(BiTemporalSQL):
 #: no repo-wide token-counting convention exists (backends account for
 #: tokens their own way); this is a deliberately crude whitespace-count
 #: fallback, always surfaced under a `_approx`-suffixed field so it is never
-#: mistaken for a real vocabulary count.
+#: mistaken for a real vocabulary count. 2026-09-14 postmortem (D-160
+#: campaign, job 211581/212000): on the actual served corpus this
+#: undercounts real (BPE) tokens by 3-7x for an unfiltered event dump
+#: (numbers/timestamps fragment heavily), which drove 72/94 llm_direct
+#: tasks on collegemsg past the model's real context window even though
+#: their approx-counted size was comfortably under the configured budget.
+#: `LLMDirect` now prefers a real tokenizer (`_try_load_hf_tokenizer`)
+#: whenever one is available, using this only as the last-resort fallback.
 def _approx_tokens_whitespace(text: str) -> int:
     return len(text.split())
 
 
+def _try_load_hf_tokenizer(model: str) -> Callable[[str], int] | None:
+    """Best-effort real subword tokenizer for `model`, for an accurate
+    context budget instead of `_approx_tokens_whitespace`. Never raises:
+    returns None if `transformers` is not installed or the tokenizer
+    files are not resolvable/cached (e.g. no network and nothing local),
+    so every caller must keep the approximate fallback."""
+    try:
+        from transformers import AutoTokenizer
+    except ImportError:
+        return None
+    # config model names carry litellm's provider-routing prefix
+    # ("openai/Qwen/Qwen2.5-14B-Instruct-AWQ" for an OpenAI-compatible
+    # endpoint); the real HF repo id is everything after the first "/".
+    hf_id = model.split("/", 1)[1] if model.startswith("openai/") else model
+    try:
+        tok = AutoTokenizer.from_pretrained(hf_id)
+    except Exception:
+        return None
+    return lambda text: len(tok.encode(text, add_special_tokens=False))
+
+
 DEFAULT_LLM_DIRECT_BUDGET_TOKENS = 8_000
+
+#: fixed margin for the prompt scaffolding around the event dump itself
+#: (the "EVENTS (...)"/"QUESTION:"/"ANSWER OBJECT:" wrapper text plus the
+#: question) -- generous on purpose: overestimating it only shrinks the
+#: event budget a little, underestimating it is exactly the failure this
+#: fix exists to prevent.
+_LLM_DIRECT_WRAPPER_RESERVE_TOKENS = 300
+
+_LLM_DIRECT_SYSTEM = (
+    "You answer questions about a temporal interaction log "
+    "using ONLY the raw event lines below -- no graph store, "
+    "retrieval index, or query language was used to prepare "
+    "them. Each line's leading [eN] tag is its evidence id; "
+    "cite it verbatim in a claim's \"evidence\" list.\n"
+    + ANSWER_CONTRACT)
 
 
 def verify_llm_direct_claims(answer_obj: dict[str, Any],
@@ -701,9 +744,26 @@ class LLMDirect:
     given, else the full corpus, most-recent-first, ties broken on
     (src, dst, rel_type) so ordering never depends on backend scan order.
     Events are serialized in that order and greedily included until the
-    token budget (approximated by `tokenizer`, default a whitespace count)
-    is exhausted; `events_offered`, `events_included`, `truncated` and
-    `prompt_tokens_approx` are recorded on every call.
+    token budget is exhausted; `events_offered`, `events_included`,
+    `truncated` and `prompt_tokens_approx` are recorded on every call.
+
+    Token counting prefers a real tokenizer for `model` (via
+    `_try_load_hf_tokenizer`) over the crude whitespace-count fallback
+    whenever one is resolvable, and, when `max_model_len` is given, caps
+    `context_budget_tokens` at `max_model_len` minus the (tokenizer-
+    measured) system-prompt cost, a wrapper-text margin, and
+    `answer_reserve_tokens` for the model's own reply -- so the greedy
+    inclusion loop in `_serialize` already "drops the oldest events until
+    it fits" by construction (candidates are most-recent-first; the loop
+    simply stops appending once accurate accounting says the window is
+    full). `tokenizer_kind` and `budget_effective_tokens` are recorded in
+    `answer()`'s meta so a report can tell which counting was used. A
+    genuine overflow past this budget (an injected/approx tokenizer badly
+    wrong, or the model's real window smaller than assumed) still reaches
+    litellm's own exception and is counted as a `task_error` row by the
+    harness -- that outcome is legitimate for a mis-configured budget,
+    not something this class should paper over by silently truncating
+    less than the accounting says is safe.
 
     Claims carry the same AnswerObject contract as every other arm and are
     passed through `verify_llm_direct_claims` and the production drop set
@@ -716,10 +776,30 @@ class LLMDirect:
     def __init__(self, store: Store, llm_fn: Callable[..., str], model: str,
                  context_budget_tokens: int = DEFAULT_LLM_DIRECT_BUDGET_TOKENS,
                  tokenizer: Callable[[str], int] | None = None,
-                 seed: int = 0) -> None:
+                 seed: int = 0,
+                 max_model_len: int | None = None,
+                 answer_reserve_tokens: int = 1500) -> None:
         self.llm_fn, self.model, self.seed = llm_fn, model, seed
-        self.context_budget_tokens = context_budget_tokens
-        self.tokenizer = tokenizer or _approx_tokens_whitespace
+        if tokenizer is not None:
+            self.tokenizer, self.tokenizer_kind = tokenizer, "injected"
+        else:
+            real = _try_load_hf_tokenizer(model)
+            if real is not None:
+                self.tokenizer, self.tokenizer_kind = real, "hf_real"
+            else:
+                self.tokenizer = _approx_tokens_whitespace
+                self.tokenizer_kind = "whitespace_approx"
+        self.requested_budget_tokens = context_budget_tokens
+        self.max_model_len = max_model_len
+        self.answer_reserve_tokens = answer_reserve_tokens
+        if max_model_len is not None:
+            sys_cost = self.tokenizer(_LLM_DIRECT_SYSTEM)
+            cap = (max_model_len - sys_cost - answer_reserve_tokens
+                   - _LLM_DIRECT_WRAPPER_RESERVE_TOKENS)
+            self.context_budget_tokens = max(1, min(context_budget_tokens,
+                                                     cap))
+        else:
+            self.context_budget_tokens = context_budget_tokens
         e = store.adapter.edges_columnar()
         src = store.adapter.uids_for(e["src_id"])
         dst = store.adapter.uids_for(e["dst_id"])
@@ -766,16 +846,11 @@ class LLMDirect:
         context = fence_data("\n".join(lines),
                              cap=max(20_000, 8 * self.context_budget_tokens))
         messages = [
-            {"role": "system", "content":
-                "You answer questions about a temporal interaction log "
-                "using ONLY the raw event lines below -- no graph store, "
-                "retrieval index, or query language was used to prepare "
-                "them. Each line's leading [eN] tag is its evidence id; "
-                "cite it verbatim in a claim's \"evidence\" list.\n"
-                + ANSWER_CONTRACT},
+            {"role": "system", "content": _LLM_DIRECT_SYSTEM},
             {"role": "user", "content":
                 f"EVENTS ({len(lines)} of {len(candidates)} offered, "
-                f"budget {self.context_budget_tokens} tokens approx)\n"
+                f"budget {self.context_budget_tokens} tokens, "
+                f"{self.tokenizer_kind})\n"
                 f"{context}\n\nQUESTION: {question}\nANSWER OBJECT:"},
         ]
         obj = answer_contract_call(self.llm_fn, self.model, messages,
@@ -789,6 +864,9 @@ class LLMDirect:
                          "events_included": len(lines),
                          "truncated": truncated,
                          "prompt_tokens_approx": used,
+                         "tokenizer_kind": self.tokenizer_kind,
+                         "budget_effective_tokens": self.context_budget_tokens,
+                         "budget_requested_tokens": self.requested_budget_tokens,
                          "report": report,
                          "pre_gate_answer": obj,
                          "n_claims_dropped": len(obj.get("claims", []))

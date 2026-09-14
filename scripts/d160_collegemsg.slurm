@@ -2,13 +2,13 @@
 #SBATCH --job-name=tgms-d160-collegemsg
 #SBATCH --partition=bigTiger
 #SBATCH --gres=gpu:rtx_5000:1
-#SBATCH --exclude=itiger05
+#SBATCH --exclude=itiger04,itiger05
 #SBATCH --cpus-per-task=8
 #SBATCH --mem=128G
 #SBATCH --time=24:00:00
 #SBATCH --signal=B:TERM@600
-#SBATCH --output=/project/xzhang12/d160-work/logs/%x-%j.out
-#SBATCH --error=/project/xzhang12/d160-work/logs/%x-%j.err
+#SBATCH --output=/home/xzhang12/d160-work-h/logs/%x-%j.out
+#SBATCH --error=/home/xzhang12/d160-work-h/logs/%x-%j.err
 #
 # D-160 re-measurement (OSDI'27 lane "D-160 re-measurement"; docs/STABILITY.md
 # section 9): re-measure the CollegeMsg agent-loop numbers under the
@@ -27,6 +27,22 @@
 # needs no --force). The per-task result cache
 # (<out_dir>/results/*.json) makes a resubmit after a partial run pick up
 # where it left off rather than re-paying every LLM call.
+#
+# llm_direct follow-up (NOT this file's default config -- prepared, not
+# yet submitted as of this comment): the 4-arm campaign's own
+# `llm_direct` result overflowed the model's context window on 72/94
+# seed-0 tasks (whitespace-token approximation undercounting real BPE
+# tokens 3-7x on this corpus; fixed in tgms/eval/baselines.py::LLMDirect
+# -- a real tokenizer + max_model_len-aware budget cap). Re-running just
+# that arm under the fix, once the 4-arm job above has completed and its
+# record is shipped as-is (first-shipped, pre-fix llm_direct numbers
+# stay published, per the README), uses this SAME script with:
+#   cd /project/xzhang12/tgms-d160
+#   export TGMS_CFG=configs/matrix-d160-collegemsg-llm-direct.yaml
+#   export TGMS_RECORD_NAME=d160-collegemsg-llm-direct
+#   export TGMS_COMMIT=$(git rev-parse HEAD)
+#   export TGMS_FORCE="llm_direct budget fix follow-up"
+#   sbatch --export=ALL scripts/d160_collegemsg.slurm
 #
 # Postmortem across three submissions (2026-09-14):
 #  - 211581: failed after 1:13:54, exit 1:0, no signal, nothing past
@@ -56,6 +72,34 @@
 #    OOM'd, and 211705 omitted `--force`, tripping the frozen-split guard
 #    (spec section 8.3) immediately. This submission passes `TGMS_FORCE`
 #    for exactly that reason (below).
+#  - Third-submission hardening (coordinator ruling): the account's
+#    /project quota tripped a second time (17:26 UTC) from unrelated
+#    jobs, so this job's own final-record destination moves off /project
+#    entirely, onto /home/xzhang12 (a separate, much smaller quota, ~8G
+#    free at the time of this ruling) -- `$STAGE` below now names that
+#    home-directory path. The harness's own WORKING directory (per-task
+#    result cache, the b6e duckdb snapshot, the b5 vanilla-kuzu build --
+#    all small, and no longer at risk of runaway growth now that the
+#    actual danger, DuckDB's temp spill, is bounded and node-local) stays
+#    under $CHECKOUT on /project as before; only the temp spill and the
+#    final record copy were the parts that needed to leave /project.
+#    `--exclude=itiger04` added: every quota failure traced to that node;
+#    this job's own GPU node (itiger07 on both prior submissions) was
+#    unaffected.
+#  - 211890: the deployed script still had the old hard /project abort --
+#    a deployment-sequencing bug (a `git checkout` on the cluster
+#    worktree, done after the earlier scp, silently reverted the
+#    just-scp'd hardened script back to the git-committed version that
+#    predates it). Fixed by re-deploying the correct file (sha256-
+#    verified) with nothing else changed.
+#  - 211978: ran correctly but stamped `RUN_STARTED commit=92c63b9`,
+#    three commits behind the 64817fa HEAD the code actually ran from --
+#    `TGMS_COMMIT` was never re-exported after the worktree advanced, so
+#    the hardcoded fallback below (now removed) silently won. `git
+#    rev-parse HEAD` and a grep for the DuckDB pragmas both confirmed the
+#    RUNNING CODE was correct; only the record's own provenance stamp was
+#    wrong. `TGMS_COMMIT` is now a required, unfallback-ed input (see
+#    below) precisely so this fails loudly instead of silently again.
 # 94/94 `ours` + 94/94 `b5` + 65/94 `b6e` rows for seed 0 (0 errors) were
 # already cached under <out_dir>/results/ before 211581 died; a resubmit
 # against the same out_dir resumes from there via the cache check in
@@ -85,12 +129,27 @@ set -uo pipefail  # not -e: cleanup must still run after a non-zero step
 JOB_ID="${SLURM_JOB_ID:?must run under sbatch}"
 
 CHECKOUT="${TGMS_REPO:-/project/xzhang12/tgms-d160}"
-STAGE="${TGMS_STAGE:-/project/xzhang12/d160-work}"
+# STAGE now lives on /home, a separate ~25G-quota filesystem from
+# /project's shared, contested one -- final records land here, never on
+# /project (see the third-submission hardening note above).
+STAGE="${TGMS_STAGE:-/home/xzhang12/d160-work-h}"
 VLLM_ENV="${VLLM_ENV:-/project/xzhang12/vllm-env}"
 VENV_PY="$CHECKOUT/.venv/bin/python"
 CFG="${TGMS_CFG:-configs/matrix-d160-collegemsg-4arm.yaml}"
 MODEL="${TGMS_MODEL:-Qwen/Qwen2.5-14B-Instruct-AWQ}"
-export TGMS_COMMIT="${TGMS_COMMIT:-92c63b9e4fccc6fbffa6d98f0666efd08e483b7a}"
+# No hardcoded fallback: a stale default silently mis-stamps the record's
+# provenance the moment the checkout advances past whatever sha was
+# baked in here at authoring time (this happened once: 211978's
+# RUN_STARTED line stamped 92c63b9, three commits behind the 64817fa
+# HEAD that job's own code was actually built from -- caught only
+# because it was cross-checked by hand). Compute nodes have no `git`
+# binary (the shim below only echoes this variable back), so the ONLY
+# valid check is at submission time, on the login node, where real git
+# exists: export TGMS_COMMIT="$(git -C "$TGMS_REPO" rev-parse HEAD)"
+# immediately before every `sbatch`, in the same shell. A missing value
+# aborts here rather than silently stamping something wrong.
+: "${TGMS_COMMIT:?export TGMS_COMMIT=\$(git -C <checkout> rev-parse HEAD) before sbatch -- see the comment above}"
+export TGMS_COMMIT
 FORCE_FLAG=()
 [ -n "${TGMS_FORCE:-}" ] && FORCE_FLAG=(--force "$TGMS_FORCE")
 
@@ -159,18 +218,25 @@ export HF_HOME=/project/xzhang12/hf HF_HUB_OFFLINE=1 TRANSFORMERS_OFFLINE=1
 # than point it somewhere this job won't use.
 unset UV_CACHE_DIR
 
-# --- fail fast if the shared quota is already tight (2026-09-14 ruling:
-# the account tripped the ~200G quota twice from unrelated jobs' spills;
-# a job that starts anyway just adds another candidate for the next
-# cascade). This is a check on shared account state, not a claim about
-# what THIS job will use -- see the DuckDB temp-directory/memory-limit
-# bounds below and in tgms/eval/baselines.py for the actual fix.
+# --- /project quota: WARNING only, not an abort -- this job no longer
+# writes anything of consequence there (see the hardening note above), so
+# its own headroom on /project is no longer this job's problem to gate
+# on. Still logged for the record's own provenance.
 DU_START_MB=$(du -sm /project/xzhang12 2>/dev/null | awk '{print $1}')
 echo "DU_MB_AT_START=${DU_START_MB:-unknown}"
-if [ -n "$DU_START_MB" ] && [ "$DU_START_MB" -gt 185000 ]; then
-    echo "QUOTA_HEADROOM_TOO_LOW: /project/xzhang12 at ${DU_START_MB}MB > 185000MB, refusing to start"
+
+# --- the real gate: >=2GB free on /home, verified by a 1GB write-and-
+# delete test (df's own "available" can lie under quota rather than
+# block-device accounting; a real write is the only test that matches
+# what this job is actually about to do).
+HOME_QUOTA_TEST="$STAGE/.quota_test_${JOB_ID}"
+if ! dd if=/dev/zero of="$HOME_QUOTA_TEST" bs=1M count=1024 2>/dev/null; then
+    rm -f "$HOME_QUOTA_TEST"
+    echo "HOME_QUOTA_TOO_LOW: could not write a 1GB test file under $STAGE"
     exit 2
 fi
+rm -f "$HOME_QUOTA_TEST"
+echo "HOME_QUOTA_TEST_OK: wrote and removed a 1GB file under $STAGE"
 
 cd "$CHECKOUT"
 hostname > "$STAGE/node_meta/job-${JOB_ID}.host"
@@ -256,7 +322,7 @@ cleanup() {
         tail -c 200000 "$f" > "$STAGE/logs/$(basename "$f" .log).tail.log" 2>/dev/null
     done
     if [ -d "$OUT_DIR" ]; then
-        DEST="$STAGE/records/d160-collegemsg-4arm-${JOB_ID}"
+        DEST="$STAGE/records/${TGMS_RECORD_NAME:-d160-collegemsg-4arm}-${JOB_ID}"
         retry_mkdir "$DEST"
         retry_cp -r "$OUT_DIR"/. "$DEST"/
         echo "RECORDS_COPIED $DEST"
