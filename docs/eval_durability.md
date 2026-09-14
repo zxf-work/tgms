@@ -124,3 +124,55 @@ encoded the wrong contract, and the instrument corrected its author.
   (gc's orphans are reclaimed by the trial's own follow-up gc — Q4 green).
 - **F6 — determinism everywhere, B1 dependent on truncation: CONFIRMED**;
   with the trim implemented, Q2 holds at every boundary including B1.
+
+## EXP-A2 — crashing recovery itself (Lane A, added 2026-09-13)
+
+Everything above answers "what if the *write* path is interrupted?" This
+experiment asks the next question: what if **recovery's own replay of the
+un-applied suffix** is interrupted, possibly more than once in a row before
+the process ever gets a clean start? `Store._recover` (`tgms/store.py`)
+carries four crash points for exactly this:
+
+| point | fires |
+|---|---|
+| `py_recover_after_trim` | the torn tail (if any) is trimmed; nothing in the suffix has been replayed yet |
+| `py_recover_before_cursor_publish` | the first un-applied batch's rows are staged in the engine; the cursor has not been touched |
+| `py_recover_after_cursor_publish` | the cursor is staged in process memory (`note_event_cursor`); the atomic commit that would make it durable has not run |
+| `py_recover_mid_replay` | that commit has landed (batch and cursor durable together, one manifest generation); the loop has not moved on |
+
+A fifth point, `py_tcsr_mid_rebuild` (`tgms/storage/tcsr.py`, after the
+permutation is computed, before its generation/manifest_sha stamp is
+written), is architecturally adjacent but cannot interrupt `_recover` — no
+bare `tgms.open()` calls `adapter.tcsr()` — so it is exercised on its own,
+not by the harness mode below.
+
+**Design, not results — no numbers here** (the harness run for this report
+was 2 seeded trials, `--recovery-crash --trials 2 --seed 11`, a smoke check
+of the mechanism, not a scored sweep):
+
+- **Harness (`scripts/eval_durability.py --recovery-crash`):** per trial —
+  seed a store with K acknowledged batches, crash it at a random *write*
+  boundary (the existing B1-B10 machinery, minus `after_current`, which
+  leaves nothing in the suffix for recovery to interrupt), then crash
+  *recovery itself* under a fresh, seed-derived random point from the table
+  above, 1-4 times in a row, and finally let one recovery run
+  uninterrupted. Q1-Q4 are the same four questions the boundary matrix
+  already answers.
+- **Q5 — convergence, the property new to this experiment.** `tt` is a
+  hybrid-logical clock seeded from wall-clock microseconds
+  (`tgms/core/clock.py`), not from the trial seed, so literally re-running
+  the write phase twice produces two different (but each internally valid)
+  histories — comparing their digests would not test recovery at all. So
+  the harness runs the write phase *once*, producing one on-disk checkpoint
+  (log plus whatever the crash left of the backend), copies it twice, and
+  replays the *identical* seed-derived crash-point sequence against each
+  copy independently. Q5 holds when both copies converge to the same
+  digest as each other and as a clean replay of the (shared) log — i.e.
+  recovery's outcome is a function of the durable log and the crash
+  sequence alone, not of which of two identical attempts happened to run.
+- **Tests** (`tests/test_crash_during_recovery.py`): one subprocess test per
+  recovery point, spawned the same way `tests/test_crash_points.py` spawns
+  the write-path ones — child crashes (exit 137), a second open completes,
+  `verify()` is clean, and the digest matches a clean replay — plus one test
+  that a `py_tcsr_mid_rebuild` crash leaves the store answering correctly
+  on the next open (the index just rebuilds live).
