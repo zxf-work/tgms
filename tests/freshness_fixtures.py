@@ -130,13 +130,16 @@ def leaf_scope_of(store, node) -> DependencyScope:
 def scope_from_terms(store, *terms: ScopeTerm) -> DependencyScope:
     """A scope carrying terms this suite wrote down from §9 directly.
 
-    Two of the twenty-one scenarios name a per-operator domain that the M4 tree
-    does not yet derive (`version_history`'s `V = window`, §9.6; `co_active`'s
-    wired window, §9.10 — both carry the coarse `"*"` fallback today, which is
-    a widening and therefore sound but cannot exhibit the conjunct the contract
-    says catches them). For those, the suite hands `check` the scope **§9
-    specifies** so the named arm is the one under test. D13.1 makes the live
-    fallback a superset of it, which the same tests assert separately.
+    Two of the twenty-one scenarios name a per-operator domain that predates
+    this file's own derivation history: `version_history`'s `V = window`
+    (§9.6, derived by the scope-derivation rollout, design 2026-09-14) and
+    `co_active`'s *wired window* (§9.10 — still reserved for M3; `co_active`
+    itself is now derived, but with `V = TOP`, since the window parameter the
+    scenario names is not wired). For those, the suite hands `check` the
+    scope **§9 specifies** so the named arm is the one under test regardless
+    of what the live tree derives today. D13.1 makes the live scope a
+    superset of it, which the same tests assert separately — true whether
+    the live scope is the coarse `"*"` fallback or a real derivation.
     """
     return basis_for(store).scope(*terms)
 

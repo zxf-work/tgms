@@ -768,12 +768,12 @@ def test_scope_of_unions_every_input_including_seeds_only_ones():
 
 
 def test_opaque_leaves_get_the_coarse_top_term_and_compute_gets_empty():
-    """The coarse default, for the twelve operators M2.3 left on `"*"`. The
-    three it derived are `tests/test_tgir_scopes.py`'s subject; `compute` is ∅
-    from day one."""
-    leaf = OpaqueLeaf.build("version_history",
-                            {"kind": "node", "window": {"t_a": 0, "t_b": 10}},
-                            ("rows",))
+    """The coarse default. As of the scope-derivation rollout (design
+    2026-09-14) `LEAF_SCOPES` names thirteen of the fourteen store-reading
+    operators (`tests/test_tgir_scopes.py`, `tests/test_scope_derivations.py`
+    are their subject); `resolve_entities` is the one left coarse by ruling
+    (`FRESHNESS_SEMANTICS.md` §13.8.1), and `compute` is ∅ from day one."""
+    leaf = OpaqueLeaf.build("resolve_entities", {"query": "u1"}, ("rows",))
     assert scope_of(leaf, BASIS).terms == (TOP_TERM,)
     assert scope_of(OpaqueLeaf.build("compute", {}, ("value",)), BASIS).is_empty
 

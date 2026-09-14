@@ -1,21 +1,28 @@
 """storm-v1 addendum-4 (D-161): `tgms.eval.storm.narrowing_coverage`.
 
-Addendum-1's finding (confirmed in code, not a checker defect): most of the
-storm harness's own registered population gets the coarse `"*"` scope
-fallback, because `tgms.tgir.leaves.LEAF_SCOPES` derives a real scope for
-only 3 of the 14 `TEMPLATES` (`entity_history`, `neighborhood_evolution`,
-`aggregate_events`); every other template's registration lands on
-`all_terms() == (TOP_TERM,)`, and `compute`'s own `∅`-scope control lands
-on `all_terms() == ()`. `narrowing_coverage` counts this, once at
-registration time, for the coordinator's own population-vs-checker
-analysis (never touching the oracle/arms/digest chain).
+Addendum-1's finding (confirmed in code, not a checker defect), as it stood
+before the scope-derivation rollout (design 2026-09-14): most of the storm
+harness's own registered population got the coarse `"*"` scope fallback,
+because `tgms.tgir.leaves.LEAF_SCOPES` derived a real scope for only 3 of the
+14 `TEMPLATES`. The rollout added ten more (Addendum 1, ACCEPTED
+2026-09-14), so as of this commit `LEAF_SCOPES` names 13 of the 14 store-
+reading templates; `resolve_entities` is the one left on the coarse
+`(TOP_TERM,)` fallback by ruling (`FRESHNESS_SEMANTICS.md` §13.8.1 excludes
+it from the measured workload), and `compute`'s own `∅`-scope control still
+lands on `all_terms() == ()`. `narrowing_coverage` counts this, once at
+registration time, for the coordinator's own population-vs-checker analysis
+(never touching the oracle/arms/digest chain) — this file exercises the
+counter itself against a hand-built population, not the rollout's own yield,
+so it is written against whichever templates are the *last* ones left
+coarse rather than against a fixed roster that the rollout would otherwise
+make stale one derivation at a time.
 
 Fixture idiom shared with `tests/test_storm_dag.py`/`tests/
 test_storm_dag_seeding.py`: a small event-stream store built via the normal
 write API, and a *hand-built* three-artifact population (one `compute`, one
-`entity_history`, one `version_history` -- a template `LEAF_SCOPES` does not
-name) rather than `Storm`'s own random population, so every count below is
-exact and independent of `TEMPLATES`' random draw order.
+`entity_history`, one `resolve_entities` -- the one template `LEAF_SCOPES`
+still does not name) rather than `Storm`'s own random population, so every
+count below is exact and independent of `TEMPLATES`' random draw order.
 """
 
 from __future__ import annotations
@@ -61,42 +68,42 @@ def _register(storm: Storm, name: str, op: str, args: dict, entities, window) ->
         last_env={"result_digest": env.get("result_digest")})
 
 
-def test_one_compute_one_entity_history_one_version_history(small_store: Path) -> None:
+def test_one_compute_one_entity_history_one_resolve_entities(small_store: Path) -> None:
     """The exact three-artifact population this module's own docstring
     describes: one `compute` (empty scope), one `entity_history` (a real
-    derivation, 3 terms since `include_edges=True`), one `version_history`
-    (not in `LEAF_SCOPES` -- the coarse `(TOP_TERM,)` fallback)."""
+    derivation, 3 terms since `include_edges=True`), one `resolve_entities`
+    (not in `LEAF_SCOPES` -- the coarse `(TOP_TERM,)` fallback, by ruling)."""
     storm = Storm(small_store, n_artifacts=0, seed=0, backend=BACKEND)
     try:
         _register(storm, "a-compute", "compute",
                  {"fn": "count", "input": [{"x": 1}, {"x": 2}]}, frozenset(), None)
         _register(storm, "a-entity", "entity_history",
                  {"uid": "n0", "include_edges": True}, frozenset({"n0"}), None)
-        _register(storm, "a-version", "version_history",
-                 {"kind": "node", "window": {"t_a": 0, "t_b": 50}}, frozenset(), (0, 50))
+        _register(storm, "a-resolve", "resolve_entities",
+                 {"query": "n0"}, frozenset(), None)
 
         nc = narrowing_coverage(storm.registry, storm.artifacts)
 
         assert nc["n_artifacts"] == 3
         assert nc["n_empty_scope"] == 1          # a-compute only
-        assert nc["n_all_top_term"] == 1         # a-version only
+        assert nc["n_all_top_term"] == 1         # a-resolve only
         assert nc["per_template_counts"] == {
-            "compute": 1, "entity_history": 1, "version_history": 1,
+            "compute": 1, "entity_history": 1, "resolve_entities": 1,
         }
         # a-compute: 0 terms; a-entity: 3 (node, dense-id, edge -- include_edges
-        # is True); a-version: 1 (the coarse TOP_TERM fallback)
+        # is True); a-resolve: 1 (the coarse TOP_TERM fallback)
         assert nc["total_terms"] == 4
         assert nc["top_axis_counts"] == {
-            # kinds/targets is TOP only for the coarse a-version term --
+            # kinds/targets is TOP only for the coarse a-resolve term --
             # entity_history's own derivation always names a concrete kind
             "kinds": 1, "targets": 1,
-            # rel_types is TOP on all 3 entity_history terms *and* a-version's
+            # rel_types is TOP on all 3 entity_history terms *and* a-resolve's
             "rel_types": 4,
             # vt is TOP on all 3 entity_history terms (entity_history_terms's
-            # own unconditional choice) *and* a-version's
+            # own unconditional choice) *and* a-resolve's
             "vt": 4,
             # props is TOP on entity_history's node+edge terms (not its
-            # dense-id term, which names "@identity") plus a-version's
+            # dense-id term, which names "@identity") plus a-resolve's
             "props": 3,
         }
     finally:
@@ -130,8 +137,8 @@ def test_narrowing_coverage_lands_in_the_manifest_summary(small_store: Path) -> 
     try:
         _register(storm, "a-compute", "compute",
                  {"fn": "count", "input": [{"x": 1}, {"x": 2}]}, frozenset(), None)
-        _register(storm, "a-version", "version_history",
-                 {"kind": "node", "window": {"t_a": 0, "t_b": 50}}, frozenset(), (0, 50))
+        _register(storm, "a-resolve", "resolve_entities",
+                 {"query": "n0"}, frozenset(), None)
         _register(storm, "a-neighborhood", "neighborhood_evolution",
                  {"uid": "n0", "t1": 0, "t2": 20, "stride": 2}, frozenset({"n0"}), (0, 20))
 
