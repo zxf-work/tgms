@@ -1,0 +1,212 @@
+{
+  "kind": "checkpoint",
+  "format": 2,
+  "generation": 8,
+  "parent": 7,
+  "created_tt": 1789363205577682,
+  "event_log": {
+    "offset": 1650,
+    "chain": "91d6a1dae2f238b2"
+  },
+  "dict": {
+    "records": 7,
+    "bytes": 70
+  },
+  "widths": {
+    "entity_id": 32,
+    "row_id": 32,
+    "rel_code": 16
+  },
+  "node_store": [
+    {
+      "file": "seg/000000000003.tgs",
+      "rows": 1,
+      "key_lo": [
+        0,
+        "ed2e345e8986605b6fba1075"
+      ],
+      "key_hi": [
+        0,
+        "ed2e345e8986605b6fba1075"
+      ],
+      "vt_min": 0,
+      "vt_max": 0,
+      "vt_e_max": 50,
+      "tt_s_min": 1789363205463581,
+      "tt_s_max": 1789363205463581,
+      "rel_codes": [],
+      "n_closed_folded": 0,
+      "all_current": true,
+      "sha": ""
+    },
+    {
+      "file": "seg/000000000004.tgs",
+      "rows": 1,
+      "key_lo": [
+        0,
+        "bc482f959528df7556babbf1"
+      ],
+      "key_hi": [
+        0,
+        "bc482f959528df7556babbf1"
+      ],
+      "vt_min": 0,
+      "vt_max": 0,
+      "vt_e_max": 50,
+      "tt_s_min": 1789363205486646,
+      "tt_s_max": 1789363205486646,
+      "rel_codes": [],
+      "n_closed_folded": 0,
+      "all_current": true,
+      "sha": ""
+    }
+  ],
+  "edge_lanes": {
+    "event": [
+      {
+        "file": "seg/000000000000.tgs",
+        "rows": 1,
+        "key_lo": [
+          0,
+          "218c0b07bc7076d4644bba9c"
+        ],
+        "key_hi": [
+          0,
+          "218c0b07bc7076d4644bba9c"
+        ],
+        "vt_min": 0,
+        "vt_max": 0,
+        "vt_e_max": 10,
+        "tt_s_min": 1789363205372334,
+        "tt_s_max": 1789363205372334,
+        "rel_codes": [],
+        "n_closed_folded": 0,
+        "all_current": true,
+        "sha": ""
+      },
+      {
+        "file": "seg/000000000001.tgs",
+        "rows": 1,
+        "key_lo": [
+          1,
+          "1976bc7fd517b5289c676b11"
+        ],
+        "key_hi": [
+          1,
+          "1976bc7fd517b5289c676b11"
+        ],
+        "vt_min": 1,
+        "vt_max": 1,
+        "vt_e_max": 11,
+        "tt_s_min": 1789363205403715,
+        "tt_s_max": 1789363205403715,
+        "rel_codes": [],
+        "n_closed_folded": 0,
+        "all_current": true,
+        "sha": ""
+      },
+      {
+        "file": "seg/000000000002.tgs",
+        "rows": 1,
+        "key_lo": [
+          2,
+          "1dc7e73b5d12dde3f2da4976"
+        ],
+        "key_hi": [
+          2,
+          "1dc7e73b5d12dde3f2da4976"
+        ],
+        "vt_min": 2,
+        "vt_max": 2,
+        "vt_e_max": 12,
+        "tt_s_min": 1789363205436366,
+        "tt_s_max": 1789363205436366,
+        "rel_codes": [],
+        "n_closed_folded": 0,
+        "all_current": true,
+        "sha": ""
+      },
+      {
+        "file": "seg/000000000005.tgs",
+        "rows": 1,
+        "key_lo": [
+          3,
+          "c09ad89b219359ecec98d88b"
+        ],
+        "key_hi": [
+          3,
+          "c09ad89b219359ecec98d88b"
+        ],
+        "vt_min": 3,
+        "vt_max": 3,
+        "vt_e_max": 13,
+        "tt_s_min": 1789363205517547,
+        "tt_s_max": 1789363205517547,
+        "rel_codes": [],
+        "n_closed_folded": 0,
+        "all_current": true,
+        "sha": ""
+      },
+      {
+        "file": "seg/000000000006.tgs",
+        "rows": 1,
+        "key_lo": [
+          4,
+          "1ee467baaf236f3b59f9246f"
+        ],
+        "key_hi": [
+          4,
+          "1ee467baaf236f3b59f9246f"
+        ],
+        "vt_min": 4,
+        "vt_max": 4,
+        "vt_e_max": 14,
+        "tt_s_min": 1789363205548758,
+        "tt_s_max": 1789363205548758,
+        "rel_codes": [],
+        "n_closed_folded": 0,
+        "all_current": true,
+        "sha": ""
+      },
+      {
+        "file": "seg/000000000007.tgs",
+        "rows": 1,
+        "key_lo": [
+          5,
+          "6b4d68de6f33e717735cf202"
+        ],
+        "key_hi": [
+          5,
+          "6b4d68de6f33e717735cf202"
+        ],
+        "vt_min": 5,
+        "vt_max": 5,
+        "vt_e_max": 15,
+        "tt_s_min": 1789363205577682,
+        "tt_s_max": 1789363205577682,
+        "rel_codes": [],
+        "n_closed_folded": 0,
+        "all_current": true,
+        "sha": ""
+      }
+    ],
+    "interval": []
+  },
+  "close_runs": [
+    {
+      "file": "close/000000000005.tgc",
+      "entries": 1,
+      "sha": ""
+    }
+  ],
+  "next_segment_id": 8,
+  "stats": {
+    "n_entities": 7,
+    "n_node_versions": 2,
+    "n_edge_versions": 6,
+    "vt_min": null,
+    "vt_max": null,
+    "max_out_degree": 0
+  },
+  "manifest_sha": "795174160fbc6e72"
+}
