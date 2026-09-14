@@ -34,6 +34,18 @@ def sha256_hex(text: str) -> str:
     return hashlib.sha256(text.encode("utf-8")).hexdigest()
 
 
+def sha256_hex_bytes(data: bytes) -> str:
+    """SHA-256 over raw bytes, not a JSON value's canonical text.
+
+    `digest()`/`sha256_hex()` hash a *value* (via its canonical-JSON
+    rendering) — sound for anything reconstructed from parsed content, but
+    blind to bytes a parser never looks at (trailing garbage after a
+    complete JSON document, for one). This is the primitive for content
+    addressing a blob's literal on-disk bytes end to end, used by
+    `tgms.artifact.registry`'s `blob_sha256` fields (task A10)."""
+    return hashlib.sha256(data).hexdigest()
+
+
 def digest(obj: Any) -> str:
     """SHA-256 of the canonical-JSON payload (used as result_digest everywhere)."""
     return sha256_hex(canonical_json(obj))

@@ -32,7 +32,6 @@ inherits that posture by construction, simply by not asking the question.
 
 from __future__ import annotations
 
-import json
 from pathlib import Path
 from typing import Any
 
@@ -43,7 +42,7 @@ from tgms.tgir.loader import load as load_plan
 from tgms.tgir.plan import Plan
 
 from tgms.artifact.record import ArtifactId, ArtifactRecord
-from tgms.artifact.registry import Registry
+from tgms.artifact.registry import Registry, _parse_json_blob_strict
 from tgms.artifact.witness import KNOWN_PLAN_FORMATS, RefreshHandle
 
 #: refresh.py's own closed refusal taxonomy — independent of `check.py`'s
@@ -167,14 +166,29 @@ def refresh(record: ArtifactRecord, handle: RefreshHandle | None, store: Any,
 
 
 def _blob(store: Any, ref: str) -> dict[str, Any]:
+    """Load `ref`'s JSON document, refusing rather than silently parsing
+    only its leading value.
+
+    Task A10: plain `json.loads(path.read_text())` stops at the first
+    complete JSON value and says nothing about what follows — the exact gap
+    the corruption campaign found (`artifact_blob|append_garbage`, 0/106
+    detected: appended bytes a real parser never looks at, so `refresh`
+    would have happily re-executed a plan it read out of a tampered file).
+    `_parse_json_blob_strict` (`tgms.artifact.registry`, reused rather than
+    duplicated — `Registry.verify()`'s `_blob_defects` needs the identical
+    rule) reports exactly what is wrong when there is anything beyond the
+    document itself, and this refuses on it the same way it already refuses
+    on a `JSONDecodeError` — reason `"ref-not-found"` covers both: either
+    way, the ref does not name a blob this function can trust enough to
+    read."""
     path = Path(store.path) / ref
     if not path.exists():
         raise RefreshRefused(f"refresh ref not found: {ref}", reason="ref-not-found", ref=ref)
-    try:
-        return json.loads(path.read_text())
-    except (json.JSONDecodeError, UnicodeDecodeError) as e:
-        raise RefreshRefused(f"refresh ref is not readable JSON: {ref} ({e})",
-                             reason="ref-not-found", ref=ref) from e
+    document, why = _parse_json_blob_strict(path.read_bytes())
+    if why is not None:
+        raise RefreshRefused(f"refresh ref is not readable JSON: {ref} ({why})",
+                             reason="ref-not-found", ref=ref)
+    return document
 
 
 def _run_tgir_plan(handle: RefreshHandle, store: Any) -> tuple[dict[str, Any], dict[str, Any]]:
