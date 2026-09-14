@@ -313,6 +313,24 @@ report task A4's own instructions leave room for: `CURRENT`'s absence
 arguably deserves classifying as corruption in its own right, not only as
 "whatever reads it next may or may not complain."
 
+**Fixed, 2026-09-15 (Lane A task A8).** `NativeStore::open` (`store.rs`) no
+longer treats a missing `CURRENT` as an empty store by default. On open, if
+`CURRENT` is absent, the engine now inspects the rest of the directory: a
+genuinely empty layout (no manifest files, no segments, an empty or absent
+dictionary log) still opens fresh, and so does the one legitimate case where
+"nothing published yet" is true despite files existing — a crash between the
+bootstrap genesis manifest's write and its `CURRENT` flip, i.e. exactly one
+manifest file, generation 0, with no segments and no dictionary tail. Every
+other populated-but-`CURRENT`-less shape now refuses with a `Corrupt`-family
+error naming the manifest and segment counts found and pointing at the two
+remedies ("remove the orphans" or "restore `CURRENT`"). The `current` /
+`delete_file` cell in `scripts/eval_corruption.py`'s sweep now classifies
+DETECTED via the open step itself, the same as every other construction-time
+check — the "detected only via the query-refusal path, and only because the
+probe uids happen to exist" caveat above no longer applies; see
+`tests/test_native_faults.py::test_current_deleted_refuses_to_open_read_write_and_read_only`
+and `tests/test_eval_corruption.py::test_deleted_current_is_detected_via_open`.
+
 Slurm campaign: `scripts/corruption_campaign.slurm` (`bigTiger`, 40 array
 tasks × 250 trials = 10,000 trials, `%6`) + `scripts/
 corruption_campaign_merge.py --kind corruption`, producing
