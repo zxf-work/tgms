@@ -768,3 +768,22 @@ public surface may cite the new numbers until that campaign lands.
 `benchmarks/faults-v1/fault-matrix-campaign-2026-09-13.json` (the pre-fix
 finding) and the `-d160` re-run record (the post-fix result, primary arm
 only) are both kept and both reported; neither supersedes the other.
+
+- **2026-09-14 — dependency-scope narrowing coverage 3 → 13 of 14 read
+  operators.** `tgms/tgir/leaves.py::LEAF_SCOPES` now derives a Level-0
+  scope for `count_temporal_motifs`, `find_temporal_motif_instances`,
+  `temporal_reachability`, `temporal_paths`, `burst_detection`,
+  `graph_metric_timeseries`, `co_active`, `diff_snapshots`,
+  `version_history` and `snapshot_subgraph` (only `resolve_entities` keeps
+  the coarse `"*"`; `compute` has an empty scope). Operators that traverse
+  neighbourhoods keep ⊤ on the incidence arm. Every operator that resolves
+  argument uids through `dense_ids` (including the already-derived
+  `neighborhood_evolution`) now also emits an *existence pair*, so
+  registering a previously unknown uid is a dependency of a call that
+  failed with `E_NOT_FOUND`. Effect: `affected()` candidate sets shrink
+  (never grow) for artifacts built on these operators; result digests are
+  unchanged (38/38); freshness verdicts can only move from stale-flagged to
+  fresh where a recompute would not change, never the reverse — guarded by
+  the per-operator differential tests and the read-tracing property test
+  (`tests/test_scope_read_tracing.py`). Records taken before this date
+  (storm-v1) measured the 3-of-14 state and stand as measured.
