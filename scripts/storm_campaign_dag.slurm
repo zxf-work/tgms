@@ -134,6 +134,11 @@ ADDENDUM_ID_FLAG=""
 [ -n "${TGMS_ADDENDUM_ID:-}" ] && ADDENDUM_ID_FLAG="--addendum-id $TGMS_ADDENDUM_ID"
 FREEZE_SHA_FLAG=""
 [ -n "${TGMS_FREEZE_SHA256:-}" ] && FREEZE_SHA_FLAG="--freeze-sha256 $TGMS_FREEZE_SHA256"
+# storm-v1 addendum-2 (additive; default off, byte-identical v1 walk when
+# absent): seed the cascade from tgms.artifact.lookup.affected()'s
+# footprint-based answer for the root correction batch, not just the root.
+SEED_FROM_AFFECTED_FLAG=""
+[ "${TGMS_DAG_SEED_FROM_AFFECTED:-0}" = "1" ] && SEED_FROM_AFFECTED_FLAG="--dag-seed-from-affected"
 ec=0
 "$VENV_PY" scripts/bench_correction_storm.py \
     --store "$DAG_STORE" \
@@ -142,6 +147,7 @@ ec=0
     --seed "$SEED" \
     --dag-shape "$SHAPE" \
     --dag-depth "$DEPTH" \
+    $SEED_FROM_AFFECTED_FLAG \
     --dag-fanout "$FANOUT" \
     --dag-cascade-k "$CASCADE_K" \
     $ADDENDUM_ID_FLAG \

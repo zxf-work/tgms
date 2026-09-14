@@ -495,7 +495,16 @@ class CascadeResult:
     nodes visited, per-hop latency, unnecessary invalidations, false-safe —
     which must be `()` for a correct `k >= the DAG's true depth from the
     refreshed root`, and is the intended way to *demonstrate* a false-safe
-    by truncating `k` below that depth)."""
+    by truncating `k` below that depth).
+
+    `seeds`/`seeded_from` (storm-v1 addendum-2, additive): `seeds` names
+    every artifact the walk started from (just `(seed_name,)` for the v1,
+    root-only walk; root plus every `--dag-seed-from-affected` extra seed
+    otherwise); `seeded_from` is `"root"` or `"affected"`. Recorded
+    unconditionally (a caller that never passes `extra_seeds` to `cascade`
+    still gets `seeded_from="root"`, `seeds=(seed_name,)`) so every record
+    states which walk it ran, but no previously-existing field's value
+    changes when `extra_seeds` is empty."""
 
     seed_name: str
     k: int
@@ -505,6 +514,8 @@ class CascadeResult:
     false_safe: tuple[str, ...]
     quiescent: bool
     peak_rss_kb: int | None
+    seeds: tuple[str, ...] = ()
+    seeded_from: str = "root"
 
     @property
     def nodes_visited(self) -> int:
@@ -519,6 +530,7 @@ class CascadeResult:
             "unnecessary_invalidations_count": len(self.unnecessary_invalidations),
             "false_safe": list(self.false_safe), "false_safe_count": len(self.false_safe),
             "quiescent": self.quiescent, "peak_rss_kb": self.peak_rss_kb,
+            "seeds": list(self.seeds), "seeded_from": self.seeded_from,
         }
 
 
@@ -528,7 +540,8 @@ def _handle_for(record: ArtifactRecord) -> RefreshHandle:
 
 
 def cascade(registry: Registry, store: Any, refreshed: ArtifactId, k: int, *,
-           track_rss: bool = True) -> CascadeResult:
+           track_rss: bool = True,
+           extra_seeds: Sequence[ArtifactRecord] = ()) -> CascadeResult:
     """The k-hop worklist §4 asks for: repeatedly call `parent_recheck`,
     `refresh()` each flagged candidate, and re-call with the refreshed id —
     `tests/test_propagation.py::test_walks_one_level_only_no_cascade`'s own
@@ -542,6 +555,24 @@ def cascade(registry: Registry, store: Any, refreshed: ArtifactId, k: int, *,
     written signature `cascade(registry, refreshed, k)` (§4): a cascade
     that cannot open a store cannot refresh anyone found, so `store` must be
     a parameter, not an implicit global.
+
+    `extra_seeds` (storm-v1 addendum-2, additive; empty by default):
+    currently-registered records to seed the walk from *in addition to*
+    `refreshed` — the addendum's `--dag-seed-from-affected` mechanism,
+    which the caller populates from `tgms.artifact.lookup.affected`'s own
+    footprint-based answer for the correction batch that produced
+    `refreshed`, so the walk also starts from artifacts the declared
+    `parents` graph cannot reach (they depend on the corrected data only
+    through their own query footprint, per Addendum 1's finding). Each
+    extra seed is refreshed exactly once here (the same "already known
+    changed, just like `refreshed` itself" treatment `refreshed` already
+    got from the caller before this function was called — never checked
+    for "unnecessary invalidation," the same reason `refreshed` never is),
+    added to the initial frontier, and its own declared `parents` edges are
+    then walked for the same `k` hops as `refreshed`'s. When `extra_seeds`
+    is empty (the default, and every v1 call site), `frontier`/`visited_set`
+    below are built exactly as v1 built them — this function's own walk is
+    byte-identical to v1's in that case.
     """
     if k < 1:
         raise ValueError("k must be >= 1")
@@ -550,6 +581,18 @@ def cascade(registry: Registry, store: Any, refreshed: ArtifactId, k: int, *,
     visited_set: set[str] = {refreshed.name}
     unnecessary: list[str] = []
     levels: list[CascadeLevelStat] = []
+    seeded_from = "affected" if extra_seeds else "root"
+    for seed_record in extra_seeds:
+        if seed_record.name in visited_set:
+            continue
+        try:
+            new_seed = refresh(seed_record, _handle_for(seed_record), store, registry)
+        except TgmsError:
+            continue
+        visited_set.add(seed_record.name)
+        visited.append(seed_record.name)
+        frontier.append(new_seed.id)
+    seed_names = tuple([refreshed.name] + [n for n in visited if n != refreshed.name])
     hop = 0
     while frontier and hop < k:
         hop += 1
@@ -598,7 +641,8 @@ def cascade(registry: Registry, store: Any, refreshed: ArtifactId, k: int, *,
     return CascadeResult(
         seed_name=refreshed.name, k=k, refreshed=tuple(visited), levels=tuple(levels),
         unnecessary_invalidations=tuple(unnecessary), false_safe=tuple(sorted(false_safe)),
-        quiescent=not frontier, peak_rss_kb=peak_rss)
+        quiescent=not frontier, peak_rss_kb=peak_rss,
+        seeds=seed_names, seeded_from=seeded_from)
 
 
 __all__ = [
