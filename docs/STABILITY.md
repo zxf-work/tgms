@@ -160,6 +160,15 @@ it cannot account for. A legacy store with no cursor (`chain == ""`)
 recovers nothing (it has no way to know what was applied) but is not
 treated as broken; it upgrades to a real cursor on its next write.
 
+**A populated store with `CURRENT` itself missing also refuses (fixed
+2026-09-15, Lane A task A8):** `open` no longer treats a missing `CURRENT`
+as an empty store — it does so only when the rest of the directory is
+genuinely empty too, or holds exactly the harmless bootstrap-crash orphan
+(the generation-0 checkpoint alone, written but never published); any other
+manifest, segment, or dictionary content found without `CURRENT` is refused
+as corruption, naming what was found and how to recover (remove the
+orphans, or restore `CURRENT`).
+
 **Tested, not just designed:** `docs/eval_durability.md` (D-086) records a
 real-process, SIGKILL-based crash-injection harness at 10 commit-protocol
 boundaries (mid-log-append, post-fsync-pre-apply, mid-segment-seal,
