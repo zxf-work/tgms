@@ -135,7 +135,7 @@ def test_every_frozen_plan_has_a_parameter_source(params_root):
     # matrix and the contracts fixture already counted inside the 24 expressible
     # templates. The census moves when the census grows; the *rules* it guards
     # (identity, units, selection) are unchanged and tested above.
-    assert len(P.LDBC_PLANS) == 24
+    assert len(P.LDBC_PLANS) == 25  # +BI6.v2 (D2)
     assert set(P.POST_FREEZE_IV_PLANS) <= set(P.LDBC_PLANS)
     for pid in P.LDBC_PLANS:
         b = P.bind(pid, params_root)
