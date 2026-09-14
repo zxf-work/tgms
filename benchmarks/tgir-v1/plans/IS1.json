@@ -1,0 +1,53 @@
+{
+ "plan_format": 1,
+ "plan_id": "IS1",
+ "row": {
+  "suite": "ldbc-is",
+  "predicted_v1_support": "yes",
+  "predicted_verdict_detail": "yes",
+  "compilation_source": "Lane D2 (2026-09-14). **There is no forecast.yaml row for IS1**: B1 classified it `class 2` under the *legacy* 15-operator algebra (`benchmarks/ldbc-fit-v1/classification.json`: `need_or_ops: entity_history+filter`), so it was never forecast as a TGIR row and never carried an artifact. `docs/eval/CAPABILITY_MATRIX.md` and `tests/test_ldbc_compare.py::test_the_24_expressible_split_matches_the_design_memo` both already count IS1 inside the 24 expressible templates; this artifact is the compilation that count asserted.",
+  "note": "NodeScan(uids=[$personId], labels=[Person]) -> exact(1) IS_LOCATED_IN dir=out -> TypeConstraint(city,[City]) -> Project. Four primitives, no Order and no Limit: the reference template has no ORDER BY and `(n:Person {id: $personId})` is a single identity, so the relation is at most one row per believed Person version and the plan's canonical order (§2.11's rule that only four node kinds sort) is the scan's own `(vt_s, vid)`. `cityId` is the **City uid**, not `city.props.id` — the same mapping IS2/IS6 use for every `*.id` column (`{\"col\": \"postAuthor.uid\"}`), and the reading `classification.json`'s own IS1 justification records (\"the City uid, which is `cityId` under the mapping\"). Every other column is a §2.7 `prop` read off the Person version valid in Σ, including `creationDate`, which is the *property*, never the version's `vt_s` — the legacy `entity_history` compilation read it as `vt_s`, and a TGIR plan must not silently substitute one for the other. `TypeConstraint(city,[City])` is not redundant sugar: `IS_LOCATED_IN` is also written Person->City, Message->Country, University->City and Company->Country in LDBC's schema, and the label is what the template's `(p:City)` pattern asserts."
+ },
+ "provenance": {
+  "reference_cypher": "external_workloads/ldbc/interactive_v1/cypher/queries/interactive-short-1.cypher",
+  "reference_repo": "https://github.com/ldbc/ldbc_snb_interactive_v1_impls/tree/main/cypher/queries",
+  "reference_title": "IS1. Profile of a person",
+  "declared_output_schema": ["firstName", "lastName", "birthday", "locationIP",
+                             "browserUsed", "cityId", "gender", "creationDate"],
+  "schema_note": "Column names and their order are the reference template's RETURN list, verbatim.",
+  "params_note": "`$personId` is the LDBC `Person` id encoded through `snb_uid('Person', id)` at bind time (`scripts/ldbc_snb_params.py::bind`, §A4). Its LDBC source is `validation_params-sf1.csv`'s `personIdSQ1` (the driver's `LdbcShortQuery1PersonProfile` accessor, `interactive_v1/common/.../QueryStore.java:424`). The frozen value here is a `stores/ldbc-fixture` anchor, as every checked-in artifact's `params` are.",
+  "licence": "LDBC material used under CC-BY 4.0. This is not an LDBC Benchmark and nothing produced here is an LDBC Benchmark Result."
+ },
+ "params": {"personId": "1"},
+ "sigma": {"t_v": [[0, 4611686018427387904]], "t_b": 4611686018427387904},
+ "root": {
+  "op": "Project",
+  "keep": "listed",
+  "bindings": [
+   ["firstName", {"prop": ["person.props", "firstName"]}],
+   ["lastName", {"prop": ["person.props", "lastName"]}],
+   ["birthday", {"prop": ["person.props", "birthday"]}],
+   ["locationIP", {"prop": ["person.props", "locationIP"]}],
+   ["browserUsed", {"prop": ["person.props", "browserUsed"]}],
+   ["cityId", {"col": "city.uid"}],
+   ["gender", {"prop": ["person.props", "gender"]}],
+   ["creationDate", {"prop": ["person.props", "creationDate"]}]
+  ],
+  "inputs": [
+   {
+    "op": "TypeConstraint", "var": "city", "labels": ["City"],
+    "inputs": [
+     {
+      "op": "Expand",
+      "from": "person", "into": "city", "dir": "out",
+      "hops": {"exact": 1}, "rel_type": "IS_LOCATED_IN",
+      "inputs": [
+       {"op": "NodeScan", "as": "person", "uids": ["$personId"],
+        "labels": ["Person"], "belief": "current", "vt_mode": "overlap"}
+      ]
+     }
+    ]
+   }
+  ]
+ }
+}

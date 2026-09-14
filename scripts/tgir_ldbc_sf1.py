@@ -1,4 +1,11 @@
-"""The E13 campaign: the 21 frozen LDBC plans against the real SF1 instance.
+"""The E13 campaign: the frozen LDBC plans against the real SF1 instance.
+
+The plan list is `ldbc_snb_params.LDBC_PLANS` — E13's frozen 21, plus IS1/IS4/IS5
+added post-freeze (Lane D2, 2026-09-14). Nothing here enumerates plan ids, so a
+row added to the binder's alias table is a row this runner already knows.
+`BI6.v2` is deliberately **not** in that list yet: it needs a `BI_SOURCES` row
+(`"BI6.v2": ("bi-6", {"tagName": "tag"})`) before it can be bound, which is the
+coordinator's call together with the BI6 rerun.
 
 **This is not an LDBC Benchmark, this is not an implementation of an LDBC
 Benchmark, and nothing produced here is an LDBC Benchmark Result.**

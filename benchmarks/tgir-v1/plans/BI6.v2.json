@@ -1,0 +1,209 @@
+{
+ "plan_format": 1,
+ "plan_id": "BI6.v2",
+ "row": {
+  "suite": "ldbc-bi",
+  "predicted_v1_support": "yes",
+  "predicted_verdict_detail": "yes",
+  "compilation_source": "Lane D2 (2026-09-14), superseding `BI6.json` (forecast.yaml BI6, DERIVED). **v1 is a plan defect, not a TGIR gap** — see `docs/design/BI6_TRIAGE_2026-09-14.md`.",
+  "supersedes": "BI6",
+  "note": "v1 chained its two `Join{left_outer}`s so that the **second** join's *left* key, `likerId`, is a column the **first** join had just null-filled. §2.8 is explicit — \"Join keys must be non-null; a null key is an error, not a non-match\" — so any person1 whose tagged message has no liker makes the plan raise `E_ARG`, which is what SF1 did at 535 rows and what `stores/ldbc-fixture` reproduces at 1 row with `$tagName = \"Tag2\"`. Nothing about §2.8 is missing: `left_outer` already expresses `OPTIONAL MATCH`, and v1 used it. The defect is that v1 propagated the nullable output of one outer join into the key position of the next.\n\nv2 restructures so that **every join key is provably non-null**, and the null-tolerance the template needs is carried by exactly one outer join at the top. The two `OPTIONAL MATCH`es are re-associated as: (a) an inner chain that computes the like-edges attributable to a person1 — `Join{inner}` on `message1.uid = likedMessageId`, then `Join{inner}` on `likerId = likedPersonId` — every key of which is a scan-bound `uid`, never a null-filled column; and (b) one `Join{left_outer}` of the **distinct person1 set** against that inner chain, whose left key is the group key of an `Aggregate` over `person1.uid` and therefore non-null by construction.\n\nThat re-association is sound because Cypher's `OPTIONAL MATCH` only ever *adds* rows carrying nulls, and every such row contributes nothing to `count(DISTINCT like)`: §2.10's `count_distinct` counts over the group's non-null values, so an all-null group is 0, not null, and no `coalesce` is needed. What the outer join must preserve is therefore only the **person1 rows themselves** — the `authorityScore = 0` bucket — which is exactly what the top-level `left_outer` against the distinct person1 set preserves, and exactly what a plain `Join{inner}` would have deleted.\n\n§8.4's left_outer multiplication is again harmless: the aggregate is `count_distinct` over the LIKES **edge identity** `eid`, so a person1 matching several probe rows, or one probe row arriving in several believed versions, collapses. §2.8's completeness precondition holds — no `Limit` below either join input. The `Limit(100)` stays at the root, so the result is `top-k` exactly as v1's was.\n\nOne observation deliberately **not** changed, so v2's delta is only the join structure: neither v1 nor v2 puts a `TypeConstraint(message1, [Post, Comment])` under `(message1:Message)`. LDBC also writes `Forum-[:HAS_TAG]->Tag`, but a Forum has no `HAS_CREATOR`, so the k=1 `HAS_CREATOR` expansion above it already deletes those rows and the relation is unchanged either way."
+ },
+ "provenance": {
+  "reference_cypher": "external_workloads/ldbc/bi/neo4j/queries/bi-6.cypher",
+  "reference_repo": "https://github.com/ldbc/ldbc_snb_bi/tree/main/neo4j/queries",
+  "reference_title": "Q6. Most authoritative users on a given topic",
+  "declared_output_schema": ["personId", "authorityScore"],
+  "schema_note": "The template's RETURN list is `person1.id, count(DISTINCT like) AS authorityScore`; `personId` is the same `*.id` -> uid mapping every other artifact uses.",
+  "params_note": "`$tagName` binds from `bi-6.csv` column `tag`, row 1 (§A9's selection rule) — the same source `BI_SOURCES['BI6']` names. **`BI6.v2` has no row in `scripts/ldbc_snb_params.py::BI_SOURCES` yet**: adding `\"BI6.v2\": (\"bi-6\", {\"tagName\": \"tag\"})` is the coordinator's one-line prerequisite for the SF1 rerun. The frozen value here is a `stores/ldbc-fixture` anchor.",
+  "licence": "LDBC material used under CC-BY 4.0. This is not an LDBC Benchmark and nothing produced here is an LDBC Benchmark Result."
+ },
+ "params": {"tagName": "Tag1"},
+ "sigma": {"t_v": [[0, 4611686018427387904]], "t_b": 4611686018427387904},
+ "root": {
+  "op": "Limit",
+  "n": 100,
+  "inputs": [
+   {
+    "op": "Order",
+    "keys": [
+     {"key": {"col": "authorityScore"}, "dir": "desc", "nulls": "nulls_last"},
+     {"key": {"cast": {"col": "personId"}, "to": "int"}, "dir": "asc", "nulls": "nulls_last"}
+    ],
+    "inputs": [
+     {
+      "op": "Aggregate",
+      "group_by": [["personId", {"col": "personId"}]],
+      "aggregates": [
+       {"fn": "count_distinct", "alias": "authorityScore", "of": {"col": "likeEid"}}
+      ],
+      "inputs": [
+       {
+        "op": "Join",
+        "type": "left_outer",
+        "on": [["personId", "scoredPersonId"]],
+        "inputs": [
+         {
+          "op": "Aggregate",
+          "group_by": [["personId", {"col": "person1.uid"}]],
+          "aggregates": [],
+          "inputs": [
+           {
+            "op": "TypeConstraint",
+            "var": "person1", "labels": ["Person"],
+            "inputs": [
+             {
+              "op": "Expand",
+              "from": "message1", "into": "person1", "dir": "out",
+              "hops": {"exact": 1}, "rel_type": "HAS_CREATOR",
+              "inputs": [
+               {
+                "op": "Expand",
+                "from": "tag", "into": "message1", "dir": "in",
+                "hops": {"exact": 1}, "rel_type": "HAS_TAG",
+                "inputs": [
+                 {
+                  "op": "PropertyPredicate",
+                  "var": "tag", "prop": "name", "cmp": "=", "value": "$tagName",
+                  "inputs": [
+                   {"op": "NodeScan", "as": "tag", "labels": ["Tag"],
+                    "belief": "current", "vt_mode": "overlap"}
+                  ]
+                 }
+                ]
+               }
+              ]
+             }
+            ]
+           }
+          ]
+         },
+         {
+          "op": "Project",
+          "keep": "listed",
+          "bindings": [
+           ["scoredPersonId", {"col": "authorId"}],
+           ["likeEid", {"col": "likeEid"}]
+          ],
+          "inputs": [
+           {
+            "op": "Join",
+            "type": "inner",
+            "on": [["likerId", "likedPersonId"]],
+            "inputs": [
+             {
+              "op": "Project",
+              "keep": "listed",
+              "bindings": [
+               ["authorId", {"col": "person1.uid"}],
+               ["likerId", {"col": "likerId"}]
+              ],
+              "inputs": [
+               {
+                "op": "Join",
+                "type": "inner",
+                "on": [["message1.uid", "likedMessageId"]],
+                "inputs": [
+                 {
+                  "op": "TypeConstraint",
+                  "var": "person1", "labels": ["Person"],
+                  "inputs": [
+                   {
+                    "op": "Expand",
+                    "from": "message1", "into": "person1", "dir": "out",
+                    "hops": {"exact": 1}, "rel_type": "HAS_CREATOR",
+                    "inputs": [
+                     {
+                      "op": "Expand",
+                      "from": "tag", "into": "message1", "dir": "in",
+                      "hops": {"exact": 1}, "rel_type": "HAS_TAG",
+                      "inputs": [
+                       {
+                        "op": "PropertyPredicate",
+                        "var": "tag", "prop": "name", "cmp": "=", "value": "$tagName",
+                        "inputs": [
+                         {"op": "NodeScan", "as": "tag", "labels": ["Tag"],
+                          "belief": "current", "vt_mode": "overlap"}
+                        ]
+                       }
+                      ]
+                     }
+                    ]
+                   }
+                  ]
+                 },
+                 {
+                  "op": "Project",
+                  "keep": "listed",
+                  "bindings": [
+                   ["likedMessageId", {"col": "likedMessage.uid"}],
+                   ["likerId", {"col": "liker.uid"}]
+                  ],
+                  "inputs": [
+                   {
+                    "op": "TypeConstraint",
+                    "var": "liker", "labels": ["Person"],
+                    "inputs": [
+                     {
+                      "op": "Expand",
+                      "from": "likedMessage", "into": "liker", "dir": "in",
+                      "hops": {"exact": 1}, "rel_type": "LIKES",
+                      "inputs": [
+                       {"op": "NodeScan", "as": "likedMessage",
+                        "labels": ["Post", "Comment"],
+                        "belief": "current", "vt_mode": "overlap"}
+                      ]
+                     }
+                    ]
+                   }
+                  ]
+                 }
+                ]
+               }
+              ]
+             },
+             {
+              "op": "Project",
+              "keep": "listed",
+              "bindings": [
+               ["likedPersonId", {"col": "author2.uid"}],
+               ["likeEid", {"col": "likeEdge.eid"}]
+              ],
+              "inputs": [
+               {
+                "op": "Expand",
+                "from": "message2", "into": "liker3", "dir": "in",
+                "hops": {"exact": 1}, "rel_type": "LIKES", "edge_var": "likeEdge",
+                "inputs": [
+                 {
+                  "op": "TypeConstraint",
+                  "var": "message2", "labels": ["Post", "Comment"],
+                  "inputs": [
+                   {
+                    "op": "Expand",
+                    "from": "author2", "into": "message2", "dir": "in",
+                    "hops": {"exact": 1}, "rel_type": "HAS_CREATOR",
+                    "inputs": [
+                     {"op": "NodeScan", "as": "author2", "labels": ["Person"],
+                      "belief": "current", "vt_mode": "overlap"}
+                    ]
+                   }
+                  ]
+                 }
+                ]
+               }
+              ]
+             }
+            ]
+           }
+          ]
+         }
+        ]
+       }
+      ]
+     }
+    ]
+   }
+  ]
+ }
+}

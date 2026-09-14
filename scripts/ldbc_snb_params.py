@@ -1,4 +1,9 @@
-"""Bind the 21 frozen LDBC plan artifacts to LDBC's own SF1 parameters (E13).
+"""Bind the LDBC plan artifacts to LDBC's own SF1 parameters (E13).
+
+E13 froze 21 of them. IS1/IS4/IS5 were added post-freeze (Lane D2, 2026-09-14)
+and bring the table to 24; see `POST_FREEZE_IV_PLANS` below. The frozen binding
+rules are unchanged — the additions are three rows in the alias table and
+nothing else.
 
 **This is not an LDBC Benchmark, this is not an implementation of an LDBC
 Benchmark, and nothing produced here is an LDBC Benchmark Result.** LDBC
@@ -85,11 +90,34 @@ IV_SOURCES: dict[str, dict[str, str]] = {
     "IC11": {"personId": "personIdQ11", "countryName": "countryName",
              "workFromYear": "workFromYear"},
     "IC12": {"personId": "personIdQ12", "tagClassName": "tagClassName"},
+    "IS1":  {"personId": "personIdSQ1"},
     "IS2":  {"personId": "personIdSQ2"},
     "IS3":  {"personId": "personIdSQ3"},
+    "IS4":  {"messageId": "messageIdContent"},
+    "IS5":  {"messageId": "messageIdCreator"},
     "IS6":  {"messageId": "messageForumId"},
     "IS7":  {"messageId": "messageRepliesId"},
 }
+
+#: **IS1/IS4/IS5 are post-freeze additions (Lane D2, 2026-09-14), not part of
+#: E13's frozen 21.** They were expressible under the legacy 15-operator algebra
+#: and so were never forecast as TGIR rows and carried no plan artifact — even
+#: though `docs/eval/CAPABILITY_MATRIX.md` and the contracts fixture have always
+#: counted all three inside the 24 expressible templates. The rows above are
+#: purely additive: no existing alias, unit rule or selection rule changed.
+#:
+#: Their LDBC key names are the driver's own, read off
+#: `interactive_v1/common/.../workloads/QueryStore.java` (the accessor a short
+#: query's parameter map is built from), not guessed from the pattern the four
+#: existing IS rows happen to show:
+#:
+#:   IS1  getPersonIdSQ1()      -> personIdSQ1        (QueryStore.java:424)
+#:   IS4  getMessageIdContent() -> messageIdContent   (QueryStore.java:484)
+#:   IS5  getMessageIdCreator() -> messageIdCreator   (QueryStore.java:504)
+#:
+#: A wrong key is not silent: `read_iv_first` raises `LookupError` naming the
+#: keys it could not find in any validation row.
+POST_FREEZE_IV_PLANS = ("IS1", "IS4", "IS5")
 
 #: id-valued parameters, and the id space they draw from (§A4).
 ID_HIERARCHY = {"personId": "Person", "messageId": "Message"}

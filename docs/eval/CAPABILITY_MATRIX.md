@@ -16,11 +16,13 @@ and 35 of the 38 it cannot express are blocked by labelled pattern matching
 and property projection — capabilities every system in the table above has
 and TGMS deliberately does not. TGIR, the compositional IR that compiles
 chains of those operators, expresses 24 of the 41 (see `README.md` for the
-3 → 24 result); 21 of those 24 have been executed — on a hand-built fixture
-carrying LDBC's labels, relationship types and multi-hop topology, and on
-the SF1 BI snapshot — but none has yet been compared against an LDBC
-reference output, so this is expressiveness coverage, not independently
-validated correctness.
+3 → 24 result); all 24 now carry a plan artifact that executes on a
+hand-built fixture carrying LDBC's labels, relationship types and multi-hop
+topology, and 21 of the 24 have also been run against the SF1 BI snapshot,
+where 20 completed and BI6 errored on a plan defect since repaired by a
+second artifact (`BI6.v2.json`) that has not yet been rerun at SF1. None has
+yet been compared against an LDBC reference output, so this is
+expressiveness coverage, not independently validated correctness.
 `docs/eval/EXTERNAL_BENCHMARKS.md` has the query-by-query classification.
 Both facts are true, and quoting the first without the second would be the
 kind of scope error this project keeps finding in its own claims.

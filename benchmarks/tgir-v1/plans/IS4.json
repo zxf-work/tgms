@@ -1,0 +1,35 @@
+{
+ "plan_format": 1,
+ "plan_id": "IS4",
+ "row": {
+  "suite": "ldbc-is",
+  "predicted_v1_support": "yes",
+  "predicted_verdict_detail": "yes",
+  "compilation_source": "Lane D2 (2026-09-14). **There is no forecast.yaml row for IS4**: B1 classified it `class 1` under the *legacy* 15-operator algebra (`benchmarks/ldbc-fit-v1/classification.json`: `need_or_ops: entity_history`) — one of the three templates the 15 operators express on their own — so it was never forecast as a TGIR row and never carried an artifact.",
+  "note": "NodeScan(uids=[$messageId], labels=[Post,Comment]) -> Project. Two primitives, the shortest plan in the suite; a class-1 row stays several nodes fewer than a class-2 one, which is the whole shape of the 3 -> 24 result. `Message` is the bind-time labels **union** [Post, Comment] (§2.1 / §8.17 / FREEZE §7.4): TGIR-v1 has no label hierarchy, so the supertype is a union list, never subtyping. `messageContent` is §2.7's `coalesce(content, imageFile)`, matching the template's `coalesce(m.content, m.imageFile)` — a Post carries `imageFile` and a Comment does not, so the second arm is null-valued on Comments and the first is null-valued on image Posts. `messageCreationDate` is the **property** `creationDate`, never the version's `vt_s`; the legacy `entity_history` compilation read it as `vt_s`, and substituting one for the other silently is exactly the class of error §A9's alias discipline exists to stop. No Order and no Limit: the template has neither, and `(m:Message {id: $messageId})` is a single identity."
+ },
+ "provenance": {
+  "reference_cypher": "external_workloads/ldbc/interactive_v1/cypher/queries/interactive-short-4.cypher",
+  "reference_repo": "https://github.com/ldbc/ldbc_snb_interactive_v1_impls/tree/main/cypher/queries",
+  "reference_title": "IS4. Content of a message",
+  "declared_output_schema": ["messageCreationDate", "messageContent"],
+  "schema_note": "Column names and their order are the reference template's RETURN list, verbatim.",
+  "params_note": "`$messageId` is the LDBC `Message` id encoded through `snb_uid('Message', id)` at bind time (`scripts/ldbc_snb_params.py::bind`, §A4). Its LDBC source is `validation_params-sf1.csv`'s `messageIdContent` (the driver's `LdbcShortQuery4MessageContent` accessor `getMessageIdContent()`, `interactive_v1/common/.../QueryStore.java:484`). The frozen value here is a `stores/ldbc-fixture` anchor, as every checked-in artifact's `params` are.",
+  "licence": "LDBC material used under CC-BY 4.0. This is not an LDBC Benchmark and nothing produced here is an LDBC Benchmark Result."
+ },
+ "params": {"messageId": "101"},
+ "sigma": {"t_v": [[0, 4611686018427387904]], "t_b": 4611686018427387904},
+ "root": {
+  "op": "Project",
+  "keep": "listed",
+  "bindings": [
+   ["messageCreationDate", {"prop": ["message.props", "creationDate"]}],
+   ["messageContent", {"coalesce": [{"prop": ["message.props", "content"]},
+                                    {"prop": ["message.props", "imageFile"]}]}]
+  ],
+  "inputs": [
+   {"op": "NodeScan", "as": "message", "uids": ["$messageId"],
+    "labels": ["Post", "Comment"], "belief": "current", "vt_mode": "overlap"}
+  ]
+ }
+}
