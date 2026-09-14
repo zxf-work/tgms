@@ -68,6 +68,7 @@ SANCTIONED = {
     # and adds coverage for its own feature (the round-3 evidence schema)
     # rather than bending an existing test's expectations.
     "785ab6ec77af9ebe23ce953d6a200c2358f05681",  # evidence: round-3 schema (D-124)
+    "db718e76422d0323e65174a936f7452db6f1d154",  # osv_loader: zero-width affects interval fix + its regression test in one commit (F3-deploy, 2026-09-13; pushed before the gate ran)
 }
 
 
