@@ -270,6 +270,45 @@ def test_swap_same_class_falls_back_when_only_one_file_exists(store):
     assert mut_info["note"] is not None
 
 
+def test_artifact_blob_append_garbage_is_now_detected_via_full_verify(store):
+    """Task A10: the corruption campaign's own finding
+    (benchmarks/corruption-v1/eval-corruption-campaign-2026-09-14.json,
+    stats.detection_matrix["artifact_blob|append_garbage"]: 0 detected of
+    106, verdict BENIGN). `register_sample_artifacts` (this fixture's own
+    `build_store`) writes each plan blob to disk before registering it, so
+    `Registry.register()` stamps a `blob_sha256` for it — `verify(mode=
+    "full")` now recomputes that hash and disagrees with it once garbage is
+    appended, which is exactly the observation `classify()` checks first.
+    """
+    store_dir, build_meta, baseline = store
+    candidates = ec.FILE_CLASSES["artifact_blob"](store_dir)
+    assert candidates, "fixture must register at least one artifact plan blob"
+    rng = __import__("random").Random(3)
+    mut_info = ec.apply_mutation("artifact_blob", "append_garbage", candidates, rng, store_dir)
+    assert mut_info["mutation"] == "append_garbage"
+
+    (verdict, reason), obs = _classify(store_dir, mut_info, build_meta, baseline, "artifact_blob")
+    assert verdict == "DETECTED", (verdict, reason, obs)
+    assert obs["verify_problems"], "expected verify(mode='full') to report a blob finding"
+
+
+def test_artifact_blob_flip_byte_is_now_detected_via_full_verify(store):
+    """The companion case task A10's own test list names explicitly: a
+    corruption that keeps the blob syntactically valid JSON (so the
+    trailing-bytes rule alone would not catch it) must still be detected —
+    that's what `blob_sha256` is for."""
+    store_dir, build_meta, baseline = store
+    candidates = ec.FILE_CLASSES["artifact_blob"](store_dir)
+    assert candidates, "fixture must register at least one artifact plan blob"
+    rng = __import__("random").Random(4)
+    mut_info = ec.apply_mutation("artifact_blob", "flip_byte", candidates, rng, store_dir)
+    assert mut_info["mutation"] == "flip_byte"
+
+    (verdict, reason), obs = _classify(store_dir, mut_info, build_meta, baseline, "artifact_blob")
+    assert verdict == "DETECTED", (verdict, reason, obs)
+    assert obs["verify_problems"], "expected verify(mode='full') to report a blob finding"
+
+
 def test_json_record_conforms_to_result_manifest_schema(tmp_path, monkeypatch):
     import jsonschema
 

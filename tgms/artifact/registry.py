@@ -71,7 +71,7 @@ from pathlib import Path
 from typing import Any, Iterable
 
 from tgms.core.errors import InvalidArgError, StateError
-from tgms.core.model import canonical_json
+from tgms.core.model import canonical_json, sha256_hex_bytes
 from tgms.storage.eventlog import SEED_CHAIN, EventLog, extend_chain
 from tgms.tgir.depscope import DependencyScope, store_identity
 
@@ -261,15 +261,69 @@ class Registry:
         generation = 0 if prior is None else prior.generation + 1
         supersedes = None if prior is None else ArtifactId(name, prior.generation)
         record_store = store if store is not None else self._store_identity()
+        plan_field = dict(plan)
+        refresh_field = dict(refresh)
+        payload_field = dict(payload) if payload is not None else None
+        # `payload.result_ref` deliberately does *not* get a `blob_sha256`
+        # here — see `_stamp_blob_sha256`'s docstring for why hashing that
+        # file's raw bytes would be actively wrong, not merely unnecessary.
+        self._stamp_blob_sha256(plan_field, "plan_ref")
+        self._stamp_blob_sha256(refresh_field, "ref")
         record = ArtifactRecord(
             name=name, generation=generation, kind=kind, store=record_store,
-            plan=dict(plan), basis=dict(basis), state=dict(state), refresh=dict(refresh),
+            plan=plan_field, basis=dict(basis), state=dict(state), refresh=refresh_field,
             steps=tuple(steps), dependency=dependency, supersedes=supersedes,
-            parents=tuple(parents), payload=(dict(payload) if payload is not None else None),
+            parents=tuple(parents), payload=payload_field,
             provenance=(dict(provenance) if provenance is not None else None),
         )
         self.append(record)
         return record
+
+    def _stamp_blob_sha256(self, container: dict[str, Any], ref_key: str) -> None:
+        """Task A10: content-address the referenced blob's literal bytes,
+        not merely whatever digest its own JSON declares. `plan_digest`
+        (`tgms/tgir/plan.py:55-58`) is a digest of the *loaded plan value*
+        (op/args/sigma/inputs) — not of the file `plan.plan_ref`/`refresh.
+        ref` names — so it cannot catch a byte appended or flipped in that
+        file after the fact. `blob_sha256` is: `sha256` of exactly what is
+        on disk at `container[ref_key]`, computed once, right here, at the
+        one moment this package can still trust the bytes (an instant after
+        whichever caller just finished writing them).
+
+        **Only ever called for `plan.plan_ref` and `refresh.ref`** — never
+        for `payload.result_ref`, and that is deliberate, not an oversight.
+        A `payload.result_ref` blob is `ResultStore.put`'s serialization of
+        the *whole re-execution envelope*, which legitimately carries
+        wall-clock telemetry no caller asked to be reproducible (`tgir.
+        annotations.*.telemetry.wall_ms` — confirmed non-deterministic
+        across two otherwise-identical replays while chasing task A10's own
+        determinism requirement: `test_deterministic_replay_identical_
+        registry_bytes` started failing the moment this function was wired
+        up to also stamp `payload.result_ref`, on nothing but a differing
+        `wall_ms`). `payload.result_digest` (`tgms/agent/executor.py:124`)
+        is already the right digest for that blob precisely because it is
+        computed over the *kernel payload*, wall-clock noise excluded by
+        construction — hashing the file's raw bytes instead would silently
+        re-introduce the timing dependency `result_digest` was built to
+        avoid. `_blob_defects` still runs its (weaker, pre-A10) self-
+        consistency check against `payload.result_digest` for that ref.
+
+        Silently a no-op when there is no ref to hash (an "operator"
+        artifact's `plan` dict has no `plan_ref`, for one), when the file is
+        not yet on disk (`verify()`'s existing `blob-missing` finding covers
+        that independently), or when `container` already carries a
+        `blob_sha256` — which is what makes this idempotent across a
+        refresh's `plan=dict(record.plan)` / `refresh=dict(record.refresh)`
+        carry-forward (`refresh.py::_publish`): the blob did not change, so
+        its recorded hash should not either.
+        """
+        ref = container.get(ref_key)
+        if not ref or "blob_sha256" in container:
+            return
+        path = self.store_dir / ref
+        if not path.exists():
+            return
+        container["blob_sha256"] = sha256_hex_bytes(path.read_bytes())
 
     def append(self, record: ArtifactRecord) -> None:
         """Append an already-built `ArtifactRecord`. Refuses a record whose
@@ -367,7 +421,12 @@ def verify(store: str | Path) -> list[dict[str, Any]]:
       record being deleted or inserted, which no per-record digest can see;
     * `blob-missing` / `blob-digest-mismatch` — a `refresh.ref`,
       `plan.plan_ref` or `payload.result_ref` that names a file the store
-      does not hold, or a result blob whose own `result_digest` is not the
+      does not hold; a blob that is not readable as exactly one JSON
+      document with nothing after it (task A10 — see
+      `_parse_json_blob_strict`, which is what actually catches an
+      `append_garbage`-style corruption); a blob whose `blob_sha256` (task
+      A10, present on any record registered since) no longer matches its
+      current bytes; or a result blob whose own `result_digest` is not the
       one the record recorded.
 
     Nothing is opened for writing, and — unlike `Registry.__init__` — no
@@ -439,23 +498,79 @@ def verify(store: str | Path) -> list[dict[str, Any]]:
     return out
 
 
+def _parse_json_blob_strict(raw: bytes) -> tuple[Any, str | None]:
+    """Parse `raw` as *exactly one* JSON document with nothing after it but,
+    at most, a single trailing newline — `(document, None)` on success,
+    `(None, why)` on failure.
+
+    Task A10: `json.loads` alone is not this strict — it silently accepts
+    trailing *whitespace* after a complete value (`json.loads('{"a":1}   ')`
+    returns `{"a": 1}`), and a `flip_bit`/`flip_byte`/`truncate` corruption
+    that keeps the document's own bytes short of "invalid JSON" was
+    invisible for exactly that reason. `raw_decode` reports precisely where
+    the document's own text ends, so "is there anything else in this file"
+    is answered directly rather than left to a lenient parser's mercy —
+    closing the corruption campaign's `artifact_blob|append_garbage` gap
+    (0/106 detected — every digest an `append_garbage` mutation left
+    unchanged, because nothing downstream of `open()` ever looked past the
+    leading JSON value)."""
+    try:
+        text = raw.decode("utf-8")
+    except UnicodeDecodeError as e:
+        return None, f"not valid UTF-8: {e}"
+    try:
+        document, end = json.JSONDecoder().raw_decode(text)
+    except json.JSONDecodeError as e:
+        return None, f"not readable JSON: {e}"
+    trailing = text[end:]
+    if trailing not in ("", "\n"):
+        return None, f"{len(trailing)} byte(s) after its JSON document"
+    return document, None
+
+
 def _blob_defects(store_dir: Path, record: ArtifactRecord,
                   offset: int) -> list[dict[str, Any]]:
-    """Every file this record points at, checked for presence and — where the
-    record carries a content address for it — for agreement with it.
+    """Every file this record points at, checked for presence, for carrying
+    nothing but the one JSON document it is supposed to (task A10 — see
+    `_parse_json_blob_strict`), and — where the record carries a content
+    address for it — for agreement with it.
 
-    `refresh.ref` and `plan.plan_ref` have no stored digest, so existence is
-    all there is to check. `payload.result_ref` does: the blob is what
-    `ResultStore.put` wrote under `payload.result_digest`, so the digest the
-    document carries must be the one the record names.
+    Every blob a record's `refresh.ref` / `plan.plan_ref` / `payload.
+    result_ref` names is content-addressed two different ways, and this
+    checks both, independently:
+
+    * `blob_sha256` (task A10, stamped by `Registry.register()` at
+      write time for `refresh.ref` / `plan.plan_ref` only — see
+      `_stamp_blob_sha256`) is a digest of the file's raw bytes, end to
+      end. It is what actually answers "has this file changed since it was
+      registered", and it is the one check here that catches a *flipped*
+      byte, not merely a corruption that changes the file's length or
+      breaks its JSON syntax. Absent on a record written before this field
+      existed, or on `payload.result_ref` (never stamped — see
+      `_stamp_blob_sha256`'s docstring: that blob's bytes legitimately
+      vary run to run) — silently skipped in both cases, exactly like a
+      `DependencyScope` reader tolerating a schema it predates, never
+      treated as itself a defect.
+    * `payload.result_digest` (pre-A10, kept unchanged) is a digest of a
+      *value* `ResultStore.put` may not even have derived from this file
+      (`tgms/agent/executor.py:124`'s `payload.get("result_digest") or
+      digest(payload)` — the common case is the former, a value carried
+      through from the execution envelope, not computed from the blob at
+      all) compared against the same-named field the blob's own JSON
+      carries. Weaker — it only catches the blob disagreeing with
+      *itself* — but free, and still worth keeping for a record that
+      predates `blob_sha256` too.
     """
     out: list[dict[str, Any]] = []
-    refs = [("refresh.ref", record.refresh.get("ref")),
-            ("plan.plan_ref", record.plan.get("plan_ref"))]
+    refs: list[tuple[str, str | None, str | None]] = [
+        ("refresh.ref", record.refresh.get("ref"), record.refresh.get("blob_sha256")),
+        ("plan.plan_ref", record.plan.get("plan_ref"), record.plan.get("blob_sha256")),
+    ]
     if record.payload is not None:
-        refs.append(("payload.result_ref", record.payload.get("result_ref")))
+        refs.append(("payload.result_ref", record.payload.get("result_ref"),
+                    record.payload.get("blob_sha256")))
     where = f"{record.name!r} generation {record.generation}"
-    for field, ref in refs:
+    for field, ref, expected_sha256 in refs:
         if not ref:
             continue
         blob = store_dir / ref
@@ -464,15 +579,26 @@ def _blob_defects(store_dir: Path, record: ArtifactRecord,
                         "detail": f"{where}: {field} names {ref}, which the store does "
                                   f"not hold"})
             continue
+        raw = blob.read_bytes()
+        document, why = _parse_json_blob_strict(raw)
+        if why is not None:
+            out.append({"kind": "blob-digest-mismatch", "offset": offset,
+                        "detail": f"{where}: the blob {ref} ({field}) is {why} — a "
+                                  f"reader must refuse it, never silently parse only "
+                                  f"its leading value"})
+            continue
+        if expected_sha256 is not None:
+            got_sha256 = sha256_hex_bytes(raw)
+            if got_sha256 != expected_sha256:
+                out.append({
+                    "kind": "blob-digest-mismatch", "offset": offset,
+                    "detail": f"{where}: the blob {ref} ({field}) hashes to "
+                              f"{got_sha256!r} but the record names blob_sha256="
+                              f"{expected_sha256!r} — its bytes changed after it was "
+                              f"registered"})
         if field != "payload.result_ref":
             continue
         claimed = (record.payload or {}).get("result_digest")
-        try:
-            document = json.loads(blob.read_text())
-        except (json.JSONDecodeError, OSError, UnicodeDecodeError) as e:
-            out.append({"kind": "blob-digest-mismatch", "offset": offset,
-                        "detail": f"{where}: the result blob {ref} is unreadable: {e}"})
-            continue
         got = document.get("result_digest") if isinstance(document, dict) else None
         if claimed and got != claimed:
             out.append({

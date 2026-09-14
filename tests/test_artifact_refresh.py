@@ -337,6 +337,39 @@ def test_refuses_ref_not_found() -> None:
     store.close()
 
 
+def test_refuses_a_refresh_blob_with_appended_garbage() -> None:
+    """Task A10: the corruption campaign's own finding
+    (benchmarks/corruption-v1/eval-corruption-campaign-2026-09-14.json,
+    stats.detection_matrix["artifact_blob|append_garbage"]) applied to the
+    one place in this package that actually reads a blob's bytes.
+    `refresh.py::_blob` used to be plain `json.loads(path.read_text())`,
+    which silently parses only the leading JSON value and says nothing
+    about what follows it — so a refresh handed a tampered-by-append blob
+    would have happily re-executed whatever plan the leading, still-valid
+    JSON described. It now refuses instead, reusing `reason="ref-not-
+    found"`: appended garbage makes the *file* unreadable as the single
+    document a ref is supposed to name, the same refusal an outright
+    `JSONDecodeError` already got."""
+    store_dir = _store_dir()
+    log = EventLog(store_dir / "eventlog.jsonl")
+    log.append(10, [NODE_A])
+    store = _open_and_replay(store_dir)
+    registry = Registry(store_dir)
+    gen0 = _register_plan_artifact(store_dir, store, registry)
+    ref = gen0.refresh["ref"]
+    with open(store_dir / ref, "ab") as f:
+        f.write(b"\x00\x01garbage-after-the-json-document\xff")
+
+    verdict = check_artifact(gen0, EventLog(store_dir / "eventlog.jsonl"))
+    with pytest.raises(RefreshRefused) as ei:
+        refresh(gen0, verdict.refresh, store, registry)
+    assert ei.value.reason == "ref-not-found"
+    assert ref in str(ei.value)
+    # nothing was published
+    assert registry.current("wmc").generation == 0
+    store.close()
+
+
 def test_refuses_handle_mismatch() -> None:
     store_dir = _store_dir()
     log = EventLog(store_dir / "eventlog.jsonl")

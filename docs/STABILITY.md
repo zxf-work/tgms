@@ -390,6 +390,24 @@ and a `parents` list naming other artifacts it was built from.
   `FRESH`. This is deliberate: a fixed policy about *when* to refresh would
   be a second, unstated contract on top of a mechanism whose only promise
   is *what happens once you ask*.
+- **A `refresh.ref`/`plan.plan_ref` blob is content-addressed end to end,
+  since 2026-09-14 (Lane A task A10, closing a corruption-campaign finding:
+  `artifact_blob|append_garbage` was 0/106 detected — appended bytes a
+  parser never looks at left every recorded digest unchanged).
+  `Registry.register()` now stamps a `blob_sha256` of the file's raw bytes
+  for any such blob already on disk at registration time, and both
+  `Registry.verify()` (`artifact check`'s `verify(mode="full")` oracle) and
+  `artifact refresh`'s own blob loader refuse — never silently parse only a
+  blob's leading JSON value — when a blob carries anything after its one
+  JSON document, or (when `blob_sha256` is on record) when its bytes no
+  longer hash to it. A record written before this field existed reads back
+  exactly as before: `blob_sha256` is additive and absent, not retrofitted,
+  and no existing `record_digest` changes because of it.
+  `payload.result_ref` deliberately does **not** get a `blob_sha256` — that
+  blob's bytes carry wall-clock telemetry (`tgir.annotations.*.telemetry.
+  wall_ms`, itself already digest-excluded per the bullet below) that
+  legitimately differs run to run, so hashing the raw file would make
+  `Registry.register()` itself non-deterministic.
 
 **What is not stable, and is not claimed:**
 

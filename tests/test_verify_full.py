@@ -389,6 +389,89 @@ def test_a_result_blob_that_hashes_to_something_else_is_a_blob_finding(tmp_path)
     assert ("blob", "blob-digest-mismatch") in kinds(report)
 
 
+# --- task A10: a plan blob's own bytes, not just its existence ------------ #
+#
+# `register()` above writes `plans/pd.json` *after* `reg.register()`
+# returns, so those records carry no `blob_sha256` (`Registry.
+# _stamp_blob_sha256` only hashes a blob it can already see) and the tests
+# above exercise the pre-A10 fallback path. The corruption campaign's own
+# finding (benchmarks/corruption-v1/eval-corruption-campaign-2026-09-14.json,
+# stats.detection_matrix["artifact_blob|append_garbage"]: 0/106 detected)
+# needs the real, production-shaped ordering — blob on disk *before*
+# `register()` — the same ordering `scripts/demo_propagation.py` and
+# `scripts/eval_corruption.py::register_sample_artifacts` already use, so
+# `blob_sha256` actually gets stamped and `verify(mode="full")` has
+# something to compare against.
+
+
+def register_with_real_plan_blob(root: Path, *, name: str = "wmc2",
+                                 plan_bytes: bytes = b'{"plan_format": 1, "op": "NodeScan", '
+                                                     b'"uids": ["A"]}') -> None:
+    """Same shape as `register()` above, except the plan blob exists before
+    `Registry.register()` runs, so it gets a `blob_sha256` stamped against
+    its real bytes."""
+    from tgms.artifact.record import StepDependency
+    from tgms.artifact.registry import Registry
+    from tgms.storage.eventlog import EventLog
+    from tgms.tgir.depscope import DependencyScope, ScopeTerm, Targets, store_identity
+
+    log = EventLog(root / "eventlog.jsonl")
+    identity = store_identity(log.header(), log.first_batch())
+    scope = DependencyScope(store=identity, tt_q=10,
+                            terms=(ScopeTerm(targets=Targets(nodes=("n0",))),))
+    (root / "plans").mkdir(exist_ok=True)
+    (root / "plans" / f"{name}.json").write_bytes(plan_bytes)
+    reg = Registry(root, log=log)
+    reg.register(
+        name=name, kind="query_result", store=identity,
+        plan={"plan_digest": f"pd-{name}", "plan_format": 1, "plan_ref": f"plans/{name}.json"},
+        basis={"tt_q": 10, "pinned": False, "clamped": False, "tt_q_verified": True},
+        state={"completeness": "complete", "exactness": "exact", "refusal": None},
+        refresh={"kind": "tgir_plan", "ref": f"plans/{name}.json"},
+        steps=[StepDependency("s1", scope)],
+    )
+
+
+def test_a_real_plan_blob_matching_its_stamped_hash_is_clean(tmp_path):
+    root = build(tmp_path / "s")
+    register_with_real_plan_blob(root)
+    report = verify(root)
+    assert report["healthy"], report["findings"]
+
+
+def test_appended_garbage_on_a_plan_blob_is_now_a_blob_finding(tmp_path):
+    """The exact corruption class the campaign found undetected: garbage
+    bytes appended after a complete, otherwise-untouched JSON document.
+    `_parse_json_blob_strict`'s "nothing after the document" rule is what
+    catches this — the file is still "valid JSON" up to where the real
+    document ends, which is exactly what a lenient `json.loads` used to let
+    through silently."""
+    root = build(tmp_path / "s")
+    register_with_real_plan_blob(root)
+    with open(root / "plans" / "wmc2.json", "ab") as f:
+        f.write(b"\x00\x01not-json-and-not-whitespace\xff")
+
+    report = verify(root)
+    assert ("blob", "blob-digest-mismatch") in kinds(report)
+    assert not report["healthy"]
+
+
+def test_a_flipped_byte_in_a_plan_blob_is_a_blob_finding(tmp_path):
+    """A mutation that keeps the file syntactically valid JSON — the
+    trailing-bytes rule alone would miss this; `blob_sha256` is what
+    catches it."""
+    root = build(tmp_path / "s")
+    register_with_real_plan_blob(root)
+    blob = root / "plans" / "wmc2.json"
+    buf = bytearray(blob.read_bytes())
+    buf[10] ^= 0xFF  # inside "op": "NodeScan" — the document stays valid JSON
+    blob.write_bytes(bytes(buf))
+
+    report = verify(root)
+    assert ("blob", "blob-digest-mismatch") in kinds(report)
+    assert not report["healthy"]
+
+
 def test_a_deleted_registry_generation_breaks_the_generation_chain(tmp_path):
     """No per-record digest can see a whole record removed; the per-name
     generation sequence is what catches it."""

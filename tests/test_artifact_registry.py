@@ -409,3 +409,170 @@ def test_cli_register_list_check_round_trip(capsys: pytest.CaptureFixture[str]) 
     verdict = json.loads(capsys.readouterr().out)
     assert verdict["verdict"] == "possibly-stale"
     assert rc == 1
+
+
+# ---------------------------------------------------------------------------
+# 9 — task A10: `blob_sha256`, the corruption-campaign fix
+# (benchmarks/corruption-v1/eval-corruption-campaign-2026-09-14.json,
+# stats.detection_matrix["artifact_blob|append_garbage"]: 0/106 detected)
+#
+# `register()`'s `plan`/`refresh` fields carried only `plan_digest` /
+# `node_digest` — digests of the *loaded plan value*, not of the file
+# `plan_ref`/`ref` actually names — so a blob corrupted after being
+# registered (bytes appended, a byte flipped) hashed exactly the same as an
+# intact one from `Registry.verify()`'s point of view: nothing recorded ever
+# disagreed with anything on disk. `_stamp_blob_sha256` closes that by
+# hashing the real file at registration time; `_blob_defects` (exercised via
+# `tgms.artifact.registry.verify` here, and via `NativeStoreAdapter.verify
+# (mode="full")` in `tests/test_verify_full.py`) compares it back.
+# ---------------------------------------------------------------------------
+
+
+def _write_plan_blob(store: Path, name: str, content: bytes = b'{"plan_format": 1}') -> None:
+    (store / "plans").mkdir(exist_ok=True)
+    (store / "plans" / f"{name}.json").write_bytes(content)
+
+
+def test_register_stamps_blob_sha256_when_the_plan_blob_already_exists() -> None:
+    """The common, production-shaped ordering (`scripts/demo_propagation.py`,
+    `scripts/eval_corruption.py::register_sample_artifacts`): the blob is
+    written to disk *before* `register()` runs, so `register()` can hash the
+    real bytes right there rather than guessing at them later."""
+    from tgms.core.model import sha256_hex_bytes
+
+    store = _store()
+    log = _log(store, (10, [NODE_A]))
+    scope = _scope(log, ScopeTerm(targets=Targets(nodes=("A",))), tt_q=10)
+    _write_plan_blob(store, "pd")
+    reg = Registry(store)
+    rec = reg.register(**_fields("wmc", log, scope))
+
+    expected = sha256_hex_bytes((store / "plans" / "pd.json").read_bytes())
+    assert rec.plan["blob_sha256"] == expected
+    assert rec.refresh["blob_sha256"] == expected  # same file, same ref
+
+
+def test_register_does_not_stamp_blob_sha256_when_the_blob_is_not_yet_on_disk() -> None:
+    """The `tests/test_verify_full.py` fixture ordering (blob written
+    *after* `register()`): silently no-op, never an error — `verify()`'s
+    own `blob-missing` finding is what a genuinely absent blob gets, and a
+    blob that merely has not been written *yet* by the time `register()`
+    ran is exactly the pre-A10 situation this field did not exist to fix."""
+    store = _store()
+    log = _log(store, (10, [NODE_A]))
+    scope = _scope(log, ScopeTerm(targets=Targets(nodes=("A",))), tt_q=10)
+    reg = Registry(store)
+    rec = reg.register(**_fields("wmc", log, scope))  # plans/pd.json never written
+
+    assert "blob_sha256" not in rec.plan
+    assert "blob_sha256" not in rec.refresh
+
+
+def test_register_never_stamps_blob_sha256_for_payload_result_ref() -> None:
+    """`payload.result_ref` is deliberately exempt (see
+    `Registry._stamp_blob_sha256`'s docstring): that blob is `ResultStore.
+    put`'s serialization of a whole re-execution envelope, which carries
+    wall-clock telemetry (`tgir.annotations.*.telemetry.wall_ms`) no caller
+    asked to be reproducible — hashing the file's raw bytes would silently
+    reintroduce a timing dependency `result_digest` was built to exclude
+    (confirmed the hard way: wiring this up broke `tests/
+    test_artifact_refresh.py::test_deterministic_replay_identical_
+    registry_bytes` on nothing but a differing `wall_ms`). This is a
+    regression guard against reintroducing that."""
+    store = _store()
+    log = _log(store, (10, [NODE_A]))
+    scope = _scope(log, ScopeTerm(targets=Targets(nodes=("A",))), tt_q=10)
+    (store / "results").mkdir(exist_ok=True)
+    (store / "results" / "rd.json").write_text(json.dumps({"result_digest": "rd"}))
+    reg = Registry(store)
+    rec = reg.register(**_fields(
+        "wmc", log, scope, payload={"result_digest": "rd", "result_ref": "results/rd.json"}))
+
+    assert "blob_sha256" not in (rec.payload or {})
+
+
+def test_verify_detects_a_plan_blob_with_appended_garbage() -> None:
+    """The corruption campaign's own finding, reproduced directly against
+    `tgms.artifact.registry.verify`: appending garbage bytes to a
+    registered plan blob used to leave every observable digest unchanged
+    (0/106 detected). `_parse_json_blob_strict`'s "nothing after the JSON
+    document" rule catches this even before `blob_sha256` is consulted."""
+    from tgms.artifact.registry import verify
+
+    store = _store()
+    log = _log(store, (10, [NODE_A]))
+    scope = _scope(log, ScopeTerm(targets=Targets(nodes=("A",))), tt_q=10)
+    _write_plan_blob(store, "pd")
+    reg = Registry(store)
+    reg.register(**_fields("wmc", log, scope))
+
+    with open(store / "plans" / "pd.json", "ab") as f:
+        f.write(b"\x00garbage-not-json-whitespace\xff")
+
+    findings = verify(store)
+    assert any(f["kind"] == "blob-digest-mismatch" for f in findings), findings
+    assert any("plan.plan_ref" in f["detail"] or "refresh.ref" in f["detail"]
+              for f in findings if f["kind"] == "blob-digest-mismatch")
+
+
+def test_verify_detects_a_flipped_byte_in_a_plan_blob() -> None:
+    """A corruption that keeps the blob syntactically valid JSON (so the
+    trailing-bytes rule alone would miss it) is still caught — this is
+    exactly what `blob_sha256` is for, not merely a belt-and-braces repeat
+    of the trailing-bytes check above."""
+    from tgms.artifact.registry import verify
+
+    store = _store()
+    log = _log(store, (10, [NODE_A]))
+    scope = _scope(log, ScopeTerm(targets=Targets(nodes=("A",))), tt_q=10)
+    _write_plan_blob(store, "pd", b'{"plan_format": 1, "op": "NodeScan", "uids": ["A"]}')
+    reg = Registry(store)
+    reg.register(**_fields("wmc", log, scope))
+
+    blob_path = store / "plans" / "pd.json"
+    buf = bytearray(blob_path.read_bytes())
+    buf[10] ^= 0xFF  # inside "op": "NodeScan" — stays syntactically valid JSON
+    blob_path.write_bytes(bytes(buf))
+
+    findings = verify(store)
+    assert any(f["kind"] == "blob-digest-mismatch" for f in findings), findings
+
+
+def test_verify_is_clean_when_a_real_plan_blob_matches_its_recorded_hash() -> None:
+    """No false positives: registering against a real, unmutated blob stays
+    healthy — the same shape `tests/test_verify_full.py::
+    test_a_registry_with_its_blobs_in_place_is_clean` checks at the
+    `NativeStoreAdapter.verify(mode="full")` layer, exercised here directly
+    against the module `verify()` this task changed."""
+    from tgms.artifact.registry import verify
+
+    store = _store()
+    log = _log(store, (10, [NODE_A]))
+    scope = _scope(log, ScopeTerm(targets=Targets(nodes=("A",))), tt_q=10)
+    _write_plan_blob(store, "pd")
+    reg = Registry(store)
+    reg.register(**_fields("wmc", log, scope))
+
+    assert verify(store) == []
+
+
+def test_blob_sha256_does_not_change_an_existing_records_digest() -> None:
+    """§2.4's determinism obligation, task A10's own constraint: a record
+    written *before* `blob_sha256` existed (no such key in its `plan`/
+    `refresh` dicts, on disk or in memory) recomputes to exactly the
+    `record_digest` it already carries — adding the field only ever changes
+    the digest of a *new* registration, never an old line's own recomputed
+    digest, since nothing rewrites what is already on disk."""
+    store = _store()
+    log = _log(store, (10, [NODE_A]))
+    scope = _scope(log, ScopeTerm(targets=Targets(nodes=("A",))), tt_q=10)
+    reg = Registry(store)
+    # No plan blob on disk — this generation's `plan`/`refresh` carry no
+    # `blob_sha256`, exactly like every record `Registry.register()` wrote
+    # before this task.
+    rec = reg.register(**_fields("wmc", log, scope))
+    before = rec.record_digest
+
+    reopened = Registry(store)
+    assert reopened.current("wmc").record_digest == before
+    assert "blob_sha256" not in reopened.current("wmc").plan
