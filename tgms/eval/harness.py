@@ -298,7 +298,12 @@ def build_systems(cfg: dict[str, Any], store: Store, model: str,
             cls = BiTemporalSQLEvidence if system == "b6e" else BiTemporalSQL
             out[system] = cls(llm_fn, model, db_path=bt_path,
                               max_repairs=cfg.get("max_repairs", 3),
-                              seed=seed)
+                              seed=seed,
+                              duckdb_temp_dir=cfg.get("duckdb_temp_dir"),
+                              duckdb_max_temp_mb=cfg.get(
+                                  "duckdb_max_temp_mb", 4096),
+                              duckdb_memory_limit_gb=cfg.get(
+                                  "duckdb_memory_limit_gb", 96))
         elif system == "llm_direct":
             from tgms.eval.baselines import LLMDirect
             out[system] = LLMDirect(

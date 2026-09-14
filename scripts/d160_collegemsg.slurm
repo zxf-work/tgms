@@ -28,19 +28,38 @@
 # (<out_dir>/results/*.json) makes a resubmit after a partial run pick up
 # where it left off rather than re-paying every LLM call.
 #
-# 2026-09-14 postmortem (job 211581): failed after 1:13:54 with exit 1:0,
-# no signal, nothing in .out/.err/harness log past SERVER_UP -- the
-# signature of a hard cgroup OOM-kill (SIGKILL bypasses this script's own
-# TERM trap and cleanup entirely, which is why no RECORDS_COPIED /
-# TGMS_JOB_DONE line appears). `sacct`'s batch-step MaxRSS was
-# 67,080,148K, ~99.96% of the 64G --mem request that job used -- not a
-# disk-quota issue (independently checked: /project/xzhang12 sat at 188G,
-# well under quota, both during and after the failure; no
-# `*.duckdb.tmp` spill files existed). --mem raised to 128G (itiger07 had
-# ~179G free at the time). 94/94 `ours` + 94/94 `b5` + 65/94 `b6e` rows
-# for seed 0 were already cached under <out_dir>/results/ when it died;
-# a resubmit against the same out_dir resumes from there via the cache
-# check above rather than re-running them.
+# Postmortem across three submissions (2026-09-14):
+#  - 211581: failed after 1:13:54, exit 1:0, no signal, nothing past
+#    SERVER_UP in any log -- a hard cgroup OOM-kill (SIGKILL bypasses this
+#    script's own TERM trap, hence no RECORDS_COPIED/TGMS_JOB_DONE line).
+#    `sacct`'s batch-step MaxRSS was 67,080,148K, ~99.96% of the 64G
+#    --mem this job used.
+#  - The coordinator separately found (verified independently: many
+#    concurrent Slurm array tasks across other jobs failed within the
+#    same second) that the SAME run also spilled ~13GB of DuckDB temp
+#    storage onto /project (a pathological b6e statement can drive both
+#    the RSS and the temp spill at once -- DuckDB's default
+#    `temp_directory` sits next to the database file, which for this
+#    campaign is on /project, a quota-limited shared filesystem). Fixed
+#    at the source in `tgms/eval/baselines.py`'s `BiTemporalSQL`: every
+#    subprocess-side DuckDB connection now binds `temp_directory` under
+#    the process's own `TMPDIR` (node-local, see deviation 2 below),
+#    `max_temp_directory_size='4096MB'`, and `memory_limit='96GB'` (under
+#    this script's 128G --mem), via DuckDB's own `config=` connect-time
+#    option -- so a runaway statement fails bounded and node-local
+#    instead of spilling onto the shared quota. --mem itself stays 128G
+#    (raised from 64G; itiger07 had ~179G free) as a second, independent
+#    layer of protection.
+#  - 211705 (the previously-permitted resubmit): failed in 0:02:23 before
+#    doing any new work -- 211581's own `run_matrix` call had already
+#    logged a `runs_log.jsonl` entry for this config+split before it
+#    OOM'd, and 211705 omitted `--force`, tripping the frozen-split guard
+#    (spec section 8.3) immediately. This submission passes `TGMS_FORCE`
+#    for exactly that reason (below).
+# 94/94 `ours` + 94/94 `b5` + 65/94 `b6e` rows for seed 0 (0 errors) were
+# already cached under <out_dir>/results/ before 211581 died; a resubmit
+# against the same out_dir resumes from there via the cache check in
+# `run_matrix` rather than re-running them.
 #
 # Two deviations from a naive "run the harness on /project" script, both
 # precedented by scripts/storm_campaign.slurm / scripts/fault_matrix_campaign.slurm:
@@ -97,11 +116,30 @@ export PATH="$SHIM_DIR:$PATH"
 
 # --- node-local scratch (deviation 2) ----------------------------------- #
 TMPDIR="/tmp/tgms-d160-${JOB_ID}"
-mkdir -p "$TMPDIR"
+LOCAL_LOGS="$TMPDIR/logs"
+mkdir -p "$TMPDIR" "$LOCAL_LOGS"
 export TMPDIR
 
 export HF_HOME=/project/xzhang12/hf HF_HUB_OFFLINE=1 TRANSFORMERS_OFFLINE=1
-export UV_CACHE_DIR=/project/xzhang12/uv-cache
+# uv-cache is a project-wide shared cache other lanes' `uv sync` calls
+# also use, on /project by long-standing convention (see
+# scripts/itiger_job.slurm) -- this job does not run `uv sync` at all
+# (the .venv is already built), so it never writes there; unset rather
+# than point it somewhere this job won't use.
+unset UV_CACHE_DIR
+
+# --- fail fast if the shared quota is already tight (2026-09-14 ruling:
+# the account tripped the ~200G quota twice from unrelated jobs' spills;
+# a job that starts anyway just adds another candidate for the next
+# cascade). This is a check on shared account state, not a claim about
+# what THIS job will use -- see the DuckDB temp-directory/memory-limit
+# bounds below and in tgms/eval/baselines.py for the actual fix.
+DU_START_MB=$(du -sm /project/xzhang12 2>/dev/null | awk '{print $1}')
+echo "DU_MB_AT_START=${DU_START_MB:-unknown}"
+if [ -n "$DU_START_MB" ] && [ "$DU_START_MB" -gt 185000 ]; then
+    echo "QUOTA_HEADROOM_TOO_LOW: /project/xzhang12 at ${DU_START_MB}MB > 185000MB, refusing to start"
+    exit 2
+fi
 
 cd "$CHECKOUT"
 hostname > "$STAGE/node_meta/job-${JOB_ID}.host"
@@ -136,10 +174,13 @@ OUT_DIR=$(grep '^out_dir:' "$CFG" | awk '{print $2}')
 rm -rf "${OUT_DIR:?}"/vanilla-kuzu-* 2>/dev/null
 
 # --- serve Qwen2.5-14B-AWQ ------------------------------------------------ #
+# All bulk logs (vLLM's per-request lines over hours, the harness log)
+# live on node-local $TMPDIR, never /project -- only a trimmed tail of
+# each is copied out in cleanup(), alongside the actual records.
 PORT=8000
 nohup "$VLLM_ENV/bin/vllm" serve "$MODEL" --dtype half \
     --max-model-len 28672 --gpu-memory-utilization 0.92 --port "$PORT" \
-    > "$STAGE/logs/vllm-${JOB_ID}.log" 2>&1 &
+    > "$LOCAL_LOGS/vllm-${JOB_ID}.log" 2>&1 &
 VPID=$!
 
 up=0
@@ -151,8 +192,10 @@ for i in $(seq 1 540); do
 done
 if [ "$up" != 1 ]; then
     echo "SERVE_FAIL"
-    tail -40 "$STAGE/logs/vllm-${JOB_ID}.log"
+    tail -40 "$LOCAL_LOGS/vllm-${JOB_ID}.log"
     kill "$VPID" 2>/dev/null
+    mkdir -p "$STAGE/logs"
+    cp "$LOCAL_LOGS/vllm-${JOB_ID}.log" "$STAGE/logs/vllm-${JOB_ID}-SERVE_FAIL.log" 2>/dev/null
     rm -rf "$SHIM_DIR" "$TMPDIR"
     exit 1
 fi
@@ -163,9 +206,9 @@ echo "SERVER_UP $MODEL port=$PORT"
 # Hopper GPUs are not known to hit it, but a multi-hour run costs little
 # to insure against it). Fixed port 8000 matches vllm_watchdog.sh's own
 # assumption.
-LOG_DIR="$STAGE/logs" VLLM_ENV="$VLLM_ENV" \
+LOG_DIR="$LOCAL_LOGS" VLLM_ENV="$VLLM_ENV" \
     nohup bash scripts/vllm_watchdog.sh 12600 \
-    > "$STAGE/logs/watchdog-${JOB_ID}.log" 2>&1 &
+    > "$LOCAL_LOGS/watchdog-${JOB_ID}.log" 2>&1 &
 WPID=$!
 
 # --- run the matrix (all three seeds, sequentially, one process) -------- #
@@ -173,12 +216,21 @@ cleanup() {
     kill "$WPID" 2>/dev/null
     pkill -f "[v]llm.serve" 2>/dev/null
     pkill -f "[V]LLM::EngineCore" 2>/dev/null
+    mkdir -p "$STAGE/logs"
+    # trimmed tails only -- the full logs stay node-local and die with
+    # $TMPDIR; this is enough to diagnose a failure without putting
+    # hours of vLLM request logging on the shared quota.
+    for f in "$LOCAL_LOGS"/*.log; do
+        [ -f "$f" ] || continue
+        tail -c 200000 "$f" > "$STAGE/logs/$(basename "$f" .log).tail.log" 2>/dev/null
+    done
     if [ -d "$OUT_DIR" ]; then
         DEST="$STAGE/records/d160-collegemsg-4arm-${JOB_ID}"
         mkdir -p "$DEST"
         cp -r "$OUT_DIR"/. "$DEST"/
         echo "RECORDS_COPIED $DEST"
     fi
+    du -sm /project/xzhang12 2>/dev/null | awk '{print "DU_MB_AT_CLEANUP="$1}'
     rm -rf "$SHIM_DIR" "$TMPDIR"
 }
 HPID=""
@@ -189,7 +241,7 @@ term_handler() {
 trap term_handler TERM
 
 "$VENV_PY" -m tgms.cli eval run --config "$CFG" "${FORCE_FLAG[@]}" \
-    > "$STAGE/logs/harness-${JOB_ID}.log" 2>&1 &
+    > "$LOCAL_LOGS/harness-${JOB_ID}.log" 2>&1 &
 HPID=$!
 wait "$HPID"
 EC=$?

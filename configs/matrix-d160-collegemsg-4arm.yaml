@@ -44,3 +44,13 @@ llm_direct_budget_tokens: 8000
 memory_db: stores/collegemsg/memory.sqlite
 llm_api_base: "http://localhost:8000/v1"
 llm_api_key: "EMPTY"
+# 2026-09-14 postmortem (job 211581): b6e's LLM-generated SQL can be a
+# pathological cartesian product; DuckDB's default temp_directory sits
+# next to the database file, which for this campaign is the quota-limited
+# /project filesystem. tgms.eval.baselines.BiTemporalSQL binds every
+# subprocess-side DuckDB connection to a bounded, TMPDIR-local
+# temp_directory plus these two explicit ceilings (also its own
+# defaults -- listed here for the record's own reproducibility, not
+# because the harness needs them spelled out to behave this way).
+duckdb_max_temp_mb: 4096
+duckdb_memory_limit_gb: 96
