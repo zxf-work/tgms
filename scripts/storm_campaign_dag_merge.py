@@ -161,7 +161,13 @@ def main(argv: list[str] | None = None) -> int:
     ap.add_argument("--freeze-id", default=None)
     ap.add_argument("--freeze-sha256", default=None)
     ap.add_argument("--out", type=Path, required=True)
-    ap.add_argument("--array-job-id", default=None)
+    ap.add_argument("--array-job-id", default=None,
+                    help="Slurm array job id, recorded in config for provenance. "
+                         "Comma-separated if the dag phase's tasks came from more than "
+                         "one sbatch submission (e.g. a per-cell resubmission after a "
+                         "timeout or a bad-node exclusion) -- see the sibling "
+                         "config.array_job_ids, a list form of the same value, same "
+                         "convention as scripts/storm_campaign_merge.py.")
     args = ap.parse_args(argv)
 
     shapes = _csv_list(args.shapes)
@@ -194,7 +200,9 @@ def main(argv: list[str] | None = None) -> int:
         "config": {
             "harness": "scripts/bench_correction_storm.py (dag phase)",
             "slurm_script": "scripts/storm_campaign_dag.slurm",
-            "array_job_id": args.array_job_id, "freeze_id": args.freeze_id,
+            "array_job_id": args.array_job_id,
+            "array_job_ids": _csv_list(args.array_job_id) if args.array_job_id else [],
+            "freeze_id": args.freeze_id,
             "freeze_sha256": args.freeze_sha256, "n_tasks": n_tasks,
             "store": args.store, "shapes": shapes, "depths": depths, "fanouts": fanouts,
             "seeds": seeds,
