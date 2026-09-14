@@ -321,7 +321,11 @@ def _child_paced_refresher(store_dir: str, name: str, out: str, ready_evt, go_ev
 
     refresh_mod.run_plan = paced_run_plan
     try:
-        store = tgms.open(store_dir, backend="native")
+        # Read-only: refresh() only executes the recorded plan and appends to
+        # the registry (which has its own lock). Since the OS-level single-
+        # writer lock (docs/STABILITY.md §8) a second read-write open beside
+        # the corrector is refused, and it was never a supported configuration.
+        store = tgms.open(store_dir, backend="native", read_only=True)
         registry = Registry(store_dir)
         gen0 = registry.current(name)
         verdict = check_artifact(gen0, EventLog(Path(store_dir) / "eventlog.jsonl"))
