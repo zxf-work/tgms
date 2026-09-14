@@ -982,6 +982,633 @@ impl NativeStore {
         }
         Ok(out)
     }
+
+    // ------------------------------------------------------------------ //
+    // the bounded version page (O15 `version_history`)                    //
+    // ------------------------------------------------------------------ //
+
+    /// A fixed-width sort key per *surviving* row, and nothing else.
+    ///
+    /// The first of the two passes behind `version_page`. It has the sweep
+    /// shape of `props_for_vids`: open each segment once, read integer
+    /// columns, and touch the string table only for rows that matter — here,
+    /// not even then, because a key carries no strings at all.
+    ///
+    /// **Why a key and not a row.** `version_history` returns at most
+    /// `limit` rows but must order the whole surviving population to know
+    /// which ones those are, and must count it to report `rows_total`
+    /// exactly. Doing that through `all_*_versions` cost ~1,060 bytes per
+    /// stored version — 10.6 GB at 10M, measured (D-069) — for a 50-row
+    /// page. A [`VersionKey`] is 32 bytes and carries exactly what the sort
+    /// and the second pass need.
+    ///
+    /// **Cost note (D-149).** `tt_s` is run-length encoded in the segment
+    /// header and this reads it per row. On a compacted store the global
+    /// `(vt_s, vid)` re-sort shatters those runs — 2.1M runs over 3.0M rows
+    /// has been measured — so the binary search in
+    /// [`SegmentHeader::tt_s_at`](crate::segment::SegmentHeader::tt_s_at) is
+    /// load-bearing here, not a micro-optimization. The cheap valid-time
+    /// window test runs first for the same reason: a pruned row never pays
+    /// for its `tt_s`.
+    ///
+    /// Segments are scanned in `edge_files()` / `node_files()` order and
+    /// staged rows last, which is the order `all_*_versions` produced. The
+    /// sort in `version_page` is stable, so that order still breaks ties.
+    pub fn version_keys(&self, kind: RowKind, f: &VersionFilter<'_>) -> Result<Vec<VersionKey>> {
+        let closes = self.close_index()?;
+        let mut keys: Vec<VersionKey> = Vec::new();
+        let files = match kind {
+            RowKind::Edge => self.edge_files(),
+            RowKind::Node => self.node_files(),
+        };
+        for (file, seg_id) in files {
+            let seg = self.open_segment(&file)?;
+            let h = seg.header();
+            // `rel_type` is a per-segment code, so the filter becomes a
+            // lookup table over this segment's own vocabulary — and a
+            // segment naming none of the wanted types is skipped whole,
+            // without reading a single column.
+            let wanted: Option<Vec<bool>> = match (kind, f.rel_types) {
+                (RowKind::Edge, Some(names)) => {
+                    let mask: Vec<bool> = h
+                        .rel_types
+                        .iter()
+                        .map(|t| names.iter().any(|n| n == t))
+                        .collect();
+                    if !mask.iter().any(|&b| b) {
+                        continue;
+                    }
+                    Some(mask)
+                }
+                _ => None,
+            };
+            let vt_s = seg.i64_column("vt_s")?;
+            let vt_e = if h.vt_e_elided {
+                None
+            } else {
+                Some(seg.i64_column("vt_e")?)
+            };
+            let vid_hi = seg.u64_column("vid64")?;
+            let vid_lo = seg.u32_column("vid_lo32")?;
+            let rel = match wanted {
+                Some(_) => Some(seg.u16_column("rel_code")?),
+                None => None,
+            };
+            let sidecar = seg.sidecar();
+            for i in 0..vt_s.len() {
+                // `vt_e` elided means every row of this segment is
+                // instantaneous, exactly as `edge_rows_sel` reads it
+                let ve = vt_e.map(|c| c[i]).unwrap_or(vt_s[i] + 1);
+                if vt_s[i] >= f.t_b || ve <= f.t_a {
+                    continue;
+                }
+                if let (Some(mask), Some(rel)) = (&wanted, rel) {
+                    if !mask.get(rel[i] as usize).copied().unwrap_or(false) {
+                        continue;
+                    }
+                }
+                let tt_s = h.tt_s_at(i as u32)?;
+                if tt_s > f.as_of {
+                    continue;
+                }
+                // a close run outranks a folded sidecar entry: later
+                // transaction (the rule `edge_rows_sel` applies)
+                let from_run = closes.tt_e(seg_id, i as u32);
+                let tt_e = if from_run != OPEN_END {
+                    from_run
+                } else {
+                    sidecar.tt_e(i as u32)
+                };
+                if !f.belief.admits(tt_e <= f.as_of) {
+                    continue;
+                }
+                keys.push(VersionKey {
+                    tt_s,
+                    vid_hi: vid_hi[i],
+                    vid_lo: vid_lo[i],
+                    seg_id,
+                    row: i as u32,
+                });
+            }
+        }
+        // Rows staged in the open batch, which `all_*_versions` unions in and
+        // this path therefore must too: a batch reads its own writes.
+        match kind {
+            RowKind::Edge => {
+                let staged_closes = self.staged_closes();
+                for (i, r) in self.staged_edges().iter().enumerate() {
+                    if r.vt_s >= f.t_b || r.vt_e <= f.t_a || r.tt_s > f.as_of {
+                        continue;
+                    }
+                    if let Some(names) = f.rel_types {
+                        if !names.contains(&r.rel_type) {
+                            continue;
+                        }
+                    }
+                    let tt_e = staged_closes.get(&r.vid).copied().unwrap_or(OPEN_END);
+                    if !f.belief.admits(tt_e <= f.as_of) {
+                        continue;
+                    }
+                    keys.push(VersionKey {
+                        tt_s: r.tt_s,
+                        vid_hi: r.vid.hi,
+                        vid_lo: r.vid.lo,
+                        seg_id: STAGED_SEG,
+                        row: i as u32,
+                    });
+                }
+            }
+            RowKind::Node => {
+                let staged_closes = self.staged_closes();
+                for (i, r) in self.staged_nodes().iter().enumerate() {
+                    if r.vt_s >= f.t_b || r.vt_e <= f.t_a || r.tt_s > f.as_of {
+                        continue;
+                    }
+                    let tt_e = staged_closes.get(&r.vid).copied().unwrap_or(OPEN_END);
+                    if !f.belief.admits(tt_e <= f.as_of) {
+                        continue;
+                    }
+                    keys.push(VersionKey {
+                        tt_s: r.tt_s,
+                        vid_hi: r.vid.hi,
+                        vid_lo: r.vid.lo,
+                        seg_id: STAGED_SEG,
+                        row: i as u32,
+                    });
+                }
+            }
+        }
+        Ok(keys)
+    }
+
+    /// The second pass: the projected columns of the rows `keys` names, in
+    /// that order.
+    ///
+    /// The companion of `version_keys` and the same trade `edge_idents_at`
+    /// makes — a physical address is cheap to carry and exact to resolve, so
+    /// the expensive per-row work (a `sha256` for an `eid`, two dictionary
+    /// lookups, a string-table read) happens once per *returned* row rather
+    /// than once per scanned one. `props`, `source` and `provenance_ref` are
+    /// never read: `version_history` drops all three, and building them was
+    /// most of what the old path cost.
+    ///
+    /// Addresses are only meaningful against the generation that produced
+    /// them, which is why the two passes are composed inside `version_page`
+    /// rather than across the Python boundary.
+    pub fn version_rows_at(&self, kind: RowKind, keys: &[VersionKey]) -> Result<VersionRows> {
+        let closes = self.close_index()?;
+        let files: HashMap<u64, String> = match kind {
+            RowKind::Edge => self.edge_files(),
+            RowKind::Node => self.node_files(),
+        }
+        .into_iter()
+        .map(|(file, id)| (id, file))
+        .collect();
+        // group by segment so each is opened (and verified) once; output
+        // positions come along so input order is restored at the end
+        let mut by_seg: std::collections::BTreeMap<u64, Vec<usize>> = Default::default();
+        for (i, k) in keys.iter().enumerate() {
+            by_seg.entry(k.seg_id).or_default().push(i);
+        }
+        let staged_positions = by_seg.remove(&STAGED_SEG).unwrap_or_default();
+
+        match kind {
+            RowKind::Edge => {
+                let mut out: Vec<Option<EdgeVersionRow>> = vec![None; keys.len()];
+                for (seg_id, positions) in by_seg {
+                    let file = files.get(&seg_id).ok_or_else(|| {
+                        EngineError::invariant(format!(
+                            "segment id {seg_id} is not in the current generation"
+                        ))
+                    })?;
+                    let seg = self.open_segment(file)?;
+                    let h = seg.header();
+                    let strings = seg.strings()?;
+                    let sidecar = seg.sidecar();
+                    let vt_s = seg.i64_column("vt_s")?;
+                    let vt_e = if h.vt_e_elided {
+                        None
+                    } else {
+                        Some(seg.i64_column("vt_e")?)
+                    };
+                    let src = seg.u32_column("src_id")?;
+                    let dst = seg.u32_column("dst_id")?;
+                    let rel = seg.u16_column("rel_code")?;
+                    let disc = seg.u32_column("disc_ref")?;
+                    let vid_hi = seg.u64_column("vid64")?;
+                    let vid_lo = seg.u32_column("vid_lo32")?;
+                    for p in positions {
+                        let i = keys[p].row as usize;
+                        if i >= vt_s.len() {
+                            return Err(EngineError::invariant(format!(
+                                "row {i} is out of bounds for segment {seg_id}"
+                            )));
+                        }
+                        let src_uid = self.uid_of(src[i])?;
+                        let dst_uid = self.uid_of(dst[i])?;
+                        let rel_type = h
+                            .rel_types
+                            .get(rel[i] as usize)
+                            .ok_or_else(|| {
+                                EngineError::corrupt(format!("rel_code {} has no entry", rel[i]))
+                                    .at_row(i as u32)
+                            })?
+                            .clone();
+                        let disc_s = strings.get(disc[i])?.to_string();
+                        let from_run = closes.tt_e(seg_id, i as u32);
+                        let tt_e = if from_run != OPEN_END {
+                            from_run
+                        } else {
+                            sidecar.tt_e(i as u32)
+                        };
+                        out[p] = Some(EdgeVersionRow {
+                            vid: Id96 {
+                                hi: vid_hi[i],
+                                lo: vid_lo[i],
+                            }
+                            .to_hex(),
+                            eid: edge_eid(&src_uid, &dst_uid, &rel_type, &disc_s).to_hex(),
+                            src: src_uid,
+                            dst: dst_uid,
+                            rel_type,
+                            disc: disc_s,
+                            vt_s: vt_s[i],
+                            vt_e: vt_e.map(|c| c[i]).unwrap_or(vt_s[i] + 1),
+                            tt_s: h.tt_s_at(i as u32)?,
+                            tt_e,
+                        });
+                    }
+                }
+                if !staged_positions.is_empty() {
+                    let staged = self.staged_edges();
+                    let staged_closes = self.staged_closes();
+                    for p in staged_positions {
+                        let r = staged.get(keys[p].row as usize).ok_or_else(|| {
+                            EngineError::invariant(format!(
+                                "staged row {} is no longer in the open batch",
+                                keys[p].row
+                            ))
+                        })?;
+                        let src = self.uid_of(r.src_id)?;
+                        let dst = self.uid_of(r.dst_id)?;
+                        out[p] = Some(EdgeVersionRow {
+                            vid: r.vid.to_hex(),
+                            eid: edge_eid(&src, &dst, &r.rel_type, &r.disc).to_hex(),
+                            src,
+                            dst,
+                            rel_type: r.rel_type.clone(),
+                            disc: r.disc.clone(),
+                            vt_s: r.vt_s,
+                            vt_e: r.vt_e,
+                            tt_s: r.tt_s,
+                            tt_e: staged_closes.get(&r.vid).copied().unwrap_or(OPEN_END),
+                        });
+                    }
+                }
+                Ok(VersionRows::Edge(
+                    out.into_iter()
+                        .map(|o| o.expect("every requested address was filled"))
+                        .collect(),
+                ))
+            }
+            RowKind::Node => {
+                let mut out: Vec<Option<NodeVersionRow>> = vec![None; keys.len()];
+                for (seg_id, positions) in by_seg {
+                    let file = files.get(&seg_id).ok_or_else(|| {
+                        EngineError::invariant(format!(
+                            "segment id {seg_id} is not in the current generation"
+                        ))
+                    })?;
+                    let seg = self.open_segment(file)?;
+                    let h = seg.header();
+                    let strings = seg.strings()?;
+                    let sidecar = seg.sidecar();
+                    let vt_s = seg.i64_column("vt_s")?;
+                    let vt_e = if h.vt_e_elided {
+                        None
+                    } else {
+                        Some(seg.i64_column("vt_e")?)
+                    };
+                    let uid_id = seg.u32_column("uid_id")?;
+                    let label = seg.u32_column("label_ref")?;
+                    let vid_hi = seg.u64_column("vid64")?;
+                    let vid_lo = seg.u32_column("vid_lo32")?;
+                    for p in positions {
+                        let i = keys[p].row as usize;
+                        if i >= vt_s.len() {
+                            return Err(EngineError::invariant(format!(
+                                "row {i} is out of bounds for segment {seg_id}"
+                            )));
+                        }
+                        let from_run = closes.tt_e(seg_id, i as u32);
+                        let tt_e = if from_run != OPEN_END {
+                            from_run
+                        } else {
+                            sidecar.tt_e(i as u32)
+                        };
+                        out[p] = Some(NodeVersionRow {
+                            vid: Id96 {
+                                hi: vid_hi[i],
+                                lo: vid_lo[i],
+                            }
+                            .to_hex(),
+                            uid: self.uid_of(uid_id[i])?,
+                            label: strings.get(label[i])?.to_string(),
+                            vt_s: vt_s[i],
+                            vt_e: vt_e.map(|c| c[i]).unwrap_or(vt_s[i] + 1),
+                            tt_s: h.tt_s_at(i as u32)?,
+                            tt_e,
+                        });
+                    }
+                }
+                if !staged_positions.is_empty() {
+                    let staged = self.staged_nodes();
+                    let staged_closes = self.staged_closes();
+                    for p in staged_positions {
+                        let r = staged.get(keys[p].row as usize).ok_or_else(|| {
+                            EngineError::invariant(format!(
+                                "staged row {} is no longer in the open batch",
+                                keys[p].row
+                            ))
+                        })?;
+                        out[p] = Some(NodeVersionRow {
+                            vid: r.vid.to_hex(),
+                            uid: self.uid_of(r.uid_id)?,
+                            label: r.label.clone(),
+                            vt_s: r.vt_s,
+                            vt_e: r.vt_e,
+                            tt_s: r.tt_s,
+                            tt_e: staged_closes.get(&r.vid).copied().unwrap_or(OPEN_END),
+                        });
+                    }
+                }
+                Ok(VersionRows::Node(
+                    out.into_iter()
+                        .map(|o| o.expect("every requested address was filled"))
+                        .collect(),
+                ))
+            }
+        }
+    }
+
+    /// One ordered page of `version_history`, and the exact size of the
+    /// population it was drawn from.
+    ///
+    /// Both passes run under one `close_index()` and one manifest read, so
+    /// the physical addresses the first pass produces cannot be invalidated
+    /// by a compaction before the second pass resolves them.
+    ///
+    /// Order is `(tt_s, vid)` — the belief log's own, not valid time (D-058).
+    /// `vid` is compared as its 96-bit integer, which is what a comparison of
+    /// the zero-padded lowercase hex the Python path sorted comes to.
+    /// **Stable**, so rows tying on both keys keep the scan order
+    /// `np.lexsort` (also stable) preserved over `all_*_versions`.
+    pub fn version_page(
+        &self,
+        kind: RowKind,
+        f: &VersionFilter<'_>,
+        offset: usize,
+        limit: usize,
+    ) -> Result<(VersionRows, usize)> {
+        let mut keys = self.version_keys(kind, f)?;
+        // `sort_by_key` is a stable sort, which is the load-bearing part
+        keys.sort_by_key(|k| (k.tt_s, k.vid_hi, k.vid_lo));
+        let total = keys.len();
+        let start = offset.min(total);
+        let end = offset.saturating_add(limit).min(total);
+        Ok((self.version_rows_at(kind, &keys[start..end])?, total))
+    }
+
+    /// Node versions believed at `as_of_tt` whose valid interval overlaps
+    /// `[vt_min, vt_max)` — the filter applied *during* the sweep.
+    ///
+    /// The counterpart of `version_keys` for the second O(store) site. This
+    /// used to be `all_node_versions()` followed by a `.filter()`: every
+    /// stored node version became a `NodeVersionOut` — a uid, a 24-hex vid, a
+    /// label, and the `props`/`source`/`provenance_ref` no caller of
+    /// `nodes_columnar` has ever wanted — and the survivors were then picked
+    /// out of that. It is D-149's scan that did not finish in 1,400 s over
+    /// SNB SF1's 2,997,352 node versions.
+    ///
+    /// The sweep still visits every row: node segments are ordered by
+    /// `(vt_s, vid)` but carry no belief index, and the pruning machinery the
+    /// edge cursor has buys nothing at |V| scale (D-028 #15). What changed is
+    /// that a row's strings are built only once it survives — and `uid_id`
+    /// comes straight off the column instead of being recovered from the
+    /// materialized uid by a reverse dictionary lookup.
+    pub fn scan_node_versions(
+        &self,
+        as_of_tt: i64,
+        vt_min: Option<i64>,
+        vt_max: Option<i64>,
+    ) -> Result<NodeScanOut> {
+        let closes = self.close_index()?;
+        let mut out = NodeScanOut::default();
+        for (file, seg_id) in self.node_files() {
+            let seg = self.open_segment(&file)?;
+            let h = seg.header();
+            let strings = seg.strings()?;
+            let sidecar = seg.sidecar();
+            let vt_s = seg.i64_column("vt_s")?;
+            let vt_e = if h.vt_e_elided {
+                None
+            } else {
+                Some(seg.i64_column("vt_e")?)
+            };
+            let uid_id = seg.u32_column("uid_id")?;
+            let label = seg.u32_column("label_ref")?;
+            let vid_hi = seg.u64_column("vid64")?;
+            let vid_lo = seg.u32_column("vid_lo32")?;
+            out.rows_examined += vt_s.len();
+            for i in 0..vt_s.len() {
+                let ve = vt_e.map(|c| c[i]).unwrap_or(vt_s[i] + 1);
+                if vt_min.is_some_and(|t| ve <= t) || vt_max.is_some_and(|t| vt_s[i] >= t) {
+                    continue;
+                }
+                let from_run = closes.tt_e(seg_id, i as u32);
+                let tt_e = if from_run != OPEN_END {
+                    from_run
+                } else {
+                    sidecar.tt_e(i as u32)
+                };
+                if !crate::believed_at(h.tt_s_at(i as u32)?, tt_e, as_of_tt) {
+                    continue;
+                }
+                out.rows.push(NodeScanRow {
+                    uid_id: uid_id[i],
+                    uid: self.uid_of(uid_id[i])?,
+                    vid: Id96 {
+                        hi: vid_hi[i],
+                        lo: vid_lo[i],
+                    }
+                    .to_hex(),
+                    label: strings.get(label[i])?.to_string(),
+                    vt_s: vt_s[i],
+                    vt_e: ve,
+                });
+            }
+        }
+        let staged = self.staged_nodes();
+        out.rows_examined += staged.len();
+        let staged_closes = self.staged_closes();
+        for r in staged {
+            if vt_min.is_some_and(|t| r.vt_e <= t) || vt_max.is_some_and(|t| r.vt_s >= t) {
+                continue;
+            }
+            let tt_e = staged_closes.get(&r.vid).copied().unwrap_or(OPEN_END);
+            if !crate::believed_at(r.tt_s, tt_e, as_of_tt) {
+                continue;
+            }
+            out.rows.push(NodeScanRow {
+                uid_id: r.uid_id,
+                uid: self.uid_of(r.uid_id)?,
+                vid: r.vid.to_hex(),
+                label: r.label.clone(),
+                vt_s: r.vt_s,
+                vt_e: r.vt_e,
+            });
+        }
+        out.rows_materialized = out.rows.len();
+        out.rows.sort_by(|a, b| (a.vt_s, &a.vid).cmp(&(b.vt_s, &b.vid)));
+        Ok(out)
+    }
+}
+
+/// Sentinel `seg_id` for a row staged in the open batch. It has no segment
+/// yet, so `VersionKey::row` indexes the staging vector instead.
+pub const STAGED_SEG: u64 = u64::MAX;
+
+/// Which beliefs a version page selects, always **as of** its `as_of`
+/// (`tgms/temporal/ops_versions.py`'s contract).
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum Belief {
+    /// Still believed then.
+    Current,
+    /// Already revised by then.
+    Superseded,
+    /// Everything written by then.
+    All,
+}
+
+impl Belief {
+    /// Does this mode admit a row whose belief had (or had not) ended by
+    /// `as_of`? `superseded` is `tt_e <= as_of`, and nothing else: a belief
+    /// that ended *after* `as_of` had not ended yet.
+    fn admits(self, superseded: bool) -> bool {
+        match self {
+            Belief::Current => !superseded,
+            Belief::Superseded => superseded,
+            Belief::All => true,
+        }
+    }
+}
+
+/// The predicates a version page selects by, evaluated as of `as_of`.
+#[derive(Clone, Copy, Debug)]
+pub struct VersionFilter<'a> {
+    /// The belief state to evaluate under. A version whose `tt_s` is after
+    /// this does not exist yet and appears in no mode.
+    pub as_of: i64,
+    /// Half-open valid-time window `[t_a, t_b)`; a row survives if its own
+    /// interval overlaps it.
+    pub t_a: i64,
+    pub t_b: i64,
+    pub belief: Belief,
+    /// Edges only — node versions have a label, not a relationship type.
+    pub rel_types: Option<&'a [String]>,
+}
+
+/// A surviving row's sort key and its physical address: 32 bytes, no strings.
+///
+/// The forecast budgeted 28 (`seg_id` as a `u32`); segment ids are `u64`
+/// throughout this engine, so the key is 32 with padding. At 10M surviving
+/// rows that is 320 MB against 280 MB, both far under the ~10.6 GB the
+/// materialized population cost.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub struct VersionKey {
+    pub tt_s: i64,
+    pub vid_hi: u64,
+    pub vid_lo: u32,
+    /// [`STAGED_SEG`] for a row in the open batch.
+    pub seg_id: u64,
+    pub row: u32,
+}
+
+/// One `version_history` node row: `StorageAdapter.VERSION_COLS["node"]` and
+/// nothing else. No `props` — the operator drops it, and a blob per row on a
+/// whole-store scan is what D-058 refused — and no `source` /
+/// `provenance_ref`, which D-069's projection pushdown reached DuckDB with
+/// and never reached native.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct NodeVersionRow {
+    pub vid: String,
+    pub uid: String,
+    pub label: String,
+    pub vt_s: i64,
+    pub vt_e: i64,
+    pub tt_s: i64,
+    /// Raw: the `OPEN_END` censoring against `as_of` is the operator's, and
+    /// stays there so the contract has one home.
+    pub tt_e: i64,
+}
+
+/// One `version_history` edge row: `StorageAdapter.VERSION_COLS["edge"]`.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct EdgeVersionRow {
+    pub vid: String,
+    pub eid: String,
+    pub src: String,
+    pub dst: String,
+    pub rel_type: String,
+    pub disc: String,
+    pub vt_s: i64,
+    pub vt_e: i64,
+    pub tt_s: i64,
+    pub tt_e: i64,
+}
+
+/// A page of version rows, of whichever kind was asked for.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub enum VersionRows {
+    Node(Vec<NodeVersionRow>),
+    Edge(Vec<EdgeVersionRow>),
+}
+
+impl VersionRows {
+    pub fn len(&self) -> usize {
+        match self {
+            VersionRows::Node(v) => v.len(),
+            VersionRows::Edge(v) => v.len(),
+        }
+    }
+
+    pub fn is_empty(&self) -> bool {
+        self.len() == 0
+    }
+}
+
+/// One believed node version, with the columns `nodes_columnar` projects.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct NodeScanRow {
+    pub uid_id: u32,
+    pub uid: String,
+    pub vid: String,
+    pub label: String,
+    pub vt_s: i64,
+    pub vt_e: i64,
+}
+
+/// The node scan's rows and its own account of what it did.
+///
+/// `rows_examined` counts every stored version the sweep visited;
+/// `rows_materialized` counts the ones it built. They were the same number
+/// before the filter moved below the materialization, which is the whole
+/// claim, so both are reported.
+#[derive(Clone, Debug, Default)]
+pub struct NodeScanOut {
+    pub rows: Vec<NodeScanRow>,
+    pub rows_examined: usize,
+    pub rows_materialized: usize,
 }
 
 /// Materialize either every row of a segment or just the selected ones.
@@ -1494,5 +2121,417 @@ mod tests {
         // …and addresses from another generation's segments are refused
         assert!(s.edge_idents_at(&[u64::MAX - 1], &[0]).is_err());
         assert!(s.edge_idents_at(&[cols.seg_id[0]], &[u32::MAX]).is_err());
+    }
+
+    // ------------------------------------------------------------------ //
+    // the bounded version page                                            //
+    // ------------------------------------------------------------------ //
+
+    /// A store the page has to work for: four batches (so four segments and
+    /// four transaction times), two relationship types, a closed version at
+    /// each of two different `tt_e`s, and node versions alongside.
+    fn versioned(name: &str) -> (PathBuf, NativeStore) {
+        let root = tmp_root(name);
+        let mut s = NativeStore::open(&root).unwrap();
+        // transaction time only advances, so the corrections are interleaved
+        // with the writes rather than appended: batch 0 is revised at 250,
+        // batch 1 at 350, and batches 2 and 3 land in between and after.
+        for (b, tt) in [(0u32, 100i64), (1, 200), (2, 300), (3, 400)] {
+            if let Some((tt_e, victim)) = match b {
+                2 => Some((250i64, 0u32)),
+                3 => Some((350, 1)),
+                _ => None,
+            } {
+                close_batch(&mut s, tt_e, victim);
+            }
+            s.begin(tt).unwrap();
+            let a = s.ensure_entity("n1", "Node").unwrap();
+            let c = s.ensure_entity("n2", "Node").unwrap();
+            for i in 0..5u32 {
+                // valid times interleave across batches, so a compaction
+                // re-sort shatters the tt_s runs (D-149)
+                let vt = (i * 4 + b) as i64;
+                let disc = format!("#{b}-{i}");
+                let rel = if i.is_multiple_of(2) { "R" } else { "S" };
+                let eid = edge_eid("n1", "n2", rel, &disc);
+                s.stage_edge(EdgeRow {
+                    vid: version_vid(&eid.to_hex(), tt, vt),
+                    src_id: a,
+                    dst_id: c,
+                    rel_type: rel.into(),
+                    disc,
+                    vt_s: vt,
+                    vt_e: vt + 2,
+                    tt_s: tt,
+                    props: format!(r#"{{"i":{i}}}"#),
+                    source: "ingest".into(),
+                    provenance_ref: None,
+                })
+                .unwrap();
+                s.stage_node(NodeRow {
+                    vid: version_vid(&format!("n{b}-{i}"), tt, vt),
+                    uid_id: if i.is_multiple_of(2) { a } else { c },
+                    label: "Node".into(),
+                    vt_s: vt,
+                    vt_e: vt + 2,
+                    tt_s: tt,
+                    props: "{}".into(),
+                    source: "ingest".into(),
+                    provenance_ref: None,
+                })
+                .unwrap();
+            }
+            s.commit(EventLogRef::default()).unwrap();
+        }
+        (root, s)
+    }
+
+    /// Stop believing two edge versions and two node versions of one batch,
+    /// as of `tt_e` — so `belief` and `as_of` have something to disagree
+    /// about.
+    fn close_batch(s: &mut NativeStore, tt_e: i64, batch: u32) {
+        let victims: Vec<(RowKind, Id96)> = s
+            .all_edge_versions()
+            .unwrap()
+            .into_iter()
+            .filter(|r| r.disc.starts_with(&format!("#{batch}-")))
+            .take(2)
+            .map(|r| (RowKind::Edge, Id96::from_hex(&r.vid).unwrap()))
+            .chain(
+                s.all_node_versions()
+                    .unwrap()
+                    .into_iter()
+                    .filter(|r| r.vt_s % 4 == batch as i64)
+                    .take(2)
+                    .map(|r| (RowKind::Node, Id96::from_hex(&r.vid).unwrap())),
+            )
+            .collect();
+        assert_eq!(victims.len(), 4, "fixture: batch {batch} has rows to close");
+        s.begin(tt_e).unwrap();
+        for (kind, vid) in victims {
+            s.close_version(kind, vid, tt_e).unwrap();
+        }
+        s.commit(EventLogRef::default()).unwrap();
+    }
+
+    /// `version_history`'s mask and ordering, spelled out over the fully
+    /// materialized listing — the path `version_page` replaces, kept here as
+    /// the oracle it has to agree with. This is the frozen digest's
+    /// arithmetic (`tgms/temporal/ops_versions.py`), in Rust.
+    fn reference_edges(s: &NativeStore, f: &VersionFilter<'_>) -> Vec<EdgeVersionOut> {
+        let mut rows: Vec<EdgeVersionOut> = s
+            .all_edge_versions()
+            .unwrap()
+            .into_iter()
+            .filter(|r| r.tt_s <= f.as_of && r.vt_s < f.t_b && f.t_a < r.vt_e)
+            .filter(|r| f.belief.admits(r.tt_e <= f.as_of))
+            .filter(|r| f.rel_types.is_none_or(|ts| ts.contains(&r.rel_type)))
+            .collect();
+        rows.sort_by(|a, b| (a.tt_s, &a.vid).cmp(&(b.tt_s, &b.vid)));
+        rows
+    }
+
+    fn reference_nodes(s: &NativeStore, f: &VersionFilter<'_>) -> Vec<NodeVersionOut> {
+        let mut rows: Vec<NodeVersionOut> = s
+            .all_node_versions()
+            .unwrap()
+            .into_iter()
+            .filter(|r| r.tt_s <= f.as_of && r.vt_s < f.t_b && f.t_a < r.vt_e)
+            .filter(|r| f.belief.admits(r.tt_e <= f.as_of))
+            .collect();
+        rows.sort_by(|a, b| (a.tt_s, &a.vid).cmp(&(b.tt_s, &b.vid)));
+        rows
+    }
+
+    fn edges_of(rows: VersionRows) -> Vec<EdgeVersionRow> {
+        match rows {
+            VersionRows::Edge(v) => v,
+            VersionRows::Node(_) => panic!("asked for edges, got nodes"),
+        }
+    }
+
+    fn nodes_of(rows: VersionRows) -> Vec<NodeVersionRow> {
+        match rows {
+            VersionRows::Node(v) => v,
+            VersionRows::Edge(_) => panic!("asked for nodes, got edges"),
+        }
+    }
+
+    /// Every combination of belief mode, `as_of` and window the fixture can
+    /// tell apart, against the listing-based oracle. This is the test that
+    /// stands between the bounded path and the frozen digest
+    /// `84e8853c…be78fbfd`: if the two disagree on one row or one position,
+    /// the digest moves.
+    #[test]
+    fn version_page_agrees_with_the_materialized_listing() {
+        let (_root, s) = versioned("page-oracle");
+        let rel_r = vec!["R".to_string()];
+        let rel_rs = vec!["R".to_string(), "S".to_string()];
+        let rel_none = vec!["T".to_string()];
+        for as_of in [50i64, 150, 250, 300, 350, OPEN_END] {
+            for belief in [Belief::Current, Belief::Superseded, Belief::All] {
+                for (t_a, t_b) in [(0i64, 64i64), (4, 12), (100, 200), (-5, 3)] {
+                    for rel_types in [None, Some(&rel_r), Some(&rel_rs), Some(&rel_none)] {
+                        let f = VersionFilter {
+                            as_of,
+                            t_a,
+                            t_b,
+                            belief,
+                            rel_types: rel_types.map(|v| v.as_slice()),
+                        };
+                        let want = reference_edges(&s, &f);
+                        let (got, total) = s.version_page(RowKind::Edge, &f, 0, 10_000).unwrap();
+                        let got = edges_of(got);
+                        assert_eq!(
+                            total,
+                            want.len(),
+                            "rows_total must be exact: {f:?}"
+                        );
+                        assert_eq!(got.len(), want.len(), "page length: {f:?}");
+                        for (g, w) in got.iter().zip(&want) {
+                            assert_eq!(g.vid, w.vid, "order or membership diverged: {f:?}");
+                            assert_eq!(g.eid, w.eid);
+                            assert_eq!((g.src.as_str(), g.dst.as_str()), (w.src.as_str(), w.dst.as_str()));
+                            assert_eq!(g.rel_type, w.rel_type);
+                            assert_eq!(g.disc, w.disc);
+                            assert_eq!((g.vt_s, g.vt_e, g.tt_s, g.tt_e), (w.vt_s, w.vt_e, w.tt_s, w.tt_e));
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    #[test]
+    fn node_version_page_agrees_with_the_materialized_listing() {
+        let (_root, s) = versioned("page-oracle-nodes");
+        for as_of in [50i64, 250, 350, OPEN_END] {
+            for belief in [Belief::Current, Belief::Superseded, Belief::All] {
+                let f = VersionFilter {
+                    as_of,
+                    t_a: 0,
+                    t_b: 64,
+                    belief,
+                    rel_types: None,
+                };
+                let want = reference_nodes(&s, &f);
+                let (got, total) = s.version_page(RowKind::Node, &f, 0, 10_000).unwrap();
+                let got = nodes_of(got);
+                assert_eq!(total, want.len(), "{f:?}");
+                for (g, w) in got.iter().zip(&want) {
+                    assert_eq!((g.vid.as_str(), g.uid.as_str(), g.label.as_str()),
+                               (w.vid.as_str(), w.uid.as_str(), w.label.as_str()), "{f:?}");
+                    assert_eq!((g.vt_s, g.vt_e, g.tt_s, g.tt_e), (w.vt_s, w.vt_e, w.tt_s, w.tt_e));
+                }
+            }
+        }
+    }
+
+    /// Paging is a slice of one ordering, not a re-query: consecutive pages
+    /// concatenate to the whole, and `rows_total` never moves.
+    #[test]
+    fn version_page_slices_one_ordering() {
+        let (_root, s) = versioned("page-slices");
+        let f = VersionFilter {
+            as_of: OPEN_END,
+            t_a: 0,
+            t_b: 64,
+            belief: Belief::All,
+            rel_types: None,
+        };
+        let (all, total) = s.version_page(RowKind::Edge, &f, 0, 10_000).unwrap();
+        let all = edges_of(all);
+        assert_eq!(all.len(), 20, "the fixture writes 20 edge versions");
+        assert_eq!(total, 20);
+        let mut walked: Vec<String> = Vec::new();
+        for offset in (0..24).step_by(3) {
+            let (page, t) = s.version_page(RowKind::Edge, &f, offset, 3).unwrap();
+            assert_eq!(t, total, "rows_total is a property of the filter, not the page");
+            walked.extend(edges_of(page).into_iter().map(|r| r.vid));
+        }
+        assert_eq!(walked, all.iter().map(|r| r.vid.clone()).collect::<Vec<_>>());
+        // an offset past the end is an empty page, not an error
+        let (past, t) = s.version_page(RowKind::Edge, &f, 10_000, 50).unwrap();
+        assert!(past.is_empty());
+        assert_eq!(t, total);
+    }
+
+    /// `(tt_s, vid)` — the belief log's own order, not valid time. The
+    /// fixture's valid times deliberately disagree with its transaction
+    /// times, so a path that sorted by `vt_s` would fail here.
+    #[test]
+    fn version_keys_order_by_transaction_time_then_vid() {
+        let (_root, s) = versioned("page-order");
+        let f = VersionFilter {
+            as_of: OPEN_END,
+            t_a: 0,
+            t_b: 64,
+            belief: Belief::All,
+            rel_types: None,
+        };
+        let rows = edges_of(s.version_page(RowKind::Edge, &f, 0, 10_000).unwrap().0);
+        let keys: Vec<(i64, &str)> = rows.iter().map(|r| (r.tt_s, r.vid.as_str())).collect();
+        let mut sorted = keys.clone();
+        sorted.sort();
+        assert_eq!(keys, sorted, "rows are not in (tt_s, vid) order");
+        assert_ne!(
+            rows.iter().map(|r| r.vt_s).collect::<Vec<_>>(),
+            {
+                let mut v: Vec<i64> = rows.iter().map(|r| r.vt_s).collect();
+                v.sort();
+                v
+            },
+            "fixture sanity: (tt_s, vid) order must differ from valid-time order"
+        );
+    }
+
+    /// A batch reads its own writes: `all_*_versions` unions the open
+    /// batch's staged rows and the bounded path has to as well.
+    #[test]
+    fn version_page_sees_the_open_batch() {
+        let (_root, mut s) = versioned("page-staged");
+        let f = VersionFilter {
+            as_of: OPEN_END,
+            t_a: 0,
+            t_b: 1_000,
+            belief: Belief::All,
+            rel_types: None,
+        };
+        let before = s.version_page(RowKind::Edge, &f, 0, 10_000).unwrap().1;
+        s.begin(500).unwrap();
+        let a = s.ensure_entity("n1", "Node").unwrap();
+        let c = s.ensure_entity("n2", "Node").unwrap();
+        let eid = edge_eid("n1", "n2", "R", "#staged");
+        s.stage_edge(EdgeRow {
+            vid: version_vid(&eid.to_hex(), 500, 900),
+            src_id: a,
+            dst_id: c,
+            rel_type: "R".into(),
+            disc: "#staged".into(),
+            vt_s: 900,
+            vt_e: 901,
+            tt_s: 500,
+            props: "{}".into(),
+            source: "ingest".into(),
+            provenance_ref: None,
+        })
+        .unwrap();
+
+        let (rows, total) = s.version_page(RowKind::Edge, &f, 0, 10_000).unwrap();
+        assert_eq!(total, before + 1, "the staged row is not in the page");
+        let rows = edges_of(rows);
+        let staged = rows.last().expect("a non-empty page");
+        assert_eq!(staged.disc, "#staged", "tt_s 500 is the highest, so it sorts last");
+        assert_eq!((staged.vt_s, staged.tt_s, staged.tt_e), (900, 500, OPEN_END));
+        assert_eq!(staged.eid, eid.to_hex());
+        // and it agrees with the listing, staged rows included
+        assert_eq!(
+            rows.iter().map(|r| r.vid.clone()).collect::<Vec<_>>(),
+            reference_edges(&s, &f).into_iter().map(|r| r.vid).collect::<Vec<_>>()
+        );
+    }
+
+    /// The whole point: the page's cost is the page's, not the store's. The
+    /// second pass may only touch the rows the page names.
+    #[test]
+    fn version_rows_at_materializes_only_the_addresses_it_is_given() {
+        let (_root, s) = versioned("page-narrow");
+        let f = VersionFilter {
+            as_of: OPEN_END,
+            t_a: 0,
+            t_b: 64,
+            belief: Belief::All,
+            rel_types: None,
+        };
+        let mut keys = s.version_keys(RowKind::Edge, &f).unwrap();
+        assert_eq!(keys.len(), 20);
+        keys.sort_by_key(|k| (k.tt_s, k.vid_hi, k.vid_lo));
+        let rows = edges_of(s.version_rows_at(RowKind::Edge, &keys[3..5]).unwrap());
+        assert_eq!(rows.len(), 2, "two addresses in, two rows out");
+        for (r, k) in rows.iter().zip(&keys[3..5]) {
+            assert_eq!(r.vid, Id96 { hi: k.vid_hi, lo: k.vid_lo }.to_hex());
+            assert_eq!(r.tt_s, k.tt_s);
+        }
+        // an empty page is an empty result, not a full scan
+        assert!(s.version_rows_at(RowKind::Edge, &[]).unwrap().is_empty());
+    }
+
+    /// A filter that selects nothing must still count nothing — and must not
+    /// have built a row to find that out.
+    #[test]
+    fn version_page_over_an_empty_selection() {
+        let (_root, s) = versioned("page-empty");
+        let f = VersionFilter {
+            as_of: 0, // before anything was written
+            t_a: 0,
+            t_b: 64,
+            belief: Belief::All,
+            rel_types: None,
+        };
+        let (rows, total) = s.version_page(RowKind::Edge, &f, 0, 50).unwrap();
+        assert!(rows.is_empty());
+        assert_eq!(total, 0);
+    }
+
+    // --- the second site: the node scan ------------------------------- //
+
+    #[test]
+    fn scan_node_versions_agrees_with_the_filtered_listing() {
+        let (_root, s) = versioned("node-scan-oracle");
+        for as_of in [50i64, 250, 300, OPEN_END] {
+            for (vt_min, vt_max) in [
+                (None, None),
+                (Some(0i64), Some(4i64)),
+                (Some(6), None),
+                (None, Some(10)),
+                (Some(1_000), Some(2_000)),
+            ] {
+                let got = s.scan_node_versions(as_of, vt_min, vt_max).unwrap();
+                let mut want: Vec<NodeVersionOut> = s
+                    .all_node_versions()
+                    .unwrap()
+                    .into_iter()
+                    .filter(|r| crate::believed_at(r.tt_s, r.tt_e, as_of))
+                    .filter(|r| vt_min.is_none_or(|t| r.vt_e > t))
+                    .filter(|r| vt_max.is_none_or(|t| r.vt_s < t))
+                    .collect();
+                want.sort_by(|a, b| (a.vt_s, &a.vid).cmp(&(b.vt_s, &b.vid)));
+                let ctx = format!("as_of={as_of} vt=[{vt_min:?},{vt_max:?})");
+                assert_eq!(got.rows.len(), want.len(), "{ctx}");
+                for (g, w) in got.rows.iter().zip(&want) {
+                    assert_eq!(g.vid, w.vid, "{ctx}");
+                    assert_eq!(g.uid, w.uid);
+                    assert_eq!(g.label, w.label);
+                    assert_eq!((g.vt_s, g.vt_e), (w.vt_s, w.vt_e));
+                    // the dense id read off the column is the one the uid
+                    // resolves to; the old path recovered it in reverse
+                    assert_eq!(s.dict().dense_id(&w.uid), Some(g.uid_id), "{ctx}");
+                }
+            }
+        }
+    }
+
+    /// D-149's site. The sweep still visits every stored version — node
+    /// segments carry no belief index — but a narrow window must not *build*
+    /// them.
+    #[test]
+    fn scan_node_versions_builds_only_the_survivors() {
+        let (_root, s) = versioned("node-scan-narrow");
+        let all = s.scan_node_versions(OPEN_END, None, None).unwrap();
+        assert_eq!(all.rows_examined, 20, "the fixture writes 20 node versions");
+
+        let narrow = s.scan_node_versions(OPEN_END, Some(0), Some(2)).unwrap();
+        assert_eq!(
+            narrow.rows_examined, 20,
+            "the sweep visits every row: there is nothing to prune by"
+        );
+        assert!(
+            narrow.rows_materialized < all.rows_materialized,
+            "a narrow window materialized {} of {} rows — the filter is still \
+             above the materialization (D-149)",
+            narrow.rows_materialized,
+            all.rows_materialized
+        );
+        assert_eq!(narrow.rows_materialized, narrow.rows.len());
     }
 }
