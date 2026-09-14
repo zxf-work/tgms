@@ -360,9 +360,29 @@ def record_to_ops(record: dict[str, Any]) -> list[Op]:
         ops.append(make_op("assert_node", uid=pkg_uid, label="Package",
                            props={"ecosystem": eco, "name": name},
                            vt_s=published, vt_e=OPEN_END, source="osv", provenance_ref=None))
-        ops.append(make_op("assert_edge", src=adv_uid, dst=pkg_uid, rel_type="affects",
-                           props={}, vt_s=published, vt_e=affects_vt_e, disc="",
-                           source="osv", provenance_ref=None))
+        # A handful of real GHSA records (6 of 32,912 in the 2026-09-13
+        # bootstrap corpus, all dated 2021-02-24) carry `withdrawn ==
+        # published` to the microsecond -- duplicate/superseded advisories
+        # withdrawn at the instant they were published. `affects_vt_e` then
+        # equals `published`, and `Interval` (`tgms/core/model.py:43-51`) is
+        # half-open and requires `start < end` strictly, so asserting
+        # `[published, affects_vt_e)` would raise `InvalidArgError` on a
+        # zero-width (or, if a feed ever reports `withdrawn < published`,
+        # negative-width) interval. Semantically this package was never
+        # validly affected for any positive duration, so the edge is simply
+        # never asserted -- the Ecosystem/Package/Range nodes above and below
+        # are unaffected, since they carry no narrowed interval. This is the
+        # same case `diff_to_ops`'s live withdrawal-transition `retract`
+        # already tolerates without a fix: `StorageAdapter._retract`
+        # (`tgms/storage/base.py:398-422`) filters replacement fragments on
+        # `v.vt_s < t`, so a `retract(t=vt_s)` supersedes the open version
+        # and inserts no zero-width replacement -- it never calls
+        # `_interval()` at all. `record_to_ops`'s direct `assert_edge` has no
+        # such filter, which is what made this the crashing path.
+        if affects_vt_e > published:
+            ops.append(make_op("assert_edge", src=adv_uid, dst=pkg_uid, rel_type="affects",
+                               props={}, vt_s=published, vt_e=affects_vt_e, disc="",
+                               source="osv", provenance_ref=None))
         for ordinal, r in enumerate(ranges):
             range_uid = osv_uid("R", record["id"], pkg_uid, str(ordinal))
             events = list(r.get("events") or [])

@@ -190,6 +190,49 @@ def test_already_withdrawn_at_bootstrap_bounds_affects_not_asserted_open() -> No
     assert not [op for op in ops if op["op"] == "assert_edge" and op["rel_type"] == "introduced_in"]
 
 
+def test_withdrawn_at_publication_instant_never_asserts_affects_edge() -> None:
+    """Real-world edge case hit bootstrapping the 2026-09-13 export (F3
+    deploy): 6 of 32,912 advisories -- all GHSA duplicates dated
+    2021-02-24 -- carry `withdrawn == published` to the microsecond, so
+    `affects_vt_e` (`record_to_ops`) equals `published` exactly.
+    `Interval` (`tgms/core/model.py:43-51`) is half-open and requires
+    `start < end` strictly, so asserting `[published, affects_vt_e)`
+    raised `InvalidArgError: invalid interval: [t, t)` and crashed the
+    real bootstrap partway through (generation 44, 87,395 rows written).
+    The package was never validly affected for any positive duration, so
+    `record_to_ops` must skip the `affects` edge entirely rather than
+    assert a zero-width one -- the Ecosystem/Package/Range nodes, which
+    carry no narrowed interval, are unaffected."""
+    record = {
+        "id": "GHSA-0000-0000-fake",
+        "published": "2021-02-24T19:46:35Z",
+        "withdrawn": "2021-02-24T19:46:35Z",
+        "summary": "duplicate advisory withdrawn at the instant of publication",
+        "affected": [{
+            "package": {"ecosystem": "PyPI", "name": "some-fake-pkg"},
+            "ranges": [{"type": "ECOSYSTEM", "events": [{"introduced": "0"}]}],
+        }],
+    }
+    ops = record_to_ops(record)
+    affects = [op for op in ops if op["op"] == "assert_edge" and op["rel_type"] == "affects"]
+    assert affects == []
+    pkg_nodes = [op for op in ops if op["op"] == "assert_node" and op["label"] == "Package"]
+    assert len(pkg_nodes) == 1
+    range_nodes = [op for op in ops if op["op"] == "assert_node" and op["label"] == "Range"]
+    assert len(range_nodes) == 1
+
+    # the crash was at the store layer, not just the pure mapping -- confirm
+    # the resulting ops actually apply cleanly.
+    store_dir = Path(tempfile.mkdtemp())
+    store = tgms.open(store_dir, backend=BACKEND)
+    try:
+        store._write(ops)
+        health = store.adapter.verify()
+        assert health["healthy"] is True
+    finally:
+        store.close()
+
+
 def test_git_range_multi_event_all_concrete() -> None:
     record = _bootstrap_record("OSV-2021-1809")
     ops = record_to_ops(record)
