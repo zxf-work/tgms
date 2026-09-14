@@ -70,6 +70,20 @@
 #    `--exclude=itiger04` added: every quota failure traced to that node;
 #    this job's own GPU node (itiger07 on both prior submissions) was
 #    unaffected.
+#  - 211890: the deployed script still had the old hard /project abort --
+#    a deployment-sequencing bug (a `git checkout` on the cluster
+#    worktree, done after the earlier scp, silently reverted the
+#    just-scp'd hardened script back to the git-committed version that
+#    predates it). Fixed by re-deploying the correct file (sha256-
+#    verified) with nothing else changed.
+#  - 211978: ran correctly but stamped `RUN_STARTED commit=92c63b9`,
+#    three commits behind the 64817fa HEAD the code actually ran from --
+#    `TGMS_COMMIT` was never re-exported after the worktree advanced, so
+#    the hardcoded fallback below (now removed) silently won. `git
+#    rev-parse HEAD` and a grep for the DuckDB pragmas both confirmed the
+#    RUNNING CODE was correct; only the record's own provenance stamp was
+#    wrong. `TGMS_COMMIT` is now a required, unfallback-ed input (see
+#    below) precisely so this fails loudly instead of silently again.
 # 94/94 `ours` + 94/94 `b5` + 65/94 `b6e` rows for seed 0 (0 errors) were
 # already cached under <out_dir>/results/ before 211581 died; a resubmit
 # against the same out_dir resumes from there via the cache check in
@@ -107,7 +121,19 @@ VLLM_ENV="${VLLM_ENV:-/project/xzhang12/vllm-env}"
 VENV_PY="$CHECKOUT/.venv/bin/python"
 CFG="${TGMS_CFG:-configs/matrix-d160-collegemsg-4arm.yaml}"
 MODEL="${TGMS_MODEL:-Qwen/Qwen2.5-14B-Instruct-AWQ}"
-export TGMS_COMMIT="${TGMS_COMMIT:-92c63b9e4fccc6fbffa6d98f0666efd08e483b7a}"
+# No hardcoded fallback: a stale default silently mis-stamps the record's
+# provenance the moment the checkout advances past whatever sha was
+# baked in here at authoring time (this happened once: 211978's
+# RUN_STARTED line stamped 92c63b9, three commits behind the 64817fa
+# HEAD that job's own code was actually built from -- caught only
+# because it was cross-checked by hand). Compute nodes have no `git`
+# binary (the shim below only echoes this variable back), so the ONLY
+# valid check is at submission time, on the login node, where real git
+# exists: export TGMS_COMMIT="$(git -C "$TGMS_REPO" rev-parse HEAD)"
+# immediately before every `sbatch`, in the same shell. A missing value
+# aborts here rather than silently stamping something wrong.
+: "${TGMS_COMMIT:?export TGMS_COMMIT=\$(git -C <checkout> rev-parse HEAD) before sbatch -- see the comment above}"
+export TGMS_COMMIT
 FORCE_FLAG=()
 [ -n "${TGMS_FORCE:-}" ] && FORCE_FLAG=(--force "$TGMS_FORCE")
 
