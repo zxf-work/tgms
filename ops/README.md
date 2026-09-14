@@ -6,7 +6,7 @@ hypothetical or forecast failure modes. An entry is added once a defect has
 actually been observed (by a test, a measurement harness, or in the course
 of development), diagnosed to a root cause, and fixed. The ledger exists so
 that "what has actually gone wrong, and how was it caught" is answerable by
-reading one file instead of grepping `docs/DECISIONS.md` (internal) for
+reading one file instead of grepping the internal decision ledger for
 `D-` numbers.
 
 This is a record, not a gate: nothing in CI reads this file yet, and adding
@@ -29,7 +29,7 @@ case line 1. Each object has exactly these required fields:
 | `root_cause` | string | The mechanism, once diagnosed — not just "X was slow/wrong" but why. |
 | `fix_commit` | string | Full git commit SHA that landed the fix. |
 | `regression_test` | string | Path to the test that would fail if the defect came back. |
-| `decision_ref` | string | The `D-NNN` decision record (internal `docs/DECISIONS.md`) that ratified the diagnosis and fix, if one exists. |
+| `decision_ref` | string | The `D-NNN` entry in the internal decision ledger that ratified the diagnosis and fix, if one exists. |
 
 `additionalProperties` beyond these nine is allowed (a `notes` field, a
 `measured` block, etc.) but every line must carry all nine required fields
