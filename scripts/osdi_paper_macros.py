@@ -31,13 +31,26 @@ skeleton --
       this file's comments; every number below is recomputed from the
       m5-v1 JSON files' own rows)
   C8  benchmarks/faults-v1/fault-matrix-campaign-2026-09-{13,15-d160}.json
+  C7  (partial) benchmarks/storm-v1/storm-campaign-dag-{,v2-,v3-}2026-09.json
+      (+ each one's -rows.jsonl) -- the DAG-phase v1/v2/v3 grids, all 40/40
+      cells each -- and benchmarks/storm-v1/storm-r18-probe-2026-09.json
+      (+ -rows.jsonl) -- the N=10,000 c1 seed-0 R-18 characterization probe,
+      5/5 batches, not wall-capped. The main correction-storm cell grid
+      (addendum-1's 36-cell grid, ``storm-campaign-2026-09.json``) that the
+      rest of C7's claims (P5/P6 end-to-end speedup at N=1,000, the merged
+      N=1,000 c1 seed-0 cell) depend on has **not** landed -- 12/36 cells
+      complete, 24 blocked on an iTiger disk-quota incident (see
+      benchmarks/storm-v1/README.md) -- so those quantities stay PENDING
+      below (``osdiStormCells``/``osdiStormFalseFresh``/``osdiTtfSpeedup``/
+      ``osdiStormSpeedupN1k``/``osdiStormAvoidedN1k``) even though the DAG
+      phase and the R-18 probe are both fully landed and scored here.
 
-Claims C2 (corruption-detection campaign), C7 (storm-v1 time-to-fresh),
-C9 (LDBC generality, four axes -- the Neo4j reference run is pending), and
-C10 (live OSV workload) have no landed record yet; their macros are
-emitted as PENDING stubs (see ``Macros.add_pending``) that raise a real
-LaTeX error (``\\errmessage``) if the paper ever expands one, rather than
-silently emitting a placeholder number.
+Claims C2 (corruption-detection campaign), C9 (LDBC generality, four axes
+-- the Neo4j reference run is pending), and C10 (live OSV workload) have
+no landed record yet; their macros, plus the still-unlanded slice of C7
+above, are emitted as PENDING stubs (see ``Macros.add_pending``) that
+raise a real LaTeX error (``\\errmessage``) if the paper ever expands one,
+rather than silently emitting a placeholder number.
 
 Usage:  $HOME/.venvs/tgms/bin/python scripts/osdi_paper_macros.py [--check]
 
@@ -81,6 +94,16 @@ M5_PROP_TWO = [
 FAULTS_PRE = ROOT / "benchmarks" / "faults-v1" / "fault-matrix-campaign-2026-09-13.json"
 FAULTS_POST = ROOT / "benchmarks" / "faults-v1" / "fault-matrix-campaign-2026-09-15-d160.json"
 
+STORM_V1 = ROOT / "benchmarks" / "storm-v1"
+DAG_V1 = STORM_V1 / "storm-campaign-dag-2026-09.json"
+DAG_V1_ROWS = STORM_V1 / "storm-campaign-dag-2026-09-rows.jsonl"
+DAG_V2 = STORM_V1 / "storm-campaign-dag-v2-2026-09.json"
+DAG_V2_ROWS = STORM_V1 / "storm-campaign-dag-v2-2026-09-rows.jsonl"
+DAG_V3 = STORM_V1 / "storm-campaign-dag-v3-2026-09.json"
+DAG_V3_ROWS = STORM_V1 / "storm-campaign-dag-v3-2026-09-rows.jsonl"
+R18_PROBE = STORM_V1 / "storm-r18-probe-2026-09.json"
+R18_PROBE_ROWS = STORM_V1 / "storm-r18-probe-2026-09-rows.jsonl"
+
 
 # --------------------------------------------------------------------------
 # verification helpers (copied from scripts/tgir_paper_macros.py)
@@ -106,6 +129,10 @@ def close(got: float, want: float, tol: float, what: str):
     require(abs(got - want) <= tol,
             f"{what}: derived {got!r} not within {tol} of {want!r}")
     return got
+
+
+def load_jsonl(path: Path) -> list[dict]:
+    return [json.loads(line) for line in path.read_text(encoding="utf-8").splitlines() if line.strip()]
 
 
 def relpath(p: Path) -> str:
@@ -621,6 +648,256 @@ def compute_c8(m: Macros) -> None:
 
 
 # --------------------------------------------------------------------------
+# C7 (partial) --- correction-storm DAG phase, v1/v2/v3 (40 cells each)
+# --------------------------------------------------------------------------
+
+def compute_c7_dag(m: Macros) -> None:
+    v1 = json.loads(DAG_V1.read_text(encoding="utf-8"))
+    v2 = json.loads(DAG_V2.read_text(encoding="utf-8"))
+    v3 = json.loads(DAG_V3.read_text(encoding="utf-8"))
+    v1_rows = load_jsonl(DAG_V1_ROWS)
+    v2_rows = load_jsonl(DAG_V2_ROWS)
+    v3_rows = load_jsonl(DAG_V3_ROWS)
+
+    for name, d, rows in (("v1", v1, v1_rows), ("v2", v2, v2_rows), ("v3", v3, v3_rows)):
+        eq(d["total_tasks"], 40, f"DAG {name}: total_tasks")
+        eq(len(d["per_cell"]), 40, f"DAG {name}: per_cell row count")
+        eq(len(rows), 40, f"DAG {name}: rows.jsonl line count")
+
+    eq(len({v1["total_tasks"], v2["total_tasks"], v3["total_tasks"]}), 1,
+       "DAG: v1/v2/v3 all run the same 40-cell grid")
+    dag_cells = 40
+
+    def by_task(per_cell):
+        return {c["task_id"]: c for c in per_cell}
+
+    def rows_by_task(rows):
+        return {r["_task_id"]: r for r in rows}
+
+    v1c, v2c, v3c = by_task(v1["per_cell"]), by_task(v2["per_cell"]), by_task(v3["per_cell"])
+
+    # Cross-check every per_cell summary field against the fuller per-row
+    # dag.cascade block in the companion -rows.jsonl file -- two different
+    # serializations of the same underlying measurement.
+    for name, cells, rows in (("v1", v1c, v1_rows), ("v2", v2c, v2_rows), ("v3", v3c, v3_rows)):
+        for r in rows:
+            c = cells[r["_task_id"]]
+            cascade = r["dag"]["cascade"]
+            eq(cascade["false_safe_count"], c["false_safe_count"],
+               f"DAG {name} task {c['task_id']}: rows.jsonl dag.cascade.false_safe_count "
+               "matches per_cell")
+            eq(cascade["nodes_visited"], c["nodes_visited"],
+               f"DAG {name} task {c['task_id']}: rows.jsonl dag.cascade.nodes_visited "
+               "matches per_cell")
+            eq(cascade["quiescent"], c["quiescent"],
+               f"DAG {name} task {c['task_id']}: rows.jsonl dag.cascade.quiescent matches per_cell")
+
+    v1_fs_cells = [c for c in v1["per_cell"] if c["false_safe_count"] > 0]
+    eq(len(v1_fs_cells), 20, "DAG v1 frozen: false-safe cell count")
+    require(all(c["false_safe_count"] == 3 for c in v1_fs_cells),
+            "DAG v1: every false-safe cell reports exactly 3 false-safes")
+    v1_false_safe_per_cell = 3
+
+    v2_fs_cells = sum(1 for c in v2["per_cell"] if c["false_safe_count"] > 0)
+    eq(v2_fs_cells, 0, "DAG v2 frozen: false-safe cell count")
+    v3_fs_cells = sum(1 for c in v3["per_cell"] if c["false_safe_count"] > 0)
+    eq(v3_fs_cells, 0, "DAG v3 frozen: false-safe cell count")
+
+    # G-S2 gate cross-check: v1 fails it (some cells false-safe), v2/v3 pass.
+    eq(v1["gates"]["g_s2_false_safe_zero"], False, "DAG v1: G-S2 gate fails as expected")
+    eq(len(v1["gates"]["g_s2_failing_cells"]), len(v1_fs_cells),
+       "DAG v1: gate's failing-cell count matches recomputed false-safe cell count")
+    for name, d in (("v2", v2), ("v3", v3)):
+        eq(d["gates"]["g_s2_false_safe_zero"], True, f"DAG {name}: G-S2 gate passes")
+        eq(d["gates"]["g_s2_failing_cells"], [], f"DAG {name}: no G-S2 failing cells")
+
+    for seed in (0, 1):
+        n = sum(1 for c in v1["per_cell"] if c["seed"] == seed)
+        eq(n, 20, f"DAG: {n} cells at seed {seed} (expected 20 -- half the 40-cell grid)")
+
+    def extra_visits(other_cells, seed):
+        diffs = {other_cells[tid]["nodes_visited"] - v1c[tid]["nodes_visited"]
+                 for tid in v1c if v1c[tid]["seed"] == seed}
+        require(len(diffs) == 1,
+                f"DAG: nodes_visited delta vs v1 is not constant across seed-{seed} cells "
+                f"(got {sorted(diffs)})")
+        return next(iter(diffs))
+
+    v2_extra_s0 = extra_visits(v2c, 0)
+    v2_extra_s1 = extra_visits(v2c, 1)
+    v3_extra_s0 = extra_visits(v3c, 0)
+    v3_extra_s1 = extra_visits(v3c, 1)
+
+    eq(v2_extra_s0, 61, "DAG v2 frozen: nodes_visited delta vs v1, seed 0")
+    eq(v2_extra_s1, 62, "DAG v2 frozen: nodes_visited delta vs v1, seed 1")
+    eq(v3_extra_s0, 15, "DAG v3 frozen: nodes_visited delta vs v1, seed 0")
+    eq(v3_extra_s1, 11, "DAG v3 frozen: nodes_visited delta vs v1, seed 1")
+
+    # v3-only: the D-161 rollout's narrowing_coverage block (absent from v1/v2).
+    require(all("narrowing_coverage" not in r["summary"] for r in v1_rows + v2_rows),
+            "DAG v1/v2: narrowing_coverage is a v3-only (post-D-161-rollout) field")
+    require(all("narrowing_coverage" in r["summary"] for r in v3_rows),
+            "DAG v3: every cell carries a narrowing_coverage block")
+    all_top_term_total = sum(r["summary"]["narrowing_coverage"]["n_all_top_term"] for r in v3_rows)
+    eq(all_top_term_total, 0, "DAG v3 frozen: n_all_top_term summed over all 40 cells")
+
+    def tgms_false_fresh(rows):
+        return sum(r["summary"]["arms"][arm]["false_fresh"]
+                   for r in rows for arm in ("tgms-L0", "tgms-L1"))
+
+    ff_v1, ff_v2, ff_v3 = (tgms_false_fresh(v1_rows), tgms_false_fresh(v2_rows),
+                           tgms_false_fresh(v3_rows))
+    eq(ff_v1, 0, "DAG v1 frozen: tgms-L0+tgms-L1 false-fresh total")
+    eq(ff_v2, 0, "DAG v2 frozen: tgms-L0+tgms-L1 false-fresh total")
+    eq(ff_v3, 0, "DAG v3 frozen: tgms-L0+tgms-L1 false-fresh total")
+    ff_total = ff_v1 + ff_v2 + ff_v3
+    eq(ff_total, 0, "DAG v1+v2+v3 frozen: tgms-L0+tgms-L1 false-fresh total")
+
+    m.add("osdiDagCells", dag_cells,
+          f"{relpath(DAG_V1)}: total_tasks, == v2/v3's own total_tasks (40-cell grid, all three)")
+    m.add("osdiDagV1FalseSafeCells", len(v1_fs_cells),
+          f"{relpath(DAG_V1)}: per_cell entries with false_safe_count>0, of 40")
+    m.add("osdiDagV2FalseSafeCells", v2_fs_cells,
+          f"{relpath(DAG_V2)}: per_cell entries with false_safe_count>0, of 40")
+    m.add("osdiDagV3FalseSafeCells", v3_fs_cells,
+          f"{relpath(DAG_V3)}: per_cell entries with false_safe_count>0, of 40")
+    m.add("osdiDagV1FalseSafePerCell", v1_false_safe_per_cell,
+          f"{relpath(DAG_V1)}: false_safe_count in each of the 20 affected cells (uniform)")
+    m.add("osdiDagV2ExtraVisitsSeedZero", v2_extra_s0,
+          f"{relpath(DAG_V2)} vs {DAG_V1.name}: nodes_visited delta, seed-0 cells "
+          "(constant across all 20, asserted)")
+    m.add("osdiDagV2ExtraVisitsSeedOne", v2_extra_s1,
+          f"{relpath(DAG_V2)} vs {DAG_V1.name}: nodes_visited delta, seed-1 cells "
+          "(constant across all 20, asserted)")
+    m.add("osdiDagV3ExtraVisitsSeedZero", v3_extra_s0,
+          f"{relpath(DAG_V3)} vs {DAG_V1.name}: nodes_visited delta, seed-0 cells "
+          "(constant across all 20, asserted)")
+    m.add("osdiDagV3ExtraVisitsSeedOne", v3_extra_s1,
+          f"{relpath(DAG_V3)} vs {DAG_V1.name}: nodes_visited delta, seed-1 cells "
+          "(constant across all 20, asserted)")
+    m.add("osdiDagV3AllTopTerm", all_top_term_total,
+          f"{relpath(DAG_V3_ROWS)}: sum of summary.narrowing_coverage.n_all_top_term over "
+          "all 40 cells")
+    m.add("osdiDagFalseFreshTotal", ff_total,
+          f"{relpath(DAG_V1_ROWS)}+{DAG_V2_ROWS.name}+{DAG_V3_ROWS.name}: sum of "
+          "summary.arms.{tgms-L0,tgms-L1}.false_fresh over all 120 cells (v1+v2+v3)")
+
+
+# --------------------------------------------------------------------------
+# C7 (partial) --- R-18 probe, N=10,000 c1 seed 0, 5 batches
+# --------------------------------------------------------------------------
+
+def compute_c7_r18(m: Macros) -> None:
+    d = json.loads(R18_PROBE.read_text(encoding="utf-8"))
+    rows = load_jsonl(R18_PROBE_ROWS)
+    rows.sort(key=lambda r: r["batch_index"])
+
+    eq(d["config"]["n_artifacts"], 10000, "R18 frozen: probe artifact count")
+    eq(d["config"]["batches"], 5, "R18 frozen: batch count")
+    eq(len(rows), d["config"]["batches"], "R18: rows.jsonl line count matches config.batches")
+    eq(d["config"]["wall_capped"], False, "R18: probe was not wall-capped")
+    eq(d["config"]["mix"], "c1", "R18: this probe is the c1 mix (P7's R-18 trip criterion "
+       "targets c4, not this cell)")
+
+    n_registered_vals = {r["n_registered"] for r in rows}
+    require(len(n_registered_vals) == 1, "R18: n_registered constant across batches")
+    n_registered = next(iter(n_registered_vals))
+    eq(n_registered, d["config"]["n_registered"], "R18: recomputed n_registered matches config")
+
+    intersects = [r["intersects_calls"] for r in rows]
+    lookup_ms = [r["lookup_wall_ms"] for r in rows]
+    survivors = [r["candidate_survivors"] for r in rows]
+    changed = [r["changed_count"] for r in rows]
+
+    intersects_med = statistics.median(intersects)
+    lookup_med = statistics.median(lookup_ms)
+    survivors_med = statistics.median(survivors)
+    eq(intersects_med, 13009, "R18 frozen: median intersects_calls/batch")
+    require(intersects_med <= 50000,
+            "R18: median intersects_calls/batch does not exceed the R-18 trip threshold "
+            "(P7: trips in c4, not this c1 cell)")
+
+    survivor_fraction = survivors_med / n_registered
+    close(survivor_fraction, 0.7131, 0.001,
+          "R18 frozen: median candidate_survivors / n_registered")
+
+    precision_per_batch = [c / s for c, s in zip(changed, survivors)]
+    precision_med = statistics.median(precision_per_batch)
+    close(precision_med, 0.0851, 0.001,
+          "R18 frozen: median(changed_count / candidate_survivors) over the 5 batches")
+
+    l1_check_ms = [r["arms"]["tgms-L1"]["check_wall_ms"] for r in rows]
+    l1_ttf_ms = [r["arms"]["tgms-L1"]["ttf_ms"] for r in rows]
+    global_ttf_ms = [r["arms"]["global-recompute"]["ttf_ms"] for r in rows]
+    l1_invalidated = [r["arms"]["tgms-L1"]["invalidated_count"] for r in rows]
+    l1_false_fresh = [r["arms"]["tgms-L1"]["false_fresh_count"] for r in rows]
+
+    eq(sum(l1_false_fresh), 0, "R18 frozen: tgms-L1 false-fresh count, summed over batches")
+    eq(sum(l1_false_fresh), d["summary"]["arms"]["tgms-L1"]["false_fresh"],
+       "R18: recomputed tgms-L1 false-fresh matches the record's own summary.arms field")
+
+    l1_check_med = statistics.median(l1_check_ms)
+    l1_ttf_med = statistics.median(l1_ttf_ms)
+    global_ttf_med = statistics.median(global_ttf_ms)
+
+    # Cross-check every recomputed per-batch median against the record's own
+    # aggregate summary.arms block -- never trusted without this.
+    eq(l1_ttf_med, d["summary"]["arms"]["tgms-L1"]["ttf_p50_ms"],
+       "R18: recomputed tgms-L1 ttf p50 (median of per-batch ttf_ms) matches "
+       "the record's own summary.arms field")
+    eq(global_ttf_med, d["summary"]["arms"]["global-recompute"]["ttf_p50_ms"],
+       "R18: recomputed global-recompute ttf p50 matches the record's own summary.arms field")
+
+    avoided_decision = 1 - sum(l1_invalidated) / (n_registered * len(rows))
+    eq(avoided_decision, d["summary"]["arms"]["tgms-L1"]["avoided_recompute_decision"],
+       "R18: recomputed avoided_recompute_decision (1 - sum(invalidated)/sum(n_registered)) "
+       "matches the record's own summary.arms field")
+
+    # "Speedup of L1 over global-recompute" == baseline/candidate == global/L1,
+    # per campaign.yaml's P5/P6 convention (>1.0 means L1 is faster). This
+    # probe measures speedup < 1.0 -- L1 pays more in end-to-end time-to-fresh
+    # than global-recompute here even though R-18 itself did not trip (median
+    # intersects_calls 13,009 << the 50,000 trip threshold) -- a genuine,
+    # asserted result, not a falsifier-triggering trip.
+    speedup = global_ttf_med / l1_ttf_med
+    close(speedup, 0.8067, 0.001, "R18 frozen: speedup of tgms-L1 over global-recompute "
+          "(global_ttf_median / l1_ttf_median)")
+    require(0.80 <= speedup <= 0.82,
+            "R18: speedup(L1 over global) falls within the documented [0.80, 0.82] range")
+
+    check_seconds_med = l1_check_med / 1000
+    ttf_l1_s = l1_ttf_med / 1000
+    ttf_global_s = global_ttf_med / 1000
+
+    m.add("osdiR18Artifacts", tex_num(d["config"]["n_artifacts"]),
+          f"{relpath(R18_PROBE)}: config.n_artifacts")
+    m.add("osdiR18IntersectsCallsMedian", tex_num(int(intersects_med)),
+          f"{relpath(R18_PROBE_ROWS)}: median(intersects_calls) over the 5 batches")
+    m.add("osdiR18LookupMsMedian", f"{lookup_med:.2f}",
+          f"{relpath(R18_PROBE_ROWS)}: median(lookup_wall_ms) over the 5 batches, ms")
+    m.add("osdiR18SurvivorFraction", f"{survivor_fraction * 100:.1f}",
+          f"{relpath(R18_PROBE_ROWS)}: median(candidate_survivors) / n_registered, percent")
+    m.add("osdiR18CheckSecondsMedian", f"{check_seconds_med:.1f}",
+          f"{relpath(R18_PROBE_ROWS)}: median(arms.tgms-L1.check_wall_ms) over the 5 "
+          "batches, /1000, s")
+    m.add("osdiR18TtfL1Seconds", f"{ttf_l1_s:.1f}",
+          f"{relpath(R18_PROBE_ROWS)}: median(arms.tgms-L1.ttf_ms) over the 5 batches, /1000, s "
+          "(== record's own summary.arms.tgms-L1.ttf_p50_ms)")
+    m.add("osdiR18TtfGlobalSeconds", f"{ttf_global_s:.1f}",
+          f"{relpath(R18_PROBE_ROWS)}: median(arms.global-recompute.ttf_ms) over the 5 "
+          "batches, /1000, s (== record's own summary.arms.global-recompute.ttf_p50_ms)")
+    m.add("osdiR18Speedup", f"{speedup:.3f}",
+          f"{relpath(R18_PROBE_ROWS)}: median(global-recompute ttf_ms) / median(tgms-L1 "
+          "ttf_ms) -- P5/P6's speedup convention, <1.0 means L1 is slower here")
+    m.add("osdiR18Precision", f"{precision_med * 100:.2f}",
+          f"{relpath(R18_PROBE_ROWS)}: median(changed_count / candidate_survivors) over the "
+          "5 batches, percent")
+    m.add("osdiR18AvoidedRecompute", f"{avoided_decision * 100:.1f}",
+          f"{relpath(R18_PROBE_ROWS)}: 1 - sum(arms.tgms-L1.invalidated_count) / "
+          "sum(n_registered) over the 5 batches, percent (== record's own summary field)")
+
+
+# --------------------------------------------------------------------------
 # pending stubs (records not yet landed)
 # --------------------------------------------------------------------------
 
@@ -631,14 +908,28 @@ def add_pending_stubs(m: Macros) -> None:
     m.add_pending("osdiCorruptionDetected", "C2 (corruption detection)",
                   "same as osdiCorruptionClasses -- no campaign record yet")
 
+    # The DAG-phase (v1/v2/v3, all 40/40 cells) and the R-18 probe (5/5
+    # batches) are both fully landed and scored -- see compute_c7_dag and
+    # compute_c7_r18 above. What remains pending is the main correction-
+    # storm cell grid itself (addendum-1's 36-cell grid,
+    # storm-campaign-2026-09.json): 12/36 cells complete, the other 24
+    # blocked on an iTiger disk-quota incident (2026-09-14, see
+    # benchmarks/storm-v1/README.md and SUBMISSION_NOTE.txt on iTiger) --
+    # not yet scored or committed as a merged record.
     m.add_pending("osdiTtfSpeedup", "C7 (storm-v1 time-to-fresh)",
-                  "benchmarks/storm-v1/storm-campaign-2026-09.json has not landed "
-                  "(CORRECTION_STORM_FREEZE_2026-09-15.md Addendum 1: grid reduced, projected "
-                  "~21h, at risk)")
+                  "main grid 12/36, blocked on cluster quota")
     m.add_pending("osdiStormCells", "C7 (storm-v1 time-to-fresh)",
-                  "same record as osdiTtfSpeedup -- not landed")
+                  "main grid 12/36, blocked on cluster quota")
     m.add_pending("osdiStormFalseFresh", "C7 (storm-v1 time-to-fresh)",
-                  "same record as osdiTtfSpeedup -- not landed")
+                  "main grid 12/36, blocked on cluster quota")
+    m.add_pending("osdiStormSpeedupN1k", "C7 (storm-v1 time-to-fresh)",
+                  "the N=1,000 c1 seed-0 cell (211319_0) is not a merged main-grid record on "
+                  "main yet -- its numbers appear only in benchmarks/storm-v1/README.md's R-18 "
+                  "section table, which this generator does not treat as a record source; "
+                  "main grid 12/36, blocked on cluster quota")
+    m.add_pending("osdiStormAvoidedN1k", "C7 (storm-v1 time-to-fresh)",
+                  "same as osdiStormSpeedupN1k -- the N=1,000 c1 seed-0 cell has not landed as "
+                  "a committed main-grid record; main grid 12/36, blocked on cluster quota")
 
     m.add_pending("osdiLdbcExpressible", "C9 (LDBC generality, four axes)",
                   "benchmarks/ldbc-fit-v1/classification.json exists but the independent-"
@@ -674,6 +965,8 @@ def main() -> int:
     compute_c5(m)
     compute_c6(m)
     compute_c8(m)
+    compute_c7_dag(m)
+    compute_c7_r18(m)
     add_pending_stubs(m)
 
     if FAILURES:

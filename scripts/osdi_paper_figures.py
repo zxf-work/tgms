@@ -19,6 +19,12 @@ record path):
      D-160                                        (C8)
   6. M4/M5 false-fresh + precision +
      avoided-recomputation table                  (C6)
+  7. correction-storm DAG phase v1/v2/v3:
+     false-safe cells + extra visits per seed      (C7, partial)
+  8. R-18 probe crossover, N=10,000 c1 seed 0:
+     per-batch check/lookup/global cost + ttf p50;
+     the N=1,000 point is a PENDING annotation
+     until the main grid lands                     (C7, partial)
 
 Every deliverable is emitted as a CSV (the underlying data table, always,
 independent of matplotlib) and, when matplotlib is importable in the
@@ -63,6 +69,16 @@ M5_PROP_TWO = [
 ]
 FAULTS_PRE = ROOT / "benchmarks" / "faults-v1" / "fault-matrix-campaign-2026-09-13.json"
 FAULTS_POST = ROOT / "benchmarks" / "faults-v1" / "fault-matrix-campaign-2026-09-15-d160.json"
+
+STORM_V1 = ROOT / "benchmarks" / "storm-v1"
+DAG_V1 = STORM_V1 / "storm-campaign-dag-2026-09.json"
+DAG_V2 = STORM_V1 / "storm-campaign-dag-v2-2026-09.json"
+DAG_V3 = STORM_V1 / "storm-campaign-dag-v3-2026-09.json"
+R18_PROBE_ROWS = STORM_V1 / "storm-r18-probe-2026-09-rows.jsonl"
+
+
+def load_jsonl(path: Path) -> list[dict]:
+    return [json.loads(line) for line in path.read_text(encoding="utf-8").splitlines() if line.strip()]
 
 try:
     import matplotlib
@@ -555,6 +571,162 @@ def plot_freshness_table(data: dict) -> None:
 
 
 # --------------------------------------------------------------------------
+# 7. correction-storm DAG phase, v1/v2/v3: false-safe cells + extra visits
+#    per seed (C7, partial)
+# --------------------------------------------------------------------------
+
+def build_dag_versions_data() -> dict:
+    v1 = json.loads(DAG_V1.read_text(encoding="utf-8"))
+    v2 = json.loads(DAG_V2.read_text(encoding="utf-8"))
+    v3 = json.loads(DAG_V3.read_text(encoding="utf-8"))
+
+    def by_task(per_cell):
+        return {c["task_id"]: c for c in per_cell}
+
+    v1c = by_task(v1["per_cell"])
+
+    def extra_visits(d, seed):
+        other = by_task(d["per_cell"])
+        diffs = {other[tid]["nodes_visited"] - v1c[tid]["nodes_visited"]
+                 for tid in v1c if v1c[tid]["seed"] == seed}
+        assert len(diffs) == 1, f"nodes_visited delta not constant at seed {seed}"
+        return next(iter(diffs))
+
+    rows = []
+    for version, d in (("v1", v1), ("v2", v2), ("v3", v3)):
+        false_safe_cells = sum(1 for c in d["per_cell"] if c["false_safe_count"] > 0)
+        extra_s0 = 0 if version == "v1" else extra_visits(d, 0)
+        extra_s1 = 0 if version == "v1" else extra_visits(d, 1)
+        rows.append({
+            "version": version,
+            "cells": len(d["per_cell"]),
+            "false_safe_cells": false_safe_cells,
+            "extra_visits_seed0_vs_v1": extra_s0,
+            "extra_visits_seed1_vs_v1": extra_s1,
+            "commit": d["git_commit"],
+        })
+    return {"rows": rows}
+
+
+def write_dag_versions_csv(data: dict) -> str:
+    header = ["version", "cells", "false_safe_cells", "extra_visits_seed0_vs_v1",
+              "extra_visits_seed1_vs_v1", "commit"]
+    rows = [[r[c] for c in header] for r in data["rows"]]
+    return write_csv(OUT_DIR / "f7_dag_versions.csv", header, rows)
+
+
+def plot_dag_versions(data: dict) -> None:
+    _require_mpl()
+    with plt.rc_context(STYLE):
+        fig, axes = plt.subplots(1, 2, figsize=(7.5, 3.2))
+        versions = [r["version"] for r in data["rows"]]
+        x = range(len(versions))
+
+        ax = axes[0]
+        ax.bar(x, [r["false_safe_cells"] for r in data["rows"]], color="0.3", edgecolor="black")
+        ax.set_xticks(list(x))
+        ax.set_xticklabels(versions)
+        ax.set_ylabel(f"false-safe cells (of {data['rows'][0]['cells']})")
+        ax.set_title("DAG phase: registry-wide false-safe, by version")
+
+        ax = axes[1]
+        width = 0.35
+        ax.bar([i - width / 2 for i in x],
+               [r["extra_visits_seed0_vs_v1"] for r in data["rows"]], width,
+               label="seed 0", **CONTROL_STYLE, edgecolor="black")
+        ax.bar([i + width / 2 for i in x],
+               [r["extra_visits_seed1_vs_v1"] for r in data["rows"]], width,
+               label="seed 1", **TREATMENT_STYLE, edgecolor="black")
+        ax.set_xticks(list(x))
+        ax.set_xticklabels(versions)
+        ax.set_ylabel("nodes_visited delta vs v1 (uniform per seed)")
+        ax.set_title("DAG phase: extra visits vs v1, by version and seed")
+        ax.legend(fontsize=7)
+
+        fig.tight_layout()
+        _savefig(fig, OUT_DIR / "f7_dag_versions")
+
+
+# --------------------------------------------------------------------------
+# 8. R-18 probe crossover, N=10,000 c1 seed 0 (C7, partial)
+# --------------------------------------------------------------------------
+
+def build_r18_crossover_data() -> dict:
+    rows = load_jsonl(R18_PROBE_ROWS)
+    rows.sort(key=lambda r: r["batch_index"])
+
+    batches = [r["batch_index"] for r in rows]
+    check_s_l1 = [r["arms"]["tgms-L1"]["check_wall_ms"] / 1000 for r in rows]
+    lookup_ms = [r["lookup_wall_ms"] for r in rows]
+    global_s = [r["global_recompute_wall_ms"] / 1000 for r in rows]
+    ttf_l1_s = [r["arms"]["tgms-L1"]["ttf_ms"] / 1000 for r in rows]
+    ttf_global_s = [r["arms"]["global-recompute"]["ttf_ms"] / 1000 for r in rows]
+
+    return {
+        "batches": batches,
+        "check_s_l1": check_s_l1,
+        "lookup_ms": lookup_ms,
+        "global_s": global_s,
+        "ttf_l1_s": ttf_l1_s,
+        "ttf_global_s": ttf_global_s,
+        "ttf_l1_p50_s": statistics.median(ttf_l1_s),
+        "ttf_global_p50_s": statistics.median(ttf_global_s),
+        # N=1,000's own c1 seed-0 point is not a merged main-grid record on
+        # main yet (only in README.md's R-18 section prose table); left as
+        # a PENDING annotation, never a number pulled from that prose.
+        "n1000_pending": True,
+    }
+
+
+def write_r18_crossover_csv(data: dict) -> str:
+    header = ["batch_index", "check_seconds_tgms_L1", "lookup_ms", "global_recompute_seconds",
+              "ttf_tgms_L1_seconds", "ttf_global_recompute_seconds"]
+    rows = [[b, round(c, 3), round(lk, 3), round(g, 3), round(tl, 3), round(tg, 3)]
+            for b, c, lk, g, tl, tg in zip(data["batches"], data["check_s_l1"],
+                                            data["lookup_ms"], data["global_s"],
+                                            data["ttf_l1_s"], data["ttf_global_s"])]
+    rows.append(["p50", "", "", "", round(data["ttf_l1_p50_s"], 3),
+                 round(data["ttf_global_p50_s"], 3)])
+    rows.append(["N=1000 c1 seed0", "PENDING", "PENDING", "PENDING", "PENDING", "PENDING"])
+    return write_csv(OUT_DIR / "f8_r18_crossover.csv", header, rows)
+
+
+def plot_r18_crossover(data: dict) -> None:
+    _require_mpl()
+    with plt.rc_context(STYLE):
+        fig, axes = plt.subplots(1, 2, figsize=(8.5, 3.2))
+
+        ax = axes[0]
+        ax.plot(data["batches"], data["check_s_l1"], marker="o", color="0.15",
+                label="tgms-L1 check, s")
+        ax.plot(data["batches"], data["global_s"], marker="s", color="0.55",
+                label="global-recompute, s")
+        ax2 = ax.twinx()
+        ax2.plot(data["batches"], data["lookup_ms"], marker="^", color="0.35",
+                 linestyle="--", label="lookup, ms (right axis)")
+        ax.set_xlabel("batch index")
+        ax.set_ylabel("seconds")
+        ax2.set_ylabel("lookup_wall_ms")
+        lines1, labels1 = ax.get_legend_handles_labels()
+        lines2, labels2 = ax2.get_legend_handles_labels()
+        ax.legend(lines1 + lines2, labels1 + labels2, fontsize=6, loc="center left")
+        ax.set_title("N=10,000 c1 seed 0: per-batch cost")
+
+        ax = axes[1]
+        x = [0, 1]
+        ax.bar(x, [data["ttf_global_p50_s"], data["ttf_l1_p50_s"]],
+               color=["0.55", "0.15"], edgecolor="black", hatch=["", "///"])
+        ax.set_xticks(x)
+        ax.set_xticklabels(["global-recompute", "tgms-L1"])
+        ax.set_ylabel("time-to-fresh p50, s")
+        ratio = data["ttf_global_p50_s"] / data["ttf_l1_p50_s"]
+        ax.set_title(f"N=10,000: speedup {ratio:.2f}x\nN=1,000: PENDING (main grid 12/36)")
+
+        fig.tight_layout()
+        _savefig(fig, OUT_DIR / "f8_r18_crossover")
+
+
+# --------------------------------------------------------------------------
 # main
 # --------------------------------------------------------------------------
 
@@ -567,6 +739,10 @@ DELIVERABLES = [
      "t5_fault_matrix_pre_post.csv"),
     ("freshness_table", build_freshness_table_data, write_freshness_table_csv,
      plot_freshness_table, "t3_freshness_summary.csv"),
+    ("dag_versions", build_dag_versions_data, write_dag_versions_csv, plot_dag_versions,
+     "f7_dag_versions.csv"),
+    ("r18_crossover", build_r18_crossover_data, write_r18_crossover_csv, plot_r18_crossover,
+     "f8_r18_crossover.csv"),
 ]
 # `csv_filename` (not a precomputed path) so every consumer -- main() below,
 # and tests that monkeypatch module-level OUT_DIR -- resolves the path
