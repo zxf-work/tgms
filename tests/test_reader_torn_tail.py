@@ -46,11 +46,14 @@ reaches DETECTED for it).
 from __future__ import annotations
 
 import json
+import threading
+from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 
 import pytest
 
 import tgms
+import tgms.store as store_mod
 from tgms.artifact.record import StepDependency
 from tgms.artifact.registry import Registry
 from tgms.artifact.registry import verify as registry_verify
@@ -283,3 +286,103 @@ def test_registry_torn_final_record_is_still_a_verify_finding(tmp_path: Path) ->
 
     problems = registry_verify(tmp_path)
     assert problems, "a torn final registry record must still be a verify() finding"
+
+
+# --------------------------------------------------------------------------- #
+# 5. the lazy-probe hazard: reader opens must not starve a real writer        #
+# --------------------------------------------------------------------------- #
+#
+# `_writer_lock_is_held` used to run on *every* read-only open (as part of
+# eagerly computing `_reader_torn_tail_floor`). A soak with several readers
+# reopening every few minutes, or the OSV daily queries looping reader
+# opens, made it likely enough in practice that a writer's own
+# `_acquire_writer_lock` trylock could land in the same instant a reader's
+# probe held `writer.lock` for a moment, and see a spurious
+# `WriterLockedError` — one process refusing to become the writer because
+# of a lock only a *reader* was, correctly but coincidentally, also
+# holding for a heartbeat. Two independent changes close this: the probe
+# now runs only when `batches_from` actually meets a torn-tail candidate
+# (never on a sound store), and `_acquire_writer_lock` retries briefly
+# before refusing.
+
+
+def test_probe_never_runs_when_there_is_no_torn_tail(tmp_path: Path) -> None:
+    """(a) A pool of readers hammering open/close on a store with no torn
+    tail must never invoke `_writer_lock_is_held` — the probe is wired as
+    `batches_from`'s lazy `writer_active` callback and is only ever called
+    at the one place a torn-tail candidate is actually found, never merely
+    because a handle opened read-only."""
+    store_dir = tmp_path / "s"
+    writer = tgms.open(store_dir, backend="native")
+    for i in range(4):
+        writer.assert_node(f"a{i}", "N", {"i": i}, vt_s=0, vt_e=100)
+    writer.close()
+
+    def _boom(self: object) -> bool:
+        raise AssertionError(
+            "writer-lock probe ran even though the store has no torn tail")
+
+    original = store_mod.Store._writer_lock_is_held
+    store_mod.Store._writer_lock_is_held = _boom  # type: ignore[method-assign]
+    try:
+        def _open_and_close() -> None:
+            s = tgms.open(store_dir, backend="native", read_only=True)
+            s.close()
+
+        with ThreadPoolExecutor(max_workers=8) as pool:
+            futures = [pool.submit(_open_and_close) for _ in range(80)]
+            for f in futures:
+                f.result()  # re-raises the AssertionError here if it fired
+    finally:
+        store_mod.Store._writer_lock_is_held = original
+
+
+def test_writer_open_never_raises_under_a_hammering_reader_probe(tmp_path: Path) -> None:
+    """(b) `_acquire_writer_lock`'s bounded retry must absorb a reader's
+    momentary probe: 50 sequential writer opens/closes, while eight
+    threads hammer `_writer_lock_is_held` directly the whole time — the
+    same trylock-then-unlock the lazy `writer_active` callback runs once
+    it actually finds a torn-tail candidate, exercised here in isolation
+    from that trigger so the contention is dense rather than incidental —
+    must never surface `WriterLockedError` from a writer that was never
+    actually racing another writer."""
+    from tgms.store import WriterLockedError
+
+    store_dir = tmp_path / "s"
+    seed = tgms.open(store_dir, backend="native")
+    seed.assert_node("seed", "N", {}, vt_s=0, vt_e=100)
+    seed.close()
+
+    stop = threading.Event()
+    probe_errors: list[BaseException] = []
+
+    def _hammer() -> None:
+        reader = tgms.open(store_dir, backend="native", read_only=True)
+        try:
+            while not stop.is_set():
+                reader._writer_lock_is_held()
+        except BaseException as e:  # noqa: BLE001 - captured, not swallowed
+            probe_errors.append(e)
+        finally:
+            reader.close()
+
+    threads = [threading.Thread(target=_hammer) for _ in range(8)]
+    for t in threads:
+        t.start()
+
+    writer_errors: list[BaseException] = []
+    try:
+        for i in range(50):
+            try:
+                w = tgms.open(store_dir, backend="native")
+                w.assert_node(f"w{i}", "N", {"i": i}, vt_s=0, vt_e=100)
+                w.close()
+            except WriterLockedError as e:
+                writer_errors.append(e)
+    finally:
+        stop.set()
+        for t in threads:
+            t.join()
+
+    assert not writer_errors, f"writer open spuriously refused: {writer_errors}"
+    assert not probe_errors, f"reader probe raised: {probe_errors}"
