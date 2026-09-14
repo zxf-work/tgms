@@ -416,6 +416,45 @@ def temporal_reachability_terms(args: dict[str, Any], sigma: Sigma) -> tuple[Sco
 
 
 # ---------------------------------------------------------------------------
+# §2.10 — temporal_paths (rollout design 2026-09-14, §6 step 3)
+# ---------------------------------------------------------------------------
+
+def temporal_paths_terms(args: dict[str, Any], sigma: Sigma) -> tuple[ScopeTerm, ...]:
+    """Same shape as `temporal_reachability`, with `P = ⊤` — the one
+    difference, and it lands the contrast test for free.
+
+    **Reads.** `adapter.dense_ids([src, dst])` (`ops_paths.py:220`); `_csr_for`
+    (`:222`, `:288-299`) — either the cached whole-store current-belief TCSR
+    when `as_of_tt` is current, or a windowed `edges_columnar` scan
+    otherwise; `csr.neighbors` per DFS step; `adapter.edge_idents_at` /
+    `adapter.uids_for` for the rows on found paths.
+
+    **`I = ⊤`, `T = ⊤`** (§9.14, as §9.13 above). The unwindowed TCSR branch
+    is `ops_paths.py:290-291`'s own "domain follows the answer" argument:
+    the traversal constraints (`τ < vt_e`, `τ < t_b`, `τ ≥ t_a`) make the
+    unwindowed index return identical results, so `V = window` under overlap
+    is sound by exactly `temporal_reachability`'s argument.
+
+    **`P = ⊤` is mandatory and is *not* about the traversal**: paths are
+    ranked by `(arrival, hops, edge sequence)` where the sequence is
+    `(vt_s, eid)` per edge, so a carve changes which fragment's `vt_s`
+    appears in the key and can reorder paths whose arrivals are identical —
+    D1.8 counts reordering as a change. It is also a **top-k**: a new path
+    displaces the `k`-th while every retained path is untouched. So the
+    carve arm reaches this operator and `V` is worth nothing against Class
+    B/C/D ops on edge identities; the entity-kind exclusion in `E` survives
+    and is the whole of the narrowing.
+    """
+    src, dst = args.get("src"), args.get("dst")
+    vt = _window_vt(args)
+    if not isinstance(src, str) or not src or not isinstance(dst, str) or not dst or vt is None:
+        return (TOP_TERM,)
+    uids = tuple(dict.fromkeys((src, dst)))
+    return (ScopeTerm(kinds=K_EDGE, targets=_edge_target(), rel_types=TOP,
+                      vt=vt, vt_mode="overlap", props=TOP),) + _existence_terms(uids)
+
+
+# ---------------------------------------------------------------------------
 # the rollout table — one line per operator, and the rollback
 # ---------------------------------------------------------------------------
 
@@ -431,6 +470,7 @@ LEAF_SCOPES: dict[str, Derivation] = {
     "count_temporal_motifs": count_temporal_motifs_terms,
     "find_temporal_motif_instances": find_temporal_motif_instances_terms,
     "temporal_reachability": temporal_reachability_terms,
+    "temporal_paths": temporal_paths_terms,
 }
 
 #: Does this operator's output bind **node-version** columns — a label, a
@@ -454,6 +494,8 @@ BINDS_NODE_VERSIONS: dict[str, Callable[[dict[str, Any]], bool]] = {
     "find_temporal_motif_instances": lambda args: False,
     # rows are {uid, earliest_arrival}: a uid read off an edge endpoint
     "temporal_reachability": lambda args: False,
+    # rows carry src/dst/rel_type/eid/t off edge endpoints, never a node column
+    "temporal_paths": lambda args: False,
 }
 
 
@@ -474,5 +516,6 @@ __all__ = [
     "BINDS_NODE_VERSIONS", "Derivation", "LEAF_SCOPES", "P_CARVE_REACHED",
     "P_VALUE", "aggregate_events_terms", "count_temporal_motifs_terms",
     "entity_history_terms", "find_temporal_motif_instances_terms",
-    "neighborhood_evolution_terms", "temporal_reachability_terms", "terms_for",
+    "neighborhood_evolution_terms", "temporal_paths_terms",
+    "temporal_reachability_terms", "terms_for",
 ]
