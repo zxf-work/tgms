@@ -774,8 +774,8 @@ impl NativeStore {
     }
 
     /// Refuse a write against a store this build cannot write (memo §4,
-    /// "Migration"): format-1 stores open read-only and are converted by an
-    /// explicit command, never silently reinterpreted.
+    /// "Migration"): format-1 and format-2 stores open read-only and are
+    /// converted by an explicit command, never silently reinterpreted.
     pub(crate) fn require_writable_format(&self) -> Result<()> {
         if manifest_chain::is_writable_format(self.manifest.format) {
             return Ok(());
@@ -783,11 +783,18 @@ impl NativeStore {
         Err(manifest_chain::read_only_format_error(self.manifest.format))
     }
 
-    /// Convert a format-1 store in place: publish the current generation's
-    /// content again as a format-2 checkpoint (memo §4, "Migration").
+    /// Convert an older store in place: publish the current generation's
+    /// content again as a format-3 checkpoint (memo §4, "Migration").
+    ///
+    /// Format 1 or format 2, the shape is the same. From format 2 the
+    /// document barely changes at all — a `sha_kind` tag and a bumped
+    /// `format` — and yet `manifest_sha` changes completely, because format 3
+    /// changes what that digest *is* (a Merkle root over the ordered segment
+    /// set rather than the sha of the whole document). That is exactly why
+    /// this is a migration and not a silent reinterpretation.
     ///
     /// **Deviation from the memo, and why.** §4 says "write generation `G` as
-    /// a format-2 checkpoint … flip `CURRENT`". `manifest_sha` covers the
+    /// a checkpoint … flip `CURRENT`". `manifest_sha` covers the
     /// `format` field, so the converted document hashes differently from the
     /// one `CURRENT` currently names — and rewriting `manifests/<G>.json` in
     /// place would leave a window in which `CURRENT` names a sha no file on
@@ -814,7 +821,7 @@ impl NativeStore {
                 manifest_sha: self.manifest.manifest_sha.clone(),
             });
         }
-        if self.manifest.format != crate::FORMAT_LEGACY {
+        if !crate::MANIFEST_FORMATS_READ_ONLY.contains(&self.manifest.format) {
             return Err(manifest_chain::read_only_format_error(self.manifest.format));
         }
         let from_format = self.manifest.format;
@@ -1085,6 +1092,9 @@ impl NativeStore {
         let (mut report, closes) = self.verify_files()?;
         report.mode = "full".into();
 
+        for f in self.digest_oracle() {
+            report.flag(f);
+        }
         for f in integrity::parent_chain(&self.root, self.manifest.generation) {
             report.flag(f);
         }
@@ -1102,6 +1112,71 @@ impl NativeStore {
             report.flag(f);
         }
         Ok(report)
+    }
+
+    /// The price of an incremental digest, paid in the mode nobody runs per
+    /// commit (memo §4(d)).
+    ///
+    /// From format 3 `manifest_sha` is maintained by appending to a spine, so
+    /// a bug in that update would be *self-consistent*: the store would seal
+    /// with a wrong digest, publish it, and check it against itself forever.
+    /// The defence is a recomputation that shares no code with the
+    /// incremental path — [`Manifest::body_sha_canonical`], the whole tree
+    /// rebuilt from the whole ordered segment set — compared against the
+    /// value on disk in `CURRENT`, which is what was actually published
+    /// rather than what this handle currently believes.
+    ///
+    /// `verify_files` already re-derives the handle's own digest from scratch
+    /// and refuses outright if it disagrees; what this adds is the crossing
+    /// to the published bytes. Read-only, like everything else in verify.
+    fn digest_oracle(&self) -> Vec<Finding> {
+        let path = self.root.join(CURRENT);
+        let rel = CURRENT.to_string();
+        let generation = self.manifest.generation;
+        let text = match fs::read_to_string(&path) {
+            Ok(t) => t,
+            Err(e) => {
+                return vec![Finding::error(
+                    integrity::LAYER_MANIFEST,
+                    "current-unreadable",
+                    rel,
+                    generation,
+                    format!("CURRENT could not be read: {e}"),
+                )]
+            }
+        };
+        let mut parts = text.split_whitespace();
+        let (Some(gen), Some(sha)) = (parts.next(), parts.next()) else {
+            return vec![Finding::error(
+                integrity::LAYER_MANIFEST,
+                "current-malformed",
+                rel,
+                generation,
+                format!("CURRENT must contain '<generation> <sha>', found {text:?}"),
+            )];
+        };
+        let mut findings = Vec::new();
+        // A handle that has committed since it opened is *ahead* of nothing —
+        // it publishes CURRENT itself — but one pinned to an older generation
+        // legitimately is behind, and that is not a defect.
+        if gen.parse::<u64>() != Ok(generation) {
+            return findings;
+        }
+        let oracle = self.manifest.body_sha_canonical();
+        if oracle != sha {
+            findings.push(Finding::error(
+                integrity::LAYER_MANIFEST,
+                "digest-oracle-mismatch",
+                rel,
+                generation,
+                format!(
+                    "generation {generation} recomputes from scratch to {oracle} but \
+                     CURRENT publishes {sha} — the incrementally maintained digest and \
+                     an independent recomputation of it disagree"
+                ),
+            ));
+        }
+        findings
     }
 
     /// Closes every read in this handle must honour: the committed ones, plus
@@ -1837,8 +1912,9 @@ fn detected_ram_bytes() -> Option<u64> {
 #[derive(Clone, Debug, Default, PartialEq, Eq)]
 pub struct VerifyReport {
     pub generation: u64,
-    /// On-disk manifest format this generation was read at (1 = read-only
-    /// legacy, 2 = checkpoint/delta chain).
+    /// On-disk manifest format this generation was read at: 3 is what this
+    /// build writes (checkpoint/delta chain, `manifest_sha` a Merkle root);
+    /// 1 and 2 open read-only.
     pub manifest_format: u32,
     /// Generation of the checkpoint the chain was replayed from, and how many
     /// deltas sat on top of it. `manifest_deltas == 0` means `CURRENT` names
@@ -3007,6 +3083,115 @@ mod tests {
         assert_eq!(m.next_segment_id, content.next_segment_id);
         assert_eq!(m.event_log, content.event_log);
         assert_eq!(s.all_edge_versions().unwrap().len(), 1);
+    }
+
+    #[test]
+    fn a_format_2_store_opens_read_only_and_upgrades_to_format_3() {
+        // format 3 changes only what `manifest_sha` *is*, so a format-2 chain
+        // must keep verifying under its own rule and refuse every write until
+        // it is converted — the same promise format 1 got, one format later
+        let root = tmp_root("format2-upgrade");
+        for sub in SUBDIRS {
+            fs::create_dir_all(root.join(sub)).unwrap();
+        }
+        let mut s = NativeStore::open(&root).unwrap();
+        s.begin(10).unwrap();
+        let a = s.ensure_entity("n1", "Node").unwrap();
+        s.stage_edge(edge_row(a, a, 1, 10, 0)).unwrap();
+        s.commit(EventLogRef::default()).unwrap();
+        let content = s.manifest().clone();
+        let before = s.verify().unwrap();
+        drop(s);
+
+        // the head as the previous engine wrote it: format 2, tagged
+        // checkpoint, `manifest_sha` the sha of the whole document
+        let mut legacy = content.clone();
+        legacy.format = 2;
+        legacy.seal();
+        assert_ne!(
+            legacy.manifest_sha, content.manifest_sha,
+            "the same content under the two rules must not share a digest"
+        );
+        write_atomic(
+            &NativeStore::manifest_path(&root, legacy.generation),
+            &manifest_chain::checkpoint_json(&legacy),
+        )
+        .unwrap();
+        write_atomic(
+            &root.join(CURRENT),
+            &format!("{} {}\n", legacy.generation, legacy.manifest_sha),
+        )
+        .unwrap();
+
+        let mut s = NativeStore::open(&root).unwrap();
+        assert_eq!(s.manifest_format(), 2);
+        assert!(s.merkle.is_none(), "a read-only store maintains no state");
+        // reads and verification work
+        let report = s.verify().unwrap();
+        assert!(report.is_healthy(), "{:?}", report.problems);
+        assert_eq!(report.manifest_format, 2);
+        assert_eq!(s.all_edge_versions().unwrap().len(), 1);
+        // writes do not
+        let err = s.gc(1).unwrap_err();
+        assert_eq!(err.category, crate::error::Category::Invariant);
+        assert!(err.message.contains("format-2"), "{}", err.message);
+        assert!(err
+            .remedy
+            .as_deref()
+            .unwrap_or_default()
+            .contains("upgrade-manifests"));
+
+        let up = s.upgrade_manifests().unwrap();
+        assert!(up.upgraded);
+        assert_eq!(up.from_format, 2);
+        assert_eq!(s.manifest_format(), crate::MANIFEST_FORMAT_VERSION);
+        assert!(s.merkle.is_some());
+        let after = s.verify_full().unwrap();
+        assert!(after.is_healthy(), "{:?}", after.problems);
+        assert_eq!(after.segments_checked, before.segments_checked);
+        assert_eq!(after.rows, before.rows);
+        assert_eq!(after.manifest_deltas, 0);
+        assert_eq!(s.manifest().node_store, content.node_store);
+        assert_eq!(s.manifest().edge_lanes, content.edge_lanes);
+        assert_eq!(s.all_edge_versions().unwrap().len(), 1);
+        // and writing works now
+        commit_with(&mut s, 30, &["n2"]);
+        assert!(s.verify_full().unwrap().is_healthy());
+    }
+
+    #[test]
+    fn verify_full_re_derives_the_published_digest_from_scratch() {
+        // memo §4(d): an incrementally maintained digest could be wrong and
+        // self-consistent. The oracle is a recomputation that shares no code
+        // with the incremental path, crossed against what CURRENT publishes.
+        let root = tmp_root("digest-oracle");
+        let mut s = NativeStore::open(&root).unwrap();
+        for g in 1..=4i64 {
+            commit_with(&mut s, g * 10, &[&format!("n{g}")]);
+        }
+        let clean = s.verify_full().unwrap();
+        assert!(clean.is_healthy(), "{:?}", clean.problems);
+
+        // stand in for a bad incremental update: the value published is not
+        // the value a from-scratch recomputation of this generation gives
+        write_atomic(
+            &root.join(CURRENT),
+            &format!("{} 0000000000000000\n", s.generation()),
+        )
+        .unwrap();
+        let report = s.verify_full().unwrap();
+        assert!(!report.is_healthy());
+        assert!(
+            report
+                .findings
+                .iter()
+                .any(|f| f.kind == "digest-oracle-mismatch"),
+            "{:?}",
+            report.problems
+        );
+        // the fast pass does not make this check — it is the price of an
+        // incremental digest, paid in the mode nobody runs per commit
+        assert!(s.verify().unwrap().is_healthy());
     }
 
     #[test]
