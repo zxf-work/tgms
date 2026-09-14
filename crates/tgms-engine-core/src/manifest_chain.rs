@@ -59,7 +59,7 @@ use serde::{Deserialize, Serialize};
 use crate::error::{EngineError, Result};
 use crate::manifest::{
     merkle, read_only_list, short_sha, CloseRunRef, DictRef, EventLogRef, Manifest, SegmentEntry,
-    Stats,
+    Stats, Widths,
 };
 use crate::{
     FORMAT_LEGACY, MANIFEST_FORMATS_READ_ONLY, MANIFEST_FORMAT_MERKLE, MANIFEST_FORMAT_VERSION,
@@ -139,6 +139,48 @@ pub struct ManifestDelta {
     /// Sha of the manifest this record reconstructs — same value a checkpoint
     /// of the same content would carry.
     pub manifest_sha: String,
+}
+
+/// Where a pure-append commit began, so a delta can be cut in O(appended).
+///
+/// [`ManifestDelta::between`] costs eight O(live-segments) scans — four
+/// `added_entries`, four `removed_names`, plus four `patch_matches` to
+/// validate. Cheap next to a full serialize, and the *new* O(n) term once the
+/// serialize is gone: ~2 µs per segment, 1,150 µs at n = 575 (Addendum 3
+/// ruling 3). The commit path knows what it appended, so it says so.
+///
+/// The validation `between` performs by diffing is here a structural
+/// guarantee instead: the commit mutates the very lists this indexes into,
+/// and only ever by pushing, so the prefix below each split is the parent's
+/// by construction rather than by comparison. What is still checked is
+/// everything that would make the *record* wrong — format, widths, the
+/// parent link, and that each lane did in fact only grow.
+#[derive(Clone, Debug)]
+pub struct AppendSpan {
+    pub parent: u64,
+    pub parent_sha: String,
+    pub widths: Widths,
+    /// Lane lengths before the append, in lane order: `node_store`,
+    /// `edge_lanes.event`, `edge_lanes.interval`, `close_runs`.
+    pub split: [usize; 4],
+}
+
+impl AppendSpan {
+    /// The span of a commit that starts from `parent` and has appended
+    /// nothing yet.
+    pub fn of(parent: &Manifest) -> Self {
+        Self {
+            parent: parent.generation,
+            parent_sha: parent.manifest_sha.clone(),
+            widths: parent.widths.clone(),
+            split: [
+                parent.node_store.len(),
+                parent.edge_lanes.event.len(),
+                parent.edge_lanes.interval.len(),
+                parent.close_runs.len(),
+            ],
+        }
+    }
 }
 
 fn seg_name(e: &SegmentEntry) -> &str {
@@ -322,6 +364,51 @@ impl ManifestDelta {
         {
             return None;
         }
+        d.seal();
+        Some(d)
+    }
+
+    /// The delta for a commit that only appended, cut from the append span
+    /// rather than re-diffed — O(appended), not O(live segments).
+    ///
+    /// `None` for the same reasons `between` returns `None`: the pair is not
+    /// expressible as one delta, and the caller should write a checkpoint.
+    pub fn from_appends(child: &Manifest, span: &AppendSpan, checkpoint: u64) -> Option<Self> {
+        if child.format != MANIFEST_FORMAT_VERSION
+            || child.widths != span.widths
+            || child.parent != Some(span.parent)
+            || child.generation != span.parent.checked_add(1)?
+            || child.node_store.len() < span.split[0]
+            || child.edge_lanes.event.len() < span.split[1]
+            || child.edge_lanes.interval.len() < span.split[2]
+            || child.close_runs.len() < span.split[3]
+        {
+            return None;
+        }
+        let mut d = Self {
+            format: MANIFEST_FORMAT_VERSION,
+            kind: "delta".into(),
+            sha_kind: merkle::SHA_KIND.into(),
+            generation: child.generation,
+            parent: span.parent,
+            parent_sha: span.parent_sha.clone(),
+            checkpoint,
+            created_tt: child.created_tt,
+            event_log: child.event_log.clone(),
+            dict: child.dict.clone(),
+            next_segment_id: child.next_segment_id,
+            stats: child.stats.clone(),
+            add_nodes: child.node_store[span.split[0]..].to_vec(),
+            del_nodes: Vec::new(),
+            add_edges_event: child.edge_lanes.event[span.split[1]..].to_vec(),
+            del_edges_event: Vec::new(),
+            add_edges_interval: child.edge_lanes.interval[span.split[2]..].to_vec(),
+            del_edges_interval: Vec::new(),
+            add_close_runs: child.close_runs[span.split[3]..].to_vec(),
+            del_close_runs: Vec::new(),
+            delta_sha: String::new(),
+            manifest_sha: child.manifest_sha.clone(),
+        };
         d.seal();
         Some(d)
     }

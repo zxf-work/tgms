@@ -31,9 +31,9 @@ use std::path::{Path, PathBuf};
 use crate::dict::Dictionary;
 use crate::error::{EngineError, Result};
 use crate::derive::Id96;
-use crate::manifest::{CloseRunRef, EventLogRef, Manifest};
+use crate::manifest::{self, merkle, CloseRunRef, DictRef, EventLogRef, Manifest, Stats, Widths};
 use crate::integrity::{self, Finding};
-use crate::manifest_chain::{self, ManifestDelta};
+use crate::manifest_chain::{self, AppendSpan, ManifestDelta};
 use crate::row::{EdgeRow, Lane, NodeRow, RowKind};
 use crate::segment::MmapSource;
 use crate::staging::{PartitionMap, Staging};
@@ -70,7 +70,20 @@ pub struct NativeStore {
     /// two handles opened through different spellings of one path agree.
     pin_key: PathBuf,
     dict: Dictionary,
+    /// The reconstructed manifest of the generation this handle sees — and,
+    /// on the write path, the *working* manifest a commit mutates in place.
+    ///
+    /// It used to be cloned three times per commit: once by `successor`, once
+    /// by `seal`'s `body_sha`, once by `publish`'s redundant `verify`. That is
+    /// 5.9 µs per live segment per commit, and 100% of the measured 1.8×
+    /// last/first-decile growth (V2 diagnosis §2). The store already carried
+    /// this across commits; it simply did not reuse it.
     manifest: Manifest,
+    /// The Merkle state of `manifest`, carried across commits so a commit's
+    /// digest costs O(appended + log n) rather than a full re-serialization.
+    /// `None` on a store this build may not write (formats 1 and 2), where
+    /// there is no such digest to maintain.
+    merkle: Option<manifest::merkle::ManifestMerkle>,
     /// Generation of the last full checkpoint on the manifest chain — where
     /// `open` would start replaying deltas from, and what each delta this
     /// handle writes records as its `checkpoint` hint.
@@ -197,6 +210,87 @@ pub struct CommitPhases {
     pub manifest_checkpoint: bool,
 }
 
+/// Everything a commit has to be able to put back, and everything the delta
+/// it writes needs to know about the generation it came from.
+///
+/// The commit path advances `self.manifest` in place rather than building a
+/// clone of it, so there is no parent object left to diff against or to fall
+/// back to. This is that parent, in O(1) space: the scalars are a handful of
+/// small values, the four lanes only ever grow within a commit so a length is
+/// enough to truncate back to, and a Merkle state is O(log n) hashes.
+struct CommitBase {
+    generation: u64,
+    parent: Option<u64>,
+    created_tt: i64,
+    event_log: EventLogRef,
+    dict: DictRef,
+    widths: Widths,
+    next_segment_id: u64,
+    stats: Stats,
+    manifest_sha: String,
+    /// Lane lengths before the commit, in lane order.
+    split: [usize; 4],
+    merkle: Option<merkle::ManifestMerkle>,
+}
+
+impl CommitBase {
+    fn capture(m: &Manifest, merkle: &Option<merkle::ManifestMerkle>) -> Self {
+        Self {
+            generation: m.generation,
+            parent: m.parent,
+            created_tt: m.created_tt,
+            event_log: m.event_log.clone(),
+            dict: m.dict.clone(),
+            widths: m.widths.clone(),
+            next_segment_id: m.next_segment_id,
+            stats: m.stats.clone(),
+            manifest_sha: m.manifest_sha.clone(),
+            split: [
+                m.node_store.len(),
+                m.edge_lanes.event.len(),
+                m.edge_lanes.interval.len(),
+                m.close_runs.len(),
+            ],
+            merkle: merkle.clone(),
+        }
+    }
+
+    /// What the commit appended over, for a delta cut in O(appended).
+    fn span(&self) -> AppendSpan {
+        AppendSpan {
+            parent: self.generation,
+            parent_sha: self.manifest_sha.clone(),
+            widths: self.widths.clone(),
+            split: self.split,
+        }
+    }
+
+    /// Put the handle's view back where it was. Only the lanes need
+    /// truncating: a commit appends to them and never edits one in place, so
+    /// the prefix below each split is untouched.
+    fn restore(&self, m: &mut Manifest, merkle: &mut Option<merkle::ManifestMerkle>) {
+        m.generation = self.generation;
+        m.parent = self.parent;
+        m.created_tt = self.created_tt;
+        m.event_log = self.event_log.clone();
+        m.dict = self.dict.clone();
+        m.widths = self.widths.clone();
+        m.next_segment_id = self.next_segment_id;
+        m.stats = self.stats.clone();
+        m.manifest_sha = self.manifest_sha.clone();
+        m.node_store.truncate(self.split[0]);
+        m.edge_lanes.event.truncate(self.split[1]);
+        m.edge_lanes.interval.truncate(self.split[2]);
+        m.close_runs.truncate(self.split[3]);
+        merkle.clone_from(&self.merkle);
+        debug_assert_eq!(
+            m.manifest_sha,
+            m.body_sha_canonical(),
+            "rollback did not restore the generation the handle came in with"
+        );
+    }
+}
+
 impl NativeStore {
     pub fn open(root: impl Into<PathBuf>) -> Result<Self> {
         let root = root.into();
@@ -204,7 +298,7 @@ impl NativeStore {
             fs::create_dir_all(root.join(sub))
                 .map_err(|e| EngineError::from(e).at_file(root.join(sub)))?;
         }
-        let (manifest, checkpoint_gen) = if root.join(CURRENT).exists() {
+        let (manifest, checkpoint_gen, merkle) = if root.join(CURRENT).exists() {
             Self::load_current(&root)?
         } else {
             Self::refuse_if_populated_without_current(&root)?;
@@ -212,7 +306,8 @@ impl NativeStore {
             // generation 0 is always a checkpoint: a chain must start
             // somewhere, and there is no parent to diff against
             Self::publish(&root, None, &genesis, true, u64::MAX)?;
-            (genesis, 0)
+            let state = merkle::ManifestMerkle::from_manifest(&genesis);
+            (genesis, 0, Some(state))
         };
         let dict = Dictionary::open(
             root.join(DICT),
@@ -227,6 +322,7 @@ impl NativeStore {
             pin_key,
             dict,
             manifest,
+            merkle,
             checkpoint_gen,
             checkpoint_every: None,
             staging: Staging::default(),
@@ -297,7 +393,8 @@ impl NativeStore {
     /// plus up to `K−1` deltas rather than read whole — which the sha check
     /// cannot tell apart, because `manifest_sha` is the digest of the logical
     /// document either way.
-    fn load_current(root: &Path) -> Result<(Manifest, u64)> {
+    #[allow(clippy::type_complexity)]
+    fn load_current(root: &Path) -> Result<(Manifest, u64, Option<merkle::ManifestMerkle>)> {
         let cur_path = root.join(CURRENT);
         let text = fs::read_to_string(&cur_path)
             .map_err(|e| EngineError::from(e).at_file(&cur_path))?;
@@ -332,7 +429,7 @@ impl NativeStore {
             ))
             .at_file(&m_path));
         }
-        Ok((manifest, resolved.checkpoint))
+        Ok((manifest, resolved.checkpoint, resolved.merkle))
     }
 
     fn manifest_path(root: &Path, generation: u64) -> PathBuf {
@@ -428,11 +525,21 @@ impl NativeStore {
     /// Steps 4 and 5: write this generation's manifest record, then flip
     /// `CURRENT`.
     ///
-    /// `prev` is the parent generation and the checkpoint the chain currently
-    /// rests on; `None` means "no parent to diff against", which forces a
-    /// checkpoint. `force_checkpoint` is the memo's rules 2 and 3 —
-    /// compaction (which replaces the whole segment list, so a delta would be
-    /// no smaller) and gc's retention floor.
+    /// `appended` is the span the commit path appended over, plus the
+    /// checkpoint the chain currently rests on; `None` means "nothing to cut
+    /// a delta from", which forces a checkpoint — which is what every caller
+    /// but `commit` wants anyway, since each of them replaces the whole
+    /// segment list or has no parent at all. `force_checkpoint` is the memo's
+    /// rules 2 and 3 — compaction and gc's retention floor.
+    ///
+    /// **The manifest is not re-verified here.** It used to be, on its first
+    /// line: a third deep clone plus a second serialize-and-sha256 of bytes
+    /// the caller's own `seal` had produced microseconds earlier on the same
+    /// thread, with nothing in between (V2 diagnosis §2, item 3 — "pure
+    /// redundancy"; Addendum 3 ruling 4). The format check it also made is
+    /// kept, because that one is not redundant. A `debug_assert` keeps the
+    /// digest check in test builds, where it is a real net over the
+    /// incremental seal.
     ///
     /// Returns `(manifest_us, current_us, manifest_bytes, checkpoint_gen)`.
     /// The timing split matters because step 4 used to rewrite the whole
@@ -441,12 +548,16 @@ impl NativeStore {
     /// either, so the split is what shows it.
     fn publish(
         root: &Path,
-        prev: Option<(&Manifest, u64)>,
+        appended: Option<(&AppendSpan, u64)>,
         manifest: &Manifest,
         force_checkpoint: bool,
         every: u64,
     ) -> Result<(u64, u64, u64, u64)> {
-        manifest.verify()?;
+        debug_assert_eq!(
+            manifest.manifest_sha,
+            manifest.body_sha_canonical(),
+            "publish was handed a manifest its caller had not sealed"
+        );
         if !manifest_chain::is_writable_format(manifest.format) {
             return Err(manifest_chain::read_only_format_error(manifest.format));
         }
@@ -454,10 +565,10 @@ impl NativeStore {
         let delta = if force_checkpoint || generation.is_multiple_of(every) {
             None
         } else {
-            prev.and_then(|(parent, ckpt)| ManifestDelta::between(parent, manifest, ckpt))
+            appended.and_then(|(span, ckpt)| ManifestDelta::from_appends(manifest, span, ckpt))
         };
         let (json, checkpoint_gen) = match &delta {
-            Some(d) => (d.to_json(), prev.expect("a delta needs a parent").1),
+            Some(d) => (d.to_json(), appended.expect("a delta needs a parent").1),
             None => (manifest_chain::checkpoint_json(manifest), generation),
         };
 
@@ -492,9 +603,24 @@ impl NativeStore {
     /// reader pin with it. Every path that advances `self.manifest` after
     /// open must come through here or gc could collect the old view early —
     /// or keep protecting a generation nobody holds.
+    /// Adopt a manifest that was *built* rather than appended to — compaction
+    /// and the format upgrade. Both replace the whole segment list, so the
+    /// Merkle state is rebuilt wholesale; both already force a checkpoint, so
+    /// the O(n) is one they were paying anyway.
     fn adopt(&mut self, next: Manifest) {
-        crate::gc::repin(&self.pin_key, self.manifest.generation, next.generation);
+        self.repin(self.manifest.generation, next.generation);
+        self.merkle = manifest_chain::is_writable_format(next.format)
+            .then(|| merkle::ManifestMerkle::from_manifest(&next));
         self.manifest = next;
+    }
+
+    /// Move this handle's reader pin. Taken explicitly rather than read off
+    /// `self.manifest`, because the commit path advances the manifest it
+    /// already holds — by the time it repins, `self.manifest.generation` is
+    /// the destination, and a `repin(new, new)` would silently strand the old
+    /// pin and stop gc from ever collecting that generation.
+    fn repin(&self, from: u64, to: u64) {
+        crate::gc::repin(&self.pin_key, from, to);
     }
 
     /// Drop cached segments gc just removed from disk. Sound because ids are
@@ -589,7 +715,7 @@ impl NativeStore {
         self.require_writable_format()?;
         let (_, _, _, ckpt) = Self::publish(
             &self.root,
-            Some((&self.manifest, self.checkpoint_gen)),
+            None,
             &next,
             true,
             self.checkpoint_every(),
@@ -697,7 +823,7 @@ impl NativeStore {
         next.seal();
         let (_, _, _, ckpt) = Self::publish(
             &self.root,
-            Some((&self.manifest, self.checkpoint_gen)),
+            None,
             &next,
             true,
             self.checkpoint_every(),
@@ -1292,12 +1418,53 @@ impl NativeStore {
 
     /// Publish the open batch as a new generation. `event_log` records where
     /// in the (already durable) log this generation ends.
+    ///
+    /// **The manifest is advanced in place.** It used to be cloned by
+    /// `successor`, cloned again inside `seal`'s digest, and a third time by
+    /// `publish`'s redundant `verify` — three O(live-segments) deep copies
+    /// and two full serialize-and-sha256 passes, none of which the commit's
+    /// timed phases counted, and which were 100% of the measured 1.8×
+    /// last/first-decile growth (V2 diagnosis §2). What is left is an append
+    /// to four `Vec`s, a spine update per appended entry, and one 200-byte
+    /// hash.
+    ///
+    /// In-place means a failure part-way has to be undone, which
+    /// [`CommitBase`] does. Nothing is visible to any other reader until
+    /// `CURRENT` flips regardless — that is invariant 1 and it has not moved
+    /// — so the rollback is about this handle's own view, not about
+    /// durability.
     pub fn commit(&mut self, event_log: EventLogRef) -> Result<u64> {
         let tt = self.require_batch()?;
         self.require_writable_format()?;
         let mut phases = CommitPhases::default();
         let commit_start = std::time::Instant::now();
-        let mut next = self.manifest.successor(tt);
+        let base = CommitBase::capture(&self.manifest, &self.merkle);
+        match self.commit_inner(tt, event_log, &base, &mut phases, commit_start) {
+            Ok(generation) => Ok(generation),
+            Err(e) => {
+                base.restore(&mut self.manifest, &mut self.merkle);
+                Err(e)
+            }
+        }
+    }
+
+    fn commit_inner(
+        &mut self,
+        tt: i64,
+        event_log: EventLogRef,
+        base: &CommitBase,
+        phases: &mut CommitPhases,
+        commit_start: std::time::Instant,
+    ) -> Result<u64> {
+        let next = &mut self.manifest;
+        next.generation = base.generation + 1;
+        next.parent = Some(base.generation);
+        next.created_tt = tt;
+        next.manifest_sha = String::new();
+        let state = self
+            .merkle
+            .as_mut()
+            .expect("a writable store always carries a Merkle state");
 
         // step 2 — segments: written and fsynced before anything names them
         let phase = std::time::Instant::now();
@@ -1313,12 +1480,19 @@ impl NativeStore {
         for (lane, entry) in sealed.edges {
             next.stats.n_edge_versions += entry.rows as u64;
             match lane {
-                Lane::Event => next.edge_lanes.event.push(entry),
-                Lane::Interval => next.edge_lanes.interval.push(entry),
+                Lane::Event => {
+                    state.push_edge_event(&entry);
+                    next.edge_lanes.event.push(entry);
+                }
+                Lane::Interval => {
+                    state.push_edge_interval(&entry);
+                    next.edge_lanes.interval.push(entry);
+                }
             }
         }
         for entry in sealed.nodes {
             next.stats.n_node_versions += entry.rows as u64;
+            state.push_node(&entry);
             next.node_store.push(entry);
         }
         phases.seal_us = phase.elapsed().as_micros() as u64;
@@ -1331,11 +1505,13 @@ impl NativeStore {
             let file = format!("close/{:012}.tgc", next.generation);
             let path = self.root.join(&file);
             let entries = write_close_run(&path, &self.pending_closes)?;
-            next.close_runs.push(CloseRunRef {
+            let run = CloseRunRef {
                 file,
                 entries,
                 sha: String::new(),
-            });
+            };
+            state.push_close_run(&run);
+            next.close_runs.push(run);
         }
         phases.closes_us = phase.elapsed().as_micros() as u64;
         crash_point("after_close_runs");
@@ -1363,32 +1539,35 @@ impl NativeStore {
         next.dict.records = records;
         next.dict.bytes = bytes;
         next.stats.n_entities = self.dict.len();
-        next.seal();
+        // O(1) against the state the appends above kept in step, where
+        // `seal()` would re-serialize every live segment
+        next.seal_with(state);
         phases.segments_named = (next.edge_lanes.event.len()
             + next.edge_lanes.interval.len()
             + next.node_store.len()) as u64;
 
         // steps 4-5 — manifest record, then CURRENT
+        let span = base.span();
         let (manifest_us, current_us, manifest_bytes, checkpoint_gen) = Self::publish(
             &self.root,
-            Some((&self.manifest, self.checkpoint_gen)),
-            &next,
+            Some((&span, self.checkpoint_gen)),
+            &self.manifest,
             false,
             self.checkpoint_every(),
         )?;
         phases.manifest_us = manifest_us;
         phases.current_us = current_us;
         phases.manifest_bytes = manifest_bytes;
-        phases.manifest_checkpoint = checkpoint_gen == next.generation;
+        phases.manifest_checkpoint = checkpoint_gen == self.manifest.generation;
         self.checkpoint_gen = checkpoint_gen;
-        self.adopt(next);
+        self.repin(base.generation, self.manifest.generation);
         self.staging.clear();
         self.staged_closes.clear();
         self.pending_closes.clear();
         self.pending_overlay = None;
         self.batch_tt = None;
         phases.total_us = commit_start.elapsed().as_micros() as u64;
-        self.last_commit = Some(phases);
+        self.last_commit = Some(*phases);
         Ok(self.manifest.generation)
     }
 
@@ -2296,6 +2475,161 @@ mod tests {
         assert!(root.join("CURRENT").exists());
     }
 
+    // --- the commit path's working manifest (V2 §4(a)) -------------------- //
+
+    #[test]
+    fn a_commit_leaves_the_handle_holding_a_manifest_its_own_state_seals() {
+        // the invariant the whole in-place commit path rests on: the carried
+        // Merkle state is still the state of the manifest the handle holds,
+        // commit after commit, and the O(1) seal agrees with the O(n) oracle
+        let root = tmp_root("working-manifest");
+        let mut s = NativeStore::open(&root).unwrap();
+        for g in 1..=12i64 {
+            commit_with(&mut s, g * 10, &[&format!("n{g}")]);
+            let state = s.merkle.as_ref().expect("a writable store carries one");
+            assert_eq!(
+                state,
+                &merkle::ManifestMerkle::from_manifest(s.manifest()),
+                "the carried state drifted from the manifest at generation {g}"
+            );
+            assert_eq!(
+                s.manifest().manifest_sha,
+                s.manifest().body_sha_canonical(),
+                "the incremental seal disagrees with the oracle at generation {g}"
+            );
+        }
+        assert!(s.verify().unwrap().is_healthy());
+    }
+
+    #[test]
+    fn the_delta_cut_from_the_append_span_is_the_one_a_full_diff_would_produce() {
+        // Addendum 3 ruling 3: `between`'s eight O(n) scans come off the
+        // commit path. The record they used to produce must not change.
+        let root = tmp_root("append-span");
+        let mut s = NativeStore::open(&root).unwrap();
+        commit_with(&mut s, 10, &["n1"]);
+        let parent = s.manifest().clone();
+        let ckpt = s.checkpoint_generation();
+        commit_with(&mut s, 20, &["n2"]);
+        let child = s.manifest().clone();
+
+        let from_span = match manifest_chain::read_record(&root, child.generation).unwrap() {
+            manifest_chain::ManifestRecord::Delta(d) => d,
+            other => panic!("expected a delta, got {other:?}"),
+        };
+        let from_diff = ManifestDelta::between(&parent, &child, ckpt)
+            .expect("the same pair is expressible as a delta either way");
+        assert_eq!(from_span, from_diff);
+        assert_eq!(from_span.apply(&parent), child);
+    }
+
+    #[test]
+    fn a_rolled_back_commit_puts_the_handle_back_exactly_where_it_was() {
+        // in-place mutation means a failure part-way has to be undone. This
+        // exercises the guard directly: capture, make the mess a commit makes,
+        // restore, and demand byte equality with what was captured.
+        let root = tmp_root("commit-rollback");
+        let mut s = NativeStore::open(&root).unwrap();
+        commit_with(&mut s, 10, &["n1"]);
+        commit_with(&mut s, 20, &["n2"]);
+
+        let before = s.manifest().clone();
+        let before_state = s.merkle.clone();
+        let base = CommitBase::capture(&s.manifest, &s.merkle);
+
+        // exactly the mutations `commit_inner` performs before it can fail
+        {
+            let m = &mut s.manifest;
+            m.generation += 1;
+            m.parent = Some(before.generation);
+            m.created_tt = 999;
+            m.manifest_sha = String::new();
+            m.next_segment_id += 3;
+            m.stats.n_node_versions += 7;
+            m.dict.records += 2;
+            m.event_log.offset += 64;
+            let seg = crate::manifest::SegmentEntry {
+                file: "seg/000000000099.tgs".into(),
+                rows: 3,
+                key_lo: (1, "a".into()),
+                key_hi: (2, "b".into()),
+                vt_min: 0,
+                vt_max: 5,
+                vt_e_max: 6,
+                tt_s_min: 1,
+                tt_s_max: 1,
+                rel_codes: vec![1],
+                n_closed_folded: 0,
+                all_current: true,
+                sha: "00000000000000ff".into(),
+            };
+            let state = s.merkle.as_mut().unwrap();
+            state.push_node(&seg);
+            m.node_store.push(seg.clone());
+            state.push_edge_event(&seg);
+            m.edge_lanes.event.push(seg.clone());
+            let run = CloseRunRef {
+                file: "close/000000000099.tgc".into(),
+                entries: 1,
+                sha: String::new(),
+            };
+            state.push_close_run(&run);
+            m.close_runs.push(run);
+            m.seal_with(s.merkle.as_ref().unwrap());
+        }
+        assert_ne!(s.manifest, before, "the fixture must actually dirty it");
+
+        base.restore(&mut s.manifest, &mut s.merkle);
+        assert_eq!(s.manifest, before);
+        assert_eq!(s.merkle, before_state);
+        assert_eq!(
+            s.merkle.as_ref().unwrap(),
+            &merkle::ManifestMerkle::from_manifest(&s.manifest)
+        );
+
+        // and the handle is still usable: the next commit is the one the
+        // rolled-back attempt would have been
+        let g = commit_with(&mut s, 30, &["n3"]);
+        assert_eq!(g, before.generation + 1);
+        assert!(s.verify().unwrap().is_healthy());
+        drop(s);
+        let re = NativeStore::open(&root).unwrap();
+        assert_eq!(re.generation(), g);
+    }
+
+    #[test]
+    fn compaction_and_gc_rebuild_the_state_rather_than_appending_to_it() {
+        // both replace or truncate the segment set, so neither can extend a
+        // spine. Both already force a checkpoint, so the rebuild is free —
+        // what matters is that the handle is not left with a stale state.
+        let root = tmp_root("rebuild-state");
+        let mut s = NativeStore::open(&root).unwrap();
+        for g in 1..=6i64 {
+            commit_with(&mut s, g * 10, &[&format!("n{g}")]);
+        }
+        s.compact().unwrap();
+        assert_eq!(
+            s.merkle.as_ref().unwrap(),
+            &merkle::ManifestMerkle::from_manifest(s.manifest()),
+            "compaction left a stale Merkle state"
+        );
+        assert!(s.verify().unwrap().is_healthy());
+
+        s.gc(2).unwrap();
+        assert_eq!(
+            s.merkle.as_ref().unwrap(),
+            &merkle::ManifestMerkle::from_manifest(s.manifest())
+        );
+        commit_with(&mut s, 100, &["after"]);
+        assert!(s.verify().unwrap().is_healthy());
+        drop(s);
+        assert!(NativeStore::open(&root)
+            .unwrap()
+            .verify()
+            .unwrap()
+            .is_healthy());
+    }
+
     #[test]
     fn orphaned_genesis_manifest_alone_still_opens_fresh() {
         // exactly what a crash at `after_manifest` during the very first
@@ -2754,7 +3088,8 @@ mod tests {
         next.dict.records = records;
         next.dict.bytes = bytes;
         next.seal();
-        NativeStore::publish(&root, Some((w.manifest(), 0)), &next, false, 512).unwrap();
+        let span = AppendSpan::of(w.manifest());
+        NativeStore::publish(&root, Some((&span, 0)), &next, false, 512).unwrap();
 
         let re = NativeStore::open(&root).unwrap();
         assert_eq!(re.generation(), 2);
