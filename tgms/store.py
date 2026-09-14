@@ -150,6 +150,18 @@ class Store:
         a generation of its own, concurrently with the writer publishing the
         same generation number: two writers, overwriting each other's segment
         files under the mmap of anyone already reading them.
+
+        **Killable while it runs (Lane A EXP-A2):** this method is itself on
+        the crash-injection surface — `py_recover_after_trim`,
+        `py_recover_before_cursor_publish`, `py_recover_after_cursor_publish`,
+        and `py_recover_mid_replay` (`tgms/storage/crashpoint.py`, armed only
+        under `TGMS_CRASH_POINT`) mark points inside the loop below. The
+        contract under test is convergence, not just survival: killing
+        recovery itself, restarting, and recovering again — repeatedly, at
+        fresh random points — must still land on exactly the state a single
+        uninterrupted recovery (equivalently, a clean replay of the same log
+        into a fresh store) would produce. See `docs/eval_durability.md`
+        (`--recovery-crash`) and `tests/test_crash_during_recovery.py`.
         """
         cursor = getattr(self.adapter, "event_cursor", None)
         if cursor is None:
@@ -184,6 +196,12 @@ class Store:
         trimmed = self.eventlog.trim_torn_tail(offset)
         if trimmed is not None:
             size = self.eventlog.size()
+        # recovery-crash injection point (Lane A EXP-A2): the tail is now
+        # sound (trimmed or never torn) but nothing in the suffix has been
+        # replayed yet. Killing here and reopening must re-derive exactly
+        # this same starting point — same trim decision, same offset — since
+        # nothing about it was durable to begin with.
+        crash_point("py_recover_after_trim")
         if offset == size:
             return  # clean shutdown: nothing to do
         for batch, end, raw in self.eventlog.batches_from(offset):
@@ -196,8 +214,31 @@ class Store:
                 # successful commit's cursor covers the skipped record
                 self.adapter.rollback()
                 continue
+            # recovery-crash injection points (Lane A EXP-A2): the native
+            # engine stages the cursor in-memory (`note_event_cursor` ->
+            # `NativeStore.set_event_cursor`, PyO3) and only makes it (and
+            # the replayed rows) durable in the single atomic manifest swap
+            # `commit()` performs — there is no separate "cursor durable"
+            # moment from "batch durable"; both land in one generation. So
+            # `before`/`after_cursor_publish` bracket the staging call
+            # itself, entirely before that commit: a crash at either one
+            # leaves the on-disk manifest completely untouched (the engine's
+            # `pending_cursor` is process memory, discarded on death), so the
+            # next recovery attempt redoes this exact batch from the same
+            # starting cursor — identically to a crash before `apply_ops`
+            # ever ran.
+            crash_point("py_recover_before_cursor_publish")
             self.adapter.note_event_cursor(end, self._chain)
+            crash_point("py_recover_after_cursor_publish")
             self.adapter.commit()
+            # `py_recover_mid_replay` fires after the atomic commit above has
+            # made this batch *and* its cursor durable as a new generation,
+            # but before the loop advances to whatever the suffix holds
+            # next. A restart here must resume cleanly from the new cursor:
+            # either recovery is a no-op (this was the last un-applied
+            # batch) or it replays the remaining suffix — never re-applying
+            # what this commit already published.
+            crash_point("py_recover_mid_replay")
 
     def close(self) -> None:
         self.adapter.close()

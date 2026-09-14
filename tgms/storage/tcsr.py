@@ -27,6 +27,8 @@ from pathlib import Path
 
 import numpy as np
 
+from tgms.storage.crashpoint import crash_point
+
 #: Bump to orphan every persisted permutation written by older layouts.
 PERM_FORMAT = 1
 
@@ -134,6 +136,14 @@ def save_permutation(path: Path, csr: TemporalCSR,
     tmp = path.with_name(f"{path.stem}.tmp{os.getpid()}.npz")
     try:
         path.parent.mkdir(parents=True, exist_ok=True)
+        # recovery-crash injection point (Lane A EXP-A2): the permutation
+        # (`csr`) is already fully computed above — everything left is
+        # writing it out under its generation/manifest_sha stamp. Killing
+        # here must leave no trace: `tmp` does not exist yet, so the next
+        # `tcsr()` call (a fresh process re-opening the store) finds no
+        # matching persisted file and falls back to `TemporalCSR.build`,
+        # answering correctly from the live scan while it re-saves.
+        crash_point("py_tcsr_mid_rebuild")
         np.savez(tmp,
                  format=PERM_FORMAT,
                  generation=generation,
