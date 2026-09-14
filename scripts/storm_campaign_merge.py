@@ -132,6 +132,7 @@ def load_tasks(records_dir: Path, n_tasks: int, stores: list[str], mixes: list[s
             "n_registered": cfg.get("n_registered"), "batches_realized": manifest.get(
                 "summary", {}).get("batches"),
             "wall_s": cfg.get("wall_s"),
+            "wall_capped": cfg.get("wall_capped", False),
         })
     if missing:
         raise FileNotFoundError(
@@ -184,6 +185,7 @@ def per_cell_table(manifests: list[dict[str, Any]]) -> list[dict[str, Any]]:
             "n_artifacts": cfg.get("n_artifacts"), "seed": m.get("seed", {}).get("value"),
             "measure_ttf": cfg.get("measure_ttf") or "sum",
             "batches_realized": summary.get("batches"), "wall_s": cfg.get("wall_s"),
+            "wall_capped": cfg.get("wall_capped", False),
             "g_s1_false_fresh_zero": g_s1, "g_s2_false_safe_zero": g_s2,
             "arms": {arm: {
                 "false_fresh": row.get("false_fresh"), "false_stale": row.get("false_stale"),
