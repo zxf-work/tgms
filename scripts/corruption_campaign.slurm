@@ -49,7 +49,7 @@ CHECKOUT="${TGMS_REPO:-/project/xzhang12/tgms-corruption-v1}"
 STAGE="${TGMS_STAGE:-/project/xzhang12/corruption-v1-work}"
 BASE_SEED="${TGMS_BASE_SEED:-1000}"
 TRIALS_PER_TASK="${TGMS_TRIALS_PER_TASK:-250}"
-export TGMS_COMMIT="${TGMS_COMMIT:?set TGMS_COMMIT to the checkout's commit sha}"
+export TGMS_COMMIT="${TGMS_COMMIT:?set TGMS_COMMIT to the checkout commit sha}"
 
 SEED=$((BASE_SEED + TASK_ID))
 mkdir -p "$STAGE/records" "$STAGE/logs" "$STAGE/node_meta"
