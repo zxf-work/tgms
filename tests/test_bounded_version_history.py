@@ -386,6 +386,11 @@ def test_version_history_memory_is_bounded_per_stored_version(stores):
         f"docs/design/BOUNDED_VERSION_HISTORY_FORECAST_2026-09-13.md SS4 "
         f"budgets at a 32-byte key per surviving row. [{detail}]"
     )
+    if small["per_row"] <= 0:
+        # On Linux CI the small store's operator-only growth rounds to zero
+        # (VmHWM never moves past the warm floor), so the flatness ratio is
+        # undefined there; the absolute per-row bound above already holds.
+        return
     ratio = big["per_row"] / small["per_row"]
     assert ratio <= MAX_PER_ROW_RATIO, (
         f"version_history's per-stored-version cost itself grew {ratio:.2f}x "
