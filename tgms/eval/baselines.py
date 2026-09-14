@@ -10,6 +10,18 @@
   properties, no bi-temporal layer). Query errors / empty results are fed
   back up to `max_repairs` times. Claims cite raw query output and are
   unverifiable beyond re-execution — the harness records that contrast.
+- LLMDirect: the "just stuff the events in the prompt" control — no graph
+  store, no retrieval index, no Cypher/SQL. Events selected deterministically
+  (question entities if named, else most-recent-first) and serialized as raw
+  lines, truncated to a token budget. There is no operator trace or index to
+  recompute a claim against (that absence is the ablation), so
+  `verify_llm_direct_claims` grounds only entity claims against the cited
+  lines and leaves every other claim type `unverifiable`; the same
+  `GATED_VERDICTS` drop set the production (`ours`) gate uses (D-160,
+  `docs/design/TRUST_BOUNDARY_FAULT_MATRIX_DESIGN_2026-09-13.md` Addendum 2)
+  is applied before the answer is delivered, so this arm's claims are
+  classified supported/unsupported/unverifiable exactly like every other
+  arm's.
 
 All baseline prompts follow the WP2.1 data-as-inert-content policy: stored
 data enters prompts only inside <data> fences, escaped and length-capped.
@@ -30,6 +42,7 @@ import numpy as np
 from tgms.agent.planner import fence_data, sanitize_data_strings, strip_fences
 from tgms.agent.verifier import ANSWER_SCHEMA
 from tgms.core.model import canonical_json
+from tgms.eval.plan_faults import GATED_VERDICTS
 from tgms.store import Store
 
 ANSWER_CONTRACT = """Answer as ONE JSON AnswerObject and nothing else:
@@ -556,3 +569,184 @@ class BiTemporalSQLEvidence(BiTemporalSQL):
             pre_gate_answer=obj)
         out["answer_object"] = {**obj, "claims": kept}
         return out
+
+
+# --------------------------------------------------------------------------- #
+# LLM-direct — raw event dump, no store/index/query layer                     #
+# --------------------------------------------------------------------------- #
+
+#: no repo-wide token-counting convention exists (backends account for
+#: tokens their own way); this is a deliberately crude whitespace-count
+#: fallback, always surfaced under a `_approx`-suffixed field so it is never
+#: mistaken for a real vocabulary count.
+def _approx_tokens_whitespace(text: str) -> int:
+    return len(text.split())
+
+
+DEFAULT_LLM_DIRECT_BUDGET_TOKENS = 8_000
+
+
+def verify_llm_direct_claims(answer_obj: dict[str, Any],
+                             events_by_tag: dict[str, dict[str, Any]]
+                             ) -> dict[str, Any]:
+    """Claim verification for the LLM-direct arm, in the same verdict
+    vocabulary and report shape `tgms.agent.verifier.ClaimVerifier.verify`
+    produces (`supported | weakly_supported | unsupported | unverifiable`,
+    `{"claims": [{"id", "type", "verdict", "reason"}], "metrics": {...}}`)
+    so `tgms.eval.plan_faults.classify`/`gate_answer` accept it unchanged.
+
+    This arm has no operator trace, no index, and no store handle to
+    recompute a claim against — that absence is the point of the ablation.
+    The only check available is grounding against what was actually placed
+    in the prompt: does a cited evidence tag name an offered-and-included
+    event, and (for entity claims only) does the claimed uid appear on that
+    event. A tag naming an event that was never offered, or that was
+    dropped by truncation, makes the claim `unverifiable` rather than
+    crashing verification. count/value/ordering/temporal_pattern claims are
+    always `unverifiable` here: nothing in a raw-text baseline can
+    independently recompute them, which is exactly the capability gap this
+    arm exists to make visible.
+    """
+    results: list[dict[str, Any]] = []
+    for claim in answer_obj.get("claims", []):
+        tags = claim.get("evidence") or []
+        missing = [t for t in tags if t not in events_by_tag]
+        if not tags:
+            verdict, reason = "unverifiable", "no evidence cited"
+        elif missing:
+            verdict, reason = "unverifiable", \
+                ("evidence cites events outside the offered context: "
+                 f"{missing[:5]}")
+        elif claim.get("type") == "entity":
+            lexicon: set[str] = set()
+            for t in tags:
+                ev = events_by_tag[t]
+                lexicon.add(ev["src"])
+                lexicon.add(ev["dst"])
+            uids = claim.get("uids") or []
+            miss_uids = [u for u in uids if u not in lexicon]
+            if not uids:
+                verdict, reason = "unverifiable", "no uids in claim"
+            elif miss_uids:
+                verdict, reason = "unsupported", \
+                    f"uids not on cited events: {miss_uids[:5]}"
+            else:
+                verdict, reason = "supported", \
+                    "all uids grounded on cited events"
+        else:
+            verdict, reason = "unverifiable", \
+                "no independent recomputation available for a raw-text " \
+                "baseline"
+        results.append({"id": claim.get("id"), "type": claim.get("type"),
+                        "verdict": verdict, "reason": reason})
+    n = len(results)
+    n_unsupported = sum(r["verdict"] == "unsupported" for r in results)
+    return {"schema_valid": True, "claims": results,
+            "metrics": {"n_claims": n,
+                       "ucr": (n_unsupported / n) if n else 0.0,
+                       "coverage": 0.0}}
+
+
+class LLMDirect:
+    """LLM-direct: the model answers straight from the raw serialized event
+    text of the relevant slice — no graph store, no retrieval index, no
+    Cypher/SQL. The "just stuff the events in the prompt" control, bounded
+    by `context_budget_tokens`.
+
+    Event selection is deterministic given (seed, question entities, event
+    set): filtered to the question's named entities (`input_uids`) when
+    given, else the full corpus, most-recent-first, ties broken on
+    (src, dst, rel_type) so ordering never depends on backend scan order.
+    Events are serialized in that order and greedily included until the
+    token budget (approximated by `tokenizer`, default a whitespace count)
+    is exhausted; `events_offered`, `events_included`, `truncated` and
+    `prompt_tokens_approx` are recorded on every call.
+
+    Claims carry the same AnswerObject contract as every other arm and are
+    passed through `verify_llm_direct_claims` and the production drop set
+    (`tgms.eval.plan_faults.GATED_VERDICTS`) before delivery — the same
+    gate `tgms.eval.harness.run_task_ours` applies post-D-160, so this arm's
+    claims land in the same supported/unsupported/unverifiable/
+    weakly_supported buckets as `ours`'s.
+    """
+
+    def __init__(self, store: Store, llm_fn: Callable[..., str], model: str,
+                 context_budget_tokens: int = DEFAULT_LLM_DIRECT_BUDGET_TOKENS,
+                 tokenizer: Callable[[str], int] | None = None,
+                 seed: int = 0) -> None:
+        self.llm_fn, self.model, self.seed = llm_fn, model, seed
+        self.context_budget_tokens = context_budget_tokens
+        self.tokenizer = tokenizer or _approx_tokens_whitespace
+        e = store.adapter.edges_columnar()
+        src = store.adapter.uids_for(e["src_id"])
+        dst = store.adapter.uids_for(e["dst_id"])
+        events = [{"src": s, "dst": d, "rel_type": r, "vt_s": int(t)}
+                  for s, d, r, t in zip(src, dst, e["rel_type"], e["vt_s"])]
+        # deterministic candidate order: most-recent-first, ties broken so
+        # selection (and hence what truncation drops) never depends on
+        # backend/scan iteration order
+        events.sort(key=lambda ev: (-ev["vt_s"], ev["src"], ev["dst"],
+                                    ev["rel_type"]))
+        self.events = events
+
+    def _select(self, input_uids: list[str] | None) -> list[dict[str, Any]]:
+        seeds = set(input_uids or [])
+        if not seeds:
+            return self.events
+        return [ev for ev in self.events
+                if ev["src"] in seeds or ev["dst"] in seeds]
+
+    def _serialize(self, events: list[dict[str, Any]]
+                   ) -> tuple[list[str], dict[str, dict[str, Any]], bool, int]:
+        """Greedily include events (already in selection order) until the
+        context budget is exhausted. Returns (lines, tag->event, truncated,
+        prompt_tokens_approx)."""
+        lines: list[str] = []
+        by_tag: dict[str, dict[str, Any]] = {}
+        used = 0
+        for i, ev in enumerate(events):
+            tag = f"e{i}"
+            line = (f"[{tag}] {ev['src']} {ev['rel_type']} {ev['dst']} at "
+                    f"{_iso(ev['vt_s'])} ({ev['vt_s']})")
+            cost = self.tokenizer(line)
+            if lines and used + cost > self.context_budget_tokens:
+                return lines, by_tag, True, used
+            lines.append(line)
+            by_tag[tag] = ev
+            used += cost
+        return lines, by_tag, len(lines) < len(events), used
+
+    def answer(self, question: str, input_uids: list[str] | None = None
+               ) -> dict[str, Any]:
+        candidates = self._select(input_uids)
+        lines, by_tag, truncated, used = self._serialize(candidates)
+        context = fence_data("\n".join(lines),
+                             cap=max(20_000, 8 * self.context_budget_tokens))
+        messages = [
+            {"role": "system", "content":
+                "You answer questions about a temporal interaction log "
+                "using ONLY the raw event lines below -- no graph store, "
+                "retrieval index, or query language was used to prepare "
+                "them. Each line's leading [eN] tag is its evidence id; "
+                "cite it verbatim in a claim's \"evidence\" list.\n"
+                + ANSWER_CONTRACT},
+            {"role": "user", "content":
+                f"EVENTS ({len(lines)} of {len(candidates)} offered, "
+                f"budget {self.context_budget_tokens} tokens approx)\n"
+                f"{context}\n\nQUESTION: {question}\nANSWER OBJECT:"},
+        ]
+        obj = answer_contract_call(self.llm_fn, self.model, messages,
+                                   self.seed)
+        report = verify_llm_direct_claims(obj, by_tag)
+        kept = [c for c, r in zip(obj.get("claims", []), report["claims"])
+                if r["verdict"] not in GATED_VERDICTS]
+        gated = {**obj, "claims": kept}
+        return {"answer_object": gated,
+                "meta": {"events_offered": len(candidates),
+                         "events_included": len(lines),
+                         "truncated": truncated,
+                         "prompt_tokens_approx": used,
+                         "report": report,
+                         "pre_gate_answer": obj,
+                         "n_claims_dropped": len(obj.get("claims", []))
+                                             - len(kept)}}
