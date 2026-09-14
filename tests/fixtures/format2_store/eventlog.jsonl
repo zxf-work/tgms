@@ -1,0 +1,11 @@
+{"format":"tgms-eventlog","version":1}
+{"batch_id":"cb83fb6dd68c973d","ops":[{"disc":"#0","dst":"n1","op":"assert_edge","props":{"w":0},"provenance_ref":null,"rel_type":"R","source":"ingest","src":"n0","vt_e":10,"vt_s":0}],"tt":1789363205372334}
+{"batch_id":"9547a8f93fb4f0d0","ops":[{"disc":"#1","dst":"n2","op":"assert_edge","props":{"w":1},"provenance_ref":null,"rel_type":"R","source":"ingest","src":"n1","vt_e":11,"vt_s":1}],"tt":1789363205403715}
+{"batch_id":"fd7187ad824f9ee7","ops":[{"disc":"#2","dst":"n3","op":"assert_edge","props":{"w":2},"provenance_ref":null,"rel_type":"R","source":"ingest","src":"n2","vt_e":12,"vt_s":2}],"tt":1789363205436366}
+{"batch_id":"5427220d86636cb8","ops":[{"label":"N","op":"assert_node","props":{"p":1},"provenance_ref":null,"source":"ingest","uid":"n0","vt_e":50,"vt_s":0}],"tt":1789363205463581}
+{"batch_id":"da6f5e3b86bccaea","ops":[{"op":"correct","props":{"p":99},"provenance_ref":null,"ref":{"kind":"node","uid":"n0"},"source":"ingest","vt_e":50,"vt_s":0}],"tt":1789363205486646}
+{"batch_id":"fe04fb07a7d5bef6","ops":[{"disc":"#3","dst":"n4","op":"assert_edge","props":{"w":3},"provenance_ref":null,"rel_type":"R","source":"ingest","src":"n3","vt_e":13,"vt_s":3}],"tt":1789363205517547}
+{"batch_id":"b1466f52ba6bf761","ops":[{"disc":"#4","dst":"n5","op":"assert_edge","props":{"w":4},"provenance_ref":null,"rel_type":"R","source":"ingest","src":"n4","vt_e":14,"vt_s":4}],"tt":1789363205548758}
+{"batch_id":"053b6d61bba66427","ops":[{"disc":"#5","dst":"n6","op":"assert_edge","props":{"w":5},"provenance_ref":null,"rel_type":"R","source":"ingest","src":"n5","vt_e":15,"vt_s":5}],"tt":1789363205577682}
+{"batch_id":"256bfb2f739527fd","ops":[{"disc":"#6","dst":"n7","op":"assert_edge","props":{"w":6},"provenance_ref":null,"rel_type":"R","source":"ingest","src":"n6","vt_e":16,"vt_s":6}],"tt":1789363205607530}
+{"batch_id":"50dae005b7b9dff0","ops":[{"disc":"#7","dst":"n8","op":"assert_edge","props":{"w":7},"provenance_ref":null,"rel_type":"R","source":"ingest","src":"n7","vt_e":17,"vt_s":7}],"tt":1789363205638822}

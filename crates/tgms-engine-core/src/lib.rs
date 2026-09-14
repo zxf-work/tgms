@@ -55,14 +55,35 @@ pub const VERSION: &str = env!("CARGO_PKG_VERSION");
 /// story §4 requires.
 pub const FORMAT_VERSION: u32 = 1;
 
-/// On-disk format version for `manifests/<G>.json`. Format 2 is the tagged
-/// checkpoint/delta document of the memo above; format 1 is the pre-2026-09-13
-/// full-manifest-per-generation shape, which this build opens read-only and
-/// `tgms store upgrade-manifests` converts.
-pub const MANIFEST_FORMAT_VERSION: u32 = 2;
+/// On-disk format version for `manifests/<G>.json`.
+///
+/// * **1** — the pre-2026-09-13 full-manifest-per-generation shape.
+/// * **2** — the tagged checkpoint/delta document of the memo above, with
+///   `manifest_sha` still the sha of the whole serialized document.
+/// * **3** — the same document shape, with `manifest_sha` a **Merkle root**
+///   over the ordered segment set
+///   (`docs/design/INCREMENTAL_MANIFEST_V2_DIAGNOSIS_2026-09-15.md` §4,
+///   Addendum 3 ruling 1). The document layout did not change; the *value* of
+///   `manifest_sha` did, which is why it is a format bump. Records written at
+///   format 3 carry `sha_kind: "merkle-v1"` so the digest rule is legible on
+///   disk as well as derivable from `format`.
+///
+/// This build writes format 3; formats 1 and 2 open **read-only** and
+/// `tgms store upgrade-manifests` converts either of them.
+pub const MANIFEST_FORMAT_VERSION: u32 = 3;
 
-/// The manifest format this build can read but not write.
+/// The oldest manifest format this build can read.
 pub const FORMAT_LEGACY: u32 = 1;
+
+/// The manifest formats this build can read but not write — everything below
+/// [`MANIFEST_FORMAT_VERSION`] that it still understands. Kept as an explicit
+/// list rather than a `<` test so that dropping support for a format is a
+/// deliberate edit here rather than a silent consequence of a bump.
+pub const MANIFEST_FORMATS_READ_ONLY: [u32; 2] = [1, 2];
+
+/// The first manifest format whose `manifest_sha` is the Merkle root rather
+/// than the sha of the whole serialized document.
+pub const MANIFEST_FORMAT_MERKLE: u32 = 3;
 
 /// Open-end sentinel — must equal `tgms.core.model.OPEN_END` (spec §2.1).
 pub const OPEN_END: i64 = 1 << 62;

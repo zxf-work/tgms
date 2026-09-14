@@ -774,9 +774,11 @@ impl NativeStore {
         self.inner.manifest().manifest_sha.clone()
     }
 
-    /// On-disk manifest format this store was opened at: 2 for a store this
-    /// build wrote, 1 for one the pre-2026-09-13 engine wrote — which opens
-    /// read-only until `upgrade_manifests` converts it.
+    /// On-disk manifest format this store was opened at: 3 for a store this
+    /// build wrote, 1 or 2 for one an earlier engine wrote — which opens
+    /// read-only until `upgrade_manifests` converts it. Format 3 differs
+    /// from 2 only in what `manifest_sha` is: a Merkle root over the ordered
+    /// segment set rather than the sha of the whole document.
     fn manifest_format(&self) -> u32 {
         self.inner.manifest_format()
     }
@@ -1080,14 +1082,15 @@ impl NativeStore {
         Ok(d.into())
     }
 
-    /// Convert a format-1 store to format 2 by republishing the current
-    /// content as a checkpoint (`tgms store upgrade-manifests`).
+    /// Convert a format-1 or format-2 store to format 3 by republishing the
+    /// current content as a checkpoint (`tgms store upgrade-manifests`).
     ///
     /// One manifest written, `CURRENT` flipped, nothing else touched.
-    /// Idempotent: `upgraded` is False on a store already at format 2.
-    /// `manifest_sha` changes — it covers the format field — so any TCSR
-    /// cache stamped against the old generation rebuilds, which is what that
-    /// stamp is for.
+    /// Idempotent: `upgraded` is False on a store already at format 3.
+    /// `manifest_sha` changes — the format field is inside its preimage, and
+    /// from format 3 the digest is a different function entirely — so any
+    /// TCSR cache stamped against the old generation rebuilds, which is what
+    /// that stamp is for.
     fn upgrade_manifests(&mut self, py: Python<'_>) -> Res<Py<PyDict>> {
         let r = self.inner.upgrade_manifests().map_err(err)?;
         let d = PyDict::new(py);

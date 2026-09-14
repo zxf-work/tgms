@@ -1,0 +1,51 @@
+{
+  "format": 2,
+  "kind": "delta",
+  "generation": 1,
+  "parent": 0,
+  "parent_sha": "e96de1fc33697fdb",
+  "checkpoint": 0,
+  "created_tt": 1789363205372334,
+  "event_log": {
+    "offset": 246,
+    "chain": "51716b1a08fb2157"
+  },
+  "dict": {
+    "records": 2,
+    "bytes": 20
+  },
+  "next_segment_id": 1,
+  "stats": {
+    "n_entities": 2,
+    "n_node_versions": 0,
+    "n_edge_versions": 1,
+    "vt_min": null,
+    "vt_max": null,
+    "max_out_degree": 0
+  },
+  "add_edges_event": [
+    {
+      "file": "seg/000000000000.tgs",
+      "rows": 1,
+      "key_lo": [
+        0,
+        "218c0b07bc7076d4644bba9c"
+      ],
+      "key_hi": [
+        0,
+        "218c0b07bc7076d4644bba9c"
+      ],
+      "vt_min": 0,
+      "vt_max": 0,
+      "vt_e_max": 10,
+      "tt_s_min": 1789363205372334,
+      "tt_s_max": 1789363205372334,
+      "rel_codes": [],
+      "n_closed_folded": 0,
+      "all_current": true,
+      "sha": ""
+    }
+  ],
+  "delta_sha": "24338ab8ec673182",
+  "manifest_sha": "2e72b2cc09b7a484"
+}

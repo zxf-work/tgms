@@ -570,21 +570,24 @@ class NativeAdapter(StorageAdapter):
             raise _translate(e) from None
 
     def manifest_format(self) -> int:
-        """On-disk manifest format: 2 for a store this build wrote, 1 for one
-        the pre-2026-09-13 engine wrote, which opens read-only."""
+        """On-disk manifest format: 3 for a store this build wrote, 1 or 2
+        for one an earlier engine wrote, which opens read-only. Format 3
+        differs from 2 only in what ``manifest_sha`` is — a Merkle root over
+        the ordered segment set rather than the sha of the whole document."""
         return int(self._store.manifest_format())
 
     def upgrade_manifests(self) -> dict[str, Any]:
-        """Convert a format-1 store to format 2 (`tgms store
+        """Convert a format-1 or format-2 store to format 3 (`tgms store
         upgrade-manifests`).
 
-        Republishes the current generation's content as a format-2
+        Republishes the current generation's content as a format-3
         checkpoint and flips `CURRENT`: one manifest written, nothing else
         touched. Idempotent — `upgraded` is False if the store is already
-        format 2. The generation advances by one and `manifest_sha` changes
-        (it covers the format field), so a persisted TCSR stamped against the
-        old generation rebuilds on next use, which is exactly what that stamp
-        is for.
+        format 3. The generation advances by one and `manifest_sha` changes
+        (the format field is inside its preimage, and from format 3 the
+        digest is a different function entirely), so a persisted TCSR stamped
+        against the old generation rebuilds on next use, which is exactly
+        what that stamp is for.
         """
         try:
             return self._store.upgrade_manifests()

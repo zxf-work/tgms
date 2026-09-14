@@ -1,0 +1,122 @@
+{
+  "kind": "checkpoint",
+  "format": 2,
+  "generation": 4,
+  "parent": 3,
+  "created_tt": 1789363205463581,
+  "event_log": {
+    "offset": 841,
+    "chain": "11aabb25c7549f30"
+  },
+  "dict": {
+    "records": 4,
+    "bytes": 40
+  },
+  "widths": {
+    "entity_id": 32,
+    "row_id": 32,
+    "rel_code": 16
+  },
+  "node_store": [
+    {
+      "file": "seg/000000000003.tgs",
+      "rows": 1,
+      "key_lo": [
+        0,
+        "ed2e345e8986605b6fba1075"
+      ],
+      "key_hi": [
+        0,
+        "ed2e345e8986605b6fba1075"
+      ],
+      "vt_min": 0,
+      "vt_max": 0,
+      "vt_e_max": 50,
+      "tt_s_min": 1789363205463581,
+      "tt_s_max": 1789363205463581,
+      "rel_codes": [],
+      "n_closed_folded": 0,
+      "all_current": true,
+      "sha": ""
+    }
+  ],
+  "edge_lanes": {
+    "event": [
+      {
+        "file": "seg/000000000000.tgs",
+        "rows": 1,
+        "key_lo": [
+          0,
+          "218c0b07bc7076d4644bba9c"
+        ],
+        "key_hi": [
+          0,
+          "218c0b07bc7076d4644bba9c"
+        ],
+        "vt_min": 0,
+        "vt_max": 0,
+        "vt_e_max": 10,
+        "tt_s_min": 1789363205372334,
+        "tt_s_max": 1789363205372334,
+        "rel_codes": [],
+        "n_closed_folded": 0,
+        "all_current": true,
+        "sha": ""
+      },
+      {
+        "file": "seg/000000000001.tgs",
+        "rows": 1,
+        "key_lo": [
+          1,
+          "1976bc7fd517b5289c676b11"
+        ],
+        "key_hi": [
+          1,
+          "1976bc7fd517b5289c676b11"
+        ],
+        "vt_min": 1,
+        "vt_max": 1,
+        "vt_e_max": 11,
+        "tt_s_min": 1789363205403715,
+        "tt_s_max": 1789363205403715,
+        "rel_codes": [],
+        "n_closed_folded": 0,
+        "all_current": true,
+        "sha": ""
+      },
+      {
+        "file": "seg/000000000002.tgs",
+        "rows": 1,
+        "key_lo": [
+          2,
+          "1dc7e73b5d12dde3f2da4976"
+        ],
+        "key_hi": [
+          2,
+          "1dc7e73b5d12dde3f2da4976"
+        ],
+        "vt_min": 2,
+        "vt_max": 2,
+        "vt_e_max": 12,
+        "tt_s_min": 1789363205436366,
+        "tt_s_max": 1789363205436366,
+        "rel_codes": [],
+        "n_closed_folded": 0,
+        "all_current": true,
+        "sha": ""
+      }
+    ],
+    "interval": []
+  },
+  "close_runs": [],
+  "next_segment_id": 4,
+  "stats": {
+    "n_entities": 4,
+    "n_node_versions": 1,
+    "n_edge_versions": 3,
+    "vt_min": null,
+    "vt_max": null,
+    "max_out_degree": 0
+  },
+  "manifest_sha": "665c29b1de6d1dd3"
+}

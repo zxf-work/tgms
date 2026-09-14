@@ -237,17 +237,20 @@ def build_parser() -> argparse.ArgumentParser:
         help="gc: drop superseded generations and the files only they "
              "reference. compact: re-sort the live rows into fresh segments. "
              "verify: checksum-walk everything this generation names. "
-             "upgrade-manifests: convert a store written by the pre-2026-09-13 "
-             "engine (on-disk manifest format 1, one full manifest per "
-             "generation) to format 2, the checkpoint-plus-delta chain this "
-             "build writes. A format-1 store opens and reads fine but refuses "
-             "every write until this is run. It republishes the current "
-             "content as one checkpoint and flips CURRENT: one manifest "
-             "written, no segment, close run, dictionary or event-log byte "
-             "touched, and it is safe to run twice. The generation counter "
-             "advances by one and manifest_sha changes, so any persisted TCSR "
-             "index rebuilds on next use and build receipts must not be "
-             "compared on manifest_sha across the two formats.")
+             "upgrade-manifests: convert a store written by an earlier engine "
+             "(on-disk manifest format 1, one full manifest per generation, "
+             "or format 2, the checkpoint-plus-delta chain with a "
+             "whole-document manifest_sha) to format 3, which this build "
+             "writes: the same chain, with manifest_sha a Merkle root over "
+             "the ordered segment set. A format-1 or format-2 store opens and "
+             "reads fine but refuses every write until this is run. It "
+             "republishes the current content as one checkpoint and flips "
+             "CURRENT: one manifest written, no segment, close run, "
+             "dictionary or event-log byte touched, and it is safe to run "
+             "twice. The generation counter advances by one and manifest_sha "
+             "changes, so any persisted TCSR index rebuilds on next use and "
+             "build receipts must not be compared on manifest_sha across "
+             "formats.")
     p_store.add_argument("--store", required=True,
                          help="gc/compact/verify/backup: the store to act on. "
                               "restore: the fresh store to create")
@@ -890,7 +893,8 @@ def main(argv: list[str] | None = None) -> int:
         if args.action == "upgrade-manifests":
             # Deliberately *not* through `tgms.open`: that opens the event log
             # and may replay a suffix, which is a write — and a write is the
-            # one thing a format-1 store refuses until this command has run.
+            # one thing a format-1 or format-2 store refuses until this
+            # command has run.
             # The engine handle alone is enough, and touches nothing else.
             from pathlib import Path as _StorePath
 
