@@ -451,3 +451,101 @@ class TestTemporalPaths:
               f"precision={result.precision:.2f} n={result.n}")
         assert result.n > 0
         assert result.exclusion_rate >= 0.1
+
+
+# ---------------------------------------------------------------------------
+# §2.5 — burst_detection
+# ---------------------------------------------------------------------------
+
+class TestBurstDetection:
+    WINDOW = {"t_a": 0, "t_b": 900}
+    EDGE_RATE = {"target": {"kind": "edge_event_rate"}, "window": WINDOW, "stride": 10}
+    NODE_ACTIVITY = {"target": {"kind": "node_activity", "uid": "n0"},
+                     "window": WINDOW, "stride": 10}
+    NODE_ACTIVITY_REL = {"target": {"kind": "node_activity", "uid": "n0",
+                                    "rel_type": "R"}, "window": WINDOW, "stride": 10}
+
+    EDGE_RATE_MATRIX = [
+        ("an edge event inside the window", EDGE_RATE,
+         assert_edge("n5", "n6", vt_s=10, vt_e=11), True),
+        ("a correction inside the window", EDGE_RATE,
+         correct_edge("n5", "n6", vt_s=10, vt_e=20), True),
+        ("events ingested inside the window", EDGE_RATE, ingest("n5", "n6", 10), True),
+        ("a node write", EDGE_RATE, assert_node("n5"), False),
+        ("an edge event after the window", EDGE_RATE,
+         assert_edge("n5", "n6", vt_s=1000, vt_e=1001), False),
+        ("a carve of an edge, entirely outside the window (P = Pv: excluded)",
+         EDGE_RATE, correct_edge("n5", "n6", vt_s=2000, vt_e=2010), False),
+    ]
+
+    NODE_ACTIVITY_MATRIX = [
+        ("an edge incident to the target uid, inside the window",
+         NODE_ACTIVITY, assert_edge("n0", "n6", vt_s=10, vt_e=11), True),
+        ("an edge NOT incident to the target uid", NODE_ACTIVITY,
+         assert_edge("n5", "n6", vt_s=10, vt_e=11), False),
+        # this ALSO names n0 as an endpoint, so — even outside the window —
+        # the existence pair (vt = TOP, no rel_type restriction) catches it;
+        # only an op naming neither endpoint as n0 is a genuine precision win
+        ("an edge incident to the target uid, outside the window (the "
+         "existence pair, not the read term, catches it)",
+         NODE_ACTIVITY, assert_edge("n0", "n6", vt_s=1000, vt_e=1001), True),
+        # the existence pair
+        ("an assert_node registering the target uid", NODE_ACTIVITY,
+         assert_node("n0"), True),
+        ("an assert_edge naming the target uid, far outside the window",
+         NODE_ACTIVITY, assert_edge("n0", "n50", vt_s=2000, vt_e=2001), True),
+        ("an assert_node registering an unrelated uid", NODE_ACTIVITY,
+         assert_node("n1"), False),
+        # the rel_type filter narrows T on the READ term, but the existence
+        # pair (rel_types = TOP always) still catches an edge naming n0 —
+        # so this is a `both` arms hit, not a pure T-exclusion case
+        ("an incident edge of a DIFFERENT rel_type — the read term's T "
+         "excludes it, but the existence pair still catches it",
+         NODE_ACTIVITY_REL, assert_edge("n0", "n6", rel_type="S", vt_s=10, vt_e=11),
+         True),
+        ("an incident edge of the named rel_type", NODE_ACTIVITY_REL,
+         assert_edge("n0", "n6", rel_type="R", vt_s=10, vt_e=11), True),
+        # a genuine T-exclusion, isolated from the existence pair: `correct`
+        # is not in K_DENSE_ID (it carries no entity-kind discriminator that
+        # would let it register a NEW dense id), so a correction incident to
+        # n0 of the wrong rel_type is excluded outright
+        ("a correction incident to the target uid, wrong rel_type "
+         "(isolates T — correct never registers a dense id)",
+         NODE_ACTIVITY_REL, correct_edge("n0", "n6", rel_type="S", vt_s=10, vt_e=11),
+         False),
+    ]
+
+    @pytest.mark.parametrize("label,args,op,must", EDGE_RATE_MATRIX + NODE_ACTIVITY_MATRIX,
+                             ids=[m[0] for m in EDGE_RATE_MATRIX + NODE_ACTIVITY_MATRIX])
+    def test_matrix(self, label, args, op, must):
+        filled = validate_args("burst_detection", dict(args))
+        terms = terms_for("burst_detection", filled, sigma_for("burst_detection", filled))
+        assert hits(terms, op) is must, (
+            f"{label}: should {'intersect' if must else 'NOT intersect'}; "
+            f"arms hit: {arms_that_hit(terms, op)}")
+
+    def test_edge_event_rate_has_no_entity_filter(self):
+        filled = validate_args("burst_detection", dict(self.EDGE_RATE))
+        (term,) = terms_for("burst_detection", filled, sigma_for("burst_detection", filled))
+        assert term.targets.edges is TOP
+
+    def test_node_activity_incident_arm_matches_the_kernel_mask(self):
+        filled = validate_args("burst_detection", dict(self.NODE_ACTIVITY))
+        read_term = terms_for("burst_detection", filled, sigma_for("burst_detection", filled))[0]
+        assert read_term.targets.incident == Incident("either", ("n0",))
+
+    def test_differential_edge_event_rate(self, store):
+        result = run_differential(store, "burst_detection", dict(self.EDGE_RATE),
+                                  window=(0, 900), trials=10, seed=6)
+        print(f"burst_detection[edge_event_rate]: exclusion={result.exclusion_rate:.2f} "
+              f"precision={result.precision:.2f} n={result.n}")
+        assert result.n > 0
+        assert result.exclusion_rate >= 0.3
+
+    def test_differential_node_activity(self, store):
+        result = run_differential(store, "burst_detection", dict(self.NODE_ACTIVITY),
+                                  read_uids=("n0",), window=(0, 900), trials=10, seed=7)
+        print(f"burst_detection[node_activity]: exclusion={result.exclusion_rate:.2f} "
+              f"precision={result.precision:.2f} n={result.n}")
+        assert result.n > 0
+        assert result.exclusion_rate >= 0.3
