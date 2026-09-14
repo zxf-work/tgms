@@ -1,7 +1,7 @@
 #!/bin/bash
 #SBATCH --job-name=tgms-storm
 #SBATCH --partition=bigTiger
-#SBATCH --array=0-199%20
+#SBATCH --array=0-399%6
 #SBATCH --cpus-per-task=4
 #SBATCH --mem=16G
 #SBATCH --time=04:00:00
@@ -31,7 +31,17 @@
 #   TGMS_AGES              (default: none,recent,hours,days,deep)         5
 #   TGMS_N_ARTIFACTS_LIST  (default: 1000)                                1
 #   TGMS_N_SEEDS           (default: 5, seeds 0..N-1)                     5
-#                                                    total = 2*4*5*1*5 = 200
+#   TGMS_MEASURE_TTF_LIST  (default: sum,end-to-end)                      2
+#                                                total = 2*4*5*1*5*2 = 400
+#
+# storm-v1 C6 freeze note (benchmarks/storm-v1/campaign.yaml): the frozen
+# cell grid scores "both TTF modes" per cell, which the original single-
+# mode version of this script (hardcoded `--measure-ttf sum`) could not
+# produce. TGMS_MEASURE_TTF_LIST is the additive fix -- an outermost index
+# dimension, slower-varying than store, so a small --array slice still
+# sweeps one ttf mode's full cell grid before the other begins. This is
+# the SMALLEST change that makes the script produce the freeze's grid;
+# `scripts/storm_campaign_merge.py` gained the matching `--ttf-modes` flag.
 #
 # "none" in TGMS_AGES means no --age flag at all (the plain --mix cell,
 # C2's rate axis without the age axis layered on). 10^5 artifacts is
@@ -61,13 +71,19 @@ JOB_ID="${SLURM_JOB_ID:?must run under sbatch}"
 CHECKOUT="${TGMS_REPO:-/project/xzhang12/tgms-storm-v1}"
 STAGE="${TGMS_STAGE:-/project/xzhang12/storm-v1-work}"
 BASE_SEED="${TGMS_BASE_SEED:-0}"
-export TGMS_COMMIT="${TGMS_COMMIT:-4af2181}"
+export TGMS_COMMIT="${TGMS_COMMIT:-8962b78}"
+# additive fix: the checkout under test has its own rebuilt engine/venv
+# (storm-v1 freeze anchor commit differs from the shared /project/xzhang12/
+# tgms checkout other lanes build against) -- default to $CHECKOUT's own
+# .venv rather than a hardcoded sibling checkout's, still overridable.
+VENV_PY="${TGMS_VENV_PY:-$CHECKOUT/.venv/bin/python}"
 
 IFS=',' read -r -a STORES <<< "${TGMS_STORES:-synth-iv-60k,collegemsg}"
 IFS=',' read -r -a MIXES <<< "${TGMS_MIXES:-c1,c2,c3,c4}"
 IFS=',' read -r -a AGES <<< "${TGMS_AGES:-none,recent,hours,days,deep}"
 IFS=',' read -r -a N_ARTIFACTS_LIST <<< "${TGMS_N_ARTIFACTS_LIST:-1000}"
 N_SEEDS="${TGMS_N_SEEDS:-5}"
+IFS=',' read -r -a TTF_MODES <<< "${TGMS_MEASURE_TTF_LIST:-sum,end-to-end}"
 BATCHES_PER_TASK="${TGMS_BATCHES_PER_TASK:-2000}"
 ALLOW_R18_TRIP_FLAG=""
 [ "${TGMS_ALLOW_R18_TRIP:-0}" = "1" ] && ALLOW_R18_TRIP_FLAG="--allow-r18-trip"
@@ -76,27 +92,33 @@ n_stores=${#STORES[@]}
 n_mixes=${#MIXES[@]}
 n_ages=${#AGES[@]}
 n_nlist=${#N_ARTIFACTS_LIST[@]}
-total=$((n_stores * n_mixes * n_ages * n_nlist * N_SEEDS))
+n_ttf=${#TTF_MODES[@]}
+total=$((n_stores * n_mixes * n_ages * n_nlist * N_SEEDS * n_ttf))
 if [ "$TASK_ID" -ge "$total" ]; then
     echo "TASK_ID=$TASK_ID out of range for grid size $total " \
-         "(stores=$n_stores mixes=$n_mixes ages=$n_ages n_artifacts=$n_nlist seeds=$N_SEEDS)" >&2
+         "(stores=$n_stores mixes=$n_mixes ages=$n_ages n_artifacts=$n_nlist seeds=$N_SEEDS ttf_modes=$n_ttf)" >&2
     exit 2
 fi
 
 # in-script index decomposition (§7's own phrase), seed varying fastest so
-# a small array slice (e.g. --array=0-4) sweeps one cell's seeds first.
+# a small array slice (e.g. --array=0-4) sweeps one cell's seeds first;
+# ttf mode is the new OUTERMOST (slowest-varying) axis, so --array=0-199
+# sweeps the whole store x mix x age x n_artifacts x seed grid at "sum"
+# before "end-to-end" begins at task 200.
 rem=$TASK_ID
 seed_idx=$((rem % N_SEEDS)); rem=$((rem / N_SEEDS))
 n_idx=$((rem % n_nlist)); rem=$((rem / n_nlist))
 age_idx=$((rem % n_ages)); rem=$((rem / n_ages))
 mix_idx=$((rem % n_mixes)); rem=$((rem / n_mixes))
-store_idx=$((rem % n_stores))
+store_idx=$((rem % n_stores)); rem=$((rem / n_stores))
+ttf_idx=$((rem % n_ttf))
 
 STORE="${STORES[$store_idx]}"
 MIX="${MIXES[$mix_idx]}"
 AGE="${AGES[$age_idx]}"
 N_ARTIFACTS="${N_ARTIFACTS_LIST[$n_idx]}"
 SEED=$((BASE_SEED + seed_idx))
+MEASURE_TTF="${TTF_MODES[$ttf_idx]}"
 
 AGE_FLAG=""
 [ "$AGE" != "none" ] && AGE_FLAG="--age $AGE"
@@ -130,12 +152,17 @@ cleanup() { rm -rf "$TMPDIR" "$SHIM_DIR"; }
 trap cleanup EXIT
 
 echo "RUN_STARTED commit=${TGMS_COMMIT} task=${TASK_ID} store=${STORE} mix=${MIX} " \
-     "age=${AGE} n_artifacts=${N_ARTIFACTS} seed=${SEED}"
+     "age=${AGE} n_artifacts=${N_ARTIFACTS} seed=${SEED} measure_ttf=${MEASURE_TTF}"
 hostname > "$STAGE/node_meta/task-${TASK_ID}.host"
 { uname -a; nproc; } > "$STAGE/node_meta/task-${TASK_ID}.uname" 2>&1
 
 cd "$CHECKOUT"
-VENV_PY="/project/xzhang12/tgms/.venv/bin/python"
+# addendum stamps (additive; empty by default -- storm-v1 addendum-1's own
+# text requires every record to carry these in its own "config").
+ADDENDUM_ID_FLAG=""
+[ -n "${TGMS_ADDENDUM_ID:-}" ] && ADDENDUM_ID_FLAG="--addendum-id $TGMS_ADDENDUM_ID"
+FREEZE_SHA_FLAG=""
+[ -n "${TGMS_FREEZE_SHA256:-}" ] && FREEZE_SHA_FLAG="--freeze-sha256 $TGMS_FREEZE_SHA256"
 ec=0
 "$VENV_PY" scripts/bench_correction_storm.py \
     --store "$STORE" \
@@ -144,11 +171,13 @@ ec=0
     --seed "$SEED" \
     --mix "$MIX" \
     $AGE_FLAG \
-    --measure-ttf sum \
+    --measure-ttf "$MEASURE_TTF" \
     $ALLOW_R18_TRIP_FLAG \
+    $ADDENDUM_ID_FLAG \
+    $FREEZE_SHA_FLAG \
     --out "$STAGE/records/task-${TASK_ID}" \
     && ec=0 || ec=$?
 
 echo "TASK_DONE task=${TASK_ID} store=${STORE} mix=${MIX} age=${AGE} " \
-     "n_artifacts=${N_ARTIFACTS} seed=${SEED} exit=${ec}"
+     "n_artifacts=${N_ARTIFACTS} seed=${SEED} measure_ttf=${MEASURE_TTF} exit=${ec}"
 exit "$ec"

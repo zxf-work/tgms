@@ -38,6 +38,7 @@ import json
 import os
 import platform
 import shutil
+import signal
 import socket
 import subprocess
 import sys
@@ -211,6 +212,33 @@ def main(argv: list[str] | None = None) -> int:
     ap.add_argument("--dag-depth", type=int, default=4)
     ap.add_argument("--dag-fanout", type=int, default=3)
     ap.add_argument("--dag-cascade-k", type=int, default=4)
+    # storm-v1 addendum-1 provenance stamps (additive; no effect on measurement) --
+    # a campaign.yaml addendum supersedes the frozen grid for a run of record, and
+    # the addendum's own text says every record must carry its id + the
+    # campaign.yaml sha256 it ran against, in this manifest's own "config".
+    ap.add_argument("--addendum-id", default=None,
+                    help="stamped into config verbatim (e.g. storm-v1-addendum-1); no "
+                         "effect on measurement")
+    ap.add_argument("--freeze-sha256", default=None,
+                    help="campaign.yaml's own sha256 after the addendum, stamped into "
+                         "config verbatim; no effect on measurement")
+    # wall-cap checkpoint (additive; only engages if --wall-cap-s is passed) -- a
+    # probe run under a Slurm time limit that could plausibly not finish (R-18 is
+    # a *super-linear* trip point by design) needs a partial record rather than
+    # nothing at all, since `Storm.run` itself only returns after every batch
+    # completes. `--wall-cap-s` installs a SIGTERM handler and inlines `Storm.run`'s
+    # own loop (byte-for-byte, restated here since the loop needs a place to check
+    # a flag `Storm.run` has no hook for) so a signal received between batches
+    # (never mid-batch -- the in-flight batch always finishes) stops the loop
+    # early and this script still writes the manifest, tagged
+    # `config.wall_capped=true`. The caller (a Slurm `--signal=B:TERM@<lead>`)
+    # is responsible for sending SIGTERM enough wall-clock before the hard kill
+    # for one in-flight batch to finish.
+    ap.add_argument("--wall-cap-s", type=float, default=None,
+                    help="if set, install a SIGTERM handler and stop after the "
+                         "in-flight batch if the signal arrives before --batches "
+                         "batches complete, writing a partial manifest instead of "
+                         "nothing (config.wall_capped=true)")
     args = ap.parse_args(argv)
 
     if args.n_artifacts > R18_TRIP_N_ARTIFACTS and not args.allow_r18_trip:
@@ -241,7 +269,34 @@ def main(argv: list[str] | None = None) -> int:
                  measure_ttf=args.measure_ttf)
     n_registered = len(storm.artifacts)
     n_skipped = storm.n_registration_skipped
-    results = storm.run(args.batches, max_attempts_factor=args.max_attempts_factor)
+    wall_capped = False
+    if args.wall_cap_s is None:
+        results = storm.run(args.batches, max_attempts_factor=args.max_attempts_factor)
+    else:
+        # `Storm.run`'s own loop (tgms/eval/storm.py), restated here only because
+        # it needs a place to check the stop flag that module has no hook for --
+        # identical to `storm.run(args.batches, max_attempts_factor=...)` whenever
+        # the flag never fires.
+        stop_requested = False
+
+        def _on_term(signum, frame):
+            nonlocal stop_requested
+            stop_requested = True
+
+        signal.signal(signal.SIGTERM, _on_term)
+        results = []
+        attempts = 0
+        cap = max(1, args.batches) * args.max_attempts_factor
+        while len(results) < args.batches and attempts < cap:
+            if stop_requested:
+                wall_capped = True
+                print(f"** WALL CAP: SIGTERM received after {len(results)}/{args.batches} "
+                     f"batches -- writing partial manifest **")
+                break
+            attempts += 1
+            r = storm.run_batch(len(results))
+            if r is not None:
+                results.append(r)
     wall_s = time.time() - t_start
 
     dag_payload: dict[str, Any] | None = None
@@ -296,7 +351,9 @@ def main(argv: list[str] | None = None) -> int:
                   "burst_after": args.burst_after, "measure_ttf": args.measure_ttf,
                   "allow_r18_trip": args.allow_r18_trip, "interval_vt": interval_vt,
                   "dag_shape": args.dag_shape, "dag_depth": args.dag_depth,
-                  "dag_fanout": args.dag_fanout, "dag_cascade_k": args.dag_cascade_k},
+                  "dag_fanout": args.dag_fanout, "dag_cascade_k": args.dag_cascade_k,
+                  "addendum_id": args.addendum_id, "freeze_sha256": args.freeze_sha256,
+                  "wall_cap_s": args.wall_cap_s, "wall_capped": wall_capped},
         "seed": {"value": args.seed},
         "dataset": {"name": store_label, "digest": eventlog_digest,
                    "digest_kind": "eventlog_sha"},
