@@ -1,0 +1,1170 @@
+{
+ "mode": "mixed",
+ "store": "/mnt/project/xzhang/tgms/tmp/tgms-eval-resources/scale-10000000/store-native",
+ "scale": 10000000,
+ "reader_counts": [
+  1,
+  4,
+  8,
+  16
+ ],
+ "queries": [
+  "hist.single",
+  "snap.hop2",
+  "series.count",
+  "coactive.narrow"
+ ],
+ "duration_s": 30.0,
+ "trials": 3,
+ "batch_rows": 100,
+ "records": [
+  {
+   "readers": 1,
+   "writer": false,
+   "aggregate_qps": [
+    2.75,
+    2.78,
+    2.69
+   ],
+   "per_query_ms": {
+    "hist.single": {
+     "trials": 3,
+     "trial_p50s": [
+      2.057,
+      1.737,
+      1.891
+     ],
+     "pooled": {
+      "n": 63,
+      "p50": 1.891,
+      "p90": 2.444,
+      "p99": 2.833,
+      "min": 1.299,
+      "max": 2.871
+     }
+    },
+    "snap.hop2": {
+     "trials": 3,
+     "trial_p50s": [
+      1092.353,
+      1083.116,
+      1115.345
+     ],
+     "pooled": {
+      "n": 63,
+      "p50": 1099.293,
+      "p90": 1138.785,
+      "p99": 1197.845,
+      "min": 1070.242,
+      "max": 1263.646
+     }
+    },
+    "series.count": {
+     "trials": 3,
+     "trial_p50s": [
+      114.6,
+      111.475,
+      112.531
+     ],
+     "pooled": {
+      "n": 63,
+      "p50": 113.029,
+      "p90": 123.925,
+      "p99": 130.866,
+      "min": 94.621,
+      "max": 135.847
+     }
+    },
+    "coactive.narrow": {
+     "trials": 3,
+     "trial_p50s": [
+      233.649,
+      232.633,
+      238.86
+     ],
+     "pooled": {
+      "n": 63,
+      "p50": 234.951,
+      "p90": 254.939,
+      "p99": 269.762,
+      "min": 215.541,
+      "max": 270.296
+     }
+    }
+   },
+   "commit_ms": null,
+   "trials": [
+    {
+     "trial": 0,
+     "aggregate_qps": 2.75,
+     "reader_generations": [
+      462
+     ],
+     "writer": null
+    },
+    {
+     "trial": 1,
+     "aggregate_qps": 2.78,
+     "reader_generations": [
+      462
+     ],
+     "writer": null
+    },
+    {
+     "trial": 2,
+     "aggregate_qps": 2.69,
+     "reader_generations": [
+      462
+     ],
+     "writer": null
+    }
+   ]
+  },
+  {
+   "readers": 1,
+   "writer": true,
+   "aggregate_qps": [
+    2.68,
+    2.71,
+    2.7
+   ],
+   "per_query_ms": {
+    "hist.single": {
+     "trials": 3,
+     "trial_p50s": [
+      1.597,
+      2.064,
+      1.832
+     ],
+     "pooled": {
+      "n": 63,
+      "p50": 1.767,
+      "p90": 2.615,
+      "p99": 2.921,
+      "min": 1.327,
+      "max": 2.932
+     }
+    },
+    "snap.hop2": {
+     "trials": 3,
+     "trial_p50s": [
+      1135.595,
+      1118.816,
+      1119.035
+     ],
+     "pooled": {
+      "n": 63,
+      "p50": 1123.038,
+      "p90": 1175.364,
+      "p99": 1234.255,
+      "min": 1082.028,
+      "max": 1238.413
+     }
+    },
+    "series.count": {
+     "trials": 3,
+     "trial_p50s": [
+      108.723,
+      118.039,
+      111.132
+     ],
+     "pooled": {
+      "n": 63,
+      "p50": 111.564,
+      "p90": 129.416,
+      "p99": 134.689,
+      "min": 98.246,
+      "max": 146.252
+     }
+    },
+    "coactive.narrow": {
+     "trials": 3,
+     "trial_p50s": [
+      231.522,
+      237.755,
+      235.238
+     ],
+     "pooled": {
+      "n": 63,
+      "p50": 234.464,
+      "p90": 252.526,
+      "p99": 267.345,
+      "min": 216.635,
+      "max": 281.881
+     }
+    }
+   },
+   "commit_ms": {
+    "trials": 3,
+    "trial_p50s": [
+     24.352,
+     23.67,
+     23.239
+    ],
+    "pooled": {
+     "n": 3753,
+     "p50": 23.723,
+     "p90": 32.062,
+     "p99": 36.629,
+     "min": 11.095,
+     "max": 112.525
+    }
+   },
+   "trials": [
+    {
+     "trial": 0,
+     "aggregate_qps": 2.68,
+     "reader_generations": [
+      462
+     ],
+     "writer": {
+      "commits": 1232,
+      "commit_ms": {
+       "n": 1232,
+       "p50": 24.353,
+       "p90": 31.918,
+       "p99": 34.539,
+       "min": 11.188,
+       "max": 112.525
+      },
+      "commits_per_s": 41.062,
+      "phase_p50_us": {
+       "seal_us": 1531,
+       "closes_us": 0,
+       "stats_us": 0,
+       "dict_us": 445,
+       "manifest_us": 3572,
+       "current_us": 837,
+       "total_us": 16629,
+       "manifest_bytes": 886242,
+       "segments_named": 1708
+      }
+     }
+    },
+    {
+     "trial": 1,
+     "aggregate_qps": 2.71,
+     "reader_generations": [
+      462
+     ],
+     "writer": {
+      "commits": 1257,
+      "commit_ms": {
+       "n": 1257,
+       "p50": 23.67,
+       "p90": 32.343,
+       "p99": 36.586,
+       "min": 11.192,
+       "max": 110.305
+      },
+      "commits_per_s": 41.887,
+      "phase_p50_us": {
+       "seal_us": 1395,
+       "closes_us": 0,
+       "stats_us": 0,
+       "dict_us": 424,
+       "manifest_us": 3565,
+       "current_us": 750,
+       "total_us": 16015,
+       "manifest_bytes": 898805,
+       "segments_named": 1733
+      }
+     }
+    },
+    {
+     "trial": 2,
+     "aggregate_qps": 2.7,
+     "reader_generations": [
+      462
+     ],
+     "writer": {
+      "commits": 1264,
+      "commit_ms": {
+       "n": 1264,
+       "p50": 23.239,
+       "p90": 32.052,
+       "p99": 37.053,
+       "min": 11.095,
+       "max": 110.851
+      },
+      "commits_per_s": 42.098,
+      "phase_p50_us": {
+       "seal_us": 1391,
+       "closes_us": 0,
+       "stats_us": 0,
+       "dict_us": 422,
+       "manifest_us": 3563,
+       "current_us": 741,
+       "total_us": 15822,
+       "manifest_bytes": 902322,
+       "segments_named": 1740
+      }
+     }
+    }
+   ]
+  },
+  {
+   "readers": 4,
+   "writer": false,
+   "aggregate_qps": [
+    10.16,
+    9.93,
+    10.07
+   ],
+   "per_query_ms": {
+    "hist.single": {
+     "trials": 3,
+     "trial_p50s": [
+      1.603,
+      1.66,
+      1.729
+     ],
+     "pooled": {
+      "n": 233,
+      "p50": 1.685,
+      "p90": 2.366,
+      "p99": 5.451,
+      "min": 1.308,
+      "max": 5.717
+     }
+    },
+    "snap.hop2": {
+     "trials": 3,
+     "trial_p50s": [
+      1132.081,
+      1123.105,
+      1160.168
+     ],
+     "pooled": {
+      "n": 233,
+      "p50": 1137.945,
+      "p90": 1186.42,
+      "p99": 1266.949,
+      "min": 1066.957,
+      "max": 1383.197
+     }
+    },
+    "series.count": {
+     "trials": 3,
+     "trial_p50s": [
+      137.448,
+      150.916,
+      121.566
+     ],
+     "pooled": {
+      "n": 233,
+      "p50": 143.722,
+      "p90": 159.771,
+      "p99": 170.364,
+      "min": 93.295,
+      "max": 182.551
+     }
+    },
+    "coactive.narrow": {
+     "trials": 3,
+     "trial_p50s": [
+      309.518,
+      353.562,
+      285.75
+     ],
+     "pooled": {
+      "n": 233,
+      "p50": 325.787,
+      "p90": 369.53,
+      "p99": 379.634,
+      "min": 210.113,
+      "max": 383.196
+     }
+    }
+   },
+   "commit_ms": null,
+   "trials": [
+    {
+     "trial": 0,
+     "aggregate_qps": 10.16,
+     "reader_generations": [
+      462
+     ],
+     "writer": null
+    },
+    {
+     "trial": 1,
+     "aggregate_qps": 9.93,
+     "reader_generations": [
+      462
+     ],
+     "writer": null
+    },
+    {
+     "trial": 2,
+     "aggregate_qps": 10.07,
+     "reader_generations": [
+      462
+     ],
+     "writer": null
+    }
+   ]
+  },
+  {
+   "readers": 4,
+   "writer": true,
+   "aggregate_qps": [
+    9.76,
+    9.72,
+    9.99
+   ],
+   "per_query_ms": {
+    "hist.single": {
+     "trials": 3,
+     "trial_p50s": [
+      1.655,
+      1.703,
+      1.708
+     ],
+     "pooled": {
+      "n": 228,
+      "p50": 1.692,
+      "p90": 2.352,
+      "p99": 5.697,
+      "min": 1.255,
+      "max": 15.761
+     }
+    },
+    "snap.hop2": {
+     "trials": 3,
+     "trial_p50s": [
+      1162.554,
+      1151.586,
+      1179.3
+     ],
+     "pooled": {
+      "n": 228,
+      "p50": 1166.011,
+      "p90": 1212.144,
+      "p99": 1378.472,
+      "min": 1086.418,
+      "max": 1468.861
+     }
+    },
+    "series.count": {
+     "trials": 3,
+     "trial_p50s": [
+      148.737,
+      152.353,
+      124.042
+     ],
+     "pooled": {
+      "n": 228,
+      "p50": 146.117,
+      "p90": 162.555,
+      "p99": 170.168,
+      "min": 95.427,
+      "max": 195.98
+     }
+    },
+    "coactive.narrow": {
+     "trials": 3,
+     "trial_p50s": [
+      343.721,
+      354.482,
+      263.201
+     ],
+     "pooled": {
+      "n": 228,
+      "p50": 338.626,
+      "p90": 368.494,
+      "p99": 385.632,
+      "min": 208.365,
+      "max": 391.404
+     }
+    }
+   },
+   "commit_ms": {
+    "trials": 3,
+    "trial_p50s": [
+     24.594,
+     24.633,
+     24.508
+    ],
+    "pooled": {
+     "n": 3535,
+     "p50": 24.574,
+     "p90": 35.001,
+     "p99": 53.531,
+     "min": 11.342,
+     "max": 122.311
+    }
+   },
+   "trials": [
+    {
+     "trial": 0,
+     "aggregate_qps": 9.76,
+     "reader_generations": [
+      462
+     ],
+     "writer": {
+      "commits": 1171,
+      "commit_ms": {
+       "n": 1171,
+       "p50": 24.594,
+       "p90": 35.222,
+       "p99": 53.103,
+       "min": 11.348,
+       "max": 114.516
+      },
+      "commits_per_s": 39.014,
+      "phase_p50_us": {
+       "seal_us": 1447,
+       "closes_us": 0,
+       "stats_us": 0,
+       "dict_us": 442,
+       "manifest_us": 3484,
+       "current_us": 765,
+       "total_us": 16748,
+       "manifest_bytes": 855590,
+       "segments_named": 1647
+      }
+     }
+    },
+    {
+     "trial": 1,
+     "aggregate_qps": 9.72,
+     "reader_generations": [
+      462
+     ],
+     "writer": {
+      "commits": 1172,
+      "commit_ms": {
+       "n": 1172,
+       "p50": 24.633,
+       "p90": 35.789,
+       "p99": 53.134,
+       "min": 11.342,
+       "max": 122.311
+      },
+      "commits_per_s": 39.021,
+      "phase_p50_us": {
+       "seal_us": 1406,
+       "closes_us": 0,
+       "stats_us": 0,
+       "dict_us": 435,
+       "manifest_us": 3447,
+       "current_us": 737,
+       "total_us": 16796,
+       "manifest_bytes": 856092,
+       "segments_named": 1648
+      }
+     }
+    },
+    {
+     "trial": 2,
+     "aggregate_qps": 9.99,
+     "reader_generations": [
+      462
+     ],
+     "writer": {
+      "commits": 1192,
+      "commit_ms": {
+       "n": 1192,
+       "p50": 24.508,
+       "p90": 34.164,
+       "p99": 53.589,
+       "min": 11.405,
+       "max": 112.831
+      },
+      "commits_per_s": 39.712,
+      "phase_p50_us": {
+       "seal_us": 1418,
+       "closes_us": 0,
+       "stats_us": 0,
+       "dict_us": 434,
+       "manifest_us": 3518,
+       "current_us": 743,
+       "total_us": 16806,
+       "manifest_bytes": 866142,
+       "segments_named": 1668
+      }
+     }
+    }
+   ]
+  },
+  {
+   "readers": 8,
+   "writer": false,
+   "aggregate_qps": [
+    17.25,
+    17.3,
+    17.22
+   ],
+   "per_query_ms": {
+    "hist.single": {
+     "trials": 3,
+     "trial_p50s": [
+      1.751,
+      1.754,
+      1.727
+     ],
+     "pooled": {
+      "n": 404,
+      "p50": 1.748,
+      "p90": 2.499,
+      "p99": 6.721,
+      "min": 1.293,
+      "max": 9.377
+     }
+    },
+    "snap.hop2": {
+     "trials": 3,
+     "trial_p50s": [
+      1272.569,
+      1321.412,
+      1273.028
+     ],
+     "pooled": {
+      "n": 404,
+      "p50": 1283.952,
+      "p90": 1379.812,
+      "p99": 1461.476,
+      "min": 1151.09,
+      "max": 1545.635
+     }
+    },
+    "series.count": {
+     "trials": 3,
+     "trial_p50s": [
+      166.123,
+      158.959,
+      166.963
+     ],
+     "pooled": {
+      "n": 404,
+      "p50": 163.32,
+      "p90": 213.105,
+      "p99": 245.832,
+      "min": 116.41,
+      "max": 266.999
+     }
+    },
+    "coactive.narrow": {
+     "trials": 3,
+     "trial_p50s": [
+      395.891,
+      361.62,
+      402.243
+     ],
+     "pooled": {
+      "n": 404,
+      "p50": 383.322,
+      "p90": 453.999,
+      "p99": 499.092,
+      "min": 208.485,
+      "max": 517.378
+     }
+    }
+   },
+   "commit_ms": null,
+   "trials": [
+    {
+     "trial": 0,
+     "aggregate_qps": 17.25,
+     "reader_generations": [
+      462
+     ],
+     "writer": null
+    },
+    {
+     "trial": 1,
+     "aggregate_qps": 17.3,
+     "reader_generations": [
+      462
+     ],
+     "writer": null
+    },
+    {
+     "trial": 2,
+     "aggregate_qps": 17.22,
+     "reader_generations": [
+      462
+     ],
+     "writer": null
+    }
+   ]
+  },
+  {
+   "readers": 8,
+   "writer": true,
+   "aggregate_qps": [
+    17.21,
+    17.13,
+    17.15
+   ],
+   "per_query_ms": {
+    "hist.single": {
+     "trials": 3,
+     "trial_p50s": [
+      1.75,
+      1.774,
+      1.758
+     ],
+     "pooled": {
+      "n": 395,
+      "p50": 1.758,
+      "p90": 2.416,
+      "p99": 7.016,
+      "min": 1.341,
+      "max": 8.958
+     }
+    },
+    "snap.hop2": {
+     "trials": 3,
+     "trial_p50s": [
+      1280.544,
+      1292.165,
+      1303.931
+     ],
+     "pooled": {
+      "n": 395,
+      "p50": 1293.655,
+      "p90": 1458.793,
+      "p99": 1553.999,
+      "min": 1157.763,
+      "max": 1578.486
+     }
+    },
+    "series.count": {
+     "trials": 3,
+     "trial_p50s": [
+      161.137,
+      164.372,
+      164.729
+     ],
+     "pooled": {
+      "n": 395,
+      "p50": 163.134,
+      "p90": 203.881,
+      "p99": 251.142,
+      "min": 106.933,
+      "max": 283.021
+     }
+    },
+    "coactive.narrow": {
+     "trials": 3,
+     "trial_p50s": [
+      366.809,
+      368.127,
+      367.785
+     ],
+     "pooled": {
+      "n": 395,
+      "p50": 367.57,
+      "p90": 446.21,
+      "p99": 504.363,
+      "min": 224.298,
+      "max": 517.821
+     }
+    }
+   },
+   "commit_ms": {
+    "trials": 3,
+    "trial_p50s": [
+     26.932,
+     26.184,
+     26.006
+    ],
+    "pooled": {
+     "n": 3268,
+     "p50": 26.428,
+     "p90": 42.453,
+     "p99": 54.104,
+     "min": 11.18,
+     "max": 133.077
+    }
+   },
+   "trials": [
+    {
+     "trial": 0,
+     "aggregate_qps": 17.21,
+     "reader_generations": [
+      462
+     ],
+     "writer": {
+      "commits": 1072,
+      "commit_ms": {
+       "n": 1072,
+       "p50": 26.933,
+       "p90": 43.438,
+       "p99": 55.009,
+       "min": 11.282,
+       "max": 133.077
+      },
+      "commits_per_s": 35.7,
+      "phase_p50_us": {
+       "seal_us": 1448,
+       "closes_us": 0,
+       "stats_us": 0,
+       "dict_us": 424,
+       "manifest_us": 3452,
+       "current_us": 722,
+       "total_us": 17929,
+       "manifest_bytes": 805840,
+       "segments_named": 1548
+      }
+     }
+    },
+    {
+     "trial": 1,
+     "aggregate_qps": 17.13,
+     "reader_generations": [
+      462
+     ],
+     "writer": {
+      "commits": 1082,
+      "commit_ms": {
+       "n": 1082,
+       "p50": 26.185,
+       "p90": 43.563,
+       "p99": 54.177,
+       "min": 11.41,
+       "max": 120.17
+      },
+      "commits_per_s": 36.064,
+      "phase_p50_us": {
+       "seal_us": 1445,
+       "closes_us": 0,
+       "stats_us": 0,
+       "dict_us": 423,
+       "manifest_us": 3399,
+       "current_us": 721,
+       "total_us": 17350,
+       "manifest_bytes": 810867,
+       "segments_named": 1558
+      }
+     }
+    },
+    {
+     "trial": 2,
+     "aggregate_qps": 17.15,
+     "reader_generations": [
+      462
+     ],
+     "writer": {
+      "commits": 1114,
+      "commit_ms": {
+       "n": 1114,
+       "p50": 26.006,
+       "p90": 40.313,
+       "p99": 52.713,
+       "min": 11.18,
+       "max": 111.132
+      },
+      "commits_per_s": 37.1,
+      "phase_p50_us": {
+       "seal_us": 1430,
+       "closes_us": 0,
+       "stats_us": 0,
+       "dict_us": 426,
+       "manifest_us": 3403,
+       "current_us": 722,
+       "total_us": 17523,
+       "manifest_bytes": 826947,
+       "segments_named": 1590
+      }
+     }
+    }
+   ]
+  },
+  {
+   "readers": 16,
+   "writer": false,
+   "aggregate_qps": [
+    25.41,
+    25.38,
+    25.09
+   ],
+   "per_query_ms": {
+    "hist.single": {
+     "trials": 3,
+     "trial_p50s": [
+      1.832,
+      1.849,
+      1.848
+     ],
+     "pooled": {
+      "n": 595,
+      "p50": 1.84,
+      "p90": 2.76,
+      "p99": 12.436,
+      "min": 1.383,
+      "max": 18.755
+     }
+    },
+    "snap.hop2": {
+     "trials": 3,
+     "trial_p50s": [
+      1751.114,
+      1855.287,
+      1821.954
+     ],
+     "pooled": {
+      "n": 595,
+      "p50": 1811.04,
+      "p90": 2114.104,
+      "p99": 2305.91,
+      "min": 1217.75,
+      "max": 2825.042
+     }
+    },
+    "series.count": {
+     "trials": 3,
+     "trial_p50s": [
+      212.545,
+      185.232,
+      199.116
+     ],
+     "pooled": {
+      "n": 595,
+      "p50": 198.752,
+      "p90": 328.973,
+      "p99": 501.306,
+      "min": 126.397,
+      "max": 589.53
+     }
+    },
+    "coactive.narrow": {
+     "trials": 3,
+     "trial_p50s": [
+      504.19,
+      418.786,
+      457.106
+     ],
+     "pooled": {
+      "n": 595,
+      "p50": 462.01,
+      "p90": 691.746,
+      "p99": 910.336,
+      "min": 237.554,
+      "max": 996.562
+     }
+    }
+   },
+   "commit_ms": null,
+   "trials": [
+    {
+     "trial": 0,
+     "aggregate_qps": 25.41,
+     "reader_generations": [
+      462
+     ],
+     "writer": null
+    },
+    {
+     "trial": 1,
+     "aggregate_qps": 25.38,
+     "reader_generations": [
+      462
+     ],
+     "writer": null
+    },
+    {
+     "trial": 2,
+     "aggregate_qps": 25.09,
+     "reader_generations": [
+      462
+     ],
+     "writer": null
+    }
+   ]
+  },
+  {
+   "readers": 16,
+   "writer": true,
+   "aggregate_qps": [
+    24.76,
+    24.86,
+    24.73
+   ],
+   "per_query_ms": {
+    "hist.single": {
+     "trials": 3,
+     "trial_p50s": [
+      1.817,
+      1.794,
+      1.839
+     ],
+     "pooled": {
+      "n": 579,
+      "p50": 1.818,
+      "p90": 2.72,
+      "p99": 8.569,
+      "min": 1.406,
+      "max": 26.484
+     }
+    },
+    "snap.hop2": {
+     "trials": 3,
+     "trial_p50s": [
+      1611.279,
+      1554.269,
+      1777.876
+     ],
+     "pooled": {
+      "n": 579,
+      "p50": 1660.399,
+      "p90": 1965.166,
+      "p99": 2231.719,
+      "min": 1205.861,
+      "max": 2432.676
+     }
+    },
+    "series.count": {
+     "trials": 3,
+     "trial_p50s": [
+      293.75,
+      300.871,
+      238.578
+     ],
+     "pooled": {
+      "n": 579,
+      "p50": 265.374,
+      "p90": 431.488,
+      "p99": 486.355,
+      "min": 140.725,
+      "max": 542.738
+     }
+    },
+    "coactive.narrow": {
+     "trials": 3,
+     "trial_p50s": [
+      652.32,
+      690.929,
+      535.7
+     ],
+     "pooled": {
+      "n": 579,
+      "p50": 627.751,
+      "p90": 886.971,
+      "p99": 1002.982,
+      "min": 266.697,
+      "max": 1090.311
+     }
+    }
+   },
+   "commit_ms": {
+    "trials": 3,
+    "trial_p50s": [
+     27.75,
+     29.463,
+     29.529
+    ],
+    "pooled": {
+     "n": 2681,
+     "p50": 29.156,
+     "p90": 55.841,
+     "p99": 81.31,
+     "min": 11.208,
+     "max": 138.645
+    }
+   },
+   "trials": [
+    {
+     "trial": 0,
+     "aggregate_qps": 24.76,
+     "reader_generations": [
+      462
+     ],
+     "writer": {
+      "commits": 888,
+      "commit_ms": {
+       "n": 888,
+       "p50": 27.75,
+       "p90": 58.004,
+       "p99": 78.229,
+       "min": 12.171,
+       "max": 131.172
+      },
+      "commits_per_s": 29.587,
+      "phase_p50_us": {
+       "seal_us": 1655,
+       "closes_us": 0,
+       "stats_us": 0,
+       "dict_us": 437,
+       "manifest_us": 3396,
+       "current_us": 737,
+       "total_us": 18361,
+       "manifest_bytes": 713380,
+       "segments_named": 1364
+      }
+     }
+    },
+    {
+     "trial": 1,
+     "aggregate_qps": 24.86,
+     "reader_generations": [
+      462
+     ],
+     "writer": {
+      "commits": 881,
+      "commit_ms": {
+       "n": 881,
+       "p50": 29.463,
+       "p90": 59.832,
+       "p99": 83.037,
+       "min": 11.769,
+       "max": 138.645
+      },
+      "commits_per_s": 29.364,
+      "phase_p50_us": {
+       "seal_us": 1617,
+       "closes_us": 0,
+       "stats_us": 0,
+       "dict_us": 433,
+       "manifest_us": 3387,
+       "current_us": 724,
+       "total_us": 19251,
+       "manifest_bytes": 709863,
+       "segments_named": 1357
+      }
+     }
+    },
+    {
+     "trial": 2,
+     "aggregate_qps": 24.73,
+     "reader_generations": [
+      462
+     ],
+     "writer": {
+      "commits": 912,
+      "commit_ms": {
+       "n": 912,
+       "p50": 29.529,
+       "p90": 50.392,
+       "p99": 77.849,
+       "min": 11.208,
+       "max": 131.035
+      },
+      "commits_per_s": 30.394,
+      "phase_p50_us": {
+       "seal_us": 1672,
+       "closes_us": 0,
+       "stats_us": 0,
+       "dict_us": 434,
+       "manifest_us": 3385,
+       "current_us": 723,
+       "total_us": 19227,
+       "manifest_bytes": 725440,
+       "segments_named": 1388
+      }
+     }
+    }
+   ]
+  }
+ ],
+ "wall_s": 2211.6,
+ "provenance": {
+  "commit": "cb0e6af",
+  "dirty": false,
+  "python": "3.12.13",
+  "platform": "Linux 5.4.0-216-generic x86_64",
+  "cpu_count": 40
+ }
+}

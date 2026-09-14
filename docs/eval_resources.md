@@ -481,3 +481,185 @@ models differ by design (embedded library against wire-protocol server),
 and the normalized table is precisely where that difference stops hiding —
 27× on disk, 21× on resident memory, and 20–40× on cold start are the cost
 of the server generality TGMS deliberately does not have.
+
+## §20 Reader scaling at 10M under the byte budget, 1–32 readers (2026-09-13)
+
+§14.4's reader sweep predates §18's byte-budget cache and stats-fold fix
+and was never re-measured at 10M (§18 said so explicitly). This redoes it
+on the same host, commit `cb0e6af`, extended from 16 to 32 readers, and
+adds a live-writer condition §19b deliberately skipped at 10M ("measures
+the OOM killer, not concurrency"). Full record:
+`benchmarks/results-v1/eval-readers-10m-2026-09.json` (schema-conformant,
+passes `scripts/check_result_manifest.py`), built from four raw harness
+records alongside it (`eval-resources-readers-10m-2026-09-quiescent-{1to16,32}.json`,
+`eval-concurrency-mixed-10m-2026-09-{1to16,32}.json`).
+
+**Two operational incidents, both worth recording.** First, the shared
+xzgpu checkout advanced twice via other lanes' merges (`cb0e6af` →
+`2cf15c0` → `4af2181`) while this sweep was in flight; the fix was an
+isolated `git worktree add --detach` pinned at `cb0e6af` (removed after
+the sweep) so every phase measured one commit. The diff `cb0e6af..2cf15c0`
+touched no `src/`, `tgms/storage`, `tgms/temporal`, or `scripts/eval*`
+path, so the shared checkout's already-built `_engine` extension was
+copied over unmodified rather than rebuilt. Second, and more consequential:
+the 10M native store cached under `$TMPDIR/tgms-eval-resources` turned out
+to be six weeks stale (built 2026-08-01), because `ensure_store()`'s `.ok`
+marker carries no commit or content identity — it happily serves whatever
+was last replayed there. That stale store made every mixed-writer trial
+fail outright with `tgms.core.errors.StateError: event-log cursor ... is
+not a record boundary`, consistent with the durable-replay-cursor change
+(`f851d69`) landing in that six-week window. The stale cache was deleted,
+the dataset and store rebuilt fresh at `cb0e6af`, and the quiescent phases
+(1a/1b) re-run from scratch against the fresh store even though their
+stale-store numbers had looked externally plausible — for full
+self-consistency, not because the readers-only numbers showed any
+symptom. **The `.ok`-marker cache having no version awareness is itself a
+harness gap**, flagged separately rather than fixed here (out of this
+task's file scope).
+
+Protocol, and where it departs from a literal "3 trials × 30 s" reading:
+the quiescent phase uses `eval_resources.py readers`, which has no
+`--trials` flag — it loops each reader count for one continuous
+wall-clock window (60 s at 10M, barrier lead 150 s for 1–16 readers, 240 s
+for 32), matching this file's own stated convention ("duration-based
+windows rather than fixed repetitions... medians are over ≥10 completions
+per reader per query at 10M"). The live-writer phase uses
+`eval_concurrency.py mixed`, whose actual defaults *are* 3 trials × 30 s
+— that is the D-045 convention §19b of `docs/eval_concurrency.md` applies,
+and this reuses it unchanged: readers {1, 4, 8, 16, 32} idle vs. a writer
+committing 100-row batches as fast as it can, three trials each, a fresh
+store copy per trial. Reader count 2 is skipped in the mixed phase only,
+to save time, per the task's own instruction. Both phases ran with the
+byte-budget cache at its shipped default (`TGMS_SEGMENT_CACHE_BYTES`
+unset → half of detected RAM, ~46 GiB here) — far above what any single
+reader touches at this scale, so the cache never evicts a segment in this
+sweep; the 32-reader row is where the mechanism would start to matter at
+smaller scale-per-host ratios, not this one.
+
+### Quiescent: reader scaling, 1–32, 10M events
+
+One continuous 60 s window per reader count (no writer), per-reader
+median p50, aggregate completed queries/second:
+
+| readers | agg q/s | hist.single | snap.hop2 | series.count | coactive.narrow |
+|---|---|---|---|---|---|
+| 1 | 2.85 | 1.82 | 1,051.7 | 116.5 | 231.9 |
+| 2 | 5.52 | 1.64 | 1,094.3 | 113.7 | 233.2 |
+| 4 | 10.24 | 1.69 | 1,125.3 | 121.1 | 286.6 |
+| 8 | 17.10 | 1.74 | 1,288.7 | 160.9 | 384.0 |
+| 16 | 24.73 | 1.80 | 1,588.8 | 296.8 | 691.7 |
+| 32 | 27.72 | 1.85 | 3,248.0 | 423.4 | 925.5 |
+
+Scaling is sub-linear past 8 readers: aggregate throughput is 8.68× at 16
+readers (24.73/2.85) and 9.72× at 32 (27.72/2.85), well short of 16× and
+32× respectively, and `coactive.narrow`/`snap.hop2` climb with reader count — the same scan-thread-oversubscription effect §14.4
+attributed to 16 readers × 16 scan threads competing for 40 cores, now
+visibly worse at 32 readers. **No reader failed at any count up to 32.**
+
+### RSS/VmHWM per reader (quiescent)
+
+| readers | VmHWM min (GiB) | median (GiB) | max (GiB) |
+|---|---:|---:|---:|
+| 1 | 1.224 | 1.224 | 1.224 |
+| 2 | 1.223 | 1.224 | 1.224 |
+| 4 | 1.211 | 1.223 | 1.226 |
+| 8 | 1.199 | 1.211 | 1.217 |
+| 16 | 1.192 | 1.199 | 1.216 |
+| 32 | 1.179 | 1.189 | 1.204 |
+
+**The "~4 GB per reader, 2 of 16 OOM-killed" number from §14.4 is
+retired, and by more than the byte-budget cache alone was expected to
+buy.** Per-reader VmHWM is flat at ~1.19–1.22 GiB regardless of reader
+count, from 1 to 32 readers — not just below the old ~4 GB estimate but
+below the §18 whole-suite (six-query) uncapped figure of 1.82 GB, because
+the reader mix here is four queries, not six. At 32 readers total
+resident memory is ~32 × 1.2 GiB ≈ 38 GiB against 80 GiB available on
+this 93 GiB host — comfortable headroom, not a near-miss. Combined with
+§18's attribution (the old floor was mostly the stats-warm-up transient,
+not the cache), the OOM the old §14.4 row measured looks like it would
+not recur at double the reader count on this host, not merely at parity.
+
+### Live writer: aggregate throughput, idle vs. writer running (10M, 3 trials)
+
+Per-trial values, readers {1, 4, 8, 16, 32} (2 skipped to save time):
+
+| readers | writer idle (q/s) | writer running (q/s) | cost |
+|---:|---|---|---:|
+| 1 | 2.75, 2.78, 2.69 | 2.68, 2.71, 2.70 | 1.8% |
+| 4 | 10.16, 9.93, 10.07 | 9.76, 9.72, 9.99 | 3.1% |
+| 8 | 17.25, 17.30, 17.22 | 17.21, 17.13, 17.15 | 0.6% |
+| 16 | 25.41, 25.38, 25.09 | 24.76, 24.86, 24.73 | 2.4% |
+| 32 | 28.77, 28.59, 28.89 | 28.37, 28.16, 28.35 | 1.5% |
+
+Cost is median-of-idle-trials vs. median-of-writer-trials, same convention
+as §19b. Every cost here (0.6–3.1%) sits inside or barely outside the
+between-trial spread at each row — a tie by this file's own convention —
+and matches the 0–3% §19b found at 1M. **The live-writer cost to
+aggregate reader throughput does not grow with scale or reader count**, at
+least up to 32 readers on this host.
+
+### Live writer: per-query latency, idle vs. writer (median p50 across 3 trials, ms)
+
+| readers | hist.single (I/W) | snap.hop2 (I/W) | series.count (I/W) | coactive.narrow (I/W) |
+|---:|---|---|---|---|
+| 1 | 1.89 / 1.83 | 1,092 / 1,119 | 112.5 / 111.1 | 233.6 / 235.2 |
+| 4 | 1.66 / 1.70 | 1,132 / 1,163 | 137.4 / 148.7 | 309.5 / 343.7 |
+| 8 | 1.75 / 1.76 | 1,273 / 1,292 | 166.1 / 164.4 | 395.9 / 367.8 |
+| 16 | 1.85 / 1.82 | 1,822 / 1,611 | 199.1 / 293.8 | 457.1 / 652.3 |
+| 32 | 1.85 / 1.85 | 3,073 / 2,962 | 439.1 / 475.9 | 996.9 / 1,116.0 |
+
+This is where the 10M/32-reader picture diverges from §19b's 1M finding
+of "0–3% of scan latency, tails move no differently." At 16 readers, a
+live writer costs `series.count` +47.6% (199 → 294 ms) and
+`coactive.narrow` +42.7% (457 → 652 ms) — both well outside the
+trial-to-trial spread at that row, not a tie. At 1, 4, and 8 readers the
+writer's cost is a few percent either direction, consistent with §19b. At
+32 readers the pattern partly reverses (`snap.hop2` and `coactive.narrow`
+idle *higher* than writer) — read that as oversubscription noise (256+
+scan threads plus a writer thread competing for 40 cores) swamping the
+writer's own signal, not as the writer helping. **At 10M with reader
+counts high enough to already oversubscribe the host, a live writer's
+cost is no longer uniformly negligible**, unlike the 1M/≤8-reader case
+§19b measured.
+
+### What readers cost the writer (commit p50 per trial, ms)
+
+| readers | commit p50 per trial (ms) |
+|---:|---|
+| 1 | 24.35, 23.67, 23.24 |
+| 4 | 24.59, 24.63, 24.51 |
+| 8 | 26.93, 26.18, 26.01 |
+| 16 | 27.75, 29.46, 29.53 |
+| 32 | 49.04, 46.22, 50.23 |
+
+§19b found this "nothing measurable" at 1M up to 8 readers (1.0% spread
+across an eightfold reader increase). At 10M the picture holds through 16
+readers (24–30 ms, a 20–25% drift consistent with more scan threads
+sharing the host, not a step change) and then roughly doubles at 32
+readers (46–50 ms) — the same oversubscription boundary visible in the
+per-query and quiescent tables above, now showing up in the writer's own
+commit latency rather than only in reader-side scan latency.
+
+### Same-day-ish drift check: the 1-reader cell against §14.4
+
+§14.4's original 10M, 1-reader row (pre-§17 gates, pre-§18 cache): agg
+2.33 q/s, hist.single 1.25 ms, snap.hop2 1,012 ms, series.count 487 ms,
+coactive.narrow 206 ms. Today's 1-reader row: agg 2.85 q/s, hist.single
+1.82 ms, snap.hop2 1,052 ms, series.count 116.5 ms, coactive.narrow
+231.9 ms. This is not a same-code drift check — §17 and §18 both landed
+between the two measurements — so the honest reading is per-query: `snap.hop2`
+(+4%) and `coactive.narrow` (+13%) sit inside or just outside D-045's
+±20% reproducibility band, consistent with ordinary between-day drift.
+`series.count` moved 487 → 116.5 ms (−76%), which is not drift — it
+matches §17's row-based parallel-gate recalibration changing which path a
+single-threaded scan takes. `hist.single` moved 1.25 → 1.82 ms, a large
+relative jump on an absolute scale (sub-2 ms) where process and OS
+scheduling jitter dominate the signal.
+
+### Record identity
+
+`git_commit cb0e6af`, `dataset.digest` (store digest)
+`7e48836e71677e1b428669822fba0542c69541b51135acd705e6bb6432d28cba`,
+`measurement_host xzgpu` (40 cores, 93 GiB RAM), `result_digest`
+`5c4eccc3703d2b32e45589f7316a67e9f1b980ddbca18f09c797ee9d3f64c812`. Seed:
+none — the synthetic generator is deterministic given scale.
