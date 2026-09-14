@@ -207,6 +207,7 @@ impl NativeStore {
         let (manifest, checkpoint_gen) = if root.join(CURRENT).exists() {
             Self::load_current(&root)?
         } else {
+            Self::refuse_if_populated_without_current(&root)?;
             let genesis = Manifest::genesis();
             // generation 0 is always a checkpoint: a chain must start
             // somewhere, and there is no parent to diff against
@@ -336,6 +337,92 @@ impl NativeStore {
 
     fn manifest_path(root: &Path, generation: u64) -> PathBuf {
         manifest_chain::manifest_path(root, generation)
+    }
+
+    /// Refuse to treat a populated directory as a fresh store just because
+    /// `CURRENT` happens to be missing (corruption-sweep finding,
+    /// 2026-09-15: deleting `native/CURRENT` used to make `open` silently
+    /// materialize an empty store, so every query returned empty results
+    /// instead of failing).
+    ///
+    /// `CURRENT` legitimately does not exist yet in exactly one case: the
+    /// bootstrap crash inside a *previous* call to `open`, between the
+    /// genesis manifest's write (step 4 of the commit protocol, applied to
+    /// generation 0) and the `CURRENT` flip that was supposed to follow it
+    /// (step 5). There is no prior generation for that crash to have left
+    /// intact — the commit protocol's guarantee only starts to apply once a
+    /// first generation exists — so an orphaned, unpublished generation-0
+    /// checkpoint with nothing else on disk is legitimately "nothing
+    /// published yet" rather than corruption. `open` heals it by falling
+    /// through to the normal genesis-publish path, which rewrites the
+    /// (deterministic) genesis document and this time completes the flip.
+    ///
+    /// Anything else without `CURRENT` — any other manifest file, any
+    /// segment, or a non-empty dictionary log — means a store was populated
+    /// at some point and `CURRENT` is now gone: refuse instead of guessing.
+    fn refuse_if_populated_without_current(root: &Path) -> Result<()> {
+        let manifests_dir = root.join("manifests");
+        let mut manifest_gens: Vec<u64> = Vec::new();
+        if manifests_dir.is_dir() {
+            for entry in fs::read_dir(&manifests_dir)
+                .map_err(|e| EngineError::from(e).at_file(&manifests_dir))?
+            {
+                let entry = entry.map_err(|e| EngineError::from(e).at_file(&manifests_dir))?;
+                let path = entry.path();
+                if path.extension().and_then(|e| e.to_str()) != Some("json") {
+                    continue; // ignore `.tmp` leftovers from an interrupted write_atomic
+                }
+                if let Some(gen) = path
+                    .file_stem()
+                    .and_then(|s| s.to_str())
+                    .and_then(|s| s.parse::<u64>().ok())
+                {
+                    manifest_gens.push(gen);
+                }
+            }
+        }
+        manifest_gens.sort_unstable();
+
+        let seg_dir = root.join("seg");
+        let n_segments = if seg_dir.is_dir() {
+            fs::read_dir(&seg_dir)
+                .map_err(|e| EngineError::from(e).at_file(&seg_dir))?
+                .filter_map(|e| e.ok())
+                .filter(|e| e.path().extension().and_then(|x| x.to_str()) == Some("tgs"))
+                .count()
+        } else {
+            0
+        };
+
+        let dict_bytes = fs::metadata(root.join(DICT)).map(|m| m.len()).unwrap_or(0);
+
+        if manifest_gens.is_empty() && n_segments == 0 && dict_bytes == 0 {
+            return Ok(()); // a genuinely new, empty directory
+        }
+
+        // the bootstrap-crash exception: exactly the orphaned generation-0
+        // checkpoint, nothing else, and its own event log starts at cursor 0
+        if manifest_gens == [0] && n_segments == 0 && dict_bytes == 0 {
+            if let Ok(manifest_chain::ManifestRecord::Checkpoint(m)) =
+                manifest_chain::read_record(root, 0)
+            {
+                if m.generation == 0 && m.parent.is_none() && m.event_log.offset == 0 {
+                    return Ok(());
+                }
+            }
+        }
+
+        Err(EngineError::corrupt(format!(
+            "store has {} manifest(s) / {} segment(s) but no CURRENT — \
+             refusing to treat a populated directory as empty; if this is a \
+             crashed first commit, remove the orphans or restore CURRENT",
+            manifest_gens.len(),
+            n_segments
+        ))
+        .with_remedy(
+            "remove the orphaned manifests/segments if this was a crashed \
+             first commit, or restore CURRENT from a backup",
+        ))
     }
 
     /// Steps 4 and 5: write this generation's manifest record, then flip
@@ -2189,6 +2276,102 @@ mod tests {
         assert_eq!(re.dict().len(), 1);
         assert_eq!(re.manifest().stats.n_entities, 1);
         assert!(re.verify().unwrap().is_healthy());
+    }
+
+    // --- CURRENT missing: a populated store must refuse, not go empty --- //
+    //
+    // Corruption-sweep finding (2026-09-15): deleting `native/CURRENT` from a
+    // populated store used to make `open` treat the directory as fresh and
+    // empty, so every query silently returned no rows. `open` must now
+    // distinguish that from the one case where "CURRENT is absent" really
+    // does mean "nothing published yet": the bootstrap crash between the
+    // genesis manifest write and the very first `CURRENT` flip.
+
+    #[test]
+    fn empty_directory_without_current_still_opens_fresh() {
+        let root = tmp_root("current-missing-empty");
+        // `open` itself creates the subdirectories; nothing else is on disk.
+        let s = NativeStore::open(&root).unwrap();
+        assert_eq!(s.generation(), 0);
+        assert!(root.join("CURRENT").exists());
+    }
+
+    #[test]
+    fn orphaned_genesis_manifest_alone_still_opens_fresh() {
+        // exactly what a crash at `after_manifest` during the very first
+        // `open` (publishing generation 0) leaves behind: the genesis
+        // checkpoint on disk, no CURRENT, no segments, no dictionary tail.
+        let root = tmp_root("current-missing-genesis-orphan");
+        for sub in SUBDIRS {
+            fs::create_dir_all(root.join(sub)).unwrap();
+        }
+        let genesis = Manifest::genesis();
+        write_atomic(
+            &NativeStore::manifest_path(&root, 0),
+            &manifest_chain::checkpoint_json(&genesis),
+        )
+        .unwrap();
+        assert!(!root.join("CURRENT").exists());
+
+        let s = NativeStore::open(&root).unwrap();
+        assert_eq!(s.generation(), 0);
+        assert!(root.join("CURRENT").exists(), "the crash is healed");
+        assert!(s.verify().unwrap().is_healthy());
+    }
+
+    #[test]
+    fn populated_store_without_current_refuses_to_open() {
+        let root = tmp_root("current-missing-populated");
+        let mut s = NativeStore::open(&root).unwrap();
+        commit_with(&mut s, 10, &["n1"]);
+        commit_with(&mut s, 20, &["n2"]);
+        drop(s);
+
+        fs::remove_file(root.join("CURRENT")).unwrap();
+
+        let err = open_err(&root);
+        assert_eq!(err.category, crate::error::Category::Corrupt);
+        assert!(err.message.contains("CURRENT"), "{}", err.message);
+        assert!(
+            err.remedy.as_deref().unwrap_or_default().contains("CURRENT"),
+            "{:?}",
+            err.remedy
+        );
+    }
+
+    #[test]
+    fn populated_store_with_only_segments_and_no_manifest_dir_entries_refuses() {
+        // the manifests directory can itself still hold generation 0 (the
+        // genesis checkpoint is not deleted by this scenario), but a real
+        // segment on disk means the store is not "nothing published yet".
+        let root = tmp_root("current-missing-with-segments");
+        let mut s = NativeStore::open(&root).unwrap();
+        commit_with(&mut s, 10, &["n1"]);
+        drop(s);
+
+        fs::remove_file(root.join("CURRENT")).unwrap();
+        // even if every manifest after genesis vanished too, a segment file
+        // alone is enough evidence that this store was not empty
+        fs::remove_file(NativeStore::manifest_path(&root, 1)).unwrap();
+
+        let err = open_err(&root);
+        assert_eq!(err.category, crate::error::Category::Corrupt);
+        assert!(err.message.contains("CURRENT"), "{}", err.message);
+    }
+
+    #[test]
+    fn dictionary_tail_alone_is_enough_evidence_to_refuse() {
+        // a store whose manifests and segments are both gone but whose
+        // dictionary log still holds bytes: still not an empty directory.
+        let root = tmp_root("current-missing-dict-only");
+        for sub in SUBDIRS {
+            fs::create_dir_all(root.join(sub)).unwrap();
+        }
+        fs::write(root.join(DICT), b"not actually a valid dict tail, just bytes").unwrap();
+
+        let err = open_err(&root);
+        assert_eq!(err.category, crate::error::Category::Corrupt);
+        assert!(err.message.contains("CURRENT"), "{}", err.message);
     }
 
     // --- format 2: the manifest chain (memo §6) ------------------------- //
