@@ -69,6 +69,7 @@ The two `tgms-*` arms are the only ones that go through the real
 
 from __future__ import annotations
 
+import fractions
 import json
 import random
 import time
@@ -80,8 +81,18 @@ import tgms
 from tgms.core.errors import TgmsError
 from tgms.core.model import OPEN_END, canonical_json
 from tgms.eval.corrections import (
-    Correction, Substrate, Target, generate as generate_corrections, probe_substrate,
+    Correction, GENERATORS, Substrate, Target, generate as generate_corrections,
+    probe_substrate,
+    # `_believed_nodes`/`_version_for` are private to `corrections.py`, and
+    # imported here deliberately rather than restated: the C2 design memo
+    # (`docs/design/CORRECTION_STORM_DESIGN_2026-09-13.md` §2, §4's opening)
+    # names `_version_for` by name as the mechanism the age axis is meant to
+    # build over, because `generate()`'s own outside-window `_interval` caps
+    # Δvt at one `step` (`rng.randrange(step)`) and cannot express "days" or
+    # "deep-historical" distances at all — see `_age_correction` below.
+    _believed_nodes, _version_for,
 )
+from tgms.storage.base import make_op
 from tgms.storage.eventlog import extend_chain
 from tgms.temporal.algebra import ENVELOPE_META_FIELDS, ensure_all_registered
 from tgms.tgir.depscope import DependencyScope
@@ -297,6 +308,12 @@ class BatchResult:
     log_bytes: int
     log_records: int
     registry_bytes: int
+    #: §5/§9's TTF measurement mode this batch used ("sum" or "end-to-end") —
+    #: `TTF_MODES`.
+    ttf_mode: str = "sum"
+    #: §2's SNAP caveat, restated per cell (`Storm.interval_vt`): `None` when
+    #: the age axis was not in play this run.
+    age_vt_meaningful: bool | None = None
 
     def to_json(self) -> dict[str, Any]:
         return {
@@ -310,6 +327,7 @@ class BatchResult:
             "changed_count": len(self.oracle_changed), "changed": list(self.oracle_changed),
             "refused_count": len(self.refused),
             "arms": {k: v.to_json() for k, v in self.arms.items()},
+            "ttf_mode": self.ttf_mode, "age_vt_meaningful": self.age_vt_meaningful,
             "log_bytes": self.log_bytes, "log_records": self.log_records,
             "registry_bytes": self.registry_bytes,
         }
@@ -407,6 +425,290 @@ def _correction_interval(ops: Sequence[dict[str, Any]]) -> tuple[int, int] | Non
 
 
 # ---------------------------------------------------------------------------
+# C2 — rate/age/degree/range-width axes (§2 of the design memo)
+#
+# `corrections.generate()` stays taxonomy/placement-only (§9's own rule: the
+# axes go "around `corrections.generate()`, never inside it"). Everything
+# below is a `mix` callable — `Storm`'s existing, frozen extension point —
+# that reweights and, for the age/burst axes, directly reuses
+# `_believed_nodes`/`_version_for` to reach Δvt magnitudes `generate()`'s own
+# single-step `_interval` cannot. Every corrections.Correction this section
+# builds still carries a real class letter (§2's taxonomy is per-op, not
+# per-mix), but `generator` is set to a synthetic name (`age_*`, `c4_burst`)
+# outside the frozen 8-generator catalogue so a storm record is never
+# mistaken for one of `corrections.GENERATORS`' own cells — `summarize()`
+# and every test here treat `correction_generator` as free-form accounting,
+# exactly as the module docstring already says of `correction_class`/
+# `correction_placement`.
+# ---------------------------------------------------------------------------
+
+#: §2's four correction-rate mixes. C4's own ratio (steady state, between
+#: bursts) is not specified by the design beyond "burst of 10,000" — treated
+#: here as C3's 80/20, since C4's distinguishing feature is the burst event,
+#: not a fifth steady-state ratio.
+MIXES: tuple[str, ...] = ("c1", "c2", "c3", "c4")
+MIX_APPEND_FRAC: dict[str, float] = {"c1": 0.99, "c2": 0.95, "c3": 0.80, "c4": 0.80}
+
+#: §2's four correction-age bands.
+AGE_BANDS: tuple[str, ...] = ("recent", "hours", "days", "deep")
+
+#: §2's degree quantile buckets and range-width buckets (orthogonal
+#: selectors, "recorded per trial, not a new class").
+DEGREE_BUCKETS: tuple[str, ...] = ("low", "mid", "high")
+RANGE_WIDTHS: tuple[str, ...] = ("narrow", "mid", "wide")
+
+#: §5/§9's two TTF measurement modes — `sum` is the storm-core lane's
+#: existing "Σ per-artifact costs" model (module docstring, "One execution
+#: pass per batch"); `end-to-end` is this task's addition (see `Storm.
+#: run_batch`'s own note below).
+TTF_MODES: tuple[str, ...] = ("sum", "end-to-end")
+
+#: Age-band Δvt targets as a multiple of `corrections.py`'s own
+#: `step = max(2, sub.span // 20)` unit (`corrections.py:188`) — the
+#: "valid-time distance... as a fraction of the substrate span" the design
+#: asks for (§2's table), expressed in `step` units so it composes with the
+#: same unit `corrections.py`'s own window-fraction axis already uses.
+#: `recent` is drawn straight from `generate()`'s `in-window-read` cell (Δvt
+#: ~= 0 by construction); the rest are built directly, below.
+_AGE_STEP_RANGE: dict[str, tuple[int, int]] = {
+    "recent": (0, 1), "hours": (1, 3), "days": (3, 10), "deep": (10, 40),
+}
+
+
+def _ratio_weights(frac: float, *, max_denominator: int = 100) -> tuple[int, int]:
+    """`frac` (e.g. 0.95) as a small integer ratio `(w_a, w_other)` — 95/5 ->
+    (19, 1) — so the mix's weighted candidate list stays small (at most
+    `max_denominator` candidates per pool) rather than literally replicating
+    to hundred-element lists for every ratio."""
+    f = fractions.Fraction(frac).limit_denominator(max_denominator)
+    return f.numerator, f.denominator - f.numerator if f.denominator > f.numerator else 1
+
+
+def _has_interval_vt(store: Any, *, limit: int = 200) -> bool:
+    """§2's SNAP caveat: is this store's valid time a genuine interval (some
+    node version has a closed `vt_e`), or purely event-instant (every
+    version `[first_seen, OPEN_END)`, the SNAP event-stream shape,
+    `corrections.py:228`)? A bounded scan, not a full one — `probe_substrate`
+    already pays the real scan cost and this only needs one `True`."""
+    n = 0
+    for v in store.adapter.all_node_versions():
+        if v.vt_e < OPEN_END:
+            return True
+        n += 1
+        if n >= limit:
+            break
+    return False
+
+
+def _degree_map(store: Any, *, limit: int = 20_000) -> dict[str, int]:
+    """Undirected degree by edge-endpoint count — the substrate probe's own
+    scan idiom (`corrections.py::probe_substrate`), bounded the same way."""
+    deg: dict[str, int] = {}
+    n = 0
+    for e in store.adapter.all_edge_versions():
+        deg[e.src] = deg.get(e.src, 0) + 1
+        deg[e.dst] = deg.get(e.dst, 0) + 1
+        n += 1
+        if n >= limit:
+            break
+    return deg
+
+
+def _degree_bucket_set(uids: Sequence[str], deg_map: dict[str, int], bucket: str) -> set[str]:
+    """The quantile bucket of `uids` by `deg_map` (missing uids score 0
+    degree) — §2's "quantile bucket of the target's degree"."""
+    if not uids:
+        return set()
+    ordered = sorted(uids, key=lambda u: deg_map.get(u, 0))
+    n = len(ordered)
+    lo, hi = {
+        "low": (0, max(1, n // 3)),
+        "mid": (n // 3, max(n // 3 + 1, (2 * n) // 3)),
+        "high": (max(1, (2 * n) // 3), n),
+    }[bucket]
+    return set(ordered[lo:hi])
+
+
+def _age_correction(store: Any, sub: Substrate, rng: random.Random, age: str,
+                    *, recency_frac: float = 0.15) -> Correction | None:
+    """One correction placed at `age`'s Δvt band.
+
+    `Storm.target` (the generic per-batch `Target` the default mix uses) is
+    always built with `window=None` (§2 selects placement per *artifact*,
+    but a `mix` callable only ever sees the storm-wide `Target`) — and
+    `corrections.py::_outside` requires a real window to call anything
+    "outside" at all. So this function synthesizes its own small local
+    window — the substrate's own last `recency_frac` of span, standing in
+    for "the current query's recency window" — genuinely non-`None`, which
+    is what makes `_version_for`'s outside-window "reaching" filter apply
+    for real rather than degenerating to the in-window fallback
+    (`corrections.py::_interval`'s own documented fallback for a `None`
+    window). This is the C2 lane's own deviation, reported in the module
+    report.
+    """
+    if not sub.uids:
+        return None
+    lo = sub.vt_lo + int(sub.span * (1 - recency_frac))
+    hi = sub.vt_hi
+    local_target = Target(read_uids=sub.uids, window=(lo, hi))
+    if age == "recent":
+        pool = generate_corrections(store, sub, local_target, rng=rng,
+                                    placements=["in-window-read"])
+        if not pool:
+            return None
+        c = pool[rng.randrange(len(pool))]
+        return Correction(c.cls, "age_recent", c.placement, c.ops,
+                          note=f"age band recent: {c.note}", identities=c.identities)
+
+    step = max(2, sub.span // 20)
+    lo_mult, hi_mult = _AGE_STEP_RANGE[age]
+    uid = sub.uids[rng.randrange(len(sub.uids))]
+    believed = _believed_nodes(store, uid)
+    if not believed:
+        return None
+    dist = step * rng.randint(lo_mult, max(lo_mult, hi_mult - 1))
+    vt_s = hi + dist
+    vt_e = vt_s + step
+    v = _version_for(believed, local_target, "outside-window-read", vt_s, vt_e, rng)
+    if v is None:
+        return None
+    corrected_lo = max(vt_s, v.vt_s + 1)
+    corrected_hi = max(corrected_lo + 1, min(vt_e, v.vt_e if v.vt_e < OPEN_END else vt_e))
+    op = make_op("correct", ref={"kind": "node", "uid": uid},
+                props={"injected": "age", "band": age}, vt_s=corrected_lo, vt_e=corrected_hi,
+                source="inject", provenance_ref=None)
+    return Correction(
+        "C", f"age_{age}", "outside-window-read", (op,),
+        note=(f"age band {age}: Δvt={dist} ({dist / step:.1f} steps past the "
+             f"synthesized recency window)"),
+        identities=(uid,))
+
+
+def _build_burst(store: Any, sub: Substrate, rng: random.Random, burst_size: int,
+                 *, max_attempts_factor: int = 4) -> Correction | None:
+    """C4's burst: `burst_size` historical (deep, outside-window) corrections
+    bundled into **one** batch (one `Correction`, many `ops`) — "a burst of
+    10,000 historical corrections in one interval" (§2's own phrasing: one
+    interval, i.e. one batch). Built by calling `age`'s `deep` path
+    repeatedly with the shared `rng`, so each op is independently drawn
+    (different uid/interval) but every one is genuinely outside a window and
+    genuinely deep, never a synthetic stand-in."""
+    ops: list[dict[str, Any]] = []
+    identities: list[str] = []
+    attempts = 0
+    cap = max(1, burst_size) * max_attempts_factor
+    while len(ops) < burst_size and attempts < cap:
+        attempts += 1
+        c = _age_correction(store, sub, rng, "deep")
+        if c is not None:
+            ops.extend(c.ops)
+            identities.extend(c.identities)
+    if not ops:
+        return None
+    return Correction(
+        "D", "c4_burst", "outside-window-read", tuple(ops),
+        note=f"C4 burst: {len(ops)}/{burst_size} historical corrections in one interval "
+             f"({attempts} draws)",
+        identities=tuple(identities))
+
+
+class Mix:
+    """A `Storm(mix=...)` callable implementing one C2 cell: a rate mix
+    (`--mix`), optionally an age band (`--age`), a degree bucket
+    (`--degree`), and a range-width bucket (`--range-width`).
+
+    Never reimplements `corrections.generate()`'s taxonomy — every
+    non-age-banded correction still comes from `generate()` unmodified; this
+    class only reweights the A-vs-BCDE draw (§2's rate axis) and, for `c4`,
+    schedules one burst batch. `degree`/`range-width` are best-effort
+    accept/reject filters over `generate()`'s own output: when nothing in a
+    pool survives the filter, the **unfiltered** pool is used instead of an
+    empty list, so `Storm.run`'s bounded-attempt loop is never starved by a
+    selector that happens to match nothing this batch — a documented
+    deviation, since §2 describes these as "recorded per trial", not as a
+    hard constraint on realizability.
+    """
+
+    def __init__(self, name: str, *, burst_size: int = 0, burst_after: int = 0,
+                age: str | None = None, degree: str | None = None,
+                range_width: str | None = None) -> None:
+        if name not in MIXES:
+            raise ValueError(f"unknown mix: {name!r}; choose from {MIXES}")
+        if age is not None and age not in AGE_BANDS:
+            raise ValueError(f"unknown age band: {age!r}; choose from {AGE_BANDS}")
+        if degree is not None and degree not in DEGREE_BUCKETS:
+            raise ValueError(f"unknown degree bucket: {degree!r}; choose from {DEGREE_BUCKETS}")
+        if range_width is not None and range_width not in RANGE_WIDTHS:
+            raise ValueError(f"unknown range-width bucket: {range_width!r}; "
+                             f"choose from {RANGE_WIDTHS}")
+        self.name = name
+        self.append_frac = MIX_APPEND_FRAC[name]
+        self.burst_size = burst_size if name == "c4" else 0
+        self.burst_after = burst_after
+        self.age = age
+        self.degree = degree
+        self.range_width = range_width
+        self._calls = 0
+        self._degree_map: dict[str, int] | None = None
+
+    def _filter_degree(self, store: Any, sub: Substrate,
+                       pool: list[Correction]) -> list[Correction]:
+        if self._degree_map is None:
+            self._degree_map = _degree_map(store)
+        bucket = _degree_bucket_set(sub.uids, self._degree_map, self.degree)
+        return [c for c in pool if set(c.identities) & bucket]
+
+    def _filter_range_width(self, sub: Substrate, pool: list[Correction]) -> list[Correction]:
+        step = max(2, sub.span // 20)
+        out = []
+        for c in pool:
+            interval = _correction_interval(c.ops)
+            if interval is None:
+                continue
+            mult = (interval[1] - interval[0]) / step
+            ok = {"narrow": mult <= 1.5, "mid": 1.5 < mult <= 6, "wide": mult > 6}[
+                self.range_width]
+            if ok:
+                out.append(c)
+        return out
+
+    def __call__(self, store: Any, sub: Substrate, target: Target,
+                 rng: random.Random) -> list[Correction]:
+        self._calls += 1
+        if self.burst_size and self._calls == self.burst_after + 1:
+            burst = _build_burst(store, sub, rng, self.burst_size)
+            if burst is not None:
+                return [burst]
+
+        a_gens = [g for g, c in GENERATORS.items() if c == "A"]
+        other_gens = [g for g, c in GENERATORS.items() if c != "A"]
+        pool_a = generate_corrections(store, sub, target, rng=rng, generators=a_gens)
+        if self.age is not None:
+            pool_other = [c for c in (
+                _age_correction(store, sub, rng, self.age) for _ in range(6)) if c is not None]
+        else:
+            pool_other = generate_corrections(store, sub, target, rng=rng, generators=other_gens)
+
+        if self.degree is not None:
+            pool_a = self._filter_degree(store, sub, pool_a) or pool_a
+            pool_other = self._filter_degree(store, sub, pool_other) or pool_other
+        if self.range_width is not None:
+            pool_a = self._filter_range_width(sub, pool_a) or pool_a
+            pool_other = self._filter_range_width(sub, pool_other) or pool_other
+
+        w_a, w_o = _ratio_weights(self.append_frac)
+        weighted = pool_a * w_a + pool_other * w_o
+        return weighted or pool_a or pool_other
+
+
+def build_mix(name: str, **kwargs: Any) -> Mix:
+    """The CLI's own factory — `scripts/bench_correction_storm.py --mix ...
+    --age ... --degree ... --range-width ... --burst-size ... --burst-after
+    ...` all land here, as a single `Mix` handed to `Storm(mix=...)`."""
+    return Mix(name, **kwargs)
+
+
+# ---------------------------------------------------------------------------
 # the driver
 # ---------------------------------------------------------------------------
 
@@ -425,7 +727,12 @@ class Storm:
                 backend: str | None = None, arms: Sequence[str] = ARMS,
                 mix: Callable[[Any, Substrate, Target, random.Random],
                              list[Correction]] | None = None,
-                name_prefix: str = "storm", collect_timing: bool = True) -> None:
+                name_prefix: str = "storm", collect_timing: bool = True,
+                measure_ttf: str = "sum") -> None:
+        if measure_ttf not in TTF_MODES:
+            raise ValueError(f"unknown measure_ttf mode: {measure_ttf!r}; "
+                             f"choose from {TTF_MODES}")
+        self.measure_ttf = measure_ttf
         self.store_dir = Path(store_dir)
         self.backend = backend
         self.store = tgms.open(self.store_dir, backend=backend)
@@ -434,6 +741,12 @@ class Storm:
         self.rng = random.Random(seed)
         self.sub = probe_substrate(self.store, rng=random.Random(seed))
         self.target = Target(read_uids=tuple(self.sub.uids), window=None)
+        #: §2's SNAP caveat: whether this store's valid time is a genuine
+        #: interval (so `hours`/`days` bands mean a real wall-clock-shaped
+        #: distance) or purely event-instant (so they degrade to
+        #: log-distance-only). Recorded on every `BatchResult`, never
+        #: silently assumed either way.
+        self.interval_vt = _has_interval_vt(self.store)
         self.mix = mix or (
             lambda store, sub, target, rng: generate_corrections(store, sub, target, rng=rng))
         self.arms = tuple(arms)
@@ -591,6 +904,41 @@ class Storm:
                 if not verdict.actionable_fresh:
                     tgms_invalidated[arm_name].add(name)
 
+        # C2's end-to-end TTF mode (in addition to the sum-of-parts mode
+        # above, which is unaffected by this block): for the tgms arms only,
+        # actually run check -> refresh over that arm's own nominated set as
+        # one continuous timed interval, rather than reporting
+        # `check_wall_ms + Σ refresh_wall_ms` computed from the shared
+        # per-artifact table the oracle pass below builds. This necessarily
+        # calls `refresh()` a second time this batch for any name both
+        # passes touch (harmless: `refresh()` is idempotent in content when
+        # nothing changed between the two calls, and every oracle-relevant
+        # decision below — `oracle_changed`, `refused`, every arm's
+        # `invalidated`/`false_fresh`/`false_stale` — is computed from the
+        # *oracle* pass alone, never from this one, so the two TTF modes
+        # produce byte-identical non-timing records; only `ttf_ms` differs).
+        end_to_end_ms: dict[str, float] = {}
+        if self.measure_ttf == "end-to-end":
+            for arm_name, level1 in (("tgms-L0", False), ("tgms-L1", True)):
+                if arm_name not in self.arms:
+                    continue
+                nominated = sorted(tgms_invalidated[arm_name])
+
+                def _run_e2e(names=nominated, l1=level1) -> None:
+                    for name in names:
+                        record = self.registry.current(name)
+                        if record is None:
+                            continue
+                        verdict = check_artifact(record, self.store.eventlog, level1=l1)
+                        if not verdict.actionable_fresh and verdict.refresh is not None:
+                            try:
+                                refresh(record, verdict.refresh, self.store, self.registry)
+                            except TgmsError:
+                                pass
+
+                _unused, dt = self._timed(_run_e2e)
+                end_to_end_ms[arm_name] = dt
+
         entity_inv = set(_entity_touch(self.artifacts, touched))
         window_inv = set(_window_overlap(self.artifacts, interval))
         row_inv = set(_row_touch(last_env_before, correction))
@@ -637,7 +985,10 @@ class Storm:
             false_stale = tuple(sorted(n for n in scored if n not in oracle_changed and n in inv))
             check_ms = check_ms_by_arm.get(arm, 0.0)
             r_ms = sum(refresh_ms.get(n, 0.0) for n in inv)
-            ttf_ms = None if false_fresh else check_ms + r_ms
+            if self.measure_ttf == "end-to-end" and arm in end_to_end_ms:
+                ttf_ms = None if false_fresh else end_to_end_ms[arm]
+            else:
+                ttf_ms = None if false_fresh else check_ms + r_ms
             arms_out[arm] = ArmOutcome(
                 arm=arm, invalidated=tuple(sorted(inv)), check_wall_ms=check_ms,
                 refresh_wall_ms=r_ms, ttf_ms=ttf_ms, false_fresh=false_fresh,
@@ -651,7 +1002,10 @@ class Storm:
             global_recompute_wall_ms=sum(refresh_ms.values()),
             oracle_changed=tuple(sorted(oracle_changed)), refused=tuple(refused), arms=arms_out,
             log_bytes=self.store.eventlog.size(), log_records=self.n_batches,
-            registry_bytes=self.registry.path.stat().st_size)
+            registry_bytes=self.registry.path.stat().st_size,
+            ttf_mode=self.measure_ttf,
+            age_vt_meaningful=(self.interval_vt if isinstance(self.mix, Mix)
+                              and self.mix.age is not None else None))
 
     def run(self, n_batches: int, *, max_attempts_factor: int = 4) -> list[BatchResult]:
         """Run until `n_batches` batches have been realized, or give up
@@ -726,4 +1080,7 @@ def summarize(results: Sequence[BatchResult]) -> dict[str, Any]:
 __all__ = [
     "ARMS", "WINDOW_FRACTIONS", "TEMPLATES", "ArmOutcome", "ArtifactMeta", "BatchResult",
     "RegisteredArtifact", "Storm", "summarize",
+    # C2
+    "MIXES", "MIX_APPEND_FRAC", "AGE_BANDS", "DEGREE_BUCKETS", "RANGE_WIDTHS", "TTF_MODES",
+    "Mix", "build_mix",
 ]
