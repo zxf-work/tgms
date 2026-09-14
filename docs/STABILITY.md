@@ -403,3 +403,36 @@ and a `parents` list naming other artifacts it was built from.
 - **The record wire format (`tgms-artifact`) is v0.x.** Field names, the
   refusal taxonomy's exact members, and the registry file's own layout may
   still change; only the freshness verdict contract above is a promise.
+
+---
+
+## 7. `tgms store backup` / `tgms store restore` (added Lane A EXP-A2, 2026-09-13)
+
+**Backup is the event log; restore is replay.** §1 already establishes the
+event log as the durable source of truth and the derived store as a
+rebuildable cache; backup and restore are exactly that fact turned into two
+verbs, adding no new durability mechanism of their own.
+
+- **`tgms store backup --store <src> --dest <dest>`** writes a *quiesced*
+  copy: `<src>/eventlog.jsonl` copied byte for byte to `<dest>/eventlog.jsonl`,
+  plus `<dest>/backup_manifest.json` recording `store_identity`, the source's
+  generation and `manifest_sha`, the copied log's own sha256 and record
+  count, a backend-independent logical digest (`store_digest()`), and the
+  `tgms_version`/`commit` that made the backup. The source is opened
+  `read_only=True` — the one mode that never runs `Store._recover` or
+  publishes a generation (§2's "recovery is a writer's act") — so taking a
+  backup never mutates the store being backed up.
+- **`tgms store restore --dest <dest> --store <new_store>`** replays that
+  backed-up log into a fresh store at `<new_store>`, reusing exactly the
+  `tgms replay` CLI path (copy the log into place, `replay(..., thread_cursor=
+  True)`), then compares the result's `store_identity` and logical digest
+  against the backup manifest and prints a `PASS`/`FAIL` verdict — nonzero
+  exit on any mismatch. The backed-up log's sha256 is checked against the
+  manifest *before* replay runs at all, so a tampered backup fails loudly
+  instead of silently reconstructing something else.
+- **What this is not:** a scheduling, retention, or incremental-backup
+  mechanism — `--dest` is a plain directory, and running backup twice
+  overwrites it. There is also no cross-machine or cross-version portability
+  claim beyond what §1 already makes for the event-log format itself.
+
+---

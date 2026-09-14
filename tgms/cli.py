@@ -216,9 +216,24 @@ def build_parser() -> argparse.ArgumentParser:
     p_eval.add_argument("--force", default=None,
                         help="rerun the frozen test split; reason is logged (§8.3)")
 
-    p_store = sub.add_parser("store", help="native store maintenance")
+    p_store = sub.add_parser(
+        "store", help="native store maintenance",
+        description="native store maintenance. backup/restore (Lane A "
+                    "EXP-A2): `--store` always names the store this "
+                    "invocation acts on or creates; `--dest` always names "
+                    "the backup directory. `store backup --store <src> "
+                    "--dest <backup_dir>` writes a quiesced copy (the "
+                    "event log, the authoritative artifact, plus a "
+                    "manifest record) to <backup_dir>. `store restore "
+                    "--dest <backup_dir> --store <new_store>` replays that "
+                    "backed-up log into a fresh store at <new_store> "
+                    "(reusing `tgms replay`'s path), then compares the "
+                    "result's identity and logical digest against the "
+                    "backup manifest, printing PASS/FAIL with a nonzero "
+                    "exit on any mismatch — including a tampered log, "
+                    "caught before replay even starts.")
     p_store.add_argument(
-        "action", choices=["gc", "compact", "verify", "upgrade-manifests"],
+        "action", choices=["gc", "compact", "verify", "upgrade-manifests", "backup", "restore"],
         help="gc: drop superseded generations and the files only they "
              "reference. compact: re-sort the live rows into fresh segments. "
              "verify: checksum-walk everything this generation names. "
@@ -233,7 +248,13 @@ def build_parser() -> argparse.ArgumentParser:
              "advances by one and manifest_sha changes, so any persisted TCSR "
              "index rebuilds on next use and build receipts must not be "
              "compared on manifest_sha across the two formats.")
-    p_store.add_argument("--store", required=True)
+    p_store.add_argument("--store", required=True,
+                         help="gc/compact/verify/backup: the store to act on. "
+                              "restore: the fresh store to create")
+    p_store.add_argument("--dest", default=None,
+                         help="backup: directory to write the backup into. "
+                              "restore: the backup directory to restore from "
+                              "(required for both)")
     p_store.add_argument("--keep", type=int, default=2,
                          help="gc: generations to retain besides those "
                               "pinned by live readers (default 2)")
@@ -245,6 +266,150 @@ def build_parser() -> argparse.ArgumentParser:
     p_mem.add_argument("--refresh-stale", action="store_true")
 
     return p
+
+
+#: `store backup`'s manifest filename inside `--dest` — read back verbatim
+#: by `store restore` (Lane A EXP-A2). Not a store-format file: it lives in
+#: the backup directory, never inside a live store's own layout.
+BACKUP_MANIFEST_NAME = "backup_manifest.json"
+
+
+def _git_commit() -> str | None:
+    """Best-effort `git rev-parse HEAD`, or None outside a git checkout —
+    same fallback shape `scripts/eval_durability.py`'s manifest already
+    uses for its own `commit` field."""
+    import subprocess
+
+    try:
+        out = subprocess.run(["git", "rev-parse", "HEAD"], capture_output=True,
+                             text=True, timeout=5)
+        return out.stdout.strip() or None
+    except OSError:
+        return None
+
+
+def _store_backup(src: str, dest: str | None) -> int:
+    """`tgms store backup --store <src> --dest <dest>`: a quiesced copy.
+
+    The event log is the authoritative artifact (STABILITY.md §1) — it is
+    copied verbatim, byte for byte — plus a manifest record identifying
+    exactly what was backed up: `store_identity`, the source generation and
+    its `manifest_sha`, the copied log's own sha256/record count, and the
+    tooling that made the backup. `read_only=True` matters here: it is the
+    one open mode that never runs `Store._recover` or publishes a
+    generation (`tgms/store.py::Store._recover`'s "recovery is a writer's
+    act"), so backing up a store never mutates it — this snapshots exactly
+    what is currently durable on disk, nothing more.
+    """
+    import hashlib
+    import shutil
+    from pathlib import Path
+
+    import tgms
+    from tgms.storage.eventlog import EventLog
+
+    if not dest:
+        print("store backup: --dest is required", file=sys.stderr)
+        return 2
+    src_path, dest_path = Path(src), Path(dest)
+    dest_path.mkdir(parents=True, exist_ok=True)
+
+    store = tgms.open(src_path, backend="native", read_only=True)
+    try:
+        store_identity = store.store_identity
+        generation = store.adapter.generation
+        manifest_sha = store.adapter._store.manifest_sha()
+        logical_digest = store.digest()
+    finally:
+        store.close()
+
+    src_log = src_path / "eventlog.jsonl"
+    dest_log = dest_path / "eventlog.jsonl"
+    shutil.copyfile(src_log, dest_log)
+    log_sha256 = hashlib.sha256(dest_log.read_bytes()).hexdigest()
+    log_records = sum(1 for _ in EventLog(dest_log).batches())
+
+    manifest = {
+        "store_identity": store_identity,
+        "generation": generation,
+        "manifest_sha": manifest_sha,
+        "log_sha256": log_sha256,
+        "log_records": log_records,
+        # not one of the plan's named fields, but restore needs a content
+        # check beyond "the bytes are the bytes I copied" — this is the
+        # backend-independent check (`StorageAdapter.store_digest`) that
+        # verifies replaying that log actually reconstructs the same store.
+        "logical_digest": logical_digest,
+        "tgms_version": getattr(tgms, "__version__", None),
+        "commit": _git_commit(),
+    }
+    (dest_path / BACKUP_MANIFEST_NAME).write_text(json.dumps(manifest, indent=1) + "\n")
+    print(json.dumps(manifest, indent=1))
+    return 0
+
+
+def _store_restore(dest: str | None, new_store: str) -> int:
+    """`tgms store restore --dest <dest> --store <new_store>`: replay a
+    backup's log into a fresh store, then verify it against the manifest.
+
+    Restore is deliberately just `tgms replay` plus a check: the backed-up
+    log is copied into `new_store` and replayed there
+    (`tgms.storage.eventlog.replay`, `thread_cursor=True` — the same call
+    `tgms replay`'s CLI action makes), and the result's `store_identity` and
+    logical digest are compared against what `store backup` recorded.
+    PASS/FAIL is printed either way; the exit code is nonzero on any
+    mismatch, including one caught before replay even runs: the backed-up
+    log's sha256 is checked against the manifest first, so a tampered log
+    fails loudly instead of silently replaying into something else.
+    """
+    import hashlib
+    import shutil
+    from pathlib import Path
+
+    import tgms
+    from tgms.storage.eventlog import replay
+
+    if not dest:
+        print("store restore: --dest is required", file=sys.stderr)
+        return 2
+    dest_path = Path(dest)
+    manifest_path = dest_path / BACKUP_MANIFEST_NAME
+    if not manifest_path.exists():
+        print(f"store restore: no backup manifest at {manifest_path}", file=sys.stderr)
+        return 2
+    manifest = json.loads(manifest_path.read_text())
+
+    backed_up_log = dest_path / "eventlog.jsonl"
+    if not backed_up_log.exists():
+        print(f"store restore: no backed-up log at {backed_up_log}", file=sys.stderr)
+        return 2
+    actual_sha = hashlib.sha256(backed_up_log.read_bytes()).hexdigest()
+    if actual_sha != manifest.get("log_sha256"):
+        print(f"FAIL: backed-up log does not match its manifest "
+              f"(sha256 {actual_sha} != recorded {manifest.get('log_sha256')}) "
+              f"— refusing to restore a tampered log", file=sys.stderr)
+        return 1
+
+    store = tgms.open(new_store, backend="native")
+    dst_log = Path(store.path) / "eventlog.jsonl"
+    if backed_up_log.resolve() != dst_log.resolve():
+        shutil.copyfile(backed_up_log, dst_log)
+    replay(dst_log, store.adapter, thread_cursor=True)
+
+    got_identity = store.store_identity
+    got_digest = store.digest()
+    store.close()
+
+    ok = (got_identity == manifest.get("store_identity")
+         and got_digest == manifest.get("logical_digest"))
+    print(json.dumps({
+        "verdict": "PASS" if ok else "FAIL",
+        "store_identity": got_identity,
+        "expected_store_identity": manifest.get("store_identity"),
+        "logical_digest": got_digest,
+        "expected_logical_digest": manifest.get("logical_digest"),
+    }, indent=1))
+    return 0 if ok else 1
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -588,6 +753,12 @@ def main(argv: list[str] | None = None) -> int:
                 print(f"unchanged:  already at manifest format "
                       f"{report['to_format']}")
             return 0
+
+        if args.action == "backup":
+            return _store_backup(args.store, args.dest)
+        if args.action == "restore":
+            return _store_restore(args.dest, args.store)
+
         store = tgms.open(args.store, backend="native")
         if args.action == "verify":
             r = store.adapter.verify()
