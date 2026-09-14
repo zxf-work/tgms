@@ -117,30 +117,90 @@ pub struct ManifestDelta {
     pub manifest_sha: String,
 }
 
-fn removed(before: &[String], after: &[String]) -> Vec<String> {
-    let keep: std::collections::HashSet<&str> = after.iter().map(String::as_str).collect();
-    before
+fn seg_name(e: &SegmentEntry) -> &str {
+    &e.file
+}
+
+fn run_name(r: &CloseRunRef) -> &str {
+    &r.file
+}
+
+/// Names in `parent` that `child` no longer lists.
+///
+/// Everything here borrows the names rather than copying them: the commit
+/// path runs this once per lane per commit, and the whole point of the change
+/// is that a commit stops paying per live segment. The only allocations are
+/// the `del` names actually returned, which is empty on every path except
+/// compaction — and compaction writes a checkpoint instead.
+fn removed_names<T>(
+    parent: &[T],
+    child: &[T],
+    name: impl for<'a> Fn(&'a T) -> &'a str,
+) -> Vec<String> {
+    if parent.is_empty() {
+        return Vec::new();
+    }
+    let keep: std::collections::HashSet<&str> = child.iter().map(&name).collect();
+    parent
         .iter()
-        .filter(|f| !keep.contains(f.as_str()))
+        .map(&name)
+        .filter(|f| !keep.contains(f))
+        .map(str::to_string)
+        .collect()
+}
+
+/// Entries `child` lists that `parent` did not.
+fn added_entries<T: Clone>(
+    parent: &[T],
+    child: &[T],
+    name: impl for<'a> Fn(&'a T) -> &'a str,
+) -> Vec<T> {
+    if parent.is_empty() {
+        return child.to_vec();
+    }
+    let had: std::collections::HashSet<&str> = parent.iter().map(&name).collect();
+    child
+        .iter()
+        .filter(|e| !had.contains(name(e)))
         .cloned()
         .collect()
 }
 
-fn added<'a, T: 'a>(before: &[String], after: &'a [T], name: impl Fn(&T) -> &str) -> Vec<&'a T> {
-    let had: std::collections::HashSet<&str> = before.iter().map(String::as_str).collect();
-    after.iter().filter(|e| !had.contains(name(e))).collect()
-}
-
-fn seg_names(v: &[SegmentEntry]) -> Vec<String> {
-    v.iter().map(|e| e.file.clone()).collect()
-}
-
-fn run_names(v: &[CloseRunRef]) -> Vec<String> {
-    v.iter().map(|r| r.file.clone()).collect()
+/// Would `parent` minus `del` plus `add` be exactly `child`?
+///
+/// The validation `between` runs before it will offer a delta. Deliberately
+/// not "clone the parent, patch it, compare": that would put an O(segments)
+/// deep clone back on the commit path this change exists to flatten. This
+/// walks the three sequences in lockstep and allocates nothing beyond the
+/// deletion set, which is empty on the commit path.
+fn patch_matches<T: PartialEq>(
+    parent: &[T],
+    del: &[String],
+    add: &[T],
+    child: &[T],
+    name: impl for<'a> Fn(&'a T) -> &'a str,
+) -> bool {
+    if child.len() + del.len() != parent.len() + add.len() {
+        return false;
+    }
+    let gone: std::collections::HashSet<&str> = del.iter().map(String::as_str).collect();
+    let mut want = child.iter();
+    let survivors = parent.iter().filter(|e| !gone.contains(name(e)));
+    for e in survivors.chain(add.iter()) {
+        if want.next() != Some(e) {
+            return false;
+        }
+    }
+    want.next().is_none()
 }
 
 /// Apply one list diff: drop the named entries, then append the new ones.
-fn patch<T: Clone>(list: &mut Vec<T>, del: &[String], add: &[T], name: impl Fn(&T) -> &str) {
+fn patch<T: Clone>(
+    list: &mut Vec<T>,
+    del: &[String],
+    add: &[T],
+    name: impl for<'a> Fn(&'a T) -> &'a str,
+) {
     if !del.is_empty() {
         let gone: std::collections::HashSet<&str> = del.iter().map(String::as_str).collect();
         list.retain(|e| !gone.contains(name(e)));
@@ -153,12 +213,14 @@ impl ManifestDelta {
     /// cannot be expressed as one.
     ///
     /// The `None` cases are not failures — they are the caller's signal to
-    /// write a checkpoint instead. Crucially, the delta is *validated by
-    /// replay before it is returned*: whatever the diff heuristics do,
-    /// `apply` must reproduce `child` exactly or no delta is offered. That is
-    /// what makes an entry whose contents changed in place (rather than being
-    /// added or removed), or a reordering, structurally safe instead of a
-    /// silent divergence.
+    /// write a checkpoint instead. Crucially, the delta is *validated before
+    /// it is returned*: whatever the name diff does, replaying it must
+    /// reproduce `child` exactly or no delta is offered. That is what makes an
+    /// entry whose contents changed in place (rather than being added or
+    /// removed), or a reordering, structurally safe instead of a silent
+    /// divergence. The validation walks the sequences in lockstep rather than
+    /// cloning and comparing, because a deep clone per commit is exactly the
+    /// O(segments) cost this change exists to remove.
     pub fn between(parent: &Manifest, child: &Manifest, checkpoint: u64) -> Option<Self> {
         if parent.format != child.format
             || child.format != MANIFEST_FORMAT_VERSION
@@ -168,6 +230,7 @@ impl ManifestDelta {
         {
             return None;
         }
+        let (seg, run) = (seg_name, run_name);
         let mut d = Self {
             format: MANIFEST_FORMAT_VERSION,
             kind: "delta".into(),
@@ -180,46 +243,58 @@ impl ManifestDelta {
             dict: child.dict.clone(),
             next_segment_id: child.next_segment_id,
             stats: child.stats.clone(),
-            add_nodes: added(&seg_names(&parent.node_store), &child.node_store, |e| &e.file)
-                .into_iter()
-                .cloned()
-                .collect(),
-            del_nodes: removed(&seg_names(&parent.node_store), &seg_names(&child.node_store)),
-            add_edges_event: added(
-                &seg_names(&parent.edge_lanes.event),
-                &child.edge_lanes.event,
-                |e| &e.file,
-            )
-            .into_iter()
-            .cloned()
-            .collect(),
-            del_edges_event: removed(
-                &seg_names(&parent.edge_lanes.event),
-                &seg_names(&child.edge_lanes.event),
-            ),
-            add_edges_interval: added(
-                &seg_names(&parent.edge_lanes.interval),
+            add_nodes: added_entries(&parent.node_store, &child.node_store, seg),
+            del_nodes: removed_names(&parent.node_store, &child.node_store, seg),
+            add_edges_event: added_entries(&parent.edge_lanes.event, &child.edge_lanes.event, seg),
+            del_edges_event: removed_names(&parent.edge_lanes.event, &child.edge_lanes.event, seg),
+            add_edges_interval: added_entries(
+                &parent.edge_lanes.interval,
                 &child.edge_lanes.interval,
-                |e| &e.file,
-            )
-            .into_iter()
-            .cloned()
-            .collect(),
-            del_edges_interval: removed(
-                &seg_names(&parent.edge_lanes.interval),
-                &seg_names(&child.edge_lanes.interval),
+                seg,
             ),
-            add_close_runs: added(&run_names(&parent.close_runs), &child.close_runs, |r| {
-                &r.file
-            })
-            .into_iter()
-            .cloned()
-            .collect(),
-            del_close_runs: removed(&run_names(&parent.close_runs), &run_names(&child.close_runs)),
+            del_edges_interval: removed_names(
+                &parent.edge_lanes.interval,
+                &child.edge_lanes.interval,
+                seg,
+            ),
+            add_close_runs: added_entries(&parent.close_runs, &child.close_runs, run),
+            del_close_runs: removed_names(&parent.close_runs, &child.close_runs, run),
             delta_sha: String::new(),
             manifest_sha: child.manifest_sha.clone(),
         };
-        if d.apply(parent) != *child {
+        // Every scalar field is copied from `child` above, so `apply` sets
+        // them to child's values by construction; `format`, `widths`,
+        // `generation` and `parent` were checked at the top. That leaves the
+        // four lists, and these are what could silently differ.
+        if !patch_matches(
+                &parent.node_store,
+                &d.del_nodes,
+                &d.add_nodes,
+                &child.node_store,
+                seg,
+            )
+            || !patch_matches(
+                &parent.edge_lanes.event,
+                &d.del_edges_event,
+                &d.add_edges_event,
+                &child.edge_lanes.event,
+                seg,
+            )
+            || !patch_matches(
+                &parent.edge_lanes.interval,
+                &d.del_edges_interval,
+                &d.add_edges_interval,
+                &child.edge_lanes.interval,
+                seg,
+            )
+            || !patch_matches(
+                &parent.close_runs,
+                &d.del_close_runs,
+                &d.add_close_runs,
+                &child.close_runs,
+                run,
+            )
+        {
             return None;
         }
         d.seal();

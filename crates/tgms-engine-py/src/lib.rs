@@ -236,6 +236,10 @@ impl NativeStore {
             ("total_us", p.total_us),
             ("manifest_bytes", p.manifest_bytes),
             ("segments_named", p.segments_named),
+            // 1 when step 4 wrote a full checkpoint rather than a delta, so a
+            // harness can separate the amortized every-Kth-commit cost from
+            // the per-commit one instead of averaging them together
+            ("manifest_checkpoint", u64::from(p.manifest_checkpoint)),
         ] {
             d.set_item(k, v).expect("fresh dict accepts u64 values");
         }
