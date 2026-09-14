@@ -642,6 +642,63 @@ def co_active_terms(args: dict[str, Any], sigma: Sigma) -> tuple[ScopeTerm, ...]
 
 
 # ---------------------------------------------------------------------------
+# §2.3 — diff_snapshots (rollout design 2026-09-14, §6 step 7)
+# ---------------------------------------------------------------------------
+
+def diff_snapshots_terms(args: dict[str, Any], sigma: Sigma) -> tuple[ScopeTerm, ...]:
+    """Two instants in one `vt` tuple, `P = Pᵥ` — the one place in the
+    snapshot family where the carve arm is excluded, and the derivation's
+    whole value.
+
+    **Reads.** `_point_state` twice, each `nodes_at(t)` + `edges_at(t,
+    columns=_DIFF_EDGE_COLS)` (`ops_snapshot.py:199-205` — `eid`, `vid`,
+    `src_id`, `dst_id`, `rel_type`; deliberately not `vt_s`/`vt_e`); when
+    `scope` is non-null, `adapter.dense_ids(scope["seeds"])` (`:233`), two
+    BFS calls (`:235-236`) and `adapter.uids_for` (`:237,245`);
+    `adapter.props_for_vids` over the identities present at both instants
+    with differing `vid` (`:259-260,270-271`); node `label` comparison
+    (`:262-263`).
+
+    **`I = ⊤` on both terms** (§9.2's BFS argument, inherited verbatim, plus
+    §2.2's induced-edge strengthening). `T = ⊤` always — the operator has no
+    `rel_types` argument.
+
+    **`P = Pᵥ`**: `vid` here is only a change-*candidate* filter; the emitted
+    rows compare `props` and `label`, which a carve preserves (`_remainder`
+    re-inserts fragments with the old props), a carve can only split and
+    never merge so it cannot collapse two differing versions into one
+    candidate, and a split whose fragments carry equal props yields a `vid`
+    difference the content test discards. Every output list is a set
+    **difference**, so the domain must cover both instants in full — which
+    `I = ⊤` does.
+    """
+    t1, t2 = args.get("t1"), args.get("t2")
+    v2 = _two_instant_vt(t1, t2)
+    if v2 is None:
+        return (TOP_TERM,)
+    terms = [
+        ScopeTerm(kinds=K_EDGE, targets=_edge_target(), rel_types=TOP,
+                 vt=v2, vt_mode="instant", props=P_VALUE),
+        ScopeTerm(kinds=K_NODE, targets=Targets(nodes=TOP), rel_types=TOP,
+                 vt=v2, vt_mode="instant", props=P_VALUE),
+    ]
+    scope_arg = args.get("scope")
+    if scope_arg is not None:
+        if not isinstance(scope_arg, dict) or not scope_arg.get("seeds"):
+            return (TOP_TERM,)
+        uids = tuple(dict.fromkeys(scope_arg["seeds"]))
+        terms.extend(_existence_terms(uids))
+    return tuple(terms)
+
+
+def _two_instant_vt(t1: Any, t2: Any) -> tuple[tuple[int, int], ...] | None:
+    iv1, iv2 = _instant_vt(t1), _instant_vt(t2)
+    if iv1 is None or iv2 is None:
+        return None
+    return iv1 + iv2
+
+
+# ---------------------------------------------------------------------------
 # the rollout table — one line per operator, and the rollback
 # ---------------------------------------------------------------------------
 
@@ -661,6 +718,7 @@ LEAF_SCOPES: dict[str, Derivation] = {
     "burst_detection": burst_detection_terms,
     "graph_metric_timeseries": graph_metric_timeseries_terms,
     "co_active": co_active_terms,
+    "diff_snapshots": diff_snapshots_terms,
 }
 
 #: Does this operator's output bind **node-version** columns — a label, a
@@ -692,6 +750,8 @@ BINDS_NODE_VERSIONS: dict[str, Callable[[dict[str, Any]], bool]] = {
         {"node_count", "mean_out_degree", "new_node_rate"},
     # rows are {a: edge_desc, b: edge_desc}: uids read off edge endpoints
     "co_active": lambda args: False,
+    # nodes_added/removed carry label; props_changed carries node props too
+    "diff_snapshots": lambda args: True,
 }
 
 
@@ -711,8 +771,8 @@ def terms_for(op: str, args: dict[str, Any], sigma: Sigma) -> tuple[ScopeTerm, .
 __all__ = [
     "BINDS_NODE_VERSIONS", "Derivation", "LEAF_SCOPES", "P_CARVE_REACHED",
     "P_VALUE", "aggregate_events_terms", "burst_detection_terms",
-    "co_active_terms", "count_temporal_motifs_terms", "entity_history_terms",
-    "find_temporal_motif_instances_terms", "graph_metric_timeseries_terms",
-    "neighborhood_evolution_terms", "temporal_paths_terms",
-    "temporal_reachability_terms", "terms_for",
+    "co_active_terms", "count_temporal_motifs_terms", "diff_snapshots_terms",
+    "entity_history_terms", "find_temporal_motif_instances_terms",
+    "graph_metric_timeseries_terms", "neighborhood_evolution_terms",
+    "temporal_paths_terms", "temporal_reachability_terms", "terms_for",
 ]
