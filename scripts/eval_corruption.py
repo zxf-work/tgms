@@ -595,6 +595,13 @@ def explain_benign(cls: str, mut_info: dict[str, Any], build_meta: dict[str, Any
                 "truncates it on the next writer open")
     file_rel = mut_info.get("file")
     if file_rel is not None and file_rel in build_meta.get("orphan_files", set()):
+        # Reached only for a segment/close-run orphan under the default
+        # verify_mode="full": an orphaned *manifest* generation is instead
+        # DETECTED before classify() ever gets here — full mode's own
+        # manifest-parent-chain check (added Lane A task A9) walks every
+        # retained generation still on disk, not only the chain reachable
+        # from CURRENT (tests/test_eval_corruption.py::
+        # test_orphaned_manifest_generation_is_detected_under_full_verify).
         return ("the mutated file was superseded by this trial's own "
                 "compact() before the mutation ran — no live manifest "
                 "generation references it")
