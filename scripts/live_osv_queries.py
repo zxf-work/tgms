@@ -117,13 +117,16 @@ def run_queries(store_dir: str | Path, *, log_path: str | Path, seed: str,
             print(f"DRY_RUN query plan: {json.dumps(plan)}")
             return plan
 
-        # register on first run: an idempotent, up-to-500 sample.
-        live = tgms.open(store_dir, backend=backend)
-        try:
-            newly = poller.register_sample_artifacts(
-                live, registry, sample_size=artifact_sample_size, seed=seed)
-        finally:
-            live.close()
+        # register on first run: an idempotent, up-to-500 sample. Uses the
+        # existing read-only `store` handle — register_sample_artifacts (and
+        # register_exposure_artifact under it) only reads via store.adapter
+        # and ToolRouter.call("snapshot_subgraph", ...) and appends to the
+        # separate artifact registry; it never mutates the store itself, so
+        # a second read-write open here would only race the poller's own
+        # writer for the OS-level single-writer lock (STABILITY.md §8) and
+        # get refused with WriterLockedError while the poller holds it.
+        newly = poller.register_sample_artifacts(
+            store, registry, sample_size=artifact_sample_size, seed=seed)
 
         router = ToolRouter(store.adapter, tt_source=store)
         pkgs = _sample_packages(store, registry, rng, QUERIES_PER_FAMILY)
