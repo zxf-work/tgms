@@ -1,0 +1,21 @@
+{
+ "answer_spec": {
+  "from": "s1.neighbors_gained_total",
+  "kind": "count"
+ },
+ "plan_id": "p05-neighborhood-evolution",
+ "question": "How many neighbors did n1 gain between the two quarter-extent snapshots?",
+ "steps": [
+  {
+   "args": {
+    "stride": 10277650751807,
+    "t1": 1330352514735590,
+    "t2": 1412573720750050,
+    "uid": "n1"
+   },
+   "depends_on": [],
+   "id": "s1",
+   "op": "neighborhood_evolution"
+  }
+ ]
+}

@@ -1,0 +1,29 @@
+{
+ "answer_spec": {
+  "from": "s1.value",
+  "kind": "count"
+ },
+ "plan_id": "p12-compute-only",
+ "question": "The empty-scope control: count of a literal 3-element list.",
+ "steps": [
+  {
+   "args": {
+    "fn": "count",
+    "input": [
+     {
+      "x": 1
+     },
+     {
+      "x": 2
+     },
+     {
+      "x": 3
+     }
+    ]
+   },
+   "depends_on": [],
+   "id": "s1",
+   "op": "compute"
+  }
+ ]
+}

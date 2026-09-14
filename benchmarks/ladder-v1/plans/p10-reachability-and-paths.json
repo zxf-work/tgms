@@ -1,0 +1,51 @@
+{
+ "answer_spec": {
+  "from": "s3.value",
+  "kind": "count"
+ },
+ "plan_id": "p10-reachability-and-paths",
+ "question": "How many time-respecting n1->n2 paths (k<=3, <=3 hops) exist in the full extent, after checking n1's own reachable set?",
+ "steps": [
+  {
+   "args": {
+    "limit": 50,
+    "src": "n1",
+    "window": {
+     "t_a": 1289241911728360,
+     "t_b": 1453684323757281
+    }
+   },
+   "depends_on": [],
+   "id": "s1",
+   "op": "temporal_reachability"
+  },
+  {
+   "args": {
+    "dst": "n2",
+    "k": 3,
+    "max_hops": 3,
+    "src": "n1",
+    "window": {
+     "t_a": 1289241911728360,
+     "t_b": 1453684323757281
+    }
+   },
+   "depends_on": [],
+   "id": "s2",
+   "op": "temporal_paths"
+  },
+  {
+   "args": {
+    "fn": "count",
+    "input": {
+     "$ref": "s2.rows"
+    }
+   },
+   "depends_on": [
+    "s2"
+   ],
+   "id": "s3",
+   "op": "compute"
+  }
+ ]
+}

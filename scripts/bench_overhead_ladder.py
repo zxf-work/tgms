@@ -453,6 +453,15 @@ def run_condition(rung: int, plan_path: Path, store_path: str, reps: int,
 # --------------------------------------------------------------------------- #
 
 def _build_smoke_store(root: Path) -> Path:
+    """`n1`/`n2`/`n3`, all open from vt=0 -- enough for the built-in
+    two-step smoke plan (`n1`, `n2`) and for `benchmarks/ladder-v1/plans`
+    run through `--smoke --plans` (lane D4b): `n3` is there only because
+    one of that plan set's steps (`snapshot_subgraph`, `seeds=["n1","n3"]`)
+    needs a third identity to resolve; every other ladder-v1 plan is
+    satisfied by `n1`/`n2` alone. A plan step whose *window* falls outside
+    `[0, OPEN_END)` (the ladder-v1 plans mostly use real bitcoinotc-epoch
+    windows, far above 0) still executes without error -- it just returns
+    zero rows, which is a legitimate answer, not a failure."""
     import tgms
     from tgms.core.model import OPEN_END
 
@@ -461,7 +470,9 @@ def _build_smoke_store(root: Path) -> Path:
     try:
         store.assert_node("n1", "Person", {"name": "Alice"}, vt_s=0, vt_e=OPEN_END)
         store.assert_node("n2", "Person", {"name": "Bob"}, vt_s=0, vt_e=OPEN_END)
+        store.assert_node("n3", "Person", {"name": "Carol"}, vt_s=0, vt_e=OPEN_END)
         store.assert_edge("n1", "n2", "KNOWS", {}, vt_s=0, vt_e=OPEN_END)
+        store.assert_edge("n2", "n3", "KNOWS", {}, vt_s=0, vt_e=OPEN_END)
     finally:
         store.close()
     return store_path
@@ -581,7 +592,14 @@ def main() -> int:
         smoke_dir_ctx = tempfile.TemporaryDirectory(prefix="tgms-ladder-smoke-")
         smoke_root = Path(smoke_dir_ctx.name)
         store_path = str(_build_smoke_store(smoke_root))
-        plan_paths = [_write_smoke_plan(smoke_root)]
+        # additive: `--smoke --plans DIR-or-list` runs a real plan set (e.g.
+        # benchmarks/ladder-v1/plans) against the tiny smoke store instead of
+        # the built-in two-step plan -- the laptop-side way to exercise a
+        # frozen plan set end to end without touching a real store (see
+        # tests/test_ladder_v1_plans.py). `--smoke` with no `--plans` is
+        # unchanged.
+        plan_paths = (_iter_plan_paths(args.plans) if args.plans
+                      else [_write_smoke_plan(smoke_root)])
         reps = min(args.reps, 2)
         out_path = Path(args.out) if args.out else smoke_root / "smoke-record.json"
     else:

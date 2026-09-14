@@ -1,0 +1,45 @@
+{
+ "answer_spec": {
+  "from": "s3.value",
+  "kind": "count"
+ },
+ "plan_id": "p02-compiled-entity-and-version",
+ "question": "How many edge-version rows land in the full extent window, after checking n2's own history?",
+ "steps": [
+  {
+   "args": {
+    "limit": 50,
+    "uid": "n2"
+   },
+   "depends_on": [],
+   "id": "s1",
+   "op": "entity_history"
+  },
+  {
+   "args": {
+    "kind": "edge",
+    "limit": 50,
+    "window": {
+     "t_a": 1289241911728360,
+     "t_b": 1453684323757281
+    }
+   },
+   "depends_on": [],
+   "id": "s2",
+   "op": "version_history"
+  },
+  {
+   "args": {
+    "fn": "count",
+    "input": {
+     "$ref": "s2.rows"
+    }
+   },
+   "depends_on": [
+    "s2"
+   ],
+   "id": "s3",
+   "op": "compute"
+  }
+ ]
+}

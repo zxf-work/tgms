@@ -1,0 +1,24 @@
+{
+ "answer_spec": {
+  "from": "s1.nodes_total",
+  "kind": "count"
+ },
+ "plan_id": "p03-snapshot-subgraph",
+ "question": "How many nodes are within 2 hops of {n1, n3} at the midpoint snapshot?",
+ "steps": [
+  {
+   "args": {
+    "hops": 2,
+    "limit": 50,
+    "seeds": [
+     "n1",
+     "n3"
+    ],
+    "t_valid": 1371463117742820
+   },
+   "depends_on": [],
+   "id": "s1",
+   "op": "snapshot_subgraph"
+  }
+ ]
+}

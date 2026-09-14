@@ -1,0 +1,225 @@
+# ladder-v1 campaign — FROZEN 2026-09-14 by lane D4b (OSDI'27 overhead-ladder
+# measurement, coordinated under lane D4). Pre-registered before any run.
+# Append-only from here: changes land as dated addenda below, never as edits
+# to the blocks already frozen. No run has been submitted against this file
+# (this lane is laptop-only per the campaign's "experiments remote only"
+# rule — no ssh, no cluster access); the coordinator schedules and stamps
+# the run of record.
+freeze_id: ladder-v1-2026-09-14
+anchor:
+  worktree_commit: 1ae3a93665a2   # this lane's own HEAD at freeze time; NOT commit_under_test (see below)
+  harness: [scripts/bench_overhead_ladder.py, scripts/overhead_ladder.slurm,
+            docs/eval/overhead_ladder.md, tests/test_overhead_ladder.py]
+  plans_dir: benchmarks/ladder-v1/plans
+host: iTiger, bigTiger partition, one node, exec (scripts/overhead_ladder.slurm
+      execs the interpreter as the job step's last command; see that script's
+      own header for why)
+
+store: bitcoinotc   # stores/bitcoinotc: 5,881 entities, 35,592 TRUST edge
+                    # versions, vt in [1289241911728360, 1453684323757281]
+                    # (epoch microseconds) — the same store
+                    # e14-p1-leaf-overhead-bitcoinotc.json was measured
+                    # against; every plan below was written against this
+                    # store's known extent and node-id convention ("n<raw
+                    # SNAP id>", from tgms/data/loaders.py::snap_edge_stream).
+
+grid:
+  reps: 5
+  seeds: [0, 1, 2]
+  rungs: [1, 2, 3, 4, 5]
+  tokenizer: auto
+
+commit_under_test: TBD   # filled at submission (scripts/overhead_ladder.slurm's
+                         # TGMS_COMMIT env var — iTiger compute nodes carry no
+                         # git binary, so this cannot be read from the checkout
+                         # at run time; see that script's header)
+
+plans:                    # benchmarks/ladder-v1/plans/*.json, sha256 per file
+  - file: p01-entity-history.json
+    ops: [entity_history]
+    steps: 1
+    sha256: b56db384a43c8faf0595d939ae608265c43ae4bc00db3e7971f3d62034de19f9
+  - file: p02-compiled-entity-and-version.json
+    ops: [entity_history, version_history, compute]
+    steps: 3
+    sha256: 20e3e274115bfedca5b2dc9799ad3bd2976d977b93071f02a9250541edd6afab
+    note: the only plan touching BOTH tgms.tgir.compiled.COMPILED operators
+          (entity_history, version_history) — rung 2's population for this
+          campaign is exactly this plan's two matching steps.
+  - file: p03-snapshot-subgraph.json
+    ops: [snapshot_subgraph]
+    steps: 1
+    sha256: 549304e3fc6fff6839ac3fc94a7cae177ff05399d53306ebb8c0867aac6d0dae
+  - file: p04-diff-snapshots.json
+    ops: [diff_snapshots]
+    steps: 1
+    sha256: a218abc41c332b55bcb1b5e09efb33ace2570dbdddb7984961577370e4a15cb2
+  - file: p05-neighborhood-evolution.json
+    ops: [neighborhood_evolution]
+    steps: 1
+    sha256: 92155a656232b86667ff30f50674ece318f9e5c33d0a9b24896b802bc122fbca
+  - file: p06-aggregate-events.json
+    ops: [aggregate_events]
+    steps: 1
+    sha256: 9d05e12001ca51f73e009650a22b9e0cf8dea68ac6d0f5a6e0e743bb23a41342
+  - file: p07-graph-metric-timeseries.json
+    ops: [graph_metric_timeseries]
+    steps: 1
+    sha256: 0a6814525c05d1f5fdf69bebc3a98d500bc0e05c3de20fe01505359741850f29
+  - file: p08-burst-detection.json
+    ops: [burst_detection]
+    steps: 1
+    sha256: d1e32525c337b760fca23ddfcac8d4b1f6daaabf009ca9078496b46f68e171f3
+  - file: p09-motifs.json
+    ops: [count_temporal_motifs, find_temporal_motif_instances, compute]
+    steps: 3
+    sha256: 3ad61ab4e7760647baa8a58558498cafd18b87620ca325e7ee730076f94b2149
+  - file: p10-reachability-and-paths.json
+    ops: [temporal_reachability, temporal_paths, compute]
+    steps: 3
+    sha256: b9eb325d18c71a79faacb49e44e581a1ce66c90fe14275601a4ea8598dfb619a
+  - file: p11-co-active.json
+    ops: [co_active]
+    steps: 1
+    sha256: b2ef80f175f7b5afbeca8309ebab775a0617f80e9657a8dc3c750b2783f2b2d8
+  - file: p12-compute-only.json
+    ops: [compute]
+    steps: 1
+    sha256: 143aa109a36baed55e6c69f8c8a59e9f7c1a969e4f45345592e37729ee6c90b4
+    note: the empty-scope control (storm-v1's own true-negative anchor,
+          `_tmpl_compute` in tgms/eval/storm.py) — a literal-list count,
+          never touches the store.
+
+catalogue_coverage: 14/14   # tgms.tgir.leaves.LEAF_SCOPES (13) union {compute};
+                            # the same 14-of-15 population storm.py's own
+                            # TEMPLATES tuple documents (resolve_entities
+                            # excluded by ruling, D-161/§13.8.1 — a
+                            # constructed-counterexample operator, never a
+                            # workload sample). Verified mechanically from
+                            # the code (not hand-counted) by
+                            # tests/test_ladder_v1_plans.py.
+
+gates:
+  G-L1_every_plan_executes: {max_failures: 0}   # every plan in plans/ runs to
+                                                 # completion (no uncaught
+                                                 # exception in Executor.run)
+                                                 # against stores/bitcoinotc
+  G-L2_schema_valid: {schema: benchmarks/schema/result_manifest.schema.json}
+
+predictions:
+  # --- rungs 1-2: grounded in existing records where one exists on THIS
+  # store; rung 2 has no bitcoinotc-specific record, so its bar is wider and
+  # explicitly labelled. Every free-text field below is a ">-" (folded)
+  # block scalar specifically so embedded ": " sequences (file paths,
+  # "20k-60k nodes, 1M-10M edge versions: ...") never get misread as a YAML
+  # mapping separator.
+  rung1_leaf_overhead:
+    basis: >-
+      benchmarks/results-v1/e14-p1-leaf-overhead-bitcoinotc.json (same
+      store, same commit family; per-op leaf_over_direct ratios there
+      span 0.907-1.210 across the 13 catalogue ops it measures, e.g.
+      entity_history 1.077, version_history 1.041, snapshot_subgraph
+      0.952, temporal_paths 1.055, co_active 1.001 -- all within the
+      +/-20% "leaf overhead is ~zero" band the P1 harness gates on)
+    predicted: >-
+      leaf_over_direct in [0.8, 1.3] for every op any plan in this
+      set measures (a slightly wider bar than the cited record's
+      own 0.9-1.21, because rung 1 here windows off THIS campaign's
+      plans, not P1's own canned per-op args)
+    pass_if: every measured op's leaf_over_direct in [0.7, 1.5]
+    refuted_if: >-
+      any measured op's leaf_over_direct outside [0.5, 2.0], or
+      outcome != OK for any arm
+  rung2_compiled_vs_kernel:
+    basis: >-
+      no bitcoinotc-specific compiled_vs_kernel record exists (checked;
+      see docs/eval/overhead_ladder.md read-first list). The only
+      existing records are cross-store, different scale entirely --
+      benchmarks/results-v1/e14-p2-compiled-{1m,10m}.json (synth,
+      20k-60k nodes, 1M-10M edge versions). There, entity_history's
+      compiled_over_kernel is 292.7x at 1M edges and 446.9x at 10M; both
+      records show version_history's compiled_over_kernel as
+      unavailable (one arm did not report OK there). These are cited
+      for DIRECTION ONLY -- bitcoinotc is 35,592 edge versions, ~28x
+      smaller than the 1M record -- not as a same-store basis.
+    predicted: >-
+      predicted, no prior record on bitcoinotc -- compiled_over_kernel
+      greater than 1 for entity_history (order-of-magnitude 3x-300x, wide
+      on purpose given no same-store anchor); version_history
+      unconstrained (no prior sign to anchor even a direction)
+    pass_if: >-
+      entity_history compiled_over_kernel in [1, 2000] and both arms
+      report outcome OK for both ops
+    refuted_if: >-
+      entity_history compiled_over_kernel <= 1 (the compiled route
+      would have to be FASTER than the hand kernel -- the opposite
+      sign of every existing record at any scale)
+  # --- rungs 3-5: no prior record at all (this harness has never been run);
+  # every bar below is "predicted, no prior record" per the campaign brief,
+  # anchored only by this lane's own --smoke run against a 3-node tmp_path
+  # store (order-of-magnitude floor, not a same-data bar -- see note).
+  rung3_trace_bytes:
+    basis: >-
+      predicted, no prior record. --smoke run (benchmarks/ladder-v1/plans
+      against a synthetic 3-node/2-edge tmp_path store, this lane,
+      2026-09-14) measured bytes_median 2699-3876 for the nine 1-step
+      plans and 8121-9336 for the three 3-step plans -- a floor, not a
+      same-data estimate. bitcoinotc rows carry real content (numeric
+      ids, rel_type, four-clock version fields) the smoke store's
+      near-empty results mostly don't.
+    predicted: >-
+      bytes_median in [1500, 30000] for a 1-step plan; [4000, 90000]
+      for a 3-step plan; roughly linear in step count within a plan
+    pass_if: >-
+      every plan's bytes_median is in that range and reproducible
+      across the 5 reps at fixed seed (bytes_min == bytes_max)
+    refuted_if: >-
+      any plan's bytes_median is non-reproducible across reps at
+      fixed seed, or falls outside [500, 300000]
+  rung4_verify_ms:
+    basis: >-
+      predicted, no prior record. Same --smoke run measured verify_ms
+      p50 2.66-2.98 ms uniformly across all twelve plans (1 claim per
+      plan in every case) -- dominated by fixed ClaimVerifier overhead,
+      not data volume, at this claim count.
+    predicted: >-
+      p50_ms in [1, 20] per plan (bitcoinotc's larger row/version
+      counts may move ECQR evidence lookups, but each plan still
+      resolves exactly one claim)
+    pass_if: every plan's p50_ms in [0.5, 50]
+    refuted_if: any plan's p50_ms > 200, or min_ms < 0
+  rung5_tokens_tool_calls:
+    basis: >-
+      predicted, no prior record. Same --smoke run measured tokens.total
+      1121-2162 for 1-step plans and 2502-3113 for 3-step plans
+      (tokenizer=auto); tool_calls exactly matched n_steps on all
+      twelve plans (1 for the nine single-step plans, 3 for
+      p02/p09/p10) -- this half of the prediction is a hard invariant,
+      not a range.
+    predicted: >-
+      tokens.total in [800, 8000] for a 1-step plan, [2000, 20000]
+      for a 3-step plan; tool_calls == n_steps for every plan,
+      exactly (9 plans at 1, 3 plans at 3)
+    pass_if: >-
+      tool_calls == n_steps for every plan (no exceptions -- this is
+      also a falsifier below) and tokens.total falls in the stated
+      ranges
+    refuted_if: >-
+      any plan's tool_calls != n_steps (falsifier, restated), or
+      tokens.total outside [200, 100000]
+
+falsifiers:
+  a: rung 5 tool-call count != number of executed steps, for any plan
+  b: rung 3 trace bytes non-deterministic across reps at the same seed (same
+     store, same plan, same commit)
+  c: any plan failing to execute (an uncaught exception from Executor.run,
+     not a step-level error recorded in the trace — a step returning
+     E_NOT_FOUND or similar and being skipped downstream is NOT a failure
+     under this falsifier, per docs/eval/overhead_ladder.md's own rung-2
+     population note)
+  d: the result manifest fails to validate against
+     benchmarks/schema/result_manifest.schema.json
+
+# No addenda yet — this is the initial freeze. Any change to `plans/`,
+# `grid`, `gates`, `predictions` or `falsifiers` above lands as a dated
+# `addendum_N` block below, never as an edit to the blocks above.

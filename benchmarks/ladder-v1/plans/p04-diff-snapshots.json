@@ -1,0 +1,20 @@
+{
+ "answer_spec": {
+  "from": "s1.edges_added_total",
+  "kind": "count"
+ },
+ "plan_id": "p04-diff-snapshots",
+ "question": "How many edges were added between the two quarter-extent snapshots?",
+ "steps": [
+  {
+   "args": {
+    "limit": 50,
+    "t1": 1330352514735590,
+    "t2": 1412573720750050
+   },
+   "depends_on": [],
+   "id": "s1",
+   "op": "diff_snapshots"
+  }
+ ]
+}

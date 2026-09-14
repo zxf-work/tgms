@@ -1,0 +1,24 @@
+{
+ "answer_spec": {
+  "from": "s1.rows_total",
+  "kind": "count"
+ },
+ "plan_id": "p07-graph-metric-timeseries",
+ "question": "How many buckets does the full-extent edge_event_count series have?",
+ "steps": [
+  {
+   "args": {
+    "limit": 50,
+    "metric": "edge_event_count",
+    "stride": 2569412687951,
+    "window": {
+     "t_a": 1289241911728360,
+     "t_b": 1453684323757281
+    }
+   },
+   "depends_on": [],
+   "id": "s1",
+   "op": "graph_metric_timeseries"
+  }
+ ]
+}

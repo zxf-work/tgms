@@ -1,0 +1,27 @@
+{
+ "answer_spec": {
+  "from": "s1.rows_total",
+  "kind": "count"
+ },
+ "plan_id": "p11-co-active",
+ "question": "How many (n1-sourced, n2-sourced) edge-version pairs overlap in valid time?",
+ "steps": [
+  {
+   "args": {
+    "a_spec": {
+     "src": "n1"
+    },
+    "allen_relation": {
+     "relation": "overlaps"
+    },
+    "b_spec": {
+     "src": "n2"
+    },
+    "limit": 20
+   },
+   "depends_on": [],
+   "id": "s1",
+   "op": "co_active"
+  }
+ ]
+}

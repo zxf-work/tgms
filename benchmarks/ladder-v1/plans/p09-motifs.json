@@ -1,0 +1,50 @@
+{
+ "answer_spec": {
+  "from": "s3.value",
+  "kind": "count"
+ },
+ "plan_id": "p09-motifs",
+ "question": "How many 2-node ping-pong motif instances (delta 1h) does the full extent contain, and how many does the instance enumerator return?",
+ "steps": [
+  {
+   "args": {
+    "delta": 3600000000,
+    "motif": "M_2node_pingpong",
+    "window": {
+     "t_a": 1289241911728360,
+     "t_b": 1453684323757281
+    }
+   },
+   "depends_on": [],
+   "id": "s1",
+   "op": "count_temporal_motifs"
+  },
+  {
+   "args": {
+    "delta": 3600000000,
+    "limit": 20,
+    "motif": "M_2node_pingpong",
+    "window": {
+     "t_a": 1289241911728360,
+     "t_b": 1453684323757281
+    }
+   },
+   "depends_on": [],
+   "id": "s2",
+   "op": "find_temporal_motif_instances"
+  },
+  {
+   "args": {
+    "fn": "count",
+    "input": {
+     "$ref": "s2.rows"
+    }
+   },
+   "depends_on": [
+    "s2"
+   ],
+   "id": "s3",
+   "op": "compute"
+  }
+ ]
+}

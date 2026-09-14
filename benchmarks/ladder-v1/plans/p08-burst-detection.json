@@ -1,0 +1,26 @@
+{
+ "answer_spec": {
+  "from": "s1.rows_total",
+  "kind": "count"
+ },
+ "plan_id": "p08-burst-detection",
+ "question": "How many buckets of the full-extent edge-event-rate series does burst detection report?",
+ "steps": [
+  {
+   "args": {
+    "limit": 50,
+    "stride": 2569412687951,
+    "target": {
+     "kind": "edge_event_rate"
+    },
+    "window": {
+     "t_a": 1289241911728360,
+     "t_b": 1453684323757281
+    }
+   },
+   "depends_on": [],
+   "id": "s1",
+   "op": "burst_detection"
+  }
+ ]
+}
