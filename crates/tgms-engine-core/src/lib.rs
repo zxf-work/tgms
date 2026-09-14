@@ -18,6 +18,7 @@ pub mod derive;
 pub mod dict;
 pub mod error;
 pub mod gc;
+pub mod integrity;
 pub mod interval;
 pub mod manifest;
 pub mod manifest_chain;

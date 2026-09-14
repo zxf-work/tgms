@@ -32,6 +32,7 @@ use crate::dict::Dictionary;
 use crate::error::{EngineError, Result};
 use crate::derive::Id96;
 use crate::manifest::{CloseRunRef, EventLogRef, Manifest};
+use crate::integrity::{self, Finding};
 use crate::manifest_chain::{self, ManifestDelta};
 use crate::row::{EdgeRow, Lane, NodeRow, RowKind};
 use crate::segment::MmapSource;
@@ -676,10 +677,32 @@ impl NativeStore {
     /// (blueprint §1). Problems are collected rather than raised on the first
     /// one, so an operator sees the whole picture instead of peeling the
     /// onion a file at a time.
+    ///
+    /// This is the *fast* mode of `tgms store verify`. It answers "is every
+    /// file this generation names intact, and does it hold what the manifest
+    /// claims" — bounded by the bytes on disk, and nothing more. What it does
+    /// not do is look inside a segment at the rows, walk the retained
+    /// manifests it did not have to read, or check any invariant that spans
+    /// two files; that is [`verify_full`](Self::verify_full).
     pub fn verify(&self) -> Result<VerifyReport> {
+        self.verify_fast()
+    }
+
+    /// Fast mode. See [`verify`](Self::verify).
+    pub fn verify_fast(&self) -> Result<VerifyReport> {
+        Ok(self.verify_files()?.0)
+    }
+
+    /// The file-level walk both modes start from. Full mode wants the close
+    /// records this pass already read, so it hands them back rather than
+    /// making the caller read every run file a second time.
+    fn verify_files(&self) -> Result<(VerifyReport, Vec<CloseRecord>)> {
+        let generation = self.manifest.generation;
+        let mut closes: Vec<CloseRecord> = Vec::new();
         let mut report = VerifyReport {
-            generation: self.manifest.generation,
+            generation,
             manifest_format: self.manifest.format,
+            mode: "fast".into(),
             ..Default::default()
         };
         self.manifest.verify()?;
@@ -696,17 +719,29 @@ impl NativeStore {
                 report.manifest_deltas = resolved.deltas;
                 report.manifest_checkpoint = resolved.checkpoint;
                 if resolved.manifest != self.manifest {
-                    report.problems.push(format!(
-                        "generation {} reconstructs from disk to sha {} but this handle holds {}",
+                    report.flag(Finding::error(
+                        integrity::LAYER_MANIFEST,
+                        "reconstruction-mismatch",
+                        manifest_chain::manifest_path(Path::new(""), self.manifest.generation)
+                            .to_string_lossy()
+                            .into_owned(),
                         self.manifest.generation,
-                        resolved.manifest.manifest_sha,
-                        self.manifest.manifest_sha
+                        format!(
+                            "generation {} reconstructs from disk to sha {} but this handle holds {}",
+                            self.manifest.generation,
+                            resolved.manifest.manifest_sha,
+                            self.manifest.manifest_sha
+                        ),
                     ));
                 }
             }
-            Err(e) => report
-                .problems
-                .push(format!("manifest chain: {}", e.message)),
+            Err(e) => report.flag(Finding::error(
+                integrity::LAYER_MANIFEST,
+                "chain-broken",
+                "",
+                self.manifest.generation,
+                format!("manifest chain: {}", e.message),
+            )),
         }
 
         let m = &self.manifest;
@@ -737,13 +772,29 @@ impl NativeStore {
                     report.max_tt_s_runs = report.max_tt_s_runs.max(runs);
                     report.tt_s_runs += runs as u64;
                     if seg.rows() != claimed_rows {
-                        report.problems.push(format!(
-                            "{file}: manifest claims {claimed_rows} rows, segment holds {}",
-                            seg.rows()
+                        report.flag(Finding::error(
+                            integrity::LAYER_SEGMENT,
+                            "row-count-mismatch",
+                            file,
+                            generation,
+                            format!(
+                                "{file}: manifest claims {claimed_rows} rows, segment holds {}",
+                                seg.rows()
+                            ),
                         ));
                     }
                 }
-                Err(e) => report.problems.push(format!("{file}: {e}")),
+                Err(e) => report.flag(Finding::error(
+                    integrity::LAYER_SEGMENT,
+                    if path.exists() {
+                        "segment-unreadable"
+                    } else {
+                        "segment-missing"
+                    },
+                    file,
+                    generation,
+                    format!("{file}: {e}"),
+                )),
             }
         }
 
@@ -754,25 +805,88 @@ impl NativeStore {
                     report.close_runs_checked += 1;
                     report.closes += records.len() as u64;
                     if records.len() as u32 != run.entries {
-                        report.problems.push(format!(
-                            "{}: manifest claims {} entries, file holds {}",
-                            run.file,
-                            run.entries,
-                            records.len()
+                        report.flag(Finding::error(
+                            integrity::LAYER_CLOSE,
+                            "entry-count-mismatch",
+                            run.file.clone(),
+                            generation,
+                            format!(
+                                "{}: manifest claims {} entries, file holds {}",
+                                run.file,
+                                run.entries,
+                                records.len()
+                            ),
                         ));
                     }
+                    closes.extend(records);
                 }
-                Err(e) => report.problems.push(format!("{}: {e}", run.file)),
+                Err(e) => report.flag(Finding::error(
+                    integrity::LAYER_CLOSE,
+                    if path.exists() {
+                        "close-run-unreadable"
+                    } else {
+                        "close-run-missing"
+                    },
+                    run.file.clone(),
+                    generation,
+                    format!("{}: {e}", run.file),
+                )),
             }
         }
 
         report.dict_records = self.dict.len();
         if self.dict.len() != m.dict.records {
-            report.problems.push(format!(
-                "dictionary holds {} records, manifest claims {}",
-                self.dict.len(),
-                m.dict.records
+            report.flag(Finding::error(
+                integrity::LAYER_DICT,
+                "record-count-mismatch",
+                DICT,
+                generation,
+                format!(
+                    "dictionary holds {} records, manifest claims {}",
+                    self.dict.len(),
+                    m.dict.records
+                ),
             ));
+        }
+        Ok((report, closes))
+    }
+
+    /// Full mode: everything `verify_fast` checks, plus the invariants that
+    /// span files or live inside a segment's rows.
+    ///
+    /// Three checks the fast pass structurally cannot make:
+    ///
+    /// * the **manifest parent chain** across every retained generation, not
+    ///   just the links a reconstruction of `CURRENT` happens to walk;
+    /// * **dictionary-code reference validity** - every code a row names must
+    ///   exist in the dictionary prefix the manifest commits;
+    /// * the **bitemporal row invariants**, including I1 disjointness of
+    ///   believed versions per identity, checked against the bytes on disk
+    ///   rather than against the write path that is supposed to maintain it.
+    ///
+    /// Read-only, like everything else here. A defect is a finding; nothing
+    /// is trimmed, recovered or rewritten. This is the mode the corruption
+    /// sweep uses as its oracle, so the answer has to describe the store as
+    /// it found it.
+    pub fn verify_full(&self) -> Result<VerifyReport> {
+        let (mut report, closes) = self.verify_files()?;
+        report.mode = "full".into();
+
+        for f in integrity::parent_chain(&self.root, self.manifest.generation) {
+            report.flag(f);
+        }
+        for f in integrity::check_close_targets(&self.manifest, &closes) {
+            report.flag(f);
+        }
+
+        let index = CloseIndex::from_records(closes);
+        let (scan, findings) =
+            integrity::check_rows(&self.root, &self.manifest, &self.dict, &index)?;
+        report.rows_walked = scan.rows_walked;
+        report.believed_rows = scan.believed_rows;
+        report.identities_checked = scan.identities_checked;
+        for f in findings {
+            report.flag(f);
         }
         Ok(report)
     }
@@ -1480,12 +1594,43 @@ pub struct VerifyReport {
     /// from a wall clock.
     pub tt_s_runs: u64,
     pub max_tt_s_runs: u32,
+    /// Human-readable text for every *error* finding, in the order they were
+    /// made. Kept alongside `findings` because it is what the CLI's prose
+    /// report and every pre-A3 caller already read; advisories deliberately
+    /// stay out of it, so `problems.is_empty()` and "healthy" still mean the
+    /// same thing they did.
     pub problems: Vec<String>,
+    /// `"fast"` or `"full"` - which pass produced this report.
+    pub mode: String,
+    /// Every structured observation, advisories included. This is what A4's
+    /// corruption sweep matches on.
+    pub findings: Vec<Finding>,
+    /// Full mode only: rows read out of live segments, of which
+    /// `believed_rows` were still believed, spread over
+    /// `identities_checked` identities.
+    pub rows_walked: u64,
+    pub believed_rows: u64,
+    pub identities_checked: u64,
 }
 
 impl VerifyReport {
     pub fn is_healthy(&self) -> bool {
         self.problems.is_empty()
+    }
+
+    /// Record one finding. An error also lands in `problems`, which is what
+    /// `is_healthy` and the prose report are built from; an advisory is
+    /// listed and does not condemn the store.
+    pub(crate) fn flag(&mut self, f: Finding) {
+        if f.is_error() {
+            self.problems.push(f.detail.clone());
+        }
+        self.findings.push(f);
+    }
+
+    /// Findings that make the store untrustworthy.
+    pub fn errors(&self) -> impl Iterator<Item = &Finding> {
+        self.findings.iter().filter(|f| f.is_error())
     }
 }
 

@@ -973,9 +973,27 @@ impl NativeStore {
     /// Walk every referenced file, checking magic, checksums, completion
     /// markers, and cross-references. Returns a report rather than raising,
     /// so an operator sees every problem at once.
-    fn verify(&self, py: Python<'_>) -> Res<Py<PyDict>> {
-        let r = self.inner.verify().map_err(err)?;
+    ///
+    /// `full=True` adds the checks that span files or read inside a segment:
+    /// the manifest parent chain across every retained generation,
+    /// dictionary-code reference validity, and the bitemporal row invariants
+    /// (A3). Both modes are strictly read-only.
+    ///
+    /// The report gains `findings`, a list of
+    /// `{layer, kind, path, generation, detail, severity}` dicts — the
+    /// machine-readable form the corruption sweep matches on. `problems`
+    /// stays as it was: the prose of every *error* finding, which is what
+    /// `healthy` is computed from.
+    #[pyo3(signature = (full = false))]
+    fn verify(&self, py: Python<'_>, full: bool) -> Res<Py<PyDict>> {
+        let r = if full {
+            self.inner.verify_full()
+        } else {
+            self.inner.verify_fast()
+        }
+        .map_err(err)?;
         let d = PyDict::new(py);
+        d.set_item("mode", &r.mode)?;
         d.set_item("generation", r.generation)?;
         // the manifest chain: which format, which checkpoint it rests on, and
         // how many deltas were replayed to reach this generation
@@ -991,7 +1009,23 @@ impl NativeStore {
         // ingest writes, and compaction's global re-sort is what inflates it
         d.set_item("tt_s_runs", r.tt_s_runs)?;
         d.set_item("max_tt_s_runs", r.max_tt_s_runs)?;
+        // full mode only; zero in fast mode, where no row is read
+        d.set_item("rows_walked", r.rows_walked)?;
+        d.set_item("believed_rows", r.believed_rows)?;
+        d.set_item("identities_checked", r.identities_checked)?;
         d.set_item("problems", PyList::new(py, &r.problems)?)?;
+        let findings = PyList::empty(py);
+        for f in &r.findings {
+            let fd = PyDict::new(py);
+            fd.set_item("layer", f.layer)?;
+            fd.set_item("kind", f.kind)?;
+            fd.set_item("path", &f.path)?;
+            fd.set_item("generation", f.generation)?;
+            fd.set_item("detail", &f.detail)?;
+            fd.set_item("severity", f.severity)?;
+            findings.append(fd)?;
+        }
+        d.set_item("findings", findings)?;
         d.set_item("healthy", r.is_healthy())?;
         Ok(d.into())
     }
