@@ -823,3 +823,83 @@ class TestDiffSnapshots:
               f"precision={result.precision:.2f} n={result.n}")
         assert result.n > 0
         assert result.exclusion_rate >= 0.2
+
+
+# ---------------------------------------------------------------------------
+# §2.1 — version_history
+# ---------------------------------------------------------------------------
+
+class TestVersionHistory:
+    NODE_ARGS = {"kind": "node", "window": {"t_a": 0, "t_b": 900}}
+    EDGE_ARGS = {"kind": "edge", "window": {"t_a": 0, "t_b": 900}}
+    EDGE_RELS_ARGS = {"kind": "edge", "window": {"t_a": 0, "t_b": 900},
+                      "rel_types": ["R"]}
+
+    NODE_MATRIX = [
+        ("a node write inside the window", NODE_ARGS,
+         assert_node("n5", vt_s=10, vt_e=11), True),
+        ("a node correction inside the window", NODE_ARGS,
+         correct_node("n5", vt_s=10, vt_e=20), True),
+        # the entity-kind exclusion is this operator's real narrowing
+        ("an edge write, kind = node", NODE_ARGS, assert_edge("n5", "n6"), False),
+        # V only bites a non-carving op: assert/correct/retract's carve arm
+        # (P = TOP) reaches regardless of window position
+        ("events ingested after the window (no carve arm to rescue it)",
+         NODE_ARGS, ingest("n5", "n6", 1000), False),
+        ("an assert_node, entirely outside the window (P = TOP: the carve "
+         "arm reaches it)", NODE_ARGS, assert_node("n5", vt_s=1000, vt_e=1001), True),
+        ("a carve of a node, entirely outside the window (P = TOP: reaches)",
+         NODE_ARGS, correct_node("n5", vt_s=2000, vt_e=2010), True),
+    ]
+
+    EDGE_MATRIX = [
+        ("an edge write inside the window, kind = edge", EDGE_ARGS,
+         assert_edge("n5", "n6", vt_s=10, vt_e=11), True),
+        ("a node write, kind = edge", EDGE_ARGS, assert_node("n5"), False),
+        ("an edge of the named rel_type", EDGE_RELS_ARGS,
+         assert_edge("n5", "n6", rel_type="R", vt_s=10, vt_e=11), True),
+        ("an edge of another rel_type, with rel_types set", EDGE_RELS_ARGS,
+         assert_edge("n5", "n6", rel_type="S", vt_s=10, vt_e=11), False),
+    ]
+
+    @pytest.mark.parametrize("label,args,op,must", NODE_MATRIX + EDGE_MATRIX,
+                             ids=[m[0] for m in NODE_MATRIX + EDGE_MATRIX])
+    def test_matrix(self, label, args, op, must):
+        filled = validate_args("version_history", dict(args))
+        terms = terms_for("version_history", filled, sigma_for("version_history", filled))
+        assert hits(terms, op) is must, (
+            f"{label}: should {'intersect' if must else 'NOT intersect'}; "
+            f"arms hit: {arms_that_hit(terms, op)}")
+
+    def test_p_is_top_unconditionally(self):
+        """V is sound only because P = TOP makes the carve arm reachable: a
+        correct outside the window can re-cut an in-window version's
+        vid/vt_e and move rows_total, which only the carve arm's vt = "*"
+        catches."""
+        filled = validate_args("version_history", dict(self.NODE_ARGS))
+        (term,) = terms_for("version_history", filled, sigma_for("version_history", filled))
+        assert term.props is TOP
+
+    def test_rel_types_null_widens_t(self):
+        filled = validate_args("version_history", dict(self.EDGE_ARGS))
+        (term,) = terms_for("version_history", filled, sigma_for("version_history", filled))
+        assert term.rel_types is TOP
+
+    def test_differential_node(self, store):
+        result = run_differential(store, "version_history", dict(self.NODE_ARGS),
+                                  window=(0, 900), trials=10, seed=14)
+        print(f"version_history[node]: exclusion={result.exclusion_rate:.2f} "
+              f"precision={result.precision:.2f} n={result.n}")
+        assert result.n > 0
+        # §2.1's own honest note: near-total invalidation is the correct
+        # answer here, not a precision failure — the floor is deliberately
+        # low (only the entity-kind exclusion narrows at all)
+        assert result.exclusion_rate >= 0.05
+
+    def test_differential_edge_with_rel_types(self, store):
+        result = run_differential(store, "version_history", dict(self.EDGE_RELS_ARGS),
+                                  window=(0, 900), trials=10, seed=15)
+        print(f"version_history[edge,rel_types]: exclusion={result.exclusion_rate:.2f} "
+              f"precision={result.precision:.2f} n={result.n}")
+        assert result.n > 0
+        assert result.exclusion_rate >= 0.3
