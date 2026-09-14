@@ -5,16 +5,14 @@ TGIR/agent path against raw kernel execution, on one store, in one run, and
 writes a single result manifest conforming to
 `benchmarks/schema/result_manifest.schema.json`.
 
-**Provenance note.** `benchmarks/tgir-v1/merged.yaml` (the file this
-harness's brief pointed at for the ladder's frozen definition) and
-`docs/design/OSDI27_PAPER_SKELETON_2026-09-15.md` do not exist in this tree
-(checked across every branch in the worktree set at the time this was
-written). The rung names, boundaries and the `--plans` file format below
-are this script's own design, made against the two rungs that already
-existed (`bench_leaf_overhead.py`, `bench_compiled_vs_kernel.py`) and the
-real agent-path code (`tgms/agent/*`, `tgms/tools/server.py`). If
-`merged.yaml` lands later with a different ladder definition, reconcile
-against it then.
+**Provenance note.** The ladder's rung definition is the campaign plan's
+lane D4: rungs 1–2 are the two pre-existing harnesses, rungs 3–5 are
+trace bytes, verify milliseconds, and tokens/tool calls. The "coverage
+ladder" in the internal TGIR design notes is a different concept (query
+capability rungs) and is not the ladder measured here. The rung
+boundaries and the `--plans` file format below are this script's design,
+made against the two existing rung scripts and the real agent-path code
+(`tgms/agent/*`, `tgms/tools/server.py`).
 
 ## The five rungs
 
