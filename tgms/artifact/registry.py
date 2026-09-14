@@ -343,4 +343,143 @@ class Registry:
                 name=record.name, generation=record.generation, offset=start_offset)
 
 
-__all__ = ["FILE_NAME", "HEADER", "Registry"]
+def verify(store: str | Path) -> list[dict[str, Any]]:
+    """Walk `<store>/artifacts.jsonl` read-only and report what is wrong.
+
+    `Registry(store)` already checks all of this — and *raises* on the first
+    defect, which is right for every caller that is about to use the fold and
+    exactly wrong for an integrity checker. `_load` would refuse to build an
+    index at all, so nothing past the first bad line would ever be looked at,
+    and the operator would peel the onion a record at a time. This walks the
+    same bytes with the same rules and collects instead.
+
+    Returns `{kind, offset, detail}` dicts, deliberately free of the
+    integrity report's own schema (the caller adds `layer`/`generation`):
+
+    * `registry-header` — the first line is not this format's header;
+    * `record-unparseable` / `record-malformed` — the line is not JSON, or
+      not a well-formed `ArtifactRecord`;
+    * `record-digest-mismatch` — the record fails its own `record_digest`,
+      i.e. it was hand-edited or tampered with (§2.4 obligation 3);
+    * `generation-not-consecutive` / `supersedes-mismatch` — the per-name
+      generation chain has a gap, a duplicate, a reordering, or a link that
+      does not name its immediate predecessor. These are what catch a whole
+      record being deleted or inserted, which no per-record digest can see;
+    * `blob-missing` / `blob-digest-mismatch` — a `refresh.ref`,
+      `plan.plan_ref` or `payload.result_ref` that names a file the store
+      does not hold, or a result blob whose own `result_digest` is not the
+      one the record recorded.
+
+    Nothing is opened for writing, and — unlike `Registry.__init__` — no
+    missing registry is created: a store with no `artifacts.jsonl` has no
+    artifacts, which is not a defect.
+    """
+    store_dir = Path(store)
+    path = store_dir / FILE_NAME
+    out: list[dict[str, Any]] = []
+    if not path.exists():
+        return out
+
+    with open(path, "rb") as f:
+        header_line = f.readline()
+        try:
+            head = json.loads(header_line)
+            ok = head.get("format") == HEADER["format"]
+        except json.JSONDecodeError:
+            ok = False
+        if not ok:
+            out.append({"kind": "registry-header", "offset": 0,
+                        "detail": f"{path} does not begin with a tgms artifact-registry "
+                                  f"header"})
+            return out
+        offset = f.tell()
+        seen: dict[str, int] = {}
+        while True:
+            raw = f.readline()
+            if not raw:
+                break
+            start, offset = offset, f.tell()
+            if not raw.strip():
+                continue
+            try:
+                obj = json.loads(raw)
+            except json.JSONDecodeError as e:
+                out.append({"kind": "record-unparseable", "offset": start,
+                            "detail": f"the record at offset {start} is not JSON: {e}"})
+                continue
+            try:
+                record = ArtifactRecord.from_json(obj)
+            except (InvalidArgError, KeyError, TypeError, ValueError) as e:
+                out.append({"kind": "record-malformed", "offset": start,
+                            "detail": f"the record at offset {start} is not a well-formed "
+                                      f"artifact record: {e}"})
+                continue
+            if obj.get("record_digest") != record.record_digest:
+                out.append({
+                    "kind": "record-digest-mismatch", "offset": start,
+                    "detail": f"{record.name!r} generation {record.generation} at offset "
+                              f"{start} fails its own record_digest (recomputes to "
+                              f"{record.record_digest}, carries "
+                              f"{obj.get('record_digest')!r}) — the file has been "
+                              f"tampered with or hand-edited"})
+            expected = seen.get(record.name, 0)
+            if record.generation != expected:
+                out.append({
+                    "kind": "generation-not-consecutive", "offset": start,
+                    "detail": f"{record.name!r} generation {record.generation} is not "
+                              f"consecutive (expected {expected}) — the log has been "
+                              f"reordered, has a gap, or was rewritten"})
+            elif expected and record.supersedes != ArtifactId(record.name, expected - 1):
+                out.append({
+                    "kind": "supersedes-mismatch", "offset": start,
+                    "detail": f"{record.name!r} generation {record.generation} does not "
+                              f"name its immediate predecessor"})
+            seen[record.name] = max(expected, record.generation) + 1
+            out.extend(_blob_defects(store_dir, record, start))
+    return out
+
+
+def _blob_defects(store_dir: Path, record: ArtifactRecord,
+                  offset: int) -> list[dict[str, Any]]:
+    """Every file this record points at, checked for presence and — where the
+    record carries a content address for it — for agreement with it.
+
+    `refresh.ref` and `plan.plan_ref` have no stored digest, so existence is
+    all there is to check. `payload.result_ref` does: the blob is what
+    `ResultStore.put` wrote under `payload.result_digest`, so the digest the
+    document carries must be the one the record names.
+    """
+    out: list[dict[str, Any]] = []
+    refs = [("refresh.ref", record.refresh.get("ref")),
+            ("plan.plan_ref", record.plan.get("plan_ref"))]
+    if record.payload is not None:
+        refs.append(("payload.result_ref", record.payload.get("result_ref")))
+    where = f"{record.name!r} generation {record.generation}"
+    for field, ref in refs:
+        if not ref:
+            continue
+        blob = store_dir / ref
+        if not blob.exists():
+            out.append({"kind": "blob-missing", "offset": offset,
+                        "detail": f"{where}: {field} names {ref}, which the store does "
+                                  f"not hold"})
+            continue
+        if field != "payload.result_ref":
+            continue
+        claimed = (record.payload or {}).get("result_digest")
+        try:
+            document = json.loads(blob.read_text())
+        except (json.JSONDecodeError, OSError, UnicodeDecodeError) as e:
+            out.append({"kind": "blob-digest-mismatch", "offset": offset,
+                        "detail": f"{where}: the result blob {ref} is unreadable: {e}"})
+            continue
+        got = document.get("result_digest") if isinstance(document, dict) else None
+        if claimed and got != claimed:
+            out.append({
+                "kind": "blob-digest-mismatch", "offset": offset,
+                "detail": f"{where}: the result blob {ref} carries result_digest "
+                          f"{got!r} but the record names {claimed!r}"})
+    return out
+
+
+__all__ = ["FILE_NAME", "HEADER", "Registry", "verify"]

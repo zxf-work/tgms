@@ -602,17 +602,213 @@ class NativeAdapter(StorageAdapter):
         except Exception as e:
             raise _translate(e) from None
 
-    def verify(self) -> dict[str, Any]:
-        """Checksum-walk every file this generation references.
+    def verify(self, mode: str = "fast") -> dict[str, Any]:
+        """Check this store's integrity. Read-only, in both modes.
 
         Corruption has to be *detected* before bad data reaches a query — the
         engine's durability objective is that an inconsistent generation is
         never silently exposed, which is only true if something checks.
+
+        `mode="fast"` is the engine's file walk: every segment, close run,
+        dictionary and manifest this generation names, checksummed and
+        cross-checked against what the manifest claims. It is bounded by the
+        bytes on disk and is what `tgms store verify` has always run.
+
+        `mode="full"` adds everything that spans files or lives outside the
+        engine's own directory:
+
+        * the engine's own extra passes — the manifest parent chain across
+          every retained generation, dictionary-code reference validity, and
+          the bitemporal row invariants (`integrity.rs`);
+        * the **event log**: per-record framing, tt monotonicity, and the
+          rolling chain over the applied prefix against the `(offset, chain)`
+          cursor this generation recorded. The store is a deterministic
+          materialization of that log, so a log the store cannot account for
+          is a defect in the store even when every segment checksums;
+        * the **persisted TCSR permutation**, when one exists: its stamp, its
+          shape against the live scan, and a content spot-check that rebuilds
+          the index and compares;
+        * the **artifact registry**: record digests, the per-name generation
+          chain, and the blobs those records point at.
+
+        **Nothing is repaired.** A torn event-log tail is a finding, not a
+        trim; a stale index is a finding, not a rebuild. That is what makes
+        this usable as an oracle: a checker that quietly fixed what it found
+        would make every corruption sweep a tautology. It is also why a
+        caller who wants the truth should open the store read-only —
+        `Store(..., read_only=True)` — since a writer handle runs crash
+        recovery on open and will have trimmed a torn tail before verify is
+        ever called.
+
+        The report is the engine's, plus `mode`, `store`, and a `findings`
+        list of `{layer, kind, path, generation, detail, severity}` covering
+        every layer. `problems` is the prose of the `error` findings and
+        `healthy` is whether there are none; `advisory` findings are reported
+        and do not make a store unhealthy.
         """
+        if mode not in ("fast", "full"):
+            raise InvalidArgError(f"verify mode must be 'fast' or 'full', got {mode!r}")
         try:
-            return self._store.verify()
+            report = self._store.verify(full=(mode == "full"))
         except Exception as e:
             raise _translate(e) from None
+        findings: list[dict[str, Any]] = list(report.get("findings") or ())
+        if mode == "full":
+            findings += self._verify_eventlog()
+            # The index check rebuilds the index from a live scan, so it can
+            # only run over segments the engine has just certified. Against a
+            # damaged one it would raise on the scan and take the whole
+            # report down with it, hiding the findings that actually matter.
+            findings += self._verify_tcsr(
+                scan_is_trustworthy=not any(f["severity"] == "error" for f in findings))
+            findings += self._verify_registry()
+        report["findings"] = findings
+        report["problems"] = [f["detail"] for f in findings if f["severity"] == "error"]
+        report["healthy"] = not report["problems"]
+        report["mode"] = mode
+        report["store"] = str(self.path)
+        return report
+
+    # --- the full-mode layers outside the engine --------------------------- #
+    #
+    # The engine directory is `<store>/native`; the event log and the artifact
+    # registry are its siblings, one level up. An adapter constructed directly
+    # on a bare directory (as the engine's own unit tests do) has neither, and
+    # their absence is not a defect — only a store that *claims* an applied
+    # log prefix and cannot produce the log is.
+
+    def _finding(self, layer: str, kind: str, path: str, detail: str,
+                 severity: str = "error") -> dict[str, Any]:
+        return {"layer": layer, "kind": kind, "path": path,
+                "generation": self.generation, "detail": detail,
+                "severity": severity}
+
+    def _verify_eventlog(self) -> list[dict[str, Any]]:
+        from tgms.storage.eventlog import EventLog
+
+        rel = "eventlog.jsonl"
+        path = self.path.parent / rel
+        offset, chain = self.event_cursor()
+        if not path.exists():
+            if offset:
+                return [self._finding(
+                    "eventlog", "log-missing", rel,
+                    f"generation {self.generation} records an applied prefix of "
+                    f"{offset} bytes, but there is no event log at {path}")]
+            return []
+        try:
+            # `EventLog(path)` creates the file when it is absent; the guard
+            # above is what keeps this constructor read-only.
+            log = EventLog(path)
+        except Exception as e:
+            return [self._finding("eventlog", "log-unreadable", rel,
+                                  f"the event log cannot be opened: {e}")]
+        try:
+            defects = log.check_chain(offset, chain or None)
+        except OSError as e:
+            return [self._finding("eventlog", "log-unreadable", rel,
+                                  f"the event log cannot be read: {e}")]
+        return [self._finding("eventlog", d["kind"], rel, d["detail"])
+                for d in defects]
+
+    def _verify_registry(self) -> list[dict[str, Any]]:
+        from tgms.artifact import registry as artifact_registry
+
+        rel = artifact_registry.FILE_NAME
+        try:
+            defects = artifact_registry.verify(self.path.parent)
+        except OSError as e:
+            return [self._finding("registry", "registry-unreadable", rel,
+                                  f"the artifact registry cannot be read: {e}")]
+        layer_of = {"blob-missing": "blob", "blob-digest-mismatch": "blob"}
+        return [self._finding(layer_of.get(d["kind"], "registry"), d["kind"], rel,
+                              d["detail"])
+                for d in defects]
+
+    #: Vertices the TCSR content spot-check compares in full. The permutation
+    #: is checked whole through its offsets (cheap, exact); this samples the
+    #: gathered neighbour arrays, which is where a corrupt `row` column that
+    #: still had the right shape would hide.
+    TCSR_SAMPLE = 32
+
+    def _verify_tcsr(self, scan_is_trustworthy: bool = True) -> list[dict[str, Any]]:
+        import numpy as np
+
+        from tgms.storage.tcsr import (PERM_FORMAT, TemporalCSR,
+                                       load_permutation)
+
+        rel = "index/tcsr.npz"
+        path = self.path / "index" / "tcsr.npz"
+        if not path.exists():
+            return []
+        if not scan_is_trustworthy:
+            return [self._finding(
+                "tcsr", "tcsr-not-checked", rel,
+                "the persisted TCSR permutation was not checked: it can only be "
+                "compared against a rebuild from the live rows, and this store has "
+                "findings against the rows themselves",
+                severity="advisory")]
+        gen, sha = self._store.generation(), self._store.manifest_sha()
+        try:
+            with np.load(path) as z:
+                stamp = (int(z["format"]), int(z["generation"]), str(z["manifest_sha"]))
+        except Exception as e:
+            return [self._finding(
+                "tcsr", "tcsr-unreadable", rel,
+                f"the persisted TCSR permutation exists but cannot be read: {e}")]
+        if stamp != (PERM_FORMAT, int(gen), sha):
+            # Not a defect in the store. A permutation is meaningless against
+            # rows it was not computed from, and `load_permutation` already
+            # ignores a mismatched stamp and rebuilds — so every store that
+            # has written since its last index build would otherwise report
+            # as corrupt, which would make this useless as a sweep oracle.
+            return [self._finding(
+                "tcsr", "tcsr-stale", rel,
+                f"the persisted TCSR permutation is stamped "
+                f"(format {stamp[0]}, generation {stamp[1]}, manifest {stamp[2]}) "
+                f"and this store is at (format {PERM_FORMAT}, generation {gen}, "
+                f"manifest {sha}); it will be ignored and rebuilt",
+                severity="advisory")]
+
+        try:
+            cols = self.edges_columnar(columns=self.TCSR_COLS)
+            n = self.num_entities()
+        except Exception as e:  # a scan the engine's own walk did not condemn
+            return [self._finding(
+                "tcsr", "tcsr-not-checked", rel,
+                f"the persisted TCSR permutation could not be compared against a "
+                f"rebuild: the base scan failed with {e}",
+                severity="advisory")]
+        loaded = load_permutation(path, cols, n, gen, sha)
+        if loaded is None:
+            return [self._finding(
+                "tcsr", "tcsr-shape", rel,
+                "the persisted TCSR permutation carries this generation's stamp but "
+                "does not fit the rows it names")]
+        built = TemporalCSR.build(cols, n)
+        for direction in ("out", "in"):
+            a = loaded.out if direction == "out" else loaded.inn
+            b = built.out if direction == "out" else built.inn
+            if not np.array_equal(a.offsets, b.offsets):
+                return [self._finding(
+                    "tcsr", "tcsr-content-mismatch", rel,
+                    f"the persisted TCSR permutation's {direction} offsets do not "
+                    f"match the index rebuilt from this generation's rows")]
+        # Content: rebuild a slice per sampled vertex and compare what the
+        # traversal would actually read.
+        degrees = np.diff(built.out.offsets) + np.diff(built.inn.offsets)
+        sample = np.nonzero(degrees)[0][: self.TCSR_SAMPLE]
+        for u in sample:
+            for direction in ("out", "in"):
+                got = loaded.neighbors(int(u), direction)
+                want = built.neighbors(int(u), direction)
+                if any(not np.array_equal(g, w) for g, w in zip(got, want)):
+                    return [self._finding(
+                        "tcsr", "tcsr-content-mismatch", rel,
+                        f"the persisted TCSR permutation disagrees with the index "
+                        f"rebuilt from this generation's rows at vertex {int(u)} "
+                        f"({direction})")]
+        return []
 
     def needs_compaction(self) -> bool:
         return bool(self._store.needs_compaction())

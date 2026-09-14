@@ -233,6 +233,154 @@ class EventLog:
             last = batch["tt"]
         return last
 
+    # --- read-only inspection (A3: `tgms check`) --------------------------- #
+    #
+    # `batches_from` raises on the first thing it cannot parse, which is right
+    # for recovery and for replay — those callers must not proceed past
+    # damage. An integrity checker needs the opposite: keep walking, and
+    # report each defect with its offset, because the operator's question is
+    # "what is wrong with this log", not "may I read record 4". `walk` is that
+    # second reading of the same bytes. Neither function writes, truncates or
+    # recovers: a torn tail is a *finding* here, never a repair.
+
+    def walk(self) -> Iterator[tuple[int, int, bytes, dict[str, Any] | None, str | None]]:
+        """Every record after the header, as
+        `(start, end, raw, parsed_or_None, defect_or_None)`.
+
+        `defect` is `None` for a sound record, and otherwise one of:
+
+        * `"unparseable"` — the bytes are not JSON, or not an object with the
+          fields a batch record carries;
+        * `"unterminated"` — the record does not end in a newline, so the
+          writer died mid-append;
+        * `"id-mismatch"` — it parses, but its `batch_id` is not the hash of
+          its own `(tt, ops)`. `append` computes that id from the content, so
+          a disagreement means the content changed after it was written.
+
+        Nothing is raised. A caller that wants the strict reading still has
+        `batches_from`.
+        """
+        with open(self.path, "rb") as f:
+            f.readline()  # the header record, outside the chain
+            while True:
+                start = f.tell()
+                raw = f.readline()
+                if not raw:
+                    return
+                if not raw.strip():
+                    continue
+                end = f.tell()
+                if not raw.endswith(b"\n"):
+                    yield start, end, raw, None, "unterminated"
+                    continue
+                try:
+                    batch = json.loads(raw)
+                    expect = sha256_hex(canonical_json(
+                        {"tt": batch["tt"], "ops": batch["ops"]}))[:16]
+                except (json.JSONDecodeError, KeyError, TypeError, AttributeError):
+                    yield start, end, raw, None, "unparseable"
+                    continue
+                if not isinstance(batch, dict):
+                    yield start, end, raw, None, "unparseable"
+                    continue
+                defect = None if batch.get("batch_id") == expect else "id-mismatch"
+                yield start, end, raw, batch, defect
+
+    def check_chain(self, applied_offset: int | None = None,
+                    applied_chain: str | None = None) -> list[dict[str, Any]]:
+        """Walk the log and report every framing or chain defect, read-only.
+
+        Returns a list of `{kind, offset, detail}` dicts — the raw material
+        for an integrity report's `eventlog` layer, kept free of that
+        report's own schema so this module stays a log module.
+
+        Three families of defect:
+
+        * **framing**, per record, straight off `walk`. A defect whose bytes
+          run to end-of-file is reported as `torn-tail` rather than
+          `record-*`: that is the shape a crash mid-append leaves, it breaks
+          no acknowledged write (`append` fsyncs and *then* returns), and
+          `trim_torn_tail` exists to remove it. It is still a finding —
+          verify reports what it found and repairs nothing — but naming it
+          precisely is what lets the operator tell a survivable crash from
+          damage in the middle of the history.
+        * **tt monotonicity** across records, the same rule `replay`
+          enforces.
+        * **the applied-prefix cursor**, when the caller passes the manifest's
+          `(offset, chain)`. The offset must land exactly on a record
+          boundary and at or before end-of-file, and the rolling chain over
+          the records ending at or before it must equal what the manifest
+          recorded. A rewritten record in the *middle* of the applied prefix
+          fails this even when every later record is intact — which is
+          precisely the tamper the per-record `batch_id` alone would let
+          through if the rewrite also fixed the id.
+        """
+        out: list[dict[str, Any]] = []
+        size = self.size()
+        try:
+            head = self.header()
+        except (json.JSONDecodeError, OSError, UnicodeDecodeError) as e:
+            out.append({"kind": "header-unreadable", "offset": 0,
+                        "detail": f"the event log's header record is unreadable: {e}"})
+            return out
+        if head.get("format") != HEADER["format"]:
+            out.append({"kind": "header-unreadable", "offset": 0,
+                        "detail": f"not a tgms event log: header says {head.get('format')!r}"})
+            return out
+
+        boundaries: dict[int, str] = {0: SEED_CHAIN}
+        chain = SEED_CHAIN
+        prev_tt = 0
+        sound = True
+        for start, end, raw, batch, defect in self.walk():
+            if defect is not None:
+                sound = False
+                if end >= size:
+                    out.append({
+                        "kind": "torn-tail", "offset": start,
+                        "detail": f"the last record at offset {start} is {defect}: a "
+                                  f"crash mid-append left a tail that was never "
+                                  f"acknowledged"})
+                else:
+                    out.append({
+                        "kind": f"record-{defect}", "offset": start,
+                        "detail": f"the record at offset {start} is {defect}, and it is "
+                                  f"not the log's last record"})
+                continue
+            chain = extend_chain(chain, raw)
+            boundaries[end] = chain
+            tt = batch["tt"]
+            if tt <= prev_tt:
+                out.append({"kind": "tt-non-monotonic", "offset": start,
+                            "detail": f"the record at offset {start} carries tt {tt} "
+                                      f"after {prev_tt}"})
+            prev_tt = tt
+
+        if applied_offset is None:
+            return out
+        applied_offset = int(applied_offset)
+        if applied_offset > size:
+            out.append({"kind": "cursor-past-end", "offset": applied_offset,
+                        "detail": f"the manifest's applied cursor is at offset "
+                                  f"{applied_offset}, past the log's {size} bytes"})
+            return out
+        if applied_offset not in boundaries:
+            # A cursor that misses a boundary because an earlier record was
+            # torn is a consequence of that, not a second defect.
+            if sound:
+                out.append({"kind": "cursor-not-on-boundary", "offset": applied_offset,
+                            "detail": f"the manifest's applied cursor {applied_offset} is "
+                                      f"not a record boundary of this log"})
+            return out
+        if applied_chain and boundaries[applied_offset] != applied_chain:
+            out.append({
+                "kind": "chain-mismatch", "offset": applied_offset,
+                "detail": f"the log prefix applied at offset {applied_offset} hashes to "
+                          f"{boundaries[applied_offset]} but the manifest records "
+                          f"{applied_chain} — a record inside the applied prefix has "
+                          f"been rewritten"})
+        return out
+
 
 def replay(eventlog_path: str | Path, adapter: Any, *,
            thread_cursor: bool = False) -> int:
