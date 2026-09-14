@@ -1,49 +1,84 @@
 #!/bin/bash
 #SBATCH --job-name=tgms-faultmatrix
 #SBATCH --partition=bigTiger
-#SBATCH --array=0-39%6
+#SBATCH --array=0-22%6
 #SBATCH --cpus-per-task=4
 #SBATCH --mem=8G
 #SBATCH --time=00:30:00
-#SBATCH --output=/project/xzhang12/faults-v1-work/logs/task-%a.out
-#SBATCH --error=/project/xzhang12/faults-v1-work/logs/task-%a.err
+#SBATCH --output=/project/xzhang12/faults-v1-work/logs/%x-%A_%a.out
+#SBATCH --error=/project/xzhang12/faults-v1-work/logs/%x-%A_%a.err
 #
 # Lane E, task E-campaign — the pre-registered trust-boundary fault matrix
 # (docs/design/TRUST_BOUNDARY_FAULT_MATRIX_DESIGN_2026-09-13.md, FROZEN),
-# model-free primary arm plus the coordinator's --strict-gate secondary arm
-# (Addendum 1), run as a Slurm array of scripts/eval_trust_boundary_matrix.py
-# invocations. One array task = one (cell, surface, gate) triple.
+# run as a Slurm array of scripts/eval_trust_boundary_matrix.py invocations.
+# One array task = one (cell, surface) pair.
 #
-# 40 tasks total:
-#   - 19 surface-A cells x primary gate, suite collegemsg          (idx  0-18)
-#   - 17 surface-A cells x --strict-gate, suite collegemsg         (idx 19-35)
-#     (F1-8 and F2-5 are excluded from the strict arm: the driver's own
-#     docstring says --strict-gate is a no-op for "cells with no answer/gate
-#     at all (F1-8, F2-5, surface B)" -- running them again would just
-#     reproduce the primary-arm file byte-for-byte and waste an array slot.)
-#   - 4 surface-B cells (F1-1, F1-3a, F1-3b, F1-5) x primary gate only,
-#     against the 29 runnable TGIR-v1 plans on the LDBC-shaped fixture
-#     (idx 36-39). --strict-gate is likewise a no-op here (same docstring),
-#     so surface B is never duplicated into a strict variant.
+# PRIMARY ARM ONLY (Lane E task E3, D-160 re-run, 2026-09-15): this table
+# holds only the primary-gate rows of the original 40-task layout
+# (scripts/eval_trust_boundary_matrix.py's --strict-gate secondary arm is
+# NOT run here). D-160 (coordinator ruling; docs/STABILITY.md §9) made
+# --strict-gate a no-op alias of the default gate in
+# tgms.eval.plan_faults.gate_answer -- both now drop `unsupported` AND
+# `unverifiable` -- so re-running the 17 former strict-arm task slots would
+# reproduce the primary arm's own output byte-for-byte and waste array
+# slots. Cell identities and per-cell N are UNCHANGED from the original
+# campaign (docs/design/... §5, coordinator Addendum 1's eight
+# "existing-machinery" cells at N=300, everything else at N=100); only the
+# now-redundant strict-arm rows are dropped and the array renumbered:
 #
-# N per cell follows the design's §5 pre-registration: 300 for the eight
-# "existing-machinery" cells {F1-7, F1-8, F1-9, F1-10, F1-11, F2-1, F2-4,
-# F2-6} (coordinator Addendum 1 names these eight explicitly), 100 for every
-# other cell. Same base seed (0) for every task: each invocation reseeds its
-# own random.Random(seed), so the primary and strict arms of the same cell
-# draw the identical mutation/task-selection sequence and differ only in
-# which claims the gate drops before classification -- the controlled
-# comparison Addendum 1 asks for.
+# 23 tasks total:
+#   - 19 surface-A cells, suite collegemsg                          (idx  0-18)
+#   - 4 surface-B cells (F1-1, F1-3a, F1-3b, F1-5), the 29 runnable
+#     TGIR-v1 plans on the LDBC-shaped fixture                      (idx 19-22)
 #
-# email-eu is OUT OF SCOPE for this campaign: benchmarks/frozen-v1/ has no
-# raw event log for email-eu (only collegemsg.eventlog.jsonl is checked in;
-# tgms/data/loaders.py's "email-eu" entry downloads from SNAP and a fresh
-# `tgms ingest` reassigns transaction times per D-023, so it cannot
-# reproduce the frozen suite's gold). See benchmarks/faults-v1/README.md.
+# Same base seed (0) as the original campaign, so this re-run's mutation/
+# task-selection sequence is identical to fault-matrix-campaign-2026-09-13's
+# primary arm and the two records differ only in what the new gate lets
+# through -- the controlled before/after comparison the README's "Re-run
+# under D-160" section reports.
+#
+# email-eu is OUT OF SCOPE (unchanged from the original campaign): see
+# benchmarks/faults-v1/README.md.
+#
+# Parameterization (this is the only change from the original script beyond
+# dropping the strict-arm rows -- cells/N are not touched):
+#   TGMS_REPO   checkout to run against. Points at the SEPARATE D-160
+#               worktree (/project/xzhang12/tgms-d160, `git worktree add`
+#               from 4af2181 with only tgms/eval/harness.py,
+#               tgms/agent/reporter.py and tgms/eval/plan_faults.py
+#               overwritten by scp from the local D-160 commit -- see
+#               benchmarks/faults-v1/README.md's "Re-run under D-160" for
+#               the sha256 receipts), NOT the original /project/xzhang12/tgms
+#               checkout the 2026-09-13 campaign ran against.
+#   TGMS_STAGE  staging directory for records/logs/node_meta. Point this at
+#               a fresh directory (e.g. /project/xzhang12/faults-v1-work-d160)
+#               so this re-run's raw output never collides with or
+#               overwrites the original campaign's staged files.
+#   TGMS_TAG    optional free-text tag folded into each record's filename
+#               (default: "d160"), so records staged under a shared
+#               directory are still visually distinguishable by run.
+#   TGMS_COMMIT the commit sha stamped into every raw record via the git
+#               shim (deviation 2 below) -- the LOCAL commit that made the
+#               D-160 gate change (tgms/eval/harness.py,
+#               tgms/eval/plan_faults.py), NOT 4af2181, since the worktree's
+#               checked-out tree does not match 4af2181 verbatim after the
+#               scp overwrite. Set this explicitly at submission time; the
+#               script's own default (4af2181) is deliberately wrong for
+#               this re-run and exists only so the original invocation
+#               convention still works unmodified for anyone re-running the
+#               pre-D160 campaign.
+#   TGMS_BASE_SEED, TGMS_VENV_PY  unchanged from the original script.
+# Submit like:
+#   sbatch --job-name=tgms-faultmatrix-d160 \
+#     --export=ALL,TGMS_REPO=/project/xzhang12/tgms-d160,\
+#TGMS_STAGE=/project/xzhang12/faults-v1-work-d160,TGMS_TAG=d160,\
+#TGMS_COMMIT=<local D-160 commit sha> \
+#     scripts/fault_matrix_campaign.slurm
 #
 # Two deviations from a naive "run the harness on /project" script, both
 # mirroring scripts/crash_campaign.slurm's own precedent and confirmed by
-# smoke-testing this exact script before the real campaign:
+# smoke-testing this exact script before the original campaign (unchanged
+# from the 2026-09-13 run):
 #
 #  1. TMPDIR and the store this task reads are both node-local
 #     (/tmp/tgms-faultmatrix-$SLURM_JOB_ID), NOT under /project. Two reasons:
@@ -54,13 +89,12 @@
 #     fcntl.flock single-writer lock on <store>/writer.lock for the whole
 #     process lifetime (tgms/store.py:29-34,271-310) even though every trial
 #     here only reads. With up to 6 array tasks running concurrently
-#     (--array=...%6) against one shared /project/xzhang12/tgms/stores/
-#     collegemsg or stores/ldbc-fixture, 5 of 6 would hit WriterLockedError
-#     immediately. Each task instead cp's the small frozen store (~18 MB
-#     collegemsg, ~tens of KB ldbc-fixture) to its own node-local scratch
-#     and points --store there, so every task holds its own writer lock on
-#     its own private copy. Nothing is written back; the copy is rm -rf'd on
-#     exit.
+#     (--array=...%6) against one shared $TGMS_REPO/stores/collegemsg or
+#     stores/ldbc-fixture, 5 of 6 would hit WriterLockedError immediately.
+#     Each task instead cp's the small frozen store (~18 MB collegemsg, ~tens
+#     of KB ldbc-fixture) to its own node-local scratch and points --store
+#     there, so every task holds its own writer lock on its own private
+#     copy. Nothing is written back; the copy is rm -rf'd on exit.
 #
 #  2. iTiger compute nodes have no `git` binary (confirmed: `which git`
 #     fails under srun on itiger07; login-node-only, same finding as
@@ -82,21 +116,23 @@ STAGE="${TGMS_STAGE:-/project/xzhang12/faults-v1-work}"
 BASE_SEED="${TGMS_BASE_SEED:-0}"
 export TGMS_COMMIT="${TGMS_COMMIT:-4af2181}"
 VENV_PY="${TGMS_VENV_PY:-/project/xzhang12/tgms/.venv/bin/python}"
+TAG="${TGMS_TAG:-d160}"
 
-# --- the 40-task table: cell, surface, store-name, out-suite-label, strict, n
+# --- the 23-task table (primary arm only): cell, surface, store-name,
+# out-suite-label, n. Identical cell identities and per-cell N to the
+# original 40-task table's primary-arm rows (idx 0-18, 36-39) -- only the
+# now-redundant --strict-gate rows (former idx 19-35) are dropped, per
+# D-160 making --strict-gate a no-op alias of the default gate.
 CELL=(
   F1-1 F1-2 F1-3a F1-3b F1-4 F1-5 F1-6 F1-6b F1-7 F1-8 F1-9 F1-10 F1-11 F2-1 F2-2 F2-3 F2-4 F2-5 F2-6
-  F1-1 F1-2 F1-3a F1-3b F1-4 F1-5 F1-6 F1-6b F1-7 F1-9 F1-10 F1-11 F2-1 F2-2 F2-3 F2-4 F2-6
   F1-1 F1-3a F1-3b F1-5
 )
 SURFACE=(
   A A A A A A A A A A A A A A A A A A A
-  A A A A A A A A A A A A A A A A A
   B B B B
 )
 STORE_NAME=(
   collegemsg collegemsg collegemsg collegemsg collegemsg collegemsg collegemsg collegemsg collegemsg collegemsg collegemsg collegemsg collegemsg collegemsg collegemsg collegemsg collegemsg collegemsg collegemsg
-  collegemsg collegemsg collegemsg collegemsg collegemsg collegemsg collegemsg collegemsg collegemsg collegemsg collegemsg collegemsg collegemsg collegemsg collegemsg collegemsg collegemsg
   ldbc-fixture ldbc-fixture ldbc-fixture ldbc-fixture
 )
 # --suite argument passed to the driver. For surface B this is a required
@@ -107,28 +143,20 @@ STORE_NAME=(
 # rewriting the raw record's own "dataset" field.
 SUITE_ARG=(
   collegemsg collegemsg collegemsg collegemsg collegemsg collegemsg collegemsg collegemsg collegemsg collegemsg collegemsg collegemsg collegemsg collegemsg collegemsg collegemsg collegemsg collegemsg collegemsg
-  collegemsg collegemsg collegemsg collegemsg collegemsg collegemsg collegemsg collegemsg collegemsg collegemsg collegemsg collegemsg collegemsg collegemsg collegemsg collegemsg collegemsg
   collegemsg collegemsg collegemsg collegemsg
 )
 OUT_SUITE_LABEL=(
   collegemsg collegemsg collegemsg collegemsg collegemsg collegemsg collegemsg collegemsg collegemsg collegemsg collegemsg collegemsg collegemsg collegemsg collegemsg collegemsg collegemsg collegemsg collegemsg
-  collegemsg collegemsg collegemsg collegemsg collegemsg collegemsg collegemsg collegemsg collegemsg collegemsg collegemsg collegemsg collegemsg collegemsg collegemsg collegemsg collegemsg
   ldbc-fixture ldbc-fixture ldbc-fixture ldbc-fixture
-)
-STRICT=(
-  0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
-  1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1
-  0 0 0 0
 )
 N=(
   100 100 100 100 100 100 100 100 300 300 300 300 300 300 100 100 300 100 300
-  100 100 100 100 100 100 100 100 300 300 300 300 300 100 100 300 300
   100 100 100 100
 )
 
-if [ "${#CELL[@]}" -ne 40 ] || [ "${#SURFACE[@]}" -ne 40 ] || [ "${#STORE_NAME[@]}" -ne 40 ] \
-   || [ "${#SUITE_ARG[@]}" -ne 40 ] || [ "${#OUT_SUITE_LABEL[@]}" -ne 40 ] \
-   || [ "${#STRICT[@]}" -ne 40 ] || [ "${#N[@]}" -ne 40 ]; then
+if [ "${#CELL[@]}" -ne 23 ] || [ "${#SURFACE[@]}" -ne 23 ] || [ "${#STORE_NAME[@]}" -ne 23 ] \
+   || [ "${#SUITE_ARG[@]}" -ne 23 ] || [ "${#OUT_SUITE_LABEL[@]}" -ne 23 ] \
+   || [ "${#N[@]}" -ne 23 ]; then
     echo "task table length mismatch -- refusing to run" >&2
     exit 1
 fi
@@ -138,13 +166,12 @@ SURF="${SURFACE[$TASK_ID]}"
 STORE="${STORE_NAME[$TASK_ID]}"
 SUITE="${SUITE_ARG[$TASK_ID]}"
 OUT_SUITE="${OUT_SUITE_LABEL[$TASK_ID]}"
-IS_STRICT="${STRICT[$TASK_ID]}"
 N_TRIALS="${N[$TASK_ID]}"
 SEED="$BASE_SEED"
 
 mkdir -p "$STAGE/records" "$STAGE/logs" "$STAGE/node_meta"
 
-echo "RUN_STARTED commit=${TGMS_COMMIT} task=${TASK_ID} seed=${SEED}"
+echo "RUN_STARTED commit=${TGMS_COMMIT} tag=${TAG} task=${TASK_ID} seed=${SEED}"
 hostname > "$STAGE/node_meta/task-${TASK_ID}.host"
 { uname -a; nproc; } > "$STAGE/node_meta/task-${TASK_ID}.uname" 2>&1
 
@@ -175,11 +202,6 @@ LOCAL_STORE="$TMPDIR/stores/$STORE"
 
 cd "$CHECKOUT"
 
-STRICT_FLAG=()
-if [ "$IS_STRICT" = "1" ]; then
-    STRICT_FLAG=(--strict-gate)
-fi
-
 OUT_DIR="$TMPDIR/out"
 mkdir -p "$OUT_DIR"
 
@@ -192,21 +214,20 @@ ec=0
     --seed "$SEED" \
     --store "$LOCAL_STORE" \
     --out "$OUT_DIR" \
-    "${STRICT_FLAG[@]}" \
     > "$STAGE/logs/task-${TASK_ID}.driver.log" 2>&1 && ec=0 || ec=$?
 
 cat "$STAGE/logs/task-${TASK_ID}.driver.log"
 
-# The driver names its output "<cell>-<suite arg>[-strict].json"; rename to
-# the "<cell>-<out-suite-label>[-strict].json" convention
-# benchmarks/faults-v1/README.md documents (collegemsg for surface A,
-# ldbc-fixture for surface B) and copy to the shared staging area.
-SUFFIX=""
-if [ "$IS_STRICT" = "1" ]; then
-    SUFFIX="-strict"
-fi
-SRC_NAME="${CELL_ID}-${SUITE}${SUFFIX}.json"
-DST_NAME="${CELL_ID}-${OUT_SUITE}${SUFFIX}.json"
+# The driver names its output "<cell>-<suite arg>.json"; rename to the
+# "<cell>-<out-suite-label>-<tag>.json" convention benchmarks/faults-v1/
+# README.md documents (collegemsg for surface A, ldbc-fixture for surface
+# B) and copy to the shared staging area. The "-<tag>" suffix (default
+# "d160") is this script's output-tag parameterization: it keeps this
+# re-run's records visually distinct from the original campaign's
+# "<cell>-<suite>.json" files if the two ever land under the same
+# directory, without changing the driver's own on-disk naming convention.
+SRC_NAME="${CELL_ID}-${SUITE}.json"
+DST_NAME="${CELL_ID}-${OUT_SUITE}-${TAG}.json"
 if [ -f "$OUT_DIR/$SRC_NAME" ]; then
     cp "$OUT_DIR/$SRC_NAME" "$STAGE/records/task-${TASK_ID}--${DST_NAME}"
 else
@@ -214,5 +235,5 @@ else
     ec=1
 fi
 
-echo "TASK_DONE task=${TASK_ID} cell=${CELL_ID} surface=${SURF} strict=${IS_STRICT} n=${N_TRIALS} exit=${ec}"
+echo "TASK_DONE task=${TASK_ID} cell=${CELL_ID} surface=${SURF} n=${N_TRIALS} exit=${ec}"
 exit "$ec"
