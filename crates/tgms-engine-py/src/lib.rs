@@ -870,8 +870,8 @@ impl NativeStore {
         t_b: i64,
         belief: &str,
         rel_types: Option<Vec<String>>,
-        offset: usize,
-        limit: usize,
+        offset: i64,
+        limit: i64,
     ) -> Res<Bound<'py, PyDict>> {
         let k = kind_of(kind)?;
         let belief = match belief {

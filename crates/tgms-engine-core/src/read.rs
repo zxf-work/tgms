@@ -1367,15 +1367,14 @@ impl NativeStore {
         &self,
         kind: RowKind,
         f: &VersionFilter<'_>,
-        offset: usize,
-        limit: usize,
+        offset: i64,
+        limit: i64,
     ) -> Result<(VersionRows, usize)> {
         let mut keys = self.version_keys(kind, f)?;
         // `sort_by_key` is a stable sort, which is the load-bearing part
         keys.sort_by_key(|k| (k.tt_s, k.vid_hi, k.vid_lo));
         let total = keys.len();
-        let start = offset.min(total);
-        let end = offset.saturating_add(limit).min(total);
+        let (start, end) = py_slice(offset, limit, total);
         Ok((self.version_rows_at(kind, &keys[start..end])?, total))
     }
 
@@ -1477,6 +1476,23 @@ impl NativeStore {
 /// Sentinel `seg_id` for a row staged in the open batch. It has no segment
 /// yet, so `VersionKey::row` indexes the staging vector instead.
 pub const STAGED_SEG: u64 = u64::MAX;
+
+/// `rows[offset:offset + limit]`, with CPython's slice arithmetic.
+///
+/// The page offset is a plaintext decimal cursor frozen by M2's C6, and the
+/// Python path took it by slicing a list — so a nonsensical cursor produced a
+/// nonsensical-but-defined page rather than an error, and moving the slice
+/// into the engine must not quietly turn that into a refusal or, worse, into
+/// a different page. Each endpoint is adjusted by the length if it is
+/// negative and then clamped, independently, exactly as `PySlice_AdjustIndices`
+/// does; a stop below the start is an empty page.
+fn py_slice(offset: i64, limit: i64, total: usize) -> (usize, usize) {
+    let n = total as i64;
+    let adjust = |v: i64| if v < 0 { (v + n).max(0) } else { v.min(n) };
+    let start = adjust(offset);
+    let stop = adjust(offset.saturating_add(limit));
+    (start as usize, stop.max(start) as usize)
+}
 
 /// Which beliefs a version page selects, always **as of** its `as_of`
 /// (`tgms/temporal/ops_versions.py`'s contract).
@@ -2454,6 +2470,29 @@ mod tests {
         }
         // an empty page is an empty result, not a full scan
         assert!(s.version_rows_at(RowKind::Edge, &[]).unwrap().is_empty());
+    }
+
+    /// The cursor is a plaintext decimal offset and the old path fed it
+    /// straight to a Python slice, so a nonsensical one had a defined answer.
+    /// Moving the slice into the engine must reproduce it, not refuse it.
+    #[test]
+    fn py_slice_is_cpython_slice_arithmetic() {
+        // (offset, limit, total) -> what `range(total)[offset:offset+limit]`
+        // gives, checked against CPython's own numbers
+        for &(off, lim, total, want) in &[
+            (0i64, 3i64, 10usize, (0usize, 3usize)),
+            (8, 5, 10, (8, 10)),
+            (10, 5, 10, (10, 10)),
+            (99, 5, 10, (10, 10)),
+            (-5, 8, 10, (5, 5)),   // range(10)[-5:3] is empty: 3 is not
+            (-2, 5, 10, (8, 8)),   // adjusted, so it lands before the start
+            (-5, 1, 3, (0, 0)),    // range(3)[-5:-4] is empty
+            (0, 1, 0, (0, 0)),
+        ] {
+            assert_eq!(py_slice(off, lim, total), want, "offset={off} limit={lim} total={total}");
+        }
+        // an absurd limit cannot overflow the addition
+        assert_eq!(py_slice(1, i64::MAX, 10), (1, 10));
     }
 
     /// A filter that selects nothing must still count nothing — and must not
