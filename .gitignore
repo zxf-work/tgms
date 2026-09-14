@@ -19,6 +19,7 @@ runs/
 
 # CIDR submission draft — not public yet
 paper/cidr/
+paper/ecqr/
 
 # phase-3 private planning handoff
 HANDOFF-PHASE3.md
@@ -63,3 +64,6 @@ paper/
 # internal review/handoff work products at the repo root
 ECQR_*.md
 TGMS_Contributor_Review_*.md
+# blind corpus raw submissions + receipts: internal tree only until
+# release (BLIND_CORPUS_PROTOCOL.md) — never on the public branch
+benchmarks/blind-v1/

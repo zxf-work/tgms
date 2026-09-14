@@ -1,0 +1,12 @@
+# M8 frozen campaign, SQL arms (D-109): oracle-v3 TEST split, three seeds.
+suite_path: stores/suite-sx-mathoverflow/suite-v3.json
+store_path: stores/sx-mathoverflow-duckdb
+out_dir: runs/m8-sx-mathoverflow-sql
+split: test
+systems: [b6, b6e]
+models: ["openai/Qwen/Qwen2.5-14B-Instruct-AWQ"]
+seeds: [0, 1, 2]
+max_repairs: 3
+memory_db: stores/sx-mathoverflow/memory.sqlite
+llm_api_base: "http://localhost:8000/v1"
+llm_api_key: "EMPTY"

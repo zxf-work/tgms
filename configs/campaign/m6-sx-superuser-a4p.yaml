@@ -1,0 +1,16 @@
+# M6 A4' (D-112): the causal disambiguation follow-up — identical to A4
+# (full 15-op surface, same runtime/model/seed/suite) except the
+# aggregate_events <-> graph_metric_timeseries descriptions now carry
+# explicit mutual CHOOSING guidance. If A4' improves selection, semantic
+# overlap (not operator count) drives the planning penalty.
+suite_path: stores/suite-sx-superuser/suite-v3.json
+store_path: stores/sx-superuser
+out_dir: runs/m6-sx-superuser-a4p
+split: dev
+systems: [ours]
+models: ["openai/Qwen/Qwen2.5-14B-Instruct-AWQ"]
+seeds: [0]
+max_repairs: 3
+memory_db: stores/sx-superuser/memory.sqlite
+llm_api_base: "http://localhost:8000/v1"
+llm_api_key: "EMPTY"

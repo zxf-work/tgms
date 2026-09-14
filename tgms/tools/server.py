@@ -23,7 +23,8 @@ class ToolRouter:
     def __init__(self, adapter: StorageAdapter,
                  cost_ceilings: dict[str, int] | None = None,
                  exclude: tuple[str, ...] = (),
-                 tt_source: Any = None) -> None:
+                 tt_source: Any = None,
+                 skip_cost_check: bool = False) -> None:
         ensure_all_registered()
         self.adapter = adapter
         self.cost_ceilings = cost_ceilings
@@ -33,6 +34,10 @@ class ToolRouter:
         #: a bare adapter can answer for (TGIR_SPEC §5.6). Optional by design:
         #: every oracle-family test constructs an adapter with no store at all.
         self.tt_source = tt_source
+        #: benchmark oracle lane only (plan §2c / D-098): bypasses the
+        #: admission policy under the lane's own declared budget.
+        #: Production surfaces never set this.
+        self.skip_cost_check = skip_cost_check
 
     def tools(self) -> list[str]:
         return sorted(n for n in REGISTRY if n not in self.exclude)
@@ -46,7 +51,8 @@ class ToolRouter:
         try:
             return call_operator(self.adapter, name, args,
                                  cost_ceilings=self.cost_ceilings,
-                                 tt_source=self.tt_source)
+                                 tt_source=self.tt_source,
+                                 skip_cost_check=self.skip_cost_check)
         except TgmsError as e:
             return e.to_payload()
 

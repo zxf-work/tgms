@@ -862,7 +862,12 @@ def _native(adapter: StorageAdapter, args: dict[str, Any]) -> dict[str, Any]:
         "cursor": CURSOR,
     },
     "Grouped aggregation over edge events (believed edge versions with "
-    "t_a <= vt_s < t_b). Dimensions: time_bucket (with stride), "
+    "t_a <= vt_s < t_b). CHOOSING vs graph_metric_timeseries: use THIS "
+    "operator only to group BY rel_type, endpoint, label, or calendar "
+    "unit, or for count_distinct / min / max / mean; for plain event "
+    "counts over time, series shapes, or busiest-bucket questions use "
+    "graph_metric_timeseries — it is the right tool when the only "
+    "dimension is time. Dimensions: time_bucket (with stride), "
     "calendar_unit (with unit = hour_of_day 0-23, day_of_week Monday..Sunday "
     "or month_of_year January..December, and an optional "
     "tz_offset_minutes — a FIXED offset from UTC, not a timezone, so no DST; "

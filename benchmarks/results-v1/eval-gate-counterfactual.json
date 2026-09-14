@@ -1,0 +1,57 @@
+{
+ "note": "deterministic gate applied counterfactually to the ungated arms' own claims; planning/execution/values held fixed; per-claim ambiguity bounded, not guessed",
+ "cells": {
+  "sx-mathoverflow|ours-noverify": {
+   "n_rows": 216,
+   "em_ungated": 0.4861,
+   "em_gate_replay_optimistic": 0.3611,
+   "em_gate_replay_pessimistic": 0.3611,
+   "would_abstain": 48,
+   "ambiguous_rows": 3
+  },
+  "sx-superuser|ours-noverify": {
+   "n_rows": 204,
+   "em_ungated": 0.4559,
+   "em_gate_replay_optimistic": 0.3676,
+   "em_gate_replay_pessimistic": 0.3676,
+   "would_abstain": 33,
+   "ambiguous_rows": 3
+  },
+  "wiki-talk|ours-noverify": {
+   "n_rows": 186,
+   "em_ungated": 0.4032,
+   "em_gate_replay_optimistic": 0.3065,
+   "em_gate_replay_pessimistic": 0.3065,
+   "would_abstain": 33,
+   "ambiguous_rows": 0
+  },
+  "sx-mathoverflow|b6": {
+   "n_rows": 216,
+   "em_ungated": 0.3611,
+   "em_gate_replay_optimistic": 0.3611,
+   "em_gate_replay_pessimistic": 0.3611,
+   "would_abstain": 0,
+   "ambiguous_rows": 0
+  },
+  "sx-superuser|b6": {
+   "n_rows": 204,
+   "em_ungated": 0.3676,
+   "em_gate_replay_optimistic": 0.3676,
+   "em_gate_replay_pessimistic": 0.3676,
+   "would_abstain": 0,
+   "ambiguous_rows": 0
+  },
+  "wiki-talk|b6": {
+   "n_rows": 186,
+   "em_ungated": 0.4194,
+   "em_gate_replay_optimistic": 0.4194,
+   "em_gate_replay_pessimistic": 0.4194,
+   "would_abstain": 0,
+   "ambiguous_rows": 0
+  }
+ },
+ "manifest": {
+  "commit": "68c8293",
+  "host": "itiger"
+ }
+}

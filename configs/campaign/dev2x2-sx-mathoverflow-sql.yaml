@@ -1,0 +1,15 @@
+# M5 2x2 factorization, SQL arms (dev, one seed — mechanism pass, D-105).
+# b6 = no evidence contract; b6e = SQL+E (COUNT certificates + witness gate
+# through the same generic verifier). Same replica store, suite, model,
+# seed, repair budget as every other arm (§21 fairness).
+suite_path: stores/suite-sx-mathoverflow/suite-v3.json
+store_path: stores/sx-mathoverflow-duckdb
+out_dir: runs/dev2x2-sx-mathoverflow-sql
+split: dev
+systems: [b6, b6e]
+models: ["openai/Qwen/Qwen2.5-14B-Instruct-AWQ"]
+seeds: [0]
+max_repairs: 3
+memory_db: stores/sx-mathoverflow/memory.sqlite
+llm_api_base: "http://localhost:8000/v1"
+llm_api_key: "EMPTY"

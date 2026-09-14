@@ -92,6 +92,13 @@ def build_parser() -> argparse.ArgumentParser:
                          help="JSON dict of per-family task counts, e.g. "
                               "'{\"t1\":60,\"probes\":60}'")
     p_tasks.add_argument("--out", required=True)
+    p_tasks.add_argument("--oracle-budget", type=float, default=None,
+                         help="oracle-lane wall budget in seconds per task "
+                              "(D-098 two-lane gold; default 120)")
+    p_tasks.add_argument("--oracle-max-rows", type=int, default=None,
+                         help="oracle-lane materialized-row cap (oracle-v3.1 "
+                              "declared envelope; default 50000 = the "
+                              "production cap, keeping splits invariant)")
 
     p_ask = sub.add_parser("ask", help="ask one question against a store")
     p_ask.add_argument("question")
@@ -293,8 +300,13 @@ def main(argv: list[str] | None = None) -> int:
             with open(args.manifest) as f:
                 manifest = json.load(f)
         sizes = json.loads(args.sizes) if args.sizes else None
+        kw = {}
+        if args.oracle_budget is not None:
+            kw["oracle_budget_s"] = args.oracle_budget
+        if args.oracle_max_rows is not None:
+            kw["oracle_max_rows"] = args.oracle_max_rows
         suite = generate_suite(store, args.dataset, seed=args.seed,
-                               sizes=sizes,
+                               sizes=sizes, **kw,
                                manifest=manifest)
         with open(args.out, "w") as f:
             json.dump(suite, f, indent=1, sort_keys=True)
