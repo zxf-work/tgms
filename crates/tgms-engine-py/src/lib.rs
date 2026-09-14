@@ -26,7 +26,9 @@ use pyo3::types::{PyDict, PyList};
 
 use tgms_engine_core::derive::Id96;
 use tgms_engine_core::error::{Category, EngineError};
-use tgms_engine_core::read::{EdgeVersionOut, NodeVersionOut};
+use tgms_engine_core::read::{
+    Belief, EdgeVersionOut, NodeVersionOut, VersionFilter, VersionRows,
+};
 use tgms_engine_core::row::{EdgeRow, NodeRow, RowKind};
 use tgms_engine_core::scan::{ScanRequest, ScanSet, ScanTarget};
 use tgms_engine_core::segment::MmapSource;
@@ -790,9 +792,17 @@ impl NativeStore {
 
     /// Node versions overlapping a window, sorted by `(vt_s, vid)`.
     ///
-    /// Nodes are few and identity-clustered (D-028 #15), so this filters the
-    /// full listing rather than driving the segment cursor — the cursor's
-    /// pruning machinery buys nothing at |V| scale.
+    /// Nodes are few and identity-clustered (D-028 #15), so this sweeps the
+    /// node segments directly rather than driving the segment cursor — the
+    /// cursor's pruning machinery buys nothing at |V| scale.
+    ///
+    /// The filter runs **inside** the sweep (`scan_node_versions`). It used
+    /// to run over a fully materialized `all_node_versions()` listing, which
+    /// built a uid, a 24-hex vid, a label and the three columns this scan
+    /// does not project for every stored version before discarding most of
+    /// them — D-149's scan that never completed in 1,400 s on SNB SF1's
+    /// 2,997,352 node versions, and the second site in
+    /// `docs/design/BOUNDED_VERSION_HISTORY_FORECAST_2026-09-13.md` §1.
     #[pyo3(signature = (as_of_tt = OPEN_END, vt_min = None, vt_max = None))]
     fn scan_nodes<'py>(
         &self,
@@ -803,25 +813,23 @@ impl NativeStore {
     ) -> Res<Bound<'py, PyDict>> {
         self.inner.assert_full_belief(as_of_tt).map_err(err)?;
         let t_mat = std::time::Instant::now();
-        let listed = self.inner.all_node_versions().map_err(err)?;
-        let rows_examined = listed.len();
-        let mut rows: Vec<NodeVersionOut> = listed
-            .into_iter()
-            .filter(|r| tgms_engine_core::believed_at(r.tt_s, r.tt_e, as_of_tt))
-            .filter(|r| vt_min.is_none_or(|t| r.vt_e > t))
-            .filter(|r| vt_max.is_none_or(|t| r.vt_s < t))
-            .collect();
-        let materialize_ns = t_mat.elapsed().as_nanos() as u64;
-        let t_sort = std::time::Instant::now();
-        rows.sort_by(|a, b| (a.vt_s, &a.vid).cmp(&(b.vt_s, &b.vid)));
-        let sort_ns = t_sort.elapsed().as_nanos() as u64;
+        // sweep + filter + sort; `scan_node_versions` reports its own counts
+        let out = self
+            .inner
+            .scan_node_versions(as_of_tt, vt_min, vt_max)
+            .map_err(err)?;
+        let scan_ns = t_mat.elapsed().as_nanos() as u64;
+        let rows = &out.rows;
 
         let t_conv = std::time::Instant::now();
         let d = PyDict::new(py);
         d.set_item(
             "uid_id",
+            // straight off the segment column: the dense id is what is
+            // stored, so recovering it from the materialized uid by a
+            // reverse dictionary lookup was work to undo work
             rows.iter()
-                .map(|r| self.inner.dict().dense_id(&r.uid).unwrap_or(0) as i64)
+                .map(|r| r.uid_id as i64)
                 .collect::<Vec<_>>()
                 .into_pyarray(py),
         )?;
@@ -836,19 +844,108 @@ impl NativeStore {
         d.set_item("uid", PyList::new(py, rows.iter().map(|r| r.uid.clone()))?)?;
         d.set_item("vid", PyList::new(py, rows.iter().map(|r| r.vid.clone()))?)?;
         d.set_item("label", PyList::new(py, rows.iter().map(|r| r.label.clone()))?)?;
-        // Counters and stage times, in `scan_edges`' style. This path does
-        // not drive the segment cursor (nodes are few and identity-clustered)
-        // so it has no pruning to report — but it does walk every stored node
-        // version, and "the node scan is the cost" was until now a
-        // subtraction against a Python wall clock. `rows_examined` counts the
-        // full listing, `rows` what survived the filters.
+        // Counters and stage times, in `scan_edges`' style. This path has no
+        // pruning to report, but it does visit every stored node version, and
+        // "the node scan is the cost" was until now a subtraction against a
+        // Python wall clock. `rows_examined` counts what the sweep visited;
+        // `rows_materialized` what it built — equal before the filter moved
+        // below the materialization, and the gate in
+        // `tests/test_bounded_version_history.py` is that they no longer are.
         let ms = |ns: u64| ns as f64 / 1e6;
         d.set_item("segments_total", self.inner.manifest().node_store.len())?;
         d.set_item("rows", rows.len())?;
-        d.set_item("rows_examined", rows_examined)?;
-        d.set_item("t_materialize_ms", ms(materialize_ns))?;
-        d.set_item("t_sort_ms", ms(sort_ns))?;
+        d.set_item("rows_examined", out.rows_examined)?;
+        d.set_item("rows_materialized", out.rows_materialized)?;
+        // one timer now covers the sweep, the filter and the sort: they are a
+        // single pass over the segments and cannot be split without lying
+        d.set_item("t_materialize_ms", ms(scan_ns))?;
+        d.set_item("t_sort_ms", 0.0)?;
         d.set_item("t_convert_ms", ms(t_conv.elapsed().as_nanos() as u64))?;
+        Ok(d)
+    }
+
+    /// One ordered page of O15 `version_history`, plus the exact size of the
+    /// population it was drawn from.
+    ///
+    /// The bounded replacement for `all_versions` on this operator's path
+    /// (`docs/design/BOUNDED_VERSION_HISTORY_FORECAST_2026-09-13.md` §4).
+    /// Filtering, ordering by `(tt_s, vid)` and counting all happen in the
+    /// engine over 32-byte integer keys; the only Python objects built are
+    /// the `<= limit` rows of the page, and only in the columns
+    /// `VERSION_COLS` projects — no `props`, so no `json.loads` per row on
+    /// the way back either.
+    ///
+    /// `tt_e` comes back raw. The `OPEN_END` censoring against `as_of_tt` is
+    /// part of the operator's contract and stays in the operator.
+    #[pyo3(signature = (kind, as_of_tt, t_a, t_b, belief, rel_types, offset, limit))]
+    #[allow(clippy::too_many_arguments)]
+    fn version_page<'py>(
+        &self,
+        py: Python<'py>,
+        kind: &str,
+        as_of_tt: i64,
+        t_a: i64,
+        t_b: i64,
+        belief: &str,
+        rel_types: Option<Vec<String>>,
+        offset: i64,
+        limit: i64,
+    ) -> Res<Bound<'py, PyDict>> {
+        let k = kind_of(kind)?;
+        let belief = match belief {
+            "current" => Belief::Current,
+            "superseded" => Belief::Superseded,
+            "all" => Belief::All,
+            other => {
+                return Err(PyRuntimeError::new_err(format!(
+                    "unknown belief mode {other:?}; expected 'current', \
+                     'superseded' or 'all'"
+                )))
+            }
+        };
+        if k == RowKind::Node && rel_types.is_some() {
+            return Err(PyRuntimeError::new_err(
+                "'rel_types' is only meaningful with kind 'edge'; node \
+                 versions have a label, not a relationship type",
+            ));
+        }
+        let f = VersionFilter {
+            as_of: as_of_tt,
+            t_a,
+            t_b,
+            belief,
+            rel_types: rel_types.as_deref(),
+        };
+        let (rows, rows_total) = self.inner.version_page(k, &f, offset, limit).map_err(err)?;
+        let d = PyDict::new(py);
+        let ints = |v: Vec<i64>| v.into_pyarray(py);
+        match rows {
+            VersionRows::Node(rows) => {
+                d.set_item("vid", PyList::new(py, rows.iter().map(|r| r.vid.clone()))?)?;
+                d.set_item("uid", PyList::new(py, rows.iter().map(|r| r.uid.clone()))?)?;
+                d.set_item("label", PyList::new(py, rows.iter().map(|r| r.label.clone()))?)?;
+                d.set_item("vt_s", ints(rows.iter().map(|r| r.vt_s).collect()))?;
+                d.set_item("vt_e", ints(rows.iter().map(|r| r.vt_e).collect()))?;
+                d.set_item("tt_s", ints(rows.iter().map(|r| r.tt_s).collect()))?;
+                d.set_item("tt_e", ints(rows.iter().map(|r| r.tt_e).collect()))?;
+            }
+            VersionRows::Edge(rows) => {
+                d.set_item("vid", PyList::new(py, rows.iter().map(|r| r.vid.clone()))?)?;
+                d.set_item("eid", PyList::new(py, rows.iter().map(|r| r.eid.clone()))?)?;
+                d.set_item("src", PyList::new(py, rows.iter().map(|r| r.src.clone()))?)?;
+                d.set_item("dst", PyList::new(py, rows.iter().map(|r| r.dst.clone()))?)?;
+                d.set_item(
+                    "rel_type",
+                    PyList::new(py, rows.iter().map(|r| r.rel_type.clone()))?,
+                )?;
+                d.set_item("disc", PyList::new(py, rows.iter().map(|r| r.disc.clone()))?)?;
+                d.set_item("vt_s", ints(rows.iter().map(|r| r.vt_s).collect()))?;
+                d.set_item("vt_e", ints(rows.iter().map(|r| r.vt_e).collect()))?;
+                d.set_item("tt_s", ints(rows.iter().map(|r| r.tt_s).collect()))?;
+                d.set_item("tt_e", ints(rows.iter().map(|r| r.tt_e).collect()))?;
+            }
+        }
+        d.set_item("rows_total", rows_total)?;
         Ok(d)
     }
 

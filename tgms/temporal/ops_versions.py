@@ -37,8 +37,6 @@ and a props column would put a JSON blob on every row of a whole-store scan.
 
 from __future__ import annotations
 
-import numpy as np
-
 from typing import Any
 
 from tgms.core.errors import InvalidArgError
@@ -89,6 +87,24 @@ def _version_validators(args: dict[str, Any]) -> None:
             "have a label, not a relationship type")
 
 
+def _cursor_offset(cursor: str | None) -> int:
+    """`paginate`'s own cursor arithmetic, needed *before* the page is read
+    rather than after it.
+
+    The offset has to reach the backend, because the whole point of
+    `versions_page` is that nothing outside the page is ever built — so the
+    slice cannot be taken here, on a list the old path materialized first.
+    The spelling is `paginate`'s (`algebra.py`), including the error, because
+    the cursor is a plaintext decimal offset frozen by M2's C6; `paginate` is
+    still called below over `range(rows_total)`, so the two cannot drift
+    without the length check firing.
+    """
+    try:
+        return int(cursor) if cursor else 0
+    except ValueError:
+        raise InvalidArgError(f"bad cursor: {cursor!r}") from None
+
+
 @operator(
     "version_history",
     {
@@ -128,34 +144,39 @@ def version_history(adapter: StorageAdapter, args: dict[str, Any]) -> dict[str, 
     as_of = clamp_tt(args["as_of_tt"])
     t_a, t_b = args["window"]["t_a"], args["window"]["t_b"]
     belief, kind = args["belief"], args["kind"]
-    rel_types = set(args["rel_types"]) if args["rel_types"] is not None else None
+    rel_types = args["rel_types"]
 
-    # Columns, not objects: the censoring and the window are masks, the
-    # ordering is a lexsort over two of them, and only the page is ever
-    # built into rows. The old path materialized the whole population —
-    # 64 s of object construction at 10M — to return at most `limit` rows
-    # (D-069). `rows_total` is still exact because the mask counts.
-    cols = adapter.versions_columnar(kind)
-    tt_s, tt_e, vt_s, vt_e = (cols["tt_s"], cols["tt_e"],
-                              cols["vt_s"], cols["vt_e"])
-    superseded = tt_e <= as_of
-    keep = (tt_s <= as_of) & (vt_s < t_b) & (t_a < vt_e)
-    if belief == "current":
-        keep &= ~superseded
-    elif belief == "superseded":
-        keep &= superseded
-    if rel_types is not None:
-        keep &= np.isin(cols["rel_type"], list(rel_types))
-    idx = np.flatnonzero(keep)
-    # (tt_s, vid) — the last key to lexsort is the primary one
-    idx = idx[np.lexsort((cols["vid"][idx], tt_s[idx]))]
+    # The page, and the exact size of the population it came out of. The
+    # filtering, the ordering and the count all happen below the adapter:
+    # a backend that can do them over packed columns builds nothing but the
+    # page, and one that cannot falls back to the columnar mask, which is
+    # this arithmetic verbatim (`StorageAdapter.versions_page`). The old
+    # path did the mask here, over a struct-of-arrays of the whole
+    # population — 10.6 GB at 10M edge versions to return `limit` rows.
+    # `rows_total` is still exact: the filter counts without materializing.
+    offset = _cursor_offset(args["cursor"])
+    cols, rows_total = adapter.versions_page(
+        kind, as_of=as_of, t_a=t_a, t_b=t_b, belief=belief,
+        rel_types=rel_types, offset=offset, limit=args["limit"])
 
-    names = [c for c in adapter.VERSION_COLS[kind]]
-    page = paginate(idx.tolist(), args["limit"], args["cursor"])
+    # The envelope from `paginate` itself, over a `range` standing in for the
+    # ordering — it slices in O(1) and never holds a row, and using the frozen
+    # function is what keeps `truncated` and the cursor spelled exactly as
+    # M2's C6 froze them.
+    page = paginate(range(rows_total), args["limit"], args["cursor"])
+    n = len(cols["vid"])
+    if n != len(page["rows"]):
+        raise InvalidArgError(
+            f"versions_page returned {n} rows where offset {offset} and limit "
+            f"{args['limit']} over {rows_total} select {len(page['rows'])}")
+
+    names = adapter.VERSION_COLS[kind]
+    tt_e = cols["tt_e"]
     page["rows"] = [
         {**{c: (int(cols[c][i]) if c in adapter.VERSION_INT_COLS
                 else cols[c][i]) for c in names},
-         "tt_e": int(tt_e[i]) if superseded[i] else OPEN_END}
-        for i in page["rows"]
+         # a belief that ended after `as_of` had not ended yet
+         "tt_e": int(tt_e[i]) if tt_e[i] <= as_of else OPEN_END}
+        for i in range(n)
     ]
     return page
