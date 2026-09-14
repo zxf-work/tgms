@@ -558,10 +558,15 @@ def test_an_empty_cohort_widens_rather_than_going_vacuous():
 # ---------------------------------------------------------------------------
 
 def test_only_three_operators_are_derived_and_the_rest_stay_top():
-    """The coordinator's scope cut, stated as a test so widening it is a
-    deliberate act."""
-    assert set(LEAF_SCOPES) == {"entity_history", "neighborhood_evolution",
-                                "aggregate_events"}
+    """The rollout's own tripwire (design 2026-09-14, §6 item 6): the derived
+    set is edited deliberately, one operator at a time, never relaxed to a
+    subset check. The name is the M2 coordinator's original scope cut; it is
+    kept rather than renamed, so the diff on every future line here stays
+    small and reviewable."""
+    assert set(LEAF_SCOPES) == {
+        "entity_history", "neighborhood_evolution", "aggregate_events",
+        "count_temporal_motifs", "find_temporal_motif_instances",
+    }
     for op, args in (("version_history", {"kind": "node", "window": W}),
                      ("snapshot_subgraph", {"seeds": ["u1"], "t_valid": 10}),
                      ("diff_snapshots", {"t1": 10, "t2": 20}),

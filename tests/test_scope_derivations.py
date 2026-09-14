@@ -1,0 +1,302 @@
+"""The scope-derivation rollout — differential and matrix tests.
+
+`docs/design/SCOPE_DERIVATION_ROLLOUT_DESIGN_2026-09-14.md` (internal, not in
+this worktree) specifies ten new `LEAF_SCOPES` derivations in
+`tgms/tgir/leaves.py`. This file is the rollout's own test home (one class per
+operator), separate from `tests/test_tgir_scopes.py`, which keeps the three
+already-shipped derivations (`entity_history`, `neighborhood_evolution`,
+`aggregate_events`).
+
+Two independent lines of evidence per operator, exactly as the design's §4
+specifies:
+
+- **A hand-written matrix** (§4.1's "per-operator matrices" complement): the
+  positive case, the entity-kind exclusion, the `V` exclusion, the carve-arm
+  verdict, and the `dense_ids` existence flip where the operator has one.
+  Uses the independent D13.20-D13.23 oracle already living in
+  `test_tgir_scopes.py` (`hits`, `arms_that_hit`, `footprints`) rather than
+  re-deriving it — the point of that independence is separateness from
+  `tgms/tgir/check.py`, not from other test modules.
+- **A differential test** (§4.1's template): real corrections
+  (`tgms.eval.corrections`, the same 8-generator x 5-placement matrix the
+  design's own forecast is built on) applied to a real store inside a rolled-
+  back transaction, comparing a real recompute's outcome against the derived
+  scope's verdict. `changed => in_scope` is asserted — the soundness gate,
+  never merely reported — and the observed exclusion rate is printed and
+  checked against a floor.
+
+**Scale.** The design's own template samples >= 2000 trials x 20 corrections
+per operator for a dedicated measurement run. These are unit tests
+("seconds each" — the lane's own instructions), so trial counts here are cut
+by two orders of magnitude; the soundness assertion is unaffected by sample
+size (it is a per-correction assertion, not a statistical one), and the
+printed exclusion rate is reported as an approximation, with a floor set
+low enough to absorb the resulting noise rather than the design's own
+central estimate.
+"""
+
+from __future__ import annotations
+
+import random
+from dataclasses import dataclass
+from typing import Any, Iterable
+
+import pytest
+
+from tgms.core.errors import CostError, InvalidArgError, LimitError, NotFoundError
+from tgms.eval.corrections import Target, generate, probe_substrate
+from tgms.storage.base import make_op
+from tgms.temporal.algebra import call_operator, ensure_all_registered, validate_args
+from tgms.tgir.depscope import TOP, Incident
+from tgms.tgir.leaf import sigma_for
+from tgms.tgir.leaves import terms_for
+
+from tests.test_tgir_scopes import (
+    arms_that_hit,
+    assert_edge,
+    assert_node,
+    correct_edge,
+    correct_node,
+    hits,
+    ingest,
+    retract_edge,
+)
+
+#: The registry is populated on import so every `validate_args`/`terms_for`
+#: call below — including the ones at class-body evaluation time via the
+#: matrix tables — sees every operator.
+ensure_all_registered()
+
+# ---------------------------------------------------------------------------
+# the shared store
+# ---------------------------------------------------------------------------
+
+N_NODES = 12
+NODE_UIDS = tuple(f"n{i}" for i in range(N_NODES))
+
+
+def _mk_store():
+    from tests.conftest import fresh_adapter
+
+    a = fresh_adapter()
+    nodes = [make_op("assert_node", uid=u, label="A" if i % 2 == 0 else "B",
+                     vt_s=0, vt_e=1000, source="setup", provenance_ref=None)
+             for i, u in enumerate(NODE_UIDS)]
+    a.begin()
+    a.apply_ops(nodes, 1)
+    a.commit()
+    rng = random.Random(7)
+    rels = ("R", "S")
+    edges = []
+    k = 0
+    for i in range(N_NODES):
+        for j in (1, 2, 3):
+            dst = (i + j) % N_NODES
+            vt_s = rng.randrange(0, 700)
+            vt_e = vt_s + rng.randrange(20, 250)
+            edges.append(make_op(
+                "assert_edge", src=f"n{i}", dst=f"n{dst}", rel_type=rels[k % 2],
+                disc=f"e{k}", vt_s=vt_s, vt_e=vt_e, source="setup", provenance_ref=None))
+            k += 1
+    a.begin()
+    a.apply_ops(edges, 2)
+    a.commit()
+    return a
+
+
+@pytest.fixture()
+def store():
+    a = _mk_store()
+    yield a
+    a.close()
+
+
+# ---------------------------------------------------------------------------
+# the differential harness (design §4.1, at unit-test scale)
+# ---------------------------------------------------------------------------
+
+class _StoreLike:
+    """The one attribute `tgms.eval.corrections` needs from a `Store`."""
+
+    def __init__(self, adapter: Any) -> None:
+        self.adapter = adapter
+
+
+def _outcome(adapter: Any, op: str, args: dict[str, Any]) -> tuple[str, Any]:
+    """The operator's outcome, digested — a real result or an error class.
+    Catching only the error class (never the message) is what makes the
+    `dense_ids` hazard of §1.8 visible: a `NotFoundError` that becomes a
+    result is a `changed` outcome exactly like a moved digest."""
+    try:
+        env = call_operator(adapter, op, dict(args))
+        return ("ok", env["result_digest"])
+    except (NotFoundError, CostError, LimitError, InvalidArgError) as e:
+        return ("err", type(e).__name__)
+
+
+@dataclass
+class DiffResult:
+    n: int
+    n_changed: int
+    n_in_scope: int
+
+    @property
+    def exclusion_rate(self) -> float:
+        return 1.0 - (self.n_in_scope / self.n if self.n else 0.0)
+
+    @property
+    def precision(self) -> float:
+        return (self.n_changed / self.n_in_scope) if self.n_in_scope else 0.0
+
+
+def run_differential(adapter: Any, op: str, args: dict[str, Any], *,
+                     read_uids: Iterable[str] = (),
+                     window: tuple[int, int] | None = None,
+                     trials: int = 8, seed: int = 0) -> DiffResult:
+    """One `(op, args)` cell against `generate`'s realized correction matrix.
+
+    Each correction is applied inside `begin()`/`rollback()`, so every trial
+    sees the same pristine base store (D13.20's `probe_substrate` reads it
+    once, up front) — a real fork without DuckDB's cost of rebuilding one.
+    `changed ⇒ in_scope` is asserted per correction, never batched away.
+    """
+    ensure_all_registered()
+    filled = validate_args(op, dict(args))
+    terms = terms_for(op, filled, sigma_for(op, filled))
+    before = _outcome(adapter, op, filled)
+    store_like = _StoreLike(adapter)
+    sub = probe_substrate(store_like, sample=50, rng=random.Random(seed))
+    target = Target(read_uids=tuple(read_uids), window=window)
+    rng = random.Random(seed + 1)
+    n = n_changed = n_in_scope = 0
+    for _ in range(trials):
+        for corr in generate(store_like, sub, target, rng=rng):
+            adapter.begin()
+            try:
+                adapter.apply_ops(list(corr.ops), 5_000_000)
+            except Exception:
+                adapter.rollback()
+                continue
+            after = _outcome(adapter, op, filled)
+            adapter.rollback()
+            changed = after != before
+            in_scope = any(hits(terms, one_op) for one_op in corr.ops)
+            n += 1
+            n_changed += int(changed)
+            n_in_scope += int(in_scope)
+            assert not (changed and not in_scope), (
+                f"{op}{filled}: {corr.generator}/{corr.placement} changed the "
+                f"result ({before} -> {after}) but the derived scope missed "
+                f"it: {corr.to_json()}")
+    return DiffResult(n, n_changed, n_in_scope)
+
+
+# ---------------------------------------------------------------------------
+# §2.7 / §2.8 — count_temporal_motifs, find_temporal_motif_instances
+# ---------------------------------------------------------------------------
+
+class TestTemporalMotifs:
+    """One derivation, two `LEAF_SCOPES` entries."""
+
+    UNFILTERED = {"motif": "M_2node_pingpong", "delta": 50,
+                  "window": {"t_a": 0, "t_b": 900}}
+    FILTERED = {**UNFILTERED, "node_filter": ["n0", "n1", "n2"]}
+
+    MATRIX = [
+        # the positive case
+        ("an edge event inside the window", UNFILTERED,
+         assert_edge("n0", "n1", vt_s=10, vt_e=11), True),
+        ("an edge correction inside the window", UNFILTERED,
+         correct_edge("n0", "n1", vt_s=10, vt_e=20), True),
+        ("an edge retraction inside the window", UNFILTERED,
+         retract_edge("n0", "n1", 5), True),
+        ("events ingested inside the window", UNFILTERED,
+         ingest("n0", "n1", 10), True),
+        # entity-kind exclusion: the operator reads only edges
+        ("a node write, no node_filter", UNFILTERED, assert_node("n0"), False),
+        ("a node correction, no node_filter", UNFILTERED, correct_node("n0"), False),
+        # V exclusion
+        ("an edge event after the window", UNFILTERED,
+         assert_edge("n0", "n1", vt_s=1000, vt_e=1001), False),
+        # carve-arm verdict: P = Pv, not carve-reachable (gate Appendix A.3)
+        ("a carve of an edge, entirely outside the window", UNFILTERED,
+         correct_edge("n0", "n1", vt_s=2000, vt_e=2010), False),
+        # node_filter branch: role="both" on the read term
+        ("an edge with both endpoints in the filter", FILTERED,
+         assert_edge("n0", "n1", vt_s=10, vt_e=11), True),
+        ("an edge naming neither filtered uid", FILTERED,
+         assert_edge("n9", "n10", vt_s=10, vt_e=11), False),
+        # the derivation's one subtlety: `both` on the read term excludes a
+        # single-endpoint edge from the *motif count*, but the existence
+        # pair's `either` still catches it, because dense_ids(node_filter)
+        # raises if ANY one of the filter's uids is unknown
+        ("an edge with only ONE endpoint in the filter — excluded by the read "
+         "term's `both`, still caught by the existence pair's `either`",
+         FILTERED, assert_edge("n0", "n9", vt_s=10, vt_e=11), True),
+        ("an assert_node registering a filtered uid (the existence pair)",
+         FILTERED, assert_node("n1"), True),
+        ("an assert_node registering an unfiltered uid", FILTERED,
+         assert_node("n9"), False),
+    ]
+
+    @pytest.mark.parametrize("label,args,op,must", MATRIX, ids=[m[0] for m in MATRIX])
+    def test_matrix(self, label, args, op, must):
+        filled = validate_args("count_temporal_motifs", dict(args))
+        terms = terms_for("count_temporal_motifs", filled, sigma_for("count_temporal_motifs", filled))
+        assert hits(terms, op) is must, (
+            f"{label}: should {'intersect' if must else 'NOT intersect'}; "
+            f"arms hit: {arms_that_hit(terms, op)}")
+
+    def test_find_temporal_motif_instances_shares_the_derivation(self):
+        filled = validate_args("find_temporal_motif_instances", dict(self.UNFILTERED))
+        terms = terms_for("find_temporal_motif_instances", filled,
+                          sigma_for("find_temporal_motif_instances", filled))
+        assert hits(terms, assert_edge("n0", "n1", vt_s=10, vt_e=11))
+        assert not hits(terms, assert_edge("n0", "n1", vt_s=1000, vt_e=1001))
+
+    def test_rel_type_is_never_narrowed(self):
+        """T = ⊤ always and explicitly: the matcher ignores rel_type."""
+        filled = validate_args("count_temporal_motifs", dict(self.UNFILTERED))
+        (term,) = terms_for("count_temporal_motifs", filled, sigma_for("count_temporal_motifs", filled))
+        assert term.rel_types is TOP
+        assert hits((term,), assert_edge("n0", "n1", rel_type="ZZZ", vt_s=10, vt_e=11))
+
+    def test_role_both_vs_either_asymmetry(self):
+        filled = validate_args("count_temporal_motifs", dict(self.FILTERED))
+        read_term, existence_node, existence_dense = terms_for(
+            "count_temporal_motifs", filled, sigma_for("count_temporal_motifs", filled))
+        assert read_term.targets.incident == Incident("both", ("n0", "n1", "n2"))
+        assert existence_node.targets.nodes == ("n0", "n1", "n2")
+        assert existence_dense.targets.incident == Incident("either", ("n0", "n1", "n2"))
+
+    def test_i_cannot_narrow_to_the_declared_filter_when_unfiltered(self):
+        """§9.11: unfiltered, `I = ⊤` — a motif instance is a combination, not
+        a neighbourhood a static uid set can bound."""
+        filled = validate_args("count_temporal_motifs", dict(self.UNFILTERED))
+        (term,) = terms_for("count_temporal_motifs", filled, sigma_for("count_temporal_motifs", filled))
+        assert term.targets.edges is TOP
+
+    def test_differential_unfiltered(self, store):
+        result = run_differential(store, "count_temporal_motifs", dict(self.UNFILTERED),
+                                  window=(0, 900), trials=10, seed=1)
+        print(f"count_temporal_motifs[unfiltered]: exclusion={result.exclusion_rate:.2f} "
+              f"precision={result.precision:.2f} n={result.n}")
+        assert result.n > 0
+        assert result.exclusion_rate >= 0.3
+
+    def test_differential_filtered(self, store):
+        result = run_differential(store, "count_temporal_motifs", dict(self.FILTERED),
+                                  read_uids=("n0", "n1", "n2"), window=(0, 900),
+                                  trials=10, seed=2)
+        print(f"count_temporal_motifs[filtered]: exclusion={result.exclusion_rate:.2f} "
+              f"precision={result.precision:.2f} n={result.n}")
+        assert result.n > 0
+        assert result.exclusion_rate >= 0.3
+
+    def test_differential_find_instances(self, store):
+        result = run_differential(store, "find_temporal_motif_instances", dict(self.UNFILTERED),
+                                  window=(0, 900), trials=10, seed=3)
+        print(f"find_temporal_motif_instances[unfiltered]: exclusion="
+              f"{result.exclusion_rate:.2f} precision={result.precision:.2f} n={result.n}")
+        assert result.n > 0
+        assert result.exclusion_rate >= 0.3
