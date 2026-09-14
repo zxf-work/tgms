@@ -30,7 +30,7 @@ import pytest
 
 from tgms.core.model import OPEN_END
 from tgms.temporal.algebra import ensure_all_registered, validate_args
-from tgms.tgir.depscope import TOP, ScopeTerm
+from tgms.tgir.depscope import TOP, Incident, ScopeTerm
 from tgms.tgir.leaf import sigma_for
 from tgms.tgir.leaves import LEAF_SCOPES, terms_for
 
@@ -344,14 +344,25 @@ NEIGHBORHOOD_MATRIX = [
      ingest("u1", "u9", 15), True),
     ("an incident edge whose interval spans the window", NE,
      assert_edge("u9", "u1", vt_s=0, vt_e=100), True),
+    # §1.8's existence pair (rollout design 2026-09-14, Addendum 1 ruling 1):
+    # `adapter.dense_ids([uid])` (ops_snapshot.py:332) can flip E_NOT_FOUND to
+    # a result for ANY op that registers the identity's dense id, at ANY
+    # valid-time location — additive and widening, so these three, which used
+    # to be precision claims, are now soundness claims instead.
+    ("a node write to the very identity (the existence pair)", NE,
+     assert_node("u1"), True),
+    ("an incident edge asserted after the window (the existence pair)", NE,
+     assert_edge("u1", "u9", vt_s=30, vt_e=40), True),
+    ("an incident edge asserted before the window (the existence pair)", NE,
+     assert_edge("u1", "u9", vt_s=0, vt_e=5), True),
     # precision claims
-    ("a node write to the very identity", NE, assert_node("u1"), False),
     ("a correction to the identity's node version", NE, correct_node("u1"), False),
+    ("a retraction of the identity's node version", NE, retract_node("u1", 5), False),
     ("an edge between two other identities", NE, assert_edge("u7", "u8"), False),
-    ("an incident edge asserted after the window", NE,
-     assert_edge("u1", "u9", vt_s=30, vt_e=40), False),
-    ("an incident edge asserted before the window", NE,
-     assert_edge("u1", "u9", vt_s=0, vt_e=5), False),
+    # the existence pair is keyed on identity alone: it does not fire for a
+    # write naming neither endpoint
+    ("an edge between two other identities, outside the window", NE,
+     assert_edge("u7", "u8", vt_s=30, vt_e=40), False),
 ]
 
 
@@ -387,13 +398,30 @@ def test_neighborhood_evolution_survives_the_carve_arm():
 
 
 def test_neighborhood_evolution_narrows_kinds_for_real():
-    """`K = ℰ` is four of five wire kinds — a genuine narrowing, unlike the
-    node-touching scans whose `𝒩 ∪ 𝒟` canonicalizes to `"*"`."""
-    (term,) = scope("neighborhood_evolution", NE)
+    """`K = ℰ` is four of five wire kinds on the *read* term — a genuine
+    narrowing, unlike the node-touching scans whose `𝒩 ∪ 𝒟` canonicalizes to
+    `"*"`. The existence pair (§1.8) rides alongside it as two more terms."""
+    terms = scope("neighborhood_evolution", NE)
+    assert len(terms) == 3
+    term = terms[0]
     assert term.kinds is not TOP
     assert set(term.kinds) == {"assert_edge", "correct", "retract", "ingest_events"}
     assert "assert_node" not in term.kinds
     assert term.vt == ((10, 21),) and term.vt_mode == "instant"
+
+
+def test_neighborhood_evolution_existence_pair_shape():
+    """§1.8's pair, verbatim: an `assert_node`/`ingest_events` term over
+    `nodes=uids`, and a `K_DENSE_ID` term over `incident("either", uids)` —
+    both `vt = ⊤` and `props = ("@identity",)`, exactly `entity_history`'s `𝒟`
+    term (`leaves.py:99-102`)."""
+    _read, existence_node, existence_dense = scope("neighborhood_evolution", NE)
+    assert set(existence_node.kinds) == {"assert_node", "ingest_events"}
+    assert existence_node.targets.nodes == ("u1",)
+    assert existence_node.vt is TOP and existence_node.props == ("@identity",)
+    assert set(existence_dense.kinds) == {"assert_edge", "ingest_events"}
+    assert existence_dense.targets.incident == Incident("either", ("u1",))
+    assert existence_dense.vt is TOP and existence_dense.props == ("@identity",)
 
 
 # ---------------------------------------------------------------------------
@@ -627,14 +655,17 @@ def _digest(adapter, op, args):
 def test_neighborhood_evolution_really_is_insensitive_to_node_writes(store):
     """`K = ℰ` is a claim about the kernel, so it is checked against the
     kernel: the operator does not gate on node validity, so a write to the very
-    identity it is centred on cannot move its answer."""
+    identity it is centred on cannot move its answer — even though, since
+    §1.8's existence pair, the *scope* now (soundly) admits that write anyway,
+    because it cannot distinguish "already registered" from "the first
+    registration" (D13.14 prohibition 3's case)."""
     _write(store, [_node("u1"), _node("u9")], 1)
     _write(store, [_edge("u1", "u9", vt_s=10, vt_e=100)], 2)
     args = {"uid": "u1", "t1": 10, "t2": 20}
     before = _digest(store, "neighborhood_evolution", args)
     _write(store, [_node("u1", label="RELABELLED", props={"x": 9})], 3)
     assert _digest(store, "neighborhood_evolution", args) == before
-    assert not hits(scope("neighborhood_evolution", args), assert_node("u1"))
+    assert hits(scope("neighborhood_evolution", args), assert_node("u1"))
 
 
 def test_a_recut_outside_the_window_really_does_not_reach_it(store):
