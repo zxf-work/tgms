@@ -131,6 +131,45 @@ def test_full_mode_actually_walks_the_rows(tmp_path):
         "the fixture's correction should leave one superseded row"
 
 
+def test_full_mode_re_derives_the_published_digest_from_scratch(tmp_path):
+    """The one check full mode gained with format 3 (V2 diagnosis §4(d)).
+
+    `manifest_sha` is now maintained incrementally — appended to a Merkle
+    spine as a commit pushes segments — so a bug in that update would be
+    *self-consistent*: the store would seal with a wrong digest, publish it,
+    and check it against itself forever. Full mode rebuilds the whole tree
+    from the whole ordered segment set and compares against what `CURRENT`
+    actually publishes, which no incremental path touched.
+
+    The defect has to be injected under a live handle: a store whose
+    `CURRENT` disagrees with its head manifest does not reopen at all, which
+    is a different (and also correct) answer, asserted elsewhere.
+    """
+    import tgms
+    root = build(tmp_path / "s")
+    store = tgms.open(root, backend="native")
+    assert store.adapter.verify(mode="full")["healthy"]
+
+    current = root / "native" / "CURRENT"
+    generation = int(current.read_text().split()[0])
+    current.write_text(f"{generation} 0000000000000000\n")
+
+    report = store.adapter.verify(mode="full")
+    assert not report["healthy"]
+    oracle = [f for f in report["findings"]
+              if f["kind"] == "digest-oracle-mismatch"]
+    assert len(oracle) == 1, report["findings"]
+    assert oracle[0]["layer"] == "manifest"
+    assert oracle[0]["severity"] == "error"
+    assert oracle[0]["generation"] == generation
+    assert "0000000000000000" in oracle[0]["detail"]
+
+    # fast mode does not pay for it — it is the price of an incremental
+    # digest, and it belongs in the mode nobody runs per commit
+    assert store.adapter.verify(mode="fast")["healthy"]
+    store.close()
+
+
 def test_every_finding_carries_the_full_shape(tmp_path):
     """The contract A4 matches on."""
     root = build(tmp_path / "s")
