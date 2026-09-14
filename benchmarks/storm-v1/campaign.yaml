@@ -151,7 +151,7 @@ addendum_3:
       batches_per_cell: 5
       allow_r18_trip: true
       wall_cap_h: 12
-    dag_phase: not re-run -- v2's --dag-seed-from-affected (addendum_2) already covers the narrowing-coverage-adjacent DAG question
+    dag_phase: see dag_phase_v3 below (not addendum_1's frozen dag_phase, unchanged) -- v3 characterizes --dag-seed-from-affected under the D-161 rollout (fdd393c), where addendum_2/v2 tested the mechanism alone at the pre-rollout anchor (8962b78)
   commit_under_test: fdd393c  # /project/xzhang12/tgms-storm-v2's own checked-out HEAD; MANIFEST_FORMAT_VERSION==3 and tgms.tgir.leaves.LEAF_SCOPES has 13 entries, both confirmed on the cluster
   predictions:  # verbatim from the accepted design; each PASS-if/REFUTED-if as given
     all_top_fraction:
@@ -190,4 +190,42 @@ addendum_3:
       pass_if: "== 0 in every cell"
       refuted_if: any nonzero -- the rollout is withdrawn, not tuned
   conditionality: node-only vs edge-writing corrections reported separately (from correction_class/correction_placement); the population mix is the frozen v1 one, unchanged for this addendum
+  dag_phase_v3:  # same 40-cell grid as the frozen dag_phase block above; characterizes --dag-seed-from-affected (addendum_2's mechanism) under the D-161 scope-derivation rollout -- addendum_2/v2 (job 211555) tested the same mechanism alone at the pre-rollout anchor (8962b78) and measured its REFUTED +61/+62 visit-count result (freeze Addendum 5) instead of the originally predicted +3/+0; this block re-predicts the visit-count delta with that measurement in hand, under the rolled-out engine where far fewer artifacts are TOP_TERM-scoped
+    store: synth-iv-60k
+    shapes: [chain, tree, diamond, layered, power-law]
+    depth: [4, 16]
+    fanout: [2, 10]
+    cascade_k: depth
+    seeds: [0, 1]
+    seed_from_affected: true
+    commit_under_test: fdd393c
+    predictions:
+      registry_wide_false_safe:
+        predicted: 0 in 40/40
+        pass_if: "== 0 in every cell"
+        refuted_if: any false-safe
+      dag_node_false_safe:
+        predicted: 0
+        pass_if: "== 0"
+        refuted_if: any false-safe artifact is itself a DAG node
+      tgms_false_fresh:
+        predicted: 0/40
+        pass_if: "== 0 in every cell"
+        refuted_if: any nonzero
+      nodes_visited_delta_seed0:
+        description: nodes_visited delta vs v1 (job 211321/211503/211504) in every seed-0 cell
+        predicted: "[3, 20]"
+        pass_if: every seed-0 cell's delta is in [3, 20]
+        refuted_if: any delta >= 40
+      nodes_visited_delta_seed1:
+        description: nodes_visited delta vs v1 in every seed-1 cell
+        predicted: "[0, 15]"
+        pass_if: every seed-1 cell's delta is in [0, 15]
+        refuted_if: any delta >= 40
+      n_all_top_term:
+        description: summary.narrowing_coverage.n_all_top_term, per cell's underlying storm population
+        predicted: 0
+        pass_if: "== 0"
+        refuted_if: "> 0"
+    status: pre-registered, not yet submitted (211499/211555 and the D-160 lane's 211581 hold the concurrency slots; coordinator gates submission)
   status: pre-registered, not yet submitted (211499/211555 and the D-160 lane's 211581 hold the concurrency slots; coordinator gates submission)
