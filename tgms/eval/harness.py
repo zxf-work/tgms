@@ -28,6 +28,9 @@ from typing import Any, Callable
 
 from tgms.core.model import canonical_json, sha256_hex
 from tgms.eval.metrics import extract_pred, rates, score_answer
+from tgms.eval.plan_faults import (
+    Oracle, Run, augment_report, classify, to_certificate,
+)
 from tgms.store import Store
 
 OURS_SYSTEMS = ("ours", "ours-noverify", "ours-nomem")
@@ -97,6 +100,19 @@ def run_task_ours(system: str, task: dict[str, Any], store: Store,
                           extract_pred(task["answer_kind"], pred))
     row.update(scores)
 
+    if not (trace is not None and out["plan_result"].plan is not None):
+        # No reporter/verifier step runs below (same guard as the `if` this
+        # mirrors) -- additive outcome fields per the fault-matrix design
+        # (docs/design/TRUST_BOUNDARY_FAULT_MATRIX_DESIGN_2026-09-13.md §6):
+        # no metric semantics change, `rates()` never reads these keys.
+        err = row.get("exec_error") or {"error": "E_NO_PLAN",
+                                        "message": "no plan produced", "details": {}}
+        cls = classify(Run(error=err, certificate=to_certificate(err)),
+                      Oracle(gold=task.get("gold")))
+        row.update(cls.to_json())
+        row["outcome_reason"] = row.pop("reason")
+        return row
+
     # reporter + (optionally) verifier gating
     if trace is not None and out["plan_result"].plan is not None:
         reporter = Reporter(model, llm_fn=llm_fn, seed=seed, guided=guided)
@@ -114,6 +130,13 @@ def run_task_ours(system: str, task: dict[str, Any], store: Store,
             row["ucr"] = report["metrics"].get("ucr")
             row["coverage"] = report["metrics"].get("coverage")
             row["answer_object"] = answer_obj
+            # additive outcome (§6): the ungated read, matching what this
+            # ablation actually delivers -- no metric semantics change.
+            run = Run(answer=answer_obj, answer_value=trace.answer,
+                     report=augment_report(answer_obj, report, verifier))
+            cls = classify(run, Oracle(gold=task.get("gold")))
+            row.update(cls.to_json())
+            row["outcome_reason"] = row.pop("reason")
         else:
             verifier = ClaimVerifier(trace, agent.executor.results,
                                      store.adapter,
@@ -134,6 +157,13 @@ def run_task_ours(system: str, task: dict[str, Any], store: Store,
             row["ucr"] = regate["metrics"].get("ucr")
             row["coverage"] = regate["metrics"].get("coverage")
             row["answer_object"] = gated
+            # additive outcome (§6): the delivered, already-gated answer --
+            # no metric semantics change.
+            run = Run(answer=gated, answer_value=trace.answer,
+                     report=augment_report(gated, regate, verifier))
+            cls = classify(run, Oracle(gold=task.get("gold")))
+            row.update(cls.to_json())
+            row["outcome_reason"] = row.pop("reason")
         row["verifiable_claims"] = system != "ours-noverify"
     return row
 

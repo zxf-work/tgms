@@ -1,0 +1,195 @@
+{
+  "_comment": "Hand-built classify() fixture (design memo section 6): every one of the four Outcome classes appears at least once, with I1-I4 each demonstrated at least once and one case demonstrating gold_mismatch orthogonal to a `correct` outcome. No store, no LLM, no trace object -- these are plain dicts fed straight to tgms.eval.plan_faults.Run/Oracle/classify.",
+  "cases": [
+    {
+      "id": "correct-plain",
+      "description": "A TGIR-envelope-shaped run: no claims, FRESH and recomputation agrees. No gold supplied.",
+      "run": {
+        "certificate": null,
+        "freshness": {"kind": "FRESH"},
+        "answer": {"claims": []},
+        "answer_value": 42,
+        "report": {"claims": []},
+        "error": null
+      },
+      "oracle": {"recompute_value": 42},
+      "expected_outcome": "correct",
+      "expected_gold_mismatch": null,
+      "expected_misattributed": false,
+      "expected_invariants": []
+    },
+    {
+      "id": "correct-but-gold-mismatch",
+      "description": "An agent-answer run whose single count claim is fully supported by its own trace (evidence-consistent) but disagrees with gold -- the F1-3b/F1-6 reading: correct under I1-I4, gold_mismatch fires anyway. Asserts the orthogonality of the two flags.",
+      "run": {
+        "certificate": null,
+        "freshness": null,
+        "answer": {"claims": [
+          {"id": "c1", "type": "count", "value": 7, "evidence": ["s1"]}
+        ]},
+        "answer_value": 7,
+        "report": {"claims": [
+          {"id": "c1", "verdict": "supported", "reason": "matched 7",
+           "truncated": false, "cited_uids": [], "cited_values": [7]}
+        ]},
+        "error": null
+      },
+      "oracle": {"gold": 9},
+      "expected_outcome": "correct",
+      "expected_gold_mismatch": true,
+      "expected_misattributed": false,
+      "expected_invariants": []
+    },
+    {
+      "id": "safe-refusal-cost-certificate",
+      "description": "A plan-level RefusalCertificate (admission.py stage=plan) -- the refusal channel fires before anything else is inspected.",
+      "run": {
+        "certificate": {"reason": "cost-ceiling:plan", "detail": {"stage": "plan"}},
+        "freshness": null,
+        "answer": null,
+        "answer_value": null,
+        "report": null,
+        "error": null
+      },
+      "oracle": {},
+      "expected_outcome": "safe-refusal",
+      "expected_reason": "cost-ceiling:plan",
+      "expected_gold_mismatch": null,
+      "expected_misattributed": false,
+      "expected_invariants": []
+    },
+    {
+      "id": "safe-refusal-incompleteness",
+      "description": "An IncompletenessRefusal (metadata.py E_INCOMPLETE) -- the closed taxonomy's `incompleteness` reason.",
+      "run": {
+        "certificate": {"reason": "incompleteness"},
+        "freshness": null,
+        "answer": null,
+        "answer_value": null,
+        "report": null,
+        "error": null
+      },
+      "oracle": {},
+      "expected_outcome": "safe-refusal",
+      "expected_reason": "incompleteness",
+      "expected_gold_mismatch": null,
+      "expected_misattributed": false,
+      "expected_invariants": []
+    },
+    {
+      "id": "safe-refusal-undecidable-freshness",
+      "description": "check() returns UNDECIDABLE -- D13.25 treats it as POSSIBLY_STALE everywhere, and section 4 makes it a named safe-refusal reason in its own right.",
+      "run": {
+        "certificate": null,
+        "freshness": {"kind": "UNDECIDABLE"},
+        "answer": null,
+        "answer_value": null,
+        "report": null,
+        "error": null
+      },
+      "oracle": {},
+      "expected_outcome": "safe-refusal",
+      "expected_reason": "undecidable-freshness",
+      "expected_gold_mismatch": null,
+      "expected_misattributed": false,
+      "expected_invariants": []
+    },
+    {
+      "id": "explicit-failure-static-schema",
+      "description": "validate_static rejected the mutated plan (E_SCHEMA) and no repair was attempted -- no trace, no certificate.",
+      "run": {
+        "certificate": null,
+        "freshness": null,
+        "answer": null,
+        "answer_value": null,
+        "report": null,
+        "error": {"error": "E_SCHEMA", "message": "plan schema: duplicate step ids", "details": {}}
+      },
+      "oracle": {},
+      "expected_outcome": "explicit-failure",
+      "expected_reason": "E_SCHEMA",
+      "expected_gold_mismatch": null,
+      "expected_misattributed": false,
+      "expected_invariants": []
+    },
+    {
+      "id": "explicit-failure-runtime-e-answer",
+      "description": "The plan executed but the answer_spec could not resolve (harness.py's E_ANSWER row shape).",
+      "run": {
+        "certificate": null,
+        "freshness": null,
+        "answer": null,
+        "answer_value": null,
+        "report": null,
+        "error": {"error": "E_ANSWER", "message": "answer source step s3 did not complete", "details": {}}
+      },
+      "oracle": {},
+      "expected_outcome": "explicit-failure",
+      "expected_reason": "E_ANSWER",
+      "expected_gold_mismatch": null,
+      "expected_misattributed": false,
+      "expected_invariants": []
+    },
+    {
+      "id": "silent-violation-unsupported-count",
+      "description": "A count claim whose value (5) is not among the cited evidence's numbers (only 3 is present) -- I1 (verdict unsupported) and I3 (value not grounded) fire together, exactly F1-7/F1-10's shape.",
+      "run": {
+        "certificate": null,
+        "freshness": null,
+        "answer": {"claims": [
+          {"id": "c1", "type": "count", "value": 5, "evidence": ["s1"]}
+        ]},
+        "answer_value": 5,
+        "report": {"claims": [
+          {"id": "c1", "verdict": "unsupported", "reason": "value 5 not found in evidence (candidates: [3])",
+           "truncated": false, "cited_uids": [], "cited_values": [3]}
+        ]},
+        "error": null
+      },
+      "oracle": {},
+      "expected_outcome": "silent-violation",
+      "expected_gold_mismatch": null,
+      "expected_misattributed": false,
+      "expected_invariants": ["I1", "I3"]
+    },
+    {
+      "id": "silent-violation-uid-not-grounded",
+      "description": "The verifier's own entity check missed it (verdict still `supported`) but the claimed uid does not actually appear in the cited evidence's lexicon -- I2, a defense-in-depth check independent of the verdict.",
+      "run": {
+        "certificate": null,
+        "freshness": null,
+        "answer": {"claims": [
+          {"id": "c1", "type": "entity", "uids": ["n999"], "evidence": ["s1"]}
+        ]},
+        "answer_value": ["n999"],
+        "report": {"claims": [
+          {"id": "c1", "verdict": "supported", "reason": "all uids grounded",
+           "truncated": false, "cited_uids": ["n1", "n2"], "cited_values": []}
+        ]},
+        "error": null
+      },
+      "oracle": {},
+      "expected_outcome": "silent-violation",
+      "expected_gold_mismatch": null,
+      "expected_misattributed": false,
+      "expected_invariants": ["I2"]
+    },
+    {
+      "id": "silent-violation-fresh-contradicted",
+      "description": "check() said FRESH but an independent recomputation disagrees with the answer value -- I4, check.py:415,561's exact failure mode.",
+      "run": {
+        "certificate": null,
+        "freshness": {"kind": "FRESH"},
+        "answer": {"claims": []},
+        "answer_value": 100,
+        "report": {"claims": []},
+        "error": null
+      },
+      "oracle": {"recompute_value": 99},
+      "expected_outcome": "silent-violation",
+      "expected_gold_mismatch": null,
+      "expected_misattributed": false,
+      "expected_invariants": ["I4"]
+    }
+  ]
+}
