@@ -382,8 +382,9 @@ def table_fault(fm: dict) -> str:
         n_f = sum(1 for c in cells if c["expectation"] == "must_not_certify")
         n_c = sum(1 for c in cells if c["expectation"] == "must_certify")
         ok = all(c["ok"] for c in cells)
+        status = "verified" if ok else "\\textbf{FAILED}"
         rows.append(f"{CLAIM_LABEL[ct]:<16} & {n_f} & {n_c} & "
-                    f"{'verified' if ok else '\\textbf{FAILED}'} \\\\")
+                    f"{status} \\\\")
     body = "\n".join(rows)
     nc = ", ".join(fm["not_covered"][:3])
     nc2 = ", ".join(fm["not_covered"][3:]).replace("wrong_extremum",

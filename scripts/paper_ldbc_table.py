@@ -38,7 +38,7 @@ def main() -> int:
     ap.add_argument("--outdir", type=Path, required=True)
     args = ap.parse_args()
 
-    rows = [json.loads(l) for l in open(ANN)]
+    rows = [json.loads(line) for line in open(ANN)]
     rec = json.loads(REC.read_text())
     assert len(rows) == rec["n_templates"] == 41
 

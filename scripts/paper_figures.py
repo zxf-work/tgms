@@ -74,7 +74,7 @@ def fig5(pn: dict, uc: dict) -> str:
               ("cited value", 3), ("undetermined", 4),
               ("witness (SQL)", 5)]
     plots = "\n".join(
-        rf"\addplot coordinates {{"
+        r"\addplot coordinates {"
         + " ".join(f"({r[si]},{r[0]})" for r in rows) + "};"
         for _, si in series)
     legend = ", ".join(lab for lab, _ in series)

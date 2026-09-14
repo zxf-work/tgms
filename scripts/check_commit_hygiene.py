@@ -81,7 +81,13 @@ def is_implementation(path: str) -> bool:
 
 def main() -> int:
     base = sys.argv[1] if len(sys.argv) > 1 else default_base()
-    commits = sh("rev-list", f"{base}..HEAD").split()
+    # Merge commits are excluded: `git show --name-only` on a merge prints the
+    # combined diff, which lists every file the merge genuinely joined from
+    # both sides -- a legitimate union merge of a long-lived branch therefore
+    # "mixes" tests/ and tgms/ without any author having done so (seen on the
+    # 2026-09-13 agent-interface reconciliation). The rule binds authored
+    # commits; merges are the sum of already-checked parents.
+    commits = sh("rev-list", "--no-merges", f"{base}..HEAD").split()
     bad = []
     for c in commits:
         if c in SANCTIONED:
