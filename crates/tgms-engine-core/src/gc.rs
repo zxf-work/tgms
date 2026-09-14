@@ -38,7 +38,7 @@ use std::path::{Path, PathBuf};
 use std::sync::{Mutex, OnceLock};
 
 use crate::error::{EngineError, Result};
-use crate::manifest::Manifest;
+use crate::manifest_chain;
 use crate::store::NativeStore;
 
 /// In-process reader pins: canonical store root → generation → open handles.
@@ -115,15 +115,42 @@ impl NativeStore {
                 "cannot collect generations while a batch is open",
             ));
         }
+        self.require_writable_format()?;
         let current = self.generation();
         let floor = current.saturating_sub(keep_last.max(1) - 1);
         let protected = pinned(self.pin_key());
         let mut report = GcReport::default();
+        let m_dir = self.root().join("manifests");
+
+        // Pass 0 — make every generation that survives this pass
+        // reconstructible before anything is unlinked.
+        //
+        // A retained generation may be a delta whose chain reaches back
+        // through generations pass 1 is about to remove. The memo's
+        // recommended variant (§4, "gc with deltas") is to materialize a
+        // fresh checkpoint at the retention floor and only then delete below
+        // it; the same argument applies to a pinned generation stranded below
+        // the floor, so the rule here is one checkpoint per *anchor* — the
+        // lowest member of each contiguous run of retained generations. Every
+        // other retained generation chains back to its own run's anchor.
+        //
+        // Rewriting an anchor is safe even when it is `CURRENT`: `manifest_sha`
+        // is the digest of the logical manifest, so a delta and the checkpoint
+        // that reconstructs the same content carry the same sha and `CURRENT`
+        // needs no change. Everything here is durable before pass 1 unlinks
+        // anything, so a crash mid-materialization leaves every chain intact —
+        // the property `gc.rs`'s header already claims.
+        let on_disk = manifest_generations(&m_dir)?;
+        let retained = |g: u64| g >= floor || g == current || protected.contains(&g);
+        let deletable: Vec<u64> = on_disk.iter().copied().filter(|g| !retained(*g)).collect();
+        if !deletable.is_empty() {
+            self.materialize_anchor_checkpoints(&on_disk, &retained)?;
+            fsync_dir(&m_dir)?;
+        }
 
         // Pass 1 — superseded manifests, plus temp files a crash between
         // write and rename left behind. Names that parse as neither are left
         // alone: gc removes only what it can prove is garbage.
-        let m_dir = self.root().join("manifests");
         for name in list_dir(&m_dir)? {
             let path = m_dir.join(&name);
             if name.ends_with(".tmp") {
@@ -136,7 +163,7 @@ impl NativeStore {
             else {
                 continue;
             };
-            if g >= floor || g == current || protected.contains(&g) {
+            if retained(g) {
                 continue;
             }
             report.bytes_reclaimed += remove(&path)?;
@@ -149,6 +176,13 @@ impl NativeStore {
         // passes can only make the next pass conservative, never eager. A
         // retained manifest that fails its checksum aborts the pass: deleting
         // by an unreadable reference list would be guessing.
+        //
+        // With format 2 a record contributes the files it *introduces*: a
+        // checkpoint's whole segment set, or a delta's `add_*` entries. The
+        // union over every record still on disk is a superset of what any
+        // retained generation names — no reconstruction needed, and wrong
+        // only in the conservative direction, which is the direction gc
+        // already argues for.
         let mut referenced: HashSet<String> = HashSet::new();
         for name in list_dir(&m_dir)? {
             if !name.ends_with(".json") {
@@ -157,18 +191,10 @@ impl NativeStore {
             let path = m_dir.join(&name);
             let raw = fs::read_to_string(&path)
                 .map_err(|e| EngineError::from(e).at_file(&path))?;
-            let m = Manifest::from_json(&raw).map_err(|e| e.at_file(&path))?;
+            let rec = manifest_chain::parse_record(&raw).map_err(|e| e.at_file(&path))?;
             report.generations_retained += 1;
-            for e in m
-                .node_store
-                .iter()
-                .chain(m.edge_lanes.event.iter())
-                .chain(m.edge_lanes.interval.iter())
-            {
-                referenced.insert(e.file.clone());
-            }
-            for r in &m.close_runs {
-                referenced.insert(r.file.clone());
+            for file in rec.referenced_files() {
+                referenced.insert(file.to_string());
             }
         }
 
@@ -193,6 +219,41 @@ impl NativeStore {
         self.evict_segments_not_in(&referenced);
         Ok(report)
     }
+
+    /// Write a full checkpoint at the lowest member of each contiguous run of
+    /// retained generations, so no surviving generation's chain can reach into
+    /// what pass 1 removes.
+    fn materialize_anchor_checkpoints(
+        &self,
+        on_disk: &[u64],
+        retained: &impl Fn(u64) -> bool,
+    ) -> Result<()> {
+        for (i, g) in on_disk.iter().copied().enumerate() {
+            if !retained(g) {
+                continue;
+            }
+            let previous_is_retained =
+                i > 0 && on_disk[i - 1] == g.wrapping_sub(1) && retained(on_disk[i - 1]);
+            if previous_is_retained {
+                continue; // chains back within its own run
+            }
+            self.materialize_checkpoint(g)?;
+        }
+        Ok(())
+    }
+}
+
+/// Generations with a manifest file on disk, ascending.
+fn manifest_generations(m_dir: &Path) -> Result<Vec<u64>> {
+    let mut gens: Vec<u64> = list_dir(m_dir)?
+        .into_iter()
+        .filter_map(|n| {
+            n.strip_suffix(".json")
+                .and_then(|s| s.parse::<u64>().ok())
+        })
+        .collect();
+    gens.sort_unstable();
+    Ok(gens)
 }
 
 fn list_dir(dir: &Path) -> Result<Vec<String>> {
@@ -460,6 +521,179 @@ mod tests {
         assert_eq!(manifest_gens(&root), vec![3]);
         assert!(!root.join("manifests").join("junk.tmp").exists());
         assert_eq!(report.segments_removed, 2, "orphaned segments collected");
+        assert!(re.verify().unwrap().is_healthy());
+    }
+
+    // --- gc against a delta chain (memo §4, "gc with deltas") ----------- //
+
+    fn is_checkpoint(root: &Path, g: u64) -> bool {
+        crate::manifest_chain::read_record(root, g)
+            .unwrap()
+            .is_checkpoint()
+    }
+
+    #[test]
+    fn gc_materializes_a_floor_checkpoint_before_cutting_the_chain() {
+        // keep_last must keep meaning "the last N generations are readable",
+        // which with deltas means the floor cannot be left pointing at a
+        // checkpoint gc is about to delete
+        let root = tmp_root("delta-floor");
+        let mut s = NativeStore::open(&root).unwrap();
+        s.set_checkpoint_every(Some(1_000_000)); // only genesis checkpoints
+        for tt in 1..=6 {
+            commit_edges(&mut s, tt * 10, 1);
+        }
+        assert_eq!(s.checkpoint_generation(), 0);
+        for g in 1..=6 {
+            assert!(!is_checkpoint(&root, g), "generation {g} should be a delta");
+        }
+
+        let report = s.gc(3).unwrap();
+        assert_eq!(manifest_gens(&root), vec![4, 5, 6]);
+        assert_eq!(report.manifests_removed, 4);
+        assert_eq!(report.generations_retained, 3);
+        assert!(
+            is_checkpoint(&root, 4),
+            "the floor must be materialized as a checkpoint before the chain \
+             below it is cut"
+        );
+        assert!(!is_checkpoint(&root, 5), "the rest stay deltas");
+        assert!(!is_checkpoint(&root, 6));
+        assert_eq!(report.segments_removed, 0, "all six are still referenced");
+
+        // both the live generation and the floor reconstruct from disk alone
+        for g in [4u64, 5, 6] {
+            let m = crate::manifest_chain::reconstruct(&root, g).unwrap();
+            assert_eq!(m.manifest.generation, g);
+            assert_eq!(m.checkpoint, 4);
+        }
+        drop(s);
+        let re = NativeStore::open(&root).unwrap();
+        assert_eq!(re.generation(), 6);
+        assert_eq!(re.all_edge_versions().unwrap().len(), 6);
+        assert!(re.verify().unwrap().is_healthy());
+    }
+
+    #[test]
+    fn gc_leaves_every_pinned_generation_reconstructible() {
+        // a pinned generation stranded below the floor gets its own anchor
+        // checkpoint; the generations between it and the floor still go
+        let root = tmp_root("delta-pins");
+        let mut w = NativeStore::open(&root).unwrap();
+        w.set_checkpoint_every(Some(1_000_000));
+        let pinned_rows = commit_edges(&mut w, 10, 1); // generation 1
+        let reader = NativeStore::open(&root).unwrap(); // pins generation 1
+        for tt in 2..=5 {
+            commit_edges(&mut w, tt * 10, 1);
+        }
+
+        let report = w.gc(2).unwrap();
+        assert_eq!(
+            manifest_gens(&root),
+            vec![1, 4, 5],
+            "the pinned generation survives alongside the keep_last window"
+        );
+        assert_eq!(report.manifests_removed, 3);
+        assert!(is_checkpoint(&root, 1), "the pinned generation is an anchor");
+        assert!(is_checkpoint(&root, 4), "so is the floor");
+        assert!(!is_checkpoint(&root, 5));
+
+        // the reader's own view still resolves, and its rows still read
+        let seen = reader.all_edge_versions().unwrap();
+        assert_eq!(seen.len(), 1);
+        assert_eq!(seen[0].vid, pinned_rows[0].vid.to_hex());
+        assert!(reader.verify().unwrap().is_healthy());
+        let m = crate::manifest_chain::reconstruct(&root, 1).unwrap();
+        assert_eq!(m.manifest.manifest_sha, reader.manifest().manifest_sha);
+        assert_eq!(report.segments_removed, 0, "nothing a chain member names");
+
+        drop(reader);
+        let report = w.gc(2).unwrap();
+        assert_eq!(manifest_gens(&root), vec![4, 5]);
+        assert_eq!(report.manifests_removed, 1);
+        assert!(w.verify().unwrap().is_healthy());
+    }
+
+    #[test]
+    fn an_orphan_delta_above_current_is_ignored() {
+        // the `after_manifest` crash shape: a delta for the next generation
+        // reached disk, CURRENT did not. Reconstruction from CURRENT stops at
+        // 3 and never reads 4. gc's retention rule is unchanged from format 1
+        // — a generation at or above the floor is kept, and an orphan above
+        // `current` is above every floor — so it survives, harmlessly: it is
+        // never read, and the only thing it protects is the segment it names,
+        // which the live generation names too.
+        let root = tmp_root("delta-orphan");
+        let mut s = NativeStore::open(&root).unwrap();
+        s.set_checkpoint_every(Some(1_000_000));
+        for tt in 1..=3 {
+            commit_edges(&mut s, tt * 10, 1);
+        }
+        let live = s.manifest().clone();
+        let mut ghost = live.successor(999);
+        ghost.stats.n_edge_versions += 100;
+        ghost.seal();
+        let d = crate::manifest_chain::ManifestDelta::between(&live, &ghost, 0).unwrap();
+        fs::write(
+            root.join("manifests").join(format!("{:020}.json", 4)),
+            d.to_json(),
+        )
+        .unwrap();
+
+        // open ignores it: CURRENT still names 3
+        drop(s);
+        let mut re = NativeStore::open(&root).unwrap();
+        assert_eq!(re.generation(), 3);
+        assert_eq!(re.manifest().stats.n_edge_versions, 3);
+        assert!(re.verify().unwrap().is_healthy());
+
+        // gc keeps it (same rule as format 1) and collects nothing it names
+        let report = re.gc(1).unwrap();
+        assert_eq!(manifest_gens(&root), vec![3, 4]);
+        assert_eq!(report.segments_removed, 0);
+        assert!(is_checkpoint(&root, 3), "the floor is anchored");
+        assert!(re.verify().unwrap().is_healthy());
+
+        // and the next commit overwrites the orphan with the real generation 4
+        commit_edges(&mut re, 40, 1);
+        assert_eq!(re.generation(), 4);
+        assert_eq!(re.manifest().stats.n_edge_versions, 4);
+        drop(re);
+        let again = NativeStore::open(&root).unwrap();
+        assert_eq!(again.all_edge_versions().unwrap().len(), 4);
+        assert!(again.verify().unwrap().is_healthy());
+    }
+
+    #[test]
+    fn a_crash_mid_delete_leaves_every_retained_generation_reconstructible() {
+        // `gc_mid_delete` (memo §4): the anchor checkpoints are durable before
+        // any unlink, so whatever subset of the deletions landed, the store
+        // still opens and verifies
+        let root = tmp_root("delta-crash-mid");
+        let mut s = NativeStore::open(&root).unwrap();
+        s.set_checkpoint_every(Some(1_000_000));
+        for tt in 1..=5 {
+            commit_edges(&mut s, tt * 10, 1);
+        }
+        let rows = s.all_edge_versions().unwrap().len();
+        drop(s);
+
+        // pass 0 ran (the floor is a checkpoint), then the process died after
+        // deleting only some of the doomed manifests
+        let s = NativeStore::open(&root).unwrap();
+        s.materialize_checkpoint(4).unwrap();
+        drop(s);
+        fs::remove_file(root.join("manifests").join(format!("{:020}.json", 1))).unwrap();
+        fs::remove_file(root.join("manifests").join(format!("{:020}.json", 3))).unwrap();
+
+        let mut re = NativeStore::open(&root).unwrap();
+        assert_eq!(re.generation(), 5);
+        assert_eq!(re.all_edge_versions().unwrap().len(), rows);
+        assert!(re.verify().unwrap().is_healthy());
+
+        let report = re.gc(2).unwrap();
+        assert_eq!(manifest_gens(&root), vec![4, 5]);
+        assert_eq!(report.manifests_removed, 2, "0 and 2 finish the job");
         assert!(re.verify().unwrap().is_healthy());
     }
 
