@@ -1,0 +1,52 @@
+# storm-v1 campaign — FROZEN 2026-09-15 by the coordinator (task C6).
+# Pre-registered before any run. Append-only: changes land as dated addenda in
+# the internal freeze record (docs/design/CORRECTION_STORM_FREEZE_2026-09-15.md),
+# never as edits here. The merge script stamps every record with this file's
+# sha256 (freeze_id) and the running commit.
+freeze_id: storm-v1-2026-09-15
+anchor:
+  public_commit: 0b461de
+  harness: [tgms/eval/storm.py, tgms/eval/storm_dag.py, scripts/bench_correction_storm.py,
+            scripts/storm_campaign.slurm, scripts/storm_campaign_merge.py]
+host: iTiger (bigTiger partition; node-local TMPDIR; one cell per task)
+oracle: full re-execution of every registered artifact after every batch; digest compare
+        (tgms/eval/storm.py, independent of tgms/tgir/check.py by the import boundary)
+cells:
+  stores: [synth-iv-60k, collegemsg]      # interval valid time; instantaneous (SNAP) — age bands degrade to log distance there, recorded per cell
+  mixes: [c1, c2, c3, c4]                 # 99/1, 95/5, 80/20, 80/20 + burst (burst_size 10000, burst_after 10)
+  ages: [none, recent, hours, days, deep]
+  n_artifacts: [1000]
+  seeds: [0, 1, 2, 3, 4]
+  batches_per_cell: 40
+  arms: [global-recompute, entity-touch, window-overlap, row-touch, tgms-L0, tgms-L1]
+  measure_ttf: [end-to-end, sum]
+r18_probe:                                # the one cell allowed to trip R-18; characterization, not a gate
+  store: synth-iv-60k
+  mixes: [c1, c4]
+  n_artifacts: 10000
+  seeds: [0]
+  allow_r18_trip: true
+dag_phase:
+  store: synth-iv-60k
+  shapes: [chain, tree, diamond, layered, power-law]
+  depth: [4, 16]
+  fanout: [2, 10]
+  cascade_k: depth
+  seeds: [0, 1]
+gates:
+  G-S1_false_fresh: {arms: [tgms-L0, tgms-L1], every_cell: true, max: 0}   # non-negotiable
+  G-S2_false_safe:  {phase: dag, every_cell: true, max: 0}
+predictions:                              # scored after the run; a miss is reported, never re-tuned
+  P1: row-touch false-fresh >= 0.40 overall and == 1.00 on new-identity placements
+  P2: entity-touch false-fresh within 0.10 of row-touch; window-overlap false-fresh == 0 with precision <= tgms-L0
+  P3: tgms-L0/L1 avoided recomputation (decision count) >= 0.95 at c1 and c2, >= 0.80 at c3, and c4 < c3
+  P4: wall-clock avoided recomputation < decision-count avoided in every cell
+  P5: end-to-end time-to-fresh speedup of tgms-L1 over global-recompute > 1.0 at N=1000 on both stores
+  P6: P5's speedup at N=10000 (r18_probe c1) > at N=1000 (same store, mix, seed 0)
+  P7: R-18 (median intersects_calls per batch > 50000) trips in r18_probe c4, not in any N=1000 cell
+falsifiers:
+  a: any false-fresh in a tgms arm
+  b: any false-safe in the dag phase at cascade_k == depth
+  c: wall-clock avoided recomputation <= 0 in any N=1000 cell
+  d: P5 speedup < 1.0 on synth-iv-60k at N=1000
+  e: a coarse baseline (entity-touch or window-overlap) matching tgms-L1 on both false-fresh and wall-clock cost in any cell
