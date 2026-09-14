@@ -227,17 +227,200 @@ verbatim), `dag-records-40-tasks.tar.gz` (raw per-task record directories).
 `scripts/check_result_manifest.py` passes. **Not yet committed** — held in
 the worktree pending the coordinator's scoring of G-S2/falsifier (b).
 
-**Addendum-2 (pre-registered, not yet submitted).** `--dag-seed-from-affected`
-(additive to `scripts/bench_correction_storm.py` / `tgms/eval/storm_dag.py`,
-default off, v1 walk byte-identical when absent) seeds the cascade from
-every artifact `tgms.artifact.lookup.affected()` finds for the DAG-root
+**Addendum-2, mechanism.** `--dag-seed-from-affected` (additive to
+`scripts/bench_correction_storm.py` / `tgms/eval/storm_dag.py`, default
+off, v1 walk byte-identical when absent) seeds the cascade from every
+artifact `tgms.artifact.lookup.affected()` finds for the DAG-root
 correction batch — the same footprint pre-filter the `tgms-*`/
 `entity-touch`/`window-overlap` storm arms already use — not just the
-declared-edge root, then walks each seed's own `parents` edges for the same
-`k`; the registry-wide false-safe oracle is unchanged. Full terms in
-`campaign.yaml`'s `addendum_2` block. Submission is gated on the
-coordinator (the main grid and R-18 probe currently hold the cluster's
-concurrency slots).
+declared-edge root, then walks each seed's own `parents` edges for the
+same `k`; the registry-wide false-safe oracle is unchanged. Full terms in
+`campaign.yaml`'s `addendum_2` block.
+
+## DAG phase v2 — run of record (addendum-2, same 40-cell grid, job 211555;
+commit `8962b78`, the same anchor v1 ran — this run isolates
+`--dag-seed-from-affected` and does not include the D-161 scope-derivation
+rollout)
+
+**Gate result: G-S2_false_safe PASSED — 0/40 cells, registry-wide and
+DAG-node both.** Every cell that failed in v1 (all 20 seed=0 cells) now
+shows `false_safe_count=0`; `tgms-L0`/`tgms-L1` false-fresh is 0/40 across
+every cell, same as v1.
+
+**Measured vs. addendum-2's pre-registered prediction — not the predicted
+magnitude, but the predicted qualitative outcome.** The prediction read
+"nodes_visited unchanged in seed-1 cells and +3 in seed-0 cells." Measured:
+`nodes_visited` increases in **every** cell, by an amount that is constant
+per seed, not per cell or shape — **exactly +61 in all 20 seed=0 cells,
+exactly +62 in all 20 seed=1 cells**, with zero variance. This is because
+`affected()` is a conservative footprint pre-filter, not the exact
+false-safe set: at this run's anchor commit (`8962b78`, pre-D-161), most of
+the incidental storm-population artifacts each DAG task registers before
+building its DAG carry the coarse `(TOP_TERM,)` scope (Addendum-4's own
+finding), so *any* correction's `affected()` answer sweeps in most of that
+population as seeds — not just the handful that actually turn out to have
+changed. The DAG's own cascade discovery is a small, shape-dependent
+fraction of that count; the +61/+62 constant is the incidental population's
+own TOP_TERM survivor count for that seed, unrelated to shape/depth/fanout
+(the same underlying storm population, same seed, same default `mix=None`
+call, precedes every DAG build regardless of shape).
+
+**Quiescence**: `diamond`'s four (depth, fanout) combinations were
+`quiescent=False` in v1 (the frontier was still non-empty when `k` ran
+out) and are `quiescent=True` in v2 for all of them, at both seeds — the
+larger seed set reaches a fixed point within the same `k`.
+
+**Per-cell table** (v1 → v2; all `v2_fs_names` are empty — no false-safe
+artifacts of any kind in v2):
+
+| shape/depth/fanout/seed | v1 false_safe | v2 false_safe | v1 nodes_visited | v2 nodes_visited | Δ | v2 seeds | L0/L1 false_fresh (v2) | quiescent v1→v2 | wall_s v1→v2 |
+|---|---:|---:|---:|---:|---:|---:|---:|---|---:|
+| chain/4/2/s0 | 3 | 0 | 3 | 64 | 61 | 65 | 0/0 | T→T | 13.6→16.1 |
+| chain/4/2/s1 | 0 | 0 | 3 | 65 | 62 | 66 | 0/0 | T→T | 13.4→15.0 |
+| chain/4/10/s0 | 3 | 0 | 3 | 64 | 61 | 65 | 0/0 | T→T | 14.3→16.1 |
+| chain/4/10/s1 | 0 | 0 | 3 | 65 | 62 | 66 | 0/0 | T→T | 13.8→15.0 |
+| chain/16/2/s0 | 3 | 0 | 15 | 76 | 61 | 77 | 0/0 | T→T | 17.4→19.6 |
+| chain/16/2/s1 | 0 | 0 | 15 | 77 | 62 | 78 | 0/0 | T→T | 17.2→18.3 |
+| chain/16/10/s0 | 3 | 0 | 15 | 76 | 61 | 77 | 0/0 | T→T | 19.6→19.7 |
+| chain/16/10/s1 | 0 | 0 | 15 | 77 | 62 | 78 | 0/0 | T→T | 19.1→19.6 |
+| tree/4/2/s0 | 3 | 0 | 14 | 75 | 61 | 62 | 0/0 | T→T | 17.0→19.2 |
+| tree/4/2/s1 | 0 | 0 | 14 | 76 | 62 | 68 | 0/0 | T→T | 16.5→19.0 |
+| tree/4/10/s0 | 3 | 0 | 1110 | 1171 | 61 | 167 | 0/0 | T→T | 310.9→351.7 |
+| tree/4/10/s1 | 0 | 0 | 1110 | 1172 | 62 | 190 | 0/0 | T→T | 311.7→357.2 |
+| tree/16/2/s0† | 3 | 0 | 3999 | 4060 | 61 | 62 | 0/0 | T→T | 1163.2→1194.7 |
+| tree/16/2/s1† | 0 | 0 | 3999 | 4061 | 62 | 71 | 0/0 | T→T | 995.5→1198.7 |
+| tree/16/10/s0† | 3 | 0 | 3999 | 4060 | 61 | 290 | 0/0 | T→T | 1009.2→1200.6 |
+| tree/16/10/s1† | 0 | 0 | 3999 | 4061 | 62 | 380 | 0/0 | T→T | 1002.7→1199.1 |
+| diamond/4/2/s0 | 3 | 0 | 6 | 67 | 61 | 68 | 0/0 | **F→T** | 15.3→17.3 |
+| diamond/4/2/s1 | 0 | 0 | 6 | 68 | 62 | 69 | 0/0 | **F→T** | 14.9→16.5 |
+| diamond/4/10/s0 | 3 | 0 | 22 | 83 | 61 | 84 | 0/0 | **F→T** | 19.7→22.1 |
+| diamond/4/10/s1 | 0 | 0 | 22 | 84 | 62 | 85 | 0/0 | **F→T** | 19.1→21.2 |
+| diamond/16/2/s0 | 3 | 0 | 24 | 85 | 61 | 86 | 0/0 | **F→T** | 20.2→22.6 |
+| diamond/16/2/s1 | 0 | 0 | 24 | 86 | 62 | 87 | 0/0 | **F→T** | 20.1→22.2 |
+| diamond/16/10/s0 | 3 | 0 | 88 | 149 | 61 | 150 | 0/0 | **F→T** | 39.8→41.5 |
+| diamond/16/10/s1 | 0 | 0 | 88 | 150 | 62 | 151 | 0/0 | **F→T** | 35.9→42.3 |
+| layered/4/2/s0 | 3 | 0 | 6 | 67 | 61 | 62 | 0/0 | T→T | 15.0→17.3 |
+| layered/4/2/s1 | 0 | 0 | 6 | 68 | 62 | 65 | 0/0 | T→T | 15.0→16.8 |
+| layered/4/10/s0 | 3 | 0 | 30 | 91 | 61 | 62 | 0/0 | T→T | 24.5→27.1 |
+| layered/4/10/s1 | 0 | 0 | 30 | 92 | 62 | 64 | 0/0 | T→T | 22.9→26.4 |
+| layered/16/2/s0 | 3 | 0 | 30 | 91 | 61 | 62 | 0/0 | T→T | 21.5→24.8 |
+| layered/16/2/s1 | 0 | 0 | 30 | 92 | 62 | 65 | 0/0 | T→T | 21.3→24.2 |
+| layered/16/10/s0 | 3 | 0 | 150 | 211 | 61 | 62 | 0/0 | T→T | 56.3→63.8 |
+| layered/16/10/s1 | 0 | 0 | 150 | 212 | 62 | 64 | 0/0 | T→T | 57.0→63.9 |
+| power-law/4/2/s0 | 3 | 0 | 7 | 68 | 61 | 63 | 0/0 | T→T | 15.9→17.6 |
+| power-law/4/2/s1 | 0 | 0 | 7 | 69 | 62 | 64 | 0/0 | T→T | 14.6→16.9 |
+| power-law/4/10/s0 | 3 | 0 | 39 | 100 | 61 | 75 | 0/0 | T→T | 23.8→27.4 |
+| power-law/4/10/s1 | 0 | 0 | 39 | 101 | 62 | 63 | 0/0 | T→T | 24.3→25.5 |
+| power-law/16/2/s0 | 3 | 0 | 31 | 92 | 61 | 65 | 0/0 | T→T | 22.3→24.8 |
+| power-law/16/2/s1 | 0 | 0 | 31 | 93 | 62 | 66 | 0/0 | T→T | 21.1→24.1 |
+| power-law/16/10/s0 | 3 | 0 | 159 | 220 | 61 | 115 | 0/0 | T→T | 54.8→56.2 |
+| power-law/16/10/s1 | 0 | 0 | 159 | 221 | 62 | 69 | 0/0 | T→T | 56.2→59.7 |
+
+†`truncated=True` in both v1 and v2 (`DEFAULT_MAX_NODES=4000` safety valve).
+
+**Addendum-2 predictions, measured aggregate (no verdicts):**
+
+| prediction | measured |
+|---|---|
+| registry-wide false-safe cells (max 0) | **0/40** |
+| DAG-node false-safe cells (max 0) | **0/40** |
+| seed-1 cells with nodes_visited unchanged | **0/20** (all 20 changed, uniformly by +62) |
+| seed-0 cells with nodes_visited +3 | **0/20** (all 20 changed, uniformly by +61, not +3) |
+| false-fresh total across all 40 cells (tgms-L0 + tgms-L1) | **0** |
+
+**Records**: `storm-campaign-dag-v2-2026-09.json` (merged, provenance job id
+211555 only), `storm-campaign-dag-v2-2026-09-rows.jsonl`,
+`dag-v2-records-40-tasks.tar.gz`. `scripts/check_result_manifest.py`
+passes. Every one of the 40 underlying records carries
+`dag.cascade.seeded_from == "affected"`, `config.addendum_id ==
+"storm-v1-addendum-2"`, `config.freeze_sha256 == "ac21f29c…"` — confirmed
+directly, all 40. **Not yet committed** — held in the worktree pending the
+coordinator's scoring.
+
+## DAG phase v3 — run of record (addendum-3's `dag_phase_v3`, same 40-cell
+grid; jobs 211614 + 211700 + 211706; commit `fdd393c`, the D-161-rolled-out
+engine — this is the same `--dag-seed-from-affected` mechanism v2 tested,
+now run where 13 of 14 read operators derive a real scope instead of 3)
+
+**All six pre-registered predictions PASS, and each matches its predicted
+range exactly, not just its floor:**
+
+| prediction | measured |
+|---|---|
+| registry-wide false-safe cells (max 0) | **0/40** |
+| DAG-node false-safe cells (max 0) | **0/40** (trivial — 0 false-safe artifacts of any kind) |
+| tgms false-fresh total (predicted 0/40) | **0** (tgms-L0 + tgms-L1, summed over all 40 cells) |
+| `nodes_visited` delta vs v1, seed-0 cells (predicted ∈ [3, 20]) | **exactly +15 in all 20 seed-0 cells** |
+| `nodes_visited` delta vs v1, seed-1 cells (predicted ∈ [0, 15]) | **exactly +11 in all 20 seed-1 cells** |
+| `summary.narrowing_coverage.n_all_top_term` (predicted 0) | **0/40 cells** |
+
+**Reading the deltas against v2's own result.** v2 (pre-rollout, 8962b78)
+measured a uniform +61/+62 — most of the incidental storm population was
+`TOP_TERM`-scoped, so `affected()` swept in most of it regardless of
+shape. Under the rollout (fdd393c), `n_all_top_term=0` in every cell — no
+artifact in any of the 40 underlying storm populations falls back to the
+coarse scope — so `affected()`'s answer shrinks to a small, still-uniform-
+per-seed constant (+15 seed-0, +11 seed-1) that reflects genuinely
+narrowed, non-`TOP_TERM` footprint matches rather than a population-wide
+sweep. The constant-per-seed (not per-shape) pattern persists for the same
+structural reason as v2: the same incidental storm population (same seed,
+same default call) precedes every DAG build regardless of shape.
+
+**Quiescence**: as in v2, all four `diamond` (depth, fanout) combinations
+are `quiescent=False` in v1 and `quiescent=True` in v3, at both seeds.
+
+**Per-cell table** (v1 → v3):
+
+| shape/depth/fanout/seed | v1 false_safe | v3 false_safe | v1 nodes_visited | v3 nodes_visited | Δ | n_all_top_term | L0/L1 false_fresh | quiescent v1→v3 | wall_s v1→v3 |
+|---|---:|---:|---:|---:|---:|---:|---:|---|---:|
+| chain/4/2/s0 | 3 | 0 | 3 | 18 | 15 | 0 | 0/0 | T→T | 13.6→15.3 |
+| chain/4/2/s1 | 0 | 0 | 3 | 14 | 11 | 0 | 0/0 | T→T | 13.4→14.8 |
+| chain/4/10/s0 | 3 | 0 | 3 | 18 | 15 | 0 | 0/0 | T→T | 14.3→15.3 |
+| chain/4/10/s1 | 0 | 0 | 3 | 14 | 11 | 0 | 0/0 | T→T | 13.8→14.9 |
+| chain/16/2/s0 | 3 | 0 | 15 | 30 | 15 | 0 | 0/0 | T→T | 17.4→17.6 |
+| chain/16/2/s1 | 0 | 0 | 15 | 26 | 11 | 0 | 0/0 | T→T | 17.2→19.1 |
+| chain/16/10/s0 | 3 | 0 | 15 | 30 | 15 | 0 | 0/0 | T→T | 19.6→19.9 |
+| chain/16/10/s1 | 0 | 0 | 15 | 26 | 11 | 0 | 0/0 | T→T | 19.1→19.1 |
+| tree/4/2/s0 | 3 | 0 | 14 | 29 | 15 | 0 | 0/0 | T→T | 17.0→19.6 |
+| tree/4/2/s1 | 0 | 0 | 14 | 25 | 11 | 0 | 0/0 | T→T | 16.5→19.0 |
+| tree/4/10/s0 | 3 | 0 | 1110 | 1125 | 15 | 0 | 0/0 | T→T | 310.9→351.0 |
+| tree/4/10/s1 | 0 | 0 | 1110 | 1121 | 11 | 0 | 0/0 | T→T | 311.7→350.7 |
+| tree/16/2/s0† | 3 | 0 | 3999 | 4014 | 15 | 0 | 0/0 | T→T | 1163.2→1209.1 |
+| tree/16/2/s1† | 0 | 0 | 3999 | 4010 | 11 | 0 | 0/0 | T→T | 995.5→1199.8 |
+| tree/16/10/s0† | 3 | 0 | 3999 | 4014 | 15 | 0 | 0/0 | T→T | 1009.2→1198.1 |
+| tree/16/10/s1† | 0 | 0 | 3999 | 4010 | 11 | 0 | 0/0 | T→T | 1002.7→1172.4 |
+| diamond/4/2/s0 | 3 | 0 | 6 | 21 | 15 | 0 | 0/0 | **F→T** | 15.3→17.0 |
+| diamond/4/2/s1 | 0 | 0 | 6 | 17 | 11 | 0 | 0/0 | **F→T** | 14.9→16.5 |
+| diamond/4/10/s0 | 3 | 0 | 22 | 37 | 15 | 0 | 0/0 | **F→T** | 19.7→22.3 |
+| diamond/4/10/s1 | 0 | 0 | 22 | 33 | 11 | 0 | 0/0 | **F→T** | 19.1→21.5 |
+| diamond/16/2/s0 | 3 | 0 | 24 | 39 | 15 | 0 | 0/0 | **F→T** | 20.2→22.8 |
+| diamond/16/2/s1 | 0 | 0 | 24 | 35 | 11 | 0 | 0/0 | **F→T** | 20.1→21.9 |
+| diamond/16/10/s0 | 3 | 0 | 88 | 103 | 15 | 0 | 0/0 | **F→T** | 39.8→50.0 |
+| diamond/16/10/s1 | 0 | 0 | 88 | 99 | 11 | 0 | 0/0 | **F→T** | 35.9→41.5 |
+| layered/4/2/s0 | 3 | 0 | 6 | 21 | 15 | 0 | 0/0 | T→T | 15.0→17.3 |
+| layered/4/2/s1 | 0 | 0 | 6 | 17 | 11 | 0 | 0/0 | T→T | 15.0→16.8 |
+| layered/4/10/s0 | 3 | 0 | 30 | 45 | 15 | 0 | 0/0 | T→T | 24.5→23.7 |
+| layered/4/10/s1 | 0 | 0 | 30 | 41 | 11 | 0 | 0/0 | T→T | 22.9→26.6 |
+| layered/16/2/s0 | 3 | 0 | 30 | 45 | 15 | 0 | 0/0 | T→T | 21.5→21.4 |
+| layered/16/2/s1 | 0 | 0 | 30 | 41 | 11 | 0 | 0/0 | T→T | 21.3→23.1 |
+| layered/16/10/s0 | 3 | 0 | 150 | 165 | 15 | 0 | 0/0 | T→T | 56.3→55.9 |
+| layered/16/10/s1 | 0 | 0 | 150 | 161 | 11 | 0 | 0/0 | T→T | 57.0→55.0 |
+| power-law/4/2/s0 | 3 | 0 | 7 | 22 | 15 | 0 | 0/0 | T→T | 15.9→15.6 |
+| power-law/4/2/s1 | 0 | 0 | 7 | 18 | 11 | 0 | 0/0 | T→T | 14.6→17.0 |
+| power-law/4/10/s0 | 3 | 0 | 39 | 54 | 15 | 0 | 0/0 | T→T | 23.8→27.1 |
+| power-law/4/10/s1 | 0 | 0 | 39 | 50 | 11 | 0 | 0/0 | T→T | 24.3→23.9 |
+| power-law/16/2/s0 | 3 | 0 | 31 | 46 | 15 | 0 | 0/0 | T→T | 22.3→21.7 |
+| power-law/16/2/s1 | 0 | 0 | 31 | 42 | 11 | 0 | 0/0 | T→T | 21.1→20.3 |
+| power-law/16/10/s0 | 3 | 0 | 159 | 174 | 15 | 0 | 0/0 | T→T | 54.8→60.0 |
+| power-law/16/10/s1 | 0 | 0 | 159 | 170 | 11 | 0 | 0/0 | T→T | 56.2→55.9 |
+
+†`truncated=True` in both v1 and v3 (`DEFAULT_MAX_NODES=4000` safety valve).
+
+**Records**: `storm-campaign-dag-v3-2026-09.json` (merged, provenance job
+ids 211614 + 211700 + 211706), `storm-campaign-dag-v3-2026-09-rows.jsonl`,
+`dag-v3-records-40-tasks.tar.gz`. `scripts/check_result_manifest.py`
+passes. **Not yet committed** — held in the worktree pending the
+coordinator's scoring.
 
 ## Regenerating (once the C6 freeze creates `campaign.yaml`/`FREEZE_BINDING`)
 
@@ -257,7 +440,13 @@ python scripts/check_result_manifest.py benchmarks/storm-v1/storm-campaign-<date
 ```
 
 The C6 pre-registration table above is still `_(blank)_` by design — the
-main correction-storm cell grid and R-18 probe (addendum-1) are still
-running on iTiger as of this writing. The DAG phase (addendum-1's own
-grid) has completed and its results are reported above, with G-S2/
-falsifier (b) stated as measured outcomes for the coordinator to score.
+main correction-storm cell grid (addendum-1, 36 cells) is **12/36 cells
+complete; 24 cells pending quota headroom; not yet scored** (a cluster
+disk-quota incident on 2026-09-14 — see `SUBMISSION_NOTE.txt` on iTiger —
+has failed the same 24 cells on four consecutive submission attempts;
+resubmission is parked until the PI frees space). The R-18 probe
+(addendum-1) completed (job 211320, 5/5 batches, not wall-capped) but its
+own results are not yet written up in this README. The DAG phase
+(v1/v2/v3, all three addenda) has completed and its results are reported
+above, with G-S2/falsifier (b) stated as measured outcomes for the
+coordinator to score.
