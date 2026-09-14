@@ -40,7 +40,7 @@ CHECKOUT="${TGMS_REPO:-/project/xzhang12/tgms-diskfull-v1}"
 STAGE="${TGMS_STAGE:-/project/xzhang12/diskfull-v1-work}"
 BASE_SEED="${TGMS_BASE_SEED:-1000}"
 TRIALS_PER_TASK="${TGMS_TRIALS_PER_TASK:-100}"
-export TGMS_COMMIT="${TGMS_COMMIT:?set TGMS_COMMIT to the checkout's commit sha}"
+export TGMS_COMMIT="${TGMS_COMMIT:?set TGMS_COMMIT to the checkout commit sha}"
 
 # Defensive: this job step's own environment must never carry the
 # injector's env vars into the parent process (scripts/eval_diskfull.py's

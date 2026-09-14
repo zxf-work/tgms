@@ -338,6 +338,48 @@ corruption_campaign_merge.py --kind corruption`, producing
 `scripts/crash_campaign.slurm`'s smoke testing already found (node-local
 `TMPDIR`, the `git` shim for `TGMS_COMMIT`) rather than rediscovering them.
 
+**EXP-A3 measured, 2026-09-14 (Lane A task A9).** The campaign above run
+for real: 40 tasks × 250 trials, **10,000 trials**, commit `fc2fb98`, job
+211154 (`itiger01`×32, `itiger02`×2, `itiger04`×6), 6m3s wall-clock. Every
+number below is read from the merged, schema-conformant record
+`benchmarks/corruption-v1/eval-corruption-campaign-2026-09-14.json`
+(`scripts/check_result_manifest.py` passes); full detection matrix,
+BENIGN-reason breakdown, and the two infrastructure notes below are in
+`benchmarks/corruption-v1/README.md`.
+
+| verdict | count |
+|---|---:|
+| DETECTED | 5966 |
+| BENIGN | 3775 |
+| TOLERATED-REBUILT | 259 |
+| **SILENT** | **0** |
+
+**Result: 10,000/10,000 trials classified, 0 SILENT** — the campaign gate
+("this count is always zero") passes. Two things worth stating plainly:
+
+1. **The verify-mode upgrade.** This run used `store.adapter.
+   verify(mode="full")` (the harness's own `--verify-mode`, default `full`
+   as of this task) rather than the `mode="fast"` observation task A4's
+   original design used — A3 (`verify_full`) and A8 (the CURRENT-missing
+   refusal) both landed after that design was written, so this task
+   switched the sweep to the strongest oracle available, per its own
+   instructions. This is not cosmetic: it changed two unit tests' real,
+   provable outcomes (an orphaned *manifest* generation's corruption is
+   now DETECTED, where fast mode calls it BENIGN; a severely corrupted
+   `tcsr_file` is now DETECTED via `verify()` directly rather than only
+   reachable via the harness's separate rebuild check) — both confirmed
+   side-by-side against `--verify-mode fast` on the identical file and
+   mutation, not asserted from theory (`tests/test_eval_corruption.py`).
+2. **An infrastructure bug found and fixed before any trial ran.**
+   `scripts/corruption_campaign.slurm` and `scripts/diskfull_campaign.slurm`
+   share a `TGMS_COMMIT` guard whose `:?` error message contained an
+   apostrophe — which breaks bash's parser even inside the enclosing
+   double quotes. Neither script had ever actually been run under `sbatch`
+   before this task's first submission attempt (211093/211094): both
+   arrays failed instantly, exit 2, every task, before a single Python
+   line ran. Fixed by rewording the message; verified with `bash -n` and a
+   clean resubmission that actually ran (211154/211155).
+
 ## EXP-A5 — disk-full / short-write injection (Lane A task A5, design written 2026-09-13)
 
 Real `ENOSPC` needs either root (a loopback filesystem sized to fail) or an
@@ -419,3 +461,44 @@ tasks × 100 trials = 2,000 trials, `%6`) + `scripts/
 corruption_campaign_merge.py --kind diskfull`, producing
 `benchmarks/diskfull-v1/`, same two infrastructure fixes reused from
 `scripts/crash_campaign.slurm`.
+
+**disk-full measured, 2026-09-14 (Lane A task A9).** The campaign above
+run for real: 20 tasks × 100 trials, **2,000 trials**, commit `199f3f5`,
+job 211234 (`itiger01`×11, `itiger04`×9), 2m39s wall-clock. Every number
+below is read from the merged, schema-conformant record
+`benchmarks/diskfull-v1/eval-diskfull-campaign-2026-09-14.json`
+(`scripts/check_result_manifest.py` passes); the full writeup is in
+`benchmarks/diskfull-v1/README.md`.
+
+| site | trials | fired | Q1 pass | Q2 pass | Q3 pass | Q4 pass | hangs |
+|---|---:|---:|---:|---:|---:|---:|---:|
+| `enospc@os.fsync` (mode=diskfull, fired) | 798 | 798 | 798 | 798 | 798 | 798 | 0 |
+| mode=diskfull, not fired | 226 | 0 | 226 | 226 | 226 | 226 | 0 |
+| mode=short_write (never fires — dead code against this codebase, task A5's own finding, confirmed again at this scale) | 976 | 0 | 976 | 976 | 976 | 976 | 0 |
+| **total** | **2000** | **798** | **2000** | **2000** | **2000** | **2000** | **0** |
+
+**Result: 2,000/2,000 trials clean, 0 hangs** (the disallowed outcome).
+
+**Not the result of the first attempt, reported here rather than buried.**
+The first submission of this array (job 211155, commit `fc2fb98`, same
+seeds and scale) reported **152/2,000 trials (7.6%) failing
+`q1_acked_survive`** — e.g. `acked node r20=137839 but believed=[]`, Q2/Q3/Q4
+all clean, 0 hangs. Every one of the 152 was confirmed (not assumed) to
+share one shape: `mode=diskfull`, `inject_at == calls_seen`, exactly one
+`problems` entry. Deterministic reproduction traced it to the raw event
+log: the crash-adjacent operation (a `correct`/`retract` of an
+*already-acked* entity) had its bytes durable on disk before its own
+`fsync` raised the injected `ENOSPC`, so it was correctly never
+acknowledged but got replayed on recovery anyway — the same accepted
+"acked value superseded by the crash batch" direction EXP-A1 already
+documents, generalized here (`eval_durability.py`'s own harness only ever
+special-cases this for one fixed key, `a0`; this harness's injection point
+is uniformly random over the whole workload, so the crash-adjacent write
+can land on, and override, any already-acked entity). This was a harness
+oracle gap, not an engine defect: fixed the same day
+(`scripts/eval_diskfull.py::_last_batch_targets`), regression-tested
+(`tests/test_eval_diskfull.py::
+test_crash_adjacent_unacked_correction_does_not_false_positive_q1`), and
+this section's table is the corrected re-run — same seeds, same scale,
+`fired`/`calls_seen` identical field-by-field to the first attempt, now
+correctly classified. Full detail: `benchmarks/diskfull-v1/README.md`.

@@ -102,23 +102,23 @@ def test_tampered_artifacts_jsonl_is_detected_via_artifact_check(store):
 
 
 def test_orphaned_pre_compaction_segment_is_benign(store):
-    """A file `compact()` already superseded before the mutation ran can
-    never be reached by verify() or by a query against the current
-    generation — the harness's own documented BENIGN case, not silence."""
+    """A superseded *segment* or *close-run* file — `compact()` already
+    stopped referencing it before the mutation ran — is invisible to both
+    verify modes and to a query against the current generation: the
+    harness's own documented BENIGN case, not silence.
+
+    Restricted to `.tgs`/`.tgc` orphans specifically (not orphaned
+    manifests — see `test_orphaned_manifest_generation_is_detected_under_full_verify`
+    right below for why `--verify-mode full`'s own manifest-parent-chain
+    check, added Lane A task A9, changes that case to DETECTED instead)."""
     store_dir, build_meta, baseline = store
-    orphan_rel = next(iter(build_meta["orphan_files"]))
+    file_orphans = [r for r in build_meta["orphan_files"]
+                    if r.endswith(".tgs") or r.endswith(".tgc")]
+    assert file_orphans, "fixture must have at least one orphaned segment/close-run"
+    orphan_rel = sorted(file_orphans)[0]  # deterministic: set iteration order is not
     orphan = store_dir / orphan_rel
     assert orphan.exists(), "the orphan file must still be on disk (no gc has run)"
-
-    # Classify by content *before* mutating — a flipped byte inside a
-    # manifest's JSON text can easily break its own parse.
-    if orphan_rel.endswith(".tgs"):
-        cls = "segment_body"
-    elif orphan_rel.endswith(".tgc"):
-        cls = "close_run"
-    else:
-        kind = json.loads(orphan.read_text()).get("kind", "checkpoint")
-        cls = "checkpoint_manifest" if kind == "checkpoint" else "delta_manifest"
+    cls = "segment_body" if orphan_rel.endswith(".tgs") else "close_run"
 
     data = bytearray(orphan.read_bytes())
     offset = len(data) // 2 if data else 0
@@ -133,6 +133,47 @@ def test_orphaned_pre_compaction_segment_is_benign(store):
     (verdict, reason), obs = _classify(store_dir, mut_info, build_meta, baseline, cls)
     assert verdict == "BENIGN", (verdict, reason, obs)
     assert "superseded" in reason
+
+
+def test_orphaned_manifest_generation_is_detected_under_full_verify(store):
+    """Found while switching the default verify observation to `mode="full"`
+    (Lane A task A9, once A3 landed `verify_full`): unlike a superseded
+    segment/close-run, a superseded *manifest* generation is NOT invisible
+    under full mode. `NativeStoreAdapter.verify(mode="full")`'s own
+    docstring says it walks "the manifest parent chain across every
+    retained generation" — and empirically that means every manifest FILE
+    still physically present on disk (this fixture's `compact()` writes a
+    fresh, self-contained checkpoint but does not delete the superseded
+    generations — only `gc()` does that), not only the chain reachable by
+    walking backward from `CURRENT`. So corrupting an orphaned manifest
+    generation still on disk is DETECTED under full mode, where it was
+    BENIGN under fast mode (`--verify-mode fast` reproduces the old,
+    weaker result) — a real, desirable strengthening from the stronger
+    oracle, not a false positive: full mode is telling the truth about a
+    file it now actually reads."""
+    store_dir, build_meta, baseline = store
+    manifest_orphans = [r for r in build_meta["orphan_files"] if r.endswith(".json")]
+    assert manifest_orphans, "fixture must have at least one orphaned manifest generation"
+    orphan_rel = sorted(manifest_orphans)[0]
+    orphan = store_dir / orphan_rel
+    kind = json.loads(orphan.read_text()).get("kind", "checkpoint")
+    cls = "checkpoint_manifest" if kind == "checkpoint" else "delta_manifest"
+
+    data = bytearray(orphan.read_bytes())
+    offset = len(data) // 2
+    data[offset] ^= 0xFF
+    orphan.write_bytes(bytes(data))
+
+    mut_info = {"class": cls, "mutation": "flip_byte", "note": None,
+               "file": orphan_rel, "offset": offset}
+    (verdict, reason), obs = _classify(store_dir, mut_info, build_meta, baseline, cls)
+    assert verdict == "DETECTED", (verdict, reason, obs)
+    assert obs["verify_problems"], "expected full-mode verify to walk the orphaned generation"
+
+    # Fast mode still calls it BENIGN — same file, same mutation, weaker oracle.
+    obs_fast = ec.observe(store_dir, build_meta["artifact_names"], verify_mode="fast")
+    verdict_fast, reason_fast = ec.classify(cls, mut_info, obs_fast, baseline, build_meta, None)
+    assert verdict_fast == "BENIGN", (verdict_fast, reason_fast, obs_fast)
 
 
 def test_torn_event_log_tail_is_detected_even_read_only(store):
@@ -172,18 +213,48 @@ def test_torn_event_log_tail_is_detected_even_read_only(store):
         assert b'"torn"' not in f.read()
 
 
-def test_corrupted_tcsr_index_is_tolerated_and_rebuilt(store):
+def test_corrupted_tcsr_index_is_detected_under_full_verify(store):
     """tests/test_tcsr_persistence.py::test_a_damaged_file_degrades_to_rebuild:
     a damaged persisted index must never error and must never be trusted —
-    it silently rebuilds. TOLERATED-REBUILT is this harness's name for
-    exactly that outcome."""
+    the engine itself silently rebuilds it, and that degrade-to-rebuild
+    contract still holds (checked below via `check_tcsr_rebuild` directly,
+    same as the harness's own fifth, class-gated check).
+
+    But TOLERATED-REBUILT — this harness's verdict name for "the mutation
+    was invisible to verify() and only caught by the dedicated tcsr rebuild
+    check" — is no longer what a real `flip_byte`-style corruption produces
+    once observation 2 is `verify(mode="full")` (Lane A task A9's default,
+    once A3 landed `verify_full`): `NativeStoreAdapter._verify_tcsr` reads
+    the persisted `.npz` directly as part of full-mode verify and reports
+    an "error"-severity `tcsr-unreadable`/`tcsr-shape` finding for any
+    corruption severe enough that `np.load` chokes on it or the shape does
+    not fit — which is what every real mutation this harness applies
+    produces (a singleton class, so `swap_same_class` even falls back to
+    `flip_byte`). So this class's mutations are now DETECTED via verify()
+    before the dedicated tcsr check ever gets a chance to matter for
+    classification; `--verify-mode fast` (below) still reaches
+    TOLERATED-REBUILT, since fast mode never reads the tcsr file at all."""
     store_dir, build_meta, baseline = store
     idx = ec.FILE_CLASSES["tcsr_file"](store_dir)[0]
     idx.write_bytes(b"not a zipfile at all")
     mut_info = {"class": "tcsr_file", "mutation": "flip_byte", "note": None,
                "file": str(idx.relative_to(store_dir)), "offset": 0}
+
     (verdict, reason), obs = _classify(store_dir, mut_info, build_meta, baseline, "tcsr_file")
-    assert verdict == "TOLERATED-REBUILT", (verdict, reason, obs)
+    assert verdict == "DETECTED", (verdict, reason, obs)
+    assert obs["verify_problems"], "expected full-mode verify to read the tcsr file directly"
+
+    # The engine's own degrade-to-rebuild contract is unaffected either way —
+    # it is a property of the engine, not of which verify mode observed it.
+    tcsr = ec.check_tcsr_rebuild(store_dir)
+    assert tcsr["rebuilt"] and tcsr["error"] is None, tcsr
+
+    # Fast mode never reads the tcsr file, so it still reaches the verdict
+    # this class was originally documented to produce.
+    obs_fast = ec.observe(store_dir, build_meta["artifact_names"], verify_mode="fast")
+    verdict_fast, reason_fast = ec.classify(
+        "tcsr_file", mut_info, obs_fast, baseline, build_meta, tcsr)
+    assert verdict_fast == "TOLERATED-REBUILT", (verdict_fast, reason_fast, obs_fast)
 
 
 def test_swap_same_class_falls_back_when_only_one_file_exists(store):

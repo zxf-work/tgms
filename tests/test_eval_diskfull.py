@@ -166,6 +166,33 @@ def test_diskfull_never_reached_is_a_harmless_no_fire_trial(tmp_path):
     assert acked.read_text().strip() != "", "the seed write should have been acked"
 
 
+def test_crash_adjacent_unacked_correction_does_not_false_positive_q1():
+    """Regression for a false positive `_q1_q3_q4` reported in 152/2000 EXP-A5
+    campaign trials (Lane A task A9, `benchmarks/diskfull-v1/`): the
+    uniformly random injection point can land on a `correct`/`retract` of an
+    entity that was already acked with a different value. That call raises
+    (so it is correctly never acked) but its bytes already reached the real
+    filesystem before the faked `fsync`, so recovery replays it — the same
+    accepted "acked value superseded by the crash batch" direction EXP-A1
+    already documents, here generalized (`_last_batch_targets`) from
+    `eval_durability.py`'s fixed `a0` special case to whichever key this
+    harness's random `inject_at` actually hits.
+
+    `run_trial(2, 1000)` is the exact, deterministically reproduced case
+    found by the campaign: mode=diskfull, inject_at=58, the crash-adjacent
+    batch is `retract(node r20)` superseding r20's last acked correction. Before
+    the fix this failed `q1_acked_survive` ("acked node r20=137839 but
+    believed=[]"); after it, that mismatch is recognized as exempt and
+    reported in `q1_exempted_last_batch`, not as a problem.
+    """
+    r = ed.run_trial(2, seed=1000)
+    assert r["mode"] == "diskfull" and r["inject_at"] == 58 and r["fault_fired"]
+    assert r["q1_acked_survive"], r["problems"]
+    assert r["problems"] == []
+    assert r.get("q1_exempted_last_batch"), "the exemption should have been recorded, not silent"
+    assert ed.is_ok(r), r
+
+
 def test_run_trial_smoke_is_always_ok_and_json_conforms_to_schema(tmp_path, monkeypatch):
     import jsonschema
 
