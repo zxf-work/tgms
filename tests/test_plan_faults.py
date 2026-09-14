@@ -155,24 +155,62 @@ def test_classify_is_total_asserts_on_a_malformed_run():
 
 
 # --------------------------------------------------------------------------- #
-# gate_answer: unsupported AND unverifiable are dropped before delivery      #
+# gate_answer: coordinator Addendum 1 (2026-09-13) -- the primary arm's      #
+# default gate matches harness.py's production gate exactly (unsupported    #
+# only); --strict-gate is the named secondary arm.                          #
 # --------------------------------------------------------------------------- #
 
-def test_gate_answer_drops_unsupported_and_unverifiable():
-    answer = {"text": "t", "claims": [
-        {"id": "c1", "type": "count", "value": 1, "evidence": ["s1"]},
-        {"id": "c2", "type": "count", "value": 2, "evidence": ["s2"]},
-        {"id": "c3", "type": "count", "value": 3, "evidence": ["s3"]},
-    ]}
-    report = {"claims": [
-        {"id": "c1", "verdict": "supported"},
-        {"id": "c2", "verdict": "unsupported"},
-        {"id": "c3", "verdict": "unverifiable"},
-    ]}
-    gated, gated_report, n_dropped = gate_answer(answer, report)
+_THREE_CLAIM_ANSWER = {"text": "t", "claims": [
+    {"id": "c1", "type": "count", "value": 1, "evidence": ["s1"]},
+    {"id": "c2", "type": "count", "value": 2, "evidence": ["s2"]},
+    {"id": "c3", "type": "count", "value": 3, "evidence": ["s3"]},
+]}
+_THREE_CLAIM_REPORT = {"claims": [
+    {"id": "c1", "verdict": "supported"},
+    {"id": "c2", "verdict": "unsupported"},
+    {"id": "c3", "verdict": "unverifiable"},
+]}
+
+
+def test_gate_answer_default_drops_only_unsupported():
+    """Addendum 1: the default is exactly harness.py's own production gate
+    -- an `unverifiable` claim is NOT dropped, so it reaches `classify` and
+    can register a real I1 `silent-violation`. That is the intended
+    finding, not a condition this function pre-empts."""
+    gated, gated_report, n_dropped = gate_answer(_THREE_CLAIM_ANSWER, _THREE_CLAIM_REPORT)
+    assert [c["id"] for c in gated["claims"]] == ["c1", "c3"]
+    assert [r["id"] for r in gated_report["claims"]] == ["c1", "c3"]
+    assert n_dropped == 1
+
+
+def test_gate_answer_strict_drops_unsupported_and_unverifiable():
+    """The named secondary arm (`--strict-gate`)."""
+    gated, gated_report, n_dropped = gate_answer(_THREE_CLAIM_ANSWER, _THREE_CLAIM_REPORT,
+                                                 strict=True)
     assert [c["id"] for c in gated["claims"]] == ["c1"]
     assert [r["id"] for r in gated_report["claims"]] == ["c1"]
     assert n_dropped == 2
+
+
+def test_unverifiable_claim_surfaces_as_silent_violation_under_the_default_gate():
+    """The end-to-end point of Addendum 1: a claim that survives the
+    default (primary-arm) gate as `unverifiable` is a real I1 violation
+    under `classify`, not something quietly absorbed."""
+    gated, gated_report, _n = gate_answer(_THREE_CLAIM_ANSWER, _THREE_CLAIM_REPORT)
+    run = Run(answer=gated, answer_value=[1, 3], report=gated_report)
+    cls = classify(run)
+    assert cls.outcome is Outcome.SILENT_VIOLATION
+    assert any(i == "I1" and claim_id == "c3" for i, claim_id, _d in cls.invariants)
+
+
+def test_has_weak_support_flag():
+    from tgms.eval.plan_faults import has_weak_support
+
+    weak = {"claims": [{"id": "c1", "verdict": "weakly_supported"}]}
+    clean = {"claims": [{"id": "c1", "verdict": "supported"}]}
+    assert has_weak_support(weak) is True
+    assert has_weak_support(clean) is False
+    assert has_weak_support({"claims": []}) is False
 
 
 # --------------------------------------------------------------------------- #
@@ -219,7 +257,7 @@ def test_mutator_determinism_same_seed_same_digest(cell_id):
 
 
 def test_run_plan_cell_determinism(monkeypatch):
-    """The same property one level up: `scripts/eval_fault_matrix.py`'s own
+    """The same property one level up: `scripts/eval_trust_boundary_matrix.py`'s own
     trial loop, seeded, over a fixed in-memory plan pool with no store
     needed for the *static* stage (validate_static accepts adapter=None)."""
     from tgms.agent.verifier import validate_static
@@ -396,7 +434,7 @@ def test_smoke_run_writes_a_manifest_with_the_required_fields(tmp_path):
     pytest.importorskip("tgms._engine", reason="native engine extension not built")
     store_dir = tmp_path / "stores" / "collegemsg"
     out_dir = tmp_path / "faults-out"
-    script = ROOT / "scripts" / "eval_fault_matrix.py"
+    script = ROOT / "scripts" / "eval_trust_boundary_matrix.py"
     env = {"PYTHONPATH": str(ROOT), "TGMS_TEST_BACKEND": "native"}
     import os
     full_env = {**os.environ, **env}
@@ -426,7 +464,7 @@ def test_smoke_run_writes_a_manifest_with_the_required_fields(tmp_path):
 def test_dry_run_lists_cells_without_a_store():
     """`--dry-run` never opens a store or touches the network -- runs even
     without the frozen event log or the native engine."""
-    script = ROOT / "scripts" / "eval_fault_matrix.py"
+    script = ROOT / "scripts" / "eval_trust_boundary_matrix.py"
     import os
     result = subprocess.run(
         [sys.executable, str(script), "--dry-run"],
