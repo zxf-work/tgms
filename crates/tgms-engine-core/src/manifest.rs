@@ -10,18 +10,25 @@
 //! Manifests are JSON on purpose. They are small, written once per commit,
 //! and being able to read one with `cat` during an incident is worth more
 //! than the bytes a binary encoding would save.
+//!
+//! This module owns the *logical* manifest — the document one generation
+//! means. How it reaches disk (a format-2 checkpoint or a delta against its
+//! parent) is `manifest_chain`'s business; a reader that has reconstructed a
+//! generation holds exactly the `Manifest` a format-1 store would have
+//! written for the same content, and `manifest_sha` is the digest of that
+//! logical document either way.
 
 use serde::{Deserialize, Serialize};
 
 use crate::derive::sha256_hex;
 use crate::error::{EngineError, Result};
-use crate::FORMAT_VERSION;
+use crate::{FORMAT_LEGACY, MANIFEST_FORMAT_VERSION};
 
 /// Truncation used for file/manifest digests: 16 hex chars = 64 bits, enough
 /// to detect corruption and mismatched pairings (not a security boundary).
 pub const SHA_HEX_LEN: usize = 16;
 
-fn short_sha(text: &str) -> String {
+pub(crate) fn short_sha(text: &str) -> String {
     sha256_hex(text)[..SHA_HEX_LEN].to_string()
 }
 
@@ -152,7 +159,7 @@ impl Manifest {
     /// The empty store: generation 0, no data, seeded log chain.
     pub fn genesis() -> Self {
         let mut m = Self {
-            format: FORMAT_VERSION,
+            format: MANIFEST_FORMAT_VERSION,
             generation: 0,
             parent: None,
             created_tt: 0,
@@ -183,7 +190,10 @@ impl Manifest {
         next
     }
 
-    fn body_sha(&self) -> String {
+    /// The digest this manifest *should* carry: the sha of the document with
+    /// `manifest_sha` blanked. Public because reconstruction has to re-derive
+    /// it independently of the record that claimed it (`manifest_chain`).
+    pub fn body_sha(&self) -> String {
         let mut blanked = self.clone();
         blanked.manifest_sha = String::new();
         short_sha(&serde_json::to_string(&blanked).expect("manifest is serializable"))
@@ -205,10 +215,18 @@ impl Manifest {
     }
 
     /// Structural checks every manifest must pass before it is trusted.
+    ///
+    /// Format 1 is *accepted* here rather than rejected (memo §4,
+    /// "Migration"): a store the previous engine wrote must still open, and
+    /// still verify, so that `tgms store upgrade-manifests` has something to
+    /// read. Writing is where the line is drawn — every publication path
+    /// asks `manifest_chain::is_writable_format` first, so a format-1 store
+    /// is read-only rather than silently reinterpreted.
     pub fn verify(&self) -> Result<()> {
-        if self.format != FORMAT_VERSION {
+        if self.format != MANIFEST_FORMAT_VERSION && self.format != FORMAT_LEGACY {
             return Err(EngineError::corrupt(format!(
-                "manifest format {} is not supported by this build (expected {FORMAT_VERSION})",
+                "manifest format {} is not supported by this build \
+                 (expected {MANIFEST_FORMAT_VERSION}, or {FORMAT_LEGACY} read-only)",
                 self.format
             )));
         }
@@ -264,6 +282,30 @@ mod tests {
         assert_eq!(g1.parent, Some(0));
         assert_eq!(g1.created_tt, 1234);
         assert_ne!(g1.manifest_sha, g0.manifest_sha);
+    }
+
+    #[test]
+    fn a_format_1_manifest_still_verifies_but_is_not_writable() {
+        // migration (memo §4): the previous engine's documents must open, or
+        // there is nothing for `upgrade-manifests` to convert
+        let mut legacy = Manifest::genesis();
+        legacy.format = FORMAT_LEGACY;
+        legacy.seal();
+        legacy.verify().unwrap();
+        assert_eq!(Manifest::from_json(&legacy.to_json()).unwrap(), legacy);
+        assert!(!crate::manifest_chain::is_writable_format(legacy.format));
+        assert!(crate::manifest_chain::is_writable_format(
+            Manifest::genesis().format
+        ));
+
+        // a format from the future is still rejected outright
+        let mut future = Manifest::genesis();
+        future.format = MANIFEST_FORMAT_VERSION + 1;
+        future.seal();
+        assert_eq!(
+            future.verify().unwrap_err().category,
+            crate::error::Category::Corrupt
+        );
     }
 
     #[test]

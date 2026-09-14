@@ -217,7 +217,22 @@ def build_parser() -> argparse.ArgumentParser:
                         help="rerun the frozen test split; reason is logged (§8.3)")
 
     p_store = sub.add_parser("store", help="native store maintenance")
-    p_store.add_argument("action", choices=["gc", "compact", "verify"])
+    p_store.add_argument(
+        "action", choices=["gc", "compact", "verify", "upgrade-manifests"],
+        help="gc: drop superseded generations and the files only they "
+             "reference. compact: re-sort the live rows into fresh segments. "
+             "verify: checksum-walk everything this generation names. "
+             "upgrade-manifests: convert a store written by the pre-2026-09-13 "
+             "engine (on-disk manifest format 1, one full manifest per "
+             "generation) to format 2, the checkpoint-plus-delta chain this "
+             "build writes. A format-1 store opens and reads fine but refuses "
+             "every write until this is run. It republishes the current "
+             "content as one checkpoint and flips CURRENT: one manifest "
+             "written, no segment, close run, dictionary or event-log byte "
+             "touched, and it is safe to run twice. The generation counter "
+             "advances by one and manifest_sha changes, so any persisted TCSR "
+             "index rebuilds on next use and build receipts must not be "
+             "compared on manifest_sha across the two formats.")
     p_store.add_argument("--store", required=True)
     p_store.add_argument("--keep", type=int, default=2,
                          help="gc: generations to retain besides those "
@@ -546,6 +561,33 @@ def main(argv: list[str] | None = None) -> int:
         print(json.dumps({"rows": len(rows), "out_dir": cfg["out_dir"]}))
     elif args.cmd == "store":
         import tgms
+        if args.action == "upgrade-manifests":
+            # Deliberately *not* through `tgms.open`: that opens the event log
+            # and may replay a suffix, which is a write — and a write is the
+            # one thing a format-1 store refuses until this command has run.
+            # The engine handle alone is enough, and touches nothing else.
+            from pathlib import Path as _StorePath
+
+            from tgms.storage.native import NativeAdapter
+            adapter = NativeAdapter(_StorePath(args.store) / "native")
+            report = adapter.upgrade_manifests()
+            adapter.close()
+            if report["upgraded"]:
+                print(f"store:      {args.store}")
+                print(f"upgraded:   manifest format {report['from_format']} "
+                      f"-> {report['to_format']}")
+                print(f"generation: {report['generation']} "
+                      f"(sha {report['manifest_sha']})")
+                print("\nOne checkpoint written and CURRENT flipped; segments, "
+                      "close runs, the dictionary and the event log are "
+                      "untouched. Persisted TCSR indexes will rebuild on next "
+                      "use, and receipts must not be compared on manifest_sha "
+                      "across the two formats.")
+            else:
+                print(f"store:      {args.store}")
+                print(f"unchanged:  already at manifest format "
+                      f"{report['to_format']}")
+            return 0
         store = tgms.open(args.store, backend="native")
         if args.action == "verify":
             r = store.adapter.verify()

@@ -1,0 +1,35 @@
+{
+  "format": 1,
+  "generation": 0,
+  "parent": null,
+  "created_tt": 0,
+  "event_log": {
+    "offset": 0,
+    "chain": "e3b0c44298fc1c14"
+  },
+  "dict": {
+    "records": 0,
+    "bytes": 0
+  },
+  "widths": {
+    "entity_id": 32,
+    "row_id": 32,
+    "rel_code": 16
+  },
+  "node_store": [],
+  "edge_lanes": {
+    "event": [],
+    "interval": []
+  },
+  "close_runs": [],
+  "next_segment_id": 0,
+  "stats": {
+    "n_entities": 0,
+    "n_node_versions": 0,
+    "n_edge_versions": 0,
+    "vt_min": null,
+    "vt_max": null,
+    "max_out_degree": 0
+  },
+  "manifest_sha": "1d21911fe6344307"
+}

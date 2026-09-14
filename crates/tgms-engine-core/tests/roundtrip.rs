@@ -298,3 +298,118 @@ fn a_reopened_store_sees_exactly_what_was_committed() {
     assert_eq!(counts[1], counts[2]);
     assert_eq!(counts[0].2, reference.len());
 }
+
+// --- the manifest chain, over the same generator (memo §6) -------------- //
+
+/// The same shape as `build`, with the checkpoint interval under the test's
+/// control. The override is per-handle by design — it must not race other
+/// threads through the process environment — so the writing handle is the one
+/// that has to carry it.
+fn build_with_k(root: &std::path::Path, seed: u64, batches: usize, k: u64) -> NativeStore {
+    let mut store = NativeStore::open(root).unwrap();
+    store.set_checkpoint_every(Some(k));
+    store.set_layout(PartitionMap::new(0, 3 * DAY).unwrap(), 8 * 1024);
+    let mut rng = Rng::new(seed);
+    let mut tt = 100i64;
+    let mut counter = 0u32;
+    for _ in 0..batches {
+        tt += 1 + rng.below(5) as i64;
+        store.begin(tt).unwrap();
+        let n = 1 + rng.below(40);
+        for _ in 0..n {
+            let src = rng.below(23) as u32;
+            let dst = rng.below(23) as u32;
+            let uid_s = format!("n{src}");
+            let uid_d = format!("n{dst}");
+            let src_id = store.ensure_entity(&uid_s, "Node").unwrap();
+            let dst_id = store.ensure_entity(&uid_d, "Node").unwrap();
+            let rel = RELS[rng.below(3) as usize];
+            let disc = format!("#{counter}");
+            counter += 1;
+            let vt_s = rng.below(40) as i64 * DAY / 4 + rng.below(1_000) as i64;
+            // both lanes, so a delta has to carry entries for each
+            let vt_e = if rng.chance(6) {
+                vt_s + 1 + rng.below(30) as i64 * DAY
+            } else {
+                vt_s + 1
+            };
+            let eid = edge_eid(&uid_s, &uid_d, rel, &disc);
+            store
+                .stage_edge(EdgeRow {
+                    vid: version_vid(&eid.to_hex(), tt, vt_s),
+                    src_id,
+                    dst_id,
+                    rel_type: rel.to_string(),
+                    disc,
+                    vt_s,
+                    vt_e,
+                    tt_s: tt,
+                    props: "{}".to_string(),
+                    source: "ingest".to_string(),
+                    provenance_ref: None,
+                })
+                .unwrap();
+        }
+        store.commit(EventLogRef::default()).unwrap();
+    }
+    store
+}
+
+/// The stated property (memo §6): for every consecutive pair of generations a
+/// randomized store produced, `apply(delta(parent, child)) == child` — and the
+/// chain on disk reconstructs to exactly those documents, whatever K is.
+#[test]
+fn deltas_round_trip_over_a_randomized_store() {
+    use tgms_engine_core::manifest_chain::{reconstruct, ManifestDelta};
+
+    for (seed, k) in [(1u64, 3u64), (42, 5), (90210, 7), (7, 1_000_000)] {
+        let root = tmp_root(&format!("chain-{seed}-{k}"));
+        let store = build_with_k(&root, seed, 22, k);
+        let top = store.generation();
+        assert_eq!(top, 22, "one generation per committed batch");
+        drop(store);
+
+        let mut prev = reconstruct(&root, 0).unwrap().manifest;
+        let mut checkpoints = 1u64;
+        let mut deltas = 0u64;
+        for g in 1..=top {
+            let resolved = reconstruct(&root, g).unwrap();
+            let child = resolved.manifest;
+            assert_eq!(child.generation, g);
+            // self-consistent: the reconstruction hashes to what the record
+            // claimed, and no chain runs longer than K
+            assert_eq!(child.body_sha(), child.manifest_sha);
+            assert!(resolved.deltas < k, "chain of {} at K={k}", resolved.deltas);
+            if resolved.deltas == 0 {
+                checkpoints += 1;
+            } else {
+                deltas += 1;
+            }
+
+            // apply(delta(parent, child)) == child, over real engine output
+            let d = ManifestDelta::between(&prev, &child, resolved.checkpoint)
+                .expect("consecutive committed generations are expressible as a delta");
+            assert_eq!(d.apply(&prev), child, "generation {g}");
+            d.verify_self().unwrap();
+            assert_eq!(d.parent_sha, prev.manifest_sha);
+            assert_eq!(d.manifest_sha, child.manifest_sha);
+
+            prev = child;
+        }
+        if k < 20 {
+            assert!(checkpoints > 1, "K={k} should have produced checkpoints");
+        } else {
+            assert_eq!(checkpoints, 1, "K={k} should have checkpointed only genesis");
+        }
+        assert!(deltas > 0, "K={k} should have produced deltas");
+
+        // and the store the chain describes still reads back correctly
+        let (reopened, segs) = open_segments(&root);
+        assert_eq!(reopened.generation(), top);
+        assert_eq!(
+            scan(&segs, &ScanRequest::current()).len() as u64,
+            reopened.manifest().stats.n_edge_versions
+        );
+        assert!(reopened.verify().unwrap().is_healthy());
+    }
+}

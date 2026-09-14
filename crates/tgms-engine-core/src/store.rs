@@ -14,7 +14,8 @@
 //! 2. segment and close-run files are written and fsynced;
 //! 3. the dictionary tail is appended and fsynced;
 //! 4. `manifests/<G>.json` is written, fsynced, renamed, and its directory
-//!    fsynced;
+//!    fsynced — as a delta against generation G−1, or as a full checkpoint
+//!    every `K`th generation (`manifest_chain`);
 //! 5. `CURRENT` is rewritten atomically — **the publication point**.
 //!
 //! A crash before step 5 is invisible: `open` reads the old `CURRENT`, and
@@ -31,6 +32,7 @@ use crate::dict::Dictionary;
 use crate::error::{EngineError, Result};
 use crate::derive::Id96;
 use crate::manifest::{CloseRunRef, EventLogRef, Manifest};
+use crate::manifest_chain::{self, ManifestDelta};
 use crate::row::{EdgeRow, Lane, NodeRow, RowKind};
 use crate::segment::MmapSource;
 use crate::staging::{PartitionMap, Staging};
@@ -68,6 +70,17 @@ pub struct NativeStore {
     pin_key: PathBuf,
     dict: Dictionary,
     manifest: Manifest,
+    /// Generation of the last full checkpoint on the manifest chain — where
+    /// `open` would start replaying deltas from, and what each delta this
+    /// handle writes records as its `checkpoint` hint.
+    checkpoint_gen: u64,
+    /// Per-handle override of the checkpoint interval (`None` = the process
+    /// default, `TGMS_MANIFEST_CHECKPOINT_EVERY` or
+    /// `defaults::MANIFEST_CHECKPOINT_EVERY`). Exists for the same reason
+    /// `set_segment_cache_budget` does: a sweep or a test must be able to
+    /// change K without mutating the process environment, which races other
+    /// threads.
+    checkpoint_every: Option<u64>,
     staging: Staging,
     /// Closes landing on rows staged in this same batch — folded into the
     /// owning segment's sidecar at seal, so no run file is needed.
@@ -176,6 +189,11 @@ pub struct CommitPhases {
     /// with store history rather than with the batch.
     pub manifest_bytes: u64,
     pub segments_named: u64,
+    /// Whether step 4 wrote a full checkpoint rather than a delta. A
+    /// checkpoint every `K`th generation is the amortized cost the delta
+    /// design trades for; separating the two keeps that a measurement rather
+    /// than an assumption.
+    pub manifest_checkpoint: bool,
 }
 
 impl NativeStore {
@@ -185,12 +203,14 @@ impl NativeStore {
             fs::create_dir_all(root.join(sub))
                 .map_err(|e| EngineError::from(e).at_file(root.join(sub)))?;
         }
-        let manifest = if root.join(CURRENT).exists() {
+        let (manifest, checkpoint_gen) = if root.join(CURRENT).exists() {
             Self::load_current(&root)?
         } else {
             let genesis = Manifest::genesis();
-            Self::publish(&root, &genesis)?;
-            genesis
+            // generation 0 is always a checkpoint: a chain must start
+            // somewhere, and there is no parent to diff against
+            Self::publish(&root, None, &genesis, true, u64::MAX)?;
+            (genesis, 0)
         };
         let dict = Dictionary::open(
             root.join(DICT),
@@ -205,6 +225,8 @@ impl NativeStore {
             pin_key,
             dict,
             manifest,
+            checkpoint_gen,
+            checkpoint_every: None,
             staging: Staging::default(),
             staged_closes: HashMap::new(),
             pending_closes: Vec::new(),
@@ -265,7 +287,15 @@ impl NativeStore {
         Ok(())
     }
 
-    fn load_current(root: &Path) -> Result<Manifest> {
+    /// Resolve `CURRENT` into `(manifest, checkpoint generation)`.
+    ///
+    /// The `CURRENT` half is unchanged from format 1: one line of
+    /// `"<generation> <sha>"`, and the sha must equal the manifest's. What
+    /// changed is that the manifest may now be assembled from a checkpoint
+    /// plus up to `K−1` deltas rather than read whole — which the sha check
+    /// cannot tell apart, because `manifest_sha` is the digest of the logical
+    /// document either way.
+    fn load_current(root: &Path) -> Result<(Manifest, u64)> {
         let cur_path = root.join(CURRENT);
         let text = fs::read_to_string(&cur_path)
             .map_err(|e| EngineError::from(e).at_file(&cur_path))?;
@@ -285,20 +315,14 @@ impl NativeStore {
         })?;
 
         let m_path = Self::manifest_path(root, generation);
-        let raw = fs::read_to_string(&m_path).map_err(|e| {
-            EngineError::corrupt(format!(
-                "CURRENT points at generation {generation} but its manifest is unreadable: {e}"
-            ))
-            .at_file(&m_path)
-        })?;
-        let manifest = Manifest::from_json(&raw).map_err(|e| e.at_file(&m_path))?;
-        if manifest.generation != generation {
+        if !m_path.exists() {
             return Err(EngineError::corrupt(format!(
-                "manifest says generation {} but is filed as {generation}",
-                manifest.generation
+                "CURRENT points at generation {generation} but its manifest is missing"
             ))
             .at_file(&m_path));
         }
+        let resolved = manifest_chain::reconstruct(root, generation)?;
+        let manifest = resolved.manifest;
         if manifest.manifest_sha != sha {
             return Err(EngineError::corrupt(format!(
                 "CURRENT records sha {sha} but manifest {generation} has {}",
@@ -306,23 +330,50 @@ impl NativeStore {
             ))
             .at_file(&m_path));
         }
-        Ok(manifest)
+        Ok((manifest, resolved.checkpoint))
     }
 
     fn manifest_path(root: &Path, generation: u64) -> PathBuf {
-        root.join("manifests").join(format!("{generation:020}.json"))
+        manifest_chain::manifest_path(root, generation)
     }
 
-    /// Steps 4 and 5: write the manifest, then flip `CURRENT`.
+    /// Steps 4 and 5: write this generation's manifest record, then flip
+    /// `CURRENT`.
     ///
-    /// Returns `(manifest_us, current_us, manifest_bytes)` — the split
-    /// matters because step 4 rewrites the whole manifest every generation
-    /// while step 5 writes forty bytes, and only one of those grows with
-    /// store history.
-    fn publish(root: &Path, manifest: &Manifest) -> Result<(u64, u64, u64)> {
+    /// `prev` is the parent generation and the checkpoint the chain currently
+    /// rests on; `None` means "no parent to diff against", which forces a
+    /// checkpoint. `force_checkpoint` is the memo's rules 2 and 3 —
+    /// compaction (which replaces the whole segment list, so a delta would be
+    /// no smaller) and gc's retention floor.
+    ///
+    /// Returns `(manifest_us, current_us, manifest_bytes, checkpoint_gen)`.
+    /// The timing split matters because step 4 used to rewrite the whole
+    /// manifest every generation while step 5 writes forty bytes; the point
+    /// of this change is that step 4 no longer grows with store history
+    /// either, so the split is what shows it.
+    fn publish(
+        root: &Path,
+        prev: Option<(&Manifest, u64)>,
+        manifest: &Manifest,
+        force_checkpoint: bool,
+        every: u64,
+    ) -> Result<(u64, u64, u64, u64)> {
         manifest.verify()?;
-        let m_path = Self::manifest_path(root, manifest.generation);
-        let json = manifest.to_json();
+        if !manifest_chain::is_writable_format(manifest.format) {
+            return Err(manifest_chain::read_only_format_error(manifest.format));
+        }
+        let generation = manifest.generation;
+        let delta = if force_checkpoint || generation.is_multiple_of(every) {
+            None
+        } else {
+            prev.and_then(|(parent, ckpt)| ManifestDelta::between(parent, manifest, ckpt))
+        };
+        let (json, checkpoint_gen) = match &delta {
+            Some(d) => (d.to_json(), prev.expect("a delta needs a parent").1),
+            None => (manifest_chain::checkpoint_json(manifest), generation),
+        };
+
+        let m_path = Self::manifest_path(root, generation);
         let t = std::time::Instant::now();
         write_atomic(&m_path, &json)?;
         let manifest_us = t.elapsed().as_micros() as u64;
@@ -330,10 +381,15 @@ impl NativeStore {
         let t = std::time::Instant::now();
         write_atomic(
             &root.join(CURRENT),
-            &format!("{} {}\n", manifest.generation, manifest.manifest_sha),
+            &format!("{} {}\n", generation, manifest.manifest_sha),
         )?;
         crash_point("after_current");
-        Ok((manifest_us, t.elapsed().as_micros() as u64, json.len() as u64))
+        Ok((
+            manifest_us,
+            t.elapsed().as_micros() as u64,
+            json.len() as u64,
+            checkpoint_gen,
+        ))
     }
 
     pub fn root(&self) -> &Path {
@@ -431,15 +487,141 @@ impl NativeStore {
 
     /// Publish an already-built manifest as the next generation. Used by
     /// compaction, which rewrites content without going through a batch.
+    ///
+    /// Always a checkpoint (memo §4, checkpoint rule 2): the only caller
+    /// replaces the entire segment list, so the delta would be no smaller
+    /// than the full document — and the chain conveniently resets at exactly
+    /// the point the store shrinks.
     pub(crate) fn install(&mut self, next: Manifest) -> Result<u64> {
         if self.in_batch() {
             return Err(EngineError::invariant(
                 "cannot publish a generation while a batch is open",
             ));
         }
-        Self::publish(&self.root, &next)?;
+        self.require_writable_format()?;
+        let (_, _, _, ckpt) = Self::publish(
+            &self.root,
+            Some((&self.manifest, self.checkpoint_gen)),
+            &next,
+            true,
+            self.checkpoint_every(),
+        )?;
+        self.checkpoint_gen = ckpt;
         self.adopt(next);
         Ok(self.manifest.generation)
+    }
+
+    /// Rewrite one generation's record as a full checkpoint, unless it is one
+    /// already. Returns whether a file was written.
+    ///
+    /// The rewrite is content-preserving by construction — the checkpoint is
+    /// serialized from the reconstruction of the very record it replaces — so
+    /// `manifest_sha` is unchanged and `CURRENT` keeps pointing at the same
+    /// digest whether or not this generation is the live one. That is what
+    /// lets gc cut a chain below its retention floor without a publication
+    /// step (`gc.rs`, pass 0).
+    pub(crate) fn materialize_checkpoint(&self, generation: u64) -> Result<bool> {
+        if manifest_chain::read_record(&self.root, generation)?.is_checkpoint() {
+            return Ok(false);
+        }
+        self.require_writable_format()?;
+        let resolved = manifest_chain::reconstruct(&self.root, generation)?;
+        write_atomic(
+            &Self::manifest_path(&self.root, generation),
+            &manifest_chain::checkpoint_json(&resolved.manifest),
+        )?;
+        Ok(true)
+    }
+
+    /// The on-disk manifest format this store was opened at: 2 for a store
+    /// this build wrote, 1 for one the previous engine wrote.
+    pub fn manifest_format(&self) -> u32 {
+        self.manifest.format
+    }
+
+    /// Generation of the checkpoint the current chain rests on. Equal to
+    /// `generation()` right after a checkpoint; at most `K−1` below it
+    /// otherwise.
+    pub fn checkpoint_generation(&self) -> u64 {
+        self.checkpoint_gen
+    }
+
+    /// Override the checkpoint interval for this handle (`None` = the
+    /// process default). The A/B sweeps K; tests use it to reach a periodic
+    /// checkpoint in a handful of commits.
+    pub fn set_checkpoint_every(&mut self, every: Option<u64>) {
+        self.checkpoint_every = every.filter(|k| *k > 0);
+    }
+
+    /// The checkpoint interval in force for this handle.
+    pub fn checkpoint_every(&self) -> u64 {
+        self.checkpoint_every
+            .unwrap_or_else(manifest_chain::checkpoint_every)
+    }
+
+    /// Refuse a write against a store this build cannot write (memo §4,
+    /// "Migration"): format-1 stores open read-only and are converted by an
+    /// explicit command, never silently reinterpreted.
+    pub(crate) fn require_writable_format(&self) -> Result<()> {
+        if manifest_chain::is_writable_format(self.manifest.format) {
+            return Ok(());
+        }
+        Err(manifest_chain::read_only_format_error(self.manifest.format))
+    }
+
+    /// Convert a format-1 store in place: publish the current generation's
+    /// content again as a format-2 checkpoint (memo §4, "Migration").
+    ///
+    /// **Deviation from the memo, and why.** §4 says "write generation `G` as
+    /// a format-2 checkpoint … flip `CURRENT`". `manifest_sha` covers the
+    /// `format` field, so the converted document hashes differently from the
+    /// one `CURRENT` currently names — and rewriting `manifests/<G>.json` in
+    /// place would leave a window in which `CURRENT` names a sha no file on
+    /// disk has. A crash there is an unopenable store, which is invariant 1
+    /// (single publication point; everything before `CURRENT` is invisible on
+    /// crash) lost. So the checkpoint is published as generation `G+1` with
+    /// identical logical content: the ordinary shape, where a crash before the
+    /// flip leaves `G` intact and `G+1` orphaned. One file written, nothing
+    /// else touched, and the generation counter advances by one — which the
+    /// TCSR stamp already treats as a rebuild trigger, as §4 anticipates.
+    ///
+    /// Idempotent: a store already at format 2 is returned unchanged.
+    pub fn upgrade_manifests(&mut self) -> Result<UpgradeReport> {
+        if self.in_batch() {
+            return Err(EngineError::invariant(
+                "cannot upgrade manifests while a batch is open",
+            ));
+        }
+        if manifest_chain::is_writable_format(self.manifest.format) {
+            return Ok(UpgradeReport {
+                upgraded: false,
+                from_format: self.manifest.format,
+                generation: self.manifest.generation,
+                manifest_sha: self.manifest.manifest_sha.clone(),
+            });
+        }
+        if self.manifest.format != crate::FORMAT_LEGACY {
+            return Err(manifest_chain::read_only_format_error(self.manifest.format));
+        }
+        let from_format = self.manifest.format;
+        let mut next = self.manifest.successor(self.manifest.created_tt);
+        next.format = crate::MANIFEST_FORMAT_VERSION;
+        next.seal();
+        let (_, _, _, ckpt) = Self::publish(
+            &self.root,
+            Some((&self.manifest, self.checkpoint_gen)),
+            &next,
+            true,
+            self.checkpoint_every(),
+        )?;
+        self.checkpoint_gen = ckpt;
+        self.adopt(next);
+        Ok(UpgradeReport {
+            upgraded: true,
+            from_format,
+            generation: self.manifest.generation,
+            manifest_sha: self.manifest.manifest_sha.clone(),
+        })
     }
 
     /// Open a segment, verifying its checksums the first time this session
@@ -497,9 +679,35 @@ impl NativeStore {
     pub fn verify(&self) -> Result<VerifyReport> {
         let mut report = VerifyReport {
             generation: self.manifest.generation,
+            manifest_format: self.manifest.format,
             ..Default::default()
         };
         self.manifest.verify()?;
+
+        // Invariant 4: this generation must be checkable *from disk alone*.
+        // With format 2 that is no longer a single document read — it is the
+        // checkpoint plus the delta chain above it, each record self-sha'd,
+        // each link's `parent_sha` matched, and the reconstruction re-hashed
+        // against what each delta claims. Doing it here rather than trusting
+        // the in-memory manifest is the whole point: a handle that has been
+        // open across a gc must still be able to prove its own view.
+        match manifest_chain::reconstruct(&self.root, self.manifest.generation) {
+            Ok(resolved) => {
+                report.manifest_deltas = resolved.deltas;
+                report.manifest_checkpoint = resolved.checkpoint;
+                if resolved.manifest != self.manifest {
+                    report.problems.push(format!(
+                        "generation {} reconstructs from disk to sha {} but this handle holds {}",
+                        self.manifest.generation,
+                        resolved.manifest.manifest_sha,
+                        self.manifest.manifest_sha
+                    ));
+                }
+            }
+            Err(e) => report
+                .problems
+                .push(format!("manifest chain: {}", e.message)),
+        }
 
         let m = &self.manifest;
         let segments: Vec<(&str, u32)> = m
@@ -885,6 +1093,7 @@ impl NativeStore {
     /// in the (already durable) log this generation ends.
     pub fn commit(&mut self, event_log: EventLogRef) -> Result<u64> {
         let tt = self.require_batch()?;
+        self.require_writable_format()?;
         let mut phases = CommitPhases::default();
         let commit_start = std::time::Instant::now();
         let mut next = self.manifest.successor(tt);
@@ -958,11 +1167,19 @@ impl NativeStore {
             + next.edge_lanes.interval.len()
             + next.node_store.len()) as u64;
 
-        // steps 4-5 — manifest, then CURRENT
-        let (manifest_us, current_us, manifest_bytes) = Self::publish(&self.root, &next)?;
+        // steps 4-5 — manifest record, then CURRENT
+        let (manifest_us, current_us, manifest_bytes, checkpoint_gen) = Self::publish(
+            &self.root,
+            Some((&self.manifest, self.checkpoint_gen)),
+            &next,
+            false,
+            self.checkpoint_every(),
+        )?;
         phases.manifest_us = manifest_us;
         phases.current_us = current_us;
         phases.manifest_bytes = manifest_bytes;
+        phases.manifest_checkpoint = checkpoint_gen == next.generation;
+        self.checkpoint_gen = checkpoint_gen;
         self.adopt(next);
         self.staging.clear();
         self.staged_closes.clear();
@@ -1240,6 +1457,14 @@ fn detected_ram_bytes() -> Option<u64> {
 #[derive(Clone, Debug, Default, PartialEq, Eq)]
 pub struct VerifyReport {
     pub generation: u64,
+    /// On-disk manifest format this generation was read at (1 = read-only
+    /// legacy, 2 = checkpoint/delta chain).
+    pub manifest_format: u32,
+    /// Generation of the checkpoint the chain was replayed from, and how many
+    /// deltas sat on top of it. `manifest_deltas == 0` means `CURRENT` names
+    /// a checkpoint outright.
+    pub manifest_checkpoint: u64,
+    pub manifest_deltas: u64,
     pub segments_checked: u32,
     pub close_runs_checked: u32,
     pub rows: u64,
@@ -1262,6 +1487,17 @@ impl VerifyReport {
     pub fn is_healthy(&self) -> bool {
         self.problems.is_empty()
     }
+}
+
+/// What `upgrade_manifests` did. `upgraded == false` means the store was
+/// already format 2 and nothing was written — the command is idempotent, so
+/// running it twice is not an error.
+#[derive(Clone, Debug, Default, PartialEq, Eq)]
+pub struct UpgradeReport {
+    pub upgraded: bool,
+    pub from_format: u32,
+    pub generation: u64,
+    pub manifest_sha: String,
 }
 
 /// Segment file id from its manifest path (`seg/000000000042.tgs` -> 42).
@@ -1793,19 +2029,322 @@ mod tests {
         commit_with(&mut s, 10, &["n1"]);
         drop(s);
 
-        // simulate: generation 2's manifest reached disk, CURRENT did not
-        let g1 = Manifest::from_json(
-            &fs::read_to_string(NativeStore::manifest_path(&root, 1)).unwrap(),
-        )
-        .unwrap();
+        // simulate: generation 2's *delta* reached disk, CURRENT did not.
+        // Reconstruction from CURRENT stops at 1 and never reads 2, so this
+        // is the same orphaned-manifest case format 1 had.
+        let g1 = manifest_chain::reconstruct(&root, 1).unwrap().manifest;
         let mut g2 = g1.successor(20);
         g2.stats.n_entities = 99;
         g2.seal();
-        write_atomic(&NativeStore::manifest_path(&root, 2), &g2.to_json()).unwrap();
+        let d = ManifestDelta::between(&g1, &g2, 0).expect("expressible as a delta");
+        write_atomic(&NativeStore::manifest_path(&root, 2), &d.to_json()).unwrap();
 
         let re = NativeStore::open(&root).unwrap();
-        assert_eq!(re.generation(), 1, "orphaned manifest must not be adopted");
+        assert_eq!(re.generation(), 1, "orphaned delta must not be adopted");
         assert_eq!(re.dict().len(), 1);
+        assert_eq!(re.manifest().stats.n_entities, 1);
+        assert!(re.verify().unwrap().is_healthy());
+    }
+
+    // --- format 2: the manifest chain (memo §6) ------------------------- //
+
+    fn record_of(root: &Path, g: u64) -> crate::manifest_chain::ManifestRecord {
+        manifest_chain::read_record(root, g).unwrap()
+    }
+
+    /// `NativeStore` is not `Debug`, so `unwrap_err` cannot be used on it.
+    fn open_err(root: &Path) -> EngineError {
+        match NativeStore::open(root) {
+            Ok(_) => panic!("a broken manifest chain must not open"),
+            Err(e) => e,
+        }
+    }
+
+    #[test]
+    fn commits_write_deltas_and_a_checkpoint_every_k() {
+        let root = tmp_root("chain-shape");
+        let mut s = NativeStore::open(&root).unwrap();
+        // a tiny K so the periodic checkpoint is reachable in a unit test
+        s.set_checkpoint_every(Some(4));
+        {
+            for tt in 1..=9i64 {
+                s.begin(tt * 10).unwrap();
+                let a = s.ensure_entity(&format!("n{tt}"), "Node").unwrap();
+                s.stage_edge(edge_row(a, a, tt, tt * 10, tt as u32)).unwrap();
+                s.commit(EventLogRef::default()).unwrap();
+            }
+            assert_eq!(s.generation(), 9);
+            assert_eq!(s.checkpoint_generation(), 8);
+
+            let kinds: Vec<bool> = (0..=9).map(|g| record_of(&root, g).is_checkpoint()).collect();
+            assert_eq!(
+                kinds,
+                vec![true, false, false, false, true, false, false, false, true, false],
+                "generation 0 and every 4th generation are checkpoints"
+            );
+
+            // the delta really is the smaller document
+            let delta_bytes = fs::metadata(NativeStore::manifest_path(&root, 9))
+                .unwrap()
+                .len();
+            let ckpt_bytes = fs::metadata(NativeStore::manifest_path(&root, 8))
+                .unwrap()
+                .len();
+            assert!(delta_bytes < ckpt_bytes, "{delta_bytes} vs {ckpt_bytes}");
+
+            // and the phase record says which was written
+            assert!(!s.last_commit_phases().unwrap().manifest_checkpoint);
+        }
+    }
+
+    #[test]
+    fn a_reconstructed_generation_equals_the_full_document_for_the_same_ops() {
+        // the load-bearing equivalence: replaying deltas must land on exactly
+        // the manifest a checkpoint at that generation would have held
+        let root = tmp_root("chain-equals-full");
+        let mut s = NativeStore::open(&root).unwrap();
+        s.set_checkpoint_every(Some(1_000_000)); // deltas all the way down
+        {
+            let mut rows = Vec::new();
+            for tt in 1..=6i64 {
+                s.begin(tt * 10).unwrap();
+                let a = s.ensure_entity(&format!("n{tt}"), "Node").unwrap();
+                let r = edge_row(a, a, tt, tt * 10, tt as u32);
+                rows.push(r.clone());
+                s.stage_edge(r).unwrap();
+                if tt == 4 {
+                    s.close_version(RowKind::Edge, rows[0].vid, tt * 10).unwrap();
+                }
+                s.commit(EventLogRef::default()).unwrap();
+            }
+            // every generation is a delta except genesis
+            assert_eq!(s.checkpoint_generation(), 0);
+            for g in 1..=6 {
+                assert!(!record_of(&root, g).is_checkpoint());
+            }
+
+            let resolved = manifest_chain::reconstruct(&root, 6).unwrap();
+            assert_eq!(resolved.checkpoint, 0);
+            assert_eq!(resolved.deltas, 6);
+            assert_eq!(&resolved.manifest, s.manifest());
+            // and the sha is the one CURRENT names, computed the format-1 way
+            assert_eq!(resolved.manifest.body_sha(), s.manifest().manifest_sha);
+            assert_eq!(
+                fs::read_to_string(root.join(CURRENT)).unwrap().trim(),
+                format!("6 {}", s.manifest().manifest_sha)
+            );
+
+            drop(s);
+            let re = NativeStore::open(&root).unwrap();
+            assert_eq!(re.generation(), 6);
+            assert_eq!(re.all_edge_versions().unwrap().len(), 6);
+            let report = re.verify().unwrap();
+            assert!(report.is_healthy(), "{:?}", report.problems);
+            assert_eq!(report.manifest_deltas, 6);
+            assert_eq!(report.manifest_format, crate::MANIFEST_FORMAT_VERSION);
+        }
+    }
+
+    #[test]
+    fn a_break_anywhere_in_the_chain_is_corruption() {
+        let root = tmp_root("chain-break");
+        let mut s = NativeStore::open(&root).unwrap();
+        s.set_checkpoint_every(Some(1_000_000)); // deltas all the way down
+        {
+            for tt in 1..=4i64 {
+                commit_with(&mut s, tt * 10, &[&format!("n{tt}")]);
+            }
+            drop(s);
+            let intact: Vec<String> = (0..=4)
+                .map(|g| fs::read_to_string(NativeStore::manifest_path(&root, g)).unwrap())
+                .collect();
+            let restore = || {
+                for (g, text) in intact.iter().enumerate() {
+                    fs::write(NativeStore::manifest_path(&root, g as u64), text).unwrap();
+                }
+            };
+
+            // (a) a gap: generation 2 is gone
+            fs::remove_file(NativeStore::manifest_path(&root, 2)).unwrap();
+            let err = open_err(&root);
+            assert_eq!(err.category, crate::error::Category::Corrupt);
+            restore();
+
+            // (b) a reordered chain: generation 2 is replaced by 3's record,
+            //     so the parent link and the running sha disagree
+            fs::write(NativeStore::manifest_path(&root, 2), &intact[3]).unwrap();
+            let err = open_err(&root);
+            assert_eq!(err.category, crate::error::Category::Corrupt);
+            restore();
+
+            // (c) a tampered parent_sha, resealed so delta_sha still passes:
+            //     the chain check has to be the thing that catches it
+            let mut d: crate::manifest_chain::ManifestDelta =
+                serde_json::from_str(&intact[3]).unwrap();
+            d.parent_sha = "dead0000dead0000".into();
+            d.seal();
+            d.verify_self().unwrap();
+            fs::write(NativeStore::manifest_path(&root, 3), d.to_json()).unwrap();
+            let err = open_err(&root);
+            assert_eq!(err.category, crate::error::Category::Corrupt);
+            assert!(
+                err.message.contains("chain broken"),
+                "unhelpful message: {}",
+                err.message
+            );
+            restore();
+
+            // (d) a flipped byte inside a delta: the record's own sha
+            let poisoned = intact[3].replace("\"next_segment_id\": 0", "\"next_segment_id\": 7");
+            assert_ne!(poisoned, intact[3]);
+            fs::write(NativeStore::manifest_path(&root, 3), poisoned).unwrap();
+            assert_eq!(
+                open_err(&root).category,
+                crate::error::Category::Corrupt
+            );
+            restore();
+
+            // and after every restore the store is healthy again
+            assert!(NativeStore::open(&root).unwrap().verify().unwrap().is_healthy());
+        }
+    }
+
+    #[test]
+    fn compaction_always_emits_a_checkpoint() {
+        let root = tmp_root("chain-compact");
+        let mut s = NativeStore::open(&root).unwrap();
+        s.set_checkpoint_every(Some(1_000_000)); // deltas all the way down
+        {
+            for tt in 1..=3i64 {
+                s.begin(tt * 10).unwrap();
+                let a = s.ensure_entity("n1", "Node").unwrap();
+                s.stage_edge(edge_row(a, a, tt, tt * 10, tt as u32)).unwrap();
+                s.commit(EventLogRef::default()).unwrap();
+            }
+            assert!(!record_of(&root, 3).is_checkpoint());
+            s.compact().unwrap();
+            let g = s.generation();
+            assert!(
+                record_of(&root, g).is_checkpoint(),
+                "compaction replaces the whole segment list; the delta would \
+                 be no smaller, and the chain should reset here"
+            );
+            assert_eq!(s.checkpoint_generation(), g);
+            assert!(s.verify().unwrap().is_healthy());
+        }
+    }
+
+    #[test]
+    fn a_format_1_store_opens_read_only_and_refuses_writes_with_a_remedy() {
+        let root = tmp_root("legacy-open");
+        // a store exactly as the pre-change engine left it: one untagged,
+        // format-1 document per generation
+        fs::create_dir_all(root.join("manifests")).unwrap();
+        for sub in SUBDIRS {
+            fs::create_dir_all(root.join(sub)).unwrap();
+        }
+        let mut legacy = Manifest::genesis();
+        legacy.format = crate::FORMAT_LEGACY;
+        legacy.seal();
+        write_atomic(
+            &NativeStore::manifest_path(&root, 0),
+            &serde_json::to_string_pretty(&legacy).unwrap(),
+        )
+        .unwrap();
+        write_atomic(
+            &root.join(CURRENT),
+            &format!("0 {}\n", legacy.manifest_sha),
+        )
+        .unwrap();
+
+        let mut s = NativeStore::open(&root).unwrap();
+        assert_eq!(s.manifest_format(), crate::FORMAT_LEGACY);
+        assert!(s.verify().unwrap().is_healthy(), "reads must still work");
+
+        s.begin(10).unwrap();
+        s.ensure_entity("n1", "Node").unwrap();
+        let err = s.commit(EventLogRef::default()).unwrap_err();
+        assert_eq!(err.category, crate::error::Category::Invariant);
+        assert!(err.message.contains("read-only"), "{}", err.message);
+        assert!(
+            err.remedy
+                .as_deref()
+                .unwrap_or_default()
+                .contains("upgrade-manifests"),
+            "a refusal without a remedy is a dead end: {:?}",
+            err.remedy
+        );
+        s.rollback().unwrap();
+        assert!(s.gc(2).is_err(), "gc is a write path too");
+
+        // the upgrade converts it, and then writing works
+        let report = s.upgrade_manifests().unwrap();
+        assert!(report.upgraded);
+        assert_eq!(report.from_format, crate::FORMAT_LEGACY);
+        assert_eq!(s.manifest_format(), crate::MANIFEST_FORMAT_VERSION);
+        assert!(record_of(&root, s.generation()).is_checkpoint());
+        assert!(s.verify().unwrap().is_healthy());
+        // idempotent
+        assert!(!s.upgrade_manifests().unwrap().upgraded);
+        commit_with(&mut s, 20, &["n1"]);
+        drop(s);
+        assert_eq!(NativeStore::open(&root).unwrap().dict().len(), 1);
+    }
+
+    #[test]
+    fn the_upgrade_preserves_the_generation_content_verbatim() {
+        let root = tmp_root("legacy-upgrade");
+        for sub in SUBDIRS {
+            fs::create_dir_all(root.join(sub)).unwrap();
+        }
+        // build a real store, then rewrite its head as a format-1 document —
+        // the same logical content the old engine would have written
+        let mut s = NativeStore::open(&root).unwrap();
+        s.begin(10).unwrap();
+        let a = s.ensure_entity("n1", "Node").unwrap();
+        s.stage_edge(edge_row(a, a, 1, 10, 0)).unwrap();
+        s.commit(EventLogRef::default()).unwrap();
+        let content = s.manifest().clone();
+        let before = s.verify().unwrap();
+        drop(s);
+
+        let mut legacy = content.clone();
+        legacy.format = crate::FORMAT_LEGACY;
+        legacy.seal();
+        write_atomic(
+            &NativeStore::manifest_path(&root, legacy.generation),
+            &serde_json::to_string_pretty(&legacy).unwrap(),
+        )
+        .unwrap();
+        write_atomic(
+            &root.join(CURRENT),
+            &format!("{} {}\n", legacy.generation, legacy.manifest_sha),
+        )
+        .unwrap();
+
+        let mut s = NativeStore::open(&root).unwrap();
+        assert_eq!(s.manifest_format(), crate::FORMAT_LEGACY);
+        s.upgrade_manifests().unwrap();
+        let after = s.verify().unwrap();
+
+        // everything the report says about the *data* is identical; only the
+        // generation counter, the format, and the chain fields move
+        assert_eq!(after.segments_checked, before.segments_checked);
+        assert_eq!(after.rows, before.rows);
+        assert_eq!(after.closes, before.closes);
+        assert_eq!(after.dict_records, before.dict_records);
+        assert_eq!(after.problems, before.problems);
+        assert_eq!(after.manifest_format, crate::MANIFEST_FORMAT_VERSION);
+        assert_eq!(after.manifest_deltas, 0);
+        let m = s.manifest();
+        assert_eq!(m.node_store, content.node_store);
+        assert_eq!(m.edge_lanes, content.edge_lanes);
+        assert_eq!(m.close_runs, content.close_runs);
+        assert_eq!(m.stats, content.stats);
+        assert_eq!(m.dict, content.dict);
+        assert_eq!(m.next_segment_id, content.next_segment_id);
+        assert_eq!(m.event_log, content.event_log);
+        assert_eq!(s.all_edge_versions().unwrap().len(), 1);
     }
 
     #[test]
@@ -1887,7 +2426,7 @@ mod tests {
         next.dict.records = records;
         next.dict.bytes = bytes;
         next.seal();
-        NativeStore::publish(&root, &next).unwrap();
+        NativeStore::publish(&root, Some((w.manifest(), 0)), &next, false, 512).unwrap();
 
         let re = NativeStore::open(&root).unwrap();
         assert_eq!(re.generation(), 2);

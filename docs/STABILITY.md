@@ -66,6 +66,44 @@ reserved in the format header, but nothing currently reads a v0 store
 directly with v2 code. Until such tooling exists, "incompatible version"
 should be read as "requires a replay," not "requires a converter."
 
+**Manifest format 2 (added 2026-09-13; the one converter that does exist).**
+The manifest document now has its own version, separate from the physical
+file-header version the segments and close runs carry. Segment and close-run
+bytes did not change and their `FORMAT_VERSION` is still 1;
+`MANIFEST_FORMAT_VERSION` is 2. Format 1 wrote the entire manifest — every
+live segment — once per generation, which made retained manifest bytes grow
+as Θ(generations²): 25,451 MB of manifests against 163 MB of segments on the
+SNB SF1 build that motivated the change. Format 2 writes a *delta* against
+the parent generation and a full **checkpoint** every 512 generations
+(`TGMS_MANIFEST_CHECKPOINT_EVERY`), plus one whenever compaction runs or gc
+sets a retention floor. `manifests/<G>.json`, one file per generation,
+`CURRENT` flipped last, and JSON you can read with `cat` are all unchanged;
+so is `manifest_sha`, which remains the digest of the *reconstructed*
+logical manifest, so a checkpoint and a delta describing the same content
+hash identically and the TCSR stamp keeps its meaning.
+
+This is the exception to "no in-place binary migration tool", and it is
+narrow:
+
+- A store written by TGMS ≤ v0.8.0 (manifest format 1) **opens, reads, and
+  passes `tgms store verify`** under the new engine, but refuses every write
+  — commit, compact, gc — with an error naming the remedy.
+- `tgms store upgrade-manifests --store <path>` converts it: it republishes
+  the current generation's content as one format-2 checkpoint and flips
+  `CURRENT`. Nothing else is touched — no segment, close-run, dictionary, or
+  event-log byte — and running it twice is a no-op.
+- Two things do move. The generation counter advances by one, and
+  `manifest_sha` changes, because the digest covers the format field. Any
+  persisted TCSR index therefore fails its stamp check and rebuilds silently,
+  which is what that check is for. Build receipts must record
+  `manifest_format` alongside `manifest_sha` and **must not be compared on
+  `manifest_sha` across the two formats**; their discriminating half,
+  `store_identity`, is event-log-derived and format-independent, so existing
+  receipts stay citable.
+- There is no downgrade. Going back to a format-1 engine means replaying the
+  event log, which is the standing mitigation for every other format change
+  here.
+
 **Forward compatibility is not symmetric, and this is the honest statement
 of it.** The log format is stable in the *backward* direction — a newer TGMS
 reads every older log — but op records may gain optional fields, and the
