@@ -114,5 +114,5 @@ addendum_2:
   # The line below is this agent's own best-effort restatement of that
   # prediction's natural negation, offered for the coordinator to confirm
   # or replace with their actual wording before v2 is scored.
-  refuted_if_agent_draft_pending_coordinator_confirmation: any v2 cell (same 40-cell grid) still shows nonzero registry-wide false-safe; OR any false-safe artifact is itself a DAG node; OR any seed-1 cell's nodes_visited differs from its v1 value; OR a seed-0 cell's nodes_visited does not increase by exactly 3 over its v1 value; OR tgms-L0/tgms-L1 false-fresh is nonzero in any of the 40 cells
+  refuted_if: any v2 cell (same 40-cell grid) still shows nonzero registry-wide false-safe; OR any false-safe artifact is itself a DAG node; OR any seed-1 cell's nodes_visited differs from its v1 value; OR a seed-0 cell's nodes_visited does not increase by exactly 3 over its v1 value; OR tgms-L0/tgms-L1 false-fresh is nonzero in any of the 40 cells
   status: pre-registered, not yet submitted (main grid + R-18 hold the concurrency slots; coordinator gates submission)
