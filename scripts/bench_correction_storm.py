@@ -54,7 +54,8 @@ from tgms.artifact.lookup import affected  # noqa: E402
 from tgms.artifact.record import ArtifactRecord  # noqa: E402
 from tgms.artifact.refresh import refresh  # noqa: E402
 from tgms.eval.storm import (  # noqa: E402
-    ARMS, AGE_BANDS, DEGREE_BUCKETS, MIXES, RANGE_WIDTHS, TTF_MODES, Storm, build_mix, summarize,
+    ARMS, AGE_BANDS, DEGREE_BUCKETS, MIXES, RANGE_WIDTHS, TTF_MODES, Storm, build_mix,
+    narrowing_coverage, summarize,
 )
 from tgms.eval.corrections import _believed_nodes  # noqa: E402
 from tgms.eval.storm_dag import SHAPES as DAG_SHAPES, _handle_for, build_dag, cascade  # noqa: E402
@@ -292,6 +293,10 @@ def main(argv: list[str] | None = None) -> int:
                  measure_ttf=args.measure_ttf)
     n_registered = len(storm.artifacts)
     n_skipped = storm.n_registration_skipped
+    # storm-v1 addendum-4 (D-161): registration-time only, read-only against
+    # the registry, before any batch runs -- never touches the oracle/arms/
+    # digest chain, so existing digests/tests are unaffected.
+    narrowing_coverage_data = narrowing_coverage(storm.registry, storm.artifacts)
     wall_capped = False
     if args.wall_cap_s is None:
         results = storm.run(args.batches, max_attempts_factor=args.max_attempts_factor)
@@ -368,6 +373,7 @@ def main(argv: list[str] | None = None) -> int:
             f.write(json.dumps(r.to_json(), sort_keys=True) + "\n")
 
     summary = summarize(results)
+    summary["narrowing_coverage"] = narrowing_coverage_data
     rows_json = [r.to_json() for r in results]
 
     manifest = {

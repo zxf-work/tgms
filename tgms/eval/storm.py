@@ -95,7 +95,7 @@ from tgms.eval.corrections import (
 from tgms.storage.base import make_op
 from tgms.storage.eventlog import extend_chain
 from tgms.temporal.algebra import ENVELOPE_META_FIELDS, ensure_all_registered
-from tgms.tgir.depscope import DependencyScope
+from tgms.tgir.depscope import TOP, TOP_TERM, DependencyScope
 
 from tgms.artifact.lookup import affected
 from tgms.artifact.record import ArtifactId
@@ -1028,6 +1028,75 @@ class Storm:
 
 
 # ---------------------------------------------------------------------------
+# narrowing coverage (storm-v1 addendum-4, D-161) — a population-design
+# measurement, not a per-batch cost: computed once at registration time
+# (generation 0, before any batch runs), read-only against the registry,
+# never touches the oracle/arms/digest chain.
+# ---------------------------------------------------------------------------
+
+def narrowing_coverage(registry: Registry,
+                       artifacts: dict[str, RegisteredArtifact]) -> dict[str, Any]:
+    """Addendum-1's finding (confirmed in code, Addendum-4/D-161): most of
+    this harness's own registered population gets the coarse `"*"` scope
+    fallback (`tgms.tgir.leaves.LEAF_SCOPES` derives a real scope for only
+    3 of the 14 `TEMPLATES`), not a checker defect. This counts, per
+    population, exactly what that finding claims:
+
+    - `n_all_top_term`: artifacts whose `record.all_terms()` is exactly
+      `(TOP_TERM,)` — the coarse-fallback templates land here.
+    - `n_empty_scope`: artifacts whose `all_terms()` is `()` — `compute`'s
+      own `∅`-scope true-negative anchor lands here, never here-and-also-
+      `n_all_top_term` (the two are mutually exclusive by construction).
+    - `per_template_counts`: `ArtifactMeta.op` (the template name storm.py
+      itself assigned at registration) tallied per name — independent of
+      whether the template derived a narrow scope or not.
+    - `top_axis_counts`: across *every* `ScopeTerm` `all_terms()` returns
+      (not just the artifacts that are wholly `(TOP_TERM,)`), how many
+      terms carry `TOP` on each of the five D13.3 conjuncts (`kinds`,
+      `targets`, `rel_types`, `vt`, `props`) — `aggregate_events`'s own
+      `Targets(edges=TOP)` term, for instance, contributes to `targets`
+      here without being an all-⊤ term itself.
+
+    A record with no current generation (should not happen for a freshly
+    registered population, but never assumed) contributes zero terms
+    rather than raising — this is a coverage report, not a correctness
+    check."""
+    per_template: dict[str, int] = {}
+    n_all_top_term = 0
+    n_empty_scope = 0
+    top_axis_counts = {"kinds": 0, "targets": 0, "rel_types": 0, "vt": 0, "props": 0}
+    total_terms = 0
+    for name, ra in artifacts.items():
+        per_template[ra.meta.op] = per_template.get(ra.meta.op, 0) + 1
+        record = registry.current(name)
+        terms = record.all_terms() if record is not None else ()
+        if not terms:
+            n_empty_scope += 1
+        elif terms == (TOP_TERM,):
+            n_all_top_term += 1
+        for term in terms:
+            total_terms += 1
+            if term.kinds is TOP:
+                top_axis_counts["kinds"] += 1
+            if term.targets is TOP:
+                top_axis_counts["targets"] += 1
+            if term.rel_types is TOP:
+                top_axis_counts["rel_types"] += 1
+            if term.vt is TOP:
+                top_axis_counts["vt"] += 1
+            if term.props is TOP:
+                top_axis_counts["props"] += 1
+    return {
+        "n_artifacts": len(artifacts),
+        "n_all_top_term": n_all_top_term,
+        "n_empty_scope": n_empty_scope,
+        "per_template_counts": per_template,
+        "total_terms": total_terms,
+        "top_axis_counts": top_axis_counts,
+    }
+
+
+# ---------------------------------------------------------------------------
 # summary (§5, §6, §8's "reported, not passed" figures)
 # ---------------------------------------------------------------------------
 
@@ -1079,7 +1148,7 @@ def summarize(results: Sequence[BatchResult]) -> dict[str, Any]:
 
 __all__ = [
     "ARMS", "WINDOW_FRACTIONS", "TEMPLATES", "ArmOutcome", "ArtifactMeta", "BatchResult",
-    "RegisteredArtifact", "Storm", "summarize",
+    "RegisteredArtifact", "Storm", "summarize", "narrowing_coverage",
     # C2
     "MIXES", "MIX_APPEND_FRAC", "AGE_BANDS", "DEGREE_BUCKETS", "RANGE_WIDTHS", "TTF_MODES",
     "Mix", "build_mix",
