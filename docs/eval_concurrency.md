@@ -500,6 +500,131 @@ under `steps`/`recovery` and a `dev_host_note` field marking any given run's
 provenance, so a manifest from a laptop is never silently mistaken for one
 of this document's calibrated xzgpu numbers.
 
+## §24 The longevity harness (2026-09-13)
+
+P4.5 of `docs/design/M5_EXECUTION_PLAN_2026-08-27.md` §7 — "the phase's
+centerpiece" — is a sustained soak, not a trial: everything above this
+section runs for seconds to tens of seconds, one condition at a time, and
+stops. `scripts/longevity_run.py` runs the write path, the read path, and
+the artifact/freshness path together for hours (Gate G1's 24h run, the
+OSDI plan's 72h Phase-4 run), because D-149's own class of bug — O(batches²)
+manifest growth — was found by a production build running long, not by any
+test. This section describes the protocol only; it carries no numbers,
+because no number here is a reported one until the 24h/72h runs land (the
+commit report's dev-host run is explicitly labelled as such, not as a
+measurement of this section's claims).
+
+**Process layout.** One **writer** process (group-commit, a seeded
+append+correction stream, `compact()`+`gc(keep_last=2)` every
+`--compact-every-batches` batches), N **reader** processes (`read_only=True`,
+looping this document's own §14.4-shaped mix, sampled from whatever store
+the run was given rather than assumed), and the orchestrating process
+itself, which copies the input store, drives a restart cycle (`SIGKILL`-
+equivalent: `TGMS_CRASH_POINT`, reused from `scripts/eval_durability.py`'s
+own ten boundaries, at a random boundary per cycle) against the writer, and
+does the final `verify()` + replay/digest-equivalence check. The artifact
+checker/refresher runs as a **background thread inside the writer process**,
+not a fourth OS process — see the harness's own module docstring for why:
+`tgms.artifact.refresh.refresh` needs a live read-write `Store` handle, and
+two OS processes each holding one on the same store directory is explicitly
+undefined here (D-028; §22 above: "multi-process writers ... remain
+undefined by design"). Sharing the writer's one handle across a thread is
+the configuration the design *does* define (`Store._write_locked`'s own
+`threading.Lock`), so that is what the checker uses.
+
+**Metrics.** One JSONL sink (`tgms.telemetry.metrics.Metrics`,
+`TGMS_METRICS_PATH`) shared by every process: ingest/commit/correction/query
+rates, per-query-class and per-commit p50/p95/p99 computed by each process
+over its own one-minute window (not read back from the sink's histogram,
+which is cumulative-since-start by construction and therefore not a
+per-minute number — see the harness's own note on this), RSS, disk bytes by
+kind (segments/manifests/log/dict/registry/plans, from a filesystem walk —
+there is no on-disk TCSR file to bucket, since D-045's index is resident,
+not persisted), generation count, artifact checks/invalidations/refreshes
+and time-to-fresh, and recovery counts and wall-clock.
+
+**What the harness does not, and cannot, get from the public API alone:**
+
+- **Queue depth.** `tgms.write.GroupCommitWriter` exposes `.stats()`
+  (commits/submissions/max_group/solo_fallbacks) but no live queue-depth
+  accessor — the plan's own metric list names this "if exposed", and it is
+  not.
+- **A literal 60/25/10/5 global operation mix.** The blueprint mixture
+  describes proportions across the whole system; the harness controls the
+  append:correction ratio inside the writer's own stream and a writer duty-
+  cycle throttle, and ties artifact/freshness checks to the correction
+  stream rather than to an independent rate. See the harness's module
+  docstring for the full reasoning.
+- **Class-E ("within-batch retirement") corrections**
+  (`tgms.eval.corrections`), whose entire point is two ops landing in one
+  event-log batch: every public write method (`assert_node`/`assert_edge`/
+  `correct`/`retract`/`ingest_events`) is its own batch, so this class is
+  skipped rather than silently applied as two batches (a different, weaker
+  claim than the class is defined to test).
+
+**The DuckDB writer-vs-reader asymmetry (P4.5's other ask).** The native
+backend's whole concurrent-reader story is "lock-free reads off immutable
+segments" (§19 above) — a live writer never blocks a `read_only=True`
+reader. DuckDB does not have this property, and the difference is not a
+performance gap but a **hard refusal**: `DuckDBAdapter` opens its file with
+`duckdb.connect(path, read_only=...)`, and DuckDB's own file lock is
+exclusive-or-shared at the process level — a second process cannot open the
+same `store.duckdb` `read_only=True` while a first process holds it
+read-write. Verified directly (two processes, one `tgms.open(..., backend=
+"duckdb")`, one `tgms.open(..., backend="duckdb", read_only=True)` a moment
+later): the second raises `duckdb.IOException: ... Conflicting lock is held
+in <pid> ...` and never opens. So the entire premise of this document's
+mixed/readers/residency modes — N reader processes concurrent with a live
+writer — is native-only; on DuckDB there is no concurrent-reader
+configuration to measure, only a queue of processes each waiting for the
+lock. This was previously undocumented (the survey behind P4.5 found no
+entry for it); it is now recorded here rather than in STABILITY.md, since
+every other concurrency claim in this document already lives here and the
+asymmetry is a fact about *this document's* scope, not a top-level
+stability guarantee.
+
+**A local disk-safety addendum (2026-09-14), after a local run of the
+above filled its host's disk.** The harness's own module docstring
+(`scripts/longevity_run.py`) carries the full account; this is the
+qualitative summary, deliberately without the numbers the docstring backs
+with a small, direct measurement. Two things contribute, and the harness
+now guards against both rather than betting on one diagnosis: the final
+replay/digest-equivalence step re-applies every logged batch as its own
+uncompacted generation, which is D-149's own O(batches²) manifest-growth
+pathology named earlier in this document's history — a mandatory step in
+every run, not only a long one, and now sized up (from the real batch
+count) before it is paid for rather than after. Separately, and only
+plausibly rather than confirmed locally (see the docstring for why this
+harness cannot safely reproduce it on this host), this section's own
+"three more races" above already documents that the native engine's
+generation-pin table is in-process only — a reader running as its own OS
+process, as this harness's design calls for, is invisible to a writer
+process's `gc()`, and POSIX does not reclaim a file's blocks on `unlink()`
+while another process still holds it open. Neither story requires an engine
+change to guard against from the harness side (`tgms/` stays public-API-
+only): a wall-clock floor between compactions on top of the existing
+batch-count trigger, a periodic reader handle refresh so no reader process
+holds a stale generation's files open indefinitely, and — underneath both,
+independent of which story is right — a disk-usage ceiling checked
+periodically through the whole run (not only before the risky step) that
+aborts cleanly, with a ledger entry, the moment the run's own output
+directory crosses it.
+
+The coordinator's own xzgpu launch line for the real (non-dev-host,
+non-reported-until-it-lands) 24h run, one PI ruling later than the rest of
+this section — everything under `--out` and everything the run itself
+writes stays on xzgpu's own project storage, never this repository's
+working tree:
+
+    nohup python scripts/longevity_run.py \
+        --store stores/synth-1m-native --duration 24h --mix balanced \
+        --readers 8 --compact-every-batches 500 --compact-min-interval-s 5 \
+        --reader-reopen-every-s 300 --restart-every 30m --artifacts 20 \
+        --seed 0 --out /mnt/project/xzhang/tgms/longevity/<date> \
+        --metrics /mnt/project/xzhang/tgms/longevity/<date>/metrics.jsonl \
+        --max-disk-mb 512000 \
+        > /mnt/project/xzhang/tgms/longevity/<date>/orchestrator.log 2>&1 &
+
 ---
 
 ## Honest limits
