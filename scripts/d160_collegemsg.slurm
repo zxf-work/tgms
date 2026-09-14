@@ -94,7 +94,38 @@ export TGMS_COMMIT="${TGMS_COMMIT:-92c63b9e4fccc6fbffa6d98f0666efd08e483b7a}"
 FORCE_FLAG=()
 [ -n "${TGMS_FORCE:-}" ] && FORCE_FLAG=(--force "$TGMS_FORCE")
 
-mkdir -p "$STAGE/logs" "$STAGE/records" "$STAGE/node_meta"
+# Bounded retry for a transient shared-quota EDQUOT on /project (see
+# tgms/tools/retry_io.py's docstring for the same rationale on the Python
+# side): 12 attempts, 10s apart, loud failure after the last rather than
+# the job dying at its very first mkdir or losing the final record copy to
+# a few-second blip after a multi-hour run.
+retry_mkdir() {
+    local i
+    for i in $(seq 1 12); do
+        mkdir -p "$@" && return 0
+        if [ "$i" -eq 12 ]; then
+            echo "FATAL: mkdir -p $* failed after 12 attempts" >&2
+            exit 1
+        fi
+        echo "RETRY_EDQUOT $i"
+        sleep 10
+    done
+}
+
+retry_cp() {
+    local i
+    for i in $(seq 1 12); do
+        cp "$@" && return 0
+        if [ "$i" -eq 12 ]; then
+            echo "FATAL: cp $* failed after 12 attempts" >&2
+            exit 1
+        fi
+        echo "RETRY_EDQUOT $i"
+        sleep 10
+    done
+}
+
+retry_mkdir "$STAGE/logs" "$STAGE/records" "$STAGE/node_meta"
 
 # --- git shim (deviation 1) -------------------------------------------- #
 SHIM_DIR="/tmp/tgms-d160-shim-${JOB_ID}"
@@ -226,8 +257,8 @@ cleanup() {
     done
     if [ -d "$OUT_DIR" ]; then
         DEST="$STAGE/records/d160-collegemsg-4arm-${JOB_ID}"
-        mkdir -p "$DEST"
-        cp -r "$OUT_DIR"/. "$DEST"/
+        retry_mkdir "$DEST"
+        retry_cp -r "$OUT_DIR"/. "$DEST"/
         echo "RECORDS_COPIED $DEST"
     fi
     du -sm /project/xzhang12 2>/dev/null | awk '{print "DU_MB_AT_CLEANUP="$1}'

@@ -49,7 +49,26 @@ export TGMS_COMMIT="${TGMS_COMMIT:?set TGMS_COMMIT to the checkout commit sha}"
 unset TGMS_DISKFULL_AT TGMS_SHORT_WRITE_AT || true
 
 SEED=$((BASE_SEED + TASK_ID))
-mkdir -p "$STAGE/records" "$STAGE/logs" "$STAGE/node_meta"
+
+# Bounded retry for a transient shared-quota EDQUOT on /project (see
+# tgms/tools/retry_io.py's docstring for the same rationale on the Python
+# side, which now protects eval_diskfull.py's own --json write): 12
+# attempts, 10s apart, loud failure after the last rather than the task
+# dying at its very first mkdir.
+retry_mkdir() {
+    local i
+    for i in $(seq 1 12); do
+        mkdir -p "$@" && return 0
+        if [ "$i" -eq 12 ]; then
+            echo "FATAL: mkdir -p $* failed after 12 attempts" >&2
+            exit 1
+        fi
+        echo "RETRY_EDQUOT $i"
+        sleep 10
+    done
+}
+
+retry_mkdir "$STAGE/records" "$STAGE/logs" "$STAGE/node_meta"
 
 # git shim: answers only what the harness needs (`git rev-parse HEAD`).
 SHIM_DIR="/tmp/tgms-diskfull-shim-${JOB_ID}"

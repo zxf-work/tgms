@@ -61,6 +61,7 @@ from tgms.eval.corrections import _believed_nodes  # noqa: E402
 from tgms.eval.storm_dag import SHAPES as DAG_SHAPES, _handle_for, build_dag, cascade  # noqa: E402
 from tgms.storage.base import make_op  # noqa: E402
 from tgms.storage.eventlog import extend_chain  # noqa: E402
+from tgms.tools.retry_io import mkdir_with_retry, write_bytes_with_retry  # noqa: E402
 
 SCHEMA_VERSION = "1.0.0"
 
@@ -365,12 +366,11 @@ def main(argv: list[str] | None = None) -> int:
     if not args.keep_work_dir:
         shutil.rmtree(work_root, ignore_errors=True)
 
-    args.out.mkdir(parents=True, exist_ok=True)
+    mkdir_with_retry(args.out)
     base = f"storm-{store_label}-{args.seed}"
     rows_path = args.out / f"{base}-rows.jsonl"
-    with open(rows_path, "w", encoding="utf-8") as f:
-        for r in results:
-            f.write(json.dumps(r.to_json(), sort_keys=True) + "\n")
+    rows_text = "".join(json.dumps(r.to_json(), sort_keys=True) + "\n" for r in results)
+    write_bytes_with_retry(rows_path, rows_text.encode("utf-8"))
 
     summary = summarize(results)
     summary["narrowing_coverage"] = narrowing_coverage_data
@@ -407,7 +407,8 @@ def main(argv: list[str] | None = None) -> int:
         "dag": dag_payload,
     }
     manifest_path = args.out / f"{base}.json"
-    manifest_path.write_text(json.dumps(manifest, indent=2, sort_keys=True) + "\n")
+    write_bytes_with_retry(manifest_path,
+                           (json.dumps(manifest, indent=2, sort_keys=True) + "\n").encode("utf-8"))
 
     print(f"wrote {manifest_path}")
     print(f"wrote {rows_path}")

@@ -93,6 +93,8 @@ from typing import Any
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
 
+from tgms.tools.retry_io import mkdir_with_retry, write_bytes_with_retry  # noqa: E402
+
 THIS_FILE = Path(__file__).resolve()
 
 #: Rungs 3-5 (agent-path timing) get their own, smaller warmup/rep protocol;
@@ -584,7 +586,8 @@ def main() -> int:
                            args.reps, args.tokenizer)
         print(json.dumps(result, default=str))
         if args.out and args.out != os.devnull:
-            Path(args.out).write_text(json.dumps(result, indent=1, default=str))
+            write_bytes_with_retry(Path(args.out),
+                                   json.dumps(result, indent=1, default=str).encode("utf-8"))
         return 0
 
     smoke_dir_ctx = None
@@ -633,8 +636,10 @@ def main() -> int:
 
     manifest = build_manifest(store_path, plan_paths, rungs, reps, args.seed,
                               args.tokenizer, rows, out_path, args.smoke)
-    out_path.parent.mkdir(parents=True, exist_ok=True)
-    out_path.write_text(json.dumps(manifest, indent=1, sort_keys=True, default=str))
+    mkdir_with_retry(out_path.parent)
+    write_bytes_with_retry(out_path,
+                           json.dumps(manifest, indent=1, sort_keys=True,
+                                     default=str).encode("utf-8"))
     print(f"\nwall_s={time.time() - t0:.1f}")
     print(f"record: {out_path}")
 

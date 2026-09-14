@@ -184,7 +184,37 @@ OUT_SUITE="${OUT_SUITE_LABEL[$TASK_ID]}"
 N_TRIALS="${N[$TASK_ID]}"
 SEED="$BASE_SEED"
 
-mkdir -p "$STAGE/records" "$STAGE/logs" "$STAGE/node_meta"
+# Bounded retry for a transient shared-quota EDQUOT on /project (see
+# tgms/tools/retry_io.py's docstring for the same rationale on the Python
+# side): 12 attempts, 10s apart, loud failure after the last rather than
+# the task dying at its very first mkdir or losing the final record copy.
+retry_mkdir() {
+    local i
+    for i in $(seq 1 12); do
+        mkdir -p "$@" && return 0
+        if [ "$i" -eq 12 ]; then
+            echo "FATAL: mkdir -p $* failed after 12 attempts" >&2
+            exit 1
+        fi
+        echo "RETRY_EDQUOT $i"
+        sleep 10
+    done
+}
+
+retry_cp() {
+    local i
+    for i in $(seq 1 12); do
+        cp "$@" && return 0
+        if [ "$i" -eq 12 ]; then
+            echo "FATAL: cp $* failed after 12 attempts" >&2
+            exit 1
+        fi
+        echo "RETRY_EDQUOT $i"
+        sleep 10
+    done
+}
+
+retry_mkdir "$STAGE/records" "$STAGE/logs" "$STAGE/node_meta"
 
 echo "RUN_STARTED commit=${TGMS_COMMIT} tag=${TAG} task=${TASK_ID} seed=${SEED}"
 hostname > "$STAGE/node_meta/task-${TASK_ID}.host"
@@ -247,7 +277,7 @@ cat "$STAGE/logs/task-${TASK_ID}.driver.log"
 SRC_NAME="${CELL_ID}-${SUITE}.json"
 DST_NAME="${CELL_ID}-${OUT_SUITE}.json"
 if [ -f "$OUT_DIR/$SRC_NAME" ]; then
-    cp "$OUT_DIR/$SRC_NAME" "$STAGE/records/task-${TASK_ID}--${DST_NAME}"
+    retry_cp "$OUT_DIR/$SRC_NAME" "$STAGE/records/task-${TASK_ID}--${DST_NAME}"
 else
     echo "MISSING_OUTPUT expected $OUT_DIR/$SRC_NAME" >&2
     ec=1

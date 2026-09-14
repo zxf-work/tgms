@@ -41,6 +41,8 @@ from typing import Any
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
+from tgms.tools.retry_io import mkdir_with_retry, write_bytes_with_retry  # noqa: E402
+
 ENGINE_BOUNDARIES = [
     "after_seal", "after_close_runs", "after_dict",
     "after_manifest", "after_current",
@@ -613,7 +615,8 @@ def main() -> int:
                            "q5_convergence"))]
         print(f"\n{len(results)} recovery-crash trials, {len(bad)} with problems")
         if args.json:
-            args.json.write_text(json.dumps(
+            mkdir_with_retry(args.json.parent)
+            write_bytes_with_retry(args.json, (json.dumps(
                 {"results": results,
                  "manifest": {
                      "commit": subprocess.run(
@@ -621,7 +624,7 @@ def main() -> int:
                          text=True).stdout.strip(),
                      "seed": args.seed,
                      "mode": "recovery-crash",
-                 }}, indent=1) + "\n")
+                 }}, indent=1) + "\n").encode("utf-8"))
             print(f"record → {args.json}")
         return 1 if bad else 0
 
@@ -643,14 +646,15 @@ def main() -> int:
                        "q3_single_generation", "q4_orphans_reclaimed"))]
     print(f"\n{len(results)} trials, {len(bad)} with problems")
     if args.json:
-        args.json.write_text(json.dumps(
+        mkdir_with_retry(args.json.parent)
+        write_bytes_with_retry(args.json, (json.dumps(
             {"results": results,
              "manifest": {
                  "commit": subprocess.run(
                      ["git", "rev-parse", "HEAD"], capture_output=True,
                      text=True).stdout.strip(),
                  "seed": args.seed,
-             }}, indent=1) + "\n")
+             }}, indent=1) + "\n").encode("utf-8"))
         print(f"record → {args.json}")
     return 1 if bad else 0
 

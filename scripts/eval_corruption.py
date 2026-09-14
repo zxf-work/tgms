@@ -89,6 +89,7 @@ ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
 
 from scripts.eval_durability import _apply_workload_op, _random_workload  # noqa: E402
+from tgms.tools.retry_io import mkdir_with_retry, write_bytes_with_retry  # noqa: E402
 
 SCHEMA_VERSION = "1.0.0"
 
@@ -848,8 +849,8 @@ def main() -> int:
             pass
         manifest = build_manifest(results, summary, args.seed, classes, mutations, record_path,
                                   verify_mode=args.verify_mode)
-        args.json.parent.mkdir(parents=True, exist_ok=True)
-        args.json.write_text(json.dumps(manifest, indent=1) + "\n")
+        mkdir_with_retry(args.json.parent)
+        write_bytes_with_retry(args.json, (json.dumps(manifest, indent=1) + "\n").encode("utf-8"))
         print(f"record → {args.json}")
 
     return 1 if summary["verdict_counts"]["SILENT"] else 0

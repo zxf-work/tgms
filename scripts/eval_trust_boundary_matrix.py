@@ -79,6 +79,7 @@ from tgms.eval.plan_faults import (  # noqa: E402
     has_weak_support, make_misattribution_oracle, tiny_cost_ceilings,
     to_certificate, truncated_count_cases,
 )
+from tgms.tools.retry_io import mkdir_with_retry, write_bytes_with_retry  # noqa: E402
 
 #: This script's reading of §5's "eight cells with an existing detection
 #: mechanism" -- see the module docstring above.
@@ -666,7 +667,7 @@ def main(argv: list[str] | None = None) -> int:
     tgir_plans = runnable_tgir_plans() if any(c in TGIR_MUTATORS for c in cells) else None
 
     out_dir = ROOT / args.out
-    out_dir.mkdir(parents=True, exist_ok=True)
+    mkdir_with_retry(out_dir)
     with tempfile.TemporaryDirectory(prefix="tgms-faultmatrix-") as tmp:
         scratch = Path(tmp)
         for c in cells:
@@ -681,7 +682,7 @@ def main(argv: list[str] | None = None) -> int:
                                       strict=args.strict_gate)
             suffix = "-strict" if args.strict_gate else ""
             out_path = out_dir / f"{c}-{args.suite}{suffix}.json"
-            out_path.write_text(canonical_json(manifest))
+            write_bytes_with_retry(out_path, canonical_json(manifest).encode("utf-8"))
             t = outcome_table(trials)
             print(f"{c}\tn={t['n']}\t{t['counts']}\tgold_mismatch={t['gold_mismatch']}\t"
                  f"misattributed={t['misattributed']}\tweak_support={t['weak_support']}\t"

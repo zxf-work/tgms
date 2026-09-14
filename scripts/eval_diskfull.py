@@ -92,6 +92,7 @@ from scripts.eval_durability import (  # noqa: E402
     _random_workload,
     clean_replay_digest,
 )
+from tgms.tools.retry_io import mkdir_with_retry, write_bytes_with_retry  # noqa: E402
 
 SCHEMA_VERSION = "1.0.0"
 
@@ -545,8 +546,8 @@ def main() -> int:
         except ValueError:
             pass
         manifest = build_manifest(results, args.seed, record_path)
-        args.json.parent.mkdir(parents=True, exist_ok=True)
-        args.json.write_text(json.dumps(manifest, indent=1) + "\n")
+        mkdir_with_retry(args.json.parent)
+        write_bytes_with_retry(args.json, (json.dumps(manifest, indent=1) + "\n").encode("utf-8"))
         print(f"record → {args.json}")
 
     return 1 if bad else 0

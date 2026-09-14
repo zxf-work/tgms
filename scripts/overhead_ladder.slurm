@@ -57,7 +57,26 @@ SEED="${TGMS_SEED:-0}"
 TOKENIZER="${TGMS_TOKENIZER:-auto}"
 
 OUT_DIR="$STAGE/runs/overhead-ladder/${JOB_ID}"
-mkdir -p "$OUT_DIR" "$STAGE/logs"
+
+# Bounded retry for a transient shared-quota EDQUOT on /project (see
+# tgms/tools/retry_io.py's docstring for the same rationale on the Python
+# side, which now protects bench_overhead_ladder.py's own --out writes):
+# 12 attempts, 10s apart, loud failure after the last rather than the task
+# dying at its very first mkdir.
+retry_mkdir() {
+    local i
+    for i in $(seq 1 12); do
+        mkdir -p "$@" && return 0
+        if [ "$i" -eq 12 ]; then
+            echo "FATAL: mkdir -p $* failed after 12 attempts" >&2
+            exit 1
+        fi
+        echo "RETRY_EDQUOT $i"
+        sleep 10
+    done
+}
+
+retry_mkdir "$OUT_DIR" "$STAGE/logs"
 
 # git shim: answers only what bench_overhead_ladder.py's `_sha()` needs
 # (`git rev-parse --short=12 HEAD`, `git status --porcelain`) --

@@ -18,7 +18,24 @@ export HF_HOME=/project/$USER/hf
 # internet (some cannot reach huggingface.co) still serves from cache
 export HF_HUB_OFFLINE=1 TRANSFORMERS_OFFLINE=1
 cd /project/$USER/tgms
-mkdir -p logs
+
+# Bounded retry for a transient shared-quota EDQUOT on /project: 12
+# attempts, 10s apart, loud failure after the last rather than the job
+# dying at its very first mkdir.
+retry_mkdir() {
+    local i
+    for i in $(seq 1 12); do
+        mkdir -p "$@" && return 0
+        if [ "$i" -eq 12 ]; then
+            echo "FATAL: mkdir -p $* failed after 12 attempts" >&2
+            exit 1
+        fi
+        echo "RETRY_EDQUOT $i"
+        sleep 10
+    done
+}
+
+retry_mkdir logs
 PORT=$((8000 + SLURM_JOB_ID % 2000))
 PAT=$(echo "$MODEL" | sed 's#.*/##')
 EXTRA=""

@@ -72,7 +72,25 @@ WALL_CAP_S="${TGMS_R18_WALL_CAP_S:-32400}"  # 9h -- signal fires at 3h before
 ADDENDUM_ID="${TGMS_ADDENDUM_ID:-storm-v1-addendum-1}"
 FREEZE_SHA256="${TGMS_FREEZE_SHA256:?TGMS_FREEZE_SHA256 must be set (campaign.yaml sha256 after the addendum)}"
 
-mkdir -p "$STAGE/records/task-0" "$STAGE/logs" "$STAGE/node_meta"
+# Bounded retry for a transient shared-quota EDQUOT on /project (see
+# tgms/tools/retry_io.py's docstring for the same rationale on the Python
+# side, which now protects bench_correction_storm.py's own --out writes):
+# 12 attempts, 10s apart, loud failure after the last rather than the task
+# dying at its very first mkdir.
+retry_mkdir() {
+    local i
+    for i in $(seq 1 12); do
+        mkdir -p "$@" && return 0
+        if [ "$i" -eq 12 ]; then
+            echo "FATAL: mkdir -p $* failed after 12 attempts" >&2
+            exit 1
+        fi
+        echo "RETRY_EDQUOT $i"
+        sleep 10
+    done
+}
+
+retry_mkdir "$STAGE/records/task-0" "$STAGE/logs" "$STAGE/node_meta"
 
 # git shim: answers only what bench_correction_storm.py needs
 # (`git rev-parse HEAD`) -- scripts/crash_campaign.slurm's own idiom.
