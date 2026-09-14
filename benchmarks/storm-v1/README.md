@@ -344,20 +344,35 @@ TTF, `--allow-r18-trip`): completed cleanly, `wall_s` 17836.2 (4:57:18),
 not wall-capped, all 5/5 batches realized.
 
 Beside it, the same fields for the N=1,000 `c1` seed-0 cell (211319_0,
-already among the main-grid records, `sum` TTF, 20 batches):
+already among the main-grid records, `sum` TTF, 20 batches). **Every cell
+in both columns below is the per-batch median over that cell's own
+batches (5 for the probe, 20 for the N=1,000 cell) — not a single
+batch's value.**
 
 | field | R-18 probe (N=10,000) | N=1,000 c1 seed 0 (211319_0) |
 |---|---:|---:|
 | batches | 5 | 20 |
+| `n_registered` (of `n_artifacts` requested) | 8,922 of 10,000 | 884 of 1,000 |
 | median `intersects_calls`/batch | 13,009 | 1,289 |
-| median `lookup_wall_ms`/batch | 27.5 | 2.74 |
-| median `candidate_survivors`/batch | 6,369 | 601 |
-| median `check_wall_ms` (tgms-L1)/batch | ≈870,000 (≈870 s) | 78,108.5 (≈78.1 s) |
-| tgms-L1 `ttf_p50_ms` | 1,977,551.0 (≈1,977.6 s) | 78,320.5 (≈78.3 s) |
-| global-recompute `ttf_p50_ms` | 1,595,328.6 (≈1,595.3 s) | 151,763.5 (≈151.8 s) |
-| tgms-L1 `false_fresh` | 0 | 0 |
-| tgms-L1 `false_stale` | 28,873 | 10,942 |
+| median `lookup_wall_ms`/batch | 26.91 | 2.74 |
+| median `candidate_survivors`/batch | 6,360 | 601 |
+| median `check_wall_ms` (tgms-L1)/batch | 867,567.9 (≈867.6 s) | 78,108.5 (≈78.1 s) |
+| tgms-L1 `ttf_p50_ms` (== median `ttf_ms`) | 1,977,551.0 (≈1,977.6 s) | 78,320.5 (≈78.3 s) |
+| global-recompute `ttf_p50_ms` (== median `ttf_ms`) | 1,595,328.6 (≈1,595.3 s) | 151,763.5 (≈151.8 s) |
+| tgms-L1 `false_fresh` (summed over batches) | 0 | 0 |
+| tgms-L1 `false_stale` (summed over batches) | 28,873 | 10,942 |
 | tgms-L1 `avoided_recompute_decision` | 0.2989 | 0.3228 |
+
+`n_registered` is short of `n_artifacts` in both cells because
+`tgms.eval.storm.py`'s own registration loop skips a random template draw
+whose call is refused (a `TgmsError`, e.g. an edge-case argument
+combination for that draw) rather than retrying with a different one —
+`config.n_registration_skipped` records the count directly (1,078 and 116
+respectively here), not further attributed beyond that in either record.
+
+Paper numbers come from `scripts/osdi_paper_macros.py`, recomputed from
+this record (its own median/aggregate computations are cross-checked
+against each record's `summary` block before being trusted).
 
 No verdicts here — the paper's own scoring of these numbers (P5/P6/P7 and
 the R-18 trip criterion) lives in the internal freeze.
