@@ -144,7 +144,7 @@ impl NativeStore {
         let retained = |g: u64| g >= floor || g == current || protected.contains(&g);
         let deletable: Vec<u64> = on_disk.iter().copied().filter(|g| !retained(*g)).collect();
         if !deletable.is_empty() {
-            self.materialize_anchor_checkpoints(&on_disk, &retained)?;
+            self.materialize_anchor_checkpoints(current, &on_disk, &retained)?;
             fsync_dir(&m_dir)?;
         }
 
@@ -225,11 +225,19 @@ impl NativeStore {
     /// what pass 1 removes.
     fn materialize_anchor_checkpoints(
         &self,
+        current: u64,
         on_disk: &[u64],
         retained: &impl Fn(u64) -> bool,
     ) -> Result<()> {
         for (i, g) in on_disk.iter().copied().enumerate() {
             if !retained(g) {
+                continue;
+            }
+            if g > current {
+                // An orphan a crash left above `CURRENT` (`after_manifest`):
+                // no reader can reach it, so it needs no chain, and trying to
+                // reconstruct one that has none would fail a gc that has
+                // nothing wrong with it.
                 continue;
             }
             let previous_is_retained =
