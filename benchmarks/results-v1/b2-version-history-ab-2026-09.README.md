@@ -88,3 +88,12 @@ decisively (memory, wall, digest), matching the design's central claim that
 `version_history` at 10M becomes cheap in absolute terms. The RATIO
 falsifier is refuted, which specifically undercuts the "near-flatness"
 sub-claim — the win is real but not flat across scale the way SS4 predicted.
+
+## Erratum (2026-09-15, coordinator)
+
+The "95.2x faster" in this README and in the record's `falsifiers.*.measured`
+prose is a mis-division: the record's own medians give 179,250.1 ms /
+1,866.8 ms = **96.0x** (the 10.9x memory figure is correct: 13,414,332 /
+1,229,724 KB). The JSON record is left byte-identical (its digest is of
+record); `scripts/osdi_paper_macros.py::osdiVhWall*` recomputes the ratio
+from the raw reps and is the number the paper uses.
