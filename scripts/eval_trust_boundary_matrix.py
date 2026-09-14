@@ -363,6 +363,26 @@ def run_answer_level_cell(cell_id: str, tasks: list[dict[str, Any]], store: Any,
     return trials
 
 
+def f1_8_rows_steps(plan_json: dict[str, Any]) -> list[dict[str, Any]]:
+    """The F1-8 candidate filter: steps carrying a `limit` arg whose
+    operator declares `rows` among its output fields. Calls
+    `ensure_all_registered()` first: `REGISTRY` is populated lazily by
+    importing the `tgms.temporal.ops_*` modules, and this filter is the
+    one registry consumer in the driver with no `ToolRouter`,
+    `validate_static` or mutator ahead of it to have done so. Without
+    the call, `--cells F1-8` alone saw an empty registry and produced
+    0 trials while the same cell after F1-6b in one process produced
+    trials (2026-09-14; the 2026-09-13 campaign's F1-8 row, 0/300, is
+    this bug)."""
+    from tgms.temporal.algebra import REGISTRY, ensure_all_registered
+
+    ensure_all_registered()
+    return [st for st in plan_json["steps"]
+            if "limit" in st.get("args", {})
+            and "rows" in (getattr(REGISTRY.get(st["op"]),
+                                   "output_fields", ()) or ())]
+
+
 def run_f1_8_cell(tasks: list[dict[str, Any]], store: Any, scratch: Path,
                   n: int, seed: int) -> list[dict[str, Any]]:
     """F1-8, "unsupported aggregation": shrink a paginated rows-step's
@@ -377,8 +397,6 @@ def run_f1_8_cell(tasks: list[dict[str, Any]], store: Any, scratch: Path,
     opposite outcome: that function keeps only the cases where truncation
     reaches a *claim* (F1-11's shape); this one keeps only the cases where
     it is refused before one exists."""
-    from tgms.tools.schemas import REGISTRY as TOOLS_REGISTRY
-
     rng = random.Random(seed)
     cands = [t for t in tasks if t.get("gold_source") == "oracle_plan"]
     trials: list[dict[str, Any]] = []
@@ -388,10 +406,7 @@ def run_f1_8_cell(tasks: list[dict[str, Any]], store: Any, scratch: Path,
         attempts += 1
         task = cands[rng.randrange(len(cands))]
         pj = copy.deepcopy(task["oracle_plan"])
-        rows_steps = [st for st in pj["steps"]
-                     if "limit" in st.get("args", {})
-                     and "rows" in (getattr(TOOLS_REGISTRY.get(st["op"]),
-                                            "output_fields", ()) or ())]
+        rows_steps = f1_8_rows_steps(pj)
         if not rows_steps:
             continue
         rows_steps[-1]["args"]["limit"] = 1
