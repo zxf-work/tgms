@@ -15,6 +15,7 @@ from tgms.core.clock import HybridLogicalClock
 from tgms.core.errors import StateError, TgmsError
 from tgms.core.model import OPEN_END, EntityRef, Props
 from tgms.storage.base import StorageAdapter, make_op
+from tgms.storage.crashpoint import crash_point
 from tgms.storage.eventlog import EventLog, extend_chain
 
 INGEST_CHUNK = 50_000
@@ -292,6 +293,11 @@ class Store:
     def _write_locked(self, ops: list[dict[str, Any]]) -> int:
         tt = self.clock.tick()
         _batch_id, end_offset, record = self.eventlog.append(tt, ops)
+        # durability-injection point (D-086): fires only under
+        # TGMS_CRASH_POINT=py_after_wal_fsync — the log record above is
+        # fsynced and durable, but nothing has been applied to the backend
+        # yet, so recovery must resurrect this batch by suffix replay alone.
+        crash_point("py_after_wal_fsync")
         note_cursor = getattr(self.adapter, "note_event_cursor", None)
         if note_cursor is not None:
             if self._chain is None:
@@ -312,6 +318,11 @@ class Store:
             raise
         if note_cursor is not None:
             note_cursor(end_offset, self._chain)
+        # durability-injection point (D-086): fires only under
+        # TGMS_CRASH_POINT=py_before_engine_commit — apply_ops has mutated
+        # the backend's in-memory/staged state but the engine commit that
+        # would make it durable never runs.
+        crash_point("py_before_engine_commit")
         self.adapter.commit()
         # this handle applied the batch itself, so its frontier is established
         # by observation from here on, whatever it could establish at open
