@@ -1,0 +1,148 @@
+{
+  "format": 1,
+  "generation": 4,
+  "parent": 3,
+  "created_tt": 1789344381360628,
+  "event_log": {
+    "offset": 1426,
+    "chain": "1647235fe3378596"
+  },
+  "dict": {
+    "records": 4,
+    "bytes": 56
+  },
+  "widths": {
+    "entity_id": 32,
+    "row_id": 32,
+    "rel_code": 16
+  },
+  "node_store": [
+    {
+      "file": "seg/000000000001.tgs",
+      "rows": 4,
+      "key_lo": [
+        0,
+        "def3689d5054dcaa951e5ce9"
+      ],
+      "key_hi": [
+        2,
+        "c4b92d40957682112abbaf32"
+      ],
+      "vt_min": 0,
+      "vt_max": 2,
+      "vt_e_max": 4611686018427387904,
+      "tt_s_min": 1789344380648478,
+      "tt_s_max": 1789344380648478,
+      "rel_codes": [],
+      "n_closed_folded": 0,
+      "all_current": true,
+      "sha": ""
+    },
+    {
+      "file": "seg/000000000004.tgs",
+      "rows": 1,
+      "key_lo": [
+        0,
+        "bbe8a078a1298d3a3d4816d1"
+      ],
+      "key_hi": [
+        0,
+        "bbe8a078a1298d3a3d4816d1"
+      ],
+      "vt_min": 0,
+      "vt_max": 0,
+      "vt_e_max": 1,
+      "tt_s_min": 1789344381360628,
+      "tt_s_max": 1789344381360628,
+      "rel_codes": [],
+      "n_closed_folded": 0,
+      "all_current": true,
+      "sha": ""
+    }
+  ],
+  "edge_lanes": {
+    "event": [
+      {
+        "file": "seg/000000000000.tgs",
+        "rows": 8,
+        "key_lo": [
+          0,
+          "2de694d2fb4a904cd731894e"
+        ],
+        "key_hi": [
+          7,
+          "bb899ba2671950021140429a"
+        ],
+        "vt_min": 0,
+        "vt_max": 7,
+        "vt_e_max": 10,
+        "tt_s_min": 1789344380648478,
+        "tt_s_max": 1789344380648478,
+        "rel_codes": [],
+        "n_closed_folded": 0,
+        "all_current": true,
+        "sha": ""
+      },
+      {
+        "file": "seg/000000000002.tgs",
+        "rows": 1,
+        "key_lo": [
+          20,
+          "4d6225ffc6386189a9ba7888"
+        ],
+        "key_hi": [
+          20,
+          "4d6225ffc6386189a9ba7888"
+        ],
+        "vt_min": 20,
+        "vt_max": 20,
+        "vt_e_max": 25,
+        "tt_s_min": 1789344380991055,
+        "tt_s_max": 1789344380991055,
+        "rel_codes": [],
+        "n_closed_folded": 0,
+        "all_current": true,
+        "sha": ""
+      },
+      {
+        "file": "seg/000000000003.tgs",
+        "rows": 1,
+        "key_lo": [
+          20,
+          "208e0620f4114e357834a503"
+        ],
+        "key_hi": [
+          20,
+          "208e0620f4114e357834a503"
+        ],
+        "vt_min": 20,
+        "vt_max": 20,
+        "vt_e_max": 25,
+        "tt_s_min": 1789344381178577,
+        "tt_s_max": 1789344381178577,
+        "rel_codes": [],
+        "n_closed_folded": 0,
+        "all_current": true,
+        "sha": ""
+      }
+    ],
+    "interval": []
+  },
+  "close_runs": [
+    {
+      "file": "close/000000000004.tgc",
+      "entries": 1,
+      "sha": ""
+    }
+  ],
+  "next_segment_id": 5,
+  "stats": {
+    "n_entities": 4,
+    "n_node_versions": 5,
+    "n_edge_versions": 10,
+    "vt_min": null,
+    "vt_max": null,
+    "max_out_degree": 0
+  },
+  "manifest_sha": "49f9cec1193d07f8"
+}

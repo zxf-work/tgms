@@ -1,0 +1,79 @@
+{
+  "format": 1,
+  "generation": 1,
+  "parent": 0,
+  "created_tt": 1789344380648478,
+  "event_log": {
+    "offset": 791,
+    "chain": "d301773bd8631f39"
+  },
+  "dict": {
+    "records": 4,
+    "bytes": 56
+  },
+  "widths": {
+    "entity_id": 32,
+    "row_id": 32,
+    "rel_code": 16
+  },
+  "node_store": [
+    {
+      "file": "seg/000000000001.tgs",
+      "rows": 4,
+      "key_lo": [
+        0,
+        "def3689d5054dcaa951e5ce9"
+      ],
+      "key_hi": [
+        2,
+        "c4b92d40957682112abbaf32"
+      ],
+      "vt_min": 0,
+      "vt_max": 2,
+      "vt_e_max": 4611686018427387904,
+      "tt_s_min": 1789344380648478,
+      "tt_s_max": 1789344380648478,
+      "rel_codes": [],
+      "n_closed_folded": 0,
+      "all_current": true,
+      "sha": ""
+    }
+  ],
+  "edge_lanes": {
+    "event": [
+      {
+        "file": "seg/000000000000.tgs",
+        "rows": 8,
+        "key_lo": [
+          0,
+          "2de694d2fb4a904cd731894e"
+        ],
+        "key_hi": [
+          7,
+          "bb899ba2671950021140429a"
+        ],
+        "vt_min": 0,
+        "vt_max": 7,
+        "vt_e_max": 10,
+        "tt_s_min": 1789344380648478,
+        "tt_s_max": 1789344380648478,
+        "rel_codes": [],
+        "n_closed_folded": 0,
+        "all_current": true,
+        "sha": ""
+      }
+    ],
+    "interval": []
+  },
+  "close_runs": [],
+  "next_segment_id": 2,
+  "stats": {
+    "n_entities": 4,
+    "n_node_versions": 4,
+    "n_edge_versions": 8,
+    "vt_min": null,
+    "vt_max": null,
+    "max_out_degree": 0
+  },
+  "manifest_sha": "d138a3b0becea5ec"
+}
