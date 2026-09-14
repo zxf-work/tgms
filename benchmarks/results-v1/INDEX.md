@@ -180,3 +180,23 @@ supersessions are part of the record:
 
 Plan §26 asks for parquet; JSON was chosen instead: the records are small
 (&lt;400 KB total), diffable, and dependency-free to read.
+
+- b1-manifest-ab-2026-09.json (+ -raw.json, -logs/, .README.md) — Lane B B1
+  A/B, incremental (delta) manifest vs. control `cb0e6af` (pre-B1/B2),
+  xzgpu: SF1 manifest bytes at matched 2.5M ops (25.97 GB → 62.0 MB, ~419x),
+  §20 batch=1 commitcost phase deciles, cold/warm open at G~10k, verify()
+  wall, invariant-test gate. Falsifiers: F1 and F5 PASS; F2, F3, F4
+  REFUTED — byte savings are decisive but every CPU/latency claim in the
+  forecast is refuted, including a large (~86x), reproducible open-time
+  regression (treatment opens slower than the format it replaces)
+- b2-version-history-ab-2026-09.json (+ -raw.json, -logs/, .README.md) —
+  Lane B B2 A/B, bounded `version_history` vs. the same control, xzgpu:
+  peak RSS/wall on synth-1m/10m (control reads the original format-1 store,
+  treatment reads an upgraded copy; originals untouched), `nodes_columnar`
+  bonus data point, frozen CollegeMsg digest `84e8853c...` stability.
+  Falsifiers: the three absolute 10M bounds (RSS, wall, digest) PASS
+  decisively (95.2x wall / 10.9x memory reduction); the 1M→10M peak-RSS
+  ratio falsifier is REFUTED (7.33x vs. 2.5x bound), undercutting the
+  design's "near-flatness" sub-claim even though the absolute-bound claim
+  holds. The pre-registered second-operator check (`nodes_columnar` on a
+  compacted SNB SF1 store) was not run — out of scope this lane

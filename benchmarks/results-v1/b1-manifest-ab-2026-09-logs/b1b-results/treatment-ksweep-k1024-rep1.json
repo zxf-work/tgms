@@ -1,0 +1,74 @@
+{
+ "mode": "commitcost",
+ "seed_rows": 100000,
+ "commits": 300,
+ "records": [
+  {
+   "batch_rows": 1,
+   "commits": 300,
+   "commit_ms": {
+    "n": 300,
+    "p50": 6.405,
+    "p90": 7.983,
+    "p99": 9.92,
+    "min": 3.665,
+    "max": 146.82
+   },
+   "ms_per_row": 6.405,
+   "phase_p50_us": {
+    "apply_us": 323,
+    "closes_us": 0,
+    "current_us": 839,
+    "dict_us": 399,
+    "manifest_bytes": 1568,
+    "manifest_checkpoint": 0,
+    "manifest_us": 785,
+    "seal_us": 1224,
+    "segments_named": 305,
+    "stats_us": 0,
+    "total_us": 5557,
+    "wal_us": 461,
+    "write_us": 6405
+   },
+   "first_decile_us": {
+    "apply_us": 304,
+    "closes_us": 0,
+    "current_us": 872,
+    "dict_us": 393,
+    "manifest_bytes": 1565,
+    "manifest_checkpoint": 0,
+    "manifest_us": 756,
+    "seal_us": 1243,
+    "segments_named": 35,
+    "stats_us": 0,
+    "total_us": 3899,
+    "wal_us": 451,
+    "write_us": 4701
+   },
+   "last_decile_us": {
+    "apply_us": 303,
+    "closes_us": 0,
+    "current_us": 827,
+    "dict_us": 390,
+    "manifest_bytes": 1568,
+    "manifest_checkpoint": 0,
+    "manifest_us": 808,
+    "seal_us": 1199,
+    "segments_named": 575,
+    "stats_us": 0,
+    "total_us": 6788,
+    "wal_us": 404,
+    "write_us": 7565
+   },
+   "store_bytes": 16483291
+  }
+ ],
+ "wall_s": 6.6,
+ "provenance": {
+  "commit": "4af2181",
+  "dirty": false,
+  "python": "3.12.13",
+  "platform": "Linux 5.4.0-216-generic x86_64",
+  "cpu_count": 40
+ }
+}

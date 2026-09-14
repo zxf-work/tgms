@@ -1,0 +1,107 @@
+--- copying stores for treatment upgrade (originals untouched) ---
+copy done 2026-09-14T04:30:23Z
+--- upgrade-manifests (treatment engine) ---
+store:      /mnt/project/xzhang/tgms/tmp/b2-1m-upgraded
+upgraded:   manifest format 1 -> 2
+generation: 21 (sha ad224d407dab5fc1)
+
+One checkpoint written and CURRENT flipped; segments, close runs, the dictionary and the event log are untouched. Persisted TCSR indexes will rebuild on next use, and receipts must not be compared on manifest_sha across the two formats.
+store:      /mnt/project/xzhang/tgms/tmp/b2-10m-upgraded
+upgraded:   manifest format 1 -> 2
+generation: 201 (sha c3ff157c4417b8b5)
+
+One checkpoint written and CURRENT flipped; segments, close runs, the dictionary and the event log are untouched. Persisted TCSR indexes will rebuild on next use, and receipts must not be compared on manifest_sha across the two formats.
+--- version_history: 1M, 3 reps, both engines ---
+RUN_STARTED probe=control-1m op=version_history belief=all rep=1 store=/mnt/project/xzhang/tgms/work/tgms/stores/synth-1m-native 2026-09-14T04:30:23Z
+Traceback (most recent call last):
+  File "/mnt/project/xzhang/tgms/work/tgms/runs/b2_probe.py", line 74, in <module>
+    main()
+  File "/mnt/project/xzhang/tgms/work/tgms/runs/b2_probe.py", line 53, in main
+    out = call_operator(adapter, "version_history",
+          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/mnt/project/xzhang/tgms/work/tgms-ctl-cb0e6af/tgms/temporal/algebra.py", line 206, in call_operator
+    enforce_cost(name, add_time_estimate(name, spec.cost_fn(filled, stats)),
+  File "/mnt/project/xzhang/tgms/work/tgms-ctl-cb0e6af/tgms/temporal/guardrails.py", line 133, in enforce_cost
+    raise CostError(
+tgms.core.errors.CostError: estimated cost for version_history exceeds ceilings
+RUN_ENDED probe=control-1m op=version_history belief=all rep=1 rc=0 2026-09-14T04:30:27Z
+RUN_STARTED probe=treatment-1m op=version_history belief=all rep=1 store=/mnt/project/xzhang/tgms/tmp/b2-1m-upgraded 2026-09-14T04:30:27Z
+Traceback (most recent call last):
+  File "/mnt/project/xzhang/tgms/work/tgms/runs/b2_probe.py", line 74, in <module>
+    main()
+  File "/mnt/project/xzhang/tgms/work/tgms/runs/b2_probe.py", line 53, in main
+    out = call_operator(adapter, "version_history",
+          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/mnt/project/xzhang/tgms/work/tgms/tgms/temporal/algebra.py", line 206, in call_operator
+    enforce_cost(name, add_time_estimate(name, spec.cost_fn(filled, stats)),
+  File "/mnt/project/xzhang/tgms/work/tgms/tgms/temporal/guardrails.py", line 133, in enforce_cost
+    raise CostError(
+tgms.core.errors.CostError: estimated cost for version_history exceeds ceilings
+RUN_ENDED probe=treatment-1m op=version_history belief=all rep=1 rc=0 2026-09-14T04:30:32Z
+RUN_STARTED probe=control-1m op=version_history belief=all rep=2 store=/mnt/project/xzhang/tgms/work/tgms/stores/synth-1m-native 2026-09-14T04:30:32Z
+Traceback (most recent call last):
+  File "/mnt/project/xzhang/tgms/work/tgms/runs/b2_probe.py", line 74, in <module>
+    main()
+  File "/mnt/project/xzhang/tgms/work/tgms/runs/b2_probe.py", line 53, in main
+    out = call_operator(adapter, "version_history",
+          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/mnt/project/xzhang/tgms/work/tgms-ctl-cb0e6af/tgms/temporal/algebra.py", line 206, in call_operator
+    enforce_cost(name, add_time_estimate(name, spec.cost_fn(filled, stats)),
+  File "/mnt/project/xzhang/tgms/work/tgms-ctl-cb0e6af/tgms/temporal/guardrails.py", line 133, in enforce_cost
+    raise CostError(
+tgms.core.errors.CostError: estimated cost for version_history exceeds ceilings
+RUN_ENDED probe=control-1m op=version_history belief=all rep=2 rc=0 2026-09-14T04:30:36Z
+RUN_STARTED probe=treatment-1m op=version_history belief=all rep=2 store=/mnt/project/xzhang/tgms/tmp/b2-1m-upgraded 2026-09-14T04:30:36Z
+Traceback (most recent call last):
+  File "/mnt/project/xzhang/tgms/work/tgms/runs/b2_probe.py", line 74, in <module>
+    main()
+  File "/mnt/project/xzhang/tgms/work/tgms/runs/b2_probe.py", line 53, in main
+    out = call_operator(adapter, "version_history",
+          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/mnt/project/xzhang/tgms/work/tgms/tgms/temporal/algebra.py", line 206, in call_operator
+    enforce_cost(name, add_time_estimate(name, spec.cost_fn(filled, stats)),
+  File "/mnt/project/xzhang/tgms/work/tgms/tgms/temporal/guardrails.py", line 133, in enforce_cost
+    raise CostError(
+tgms.core.errors.CostError: estimated cost for version_history exceeds ceilings
+RUN_ENDED probe=treatment-1m op=version_history belief=all rep=2 rc=0 2026-09-14T04:30:40Z
+RUN_STARTED probe=control-1m op=version_history belief=all rep=3 store=/mnt/project/xzhang/tgms/work/tgms/stores/synth-1m-native 2026-09-14T04:30:40Z
+Traceback (most recent call last):
+  File "/mnt/project/xzhang/tgms/work/tgms/runs/b2_probe.py", line 74, in <module>
+    main()
+  File "/mnt/project/xzhang/tgms/work/tgms/runs/b2_probe.py", line 53, in main
+    out = call_operator(adapter, "version_history",
+          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/mnt/project/xzhang/tgms/work/tgms-ctl-cb0e6af/tgms/temporal/algebra.py", line 206, in call_operator
+    enforce_cost(name, add_time_estimate(name, spec.cost_fn(filled, stats)),
+  File "/mnt/project/xzhang/tgms/work/tgms-ctl-cb0e6af/tgms/temporal/guardrails.py", line 133, in enforce_cost
+    raise CostError(
+tgms.core.errors.CostError: estimated cost for version_history exceeds ceilings
+RUN_ENDED probe=control-1m op=version_history belief=all rep=3 rc=0 2026-09-14T04:30:44Z
+RUN_STARTED probe=treatment-1m op=version_history belief=all rep=3 store=/mnt/project/xzhang/tgms/tmp/b2-1m-upgraded 2026-09-14T04:30:44Z
+Traceback (most recent call last):
+  File "/mnt/project/xzhang/tgms/work/tgms/runs/b2_probe.py", line 74, in <module>
+    main()
+  File "/mnt/project/xzhang/tgms/work/tgms/runs/b2_probe.py", line 53, in main
+    out = call_operator(adapter, "version_history",
+          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/mnt/project/xzhang/tgms/work/tgms/tgms/temporal/algebra.py", line 206, in call_operator
+    enforce_cost(name, add_time_estimate(name, spec.cost_fn(filled, stats)),
+  File "/mnt/project/xzhang/tgms/work/tgms/tgms/temporal/guardrails.py", line 133, in enforce_cost
+    raise CostError(
+tgms.core.errors.CostError: estimated cost for version_history exceeds ceilings
+RUN_ENDED probe=treatment-1m op=version_history belief=all rep=3 rc=0 2026-09-14T04:30:48Z
+--- version_history: 10M, 3 reps, both engines ---
+RUN_STARTED probe=control-10m op=version_history belief=all rep=1 store=/mnt/project/xzhang/tgms/work/tgms/stores/synth-10m-native 2026-09-14T04:30:48Z
+Traceback (most recent call last):
+  File "/mnt/project/xzhang/tgms/work/tgms/runs/b2_probe.py", line 74, in <module>
+    main()
+  File "/mnt/project/xzhang/tgms/work/tgms/runs/b2_probe.py", line 53, in main
+    out = call_operator(adapter, "version_history",
+          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/mnt/project/xzhang/tgms/work/tgms-ctl-cb0e6af/tgms/temporal/algebra.py", line 206, in call_operator
+    enforce_cost(name, add_time_estimate(name, spec.cost_fn(filled, stats)),
+  File "/mnt/project/xzhang/tgms/work/tgms-ctl-cb0e6af/tgms/temporal/guardrails.py", line 133, in enforce_cost
+    raise CostError(
+tgms.core.errors.CostError: estimated cost for version_history exceeds ceilings
+RUN_ENDED probe=control-10m op=version_history belief=all rep=1 rc=0 2026-09-14T04:31:22Z
+RUN_STARTED probe=treatment-10m op=version_history belief=all rep=1 store=/mnt/project/xzhang/tgms/tmp/b2-10m-upgraded 2026-09-14T04:31:22Z

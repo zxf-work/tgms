@@ -1,0 +1,64 @@
+RUN_STARTED commit=cb0e6afc17e7 label=control ckpt=default rep=1 2026-09-14T04:18:56Z
+# commitcost
+  batch=1     write p50     6.80 ms (6.7990 ms/row)
+      wal=0.47 apply=0.34 | engine 6.02 = seal 1.22 + dict 0.39 + manifest 1.25 + CURRENT 0.84
+      manifest 151,890 B naming 305 segs | growth first->last decile: write 4.66->8.88 ms, manifest 17,967->285,810 B
+wrote /mnt/project/xzhang/tgms/tmp/b1b-results/control-rep1.json
+RUN_ENDED label=control ckpt=default rep=1 rc=0 2026-09-14T04:19:04Z
+RUN_STARTED commit=cb0e6afc17e7 label=control ckpt=default rep=2 2026-09-14T04:19:04Z
+# commitcost
+  batch=1     write p50     7.06 ms (7.0630 ms/row)
+      wal=0.47 apply=0.33 | engine 6.22 = seal 1.22 + dict 0.40 + manifest 1.28 + CURRENT 0.85
+      manifest 151,890 B naming 305 segs | growth first->last decile: write 4.60->8.93 ms, manifest 17,967->285,810 B
+wrote /mnt/project/xzhang/tgms/tmp/b1b-results/control-rep2.json
+RUN_ENDED label=control ckpt=default rep=2 rc=0 2026-09-14T04:19:11Z
+RUN_STARTED commit=cb0e6afc17e7 label=control ckpt=default rep=3 2026-09-14T04:19:11Z
+# commitcost
+  batch=1     write p50     6.62 ms (6.6220 ms/row)
+      wal=0.45 apply=0.30 | engine 5.93 = seal 1.19 + dict 0.39 + manifest 1.28 + CURRENT 0.84
+      manifest 151,890 B naming 305 segs | growth first->last decile: write 4.67->8.96 ms, manifest 17,967->285,810 B
+wrote /mnt/project/xzhang/tgms/tmp/b1b-results/control-rep3.json
+RUN_ENDED label=control ckpt=default rep=3 rc=0 2026-09-14T04:19:18Z
+RUN_STARTED commit=4af218192d8c label=treatment ckpt=default rep=1 2026-09-14T04:19:18Z
+# commitcost
+  batch=1     write p50     6.35 ms (6.3500 ms/row)
+      wal=0.46 apply=0.33 | engine 5.56 = seal 1.21 + dict 0.39 + manifest 0.79 + CURRENT 0.84
+      manifest 1,568 B naming 305 segs | growth first->last decile: write 4.73->8.02 ms, manifest 1,565->1,568 B
+wrote /mnt/project/xzhang/tgms/tmp/b1b-results/treatment-rep1.json
+RUN_ENDED label=treatment ckpt=default rep=1 rc=0 2026-09-14T04:19:25Z
+RUN_STARTED commit=4af218192d8c label=treatment ckpt=default rep=2 2026-09-14T04:19:25Z
+# commitcost
+  batch=1     write p50     6.54 ms (6.5390 ms/row)
+      wal=0.47 apply=0.34 | engine 5.67 = seal 1.23 + dict 0.40 + manifest 0.83 + CURRENT 0.85
+      manifest 1,568 B naming 305 segs | growth first->last decile: write 4.73->7.85 ms, manifest 1,565->1,568 B
+wrote /mnt/project/xzhang/tgms/tmp/b1b-results/treatment-rep2.json
+RUN_ENDED label=treatment ckpt=default rep=2 rc=0 2026-09-14T04:19:32Z
+RUN_STARTED commit=4af218192d8c label=treatment ckpt=default rep=3 2026-09-14T04:19:32Z
+# commitcost
+  batch=1     write p50     6.35 ms (6.3515 ms/row)
+      wal=0.47 apply=0.35 | engine 5.58 = seal 1.24 + dict 0.38 + manifest 0.79 + CURRENT 0.85
+      manifest 1,568 B naming 305 segs | growth first->last decile: write 4.76->7.91 ms, manifest 1,565->1,568 B
+wrote /mnt/project/xzhang/tgms/tmp/b1b-results/treatment-rep3.json
+RUN_ENDED label=treatment ckpt=default rep=3 rc=0 2026-09-14T04:19:39Z
+RUN_STARTED commit=4af218192d8c label=treatment-ksweep ckpt=128 rep=1 2026-09-14T04:19:39Z
+# commitcost
+  batch=1     write p50     6.31 ms (6.3070 ms/row)
+      wal=0.47 apply=0.34 | engine 5.51 = seal 1.23 + dict 0.40 + manifest 0.80 + CURRENT 0.85
+      manifest 1,570 B naming 305 segs | growth first->last decile: write 4.75->7.05 ms, manifest 1,565->1,570 B
+wrote /mnt/project/xzhang/tgms/tmp/b1b-results/treatment-ksweep-k128-rep1.json
+RUN_ENDED label=treatment-ksweep ckpt=128 rep=1 rc=0 2026-09-14T04:19:46Z
+RUN_STARTED commit=4af218192d8c label=treatment-ksweep ckpt=512 rep=1 2026-09-14T04:19:46Z
+# commitcost
+  batch=1     write p50     5.12 ms (5.1190 ms/row)
+      wal=0.35 apply=0.21 | engine 4.48 = seal 0.98 + dict 0.34 + manifest 0.69 + CURRENT 0.74
+      manifest 1,568 B naming 305 segs | growth first->last decile: write 4.39->6.72 ms, manifest 1,565->1,568 B
+wrote /mnt/project/xzhang/tgms/tmp/b1b-results/treatment-ksweep-k512-rep1.json
+RUN_ENDED label=treatment-ksweep ckpt=512 rep=1 rc=0 2026-09-14T04:19:53Z
+RUN_STARTED commit=4af218192d8c label=treatment-ksweep ckpt=1024 rep=1 2026-09-14T04:19:53Z
+# commitcost
+  batch=1     write p50     6.41 ms (6.4050 ms/row)
+      wal=0.46 apply=0.32 | engine 5.56 = seal 1.22 + dict 0.40 + manifest 0.79 + CURRENT 0.84
+      manifest 1,568 B naming 305 segs | growth first->last decile: write 4.70->7.57 ms, manifest 1,565->1,568 B
+wrote /mnt/project/xzhang/tgms/tmp/b1b-results/treatment-ksweep-k1024-rep1.json
+RUN_ENDED label=treatment-ksweep ckpt=1024 rep=1 rc=0 2026-09-14T04:20:00Z
+ALL_B1B_DONE 2026-09-14T04:20:00Z

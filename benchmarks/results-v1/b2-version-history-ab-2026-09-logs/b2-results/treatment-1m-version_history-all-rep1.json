@@ -1,0 +1,1 @@
+{"store": "/mnt/project/xzhang/tgms/tmp/b2-1m-upgraded", "op": "version_history", "belief": "all", "reps": 1, "open_ms": 3793.9, "median_ms": 206.2, "min_ms": 206.2, "max_ms": 206.2, "timings_ms": [206.2], "rows_total": 1000000, "vmsize_kb": 1812048, "vmhwm_kb": 167968, "vmrss_kb": 121228}

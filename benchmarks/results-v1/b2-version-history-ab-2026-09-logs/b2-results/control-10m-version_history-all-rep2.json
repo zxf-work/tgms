@@ -1,0 +1,1 @@
+{"store": "/mnt/project/xzhang/tgms/work/tgms/stores/synth-10m-native", "op": "version_history", "belief": "all", "reps": 1, "open_ms": 34691.5, "median_ms": 183320.6, "min_ms": 183320.6, "max_ms": 183320.6, "timings_ms": [183320.6], "rows_total": 10000000, "vmsize_kb": 2481036, "vmhwm_kb": 13414504, "vmrss_kb": 791972}

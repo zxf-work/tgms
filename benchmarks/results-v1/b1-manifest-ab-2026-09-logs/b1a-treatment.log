@@ -1,0 +1,14 @@
+WRAPPER child_pid=1467432 label=treatment pypath=/mnt/project/xzhang/tgms/work/tgms out=/mnt/project/xzhang/tgms/tmp/b1a-treatment 2026-09-14T04:01:02Z
+RUN_STARTED commit=4af218192d8c csv=/mnt/project/xzhang/tgms/ldbc-sf1/bi-sf1-composite-merged-fk/graphs/csv/bi/composite-merged-fk/initial_snapshot out=/mnt/project/xzhang/tgms/tmp/b1a-treatment backend=native batch=250 compact_every=0 path=assert digest=manifest host=xzgpu
+assert — pass 1/2 nodes
+       500,000 ops      8,951 ops/s  (500,000 nodes / 0 edges; 0 compactions, 0s)
+     1,000,000 ops      5,712 ops/s  (1,000,000 nodes / 0 edges; 0 compactions, 0s)
+     1,500,000 ops      4,139 ops/s  (1,500,000 nodes / 0 edges; 0 compactions, 0s)
+     2,000,000 ops      3,219 ops/s  (2,000,000 nodes / 0 edges; 0 compactions, 0s)
+     2,500,000 ops      2,610 ops/s  (2,500,000 nodes / 0 edges; 0 compactions, 0s)
+STOP_TRIGGER ops>=2500000 2026-09-14T04:17:02Z
+PROCESS_ENDED killed=1 2026-09-14T04:17:05Z
+--- final sizes ---
+62046913	/mnt/project/xzhang/tgms/tmp/b1a-treatment/native/manifests
+146516413	/mnt/project/xzhang/tgms/tmp/b1a-treatment/native/seg
+RUN_DONE 2026-09-14T04:17:05Z

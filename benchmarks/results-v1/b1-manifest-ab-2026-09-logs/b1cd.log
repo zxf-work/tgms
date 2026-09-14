@@ -1,0 +1,14 @@
+--- B1c: control store open (G~10147, format 1, full manifest parse) ---
+{"label": "control-first_open_after_build", "store": "/mnt/project/xzhang/tgms/tmp/b1a-control", "open_ms": 23814.833, "generation": 10014}
+{"label": "control-warm2", "store": "/mnt/project/xzhang/tgms/tmp/b1a-control", "open_ms": 24934.228, "generation": 10014}
+{"label": "control-warm3", "store": "/mnt/project/xzhang/tgms/tmp/b1a-control", "open_ms": 23198.932, "generation": 10014}
+--- B1c: treatment store open (G~10000, format 2, K=512 checkpoint chain) ---
+{"label": "treatment-first_open_after_build", "store": "/mnt/project/xzhang/tgms/tmp/b1a-treatment", "open_ms": 30848.301, "generation": 10008}
+{"label": "treatment-warm2", "store": "/mnt/project/xzhang/tgms/tmp/b1a-treatment", "open_ms": 32198.199, "generation": 10008}
+{"label": "treatment-warm3", "store": "/mnt/project/xzhang/tgms/tmp/b1a-treatment", "open_ms": 31973.985, "generation": 10008}
+--- B1d: verify() wall on the treatment store ---
+{"store": "/mnt/project/xzhang/tgms/tmp/b1a-treatment", "wall_ms": 9833.454, "report_summary": {"generation": 10008, "manifest_format": 2, "manifest_checkpoint": 9728, "manifest_deltas": 280, "segments_checked": 10008, "close_runs_checked": 0, "rows": 2502000, "closes": 0, "dict_records": 2502000, "tt_s_runs": 10008, "max_tt_s_runs": 1, "problems": [], "healthy": true}}
+--- Falsifier 5: invariant tests (treatment engine) ---
+................................                                         [100%]
+pytest_rc=0
+ALL_B1CD_DONE 2026-09-14T04:26:10Z

@@ -1,0 +1,109 @@
+{
+ "schema_version": "1.0.0",
+ "git_commit": "4af218192d8c61bb3864b342df0c7014dcd9f586",
+ "timestamp_utc": "2026-09-14T04:20:00Z",
+ "machine": {
+  "host": "xzgpu",
+  "platform": "Linux-5.4.0-x86_64",
+  "cpus": 40,
+  "ram_gb": 93
+ },
+ "config": {
+  "measurement": "Lane B B1 A/B: incremental (delta) manifest, per docs/design/INCREMENTAL_MANIFEST_FORECAST_2026-09-13.md SS5/SS6",
+  "control_commit": "cb0e6afc17e7690fa1f498d503012e40875a1181",
+  "control_note": "pre-B1/B2, ancestor of both merge commits 391b413 (B1) and 2f95d9f (B2); MANIFEST_FORMAT_VERSION absent, verified before use",
+  "treatment_commit": "4af218192d8c61bb3864b342df0c7014dcd9f586",
+  "treatment_note": "MANIFEST_FORMAT_VERSION == 2, checkpoint-every default 512",
+  "b1a": {
+   "script": "scripts/build_snb_store.py",
+   "args": [
+    "--backend",
+    "native",
+    "--batch",
+    "250",
+    "--compact-every",
+    "0",
+    "--digest",
+    "manifest",
+    "--write-path",
+    "assert"
+   ],
+   "stop_rule": "killed at the 2,500,000 ops log line (matched ops between arms); --write-path assert is required to reproduce the pathology -- the default --write-path bulk checkpoints every 50,000 ops and does not"
+  },
+  "b1b": {
+   "script": "scripts/eval_concurrency.py",
+   "args": [
+    "commitcost",
+    "--batch-sizes",
+    "1",
+    "--commits",
+    "300",
+    "--seed-rows",
+    "100000"
+   ],
+   "reps": 3,
+   "ksweep_env": "TGMS_MANIFEST_CHECKPOINT_EVERY",
+   "ksweep_values": [
+    128,
+    512,
+    1024
+   ],
+   "ksweep_reps": 1
+  },
+  "b1c": {
+   "method": "NativeAdapter(store/'native') construction time (the Rust-level NativeStore::open), NOT tgms.open() -- tgms.open additionally replays the event log, a materially larger and different cost",
+   "generation_approx": 10000,
+   "checkpoint_every": 512
+  },
+  "b1d": {
+   "method": "adapter.verify() wall on the treatment store post-b1a"
+  },
+  "b1_falsifier5": {
+   "suite": "tests/test_concurrency.py tests/test_native_faults.py tests/test_tcsr_persistence.py",
+   "engine": "treatment"
+  }
+ },
+ "seed": {
+  "value": null,
+  "reason": "b1a is a deterministic replay of the fixed LDBC SF1 CSV corpus (no RNG); b1b's commitcost harness seeds a 100k-row store deterministically by row index, not by an RNG seed argument -- see scripts/eval_concurrency.py cmd_commitcost"
+ },
+ "dataset": {
+  "name": "ldbc-sf1-composite-merged-fk-initial-snapshot",
+  "digest": "d8ccf1970f67f657d7121b3586399d180c727e867055f1da7c73d73caebe67",
+  "digest_kind": "store_digest",
+  "digest_note": "no built-store digest applies to a raw CSV corpus (the schema's enum has no such kind); this is sha256 of the sorted (relative_path, size) listing of every file under the initial_snapshot directory -- a structural fingerprint confirming both arms read the identical input, not a content hash of the CSV bytes"
+ },
+ "result_digest": "a692ee2da94d2b98ccd4e01b34d511cee6916e391bade81f22c5efe7cb5cc50d",
+ "protocol": {
+  "warmups": 0,
+  "reps": 3,
+  "ceilings": {
+   "b1a_stop_ops": 2500000,
+   "b1a_stop_manifest_gb": 30
+  }
+ },
+ "record": "benchmarks/results-v1/b1-manifest-ab-2026-09-raw.json",
+ "falsifiers": {
+  "F1_manifest_bytes_le_500MB_at_2.5M_ops": {
+   "verdict": "PASS",
+   "measured": "treatment manifests = 62,046,913 B (62.0 MB); control (pathology reproduction) = 25,970,987,762 B (25.97 GB); segments ~146.5-146.6 MB both arms"
+  },
+  "F2_phase_deciles_le_1.2x": {
+   "verdict": "REFUTED",
+   "measured": "manifest_us last/first decile: control 2.09-2.17x, treatment 1.04-1.13x (component PASSES); engine-commit total_us last/first decile: control ~2.07-2.10x, treatment 1.78-1.80x (component FAILS, > 1.2x). Falsifier is an OR of the two components; the total_us component triggers it."
+  },
+  "F3_cold_open_le_100ms_at_G10k_K512": {
+   "verdict": "REFUTED",
+   "measured": "treatment NativeStore::open ~8,578-8,649 ms (n=3) at G~10,008 with checkpoint=9,728 + 280 deltas; control (full-manifest parse, format 1) ~1,066-1,071 ms at G~10,014 -- treatment is ~8x SLOWER to open than control, not faster"
+  },
+  "F4_p50_ge_15pct_below_5.07ms_baseline": {
+   "verdict": "REFUTED",
+   "measured": "treatment engine-commit p50 (total_us) = 5,584 us (5.58 ms), ABOVE the 5.07 ms historical baseline, not >=15% below it (bound was <=4.31 ms); this run's own control p50 was 6,017 us, ~19% above the historical baseline too, so host/data conditions differ somewhat from the original measurement, but the paired treatment vs. this run's control improvement (~7%) also misses 15%"
+  },
+  "F5_no_invariant_regressions": {
+   "verdict": "PASS",
+   "measured": "tests/test_concurrency.py tests/test_native_faults.py tests/test_tcsr_persistence.py: 32 passed, 0 failed on the treatment engine"
+  },
+  "overall": "REFUTED (3 of 5: F2, F3, F4) -- the byte-savings claim (F1) and the invariant-preservation claim (F5) are decisively confirmed, but the CPU/latency claims (F2, F3, F4) are all refuted by the measured data. Per SS5, an Addendum-1-anticipated outcome for F2 (manifest bytes vs. engine-commit CPU are separate claims); F3's magnitude (~86x over bound) and F4's direction (treatment slower than the historical baseline, not just short of the 15% target) were not anticipated by the memo and should be treated as new findings, not noise."
+ }
+}
