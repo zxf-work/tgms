@@ -118,11 +118,11 @@ def check_store(backend: str) -> None:
     check(f"{backend}: the scope carries this store's identity and tt_q",
           scope.store == identity and scope.tt_q == open_end["tt_q"])
     # M2.3 derived this operator's scope, so the coarse default is checked on
-    # one that still carries it. `entity_history`'s own shape is
-    # `tests/test_tgir_scopes.py`'s subject.
+    # one that still carries it. Since the 2026-09-14 rollout (D-161) that is
+    # `resolve_entities` alone -- 13 of 14 read operators now narrow.
+    # `entity_history`'s own shape is `tests/test_tgir_scopes.py`'s subject.
     coarse = DependencyScope.from_json(
-        router.call("version_history",
-                    {"kind": "node", "window": {"t_a": 0, "t_b": 100}})["dependency"])
+        router.call("resolve_entities", {"query": "u1"})["dependency"])
     check(f"{backend}: an underived operator still carries the all-'*' term",
           coarse.terms == (TOP_TERM,))
     check(f"{backend}: a derived operator narrows instead",
