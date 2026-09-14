@@ -155,9 +155,14 @@ def test_classify_is_total_asserts_on_a_malformed_run():
 
 
 # --------------------------------------------------------------------------- #
-# gate_answer: coordinator Addendum 1 (2026-09-13) -- the primary arm's      #
-# default gate matches harness.py's production gate exactly (unsupported    #
-# only); --strict-gate is the named secondary arm.                          #
+# gate_answer: D-160 (coordinator, 2026-09-15, Addendum 2) -- the production #
+# gate drops `unverifiable` claims as well as `unsupported` ones. This       #
+# supersedes Addendum 1 (2026-09-13)'s "unsupported only" reading, which     #
+# the campaign found let 271/300 F1-9 wrong-step-citation trials survive as  #
+# emitted `unverifiable` claims (docs/STABILITY.md §9,                       #
+# benchmarks/faults-v1/fault-matrix-campaign-2026-09-13.json). `--strict-    #
+# gate` is now a no-op alias: `strict=True` and `strict=False` compute the   #
+# same `GATED_VERDICTS` drop set.                                            #
 # --------------------------------------------------------------------------- #
 
 _THREE_CLAIM_ANSWER = {"text": "t", "claims": [
@@ -166,41 +171,69 @@ _THREE_CLAIM_ANSWER = {"text": "t", "claims": [
     {"id": "c3", "type": "count", "value": 3, "evidence": ["s3"]},
 ]}
 _THREE_CLAIM_REPORT = {"claims": [
-    {"id": "c1", "verdict": "supported"},
-    {"id": "c2", "verdict": "unsupported"},
-    {"id": "c3", "verdict": "unverifiable"},
+    {"id": "c1", "verdict": "supported", "cited_values": [1]},
+    {"id": "c2", "verdict": "unsupported", "cited_values": []},
+    {"id": "c3", "verdict": "unverifiable", "cited_values": []},
 ]}
 
 
-def test_gate_answer_default_drops_only_unsupported():
-    """Addendum 1: the default is exactly harness.py's own production gate
-    -- an `unverifiable` claim is NOT dropped, so it reaches `classify` and
-    can register a real I1 `silent-violation`. That is the intended
-    finding, not a condition this function pre-empts."""
+def test_gate_answer_default_drops_unsupported_and_unverifiable():
+    """D-160: the default gate now drops BOTH `unsupported` and
+    `unverifiable` claims -- an `unverifiable` claim (c3) no longer
+    survives to reach `classify` as a would-be I1 finding; it is withheld
+    at the gate instead."""
     gated, gated_report, n_dropped = gate_answer(_THREE_CLAIM_ANSWER, _THREE_CLAIM_REPORT)
-    assert [c["id"] for c in gated["claims"]] == ["c1", "c3"]
-    assert [r["id"] for r in gated_report["claims"]] == ["c1", "c3"]
-    assert n_dropped == 1
-
-
-def test_gate_answer_strict_drops_unsupported_and_unverifiable():
-    """The named secondary arm (`--strict-gate`)."""
-    gated, gated_report, n_dropped = gate_answer(_THREE_CLAIM_ANSWER, _THREE_CLAIM_REPORT,
-                                                 strict=True)
     assert [c["id"] for c in gated["claims"]] == ["c1"]
     assert [r["id"] for r in gated_report["claims"]] == ["c1"]
     assert n_dropped == 2
 
 
-def test_unverifiable_claim_surfaces_as_silent_violation_under_the_default_gate():
-    """The end-to-end point of Addendum 1: a claim that survives the
-    default (primary-arm) gate as `unverifiable` is a real I1 violation
-    under `classify`, not something quietly absorbed."""
+def test_gate_answer_strict_is_now_a_no_op_alias_of_the_default():
+    """D-160 made `--strict-gate` a no-op alias: since the production gate
+    already drops `unverifiable`, passing `strict=True` changes nothing."""
+    default = gate_answer(_THREE_CLAIM_ANSWER, _THREE_CLAIM_REPORT, strict=False)
+    strict = gate_answer(_THREE_CLAIM_ANSWER, _THREE_CLAIM_REPORT, strict=True)
+    assert default == strict
+    gated, gated_report, n_dropped = strict
+    assert [c["id"] for c in gated["claims"]] == ["c1"]
+    assert [r["id"] for r in gated_report["claims"]] == ["c1"]
+    assert n_dropped == 2
+
+
+def test_unverifiable_claim_is_gated_before_it_can_reach_classify():
+    """The end-to-end point of D-160: under the pre-fix (Addendum 1) gate
+    this same fixture reached `classify` with `c3` still present and
+    registered an I1 `silent-violation` (the historical behaviour
+    `docs/STABILITY.md` §9 and the 2026-09-13 campaign record document).
+    Under the D-160 gate, `c3` never reaches `classify` at all -- the run
+    is `correct`, not because the violation was reclassified, but because
+    the unverifiable claim was withheld rather than emitted."""
     gated, gated_report, _n = gate_answer(_THREE_CLAIM_ANSWER, _THREE_CLAIM_REPORT)
-    run = Run(answer=gated, answer_value=[1, 3], report=gated_report)
+    run = Run(answer=gated, answer_value=[1], report=gated_report)
     cls = classify(run)
-    assert cls.outcome is Outcome.SILENT_VIOLATION
-    assert any(i == "I1" and claim_id == "c3" for i, claim_id, _d in cls.invariants)
+    assert cls.outcome is Outcome.CORRECT
+    assert cls.invariants == []
+
+
+def test_gate_answer_default_matches_run_task_ours_gate_on_a_shared_fixture():
+    """E3: `tgms.eval.harness.run_task_ours`'s own gating line reads
+    `tgms.eval.plan_faults.GATED_VERDICTS` directly (not a parallel copy of
+    the verdict tuple), so replaying that same filter expression here must
+    agree with `gate_answer()`'s default by construction, not by
+    coincidence of two independently maintained lists staying in sync."""
+    from tgms.eval.plan_faults import GATED_VERDICTS
+
+    assert GATED_VERDICTS == ("unsupported", "unverifiable")
+    gated, gated_report, n_dropped = gate_answer(_THREE_CLAIM_ANSWER, _THREE_CLAIM_REPORT)
+    harness_kept = [c for c, r in zip(_THREE_CLAIM_ANSWER["claims"],
+                                      _THREE_CLAIM_REPORT["claims"])
+                   if r["verdict"] not in GATED_VERDICTS]
+    harness_kept_reports = [r for r in _THREE_CLAIM_REPORT["claims"]
+                            if r["verdict"] not in GATED_VERDICTS]
+    assert [c["id"] for c in gated["claims"]] == [c["id"] for c in harness_kept]
+    assert [r["id"] for r in gated_report["claims"]] == \
+        [r["id"] for r in harness_kept_reports]
+    assert n_dropped == len(_THREE_CLAIM_ANSWER["claims"]) - len(harness_kept)
 
 
 def test_has_weak_support_flag():

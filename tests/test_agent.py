@@ -284,6 +284,68 @@ def test_agent_ask_end_to_end_with_runtime_repair(tmp_path):
     store.close()
 
 
+def test_run_task_ours_gate_drops_unverifiable_claims_d160(tmp_path):
+    """D-160 (coordinator ruling, 2026-09-15; `docs/STABILITY.md` §9): the
+    production gate in `tgms.eval.harness.run_task_ours` drops a claim
+    verdicted `unverifiable` by `ClaimVerifier`, not just `unsupported`.
+
+    `c2` below cites evidence step `"s99"`, which does not exist in the
+    trace -- `ClaimVerifier.verify` marks that `unverifiable` ("evidence
+    steps unavailable"), a distinct verdict from `unsupported`. Before
+    D-160 (Addendum 1's "unsupported only" gate) it would have survived
+    into the delivered answer; the 2026-09-13 fault-matrix campaign found
+    this exact shape (a claim citing a step other than the one that
+    actually grounds it) is what let 271/300 F1-9 trials leak past the old
+    gate as silent violations."""
+    import tgms
+    from tgms.eval.harness import run_task_ours
+
+    store = tgms.open(tmp_path / "gate-store")
+    store.ingest_events([
+        {"src": "alice", "dst": "bob", "rel_type": "MSG", "vt_s": 10},
+    ])
+
+    plan_json = json.dumps({
+        "plan_id": "p1",
+        "steps": [{"id": "s1", "op": "resolve_entities",
+                   "args": {"query": "alice"}, "depends_on": []}],
+        "answer_spec": {"kind": "entity_set", "from": "s1.rows"},
+    })
+    # the reporter's AnswerObject: c1 is a genuine claim grounded in s1's
+    # payload; c2 cites a step ("s99") absent from the trace entirely --
+    # unverifiable, never unsupported.
+    answer_json = json.dumps({
+        "text": "The entity is alice. The count is 3.",
+        "claims": [
+            {"id": "c1", "type": "entity", "uids": ["alice"], "evidence": ["s1"]},
+            {"id": "c2", "type": "count", "value": 3, "evidence": ["s99"]},
+        ],
+    })
+    script = iter([plan_json, answer_json])
+
+    task = {"question_text": "Who is alice?", "input_uids": ["alice"],
+           "answer_kind": "entity_set", "gold": ["alice"]}
+    row = run_task_ours("ours", task, store, model="fake",
+                        llm_fn=lambda *a, **k: next(script), seed=0)
+    store.close()
+
+    kept_ids = [c["id"] for c in row["answer_object"]["claims"]]
+    assert kept_ids == ["c1"]              # c2 gated out under D-160
+    # ucr_pre_gate is computed over the RAW, un-gated answer and is
+    # unaffected by this ruling: neither claim is "unsupported", so it
+    # reads 0.0 whether or not c2 is later withheld by the gate.
+    assert row["ucr_pre_gate"] == 0.0
+    assert row["ucr"] == 0.0
+    # coverage IS affected: "3" was only covered by the now-withheld c2,
+    # so it shows up as uncovered text once c2 is gated out -- this is the
+    # "coverage falls" half of the dated STABILITY note.
+    assert row["coverage"] == pytest.approx(0.5)
+    # the withheld claim never reaches classify(): the delivered answer is
+    # evidence-consistent, not a silent-violation of I1.
+    assert row["outcome"] == "correct"
+    assert row["invariants_violated"] == []
+
+
 def test_strip_fences():
     assert strip_fences('```json\n{"a": 1}\n```') == '{"a": 1}'
     assert strip_fences('{"a": 1}') == '{"a": 1}'
