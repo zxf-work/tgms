@@ -178,7 +178,8 @@ engine already does — human-readable report (generation, segments/rows
 checked, close-run count, dictionary records checked), a `PROBLEMS` list if
 anything failed a checksum or cross-reference, and a nonzero exit code on
 any problem (`tgms/cli.py`, the `store verify` action). On failure it
-prints the same remedy: rebuild from the event log with `tgms replay`.
+prints the same remedy: rebuild from the event log with `tgms replay`. Since
+2026-09-13 it has two modes and a machine-readable form — see §9.
 
 **What a user should do after a crash:**
 1. Just reopen the store normally (`tgms.open(...)`). Recovery (chain
@@ -554,3 +555,79 @@ request*; a call path that never logs a `"started"` line (library code that
 bypasses `ToolRouter.call`) is invisible to it, and restarting a child is a
 mitigation for availability, not a substitute for finding why a request ran
 long.
+
+---
+
+## 9. The integrity checker's full mode (added Lane A A3, 2026-09-13)
+
+`tgms store verify` had one mode: walk every file this generation names and
+checksum it. That mode still exists, is still the default, and still costs
+what it always did — it is now spelled `--fast`.
+
+`--full` adds the checks that span files or read inside one. `tgms check
+<store>` is the same thing with a positional argument, for the moment during
+an incident when three words is two too many.
+
+**What each mode checks.**
+
+| Layer | `--fast` | `--full` adds |
+| --- | --- | --- |
+| `manifest` | this generation's self-sha, and its reconstruction from the checkpoint plus delta chain on disk | every *retained* generation's record, its parent link and `parent_sha`, and monotonicity of `created_tt`, `next_segment_id` and `event_log.offset` between adjacent generations |
+| `segment` | every file's magic, header, per-column CRC, completion marker, and row count against the manifest | `rel_code` and string-heap references per row |
+| `close` | every close run's header, checksum and entry count | close records addressing a row past the end of the segment they name |
+| `dict` | record count against the manifest | every `src_id` / `dst_id` / `uid_id` a row carries, against the record count the manifest **commits** |
+| `row` | — | `vt_s < vt_e`; `tt_s < tt_e` for closed rows; and I1 — no two *believed* versions of one identity overlapping in valid time |
+| `eventlog` | — | per-record framing and `batch_id`, tt monotonicity, and the rolling chain over the applied prefix against the `(offset, chain)` cursor this generation recorded |
+| `tcsr` | — | the persisted permutation's stamp and shape, plus a rebuild-and-compare content check |
+| `registry` / `blob` | — | each artifact record's own `record_digest`, the per-name generation chain and its `supersedes` links, and the blobs `refresh.ref` / `plan.plan_ref` / `payload.result_ref` name |
+
+**The report.** Every observation is a structured finding —
+`{layer, kind, path, generation, detail, severity}` — and `--json` emits the
+whole report. `layer` and `kind` are stable tokens meant to be matched on;
+`detail` is prose and may be reworded at any time. `problems` remains the
+list of `detail` strings for the `error` findings, and `healthy` remains
+"no problems", so anything reading the pre-A3 report keeps working.
+
+`severity` is either `error` or `advisory`. Only errors affect the verdict
+and the exit code. The distinction exists because of one real case: a
+persisted TCSR permutation goes stale on the very next write, and
+`load_permutation` correctly ignores a stale stamp and rebuilds — so
+reporting it as corruption would fail almost every store that has ever been
+written to. It is reported (`tcsr-stale`) and it does not condemn the store.
+
+**Exit codes.** `0` clean, `1` findings, `2` the store cannot be checked at
+all — `CURRENT` malformed, a manifest failing its own checksum, a dictionary
+shorter than the manifest commits. Those are refusals the engine makes before
+a report exists, and "cannot be checked" is a different answer from "checked,
+and here is what is wrong".
+
+**Read-only, and this is a promise, not an implementation detail.** Verify
+never writes, truncates, trims or recovers, in either mode. A torn event-log
+tail is reported as `eventlog/torn-tail`; it is *not* trimmed, even though
+`EventLog.trim_torn_tail` exists and normal recovery would do exactly that. A
+stale index is reported; it is not rebuilt. Both commands therefore open the
+store read-only and go straight to the storage adapter rather than through
+`tgms.open`, because a read-write handle runs crash recovery on open and
+would have repaired the defect before the check ran.
+`tests/test_verify_full.py` asserts the property directly: a full check of a
+store damaged in four places leaves every byte under the store root
+unchanged.
+
+**What full mode still does not check, stated honestly.** It does not
+re-derive the store from its event log — that is `tgms replay` plus a digest
+comparison, and it is the only thing that proves the materialization itself
+is right. It does not check `props` beyond the bytes round-tripping, so a
+semantically wrong but well-formed value is invisible to it. It reads
+`manifests/` only up to `CURRENT`: a manifest above it is what a crash
+between the manifest write and the `CURRENT` flip leaves, and the commit
+protocol depends on that file being ignorable. And its memory is bounded by
+one segment at a time plus one interval pair per currently-believed row —
+proportional to the live version count, so a store with a very large believed
+set will use more memory in `--full` than in `--fast`.
+
+**Not promised:** the wording of any `detail`, the ordering of `findings`
+within one report (it is deterministic for a given store, but not stable
+across versions), and the exact set of `kind` tokens, which will grow as the
+corruption sweep finds shapes worth naming separately. The six keys of a
+finding, the `layer` vocabulary, `severity`'s two values and the three exit
+codes are the parts to build on.
