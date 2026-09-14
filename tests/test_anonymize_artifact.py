@@ -7,7 +7,8 @@ tables/greps live in the task's own report, not here) that reproduces the
 shapes the real repo actually has: a benchmark JSON record with a
 `machine.host`-style field, a benchmark README mentioning a cluster node
 name, the Slurm partition, the university domain, and a PI email, plus a
-`/project/<user>/...` path buried in both a JSON string and prose.
+`/project/<user>/...` path buried in both a JSON string and prose, a file
+whose own *name* carries a token, and a JSON *key* that carries one.
 
 Module loaded fresh via `importlib.util`, matching the pattern
 `tests/test_osdi_paper_macros.py` already uses for `scripts/*.py`.
@@ -213,23 +214,102 @@ def test_hard_excludes_cannot_be_reincluded(tmp_path):
     assert not (out / "docs" / "DECISIONS.md").exists()
 
 
-def test_key_names_are_never_rewritten(tmp_path):
-    """A JSON key that itself embeds a hostname-shaped token (not just a
-    value) must be left exactly as-is -- process_file only ever touches
-    string leaf *values*."""
+def test_json_key_carrying_token_is_rewritten_and_listed(tmp_path):
+    """A JSON key that itself embeds a hostname-shaped token gets the same
+    replacement a value would (ruling: keys are untouched *unless* they
+    carry a token), and the rewrite is logged under `rewritten_keys` --
+    never with the original key text, only a sha256 of it."""
     src = tmp_path / "repo"
     bench_dir = src / "benchmarks" / "keyed-v1"
     bench_dir.mkdir(parents=True)
-    data = {"itiger_scaled_at_500ms": {"p50": 12.3, "note": "on itiger02"}}
+    data = {"itiger_scaled_at_500ms": {"p50": 12.3, "note": "on itiger02"}, "ordinary_key": "kept"}
     (bench_dir / "record.json").write_text(json.dumps(data), encoding="utf-8")
 
     out = tmp_path / "bundle"
     assert _run(src, out) == 0
     out_data = json.loads((out / "benchmarks" / "keyed-v1" / "record.json").read_text())
 
-    assert "itiger_scaled_at_500ms" in out_data  # key untouched, even though it embeds a hostname token
-    assert out_data["itiger_scaled_at_500ms"]["p50"] == 12.3
-    assert "itiger02" not in out_data["itiger_scaled_at_500ms"]["note"]  # the value was still scrubbed
+    # the token-carrying key was rewritten, not left alone
+    assert "itiger_scaled_at_500ms" not in out_data
+    new_keys = [k for k in out_data if k != "ordinary_key"]
+    assert len(new_keys) == 1
+    new_key = new_keys[0]
+    assert "itiger" not in new_key.lower()
+
+    # nested value and number under it are untouched/scrubbed as normal
+    assert out_data[new_key]["p50"] == 12.3
+    assert "itiger02" not in out_data[new_key]["note"]
+
+    # a key that carries no token is left exactly as-is
+    assert out_data["ordinary_key"] == "kept"
+
+    manifest = json.loads((out / "bundle-manifest.json").read_text())
+    entry = next(e for e in manifest["rewritten_keys"] if e["new_key"] == new_key)
+    assert entry["file"] == "benchmarks/keyed-v1/record.json"
+    assert len(entry["old_key_sha256"]) == 64
+    assert entry["old_key_sha256"] == aa.sha256_hex("itiger_scaled_at_500ms".encode("utf-8"))
+    assert "cluster_name" in entry["patterns"]
+    # the manifest never carries the raw original key text
+    assert "itiger_scaled_at_500ms" not in json.dumps(manifest)
+
+
+def test_filename_carrying_token_is_renamed_and_listed(tmp_path):
+    """A bundled file whose *name* carries a hostname-shaped token is
+    renamed inside the bundle, and the rename is logged under `renames`
+    -- new path plus a sha256 of the original relative path, never the
+    original path text itself."""
+    src = tmp_path / "repo"
+    bench_dir = src / "benchmarks" / "results-v1"
+    bench_dir.mkdir(parents=True)
+    original_rel = "benchmarks/results-v1/evidence-overhead-itiger.json"
+    (bench_dir / "evidence-overhead-itiger.json").write_text(json.dumps({"ok": True}), encoding="utf-8")
+
+    out = tmp_path / "bundle"
+    assert _run(src, out) == 0
+
+    assert not (out / "benchmarks" / "results-v1" / "evidence-overhead-itiger.json").exists()
+    renamed = list((out / "benchmarks" / "results-v1").glob("evidence-overhead-*.json"))
+    assert len(renamed) == 1
+    new_path = renamed[0]
+    assert "itiger" not in new_path.name.lower()
+
+    manifest = json.loads((out / "bundle-manifest.json").read_text())
+    new_rel = str(new_path.relative_to(out))
+    rename_entry = next(r for r in manifest["renames"] if r["to"] == new_rel)
+    assert rename_entry["old_path_sha256"] == aa.sha256_hex(original_rel.encode("utf-8"))
+    assert "cluster_name" in rename_entry["patterns"]
+
+    file_entry = next(f for f in manifest["files"] if f["path"] == new_rel)
+    assert file_entry["renamed"] is True
+
+    # the manifest never carries the raw original path text
+    assert "evidence-overhead-itiger.json" not in json.dumps(manifest)
+
+
+def test_manifest_and_doc_leftover_fails_verification(tmp_path):
+    """Verification has no exclusions: a leftover inside the manifest
+    itself, or inside an ordinary bundled doc, must fail exactly like a
+    leftover in benchmark content would."""
+    src = _make_repo(tmp_path)
+    out = tmp_path / "bundle"
+    assert _run(src, out) == 0
+
+    table = aa.build_replacement_table()
+    assert aa.verify_bundle(out, table, aa.VERIFICATION_SENTINELS) == []
+
+    # tamper the manifest itself (as if a future bug reintroduced a raw path)
+    manifest_path = out / "bundle-manifest.json"
+    manifest_text = manifest_path.read_text()
+    manifest_path.write_text(manifest_text.replace("}\n", '}\n', 1) + "\n<!-- xzgpu.uom.memphis.edu -->\n")
+    violations = aa.verify_bundle(out, table, aa.VERIFICATION_SENTINELS)
+    assert any("bundle-manifest.json" in v for v in violations)
+
+    # restore, then tamper an ordinary bundled doc instead
+    manifest_path.write_text(manifest_text)
+    readme_path = out / "benchmarks" / "sample-v1" / "README.md"
+    readme_path.write_text(readme_path.read_text() + "\nSee memphis.edu for details.\n")
+    violations = aa.verify_bundle(out, table, aa.VERIFICATION_SENTINELS)
+    assert any("README.md" in v for v in violations)
 
 
 def test_gitignored_files_are_excluded(tmp_path):
