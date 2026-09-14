@@ -24,6 +24,7 @@ from typing import Any, Iterator
 
 from tgms.core.errors import StateError
 from tgms.core.model import canonical_json, sha256_hex
+from tgms.storage.crashpoint import crash_point
 
 HEADER = {"format": "tgms-eventlog", "version": 1}
 
@@ -65,11 +66,27 @@ class EventLog:
         Returns `(batch_id, end_offset, record_bytes)`: the offset points
         immediately past the record's newline and, with the record bytes,
         lets the caller advance its replay cursor without re-reading the log.
+
+        Normally this is one `write()` of the whole record, which is what
+        makes a live append atomic with respect to a concurrent reader
+        opening the log mid-write (`test_concurrency.py`). Only when the
+        durability-injection point is actually armed
+        (`TGMS_CRASH_POINT=py_torn_wal_append`, D-086) does the call instead
+        write a partial record, flush it, and die via `crash_point` before
+        the rest, the newline, or the fsync — leaving exactly the torn tail
+        `EventLog.trim_torn_tail` exists to recover from. This reproduces,
+        from inside the product, the shape `scripts/eval_durability.py` used
+        to produce with a harness-local monkeypatch of this method.
         """
         batch_id = sha256_hex(canonical_json({"tt": tt, "ops": ops}))[:16]
         record = canonical_json({"batch_id": batch_id, "tt": tt, "ops": ops})
         record_bytes = (record + "\n").encode("utf-8")
         with open(self.path, "ab") as f:
+            if os.environ.get("TGMS_CRASH_POINT") == "py_torn_wal_append":
+                half = max(1, len(record_bytes) // 2)
+                f.write(record_bytes[:half])
+                f.flush()
+                crash_point("py_torn_wal_append")  # dies here; never returns
             f.write(record_bytes)
             f.flush()
             os.fsync(f.fileno())

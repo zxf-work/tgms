@@ -8,21 +8,36 @@ jobs:
   test:
     runs-on: ubuntu-latest
     timeout-minutes: 15   # spec §7.5: make ci must finish < 15 min
+    strategy:
+      fail-fast: false
+      matrix:
+        # P0.6: the single-version job masked interpreter-specific breakage;
+        # ubuntu-only (publish.yml already covers macOS wheel builds).
+        python-version: ["3.11", "3.12", "3.13"]
     steps:
       - uses: actions/checkout@v5
         with:
           fetch-depth: 0   # commit-hygiene check (§8.1) walks history
       # native engine (D-028): the package is a mixed Rust/Python build, so
       # a source install needs a toolchain. Cached, or this dominates CI.
-      - uses: dtolnay/rust-toolchain@stable
+      # @stable floated and already bit once (clippy 1.98's chunks-exact
+      # lint broke `-D warnings` mid-cycle, 8ffe464/41e498f). Pinned here
+      # via @master + explicit `toolchain` (P0.6) — @master does NOT read
+      # rust-toolchain.toml on its own (confirmed against the action's
+      # README: with no @rev-implied channel, `toolchain` must be given
+      # explicitly), so the version below must be kept equal to the
+      # `channel` in rust-toolchain.toml; the file still governs local
+      # `cargo` builds run without this action.
+      - uses: dtolnay/rust-toolchain@master
         with:
+          toolchain: "1.98.1"
           components: clippy
       - uses: Swatinem/rust-cache@v2
       # v7, not v5: publish.yml already pins v7, and two workflows on
       # different majors of the same action is how one of them goes stale
       - uses: astral-sh/setup-uv@v7
         with:
-          python-version: "3.12"
+          python-version: ${{ matrix.python-version }}
       - run: uv sync --extra agent
       - name: rust core tests
         run: cargo test -p tgms-engine-core

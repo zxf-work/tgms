@@ -39,6 +39,43 @@ DATASETS: dict[str, dict[str, Any]] = {
                  "financial trust domain (who-trusts-whom on the Bitcoin "
                  "OTC market); timestamped, instantaneous events",
     },
+    # Stack-Exchange interaction networks ship one file per edge type; the
+    # loader streams them in the listed (fixed) order, so the recorded event
+    # log is deterministic but interleaves valid time across types — a real
+    # tt≠vt workload, unlike the roughly time-sorted single-file datasets.
+    "sx-mathoverflow": {
+        "files": [
+            {"url": "https://snap.stanford.edu/data/sx-mathoverflow-a2q.txt.gz",
+             "raw": "sx-mathoverflow-a2q.txt.gz", "rel_type": "A2Q"},
+            {"url": "https://snap.stanford.edu/data/sx-mathoverflow-c2q.txt.gz",
+             "raw": "sx-mathoverflow-c2q.txt.gz", "rel_type": "C2Q"},
+            {"url": "https://snap.stanford.edu/data/sx-mathoverflow-c2a.txt.gz",
+             "raw": "sx-mathoverflow-c2a.txt.gz", "rel_type": "C2A"},
+        ],
+        "notes": "~25k nodes / ~506k events over ~6.5 years; three edge "
+                 "types (answer-to-question, comment-to-question, "
+                 "comment-to-answer); instantaneous events",
+    },
+    "sx-superuser": {
+        "files": [
+            {"url": "https://snap.stanford.edu/data/sx-superuser-a2q.txt.gz",
+             "raw": "sx-superuser-a2q.txt.gz", "rel_type": "A2Q"},
+            {"url": "https://snap.stanford.edu/data/sx-superuser-c2q.txt.gz",
+             "raw": "sx-superuser-c2q.txt.gz", "rel_type": "C2Q"},
+            {"url": "https://snap.stanford.edu/data/sx-superuser-c2a.txt.gz",
+             "raw": "sx-superuser-c2a.txt.gz", "rel_type": "C2A"},
+        ],
+        "notes": "~194k nodes / ~1.44M events; same three edge types as "
+                 "sx-mathoverflow; the 1M-class real graph",
+    },
+    "wiki-talk": {
+        "url": "https://snap.stanford.edu/data/wiki-talk-temporal.txt.gz",
+        "raw": "wiki-talk-temporal.txt.gz",
+        "rel_type": "TALK",
+        "notes": "~1.14M nodes / ~7.8M talk-page edits over ~6.4 years; "
+                 "extreme hub skew (admins/bots) — the guardrail stressor; "
+                 "instantaneous events",
+    },
 }
 
 
@@ -50,13 +87,9 @@ def sha256_file(path: Path) -> str:
     return h.hexdigest()
 
 
-def download(name: str, data_dir: str | Path) -> Path:
-    spec = DATASETS[name]
-    data_dir = Path(data_dir)
-    data_dir.mkdir(parents=True, exist_ok=True)
-    raw = data_dir / spec["raw"]
+def _fetch_pinned(url: str, raw: Path, name: str) -> Path:
     if not raw.exists():
-        urllib.request.urlretrieve(spec["url"], raw)  # noqa: S310 — SNAP https
+        urllib.request.urlretrieve(url, raw)  # noqa: S310 — SNAP https
     manifest = raw.with_suffix(raw.suffix + ".sha256")
     digest = sha256_file(raw)
     if manifest.exists():
@@ -67,6 +100,23 @@ def download(name: str, data_dir: str | Path) -> Path:
     else:
         manifest.write_text(f"{digest}  {raw.name}\n")
     return raw
+
+
+def download(name: str, data_dir: str | Path) -> Path | list[tuple[Path, str]]:
+    """Fetch and SHA-pin a dataset's raw file(s).
+
+    Single-file datasets return the raw Path (unchanged contract);
+    multi-file datasets return [(raw, rel_type), ...] in the DATASETS order,
+    which is the order `load` streams them — part of the recorded log's
+    determinism, so never reorder the spec list.
+    """
+    spec = DATASETS[name]
+    data_dir = Path(data_dir)
+    data_dir.mkdir(parents=True, exist_ok=True)
+    if "files" in spec:
+        return [(_fetch_pinned(f["url"], data_dir / f["raw"], name), f["rel_type"])
+                for f in spec["files"]]
+    return _fetch_pinned(spec["url"], data_dir / spec["raw"], name)
 
 
 def snap_edge_stream(raw: Path, rel_type: str) -> Iterator[Event]:
@@ -109,6 +159,10 @@ def load(name: str, data_dir: str | Path) -> Iterator[Event]:
         return
     spec = DATASETS[name]
     raw = download(name, data_dir)
+    if "files" in spec:
+        for path, rel_type in raw:
+            yield from snap_edge_stream(path, rel_type)
+        return
     if spec.get("format") == "csv_rated":
         yield from csv_rated_stream(raw, spec["rel_type"])
         return

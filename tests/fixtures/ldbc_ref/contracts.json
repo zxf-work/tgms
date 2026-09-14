@@ -1,0 +1,264 @@
+{
+ "_provenance": {
+  "copied_on": "2026-09-13",
+  "manifest_pins": {
+   "bi_commit": "47dd38b40844ecdb0e42e5a610c369535304786d",
+   "bi_repo": "https://github.com/ldbc/ldbc_snb_bi",
+   "interactive_v1_impls_commit": "11db98cc2ba14c33492f6c0c34e68c8be7e22e5f",
+   "interactive_v1_impls_repo": "https://github.com/ldbc/ldbc_snb_interactive_v1_impls",
+   "manifest_file": "external_workloads/MANIFEST.yaml:59-72"
+  },
+  "note": "external_workloads/ is not on main; these 41 rows are the whole file, copied verbatim (query_id, claim_full_contract, duplicate_safe, workload, title only) so ldbc_compare.py can read the per-template contract class without the vendored tree being checked out.",
+  "row_count": 41,
+  "source": "external_workloads/ldbc/coverage_annotation.jsonl",
+  "source_worktree": "/Users/xz/.tgms-worktrees/agent-interface"
+ },
+ "rows": {
+  "BI1": {
+   "claim_full_contract": "REQUIRES_ORDERED_RESULT",
+   "duplicate_safe": "GUARANTEED_BY_GROUP",
+   "title": "Posting summary",
+   "workload": "bi"
+  },
+  "BI10": {
+   "claim_full_contract": "REQUIRES_TOP_K",
+   "duplicate_safe": "GUARANTEED_BY_KEY",
+   "title": "Experts in social circle",
+   "workload": "bi"
+  },
+  "BI11": {
+   "claim_full_contract": "CURRENT_ECQR_FRAGMENT",
+   "duplicate_safe": "SINGLE_ROW",
+   "title": "Friend triangles",
+   "workload": "bi"
+  },
+  "BI12": {
+   "claim_full_contract": "REQUIRES_ORDERED_RESULT",
+   "duplicate_safe": "GUARANTEED_BY_GROUP",
+   "title": "How many persons have a given number of messages",
+   "workload": "bi"
+  },
+  "BI13": {
+   "claim_full_contract": "REQUIRES_TOP_K",
+   "duplicate_safe": "GUARANTEED_BY_KEY",
+   "title": "Zombies in a country",
+   "workload": "bi"
+  },
+  "BI14": {
+   "claim_full_contract": "REQUIRES_GROUPWISE_EXTREMUM",
+   "duplicate_safe": "GUARANTEED_BY_KEY",
+   "title": "International dialog",
+   "workload": "bi"
+  },
+  "BI15": {
+   "claim_full_contract": "CURRENT_ECQR_FRAGMENT",
+   "duplicate_safe": "SINGLE_ROW",
+   "title": "Trusted connection paths through forums created in a given timeframe",
+   "workload": "bi"
+  },
+  "BI16": {
+   "claim_full_contract": "REQUIRES_TOP_K",
+   "duplicate_safe": "GUARANTEED_BY_KEY",
+   "title": "Fake news detection",
+   "workload": "bi"
+  },
+  "BI17": {
+   "claim_full_contract": "REQUIRES_TOP_K",
+   "duplicate_safe": "GUARANTEED_BY_KEY",
+   "title": "Information propagation analysis",
+   "workload": "bi"
+  },
+  "BI18": {
+   "claim_full_contract": "REQUIRES_TOP_K",
+   "duplicate_safe": "GUARANTEED_BY_KEY",
+   "title": "Friend recommendation",
+   "workload": "bi"
+  },
+  "BI19": {
+   "claim_full_contract": "REQUIRES_ORDERED_RESULT",
+   "duplicate_safe": "GUARANTEED_BY_KEY",
+   "title": "Interaction path between cities",
+   "workload": "bi"
+  },
+  "BI2": {
+   "claim_full_contract": "REQUIRES_TOP_K",
+   "duplicate_safe": "GUARANTEED_BY_GROUP",
+   "title": "Tag evolution",
+   "workload": "bi"
+  },
+  "BI20": {
+   "claim_full_contract": "REQUIRES_TOP_K",
+   "duplicate_safe": "GUARANTEED_BY_KEY",
+   "title": "Recruitment",
+   "workload": "bi"
+  },
+  "BI3": {
+   "claim_full_contract": "REQUIRES_TOP_K",
+   "duplicate_safe": "GUARANTEED_BY_KEY",
+   "title": "Popular topics in a country",
+   "workload": "bi"
+  },
+  "BI4": {
+   "claim_full_contract": "REQUIRES_TOP_K",
+   "duplicate_safe": "GUARANTEED_BY_KEY",
+   "title": "Top message creators by country",
+   "workload": "bi"
+  },
+  "BI5": {
+   "claim_full_contract": "REQUIRES_TOP_K",
+   "duplicate_safe": "GUARANTEED_BY_KEY",
+   "title": "Most active posters of a given topic",
+   "workload": "bi"
+  },
+  "BI6": {
+   "claim_full_contract": "REQUIRES_TOP_K",
+   "duplicate_safe": "GUARANTEED_BY_KEY",
+   "title": "Most authoritative users on a given topic",
+   "workload": "bi"
+  },
+  "BI7": {
+   "claim_full_contract": "REQUIRES_TOP_K",
+   "duplicate_safe": "GUARANTEED_BY_GROUP",
+   "title": "Related topics",
+   "workload": "bi"
+  },
+  "BI8": {
+   "claim_full_contract": "REQUIRES_TOP_K",
+   "duplicate_safe": "GUARANTEED_BY_KEY",
+   "title": "Central person for a tag",
+   "workload": "bi"
+  },
+  "BI9": {
+   "claim_full_contract": "REQUIRES_TOP_K",
+   "duplicate_safe": "GUARANTEED_BY_KEY",
+   "title": "Top thread initiators",
+   "workload": "bi"
+  },
+  "IC1": {
+   "claim_full_contract": "REQUIRES_TOP_K",
+   "duplicate_safe": null,
+   "title": "Transitive friends with a certain name",
+   "workload": "interactive-v1"
+  },
+  "IC10": {
+   "claim_full_contract": "REQUIRES_TOP_K",
+   "duplicate_safe": "GUARANTEED_BY_KEY",
+   "title": "Friend recommendation",
+   "workload": "interactive-v1"
+  },
+  "IC11": {
+   "claim_full_contract": "REQUIRES_TOP_K",
+   "duplicate_safe": "GUARANTEED_BY_KEY",
+   "title": "Job referral",
+   "workload": "interactive-v1"
+  },
+  "IC12": {
+   "claim_full_contract": "REQUIRES_TOP_K",
+   "duplicate_safe": null,
+   "title": "Expert search",
+   "workload": "interactive-v1"
+  },
+  "IC13": {
+   "claim_full_contract": "CURRENT_ECQR_FRAGMENT",
+   "duplicate_safe": "SINGLE_ROW",
+   "title": "Single shortest path",
+   "workload": "interactive-v1"
+  },
+  "IC14": {
+   "claim_full_contract": "REQUIRES_PATH_CERTIFICATE",
+   "duplicate_safe": null,
+   "title": "Trusted connection paths (v1)",
+   "workload": "interactive-v1"
+  },
+  "IC2": {
+   "claim_full_contract": "REQUIRES_TOP_K",
+   "duplicate_safe": "GUARANTEED_BY_KEY",
+   "title": "Recent messages by your friends",
+   "workload": "interactive-v1"
+  },
+  "IC3": {
+   "claim_full_contract": "REQUIRES_TOP_K",
+   "duplicate_safe": "GUARANTEED_BY_KEY",
+   "title": "Friends and friends of friends that have been to given countries",
+   "workload": "interactive-v1"
+  },
+  "IC4": {
+   "claim_full_contract": "REQUIRES_TOP_K",
+   "duplicate_safe": "GUARANTEED_BY_GROUP",
+   "title": "New topics",
+   "workload": "interactive-v1"
+  },
+  "IC5": {
+   "claim_full_contract": "REQUIRES_TOP_K",
+   "duplicate_safe": "GUARANTEED_BY_KEY",
+   "title": "New groups",
+   "workload": "interactive-v1"
+  },
+  "IC6": {
+   "claim_full_contract": "REQUIRES_TOP_K",
+   "duplicate_safe": "GUARANTEED_BY_GROUP",
+   "title": "Tag co-occurrence",
+   "workload": "interactive-v1"
+  },
+  "IC7": {
+   "claim_full_contract": "REQUIRES_TOP_K",
+   "duplicate_safe": "GUARANTEED_BY_KEY",
+   "title": "Recent likers",
+   "workload": "interactive-v1"
+  },
+  "IC8": {
+   "claim_full_contract": "REQUIRES_TOP_K",
+   "duplicate_safe": "GUARANTEED_BY_KEY",
+   "title": "Recent replies",
+   "workload": "interactive-v1"
+  },
+  "IC9": {
+   "claim_full_contract": "REQUIRES_TOP_K",
+   "duplicate_safe": "GUARANTEED_BY_KEY",
+   "title": "Recent messages by friends or friends of friends",
+   "workload": "interactive-v1"
+  },
+  "IS1": {
+   "claim_full_contract": "CURRENT_ECQR_FRAGMENT",
+   "duplicate_safe": "SINGLE_ROW",
+   "title": "Profile of a person",
+   "workload": "interactive-v1"
+  },
+  "IS2": {
+   "claim_full_contract": "REQUIRES_TOP_K",
+   "duplicate_safe": "GUARANTEED_BY_KEY",
+   "title": "Recent messages of a person",
+   "workload": "interactive-v1"
+  },
+  "IS3": {
+   "claim_full_contract": "REQUIRES_ORDERED_RESULT",
+   "duplicate_safe": "GUARANTEED_BY_KEY",
+   "title": "Friends of a person",
+   "workload": "interactive-v1"
+  },
+  "IS4": {
+   "claim_full_contract": "CURRENT_ECQR_FRAGMENT",
+   "duplicate_safe": "SINGLE_ROW",
+   "title": "Content of a message",
+   "workload": "interactive-v1"
+  },
+  "IS5": {
+   "claim_full_contract": "CURRENT_ECQR_FRAGMENT",
+   "duplicate_safe": "SINGLE_ROW",
+   "title": "Creator of a message",
+   "workload": "interactive-v1"
+  },
+  "IS6": {
+   "claim_full_contract": "CURRENT_ECQR_FRAGMENT",
+   "duplicate_safe": "SINGLE_ROW",
+   "title": "Forum of a message",
+   "workload": "interactive-v1"
+  },
+  "IS7": {
+   "claim_full_contract": "REQUIRES_ORDERED_RESULT",
+   "duplicate_safe": "GUARANTEED_BY_KEY",
+   "title": "Replies of a message",
+   "workload": "interactive-v1"
+  }
+ }
+}

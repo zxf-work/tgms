@@ -460,3 +460,73 @@ What the decision is *not*:
   found the host OOM killer taking 2 of 16 readers at 10M (~4 GB per reader
   on a 93 GB host). Adding a writer to a configuration already at the memory
   ceiling measures the OOM killer, not concurrency.
+
+---
+
+## 2026-09-13 — three more races, and a real one closed
+
+Everything above is the native engine's own concurrency contract: segments,
+manifests, readers. `tgms/artifact/` sits beside it as a second piece of
+on-disk state (`artifacts.jsonl`, the registry) with its own concurrency
+questions, and the OSDI27 fault-matrix design memo (§7) named three of them
+as untested. This section records what each test found, not numbers — the
+point of these tests is which of a small number of qualitative outcomes
+happens, never a rate or a latency.
+
+**`Registry.append` was an unlocked check-then-act, and it was wrong.**
+`register()`/`append()` used to read the current generation from the
+registry's own in-memory fold, decide the next generation from it, and only
+then write — with no lock protecting that read-decide-write sequence from a
+second process doing the same thing on the same `artifacts.jsonl`. Two
+processes racing to append the next generation of one artifact name could
+both read the same "current" generation, both pass the check, and both
+append — leaving two records on disk claiming the same generation, a
+corruption the loader only ever caught later, on the *next* fresh
+`Registry(path)` open, as a chain-consecutiveness error. Fixed with an
+OS-level exclusive lock (`fcntl.flock`) on a sidecar `artifacts.jsonl.lock`
+— never the registry file itself, so a reader never contends with a writer —
+held across the whole check-then-act: a re-read of whatever another process
+appended since this object's own fold last looked, the generation check, the
+append and its `fsync`, and the in-memory index update. A post-append
+re-read stays in as belt-and-braces alongside the lock, verifying on disk
+that nothing landed where this process's own write believed it was landing.
+A losing writer now raises immediately, in its own `append()` call, instead
+of silently writing a corrupt second generation.
+
+**Query vs. cross-process compaction/gc: no cross-process contract, and the
+engine does not pretend to have one.** The native engine's generation-pin
+table (`gc.rs`) is explicit that it is in-process only — "no cross-process
+reader registry, deliberately" — so a reader in one process pinning a
+generation is not visible to `gc()` running in another. The new test
+exercises exactly that: a reader repeatedly answers a fixed set of questions
+while a second process commits more batches and runs `compact()` +
+`gc(keep_last=2)` underneath it. The property that must hold either way is
+not "gc leaves the reader's generation alone" — nothing promises that
+cross-process — it is that gc can never make the reader silently *wrong*.
+The two acceptable outcomes are answer-stable (the reader's already-open
+file handles keep answering the same thing regardless of what gc collects
+on disk, since POSIX does not invalidate a handle a process still holds
+open) and loud failure (an exception naming what went missing). The test
+records whichever actually happens rather than asserting one; see the E2
+task report for which one this host produced.
+
+**A correction landing mid-refresh does not make `refresh()` claim
+freshness it should not.** There is no natural I/O gap inside `refresh()`
+between its read (`run_plan`, capturing the fresh execution's envelope) and
+its publish (`registry.register`, inside `_publish`) for a correction to
+race into, so the new test pauses that exact window from the test side —
+monkeypatching `tgms.artifact.refresh.run_plan` in the refresher process
+only, `refresh.py` itself untouched — and lands a correction from a second,
+separate process during the pause. Checking the published generation
+against the post-correction log reports `POSSIBLY_STALE` with a witness
+naming the correction, never `FRESH`: the published basis is honest about
+what it actually read, under the race, not only in the sequential case
+`tests/test_artifact_refresh.py` already covers.
+
+Also added: a one-process test for `tgms/storage/eventlog.py`'s
+non-monotonic-`tt` refusal in `replay()` (previously untested — `append()`
+itself does not enforce ordering, so a log that somehow acquires two batches
+out of `tt` order must be refused at replay, not silently applied as if time
+ran backwards), and a `pace_s`-paced variant of the existing pinned-reader
+test that stretches the same one-generation-per-handle property over many
+more writer-committed generations instead of twelve.

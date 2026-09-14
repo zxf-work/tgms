@@ -61,6 +61,13 @@ SANCTIONED = {
     "01d49846f7c92fed42780ffc66f18392ebd59d76",  # M4.6 sweep: harness + its tests
     "bff8fd9f8c398f0781b5dc8bd34bf7566f67a5cc",  # edge-endpoint hints + replay tests
     "59ecb2408d78172f7765ac97f1060e8bbef812b3",  # layout fix + its scaling test
+    # --- Third category, grandfathered for the agent-interface merge
+    # (2026-09-13, P0.3): imported from a branch that committed atomically
+    # per independent chip sessions, predating this check on that branch.
+    # Verified before sanctioning: does not touch tgms/temporal/oracle.py
+    # and adds coverage for its own feature (the round-3 evidence schema)
+    # rather than bending an existing test's expectations.
+    "785ab6ec77af9ebe23ce953d6a200c2358f05681",  # evidence: round-3 schema (D-124)
 }
 
 
@@ -74,7 +81,13 @@ def is_implementation(path: str) -> bool:
 
 def main() -> int:
     base = sys.argv[1] if len(sys.argv) > 1 else default_base()
-    commits = sh("rev-list", f"{base}..HEAD").split()
+    # Merge commits are excluded: `git show --name-only` on a merge prints the
+    # combined diff, which lists every file the merge genuinely joined from
+    # both sides -- a legitimate union merge of a long-lived branch therefore
+    # "mixes" tests/ and tgms/ without any author having done so (seen on the
+    # 2026-09-13 agent-interface reconciliation). The rule binds authored
+    # commits; merges are the sum of already-checked parents.
+    commits = sh("rev-list", "--no-merges", f"{base}..HEAD").split()
     bad = []
     for c in commits:
         if c in SANCTIONED:

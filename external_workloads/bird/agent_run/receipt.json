@@ -1,0 +1,104 @@
+{
+ "host": "Xiaofeis-Mac-mini.local",
+ "n": 500,
+ "freeze": {
+  "prompt_template_sha256": "1790a36a0dc2a386ac4485cd4406974e88320d217f61d76325ba96a58cc287b4",
+  "repair_template_sha256": "0bd398b4ff27c457ef2efef45ffe7dbbb344b6b7f8e0ac9b1068b21deccb2637",
+  "repair_rounds": 3,
+  "ceiling_s": 600,
+  "max_new_tokens": 1024,
+  "model": "Qwen/Qwen2.5-14B-Instruct-AWQ",
+  "temperature": 0.0,
+  "seed": 0
+ },
+ "stage_counts": {
+  "certified": 432,
+  "shape_mismatch": 62,
+  "no_executable_sql": 5,
+  "outside_fragment": 1
+ },
+ "by_form": {
+  "SCALAR": {
+   "n": 292,
+   "executable": 289,
+   "claim_constructed": 240,
+   "certified": 240,
+   "certified_and_correct": 139,
+   "em": 144
+  },
+  "SCALAR_TUPLE": {
+   "n": 54,
+   "executable": 52,
+   "claim_constructed": 41,
+   "certified": 41,
+   "certified_and_correct": 17,
+   "em": 17
+  },
+  "COMPLETE_SET": {
+   "n": 150,
+   "executable": 150,
+   "claim_constructed": 150,
+   "certified": 150,
+   "certified_and_correct": 67,
+   "em": 67
+  },
+  "OUTSIDE_FRAGMENT": {
+   "n": 1,
+   "executable": 1,
+   "claim_constructed": 0,
+   "certified": 0,
+   "certified_and_correct": 0,
+   "em": 0
+  },
+  "EXISTS": {
+   "n": 2,
+   "executable": 2,
+   "claim_constructed": 0,
+   "certified": 0,
+   "certified_and_correct": 0,
+   "em": 0
+  },
+  "SET_AND_COUNT": {
+   "n": 1,
+   "executable": 1,
+   "claim_constructed": 1,
+   "certified": 1,
+   "certified_and_correct": 0,
+   "em": 0
+  }
+ },
+ "unsupported_verdict_counts": {},
+ "funnel": {
+  "universe": 500,
+  "executable_sql": 495,
+  "claim_constructed": 432,
+  "certified": 432,
+  "certified_and_correct": 223
+ },
+ "em_overall": 228,
+ "certified": 432,
+ "certified_and_correct": 223,
+ "outside_fragment": 1,
+ "question_gold_mismatch": 11,
+ "full_contract_not_covered": 31,
+ "duplicate_bearing_reference": 27,
+ "certified_full_contract": 402,
+ "certified_partial_contract": 30,
+ "gold_match_any_claim": 223,
+ "gold_match_full_contract": 210,
+ "partial_contract_reasons": {
+  "duplicate_bearing_reference": 27,
+  "multipart_partially_answered": 2,
+  "ordered_output_demanded": 1
+ },
+ "claim_kind_census": {
+  "scalar": 341,
+  "exact_count": 1,
+  "complete_set": 151
+ },
+ "tokens_in_total": 617487,
+ "tokens_out_total": 43399,
+ "descriptor_bytes_median": 614,
+ "repair_used": 78,
+ "sqlite_version": "3.53.1"
+}

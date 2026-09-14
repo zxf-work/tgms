@@ -1,0 +1,13 @@
+# M5 2x2 factorization, TGMS arms (dev, one seed — mechanism pass, D-105).
+# Suite = oracle-v3 (guardrail-unconditioned inventory's resolved view).
+suite_path: stores/suite-wiki-talk/suite-v3.json
+store_path: stores/wiki-talk
+out_dir: runs/dev2x2-wiki-talk-tgms
+split: dev
+systems: [ours, ours-noverify]
+models: ["openai/Qwen/Qwen2.5-14B-Instruct-AWQ"]
+seeds: [0]
+max_repairs: 3
+memory_db: stores/wiki-talk/memory.sqlite
+llm_api_base: "http://localhost:8000/v1"
+llm_api_key: "EMPTY"

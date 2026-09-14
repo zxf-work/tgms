@@ -1,0 +1,21 @@
+{
+ "host": "itiger07",
+ "build_ecqr_ms": {
+  "small_envelope": 0.0025,
+  "large_envelope": 0.003,
+  "large_rows": 100
+ },
+ "plan_overhead": {
+  "with_descriptors_ms": 0.889,
+  "descriptors_disabled_ms": 0.833,
+  "overhead_ms": 0.056,
+  "overhead_pct": 6.72
+ },
+ "sql_certificate": {
+  "db": "stores/sx-superuser-duckdb/store.duckdb",
+  "page_query_ms": 14.37,
+  "count_certificate_ms": 13.71,
+  "certificate_over_page": 0.95
+ },
+ "commit": "f4adae9"
+}

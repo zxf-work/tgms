@@ -34,7 +34,7 @@ from tgms.eval.plan_faults import (
 from tgms.store import Store
 
 OURS_SYSTEMS = ("ours", "ours-noverify", "ours-nomem")
-BASELINE_SYSTEMS = ("b1", "b2", "b5", "b6")
+BASELINE_SYSTEMS = ("b1", "b2", "b5", "b6", "b6e")
 
 
 # --------------------------------------------------------------------------- #
@@ -55,7 +55,8 @@ def run_task_ours(system: str, task: dict[str, Any], store: Store,
                   model: str, llm_fn: Callable[..., str], seed: int,
                   memory=None, guided: bool = False,
                   ablate_output_contracts: bool = False,
-                  ablate_truncation_taint: bool = False) -> dict[str, Any]:
+                  ablate_truncation_taint: bool = False,
+                  exclude_ops: tuple[str, ...] = ()) -> dict[str, Any]:
     from tgms.agent.agent import Agent
     from tgms.agent.reporter import Reporter
     from tgms.agent.verifier import ClaimVerifier
@@ -67,7 +68,8 @@ def run_task_ours(system: str, task: dict[str, Any], store: Store,
             notes = [n["text"] for n in memory.retrieve(w[0], w[1], k=3)]
 
     agent = Agent(store, model=model, llm_fn=llm_fn, seed=seed, guided=guided,
-                  ablate_output_contracts=ablate_output_contracts)
+                  ablate_output_contracts=ablate_output_contracts,
+                  exclude_ops=exclude_ops)
     t0 = time.perf_counter()
     out = agent.ask(task["question_text"],
                     task_input_uids=set(task["input_uids"]),
@@ -78,6 +80,10 @@ def run_task_ours(system: str, task: dict[str, Any], store: Store,
         "executed_ok": float(bool(trace and trace.ok)),
         "n_llm_calls": len(out["plan_result"].calls),
         "wall_s": round(time.perf_counter() - t0, 3),
+        # the planned operator sequence, for the M6 operator-selection
+        # confusion analysis (oracle ops live in the task record)
+        "plan_ops": [s_.op for s_ in out["plan_result"].plan.steps]
+        if out["plan_result"].plan is not None else None,
     }
     if trace is not None and not trace.ok:
         # first failed step's error payload — makes exec failures diagnosable
@@ -259,8 +265,8 @@ def build_systems(cfg: dict[str, Any], store: Store, model: str,
                                        db_path=str(vk_path),
                                        max_repairs=cfg.get("max_repairs", 3),
                                        seed=seed)
-        elif system == "b6":
-            from tgms.eval.baselines import BiTemporalSQL
+        elif system in ("b6", "b6e"):
+            from tgms.eval.baselines import BiTemporalSQL, BiTemporalSQLEvidence
             src_db = Path(cfg["store_path"]) / "store.duckdb"
             bt_path = Path(cfg["out_dir"]) / f"bitemporal-{suite_tag(cfg)}.duckdb"
             if not bt_path.exists():
@@ -270,9 +276,10 @@ def build_systems(cfg: dict[str, Any], store: Store, model: str,
                 import shutil
                 bt_path.parent.mkdir(parents=True, exist_ok=True)
                 shutil.copy2(src_db, bt_path)
-            out[system] = BiTemporalSQL(llm_fn, model, db_path=bt_path,
-                                        max_repairs=cfg.get("max_repairs", 3),
-                                        seed=seed)
+            cls = BiTemporalSQLEvidence if system == "b6e" else BiTemporalSQL
+            out[system] = cls(llm_fn, model, db_path=bt_path,
+                              max_repairs=cfg.get("max_repairs", 3),
+                              seed=seed)
         else:
             raise ValueError(f"unknown system {system}")
     return out
@@ -340,15 +347,22 @@ def run_matrix(cfg: dict[str, Any], llm_fn: Callable[..., str],
                                     ablate_output_contracts=bool(
                                         cfg.get("ablate_output_contracts")),
                                     ablate_truncation_taint=bool(
-                                        cfg.get("ablate_truncation_taint")))
+                                        cfg.get("ablate_truncation_taint")),
+                                    exclude_ops=tuple(
+                                        cfg.get("exclude_ops") or ()))
                             else:
                                 row = run_task_baseline(system, task,
                                                         systems[system], seed)
                         except Exception as e:  # one bad task must not kill
-                            row = {"first_emission_valid": None,   # the matrix
+                            import traceback                       # the matrix
+                            tb = traceback.format_exception(e)
+                            row = {"first_emission_valid": None,
                                    "executed_ok": 0.0, "em": 0.0, "f1": 0.0,
                                    "task_error": f"{type(e).__name__}: "
-                                                 f"{str(e)[:300]}"}
+                                                 f"{str(e)[:300]}",
+                                   # last frames: a deterministic error must
+                                   # be diagnosable from the cached row
+                                   "task_error_tb": "".join(tb[-4:])[-900:]}
                         if usage_log is not None:
                             new = usage_log[u0:]
                             row["tokens_in"] = sum(x["tokens_in"] for x in new)

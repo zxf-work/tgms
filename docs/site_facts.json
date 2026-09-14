@@ -127,7 +127,7 @@
     "TGIR dependency-scope freshness check",
     "naive row-touch baseline"
    ],
-   "note": "Forecast frozen 2026-08-22, before the first headline trial ran. false-fresh is judged on the full digest-changed set: 898 changed trials pooled across both campaigns (447 in run 2, the record of account; 451 in run 1, superseded by a correction-generator fix but kept as corroborating evidence on the soundness axis). Row-touch false-fresh (47.4%) is reported on run 2's 447 changed trials alone.",
+   "note": "Forecast frozen 2026-08-22, before the first headline trial ran. false-fresh is judged on run 2's digest-changed set alone: 447 changed trials, the record of account; run 1's 451 changed trials used a mislabelled correction generator and are shown for comparison only — the M4 report holds that pooling the two runs into one denominator would be illegitimate. Row-touch false-fresh (47.4%) is reported on run 2's 447 changed trials alone.",
    "record": "benchmarks/freshness-v1/trials-full.json"
   },
   "m5-v1-zero-false-fresh": {
@@ -282,8 +282,8 @@
   "freshness_false_fresh": {
    "value": "0",
    "kind": "tested",
-   "prose": "false-fresh verdicts from tgms trace check's dependency-scope mechanism, over 898 changed trials pooled across the two M4 injection campaigns (3,354 injected corrections total on bitcoinotc, collegemsg and the LDBC fixture) — a false-fresh event is a soundness violation, and none occurred in either campaign",
-   "scope_required": "always state the denominator: 898 changed trials pooled across both campaigns (447 in run 2, the record of account; 451 in run 1, superseded but corroborating on soundness)",
+   "prose": "false-fresh verdicts from tgms trace check's dependency-scope mechanism: 0 of 447 changed trials in the M4 injection campaign (run 2, the record of account) and 0 of 1,852 changed trials in the M5 carve-2 campaign (28,044 trials on synth-iv-60k) — a false-fresh event is a soundness violation, and none occurred in either campaign",
+   "scope_required": "state each campaign's own denominator and never pool them — the M4 report rejects pooling run 1 and run 2 as illegitimate: 447 changed trials in M4 run 2 (record of account); 1,852 changed trials of 28,044 in M5 carve-2",
    "snapshot": "freshness-v1-m4"
   },
   "freshness_rowtouch_false_fresh": {
@@ -1184,6 +1184,10 @@
   {
    "phrase": "5–70× sooner",
    "reason": "the DuckDB cold-start gap is 1.2-8.8x at 10M and parity at 1M since D-082; recompute from the coldwarm receipts"
+  },
+  {
+   "phrase": "898 changed",
+   "reason": "the M4 measured report (internal record) holds that pooling run 1 (451 changed) and run 2 (447 changed) into one denominator is illegitimate; quote per campaign — 0/447 M4 (run 2, record of account) and 0/1,852 changed of 28,044 M5 carve-2 trials"
   }
  ]
 }

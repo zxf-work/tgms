@@ -1,0 +1,22 @@
+{
+ "host": "Xiaofeis-Mac-mini.local",
+ "n": 500,
+ "auto_claim_counts": {
+  "EXACT_COUNT": 76,
+  "COMPLETE_SET": 142,
+  "SCALAR": 182,
+  "QUEUE": 52,
+  "SCALAR_TUPLE": 48
+ },
+ "semantic_property_counts": {
+  "aggregate": 191,
+  "plain": 182,
+  "windowed": 5,
+  "grouped": 25,
+  "top_k": 15,
+  "ranked_extremal": 80,
+  "set_op": 2
+ },
+ "adjudication_queue": 52,
+ "commit": "a3f27128b8141c9753c14753e528e30275e27074"
+}

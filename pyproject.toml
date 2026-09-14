@@ -39,7 +39,9 @@ duckdb = ["duckdb>=1.1", "pyarrow>=17"]
 # backend plus the b5 text-to-Cypher baseline. Pinned here for replaying the
 # frozen b5 results; nothing in the runtime needs it.
 kuzu = ["kuzu>=0.7"]
-agent = ["litellm>=1.48", "fastmcp>=2.0"]
+# tenacity: litellm imports it lazily on its retry path and fails at task
+# time without it (found by the 2026-08-06 iTiger smoke job, one row lost)
+agent = ["litellm>=1.48", "fastmcp>=2.0", "tenacity>=8.2"]
 memory = ["faiss-cpu>=1.8", "sentence-transformers>=3.0"]
 eval = [
     "psycopg[binary]>=3.2",

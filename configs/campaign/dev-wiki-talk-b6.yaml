@@ -1,0 +1,15 @@
+# Session 4, b6 arm: same-information text-to-SQL over a DuckDB replica
+# replayed from the canonical event log (tt-preserving; probe corrections
+# included). Separate config because b6 needs store.duckdb while the
+# primary store is native.
+suite_path: stores/suite-wiki-talk/suite.json
+store_path: stores/wiki-talk-duckdb
+out_dir: runs/dev-wiki-talk-b6
+split: dev
+systems: [b6]
+models: ["openai/Qwen/Qwen2.5-14B-Instruct-AWQ"]
+seeds: [0]
+max_repairs: 3
+memory_db: stores/wiki-talk/memory.sqlite
+llm_api_base: "http://localhost:8000/v1"
+llm_api_key: "EMPTY"

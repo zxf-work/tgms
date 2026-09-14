@@ -39,11 +39,16 @@ class Agent:
                  cache_dir: str | Path | None = None,
                  max_repairs: int = 3, seed: int = 0,
                  guided: bool = False,
-                 ablate_output_contracts: bool = False) -> None:
+                 ablate_output_contracts: bool = False,
+                 exclude_ops: tuple[str, ...] = ()) -> None:
         from tgms.tools.schemas import tool_description
 
         self.store = store
-        self.router = ToolRouter(store.adapter, tt_source=store)
+        # exclude_ops restricts the whole surface in one move: the router
+        # refuses the op AND the planner's tool manual never mentions it —
+        # the M6 nested-algebra experiment's lever (a restriction only at
+        # the router would measure error recovery, not interface size)
+        self.router = ToolRouter(store.adapter, tt_source=store, exclude=exclude_ops)
         manual = "\n".join(f"### {name}\n{tool_description(name)}"
                            for name in self.router.tools())
         self.planner = Planner(model=model, tool_manual=manual, llm_fn=llm_fn,
@@ -69,6 +74,16 @@ class Agent:
             runtime_error = next(
                 (s["error"] for s in trace.steps
                  if s.get("error", {}).get("error") in REPAIRABLE), None)
+            if runtime_error is None and trace.answer_error is not None:
+                # Answer extraction failed on a plan whose steps all ran: the
+                # same repair budget applies — the payload names the broken
+                # reference so the planner can re-point the answer_spec or
+                # re-shape the producing step. Measured before this branch
+                # existed: such rows died at 1-2 LLM calls because nothing
+                # routed them into the loop.
+                runtime_error = {"error": "E_ANSWER",
+                                 "message": trace.answer_error,
+                                 "details": {"failed_at": "answer_spec"}}
             if runtime_error is None or \
                     len(result.attempts) > self.planner.max_repairs:
                 break

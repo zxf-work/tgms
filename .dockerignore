@@ -1,0 +1,27 @@
+# Keep the build context small and the builder stage from picking up
+# host-built artifacts (a stale native .so or target/ would shadow the
+# in-container Rust build, and stores/runs are pure local run state).
+.git/
+.github/
+
+target/
+.venv/
+*.so
+
+stores/
+runs/
+
+paper/
+docs/design/
+
+dist/
+build/
+*.egg-info/
+
+__pycache__/
+*.pyc
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+
+.DS_Store

@@ -339,9 +339,9 @@ reports what it doesn't do as deliberately as what it does:
 
 The sharpest concrete illustration of point 1 comes from this project's
 own evaluation, not a hypothetical: running TGMS's agent against 500
-questions from the BIRD text-to-SQL benchmark, 440 answers were certified
-— fully verified against their own trace — but only 224 of those 440 also
-matched the independently re-executed gold answer. **216 certified answers
+questions from the BIRD text-to-SQL benchmark, 432 answers were certified
+— fully verified against their own trace — but only 223 of those 432 also
+matched the independently re-executed gold answer. **209 certified answers
 were confidently wrong**: TGMS correctly confirmed that the reported value
 was exactly what the executed query computed, in full, with nothing
 hidden — the query itself just answered a different question than the one
