@@ -1,0 +1,15 @@
+# Pins the toolchain used to build the native engine (crates/tgms-engine-core,
+# crates/tgms-engine-py). CI floated on dtolnay/rust-toolchain@stable, which
+# already bit once: clippy 1.98 added the chunks-exact-to-as-chunks lint
+# mid-cycle and broke `cargo clippy -D warnings` on long-standing code
+# (8ffe464, 2026-08-24), forcing a same-day CI-only allow that was retired
+# only once the engine was migrated to as_chunks (41e498f, 2026-08-27).
+# 1.98.1 is the version this repo's engine last built and clippy-clean
+# against (rustc/cargo --version locally; see 8ffe464/41e498f for the
+# clippy-1.98 history — no docs/DECISIONS.md or docs/HANDOFF-ENGINE.md
+# exists in this tree to cross-check). Pinning here makes the toolchain
+# reproducible instead of floating; bump deliberately, in the same commit
+# as any clippy fallout it introduces.
+[toolchain]
+channel = "1.98.1"
+components = ["clippy"]
