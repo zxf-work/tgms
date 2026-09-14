@@ -1,0 +1,657 @@
+{
+  "config": {
+    "backend": "native",
+    "dataset": "synth",
+    "mixed_phase": {
+      "duration_s": 30.0,
+      "harness": "scripts/eval_concurrency.py mixed",
+      "lead_s": {
+        "1,4,8,16": 60.0,
+        "32": 90.0
+      },
+      "reader_counts": [
+        1,
+        4,
+        8,
+        16,
+        32
+      ],
+      "skipped": [
+        2
+      ],
+      "store_per_trial": "fresh copy per trial (writer grows generations); readers open read_only=True",
+      "trials": 3
+    },
+    "notes": [
+      "Measured from an isolated `git worktree add --detach` at cb0e6af (path tgms-b6-cb0e6af, removed after the sweep) because the shared xzgpu checkout at /mnt/project/xzhang/tgms/work/tgms advanced to 2cf15c0 and then 4af2181 via other lanes' merges mid-sweep; pinning avoided measuring across two commits. The compiled Rust extension (_engine .so) was copied unmodified from the shared checkout's build; the diff cb0e6af..2cf15c0 touched no src/, tgms/storage, tgms/temporal, or scripts/eval* paths, so the same .so is valid for cb0e6af.",
+      "The 10M native store cached under $TMPDIR/tgms-eval-resources was found to be stale (built 2026-08-01, ~6 weeks before this run) because ensure_store()'s .ok marker has no commit/version awareness. It caused every mixed-writer trial to fail with tgms.core.errors.StateError ('event-log cursor ... is not a record boundary'), consistent with the 'durable replay cursor' change (f851d69) landing in that window. The stale cache was deleted and the dataset+store rebuilt fresh at cb0e6af before any measurement in this record; phases 1a/1b (quiescent) were re-run from scratch against the fresh store even though their stale-store numbers had looked plausible, for full self-consistency. This is a harness gap worth fixing (the .ok marker should key on commit or a content hash), flagged separately."
+    ],
+    "quiescent_phase": {
+      "barrier_s": {
+        "1,2,4,8,16": 150.0,
+        "32": 240.0
+      },
+      "duration_s": 60.0,
+      "harness": "scripts/eval_resources.py readers",
+      "protocol_note": "continuous single wall-clock window per reader count (no discrete trials), matching the pre-existing duration-based \u00a714.4 convention documented in docs/eval_resources.md's Honest limits; medians are over all completions within the window (>=10 per reader at 10M per that convention).",
+      "reader_counts": [
+        1,
+        2,
+        4,
+        8,
+        16,
+        32
+      ]
+    },
+    "raw_records": [
+      "benchmarks/results-v1/eval-resources-readers-10m-2026-09-quiescent-1to16.json",
+      "benchmarks/results-v1/eval-resources-readers-10m-2026-09-quiescent-32.json",
+      "benchmarks/results-v1/eval-concurrency-mixed-10m-2026-09-1to16.json",
+      "benchmarks/results-v1/eval-concurrency-mixed-10m-2026-09-32.json"
+    ],
+    "scale_events": 10000000,
+    "segment_cache": "byte-budget LRU (D-041), default half-of-detected-RAM (TGMS_SEGMENT_CACHE_BYTES unset) -- not binding at this scale per reader (~1.2 GiB VmHWM vs ~46 GiB default budget)"
+  },
+  "dataset": {
+    "digest": "7e48836e71677e1b428669822fba0542c69541b51135acd705e6bb6432d28cba",
+    "digest_kind": "store_digest",
+    "name": "synth"
+  },
+  "git_commit": "cb0e6af",
+  "machine": {
+    "cpus": 40,
+    "host": "xzgpu",
+    "platform": "Linux 5.4.0-216-generic x86_64",
+    "ram_gb": 93
+  },
+  "mixed": [
+    {
+      "aggregate_qps_per_trial": [
+        2.75,
+        2.78,
+        2.69
+      ],
+      "commit_p50_ms_per_trial": null,
+      "n_failed_trials": 0,
+      "n_trials": 3,
+      "per_query_p50_ms": {
+        "coactive.narrow": [
+          233.649,
+          232.633,
+          238.86
+        ],
+        "hist.single": [
+          2.057,
+          1.737,
+          1.891
+        ],
+        "series.count": [
+          114.6,
+          111.475,
+          112.531
+        ],
+        "snap.hop2": [
+          1092.353,
+          1083.116,
+          1115.345
+        ]
+      },
+      "readers": 1,
+      "writer": false
+    },
+    {
+      "aggregate_qps_per_trial": [
+        2.68,
+        2.71,
+        2.7
+      ],
+      "commit_p50_ms_per_trial": [
+        24.352,
+        23.67,
+        23.239
+      ],
+      "n_failed_trials": 0,
+      "n_trials": 3,
+      "per_query_p50_ms": {
+        "coactive.narrow": [
+          231.522,
+          237.755,
+          235.238
+        ],
+        "hist.single": [
+          1.597,
+          2.064,
+          1.832
+        ],
+        "series.count": [
+          108.723,
+          118.039,
+          111.132
+        ],
+        "snap.hop2": [
+          1135.595,
+          1118.816,
+          1119.035
+        ]
+      },
+      "readers": 1,
+      "writer": true
+    },
+    {
+      "aggregate_qps_per_trial": [
+        10.16,
+        9.93,
+        10.07
+      ],
+      "commit_p50_ms_per_trial": null,
+      "n_failed_trials": 0,
+      "n_trials": 3,
+      "per_query_p50_ms": {
+        "coactive.narrow": [
+          309.518,
+          353.562,
+          285.75
+        ],
+        "hist.single": [
+          1.603,
+          1.66,
+          1.729
+        ],
+        "series.count": [
+          137.448,
+          150.916,
+          121.566
+        ],
+        "snap.hop2": [
+          1132.081,
+          1123.105,
+          1160.168
+        ]
+      },
+      "readers": 4,
+      "writer": false
+    },
+    {
+      "aggregate_qps_per_trial": [
+        9.76,
+        9.72,
+        9.99
+      ],
+      "commit_p50_ms_per_trial": [
+        24.594,
+        24.633,
+        24.508
+      ],
+      "n_failed_trials": 0,
+      "n_trials": 3,
+      "per_query_p50_ms": {
+        "coactive.narrow": [
+          343.721,
+          354.482,
+          263.201
+        ],
+        "hist.single": [
+          1.655,
+          1.703,
+          1.708
+        ],
+        "series.count": [
+          148.737,
+          152.353,
+          124.042
+        ],
+        "snap.hop2": [
+          1162.554,
+          1151.586,
+          1179.3
+        ]
+      },
+      "readers": 4,
+      "writer": true
+    },
+    {
+      "aggregate_qps_per_trial": [
+        17.25,
+        17.3,
+        17.22
+      ],
+      "commit_p50_ms_per_trial": null,
+      "n_failed_trials": 0,
+      "n_trials": 3,
+      "per_query_p50_ms": {
+        "coactive.narrow": [
+          395.891,
+          361.62,
+          402.243
+        ],
+        "hist.single": [
+          1.751,
+          1.754,
+          1.727
+        ],
+        "series.count": [
+          166.123,
+          158.959,
+          166.963
+        ],
+        "snap.hop2": [
+          1272.569,
+          1321.412,
+          1273.028
+        ]
+      },
+      "readers": 8,
+      "writer": false
+    },
+    {
+      "aggregate_qps_per_trial": [
+        17.21,
+        17.13,
+        17.15
+      ],
+      "commit_p50_ms_per_trial": [
+        26.932,
+        26.184,
+        26.006
+      ],
+      "n_failed_trials": 0,
+      "n_trials": 3,
+      "per_query_p50_ms": {
+        "coactive.narrow": [
+          366.809,
+          368.127,
+          367.785
+        ],
+        "hist.single": [
+          1.75,
+          1.774,
+          1.758
+        ],
+        "series.count": [
+          161.137,
+          164.372,
+          164.729
+        ],
+        "snap.hop2": [
+          1280.544,
+          1292.165,
+          1303.931
+        ]
+      },
+      "readers": 8,
+      "writer": true
+    },
+    {
+      "aggregate_qps_per_trial": [
+        25.41,
+        25.38,
+        25.09
+      ],
+      "commit_p50_ms_per_trial": null,
+      "n_failed_trials": 0,
+      "n_trials": 3,
+      "per_query_p50_ms": {
+        "coactive.narrow": [
+          504.19,
+          418.786,
+          457.106
+        ],
+        "hist.single": [
+          1.832,
+          1.849,
+          1.848
+        ],
+        "series.count": [
+          212.545,
+          185.232,
+          199.116
+        ],
+        "snap.hop2": [
+          1751.114,
+          1855.287,
+          1821.954
+        ]
+      },
+      "readers": 16,
+      "writer": false
+    },
+    {
+      "aggregate_qps_per_trial": [
+        24.76,
+        24.86,
+        24.73
+      ],
+      "commit_p50_ms_per_trial": [
+        27.75,
+        29.463,
+        29.529
+      ],
+      "n_failed_trials": 0,
+      "n_trials": 3,
+      "per_query_p50_ms": {
+        "coactive.narrow": [
+          652.32,
+          690.929,
+          535.7
+        ],
+        "hist.single": [
+          1.817,
+          1.794,
+          1.839
+        ],
+        "series.count": [
+          293.75,
+          300.871,
+          238.578
+        ],
+        "snap.hop2": [
+          1611.279,
+          1554.269,
+          1777.876
+        ]
+      },
+      "readers": 16,
+      "writer": true
+    },
+    {
+      "aggregate_qps_per_trial": [
+        28.77,
+        28.59,
+        28.89
+      ],
+      "commit_p50_ms_per_trial": null,
+      "n_failed_trials": 0,
+      "n_trials": 3,
+      "per_query_p50_ms": {
+        "coactive.narrow": [
+          1006.728,
+          996.94,
+          921.341
+        ],
+        "hist.single": [
+          1.833,
+          1.851,
+          1.847
+        ],
+        "series.count": [
+          458.558,
+          439.086,
+          409.572
+        ],
+        "snap.hop2": [
+          2996.003,
+          3073.214,
+          3112.925
+        ]
+      },
+      "readers": 32,
+      "writer": false
+    },
+    {
+      "aggregate_qps_per_trial": [
+        28.37,
+        28.16,
+        28.35
+      ],
+      "commit_p50_ms_per_trial": [
+        49.039,
+        46.221,
+        50.227
+      ],
+      "n_failed_trials": 0,
+      "n_trials": 3,
+      "per_query_p50_ms": {
+        "coactive.narrow": [
+          1116.045,
+          1128.178,
+          1027.045
+        ],
+        "hist.single": [
+          1.845,
+          1.847,
+          1.86
+        ],
+        "series.count": [
+          475.903,
+          475.971,
+          447.948
+        ],
+        "snap.hop2": [
+          2961.998,
+          2955.091,
+          3095.791
+        ]
+      },
+      "readers": 32,
+      "writer": true
+    }
+  ],
+  "protocol": {
+    "ceilings": {},
+    "note": "warmups=1 describes the readers-mode warm pre-pass + per-window warm loop; reps=3 describes the mixed-mode trial count. The quiescent phase does not use discrete reps (duration-based single window per condition) -- see config.quiescent_phase.protocol_note.",
+    "reps": 3,
+    "warmups": 1
+  },
+  "quiescent": [
+    {
+      "aggregate_qps": 2.85,
+      "failed_readers": 0,
+      "per_query_median_p50_ms": {
+        "coactive.narrow": 231.873,
+        "hist.single": 1.82,
+        "series.count": 116.491,
+        "snap.hop2": 1051.728
+      },
+      "queries_done": 172,
+      "readers": 1,
+      "vmhwm_kb": {
+        "max": 1283240,
+        "median": 1283240,
+        "min": 1283240
+      },
+      "vmrss_kb": {
+        "max": 1097532,
+        "median": 1097532,
+        "min": 1097532
+      }
+    },
+    {
+      "aggregate_qps": 5.52,
+      "failed_readers": 0,
+      "per_query_median_p50_ms": {
+        "coactive.narrow": 233.209,
+        "hist.single": 1.643,
+        "series.count": 113.732,
+        "snap.hop2": 1094.298
+      },
+      "queries_done": 336,
+      "readers": 2,
+      "vmhwm_kb": {
+        "max": 1283268,
+        "median": 1283268,
+        "min": 1282648
+      },
+      "vmrss_kb": {
+        "max": 1115956,
+        "median": 1115956,
+        "min": 1098324
+      }
+    },
+    {
+      "aggregate_qps": 10.24,
+      "failed_readers": 0,
+      "per_query_median_p50_ms": {
+        "coactive.narrow": 286.647,
+        "hist.single": 1.688,
+        "series.count": 121.11,
+        "snap.hop2": 1125.331
+      },
+      "queries_done": 624,
+      "readers": 4,
+      "vmhwm_kb": {
+        "max": 1285388,
+        "median": 1282396,
+        "min": 1269544
+      },
+      "vmrss_kb": {
+        "max": 1158432,
+        "median": 1098532,
+        "min": 1084604
+      }
+    },
+    {
+      "aggregate_qps": 17.1,
+      "failed_readers": 0,
+      "per_query_median_p50_ms": {
+        "coactive.narrow": 383.954,
+        "hist.single": 1.738,
+        "series.count": 160.851,
+        "snap.hop2": 1288.696
+      },
+      "queries_done": 1056,
+      "readers": 8,
+      "vmhwm_kb": {
+        "max": 1276388,
+        "median": 1269876,
+        "min": 1257368
+      },
+      "vmrss_kb": {
+        "max": 1090596,
+        "median": 1084052,
+        "min": 1077200
+      }
+    },
+    {
+      "aggregate_qps": 24.73,
+      "failed_readers": 0,
+      "per_query_median_p50_ms": {
+        "coactive.narrow": 691.688,
+        "hist.single": 1.802,
+        "series.count": 296.798,
+        "snap.hop2": 1588.814
+      },
+      "queries_done": 1536,
+      "readers": 16,
+      "vmhwm_kb": {
+        "max": 1275184,
+        "median": 1256872,
+        "min": 1250360
+      },
+      "vmrss_kb": {
+        "max": 1094908,
+        "median": 1077136,
+        "min": 1064360
+      }
+    },
+    {
+      "aggregate_qps": 27.72,
+      "failed_readers": 0,
+      "per_query_median_p50_ms": {
+        "coactive.narrow": 925.538,
+        "hist.single": 1.848,
+        "series.count": 423.428,
+        "snap.hop2": 3247.95
+      },
+      "queries_done": 1760,
+      "readers": 32,
+      "vmhwm_kb": {
+        "max": 1262400,
+        "median": 1246464,
+        "min": 1236124
+      },
+      "vmrss_kb": {
+        "max": 1131896,
+        "median": 1062088,
+        "min": 1045916
+      }
+    }
+  ],
+  "record": "benchmarks/results-v1/eval-resources-readers-10m-2026-09-quiescent-1to16.json",
+  "result_digest": "5c4eccc3703d2b32e45589f7316a67e9f1b980ddbca18f09c797ee9d3f64c812",
+  "schema_version": "1.0.0",
+  "seed": {
+    "reason": "the synthetic dataset generator (scripts/eval_harness.py build_dataset) is deterministic given `scale` (splitmix64-based id/timestamp derivation); no run-to-run random seed is used or recorded, consistent with every other harness manifest in this repo.",
+    "value": null
+  },
+  "timestamp_utc": "2026-09-14T02:10:32Z",
+  "vmhwm_kb_max_by_readers": {
+    "1": 1283240,
+    "2": 1283268,
+    "4": 1285388,
+    "8": 1276388,
+    "16": 1275184,
+    "32": 1262400
+  },
+  "writer_cost": [
+    {
+      "cost_pct": 1.82,
+      "idle_qps_trials": [
+        2.75,
+        2.78,
+        2.69
+      ],
+      "readers": 1,
+      "writer_qps_trials": [
+        2.68,
+        2.71,
+        2.7
+      ]
+    },
+    {
+      "cost_pct": 3.08,
+      "idle_qps_trials": [
+        10.16,
+        9.93,
+        10.07
+      ],
+      "readers": 4,
+      "writer_qps_trials": [
+        9.76,
+        9.72,
+        9.99
+      ]
+    },
+    {
+      "cost_pct": 0.58,
+      "idle_qps_trials": [
+        17.25,
+        17.3,
+        17.22
+      ],
+      "readers": 8,
+      "writer_qps_trials": [
+        17.21,
+        17.13,
+        17.15
+      ]
+    },
+    {
+      "cost_pct": 2.44,
+      "idle_qps_trials": [
+        25.41,
+        25.38,
+        25.09
+      ],
+      "readers": 16,
+      "writer_qps_trials": [
+        24.76,
+        24.86,
+        24.73
+      ]
+    },
+    {
+      "cost_pct": 1.46,
+      "idle_qps_trials": [
+        28.77,
+        28.59,
+        28.89
+      ],
+      "readers": 32,
+      "writer_qps_trials": [
+        28.37,
+        28.16,
+        28.35
+      ]
+    }
+  ]
+}
