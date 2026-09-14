@@ -2456,7 +2456,7 @@ mod tests {
             assert_eq!(resolved.deltas, 6);
             assert_eq!(&resolved.manifest, s.manifest());
             // and the sha is the one CURRENT names, computed the format-1 way
-            assert_eq!(resolved.manifest.body_sha(), s.manifest().manifest_sha);
+            assert_eq!(resolved.manifest.digest(), s.manifest().manifest_sha);
             assert_eq!(
                 fs::read_to_string(root.join(CURRENT)).unwrap().trim(),
                 format!("6 {}", s.manifest().manifest_sha)

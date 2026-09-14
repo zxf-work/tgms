@@ -378,7 +378,7 @@ fn deltas_round_trip_over_a_randomized_store() {
             assert_eq!(child.generation, g);
             // self-consistent: the reconstruction hashes to what the record
             // claimed, and no chain runs longer than K
-            assert_eq!(child.body_sha(), child.manifest_sha);
+            assert_eq!(child.digest(), child.manifest_sha);
             assert!(resolved.deltas < k, "chain of {} at K={k}", resolved.deltas);
             if resolved.deltas == 0 {
                 checkpoints += 1;

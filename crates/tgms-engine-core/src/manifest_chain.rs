@@ -575,7 +575,7 @@ pub fn reconstruct(root: &Path, generation: u64) -> Result<Reconstructed> {
             .at_file(manifest_path(root, d.generation)));
         }
         m = d.apply(&m);
-        let expected = m.body_sha();
+        let expected = m.digest();
         if expected != d.manifest_sha {
             return Err(EngineError::corrupt(format!(
                 "reconstructed manifest {} hashes to {expected} but the delta records {}",
