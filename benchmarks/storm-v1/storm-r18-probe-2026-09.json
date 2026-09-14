@@ -1,0 +1,171 @@
+{
+  "config": {
+    "addendum_id": "storm-v1-addendum-1",
+    "age": null,
+    "allow_r18_trip": true,
+    "arms": [
+      "global-recompute",
+      "entity-touch",
+      "window-overlap",
+      "row-touch",
+      "tgms-L0",
+      "tgms-L1"
+    ],
+    "backend": "native",
+    "batches": 5,
+    "burst_after": 10,
+    "burst_size": 10000,
+    "dag_cascade_k": 4,
+    "dag_depth": 4,
+    "dag_fanout": 3,
+    "dag_shape": null,
+    "degree": null,
+    "freeze_sha256": "49613eb54e9d237c463f16a026fd28df9dc9cf4eb5887904be5706a710b61cb0",
+    "interval_vt": false,
+    "measure_ttf": "sum",
+    "mix": "c1",
+    "n_artifacts": 10000,
+    "n_registered": 8922,
+    "n_registration_skipped": 1078,
+    "range_width": null,
+    "seed": 0,
+    "store": "synth-iv-60k",
+    "wall_cap_s": 32400.0,
+    "wall_capped": false,
+    "wall_s": 17836.200459718704
+  },
+  "dag": null,
+  "dataset": {
+    "digest": "c00e619207e44aaf6f0f5d954984699cc2a47a3a6d4d3bd08c0492c8d06d7cde",
+    "digest_kind": "eventlog_sha",
+    "name": "synth-iv-60k"
+  },
+  "git_commit": "8962b78",
+  "machine": {
+    "cpus": 64,
+    "host": "itiger01",
+    "platform": "Linux-5.14.0-427.31.1.el9_4.x86_64-x86_64-with-glibc2.34",
+    "ram_gb": 755.6
+  },
+  "protocol": {
+    "ceilings": {
+      "r18_trip_n_artifacts": 10000
+    },
+    "reps": 1,
+    "warmups": 0
+  },
+  "record": "/project/xzhang12/storm-v1-work/r18-work/records/task-0/storm-synth-iv-60k-0-rows.jsonl",
+  "result_digest": "4e184f21ba52b428aeda6d24f612350556c5f19e3dc966704285bf1f1f45fbf1",
+  "schema_version": "1.0.0",
+  "seed": {
+    "value": 0
+  },
+  "summary": {
+    "arms": {
+      "entity-touch": {
+        "avoided_recompute_decision": 0.9979825151311366,
+        "avoided_recompute_wall": 0.9976568211630883,
+        "false_fresh": 2385,
+        "false_stale": 71,
+        "invalidated": 90,
+        "ttf_incomplete_batches": 5,
+        "ttf_p50_ms": null,
+        "ttf_p95_ms": null
+      },
+      "global-recompute": {
+        "avoided_recompute_decision": 0.0,
+        "avoided_recompute_wall": 0.0,
+        "false_fresh": 0,
+        "false_stale": 42206,
+        "invalidated": 44610,
+        "ttf_incomplete_batches": 0,
+        "ttf_p50_ms": 1595328.587377444,
+        "ttf_p95_ms": 1618607.7111726627
+      },
+      "row-touch": {
+        "avoided_recompute_decision": 1.0,
+        "avoided_recompute_wall": 1.0,
+        "false_fresh": 2404,
+        "false_stale": 0,
+        "invalidated": 0,
+        "ttf_incomplete_batches": 5,
+        "ttf_p50_ms": null,
+        "ttf_p95_ms": null
+      },
+      "tgms-L0": {
+        "avoided_recompute_decision": 0.29887917507285366,
+        "avoided_recompute_wall": 0.2842881550286682,
+        "false_fresh": 0,
+        "false_stale": 28873,
+        "invalidated": 31277,
+        "ttf_incomplete_batches": 0,
+        "ttf_p50_ms": 1976692.5050467253,
+        "ttf_p95_ms": 2091402.7544986457
+      },
+      "tgms-L1": {
+        "avoided_recompute_decision": 0.29887917507285366,
+        "avoided_recompute_wall": 0.2842881550286682,
+        "false_fresh": 0,
+        "false_stale": 28873,
+        "invalidated": 31277,
+        "ttf_incomplete_batches": 0,
+        "ttf_p50_ms": 1977551.0343359783,
+        "ttf_p95_ms": 2092413.5407386348
+      },
+      "window-overlap": {
+        "avoided_recompute_decision": 0.7483748038556377,
+        "avoided_recompute_wall": 0.7465724946722841,
+        "false_fresh": 10,
+        "false_stale": 8831,
+        "invalidated": 11225,
+        "ttf_incomplete_batches": 3,
+        "ttf_p50_ms": 264697.317071259,
+        "ttf_p95_ms": 354916.75892006606
+      }
+    },
+    "batches": 5,
+    "check_cost_curve": [
+      {
+        "batch_index": 0,
+        "check_ms_tgms_L0": 870877.3807622492,
+        "check_ms_tgms_L1": 870768.7207721174,
+        "log_bytes": 4102403,
+        "log_records": 1,
+        "registry_bytes": 21298756
+      },
+      {
+        "batch_index": 1,
+        "check_ms_tgms_L0": 866709.3836888671,
+        "check_ms_tgms_L1": 867567.9129781201,
+        "log_bytes": 4102621,
+        "log_records": 2,
+        "registry_bytes": 32929530
+      },
+      {
+        "batch_index": 2,
+        "check_ms_tgms_L0": 911563.1353380159,
+        "check_ms_tgms_L1": 912573.921578005,
+        "log_bytes": 4102857,
+        "log_records": 3,
+        "registry_bytes": 44560304
+      },
+      {
+        "batch_index": 3,
+        "check_ms_tgms_L0": 771196.6940816492,
+        "check_ms_tgms_L1": 770515.4013326392,
+        "log_bytes": 4103070,
+        "log_records": 4,
+        "registry_bytes": 56191078
+      },
+      {
+        "batch_index": 4,
+        "check_ms_tgms_L0": 816557.9343466088,
+        "check_ms_tgms_L1": 816701.1023424566,
+        "log_bytes": 4103307,
+        "log_records": 5,
+        "registry_bytes": 67821852
+      }
+    ]
+  },
+  "timestamp_utc": "2026-09-14T11:51:23Z"
+}

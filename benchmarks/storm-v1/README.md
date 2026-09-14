@@ -337,6 +337,34 @@ passes. Every one of the 40 underlying records carries
 directly, all 40. **Not yet committed** — held in the worktree pending the
 coordinator's scoring.
 
+## R-18 probe (addendum 1) — run of record
+
+Job 211320 (`synth-iv-60k`, mix `c1`, N=10,000, seed 0, 5 batches, `sum`
+TTF, `--allow-r18-trip`): completed cleanly, `wall_s` 17836.2 (4:57:18),
+not wall-capped, all 5/5 batches realized.
+
+Beside it, the same fields for the N=1,000 `c1` seed-0 cell (211319_0,
+already among the main-grid records, `sum` TTF, 20 batches):
+
+| field | R-18 probe (N=10,000) | N=1,000 c1 seed 0 (211319_0) |
+|---|---:|---:|
+| batches | 5 | 20 |
+| median `intersects_calls`/batch | 13,009 | 1,289 |
+| median `lookup_wall_ms`/batch | 27.5 | 2.74 |
+| median `candidate_survivors`/batch | 6,369 | 601 |
+| median `check_wall_ms` (tgms-L1)/batch | ≈870,000 (≈870 s) | 78,108.5 (≈78.1 s) |
+| tgms-L1 `ttf_p50_ms` | 1,977,551.0 (≈1,977.6 s) | 78,320.5 (≈78.3 s) |
+| global-recompute `ttf_p50_ms` | 1,595,328.6 (≈1,595.3 s) | 151,763.5 (≈151.8 s) |
+| tgms-L1 `false_fresh` | 0 | 0 |
+| tgms-L1 `false_stale` | 28,873 | 10,942 |
+| tgms-L1 `avoided_recompute_decision` | 0.2989 | 0.3228 |
+
+No verdicts here — the paper's own scoring of these numbers (P5/P6/P7 and
+the R-18 trip criterion) lives in the internal freeze.
+
+**Records**: `storm-r18-probe-2026-09.json`, `storm-r18-probe-2026-09-
+rows.jsonl`. `scripts/check_result_manifest.py` passes.
+
 ## DAG phase v3 — run of record (addendum-3's `dag_phase_v3`, same 40-cell
 grid; jobs 211614 + 211700 + 211706; commit `fdd393c`, the D-161-rolled-out
 engine — this is the same `--dag-seed-from-affected` mechanism v2 tested,
