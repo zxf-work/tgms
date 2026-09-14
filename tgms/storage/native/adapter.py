@@ -351,6 +351,47 @@ class NativeAdapter(StorageAdapter):
     def all_edge_versions(self) -> Iterable[EdgeVersion]:
         return self._edges(self._store.all_versions("edge"))
 
+    def versions_page(
+        self,
+        kind: str,
+        *,
+        as_of: int = OPEN_END,
+        t_a: int,
+        t_b: int,
+        belief: str = "current",
+        rel_types: Sequence[str] | None = None,
+        offset: int = 0,
+        limit: int = 100,
+    ) -> tuple[dict[str, Any], int]:
+        """The bounded override of the ABC default (D-069's compatibility
+        pattern, applied to the operator D-069 left behind).
+
+        Everything the default does over ten object arrays covering the whole
+        population — mask, `(tt_s, vid)` order, count, slice — the engine does
+        over 32-byte integer keys, and only the page crosses the boundary.
+        `props` is not among the columns asked for, so no row is parsed out of
+        JSON on the way back either; the default reached `versions_columnar`,
+        which reached `all_*_versions`, which built one `props` dict per
+        version of the store to answer a 50-row question.
+
+        Peak memory is therefore the page plus the key array plus the segment
+        cache budget, not ~1,060 bytes per stored version
+        (`docs/design/BOUNDED_VERSION_HISTORY_FORECAST_2026-09-13.md` §1, §4).
+        """
+        try:
+            got = self._store.version_page(
+                kind, clamp_tt(as_of), t_a, t_b, belief,
+                list(rel_types) if rel_types is not None else None,
+                offset, limit,
+            )
+        except Exception as e:
+            raise _translate(e) from None
+        # int columns arrive as int64 arrays, string columns as lists of str
+        # — the same two shapes the ABC default's object arrays present at
+        # `cols[c][i]`, so the row build above them is unchanged.
+        cols = {c: got[c] for c in self.VERSION_COLS[kind]}
+        return cols, int(got["rows_total"])
+
     def props_for_vids(self, kind: str, vids: Sequence[str]) -> dict[str, dict]:
         if not vids:
             return {}

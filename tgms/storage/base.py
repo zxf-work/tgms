@@ -237,6 +237,58 @@ class StorageAdapter(ABC):
                               else object)
                 for c, vals in cols.items()}
 
+    def versions_page(
+        self,
+        kind: str,
+        *,
+        as_of: int,
+        t_a: int,
+        t_b: int,
+        belief: str = "current",
+        rel_types: Sequence[str] | None = None,
+        offset: int = 0,
+        limit: int = 100,
+    ) -> tuple[dict[str, Any], int]:
+        """`(page columns, exact population size)` for O15 `version_history`.
+
+        The page is `VERSION_COLS[kind]`, already ordered by `(tt_s, vid)` and
+        already sliced to `[offset:offset + limit]`; the count is of *every*
+        row the filter selected, not of the page. `tt_e` comes back raw — the
+        `OPEN_END` censoring against `as_of` is part of the operator's
+        contract and stays in the operator, so there is one place to read it.
+
+        Why this exists, next to `versions_columnar` rather than replacing it:
+        a backend that can filter, order and count without materializing the
+        population overrides this and never builds one, while the default
+        below keeps every other backend correct at the old cost. That is
+        D-069's own compatibility pattern (`DECISIONS.md:3252-3258`), applied
+        to the operator D-069 left behind — `version_history` was measured at
+        10.6 GB and 75.8 s over 10M edge versions to return at most `limit`
+        rows (`docs/DECISIONS.md:3301-3305`), which is the last item binding
+        D-071's 100M gate.
+
+        **This default is the definition.** It is the arithmetic the frozen
+        digest `84e8853c…be78fbfd` was captured over, moved here verbatim from
+        `ops_versions.version_history`, and an overriding backend agrees with
+        it row for row and position for position or the digest moves.
+        """
+        cols = self.versions_columnar(kind)
+        tt_s, tt_e, vt_s, vt_e = (cols["tt_s"], cols["tt_e"],
+                                  cols["vt_s"], cols["vt_e"])
+        superseded = tt_e <= as_of
+        keep = (tt_s <= as_of) & (vt_s < t_b) & (t_a < vt_e)
+        if belief == "current":
+            keep &= ~superseded
+        elif belief == "superseded":
+            keep &= superseded
+        if rel_types is not None:
+            keep &= np.isin(cols["rel_type"], list(set(rel_types)))
+        idx = np.flatnonzero(keep)
+        # (tt_s, vid) — the last key to lexsort is the primary one
+        idx = idx[np.lexsort((cols["vid"][idx], tt_s[idx]))]
+        page = idx[offset:offset + limit]
+        return {c: cols[c][page] for c in self.VERSION_COLS[kind]}, int(idx.size)
+
     @abstractmethod
     def edges_columnar(
         self,
