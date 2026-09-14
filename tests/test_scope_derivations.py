@@ -549,3 +549,88 @@ class TestBurstDetection:
               f"precision={result.precision:.2f} n={result.n}")
         assert result.n > 0
         assert result.exclusion_rate >= 0.3
+
+
+# ---------------------------------------------------------------------------
+# §2.4 — graph_metric_timeseries
+# ---------------------------------------------------------------------------
+
+class TestGraphMetricTimeseries:
+    def _args(self, metric, t_a=0, t_b=900):
+        return {"metric": metric, "window": {"t_a": t_a, "t_b": t_b}, "stride": 10}
+
+    EDGE_METRIC_MATRIX = [
+        ("an edge event inside the window", "edge_event_count",
+         assert_edge("n5", "n6", vt_s=10, vt_e=11), True),
+        ("a node write", "edge_event_count", assert_node("n5"), False),
+        ("an edge event after the window", "edge_event_count",
+         assert_edge("n5", "n6", vt_s=1000, vt_e=1001), False),
+        ("a carve of an edge, entirely outside the window (P = Pv: excluded)",
+         "edge_event_count", correct_edge("n5", "n6", vt_s=2000, vt_e=2010), False),
+        ("reciprocity reads only edges too", "reciprocity",
+         assert_edge("n5", "n6", vt_s=10, vt_e=11), True),
+        ("reciprocity: a node write does not intersect", "reciprocity",
+         assert_node("n5"), False),
+    ]
+
+    NODE_METRIC_MATRIX = [
+        ("a node write inside the window", "node_count",
+         assert_node("n5", vt_s=10, vt_e=11), True),
+        ("an edge write", "node_count", assert_edge("n5", "n6"), False),
+        ("a node write after the window", "node_count",
+         assert_node("n5", vt_s=1000, vt_e=1001), False),
+    ]
+
+    @pytest.mark.parametrize("label,metric,op,must", EDGE_METRIC_MATRIX + NODE_METRIC_MATRIX,
+                             ids=[m[0] for m in EDGE_METRIC_MATRIX + NODE_METRIC_MATRIX])
+    def test_matrix(self, label, metric, op, must):
+        filled = validate_args("graph_metric_timeseries", self._args(metric))
+        terms = terms_for("graph_metric_timeseries", filled,
+                          sigma_for("graph_metric_timeseries", filled))
+        assert hits(terms, op) is must, (
+            f"{label} ({metric}): should {'intersect' if must else 'NOT intersect'}; "
+            f"arms hit: {arms_that_hit(terms, op)}")
+
+    def test_mean_out_degree_emits_both_arms(self):
+        filled = validate_args("graph_metric_timeseries", self._args("mean_out_degree"))
+        terms = terms_for("graph_metric_timeseries", filled,
+                          sigma_for("graph_metric_timeseries", filled))
+        assert len(terms) == 2
+        assert hits(terms, assert_edge("n5", "n6", vt_s=10, vt_e=11))
+        assert hits(terms, assert_node("n5", vt_s=10, vt_e=11))
+
+    def test_new_node_rate_widens_to_the_whole_history(self):
+        """CE-4: a node version created entirely before t_a can still move a
+        birth out of the window, since the answer is a minimum over an
+        identity's whole believed history. `node_count`, by contrast, keeps
+        the plain window — it is an instant sample, not a history minimum."""
+        window_only = validate_args("graph_metric_timeseries",
+                                    self._args("node_count", t_a=30, t_b=50))
+        widened = validate_args("graph_metric_timeseries",
+                                self._args("new_node_rate", t_a=30, t_b=50))
+        window_terms = terms_for("graph_metric_timeseries", window_only,
+                                 sigma_for("graph_metric_timeseries", window_only))
+        widened_terms = terms_for("graph_metric_timeseries", widened,
+                                  sigma_for("graph_metric_timeseries", widened))
+        early_birth = assert_node("n5", vt_s=5, vt_e=10)
+        assert not hits(window_terms, early_birth)
+        assert hits(widened_terms, early_birth)
+        assert widened_terms[0].vt == ((0, 50),)
+
+    def test_differential_edge_event_count(self, store):
+        result = run_differential(store, "graph_metric_timeseries",
+                                  self._args("edge_event_count"), window=(0, 900),
+                                  trials=10, seed=8)
+        print(f"graph_metric_timeseries[edge_event_count]: exclusion="
+              f"{result.exclusion_rate:.2f} precision={result.precision:.2f} n={result.n}")
+        assert result.n > 0
+        assert result.exclusion_rate >= 0.3
+
+    def test_differential_node_count(self, store):
+        result = run_differential(store, "graph_metric_timeseries",
+                                  self._args("node_count"), window=(0, 900),
+                                  trials=10, seed=9)
+        print(f"graph_metric_timeseries[node_count]: exclusion="
+              f"{result.exclusion_rate:.2f} precision={result.precision:.2f} n={result.n}")
+        assert result.n > 0
+        assert result.exclusion_rate >= 0.1
