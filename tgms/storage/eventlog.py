@@ -96,8 +96,9 @@ class EventLog:
     def size(self) -> int:
         return self.path.stat().st_size
 
-    def batches(self) -> Iterator[dict[str, Any]]:
-        for batch, _end, _raw in self.batches_from(0):
+    def batches(self, *, tolerate_torn_tail: bool = False) -> Iterator[dict[str, Any]]:
+        for batch, _end, _raw in self.batches_from(
+                0, tolerate_torn_tail=tolerate_torn_tail):
             yield batch
 
     def header(self) -> dict[str, Any]:
@@ -167,7 +168,8 @@ class EventLog:
                         os.fsync(w.fileno())
                     return start
 
-    def batches_from(self, offset: int) -> Iterator[tuple[dict[str, Any], int, bytes]]:
+    def batches_from(self, offset: int, *, tolerate_torn_tail: bool = False
+                     ) -> Iterator[tuple[dict[str, Any], int, bytes]]:
         """Batches whose records start at or after `offset`, as
         `(batch, end_offset, record_bytes)`.
 
@@ -175,6 +177,27 @@ class EventLog:
         skipped); any other value must be a record boundary a cursor
         recorded — landing mid-record is corruption, and the JSON parse
         below says so rather than resynchronizing silently.
+
+        `tolerate_torn_tail` (invariant 1.5, extended to readers): when a
+        record fails to parse or is missing its terminating newline, and
+        that record's bytes run all the way to the file's current size,
+        treat it as an in-flight write that has not committed yet rather
+        than corruption — stop iterating *before* it, exactly as if it were
+        not there yet, so the caller's cursor lands at the start of that
+        record and a later re-read observes the completed one once the
+        writer's `append()` (one `write()` call, fsynced before it returns)
+        finishes. "Current size" is checked fresh — `seek(0, 2)` at the
+        moment the defect is found — rather than inferred from this read
+        alone, since the writer may finish the record between the read that
+        found the defect and this check. A defect anywhere *before* the
+        file's end is still corruption and still raises, torn or not: only
+        the tail of the file, past every committed record, is ever
+        forgiven. Only a reader that will not run recovery
+        (`Store.__init__(read_only=True)`) may pass this — a writer trims a
+        genuinely torn tail during `_recover` (`trim_torn_tail`, D-086)
+        before ever reaching a live `batches_from` call, so anything still
+        torn at that point is corruption, not an in-flight write, and must
+        keep raising.
         """
         with open(self.path, "rb") as f:
             header = f.readline()  # header record, outside the chain
@@ -186,20 +209,39 @@ class EventLog:
                     )
                 f.seek(offset)
             while True:
+                start = f.tell()
                 raw = f.readline()
                 if not raw:
                     return
                 if not raw.strip():
                     continue
-                try:
-                    batch = json.loads(raw)
-                except json.JSONDecodeError as e:
+                end = f.tell()
+                parse_error: json.JSONDecodeError | None = None
+                batch: dict[str, Any] | None = None
+                if raw.endswith(b"\n"):
+                    try:
+                        batch = json.loads(raw)
+                    except json.JSONDecodeError as e:
+                        parse_error = e
+                if parse_error is not None or not raw.endswith(b"\n"):
+                    if tolerate_torn_tail:
+                        size = f.seek(0, 2)
+                        if end >= size:
+                            return  # in-flight write, not yet committed
+                    if parse_error is not None:
+                        raise StateError(
+                            f"event log {self.path} is not readable at offset "
+                            f"{start}: {parse_error} — the replay cursor may "
+                            f"not be on a record boundary"
+                        ) from None
                     raise StateError(
-                        f"event log {self.path} is not readable at offset "
-                        f"{f.tell() - len(raw)}: {e} — the replay cursor may "
-                        f"not be on a record boundary"
-                    ) from None
-                yield batch, f.tell(), raw
+                        f"event log {self.path} record at offset {start} has "
+                        f"no terminating newline and is not the log's last "
+                        f"record — the replay cursor may not be on a record "
+                        f"boundary"
+                    )
+                assert batch is not None
+                yield batch, end, raw
 
     def chain_of_prefix(self, offset: int) -> str:
         """The rolling chain over every record ending at or before `offset`.
@@ -223,13 +265,16 @@ class EventLog:
             f"{self.path} (records end at {pos})"
         )
 
-    def last_tt(self) -> int:
+    def last_tt(self, *, tolerate_torn_tail: bool = False) -> int:
         """Transaction time of the last batch (0 if empty).
 
         Linear scan; fine at research scale. TODO(phase3): tail-seek.
+
+        `tolerate_torn_tail`: forwarded to `batches_from` — see there. Only
+        `Store.__init__`'s read-only path passes it.
         """
         last = 0
-        for batch in self.batches():
+        for batch in self.batches(tolerate_torn_tail=tolerate_torn_tail):
             last = batch["tt"]
         return last
 

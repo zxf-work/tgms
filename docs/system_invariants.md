@@ -84,6 +84,32 @@ damage as loudly fatal.
 *Tested by* `tests/test_torn_wal.py`. *Ruling:* D-086 — the first real
 defect the durability-injection harness found.
 
+**1.5 (reader clause, 2026-09-14).** A reader never runs recovery
+(`Store.__init__(read_only=True)` skips `_recover`, D-049), so
+`trim_torn_tail` never runs for it — yet a read-only open still walks the
+whole log (to seed its clock and its frontier) and can land on the same
+torn final record a live writer's in-flight `append()` is still fsyncing.
+The same three signatures that make a tail *recoverable* for a writer make
+it *uncommitted* for a reader: `EventLog.batches_from(offset,
+tolerate_torn_tail=True)` stops before an unparseable or newline-missing
+record when — checked fresh at the moment the defect is found, since the
+writer may finish the record in between — that record's bytes run to the
+file's current size, leaving the reader's cursor at the start of that
+record rather than raising. A defect anywhere else in the file, or the same
+defect once anything sound follows it, is still corruption and still
+raises. Only the read-only open/replay path passes `tolerate_torn_tail`; a
+writer, which trims a genuinely torn tail during `_recover` before ever
+reaching a live `batches_from` call, keeps the strict reading. The
+artifact registry's read path (`Registry.__init__(..., read_only=True)` ->
+`_load`) extends the same rule and parameter shape to `artifacts.jsonl`,
+for the same reason: registry readers (freshness checks, the OSV daily
+queries) race the poller's `append()` the same way.
+*Enforced at* `EventLog.batches_from`, `EventLog.batches`, `EventLog.last_tt`
+(`tgms/storage/eventlog.py`), `Store._tt_at_offset` / `Store.__init__`
+(`tgms/store.py`), `Registry._load` (`tgms/artifact/registry.py`).
+*Tested by* `tests/test_reader_torn_tail.py`. *Ruling:* D-086 (extension) —
+first observed on CI, run 34852755086.
+
 ---
 
 ## 2. Single-generation visibility and reader isolation

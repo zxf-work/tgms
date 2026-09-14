@@ -74,7 +74,13 @@ class Store:
             # rather than merely documented.
             self._acquire_writer_lock()
             self._recover()
-        self.clock = HybridLogicalClock(last_tt=self.eventlog.last_tt())
+        # invariant 1.5, extended to readers: this unconditional full-log
+        # scan runs before `_seed_frontier` even for a read-only handle, so
+        # it must tolerate the same in-flight-write tail that handle's own
+        # scan does — never for a writer, which has already trimmed any
+        # genuinely torn tail in `_recover()` above.
+        self.clock = HybridLogicalClock(
+            last_tt=self.eventlog.last_tt(tolerate_torn_tail=self.read_only))
         #: False when this handle could not establish its frontier against the
         #: **applied** prefix — see `_seed_frontier`. Rides into the dependency
         #: scope as `tt_q_verified`, never as a flat envelope key.
@@ -117,13 +123,26 @@ class Store:
                 self.adapter.note_frontier_tt(self._tt_at_offset(int(offset)))
                 return
         self.frontier_verified = False
-        self.adapter.note_frontier_tt(self.eventlog.last_tt())
+        self.adapter.note_frontier_tt(
+            self.eventlog.last_tt(tolerate_torn_tail=self.read_only))
 
     def _tt_at_offset(self, offset: int) -> int:
         """The tt of the last log record ending at or before `offset` (0 for an
-        empty applied prefix)."""
+        empty applied prefix).
+
+        Walking from 0 to find it can read past the applied prefix itself
+        (`end > offset` is only known once the next record's end is read) —
+        for a read-only handle that next record can be one a live writer is
+        mid-append on, which (invariant 1.5, extended to readers) is an
+        in-flight write, not corruption, so `tolerate_torn_tail` is passed
+        exactly when this handle is read-only. A writer reaches this only
+        after `_recover()` has already trimmed any genuinely torn tail, so
+        it keeps the strict reading — anything still torn there is
+        corruption.
+        """
         tt = 0
-        for batch, end, _raw in self.eventlog.batches_from(0):
+        for batch, end, _raw in self.eventlog.batches_from(
+                0, tolerate_torn_tail=self.read_only):
             if end > offset:
                 break
             tt = batch["tt"]

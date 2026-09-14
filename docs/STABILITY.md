@@ -236,6 +236,25 @@ prints the same remedy: rebuild from the event log with `tgms replay`. Since
    guaranteed-safe path back to a healthy store, because the event log is
    the durable source of truth (§1).
 
+- **2026-09-14 — read-only opens treat a torn final record as uncommitted
+  (invariant 1.5 extended to readers).** A reader never runs recovery
+  (`Store.__init__(read_only=True)` skips `_recover`, D-049), so
+  `trim_torn_tail` never trims for it — but a read-only open still scans
+  the whole log to seed its clock and frontier, and used to raise
+  `StateError` if that scan landed on a torn final record a live writer's
+  `append()` was still fsyncing (CI run 34852755086, first observed on
+  `tests/test_concurrency.py`'s readers-throughout-a-write-run test).
+  `EventLog.batches_from(offset, tolerate_torn_tail=True)` — passed only by
+  the read-only open/replay path, never by a writer — now stops before an
+  unparseable or newline-missing record when its bytes run to the file's
+  current size (checked fresh at the moment the defect is found), leaving
+  the reader's cursor at the start of that record instead of raising; a
+  defect anywhere else in the log, or the writer's own replay, still raises
+  exactly as before. `Registry`'s read path (`read_only=True`) gets the
+  same parameter and the same rule for `artifacts.jsonl`, since a registry
+  reader can race the poller's `append()` the same way. See
+  `docs/system_invariants.md` §1.5 and `tests/test_reader_torn_tail.py`.
+
 ---
 
 ## 3. Operator semantics
