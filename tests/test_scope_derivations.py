@@ -49,7 +49,7 @@ from tgms.storage.base import make_op
 from tgms.temporal.algebra import call_operator, ensure_all_registered, validate_args
 from tgms.tgir.depscope import TOP, Incident
 from tgms.tgir.leaf import sigma_for
-from tgms.tgir.leaves import terms_for
+from tgms.tgir.leaves import P_VALUE, terms_for
 
 from tests.test_tgir_scopes import (
     arms_that_hit,
@@ -370,6 +370,84 @@ class TestTemporalReachability:
         result = run_differential(store, "temporal_reachability", dict(self.ARGS),
                                   read_uids=("n0",), window=(0, 900), trials=10, seed=4)
         print(f"temporal_reachability: exclusion={result.exclusion_rate:.2f} "
+              f"precision={result.precision:.2f} n={result.n}")
+        assert result.n > 0
+        assert result.exclusion_rate >= 0.1
+
+
+# ---------------------------------------------------------------------------
+# §2.10 — temporal_paths
+# ---------------------------------------------------------------------------
+
+class TestTemporalPaths:
+    """Same shape as `temporal_reachability`, with `P = ⊤` — the one
+    difference, contrasted directly below."""
+
+    ARGS = {"src": "n0", "dst": "n3", "window": {"t_a": 0, "t_b": 900}}
+
+    MATRIX = [
+        ("an edge event inside the window, unrelated to src/dst", ARGS,
+         assert_edge("n5", "n6", vt_s=10, vt_e=11), True),
+        ("events ingested inside the window", ARGS, ingest("n5", "n6", 10), True),
+        ("a node write, unrelated to src/dst", ARGS, assert_node("n9"), False),
+        # V exclusion only bites a non-carving op (ingest_events emits no
+        # carve arm at all): an assert/correct/retract outside the window
+        # still intersects through its unconditional carve arm, below
+        ("events ingested after the window (no carve arm to rescue it)", ARGS,
+         ingest("n5", "n6", 1000), False),
+        # the contrast with temporal_reachability: P = TOP, so the carve arm
+        # DOES reach this operator (paths are ranked by a key that includes
+        # each edge's vt_s, and it is a top-k, so a carve can reorder or
+        # displace a result even from entirely outside the window) — and,
+        # unlike ingest_events, assert/correct/retract always carry one
+        ("an assert_edge, entirely outside the window (P = TOP: the carve "
+         "arm reaches it)", ARGS,
+         assert_edge("n5", "n6", vt_s=2000, vt_e=2001), True),
+        ("a carve of an edge, entirely outside the window (P = TOP: reaches)",
+         ARGS, correct_edge("n5", "n6", vt_s=2000, vt_e=2010), True),
+        ("an assert_node registering src", ARGS, assert_node("n0"), True),
+        ("an assert_node registering dst", ARGS, assert_node("n3"), True),
+        ("an assert_node registering an unrelated uid", ARGS, assert_node("n1"), False),
+    ]
+
+    @pytest.mark.parametrize("label,args,op,must", MATRIX, ids=[m[0] for m in MATRIX])
+    def test_matrix(self, label, args, op, must):
+        filled = validate_args("temporal_paths", dict(args))
+        terms = terms_for("temporal_paths", filled, sigma_for("temporal_paths", filled))
+        assert hits(terms, op) is must, (
+            f"{label}: should {'intersect' if must else 'NOT intersect'}; "
+            f"arms hit: {arms_that_hit(terms, op)}")
+
+    def test_p_is_top_unlike_reachability(self):
+        """§2.10's one difference from §2.9: the carve arm reaches this
+        operator (a top-k ranked by a key naming each edge's vt_s), so V is
+        worth nothing against a Class B/C/D op on an edge identity — only
+        the entity-kind exclusion in E survives, and it is the whole of the
+        narrowing."""
+        reach_filled = validate_args("temporal_reachability",
+                                     {"src": "n0", "window": {"t_a": 0, "t_b": 900}})
+        reach_term = terms_for("temporal_reachability", reach_filled,
+                               sigma_for("temporal_reachability", reach_filled))[0]
+        paths_filled = validate_args("temporal_paths", dict(self.ARGS))
+        paths_term = terms_for("temporal_paths", paths_filled, sigma_for("temporal_paths", paths_filled))[0]
+        assert reach_term.props == P_VALUE
+        assert paths_term.props is TOP
+        far_carve = correct_edge("n5", "n6", vt_s=5000, vt_e=5010)
+        assert not hits((reach_term,), far_carve)
+        assert hits((paths_term,), far_carve)
+
+    def test_existence_pair_covers_both_src_and_dst(self):
+        filled = validate_args("temporal_paths", dict(self.ARGS))
+        terms = terms_for("temporal_paths", filled, sigma_for("temporal_paths", filled))
+        node_terms = [t for t in terms if getattr(t.targets, "nodes", None) is not None]
+        assert len(node_terms) == 1
+        assert set(node_terms[0].targets.nodes) == {"n0", "n3"}
+
+    def test_differential(self, store):
+        result = run_differential(store, "temporal_paths", dict(self.ARGS),
+                                  read_uids=("n0", "n3"), window=(0, 900),
+                                  trials=10, seed=5)
+        print(f"temporal_paths: exclusion={result.exclusion_rate:.2f} "
               f"precision={result.precision:.2f} n={result.n}")
         assert result.n > 0
         assert result.exclusion_rate >= 0.1
