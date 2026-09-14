@@ -747,3 +747,79 @@ class TestCoActive:
               f"precision={result.precision:.2f} n={result.n}")
         assert result.n > 0
         assert result.exclusion_rate >= 0.1
+
+
+# ---------------------------------------------------------------------------
+# §2.3 — diff_snapshots
+# ---------------------------------------------------------------------------
+
+class TestDiffSnapshots:
+    NO_SCOPE = {"t1": 100, "t2": 500}
+    WITH_SCOPE = {"t1": 100, "t2": 500, "scope": {"seeds": ["n0"], "hops": 1}}
+
+    NO_SCOPE_MATRIX = [
+        ("an edge event AT t1", NO_SCOPE, assert_edge("n5", "n6", vt_s=100, vt_e=101), True),
+        ("an edge event AT t2", NO_SCOPE, assert_edge("n5", "n6", vt_s=500, vt_e=501), True),
+        ("a node write AT t1", NO_SCOPE, assert_node("n5", vt_s=100, vt_e=101), True),
+        ("a node correction spanning t2", NO_SCOPE,
+         correct_node("n5", vt_s=490, vt_e=510), True),
+        # V exclusion: neither instant is covered
+        ("an edge event covering neither instant", NO_SCOPE,
+         assert_edge("n5", "n6", vt_s=200, vt_e=201), False),
+        # the carve arm is EXCLUDED (P = Pv) — the whole value of this
+        # derivation over the rest of the snapshot family
+        ("a carve covering neither instant (P = Pv: excluded)", NO_SCOPE,
+         correct_edge("n5", "n6", vt_s=200, vt_e=210), False),
+    ]
+
+    SCOPE_MATRIX = [
+        ("the existence pair over a scope seed", WITH_SCOPE, assert_node("n0"), True),
+        ("an assert_edge naming a scope seed, far outside both instants",
+         WITH_SCOPE, assert_edge("n0", "n50", vt_s=5000, vt_e=5001), True),
+        ("an unrelated node write, covering neither instant", WITH_SCOPE,
+         assert_node("n9", vt_s=200, vt_e=201), False),
+    ]
+
+    @pytest.mark.parametrize("label,args,op,must", NO_SCOPE_MATRIX + SCOPE_MATRIX,
+                             ids=[m[0] for m in NO_SCOPE_MATRIX + SCOPE_MATRIX])
+    def test_matrix(self, label, args, op, must):
+        filled = validate_args("diff_snapshots", dict(args))
+        terms = terms_for("diff_snapshots", filled, sigma_for("diff_snapshots", filled))
+        assert hits(terms, op) is must, (
+            f"{label}: should {'intersect' if must else 'NOT intersect'}; "
+            f"arms hit: {arms_that_hit(terms, op)}")
+
+    def test_i_is_top_on_both_terms(self):
+        """§9.2's BFS argument, inherited verbatim: a chain of entirely new
+        edges can pull a node into the ball even at hops=1 for the induced
+        subgraph, so a static seed set never bounds I."""
+        filled = validate_args("diff_snapshots", dict(self.WITH_SCOPE))
+        edge_term, node_term = terms_for("diff_snapshots", filled, sigma_for("diff_snapshots", filled))[:2]
+        assert edge_term.targets.edges is TOP
+        assert node_term.targets.nodes is TOP
+
+    def test_two_instants_one_vt_tuple(self):
+        filled = validate_args("diff_snapshots", dict(self.NO_SCOPE))
+        (edge_term, _node_term) = terms_for("diff_snapshots", filled, sigma_for("diff_snapshots", filled))
+        assert edge_term.vt == ((100, 101), (500, 501))
+
+    def test_no_existence_pair_when_scope_is_none(self):
+        filled = validate_args("diff_snapshots", dict(self.NO_SCOPE))
+        assert len(terms_for("diff_snapshots", filled, sigma_for("diff_snapshots", filled))) == 2
+
+    def test_differential_no_scope(self, store):
+        result = run_differential(store, "diff_snapshots", dict(self.NO_SCOPE),
+                                  window=(100, 501), trials=10, seed=12)
+        print(f"diff_snapshots[no_scope]: exclusion={result.exclusion_rate:.2f} "
+              f"precision={result.precision:.2f} n={result.n}")
+        assert result.n > 0
+        assert result.exclusion_rate >= 0.2
+
+    def test_differential_with_scope(self, store):
+        result = run_differential(store, "diff_snapshots", dict(self.WITH_SCOPE),
+                                  read_uids=("n0",), window=(100, 501),
+                                  trials=10, seed=13)
+        print(f"diff_snapshots[with_scope]: exclusion={result.exclusion_rate:.2f} "
+              f"precision={result.precision:.2f} n={result.n}")
+        assert result.n > 0
+        assert result.exclusion_rate >= 0.2

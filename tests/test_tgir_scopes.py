@@ -567,11 +567,10 @@ def test_only_three_operators_are_derived_and_the_rest_stay_top():
         "entity_history", "neighborhood_evolution", "aggregate_events",
         "count_temporal_motifs", "find_temporal_motif_instances",
         "temporal_reachability", "temporal_paths", "burst_detection",
-        "graph_metric_timeseries", "co_active",
+        "graph_metric_timeseries", "co_active", "diff_snapshots",
     }
     for op, args in (("version_history", {"kind": "node", "window": W}),
                      ("snapshot_subgraph", {"seeds": ["u1"], "t_valid": 10}),
-                     ("diff_snapshots", {"t1": 10, "t2": 20}),
                      ("resolve_entities", {"query": "u1"})):
         (term,) = scope(op, args)
         assert (term.kinds, term.targets, term.rel_types, term.vt, term.props) == \
