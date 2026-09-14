@@ -116,3 +116,78 @@ addendum_2:
   # or replace with their actual wording before v2 is scored.
   refuted_if: any v2 cell (same 40-cell grid) still shows nonzero registry-wide false-safe; OR any false-safe artifact is itself a DAG node; OR any seed-1 cell's nodes_visited differs from its v1 value; OR a seed-0 cell's nodes_visited does not increase by exactly 3 over its v1 value; OR tgms-L0/tgms-L1 false-fresh is nonzero in any of the 40 cells
   status: pre-registered, not yet submitted (main grid + R-18 hold the concurrency slots; coordinator gates submission)
+
+# --- addendum_3 (2026-09-14, coordinator): D-161's scope-derivation rollout
+# (C8, public main fdd393c) changed the narrowing-coverage population from
+# 3-of-14 read operators with a derived Level-0 scope to 13-of-14 (only
+# resolve_entities stays coarse by ruling; compute stays empty-scope).
+# storm-v1's own records (this file's cells/r18_probe blocks, and the dag
+# addenda) measured the 3-of-14 state and are not rerun or edited for this
+# change -- they stand as the record of that state. This block
+# pre-registers storm-v2: the same run of record as addendum_1's main grid
+# and R-18 probe, against the rolled-out engine, to characterize whether
+# the 13-of-14 narrowing actually moves precision/speedup the way the
+# rollout's own design predicts. Not yet submitted -- the current campaign
+# (211499/211555) and the D-160 lane's job (211581) hold the cluster's
+# concurrency slots.
+addendum_3:
+  id: storm-v1-addendum-3
+  reason: narrowing coverage 3 -> 13 of 14 after D-161; storm-v1 measured the 3-of-14 state
+  run_of_record_v2:
+    cells:  # addendum_1's main grid, unchanged
+      stores: [synth-iv-60k, collegemsg]
+      mixes: [c1, c3, c4]
+      ages: [none, deep]
+      n_artifacts: [1000]
+      seeds: [0, 1, 2]
+      batches_per_cell: 20
+      arms: [global-recompute, entity-touch, window-overlap, row-touch, tgms-L0, tgms-L1]
+      measure_ttf: [end-to-end]
+    r18_probe:  # the c1 N=10,000 seed-0 probe, unchanged
+      store: synth-iv-60k
+      mixes: [c1]
+      n_artifacts: 10000
+      seeds: [0]
+      batches_per_cell: 5
+      allow_r18_trip: true
+      wall_cap_h: 12
+    dag_phase: not re-run -- v2's --dag-seed-from-affected (addendum_2) already covers the narrowing-coverage-adjacent DAG question
+  commit_under_test: TBD -- fill with the sha checked out on the cluster worktree (>= fdd393c)
+  predictions:  # verbatim from the accepted design; each PASS-if/REFUTED-if as given
+    all_top_fraction:
+      description: all-⊤ fraction of the registered population (compute excluded)
+      predicted: 0.00
+      pass_if: "== 0.00"
+      refuted_if: any well-formed args emit TOP_TERM (now measurable from the record's narrowing_coverage block)
+    prefilter_survivor_fraction:
+      description: pre-filter survivor fraction (median per batch, c1)
+      predicted: 0.22 (0.15-0.32)
+      pass_if: "<= 0.35"
+      refuted_if: ">= 0.45"
+    precision_changed_over_survivors:
+      description: precision changed / survivors (median per batch, c1)
+      predicted: 0.20 (0.14-0.30)
+      pass_if: ">= 0.15"
+      refuted_if: "<= 0.10"
+    avoided_recompute_decision_c1:
+      description: "P3' avoided recomputation (decision count) at c1"
+      predicted: 0.73 (0.65-0.82)
+      pass_if: ">= 0.60"
+      refuted_if: "< 0.45"
+    speedup_n1000_seed0:
+      description: tgms-L1 vs global-recompute end-to-end speedup, N=1,000 synth-iv-60k seed 0
+      predicted: 4.2x (3.0-5.0)
+      pass_if: "> 2.5x"
+      refuted_if: "<= 1.94x"
+    speedup_n10000_probe:
+      description: same speedup at N=10,000 (r18_probe)
+      predicted: 2.0x (1.1-4.3)
+      pass_if: "> 1.0x"
+      refuted_if: "<= 1.0x"
+    false_fresh_every_tgms_cell:
+      description: false-fresh in every tgms cell
+      predicted: 0
+      pass_if: "== 0 in every cell"
+      refuted_if: any nonzero -- the rollout is withdrawn, not tuned
+  conditionality: node-only vs edge-writing corrections reported separately (from correction_class/correction_placement); the population mix is the frozen v1 one, unchanged for this addendum
+  status: pre-registered, not yet submitted (211499/211555 and the D-160 lane's 211581 hold the concurrency slots; coordinator gates submission)
