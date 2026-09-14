@@ -28,16 +28,31 @@ with the four durability questions answered by machine afterward:
 
 | # | boundary | mechanism |
 |---|---|---|
-| B1 | mid event-log append (torn record, no fsync) | Python-side wrap |
-| B2 | after log fsync, before `apply_ops` | Python-side wrap |
-| B3 | mid apply, before engine commit begins | Python-side wrap |
-| B4 | mid segment seal (partial `.tgs`) | engine `crash_point` |
-| B5 | after segments, mid close-run write | engine `crash_point` |
-| B6 | after close runs, mid dict append | engine `crash_point` |
-| B7 | mid manifest write (before rename) | engine `crash_point` |
-| B8 | after manifest rename, before `CURRENT` | engine `crash_point` |
-| B9 | after `CURRENT` flip, before return | engine `crash_point` |
-| B10 | mid compaction publish / mid gc deletion | engine `crash_point` |
+| B1 | mid event-log append (torn record, no fsync) | `crash_point("py_torn_wal_append")` |
+| B2 | after log fsync, before `apply_ops` | `crash_point("py_after_wal_fsync")` |
+| B3 | after `apply_ops`, before engine commit begins | `crash_point("py_before_engine_commit")` |
+| B4 | after ALL segments are sealed, before close runs | engine `crash_point("after_seal")` |
+| B5 | after close runs are written, before dict append | engine `crash_point("after_close_runs")` |
+| B6 | after dict append, before the manifest write | engine `crash_point("after_dict")` |
+| B7 | after the new manifest is fsynced and renamed into place, before `CURRENT` is updated | engine `crash_point("after_manifest")` |
+| B8 | same physical point as B7 — `after_manifest` fires once, after the rename `write_atomic` already fsyncs; there is no separate "before rename" point to crash at | engine `crash_point("after_manifest")` |
+| B9 | after `CURRENT` flip, before return | engine `crash_point("after_current")` |
+| B10 | mid compaction publish / mid gc deletion | engine `crash_point("compact_before_install"/"gc_mid_delete")` |
+
+Note: B1–B3 are now product-side `crash_point` calls in
+`tgms/storage/eventlog.py::EventLog.append` and
+`tgms/store.py::Store._write_locked` (previously harness-local monkeypatches
+of those methods) — same `TGMS_CRASH_POINT` env-var protocol as the
+engine's, so every boundary is selected identically. B4 and B7 do **not**
+catch a segment or manifest
+*mid-write* the way this table originally described: `after_seal` fires
+only once every segment in the batch has already been sealed (there is no
+per-segment crash point), and `after_manifest` fires only after
+`write_atomic` has already fsynced the temp file and renamed it into place
+— so B7 and B8 observe the same on-disk state. Genuine mid-file tears (a
+half-written `.tgs`, a half-written manifest before rename) are covered
+instead by the constructed-state tests, not by process injection (D-086,
+`docs/DECISIONS.md:4479-4480`).
 
 ## Forecast, written 2026-08-06 before the instrument (D-086; score after)
 
