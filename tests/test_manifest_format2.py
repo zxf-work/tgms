@@ -271,6 +271,36 @@ def test_the_format_2_fixture_really_has_a_chain_to_reconstruct():
     assert kinds[head_generation(FORMAT2)] == "delta"
 
 
+def test_a_format_2_chain_replays_to_the_digest_the_old_engine_wrote():
+    """The sharpest statement of the read-only promise.
+
+    The head of the format-2 fixture is a delta two generations above a
+    periodic checkpoint, so opening it *replays a chain*. Under format 3 that
+    replay must resolve the base, apply both deltas, and arrive at exactly the
+    sha the pre-format-3 engine sealed and wrote into `CURRENT` — computed
+    under format 2's whole-document rule, not the Merkle one. A single byte of
+    reinterpretation and this number moves.
+
+    Read-only, so the fixture is opened in place rather than copied.
+    """
+    adapter = NativeAdapter(FORMAT2 / "native")
+    try:
+        expected_gen, expected_sha = (
+            FORMAT2 / "native" / "CURRENT").read_text().split()
+        assert adapter.manifest_format() == 2
+        assert adapter.generation == int(expected_gen)
+        assert adapter._store.manifest_sha() == expected_sha
+
+        report = adapter.verify(mode="full")
+        assert report["healthy"], report["problems"]
+        assert report["manifest_checkpoint"] == 8
+        assert report["manifest_deltas"] == 2, (
+            "the head must have been reached by replaying a chain, or this "
+            "test proves nothing about chains")
+    finally:
+        adapter.close()
+
+
 @pytest.mark.parametrize("fixture,format_version", LEGACY)
 def test_an_older_store_opens_read_only_and_names_its_remedy(
         tmp_path, fixture, format_version):
