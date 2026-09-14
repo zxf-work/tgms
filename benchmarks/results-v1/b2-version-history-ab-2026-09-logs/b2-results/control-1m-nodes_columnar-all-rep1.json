@@ -1,0 +1,1 @@
+{"store": "/mnt/project/xzhang/tgms/work/tgms/stores/synth-1m-native", "op": "nodes_columnar", "belief": "all", "reps": 1, "open_ms": 3948.3, "median_ms": 32.3, "min_ms": 32.3, "max_ms": 32.3, "timings_ms": [32.3], "rows_total": 20000, "vmsize_kb": 1817092, "vmhwm_kb": 130544, "vmrss_kb": 127368}

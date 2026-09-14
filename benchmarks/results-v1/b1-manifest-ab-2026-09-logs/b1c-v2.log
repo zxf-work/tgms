@@ -1,0 +1,8 @@
+--- B1c v2: control (NativeAdapter direct) ---
+{"label": "control-rep1", "store": "/mnt/project/xzhang/tgms/tmp/b1a-control", "open_ms": 1071.137, "generation": 10014}
+{"label": "control-rep2", "store": "/mnt/project/xzhang/tgms/tmp/b1a-control", "open_ms": 1066.403, "generation": 10014}
+{"label": "control-rep3", "store": "/mnt/project/xzhang/tgms/tmp/b1a-control", "open_ms": 1070.393, "generation": 10014}
+--- B1c v2: treatment (NativeAdapter direct) ---
+{"label": "treatment-rep1", "store": "/mnt/project/xzhang/tgms/tmp/b1a-treatment", "open_ms": 8588.684, "generation": 10008}
+{"label": "treatment-rep2", "store": "/mnt/project/xzhang/tgms/tmp/b1a-treatment", "open_ms": 8578.074, "generation": 10008}
+B1C_V2_DONE

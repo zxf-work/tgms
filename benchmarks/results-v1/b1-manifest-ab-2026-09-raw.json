@@ -1,0 +1,676 @@
+{
+ "b1a": {
+  "control": {
+   "run_started_line": "RUN_STARTED commit=cb0e6afc17e7 csv=/mnt/project/xzhang/tgms/ldbc-sf1/bi-sf1-composite-merged-fk/graphs/csv/bi/composite-merged-fk/initial_snapshot out=/mnt/project/xzhang/tgms/tmp/b1a-control backend=native batch=250 compact_every=0 path=assert digest=manifest host=xzgpu",
+   "ops_series": [
+    [
+     500000,
+     8637
+    ],
+    [
+     1000000,
+     5397
+    ],
+    [
+     1500000,
+     3822
+    ],
+    [
+     2000000,
+     2931
+    ],
+    [
+     2500000,
+     2332
+    ]
+   ],
+   "manifest_bytes_at_stop": 25970987762,
+   "segment_bytes_at_stop": 146613591,
+   "stopped_at_ops": 2500000
+  },
+  "treatment": {
+   "run_started_line": "RUN_STARTED commit=4af218192d8c csv=/mnt/project/xzhang/tgms/ldbc-sf1/bi-sf1-composite-merged-fk/graphs/csv/bi/composite-merged-fk/initial_snapshot out=/mnt/project/xzhang/tgms/tmp/b1a-treatment backend=native batch=250 compact_every=0 path=assert digest=manifest host=xzgpu",
+   "ops_series": [
+    [
+     500000,
+     8951
+    ],
+    [
+     1000000,
+     5712
+    ],
+    [
+     1500000,
+     4139
+    ],
+    [
+     2000000,
+     3219
+    ],
+    [
+     2500000,
+     2610
+    ]
+   ],
+   "manifest_bytes_at_stop": 62046913,
+   "segment_bytes_at_stop": 146516413,
+   "stopped_at_ops": 2500000
+  }
+ },
+ "b1b": {
+  "raw": {
+   "control": [
+    {
+     "batch_rows": 1,
+     "commits": 300,
+     "commit_ms": {
+      "n": 300,
+      "p50": 6.799,
+      "p90": 9.615,
+      "p99": 12.572,
+      "min": 4.107,
+      "max": 146.072
+     },
+     "ms_per_row": 6.799,
+     "phase_p50_us": {
+      "apply_us": 343,
+      "closes_us": 0,
+      "current_us": 845,
+      "dict_us": 385,
+      "manifest_bytes": 151890,
+      "manifest_us": 1255,
+      "seal_us": 1221,
+      "segments_named": 305,
+      "stats_us": 0,
+      "total_us": 6017,
+      "wal_us": 465,
+      "write_us": 6799
+     },
+     "first_decile_us": {
+      "apply_us": 352,
+      "closes_us": 0,
+      "current_us": 839,
+      "dict_us": 380,
+      "manifest_bytes": 17967,
+      "manifest_us": 796,
+      "seal_us": 1194,
+      "segments_named": 35,
+      "stats_us": 0,
+      "total_us": 3811,
+      "wal_us": 460,
+      "write_us": 4664
+     },
+     "last_decile_us": {
+      "apply_us": 471,
+      "closes_us": 0,
+      "current_us": 863,
+      "dict_us": 380,
+      "manifest_bytes": 285810,
+      "manifest_us": 1718,
+      "seal_us": 1219,
+      "segments_named": 575,
+      "stats_us": 0,
+      "total_us": 7990,
+      "wal_us": 428,
+      "write_us": 8877
+     },
+     "store_bytes": 61580949
+    },
+    {
+     "batch_rows": 1,
+     "commits": 300,
+     "commit_ms": {
+      "n": 300,
+      "p50": 7.063,
+      "p90": 9.777,
+      "p99": 12.4,
+      "min": 3.731,
+      "max": 146.268
+     },
+     "ms_per_row": 7.063,
+     "phase_p50_us": {
+      "apply_us": 332,
+      "closes_us": 0,
+      "current_us": 850,
+      "dict_us": 400,
+      "manifest_bytes": 151890,
+      "manifest_us": 1285,
+      "seal_us": 1217,
+      "segments_named": 305,
+      "stats_us": 0,
+      "total_us": 6218,
+      "wal_us": 468,
+      "write_us": 7063
+     },
+     "first_decile_us": {
+      "apply_us": 302,
+      "closes_us": 0,
+      "current_us": 870,
+      "dict_us": 396,
+      "manifest_bytes": 17967,
+      "manifest_us": 822,
+      "seal_us": 1212,
+      "segments_named": 35,
+      "stats_us": 0,
+      "total_us": 3884,
+      "wal_us": 467,
+      "write_us": 4596
+     },
+     "last_decile_us": {
+      "apply_us": 437,
+      "closes_us": 0,
+      "current_us": 847,
+      "dict_us": 398,
+      "manifest_bytes": 285810,
+      "manifest_us": 1718,
+      "seal_us": 1195,
+      "segments_named": 575,
+      "stats_us": 0,
+      "total_us": 8023,
+      "wal_us": 469,
+      "write_us": 8933
+     },
+     "store_bytes": 61580943
+    },
+    {
+     "batch_rows": 1,
+     "commits": 300,
+     "commit_ms": {
+      "n": 300,
+      "p50": 6.622,
+      "p90": 9.218,
+      "p99": 12.492,
+      "min": 3.387,
+      "max": 149.891
+     },
+     "ms_per_row": 6.622,
+     "phase_p50_us": {
+      "apply_us": 299,
+      "closes_us": 0,
+      "current_us": 838,
+      "dict_us": 394,
+      "manifest_bytes": 151890,
+      "manifest_us": 1276,
+      "seal_us": 1192,
+      "segments_named": 305,
+      "stats_us": 0,
+      "total_us": 5926,
+      "wal_us": 449,
+      "write_us": 6622
+     },
+     "first_decile_us": {
+      "apply_us": 358,
+      "closes_us": 0,
+      "current_us": 838,
+      "dict_us": 397,
+      "manifest_bytes": 17967,
+      "manifest_us": 799,
+      "seal_us": 1262,
+      "segments_named": 35,
+      "stats_us": 0,
+      "total_us": 3835,
+      "wal_us": 471,
+      "write_us": 4673
+     },
+     "last_decile_us": {
+      "apply_us": 435,
+      "closes_us": 0,
+      "current_us": 842,
+      "dict_us": 404,
+      "manifest_bytes": 285810,
+      "manifest_us": 1731,
+      "seal_us": 1208,
+      "segments_named": 575,
+      "stats_us": 0,
+      "total_us": 8029,
+      "wal_us": 467,
+      "write_us": 8958
+     },
+     "store_bytes": 61580896
+    }
+   ],
+   "treatment": [
+    {
+     "batch_rows": 1,
+     "commits": 300,
+     "commit_ms": {
+      "n": 300,
+      "p50": 6.35,
+      "p90": 8.354,
+      "p99": 9.454,
+      "min": 3.756,
+      "max": 146.588
+     },
+     "ms_per_row": 6.35,
+     "phase_p50_us": {
+      "apply_us": 333,
+      "closes_us": 0,
+      "current_us": 838,
+      "dict_us": 387,
+      "manifest_bytes": 1568,
+      "manifest_checkpoint": 0,
+      "manifest_us": 791,
+      "seal_us": 1211,
+      "segments_named": 305,
+      "stats_us": 0,
+      "total_us": 5560,
+      "wal_us": 464,
+      "write_us": 6350
+     },
+     "first_decile_us": {
+      "apply_us": 358,
+      "closes_us": 0,
+      "current_us": 864,
+      "dict_us": 386,
+      "manifest_bytes": 1565,
+      "manifest_checkpoint": 0,
+      "manifest_us": 774,
+      "seal_us": 1231,
+      "segments_named": 35,
+      "stats_us": 0,
+      "total_us": 3921,
+      "wal_us": 463,
+      "write_us": 4729
+     },
+     "last_decile_us": {
+      "apply_us": 371,
+      "closes_us": 0,
+      "current_us": 830,
+      "dict_us": 367,
+      "manifest_bytes": 1568,
+      "manifest_checkpoint": 0,
+      "manifest_us": 826,
+      "seal_us": 1152,
+      "segments_named": 575,
+      "stats_us": 0,
+      "total_us": 7051,
+      "wal_us": 441,
+      "write_us": 8019
+     },
+     "store_bytes": 16483290
+    },
+    {
+     "batch_rows": 1,
+     "commits": 300,
+     "commit_ms": {
+      "n": 300,
+      "p50": 6.539,
+      "p90": 8.658,
+      "p99": 10.865,
+      "min": 3.691,
+      "max": 148.237
+     },
+     "ms_per_row": 6.539,
+     "phase_p50_us": {
+      "apply_us": 342,
+      "closes_us": 0,
+      "current_us": 847,
+      "dict_us": 403,
+      "manifest_bytes": 1568,
+      "manifest_checkpoint": 0,
+      "manifest_us": 827,
+      "seal_us": 1225,
+      "segments_named": 305,
+      "stats_us": 0,
+      "total_us": 5675,
+      "wal_us": 468,
+      "write_us": 6539
+     },
+     "first_decile_us": {
+      "apply_us": 354,
+      "closes_us": 0,
+      "current_us": 836,
+      "dict_us": 399,
+      "manifest_bytes": 1565,
+      "manifest_checkpoint": 0,
+      "manifest_us": 746,
+      "seal_us": 1242,
+      "segments_named": 35,
+      "stats_us": 0,
+      "total_us": 3857,
+      "wal_us": 465,
+      "write_us": 4730
+     },
+     "last_decile_us": {
+      "apply_us": 382,
+      "closes_us": 0,
+      "current_us": 835,
+      "dict_us": 407,
+      "manifest_bytes": 1568,
+      "manifest_checkpoint": 0,
+      "manifest_us": 843,
+      "seal_us": 1215,
+      "segments_named": 575,
+      "stats_us": 0,
+      "total_us": 6868,
+      "wal_us": 414,
+      "write_us": 7847
+     },
+     "store_bytes": 16483262
+    },
+    {
+     "batch_rows": 1,
+     "commits": 300,
+     "commit_ms": {
+      "n": 300,
+      "p50": 6.351,
+      "p90": 8.526,
+      "p99": 9.829,
+      "min": 3.776,
+      "max": 146.671
+     },
+     "ms_per_row": 6.3515,
+     "phase_p50_us": {
+      "apply_us": 349,
+      "closes_us": 0,
+      "current_us": 853,
+      "dict_us": 384,
+      "manifest_bytes": 1568,
+      "manifest_checkpoint": 0,
+      "manifest_us": 793,
+      "seal_us": 1235,
+      "segments_named": 305,
+      "stats_us": 0,
+      "total_us": 5584,
+      "wal_us": 470,
+      "write_us": 6351
+     },
+     "first_decile_us": {
+      "apply_us": 306,
+      "closes_us": 0,
+      "current_us": 870,
+      "dict_us": 384,
+      "manifest_bytes": 1565,
+      "manifest_checkpoint": 0,
+      "manifest_us": 761,
+      "seal_us": 1288,
+      "segments_named": 35,
+      "stats_us": 0,
+      "total_us": 3958,
+      "wal_us": 464,
+      "write_us": 4761
+     },
+     "last_decile_us": {
+      "apply_us": 372,
+      "closes_us": 0,
+      "current_us": 832,
+      "dict_us": 391,
+      "manifest_bytes": 1568,
+      "manifest_checkpoint": 0,
+      "manifest_us": 789,
+      "seal_us": 1240,
+      "segments_named": 575,
+      "stats_us": 0,
+      "total_us": 7072,
+      "wal_us": 468,
+      "write_us": 7908
+     },
+     "store_bytes": 16483260
+    }
+   ],
+   "treatment_ksweep": {
+    "128": {
+     "batch_rows": 1,
+     "commits": 300,
+     "commit_ms": {
+      "n": 300,
+      "p50": 6.307,
+      "p90": 8.091,
+      "p99": 10.0,
+      "min": 3.636,
+      "max": 147.061
+     },
+     "ms_per_row": 6.307,
+     "phase_p50_us": {
+      "apply_us": 343,
+      "closes_us": 0,
+      "current_us": 847,
+      "dict_us": 398,
+      "manifest_bytes": 1570,
+      "manifest_checkpoint": 0,
+      "manifest_us": 796,
+      "seal_us": 1225,
+      "segments_named": 305,
+      "stats_us": 0,
+      "total_us": 5512,
+      "wal_us": 468,
+      "write_us": 6307
+     },
+     "first_decile_us": {
+      "apply_us": 365,
+      "closes_us": 0,
+      "current_us": 842,
+      "dict_us": 395,
+      "manifest_bytes": 1565,
+      "manifest_checkpoint": 0,
+      "manifest_us": 752,
+      "seal_us": 1286,
+      "segments_named": 35,
+      "stats_us": 0,
+      "total_us": 3885,
+      "wal_us": 469,
+      "write_us": 4746
+     },
+     "last_decile_us": {
+      "apply_us": 306,
+      "closes_us": 0,
+      "current_us": 785,
+      "dict_us": 369,
+      "manifest_bytes": 1570,
+      "manifest_checkpoint": 0,
+      "manifest_us": 760,
+      "seal_us": 1085,
+      "segments_named": 575,
+      "stats_us": 0,
+      "total_us": 6321,
+      "wal_us": 408,
+      "write_us": 7051
+     },
+     "store_bytes": 16862668
+    },
+    "512": {
+     "batch_rows": 1,
+     "commits": 300,
+     "commit_ms": {
+      "n": 300,
+      "p50": 5.119,
+      "p90": 7.335,
+      "p99": 9.036,
+      "min": 3.243,
+      "max": 148.219
+     },
+     "ms_per_row": 5.119,
+     "phase_p50_us": {
+      "apply_us": 209,
+      "closes_us": 0,
+      "current_us": 744,
+      "dict_us": 339,
+      "manifest_bytes": 1568,
+      "manifest_checkpoint": 0,
+      "manifest_us": 690,
+      "seal_us": 977,
+      "segments_named": 305,
+      "stats_us": 0,
+      "total_us": 4479,
+      "wal_us": 353,
+      "write_us": 5119
+     },
+     "first_decile_us": {
+      "apply_us": 267,
+      "closes_us": 0,
+      "current_us": 795,
+      "dict_us": 354,
+      "manifest_bytes": 1565,
+      "manifest_checkpoint": 0,
+      "manifest_us": 689,
+      "seal_us": 1126,
+      "segments_named": 35,
+      "stats_us": 0,
+      "total_us": 3568,
+      "wal_us": 427,
+      "write_us": 4388
+     },
+     "last_decile_us": {
+      "apply_us": 272,
+      "closes_us": 0,
+      "current_us": 735,
+      "dict_us": 338,
+      "manifest_bytes": 1568,
+      "manifest_checkpoint": 0,
+      "manifest_us": 722,
+      "seal_us": 1100,
+      "segments_named": 575,
+      "stats_us": 0,
+      "total_us": 5865,
+      "wal_us": 361,
+      "write_us": 6716
+     },
+     "store_bytes": 16483251
+    },
+    "1024": {
+     "batch_rows": 1,
+     "commits": 300,
+     "commit_ms": {
+      "n": 300,
+      "p50": 6.405,
+      "p90": 7.983,
+      "p99": 9.92,
+      "min": 3.665,
+      "max": 146.82
+     },
+     "ms_per_row": 6.405,
+     "phase_p50_us": {
+      "apply_us": 323,
+      "closes_us": 0,
+      "current_us": 839,
+      "dict_us": 399,
+      "manifest_bytes": 1568,
+      "manifest_checkpoint": 0,
+      "manifest_us": 785,
+      "seal_us": 1224,
+      "segments_named": 305,
+      "stats_us": 0,
+      "total_us": 5557,
+      "wal_us": 461,
+      "write_us": 6405
+     },
+     "first_decile_us": {
+      "apply_us": 304,
+      "closes_us": 0,
+      "current_us": 872,
+      "dict_us": 393,
+      "manifest_bytes": 1565,
+      "manifest_checkpoint": 0,
+      "manifest_us": 756,
+      "seal_us": 1243,
+      "segments_named": 35,
+      "stats_us": 0,
+      "total_us": 3899,
+      "wal_us": 451,
+      "write_us": 4701
+     },
+     "last_decile_us": {
+      "apply_us": 303,
+      "closes_us": 0,
+      "current_us": 827,
+      "dict_us": 390,
+      "manifest_bytes": 1568,
+      "manifest_checkpoint": 0,
+      "manifest_us": 808,
+      "seal_us": 1199,
+      "segments_named": 575,
+      "stats_us": 0,
+      "total_us": 6788,
+      "wal_us": 404,
+      "write_us": 7565
+     },
+     "store_bytes": 16483291
+    }
+   }
+  },
+  "summary": {
+   "control": {
+    "manifest_us": {
+     "p50_us": 1276,
+     "first_decile_us": 799,
+     "last_decile_us": 1718,
+     "ratio_last_over_first": 2.15
+    },
+    "total_us": {
+     "p50_us": 6017,
+     "first_decile_us": 3835,
+     "last_decile_us": 8023,
+     "ratio_last_over_first": 2.092
+    }
+   },
+   "treatment": {
+    "manifest_us": {
+     "p50_us": 793,
+     "first_decile_us": 761,
+     "last_decile_us": 826,
+     "ratio_last_over_first": 1.085
+    },
+    "total_us": {
+     "p50_us": 5584,
+     "first_decile_us": 3921,
+     "last_decile_us": 7051,
+     "ratio_last_over_first": 1.798
+    }
+   }
+  }
+ },
+ "b1c": {
+  "authoritative": {
+   "control_open_ms": [
+    1071.137,
+    1066.403,
+    1070.393
+   ],
+   "treatment_open_ms": [
+    8588.684,
+    8578.074,
+    8649.193
+   ],
+   "method": "NativeAdapter(path/'native') construction time -- the Rust-level NativeStore::open, NOT tgms.open() (which additionally replays the event log)."
+  },
+  "superseded_first_attempt": {
+   "note": "superseded by b1c-v2 (see method note); these used tgms.open() and so include event-log replay, not just manifest-chain reconstruction",
+   "control_open_ms": [
+    23814.833,
+    24934.228,
+    23198.932
+   ],
+   "treatment_open_ms": [
+    30848.301,
+    32198.199,
+    31973.985
+   ]
+  }
+ },
+ "b1d": {
+  "store": "/mnt/project/xzhang/tgms/tmp/b1a-treatment",
+  "wall_ms": 9833.454,
+  "report_summary": {
+   "generation": 10008,
+   "manifest_format": 2,
+   "manifest_checkpoint": 9728,
+   "manifest_deltas": 280,
+   "segments_checked": 10008,
+   "close_runs_checked": 0,
+   "rows": 2502000,
+   "closes": 0,
+   "dict_records": 2502000,
+   "tt_s_runs": 10008,
+   "max_tt_s_runs": 1,
+   "problems": [],
+   "healthy": true
+  }
+ },
+ "b1_falsifier5_tests": {
+  "suite": "tests/test_concurrency.py tests/test_native_faults.py tests/test_tcsr_persistence.py (treatment engine)",
+  "result_line": [
+   "................................                                         [100%]"
+  ],
+  "rc_line": "pytest_rc=0"
+ }
+}

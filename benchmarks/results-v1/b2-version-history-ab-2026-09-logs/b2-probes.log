@@ -1,0 +1,57 @@
+--- version_history: 1M, 3 reps, both engines ---
+RUN_STARTED probe=control-1m op=version_history belief=all rep=1 store=/mnt/project/xzhang/tgms/work/tgms/stores/synth-1m-native 2026-09-14T04:34:10Z
+{"store": "/mnt/project/xzhang/tgms/work/tgms/stores/synth-1m-native", "op": "version_history", "belief": "all", "reps": 1, "open_ms": 3847.1, "median_ms": 13396.2, "min_ms": 13396.2, "max_ms": 13396.2, "timings_ms": [13396.2], "rows_total": 1000000, "vmsize_kb": 2140456, "vmhwm_kb": 1366540, "vmrss_kb": 451440}
+RUN_ENDED probe=control-1m op=version_history belief=all rep=1 rc=0 2026-09-14T04:34:28Z
+RUN_STARTED probe=treatment-1m op=version_history belief=all rep=1 store=/mnt/project/xzhang/tgms/tmp/b2-1m-upgraded 2026-09-14T04:34:28Z
+{"store": "/mnt/project/xzhang/tgms/tmp/b2-1m-upgraded", "op": "version_history", "belief": "all", "reps": 1, "open_ms": 3793.9, "median_ms": 206.2, "min_ms": 206.2, "max_ms": 206.2, "timings_ms": [206.2], "rows_total": 1000000, "vmsize_kb": 1812048, "vmhwm_kb": 167968, "vmrss_kb": 121228}
+RUN_ENDED probe=treatment-1m op=version_history belief=all rep=1 rc=0 2026-09-14T04:34:32Z
+RUN_STARTED probe=control-1m op=version_history belief=all rep=2 store=/mnt/project/xzhang/tgms/work/tgms/stores/synth-1m-native 2026-09-14T04:34:32Z
+{"store": "/mnt/project/xzhang/tgms/work/tgms/stores/synth-1m-native", "op": "version_history", "belief": "all", "reps": 1, "open_ms": 3766.9, "median_ms": 13421.3, "min_ms": 13421.3, "max_ms": 13421.3, "timings_ms": [13421.3], "rows_total": 1000000, "vmsize_kb": 2140388, "vmhwm_kb": 1366276, "vmrss_kb": 451824}
+RUN_ENDED probe=control-1m op=version_history belief=all rep=2 rc=0 2026-09-14T04:34:50Z
+RUN_STARTED probe=treatment-1m op=version_history belief=all rep=2 store=/mnt/project/xzhang/tgms/tmp/b2-1m-upgraded 2026-09-14T04:34:50Z
+{"store": "/mnt/project/xzhang/tgms/tmp/b2-1m-upgraded", "op": "version_history", "belief": "all", "reps": 1, "open_ms": 3803.4, "median_ms": 226.9, "min_ms": 226.9, "max_ms": 226.9, "timings_ms": [226.9], "rows_total": 1000000, "vmsize_kb": 1811916, "vmhwm_kb": 167660, "vmrss_kb": 120840}
+RUN_ENDED probe=treatment-1m op=version_history belief=all rep=2 rc=0 2026-09-14T04:34:54Z
+RUN_STARTED probe=control-1m op=version_history belief=all rep=3 store=/mnt/project/xzhang/tgms/work/tgms/stores/synth-1m-native 2026-09-14T04:34:54Z
+{"store": "/mnt/project/xzhang/tgms/work/tgms/stores/synth-1m-native", "op": "version_history", "belief": "all", "reps": 1, "open_ms": 3815.2, "median_ms": 13876.0, "min_ms": 13876.0, "max_ms": 13876.0, "timings_ms": [13876.0], "rows_total": 1000000, "vmsize_kb": 1852988, "vmhwm_kb": 1365908, "vmrss_kb": 163520}
+RUN_ENDED probe=control-1m op=version_history belief=all rep=3 rc=0 2026-09-14T04:35:12Z
+RUN_STARTED probe=treatment-1m op=version_history belief=all rep=3 store=/mnt/project/xzhang/tgms/tmp/b2-1m-upgraded 2026-09-14T04:35:12Z
+{"store": "/mnt/project/xzhang/tgms/tmp/b2-1m-upgraded", "op": "version_history", "belief": "all", "reps": 1, "open_ms": 3804.8, "median_ms": 218.2, "min_ms": 218.2, "max_ms": 218.2, "timings_ms": [218.2], "rows_total": 1000000, "vmsize_kb": 1811920, "vmhwm_kb": 168072, "vmrss_kb": 121276}
+RUN_ENDED probe=treatment-1m op=version_history belief=all rep=3 rc=0 2026-09-14T04:35:16Z
+--- version_history: 10M, 3 reps, both engines ---
+RUN_STARTED probe=control-10m op=version_history belief=all rep=1 store=/mnt/project/xzhang/tgms/work/tgms/stores/synth-10m-native 2026-09-14T04:35:16Z
+{"store": "/mnt/project/xzhang/tgms/work/tgms/stores/synth-10m-native", "op": "version_history", "belief": "all", "reps": 1, "open_ms": 34992.8, "median_ms": 169216.0, "min_ms": 169216.0, "max_ms": 169216.0, "timings_ms": [169216.0], "rows_total": 10000000, "vmsize_kb": 2481156, "vmhwm_kb": 13414120, "vmrss_kb": 791836}
+RUN_ENDED probe=control-10m op=version_history belief=all rep=1 rc=0 2026-09-14T04:38:41Z
+RUN_STARTED probe=treatment-10m op=version_history belief=all rep=1 store=/mnt/project/xzhang/tgms/tmp/b2-10m-upgraded 2026-09-14T04:38:41Z
+{"store": "/mnt/project/xzhang/tgms/tmp/b2-10m-upgraded", "op": "version_history", "belief": "all", "reps": 1, "open_ms": 36359.1, "median_ms": 1831.7, "min_ms": 1831.7, "max_ms": 1831.7, "timings_ms": [1831.7], "rows_total": 10000000, "vmsize_kb": 2453348, "vmhwm_kb": 1229712, "vmrss_kb": 761180}
+RUN_ENDED probe=treatment-10m op=version_history belief=all rep=1 rc=0 2026-09-14T04:39:19Z
+RUN_STARTED probe=control-10m op=version_history belief=all rep=2 store=/mnt/project/xzhang/tgms/work/tgms/stores/synth-10m-native 2026-09-14T04:39:19Z
+{"store": "/mnt/project/xzhang/tgms/work/tgms/stores/synth-10m-native", "op": "version_history", "belief": "all", "reps": 1, "open_ms": 34691.5, "median_ms": 183320.6, "min_ms": 183320.6, "max_ms": 183320.6, "timings_ms": [183320.6], "rows_total": 10000000, "vmsize_kb": 2481036, "vmhwm_kb": 13414504, "vmrss_kb": 791972}
+RUN_ENDED probe=control-10m op=version_history belief=all rep=2 rc=0 2026-09-14T04:42:57Z
+RUN_STARTED probe=treatment-10m op=version_history belief=all rep=2 store=/mnt/project/xzhang/tgms/tmp/b2-10m-upgraded 2026-09-14T04:42:57Z
+{"store": "/mnt/project/xzhang/tgms/tmp/b2-10m-upgraded", "op": "version_history", "belief": "all", "reps": 1, "open_ms": 35310.4, "median_ms": 1888.2, "min_ms": 1888.2, "max_ms": 1888.2, "timings_ms": [1888.2], "rows_total": 10000000, "vmsize_kb": 2453344, "vmhwm_kb": 1229956, "vmrss_kb": 761432}
+RUN_ENDED probe=treatment-10m op=version_history belief=all rep=2 rc=0 2026-09-14T04:43:35Z
+RUN_STARTED probe=control-10m op=version_history belief=all rep=3 store=/mnt/project/xzhang/tgms/work/tgms/stores/synth-10m-native 2026-09-14T04:43:35Z
+{"store": "/mnt/project/xzhang/tgms/work/tgms/stores/synth-10m-native", "op": "version_history", "belief": "all", "reps": 1, "open_ms": 34530.6, "median_ms": 179250.1, "min_ms": 179250.1, "max_ms": 179250.1, "timings_ms": [179250.1], "rows_total": 10000000, "vmsize_kb": 2480336, "vmhwm_kb": 13414332, "vmrss_kb": 790884}
+RUN_ENDED probe=control-10m op=version_history belief=all rep=3 rc=0 2026-09-14T04:47:09Z
+RUN_STARTED probe=treatment-10m op=version_history belief=all rep=3 store=/mnt/project/xzhang/tgms/tmp/b2-10m-upgraded 2026-09-14T04:47:09Z
+{"store": "/mnt/project/xzhang/tgms/tmp/b2-10m-upgraded", "op": "version_history", "belief": "all", "reps": 1, "open_ms": 35327.1, "median_ms": 1866.8, "min_ms": 1866.8, "max_ms": 1866.8, "timings_ms": [1866.8], "rows_total": 10000000, "vmsize_kb": 2453408, "vmhwm_kb": 1229724, "vmrss_kb": 761208}
+RUN_ENDED probe=treatment-10m op=version_history belief=all rep=3 rc=0 2026-09-14T04:47:47Z
+--- nodes_columnar: 1M/10M, 1 rep, both engines ---
+RUN_STARTED probe=control-1m op=nodes_columnar belief=all rep=1 store=/mnt/project/xzhang/tgms/work/tgms/stores/synth-1m-native 2026-09-14T04:47:47Z
+{"store": "/mnt/project/xzhang/tgms/work/tgms/stores/synth-1m-native", "op": "nodes_columnar", "belief": "all", "reps": 1, "open_ms": 3948.3, "median_ms": 32.3, "min_ms": 32.3, "max_ms": 32.3, "timings_ms": [32.3], "rows_total": 20000, "vmsize_kb": 1817092, "vmhwm_kb": 130544, "vmrss_kb": 127368}
+RUN_ENDED probe=control-1m op=nodes_columnar belief=all rep=1 rc=0 2026-09-14T04:47:51Z
+RUN_STARTED probe=treatment-1m op=nodes_columnar belief=all rep=1 store=/mnt/project/xzhang/tgms/tmp/b2-1m-upgraded 2026-09-14T04:47:51Z
+{"store": "/mnt/project/xzhang/tgms/tmp/b2-1m-upgraded", "op": "nodes_columnar", "belief": "all", "reps": 1, "open_ms": 3935.1, "median_ms": 21.1, "min_ms": 21.1, "max_ms": 21.1, "timings_ms": [21.1], "rows_total": 20000, "vmsize_kb": 1816540, "vmhwm_kb": 124128, "vmrss_kb": 124128}
+RUN_ENDED probe=treatment-1m op=nodes_columnar belief=all rep=1 rc=0 2026-09-14T04:47:55Z
+RUN_STARTED probe=control-10m op=nodes_columnar belief=all rep=1 store=/mnt/project/xzhang/tgms/work/tgms/stores/synth-10m-native 2026-09-14T04:47:55Z
+{"store": "/mnt/project/xzhang/tgms/work/tgms/stores/synth-10m-native", "op": "nodes_columnar", "belief": "all", "reps": 1, "open_ms": 33939.1, "median_ms": 87.8, "min_ms": 87.8, "max_ms": 87.8, "timings_ms": [87.8], "rows_total": 60000, "vmsize_kb": 2466764, "vmhwm_kb": 786448, "vmrss_kb": 776152}
+RUN_ENDED probe=control-10m op=nodes_columnar belief=all rep=1 rc=0 2026-09-14T04:48:29Z
+RUN_STARTED probe=treatment-10m op=nodes_columnar belief=all rep=1 store=/mnt/project/xzhang/tgms/tmp/b2-10m-upgraded 2026-09-14T04:48:29Z
+{"store": "/mnt/project/xzhang/tgms/tmp/b2-10m-upgraded", "op": "nodes_columnar", "belief": "all", "reps": 1, "open_ms": 34851.3, "median_ms": 70.6, "min_ms": 70.6, "max_ms": 70.6, "timings_ms": [70.6], "rows_total": 60000, "vmsize_kb": 2463212, "vmhwm_kb": 777560, "vmrss_kb": 772252}
+RUN_ENDED probe=treatment-10m op=nodes_columnar belief=all rep=1 rc=0 2026-09-14T04:49:05Z
+--- frozen digest stability (treatment engine) ---
+native: 19 cases in 2.7s
+duckdb: 19 cases in 6.2s
+OK: 38 result_digests unchanged across native, duckdb
+digest_check_rc=0
+ALL_B2_PROBES_DONE 2026-09-14T04:49:14Z

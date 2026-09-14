@@ -1,0 +1,14 @@
+WRAPPER child_pid=1453993 label=control pypath=/mnt/project/xzhang/tgms/work/tgms-ctl-cb0e6af out=/mnt/project/xzhang/tgms/tmp/b1a-control 2026-09-14T03:41:43Z
+RUN_STARTED commit=cb0e6afc17e7 csv=/mnt/project/xzhang/tgms/ldbc-sf1/bi-sf1-composite-merged-fk/graphs/csv/bi/composite-merged-fk/initial_snapshot out=/mnt/project/xzhang/tgms/tmp/b1a-control backend=native batch=250 compact_every=0 path=assert digest=manifest host=xzgpu
+assert — pass 1/2 nodes
+       500,000 ops      8,637 ops/s  (500,000 nodes / 0 edges; 0 compactions, 0s)
+     1,000,000 ops      5,397 ops/s  (1,000,000 nodes / 0 edges; 0 compactions, 0s)
+     1,500,000 ops      3,822 ops/s  (1,500,000 nodes / 0 edges; 0 compactions, 0s)
+     2,000,000 ops      2,931 ops/s  (2,000,000 nodes / 0 edges; 0 compactions, 0s)
+     2,500,000 ops      2,332 ops/s  (2,500,000 nodes / 0 edges; 0 compactions, 0s)
+STOP_TRIGGER ops>=2500000 2026-09-14T03:59:39Z
+PROCESS_ENDED killed=1 2026-09-14T03:59:42Z
+--- final sizes ---
+25970987762	/mnt/project/xzhang/tgms/tmp/b1a-control/native/manifests
+146613591	/mnt/project/xzhang/tgms/tmp/b1a-control/native/seg
+RUN_DONE 2026-09-14T03:59:42Z

@@ -1,0 +1,67 @@
+{
+ "schema_version": "1.0.0",
+ "git_commit": "4af218192d8c61bb3864b342df0c7014dcd9f586",
+ "timestamp_utc": "2026-09-14T04:49:14Z",
+ "machine": {
+  "host": "xzgpu",
+  "platform": "Linux-5.4.0-x86_64",
+  "cpus": 40,
+  "ram_gb": 93
+ },
+ "config": {
+  "measurement": "Lane B B2 A/B: bounded version_history, per docs/design/BOUNDED_VERSION_HISTORY_FORECAST_2026-09-13.md SS4/SS5",
+  "control_commit": "cb0e6afc17e7690fa1f498d503012e40875a1181",
+  "control_note": "reads the original format-1 stores directly, read-only; originals never modified",
+  "treatment_commit": "4af218192d8c61bb3864b342df0c7014dcd9f586",
+  "treatment_note": "reads an upgraded COPY of each store (tgms store upgrade-manifests); originals untouched",
+  "probe": {
+   "script": "runs/b2_probe.py (ad hoc, not committed to the repo -- mirrors scripts/bench_versions.py's call_operator(..., skip_cost_check=True) methodology, adding a same-process VmHWM read from /proc/self/status at the end, per docs/eval_resources.md's _vm_status() precedent)",
+   "op": "version_history",
+   "kind": "edge",
+   "belief": "all",
+   "note": "skip_cost_check=True is required -- the plain call_operator path raises CostError (the standing admission-guardrail refusal the memo describes) before executing at all"
+  },
+  "stores": {
+   "synth-1m-native": "6cd631c25e0083c3ab2be05cfb2c1ef4a2aed4c9bf96c8d064eecefe4c439b2e",
+   "synth-10m-native": "c72e132d8474add15ded7c01825941a9bbbccc9d1c3bb54512d192cccc540dbc"
+  },
+  "second_operator_note": "nodes_columnar was measured on synth-1m/10m (60k node versions) as a bonus data point only -- fast and small at this scale by construction (the memo itself notes synth-10m's 60k node versions are 'invisible' to this pathology). The pre-registered secondary check (a compacted SNB SF1 store, 2,997,352 node versions) was NOT run in this lane -- out of scope for the time/resource budget available; flagged for a follow-up."
+ },
+ "seed": {
+  "value": null,
+  "reason": "version_history/nodes_columnar are deterministic reads over pre-built stores; no RNG in this probe"
+ },
+ "dataset": {
+  "name": "synth-10m-native",
+  "digest": "c72e132d8474add15ded7c01825941a9bbbccc9d1c3bb54512d192cccc540dbc",
+  "digest_kind": "eventlog_sha"
+ },
+ "result_digest": "ecfbf0a7ad7a53ea2d963cfdcf41cfc3704180e1ae278a28837fcd40dbcc7029",
+ "protocol": {
+  "warmups": 0,
+  "reps": 3,
+  "ceilings": {
+   "admission_guardrail": "bypassed via skip_cost_check=True, per the memo"
+  }
+ },
+ "record": "benchmarks/results-v1/b2-version-history-ab-2026-09-raw.json",
+ "falsifiers": {
+  "peak_rss_le_2.5GB_at_10M": {
+   "verdict": "PASS",
+   "measured": "treatment median VmHWM at 10M = 1,229,724 KB (1.259 GB); control (format-1, unmodified) = 13,414,332 KB (13.74 GB) -- 10.9x reduction"
+  },
+  "wall_le_113.7s_at_10M": {
+   "verdict": "PASS",
+   "measured": "treatment median wall at 10M = 1,866.8 ms (1.87 s); control = 179,250.1 ms (179.3 s) -- 95.2x faster. Note: control's own wall (~177s avg) and VmHWM (~13.7GB avg) are well above the historical baseline (75.8s / 10.6GB) -- host/data conditions differ from the original D-069 measurement, though this does not affect the treatment-vs-bound comparison, which passes by a wide margin either way"
+  },
+  "digest_unchanged_84e8853c": {
+   "verdict": "PASS",
+   "measured": "scripts/check_digest_stability.py on the treatment engine: 38/38 result_digests unchanged across native and duckdb (19 cases each), rc=0; 84e8853c5d6732deb6d3e4329b46fd5f03770eff399b1099a6b68409be78fbfd confirmed present at frozen_digests_v1.json:257,278 for version_history on both backends"
+  },
+  "1M_to_10M_peak_rss_ratio_le_2.5x": {
+   "verdict": "REFUTED",
+   "measured": "treatment: 1M median VmHWM = 167,968 KB (0.172 GB), 10M median VmHWM = 1,229,724 KB (1.259 GB) -- ratio 7.33x, exceeding the 2.5x bound despite both absolute numbers individually passing. Per SS4's own wording, this 'refutes the near-flatness claim even if the absolute numbers pass' -- exactly the case here. Plausible mechanism: at 1M the peak is dominated by the fixed per-store floor (uid dictionary + out-degree map, per Addendum 1 item 1), which the 10M store's genuinely larger key array (~320 MB per Addendum 1 item 3) then exceeds."
+  },
+  "overall": "PARTIALLY REFUTED: all three absolute bounds at 10M pass decisively (10.9x memory / 95.2x wall reduction vs. control, digest unchanged), but the 1M->10M peak-RSS RATIO falsifier is refuted (7.33x vs 2.5x bound), which specifically refutes the design's 'near-flatness' claim even though the bounded-absolute-memory claim holds. The secondary nodes_columnar/SNB-SF1 check was not run (out of scope this lane); the version measured (synth-1m/10m) does not exercise that pathology."
+ }
+}
