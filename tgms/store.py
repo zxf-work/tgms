@@ -7,6 +7,8 @@ event log first (write-ahead), then applied to the backend at the same tt.
 
 from __future__ import annotations
 
+import io
+import os
 import threading
 from pathlib import Path
 from typing import Any, Iterable, Iterator
@@ -19,6 +21,18 @@ from tgms.storage.crashpoint import crash_point
 from tgms.storage.eventlog import EventLog, extend_chain
 
 INGEST_CHUNK = 50_000
+
+#: B5/F2: the single-writer rule (spec §1) was a convention nowhere enforced
+#: — a second writer process previously raced `_recover`/`_write` silently,
+#: which is exactly the failure `docs/eval_concurrency.md` §19 fixed for
+#: *readers* opening mid-commit but never closed for a second *writer*. This
+#: file, held with `fcntl.flock(LOCK_EX | LOCK_NB)` for the process's whole
+#: writer lifetime, makes a second writer fail fast and by name instead.
+WRITER_LOCK_NAME = "writer.lock"
+
+
+class WriterLockedError(StateError):
+    """Another process already holds `<store>/writer.lock`."""
 
 
 class Store:
@@ -50,7 +64,15 @@ class Store:
         #: want concurrency without the serialization want
         #: `tgms.write.GroupCommitWriter`, which coalesces instead.
         self._write_lock = threading.Lock()
+        #: The OS-level single-writer lock's held file handle, or None for a
+        #: reader (readers never take this lock) or before it is acquired.
+        self._writer_lock_fh: Any | None = None
         if not read_only:
+            # Acquired *before* `_recover()`, which is a writer's act (see
+            # `_recover`'s own docstring) and must never run concurrently in
+            # two processes — the lock is what makes that "must never" true
+            # rather than merely documented.
+            self._acquire_writer_lock()
             self._recover()
         self.clock = HybridLogicalClock(last_tt=self.eventlog.last_tt())
         #: False when this handle could not establish its frontier against the
@@ -242,6 +264,61 @@ class Store:
 
     def close(self) -> None:
         self.adapter.close()
+        self._release_writer_lock()
+
+    # --- OS-level single-writer lock (B5/F2) ------------------------------- #
+
+    def _acquire_writer_lock(self) -> None:
+        """`fcntl.flock(LOCK_EX | LOCK_NB)` on `<store>/writer.lock`.
+
+        Advisory and tied to the open file description, not a lock file
+        whose mere *presence* is checked: a crashed writer's lock is
+        released by the OS the moment its process exits (or the fd is
+        otherwise closed), so there is no stale-lock cleanup step and no
+        window where a dead writer's lock file wrongly blocks a new one.
+        Two `Store` objects racing for it *within* one process are refused
+        exactly like two processes would be — `flock` locks are per open
+        file description, not per process — which is the conservative
+        (and correct) reading of "one writer."
+        """
+        import fcntl
+
+        # `io.open`, not the bare builtin: this module's own `open()`
+        # (the store-opening function below) shadows the builtin at module
+        # scope, and a bare `open(lock_path, "a+")` here would resolve to
+        # *that* — this is not hypothetical, it broke exactly this way
+        # during development.
+        lock_path = self.path / WRITER_LOCK_NAME
+        fh = io.open(lock_path, "a+")
+        try:
+            fcntl.flock(fh.fileno(), fcntl.LOCK_EX | fcntl.LOCK_NB)
+        except OSError:
+            fh.seek(0)
+            holder = fh.read().strip() or "unknown pid (race with the holder " \
+                                          "writing it)"
+            fh.close()
+            raise WriterLockedError(
+                f"another process is already the writer for {self.path} "
+                f"(writer.lock held by pid {holder}); a second concurrent "
+                f"writer is undefined (spec §1). Open with read_only=True "
+                f"instead, or wait for that process to exit."
+            ) from None
+        fh.seek(0)
+        fh.truncate()
+        fh.write(str(os.getpid()))
+        fh.flush()
+        self._writer_lock_fh = fh
+
+    def _release_writer_lock(self) -> None:
+        if self._writer_lock_fh is None:
+            return
+        import fcntl
+
+        try:
+            fcntl.flock(self._writer_lock_fh.fileno(), fcntl.LOCK_UN)
+        finally:
+            self._writer_lock_fh.close()
+            self._writer_lock_fh = None
 
     def attach_memory(self, memory: Any) -> None:
         """Register an EvolutionMemory for staleness invalidation: correct()

@@ -50,6 +50,23 @@ from tgms.core.errors import StateError, TgmsError
 from tgms.core.model import OPEN_END, EntityRef, Props
 from tgms.storage.base import make_op
 from tgms.store import Store, _ref_json
+from tgms.telemetry.metrics import Metrics
+
+
+class QueueFullError(TgmsError):
+    """The ingestion queue is at `max_queue` and `submit` was not asked to
+    block (B5's backpressure surface, spec D-155's rule applied to the
+    write path: refuse immediately, never silently drop or truncate).
+
+    Distinct from every other refusal in the taxonomy because it fires
+    before the op is even queued — there is no plan, no cost estimate, no
+    node to attribute it to, just "the coalescing buffer is full." Callers
+    that want to wait instead of refusing pass `submit(op, block=True,
+    timeout=...)`, which raises `queue.Full` (not this) on a timeout — that
+    is the caller's own choice to wait-then-give-up, not a policy refusal.
+    """
+
+    code = "E_QUEUE_FULL"
 
 
 class _Submission:
@@ -71,14 +88,22 @@ class GroupCommitWriter:
     """
 
     def __init__(self, store: Store, max_delay_s: float = 0.0,
-                 max_batch: int = 1000) -> None:
+                 max_batch: int = 1000, max_queue: int = 0,
+                 metrics: Metrics | None = None) -> None:
         if store.read_only:
             raise StateError("a read-only store cannot be written through "
                              "GroupCommitWriter")
         self.store = store
         self.max_delay_s = float(max_delay_s)
         self.max_batch = int(max_batch)
-        self._q: queue.Queue[_Submission | None] = queue.Queue()
+        #: Bound on how many unclaimed submissions may sit in the queue at
+        #: once. `0` (the default) is `queue.Queue`'s own "unbounded" —
+        #: today's behaviour, unchanged unless a caller opts in. A bounded
+        #: queue turns a submitter that would otherwise pile up unboundedly
+        #: behind a slow committer into an immediate, typed refusal
+        #: (`QueueFullError`) instead of unbounded memory growth.
+        self.max_queue = int(max_queue)
+        self._q: queue.Queue[_Submission | None] = queue.Queue(maxsize=self.max_queue)
         self._thread: threading.Thread | None = None
         self._closed = False
         #: How the coalescing actually went, so "it batched" is a measurement
@@ -88,6 +113,11 @@ class GroupCommitWriter:
         self.submissions = 0
         self.max_group = 0
         self.solo_fallbacks = 0
+        #: Submissions refused outright because the queue was full (B5).
+        self.rejected = 0
+        #: `path=None` (the default) makes every call below a no-op unless
+        #: `TGMS_METRICS_PATH` is set — see `tgms.telemetry.metrics.Metrics`.
+        self.metrics = metrics if metrics is not None else Metrics()
 
     # --- lifecycle ------------------------------------------------------- #
 
@@ -142,13 +172,34 @@ class GroupCommitWriter:
                                    props=new_props, vt_s=vt_s, vt_e=vt_e,
                                    source="ingest", provenance_ref=None))
 
-    def submit(self, op: dict[str, Any]) -> int:
+    def submit(self, op: dict[str, Any], *, block: bool = False,
+              timeout: float | None = None) -> int:
         """Queue one op and block until the generation containing it is on
-        disk. Returns that generation's transaction time."""
+        disk. Returns that generation's transaction time.
+
+        With `max_queue` unset (0, unbounded) this always accepts. With a
+        bound configured, a full queue raises `QueueFullError` immediately
+        — B5's backpressure surface: refuse rather than let submitters (and
+        their memory) pile up unboundedly behind a slow committer. Pass
+        `block=True` (optionally with `timeout`) to wait for room instead of
+        refusing immediately; a timeout that elapses still raises
+        `QueueFullError`, not a bare `queue.Full`, so every caller sees the
+        same typed error regardless of which knob it hit.
+        """
         if self._closed or self._thread is None:
             raise StateError("GroupCommitWriter is not running; call start()")
         s = _Submission(op)
-        self._q.put(s)
+        try:
+            self._q.put(s, block=block, timeout=timeout)
+        except queue.Full:
+            self.rejected += 1
+            self.metrics.counter("rejected", kind="queue_full")
+            raise QueueFullError(
+                f"GroupCommitWriter queue is full (max_queue={self.max_queue}); "
+                f"refusing rather than growing unboundedly behind the "
+                f"committer. Pass block=True to wait for room instead.",
+                max_queue=self.max_queue) from None
+        self.metrics.gauge("queue_depth", self._q.qsize())
         s.done.wait()
         if s.error is not None:
             raise s.error
@@ -231,5 +282,7 @@ class GroupCommitWriter:
         return {"commits": self.commits, "submissions": self.submissions,
                 "max_group": self.max_group,
                 "solo_fallbacks": self.solo_fallbacks,
+                "rejected": self.rejected,
+                "queue_depth": self._q.qsize(),
                 "rows_per_commit": round(self.submissions / self.commits, 2)
                 if self.commits else 0.0}

@@ -14,6 +14,12 @@ Engineering constraints: stdlib-only HTTP server (no new dependencies,
 spec §8.6); binds 127.0.0.1 — remote access via SSH port forwarding;
 store access is read-only and serialized behind a lock (DuckDB connections
 are not thread-safe under the threading server).
+
+**B5/F2 additions, loopback-only like everything else here:** `GET /live`
+(process up, no store touched) and `GET /ready` (`ReadinessProbe` — see its
+docstring for the exact contract, and `docs/STABILITY.md` §7). Tool calls
+made through the demo's `ToolRouter` are logged as structured JSON via
+`tgms.tools.jsonlog` (`TGMS_LOG_PATH` or stderr).
 """
 
 from __future__ import annotations
@@ -30,8 +36,94 @@ from tgms.agent.ir import Plan
 from tgms.agent.reporter import Reporter
 from tgms.agent.verifier import ClaimVerifier
 from tgms.store import Store
+from tgms.tools.jsonlog import CallLogger, configure_logging
 from tgms.tools.server import ToolRouter
 from tgms.tools.trace_viewer import render_trace_html
+
+
+class ReadinessProbe:
+    """Fast (O(1) per `check()`) health probe for a `Store` handle — B5/F2's
+    `/ready`.
+
+    **What "ready" means here, precisely**, because a reader and a writer
+    need different answers to "is recovery pending":
+
+    - A **writer** (`read_only=False`) that exists at all has already
+      recovered — `Store.__init__` runs `_recover()` to completion before
+      the constructor returns, so there is no window in this process where
+      a writer `Store` object exists but recovery has not finished.
+      `recovery_pending` is reported as `False` for exactly that reason,
+      not because nothing was checked.
+    - A **reader** (`read_only=True`) never recovers by design (D-049): it
+      skips `_recover()` unconditionally. So a torn/unaccounted tail that a
+      writer would have trimmed and replayed can sit unnoticed under a
+      reader unless something checks for it — which is what the one-time
+      probe below does, using the *same* signatures `Store._recover` checks
+      (cursor within the log, cursor chain matches the log's chain at that
+      offset) without ever writing anything (recovery is a writer's act;
+      this never applies a batch, only verifies consistency).
+
+    **Why the check runs once, at construction, and not on every `/ready`
+    hit:** `EventLog.chain_of_prefix` re-hashes the whole applied prefix —
+    exactly the one-time cost a writer's `_recover` already pays at open,
+    wrong to pay again every few seconds from a liveness probe. So the
+    expensive verdict is cached; `check()` afterward is a cheap re-poll of
+    the adapter (`stats()` still answering, generation still readable) —
+    genuinely fast, and enough to notice an adapter that broke after open.
+    """
+
+    def __init__(self, store: Store) -> None:
+        self.store = store
+        self._verdict = self._compute()
+
+    def _compute(self) -> dict[str, Any]:
+        try:
+            generation = self.store.adapter.generation
+        except Exception as e:  # noqa: BLE001 — the exception *is* the finding
+            return {"ready": False,
+                    "reason": f"adapter generation unreadable: "
+                             f"{type(e).__name__}: {e}"}
+        cursor = getattr(self.store.adapter, "event_cursor", None)
+        if cursor is not None:
+            try:
+                offset, chain = cursor()
+            except Exception as e:  # noqa: BLE001
+                return {"ready": False,
+                        "reason": f"event cursor unreadable: "
+                                 f"{type(e).__name__}: {e}"}
+            if chain:
+                size = self.store.eventlog.size()
+                if offset > size:
+                    return {"ready": False,
+                            "reason": "replay cursor is ahead of the event "
+                                     "log (torn or rewritten log)"}
+                try:
+                    got = self.store.eventlog.chain_of_prefix(offset)
+                except Exception as e:  # noqa: BLE001 — StateError et al.
+                    return {"ready": False,
+                            "reason": f"cursor is not a record boundary: "
+                                     f"{type(e).__name__}: {e}"}
+                if got != chain:
+                    return {"ready": False,
+                            "reason": "replay cursor chain mismatch "
+                                     "(unaccounted or torn tail)"}
+        return {"ready": True, "generation": generation,
+                "read_only": self.store.read_only,
+                "frontier_verified": self.store.frontier_verified,
+                "recovery_pending": False,
+                "store_identity": self.store.store_identity}
+
+    def check(self) -> dict[str, Any]:
+        """The O(1) re-check hit on every `/ready` request."""
+        if not self._verdict.get("ready"):
+            return self._verdict
+        try:
+            self.store.adapter.stats()
+        except Exception as e:  # noqa: BLE001
+            return {"ready": False,
+                    "reason": f"adapter no longer answering: "
+                             f"{type(e).__name__}: {e}"}
+        return self._verdict
 
 
 class DemoApp:
@@ -41,11 +133,15 @@ class DemoApp:
         self.suite = suite
         self.model = model
         self.llm_fn = llm_fn
-        self.router = ToolRouter(store.adapter, tt_source=store)
+        logger = configure_logging()
+        self.router = ToolRouter(store.adapter, tt_source=store,
+                                 call_logger=CallLogger(logger, enabled=True))
         self.results = ResultStore(results_dir)
         self.records: dict[str, dict[str, Any]] = {}
         self.lock = threading.Lock()  # DuckDB conn + agent are not thread-safe
         self.card = dataset_card(store)
+        #: B5/F2's `/ready`; see `ReadinessProbe`.
+        self.readiness = ReadinessProbe(store)
 
     # ---------------- curated demo content ---------------------------------- #
 
@@ -261,6 +357,13 @@ def make_handler(app: DemoApp):
                             "examples": app.examples()})
             elif self.path == "/api/probe-demo":
                 self._json(app.probe_demo())
+            elif self.path == "/live":
+                # process-up only — no store touched, so this always answers
+                # even if the store handle somehow became unusable.
+                self._json({"live": True})
+            elif self.path == "/ready":
+                result = app.readiness.check()
+                self._json(result, 200 if result["ready"] else 503)
             elif self.path.startswith("/trace/"):
                 page = app.trace_html(self.path.split("/trace/")[1])
                 if page is None:

@@ -233,6 +233,14 @@ def test_harness_matrix_ours_and_b2(suite_env, tmp_path):
     }
     (suite_env["tmp"] / "suite.json").write_text(
         canonical_json(suite_env["suite"]))
+    # `run_matrix` opens its own read-write handle on `cfg["store_path"]`,
+    # the same directory `suite_env["store"]` already holds open as a
+    # writer. Two coexisting writer handles on one store were always
+    # undefined (spec §1); B5/F2's `fcntl.flock` writer lock
+    # (`tgms.store.Store`) now refuses the second one outright instead of
+    # letting them race silently, so the fixture's handle is closed first.
+    # Nothing later in this module reads `suite_env["store"]` again.
+    suite_env["store"].close()
     llm = _oracle_echo_llm(suite_env["suite"])
     rows = run_matrix(cfg, llm_fn=llm, embed_fn=_fake_embed)
     ours = [r for r in rows if r["system"] == "ours"]

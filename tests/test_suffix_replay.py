@@ -147,8 +147,12 @@ def test_failed_batch_in_the_suffix_is_skipped_deterministically(tmp_path):
     assert re.digest() == digest_before, (
         "a failed batch must change nothing during recovery"
     )
-    # the cursor stays behind the failed record, so every open retries it —
-    # deterministically, publishing nothing
+    # B5/F2's single-writer lock (`Store.__init__`'s `fcntl.flock`) now
+    # refuses a second concurrent writer on the same path, so `re` is
+    # closed before the next open rather than left live alongside it — the
+    # thing under test (every open retries the failed record deterministically,
+    # publishing nothing) does not depend on the two handles overlapping.
+    re.close()
     reopened = tgms.open(root)
     assert reopened.digest() == digest_before
     # a later successful write advances the cursor past the failed record
@@ -157,7 +161,6 @@ def test_failed_batch_in_the_suffix_is_skipped_deterministically(tmp_path):
         log_path(root).stat().st_size
     assert reopened.digest() == replay_reference_digest(root, tmp_path)
     reopened.close()
-    re.close()
 
 
 # --- corruption must refuse loudly ---------------------------------------- #

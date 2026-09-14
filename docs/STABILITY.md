@@ -436,3 +436,121 @@ verbs, adding no new durability mechanism of their own.
   claim beyond what §1 already makes for the event-log format itself.
 
 ---
+## 8. The service surface: backpressure, limits, logging, health, the
+## writer lock (added 2026-09-13)
+
+Everything in this section is **additive**: it changes nothing about the
+event log, the derived store's binary format, or the fifteen operators'
+semantics, and every one of its defaults reproduces prior behaviour exactly
+unless a caller opts in (an environment variable, a constructor argument, or
+running as one of the two server entry points, `tgms serve` / `tgms
+webapp`). None of it touches TGIR's plan-cost admission
+(`tgms.tgir.admission`, frozen) or the write/recover paths' own logic
+(`tgms.store._write`, `tgms.store._recover`) — it wraps them.
+
+**Bounded ingestion queue (`tgms.write.GroupCommitWriter`).**
+`max_queue=0` (the default) is `queue.Queue`'s own "unbounded," identical to
+every construction before this section. A caller that passes `max_queue=N`
+gets `QueueFullError` (`E_QUEUE_FULL`) immediately from a non-blocking
+`submit()` once `N` submissions are queued awaiting the committer thread —
+never a silently unbounded pile of blocked submitter threads. `submit(op,
+block=True, timeout=...)` waits for room instead of refusing; a timeout that
+elapses still raises `QueueFullError`, not a bare `queue.Full`. `rejected`
+and `queue_depth` are both in `GroupCommitWriter.stats()` and, when
+`TGMS_METRICS_PATH`/a `Metrics` instance is supplied, on the metrics sink as
+a counter and a gauge.
+
+**Service-surface limits (`tgms.tools.limits.Limits`,
+`tgms.tools.server.ToolRouter`).** `Limits(max_rows, max_bytes,
+max_concurrent, max_wall_s)`, from the constructor or
+`TGMS_MAX_ROWS`/`TGMS_MAX_BYTES`/`TGMS_MAX_CONCURRENT`/`TGMS_MAX_WALL_S`. A
+bare `Limits()` (every field `None`) enforces nothing — the default for
+every pre-existing `ToolRouter` construction, including every experiment
+lane. `ToolRouter.call` enforces `max_concurrent` with a non-blocking gate
+(refuse, don't queue — queueing is the bounded-queue's job on the *write*
+side, not this call surface's) and counts a successful result's rows/bytes
+*after* execution, refusing over either ceiling. **Refuse, never truncate**
+(§3's "an answer must not rest on a shrunken denominator without saying
+so," applied here): a call over a row/byte/concurrency ceiling returns a
+structured `E_LIMIT` payload carrying `details.stage == "limit"` — shaped
+like a TGIR `RefusalCertificate`'s `stage` field
+(`tgms.tgir.admission.RefusalCertificate`, `stage in {"plan", "node",
+"runtime"}`) but a distinct mechanism: admission prices a plan *before* it
+runs against an estimate; this caps a call *before* (concurrency) and
+*after* (realized size) it runs, independent of any estimate. `max_wall_s`
+is carried as configuration only — **nothing in-process enforces it**; see
+`Budget`'s own docstring (`tgms.tgir.admission`) for why a wall-clock
+ceiling cannot be built from inside the process at all, and
+`scripts/tgms_supervise.py` below for the out-of-process answer.
+
+**Structured JSON logging (`tgms.tools.jsonlog`).** Off by default in
+library use (`CallLogger(enabled=False)`, the default on a bare
+`ToolRouter`); on for the two server entry points. Each call logs a
+`"started"` line and a `"finished"` line, both carrying a `request_id`
+(`uuid4().hex`, fresh per call) so the two can be correlated — this is the
+shape `scripts/tgms_supervise.py` tails to find a request that started but
+never finished. A **successful** envelope also carries its `request_id` in
+a new top-level `annotations` key. This is digest-excluded the same way
+§6's `annotations` field already is — *structurally*, not by convention:
+`result_digest` is computed from `payload` before the envelope is
+assembled, and `ToolRouter.call` only ever adds `annotations` to the
+already-built envelope, after `result_digest` is already fixed. Calling the
+same operator with the same arguments twice yields two different
+`request_id`s and the same `result_digest`
+(`tests/test_jsonlog.py::test_digest_is_unaffected_by_request_id_annotation`).
+An **error** payload carries `request_id` inside `details` instead, because
+`TgmsError.to_payload()`'s `{error, message, details}` shape is itself a
+frozen surface (§2.13/`RefusalCertificate.raise_`'s own rule) that must not
+grow a new top-level key.
+
+**Health: `GET /live` / `GET /ready` (webapp), `tgms store ready`
+(CLI).** `/live` means only "the process answered the request" — it never
+touches the store. **`/ready`'s exact contract**
+(`tgms.tools.webapp.ReadinessProbe`): the adapter's manifest generation is
+readable, and — for a backend that keeps a replay cursor — that cursor is
+internally consistent with the event log (within the log's current size,
+landing on a record boundary, its recorded chain matches the log's chain
+computed over that same prefix). A **writer** handle that exists at all has
+already recovered (`Store.__init__` runs `_recover()` to completion before
+returning), so `recovery_pending` is reported as `False` by construction,
+not because nothing was checked. A **reader** never recovers by design
+(D-049) — this probe's own consistency check is what notices a torn or
+rewritten log under a reader that `_recover` would otherwise have caught
+for a writer. The expensive half of the check (re-hashing the applied
+prefix, `EventLog.chain_of_prefix`) runs **once**, at construction, and is
+cached; `/ready` itself re-polls only the adapter (`stats()` still
+answering) on every hit, so it stays cheap to poll frequently. `tgms store
+ready <path>` runs the same probe from the CLI (`--writer` to probe as the
+writer instead of the read-only default), exit `0` ready / `1` not ready /
+`2` the open itself raised (corruption, or the writer lock already held).
+The webapp stays loopback-only (`127.0.0.1` by default, unchanged); these
+endpoints inherit that binding, not a new one.
+
+**The OS-level single-writer lock (`tgms.store.Store`, `read_only=False`).**
+The single-writer rule (spec §1) was a documented convention, enforced
+nowhere — this closes that gap the same way §2's suffix-recovery work
+closed the *reader*-opening-mid-commit hole. `Store.__init__` with
+`read_only=False` takes `fcntl.flock(LOCK_EX | LOCK_NB)` on
+`<store_path>/writer.lock` before running `_recover()`; a second concurrent
+writer — another process, or a second `Store(read_only=False)` in the same
+process, since `flock` locks are per open file description, not per process
+— fails fast with `WriterLockedError`, naming the pid the lock file
+records. Readers never take this lock, in either direction: a live writer
+does not block a reader from opening, and a reader does not block a writer
+from opening after it. The lock is released by the OS the instant the
+holder's process exits or the file descriptor is otherwise closed — there
+is no stale-lock file to clean up, and no window where a crashed writer's
+lock wrongly blocks a new one.
+
+**What is not covered, stated honestly:** the concurrency/row/byte limits
+and the writer lock are new refusal *points*; they add no new persisted
+state and no new wire format, so nothing above is a promise about a
+specific error message's wording, a specific log line's exact key set
+beyond the eight named above, or the manifest schema
+`scripts/eval_overload.py` writes (`benchmarks/schema/result_manifest.schema.json`
+v0.x, itself already marked as such). The wall-clock supervisor
+(`scripts/tgms_supervise.py`) bounds elapsed time *per outstanding logged
+request*; a call path that never logs a `"started"` line (library code that
+bypasses `ToolRouter.call`) is invisible to it, and restarting a child is a
+mitigation for availability, not a substitute for finding why a request ran
+long.
