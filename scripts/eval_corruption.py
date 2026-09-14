@@ -15,7 +15,8 @@ observe — never repair — through four surfaces a real caller would use:
   1. `tgms.open(store, backend="native", read_only=True)` — a reader process
      reopening the store. This still runs the native engine's own
      construction-time checks (manifest_sha, `CURRENT` shape, missing
-     manifest — see `tests/test_native_faults.py`), and Python's
+     manifest, a populated store with `CURRENT` itself gone — see
+     `tests/test_native_faults.py`), and Python's
      `Store._seed_frontier` *unconditionally* walks the whole event log
      (even for a reader, to avoid seeding a false-fresh frontier —
      `tgms/store.py`'s own docstring) with no torn-tail tolerance of its
