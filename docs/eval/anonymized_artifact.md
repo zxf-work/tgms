@@ -36,19 +36,23 @@ via `--include`.
 Non-dry-run mode writes the bundle, a `bundle-README.md` explaining that
 digests were not recomputed, and a manifest recording every file's
 before/after sha256 and a per-pattern replacement count (never the
-original matched text). It then re-scans the written bundle for every
-table pattern plus a short list of hard-coded sentinels
-(`memphis`, `xzhang`, the GitHub org) and exits non-zero if anything
-survived.
+original matched text). It then re-scans the *entire* written bundle —
+file content, file and directory names, and the manifest itself, with no
+exclusions — for every table pattern plus a short list of hard-coded
+sentinel substrings drawn from the same real identifiers the table
+targets, and exits non-zero if anything survived.
 
 ## Replacement table
 
-Applied to whole file text for `.md`/`.py`/`.yaml`/`README.md`/`LICENSE`,
-and to JSON string *values only* (never keys, never numbers) for
-`.json`/`.jsonl`, walking the parsed structure so a match nested inside a
-longer string (e.g. a kernel `platform` string) still lands. Longer/more
-specific patterns run before shorter/more general ones so a substring one
-rule consumes can't also trip a later rule.
+Applied to whole file text for `.md`/`.py`/`.yaml`/`README.md`/`LICENSE`;
+to JSON string values and to JSON object keys for `.json`/`.jsonl`
+(walking the parsed structure so a match nested inside a longer string —
+e.g. a kernel `platform` string — still lands); and to each file's own
+relative path, so a directory or file name that matches gets renamed
+inside the bundle. A key or number that matches nothing is left exactly
+as it was — this table only ever *replaces a match*, never restructures
+around one. Longer/more specific patterns run before shorter/more general
+ones so a substring one rule consumes can't also trip a later rule.
 
 | pattern | what it targets |
 |---|---|
@@ -77,18 +81,43 @@ rule consumes can't also trip a later rule.
 Every pattern above was built from the real repo — grepped, not guessed
 (see the task's own report for what was found and where).
 
+### Renamed files and rewritten keys
+
+A file whose relative path (directory component or basename) matches one
+of the patterns above is renamed inside the bundle — the manifest's
+`renames` list records the new path plus a sha256 of the *original*
+relative path (never the original path text: an author holding the real
+tree can hash each candidate original name and match it against the
+recorded digest, without the manifest itself ever carrying anything a
+reviewer could read back). A JSON object key that matches one of the
+patterns is rewritten the same way and logged under `rewritten_keys`
+(file, new key, and a sha256 of the original key text). Everything that
+doesn't match — the overwhelming majority of keys, and every number — is
+left untouched.
+
+## Verification
+
+The final pass re-scans everything the bundle contains — every file's
+content, every file's and directory's name, and the manifest and
+`bundle-README.md` themselves — for every pattern in the table above, plus
+a short list of hard-coded sentinel substrings kept independent of the
+table (so verification doesn't depend on the table being complete or
+correctly ordered). Nothing is exempted: because renaming and key-rewriting
+are real operations done before the manifest is written, the manifest's
+own content is expected to come up exactly as clean as everything else.
+
 ## Dry-run summary (2026-09-14, this worktree)
 
-`scripts/anonymize_artifact.py --src . --out /tmp/… --dry-run`: 346 files
+`scripts/anonymize_artifact.py --src . --out /tmp/… --dry-run`: 347 files
 scanned. Counts per pattern, per top-level directory (originals never
 shown — only counts):
 
 | directory | pattern | count |
 |---|---|---:|
 | `README.md` | `github_identity` | 4 |
-| `benchmarks/` | `cluster_name` | 40 |
+| `benchmarks/` | `cluster_name` | 44 |
 | `benchmarks/` | `cluster_node_name` | 954 |
-| `benchmarks/` | `gpu_server_host` | 87 |
+| `benchmarks/` | `gpu_server_host` | 89 |
 | `benchmarks/` | `path_mnt_project_gpu_user` | 49 |
 | `benchmarks/` | `path_project_cluster_user` | 144 |
 | `benchmarks/` | `path_users_pi_laptop` | 3 |
@@ -99,40 +128,34 @@ shown — only counts):
 | `docs/` | `slurm_partition` | 1 |
 | `scripts/` | `gpu_server_host` | 1 |
 
-Totals: `cluster_name` 47, `cluster_node_name` 954, `github_identity` 4,
-`gpu_server_host` 91, `path_mnt_project_gpu_user` 49,
+Totals (content + keys): `cluster_name` 51, `cluster_node_name` 954,
+`github_identity` 4, `gpu_server_host` 93, `path_mnt_project_gpu_user` 49,
 `path_project_cluster_user` 144, `path_users_pi_laptop` 3,
-`personal_workstation` 8, `slurm_partition` 9. Patterns with zero hits in
-this worktree today (`cluster_login_fqdn`, `gpu_server_fqdn`,
-`pi_full_name`, `pi_email`, `github_noreply_email`, `github_handle`,
-`university_domain`, `university_name`, `path_home_cluster_user`,
-`user_token_cluster_user`, `user_token_gpu_user`) are kept in the table
-regardless — several of the removed real values (the FQDNs, the PI's
-email) only ever appeared in files this default include set doesn't pull
-in (`pyproject.toml`, `CITATION.cff`, `Cargo.toml`, `.git` history), and
-the table stays defensive for whatever future record adds one.
+`personal_workstation` 8, `slurm_partition` 9.
 
-A real (non-dry-run) build of this worktree wrote 346 files and passed its
-own verification pass clean.
+Path (file/directory name) components: 2 files renamed, both under
+`benchmarks/results-v1/`, both via `cluster_name` (2 hits). JSON keys
+rewritten: 6, all in one file under `benchmarks/results-v1/` (4 via
+`cluster_name`, 2 via `gpu_server_host`).
+
+A real (non-dry-run) build of this worktree wrote 347 files and its
+verification pass came back clean: zero survivors, scanning file content,
+file and directory names, and the manifest itself, for every table
+pattern and for the sentinel list (a case-insensitive substring check for
+each of: the cluster's login domain, the cluster's own name, the GPU
+server's hostname and domain, the Slurm partition name, the GitHub
+organisation, and the PI's given name, GitHub handle, and email prefix).
 
 ## What this script cannot fix mechanically
 
-- **File and directory names.** `benchmarks/results-v1/evidence-overhead-itiger.json`
-  and `…/guard-frontier-itiger-scaled.json` embed the cluster name in the
-  filename itself. The script anonymizes file *content*, not the bundle's
-  directory listing — renaming would break the paper's own citations to
-  these files by path. The bundle manifest's `files[].path` entries are
-  therefore left as the real relative paths on purpose (and are excluded
-  from the manifest's own verification scan for exactly this reason).
-- **JSON object keys.** `benchmarks/results-v1/paper_numbers.json` has
-  keys named things like `itiger_scaled_at_500ms`. The task's own rule is
-  "replace inside strings; never change numbers or keys" — a key that
-  embeds a hostname is, by that rule, out of scope for a value-rewriting
-  pass, and verification is scoped to match (it checks JSON *values* only
-  for `.json`/`.jsonl`, not keys, to stay consistent with what the
-  rewriter itself is allowed to touch).
 - **Prose that describes the cluster's shape without naming it.** GPU
   counts, quota sizes, node counts, and similar numbers in `docs/eval/*.md`
   are left alone even where they're suggestive, because they're ordinary
   numbers this table can't pattern-match without risking collateral damage
   to unrelated figures.
+- **Two different real names that anonymize to the identical string.**
+  `dedupe_path` disambiguates a bundled-path collision deterministically
+  (a short hash of the original path is appended), so two files never
+  silently overwrite each other, but the resulting bundled name is then a
+  hash fragment rather than something meaningful on its own — expected to
+  be rare in practice (no such collision occurs in this repo today).
