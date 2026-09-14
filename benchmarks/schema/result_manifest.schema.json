@@ -1,0 +1,151 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://tgms.dev/schema/result_manifest.schema.json",
+  "title": "TGMS benchmark result manifest",
+  "description": "A formal description of the metadata every TGMS benchmark result should carry, so a result can be checked, reproduced, and compared to another run without reading the harness that produced it. This schema formalizes fields the repo's own benchmark manifests already carry under various names (see benchmarks/schema/README.md for the audit of existing records against it); it does not invent a new reporting requirement.",
+  "type": "object",
+  "additionalProperties": true,
+  "required": [
+    "schema_version",
+    "git_commit",
+    "timestamp_utc",
+    "machine",
+    "config",
+    "seed",
+    "dataset",
+    "result_digest",
+    "protocol",
+    "record"
+  ],
+  "properties": {
+    "schema_version": {
+      "description": "Version of this schema the manifest was written against, e.g. \"1.0.0\".",
+      "type": "string",
+      "pattern": "^[0-9]+\\.[0-9]+\\.[0-9]+$"
+    },
+    "git_commit": {
+      "description": "The commit the measured code was built from. A short or full hex SHA; append \"-dirty\" when the working tree had uncommitted changes at measurement time.",
+      "type": "string",
+      "pattern": "^[0-9a-f]{7,40}(-dirty)?$"
+    },
+    "timestamp_utc": {
+      "description": "When the measurement was taken, in UTC, RFC 3339 / ISO 8601.",
+      "type": "string",
+      "format": "date-time"
+    },
+    "machine": {
+      "description": "The hardware and OS the measurement ran on.",
+      "type": "object",
+      "additionalProperties": true,
+      "required": ["host", "platform", "cpus", "ram_gb"],
+      "properties": {
+        "host": {
+          "description": "Hostname or a stable label for the measurement machine (e.g. \"xzgpu\", \"itiger02\").",
+          "type": "string",
+          "minLength": 1
+        },
+        "platform": {
+          "description": "OS/kernel/arch string, e.g. \"Linux-5.14.0-427.31.1.el9_4.x86_64-x86_64-with-glibc2.34\".",
+          "type": "string",
+          "minLength": 1
+        },
+        "cpus": {
+          "description": "Logical CPU count available to the run.",
+          "type": "integer",
+          "minimum": 1
+        },
+        "ram_gb": {
+          "description": "Total or allotted RAM in gibibytes, as a plain number (e.g. 128 or 62.5).",
+          "type": "number",
+          "exclusiveMinimum": 0
+        }
+      }
+    },
+    "config": {
+      "description": "The configuration the run used: either a path to a config file (relative to the repo root) or the configuration inlined as an object.",
+      "anyOf": [
+        { "type": "string", "minLength": 1 },
+        { "type": "object" }
+      ]
+    },
+    "seed": {
+      "description": "The random seed the run used. Nullable, but a null seed must carry a reason (e.g. the workload is seedless, or the seed was not recorded and that is itself the finding).",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["value"],
+      "properties": {
+        "value": {
+          "description": "The seed itself, or null if none was used/recorded.",
+          "type": ["integer", "string", "null"]
+        },
+        "reason": {
+          "description": "Required and non-empty when value is null; explains why there is no seed.",
+          "type": ["string", "null"]
+        }
+      },
+      "if": {
+        "properties": { "value": { "const": null } }
+      },
+      "then": {
+        "required": ["value", "reason"],
+        "properties": {
+          "reason": { "type": "string", "minLength": 1 }
+        }
+      }
+    },
+    "dataset": {
+      "description": "The dataset the run measured against, identified so a later run can confirm it read the same data.",
+      "type": "object",
+      "additionalProperties": true,
+      "required": ["name", "digest", "digest_kind"],
+      "properties": {
+        "name": {
+          "description": "Dataset identifier, e.g. \"synth\", \"bitcoinotc\", \"ldbc-sf1\".",
+          "type": "string",
+          "minLength": 1
+        },
+        "digest": {
+          "description": "The digest value itself (hex digest, or another identifier consistent with digest_kind).",
+          "type": "string",
+          "minLength": 1
+        },
+        "digest_kind": {
+          "description": "What kind of digest `digest` is: a manifest digest (e.g. a store's generation manifest hash), a whole-store content digest, or a hash of the source event log.",
+          "enum": ["manifest", "store_digest", "eventlog_sha"]
+        }
+      }
+    },
+    "result_digest": {
+      "description": "A digest over the reported result/rows, so two runs claiming the same answer can be compared without re-diffing raw output.",
+      "type": "string",
+      "minLength": 1
+    },
+    "protocol": {
+      "description": "The measurement protocol: how many warmup and measured repetitions were run, and what ceilings (if any) bounded the run.",
+      "type": "object",
+      "additionalProperties": true,
+      "required": ["warmups", "reps", "ceilings"],
+      "properties": {
+        "warmups": {
+          "description": "Number of warmup repetitions excluded from the measurement.",
+          "type": "integer",
+          "minimum": 0
+        },
+        "reps": {
+          "description": "Number of measured repetitions.",
+          "type": "integer",
+          "minimum": 1
+        },
+        "ceilings": {
+          "description": "Any admission/cost/time ceilings enforced during the run, as a free-form object (empty object if none applied).",
+          "type": "object"
+        }
+      }
+    },
+    "record": {
+      "description": "Path (relative to the repo root) to the raw per-row/per-trial records this manifest summarizes.",
+      "type": "string",
+      "minLength": 1
+    }
+  }
+}
