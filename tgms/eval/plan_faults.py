@@ -361,42 +361,52 @@ def _finalize(base: Classification, run: Run, oracle: Oracle) -> Classification:
     return base
 
 
-def gate_answer(answer_obj: dict[str, Any],
-                report: dict[str, Any]) -> tuple[dict[str, Any], dict[str, Any], int]:
-    """The delivered-answer reading for this module's own classification
-    (§2's F1 table names several cells' expected class "explicit-failure
-    (gated)", describing a *gated* read, not an ungated one): drop a claim
-    before classification whenever `classify`'s own I1 branch would flag
-    it, i.e. `verdict in ("unsupported", "unverifiable")`.
+def gate_answer(answer_obj: dict[str, Any], report: dict[str, Any],
+                strict: bool = False) -> tuple[dict[str, Any], dict[str, Any], int]:
+    """The delivered-answer reading for classification.
 
-    **Named discrepancy with `tgms/eval/harness.py`, deliberately not
-    fixed here.** `run_task_ours`'s own gate (`harness.py:124-126`) is
-    narrower: `kept = [c for c, r in ... if r["verdict"] != "unsupported"]`
-    -- it does not drop `unverifiable` claims, so one reaches a real user
-    of the deployed "ours" system today. This function uses the wider,
-    classifier-parity rule instead, because (a) §4's `classify` itself
-    treats the two verdicts identically for I1, and (b) §2's own F1-9 row
-    cites "missing -> unverifiable" as *the* detection mechanism behind its
-    "explicit-failure" expected class, which only holds if the delivered
-    answer drops that claim too. Changing `harness.py`'s gate to match is
-    out of this task's scope (E1 owns only its additive `outcome` field,
-    "no metric semantics change") -- flagged here, and in the E1 report,
-    as a real gap for a follow-up decision, not silently resolved.
+    **Coordinator ruling, Addendum 1 to the frozen design (2026-09-13),
+    superseding this function's original docstring.** The PRIMARY arm must
+    measure the deployed boundary, so the default (`strict=False`) is
+    *exactly* `tgms.eval.harness.run_task_ours`'s own production gate
+    (`harness.py`: `kept = [c for c, r in ... if r["verdict"] !=
+    "unsupported"]`) -- `unverifiable` is **not** dropped. An emitted
+    `unverifiable` claim the cited evidence does not support therefore
+    reaches `classify`, which flags it `I1` -> `silent-violation`: that is
+    the finding the primary arm exists to surface, not a condition to
+    pre-empt by widening the gate.
+
+    `strict=True` is the named **secondary** arm (`--strict-gate`): drops
+    `unsupported` *and* `unverifiable`, the classifier-parity reading this
+    function used before the ruling. Kept for contrast, never the headline.
 
     Returns `(gated_answer, gated_report, n_dropped)`; `gated_report
     ["claims"]` stays aligned with `gated_answer["claims"]`
     position-for-position, which is what `classify`'s `zip` needs.
     """
+    drop = ("unsupported", "unverifiable") if strict else ("unsupported",)
     claims = answer_obj.get("claims") or []
     reports = (report or {}).get("claims") or []
     kept_c, kept_r = [], []
     for c, r in zip(claims, reports):
-        if r.get("verdict") in ("unsupported", "unverifiable"):
+        if r.get("verdict") in drop:
             continue
         kept_c.append(c)
         kept_r.append(r)
     return ({**answer_obj, "claims": kept_c}, {"claims": kept_r},
            len(claims) - len(kept_c))
+
+
+def has_weak_support(report: dict[str, Any]) -> bool:
+    """Addendum 1: a visibility flag, not a reclassification. True iff any
+    claim in the (already-gated) report was capped `weakly_supported` by
+    truncated evidence (`verifier.py:503-506`). §4 keeps such a claim's
+    outcome `correct` verbatim -- no I1 violation, no branch added -- but
+    the fact is still worth surfacing on the trial row and the per-cell
+    table, since a "correct" answer that rests on partial evidence is not
+    the same finding as one resting on a complete one."""
+    return any(r.get("verdict") == "weakly_supported"
+              for r in (report or {}).get("claims") or [])
 
 
 def freshness_from_verdict(verdict: Any) -> dict[str, Any]:
@@ -1015,6 +1025,7 @@ __all__ = [
     "Classification", "EXEC_FAULTS", "FaultingRouter", "Oracle",
     "Outcome", "PLAN_MUTATORS", "PlanMutator", "Run", "SAFE_REFUSAL_REASONS",
     "TGIR_MUTATORS", "TgirMutator", "augment_report", "classify", "gate_answer",
+    "has_weak_support",
     "outcome_rates",
     "f2_7_stale_index_metadata_by_reference", "freshness_from_verdict",
     "make_misattribution_oracle", "tiny_cost_ceilings", "to_certificate",
