@@ -263,7 +263,39 @@ def build_parser() -> argparse.ArgumentParser:
                               "taking the writer lock and running recovery) "
                               "instead of the default read-only reader probe")
     p_store.add_argument("--json", action="store_true",
-                         help="ready: emit JSON instead of prose")
+                         help="ready/verify: emit JSON instead of prose")
+    mode = p_store.add_mutually_exclusive_group()
+    mode.add_argument("--fast", dest="mode", action="store_const", const="fast",
+                      help="verify: the file walk only — every segment, close "
+                           "run, dictionary and manifest this generation "
+                           "names, checksummed against what the manifest "
+                           "claims. The default.")
+    mode.add_argument("--full", dest="mode", action="store_const", const="full",
+                      help="verify: everything --fast checks, plus the "
+                           "invariants that span files — the manifest parent "
+                           "chain across every retained generation, "
+                           "dictionary-code reference validity, the "
+                           "bitemporal row invariants, the event log's "
+                           "framing and hash chain against the applied "
+                           "cursor, the persisted TCSR index, and the "
+                           "artifact registry with the blobs it names. "
+                           "Read-only: a torn log tail is reported, never "
+                           "trimmed.")
+    p_store.set_defaults(mode="fast")
+
+    p_check = sub.add_parser(
+        "check", help="full integrity check of a store (alias of "
+                      "`store verify --full`)",
+        description="Read-only, exhaustive integrity check: every layer, "
+                    "every finding reported as {layer, kind, path, "
+                    "generation, detail, severity}. Exits 0 when the store "
+                    "is clean, 1 when there are findings, and 2 when the "
+                    "store cannot be opened at all. Nothing is repaired — "
+                    "the remedy for a corrupt store is `tgms replay` from "
+                    "its event log.")
+    p_check.add_argument("store", help="the store to check")
+    p_check.add_argument("--json", action="store_true",
+                         help="emit the report as JSON instead of prose")
 
     p_mem = sub.add_parser("memory", help="evolution-memory maintenance")
     p_mem.add_argument("action", choices=["build"])
@@ -272,6 +304,98 @@ def build_parser() -> argparse.ArgumentParser:
     p_mem.add_argument("--refresh-stale", action="store_true")
 
     return p
+
+
+def _store_verify(path: str, mode: str, as_json: bool) -> int:
+    """`tgms store verify` / `tgms check`. Exit 0 clean, 1 findings, 2 unreadable.
+
+    Opened **read-only**, always. A read-write handle runs crash recovery on
+    open, and recovery trims a torn event-log tail — so a writer handle would
+    quietly repair the very defect full mode exists to report, and the check
+    would then pass on a store it had just changed. Read-only also means a
+    monitoring process can check a store its writer is still using.
+
+    Exit 2 is reserved for "cannot be checked": the store will not open at
+    all, because `CURRENT` is malformed, a manifest fails its own checksum,
+    or the dictionary is shorter than the manifest commits. Those are
+    refusals the engine makes before any report exists, and they are a
+    different answer from "checked, and here is what is wrong" — the
+    corruption sweep has to tell the two apart.
+
+    The adapter is constructed directly rather than through `tgms.open`,
+    which is not a shortcut: `Store.__init__` seeds its clock by scanning the
+    whole event log, and that scan *raises* on the first record it cannot
+    parse. Going through it would turn every torn tail into exit 2 —
+    "unreadable" — when the store itself is perfectly readable and the log's
+    tail is precisely the finding full mode exists to report.
+    """
+    from pathlib import Path
+
+    from tgms.storage.native import NativeAdapter
+
+    engine_dir = Path(path) / "native"
+    try:
+        if not engine_dir.is_dir():
+            raise FileNotFoundError(f"there is no native store at {engine_dir}")
+        store = NativeAdapter(engine_dir)
+    except Exception as e:
+        report = {"store": path, "mode": mode, "readable": False,
+                  "reason": f"{type(e).__name__}: {e}"}
+        if as_json:
+            print(json.dumps(report, sort_keys=True))
+        else:
+            print(f"store:      {path}")
+            print(f"\nverdict: UNREADABLE — {report['reason']}")
+            print("\nthis store cannot be checked at all; rebuild it from its "
+                  "event log with `tgms replay`")
+        return 2
+    try:
+        r = store.verify(mode=mode)
+    finally:
+        store.close()
+    # the adapter names the engine directory it walked; the report names the
+    # store the operator asked about, so the two exits agree on the subject
+    r["store"] = path
+    r["readable"] = True
+
+    if as_json:
+        print(json.dumps(r, sort_keys=True))
+        return 0 if r["healthy"] else 1
+
+    findings = r["findings"]
+    errors = [f for f in findings if f["severity"] == "error"]
+    advisories = [f for f in findings if f["severity"] != "error"]
+    print(f"store:      {path}")
+    print(f"mode:       {r['mode']}")
+    print(f"generation: {r['generation']}")
+    print(f"checked:    {r['segments_checked']} segments "
+          f"({r['rows']} rows), {r['close_runs_checked']} close runs "
+          f"({r['closes']} closes), {r['dict_records']} dictionary "
+          f"records")
+    if r["mode"] == "full":
+        print(f"walked:     {r['rows_walked']} rows "
+              f"({r['believed_rows']} believed) across "
+              f"{r['identities_checked']} identities")
+    print(f"layout:     {r['tt_s_runs']} tt_s runs across live "
+          f"segments, {r['max_tt_s_runs']} in the worst one")
+    for title, group in (("PROBLEMS", errors), ("ADVISORIES", advisories)):
+        if not group:
+            continue
+        print(f"\n{title} ({len(group)}):")
+        for f in group:
+            where = f" {f['path']}" if f["path"] else ""
+            print(f"  - [{f['layer']}/{f['kind']}]{where}: {f['detail']}")
+    if errors:
+        print("\nverdict: CORRUPT — do not trust this store; rebuild "
+              "it from its event log with `tgms replay`")
+    elif r["mode"] == "full":
+        print("\nverdict: healthy — every referenced file passed its "
+              "checksums, every cross-reference resolved, and every "
+              "bitemporal invariant held")
+    else:
+        print("\nverdict: healthy — every referenced file passed its "
+              "checksums and cross-references")
+    return 0 if not errors else 1
 
 
 #: `store backup`'s manifest filename inside `--dest` — read back verbatim
@@ -796,34 +920,18 @@ def main(argv: list[str] | None = None) -> int:
         if args.action == "restore":
             return _store_restore(args.dest, args.store)
 
-        store = tgms.open(args.store, backend="native")
         if args.action == "verify":
-            r = store.adapter.verify()
-            print(f"store:      {args.store}")
-            print(f"generation: {r['generation']}")
-            print(f"checked:    {r['segments_checked']} segments "
-                  f"({r['rows']} rows), {r['close_runs_checked']} close runs "
-                  f"({r['closes']} closes), {r['dict_records']} dictionary "
-                  f"records")
-            print(f"layout:     {r['tt_s_runs']} tt_s runs across live "
-                  f"segments, {r['max_tt_s_runs']} in the worst one")
-            if r["problems"]:
-                print(f"\nPROBLEMS ({len(r['problems'])}):")
-                for p in r["problems"]:
-                    print(f"  - {p}")
-                print("\nverdict: CORRUPT — do not trust this store; rebuild "
-                      "it from its event log with `tgms replay`")
-            else:
-                print("\nverdict: healthy — every referenced file passed its "
-                      "checksums and cross-references")
-            store.close()
-            return 0 if r["healthy"] else 1
+            return _store_verify(args.store, args.mode, args.json)
+
+        store = tgms.open(args.store, backend="native")
         if args.action == "gc":
             report = store.adapter.gc(keep_last=args.keep)
         else:
             report = store.adapter.compact()
         print(json.dumps(report))
         store.close()
+    elif args.cmd == "check":
+        return _store_verify(args.store, "full", args.json)
     elif args.cmd == "memory":
         import tgms
         from tgms.agent.memory import MICROS_PER_DAY, EvolutionMemory
