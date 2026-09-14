@@ -3,8 +3,14 @@
 tidy CSV + markdown tables with determinism receipts (spec §8.4).
 
 Systems:
-  ours        planner -> executor -> reporter -> verifier; unsupported claims
-              are gated out of the final answer (the C2 mechanism)
+  ours        planner -> executor -> reporter -> verifier; unsupported AND
+              unverifiable claims are gated out of the final answer (the C2
+              mechanism). Since 2026-09-15 (D-160, coordinator ruling; see
+              docs/STABILITY.md) the gate also drops `unverifiable` claims,
+              not just `unsupported` ones -- the trust boundary must not
+              emit a claim it cannot verify. The drop set is
+              `tgms.eval.plan_faults.GATED_VERDICTS`, the single source of
+              truth this module and the fault-matrix driver both read.
   ours-noverify (B3)  same, verifier off — reporter output goes out raw
   ours-nomem    (B4)  same as ours, no memory notes injected
   b1 / b2 / b5  baselines (eval/baselines.py), same answer contract
@@ -29,7 +35,7 @@ from typing import Any, Callable
 from tgms.core.model import canonical_json, sha256_hex
 from tgms.eval.metrics import extract_pred, rates, score_answer
 from tgms.eval.plan_faults import (
-    Oracle, Run, augment_report, classify, to_certificate,
+    GATED_VERDICTS, Oracle, Run, augment_report, classify, to_certificate,
 )
 from tgms.store import Store
 
@@ -150,8 +156,21 @@ def run_task_ours(system: str, task: dict[str, Any], store: Store,
                 1 for c, r in zip(answer_obj["claims"], report["claims"])
                 if r["verdict"] == "supported"
                 and verifier._evidence_payloads(c["evidence"])[2])
+            # The production claim gate (D-160, coordinator ruling
+            # 2026-09-15; docs/STABILITY.md). Before 2026-09-15 this dropped
+            # `unsupported` only; the trust-boundary fault-matrix campaign
+            # (benchmarks/faults-v1/fault-matrix-campaign-2026-09-13.json)
+            # found 271/300 F1-9 wrong-step-citation trials survived that
+            # gate as an emitted `unverifiable` claim the cited evidence
+            # does not support. `GATED_VERDICTS` is shared verbatim with
+            # `tgms.eval.plan_faults.gate_answer`'s default so the two
+            # cannot silently diverge. `ucr_pre_gate` above is computed
+            # before this filter and its semantics are unchanged; `ucr`/
+            # `coverage` below are computed after it, so a dropped
+            # `unverifiable` claim now counts as withheld coverage rather
+            # than an emitted, unverified assertion.
             kept = [c for c, r in zip(answer_obj["claims"], report["claims"])
-                    if r["verdict"] != "unsupported"]
+                    if r["verdict"] not in GATED_VERDICTS]
             gated = {**answer_obj, "claims": kept}
             regate = verifier.verify(gated)
             row["ucr"] = regate["metrics"].get("ucr")
