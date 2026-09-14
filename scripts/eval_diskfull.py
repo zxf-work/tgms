@@ -235,21 +235,69 @@ def derive_trial_seed(seed: int, trial: int) -> int:
     return int(digest[:16], 16)
 
 
+def _last_batch_targets(log_path: Path) -> set[tuple[str, Any]]:
+    """The (kind, key) pair(s) touched by the event log's very last batch —
+    the one operation whose call may have raised the injected exception
+    *after* its bytes were already `write()`+`flush()`ed but *before* its
+    own `fsync`, and which the child therefore never acks (it stops at the
+    first exception). That batch's bytes are already on the real
+    filesystem in the ordinary sense (there is no actual full disk here —
+    only the `fsync` call itself is faked), so a subsequent writer-mode
+    reopen's recovery finds it as an unapplied-but-durable suffix and
+    replays it, exactly `docs/eval_durability.md` EXP-A1's documented,
+    accepted "acked value superseded by the crash batch" direction
+    (Q1: returned-success implies present, not the converse).
+
+    Found empirically (Lane A task A9, 152/2000 EXP-A5 trials): unlike
+    `eval_durability.py`, whose crash write always targets the one fixed,
+    reserved key `a0` (carved out explicitly in `assess_q1_q3_q4`), this
+    harness's injection point is uniformly random over the *entire*
+    workload — so the crash-adjacent unacked batch can land on ANY
+    already-acked entity, including a `correct`/`retract` that overwrites
+    or erases that entity's last acked value on replay. The naive "every
+    acked entry must be exactly present" check flagged every one of these
+    as a Q1 violation; none was — `q2`/`q3`/`q4` were clean in all 152, and
+    direct reproduction (same seed) confirmed the "acked but missing/
+    changed" entity is always exactly the target of the log's last batch,
+    landing exactly at `inject_at == calls_seen`. This generalizes
+    `eval_durability.py`'s fixed-key carve-out to whichever key the
+    randomized injection point actually hits, rather than widening the
+    gate to hide anything else."""
+    lines = [ln for ln in log_path.read_bytes().splitlines() if ln.strip()]
+    if not lines:
+        return set()
+    last = json.loads(lines[-1])
+    keys: set[tuple[str, Any]] = set()
+    for op in last.get("ops", ()):
+        ref = op.get("ref")
+        if ref is not None:  # correct / retract
+            if ref.get("kind") == "node":
+                keys.add(("node", ref["uid"]))
+            else:
+                keys.add(("edge", (ref["src"], ref["dst"], ref["rel_type"], ref["disc"])))
+        elif "uid" in op:  # assert_node
+            keys.add(("node", op["uid"]))
+        elif "src" in op:  # assert_edge
+            keys.add(("edge", (op["src"], op["dst"], op["rel_type"], op["disc"])))
+    return keys
+
+
 def _q1_q3_q4(store_path: Path, acked_path: Path) -> tuple[dict[str, Any], list[str]]:
-    """Simplified relative of `eval_durability.assess_q1_q3_q4`: no special
-    "last write may be a visible blend" case is needed here, because the
-    child stops at the *first* exception and only ever acks a write after
-    the call returns — so every acked entry, without exception, must be
-    exactly present; an unacked trailing write may or may not have been
-    resurrected by write-ahead replay (bytes reached the OS before the
-    injected fsync failure), and that is Q1's known-open direction, not a
-    violation either way (D-086)."""
+    """Relative of `eval_durability.assess_q1_q3_q4`. The child stops at the
+    *first* exception and only ever acks a write after the call returns, so
+    every acked entry must be present at its last acked value — *except* the
+    one entity (if any) the log's last, possibly-unacked-but-durable batch
+    targets, which `_last_batch_targets` identifies; see its docstring for
+    why that exemption is necessary here (unlike `eval_durability.py`, whose
+    crash write always lands on the same reserved key) and why it does not
+    weaken the check for anything else."""
     import tgms
     from tgms.core.model import edge_eid
 
     problems: list[str] = []
     fields: dict[str, Any] = {}
     acked = [json.loads(line) for line in acked_path.read_text().splitlines() if line.strip()]
+    exempt = _last_batch_targets(store_path / "eventlog.jsonl")
 
     store = tgms.open(store_path, backend="native")
     v = store.adapter.verify()
@@ -262,6 +310,7 @@ def _q1_q3_q4(store_path: Path, acked_path: Path) -> tuple[dict[str, Any], list[
         key = (rec["kind"], tuple(rec["key"]) if isinstance(rec["key"], list) else rec["key"])
         latest[key] = rec["i"]
     q1 = True
+    exempted_seen: list[str] = []
     for (kind, key), want in latest.items():
         if kind == "node":
             got = store.adapter.believed_node_versions(key)
@@ -269,6 +318,13 @@ def _q1_q3_q4(store_path: Path, acked_path: Path) -> tuple[dict[str, Any], list[
             src, dst, rel, disc = key
             got = store.adapter.believed_edge_versions(edge_eid(src, dst, rel, disc), src=src, dst=dst)
         vals_here = [g.props.get("i") for g in got]
+        if (kind, key) in exempt:
+            mismatch = (got if want is None else (len(got) != 1 or got[0].props.get("i") != want))
+            if mismatch:
+                exempted_seen.append(
+                    f"acked {kind} {key}={want} but believed={vals_here} "
+                    "(exempt: target of the log's last, possibly-unacked batch)")
+            continue
         if want is None:
             if got:
                 q1 = False
@@ -278,6 +334,8 @@ def _q1_q3_q4(store_path: Path, acked_path: Path) -> tuple[dict[str, Any], list[
             q1 = False
             problems.append(f"acked {kind} {key}={want} but believed={vals_here}")
     fields["q1_acked_survive"] = q1
+    if exempted_seen:
+        fields["q1_exempted_last_batch"] = exempted_seen
     fields["digest"] = store.digest()
     store.close()
 
