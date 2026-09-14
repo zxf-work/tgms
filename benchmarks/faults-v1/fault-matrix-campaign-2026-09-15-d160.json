@@ -1,0 +1,780 @@
+{
+ "schema_version": "1.0.0",
+ "git_commit": "a501fceb45e8e53cc00fa1f8d93625564ddd5d94",
+ "timestamp_utc": "2026-09-14T04:26:31Z",
+ "machine": {
+  "host": "itiger01,itiger02,itiger04",
+  "platform": "Linux itiger01 5.14.0-427.31.1.el9_4.x86_64 #1 SMP PREEMPT_DYNAMIC Wed Aug 14 16:15:25 UTC 2024 x86_64 x86_64 x86_64 GNU/Linux",
+  "cpus": 4,
+  "ram_gb": 16.0
+ },
+ "config": {
+  "harness": "scripts/eval_trust_boundary_matrix.py",
+  "slurm_script": "scripts/fault_matrix_campaign.slurm",
+  "array_job_id": "211059",
+  "n_tasks": 23,
+  "concurrency": 6,
+  "wall_per_task_s": 1800,
+  "design_doc": "docs/design/TRUST_BOUNDARY_FAULT_MATRIX_DESIGN_2026-09-13.md",
+  "addendum": "Addendum 1 (2026-09-13, coordinator): primary arm gates unsupported only (matches tgms.eval.harness.run_task_ours); --strict-gate is the named secondary arm, dropping unsupported + unverifiable.",
+  "tmpdir": "node-local /tmp (not /project); the store each task reads is also copied node-local before the run -- tgms.store.Store takes an OS-level single-writer flock even for a read-only workload, and up to 6 array tasks run concurrently against what would otherwise be one shared store (see the .slurm script's own comments).",
+  "commit_resolution": "git shim answering TGMS_COMMIT -- no git binary on iTiger compute nodes",
+  "out_of_scope": "email-eu: benchmarks/frozen-v1/ carries no raw event log for email-eu (tgms/data/loaders.py's entry downloads from SNAP, and a fresh `tgms ingest` reassigns transaction times per D-023, so it cannot reproduce the frozen suite's gold). Not run."
+ },
+ "seed": {
+  "value": 0
+ },
+ "dataset": {
+  "name": "collegemsg (surface A) + 29 runnable TGIR-v1 plans on the LDBC-shaped fixture (surface B)",
+  "digest": "c70039b579ecebe9549c420a3db9336ee73fd6cca92d8975e80cdcc3bfa373b4",
+  "digest_kind": "manifest"
+ },
+ "result_digest": "0b623c90d128ee5c307ad39d86e0ed134afd61679a01607562b8ed23df2f9ddd",
+ "protocol": {
+  "warmups": 0,
+  "reps": 3102,
+  "ceilings": {
+   "child_timeout_s": 1800,
+   "array_concurrency": 6
+  }
+ },
+ "record": "benchmarks/faults-v1/fault-matrix-campaign-2026-09-15-d160.json",
+ "total_trials": 3102,
+ "total_trials_requested": 3900,
+ "n_records": 23,
+ "per_cell_gate_table": [
+  {
+   "cell": "F1-1",
+   "surface": "A",
+   "strict_gate": false,
+   "suite_or_plans": "collegemsg",
+   "raw_file": "task-0--F1-1-collegemsg.json",
+   "n_requested": 100,
+   "n_cases": 100,
+   "counts": {
+    "correct": 0,
+    "safe-refusal": 0,
+    "explicit-failure": 100,
+    "silent-violation": 0
+   },
+   "gold_mismatch": 0,
+   "misattributed": 0,
+   "weak_support": 0,
+   "false_refusal_rate": 0.0,
+   "result_digest": "c4c8f0cf12a23b20837519b96eeafbf9efcb9ce2003e86b38f560b192b2724e3"
+  },
+  {
+   "cell": "F1-1",
+   "surface": "B",
+   "strict_gate": false,
+   "suite_or_plans": "ldbc-fixture",
+   "raw_file": "task-19--F1-1-ldbc-fixture.json",
+   "n_requested": 100,
+   "n_cases": 100,
+   "counts": {
+    "correct": 92,
+    "safe-refusal": 0,
+    "explicit-failure": 8,
+    "silent-violation": 0
+   },
+   "gold_mismatch": 0,
+   "misattributed": 0,
+   "weak_support": 0,
+   "false_refusal_rate": null,
+   "result_digest": "99c95626fbb6f8335eeaddc40b0f7a1467adc65102f667f8e61a77b06eb87aac"
+  },
+  {
+   "cell": "F1-10",
+   "surface": "A",
+   "strict_gate": false,
+   "suite_or_plans": "collegemsg",
+   "raw_file": "task-11--F1-10-collegemsg.json",
+   "n_requested": 300,
+   "n_cases": 300,
+   "counts": {
+    "correct": 0,
+    "safe-refusal": 0,
+    "explicit-failure": 300,
+    "silent-violation": 0
+   },
+   "gold_mismatch": 0,
+   "misattributed": 0,
+   "weak_support": 0,
+   "false_refusal_rate": null,
+   "result_digest": "29bf8595089f866a33d6af055b76378643feec0c201b9fbbba968c12b36944fb"
+  },
+  {
+   "cell": "F1-11",
+   "surface": "A",
+   "strict_gate": false,
+   "suite_or_plans": "collegemsg",
+   "raw_file": "task-12--F1-11-collegemsg.json",
+   "n_requested": 300,
+   "n_cases": 2,
+   "counts": {
+    "correct": 2,
+    "safe-refusal": 0,
+    "explicit-failure": 0,
+    "silent-violation": 0
+   },
+   "gold_mismatch": 0,
+   "misattributed": 0,
+   "weak_support": 2,
+   "false_refusal_rate": null,
+   "result_digest": "e322f408b1cd89a11f2e263536c2502668d85384ba5db26d99aa00c13708ef57"
+  },
+  {
+   "cell": "F1-2",
+   "surface": "A",
+   "strict_gate": false,
+   "suite_or_plans": "collegemsg",
+   "raw_file": "task-1--F1-2-collegemsg.json",
+   "n_requested": 100,
+   "n_cases": 100,
+   "counts": {
+    "correct": 0,
+    "safe-refusal": 0,
+    "explicit-failure": 100,
+    "silent-violation": 0
+   },
+   "gold_mismatch": 0,
+   "misattributed": 0,
+   "weak_support": 0,
+   "false_refusal_rate": 0.0,
+   "result_digest": "b472f7a7bdb02e21c32c8e2929c4f8802134132dee10da70185f84ccc8d4fdad"
+  },
+  {
+   "cell": "F1-3a",
+   "surface": "A",
+   "strict_gate": false,
+   "suite_or_plans": "collegemsg",
+   "raw_file": "task-2--F1-3a-collegemsg.json",
+   "n_requested": 100,
+   "n_cases": 100,
+   "counts": {
+    "correct": 0,
+    "safe-refusal": 0,
+    "explicit-failure": 100,
+    "silent-violation": 0
+   },
+   "gold_mismatch": 0,
+   "misattributed": 0,
+   "weak_support": 0,
+   "false_refusal_rate": 0.0,
+   "result_digest": "36c8986e1ed7182e2d3463fe191a0efb3e632f9dbb7db8f6df288fc8340d96cb"
+  },
+  {
+   "cell": "F1-3a",
+   "surface": "B",
+   "strict_gate": false,
+   "suite_or_plans": "ldbc-fixture",
+   "raw_file": "task-20--F1-3a-ldbc-fixture.json",
+   "n_requested": 100,
+   "n_cases": 100,
+   "counts": {
+    "correct": 0,
+    "safe-refusal": 0,
+    "explicit-failure": 100,
+    "silent-violation": 0
+   },
+   "gold_mismatch": 0,
+   "misattributed": 0,
+   "weak_support": 0,
+   "false_refusal_rate": null,
+   "result_digest": "83200a9db06b514a5a47d80adde9ed3e12694f7ccbff3e693a547ae77daeb214"
+  },
+  {
+   "cell": "F1-3b",
+   "surface": "A",
+   "strict_gate": false,
+   "suite_or_plans": "collegemsg",
+   "raw_file": "task-3--F1-3b-collegemsg.json",
+   "n_requested": 100,
+   "n_cases": 100,
+   "counts": {
+    "correct": 82,
+    "safe-refusal": 0,
+    "explicit-failure": 18,
+    "silent-violation": 0
+   },
+   "gold_mismatch": 62,
+   "misattributed": 0,
+   "weak_support": 0,
+   "false_refusal_rate": null,
+   "result_digest": "1067094067f2b059d27ea7e0f3a88d76f6cb0c52a1c5a0b39fb6aeaea2c1b41a"
+  },
+  {
+   "cell": "F1-3b",
+   "surface": "B",
+   "strict_gate": false,
+   "suite_or_plans": "ldbc-fixture",
+   "raw_file": "task-21--F1-3b-ldbc-fixture.json",
+   "n_requested": 100,
+   "n_cases": 100,
+   "counts": {
+    "correct": 0,
+    "safe-refusal": 0,
+    "explicit-failure": 100,
+    "silent-violation": 0
+   },
+   "gold_mismatch": 0,
+   "misattributed": 0,
+   "weak_support": 0,
+   "false_refusal_rate": null,
+   "result_digest": "8f94474b4e0914744077f4ecbefe0c072e4fa5d509cd3aafb4eba7e00ede63c0"
+  },
+  {
+   "cell": "F1-4",
+   "surface": "A",
+   "strict_gate": false,
+   "suite_or_plans": "collegemsg",
+   "raw_file": "task-4--F1-4-collegemsg.json",
+   "n_requested": 100,
+   "n_cases": 100,
+   "counts": {
+    "correct": 0,
+    "safe-refusal": 0,
+    "explicit-failure": 100,
+    "silent-violation": 0
+   },
+   "gold_mismatch": 0,
+   "misattributed": 0,
+   "weak_support": 0,
+   "false_refusal_rate": 0.0,
+   "result_digest": "aba285b44299dc85e2ccc042e2c9b5d1be93dbfb626b08e59193905693c7ae91"
+  },
+  {
+   "cell": "F1-5",
+   "surface": "A",
+   "strict_gate": false,
+   "suite_or_plans": "collegemsg",
+   "raw_file": "task-5--F1-5-collegemsg.json",
+   "n_requested": 100,
+   "n_cases": 100,
+   "counts": {
+    "correct": 0,
+    "safe-refusal": 0,
+    "explicit-failure": 100,
+    "silent-violation": 0
+   },
+   "gold_mismatch": 0,
+   "misattributed": 0,
+   "weak_support": 0,
+   "false_refusal_rate": 0.0,
+   "result_digest": "4761547f0eb3ad0f1e4908fa7d56fe6e70e6dbf8f05dc9a90344fc6b0035c2aa"
+  },
+  {
+   "cell": "F1-5",
+   "surface": "B",
+   "strict_gate": false,
+   "suite_or_plans": "ldbc-fixture",
+   "raw_file": "task-22--F1-5-ldbc-fixture.json",
+   "n_requested": 100,
+   "n_cases": 100,
+   "counts": {
+    "correct": 0,
+    "safe-refusal": 0,
+    "explicit-failure": 100,
+    "silent-violation": 0
+   },
+   "gold_mismatch": 0,
+   "misattributed": 0,
+   "weak_support": 0,
+   "false_refusal_rate": null,
+   "result_digest": "a9372e16fee395166536e4e1cf824d5a099813e1f981c8c5f83d6f1522cc2886"
+  },
+  {
+   "cell": "F1-6",
+   "surface": "A",
+   "strict_gate": false,
+   "suite_or_plans": "collegemsg",
+   "raw_file": "task-6--F1-6-collegemsg.json",
+   "n_requested": 100,
+   "n_cases": 0,
+   "counts": {
+    "correct": 0,
+    "safe-refusal": 0,
+    "explicit-failure": 0,
+    "silent-violation": 0
+   },
+   "gold_mismatch": 0,
+   "misattributed": 0,
+   "weak_support": 0,
+   "false_refusal_rate": null,
+   "result_digest": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+  },
+  {
+   "cell": "F1-6b",
+   "surface": "A",
+   "strict_gate": false,
+   "suite_or_plans": "collegemsg",
+   "raw_file": "task-7--F1-6b-collegemsg.json",
+   "n_requested": 100,
+   "n_cases": 0,
+   "counts": {
+    "correct": 0,
+    "safe-refusal": 0,
+    "explicit-failure": 0,
+    "silent-violation": 0
+   },
+   "gold_mismatch": 0,
+   "misattributed": 0,
+   "weak_support": 0,
+   "false_refusal_rate": null,
+   "result_digest": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+  },
+  {
+   "cell": "F1-7",
+   "surface": "A",
+   "strict_gate": false,
+   "suite_or_plans": "collegemsg",
+   "raw_file": "task-8--F1-7-collegemsg.json",
+   "n_requested": 300,
+   "n_cases": 300,
+   "counts": {
+    "correct": 0,
+    "safe-refusal": 0,
+    "explicit-failure": 300,
+    "silent-violation": 0
+   },
+   "gold_mismatch": 0,
+   "misattributed": 0,
+   "weak_support": 0,
+   "false_refusal_rate": null,
+   "result_digest": "93b618028c56e9da132900f7feb26418879ba313911e4991a3392741cb822830"
+  },
+  {
+   "cell": "F1-8",
+   "surface": "A",
+   "strict_gate": false,
+   "suite_or_plans": "collegemsg",
+   "raw_file": "task-9--F1-8-collegemsg.json",
+   "n_requested": 300,
+   "n_cases": 0,
+   "counts": {
+    "correct": 0,
+    "safe-refusal": 0,
+    "explicit-failure": 0,
+    "silent-violation": 0
+   },
+   "gold_mismatch": 0,
+   "misattributed": 0,
+   "weak_support": 0,
+   "false_refusal_rate": null,
+   "result_digest": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+  },
+  {
+   "cell": "F1-9",
+   "surface": "A",
+   "strict_gate": false,
+   "suite_or_plans": "collegemsg",
+   "raw_file": "task-10--F1-9-collegemsg.json",
+   "n_requested": 300,
+   "n_cases": 300,
+   "counts": {
+    "correct": 29,
+    "safe-refusal": 0,
+    "explicit-failure": 271,
+    "silent-violation": 0
+   },
+   "gold_mismatch": 29,
+   "misattributed": 29,
+   "weak_support": 0,
+   "false_refusal_rate": null,
+   "result_digest": "6010ac163367ca15387c64e584fe98c677eac56a55cee73740a94a89b568ec1d"
+  },
+  {
+   "cell": "F2-1",
+   "surface": "A",
+   "strict_gate": false,
+   "suite_or_plans": "collegemsg",
+   "raw_file": "task-13--F2-1-collegemsg.json",
+   "n_requested": 300,
+   "n_cases": 300,
+   "counts": {
+    "correct": 0,
+    "safe-refusal": 11,
+    "explicit-failure": 289,
+    "silent-violation": 0
+   },
+   "gold_mismatch": 0,
+   "misattributed": 0,
+   "weak_support": 0,
+   "false_refusal_rate": null,
+   "result_digest": "16dc16b9271dee66baa6656387374dad3f0fade2709038ff9f9c36b098be4080"
+  },
+  {
+   "cell": "F2-2",
+   "surface": "A",
+   "strict_gate": false,
+   "suite_or_plans": "collegemsg",
+   "raw_file": "task-14--F2-2-collegemsg.json",
+   "n_requested": 100,
+   "n_cases": 100,
+   "counts": {
+    "correct": 0,
+    "safe-refusal": 6,
+    "explicit-failure": 94,
+    "silent-violation": 0
+   },
+   "gold_mismatch": 0,
+   "misattributed": 0,
+   "weak_support": 0,
+   "false_refusal_rate": null,
+   "result_digest": "4fcac356cb630eb5c6ddc2a72c5c0d731e5e181eea0c9fa9895ce91c924750b6"
+  },
+  {
+   "cell": "F2-3",
+   "surface": "A",
+   "strict_gate": false,
+   "suite_or_plans": "collegemsg",
+   "raw_file": "task-15--F2-3-collegemsg.json",
+   "n_requested": 100,
+   "n_cases": 100,
+   "counts": {
+    "correct": 54,
+    "safe-refusal": 8,
+    "explicit-failure": 6,
+    "silent-violation": 32
+   },
+   "gold_mismatch": 18,
+   "misattributed": 0,
+   "weak_support": 0,
+   "false_refusal_rate": null,
+   "result_digest": "596fd2b3adff6de95e459ed2a609b3f3738781878656e7503290c8a4e66ea1ed"
+  },
+  {
+   "cell": "F2-4",
+   "surface": "A",
+   "strict_gate": false,
+   "suite_or_plans": "collegemsg",
+   "raw_file": "task-16--F2-4-collegemsg.json",
+   "n_requested": 300,
+   "n_cases": 300,
+   "counts": {
+    "correct": 201,
+    "safe-refusal": 57,
+    "explicit-failure": 42,
+    "silent-violation": 0
+   },
+   "gold_mismatch": 27,
+   "misattributed": 0,
+   "weak_support": 18,
+   "false_refusal_rate": null,
+   "result_digest": "5013219fce76c7370d8cc3d24b8a7aca28866b7ebd694a301c6d3ed75e211331"
+  },
+  {
+   "cell": "F2-5",
+   "surface": "A",
+   "strict_gate": false,
+   "suite_or_plans": "collegemsg",
+   "raw_file": "task-17--F2-5-collegemsg.json",
+   "n_requested": 100,
+   "n_cases": 100,
+   "counts": {
+    "correct": 0,
+    "safe-refusal": 100,
+    "explicit-failure": 0,
+    "silent-violation": 0
+   },
+   "gold_mismatch": 0,
+   "misattributed": 0,
+   "weak_support": 0,
+   "false_refusal_rate": null,
+   "result_digest": "50759b0b9372b41cf29a589934f11d77f830438b2b74a68a433b7b107a9a22b5"
+  },
+  {
+   "cell": "F2-6",
+   "surface": "A",
+   "strict_gate": false,
+   "suite_or_plans": "collegemsg",
+   "raw_file": "task-18--F2-6-collegemsg.json",
+   "n_requested": 300,
+   "n_cases": 300,
+   "counts": {
+    "correct": 174,
+    "safe-refusal": 18,
+    "explicit-failure": 108,
+    "silent-violation": 0
+   },
+   "gold_mismatch": 21,
+   "misattributed": 0,
+   "weak_support": 0,
+   "false_refusal_rate": null,
+   "result_digest": "9dfb015811851bfda49beedd3d73c03f7b56d2a47eb40ce64441ec6a13bdb599"
+  }
+ ],
+ "shortfalls": [
+  {
+   "cell": "F1-11",
+   "surface": "A (trace)",
+   "strict_gate": false,
+   "n_requested": 300,
+   "n_cases": 2,
+   "raw_file": "task-12--F1-11-collegemsg.json"
+  },
+  {
+   "cell": "F1-6",
+   "surface": "A",
+   "strict_gate": false,
+   "n_requested": 100,
+   "n_cases": 0,
+   "raw_file": "task-6--F1-6-collegemsg.json"
+  },
+  {
+   "cell": "F1-6b",
+   "surface": "?",
+   "strict_gate": false,
+   "n_requested": 100,
+   "n_cases": 0,
+   "raw_file": "task-7--F1-6b-collegemsg.json"
+  },
+  {
+   "cell": "F1-8",
+   "surface": "A/B",
+   "strict_gate": false,
+   "n_requested": 300,
+   "n_cases": 0,
+   "raw_file": "task-9--F1-8-collegemsg.json"
+  }
+ ],
+ "silent_violations": [
+  {
+   "cell": "F2-3",
+   "surface": "A",
+   "strict_gate": false,
+   "raw_file": "task-15--F2-3-collegemsg.json",
+   "headline": false,
+   "count": 32,
+   "n_cases": 100,
+   "trials": [
+    {
+     "per_case_index": 0,
+     "task_id": "collegemsg-t4-coactive_count-009",
+     "reason": "assumption-A2-exercised (silent partial result, undetectable by construction)",
+     "invariants_violated": [],
+     "mutator": null
+    },
+    {
+     "per_case_index": 8,
+     "task_id": "collegemsg-t1-burst_buckets-018",
+     "reason": "assumption-A2-exercised (silent partial result, undetectable by construction)",
+     "invariants_violated": [],
+     "mutator": null
+    },
+    {
+     "per_case_index": 11,
+     "task_id": "collegemsg-t1-partners_window-030",
+     "reason": "assumption-A2-exercised (silent partial result, undetectable by construction)",
+     "invariants_violated": [],
+     "mutator": null
+    },
+    {
+     "per_case_index": 13,
+     "task_id": "collegemsg-t4-first_reached_history-015",
+     "reason": "assumption-A2-exercised (silent partial result, undetectable by construction)",
+     "invariants_violated": [],
+     "mutator": null
+    },
+    {
+     "per_case_index": 14,
+     "task_id": "collegemsg-t1-burst_buckets-055",
+     "reason": "assumption-A2-exercised (silent partial result, undetectable by construction)",
+     "invariants_violated": [],
+     "mutator": null
+    },
+    {
+     "per_case_index": 20,
+     "task_id": "collegemsg-t1-busiest_bucket-004",
+     "reason": "assumption-A2-exercised (silent partial result, undetectable by construction)",
+     "invariants_violated": [],
+     "mutator": null
+    },
+    {
+     "per_case_index": 23,
+     "task_id": "collegemsg-t1-earliest_arrival_at-038",
+     "reason": "assumption-A2-exercised (silent partial result, undetectable by construction)",
+     "invariants_violated": [],
+     "mutator": null
+    },
+    {
+     "per_case_index": 25,
+     "task_id": "collegemsg-t3-first_burst-021",
+     "reason": "assumption-A2-exercised (silent partial result, undetectable by construction)",
+     "invariants_violated": [],
+     "mutator": null
+    },
+    {
+     "per_case_index": 26,
+     "task_id": "collegemsg-t1-reach_first-022",
+     "reason": "assumption-A2-exercised (silent partial result, undetectable by construction)",
+     "invariants_violated": [],
+     "mutator": null
+    },
+    {
+     "per_case_index": 27,
+     "task_id": "collegemsg-t4-coactive_count-003",
+     "reason": "assumption-A2-exercised (silent partial result, undetectable by construction)",
+     "invariants_violated": [],
+     "mutator": null
+    },
+    {
+     "per_case_index": 29,
+     "task_id": "collegemsg-t3-first_burst-021",
+     "reason": "assumption-A2-exercised (silent partial result, undetectable by construction)",
+     "invariants_violated": [],
+     "mutator": null
+    },
+    {
+     "per_case_index": 31,
+     "task_id": "collegemsg-probe-now-002",
+     "reason": "assumption-A2-exercised (silent partial result, undetectable by construction)",
+     "invariants_violated": [],
+     "mutator": null
+    },
+    {
+     "per_case_index": 37,
+     "task_id": "collegemsg-t3-first_burst-021",
+     "reason": "assumption-A2-exercised (silent partial result, undetectable by construction)",
+     "invariants_violated": [],
+     "mutator": null
+    },
+    {
+     "per_case_index": 42,
+     "task_id": "collegemsg-t1-reach_first-001",
+     "reason": "assumption-A2-exercised (silent partial result, undetectable by construction)",
+     "invariants_violated": [],
+     "mutator": null
+    },
+    {
+     "per_case_index": 43,
+     "task_id": "collegemsg-t1-busiest_bucket-004",
+     "reason": "assumption-A2-exercised (silent partial result, undetectable by construction)",
+     "invariants_violated": [],
+     "mutator": null
+    },
+    {
+     "per_case_index": 44,
+     "task_id": "collegemsg-t1-burst_buckets-029",
+     "reason": "assumption-A2-exercised (silent partial result, undetectable by construction)",
+     "invariants_violated": [],
+     "mutator": null
+    },
+    {
+     "per_case_index": 49,
+     "task_id": "collegemsg-t4-first_reached_history-000",
+     "reason": "assumption-A2-exercised (silent partial result, undetectable by construction)",
+     "invariants_violated": [],
+     "mutator": null
+    },
+    {
+     "per_case_index": 50,
+     "task_id": "collegemsg-t1-busiest_bucket-044",
+     "reason": "assumption-A2-exercised (silent partial result, undetectable by construction)",
+     "invariants_violated": [],
+     "mutator": null
+    },
+    {
+     "per_case_index": 53,
+     "task_id": "collegemsg-t3-first_burst-009",
+     "reason": "assumption-A2-exercised (silent partial result, undetectable by construction)",
+     "invariants_violated": [],
+     "mutator": null
+    },
+    {
+     "per_case_index": 55,
+     "task_id": "collegemsg-t1-partners_window-019",
+     "reason": "assumption-A2-exercised (silent partial result, undetectable by construction)",
+     "invariants_violated": [],
+     "mutator": null
+    },
+    {
+     "per_case_index": 59,
+     "task_id": "collegemsg-t1-reach_count-058",
+     "reason": "assumption-A2-exercised (silent partial result, undetectable by construction)",
+     "invariants_violated": [],
+     "mutator": null
+    },
+    {
+     "per_case_index": 62,
+     "task_id": "collegemsg-t3-first_burst-003",
+     "reason": "assumption-A2-exercised (silent partial result, undetectable by construction)",
+     "invariants_violated": [],
+     "mutator": null
+    },
+    {
+     "per_case_index": 64,
+     "task_id": "collegemsg-t1-reach_first-022",
+     "reason": "assumption-A2-exercised (silent partial result, undetectable by construction)",
+     "invariants_violated": [],
+     "mutator": null
+    },
+    {
+     "per_case_index": 67,
+     "task_id": "collegemsg-probe-now-003",
+     "reason": "assumption-A2-exercised (silent partial result, undetectable by construction)",
+     "invariants_violated": [],
+     "mutator": null
+    },
+    {
+     "per_case_index": 73,
+     "task_id": "collegemsg-t1-reach_count-049",
+     "reason": "assumption-A2-exercised (silent partial result, undetectable by construction)",
+     "invariants_violated": [],
+     "mutator": null
+    },
+    {
+     "per_case_index": 78,
+     "task_id": "collegemsg-t1-burst_buckets-039",
+     "reason": "assumption-A2-exercised (silent partial result, undetectable by construction)",
+     "invariants_violated": [],
+     "mutator": null
+    },
+    {
+     "per_case_index": 80,
+     "task_id": "collegemsg-t1-reach_first-012",
+     "reason": "assumption-A2-exercised (silent partial result, undetectable by construction)",
+     "invariants_violated": [],
+     "mutator": null
+    },
+    {
+     "per_case_index": 81,
+     "task_id": "collegemsg-t1-earliest_arrival_at-007",
+     "reason": "assumption-A2-exercised (silent partial result, undetectable by construction)",
+     "invariants_violated": [],
+     "mutator": null
+    },
+    {
+     "per_case_index": 83,
+     "task_id": "collegemsg-t1-busiest_bucket-044",
+     "reason": "assumption-A2-exercised (silent partial result, undetectable by construction)",
+     "invariants_violated": [],
+     "mutator": null
+    },
+    {
+     "per_case_index": 85,
+     "task_id": "collegemsg-t3-first_burst-023",
+     "reason": "assumption-A2-exercised (silent partial result, undetectable by construction)",
+     "invariants_violated": [],
+     "mutator": null
+    },
+    {
+     "per_case_index": 89,
+     "task_id": "collegemsg-t1-partners_window-056",
+     "reason": "assumption-A2-exercised (silent partial result, undetectable by construction)",
+     "invariants_violated": [],
+     "mutator": null
+    },
+    {
+     "per_case_index": 98,
+     "task_id": "collegemsg-t3-first_burst-017",
+     "reason": "assumption-A2-exercised (silent partial result, undetectable by construction)",
+     "invariants_violated": [],
+     "mutator": null
+    }
+   ]
+  }
+ ],
+ "headline_silent_violation_count": 0,
+ "non_headline_silent_violation_count": 32
+}
