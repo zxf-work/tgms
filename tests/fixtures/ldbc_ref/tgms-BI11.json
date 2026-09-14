@@ -1,0 +1,50 @@
+{
+ "_note": "Hand-built canned fixture for test_ldbc_compare.py's file-based (compare_all) path -- not a captured SF1 run. Shapes match --emit-rows's format: schema is [name, tau] pairs (tau as tgms/tgir/types.py Column.to_json emits it), rows are LDBC-decoded (uid columns already plain ints). cityName's second row is deliberately NFD (decomposed) on this side and NFC (precomposed) on the reference side, to exercise the NFC-normalization rule end to end through compare_all().",
+ "arm": "scored-bi",
+ "columns": [
+  "person1Id",
+  "person2Id",
+  "cityName",
+  "sinceDate"
+ ],
+ "commit": "canned",
+ "host": "canned",
+ "params": {
+  "country": "Countryland"
+ },
+ "plan_digest": "canned-plan-digest",
+ "plan_id": "BI11",
+ "result_digest": "canned-tgms-bi11",
+ "rows": [
+  {
+   "cityName": "Countryville",
+   "person1Id": 10,
+   "person2Id": 20,
+   "sinceDate": 1000000
+  },
+  {
+   "cityName": "Otheréville",
+   "person1Id": 30,
+   "person2Id": 40,
+   "sinceDate": 2000000
+  }
+ ],
+ "schema": [
+  [
+   "person1Id",
+   "uid"
+  ],
+  [
+   "person2Id",
+   "uid"
+  ],
+  [
+   "cityName",
+   "str"
+  ],
+  [
+   "sinceDate",
+   "ts"
+  ]
+ ]
+}
