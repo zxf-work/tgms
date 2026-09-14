@@ -313,6 +313,69 @@ def _reads_duration(args: dict[str, Any]) -> bool:
 
 
 # ---------------------------------------------------------------------------
+# §2.7/2.8 — count_temporal_motifs, find_temporal_motif_instances
+# (rollout design 2026-09-14, §6 step 1)
+# ---------------------------------------------------------------------------
+
+def _motif_terms(args: dict[str, Any], sigma: Sigma) -> tuple[ScopeTerm, ...]:
+    """One derivation, two `LEAF_SCOPES` entries (`count_temporal_motifs`,
+    `find_temporal_motif_instances`).
+
+    **Reads.** `_events` (`ops_motifs.py:116-140`): with a `node_filter`,
+    `adapter.dense_ids(sorted(set(node_filter)))` (`:121`); then
+    `adapter.edges_columnar(vt_min=t_a, vt_max=t_b, touching_ids=…,
+    touching_both=ids is not None)` (`:127-130`) and the event mask
+    `vt_s ∈ [t_a, t_b)` (`:131`). `_EVENT_COLS` carries no `vid`, no `vt_e`
+    (`:113`).
+
+    **`T = ⊤` always and explicitly** — the matcher ignores `rel_type`
+    (`ops_motifs.py:8`), so no rel-type narrowing is available even though the
+    column is read and emitted.
+
+    **`I`.** `role="both"` on the read term is *narrower than* "an op
+    touching any filtered uid is in scope" and is nonetheless sound, because
+    the scan is asked for `touching_both=True` (`:130`): an edge with exactly
+    one endpoint in the filter never enters the event set. Unfiltered, `I = ⊤`
+    (as `E`) — a motif instance is a combination, not a neighbourhood, and a
+    single added event can complete an instance whose other edges were
+    already present (CE-3; two added events can jointly complete one, D4.3).
+
+    The existence pair, by contrast, uses `role="either"`: `dense_ids` is
+    called on the **whole** filter set and raises if *any* one of its uids is
+    unknown, so registering any single filter uid flips the outcome. That
+    asymmetry — `both` on the read term, `either` on the existence term — is
+    this derivation's one subtlety.
+
+    **`P = Pᵥ`**: rows expose `t = vt_s` and the scan projects no `vid`, no
+    `vt_e` — not carve-reachable (gate Appendix A.3, D9.0's own worked
+    illustration names `find_temporal_motif_instances`).
+
+    An empty `node_filter` (`[]`) is a legal argument (unlike a null one) and
+    means a constant-empty answer, since `dense_ids([])` never raises and no
+    edge can have both endpoints in the empty set; widened to the unfiltered
+    shape rather than risking a vacuous term (D13.5), same reasoning as
+    `aggregate_events`'s `_endpoint_targets`.
+    """
+    vt = _window_vt(args)
+    delta = args.get("delta")
+    if vt is None or not isinstance(delta, int):
+        return (TOP_TERM,)
+    node_filter = args.get("node_filter")
+    if node_filter is not None and not isinstance(node_filter, list):
+        return (TOP_TERM,)
+    if not node_filter:
+        return (ScopeTerm(kinds=K_EDGE, targets=_edge_target(), rel_types=TOP,
+                          vt=vt, vt_mode="event", props=P_VALUE),)
+    uids = tuple(sorted(set(node_filter)))
+    return (ScopeTerm(kinds=K_EDGE, targets=_edge_target(uids, "both"), rel_types=TOP,
+                      vt=vt, vt_mode="event", props=P_VALUE),) + _existence_terms(uids)
+
+
+count_temporal_motifs_terms = _motif_terms
+find_temporal_motif_instances_terms = _motif_terms
+
+
+# ---------------------------------------------------------------------------
 # the rollout table — one line per operator, and the rollback
 # ---------------------------------------------------------------------------
 
@@ -325,6 +388,8 @@ LEAF_SCOPES: dict[str, Derivation] = {
     "entity_history": entity_history_terms,
     "neighborhood_evolution": neighborhood_evolution_terms,
     "aggregate_events": aggregate_events_terms,
+    "count_temporal_motifs": count_temporal_motifs_terms,
+    "find_temporal_motif_instances": find_temporal_motif_instances_terms,
 }
 
 #: Does this operator's output bind **node-version** columns — a label, a
@@ -342,6 +407,10 @@ BINDS_NODE_VERSIONS: dict[str, Callable[[dict[str, Any]], bool]] = {
     # neighbours are uids read off edge endpoints; the series is a count
     "neighborhood_evolution": lambda args: False,
     "aggregate_events": _groups_on_label,
+    # motif rows are edge-event tuples (src/dst/t/eid/rel_type) — no node
+    # column is ever bound
+    "count_temporal_motifs": lambda args: False,
+    "find_temporal_motif_instances": lambda args: False,
 }
 
 
@@ -360,6 +429,7 @@ def terms_for(op: str, args: dict[str, Any], sigma: Sigma) -> tuple[ScopeTerm, .
 
 __all__ = [
     "BINDS_NODE_VERSIONS", "Derivation", "LEAF_SCOPES", "P_CARVE_REACHED",
-    "P_VALUE", "aggregate_events_terms", "entity_history_terms",
+    "P_VALUE", "aggregate_events_terms", "count_temporal_motifs_terms",
+    "entity_history_terms", "find_temporal_motif_instances_terms",
     "neighborhood_evolution_terms", "terms_for",
 ]
