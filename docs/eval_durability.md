@@ -124,3 +124,43 @@ encoded the wrong contract, and the instrument corrected its author.
   (gc's orphans are reclaimed by the trial's own follow-up gc — Q4 green).
 - **F6 — determinism everywhere, B1 dependent on truncation: CONFIRMED**;
   with the trim implemented, Q2 holds at every boundary including B1.
+
+## EXP-A1 — 10,000 seeded trials (2026-09-13)
+
+Lane A task A7 (OSDI plan): the 30-trial result above, scaled three orders
+of magnitude on the seeded/randomized workload generator (D-086 P0.7,
+`--seed`) rather than the fixed legacy workload, as a Slurm array on the
+iTiger cluster (20 tasks × 50 trials × 10 boundaries = **10,000 trials**,
+commit `cb0e6af`). Full protocol, host list, and the two infrastructure
+deviations forced by smoke-testing the campaign script (node-local
+`TMPDIR`, a `git` shim for `--json`'s commit stamp) are in
+`benchmarks/crash-v1/README.md`; the merged, schema-conformant record is
+`benchmarks/crash-v1/eval-crash-campaign-2026-09-13.json`
+(`scripts/crash_campaign.slurm` + `scripts/crash_campaign_merge.py`).
+Every number below is read from that record, not hand-typed.
+
+| boundary | trials | problems |
+|---|---:|---:|
+| `py_torn_wal_append` | 1000 | 0 |
+| `py_after_wal_fsync` | 1000 | 0 |
+| `py_before_engine_commit` | 1000 | 0 |
+| `after_seal` | 1000 | 0 |
+| `after_close_runs` | 1000 | 0 |
+| `after_dict` | 1000 | 0 |
+| `after_manifest` | 1000 | 0 |
+| `after_current` | 1000 | 0 |
+| `compact_before_install` | 1000 | 0 |
+| `gc_mid_delete` | 1000 | 0 |
+| **total** | **10000** | **0** |
+
+**Result: 10,000/10,000 trials clean at every boundary, on every one of
+Q1–Q4.** No failure to report — the campaign that could have surfaced a
+scale-dependent or randomization-dependent crash/recovery defect (a rare
+interleaving the 30-trial fixed-workload run had no chance to hit) did
+not find one. This raises confidence in the commit-protocol's durability
+under the ten instrumented boundaries at this scale; it is not evidence
+about boundaries, concurrency shapes, or failure modes (concurrent
+writers, multi-process crashes, disk-level corruption) this harness does
+not exercise. Wall-clock: 16m1s for the full array (job 210821, `--array
+=0-19%6`, itiger01/itiger02); result_digest and file sha256 are in
+`benchmarks/crash-v1/README.md`.
