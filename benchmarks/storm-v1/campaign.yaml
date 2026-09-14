@@ -50,3 +50,69 @@ falsifiers:
   c: wall-clock avoided recomputation <= 0 in any N=1000 cell
   d: P5 speedup < 1.0 on synth-iv-60k at N=1000
   e: a coarse baseline (entity-touch or window-overlap) matching tgms-L1 on both false-fresh and wall-clock cost in any cell
+
+# --- addendum_1 (2026-09-15, coordinator): the grid above was measured infeasible
+# before any submission (292.6 s/batch at N=1,000 on itiger07 → 3.25 h/task,
+# 9.5 days at %6). This block supersedes `cells`/`r18_probe` for the run of
+# record; gates, predictions and falsifiers are unchanged. Pre-registered
+# before submission; the merge script stamps records with `addendum_id`.
+addendum_1:
+  id: storm-v1-addendum-1
+  reason: measured per-task cost (job 211090, N=1000, c1, 5 batches, 1462.9 s) makes the frozen grid ~9.5 days at %6; cap is 24 h
+  cells:
+    stores: [synth-iv-60k, collegemsg]
+    mixes: [c1, c3, c4]                   # c2 dropped: bracketed by c1 and c3
+    ages: [none, deep]                    # recent/hours/days dropped: on these stores they are within a step of `none` (SNAP) or covered by `deep` on the interval store
+    n_artifacts: [1000]
+    seeds: [0, 1, 2]
+    batches_per_cell: 20
+    arms: [global-recompute, entity-touch, window-overlap, row-touch, tgms-L0, tgms-L1]
+    measure_ttf: [end-to-end]             # end-to-end records also carry the sum-of-parts model, so one mode yields both
+  r18_probe:
+    store: synth-iv-60k
+    mixes: [c1]                           # c4 at N=10,000 deferred: projected >32 h/task linear and super-linear by design
+    n_artifacts: 10000
+    seeds: [0]
+    batches_per_cell: 5
+    allow_r18_trip: true
+    wall_cap_h: 12                        # partial record kept if the cap hits
+  dag_phase: unchanged
+  projected_wall_h_at_pct6: 21            # 36 main tasks × ~3.2 h (end-to-end margin 2×) + probe ~4 h + DAG 6.5 task-h
+  predictions_scope: P1–P5, P7 scored on the reduced grid; P6 (speedup growth with N) scored on the probe vs the N=1,000 c1 seed-0 cell if the probe finishes
+
+# --- addendum_2 (2026-09-14, coordinator): the v1 dag_phase record (this
+# file's own `dag_phase` block, run under addendum_1) scored G-S2 FAILED
+# and triggered falsifier (b) as frozen: 20/40 cells (every seed-0 cell,
+# regardless of shape/depth/fanout) reported false_safe_count=3, always the
+# same three storm-population artifacts, always sharing the DAG root's own
+# corrected uid. Confirmed by the coordinator against all 40 v1 records: no
+# DAG node is ever false-safe; the three false-safe artifacts depend on the
+# corrected uid only through their own query footprint, not through a
+# declared `parents` edge a k-hop cascade can walk. This is NOT a harness
+# bug -- the registry-wide false-safe oracle is the correct definition, and
+# an edges-only cascade cannot be expected to reach a footprint-only
+# dependent. The v1 record stands as the run of record for G-S2; it is not
+# rerun or edited. This block pre-registers a v2 characterization run
+# (`--dag-seed-from-affected`, additive, default off) before it is
+# submitted.
+addendum_2:
+  id: storm-v1-addendum-2
+  reason: v1's G-S2 FAIL (20/40 cells, all seed 0) is fully diagnosed as an edges-only cascade missing footprint-only dependents, not a defect in cascade() or the oracle; v2 characterizes whether seeding the walk from tgms.artifact.lookup.affected()'s footprint-based answer (not just the declared-edge root) closes exactly that gap
+  mechanism: cascade is additionally seeded from every artifact in affected()'s answer for the DAG-root correction batch (the same footprint pre-filter the tgms-*/entity-touch/window-overlap storm arms already use), each seed refreshed once and its own declared parents edges walked for the same k; the registry-wide false-safe oracle is unchanged
+  dag_phase_v2:
+    store: synth-iv-60k
+    shapes: [chain, tree, diamond, layered, power-law]
+    depth: [4, 16]
+    fanout: [2, 10]
+    cascade_k: depth
+    seeds: [0, 1]
+    seed_from_affected: true
+  prediction: registry-wide false-safe = 0 in 40/40; DAG-node false-safe 0; nodes_visited unchanged in seed-1 cells and +3 in seed-0 cells; false-fresh 0/40
+  # NOTE (agent, not the coordinator): the coordinator's message named this
+  # prediction verbatim but referred to a "refuted-if" condition already
+  # written in their own internal addendum text without pasting it here.
+  # The line below is this agent's own best-effort restatement of that
+  # prediction's natural negation, offered for the coordinator to confirm
+  # or replace with their actual wording before v2 is scored.
+  refuted_if_agent_draft_pending_coordinator_confirmation: any v2 cell (same 40-cell grid) still shows nonzero registry-wide false-safe; OR any false-safe artifact is itself a DAG node; OR any seed-1 cell's nodes_visited differs from its v1 value; OR a seed-0 cell's nodes_visited does not increase by exactly 3 over its v1 value; OR tgms-L0/tgms-L1 false-fresh is nonzero in any of the 40 cells
+  status: pre-registered, not yet submitted (main grid + R-18 hold the concurrency slots; coordinator gates submission)

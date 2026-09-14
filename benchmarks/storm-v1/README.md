@@ -166,6 +166,79 @@ anywhere; (b) any false-safe; (c) wall-clock avoided recomputation <= 0 at
 some (N, log size); (d) TTF speedup < 1x on the largest store; (e) a coarse
 baseline matching TGMS on false-fresh *and* cost at some cell.
 
+## DAG phase — run of record (addendum-1's grid, unchanged from the C6
+freeze; 40/40 cells: 5 shapes × depth {4, 16} × fanout {2, 10} × seed {0, 1})
+
+**Gate result: G-S2_false_safe FAILED.** 20/40 cells (every seed=0 cell,
+independent of shape/depth/fanout) report `false_safe_count=3`; all 20
+seed=1 cells report 0. Falsifier (b) ("any false-safe in the dag phase at
+`cascade_k == depth`") **triggered** — `cascade_k == depth` holds in all
+40/40 cells. `tgms-L0`/`tgms-L1` false-fresh is 0/40 in every cell (the
+oracle-falsifier check: every artifact the oracle found changed was also
+found by both TGMS arms, digest-compared correctly, with no exceptions).
+
+**Mechanism (confirmed, not a harness bug).** Every seed=0 cell assigns the
+DAG root the identical uid (`__inj000780081`) and reports the identical
+false-safe set (`storm-000026`, `storm-000051`, `storm-000063`) regardless
+of DAG shape — these are artifacts from the incidental default storm-batch
+population each DAG task registers before building its DAG (`--n-artifacts
+100 --batches 20`, no `--mix`/`--age`), not DAG nodes, and they depend on
+the corrected uid only through their own query footprint, never through a
+declared `parents` edge. `cascade`'s false-safe oracle is registry-wide by
+design (§4/§8-G-S2) and is therefore correct to flag them; a k-hop walk
+that only follows declared edges structurally cannot reach an artifact
+whose dependency is footprint-only, at any `k`.
+
+**Per (shape, depth, fanout), seed 0 / seed 1:**
+
+| shape/depth/fanout | nodes_visited | false_safe | quiescent | med hop latency (ms) | cascade wall_s | tgms-L0 ttf_p50 (ms) | tgms-L1 ttf_p50 (ms) |
+|---|---:|---:|---|---:|---:|---:|---:|
+| chain/4/2 | 3 / 3 | 3 / 0 | T / T | 120.3 / 134.8 | 13.6 / 13.4 | 14481.8 / 15009.8 | 14461.8 / 14983.8 |
+| chain/4/10 | 3 / 3 | 3 / 0 | T / T | 134.0 / 135.9 | 14.3 / 13.8 | 15082.9 / 15405.1 | 15087.7 / 15400.4 |
+| chain/16/2 | 15 / 15 | 3 / 0 | T / T | 134.8 / 135.2 | 17.4 / 17.2 | 14857.0 / 15567.5 | 14872.0 / 15563.4 |
+| chain/16/10 | 15 / 15 | 3 / 0 | T / T | 149.6 / 150.2 | 19.6 / 19.1 | 17021.2 / 17477.7 | 17024.5 / 17479.4 |
+| tree/4/2 | 14 / 14 | 3 / 0 | T / T | 394.2 / 398.6 | 17.0 / 16.5 | 14725.4 / 15076.0 | 14742.7 / 15091.8 |
+| tree/4/10 | 1110 / 1110 | 3 / 0 | T / T | 7364.9 / 7380.4 | 310.9 / 311.7 | 15201.7 / 15657.7 | 15224.7 / 15663.7 |
+| tree/16/2† | 3999 / 3999 | 3 / 0 | T / T | 6901.9 / 5870.7 | 1163.2 / 995.6 | 16395.4 / 15154.2 | 16394.1 / 15227.7 |
+| tree/16/10† | 3999 / 3999 | 3 / 0 | T / T | 12343.2 / 12294.5 | 1009.2 / 1002.7 | 14737.5 / 15202.2 | 14737.4 / 15196.5 |
+| diamond/4/2 | 6 / 6 | 3 / 0 | F / F | 201.6 / 206.6 | 15.3 / 14.9 | 15337.7 / 15730.8 | 15340.2 / 15716.4 |
+| diamond/4/10 | 22 / 22 | 3 / 0 | F / F | 745.2 / 754.4 | 19.7 / 19.1 | 15203.7 / 15626.3 | 15205.6 / 15622.9 |
+| diamond/16/2 | 24 / 24 | 3 / 0 | F / F | 206.7 / 211.0 | 20.2 / 20.2 | 15417.5 / 15827.1 | 15416.3 / 15811.1 |
+| diamond/16/10 | 88 / 88 | 3 / 0 | F / F | 787.9 / 717.0 | 39.8 / 36.0 | 16471.2 / 15205.5 | 16514.7 / 15197.0 |
+| layered/4/2 | 6 / 6 | 3 / 0 | T / T | 263.7 / 272.2 | 15.0 / 15.0 | 14744.4 / 15590.6 | 14739.7 / 15597.6 |
+| layered/4/10 | 30 / 30 | 3 / 0 | T / T | 1369.7 / 1311.7 | 24.5 / 22.9 | 15258.5 / 15150.4 | 15248.4 / 15158.6 |
+| layered/16/2 | 30 / 30 | 3 / 0 | T / T | 264.2 / 267.3 | 21.5 / 21.3 | 14806.0 / 15304.2 | 14830.2 / 15339.2 |
+| layered/16/10 | 150 / 150 | 3 / 0 | T / T | 1340.9 / 1378.6 | 56.3 / 57.0 | 15143.1 / 15775.2 | 15139.6 / 15798.4 |
+| power-law/4/2 | 7 / 7 | 3 / 0 | T / T | 418.4 / 132.2 | 15.9 / 14.6 | 15469.3 / 15113.7 | 15481.3 / 15089.4 |
+| power-law/4/10 | 39 / 39 | 3 / 0 | T / T | 391.7 / 422.3 | 23.8 / 24.3 | 14900.1 / 15853.2 | 14912.8 / 15831.7 |
+| power-law/16/2 | 31 / 31 | 3 / 0 | T / T | 1114.2 / 1847.6 | 22.3 / 21.1 | 15378.6 / 15175.8 | 15366.0 / 15182.1 |
+| power-law/16/10 | 159 / 159 | 3 / 0 | T / T | 6133.9 / 6933.9 | 54.8 / 56.2 | 14651.9 / 15585.4 | 14642.3 / 15598.1 |
+
+†`truncated=True` (`DEFAULT_MAX_NODES=4000` safety valve hit). tgms-L0/L1
+TTF columns come from each task's own incidental storm-batch population
+(identical parameters for every DAG cell) — noise across configs, not a
+designed sweep, reported since it is the only per-arm TTF these tasks
+carry. Seeds agree perfectly on `nodes_visited`/`quiescent` in every
+combo; the only disagreement is `false_safe_count`, fully explained above.
+
+**Records**: `storm-campaign-dag-2026-09.json` (merged, provenance job ids
+211321/211503/211504), `storm-campaign-dag-2026-09-rows.jsonl` (per-task,
+verbatim), `dag-records-40-tasks.tar.gz` (raw per-task record directories).
+`scripts/check_result_manifest.py` passes. **Not yet committed** — held in
+the worktree pending the coordinator's scoring of G-S2/falsifier (b).
+
+**Addendum-2 (pre-registered, not yet submitted).** `--dag-seed-from-affected`
+(additive to `scripts/bench_correction_storm.py` / `tgms/eval/storm_dag.py`,
+default off, v1 walk byte-identical when absent) seeds the cascade from
+every artifact `tgms.artifact.lookup.affected()` finds for the DAG-root
+correction batch — the same footprint pre-filter the `tgms-*`/
+`entity-touch`/`window-overlap` storm arms already use — not just the
+declared-edge root, then walks each seed's own `parents` edges for the same
+`k`; the registry-wide false-safe oracle is unchanged. Full terms in
+`campaign.yaml`'s `addendum_2` block. Submission is gated on the
+coordinator (the main grid and R-18 probe currently hold the cluster's
+concurrency slots).
+
 ## Regenerating (once the C6 freeze creates `campaign.yaml`/`FREEZE_BINDING`)
 
 ```sh
@@ -183,5 +256,8 @@ python scripts/storm_campaign_merge.py \
 python scripts/check_result_manifest.py benchmarks/storm-v1/storm-campaign-<date>.json
 ```
 
-No experiments were run to produce this file — every number above is
-`_(blank)_` by design; this is infrastructure only.
+The C6 pre-registration table above is still `_(blank)_` by design — the
+main correction-storm cell grid and R-18 probe (addendum-1) are still
+running on iTiger as of this writing. The DAG phase (addendum-1's own
+grid) has completed and its results are reported above, with G-S2/
+falsifier (b) stated as measured outcomes for the coordinator to score.

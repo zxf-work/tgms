@@ -50,6 +50,8 @@ from typing import Any
 ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT))
 
+from tgms.artifact.lookup import affected  # noqa: E402
+from tgms.artifact.record import ArtifactRecord  # noqa: E402
 from tgms.artifact.refresh import refresh  # noqa: E402
 from tgms.eval.storm import (  # noqa: E402
     ARMS, AGE_BANDS, DEGREE_BUCKETS, MIXES, RANGE_WIDTHS, TTF_MODES, Storm, build_mix, summarize,
@@ -130,7 +132,7 @@ def _print_table(store_label: str, summary: dict[str, Any]) -> None:
             print(f"** G-S1 VIOLATION: {arm} false_fresh={row['false_fresh']} (must be 0) **")
 
 
-def _correct_uid(store: Any, uid: str, *, seq: int) -> None:
+def _correct_uid(store: Any, uid: str, *, seq: int) -> dict[str, Any]:
     """One deterministic, clock-free `correct` op against `uid` — the
     `demo_propagation.py`/`tests/test_artifact_refresh.py` `_apply` idiom,
     restated here (this script's own copy) so C5's DAG phase does not need
@@ -144,7 +146,14 @@ def _correct_uid(store: Any, uid: str, *, seq: int) -> None:
     `new-identity` placement's `__inj...` uid), whose believed interval is
     not `[0, 50)`. The overlapping interval is read off `uid`'s own believed
     versions (`corrections.py::_believed_nodes`, the same primitive `storm.py`'s
-    age axis uses) rather than assumed, so this never guesses wrong."""
+    age axis uses) rather than assumed, so this never guesses wrong.
+
+    Returns the logged batch as a plain dict (`{"batch_id", "tt", "ops"}`,
+    `tgms.tgir.footprint.footprints_of_batch`'s own expected shape) —
+    storm-v1 addendum-2's `--dag-seed-from-affected` needs it to call
+    `tgms.artifact.lookup.affected(batch, registry)` for exactly the batch
+    this correction produced. Callers that don't pass the new flag simply
+    ignore the return value, so this is additive."""
     believed = _believed_nodes(store, uid)
     if not believed:
         raise RuntimeError(f"no believed node version for DAG root uid {uid!r} to correct")
@@ -171,6 +180,7 @@ def _correct_uid(store: Any, uid: str, *, seq: int) -> None:
     if note_cursor is not None:
         note_cursor(end_offset, store._chain)
     store.adapter.commit()
+    return {"batch_id": _batch_id, "tt": tt, "ops": ops}
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -212,6 +222,19 @@ def main(argv: list[str] | None = None) -> int:
     ap.add_argument("--dag-depth", type=int, default=4)
     ap.add_argument("--dag-fanout", type=int, default=3)
     ap.add_argument("--dag-cascade-k", type=int, default=4)
+    # storm-v1 addendum-2 (additive; default off, v1 walk byte-identical when
+    # absent): seed the cascade from every artifact in the footprint-based
+    # `affected()` set of the DAG-root correction batch, not just the root,
+    # then walk declared `parents` edges from each seed for the same k --
+    # Addendum 1 found that a declared-edge cascade cannot reach an artifact
+    # that depends on the corrected data only through its query footprint
+    # (not a harness bug: the registry-wide false-safe oracle is correct,
+    # a footprint-only dependent is a real miss for an edges-only cascade).
+    ap.add_argument("--dag-seed-from-affected", action="store_true",
+                    help="seed the dag cascade from tgms.artifact.lookup.affected()'s "
+                         "footprint-based answer for the root correction batch, not just "
+                         "the root (storm-v1 addendum-2); default off, byte-identical to "
+                         "the root-only walk when absent")
     # storm-v1 addendum-1 provenance stamps (additive; no effect on measurement) --
     # a campaign.yaml addendum supersedes the frozen grid for a run of record, and
     # the addendum's own text says every record must carry its id + the
@@ -305,13 +328,24 @@ def main(argv: list[str] | None = None) -> int:
         dag_info = build_dag(storm.registry, storm.store, args.dag_shape, args.dag_depth,
                              args.dag_fanout, args.seed, name_prefix=f"storm-dag-{store_label}")
         root = dag_info.nodes[0]
-        _correct_uid(storm.store, root.uid, seq=args.seed)
+        root_batch = _correct_uid(storm.store, root.uid, seq=args.seed)
         root_record = storm.registry.current(root.name)
         root1 = refresh(root_record, _handle_for(root_record), storm.store, storm.registry)
-        cascade_result = cascade(storm.registry, storm.store, root1.id, args.dag_cascade_k)
+        extra_seeds: list[ArtifactRecord] = []
+        if args.dag_seed_from_affected:
+            # storm-v1 addendum-2: the same footprint-based `affected()` the
+            # tgms-*/entity-touch/window-overlap arms already use, over the
+            # exact batch `_correct_uid` just applied -- every survivor
+            # other than the root itself (already the primary seed above)
+            # becomes an extra cascade seed.
+            lookup_result = affected(root_batch, storm.registry)
+            extra_seeds = [r for r in lookup_result.affected if r.name != root.name]
+        cascade_result = cascade(storm.registry, storm.store, root1.id, args.dag_cascade_k,
+                                 extra_seeds=extra_seeds)
         dag_payload = {
             "shape": args.dag_shape, "depth": args.dag_depth, "fanout": args.dag_fanout,
             "cascade_k": args.dag_cascade_k, "root": root.name, "root_uid": root.uid,
+            "seed_from_affected": args.dag_seed_from_affected,
             "info": dag_info.to_json(), "cascade": cascade_result.to_json(),
             "wall_s": time.time() - t_dag,
         }
@@ -352,6 +386,7 @@ def main(argv: list[str] | None = None) -> int:
                   "allow_r18_trip": args.allow_r18_trip, "interval_vt": interval_vt,
                   "dag_shape": args.dag_shape, "dag_depth": args.dag_depth,
                   "dag_fanout": args.dag_fanout, "dag_cascade_k": args.dag_cascade_k,
+                  "dag_seed_from_affected": args.dag_seed_from_affected,
                   "addendum_id": args.addendum_id, "freeze_sha256": args.freeze_sha256,
                   "wall_cap_s": args.wall_cap_s, "wall_capped": wall_capped},
         "seed": {"value": args.seed},
