@@ -62,18 +62,20 @@ def test_flipped_segment_byte_is_detected_via_verify(store):
 
 
 def test_deleted_current_is_detected_via_open(store):
+    """A deleted `CURRENT` used to make the engine treat a populated store
+    as freshly initialized (empty) rather than refusing to open — a real
+    finding (docs/eval_durability.md), detected only when a fixed query
+    against a known uid came back empty. `NativeStore::open` now refuses
+    directly: a populated `manifests/`, `seg/`, or dictionary log with no
+    `CURRENT` is corruption, not an empty store, so detection happens at
+    open and the fixed queries never even run."""
     store_dir, build_meta, baseline = store
     candidates = ec.FILE_CLASSES["current"](store_dir)
     mut_info = ec.apply_mutation("current", "delete_file", candidates, __import__("random").Random(1), store_dir)
     (verdict, reason), obs = _classify(store_dir, mut_info, build_meta, baseline, "current")
-    # A deleted CURRENT makes the engine treat the store as freshly
-    # initialized (empty) rather than refusing to open — a real, worth-
-    # documenting finding (docs/eval_durability.md) — so detection here
-    # comes from the fixed queries refusing against an unexpectedly empty
-    # store, not from the open call itself.
     assert verdict == "DETECTED", reason
-    assert obs["open_ok"] or obs["query_errors"], (
-        "either open must refuse, or the now-empty store must refuse the fixed queries")
+    assert not obs["open_ok"], "a populated store missing CURRENT must refuse to open"
+    assert "CURRENT" in (obs["open_error"] or ""), obs["open_error"]
 
 
 def test_tampered_artifacts_jsonl_is_detected_via_artifact_check(store):

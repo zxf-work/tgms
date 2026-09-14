@@ -192,6 +192,23 @@ def test_current_pointing_past_the_manifests_refuses_to_open(tmp_path):
         reopen(root)
 
 
+def test_current_deleted_refuses_to_open_read_write_and_read_only(tmp_path):
+    """The corruption-sweep finding this test guards: deleting `CURRENT`
+    from a populated store used to make `open` treat the directory as fresh
+    and empty, so every query silently returned no rows instead of failing.
+    Both `tgms.open` modes must now refuse, naming CURRENT."""
+    import tgms
+
+    root = tmp_path / "s"
+    build(root)
+    (native_dir(root) / "CURRENT").unlink()
+
+    for read_only in (False, True):
+        with pytest.raises(TgmsError) as excinfo:
+            tgms.open(root, backend="native", read_only=read_only)
+        assert "CURRENT" in str(excinfo.value), excinfo.value
+
+
 # --- interrupted writes must leave the previous generation intact -------- #
 
 
