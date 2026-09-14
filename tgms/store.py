@@ -74,13 +74,15 @@ class Store:
             # rather than merely documented.
             self._acquire_writer_lock()
             self._recover()
-        # invariant 1.5, extended to readers: this unconditional full-log
-        # scan runs before `_seed_frontier` even for a read-only handle, so
-        # it must tolerate the same in-flight-write tail that handle's own
-        # scan does — never for a writer, which has already trimmed any
-        # genuinely torn tail in `_recover()` above.
+        #: Invariant 1.5, extended to readers — computed once, up front, and
+        #: reused by every full-log scan this `__init__` runs before it ever
+        #: reaches `_seed_frontier`. See `_reader_torn_tail_floor`'s own
+        #: docstring for what this offset means and why it is `None` far
+        #: more often than "any read-only handle".
+        self._reader_torn_tail_floor: int | None = self._compute_reader_torn_tail_floor()
         self.clock = HybridLogicalClock(
-            last_tt=self.eventlog.last_tt(tolerate_torn_tail=self.read_only))
+            last_tt=self.eventlog.last_tt(
+                tolerate_torn_tail_from=self._reader_torn_tail_floor))
         #: False when this handle could not establish its frontier against the
         #: **applied** prefix — see `_seed_frontier`. Rides into the dependency
         #: scope as `tt_q_verified`, never as a flat envelope key.
@@ -124,7 +126,7 @@ class Store:
                 return
         self.frontier_verified = False
         self.adapter.note_frontier_tt(
-            self.eventlog.last_tt(tolerate_torn_tail=self.read_only))
+            self.eventlog.last_tt(tolerate_torn_tail_from=self._reader_torn_tail_floor))
 
     def _tt_at_offset(self, offset: int) -> int:
         """The tt of the last log record ending at or before `offset` (0 for an
@@ -134,19 +136,95 @@ class Store:
         (`end > offset` is only known once the next record's end is read) —
         for a read-only handle that next record can be one a live writer is
         mid-append on, which (invariant 1.5, extended to readers) is an
-        in-flight write, not corruption, so `tolerate_torn_tail` is passed
-        exactly when this handle is read-only. A writer reaches this only
-        after `_recover()` has already trimmed any genuinely torn tail, so
-        it keeps the strict reading — anything still torn there is
-        corruption.
+        in-flight write, not corruption, so `_reader_torn_tail_floor` is
+        threaded through. A writer reaches this only after `_recover()` has
+        already trimmed any genuinely torn tail, so it keeps the strict
+        reading (`_reader_torn_tail_floor` is `None` for a writer) —
+        anything still torn there is corruption.
         """
         tt = 0
         for batch, end, _raw in self.eventlog.batches_from(
-                0, tolerate_torn_tail=self.read_only):
+                0, tolerate_torn_tail_from=self._reader_torn_tail_floor):
             if end > offset:
                 break
             tt = batch["tt"]
         return tt
+
+    def _compute_reader_torn_tail_floor(self) -> int | None:
+        """The manifest's applied event-log offset — the same value
+        `trim_torn_tail(applied_offset)` uses for a writer — for a
+        *read-only* handle's torn-tail tolerance (invariant 1.5's reader
+        clause). Passed to `EventLog.batches_from`'s `tolerate_torn_tail_from`
+        by every full-log scan this handle runs; `None` withholds tolerance
+        entirely, so any tail defect raises exactly as before this
+        invariant was extended to readers. `None` in every one of these
+        cases:
+
+        * a writer (`not self.read_only`) — recovery already trims a
+          genuinely torn tail in `_recover()`, run above, before this is
+          ever computed; anything still torn past that point is corruption;
+        * no cursor to trust — a backend that keeps none, or a legacy store
+          (`chain == ""`) that predates cursors; there is then no applied
+          offset to compare against, so nothing is guessed;
+        * **no writer process could possibly be mid-append right now.** A
+          torn final record is indistinguishable, by framing alone, from
+          bytes a corruption sweep appended to a store nothing is writing
+          to any more (`tests/test_eval_corruption.py::
+          test_torn_event_log_tail_is_detected_even_read_only`: `append_
+          garbage` onto a *closed* store's log produces the exact same
+          shape — unparseable, no trailing newline, run to end-of-file, and
+          starting exactly at the manifest's own applied offset — as a live
+          writer's not-yet-finished record). The one signal that tells them
+          apart is whether any process actually holds `writer.lock`
+          (`_acquire_writer_lock`); `_writer_lock_is_held` probes it with a
+          non-blocking `flock`, released immediately, since a reader never
+          holds this lock itself. A torn tail found while the lock is free
+          is not an in-flight write — it is corruption, and stays refused.
+
+        The offset comparison in `batches_from` still matters even when a
+        writer *is* active: it keeps a torn record that starts *before*
+        the applied offset — damage to a record some generation already
+        applied — refused as corruption regardless of whether the file's
+        current end happens to line up with it (e.g. a tamper that also
+        truncated everything after the record it damaged, faking an
+        in-flight tail's shape).
+        """
+        if not self.read_only:
+            return None
+        cursor = getattr(self.adapter, "event_cursor", None)
+        if cursor is None:
+            return None
+        offset, chain = cursor()
+        if not chain:
+            return None
+        if not self._writer_lock_is_held():
+            return None
+        return int(offset)
+
+    def _writer_lock_is_held(self) -> bool:
+        """Best-effort, non-blocking probe of `<store>/writer.lock`: True
+        iff some *other* process currently holds the OS-level single-writer
+        lock (`_acquire_writer_lock`). A reader never takes this lock
+        itself (only `read_only=False` does, above), so a probe that
+        acquires it uncontended proves no writer is running right now —
+        released immediately, since this handle has no business holding
+        it — and one that fails proves a writer is.
+        """
+        lock_path = self.path / WRITER_LOCK_NAME
+        if not lock_path.exists():
+            return False
+        import fcntl
+
+        fh = io.open(lock_path, "a+")
+        try:
+            fcntl.flock(fh.fileno(), fcntl.LOCK_EX | fcntl.LOCK_NB)
+        except OSError:
+            return True
+        else:
+            fcntl.flock(fh.fileno(), fcntl.LOCK_UN)
+            return False
+        finally:
+            fh.close()
 
     def frontier_tt(self) -> int:
         """The belief-time frontier this handle serves reads from."""

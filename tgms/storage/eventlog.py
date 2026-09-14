@@ -96,9 +96,10 @@ class EventLog:
     def size(self) -> int:
         return self.path.stat().st_size
 
-    def batches(self, *, tolerate_torn_tail: bool = False) -> Iterator[dict[str, Any]]:
+    def batches(self, *, tolerate_torn_tail_from: int | None = None
+               ) -> Iterator[dict[str, Any]]:
         for batch, _end, _raw in self.batches_from(
-                0, tolerate_torn_tail=tolerate_torn_tail):
+                0, tolerate_torn_tail_from=tolerate_torn_tail_from):
             yield batch
 
     def header(self) -> dict[str, Any]:
@@ -168,7 +169,7 @@ class EventLog:
                         os.fsync(w.fileno())
                     return start
 
-    def batches_from(self, offset: int, *, tolerate_torn_tail: bool = False
+    def batches_from(self, offset: int, *, tolerate_torn_tail_from: int | None = None
                      ) -> Iterator[tuple[dict[str, Any], int, bytes]]:
         """Batches whose records start at or after `offset`, as
         `(batch, end_offset, record_bytes)`.
@@ -178,26 +179,34 @@ class EventLog:
         recorded — landing mid-record is corruption, and the JSON parse
         below says so rather than resynchronizing silently.
 
-        `tolerate_torn_tail` (invariant 1.5, extended to readers): when a
-        record fails to parse or is missing its terminating newline, and
-        that record's bytes run all the way to the file's current size,
-        treat it as an in-flight write that has not committed yet rather
-        than corruption — stop iterating *before* it, exactly as if it were
-        not there yet, so the caller's cursor lands at the start of that
-        record and a later re-read observes the completed one once the
-        writer's `append()` (one `write()` call, fsynced before it returns)
-        finishes. "Current size" is checked fresh — `seek(0, 2)` at the
-        moment the defect is found — rather than inferred from this read
-        alone, since the writer may finish the record between the read that
-        found the defect and this check. A defect anywhere *before* the
-        file's end is still corruption and still raises, torn or not: only
-        the tail of the file, past every committed record, is ever
-        forgiven. Only a reader that will not run recovery
-        (`Store.__init__(read_only=True)`) may pass this — a writer trims a
-        genuinely torn tail during `_recover` (`trim_torn_tail`, D-086)
-        before ever reaching a live `batches_from` call, so anything still
-        torn at that point is corruption, not an in-flight write, and must
-        keep raising.
+        `tolerate_torn_tail_from` (invariant 1.5, extended to readers): when
+        a record fails to parse or is missing its terminating newline, its
+        bytes run all the way to the file's current size ("current size" is
+        checked fresh — `seek(0, 2)` at the moment the defect is found,
+        rather than inferred from this read alone, since the writer may
+        finish the record between the read that found the defect and this
+        check), *and* the record's own start offset is at or past
+        `tolerate_torn_tail_from`, treat it as an in-flight write that has
+        not committed yet rather than corruption — stop iterating *before*
+        it, so the caller's cursor lands at the start of that record and a
+        later re-read observes the completed one once the writer's
+        `append()` (one `write()` call, fsynced before it returns)
+        finishes. `tolerate_torn_tail_from` is meant to be the manifest's
+        own applied event-log offset — the same value
+        `trim_torn_tail(applied_offset)` uses for a writer — so a torn
+        record starting *before* it is damage to a record some generation
+        has already applied, never forgiven regardless of where the file
+        now ends: an attacker (or a corruption sweep) that truncates
+        trailing bytes after tampering with an old record cannot fake an
+        in-flight tail merely by making the damage land at the new
+        end-of-file. `None` (the default) withholds tolerance entirely, so
+        any tail defect raises — the pre-extension, strict reading. Only
+        `Store.__init__`'s read-only path ever passes a non-`None` value,
+        and only while a writer could plausibly still be appending (see
+        `Store._reader_torn_tail_floor`) — a writer trims a genuinely torn
+        tail during `_recover` (`trim_torn_tail`, D-086) before ever
+        reaching a live `batches_from` call, so anything still torn there
+        is corruption, not an in-flight write, and must keep raising.
         """
         with open(self.path, "rb") as f:
             header = f.readline()  # header record, outside the chain
@@ -224,7 +233,8 @@ class EventLog:
                     except json.JSONDecodeError as e:
                         parse_error = e
                 if parse_error is not None or not raw.endswith(b"\n"):
-                    if tolerate_torn_tail:
+                    if (tolerate_torn_tail_from is not None
+                            and start >= tolerate_torn_tail_from):
                         size = f.seek(0, 2)
                         if end >= size:
                             return  # in-flight write, not yet committed
@@ -265,16 +275,16 @@ class EventLog:
             f"{self.path} (records end at {pos})"
         )
 
-    def last_tt(self, *, tolerate_torn_tail: bool = False) -> int:
+    def last_tt(self, *, tolerate_torn_tail_from: int | None = None) -> int:
         """Transaction time of the last batch (0 if empty).
 
         Linear scan; fine at research scale. TODO(phase3): tail-seek.
 
-        `tolerate_torn_tail`: forwarded to `batches_from` — see there. Only
-        `Store.__init__`'s read-only path passes it.
+        `tolerate_torn_tail_from`: forwarded to `batches_from` — see there.
+        Only `Store.__init__`'s read-only path passes a non-`None` value.
         """
         last = 0
-        for batch in self.batches(tolerate_torn_tail=tolerate_torn_tail):
+        for batch in self.batches(tolerate_torn_tail_from=tolerate_torn_tail_from):
             last = batch["tt"]
         return last
 

@@ -244,16 +244,36 @@ prints the same remedy: rebuild from the event log with `tgms replay`. Since
   `StateError` if that scan landed on a torn final record a live writer's
   `append()` was still fsyncing (CI run 34852755086, first observed on
   `tests/test_concurrency.py`'s readers-throughout-a-write-run test).
-  `EventLog.batches_from(offset, tolerate_torn_tail=True)` — passed only by
-  the read-only open/replay path, never by a writer — now stops before an
-  unparseable or newline-missing record when its bytes run to the file's
-  current size (checked fresh at the moment the defect is found), leaving
-  the reader's cursor at the start of that record instead of raising; a
-  defect anywhere else in the log, or the writer's own replay, still raises
-  exactly as before. `Registry`'s read path (`read_only=True`) gets the
-  same parameter and the same rule for `artifacts.jsonl`, since a registry
-  reader can race the poller's `append()` the same way. See
-  `docs/system_invariants.md` §1.5 and `tests/test_reader_torn_tail.py`.
+  **Refined the same day:** the first fix tolerated *any* torn final
+  record and regressed `tests/test_eval_corruption.py::
+  test_torn_event_log_tail_is_detected_even_read_only` — a corruption
+  sweep's `append_garbage` mutation onto a *closed* store produces bytes
+  indistinguishable, by framing alone, from a live writer's not-yet-
+  finished record (both are unparseable, missing a trailing newline, and
+  run to the file's end, starting exactly at the manifest's applied
+  offset). Tolerance now requires two conditions together
+  (`Store._compute_reader_torn_tail_floor`): the torn record's start
+  offset must be at or past the manifest's own applied event-log offset
+  (`EventLog.batches_from`'s `tolerate_torn_tail_from`, the same value
+  `trim_torn_tail(applied_offset)` uses for a writer — a torn record
+  *before* it is damage to already-applied history and stays corruption
+  regardless of where the file now ends), **and** some process must
+  currently hold `writer.lock` (`Store._writer_lock_is_held`, a
+  non-blocking `flock` probe, released immediately — a reader never holds
+  this lock itself, so finding it free proves nothing could still be
+  appending). Both hold in the real race; neither holds for the
+  corruption sweep's closed-store injection, which stays DETECTED. Only
+  the read-only open/replay path ever passes a non-`None`
+  `tolerate_torn_tail_from`; a writer, which trims a genuinely torn tail
+  during `_recover` before ever reaching a live `batches_from` call, keeps
+  the strict (`None`) reading. `Registry`'s read path (`read_only=True`)
+  has no analogous applied-offset concept — every record it writes is
+  folded synchronously under its own lock, so there is no "log ahead of
+  backend" gap — so it keeps unconditional tolerance for a torn final
+  line; `Registry.verify()` still reports one as a finding regardless,
+  which is what keeps the corruption classifier's `verify_problems` path
+  reaching DETECTED for it. See `docs/system_invariants.md` §1.5 and
+  `tests/test_reader_torn_tail.py`.
 
 ---
 

@@ -84,31 +84,65 @@ damage as loudly fatal.
 *Tested by* `tests/test_torn_wal.py`. *Ruling:* D-086 — the first real
 defect the durability-injection harness found.
 
-**1.5 (reader clause, 2026-09-14).** A reader never runs recovery
-(`Store.__init__(read_only=True)` skips `_recover`, D-049), so
+**1.5 (reader clause, 2026-09-14; refined 2026-09-14).** A reader never runs
+recovery (`Store.__init__(read_only=True)` skips `_recover`, D-049), so
 `trim_torn_tail` never runs for it — yet a read-only open still walks the
 whole log (to seed its clock and its frontier) and can land on the same
 torn final record a live writer's in-flight `append()` is still fsyncing.
 The same three signatures that make a tail *recoverable* for a writer make
-it *uncommitted* for a reader: `EventLog.batches_from(offset,
-tolerate_torn_tail=True)` stops before an unparseable or newline-missing
-record when — checked fresh at the moment the defect is found, since the
-writer may finish the record in between — that record's bytes run to the
-file's current size, leaving the reader's cursor at the start of that
-record rather than raising. A defect anywhere else in the file, or the same
-defect once anything sound follows it, is still corruption and still
-raises. Only the read-only open/replay path passes `tolerate_torn_tail`; a
-writer, which trims a genuinely torn tail during `_recover` before ever
-reaching a live `batches_from` call, keeps the strict reading. The
-artifact registry's read path (`Registry.__init__(..., read_only=True)` ->
-`_load`) extends the same rule and parameter shape to `artifacts.jsonl`,
-for the same reason: registry readers (freshness checks, the OSV daily
-queries) race the poller's `append()` the same way.
+it *uncommitted* for a reader — but a torn tail's bytes alone cannot tell
+"a live writer has not finished this record yet" apart from "a corruption
+sweep appended garbage to a store nothing is writing to any more": both
+produce unparseable, newline-missing bytes that run to the file's current
+end. Tolerance therefore requires **two** conditions, both necessary, and
+either one failing means raise, exactly as before this invariant existed:
+
+1. **the torn record's start offset is at or past the manifest's own
+   applied event-log offset** — the same value `trim_torn_tail
+   (applied_offset)` uses for a writer. A torn record starting *before* it
+   is damage to a record some generation has already applied, and stays
+   corruption regardless of where the file now ends (a tamper that also
+   truncates everything after the record it damaged cannot fake an
+   in-flight tail merely by making the damage land at the new
+   end-of-file).
+2. **some process actually holds `writer.lock` right now** — probed with a
+   non-blocking, immediately-released `flock` (`Store._writer_lock_is_held`).
+   A reader never holds this lock itself, so a torn tail found while it is
+   free cannot be an in-flight write: nothing could still be appending. A
+   torn tail appended to a *closed* store (`tests/test_eval_corruption.py::
+   test_torn_event_log_tail_is_detected_even_read_only`'s `append_garbage`
+   injection, which this refinement must leave DETECTED) satisfies
+   condition 1 trivially — the injected bytes start exactly at the applied
+   offset — so condition 2 is what still refuses it.
+
+`EventLog.batches_from(offset, tolerate_torn_tail_from=applied_offset)`
+stops before a record satisfying both — checked fresh at the moment the
+defect is found (`seek(0, 2)`), since the writer may finish the record in
+between — leaving the reader's cursor at the start of that record rather
+than raising. A defect anywhere else in the file, or the same defect once
+anything sound follows it, is still corruption and still raises regardless
+of either condition. Only the read-only open/replay path ever passes a
+non-`None` `tolerate_torn_tail_from`, computed once by
+`Store._compute_reader_torn_tail_floor`; a writer, which trims a genuinely
+torn tail during `_recover` before ever reaching a live `batches_from`
+call, keeps the strict reading (`None`, unconditionally). The artifact
+registry's read path (`Registry.__init__(..., read_only=True)` -> `_load`)
+has no analogous applied-offset concept — every record it ever writes is
+folded synchronously under its own lock, so there is no "log ahead of
+backend" gap the way the event log has — so it keeps unconditional
+tolerance for a torn final line; `Registry.verify()` (never trims,
+never tolerates) still reports one as a finding, which is what keeps
+`scripts/eval_corruption.py::classify`'s `verify_problems` path reaching
+DETECTED for it regardless.
 *Enforced at* `EventLog.batches_from`, `EventLog.batches`, `EventLog.last_tt`
-(`tgms/storage/eventlog.py`), `Store._tt_at_offset` / `Store.__init__`
+(`tgms/storage/eventlog.py`), `Store._compute_reader_torn_tail_floor`,
+`Store._writer_lock_is_held`, `Store._tt_at_offset` / `Store.__init__`
 (`tgms/store.py`), `Registry._load` (`tgms/artifact/registry.py`).
-*Tested by* `tests/test_reader_torn_tail.py`. *Ruling:* D-086 (extension) —
-first observed on CI, run 34852755086.
+*Tested by* `tests/test_reader_torn_tail.py`, `tests/test_eval_corruption.py::
+test_torn_event_log_tail_is_detected_even_read_only`. *Ruling:* D-086
+(extension) — first observed on CI, run 34852755086; refined the same day
+after the extension's first form regressed the corruption sweep's
+read-only-open detection.
 
 ---
 
