@@ -578,6 +578,70 @@ def graph_metric_timeseries_terms(args: dict[str, Any], sigma: Sigma) -> tuple[S
 
 
 # ---------------------------------------------------------------------------
+# §2.6 — co_active (rollout design 2026-09-14, §6 step 6)
+# ---------------------------------------------------------------------------
+
+def _co_active_spec_term(spec: dict[str, Any]) -> ScopeTerm:
+    """One selection's term: `Incident("both"/"src"/"dst", …)` when the spec
+    names one or two endpoints, `E` otherwise — the exact role mapping
+    `_select`'s mask realises. `role="both"` is a **widening** in two
+    directions that must be stated: it admits the reversed edge `dst→src`,
+    and against an `ingest_events` edge arm (whose `identity.src`/`.dst` are
+    whole-batch sets) it fires whenever *some* event has our `src` as source
+    and *some* event has our `dst` as destination, not necessarily the same
+    event. Both admit more than the operator reads, the safe direction."""
+    rel_type = spec.get("rel_type")
+    rel = (rel_type,) if rel_type else TOP
+    src, dst = spec.get("src"), spec.get("dst")
+    if src and dst:
+        tgt = _edge_target((src, dst), "both")
+    elif src:
+        tgt = _edge_target((src,), "src")
+    elif dst:
+        tgt = _edge_target((dst,), "dst")
+    else:
+        tgt = _edge_target()
+    return ScopeTerm(kinds=K_EDGE, targets=tgt, rel_types=rel, vt=TOP,
+                     vt_mode="overlap", props=TOP)
+
+
+def co_active_terms(args: dict[str, Any], sigma: Sigma) -> tuple[ScopeTerm, ...]:
+    """Two terms, one per spec, plus one existence pair over the union of the
+    uids both specs name.
+
+    **`V = ⊤`, unconditionally** — `co_active` takes no window argument at
+    all; §9.10 records this as the only operator of the fifteen whose `V` is
+    unbounded for structural rather than semantic reasons. The reserved
+    `window` parameter (§9.10, FF-9) stays unwired this rollout (coordinator
+    Addendum 1 ruling 5 — out of storm-v2, no new operator semantics during a
+    measurement campaign).
+
+    **Two terms rather than one**, because the scope's `terms` list is a
+    disjunction and the two selections have independent endpoint and
+    rel-type restrictions; merging them would have to take the union of
+    both, a strictly coarser answer.
+
+    **`P = ⊤`** by §9.10: the operator compares whole intervals under Allen
+    relations, so splitting one believed version into three changes which
+    relations hold — this costs nothing while `V` is already ⊤. The join's
+    own sensitivity (a new interval on either side pairs with untouched
+    intervals on the other) is why the domain covers both selectors' whole
+    populations rather than the returned pairs, and `E`/`incident` per spec
+    is exactly that; `PAIR_CAP`'s `CostError` is an outcome the scope must
+    also cover and depends on the same two populations.
+    """
+    a_spec, b_spec, allen = args.get("a_spec"), args.get("b_spec"), args.get("allen_relation")
+    if not isinstance(a_spec, dict) or not isinstance(b_spec, dict) or not isinstance(allen, dict):
+        return (TOP_TERM,)
+    terms = (_co_active_spec_term(a_spec), _co_active_spec_term(b_spec))
+    uids = tuple(dict.fromkeys(
+        u for spec in (a_spec, b_spec) for u in (spec.get("src"), spec.get("dst")) if u))
+    if uids:
+        terms += _existence_terms(uids)
+    return terms
+
+
+# ---------------------------------------------------------------------------
 # the rollout table — one line per operator, and the rollback
 # ---------------------------------------------------------------------------
 
@@ -596,6 +660,7 @@ LEAF_SCOPES: dict[str, Derivation] = {
     "temporal_paths": temporal_paths_terms,
     "burst_detection": burst_detection_terms,
     "graph_metric_timeseries": graph_metric_timeseries_terms,
+    "co_active": co_active_terms,
 }
 
 #: Does this operator's output bind **node-version** columns — a label, a
@@ -625,6 +690,8 @@ BINDS_NODE_VERSIONS: dict[str, Callable[[dict[str, Any]], bool]] = {
     "burst_detection": lambda args: False,
     "graph_metric_timeseries": lambda args: args.get("metric") in
         {"node_count", "mean_out_degree", "new_node_rate"},
+    # rows are {a: edge_desc, b: edge_desc}: uids read off edge endpoints
+    "co_active": lambda args: False,
 }
 
 
@@ -644,7 +711,7 @@ def terms_for(op: str, args: dict[str, Any], sigma: Sigma) -> tuple[ScopeTerm, .
 __all__ = [
     "BINDS_NODE_VERSIONS", "Derivation", "LEAF_SCOPES", "P_CARVE_REACHED",
     "P_VALUE", "aggregate_events_terms", "burst_detection_terms",
-    "count_temporal_motifs_terms", "entity_history_terms",
+    "co_active_terms", "count_temporal_motifs_terms", "entity_history_terms",
     "find_temporal_motif_instances_terms", "graph_metric_timeseries_terms",
     "neighborhood_evolution_terms", "temporal_paths_terms",
     "temporal_reachability_terms", "terms_for",
