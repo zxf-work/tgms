@@ -75,3 +75,96 @@ fitness probe at build time: one seeded outside-window correction must
 change an `aggregate_events` duration answer, printed in the card.
 Scored population for the carve arm only, per the M5 campaign freeze's
 Addendum 6.
+
+## osv-live (live workload, added 2026-09-13, Lane F3 P0.5)
+
+The OSDI paper's live-ingestion arm: a real, continuously-revised feed
+rather than a frozen replay. Design of record:
+`docs/design/LIVE_WORKLOAD_OSV_DESIGN_2026-09-13.md`. Loader:
+`tgms/data/osv_loader.py`; service: `scripts/live_osv_poller.py` +
+`scripts/live_supervise.sh`; daily query workload: `scripts/live_osv_queries.py`.
+
+**Source and license.** OSV advisory JSON (schema 1.x) for four ecosystems —
+PyPI, Go, Maven, crates.io — from the public per-ecosystem `all.zip` exports
+at `https://osv-vulnerabilities.storage.googleapis.com/<ECOSYSTEM>/all.zip`.
+`MAL-` (OpenSSF Malicious-Packages) records are filtered in every ecosystem
+(design §3: 96.8% of npm's records are `MAL-`, which is why npm is excluded
+entirely). The OSV schema/tooling are Apache-2.0; the advisory *content* our
+four ecosystems draw on is CC-BY-4.0 (GitHub Advisory DB, PyPI/Go/OSS-Fuzz
+style feeds) or CC0-1.0 (Rust Advisory DB) — never the CC-BY-SA (Ubuntu) or
+unaudited sources OSV also lists (design §6). Redistribution is
+attribution-only, per §6: the raw daily feed tarballs ship with a `NOTICE`
+naming each upstream database and license.
+
+**Bootstrap graph** (design §3, measured against the 2026-09-13 export):
+32,912 advisories, 8,893 packages, 50,842 `affects` edges, 112,317 range
+events, 64,027 alias links, 186,147 references, 931 already withdrawn —
+≈413k edge versions, ≈155k node versions. Entities: `Advisory`, `Package`
+(ecosystem-qualified), `PackageVersion`, `Range`, `Reference`, `Ecosystem`.
+Relations: `affects`, `range_of`, `fixed_by`/`introduced_in`, `aliases`
+(written both arms), `references`, `withdraws`. Identity is one function,
+`osv_uid(kind, *parts) = kind + ":" + "\x1f".join(parts)` — mirrors
+`snb_loader.snb_uid`'s one-definition-site discipline; OSV ids are strings,
+so the SNB integer interleave does not apply. **Ranges are the belief;
+enumerated `affected[].versions` are never materialized** (design §1: the
+four ecosystems carry 1,975,063 explicit version enumerations against only
+112,317 range events — enumerating them would triple the edge count with an
+83%-redundant re-expansion of what the ranges already state).
+
+**Live delta mechanism.** Hourly polling of each ecosystem's
+`modified_id.csv` (reverse-chronological; the poller stops at its own
+high-water mark), `GET /v1/vulns/{id}` for every id past it, self-limited to
+5 req/s. Projected 60-day volume (design §3): ~2,200 new advisories, ~8,900
+revisions, ~5,000–6,000 genuine content corrections atop the bootstrap.
+
+**What is a correction (design §2).** `published` maps to `vt_s`
+(`vt_e = OPEN_END`); `modified` carries no valid-time meaning at all — it
+only triggers a re-read. A re-observed advisory is diffed on
+**canonicalised content** (`osv_loader.canonical_digest`), never raw bytes:
+an unchanged digest is a no-op (`noop_revisions`, roughly a third of feed
+churn per design §2); a changed digest becomes exactly the ops the §2 table
+names — `correct` for a range edit or a severity/summary change, `assert_*`
+for a newly-acquired alias/reference/affected-package (belief is new, even
+though the fact "was always true"), and, for a `withdrawn` transition, both
+a `correct` (the belief record) and a `retract` of every open `affects` edge
+at the withdrawal instant — deliberately both, per §2, so the store keeps
+the audit that the advisory was once believed live *and* stops answering
+"what is vulnerable now" with it.
+
+**Service.** One writer (`scripts/live_osv_poller.py`), one batch per poll
+cycle — small and frequent rather than large and rare, since each cycle is
+one event-log record, one generation, one freshness-checkable correction
+batch. `compact()` + `gc(keep_last=2)` every 100 cycles (design §5,
+evidenced by `scripts/build_snb_store.py`'s own manifest-growth measurement:
+uncompacted, manifest bytes alone reached 25,451 MB on a 27 GB store).
+Crash safety is the engine's write-ahead log, already measured
+(`docs/eval_durability.md`) — the supervisor (`scripts/live_supervise.sh`)
+only restarts and lets `open()` recover; it carries no WAL of its own.
+Metrics: one JSON object per cycle in `run/live_metrics.jsonl` (design §5's
+full field list); failures append to a JSONL ledger before re-raising (see
+`scripts/live_osv_poller.py::_write_failure_ledger_entry` for the documented
+gap between this live-incident record and `ops/failure_ledger.jsonl`'s own
+curated-defect schema — the two are not the same file by default).
+
+**Query workload** (design §4): `scripts/live_osv_queries.py`, a daily
+seeded (`seed = ISO date`) run of 200 queries — five families of 40 — through
+the same `ToolRouter` the MCP server exposes, over up to 500 registered
+per-package "current exposure" artifacts (`Registry.register`, `kind:
+"osv_exposure"`, an opaque `snapshot_subgraph` leaf). Each cycle's
+correction batch is walked through `artifact.lookup.affected` and every
+flagged record refreshed via `artifact.refresh.refresh` — the live
+instantiation of M5 §3.2's all-scopes walk, `intersects_calls` measured
+per cycle rather than predicted.
+
+## Loading rule, extended for osv-live
+
+The loading rule above (one recorded event log per dataset, replay
+reproduces it) holds here too, with the caveat every live/appended dataset
+shares: `tt` and every derived id are store-specific (D-023), so what is
+reproducible is the **op stream** a fresh replay of `eventlog.jsonl`
+produces, not a byte-identical second bootstrap+poll run against the live
+feed (which would fetch a different `modified_id.csv` snapshot entirely).
+`tests/test_osv_loader.py::test_replay_reproduces_digest` verifies the
+former on the 20-advisory fixture under `tests/fixtures/osv/` (see its own
+`README.md` for exactly what each fixture record covers and its
+provenance/license).
