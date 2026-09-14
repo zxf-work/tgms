@@ -62,6 +62,8 @@ BI_SOURCES: dict[str, tuple[str, dict[str, str]]] = {
     "BI3":  ("bi-3",   {"tagClass": "tagClass", "country": "country"}),
     "BI4":  ("bi-4",   {"date": "date"}),
     "BI6":  ("bi-6",   {"tagName": "tag"}),
+    # BI6.v2 (D2, 2026-09-14): the re-associated plan binds exactly like BI6 — same file, same column, same §A9 rule.
+    "BI6.v2": ("bi-6", {"tagName": "tag"}),
     "BI7":  ("bi-7",   {"tagName": "tag"}),
     "BI9":  ("bi-9",   {"startDate": "startDate", "endDate": "endDate"}),
     "BI10": ("bi-10a", {"personId": "personId", "country": "country",
