@@ -768,6 +768,20 @@ impl NativeStore {
         self.inner.manifest().manifest_sha.clone()
     }
 
+    /// On-disk manifest format this store was opened at: 2 for a store this
+    /// build wrote, 1 for one the pre-2026-09-13 engine wrote — which opens
+    /// read-only until `upgrade_manifests` converts it.
+    fn manifest_format(&self) -> u32 {
+        self.inner.manifest_format()
+    }
+
+    /// Generation of the checkpoint the manifest chain currently rests on.
+    /// Equal to `generation()` right after a checkpoint; below it by the
+    /// number of deltas `open` would have to replay otherwise.
+    fn checkpoint_generation(&self) -> u64 {
+        self.inner.checkpoint_generation()
+    }
+
     // --- maintenance ------------------------------------------------------ //
 
     /// Node versions overlapping a window, sorted by `(vt_s, vid)`.
@@ -862,6 +876,11 @@ impl NativeStore {
         let r = self.inner.verify().map_err(err)?;
         let d = PyDict::new(py);
         d.set_item("generation", r.generation)?;
+        // the manifest chain: which format, which checkpoint it rests on, and
+        // how many deltas were replayed to reach this generation
+        d.set_item("manifest_format", r.manifest_format)?;
+        d.set_item("manifest_checkpoint", r.manifest_checkpoint)?;
+        d.set_item("manifest_deltas", r.manifest_deltas)?;
         d.set_item("segments_checked", r.segments_checked)?;
         d.set_item("close_runs_checked", r.close_runs_checked)?;
         d.set_item("rows", r.rows)?;
@@ -923,6 +942,25 @@ impl NativeStore {
         d.set_item("close_runs_removed", r.close_runs_removed)?;
         d.set_item("bytes_reclaimed", r.bytes_reclaimed)?;
         d.set_item("generations_retained", r.generations_retained)?;
+        Ok(d.into())
+    }
+
+    /// Convert a format-1 store to format 2 by republishing the current
+    /// content as a checkpoint (`tgms store upgrade-manifests`).
+    ///
+    /// One manifest written, `CURRENT` flipped, nothing else touched.
+    /// Idempotent: `upgraded` is False on a store already at format 2.
+    /// `manifest_sha` changes — it covers the format field — so any TCSR
+    /// cache stamped against the old generation rebuilds, which is what that
+    /// stamp is for.
+    fn upgrade_manifests(&mut self, py: Python<'_>) -> Res<Py<PyDict>> {
+        let r = self.inner.upgrade_manifests().map_err(err)?;
+        let d = PyDict::new(py);
+        d.set_item("upgraded", r.upgraded)?;
+        d.set_item("from_format", r.from_format)?;
+        d.set_item("to_format", tgms_engine_core::MANIFEST_FORMAT_VERSION)?;
+        d.set_item("generation", r.generation)?;
+        d.set_item("manifest_sha", r.manifest_sha)?;
         Ok(d.into())
     }
 }
@@ -1017,6 +1055,10 @@ fn _engine(m: &Bound<'_, PyModule>) -> PyResult<()> {
     m.add_function(wrap_pyfunction!(ping, m)?)?;
     m.add_function(wrap_pyfunction!(core_version, m)?)?;
     m.add("FORMAT_VERSION", tgms_engine_core::FORMAT_VERSION)?;
+    m.add(
+        "MANIFEST_FORMAT_VERSION",
+        tgms_engine_core::MANIFEST_FORMAT_VERSION,
+    )?;
     m.add("OPEN_END", tgms_engine_core::OPEN_END)?;
     m.add("BLOCK_ROWS", tgms_engine_core::defaults::BLOCK_ROWS)?;
     m.add(
