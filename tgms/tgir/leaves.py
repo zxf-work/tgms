@@ -27,6 +27,7 @@ from __future__ import annotations
 
 from typing import Any, Callable
 
+from tgms.core.model import OPEN_END
 from tgms.tgir.depscope import (
     TOP, TOP_TERM, Incident, K_DENSE_ID, K_EDGE, K_NODE, ScopeTerm, Targets,
 )
@@ -56,6 +57,67 @@ P_CARVE_REACHED: tuple[str, ...] = P_VALUE + ("@recut",)
 def _uid_list(args: dict[str, Any], key: str = "uid") -> tuple[str, ...] | None:
     uid = args.get(key)
     return (uid,) if isinstance(uid, str) and uid else None
+
+
+# ---------------------------------------------------------------------------
+# shared helpers for the ten-operator rollout (design 2026-09-14, §1.8, §6)
+# ---------------------------------------------------------------------------
+
+def _existence_terms(uids: tuple[str, ...]) -> tuple[ScopeTerm, ScopeTerm]:
+    """§1.8's `existence(U)` pair.
+
+    Seven of the ten rolled-out operators call `adapter.dense_ids` on
+    argument-supplied uids and let `NotFoundError` escape. A uid's dense id
+    comes into existence through `assert_node`, or through `ensure_entities`
+    on `assert_edge`/`ingest_events` (`𝒟`), and never disappears — so a write
+    that merely *registers* one of `U` flips such a call's outcome from
+    `E_NOT_FOUND` to a result (§9.1's surprise, L13.3). `vt` is ⊤ on both
+    terms: a uid can be registered at any valid-time location, and the flip
+    does not depend on where. `props = ("@identity",)` is the whole of the
+    reach — `correct` and `retract` cannot create an entity, so they carry no
+    `@identity`, and the pair stays narrow against them.
+    """
+    return (
+        ScopeTerm(kinds=("assert_node", "ingest_events"), targets=Targets(nodes=uids),
+                  rel_types=TOP, vt=TOP, vt_mode="overlap", props=("@identity",)),
+        ScopeTerm(kinds=K_DENSE_ID,
+                  targets=Targets(incident=Incident("either", uids)),
+                  rel_types=TOP, vt=TOP, vt_mode="overlap", props=("@identity",)),
+    )
+
+
+def _edge_target(uids: tuple[str, ...] | None = None, role: str = "either") -> Targets:
+    """`E = Targets(edges=TOP)` (matches every edge footprint, no node
+    footprint) when `uids` is empty/absent, or an `incident` arm over `uids`
+    under `role` otherwise. Never a `nodes` arm — this is exclusively the edge
+    side of a term."""
+    if not uids:
+        return Targets(edges=TOP)
+    return Targets(incident=Incident(role, uids))
+
+
+def _window_vt(args: dict[str, Any]) -> tuple[tuple[int, int], ...] | None:
+    """`W = ((t_a, t_b),)`, copied from Σ's window and stopped (D13.6) — or
+    `None` when the window is absent, malformed, or empty, which every caller
+    treats as "fall back to `(TOP_TERM,)`"."""
+    w = args.get("window")
+    if not isinstance(w, dict) or "t_a" not in w or "t_b" not in w:
+        return None
+    try:
+        t_a, t_b = int(w["t_a"]), int(w["t_b"])
+    except (TypeError, ValueError):
+        return None
+    if not (0 <= t_a < t_b <= OPEN_END):
+        return None
+    return ((t_a, t_b),)
+
+
+def _instant_vt(t: Any) -> tuple[tuple[int, int], ...] | None:
+    """`[t, t+1)` — a read-region fact for an instant read (§1.7), not a
+    D13.6 adjustment. `None` when `t` is not a valid instant."""
+    if not isinstance(t, int) or not (0 <= t < OPEN_END):
+        return None
+    return ((t, t + 1),)
 
 
 # ---------------------------------------------------------------------------
@@ -115,7 +177,8 @@ def entity_history_terms(args: dict[str, Any], sigma: Sigma) -> tuple[ScopeTerm,
 
 def neighborhood_evolution_terms(args: dict[str, Any],
                                  sigma: Sigma) -> tuple[ScopeTerm, ...]:
-    """Edges incident to one identity, over `[t1, t2+1)`.
+    """Edges incident to one identity, over `[t1, t2+1)`, plus the `dense_ids`
+    existence pair (rollout design 2026-09-14, Addendum 1 ruling 1).
 
     `K = ℰ` — a genuine four-of-five narrowing: node ops cannot change this
     answer, because unlike `snapshot_subgraph` the operator does not gate on
@@ -132,6 +195,18 @@ def neighborhood_evolution_terms(args: dict[str, Any],
 
     L9.1 is about **instant** counts only. It is false for event counts keyed
     on `vt_s` (that is CE-5), so it must not be carried to `aggregate_events`.
+
+    **The existence pair (§1.8's finding).** The shipped single `K_EDGE` term
+    carries only an `incident` arm, so it cannot match a *node* footprint —
+    but the operator calls `adapter.dense_ids([uid])`
+    (`tgms/temporal/ops_snapshot.py:332`) and raises `NotFoundError` when the
+    centred uid has never been registered. An `assert_node`/`ingest_events`
+    that merely registers `uid` therefore flips the outcome from
+    `E_NOT_FOUND` to a result — reachable only for a *failed* call whose scope
+    was nonetheless recorded (D13.14 prohibition 3), which is exactly why the
+    old single-term scope was a soundness gap rather than an intentional
+    narrowing. Additive and widening (D13.1): it costs precision only on the
+    common case where `uid` already exists, and it never costs correctness.
     """
     uids = _uid_list(args)
     t1, t2 = args.get("t1"), args.get("t2")
@@ -144,7 +219,7 @@ def neighborhood_evolution_terms(args: dict[str, Any],
         vt=((t1, t2 + 1),),
         vt_mode="instant",
         props=("@identity", "@extent"),
-    ),)
+    ),) + _existence_terms(uids)
 
 
 # ---------------------------------------------------------------------------
