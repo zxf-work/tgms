@@ -20,7 +20,7 @@ import hashlib
 import json
 import os
 from pathlib import Path
-from typing import Any, Iterator
+from typing import Any, Callable, Iterator
 
 from tgms.core.errors import StateError
 from tgms.core.model import canonical_json, sha256_hex
@@ -96,10 +96,12 @@ class EventLog:
     def size(self) -> int:
         return self.path.stat().st_size
 
-    def batches(self, *, tolerate_torn_tail_from: int | None = None
+    def batches(self, *, tolerate_torn_tail_from: int | None = None,
+               writer_active: Callable[[], bool] | None = None
                ) -> Iterator[dict[str, Any]]:
         for batch, _end, _raw in self.batches_from(
-                0, tolerate_torn_tail_from=tolerate_torn_tail_from):
+                0, tolerate_torn_tail_from=tolerate_torn_tail_from,
+                writer_active=writer_active):
             yield batch
 
     def header(self) -> dict[str, Any]:
@@ -169,7 +171,8 @@ class EventLog:
                         os.fsync(w.fileno())
                     return start
 
-    def batches_from(self, offset: int, *, tolerate_torn_tail_from: int | None = None
+    def batches_from(self, offset: int, *, tolerate_torn_tail_from: int | None = None,
+                     writer_active: Callable[[], bool] | None = None
                      ) -> Iterator[tuple[dict[str, Any], int, bytes]]:
         """Batches whose records start at or after `offset`, as
         `(batch, end_offset, record_bytes)`.
@@ -186,13 +189,9 @@ class EventLog:
         rather than inferred from this read alone, since the writer may
         finish the record between the read that found the defect and this
         check), *and* the record's own start offset is at or past
-        `tolerate_torn_tail_from`, treat it as an in-flight write that has
-        not committed yet rather than corruption — stop iterating *before*
-        it, so the caller's cursor lands at the start of that record and a
-        later re-read observes the completed one once the writer's
-        `append()` (one `write()` call, fsynced before it returns)
-        finishes. `tolerate_torn_tail_from` is meant to be the manifest's
-        own applied event-log offset — the same value
+        `tolerate_torn_tail_from`, this is a **candidate** in-flight write —
+        but not yet forgiven. `tolerate_torn_tail_from` is meant to be the
+        manifest's own applied event-log offset — the same value
         `trim_torn_tail(applied_offset)` uses for a writer — so a torn
         record starting *before* it is damage to a record some generation
         has already applied, never forgiven regardless of where the file
@@ -200,13 +199,34 @@ class EventLog:
         trailing bytes after tampering with an old record cannot fake an
         in-flight tail merely by making the damage land at the new
         end-of-file. `None` (the default) withholds tolerance entirely, so
-        any tail defect raises — the pre-extension, strict reading. Only
-        `Store.__init__`'s read-only path ever passes a non-`None` value,
-        and only while a writer could plausibly still be appending (see
-        `Store._reader_torn_tail_floor`) — a writer trims a genuinely torn
-        tail during `_recover` (`trim_torn_tail`, D-086) before ever
-        reaching a live `batches_from` call, so anything still torn there
-        is corruption, not an in-flight write, and must keep raising.
+        any tail defect raises — the pre-extension, strict reading.
+
+        A candidate is only actually forgiven when `writer_active` — called
+        at most once, lazily, exactly at this point, and *never* otherwise
+        — returns `True`. This is deliberately the last and only
+        conditional call: a torn final record at/after the floor is rare
+        (almost every open meets none at all), and `writer_active` is
+        expected to be `Store._writer_lock_is_held`, a non-blocking `flock`
+        probe on `writer.lock` — cheap, but not free of side effects worth
+        confining to the moment they are actually needed (see that
+        method's own docstring for the hazard eagerly probing on every open
+        used to create). `writer_active=None` forgives nothing (treated as
+        "cannot confirm a writer is active"), so a caller that passes a
+        floor without a callback gets the strict reading for any candidate,
+        never silent unconditional tolerance.
+
+        A defect that fails either gate — start before the floor, or
+        `writer_active` (once actually called) returning `False` — stops
+        iterating *before* the record and lets the caller's cursor land at
+        its start, so a later re-read observes the completed record once
+        the writer's `append()` (one `write()` call, fsynced before it
+        returns) finishes. Only `Store.__init__`'s read-only path ever
+        passes a non-`None` `tolerate_torn_tail_from`, paired with
+        `writer_active=self._writer_lock_is_held` — a writer trims a
+        genuinely torn tail during `_recover` (`trim_torn_tail`, D-086)
+        before ever reaching a live `batches_from` call, so anything still
+        torn there is corruption, not an in-flight write, and must keep
+        raising.
         """
         with open(self.path, "rb") as f:
             header = f.readline()  # header record, outside the chain
@@ -237,7 +257,10 @@ class EventLog:
                             and start >= tolerate_torn_tail_from):
                         size = f.seek(0, 2)
                         if end >= size:
-                            return  # in-flight write, not yet committed
+                            # a genuine torn-final-record candidate: the one
+                            # moment `writer_active` is ever called
+                            if writer_active is not None and writer_active():
+                                return  # in-flight write, not yet committed
                     if parse_error is not None:
                         raise StateError(
                             f"event log {self.path} is not readable at offset "
@@ -275,16 +298,19 @@ class EventLog:
             f"{self.path} (records end at {pos})"
         )
 
-    def last_tt(self, *, tolerate_torn_tail_from: int | None = None) -> int:
+    def last_tt(self, *, tolerate_torn_tail_from: int | None = None,
+               writer_active: Callable[[], bool] | None = None) -> int:
         """Transaction time of the last batch (0 if empty).
 
         Linear scan; fine at research scale. TODO(phase3): tail-seek.
 
-        `tolerate_torn_tail_from`: forwarded to `batches_from` — see there.
-        Only `Store.__init__`'s read-only path passes a non-`None` value.
+        `tolerate_torn_tail_from` and `writer_active`: forwarded to
+        `batches_from` — see there. Only `Store.__init__`'s read-only path
+        passes non-`None` values.
         """
         last = 0
-        for batch in self.batches(tolerate_torn_tail_from=tolerate_torn_tail_from):
+        for batch in self.batches(tolerate_torn_tail_from=tolerate_torn_tail_from,
+                                  writer_active=writer_active):
             last = batch["tt"]
         return last
 

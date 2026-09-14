@@ -272,8 +272,12 @@ prints the same remedy: rebuild from the event log with `tgms replay`. Since
   backend" gap — so it keeps unconditional tolerance for a torn final
   line; `Registry.verify()` still reports one as a finding regardless,
   which is what keeps the corruption classifier's `verify_problems` path
-  reaching DETECTED for it. See `docs/system_invariants.md` §1.5 and
-  `tests/test_reader_torn_tail.py`.
+  reaching DETECTED for it. **Hazard closed the same day:** the
+  `writer.lock` probe now runs only on actually encountering a torn tail
+  (never on every read-only open), and a writer's own lock acquisition
+  retries briefly, so a reader's momentary probe can no longer make a
+  concurrent writer open spuriously refuse with `WriterLockedError`. See
+  `docs/system_invariants.md` §1.5 and `tests/test_reader_torn_tail.py`.
 
 ---
 

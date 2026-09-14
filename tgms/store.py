@@ -10,6 +10,7 @@ from __future__ import annotations
 import io
 import os
 import threading
+import time
 from pathlib import Path
 from typing import Any, Iterable, Iterator
 
@@ -29,6 +30,14 @@ INGEST_CHUNK = 50_000
 #: file, held with `fcntl.flock(LOCK_EX | LOCK_NB)` for the process's whole
 #: writer lifetime, makes a second writer fail fast and by name instead.
 WRITER_LOCK_NAME = "writer.lock"
+
+#: `_acquire_writer_lock`'s bounded retry (invariant 1.5's reader clause):
+#: 20 x 5ms = at most 95ms of sleeping past the first failed attempt,
+#: comfortably longer than a reader's own momentary `_writer_lock_is_held`
+#: probe can plausibly hold this lock, while still refusing a genuine
+#: second writer within a fraction of a second, not silently.
+_WRITER_LOCK_RETRY_ATTEMPTS = 20
+_WRITER_LOCK_RETRY_DELAY_S = 0.005
 
 
 class WriterLockedError(StateError):
@@ -74,15 +83,17 @@ class Store:
             # rather than merely documented.
             self._acquire_writer_lock()
             self._recover()
-        #: Invariant 1.5, extended to readers — computed once, up front, and
-        #: reused by every full-log scan this `__init__` runs before it ever
-        #: reaches `_seed_frontier`. See `_reader_torn_tail_floor`'s own
-        #: docstring for what this offset means and why it is `None` far
-        #: more often than "any read-only handle".
+        #: Invariant 1.5, extended to readers — computed once, up front
+        #: (cheap: reads the already-loaded manifest cursor, no lock probe),
+        #: and reused by every full-log scan this `__init__` runs before it
+        #: ever reaches `_seed_frontier`. See `_compute_reader_torn_tail_
+        #: floor`'s own docstring for what this offset means and why it is
+        #: `None` far more often than "any read-only handle".
         self._reader_torn_tail_floor: int | None = self._compute_reader_torn_tail_floor()
         self.clock = HybridLogicalClock(
             last_tt=self.eventlog.last_tt(
-                tolerate_torn_tail_from=self._reader_torn_tail_floor))
+                tolerate_torn_tail_from=self._reader_torn_tail_floor,
+                writer_active=self._writer_lock_is_held))
         #: False when this handle could not establish its frontier against the
         #: **applied** prefix — see `_seed_frontier`. Rides into the dependency
         #: scope as `tt_q_verified`, never as a flat envelope key.
@@ -126,7 +137,8 @@ class Store:
                 return
         self.frontier_verified = False
         self.adapter.note_frontier_tt(
-            self.eventlog.last_tt(tolerate_torn_tail_from=self._reader_torn_tail_floor))
+            self.eventlog.last_tt(tolerate_torn_tail_from=self._reader_torn_tail_floor,
+                                 writer_active=self._writer_lock_is_held))
 
     def _tt_at_offset(self, offset: int) -> int:
         """The tt of the last log record ending at or before `offset` (0 for an
@@ -136,15 +148,16 @@ class Store:
         (`end > offset` is only known once the next record's end is read) —
         for a read-only handle that next record can be one a live writer is
         mid-append on, which (invariant 1.5, extended to readers) is an
-        in-flight write, not corruption, so `_reader_torn_tail_floor` is
-        threaded through. A writer reaches this only after `_recover()` has
-        already trimmed any genuinely torn tail, so it keeps the strict
-        reading (`_reader_torn_tail_floor` is `None` for a writer) —
-        anything still torn there is corruption.
+        in-flight write, not corruption, so `_reader_torn_tail_floor` and
+        `_writer_lock_is_held` are threaded through. A writer reaches this
+        only after `_recover()` has already trimmed any genuinely torn
+        tail, so it keeps the strict reading (`_reader_torn_tail_floor` is
+        `None` for a writer) — anything still torn there is corruption.
         """
         tt = 0
         for batch, end, _raw in self.eventlog.batches_from(
-                0, tolerate_torn_tail_from=self._reader_torn_tail_floor):
+                0, tolerate_torn_tail_from=self._reader_torn_tail_floor,
+                writer_active=self._writer_lock_is_held):
             if end > offset:
                 break
             tt = batch["tt"]
@@ -157,37 +170,22 @@ class Store:
         clause). Passed to `EventLog.batches_from`'s `tolerate_torn_tail_from`
         by every full-log scan this handle runs; `None` withholds tolerance
         entirely, so any tail defect raises exactly as before this
-        invariant was extended to readers. `None` in every one of these
-        cases:
+        invariant was extended to readers. `None` in either of these cases:
 
         * a writer (`not self.read_only`) — recovery already trims a
           genuinely torn tail in `_recover()`, run above, before this is
           ever computed; anything still torn past that point is corruption;
         * no cursor to trust — a backend that keeps none, or a legacy store
           (`chain == ""`) that predates cursors; there is then no applied
-          offset to compare against, so nothing is guessed;
-        * **no writer process could possibly be mid-append right now.** A
-          torn final record is indistinguishable, by framing alone, from
-          bytes a corruption sweep appended to a store nothing is writing
-          to any more (`tests/test_eval_corruption.py::
-          test_torn_event_log_tail_is_detected_even_read_only`: `append_
-          garbage` onto a *closed* store's log produces the exact same
-          shape — unparseable, no trailing newline, run to end-of-file, and
-          starting exactly at the manifest's own applied offset — as a live
-          writer's not-yet-finished record). The one signal that tells them
-          apart is whether any process actually holds `writer.lock`
-          (`_acquire_writer_lock`); `_writer_lock_is_held` probes it with a
-          non-blocking `flock`, released immediately, since a reader never
-          holds this lock itself. A torn tail found while the lock is free
-          is not an in-flight write — it is corruption, and stays refused.
+          offset to compare against, so nothing is guessed.
 
-        The offset comparison in `batches_from` still matters even when a
-        writer *is* active: it keeps a torn record that starts *before*
-        the applied offset — damage to a record some generation already
-        applied — refused as corruption regardless of whether the file's
-        current end happens to line up with it (e.g. a tamper that also
-        truncated everything after the record it damaged, faking an
-        in-flight tail's shape).
+        Deliberately cheap and lock-free: this reads only the manifest
+        cursor this handle's adapter already loaded at open, never
+        `writer.lock`. Whether a torn record found at/after this floor is
+        actually forgiven is decided later, lazily, by `batches_from`
+        itself calling `_writer_lock_is_held` — see that method's
+        docstring for why the probe must not run here, unconditionally, on
+        every open.
         """
         if not self.read_only:
             return None
@@ -196,8 +194,6 @@ class Store:
             return None
         offset, chain = cursor()
         if not chain:
-            return None
-        if not self._writer_lock_is_held():
             return None
         return int(offset)
 
@@ -209,6 +205,26 @@ class Store:
         acquires it uncontended proves no writer is running right now —
         released immediately, since this handle has no business holding
         it — and one that fails proves a writer is.
+
+        **Called lazily, not at open.** Passed to `EventLog.batches_from`
+        as its `writer_active` callback and invoked at most once per scan,
+        and only when a torn record is actually found at or past
+        `_reader_torn_tail_floor` and running to the file's true end — the
+        one moment the answer matters. Calling this unconditionally on
+        every read-only open (the shape this invariant's fix originally
+        shipped in) opened a real hazard: the soak's reader pool reopens
+        every few minutes and the OSV daily queries loop opening readers,
+        so a writer's own `_acquire_writer_lock` (`LOCK_EX | LOCK_NB`,
+        no retry at the time) could land its trylock in the same instant a
+        reader's probe held the lock for a moment and see a spurious
+        `WriterLockedError` — one process refusing to become the writer
+        because of a lock a mere *reader* was, correctly but coincidentally,
+        also holding for a heartbeat. Confining the probe to actual
+        torn-tail encounters — rare, since almost no open ever meets one —
+        shrinks that window from "every read-only open" to "the same open
+        already mid-recovery-adjacent bookkeeping a torn tail forces
+        anyway"; `_acquire_writer_lock`'s own bounded retry closes the
+        remaining sliver.
         """
         lock_path = self.path / WRITER_LOCK_NAME
         if not lock_path.exists():
@@ -366,7 +382,8 @@ class Store:
     # --- OS-level single-writer lock (B5/F2) ------------------------------- #
 
     def _acquire_writer_lock(self) -> None:
-        """`fcntl.flock(LOCK_EX | LOCK_NB)` on `<store>/writer.lock`.
+        """`fcntl.flock(LOCK_EX | LOCK_NB)` on `<store>/writer.lock`, retried
+        briefly before refusing.
 
         Advisory and tied to the open file description, not a lock file
         whose mere *presence* is checked: a crashed writer's lock is
@@ -377,6 +394,22 @@ class Store:
         exactly like two processes would be — `flock` locks are per open
         file description, not per process — which is the conservative
         (and correct) reading of "one writer."
+
+        The retry exists for a narrower reason than contention with a real
+        second writer: a read-only handle's `_writer_lock_is_held` probe
+        (invariant 1.5's reader clause, `EventLog.batches_from`'s
+        `writer_active` callback) also trylocks this same file, for a
+        moment, non-blocking on its own side. Without a retry here, a
+        writer opening in that instant would see `WriterLockedError` from a
+        process that was never going to write anything — a soak with eight
+        readers reopening every few minutes, or the OSV daily queries
+        looping reader opens, makes that instant likely enough to hit in
+        practice, not merely a theoretical race. `_RETRY_ATTEMPTS` tries at
+        `_RETRY_DELAY_S` apart bound the total added latency to a genuinely
+        contended open (`(_RETRY_ATTEMPTS - 1) * _RETRY_DELAY_S`, comfortably
+        under a reader probe's own hold time by orders of magnitude) while
+        still failing a *real* second writer within that same short window,
+        never silently.
         """
         import fcntl
 
@@ -387,19 +420,25 @@ class Store:
         # during development.
         lock_path = self.path / WRITER_LOCK_NAME
         fh = io.open(lock_path, "a+")
-        try:
-            fcntl.flock(fh.fileno(), fcntl.LOCK_EX | fcntl.LOCK_NB)
-        except OSError:
-            fh.seek(0)
-            holder = fh.read().strip() or "unknown pid (race with the holder " \
-                                          "writing it)"
-            fh.close()
-            raise WriterLockedError(
-                f"another process is already the writer for {self.path} "
-                f"(writer.lock held by pid {holder}); a second concurrent "
-                f"writer is undefined (spec §1). Open with read_only=True "
-                f"instead, or wait for that process to exit."
-            ) from None
+        for attempt in range(_WRITER_LOCK_RETRY_ATTEMPTS):
+            try:
+                fcntl.flock(fh.fileno(), fcntl.LOCK_EX | fcntl.LOCK_NB)
+            except OSError:
+                if attempt + 1 < _WRITER_LOCK_RETRY_ATTEMPTS:
+                    time.sleep(_WRITER_LOCK_RETRY_DELAY_S)
+                    continue
+                fh.seek(0)
+                holder = fh.read().strip() or "unknown pid (race with the holder " \
+                                              "writing it)"
+                fh.close()
+                raise WriterLockedError(
+                    f"another process is already the writer for {self.path} "
+                    f"(writer.lock held by pid {holder}); a second concurrent "
+                    f"writer is undefined (spec §1). Open with read_only=True "
+                    f"instead, or wait for that process to exit."
+                ) from None
+            else:
+                break
         fh.seek(0)
         fh.truncate()
         fh.write(str(os.getpid()))

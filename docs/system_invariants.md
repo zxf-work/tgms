@@ -115,6 +115,13 @@ either one failing means raise, exactly as before this invariant existed:
    condition 1 trivially — the injected bytes start exactly at the applied
    offset — so condition 2 is what still refuses it.
 
+Condition 2's probe (`_writer_lock_is_held`) runs lazily — only at the
+moment `batches_from` actually meets a torn record satisfying condition 1
+and running to the file's true end, never on every read-only open — and
+`_acquire_writer_lock` retries its own trylock briefly before refusing, so
+neither a reader's momentary probe nor a writer's own open can spuriously
+refuse the other under contention.
+
 `EventLog.batches_from(offset, tolerate_torn_tail_from=applied_offset)`
 stops before a record satisfying both — checked fresh at the moment the
 defect is found (`seek(0, 2)`), since the writer may finish the record in
