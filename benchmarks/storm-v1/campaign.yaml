@@ -152,7 +152,7 @@ addendum_3:
       allow_r18_trip: true
       wall_cap_h: 12
     dag_phase: not re-run -- v2's --dag-seed-from-affected (addendum_2) already covers the narrowing-coverage-adjacent DAG question
-  commit_under_test: TBD -- fill with the sha checked out on the cluster worktree (>= fdd393c)
+  commit_under_test: fdd393c  # /project/xzhang12/tgms-storm-v2's own checked-out HEAD; MANIFEST_FORMAT_VERSION==3 and tgms.tgir.leaves.LEAF_SCOPES has 13 entries, both confirmed on the cluster
   predictions:  # verbatim from the accepted design; each PASS-if/REFUTED-if as given
     all_top_fraction:
       description: all-⊤ fraction of the registered population (compute excluded)
