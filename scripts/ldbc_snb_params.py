@@ -39,6 +39,7 @@ import calendar
 import hashlib
 import json
 import sys
+import time
 from pathlib import Path
 from typing import Any, Iterator
 
@@ -400,6 +401,118 @@ def substitute(node: Any, params: dict[str, Any]) -> Any:
 
 
 LDBC_PLANS = sorted(set(BI_SOURCES) | set(IV_SOURCES))
+
+
+# --------------------------------------------------------------------------
+# `params.json` export (design §3) — one binding, two consumers.
+#
+# `bind()` above produces the TGIR side only (encoded uids, µs timestamps,
+# the OR-expanded root). The Cypher side needs the *same* draw in LDBC's own
+# names and types, so this is a read-only projection over `bind()`'s own
+# inputs — it does not re-derive anything and it is not a second binder.
+# --------------------------------------------------------------------------
+
+#: LDBC parameter names (the alias table's *value* side) that name a
+#: millisecond-or-date clock rather than a plain scalar, keyed the same way
+#: `IV_MILLIS_PARAMS` is for the Interactive side. BI rows never appear here
+#: by name collision because `_typed` already turned their `:DATE`/`:DATETIME`
+#: columns into µs before `bind()` sees them — the BI half of this set is
+#: therefore discovered from each file's own header (`_bi_temporal_keys`),
+#: not hard-coded, so a header change cannot silently desync the export from
+#: the binder the way a second copy of `IV_MILLIS_PARAMS` could.
+IV_TEMPORAL_LDBC_KEYS = IV_MILLIS_PARAMS
+
+
+def us_to_iso(us: int) -> str:
+    """Microseconds since the epoch -> `YYYY-MM-DDTHH:MM:SS.mmm+00:00`.
+
+    The inverse of `tgms.data.snb_loader.parse_ts`, to millisecond precision
+    (SNB's own precision) — a BI date's µs value is always exact midnight, so
+    it round-trips through this losslessly too.
+    """
+    us = int(us)
+    total_us = us % 1_000_000
+    total_s = us // 1_000_000
+    ms = total_us // 1000
+    tm = time.gmtime(total_s)
+    return (f"{tm.tm_year:04d}-{tm.tm_mon:02d}-{tm.tm_mday:02d}T"
+            f"{tm.tm_hour:02d}:{tm.tm_min:02d}:{tm.tm_sec:02d}.{ms:03d}+00:00")
+
+
+def _bi_temporal_keys(params_root: Path, sf: str, name: str) -> set[str]:
+    """Which of a BI parameter file's own columns are `:DATE`/`:DATETIME`,
+    read straight from its header — the same file `read_bi_first` reads,
+    consulted a second time only for the type suffix `bind()` already
+    discards once a value is typed."""
+    path = (params_root / "bi" / "ldbc-snb-bi-parameters-sf1-to-sf30000"
+            / f"parameters-{sf}" / f"{name}.csv")
+    with open(path, encoding="utf-8") as f:
+        header = f.readline().rstrip("\n").split("|")
+    return {h.partition(":")[0] for h in header
+            if h.partition(":")[2] in ("DATE", "DATETIME")}
+
+
+def _cypher_side(plan_id: str, alias: dict[str, str], raw: dict[str, Any],
+                 params_root: Path, sf: str) -> dict[str, Any]:
+    """LDBC-native values for the same alias table `bind()` walks: raw ids
+    (never `snb_uid`-encoded), ISO-8601 for anything that names a clock, the
+    list itself for BI12's `languages` (§E addendum 3 — the OR-expansion is a
+    TGIR-side rule; Cypher takes the `STRING[]` LDBC already supplies), and
+    every other value passed through as LDBC's own file gave it."""
+    temporal = (_bi_temporal_keys(params_root, sf, BI_SOURCES[plan_id][0])
+                if plan_id in BI_SOURCES else IV_TEMPORAL_LDBC_KEYS)
+    out: dict[str, Any] = {}
+    for plan_key, ldbc_key in alias.items():
+        value = raw[ldbc_key]
+        if plan_key in ID_HIERARCHY:
+            out[ldbc_key] = int(value)
+        elif isinstance(value, list):
+            out[ldbc_key] = list(value)
+        elif ldbc_key in temporal:
+            us = value if plan_id in BI_SOURCES else int(value) * 1000
+            out[ldbc_key] = us_to_iso(us)
+        else:
+            out[ldbc_key] = value
+    return out
+
+
+def export_bindings(params_root: Path, sf: str = "sf1",
+                    csv_root: Path | None = None, adapter: Any = None,
+                    seed: int = CAMPAIGN_SEED,
+                    plan_ids: list[str] | None = None,
+                    campaign_commit: str = "unknown") -> dict[str, Any]:
+    """The whole `params.json` (design §3): one file, both sides, one draw.
+
+    A plan that fails to bind (missing source file, `PhantomAnchor`, …) does
+    not abort the export — it is recorded under `"error"` so a partial
+    `params_root` (a fixture, a single downloaded parameter file) still
+    produces a usable file for the plans it can reach.
+    """
+    ids = plan_ids if plan_ids is not None else LDBC_PLANS
+    rows: dict[str, Any] = {}
+    for pid in ids:
+        try:
+            b = bind(pid, params_root, sf, adapter, csv_root, seed)
+            if pid in BI_SOURCES:
+                name, alias = BI_SOURCES[pid]
+                raw = read_bi_first(params_root, sf, name)
+            else:
+                alias = IV_SOURCES[pid]
+                raw = read_iv_first(params_root, sf, alias)
+            rec: dict[str, Any] = {
+                "arm": b["arm"], "source": b["source"],
+                "cypher": _cypher_side(pid, alias, raw, params_root, sf),
+                "tgir": dict(b["params"]),
+            }
+            if b["sampled_anchors"]:
+                rec["anchors"] = list(b["sampled_anchors"].values())
+            if b["or_expansion"]:
+                rec["or_expansion"] = b["or_expansion"]
+            rows[pid] = rec
+        except Exception as e:                             # noqa: BLE001
+            rows[pid] = {"error": f"{type(e).__name__}: {e}"}
+    return {"seed": seed, "sf": sf, "campaign_commit": campaign_commit,
+            "rows": rows}
 
 
 def main() -> int:

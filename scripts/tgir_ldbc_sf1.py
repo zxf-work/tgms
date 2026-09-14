@@ -45,14 +45,18 @@ sys.path.insert(0, str(ROOT))
 
 from ldbc_snb_params import (  # noqa: E402
     CAMPAIGN_SEED, CAMPAIGN_SEED_SOURCE, LDBC_PLANS, PhantomAnchor, bind,
-    substitute,
+    export_bindings, substitute,
 )
 from tgms.core.errors import CostError, TgmsError  # noqa: E402
+from tgms.data.snb_loader import HIERARCHY_STRIDE, HIERARCHY_TAG, uid_to_ldbc_id  # noqa: E402
 from tgms.temporal.algebra import ensure_all_registered  # noqa: E402
 from tgms.temporal.guardrails import DEFAULT_CEILINGS  # noqa: E402
 from tgms.tgir.admission import POLICY_VERSION, plan_estimate  # noqa: E402
 from tgms.tgir.execute import run_plan  # noqa: E402
 from tgms.tgir.loader import load  # noqa: E402
+
+#: The inverse of `HIERARCHY_TAG`, for `--emit-rows`'s decoded sibling column.
+_TAG_HIERARCHY: dict[int, str] = {v: k for k, v in HIERARCHY_TAG.items()}
 
 #: §C5. The ceiling `external_workloads/FREEZE.md` already fixed for BIRD gold
 #: validation, adopted for continuity. No plan runs unbounded.
@@ -134,8 +138,57 @@ def _last_json(text: str, phase: str | None) -> dict[str, Any]:
     return out
 
 
+def _decode_row(row: dict[str, Any], schema: list[list[str]]) -> dict[str, Any]:
+    """One result row, LDBC-decoded (`--emit-rows`).
+
+    Every `uid` column becomes a plain LDBC id (`uid_to_ldbc_id`) plus a
+    `<name>__hierarchy` sibling carrying the tag the decode consumed —
+    decoding throws the hierarchy away, and a Post/Comment row decoded
+    through the shared `Message` slot (M6) needs that tag on hand for
+    `ldbc_compare.py` to name the union it applied, not just a bare int.
+    Every other column is passed through unchanged; comparison-side
+    normalization (ms/µs, NFC, float tolerance) is `ldbc_compare.py`'s job,
+    not the exporter's.
+    """
+    out: dict[str, Any] = {}
+    for name, tau in schema:
+        value = row.get(name)
+        if tau.rstrip("?") == "uid" and value is not None:
+            out[name] = uid_to_ldbc_id(value)
+            out[f"{name}__hierarchy"] = _TAG_HIERARCHY.get(
+                int(value) % HIERARCHY_STRIDE, "?")
+        else:
+            out[name] = value
+    return out
+
+
+def write_rows_export(out_dir: Path, plan_id: str, envelope: dict[str, Any],
+                      params: dict[str, Any], arm: str, commit: str) -> Path:
+    """`--emit-rows`: the envelope's full result, LDBC-decoded, to
+    `<dir>/tgms-<ID>.json`. Column order is the envelope's own declared
+    schema (`tgir.schema`) — never re-sorted, since "the envelope's declared
+    column order" is itself part of the comparison contract (design §6.1).
+    A sibling file; the existing campaign record format is untouched.
+    """
+    schema = envelope.get("tgir", {}).get("schema", [])
+    columns = [c[0] for c in schema]
+    rows = [_decode_row(r, schema) for r in envelope.get("rows", [])]
+    doc = {
+        "plan_id": plan_id, "schema": schema, "columns": columns, "rows": rows,
+        "result_digest": envelope.get("result_digest"),
+        "plan_digest": envelope.get("tgir", {}).get("plan_digest"),
+        "params": params, "arm": arm, "commit": commit,
+        "host": platform.node(),
+    }
+    out_dir.mkdir(parents=True, exist_ok=True)
+    path = out_dir / f"tgms-{plan_id}.json"
+    path.write_text(json.dumps(doc, indent=1, sort_keys=True, default=str))
+    return path
+
+
 def run_child(plan_id: str, store_path: str, params_root: Path,
-              sf: str, csv_root: Path | None = None) -> dict[str, Any]:
+              sf: str, csv_root: Path | None = None,
+              emit_rows_dir: Path | None = None) -> dict[str, Any]:
     """Run one plan in a child under a hard kill.
 
     **Every** plan goes through here, not only the refused ones. The first
@@ -158,6 +211,8 @@ def run_child(plan_id: str, store_path: str, params_root: Path,
            "--params", str(params_root), "--sf", sf, "--out", os.devnull]
     if csv_root is not None:
         cmd += ["--csv", str(csv_root)]
+    if emit_rows_dir is not None:
+        cmd += ["--emit-rows", str(emit_rows_dir)]
     t0 = time.time()
     try:
         done = subprocess.run(cmd, capture_output=True, text=True,
@@ -182,7 +237,8 @@ def run_child(plan_id: str, store_path: str, params_root: Path,
 
 def run_one(plan_id: str, store: Any, params_root: Path, sf: str,
             bypass: bool, emit_pre: bool = False,
-            csv_root: Path | None = None) -> dict[str, Any]:
+            csv_root: Path | None = None,
+            emit_rows_dir: Path | None = None) -> dict[str, Any]:
     rec: dict[str, Any] = {"plan_id": plan_id}
     try:
         root, b = _load_bound(plan_id, params_root, sf, store.adapter, csv_root)
@@ -246,6 +302,9 @@ def run_one(plan_id: str, store: Any, params_root: Path, sf: str,
         rec["ms_all"] = [round(x, 3) for x in times]
         rec["rows"] = len(envelope.get("rows", []))
         rec["completeness"] = envelope.get("completeness")
+        if emit_rows_dir is not None:
+            write_rows_export(emit_rows_dir, plan_id, envelope, rec["params"],
+                              rec["arm"], _sha())
     except CostError as e:
         rec["outcome"] = "REFUSED_ON_RUN"
         rec["error"] = e.to_payload().get("code")
@@ -279,6 +338,15 @@ def main() -> int:
                          "ceiling with a kill.")
     ap.add_argument("--no-bypass", action="store_true",
                     help="skip the guard-bypassed re-run of refused plans")
+    ap.add_argument("--emit-rows", default="",
+                    help="write each plan's full LDBC-decoded result rows to "
+                         "<dir>/tgms-<ID>.json, alongside the usual row-COUNT "
+                         "record (design D1 §6.1)")
+    ap.add_argument("--export-params", default="",
+                    help="write one params.json (LDBC-native `cypher` values "
+                         "plus the already-bound `tgir` values, per plan) to "
+                         "this path — a side artifact, read by both runners "
+                         "(design D1 §3); does not change the campaign run")
     args = ap.parse_args()
 
     import tgms
@@ -290,13 +358,30 @@ def main() -> int:
         try:
             rec = run_one(args.single, store, Path(args.params), args.sf,
                           bypass=not args.no_bypass, emit_pre=True,
-                          csv_root=Path(args.csv) if args.csv else None)
+                          csv_root=Path(args.csv) if args.csv else None,
+                          emit_rows_dir=(Path(args.emit_rows)
+                                        if args.emit_rows else None))
         finally:
             store.close()
         print(json.dumps({"phase": "final", **rec}, default=str))
         return 0
 
     sha = _sha()
+
+    if args.export_params:
+        store = tgms.open(args.store, read_only=True)
+        try:
+            params_doc = export_bindings(
+                Path(args.params), args.sf,
+                Path(args.csv) if args.csv else None,
+                adapter=store.adapter, campaign_commit=sha)
+        finally:
+            store.close()
+        out_path = Path(args.export_params)
+        out_path.parent.mkdir(parents=True, exist_ok=True)
+        out_path.write_text(json.dumps(params_doc, indent=1, sort_keys=True,
+                                       default=str))
+        print(f"params exported: {out_path}")
     ids = LDBC_PLANS if args.plan == "all" else [args.plan]
     print(f"RUN_STARTED commit={sha} store={args.store} sf={args.sf} "
           f"plans={len(ids)} policy={POLICY_VERSION} host={platform.node()}",
@@ -344,7 +429,8 @@ def main() -> int:
     for pid in ids:
         t = time.time()
         rec = run_child(pid, args.store, Path(args.params), args.sf,
-                        Path(args.csv) if args.csv else None)
+                        Path(args.csv) if args.csv else None,
+                        Path(args.emit_rows) if args.emit_rows else None)
         records.append(rec)
         flush()
         print(f"  {pid:6s} {rec.get('derived_admission', '—'):>6} -> "

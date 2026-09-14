@@ -1,0 +1,32 @@
+{
+ "_note": "Canned Neo4j-side counterpart to tgms-BI11.json. sinceDate is epoch milliseconds (Neo4j-native); cityName's second row is NFC.",
+ "columns": [
+  "person1Id",
+  "person2Id",
+  "cityName",
+  "sinceDate"
+ ],
+ "commit": "canned",
+ "host": "canned",
+ "params": {
+  "country": "Countryland"
+ },
+ "plan_id": "BI11",
+ "query_file": "external_workloads/ldbc/bi/neo4j/queries/bi-11.cypher",
+ "query_sha256": "canned",
+ "result_digest": "canned-ref-bi11",
+ "rows": [
+  {
+   "cityName": "Countryville",
+   "person1Id": 10,
+   "person2Id": 20,
+   "sinceDate": 1000
+  },
+  {
+   "cityName": "Otheréville",
+   "person1Id": 30,
+   "person2Id": 40,
+   "sinceDate": 2000
+  }
+ ]
+}
