@@ -503,6 +503,81 @@ def burst_detection_terms(args: dict[str, Any], sigma: Sigma) -> tuple[ScopeTerm
 
 
 # ---------------------------------------------------------------------------
+# §2.4 — graph_metric_timeseries (rollout design 2026-09-14, §6 step 5)
+# ---------------------------------------------------------------------------
+
+#: §2.4's per-metric read table (`ops_series.py:109-169`). None of the six
+#: takes an entity filter or a rel-type argument, so `I = ⊤` and `T = ⊤`
+#: always — the split below is only about which entity **kind**(s) the
+#: metric reads, and under which reading (§3.2's instant/event distinction;
+#: `vt_mode` is carried, never consulted, so this is documentation only).
+_METRIC_ARMS: dict[str, tuple[str, ...]] = {
+    "edge_event_count": ("edge",),
+    "active_edge_count": ("edge",),
+    "reciprocity": ("edge",),
+    "mean_out_degree": ("edge", "node"),
+    "node_count": ("node",),
+    "new_node_rate": ("node",),
+}
+_METRIC_VT_MODE: dict[str, str] = {
+    "edge_event_count": "event",
+    "active_edge_count": "instant",
+    "reciprocity": "event",
+    "mean_out_degree": "instant",
+    "node_count": "instant",
+    "new_node_rate": "event",
+}
+
+
+def graph_metric_timeseries_terms(args: dict[str, Any], sigma: Sigma) -> tuple[ScopeTerm, ...]:
+    """A six-row metric table plus `new_node_rate`'s `[0, t_b)` widening.
+
+    `mean_out_degree` emits **both** an edge term and a node term — it is the
+    one metric that reads both scans (`ops_series.py:121-133,141-144`).
+
+    **The `new_node_rate` widening is load-bearing**: the answer is a minimum
+    over an identity's whole believed history (`:145-154`), so a node version
+    created entirely before `t_a` can move a birth out of the window (CE-4);
+    a uniform "`V` = the window" rule is unsound for this one metric.
+    Conversely `mean_out_degree`'s edge scan reads `vt_max=t_b` with no
+    `vt_min`, yet its answer depends only on activity at bucket starts
+    inside the window (`_active_at`, `:50-54`): an interval ending at or
+    before `t_a` is active at no bucket start `≥ t_a` — §9.8's "domain
+    follows the answer" precedent, its first of three invocations in this
+    design.
+
+    `reciprocity` reads `adapter.num_entities()` (`:159`) as the radix for
+    pair encoding; since every dense id is `< nv` the encoding is injective
+    regardless of `nv`, so the metric value does not depend on the entity
+    count — a hidden read that does not enter `R`, and the reason
+    `reciprocity` keeps `K = ℰ` alone.
+
+    `P = Pᵥ` for all six: rows are `{t_a, t_b, value}`, exposing no property,
+    no `vid` and no version interval — the instant metrics are carve-neutral
+    by L9.1, the event metrics by gate Appendix A.3, and `new_node_rate` by
+    the argument that a carve's left fragment keeps its `vt_s` while a right
+    fragment's new start is bounded by the value arm.
+    """
+    metric = args.get("metric")
+    vt = _window_vt(args)
+    stride = args.get("stride")
+    if metric not in _METRIC_ARMS or vt is None or not isinstance(stride, int) or stride < 1:
+        return (TOP_TERM,)
+    mode = _METRIC_VT_MODE[metric]
+    t_b = vt[0][1]
+    arms = _METRIC_ARMS[metric]
+    terms = []
+    if "edge" in arms:
+        terms.append(ScopeTerm(kinds=K_EDGE, targets=_edge_target(), rel_types=TOP,
+                               vt=vt, vt_mode=mode, props=P_VALUE))
+    if "node" in arms:
+        node_vt = ((0, t_b),) if metric == "new_node_rate" else vt
+        terms.append(ScopeTerm(kinds=K_NODE, targets=Targets(nodes=TOP), rel_types=TOP,
+                               vt=node_vt, vt_mode=mode, props=P_VALUE))
+    return tuple(terms)
+
+
+# ---------------------------------------------------------------------------
 # the rollout table — one line per operator, and the rollback
 # ---------------------------------------------------------------------------
 
@@ -520,6 +595,7 @@ LEAF_SCOPES: dict[str, Derivation] = {
     "temporal_reachability": temporal_reachability_terms,
     "temporal_paths": temporal_paths_terms,
     "burst_detection": burst_detection_terms,
+    "graph_metric_timeseries": graph_metric_timeseries_terms,
 }
 
 #: Does this operator's output bind **node-version** columns — a label, a
@@ -547,6 +623,8 @@ BINDS_NODE_VERSIONS: dict[str, Callable[[dict[str, Any]], bool]] = {
     "temporal_paths": lambda args: False,
     # rows are {t_a, t_b, value, score}: a bucket statistic, no node column
     "burst_detection": lambda args: False,
+    "graph_metric_timeseries": lambda args: args.get("metric") in
+        {"node_count", "mean_out_degree", "new_node_rate"},
 }
 
 
@@ -567,6 +645,7 @@ __all__ = [
     "BINDS_NODE_VERSIONS", "Derivation", "LEAF_SCOPES", "P_CARVE_REACHED",
     "P_VALUE", "aggregate_events_terms", "burst_detection_terms",
     "count_temporal_motifs_terms", "entity_history_terms",
-    "find_temporal_motif_instances_terms", "neighborhood_evolution_terms",
-    "temporal_paths_terms", "temporal_reachability_terms", "terms_for",
+    "find_temporal_motif_instances_terms", "graph_metric_timeseries_terms",
+    "neighborhood_evolution_terms", "temporal_paths_terms",
+    "temporal_reachability_terms", "terms_for",
 ]
