@@ -253,6 +253,48 @@ def test_a_pinned_reader_answers_from_exactly_one_generation(tmp_path: Path):
     after.close()
 
 
+def _child_writer_paced(root: str, batches: int, rows: int, pace_s: float) -> None:
+    write_batches(Path(root), batches=batches, rows=rows, pace_s=pace_s)
+
+
+def test_a_pinned_reader_survives_two_hundred_paced_batches(tmp_path: Path):
+    """The same property as `test_a_pinned_reader_answers_from_exactly_one_
+    generation`, stressed over many more generations: `write_batches`'
+    `pace_s` knob (previously unused by any test) slows the writer down
+    between batches, so two hundred generations actually interleave with
+    the reader's loop — many more samples per generation than twelve
+    unpaced batches give — instead of the writer racing through before the
+    reader's next observation lands.
+    """
+    seed_store(tmp_path)
+    out = tmp_path / "paced.json"
+    stop, ready = MP.Event(), MP.Event()
+    r = MP.Process(target=_child_pinned_reader, args=(str(tmp_path), str(out), stop, ready))
+    r.start()
+    try:
+        assert ready.wait(180), "the reader never opened the store"
+        w = MP.Process(target=_child_writer_paced,
+                       args=(str(tmp_path), 200, BATCH_ROWS, 0.01))
+        w.start()
+        w.join(300)
+        assert w.exitcode == 0, f"the writer failed: exit {w.exitcode}"
+    finally:
+        stop.set()
+        r.join(180)
+        if r.is_alive():
+            r.terminate()
+            r.join(30)
+    assert r.exitcode == 0
+
+    got = json.loads(out.read_text())
+    assert len(got["observations"]) > 1, "the reader did not get to loop"
+    assert len(got["distinct"]) == 1, (
+        f"a pinned reader saw {len(got['distinct'])} distinct states across 200 "
+        f"paced writer batches: {got['distinct']}")
+    assert got["generation_open"] == got["generation_close"], (
+        "a read-only handle advanced its generation")
+
+
 # --------------------------------------------------------------------------- #
 # 2. batch atomicity across reopens                                            #
 # --------------------------------------------------------------------------- #
