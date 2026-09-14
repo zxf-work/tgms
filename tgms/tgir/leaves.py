@@ -455,6 +455,54 @@ def temporal_paths_terms(args: dict[str, Any], sigma: Sigma) -> tuple[ScopeTerm,
 
 
 # ---------------------------------------------------------------------------
+# §2.5 — burst_detection (rollout design 2026-09-14, §6 step 4)
+# ---------------------------------------------------------------------------
+
+def burst_detection_terms(args: dict[str, Any], sigma: Sigma) -> tuple[ScopeTerm, ...]:
+    """Two branches, both small.
+
+    **`edge_event_rate`.** `_event_bucket_counts(..., rel_types)`
+    (`ops_series.py:258,262`, `:66-106`) — no entity filter at all, so
+    `I = ⊤` (as `E`).
+
+    **`node_activity`.** `adapter.edges_columnar(vt_min=t_a, vt_max=t_b,
+    rel_types, columns=("src_id","dst_id","vt_s"))` (`:268-270`) masked to
+    `(src_id == uid_id) | (dst_id == uid_id)` and `vt_s ∈ [t_a, t_b)`
+    (`:272-273`), plus `adapter.dense_ids([target.uid])` (`:271`) — hence the
+    existence pair. `K = ℰ`, realised as an `incident("either", uid)` arm,
+    which matches the kernel's own mask exactly.
+
+    **`T = ⊤` when `target.rel_type` is null.**
+
+    **`V = window` with `vt_mode = "event"`**: the series counts events by
+    `vt_s ∈ [t_a, t_b)`, and an edge whose value-arm interval misses the
+    window contributes no such event; `vt_closed` already right-closes the
+    footprint side, so the boundary case is covered there and not here
+    (D8.6). **`P = Pᵥ`** by gate Appendix A.3: the operator is event-keyed on
+    `vt_s` alone and exposes no version metadata.
+    """
+    target = args.get("target")
+    vt = _window_vt(args)
+    if not isinstance(target, dict) or vt is None:
+        return (TOP_TERM,)
+    rel_type = target.get("rel_type")
+    rel = (rel_type,) if rel_type else TOP
+    kind = target.get("kind")
+    if kind == "edge_event_rate":
+        return (ScopeTerm(kinds=K_EDGE, targets=_edge_target(), rel_types=rel,
+                          vt=vt, vt_mode="event", props=P_VALUE),)
+    if kind == "node_activity":
+        uid = target.get("uid")
+        if not isinstance(uid, str) or not uid:
+            return (TOP_TERM,)
+        uids = (uid,)
+        return (ScopeTerm(kinds=K_EDGE, targets=_edge_target(uids, "either"),
+                          rel_types=rel, vt=vt, vt_mode="event",
+                          props=P_VALUE),) + _existence_terms(uids)
+    return (TOP_TERM,)
+
+
+# ---------------------------------------------------------------------------
 # the rollout table — one line per operator, and the rollback
 # ---------------------------------------------------------------------------
 
@@ -471,6 +519,7 @@ LEAF_SCOPES: dict[str, Derivation] = {
     "find_temporal_motif_instances": find_temporal_motif_instances_terms,
     "temporal_reachability": temporal_reachability_terms,
     "temporal_paths": temporal_paths_terms,
+    "burst_detection": burst_detection_terms,
 }
 
 #: Does this operator's output bind **node-version** columns — a label, a
@@ -496,6 +545,8 @@ BINDS_NODE_VERSIONS: dict[str, Callable[[dict[str, Any]], bool]] = {
     "temporal_reachability": lambda args: False,
     # rows carry src/dst/rel_type/eid/t off edge endpoints, never a node column
     "temporal_paths": lambda args: False,
+    # rows are {t_a, t_b, value, score}: a bucket statistic, no node column
+    "burst_detection": lambda args: False,
 }
 
 
@@ -514,8 +565,8 @@ def terms_for(op: str, args: dict[str, Any], sigma: Sigma) -> tuple[ScopeTerm, .
 
 __all__ = [
     "BINDS_NODE_VERSIONS", "Derivation", "LEAF_SCOPES", "P_CARVE_REACHED",
-    "P_VALUE", "aggregate_events_terms", "count_temporal_motifs_terms",
-    "entity_history_terms", "find_temporal_motif_instances_terms",
-    "neighborhood_evolution_terms", "temporal_paths_terms",
-    "temporal_reachability_terms", "terms_for",
+    "P_VALUE", "aggregate_events_terms", "burst_detection_terms",
+    "count_temporal_motifs_terms", "entity_history_terms",
+    "find_temporal_motif_instances_terms", "neighborhood_evolution_terms",
+    "temporal_paths_terms", "temporal_reachability_terms", "terms_for",
 ]
