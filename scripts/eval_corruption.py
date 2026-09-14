@@ -101,10 +101,32 @@ _TCSR_TOUCH_ARGS = {"src": UID_A, "dst": UID_B, "window": {"t_a": 0, "t_b": 1_00
                      "k": 1, "max_hops": 2}
 
 #: Env var read by the engine's manifest-chain code (`manifest_chain.rs`,
-#: `CHECKPOINT_EVERY_ENV`) — set low so a handful of post-compaction
-#: generations reliably produces at least one delta manifest alongside the
-#: checkpoint compaction always writes, without needing hundreds of writes.
-os.environ.setdefault("TGMS_MANIFEST_CHECKPOINT_EVERY", "2")
+#: `CHECKPOINT_EVERY_ENV`). The fixture builder sets it LOW for the span of
+#: its post-compaction writes only (see `_checkpoint_every`), so a handful of
+#: generations reliably produces a delta manifest alongside the checkpoint
+#: compaction always writes. It must never be set at import time: importing
+#: this module from a test leaked the value into every later test in the
+#: same process (CI at 0b461de: `test_manifest_format2` saw a checkpoint
+#: where the K=512 default writes a delta).
+CHECKPOINT_EVERY_FOR_FIXTURE = "2"
+
+
+class _checkpoint_every:
+    """Set `TGMS_MANIFEST_CHECKPOINT_EVERY` for a `with` block and restore it."""
+
+    def __init__(self, value: str) -> None:
+        self._value = value
+        self._prior: str | None = None
+
+    def __enter__(self) -> None:
+        self._prior = os.environ.get("TGMS_MANIFEST_CHECKPOINT_EVERY")
+        os.environ["TGMS_MANIFEST_CHECKPOINT_EVERY"] = self._value
+
+    def __exit__(self, *exc: object) -> None:
+        if self._prior is None:
+            os.environ.pop("TGMS_MANIFEST_CHECKPOINT_EVERY", None)
+        else:
+            os.environ["TGMS_MANIFEST_CHECKPOINT_EVERY"] = self._prior
 
 
 class _NullSink:
@@ -209,18 +231,18 @@ def build_store(store_dir: Path, trial_seed: int) -> dict[str, Any]:
     # saw, and — with TGMS_MANIFEST_CHECKPOINT_EVERY set low — at least one
     # delta manifest layered on the checkpoint compaction just wrote.
     have_delta = False
-    for i in range(8):
-        store.correct(EntityRef(kind="node", uid=UID_A), {"i": 2 + i}, vt_s=0, vt_e=1_000_000)
-        have_delta = any(
-            json.loads(p.read_text()).get("kind") == "delta"
-            for p in (native_dir(store_dir) / "manifests").glob("*.json")
-        )
-        if have_delta:
-            break
+    with _checkpoint_every(CHECKPOINT_EVERY_FOR_FIXTURE):
+        for i in range(8):
+            store.correct(EntityRef(kind="node", uid=UID_A), {"i": 2 + i}, vt_s=0, vt_e=1_000_000)
+            have_delta = any(
+                json.loads(p.read_text()).get("kind") == "delta"
+                for p in (native_dir(store_dir) / "manifests").glob("*.json")
+            )
+            if have_delta:
+                break
     assert have_delta, (
         "fixture bug: no delta manifest appeared after 8 post-compaction "
-        "writes with TGMS_MANIFEST_CHECKPOINT_EVERY="
-        f"{os.environ.get('TGMS_MANIFEST_CHECKPOINT_EVERY')}")
+        f"writes with TGMS_MANIFEST_CHECKPOINT_EVERY={CHECKPOINT_EVERY_FOR_FIXTURE}")
 
     call_operator(store.adapter, "temporal_paths", _TCSR_TOUCH_ARGS)  # builds index/tcsr.npz
     artifact_names = register_sample_artifacts(store_dir)
