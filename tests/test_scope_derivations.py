@@ -634,3 +634,116 @@ class TestGraphMetricTimeseries:
               f"{result.exclusion_rate:.2f} precision={result.precision:.2f} n={result.n}")
         assert result.n > 0
         assert result.exclusion_rate >= 0.1
+
+
+# ---------------------------------------------------------------------------
+# §2.6 — co_active
+# ---------------------------------------------------------------------------
+
+class TestCoActive:
+    REL_ONLY = {"a_spec": {"rel_type": "R"}, "b_spec": {"rel_type": "S"},
+               "allen_relation": {"relation": "overlaps"}}
+    SRC_ONLY = {"a_spec": {"src": "n0"}, "b_spec": {"rel_type": "S"},
+               "allen_relation": {"relation": "overlaps"}}
+    BOTH_ENDPOINTS = {"a_spec": {"src": "n0", "dst": "n1"}, "b_spec": {"src": "n2"},
+                      "allen_relation": {"relation": "before", "gap": 5}}
+
+    REL_ONLY_MATRIX = [
+        ("an edge of a_spec's rel_type", REL_ONLY,
+         assert_edge("n5", "n6", rel_type="R", vt_s=10, vt_e=11), True),
+        ("an edge of b_spec's rel_type", REL_ONLY,
+         assert_edge("n5", "n6", rel_type="S", vt_s=10, vt_e=11), True),
+        ("an edge of neither rel_type", REL_ONLY,
+         assert_edge("n5", "n6", rel_type="Z", vt_s=10, vt_e=11), False),
+        ("a node write, no endpoint named by either spec", REL_ONLY,
+         assert_node("n5"), False),
+        # V = TOP unconditionally: co_active takes no window at all
+        ("an edge of a_spec's rel_type, far in valid time", REL_ONLY,
+         assert_edge("n5", "n6", rel_type="R", vt_s=10_000, vt_e=10_001), True),
+    ]
+
+    SRC_ONLY_MATRIX = [
+        ("an edge with src = n0 (role=src)", SRC_ONLY,
+         assert_edge("n0", "n9", vt_s=10, vt_e=11), True),
+        # the READ term's role=src checks the src field only — but this edge
+        # still names n0 as an endpoint, so the existence pair (role=either)
+        # catches it regardless; correct/retract isolate the read term alone
+        ("an edge with dst = n0, NOT src — the existence pair still catches "
+         "it (only correct/retract would isolate the read term's role=src)",
+         SRC_ONLY, assert_edge("n9", "n0", vt_s=10, vt_e=11), True),
+        ("a correction with dst = n0, NOT src — isolates role=src (correct "
+         "is never in the existence pair's kinds)", SRC_ONLY,
+         correct_edge("n9", "n0", vt_s=10, vt_e=11), False),
+        ("the existence pair over the named endpoint", SRC_ONLY,
+         assert_node("n0"), True),
+        ("an assert_node on an unrelated uid", SRC_ONLY, assert_node("n9"), False),
+    ]
+
+    BOTH_MATRIX = [
+        ("an edge matching a_spec's (src, dst) pair", BOTH_ENDPOINTS,
+         assert_edge("n0", "n1", vt_s=10, vt_e=11), True),
+        # documented widening: role="both" admits the REVERSED edge too
+        ("the reversed edge also matches role=both (a stated widening)",
+         BOTH_ENDPOINTS, assert_edge("n1", "n0", vt_s=10, vt_e=11), True),
+        # excluded by the read term's `both` (only one of the two endpoints
+        # named), but the existence pair (role=either, over {n0,n1,n2}) still
+        # catches it, since n0 is one of the uids named
+        ("an edge naming only one of a_spec's two endpoints — the read "
+         "term's `both` excludes it, the existence pair still catches it",
+         BOTH_ENDPOINTS, assert_edge("n0", "n9", vt_s=10, vt_e=11), True),
+        ("a correction naming only one of a_spec's two endpoints (isolates "
+         "the read term's `both`)", BOTH_ENDPOINTS,
+         correct_edge("n0", "n9", vt_s=10, vt_e=11), False),
+        ("an edge naming none of either spec's endpoints", BOTH_ENDPOINTS,
+         assert_edge("n8", "n9", vt_s=10, vt_e=11), False),
+        ("an edge matching b_spec's single endpoint", BOTH_ENDPOINTS,
+         assert_edge("n2", "n9", vt_s=10, vt_e=11), True),
+    ]
+
+    @pytest.mark.parametrize(
+        "label,args,op,must",
+        REL_ONLY_MATRIX + SRC_ONLY_MATRIX + BOTH_MATRIX,
+        ids=[m[0] for m in REL_ONLY_MATRIX + SRC_ONLY_MATRIX + BOTH_MATRIX])
+    def test_matrix(self, label, args, op, must):
+        filled = validate_args("co_active", dict(args))
+        terms = terms_for("co_active", filled, sigma_for("co_active", filled))
+        assert hits(terms, op) is must, (
+            f"{label}: should {'intersect' if must else 'NOT intersect'}; "
+            f"arms hit: {arms_that_hit(terms, op)}")
+
+    def test_v_and_p_are_top(self):
+        """§9.10: co_active takes no window at all (V = TOP structurally, the
+        only operator of the fifteen), and P = TOP (whole-interval Allen
+        comparison, sensitive to any carve)."""
+        filled = validate_args("co_active", dict(self.REL_ONLY))
+        for term in terms_for("co_active", filled, sigma_for("co_active", filled)):
+            assert term.vt is TOP
+            assert term.props is TOP
+
+    def test_two_terms_not_a_union(self):
+        """Merging the two spec terms would take the union of both
+        selections' restrictions, a strictly coarser answer — so `co_active`
+        emits two disjuncts, not one."""
+        filled = validate_args("co_active", dict(self.REL_ONLY))
+        a_term, b_term = terms_for("co_active", filled, sigma_for("co_active", filled))
+        assert a_term.rel_types == ("R",)
+        assert b_term.rel_types == ("S",)
+
+    def test_no_existence_pair_when_no_endpoint_named(self):
+        filled = validate_args("co_active", dict(self.REL_ONLY))
+        assert len(terms_for("co_active", filled, sigma_for("co_active", filled))) == 2
+
+    def test_differential_rel_only(self, store):
+        result = run_differential(store, "co_active", dict(self.REL_ONLY), trials=10, seed=10)
+        print(f"co_active[rel_only]: exclusion={result.exclusion_rate:.2f} "
+              f"precision={result.precision:.2f} n={result.n}")
+        assert result.n > 0
+        assert result.exclusion_rate >= 0.3
+
+    def test_differential_src_only(self, store):
+        result = run_differential(store, "co_active", dict(self.SRC_ONLY),
+                                  read_uids=("n0",), trials=10, seed=11)
+        print(f"co_active[src_only]: exclusion={result.exclusion_rate:.2f} "
+              f"precision={result.precision:.2f} n={result.n}")
+        assert result.n > 0
+        assert result.exclusion_rate >= 0.1

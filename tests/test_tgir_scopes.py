@@ -567,7 +567,7 @@ def test_only_three_operators_are_derived_and_the_rest_stay_top():
         "entity_history", "neighborhood_evolution", "aggregate_events",
         "count_temporal_motifs", "find_temporal_motif_instances",
         "temporal_reachability", "temporal_paths", "burst_detection",
-        "graph_metric_timeseries",
+        "graph_metric_timeseries", "co_active",
     }
     for op, args in (("version_history", {"kind": "node", "window": W}),
                      ("snapshot_subgraph", {"seeds": ["u1"], "t_valid": 10}),
