@@ -737,6 +737,61 @@ def version_history_terms(args: dict[str, Any], sigma: Sigma) -> tuple[ScopeTerm
 
 
 # ---------------------------------------------------------------------------
+# §2.2 — snapshot_subgraph (rollout design 2026-09-14, §6 step 9, last:
+# least yield, and the induced-edge argument below is the easiest thing in
+# this document to get wrong)
+# ---------------------------------------------------------------------------
+
+def snapshot_subgraph_terms(args: dict[str, Any], sigma: Sigma) -> tuple[ScopeTerm, ...]:
+    """Two terms (the split `entity_kind` canonicalisation forces) plus the
+    existence pair over `seeds`.
+
+    **Reads.** `adapter.dense_ids(args["seeds"])` (`ops_snapshot.py:155`);
+    `edges_at` → `edges_columnar(vt_min=t, vt_max=t+1, rel_types=…)`
+    (`:156`, `:39-44`); `nodes_at` → `nodes_columnar(vt_min=t, vt_max=t+1)`
+    (`:157`, `:47-48`); `bfs_node_set` (`:51-68`, pure over the two arrays
+    already read); the induced-edge mask (`:159-160`); node rows carrying
+    `uid` and `label` (`:161-165`); `_edge_rows` → `uids_for` (`:166`,
+    `:71-80`) emitting `eid`, `vid`, `src`, `dst`, `rel_type`, `vt_s`,
+    `vt_e`.
+
+    **`I = ⊤` on *both* read terms at every `hops ≥ 1`.** The argument is
+    stronger than `temporal_reachability`'s: `bfs_node_set`'s chain-of-new-
+    edges argument applies (a node enters the ball via a path that may
+    consist entirely of new edges), but the operator returns the
+    **induced** subgraph (`ops_snapshot.py:159`), so even at `hops = 1` a new
+    edge between two existing *neighbours of seeds* — incident to no seed —
+    becomes an output row. An `incident("either", seeds)` edge arm would
+    miss it; this is precisely the narrowing a less careful implementation
+    would reach for, and it is unsound here.
+
+    **`T = ⊤` on the node term always** (`rel_types` is consulted only for
+    edge footprints) **and on the edge term when `rel_types` is null.**
+
+    **`V = [t_valid, t_valid+1)`** is a read-region fact (`edges_at`/
+    `nodes_at` pass `vt_min=t, vt_max=t+1`), not a D13.6 adjustment.
+
+    **`P = ⊤` is mandatory** by D9.0 conditions 1 and 2 (`vid` and `vt_e` are
+    in `_edge_rows`), so the instant `V` buys nothing against a Class B/C/D
+    op on a matching-kind identity.
+    """
+    seeds = args.get("seeds")
+    t = args.get("t_valid")
+    vt = _instant_vt(t)
+    if not isinstance(seeds, list) or not seeds or vt is None:
+        return (TOP_TERM,)
+    rel_types = args.get("rel_types")
+    rel = tuple(rel_types) if rel_types else TOP
+    uids = tuple(dict.fromkeys(seeds))
+    return (
+        ScopeTerm(kinds=K_EDGE, targets=_edge_target(), rel_types=rel,
+                 vt=vt, vt_mode="instant", props=TOP),
+        ScopeTerm(kinds=K_NODE, targets=Targets(nodes=TOP), rel_types=TOP,
+                 vt=vt, vt_mode="instant", props=TOP),
+    ) + _existence_terms(uids)
+
+
+# ---------------------------------------------------------------------------
 # the rollout table — one line per operator, and the rollback
 # ---------------------------------------------------------------------------
 
@@ -758,6 +813,7 @@ LEAF_SCOPES: dict[str, Derivation] = {
     "co_active": co_active_terms,
     "diff_snapshots": diff_snapshots_terms,
     "version_history": version_history_terms,
+    "snapshot_subgraph": snapshot_subgraph_terms,
 }
 
 #: Does this operator's output bind **node-version** columns — a label, a
@@ -793,6 +849,8 @@ BINDS_NODE_VERSIONS: dict[str, Callable[[dict[str, Any]], bool]] = {
     "diff_snapshots": lambda args: True,
     # node kind's rows carry label, vid; edge kind's carry no node column
     "version_history": lambda args: args.get("kind") == "node",
+    # node rows carry uid and label (ops_snapshot.py:163)
+    "snapshot_subgraph": lambda args: True,
 }
 
 
@@ -815,6 +873,6 @@ __all__ = [
     "co_active_terms", "count_temporal_motifs_terms", "diff_snapshots_terms",
     "entity_history_terms", "find_temporal_motif_instances_terms",
     "graph_metric_timeseries_terms", "neighborhood_evolution_terms",
-    "temporal_paths_terms", "temporal_reachability_terms", "terms_for",
-    "version_history_terms",
+    "snapshot_subgraph_terms", "temporal_paths_terms",
+    "temporal_reachability_terms", "terms_for", "version_history_terms",
 ]
