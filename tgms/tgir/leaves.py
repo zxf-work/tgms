@@ -699,6 +699,44 @@ def _two_instant_vt(t1: Any, t2: Any) -> tuple[tuple[int, int], ...] | None:
 
 
 # ---------------------------------------------------------------------------
+# §2.1 — version_history (rollout design 2026-09-14, §6 step 8)
+# ---------------------------------------------------------------------------
+
+def version_history_terms(args: dict[str, Any], sigma: Sigma) -> tuple[ScopeTerm, ...]:
+    """Small, but its value is the entity-kind split, not the window.
+
+    **Reads.** One call, `adapter.versions_page(kind, as_of=…, t_a, t_b,
+    belief, rel_types, offset, limit)` (`ops_versions.py:158-160`), which
+    returns the page columns **and the exact population size** `rows_total`.
+    Validator `ops_versions.py:82-87` forbids `rel_types` when
+    `kind == "node"`. No `dense_ids` call — no existence pair.
+
+    **`I = ⊤` always** (a whole-store belief-log scan). `T = ⊤` for
+    `kind == "node"` by the validator, and for `kind == "edge"` whenever
+    `rel_types` is null.
+
+    **`P = ⊤` unconditionally**: `V = window` is sound only *because* `P = ⊤`
+    makes the carve arm reachable — a `correct` outside the window can
+    re-cut an in-window version's `vid`/`vt_e` and move `rows_total`, and
+    only the carve arm's `vt = "*"` catches it. `P = ⊤` is mandatory here by
+    four of D9.0's five conditions at once (exposes `vid`; exposes `vt_e`;
+    counts version rows over an **overlap** predicate; exposes `tt_s`/`tt_e`
+    and the current/superseded classification).
+    """
+    kind = args.get("kind")
+    vt = _window_vt(args)
+    if kind not in ("node", "edge") or vt is None:
+        return (TOP_TERM,)
+    if kind == "node":
+        return (ScopeTerm(kinds=K_NODE, targets=Targets(nodes=TOP), rel_types=TOP,
+                          vt=vt, vt_mode="overlap", props=TOP),)
+    rel_types = args.get("rel_types")
+    rel = tuple(rel_types) if rel_types else TOP
+    return (ScopeTerm(kinds=K_EDGE, targets=_edge_target(), rel_types=rel,
+                      vt=vt, vt_mode="overlap", props=TOP),)
+
+
+# ---------------------------------------------------------------------------
 # the rollout table — one line per operator, and the rollback
 # ---------------------------------------------------------------------------
 
@@ -719,6 +757,7 @@ LEAF_SCOPES: dict[str, Derivation] = {
     "graph_metric_timeseries": graph_metric_timeseries_terms,
     "co_active": co_active_terms,
     "diff_snapshots": diff_snapshots_terms,
+    "version_history": version_history_terms,
 }
 
 #: Does this operator's output bind **node-version** columns — a label, a
@@ -752,6 +791,8 @@ BINDS_NODE_VERSIONS: dict[str, Callable[[dict[str, Any]], bool]] = {
     "co_active": lambda args: False,
     # nodes_added/removed carry label; props_changed carries node props too
     "diff_snapshots": lambda args: True,
+    # node kind's rows carry label, vid; edge kind's carry no node column
+    "version_history": lambda args: args.get("kind") == "node",
 }
 
 
@@ -775,4 +816,5 @@ __all__ = [
     "entity_history_terms", "find_temporal_motif_instances_terms",
     "graph_metric_timeseries_terms", "neighborhood_evolution_terms",
     "temporal_paths_terms", "temporal_reachability_terms", "terms_for",
+    "version_history_terms",
 ]
