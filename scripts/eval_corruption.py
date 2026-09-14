@@ -585,9 +585,31 @@ def check_tcsr_rebuild(store_dir: Path) -> dict[str, Any]:
 
 def explain_benign(cls: str, mut_info: dict[str, Any], build_meta: dict[str, Any]) -> str:
     if cls == "artifact_blob":
-        return ("plan blobs are read only by artifact refresh(), never by "
-                "check() — this harness never calls refresh, so a blob's "
-                "own bytes cannot affect any observation it runs")
+        # Task A10 (found here: this class's own `append_garbage` row was
+        # 0/106 detected, verdict BENIGN, every digest unchanged — the
+        # reasoning below used to be true unconditionally and is why).
+        # `register_sample_artifacts` writes each plan blob before
+        # registering it, so `Registry.register()` now stamps a
+        # `blob_sha256` for it; under the default `verify_mode="full"`,
+        # `NativeStoreAdapter.verify` walks the artifact registry
+        # (`tgms.artifact.registry.verify` -> `_blob_defects`) and recomputes
+        # that hash, so a byte-level mutation here is DETECTED at the
+        # `obs["verify_problems"]` check in `classify()`, well before this
+        # function is ever reached (`tests/test_eval_corruption.py::
+        # test_artifact_blob_append_garbage_is_now_detected_via_full_verify`,
+        # `::test_artifact_blob_flip_byte_is_now_detected_via_full_verify`).
+        # This branch is live only under `--verify-mode fast`, which — per
+        # its own A/B-comparison purpose — never calls
+        # `artifact_registry.verify()` (or `check_artifact`, which by
+        # design never opens a blob at all — `tgms/artifact/witness.py`'s
+        # module docstring) at all, so a blob's own bytes still cannot
+        # affect any observation that mode runs.
+        return ("plan blobs are content-addressed by their own bytes since "
+                "task A10 (`blob_sha256`) and a byte-level mutation here is "
+                "DETECTED under the default verify_mode='full' before "
+                "classify() ever reaches this function — reachable only "
+                "under --verify-mode fast, which never calls "
+                "artifact_registry.verify() at all")
     if cls == "event_log_tail" and mut_info["mutation"] in ("truncate", "append_garbage",
                                                             "flip_bit", "flip_byte"):
         return ("tail damage within the trim contract (D-086): the mutated "
