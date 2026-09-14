@@ -40,8 +40,10 @@ sections ask for, on the stores the phase-0 harness defines.
   own scan threads oversubscribe the cores.
 
 Stores are built once per scale by the phase-0 generator (same reference
-event log, replayed per D-023) and cached under --workdir with their
-registry parameters, so every mode measures the same bytes.
+event log, replayed per D-023) and cached under --workdir, keyed by scale
+plus a content fingerprint of the format-relevant code (see FORMAT_PATHS),
+so every mode measures the same bytes and a stale artifact left by an
+older commit is rebuilt automatically rather than silently reused.
 
     uv run python scripts/eval_resources.py threads  --scale 1000000 --json out.json
     uv run python scripts/eval_resources.py coldwarm --scale 10000000 --json out.json
@@ -52,6 +54,7 @@ registry parameters, so every mode measures the same bytes.
 from __future__ import annotations
 
 import argparse
+import hashlib
 import json
 import os
 import shutil
@@ -59,6 +62,7 @@ import statistics
 import subprocess
 import sys
 import time
+from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
@@ -89,41 +93,223 @@ def default_workdir() -> Path:
     return Path(os.environ.get("TMPDIR", "/tmp")) / "tgms-eval-resources"
 
 
+#: Repo-relative paths whose content can change the on-disk store/eventlog
+#: format, or the generated reference log itself. The cache identity below
+#: is a *content* hash of exactly these paths, not the commit SHA, so a
+#: docs-only or query-operator-only commit does not invalidate a 10M store
+#: shared across lanes in $TMPDIR, while any change to the writer, eventlog,
+#: engine, or generator code does. Real incident, 2026-09-13/14: a 10M
+#: native store cached six weeks earlier silently kept serving after
+#: commit f851d69 changed the eventlog cursor bookkeeping, and every mixed-
+#: writer trial in eval_concurrency.py failed with a cursor/record-boundary
+#: StateError (see docs/eval_resources.md).
+FORMAT_PATHS: tuple[str, ...] = (
+    "tgms/core", "tgms/storage", "tgms/store.py", "tgms/write.py",
+    "crates", "Cargo.toml", "Cargo.lock", "scripts/eval_harness.py",
+)
+
+_fingerprint_cache: dict[Path, str] = {}
+
+
+def _format_files(root: Path) -> list[str]:
+    """Repo-relative paths of tracked files under FORMAT_PATHS. Prefers
+    `git ls-files` (works inside git worktrees); falls back to os.walk if
+    git is unavailable or fails, skipping __pycache__/target/.pyc/.so."""
+    try:
+        out = subprocess.run(
+            ["git", "-C", str(root), "ls-files", "-z", "--"] + list(FORMAT_PATHS),
+            capture_output=True, check=True)
+        names = out.stdout.decode("utf-8", "surrogateescape").split("\0")
+        return sorted(n for n in names if n and (root / n).is_file())
+    except (subprocess.CalledProcessError, FileNotFoundError, OSError):
+        pass
+    found: list[str] = []
+    for rel in FORMAT_PATHS:
+        p = root / rel
+        if p.is_file():
+            found.append(rel)
+            continue
+        if not p.is_dir():
+            continue
+        for dirpath, dirnames, filenames in os.walk(p):
+            dirnames[:] = [dn for dn in dirnames if dn not in ("__pycache__", "target")]
+            for fn in filenames:
+                if fn.endswith((".pyc", ".so")):
+                    continue
+                found.append(str((Path(dirpath) / fn).relative_to(root)))
+    return sorted(found)
+
+
+def format_fingerprint(root: Path = ROOT) -> str:
+    """sha256 over the sorted (relative path, file bytes) pairs for every
+    tracked file under FORMAT_PATHS, first 16 hex chars. Hashes working-tree
+    bytes (so uncommitted edits count), not git blob ids; the path is fed
+    into the hash before the bytes so a rename changes the fingerprint.
+    Deterministic across runs; cached per `root` within this process."""
+    cached = _fingerprint_cache.get(root)
+    if cached is not None:
+        return cached
+    h = hashlib.sha256()
+    for rel in _format_files(root):
+        h.update(rel.encode("utf-8"))
+        h.update((root / rel).read_bytes())
+    fp = h.hexdigest()[:16]
+    _fingerprint_cache[root] = fp
+    return fp
+
+
+def build_identity(root: Path = ROOT) -> dict[str, Any]:
+    """The record embedded in cache markers. Only `fingerprint` is used for
+    the hit check; `commit`/`dirty`/`built_at` are for a human reading the
+    marker after the fact (e.g. diagnosing an incident like f851d69)."""
+    commit = "unknown"
+    dirty = False
+    try:
+        commit = subprocess.run(
+            ["git", "-C", str(root), "rev-parse", "--short", "HEAD"],
+            capture_output=True, text=True, check=True).stdout.strip()
+    except (subprocess.CalledProcessError, FileNotFoundError, OSError):
+        pass
+    try:
+        status = subprocess.run(
+            ["git", "-C", str(root), "status", "--porcelain", "-uno"],
+            capture_output=True, text=True, check=True)
+        dirty = bool(status.stdout.strip())
+    except (subprocess.CalledProcessError, FileNotFoundError, OSError):
+        pass
+    return {"fingerprint": format_fingerprint(root), "commit": commit or "unknown",
+            "dirty": dirty, "built_at": datetime.now(timezone.utc).isoformat()}
+
+
+def _read_marker(path: Path) -> dict[str, Any] | None:
+    """The parsed JSON object at `path`, or None if missing / not JSON / not
+    an object — a legacy text marker like "replayed in 12.3s" yields None,
+    i.e. is treated as stale."""
+    if not path.exists():
+        return None
+    try:
+        obj = json.loads(path.read_text())
+    except (json.JSONDecodeError, OSError, UnicodeDecodeError):
+        return None
+    return obj if isinstance(obj, dict) else None
+
+
+def _cache_state(marker: dict[str, Any] | None, current_fp: str) -> str:
+    """"hit" when marker's fingerprint matches; "legacy" when there is no
+    (parseable) marker at all; "stale" otherwise."""
+    if marker is None:
+        return "legacy"
+    if marker.get("fingerprint") == current_fp:
+        return "hit"
+    return "stale"
+
+
+def _cache_miss_reason(state: str, marker: dict[str, Any] | None,
+                       current_fp: str, label: str) -> str:
+    if state == "legacy":
+        return "  cache marker is pre-fingerprint (legacy) — rebuilding"
+    commit = (marker or {}).get("commit", "unknown")
+    fp = (marker or {}).get("fingerprint", "?")
+    return (f"  cache stale: {label} built at commit {commit} (fp {fp}) "
+            f"!= current fp {current_fp} — rebuilding")
+
+
 def ensure_dataset(workdir: Path, scale: int) -> tuple[H.Dataset, Path]:
-    """The reference event log for `scale`, built once and cached."""
+    """The reference event log for `scale`, built once and cached.
+
+    Cache key: `scale` plus `format_fingerprint()`, recorded as meta.json's
+    "identity". A legacy meta.json (no "identity") or one whose fingerprint
+    no longer matches the working tree is stale and triggers a rebuild —
+    along with every store-* directory/marker under `d`, since a store
+    replayed from a different reference log is wrong regardless of its own
+    marker (see the f851d69 incident at FORMAT_PATHS above)."""
     d = workdir / f"scale-{scale}"
     d.mkdir(parents=True, exist_ok=True)
     meta_p, log_p = d / "meta.json", d / "eventlog.jsonl"
-    if meta_p.exists() and log_p.exists():
-        m = json.loads(meta_p.read_text())
+    current_fp = format_fingerprint()
+
+    meta = _read_marker(meta_p)
+    identity = meta.get("identity") if meta is not None else None
+    state = _cache_state(identity, current_fp)
+    if meta is not None and log_p.exists() and state == "hit":
+        m = meta
         return H.Dataset(log=log_p, scale=m["scale"], tt_epoch1=m["tt_epoch1"],
                          t0=m["t0"], t1=m["t1"],
                          filter_uids=tuple(m["filter_uids"]), name=m["name"]), d
+
+    existed = meta_p.exists() or log_p.exists()
+    if existed:
+        if state == "hit":
+            print("  eventlog.jsonl missing — rebuilding", flush=True)
+        else:
+            print(_cache_miss_reason(state, identity, current_fp,
+                                     f"scale-{scale} dataset"), flush=True)
+        wiped = []
+        for p in (meta_p, log_p):
+            if p.exists():
+                p.unlink()
+                wiped.append(p.name)
+        for p in sorted(d.iterdir()):
+            if p.name.startswith("store-"):
+                wiped.append(p.name)
+                shutil.rmtree(p) if p.is_dir() else p.unlink()
+        if wiped:
+            print(f"  wiped stale cache entries: {', '.join(wiped)}", flush=True)
+
     print(f"  building reference log at {scale:,} events ...", flush=True)
     data = H.build_dataset(scale)
     shutil.copy2(data.log, log_p)
     meta_p.write_text(json.dumps({
         "scale": data.scale, "tt_epoch1": data.tt_epoch1, "t0": data.t0,
         "t1": data.t1, "filter_uids": list(data.filter_uids),
-        "name": data.name}) + "\n")
+        "name": data.name, "identity": build_identity()}) + "\n")
     return H.Dataset(log=log_p, scale=data.scale, tt_epoch1=data.tt_epoch1,
                      t0=data.t0, t1=data.t1, filter_uids=data.filter_uids,
                      name=data.name), d
 
 
 def ensure_store(d: Path, backend: str, log: Path) -> Path:
-    """Replay the reference log into `backend` once; the .ok marker commits
-    the cache entry only after a complete replay, so an interrupted build
-    is rebuilt rather than trusted."""
+    """Replay the reference log into `backend` once. The `.ok` marker is a
+    JSON object — build_identity() plus "backend", "replay_s" (wall time of
+    the replay), and "dataset_fingerprint" (the fingerprint recorded in
+    d/meta.json's identity, or None) — written only after a complete
+    replay, so an interrupted build is rebuilt rather than trusted. It is a
+    cache hit only when its "fingerprint" matches format_fingerprint() for
+    the current working tree; otherwise the marker and store directory are
+    removed and the store is replayed fresh (see the f851d69 incident at
+    FORMAT_PATHS above: a stale store silently served a superseded format)."""
     store, ok = d / f"store-{backend}", d / f"store-{backend}.ok"
-    if ok.exists():
+    current_fp = format_fingerprint()
+    marker = _read_marker(ok)
+    state = _cache_state(marker, current_fp)
+    if state == "hit" and store.exists():
         return store
+
+    if ok.exists() or store.exists():
+        if state == "hit":
+            print(f"  store-{backend} directory missing — rebuilding", flush=True)
+        else:
+            print(_cache_miss_reason(state, marker, current_fp,
+                                     f"store-{backend}"), flush=True)
+    if ok.exists():
+        ok.unlink()
     if store.exists():
         shutil.rmtree(store)
+
     print(f"  replaying into {backend} store ...", flush=True)
     t0 = time.perf_counter()
     H.load_store(store, backend, log)
-    ok.write_text(f"replayed in {time.perf_counter() - t0:.1f}s\n")
+    replay_s = time.perf_counter() - t0
+
+    dataset_meta = _read_marker(d / "meta.json")
+    dataset_fp = None
+    if dataset_meta is not None:
+        dataset_fp = (dataset_meta.get("identity") or {}).get("fingerprint")
+
+    marker_obj = {**build_identity(), "backend": backend,
+                  "replay_s": round(replay_s, 3),
+                  "dataset_fingerprint": dataset_fp}
+    ok.write_text(json.dumps(marker_obj) + "\n")
     return store
 
 

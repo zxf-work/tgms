@@ -515,7 +515,13 @@ stale-store numbers had looked externally plausible — for full
 self-consistency, not because the readers-only numbers showed any
 symptom. **The `.ok`-marker cache having no version awareness is itself a
 harness gap**, flagged separately rather than fixed here (out of this
-task's file scope).
+task's file scope). That gap is now closed: `ensure_dataset`/`ensure_store`
+key their `meta.json`/`.ok` markers on a content fingerprint of the
+format-relevant paths (`tgms/core`, `tgms/storage`, `tgms/store.py`,
+`tgms/write.py`, `crates`, `Cargo.toml`, `Cargo.lock`,
+`scripts/eval_harness.py` — see `FORMAT_PATHS` in `scripts/eval_resources.py`),
+plus the commit for the record, and rebuild automatically on a mismatch;
+a legacy marker without that identity is treated as stale too.
 
 Protocol, and where it departs from a literal "3 trials × 30 s" reading:
 the quiescent phase uses `eval_resources.py readers`, which has no
