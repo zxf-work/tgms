@@ -409,12 +409,29 @@ class BiTemporalSQL:
     isolates the interface (contracted operator plans vs. general query
     generation) with the stored information held equal."""
 
+    # Resource bounds applied via DuckDB's own `config=` connect-time
+    # options (2026-09-14 postmortem, job 211581): an LLM-generated SQL
+    # statement can be a pathological cartesian product. DuckDB's default
+    # `temp_directory` sits next to the database file -- on this campaign
+    # that is /project, a quota-limited shared filesystem -- so an
+    # unbounded spill there can exhaust the whole account's quota and take
+    # down unrelated jobs, not just this one (confirmed: many concurrent
+    # array tasks failed within the same second the spill peaked).
+    # `temp_directory` defaults to the process's own TMPDIR (node-local
+    # scratch on iTiger's slurm scripts) precisely so a spill never lands
+    # on /project by default; `max_temp_directory_size` caps it hard
+    # regardless. `memory_limit` bounds the connection's own RSS so a
+    # runaway query hits DuckDB's OOM error instead of the OS cgroup's.
     _CHILD = (
         "import sys, base64, pickle, duckdb\n"
-        "path, q, max_rows = sys.argv[1], sys.argv[2], int(sys.argv[3])\n"
-        "conn = duckdb.connect(path, read_only=True)\n"
+        "path, q, max_rows, temp_dir, max_temp_mb, mem_limit_gb = sys.argv[1:7]\n"
+        "conn = duckdb.connect(path, read_only=True, config={\n"
+        "    'temp_directory': temp_dir,\n"
+        "    'max_temp_directory_size': f'{max_temp_mb}MB',\n"
+        "    'memory_limit': f'{mem_limit_gb}GB',\n"
+        "})\n"
         "res = conn.execute(q)\n"
-        "rows = res.fetchmany(max_rows)\n"
+        "rows = res.fetchmany(int(max_rows))\n"
         "sys.stdout.write(base64.b64encode("
         "pickle.dumps([tuple(r) for r in rows])).decode())\n"
     )
@@ -422,15 +439,31 @@ class BiTemporalSQL:
     def __init__(self, llm_fn: Callable[..., str], model: str,
                  db_path: str | Path, max_repairs: int = 3,
                  max_rows: int = 200, seed: int = 0,
-                 query_timeout_ms: int = 120_000) -> None:
+                 query_timeout_ms: int = 120_000,
+                 duckdb_temp_dir: str | None = None,
+                 duckdb_max_temp_mb: int = 4096,
+                 duckdb_memory_limit_gb: int = 96) -> None:
+        import tempfile
         self.llm_fn, self.model = llm_fn, model
         self.db_path = str(db_path)
         self.max_repairs, self.max_rows, self.seed = max_repairs, max_rows, seed
         self.query_timeout_ms = query_timeout_ms
+        # default: a subdirectory of the PROCESS's own TMPDIR, not a fixed
+        # path -- on a slurm job whose script exports a node-local TMPDIR
+        # (the convention scripts/d160_collegemsg.slurm and its siblings
+        # already follow), this resolves node-local for free; nothing
+        # here needs its own new environment variable.
+        self.duckdb_temp_dir = duckdb_temp_dir or str(
+            Path(tempfile.gettempdir()) / "tgms-duckdb-temp")
+        self.duckdb_max_temp_mb = duckdb_max_temp_mb
+        self.duckdb_memory_limit_gb = duckdb_memory_limit_gb
 
     def _run_sql(self, query: str) -> tuple[list[tuple] | None, str | None]:
         # same hard wall-clock bound as B5: a generated query can be an
-        # unbounded join; execute in a killable child, read-only.
+        # unbounded join; execute in a killable child, read-only, with
+        # its own memory/temp-directory ceilings (see _CHILD's docstring
+        # comment above) so a runaway statement cannot exhaust /project's
+        # shared quota even if it also outruns the wall clock below.
         import base64
         import pickle
         import subprocess
@@ -438,11 +471,13 @@ class BiTemporalSQL:
         try:
             out = subprocess.run(
                 [sys.executable, "-c", self._CHILD, self.db_path,
-                 query, str(self.max_rows)],
+                 query, str(self.max_rows), self.duckdb_temp_dir,
+                 str(self.duckdb_max_temp_mb),
+                 str(self.duckdb_memory_limit_gb)],
                 capture_output=True, text=True,
                 timeout=max(30, self.query_timeout_ms // 1000 + 30))
         except subprocess.TimeoutExpired:
-            return None, "query exceeded the time limit and was killed"
+            return None, "TIMEOUT: query exceeded the time limit and was killed"
         if out.returncode != 0:
             tail = out.stderr.strip().splitlines()[-4:] or ["query failed"]
             return None, " | ".join(line for line in tail if line.strip())[:500]
@@ -466,10 +501,12 @@ class BiTemporalSQL:
         rows: list[tuple] | None = None
         query = ""
         repairs = 0
+        last_err: str | None = None
         for attempt in range(self.max_repairs + 1):
             query = strip_fences(self.llm_fn(self.model, messages, 0.0,
                                              self.seed)).strip().rstrip(";")
             rows, err = self._run_sql(query)
+            last_err = err
             if err is None and rows:
                 break
             if attempt == self.max_repairs:
@@ -494,6 +531,12 @@ class BiTemporalSQL:
         return {"answer_object": obj,
                 "meta": {"sql": query, "n_rows": len(rows or []),
                          "repairs": repairs, "failed": rows is None,
+                         # a timeout is a legitimate baseline outcome (a
+                         # pathological generated statement), not a
+                         # crash -- flagged distinctly so it is countable
+                         # from cached rows without re-parsing error text.
+                         "timeout": bool(last_err
+                                        and last_err.startswith("TIMEOUT")),
                          # the delivered page, for the +E subclass's
                          # evidence checks (strings, already sanitized)
                          "rows_sample": out_rows}}

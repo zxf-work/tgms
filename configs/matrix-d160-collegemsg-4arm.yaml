@@ -1,0 +1,56 @@
+# D-160 re-measurement (OSDI'27 campaign, E3 lane "D-160 re-measurement"):
+# four-arm CollegeMsg comparison under the post-D-160 production claim gate.
+# `tgms.eval.plan_faults.GATED_VERDICTS = ("unsupported", "unverifiable")`
+# is the code's default since 2026-09-15 (docs/STABILITY.md section 9); this
+# config changes NO gate setting -- it only re-measures the existing
+# CollegeMsg agent-loop numbers under that already-shipped default, on a
+# fresh model/seed/arm matrix. See docs/eval/baselines.md's four-arm
+# dry-run recipe (`systems: [ours, b5, b6e, llm_direct]`), which this file
+# turns into a concrete iTiger run.
+#
+# Task set: the frozen CollegeMsg TEST split (benchmarks/frozen-v1/
+# suite-collegemsg.json, 94 tasks) -- NOT the ad hoc dev suite the earlier
+# OSS matrix configs (matrix-dev-oss*.yaml) point at. This is the same
+# split docs/site_facts.json's old-gate numbers were measured on: 94 tasks
+# x 3 seeds pooled = 282 task runs, of which 199 were gated-emitted
+# (coverage 0.706) at conditional accuracy 0.548 -- see docs/STABILITY.md
+# section 9 ("What is explicitly deferred, and why"), which names this
+# exact campaign as the one that re-measures them under the new gate.
+#
+# Serve first (iTiger GPU node, e.g. an RTX 6000/5000 Ada allocation):
+#   vllm serve Qwen/Qwen2.5-14B-Instruct-AWQ --dtype half \
+#       --max-model-len 28672 --gpu-memory-utilization 0.92 --port 8000
+#
+# Store must exist at store_path, built with the DuckDB backend (b6e reads
+# <store_path>/store.duckdb directly -- see tgms/eval/harness.py::
+# build_systems's b6e branch) from the frozen event log, per
+# benchmarks/frozen-v1/README.md:
+#   tgms replay benchmarks/frozen-v1/collegemsg.eventlog.jsonl \
+#       --store stores/collegemsg --backend duckdb
+#   cp benchmarks/frozen-v1/collegemsg.memory.sqlite \
+#       stores/collegemsg/memory.sqlite
+suite_path: benchmarks/frozen-v1/suite-collegemsg.json
+store_path: stores/collegemsg
+out_dir: runs/d160-collegemsg-4arm
+split: test
+systems: [ours, b5, b6e, llm_direct]
+models: ["openai/Qwen/Qwen2.5-14B-Instruct-AWQ"]
+seeds: [0, 1, 2]
+max_repairs: 3
+# fairness rule WP2.6a: llm_direct's budget must be >= ours's measured
+# per-task context use on dev; 8000 is the value docs/eval/baselines.md's
+# dry-run recipe and D5's llm_direct arm both already use.
+llm_direct_budget_tokens: 8000
+memory_db: stores/collegemsg/memory.sqlite
+llm_api_base: "http://localhost:8000/v1"
+llm_api_key: "EMPTY"
+# 2026-09-14 postmortem (job 211581): b6e's LLM-generated SQL can be a
+# pathological cartesian product; DuckDB's default temp_directory sits
+# next to the database file, which for this campaign is the quota-limited
+# /project filesystem. tgms.eval.baselines.BiTemporalSQL binds every
+# subprocess-side DuckDB connection to a bounded, TMPDIR-local
+# temp_directory plus these two explicit ceilings (also its own
+# defaults -- listed here for the record's own reproducibility, not
+# because the harness needs them spelled out to behave this way).
+duckdb_max_temp_mb: 4096
+duckdb_memory_limit_gb: 96
