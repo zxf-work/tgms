@@ -1,0 +1,111 @@
+{
+  "config": {
+    "artifacts": 500,
+    "compact_every_batches": 500,
+    "compact_min_interval_s": 5.0,
+    "duration_s": 86400.0,
+    "max_disk_mb": 20000.0,
+    "metrics": "/mnt/project/xzhang/tgms/longevity/2026-09-15/metrics.jsonl",
+    "mix": "balanced",
+    "out": "/mnt/project/xzhang/tgms/longevity/2026-09-15",
+    "reader_reopen_every_s": 300.0,
+    "readers": 8,
+    "restart_every_s": 1800.0,
+    "seed": 0,
+    "store": "/mnt/project/xzhang/tgms/work/tgms/stores/synth-1m-native",
+    "store_name": "synth-1m-native",
+    "writer_sleep_s": null
+  },
+  "dataset": {
+    "digest": "682f1194f6ca335fd60bda56b3e0630d9d88112651e109067de222e96d9cd51a",
+    "digest_kind": "store_digest",
+    "name": "synth-1m-native"
+  },
+  "git_commit": "886805f",
+  "machine": {
+    "cpus": 40,
+    "host": "xzgpu",
+    "platform": "Linux 5.4.0-216-generic x86_64",
+    "ram_gb": 93.03
+  },
+  "protocol": {
+    "ceilings": {
+      "compact_every_batches": 500,
+      "duration_s": 86400.0,
+      "restart_every_s": 1800.0
+    },
+    "reps": 1,
+    "warmups": 0
+  },
+  "record": "/mnt/project/xzhang/tgms/longevity/2026-09-15/metrics.jsonl",
+  "result_digest": "8eb9bc26fbf418df30b89fa85b5fd827c56ae90d14da84eb94a5f8683f6d9d72",
+  "schema_version": "1.0.0",
+  "seed": {
+    "value": 0
+  },
+  "summary": {
+    "compaction_stall_max_reader_p99_ms": 0.0,
+    "compactions": 2415,
+    "digest_equal": null,
+    "drift": {
+      "commit_p99_first_hour_max": 485.579,
+      "commit_p99_last_hour_max": 3740.529,
+      "throughput_first_hour_avg": 24.03,
+      "throughput_last_hour_avg": 16.412
+    },
+    "error_count": 1,
+    "final_stats": {
+      "max_out_degree": 1839,
+      "n_edge_versions": 1910268,
+      "n_entities": 1730492,
+      "n_node_versions": 241109,
+      "rel_type_counts": {
+        "LW": 908572,
+        "MSG": 1001696
+      },
+      "vt_max": 1730986916723477,
+      "vt_min": 0
+    },
+    "generation_final": 1076589.0,
+    "memory_slope_kb_per_s": 111.639263,
+    "metadata_growth_slope_bytes_per_s": {
+      "manifests": -3.384232,
+      "segments": 1341.110649
+    },
+    "reader_errors_total": 0,
+    "reader_queries_total": 6618112,
+    "reader_restarts": 2,
+    "reader_restarts_recorded": 2,
+    "recoveries": 41,
+    "replay_skipped_reason": "projected_replay_exceeds_limit",
+    "total_batches": 1074952,
+    "unexpected_writer_deaths": 0,
+    "verify_healthy": true,
+    "wall_s": 86523.3,
+    "writer_final": {
+      "appends": 13549,
+      "batches": 19000,
+      "checks": 29,
+      "compactions": 38,
+      "compactions_throttled": 0,
+      "corrections_applied": 3211,
+      "corrections_skipped": 2239,
+      "errors": 1,
+      "final": true,
+      "group_commit": {
+        "commits": 16008,
+        "max_group": 1,
+        "queue_depth": 0,
+        "rejected": 0,
+        "rows_per_commit": 1.0,
+        "solo_fallbacks": 1,
+        "submissions": 16008
+      },
+      "invalidations": 13,
+      "n": 1707634,
+      "refreshes": 13,
+      "ts": 1789449263.161451
+    }
+  },
+  "timestamp_utc": "2026-09-15T05:16:02Z"
+}
