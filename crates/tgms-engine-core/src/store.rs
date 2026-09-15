@@ -753,6 +753,11 @@ impl NativeStore {
     /// Drop cached segments gc just removed from disk. Sound because ids are
     /// never reused (`Manifest::next_segment_id`), so an evicted name can
     /// never come back meaning different bytes.
+    ///
+    /// Also bounds the identity postings (D-087): `keep` is translated to
+    /// segment ids and handed to `Postings::retain_segments`, which is the
+    /// only thing standing between periodic compaction and an unbounded
+    /// `by_identity`/`by_vid` — see that method's own doc for why.
     pub(crate) fn evict_segments_not_in(&self, keep: &std::collections::HashSet<String>) {
         self.segments
             .lock()
@@ -762,6 +767,16 @@ impl NativeStore {
             .lock()
             .expect("verified-set mutex poisoned")
             .retain(|file| keep.contains(file));
+        let keep_ids: std::collections::HashSet<u64> =
+            keep.iter().map(|f| segment_id_of(f)).collect();
+        self.edge_postings
+            .lock()
+            .expect("edge-postings mutex poisoned")
+            .retain_segments(&keep_ids);
+        self.node_postings
+            .lock()
+            .expect("node-postings mutex poisoned")
+            .retain_segments(&keep_ids);
     }
 
     /// Override the segment-cache byte budget for this handle (`None` =
@@ -782,6 +797,26 @@ impl NativeStore {
             .lock()
             .expect("segment-cache mutex poisoned")
             .stats()
+    }
+
+    /// `(by_identity_entries, by_vid_entries, indexed_segments)` for one row
+    /// kind's identity postings — observability for D-087's bound, the same
+    /// role `segment_cache_stats` plays for the segment cache. Exists so a
+    /// test (or an operator) can measure "postings stayed bounded across
+    /// compaction cycles" directly, rather than inferring it from process
+    /// RSS, which conflates the postings leak with compaction's own
+    /// legitimate O(current rows) working set.
+    pub fn postings_stats(&self, kind: RowKind) -> (usize, usize, usize) {
+        let p = match kind {
+            RowKind::Edge => &self.edge_postings,
+            RowKind::Node => &self.node_postings,
+        };
+        let p = p.lock().expect("postings mutex poisoned");
+        (
+            p.by_identity.values().map(Vec::len).sum(),
+            p.by_vid.values().map(Vec::len).sum(),
+            p.indexed.len(),
+        )
     }
 
     pub fn generation(&self) -> u64 {
@@ -1896,10 +1931,42 @@ pub(crate) struct Postings {
     /// `read.rs::locate_open` discovers them against the `CloseIndex` and
     /// prunes in place — each row examined exactly once after it closes.
     ///
-    /// Compaction needs no special handling: its fresh segments are indexed
-    /// like any other, and entries naming segments the manifest no longer
-    /// lists are dropped by the same prune.
+    /// Compaction needs no special handling day to day: its fresh segments
+    /// are indexed like any other, and a *looked-up* identity whose entries
+    /// name a segment the manifest no longer lists is pruned in place by
+    /// `read.rs::locate_open`. An identity nobody looks up again is not
+    /// caught by that lazy prune, which is what `retain_segments` (D-087)
+    /// below exists to bound.
     pub(crate) open_rows: std::collections::HashMap<u64, Vec<(u64, u32)>>,
+}
+
+impl Postings {
+    /// Drop every posting naming a segment gc has actually removed from
+    /// disk (D-087). `open_rows` has a *lazy* per-lookup prune
+    /// (`read.rs::locate_open`) that only fires for an identity queried
+    /// again; `by_identity` and `by_vid` are pure append-only history and
+    /// have no prune at all. Neither gap mattered until compaction started
+    /// running periodically (`tgms replay --compact-every`, a long soak's
+    /// own `compact()`+`gc()` cadence): compaction physically reseals every
+    /// *live* row into fresh segments under new ids, and the next lookup
+    /// re-indexes them there — so each compaction cycle leaves the
+    /// *previous* cycle's now-unreachable entries behind forever, on top of
+    /// whatever the cycle before that left. Costs no information to drop:
+    /// a stale entry's segment is already gone from the current file map,
+    /// so `locate`/`locate_vid`/`locate_open` silently skip it today, and
+    /// the same row is re-indexed under its new segment's id the next time
+    /// something looks it up. `keep_ids` is the id set gc just proved is
+    /// still referenced by a retained generation (`gc::gc`'s own
+    /// `referenced`, translated from filenames via `segment_id_of`).
+    pub(crate) fn retain_segments(&mut self, keep_ids: &std::collections::HashSet<u64>) {
+        for map in [&mut self.by_identity, &mut self.by_vid, &mut self.open_rows] {
+            map.retain(|_, v| {
+                v.retain(|(seg, _)| keep_ids.contains(seg));
+                !v.is_empty()
+            });
+        }
+        self.indexed.retain(|id| keep_ids.contains(id));
+    }
 }
 
 /// The store's open-segment cache, accounted in bytes (D-041).
@@ -2690,6 +2757,89 @@ mod tests {
              of {depth} versions, so it is tracking history rather than belief"
         );
     }
+
+    #[test]
+    fn compaction_cycles_do_not_multiply_the_identity_postings() {
+        // D-087 regression. `open_rows` has a lazy per-lookup prune
+        // (`read.rs::locate_open`); `by_identity` and `by_vid` have none at
+        // all, which was fine until compaction started running
+        // periodically (`tgms replay --compact-every`, and a long soak's
+        // own compact()+gc() cadence): compaction reseals every row that
+        // still exists — open *and* closed, since compaction never drops
+        // one — into fresh segments every cycle, and the next lookup
+        // re-indexes them there, on top of every earlier cycle's now-
+        // unreachable entries that nothing ever freed. Observed in the
+        // wild: `tgms replay --compact-every 500` over a 24h soak's log
+        // (1,074,952 batches, 314,897,038 bytes) was OOM-killed at ~83 GB
+        // anon RSS after reaching manifest generation ~513,024 — ~160 KB
+        // retained per replayed generation — while `store_digest()`-
+        // relevant content was only ~1.7M entities: retention, not data.
+        let root = tmp_root("compaction-postings-bound");
+        let mut s = NativeStore::open(&root).unwrap();
+        const CYCLES: usize = 8;
+        const PER_CYCLE: usize = 25;
+        const N: usize = CYCLES * PER_CYCLE;
+
+        let mut vids = Vec::with_capacity(N);
+        for d in 0..N {
+            let tt = 100 + d as i64;
+            s.begin(tt).unwrap();
+            let a = s.ensure_entity("n1", "Node").unwrap();
+            let b = s.ensure_entity("n2", "Node").unwrap();
+            let r = edge_row(a, b, 0, tt, 0);
+            vids.push(r.vid);
+            s.stage_edge(r).unwrap();
+            // supersede the previous version, exactly as a correction does
+            // — this is also what triggers `index_segments` every commit.
+            if d > 0 {
+                s.close_version(RowKind::Edge, vids[d - 1], tt).unwrap();
+            }
+            s.commit(EventLogRef::default()).unwrap();
+
+            if (d + 1) % PER_CYCLE == 0 {
+                s.compact().unwrap();
+                s.gc(2).unwrap();
+            }
+        }
+
+        let (by_identity_entries, by_vid_entries, indexed_len) = {
+            let p = s.edge_postings().lock().unwrap();
+            (
+                p.by_identity.values().map(Vec::len).sum::<usize>(),
+                p.by_vid.values().map(Vec::len).sum::<usize>(),
+                p.indexed.len(),
+            )
+        };
+
+        // Every version ever committed legitimately lives in `by_identity`
+        // forever (bi-temporal history is never dropped), so N is the
+        // correct floor. The bug's shape is multiplicative in CYCLES, not
+        // additive to it: unfixed, this comes out within a small constant
+        // of PER_CYCLE * CYCLES^2 / 2 (each cycle re-indexes the entire
+        // row set sealed so far) — tens of thousands of entries here,
+        // against a few thousand fixed. A 3x margin over N catches the
+        // multiplication while tolerating the legitimate double-booking of
+        // the one or two generations `gc(keep_last=2)` still retains.
+        assert!(
+            by_identity_entries <= 3 * N,
+            "by_identity holds {by_identity_entries} entries for {N} \
+             versions ever committed over {CYCLES} compaction cycles — \
+             compaction is re-indexing history that nothing ever prunes \
+             (D-087)"
+        );
+        assert!(
+            by_vid_entries <= 3 * N,
+            "by_vid holds {by_vid_entries} entries for {N} versions — same \
+             leak as by_identity (D-087)"
+        );
+        assert!(
+            indexed_len <= 4 * PER_CYCLE,
+            "`indexed` holds {indexed_len} segment ids after {CYCLES} \
+             compactions of {PER_CYCLE} segments each — stale segment ids \
+             from superseded compaction cycles are never forgotten (D-087)"
+        );
+    }
+
 
     #[test]
     fn rolled_back_closes_leave_no_run() {
