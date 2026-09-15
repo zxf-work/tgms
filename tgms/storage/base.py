@@ -33,7 +33,12 @@ the replaced version is gone rather than colliding.
 
 from __future__ import annotations
 
+import hashlib
+import heapq
+import json as _json
+import tempfile
 from abc import ABC, abstractmethod
+from pathlib import Path
 from typing import Any, Iterable, Sequence
 
 import numpy as np
@@ -661,6 +666,149 @@ class StorageAdapter(ABC):
             key=lambda r: (r["eid"], r["tt_s"], r["vt_s"], r["vid"]))
         return digest({"nodes": node_rows, "edges": edge_rows})
 
+    def store_digest_streaming(self, chunk_rows: int = 200_000) -> str:
+        """`store_digest()`, computed in bounded memory by an external merge
+        sort — never holding more than `chunk_rows` rows (per kind) or one
+        buffered row per spilled chunk at once, so this stays flat as the
+        store grows instead of materializing every version as `store_digest`
+        does (the 25 GB digest-pass spike a 17.4M-edge store already showed;
+        at 100M+ rows the same pass alone would exceed a 93 GB host).
+
+        **Byte-identical to `store_digest()` for the same store — proved,
+        not assumed** (`tests/test_store_digest_streaming.py`). The reason it
+        can be: `canonical_json` uses compact separators (`","`, `":"`, no
+        whitespace), so a row's own JSON text never depends on where in the
+        outer array it lands — nesting depth does not change a compact
+        encoder's output. `store_digest()` builds
+        `sha256_hex(canonical_json({"edges": edge_rows, "nodes": node_rows}))`
+        (`digest()` sorts the top-level keys, and "edges" < "nodes"). This
+        method reproduces exactly that byte stream —
+        `{"edges":[<row>,<row>,...],"nodes":[<row>,...]}` — by feeding a
+        running `sha256` the same bytes in the same order, without ever
+        holding the whole string (or the whole row population) in memory:
+        each kind's rows are spilled to disk in `chunk_rows`-sized,
+        pre-sorted batches (`_spill_sorted_rows`), then reassembled into
+        global sorted order by a k-way merge over the spilled files
+        (`_merge_sorted_spill`) that reads one buffered line per chunk.
+
+        Chunk files live in a `tempfile.TemporaryDirectory` cleaned up before
+        this returns (including on an exception mid-merge).
+        """
+        edge_key = _EDGE_DIGEST_KEY
+        node_key = _NODE_DIGEST_KEY
+        with tempfile.TemporaryDirectory(prefix="tgms-digest-") as tmp:
+            tmp_path = Path(tmp)
+            edge_files = _spill_sorted_rows(
+                (v.to_json() for v in self.all_edge_versions()),
+                edge_key, chunk_rows, tmp_path, "edge")
+            node_files = _spill_sorted_rows(
+                (v.to_json() for v in self.all_node_versions()),
+                node_key, chunk_rows, tmp_path, "node")
+
+            h = hashlib.sha256()
+            h.update(b'{"edges":[')
+            _merge_sorted_spill(edge_files, h)
+            h.update(b'],"nodes":[')
+            _merge_sorted_spill(node_files, h)
+            h.update(b']}')
+            return h.hexdigest()
+
+
+#: Sort keys `store_digest`/`store_digest_streaming` order rows by — kept as
+#: named constants so both call sites are provably the same key.
+def _NODE_DIGEST_KEY(r: dict[str, Any]) -> tuple[Any, ...]:
+    return (r["uid"], r["tt_s"], r["vt_s"], r["vid"])
+
+
+def _EDGE_DIGEST_KEY(r: dict[str, Any]) -> tuple[Any, ...]:
+    return (r["eid"], r["tt_s"], r["vt_s"], r["vid"])
+
+
+def _spill_sorted_rows(
+    rows: Iterable[dict[str, Any]],
+    key_fn: Any,
+    chunk_rows: int,
+    tmp_dir: Path,
+    prefix: str,
+) -> list[Path]:
+    """Consume `rows` in batches of at most `chunk_rows`, sort each batch by
+    `key_fn`, and spill it to its own file as `[key, canonical_json(row)]`
+    JSON lines. Returns the spilled file paths in creation order (empty list
+    if `rows` was empty) — never holds more than one batch in memory.
+
+    The spilled `canonical_json(row)` text is the exact byte sequence
+    `store_digest()` would have embedded for this row (see
+    `store_digest_streaming`'s docstring); round-tripping it through
+    `json.dumps`/`json.loads` here (to give it a safe home inside a line of
+    its own alongside the sort key) preserves it exactly, because JSON string
+    escaping is a lossless encoding of the original text.
+    """
+    paths: list[Path] = []
+    batch: list[dict[str, Any]] = []
+
+    def flush(batch: list[dict[str, Any]]) -> None:
+        if not batch:
+            return
+        batch.sort(key=key_fn)
+        fh = tempfile.NamedTemporaryFile(
+            mode="w", dir=tmp_dir, prefix=f"{prefix}-", suffix=".jsonl",
+            delete=False, encoding="utf-8")
+        try:
+            for row in batch:
+                fh.write(_json.dumps([list(key_fn(row)), canonical_json(row)]))
+                fh.write("\n")
+        finally:
+            fh.close()
+        paths.append(Path(fh.name))
+
+    for row in rows:
+        batch.append(row)
+        if len(batch) >= chunk_rows:
+            flush(batch)
+            batch = []
+    flush(batch)
+    return paths
+
+
+def _merge_sorted_spill(paths: list[Path], hasher: Any) -> None:
+    """K-way merge `paths` (each pre-sorted by the spilling key, one JSON
+    line per row as `[key, row_text]`) in global key order, feeding each
+    row's `row_text` bytes into `hasher` as a comma-separated JSON array
+    element — exactly the array body `store_digest()`'s `json.dumps` would
+    produce for the same, fully-materialized, sorted row list.
+
+    Holds one buffered line per open file at once (the heap), never the
+    whole of any file — the spilled files themselves are deleted as this
+    returns, whether it completes normally or raises.
+    """
+    if not paths:
+        return
+    files = [p.open("r", encoding="utf-8") for p in paths]
+    try:
+        heap: list[tuple[list[Any], int, str]] = []
+        for i in range(len(files)):
+            line = files[i].readline()
+            if line:
+                key, text = _json.loads(line)
+                heap.append((key, i, text))
+        heapq.heapify(heap)
+        first = True
+        while heap:
+            _key, i, text = heapq.heappop(heap)
+            if not first:
+                hasher.update(b",")
+            first = False
+            hasher.update(text.encode("utf-8"))
+            line = files[i].readline()
+            if line:
+                key2, text2 = _json.loads(line)
+                heapq.heappush(heap, (key2, i, text2))
+    finally:
+        for f in files:
+            f.close()
+        for p in paths:
+            p.unlink(missing_ok=True)
+
 
 def _remainder(vs: int, ve: int, cs: int, ce: int) -> list[tuple[int, int]]:
     """Parts of [vs, ve) not covered by [cs, ce)."""
@@ -682,5 +830,4 @@ def make_op(kind: str, **kwargs: Any) -> dict[str, Any]:
     """Canonical op record for the event log."""
     op = {"op": kind, **kwargs}
     # round-trip through canonical JSON so the logged and applied forms agree
-    import json as _json
     return _json.loads(canonical_json(op))
