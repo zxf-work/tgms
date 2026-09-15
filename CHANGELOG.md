@@ -61,6 +61,17 @@ v0.7.0: every gate, floor and denominator fixed in advance, append-only,
 with the one post-hoc amendment named and scored alone in round 2. Site
 numbers resolve from `docs/site_facts.json`, gated in CI.
 
+**Release receipt.** Tagged `v0.8.0` at `ec6eb9e`, released 2026-09-15:
+[GitHub release](https://github.com/zxf-work/tgms/releases/tag/v0.8.0);
+`publish.yml` [run
+35030840313](https://github.com/zxf-work/tgms/actions/runs/35030840313)
+(wheels `ubuntu-latest` + `macos-14`, sdist, publish — all green); 7 files
+on [PyPI](https://pypi.org/project/tgms/0.8.0/) — cp311/cp312/cp313 ×
+manylinux_2_28_x86_64 + macosx_11_0_arm64, plus the sdist. Clean-environment
+check (`uv venv --python 3.12` + `uv pip install tgms==0.8.0`, Linux
+x86_64 host): `tgms._engine.build_info()` reports release / opt-level 3 /
+debug_assertions False / manifest format 3; `tgms demo` wall 0.77 s.
+
 ## v0.7.0 — 2026-08-23
 
 The compositional-IR release, and freshness v1: the fixed operator surface
