@@ -79,6 +79,7 @@ def _run_all_landed(mod):
     mod.compute_d160_llm_direct_fix(m)
     mod.compute_c2(m)
     mod.compute_ladder(m)
+    mod.compute_longevity_soak(m)
     return m
 
 
@@ -228,6 +229,30 @@ FROZEN_LANDED_VALUES = {
     "osdiLadderRung5TokensMedian": "1811.5",
     "osdiLadderRung5ToolCallsEqualExecutedSteps": "12",
     "osdiLadderPlansTruncated": "2",
+    "osdiSoakHours": "24",
+    "osdiSoakCommit": "886805f",
+    "osdiSoakEntitiesStart": "1{,}000{,}000",
+    "osdiSoakEntitiesEnd": "1{,}730{,}492",
+    "osdiSoakBatches": "1{,}074{,}952",
+    "osdiSoakWriterLives": "42",
+    "osdiSoakRecoveries": "41",
+    "osdiSoakRecoveriesSigabrt": "23",
+    "osdiSoakRecoveriesExit137": "18",
+    "osdiSoakUnexpectedRecoveries": "0",
+    "osdiSoakReaderDeaths": "2",
+    "osdiSoakReaderDeathCause": "reader torn-tail race, pre-fix engine",
+    "osdiSoakVerifyHealthy": "true",
+    "osdiSoakWriterErrorsManifest": "1",
+    "osdiSoakWriterErrorsTrue": "249",
+    "osdiSoakThroughputStart": "24.03",
+    "osdiSoakThroughputEnd": "16.41",
+    "osdiSoakP99StartMs": "485.6",
+    "osdiSoakP99EndMs": "3{,}740.5",
+    "osdiSoakManifestGrowthBps": "-3.4",
+    "osdiSoakSegmentGrowthBps": "1{,}341.1",
+    "osdiSoakDigestStatus": "not computed",
+    "osdiSoakReplayProjectedTB": "280.8",
+    "osdiSoakCompactions": "2415",
 }
 
 
@@ -762,6 +787,133 @@ def test_tampered_ladder_merged_summary_fails_the_frozen_rung3_value(tmp_path):
     mod.compute_ladder(m)
     assert mod.FAILURES, "a doctored rung-3 bytes_median must fail the raw-vs-summary " \
         "cross-check, even though the digest was patched to match"
+
+
+def test_tampered_longevity_manifest_sha256_mismatch_fails(tmp_path):
+    """Unlike B1-v2/D160/ladder's own embedded `result_digest` field (a
+    digest of that record's internal content, recomputable locally), the
+    soak manifest's `result_digest` is the *final store's* content digest --
+    a 20 GB store that stays on xzgpu and is never checked into this repo,
+    so there is nothing local to recompute it from. The verifiable digest
+    here is the whole-file sha256 benchmarks/longevity-v1/README.md's own
+    "Files here" table states for the byte-copied record; editing any field
+    (even one this generator never reads) must be caught by that check
+    before a single macro is computed."""
+    mod = _load("osdi_paper_macros")
+    manifest = json.loads(mod.LONGEVITY_MANIFEST.read_text(encoding="utf-8"))
+    manifest["summary"]["compactions"] = 999999
+    tampered = tmp_path / "longevity-synth-1m-native-0.json"
+    tampered.write_text(json.dumps(manifest), encoding="utf-8")
+
+    mod.LONGEVITY_MANIFEST = tampered
+    m = mod.Macros()
+    mod.compute_longevity_soak(m)
+    assert mod.FAILURES, "an edited manifest field must fail the sha256 check against " \
+        "README.md's Files-here table"
+    assert any("sha256" in f.lower() for f in mod.FAILURES)
+
+
+def test_tampered_longevity_side_file_sha256_mismatch_fails(tmp_path):
+    """Same discipline as the manifest check, applied to one of the four
+    other README-hash-verified side-files (recoveries.jsonl here) -- an
+    edited copy must fail before the recovery-cause counts are trusted."""
+    mod = _load("osdi_paper_macros")
+    rows = [json.loads(line) for line in
+            mod.LONGEVITY_RECOVERIES.read_text(encoding="utf-8").splitlines() if line.strip()]
+    rows[0]["returncode"] = 137  # flip one SIGABRT into an exit137, still 41 rows total
+    tampered = tmp_path / "recoveries.jsonl"
+    tampered.write_text("\n".join(json.dumps(r) for r in rows) + "\n", encoding="utf-8")
+
+    mod.LONGEVITY_RECOVERIES = tampered
+    m = mod.Macros()
+    mod.compute_longevity_soak(m)
+    assert mod.FAILURES, "an edited recoveries.jsonl must fail the sha256 check against " \
+        "README.md's Files-here table"
+    assert any("sha256" in f.lower() for f in mod.FAILURES)
+
+
+def test_longevity_true_error_sum_is_249_over_42_lives():
+    """The headline correction of the README's documented harness defect:
+    the manifest's own summary.error_count (1) is only the last of 42
+    writer lives (a counter_latest label-collision bug); the true total,
+    recomputed here by summing writer_error_counts_by_life.json's own
+    per-life rows -- never trusted from that file's own
+    true_total_errors_all_lives field without the sum matching it -- is
+    249."""
+    mod = _load("osdi_paper_macros")
+    by_life = json.loads(mod.LONGEVITY_WRITER_ERRORS_BY_LIFE.read_text(encoding="utf-8"))
+    per_life_errors = by_life["per_life_errors"]
+    assert len(per_life_errors) == 42
+    assert sum(per_life_errors) == 249
+    assert sum(per_life_errors) == by_life["true_total_errors_all_lives"]
+
+    m = mod.Macros()
+    mod.compute_longevity_soak(m)
+    values = {name: value for name, value, _ in m.items}
+    assert values["osdiSoakWriterErrorsTrue"] == "249"
+    assert values["osdiSoakWriterErrorsManifest"] == "1"
+
+
+def test_tampered_writer_error_counts_by_life_sum_mismatch_fails(tmp_path):
+    """writer_error_counts_by_life.json is the README's own "derived
+    locally" file (not in the sha256 table) -- its per-life sum must still
+    be recomputed and cross-checked against its own summary field and the
+    frozen 249, not trusted verbatim; editing one life's count must be
+    caught even though no digest scheme covers this file at all."""
+    mod = _load("osdi_paper_macros")
+    data = json.loads(mod.LONGEVITY_WRITER_ERRORS_BY_LIFE.read_text(encoding="utf-8"))
+    data["per_life_errors"][0] += 1  # sum no longer matches the file's own summary field
+    tampered = tmp_path / "writer_error_counts_by_life.json"
+    tampered.write_text(json.dumps(data), encoding="utf-8")
+
+    mod.LONGEVITY_WRITER_ERRORS_BY_LIFE = tampered
+    m = mod.Macros()
+    mod.compute_longevity_soak(m)
+    assert mod.FAILURES, "a tampered per-life error count must fail the recomputed-sum " \
+        "cross-check against the file's own true_total_errors_all_lives field"
+    assert any("true_total_errors_all_lives" in f for f in mod.FAILURES)
+
+
+def test_tampered_longevity_manifest_error_count_defect_check_fails_if_fixed(tmp_path):
+    """The whole point of osdiSoakWriterErrorsManifest/True is that they
+    *disagree* (1 vs. 249) -- that disagreement is the harness defect the
+    README documents. If a future manifest ever reported the true total
+    directly (i.e. the defect were fixed upstream), this generator's own
+    "they must differ" sanity check should catch the now-stale assumption
+    rather than silently emitting two identical numbers as if nothing
+    changed."""
+    mod = _load("osdi_paper_macros")
+    manifest = json.loads(mod.LONGEVITY_MANIFEST.read_text(encoding="utf-8"))
+    manifest["summary"]["error_count"] = 249
+    manifest["summary"]["writer_final"]["errors"] = 249
+    tampered = tmp_path / "longevity-synth-1m-native-0.json"
+    tampered.write_text(json.dumps(manifest), encoding="utf-8")
+
+    mod.LONGEVITY_MANIFEST = tampered
+    m = mod.Macros()
+    mod.compute_longevity_soak(m)
+    assert mod.FAILURES, "a manifest whose error_count now matches the true total must " \
+        "fail this generator's own defect-still-present sanity check"
+
+
+def test_longevity_digest_and_reader_death_cause_are_text_macros_not_numbers():
+    """osdiSoakDigestStatus ('not computed') and osdiSoakReaderDeathCause
+    ('reader torn-tail race, pre-fix engine') must render as literal text,
+    never a placeholder number that could be mistaken for one -- same
+    discipline as osdiB1v2OpenComponentStatus above. osdiSoakVerifyHealthy
+    is also text ('true'), not the LaTeX-truthy '1'."""
+    mod = _load("osdi_paper_macros")
+    m = mod.Macros()
+    mod.compute_longevity_soak(m)
+    values = {name: value for name, value, _ in m.items}
+
+    for name in ("osdiSoakDigestStatus", "osdiSoakReaderDeathCause", "osdiSoakVerifyHealthy"):
+        with pytest.raises(ValueError):
+            float(values[name])
+
+    assert values["osdiSoakDigestStatus"] == "not computed"
+    assert values["osdiSoakReaderDeathCause"] == "reader torn-tail race, pre-fix engine"
+    assert values["osdiSoakVerifyHealthy"] == "true"
 
 
 def test_r18_and_dag_pending_stubs_cite_the_main_grid_quota_block():
