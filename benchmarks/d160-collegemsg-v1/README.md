@@ -19,8 +19,8 @@ records below stand beside those facts, not in place of them.
 |---|---|
 | `manifest-2026-09-14.json` | the 4-arm campaign's result manifest, conforms to `benchmarks/schema/result_manifest.schema.json` (`check_result_manifest.py` passes) |
 | `rows-2026-09-14.json` | the 1,128 raw per-task-run rows the manifest's `record` field points to (canonical JSON, sha256 = the manifest's `result_digest`) |
-| `manifest-llm-direct-fix-2026-09-14.json` (**pending**) | the one-arm `llm_direct` follow-up's manifest (same task set/model/seeds, `llm_direct` only, under the real-tokenizer budget fix) — job 212231 is running as of this commit; lands in its own follow-up commit |
-| `rows-llm-direct-fix-2026-09-14.json` (**pending**) | that follow-up's raw rows |
+| `manifest-llm-direct-fix-2026-09-14.json` | the one-arm `llm_direct` follow-up's manifest (same task set/model/seeds, `llm_direct` only, under the real-tokenizer budget fix; job 212231) |
+| `rows-llm-direct-fix-2026-09-14.json` | that follow-up's 282 raw rows (canonical JSON, sha256 = the manifest's `result_digest`) |
 
 ## Task set, systems, model
 
@@ -106,14 +106,43 @@ with no `input_uids`, which fall back to the full unfiltered event corpus).
 **`prompt_tokens_approx` in this record's `llm_direct` rows is therefore not
 a reliable token count for the 216 overflow rows** — it is the input the
 harness's own greedy-inclusion loop saw, not what the model's real
-tokenizer would have counted. The fix (a real HF tokenizer + a
-`max_model_len`-aware effective budget, `tgms/eval/baselines.py`'s
-`LLMDirect`, commits `dab5c2a`/`8de040f`) is being re-measured separately
-(job 212231, running as of this commit) and will land as
-`manifest-llm-direct-fix-2026-09-14.json` rather than silently overwriting
-these numbers — **this record's `llm_direct` result stands as first
-shipped, context-overflow rate and all**, per the same non-overwrite
-discipline this whole campaign follows.
+tokenizer would have counted. **This record's `llm_direct` result stands as
+first shipped, context-overflow rate and all** — it is not overwritten;
+see the next section for the fix and its own, separate result.
+
+### `llm_direct` re-measured under the token-budget fix (job 212231)
+
+`tgms/eval/baselines.py`'s `LLMDirect` now prefers a real HF tokenizer
+(`_try_load_hf_tokenizer`) and caps the effective budget at
+`max_model_len - system_prompt_cost - answer_reserve - wrapper_reserve`
+(commits `dab5c2a`/`8de040f`). Re-run under
+`configs/matrix-d160-collegemsg-llm-direct.yaml` (same task set, model,
+seeds; `llm_direct_max_model_len: 28672` matching the served
+`--max-model-len`): **282/282 rows, 0 task_error** (vs 216/282 before).
+Every row's `meta.tokenizer_kind == "hf_real"` and
+`meta.budget_effective_tokens == 8000` — confirming the fix measured the
+same nominal 8,000-token budget in real tokens rather than
+whitespace-approximated ones.
+
+| | pre-fix (this record) | post-fix (job 212231) |
+|---|---:|---:|
+| task_error rate | 216/282 (76.6%) | **0/282 (0%)** |
+| coverage (claim-carrying rate) | 0.0000 (of 66 scored) | **0.0000 (of 282 scored)** |
+| raw pre-gate em | 0.1818 (n=66, easy tasks only) | **0.0638 (n=282, all tasks)** |
+| mean claims proposed pre-gate | 0.223 | 0.660 |
+| mean events included | 62.7 (unbounded/error mix) | 124.5 |
+| truncated rate | 0.0% (of the 66 that didn't error) | 79.8% |
+
+The fix eliminates the crash but does **not** change the headline finding:
+`llm_direct`'s claim-carrying rate is **still 0.0000** even with 0 errors and
+full coverage of all 282 tasks — every claim this arm proposes (now more
+of them, 0.660/row vs 0.223/row, since more tasks get a real attempt) is
+still dropped by the gate. Raw pre-gate em fell from 0.1818 to 0.0638
+because the pre-fix number was computed over only the 66 "easy" (small,
+filtered-context) tasks that happened not to overflow; the post-fix number
+is the honest, complete measurement over all 282 tasks, including the
+previously-unanswerable large-context ones, which score far worse once
+they are actually attempted (now truncated to fit rather than crashing).
 
 ## Old gate vs D-160 gate
 
@@ -130,7 +159,7 @@ discipline this whole campaign follows.
 | coverage of `ours` falls below 0.706 | 0.3972 pooled (0.3936 / 0.4043 / 0.3936 per seed) |
 | conditional accuracy of `ours` ≥ 0.548 | 0.5089 pooled (0.5135 / 0.5000 / 0.5135 per seed) |
 | ucr_gated of `ours` stays 0 on all seeds | 0.0000 on all 3 seeds |
-| `llm_direct` emits fewer gated claims than `ours`, raw pre-gate accuracy reported beside the gated one | `llm_direct` coverage 0.0000 vs `ours` 0.3972; `llm_direct` raw pre-gate em 0.1818 (n=66, the 216 context-overflow rows excluded — see the known-limitation note above) |
+| `llm_direct` emits fewer gated claims than `ours`, raw pre-gate accuracy reported beside the gated one | `llm_direct` coverage 0.0000 vs `ours` 0.3972 (pre-fix, n=66 scored, or post-fix, n=282 scored — coverage is 0.0000 either way); raw pre-gate em 0.1818 pre-fix (n=66, partial) / **0.0638 post-fix (n=282, complete)** |
 
 ## Provenance
 
@@ -148,17 +177,24 @@ discipline this whole campaign follows.
 - **Commits**: gate/harness/config logic unchanged across the whole span;
   infrastructure hardening landed across `47b148c` (DuckDB temp/memory
   bounds), `abb1117` (records off `/project` onto `/home`), `f22a1cc`
-  (required `TGMS_COMMIT` stamp), merged to public main as `8774679` →
-  `64817fa` → `6f062fd`. `212000` ran at `64817fa0af0e0f7f4723645feee1105e292a4e75`.
+  (required `TGMS_COMMIT` stamp), `dab5c2a`/`8de040f` (`llm_direct`
+  real-tokenizer budget fix), merged to public main as `8774679` →
+  `64817fa` → `6f062fd`. `212000` ran at
+  `64817fa0af0e0f7f4723645feee1105e292a4e75`; the `llm_direct` follow-up
+  (job **212231**, config `configs/matrix-d160-collegemsg-llm-direct.yaml`,
+  completed cleanly, exit 0, wall **00:56:43**, 282/282 rows, 0 task_error)
+  ran at `6f062fdf82dab66faf6864485a6b8b7e03752d7d`.
 - **sha256 pairs** (local worktree ↔ iTiger, verified at transfer time):
 
   | file | sha256 |
   |---|---|
   | `rows-2026-09-14.json` | `02f3936a9be37ea195d878e63d96641c1e44b9bf1003c56b4d4966c7b8ce1005` |
-  | `stores/collegemsg/store.duckdb` (dataset digest) | `f80b506b3bce6e67e15659a08a49f9253f7fff5e6dcb935ed7390a44dc791ef6` |
+  | `rows-llm-direct-fix-2026-09-14.json` | `056a8cda353bbf95709efd7052f8081ee371943416fe7911407e78c4c48cb7df` |
+  | `stores/collegemsg/store.duckdb` (dataset digest, shared by both records) | `f80b506b3bce6e67e15659a08a49f9253f7fff5e6dcb935ed7390a44dc791ef6` |
   | `benchmarks/frozen-v1/collegemsg.eventlog.jsonl` (unchanged from the frozen corpus) | `e1d4f611ab5f60c552e0f22b0c36603eb060122a11deb465c656c20ab0ccc037` |
 
-- **Validation**: `python scripts/check_result_manifest.py benchmarks/d160-collegemsg-v1/manifest-2026-09-14.json` → conforms.
+- **Validation**: `python scripts/check_result_manifest.py benchmarks/d160-collegemsg-v1/manifest-2026-09-14.json` and
+  `... manifest-llm-direct-fix-2026-09-14.json` → both conform.
 
 ## Decisions made along the way (for the record, not verdicts)
 

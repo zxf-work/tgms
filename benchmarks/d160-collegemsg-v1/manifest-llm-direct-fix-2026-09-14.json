@@ -1,0 +1,46 @@
+{
+  "schema_version": "1.0.0",
+  "git_commit": "6f062fdf82dab66faf6864485a6b8b7e03752d7d",
+  "timestamp_utc": "2026-09-15T00:56:03Z",
+  "machine": {
+    "host": "itiger07",
+    "platform": "Linux-5.14.0-427.31.1.el9_4.x86_64-x86_64-with-glibc2.34",
+    "cpus": 8,
+    "ram_gb": 128,
+    "gpu": "NVIDIA RTX 5000 Ada Generation, 32760 MiB"
+  },
+  "config": "configs/matrix-d160-collegemsg-llm-direct.yaml",
+  "seed": {
+    "value": null,
+    "reason": "campaign pools three seeds (0, 1, 2); see the additive `seeds` field and each row's own `seed`"
+  },
+  "seeds": [0, 1, 2],
+  "dataset": {
+    "name": "collegemsg",
+    "digest": "f80b506b3bce6e67e15659a08a49f9253f7fff5e6dcb935ed7390a44dc791ef6",
+    "digest_kind": "store_digest",
+    "digest_note": "same stores/collegemsg/store.duckdb as manifest-2026-09-14.json -- no rebuild between the two campaigns"
+  },
+  "result_digest": "056a8cda353bbf95709efd7052f8081ee371943416fe7911407e78c4c48cb7df",
+  "protocol": {
+    "warmups": 0,
+    "reps": 3,
+    "ceilings": {
+      "max_repairs": 3,
+      "llm_direct_budget_tokens": 8000,
+      "llm_direct_max_model_len": 28672,
+      "llm_direct_answer_reserve_tokens": 1500
+    }
+  },
+  "record": "benchmarks/d160-collegemsg-v1/rows-llm-direct-fix-2026-09-14.json",
+  "provenance": {
+    "systems": ["llm_direct"],
+    "task_set": "benchmarks/frozen-v1/suite-collegemsg.json test split (94 tasks)",
+    "model": "openai/Qwen/Qwen2.5-14B-Instruct-AWQ",
+    "n_rows": 282,
+    "n_task_errors": 0,
+    "gate": "tgms.eval.plan_faults.GATED_VERDICTS == (\"unsupported\", \"unverifiable\") -- D-160, unchanged by this campaign",
+    "fix": "tgms/eval/baselines.py::LLMDirect now prefers a real HF tokenizer for `model` (_try_load_hf_tokenizer, offline-cache-only) and, given llm_direct_max_model_len, caps the effective budget at max_model_len minus the tokenizer-measured system-prompt cost, a wrapper-text margin, and llm_direct_answer_reserve_tokens -- commits dab5c2a (impl) / 8de040f (tests), merged to public main as 8774679 (in the ancestry of this job's 6f062fd).",
+    "note": "Follow-up to manifest-2026-09-14.json's llm_direct arm, which shipped with 216/282 task_error (litellm.ContextWindowExceededError) rows because its whitespace-token budget approximation undercounted real BPE tokens 3-7x on this corpus. This run: job 212231, commit 6f062fdf82dab66faf6864485a6b8b7e03752d7d, completed cleanly, exit 0, wall 00:56:43, 282/282 rows, 0 task_error. Every row's meta.tokenizer_kind == \"hf_real\" and meta.budget_effective_tokens == 8000 (confirming the fix used the real Qwen tokenizer and the nominal 8000-token budget is now enforced in real tokens, not whitespace-approximated ones). Does NOT supersede or overwrite manifest-2026-09-14.json's llm_direct numbers -- both are kept, side by side, per the campaign's non-overwrite discipline."
+  }
+}
