@@ -23,6 +23,7 @@ sys.path.insert(0, str(ROOT / "scripts"))
 
 import check_result_manifest as CRM  # noqa: E402
 import longevity_run as LR  # noqa: E402 — reuse its own disk-size walk
+from tgms.telemetry.metrics import Metrics  # noqa: E402
 
 #: Generous headroom over what a few-thousand-event store should ever need:
 #: this is the PI ruling 2026-09-14 ceiling for anything this test writes
@@ -39,6 +40,41 @@ def _build_tiny_store(path: Path) -> None:
               "vt_s": i} for i in range(n)]
     store.ingest_events(events)
     store.close()
+
+
+def test_writer_counters_emit_deltas_not_cumulative_snapshots(tmp_path: Path) -> None:
+    """Guards against `child_writer` re-feeding its cumulative accumulators
+    into `Metrics.counter` (which *adds*) on every periodic flush — that
+    bug made the sink's running total the sum of k cumulative snapshots
+    (10, 20, 30 -> 60) instead of the count itself. `_emit_cumulative_counters`
+    must convert each life's cumulative (appends, applied, skipped) into the
+    delta since the previous call before handing it to `counter()`.
+    """
+    m = Metrics(tmp_path / "metrics.jsonl")
+    last: dict[str, int] = {}
+
+    for appends, applied, skipped in [(10, 3, 1), (20, 5, 2), (30, 7, 3)]:
+        LR._emit_cumulative_counters(m, last,
+                                     appends_total=appends,
+                                     corrections_applied_total=applied,
+                                     corrections_skipped_total=skipped)
+        m.flush()
+
+    lines = [json.loads(line)
+             for line in (tmp_path / "metrics.jsonl").read_text().splitlines()]
+    by_name: dict[str, list[dict]] = {}
+    for rec in lines:
+        by_name.setdefault(rec["name"], []).append(rec)
+
+    assert [rec["value"] for rec in by_name["appends_total"]] == [10, 20, 30]
+    assert [rec["value"] for rec in by_name["corrections_applied_total"]] == [3, 5, 7]
+    assert [rec["value"] for rec in by_name["corrections_skipped_total"]] == [1, 2, 3]
+
+    assert by_name["appends_total"][-1]["value"] == 30
+    assert by_name["corrections_applied_total"][-1]["value"] == 7
+    assert by_name["corrections_skipped_total"][-1]["value"] == 3
+
+    assert all(rec["kind"] == "counter" and rec["labels"] == {} for rec in lines)
 
 
 def test_smoke_run(tmp_path: Path) -> None:

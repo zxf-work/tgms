@@ -678,6 +678,22 @@ def child_reader(cfg: dict[str, Any]) -> None:
 # --------------------------------------------------------------------------- #
 
 
+def _emit_cumulative_counters(metrics, last_emitted: dict[str, int],
+                              **current: int) -> None:
+    """Feed cumulative accumulators to `Metrics.counter`, which *adds*.
+
+    `Metrics.counter(name, delta)` accumulates in memory and `flush()` writes
+    the running total, so passing a life's cumulative count on every periodic
+    flush would make the sink's value the sum of k snapshots instead of the
+    count itself. Emit only the delta since the previous call; `last_emitted`
+    is the per-life memory of what has already been fed in. Always calls
+    counter() (even with a zero delta) so every flush carries the series.
+    """
+    for name, value in current.items():
+        metrics.counter(name, value - last_emitted.get(name, 0))
+        last_emitted[name] = value
+
+
 def child_writer(cfg: dict[str, Any]) -> None:
     import tgms
     from tgms.artifact.refresh import RefreshRefused, refresh as artifact_refresh
@@ -769,6 +785,7 @@ def child_writer(cfg: dict[str, Any]) -> None:
     n = cfg["start_n"]
     batches = appends = corrections_applied = corrections_skipped = errors = compactions = 0
     compactions_throttled = 0
+    last_emitted: dict[str, int] = {}
     last_control_seq = -1
     commit_lat: list[float] = []
     minute_t0 = time.perf_counter()
@@ -873,9 +890,10 @@ def child_writer(cfg: dict[str, Any]) -> None:
             metrics.gauge("rss_kb", _vm_status().get("vmrss_kb", 0))
             for k, v in _disk_bytes_by_kind(store_path).items():
                 metrics.gauge(f"disk_bytes_{k}", float(v))
-            metrics.counter("appends_total", appends)
-            metrics.counter("corrections_applied_total", corrections_applied)
-            metrics.counter("corrections_skipped_total", corrections_skipped)
+            _emit_cumulative_counters(metrics, last_emitted,
+                                      appends_total=appends,
+                                      corrections_applied_total=corrections_applied,
+                                      corrections_skipped_total=corrections_skipped)
             metrics.flush()
             progress_path.write_text(json.dumps({
                 "n": n, "batches": batches, "appends": appends,
@@ -895,6 +913,10 @@ def child_writer(cfg: dict[str, Any]) -> None:
     checker_thread.join(timeout=10)
     gc_stats = gc_writer.stats()
     gc_writer.close()
+    _emit_cumulative_counters(metrics, last_emitted,
+                              appends_total=appends,
+                              corrections_applied_total=corrections_applied,
+                              corrections_skipped_total=corrections_skipped)
     metrics.flush()
     progress_path.write_text(json.dumps({
         "n": n, "batches": batches, "appends": appends,
