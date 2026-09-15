@@ -256,3 +256,64 @@ A rerun at a different seed will not reproduce this exact `result_digest`
 `derive_trial_seed` in `scripts/eval_corruption.py`), but at the same
 `--base-seed`/task count/classes/mutations it is bit-for-bit reproducible,
 modulo any code change to the harness or engine between commits.
+
+## Post-A10 rerun — `eval-corruption-campaign-2026-09-14-post-a10.json`
+
+Pre-registered by the coordinator (2026-09-14) as the confirmation run for
+task A10 (the artifact-blob reader was fixed to content-address the whole
+file, closing the "appended trailing garbage goes undetected" gap the
+2026-09-14 record above found BENIGN). Same design, same seeds, same
+10,000-trial shape as the record above — only the commit changed.
+
+- **commit**: `487457a` (worktree `/project/xzhang12/tgms-post-a10`,
+  branch `post-a10-campaign`, `git worktree add` off the shared clone
+  `/project/xzhang12/tgms` at public main `487457a`; `uv sync --extra
+  duckdb --reinstall-package tgms`, confirmed `MANIFEST_FORMAT_VERSION ==
+  3` and `LEAF_SCOPES` has 13 entries before submitting)
+- **hosts**: itiger02 only — iTiger cluster, partition `bigTiger`,
+  `--exclude=itiger04,itiger05`
+- **array job**: `212298`, `--array=0-39%6`, all 40 tasks `COMPLETED`, exit
+  `0:0` — submitted 2026-09-14 23:14:57 UTC, last task finished 23:32:44
+  UTC (17m47s wall-clock for the whole campaign; summed per-trial `wall_s`
+  across all 10,000 trials: 1627.26s)
+- **verify mode**: `--verify-mode full` (unchanged from the record above)
+- **result**: **10,000/10,000 trials classified, 0 SILENT** — the campaign
+  gate still passes
+- **result_digest**: `ba4f4dddacb3ab8fd020d1d77a0c783d1579a23a44957d99848f56fb51fd3c77`
+- **file sha256**: `bfebb5cf2dd549fb9bcea9fb9e0402a3f6569355bf13e19cb4711e4ae0a73bd5`
+
+### Predictions vs measured
+
+All six pre-registered predictions hold:
+
+| check | predicted | measured | verdict |
+|---|---|---|---|
+| `artifact_blob\|append_garbage` | 0/106 → DETECTED every trial | 106/106 detected | as predicted |
+| `artifact_blob\|flip_bit` | 0/98 → DETECTED every trial | 98/98 detected | as predicted |
+| `artifact_blob\|flip_byte` | 0/103 → DETECTED every trial | 103/103 detected | as predicted |
+| `artifact_blob\|truncate` | 0/94 → DETECTED every trial | 94/94 detected | as predicted |
+| `artifact_blob\|zero_span` | 0/117 → DETECTED every trial | 117/117 detected | as predicted |
+| `artifact_blob\|swap_same_class` | 0/103 → DETECTED every trial | 103/103 detected | as predicted |
+| SILENT | stays 0 | 0 | as predicted |
+| every other class×mutation cell | within ±2 trials of the 2026-09-14 record | every one of the other 73 cells matches exactly (0 delta) | as predicted |
+| `eventlog` torn-tail cells (`event_log_record`, `event_log_tail`) on a closed store | stay DETECTED under the reader rule | 1.0 detection rate on every mutation in both classes, unchanged | as predicted |
+
+Verdict counts: `DETECTED` 6,587 (was 5,966 — the +621 delta is exactly the
+six artifact_blob cells above), `BENIGN` 3,154 (was 3,775 — the same 621
+trials move out of BENIGN, since "plan blobs are read only by artifact
+`refresh()`" was the old BENIGN reason those six cells carried),
+`TOLERATED-REBUILT` 259 (unchanged — `tcsr_file` only), `SILENT` 0
+(unchanged). A full cell-by-cell diff against the 2026-09-14 record
+(`stats.detection_matrix`, both records) confirms these six cells are the
+*only* ones that moved by more than 2 trials.
+
+### Provenance
+
+Worktree `/project/xzhang12/tgms-post-a10` at commit `487457a`; array job
+`212298`; staged at `/home/xzhang12/corruption-v1-h/{records,logs,
+node_meta}` (never `/project`, per the 2026-09-14 EDQUOT incident); 40
+per-task records + logs + node_meta sha256-summed on the cluster,
+transferred, and re-verified locally (`shasum -a 256 -c`, all 200 files
+OK) before the server-side stage copies were deleted. Merged with the
+same `scripts/corruption_campaign_merge.py --kind corruption` used for the
+2026-09-14 record; validated with `scripts/check_result_manifest.py`.
