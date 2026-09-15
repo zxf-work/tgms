@@ -521,6 +521,15 @@ Addendum 7.
 this campaign came from the one job), `storm-v2-main-grid-2026-09-15-rows.jsonl`.
 `scripts/check_result_manifest.py` passes.
 
+**Per-batch rows**: `storm-v2-records-36-tasks.tar.gz`
+(sha256 `f1acac9ed96a3fca8ea76aeba8657c6bced8d726244204a899ee6210a714ed0d`)
+holds the 36 per-task `records/task-N/storm-*.json` + `storm-*-rows.jsonl`
+directories as transferred from the cluster (sha256-verified against the
+stage directory before packing) — the merged manifest's own `per_cell`
+table only carries cell summaries, not the per-batch `candidate_survivors`/
+`changed_count` rows the paper macros (c1 survivor fraction, precision)
+need.
+
 ## Regenerating (once the C6 freeze creates `campaign.yaml`/`FREEZE_BINDING`)
 
 ```sh
