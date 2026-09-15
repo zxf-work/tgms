@@ -78,6 +78,7 @@ def _run_all_landed(mod):
     mod.compute_c8(m)
     mod.compute_c7_dag(m)
     mod.compute_c7_r18(m)
+    mod.compute_c7_storm_v2_probe(m)
     mod.compute_c7_storm_v2(m)
     mod.compute_d160(m)
     mod.compute_d160_llm_direct_fix(m)
@@ -209,6 +210,20 @@ FROZEN_LANDED_VALUES = {
     "osdiR18Speedup": "0.807",
     "osdiR18Precision": "8.51",
     "osdiR18AvoidedRecompute": "29.9",
+    "osdiStormV2ProbeCommit": "fdd393c",
+    "osdiStormV2ProbeBatches": "5",
+    "osdiStormV2ProbeWallS": "12{,}452.8",
+    "osdiStormV2ProbeGlobalTtfS": "1{,}569.3",
+    "osdiStormV2ProbeTgmsL1TtfS": "806.3",
+    "osdiStormV2ProbeSpeedupN10k": "1.946",
+    "osdiStormV2ProbeAvoidedDecision": "0.758",
+    "osdiStormV2ProbeSurvivorMedian": "0.283",
+    "osdiStormV2ProbePrecisionMedian": "0.211",
+    "osdiStormV2ProbeIntersectsMedian": "29{,}193",
+    "osdiStormV2ProbeR18Tripped": "no",
+    "osdiStormV2ProbeAllTopTerms": "0",
+    "osdiStormV2ProbeNonComputeArtifacts": "8203",
+    "osdiStormV2ProbeCheckWallMedianS": "336.9",
     "osdiStormV2Commit": "fdd393c",
     "osdiStormV2Cells": "36",
     "osdiStormV2CellsFailed": "0",
@@ -897,6 +912,114 @@ def test_tampered_r18_probe_record_fails_the_frozen_speedup(tmp_path):
     mod.compute_c7_r18(m)
     assert mod.FAILURES, "a tampered ttf_ms must fail the cross-check against the record's " \
         "own summary.arms field and/or the frozen speedup range"
+
+
+def test_tampered_storm_v2_probe_record_digest_mismatch_fails(tmp_path):
+    """storm-v2-r18-probe-2026-09-15.json's own result_digest is sha256 of
+    the canonical-JSON list of every row (sorted by batch_index), per
+    bench_correction_storm.py's own `_sha256_json(rows_json)`. Editing the
+    record's result_digest field itself (without touching the rows.jsonl
+    it is supposed to summarize) must be caught -- same digest discipline
+    as the storm-v2 main grid's own two digest-tamper tests above, applied
+    to this probe's single-record digest scheme."""
+    mod = _load("osdi_paper_macros")
+    d = json.loads(mod.STORM_V2_R18_PROBE.read_text(encoding="utf-8"))
+    d["result_digest"] = "0" * 64  # implausible digest, rows.jsonl untouched
+    tampered = tmp_path / "storm-v2-r18-probe-2026-09-15.json"
+    tampered.write_text(json.dumps(d), encoding="utf-8")
+
+    mod.STORM_V2_R18_PROBE = tampered
+    m = mod.Macros()
+    mod.compute_c7_storm_v2_probe(m)
+    assert mod.FAILURES, "an edited result_digest must fail the sha256 digest check against " \
+        "the rows.jsonl it claims to summarize"
+    assert any("digest" in f.lower() for f in mod.FAILURES)
+
+
+def test_tampered_storm_v2_probe_rows_digest_mismatch_fails(tmp_path):
+    """The inverse of the above: editing a row's own field (without
+    touching the top-level record's result_digest) must also be caught --
+    the digest is recomputed fresh from the rows.jsonl every time, not
+    trusted from a value cached anywhere."""
+    mod = _load("osdi_paper_macros")
+    rows = [json.loads(line) for line in mod.STORM_V2_R18_PROBE_ROWS.read_text(
+        encoding="utf-8").splitlines() if line.strip()]
+    rows[0]["intersects_calls"] = 999999
+    tampered = tmp_path / "storm-v2-r18-probe-2026-09-15-rows.jsonl"
+    tampered.write_text("\n".join(json.dumps(r) for r in rows) + "\n", encoding="utf-8")
+
+    mod.STORM_V2_R18_PROBE_ROWS = tampered
+    m = mod.Macros()
+    mod.compute_c7_storm_v2_probe(m)
+    assert mod.FAILURES, "an edited row must fail the record's own result_digest check"
+    assert any("digest" in f.lower() for f in mod.FAILURES)
+
+
+def test_tampered_storm_v2_probe_ttf_fails_the_frozen_speedup(tmp_path):
+    """Same discipline as test_tampered_r18_probe_record_fails_the_frozen_speedup
+    above, applied to the v2 probe: tampering a row's ttf_ms (and its
+    result_digest, so the digest check alone does not mask the effect)
+    must still fail the cross-check against the record's own summary.arms
+    field and/or the frozen speedup."""
+    mod = _load("osdi_paper_macros")
+    rows = [json.loads(line) for line in mod.STORM_V2_R18_PROBE_ROWS.read_text(
+        encoding="utf-8").splitlines() if line.strip()]
+    # batch_index 0 is the one whose tgms-L1 ttf_ms equals the 5-batch
+    # median (806,289.76...) -- tampering any other batch would not move
+    # the recomputed median at all, so this must target that batch, not
+    # an arbitrary one.
+    for row in rows:
+        if row["batch_index"] == 0:
+            row["arms"]["tgms-L1"]["ttf_ms"] = 1.0  # implausibly fast, breaks the frozen ratio
+    tampered_rows_path = tmp_path / "storm-v2-r18-probe-2026-09-15-rows.jsonl"
+    tampered_rows_path.write_text("\n".join(json.dumps(r) for r in rows) + "\n",
+                                   encoding="utf-8")
+
+    d = json.loads(mod.STORM_V2_R18_PROBE.read_text(encoding="utf-8"))
+    d["result_digest"] = hashlib.sha256(
+        json.dumps(sorted(rows, key=lambda r: r["batch_index"]),
+                   sort_keys=True, separators=(",", ":")).encode("utf-8")
+    ).hexdigest()  # keep the digest check itself passing so it doesn't mask the real failure
+    tampered_manifest_path = tmp_path / "storm-v2-r18-probe-2026-09-15.json"
+    tampered_manifest_path.write_text(json.dumps(d), encoding="utf-8")
+
+    mod.STORM_V2_R18_PROBE = tampered_manifest_path
+    mod.STORM_V2_R18_PROBE_ROWS = tampered_rows_path
+    m = mod.Macros()
+    mod.compute_c7_storm_v2_probe(m)
+    assert mod.FAILURES, "a tampered ttf_ms must fail the cross-check against the record's " \
+        "own summary.arms field and/or the frozen speedup"
+
+
+def test_storm_v2_probe_survivor_and_precision_medians_are_recomputed_from_rows():
+    """Arithmetic check: osdiStormV2ProbeSurvivorMedian/PrecisionMedian must
+    equal the median, over the probe's own 5 batches, of
+    candidate_survivors/n_registered and changed_count/candidate_survivors
+    respectively -- recomputed independently here from the committed
+    rows.jsonl, not merely re-asserted against the generator's own
+    intermediate variables."""
+    mod = _load("osdi_paper_macros")
+    rows = [json.loads(line) for line in mod.STORM_V2_R18_PROBE_ROWS.read_text(
+        encoding="utf-8").splitlines() if line.strip()]
+    assert len(rows) == 5
+    n_registered = {r["n_registered"] for r in rows}
+    assert len(n_registered) == 1
+    n_registered = next(iter(n_registered))
+    expected_survivor_median = statistics.median(
+        r["candidate_survivors"] / n_registered for r in rows)
+    expected_precision_median = statistics.median(
+        r["changed_count"] / r["candidate_survivors"] for r in rows)
+    expected_intersects_median = statistics.median(r["intersects_calls"] for r in rows)
+
+    m = mod.Macros()
+    mod.compute_c7_storm_v2_probe(m)
+    values = {name: value for name, value, _ in m.items}
+    assert values["osdiStormV2ProbeSurvivorMedian"] == f"{expected_survivor_median:.3f}"
+    assert values["osdiStormV2ProbePrecisionMedian"] == f"{expected_precision_median:.3f}"
+    assert values["osdiStormV2ProbeIntersectsMedian"] == mod.tex_num(
+        int(expected_intersects_median))
+    assert expected_intersects_median <= 50000
+    assert values["osdiStormV2ProbeR18Tripped"] == "no"
 
 
 def test_tampered_storm_v2_merged_record_digest_mismatch_fails(tmp_path):
