@@ -133,3 +133,42 @@ def test_dry_run_rss_samples_combined_with_no_call_records(tmp_path):
     assert manifest["config"]["call_records"] is False
     assert rss_path.exists()
     assert rss_path.read_text().splitlines()[0] == "time,rss_kb,step"
+
+
+def test_dry_run_rss_sample_interval_is_additive_and_defaults_to_1hz(tmp_path):
+    """`--rss-sample-interval-s` (here, `run_dry`'s `rss_sample_interval_s`)
+    only changes the sampler's polling interval; a fast interval must not
+    break anything, and omitting it keeps the 1 Hz default from the
+    existing --rss-samples tests above."""
+    rss_path = tmp_path / "rss_fast.csv"
+    OVERLOAD.run_dry(tmp_path, rss_samples_path=rss_path,
+                     rss_sample_interval_s=0.05)
+    assert rss_path.read_text().splitlines()[0] == "time,rss_kb,step"
+
+
+def test_dry_run_hwm_checkpoints_writes_four_named_checkpoints(tmp_path):
+    """`--hwm-checkpoints PATH` (here, `run_dry`'s `hwm_checkpoints_path`)
+    is additive and must not change the manifest; it should record, in
+    order, after_imports, after_store_open, and a before/after pair for
+    each load step (run_dry uses `--clients 1 2`, so two pairs here)."""
+    hwm_path = tmp_path / "hwm.json"
+    manifest = OVERLOAD.run_dry(tmp_path, hwm_checkpoints_path=hwm_path)
+    assert manifest["steps"], "hwm-checkpoints must not affect the manifest shape"
+
+    checkpoints = json.loads(hwm_path.read_text())
+    labels = [c["label"] for c in checkpoints]
+    assert labels == ["after_imports", "after_store_open",
+                      "before_step_n1", "after_step_n1",
+                      "before_step_n2", "after_step_n2"]
+    for c in checkpoints:
+        assert "vm_hwm_kb" in c  # None off Linux (e.g. macOS dev boxes); present either way
+        assert c["t"] >= 0
+
+
+def test_dry_run_hwm_checkpoints_combined_with_no_call_records(tmp_path):
+    hwm_path = tmp_path / "hwm.json"
+    manifest = OVERLOAD.run_dry(tmp_path, keep_call_records=False,
+                                hwm_checkpoints_path=hwm_path)
+    assert manifest["config"]["call_records"] is False
+    checkpoints = json.loads(hwm_path.read_text())
+    assert len(checkpoints) == 6
