@@ -449,3 +449,49 @@ much larger confirmed leak in `replay()` over the same log, with matching
 per-unit-of-work arithmetic — points at a real, unbounded-growth defect
 in this codebase's generation/version retention path, not at a harness
 measurement artifact.
+
+
+## Correction `disc` caveat (2026-09-15)
+
+Read-only semantic review (`docs/design/CORRECTION_DISC_SEMANTICS_REVIEW_2026-09-15.md`)
+found that every `a1_events` correction this soak applied through
+`apply_correction_via_public_api` carried the disc `"#0"` — `_a1_events`
+built no explicit `disc` at all, so `Store.ingest_events` fell back to its
+position-derived default, which is `"#0"` for every single-event call. By
+the review's own arithmetic over the generator's draw distributions (not a
+re-measurement — the record itself carries no per-correction identity to
+measure), an estimated **7,200–11,100** of this run's `a1_events`
+corrections merged into another correction's edge identity rather than
+becoming the "new fact" the generator's own docstring promises (D2.1). A
+**second, independent** defect found in the same review —
+`_a2_disjoint`'s edge branch hard-coding the literal `disc="a2-disjoint"`,
+unaffected by the `"#0"` issue above and by its fix — produces a
+comparable estimated count (**~7,200–11,100**) of nominally Class-A
+"adds belief" corrections that in fact *carved* their predecessor, a
+class error rather than merely an identity error. See the review
+document for the full derivation and parameters.
+
+This does not change any frozen number in this README: every Gate E
+check above is computed from re-execution/digest-compare against the
+*same* post-write store state, never from `disc`, so it is internally
+consistent regardless of which identity a correction actually landed
+under. Two things it does affect:
+
+- **`corrections_applied` (207,850, all lives) counts ops issued, not
+  distinct logical corrections landed.** A correction that merged into an
+  existing identity, or carved one, still counts as one "applied"
+  correction in that total — it is not a count of distinct edge
+  identities created.
+- **`verify_healthy = true` is FAST-mode evidence only.**
+  `longevity_run.py`'s final `verify()` call runs in fast (file-walk)
+  mode; the review's own micro-check found `mode="fast"` reports
+  `healthy=True` on a store `mode="full"` flags with a
+  `believed-versions-overlap` error for exactly this collision shape. A
+  full-mode `verify()` of the preserved store
+  (`/mnt/project/xzhang/tgms/longevity/2026-09-15`, xzgpu, read-only) is
+  **owed and scheduled**, not yet run as of this caveat.
+
+`_a1_events` and `_a2_disjoint` were both fixed (fresh, unique-per-correction
+`disc`, never the implicit default or a hard-coded literal) after this soak
+ran; this caveat documents what the already-committed record above
+measured, not a re-run.
