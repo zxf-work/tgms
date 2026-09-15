@@ -1,0 +1,148 @@
+{
+ "mode": "commitcost",
+ "seed_rows": 100000,
+ "commits": 300,
+ "records": [
+  {
+   "batch_rows": 1,
+   "commits": 300,
+   "commit_ms": {
+    "n": 300,
+    "p50": 4.274,
+    "p90": 4.839,
+    "p99": 6.704,
+    "min": 3.414,
+    "max": 158.007
+   },
+   "ms_per_row": 4.2745,
+   "phase_p50_us": {
+    "apply_us": 385,
+    "capture_us": 0,
+    "closes_us": 0,
+    "current_us": 851,
+    "delta_build_us": 39,
+    "dict_us": 391,
+    "digest_us": 19,
+    "manifest_bytes": 1595,
+    "manifest_checkpoint": 0,
+    "manifest_us": 775,
+    "python_wrap_us": 3,
+    "seal_us": 1255,
+    "segments_named": 305,
+    "stats_us": 0,
+    "total_us": 3378,
+    "wal_us": 439,
+    "write_us": 4274
+   },
+   "first_decile_us": {
+    "apply_us": 303,
+    "capture_us": 0,
+    "closes_us": 0,
+    "current_us": 850,
+    "delta_build_us": 42,
+    "dict_us": 384,
+    "digest_us": 20,
+    "manifest_bytes": 1592,
+    "manifest_checkpoint": 0,
+    "manifest_us": 760,
+    "python_wrap_us": 3,
+    "seal_us": 1212,
+    "segments_named": 35,
+    "stats_us": 0,
+    "total_us": 3311,
+    "wal_us": 445,
+    "write_us": 4134
+   },
+   "last_decile_us": {
+    "apply_us": 445,
+    "capture_us": 0,
+    "closes_us": 0,
+    "current_us": 850,
+    "delta_build_us": 37,
+    "dict_us": 395,
+    "digest_us": 18,
+    "manifest_bytes": 1595,
+    "manifest_checkpoint": 0,
+    "manifest_us": 781,
+    "python_wrap_us": 3,
+    "seal_us": 1254,
+    "segments_named": 575,
+    "stats_us": 0,
+    "total_us": 3368,
+    "wal_us": 436,
+    "write_us": 4288
+   },
+   "phase_decile_first_us": {
+    "apply_us": 5405.933333333333,
+    "capture_us": 0.4666666666666667,
+    "closes_us": 0.0,
+    "current_us": 986.3,
+    "delta_build_us": 38.93333333333333,
+    "dict_us": 468.43333333333334,
+    "digest_us": 18.4,
+    "manifest_bytes": 1591.4333333333334,
+    "manifest_checkpoint": 0.0,
+    "manifest_us": 887.0333333333333,
+    "python_wrap_us": 3.2,
+    "seal_us": 1220.9333333333334,
+    "segments_named": 35.0,
+    "stats_us": 0.0,
+    "total_us": 3652.3333333333335,
+    "wal_us": 461.6333333333333,
+    "write_us": 9560.566666666668
+   },
+   "phase_decile_last_us": {
+    "apply_us": 460.76666666666665,
+    "capture_us": 0.1,
+    "closes_us": 0.0,
+    "current_us": 873.1,
+    "delta_build_us": 39.2,
+    "dict_us": 419.96666666666664,
+    "digest_us": 18.133333333333333,
+    "manifest_bytes": 1595.0,
+    "manifest_checkpoint": 0.0,
+    "manifest_us": 837.4,
+    "python_wrap_us": 3.3333333333333335,
+    "seal_us": 1310.1333333333334,
+    "segments_named": 575.0,
+    "stats_us": 0.0,
+    "total_us": 3528.0333333333333,
+    "wal_us": 449.0,
+    "write_us": 4477.0
+   },
+   "residual_first_us": 31.833333333333332,
+   "residual_last_us": 30.0,
+   "store_bytes": 16491430,
+   "dir_entries_first": {
+    "seg": 6,
+    "manifests": 4
+   },
+   "dir_entries_last": {
+    "seg": 604,
+    "manifests": 303
+   },
+   "build_info": {
+    "profile": "release",
+    "opt_level": "3",
+    "engine_version": "0.8.0",
+    "debug_assertions": false,
+    "manifest_format_version": 3
+   }
+  }
+ ],
+ "wall_s": 6.4,
+ "provenance": {
+  "commit": "e5d4171",
+  "dirty": false,
+  "build_info": {
+   "profile": "release",
+   "opt_level": "3",
+   "engine_version": "0.8.0",
+   "debug_assertions": false,
+   "manifest_format_version": 3
+  },
+  "python": "3.12.13",
+  "platform": "Linux 5.4.0-216-generic x86_64",
+  "cpu_count": 40
+ }
+}

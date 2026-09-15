@@ -1,0 +1,57 @@
+{
+  "named_phase_us_share_of_total_median": 0.9997,
+  "open_ms": [
+    1191.91,
+    1573.893,
+    1167.679
+  ],
+  "open_ms_median": 1191.91,
+  "open_phase_p50_us": {
+    "chain_format": 3,
+    "checkpoint_read_parse_us": 42124,
+    "delta_count": 125,
+    "delta_replay_us": 2899,
+    "dictionary_open_us": 1066460,
+    "merkle_verify_us": 40204,
+    "other_us": 388,
+    "state_build_us": 1828,
+    "total_us": 1191773
+  },
+  "open_phase_us": [
+    {
+      "chain_format": 3,
+      "checkpoint_read_parse_us": 75754,
+      "delta_count": 125,
+      "delta_replay_us": 2899,
+      "dictionary_open_us": 1066460,
+      "merkle_verify_us": 44114,
+      "other_us": 704,
+      "state_build_us": 1842,
+      "total_us": 1191773
+    },
+    {
+      "chain_format": 3,
+      "checkpoint_read_parse_us": 41233,
+      "delta_count": 125,
+      "delta_replay_us": 465074,
+      "dictionary_open_us": 1024917,
+      "merkle_verify_us": 40204,
+      "other_us": 368,
+      "state_build_us": 1801,
+      "total_us": 1573597
+    },
+    {
+      "chain_format": 3,
+      "checkpoint_read_parse_us": 42124,
+      "delta_count": 125,
+      "delta_replay_us": 2663,
+      "dictionary_open_us": 1081122,
+      "merkle_verify_us": 39214,
+      "other_us": 388,
+      "state_build_us": 1828,
+      "total_us": 1167339
+    }
+  ],
+  "reps": 3,
+  "store": "/mnt/project/xzhang/tgms/tmp/b1v2e-work/treatment-store"
+}

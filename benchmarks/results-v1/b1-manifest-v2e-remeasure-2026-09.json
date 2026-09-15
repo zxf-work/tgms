@@ -1,0 +1,97 @@
+{
+ "schema_version": "1.0.0",
+ "git_commit": "e5d4171f9",
+ "timestamp_utc": "2026-09-15T08:22:38Z",
+ "machine": {
+  "host": "xzgpu",
+  "platform": "Linux-5.4.0-216-generic-x86_64-with-glibc2.31",
+  "cpus": 40,
+  "ram_gb": 93
+ },
+ "config": {
+  "measurement": "Lane B1-v2e remeasure: the two cells the B1-v2 A/B (b1-manifest-v2-ab-2026-09) could not score -- (a) chain-open manifest-chain component split at G~10k K=512, (b) commit-cost phase attribution with the fully-timed B1-v2d harness. No verdicts scored here -- that is the coordinator's job, per this repo's convention.",
+  "treatment_commit": "e5d4171 (tests: commit-phase accounting invariant + commitcost decile aggregation, B1-v2d)",
+  "treatment_note": "built fresh into detached worktree work/tgms-xz-e5d4171 (cargo build --release -p tgms-engine-py); build_info() confirmed profile=release, debug_assertions=False, manifest_format_version=3",
+  "control_commit": "886805f600bcb447cb0bff16d432a796ba732339",
+  "control_note": "pre-pinned format-2 engine, not rebuilt; lacks open_phase_us() and the B1-v2d commitcost keys (phase_decile_first_us/last_us, residual_first_us/last_us, dir_entries_*, build_info) entirely -- ran its own pinned scripts/eval_concurrency.py and the raw-wall-clock NativeAdapter() open method instead",
+  "cell_a": {
+   "script": "scripts/bench_manifest_chain_open.py (treatment); raw NativeAdapter() wall-clock loop (control, no phase timer available)",
+   "store_setup": "scripts/build_snb_store.py --backend native --batch 250 --compact-every 0 --digest manifest --write-path assert, killed at the 2,500,000 ops log line, same as the B1-v2 A/B's B1(a)/(c)",
+   "reps": 3
+  },
+  "cell_b": {
+   "script": "scripts/eval_concurrency.py commitcost (treatment: e5d4171's version; control: 886805f's own pinned version)",
+   "args": [
+    "commitcost",
+    "--seed-rows",
+    "100000",
+    "--commits",
+    "300",
+    "--batch-sizes",
+    "1"
+   ],
+   "checkpoint_every_k": 512,
+   "reps": 3
+  }
+ },
+ "seed": {
+  "value": null,
+  "reason": "cell (a) replays the fixed LDBC SF1 CSV corpus deterministically (no RNG); cell (b)'s commitcost harness seeds a 100k-row store deterministically by row index, not by an RNG seed argument"
+ },
+ "dataset": {
+  "name": "ldbc-sf1-composite-merged-fk-initial-snapshot",
+  "digest": "5600fe771ed412de7e219aa8046ac0fd0a06c4c1ff7192d35ea16dc6a4cf47a9",
+  "digest_kind": "store_digest",
+  "digest_method": "sha256 of benchmarks/results-v1/b1-manifest-v2e-remeasure-2026-09-logs/dataset-manifest.txt, a freshly generated (2026-09-15) per-file manifest -- one line per file: 'relative_path byte_size mtime_utc_iso sha256', sorted by path -- over every file under initial_snapshot/ on xzgpu (find -type f | sort, then stat + sha256sum per file, 55 files total). Computed independently for this run, not copied from any prior record."
+ },
+ "result_digest": "5059fc4367ebc4e5fe56aa02c03ac5efbc643be1d7114d7b01c75291e82960a5",
+ "protocol": {
+  "warmups": 0,
+  "reps": 3,
+  "ceilings": {
+   "cell_a_stop_ops": 2500000,
+   "cell_b_commits": 300
+  }
+ },
+ "record": "benchmarks/results-v1/b1-manifest-v2e-remeasure-2026-09-raw.json",
+ "measurements": {
+  "cell_a_chain_open": {
+   "threshold_component_us": "<= 70,000 us (refuted > 100,000 us)",
+   "threshold_total_open": "<= 1.25x control at matched generation",
+   "treatment_generation": 10365,
+   "control_generation": 10052,
+   "treatment_manifest_chain_component_us_median": 87055,
+   "treatment_manifest_chain_component_breakdown_us_median": {
+    "checkpoint_read_parse_us": 42124,
+    "merkle_verify_us": 40204,
+    "state_build_us": 1828,
+    "delta_replay_us": 2899
+   },
+   "treatment_dictionary_open_us_median": 1066460,
+   "treatment_other_us_median": 388,
+   "treatment_total_us_median": 1191773,
+   "treatment_open_ms_median_wallclock": 1191.91,
+   "control_open_ms_median_wallclock": 10365.634,
+   "control_component_breakdown": "not available -- pinned format-2 engine predates open_phase_us()",
+   "total_open_ratio_treatment_over_control": 0.115,
+   "caveat": "a phase-2 backup tar process was running on xzgpu throughout every rep of this cell (both arms); control's open time (9.6-10.4s) is ~4.6-5x the prior clean-baseline B1-v2 A/B's control figures (1.4-2.2s) at a similar generation, and I/O contention from the concurrent backup is the leading suspect for that inflation, not a claim about the engine. The 0.115x ratio above should not be read as a clean measurement of relative open cost."
+  },
+  "cell_b_commitcost": {
+   "threshold_decile": "<= 1.10x (refute >= 1.2x)",
+   "threshold_p50": "paired <= 0.70x control OR <= 5.58 ms absolute",
+   "treatment_total_us_first_decile_median": 3311,
+   "treatment_total_us_last_decile_median": 3368,
+   "treatment_decile_ratio": 1.017,
+   "treatment_p50_median_us": 3365,
+   "treatment_residual_first_us_mean_of_reps": 33.06,
+   "treatment_residual_last_us_mean_of_reps": 30.38,
+   "control_total_us_first_decile_median": 3532,
+   "control_total_us_last_decile_median": 5990,
+   "control_decile_ratio": 1.696,
+   "control_p50_median_us": 4704,
+   "paired_p50_ratio_treatment_over_control": 0.715,
+   "paired_p50_absolute_ms": 3.365,
+   "finding": "100% of the residual the B1V2_AB_DIAGNOSIS memo (Q1) found in the treatment/format-3 arm is gone under the B1-v2d fully-timed harness: residual_first_us and residual_last_us are both ~30-35us (versus total_us ~3,300-3,400us) and do not grow first-to-last decile, and total_us itself is flat (1.017x). The control (format-2, unchanged engine) still shows the original-magnitude decile growth (1.696x, consistent with the prior lane's 1.733x) since it runs the unmodified legacy_body_sha O(segments) path the fix did not touch."
+  }
+ }
+}
