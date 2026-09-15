@@ -7,3 +7,11 @@ docs/
 interactive_v1/
 bi/
 probe/runs/
+
+# lane D1-fix (2026-09-14): the curated query/schema/script-text-only subset
+# of these two trees (no data, no generated CSVs, nothing > 1 MB) is now
+# vendored onto main -- external_workloads/ldbc/README.md has the provenance
+# note and pinned commits. Bulk raw clones of these projects anywhere else
+# under external_workloads/ stay ignored by the blanket rules above.
+!ldbc/bi/
+!ldbc/interactive_v1/
