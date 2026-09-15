@@ -236,15 +236,27 @@ def build_table(manifest: dict[str, Any], *, label: str | None = None,
     # `None` to `False` (the old `bool(s.get("digest_equal"))`) reported a
     # skipped check as a FAIL indistinguishable from an actual mismatch.
     if digest_equal_raw is None:
-        reason = (replay_skipped or {}).get("reason", "unknown")
+        rs = replay_skipped or {}
+        reason = rs.get("reason", "unknown")
         det_verdict = f"NOT COMPUTED (replay skipped: {reason})"
+        # `projection_kind`/`replay_compact_every` (B7c, 2026-09-15): the
+        # disk-guard projection is one of two different formulas depending
+        # on whether the replay itself would have compacted periodically —
+        # name which one applied rather than leaving it ambiguous.
+        kind = rs.get("projection_kind")
+        cadence = rs.get("replay_compact_every")
+        if kind == "compacted" and cadence:
+            kind_note = f"compacted projection, peak within one {cadence}-batch cycle"
+        elif kind == "uncompacted":
+            kind_note = "uncompacted projection, whole run"
+        else:
+            kind_note = "projection kind not recorded"
         det_detail = (
             f"Gate E inconclusive on this row — verify_healthy={verify_healthy}, "
             f"digest_equal=not computed; replay skipped because "
-            f"total_batches={_fmt((replay_skipped or {}).get('total_batches'))} "
-            f"projected {_fmt_mb_and_tb((replay_skipped or {}).get('projected_mb'))} "
-            f"of manifests, over the limit_mb="
-            f"{_fmt((replay_skipped or {}).get('limit_mb'))} ceiling")
+            f"total_batches={_fmt(rs.get('total_batches'))} projected "
+            f"{_fmt_mb_and_tb(rs.get('projected_mb'))} of manifests ({kind_note}), "
+            f"over the limit_mb={_fmt(rs.get('limit_mb'))} ceiling")
     else:
         deterministic = bool(digest_equal_raw) and verify_healthy
         det_verdict = _verdict(deterministic)

@@ -718,6 +718,32 @@ aggregation/report logic requires re-running `longevity_report.py` against
 the preserved `metrics.jsonl` still held on xzgpu, which is a separate,
 not-yet-done step.
 
+**Same-day follow-up — the digest-equivalence check itself is now feasible
+for a run this size (B7c, landed after the note above).**
+`tgms.storage.eventlog.replay` gained a `compact_every` parameter
+(`replay(..., compact_every=N)` calls `adapter.compact()`+
+`adapter.gc(keep_last=2)` every `N` applied batches, safe by construction —
+compaction inherits the pre-compaction generation's `created_tt` unchanged,
+so it cannot disturb the historical `tt` values replay applies each batch
+at; `store_digest()` is content-only and unaffected either way), exposed on
+the CLI as `tgms replay --compact-every N` and proved digest-preserving by
+`tests/test_replay_compaction.py`. `scripts/longevity_run.py::cmd_run` now
+passes this run's own `--compact-every-batches` as the replay's cadence by
+default (`--replay-compact-every` overrides, `0` disables and falls back to
+the old uncompacted replay), and the disk-guard projection has two
+formulas accordingly: uncompacted, `243.0 * total_batches ** 2 / 1e6` (what
+this soak measured, ~280.8 TB, correctly skipped); compacted, periodic
+compaction+gc reclaims each cycle's growth before the next starts, so the
+guard only budgets for one cycle's own peak, `243.0 *
+min(compact_every, total_batches) ** 2 / 1e6` MB. Plugging this soak's own
+numbers into the compacted formula (1,074,952 batches, cadence 500) gives
+≈60.75 MB — comfortably under the `--max-disk-mb=20000` ceiling this run
+used, i.e. **the same run's disk guard would not have skipped the replay
+step from this commit on.** This is a statement about what a *future* run
+of the same shape can now check, not a re-measurement of this soak's own
+already-committed record, which (per the note above) stays exactly as
+measured at `886805f` — a commit that predates `compact_every` entirely.
+
 ---
 
 ## Honest limits

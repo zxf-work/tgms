@@ -100,6 +100,20 @@ is >280 TB, not a realistic ceiling to raise to) or `--writer-sleep-s` to
 bound the batch count, per the harness's own module docstring on this
 exact tradeoff.
 
+**2026-09-15 follow-up, after this record was measured**: the check is
+feasible from this commit on, without either workaround.
+`tgms.storage.eventlog.replay` gained a `compact_every` cadence (B7c),
+proved digest-preserving (`tests/test_replay_compaction.py`), and
+`scripts/longevity_run.py::cmd_run` now uses it by default for the final
+replay, projecting the disk-guard cost as one compaction cycle's own peak
+rather than the whole run's uncompacted total. This run's own numbers
+(1,074,952 batches, `--compact-every-batches 500`) project to ≈60.75 MB
+under that formula — comfortably inside `--max-disk-mb=20000` — so a
+future run of this same shape would have its digest-equivalence check
+actually run. This is a statement about what a future run can now do, not
+a re-measurement of this record, which stays exactly as measured at
+`886805f`, a commit that predates `compact_every` entirely.
+
 ## `errors observed`: manifest says 1, the real total is 249
 
 `scripts/longevity_run.py::summarize()` aggregates writer-side counters

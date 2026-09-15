@@ -56,23 +56,35 @@ gets the same coverage (checks tied to the correction stream, refreshes
 timed) without asking the engine to define something it deliberately does
 not.
 
-**The final replay step has no compaction hook, and inherits D-149's own
-pathology.** `tgms.storage.eventlog.replay` — the same call `tgms replay`
-makes — applies every logged batch into a fresh, never-compacted store, one
-generation per batch. For a writer that commits many small (near-single-op)
-batches over a long run, replaying the full log this way reproduces the
-exact O(batches²) manifest-growth pathology `scripts/build_snb_store.py:70-90`
-measured (10,147 uncompacted generations -> 25 GB of manifests) — found here
-by running the *verification step itself* long enough, which is very much
-the point of this harness. There is no public hook to compact mid-replay
-(compaction cannot preserve the recorded `tt` a replay must reproduce, so a
-public-API reimplementation of `replay` cannot substitute for it either —
-see `apply_correction_via_public_api`'s note on the same constraint).
-`--writer-sleep-s` overrides a mix's per-batch throttle so an operator can
-keep the total batch count, and therefore the final replay's own disk
-footprint, in bounds on a batch-count-sensitive host; the 24h/72h runs
-should budget disk for the replay step in proportion to total batches, not
-to the live store's own (compacted) size.
+**The final replay step inherits D-149's own pathology, and (B7c,
+2026-09-15) now has a compaction hook to bound it.** `tgms.storage.
+eventlog.replay` — the same call `tgms replay` makes — applies every
+logged batch into a fresh store, one generation per batch by default. For
+a writer that commits many small (near-single-op) batches over a long run,
+replaying the full log this way (uncompacted) reproduces the exact
+O(batches²) manifest-growth pathology `scripts/build_snb_store.py:70-90`
+measured (10,147 uncompacted generations -> 25 GB of manifests) — found
+here by running the *verification step itself* long enough, which is very
+much the point of this harness. `replay(..., compact_every=N)` now calls
+`adapter.compact()`+`adapter.gc(keep_last=2)` every `N` applied batches,
+safe by construction (compaction inherits the pre-compaction generation's
+`created_tt` unchanged — `crates/tgms-engine-core/src/compact.rs` — so it
+cannot disturb the historical `tt` values `replay` applies each batch at,
+which is the actual constraint a *public-API* reimplementation of `replay`
+still cannot get around — see `apply_correction_via_public_api`'s note on
+that separate, still-standing constraint). This resets the accumulated
+live-segment count — and with it the O(k²) manifest cost — every `N`
+batches instead of letting it grow for the whole run; `cmd_run` below
+passes this run's own `--compact-every-batches` as the replay's cadence by
+default (`--replay-compact-every` overrides, `0` disables and falls back
+to the old uncompacted replay) and projects the disk-guard cost as
+`243.0 * min(compact_every, total_batches) ** 2 / 1e6` MB — the peak size
+*within one compaction cycle*, not `243.0 * total_batches ** 2 / 1e6` —
+since periodic compaction+gc reclaims each cycle's growth before the next
+one starts rather than letting it accumulate across the whole run (see
+`cmd_run`'s own comment where this is derived). `--writer-sleep-s`
+overrides a mix's per-batch throttle so an operator can keep the total
+batch count down independently of this.
 
 **Mixture presets, and what they do and do not control.** The blueprint
 mixture (60% read/query, 25% append, 10% historical correction, 5%
@@ -940,6 +952,19 @@ def cmd_run(args: argparse.Namespace) -> int:
     store_src = Path(args.store)
     store_name = store_src.name
 
+    # The final replay's own compaction cadence (B7c): defaults to this
+    # run's own writer cadence (--compact-every-batches, always positive by
+    # construction of that flag's own default) so the replay folds
+    # manifests back down on the same schedule the live run used;
+    # --replay-compact-every overrides, and 0 (or a non-positive override)
+    # disables replay-time compaction entirely, falling back to the old
+    # uncompacted replay.
+    replay_compact_every: int | None = args.replay_compact_every
+    if replay_compact_every is None:
+        replay_compact_every = args.compact_every_batches
+    if not replay_compact_every or replay_compact_every <= 0:
+        replay_compact_every = None
+
     plan = {
         "store": str(store_src), "store_name": store_name,
         "duration_s": duration_s, "mix": args.mix, "readers": args.readers,
@@ -949,6 +974,7 @@ def cmd_run(args: argparse.Namespace) -> int:
         "restart_every_s": restart_every_s, "artifacts": args.artifacts,
         "writer_sleep_s": args.writer_sleep_s,
         "max_disk_mb": args.max_disk_mb,
+        "replay_compact_every": replay_compact_every,
         "seed": args.seed, "out": str(out_dir),
         "metrics": args.metrics or str(out_dir / "metrics.jsonl"),
     }
@@ -1162,26 +1188,42 @@ def cmd_run(args: argparse.Namespace) -> int:
     final.close()
 
     # --- final replay / digest equivalence ------------------------------ #
-    # `replay()` applies every logged batch as its own uncompacted
-    # generation (module docstring: D-149's O(batches^2) manifest-growth
-    # pathology, inherited rather than introduced by this harness) — with
-    # --max-disk-mb set, estimate that cost from the batch count *before*
-    # paying for it, using the same constant the docstring's own citation
-    # implies (scripts/build_snb_store.py:70-90: 10,147 uncompacted
-    # generations -> 25 GB of manifests, ~243 bytes/batch^2).
+    # `replay()` applies every logged batch as its own generation
+    # (module docstring: D-149's O(batches^2) manifest-growth pathology,
+    # inherited rather than introduced by this harness), uncompacted unless
+    # `replay_compact_every` is set (B7c, 2026-09-15: `replay(...,
+    # compact_every=N)` folds the throwaway replay store back down every N
+    # applied batches, the same `adapter.compact()`+`adapter.gc(keep_last=2)`
+    # a live writer already does). With --max-disk-mb set, estimate that
+    # cost from the batch count *before* paying for it, using the same
+    # constant the docstring's own citation implies
+    # (scripts/build_snb_store.py:70-90: 10,147 uncompacted generations ->
+    # 25 GB of manifests, ~243 bytes/batch^2).
     #
-    # This projection is deliberately keyed on the *raw* event-log batch
-    # count, not on how often the *live* run itself compacted
-    # (--compact-every-batches): `tgms.storage.eventlog.replay` (below) has
-    # no mid-replay compaction hook at all — it calls `adapter.begin()` /
-    # `apply_ops()` / `commit()` once per logged batch and nothing else, so
-    # a replay always materializes one uncompacted generation per batch in
-    # the *whole* log, regardless of what the original writer's own
-    # compaction cadence was. A live run compacting every 500 batches does
-    # not make its replay any cheaper — replay re-derives the store from
-    # the event log alone, which remembers every batch, compacted or not.
-    # So `total_batches` (the full event-log batch count) is exactly the
-    # right input here, not an approximation that ignores compaction.
+    # Two different projections, depending on whether replay-time
+    # compaction is enabled:
+    #
+    # - **Uncompacted** (`replay_compact_every is None`): `total_batches`
+    #   (the full event-log batch count) is the right input — every batch
+    #   in the whole log becomes its own permanent, never-reclaimed
+    #   generation, so cost grows with the whole run's batch count:
+    #   `projected_mb = 243.0 * total_batches ** 2 / 1e6`.
+    # - **Compacted**: periodic `compact()`+`gc(keep_last=2)` *reclaims*
+    #   each cycle's accumulated segments/manifests before the next cycle
+    #   starts (confirmed by the same calibration this constant comes from
+    #   — scripts/build_snb_store.py's own comment: compacting every
+    #   100,000 ops held manifests at ~0 MB at 600k ops, not growing with
+    #   the ops count), so disk usage saw-tooths between a small
+    #   post-compaction baseline and a peak of one cycle's own O(cycle^2)
+    #   cost, repeating every `replay_compact_every` batches without
+    #   accumulating across cycles. The worst case this guard must budget
+    #   for is therefore that one-cycle peak, not a sum over every cycle in
+    #   the run: `projected_mb = 243.0 * min(replay_compact_every,
+    #   total_batches) ** 2 / 1e6` — independent of `total_batches` once
+    #   the run is longer than one cycle. (A naive `243.0 *
+    #   replay_compact_every * total_batches / 1e6` — cycle cost times
+    #   number of cycles — double-counts: it assumes each cycle's cost
+    #   adds to the last, which is exactly what `gc(keep_last=2)` prevents.)
     from tgms.storage.eventlog import EventLog as _EventLog
     from tgms.storage.eventlog import replay as replay_log
 
@@ -1189,39 +1231,54 @@ def cmd_run(args: argparse.Namespace) -> int:
     do_replay = True
     replay_skipped: dict[str, Any] | None = None
     if args.max_disk_mb is not None:
-        projected_mb = (243.0 * (total_batches ** 2)) / 1e6
+        if replay_compact_every is not None:
+            cycle = min(replay_compact_every, total_batches) if total_batches else 0
+            projected_mb = (243.0 * (cycle ** 2)) / 1e6
+            projection_kind = "compacted"
+        else:
+            projected_mb = (243.0 * (total_batches ** 2)) / 1e6
+            projection_kind = "uncompacted"
         current_mb = _dir_size_bytes(out_dir) / 1e6
         if current_mb + projected_mb > args.max_disk_mb:
             do_replay = False
             replay_skipped = {
                 "reason": "projected_replay_exceeds_limit",
                 "total_batches": total_batches,
+                "replay_compact_every": replay_compact_every,
+                "projection_kind": projection_kind,
                 "projected_mb": round(projected_mb, 1),
                 "limit_mb": args.max_disk_mb,
             }
             _write_ledger(out_dir, "disk_guard_replay_skip",
                           total_batches=total_batches,
+                          replay_compact_every=replay_compact_every,
+                          projection_kind=projection_kind,
                           projected_mb=round(projected_mb, 1),
                           current_mb=round(current_mb, 1), limit_mb=args.max_disk_mb)
-            print(f"  SKIPPING final replay: {total_batches} uncompacted batches would "
-                  f"project to ~{projected_mb:.0f} MB (~{projected_mb / 1e6:.1f} TB) of "
-                  f"manifests (D-149's own O(batches^2) pathology; this projection is "
-                  f"exact regardless of the live run's own --compact-every-batches, "
-                  f"since tgms.storage.eventlog.replay never compacts mid-replay), "
-                  f"which would push --out over --max-disk-mb={args.max_disk_mb:.0f}; "
-                  f"digest equivalence not checked this run.", flush=True)
+            kind_note = (f"peak within one {replay_compact_every}-batch compaction "
+                        f"cycle, {projection_kind}" if projection_kind == "compacted"
+                        else f"the whole {total_batches}-batch, {projection_kind} replay")
+            print(f"  SKIPPING final replay: projected to ~{projected_mb:.0f} MB "
+                  f"(~{projected_mb / 1e6:.1f} TB) of manifests ({kind_note}; D-149's "
+                  f"own O(batches^2) pathology), which would push --out over "
+                  f"--max-disk-mb={args.max_disk_mb:.0f}; digest equivalence not "
+                  f"checked this run.", flush=True)
 
     replay_digest: str | None = None
     digest_equal: bool | None = None
     if do_replay:
-        print(f"  replaying {total_batches} batches into a fresh store ...", flush=True)
+        cadence_note = (f" (compacting every {replay_compact_every} batches)"
+                        if replay_compact_every is not None else "")
+        print(f"  replaying {total_batches} batches into a fresh store"
+              f"{cadence_note} ...", flush=True)
         replay_dir = out_dir / "replay-store"
         if replay_dir.exists():
             shutil.rmtree(replay_dir)
         replayed = tgms.open(replay_dir, backend="native")
         dst_log = Path(replayed.path) / "eventlog.jsonl"
         shutil.copyfile(live_store / "eventlog.jsonl", dst_log)
-        replay_log(dst_log, replayed.adapter, thread_cursor=True)
+        replay_log(dst_log, replayed.adapter, thread_cursor=True,
+                  compact_every=replay_compact_every)
         # store_digest() is defined purely over logical content
         # (tgms/storage/base.py: "backend-independent"), so compacting this
         # throwaway store before hashing it cannot change the digest — it
@@ -1494,9 +1551,21 @@ def main() -> int:
                          "half-written) if --out's total size exceeds this "
                          "many MB — checked periodically through the soak "
                          "and, as a before-the-fact size estimate, before "
-                         "the final uncompacted replay step. Strongly "
-                         "recommended on any host with bounded disk; the "
-                         "smoke test always sets one.")
+                         "the final replay step. Strongly recommended on "
+                         "any host with bounded disk; the smoke test always "
+                         "sets one.")
+    ap.add_argument("--replay-compact-every", type=int, default=None,
+                    help="compact()+gc() the final replay's throwaway store "
+                         "every N applied batches (B7c: tgms.storage."
+                         "eventlog.replay's own compact_every) — bounds the "
+                         "O(batches^2) manifest-growth pathology (D-149) "
+                         "that otherwise makes replay of a long run's full "
+                         "history impractical. Defaults to this run's own "
+                         "--compact-every-batches (the same cadence the "
+                         "live writer used); 0 disables replay-time "
+                         "compaction entirely, falling back to the old "
+                         "uncompacted replay and its O(batches^2) "
+                         "disk-guard projection.")
     ap.add_argument("--seed", type=int, default=0)
     ap.add_argument("--out", required=True)
     ap.add_argument("--metrics", default=None, help="default: <out>/metrics.jsonl")
