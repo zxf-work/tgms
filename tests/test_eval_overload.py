@@ -81,3 +81,55 @@ def test_token_bucket_schedule_is_evenly_spaced():
 def test_token_bucket_schedule_empty_for_nonpositive_rate():
     assert OVERLOAD.token_bucket_schedule(0.0, 5.0) == []
     assert OVERLOAD.token_bucket_schedule(-1.0, 5.0) == []
+
+
+def test_dry_run_no_call_records_conforms_and_reports_same_shape(tmp_path):
+    """`--no-call-records` (here, `run_dry`'s `keep_call_records=False`) is
+    additive: default behaviour (tested above) is unchanged, and the
+    aggregates-only path still produces a schema-conformant manifest with
+    the same step fields populated -- just computed from counters and a
+    bounded reservoir instead of a per-call list."""
+    jsonschema = pytest.importorskip("jsonschema")
+    manifest = OVERLOAD.run_dry(tmp_path, keep_call_records=False)
+    schema = _load_schema()
+    jsonschema.Draft202012Validator(schema).validate(manifest)
+    assert manifest["config"]["call_records"] is False
+    assert "not written" in manifest["record"]
+    assert manifest["steps"], "expected at least one load step"
+    for s in manifest["steps"]:
+        assert s["n_ok"] + s["n_refused"] + s["n_error"] == s["n_calls"]
+    assert manifest["recovery"]["n_ok"] > 0
+
+
+def test_dry_run_call_records_default_true_in_manifest_config(tmp_path):
+    manifest = OVERLOAD.run_dry(tmp_path)
+    assert manifest["config"]["call_records"] is True
+    assert "--out" in manifest["record"]
+
+
+def test_dry_run_rss_samples_writes_time_rss_kb_step_csv(tmp_path):
+    """`--rss-samples PATH` (here, `run_dry`'s `rss_samples_path`) writes a
+    `time,rss_kb,step` CSV sampled from the sweep, regardless of whether
+    call records are kept."""
+    rss_path = tmp_path / "rss.csv"
+    OVERLOAD.run_dry(tmp_path, rss_samples_path=rss_path)
+    assert rss_path.exists()
+    lines = rss_path.read_text().splitlines()
+    assert lines[0] == "time,rss_kb,step"
+    # A ~1s dry-run sampled once per second may legitimately produce zero
+    # data rows (only the header) -- what matters is the file is written
+    # with the right shape and, if there are rows, they parse cleanly.
+    for line in lines[1:]:
+        t_str, rss_str, step = line.split(",", 2)
+        float(t_str)
+        int(rss_str)
+        assert step
+
+
+def test_dry_run_rss_samples_combined_with_no_call_records(tmp_path):
+    rss_path = tmp_path / "rss.csv"
+    manifest = OVERLOAD.run_dry(tmp_path, keep_call_records=False,
+                                rss_samples_path=rss_path)
+    assert manifest["config"]["call_records"] is False
+    assert rss_path.exists()
+    assert rss_path.read_text().splitlines()[0] == "time,rss_kb,step"
