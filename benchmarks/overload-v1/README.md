@@ -213,7 +213,7 @@ to the kernel's lifetime peak accounting, invisible to once-a-second
 polling. Full numbers, before/after stats, and the sampler-discrepancy note
 are in `heap-diagnostic-2026-09-15.json`.
 
-### Amendment (2026-09-15, held pending a phase-localized re-check)
+### Amendment v2 (2026-09-15, superseded — see "Pinned" below)
 
 The v1 verdict above was **held**: `/usr/bin/time -v` reports a
 process-*lifetime* peak, while the 1 Hz series sat at baseline through the
@@ -255,6 +255,62 @@ localizing it to "recovery" vs. "teardown" needs two more checkpoints, not
 run here to hold to the bounded measurement budget.** Full detail in
 `hwm_checkpoint_followup_v2` in `heap-diagnostic-2026-09-15.json`.
 
+### Pinned (2026-09-15)
+
+A third bounded run added the two missing checkpoints — after the recovery
+step, and after each of the harness's own finalization calls
+(`store.digest()`, then `store.close()`) — plus one just before the sweep
+returns:
+
+| checkpoint | `VmHWM` (kB) |
+|---|---:|
+| after the 64-client step | 227,280 |
+| after the recovery step | 227,280 |
+| after `store.digest()` | **1,999,968** |
+| after `store.close()` | 1,999,968 |
+| before exit | 1,999,968 |
+
+Same run's `/usr/bin/time -v` peak: **1,999,968 KB** — identical, kB for
+kB, to the `after_store_digest_full` checkpoint. The recovery step adds
+exactly 0 KB; `store.digest()` adds 1,772,688 KB in one call; nothing
+after it adds anything.
+
+**Pinned verdict: the service surface `VmHWM` stays ≈227 MB through the
+entire 64-client step (and the recovery step that follows it) — the
+1.9 GB lifetime peak belongs to `scripts/eval_overload.py`'s own
+end-of-sweep `store.digest()` call**, not to `ToolRouter`/`ConcurrencyGate`
+under load, not to the recovery step, and not to per-call `CallRecord`
+retention (the v1 ablation's finding stands, just not for the reason v1
+assumed — `store.digest()` is itself a harness-side finalization call, so
+"not harness bookkeeping" was wrong in scope even though "not the
+`CallRecord` list" was right). `Store.digest()`
+(`tgms/storage/base.py::store_digest`) materializes every node/edge
+version row into a sorted Python list before hashing — its cost scales
+with total row count, not with anything the load actually did, which is
+exactly why disabling `--no-call-records` never moved the peak (v1) and
+why the peak was already fully formed the instant `store.digest()`
+returned (v3).
+
+**The fix:** `Store.digest_streaming()` (`tgms/store.py`, backed by
+`StorageAdapter.store_digest_streaming` in `tgms/storage/base.py`) landed
+on `main` via the B7a streaming-digest work (commits
+`c5c03a9`/`3731a67`, merge `4930213`) after this lane's branch point
+(`23bf664`) — proved byte-identical to `store.digest()`
+(`tests/test_store_digest_streaming.py`) and bounded-memory by
+construction (an external merge sort over spilled, `chunk_rows`-sized
+batches instead of materializing every row). `scripts/eval_overload.py`
+now takes an additive `--digest-mode {full,streaming}` flag (default
+`full`, unchanged behaviour); `streaming` calls `digest_streaming()`
+instead, and on a checkout that lacks the method — including this lane's
+own branch, which predates the merge — it raises a clear `RuntimeError`
+naming the missing method and the commits that add it, rather than
+silently falling back to `full` and mislabeling the manifest.
+`digest_mode` is recorded in every manifest's `config` for provenance.
+Not exercised live here (this branch doesn't have `digest_streaming` yet);
+the flag is landed and ready to flip once this lane rebases onto or merges
+a `main` that includes it. Full detail in `hwm_checkpoint_pinning_v3` in
+`heap-diagnostic-2026-09-15.json`.
+
 ## Files
 
 - `overload-2026-09-15.json` / `.records.json` — rep1
@@ -272,6 +328,8 @@ run here to hold to the bounded measurement budget.** Full detail in
   `--rss-samples` series from that follow-up
 - `step64-no-call-records-v2.json`, `rss-no-call-records-10hz.csv`,
   `hwm-checkpoints.json` — the held/amended phase-localization re-check
-  (see "Amendment" above)
+  (see "Amendment v2" above, superseded)
+- `step64-no-call-records-v3.json`, `rss-no-call-records-v3-10hz.csv`,
+  `hwm-checkpoints-v3.json` — the pinning run (see "Pinned" above)
 - `SHA256SUMS` — sha256 of every file above, verified identical between
   xzgpu and this checkout after transfer

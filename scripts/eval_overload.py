@@ -426,7 +426,8 @@ def build_manifest(*, store_path: str, store_digest: str, op: str,
                    recovery: StepResult, dry_run: bool,
                    records_path: str, provenance: str,
                    dev_host_note: str | None = None,
-                   keep_call_records: bool = True) -> dict[str, Any]:
+                   keep_call_records: bool = True,
+                   digest_mode: str = "full") -> dict[str, Any]:
     steps_json = [s.to_json() for s in steps]
     digest_src = json.dumps({"steps": steps_json, "recovery": recovery.to_json()},
                             sort_keys=True).encode()
@@ -438,7 +439,8 @@ def build_manifest(*, store_path: str, store_digest: str, op: str,
         "config": {"store": store_path, "op": op, "args": args,
                   "max_concurrent": limits.max_concurrent,
                   "max_rows": limits.max_rows, "max_bytes": limits.max_bytes,
-                  "dry_run": dry_run, "call_records": keep_call_records},
+                  "dry_run": dry_run, "call_records": keep_call_records,
+                  "digest_mode": digest_mode},
         "seed": {"value": None,
                 "reason": "open-loop arrival scheduling is deterministic "
                          "given (rate, duration); no RNG is used"},
@@ -481,12 +483,25 @@ def render_table(steps: list[StepResult], recovery: StepResult) -> str:
 # CLI                                                                          #
 # --------------------------------------------------------------------------- #
 
+#: `--digest-mode`: 'full' is `Store.digest()`, unchanged default behaviour
+#: (materializes every node/edge version row -- ~1.8 GB for a 1M-row store,
+#: per the overload-heap diagnostic). 'streaming' is `Store.digest_streaming`
+#: (bounded-memory external-merge-sort digest, byte-identical to 'full' --
+#: `tests/test_store_digest_streaming.py` on main), landed on main via the
+#: B7a streaming-digest merge (c5c03a9/3731a67/4930213) -- not yet present on
+#: a branch that predates that merge, in which case 'streaming' raises
+#: rather than silently falling back to 'full' (a manifest recording
+#: 'streaming' that actually ran 'full' would misreport what was measured).
+DIGEST_MODES = ("full", "streaming")
+
+
 def run_sweep(store_path: str, client_counts: list[int], duration_s: float,
              rate_per_client: float, max_concurrent: int | None,
              out_records: Path | None, provenance: str,
              dev_host_note: str | None = None, keep_call_records: bool = True,
              rss_samples_path: Path | None = None, rss_sample_interval_s: float = 1.0,
-             hwm_checkpoints: "_HwmCheckpoints | None" = None) -> dict[str, Any]:
+             hwm_checkpoints: "_HwmCheckpoints | None" = None,
+             digest_mode: str = "full") -> dict[str, Any]:
     store = tgms.open(store_path, read_only=True)
     if hwm_checkpoints is not None:
         hwm_checkpoints.record("after_store_open")
@@ -524,6 +539,8 @@ def run_sweep(store_path: str, client_counts: list[int], duration_s: float,
             rss_sampler.set_step("recovery")
         recovery, recovery_records = run_step(router, op, args, 1, rate_per_client,
                                               per_step_s, keep_records=keep_call_records)
+        if hwm_checkpoints is not None:
+            hwm_checkpoints.record("after_recovery_step")
         if keep_call_records:
             all_records.append({"step": "recovery", "n_clients": 1,
                                "records": [r.__dict__ for r in recovery_records]})
@@ -532,8 +549,23 @@ def run_sweep(store_path: str, client_counts: list[int], duration_s: float,
             rss_sampler.set_step("done")
             rss_sampler.stop_and_write()
 
-    store_digest = store.digest()
+    if digest_mode == "streaming":
+        digest_fn = getattr(store, "digest_streaming", None)
+        if digest_fn is None:
+            raise RuntimeError(
+                "--digest-mode streaming requires tgms.store.Store."
+                "digest_streaming, not present on this checkout (it landed "
+                "on main via the B7a streaming-digest merge, commit "
+                "c5c03a9/3731a67/4930213; this branch predates it). Rebase "
+                "onto a main that includes it, or pass --digest-mode full.")
+    else:
+        digest_fn = store.digest
+    store_digest = digest_fn()
+    if hwm_checkpoints is not None:
+        hwm_checkpoints.record(f"after_store_digest_{digest_mode}")
     store.close()
+    if hwm_checkpoints is not None:
+        hwm_checkpoints.record("after_store_close")
 
     if not keep_call_records:
         records_path_str = ("(not written; --no-call-records was passed: "
@@ -547,17 +579,25 @@ def run_sweep(store_path: str, client_counts: list[int], duration_s: float,
     else:
         records_path_str = "(not written; pass --out to persist raw records)"
 
-    if hwm_checkpoints is not None:
-        hwm_checkpoints.write()
-
     manifest = build_manifest(store_path=store_path, store_digest=store_digest,
                               op=op, args=args, limits=limits, steps=steps,
                               recovery=recovery, dry_run=False,
                               records_path=records_path_str,
                               provenance=provenance,
                               dev_host_note=dev_host_note,
-                              keep_call_records=keep_call_records)
+                              keep_call_records=keep_call_records,
+                              digest_mode=digest_mode)
     manifest["table"] = render_table(steps, recovery)
+
+    # "before_exit": the last checkpoint this sweep records, immediately
+    # before returning to the caller (main()'s CLI driver, or run_dry()'s
+    # caller in tests) -- written here, once, so it captures everything
+    # above (including the digest/close pair) rather than being clipped by
+    # an earlier write().
+    if hwm_checkpoints is not None:
+        hwm_checkpoints.record("before_exit")
+        hwm_checkpoints.write()
+
     return manifest
 
 
@@ -565,7 +605,8 @@ def run_dry(tmp_dir: Path, dev_host_note: str | None = None,
            keep_call_records: bool = True,
            rss_samples_path: Path | None = None,
            rss_sample_interval_s: float = 1.0,
-           hwm_checkpoints_path: Path | None = None) -> dict[str, Any]:
+           hwm_checkpoints_path: Path | None = None,
+           digest_mode: str = "full") -> dict[str, Any]:
     """A tiny, fast, self-contained sweep — no `stores/synth-300k` needed."""
     from tgms.data.synth import generate
 
@@ -587,7 +628,8 @@ def run_dry(tmp_dir: Path, dev_host_note: str | None = None,
                      keep_call_records=keep_call_records,
                      rss_samples_path=rss_samples_path,
                      rss_sample_interval_s=rss_sample_interval_s,
-                     hwm_checkpoints=hwm_checkpoints)
+                     hwm_checkpoints=hwm_checkpoints,
+                     digest_mode=digest_mode)
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -631,10 +673,21 @@ def main(argv: list[str] | None = None) -> int:
     ap.add_argument("--hwm-checkpoints", default=None,
                     help="path to write VmHWM (lifetime peak RSS so far, "
                         "from /proc/self/status) at named checkpoints -- "
-                        "after imports, after store open, and before/after "
-                        "each load step -- as a JSON list; each checkpoint "
+                        "after imports, after store open, before/after each "
+                        "load step, after the recovery step, after the "
+                        "store-digest call, after store.close(), and just "
+                        "before returning -- as a JSON list; each checkpoint "
                         "is also logged to stderr as it's recorded. "
                         "Omitted by default")
+    ap.add_argument("--digest-mode", choices=DIGEST_MODES, default="full",
+                    help="'full' (default, unchanged): Store.digest(), "
+                        "which materializes every node/edge version row "
+                        "(~1.8 GB for a 1M-row store). 'streaming': "
+                        "Store.digest_streaming(), a bounded-memory, "
+                        "byte-identical alternative -- requires a checkout "
+                        "that includes the B7a streaming-digest merge; "
+                        "raises clearly if it's absent rather than silently "
+                        "falling back to 'full'")
     args = ap.parse_args(argv)
     keep_call_records = not args.no_call_records
     rss_samples_path = Path(args.rss_samples) if args.rss_samples else None
@@ -647,7 +700,8 @@ def main(argv: list[str] | None = None) -> int:
                                keep_call_records=keep_call_records,
                                rss_samples_path=rss_samples_path,
                                rss_sample_interval_s=args.rss_sample_interval_s,
-                               hwm_checkpoints_path=hwm_checkpoints_path)
+                               hwm_checkpoints_path=hwm_checkpoints_path,
+                               digest_mode=args.digest_mode)
     else:
         if not args.store:
             ap.error("--store is required unless --dry-run")
@@ -664,7 +718,8 @@ def main(argv: list[str] | None = None) -> int:
                              keep_call_records=keep_call_records,
                              rss_samples_path=rss_samples_path,
                              rss_sample_interval_s=args.rss_sample_interval_s,
-                             hwm_checkpoints=hwm_checkpoints)
+                             hwm_checkpoints=hwm_checkpoints,
+                             digest_mode=args.digest_mode)
 
     print(manifest.pop("table"))
     if args.out:
