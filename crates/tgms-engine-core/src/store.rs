@@ -208,6 +208,14 @@ pub struct CommitPhases {
     /// JSON build the B1-v2 A/B diagnosis (2026-09-15) found absorbing the
     /// fmt2 arms' decile growth).
     pub digest_us: u64,
+    /// `publish`'s `debug_assert_eq!` that recomputes the manifest digest
+    /// from scratch (O(segments)) to double-check `seal_with`'s incremental
+    /// one — compiled out entirely in release builds, where this is always
+    /// 0. In debug builds this used to run untimed ahead of `manifest_us`'s
+    /// timer, so its O(segments) cost was folded into the residual and grew
+    /// with generation count (`commit_phases_fully_account_for_total_us_
+    /// over_sixty_singleton_commits`, CI 2026-09-15).
+    pub debug_verify_us: u64,
     /// Step 4a: building the manifest record's JSON — a delta
     /// (`ManifestDelta::from_appends`, O(appended)) most generations, or a
     /// full checkpoint (`manifest_chain::checkpoint_json`, O(segments)) every
@@ -642,26 +650,37 @@ impl NativeStore {
     /// incremental seal.
     ///
     /// Returns `(manifest_us, current_us, manifest_bytes, checkpoint_gen,
-    /// delta_build_us)`. The timing split matters because step 4 used to
-    /// rewrite the whole manifest every generation while step 5 writes forty
-    /// bytes; the point of this change is that step 4 no longer grows with
-    /// store history either, so the split is what shows it. `delta_build_us`
-    /// is split out separately (B1-v2d) because it used to run entirely
-    /// before `manifest_us`'s timer started — the delta-or-checkpoint JSON
-    /// this builds is what the B1-v2 A/B diagnosis (2026-09-15, §1.5) flagged
-    /// as needing its own timer, isolated from `digest_us`.
+    /// delta_build_us, debug_verify_us)`. The timing split matters because
+    /// step 4 used to rewrite the whole manifest every generation while step
+    /// 5 writes forty bytes; the point of this change is that step 4 no
+    /// longer grows with store history either, so the split is what shows
+    /// it. `delta_build_us` is split out separately (B1-v2d) because it used
+    /// to run entirely before `manifest_us`'s timer started — the
+    /// delta-or-checkpoint JSON this builds is what the B1-v2 A/B diagnosis
+    /// (2026-09-15, §1.5) flagged as needing its own timer, isolated from
+    /// `digest_us`. `debug_verify_us` times the `debug_assert_eq!` below,
+    /// which is itself O(segments) and otherwise ran untimed ahead of
+    /// `manifest_us`'s clock start — always 0 in release, where the assert
+    /// compiles away.
     fn publish(
         root: &Path,
         appended: Option<(&AppendSpan, u64)>,
         manifest: &Manifest,
         force_checkpoint: bool,
         every: u64,
-    ) -> Result<(u64, u64, u64, u64, u64)> {
-        debug_assert_eq!(
-            manifest.manifest_sha,
-            manifest.body_sha_canonical(),
-            "publish was handed a manifest its caller had not sealed"
-        );
+    ) -> Result<(u64, u64, u64, u64, u64, u64)> {
+        #[cfg(debug_assertions)]
+        let debug_verify_us = {
+            let t = std::time::Instant::now();
+            debug_assert_eq!(
+                manifest.manifest_sha,
+                manifest.body_sha_canonical(),
+                "publish was handed a manifest its caller had not sealed"
+            );
+            t.elapsed().as_micros() as u64
+        };
+        #[cfg(not(debug_assertions))]
+        let debug_verify_us = 0u64;
         if !manifest_chain::is_writable_format(manifest.format) {
             return Err(manifest_chain::read_only_format_error(manifest.format));
         }
@@ -695,6 +714,7 @@ impl NativeStore {
             json.len() as u64,
             checkpoint_gen,
             delta_build_us,
+            debug_verify_us,
         ))
     }
 
@@ -820,7 +840,7 @@ impl NativeStore {
             ));
         }
         self.require_writable_format()?;
-        let (_, _, _, ckpt, _) = Self::publish(
+        let (_, _, _, ckpt, _, _) = Self::publish(
             &self.root,
             None,
             &next,
@@ -935,7 +955,7 @@ impl NativeStore {
         let mut next = self.manifest.successor(self.manifest.created_tt);
         next.format = crate::MANIFEST_FORMAT_VERSION;
         next.seal();
-        let (_, _, _, ckpt, _) = Self::publish(
+        let (_, _, _, ckpt, _, _) = Self::publish(
             &self.root,
             None,
             &next,
@@ -1738,7 +1758,7 @@ impl NativeStore {
 
         // steps 4-5 — manifest record, then CURRENT
         let span = base.span();
-        let (manifest_us, current_us, manifest_bytes, checkpoint_gen, delta_build_us) =
+        let (manifest_us, current_us, manifest_bytes, checkpoint_gen, delta_build_us, debug_verify_us) =
             Self::publish(
                 &self.root,
                 Some((&span, self.checkpoint_gen)),
@@ -1746,6 +1766,7 @@ impl NativeStore {
                 false,
                 self.checkpoint_every(),
             )?;
+        phases.debug_verify_us = debug_verify_us;
         phases.delta_build_us = delta_build_us;
         phases.manifest_us = manifest_us;
         phases.current_us = current_us;

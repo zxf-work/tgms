@@ -305,7 +305,8 @@ def cmd_mixed(args: argparse.Namespace) -> tuple[int, dict[str, Any]]:
 # what the engine's `total_us` is supposed to sum to.
 ENGINE_PHASE_KEYS = (
     "capture_us", "seal_us", "closes_us", "stats_us", "dict_us",
-    "digest_us", "delta_build_us", "manifest_us", "current_us",
+    "digest_us", "debug_verify_us", "delta_build_us", "manifest_us",
+    "current_us",
 )
 
 
