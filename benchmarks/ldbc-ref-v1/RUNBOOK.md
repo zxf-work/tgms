@@ -229,27 +229,22 @@ this table is what `campaign.yaml`'s `templates:` block also carries, and
 16 `REQUIRES_TOP_K` — matches the design memo §0 and
 `tests/test_ldbc_compare.py::test_the_24_expressible_split_matches_the_design_memo`.
 
-### 3.1 Known code gap: `IS1`/`IS4`/`IS5` are not in `ldbc_reference_run.py`'s naming table
+### 3.1 Closed code gap: `IS1`/`IS4`/`IS5` are now in `ldbc_reference_run.py`'s naming table
 
-`scripts/ldbc_reference_run.py`'s `_IS_NUM = {"IS2": 2, "IS3": 3, "IS6": 6,
-"IS7": 7}` does not carry `IS1`, `IS4`, or `IS5` — they were added to the
-*parameter* binder (`scripts/ldbc_snb_params.py::IV_SOURCES`, Lane D2,
-2026-09-14) but the reference runner's filename table was never updated to
-match. Calling `run_all()` for those three ids today raises `KeyError: no
-known vendored filename convention for 'IS1'` (`_default_cypher_name`,
-`ldbc_reference_run.py:201`). **This must be fixed before step 5.3.** Either:
+`scripts/ldbc_reference_run.py`'s `_IS_NUM` used to read `{"IS2": 2, "IS3": 3,
+"IS6": 6, "IS7": 7}` and did not carry `IS1`, `IS4`, or `IS5` — they were
+added to the *parameter* binder (`scripts/ldbc_snb_params.py::IV_SOURCES`,
+Lane D2, 2026-09-14) but the reference runner's filename table was not
+updated to match at the time. Calling `run_all()` for those three ids raised
+`KeyError: no known vendored filename convention for 'IS1'`
+(`_default_cypher_name`, `ldbc_reference_run.py:201`).
 
-- add the three entries to `_IS_NUM` (`{"IS1": 1, "IS2": 2, "IS3": 3, "IS4": 4,
-  "IS5": 5, "IS6": 6, "IS7": 7}`, the same pattern as the four already there),
-  or
-- pass a `cypher_name=` callable to `run_all()` when invoking it from a
-  wrapper script that covers all seven `IS` ids without touching the shared
-  table.
-
-This lane did not make that edit — it is out of scope for a prep-only
-worktree with no experiments run — but it is a real, load-bearing blocker
-for step 5.3, not a hypothetical one, and is flagged again in the final
-report.
+Commit `8b46159` (2026-09-14, lane D1-fix, "ldbc: close the IS1/IS4/IS5
+_IS_NUM gap, add a mechanical sort_keys generator (Claim C9)") closed this
+gap on `main`. `_IS_NUM` is now `{"IS1": 1, "IS2": 2, "IS3": 3, "IS4": 4,
+"IS5": 5, "IS6": 6, "IS7": 7}` — all seven `IS` ids resolve. No pre-flight
+patch to `_IS_NUM` and no `cypher_name=` override is needed any more before
+running step 5.3.
 
 ---
 
@@ -444,9 +439,9 @@ uv run --extra eval python scripts/ldbc_reference_run.py \
 ```
 
 Two invocations because BI and Interactive queries live in different
-vendored directories and `--cypher-dir` is one directory per run. **The
-second invocation needs §3.1's fix applied first** (`IS1`/`IS4`/`IS5`
-raise `KeyError` otherwise).
+vendored directories and `--cypher-dir` is one directory per run. The
+second invocation runs as-is — §3.1 is closed, so `IS1`/`IS4`/`IS5` no
+longer raise `KeyError`.
 
 `ref-BI6.json` (from the first invocation) is the reference answer for the
 `BI6` LDBC template — the same one `BI6.v2.json`'s TGIR output is compared
@@ -461,8 +456,9 @@ comment on `DEFAULT_AUTH`).
 
 `ldbc_compare.py` matches files by plan id (`tgms-<pid>.json` against
 `ref-<pid>.json`). The reference side only ever runs under the id `BI6`
-(that is the only id `_default_cypher_name` can resolve to `bi-6.cypher`
-without the fix in §3.1 growing a `BI6.v2` special case it does not need).
+(that is the only id `_default_cypher_name` resolves to `bi-6.cypher`;
+§3.1's `_IS_NUM` fix does not touch the `BI` table, and `BI6` has no
+`BI6.v2` special case there either — it does not need one).
 Before comparing, make the reference file available under both names —
 it is the same query, same parameters, same answer either way:
 
@@ -656,8 +652,8 @@ and the import log until the manifest (§9) is written and checked in.
 ## 12. Order of operations (checklist)
 
 1. §1.1 — confirm both vendored trees (now on `main`) are present at their pinned commits (`git pull` is enough).
-2. §3.1 — patch `_IS_NUM` (or supply a `cypher_name=` override) before any
-   Interactive reference run.
+2. §3.1 — confirm the checkout includes `8b46159` so `_IS_NUM` carries all
+   seven `IS` ids before any Interactive reference run.
 3. §2 — install Neo4j 5.26.0 + APOC, write `neo4j.conf`, do **not** start
    it against the existing eval instance's data directory.
 4. §4.1-4.2 — fetch `composite-projected-fk`, run the same-data gate,
