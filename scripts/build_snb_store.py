@@ -25,11 +25,12 @@ from __future__ import annotations
 import argparse
 import json
 import platform
+import resource
 import subprocess
 import sys
 import time
 from pathlib import Path
-from typing import Any, Iterator
+from typing import Any, Callable, Iterator
 
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
@@ -101,6 +102,38 @@ def _chunks(it: Iterator[dict[str, Any]], n: int) -> Iterator[list[dict[str, Any
         yield buf
 
 
+def _rss_kb() -> dict[str, int]:
+    """Cross-platform peak-RSS snapshot -- same shape as
+    `build_synth_store.py::_rss_kb` / `scripts/eval_bitemporal.py::_rss_kb`
+    (`ru_maxrss` is already the lifetime peak, kB on Linux / bytes on
+    macOS)."""
+    out: dict[str, int] = {}
+    status = Path("/proc/self/status")
+    if status.exists():  # Linux
+        for line in status.read_text().splitlines():
+            if line.startswith(("VmRSS:", "VmHWM:")):
+                k, v = line.split(":")
+                out[k.strip().lower()] = int(v.split()[0])
+    ru = resource.getrusage(resource.RUSAGE_SELF).ru_maxrss
+    out["maxrss_kb"] = ru // 1024 if sys.platform == "darwin" else ru
+    return out
+
+
+def _timed(fn: Callable[[], Any]) -> tuple[Any, dict[str, Any]]:
+    """Run `fn`, sampling RSS immediately before/after and the wall time it
+    took -- one entry of `finalisation_phases` (see `build`). Same rationale
+    as `build_synth_store.py::_timed`: addendum 2 of
+    `SCALE_BUILD_FORECAST_2026-09-15.md` traced P-SF1's finalisation RSS
+    spike to this build's own final `compact()`/`gc()`/`stats()`/digest
+    sequence, and coarse periodic sampling could not split the four apart."""
+    before = _rss_kb()
+    t0 = time.time()
+    result = fn()
+    wall_s = time.time() - t0
+    after = _rss_kb()
+    return result, {"rss_kb_before": before, "rss_kb_after": after, "wall_s": round(wall_s, 3)}
+
+
 def _sha() -> str:
     try:
         return subprocess.run(["git", "rev-parse", "--short=12", "HEAD"],
@@ -169,6 +202,12 @@ def build(csv_root: Path, out: Path, backend: str,
     t0 = time.time()
     compact_s = [0.0]
     since_compaction = [0]
+    #: RSS/wall for the *final* (`force=True`) compact()/gc()/stats()/digest
+    #: sequence only -- periodic mid-build compactions are not sampled here.
+    #: Addendum 2 of `SCALE_BUILD_FORECAST_2026-09-15.md` traced P-SF1's
+    #: finalisation RSS spike to exactly this sequence; see
+    #: `build_synth_store.py::_timed` for the same instrument there.
+    finalisation_phases: dict[str, Any] = {}
 
     def maybe_compact(force: bool = False) -> None:
         """Fold the small per-batch segments together and drop the manifests
@@ -185,10 +224,16 @@ def build(csv_root: Path, out: Path, backend: str,
         gc = getattr(store.adapter, "gc", None)
         if compact is None or gc is None:
             return
-        t = time.time()
-        compact()
-        gc(keep_last=2)
-        compact_s[0] += time.time() - t
+        if force:
+            _, finalisation_phases["compact"] = _timed(compact)
+            _, finalisation_phases["gc"] = _timed(lambda: gc(keep_last=2))
+            compact_s[0] += (finalisation_phases["compact"]["wall_s"]
+                             + finalisation_phases["gc"]["wall_s"])
+        else:
+            t = time.time()
+            compact()
+            gc(keep_last=2)
+            compact_s[0] += time.time() - t
         counts["compactions"] += 1
         since_compaction[0] = 0
 
@@ -248,13 +293,14 @@ def build(csv_root: Path, out: Path, backend: str,
     maybe_compact(force=True)                          # leave the store folded
 
     wall = time.time() - t0
-    stats = store.stats()
-    digest = _identity(store, digest_mode)
+    stats, finalisation_phases["stats"] = _timed(store.stats)
+    digest, finalisation_phases["digest"] = _timed(lambda: _identity(store, digest_mode))
     store.close()
 
     return {"counts": counts, "wall_s": round(wall, 1),
             "compact_s": round(compact_s[0], 1), "stats": stats,
-            "digest": digest, "labels": label_counts}
+            "digest": digest, "labels": label_counts,
+            "finalisation_phases": finalisation_phases}
 
 
 def main() -> int:
@@ -323,6 +369,7 @@ def main() -> int:
         "expected_edges": SF1_EDGES,
         "fidelity_gate": "PASS" if ok else "FAIL",
         "fidelity_table": lines,
+        "finalisation_phases": result["finalisation_phases"],
     }
     (out / "dataset_card.json").write_text(
         json.dumps(card, indent=1, sort_keys=True, default=str))

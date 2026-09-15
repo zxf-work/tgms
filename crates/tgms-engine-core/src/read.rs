@@ -860,6 +860,26 @@ impl NativeStore {
     /// OOM'd before the byte-budgeted segment cache could matter. Counts
     /// cover every stored row, belief ignored, exactly as before — the
     /// DuckDB adapter must agree here or `estimate_cost` diverges.
+    ///
+    /// Streaming, addendum 2 of `SCALE_BUILD_FORECAST_2026-09-15.md`: the
+    /// per-segment fold above still left every segment's decoded columns
+    /// resident, because it opened segments through `open_segment`, whose
+    /// session-wide cache keeps a decoded segment around (up to its byte
+    /// budget — half of physical RAM by default, i.e. effectively unbounded
+    /// on a large build host) long after this fold moved past it. At P-SF1
+    /// scale (17.4M edges) that turned a flat 2.4 GB ingest RSS into a 25 GB
+    /// finalisation spike. This now opens each segment with
+    /// `open_segment_uncached`, which skips the session cache entirely: the
+    /// segment (and the columns `open()` decodes for it) is dropped at the
+    /// end of each loop iteration, so the working set is bounded to one
+    /// segment's decoded columns at a time, not the whole store. The
+    /// accumulator (`acc`) is the only state that survives across segments,
+    /// and it is already O(distinct sources + distinct rel types) by
+    /// definition — the same size the non-streaming form produced. Output is
+    /// byte-identical to before (proven in
+    /// `stats_streaming_matches_the_cached_open_path` below and, on the
+    /// Python side, `tests/test_store_digest_streaming.py`); only the
+    /// segment-open path changed.
     pub fn stats_accum(&self) -> Result<crate::store::StatsAccum> {
         {
             let cell = self.stats_cell().lock().expect("stats mutex poisoned");
@@ -869,7 +889,7 @@ impl NativeStore {
         }
         let mut acc = crate::store::StatsAccum::default();
         for (file, _id) in self.edge_files() {
-            let seg = self.open_segment(&file)?;
+            let seg = self.open_segment_uncached(&file)?;
             let h = seg.header();
             let vt_s = seg.i64_column("vt_s")?;
             let vt_e = if h.vt_e_elided {
