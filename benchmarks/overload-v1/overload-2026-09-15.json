@@ -1,0 +1,180 @@
+{
+ "schema_version": "1.0.0",
+ "git_commit": "ebe1dc2",
+ "timestamp_utc": "2026-09-15T12:55:13.050877+00:00",
+ "machine": {
+  "host": "xzgpu",
+  "platform": "Linux-5.4.0-216-generic-x86_64-with-glibc2.31",
+  "cpus": 40,
+  "ram_gb": 93.0
+ },
+ "config": {
+  "store": "/mnt/project/xzhang/tgms/tmp/ov1-store",
+  "op": "entity_history",
+  "args": {
+   "uid": "n16945",
+   "limit": 5
+  },
+  "max_concurrent": 8,
+  "max_rows": null,
+  "max_bytes": null,
+  "dry_run": false
+ },
+ "seed": {
+  "value": null,
+  "reason": "open-loop arrival scheduling is deterministic given (rate, duration); no RNG is used"
+ },
+ "dataset": {
+  "name": "ov1-store",
+  "digest": "682f1194f6ca335fd60bda56b3e0630d9d88112651e109067de222e96d9cd51a",
+  "digest_kind": "store_digest"
+ },
+ "result_digest": "ff5d3b8400089710bcfdab6d3203ce48da64c1e9019afd4f5affbf400e8e68eb",
+ "protocol": {
+  "warmups": 0,
+  "reps": 7,
+  "ceilings": {
+   "max_concurrent": 8
+  }
+ },
+ "record": "/mnt/project/xzhang/tgms/tmp/ov1-out/overload-2026-09-15-rep1.records.json",
+ "steps": [
+  {
+   "n_clients": 1,
+   "target_rate_hz": 20.0,
+   "duration_s": 7.5,
+   "n_calls": 150,
+   "n_ok": 150,
+   "n_refused": 0,
+   "n_error": 0,
+   "throughput_qps": 20.129,
+   "p50_ms": 1.443,
+   "p95_ms": 1.683,
+   "p99_ms": 2.058,
+   "late_mean_ms": 16.071,
+   "late_p95_ms": 115.682,
+   "concurrent_in_flight_p95": 0.0,
+   "queue_depth": null
+  },
+  {
+   "n_clients": 2,
+   "target_rate_hz": 20.0,
+   "duration_s": 7.5,
+   "n_calls": 300,
+   "n_ok": 300,
+   "n_refused": 0,
+   "n_error": 0,
+   "throughput_qps": 40.248,
+   "p50_ms": 1.462,
+   "p95_ms": 1.717,
+   "p99_ms": 1.755,
+   "late_mean_ms": 0.114,
+   "late_p95_ms": 0.127,
+   "concurrent_in_flight_p95": 0.0,
+   "queue_depth": null
+  },
+  {
+   "n_clients": 4,
+   "target_rate_hz": 20.0,
+   "duration_s": 7.5,
+   "n_calls": 600,
+   "n_ok": 600,
+   "n_refused": 0,
+   "n_error": 0,
+   "throughput_qps": 80.456,
+   "p50_ms": 1.426,
+   "p95_ms": 1.519,
+   "p99_ms": 1.602,
+   "late_mean_ms": 0.113,
+   "late_p95_ms": 0.126,
+   "concurrent_in_flight_p95": 0.0,
+   "queue_depth": null
+  },
+  {
+   "n_clients": 8,
+   "target_rate_hz": 20.0,
+   "duration_s": 7.5,
+   "n_calls": 1200,
+   "n_ok": 1200,
+   "n_refused": 0,
+   "n_error": 0,
+   "throughput_qps": 160.74,
+   "p50_ms": 1.423,
+   "p95_ms": 1.482,
+   "p99_ms": 1.545,
+   "late_mean_ms": 0.111,
+   "late_p95_ms": 0.125,
+   "concurrent_in_flight_p95": 0.0,
+   "queue_depth": null
+  },
+  {
+   "n_clients": 16,
+   "target_rate_hz": 20.0,
+   "duration_s": 7.5,
+   "n_calls": 2400,
+   "n_ok": 2400,
+   "n_refused": 0,
+   "n_error": 0,
+   "throughput_qps": 320.923,
+   "p50_ms": 1.449,
+   "p95_ms": 1.514,
+   "p99_ms": 1.645,
+   "late_mean_ms": 0.329,
+   "late_p95_ms": 1.482,
+   "concurrent_in_flight_p95": 0.0,
+   "queue_depth": null
+  },
+  {
+   "n_clients": 32,
+   "target_rate_hz": 20.0,
+   "duration_s": 7.5,
+   "n_calls": 4800,
+   "n_ok": 4800,
+   "n_refused": 0,
+   "n_error": 0,
+   "throughput_qps": 635.692,
+   "p50_ms": 1.538,
+   "p95_ms": 23.187,
+   "p99_ms": 40.388,
+   "late_mean_ms": 11.587,
+   "late_p95_ms": 31.682,
+   "concurrent_in_flight_p95": 0.0,
+   "queue_depth": null
+  },
+  {
+   "n_clients": 64,
+   "target_rate_hz": 20.0,
+   "duration_s": 7.5,
+   "n_calls": 9600,
+   "n_ok": 5162,
+   "n_refused": 4438,
+   "n_error": 0,
+   "throughput_qps": 508.081,
+   "p50_ms": 23.128,
+   "p95_ms": 113.085,
+   "p99_ms": 279.99,
+   "late_mean_ms": 103.993,
+   "late_p95_ms": 608.898,
+   "concurrent_in_flight_p95": 8.0,
+   "queue_depth": null
+  }
+ ],
+ "recovery": {
+  "n_clients": 1,
+  "target_rate_hz": 20.0,
+  "duration_s": 7.5,
+  "n_calls": 150,
+  "n_ok": 150,
+  "n_refused": 0,
+  "n_error": 0,
+  "throughput_qps": 20.129,
+  "p50_ms": 1.432,
+  "p95_ms": 1.621,
+  "p99_ms": 1.689,
+  "late_mean_ms": 0.115,
+  "late_p95_ms": 0.125,
+  "concurrent_in_flight_p95": 0.0,
+  "queue_depth": null
+ },
+ "dev_host_note": "measured on a development host for functional verification of the backpressure mechanism, per the task instruction this is NOT a reported benchmark result and carries no reproducibility claim beyond this host/run."
+}

@@ -503,6 +503,28 @@ under `steps`/`recovery` and a `dev_host_note` field marking any given run's
 provenance, so a manifest from a laptop is never silently mistaken for one
 of this document's calibrated xzgpu numbers.
 
+**Measured (2026-09-15, xzgpu, commit `ebe1dc2`) — P-OV1.** The calibrated
+run this section's protocol was written for:
+`benchmarks/overload-v1/overload-2026-09-15.json` (+ `-rep2`, + a dedicated
+1-client/2 Hz/60 s low-rate step), full tables and environment in
+`benchmarks/overload-v1/README.md`. `--clients 1 2 4 8 16 32 64
+--duration-s 60 --rate-per-client 20 --max-concurrent 8` (the harness's own
+CLI default cap — `tgms serve` itself carries no cap unless
+`TGMS_MAX_CONCURRENT` is exported), against a fresh, read-only copy of
+`stores/synth-1m-native` upgraded to manifest format 3 first. Gate engaged
+only at `n_clients=64` in both reps (0 refusals at every lower step);
+`concurrent_in_flight_p95` reached the 8-call cap at that step in both reps
+(8.0, 7.0); every refusal observed carried `limit_kind="concurrency"` (0
+result-size refusals, 0 operator errors, 0 truncations — `max_rows`/
+`max_bytes` are unset in this harness, so the size check never fires). The
+built-in low-rate/recovery step matched that rep's own `n_clients=1` step
+within noise in both reps (throughput identical to 3 significant figures,
+p50 within 1%). Harness-process RSS grew from a ~135 MB baseline to
+1.7–2.0 GB by the end of the `n_clients=64` step in both reps — tracked to
+in-memory record volume for that step, not the known commit-path
+memory-growth defect under repair on `main` (irrelevant here regardless:
+this harness opens the store read-only and issues no commits).
+
 ## §24 The longevity harness (2026-09-13)
 
 P4.5 of `docs/design/M5_EXECUTION_PLAN_2026-08-27.md` §7 — "the phase's
