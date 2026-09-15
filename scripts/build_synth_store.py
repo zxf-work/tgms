@@ -325,6 +325,22 @@ def _rss_kb() -> dict[str, int]:
     return out
 
 
+def _timed(fn: Callable[[], Any]) -> tuple[Any, dict[str, Any]]:
+    """Run `fn`, sampling RSS immediately before and after and the wall time
+    it took. One entry of `finalisation_phases` (see `build`): addendum 2 of
+    `SCALE_BUILD_FORECAST_2026-09-15.md` traced P-SF1's flat-2.4-GB-to-25-GB
+    finalisation spike to the final `compact()`/`gc()`/`stats()`/digest
+    sequence, and the existing 60 s-cadence RSS sampling (`_print_progress`)
+    could not tell which of those four phases it was in -- they are all
+    inside one call with nothing between them. This isolates each one."""
+    before = _rss_kb()
+    t0 = time.time()
+    result = fn()
+    wall_s = time.time() - t0
+    after = _rss_kb()
+    return result, {"rss_kb_before": before, "rss_kb_after": after, "wall_s": round(wall_s, 3)}
+
+
 def _dir_bytes(path: Path) -> int:
     if not path.exists():
         return 0
@@ -621,24 +637,35 @@ def build(out: Path, n_entities: int, seed: int, batch: int, compact_every: int,
         store.close()
         return result
 
-    # done: fold the tail, final measurements
-    b._compact()
+    # done: fold the tail, final measurements. compact/gc/stats/digest are
+    # timed and RSS-sampled individually into `finalisation_phases` -- see
+    # `_timed` -- instead of going through `Builder._compact()` (which folds
+    # compact+gc into one untimed call), so a build-record can show which of
+    # the four actually spiked.
+    finalisation_phases: dict[str, Any] = {}
+    compact_fn = getattr(store.adapter, "compact", None)
+    gc_fn = getattr(store.adapter, "gc", None)
+    if compact_fn is not None and gc_fn is not None:
+        _, finalisation_phases["compact"] = _timed(compact_fn)
+        _, finalisation_phases["gc"] = _timed(lambda: gc_fn(keep_last=2))
+        b.compactions += 1
+    b._since_compact = 0
     wall = time.time() - b.t0
-    stats = store.stats()
+    stats, finalisation_phases["stats"] = _timed(store.stats)
+
     # The pass this driver's own `--digest` flag exists to make optional at
     # scale (module docstring "Digest equivalence"; `DIGEST_AUTO_THRESHOLD`).
     # `content_digest()` walks the whole store exactly as `store.digest()`
     # does (see its own docstring), so it is gated identically -- computing
     # it under `streaming` would defeat the point of choosing `streaming`.
-    if digest_mode == "full":
-        store_digest = store.digest()
-        cdigest = content_digest(store)
-    elif digest_mode == "streaming":
-        store_digest = store.digest_streaming()
-        cdigest = None
-    else:  # "none"
-        store_digest = None
-        cdigest = None
+    def _digest_pass() -> tuple[str | None, str | None]:
+        if digest_mode == "full":
+            return store.digest(), content_digest(store)
+        if digest_mode == "streaming":
+            return store.digest_streaming(), None
+        return None, None  # "none"
+
+    (store_digest, cdigest), finalisation_phases["digest"] = _timed(_digest_pass)
     rss = _rss_kb()
     nbytes = _store_bytes(out)
     manifest_identity = _manifest_identity(store)
@@ -647,7 +674,8 @@ def build(out: Path, n_entities: int, seed: int, batch: int, compact_every: int,
     result = {"complete": True, "ops": b.ops, "wall_s": round(wall, 3), "stats": stats,
              "compactions": b.compactions, "digest_mode": digest_mode,
              "store_digest": store_digest, "content_digest": cdigest,
-             "manifest_identity": manifest_identity, "rss": rss, "bytes": nbytes}
+             "manifest_identity": manifest_identity, "rss": rss, "bytes": nbytes,
+             "finalisation_phases": finalisation_phases}
     record = _make_record(out, n_entities, seed, batch, compact_every, backend, result)
     (out / "build-record.json").write_text(json.dumps(record, indent=1, sort_keys=True))
     result["record"] = record
@@ -739,6 +767,7 @@ def _make_record(out: Path, n_entities: int, seed: int, batch: int, compact_ever
             "store_digest": result["store_digest"],
             "content_digest": result["content_digest"],
             "manifest_identity": result["manifest_identity"],
+            "finalisation_phases": result.get("finalisation_phases"),
         },
     }
 

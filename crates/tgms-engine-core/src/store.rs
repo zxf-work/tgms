@@ -1051,6 +1051,41 @@ impl NativeStore {
         Ok(seg)
     }
 
+    /// Open a segment for a one-pass streaming walk, without adding it to
+    /// the session's segment cache.
+    ///
+    /// `open_segment` is right for point reads and scans that revisit
+    /// segments across calls: caching the decoded columns pays for itself.
+    /// A full-store fold that touches every segment exactly once is the
+    /// opposite case — routing it through `open_segment` would leave every
+    /// segment's decoded columns resident (up to the cache's byte budget,
+    /// which defaults to half of physical RAM, i.e. effectively unbounded
+    /// for this purpose) for the rest of the session, so peak RSS grows with
+    /// the number of segments touched rather than staying at one segment's
+    /// worth. This opens the file directly and returns an owned `Segment`
+    /// the caller drops after folding it — the same one-at-a-time discipline
+    /// `integrity.rs`'s row scan uses, and for the same reason.
+    ///
+    /// Checksums are still verified the first time this session touches a
+    /// file (tracked in `verified`, shared with `open_segment` so the two
+    /// paths never re-verify each other's work) — this only skips caching
+    /// the *decoded* segment, not the corruption check.
+    pub(crate) fn open_segment_uncached(&self, file: &str) -> Result<crate::segment::Segment<MmapSource>> {
+        let path = self.root.join(file);
+        let first_time = {
+            let seen = self.verified.lock().expect("verified-set mutex poisoned");
+            !seen.contains(file)
+        };
+        let seg = crate::segment::Segment::open(&path, MmapSource::load(&path)?, first_time)?;
+        if first_time {
+            self.verified
+                .lock()
+                .expect("verified-set mutex poisoned")
+                .insert(file.to_string());
+        }
+        Ok(seg)
+    }
+
     /// Walk every file this generation references, checking magic numbers,
     /// checksums, completion markers, and cross-references.
     ///

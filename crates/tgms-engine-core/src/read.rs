@@ -860,6 +860,26 @@ impl NativeStore {
     /// OOM'd before the byte-budgeted segment cache could matter. Counts
     /// cover every stored row, belief ignored, exactly as before — the
     /// DuckDB adapter must agree here or `estimate_cost` diverges.
+    ///
+    /// Streaming, addendum 2 of `SCALE_BUILD_FORECAST_2026-09-15.md`: the
+    /// per-segment fold above still left every segment's decoded columns
+    /// resident, because it opened segments through `open_segment`, whose
+    /// session-wide cache keeps a decoded segment around (up to its byte
+    /// budget — half of physical RAM by default, i.e. effectively unbounded
+    /// on a large build host) long after this fold moved past it. At P-SF1
+    /// scale (17.4M edges) that turned a flat 2.4 GB ingest RSS into a 25 GB
+    /// finalisation spike. This now opens each segment with
+    /// `open_segment_uncached`, which skips the session cache entirely: the
+    /// segment (and the columns `open()` decodes for it) is dropped at the
+    /// end of each loop iteration, so the working set is bounded to one
+    /// segment's decoded columns at a time, not the whole store. The
+    /// accumulator (`acc`) is the only state that survives across segments,
+    /// and it is already O(distinct sources + distinct rel types) by
+    /// definition — the same size the non-streaming form produced. Output is
+    /// byte-identical to before (proven in
+    /// `stats_streaming_matches_the_cached_open_path` below and, on the
+    /// Python side, `tests/test_store_digest_streaming.py`); only the
+    /// segment-open path changed.
     pub fn stats_accum(&self) -> Result<crate::store::StatsAccum> {
         {
             let cell = self.stats_cell().lock().expect("stats mutex poisoned");
@@ -869,7 +889,7 @@ impl NativeStore {
         }
         let mut acc = crate::store::StatsAccum::default();
         for (file, _id) in self.edge_files() {
-            let seg = self.open_segment(&file)?;
+            let seg = self.open_segment_uncached(&file)?;
             let h = seg.header();
             let vt_s = seg.i64_column("vt_s")?;
             let vt_e = if h.vt_e_elided {
@@ -2062,6 +2082,78 @@ mod tests {
         assert_eq!(acc.rel_type_counts, want.rel_type_counts);
         assert_eq!(acc.out_degree, want.out_degree);
         s.rollback().unwrap();
+    }
+
+    #[test]
+    fn stats_streaming_matches_the_materializing_walk_without_growing_the_cache() {
+        // Addendum 2 of SCALE_BUILD_FORECAST_2026-09-15.md: at P-SF1 scale,
+        // stats_accum's per-segment fold turned a flat 2.4 GB ingest RSS
+        // into a 25 GB finalisation spike because `open_segment` (used by
+        // the fold at the time) leaves every segment's decoded columns in
+        // the session's byte-budgeted cache. `stats_accum` now opens
+        // segments through `open_segment_uncached`, dropping each one's
+        // decoded columns before the next is opened. This proves both
+        // halves: the numbers stay byte-identical to the materializing
+        // definition over a multi-segment store with a closed version, and
+        // the streaming call leaves the calling store's segment cache empty.
+        let (root, mut s, _) = seeded("stats-streaming"); // segment #1
+        s.begin(110).unwrap();
+        let c = s.ensure_entity("n3", "Node").unwrap();
+        let e2 = edge(c, c, "n3", "n3", 30, 110, 9);
+        let vid2 = e2.vid;
+        s.stage_edge(e2).unwrap();
+        s.commit(EventLogRef::default()).unwrap(); // segment #2
+
+        s.begin(120).unwrap();
+        s.close_version(RowKind::Edge, vid2, 115).unwrap(); // a real closed version
+        let d = s.ensure_entity("n4", "Node").unwrap();
+        s.stage_edge(edge(d, d, "n4", "n4", 40, 120, 11)).unwrap();
+        s.commit(EventLogRef::default()).unwrap(); // segment #3
+
+        assert!(
+            s.edge_files().len() >= 3,
+            "test needs a multi-segment store, got {}",
+            s.edge_files().len()
+        );
+        // Commits themselves may touch a segment or two on the way to disk
+        // (e.g. verifying what they just sealed) — that is not what this
+        // test is about. The property under test is that folding *all*
+        // edge segments for stats adds nothing beyond whatever was already
+        // cached, i.e. stats_accum itself opens every segment uncached.
+        let before = s.segment_cache_stats().0;
+        assert!(
+            before < s.edge_files().len(),
+            "test is only meaningful if stats_accum has more segments to \
+             fold than commit-time activity already cached: {before} \
+             cached vs {} edge segments",
+            s.edge_files().len()
+        );
+
+        let acc = s.stats_accum().unwrap();
+
+        assert_eq!(
+            s.segment_cache_stats().0,
+            before,
+            "stats_accum must not add any segment to the session cache"
+        );
+
+        // Ground truth from a separate handle on the same root, so computing
+        // it does not touch `s`'s own segment cache and the assertion above
+        // stays meaningful.
+        let ground = NativeStore::open(&root).unwrap();
+        let mut want = crate::store::StatsAccum::default();
+        for e in ground.all_edge_versions().unwrap() {
+            let src_id = ground.dict().dense_id(&e.src).unwrap_or(0);
+            want.add_edge(e.vt_s, e.vt_e, &e.rel_type, src_id);
+        }
+        want.n_node_versions = ground.all_node_versions().unwrap().len() as u64;
+
+        assert_eq!(acc.n_edge_versions, want.n_edge_versions);
+        assert_eq!(acc.n_node_versions, want.n_node_versions);
+        assert_eq!(acc.vt_min, want.vt_min);
+        assert_eq!(acc.vt_max, want.vt_max);
+        assert_eq!(acc.rel_type_counts, want.rel_type_counts);
+        assert_eq!(acc.out_degree, want.out_degree);
     }
 
     #[test]
