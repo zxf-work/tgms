@@ -68,6 +68,15 @@ skeleton --
       ``osdiStormSpeedupN1k``/``osdiStormAvoidedN1k``) even though the DAG
       phase and the R-18 probe are both fully landed and scored here.
 
+  W2g (24h longevity soak, Lane B task B7a, Gate G1/Gate E) --
+      benchmarks/longevity-v1/longevity-synth-1m-native-0.json (manifest) +
+      recoveries.jsonl, reader_restarts.jsonl, longevity_ledger.jsonl,
+      orchestrator.log (whole-file sha256-checked against README.md's own
+      Files-here table), and writer_error_counts_by_life.json (a locally
+      derived, un-hashed side-file whose per-life sum this script recomputes
+      rather than trusting). No verdict macro -- Gate E's own PASS/FAIL/FLAG
+      table is gate_e_report.md, not this script.
+
 Claims C2 (corruption-detection campaign), C9 (LDBC generality, four axes
 -- the Neo4j reference run is pending), and C10 (live OSV workload) have
 no landed record yet; their macros, plus the still-unlanded slice of C7
@@ -152,6 +161,28 @@ LADDER_RAW = [
     LADDER_DIR / "raw" / "overhead-ladder-bitcoinotc-seed2-job212305.json",
 ]
 
+LONGEVITY_DIR = ROOT / "benchmarks" / "longevity-v1"
+LONGEVITY_MANIFEST = LONGEVITY_DIR / "longevity-synth-1m-native-0.json"
+LONGEVITY_RECOVERIES = LONGEVITY_DIR / "recoveries.jsonl"
+LONGEVITY_READER_RESTARTS = LONGEVITY_DIR / "reader_restarts.jsonl"
+LONGEVITY_LEDGER = LONGEVITY_DIR / "longevity_ledger.jsonl"
+LONGEVITY_ORCHESTRATOR_LOG = LONGEVITY_DIR / "orchestrator.log"
+LONGEVITY_WRITER_ERRORS_BY_LIFE = LONGEVITY_DIR / "writer_error_counts_by_life.json"
+LONGEVITY_GATE_E_REPORT = LONGEVITY_DIR / "gate_e_report.md"
+# benchmarks/longevity-v1/README.md's own "Files here" table -- the five
+# record files verified byte-identical (sha256) between xzgpu and this
+# committed copy before commit. writer_error_counts_by_life.json and
+# gate_e_report.md are the README's own "derived locally" pair and are
+# deliberately absent from this table (and from the digest check below);
+# their numbers are recomputed from the hash-checked files instead.
+LONGEVITY_MANIFEST_SHA256 = "a94a0c2c3d343d84161c911f04c6a29b586a4b3ddfc113bffb38549d988b3500"
+LONGEVITY_RECOVERIES_SHA256 = "a3ef427f47a4801ffcb4eab03bd05fd4d979b6d3ce507318b01c89783b3081da"
+LONGEVITY_READER_RESTARTS_SHA256 = "ff7375c22a6c660ab565641d8ecce6a82de2de7a0628e20d50b7eda6f50170fe"
+LONGEVITY_LEDGER_SHA256 = "edc13c40f50b849ee4fde1adfdad1ebbbed0e7be24e97a853bea4e0e414d7db4"
+LONGEVITY_ORCHESTRATOR_LOG_SHA256 = "3c66d62554a1d19051a166510ec4f003af0f9b4e3ed36c4ceca7da5dce80f7a0"
+
+FAILURE_LEDGER = ROOT / "ops" / "failure_ledger.jsonl"
+
 
 # --------------------------------------------------------------------------
 # verification helpers (copied from scripts/tgir_paper_macros.py)
@@ -181,6 +212,10 @@ def close(got: float, want: float, tol: float, what: str):
 
 def load_jsonl(path: Path) -> list[dict]:
     return [json.loads(line) for line in path.read_text(encoding="utf-8").splitlines() if line.strip()]
+
+
+def sha256_file(path: Path) -> str:
+    return hashlib.sha256(path.read_bytes()).hexdigest()
 
 
 def relpath(p: Path) -> str:
@@ -1933,6 +1968,287 @@ def compute_ladder(m: Macros) -> None:
 
 
 # --------------------------------------------------------------------------
+# Longevity -- 24h soak (Lane W2g / Lane B task B7a, Gate G1/Gate E)
+#
+# benchmarks/longevity-v1/: the real (non-dev-host) 24h soak,
+# scripts/longevity_run.py at commit 886805f (pre-fix for
+# D-086-reader-torn-tail-race) against stores/synth-1m-native on xzgpu.
+# README.md documents three harness defects this generator must not paper
+# over, and this function's own checks recompute past every one of them
+# rather than trusting a summary field:
+#   (1) manifest.summary.error_count (1) is the LAST writer life's counter
+#       only -- counter_latest's unlabeled-key collision silently drops
+#       every earlier life's counters. The true total (249) is summed here
+#       from writer_error_counts_by_life.json's per-life rows and asserted
+#       against that file's own true_total_errors_all_lives field, never
+#       trusted from either without the recomputation. Both numbers are
+#       emitted, side by side, per this script's non-overwrite discipline --
+#       osdiSoakWriterErrorsManifest is explicitly labelled as the wrong,
+#       harness-defect value.
+#   (2) digest_equal is JSON `null` ("not computed") because the disk guard
+#       skipped the mandatory final replay: 1,074,952 uncompacted batches
+#       project (D-149's own O(batches^2) manifest-growth formula,
+#       recomputed here, not just read) to ~280.8 TB, refused by
+#       --max-disk-mb=20000. Never "computed and found False" --
+#       gate_e_report.md's own "digest_equal=False" text is a display
+#       artifact of scripts/longevity_report.py coercing None to False,
+#       asserted below as a known, cited discrepancy, not this macro's
+#       source of truth.
+#   (3) reader_restarts.jsonl's two rows (readers 6 and 5) are both the same
+#       D-086 reader-torn-tail race, cross-checked against
+#       ops/failure_ledger.jsonl's own entry when that file is present on
+#       disk (it is coordinator-maintained on main, not edited by this
+#       measurement worktree).
+# No verdict macro is emitted here, per the lane brief -- Gate E's own
+# PASS/FAIL/FLAG table lives in gate_e_report.md, not in this script.
+# --------------------------------------------------------------------------
+
+def compute_longevity_soak(m: Macros) -> None:
+    # Whole-file digest check against benchmarks/longevity-v1/README.md's
+    # own "Files here" table (sha256, verified byte-identical to the xzgpu
+    # originals before commit) -- catches an edited committed copy before
+    # any field inside it is even parsed.
+    eq(sha256_file(LONGEVITY_MANIFEST), LONGEVITY_MANIFEST_SHA256,
+       f"{relpath(LONGEVITY_MANIFEST)}: sha256 matches README.md's Files-here table")
+    eq(sha256_file(LONGEVITY_RECOVERIES), LONGEVITY_RECOVERIES_SHA256,
+       f"{relpath(LONGEVITY_RECOVERIES)}: sha256 matches README.md's Files-here table")
+    eq(sha256_file(LONGEVITY_READER_RESTARTS), LONGEVITY_READER_RESTARTS_SHA256,
+       f"{relpath(LONGEVITY_READER_RESTARTS)}: sha256 matches README.md's Files-here table")
+    eq(sha256_file(LONGEVITY_LEDGER), LONGEVITY_LEDGER_SHA256,
+       f"{relpath(LONGEVITY_LEDGER)}: sha256 matches README.md's Files-here table")
+    eq(sha256_file(LONGEVITY_ORCHESTRATOR_LOG), LONGEVITY_ORCHESTRATOR_LOG_SHA256,
+       f"{relpath(LONGEVITY_ORCHESTRATOR_LOG)}: sha256 matches README.md's Files-here table")
+
+    manifest = json.loads(LONGEVITY_MANIFEST.read_text(encoding="utf-8"))
+    summary = manifest["summary"]
+
+    # --- commit + duration ---
+    eq(manifest["git_commit"], "886805f", "Longevity frozen: measured commit")
+    duration_s = manifest["config"]["duration_s"]
+    eq(duration_s, 86400.0, "Longevity frozen: configured soak duration_s")
+    hours = duration_s / 3600.0
+    eq(hours, 24.0, "Longevity: config.duration_s / 3600 is exactly 24 hours")
+
+    # --- entity count start/end ---
+    # The starting count (1,000,000) is not a counted field anywhere in the
+    # manifest or any side-file -- it is the store's own name
+    # ("synth-1m-native"), the same "<N>m" naming convention compute_c4
+    # above already treats as meaningful (control_1m/control_10m). Asserted
+    # here only as "the store name says 1m", not as a counted field; the end
+    # count *is* a counted field (final_stats.n_entities) and is checked as
+    # one, with a frozen expected value.
+    store_name = manifest["config"]["store_name"]
+    eq(store_name, "synth-1m-native", "Longevity: config.store_name")
+    eq(manifest["dataset"]["name"], store_name,
+       "Longevity: dataset.name matches config.store_name")
+    entities_start = 1_000_000
+    entities_end = summary["final_stats"]["n_entities"]
+    eq(entities_end, 1_730_492, "Longevity frozen: summary.final_stats.n_entities")
+    require(entities_end > entities_start,
+            "Longevity: the store grew past its nominal 1M starting size over the soak")
+
+    # --- batches ---
+    total_batches = summary["total_batches"]
+    eq(total_batches, 1_074_952, "Longevity frozen: summary.total_batches")
+
+    # --- writer lives / the true-vs-manifest error count defect ---
+    by_life = json.loads(LONGEVITY_WRITER_ERRORS_BY_LIFE.read_text(encoding="utf-8"))
+    per_life_errors = by_life["per_life_errors"]
+    eq(by_life["lives"], 42, "Longevity frozen: writer_error_counts_by_life.json lives")
+    eq(len(per_life_errors), by_life["lives"],
+       "Longevity: per_life_errors row count matches the file's own lives field")
+    true_total_errors = sum(per_life_errors)
+    eq(true_total_errors, 249,
+       "Longevity frozen: true total writer errors, summed over 42 lives")
+    eq(true_total_errors, by_life["true_total_errors_all_lives"],
+       "Longevity: recomputed sum(per_life_errors) matches the file's own "
+       "true_total_errors_all_lives field")
+
+    manifest_error_count = summary["error_count"]
+    eq(manifest_error_count, 1, "Longevity frozen: manifest's own (wrong) summary.error_count")
+    eq(manifest_error_count, summary["writer_final"]["errors"],
+       "Longevity: summary.error_count matches writer_final.errors (both life-41-only)")
+    eq(manifest_error_count, by_life["manifest_reported_error_count"],
+       "Longevity: manifest's error_count matches writer_error_counts_by_life.json's "
+       "own record of that (wrong) figure")
+    require(true_total_errors != manifest_error_count,
+            "Longevity: the true per-life sum must differ from the manifest's single-life "
+            "figure -- this is the harness defect the README documents, not a no-op check")
+
+    # --- recoveries: designed restart cycle, by cause ---
+    recoveries_rows = load_jsonl(LONGEVITY_RECOVERIES)
+    eq(len(recoveries_rows), 41, "Longevity frozen: recoveries.jsonl row count")
+    eq(len(recoveries_rows), summary["recoveries"],
+       "Longevity: recoveries.jsonl row count matches summary.recoveries")
+    require(all(r["kind"] == "designed" for r in recoveries_rows),
+            "Longevity: every recovery row is the harness's own designed restart cycle")
+    n_sigabrt = sum(1 for r in recoveries_rows if r["returncode"] == -6)
+    n_exit137 = sum(1 for r in recoveries_rows if r["returncode"] == 137)
+    eq(n_sigabrt, 23, "Longevity frozen: SIGABRT (-6) recovery count")
+    eq(n_exit137, 18, "Longevity frozen: os._exit(137) recovery count")
+    eq(n_sigabrt + n_exit137, len(recoveries_rows),
+       "Longevity: every recovery row is one of exactly these two returncodes")
+    unexpected = summary["unexpected_writer_deaths"]
+    eq(unexpected, 0, "Longevity frozen: unexpected_writer_deaths")
+
+    # --- reader deaths: both the D-086 torn-tail race ---
+    reader_rows = load_jsonl(LONGEVITY_READER_RESTARTS)
+    eq(len(reader_rows), 2, "Longevity frozen: reader_restarts.jsonl row count")
+    eq(len(reader_rows), summary["reader_restarts"],
+       "Longevity: reader_restarts.jsonl row count matches summary.reader_restarts")
+    eq(sorted(r["idx"] for r in reader_rows), [5, 6],
+       "Longevity frozen: reader indices that died (5 and 6)")
+    require(all(r["returncode"] == 1 for r in reader_rows),
+            "Longevity: both reader deaths are returncode 1 (uncaught StateError)")
+    if FAILURE_LEDGER.exists():
+        ledger_entries = [json.loads(line) for line in
+                           FAILURE_LEDGER.read_text(encoding="utf-8").splitlines() if line.strip()]
+        d086 = [e for e in ledger_entries if e.get("id") == "D-086-reader-torn-tail-race"]
+        require(len(d086) == 1,
+                "Longevity: exactly one D-086-reader-torn-tail-race entry in "
+                "ops/failure_ledger.jsonl (cross-check only, not this macro's source)")
+        if d086:
+            wild = d086[0].get("observed_in_the_wild", "")
+            require("reader 6" in wild and "reader 5" in wild,
+                    "Longevity: the D-086 ledger entry's observed_in_the_wild note names "
+                    "both reader 6 and reader 5 (cross-check only)")
+
+    # --- verify_healthy ---
+    require(summary["verify_healthy"] is True,
+            "Longevity: summary.verify_healthy is the JSON literal true")
+
+    # --- throughput / p99 drift, first hour vs. last hour ---
+    drift = summary["drift"]
+    throughput_start = round(drift["throughput_first_hour_avg"], 2)
+    throughput_end = round(drift["throughput_last_hour_avg"], 2)
+    eq(throughput_start, 24.03, "Longevity frozen: first-hour throughput, commits/s")
+    eq(throughput_end, 16.41, "Longevity frozen: last-hour throughput, commits/s")
+
+    p99_start = round(drift["commit_p99_first_hour_max"], 1)
+    p99_end = round(drift["commit_p99_last_hour_max"], 1)
+    eq(p99_start, 485.6, "Longevity frozen: first-hour commit p99, ms")
+    eq(p99_end, 3740.5, "Longevity frozen: last-hour commit p99, ms")
+
+    # --- metadata growth slopes ---
+    growth = summary["metadata_growth_slope_bytes_per_s"]
+    manifest_growth = round(growth["manifests"], 1)
+    segment_growth = round(growth["segments"], 1)
+    eq(manifest_growth, -3.4, "Longevity frozen: manifest-bytes growth slope, B/s")
+    eq(segment_growth, 1341.1, "Longevity frozen: segment-bytes growth slope, B/s")
+
+    # --- compactions ---
+    compactions = summary["compactions"]
+    eq(compactions, 2_415, "Longevity frozen: summary.compactions")
+
+    # --- digest_equal / replay skip, cross-checked across the log, the
+    #     ledger, the manifest, and the harness's own projection formula ---
+    require(summary["digest_equal"] is None,
+            "Longevity: summary.digest_equal is JSON null (\"not computed\"), never False")
+    eq(summary["replay_skipped_reason"], "projected_replay_exceeds_limit",
+       "Longevity frozen: summary.replay_skipped_reason")
+    report_text = LONGEVITY_GATE_E_REPORT.read_text(encoding="utf-8")
+    require("digest_equal=False" in report_text,
+            "Longevity: gate_e_report.md's own digest_equal=False text confirms scripts/"
+            "longevity_report.py's None->False display coercion (a known reporting "
+            "artifact -- the manifest's own null is this macro's source, not this report)")
+
+    log_text = LONGEVITY_ORCHESTRATOR_LOG.read_text(encoding="utf-8")
+    log_match = re.search(
+        r"disk_guard_replay_skip: total_batches=(\d+), projected_mb=([\d.]+)", log_text)
+    require(log_match is not None,
+            "Longevity: orchestrator.log carries a disk_guard_replay_skip line")
+    log_batches = int(log_match.group(1))
+    log_projected_mb = float(log_match.group(2))
+    eq(log_batches, total_batches,
+       "Longevity: orchestrator.log's disk_guard_replay_skip total_batches matches "
+       "summary.total_batches")
+
+    ledger_rows = load_jsonl(LONGEVITY_LEDGER)
+    eq(len(ledger_rows), 1, "Longevity frozen: longevity_ledger.jsonl row count")
+    ledger_event = ledger_rows[0]
+    eq(ledger_event["event"], "disk_guard_replay_skip",
+       "Longevity: the ledger's one row is the disk_guard_replay_skip event")
+    eq(ledger_event["total_batches"], total_batches,
+       "Longevity: ledger's total_batches matches summary.total_batches")
+    close(ledger_event["projected_mb"], log_projected_mb, 1.0,
+          "Longevity: ledger's projected_mb matches the orchestrator log line")
+
+    # Recompute the projection from the harness's own documented formula
+    # (scripts/longevity_run.py::cmd_run, quoted in README.md: projected_mb
+    # = 243.0 * total_batches**2 / 1e6) rather than trusting either copy of
+    # the number verbatim.
+    recomputed_projected_mb = 243.0 * (total_batches ** 2) / 1e6
+    close(recomputed_projected_mb, log_projected_mb, 1.0,
+          "Longevity: 243.0*total_batches**2/1e6 matches the orchestrator log's "
+          "projected_mb (D-149's own O(batches^2) formula, quoted in README.md)")
+    projected_tb = round(recomputed_projected_mb / 1e6, 1)
+    eq(projected_tb, 280.8, "Longevity frozen: replay projection, TB")
+
+    # --- emit macros ---
+    m.add("osdiSoakHours", tex_num(int(hours)),
+          f"{relpath(LONGEVITY_MANIFEST)}: config.duration_s / 3600")
+    m.add("osdiSoakCommit", manifest["git_commit"],
+          f"{relpath(LONGEVITY_MANIFEST)}: git_commit")
+    m.add("osdiSoakEntitiesStart", tex_num(entities_start),
+          f"{relpath(LONGEVITY_MANIFEST)}: config.store_name / dataset.name "
+          "(\"synth-1m-native\") -- the store's own \"1m\" label, not a counted field; "
+          "final_stats.n_entities confirms growth past this nominal start")
+    m.add("osdiSoakEntitiesEnd", tex_num(entities_end),
+          f"{relpath(LONGEVITY_MANIFEST)}: summary.final_stats.n_entities")
+    m.add("osdiSoakBatches", tex_num(total_batches),
+          f"{relpath(LONGEVITY_MANIFEST)}: summary.total_batches")
+    m.add("osdiSoakWriterLives", tex_num(by_life["lives"]),
+          f"{relpath(LONGEVITY_WRITER_ERRORS_BY_LIFE)}: lives (== len(per_life_errors))")
+    m.add("osdiSoakRecoveries", tex_num(len(recoveries_rows)),
+          f"{relpath(LONGEVITY_RECOVERIES)}: row count, == summary.recoveries")
+    m.add("osdiSoakRecoveriesSigabrt", tex_num(n_sigabrt),
+          f"{relpath(LONGEVITY_RECOVERIES)}: rows with returncode == -6 (SIGABRT)")
+    m.add("osdiSoakRecoveriesExit137", tex_num(n_exit137),
+          f"{relpath(LONGEVITY_RECOVERIES)}: rows with returncode == 137 (os._exit(137))")
+    m.add("osdiSoakUnexpectedRecoveries", tex_num(unexpected),
+          f"{relpath(LONGEVITY_MANIFEST)}: summary.unexpected_writer_deaths -- all 41 "
+          "recoveries are the harness's own designed restart cycle (kind==\"designed\")")
+    m.add("osdiSoakReaderDeaths", tex_num(len(reader_rows)),
+          f"{relpath(LONGEVITY_READER_RESTARTS)}: row count, == summary.reader_restarts")
+    m.add("osdiSoakReaderDeathCause", "reader torn-tail race, pre-fix engine",
+          f"{relpath(LONGEVITY_READER_RESTARTS)}: both rows (readers 6, 5) are the "
+          "D-086-reader-torn-tail-race StateError shape; ops/failure_ledger.jsonl's D-086 "
+          "entry (cross-checked when present) confirms both instances against commit "
+          "886805f, which predates the fix series (ef97d2d, 43f6ef4, 3a664a8)")
+    m.add("osdiSoakVerifyHealthy", "true",
+          f"{relpath(LONGEVITY_MANIFEST)}: summary.verify_healthy")
+    m.add("osdiSoakWriterErrorsManifest", tex_num(manifest_error_count),
+          f"{relpath(LONGEVITY_MANIFEST)}: summary.error_count -- the harness's own "
+          "counter_latest label-collision defect (last writer life only, see README.md); "
+          "not a run total")
+    m.add("osdiSoakWriterErrorsTrue", tex_num(true_total_errors),
+          f"{relpath(LONGEVITY_WRITER_ERRORS_BY_LIFE)}: sum(per_life_errors), 42 lives")
+    m.add("osdiSoakThroughputStart", f"{throughput_start:.2f}",
+          f"{relpath(LONGEVITY_MANIFEST)}: summary.drift.throughput_first_hour_avg, commits/s")
+    m.add("osdiSoakThroughputEnd", f"{throughput_end:.2f}",
+          f"{relpath(LONGEVITY_MANIFEST)}: summary.drift.throughput_last_hour_avg, commits/s")
+    m.add("osdiSoakP99StartMs", f"{p99_start:.1f}",
+          f"{relpath(LONGEVITY_MANIFEST)}: summary.drift.commit_p99_first_hour_max, ms")
+    m.add("osdiSoakP99EndMs", f"{p99_end:,.1f}".replace(",", "{,}"),
+          f"{relpath(LONGEVITY_MANIFEST)}: summary.drift.commit_p99_last_hour_max, ms")
+    m.add("osdiSoakManifestGrowthBps", f"{manifest_growth:.1f}",
+          f"{relpath(LONGEVITY_MANIFEST)}: summary.metadata_growth_slope_bytes_per_s.manifests")
+    m.add("osdiSoakSegmentGrowthBps", f"{segment_growth:,.1f}".replace(",", "{,}"),
+          f"{relpath(LONGEVITY_MANIFEST)}: summary.metadata_growth_slope_bytes_per_s.segments")
+    m.add("osdiSoakDigestStatus", "not computed",
+          f"{relpath(LONGEVITY_MANIFEST)}: summary.digest_equal is JSON null -- the final "
+          "replay/digest-equivalence step never ran (disk guard skip), never \"computed "
+          "and found False\" (text macro, not a number)")
+    m.add("osdiSoakReplayProjectedTB", f"{projected_tb:.1f}",
+          f"{relpath(LONGEVITY_ORCHESTRATOR_LOG)}: disk_guard_replay_skip line's "
+          "projected_mb / 1e6, cross-checked against longevity_ledger.jsonl and "
+          "recomputed from 243.0*total_batches**2/1e6 (scripts/longevity_run.py's own "
+          "D-149 projection formula, quoted in README.md)")
+    m.add("osdiSoakCompactions", tex_num(compactions),
+          f"{relpath(LONGEVITY_MANIFEST)}: summary.compactions")
+
+
+# --------------------------------------------------------------------------
 # pending stubs (records not yet landed)
 # --------------------------------------------------------------------------
 
@@ -2001,6 +2317,7 @@ def main() -> int:
     compute_d160_llm_direct_fix(m)
     compute_c2(m)
     compute_ladder(m)
+    compute_longevity_soak(m)
     add_pending_stubs(m)
 
     if FAILURES:
