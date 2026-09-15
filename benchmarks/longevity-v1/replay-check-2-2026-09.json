@@ -1,0 +1,608 @@
+{
+  "config": {
+    "backend": "native",
+    "build_info": {
+      "debug_assertions": false,
+      "engine_version": "0.8.0",
+      "manifest_format_version": 3,
+      "opt_level": "3",
+      "profile": "release"
+    },
+    "cmd": "python -m tgms.cli replay /mnt/project/xzhang/tgms/longevity/2026-09-15/store/eventlog.jsonl --store /mnt/project/xzhang/tgms/longevity/2026-09-15/replay-check-2 --backend native --compact-every 500",
+    "compact_every": 500,
+    "eventlog": "/mnt/project/xzhang/tgms/longevity/2026-09-15/store/eventlog.jsonl",
+    "max_disk_mb_watch_ceiling": 20000,
+    "out_store": "/mnt/project/xzhang/tgms/longevity/2026-09-15/replay-check-2",
+    "rss_abort_ceiling_kb": 31457280,
+    "rss_sample_interval_s": 300,
+    "time_box_h": 12,
+    "worktree": "/mnt/project/xzhang/tgms/work/tgms-xz-a6b3e94"
+  },
+  "dataset": {
+    "digest": "e212b641a0ccd46248575cd0919768c699a256934388d305f465116c2b900d2a",
+    "digest_kind": "eventlog_sha",
+    "name": "longevity-2026-09-15-eventlog",
+    "size_bytes": 314897038,
+    "total_batches": 1074952
+  },
+  "git_commit": "a6b3e94",
+  "machine": {
+    "cpus": 40,
+    "host": "xzgpu",
+    "platform": "Linux-5.4.0-216-generic-x86_64",
+    "ram_gb": 93
+  },
+  "outcome": "completed",
+  "protocol": {
+    "ceilings": {
+      "compact_every": 500,
+      "max_disk_mb": 20000,
+      "rss_abort_gb": 30,
+      "time_box_h": 12
+    },
+    "reps": 1,
+    "warmups": 0
+  },
+  "record": "/mnt/project/xzhang/tgms/longevity/2026-09-15/replay-check-2.log",
+  "result_digest": "8eb9bc26fbf418df30b89fa85b5fd827c56ae90d14da84eb94a5f8683f6d9d72",
+  "schema_version": "1.0.0",
+  "seed": {
+    "value": 0
+  },
+  "summary": {
+    "batches_applied": 1074450,
+    "compaction_inference_basis": "compact_every=500: each cycle publishes 500 batch-commit generations + 1 compact()-commit generation (gc() publishes none); manifest_current_generation (1076598) - batches_applied (1074450) = compactions",
+    "compactions_inferred": 2148,
+    "digest_computation": {
+      "elapsed_s": 66.86,
+      "opened": "read_only=True",
+      "routine": "Store.digest() -> NativeAdapter.store_digest() (tgms/storage/base.py), the same routine longevity_run.py::cmd_run uses for its replay-equivalence check; no separate streaming-digest entry point exists in this codebase"
+    },
+    "digest_equal": true,
+    "disk_abort_triggered": false,
+    "end_utc": "2026-09-15T23:20:54Z",
+    "final_rss_kb": 2913052,
+    "final_stats": {
+      "max_out_degree": 1839,
+      "n_edge_versions": 1910268,
+      "n_entities": 1730492,
+      "n_node_versions": 241109,
+      "rel_type_counts": {
+        "LW": 908572,
+        "MSG": 1001696
+      },
+      "vt_max": 1730986916723477,
+      "vt_min": 0
+    },
+    "full_verify_of_replayed_store": {
+      "cmd": "tgms check <replay-check-2 store>",
+      "exit_code": 1,
+      "mode": "full",
+      "note": "Identical problem count/kind to the pre-replay full verify of the original soak store (benchmarks/longevity-v1/verify-full-2026-09-15.txt) and to the digest-equal result above: consistent with all corrections in this corpus carrying disc \"#0\" (a data characteristic the review memo predicted), not a storage defect introduced by replay.",
+      "problem_kinds": {
+        "row/believed-versions-overlap": 13714
+      },
+      "problems": 13714,
+      "side_file": "benchmarks/longevity-v1/verify-full-2026-09-15.txt",
+      "verdict": "CORRUPT",
+      "wall_s": 26
+    },
+    "manifest_current_generation": 1076598,
+    "peak_disk_mb_observed": 586,
+    "peak_rss_kb": 4329996,
+    "predicted_digest": "8eb9bc26fbf418df30b89fa85b5fd827c56ae90d14da84eb94a5f8683f6d9d72",
+    "rss_abort_triggered": false,
+    "rss_series": [
+      {
+        "rss_kb": 150060,
+        "store_mb": 310,
+        "ts": "2026-09-15T15:00:48Z"
+      },
+      {
+        "rss_kb": 2336908,
+        "store_mb": 368,
+        "ts": "2026-09-15T15:05:48Z"
+      },
+      {
+        "rss_kb": 2108692,
+        "store_mb": 401,
+        "ts": "2026-09-15T15:10:48Z"
+      },
+      {
+        "rss_kb": 2112376,
+        "store_mb": 368,
+        "ts": "2026-09-15T15:15:48Z"
+      },
+      {
+        "rss_kb": 2723296,
+        "store_mb": 375,
+        "ts": "2026-09-15T15:20:48Z"
+      },
+      {
+        "rss_kb": 2732508,
+        "store_mb": 408,
+        "ts": "2026-09-15T15:25:48Z"
+      },
+      {
+        "rss_kb": 2126292,
+        "store_mb": 377,
+        "ts": "2026-09-15T15:30:48Z"
+      },
+      {
+        "rss_kb": 2409792,
+        "store_mb": 381,
+        "ts": "2026-09-15T15:35:48Z"
+      },
+      {
+        "rss_kb": 2124292,
+        "store_mb": 378,
+        "ts": "2026-09-15T15:40:48Z"
+      },
+      {
+        "rss_kb": 2131396,
+        "store_mb": 384,
+        "ts": "2026-09-15T15:45:48Z"
+      },
+      {
+        "rss_kb": 2406036,
+        "store_mb": 386,
+        "ts": "2026-09-15T15:50:48Z"
+      },
+      {
+        "rss_kb": 2093892,
+        "store_mb": 384,
+        "ts": "2026-09-15T15:55:48Z"
+      },
+      {
+        "rss_kb": 2134424,
+        "store_mb": 386,
+        "ts": "2026-09-15T16:00:48Z"
+      },
+      {
+        "rss_kb": 2095448,
+        "store_mb": 388,
+        "ts": "2026-09-15T16:05:48Z"
+      },
+      {
+        "rss_kb": 2562308,
+        "store_mb": 394,
+        "ts": "2026-09-15T16:10:48Z"
+      },
+      {
+        "rss_kb": 2109584,
+        "store_mb": 391,
+        "ts": "2026-09-15T16:15:48Z"
+      },
+      {
+        "rss_kb": 2128000,
+        "store_mb": 393,
+        "ts": "2026-09-15T16:20:48Z"
+      },
+      {
+        "rss_kb": 2113044,
+        "store_mb": 394,
+        "ts": "2026-09-15T16:25:48Z"
+      },
+      {
+        "rss_kb": 2626508,
+        "store_mb": 400,
+        "ts": "2026-09-15T16:30:48Z"
+      },
+      {
+        "rss_kb": 2090472,
+        "store_mb": 398,
+        "ts": "2026-09-15T16:35:48Z"
+      },
+      {
+        "rss_kb": 3049596,
+        "store_mb": 403,
+        "ts": "2026-09-15T16:40:48Z"
+      },
+      {
+        "rss_kb": 2132888,
+        "store_mb": 401,
+        "ts": "2026-09-15T16:45:48Z"
+      },
+      {
+        "rss_kb": 2140452,
+        "store_mb": 405,
+        "ts": "2026-09-15T16:50:49Z"
+      },
+      {
+        "rss_kb": 2317120,
+        "store_mb": 409,
+        "ts": "2026-09-15T16:55:49Z"
+      },
+      {
+        "rss_kb": 3153972,
+        "store_mb": 410,
+        "ts": "2026-09-15T17:00:49Z"
+      },
+      {
+        "rss_kb": 2644436,
+        "store_mb": 412,
+        "ts": "2026-09-15T17:05:49Z"
+      },
+      {
+        "rss_kb": 2370492,
+        "store_mb": 413,
+        "ts": "2026-09-15T17:10:49Z"
+      },
+      {
+        "rss_kb": 2146472,
+        "store_mb": 412,
+        "ts": "2026-09-15T17:15:49Z"
+      },
+      {
+        "rss_kb": 3126168,
+        "store_mb": 460,
+        "ts": "2026-09-15T17:20:49Z"
+      },
+      {
+        "rss_kb": 2296540,
+        "store_mb": 418,
+        "ts": "2026-09-15T17:25:49Z"
+      },
+      {
+        "rss_kb": 3162884,
+        "store_mb": 464,
+        "ts": "2026-09-15T17:30:49Z"
+      },
+      {
+        "rss_kb": 2132088,
+        "store_mb": 417,
+        "ts": "2026-09-15T17:35:49Z"
+      },
+      {
+        "rss_kb": 2181196,
+        "store_mb": 418,
+        "ts": "2026-09-15T17:40:49Z"
+      },
+      {
+        "rss_kb": 2714724,
+        "store_mb": 470,
+        "ts": "2026-09-15T17:45:49Z"
+      },
+      {
+        "rss_kb": 2277364,
+        "store_mb": 426,
+        "ts": "2026-09-15T17:50:49Z"
+      },
+      {
+        "rss_kb": 3207952,
+        "store_mb": 473,
+        "ts": "2026-09-15T17:55:49Z"
+      },
+      {
+        "rss_kb": 2202548,
+        "store_mb": 428,
+        "ts": "2026-09-15T18:00:49Z"
+      },
+      {
+        "rss_kb": 2735780,
+        "store_mb": 430,
+        "ts": "2026-09-15T18:05:49Z"
+      },
+      {
+        "rss_kb": 3416480,
+        "store_mb": 432,
+        "ts": "2026-09-15T18:10:49Z"
+      },
+      {
+        "rss_kb": 2895528,
+        "store_mb": 433,
+        "ts": "2026-09-15T18:15:49Z"
+      },
+      {
+        "rss_kb": 2364184,
+        "store_mb": 434,
+        "ts": "2026-09-15T18:20:49Z"
+      },
+      {
+        "rss_kb": 3297640,
+        "store_mb": 436,
+        "ts": "2026-09-15T18:25:49Z"
+      },
+      {
+        "rss_kb": 3498368,
+        "store_mb": 437,
+        "ts": "2026-09-15T18:30:49Z"
+      },
+      {
+        "rss_kb": 2173016,
+        "store_mb": 434,
+        "ts": "2026-09-15T18:35:49Z"
+      },
+      {
+        "rss_kb": 2239548,
+        "store_mb": 436,
+        "ts": "2026-09-15T18:40:49Z"
+      },
+      {
+        "rss_kb": 2260328,
+        "store_mb": 437,
+        "ts": "2026-09-15T18:45:49Z"
+      },
+      {
+        "rss_kb": 2174956,
+        "store_mb": 438,
+        "ts": "2026-09-15T18:50:49Z"
+      },
+      {
+        "rss_kb": 3435076,
+        "store_mb": 444,
+        "ts": "2026-09-15T18:55:50Z"
+      },
+      {
+        "rss_kb": 2196388,
+        "store_mb": 441,
+        "ts": "2026-09-15T19:00:50Z"
+      },
+      {
+        "rss_kb": 2212372,
+        "store_mb": 442,
+        "ts": "2026-09-15T19:05:50Z"
+      },
+      {
+        "rss_kb": 2882196,
+        "store_mb": 448,
+        "ts": "2026-09-15T19:10:50Z"
+      },
+      {
+        "rss_kb": 2237720,
+        "store_mb": 445,
+        "ts": "2026-09-15T19:15:50Z"
+      },
+      {
+        "rss_kb": 2407928,
+        "store_mb": 451,
+        "ts": "2026-09-15T19:20:50Z"
+      },
+      {
+        "rss_kb": 2974000,
+        "store_mb": 452,
+        "ts": "2026-09-15T19:25:50Z"
+      },
+      {
+        "rss_kb": 3814276,
+        "store_mb": 453,
+        "ts": "2026-09-15T19:30:50Z"
+      },
+      {
+        "rss_kb": 3718088,
+        "store_mb": 455,
+        "ts": "2026-09-15T19:35:50Z"
+      },
+      {
+        "rss_kb": 3066200,
+        "store_mb": 511,
+        "ts": "2026-09-15T19:40:50Z"
+      },
+      {
+        "rss_kb": 2686204,
+        "store_mb": 457,
+        "ts": "2026-09-15T19:45:50Z"
+      },
+      {
+        "rss_kb": 2341628,
+        "store_mb": 456,
+        "ts": "2026-09-15T19:50:50Z"
+      },
+      {
+        "rss_kb": 2699180,
+        "store_mb": 460,
+        "ts": "2026-09-15T19:55:50Z"
+      },
+      {
+        "rss_kb": 2441760,
+        "store_mb": 461,
+        "ts": "2026-09-15T20:00:50Z"
+      },
+      {
+        "rss_kb": 2377880,
+        "store_mb": 460,
+        "ts": "2026-09-15T20:05:50Z"
+      },
+      {
+        "rss_kb": 3331820,
+        "store_mb": 463,
+        "ts": "2026-09-15T20:10:50Z"
+      },
+      {
+        "rss_kb": 2800948,
+        "store_mb": 465,
+        "ts": "2026-09-15T20:15:50Z"
+      },
+      {
+        "rss_kb": 3795480,
+        "store_mb": 525,
+        "ts": "2026-09-15T20:20:50Z"
+      },
+      {
+        "rss_kb": 2823048,
+        "store_mb": 467,
+        "ts": "2026-09-15T20:25:50Z"
+      },
+      {
+        "rss_kb": 4055048,
+        "store_mb": 470,
+        "ts": "2026-09-15T20:30:50Z"
+      },
+      {
+        "rss_kb": 2812576,
+        "store_mb": 469,
+        "ts": "2026-09-15T20:35:50Z"
+      },
+      {
+        "rss_kb": 2458628,
+        "store_mb": 466,
+        "ts": "2026-09-15T20:40:50Z"
+      },
+      {
+        "rss_kb": 2701644,
+        "store_mb": 472,
+        "ts": "2026-09-15T20:45:50Z"
+      },
+      {
+        "rss_kb": 3951712,
+        "store_mb": 473,
+        "ts": "2026-09-15T20:50:50Z"
+      },
+      {
+        "rss_kb": 2938572,
+        "store_mb": 474,
+        "ts": "2026-09-15T20:55:50Z"
+      },
+      {
+        "rss_kb": 4171852,
+        "store_mb": 475,
+        "ts": "2026-09-15T21:00:51Z"
+      },
+      {
+        "rss_kb": 2529512,
+        "store_mb": 475,
+        "ts": "2026-09-15T21:05:51Z"
+      },
+      {
+        "rss_kb": 2884668,
+        "store_mb": 477,
+        "ts": "2026-09-15T21:10:51Z"
+      },
+      {
+        "rss_kb": 4103240,
+        "store_mb": 478,
+        "ts": "2026-09-15T21:15:51Z"
+      },
+      {
+        "rss_kb": 3945852,
+        "store_mb": 479,
+        "ts": "2026-09-15T21:20:51Z"
+      },
+      {
+        "rss_kb": 3034232,
+        "store_mb": 556,
+        "ts": "2026-09-15T21:25:51Z"
+      },
+      {
+        "rss_kb": 3311652,
+        "store_mb": 482,
+        "ts": "2026-09-15T21:30:51Z"
+      },
+      {
+        "rss_kb": 2590580,
+        "store_mb": 479,
+        "ts": "2026-09-15T21:35:51Z"
+      },
+      {
+        "rss_kb": 2648180,
+        "store_mb": 484,
+        "ts": "2026-09-15T21:40:51Z"
+      },
+      {
+        "rss_kb": 2522048,
+        "store_mb": 480,
+        "ts": "2026-09-15T21:45:51Z"
+      },
+      {
+        "rss_kb": 4329996,
+        "store_mb": 485,
+        "ts": "2026-09-15T21:50:51Z"
+      },
+      {
+        "rss_kb": 3068372,
+        "store_mb": 564,
+        "ts": "2026-09-15T21:55:51Z"
+      },
+      {
+        "rss_kb": 4035596,
+        "store_mb": 552,
+        "ts": "2026-09-15T22:00:51Z"
+      },
+      {
+        "rss_kb": 2636172,
+        "store_mb": 484,
+        "ts": "2026-09-15T22:05:51Z"
+      },
+      {
+        "rss_kb": 2685932,
+        "store_mb": 489,
+        "ts": "2026-09-15T22:10:51Z"
+      },
+      {
+        "rss_kb": 2651004,
+        "store_mb": 487,
+        "ts": "2026-09-15T22:15:51Z"
+      },
+      {
+        "rss_kb": 2706012,
+        "store_mb": 492,
+        "ts": "2026-09-15T22:20:51Z"
+      },
+      {
+        "rss_kb": 3078376,
+        "store_mb": 492,
+        "ts": "2026-09-15T22:25:51Z"
+      },
+      {
+        "rss_kb": 2741820,
+        "store_mb": 489,
+        "ts": "2026-09-15T22:30:51Z"
+      },
+      {
+        "rss_kb": 3444968,
+        "store_mb": 494,
+        "ts": "2026-09-15T22:35:51Z"
+      },
+      {
+        "rss_kb": 2739392,
+        "store_mb": 494,
+        "ts": "2026-09-15T22:40:51Z"
+      },
+      {
+        "rss_kb": 2768492,
+        "store_mb": 493,
+        "ts": "2026-09-15T22:45:51Z"
+      },
+      {
+        "rss_kb": 3838276,
+        "store_mb": 579,
+        "ts": "2026-09-15T22:50:51Z"
+      },
+      {
+        "rss_kb": 3268392,
+        "store_mb": 498,
+        "ts": "2026-09-15T22:55:51Z"
+      },
+      {
+        "rss_kb": 3855972,
+        "store_mb": 582,
+        "ts": "2026-09-15T23:00:52Z"
+      },
+      {
+        "rss_kb": 2954272,
+        "store_mb": 500,
+        "ts": "2026-09-15T23:05:52Z"
+      },
+      {
+        "rss_kb": 3761000,
+        "store_mb": 502,
+        "ts": "2026-09-15T23:10:52Z"
+      },
+      {
+        "rss_kb": 2984104,
+        "store_mb": 586,
+        "ts": "2026-09-15T23:15:52Z"
+      },
+      {
+        "rss_kb": 2913052,
+        "store_mb": 503,
+        "ts": "2026-09-15T23:20:52Z"
+      }
+    ],
+    "start_utc": "2026-09-15T15:00:39Z",
+    "total_batches_in_eventlog": 1074952,
+    "wall_s": 30015.0
+  },
+  "supersedes": "benchmarks/longevity-v1/replay-check-2026-09-15.json",
+  "timestamp_utc": "2026-09-15T23:20:54Z"
+}
