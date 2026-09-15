@@ -1329,6 +1329,57 @@ def compute_c2(m: Macros) -> None:
     eq(det_blob_pre, 0, "C2 frozen: pre-A10 blob-fix mutations DETECTED count (0 of N)")
     eq(det_blob_post, n_blob_post, "C2 frozen: post-A10 blob-fix mutations DETECTED count (N of N)")
 
+    # All seven artifact_blob mutations (the six A10 fixed, plus the one
+    # that was already DETECTED before A10 via a different mechanism) --
+    # a reader citing "blob detected" without qualification would otherwise
+    # assume this population, not the six-mutation fix subset above.
+    all_blob_mutations = sorted(mut for c, mut in pre_dm if c == "artifact_blob")
+    eq(len(all_blob_mutations), 7, "C2 frozen: artifact_blob mutation count (all seven)")
+    eq(set(all_blob_mutations), set(mutations),
+       "C2: artifact_blob's own mutation set equals the campaign's full mutation set")
+
+    n_blob_all_pre = sum(pre_dm[("artifact_blob", mut)][0] for mut in all_blob_mutations)
+    det_blob_all_pre = sum(pre_dm[("artifact_blob", mut)][1] for mut in all_blob_mutations)
+    n_blob_all_post = sum(post_dm[("artifact_blob", mut)][0] for mut in all_blob_mutations)
+    det_blob_all_post = sum(post_dm[("artifact_blob", mut)][1] for mut in all_blob_mutations)
+    eq(n_blob_all_pre, n_blob_all_post,
+       "C2: artifact_blob's total trial population (all seven mutations) is identical "
+       "pre/post-A10")
+    eq(n_blob_all_pre, 710, "C2 frozen: artifact_blob total trial count, all seven mutations")
+    eq(det_blob_all_post, n_blob_all_post,
+       "C2 frozen: post-A10 artifact_blob DETECTED count over all seven mutations (N of N)")
+
+    # The one artifact_blob mutation DETECTED pre-A10 -- recomputed, never
+    # hard-coded, as "the mutation outside the six-mutation fix set with a
+    # nonzero pre-A10 DETECTED count".
+    already_detected = [mut for mut in all_blob_mutations
+                        if mut not in blob_fixed and pre_dm[("artifact_blob", mut)][1] > 0]
+    eq(len(already_detected), 1,
+       "C2: exactly one artifact_blob mutation was already DETECTED pre-A10")
+    already_detected_mutation = already_detected[0]
+    eq(already_detected_mutation, "delete_file",
+       "C2 frozen: the pre-A10-already-detected artifact_blob mutation")
+
+    # Partition check: the six-mutation fix set and the already-detected
+    # mutation must cover all seven blob mutations, disjointly, and their
+    # trial counts must sum to the all-mutations total (710) -- not merely
+    # assumed from the mutation-name partition alone.
+    eq(set(blob_fixed) | set(already_detected), set(all_blob_mutations),
+       "C2: the six-mutation fix set + the already-detected mutation cover all seven blob "
+       "mutations")
+    eq(set(blob_fixed) & set(already_detected), set(),
+       "C2: the six-mutation fix set and the already-detected mutation are disjoint")
+    n_already_pre, det_already_pre = pre_dm[("artifact_blob", already_detected_mutation)]
+    eq(n_blob_pre + n_already_pre, n_blob_all_pre,
+       "C2: the six-mutation trial count plus the already-detected mutation's trial count "
+       "sums to the all-seven-mutations total -- a partition of the 710 blob trials")
+    eq(det_already_pre, n_already_pre,
+       "C2 frozen: the already-detected mutation was DETECTED in every one of its own "
+       "pre-A10 trials")
+    eq(det_blob_all_pre, det_already_pre,
+       "C2: pre-A10 DETECTED over all seven blob mutations equals the already-detected "
+       "mutation's own count alone (the six fixed mutations contributed 0)")
+
     # Every non-blob cell must be within +/-2 trials of the pre-A10 record
     # (the README's own pre-registered prediction #8); this is the
     # constancy assertion, never averaged away.
@@ -1367,6 +1418,21 @@ def compute_c2(m: Macros) -> None:
     m.add("osdiCorruptionBlobDetectedPost", f"{det_blob_post}/{n_blob_post}",
           f"{relpath(CORRUPTION_POST)}: DETECTED/trials summed over the same six artifact_blob "
           "mutations, after the fix")
+    m.add("osdiCorruptionBlobTrials", tex_num(n_blob_all_pre),
+          f"{relpath(CORRUPTION_PRE)}: trials summed over all seven artifact_blob mutations "
+          "(== the six-mutation fix population 621 + the already-detected mutation's own "
+          f"{n_already_pre}), unchanged post-A10")
+    m.add("osdiCorruptionBlobDetectedAllPre", f"{det_blob_all_pre}/{n_blob_all_pre}",
+          f"{relpath(CORRUPTION_PRE)}: DETECTED/trials summed over all seven artifact_blob "
+          "mutations, before the fix -- distinct from osdiCorruptionBlobDetectedPre, which "
+          "covers only the six mutations A10 fixed")
+    m.add("osdiCorruptionBlobDetectedAllPost", f"{det_blob_all_post}/{n_blob_all_post}",
+          f"{relpath(CORRUPTION_POST)}: DETECTED/trials summed over all seven artifact_blob "
+          "mutations, after the fix")
+    m.add("osdiCorruptionBlobMutationAlreadyDetected", already_detected_mutation.replace("_", r"\_"),
+          f"{relpath(CORRUPTION_PRE)}: the one artifact_blob mutation (of all seven) with a "
+          "nonzero pre-A10 DETECTED count, recomputed as the mutation outside the six-mutation "
+          "fix set with detected>0 -- not hard-coded")
     m.add("osdiCorruptionCellsMovedPost", len(moved),
           f"{relpath(CORRUPTION_PRE)} vs {CORRUPTION_POST.name}: non-blob class x mutation "
           "cells whose DETECTED count moved by more than 2 trials (asserted 0 above)")
