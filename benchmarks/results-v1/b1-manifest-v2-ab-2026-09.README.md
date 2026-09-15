@@ -62,6 +62,102 @@ paired ≤ 0.70x control **or** ≤ 5.58 ms absolute — treatment median p50 is
 5,478 us = 5.478 ms (at the absolute bound); the paired ratio
 treatment/control is 5,478/5,430 = 1.009x (not below 0.70x).
 
+### Correction (2026-09-15): the treatment reps above measured a format-2 chain
+
+**B1(b)'s treatment numbers on this page are format-2 numbers, not format-3
+ones.** `b1-manifest-v2e-remeasure-2026-09-raw.json`'s `cell_b_commitcost.
+treatment_reps_full[*].first_decile_us.manifest_bytes` /
+`last_decile_us.manifest_bytes` — the same field this lane's own treatment
+reps report — is 1,592 → 1,595 B for a genuine format-3 chain built by the
+same `e5d4171` treatment engine used for that remeasurement. Every treatment
+rep committed to *this* record
+(`b1-manifest-v2-ab-2026-09-logs/b1v2-cc-treatment-{rep1,rep2,rep3,k128,
+k1024}.json`) instead reports `first_decile_us.manifest_bytes` = 1,565 B and
+`last_decile_us.manifest_bytes` = 1,568–1,570 B — byte-identical (to the
+smaller value) with this page's own control (`b1v2-cc-control-rep*.json`:
+1,565 → 1,568 B), which ran the pinned format-2 engine (`886805f600bc`,
+`MANIFEST_FORMAT_VERSION == 2`) by design.
+
+`Manifest::digest()` (`crates/tgms-engine-core/src/manifest.rs:615–636`)
+picks the digest rule from the manifest's own `format` field, not from the
+binary that opened it: formats 1–2 hash the whole blanked document
+(`legacy_body_sha`, O(segments) per commit), format 3 takes the Merkle root
+over the ordered segment set. A format-2 chain therefore keeps paying the
+O(segments) rule regardless of which engine is timing it. Every treatment
+commitcost rep on this page ran against a format-2 chain — **the B1(b)
+treatment column above (decile 1.674x, p50 5,478 us, p50 parity 1.009x) is
+what the format-3 binary measured *while pointed at a format-2 store*, not
+a measurement of the format-3 commit path.** That the treatment column's
+decile (1.674x) tracks the control's (1.733x) so closely, rather than
+looking anything like the flat, O(1)-shaped decile the format-3 path
+actually produces, is the same fact seen from the number side.
+
+This is superseded, for commit cost and chain-open, by
+`b1-manifest-v2e-remeasure-2026-09.json`/`-raw.json` (treatment `e5d4171`,
+built fresh and confirmed on a genuine format-3 chain via `build_info()`
+and this same manifest-bytes field: 1,592 → 1,595 B): commit-cost decile
+1.017x (vs. this page's mislabeled 1.674x), p50 paired ratio 0.715x /
+absolute 3.365 ms, chain-open manifest-chain component 87.06 ms,
+dictionary-open component 1,066.5 ms. **The records on this page are left
+exactly as measured** — nothing above is edited or re-scored — this
+section only says what they actually measured and where the corrected
+numbers live.
+
+**How the treatment reps ended up on a format-2 chain.** Two explanations
+were checked: (a) `eval_concurrency.py commitcost` copying a pre-built
+format-2 seed store into the treatment run, or (b) the treatment
+invocation's `PYTHONPATH`/venv resolving the pinned `886805f` engine
+instead of the freshly built `7a5ff98` one.
+
+(a) is ruled out by the script's own source at the commit this lane
+actually ran, `7a5ff9871a0e` (`git show 7a5ff9871a0e:scripts/
+eval_concurrency.py`): `cmd_commitcost` has never had a `--store`/copy
+path — every rep builds its seed store fresh, in-process, via
+`root = Path(tempfile.mkdtemp(prefix="tgms-cc-")) / "s"` followed by
+`s = tgms.open(root, backend="native")` and `s.ingest_events(...)`, unlike
+`cmd_mixed`'s `_pristine()`, which does copy a cached store per trial.
+There is no code path in this function, at this commit, through which a
+pre-built store of any format could be substituted.
+
+That leaves (b), and the evidence is consistent with it but does not
+independently confirm it, because the logs cannot decide it either way.
+What the logs *do* show: every `b1v2-cc-treatment-*.json` record's
+`provenance.commit` field (`git rev-parse --short HEAD` run in the
+harness's own working directory) reads `"7a5ff98"`, and every
+`b1v2-cc-control-*.json` record's reads `"886805f"` — confirming the
+harness was invoked with its working directory inside the correct
+per-arm worktree for each arm. That field says nothing about which
+`_engine*.so` `import tgms` actually resolved, though: the working
+directory a subprocess is launched from and the `PYTHONPATH`/venv that
+resolves its imports are two independent things, and only the former is
+in this field.
+
+What is missing, and would have settled it either way: at
+`7a5ff9871a0e` (2026-09-15 00:32:02, per `git log`), neither
+`NativeAdapter.build_info()`/`_engine.build_info()` nor `open_phase_us()`'s
+`chain_format` existed yet — `build_info()` landed in `23fd7665`
+(02:17:19, +1h45m) and the fully-timed commit path with its own
+`build_info` row field in `db3fd6c1`/`e5d4171` (02:44:27–02:44:33,
++2h12m). Neither the `b1v2-cc-treatment-*.json` records nor anything else
+under `b1-manifest-v2-ab-2026-09-logs/` therefore carries a
+`build_info()`/`MANIFEST_FORMAT_VERSION` printout, a captured
+`PYTHONPATH` value, a `sys.path` dump, or `tgms._engine.__file__` — any of
+which would have shown, directly, which engine `import tgms` actually
+loaded for these invocations. The `b1v2-treatment.log`/`b1v2-control.log`
+files in the same directory are B1(a)'s `build_snb_store.py` logs, not
+B1(b)'s, and record only `RUN_STARTED commit=... csv=... backend=native
+...` lines with no engine-path or PYTHONPATH field either.
+
+**Conclusion:** the pre-built-seed-store hypothesis is ruled out by source
+inspection; a stale `PYTHONPATH`/venv resolving `886805f`'s engine during
+the treatment invocation is the only explanation consistent with the
+manifest-bytes evidence, but it is not independently confirmed by
+anything this lane recorded. `scripts/eval_concurrency.py commitcost` now
+records each rep's own `chain_format` and refuses to run one whose format
+is older than the loaded engine's `MANIFEST_FORMAT_VERSION` (see
+`docs/eval_concurrency.md`'s 2026-09-15 note), so this specific failure
+mode cannot recur silently regardless of which explanation was true here.
+
 ## B1(c) — cold/warm chain-open at G~10k, K=512
 
 Same corrected methodology as v1: times `NativeAdapter(store/"native")`

@@ -126,21 +126,42 @@ computed or filled in on control's behalf.
 | treatment (e5d4171, fmt3) | 3,311 | 3,368 | +57 us (1.7%) | 33.1 -> 30.4 us (flat, ~1% of total_us) | **closed** — the B1V2_AB_DIAGNOSIS memo's Q1 residual (previously 100% of the growth, +2,574 to +2,638 us at last decile across both format-3 and format-2 arms) is gone in this arm |
 | control (886805f, fmt2, unchanged) | 3,532 | 5,990 | +2,458 us (69.6%) | not measured (no residual field) | **unchanged** — same order of magnitude as the original diagnosis's control residual (+2,638 us) and the prior lane's own 1.733x decile ratio; this arm never received the B1-v2d fix |
 
-**Reading it plainly:** the fix that added full phase accounting to the
-treatment/format-3 commit path did not just make the previously-untimed cost
-*visible* — it made it *disappear*. Every named phase (`manifest_us`,
-`seal_us`, `dict_us`, `current_us`, etc.) was already flat across the decile
-in the old diagnosis; now `total_us` is flat too (1.017x, well inside the
-<=1.10x band), and the residual that used to absorb 100% of the growth sits
-at 30-35 us regardless of decile — noise-sized next to a ~3,300-3,400 us
-total. `segments_named` still grows 35 -> 575 the same as before (confirmed
-in the raw per-commit records), so the covariate the diagnosis pointed at is
-present; the O(segments) cost it used to hide is not. Control, running the
-unmodified format-2 engine, still carries growth of the same magnitude and
-shape the diagnosis found (1.696x here vs. 1.733x in the v2 A/B) — consistent
-with the fix being specific to the format-3 commit path the diagnosis's
-static reading (§1.3) said should already be O(1)/O(log n), and which this
-measurement now confirms behaves that way.
+**Reading it plainly — corrected 2026-09-15.** This paragraph originally
+credited "the fix that added full phase accounting" with making the
+previously-untimed cost *disappear*, not just *visible*. That is not what
+happened, and the B1-v2 A/B's own 2026-09-15 README correction
+(`b1-manifest-v2-ab-2026-09.README.md`) is why: `db3fd6c1`/`e5d4171`'s own
+commit message says "No behaviour change: every addition is an
+`Instant::now()`/`perf_counter()` pair or a directory scan" — it is
+instrumentation, not a performance fix, and it changed nothing about what
+the commit path does. What actually changed between the two lanes is which
+*chain format* the treatment was measuring. The B1-v2 A/B's treatment reps
+(1.674x decile, tracking the control's 1.733x) were, per that correction,
+silently running against a **format-2** chain despite the format-3 binary
+timing them — `manifest_bytes` there is 1,565→1,568 B, byte-identical to
+that lane's own format-2 control. This lane's treatment store was built
+fresh by the `e5d4171` engine and confirmed on a genuine **format-3**
+chain both by `build_info()` (`manifest_format_version: 3`) and by this
+same `manifest_bytes` field, here 1,592→1,595 B. `Manifest::digest()`
+(`crates/tgms-engine-core/src/manifest.rs:615-636`) dispatches its digest
+rule on the manifest's own `format` field: format 3's Merkle root is
+O(1)/O(log n) per commit, formats 1-2's whole-document `legacy_body_sha` is
+O(segments). The flatness below is the format-3 path finally being
+measured *as* format-3, not a change the instrumentation fix caused.
+
+Every named phase (`manifest_us`, `seal_us`, `dict_us`, `current_us`, etc.)
+was already flat across the decile in the old diagnosis; now `total_us` is
+flat too (1.017x, well inside the <=1.10x band), and the residual that used
+to absorb 100% of the growth sits at 30-35 us regardless of decile —
+noise-sized next to a ~3,300-3,400 us total. `segments_named` still grows
+35 -> 575 the same as before (confirmed in the raw per-commit records), so
+the covariate the diagnosis pointed at is present; the O(segments) cost it
+used to hide is not, because this arm is the first one actually running the
+O(1)/O(log n) format-3 path the diagnosis's static reading (§1.3) said
+should exist. Control, running the unmodified format-2 engine on a genuine
+format-2 chain throughout, still carries growth of the same magnitude and
+shape the diagnosis found (1.696x here vs. 1.733x in the v2 A/B) — the
+O(segments) path neither lane's control ever left.
 
 ## Dataset
 

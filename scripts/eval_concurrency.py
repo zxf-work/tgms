@@ -16,6 +16,20 @@ This measures the three things that were missing.
   engine phase, as the store's history grows. `engine_lessons.md` §7 blames
   "several fsyncs"; `docs/eval_writes.md` blames "a fresh full manifest per
   commit naming every segment". Those are different fixes. Measure first.
+  Every rep's seed store must be built by the same engine that is being
+  measured: `benchmarks/results-v1/b1-manifest-v2-ab-2026-09.README.md`'s
+  2026-09-15 correction found a B1-v2 A/B "treatment" commitcost rep that
+  had silently written a format-2 manifest chain (byte-identical in size to
+  the format-2 control) under a format-3 binary, because
+  `manifest.rs::digest()` picks the digest rule from the manifest's own
+  `format` field rather than from the binary that opened it
+  (`crates/tgms-engine-core/src/manifest.rs:615-636`) — a format-2 chain
+  keeps paying the O(segments) `legacy_body_sha` fallback no matter which
+  engine is measuring it. `cmd_commitcost` now reads the fresh store's own
+  `chain_format` (`NativeAdapter.manifest_format()`) right after `tgms.open`
+  and refuses to run a rep whose chain format is older than the loaded
+  engine's `MANIFEST_FORMAT_VERSION`, unless `--allow-legacy-chain` is
+  passed explicitly.
 
 * **groupcommit** — what coalescing queued single writes into one durable
   generation buys, on the write patterns that exist.
@@ -410,12 +424,71 @@ def _timed_write(store, events: list[dict[str, Any]]) -> dict[str, int]:
     return ph
 
 
+def _loaded_engine_manifest_format() -> int:
+    """`MANIFEST_FORMAT_VERSION` of whichever `_engine*.so` this process has
+    resolved -- the format a store this process creates gets written at.
+
+    Read from the module constant directly (`crates/tgms-engine-py/src/lib.rs`
+    registers it on `_engine` alongside `build_info()`) rather than through
+    `NativeAdapter.build_info()`, which is a newer addition (`23fd7665`) an
+    older engine `.so` may not carry at all -- this constant is older and is
+    the one property `_check_chain_format` actually needs.
+    """
+    from tgms import _engine
+
+    return int(_engine.MANIFEST_FORMAT_VERSION)
+
+
+def _check_chain_format(store, allow_legacy: bool) -> int:
+    """Refuse to time a commitcost rep whose store is on an older manifest
+    chain format than the loaded engine writes.
+
+    `benchmarks/results-v1/b1-manifest-v2-ab-2026-09.README.md`'s
+    2026-09-15 correction: the B1-v2 A/B's commit-cost "treatment" reps
+    wrote manifest records sized like the format-2 control (1,565-1,568 B)
+    instead of format 3 (1,592-1,595 B). `Manifest::digest()`
+    (`crates/tgms-engine-core/src/manifest.rs:615-636`) picks the digest
+    rule from the manifest's own `format` field, not from the binary that
+    is running it, so a format-2 chain measured under a format-3 binary
+    silently keeps paying the O(segments) `legacy_body_sha` fallback --
+    the A/B ended up comparing two format-2 arms without anyone noticing
+    until the byte counts were checked well after the fact. This makes
+    that failure mode loud instead of silent: every rep's own chain format
+    is read back from the store it just opened and compared against the
+    loaded engine's `MANIFEST_FORMAT_VERSION` before a single commit is
+    timed.
+
+    Raises `SystemExit` naming both numbers unless `allow_legacy` is set --
+    the escape hatch for a rep deliberately measuring a legacy chain (e.g.
+    an upgrade-path benchmark), which is never `commitcost`'s default.
+    """
+    chain_format = int(store.adapter.manifest_format())
+    engine_format = _loaded_engine_manifest_format()
+    if chain_format < engine_format and not allow_legacy:
+        raise SystemExit(
+            f"commitcost: store chain format {chain_format} is older than "
+            f"the loaded engine's MANIFEST_FORMAT_VERSION {engine_format} -- "
+            "this rep's seed store was not built by the engine being "
+            "measured (a stale PYTHONPATH/venv is the usual cause, per the "
+            "B1-v2 A/B's 2026-09-15 correction). Rebuild the seed store "
+            "with the treatment engine, or pass --allow-legacy-chain to "
+            "measure the legacy chain anyway.")
+    return chain_format
+
+
 def cmd_commitcost(args: argparse.Namespace) -> tuple[int, dict[str, Any]]:
     """Commit a singleton batch repeatedly and watch the phases move.
 
     The point is the *shape over generations*: fsync cost is flat, manifest
     cost grows with the number of segments the manifest has to name. Whichever
     grows is the one group-commit has to beat.
+
+    Every rep builds its own store fresh, in this process, via `tgms.open` --
+    there is no `--store`/copy path here (unlike `cmd_mixed`'s `_pristine()`)
+    -- so its manifest chain format is, in principle, always whatever the
+    loaded engine writes. `_check_chain_format` asserts that rather than
+    assuming it: see its docstring and the module docstring's `commitcost`
+    entry for the 2026-09-15 incident this guards against.
     """
     import tempfile
 
@@ -427,6 +500,7 @@ def cmd_commitcost(args: argparse.Namespace) -> tuple[int, dict[str, Any]]:
         root = Path(tempfile.mkdtemp(prefix="tgms-cc-")) / "s"
         native_root = root / "native"
         s = tgms.open(root, backend="native")
+        chain_format = _check_chain_format(s, args.allow_legacy_chain)
         s.ingest_events([{"src": f"p{i}", "dst": f"q{i}", "rel_type": "R",
                           "vt_s": i} for i in range(args.seed_rows)])
         lat, phases = [], []
@@ -454,6 +528,7 @@ def cmd_commitcost(args: argparse.Namespace) -> tuple[int, dict[str, Any]]:
             "dir_entries_first": dir_entries_first,
             "dir_entries_last": dir_entries_last,
             "build_info": _engine_build_info(),
+            "chain_format": chain_format,
         }
         out.append(row)
         p = row["phase_p50_us"]
@@ -723,6 +798,13 @@ def main() -> int:
     ap.add_argument("--seed-rows", type=int, default=100_000)
     ap.add_argument("--commits", type=int, default=200)
     ap.add_argument("--batch-sizes", default="1,10,100,1000")
+    ap.add_argument("--allow-legacy-chain", action="store_true",
+                    help="commitcost: measure a store whose manifest chain "
+                         "format is older than the loaded engine's "
+                         "MANIFEST_FORMAT_VERSION instead of refusing (see "
+                         "_check_chain_format's docstring); never needed for "
+                         "a normal run, since commitcost always builds its "
+                         "own store fresh")
     ap.add_argument("--writers", default="1,2,4,8")
     ap.add_argument("--rows-per-writer", type=int, default=100)
     ap.add_argument("--max-delay", type=float, default=0.002)

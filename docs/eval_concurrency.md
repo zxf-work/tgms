@@ -837,3 +837,39 @@ out of `tt` order must be refused at replay, not silently applied as if time
 ran backwards), and a `pace_s`-paced variant of the existing pinned-reader
 test that stretches the same one-generation-per-handle property over many
 more writer-committed generations instead of twelve.
+
+---
+
+## 2026-09-15 — commitcost's seed store must be built by the engine it measures
+
+`benchmarks/results-v1/b1-manifest-v2-ab-2026-09.README.md`'s 2026-09-15
+correction found that the B1-v2 A/B's commit-cost (§20-style) "treatment"
+reps had written manifest records the size of the format-2 control's
+(1,565–1,568 B) instead of format 3's (1,592–1,595 B). `commitcost` always
+builds its store fresh, in-process, via `tgms.open()` — there is no
+`--store`/pre-built-seed-store path in `cmd_commitcost` for a stale copy to
+sneak in through — so the only way a "treatment" rep ends up on a format-2
+chain is that `import tgms` itself resolved an older engine `.so` than the
+one the invocation believed it was measuring (a stale `PYTHONPATH`/venv
+left over from the control arm being the leading candidate; not confirmed
+from this record's own logs, which predate the instrumentation below by
+about two hours — see the README correction for exactly what is and is not
+in evidence).
+
+`Manifest::digest()` (`crates/tgms-engine-core/src/manifest.rs:615–636`)
+picks the digest rule from the manifest's own `format` field, not from
+whichever binary opened it: a format-2 chain pays the O(segments)
+`legacy_body_sha` fallback under a format-3 engine exactly as it would
+under a format-2 one. A mislabeled arm is therefore not just wrong
+metadata — it silently measures the wrong code path, and nothing about the
+resulting numbers looks obviously broken (they still move, just like the
+control's).
+
+`cmd_commitcost` now reads each rep's own chain format back from the store
+right after opening it (`NativeAdapter.manifest_format()`) and refuses to
+time a rep whose format is older than the loaded engine's
+`MANIFEST_FORMAT_VERSION`, unless `--allow-legacy-chain` is passed
+explicitly. The record's own `chain_format` field is written into every
+commitcost row so a future record can be checked the same way this
+correction checked `manifest_bytes` after the fact, without waiting for
+someone to notice the byte counts.
