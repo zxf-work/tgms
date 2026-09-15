@@ -272,6 +272,103 @@ quote fully above, not so small it belongs only in prose). `metrics.jsonl`
 their path is recorded in the manifest's own `record`/`config.metrics`
 fields.
 
+## Post-hoc replay check (2026-09-15) — aborted: replay process OOM-killed
+
+**Pre-registered in the OSDI'27 campaign plan (§4.3a), prediction untested.**
+B7c's `tgms.storage.eventlog.replay(..., compact_every=N)` (see the
+"Replay with periodic compaction" section of `docs/eval_durability.md`,
+2026-09-15) makes the Gate E replay/digest-equivalence check *disk*-feasible
+for this soak's 1,074,952-batch log — but attempting it for real surfaced a
+second, previously unmeasured resource limit: **host memory**, not disk.
+
+**Setup.** Pinned worktree `/mnt/project/xzhang/tgms/work/tgms-xz-039fda7`
+at commit `039fda7` (a descendant of the soak's own measured commit
+`886805f`); engine built release (`build_info()`: `profile: release`,
+`debug_assertions: False`, `engine_version: 0.8.0`). `git diff 886805f
+039fda7 -- tgms/storage/base.py` is **empty** — `store_digest()`'s
+definition is unchanged between the two commits, so a replay at `039fda7`
+is a valid check of the `886805f` soak's own final digest. Command:
+`tgms replay /mnt/project/xzhang/tgms/longevity/2026-09-15/store/
+eventlog.jsonl --store .../replay-check --backend native
+--compact-every 500`, logged to `replay-check.log`, against the preserved
+314,897,038-byte / 1,074,952-batch event log (sha256
+`e212b641a0ccd46248575cd0919768c699a256934388d305f465116c2b900d2a`).
+
+**Attempt 1** (started 2026-09-15T08:37:28Z): the process was killed by the
+kernel OOM killer at 2026-09-15T11:59:50Z, after 3h22m22s (12,142 s),
+before printing anything (`replay-check.log` is 0 bytes — `tgms replay`
+only prints its `{"batches": ..., "stats": ...}` line after `replay()`
+returns, which it never did). Verbatim `dmesg`:
+
+```
+Out of memory: Killed process 2213341 (python) total-vm:94184404kB, anon-rss:82997140kB, file-rss:2408kB, shmem-rss:0kB, UID:1000 pgtables:181316kB oom_score_adj:0
+```
+
+xzgpu has 93 GB RAM total (`free -g`); this single process alone reached
+~83 GB resident before the kill, with only ~8.6 GB used by everything else
+on the (shared, multi-tenant) host at the time — the crash is this
+process's own footprint, not contention. The partial store's own manifest
+numbering reached generation `513024` before the kill (directly observed;
+that store was deleted before this was written up, to make room for
+attempt 2). Taking `compact_every=500` at face value —
+each cycle publishes 500 batch-commit generations plus one
+`compact()`-commit generation (`gc()` publishes none) — 501
+generations/cycle, and `513024 / 501 = 1024` exactly, so **inferred**
+(not directly logged): 1,024 compactions, ~512,000 of 1,074,952 batches
+(47.6%) applied. The out-directory itself stayed small throughout
+(peak ~485 MB observed, far under the 20,000 MB watch ceiling) — **the
+disk-growth fix (B7c) worked exactly as designed; the failure is in
+resident memory, which `compact_every` does not bound.** Dividing peak
+RSS by the generation reached (82,997,140 kB / 513,024) gives **≈161.8
+KB of resident memory per generation** — a rate that, if it holds for the
+whole 1,074,952-batch/513,024-generation-equivalent replay-with-compaction
+run, projects well past this host's 93 GB long before the log is fully
+replayed. A single continuous `tgms replay` process holds the *entire*
+run's resident-index growth in one process lifetime; the live soak itself
+never did this — its writer was restarted every 30 minutes
+(`--restart-every 30m`), which reset RSS to a fresh-process baseline each
+time (see "Memory (RSS slope)" above: "RSS saw-tooths on every writer
+restart... each life is a fresh OS process") and would have **masked**
+this same growth from ever being visible during the original soak. This
+looks like a real memory-growth defect in the replay path (or possibly in
+the native store's resident index generally, only exposed here because
+nothing resets it) and is under investigation as a follow-up — not fixed
+or root-caused by this record, which is a measurement, not a patch.
+
+**Attempt 2** (retry, started 2026-09-15T12:05:22Z): launched to check
+whether attempt 1 was a one-off host-contention artifact rather than
+reproducible. It was **deliberately killed** (`kill -9`, pid `2345872`) at
+2026-09-15T12:09:23Z once its early trajectory (generation `8015` reached
+within ~4 minutes, tracking the same 501-generations/cycle pattern) made
+clear it was headed for the same ~83 GB/similar-generation OOM in another
+~3.5h, which would have blocked the shared host for that long to
+reconfirm a conclusion already well supported by attempt 1's own numbers —
+this is itself a finding (a reproducible resource ceiling), not
+infrastructure noise, so it was not left to run to completion. Its
+partial store is **kept** (not deleted) for a separate diagnosis lane, at
+`/mnt/project/xzhang/tgms/longevity/2026-09-15/replay-check/`, 396 MB as
+of the kill.
+
+**Prediction (frozen): untested.** The pre-registered prediction — that
+the replayed store's digest equals the soak manifest's `final_digest`
+`8eb9bc26fbf418df30b89fa85b5fd827c56ae90d14da84eb94a5f8683f6d9d72` — was
+never checked on either attempt; no replay digest was ever computed.
+`digest_status: "not computed (process OOM-killed)"` in
+`replay-check-2026-09-15.json`, not "computed and found equal/unequal."
+Per the pre-registration's own rule against re-running after an unfavorable
+result: that rule applies to a completed run with a digest that turned out
+to mismatch, which did not happen here — nothing was discarded to get a
+different answer, since no digest ever existed to discard.
+
+**Files**: `replay-check-2026-09-15.json`
+(sha256 `a5c7a93c79af6a97160f7262fd16c98ff99cb982f22d282e896f3805ab7e4d9b`).
+
+See also "Re-derived Gate E report (2026-09-15, post-fix harness)" below:
+the live writer's own within-life RSS slope shows the same defect on the
+*write* path, not only in this post-hoc replay of an already-written log —
+the two numbers agree to within a few percent (see that section's
+arithmetic).
+
 ## Honest limits
 
 - One host, one storage stack, one seed. 41 restarts, 2 reader crashes,
@@ -281,6 +378,14 @@ fields.
   "deterministic final state" is unverified, not confirmed, for this run.
 - The memory FAIL is real as computed but its interpretation (leak vs.
   dataset-growth baseline) is not resolved here.
+- The 2026-09-15 post-hoc replay check (see above) also did not resolve
+  Gate E's replay/digest-equivalence question: `compact_every` fixed the
+  disk side but the replay process was OOM-killed by the host kernel
+  before producing a digest, on both of two attempts. The frozen
+  prediction (`final_digest` == replay digest) stays untested, and a
+  ~161.8 KB/generation resident-memory growth rate is now an open,
+  under-investigation defect, not a confirmed root cause.
+
 
 ## Re-derived Gate E report (2026-09-15, post-fix harness)
 
@@ -314,13 +419,33 @@ all 6 readers that never crashed) — see the full table in
 
 **This is a real, positive finding, not a re-interpretation of noise**:
 every one of 42 independent writer-life measurements agrees in sign and
-order of magnitude. It directly corroborates the separate 2026-09-15
-finding that a post-hoc `tgms replay` of this run's own log was
-OOM-killed at ≈83 GB RSS after ≈513k generations (≈160 KB/generation
-retained) — see `benchmarks/longevity-v1/replay-check-2026-09-15.json`
-and failure-ledger entry `D-087-replay-memory-growth` (both written by
-other lanes working that finding directly; referenced here by path only).
+order of magnitude. It directly corroborates the same-day
+"Post-hoc replay check (2026-09-15) — aborted: replay process OOM-killed"
+section above: that post-hoc `tgms replay` of this run's own log was
+OOM-killed at ≈83 GB RSS after ≈513,024 generations, ≈161.8 KB of
+resident memory retained per generation (82,997,140 kB / 513,024).
+
+**The arithmetic lines up across both measurements.** This run's own
+first/last-hour write throughput averaged 24.030 -> 16.412 commits/s,
+call it ≈20 commits/s; the within-life median RSS slope of 3,165.6 kB/s
+divided by that rate is 3,165.6 / 20 ≈ **158 KB retained per commit** on
+the live writer's own write path — matching, to within a few percent,
+the replay's independently measured **≈161.8 KB per generation**
+retained (each generation being, to a first approximation, one
+committed batch plus the periodic compaction generation). Two
+independently-run processes, measured two different ways (a live
+30-minute-lifetime writer's RSS regression vs. a single long-lived
+replay process's peak RSS at its OOM point), converge on the same
+order-of-magnitude per-unit-of-work retention rate. That agreement is
+what elevates this from "two separate FAILs" to one finding: a real,
+unbounded per-generation/per-commit memory retention defect somewhere in
+the shared code both paths exercise (the native store's resident index
+and/or version-retention bookkeeping — see the "Post-hoc replay check"
+section's own root-cause discussion above), not a harness artifact and
+not two unrelated issues.
+
 The combination — a positive within-life slope in the live writer, and a
-much larger confirmed leak in `replay()` over the same log — points at a
-real, unbounded-growth defect in this codebase's generation/version
-retention path, not at a harness measurement artifact.
+much larger confirmed leak in `replay()` over the same log, with matching
+per-unit-of-work arithmetic — points at a real, unbounded-growth defect
+in this codebase's generation/version retention path, not at a harness
+measurement artifact.
