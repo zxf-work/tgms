@@ -23,7 +23,10 @@ Two conventions, both from things that went wrong here before:
 - one fresh process per condition (§9g); readers open `read_only=True`
 - mixed mode copies the store per trial, so a writer's thousands of
   generations never leak into the next condition or into the cached store
-  other harnesses replay from
+  other harnesses replay from — that cache is built by the same
+  fingerprinted `ensure_dataset`/`ensure_store` helpers `eval_resources.py`
+  uses, so a stale artifact from an older commit is detected and rebuilt
+  automatically rather than silently reused
 - raw records: `conc-commitcost.json`, `conc-groupcommit*.json`,
   `conc-mixed-1m.json`, `conc-residency-1m.json`
 - **±20% reproducibility bound** applies here as everywhere (D-045)
