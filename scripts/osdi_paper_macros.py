@@ -20,7 +20,12 @@ it). Implemented here: every claim whose record has LANDED per that
 skeleton --
 
   C1  benchmarks/crash-v1/eval-crash-campaign-2026-09-13.json
-  C3  benchmarks/results-v1/b1-manifest-ab-2026-09{,-raw}.json
+  C3  benchmarks/results-v1/b1-manifest-ab-2026-09{,-raw}.json (v1 B1 A/B) and
+      benchmarks/results-v1/b1-manifest-v2-ab-2026-09{,-raw}.json (Lane W2f's
+      B1-v2, manifest format 3 -- the reader torn-tail fix -- vs. the pinned
+      format-2 soak engine; ``osdiB1v2*`` macros stand beside the v1-era
+      ``osdiManifest*`` ones without overwriting them; no verdict macro --
+      scoring is the coordinator's, per the internal freeze doc)
   C4  benchmarks/results-v1/b2-version-history-ab-2026-09{,-raw}.json
   C5  benchmarks/results-v1/eval-readers-10m-2026-09.json
   C6  benchmarks/freshness-v1/trials-{full,fixture}.json (M4 record of
@@ -95,6 +100,9 @@ OUT_DIR = ROOT / "paper" / "osdi" / "generated"
 CRASH_V1 = ROOT / "benchmarks" / "crash-v1" / "eval-crash-campaign-2026-09-13.json"
 
 B1_RAW = ROOT / "benchmarks" / "results-v1" / "b1-manifest-ab-2026-09-raw.json"
+
+B1_V2_MANIFEST = ROOT / "benchmarks" / "results-v1" / "b1-manifest-v2-ab-2026-09.json"
+B1_V2_RAW = ROOT / "benchmarks" / "results-v1" / "b1-manifest-v2-ab-2026-09-raw.json"
 
 B2_SUMMARY = ROOT / "benchmarks" / "results-v1" / "b2-version-history-ab-2026-09.json"
 B2_RAW = ROOT / "benchmarks" / "results-v1" / "b2-version-history-ab-2026-09-raw.json"
@@ -351,6 +359,250 @@ def compute_c3(m: Macros) -> None:
     m.add("osdiManifestColdOpen", f"{cold_open_ratio:.2f}",
           f"{relpath(B1_RAW)}: b1c.authoritative median(treatment_open_ms) / "
           "median(control_open_ms) at G~10k (the F3 falsifier: refuted, bar <=100ms)")
+
+
+# --------------------------------------------------------------------------
+# B1-v2 --- manifest format 3 (reader torn-tail fix) A/B, Lane B / W2f.
+#
+# Same Addendum-3 (manifest forecast) protocol as v1's B1 A/B above (C3):
+# SF1 manifest bytes at matched 2.5M ops, SS20 batch=1 commitcost phase
+# deciles/p50 (300 commits, 100k-row seed store), chain-open at G~10k
+# K=512, plus the off-default K=128/K=1024 sweep (1 rep each). These
+# osdiB1v2* macros stand beside the osdiManifest* ones above as v2-era
+# measurements -- v1's numbers are never overwritten. No verdict macro:
+# the brief's thresholds and pass/fail scoring live in the internal
+# freeze doc, not here.
+# --------------------------------------------------------------------------
+
+def compute_b1_v2(m: Macros) -> None:
+    manifest = json.loads(B1_V2_MANIFEST.read_text(encoding="utf-8"))
+    raw = json.loads(B1_V2_RAW.read_text(encoding="utf-8"))
+
+    # digest-check: the manifest's own result_digest is sha256 of its
+    # `measurements` block (canonical, sort_keys JSON) -- this is the
+    # manifest-format-3 record's own tamper-evidence, distinct from (and
+    # in addition to) recomputing every figure from the raw record below.
+    recomputed_digest = hashlib.sha256(
+        json.dumps(manifest["measurements"], sort_keys=True).encode("utf-8")
+    ).hexdigest()
+    eq(recomputed_digest, manifest["result_digest"],
+       f"{relpath(B1_V2_MANIFEST)}: sha256(measurements, sort_keys=True) matches "
+       "the manifest's own result_digest")
+
+    ctl_commit = manifest["config"]["control_commit"]
+    trt_commit = manifest["config"]["treatment_commit"]
+    eq(ctl_commit[:7], "886805f", "B1-v2 frozen: control_commit short sha")
+    eq(trt_commit[:7], "7a5ff98", "B1-v2 frozen: treatment_commit short sha")
+
+    # --- B1(a): manifest/segment bytes + build ops/s at matched 2.5M ops ---
+    b1a = raw["b1a"]
+    ctl, trt = b1a["control"], b1a["treatment"]
+    eq(ctl["stopped_at_ops"], 2_500_000, "B1-v2: control stopped at 2.5M ops")
+    eq(trt["stopped_at_ops"], 2_500_000, "B1-v2: treatment stopped at 2.5M ops")
+    eq(ctl["ops_series"][-1][0], 2_500_000,
+       "B1-v2: control ops_series last point is 2.5M ops")
+    eq(trt["ops_series"][-1][0], 2_500_000,
+       "B1-v2: treatment ops_series last point is 2.5M ops")
+
+    bytes_ctl = ctl["manifest_bytes_at_stop"]
+    bytes_trt = trt["manifest_bytes_at_stop"]
+    seg_ctl = ctl["segment_bytes_at_stop"]
+    seg_trt = trt["segment_bytes_at_stop"]
+    eq(bytes_ctl, 73_790_679, "B1-v2 frozen: control manifest bytes at 2.5M ops")
+    eq(bytes_trt, 74_403_447, "B1-v2 frozen: treatment manifest bytes at 2.5M ops")
+    eq(seg_ctl, 158_966_639, "B1-v2 frozen: control segment bytes at 2.5M ops")
+    eq(seg_trt, 163_447_175, "B1-v2 frozen: treatment segment bytes at 2.5M ops")
+
+    meas_bytes = manifest["measurements"]["bytes_at_2_5m_ops"]
+    eq(bytes_ctl, meas_bytes["control_manifest_bytes"],
+       "B1-v2: recomputed control manifest bytes matches manifest's own field")
+    eq(bytes_trt, meas_bytes["treatment_manifest_bytes"],
+       "B1-v2: recomputed treatment manifest bytes matches manifest's own field")
+    eq(seg_ctl, meas_bytes["control_segment_bytes"],
+       "B1-v2: recomputed control segment bytes matches manifest's own field")
+    eq(seg_trt, meas_bytes["treatment_segment_bytes"],
+       "B1-v2: recomputed treatment segment bytes matches manifest's own field")
+
+    bytes_paired = bytes_trt / bytes_ctl
+    close(bytes_paired, 1.008, 0.001,
+          "B1-v2 frozen: manifest-bytes paired ratio treatment/control")
+
+    ops_ctl_2_5m = ctl["ops_series"][-1][1]
+    ops_trt_2_5m = trt["ops_series"][-1][1]
+    eq(ops_ctl_2_5m, 2543, "B1-v2 frozen: control build ops/s at the 2.5M-op checkpoint")
+    eq(ops_trt_2_5m, 5335, "B1-v2 frozen: treatment build ops/s at the 2.5M-op checkpoint")
+    ops_ratio = ops_trt_2_5m / ops_ctl_2_5m
+    close(ops_ratio, 2.098, 0.001,
+          "B1-v2 frozen: build ops/s ratio (treatment/control) at 2.5M ops -- "
+          "observation only, no claim attached (per the record's own note)")
+
+    # --- B1(b): commitcost phase deciles / p50, K=512 default + K-sweep ---
+    b1b = raw["b1b"]["raw"]
+
+    def decile_ratio(rep: dict, field: str) -> float:
+        return rep["last_decile_us"][field] / rep["first_decile_us"][field]
+
+    def median_decile(reps: list, field: str) -> float:
+        return statistics.median(decile_ratio(r, field) for r in reps)
+
+    eq(len(b1b["control"]), 3, "B1-v2: control commitcost has 3 reps")
+    eq(len(b1b["treatment"]), 3, "B1-v2: treatment commitcost has 3 reps")
+    eq(len(b1b["treatment_k128"]), 1, "B1-v2: K=128 sweep is 1 rep")
+    eq(len(b1b["treatment_k1024"]), 1, "B1-v2: K=1024 sweep is 1 rep")
+
+    manifest_decile_ctl = median_decile(b1b["control"], "manifest_us")
+    manifest_decile_trt = median_decile(b1b["treatment"], "manifest_us")
+    total_decile_ctl = median_decile(b1b["control"], "total_us")
+    total_decile_trt = median_decile(b1b["treatment"], "total_us")
+
+    close(manifest_decile_ctl, 1.115, 0.001,
+          "B1-v2 frozen: control manifest_us decile ratio (median of 3 reps)")
+    close(manifest_decile_trt, 1.079, 0.001,
+          "B1-v2 frozen: treatment manifest_us decile ratio (median of 3 reps)")
+    close(total_decile_ctl, 1.733, 0.001,
+          "B1-v2 frozen: control engine-commit total_us decile ratio (median of 3 reps)")
+    close(total_decile_trt, 1.674, 0.001,
+          "B1-v2 frozen: treatment engine-commit total_us decile ratio (median of 3 reps)")
+
+    meas_decile = manifest["measurements"]["commitcost_decile"]
+    md = meas_decile["manifest_us_first_last_decile_ratio"]
+    td = meas_decile["engine_commit_total_us_first_last_decile_ratio"]
+    close(manifest_decile_ctl, md["control_median"], 0.001,
+          "B1-v2: recomputed control manifest_us decile matches manifest's own median")
+    close(manifest_decile_trt, md["treatment_median"], 0.001,
+          "B1-v2: recomputed treatment manifest_us decile matches manifest's own median")
+    close(total_decile_ctl, td["control_median"], 0.001,
+          "B1-v2: recomputed control total_us decile matches manifest's own median")
+    close(total_decile_trt, td["treatment_median"], 0.001,
+          "B1-v2: recomputed treatment total_us decile matches manifest's own median")
+
+    manifest_decile_k128 = decile_ratio(b1b["treatment_k128"][0], "manifest_us")
+    manifest_decile_k1024 = decile_ratio(b1b["treatment_k1024"][0], "manifest_us")
+    close(manifest_decile_k128, 1.068, 0.001,
+          "B1-v2 frozen: treatment K=128 manifest_us decile ratio (1 rep)")
+    close(manifest_decile_k1024, 1.150, 0.001,
+          "B1-v2 frozen: treatment K=1024 manifest_us decile ratio (1 rep)")
+
+    p50_ctl = statistics.median(r["phase_p50_us"]["total_us"] for r in b1b["control"])
+    p50_trt = statistics.median(r["phase_p50_us"]["total_us"] for r in b1b["treatment"])
+    eq(p50_ctl, 5430, "B1-v2 frozen: control engine-commit p50 total_us (median of 3 reps)")
+    eq(p50_trt, 5478, "B1-v2 frozen: treatment engine-commit p50 total_us (median of 3 reps)")
+
+    meas_p50 = manifest["measurements"]["commitcost_p50"]
+    eq(p50_ctl, meas_p50["control_median_us"],
+       "B1-v2: recomputed control p50 matches manifest's own field")
+    eq(p50_trt, meas_p50["treatment_median_us"],
+       "B1-v2: recomputed treatment p50 matches manifest's own field")
+
+    p50_paired = p50_trt / p50_ctl
+    close(p50_paired, 1.009, 0.001, "B1-v2 frozen: p50 paired ratio treatment/control")
+    close(p50_paired, meas_p50["paired_ratio_treatment_over_control"], 0.001,
+          "B1-v2: recomputed p50 paired ratio matches manifest's own field")
+
+    # --- B1(c): cold/warm chain-open at G~10k ---
+    b1c = raw["b1c"]["authoritative"]
+    ctl_open = b1c["control_open_ms"]
+    trt_open = b1c["treatment_open_ms"]
+    eq(len(ctl_open), 3, "B1-v2: control cold-open reps")
+    eq(len(trt_open), 3, "B1-v2: treatment cold-open reps")
+    ctl_open_med = statistics.median(ctl_open)
+    trt_open_med = statistics.median(trt_open)
+    close(ctl_open_med, 2247.9, 0.05, "B1-v2 frozen: control cold-open median, ms")
+    close(trt_open_med, 1705.3, 0.05, "B1-v2 frozen: treatment cold-open median, ms")
+
+    meas_open = manifest["measurements"]["chain_open_cold_warm"]
+    close(ctl_open_med, meas_open["control_median_ms"], 0.05,
+          "B1-v2: recomputed control open median matches manifest's own field")
+    close(trt_open_med, meas_open["treatment_median_ms"], 0.05,
+          "B1-v2: recomputed treatment open median matches manifest's own field")
+
+    open_paired = trt_open_med / ctl_open_med
+    close(open_paired, 0.76, 0.005,
+          "B1-v2 frozen: cold-open paired ratio treatment/control")
+
+    ctl_generation = b1c["control_generation"]
+    trt_generation = b1c["treatment_generation"]
+    eq(ctl_generation, 10759, "B1-v2 frozen: control chain-open generation (G)")
+    eq(trt_generation, 11029, "B1-v2 frozen: treatment chain-open generation (G)")
+
+    # The checkpoint-load vs. delta-replay component split was not measured:
+    # NativeAdapter() is a single opaque constructor with no internal phase
+    # timer exposed to Python (unlike the commit path's phase_p50_us).
+    # Assert the record says so honestly rather than silently treating a
+    # missing split as zero.
+    require(b1c["component_breakdown"] is None,
+            "B1-v2: component_breakdown is genuinely absent (flagged), not fabricated")
+
+    # --- emit macros ---
+    m.add("osdiB1v2ControlCommit", ctl_commit[:7],
+          f"{relpath(B1_V2_MANIFEST)}: config.control_commit, short sha")
+    m.add("osdiB1v2TreatmentCommit", trt_commit[:7],
+          f"{relpath(B1_V2_MANIFEST)}: config.treatment_commit, short sha")
+
+    m.add("osdiB1v2BytesControlMB", f"{bytes_ctl / 1e6:.1f}",
+          f"{relpath(B1_V2_RAW)}: b1a.control.manifest_bytes_at_stop, decimal MB")
+    m.add("osdiB1v2BytesTreatmentMB", f"{bytes_trt / 1e6:.1f}",
+          f"{relpath(B1_V2_RAW)}: b1a.treatment.manifest_bytes_at_stop, decimal MB")
+    m.add("osdiB1v2BytesPaired", f"{bytes_paired:.3f}",
+          f"{relpath(B1_V2_RAW)}: b1a.treatment.manifest_bytes_at_stop / "
+          "b1a.control.manifest_bytes_at_stop")
+    m.add("osdiB1v2SegmentBytesControlMB", f"{seg_ctl / 1e6:.1f}",
+          f"{relpath(B1_V2_RAW)}: b1a.control.segment_bytes_at_stop, decimal MB")
+    m.add("osdiB1v2SegmentBytesTreatmentMB", f"{seg_trt / 1e6:.1f}",
+          f"{relpath(B1_V2_RAW)}: b1a.treatment.segment_bytes_at_stop, decimal MB")
+
+    m.add("osdiB1v2ManifestDecileControl", f"{manifest_decile_ctl:.3f}",
+          f"{relpath(B1_V2_RAW)}: b1b.raw.control[*].last_decile_us.manifest_us / "
+          "[*].first_decile_us.manifest_us, median over 3 reps")
+    m.add("osdiB1v2ManifestDecileTreatment", f"{manifest_decile_trt:.3f}",
+          f"{relpath(B1_V2_RAW)}: b1b.raw.treatment[*].last_decile_us.manifest_us / "
+          "[*].first_decile_us.manifest_us, median over 3 reps")
+    m.add("osdiB1v2ManifestDecileK128", f"{manifest_decile_k128:.3f}",
+          f"{relpath(B1_V2_RAW)}: b1b.raw.treatment_k128[0].last_decile_us.manifest_us / "
+          "first_decile_us.manifest_us (1 rep)")
+    m.add("osdiB1v2ManifestDecileK1024", f"{manifest_decile_k1024:.3f}",
+          f"{relpath(B1_V2_RAW)}: b1b.raw.treatment_k1024[0].last_decile_us.manifest_us / "
+          "first_decile_us.manifest_us (1 rep)")
+
+    m.add("osdiB1v2TotalDecileControl", f"{total_decile_ctl:.3f}",
+          f"{relpath(B1_V2_RAW)}: b1b.raw.control[*].last_decile_us.total_us / "
+          "[*].first_decile_us.total_us, median over 3 reps")
+    m.add("osdiB1v2TotalDecileTreatment", f"{total_decile_trt:.3f}",
+          f"{relpath(B1_V2_RAW)}: b1b.raw.treatment[*].last_decile_us.total_us / "
+          "[*].first_decile_us.total_us, median over 3 reps")
+
+    m.add("osdiB1v2P50ControlMs", f"{p50_ctl / 1000:.3f}",
+          f"{relpath(B1_V2_RAW)}: b1b.raw.control[*].phase_p50_us.total_us, "
+          "median over 3 reps, /1000, ms")
+    m.add("osdiB1v2P50TreatmentMs", f"{p50_trt / 1000:.3f}",
+          f"{relpath(B1_V2_RAW)}: b1b.raw.treatment[*].phase_p50_us.total_us, "
+          "median over 3 reps, /1000, ms")
+    m.add("osdiB1v2P50Paired", f"{p50_paired:.3f}",
+          f"{relpath(B1_V2_RAW)}: median(treatment[*].phase_p50_us.total_us) / "
+          "median(control[*].phase_p50_us.total_us)")
+
+    m.add("osdiB1v2OpenControlMs", f"{ctl_open_med:.1f}",
+          f"{relpath(B1_V2_RAW)}: median(b1c.authoritative.control_open_ms), 3 reps, ms")
+    m.add("osdiB1v2OpenTreatmentMs", f"{trt_open_med:.1f}",
+          f"{relpath(B1_V2_RAW)}: median(b1c.authoritative.treatment_open_ms), 3 reps, ms")
+    m.add("osdiB1v2OpenPaired", f"{open_paired:.2f}",
+          f"{relpath(B1_V2_RAW)}: median(b1c.authoritative.treatment_open_ms) / "
+          "median(b1c.authoritative.control_open_ms)")
+    m.add("osdiB1v2OpenControlGeneration", tex_num(ctl_generation),
+          f"{relpath(B1_V2_RAW)}: b1c.authoritative.control_generation")
+    m.add("osdiB1v2OpenTreatmentGeneration", tex_num(trt_generation),
+          f"{relpath(B1_V2_RAW)}: b1c.authoritative.treatment_generation")
+
+    m.add("osdiB1v2BuildOpsPerSecRatioAt2p5M", f"{ops_ratio:.2f}",
+          f"{relpath(B1_V2_RAW)}: b1a.treatment.ops_series[-1][1] (5335) / "
+          "b1a.control.ops_series[-1][1] (2543), build ops/s at the 2.5M-op "
+          "checkpoint -- observation only, no claim attached")
+
+    m.add("osdiB1v2OpenComponentStatus", "not computed",
+          f"{relpath(B1_V2_RAW)}: b1c.authoritative.component_breakdown is null -- "
+          "NativeAdapter() exposes no internal phase timer to split checkpoint-load "
+          "from delta-replay (text macro, not a number -- see "
+          "b1c.authoritative.component_breakdown_note)")
 
 
 # --------------------------------------------------------------------------
@@ -1738,6 +1990,7 @@ def main() -> int:
     m = Macros()
     compute_c1(m)
     compute_c3(m)
+    compute_b1_v2(m)
     compute_c4(m)
     compute_c5(m)
     compute_c6(m)
