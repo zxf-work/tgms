@@ -521,3 +521,133 @@ def test_emit_rows_decode_arithmetic_matches_uid_to_ldbc_id_on_every_uid_column(
             assert decoded_row[name] == uid_to_ldbc_id(raw_uid)
             expect_tag = tag_hierarchy.get(int(raw_uid) % HIERARCHY_STRIDE, "?")
             assert decoded_row[f"{name}__hierarchy"] == expect_tag
+
+
+# ==========================================================================
+# 7. `rows_digest` — per-plan row-level digest, additive to the campaign
+#    record (`scripts/tgir_ldbc_sf1.py`, companion to `--emit-rows`)
+# ==========================================================================
+
+def _run_fixture_plan(store: Any, plan_id: str) -> tuple[dict[str, Any], dict[str, Any]]:
+    from tgms.tgir.execute import run_plan
+    from tgms.tgir.loader import load
+
+    document, params = _bind_fixture_plan(plan_id)
+    root = load(document)
+    envelope = run_plan(root, store.adapter, tt_source=store, limit=1000,
+                        plan_id=plan_id)
+    return envelope, params
+
+
+def _build_tmp_fixture_store(tmp_path: Path) -> Any:
+    """A fresh, tiny fixture store built into `tmp_path` — no dependency on
+    `stores/ldbc-fixture` existing in the checkout (disk-tight laptop
+    policy: experiments run remote, the laptop keeps only code and tiny
+    local tests)."""
+    import build_ldbc_fixture as F
+    from tgms.temporal.algebra import ensure_all_registered
+
+    ensure_all_registered()
+    return F.build(tmp_path / "store")
+
+
+def test_rows_digest_is_permutation_invariant_only_for_order_free_templates():
+    """`ROWS_DIGEST_RULE`, on synthetic rows: an order-free template's digest
+    must not depend on the order the engine happened to return rows in, but
+    a template with a declared `order_by` must be sensitive to it — an
+    ordering regression is exactly what the ordered branch exists to catch.
+    """
+    rows = [{"a": 1, "b": "x"}, {"a": 2, "b": "y"}, {"a": 3, "b": "z"}]
+    shuffled = [rows[2], rows[0], rows[1]]
+
+    d_free = T.compute_rows_digest(rows, order_free=True)
+    d_free_shuffled = T.compute_rows_digest(shuffled, order_free=True)
+    assert d_free == d_free_shuffled
+
+    d_ordered = T.compute_rows_digest(rows, order_free=False)
+    d_ordered_shuffled = T.compute_rows_digest(shuffled, order_free=False)
+    assert d_ordered != d_ordered_shuffled
+
+
+def test_rows_digest_is_sensitive_to_a_one_row_change():
+    base = [{"a": 1, "b": "x"}, {"a": 2, "b": "y"}]
+    changed = [{"a": 1, "b": "x"}, {"a": 2, "b": "z"}]
+    for order_free in (True, False):
+        assert (T.compute_rows_digest(base, order_free=order_free)
+               != T.compute_rows_digest(changed, order_free=order_free))
+
+
+def test_is_order_free_reads_sort_keys_yaml_and_resolves_v2_aliases():
+    """Pinned against the real `sort_keys.yaml`, not a fixture copy — a
+    silently-added `ORDER BY` on a previously order-free template (or vice
+    versa) is exactly the kind of drift `rows_digest`'s rule depends on
+    catching."""
+    assert T._is_order_free("BI11") is True         # order_by: []
+    assert T._is_order_free("IS1") is True           # order_by: []
+    assert T._is_order_free("BI3") is False          # declared order_by
+    assert T._is_order_free("BI6.v2") is False       # alias of BI6, ordered
+    assert T._is_order_free("NOT-A-REAL-PLAN") is True  # unknown -> order-free
+
+
+def test_rows_digest_stable_across_two_runs_against_a_tmp_fixture_store(tmp_path):
+    """A tmp fixture store with two small plans — one ordered (IS2), one
+    order-free (BI11) — run twice each. `rows_digest` must agree run over
+    run, and must actually be a sha256 hex digest."""
+    store = _build_tmp_fixture_store(tmp_path)
+    try:
+        for plan_id in ("IS2", "BI11"):
+            order_free = T._is_order_free(plan_id)
+            env1, _ = _run_fixture_plan(store, plan_id)
+            env2, _ = _run_fixture_plan(store, plan_id)
+            _, rows1 = T.decode_rows(env1)
+            _, rows2 = T.decode_rows(env2)
+            d1 = T.compute_rows_digest(rows1, order_free=order_free)
+            d2 = T.compute_rows_digest(rows2, order_free=order_free)
+            assert d1 == d2, plan_id
+            assert len(d1) == 64 and all(c in "0123456789abcdef" for c in d1)
+    finally:
+        store.close()
+
+
+def test_rows_digest_against_a_tmp_fixture_store_changes_with_the_rows(tmp_path):
+    """Same store, same plan (IS2, ordered) — mutating one decoded row (as a
+    stand-in for a genuine result change) must change the digest, exercised
+    against a real run's decoded rows rather than only hand-built dicts."""
+    store = _build_tmp_fixture_store(tmp_path)
+    try:
+        envelope, _ = _run_fixture_plan(store, "IS2")
+    finally:
+        store.close()
+    _, rows = T.decode_rows(envelope)
+    assert rows, "IS2 against the tmp fixture returned no rows"
+    baseline = T.compute_rows_digest(rows, order_free=False)
+
+    mutated = [dict(r) for r in rows]
+    first_key = next(iter(mutated[0]))
+    mutated[0][first_key] = "mutated-sentinel-value"
+    assert T.compute_rows_digest(mutated, order_free=False) != baseline
+
+
+def test_emit_rows_output_is_directly_readable_by_ldbc_compare(tmp_path):
+    """`--emit-rows`'s file shape (`write_rows_export`) is what
+    `ldbc_compare.py --sort-keys` reads on both the TGMS and the reference
+    side (module docstring). Comparing the export against itself must be a
+    clean, complete agreement — proof the file loads and the schema/rows
+    shape round-trips through `compare_plan`, not just through `json.loads`.
+    """
+    store = _build_tmp_fixture_store(tmp_path)
+    try:
+        envelope, params = _run_fixture_plan(store, "IS2")
+    finally:
+        store.close()
+    path = T.write_rows_export(tmp_path, "IS2", envelope, params,
+                               "fixture-test", "test-commit")
+    doc = json.loads(path.read_text())
+
+    sort_keys = C.lookup_sort_keys(C.load_sort_keys(T.SORT_KEYS_PATH), "IS2")
+    verdict = C.compare_plan("IS2", doc, doc, None, sort_keys)
+
+    assert verdict["both_sides_completed"] is True
+    assert verdict["compared"] == len(doc["rows"]) > 0
+    assert verdict["disagreeing"] == 0
+    assert verdict["verdict"] == "agreeing"
