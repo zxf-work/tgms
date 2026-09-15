@@ -45,6 +45,20 @@ def test_dry_run_manifest_conforms_to_result_manifest_schema(tmp_path):
     jsonschema.Draft202012Validator(schema).validate(manifest)
 
 
+def test_dry_run_dev_host_note_is_none_unless_flag_given(tmp_path):
+    """`dev_host_note` must not be a silent hard-coded default -- it is
+    `None` unless a caller explicitly passes `--dev-host-note` (here,
+    `run_dry`'s `dev_host_note` kwarg standing in for that flag), while
+    `provenance` is always present regardless."""
+    manifest = OVERLOAD.run_dry(tmp_path)
+    assert manifest["dev_host_note"] is None
+    assert manifest["provenance"]
+
+    noted = OVERLOAD.run_dry(tmp_path, dev_host_note="dev host, functional check only")
+    assert noted["dev_host_note"] == "dev host, functional check only"
+    assert noted["provenance"]
+
+
 def test_dry_run_exercises_the_concurrency_gate(tmp_path):
     """With `max_concurrent=2` and two open-loop clients hammering the
     router, at least one call in the sweep should observe more than zero
