@@ -25,7 +25,14 @@ skeleton --
       B1-v2, manifest format 3 -- the reader torn-tail fix -- vs. the pinned
       format-2 soak engine; ``osdiB1v2*`` macros stand beside the v1-era
       ``osdiManifest*`` ones without overwriting them; no verdict macro --
-      scoring is the coordinator's, per the internal freeze doc)
+      scoring is the coordinator's, per the internal freeze doc) and
+      benchmarks/results-v1/b1-manifest-co7-chain-open-2026-09{,-raw}.json
+      (Lane P-CO7's chain-open re-measurement on a confirmed-quiet host,
+      treatment ``ebe1dc2``; ``osdiB1co7*`` macros stand beside the v2e-era
+      ``osdiB1v2e*`` ones without overwriting them; the two
+      ``osdiB1WorstPhaseOpen*`` macros are arithmetic on the co7 per-delta
+      costs projected to K-1=511 deltas, labelled as such, not a
+      measurement; no verdict macro here either)
   C4  benchmarks/results-v1/b2-version-history-ab-2026-09{,-raw}.json
   C5  benchmarks/results-v1/eval-readers-10m-2026-09.json
   C6  benchmarks/freshness-v1/trials-{full,fixture}.json (M4 record of
@@ -101,6 +108,7 @@ import json
 import re
 import statistics
 import sys
+from decimal import ROUND_HALF_UP, Decimal
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
@@ -115,6 +123,9 @@ B1_V2_RAW = ROOT / "benchmarks" / "results-v1" / "b1-manifest-v2-ab-2026-09-raw.
 
 B1_V2E_MANIFEST = ROOT / "benchmarks" / "results-v1" / "b1-manifest-v2e-remeasure-2026-09.json"
 B1_V2E_RAW = ROOT / "benchmarks" / "results-v1" / "b1-manifest-v2e-remeasure-2026-09-raw.json"
+
+B1_CO7_MANIFEST = ROOT / "benchmarks" / "results-v1" / "b1-manifest-co7-chain-open-2026-09.json"
+B1_CO7_RAW = ROOT / "benchmarks" / "results-v1" / "b1-manifest-co7-chain-open-2026-09-raw.json"
 
 B2_SUMMARY = ROOT / "benchmarks" / "results-v1" / "b2-version-history-ab-2026-09.json"
 B2_RAW = ROOT / "benchmarks" / "results-v1" / "b2-version-history-ab-2026-09-raw.json"
@@ -230,6 +241,18 @@ def relpath(p: Path) -> str:
         return str(p.relative_to(ROOT))
     except ValueError:
         return str(p)
+
+
+def us_to_ms_str(us: int, ndigits: int) -> str:
+    """Format an integer-microsecond figure as milliseconds with exact
+    decimal rounding. ``f"{us / 1000:.{ndigits}f}"`` looks equivalent but is
+    not: a binary float can't represent an exact half like 5935/1000 ==
+    5.935, so it may land a hair below the tie and round the wrong way
+    (5.93 instead of 5.94). Decimal division on the exact integer input
+    rounds the true half correctly."""
+    ms = Decimal(int(us)) / Decimal(1000)
+    quant = Decimal(1).scaleb(-ndigits)
+    return str(ms.quantize(quant, rounding=ROUND_HALF_UP))
 
 
 def tex_num(n: int) -> str:
@@ -961,6 +984,252 @@ def compute_b1_v2e(m: Macros) -> None:
           f"{relpath(B1_V2E_RAW)}: cell_b_commitcost.control_reps_full[*]."
           "first_decile_us.manifest_bytes, constant across 3 reps -- the format-2 "
           "byte size the v2 A/B's treatment reps actually matched")
+
+
+# --------------------------------------------------------------------------
+# C3 (cont.) --- Lane P-CO7: chain-open re-measurement on a confirmed-quiet
+# host (same v2e B1(c) cell, treatment ebe1dc2, re-run because the v2e lane's
+# control open time was confounded by a concurrent tar backup). Every
+# component figure below is a per-field median recomputed from the raw
+# record's 3-rep ``open_phase_us`` array, cross-checked against that same
+# record's own precomputed ``open_phase_p50_us`` aggregate and against the
+# summary manifest's own quoted fields -- never read off either aggregate
+# without first recomputing it from the reps underneath.
+# --------------------------------------------------------------------------
+
+def compute_b1_co7(m: Macros) -> None:
+    manifest = json.loads(B1_CO7_MANIFEST.read_text(encoding="utf-8"))
+    raw_bytes = B1_CO7_RAW.read_bytes()
+    raw = json.loads(raw_bytes)
+
+    # digest-check: same discipline as B1-v2e -- result_digest is sha256 of
+    # the raw records file's own bytes, recomputed from the file this module
+    # actually reads, not copied from either document.
+    recomputed_digest = hashlib.sha256(raw_bytes).hexdigest()
+    eq(recomputed_digest, manifest["result_digest"],
+       f"{relpath(B1_CO7_RAW)}: sha256(raw file bytes) matches the summary "
+       f"manifest's ({relpath(B1_CO7_MANIFEST)}) own result_digest")
+
+    trt_commit = manifest["git_commit"]
+    eq(trt_commit, raw["treatment_commit"],
+       "P-CO7: manifest's git_commit matches the raw record's own treatment_commit")
+    eq(trt_commit, "ebe1dc2", "P-CO7 frozen: treatment commit")
+
+    ca = raw["cell_a_chain_open"]
+    trt, ctl = ca["treatment"], ca["control"]
+    meas_ca = manifest["measurements"]["cell_a_chain_open"]
+
+    reps = trt["open_phase_us"]
+    eq(len(reps), 3, "P-CO7: treatment chain-open has 3 reps")
+
+    def med(field: str) -> float:
+        return statistics.median(r[field] for r in reps)
+
+    checkpoint_us = med("checkpoint_read_parse_us")
+    merkle_us = med("merkle_verify_us")
+    state_build_us = med("state_build_us")
+    delta_replay_us = med("delta_replay_us")
+    dictionary_us = med("dictionary_open_us")
+    total_us = med("total_us")
+
+    eq(checkpoint_us, 12670, "P-CO7 frozen: checkpoint_read_parse_us (median of 3 reps)")
+    eq(merkle_us, 34858, "P-CO7 frozen: merkle_verify_us (median of 3 reps)")
+    eq(state_build_us, 5935, "P-CO7 frozen: state_build_us (median of 3 reps)")
+    eq(delta_replay_us, 6256, "P-CO7 frozen: delta_replay_us (median of 3 reps)")
+    eq(dictionary_us, 1092729, "P-CO7 frozen: dictionary_open_us (median of 3 reps)")
+    eq(total_us, 1155032, "P-CO7 frozen: open total_us (median of 3 reps)")
+
+    # cross-check the recomputed per-field medians against the raw record's
+    # own precomputed open_phase_p50_us aggregate
+    p50 = trt["open_phase_p50_us"]
+    eq(checkpoint_us, p50["checkpoint_read_parse_us"],
+       "P-CO7: recomputed checkpoint_read_parse_us matches raw record's own open_phase_p50_us")
+    eq(merkle_us, p50["merkle_verify_us"],
+       "P-CO7: recomputed merkle_verify_us matches raw record's own open_phase_p50_us")
+    eq(state_build_us, p50["state_build_us"],
+       "P-CO7: recomputed state_build_us matches raw record's own open_phase_p50_us")
+    eq(delta_replay_us, p50["delta_replay_us"],
+       "P-CO7: recomputed delta_replay_us matches raw record's own open_phase_p50_us")
+    eq(dictionary_us, p50["dictionary_open_us"],
+       "P-CO7: recomputed dictionary_open_us matches raw record's own open_phase_p50_us")
+    eq(total_us, p50["total_us"],
+       "P-CO7: recomputed open total_us matches raw record's own open_phase_p50_us")
+
+    # ... and against the summary manifest's own quoted fields
+    eq(checkpoint_us, meas_ca["treatment_checkpoint_read_parse_us_median"],
+       "P-CO7: recomputed checkpoint_read_parse_us matches manifest's own field")
+    eq(merkle_us, meas_ca["treatment_merkle_verify_us_median"],
+       "P-CO7: recomputed merkle_verify_us matches manifest's own field")
+    eq(state_build_us, meas_ca["treatment_state_build_us_median"],
+       "P-CO7: recomputed state_build_us matches manifest's own field")
+    eq(delta_replay_us, meas_ca["treatment_delta_replay_us_median"],
+       "P-CO7: recomputed delta_replay_us matches manifest's own field")
+    eq(dictionary_us, meas_ca["treatment_dictionary_open_us_median"],
+       "P-CO7: recomputed dictionary_open_us matches manifest's own field")
+    eq(total_us, meas_ca["treatment_total_us_median"],
+       "P-CO7: recomputed open total_us matches manifest's own field")
+
+    component_us = checkpoint_us + merkle_us + state_build_us + delta_replay_us
+    eq(component_us, 59719, "P-CO7: recomputed manifest-chain component "
+       "(checkpoint+merkle+state_build+delta_replay) sums to 59,719 us")
+    eq(component_us, ca["manifest_chain_component_us_treatment_median"]["sum_us"],
+       "P-CO7: recomputed component sum matches raw record's own sum_us field")
+    eq(component_us, meas_ca["treatment_manifest_chain_component_us_median_sum"],
+       "P-CO7: recomputed component sum matches manifest's own field")
+
+    # delta_count is constant across reps (K=512 checkpoint cadence)
+    delta_counts = {r["delta_count"] for r in reps}
+    eq(delta_counts, {388}, "P-CO7 frozen: every treatment rep's delta_count is 388")
+    delta_count = next(iter(delta_counts))
+
+    trt_generation = trt["generation"]
+    eq(trt_generation, 10116, "P-CO7 frozen: treatment chain-open generation (G)")
+    eq(trt_generation, meas_ca["treatment_generation"],
+       "P-CO7: recomputed treatment generation matches manifest's own field")
+
+    checkpoint_generation = trt_generation - delta_count
+    eq(checkpoint_generation, 9728,
+       "P-CO7: recomputed checkpoint generation (generation - delta_count)")
+    require(checkpoint_generation % 512 == 0,
+            "P-CO7: checkpoint generation is a multiple of K=512, consistent with the "
+            "chain's checkpoint cadence")
+
+    state_build_per_delta_us = state_build_us / delta_count
+    delta_replay_per_delta_us = delta_replay_us / delta_count
+    close(state_build_per_delta_us, 15.3, 0.05,
+          "P-CO7 frozen: state_build_us / delta_count (us/delta)")
+    close(delta_replay_per_delta_us, 16.1, 0.05,
+          "P-CO7 frozen: delta_replay_us / delta_count (us/delta)")
+
+    # --- control ---
+    ctl_generation = ctl["generation"]
+    eq(ctl_generation, 10042, "P-CO7 frozen: control chain-open generation (G)")
+    eq(ctl_generation, meas_ca["control_generation"],
+       "P-CO7: recomputed control generation matches manifest's own field")
+
+    ctl_reps_ms = ctl["open_ms"]
+    eq(len(ctl_reps_ms), 3, "P-CO7: control chain-open has 3 reps")
+    ctl_open_ms = statistics.median(ctl_reps_ms)
+    close(ctl_open_ms, 10100.238, 0.001,
+          "P-CO7 frozen: control open_ms (median of 3 reps)")
+    eq(ctl_open_ms, ctl["open_ms_median"],
+       "P-CO7: recomputed control open_ms median matches raw record's own field")
+    close(ctl_open_ms, meas_ca["control_open_ms_median_wallclock"], 0.001,
+          "P-CO7: recomputed control open_ms matches manifest's own field")
+
+    require(ctl["component_breakdown"] is not None
+            and "not available" in ctl["component_breakdown"],
+            "P-CO7: control component_breakdown is genuinely absent (flagged), "
+            "not fabricated -- the pinned control engine predates open_phase_us()")
+
+    ctl_delta_count = ctl_generation % 512
+    eq(ctl_delta_count, 314, "P-CO7: recomputed control delta_count (control_generation mod K=512)")
+
+    # control has no phase breakdown; the treatment's measured dictionary-open
+    # time is used only as an *estimate* of the control's own dictionary-open
+    # cost (both arms open the same dictionary format) to back out an
+    # approximate per-delta manifest-chain cost for the control arm. This is
+    # explicitly an estimate built from one measured term and one measured
+    # total, not a second independent measurement.
+    dictionary_ms = dictionary_us / 1000
+    ctl_per_delta_ms = (ctl_open_ms - dictionary_ms) / ctl_delta_count
+    close(ctl_per_delta_ms, 28.7, 0.05,
+          "P-CO7 frozen: estimated control per-delta manifest-chain cost "
+          "((control open_ms - treatment's measured dictionary_open_ms estimate) / "
+          "control delta_count)")
+
+    open_ratio = (total_us / 1000) / ctl_open_ms
+    close(open_ratio, 0.114, 0.001,
+          "P-CO7 frozen: treatment/control open ratio (treatment total_us/1000 / "
+          "control open_ms)")
+    close(open_ratio, meas_ca["total_open_ratio_treatment_over_control"], 0.001,
+          "P-CO7: recomputed open ratio matches manifest's own field")
+
+    # --- derived (not measurements): projected worst-phase open cost at
+    # K-1=511 deltas, the last generation before the next checkpoint reset --
+    # arithmetic on the measured per-delta costs above, clearly not itself a
+    # measurement.
+    worst_phase_deltas = 511
+    worst_phase_open_trt_ms = (
+        checkpoint_us / 1000 + merkle_us / 1000
+        + (state_build_per_delta_us + delta_replay_per_delta_us) * worst_phase_deltas / 1000
+    )
+    close(worst_phase_open_trt_ms, 63.6, 0.1,
+          "P-CO7 derived (arithmetic, not measured): projected treatment manifest-chain "
+          "open at K-1=511 deltas (checkpoint_ms + merkle_ms + "
+          "(state_build_per_delta_us + delta_replay_per_delta_us) * 511 / 1000)")
+
+    worst_phase_open_ctl_s = ctl_per_delta_ms * worst_phase_deltas / 1000
+    close(worst_phase_open_ctl_s, 14.7, 0.1,
+          "P-CO7 derived (arithmetic, not measured): projected control manifest-chain "
+          "open at K-1=511 deltas (estimated control per-delta cost * 511 / 1000)")
+
+    # --- emit macros ---
+    m.add("osdiB1co7TreatmentCommit", trt_commit,
+          f"{relpath(B1_CO7_MANIFEST)}: git_commit")
+
+    m.add("osdiB1co7CheckpointReadParseMs", us_to_ms_str(checkpoint_us, 2),
+          f"{relpath(B1_CO7_RAW)}: median(cell_a_chain_open.treatment.open_phase_us[*]."
+          "checkpoint_read_parse_us) over 3 reps, /1000, ms")
+    m.add("osdiB1co7MerkleVerifyMs", us_to_ms_str(merkle_us, 2),
+          f"{relpath(B1_CO7_RAW)}: median(cell_a_chain_open.treatment.open_phase_us[*]."
+          "merkle_verify_us) over 3 reps, /1000, ms")
+    m.add("osdiB1co7StateBuildMs", us_to_ms_str(state_build_us, 2),
+          f"{relpath(B1_CO7_RAW)}: median(cell_a_chain_open.treatment.open_phase_us[*]."
+          "state_build_us) over 3 reps, /1000, ms")
+    m.add("osdiB1co7DeltaReplayMs", us_to_ms_str(delta_replay_us, 2),
+          f"{relpath(B1_CO7_RAW)}: median(cell_a_chain_open.treatment.open_phase_us[*]."
+          "delta_replay_us) over 3 reps, /1000, ms")
+    m.add("osdiB1co7ComponentMs", us_to_ms_str(component_us, 2),
+          f"{relpath(B1_CO7_RAW)}: checkpoint_read_parse_us + merkle_verify_us + "
+          "state_build_us + delta_replay_us (each median of 3 reps), /1000, ms -- "
+          "asserted equal to the raw record's own manifest_chain_component_us_treatment_"
+          "median.sum_us")
+    m.add("osdiB1co7DictionaryOpenMs", us_to_ms_str(dictionary_us, 1),
+          f"{relpath(B1_CO7_RAW)}: median(cell_a_chain_open.treatment.open_phase_us[*]."
+          "dictionary_open_us) over 3 reps, /1000, ms -- dominates the open")
+    m.add("osdiB1co7TotalMs", us_to_ms_str(total_us, 1),
+          f"{relpath(B1_CO7_RAW)}: median(cell_a_chain_open.treatment.open_phase_us[*]."
+          "total_us) over 3 reps, /1000, ms")
+    m.add("osdiB1co7Generation", tex_num(trt_generation),
+          f"{relpath(B1_CO7_RAW)}: cell_a_chain_open.treatment.generation")
+    m.add("osdiB1co7DeltaCount", tex_num(delta_count),
+          f"{relpath(B1_CO7_RAW)}: cell_a_chain_open.treatment.open_phase_us[*]."
+          "delta_count, constant across 3 reps")
+    m.add("osdiB1co7CheckpointGeneration", tex_num(checkpoint_generation),
+          f"{relpath(B1_CO7_RAW)}: cell_a_chain_open.treatment.generation - delta_count "
+          "-- asserted a multiple of the K=512 checkpoint cadence")
+    m.add("osdiB1co7StateBuildPerDeltaUs", f"{state_build_per_delta_us:.1f}",
+          f"{relpath(B1_CO7_RAW)}: treatment state_build_us (median) / delta_count, "
+          "us/delta")
+    m.add("osdiB1co7DeltaReplayPerDeltaUs", f"{delta_replay_per_delta_us:.1f}",
+          f"{relpath(B1_CO7_RAW)}: treatment delta_replay_us (median) / delta_count, "
+          "us/delta")
+
+    m.add("osdiB1co7ControlOpenMs", f"{ctl_open_ms:.1f}",
+          f"{relpath(B1_CO7_RAW)}: median(cell_a_chain_open.control.open_ms) over 3 reps, ms")
+    m.add("osdiB1co7ControlGeneration", tex_num(ctl_generation),
+          f"{relpath(B1_CO7_RAW)}: cell_a_chain_open.control.generation")
+    m.add("osdiB1co7ControlDeltaCount", tex_num(ctl_delta_count),
+          f"{relpath(B1_CO7_RAW)}: cell_a_chain_open.control.generation mod K=512 "
+          "-- the control engine predates open_phase_us() and reports no delta_count "
+          "of its own")
+    m.add("osdiB1co7ControlPerDeltaMs", f"{ctl_per_delta_ms:.1f}",
+          f"{relpath(B1_CO7_RAW)}: (control open_ms (median) - treatment's measured "
+          "dictionary_open_us/1000, used as an estimate of the control's own "
+          "dictionary-open cost) / control delta_count -- an estimate, not a second "
+          "independent measurement")
+    m.add("osdiB1co7OpenRatio", f"{open_ratio:.3f}",
+          f"{relpath(B1_CO7_RAW)}: (treatment total_us (median) / 1000) / control "
+          "open_ms (median)")
+
+    m.add("osdiB1WorstPhaseOpenTreatmentMs", f"{worst_phase_open_trt_ms:.1f}",
+          "derived, not measured: osdiB1co7CheckpointReadParseMs + osdiB1co7MerkleVerifyMs "
+          "+ (osdiB1co7StateBuildPerDeltaUs + osdiB1co7DeltaReplayPerDeltaUs) * 511 / 1000 "
+          "-- projected treatment manifest-chain open cost at K-1=511 deltas")
+    m.add("osdiB1WorstPhaseOpenControlS", f"{worst_phase_open_ctl_s:.1f}",
+          "derived, not measured: osdiB1co7ControlPerDeltaMs * 511 / 1000 -- projected "
+          "control manifest-chain open cost at K-1=511 deltas")
 
 
 # --------------------------------------------------------------------------
@@ -2632,6 +2901,7 @@ def main() -> int:
     compute_b1_v2(m)
     _void_b1_v2_treatment_provenance(m)
     compute_b1_v2e(m)
+    compute_b1_co7(m)
     compute_c4(m)
     compute_c5(m)
     compute_c6(m)
