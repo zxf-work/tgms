@@ -1,0 +1,748 @@
+{
+  "lane": "B1-v2e remeasure (2026-09-15) -- cells (a) chain-open component split and (b) commit-cost phase attribution, unscorable in the B1-v2 A/B",
+  "treatment_commit": "e5d4171",
+  "control_commit": "886805f600bcb447cb0bff16d432a796ba732339",
+  "preconditions": {
+    "checked_utc": "2026-09-15T07:50:33Z to 2026-09-15T07:51:00Z",
+    "no_longevity_eval_bench_processes": true,
+    "osv_poller_pid_1457823_untouched": true,
+    "daily_loop_pid_1540052_untouched": true,
+    "disk_free_gb_mnt_project": 456,
+    "phase2_tar_running_at_baseline": false
+  },
+  "phase2_tar_backup": {
+    "note": "A phase-2 backup `tar xf` (pid 2184056) started at 2026-09-15T07:56Z, AFTER the baseline precondition check (07:50-07:51Z) and BEFORE every measurement in this record; it was still running (ps aux confirmed) at 08:08-08:09Z (cell b, both arms), 08:10-08:12Z (cell a treatment), and ~08:16-08:22Z (cell a control). It was not stopped -- allowed per the lane brief -- but is recorded here because cell (a) control's open time is anomalously high relative to the prior clean-baseline B1-v2 A/B (10.4s vs 2.2s median) and I/O contention from this backup is the leading suspect, not a claim.",
+    "running_during_cell_a_treatment": true,
+    "running_during_cell_a_control": true,
+    "running_during_cell_b_both_arms": true
+  },
+  "cell_a_chain_open": {
+    "setup": "scripts/build_snb_store.py --backend native --batch 250 --compact-every 0 --digest manifest --write-path assert, csv=ldbc-sf1 initial_snapshot, killed at the 2,500,000 ops log line; 3 reps per arm, back-to-back in one process, immediately after store generation (process-cold first rep, warm thereafter)",
+    "treatment": {
+      "named_phase_us_share_of_total_median": 0.9997,
+      "open_ms": [
+        1191.91,
+        1573.893,
+        1167.679
+      ],
+      "open_ms_median": 1191.91,
+      "open_phase_p50_us": {
+        "chain_format": 3,
+        "checkpoint_read_parse_us": 42124,
+        "delta_count": 125,
+        "delta_replay_us": 2899,
+        "dictionary_open_us": 1066460,
+        "merkle_verify_us": 40204,
+        "other_us": 388,
+        "state_build_us": 1828,
+        "total_us": 1191773
+      },
+      "open_phase_us": [
+        {
+          "chain_format": 3,
+          "checkpoint_read_parse_us": 75754,
+          "delta_count": 125,
+          "delta_replay_us": 2899,
+          "dictionary_open_us": 1066460,
+          "merkle_verify_us": 44114,
+          "other_us": 704,
+          "state_build_us": 1842,
+          "total_us": 1191773
+        },
+        {
+          "chain_format": 3,
+          "checkpoint_read_parse_us": 41233,
+          "delta_count": 125,
+          "delta_replay_us": 465074,
+          "dictionary_open_us": 1024917,
+          "merkle_verify_us": 40204,
+          "other_us": 368,
+          "state_build_us": 1801,
+          "total_us": 1573597
+        },
+        {
+          "chain_format": 3,
+          "checkpoint_read_parse_us": 42124,
+          "delta_count": 125,
+          "delta_replay_us": 2663,
+          "dictionary_open_us": 1081122,
+          "merkle_verify_us": 39214,
+          "other_us": 388,
+          "state_build_us": 1828,
+          "total_us": 1167339
+        }
+      ],
+      "reps": 3,
+      "store": "/mnt/project/xzhang/tgms/tmp/b1v2e-work/treatment-store",
+      "generation": 10365
+    },
+    "control": {
+      "store": "/mnt/project/xzhang/tgms/tmp/b1v2e-work/control-store",
+      "method": "NativeAdapter(store/'native') construction wall-clock only -- control engine (886805f) has no open_phase_us(); same corrected method the v2 A/B used for its authoritative b1c figures",
+      "reps": 3,
+      "open_ms": [
+        9620.406,
+        10365.634,
+        10428.464
+      ],
+      "open_ms_median": 10365.634,
+      "generation": 10052,
+      "component_breakdown": "not available -- pinned format-2 engine predates open_phase_us(); flagged, not fabricated"
+    },
+    "manifest_chain_component_us_treatment_median": {
+      "checkpoint_read_parse_us": 42124,
+      "merkle_verify_us": 40204,
+      "state_build_us": 1828,
+      "delta_replay_us": 2899,
+      "sum_us": 87055
+    }
+  },
+  "cell_b_commitcost": {
+    "setup": "scripts/eval_concurrency.py commitcost --seed-rows 100000 --commits 300 --batch-sizes 1, K=512 (treatment default, unset TGMS_MANIFEST_CHECKPOINT_EVERY), 3 reps per arm, same seed-by-row-index method both arms",
+    "treatment_reps_full": [
+      {
+        "batch_rows": 1,
+        "commits": 300,
+        "commit_ms": {
+          "n": 300,
+          "p50": 4.124,
+          "p90": 4.651,
+          "p99": 5.502,
+          "min": 3.564,
+          "max": 174.641
+        },
+        "ms_per_row": 4.124,
+        "phase_p50_us": {
+          "apply_us": 377,
+          "capture_us": 0,
+          "closes_us": 0,
+          "current_us": 808,
+          "delta_build_us": 39,
+          "dict_us": 390,
+          "digest_us": 19,
+          "manifest_bytes": 1595,
+          "manifest_checkpoint": 0,
+          "manifest_us": 738,
+          "python_wrap_us": 3,
+          "seal_us": 1216,
+          "segments_named": 305,
+          "stats_us": 0,
+          "total_us": 3265,
+          "wal_us": 432,
+          "write_us": 4124
+        },
+        "first_decile_us": {
+          "apply_us": 289,
+          "capture_us": 0,
+          "closes_us": 0,
+          "current_us": 816,
+          "delta_build_us": 42,
+          "dict_us": 389,
+          "digest_us": 19,
+          "manifest_bytes": 1592,
+          "manifest_checkpoint": 0,
+          "manifest_us": 729,
+          "python_wrap_us": 3,
+          "seal_us": 1197,
+          "segments_named": 35,
+          "stats_us": 0,
+          "total_us": 3261,
+          "wal_us": 434,
+          "write_us": 4050
+        },
+        "last_decile_us": {
+          "apply_us": 470,
+          "capture_us": 0,
+          "closes_us": 0,
+          "current_us": 810,
+          "delta_build_us": 37,
+          "dict_us": 395,
+          "digest_us": 18,
+          "manifest_bytes": 1595,
+          "manifest_checkpoint": 0,
+          "manifest_us": 748,
+          "python_wrap_us": 3,
+          "seal_us": 1228,
+          "segments_named": 575,
+          "stats_us": 0,
+          "total_us": 3277,
+          "wal_us": 432,
+          "write_us": 4236
+        },
+        "phase_decile_first_us": {
+          "apply_us": 5902.066666666667,
+          "capture_us": 0.13333333333333333,
+          "closes_us": 0.0,
+          "current_us": 875.0666666666667,
+          "delta_build_us": 38.96666666666667,
+          "dict_us": 419.7,
+          "digest_us": 18.466666666666665,
+          "manifest_bytes": 1591.4333333333334,
+          "manifest_checkpoint": 0.0,
+          "manifest_us": 769.4333333333333,
+          "python_wrap_us": 3.1,
+          "seal_us": 1268.1,
+          "segments_named": 35.0,
+          "stats_us": 0.0,
+          "total_us": 3422.1666666666665,
+          "wal_us": 552.4666666666667,
+          "write_us": 9916.366666666667
+        },
+        "phase_decile_last_us": {
+          "apply_us": 481.6333333333333,
+          "capture_us": 0.3333333333333333,
+          "closes_us": 0.0,
+          "current_us": 842.6,
+          "delta_build_us": 39.766666666666666,
+          "dict_us": 406.3666666666667,
+          "digest_us": 18.9,
+          "manifest_bytes": 1595.0,
+          "manifest_checkpoint": 0.0,
+          "manifest_us": 799.9,
+          "python_wrap_us": 3.6333333333333333,
+          "seal_us": 1257.2666666666667,
+          "segments_named": 575.0,
+          "stats_us": 0.0,
+          "total_us": 3396.266666666667,
+          "wal_us": 443.03333333333336,
+          "write_us": 4362.666666666667
+        },
+        "residual_first_us": 32.3,
+        "residual_last_us": 31.133333333333333,
+        "store_bytes": 16491443,
+        "dir_entries_first": {
+          "seg": 6,
+          "manifests": 4
+        },
+        "dir_entries_last": {
+          "seg": 604,
+          "manifests": 303
+        },
+        "build_info": {
+          "profile": "release",
+          "opt_level": "3",
+          "engine_version": "0.8.0",
+          "debug_assertions": false,
+          "manifest_format_version": 3
+        }
+      },
+      {
+        "batch_rows": 1,
+        "commits": 300,
+        "commit_ms": {
+          "n": 300,
+          "p50": 4.274,
+          "p90": 4.855,
+          "p99": 19.995,
+          "min": 3.368,
+          "max": 293.91
+        },
+        "ms_per_row": 4.274,
+        "phase_p50_us": {
+          "apply_us": 395,
+          "capture_us": 0,
+          "closes_us": 0,
+          "current_us": 844,
+          "delta_build_us": 38,
+          "dict_us": 406,
+          "digest_us": 19,
+          "manifest_bytes": 1595,
+          "manifest_checkpoint": 0,
+          "manifest_us": 768,
+          "python_wrap_us": 3,
+          "seal_us": 1242,
+          "segments_named": 305,
+          "stats_us": 0,
+          "total_us": 3365,
+          "wal_us": 435,
+          "write_us": 4274
+        },
+        "first_decile_us": {
+          "apply_us": 316,
+          "capture_us": 0,
+          "closes_us": 0,
+          "current_us": 843,
+          "delta_build_us": 40,
+          "dict_us": 393,
+          "digest_us": 19,
+          "manifest_bytes": 1592,
+          "manifest_checkpoint": 0,
+          "manifest_us": 744,
+          "python_wrap_us": 3,
+          "seal_us": 1208,
+          "segments_named": 35,
+          "stats_us": 0,
+          "total_us": 3334,
+          "wal_us": 438,
+          "write_us": 4150
+        },
+        "last_decile_us": {
+          "apply_us": 461,
+          "capture_us": 0,
+          "closes_us": 0,
+          "current_us": 843,
+          "delta_build_us": 35,
+          "dict_us": 411,
+          "digest_us": 17,
+          "manifest_bytes": 1595,
+          "manifest_checkpoint": 0,
+          "manifest_us": 776,
+          "python_wrap_us": 3,
+          "seal_us": 1261,
+          "segments_named": 575,
+          "stats_us": 0,
+          "total_us": 3422,
+          "wal_us": 428,
+          "write_us": 4424
+        },
+        "phase_decile_first_us": {
+          "apply_us": 5578.033333333334,
+          "capture_us": 0.2,
+          "closes_us": 0.0,
+          "current_us": 886.4333333333333,
+          "delta_build_us": 36.2,
+          "dict_us": 413.3,
+          "digest_us": 16.8,
+          "manifest_bytes": 1591.4333333333334,
+          "manifest_checkpoint": 0.0,
+          "manifest_us": 766.9666666666667,
+          "python_wrap_us": 3.1333333333333333,
+          "seal_us": 1198.9666666666667,
+          "segments_named": 35.0,
+          "stats_us": 0.0,
+          "total_us": 3353.9,
+          "wal_us": 443.1,
+          "write_us": 9414.166666666666
+        },
+        "phase_decile_last_us": {
+          "apply_us": 480.8333333333333,
+          "capture_us": 0.2,
+          "closes_us": 0.0,
+          "current_us": 887.3666666666667,
+          "delta_build_us": 38.5,
+          "dict_us": 431.93333333333334,
+          "digest_us": 18.366666666666667,
+          "manifest_bytes": 1595.0,
+          "manifest_checkpoint": 0.0,
+          "manifest_us": 790.2666666666667,
+          "python_wrap_us": 3.433333333333333,
+          "seal_us": 1292.5333333333333,
+          "segments_named": 575.0,
+          "stats_us": 0.0,
+          "total_us": 3489.1666666666665,
+          "wal_us": 438.6,
+          "write_us": 4449.066666666667
+        },
+        "residual_first_us": 35.03333333333333,
+        "residual_last_us": 30.0,
+        "store_bytes": 16491441,
+        "dir_entries_first": {
+          "seg": 6,
+          "manifests": 4
+        },
+        "dir_entries_last": {
+          "seg": 604,
+          "manifests": 303
+        },
+        "build_info": {
+          "profile": "release",
+          "opt_level": "3",
+          "engine_version": "0.8.0",
+          "debug_assertions": false,
+          "manifest_format_version": 3
+        }
+      },
+      {
+        "batch_rows": 1,
+        "commits": 300,
+        "commit_ms": {
+          "n": 300,
+          "p50": 4.274,
+          "p90": 4.839,
+          "p99": 6.704,
+          "min": 3.414,
+          "max": 158.007
+        },
+        "ms_per_row": 4.2745,
+        "phase_p50_us": {
+          "apply_us": 385,
+          "capture_us": 0,
+          "closes_us": 0,
+          "current_us": 851,
+          "delta_build_us": 39,
+          "dict_us": 391,
+          "digest_us": 19,
+          "manifest_bytes": 1595,
+          "manifest_checkpoint": 0,
+          "manifest_us": 775,
+          "python_wrap_us": 3,
+          "seal_us": 1255,
+          "segments_named": 305,
+          "stats_us": 0,
+          "total_us": 3378,
+          "wal_us": 439,
+          "write_us": 4274
+        },
+        "first_decile_us": {
+          "apply_us": 303,
+          "capture_us": 0,
+          "closes_us": 0,
+          "current_us": 850,
+          "delta_build_us": 42,
+          "dict_us": 384,
+          "digest_us": 20,
+          "manifest_bytes": 1592,
+          "manifest_checkpoint": 0,
+          "manifest_us": 760,
+          "python_wrap_us": 3,
+          "seal_us": 1212,
+          "segments_named": 35,
+          "stats_us": 0,
+          "total_us": 3311,
+          "wal_us": 445,
+          "write_us": 4134
+        },
+        "last_decile_us": {
+          "apply_us": 445,
+          "capture_us": 0,
+          "closes_us": 0,
+          "current_us": 850,
+          "delta_build_us": 37,
+          "dict_us": 395,
+          "digest_us": 18,
+          "manifest_bytes": 1595,
+          "manifest_checkpoint": 0,
+          "manifest_us": 781,
+          "python_wrap_us": 3,
+          "seal_us": 1254,
+          "segments_named": 575,
+          "stats_us": 0,
+          "total_us": 3368,
+          "wal_us": 436,
+          "write_us": 4288
+        },
+        "phase_decile_first_us": {
+          "apply_us": 5405.933333333333,
+          "capture_us": 0.4666666666666667,
+          "closes_us": 0.0,
+          "current_us": 986.3,
+          "delta_build_us": 38.93333333333333,
+          "dict_us": 468.43333333333334,
+          "digest_us": 18.4,
+          "manifest_bytes": 1591.4333333333334,
+          "manifest_checkpoint": 0.0,
+          "manifest_us": 887.0333333333333,
+          "python_wrap_us": 3.2,
+          "seal_us": 1220.9333333333334,
+          "segments_named": 35.0,
+          "stats_us": 0.0,
+          "total_us": 3652.3333333333335,
+          "wal_us": 461.6333333333333,
+          "write_us": 9560.566666666668
+        },
+        "phase_decile_last_us": {
+          "apply_us": 460.76666666666665,
+          "capture_us": 0.1,
+          "closes_us": 0.0,
+          "current_us": 873.1,
+          "delta_build_us": 39.2,
+          "dict_us": 419.96666666666664,
+          "digest_us": 18.133333333333333,
+          "manifest_bytes": 1595.0,
+          "manifest_checkpoint": 0.0,
+          "manifest_us": 837.4,
+          "python_wrap_us": 3.3333333333333335,
+          "seal_us": 1310.1333333333334,
+          "segments_named": 575.0,
+          "stats_us": 0.0,
+          "total_us": 3528.0333333333333,
+          "wal_us": 449.0,
+          "write_us": 4477.0
+        },
+        "residual_first_us": 31.833333333333332,
+        "residual_last_us": 30.0,
+        "store_bytes": 16491430,
+        "dir_entries_first": {
+          "seg": 6,
+          "manifests": 4
+        },
+        "dir_entries_last": {
+          "seg": 604,
+          "manifests": 303
+        },
+        "build_info": {
+          "profile": "release",
+          "opt_level": "3",
+          "engine_version": "0.8.0",
+          "debug_assertions": false,
+          "manifest_format_version": 3
+        }
+      }
+    ],
+    "control_reps_full": [
+      {
+        "batch_rows": 1,
+        "commits": 300,
+        "commit_ms": {
+          "n": 300,
+          "p50": 5.373,
+          "p90": 6.705,
+          "p99": 11.046,
+          "min": 3.378,
+          "max": 147.063
+        },
+        "ms_per_row": 5.3725,
+        "phase_p50_us": {
+          "apply_us": 207,
+          "closes_us": 0,
+          "current_us": 793,
+          "dict_us": 376,
+          "manifest_bytes": 1568,
+          "manifest_checkpoint": 0,
+          "manifest_us": 740,
+          "seal_us": 1017,
+          "segments_named": 305,
+          "stats_us": 0,
+          "total_us": 4776,
+          "wal_us": 366,
+          "write_us": 5372
+        },
+        "first_decile_us": {
+          "apply_us": 235,
+          "closes_us": 0,
+          "current_us": 809,
+          "dict_us": 377,
+          "manifest_bytes": 1565,
+          "manifest_checkpoint": 0,
+          "manifest_us": 723,
+          "seal_us": 1068,
+          "segments_named": 35,
+          "stats_us": 0,
+          "total_us": 3496,
+          "wal_us": 398,
+          "write_us": 4227
+        },
+        "last_decile_us": {
+          "apply_us": 238,
+          "closes_us": 0,
+          "current_us": 791,
+          "dict_us": 377,
+          "manifest_bytes": 1568,
+          "manifest_checkpoint": 0,
+          "manifest_us": 751,
+          "seal_us": 1017,
+          "segments_named": 575,
+          "stats_us": 0,
+          "total_us": 6017,
+          "wal_us": 358,
+          "write_us": 6662
+        },
+        "store_bytes": 16483242
+      },
+      {
+        "batch_rows": 1,
+        "commits": 300,
+        "commit_ms": {
+          "n": 300,
+          "p50": 5.287,
+          "p90": 6.626,
+          "p99": 9.339,
+          "min": 3.451,
+          "max": 160.317
+        },
+        "ms_per_row": 5.2875,
+        "phase_p50_us": {
+          "apply_us": 210,
+          "closes_us": 0,
+          "current_us": 791,
+          "dict_us": 361,
+          "manifest_bytes": 1568,
+          "manifest_checkpoint": 0,
+          "manifest_us": 737,
+          "seal_us": 1014,
+          "segments_named": 305,
+          "stats_us": 0,
+          "total_us": 4678,
+          "wal_us": 367,
+          "write_us": 5287
+        },
+        "first_decile_us": {
+          "apply_us": 257,
+          "closes_us": 0,
+          "current_us": 821,
+          "dict_us": 370,
+          "manifest_bytes": 1565,
+          "manifest_checkpoint": 0,
+          "manifest_us": 735,
+          "seal_us": 1102,
+          "segments_named": 35,
+          "stats_us": 0,
+          "total_us": 3532,
+          "wal_us": 409,
+          "write_us": 4188
+        },
+        "last_decile_us": {
+          "apply_us": 239,
+          "closes_us": 0,
+          "current_us": 789,
+          "dict_us": 362,
+          "manifest_bytes": 1568,
+          "manifest_checkpoint": 0,
+          "manifest_us": 746,
+          "seal_us": 1017,
+          "segments_named": 575,
+          "stats_us": 0,
+          "total_us": 5990,
+          "wal_us": 362,
+          "write_us": 6618
+        },
+        "store_bytes": 16483253
+      },
+      {
+        "batch_rows": 1,
+        "commits": 300,
+        "commit_ms": {
+          "n": 300,
+          "p50": 5.303,
+          "p90": 6.527,
+          "p99": 7.652,
+          "min": 3.469,
+          "max": 161.228
+        },
+        "ms_per_row": 5.3025,
+        "phase_p50_us": {
+          "apply_us": 206,
+          "closes_us": 0,
+          "current_us": 793,
+          "dict_us": 375,
+          "manifest_bytes": 1568,
+          "manifest_checkpoint": 0,
+          "manifest_us": 736,
+          "seal_us": 1011,
+          "segments_named": 305,
+          "stats_us": 0,
+          "total_us": 4704,
+          "wal_us": 365,
+          "write_us": 5302
+        },
+        "first_decile_us": {
+          "apply_us": 252,
+          "closes_us": 0,
+          "current_us": 823,
+          "dict_us": 377,
+          "manifest_bytes": 1565,
+          "manifest_checkpoint": 0,
+          "manifest_us": 739,
+          "seal_us": 1100,
+          "segments_named": 35,
+          "stats_us": 0,
+          "total_us": 3567,
+          "wal_us": 414,
+          "write_us": 4274
+        },
+        "last_decile_us": {
+          "apply_us": 231,
+          "closes_us": 0,
+          "current_us": 789,
+          "dict_us": 377,
+          "manifest_bytes": 1568,
+          "manifest_checkpoint": 0,
+          "manifest_us": 755,
+          "seal_us": 1014,
+          "segments_named": 575,
+          "stats_us": 0,
+          "total_us": 5979,
+          "wal_us": 360,
+          "write_us": 6622
+        },
+        "store_bytes": 16483266
+      }
+    ],
+    "treatment_summary": {
+      "first_decile_us_total_us_reps": [
+        3261,
+        3334,
+        3311
+      ],
+      "last_decile_us_total_us_reps": [
+        3277,
+        3422,
+        3368
+      ],
+      "first_decile_us_total_us_median": 3311,
+      "last_decile_us_total_us_median": 3368,
+      "phase_p50_us_total_us_reps": [
+        3265,
+        3365,
+        3378
+      ],
+      "phase_p50_us_total_us_median": 3365,
+      "phase_decile_first_us_total_us_reps": [
+        3422.1666666666665,
+        3353.9,
+        3652.3333333333335
+      ],
+      "phase_decile_last_us_total_us_reps": [
+        3396.266666666667,
+        3489.1666666666665,
+        3528.0333333333333
+      ],
+      "residual_first_us_reps": [
+        32.3,
+        35.03333333333333,
+        31.833333333333332
+      ],
+      "residual_last_us_reps": [
+        31.133333333333333,
+        30.0,
+        30.0
+      ],
+      "dir_entries_first": {
+        "seg": 6,
+        "manifests": 4
+      },
+      "dir_entries_last": {
+        "seg": 604,
+        "manifests": 303
+      },
+      "build_info": {
+        "profile": "release",
+        "opt_level": "3",
+        "engine_version": "0.8.0",
+        "debug_assertions": false,
+        "manifest_format_version": 3
+      }
+    },
+    "control_summary": {
+      "first_decile_us_total_us_reps": [
+        3496,
+        3532,
+        3567
+      ],
+      "last_decile_us_total_us_reps": [
+        6017,
+        5990,
+        5979
+      ],
+      "first_decile_us_total_us_median": 3532,
+      "last_decile_us_total_us_median": 5990,
+      "phase_p50_us_total_us_reps": [
+        4776,
+        4678,
+        4704
+      ],
+      "phase_p50_us_total_us_median": 4704,
+      "keys_available": [
+        "batch_rows",
+        "commit_ms",
+        "commits",
+        "first_decile_us",
+        "last_decile_us",
+        "ms_per_row",
+        "phase_p50_us",
+        "store_bytes"
+      ],
+      "note": "control (886805f) runs its own pinned eval_concurrency.py -- no phase_decile_first_us/last_us, residual_first_us/last_us, dir_entries_*, or build_info fields exist in this arm's harness"
+    }
+  }
+}

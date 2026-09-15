@@ -1,0 +1,7 @@
+# commitcost
+  build_info: {'profile': 'release', 'opt_level': '3', 'engine_version': '0.8.0', 'debug_assertions': False, 'manifest_format_version': 3}
+  batch=1     write p50     4.27 ms (4.2745 ms/row)
+      wal=0.44 apply=0.39 | engine 3.38 = seal 1.25 + dict 0.39 + manifest 0.78 + CURRENT 0.85
+      manifest 1,595 B naming 305 segs | growth first->last decile: write 4.13->4.29 ms, manifest 1,592->1,595 B
+      residual first->last decile (mean): 31.8->30.0 us | seg/ 6->604, manifests/ 4->303
+wrote /mnt/project/xzhang/tgms/tmp/b1v2e-work/treatment-commitcost-rep3.json

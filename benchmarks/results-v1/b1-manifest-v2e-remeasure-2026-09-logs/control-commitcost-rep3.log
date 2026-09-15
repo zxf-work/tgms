@@ -1,0 +1,5 @@
+# commitcost
+  batch=1     write p50     5.30 ms (5.3025 ms/row)
+      wal=0.36 apply=0.21 | engine 4.70 = seal 1.01 + dict 0.38 + manifest 0.74 + CURRENT 0.79
+      manifest 1,568 B naming 305 segs | growth first->last decile: write 4.27->6.62 ms, manifest 1,565->1,568 B
+wrote /mnt/project/xzhang/tgms/tmp/b1v2e-work/control-commitcost-rep3.json

@@ -1,0 +1,7 @@
+RUN_STARTED commit=e5d417100a52 csv=/mnt/project/xzhang/tgms/ldbc-sf1/bi-sf1-composite-merged-fk/graphs/csv/bi/composite-merged-fk/initial_snapshot out=/mnt/project/xzhang/tgms/tmp/b1v2e-work/treatment-store backend=native batch=250 compact_every=0 path=assert digest=manifest host=xzgpu
+assert — pass 1/2 nodes
+       500,000 ops     12,090 ops/s  (500,000 nodes / 0 edges; 0 compactions, 0s)
+     1,000,000 ops      9,254 ops/s  (1,000,000 nodes / 0 edges; 0 compactions, 0s)
+     1,500,000 ops      7,391 ops/s  (1,500,000 nodes / 0 edges; 0 compactions, 0s)
+     2,000,000 ops      6,107 ops/s  (2,000,000 nodes / 0 edges; 0 compactions, 0s)
+     2,500,000 ops      5,159 ops/s  (2,500,000 nodes / 0 edges; 0 compactions, 0s)
