@@ -78,6 +78,7 @@ def _run_all_landed(mod):
     mod.compute_c8(m)
     mod.compute_c7_dag(m)
     mod.compute_c7_r18(m)
+    mod.compute_c7_storm_v1(m)
     mod.compute_c7_storm_v2_probe(m)
     mod.compute_c7_storm_v2(m)
     mod.compute_d160(m)
@@ -210,6 +211,36 @@ FROZEN_LANDED_VALUES = {
     "osdiR18Speedup": "0.807",
     "osdiR18Precision": "8.51",
     "osdiR18AvoidedRecompute": "29.9",
+    "osdiStormV1Commit": "8962b78",
+    "osdiStormV1Cells": "36",
+    "osdiStormV1CellsFailed": "0",
+    "osdiStormV1FalseFreshTgmsCellsNonzero": "0",
+    "osdiStormV1SpeedupN1kSeed0": "1.938",
+    "osdiStormV1SpeedupSynthC1None": "1.895",
+    "osdiStormV1SpeedupSynthC1Deep": "1.908",
+    "osdiStormV1SpeedupSynthC3None": "1.933",
+    "osdiStormV1SpeedupSynthC3Deep": "1.939",
+    "osdiStormV1SpeedupSynthC4None": "1.788",
+    "osdiStormV1SpeedupSynthC4Deep": "1.756",
+    "osdiStormV1SpeedupCollegeMsgC1None": "2.333",
+    "osdiStormV1SpeedupCollegeMsgC1Deep": "2.304",
+    "osdiStormV1SpeedupCollegeMsgC3None": "2.382",
+    "osdiStormV1SpeedupCollegeMsgC3Deep": "2.427",
+    "osdiStormV1SpeedupCollegeMsgC4None": "2.325",
+    "osdiStormV1SpeedupCollegeMsgC4Deep": "2.151",
+    "osdiStormV1SpeedupGridMin": "1.742",
+    "osdiStormV1SpeedupGridMax": "2.558",
+    "osdiStormV1AvoidedDecisionC1Median": "0.309",
+    "osdiStormV1AvoidedDecisionC3Median": "0.312",
+    "osdiStormV1AvoidedDecisionC4Median": "0.312",
+    "osdiStormV1Batches": "720",
+    "osdiStormV1RowTouchFalseFreshMedian": "1.000",
+    "osdiStormV1EntityTouchFalseFreshMedian": "0.993",
+    "osdiStormV1WindowOverlapFalseFreshMedian": "0.189",
+    "osdiStormV1WindowOverlapNonzeroBatches": "258",
+    "osdiStormV1NewIdentityBatches": "195",
+    "osdiStormV1NewIdentityRowTouchMedian": "1.000",
+    "osdiStormV1P4ViolationCells": "0",
     "osdiStormV2ProbeCommit": "fdd393c",
     "osdiStormV2ProbeBatches": "5",
     "osdiStormV2ProbeWallS": "12{,}452.8",
@@ -364,7 +395,6 @@ def test_pending_macros_raise_a_latex_error_never_a_placeholder_number():
     expected_names = {
         "osdiTtfSpeedup", "osdiStormCells", "osdiStormFalseFresh",
         "osdiStormSpeedupN1k", "osdiStormAvoidedN1k",
-        "osdiStormV1SpeedupN1kSeed0",
         "osdiLdbcExpressible", "osdiLdbcExecuted", "osdiLdbcValidated",
         "osdiLiveDays", "osdiLiveAdvisories", "osdiLiveCorrections",
     }
@@ -386,7 +416,7 @@ def test_full_macro_set_has_no_duplicate_names_and_covers_every_skeleton_claim()
     mod.add_pending_stubs(m)
     names = [name for name, _, _ in m.items]
     assert len(names) == len(set(names)), "duplicate macro name"
-    assert len(names) == len(FROZEN_LANDED_VALUES) + 12
+    assert len(names) == len(FROZEN_LANDED_VALUES) + 11
 
 
 def test_cli_check_mode_agrees_with_committed_output(tmp_path):
@@ -912,6 +942,29 @@ def test_tampered_r18_probe_record_fails_the_frozen_speedup(tmp_path):
     mod.compute_c7_r18(m)
     assert mod.FAILURES, "a tampered ttf_ms must fail the cross-check against the record's " \
         "own summary.arms field and/or the frozen speedup range"
+
+
+def test_tampered_storm_v1_records_tarball_sha_mismatch_fails(tmp_path):
+    """Lane W2m: storm-v1-records-36-tasks.tar.gz holds the per-batch rows
+    the row-touch/entity-touch/window-overlap false-fresh medians (and the
+    new-identity-batch/P4 quantities) are computed from, never committed as
+    individual files. A single flipped byte in the tarball must fail the
+    frozen/README-quoted sha256 check before anything inside it is trusted
+    -- the same house rule already applied to the storm-v2 tarball above
+    and to every other whole-file digest in this module."""
+    mod = _load("osdi_paper_macros")
+    original = mod.STORM_V1_RECORDS_TARBALL.read_bytes()
+    tampered_bytes = bytearray(original)
+    tampered_bytes[-1] ^= 0xFF  # flip the last byte -- still a well-formed gzip trailer byte
+    tampered = tmp_path / "storm-v1-records-36-tasks.tar.gz"
+    tampered.write_bytes(bytes(tampered_bytes))
+    assert tampered.read_bytes() != original
+
+    mod.STORM_V1_RECORDS_TARBALL = tampered
+    m = mod.Macros()
+    mod.compute_c7_storm_v1(m)
+    assert mod.FAILURES, "a tampered tarball byte must fail the sha256 check"
+    assert any("sha256" in f.lower() or "records tarball" in f.lower() for f in mod.FAILURES)
 
 
 def test_tampered_storm_v2_probe_record_digest_mismatch_fails(tmp_path):

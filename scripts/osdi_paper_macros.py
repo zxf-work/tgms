@@ -65,24 +65,36 @@ skeleton --
       (+ each one's -rows.jsonl) -- the DAG-phase v1/v2/v3 grids, all 40/40
       cells each -- and benchmarks/storm-v1/storm-r18-probe-2026-09.json
       (+ -rows.jsonl) -- the N=10,000 c1 seed-0 R-18 characterization probe,
-      5/5 batches, not wall-capped. The main correction-storm cell grid
-      (addendum-1's 36-cell grid, ``storm-campaign-2026-09.json``) that the
-      pre-D-161-rollout P5/P6 end-to-end speedup claims (at N=1,000) would
-      have depended on has **not** landed -- 12/36 cells complete, 24
-      blocked on an iTiger disk-quota incident (see
-      benchmarks/storm-v1/README.md) -- so those quantities stay PENDING
-      below (``osdiStormCells``/``osdiStormFalseFresh``/``osdiTtfSpeedup``/
-      ``osdiStormSpeedupN1k``/``osdiStormAvoidedN1k``/
-      ``osdiStormV1SpeedupN1kSeed0``) even though the DAG phase and the
-      R-18 probe are both fully landed and scored here. A *different*
-      36-cell grid -- the same (store x mix x age x seed) recipe, rerun
-      post-D-161-rollout under commit ``fdd393c`` (addendum-3,
-      ``storm-v2-main-grid-2026-09-15.json`` + its -rows.jsonl, job
-      212294) -- **has** landed; its macros are ``osdiStormV2*``
-      (``compute_c7_storm_v2`` below) and stand beside the still-PENDING
-      addendum-1 (v1) stubs above without overwriting or resolving them --
-      a v1/v2 speedup comparison is prose-only until addendum-1 itself
-      lands. The survivor-fraction/precision pair
+      5/5 batches, not wall-capped. An earlier attempt at the main
+      correction-storm cell grid (addendum-1, ``storm-campaign-2026-09.json``,
+      12/36 cells complete, 24 blocked on an iTiger disk-quota incident) was
+      never committed and stays a dead end -- its own quantities
+      (``osdiStormCells``/``osdiStormFalseFresh``/``osdiTtfSpeedup``/
+      ``osdiStormSpeedupN1k``/``osdiStormAvoidedN1k``) stay PENDING below,
+      unresolved by anything in this section, since no record under that
+      name ever landed. Addendum-1's grid itself since **has** landed under
+      a different name and seam (Lane W2m; ``storm-v1-main-grid-2026-09-15
+      .json`` + its -rows.jsonl, five submissions across the same quota
+      incident, 36/36 cells, commit ``8962b78``, pre-D-161-rollout) -- its
+      macros are ``osdiStormV1*`` (``compute_c7_storm_v1`` below), which
+      resolves the previously-PENDING ``osdiStormV1SpeedupN1kSeed0`` stub
+      with a value read from this record instead of from
+      benchmarks/storm-v1/README.md's prose. The v1-scoring quantities the
+      C6 pre-registration template asked for -- row-touch/entity-touch/
+      window-overlap false-fresh rates, the P4 (wall-avoided <
+      decision-avoided) check -- are per-cell aggregates (``Sum(false_fresh)
+      / Sum(changed_count)`` over each cell's own batches, then median
+      across cells) read from ``storm-v1-records-36-tasks.tar.gz``'s
+      per-batch rows, sha256-checked against README.md's own quoted value,
+      the same in-memory ``tarfile`` discipline as Lane W2l's v2 tarball
+      read below. A *different* 36-cell grid -- the same (store x mix x age
+      x seed) recipe, rerun post-D-161-rollout under commit ``fdd393c``
+      (addendum-3, ``storm-v2-main-grid-2026-09-15.json`` + its -rows.jsonl,
+      job 212294) -- **has** also landed; its macros are ``osdiStormV2*``
+      (``compute_c7_storm_v2`` below) and stand beside ``osdiStormV1*``
+      without overwriting or resolving them -- a v1/v2 speedup comparison
+      is prose-only (README.md's own two main-grid sections), never a
+      macro. The survivor-fraction/precision pair
       (``osdiStormV2SurvivorFractionC1Median``/``osdiStormV2PrecisionC1Median``)
       is a per-batch quantity (``candidate_survivors``/``changed_count``)
       that only the per-task ``-rows.jsonl`` sidecars carry, and those
@@ -235,6 +247,17 @@ STORM_V2_RECORDS_TARBALL = STORM_V1 / "storm-v2-records-36-tasks.tar.gz"
 # quotes this sha256 for the tarball; cross-checked against that quoted
 # text in compute_c7_storm_v2 below, not only frozen from a first read.
 STORM_V2_RECORDS_TARBALL_SHA256 = "f1acac9ed96a3fca8ea76aeba8657c6bced8d726244204a899ee6210a714ed0d"
+# Lane W2m: addendum-1's own 36-cell main grid (pre-D-161-rollout, commit
+# 8962b78), landed under this name -- a different file from the never-
+# committed storm-campaign-2026-09.json partial attempt add_pending_stubs
+# below still references.
+STORM_V1_MAIN_GRID = STORM_V1 / "storm-v1-main-grid-2026-09-15.json"
+STORM_V1_MAIN_GRID_ROWS = STORM_V1 / "storm-v1-main-grid-2026-09-15-rows.jsonl"
+STORM_V1_RECORDS_TARBALL = STORM_V1 / "storm-v1-records-36-tasks.tar.gz"
+# Lane W2m: benchmarks/storm-v1/README.md's own "storm-v1 main grid" section
+# quotes this sha256 for the tarball; cross-checked against that quoted
+# text in compute_c7_storm_v1 below, not only frozen from a first read.
+STORM_V1_RECORDS_TARBALL_SHA256 = "a5396d6ffba3b13bb57e2f2ed004a67ae2fdcd80a639e69efe7849f1d667ee63"
 
 D160_DIR = ROOT / "benchmarks" / "d160-collegemsg-v1"
 D160_MANIFEST = D160_DIR / "manifest-2026-09-14.json"
@@ -1916,6 +1939,399 @@ def compute_c7_r18(m: Macros) -> None:
     m.add("osdiR18AvoidedRecompute", f"{avoided_decision * 100:.1f}",
           f"{relpath(R18_PROBE_ROWS)}: 1 - sum(arms.tgms-L1.invalidated_count) / "
           "sum(n_registered) over the 5 batches, percent (== record's own summary field)")
+
+
+# --------------------------------------------------------------------------
+# C7 (partial) -- storm-v1 main grid (Lane W2m; addendum-1's 36-cell grid:
+# 2 stores x {c1,c3,c4} x {none,deep} x N=1,000 x seeds{0,1,2}, end-to-end
+# TTF only; commit 8962b78, pre-D-161-rollout):
+# benchmarks/storm-v1/storm-v1-main-grid-2026-09-15.json + -rows.jsonl. All
+# 36 cells landed, assembled from a five-job seam across an iTiger
+# disk-quota incident (README.md's "storm-v1 main grid" section, seam
+# table) -- provenance only, no verdict drawn from which job produced
+# which cell. `osdiStormV1*` macros mirror `osdiStormV2*`
+# (`compute_c7_storm_v2` below) exactly, on this pre-rollout grid instead
+# of the post-rollout rerun, resolving the `osdiStormV1SpeedupN1kSeed0`
+# stub that stood in add_pending_stubs below, and additionally landing the
+# v1-scoring quantities the C6 pre-registration template (README.md) asked
+# for -- the row-touch/entity-touch/window-overlap false-fresh rates and
+# the P4 (wall-avoided < decision-avoided) check -- which only the
+# per-task per-batch rows packed in storm-v1-records-36-tasks.tar.gz carry
+# (the merged grid's own per_cell table has only cell summaries, same
+# reason Lane W2l unpacked the v2 tarball for its own survivor-fraction/
+# precision pair below). Unlike storm-v2's rows, these rows carry no
+# `narrowing_coverage` block, so there is no v1 counterpart to
+# `osdiStormV2{AllTopTerms,NonComputeArtifacts}`.
+# --------------------------------------------------------------------------
+
+_STORM_V1_STORE_TOKEN = {"synth-iv-60k": "Synth", "collegemsg": "CollegeMsg"}
+_STORM_V1_MIX_TOKEN = {"c1": "C1", "c3": "C3", "c4": "C4"}
+_STORM_V1_AGE_TOKEN = {None: "None", "deep": "Deep"}
+
+
+def compute_c7_storm_v1(m: Macros) -> None:
+    merged = json.loads(STORM_V1_MAIN_GRID.read_text(encoding="utf-8"))
+    rows = load_jsonl(STORM_V1_MAIN_GRID_ROWS)
+
+    eq(merged["record"], relpath(STORM_V1_MAIN_GRID_ROWS),
+       f"storm-v1 main grid: {relpath(STORM_V1_MAIN_GRID)}'s own record field names its "
+       "rows.jsonl sidecar")
+    eq(len(rows), 36, "storm-v1 main grid: rows.jsonl line count")
+    eq(merged["total_tasks"], 36, "storm-v1 main grid: merged.total_tasks")
+    eq(merged["config"]["n_tasks"], 36, "storm-v1 main grid: merged.config.n_tasks")
+
+    # digest-check #1: result_digest is sha256 of every row's own
+    # (_task_id, result_digest), sorted by task id -- storm_campaign_merge.
+    # py's own result_digest() function, restated here rather than trusted.
+    canon = sorted(
+        ({"task_id": r.get("_task_id"), "result_digest": r.get("result_digest")} for r in rows),
+        key=lambda x: x["task_id"])
+    recomputed_result_digest = hashlib.sha256(
+        json.dumps(canon, sort_keys=True, separators=(",", ":")).encode()
+    ).hexdigest()
+    eq(recomputed_result_digest, merged["result_digest"],
+       f"storm-v1 main grid: sha256 over every {relpath(STORM_V1_MAIN_GRID_ROWS)} row's own "
+       f"(_task_id, result_digest), sorted by task_id, matches {relpath(STORM_V1_MAIN_GRID)}'s "
+       "own result_digest")
+
+    # digest-check #2: dataset.digest is sha256 of the campaign recipe
+    # (stores/mixes/ages/n_artifacts_list/n_seeds/base_seed/ttf_modes) --
+    # storm_campaign_merge.py's own dataset_digest() function.
+    cfg = merged["config"]
+    recipe = {"stores": cfg["stores"], "mixes": cfg["mixes"], "ages": cfg["ages"],
+              "n_artifacts_list": cfg["n_artifacts_list"], "n_seeds": cfg["n_seeds"],
+              "base_seed": cfg["base_seed"], "ttf_modes": cfg["ttf_modes"]}
+    recomputed_dataset_digest = hashlib.sha256(
+        json.dumps(recipe, sort_keys=True, separators=(",", ":")).encode()
+    ).hexdigest()
+    eq(merged["dataset"]["digest_kind"], "manifest", "storm-v1 main grid: dataset.digest_kind")
+    eq(recomputed_dataset_digest, merged["dataset"]["digest"],
+       f"storm-v1 main grid: sha256 of {relpath(STORM_V1_MAIN_GRID)}'s own config.{{stores,"
+       "mixes,ages,n_artifacts_list,n_seeds,base_seed,ttf_modes}} matches its dataset.digest")
+
+    commits = {r["git_commit"] for r in rows}
+    eq(len(commits), 1, "storm-v1 main grid: single git_commit across all 36 cells")
+    commit = next(iter(commits))
+    eq(commit, merged["git_commit"],
+       f"storm-v1 main grid: row git_commit matches {relpath(STORM_V1_MAIN_GRID)}'s own "
+       "git_commit")
+    eq(commit, "8962b78", "storm-v1 main grid frozen: engine commit (pre-D-161-rollout, the "
+       "same anchor the v1 DAG phase and v1 R-18 probe ran)")
+
+    addenda = {r["config"]["addendum_id"] for r in rows}
+    eq(addenda, {"storm-v1-addendum-1"},
+       "storm-v1 main grid frozen: single addendum_id across all 36 cells")
+    freezes = {r["config"]["freeze_sha256"] for r in rows}
+    eq(len(freezes), 1, "storm-v1 main grid: single freeze_sha256 across all 36 cells")
+    eq(next(iter(freezes)), cfg["freeze_sha256"],
+       f"storm-v1 main grid: row config.freeze_sha256 matches {relpath(STORM_V1_MAIN_GRID)}'s "
+       "own config.freeze_sha256")
+    eq(next(iter(freezes)),
+       "49613eb54e9d237c463f16a026fd28df9dc9cf4eb5887904be5706a710b61cb0",
+       "storm-v1 main grid frozen: freeze_sha256 (addendum-1)")
+
+    stores = sorted({r["config"]["store"] for r in rows})
+    mixes = sorted({r["config"]["mix"] for r in rows})
+    ages = sorted({r["config"]["age"] for r in rows}, key=lambda a: (a is None, a))
+    seeds = sorted({r["config"]["seed"] for r in rows})
+    n_artifacts_vals = {r["config"]["n_artifacts"] for r in rows}
+    eq(stores, ["collegemsg", "synth-iv-60k"], "storm-v1 main grid frozen: store axis")
+    eq(mixes, ["c1", "c3", "c4"], "storm-v1 main grid frozen: mix axis")
+    eq(ages, ["deep", None], "storm-v1 main grid frozen: age axis")
+    eq(seeds, [0, 1, 2], "storm-v1 main grid frozen: seed axis")
+    eq(n_artifacts_vals, {1000}, "storm-v1 main grid frozen: n_artifacts axis (N=1,000 "
+       "throughout)")
+    eq(len(stores) * len(mixes) * len(ages) * len(seeds), 36,
+       "storm-v1 main grid: 2 stores x 3 mixes x 2 ages x 3 seeds == 36 cells")
+
+    # Cross-check every row's cell-level gate outcome against the merged
+    # record's own per_cell entries -- G-S1/G-S2 recomputed straight from
+    # each row's own summary.arms/dag blocks, never trusted from the
+    # per_cell table or the top-level gates block without this (same
+    # discipline as compute_c7_storm_v2 below).
+    per_cell_by_id = {c["task_id"]: c for c in merged["per_cell"]}
+    eq(set(per_cell_by_id), {r["_task_id"] for r in rows},
+       "storm-v1 main grid: merged.per_cell task_ids match rows.jsonl _task_ids")
+    failing_cells: list[int] = []
+    ff_nonzero = 0
+    for r in rows:
+        tid = r["_task_id"]
+        cell = per_cell_by_id[tid]
+        arms = r["summary"]["arms"]
+        g_s1 = all(arms.get(arm, {}).get("false_fresh", 0) == 0
+                   for arm in ("tgms-L0", "tgms-L1") if arm in arms)
+        dag = r.get("dag")
+        g_s2 = True if dag is None else dag.get("cascade", {}).get("false_safe_count", 0) == 0
+        eq(g_s1, cell["g_s1_false_fresh_zero"],
+           f"storm-v1 main grid task {tid}: recomputed G-S1 matches merged.per_cell")
+        eq(g_s2, cell["g_s2_false_safe_zero"],
+           f"storm-v1 main grid task {tid}: recomputed G-S2 matches merged.per_cell")
+        if not (g_s1 and g_s2):
+            failing_cells.append(tid)
+        for arm in ("tgms-L0", "tgms-L1"):
+            if arms[arm]["false_fresh"] > 0:
+                ff_nonzero += 1
+
+    eq(failing_cells, [], "storm-v1 main grid: no cell recomputes to fail G-S1 or G-S2")
+    eq(merged["gates"]["g_s1_failing_cells"], [],
+       "storm-v1 main grid: merged.gates.g_s1_failing_cells is empty")
+    eq(merged["gates"]["g_s2_failing_cells"], [],
+       "storm-v1 main grid: merged.gates.g_s2_failing_cells is empty")
+    eq(ff_nonzero, 0, "storm-v1 main grid frozen: (cell, arm) pairs among tgms-L0/tgms-L1 "
+       "over all 36 cells (72 total) with false_fresh > 0")
+
+    def _speedup(r: dict) -> float:
+        arms = r["summary"]["arms"]
+        return arms["global-recompute"]["ttf_p50_ms"] / arms["tgms-L1"]["ttf_p50_ms"]
+
+    all_speedups = [_speedup(r) for r in rows]
+    grid_min, grid_max = min(all_speedups), max(all_speedups)
+    close(grid_min, 1.742, 0.001,
+          "storm-v1 main grid frozen: minimum per-cell speedup over all 36 cells")
+    close(grid_max, 2.558, 0.001,
+          "storm-v1 main grid frozen: maximum per-cell speedup over all 36 cells")
+
+    target = [r for r in rows if r["config"]["store"] == "synth-iv-60k"
+              and r["config"]["mix"] == "c1" and r["config"]["age"] is None
+              and r["config"]["seed"] == 0]
+    eq(len(target), 1, "storm-v1 main grid: exactly one cell at (synth-iv-60k, c1, age none, "
+       "seed 0)")
+    n1k_speedup = _speedup(target[0])
+    close(n1k_speedup, 1.938, 0.001, "storm-v1 main grid frozen: N=1,000 speedup at "
+          "synth-iv-60k/c1/age-none/seed-0 (global-recompute ttf_p50_ms / tgms-L1 ttf_p50_ms)")
+
+    groups: dict[tuple[str, str, str | None], list[dict]] = {}
+    for r in rows:
+        cfg_r = r["config"]
+        groups.setdefault((cfg_r["store"], cfg_r["mix"], cfg_r["age"]), []).append(r)
+    eq(len(groups), 12, "storm-v1 main grid: 12 distinct (store, mix, age) groups")
+
+    frozen_group_medians = {
+        ("synth-iv-60k", "c1", None): 1.895, ("synth-iv-60k", "c1", "deep"): 1.908,
+        ("synth-iv-60k", "c3", None): 1.933, ("synth-iv-60k", "c3", "deep"): 1.939,
+        ("synth-iv-60k", "c4", None): 1.788, ("synth-iv-60k", "c4", "deep"): 1.756,
+        ("collegemsg", "c1", None): 2.333, ("collegemsg", "c1", "deep"): 2.304,
+        ("collegemsg", "c3", None): 2.382, ("collegemsg", "c3", "deep"): 2.427,
+        ("collegemsg", "c4", None): 2.325, ("collegemsg", "c4", "deep"): 2.151,
+    }
+    eq(set(groups), set(frozen_group_medians), "storm-v1 main grid: (store, mix, age) group "
+       "keys match the frozen table")
+
+    per_group_median: dict[tuple[str, str, str | None], float] = {}
+    for key, grp in groups.items():
+        eq(sorted(g["config"]["seed"] for g in grp), [0, 1, 2],
+           f"storm-v1 main grid: group {key} covers seeds 0/1/2 exactly")
+        med = statistics.median(_speedup(g) for g in grp)
+        close(med, frozen_group_medians[key], 0.001,
+              f"storm-v1 main grid frozen: median speedup for {key}")
+        per_group_median[key] = med
+
+    # avoided-recomputation (decision) medians by mix, tgms-L1 -- median
+    # over each mix's 12 cells of the cell's own summary.arms.tgms-L1.
+    # avoided_recompute_decision (same per-cell aggregate compute_c7_storm_v2
+    # uses for its c1-only osdiStormV2AvoidedDecisionC1Median, generalized
+    # here to all three mixes per the C6 template's own per-mix prediction).
+    avoided_by_mix: dict[str, float] = {}
+    for mix in ("c1", "c3", "c4"):
+        mix_rows = [r for r in rows if r["config"]["mix"] == mix]
+        eq(len(mix_rows), 12, f"storm-v1 main grid: {mix}-mix cell count (2 stores x 2 ages "
+           "x 3 seeds)")
+        vals = [r["summary"]["arms"]["tgms-L1"]["avoided_recompute_decision"] for r in mix_rows]
+        avoided_by_mix[mix] = statistics.median(vals)
+    close(avoided_by_mix["c1"], 0.309, 0.001, "storm-v1 main grid frozen: median "
+          "summary.arms.tgms-L1.avoided_recompute_decision over the 12 c1-mix cells")
+    close(avoided_by_mix["c3"], 0.312, 0.001, "storm-v1 main grid frozen: median "
+          "summary.arms.tgms-L1.avoided_recompute_decision over the 12 c3-mix cells")
+    close(avoided_by_mix["c4"], 0.312, 0.001, "storm-v1 main grid frozen: median "
+          "summary.arms.tgms-L1.avoided_recompute_decision over the 12 c4-mix cells")
+
+    # P4 ("avoided recomputation (wall clock) < the decision count" --
+    # README.md's C6 pre-registration table): per cell, tgms-L1's
+    # avoided_recompute_wall must be strictly less than its
+    # avoided_recompute_decision (check cost is O(prefix), paid regardless
+    # of how many artifacts turn out invalidated). Counted, not asserted,
+    # since the C6 template records this as a prediction to score, not a
+    # gate -- the frozen count below is the coordinator's own scoring of
+    # it, restated here as an assertion the same way every other frozen
+    # number in this module is.
+    p4_violations = 0
+    for r in rows:
+        a = r["summary"]["arms"]["tgms-L1"]
+        if not (a["avoided_recompute_wall"] < a["avoided_recompute_decision"]):
+            p4_violations += 1
+    eq(p4_violations, 0, "storm-v1 main grid frozen: P4 violations (cells where tgms-L1's "
+       "avoided_recompute_wall is not < avoided_recompute_decision), of 36")
+
+    # --- v1-scoring quantities from the per-task per-batch rows packed in
+    # storm-v1-records-36-tasks.tar.gz (never committed as individual
+    # files -- see the module docstring's C7 section). sha256-checked
+    # before anything inside it is trusted, and that frozen constant is
+    # itself cross-checked against README.md's own quoted value, not just
+    # asserted from a first read (same discipline as the v2 tarball read
+    # in compute_c7_storm_v2 below).
+    readme_text = STORM_V1_README.read_text(encoding="utf-8")
+    readme_sha_match = re.search(
+        r"storm-v1-records-36-tasks\.tar\.gz`\s*\(sha256\s*\n?`([0-9a-f]{64})`\)", readme_text)
+    require(readme_sha_match is not None,
+            f"storm-v1 records tarball: {relpath(STORM_V1_README)} names a sha256 for "
+            "storm-v1-records-36-tasks.tar.gz in its storm-v1 main grid section")
+    if readme_sha_match is not None:
+        eq(readme_sha_match.group(1), STORM_V1_RECORDS_TARBALL_SHA256,
+           "storm-v1 records tarball: frozen sha256 constant matches "
+           f"{relpath(STORM_V1_README)}'s own quoted value")
+    eq(sha256_file(STORM_V1_RECORDS_TARBALL), STORM_V1_RECORDS_TARBALL_SHA256,
+       f"{relpath(STORM_V1_RECORDS_TARBALL)}: sha256 matches the frozen/README-quoted value")
+
+    # Per cell: Sum(false_fresh_count) / Sum(changed_count) over that
+    # cell's own 20 batches, for each of the three coarse baselines
+    # (row-touch/entity-touch/window-overlap) -- the freeze's own
+    # denominator. The reported quantity is the median of that per-cell
+    # ratio over the 36 cells; separately, the window-overlap
+    # "nonzero-batch" count and the new-identity-placement row-touch
+    # ratios are raw per-batch quantities pooled over all 720 batches
+    # (36 cells x 20 batches), not per-cell aggregates -- two different
+    # granularities read from the same 720 rows, both restated here rather
+    # than trusted from prose.
+    per_cell_row_touch_ratio: list[float] = []
+    per_cell_entity_touch_ratio: list[float] = []
+    per_cell_window_overlap_ratio: list[float] = []
+    window_overlap_nonzero_batches = 0
+    total_batches = 0
+    new_identity_row_touch_ratios: list[float] = []
+
+    with tarfile.open(STORM_V1_RECORDS_TARBALL, "r:gz") as tf:
+        tar_names = set(tf.getnames())
+        for r in rows:
+            tid = r["_task_id"]
+            idx = r["record"].index("records/")
+            member = r["record"][idx:]
+            require(member in tar_names,
+                    f"storm-v1 records tarball: task {tid}'s own record field names a member "
+                    f"({member}) present in the tarball")
+            raw = tf.extractfile(member).read().decode("utf-8")
+            batch_rows = [json.loads(line) for line in raw.splitlines() if line.strip()]
+            eq(len(batch_rows), r["config"]["batches"],
+               f"storm-v1 records tarball task {tid}: batch row count matches "
+               "config.batches")
+
+            cell_changed = 0
+            cell_row_ff = 0
+            cell_entity_ff = 0
+            cell_wo_ff = 0
+            for br in batch_rows:
+                total_batches += 1
+                changed_count = br["changed_count"]
+                row_ff = br["arms"]["row-touch"]["false_fresh_count"]
+                ent_ff = br["arms"]["entity-touch"]["false_fresh_count"]
+                wo_ff = br["arms"]["window-overlap"]["false_fresh_count"]
+                cell_changed += changed_count
+                cell_row_ff += row_ff
+                cell_entity_ff += ent_ff
+                cell_wo_ff += wo_ff
+                if wo_ff > 0:
+                    window_overlap_nonzero_batches += 1
+                if br["correction_placement"] == "new-identity" and changed_count > 0:
+                    new_identity_row_touch_ratios.append(row_ff / changed_count)
+
+            require(cell_changed > 0,
+                    f"storm-v1 records tarball task {tid}: at least one changed artifact "
+                    "across its 20 batches")
+            per_cell_row_touch_ratio.append(cell_row_ff / cell_changed)
+            per_cell_entity_touch_ratio.append(cell_entity_ff / cell_changed)
+            per_cell_window_overlap_ratio.append(cell_wo_ff / cell_changed)
+
+    eq(total_batches, 720, "storm-v1 records tarball: total per-batch rows over all 36 cells "
+       "(36 cells x 20 batches)")
+
+    row_touch_median = statistics.median(per_cell_row_touch_ratio)
+    entity_touch_median = statistics.median(per_cell_entity_touch_ratio)
+    window_overlap_median = statistics.median(per_cell_window_overlap_ratio)
+    close(row_touch_median, 1.000, 0.001, "storm-v1 main grid frozen: median per-cell "
+          "Sum(row-touch false_fresh_count) / Sum(changed_count) over the 36 cells")
+    close(entity_touch_median, 0.993, 0.001, "storm-v1 main grid frozen: median per-cell "
+          "Sum(entity-touch false_fresh_count) / Sum(changed_count) over the 36 cells")
+    close(window_overlap_median, 0.189, 0.001, "storm-v1 main grid frozen: median per-cell "
+          "Sum(window-overlap false_fresh_count) / Sum(changed_count) over the 36 cells")
+    eq(window_overlap_nonzero_batches, 258, "storm-v1 main grid frozen: batches (of 720) with "
+       "window-overlap false_fresh_count > 0")
+
+    eq(len(new_identity_row_touch_ratios), 195, "storm-v1 main grid frozen: batches (of 720) "
+       "whose correction_placement is new-identity")
+    new_identity_row_touch_median = statistics.median(new_identity_row_touch_ratios)
+    close(new_identity_row_touch_median, 1.000, 0.001, "storm-v1 main grid frozen: median "
+          "row-touch false_fresh_count / changed_count over the 195 new-identity batches")
+
+    m.add("osdiStormV1Commit", commit,
+          f"{relpath(STORM_V1_MAIN_GRID_ROWS)}: git_commit, uniform over all 36 cells (== "
+          f"{relpath(STORM_V1_MAIN_GRID)}'s own git_commit)")
+    m.add("osdiStormV1Cells", len(rows),
+          f"{relpath(STORM_V1_MAIN_GRID_ROWS)}: line count (== "
+          f"{relpath(STORM_V1_MAIN_GRID)}'s own total_tasks/config.n_tasks)")
+    m.add("osdiStormV1CellsFailed", len(failing_cells),
+          f"{relpath(STORM_V1_MAIN_GRID_ROWS)}: cells recomputed to fail G-S1 or G-S2, of 36 "
+          f"(== union of {relpath(STORM_V1_MAIN_GRID)}'s own gates.g_s{{1,2}}_failing_cells)")
+    m.add("osdiStormV1FalseFreshTgmsCellsNonzero", ff_nonzero,
+          f"{relpath(STORM_V1_MAIN_GRID_ROWS)}: count of (cell, arm) pairs among tgms-L0/"
+          "tgms-L1 over all 36 cells (72 total) with summary.arms[arm].false_fresh > 0")
+    m.add("osdiStormV1SpeedupN1kSeed0", f"{n1k_speedup:.3f}",
+          f"{relpath(STORM_V1_MAIN_GRID_ROWS)}: summary.arms.{{global-recompute,tgms-L1}}."
+          "ttf_p50_ms ratio at (store=synth-iv-60k, mix=c1, age=none, seed=0, "
+          "n_artifacts=1000)")
+
+    for key, med in per_group_median.items():
+        store, mix, age = key
+        name = (f"osdiStormV1Speedup{_STORM_V1_STORE_TOKEN[store]}{_STORM_V1_MIX_TOKEN[mix]}"
+                f"{_STORM_V1_AGE_TOKEN[age]}")
+        m.add(name, f"{med:.3f}",
+              f"{relpath(STORM_V1_MAIN_GRID_ROWS)}: median over seeds 0/1/2 of "
+              "summary.arms.{global-recompute,tgms-L1}.ttf_p50_ms ratio at "
+              f"(store={store}, mix={mix}, age={age or 'none'}, n_artifacts=1000)")
+
+    m.add("osdiStormV1SpeedupGridMin", f"{grid_min:.3f}",
+          f"{relpath(STORM_V1_MAIN_GRID_ROWS)}: minimum per-cell "
+          "summary.arms.{global-recompute,tgms-L1}.ttf_p50_ms ratio over all 36 cells")
+    m.add("osdiStormV1SpeedupGridMax", f"{grid_max:.3f}",
+          f"{relpath(STORM_V1_MAIN_GRID_ROWS)}: maximum per-cell "
+          "summary.arms.{global-recompute,tgms-L1}.ttf_p50_ms ratio over all 36 cells")
+
+    m.add("osdiStormV1AvoidedDecisionC1Median", f"{avoided_by_mix['c1']:.3f}",
+          f"{relpath(STORM_V1_MAIN_GRID_ROWS)}: median(summary.arms.tgms-L1."
+          "avoided_recompute_decision) over the 12 c1-mix cells")
+    m.add("osdiStormV1AvoidedDecisionC3Median", f"{avoided_by_mix['c3']:.3f}",
+          f"{relpath(STORM_V1_MAIN_GRID_ROWS)}: median(summary.arms.tgms-L1."
+          "avoided_recompute_decision) over the 12 c3-mix cells")
+    m.add("osdiStormV1AvoidedDecisionC4Median", f"{avoided_by_mix['c4']:.3f}",
+          f"{relpath(STORM_V1_MAIN_GRID_ROWS)}: median(summary.arms.tgms-L1."
+          "avoided_recompute_decision) over the 12 c4-mix cells")
+
+    m.add("osdiStormV1Batches", tex_num(total_batches),
+          f"{relpath(STORM_V1_RECORDS_TARBALL)}: total per-batch rows over all 36 cells "
+          "(36 cells x 20 batches)")
+    m.add("osdiStormV1RowTouchFalseFreshMedian", f"{row_touch_median:.3f}",
+          f"{relpath(STORM_V1_RECORDS_TARBALL)}: median over the 36 cells of Sum(row-touch "
+          "arms.false_fresh_count) / Sum(changed_count), each summed over that cell's own "
+          "20 batches")
+    m.add("osdiStormV1EntityTouchFalseFreshMedian", f"{entity_touch_median:.3f}",
+          f"{relpath(STORM_V1_RECORDS_TARBALL)}: median over the 36 cells of Sum(entity-touch "
+          "arms.false_fresh_count) / Sum(changed_count), each summed over that cell's own "
+          "20 batches")
+    m.add("osdiStormV1WindowOverlapFalseFreshMedian", f"{window_overlap_median:.3f}",
+          f"{relpath(STORM_V1_RECORDS_TARBALL)}: median over the 36 cells of "
+          "Sum(window-overlap arms.false_fresh_count) / Sum(changed_count), each summed over "
+          "that cell's own 20 batches")
+    m.add("osdiStormV1WindowOverlapNonzeroBatches", tex_num(window_overlap_nonzero_batches),
+          f"{relpath(STORM_V1_RECORDS_TARBALL)}: batches (of 720) with window-overlap "
+          "arms.false_fresh_count > 0")
+    m.add("osdiStormV1NewIdentityBatches", tex_num(len(new_identity_row_touch_ratios)),
+          f"{relpath(STORM_V1_RECORDS_TARBALL)}: batches (of 720) whose correction_placement "
+          "is new-identity")
+    m.add("osdiStormV1NewIdentityRowTouchMedian", f"{new_identity_row_touch_median:.3f}",
+          f"{relpath(STORM_V1_RECORDS_TARBALL)}: median row-touch arms.false_fresh_count / "
+          "changed_count over the 195 new-identity batches")
+    m.add("osdiStormV1P4ViolationCells", tex_num(p4_violations),
+          f"{relpath(STORM_V1_MAIN_GRID_ROWS)}: cells (of 36) where summary.arms.tgms-L1."
+          "avoided_recompute_wall is not < avoided_recompute_decision (P4: check cost is "
+          "O(prefix), paid regardless)")
 
 
 # --------------------------------------------------------------------------
@@ -3685,14 +4101,18 @@ def compute_longevity_rederived(m: Macros) -> None:
 # --------------------------------------------------------------------------
 
 def add_pending_stubs(m: Macros) -> None:
-    # The DAG-phase (v1/v2/v3, all 40/40 cells) and the R-18 probe (5/5
-    # batches) are both fully landed and scored -- see compute_c7_dag and
-    # compute_c7_r18 above. What remains pending is the main correction-
-    # storm cell grid itself (addendum-1's 36-cell grid,
-    # storm-campaign-2026-09.json): 12/36 cells complete, the other 24
-    # blocked on an iTiger disk-quota incident (2026-09-14, see
+    # The DAG-phase (v1/v2/v3, all 40/40 cells), the R-18 probe (5/5
+    # batches), and the addendum-1 main correction-storm cell grid (36/36
+    # cells, storm-v1-main-grid-2026-09-15.json, Lane W2m) are all now
+    # landed and scored -- see compute_c7_dag, compute_c7_r18, and
+    # compute_c7_storm_v1 above. What stays pending below is a single
+    # earlier, never-committed attempt at that same grid under a different
+    # file name (storm-campaign-2026-09.json: 12/36 cells complete, the
+    # other 24 blocked on an iTiger disk-quota incident, 2026-09-14, see
     # benchmarks/storm-v1/README.md and SUBMISSION_NOTE.txt on iTiger) --
-    # not yet scored or committed as a merged record.
+    # a dead end this generator never reads from, superseded by the
+    # five-job-seam resubmission that became storm-v1-main-grid-2026-09-15
+    # .json, not the same record and not resolved by it.
     m.add_pending("osdiTtfSpeedup", "C7 (storm-v1 time-to-fresh)",
                   "main grid 12/36, blocked on cluster quota")
     m.add_pending("osdiStormCells", "C7 (storm-v1 time-to-fresh)",
@@ -3708,19 +4128,10 @@ def add_pending_stubs(m: Macros) -> None:
                   "same as osdiStormSpeedupN1k -- the N=1,000 c1 seed-0 cell has not landed as "
                   "a committed main-grid record; main grid 12/36, blocked on cluster quota")
 
-    # storm-v2-main-grid-2026-09-15 (addendum-3, post-D-161-rollout, commit
-    # fdd393c) HAS landed and is fully scored -- see compute_c7_storm_v2
-    # above. One thing stays pending even against that landed grid:
-    m.add_pending("osdiStormV1SpeedupN1kSeed0", "C7 (storm-v1 time-to-fresh)",
-                  "the pre-D-161-rollout N=1,000 c1 seed-0 cell (211319_0) has no merged-grid "
-                  "record of its own on main -- only the post-rollout rerun "
-                  "(storm-v2-main-grid-2026-09-15, commit fdd393c) has landed, and it is a "
-                  "different measurement (osdiStormV2SpeedupN1kSeed0), not this one; the v1 "
-                  "cell's numbers appear only in benchmarks/storm-v1/README.md's R-18 probe "
-                  "section table, which this generator does not treat as a record source "
-                  "(same discipline as osdiStormSpeedupN1k above)")
-    # osdiStormV2SurvivorFractionC1Median/osdiStormV2PrecisionC1Median have
-    # landed (Lane W2l) -- see compute_c7_storm_v2's tarball read above --
+    # osdiStormV1SpeedupN1kSeed0 (the pre-D-161-rollout N=1,000 c1 seed-0
+    # speedup) and osdiStormV2SurvivorFractionC1Median/
+    # osdiStormV2PrecisionC1Median have all landed (Lane W2m/W2l) -- see
+    # compute_c7_storm_v1/compute_c7_storm_v2's own tarball reads above --
     # and are no longer emitted here.
 
     m.add_pending("osdiLdbcExpressible", "C9 (LDBC generality, four axes)",
@@ -3777,6 +4188,7 @@ def main() -> int:
     compute_c8(m)
     compute_c7_dag(m)
     compute_c7_r18(m)
+    compute_c7_storm_v1(m)
     compute_c7_storm_v2_probe(m)
     compute_c7_storm_v2(m)
     compute_d160(m)
