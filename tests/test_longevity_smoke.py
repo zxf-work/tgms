@@ -100,3 +100,190 @@ def test_smoke_run(tmp_path: Path) -> None:
         f"--out grew to {used_mb:.1f} MB, over the {MAX_DISK_MB} MB smoke "
         f"ceiling — see scripts/longevity_run.py's module docstring for the "
         f"38 GB incident this guards against")
+
+    # Multi-life structural checks (cb2e055, hardened further by the
+    # pre-crash flush in child_writer's control-file block): --restart-every
+    # 10s over a 40s run must produce at least one restart, and every life —
+    # including ones killed by a designed crash point — now flushes its own
+    # writer_progress-<life>.json right before the crash point is armed, so
+    # writer_totals_all_lives must be the sum over every life's own
+    # progress snapshot, not just the last one's (see
+    # test_summarize_sums_writer_counters_across_lives for the synthetic,
+    # deterministic version of this same check).
+    progress_files = sorted(out_dir.glob("writer_progress-*.json"))
+    assert len(progress_files) >= 2, (
+        f"expected at least 2 writer lives (one restart) from "
+        f"--restart-every 10s over 40s, got {len(progress_files)}")
+
+    totals = summary["writer_totals_all_lives"]
+    assert totals["lives"] == len(progress_files) == summary["recoveries"] + 1, (
+        f"writer_totals_all_lives['lives']={totals['lives']} should equal "
+        f"the number of writer_progress-*.json files "
+        f"({len(progress_files)}) and recoveries+1 ({summary['recoveries'] + 1})")
+
+    per_life = [json.loads(p.read_text()) for p in progress_files]
+    assert totals["errors"] == sum(p["errors"] for p in per_life), (
+        "writer_totals_all_lives['errors'] must be the sum of every life's "
+        "own 'errors', not just the last life's (the 1-vs-249 defect)")
+    assert totals["appends"] == sum(p["appends"] for p in per_life), (
+        "writer_totals_all_lives['appends'] must be the sum of every "
+        "life's own 'appends', not just the last life's")
+
+    # Strict: the earlier lives appended too (balanced mix is 25 append /
+    # 10 correction weight, 0.2s writer sleep, so even a 10s life makes
+    # dozens of batches), so the all-lives total must exceed the last
+    # life's own final count, not merely be >= it.
+    assert totals["appends"] > summary["writer_final"]["appends"], (
+        "writer_totals_all_lives['appends'] should exceed writer_final's "
+        "own appends — the earlier lives' appends must be counted too")
+    assert totals["appends"] > 0, "expected the writer to make progress"
+
+
+def test_summarize_sums_writer_counters_across_lives(tmp_path: Path) -> None:
+    """Regression test for the defect fixed by cb2e055 and documented in
+    benchmarks/longevity-v1/README.md's "errors observed" section: writer
+    counters (errors, appends, ...) are unlabeled and reset to 0 in every
+    fresh writer "life", so the old `counter_latest` aggregation — keyed
+    only on (metric name, labels) and keeping whichever sample had the
+    latest timestamp — silently collapsed every life onto the last one's
+    count. A real 24h/--restart-every soak with 42 lives reported
+    error_count=1 (the last life's own count) when the true sum over all
+    lives was 249.
+
+    This test calls `LR.summarize()` directly on a synthetic three-life run
+    directory (no subprocess, no engine, no store) so the fix is pinned
+    down deterministically instead of relying on however many restarts a
+    real timed soak happens to hit.
+    """
+    out_dir = tmp_path / "run-out"
+    out_dir.mkdir()
+
+    # Three lives (two restarts). Every counter uses a distinct value per
+    # life so an accidental "last life only" or "first life only" bug would
+    # produce a visibly wrong sum instead of silently matching by luck.
+    # errors: 3, 5, 0 — life 2's zero-error life must still count as a life.
+    life_progress = [
+        {"n": 100, "batches": 13, "appends": 10, "corrections_applied": 2,
+         "corrections_skipped": 1, "compactions": 1, "compactions_throttled": 0,
+         "errors": 3, "checks": 4, "invalidations": 1, "refreshes": 1,
+         "ts": 100.0, "final": True},
+        {"n": 90, "batches": 8, "appends": 7, "corrections_applied": 1,
+         "corrections_skipped": 0, "compactions": 2, "compactions_throttled": 1,
+         "errors": 5, "checks": 3, "invalidations": 0, "refreshes": 0,
+         "ts": 200.0, "final": True},
+        {"n": 70, "batches": 9, "appends": 4, "corrections_applied": 3,
+         "corrections_skipped": 2, "compactions": 0, "compactions_throttled": 1,
+         "errors": 0, "checks": 2, "invalidations": 1, "refreshes": 1,
+         "ts": 300.0, "final": True},
+    ]
+    for i, prog in enumerate(life_progress):
+        (out_dir / f"writer_progress-{i}.json").write_text(json.dumps(prog))
+
+    # metrics.jsonl: the pre-fix-shaped unlabeled writer_errors_total samples
+    # that `counter_latest` used to collapse (life 1 resets to 0, so its own
+    # cumulative sample by the time it flushes is 5, not 3+5=8), a labeled
+    # writer_errors_total pair (post-fix, still per-flush-cumulative-within-a-
+    # life so still not a run total on its own), the reader-side counters
+    # `child_reader` already labels correctly, and a couple of gauge lines so
+    # that code path runs too.
+    metrics_path = out_dir / "metrics.jsonl"
+    metrics_lines = [
+        {"kind": "counter", "name": "writer_errors_total", "labels": {},
+         "value": 3, "ts": 100.0},
+        {"kind": "counter", "name": "writer_errors_total", "labels": {},
+         "value": 5, "ts": 200.0},
+        {"kind": "counter", "name": "writer_errors_total",
+         "labels": {"error": "RuntimeError"}, "value": 3, "ts": 100.0},
+        {"kind": "counter", "name": "writer_errors_total",
+         "labels": {"error": "RuntimeError"}, "value": 5, "ts": 200.0},
+        {"kind": "counter", "name": "reader_errors_total",
+         "labels": {"reader": 0, "query": "q1", "error": "ValueError"},
+         "value": 2, "ts": 150.0},
+        {"kind": "counter", "name": "queries_total",
+         "labels": {"reader": 0, "query": "q1"}, "value": 40, "ts": 150.0},
+        {"kind": "gauge", "name": "rss_kb", "labels": {}, "value": 12000.0,
+         "ts": 100.0},
+        {"kind": "gauge", "name": "rss_kb", "labels": {}, "value": 12500.0,
+         "ts": 200.0},
+    ]
+    metrics_path.write_text(
+        "\n".join(json.dumps(rec) for rec in metrics_lines) + "\n")
+
+    recoveries_path = out_dir / "recoveries.jsonl"
+    recoveries_path.write_text(
+        json.dumps({"kind": "designed", "ts": 100.0}) + "\n" +
+        json.dumps({"kind": "unexpected", "ts": 200.0}) + "\n")
+
+    # Absent, the way a run with no reader restarts and no compactions.jsonl
+    # entries would leave them — `_read_jsonl` must tolerate missing files.
+    reader_restarts_path = out_dir / "reader_restarts.jsonl"
+    compactions_path = out_dir / "compactions.jsonl"
+
+    summary = LR.summarize(out_dir, metrics_path, t_start=0.0, end_at=300.0,
+                           recoveries_path=recoveries_path,
+                           reader_restarts_path=reader_restarts_path,
+                           compactions_path=compactions_path)
+
+    totals = summary["writer_totals_all_lives"]
+    assert totals["lives"] == 3, (
+        f"expected 3 lives (3 writer_progress-*.json files), got "
+        f"{totals['lives']}")
+    assert totals["errors"] == 8, (
+        f"writer_totals_all_lives['errors'] should sum every life's own "
+        f"'errors' (3+5+0=8), got {totals['errors']} — this is exactly the "
+        f"1-vs-249 defect if it regresses to a single life's count")
+    assert totals["appends"] == 21, f"expected 10+7+4=21, got {totals['appends']}"
+    assert totals["corrections_applied"] == 6, (
+        f"expected 2+1+3=6, got {totals['corrections_applied']}")
+    assert totals["corrections_skipped"] == 3, (
+        f"expected 1+0+2=3, got {totals['corrections_skipped']}")
+    assert totals["compactions"] == 3, f"expected 1+2+0=3, got {totals['compactions']}"
+    assert totals["compactions_throttled"] == 2, (
+        f"expected 0+1+1=2, got {totals['compactions_throttled']}")
+    assert totals["artifact_checks"] == 9, f"expected 4+3+2=9, got {totals['artifact_checks']}"
+    assert totals["artifact_invalidations"] == 2, (
+        f"expected 1+0+1=2, got {totals['artifact_invalidations']}")
+    assert totals["artifact_refreshes"] == 2, (
+        f"expected 1+0+1=2, got {totals['artifact_refreshes']}")
+
+    assert summary["reader_errors_total"] == 2, (
+        f"expected the single labeled reader_errors_total sample (value=2), "
+        f"got {summary['reader_errors_total']}")
+
+    # error_count = writer life-sum (8) + reader_errors_total (2) +
+    # unexpected recoveries (1, the "unexpected" line — "designed" doesn't
+    # count).
+    assert summary["error_count"] == 8 + 2 + 1, (
+        f"expected error_count = writer_totals_all_lives['errors'] (8) + "
+        f"reader_errors_total (2) + unexpected recoveries (1) = 11, got "
+        f"{summary['error_count']}")
+
+    # writer_final stays the LAST life's own snapshot only — never a total —
+    # by design (see the comment above writer_totals_all_lives in
+    # scripts/longevity_run.py's summarize()).
+    assert summary["writer_final"]["errors"] == 0, (
+        "writer_final must be life 2's own snapshot (errors=0), not a sum "
+        "or any earlier life's snapshot")
+    assert summary["writer_final"] == life_progress[-1], (
+        "writer_final must equal exactly the dict written to "
+        "writer_progress-2.json (last-life-only semantics)")
+
+    # Anti-regression: the pre-fix `counter_latest` aggregation (verified
+    # directly against this same synthetic directory at cb2e055^) reports
+    # error_count = 13, not the true 11. It keeps one last-sample per
+    # (name, labels) key: the unlabeled writer_errors_total series' last
+    # sample is 5 and the labeled {"error": "RuntimeError"} series' last
+    # sample is also 5 (both are life 1's own cumulative-within-a-life
+    # value, life 2 never emitting a writer_errors_total sample at all
+    # since it has 0 errors) — summed together that's 10, plus
+    # reader_errors_total (2) plus the one unexpected recovery (1) = 13.
+    # It never reaches the true per-life sum of 8 because both keys
+    # independently collapse onto life 1's last sample instead of summing
+    # every life's own writer_progress-<life>.json (the 1-vs-249 defect in
+    # benchmarks/longevity-v1/README.md's "errors observed" section).
+    assert summary["error_count"] != 13, (
+        "error_count must not equal 13 — that is exactly what the pre-fix "
+        "counter_latest last-sample-wins aggregation reports on this same "
+        "synthetic directory (unlabeled last-sample 5 + labeled "
+        "last-sample 5 + reader 2 + unexpected 1), instead of the true "
+        "per-life sum of 11")

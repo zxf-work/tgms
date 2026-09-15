@@ -790,6 +790,21 @@ def child_writer(cfg: dict[str, Any]) -> None:
             return False
         return apply_correction_via_public_api(store, gc_writer, cands[0])
 
+    def write_progress(now: float) -> None:
+        """This life's own accumulators, as of `now` — the same dict shape
+        the periodic flush below writes. Factored out so the control-file
+        block can call it right before arming a designed crash point (see
+        the comment there)."""
+        progress_path.write_text(json.dumps({
+            "n": n, "batches": batches, "appends": appends,
+            "corrections_applied": corrections_applied,
+            "corrections_skipped": corrections_skipped,
+            "compactions": compactions, "compactions_throttled": compactions_throttled,
+            "errors": errors,
+            "checks": check_counts["checks"],
+            "invalidations": check_counts["invalidations"],
+            "refreshes": check_counts["refreshes"], "ts": now}))
+
     weight_total = max(1e-9, mix["append"] + mix["correction"])
 
     while time.time() < end_at:
@@ -801,6 +816,25 @@ def child_writer(cfg: dict[str, Any]) -> None:
             if ctl and ctl.get("seq", -1) != last_control_seq:
                 last_control_seq = ctl["seq"]
                 boundary = ctl["boundary"]
+                # A designed restart kills this process via os._exit(137) or
+                # SIGABRT inside the very next write or compact below — there
+                # is no graceful shutdown for this life once the crash point
+                # is armed. Flush metrics and this life's own progress
+                # snapshot right now, before arming it: report_every_s is
+                # hardcoded to 60s above, so without this flush a life
+                # shorter than 60s never writes writer_progress-<life>.json
+                # at all, and a longer life's last snapshot can be up to 60s
+                # stale at kill time — either way, summarize()'s life-summed
+                # totals in the parent process silently undercount (see the
+                # life_summed()/writer_totals_all_lives comment there). Only
+                # unexpected (non-designed) deaths remain best-effort,
+                # bounded by report_every_s, since those have no armed
+                # control file to hook this flush off of. Side benefit: the
+                # orchestrator's `start_n = prog.get("n", 0)` after a death
+                # now sees this life's actual last n instead of one up to
+                # 60s stale.
+                metrics.flush()
+                write_progress(time.time())
                 os.environ["TGMS_CRASH_POINT"] = boundary
                 if boundary in MAINT_BOUNDARIES:
                     store.adapter.compact()   # dies here (os._exit(137))
@@ -877,15 +911,7 @@ def child_writer(cfg: dict[str, Any]) -> None:
             metrics.counter("corrections_applied_total", corrections_applied)
             metrics.counter("corrections_skipped_total", corrections_skipped)
             metrics.flush()
-            progress_path.write_text(json.dumps({
-                "n": n, "batches": batches, "appends": appends,
-                "corrections_applied": corrections_applied,
-                "corrections_skipped": corrections_skipped,
-                "compactions": compactions, "compactions_throttled": compactions_throttled,
-                "errors": errors,
-                "checks": check_counts["checks"],
-                "invalidations": check_counts["invalidations"],
-                "refreshes": check_counts["refreshes"], "ts": now}))
+            write_progress(now)
             commit_lat = []
             batches_since_flush = 0
             minute_t0 = time.perf_counter()
@@ -1460,11 +1486,17 @@ def summarize(out_dir: Path, metrics_path: Path, t_start: float, end_at: float,
     #
     # Each life's own last-written `writer_progress-<life>.json` (one file
     # per life, already written by `child_writer` regardless of whether
-    # that life ended cleanly or was killed mid-flight — the last periodic
-    # flush before a kill is still that life's true final count, since
-    # these are monotonic non-negative accumulators within a life) carries
-    # exactly what counter_latest was missing. Summing each life's own
-    # last snapshot, one term per life, gives the true run total.
+    # that life ended cleanly or was killed mid-flight) carries exactly what
+    # counter_latest was missing. The guarantee behind "mid-flight" differs
+    # by how the life ended: a *designed* restart (the orchestrator's
+    # control file armed a crash point) is preceded by `child_writer`
+    # flushing this exact snapshot right before arming the crash point, so
+    # that file is this life's true final count, not stale by even one
+    # batch. An *unexpected* death has no such hook and falls back to
+    # best-effort — bounded by however stale the last periodic flush was
+    # (report_every_s, hardcoded to 60s in spawn_writer's cfg). These are
+    # monotonic non-negative accumulators within a life, so summing each
+    # life's own last snapshot, one term per life, gives the true run total.
     life_progress = [_read_json(p) or {} for p in progress_files]
 
     def life_summed(key: str) -> int:
@@ -1479,6 +1511,8 @@ def summarize(out_dir: Path, metrics_path: Path, t_start: float, end_at: float,
         "artifact_checks": life_summed("checks"),
         "artifact_invalidations": life_summed("invalidations"),
         "artifact_refreshes": life_summed("refreshes"),
+        "compactions": life_summed("compactions"),
+        "compactions_throttled": life_summed("compactions_throttled"),
         "lives": len(life_progress),
     }
 
