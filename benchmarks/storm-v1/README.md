@@ -513,6 +513,54 @@ ids 211614 + 211700 + 211706), `storm-campaign-dag-v3-2026-09-rows.jsonl`,
 passes. **Not yet committed** — held in the worktree pending the
 coordinator's scoring.
 
+## storm-v1 main grid — run of record (addendum-1's 36-cell grid: 2
+stores x {c1,c3,c4} x {none,deep} x N=1000 x seeds{0,1,2}, end-to-end
+TTF only; commit `8962b78`, pre-D-161-rollout)
+
+All 36 cells complete, assembled from **five submissions across a
+disk-quota incident that ran 2026-09-14 into 2026-09-15** (see
+`SUBMISSION_NOTE.txt` on iTiger for the full incident log; also written
+up as an admin ticket, `docs/design/ITIGER_QUOTA_TICKET_2026-09-15.md`,
+not committed here). Two of the five submissions (211676, 211704)
+contributed **zero** surviving records — every one of their tasks failed
+immediately to the same `mkdir: write error: Disk quota exceeded`
+condition and was superseded by a later resubmission of the same cells —
+and are omitted from the seam table below; they are not a data source,
+only prior attempts.
+
+**The seam — which cells came from which job** (verified against each
+cell's own record `git_commit`/`config.addendum_id`/`config.freeze_sha256`,
+all identical across the seam, and cross-checked against each surviving
+file's own mtime against its job's own `sacct` End time):
+
+| source job | cells (task ids) | count | note |
+|---|---|---:|---|
+| 211319 | 0, 1, 2 | 3 | the original (comma-splitting-bug) submission — these three happen to be byte-correct despite the bug, since task ids < 3 land on the grid's first store/mix/age regardless of list length |
+| 211499 | 4-11, 35 | 9 | first bug-fixed submission; failed on the rest to the DuckDB-spill quota incident |
+| 211873 | 17-34 | 18 | third resubmission of the DuckDB-spill cells; six of its own cells (3, 12-16) failed to a separate itiger04 EDQUOT wave |
+| 212406 | 3, 12, 13, 14, 15, 16 | 6 | final resubmission of 211873's six failures, staged on `/home/xzhang12/storm-v1-work-h` (not `/project`) |
+| 211676, 211704 | — | 0 | both fully superseded; listed here only for the historical record |
+
+No verdicts are drawn from this seam — it is provenance, not a result.
+Both campaign gates pass over the full merged grid regardless of which
+job produced which cell:
+
+| gate | result |
+|---|---|
+| G-S1 (`tgms-L0`/`tgms-L1` false-fresh = 0, every cell) | **PASS**, 0/36 failing cells |
+| G-S2 (false-safe = 0; trivial here — no DAG phase in the main grid) | **PASS**, 0/36 failing cells |
+
+**Records**: `storm-v1-main-grid-2026-09-15.json` (merged, per-cell
+`source_job` field per the seam table above) + `-rows.jsonl` sidecar.
+`storm-v1-records-36-tasks.tar.gz` (sha256
+`a5396d6ffba3b13bb57e2f2ed004a67ae2fdcd80a639e69efe7849f1d667ee63`) holds
+the 36 per-task `records/task-N/storm-*.json` + `storm-*-rows.jsonl`
+directories (both the `/project` and `/home`-staged ones), sha256-verified
+against their respective stage directories before packing — same reason
+as the storm-v2 tarball below: the merged manifest's `per_cell` table
+only carries cell summaries, not the per-batch rows the paper macros
+need. `scripts/check_result_manifest.py` passes.
+
 ## storm-v2 main grid — run of record (addendum-3, same 36-cell grid as
 addendum-1: 2 stores x {c1,c3,c4} x {none,deep} x N=1000 x seeds{0,1,2},
 end-to-end TTF only; job 212294; commit `fdd393c`, the D-161-rolled-out
@@ -596,13 +644,12 @@ python scripts/check_result_manifest.py benchmarks/storm-v1/storm-campaign-<date
 ```
 
 The C6 pre-registration table above is still `_(blank)_` by design — the
-main correction-storm cell grid (addendum-1, 36 cells) is **12/36 cells
-complete; 24 cells pending quota headroom; not yet scored** (a cluster
-disk-quota incident on 2026-09-14 — see `SUBMISSION_NOTE.txt` on iTiger —
-has failed the same 24 cells on four consecutive submission attempts;
-resubmission is parked until the PI frees space). The R-18 probe
-(addendum-1) completed (job 211320, 5/5 batches, not wall-capped) but its
-own results are not yet written up in this README. The DAG phase
-(v1/v2/v3, all three addenda) has completed and its results are reported
-above, with G-S2/falsifier (b) stated as measured outcomes for the
-coordinator to score.
+main correction-storm cell grid (addendum-1, 36 cells) is **now complete
+and reported above** (the "storm-v1 main grid" section), assembled across
+the disk-quota incident's five submissions (211319/211499/211676/211704/
+211873) plus the final resubmission (212406) — not yet scored. The R-18
+probe (addendum-1, job 211320) and its v2 counterpart (job 212295,
+addendum-3) are both reported above. The DAG phase (v1/v2/v3, all three
+addenda) and the storm-v2 main grid (addendum-3, job 212294) have also
+completed and are reported above, with every gate/prediction stated as a
+measured outcome for the coordinator to score.
