@@ -243,3 +243,50 @@ def test_an_untruncated_reduction_is_untouched(tmp_path):
                                    "value": trace.answer, "from": "s2.value",
                                    "evidence": ["s2"]}]})
     assert report["claims"][0]["verdict"] == "supported"
+
+
+def test_a_refused_reduction_is_marked_as_such_in_the_trace(tmp_path):
+    """`E_LIMIT` is shared by three different guards in `Executor.run`: the
+    wall-clock skip, the materialized-rows cap, and D-061's pre-dispatch
+    refusal of a reduction over a truncated page. All three can produce a
+    `status: "failed"` record whose `error.error` reads `E_LIMIT`, so the
+    error code alone does not tell a trace reader (or `trace_summary`,
+    which is what a report-writing LLM actually sees) whether the step ran
+    at all. `refused` is the marker that does: it is set only on the
+    pre-dispatch refusal, where `self.router.call` never executed, and the
+    record it produces carries neither `wall_ms` nor `resolved_args_sha`
+    (both are written only once dispatch happens). This contrasts that
+    against a step that fails *after* dispatch (`E_NOT_FOUND` on a missing
+    uid), whose record has no `refused` key at all."""
+    from tgms.agent.reporter import trace_summary
+
+    adapter, _, _ = build_store(2)
+    plan_json = _reach_plan()
+    plan_json["steps"][0]["args"]["limit"] = 1  # force truncation
+    results = ResultStore(tmp_path / "results")
+    plan = Plan.from_json(plan_json)
+    trace = Executor(ToolRouter(adapter), results).run(plan)
+
+    by = {s["step_id"]: s for s in trace.steps}
+    rec = by["s2"]
+    assert rec["refused"] == "truncated_input"
+    assert rec["status"] == "failed"
+    assert "wall_ms" not in rec
+    assert "resolved_args_sha" not in rec
+
+    summary = trace_summary(plan, trace, results)
+    assert '"refused":"truncated_input"' in summary
+
+    # Contrast: a step that fails after dispatch (E_NOT_FOUND, not a
+    # pre-dispatch refusal) carries no `refused` key at all.
+    bad_plan_json = _reach_plan()
+    bad_plan_json["steps"][0]["args"]["src"] = "no-such-uid"
+    bad_plan_json["steps"] = bad_plan_json["steps"][:1]
+    bad_plan_json["answer_spec"] = {"kind": "count", "from": "s1.rows_total"}
+    bad_results = ResultStore(tmp_path / "results-notfound")
+    bad_trace = Executor(ToolRouter(adapter), bad_results).run(
+        Plan.from_json(bad_plan_json))
+    bad_rec = {s["step_id"]: s for s in bad_trace.steps}["s1"]
+    assert bad_rec["status"] == "failed"
+    assert bad_rec["error"]["error"] == "E_NOT_FOUND"
+    assert "refused" not in bad_rec

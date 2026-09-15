@@ -57,6 +57,26 @@ def _build_store(tmp_path: Path) -> Path:
     return store_path
 
 
+def _build_fanout_store(tmp_path: Path) -> Path:
+    """One hub (`n1`) fanning out to six leaves, each reachable at a
+    distinct `vt_s` -- large enough that a `limit: 2` page of
+    `temporal_reachability` truncates (6 rows > 2), unlike `_build_store`'s
+    single edge."""
+    import tgms
+    from tgms.core.model import OPEN_END
+
+    store_path = tmp_path / "store"
+    store = tgms.open(str(store_path))
+    try:
+        store.assert_node("n1", "P", {}, vt_s=0, vt_e=OPEN_END)
+        for i in range(2, 8):
+            store.assert_node(f"n{i}", "P", {}, vt_s=0, vt_e=OPEN_END)
+            store.assert_edge("n1", f"n{i}", "K", {}, vt_s=i, vt_e=OPEN_END)
+    finally:
+        store.close()
+    return store_path
+
+
 def _write_plan(tmp_path: Path, plan_id: str = "t1") -> Path:
     """Exactly two steps that both execute (s2 depends on s1) -- the "known
     2-call plan" rung 5's tool-call count is checked against."""
@@ -188,6 +208,65 @@ def test_rung5_tool_call_count_matches_router_not_step_count(tmp_path):
     # reaches the router -- exactly one real tool call was made.
     assert result["tool_calls"] == 1
     assert result["n_steps"] == 2
+
+
+def test_rung5_excludes_a_reducing_compute_refused_over_a_truncated_page(tmp_path):
+    """The ladder-v1 campaign found `tool_calls < n_steps` on p02 and p10
+    (stores/bitcoinotc, rung 5) and this reproduces it deterministically on
+    a tmp_path store: a `compute count` step whose input is a truncated
+    page is refused by `Executor.run`'s `REDUCING_FNS` guard (D-061,
+    `tgms/agent/executor.py`) *before* `router.call` ever runs, so the
+    router -- and rung 5's `CountingRouter` -- never sees it. `tool_calls`
+    must therefore read 2 against `n_steps` 3, not 3, and the refused
+    record must be visibly a pre-dispatch refusal rather than a step that
+    ran and failed."""
+    store_path = _build_fanout_store(tmp_path)
+    plan = {
+        "plan_id": "p10-like",
+        "question": "How many nodes does n1 temporally reach, per page?",
+        "steps": [
+            {"id": "s1", "op": "entity_history", "args": {"uid": "n1", "limit": 50},
+             "depends_on": []},
+            {"id": "s2", "op": "temporal_reachability",
+             "args": {"src": "n1", "window": {"t_a": 0, "t_b": 100}, "limit": 2},
+             "depends_on": []},
+            {"id": "s3", "op": "compute",
+             "args": {"fn": "count", "input": {"$ref": "s2.rows"}},
+             "depends_on": ["s2"]},
+        ],
+        "answer_spec": {"kind": "count", "from": "s3.value"},
+    }
+    plan_path = tmp_path / "p10-like.json"
+    plan_path.write_text(json.dumps(plan))
+    p = ladder.load_plan(plan_path)
+
+    result1 = ladder.measure_rung5(str(store_path), p, tokenizer="approx")
+    assert result1["tool_calls"] == 2
+    assert result1["n_steps"] == 3
+
+    # cheap determinism check: the refusal is a pure function of the store
+    # and the plan, so a second independent run must count identically.
+    result2 = ladder.measure_rung5(str(store_path), p, tokenizer="approx")
+    assert result2["tool_calls"] == result1["tool_calls"]
+
+    results_dir = tmp_path / "results"
+    store, router, trace = ladder._run_plan(str(store_path), p, results_dir)
+    try:
+        by = {s["step_id"]: s for s in trace.steps}
+        assert by["s2"]["truncated"] is True
+
+        s3 = by["s3"]
+        assert s3["status"] == "failed"
+        assert s3["error"]["error"] == "E_LIMIT"
+        assert s3["upstream_truncated"] is True
+        assert s3["refused"] == "truncated_input"
+        assert "wall_ms" not in s3, "refused before router.call -- never dispatched"
+        assert "result_digest" not in s3
+
+        assert trace.answer is None
+        assert "s3" in trace.answer_error
+    finally:
+        store.close()
 
 
 # --------------------------------------------------------------------------- #
