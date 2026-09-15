@@ -2759,6 +2759,89 @@ mod tests {
     }
 
     #[test]
+    fn compaction_cycles_do_not_multiply_the_identity_postings() {
+        // D-087 regression. `open_rows` has a lazy per-lookup prune
+        // (`read.rs::locate_open`); `by_identity` and `by_vid` have none at
+        // all, which was fine until compaction started running
+        // periodically (`tgms replay --compact-every`, and a long soak's
+        // own compact()+gc() cadence): compaction reseals every row that
+        // still exists — open *and* closed, since compaction never drops
+        // one — into fresh segments every cycle, and the next lookup
+        // re-indexes them there, on top of every earlier cycle's now-
+        // unreachable entries that nothing ever freed. Observed in the
+        // wild: `tgms replay --compact-every 500` over a 24h soak's log
+        // (1,074,952 batches, 314,897,038 bytes) was OOM-killed at ~83 GB
+        // anon RSS after reaching manifest generation ~513,024 — ~160 KB
+        // retained per replayed generation — while `store_digest()`-
+        // relevant content was only ~1.7M entities: retention, not data.
+        let root = tmp_root("compaction-postings-bound");
+        let mut s = NativeStore::open(&root).unwrap();
+        const CYCLES: usize = 8;
+        const PER_CYCLE: usize = 25;
+        const N: usize = CYCLES * PER_CYCLE;
+
+        let mut vids = Vec::with_capacity(N);
+        for d in 0..N {
+            let tt = 100 + d as i64;
+            s.begin(tt).unwrap();
+            let a = s.ensure_entity("n1", "Node").unwrap();
+            let b = s.ensure_entity("n2", "Node").unwrap();
+            let r = edge_row(a, b, 0, tt, 0);
+            vids.push(r.vid);
+            s.stage_edge(r).unwrap();
+            // supersede the previous version, exactly as a correction does
+            // — this is also what triggers `index_segments` every commit.
+            if d > 0 {
+                s.close_version(RowKind::Edge, vids[d - 1], tt).unwrap();
+            }
+            s.commit(EventLogRef::default()).unwrap();
+
+            if (d + 1) % PER_CYCLE == 0 {
+                s.compact().unwrap();
+                s.gc(2).unwrap();
+            }
+        }
+
+        let (by_identity_entries, by_vid_entries, indexed_len) = {
+            let p = s.edge_postings().lock().unwrap();
+            (
+                p.by_identity.values().map(Vec::len).sum::<usize>(),
+                p.by_vid.values().map(Vec::len).sum::<usize>(),
+                p.indexed.len(),
+            )
+        };
+
+        // Every version ever committed legitimately lives in `by_identity`
+        // forever (bi-temporal history is never dropped), so N is the
+        // correct floor. The bug's shape is multiplicative in CYCLES, not
+        // additive to it: unfixed, this comes out within a small constant
+        // of PER_CYCLE * CYCLES^2 / 2 (each cycle re-indexes the entire
+        // row set sealed so far) — tens of thousands of entries here,
+        // against a few thousand fixed. A 3x margin over N catches the
+        // multiplication while tolerating the legitimate double-booking of
+        // the one or two generations `gc(keep_last=2)` still retains.
+        assert!(
+            by_identity_entries <= 3 * N,
+            "by_identity holds {by_identity_entries} entries for {N} \
+             versions ever committed over {CYCLES} compaction cycles — \
+             compaction is re-indexing history that nothing ever prunes \
+             (D-087)"
+        );
+        assert!(
+            by_vid_entries <= 3 * N,
+            "by_vid holds {by_vid_entries} entries for {N} versions — same \
+             leak as by_identity (D-087)"
+        );
+        assert!(
+            indexed_len <= 4 * PER_CYCLE,
+            "`indexed` holds {indexed_len} segment ids after {CYCLES} \
+             compactions of {PER_CYCLE} segments each — stale segment ids \
+             from superseded compaction cycles are never forgotten (D-087)"
+        );
+    }
+
+
+    #[test]
     fn rolled_back_closes_leave_no_run() {
         let root = tmp_root("close-rollback");
         let mut s = NativeStore::open(&root).unwrap();
