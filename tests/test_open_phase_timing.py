@@ -71,6 +71,11 @@ def test_open_phase_us_has_every_key(tmp_path):
     assert set(phases) == OPEN_PHASE_KEYS
     for key in OPEN_PHASE_KEYS:
         assert isinstance(phases[key], int), f"{key} is not an int: {phases[key]!r}"
+    # this reopen actually reads and parses generation 0's checkpoint from
+    # disk (unlike a fresh, never-yet-written store -- see
+    # test_a_fresh_store_has_no_deltas_to_replay), so the single-parse path
+    # in manifest_chain.rs must report positive time for it.
+    assert phases["checkpoint_read_parse_us"] > 0
 
 
 def test_delta_count_matches_generations_written(tmp_path):
