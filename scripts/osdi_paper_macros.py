@@ -101,6 +101,18 @@ skeleton --
       C1Median``) are computed in ``compute_c7_storm_v2`` below alongside
       the rest of the c1-mix quantities.
 
+  W2m (storm-v2 R-18 probe, job 212295, addendum-3) --
+      benchmarks/storm-v1/storm-v2-r18-probe-2026-09-15.json (+
+      -rows.jsonl), the same cell as the v1 R-18 probe above
+      (synth-iv-60k/c1/N=10,000/seed=0/5 batches) rerun post-D-161-rollout
+      under commit ``fdd393c``. ``osdiStormV2Probe*``
+      (``compute_c7_storm_v2_probe`` below) land beside the still-untouched
+      ``osdiR18*`` (v1) macros and beside ``osdiStormV2*`` (the different
+      36-cell main-grid record) -- no v1-vs-v2 or probe-vs-grid comparison
+      macro here, only prose (README.md's own "R-18 probe v2 (addendum-3)"
+      table); ``osdiStormSpeedupShrinksWithN`` in particular is a verdict,
+      not a macro, and is deliberately never added.
+
   W2g (24h longevity soak, Lane B task B7a, Gate G1/Gate E) --
       benchmarks/longevity-v1/longevity-synth-1m-native-0.json (manifest) +
       recoveries.jsonl, reader_restarts.jsonl, longevity_ledger.jsonl,
@@ -211,6 +223,12 @@ R18_PROBE = STORM_V1 / "storm-r18-probe-2026-09.json"
 R18_PROBE_ROWS = STORM_V1 / "storm-r18-probe-2026-09-rows.jsonl"
 STORM_V2_MAIN_GRID = STORM_V1 / "storm-v2-main-grid-2026-09-15.json"
 STORM_V2_MAIN_GRID_ROWS = STORM_V1 / "storm-v2-main-grid-2026-09-15-rows.jsonl"
+# Lane W2m: the v2 R-18 probe (job 212295, addendum-3, post-D-161-rollout,
+# same cell as R18_PROBE above -- synth-iv-60k/c1/N=10,000/seed=0/5
+# batches). Both files committed directly (no records tarball needed, per
+# README.md's "R-18 probe v2 (addendum-3)" section).
+STORM_V2_R18_PROBE = STORM_V1 / "storm-v2-r18-probe-2026-09-15.json"
+STORM_V2_R18_PROBE_ROWS = STORM_V1 / "storm-v2-r18-probe-2026-09-15-rows.jsonl"
 STORM_V1_README = STORM_V1 / "README.md"
 STORM_V2_RECORDS_TARBALL = STORM_V1 / "storm-v2-records-36-tasks.tar.gz"
 # Lane W2l: benchmarks/storm-v1/README.md's own "Per-batch rows" section
@@ -1898,6 +1916,170 @@ def compute_c7_r18(m: Macros) -> None:
     m.add("osdiR18AvoidedRecompute", f"{avoided_decision * 100:.1f}",
           f"{relpath(R18_PROBE_ROWS)}: 1 - sum(arms.tgms-L1.invalidated_count) / "
           "sum(n_registered) over the 5 batches, percent (== record's own summary field)")
+
+
+# --------------------------------------------------------------------------
+# C7 (partial) -- storm-v2 R-18 probe (Lane W2m; job 212295, addendum-3,
+# post-D-161-rollout): benchmarks/storm-v1/storm-v2-r18-probe-2026-09-15.json
+# + -rows.jsonl. Same cell as the v1 R-18 probe above (compute_c7_r18: store
+# synth-iv-60k, mix c1, N=10,000, seed 0, 5 batches, sum TTF) -- see
+# README.md's "R-18 probe v2 (addendum-3) -- run of record, v1 vs v2
+# comparison" section for the full side-by-side table. `osdiR18*` above
+# stay untouched; `osdiStormV2Probe*` land beside them here, and beside
+# `osdiStormV2*` (compute_c7_storm_v2, the different 36-cell main-grid
+# record) without resolving or comparing across either -- different
+# record, different macro namespace, no verdict macro (the paper's own
+# P5/P6/P7 scoring lives in the internal freeze, same as compute_c7_r18).
+# --------------------------------------------------------------------------
+
+def compute_c7_storm_v2_probe(m: Macros) -> None:
+    d = json.loads(STORM_V2_R18_PROBE.read_text(encoding="utf-8"))
+    rows = load_jsonl(STORM_V2_R18_PROBE_ROWS)
+    rows.sort(key=lambda r: r["batch_index"])
+
+    eq(d["config"]["n_artifacts"], 10000, "storm-v2 R18 probe frozen: probe artifact count")
+    eq(d["config"]["batches"], 5, "storm-v2 R18 probe frozen: batch count")
+    eq(len(rows), d["config"]["batches"],
+       "storm-v2 R18 probe: rows.jsonl line count matches config.batches")
+    eq(d["config"]["wall_capped"], False, "storm-v2 R18 probe: probe was not wall-capped")
+    eq(d["config"]["mix"], "c1", "storm-v2 R18 probe: this probe is the c1 mix (same cell as "
+       "the v1 R-18 probe above)")
+    eq(d["config"]["addendum_id"], "storm-v1-addendum-3",
+       "storm-v2 R18 probe frozen: addendum_id (post-D-161-rollout)")
+
+    commit = d["git_commit"]
+    eq(commit, "fdd393c", "storm-v2 R18 probe frozen: engine commit (the D-161-rolled-out "
+       "build, same as the storm-v2 main grid)")
+
+    # digest-check: result_digest is sha256 of the canonical-JSON list of
+    # every row (sorted by batch_index), per bench_correction_storm.py's
+    # own `"result_digest": _sha256_json(rows_json)` (canonical_json ==
+    # json.dumps(..., sort_keys=True, separators=(",", ":"))) -- restated
+    # here rather than trusted from the record's own field.
+    recomputed_result_digest = hashlib.sha256(
+        json.dumps(rows, sort_keys=True, separators=(",", ":")).encode("utf-8")
+    ).hexdigest()
+    eq(recomputed_result_digest, d["result_digest"],
+       f"storm-v2 R18 probe: sha256 over every {relpath(STORM_V2_R18_PROBE_ROWS)} row "
+       f"(sorted by batch_index) matches {relpath(STORM_V2_R18_PROBE)}'s own result_digest")
+
+    n_registered_vals = {r["n_registered"] for r in rows}
+    require(len(n_registered_vals) == 1,
+            "storm-v2 R18 probe: n_registered constant across batches")
+    n_registered = next(iter(n_registered_vals))
+    eq(n_registered, d["config"]["n_registered"],
+       "storm-v2 R18 probe: recomputed n_registered matches config")
+
+    intersects = [r["intersects_calls"] for r in rows]
+    survivors = [r["candidate_survivors"] for r in rows]
+    changed = [r["changed_count"] for r in rows]
+
+    intersects_med = statistics.median(intersects)
+    eq(intersects_med, 29193, "storm-v2 R18 probe frozen: median intersects_calls/batch")
+    r18_tripped = intersects_med > 50000
+    eq(r18_tripped, False,
+       "storm-v2 R18 probe: median intersects_calls/batch does not exceed the R-18 trip "
+       "threshold (same non-trip as the v1 probe, at roughly double the raw call count)")
+
+    survivor_fraction_per_batch = [s / n_registered for s in survivors]
+    survivor_median = statistics.median(survivor_fraction_per_batch)
+    close(survivor_median, 0.283, 0.001,
+          "storm-v2 R18 probe frozen: median candidate_survivors / n_registered")
+
+    precision_per_batch = [c / s for c, s in zip(changed, survivors)]
+    precision_median = statistics.median(precision_per_batch)
+    close(precision_median, 0.211, 0.001,
+          "storm-v2 R18 probe frozen: median(changed_count / candidate_survivors) over the "
+          "5 batches")
+
+    l1_check_ms = [r["arms"]["tgms-L1"]["check_wall_ms"] for r in rows]
+    l1_ttf_ms = [r["arms"]["tgms-L1"]["ttf_ms"] for r in rows]
+    global_ttf_ms = [r["arms"]["global-recompute"]["ttf_ms"] for r in rows]
+    l1_invalidated = [r["arms"]["tgms-L1"]["invalidated_count"] for r in rows]
+
+    l1_check_med = statistics.median(l1_check_ms)
+    l1_ttf_med = statistics.median(l1_ttf_ms)
+    global_ttf_med = statistics.median(global_ttf_ms)
+
+    # Cross-check every recomputed per-batch median against the record's
+    # own aggregate summary.arms block -- never trusted without this (same
+    # discipline as compute_c7_r18 above).
+    eq(l1_ttf_med, d["summary"]["arms"]["tgms-L1"]["ttf_p50_ms"],
+       "storm-v2 R18 probe: recomputed tgms-L1 ttf p50 (median of per-batch ttf_ms) matches "
+       "the record's own summary.arms field")
+    eq(global_ttf_med, d["summary"]["arms"]["global-recompute"]["ttf_p50_ms"],
+       "storm-v2 R18 probe: recomputed global-recompute ttf p50 matches the record's own "
+       "summary.arms field")
+
+    avoided_decision = 1 - sum(l1_invalidated) / (n_registered * len(rows))
+    eq(avoided_decision, d["summary"]["arms"]["tgms-L1"]["avoided_recompute_decision"],
+       "storm-v2 R18 probe: recomputed avoided_recompute_decision (1 - sum(invalidated) / "
+       "sum(n_registered)) matches the record's own summary.arms field")
+    close(avoided_decision, 0.758, 0.001,
+          "storm-v2 R18 probe frozen: tgms-L1 avoided_recompute_decision")
+
+    # "Speedup of L1 over global-recompute" == baseline/candidate ==
+    # global/L1, per campaign.yaml's P5/P6 convention (>1.0 means L1 is
+    # faster) -- same convention as compute_c7_r18's osdiR18Speedup, but
+    # this probe measures speedup > 1.0 (L1 faster here, unlike the v1
+    # probe): a genuine, asserted result, no verdict drawn on it here.
+    speedup = global_ttf_med / l1_ttf_med
+    close(speedup, 1.946, 0.001, "storm-v2 R18 probe frozen: speedup of tgms-L1 over "
+          "global-recompute (global_ttf_median / l1_ttf_median)")
+
+    nc = d["summary"]["narrowing_coverage"]
+    eq(nc["n_all_top_term"], 0,
+       "storm-v2 R18 probe frozen: summary.narrowing_coverage.n_all_top_term")
+    non_compute_artifacts = nc["n_artifacts"] - nc["n_empty_scope"]
+    eq(non_compute_artifacts, 8203,
+       "storm-v2 R18 probe frozen: n_artifacts - n_empty_scope")
+
+    check_wall_median_s = l1_check_med / 1000
+    close(check_wall_median_s, 336.9, 0.05,
+          "storm-v2 R18 probe frozen: median arms.tgms-L1.check_wall_ms over the 5 batches, "
+          "seconds (README.md's own quoted field)")
+
+    wall_s = d["config"]["wall_s"]
+
+    m.add("osdiStormV2ProbeCommit", commit,
+          f"{relpath(STORM_V2_R18_PROBE)}: git_commit")
+    m.add("osdiStormV2ProbeBatches", tex_num(d["config"]["batches"]),
+          f"{relpath(STORM_V2_R18_PROBE)}: config.batches")
+    m.add("osdiStormV2ProbeWallS", f"{wall_s:,.1f}".replace(",", "{,}"),
+          f"{relpath(STORM_V2_R18_PROBE)}: config.wall_s")
+    m.add("osdiStormV2ProbeGlobalTtfS", f"{global_ttf_med / 1000:,.1f}".replace(",", "{,}"),
+          f"{relpath(STORM_V2_R18_PROBE_ROWS)}: median(arms.global-recompute.ttf_ms) over "
+          "the 5 batches, /1000, s (== record's own summary.arms.global-recompute."
+          "ttf_p50_ms)")
+    m.add("osdiStormV2ProbeTgmsL1TtfS", f"{l1_ttf_med / 1000:.1f}",
+          f"{relpath(STORM_V2_R18_PROBE_ROWS)}: median(arms.tgms-L1.ttf_ms) over the 5 "
+          "batches, /1000, s (== record's own summary.arms.tgms-L1.ttf_p50_ms)")
+    m.add("osdiStormV2ProbeSpeedupN10k", f"{speedup:.3f}",
+          f"{relpath(STORM_V2_R18_PROBE_ROWS)}: median(global-recompute ttf_ms) / "
+          "median(tgms-L1 ttf_ms) -- P5/P6's speedup convention, at N=10,000")
+    m.add("osdiStormV2ProbeAvoidedDecision", f"{avoided_decision:.3f}",
+          f"{relpath(STORM_V2_R18_PROBE_ROWS)}: summary.arms.tgms-L1."
+          "avoided_recompute_decision (== 1 - sum(invalidated_count)/sum(n_registered) "
+          "over the 5 batches)")
+    m.add("osdiStormV2ProbeSurvivorMedian", f"{survivor_median:.3f}",
+          f"{relpath(STORM_V2_R18_PROBE_ROWS)}: median(candidate_survivors / n_registered) "
+          "over the 5 batches")
+    m.add("osdiStormV2ProbePrecisionMedian", f"{precision_median:.3f}",
+          f"{relpath(STORM_V2_R18_PROBE_ROWS)}: median(changed_count / candidate_survivors) "
+          "over the 5 batches")
+    m.add("osdiStormV2ProbeIntersectsMedian", tex_num(int(intersects_med)),
+          f"{relpath(STORM_V2_R18_PROBE_ROWS)}: median(intersects_calls) over the 5 batches")
+    m.add("osdiStormV2ProbeR18Tripped", "yes" if r18_tripped else "no",
+          f"{relpath(STORM_V2_R18_PROBE_ROWS)}: median(intersects_calls) > 50,000 (the R-18 "
+          "trip threshold; arithmetic fact only, no verdict)")
+    m.add("osdiStormV2ProbeAllTopTerms", nc["n_all_top_term"],
+          f"{relpath(STORM_V2_R18_PROBE)}: summary.narrowing_coverage.n_all_top_term")
+    m.add("osdiStormV2ProbeNonComputeArtifacts", tex_num(non_compute_artifacts),
+          f"{relpath(STORM_V2_R18_PROBE)}: summary.narrowing_coverage.n_artifacts - "
+          "n_empty_scope")
+    m.add("osdiStormV2ProbeCheckWallMedianS", f"{check_wall_median_s:.1f}",
+          f"{relpath(STORM_V2_R18_PROBE_ROWS)}: median(arms.tgms-L1.check_wall_ms) over the "
+          "5 batches, /1000, s (README.md's own quoted field)")
 
 
 # --------------------------------------------------------------------------
@@ -3595,6 +3777,7 @@ def main() -> int:
     compute_c8(m)
     compute_c7_dag(m)
     compute_c7_r18(m)
+    compute_c7_storm_v2_probe(m)
     compute_c7_storm_v2(m)
     compute_d160(m)
     compute_d160_llm_direct_fix(m)
