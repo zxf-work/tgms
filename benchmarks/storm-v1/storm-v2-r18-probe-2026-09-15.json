@@ -1,0 +1,200 @@
+{
+  "config": {
+    "addendum_id": "storm-v1-addendum-3",
+    "age": null,
+    "allow_r18_trip": true,
+    "arms": [
+      "global-recompute",
+      "entity-touch",
+      "window-overlap",
+      "row-touch",
+      "tgms-L0",
+      "tgms-L1"
+    ],
+    "backend": "native",
+    "batches": 5,
+    "burst_after": 10,
+    "burst_size": 10000,
+    "dag_cascade_k": 4,
+    "dag_depth": 4,
+    "dag_fanout": 3,
+    "dag_seed_from_affected": false,
+    "dag_shape": null,
+    "degree": null,
+    "freeze_sha256": "c85fb0c8bb3b17e0b9f02a92a5ee0d5273298f43574583206582e5e5aa34d309",
+    "interval_vt": false,
+    "measure_ttf": "sum",
+    "mix": "c1",
+    "n_artifacts": 10000,
+    "n_registered": 8922,
+    "n_registration_skipped": 1078,
+    "range_width": null,
+    "seed": 0,
+    "store": "synth-iv-60k",
+    "wall_cap_s": 32400.0,
+    "wall_capped": false,
+    "wall_s": 12452.776229381561
+  },
+  "dag": null,
+  "dataset": {
+    "digest": "de407a0681234ea883ff40a06f48a021634e092d120f79da72aaaa967905483a",
+    "digest_kind": "eventlog_sha",
+    "name": "synth-iv-60k"
+  },
+  "git_commit": "fdd393c",
+  "machine": {
+    "cpus": 64,
+    "host": "itiger03",
+    "platform": "Linux-5.14.0-427.31.1.el9_4.x86_64-x86_64-with-glibc2.34",
+    "ram_gb": 503.68
+  },
+  "protocol": {
+    "ceilings": {
+      "r18_trip_n_artifacts": 10000
+    },
+    "reps": 1,
+    "warmups": 0
+  },
+  "record": "/home/xzhang12/storm-v2-work-h/r18-work/records/task-0/storm-synth-iv-60k-0-rows.jsonl",
+  "result_digest": "69435b2ff572e9b41ca1674ada6b3fd1bc3b525fdcd6cac7d448a08dcc1ad4bf",
+  "schema_version": "1.0.0",
+  "seed": {
+    "value": 0
+  },
+  "summary": {
+    "arms": {
+      "entity-touch": {
+        "avoided_recompute_decision": 0.9979825151311366,
+        "avoided_recompute_wall": 0.9977214527712643,
+        "false_fresh": 2385,
+        "false_stale": 71,
+        "invalidated": 90,
+        "ttf_incomplete_batches": 5,
+        "ttf_p50_ms": null,
+        "ttf_p95_ms": null
+      },
+      "global-recompute": {
+        "avoided_recompute_decision": 0.0,
+        "avoided_recompute_wall": 0.0,
+        "false_fresh": 0,
+        "false_stale": 42206,
+        "invalidated": 44610,
+        "ttf_incomplete_batches": 0,
+        "ttf_p50_ms": 1569251.234147232,
+        "ttf_p95_ms": 1598707.774941111
+      },
+      "row-touch": {
+        "avoided_recompute_decision": 1.0,
+        "avoided_recompute_wall": 1.0,
+        "false_fresh": 2404,
+        "false_stale": 0,
+        "invalidated": 0,
+        "ttf_incomplete_batches": 5,
+        "ttf_p50_ms": null,
+        "ttf_p95_ms": null
+      },
+      "tgms-L0": {
+        "avoided_recompute_decision": 0.757610401255324,
+        "avoided_recompute_wall": 0.7465939428856943,
+        "false_fresh": 0,
+        "false_stale": 8409,
+        "invalidated": 10813,
+        "ttf_incomplete_batches": 0,
+        "ttf_p50_ms": 806830.4722132161,
+        "ttf_p95_ms": 859836.6877071094
+      },
+      "tgms-L1": {
+        "avoided_recompute_decision": 0.757610401255324,
+        "avoided_recompute_wall": 0.7465939428856943,
+        "false_fresh": 0,
+        "false_stale": 8409,
+        "invalidated": 10813,
+        "ttf_incomplete_batches": 0,
+        "ttf_p50_ms": 806289.7629088257,
+        "ttf_p95_ms": 859813.4354783688
+      },
+      "window-overlap": {
+        "avoided_recompute_decision": 0.7483748038556377,
+        "avoided_recompute_wall": 0.7466173760117274,
+        "false_fresh": 10,
+        "false_stale": 8831,
+        "invalidated": 11225,
+        "ttf_incomplete_batches": 3,
+        "ttf_p50_ms": 260734.6111931838,
+        "ttf_p95_ms": 400546.7422269285
+      }
+    },
+    "batches": 5,
+    "check_cost_curve": [
+      {
+        "batch_index": 0,
+        "check_ms_tgms_L0": 337407.55594777875,
+        "check_ms_tgms_L1": 336866.8466433883,
+        "log_bytes": 4102403,
+        "log_records": 1,
+        "registry_bytes": 26382114
+      },
+      {
+        "batch_index": 1,
+        "check_ms_tgms_L0": 213436.3763765432,
+        "check_ms_tgms_L1": 213498.45662456937,
+        "log_bytes": 4102621,
+        "log_records": 2,
+        "registry_bytes": 40554567
+      },
+      {
+        "batch_index": 2,
+        "check_ms_tgms_L0": 362164.4102628343,
+        "check_ms_tgms_L1": 362141.1580340937,
+        "log_bytes": 4102857,
+        "log_records": 3,
+        "registry_bytes": 54727020
+      },
+      {
+        "batch_index": 3,
+        "check_ms_tgms_L0": 222310.12894795276,
+        "check_ms_tgms_L1": 222182.9304753337,
+        "log_bytes": 4103070,
+        "log_records": 4,
+        "registry_bytes": 68899473
+      },
+      {
+        "batch_index": 4,
+        "check_ms_tgms_L0": 358344.12873350084,
+        "check_ms_tgms_L1": 358730.90996569954,
+        "log_bytes": 4103307,
+        "log_records": 5,
+        "registry_bytes": 83071926
+      }
+    ],
+    "narrowing_coverage": {
+      "n_all_top_term": 0,
+      "n_artifacts": 8922,
+      "n_empty_scope": 719,
+      "per_template_counts": {
+        "aggregate_events": 723,
+        "burst_detection": 732,
+        "compute": 719,
+        "count_temporal_motifs": 704,
+        "diff_snapshots": 716,
+        "entity_history": 743,
+        "find_temporal_motif_instances": 715,
+        "graph_metric_timeseries": 709,
+        "neighborhood_evolution": 657,
+        "snapshot_subgraph": 770,
+        "temporal_paths": 317,
+        "temporal_reachability": 686,
+        "version_history": 731
+      },
+      "top_axis_counts": {
+        "kinds": 0,
+        "props": 4074,
+        "rel_types": 17499,
+        "targets": 0,
+        "vt": 8553
+      },
+      "total_terms": 17499
+    }
+  },
+  "timestamp_utc": "2026-09-15T19:19:22Z"
+}
