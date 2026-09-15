@@ -186,7 +186,17 @@ def run_all(params_doc: dict[str, Any], cypher_dir: Path, session: Any,
 #: sub-letter in its *parameter* file, `bi-10a.csv`, but the query file
 #: itself is plain `bi-10.cypher`); Interactive short reads map to
 #: `interactive-short-<n>.cypher`.
-_IS_NUM = {"IS2": 2, "IS3": 3, "IS6": 6, "IS7": 7}
+#:
+#: IS1/IS4/IS5 (RUNBOOK.md §3.1's documented gap, closed here, lane D1-fix
+#: 2026-09-14): these three were added to the *parameter* binder
+#: (`ldbc_snb_params.py::IV_SOURCES`, Lane D2, 2026-09-14) but never to this
+#: table, so `run_all()` raised `KeyError` for them. Consistent with
+#: `ldbc_snb_params.py::IV_SOURCES` and the plan artifacts'
+#: `provenance.reference_cypher` fields (`benchmarks/tgir-v1/plans/IS1.json`,
+#: `IS4.json`, `IS5.json`): IS1 -> `interactive-short-1.cypher`,
+#: IS4 -> `interactive-short-4.cypher`, IS5 -> `interactive-short-5.cypher`.
+_IS_NUM = {"IS1": 1, "IS2": 2, "IS3": 3, "IS4": 4, "IS5": 5, "IS6": 6,
+          "IS7": 7}
 _IC_NUM = {"IC2": 2, "IC5": 5, "IC6": 6, "IC8": 8, "IC9": 9, "IC11": 11,
           "IC12": 12}
 

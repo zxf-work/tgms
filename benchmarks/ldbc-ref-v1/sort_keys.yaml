@@ -1,0 +1,184 @@
+generated_by: scripts/ldbc_sort_keys.py
+source_note: "mechanically parsed from each vendored query's own final ORDER BY clause\
+  \ (RUNBOOK.md \xA78); column names are resolved against that query's own RETURN\
+  \ clause, not hand-transcribed"
+templates:
+  BI3:
+    cypher: bi/neo4j/queries/bi-3.cypher
+    order_by:
+    - column: messageCount
+      direction: DESC
+    - column: forum.id
+      direction: ASC
+    limit: 20
+  BI4:
+    cypher: bi/neo4j/queries/bi-4.cypher
+    order_by:
+    - column: messageCount
+      direction: DESC
+    - column: personId
+      direction: ASC
+    limit: 100
+  BI6:
+    cypher: bi/neo4j/queries/bi-6.cypher
+    order_by:
+    - column: authorityScore
+      direction: DESC
+    - column: person1.id
+      direction: ASC
+    limit: 100
+  BI7:
+    cypher: bi/neo4j/queries/bi-7.cypher
+    order_by:
+    - column: count
+      direction: DESC
+    - column: relatedTag.name
+      direction: ASC
+    limit: 100
+  BI9:
+    cypher: bi/neo4j/queries/bi-9.cypher
+    order_by:
+    - column: messageCount
+      direction: DESC
+    - column: person.id
+      direction: ASC
+    limit: 100
+  BI10:
+    cypher: bi/neo4j/queries/bi-10.cypher
+    order_by:
+    - column: messageCount
+      direction: DESC
+    - column: tag.name
+      direction: ASC
+    - column: expertCandidatePerson.id
+      direction: ASC
+    limit: 100
+  BI11:
+    cypher: bi/neo4j/queries/bi-11.cypher
+    order_by: []
+    limit: null
+  BI12:
+    cypher: bi/neo4j/queries/bi-12.cypher
+    order_by:
+    - column: personCount
+      direction: DESC
+    - column: messageCount
+      direction: DESC
+    limit: null
+  BI17:
+    cypher: bi/neo4j/queries/bi-17.cypher
+    order_by:
+    - column: messageCount
+      direction: DESC
+    - column: person1.id
+      direction: ASC
+    limit: 10
+  BI18:
+    cypher: bi/neo4j/queries/bi-18.cypher
+    order_by:
+    - column: mutualFriendCount
+      direction: DESC
+    - column: person1Id
+      direction: ASC
+    - column: person2Id
+      direction: ASC
+    limit: 20
+  IC2:
+    cypher: interactive_v1/cypher/queries/interactive-complex-2.cypher
+    order_by:
+    - column: postOrCommentCreationDate
+      direction: DESC
+    - column: postOrCommentId
+      direction: ASC
+    limit: 20
+  IC5:
+    cypher: interactive_v1/cypher/queries/interactive-complex-5.cypher
+    order_by:
+    - column: postCount
+      direction: DESC
+    - column: forum.id
+      direction: ASC
+      unmapped: true
+    limit: 20
+  IC6:
+    cypher: interactive_v1/cypher/queries/interactive-complex-6.cypher
+    order_by:
+    - column: postCount
+      direction: DESC
+    - column: tagName
+      direction: ASC
+    limit: 10
+  IC8:
+    cypher: interactive_v1/cypher/queries/interactive-complex-8.cypher
+    order_by:
+    - column: commentCreationDate
+      direction: DESC
+    - column: commentId
+      direction: ASC
+    limit: 20
+  IC9:
+    cypher: interactive_v1/cypher/queries/interactive-complex-9.cypher
+    order_by:
+    - column: commentOrPostCreationDate
+      direction: DESC
+    - column: commentOrPostId
+      direction: ASC
+    limit: 20
+  IC11:
+    cypher: interactive_v1/cypher/queries/interactive-complex-11.cypher
+    order_by:
+    - column: organizationWorkFromYear
+      direction: ASC
+    - column: personId
+      direction: ASC
+    - column: organizationName
+      direction: DESC
+    limit: 10
+  IC12:
+    cypher: interactive_v1/cypher/queries/interactive-complex-12.cypher
+    order_by:
+    - column: replyCount
+      direction: DESC
+    - column: personId
+      direction: ASC
+    limit: 20
+  IS1:
+    cypher: interactive_v1/cypher/queries/interactive-short-1.cypher
+    order_by: []
+    limit: null
+  IS2:
+    cypher: interactive_v1/cypher/queries/interactive-short-2.cypher
+    order_by:
+    - column: messageCreationDate
+      direction: DESC
+    - column: messageId
+      direction: ASC
+    limit: null
+  IS3:
+    cypher: interactive_v1/cypher/queries/interactive-short-3.cypher
+    order_by:
+    - column: friendshipCreationDate
+      direction: DESC
+    - column: personId
+      direction: ASC
+    limit: null
+  IS4:
+    cypher: interactive_v1/cypher/queries/interactive-short-4.cypher
+    order_by: []
+    limit: null
+  IS5:
+    cypher: interactive_v1/cypher/queries/interactive-short-5.cypher
+    order_by: []
+    limit: null
+  IS6:
+    cypher: interactive_v1/cypher/queries/interactive-short-6.cypher
+    order_by: []
+    limit: null
+  IS7:
+    cypher: interactive_v1/cypher/queries/interactive-short-7.cypher
+    order_by:
+    - column: commentCreationDate
+      direction: DESC
+    - column: replyAuthorId
+      direction: ASC
+    limit: null

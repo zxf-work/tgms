@@ -33,8 +33,8 @@ LDBC material is used under CC-BY 4.0.
 | what | path | notes |
 |---|---|---|
 | this runbook + frozen predictions | `benchmarks/ldbc-ref-v1/` | this directory |
-| vendored LDBC BI Cypher + import scripts | `external_workloads/ldbc/bi/neo4j/` | **not checked into `main`** — see §1.1 |
-| vendored LDBC Interactive Cypher | `external_workloads/ldbc/interactive_v1/cypher/` | **not checked into `main`** — see §1.1 |
+| vendored LDBC BI Cypher + import scripts | `external_workloads/ldbc/bi/neo4j/` | on `main` — see §1.1 |
+| vendored LDBC Interactive Cypher | `external_workloads/ldbc/interactive_v1/cypher/` | on `main` — see §1.1 |
 | pins for both vendored trees | `external_workloads/MANIFEST.yaml:59-72` | bi commit `47dd38b40844ecdb0e42e5a610c369535304786d`, interactive_v1 commit `11db98cc2ba14c33492f6c0c34e68c8be7e22e5f` |
 | per-template contract classes (41 rows, copied) | `external_workloads/ldbc/coverage_annotation.jsonl` and `tests/fixtures/ldbc_ref/contracts.json` | **is** on `main` |
 | TGIR plan artifacts | `benchmarks/tgir-v1/plans/*.json` | 25 files feed the 24 templates (BI6 has two: `BI6.json` evidence-only, `BI6.v2.json` the one to run — §6) |
@@ -43,24 +43,25 @@ LDBC material is used under CC-BY 4.0.
 | compare | `scripts/ldbc_compare.py` | normalizes, matches, classifies disagreements |
 | D1-local (fixture-scale) evidence this run supersedes for correctness (not for expressiveness) | `benchmarks/results-v1/ldbc-sf1-campaign.json` | 21/24 executed at SF1 already, 0 compared against any reference — this is the run that closes that gap |
 
-### 1.1 The vendored Cypher is not in this checkout
+### 1.1 The vendored Cypher is on `main` (lane D1-fix, 2026-09-14)
 
-`external_workloads/ldbc/bi/neo4j/` and `external_workloads/ldbc/interactive_v1/`
-do not exist under `/Users/xz/Documents/TGMS` (this repo's `main`). They exist,
-today, only under the separate worktree
-`/Users/xz/.tgms-worktrees/agent-interface/external_workloads/ldbc/` — the
-exact path the design memo's own closing citation names. **Before step 3**,
-the xzgpu lane must obtain both trees at the pinned commits above, e.g. by
-rsyncing that worktree's `external_workloads/ldbc/{bi,interactive_v1}` trees
-to the xzgpu checkout, or by cloning
-`https://github.com/ldbc/ldbc_snb_bi` at `47dd38b4…` and
-`https://github.com/ldbc/ldbc_snb_interactive_v1_impls` at `11db98cc…`
-directly. Verify after fetching:
+`external_workloads/ldbc/bi/neo4j/` and `external_workloads/ldbc/interactive_v1/cypher/`
+are now vendored on this repo's `main` (query/schema/script text only, at the
+pinned commits above; see `external_workloads/ldbc/README.md` for the
+provenance note and the upstream `LICENSE.txt`/`NOTICE.txt` files carried
+alongside each tree). This closes the gap this section used to document — a
+plain `git pull` on the xzgpu checkout is now sufficient, no separate fetch,
+rsync, or clone step before step 3. Confirm the paths resolve after pulling:
 
 ```bash
-git -C <bi-tree> rev-parse HEAD        # 47dd38b40844ecdb0e42e5a610c369535304786d
-git -C <interactive-tree> rev-parse HEAD  # 11db98cc2ba14c33492f6c0c34e68c8be7e22e5f
+test -f external_workloads/ldbc/bi/neo4j/queries/bi-3.cypher && echo ok
+test -f external_workloads/ldbc/interactive_v1/cypher/queries/interactive-short-1.cypher && echo ok
 ```
+
+(Only query/schema/script text was vendored — no data files, no generated
+CSVs, nothing over 1 MB. `initial_snapshot/` CSVs are still fetched fresh
+per §4 for the actual import; their absence here changes nothing about the
+run.)
 
 **Do not edit any `.cypher` file.** The design memo's whole independence
 argument (§1) is that these queries run unmodified; an edited query is an
@@ -500,6 +501,7 @@ uv run python scripts/ldbc_compare.py \
     --tgms-dir benchmarks/ldbc-ref-v1/tgms-rows \
     --ref-dir benchmarks/ldbc-ref-v1/ref-rows \
     --contracts tests/fixtures/ldbc_ref/contracts.json \
+    --sort-keys benchmarks/ldbc-ref-v1/sort_keys.yaml \
     --plan BI3 --plan BI4 --plan BI6.v2 --plan BI7 --plan BI9 --plan BI10 \
     --plan BI11 --plan BI12 --plan BI17 --plan BI18 \
     --plan IC2 --plan IC5 --plan IC6 --plan IC8 --plan IC9 --plan IC11 --plan IC12 \
@@ -518,16 +520,19 @@ REFERENCE-SIDE-QUIRK`, or `UNTRIAGED` if none fits.
 `compare_topk`): for the 16 `REQUIRES_TOP_K` templates, compare the top-k
 **set** after the template's own `ORDER BY`; if the boundary row's sort key
 ties across both sides, that row is `TIE-AMBIGUOUS` — reported as its own
-outcome, neither agreement nor disagreement. This requires `sort_keys`
-per plan (the vendored `.cypher` files' own `ORDER BY` clauses are not
-vendored into this repo as data) — passing `--plan` alone is not enough; a
-follow-up to this invocation must supply
-`sort_keys={"BI3": ["messageCount", "forum.id"], ...}` read directly off
-each `.cypher` file's `ORDER BY` line before the run, or every top-k
-residual is reported `UNTRIAGED` rather than correctly classified as a tie.
-**Read every vendored query's `ORDER BY` clause and build that table before
-this step** — this runbook does not do it for you because the queries are
-not in this checkout to read from (§1.1).
+outcome, neither agreement nor disagreement. This requires `sort_keys` per
+plan; that table is now generated, not hand-built (lane D1-fix, 2026-09-14):
+`benchmarks/ldbc-ref-v1/sort_keys.yaml`, produced from the vendored `.cypher`
+files' own final `ORDER BY` clauses by `scripts/ldbc_sort_keys.py` (re-run it
+if the vendored trees are ever re-pinned to a newer commit — it is
+mechanical, not a one-time hand transcription), and `--sort-keys` above
+passes it straight to `ldbc_compare.py`. It is keyed by the 24 LDBC template
+ids (`BI6`, not `BI6.v2` — `lookup_sort_keys` strips the `.v2` suffix before
+looking up, since the sort key is a property of the query, answered by
+either plan artifact). One entry, `IC5`, carries an `unmapped: true` column
+(`forum.id`, which that query's `ORDER BY` sorts by but never projects) — a
+named limitation, not silently guessed at; any resulting top-k residual on
+that boundary is reported `UNTRIAGED` rather than misclassified as a tie.
 
 For the 3 `REQUIRES_ORDERED_RESULT` templates (BI12, IS3, IS7): compared as
 sequences; a positional mismatch where the multisets still agree is
@@ -636,7 +641,7 @@ uv run python scripts/check_result_manifest.py benchmarks/ldbc-ref-v1/manifest-<
 | `neo4j-admin database import full` + indices | 0.5-1 h |
 | 24 templates × one Cypher execution each (no reps, §9) | 1-2 h; BI-class queries at SF1 on Neo4j run seconds to minutes per the design memo, and this run does not repeat warmups |
 | TGMS side, `--emit-rows`, guard bypassed | ~1.5 h (D1-local campaign wall was 4233 s for 21/24; `benchmarks/results-v1/ldbc-sf1-campaign.json` manifest `wall_s`) |
-| compare + triage (incl. building the `sort_keys` table by hand, §8) | 1-1.5 h |
+| compare + triage (`sort_keys.yaml` is generated, §8 — this no longer includes building it by hand) | 0.5-1 h |
 | **total** | **~1.5-2 working days with slack** |
 
 Disk: **~25 GB estimated** (design memo §2) — CSVs (`composite-projected-fk`,
@@ -650,7 +655,7 @@ and the import log until the manifest (§9) is written and checked in.
 
 ## 12. Order of operations (checklist)
 
-1. §1.1 — obtain both vendored trees at their pinned commits.
+1. §1.1 — confirm both vendored trees (now on `main`) are present at their pinned commits (`git pull` is enough).
 2. §3.1 — patch `_IS_NUM` (or supply a `cypher_name=` override) before any
    Interactive reference run.
 3. §2 — install Neo4j 5.26.0 + APOC, write `neo4j.conf`, do **not** start
@@ -663,8 +668,9 @@ and the import log until the manifest (§9) is written and checked in.
    `BI6.v2.json` both).
 8. §5.3 — run the Neo4j side (two `--cypher-dir` invocations).
 9. §6 — duplicate `ref-BI6.json` to `ref-BI6.v2.json`.
-10. §8 — build the per-template `sort_keys` table from the vendored
-    `ORDER BY` clauses, then run `ldbc_compare.py`.
+10. §8 — run `ldbc_compare.py` with `--sort-keys benchmarks/ldbc-ref-v1/sort_keys.yaml`
+    (already generated and checked in; re-run `scripts/ldbc_sort_keys.py` only
+    if the vendored trees are ever re-pinned).
 11. §9 — write and validate `manifest-<date>.json`.
 12. Compare the result against `campaign.yaml`'s pre-registered predictions
     and gates; report PASS/REFUTED per the frozen bar, not a new one chosen

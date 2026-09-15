@@ -90,6 +90,35 @@ def load_contracts(path: Path) -> dict[str, dict[str, Any]]:
     return doc["rows"] if "rows" in doc else doc
 
 
+def load_sort_keys(path: Path) -> dict[str, list[str]]:
+    """`benchmarks/ldbc-ref-v1/sort_keys.yaml` (`scripts/ldbc_sort_keys.py`'s
+    output) -> `{plan_id: [column, ...]}`, in `ORDER BY` order, for
+    `compare_topk`'s tie-break rule. Only the column names travel through —
+    direction and `limit` are the generator's own documentation of the
+    query, not inputs `compare_topk` needs (the tie rule compares boundary
+    *values*, not sort order)."""
+    import yaml  # noqa: PLC0415 — only this loader needs it
+
+    doc = yaml.safe_load(Path(path).read_text())
+    return {pid: [k["column"] for k in row.get("order_by", [])]
+            for pid, row in doc.get("templates", {}).items()}
+
+
+def lookup_sort_keys(sort_keys: dict[str, list[str]] | None,
+                     plan_id: str) -> list[str] | None:
+    """`sort_keys.yaml` is keyed by the 24 LDBC template ids (`BI6`, not
+    `BI6.v2`) — the sort key is a property of the *vendored query*, which is
+    the same one either plan artifact answers (RUNBOOK.md §6). A `--plan`
+    invocation naming `BI6.v2` still finds `BI6`'s row by stripping a
+    trailing `.v2` before falling back to "no sort keys known"."""
+    if not sort_keys:
+        return None
+    if plan_id in sort_keys:
+        return sort_keys[plan_id]
+    base = plan_id.removesuffix(".v2")
+    return sort_keys.get(base)
+
+
 # --------------------------------------------------------------------------
 # normalization (§4)
 # --------------------------------------------------------------------------
@@ -364,7 +393,7 @@ def compare_all(tgms_dir: Path, ref_dir: Path, contracts: dict[str, Any],
         tgms_doc = (json.loads(tgms_path.read_text())
                    if tgms_path.exists() else None)
         ref_doc = json.loads(ref_path.read_text()) if ref_path.exists() else None
-        keys = (sort_keys or {}).get(pid)
+        keys = lookup_sort_keys(sort_keys, pid)
         verdicts.append(compare_plan(pid, tgms_doc, ref_doc,
                                      contracts.get(pid), keys))
     return {
@@ -387,12 +416,18 @@ def main() -> int:
     ap.add_argument("--plan", action="append", default=[],
                     help="restrict to these plan ids; default is every id "
                          "the contracts file names")
+    ap.add_argument("--sort-keys", default=None,
+                    help="path to scripts/ldbc_sort_keys.py's output "
+                         "(benchmarks/ldbc-ref-v1/sort_keys.yaml); supplies "
+                         "the REQUIRES_TOP_K tie-break columns RUNBOOK.md §8 "
+                         "otherwise requires building by hand")
     args = ap.parse_args()
 
     contracts = load_contracts(Path(args.contracts))
     plan_ids = args.plan or sorted(contracts)
+    sort_keys = load_sort_keys(Path(args.sort_keys)) if args.sort_keys else None
     result = compare_all(Path(args.tgms_dir), Path(args.ref_dir), contracts,
-                         plan_ids)
+                         plan_ids, sort_keys=sort_keys)
 
     out = Path(args.out)
     out.parent.mkdir(parents=True, exist_ok=True)
