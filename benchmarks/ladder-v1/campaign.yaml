@@ -29,7 +29,7 @@ grid:
   rungs: [1, 2, 3, 4, 5]
   tokenizer: auto
 
-commit_under_test: TBD   # filled at submission (scripts/overhead_ladder.slurm's
+commit_under_test: 487457a   # filled at submission (scripts/overhead_ladder.slurm's
                          # TGMS_COMMIT env var — iTiger compute nodes carry no
                          # git binary, so this cannot be read from the checkout
                          # at run time; see that script's header)

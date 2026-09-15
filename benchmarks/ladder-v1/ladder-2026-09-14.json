@@ -1,0 +1,651 @@
+{
+ "config": "benchmarks/ladder-v1/campaign.yaml",
+ "dataset": {
+  "digest": "c3260bd28a1b9d9afdf09eea0125d0b435ac3e7c5e2d0a3415f718444b232a2e",
+  "digest_kind": "store_digest",
+  "name": "bitcoinotc"
+ },
+ "falsifiers": {
+  "a_tool_calls_ne_steps": false,
+  "b_trace_bytes_nondeterministic": false,
+  "c_any_plan_failed": false
+ },
+ "gates": {
+  "G-L1_every_plan_executes": {
+   "detail": [],
+   "failures": 0,
+   "max_failures": 0
+  }
+ },
+ "git_commit": "487457a",
+ "machine": {
+  "cpus": 64,
+  "host": "itiger02",
+  "platform": "Linux-5.14.0-427.31.1.el9_4.x86_64-x86_64-with-glibc2.34",
+  "ram_gb": 503.68
+ },
+ "prediction_checks": {
+  "rung1_pass": true,
+  "rung1_refuted": false,
+  "rung2_pass": true,
+  "rung2_refuted": false,
+  "rung3_pass": true,
+  "rung4_pass": true,
+  "rung4_refuted": false,
+  "rung5_pass": true
+ },
+ "protocol": {
+  "ceilings": {
+   "call_ceiling_s": 300
+  },
+  "harness": "scripts/bench_overhead_ladder.py",
+  "job_ids": {
+   "0": 212303,
+   "1": 212304,
+   "2": 212305
+  },
+  "reps": 5,
+  "rungs": [
+   1,
+   2,
+   3,
+   4,
+   5
+  ],
+  "seeds": [
+   0,
+   1,
+   2
+  ],
+  "slurm": "scripts/overhead_ladder.slurm",
+  "tokenizer": "auto",
+  "tokenizer_actual": "approx:whitespace_punct (tiktoken not installed in the campaign venv; auto fell back per the harness's documented behavior)",
+  "warmups": 2
+ },
+ "provenance": {
+  "array_job_id_corruption_n_a": null,
+  "branch": "post-a10-campaign",
+  "ladder_job_ids": {
+   "0": 212303,
+   "1": 212304,
+   "2": 212305
+  },
+  "worktree": "/project/xzhang12/tgms-post-a10"
+ },
+ "record": "benchmarks/ladder-v1/ladder-2026-09-14.json",
+ "result_digest": "1c703fa39e93513bdd20e7f95166d17d1d1f7d1e1e634e1928123d9fac60b28c",
+ "schema_version": "1.0.0",
+ "seed": {
+  "reason": "campaign pools three seeds (0, 1, 2) per the frozen grid; see the additive `seeds` field and raw/ for per-seed records",
+  "value": null
+ },
+ "seeds": [
+  0,
+  1,
+  2
+ ],
+ "summary": {
+  "rung1_leaf_overhead": {
+   "aggregate_events": {
+    "leaf_over_direct_median": 1.0210189975220623,
+    "per_seed": [
+     1.0210189975220623,
+     1.0151214779821158,
+     1.0448005232177895
+    ]
+   },
+   "burst_detection": {
+    "leaf_over_direct_median": 1.0449476708934173,
+    "per_seed": [
+     1.0618610068590657,
+     1.0449476708934173,
+     1.0373026145482784
+    ]
+   },
+   "co_active": {
+    "leaf_over_direct_median": 1.0421013519307172,
+    "per_seed": [
+     1.0421013519307172,
+     1.0107253582102058,
+     1.0583977675716527
+    ]
+   },
+   "compute": {
+    "leaf_over_direct_median": 1.064464807738779,
+    "per_seed": [
+     1.0779372382064134,
+     1.0635287715957014,
+     1.066457423580786,
+     1.0654008438818565,
+     1.0893515358361774,
+     1.0601315165073555,
+     1.0574317492416583,
+     1.0691065221836025,
+     1.0584815090257589,
+     1.0660229822533487,
+     1.0512820512820513,
+     1.0580357142857142
+    ]
+   },
+   "count_temporal_motifs": {
+    "leaf_over_direct_median": 0.9919982626082593,
+    "per_seed": [
+     0.9655820785897907,
+     1.0201629405077681,
+     0.9919982626082593
+    ]
+   },
+   "diff_snapshots": {
+    "leaf_over_direct_median": 0.9920383770382762,
+    "per_seed": [
+     0.981339932544355,
+     0.9920383770382762,
+     1.016248782862707
+    ]
+   },
+   "entity_history": {
+    "leaf_over_direct_median": 1.0308009937415727,
+    "per_seed": [
+     1.0312483105368437,
+     1.0257698541329012,
+     1.0345164972549872,
+     1.0303536769463015,
+     1.0332954975406734,
+     1.0203083866115081
+    ]
+   },
+   "find_temporal_motif_instances": {
+    "leaf_over_direct_median": 0.9945102669288703,
+    "per_seed": [
+     0.9932990736848208,
+     0.9945102669288703,
+     1.0050612781638724
+    ]
+   },
+   "graph_metric_timeseries": {
+    "leaf_over_direct_median": 1.0430186679229727,
+    "per_seed": [
+     1.0430186679229727,
+     1.0655067136971277,
+     1.0334587437893104
+    ]
+   },
+   "neighborhood_evolution": {
+    "leaf_over_direct_median": 1.0219447840916405,
+    "per_seed": [
+     0.9983527622909275,
+     1.026044545602341,
+     1.0219447840916405
+    ]
+   },
+   "snapshot_subgraph": {
+    "leaf_over_direct_median": 1.0195496467817897,
+    "per_seed": [
+     1.0195496467817897,
+     1.019167067034162,
+     1.0366967933638727
+    ]
+   },
+   "temporal_paths": {
+    "leaf_over_direct_median": 1.0118268805438502,
+    "per_seed": [
+     1.0118268805438502,
+     1.0100245973917483,
+     1.0184499249812453
+    ]
+   },
+   "temporal_reachability": {
+    "leaf_over_direct_median": 1.0170467634185671,
+    "per_seed": [
+     1.0170467634185671,
+     1.006435489930255,
+     1.050424521994919
+    ]
+   },
+   "version_history": {
+    "leaf_over_direct_median": 1.001663504610906,
+    "per_seed": [
+     1.0086054679474008,
+     1.001663504610906,
+     0.9905411555001283
+    ]
+   }
+  },
+  "rung2_compiled_vs_kernel": {
+   "entity_history": {
+    "compiled_over_kernel_median": 1.1321759928956914,
+    "per_seed": [
+     1.1323398226373511,
+     1.1320121631540316,
+     1.1522901773894625,
+     1.134354187424616,
+     1.1241612483745123,
+     1.1293326435592344
+    ]
+   },
+   "version_history": {
+    "compiled_over_kernel_median": 2.5403795318319973,
+    "per_seed": [
+     2.52121032982277,
+     2.5403795318319973,
+     2.542925134870489
+    ]
+   }
+  },
+  "rung3_trace_bytes": {
+   "p01-entity-history": {
+    "bytes_median": 3309,
+    "per_seed": [
+     3309,
+     3309,
+     3309
+    ],
+    "reproducible_across_seeds": true
+   },
+   "p02-compiled-entity-and-version": {
+    "bytes_median": 6402,
+    "per_seed": [
+     6402,
+     6402,
+     6402
+    ],
+    "reproducible_across_seeds": true
+   },
+   "p03-snapshot-subgraph": {
+    "bytes_median": 3825,
+    "per_seed": [
+     3825,
+     3825,
+     3825
+    ],
+    "reproducible_across_seeds": true
+   },
+   "p04-diff-snapshots": {
+    "bytes_median": 3623,
+    "per_seed": [
+     3623,
+     3623,
+     3623
+    ],
+    "reproducible_across_seeds": true
+   },
+   "p05-neighborhood-evolution": {
+    "bytes_median": 3612,
+    "per_seed": [
+     3612,
+     3612,
+     3612
+    ],
+    "reproducible_across_seeds": true
+   },
+   "p06-aggregate-events": {
+    "bytes_median": 3162,
+    "per_seed": [
+     3162,
+     3162,
+     3162
+    ],
+    "reproducible_across_seeds": true
+   },
+   "p07-graph-metric-timeseries": {
+    "bytes_median": 2955,
+    "per_seed": [
+     2955,
+     2955,
+     2955
+    ],
+    "reproducible_across_seeds": true
+   },
+   "p08-burst-detection": {
+    "bytes_median": 2989,
+    "per_seed": [
+     2989,
+     2989,
+     2989
+    ],
+    "reproducible_across_seeds": true
+   },
+   "p09-motifs": {
+    "bytes_median": 7924,
+    "per_seed": [
+     7924,
+     7924,
+     7924
+    ],
+    "reproducible_across_seeds": true
+   },
+   "p10-reachability-and-paths": {
+    "bytes_median": 7549,
+    "per_seed": [
+     7549,
+     7549,
+     7549
+    ],
+    "reproducible_across_seeds": true
+   },
+   "p11-co-active": {
+    "bytes_median": 3676,
+    "per_seed": [
+     3676,
+     3676,
+     3676
+    ],
+    "reproducible_across_seeds": true
+   },
+   "p12-compute-only": {
+    "bytes_median": 2648,
+    "per_seed": [
+     2648,
+     2648,
+     2648
+    ],
+    "reproducible_across_seeds": true
+   }
+  },
+  "rung4_verify_ms": {
+   "p01-entity-history": {
+    "p50_ms_median": 5.299822427332401,
+    "per_seed": [
+     5.278208758682013,
+     5.317497998476028,
+     5.299822427332401
+    ]
+   },
+   "p02-compiled-entity-and-version": {
+    "p50_ms_median": 4.96585201472044,
+    "per_seed": [
+     4.965361673384905,
+     4.96585201472044,
+     4.9947816878557205
+    ]
+   },
+   "p03-snapshot-subgraph": {
+    "p50_ms_median": 5.037810653448105,
+    "per_seed": [
+     5.015160888433456,
+     5.059041082859039,
+     5.037810653448105
+    ]
+   },
+   "p04-diff-snapshots": {
+    "p50_ms_median": 5.024261772632599,
+    "per_seed": [
+     4.973900970071554,
+     5.024261772632599,
+     5.052441731095314
+    ]
+   },
+   "p05-neighborhood-evolution": {
+    "p50_ms_median": 5.1188296638429165,
+    "per_seed": [
+     5.1188296638429165,
+     5.158571060746908,
+     5.085520911961794
+    ]
+   },
+   "p06-aggregate-events": {
+    "p50_ms_median": 5.197939928621054,
+    "per_seed": [
+     5.197939928621054,
+     5.133031401783228,
+     5.240150261670351
+    ]
+   },
+   "p07-graph-metric-timeseries": {
+    "p50_ms_median": 5.20677026361227,
+    "per_seed": [
+     5.20677026361227,
+     5.1168710924685,
+     5.279979668557644
+    ]
+   },
+   "p08-burst-detection": {
+    "p50_ms_median": 5.081071052700281,
+    "per_seed": [
+     5.12556079775095,
+     5.081071052700281,
+     5.050111096352339
+    ]
+   },
+   "p09-motifs": {
+    "p50_ms_median": 5.1046996377408504,
+    "per_seed": [
+     5.140071269124746,
+     5.1046996377408504,
+     5.090200807899237
+    ]
+   },
+   "p10-reachability-and-paths": {
+    "p50_ms_median": 4.979241173714399,
+    "per_seed": [
+     4.982490092515945,
+     4.916884005069733,
+     4.979241173714399
+    ]
+   },
+   "p11-co-active": {
+    "p50_ms_median": 5.038202274590731,
+    "per_seed": [
+     4.984899889677763,
+     5.051914136856794,
+     5.038202274590731
+    ]
+   },
+   "p12-compute-only": {
+    "p50_ms_median": 5.0409408286213875,
+    "per_seed": [
+     5.044789984822273,
+     5.020693875849247,
+     5.0409408286213875
+    ]
+   }
+  },
+  "rung5_tokens_tool_calls": {
+   "p01-entity-history": {
+    "executed_steps": 1,
+    "n_steps": 1,
+    "note": null,
+    "per_seed_tokens": [
+     4023,
+     4023,
+     4023
+    ],
+    "tokens_total_median": 4023,
+    "tool_calls_eq_executed_steps": true,
+    "tool_calls_per_seed": [
+     1,
+     1,
+     1
+    ]
+   },
+   "p02-compiled-entity-and-version": {
+    "executed_steps": 2,
+    "n_steps": 3,
+    "note": "trailing compute(fn=count) step fails pre-dispatch with E_LIMIT (upstream page truncated at this arg shape) -- verified by direct trace re-execution; see manifest-level note",
+    "per_seed_tokens": [
+     6082,
+     6082,
+     6082
+    ],
+    "tokens_total_median": 6082,
+    "tool_calls_eq_executed_steps": true,
+    "tool_calls_per_seed": [
+     2,
+     2,
+     2
+    ]
+   },
+   "p03-snapshot-subgraph": {
+    "executed_steps": 1,
+    "n_steps": 1,
+    "note": null,
+    "per_seed_tokens": [
+     1375,
+     1375,
+     1375
+    ],
+    "tokens_total_median": 1375,
+    "tool_calls_eq_executed_steps": true,
+    "tool_calls_per_seed": [
+     1,
+     1,
+     1
+    ]
+   },
+   "p04-diff-snapshots": {
+    "executed_steps": 1,
+    "n_steps": 1,
+    "note": null,
+    "per_seed_tokens": [
+     1397,
+     1397,
+     1397
+    ],
+    "tokens_total_median": 1397,
+    "tool_calls_eq_executed_steps": true,
+    "tool_calls_per_seed": [
+     1,
+     1,
+     1
+    ]
+   },
+   "p05-neighborhood-evolution": {
+    "executed_steps": 1,
+    "n_steps": 1,
+    "note": null,
+    "per_seed_tokens": [
+     1340,
+     1340,
+     1340
+    ],
+    "tokens_total_median": 1340,
+    "tool_calls_eq_executed_steps": true,
+    "tool_calls_per_seed": [
+     1,
+     1,
+     1
+    ]
+   },
+   "p06-aggregate-events": {
+    "executed_steps": 1,
+    "n_steps": 1,
+    "note": null,
+    "per_seed_tokens": [
+     2288,
+     2288,
+     2288
+    ],
+    "tokens_total_median": 2288,
+    "tool_calls_eq_executed_steps": true,
+    "tool_calls_per_seed": [
+     1,
+     1,
+     1
+    ]
+   },
+   "p07-graph-metric-timeseries": {
+    "executed_steps": 1,
+    "n_steps": 1,
+    "note": null,
+    "per_seed_tokens": [
+     2168,
+     2168,
+     2168
+    ],
+    "tokens_total_median": 2168,
+    "tool_calls_eq_executed_steps": true,
+    "tool_calls_per_seed": [
+     1,
+     1,
+     1
+    ]
+   },
+   "p08-burst-detection": {
+    "executed_steps": 1,
+    "n_steps": 1,
+    "note": null,
+    "per_seed_tokens": [
+     1455,
+     1455,
+     1455
+    ],
+    "tokens_total_median": 1455,
+    "tool_calls_eq_executed_steps": true,
+    "tool_calls_per_seed": [
+     1,
+     1,
+     1
+    ]
+   },
+   "p09-motifs": {
+    "executed_steps": 3,
+    "n_steps": 3,
+    "note": null,
+    "per_seed_tokens": [
+     2520,
+     2520,
+     2520
+    ],
+    "tokens_total_median": 2520,
+    "tool_calls_eq_executed_steps": true,
+    "tool_calls_per_seed": [
+     3,
+     3,
+     3
+    ]
+   },
+   "p10-reachability-and-paths": {
+    "executed_steps": 2,
+    "n_steps": 3,
+    "note": "trailing compute(fn=count) step fails pre-dispatch with E_LIMIT (upstream page truncated at this arg shape) -- verified by direct trace re-execution; see manifest-level note",
+    "per_seed_tokens": [
+     3618,
+     3618,
+     3618
+    ],
+    "tokens_total_median": 3618,
+    "tool_calls_eq_executed_steps": true,
+    "tool_calls_per_seed": [
+     2,
+     2,
+     2
+    ]
+   },
+   "p11-co-active": {
+    "executed_steps": 1,
+    "n_steps": 1,
+    "note": null,
+    "per_seed_tokens": [
+     1325,
+     1325,
+     1325
+    ],
+    "tokens_total_median": 1325,
+    "tool_calls_eq_executed_steps": true,
+    "tool_calls_per_seed": [
+     1,
+     1,
+     1
+    ]
+   },
+   "p12-compute-only": {
+    "executed_steps": 1,
+    "n_steps": 1,
+    "note": null,
+    "per_seed_tokens": [
+     1188,
+     1188,
+     1188
+    ],
+    "tokens_total_median": 1188,
+    "tool_calls_eq_executed_steps": true,
+    "tool_calls_per_seed": [
+     1,
+     1,
+     1
+    ]
+   }
+  }
+ },
+ "timestamp_utc": "2026-09-15T04:14:57Z"
+}

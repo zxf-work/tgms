@@ -1,0 +1,1660 @@
+{
+ "config": {
+  "harness": "scripts/bench_overhead_ladder.py",
+  "plans": [
+   "benchmarks/ladder-v1/plans/p01-entity-history.json",
+   "benchmarks/ladder-v1/plans/p02-compiled-entity-and-version.json",
+   "benchmarks/ladder-v1/plans/p03-snapshot-subgraph.json",
+   "benchmarks/ladder-v1/plans/p04-diff-snapshots.json",
+   "benchmarks/ladder-v1/plans/p05-neighborhood-evolution.json",
+   "benchmarks/ladder-v1/plans/p06-aggregate-events.json",
+   "benchmarks/ladder-v1/plans/p07-graph-metric-timeseries.json",
+   "benchmarks/ladder-v1/plans/p08-burst-detection.json",
+   "benchmarks/ladder-v1/plans/p09-motifs.json",
+   "benchmarks/ladder-v1/plans/p10-reachability-and-paths.json",
+   "benchmarks/ladder-v1/plans/p11-co-active.json",
+   "benchmarks/ladder-v1/plans/p12-compute-only.json"
+  ],
+  "rungs": [
+   1,
+   2,
+   3,
+   4,
+   5
+  ],
+  "smoke": false,
+  "store": "stores/bitcoinotc",
+  "tokenizer": "auto"
+ },
+ "dataset": {
+  "digest": "c3260bd28a1b9d9afdf09eea0125d0b435ac3e7c5e2d0a3415f718444b232a2e",
+  "digest_kind": "store_digest",
+  "name": "bitcoinotc"
+ },
+ "git_commit": "487457a",
+ "machine": {
+  "cpus": 64,
+  "host": "itiger02",
+  "platform": "Linux-5.14.0-427.31.1.el9_4.x86_64-x86_64-with-glibc2.34",
+  "ram_gb": 503.68
+ },
+ "protocol": {
+  "ceilings": {
+   "call_ceiling_s": 300
+  },
+  "reps": 5,
+  "warmups": 2
+ },
+ "record": "/home/xzhang12/ladder-v1-h/runs/overhead-ladder/212305/overhead-ladder-bitcoinotc.json",
+ "result_digest": "b79c3362a0a4f6f5dcbf4cab4f454432f790c99ca515c904d6491a28b25bcb30",
+ "rows": [
+  {
+   "name": "leaf_overhead",
+   "ops_in_plan": [
+    "entity_history"
+   ],
+   "ops_measured": [
+    "entity_history"
+   ],
+   "pid": 3397634,
+   "plan_id": "p01-entity-history",
+   "protocol": "bench_leaf_overhead: warmups 5, reps 30/10 by threshold, one arm per process (imported unchanged)",
+   "rows": [
+    {
+     "direct": {
+      "case": "entity_history",
+      "max_ms": 4.941701889038086,
+      "min_ms": 4.302263259887695,
+      "outcome": "OK",
+      "p50_ms": 4.410982131958008,
+      "p95_ms": 4.773855209350586,
+      "reps": 30
+     },
+     "leaf": {
+      "case": "entity_history",
+      "max_ms": 4.820108413696289,
+      "min_ms": 4.471302032470703,
+      "outcome": "OK",
+      "p50_ms": 4.55784797668457,
+      "p95_ms": 4.818439483642578,
+      "reps": 30
+     },
+     "leaf_over_direct": 1.0332954975406734,
+     "op": "entity_history"
+    }
+   ],
+   "rung": 1
+  },
+  {
+   "name": "compiled_vs_kernel",
+   "ops_in_plan": [
+    "entity_history"
+   ],
+   "ops_measured": [
+    "entity_history"
+   ],
+   "pid": 3397667,
+   "plan_id": "p01-entity-history",
+   "population": "entity_history, version_history only (tgms.tgir.compiled.COMPILED)",
+   "protocol": "bench_compiled_vs_kernel: warmups 5, budgeted reps, one arm per process (imported unchanged)",
+   "rows": [
+    {
+     "compiled": {
+      "arm": "compiled",
+      "max_ms": 5.569934844970703,
+      "min_ms": 5.074977874755859,
+      "op": "entity_history",
+      "outcome": "OK",
+      "p50_ms": 5.152702331542969,
+      "p95_ms": 5.524873733520508,
+      "reps": 30,
+      "rows": 1
+     },
+     "compiled_over_kernel": 1.1241612483745123,
+     "kernel": {
+      "arm": "kernel",
+      "max_ms": 4.808187484741211,
+      "min_ms": 4.424095153808594,
+      "op": "entity_history",
+      "outcome": "OK",
+      "p50_ms": 4.583597183227539,
+      "p95_ms": 4.755496978759766,
+      "reps": 30,
+      "rows": 1
+     },
+     "op": "entity_history"
+    }
+   ],
+   "rung": 2
+  },
+  {
+   "bytes_all": [
+    3309,
+    3309,
+    3309,
+    3309,
+    3309
+   ],
+   "bytes_max": 3309,
+   "bytes_median": 3309,
+   "bytes_min": 3309,
+   "name": "trace_bytes",
+   "note": "canonical JSON of the executor's own Trace.to_json(), with wall_ms fields stripped so the byte count is reproducible across runs (see module docstring)",
+   "pid": 3397700,
+   "plan_id": "p01-entity-history",
+   "reps": 5,
+   "rung": 3
+  },
+  {
+   "max_ms": 5.429611075669527,
+   "min_ms": 5.27220219373703,
+   "ms_all": [
+    5.27220219373703,
+    5.2733817137777805,
+    5.299822427332401,
+    5.316552240401506,
+    5.429611075669527
+   ],
+   "n_claims": 1,
+   "name": "verify_ms",
+   "note": "ClaimVerifier.verify over tgms.agent.reporter.mechanical_answer(plan, trace) -- deterministic, no LLM. tgms/tgir/check.py::check_trace is a freshness check, not claim verification; see module docstring.",
+   "p50_ms": 5.299822427332401,
+   "p95_ms": 5.429611075669527,
+   "pid": 3397723,
+   "plan_id": "p01-entity-history",
+   "reps": 5,
+   "rung": 4,
+   "verify_metrics": {
+    "coverage": 1.0,
+    "n_claims": 1,
+    "ucr": 0.0,
+    "ucr_gated": 0.0,
+    "uncovered_assertions": []
+   },
+   "warmups": 2
+  },
+  {
+   "answer_claims": 1,
+   "n_steps": 1,
+   "name": "tokens_tool_calls",
+   "note": "reporter_message = the exact system+user message text tgms.agent.reporter.Reporter.report would send an LLM (built, never sent); tool_request/response = each step's resolved args and stored result payload, the round trip ToolRouter.call actually drives. tool_calls counted at ToolRouter.call itself, not inferred from trace step count.",
+   "pid": 3397734,
+   "plan_id": "p01-entity-history",
+   "rung": 5,
+   "tokens": {
+    "approx": true,
+    "reporter_message": 495,
+    "tokenizer": "approx:whitespace_punct",
+    "tool_request": 21,
+    "tool_response": 3507,
+    "total": 4023
+   },
+   "tool_calls": 1
+  },
+  {
+   "name": "leaf_overhead",
+   "ops_in_plan": [
+    "entity_history",
+    "version_history",
+    "compute"
+   ],
+   "ops_measured": [
+    "entity_history",
+    "version_history",
+    "compute"
+   ],
+   "pid": 3397745,
+   "plan_id": "p02-compiled-entity-and-version",
+   "protocol": "bench_leaf_overhead: warmups 5, reps 30/10 by threshold, one arm per process (imported unchanged)",
+   "rows": [
+    {
+     "direct": {
+      "case": "entity_history",
+      "max_ms": 4.78816032409668,
+      "min_ms": 4.317998886108398,
+      "outcome": "OK",
+      "p50_ms": 4.437685012817383,
+      "p95_ms": 4.766941070556641,
+      "reps": 30
+     },
+     "leaf": {
+      "case": "entity_history",
+      "max_ms": 4.802465438842773,
+      "min_ms": 4.436492919921875,
+      "outcome": "OK",
+      "p50_ms": 4.527807235717773,
+      "p95_ms": 4.724025726318359,
+      "reps": 30
+     },
+     "leaf_over_direct": 1.0203083866115081,
+     "op": "entity_history"
+    },
+    {
+     "direct": {
+      "case": "version_history",
+      "max_ms": 157.29880332946777,
+      "min_ms": 150.26140213012695,
+      "outcome": "OK",
+      "p50_ms": 151.411771774292,
+      "p95_ms": 154.56485748291016,
+      "reps": 30
+     },
+     "leaf": {
+      "case": "version_history",
+      "max_ms": 159.1494083404541,
+      "min_ms": 147.1724510192871,
+      "outcome": "OK",
+      "p50_ms": 149.9795913696289,
+      "p95_ms": 157.32598304748535,
+      "reps": 30
+     },
+     "leaf_over_direct": 0.9905411555001283,
+     "op": "version_history"
+    },
+    {
+     "direct": {
+      "case": "compute",
+      "max_ms": 3.8356781005859375,
+      "min_ms": 3.3910274505615234,
+      "outcome": "OK",
+      "p50_ms": 3.526449203491211,
+      "p95_ms": 3.729581832885742,
+      "reps": 30
+     },
+     "leaf": {
+      "case": "compute",
+      "max_ms": 4.117727279663086,
+      "min_ms": 3.635406494140625,
+      "outcome": "OK",
+      "p50_ms": 3.7326812744140625,
+      "p95_ms": 3.9930343627929688,
+      "reps": 30
+     },
+     "leaf_over_direct": 1.0584815090257589,
+     "op": "compute"
+    }
+   ],
+   "rung": 1
+  },
+  {
+   "name": "compiled_vs_kernel",
+   "ops_in_plan": [
+    "entity_history",
+    "version_history",
+    "compute"
+   ],
+   "ops_measured": [
+    "entity_history",
+    "version_history"
+   ],
+   "pid": 3397822,
+   "plan_id": "p02-compiled-entity-and-version",
+   "population": "entity_history, version_history only (tgms.tgir.compiled.COMPILED)",
+   "protocol": "bench_compiled_vs_kernel: warmups 5, budgeted reps, one arm per process (imported unchanged)",
+   "rows": [
+    {
+     "compiled": {
+      "arm": "compiled",
+      "max_ms": 5.507230758666992,
+      "min_ms": 5.078792572021484,
+      "op": "entity_history",
+      "outcome": "OK",
+      "p50_ms": 5.204677581787109,
+      "p95_ms": 5.386114120483398,
+      "reps": 30,
+      "rows": 1
+     },
+     "compiled_over_kernel": 1.1293326435592344,
+     "kernel": {
+      "arm": "kernel",
+      "max_ms": 5.494594573974609,
+      "min_ms": 4.437923431396484,
+      "op": "entity_history",
+      "outcome": "OK",
+      "p50_ms": 4.608631134033203,
+      "p95_ms": 5.035877227783203,
+      "reps": 30,
+      "rows": 1
+     },
+     "op": "entity_history"
+    },
+    {
+     "compiled": {
+      "arm": "compiled",
+      "max_ms": 373.3537197113037,
+      "min_ms": 350.6340980529785,
+      "op": "version_history",
+      "outcome": "OK",
+      "p50_ms": 359.73477363586426,
+      "p95_ms": 370.9075450897217,
+      "reps": 30,
+      "rows": 50
+     },
+     "compiled_over_kernel": 2.542925134870489,
+     "kernel": {
+      "arm": "kernel",
+      "max_ms": 146.78144454956055,
+      "min_ms": 139.90330696105957,
+      "op": "version_history",
+      "outcome": "OK",
+      "p50_ms": 141.4649486541748,
+      "p95_ms": 146.54541015625,
+      "reps": 30,
+      "rows": 50
+     },
+     "op": "version_history"
+    }
+   ],
+   "rung": 2
+  },
+  {
+   "bytes_all": [
+    6402,
+    6402,
+    6402,
+    6402,
+    6402
+   ],
+   "bytes_max": 6402,
+   "bytes_median": 6402,
+   "bytes_min": 6402,
+   "name": "trace_bytes",
+   "note": "canonical JSON of the executor's own Trace.to_json(), with wall_ms fields stripped so the byte count is reproducible across runs (see module docstring)",
+   "pid": 3397883,
+   "plan_id": "p02-compiled-entity-and-version",
+   "reps": 5,
+   "rung": 3
+  },
+  {
+   "max_ms": 5.060900934040546,
+   "min_ms": 4.957881756126881,
+   "ms_all": [
+    4.957881756126881,
+    4.964561201632023,
+    4.9947816878557205,
+    5.011082161217928,
+    5.060900934040546
+   ],
+   "n_claims": 1,
+   "name": "verify_ms",
+   "note": "ClaimVerifier.verify over tgms.agent.reporter.mechanical_answer(plan, trace) -- deterministic, no LLM. tgms/tgir/check.py::check_trace is a freshness check, not claim verification; see module docstring.",
+   "p50_ms": 4.9947816878557205,
+   "p95_ms": 5.060900934040546,
+   "pid": 3397906,
+   "plan_id": "p02-compiled-entity-and-version",
+   "reps": 5,
+   "rung": 4,
+   "verify_metrics": {
+    "coverage": 1.0,
+    "n_claims": 1,
+    "ucr": 0.0,
+    "ucr_gated": 0.0,
+    "uncovered_assertions": []
+   },
+   "warmups": 2
+  },
+  {
+   "answer_claims": 1,
+   "n_steps": 3,
+   "name": "tokens_tool_calls",
+   "note": "reporter_message = the exact system+user message text tgms.agent.reporter.Reporter.report would send an LLM (built, never sent); tool_request/response = each step's resolved args and stored result payload, the round trip ToolRouter.call actually drives. tool_calls counted at ToolRouter.call itself, not inferred from trace step count.",
+   "pid": 3397917,
+   "plan_id": "p02-compiled-entity-and-version",
+   "rung": 5,
+   "tokens": {
+    "approx": true,
+    "reporter_message": 960,
+    "tokenizer": "approx:whitespace_punct",
+    "tool_request": 74,
+    "tool_response": 5048,
+    "total": 6082
+   },
+   "tool_calls": 2
+  },
+  {
+   "name": "leaf_overhead",
+   "ops_in_plan": [
+    "snapshot_subgraph"
+   ],
+   "ops_measured": [
+    "snapshot_subgraph"
+   ],
+   "pid": 3397928,
+   "plan_id": "p03-snapshot-subgraph",
+   "protocol": "bench_leaf_overhead: warmups 5, reps 30/10 by threshold, one arm per process (imported unchanged)",
+   "rows": [
+    {
+     "direct": {
+      "case": "snapshot_subgraph",
+      "max_ms": 10.315656661987305,
+      "min_ms": 9.394168853759766,
+      "outcome": "OK",
+      "p50_ms": 9.628534317016602,
+      "p95_ms": 10.105133056640625,
+      "reps": 30
+     },
+     "leaf": {
+      "case": "snapshot_subgraph",
+      "max_ms": 10.968446731567383,
+      "min_ms": 9.575128555297852,
+      "outcome": "OK",
+      "p50_ms": 9.981870651245117,
+      "p95_ms": 10.521411895751953,
+      "reps": 30
+     },
+     "leaf_over_direct": 1.0366967933638727,
+     "op": "snapshot_subgraph"
+    }
+   ],
+   "rung": 1
+  },
+  {
+   "name": "compiled_vs_kernel",
+   "ops_in_plan": [
+    "snapshot_subgraph"
+   ],
+   "ops_measured": [],
+   "pid": 3397963,
+   "plan_id": "p03-snapshot-subgraph",
+   "population": "entity_history, version_history only (tgms.tgir.compiled.COMPILED)",
+   "protocol": "bench_compiled_vs_kernel: warmups 5, budgeted reps, one arm per process (imported unchanged)",
+   "rows": [],
+   "rung": 2
+  },
+  {
+   "bytes_all": [
+    3825,
+    3825,
+    3825,
+    3825,
+    3825
+   ],
+   "bytes_max": 3825,
+   "bytes_median": 3825,
+   "bytes_min": 3825,
+   "name": "trace_bytes",
+   "note": "canonical JSON of the executor's own Trace.to_json(), with wall_ms fields stripped so the byte count is reproducible across runs (see module docstring)",
+   "pid": 3397974,
+   "plan_id": "p03-snapshot-subgraph",
+   "reps": 5,
+   "rung": 3
+  },
+  {
+   "max_ms": 5.051101092249155,
+   "min_ms": 4.984421189874411,
+   "ms_all": [
+    4.984421189874411,
+    5.01985102891922,
+    5.037810653448105,
+    5.045241676270962,
+    5.051101092249155
+   ],
+   "n_claims": 1,
+   "name": "verify_ms",
+   "note": "ClaimVerifier.verify over tgms.agent.reporter.mechanical_answer(plan, trace) -- deterministic, no LLM. tgms/tgir/check.py::check_trace is a freshness check, not claim verification; see module docstring.",
+   "p50_ms": 5.037810653448105,
+   "p95_ms": 5.051101092249155,
+   "pid": 3397997,
+   "plan_id": "p03-snapshot-subgraph",
+   "reps": 5,
+   "rung": 4,
+   "verify_metrics": {
+    "coverage": 1.0,
+    "n_claims": 1,
+    "ucr": 0.0,
+    "ucr_gated": 0.0,
+    "uncovered_assertions": []
+   },
+   "warmups": 2
+  },
+  {
+   "answer_claims": 1,
+   "n_steps": 1,
+   "name": "tokens_tool_calls",
+   "note": "reporter_message = the exact system+user message text tgms.agent.reporter.Reporter.report would send an LLM (built, never sent); tool_request/response = each step's resolved args and stored result payload, the round trip ToolRouter.call actually drives. tool_calls counted at ToolRouter.call itself, not inferred from trace step count.",
+   "pid": 3398008,
+   "plan_id": "p03-snapshot-subgraph",
+   "rung": 5,
+   "tokens": {
+    "approx": true,
+    "reporter_message": 430,
+    "tokenizer": "approx:whitespace_punct",
+    "tool_request": 33,
+    "tool_response": 912,
+    "total": 1375
+   },
+   "tool_calls": 1
+  },
+  {
+   "name": "leaf_overhead",
+   "ops_in_plan": [
+    "diff_snapshots"
+   ],
+   "ops_measured": [
+    "diff_snapshots"
+   ],
+   "pid": 3398019,
+   "plan_id": "p04-diff-snapshots",
+   "protocol": "bench_leaf_overhead: warmups 5, reps 30/10 by threshold, one arm per process (imported unchanged)",
+   "rows": [
+    {
+     "direct": {
+      "case": "diff_snapshots",
+      "max_ms": 26.24201774597168,
+      "min_ms": 23.039817810058594,
+      "outcome": "OK",
+      "p50_ms": 23.50616455078125,
+      "p95_ms": 26.122570037841797,
+      "reps": 30
+     },
+     "leaf": {
+      "case": "diff_snapshots",
+      "max_ms": 27.304887771606445,
+      "min_ms": 23.281335830688477,
+      "outcome": "OK",
+      "p50_ms": 23.888111114501953,
+      "p95_ms": 25.59638023376465,
+      "reps": 30
+     },
+     "leaf_over_direct": 1.016248782862707,
+     "op": "diff_snapshots"
+    }
+   ],
+   "rung": 1
+  },
+  {
+   "name": "compiled_vs_kernel",
+   "ops_in_plan": [
+    "diff_snapshots"
+   ],
+   "ops_measured": [],
+   "pid": 3398053,
+   "plan_id": "p04-diff-snapshots",
+   "population": "entity_history, version_history only (tgms.tgir.compiled.COMPILED)",
+   "protocol": "bench_compiled_vs_kernel: warmups 5, budgeted reps, one arm per process (imported unchanged)",
+   "rows": [],
+   "rung": 2
+  },
+  {
+   "bytes_all": [
+    3623,
+    3623,
+    3623,
+    3623,
+    3623
+   ],
+   "bytes_max": 3623,
+   "bytes_median": 3623,
+   "bytes_min": 3623,
+   "name": "trace_bytes",
+   "note": "canonical JSON of the executor's own Trace.to_json(), with wall_ms fields stripped so the byte count is reproducible across runs (see module docstring)",
+   "pid": 3398064,
+   "plan_id": "p04-diff-snapshots",
+   "reps": 5,
+   "rung": 3
+  },
+  {
+   "max_ms": 5.058310925960541,
+   "min_ms": 5.01078087836504,
+   "ms_all": [
+    5.01078087836504,
+    5.04682119935751,
+    5.052441731095314,
+    5.05282124504447,
+    5.058310925960541
+   ],
+   "n_claims": 1,
+   "name": "verify_ms",
+   "note": "ClaimVerifier.verify over tgms.agent.reporter.mechanical_answer(plan, trace) -- deterministic, no LLM. tgms/tgir/check.py::check_trace is a freshness check, not claim verification; see module docstring.",
+   "p50_ms": 5.052441731095314,
+   "p95_ms": 5.058310925960541,
+   "pid": 3398087,
+   "plan_id": "p04-diff-snapshots",
+   "reps": 5,
+   "rung": 4,
+   "verify_metrics": {
+    "coverage": 1.0,
+    "n_claims": 1,
+    "ucr": 0.0,
+    "ucr_gated": 0.0,
+    "uncovered_assertions": []
+   },
+   "warmups": 2
+  },
+  {
+   "answer_claims": 1,
+   "n_steps": 1,
+   "name": "tokens_tool_calls",
+   "note": "reporter_message = the exact system+user message text tgms.agent.reporter.Reporter.report would send an LLM (built, never sent); tool_request/response = each step's resolved args and stored result payload, the round trip ToolRouter.call actually drives. tool_calls counted at ToolRouter.call itself, not inferred from trace step count.",
+   "pid": 3398098,
+   "plan_id": "p04-diff-snapshots",
+   "rung": 5,
+   "tokens": {
+    "approx": true,
+    "reporter_message": 412,
+    "tokenizer": "approx:whitespace_punct",
+    "tool_request": 19,
+    "tool_response": 966,
+    "total": 1397
+   },
+   "tool_calls": 1
+  },
+  {
+   "name": "leaf_overhead",
+   "ops_in_plan": [
+    "neighborhood_evolution"
+   ],
+   "ops_measured": [
+    "neighborhood_evolution"
+   ],
+   "pid": 3398109,
+   "plan_id": "p05-neighborhood-evolution",
+   "protocol": "bench_leaf_overhead: warmups 5, reps 30/10 by threshold, one arm per process (imported unchanged)",
+   "rows": [
+    {
+     "direct": {
+      "case": "neighborhood_evolution",
+      "max_ms": 8.136749267578125,
+      "min_ms": 7.100343704223633,
+      "outcome": "OK",
+      "p50_ms": 7.409572601318359,
+      "p95_ms": 8.011579513549805,
+      "reps": 30
+     },
+     "leaf": {
+      "case": "neighborhood_evolution",
+      "max_ms": 8.492469787597656,
+      "min_ms": 7.341861724853516,
+      "outcome": "OK",
+      "p50_ms": 7.572174072265625,
+      "p95_ms": 7.858753204345703,
+      "reps": 30
+     },
+     "leaf_over_direct": 1.0219447840916405,
+     "op": "neighborhood_evolution"
+    }
+   ],
+   "rung": 1
+  },
+  {
+   "name": "compiled_vs_kernel",
+   "ops_in_plan": [
+    "neighborhood_evolution"
+   ],
+   "ops_measured": [],
+   "pid": 3398142,
+   "plan_id": "p05-neighborhood-evolution",
+   "population": "entity_history, version_history only (tgms.tgir.compiled.COMPILED)",
+   "protocol": "bench_compiled_vs_kernel: warmups 5, budgeted reps, one arm per process (imported unchanged)",
+   "rows": [],
+   "rung": 2
+  },
+  {
+   "bytes_all": [
+    3612,
+    3612,
+    3612,
+    3612,
+    3612
+   ],
+   "bytes_max": 3612,
+   "bytes_median": 3612,
+   "bytes_min": 3612,
+   "name": "trace_bytes",
+   "note": "canonical JSON of the executor's own Trace.to_json(), with wall_ms fields stripped so the byte count is reproducible across runs (see module docstring)",
+   "pid": 3398153,
+   "plan_id": "p05-neighborhood-evolution",
+   "reps": 5,
+   "rung": 3
+  },
+  {
+   "max_ms": 5.1540411077439785,
+   "min_ms": 5.073671229183674,
+   "ms_all": [
+    5.073671229183674,
+    5.080291070044041,
+    5.085520911961794,
+    5.127391312271357,
+    5.1540411077439785
+   ],
+   "n_claims": 1,
+   "name": "verify_ms",
+   "note": "ClaimVerifier.verify over tgms.agent.reporter.mechanical_answer(plan, trace) -- deterministic, no LLM. tgms/tgir/check.py::check_trace is a freshness check, not claim verification; see module docstring.",
+   "p50_ms": 5.085520911961794,
+   "p95_ms": 5.1540411077439785,
+   "pid": 3398176,
+   "plan_id": "p05-neighborhood-evolution",
+   "reps": 5,
+   "rung": 4,
+   "verify_metrics": {
+    "coverage": 1.0,
+    "n_claims": 1,
+    "ucr": 0.0,
+    "ucr_gated": 0.0,
+    "uncovered_assertions": []
+   },
+   "warmups": 2
+  },
+  {
+   "answer_claims": 1,
+   "n_steps": 1,
+   "name": "tokens_tool_calls",
+   "note": "reporter_message = the exact system+user message text tgms.agent.reporter.Reporter.report would send an LLM (built, never sent); tool_request/response = each step's resolved args and stored result payload, the round trip ToolRouter.call actually drives. tool_calls counted at ToolRouter.call itself, not inferred from trace step count.",
+   "pid": 3398187,
+   "plan_id": "p05-neighborhood-evolution",
+   "rung": 5,
+   "tokens": {
+    "approx": true,
+    "reporter_message": 413,
+    "tokenizer": "approx:whitespace_punct",
+    "tool_request": 27,
+    "tool_response": 900,
+    "total": 1340
+   },
+   "tool_calls": 1
+  },
+  {
+   "name": "leaf_overhead",
+   "ops_in_plan": [
+    "aggregate_events"
+   ],
+   "ops_measured": [
+    "aggregate_events"
+   ],
+   "pid": 3398198,
+   "plan_id": "p06-aggregate-events",
+   "protocol": "bench_leaf_overhead: warmups 5, reps 30/10 by threshold, one arm per process (imported unchanged)",
+   "rows": [
+    {
+     "direct": {
+      "case": "aggregate_events",
+      "max_ms": 11.795997619628906,
+      "min_ms": 10.53309440612793,
+      "outcome": "OK",
+      "p50_ms": 10.936260223388672,
+      "p95_ms": 11.704444885253906,
+      "reps": 30
+     },
+     "leaf": {
+      "case": "aggregate_events",
+      "max_ms": 13.054132461547852,
+      "min_ms": 10.828971862792969,
+      "outcome": "OK",
+      "p50_ms": 11.426210403442383,
+      "p95_ms": 12.325048446655273,
+      "reps": 30
+     },
+     "leaf_over_direct": 1.0448005232177895,
+     "op": "aggregate_events"
+    }
+   ],
+   "rung": 1
+  },
+  {
+   "name": "compiled_vs_kernel",
+   "ops_in_plan": [
+    "aggregate_events"
+   ],
+   "ops_measured": [],
+   "pid": 3398231,
+   "plan_id": "p06-aggregate-events",
+   "population": "entity_history, version_history only (tgms.tgir.compiled.COMPILED)",
+   "protocol": "bench_compiled_vs_kernel: warmups 5, budgeted reps, one arm per process (imported unchanged)",
+   "rows": [],
+   "rung": 2
+  },
+  {
+   "bytes_all": [
+    3162,
+    3162,
+    3162,
+    3162,
+    3162
+   ],
+   "bytes_max": 3162,
+   "bytes_median": 3162,
+   "bytes_min": 3162,
+   "name": "trace_bytes",
+   "note": "canonical JSON of the executor's own Trace.to_json(), with wall_ms fields stripped so the byte count is reproducible across runs (see module docstring)",
+   "pid": 3398242,
+   "plan_id": "p06-aggregate-events",
+   "reps": 5,
+   "rung": 3
+  },
+  {
+   "max_ms": 5.376148968935013,
+   "min_ms": 5.187570117413998,
+   "ms_all": [
+    5.187570117413998,
+    5.190849769860506,
+    5.240150261670351,
+    5.365259945392609,
+    5.376148968935013
+   ],
+   "n_claims": 1,
+   "name": "verify_ms",
+   "note": "ClaimVerifier.verify over tgms.agent.reporter.mechanical_answer(plan, trace) -- deterministic, no LLM. tgms/tgir/check.py::check_trace is a freshness check, not claim verification; see module docstring.",
+   "p50_ms": 5.240150261670351,
+   "p95_ms": 5.376148968935013,
+   "pid": 3398265,
+   "plan_id": "p06-aggregate-events",
+   "reps": 5,
+   "rung": 4,
+   "verify_metrics": {
+    "coverage": 1.0,
+    "n_claims": 1,
+    "ucr": 0.0,
+    "ucr_gated": 0.0,
+    "uncovered_assertions": []
+   },
+   "warmups": 2
+  },
+  {
+   "answer_claims": 1,
+   "n_steps": 1,
+   "name": "tokens_tool_calls",
+   "note": "reporter_message = the exact system+user message text tgms.agent.reporter.Reporter.report would send an LLM (built, never sent); tool_request/response = each step's resolved args and stored result payload, the round trip ToolRouter.call actually drives. tool_calls counted at ToolRouter.call itself, not inferred from trace step count.",
+   "pid": 3398276,
+   "plan_id": "p06-aggregate-events",
+   "rung": 5,
+   "tokens": {
+    "approx": true,
+    "reporter_message": 525,
+    "tokenizer": "approx:whitespace_punct",
+    "tool_request": 63,
+    "tool_response": 1700,
+    "total": 2288
+   },
+   "tool_calls": 1
+  },
+  {
+   "name": "leaf_overhead",
+   "ops_in_plan": [
+    "graph_metric_timeseries"
+   ],
+   "ops_measured": [
+    "graph_metric_timeseries"
+   ],
+   "pid": 3398287,
+   "plan_id": "p07-graph-metric-timeseries",
+   "protocol": "bench_leaf_overhead: warmups 5, reps 30/10 by threshold, one arm per process (imported unchanged)",
+   "rows": [
+    {
+     "direct": {
+      "case": "graph_metric_timeseries",
+      "max_ms": 9.245634078979492,
+      "min_ms": 7.841825485229492,
+      "outcome": "OK",
+      "p50_ms": 8.301496505737305,
+      "p95_ms": 9.142160415649414,
+      "reps": 30
+     },
+     "leaf": {
+      "case": "graph_metric_timeseries",
+      "max_ms": 9.639263153076172,
+      "min_ms": 7.947206497192383,
+      "outcome": "OK",
+      "p50_ms": 8.579254150390625,
+      "p95_ms": 9.582042694091797,
+      "reps": 30
+     },
+     "leaf_over_direct": 1.0334587437893104,
+     "op": "graph_metric_timeseries"
+    }
+   ],
+   "rung": 1
+  },
+  {
+   "name": "compiled_vs_kernel",
+   "ops_in_plan": [
+    "graph_metric_timeseries"
+   ],
+   "ops_measured": [],
+   "pid": 3398320,
+   "plan_id": "p07-graph-metric-timeseries",
+   "population": "entity_history, version_history only (tgms.tgir.compiled.COMPILED)",
+   "protocol": "bench_compiled_vs_kernel: warmups 5, budgeted reps, one arm per process (imported unchanged)",
+   "rows": [],
+   "rung": 2
+  },
+  {
+   "bytes_all": [
+    2955,
+    2955,
+    2955,
+    2955,
+    2955
+   ],
+   "bytes_max": 2955,
+   "bytes_median": 2955,
+   "bytes_min": 2955,
+   "name": "trace_bytes",
+   "note": "canonical JSON of the executor's own Trace.to_json(), with wall_ms fields stripped so the byte count is reproducible across runs (see module docstring)",
+   "pid": 3398331,
+   "plan_id": "p07-graph-metric-timeseries",
+   "reps": 5,
+   "rung": 3
+  },
+  {
+   "max_ms": 5.332800094038248,
+   "min_ms": 5.21196098998189,
+   "ms_all": [
+    5.21196098998189,
+    5.274610128253698,
+    5.279979668557644,
+    5.311029031872749,
+    5.332800094038248
+   ],
+   "n_claims": 1,
+   "name": "verify_ms",
+   "note": "ClaimVerifier.verify over tgms.agent.reporter.mechanical_answer(plan, trace) -- deterministic, no LLM. tgms/tgir/check.py::check_trace is a freshness check, not claim verification; see module docstring.",
+   "p50_ms": 5.279979668557644,
+   "p95_ms": 5.332800094038248,
+   "pid": 3398354,
+   "plan_id": "p07-graph-metric-timeseries",
+   "reps": 5,
+   "rung": 4,
+   "verify_metrics": {
+    "coverage": 1.0,
+    "n_claims": 1,
+    "ucr": 0.0,
+    "ucr_gated": 0.0,
+    "uncovered_assertions": []
+   },
+   "warmups": 2
+  },
+  {
+   "answer_claims": 1,
+   "n_steps": 1,
+   "name": "tokens_tool_calls",
+   "note": "reporter_message = the exact system+user message text tgms.agent.reporter.Reporter.report would send an LLM (built, never sent); tool_request/response = each step's resolved args and stored result payload, the round trip ToolRouter.call actually drives. tool_calls counted at ToolRouter.call itself, not inferred from trace step count.",
+   "pid": 3398365,
+   "plan_id": "p07-graph-metric-timeseries",
+   "rung": 5,
+   "tokens": {
+    "approx": true,
+    "reporter_message": 529,
+    "tokenizer": "approx:whitespace_punct",
+    "tool_request": 39,
+    "tool_response": 1600,
+    "total": 2168
+   },
+   "tool_calls": 1
+  },
+  {
+   "name": "leaf_overhead",
+   "ops_in_plan": [
+    "burst_detection"
+   ],
+   "ops_measured": [
+    "burst_detection"
+   ],
+   "pid": 3398376,
+   "plan_id": "p08-burst-detection",
+   "protocol": "bench_leaf_overhead: warmups 5, reps 30/10 by threshold, one arm per process (imported unchanged)",
+   "rows": [
+    {
+     "direct": {
+      "case": "burst_detection",
+      "max_ms": 9.877443313598633,
+      "min_ms": 8.644580841064453,
+      "outcome": "OK",
+      "p50_ms": 9.21010971069336,
+      "p95_ms": 9.743452072143555,
+      "reps": 30
+     },
+     "leaf": {
+      "case": "burst_detection",
+      "max_ms": 10.522603988647461,
+      "min_ms": 9.008169174194336,
+      "outcome": "OK",
+      "p50_ms": 9.553670883178711,
+      "p95_ms": 10.514020919799805,
+      "reps": 30
+     },
+     "leaf_over_direct": 1.0373026145482784,
+     "op": "burst_detection"
+    }
+   ],
+   "rung": 1
+  },
+  {
+   "name": "compiled_vs_kernel",
+   "ops_in_plan": [
+    "burst_detection"
+   ],
+   "ops_measured": [],
+   "pid": 3398409,
+   "plan_id": "p08-burst-detection",
+   "population": "entity_history, version_history only (tgms.tgir.compiled.COMPILED)",
+   "protocol": "bench_compiled_vs_kernel: warmups 5, budgeted reps, one arm per process (imported unchanged)",
+   "rows": [],
+   "rung": 2
+  },
+  {
+   "bytes_all": [
+    2989,
+    2989,
+    2989,
+    2989,
+    2989
+   ],
+   "bytes_max": 2989,
+   "bytes_median": 2989,
+   "bytes_min": 2989,
+   "name": "trace_bytes",
+   "note": "canonical JSON of the executor's own Trace.to_json(), with wall_ms fields stripped so the byte count is reproducible across runs (see module docstring)",
+   "pid": 3398420,
+   "plan_id": "p08-burst-detection",
+   "reps": 5,
+   "rung": 3
+  },
+  {
+   "max_ms": 5.249380134046078,
+   "min_ms": 5.042050965130329,
+   "ms_all": [
+    5.042050965130329,
+    5.04229124635458,
+    5.050111096352339,
+    5.206000991165638,
+    5.249380134046078
+   ],
+   "n_claims": 1,
+   "name": "verify_ms",
+   "note": "ClaimVerifier.verify over tgms.agent.reporter.mechanical_answer(plan, trace) -- deterministic, no LLM. tgms/tgir/check.py::check_trace is a freshness check, not claim verification; see module docstring.",
+   "p50_ms": 5.050111096352339,
+   "p95_ms": 5.249380134046078,
+   "pid": 3398443,
+   "plan_id": "p08-burst-detection",
+   "reps": 5,
+   "rung": 4,
+   "verify_metrics": {
+    "coverage": 1.0,
+    "n_claims": 1,
+    "ucr": 0.0,
+    "ucr_gated": 0.0,
+    "uncovered_assertions": []
+   },
+   "warmups": 2
+  },
+  {
+   "answer_claims": 1,
+   "n_steps": 1,
+   "name": "tokens_tool_calls",
+   "note": "reporter_message = the exact system+user message text tgms.agent.reporter.Reporter.report would send an LLM (built, never sent); tool_request/response = each step's resolved args and stored result payload, the round trip ToolRouter.call actually drives. tool_calls counted at ToolRouter.call itself, not inferred from trace step count.",
+   "pid": 3398454,
+   "plan_id": "p08-burst-detection",
+   "rung": 5,
+   "tokens": {
+    "approx": true,
+    "reporter_message": 586,
+    "tokenizer": "approx:whitespace_punct",
+    "tool_request": 45,
+    "tool_response": 824,
+    "total": 1455
+   },
+   "tool_calls": 1
+  },
+  {
+   "name": "leaf_overhead",
+   "ops_in_plan": [
+    "count_temporal_motifs",
+    "find_temporal_motif_instances",
+    "compute"
+   ],
+   "ops_measured": [
+    "count_temporal_motifs",
+    "find_temporal_motif_instances",
+    "compute"
+   ],
+   "pid": 3398465,
+   "plan_id": "p09-motifs",
+   "protocol": "bench_leaf_overhead: warmups 5, reps 30/10 by threshold, one arm per process (imported unchanged)",
+   "rows": [
+    {
+     "direct": {
+      "case": "count_temporal_motifs",
+      "max_ms": 70.53709030151367,
+      "min_ms": 60.94980239868164,
+      "outcome": "OK",
+      "p50_ms": 63.67373466491699,
+      "p95_ms": 65.10210037231445,
+      "reps": 30
+     },
+     "leaf": {
+      "case": "count_temporal_motifs",
+      "max_ms": 67.38543510437012,
+      "min_ms": 62.102556228637695,
+      "outcome": "OK",
+      "p50_ms": 63.16423416137695,
+      "p95_ms": 64.87894058227539,
+      "reps": 30
+     },
+     "leaf_over_direct": 0.9919982626082593,
+     "op": "count_temporal_motifs"
+    },
+    {
+     "direct": {
+      "case": "find_temporal_motif_instances",
+      "max_ms": 65.91248512268066,
+      "min_ms": 60.96339225769043,
+      "outcome": "OK",
+      "p50_ms": 62.36886978149414,
+      "p95_ms": 64.83149528503418,
+      "reps": 30
+     },
+     "leaf": {
+      "case": "find_temporal_motif_instances",
+      "max_ms": 69.49567794799805,
+      "min_ms": 60.700416564941406,
+      "outcome": "OK",
+      "p50_ms": 62.68453598022461,
+      "p95_ms": 63.98510932922363,
+      "reps": 30
+     },
+     "leaf_over_direct": 1.0050612781638724,
+     "op": "find_temporal_motif_instances"
+    },
+    {
+     "direct": {
+      "case": "compute",
+      "max_ms": 3.5736560821533203,
+      "min_ms": 3.360271453857422,
+      "outcome": "OK",
+      "p50_ms": 3.5064220428466797,
+      "p95_ms": 3.5729408264160156,
+      "reps": 30
+     },
+     "leaf": {
+      "case": "compute",
+      "max_ms": 4.226207733154297,
+      "min_ms": 3.6623477935791016,
+      "outcome": "OK",
+      "p50_ms": 3.737926483154297,
+      "p95_ms": 3.954648971557617,
+      "reps": 30
+     },
+     "leaf_over_direct": 1.0660229822533487,
+     "op": "compute"
+    }
+   ],
+   "rung": 1
+  },
+  {
+   "name": "compiled_vs_kernel",
+   "ops_in_plan": [
+    "count_temporal_motifs",
+    "find_temporal_motif_instances",
+    "compute"
+   ],
+   "ops_measured": [],
+   "pid": 3398545,
+   "plan_id": "p09-motifs",
+   "population": "entity_history, version_history only (tgms.tgir.compiled.COMPILED)",
+   "protocol": "bench_compiled_vs_kernel: warmups 5, budgeted reps, one arm per process (imported unchanged)",
+   "rows": [],
+   "rung": 2
+  },
+  {
+   "bytes_all": [
+    7924,
+    7924,
+    7924,
+    7924,
+    7924
+   ],
+   "bytes_max": 7924,
+   "bytes_median": 7924,
+   "bytes_min": 7924,
+   "name": "trace_bytes",
+   "note": "canonical JSON of the executor's own Trace.to_json(), with wall_ms fields stripped so the byte count is reproducible across runs (see module docstring)",
+   "pid": 3398556,
+   "plan_id": "p09-motifs",
+   "reps": 5,
+   "rung": 3
+  },
+  {
+   "max_ms": 5.098911002278328,
+   "min_ms": 5.015131086111069,
+   "ms_all": [
+    5.015131086111069,
+    5.0499215722084045,
+    5.090200807899237,
+    5.094560794532299,
+    5.098911002278328
+   ],
+   "n_claims": 1,
+   "name": "verify_ms",
+   "note": "ClaimVerifier.verify over tgms.agent.reporter.mechanical_answer(plan, trace) -- deterministic, no LLM. tgms/tgir/check.py::check_trace is a freshness check, not claim verification; see module docstring.",
+   "p50_ms": 5.090200807899237,
+   "p95_ms": 5.098911002278328,
+   "pid": 3398579,
+   "plan_id": "p09-motifs",
+   "reps": 5,
+   "rung": 4,
+   "verify_metrics": {
+    "coverage": 1.0,
+    "n_claims": 1,
+    "ucr": 0.0,
+    "ucr_gated": 0.0,
+    "uncovered_assertions": []
+   },
+   "warmups": 2
+  },
+  {
+   "answer_claims": 1,
+   "n_steps": 3,
+   "name": "tokens_tool_calls",
+   "note": "reporter_message = the exact system+user message text tgms.agent.reporter.Reporter.report would send an LLM (built, never sent); tool_request/response = each step's resolved args and stored result payload, the round trip ToolRouter.call actually drives. tool_calls counted at ToolRouter.call itself, not inferred from trace step count.",
+   "pid": 3398590,
+   "plan_id": "p09-motifs",
+   "rung": 5,
+   "tokens": {
+    "approx": true,
+    "reporter_message": 527,
+    "tokenizer": "approx:whitespace_punct",
+    "tool_request": 98,
+    "tool_response": 1895,
+    "total": 2520
+   },
+   "tool_calls": 3
+  },
+  {
+   "name": "leaf_overhead",
+   "ops_in_plan": [
+    "temporal_reachability",
+    "temporal_paths",
+    "compute"
+   ],
+   "ops_measured": [
+    "temporal_reachability",
+    "temporal_paths",
+    "compute"
+   ],
+   "pid": 3398601,
+   "plan_id": "p10-reachability-and-paths",
+   "protocol": "bench_leaf_overhead: warmups 5, reps 30/10 by threshold, one arm per process (imported unchanged)",
+   "rows": [
+    {
+     "direct": {
+      "case": "temporal_reachability",
+      "max_ms": 27.727365493774414,
+      "min_ms": 13.493061065673828,
+      "outcome": "OK",
+      "p50_ms": 14.265060424804688,
+      "p95_ms": 15.682458877563477,
+      "reps": 30
+     },
+     "leaf": {
+      "case": "temporal_reachability",
+      "max_ms": 31.433820724487305,
+      "min_ms": 14.052867889404297,
+      "outcome": "OK",
+      "p50_ms": 14.984369277954102,
+      "p95_ms": 16.190052032470703,
+      "reps": 30
+     },
+     "leaf_over_direct": 1.050424521994919,
+     "op": "temporal_reachability"
+    },
+    {
+     "direct": {
+      "case": "temporal_paths",
+      "max_ms": 11.101961135864258,
+      "min_ms": 10.04934310913086,
+      "outcome": "OK",
+      "p50_ms": 10.16998291015625,
+      "p95_ms": 10.447978973388672,
+      "reps": 30
+     },
+     "leaf": {
+      "case": "temporal_paths",
+      "max_ms": 10.780096054077148,
+      "min_ms": 10.223150253295898,
+      "outcome": "OK",
+      "p50_ms": 10.35761833190918,
+      "p95_ms": 10.780096054077148,
+      "reps": 30
+     },
+     "leaf_over_direct": 1.0184499249812453,
+     "op": "temporal_paths"
+    },
+    {
+     "direct": {
+      "case": "compute",
+      "max_ms": 4.023075103759766,
+      "min_ms": 3.369569778442383,
+      "outcome": "OK",
+      "p50_ms": 3.542661666870117,
+      "p95_ms": 4.009485244750977,
+      "reps": 30
+     },
+     "leaf": {
+      "case": "compute",
+      "max_ms": 4.03594970703125,
+      "min_ms": 3.5948753356933594,
+      "outcome": "OK",
+      "p50_ms": 3.724336624145508,
+      "p95_ms": 3.9832592010498047,
+      "reps": 30
+     },
+     "leaf_over_direct": 1.0512820512820513,
+     "op": "compute"
+    }
+   ],
+   "rung": 1
+  },
+  {
+   "name": "compiled_vs_kernel",
+   "ops_in_plan": [
+    "temporal_reachability",
+    "temporal_paths",
+    "compute"
+   ],
+   "ops_measured": [],
+   "pid": 3398678,
+   "plan_id": "p10-reachability-and-paths",
+   "population": "entity_history, version_history only (tgms.tgir.compiled.COMPILED)",
+   "protocol": "bench_compiled_vs_kernel: warmups 5, budgeted reps, one arm per process (imported unchanged)",
+   "rows": [],
+   "rung": 2
+  },
+  {
+   "bytes_all": [
+    7549,
+    7549,
+    7549,
+    7549,
+    7549
+   ],
+   "bytes_max": 7549,
+   "bytes_median": 7549,
+   "bytes_min": 7549,
+   "name": "trace_bytes",
+   "note": "canonical JSON of the executor's own Trace.to_json(), with wall_ms fields stripped so the byte count is reproducible across runs (see module docstring)",
+   "pid": 3398689,
+   "plan_id": "p10-reachability-and-paths",
+   "reps": 5,
+   "rung": 3
+  },
+  {
+   "max_ms": 5.27265015989542,
+   "min_ms": 4.9032228998839855,
+   "ms_all": [
+    4.9032228998839855,
+    4.933591932058334,
+    4.979241173714399,
+    4.993482027202845,
+    5.27265015989542
+   ],
+   "n_claims": 1,
+   "name": "verify_ms",
+   "note": "ClaimVerifier.verify over tgms.agent.reporter.mechanical_answer(plan, trace) -- deterministic, no LLM. tgms/tgir/check.py::check_trace is a freshness check, not claim verification; see module docstring.",
+   "p50_ms": 4.979241173714399,
+   "p95_ms": 5.27265015989542,
+   "pid": 3398714,
+   "plan_id": "p10-reachability-and-paths",
+   "reps": 5,
+   "rung": 4,
+   "verify_metrics": {
+    "coverage": 1.0,
+    "n_claims": 1,
+    "ucr": 0.0,
+    "ucr_gated": 0.0,
+    "uncovered_assertions": []
+   },
+   "warmups": 2
+  },
+  {
+   "answer_claims": 1,
+   "n_steps": 3,
+   "name": "tokens_tool_calls",
+   "note": "reporter_message = the exact system+user message text tgms.agent.reporter.Reporter.report would send an LLM (built, never sent); tool_request/response = each step's resolved args and stored result payload, the round trip ToolRouter.call actually drives. tool_calls counted at ToolRouter.call itself, not inferred from trace step count.",
+   "pid": 3398725,
+   "plan_id": "p10-reachability-and-paths",
+   "rung": 5,
+   "tokens": {
+    "approx": true,
+    "reporter_message": 909,
+    "tokenizer": "approx:whitespace_punct",
+    "tool_request": 106,
+    "tool_response": 2603,
+    "total": 3618
+   },
+   "tool_calls": 2
+  },
+  {
+   "name": "leaf_overhead",
+   "ops_in_plan": [
+    "co_active"
+   ],
+   "ops_measured": [
+    "co_active"
+   ],
+   "pid": 3398736,
+   "plan_id": "p11-co-active",
+   "protocol": "bench_leaf_overhead: warmups 5, reps 30/10 by threshold, one arm per process (imported unchanged)",
+   "rows": [
+    {
+     "direct": {
+      "case": "co_active",
+      "max_ms": 8.81648063659668,
+      "min_ms": 8.03518295288086,
+      "outcome": "OK",
+      "p50_ms": 8.202075958251953,
+      "p95_ms": 8.760929107666016,
+      "reps": 30
+     },
+     "leaf": {
+      "case": "co_active",
+      "max_ms": 9.621858596801758,
+      "min_ms": 8.392095565795898,
+      "outcome": "OK",
+      "p50_ms": 8.681058883666992,
+      "p95_ms": 9.153127670288086,
+      "reps": 30
+     },
+     "leaf_over_direct": 1.0583977675716527,
+     "op": "co_active"
+    }
+   ],
+   "rung": 1
+  },
+  {
+   "name": "compiled_vs_kernel",
+   "ops_in_plan": [
+    "co_active"
+   ],
+   "ops_measured": [],
+   "pid": 3398770,
+   "plan_id": "p11-co-active",
+   "population": "entity_history, version_history only (tgms.tgir.compiled.COMPILED)",
+   "protocol": "bench_compiled_vs_kernel: warmups 5, budgeted reps, one arm per process (imported unchanged)",
+   "rows": [],
+   "rung": 2
+  },
+  {
+   "bytes_all": [
+    3676,
+    3676,
+    3676,
+    3676,
+    3676
+   ],
+   "bytes_max": 3676,
+   "bytes_median": 3676,
+   "bytes_min": 3676,
+   "name": "trace_bytes",
+   "note": "canonical JSON of the executor's own Trace.to_json(), with wall_ms fields stripped so the byte count is reproducible across runs (see module docstring)",
+   "pid": 3398781,
+   "plan_id": "p11-co-active",
+   "reps": 5,
+   "rung": 3
+  },
+  {
+   "max_ms": 5.105700809508562,
+   "min_ms": 4.9277921207249165,
+   "ms_all": [
+    4.9277921207249165,
+    4.984891973435879,
+    5.038202274590731,
+    5.046370904892683,
+    5.105700809508562
+   ],
+   "n_claims": 1,
+   "name": "verify_ms",
+   "note": "ClaimVerifier.verify over tgms.agent.reporter.mechanical_answer(plan, trace) -- deterministic, no LLM. tgms/tgir/check.py::check_trace is a freshness check, not claim verification; see module docstring.",
+   "p50_ms": 5.038202274590731,
+   "p95_ms": 5.105700809508562,
+   "pid": 3398804,
+   "plan_id": "p11-co-active",
+   "reps": 5,
+   "rung": 4,
+   "verify_metrics": {
+    "coverage": 1.0,
+    "n_claims": 1,
+    "ucr": 0.0,
+    "ucr_gated": 0.0,
+    "uncovered_assertions": []
+   },
+   "warmups": 2
+  },
+  {
+   "answer_claims": 1,
+   "n_steps": 1,
+   "name": "tokens_tool_calls",
+   "note": "reporter_message = the exact system+user message text tgms.agent.reporter.Reporter.report would send an LLM (built, never sent); tool_request/response = each step's resolved args and stored result payload, the round trip ToolRouter.call actually drives. tool_calls counted at ToolRouter.call itself, not inferred from trace step count.",
+   "pid": 3398815,
+   "plan_id": "p11-co-active",
+   "rung": 5,
+   "tokens": {
+    "approx": true,
+    "reporter_message": 432,
+    "tokenizer": "approx:whitespace_punct",
+    "tool_request": 49,
+    "tool_response": 844,
+    "total": 1325
+   },
+   "tool_calls": 1
+  },
+  {
+   "name": "leaf_overhead",
+   "ops_in_plan": [
+    "compute"
+   ],
+   "ops_measured": [
+    "compute"
+   ],
+   "pid": 3398826,
+   "plan_id": "p12-compute-only",
+   "protocol": "bench_leaf_overhead: warmups 5, reps 30/10 by threshold, one arm per process (imported unchanged)",
+   "rows": [
+    {
+     "direct": {
+      "case": "compute",
+      "max_ms": 3.7508010864257812,
+      "min_ms": 3.408193588256836,
+      "outcome": "OK",
+      "p50_ms": 3.5247802734375,
+      "p95_ms": 3.7012100219726562,
+      "reps": 30
+     },
+     "leaf": {
+      "case": "compute",
+      "max_ms": 4.036664962768555,
+      "min_ms": 3.614187240600586,
+      "outcome": "OK",
+      "p50_ms": 3.7293434143066406,
+      "p95_ms": 3.8900375366210938,
+      "reps": 30
+     },
+     "leaf_over_direct": 1.0580357142857142,
+     "op": "compute"
+    }
+   ],
+   "rung": 1
+  },
+  {
+   "name": "compiled_vs_kernel",
+   "ops_in_plan": [
+    "compute"
+   ],
+   "ops_measured": [],
+   "pid": 3398859,
+   "plan_id": "p12-compute-only",
+   "population": "entity_history, version_history only (tgms.tgir.compiled.COMPILED)",
+   "protocol": "bench_compiled_vs_kernel: warmups 5, budgeted reps, one arm per process (imported unchanged)",
+   "rows": [],
+   "rung": 2
+  },
+  {
+   "bytes_all": [
+    2648,
+    2648,
+    2648,
+    2648,
+    2648
+   ],
+   "bytes_max": 2648,
+   "bytes_median": 2648,
+   "bytes_min": 2648,
+   "name": "trace_bytes",
+   "note": "canonical JSON of the executor's own Trace.to_json(), with wall_ms fields stripped so the byte count is reproducible across runs (see module docstring)",
+   "pid": 3398870,
+   "plan_id": "p12-compute-only",
+   "reps": 5,
+   "rung": 3
+  },
+  {
+   "max_ms": 5.058250855654478,
+   "min_ms": 4.9737123772501945,
+   "ms_all": [
+    4.9737123772501945,
+    5.035041831433773,
+    5.0409408286213875,
+    5.0567807629704475,
+    5.058250855654478
+   ],
+   "n_claims": 1,
+   "name": "verify_ms",
+   "note": "ClaimVerifier.verify over tgms.agent.reporter.mechanical_answer(plan, trace) -- deterministic, no LLM. tgms/tgir/check.py::check_trace is a freshness check, not claim verification; see module docstring.",
+   "p50_ms": 5.0409408286213875,
+   "p95_ms": 5.058250855654478,
+   "pid": 3398893,
+   "plan_id": "p12-compute-only",
+   "reps": 5,
+   "rung": 4,
+   "verify_metrics": {
+    "coverage": 1.0,
+    "n_claims": 1,
+    "ucr": 0.0,
+    "ucr_gated": 0.0,
+    "uncovered_assertions": []
+   },
+   "warmups": 2
+  },
+  {
+   "answer_claims": 1,
+   "n_steps": 1,
+   "name": "tokens_tool_calls",
+   "note": "reporter_message = the exact system+user message text tgms.agent.reporter.Reporter.report would send an LLM (built, never sent); tool_request/response = each step's resolved args and stored result payload, the round trip ToolRouter.call actually drives. tool_calls counted at ToolRouter.call itself, not inferred from trace step count.",
+   "pid": 3398904,
+   "plan_id": "p12-compute-only",
+   "rung": 5,
+   "tokens": {
+    "approx": true,
+    "reporter_message": 420,
+    "tokenizer": "approx:whitespace_punct",
+    "tool_request": 39,
+    "tool_response": 729,
+    "total": 1188
+   },
+   "tool_calls": 1
+  }
+ ],
+ "schema_version": "1.0.0",
+ "seed": {
+  "value": 2
+ },
+ "timestamp_utc": "2026-09-15T04:14:57Z"
+}
