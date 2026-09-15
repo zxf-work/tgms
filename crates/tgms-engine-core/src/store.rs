@@ -3222,6 +3222,68 @@ mod tests {
         }
     }
 
+    // --- commit-phase accounting helpers (shared by the two 60-commit
+    // distribution tests below: the entity-only shape and the edge shape) -- //
+
+    fn residual_bound(total_us: u64) -> u64 {
+        if cfg!(debug_assertions) {
+            std::cmp::max(1_000, total_us / 10) // max(1000us, 10%)
+        } else {
+            std::cmp::max(100, total_us / 50) // max(100us, 2%)
+        }
+    }
+
+    fn median(mut xs: Vec<u64>) -> u64 {
+        xs.sort_unstable();
+        let n = xs.len();
+        if n % 2 == 1 {
+            xs[n / 2]
+        } else {
+            (xs[n / 2 - 1] + xs[n / 2]) / 2
+        }
+    }
+
+    fn p90(mut xs: Vec<u64>) -> u64 {
+        xs.sort_unstable();
+        let n = xs.len();
+        let idx = ((n as f64 - 1.0) * 0.9).round() as usize;
+        xs[idx.min(n - 1)]
+    }
+
+    // The three worst commits by residual, for failure messages -- a
+    // scheduler-hiccup failure and a systematic-leak failure look
+    // different here (one outlier vs. three-in-a-row elevated values).
+    fn worst_three(commits: &[(i64, u64, u64, u64)]) -> String {
+        let mut v = commits.to_vec();
+        v.sort_unstable_by_key(|a| std::cmp::Reverse(a.3));
+        v.iter()
+            .take(3)
+            .map(|(idx, total, named_sum, residual)| {
+                format!(
+                    "commit {idx}: total_us={total} named_sum={named_sum} \
+                     residual={residual}us"
+                )
+            })
+            .collect::<Vec<_>>()
+            .join("; ")
+    }
+
+    /// Sum of every phase `total_us` is supposed to account for -- the same
+    /// set the pyo3 binding's `NAMED_PHASE_KEYS` covers in
+    /// `tests/test_commit_phase_timing.py`.
+    fn named_phase_sum(p: &CommitPhases) -> u64 {
+        p.capture_us
+            + p.seal_us
+            + p.closes_us
+            + p.stats_us
+            + p.dict_us
+            + p.digest_us
+            + p.debug_verify_us
+            + p.delta_build_us
+            + p.manifest_us
+            + p.current_us
+    }
+
     #[test]
     fn commit_phases_fully_account_for_total_us_over_sixty_singleton_commits() {
         // B1V2_AB_DIAGNOSIS_2026-09-15.md Q1: the B1 A/B's untimed residual
@@ -3257,46 +3319,6 @@ mod tests {
         // can only move one point in the distribution and cannot manufacture
         // a first-to-last trend, so median/p90/no-growth checks catch a real
         // leak while tolerating scheduler noise.
-        fn residual_bound(total_us: u64) -> u64 {
-            if cfg!(debug_assertions) {
-                std::cmp::max(1_000, total_us / 10) // max(1000us, 10%)
-            } else {
-                std::cmp::max(100, total_us / 50) // max(100us, 2%)
-            }
-        }
-        fn median(mut xs: Vec<u64>) -> u64 {
-            xs.sort_unstable();
-            let n = xs.len();
-            if n % 2 == 1 {
-                xs[n / 2]
-            } else {
-                (xs[n / 2 - 1] + xs[n / 2]) / 2
-            }
-        }
-        fn p90(mut xs: Vec<u64>) -> u64 {
-            xs.sort_unstable();
-            let n = xs.len();
-            let idx = ((n as f64 - 1.0) * 0.9).round() as usize;
-            xs[idx.min(n - 1)]
-        }
-        // The three worst commits by residual, for failure messages -- a
-        // scheduler-hiccup failure and a systematic-leak failure look
-        // different here (one outlier vs. three-in-a-row elevated values).
-        fn worst_three(commits: &[(i64, u64, u64, u64)]) -> String {
-            let mut v = commits.to_vec();
-            v.sort_unstable_by_key(|a| std::cmp::Reverse(a.3));
-            v.iter()
-                .take(3)
-                .map(|(idx, total, named_sum, residual)| {
-                    format!(
-                        "commit {idx}: total_us={total} named_sum={named_sum} \
-                         residual={residual}us"
-                    )
-                })
-                .collect::<Vec<_>>()
-                .join("; ")
-        }
-
         let root = tmp_root("phase-accounting");
         let mut s = NativeStore::open(&root).unwrap();
         let mut residuals = Vec::with_capacity(60);
@@ -3345,6 +3367,136 @@ mod tests {
         assert!(
             p90_residual <= 3 * bar,
             "p90 residual over 60 commits ({p90_residual}us) exceeds \
+             3*bar={}us -- too many commits are elevated for this to be a \
+             single scheduler hiccup (worst three: {})",
+            3 * bar,
+            worst_three(&commits)
+        );
+        assert!(
+            last_ten_median <= first_ten_median + bar,
+            "median residual grew from {first_ten_median}us (first 10 commits) \
+             to {last_ten_median}us (last 10 commits), more than bar={bar}us \
+             -- consistent with an O(segments) leak, not scheduler noise \
+             (worst three: {})",
+            worst_three(&commits)
+        );
+    }
+
+    #[test]
+    fn commit_phases_fully_account_for_total_us_over_sixty_singleton_edge_commits() {
+        // Why this exists alongside the entity-only sibling above: that test's
+        // `commit_with` helper only calls `ensure_entity`, which touches the
+        // dictionary and stages no rows, so *every one of its 60 commits seals
+        // zero segments* (`segments_named` stays 0) and `publish`'s
+        // `debug_assert_eq!` manifest recompute -- `body_sha_canonical` ->
+        // `Manifest::digest` -> `ManifestMerkle::from_manifest`, O(all segment
+        // entries across the four lanes) -- stays O(1) there. It therefore
+        // cannot observe an O(segments) accounting leak at all: the shape that
+        // exposed one in the B1 A/B was `Store::ingest_events`, which stages an
+        // edge row plus node rows per commit and so seals segments every
+        // generation. This test is that shape, with the same distribution
+        // invariant, so the O(segments) recompute is provably exercised (see
+        // the `segments_named` assertion at the end) and `debug_verify_us`
+        // must be the phase that absorbs it.
+        let root = tmp_root("phase-accounting-edges");
+        let mut s = NativeStore::open(&root).unwrap();
+        let mut residuals = Vec::with_capacity(60);
+        let mut totals = Vec::with_capacity(60);
+        let mut debug_verifies = Vec::with_capacity(60);
+        let mut commits: Vec<(i64, u64, u64, u64)> = Vec::with_capacity(60);
+        let mut last_segments_named = 0u64;
+        for tt in 1..=60i64 {
+            s.begin(tt).unwrap();
+            // both endpoints registered first so the staged rows reference
+            // dense ids that exist, exactly as `ingest_events` does
+            let src = s.ensure_entity(&format!("n{tt}"), "Node").unwrap();
+            let dst = s.ensure_entity(&format!("n{}", tt + 1), "Node").unwrap();
+            // one node row (the newly-seen endpoint) -> one node segment
+            s.stage_node(NodeRow {
+                vid: crate::derive::version_vid(&format!("n{}", tt + 1), tt, tt),
+                uid_id: dst,
+                label: "Node".into(),
+                vt_s: tt,
+                vt_e: tt + 1,
+                tt_s: tt,
+                props: "{}".into(),
+                source: "ingest".into(),
+                provenance_ref: None,
+            })
+            .unwrap();
+            // one edge row -> one edge-event segment
+            s.stage_edge(edge_row(src, dst, tt, tt, tt as u32)).unwrap();
+            let prev = s.manifest().event_log.chain.clone();
+            let g = s
+                .commit(EventLogRef {
+                    offset: tt as u64,
+                    chain: EventLogRef::extend_chain(
+                        &prev,
+                        format!("{{\"tt\":{tt}}}\n").as_bytes(),
+                    ),
+                })
+                .unwrap();
+            assert_eq!(g, tt as u64);
+
+            let p = s.last_commit_phases().unwrap();
+            let named_sum = named_phase_sum(&p);
+            assert!(
+                p.total_us >= named_sum,
+                "commit {tt}: named phases ({named_sum}us) exceed total_us \
+                 ({}us) -- a phase is double-counting another's window",
+                p.total_us
+            );
+            // the debug-only manifest recompute is timed, and compiles away
+            // entirely in release -- a nonzero reading there would mean the
+            // field had picked up someone else's window
+            if !cfg!(debug_assertions) {
+                assert_eq!(
+                    p.debug_verify_us, 0,
+                    "commit {tt}: debug_verify_us must be 0 in a release build, \
+                     where publish's debug_assert_eq! does not compile"
+                );
+            }
+            residuals.push(p.total_us - named_sum);
+            totals.push(p.total_us);
+            debug_verifies.push(p.debug_verify_us);
+            commits.push((tt, p.total_us, named_sum, p.total_us - named_sum));
+            last_segments_named = p.segments_named;
+        }
+
+        // the point of this shape: two segments sealed per generation, so the
+        // manifest the debug recompute walks really did grow to 120 entries
+        assert_eq!(
+            last_segments_named, 120,
+            "each of the 60 commits must seal one node and one edge segment \
+             for this test to exercise the O(segments) manifest recompute"
+        );
+        if cfg!(debug_assertions) {
+            // a from-scratch Merkle over 120 segment entries is far above 1us
+            // in an unoptimized build; measured at ~2000us on the last commit
+            assert!(
+                debug_verifies[59] > 0,
+                "debug_verify_us must be nonzero on the last commit of a debug \
+                 build -- publish recomputes the whole manifest digest there \
+                 over {last_segments_named} segment entries"
+            );
+        }
+
+        let bar = residual_bound(median(totals.clone()));
+        let median_residual = median(residuals.clone());
+        let p90_residual = p90(residuals.clone());
+        let first_ten_median = median(residuals[..10].to_vec());
+        let last_ten_median = median(residuals[residuals.len() - 10..].to_vec());
+
+        assert!(
+            median_residual <= bar,
+            "median residual over 60 edge commits ({median_residual}us) exceeds \
+             bar={bar}us -- a systematic accounting leak, not a one-off \
+             scheduler hiccup (worst three: {})",
+            worst_three(&commits)
+        );
+        assert!(
+            p90_residual <= 3 * bar,
+            "p90 residual over 60 edge commits ({p90_residual}us) exceeds \
              3*bar={}us -- too many commits are elevated for this to be a \
              single scheduler hiccup (worst three: {})",
             3 * bar,
