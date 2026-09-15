@@ -1,0 +1,311 @@
+# ldbc-ref-v1 campaign — FROZEN 2026-09-14 by lane D1-prep (OSDI'27 Claim C9,
+# LDBC generality's reference-correctness gap). Pre-registered before any run.
+# Append-only from here: changes land as dated addenda below, never as edits
+# to the blocks already frozen. This lane is laptop-only, prep-only — no
+# experiment, ssh session, download, or Neo4j instance was run to produce
+# this file; every prediction below is derived from the D1-local SF1
+# campaign record and the design memo, cited per row, never invented.
+#
+# Companion: benchmarks/ldbc-ref-v1/RUNBOOK.md (the how). This file is the
+# what-was-predicted; the coordinator/xzgpu lane stamps the run of record.
+freeze_id: ldbc-ref-v1-2026-09-14
+anchor:
+  worktree_commit: 85ae2cd   # this lane's own HEAD at freeze time (main >= 85ae2cd)
+  design: docs/design/LDBC_REFERENCE_CORRECTNESS_DESIGN_2026-09-13.md   # D1
+  correction: docs/design/BI6_TRIAGE_2026-09-14.md                     # D2 — BI6 is a plan defect, not a TGIR-SEMANTIC-GAP
+  harness: [scripts/ldbc_snb_params.py, scripts/tgir_ldbc_sf1.py,
+            scripts/ldbc_reference_run.py, scripts/ldbc_compare.py]
+  runbook: benchmarks/ldbc-ref-v1/RUNBOOK.md
+
+host: xzgpu (40 cores, 93 GB; per docs/eval/REPRODUCE.md — nothing else
+      scheduled in the run's window per the coordinator's brief)
+
+substrate:
+  dataset: ldbc-sf1 BI initial snapshot, composite-merged-fk (TGMS side) /
+           composite-projected-fk (Neo4j side) — same generated SF1 data,
+           two serializations, proven equal by the mandatory same-data gate
+           (RUNBOOK.md §4.2) before any query runs
+  gate_bound_counts: "2,997,352 nodes / 17,196,776 edges"   # design memo §2, citing PAPER_A_EVIDENCE_FREEZE.md §E addendum 2
+  no_update_streams: true   # M8 — only initial_snapshot/ is ever read (RUNBOOK.md §4.3)
+
+neo4j:
+  version: 5.26.0   # Community; RUNBOOK.md §2.1 for the two-vendor version conflict this resolves
+  dialect_citation: "external_workloads/ldbc/bi/neo4j/scripts/vars.sh:9 (NEO4J_VERSION default 5.20.0); scripts/import.sh:67 (neo4j-admin database import full, a 5.x-only subcommand)"
+  plugins: [apoc-5.26.0-core]   # bi-10.cypher is the only one of the 24 queries calling into APOC (apoc.path.subgraphNodes)
+  config: {heap: 8g, pagecache: 16g, transaction_timeout_s: 600}   # RUNBOOK.md §2.3, reusing the figure the design memo already judged adequate at this scale
+
+parameters:
+  source: benchmarks/ldbc-ref-v1/params.json   # scripts/ldbc_snb_params.py::export_bindings(), one binding, two consumers (design memo §3)
+  seed: 5724984519806421702                    # CAMPAIGN_SEED, == the D1-local SF1 campaign's seed (benchmarks/results-v1/ldbc-sf1-campaign.json manifest.campaign_seed)
+  selection_rule: "first tuple in LDBC's own file order (design memo §3, §A9)"
+
+tie_break_policy: docs/design/LDBC_REFERENCE_CORRECTNESS_DESIGN_2026-09-13.md#4   # scripts/ldbc_compare.py::compare_topk implements it; RUNBOOK.md §8 on why sort_keys must be supplied by hand
+
+# --------------------------------------------------------------------------
+# the 24 templates. `d1_local_rows` is the row count TGIR already produced
+# at SF1 (benchmarks/results-v1/ldbc-sf1-campaign.json), cited as the basis
+# for each prediction below — never re-measured here. `null` means "never
+# run" (IS1/IS4/IS5, post-freeze additions) or "no SF1 record for this exact
+# artifact" (BI6.v2, whose predecessor BI6 ERRORED).
+# --------------------------------------------------------------------------
+templates:
+  - id: BI3
+    contract: REQUIRES_TOP_K
+    plan_artifact: BI3.json
+    cypher: bi/neo4j/queries/bi-3.cypher
+    param_source: bi-3.csv row 1
+    d1_local_rows: 20
+    risk: "var-length REPLY_OF*0.. carve (design memo §7); TGIR-SEMANTIC-GAP possible, not assumed"
+  - id: BI4
+    contract: REQUIRES_TOP_K
+    plan_artifact: BI4.json
+    cypher: bi/neo4j/queries/bi-4.cypher
+    param_source: bi-4.csv row 1
+    d1_local_rows: 100
+  - id: BI6
+    contract: REQUIRES_TOP_K
+    plan_artifact: BI6.v2.json   # NOT BI6.json — see BI6_TRIAGE_2026-09-14.md; BI6.json kept as the v1-defect evidence, run and reported separately (RUNBOOK.md §6)
+    cypher: bi/neo4j/queries/bi-6.cypher
+    param_source: bi-6.csv row 1
+    d1_local_rows: null   # v1 (BI6.json) ERRORED at SF1 (null join key 'likerId', 535 rows); v2 has no SF1 record yet
+    note: "predicted AGREE, not TGIR-SEMANTIC-GAP — D2's triage verdict is 'plan defect', repaired in BI6.v2.json, fixture-verified against v1 wherever v1 runs (BI6_TRIAGE_2026-09-14.md §6)"
+  - id: BI7
+    contract: REQUIRES_TOP_K
+    plan_artifact: BI7.json
+    cypher: bi/neo4j/queries/bi-7.cypher
+    param_source: bi-7.csv row 1
+    d1_local_rows: 100
+  - id: BI9
+    contract: REQUIRES_TOP_K
+    plan_artifact: BI9.json
+    cypher: bi/neo4j/queries/bi-9.cypher
+    param_source: bi-9.csv row 1
+    d1_local_rows: 100
+  - id: BI10
+    contract: REQUIRES_TOP_K
+    plan_artifact: BI10.json
+    cypher: bi/neo4j/queries/bi-10.cypher
+    param_source: bi-10a.csv row 1
+    d1_local_rows: 100
+    risk: "APOC subgraph traversal (RUNBOOK.md §2.4), most likely template to approach the 600s timeout; var-length/path residual (design memo §7)"
+  - id: BI11
+    contract: CURRENT_ECQR_FRAGMENT
+    plan_artifact: BI11.json
+    cypher: bi/neo4j/queries/bi-11.cypher
+    param_source: bi-11.csv row 1
+    d1_local_rows: 1
+  - id: BI12
+    contract: REQUIRES_ORDERED_RESULT
+    plan_artifact: BI12.json
+    cypher: bi/neo4j/queries/bi-12.cypher
+    param_source: bi-12.csv row 1
+    d1_local_rows: 166
+  - id: BI17
+    contract: REQUIRES_TOP_K
+    plan_artifact: BI17.json
+    cypher: bi/neo4j/queries/bi-17.cypher
+    param_source: bi-17.csv row 1
+    d1_local_rows: 0
+    risk: "cascade/time-delta path residual (design memo §7); 0 rows at D1-local makes this a weak anchor either way"
+  - id: BI18
+    contract: REQUIRES_TOP_K
+    plan_artifact: BI18.json
+    cypher: bi/neo4j/queries/bi-18.cypher
+    param_source: bi-18.csv row 1
+    d1_local_rows: 20
+  - id: IC2
+    contract: REQUIRES_TOP_K
+    plan_artifact: IC2.json
+    cypher: interactive_v1/cypher/queries/interactive-complex-2.cypher
+    param_source: "SAMPLED anchor (seed 5724984519806421702) + validation_params-sf1.csv"
+    arm: characterization-interactive   # excluded from every third-party-parameter claim (design memo §7, PAPER_A_EVIDENCE_FREEZE.md:645-654); agreement here is evidence of correctness only
+    d1_local_rows: 20
+  - id: IC5
+    contract: REQUIRES_TOP_K
+    plan_artifact: IC5.json
+    cypher: interactive_v1/cypher/queries/interactive-complex-5.cypher
+    param_source: "SAMPLED anchor (seed 5724984519806421702) + validation_params-sf1.csv"
+    arm: characterization-interactive
+    d1_local_rows: 0
+    risk: "path residual named alongside BI10/BI17 (design memo §7)"
+  - id: IC6
+    contract: REQUIRES_TOP_K
+    plan_artifact: IC6.json
+    cypher: interactive_v1/cypher/queries/interactive-complex-6.cypher
+    param_source: "SAMPLED anchor (seed 5724984519806421702) + validation_params-sf1.csv"
+    arm: characterization-interactive
+    d1_local_rows: 10
+  - id: IC8
+    contract: REQUIRES_TOP_K
+    plan_artifact: IC8.json
+    cypher: interactive_v1/cypher/queries/interactive-complex-8.cypher
+    param_source: "SAMPLED anchor (seed 5724984519806421702) + validation_params-sf1.csv"
+    arm: characterization-interactive
+    d1_local_rows: 11
+  - id: IC9
+    contract: REQUIRES_TOP_K
+    plan_artifact: IC9.json
+    cypher: interactive_v1/cypher/queries/interactive-complex-9.cypher
+    param_source: "SAMPLED anchor (seed 5724984519806421702) + validation_params-sf1.csv"
+    arm: characterization-interactive
+    d1_local_rows: 20
+  - id: IC11
+    contract: REQUIRES_TOP_K
+    plan_artifact: IC11.json
+    cypher: interactive_v1/cypher/queries/interactive-complex-11.cypher
+    param_source: "SAMPLED anchor (seed 5724984519806421702) + validation_params-sf1.csv"
+    arm: characterization-interactive
+    d1_local_rows: 0
+  - id: IC12
+    contract: REQUIRES_TOP_K
+    plan_artifact: IC12.json
+    cypher: interactive_v1/cypher/queries/interactive-complex-12.cypher
+    param_source: "SAMPLED anchor (seed 5724984519806421702) + validation_params-sf1.csv"
+    arm: characterization-interactive
+    d1_local_rows: 5
+    risk: "path residual named alongside BI10/BI17 (design memo §7)"
+  - id: IS1
+    contract: CURRENT_ECQR_FRAGMENT
+    plan_artifact: IS1.json
+    cypher: interactive_v1/cypher/queries/interactive-short-1.cypher
+    param_source: "SAMPLED anchor (seed 5724984519806421702) + validation_params-sf1.csv"
+    arm: characterization-interactive
+    d1_local_rows: null   # post-freeze addition (Lane D2, 2026-09-14); never run at SF1
+    note: "single-row profile lookup; predicted trivially agreeing given a valid anchor"
+  - id: IS2
+    contract: REQUIRES_TOP_K
+    plan_artifact: IS2.json
+    cypher: interactive_v1/cypher/queries/interactive-short-2.cypher
+    param_source: "SAMPLED anchor (seed 5724984519806421702) + validation_params-sf1.csv"
+    arm: characterization-interactive
+    d1_local_rows: 10
+  - id: IS3
+    contract: REQUIRES_ORDERED_RESULT
+    plan_artifact: IS3.json
+    cypher: interactive_v1/cypher/queries/interactive-short-3.cypher
+    param_source: "SAMPLED anchor (seed 5724984519806421702) + validation_params-sf1.csv"
+    arm: characterization-interactive
+    d1_local_rows: 48
+  - id: IS4
+    contract: CURRENT_ECQR_FRAGMENT
+    plan_artifact: IS4.json
+    cypher: interactive_v1/cypher/queries/interactive-short-4.cypher
+    param_source: "SAMPLED anchor (seed 5724984519806421702) + validation_params-sf1.csv"
+    arm: characterization-interactive
+    d1_local_rows: null
+    note: "single-row message-content lookup; predicted trivially agreeing"
+  - id: IS5
+    contract: CURRENT_ECQR_FRAGMENT
+    plan_artifact: IS5.json
+    cypher: interactive_v1/cypher/queries/interactive-short-5.cypher
+    param_source: "SAMPLED anchor (seed 5724984519806421702) + validation_params-sf1.csv"
+    arm: characterization-interactive
+    d1_local_rows: null
+    note: "single-row creator lookup; predicted trivially agreeing"
+  - id: IS6
+    contract: CURRENT_ECQR_FRAGMENT
+    plan_artifact: IS6.json
+    cypher: interactive_v1/cypher/queries/interactive-short-6.cypher
+    param_source: "SAMPLED anchor (seed 5724984519806421702) + validation_params-sf1.csv"
+    arm: characterization-interactive
+    d1_local_rows: 1
+  - id: IS7
+    contract: REQUIRES_ORDERED_RESULT
+    plan_artifact: IS7.json
+    cypher: interactive_v1/cypher/queries/interactive-short-7.cypher
+    param_source: "SAMPLED anchor (seed 5724984519806421702) + validation_params-sf1.csv"
+    arm: characterization-interactive
+    d1_local_rows: 1
+
+gates:
+  G-R1_every_attempted_has_a_result_or_refusal:
+    description: every one of the 24 templates produces either a completed
+      Neo4j result (rows, possibly empty) or a recorded refusal (timeout,
+      APOC/import failure, same-data-gate abort) — never a silent skip
+    max_silent_skips: 0
+  G-R2_record_validates:
+    description: the run's top-level manifest validates against
+      benchmarks/schema/result_manifest.schema.json (RUNBOOK.md §9)
+    schema: benchmarks/schema/result_manifest.schema.json
+  G-R3_same_data:
+    description: the same-data gate (RUNBOOK.md §4.2) passes before any
+      query is run; a failure here aborts the whole campaign, not just the
+      gate's own row
+    required_counts: "2,997,352 nodes / 17,196,776 edges"
+
+# --------------------------------------------------------------------------
+# PRE-REGISTERED predictions, scored as-written. A miss is reported, never
+# retuned. Per-template predictions are derived from d1_local_rows above
+# (basis cited per row); the four templates with no SF1 record
+# (BI6/IS1/IS4/IS5) are explicitly labelled "no prior record" and given a
+# qualitative rather than a numeric bar.
+# --------------------------------------------------------------------------
+predictions:
+  per_template:
+    basis: >-
+      benchmarks/results-v1/ldbc-sf1-campaign.json (D1-local SF1 campaign,
+      21/24 executed, 0 compared against any reference — this run closes
+      the comparison gap, not the execution gap). For each template with a
+      d1_local_rows value above, predicted attempted=compared=agreeing=that
+      value (i.e. full agreement, no MAPPING-RULE/TGIR-SEMANTIC-GAP/
+      ENGINE-DEFECT disagreement) UNLESS the template carries a `risk` note
+      above, in which case agreement is predicted but named as the least
+      confident bet in the set. BI6/IS1/IS4/IS5 (no d1_local_rows): BI6
+      predicted to agree wherever v2 returns rows (D2's corrected triage);
+      IS1/IS4/IS5 predicted trivially agreeing (CURRENT_ECQR_FRAGMENT,
+      SINGLE_ROW, one entity_history call each per classification.json).
+    predicted: >-
+      24/24 templates attempted; 18/24 (every template with no `risk` note
+      above, plus BI6/IS1/IS4/IS5) predicted to agree on every compared row;
+      6/24 (BI3, BI10, BI17, IC5, IC12 — the design memo §7 var-length/path
+      residual list — plus no sixth beyond those five, so read as 5/24) are
+      the templates where a TGIR-SEMANTIC-GAP or ORDERING/TIE finding on
+      some rows would not be a surprise
+    pass_if: "every one of the 19 non-risk-flagged templates (all 24 minus
+      BI3/BI10/BI17/IC5/IC12) shows zero disagreeing rows"
+    refuted_if: "any non-risk-flagged template shows a disagreeing row with
+      cause other than ORDERING/TIE or REFERENCE-SIDE-QUIRK"
+  overall_agreement:
+    basis: >-
+      sum of d1_local_rows across the 20 templates that have one = 733 rows
+      (607 BI + 66 IC + 60 IS, arithmetic over the table above); BI6.v2 and
+      IS1/IS4/IS5 add an unknown but small number of further rows (single-
+      row templates plus one unconstrained BI6.v2 count)
+    predicted: ">= 0.95 of all compared rows agree, across all 24 templates,
+      pooling every row from every template (not per-template weighted)"
+    pass_if: ">= 0.90 of all compared rows agree"
+    refuted_if: "< 0.75 of all compared rows agree, OR any single template
+      disagrees on > 10% of its own compared rows without a documented
+      cause from the closed set (MAPPING-RULE/ORDERING-TIE/
+      TGIR-SEMANTIC-GAP/ENGINE-DEFECT/REFERENCE-SIDE-QUIRK)"
+  bi6_is_not_a_semantic_gap:
+    basis: docs/design/BI6_TRIAGE_2026-09-14.md — verdict "plan defect, not
+      a TGIR semantic gap"; BI6.v2.json's structural test asserts no join
+      key is nullable in its own input's schema
+    predicted: "BI6.v2 agrees with the Neo4j reference wherever both sides
+      return rows (i.e. is never classified TGIR-SEMANTIC-GAP)"
+    pass_if: "BI6.v2's verdict has zero TGIR-SEMANTIC-GAP-caused disagreements"
+    refuted_if: "any BI6.v2 disagreement is classified TGIR-SEMANTIC-GAP —
+      this would mean D2's triage was itself wrong, not just BI6.json"
+
+falsifiers:
+  a: a Neo4j reference result exists for a template whose TGIR plan cannot
+     express the query at all (as opposed to a same-row disagreement) —
+     this would mean one of the 24 was never actually expressible
+  b: a row classified MAPPING-RULE or REFERENCE-SIDE-QUIRK (i.e. "explained
+     away") that, on inspection, is actually a wrong TGIR answer — a
+     documented divergence rule hiding a defect rather than describing one
+  c: the same-data gate (G-R3) fails — the two CSV serializations are not
+     the same generated dataset, invalidating every comparison in the run
+  d: BI10 (or any template) times out at the 600s ceiling on the reference
+     side on every attempt, making zero comparison possible for that
+     template — reported as NOT-ATTEMPTED, not folded into the agreement
+     denominator
+  e: more than 2 of the 5 risk-flagged templates (BI3, BI10, BI17, IC5,
+     IC12) show a TGIR-SEMANTIC-GAP disagreement — this would mean the
+     var-length/path-feature residual the design memo named as a risk (§7)
+     is systematic rather than isolated
+
+# No addenda yet — this is the initial freeze. Any change to `templates`,
+# `neo4j`, `gates`, `predictions` or `falsifiers` above lands as a dated
+# `addendum_N` block below, never as an edit to the blocks above.
