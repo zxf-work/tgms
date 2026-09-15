@@ -1,0 +1,1694 @@
+[
+ {
+  "step": "load",
+  "n_clients": 1,
+  "records": [
+   {
+    "scheduled_s": 0.0,
+    "late_ms": 0.0036172568798065186,
+    "wall_ms": 472.8884845972061,
+    "outcome": "ok",
+    "refusal_stage": null
+   },
+   {
+    "scheduled_s": 0.5,
+    "late_ms": 0.12325122952461243,
+    "wall_ms": 2.239316701889038,
+    "outcome": "ok",
+    "refusal_stage": null
+   },
+   {
+    "scheduled_s": 1.0,
+    "late_ms": 0.13145804405212402,
+    "wall_ms": 1.488417387008667,
+    "outcome": "ok",
+    "refusal_stage": null
+   },
+   {
+    "scheduled_s": 1.5,
+    "late_ms": 0.11439621448516846,
+    "wall_ms": 1.4261230826377869,
+    "outcome": "ok",
+    "refusal_stage": null
+   },
+   {
+    "scheduled_s": 2.0,
+    "late_ms": 0.12483447790145874,
+    "wall_ms": 1.7681270837783813,
+    "outcome": "ok",
+    "refusal_stage": null
+   },
+   {
+    "scheduled_s": 2.5,
+    "late_ms": 0.12071430683135986,
+    "wall_ms": 1.7292797565460205,
+    "outcome": "ok",
+    "refusal_stage": null
+   },
+   {
+    "scheduled_s": 3.0,
+    "late_ms": 0.12451782822608948,
+    "wall_ms": 1.5994831919670105,
+    "outcome": "ok",
+    "refusal_stage": null
+   },
+   {
+    "scheduled_s": 3.5,
+    "late_ms": 0.06757304072380066,
+    "wall_ms": 1.6144923865795135,
+    "outcome": "ok",
+    "refusal_stage": null
+   },
+   {
+    "scheduled_s": 4.0,
+    "late_ms": 0.119771808385849,
+    "wall_ms": 1.7105638980865479,
+    "outcome": "ok",
+    "refusal_stage": null
+   },
+   {
+    "scheduled_s": 4.5,
+    "late_ms": 0.12189522385597229,
+    "wall_ms": 1.7548203468322754,
+    "outcome": "ok",
+    "refusal_stage": null
+   },
+   {
+    "scheduled_s": 5.0,
+    "late_ms": 0.1287795603275299,
+    "wall_ms": 1.477900892496109,
+    "outcome": "ok",
+    "refusal_stage": null
+   },
+   {
+    "scheduled_s": 5.5,
+    "late_ms": 0.1339353621006012,
+    "wall_ms": 1.4393702149391174,
+    "outcome": "ok",
+    "refusal_stage": null
+   },
+   {
+    "scheduled_s": 6.0,
+    "late_ms": 0.12228265404701233,
+    "wall_ms": 1.4165714383125305,
+    "outcome": "ok",
+    "refusal_stage": null
+   },
+   {
+    "scheduled_s": 6.5,
+    "late_ms": 0.13264641165733337,
+    "wall_ms": 1.7521493136882782,
+    "outcome": "ok",
+    "refusal_stage": null
+   },
+   {
+    "scheduled_s": 7.0,
+    "late_ms": 0.11957064270973206,
+    "wall_ms": 1.5311427414417267,
+    "outcome": "ok",
+    "refusal_stage": null
+   },
+   {
+    "scheduled_s": 7.5,
+    "late_ms": 0.12032315135002136,
+    "wall_ms": 1.4281272888183594,
+    "outcome": "ok",
+    "refusal_stage": null
+   },
+   {
+    "scheduled_s": 8.0,
+    "late_ms": 0.12093037366867065,
+    "wall_ms": 1.5472322702407837,
+    "outcome": "ok",
+    "refusal_stage": null
+   },
+   {
+    "scheduled_s": 8.5,
+    "late_ms": 0.1224130392074585,
+    "wall_ms": 1.7482638359069824,
+    "outcome": "ok",
+    "refusal_stage": null
+   },
+   {
+    "scheduled_s": 9.0,
+    "late_ms": 0.12110918760299683,
+    "wall_ms": 1.4909245073795319,
+    "outcome": "ok",
+    "refusal_stage": null
+   },
+   {
+    "scheduled_s": 9.5,
+    "late_ms": 0.1144707202911377,
+    "wall_ms": 1.4231987297534943,
+    "outcome": "ok",
+    "refusal_stage": null
+   },
+   {
+    "scheduled_s": 10.0,
+    "late_ms": 0.12104958295822144,
+    "wall_ms": 1.4202259480953217,
+    "outcome": "ok",
+    "refusal_stage": null
+   },
+   {
+    "scheduled_s": 10.5,
+    "late_ms": 0.06794929504394531,
+    "wall_ms": 1.7124712467193604,
+    "outcome": "ok",
+    "refusal_stage": null
+   },
+   {
+    "scheduled_s": 11.0,
+    "late_ms": 0.12151151895523071,
+    "wall_ms": 1.7311684787273407,
+    "outcome": "ok",
+    "refusal_stage": null
+   },
+   {
+    "scheduled_s": 11.5,
+    "late_ms": 0.12490898370742798,
+    "wall_ms": 1.5283189713954926,
+    "outcome": "ok",
+    "refusal_stage": null
+   },
+   {
+    "scheduled_s": 12.0,
+    "late_ms": 0.11907890439033508,
+    "wall_ms": 1.4363452792167664,
+    "outcome": "ok",
+    "refusal_stage": null
+   },
+   {
+    "scheduled_s": 12.5,
+    "late_ms": 0.12305751442909241,
+    "wall_ms": 1.627366989850998,
+    "outcome": "ok",
+    "refusal_stage": null
+   },
+   {
+    "scheduled_s": 13.0,
+    "late_ms": 0.12067332863807678,
+    "wall_ms": 1.796577125787735,
+    "outcome": "ok",
+    "refusal_stage": null
+   },
+   {
+    "scheduled_s": 13.5,
+    "late_ms": 0.12198835611343384,
+    "wall_ms": 1.6584396362304688,
+    "outcome": "ok",
+    "refusal_stage": null
+   },
+   {
+    "scheduled_s": 14.0,
+    "late_ms": 0.06636977195739746,
+    "wall_ms": 1.458737999200821,
+    "outcome": "ok",
+    "refusal_stage": null
+   },
+   {
+    "scheduled_s": 14.5,
+    "late_ms": 0.11964142322540283,
+    "wall_ms": 1.4502257108688354,
+    "outcome": "ok",
+    "refusal_stage": null
+   },
+   {
+    "scheduled_s": 15.0,
+    "late_ms": 0.12476742267608643,
+    "wall_ms": 1.7647072672843933,
+    "outcome": "ok",
+    "refusal_stage": null
+   },
+   {
+    "scheduled_s": 15.5,
+    "late_ms": 0.12678653001785278,
+    "wall_ms": 1.4687031507492065,
+    "outcome": "ok",
+    "refusal_stage": null
+   },
+   {
+    "scheduled_s": 16.0,
+    "late_ms": 0.1357048749923706,
+    "wall_ms": 1.4269612729549408,
+    "outcome": "ok",
+    "refusal_stage": null
+   },
+   {
+    "scheduled_s": 16.5,
+    "late_ms": 0.1149401068687439,
+    "wall_ms": 1.5917271375656128,
+    "outcome": "ok",
+    "refusal_stage": null
+   },
+   {
+    "scheduled_s": 17.0,
+    "late_ms": 0.1386888325214386,
+    "wall_ms": 1.7513856291770935,
+    "outcome": "ok",
+    "refusal_stage": null
+   },
+   {
+    "scheduled_s": 17.5,
+    "late_ms": 0.11458620429039001,
+    "wall_ms": 1.692216843366623,
+    "outcome": "ok",
+    "refusal_stage": null
+   },
+   {
+    "scheduled_s": 18.0,
+    "late_ms": 0.12145936489105225,
+    "wall_ms": 1.6282051801681519,
+    "outcome": "ok",
+    "refusal_stage": null
+   },
+   {
+    "scheduled_s": 18.5,
+    "late_ms": 0.12236833572387695,
+    "wall_ms": 1.6378127038478851,
+    "outcome": "ok",
+    "refusal_stage": null
+   },
+   {
+    "scheduled_s": 19.0,
+    "late_ms": 0.1300610601902008,
+    "wall_ms": 1.544661819934845,
+    "outcome": "ok",
+    "refusal_stage": null
+   },
+   {
+    "scheduled_s": 19.5,
+    "late_ms": 0.13695284724235535,
+    "wall_ms": 1.7515793442726135,
+    "outcome": "ok",
+    "refusal_stage": null
+   },
+   {
+    "scheduled_s": 20.0,
+    "late_ms": 0.12978166341781616,
+    "wall_ms": 1.5001408755779266,
+    "outcome": "ok",
+    "refusal_stage": null
+   },
+   {
+    "scheduled_s": 20.5,
+    "late_ms": 0.14184042811393738,
+    "wall_ms": 1.4159046113491058,
+    "outcome": "ok",
+    "refusal_stage": null
+   },
+   {
+    "scheduled_s": 21.0,
+    "late_ms": 0.13034045696258545,
+    "wall_ms": 1.4139004051685333,
+    "outcome": "ok",
+    "refusal_stage": null
+   },
+   {
+    "scheduled_s": 21.5,
+    "late_ms": 0.13491138815879822,
+    "wall_ms": 1.74693763256073,
+    "outcome": "ok",
+    "refusal_stage": null
+   },
+   {
+    "scheduled_s": 22.0,
+    "late_ms": 0.12056156992912292,
+    "wall_ms": 1.5034936368465424,
+    "outcome": "ok",
+    "refusal_stage": null
+   },
+   {
+    "scheduled_s": 22.5,
+    "late_ms": 0.12552738189697266,
+    "wall_ms": 1.5738345682621002,
+    "outcome": "ok",
+    "refusal_stage": null
+   },
+   {
+    "scheduled_s": 23.0,
+    "late_ms": 0.13037770986557007,
+    "wall_ms": 1.5622898936271667,
+    "outcome": "ok",
+    "refusal_stage": null
+   },
+   {
+    "scheduled_s": 23.5,
+    "late_ms": 0.13186410069465637,
+    "wall_ms": 1.7338357865810394,
+    "outcome": "ok",
+    "refusal_stage": null
+   },
+   {
+    "scheduled_s": 24.0,
+    "late_ms": 0.12972578406333923,
+    "wall_ms": 1.688297837972641,
+    "outcome": "ok",
+    "refusal_stage": null
+   },
+   {
+    "scheduled_s": 24.5,
+    "late_ms": 0.13083592057228088,
+    "wall_ms": 1.5370771288871765,
+    "outcome": "ok",
+    "refusal_stage": null
+   },
+   {
+    "scheduled_s": 25.0,
+    "late_ms": 0.1287497580051422,
+    "wall_ms": 1.446165144443512,
+    "outcome": "ok",
+    "refusal_stage": null
+   },
+   {
+    "scheduled_s": 25.5,
+    "late_ms": 0.1290254294872284,
+    "wall_ms": 1.4159642159938812,
+    "outcome": "ok",
+    "refusal_stage": null
+   },
+   {
+    "scheduled_s": 26.0,
+    "late_ms": 0.1270882785320282,
+    "wall_ms": 1.7406642436981201,
+    "outcome": "ok",
+    "refusal_stage": null
+   },
+   {
+    "scheduled_s": 26.5,
+    "late_ms": 0.1255422830581665,
+    "wall_ms": 1.4952272176742554,
+    "outcome": "ok",
+    "refusal_stage": null
+   },
+   {
+    "scheduled_s": 27.0,
+    "late_ms": 0.06868317723274231,
+    "wall_ms": 1.674886792898178,
+    "outcome": "ok",
+    "refusal_stage": null
+   },
+   {
+    "scheduled_s": 27.5,
+    "late_ms": 0.12335553765296936,
+    "wall_ms": 1.51737779378891,
+    "outcome": "ok",
+    "refusal_stage": null
+   },
+   {
+    "scheduled_s": 28.0,
+    "late_ms": 0.06857514381408691,
+    "wall_ms": 1.7369873821735382,
+    "outcome": "ok",
+    "refusal_stage": null
+   },
+   {
+    "scheduled_s": 28.5,
+    "late_ms": 0.1219622790813446,
+    "wall_ms": 1.6601160168647766,
+    "outcome": "ok",
+    "refusal_stage": null
+   },
+   {
+    "scheduled_s": 29.0,
+    "late_ms": 0.12119114398956299,
+    "wall_ms": 1.4615170657634735,
+    "outcome": "ok",
+    "refusal_stage": null
+   },
+   {
+    "scheduled_s": 29.5,
+    "late_ms": 0.13014301657676697,
+    "wall_ms": 1.4093704521656036,
+    "outcome": "ok",
+    "refusal_stage": null
+   },
+   {
+    "scheduled_s": 30.0,
+    "late_ms": 0.12508034706115723,
+    "wall_ms": 1.7117783427238464,
+    "outcome": "ok",
+    "refusal_stage": null
+   },
+   {
+    "scheduled_s": 30.5,
+    "late_ms": 0.13258680701255798,
+    "wall_ms": 1.6751065850257874,
+    "outcome": "ok",
+    "refusal_stage": null
+   },
+   {
+    "scheduled_s": 31.0,
+    "late_ms": 0.12952089309692383,
+    "wall_ms": 1.659933477640152,
+    "outcome": "ok",
+    "refusal_stage": null
+   },
+   {
+    "scheduled_s": 31.5,
+    "late_ms": 0.1173950731754303,
+    "wall_ms": 1.4540143311023712,
+    "outcome": "ok",
+    "refusal_stage": null
+   },
+   {
+    "scheduled_s": 32.0,
+    "late_ms": 0.1208670437335968,
+    "wall_ms": 1.410607248544693,
+    "outcome": "ok",
+    "refusal_stage": null
+   },
+   {
+    "scheduled_s": 32.5,
+    "late_ms": 0.0681467354297638,
+    "wall_ms": 1.2017451226711273,
+    "outcome": "ok",
+    "refusal_stage": null
+   },
+   {
+    "scheduled_s": 33.0,
+    "late_ms": 0.13903528451919556,
+    "wall_ms": 1.6233548521995544,
+    "outcome": "ok",
+    "refusal_stage": null
+   },
+   {
+    "scheduled_s": 33.5,
+    "late_ms": 0.12650340795516968,
+    "wall_ms": 1.620117574930191,
+    "outcome": "ok",
+    "refusal_stage": null
+   },
+   {
+    "scheduled_s": 34.0,
+    "late_ms": 0.1181289553642273,
+    "wall_ms": 1.5082210302352905,
+    "outcome": "ok",
+    "refusal_stage": null
+   },
+   {
+    "scheduled_s": 34.5,
+    "late_ms": 0.12404844164848328,
+    "wall_ms": 1.7434433102607727,
+    "outcome": "ok",
+    "refusal_stage": null
+   },
+   {
+    "scheduled_s": 35.0,
+    "late_ms": 0.1207403838634491,
+    "wall_ms": 1.6511157155036926,
+    "outcome": "ok",
+    "refusal_stage": null
+   },
+   {
+    "scheduled_s": 35.5,
+    "late_ms": 0.12206658720970154,
+    "wall_ms": 1.5342570841312408,
+    "outcome": "ok",
+    "refusal_stage": null
+   },
+   {
+    "scheduled_s": 36.0,
+    "late_ms": 0.11868774890899658,
+    "wall_ms": 1.467585563659668,
+    "outcome": "ok",
+    "refusal_stage": null
+   },
+   {
+    "scheduled_s": 36.5,
+    "late_ms": 0.11884048581123352,
+    "wall_ms": 1.7231479287147522,
+    "outcome": "ok",
+    "refusal_stage": null
+   },
+   {
+    "scheduled_s": 37.0,
+    "late_ms": 0.12002885341644287,
+    "wall_ms": 1.745365560054779,
+    "outcome": "ok",
+    "refusal_stage": null
+   },
+   {
+    "scheduled_s": 37.5,
+    "late_ms": 0.12104958295822144,
+    "wall_ms": 1.562558114528656,
+    "outcome": "ok",
+    "refusal_stage": null
+   },
+   {
+    "scheduled_s": 38.0,
+    "late_ms": 0.12487918138504028,
+    "wall_ms": 1.5848204493522644,
+    "outcome": "ok",
+    "refusal_stage": null
+   },
+   {
+    "scheduled_s": 38.5,
+    "late_ms": 0.1322627067565918,
+    "wall_ms": 1.6478188335895538,
+    "outcome": "ok",
+    "refusal_stage": null
+   },
+   {
+    "scheduled_s": 39.0,
+    "late_ms": 0.13740360736846924,
+    "wall_ms": 1.7430000007152557,
+    "outcome": "ok",
+    "refusal_stage": null
+   },
+   {
+    "scheduled_s": 39.5,
+    "late_ms": 0.12924522161483765,
+    "wall_ms": 1.5197806060314178,
+    "outcome": "ok",
+    "refusal_stage": null
+   },
+   {
+    "scheduled_s": 40.0,
+    "late_ms": 0.1286529004573822,
+    "wall_ms": 1.4396235346794128,
+    "outcome": "ok",
+    "refusal_stage": null
+   },
+   {
+    "scheduled_s": 40.5,
+    "late_ms": 0.12180209159851074,
+    "wall_ms": 1.7391368746757507,
+    "outcome": "ok",
+    "refusal_stage": null
+   },
+   {
+    "scheduled_s": 41.0,
+    "late_ms": 0.13322755694389343,
+    "wall_ms": 1.7296448349952698,
+    "outcome": "ok",
+    "refusal_stage": null
+   },
+   {
+    "scheduled_s": 41.5,
+    "late_ms": 0.12861937284469604,
+    "wall_ms": 1.5128478407859802,
+    "outcome": "ok",
+    "refusal_stage": null
+   },
+   {
+    "scheduled_s": 42.0,
+    "late_ms": 0.12503936886787415,
+    "wall_ms": 1.448310911655426,
+    "outcome": "ok",
+    "refusal_stage": null
+   },
+   {
+    "scheduled_s": 42.5,
+    "late_ms": 0.13390928506851196,
+    "wall_ms": 1.4907680451869965,
+    "outcome": "ok",
+    "refusal_stage": null
+   },
+   {
+    "scheduled_s": 43.0,
+    "late_ms": 0.07031485438346863,
+    "wall_ms": 1.1594444513320923,
+    "outcome": "ok",
+    "refusal_stage": null
+   },
+   {
+    "scheduled_s": 43.5,
+    "late_ms": 0.12437626719474792,
+    "wall_ms": 1.7460361123085022,
+    "outcome": "ok",
+    "refusal_stage": null
+   },
+   {
+    "scheduled_s": 44.0,
+    "late_ms": 0.06712228059768677,
+    "wall_ms": 1.565873622894287,
+    "outcome": "ok",
+    "refusal_stage": null
+   },
+   {
+    "scheduled_s": 44.5,
+    "late_ms": 0.1237913966178894,
+    "wall_ms": 1.5988461673259735,
+    "outcome": "ok",
+    "refusal_stage": null
+   },
+   {
+    "scheduled_s": 45.0,
+    "late_ms": 0.11887401342391968,
+    "wall_ms": 1.4552399516105652,
+    "outcome": "ok",
+    "refusal_stage": null
+   },
+   {
+    "scheduled_s": 45.5,
+    "late_ms": 0.08346885442733765,
+    "wall_ms": 1.7350204288959503,
+    "outcome": "ok",
+    "refusal_stage": null
+   },
+   {
+    "scheduled_s": 46.0,
+    "late_ms": 0.1260116696357727,
+    "wall_ms": 1.5670917928218842,
+    "outcome": "ok",
+    "refusal_stage": null
+   },
+   {
+    "scheduled_s": 46.5,
+    "late_ms": 0.1213960349559784,
+    "wall_ms": 1.5679746866226196,
+    "outcome": "ok",
+    "refusal_stage": null
+   },
+   {
+    "scheduled_s": 47.0,
+    "late_ms": 0.1275278627872467,
+    "wall_ms": 1.6758553683757782,
+    "outcome": "ok",
+    "refusal_stage": null
+   },
+   {
+    "scheduled_s": 47.5,
+    "late_ms": 0.12017041444778442,
+    "wall_ms": 1.7354078590869904,
+    "outcome": "ok",
+    "refusal_stage": null
+   },
+   {
+    "scheduled_s": 48.0,
+    "late_ms": 0.12076273560523987,
+    "wall_ms": 1.515030860900879,
+    "outcome": "ok",
+    "refusal_stage": null
+   },
+   {
+    "scheduled_s": 48.5,
+    "late_ms": 0.1227259635925293,
+    "wall_ms": 1.7150714993476868,
+    "outcome": "ok",
+    "refusal_stage": null
+   },
+   {
+    "scheduled_s": 49.0,
+    "late_ms": 0.11677294969558716,
+    "wall_ms": 1.4667026698589325,
+    "outcome": "ok",
+    "refusal_stage": null
+   },
+   {
+    "scheduled_s": 49.5,
+    "late_ms": 0.11844560503959656,
+    "wall_ms": 1.7056278884410858,
+    "outcome": "ok",
+    "refusal_stage": null
+   },
+   {
+    "scheduled_s": 50.0,
+    "late_ms": 0.11957809329032898,
+    "wall_ms": 1.6955845057964325,
+    "outcome": "ok",
+    "refusal_stage": null
+   },
+   {
+    "scheduled_s": 50.5,
+    "late_ms": 0.12475624680519104,
+    "wall_ms": 1.634303480386734,
+    "outcome": "ok",
+    "refusal_stage": null
+   },
+   {
+    "scheduled_s": 51.0,
+    "late_ms": 0.1143328845500946,
+    "wall_ms": 1.544605940580368,
+    "outcome": "ok",
+    "refusal_stage": null
+   },
+   {
+    "scheduled_s": 51.5,
+    "late_ms": 0.1215711236000061,
+    "wall_ms": 1.5599876642227173,
+    "outcome": "ok",
+    "refusal_stage": null
+   },
+   {
+    "scheduled_s": 52.0,
+    "late_ms": 0.13599172234535217,
+    "wall_ms": 1.7558746039867401,
+    "outcome": "ok",
+    "refusal_stage": null
+   },
+   {
+    "scheduled_s": 52.5,
+    "late_ms": 0.12325122952461243,
+    "wall_ms": 1.663506031036377,
+    "outcome": "ok",
+    "refusal_stage": null
+   },
+   {
+    "scheduled_s": 53.0,
+    "late_ms": 0.1286827027797699,
+    "wall_ms": 1.6662515699863434,
+    "outcome": "ok",
+    "refusal_stage": null
+   },
+   {
+    "scheduled_s": 53.5,
+    "late_ms": 0.12468919157981873,
+    "wall_ms": 1.652456820011139,
+    "outcome": "ok",
+    "refusal_stage": null
+   },
+   {
+    "scheduled_s": 54.0,
+    "late_ms": 0.12421607971191406,
+    "wall_ms": 1.7335973680019379,
+    "outcome": "ok",
+    "refusal_stage": null
+   },
+   {
+    "scheduled_s": 54.5,
+    "late_ms": 0.12177228927612305,
+    "wall_ms": 1.6783252358436584,
+    "outcome": "ok",
+    "refusal_stage": null
+   },
+   {
+    "scheduled_s": 55.0,
+    "late_ms": 0.12047961354255676,
+    "wall_ms": 1.494772732257843,
+    "outcome": "ok",
+    "refusal_stage": null
+   },
+   {
+    "scheduled_s": 55.5,
+    "late_ms": 0.12299790978431702,
+    "wall_ms": 1.428704708814621,
+    "outcome": "ok",
+    "refusal_stage": null
+   },
+   {
+    "scheduled_s": 56.0,
+    "late_ms": 0.11989101767539978,
+    "wall_ms": 1.7105117440223694,
+    "outcome": "ok",
+    "refusal_stage": null
+   },
+   {
+    "scheduled_s": 56.5,
+    "late_ms": 0.12359023094177246,
+    "wall_ms": 1.7127804458141327,
+    "outcome": "ok",
+    "refusal_stage": null
+   },
+   {
+    "scheduled_s": 57.0,
+    "late_ms": 0.1248680055141449,
+    "wall_ms": 1.4700442552566528,
+    "outcome": "ok",
+    "refusal_stage": null
+   },
+   {
+    "scheduled_s": 57.5,
+    "late_ms": 0.12300536036491394,
+    "wall_ms": 1.4241375029087067,
+    "outcome": "ok",
+    "refusal_stage": null
+   },
+   {
+    "scheduled_s": 58.0,
+    "late_ms": 0.12030825018882751,
+    "wall_ms": 1.425381749868393,
+    "outcome": "ok",
+    "refusal_stage": null
+   },
+   {
+    "scheduled_s": 58.5,
+    "late_ms": 0.12269243597984314,
+    "wall_ms": 1.7364025115966797,
+    "outcome": "ok",
+    "refusal_stage": null
+   },
+   {
+    "scheduled_s": 59.0,
+    "late_ms": 0.11770054697990417,
+    "wall_ms": 1.6157403588294983,
+    "outcome": "ok",
+    "refusal_stage": null
+   },
+   {
+    "scheduled_s": 59.5,
+    "late_ms": 0.13016164302825928,
+    "wall_ms": 1.4297328889369965,
+    "outcome": "ok",
+    "refusal_stage": null
+   }
+  ]
+ },
+ {
+  "step": "recovery",
+  "n_clients": 1,
+  "records": [
+   {
+    "scheduled_s": 0.0,
+    "late_ms": 0.0024028122425079346,
+    "wall_ms": 1.4729276299476624,
+    "outcome": "ok",
+    "refusal_stage": null
+   },
+   {
+    "scheduled_s": 0.5,
+    "late_ms": 0.12059509754180908,
+    "wall_ms": 1.407906413078308,
+    "outcome": "ok",
+    "refusal_stage": null
+   },
+   {
+    "scheduled_s": 1.0,
+    "late_ms": 0.11628866195678711,
+    "wall_ms": 1.732952892780304,
+    "outcome": "ok",
+    "refusal_stage": null
+   },
+   {
+    "scheduled_s": 1.5,
+    "late_ms": 0.11869147419929504,
+    "wall_ms": 1.5890635550022125,
+    "outcome": "ok",
+    "refusal_stage": null
+   },
+   {
+    "scheduled_s": 2.0,
+    "late_ms": 0.11872127652168274,
+    "wall_ms": 1.4554113149642944,
+    "outcome": "ok",
+    "refusal_stage": null
+   },
+   {
+    "scheduled_s": 2.5,
+    "late_ms": 0.06465986371040344,
+    "wall_ms": 1.656651496887207,
+    "outcome": "ok",
+    "refusal_stage": null
+   },
+   {
+    "scheduled_s": 3.0,
+    "late_ms": 0.07490813732147217,
+    "wall_ms": 1.7498619854450226,
+    "outcome": "ok",
+    "refusal_stage": null
+   },
+   {
+    "scheduled_s": 3.5,
+    "late_ms": 0.12462586164474487,
+    "wall_ms": 1.743074506521225,
+    "outcome": "ok",
+    "refusal_stage": null
+   },
+   {
+    "scheduled_s": 4.0,
+    "late_ms": 0.11682882905006409,
+    "wall_ms": 1.6571171581745148,
+    "outcome": "ok",
+    "refusal_stage": null
+   },
+   {
+    "scheduled_s": 4.5,
+    "late_ms": 0.12385845184326172,
+    "wall_ms": 1.5376582741737366,
+    "outcome": "ok",
+    "refusal_stage": null
+   },
+   {
+    "scheduled_s": 5.0,
+    "late_ms": 0.12123584747314453,
+    "wall_ms": 1.4877207577228546,
+    "outcome": "ok",
+    "refusal_stage": null
+   },
+   {
+    "scheduled_s": 5.5,
+    "late_ms": 0.13274699449539185,
+    "wall_ms": 1.7355456948280334,
+    "outcome": "ok",
+    "refusal_stage": null
+   },
+   {
+    "scheduled_s": 6.0,
+    "late_ms": 0.12740492820739746,
+    "wall_ms": 1.4772005379199982,
+    "outcome": "ok",
+    "refusal_stage": null
+   },
+   {
+    "scheduled_s": 6.5,
+    "late_ms": 0.12307241559028625,
+    "wall_ms": 1.4270618557929993,
+    "outcome": "ok",
+    "refusal_stage": null
+   },
+   {
+    "scheduled_s": 7.0,
+    "late_ms": 0.13162940740585327,
+    "wall_ms": 1.4185570180416107,
+    "outcome": "ok",
+    "refusal_stage": null
+   },
+   {
+    "scheduled_s": 7.5,
+    "late_ms": 0.12825429439544678,
+    "wall_ms": 1.7429739236831665,
+    "outcome": "ok",
+    "refusal_stage": null
+   },
+   {
+    "scheduled_s": 8.0,
+    "late_ms": 0.1245550811290741,
+    "wall_ms": 1.4931969344615936,
+    "outcome": "ok",
+    "refusal_stage": null
+   },
+   {
+    "scheduled_s": 8.5,
+    "late_ms": 0.13025477528572083,
+    "wall_ms": 1.4235340058803558,
+    "outcome": "ok",
+    "refusal_stage": null
+   },
+   {
+    "scheduled_s": 9.0,
+    "late_ms": 0.12813881039619446,
+    "wall_ms": 1.540008932352066,
+    "outcome": "ok",
+    "refusal_stage": null
+   },
+   {
+    "scheduled_s": 9.5,
+    "late_ms": 0.13476237654685974,
+    "wall_ms": 1.7252005636692047,
+    "outcome": "ok",
+    "refusal_stage": null
+   },
+   {
+    "scheduled_s": 10.0,
+    "late_ms": 0.13244152069091797,
+    "wall_ms": 1.5562660992145538,
+    "outcome": "ok",
+    "refusal_stage": null
+   },
+   {
+    "scheduled_s": 10.5,
+    "late_ms": 0.12376159429550171,
+    "wall_ms": 1.4503486454486847,
+    "outcome": "ok",
+    "refusal_stage": null
+   },
+   {
+    "scheduled_s": 11.0,
+    "late_ms": 0.08430331945419312,
+    "wall_ms": 1.4180727303028107,
+    "outcome": "ok",
+    "refusal_stage": null
+   },
+   {
+    "scheduled_s": 11.5,
+    "late_ms": 0.12638047337532043,
+    "wall_ms": 1.5623420476913452,
+    "outcome": "ok",
+    "refusal_stage": null
+   },
+   {
+    "scheduled_s": 12.0,
+    "late_ms": 0.12076273560523987,
+    "wall_ms": 1.8769055604934692,
+    "outcome": "ok",
+    "refusal_stage": null
+   },
+   {
+    "scheduled_s": 12.5,
+    "late_ms": 0.12743845582008362,
+    "wall_ms": 1.495853066444397,
+    "outcome": "ok",
+    "refusal_stage": null
+   },
+   {
+    "scheduled_s": 13.0,
+    "late_ms": 0.12928247451782227,
+    "wall_ms": 1.461077481508255,
+    "outcome": "ok",
+    "refusal_stage": null
+   },
+   {
+    "scheduled_s": 13.5,
+    "late_ms": 0.13491138815879822,
+    "wall_ms": 1.6825757920742035,
+    "outcome": "ok",
+    "refusal_stage": null
+   },
+   {
+    "scheduled_s": 14.0,
+    "late_ms": 0.12705102562904358,
+    "wall_ms": 1.776520162820816,
+    "outcome": "ok",
+    "refusal_stage": null
+   },
+   {
+    "scheduled_s": 14.5,
+    "late_ms": 0.12553855776786804,
+    "wall_ms": 1.6855672001838684,
+    "outcome": "ok",
+    "refusal_stage": null
+   },
+   {
+    "scheduled_s": 15.0,
+    "late_ms": 0.1317150890827179,
+    "wall_ms": 1.4958791434764862,
+    "outcome": "ok",
+    "refusal_stage": null
+   },
+   {
+    "scheduled_s": 15.5,
+    "late_ms": 0.13126805424690247,
+    "wall_ms": 1.6189515590667725,
+    "outcome": "ok",
+    "refusal_stage": null
+   },
+   {
+    "scheduled_s": 16.0,
+    "late_ms": 0.1091882586479187,
+    "wall_ms": 0.8672066032886505,
+    "outcome": "ok",
+    "refusal_stage": null
+   },
+   {
+    "scheduled_s": 16.5,
+    "late_ms": 0.11850893497467041,
+    "wall_ms": 1.5131831169128418,
+    "outcome": "ok",
+    "refusal_stage": null
+   },
+   {
+    "scheduled_s": 17.0,
+    "late_ms": 0.10461732745170593,
+    "wall_ms": 1.4343224465847015,
+    "outcome": "ok",
+    "refusal_stage": null
+   },
+   {
+    "scheduled_s": 17.5,
+    "late_ms": 0.11795386672019958,
+    "wall_ms": 1.5640519559383392,
+    "outcome": "ok",
+    "refusal_stage": null
+   },
+   {
+    "scheduled_s": 18.0,
+    "late_ms": 0.13191625475883484,
+    "wall_ms": 1.4275535941123962,
+    "outcome": "ok",
+    "refusal_stage": null
+   },
+   {
+    "scheduled_s": 18.5,
+    "late_ms": 0.11936947703361511,
+    "wall_ms": 1.7462782561779022,
+    "outcome": "ok",
+    "refusal_stage": null
+   },
+   {
+    "scheduled_s": 19.0,
+    "late_ms": 0.1202113926410675,
+    "wall_ms": 1.6350112855434418,
+    "outcome": "ok",
+    "refusal_stage": null
+   },
+   {
+    "scheduled_s": 19.5,
+    "late_ms": 0.12256577610969543,
+    "wall_ms": 1.6911625862121582,
+    "outcome": "ok",
+    "refusal_stage": null
+   },
+   {
+    "scheduled_s": 20.0,
+    "late_ms": 0.13173744082450867,
+    "wall_ms": 1.450084149837494,
+    "outcome": "ok",
+    "refusal_stage": null
+   },
+   {
+    "scheduled_s": 20.5,
+    "late_ms": 0.12568384408950806,
+    "wall_ms": 1.7397403717041016,
+    "outcome": "ok",
+    "refusal_stage": null
+   },
+   {
+    "scheduled_s": 21.0,
+    "late_ms": 0.06812438368797302,
+    "wall_ms": 1.5554316341876984,
+    "outcome": "ok",
+    "refusal_stage": null
+   },
+   {
+    "scheduled_s": 21.5,
+    "late_ms": 0.07599964737892151,
+    "wall_ms": 1.6036108136177063,
+    "outcome": "ok",
+    "refusal_stage": null
+   },
+   {
+    "scheduled_s": 22.0,
+    "late_ms": 0.11874735355377197,
+    "wall_ms": 1.4248304069042206,
+    "outcome": "ok",
+    "refusal_stage": null
+   },
+   {
+    "scheduled_s": 22.5,
+    "late_ms": 0.12118369340896606,
+    "wall_ms": 1.7497986555099487,
+    "outcome": "ok",
+    "refusal_stage": null
+   },
+   {
+    "scheduled_s": 23.0,
+    "late_ms": 0.12601912021636963,
+    "wall_ms": 1.5140548348426819,
+    "outcome": "ok",
+    "refusal_stage": null
+   },
+   {
+    "scheduled_s": 23.5,
+    "late_ms": 0.12392178177833557,
+    "wall_ms": 1.7087422311306,
+    "outcome": "ok",
+    "refusal_stage": null
+   },
+   {
+    "scheduled_s": 24.0,
+    "late_ms": 0.13063475489616394,
+    "wall_ms": 1.5598274767398834,
+    "outcome": "ok",
+    "refusal_stage": null
+   },
+   {
+    "scheduled_s": 24.5,
+    "late_ms": 0.12908130884170532,
+    "wall_ms": 1.6317777335643768,
+    "outcome": "ok",
+    "refusal_stage": null
+   },
+   {
+    "scheduled_s": 25.0,
+    "late_ms": 0.13506412506103516,
+    "wall_ms": 1.7440766096115112,
+    "outcome": "ok",
+    "refusal_stage": null
+   },
+   {
+    "scheduled_s": 25.5,
+    "late_ms": 0.1225881278514862,
+    "wall_ms": 1.661159098148346,
+    "outcome": "ok",
+    "refusal_stage": null
+   },
+   {
+    "scheduled_s": 26.0,
+    "late_ms": 0.1217089593410492,
+    "wall_ms": 1.4529228210449219,
+    "outcome": "ok",
+    "refusal_stage": null
+   },
+   {
+    "scheduled_s": 26.5,
+    "late_ms": 0.12601539492607117,
+    "wall_ms": 1.4155134558677673,
+    "outcome": "ok",
+    "refusal_stage": null
+   },
+   {
+    "scheduled_s": 27.0,
+    "late_ms": 0.13017281889915466,
+    "wall_ms": 1.7475113272666931,
+    "outcome": "ok",
+    "refusal_stage": null
+   },
+   {
+    "scheduled_s": 27.5,
+    "late_ms": 0.12174621224403381,
+    "wall_ms": 1.6670413315296173,
+    "outcome": "ok",
+    "refusal_stage": null
+   },
+   {
+    "scheduled_s": 28.0,
+    "late_ms": 0.1270398497581482,
+    "wall_ms": 1.5764907002449036,
+    "outcome": "ok",
+    "refusal_stage": null
+   },
+   {
+    "scheduled_s": 28.5,
+    "late_ms": 0.12570619583129883,
+    "wall_ms": 1.4243610203266144,
+    "outcome": "ok",
+    "refusal_stage": null
+   },
+   {
+    "scheduled_s": 29.0,
+    "late_ms": 0.13517960906028748,
+    "wall_ms": 1.747872680425644,
+    "outcome": "ok",
+    "refusal_stage": null
+   },
+   {
+    "scheduled_s": 29.5,
+    "late_ms": 0.12456625699996948,
+    "wall_ms": 1.7238222062587738,
+    "outcome": "ok",
+    "refusal_stage": null
+   },
+   {
+    "scheduled_s": 30.0,
+    "late_ms": 0.1439414918422699,
+    "wall_ms": 1.4670006930828094,
+    "outcome": "ok",
+    "refusal_stage": null
+   },
+   {
+    "scheduled_s": 30.5,
+    "late_ms": 0.12404471635818481,
+    "wall_ms": 1.422431319952011,
+    "outcome": "ok",
+    "refusal_stage": null
+   },
+   {
+    "scheduled_s": 31.0,
+    "late_ms": 0.0840313732624054,
+    "wall_ms": 1.4631636440753937,
+    "outcome": "ok",
+    "refusal_stage": null
+   },
+   {
+    "scheduled_s": 31.5,
+    "late_ms": 0.11892244219779968,
+    "wall_ms": 1.7313659191131592,
+    "outcome": "ok",
+    "refusal_stage": null
+   },
+   {
+    "scheduled_s": 32.0,
+    "late_ms": 0.1212581992149353,
+    "wall_ms": 1.5029720962047577,
+    "outcome": "ok",
+    "refusal_stage": null
+   },
+   {
+    "scheduled_s": 32.5,
+    "late_ms": 0.12265145778656006,
+    "wall_ms": 1.4221109449863434,
+    "outcome": "ok",
+    "refusal_stage": null
+   },
+   {
+    "scheduled_s": 33.0,
+    "late_ms": 0.13086572289466858,
+    "wall_ms": 1.4209523797035217,
+    "outcome": "ok",
+    "refusal_stage": null
+   },
+   {
+    "scheduled_s": 33.5,
+    "late_ms": 0.11848658323287964,
+    "wall_ms": 1.741752028465271,
+    "outcome": "ok",
+    "refusal_stage": null
+   },
+   {
+    "scheduled_s": 34.0,
+    "late_ms": 0.13322383165359497,
+    "wall_ms": 1.661926507949829,
+    "outcome": "ok",
+    "refusal_stage": null
+   },
+   {
+    "scheduled_s": 34.5,
+    "late_ms": 0.12104958295822144,
+    "wall_ms": 1.690346747636795,
+    "outcome": "ok",
+    "refusal_stage": null
+   },
+   {
+    "scheduled_s": 35.0,
+    "late_ms": 0.11539086699485779,
+    "wall_ms": 1.4966204762458801,
+    "outcome": "ok",
+    "refusal_stage": null
+   },
+   {
+    "scheduled_s": 35.5,
+    "late_ms": 0.12456253170967102,
+    "wall_ms": 1.760534942150116,
+    "outcome": "ok",
+    "refusal_stage": null
+   },
+   {
+    "scheduled_s": 36.0,
+    "late_ms": 0.1289062201976776,
+    "wall_ms": 1.6715824604034424,
+    "outcome": "ok",
+    "refusal_stage": null
+   },
+   {
+    "scheduled_s": 36.5,
+    "late_ms": 0.0664927065372467,
+    "wall_ms": 1.453455537557602,
+    "outcome": "ok",
+    "refusal_stage": null
+   },
+   {
+    "scheduled_s": 37.0,
+    "late_ms": 0.13293325901031494,
+    "wall_ms": 1.4157071709632874,
+    "outcome": "ok",
+    "refusal_stage": null
+   },
+   {
+    "scheduled_s": 37.5,
+    "late_ms": 0.12056156992912292,
+    "wall_ms": 1.47281214594841,
+    "outcome": "ok",
+    "refusal_stage": null
+   },
+   {
+    "scheduled_s": 38.0,
+    "late_ms": 0.07045269012451172,
+    "wall_ms": 1.749582588672638,
+    "outcome": "ok",
+    "refusal_stage": null
+   },
+   {
+    "scheduled_s": 38.5,
+    "late_ms": 0.12456253170967102,
+    "wall_ms": 1.4909803867340088,
+    "outcome": "ok",
+    "refusal_stage": null
+   },
+   {
+    "scheduled_s": 39.0,
+    "late_ms": 0.14008209109306335,
+    "wall_ms": 1.5959255397319794,
+    "outcome": "ok",
+    "refusal_stage": null
+   },
+   {
+    "scheduled_s": 39.5,
+    "late_ms": 0.12048706412315369,
+    "wall_ms": 1.6311146318912506,
+    "outcome": "ok",
+    "refusal_stage": null
+   },
+   {
+    "scheduled_s": 40.0,
+    "late_ms": 0.12455880641937256,
+    "wall_ms": 1.7396844923496246,
+    "outcome": "ok",
+    "refusal_stage": null
+   },
+   {
+    "scheduled_s": 40.5,
+    "late_ms": 0.11635199189186096,
+    "wall_ms": 1.4798454940319061,
+    "outcome": "ok",
+    "refusal_stage": null
+   },
+   {
+    "scheduled_s": 41.0,
+    "late_ms": 0.11907145380973816,
+    "wall_ms": 1.4213323593139648,
+    "outcome": "ok",
+    "refusal_stage": null
+   },
+   {
+    "scheduled_s": 41.5,
+    "late_ms": 0.06641075015068054,
+    "wall_ms": 1.4093518257141113,
+    "outcome": "ok",
+    "refusal_stage": null
+   },
+   {
+    "scheduled_s": 42.0,
+    "late_ms": 0.1221969723701477,
+    "wall_ms": 1.7438307404518127,
+    "outcome": "ok",
+    "refusal_stage": null
+   },
+   {
+    "scheduled_s": 42.5,
+    "late_ms": 0.13603270053863525,
+    "wall_ms": 1.5270896255970001,
+    "outcome": "ok",
+    "refusal_stage": null
+   },
+   {
+    "scheduled_s": 43.0,
+    "late_ms": 0.12092664837837219,
+    "wall_ms": 1.4877133071422577,
+    "outcome": "ok",
+    "refusal_stage": null
+   },
+   {
+    "scheduled_s": 43.5,
+    "late_ms": 0.12871995568275452,
+    "wall_ms": 1.6688443720340729,
+    "outcome": "ok",
+    "refusal_stage": null
+   },
+   {
+    "scheduled_s": 44.0,
+    "late_ms": 0.11717528104782104,
+    "wall_ms": 1.6806423664093018,
+    "outcome": "ok",
+    "refusal_stage": null
+   },
+   {
+    "scheduled_s": 44.5,
+    "late_ms": 0.13904273509979248,
+    "wall_ms": 1.7823763191699982,
+    "outcome": "ok",
+    "refusal_stage": null
+   },
+   {
+    "scheduled_s": 45.0,
+    "late_ms": 0.12806057929992676,
+    "wall_ms": 1.736510545015335,
+    "outcome": "ok",
+    "refusal_stage": null
+   },
+   {
+    "scheduled_s": 45.5,
+    "late_ms": 0.12799352407455444,
+    "wall_ms": 1.5149787068367004,
+    "outcome": "ok",
+    "refusal_stage": null
+   },
+   {
+    "scheduled_s": 46.0,
+    "late_ms": 0.13206526637077332,
+    "wall_ms": 1.7356537282466888,
+    "outcome": "ok",
+    "refusal_stage": null
+   },
+   {
+    "scheduled_s": 46.5,
+    "late_ms": 0.12908130884170532,
+    "wall_ms": 1.765027642250061,
+    "outcome": "ok",
+    "refusal_stage": null
+   },
+   {
+    "scheduled_s": 47.0,
+    "late_ms": 0.13234466314315796,
+    "wall_ms": 1.4786459505558014,
+    "outcome": "ok",
+    "refusal_stage": null
+   },
+   {
+    "scheduled_s": 47.5,
+    "late_ms": 0.0753551721572876,
+    "wall_ms": 1.5861503779888153,
+    "outcome": "ok",
+    "refusal_stage": null
+   },
+   {
+    "scheduled_s": 48.0,
+    "late_ms": 0.1301206648349762,
+    "wall_ms": 1.5660226345062256,
+    "outcome": "ok",
+    "refusal_stage": null
+   },
+   {
+    "scheduled_s": 48.5,
+    "late_ms": 0.13430044054985046,
+    "wall_ms": 1.7339028418064117,
+    "outcome": "ok",
+    "refusal_stage": null
+   },
+   {
+    "scheduled_s": 49.0,
+    "late_ms": 0.13319775462150574,
+    "wall_ms": 1.7437562346458435,
+    "outcome": "ok",
+    "refusal_stage": null
+   },
+   {
+    "scheduled_s": 49.5,
+    "late_ms": 0.1253262162208557,
+    "wall_ms": 1.6511790454387665,
+    "outcome": "ok",
+    "refusal_stage": null
+   },
+   {
+    "scheduled_s": 50.0,
+    "late_ms": 0.12902170419692993,
+    "wall_ms": 1.5780776739120483,
+    "outcome": "ok",
+    "refusal_stage": null
+   },
+   {
+    "scheduled_s": 50.5,
+    "late_ms": 0.11974945664405823,
+    "wall_ms": 1.5081875026226044,
+    "outcome": "ok",
+    "refusal_stage": null
+   },
+   {
+    "scheduled_s": 51.0,
+    "late_ms": 0.1298375427722931,
+    "wall_ms": 1.74640491604805,
+    "outcome": "ok",
+    "refusal_stage": null
+   },
+   {
+    "scheduled_s": 51.5,
+    "late_ms": 0.12838467955589294,
+    "wall_ms": 1.4893002808094025,
+    "outcome": "ok",
+    "refusal_stage": null
+   },
+   {
+    "scheduled_s": 52.0,
+    "late_ms": 0.1297295093536377,
+    "wall_ms": 1.5942379832267761,
+    "outcome": "ok",
+    "refusal_stage": null
+   },
+   {
+    "scheduled_s": 52.5,
+    "late_ms": 0.13381242752075195,
+    "wall_ms": 1.489497721195221,
+    "outcome": "ok",
+    "refusal_stage": null
+   },
+   {
+    "scheduled_s": 53.0,
+    "late_ms": 0.12502074241638184,
+    "wall_ms": 1.7469078302383423,
+    "outcome": "ok",
+    "refusal_stage": null
+   },
+   {
+    "scheduled_s": 53.5,
+    "late_ms": 0.12148171663284302,
+    "wall_ms": 1.7090924084186554,
+    "outcome": "ok",
+    "refusal_stage": null
+   },
+   {
+    "scheduled_s": 54.0,
+    "late_ms": 0.12106448411941528,
+    "wall_ms": 1.6477368772029877,
+    "outcome": "ok",
+    "refusal_stage": null
+   },
+   {
+    "scheduled_s": 54.5,
+    "late_ms": 0.11894851922988892,
+    "wall_ms": 1.6219019889831543,
+    "outcome": "ok",
+    "refusal_stage": null
+   },
+   {
+    "scheduled_s": 55.0,
+    "late_ms": 0.1233220100402832,
+    "wall_ms": 1.768205314874649,
+    "outcome": "ok",
+    "refusal_stage": null
+   },
+   {
+    "scheduled_s": 55.5,
+    "late_ms": 0.12396275997161865,
+    "wall_ms": 1.7345026135444641,
+    "outcome": "ok",
+    "refusal_stage": null
+   },
+   {
+    "scheduled_s": 56.0,
+    "late_ms": 0.12471899390220642,
+    "wall_ms": 1.5942864120006561,
+    "outcome": "ok",
+    "refusal_stage": null
+   },
+   {
+    "scheduled_s": 56.5,
+    "late_ms": 0.13105198740959167,
+    "wall_ms": 1.4347583055496216,
+    "outcome": "ok",
+    "refusal_stage": null
+   },
+   {
+    "scheduled_s": 57.0,
+    "late_ms": 0.1227259635925293,
+    "wall_ms": 1.5071146190166473,
+    "outcome": "ok",
+    "refusal_stage": null
+   },
+   {
+    "scheduled_s": 57.5,
+    "late_ms": 0.12812018394470215,
+    "wall_ms": 1.7306618392467499,
+    "outcome": "ok",
+    "refusal_stage": null
+   },
+   {
+    "scheduled_s": 58.0,
+    "late_ms": 0.12597441673278809,
+    "wall_ms": 1.6428269445896149,
+    "outcome": "ok",
+    "refusal_stage": null
+   },
+   {
+    "scheduled_s": 58.5,
+    "late_ms": 0.13510137796401978,
+    "wall_ms": 1.4769211411476135,
+    "outcome": "ok",
+    "refusal_stage": null
+   },
+   {
+    "scheduled_s": 59.0,
+    "late_ms": 0.1295134425163269,
+    "wall_ms": 1.6078799962997437,
+    "outcome": "ok",
+    "refusal_stage": null
+   },
+   {
+    "scheduled_s": 59.5,
+    "late_ms": 0.12803450226783752,
+    "wall_ms": 1.7453618347644806,
+    "outcome": "ok",
+    "refusal_stage": null
+   }
+  ]
+ }
+]
