@@ -102,7 +102,8 @@ Every field here is checkable independently, not just asserted:
   thing — see §4.
 - **`status`**: `"ok"` or `"failed"`, with an `error` payload attached to
   failed steps (the same structured `{"error": "E_...", ...}` shape you'd
-  get calling the operator directly).
+  get calling the operator directly). A step the executor refused before
+  dispatch additionally carries `refused`, naming the reason.
 
 ## 3. The answer object and the verifier report
 
@@ -171,8 +172,9 @@ Re-run the same plan with `s2`'s `temporal_reachability` capped at
 
 ```json
 {"step_id": "s3", "op": "compute", "status": "failed", "upstream_truncated": true,
+ "refused": "truncated_input",
  "error": {"error": "E_LIMIT",
-           "message": "compute count would reduce a truncated result to one number, which is a wrong answer rather than a partial one. Page through with `cursor` and combine, or narrow the window or grouping so the result fits one page."}}
+           "message": "compute count would reduce a truncated result to one number, which is a wrong answer rather than a partial one. Plans cannot loop over `cursor`. Expressible fixes: for a count, read the producing step's `rows_total` field directly (it is exact even when the page truncates); for grouped or filtered counts, use `aggregate_events`, which aggregates inside the engine without a page limit; otherwise narrow the window or grouping so the result fits one page."}}
 ```
 
 TGMS doesn't silently count 1 row and report "1" as if that were the true
@@ -181,6 +183,12 @@ reducing a partial page to a single number produces a confidently wrong
 number, not a partial-but-honest one. This is the same soundness bias you
 saw in the verdict table: when TGMS can't be sure, it says so (a refusal,
 or `unverifiable`/`weakly_supported`) rather than guessing.
+
+`refused` is the machine-readable marker for this: it's set only on a
+pre-dispatch refusal like this one (a post-dispatch failure carries
+`wall_ms` instead, and no `refused` key). The plan's `answer_error` then
+reads `"answer source step s3 did not complete"` — the answer is not
+silently taken from `s2` instead.
 
 ## 5. What "completeness" means
 
