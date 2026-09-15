@@ -132,6 +132,18 @@ D160_SUITE = ROOT / "benchmarks" / "frozen-v1" / "suite-collegemsg.json"
 SITE_FACTS = ROOT / "docs" / "site_facts.json"
 STABILITY_MD = ROOT / "docs" / "STABILITY.md"
 
+CORRUPTION_PRE = ROOT / "benchmarks" / "corruption-v1" / "eval-corruption-campaign-2026-09-14.json"
+CORRUPTION_POST = (ROOT / "benchmarks" / "corruption-v1"
+                    / "eval-corruption-campaign-2026-09-14-post-a10.json")
+
+LADDER_DIR = ROOT / "benchmarks" / "ladder-v1"
+LADDER_MERGED = LADDER_DIR / "ladder-2026-09-14.json"
+LADDER_RAW = [
+    LADDER_DIR / "raw" / "overhead-ladder-bitcoinotc-seed0-job212303.json",
+    LADDER_DIR / "raw" / "overhead-ladder-bitcoinotc-seed1-job212304.json",
+    LADDER_DIR / "raw" / "overhead-ladder-bitcoinotc-seed2-job212305.json",
+]
+
 
 # --------------------------------------------------------------------------
 # verification helpers (copied from scripts/tgir_paper_macros.py)
@@ -1217,16 +1229,396 @@ def compute_d160_llm_direct_fix(m: Macros) -> None:
 
 
 # --------------------------------------------------------------------------
+# C2 --- corruption-detection sweep, pre- and post-A10 (task A10 fixed the
+# artifact_blob reader to content-address the whole file)
+# --------------------------------------------------------------------------
+
+def _corruption_result_digest(results: list[dict]) -> str:
+    """Mirrors scripts/corruption_campaign_merge.py's result_digest(kind="corruption"):
+    sha256 over the results sorted by (class, mutation, task_id, trial), canonical JSON."""
+    key_fn = lambda r: (r["class"], r["mutation"], r.get("task_id", -1), r["trial"])  # noqa: E731
+    canon = sorted(results, key=key_fn)
+    blob = json.dumps(canon, sort_keys=True, separators=(",", ":")).encode()
+    return hashlib.sha256(blob).hexdigest()
+
+
+def _corruption_detection_matrix(results: list[dict]) -> dict[tuple[str, str], list[int]]:
+    dm: dict[tuple[str, str], list[int]] = {}
+    for r in results:
+        key = (r["class"], r["mutation"])
+        cell = dm.setdefault(key, [0, 0])
+        cell[0] += 1
+        if r["verdict"] == "DETECTED":
+            cell[1] += 1
+    return dm
+
+
+def compute_c2(m: Macros) -> None:
+    pre = json.loads(CORRUPTION_PRE.read_text(encoding="utf-8"))
+    post = json.loads(CORRUPTION_POST.read_text(encoding="utf-8"))
+
+    for label, d, path in (("pre-A10", pre, CORRUPTION_PRE), ("post-A10", post, CORRUPTION_POST)):
+        digest = _corruption_result_digest(d["results"])
+        eq(digest, d["result_digest"],
+           f"C2 {label}: sha256(sorted results, corruption_campaign_merge.py's own scheme) "
+           f"matches {relpath(path)}'s own result_digest")
+        eq(len(d["results"]), 10000, f"C2 {label} frozen: trial row count")
+        eq(d["total_trials"], len(d["results"]), f"C2 {label}: total_trials matches len(results)")
+
+    pre_dm = _corruption_detection_matrix(pre["results"])
+    post_dm = _corruption_detection_matrix(post["results"])
+
+    # Cross-check the recomputed per-cell (trials, detected) against each
+    # record's own stats.detection_matrix -- never trusted without this.
+    for label, d, dm in (("pre-A10", pre, pre_dm), ("post-A10", post, post_dm)):
+        stat_dm = d["stats"]["detection_matrix"]
+        eq(len(stat_dm), len(dm),
+           f"C2 {label}: recomputed cell count matches stats.detection_matrix")
+        for key, cell in stat_dm.items():
+            c, mut = key.split("|")
+            trials, detected = dm[(c, mut)]
+            eq(trials, cell["trials"], f"C2 {label}: {key} trials matches recomputed")
+            eq(detected, cell["detected"], f"C2 {label}: {key} detected matches recomputed")
+
+    classes = sorted({c for c, _ in pre_dm})
+    mutations = sorted({mut for _, mut in pre_dm})
+    eq(len(classes), 13, "C2 frozen: distinct on-disk file classes")
+    eq(len(mutations), 7, "C2 frozen: distinct mutation kinds")
+    eq(sorted({c for c, _ in post_dm}), classes,
+       "C2: post-A10 record's file classes match the pre-A10 record's")
+    eq(sorted({mut for _, mut in post_dm}), mutations,
+       "C2: post-A10 record's mutation kinds match the pre-A10 record's")
+
+    recomputed_silent_pre = sum(1 for r in pre["results"] if r["verdict"] == "SILENT")
+    recomputed_silent_post = sum(1 for r in post["results"] if r["verdict"] == "SILENT")
+    eq(recomputed_silent_pre, 0, "C2 frozen: pre-A10 SILENT count")
+    eq(recomputed_silent_post, 0, "C2 frozen: post-A10 SILENT count")
+    eq(recomputed_silent_pre, pre["stats"]["verdict_counts"].get("SILENT", 0),
+       "C2: recomputed pre-A10 SILENT matches the record's own verdict_counts")
+    eq(recomputed_silent_post, post["stats"]["verdict_counts"].get("SILENT", 0),
+       "C2: recomputed post-A10 SILENT matches the record's own verdict_counts")
+
+    detected_pre = sum(1 for r in pre["results"] if r["verdict"] == "DETECTED")
+    detected_post = sum(1 for r in post["results"] if r["verdict"] == "DETECTED")
+    eq(detected_pre, 5966, "C2 frozen: pre-A10 total DETECTED count")
+    eq(detected_post, 6587, "C2 frozen: post-A10 total DETECTED count")
+    eq(detected_pre, pre["stats"]["verdict_counts"]["DETECTED"],
+       "C2: recomputed pre-A10 DETECTED matches the record's own verdict_counts")
+    eq(detected_post, post["stats"]["verdict_counts"]["DETECTED"],
+       "C2: recomputed post-A10 DETECTED matches the record's own verdict_counts")
+
+    # The six artifact_blob mutations task A10 fixed. delete_file is
+    # deliberately excluded: it was already DETECTED 89/89 before A10 (a
+    # different code path -- an outright-missing plan blob, not a doctored
+    # one), and the README's own six-cell diff excludes it too.
+    blob_fixed = ("append_garbage", "flip_bit", "flip_byte", "swap_same_class",
+                  "truncate", "zero_span")
+    require(set(blob_fixed).issubset(mutations),
+            "C2: the six blob-fix mutations are a subset of the campaign's own mutation set")
+    require("delete_file" in mutations and "delete_file" not in blob_fixed,
+            "C2: delete_file (already DETECTED pre-A10) is deliberately excluded from the "
+            "blob-fix set")
+
+    n_blob_pre = sum(pre_dm[("artifact_blob", mut)][0] for mut in blob_fixed)
+    det_blob_pre = sum(pre_dm[("artifact_blob", mut)][1] for mut in blob_fixed)
+    n_blob_post = sum(post_dm[("artifact_blob", mut)][0] for mut in blob_fixed)
+    det_blob_post = sum(post_dm[("artifact_blob", mut)][1] for mut in blob_fixed)
+    eq(n_blob_pre, n_blob_post,
+       "C2: the blob-fix trial population is identical pre/post-A10 (same seeds, same design)")
+    eq(n_blob_pre, 621, "C2 frozen: blob-fix mutation trial count (N)")
+    eq(det_blob_pre, 0, "C2 frozen: pre-A10 blob-fix mutations DETECTED count (0 of N)")
+    eq(det_blob_post, n_blob_post, "C2 frozen: post-A10 blob-fix mutations DETECTED count (N of N)")
+
+    # Every non-blob cell must be within +/-2 trials of the pre-A10 record
+    # (the README's own pre-registered prediction #8); this is the
+    # constancy assertion, never averaged away.
+    moved = [key for key in pre["stats"]["detection_matrix"]
+             if not key.startswith("artifact_blob|")
+             and abs(pre_dm[tuple(key.split("|"))][1] - post_dm[tuple(key.split("|"))][1]) > 2]
+    eq(len(moved), 0,
+       f"C2 frozen: non-blob class x mutation cells whose DETECTED count moved by >2 trials "
+       f"post-A10 (got {moved})")
+
+    m.add("osdiCorruptionTrials", tex_num(pre["total_trials"]),
+          f"{relpath(CORRUPTION_PRE)}: total_trials, == {relpath(CORRUPTION_POST)}'s own "
+          "(both 10,000-trial sweeps)")
+    m.add("osdiCorruptionClasses", len(classes),
+          f"{relpath(CORRUPTION_PRE)}: distinct classes in stats.detection_matrix keys "
+          "(the 13 on-disk file families), unchanged post-A10")
+    m.add("osdiCorruptionMutations", len(mutations),
+          f"{relpath(CORRUPTION_PRE)}: distinct mutations in stats.detection_matrix keys, "
+          "unchanged post-A10")
+    m.add("osdiCorruptionDetected", tex_num(detected_post),
+          f"{relpath(CORRUPTION_POST)}: recomputed DETECTED total, of 10,000 -- the deployed "
+          "(post-A10) system's headline count; see osdiCorruptionDetectedPre/Post for the "
+          "before/after pair")
+    m.add("osdiCorruptionDetectedPre", tex_num(detected_pre),
+          f"{relpath(CORRUPTION_PRE)}: recomputed DETECTED total, of 10,000, before task A10")
+    m.add("osdiCorruptionDetectedPost", tex_num(detected_post),
+          f"{relpath(CORRUPTION_POST)}: recomputed DETECTED total, of 10,000, after task A10")
+    m.add("osdiCorruptionSilentPre", recomputed_silent_pre,
+          f"{relpath(CORRUPTION_PRE)}: recomputed SILENT total, of 10,000, before task A10")
+    m.add("osdiCorruptionSilentPost", recomputed_silent_post,
+          f"{relpath(CORRUPTION_POST)}: recomputed SILENT total, of 10,000, after task A10")
+    m.add("osdiCorruptionBlobDetectedPre", f"{det_blob_pre}/{n_blob_pre}",
+          f"{relpath(CORRUPTION_PRE)}: DETECTED/trials summed over the six artifact_blob "
+          "mutations task A10 fixed (append_garbage/flip_bit/flip_byte/swap_same_class/"
+          "truncate/zero_span), before the fix")
+    m.add("osdiCorruptionBlobDetectedPost", f"{det_blob_post}/{n_blob_post}",
+          f"{relpath(CORRUPTION_POST)}: DETECTED/trials summed over the same six artifact_blob "
+          "mutations, after the fix")
+    m.add("osdiCorruptionCellsMovedPost", len(moved),
+          f"{relpath(CORRUPTION_PRE)} vs {CORRUPTION_POST.name}: non-blob class x mutation "
+          "cells whose DETECTED count moved by more than 2 trials (asserted 0 above)")
+
+
+# --------------------------------------------------------------------------
+# D4/D4b --- overhead ladder, five rungs, twelve plans, three seeds
+# --------------------------------------------------------------------------
+
+def compute_ladder(m: Macros) -> None:
+    merged = json.loads(LADDER_MERGED.read_text(encoding="utf-8"))
+    raws = [json.loads(p.read_text(encoding="utf-8")) for p in LADDER_RAW]
+
+    for raw, path in zip(raws, LADDER_RAW):
+        digest = hashlib.sha256(
+            json.dumps(raw["rows"], sort_keys=True, separators=(",", ":")).encode()
+        ).hexdigest()
+        eq(digest, raw["result_digest"],
+           f"ladder: sha256(rows) matches {relpath(path)}'s own result_digest")
+
+    summary_digest = hashlib.sha256(
+        json.dumps(merged["summary"], sort_keys=True, separators=(",", ":")).encode()
+    ).hexdigest()
+    eq(summary_digest, merged["result_digest"],
+       f"ladder: sha256(summary) matches {relpath(LADDER_MERGED)}'s own result_digest")
+    eq(merged["seeds"], [0, 1, 2], "ladder: pooled record covers seeds 0/1/2")
+
+    def rows_of(raw, rung):
+        return [r for r in raw["rows"] if r["rung"] == rung]
+
+    # ---- rung 1: leaf_overhead, per operator, flattened over every
+    # (plan-occurrence, seed) sample -- never trusted from the summary's own
+    # median without this recomputation. ----
+    r1_samples: dict[str, list[float]] = {}
+    for raw in raws:
+        for outer in rows_of(raw, 1):
+            for inner in outer["rows"]:
+                r1_samples.setdefault(inner["op"], []).append(inner["leaf_over_direct"])
+    r1_summary = merged["summary"]["rung1_leaf_overhead"]
+    eq(len(r1_samples), 14, "ladder frozen: rung-1 distinct operator count (13 LEAF_SCOPES + "
+       "compute)")
+    eq(set(r1_samples), set(r1_summary), "ladder: rung-1 recomputed op set matches summary's")
+    r1_medians = {}
+    for op, samples in r1_samples.items():
+        med = statistics.median(samples)
+        eq(sorted(samples), sorted(r1_summary[op]["per_seed"]),
+           f"ladder rung1 {op}: recomputed per-sample values match summary's per_seed list")
+        close(med, r1_summary[op]["leaf_over_direct_median"], 1e-9,
+              f"ladder rung1 {op}: recomputed median matches summary")
+        r1_medians[op] = med
+    rung1_min_op = min(r1_medians, key=r1_medians.get)
+    rung1_max_op = max(r1_medians, key=r1_medians.get)
+    rung1_min, rung1_max = r1_medians[rung1_min_op], r1_medians[rung1_max_op]
+    close(rung1_min, 0.9919982626082593, 1e-9, "ladder frozen: rung-1 minimum op median")
+    close(rung1_max, 1.064464807738779, 1e-9, "ladder frozen: rung-1 maximum op median")
+    require(0.7 <= rung1_min and rung1_max <= 1.5,
+            "ladder: every rung-1 op median falls within the freeze's falsifier band [0.7, 1.5]")
+
+    # ---- rung 2: compiled_vs_kernel, the two tgms.tgir.compiled.COMPILED
+    # ops only. ----
+    r2_samples: dict[str, list[float]] = {}
+    for raw in raws:
+        for outer in rows_of(raw, 2):
+            for inner in outer["rows"]:
+                r2_samples.setdefault(inner["op"], []).append(inner["compiled_over_kernel"])
+    r2_summary = merged["summary"]["rung2_compiled_vs_kernel"]
+    eq(set(r2_samples), {"entity_history", "version_history"},
+       "ladder frozen: rung-2 population is exactly the two compiled ops")
+    eq(len(r2_samples["entity_history"]), 6,
+       "ladder frozen: entity_history rung-2 sample count (2 plan-occurrences x 3 seeds)")
+    eq(len(r2_samples["version_history"]), 3,
+       "ladder frozen: version_history rung-2 sample count (1 plan-occurrence x 3 seeds)")
+    entity_ratio = statistics.median(r2_samples["entity_history"])
+    version_ratio = statistics.median(r2_samples["version_history"])
+    close(entity_ratio, r2_summary["entity_history"]["compiled_over_kernel_median"], 1e-9,
+          "ladder rung2: recomputed entity_history median matches summary")
+    close(version_ratio, r2_summary["version_history"]["compiled_over_kernel_median"], 1e-9,
+          "ladder rung2: recomputed version_history median matches summary")
+    close(entity_ratio, 1.1321759928956914, 1e-9, "ladder frozen: rung-2 entity_history median")
+    close(version_ratio, 2.5403795318319973, 1e-9, "ladder frozen: rung-2 version_history median")
+    require(1 <= entity_ratio <= 2000,
+            "ladder: entity_history compiled_over_kernel falls within the freeze's pass_if "
+            "band [1, 2000]")
+
+    # ---- plan set: 12 plans, 14/14 operator coverage (union of every
+    # rung's own per-plan ops_in_plan field, cross-checked against rung 1's
+    # own 14-op population above). ----
+    plan_ids = sorted({outer["plan_id"] for outer in rows_of(raws[0], 1)})
+    eq(len(plan_ids), 12, "ladder frozen: plan count")
+    all_ops = {op for outer in rows_of(raws[0], 1) for op in outer["ops_in_plan"]}
+    eq(all_ops, set(r1_samples), "ladder: union of every plan's ops_in_plan matches rung-1's "
+       "own 14-op population")
+
+    # Step count per plan is only carried explicitly in the rung-5 rows
+    # (n_steps); reuse that rather than hard-coding which plans are 1-step
+    # vs 3-step.
+    n_steps_by_plan = {outer["plan_id"]: outer["n_steps"] for outer in rows_of(raws[0], 5)}
+    one_step_plans = {p for p, n in n_steps_by_plan.items() if n == 1}
+    three_step_plans = {p for p, n in n_steps_by_plan.items() if n == 3}
+    eq(len(one_step_plans), 9, "ladder frozen: one-step plan count")
+    eq(len(three_step_plans), 3, "ladder frozen: three-step plan count")
+    eq(one_step_plans | three_step_plans, set(plan_ids),
+       "ladder: every plan is either 1-step or 3-step, no other shape")
+
+    # ---- rung 3: trace_bytes, bit-identical across reps and across seeds
+    # for every plan. ----
+    r3_summary = merged["summary"]["rung3_trace_bytes"]
+    plan_bytes: dict[str, list[int]] = {}
+    for raw in raws:
+        for outer in rows_of(raw, 3):
+            require(outer["bytes_min"] == outer["bytes_max"] == outer["bytes_median"],
+                    f"ladder rung3 {outer['plan_id']}: not bit-identical across its own 5 reps")
+            require(len(set(outer["bytes_all"])) == 1,
+                    f"ladder rung3 {outer['plan_id']}: bytes_all has more than one distinct value")
+            plan_bytes.setdefault(outer["plan_id"], []).append(outer["bytes_median"])
+    n_deterministic = 0
+    for plan, vals in plan_bytes.items():
+        require(len(set(vals)) == 1,
+                f"ladder rung3 {plan}: bytes_median differs across seeds {vals}")
+        n_deterministic += 1
+        eq(vals[0], r3_summary[plan]["bytes_median"],
+           f"ladder rung3 {plan}: recomputed bytes_median matches summary")
+        require(r3_summary[plan]["reproducible_across_seeds"] is True,
+                f"ladder rung3 {plan}: summary's own reproducible_across_seeds flag is not True")
+    eq(n_deterministic, 12, "ladder frozen: plans confirmed bit-identical across reps and seeds")
+    one_step_bytes_median = statistics.median(plan_bytes[p][0] for p in one_step_plans)
+    three_step_bytes_median = statistics.median(plan_bytes[p][0] for p in three_step_plans)
+    eq(one_step_bytes_median, 3309, "ladder frozen: 1-step trace_bytes median across plans")
+    eq(three_step_bytes_median, 7549, "ladder frozen: 3-step trace_bytes median across plans")
+    for plan in plan_bytes:
+        band = (1500, 30000) if plan in one_step_plans else (4000, 90000)
+        require(band[0] <= plan_bytes[plan][0] <= band[1],
+                f"ladder rung3 {plan}: bytes_median {plan_bytes[plan][0]} outside the freeze's "
+                f"predicted band {band}")
+
+    # ---- rung 4: verify_ms, median p50 per plan, then median across plans. ----
+    r4_summary = merged["summary"]["rung4_verify_ms"]
+    plan_p50: dict[str, list[float]] = {}
+    for raw in raws:
+        for outer in rows_of(raw, 4):
+            recomputed_p50 = statistics.median(outer["ms_all"])
+            close(recomputed_p50, outer["p50_ms"], 1e-9,
+                  f"ladder rung4 {outer['plan_id']}: median(ms_all) matches the raw row's own "
+                  "p50_ms")
+            plan_p50.setdefault(outer["plan_id"], []).append(outer["p50_ms"])
+    plan_p50_median = {}
+    for plan, vals in plan_p50.items():
+        med = statistics.median(vals)
+        close(med, r4_summary[plan]["p50_ms_median"], 1e-9,
+              f"ladder rung4 {plan}: recomputed median matches summary")
+        plan_p50_median[plan] = med
+    verify_ms_median = statistics.median(plan_p50_median.values())
+    close(verify_ms_median, 5.061005940660834, 1e-6, "ladder frozen: rung-4 median-of-plan-medians")
+    require(0.5 <= min(plan_p50_median.values()) and max(plan_p50_median.values()) <= 50,
+            "ladder: every rung-4 plan median falls within the freeze's pass_if band [0.5, 50]")
+
+    # ---- rung 5: tokens_tool_calls -- tokens median, and the tool-calls ==
+    # executed-steps invariant on every one of the 12 plans. ----
+    r5_summary = merged["summary"]["rung5_tokens_tool_calls"]
+    plan_tokens: dict[str, list[int]] = {}
+    plan_tool_calls: dict[str, list[int]] = {}
+    for raw in raws:
+        for outer in rows_of(raw, 5):
+            plan_tokens.setdefault(outer["plan_id"], []).append(outer["tokens"]["total"])
+            plan_tool_calls.setdefault(outer["plan_id"], []).append(outer["tool_calls"])
+    plan_tokens_median = {}
+    truncated_plans = []
+    n_tool_calls_eq_executed = 0
+    for plan in plan_ids:
+        med = statistics.median(plan_tokens[plan])
+        eq(med, r5_summary[plan]["tokens_total_median"],
+           f"ladder rung5 {plan}: recomputed tokens median matches summary")
+        plan_tokens_median[plan] = med
+        tc = plan_tool_calls[plan]
+        require(len(set(tc)) == 1, f"ladder rung5 {plan}: tool_calls not constant across seeds")
+        eq(sorted(tc), sorted(r5_summary[plan]["tool_calls_per_seed"]),
+           f"ladder rung5 {plan}: recomputed tool_calls_per_seed matches summary")
+        n_steps = n_steps_by_plan[plan]
+        eq(n_steps, r5_summary[plan]["n_steps"], f"ladder rung5 {plan}: n_steps matches summary")
+        # The merge's own "executed_steps" field, by this campaign's
+        # construction (README: Executor.run's truncation guard stops a
+        # plan before its trailing compute step ever reaches
+        # ToolRouter.call), is exactly tool_calls -- confirmed here, not
+        # assumed, since executed_steps is not itself a raw-row field.
+        eq(r5_summary[plan]["executed_steps"], tc[0],
+           f"ladder rung5 {plan}: summary's executed_steps equals raw tool_calls")
+        eq(tc[0] == r5_summary[plan]["executed_steps"],
+           r5_summary[plan]["tool_calls_eq_executed_steps"],
+           f"ladder rung5 {plan}: tool_calls_eq_executed_steps recomputes correctly")
+        require(r5_summary[plan]["tool_calls_eq_executed_steps"] is True,
+                f"ladder rung5 {plan}: tool_calls != executed_steps -- falsifier (a) trips")
+        n_tool_calls_eq_executed += 1
+        if tc[0] < n_steps:
+            truncated_plans.append(plan)
+        band = (800, 8000) if plan in one_step_plans else (2000, 20000)
+        require(band[0] <= med <= band[1],
+                f"ladder rung5 {plan}: tokens median {med} outside the freeze's predicted "
+                f"band {band}")
+    eq(n_tool_calls_eq_executed, 12,
+       "ladder frozen: plans asserted tool_calls == executed_steps")
+    tokens_median_overall = statistics.median(plan_tokens_median.values())
+    eq(tokens_median_overall, 1811.5, "ladder frozen: rung-5 median-of-plan-medians tokens.total")
+    eq(sorted(truncated_plans), ["p02-compiled-entity-and-version", "p10-reachability-and-paths"],
+       "ladder frozen: the exact two plans truncated at 2-of-3 executed steps")
+
+    m.add("osdiLadderPlans", tex_num(len(plan_ids)),
+          f"{relpath(LADDER_RAW[0])}: distinct plan_id values in the rung-1 rows")
+    m.add("osdiLadderOperatorsCovered", tex_num(len(all_ops)),
+          f"{relpath(LADDER_RAW[0])}: union of every plan's ops_in_plan, rung 1 (13 LEAF_SCOPES "
+          "+ compute)")
+    m.add("osdiLadderRung1Min", f"{rung1_min:.3f}",
+          f"{relpath(LADDER_MERGED)}: min over 14 ops of rung1_leaf_overhead[op]."
+          f"leaf_over_direct_median ({rung1_min_op})")
+    m.add("osdiLadderRung1Max", f"{rung1_max:.3f}",
+          f"{relpath(LADDER_MERGED)}: max over 14 ops of rung1_leaf_overhead[op]."
+          f"leaf_over_direct_median ({rung1_max_op})")
+    m.add("osdiLadderRung2EntityHistory", f"{entity_ratio:.2f}",
+          f"{relpath(LADDER_MERGED)}: rung2_compiled_vs_kernel.entity_history."
+          "compiled_over_kernel_median")
+    m.add("osdiLadderRung2VersionHistory", f"{version_ratio:.2f}",
+          f"{relpath(LADDER_MERGED)}: rung2_compiled_vs_kernel.version_history."
+          "compiled_over_kernel_median")
+    m.add("osdiLadderRung3BytesOneStepMedian", tex_num(one_step_bytes_median),
+          f"{relpath(LADDER_MERGED)}: median over the 9 one-step plans of "
+          "rung3_trace_bytes[plan].bytes_median")
+    m.add("osdiLadderRung3BytesThreeStepMedian", tex_num(three_step_bytes_median),
+          f"{relpath(LADDER_MERGED)}: median over the 3 three-step plans of "
+          "rung3_trace_bytes[plan].bytes_median")
+    m.add("osdiLadderRung3Deterministic", tex_num(n_deterministic),
+          f"{relpath(LADDER_DIR)}/raw/*.json: plans confirmed bit-identical across all 5 reps "
+          "and all 3 seeds (asserted above), of 12")
+    m.add("osdiLadderRung4VerifyMsMedian", f"{verify_ms_median:.2f}",
+          f"{relpath(LADDER_MERGED)}: median over the 12 plans of rung4_verify_ms[plan]."
+          "p50_ms_median, ms")
+    m.add("osdiLadderRung5TokensMedian", f"{tokens_median_overall:.1f}",
+          f"{relpath(LADDER_MERGED)}: median over the 12 plans of rung5_tokens_tool_calls[plan]."
+          "tokens_total_median")
+    m.add("osdiLadderRung5ToolCallsEqualExecutedSteps", tex_num(n_tool_calls_eq_executed),
+          f"{relpath(LADDER_DIR)}/raw/*.json: plans with tool_calls == executed steps "
+          "(falsifier (a)'s own 'executed steps' wording, not a naive n_steps comparison), "
+          "asserted on all 12")
+    m.add("osdiLadderPlansTruncated", tex_num(len(truncated_plans)),
+          f"{relpath(LADDER_DIR)}/raw/*.json: plans where tool_calls < n_steps "
+          "(p02, p10 -- Executor.run's own truncation guard on a downstream compute step, "
+          "see README)")
+
+
+# --------------------------------------------------------------------------
 # pending stubs (records not yet landed)
 # --------------------------------------------------------------------------
 
 def add_pending_stubs(m: Macros) -> None:
-    m.add_pending("osdiCorruptionClasses", "C2 (corruption detection)",
-                  "code landed (A2+A6/A4+A5/A8/A3 merges) but no campaign record exists yet; "
-                  "see OSDI27_PAPER_SKELETON_2026-09-15.md S3 row C2")
-    m.add_pending("osdiCorruptionDetected", "C2 (corruption detection)",
-                  "same as osdiCorruptionClasses -- no campaign record yet")
-
     # The DAG-phase (v1/v2/v3, all 40/40 cells) and the R-18 probe (5/5
     # batches) are both fully landed and scored -- see compute_c7_dag and
     # compute_c7_r18 above. What remains pending is the main correction-
@@ -1288,6 +1680,8 @@ def main() -> int:
     compute_c7_r18(m)
     compute_d160(m)
     compute_d160_llm_direct_fix(m)
+    compute_c2(m)
+    compute_ladder(m)
     add_pending_stubs(m)
 
     if FAILURES:

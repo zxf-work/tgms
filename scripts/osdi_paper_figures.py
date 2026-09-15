@@ -49,6 +49,7 @@ import argparse
 import csv
 import io
 import json
+import math
 import statistics
 import sys
 from pathlib import Path
@@ -75,6 +76,18 @@ DAG_V1 = STORM_V1 / "storm-campaign-dag-2026-09.json"
 DAG_V2 = STORM_V1 / "storm-campaign-dag-v2-2026-09.json"
 DAG_V3 = STORM_V1 / "storm-campaign-dag-v3-2026-09.json"
 R18_PROBE_ROWS = STORM_V1 / "storm-r18-probe-2026-09-rows.jsonl"
+
+CORRUPTION_PRE = ROOT / "benchmarks" / "corruption-v1" / "eval-corruption-campaign-2026-09-14.json"
+CORRUPTION_POST = (ROOT / "benchmarks" / "corruption-v1"
+                    / "eval-corruption-campaign-2026-09-14-post-a10.json")
+
+LADDER_DIR = ROOT / "benchmarks" / "ladder-v1"
+LADDER_MERGED = LADDER_DIR / "ladder-2026-09-14.json"
+LADDER_RAW = [
+    LADDER_DIR / "raw" / "overhead-ladder-bitcoinotc-seed0-job212303.json",
+    LADDER_DIR / "raw" / "overhead-ladder-bitcoinotc-seed1-job212304.json",
+    LADDER_DIR / "raw" / "overhead-ladder-bitcoinotc-seed2-job212305.json",
+]
 
 
 def load_jsonl(path: Path) -> list[dict]:
@@ -727,6 +740,226 @@ def plot_r18_crossover(data: dict) -> None:
 
 
 # --------------------------------------------------------------------------
+# 9. corruption-detection matrix: class x mutation detection rate, pre vs
+#    post A10 (C2)
+# --------------------------------------------------------------------------
+
+def build_corruption_matrix_data() -> dict:
+    pre = json.loads(CORRUPTION_PRE.read_text(encoding="utf-8"))
+    post = json.loads(CORRUPTION_POST.read_text(encoding="utf-8"))
+
+    def matrix(d):
+        dm: dict[tuple[str, str], list[int]] = {}
+        for r in d["results"]:
+            key = (r["class"], r["mutation"])
+            cell = dm.setdefault(key, [0, 0])
+            cell[0] += 1
+            if r["verdict"] == "DETECTED":
+                cell[1] += 1
+        return dm
+
+    pre_dm, post_dm = matrix(pre), matrix(post)
+    classes = sorted({c for c, _ in pre_dm})
+    mutations = sorted({mut for _, mut in pre_dm})
+
+    # Not every (class, mutation) pair applies -- e.g. swap_same_class has no
+    # meaning for classes with no same-class sibling file to swap with --
+    # so a missing cell is a valid population gap, not a data error.
+    rows = []
+    for c in classes:
+        for mut in mutations:
+            if (c, mut) not in pre_dm:
+                continue
+            trials_pre, det_pre = pre_dm[(c, mut)]
+            trials_post, det_post = post_dm[(c, mut)]
+            rows.append({
+                "class": c, "mutation": mut,
+                "trials_pre": trials_pre, "detected_pre": det_pre,
+                "rate_pre": det_pre / trials_pre,
+                "trials_post": trials_post, "detected_post": det_post,
+                "rate_post": det_post / trials_post,
+            })
+    return {"classes": classes, "mutations": mutations, "rows": rows,
+            "commit_pre": pre["git_commit"], "commit_post": post["git_commit"]}
+
+
+def write_corruption_matrix_csv(data: dict) -> str:
+    header = ["class", "mutation", "trials_pre", "detected_pre", "detection_rate_pre",
+              "trials_post", "detected_post", "detection_rate_post"]
+    rows = [[r["class"], r["mutation"], r["trials_pre"], r["detected_pre"],
+             round(r["rate_pre"], 4), r["trials_post"], r["detected_post"],
+             round(r["rate_post"], 4)] for r in data["rows"]]
+    return write_csv(OUT_DIR / "f_corruption_matrix.csv", header, rows)
+
+
+def plot_corruption_matrix(data: dict) -> None:
+    _require_mpl()
+    classes, mutations = data["classes"], data["mutations"]
+    by_key = {(r["class"], r["mutation"]): r for r in data["rows"]}
+    grid_pre = [[by_key[(c, mut)]["rate_pre"] if (c, mut) in by_key else math.nan
+                 for mut in mutations] for c in classes]
+    grid_post = [[by_key[(c, mut)]["rate_post"] if (c, mut) in by_key else math.nan
+                  for mut in mutations] for c in classes]
+
+    with plt.rc_context(STYLE):
+        fig, axes = plt.subplots(1, 2, figsize=(9.5, 5.0), sharey=True)
+        for ax, grid, label, commit in (
+            (axes[0], grid_pre, "pre-A10", data["commit_pre"]),
+            (axes[1], grid_post, "post-A10", data["commit_post"]),
+        ):
+            im = ax.imshow(grid, cmap="Greys", vmin=0, vmax=1, aspect="auto")
+            ax.set_xticks(range(len(mutations)))
+            ax.set_xticklabels(mutations, rotation=45, ha="right", fontsize=6)
+            ax.set_title(f"{label} (commit {commit})", fontsize=8)
+        axes[0].set_yticks(range(len(classes)))
+        axes[0].set_yticklabels(classes, fontsize=6)
+        fig.colorbar(im, ax=axes, fraction=0.03, pad=0.02, label="detection rate")
+        fig.suptitle("Corruption-detection matrix: class x mutation, pre vs post A10", fontsize=9)
+        _savefig(fig, OUT_DIR / "f_corruption_matrix")
+
+
+# --------------------------------------------------------------------------
+# 10. overhead ladder: per rung, per plan/op medians with the freeze's
+#     predicted band shaded (D4/D4b)
+# --------------------------------------------------------------------------
+
+# The freeze's own numeric predicted/pass_if bands (benchmarks/ladder-v1/campaign.yaml
+# predictions.*), reproduced here only as shading anchors for the figure --
+# never as a source for any number scripts/osdi_paper_macros.py emits.
+LADDER_BANDS = {
+    1: (0.8, 1.3),        # rung1_leaf_overhead: predicted
+    2: (1, 2000),         # rung2_compiled_vs_kernel: entity_history pass_if
+    3: {"one_step": (1500, 30000), "three_step": (4000, 90000)},
+    4: (1, 20),           # rung4_verify_ms: predicted
+    5: {"one_step": (800, 8000), "three_step": (2000, 20000)},
+}
+
+
+def build_ladder_data() -> dict:
+    merged = json.loads(LADDER_MERGED.read_text(encoding="utf-8"))
+    s = merged["summary"]
+
+    rung1 = sorted(s["rung1_leaf_overhead"].items(), key=lambda kv: kv[1]["leaf_over_direct_median"])
+    rung2 = s["rung2_compiled_vs_kernel"]
+
+    n_steps_by_plan = {plan: v["n_steps"] for plan, v in s["rung5_tokens_tool_calls"].items()}
+    plans = sorted(n_steps_by_plan, key=lambda p: (n_steps_by_plan[p], p))
+
+    rung3 = [(p, s["rung3_trace_bytes"][p]["bytes_median"]) for p in plans]
+    rung4 = [(p, s["rung4_verify_ms"][p]["p50_ms_median"]) for p in plans]
+    rung5 = [(p, s["rung5_tokens_tool_calls"][p]["tokens_total_median"]) for p in plans]
+
+    return {
+        "rung1": rung1,
+        "rung2_entity": rung2["entity_history"]["compiled_over_kernel_median"],
+        "rung2_version": rung2["version_history"]["compiled_over_kernel_median"],
+        "plans": plans,
+        "n_steps_by_plan": n_steps_by_plan,
+        "rung3": rung3,
+        "rung4": rung4,
+        "rung5": rung5,
+        "commit": merged["git_commit"],
+    }
+
+
+def write_ladder_csv(data: dict) -> str:
+    header = ["rung", "series", "n_steps", "value", "band_low", "band_high"]
+    rows = []
+    for op, v in data["rung1"]:
+        lo, hi = LADDER_BANDS[1]
+        rows.append([1, op, "", round(v["leaf_over_direct_median"], 4), lo, hi])
+    lo2, hi2 = LADDER_BANDS[2]
+    rows.append([2, "entity_history", "", round(data["rung2_entity"], 4), lo2, hi2])
+    rows.append([2, "version_history", "", round(data["rung2_version"], 4), "", ""])
+    for plan, bytes_med in data["rung3"]:
+        n = data["n_steps_by_plan"][plan]
+        band = LADDER_BANDS[3]["one_step"] if n == 1 else LADDER_BANDS[3]["three_step"]
+        rows.append([3, plan, n, bytes_med, band[0], band[1]])
+    for plan, ms_med in data["rung4"]:
+        n = data["n_steps_by_plan"][plan]
+        lo4, hi4 = LADDER_BANDS[4]
+        rows.append([4, plan, n, round(ms_med, 4), lo4, hi4])
+    for plan, tok_med in data["rung5"]:
+        n = data["n_steps_by_plan"][plan]
+        band = LADDER_BANDS[5]["one_step"] if n == 1 else LADDER_BANDS[5]["three_step"]
+        rows.append([5, plan, n, tok_med, band[0], band[1]])
+    return write_csv(OUT_DIR / "f_overhead_ladder.csv", header, rows)
+
+
+def _plot_banded_bars(ax, labels, values, band, *, log=False, rotation=45):
+    x = range(len(labels))
+    ax.bar(x, values, color="0.3", edgecolor="black")
+    if band is not None:
+        ax.axhspan(band[0], band[1], color="0.6", alpha=0.25, zorder=0,
+                   label=f"predicted [{band[0]}, {band[1]}]")
+    ax.set_xticks(list(x))
+    ax.set_xticklabels(labels, rotation=rotation, ha="right", fontsize=6)
+    if log:
+        ax.set_yscale("log")
+
+
+def plot_ladder(data: dict) -> None:
+    _require_mpl()
+    with plt.rc_context(STYLE):
+        fig, axes = plt.subplots(2, 3, figsize=(12.0, 7.0))
+
+        ax = axes[0][0]
+        ops = [op for op, _ in data["rung1"]]
+        vals = [v["leaf_over_direct_median"] for _, v in data["rung1"]]
+        _plot_banded_bars(ax, ops, vals, LADDER_BANDS[1])
+        ax.set_ylabel("leaf_over_direct (median)")
+        ax.set_title("Rung 1: leaf_overhead, per op")
+        ax.legend(fontsize=6)
+
+        ax = axes[0][1]
+        _plot_banded_bars(ax, ["entity_history", "version_history"],
+                           [data["rung2_entity"], data["rung2_version"]], LADDER_BANDS[2],
+                           log=True, rotation=20)
+        ax.set_ylabel("compiled_over_kernel (median, log)")
+        ax.set_title("Rung 2: compiled_vs_kernel")
+        ax.legend(fontsize=6)
+
+        ax = axes[0][2]
+        plans = [p for p, _ in data["rung3"]]
+        vals = [v for _, v in data["rung3"]]
+        one_step_n = sum(1 for p in plans if data["n_steps_by_plan"][p] == 1)
+        _plot_banded_bars(ax, plans, vals, None, log=True)
+        lo1, hi1 = LADDER_BANDS[3]["one_step"]
+        lo3, hi3 = LADDER_BANDS[3]["three_step"]
+        ax.axhspan(lo1, hi1, xmin=0, xmax=one_step_n / len(plans), color="0.6", alpha=0.25)
+        ax.axhspan(lo3, hi3, xmin=one_step_n / len(plans), xmax=1, color="0.4", alpha=0.25)
+        ax.set_ylabel("trace bytes (median, log)")
+        ax.set_title("Rung 3: trace_bytes, per plan")
+
+        ax = axes[1][0]
+        plans4 = [p for p, _ in data["rung4"]]
+        vals4 = [v for _, v in data["rung4"]]
+        _plot_banded_bars(ax, plans4, vals4, LADDER_BANDS[4])
+        ax.set_ylabel("verify p50, ms")
+        ax.set_title("Rung 4: verify_ms, per plan")
+        ax.legend(fontsize=6)
+
+        ax = axes[1][1]
+        plans5 = [p for p, _ in data["rung5"]]
+        vals5 = [v for _, v in data["rung5"]]
+        one_step_n5 = sum(1 for p in plans5 if data["n_steps_by_plan"][p] == 1)
+        _plot_banded_bars(ax, plans5, vals5, None)
+        lo1, hi1 = LADDER_BANDS[5]["one_step"]
+        lo3, hi3 = LADDER_BANDS[5]["three_step"]
+        ax.axhspan(lo1, hi1, xmin=0, xmax=one_step_n5 / len(plans5), color="0.6", alpha=0.25)
+        ax.axhspan(lo3, hi3, xmin=one_step_n5 / len(plans5), xmax=1, color="0.4", alpha=0.25)
+        ax.set_ylabel("tokens.total (median)")
+        ax.set_title("Rung 5: tokens_tool_calls, per plan")
+
+        axes[1][2].axis("off")
+
+        fig.suptitle(f"Overhead ladder, run of record (commit {data['commit']}), "
+                      "shaded = freeze's predicted band", fontsize=9)
+        fig.tight_layout()
+        _savefig(fig, OUT_DIR / "f_overhead_ladder")
+
+
+# --------------------------------------------------------------------------
 # main
 # --------------------------------------------------------------------------
 
@@ -743,6 +976,10 @@ DELIVERABLES = [
      "f7_dag_versions.csv"),
     ("r18_crossover", build_r18_crossover_data, write_r18_crossover_csv, plot_r18_crossover,
      "f8_r18_crossover.csv"),
+    ("corruption_matrix", build_corruption_matrix_data, write_corruption_matrix_csv,
+     plot_corruption_matrix, "f_corruption_matrix.csv"),
+    ("overhead_ladder", build_ladder_data, write_ladder_csv, plot_ladder,
+     "f_overhead_ladder.csv"),
 ]
 # `csv_filename` (not a precomputed path) so every consumer -- main() below,
 # and tests that monkeypatch module-level OUT_DIR -- resolves the path
