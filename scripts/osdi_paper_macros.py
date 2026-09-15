@@ -84,6 +84,20 @@ skeleton --
       rather than trusting). No verdict macro -- Gate E's own PASS/FAIL/FLAG
       table is gate_e_report.md, not this script.
 
+  W2j (same soak, 2026-09-15 re-derived Gate E report + the aborted
+      post-hoc replay check) -- benchmarks/longevity-v1/
+      summary_rederived_2026-09-15.json (whole-file sha256-checked, frozen
+      here; its own ``derived_from.original_manifest_sha256`` field is
+      cross-checked against W2g's LONGEVITY_MANIFEST_SHA256 above -- proof
+      the re-derivation ran against the *same* soak, not a different one)
+      + gate_e_report_rederived_2026-09-15.md (whole-file sha256-checked,
+      frozen here) for the within-life writer/reader RSS-slope macros, and
+      replay-check-2026-09-15.json (whole-file sha256-checked against
+      README.md's own quoted value in its "Post-hoc replay check" section)
+      for the aborted-OOM replay record. Both are read-only
+      re-measurements/re-derivations against the W2g soak's own preserved
+      raw inputs -- no new soak, no new replay attempt. No verdict macro.
+
 Claims C2 (corruption-detection campaign), C9 (LDBC generality, four axes
 -- the Neo4j reference run is pending), and C10 (live OSV workload) have
 no landed record yet; their macros, plus the still-unlanded slice of C7
@@ -194,6 +208,26 @@ LONGEVITY_RECOVERIES_SHA256 = "a3ef427f47a4801ffcb4eab03bd05fd4d979b6d3ce507318b
 LONGEVITY_READER_RESTARTS_SHA256 = "ff7375c22a6c660ab565641d8ecce6a82de2de7a0628e20d50b7eda6f50170fe"
 LONGEVITY_LEDGER_SHA256 = "edc13c40f50b849ee4fde1adfdad1ebbbed0e7be24e97a853bea4e0e414d7db4"
 LONGEVITY_ORCHESTRATOR_LOG_SHA256 = "3c66d62554a1d19051a166510ec4f003af0f9b4e3ed36c4ceca7da5dce80f7a0"
+
+# Lane W2j -- the 2026-09-15 re-derived Gate E report (post-fix harness,
+# same soak) and the same-day post-hoc replay check, both read-only
+# re-measurements against the W2g soak's own preserved raw inputs; see
+# benchmarks/longevity-v1/README.md's "Re-derived Gate E report" and
+# "Post-hoc replay check" sections. Neither file appears in that README's
+# "Files here" table (that table is the *original* soak's five files
+# only), so their whole-file sha256 is frozen here instead, from this
+# lane's own first read of the committed copies -- a tamper test, not a
+# cross-check against a second copy of the number recorded elsewhere.
+LONGEVITY_SUMMARY_REDERIVED = LONGEVITY_DIR / "summary_rederived_2026-09-15.json"
+LONGEVITY_GATE_E_REPORT_REDERIVED = LONGEVITY_DIR / "gate_e_report_rederived_2026-09-15.md"
+LONGEVITY_REPLAY_CHECK = LONGEVITY_DIR / "replay-check-2026-09-15.json"
+LONGEVITY_SUMMARY_REDERIVED_SHA256 = "b2b873eec314c9646f88b892434518c61fb3c6702ff0af9842d9da9b653e14d1"
+LONGEVITY_GATE_E_REPORT_REDERIVED_SHA256 = "8ad5cf1fd22306d41255ab1560d72e50b5256569f88fccbb1b82b362d0c7c7b8"
+# This one *is* independently recorded elsewhere: README.md's "Post-hoc
+# replay check" section quotes it verbatim ("Files: replay-check-2026-09-15.json
+# (sha256 ...)"), so this constant is cross-checked against that quoted
+# text below, not only frozen from a first read.
+LONGEVITY_REPLAY_CHECK_SHA256 = "a5c7a93c79af6a97160f7262fd16c98ff99cb982f22d282e896f3805ab7e4d9b"
 
 FAILURE_LEDGER = ROOT / "ops" / "failure_ledger.jsonl"
 
@@ -2840,6 +2874,251 @@ def compute_longevity_soak(m: Macros) -> None:
           f"{relpath(LONGEVITY_MANIFEST)}: summary.compactions")
 
 
+def compute_longevity_rederived(m: Macros) -> None:
+    """Lane W2j: the 2026-09-15 re-derived Gate E report (post-fix harness,
+    same soak) and the same-day aborted post-hoc replay check. Both are
+    read-only re-measurements against the W2g soak's own preserved raw
+    inputs -- see benchmarks/longevity-v1/README.md's "Re-derived Gate E
+    report" and "Post-hoc replay check" sections. No verdict macro."""
+    # --- whole-file digest checks ---
+    eq(sha256_file(LONGEVITY_SUMMARY_REDERIVED), LONGEVITY_SUMMARY_REDERIVED_SHA256,
+       f"{relpath(LONGEVITY_SUMMARY_REDERIVED)}: sha256 matches this lane's frozen value")
+    eq(sha256_file(LONGEVITY_GATE_E_REPORT_REDERIVED), LONGEVITY_GATE_E_REPORT_REDERIVED_SHA256,
+       f"{relpath(LONGEVITY_GATE_E_REPORT_REDERIVED)}: sha256 matches this lane's frozen value")
+    eq(sha256_file(LONGEVITY_REPLAY_CHECK), LONGEVITY_REPLAY_CHECK_SHA256,
+       f"{relpath(LONGEVITY_REPLAY_CHECK)}: sha256 matches README.md's own quoted value in "
+       "its \"Post-hoc replay check\" section")
+
+    summary_doc = json.loads(LONGEVITY_SUMMARY_REDERIVED.read_text(encoding="utf-8"))
+
+    # The re-derivation must be provably against the *same* soak: its own
+    # derived_from field names the original manifest's sha256, checked
+    # here against W2g's own frozen constant for that same file, not just
+    # trusted as a string.
+    eq(summary_doc["derived_from"]["original_manifest_sha256"], LONGEVITY_MANIFEST_SHA256,
+       f"{relpath(LONGEVITY_SUMMARY_REDERIVED)}: derived_from.original_manifest_sha256 "
+       "matches the sha256 of longevity-synth-1m-native-0.json (W2g's own frozen constant) "
+       "-- proof this re-derivation ran against the same soak, not a different one")
+    eq(sha256_file(LONGEVITY_MANIFEST), LONGEVITY_MANIFEST_SHA256,
+       f"{relpath(LONGEVITY_MANIFEST)}: sha256 matches README.md's Files-here table "
+       "(re-asserted here since the check above depends on it)")
+
+    # --- writer within-life RSS slope: recomputed from the per-life rows,
+    # not trusted from the file's own aggregate fields ---
+    writer_slope = summary_doc["writer_within_life_rss_slope"]
+    per_life = writer_slope["per_life"]
+    eq(len(per_life), 42, "Longevity re-derived frozen: writer_within_life_rss_slope.per_life row count")
+    life_slopes = [row["slope_kb_per_s"] for row in per_life]
+    writer_median = statistics.median(life_slopes)
+    writer_min = min(life_slopes)
+    writer_max = max(life_slopes)
+    close(writer_median, writer_slope["median_kb_per_s"], 1e-6,
+          f"{relpath(LONGEVITY_SUMMARY_REDERIVED)}: recomputed median(per_life[*]."
+          "slope_kb_per_s) matches the file's own writer_within_life_rss_slope.median_kb_per_s")
+    close(writer_min, writer_slope["min_kb_per_s"], 1e-6,
+          f"{relpath(LONGEVITY_SUMMARY_REDERIVED)}: recomputed min(per_life[*].slope_kb_per_s) "
+          "matches the file's own writer_within_life_rss_slope.min_kb_per_s")
+    close(writer_max, writer_slope["max_kb_per_s"], 1e-6,
+          f"{relpath(LONGEVITY_SUMMARY_REDERIVED)}: recomputed max(per_life[*].slope_kb_per_s) "
+          "matches the file's own writer_within_life_rss_slope.max_kb_per_s")
+    eq(writer_slope["n_lives_with_fit"], 42,
+       "Longevity re-derived frozen: writer_within_life_rss_slope.n_lives_with_fit")
+    noise_floor = writer_slope["noise_threshold_kb_per_s"]
+    eq(noise_floor, 5.0, "Longevity re-derived frozen: writer noise_threshold_kb_per_s")
+    n_positive = sum(1 for s in life_slopes if s > noise_floor)
+    eq(n_positive, writer_slope["n_positive_beyond_noise_5kb_s"],
+       f"{relpath(LONGEVITY_SUMMARY_REDERIVED)}: recomputed count(per_life[*].slope_kb_per_s "
+       "> noise_threshold_kb_per_s) matches the file's own n_positive_beyond_noise_5kb_s")
+    eq(n_positive, 42, "Longevity re-derived frozen: all 42 writer lives clear the noise floor")
+
+    median_kb = round(writer_median, 1)
+    min_kb = round(writer_min, 1)
+    max_kb = round(writer_max, 1)
+    eq(median_kb, 3165.6, "Longevity re-derived frozen: writer within-life slope median, kB/s")
+    eq(min_kb, 1921.1, "Longevity re-derived frozen: writer within-life slope min, kB/s")
+    eq(max_kb, 4154.2, "Longevity re-derived frozen: writer within-life slope max, kB/s")
+
+    # --- reader within-life RSS slope: recomputed by pooling every
+    # fitted segment across all 8 readers, not trusted from the file's own
+    # pooled aggregate ---
+    by_idx = summary_doc["reader_rss_slope_by_idx"]
+    eq(len(by_idx), 8, "Longevity re-derived frozen: reader_rss_slope_by_idx reader count")
+    pooled_slopes: list[float] = []
+    for rec in by_idx.values():
+        pooled_slopes.extend(rec["segment_slopes_kb_per_s"])
+    eq(len(pooled_slopes), 10,
+       "Longevity re-derived frozen: total fitted reader RSS segments (8 readers, 2 of "
+       "which restarted once each, contributing a second segment)")
+    reader_pooled = summary_doc["reader_rss_slope_pooled"]
+    reader_median = statistics.median(pooled_slopes)
+    reader_max = max(pooled_slopes)
+    close(reader_median, reader_pooled["median_kb_per_s"], 1e-6,
+          f"{relpath(LONGEVITY_SUMMARY_REDERIVED)}: recomputed median(all segment "
+          "slopes across reader_rss_slope_by_idx) matches reader_rss_slope_pooled.median_kb_per_s")
+    close(reader_max, reader_pooled["max_kb_per_s"], 1e-6,
+          f"{relpath(LONGEVITY_SUMMARY_REDERIVED)}: recomputed max(all segment slopes across "
+          "reader_rss_slope_by_idx) matches reader_rss_slope_pooled.max_kb_per_s")
+    eq(reader_pooled["n_fitted_segments"], 10,
+       "Longevity re-derived frozen: reader_rss_slope_pooled.n_fitted_segments")
+
+    reader_median_kb = round(reader_median, 2)
+    reader_max_kb = round(reader_max, 2)
+    eq(reader_median_kb, 5.32, "Longevity re-derived frozen: reader within-life slope median, kB/s")
+    eq(reader_max_kb, 47.07, "Longevity re-derived frozen: reader within-life slope max, kB/s")
+
+    # --- the old (superseded) two-point first-vs-last figure, carried
+    # through unchanged by the re-derivation for direct side-by-side
+    # comparison against the new within-life figures above ---
+    first_vs_last = summary_doc["summary"]["memory_slope_kb_per_s"]
+    eq(round(first_vs_last, 3), 111.639,
+       "Longevity re-derived frozen: summary.memory_slope_kb_per_s (carried over unchanged "
+       "from the original manifest, per README's Gate E comparison table)")
+    close(first_vs_last, 111.639263, 1e-3,
+          f"{relpath(LONGEVITY_MANIFEST)}: summary.memory_slope_kb_per_s -- the re-derived "
+          "file's copy of this field matches the original manifest's own value exactly "
+          "(unchanged by the re-derivation)")
+    first_vs_last_kb = round(first_vs_last, 1)
+    eq(first_vs_last_kb, 111.6, "Longevity re-derived frozen: first-vs-last slope, kB/s")
+
+    # --- commits/s mean and the arithmetic per-commit retention estimate ---
+    drift = summary_doc["summary"]["drift"]
+    throughput_start = drift["throughput_first_hour_avg"]
+    throughput_end = drift["throughput_last_hour_avg"]
+    eq(throughput_start, 24.03, "Longevity re-derived frozen: throughput_first_hour_avg, commits/s")
+    eq(throughput_end, 16.412, "Longevity re-derived frozen: throughput_last_hour_avg, commits/s")
+    commits_per_sec_mean = (throughput_start + throughput_end) / 2
+    commits_per_sec_mean_1dp = round(commits_per_sec_mean, 1)
+    eq(commits_per_sec_mean_1dp, 20.2,
+       "Longevity re-derived frozen: mean(throughput_first_hour_avg, throughput_last_hour_avg)")
+
+    # Arithmetic, not a measurement: the within-life median RSS slope
+    # divided by the mean commit rate, giving a rough per-commit retention
+    # estimate -- README's own prose does the same division with a
+    # rounded ~20 commits/s ("3,165.6 / 20 ~ 158 KB retained per commit").
+    bytes_per_commit_kb = writer_median / commits_per_sec_mean
+    bytes_per_commit_kb_rounded = round(bytes_per_commit_kb)
+    eq(bytes_per_commit_kb_rounded, 157,
+       "Longevity derived (arithmetic, not measured): round(within-life median slope kB/s "
+       "/ mean commits-per-s) -- README's own prose gives ~158 using a coarser rate of "
+       "~20 commits/s; both land in the same ~157-158 KB/commit neighborhood")
+    require(150 <= bytes_per_commit_kb <= 165,
+            "Longevity derived: per-commit retention estimate lands in the same order of "
+            "magnitude as the replay check's independently computed ~161.8 KB/generation "
+            "figure below")
+
+    # --- the aborted post-hoc replay check ---
+    replay_doc = json.loads(LONGEVITY_REPLAY_CHECK.read_text(encoding="utf-8"))
+    outcome = replay_doc["outcome"]
+    eq(outcome, "aborted_oom", "Longevity replay-check frozen: outcome")
+
+    attempt_1 = replay_doc["summary"]["attempt_1"]
+    dmesg_line = attempt_1["dmesg_line"]
+    dmesg_match = re.search(r"anon-rss:(\d+)kB", dmesg_line)
+    require(dmesg_match is not None,
+            f"{relpath(LONGEVITY_REPLAY_CHECK)}: summary.attempt_1.dmesg_line carries an "
+            "anon-rss:<N>kB field")
+    oom_rss_kb = int(dmesg_match.group(1))
+    eq(oom_rss_kb, 82_997_140,
+       "Longevity replay-check frozen: OOM-kill anon-rss, kB (parsed from the verbatim "
+       "dmesg line, the only place this run records it)")
+    oom_rss_gb = round(oom_rss_kb / 1e6, 1)
+    eq(oom_rss_gb, 83.0,
+       "Longevity replay-check: anon-rss kB / 1e6 (decimal kB -> GB), rounded")
+
+    oom_generation = attempt_1["highest_manifest_generation_observed"]
+    eq(oom_generation, 513_024,
+       "Longevity replay-check frozen: highest_manifest_generation_observed at the kill")
+
+    # Cross-check the file's own generation/batches-applied figures against
+    # its own stated compaction-inference arithmetic (compact_every=500:
+    # 500 batch-commit generations + 1 compact()-commit generation = 501
+    # generations/cycle), rather than trusting either field on its own.
+    compactions_inferred = attempt_1["compactions_inferred"]
+    eq(compactions_inferred, 1024, "Longevity replay-check frozen: compactions_inferred")
+    eq(compactions_inferred * 501, oom_generation,
+       f"{relpath(LONGEVITY_REPLAY_CHECK)}: compactions_inferred * 501 "
+       "(500 batch-commit generations + 1 compact()-commit generation per cycle) matches "
+       "highest_manifest_generation_observed")
+    batches_applied = attempt_1["batches_applied_inferred"]
+    eq(batches_applied, 512_000, "Longevity replay-check frozen: batches_applied_inferred")
+    eq(compactions_inferred * 500, batches_applied,
+       f"{relpath(LONGEVITY_REPLAY_CHECK)}: compactions_inferred * 500 matches "
+       "batches_applied_inferred")
+
+    total_batches_dataset = replay_doc["dataset"]["total_batches"]
+    eq(total_batches_dataset, 1_074_952,
+       "Longevity replay-check frozen: dataset.total_batches (matches the soak's own "
+       "summary.total_batches, checked in compute_longevity_soak above)")
+    fraction_applied = batches_applied / total_batches_dataset
+    eq(round(fraction_applied, 3), 0.476,
+       "Longevity replay-check: batches_applied_inferred / dataset.total_batches")
+
+    kb_per_generation = oom_rss_kb / oom_generation
+    eq(round(kb_per_generation, 1), 161.8,
+       "Longevity replay-check: anon-rss kB / highest_manifest_generation_observed")
+
+    wall_s = attempt_1["wall_s"]
+    eq(wall_s, 12_142.0, "Longevity replay-check frozen: attempt_1.wall_s")
+    elapsed_h = wall_s / 3600.0
+    eq(round(elapsed_h, 2), 3.37, "Longevity replay-check: wall_s / 3600")
+
+    # --- emit macros ---
+    m.add("osdiSoakWriterWithinLifeSlopeMedianKBps", f"{median_kb:.1f}",
+          f"{relpath(LONGEVITY_SUMMARY_REDERIVED)}: median(writer_within_life_rss_slope."
+          "per_life[*].slope_kb_per_s), 42 lives")
+    m.add("osdiSoakWriterWithinLifeSlopeMinKBps", f"{min_kb:.1f}",
+          f"{relpath(LONGEVITY_SUMMARY_REDERIVED)}: min(writer_within_life_rss_slope."
+          "per_life[*].slope_kb_per_s)")
+    m.add("osdiSoakWriterWithinLifeSlopeMaxKBps", f"{max_kb:.1f}",
+          f"{relpath(LONGEVITY_SUMMARY_REDERIVED)}: max(writer_within_life_rss_slope."
+          "per_life[*].slope_kb_per_s)")
+    m.add("osdiSoakWriterLivesFitted", tex_num(writer_slope["n_lives_with_fit"]),
+          f"{relpath(LONGEVITY_SUMMARY_REDERIVED)}: writer_within_life_rss_slope."
+          "n_lives_with_fit, recomputed as len(per_life)")
+    m.add("osdiSoakWriterLivesPositive", tex_num(n_positive),
+          f"{relpath(LONGEVITY_SUMMARY_REDERIVED)}: recomputed count(per_life[*]."
+          "slope_kb_per_s > noise_threshold_kb_per_s=5.0), matches the file's own "
+          "n_positive_beyond_noise_5kb_s")
+    m.add("osdiSoakReaderWithinLifeSlopeMedianKBps", f"{reader_median_kb:.2f}",
+          f"{relpath(LONGEVITY_SUMMARY_REDERIVED)}: median of every fitted segment slope "
+          "across reader_rss_slope_by_idx (10 segments, 8 readers), matches "
+          "reader_rss_slope_pooled.median_kb_per_s")
+    m.add("osdiSoakReaderWithinLifeSlopeMaxKBps", f"{reader_max_kb:.2f}",
+          f"{relpath(LONGEVITY_SUMMARY_REDERIVED)}: max of every fitted segment slope "
+          "across reader_rss_slope_by_idx, matches reader_rss_slope_pooled.max_kb_per_s "
+          "-- the short post-restart segment for reader 5")
+    m.add("osdiSoakFirstVsLastSlopeKBps", f"{first_vs_last_kb:.1f}",
+          f"{relpath(LONGEVITY_SUMMARY_REDERIVED)}: summary.memory_slope_kb_per_s -- the "
+          "old two-point first-vs-last figure, carried over unchanged from the original "
+          "manifest; SUPERSEDED by the within-life figures above for the memory-FAIL "
+          "finding (see gate_e_report_rederived_2026-09-15.md)")
+    m.add("osdiSoakCommitsPerSecMean", f"{commits_per_sec_mean_1dp:.1f}",
+          f"{relpath(LONGEVITY_SUMMARY_REDERIVED)}: mean(summary.drift."
+          "throughput_first_hour_avg, summary.drift.throughput_last_hour_avg)")
+    m.add("osdiSoakBytesPerCommitLiveKB", tex_num(bytes_per_commit_kb_rounded),
+          f"{relpath(LONGEVITY_SUMMARY_REDERIVED)}: derived (arithmetic, not measured): "
+          "round(writer_within_life_rss_slope.median_kb_per_s / osdiSoakCommitsPerSecMean's "
+          "unrounded mean) -- README's own prose gives ~158 KB/commit using a coarser "
+          "~20 commits/s rate")
+    m.add("osdiSoakReplayOutcome", outcome,
+          f"{relpath(LONGEVITY_REPLAY_CHECK)}: outcome (text macro, not a number)")
+    m.add("osdiSoakReplayOomRssGB", f"{oom_rss_gb:.1f}",
+          f"{relpath(LONGEVITY_REPLAY_CHECK)}: summary.attempt_1.dmesg_line's "
+          "anon-rss:<N>kB, parsed and divided by 1e6")
+    m.add("osdiSoakReplayOomGeneration", tex_num(oom_generation),
+          f"{relpath(LONGEVITY_REPLAY_CHECK)}: summary.attempt_1."
+          "highest_manifest_generation_observed, cross-checked against "
+          "compactions_inferred * 501")
+    m.add("osdiSoakReplayFractionApplied", f"{round(fraction_applied, 3):.3f}",
+          f"{relpath(LONGEVITY_REPLAY_CHECK)}: summary.attempt_1.batches_applied_inferred "
+          "/ dataset.total_batches")
+    m.add("osdiSoakReplayKBPerGeneration", f"{round(kb_per_generation, 1):.1f}",
+          f"{relpath(LONGEVITY_REPLAY_CHECK)}: (dmesg anon-rss kB) / "
+          "highest_manifest_generation_observed")
+    m.add("osdiSoakReplayElapsedH", f"{round(elapsed_h, 2):.2f}",
+          f"{relpath(LONGEVITY_REPLAY_CHECK)}: summary.attempt_1.wall_s / 3600")
+
+
 # --------------------------------------------------------------------------
 # pending stubs (records not yet landed)
 # --------------------------------------------------------------------------
@@ -2913,6 +3192,7 @@ def main() -> int:
     compute_c2(m)
     compute_ladder(m)
     compute_longevity_soak(m)
+    compute_longevity_rederived(m)
     add_pending_stubs(m)
 
     if FAILURES:
