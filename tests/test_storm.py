@@ -387,3 +387,49 @@ def test_age_vt_meaningful_is_recorded_when_the_age_axis_is_active(
             assert r.age_vt_meaningful is False
     finally:
         storm_age.close()
+
+
+# ---------------------------------------------------------------------------
+# 8 -- `BatchResult` carries the correction's identities/vt/disc/eid
+# (docs/design/CORRECTION_DISC_SEMANTICS_REVIEW_2026-09-15.md §2.3's "the
+# missing field": before this, no committed storm record could be audited
+# for a disc collision at all)
+# ---------------------------------------------------------------------------
+
+def test_batch_result_carries_correction_identities_and_round_trips(
+    pristine_store: Path,
+) -> None:
+    work = _copy(pristine_store)
+    storm = Storm(work, n_artifacts=10, seed=17, backend=BACKEND)
+    try:
+        results = storm.run(12, max_attempts_factor=10)
+        assert results
+        edge_generators = {"a1_events", "a2_disjoint"}
+        saw_edge_disc = False
+        for r in results:
+            blob = r.to_json()
+
+            # identities: present on every realized correction, and the
+            # JSON form is a plain list round-trip of the tuple.
+            assert r.correction_identities
+            assert blob["correction_identities"] == list(r.correction_identities)
+
+            # vt interval: every generator here carries one.
+            assert r.correction_vt is not None
+            assert blob["correction_vt"] == list(r.correction_vt)
+
+            if r.correction_generator in edge_generators and r.correction_disc is not None:
+                saw_edge_disc = True
+                assert blob["correction_disc"] == r.correction_disc
+                assert blob["correction_eid"] == r.correction_eid
+                assert r.correction_disc not in ("", "#0", "a2-disjoint")
+            else:
+                # node-only ops (b/c/d, and a2_disjoint's own node branch)
+                # address no edge identity.
+                assert r.correction_disc is None
+                assert r.correction_eid is None
+                assert blob["correction_disc"] is None
+                assert blob["correction_eid"] is None
+        assert saw_edge_disc, "fixture should realize at least one edge-branch correction"
+    finally:
+        storm.close()

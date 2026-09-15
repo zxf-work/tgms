@@ -79,7 +79,7 @@ from typing import Any, Callable, Sequence
 
 import tgms
 from tgms.core.errors import TgmsError
-from tgms.core.model import OPEN_END, canonical_json
+from tgms.core.model import OPEN_END, canonical_json, edge_eid
 from tgms.eval.corrections import (
     Correction, GENERATORS, Substrate, Target, generate as generate_corrections,
     probe_substrate,
@@ -314,6 +314,21 @@ class BatchResult:
     #: §2's SNAP caveat, restated per cell (`Storm.interval_vt`): `None` when
     #: the age axis was not in play this run.
     age_vt_meaningful: bool | None = None
+    #: `Correction.identities` — the uids this batch's ops named — bounded to
+    #: identities only, never the full op payload
+    #: (`docs/design/CORRECTION_DISC_SEMANTICS_REVIEW_2026-09-15.md` §2.3's
+    #: "the missing field": without this, no committed storm record could be
+    #: audited for a disc/eid collision at all).
+    correction_identities: tuple[str, ...] = ()
+    #: The union valid-time interval the batch's ops carry
+    #: (`_correction_interval`), `None` when no op carries one.
+    correction_vt: tuple[int, int] | None = None
+    #: The edge `disc`/`eid` this batch's `a1_events`/`a2_disjoint` (edge
+    #: branch) op assigned (`_correction_disc_eid`); `None` for a node-only
+    #: correction (`assert_node`/`correct`/`retract`, and `a2_disjoint`'s own
+    #: node branch).
+    correction_disc: str | None = None
+    correction_eid: str | None = None
 
     def to_json(self) -> dict[str, Any]:
         return {
@@ -330,6 +345,10 @@ class BatchResult:
             "ttf_mode": self.ttf_mode, "age_vt_meaningful": self.age_vt_meaningful,
             "log_bytes": self.log_bytes, "log_records": self.log_records,
             "registry_bytes": self.registry_bytes,
+            "correction_identities": list(self.correction_identities),
+            "correction_vt": list(self.correction_vt) if self.correction_vt else None,
+            "correction_disc": self.correction_disc,
+            "correction_eid": self.correction_eid,
         }
 
 
@@ -422,6 +441,28 @@ def _correction_interval(ops: Sequence[dict[str, Any]]) -> tuple[int, int] | Non
         lo = a if lo is None else min(lo, a)
         hi = b if hi is None else max(hi, b)
     return None if lo is None else (lo, min(hi, OPEN_END))
+
+
+def _correction_disc_eid(ops: Sequence[dict[str, Any]]) -> tuple[str | None, str | None]:
+    """The edge `disc`/`eid` a correction batch's own ops assign, if any —
+    `assert_edge`'s own `disc` kwarg, or `ingest_events`'s (single) event's
+    `disc` (`corrections.py::_a1_events`/`_a2_disjoint` both now stamp a
+    fresh one; see `docs/design/CORRECTION_DISC_SEMANTICS_REVIEW_2026-09-15.md`).
+    Node ops (`assert_node`, `correct`, `retract`) address no edge and have
+    neither."""
+    for op in ops:
+        kind = op.get("op")
+        if kind == "assert_edge":
+            disc = op.get("disc", "")
+            return disc, edge_eid(op["src"], op["dst"], op["rel_type"], disc)
+        if kind == "ingest_events":
+            events = op.get("events") or []
+            if not events:
+                continue
+            ev = events[0]
+            disc = ev.get("disc", f"#{op.get('offset', 0)}")
+            return disc, edge_eid(ev["src"], ev["dst"], ev["rel_type"], disc)
+    return None, None
 
 
 # ---------------------------------------------------------------------------
@@ -994,6 +1035,7 @@ class Storm:
                 refresh_wall_ms=r_ms, ttf_ms=ttf_ms, false_fresh=false_fresh,
                 false_stale=false_stale)
 
+        correction_disc, correction_eid = _correction_disc_eid(correction.ops)
         return BatchResult(
             batch_index=batch_index, correction_class=correction.cls,
             correction_generator=correction.generator, correction_placement=correction.placement,
@@ -1005,7 +1047,9 @@ class Storm:
             registry_bytes=self.registry.path.stat().st_size,
             ttf_mode=self.measure_ttf,
             age_vt_meaningful=(self.interval_vt if isinstance(self.mix, Mix)
-                              and self.mix.age is not None else None))
+                              and self.mix.age is not None else None),
+            correction_identities=tuple(correction.identities), correction_vt=interval,
+            correction_disc=correction_disc, correction_eid=correction_eid)
 
     def run(self, n_batches: int, *, max_attempts_factor: int = 4) -> list[BatchResult]:
         """Run until `n_batches` batches have been realized, or give up

@@ -186,6 +186,7 @@ import subprocess
 import sys
 import threading
 import time
+import uuid
 from pathlib import Path
 from typing import Any
 
@@ -555,7 +556,20 @@ def apply_correction_via_public_api(store: Any, gc_writer: Any, correction: Any)
             # a1_events: exactly one event, and events supersede nothing —
             # the one public call this class needs `GroupCommitWriter` does
             # not expose, so it goes straight to the store (same lock).
-            store.ingest_events(op["events"], node_label=op.get("node_label", "Node"))
+            #
+            # `corrections.py::_a1_events` already stamps a fresh `disc` on
+            # this event, but that disc is derived from the *writer's own
+            # RNG sequence*, and the soak's writer restarts every life with
+            # the same seed (`spawn_writer` never varies it by life index) —
+            # so two lives can walk the same RNG sequence and stamp the same
+            # disc for what are, in wall-clock terms, two different
+            # corrections. Re-stamp here with something that survives a
+            # process restart by construction: not the RNG, and not any
+            # `Store` counter (`Store._ingest_offset_base` is per-instance
+            # and resets on every new writer process too), just a fresh
+            # per-call token.
+            events = [dict(ev, disc=f"life-{uuid.uuid4().hex[:16]}") for ev in op["events"]]
+            store.ingest_events(events, node_label=op.get("node_label", "Node"))
         elif kind == "assert_node":
             gc_writer.assert_node(op["uid"], op["label"], op.get("props") or {},
                                   op["vt_s"], op["vt_e"])
