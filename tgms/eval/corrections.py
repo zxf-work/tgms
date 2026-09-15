@@ -22,6 +22,7 @@ so the harness's footprints are the real ones.
 
 from __future__ import annotations
 
+import hashlib
 import random
 from dataclasses import dataclass, field
 from typing import Any, Iterable, Sequence
@@ -201,6 +202,24 @@ def _fresh_uid(rng: random.Random) -> str:
     return f"__inj{rng.randrange(10 ** 9):09d}"
 
 
+def _fresh_disc(rng: random.Random, prefix: str, *identity: Any) -> str:
+    """A `disc` unique to *this* correction, for a generator that means "a
+    new fact" (D2.1) and therefore has no original edge disc to carry.
+
+    Hashes the RNG's state — `getstate()` is a pure read, never an extra
+    draw, so calling it here cannot shift any other generator's random
+    sequence — together with the correction's own identity (its endpoints
+    and valid-time placement). The RNG's state differs between any two
+    distinct calls in one run (it has advanced by whatever those calls drew
+    in between), so two corrections on the same `(src, dst, rel_type)`
+    never collide; replaying the same seed reproduces the same sequence of
+    states and hence the same discs.
+    """
+    material = "|".join((repr(rng.getstate()), *(repr(x) for x in identity)))
+    digest = hashlib.sha256(material.encode()).hexdigest()[:16]
+    return f"{prefix}-{digest}"
+
+
 def _outside(target: Target, placement: str) -> bool:
     """Is this placement genuinely outside a real window?
 
@@ -264,10 +283,17 @@ def _a1_events(store, sub, target, placement, rng) -> Correction | None:
             return None
         others = [u for u in sub.uids if u != anchor]
         src, dst = anchor, (rng.choice(others) if others else _fresh_uid(rng))
+    # D2.1: an appended event is its own logical edge, never the original
+    # edge's disc (there is no "original" — a1 asserts a new fact). A fresh,
+    # unique-per-correction disc, not the implicit batch-offset default,
+    # keeps two a1 corrections on the same (src, dst, rel_type) — or an a1
+    # correction landing on a bulk-loaded triple — from merging identities.
+    disc = _fresh_disc(rng, "a1", src, dst, rel, vt_s)
     return Correction(
         "A", "a1_events", placement,
         (make_op("ingest_events", offset=0, node_label=sub.node_label,
-                 events=[{"src": src, "dst": dst, "rel_type": rel, "vt_s": vt_s}],
+                 events=[{"src": src, "dst": dst, "rel_type": rel, "vt_s": vt_s,
+                         "disc": disc}],
                  source="inject", provenance_ref=None),),
         note="appended event; supersedes nothing", identities=(src, dst))
 
@@ -294,10 +320,17 @@ def _a2_disjoint(store, sub, target, placement, rng) -> Correction | None:
         # deleted Class-A-disjoint from both headline stores silently.
         others = [u for u in sub.uids if u != uid]
         dst = rng.choice(others) if others else _fresh_uid(rng)
+        rel = rng.choice(sub.rel_types)
+        # Same D2.1 reasoning as `_a1_events`: this asserts a new fact on a
+        # non-overlapping interval, so there is no original disc to reuse.
+        # The literal "a2-disjoint" this replaces collided two corrections
+        # on the same triple into one eid and, worse, made the second
+        # *carve* the first — a Class-B effect recorded as Class A.
+        disc = _fresh_disc(rng, "a2", uid, dst, rel, vt_s, vt_e)
         return Correction(
             "A", "a2_disjoint", placement,
             (make_op("assert_edge", src=uid, dst=dst,
-                     rel_type=rng.choice(sub.rel_types), disc="a2-disjoint",
+                     rel_type=rel, disc=disc,
                      props={"injected": "a2"}, vt_s=vt_s, vt_e=vt_e,
                      source="inject", provenance_ref=None),),
             note="edge assert on a non-overlapping interval (node versions are "
