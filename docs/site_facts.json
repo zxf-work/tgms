@@ -382,7 +382,35 @@
    "value": "0",
    "kind": "tested",
    "prose": "emitted answers containing an unsupported claim, with gating — 0 of 199 on the frozen CollegeMsg campaign; before gating it was 21 of 220",
-   "scope_required": "always state the denominator (199 emitted, of 282 task runs) and never as a universal guarantee; coverage is 199/282, so part of the zero is bought by declining"
+   "scope_required": "always state the denominator (199 emitted, of 282 task runs) and never as a universal guarantee; coverage is 199/282, so part of the zero is bought by declining",
+   "label_required": "pre-D-160 gate"
+  },
+  "unsupported_claims_d160": {
+   "value": "0",
+   "kind": "tested",
+   "prose": "emitted answers containing an unsupported claim, under the D-160 production claim gate (drops both unsupported and unverifiable claims) — 0 of 112 gated-emitted, of 282 task runs, on the D-160 CollegeMsg re-measurement; before the gate, 0.212 of pre-gate answers carried an unsupported claim",
+   "snapshot": "benchmarks/d160-collegemsg-v1/manifest-2026-09-14.json",
+   "record": "benchmarks/d160-collegemsg-v1/rows-2026-09-14.json",
+   "scope_required": "these are the D-160-gate numbers: always print beside unsupported_claims (the pre-D-160-gate figure), never alone or in its place, and always state the denominator (112 gated-emitted, of 282 task runs)",
+   "label_required": "D-160 gate"
+  },
+  "coverage_collegemsg_d160": {
+   "value": "0.397",
+   "kind": "benchmark",
+   "prose": "D-160-gate claim-carrying rate on the CollegeMsg re-measurement — 112 of 282 task runs (94 frozen test-split tasks x 3 seeds) delivered an answer carrying at least one claim",
+   "snapshot": "benchmarks/d160-collegemsg-v1/manifest-2026-09-14.json",
+   "record": "benchmarks/d160-collegemsg-v1/rows-2026-09-14.json",
+   "scope_required": "this is the D-160-gate coverage number: always print beside the pre-D-160-gate coverage (199/282, 0.706 — see unsupported_claims and docs/STABILITY.md section 9), never alone or in its place",
+   "label_required": "D-160 gate"
+  },
+  "conditional_accuracy_collegemsg_d160": {
+   "value": "0.509",
+   "kind": "benchmark",
+   "prose": "mean exact-match accuracy among D-160-gate claim-carrying answers on the CollegeMsg re-measurement",
+   "snapshot": "benchmarks/d160-collegemsg-v1/manifest-2026-09-14.json",
+   "record": "benchmarks/d160-collegemsg-v1/rows-2026-09-14.json",
+   "scope_required": "this is the D-160-gate conditional-accuracy number: always print beside the pre-D-160-gate conditional accuracy (0.548 — see docs/STABILITY.md section 9), never alone or in its place",
+   "label_required": "D-160 gate"
   },
   "answer_accuracy_tgms": {
    "value": "41",

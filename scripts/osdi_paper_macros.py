@@ -31,6 +31,18 @@ skeleton --
       this file's comments; every number below is recomputed from the
       m5-v1 JSON files' own rows)
   C8  benchmarks/faults-v1/fault-matrix-campaign-2026-09-{13,15-d160}.json
+  D160-collegemsg (Lane W2c, not in the OSDI27 skeleton's C-numbering --
+      the coordinator's D-160 ruling deliverable) --
+      benchmarks/d160-collegemsg-v1/{manifest,rows}-2026-09-14.json, the
+      CollegeMsg coverage/conditional-accuracy/UCR re-measurement under the
+      production claim gate that also drops `unverifiable` claims (see
+      docs/STABILITY.md section 9). Its pre-D-160-gate counterparts
+      (osdiOldGate*) are parsed out of docs/site_facts.json's
+      `unsupported_claims` fact and cross-checked against that same
+      STABILITY.md section, never hard-coded independently of both. The
+      `llm_direct` follow-up re-run under the real-tokenizer budget fix
+      (`manifest-llm-direct-fix-2026-09-14.json`) has not landed, so
+      `osdiD160LlmDirectCoverageFixed` is PENDING.
   C7  (partial) benchmarks/storm-v1/storm-campaign-dag-{,v2-,v3-}2026-09.json
       (+ each one's -rows.jsonl) -- the DAG-phase v1/v2/v3 grids, all 40/40
       cells each -- and benchmarks/storm-v1/storm-r18-probe-2026-09.json
@@ -64,6 +76,7 @@ for that directory.
 from __future__ import annotations
 
 import argparse
+import hashlib
 import json
 import re
 import statistics
@@ -103,6 +116,12 @@ DAG_V3 = STORM_V1 / "storm-campaign-dag-v3-2026-09.json"
 DAG_V3_ROWS = STORM_V1 / "storm-campaign-dag-v3-2026-09-rows.jsonl"
 R18_PROBE = STORM_V1 / "storm-r18-probe-2026-09.json"
 R18_PROBE_ROWS = STORM_V1 / "storm-r18-probe-2026-09-rows.jsonl"
+
+D160_DIR = ROOT / "benchmarks" / "d160-collegemsg-v1"
+D160_MANIFEST = D160_DIR / "manifest-2026-09-14.json"
+D160_ROWS = D160_DIR / "rows-2026-09-14.json"
+SITE_FACTS = ROOT / "docs" / "site_facts.json"
+STABILITY_MD = ROOT / "docs" / "STABILITY.md"
 
 
 # --------------------------------------------------------------------------
@@ -898,6 +917,202 @@ def compute_c7_r18(m: Macros) -> None:
 
 
 # --------------------------------------------------------------------------
+# D-160 CollegeMsg re-measurement (Lane W2c): the production claim gate now
+# drops `unverifiable` claims too (docs/STABILITY.md section 9), and this is
+# the fresh coverage/conditional-accuracy/UCR record measured under it. The
+# old-gate numbers already on public surfaces are never overwritten -- see
+# docs/site_facts.json's `unsupported_claims` fact and the new
+# `*_d160` facts beside it.
+# --------------------------------------------------------------------------
+
+def _carries_claim(row: dict) -> bool:
+    ao = row.get("answer_object")
+    return bool(ao and ao.get("claims"))
+
+
+def compute_d160(m: Macros) -> None:
+    manifest = json.loads(D160_MANIFEST.read_text(encoding="utf-8"))
+    rows_bytes = D160_ROWS.read_bytes()
+    digest = hashlib.sha256(rows_bytes).hexdigest()
+    eq(digest, manifest["result_digest"],
+       "D160: sha256(rows-2026-09-14.json) matches manifest.result_digest")
+
+    rows = json.loads(rows_bytes)
+    eq(len(rows), 1128, "D160 frozen: total row count")
+    eq(len(rows), manifest["provenance"]["n_rows"], "D160: row count matches manifest n_rows")
+
+    def by_system(name: str) -> list[dict]:
+        return [r for r in rows if r["system"] == name]
+
+    ours = by_system("ours")
+    b6e = by_system("b6e")
+    b5 = by_system("b5")
+    llm_direct = by_system("llm_direct")
+
+    eq(len(ours), 282, "D160 frozen: ours row count")
+    eq(len(b6e), 282, "D160 frozen: b6e row count")
+    eq(len(b5), 282, "D160 frozen: b5 row count")
+    eq(len(llm_direct), 282, "D160 frozen: llm_direct row count")
+
+    task_ids = {r["task_id"] for r in ours}
+    eq(len(task_ids), 94, "D160 frozen: distinct CollegeMsg task count")
+    seeds = sorted({r["seed"] for r in ours})
+    eq(seeds, [0, 1, 2], "D160: three seeds, 0/1/2")
+
+    # ---- ours: coverage, conditional accuracy, ucr, ucr_pre_gate ----
+    ours_carry = [r for r in ours if _carries_claim(r)]
+    eq(len(ours_carry), 112, "D160 frozen: ours claim-carrying row count, pooled")
+    ours_coverage = len(ours_carry) / len(ours)
+    close(ours_coverage, 0.397, 0.001, "D160 frozen: ours pooled coverage")
+
+    ours_cond_acc = statistics.mean(r["em"] for r in ours_carry)
+    close(ours_cond_acc, 0.509, 0.001, "D160 frozen: ours pooled conditional accuracy")
+
+    ours_ucr_gated = statistics.mean(r["ucr"] for r in ours_carry)
+    eq(ours_ucr_gated, 0.0, "D160 frozen: ours pooled post-gate UCR")
+
+    # ucr_pre_gate is only meaningful for rows that reached claim proposal at
+    # all -- a safe-refusal row with no plan never produced a raw AnswerObject
+    # to score pre-gate, and the record correctly omits the field there.
+    ours_pre = [r for r in ours if "ucr_pre_gate" in r]
+    eq(len(ours_pre), 257, "D160 frozen: ours rows that reached claim proposal pre-gate")
+    ours_ucr_pre = statistics.mean(r["ucr_pre_gate"] for r in ours_pre)
+    close(ours_ucr_pre, 0.212, 0.001, "D160 frozen: ours pooled pre-gate UCR")
+
+    # Constancy: a per-seed coverage outlier averaged away by pooling must
+    # not pass silently.
+    for s in seeds:
+        rs = [r for r in ours if r["seed"] == s]
+        c = [r for r in rs if _carries_claim(r)]
+        seed_cov = len(c) / len(rs)
+        close(seed_cov, ours_coverage, 0.02,
+              f"D160: ours seed {s} coverage {seed_cov:.4f} not within 0.02 of pooled "
+              f"{ours_coverage:.4f}")
+
+    # ---- b6e: its own ECQR-based gate, coverage + conditional accuracy ----
+    b6e_carry = [r for r in b6e if _carries_claim(r)]
+    b6e_coverage = len(b6e_carry) / len(b6e)
+    close(b6e_coverage, 0.830, 0.001, "D160 frozen: b6e pooled coverage")
+    b6e_cond_acc = statistics.mean(r["em"] for r in b6e_carry)
+    close(b6e_cond_acc, 0.333, 0.001, "D160 frozen: b6e pooled conditional accuracy")
+    for s in seeds:
+        rs = [r for r in b6e if r["seed"] == s]
+        c = [r for r in rs if _carries_claim(r)]
+        seed_cov = len(c) / len(rs)
+        close(seed_cov, b6e_coverage, 0.02,
+              f"D160: b6e seed {s} coverage {seed_cov:.4f} not within 0.02 of pooled "
+              f"{b6e_coverage:.4f}")
+
+    # ---- b5: ungated interface ablation, raw EM (deterministic, temp 0) ----
+    b5_em = statistics.mean(r["em"] for r in b5)
+    close(b5_em, 0.181, 0.001, "D160 frozen: b5 pooled raw EM")
+    for s in seeds:
+        rs = [r for r in b5 if r["seed"] == s]
+        seed_em = statistics.mean(r["em"] for r in rs)
+        eq(round(seed_em, 6), round(b5_em, 6),
+           f"D160: b5 seed {s} EM must equal the pooled EM (deterministic, temperature 0)")
+
+    # ---- llm_direct: 0 claim-carrying rows, 216 context-overflow errors ----
+    llm_carry = [r for r in llm_direct if _carries_claim(r)]
+    eq(len(llm_carry), 0, "D160 frozen: llm_direct pooled claim-carrying row count")
+    llm_errors = [r for r in llm_direct if r.get("task_error")]
+    eq(len(llm_errors), 216, "D160 frozen: llm_direct task_error row count")
+    llm_overflow = [r for r in llm_errors if "ContextWindowExceededError" in str(r["task_error"])]
+    eq(len(llm_overflow), len(llm_errors),
+       "D160: every llm_direct task_error is the known context-overflow error -- no other "
+       "failure mode is silently folded into this count")
+
+    # ---- old-gate counterparts: parsed out of docs/site_facts.json's
+    # unsupported_claims fact (the only place the pre-D-160 CollegeMsg
+    # numbers live as structured data) and cross-checked against
+    # docs/STABILITY.md section 9, which is the only place the pre-D-160
+    # conditional accuracy (0.548) is stated at all -- site_facts.json has
+    # no separate coverage/conditional-accuracy fact for the old gate.
+    facts = json.loads(SITE_FACTS.read_text(encoding="utf-8"))["facts"]
+    old_uc = facts["unsupported_claims"]
+    eq(old_uc["value"], "0", "D160: old-gate unsupported_claims value is still 0")
+    eq(old_uc.get("label_required"), "pre-D-160 gate",
+       "D160: old-gate unsupported_claims must be labelled 'pre-D-160 gate' now that the "
+       "D-160-gate numbers land beside it")
+
+    m_prose = re.search(
+        r"0 of (\d+) on the frozen CollegeMsg campaign; before gating it was \d+ of \d+",
+        old_uc["prose"])
+    require(m_prose is not None,
+            "D160: could not parse the old-gate emitted-answer count out of "
+            "site_facts.json's unsupported_claims prose")
+    old_gate_ucr_denominator = int(m_prose.group(1))
+    eq(old_gate_ucr_denominator, 199, "D160 frozen: old-gate UCR denominator (emitted answers)")
+
+    m_scope = re.search(r"\((\d+) emitted, of (\d+) task runs\)", old_uc["scope_required"])
+    require(m_scope is not None,
+            "D160: could not parse the old-gate coverage numerator/denominator out of "
+            "site_facts.json's unsupported_claims scope_required")
+    old_gate_coverage_num = int(m_scope.group(1))
+    old_gate_coverage_den = int(m_scope.group(2))
+    eq(old_gate_coverage_num, old_gate_ucr_denominator,
+       "D160: old-gate coverage numerator matches the UCR denominator (same 199 emitted answers)")
+    eq(old_gate_coverage_den, 282, "D160 frozen: old-gate coverage denominator (task runs)")
+    old_gate_coverage = old_gate_coverage_num / old_gate_coverage_den
+    close(old_gate_coverage, 0.706, 0.001, "D160 frozen: old-gate pooled coverage")
+
+    stab_text = STABILITY_MD.read_text(encoding="utf-8")
+    m_stab = re.search(
+        r"ucr_gated`\s+0/(\d+),\s+coverage\s+(0\.\d+)\s+at\s+conditional accuracy\s+(0\.\d+)",
+        stab_text)
+    require(m_stab is not None,
+            "D160: could not find the old-gate coverage/conditional-accuracy sentence in "
+            "docs/STABILITY.md section 9 (D-160)")
+    eq(int(m_stab.group(1)), old_gate_ucr_denominator,
+       "D160: STABILITY.md's old-gate UCR denominator matches site_facts.json's")
+    eq(float(m_stab.group(2)), round(old_gate_coverage, 3),
+       "D160: STABILITY.md's old-gate coverage matches the ratio recomputed from "
+       "site_facts.json's unsupported_claims fact")
+    old_gate_cond_acc = float(m_stab.group(3))
+    eq(old_gate_cond_acc, 0.548, "D160 frozen: old-gate conditional accuracy")
+
+    m.add("osdiD160Tasks", len(task_ids),
+          f"{relpath(D160_ROWS)}: distinct task_id values among system==ours rows")
+    m.add("osdiD160TaskRuns", len(ours),
+          f"{relpath(D160_ROWS)}: row count for system==ours (94 tasks x 3 seeds)")
+    m.add("osdiD160OursCarrying", len(ours_carry),
+          f"{relpath(D160_ROWS)}: ours rows with answer_object.claims non-empty, pooled "
+          "over 3 seeds")
+    m.add("osdiD160OursCoverage", f"{ours_coverage:.3f}",
+          f"{relpath(D160_ROWS)}: osdiD160OursCarrying / osdiD160TaskRuns")
+    m.add("osdiD160OursCondAcc", f"{ours_cond_acc:.3f}",
+          f"{relpath(D160_ROWS)}: mean(em) over ours claim-carrying rows")
+    m.add("osdiD160OursUcrGated", int(ours_ucr_gated),
+          f"{relpath(D160_ROWS)}: mean(ucr) over ours claim-carrying rows (post-gate)")
+    m.add("osdiD160OursUcrPreGate", f"{ours_ucr_pre:.3f}",
+          f"{relpath(D160_ROWS)}: mean(ucr_pre_gate) over the 257 ours rows that reached "
+          "claim proposal pre-gate")
+    m.add("osdiD160B6eCoverage", f"{b6e_coverage:.3f}",
+          f"{relpath(D160_ROWS)}: b6e rows with answer_object.claims non-empty / 282, pooled")
+    m.add("osdiD160B6eCondAcc", f"{b6e_cond_acc:.3f}",
+          f"{relpath(D160_ROWS)}: mean(em) over b6e claim-carrying rows")
+    m.add("osdiD160B5Em", f"{b5_em:.3f}",
+          f"{relpath(D160_ROWS)}: mean(em) over all 282 b5 rows (ungated, deterministic)")
+    m.add("osdiD160LlmDirectCarrying", len(llm_carry),
+          f"{relpath(D160_ROWS)}: llm_direct rows with answer_object.claims non-empty, pooled")
+    m.add("osdiD160LlmDirectOverflowErrors", len(llm_overflow),
+          f"{relpath(D160_ROWS)}: llm_direct rows whose task_error is "
+          "litellm.ContextWindowExceededError, of 282 (known pre-tokenizer-fix limitation, "
+          "see benchmarks/d160-collegemsg-v1/README.md)")
+    m.add("osdiOldGateCoverage", f"{old_gate_coverage:.3f}",
+          f"{relpath(SITE_FACTS)}: unsupported_claims.scope_required 199/282, cross-checked "
+          f"against {relpath(STABILITY_MD)} section 9's own stated 0.706 -- the pre-D-160-gate "
+          "coverage, printed only beside osdiD160OursCoverage, never in its place")
+    m.add("osdiOldGateUcr", int(float(old_uc["value"])),
+          f"{relpath(SITE_FACTS)}: unsupported_claims.value, of {old_gate_ucr_denominator} "
+          "emitted answers -- the pre-D-160-gate UCR")
+    m.add("osdiOldGateCondAcc", f"{old_gate_cond_acc:.3f}",
+          f"{relpath(STABILITY_MD)} section 9 (D-160): the pre-D-160-gate conditional accuracy "
+          "among emitted answers -- not a separate site_facts.json field, so parsed from and "
+          "cross-checked against that section's own prose")
+
+
+# --------------------------------------------------------------------------
 # pending stubs (records not yet landed)
 # --------------------------------------------------------------------------
 
@@ -948,6 +1163,14 @@ def add_pending_stubs(m: Macros) -> None:
     m.add_pending("osdiLiveCorrections", "C10 (live OSV workload)",
                   "the live-correction count is not yet in a committed record")
 
+    m.add_pending("osdiD160LlmDirectCoverageFixed", "D160-collegemsg (llm_direct tokenizer fix)",
+                  "manifest-llm-direct-fix-2026-09-14.json / rows-llm-direct-fix-2026-09-14.json "
+                  "have not landed -- job 212231 (real-tokenizer-aware budget, "
+                  "tgms/eval/baselines.py commits dab5c2a/8de040f) was running as of the "
+                  "benchmarks/d160-collegemsg-v1 commit; this record's own llm_direct coverage "
+                  "(osdiD160LlmDirectCarrying, 0/282) stands as first shipped and is not "
+                  "silently overwritten by this stub")
+
 
 # --------------------------------------------------------------------------
 # main
@@ -967,6 +1190,7 @@ def main() -> int:
     compute_c8(m)
     compute_c7_dag(m)
     compute_c7_r18(m)
+    compute_d160(m)
     add_pending_stubs(m)
 
     if FAILURES:
