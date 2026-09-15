@@ -1,0 +1,81 @@
+{
+  "config": {
+    "backend": "native",
+    "build_info": {
+      "debug_assertions": false,
+      "engine_version": "0.8.0",
+      "manifest_format_version": 3,
+      "opt_level": "3",
+      "profile": "release"
+    },
+    "cmd": "tgms replay /mnt/project/xzhang/tgms/longevity/2026-09-15/store/eventlog.jsonl --store /mnt/project/xzhang/tgms/longevity/2026-09-15/replay-check --backend native --compact-every 500",
+    "compact_every": 500,
+    "eventlog": "/mnt/project/xzhang/tgms/longevity/2026-09-15/store/eventlog.jsonl",
+    "max_disk_mb_watch_ceiling": 20000,
+    "out_store": "/mnt/project/xzhang/tgms/longevity/2026-09-15/replay-check",
+    "time_box_h": 12,
+    "worktree": "/mnt/project/xzhang/tgms/work/tgms-xz-039fda7"
+  },
+  "dataset": {
+    "digest": "e212b641a0ccd46248575cd0919768c699a256934388d305f465116c2b900d2a",
+    "digest_kind": "eventlog_sha",
+    "name": "longevity-2026-09-15-eventlog",
+    "size_bytes": 314897038,
+    "total_batches": 1074952
+  },
+  "digest_status": "not computed (process OOM-killed)",
+  "git_commit": "039fda7",
+  "machine": {
+    "cpus": 40,
+    "host": "xzgpu",
+    "platform": "Linux 5.4.0-216-generic x86_64",
+    "ram_gb": 93
+  },
+  "outcome": "aborted_oom",
+  "protocol": {
+    "ceilings": {
+      "compact_every": 500,
+      "max_disk_mb": 20000,
+      "time_box_h": 12
+    },
+    "reps": 1,
+    "warmups": 0
+  },
+  "record": "/mnt/project/xzhang/tgms/longevity/2026-09-15/replay-check.log",
+  "result_digest": "not_computed",
+  "schema_version": "1.0.0",
+  "seed": {
+    "value": 0
+  },
+  "summary": {
+    "attempt_1": {
+      "batches_applied_inferred": 512000,
+      "compaction_inference_basis": "compact_every=500: each cycle publishes 500 batch-commit generations + 1 compact()-commit generation (gc() publishes none, tgms/storage/eventlog.py::replay) = 501 generations/cycle; 513024 / 501 = 1024 exactly, implying 1024 compactions and ~512,000 of 1,074,952 batches (47.6%) applied before the kill. Not directly logged (stdout was 0 bytes at crash) -- inferred from the partial stores own manifest numbering, observed before that store was deleted to make room for the retry.",
+      "compactions_inferred": 1024,
+      "dmesg_line": "Out of memory: Killed process 2213341 (python) total-vm:94184404kB, anon-rss:82997140kB, file-rss:2408kB, shmem-rss:0kB, UID:1000 pgtables:181316kB oom_score_adj:0",
+      "highest_manifest_generation_observed": 513024,
+      "oom_utc": "2026-09-15T11:59:50Z",
+      "peak_out_dir_mb_caveat": "watched via periodic du -sm; disk never approached the 20000 MB abort ceiling -- the compact_every disk-growth fix (B7c) worked as designed. The failure mode was host RAM, not disk.",
+      "peak_out_dir_mb_observed": 485,
+      "pid": 2213341,
+      "start_utc": "2026-09-15T08:37:28Z",
+      "wall_s": 12142.0
+    },
+    "attempt_2_retry": {
+      "highest_manifest_generation_observed": 8015,
+      "killed_by": "deliberately killed (kill -9) on coordinator instruction once RSS growth made a repeat OOM at a similar generation clear, rather than letting the host block for another ~3.5h to reach it",
+      "killed_utc": "2026-09-15T12:09:23Z",
+      "not_deleted": true,
+      "partial_store_kept_for_diagnosis_lane": "/mnt/project/xzhang/tgms/longevity/2026-09-15/replay-check/",
+      "partial_store_size_mb": 396,
+      "pid": 2345872,
+      "purpose": "check whether attempt 1 was a one-off contention artifact or a reproducible, intrinsic memory-growth defect",
+      "start_utc": "2026-09-15T12:05:22Z"
+    },
+    "digest_equal": null,
+    "host_ram_gb_total": 93,
+    "prediction_frozen": "8eb9bc26fbf418df30b89fa85b5fd827c56ae90d14da84eb94a5f8683f6d9d72",
+    "prediction_status": "untested -- process crashed before any replay digest could be computed on either attempt"
+  },
+  "timestamp_utc": "2026-09-15T12:09:23Z"
+}
