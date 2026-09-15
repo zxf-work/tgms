@@ -108,6 +108,36 @@ manifest/records file is written at the end), concentrated in the
 `n_clients=64` step — not a per-commit leak, consistent with the
 read-only, no-commit environment note above.
 
+**Attribution diagnostic (2026-09-15, xzgpu, quiet host reverified).** To
+tell harness bookkeeping apart from the service surface
+(`ToolRouter`/`ConcurrencyGate`/envelope retention), the `n_clients=64`
+step was re-run alone (60 s, fresh store copy, no sweep around it) with
+`tracemalloc` started before the step and snapshotted after
+(76,800 calls: 13,847 ok, 62,953 refused — a harsher single-step version
+of the sweep's n=64 cell, run this way only to get a clean before/after
+diff). All 8 of the top allocation sites by traced size are in
+`scripts/eval_overload.py` (the harness), none in `tgms/…`:
+`eval_overload.py:165` (`local.append(CallRecord(...))`, 7.99 MB /
+153,603 objects), `:158` and `:157` (the `late_ms`/`wall_ms` float
+temporaries per call, 1.84 MB / 76,800-76,801 objects each), and
+`:167` (the per-client `records.extend(local)` list growth, 0.69 MB).
+The retained-list footprint matches directly: 76,800 `CallRecord`s ×
+~142 bytes each (`sys.getsizeof` on a 200-record sample, instance +
+its `outcome`/`refusal_stage` strings) ≈ 10.9 MB. Two caveats on reading
+this as the full explanation for the sweep's multi-GB RSS: (1) this
+isolated step's own `tracemalloc` peak was only 83.48 MB (current
+14.19 MB) — two orders of magnitude below the 1.7-2.0 GB `ps` RSS the
+sweep reached at the same step, even though this run issued *more*
+calls (76,800 vs. the sweep's 9,600 at that step); (2) `tracemalloc` only
+sees CPython-heap allocations, not the native `tgms._engine` (Rust)
+extension's own heap or glibc arena retention under heavy thread churn
+(64 client threads spawned per step). So the identified top sites are
+real and 100% harness-side, but they account for at most a low-double-digit
+MB share of the sweep's observed RSS growth — the multi-GB majority is not
+attributable to any specific line by this method and is most plausibly
+native-heap/allocator behavior outside `tracemalloc`'s visibility, not
+confirmed as either harness or service code.
+
 ## Files
 
 - `overload-2026-09-15.json` / `.records.json` — rep1
