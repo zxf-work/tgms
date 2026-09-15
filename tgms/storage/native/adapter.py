@@ -15,6 +15,7 @@ than a list of records, so an ingest chunk of 50,000 events is one crossing.
 from __future__ import annotations
 
 import json
+import time
 from pathlib import Path
 from typing import Any, Iterable, Sequence
 
@@ -61,6 +62,15 @@ class NativeAdapter(StorageAdapter):
     #: fetches identities afterwards for the rows that survive it, via
     #: `edge_idents_at`. Portable backends keep the base class columns.
     TCSR_COLS = ("src_id", "dst_id", "vt_s", "vt_e", "seg_id", "seg_row")
+
+    #: Wall-clock microseconds the last `commit()` call spent outside the
+    #: Rust engine's own `NativeStore::commit` (pyo3 argument marshalling,
+    #: GIL bookkeeping, this method's own frame) -- the pyo3-boundary slice
+    #: of the residual the B1-v2 A/B diagnosis (2026-09-15) found: engine-side
+    #: `total_us` is now fully accounted for by `last_commit_phases()`
+    #: (B1-v2d), but the harness's own `write_us` still wraps a call into
+    #: compiled code, and that call is not free. 0 before any commit.
+    _last_commit_python_wrap_us = 0
 
     def __init__(self, path: str | Path) -> None:
         self.path = Path(path)
@@ -143,10 +153,23 @@ class NativeAdapter(StorageAdapter):
     def commit(self) -> None:
         if not self._store.in_batch():
             return  # a batch that wrote nothing publishes nothing
+        t = time.perf_counter()
         try:
             self._store.commit()
         except Exception as e:
             raise _translate(e) from None
+        wall_us = int((time.perf_counter() - t) * 1e6)
+        # `last_commit_phases()["total_us"]` is the Rust engine's own
+        # `commit_start.elapsed()` (B1-v2d fully accounts for it internally);
+        # what's left over here is the pyo3 call boundary this method pays on
+        # top of that, never negative by construction but clamped anyway
+        # against clock-source jitter between the two timers.
+        engine_us = int(self._store.last_commit_phases()["total_us"])
+        self._last_commit_python_wrap_us = max(0, wall_us - engine_us)
+
+    def last_commit_python_wrap_us(self) -> int:
+        """See `_last_commit_python_wrap_us`. 0 before any commit."""
+        return self._last_commit_python_wrap_us
 
     def rollback(self) -> None:
         if not self._store.in_batch():

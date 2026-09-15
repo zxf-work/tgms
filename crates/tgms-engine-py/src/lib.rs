@@ -229,10 +229,13 @@ impl NativeStore {
         let p = self.inner.last_commit_phases()?;
         let d = PyDict::new(py);
         for (k, v) in [
+            ("capture_us", p.capture_us),
             ("seal_us", p.seal_us),
             ("closes_us", p.closes_us),
             ("stats_us", p.stats_us),
             ("dict_us", p.dict_us),
+            ("digest_us", p.digest_us),
+            ("delta_build_us", p.delta_build_us),
             ("manifest_us", p.manifest_us),
             ("current_us", p.current_us),
             ("total_us", p.total_us),

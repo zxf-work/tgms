@@ -296,6 +296,82 @@ def cmd_mixed(args: argparse.Namespace) -> tuple[int, dict[str, Any]]:
 # mode: commitcost — where a singleton commit's time goes                     #
 # --------------------------------------------------------------------------- #
 
+# The engine phases that must fully account for `total_us` -- everything
+# `NativeStore::commit` times, other than `total_us` itself
+# (`crates/tgms-engine-core/src/store.rs::CommitPhases`, B1-v2d). Kept as a
+# module constant rather than re-deriving it from a phase dict's keys because
+# `wal_us`/`apply_us`/`python_wrap_us` (Python-side) and `write_us` (the
+# harness's own outer wrapper) share the `_us` suffix but are not part of
+# what the engine's `total_us` is supposed to sum to.
+ENGINE_PHASE_KEYS = (
+    "capture_us", "seal_us", "closes_us", "stats_us", "dict_us",
+    "digest_us", "delta_build_us", "manifest_us", "current_us",
+)
+
+
+def _aggregate_commit_phases(phases: list[dict[str, Any]]) -> dict[str, Any]:
+    """Per-commit phase dicts (as `_timed_write` returns) -> a commitcost
+    row's summary fields.
+
+    `phase_p50_us`/`first_decile_us`/`last_decile_us` are the pre-B1-v2d
+    median-based fields, unchanged, for existing consumers.
+
+    `phase_decile_first_us`/`phase_decile_last_us` are new: the *mean* (not
+    median) over the same first/last-decile window, per phase -- a mean
+    moves on a fat right tail a median can hide, which is exactly the shape
+    a per-commit fsync or a growing directory-entry count would take.
+
+    `residual_first_us`/`residual_last_us` re-derive the B1V2_AB_DIAGNOSIS
+    memo's own Q1 metric -- `total_us` minus the named engine phases -- per
+    commit, meaned over the same window, so a commitcost record shows on its
+    own whether the B1-v2d instrumentation actually closed the gap (it
+    should sit near zero; a nonzero, growing value here means some region of
+    the commit path is still untimed).
+    """
+    if not phases:
+        raise ValueError("_aggregate_commit_phases needs at least one commit")
+    k = max(1, len(phases) // 10)
+    keys = sorted(phases[0])
+
+    def med(ps: list[dict[str, Any]], key: str) -> int:
+        return int(statistics.median([p[key] for p in ps]))
+
+    def mean_us(ps: list[dict[str, Any]], key: str) -> float:
+        return statistics.fmean(p[key] for p in ps)
+
+    def residual(ps: list[dict[str, Any]]) -> float:
+        return statistics.fmean(
+            p["total_us"] - sum(p.get(pk, 0) for pk in ENGINE_PHASE_KEYS)
+            for p in ps)
+
+    first, last = phases[:k], phases[-k:]
+    return {
+        "phase_p50_us": {k2: med(phases, k2) for k2 in keys},
+        "first_decile_us": {k2: med(first, k2) for k2 in keys},
+        "last_decile_us": {k2: med(last, k2) for k2 in keys},
+        "phase_decile_first_us": {k2: mean_us(first, k2) for k2 in keys},
+        "phase_decile_last_us": {k2: mean_us(last, k2) for k2 in keys},
+        "residual_first_us": residual(first),
+        "residual_last_us": residual(last),
+    }
+
+
+def _dir_entry_counts(native_root: Path) -> dict[str, int]:
+    """How many files sit in `seg/` and `manifests/` right now.
+
+    The B1V2_AB_DIAGNOSIS memo's candidate 2b (§1.4) is a directory-fsync
+    cost tied to the growing entry count `write_atomic` fsyncs against;
+    recording the count at the first and last commit turns "35 -> 575
+    segments" from a number read off a raw JSON file into part of the record
+    a commitcost run produces.
+    """
+    counts = {}
+    for sub in ("seg", "manifests"):
+        d = native_root / sub
+        counts[sub] = sum(1 for _ in d.iterdir()) if d.exists() else 0
+    return counts
+
+
 
 def _timed_write(store, events: list[dict[str, Any]]) -> dict[str, int]:
     """One write batch, driven layer by layer instead of through `_write`.
@@ -328,7 +404,8 @@ def _timed_write(store, events: list[dict[str, Any]]) -> dict[str, int]:
     write_us = int((time.perf_counter() - t_all) * 1e6)
     assert a.generation == gen0 + 1, "a batch must publish exactly one generation"
     ph = {k: int(v) for k, v in a._store.last_commit_phases().items()}
-    ph.update({"wal_us": wal_us, "apply_us": apply_us, "write_us": write_us})
+    ph.update({"wal_us": wal_us, "apply_us": apply_us, "write_us": write_us,
+               "python_wrap_us": a.last_commit_python_wrap_us()})
     return ph
 
 
@@ -347,33 +424,35 @@ def cmd_commitcost(args: argparse.Namespace) -> tuple[int, dict[str, Any]]:
     out: list[dict[str, Any]] = []
     for batch in rows:
         root = Path(tempfile.mkdtemp(prefix="tgms-cc-")) / "s"
+        native_root = root / "native"
         s = tgms.open(root, backend="native")
         s.ingest_events([{"src": f"p{i}", "dst": f"q{i}", "rel_type": "R",
                           "vt_s": i} for i in range(args.seed_rows)])
         lat, phases = [], []
+        dir_entries_first: dict[str, int] | None = None
+        dir_entries_last: dict[str, int] | None = None
         n = 0
-        for _ in range(args.commits):
+        for i in range(args.commits):
             events = [{"src": f"a{n + j}", "dst": f"b{n + j}", "rel_type": "R",
                        "vt_s": 1_000_000 + n + j} for j in range(batch)]
             phases.append(_timed_write(s, events))
             lat.append(phases[-1]["write_us"] / 1e3)
             n += batch
-        # first vs last decile: does the cost grow with store history?
-        k = max(1, len(phases) // 10)
+            if i == 0:
+                dir_entries_first = _dir_entry_counts(native_root)
+            if i == args.commits - 1:
+                dir_entries_last = _dir_entry_counts(native_root)
 
-        def med(ps: list[dict], key: str) -> int:
-            return int(statistics.median([p[key] for p in ps]))
-
-        keys = sorted(phases[0])
         row = {
             "batch_rows": batch, "commits": args.commits,
             "commit_ms": dist(lat),
             "ms_per_row": round(statistics.median(lat) / batch, 4),
-            "phase_p50_us": {k2: med(phases, k2) for k2 in keys},
-            "first_decile_us": {k2: med(phases[:k], k2) for k2 in keys},
-            "last_decile_us": {k2: med(phases[-k:], k2) for k2 in keys},
+            **_aggregate_commit_phases(phases),
             "store_bytes": sum(f.stat().st_size
                                for f in root.rglob("*") if f.is_file()),
+            "dir_entries_first": dir_entries_first,
+            "dir_entries_last": dir_entries_last,
+            "build_info": _engine_build_info(),
         }
         out.append(row)
         p = row["phase_p50_us"]
@@ -391,6 +470,11 @@ def cmd_commitcost(args: argparse.Namespace) -> tuple[int, dict[str, Any]]:
               f"{last['write_us'] / 1e3:.2f} ms, "
               f"manifest {first['manifest_bytes']:,}->{last['manifest_bytes']:,} B",
               flush=True)
+        print(f"      residual first->last decile (mean): "
+              f"{row['residual_first_us']:.1f}->{row['residual_last_us']:.1f} us | "
+              f"seg/ {dir_entries_first['seg']}->{dir_entries_last['seg']}, "
+              f"manifests/ {dir_entries_first['manifests']}->"
+              f"{dir_entries_last['manifests']}", flush=True)
         s.close()
     return 0, {"mode": "commitcost", "seed_rows": args.seed_rows,
                "commits": args.commits, "records": out}

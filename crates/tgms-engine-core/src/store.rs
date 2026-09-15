@@ -189,6 +189,11 @@ pub struct NativeStore {
 /// rather than argued.
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
 pub struct CommitPhases {
+    /// Step 1: `CommitBase::capture` — the O(log n) snapshot of scalars plus
+    /// the Merkle state, taken before `commit_inner` touches anything, so a
+    /// failed commit can roll back to it (B1-v2d: previously untimed, folded
+    /// into the residual between `commit_start` and `seal_us`).
+    pub capture_us: u64,
     /// Step 2: staged rows sealed into segment files, written and fsynced.
     pub seal_us: u64,
     /// Step 2b: the close run for corrections against committed rows.
@@ -197,7 +202,19 @@ pub struct CommitPhases {
     pub stats_us: u64,
     /// Step 3: the dictionary tail, written and fsynced.
     pub dict_us: u64,
-    /// Step 4: manifest serialized, written, fsynced, renamed, dir fsynced.
+    /// `Manifest::seal_with` — the manifest digest, O(1) from the maintained
+    /// Merkle state at format >= 3, O(segments) (`legacy_body_sha`) below it
+    /// (B1-v2d: previously untimed, the gap between `dict_us` and step 4's
+    /// JSON build the B1-v2 A/B diagnosis (2026-09-15) found absorbing the
+    /// fmt2 arms' decile growth).
+    pub digest_us: u64,
+    /// Step 4a: building the manifest record's JSON — a delta
+    /// (`ManifestDelta::from_appends`, O(appended)) most generations, or a
+    /// full checkpoint (`manifest_chain::checkpoint_json`, O(segments)) every
+    /// `every`th one. Split from `manifest_us` because it used to run before
+    /// that timer started (B1-v2d).
+    pub delta_build_us: u64,
+    /// Step 4b: manifest JSON written, fsynced, renamed, dir fsynced.
     pub manifest_us: u64,
     /// Step 5: `CURRENT` rewritten atomically — the publication point.
     pub current_us: u64,
@@ -624,18 +641,22 @@ impl NativeStore {
     /// digest check in test builds, where it is a real net over the
     /// incremental seal.
     ///
-    /// Returns `(manifest_us, current_us, manifest_bytes, checkpoint_gen)`.
-    /// The timing split matters because step 4 used to rewrite the whole
-    /// manifest every generation while step 5 writes forty bytes; the point
-    /// of this change is that step 4 no longer grows with store history
-    /// either, so the split is what shows it.
+    /// Returns `(manifest_us, current_us, manifest_bytes, checkpoint_gen,
+    /// delta_build_us)`. The timing split matters because step 4 used to
+    /// rewrite the whole manifest every generation while step 5 writes forty
+    /// bytes; the point of this change is that step 4 no longer grows with
+    /// store history either, so the split is what shows it. `delta_build_us`
+    /// is split out separately (B1-v2d) because it used to run entirely
+    /// before `manifest_us`'s timer started — the delta-or-checkpoint JSON
+    /// this builds is what the B1-v2 A/B diagnosis (2026-09-15, §1.5) flagged
+    /// as needing its own timer, isolated from `digest_us`.
     fn publish(
         root: &Path,
         appended: Option<(&AppendSpan, u64)>,
         manifest: &Manifest,
         force_checkpoint: bool,
         every: u64,
-    ) -> Result<(u64, u64, u64, u64)> {
+    ) -> Result<(u64, u64, u64, u64, u64)> {
         debug_assert_eq!(
             manifest.manifest_sha,
             manifest.body_sha_canonical(),
@@ -645,6 +666,7 @@ impl NativeStore {
             return Err(manifest_chain::read_only_format_error(manifest.format));
         }
         let generation = manifest.generation;
+        let t = std::time::Instant::now();
         let delta = if force_checkpoint || generation.is_multiple_of(every) {
             None
         } else {
@@ -654,6 +676,7 @@ impl NativeStore {
             Some(d) => (d.to_json(), appended.expect("a delta needs a parent").1),
             None => (manifest_chain::checkpoint_json(manifest), generation),
         };
+        let delta_build_us = t.elapsed().as_micros() as u64;
 
         let m_path = Self::manifest_path(root, generation);
         let t = std::time::Instant::now();
@@ -671,6 +694,7 @@ impl NativeStore {
             t.elapsed().as_micros() as u64,
             json.len() as u64,
             checkpoint_gen,
+            delta_build_us,
         ))
     }
 
@@ -796,7 +820,7 @@ impl NativeStore {
             ));
         }
         self.require_writable_format()?;
-        let (_, _, _, ckpt) = Self::publish(
+        let (_, _, _, ckpt, _) = Self::publish(
             &self.root,
             None,
             &next,
@@ -911,7 +935,7 @@ impl NativeStore {
         let mut next = self.manifest.successor(self.manifest.created_tt);
         next.format = crate::MANIFEST_FORMAT_VERSION;
         next.seal();
-        let (_, _, _, ckpt) = Self::publish(
+        let (_, _, _, ckpt, _) = Self::publish(
             &self.root,
             None,
             &next,
@@ -1596,7 +1620,9 @@ impl NativeStore {
         self.require_writable_format()?;
         let mut phases = CommitPhases::default();
         let commit_start = std::time::Instant::now();
+        let capture_t = std::time::Instant::now();
         let base = CommitBase::capture(&self.manifest, &self.merkle);
+        phases.capture_us = capture_t.elapsed().as_micros() as u64;
         match self.commit_inner(tt, event_log, &base, &mut phases, commit_start) {
             Ok(generation) => Ok(generation),
             Err(e) => {
@@ -1698,21 +1724,29 @@ impl NativeStore {
         next.dict.bytes = bytes;
         next.stats.n_entities = self.dict.len();
         // O(1) against the state the appends above kept in step, where
-        // `seal()` would re-serialize every live segment
+        // `seal()` would re-serialize every live segment — except below
+        // format 3, where `seal_with` itself falls back to the O(segments)
+        // whole-document rehash (`Manifest::legacy_body_sha`); timed either
+        // way so that fallback shows up rather than vanishing into the gap
+        // between `dict_us` and step 4.
+        let phase = std::time::Instant::now();
         next.seal_with(state);
+        phases.digest_us = phase.elapsed().as_micros() as u64;
         phases.segments_named = (next.edge_lanes.event.len()
             + next.edge_lanes.interval.len()
             + next.node_store.len()) as u64;
 
         // steps 4-5 — manifest record, then CURRENT
         let span = base.span();
-        let (manifest_us, current_us, manifest_bytes, checkpoint_gen) = Self::publish(
-            &self.root,
-            Some((&span, self.checkpoint_gen)),
-            &self.manifest,
-            false,
-            self.checkpoint_every(),
-        )?;
+        let (manifest_us, current_us, manifest_bytes, checkpoint_gen, delta_build_us) =
+            Self::publish(
+                &self.root,
+                Some((&span, self.checkpoint_gen)),
+                &self.manifest,
+                false,
+                self.checkpoint_every(),
+            )?;
+        phases.delta_build_us = delta_build_us;
         phases.manifest_us = manifest_us;
         phases.current_us = current_us;
         phases.manifest_bytes = manifest_bytes;
@@ -2979,6 +3013,51 @@ mod tests {
 
             // and the phase record says which was written
             assert!(!s.last_commit_phases().unwrap().manifest_checkpoint);
+        }
+    }
+
+    #[test]
+    fn commit_phases_fully_account_for_total_us_over_sixty_singleton_commits() {
+        // B1V2_AB_DIAGNOSIS_2026-09-15.md Q1: the B1 A/B's untimed residual
+        // (total_us minus the sum of every named phase) absorbed 100% of the
+        // last/first-decile growth in engine-commit `total_us`, in every
+        // format and every arm. B1-v2d adds `capture_us` (`CommitBase::
+        // capture`), `digest_us` (`Manifest::seal_with`), and
+        // `delta_build_us` (the delta-or-checkpoint JSON `publish` used to
+        // build before its own timer started) to close that gap. This
+        // asserts the invariant holds on *every* commit, not just on
+        // average, over a run long enough to grow the segment/manifest
+        // history the diagnosis's candidate mechanisms depend on.
+        let root = tmp_root("phase-accounting");
+        let mut s = NativeStore::open(&root).unwrap();
+        for tt in 1..=60i64 {
+            let uid = format!("n{tt}");
+            let g = commit_with(&mut s, tt, &[uid.as_str()]);
+            assert_eq!(g, tt as u64);
+            let p = s.last_commit_phases().unwrap();
+            let named_sum = p.capture_us
+                + p.seal_us
+                + p.closes_us
+                + p.stats_us
+                + p.dict_us
+                + p.digest_us
+                + p.delta_build_us
+                + p.manifest_us
+                + p.current_us;
+            assert!(
+                p.total_us >= named_sum,
+                "commit {tt}: named phases ({named_sum}us) exceed total_us \
+                 ({}us) -- a phase is double-counting another's window",
+                p.total_us
+            );
+            let residual = p.total_us - named_sum;
+            let bound = std::cmp::max(50, p.total_us / 50); // max(50us, 2%)
+            assert!(
+                residual <= bound,
+                "commit {tt}: total_us={} named_sum={named_sum} \
+                 residual={residual}us exceeds max(50us, 2%)={bound}us",
+                p.total_us
+            );
         }
     }
 
