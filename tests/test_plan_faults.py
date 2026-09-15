@@ -510,3 +510,44 @@ def test_dry_run_lists_cells_without_a_store():
         if cell_id == "F2-7":
             continue
         assert any(line.startswith(cell_id + "\t") for line in lines), cell_id
+
+
+def test_f1_8_candidate_filter_does_not_depend_on_prior_registry_population():
+    """Symptom: `--cells F1-8` run alone found 0 candidate steps and
+    produced 0 trials, while `--cells F1-6b,F1-8` in the same process
+    produced trials -- because F1-6b's mutator happened to populate
+    `tgms.temporal.algebra.REGISTRY` first. Cause: the registry is filled
+    lazily by `ensure_all_registered()`, and the F1-8 candidate filter
+    (`f1_8_rows_steps`) is the only registry consumer on the driver's
+    import path with nothing upstream of it (`ToolRouter`,
+    `validate_static`, a mutator) guaranteed to have called it. This runs
+    in a fresh interpreter, via subprocess, so the registry really starts
+    empty; it needs no store and no native engine."""
+    import os
+    script = (
+        "import importlib.util, json, sys\n"
+        "from pathlib import Path\n"
+        "ROOT = Path(sys.argv[1])\n"
+        "spec = importlib.util.spec_from_file_location(\n"
+        "    'drv', ROOT / 'scripts/eval_trust_boundary_matrix.py')\n"
+        "drv = importlib.util.module_from_spec(spec)\n"
+        "spec.loader.exec_module(drv)\n"
+        "from tgms.temporal.algebra import REGISTRY\n"
+        "n_before = len(REGISTRY)\n"
+        "suite = json.loads(\n"
+        "    (ROOT / 'benchmarks/frozen-v1/suite-collegemsg.json').read_text())\n"
+        "tasks = drv.oracle_tasks(suite)\n"
+        "n_cands = sum(1 for t in tasks if drv.f1_8_rows_steps(t['oracle_plan']))\n"
+        "print(json.dumps({'n_before': n_before, 'n_after': len(REGISTRY),\n"
+        "                   'n_tasks': len(tasks), 'n_cands': n_cands}))\n"
+    )
+    result = subprocess.run(
+        [sys.executable, "-c", script, str(ROOT)],
+        capture_output=True, text=True,
+        env={**os.environ, "PYTHONPATH": str(ROOT)}, timeout=60)
+    assert result.returncode == 0, result.stdout + result.stderr
+    out = json.loads(result.stdout.strip().splitlines()[-1])
+    assert out["n_before"] == 0  # registry is lazy: importing the driver alone registers nothing
+    assert out["n_after"] > 0
+    assert out["n_tasks"] == 116
+    assert out["n_cands"] >= 50  # 79 of 116 with the registry populated (measured 2026-09-14)
