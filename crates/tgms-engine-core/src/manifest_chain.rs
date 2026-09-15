@@ -682,23 +682,55 @@ const TAG_SNIFF_WINDOW: usize = 1024;
 
 /// Read `"<key>": "<value>"` from the leading [`TAG_SNIFF_WINDOW`] bytes of a
 /// manifest document, without parsing it. `None` means the key is absent
-/// from that window.
+/// from that window — either genuinely absent (format 1 never wrote `kind`;
+/// no format below 3 writes `sha_kind`), or, in principle, present but
+/// pushed past the window by something unusual ahead of it; either way
+/// [`parse_record_raw`] falls back to the typed parse's own error rather
+/// than guessing.
 ///
 /// Byte-level rather than a `serde_json::Value` sniff: the whole point is to
 /// avoid materialising the O(segments) body just to read two tag fields that
-/// every writer this build has ever used places ahead of it. This assumes
-/// the tag's own value contains no `"` — true of every value this build
-/// writes (`"checkpoint"`, `"delta"`, `"merkle-v1"`); a value that did would
-/// simply misread a truncated tag here, which then fails the subsequent
-/// typed parse or the `sha_kind` corruption check rather than silently
-/// succeeding.
+/// every writer this build has ever used places ahead of it — confirmed from
+/// the source, not assumed: `checkpoint_json` and `ManifestDelta::to_json`
+/// (this file) are the only two constructors of on-disk manifest JSON
+/// `store.rs` ever calls (`write_atomic` sites), and both go through
+/// `serde_json::to_string_pretty`, never the compact `to_string`. This sniff
+/// does not depend on that pretty-printing, though: the match is tolerant of
+/// whitespace (`"<key>"`, optional whitespace, `:`, optional whitespace,
+/// `"`) so a compact, differently-indented, or hand-written document with
+/// the ordinary `"key": "value"` shape is still read correctly — it exists
+/// for the case where whitespace does *not* matter, not because it does.
+///
+/// This assumes the tag's own value contains no `"` — true of every value
+/// this build writes (`"checkpoint"`, `"delta"`, `"merkle-v1"`); a value
+/// that did would simply misread a truncated tag here, which then fails the
+/// subsequent typed parse or the `sha_kind` corruption check rather than
+/// silently succeeding.
 fn sniff_tag<'a>(text: &'a str, key: &str) -> Option<&'a str> {
     let bytes = text.as_bytes();
     let window = &bytes[..bytes.len().min(TAG_SNIFF_WINDOW)];
-    let needle = format!("\"{key}\": \"");
-    let start = find_bytes(window, needle.as_bytes())? + needle.len();
+    let key_needle = format!("\"{key}\"");
+    let mut i = find_bytes(window, key_needle.as_bytes())? + key_needle.len();
+    i += skip_ws(&window[i..]);
+    if window.get(i) != Some(&b':') {
+        return None;
+    }
+    i += 1;
+    i += skip_ws(&window[i..]);
+    if window.get(i) != Some(&b'"') {
+        return None;
+    }
+    let start = i + 1;
     let end = find_bytes(&window[start..], b"\"")?;
     std::str::from_utf8(&window[start..start + end]).ok()
+}
+
+/// How many leading bytes of `s` are JSON insignificant whitespace (space,
+/// tab, CR, LF — the four RFC 8259 permits between tokens).
+fn skip_ws(s: &[u8]) -> usize {
+    s.iter()
+        .take_while(|b| matches!(b, b' ' | b'\t' | b'\r' | b'\n'))
+        .count()
 }
 
 fn find_bytes(haystack: &[u8], needle: &[u8]) -> Option<usize> {
