@@ -1,0 +1,57 @@
+{
+  "named_phase_us_share_of_total_median": 0.9992,
+  "open_ms": [
+    1182.145,
+    1155.303,
+    1071.953
+  ],
+  "open_ms_median": 1155.303,
+  "open_phase_p50_us": {
+    "chain_format": 3,
+    "checkpoint_read_parse_us": 12670,
+    "delta_count": 388,
+    "delta_replay_us": 6256,
+    "dictionary_open_us": 1092729,
+    "merkle_verify_us": 34858,
+    "other_us": 879,
+    "state_build_us": 5935,
+    "total_us": 1155032
+  },
+  "open_phase_us": [
+    {
+      "chain_format": 3,
+      "checkpoint_read_parse_us": 28859,
+      "delta_count": 388,
+      "delta_replay_us": 6615,
+      "dictionary_open_us": 1092729,
+      "merkle_verify_us": 46660,
+      "other_us": 1138,
+      "state_build_us": 6010,
+      "total_us": 1182011
+    },
+    {
+      "chain_format": 3,
+      "checkpoint_read_parse_us": 12670,
+      "delta_count": 388,
+      "delta_replay_us": 6256,
+      "dictionary_open_us": 1094449,
+      "merkle_verify_us": 34858,
+      "other_us": 879,
+      "state_build_us": 5920,
+      "total_us": 1155032
+    },
+    {
+      "chain_format": 3,
+      "checkpoint_read_parse_us": 11873,
+      "delta_count": 388,
+      "delta_replay_us": 6059,
+      "dictionary_open_us": 1012807,
+      "merkle_verify_us": 34077,
+      "other_us": 875,
+      "state_build_us": 5935,
+      "total_us": 1071626
+    }
+  ],
+  "reps": 3,
+  "store": "/mnt/project/xzhang/tgms/tmp/co7-work/treatment-store"
+}

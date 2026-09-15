@@ -1,0 +1,10 @@
+{
+  "store": "/mnt/project/xzhang/tgms/tmp/co7-work/control-store",
+  "reps": 3,
+  "open_ms": [
+    9281.928,
+    10100.238,
+    10184.328
+  ],
+  "open_ms_median": 10100.238
+}
