@@ -265,6 +265,75 @@ def test_resume_without_flag_refuses(tmp_path: Path):
         B.build(out, N_SMALL, 0, 20, 1_000_000, "native", False, None)
 
 
+#: The task's own digest-mode test scale -- big enough to force several
+#: bulk-ingest batches and several `store_digest_streaming` spill chunks
+#: (with a small `--batch`/`chunk_rows`), small enough to stay a laptop-scale
+#: gate.
+N_DIGEST = 20_000
+
+
+def test_digest_mode_full_and_streaming_agree(tmp_path: Path):
+    """`--digest full` and `--digest streaming`, run through the driver's own
+    `--digest` plumbing at a scale where the bulk phase spans several
+    batches, must land on the same `store.digest()` value for the *same*
+    store.
+
+    Building it twice independently (once per `digest_mode`) would not test
+    this: `store.digest()` is tt-derived from the wall-clock
+    `HybridLogicalClock`, so two independent ingests of identical logical
+    content legitimately produce different digests regardless of
+    `digest_mode` (D-023, this module's own "Digest equivalence" docstring
+    section, and `tests/test_build_synth_store.py::
+    test_equivalence_with_old_generator` above). So this builds once with
+    `digest_mode="none"` (cheap -- no digest pass at build time) and then
+    computes both digests directly on that one store afterward, which is
+    exactly the byte-identity claim `store_digest_streaming` makes
+    (`tests/test_store_digest_streaming.py` proves it in isolation; this
+    reconfirms it through the driver's own call path)."""
+    out = tmp_path / "once"
+    result = B.build(out, N_DIGEST, 0, 2_000, 1_000_000, "native", False, None, "none")
+    assert result["complete"] and result["digest_mode"] == "none"
+
+    store = tgms.open(out, backend="native")
+    full = store.adapter.store_digest()
+    streaming = store.adapter.store_digest_streaming(chunk_rows=500)
+    store.close()
+
+    assert streaming == full
+
+
+def test_digest_mode_none_writes_null_with_mode_recorded(tmp_path: Path):
+    out = tmp_path / "none"
+    result = B.build(out, N_DIGEST, 0, 2_000, 1_000_000, "native", False, None, "none")
+    assert result["complete"]
+    assert result["digest_mode"] == "none"
+    assert result["store_digest"] is None
+    assert result["content_digest"] is None
+
+    record = json.loads((out / "build-record.json").read_text())
+    assert record["config"]["digest_mode"] == "none"
+    assert record["build_info"]["digest_mode"] == "none"
+    assert record["build_info"]["store_digest"] is None
+    assert record["build_info"]["content_digest"] is None
+
+    # The schema's dataset.digest/result_digest are required non-empty
+    # strings unconditionally -- "none" still owes the sidecar a real, cheap
+    # (O(1)) identity rather than skipping the field outright.
+    assert record["dataset"]["digest_kind"] == "manifest"
+    assert isinstance(record["dataset"]["digest"], str) and record["dataset"]["digest"]
+    assert isinstance(record["result_digest"], str) and record["result_digest"]
+
+    schema = json.loads((ROOT / "benchmarks/schema/result_manifest.schema.json").read_text())
+    jsonschema.validate(record, schema)
+
+
+def test_digest_mode_default_scales_with_n_entities():
+    assert B.default_digest_mode(0) == "full"
+    assert B.default_digest_mode(B.DIGEST_AUTO_THRESHOLD - 1) == "full"
+    assert B.default_digest_mode(B.DIGEST_AUTO_THRESHOLD) == "none"
+    assert B.default_digest_mode(B.DIGEST_AUTO_THRESHOLD * 10) == "none"
+
+
 def test_resume_parameter_mismatch_refuses(tmp_path: Path):
     out = tmp_path / "s"
     r = B.build(out, N_SMALL, 0, 20, 1_000_000, "native", False, stop_at_ops=30)
