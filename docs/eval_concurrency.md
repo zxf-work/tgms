@@ -628,6 +628,57 @@ working tree:
         --max-disk-mb 512000 \
         > /mnt/project/xzhang/tgms/longevity/<date>/orchestrator.log 2>&1 &
 
+### 24 h soak — measured (2026-09-15)
+
+The real run landed: xzgpu, commit `886805f`, `stores/synth-1m-native`,
+launched 2026-09-14 ~05:15 UTC, `RUN_DONE` 2026-09-15T05:16:02Z (wall
+86,523.3s). Two flags differed from this section's own example line above
+(`--artifacts 500` not 20, `--max-disk-mb 20000` not 512000) per an
+explicit launch instruction; full record, Gate E table, and the reasoning
+behind every number below: `benchmarks/longevity-v1/README.md`.
+
+Headline numbers, not a substitute for that README's caveats:
+
+- **Gate E**: deterministic-final-state and no-unbounded-memory both read
+  FAIL, metadata-growth and throughput-drift both PASS, errors observed
+  FLAGged, 41 recoveries / 2 reader restarts. **Read the README before
+  citing any of these** — two of the four non-PASS rows are reporting
+  artifacts of this harness, not necessarily engine findings.
+- **`digest_equal` is `null` (not computed), not `false`**: the final
+  replay/digest-equivalence step never ran — 1,074,952 uncompacted batches
+  (this mix's writer ran effectively unthrottled) projected to ~268 PB of
+  D-149-pathology manifests under replay, which the `--max-disk-mb=20000`
+  guard correctly refused to pay for. `verify_healthy=true` (the store's
+  own internal check) did pass. No `--max-disk-mb` this section would
+  plausibly recommend avoids this; the real requirement is seven orders of
+  magnitude larger.
+- **`errors observed` says 1; the real count is 249.** `summarize()`
+  aggregates unlabeled per-life writer counters via `counter_latest`,
+  which — for any run with writer restarts — keeps only the last life's
+  sample per metric key and silently discards every prior life's count.
+  This is a harness bug (`scripts/longevity_run.py`), not (necessarily) an
+  engine one, and it is not specific to this run: any soak with
+  `--restart-every` set will under-report `error_count`,
+  `appends`/`corrections`/`artifact_*` totals the same way unless read
+  from the per-life `writer_progress-<life>.json` files directly, as
+  `benchmarks/longevity-v1/writer_error_counts_by_life.json` does. Fixing
+  the aggregation (label counters by life index, or sum instead of
+  latest-wins) and adding exception-type labels to the writer's error path
+  (the reader path already has these; the writer path does not, so this
+  run's 249 errors have no recorded cause) is unresolved follow-up work,
+  not done here since it would touch the code this run measured.
+- **Reader 6's death (offset 300871482, 2026-09-15T03:15:04Z) is
+  `ops/failure_ledger.jsonl`'s `D-086-reader-torn-tail-race` entry's own
+  `observed_in_the_wild` instance** — recorded on `main` (`653eeaa`) while
+  this soak was still running, fixed there (series `ef97d2d`/`43f6ef4`,
+  final `3a664a8` — the two-condition rule: torn record at/after the
+  applied offset **and** `writer.lock` currently held) but *not* in this
+  run's pinned, pre-fix commit `886805f`. **Reader 5 died the same way**
+  90 minutes later (offset 311080182) and is not named in the ledger's
+  `observed_in_the_wild` note, which only covers reader 6 — see the README
+  for why that note is incomplete on this point. Both recovered cleanly;
+  the store was undamaged.
+
 ---
 
 ## Honest limits
