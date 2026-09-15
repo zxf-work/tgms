@@ -78,6 +78,7 @@ def _run_all_landed(mod):
     mod.compute_c8(m)
     mod.compute_c7_dag(m)
     mod.compute_c7_r18(m)
+    mod.compute_c7_storm_v2(m)
     mod.compute_d160(m)
     mod.compute_d160_llm_direct_fix(m)
     mod.compute_c2(m)
@@ -208,6 +209,28 @@ FROZEN_LANDED_VALUES = {
     "osdiR18Speedup": "0.807",
     "osdiR18Precision": "8.51",
     "osdiR18AvoidedRecompute": "29.9",
+    "osdiStormV2Commit": "fdd393c",
+    "osdiStormV2Cells": "36",
+    "osdiStormV2CellsFailed": "0",
+    "osdiStormV2AllTopTerms": "0",
+    "osdiStormV2NonComputeArtifacts": "29{,}826",
+    "osdiStormV2SpeedupN1kSeed0": "5.173",
+    "osdiStormV2AvoidedDecisionC1Median": "0.755",
+    "osdiStormV2FalseFreshTgmsCellsNonzero": "0",
+    "osdiStormV2SpeedupSynthC1None": "5.173",
+    "osdiStormV2SpeedupSynthC1Deep": "4.902",
+    "osdiStormV2SpeedupSynthC3None": "5.642",
+    "osdiStormV2SpeedupSynthC3Deep": "5.217",
+    "osdiStormV2SpeedupSynthC4None": "6.367",
+    "osdiStormV2SpeedupSynthC4Deep": "5.022",
+    "osdiStormV2SpeedupCollegeMsgC1None": "6.189",
+    "osdiStormV2SpeedupCollegeMsgC1Deep": "6.821",
+    "osdiStormV2SpeedupCollegeMsgC3None": "6.662",
+    "osdiStormV2SpeedupCollegeMsgC3Deep": "6.332",
+    "osdiStormV2SpeedupCollegeMsgC4None": "7.433",
+    "osdiStormV2SpeedupCollegeMsgC4Deep": "8.071",
+    "osdiStormV2SpeedupGridMin": "4.588",
+    "osdiStormV2SpeedupGridMax": "8.863",
     "osdiD160Tasks": "94",
     "osdiD160TaskRuns": "282",
     "osdiD160OursCarrying": "112",
@@ -319,6 +342,8 @@ def test_pending_macros_raise_a_latex_error_never_a_placeholder_number():
     expected_names = {
         "osdiTtfSpeedup", "osdiStormCells", "osdiStormFalseFresh",
         "osdiStormSpeedupN1k", "osdiStormAvoidedN1k",
+        "osdiStormV1SpeedupN1kSeed0", "osdiStormV2SurvivorFractionC1Median",
+        "osdiStormV2PrecisionC1Median",
         "osdiLdbcExpressible", "osdiLdbcExecuted", "osdiLdbcValidated",
         "osdiLiveDays", "osdiLiveAdvisories", "osdiLiveCorrections",
     }
@@ -340,7 +365,7 @@ def test_full_macro_set_has_no_duplicate_names_and_covers_every_skeleton_claim()
     mod.add_pending_stubs(m)
     names = [name for name, _, _ in m.items]
     assert len(names) == len(set(names)), "duplicate macro name"
-    assert len(names) == len(FROZEN_LANDED_VALUES) + 11
+    assert len(names) == len(FROZEN_LANDED_VALUES) + 14
 
 
 def test_cli_check_mode_agrees_with_committed_output(tmp_path):
@@ -866,6 +891,71 @@ def test_tampered_r18_probe_record_fails_the_frozen_speedup(tmp_path):
     mod.compute_c7_r18(m)
     assert mod.FAILURES, "a tampered ttf_ms must fail the cross-check against the record's " \
         "own summary.arms field and/or the frozen speedup range"
+
+
+def test_tampered_storm_v2_merged_record_digest_mismatch_fails(tmp_path):
+    """storm-v2-main-grid-2026-09-15.json's own result_digest is sha256 of
+    every row's own (_task_id, result_digest), sorted by task id
+    (storm_campaign_merge.py's result_digest()). Editing the merged
+    record's result_digest field itself (without touching the rows.jsonl
+    it is supposed to summarize) must be caught -- same digest discipline
+    as the D160/B1-v2e/ladder tamper tests above, applied to this record's
+    own digest scheme."""
+    mod = _load("osdi_paper_macros")
+    merged = json.loads(mod.STORM_V2_MAIN_GRID.read_text(encoding="utf-8"))
+    merged["result_digest"] = "0" * 64  # implausible digest, rows.jsonl untouched
+    tampered = tmp_path / "storm-v2-main-grid-2026-09-15.json"
+    tampered.write_text(json.dumps(merged), encoding="utf-8")
+
+    mod.STORM_V2_MAIN_GRID = tampered
+    m = mod.Macros()
+    mod.compute_c7_storm_v2(m)
+    assert mod.FAILURES, "an edited result_digest must fail the sha256 digest check against " \
+        "the rows.jsonl it claims to summarize"
+    assert any("digest" in f.lower() for f in mod.FAILURES)
+
+
+def test_tampered_storm_v2_rows_digest_mismatch_fails(tmp_path):
+    """The inverse of the above: editing a row's own embedded result_digest
+    (without touching the merged record) must also be caught -- the merged
+    record's result_digest is a chain over every row's own claimed digest,
+    not a value copied once and never re-verified."""
+    mod = _load("osdi_paper_macros")
+    rows = [json.loads(line) for line in mod.STORM_V2_MAIN_GRID_ROWS.read_text(
+        encoding="utf-8").splitlines() if line.strip()]
+    rows[0]["result_digest"] = "1" * 64
+    tampered = tmp_path / "storm-v2-main-grid-2026-09-15-rows.jsonl"
+    tampered.write_text("\n".join(json.dumps(r) for r in rows) + "\n", encoding="utf-8")
+
+    mod.STORM_V2_MAIN_GRID_ROWS = tampered
+    m = mod.Macros()
+    mod.compute_c7_storm_v2(m)
+    assert mod.FAILURES, "an edited row result_digest must fail the merged record's own " \
+        "result_digest check"
+    assert any("digest" in f.lower() for f in mod.FAILURES)
+
+
+def test_storm_v2_speedup_synth_c1_none_is_the_median_of_its_three_seeds():
+    """Arithmetic check on one of the 12 per-(store,mix,age) macros:
+    osdiStormV2SpeedupSynthC1None must equal the median, over exactly the
+    three seed-0/1/2 cells at (synth-iv-60k, c1, age=none), of
+    summary.arms.global-recompute.ttf_p50_ms / summary.arms.tgms-L1.ttf_p50_ms
+    -- recomputed independently here from the committed rows.jsonl, not
+    trusted from the generator's own arithmetic."""
+    mod = _load("osdi_paper_macros")
+    rows = [json.loads(line) for line in mod.STORM_V2_MAIN_GRID_ROWS.read_text(
+        encoding="utf-8").splitlines() if line.strip()]
+    cells = [r for r in rows if r["config"]["store"] == "synth-iv-60k"
+             and r["config"]["mix"] == "c1" and r["config"]["age"] is None]
+    assert sorted(c["config"]["seed"] for c in cells) == [0, 1, 2]
+    speedups = [c["summary"]["arms"]["global-recompute"]["ttf_p50_ms"]
+                / c["summary"]["arms"]["tgms-L1"]["ttf_p50_ms"] for c in cells]
+    expected_median = statistics.median(speedups)
+
+    m = mod.Macros()
+    mod.compute_c7_storm_v2(m)
+    values = {name: value for name, value, _ in m.items}
+    assert values["osdiStormV2SpeedupSynthC1None"] == f"{expected_median:.3f}"
 
 
 def test_tampered_d160_rows_digest_mismatch_fails(tmp_path):
