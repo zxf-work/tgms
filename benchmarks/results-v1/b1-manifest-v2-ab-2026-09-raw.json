@@ -1,0 +1,565 @@
+{
+ "b1a": {
+  "control": {
+   "run_started_line": "RUN_STARTED commit=886805f600bc csv=/mnt/project/xzhang/tgms/ldbc-sf1/bi-sf1-composite-merged-fk/graphs/csv/bi/composite-merged-fk/initial_snapshot out=/mnt/project/xzhang/tgms/tmp/b1v2-control backend=native batch=250 compact_every=0 path=assert digest=manifest host=xzgpu",
+   "ops_series": [
+    [
+     500000,
+     9098
+    ],
+    [
+     1000000,
+     5761
+    ],
+    [
+     1500000,
+     4121
+    ],
+    [
+     2000000,
+     3155
+    ],
+    [
+     2500000,
+     2543
+    ]
+   ],
+   "manifest_bytes_at_stop": 73790679,
+   "segment_bytes_at_stop": 158966639,
+   "stopped_at_ops": 2500000,
+   "note": "process still running at the 2,500,000 ops log line (as in v1); killed (SIGTERM) immediately after, confirmed exited, then manifests/ and seg/ dirs measured with du -sb"
+  },
+  "treatment": {
+   "run_started_line": "RUN_STARTED commit=7a5ff9871a0e csv=/mnt/project/xzhang/tgms/ldbc-sf1/bi-sf1-composite-merged-fk/graphs/csv/bi/composite-merged-fk/initial_snapshot out=/mnt/project/xzhang/tgms/tmp/b1v2-treatment backend=native batch=250 compact_every=0 path=assert digest=manifest host=xzgpu",
+   "ops_series": [
+    [
+     500000,
+     12400
+    ],
+    [
+     1000000,
+     9401
+    ],
+    [
+     1500000,
+     7579
+    ],
+    [
+     2000000,
+     6264
+    ],
+    [
+     2500000,
+     5335
+    ]
+   ],
+   "manifest_bytes_at_stop": 74403447,
+   "segment_bytes_at_stop": 163447175,
+   "stopped_at_ops": 2500000,
+   "note": "process still running at the 2,500,000 ops log line; killed (SIGTERM) immediately after, confirmed exited, then measured the same way as control. Ops/s roughly double the control's at every checkpoint (e.g. 5,335 vs 2,543 at 2.5M) -- observation, no claim attached."
+  }
+ },
+ "b1b": {
+  "raw": {
+   "control": [
+    {
+     "batch_rows": 1,
+     "commits": 300,
+     "commit_ms": {
+      "n": 300,
+      "p50": 5.234,
+      "p90": 6.755,
+      "p99": 9.031,
+      "min": 3.449,
+      "max": 149.307
+     },
+     "ms_per_row": 5.2335,
+     "phase_p50_us": {
+      "apply_us": 207,
+      "closes_us": 0,
+      "current_us": 732,
+      "dict_us": 350,
+      "manifest_bytes": 1568,
+      "manifest_checkpoint": 0,
+      "manifest_us": 679,
+      "seal_us": 952,
+      "segments_named": 305,
+      "stats_us": 0,
+      "total_us": 4652,
+      "wal_us": 342,
+      "write_us": 5233
+     },
+     "first_decile_us": {
+      "apply_us": 221,
+      "closes_us": 0,
+      "current_us": 772,
+      "dict_us": 351,
+      "manifest_bytes": 1565,
+      "manifest_checkpoint": 0,
+      "manifest_us": 689,
+      "seal_us": 1060,
+      "segments_named": 35,
+      "stats_us": 0,
+      "total_us": 3367,
+      "wal_us": 399,
+      "write_us": 4000
+     },
+     "last_decile_us": {
+      "apply_us": 227,
+      "closes_us": 0,
+      "current_us": 741,
+      "dict_us": 358,
+      "manifest_bytes": 1568,
+      "manifest_checkpoint": 0,
+      "manifest_us": 768,
+      "seal_us": 1122,
+      "segments_named": 575,
+      "stats_us": 0,
+      "total_us": 6005,
+      "wal_us": 337,
+      "write_us": 6698
+     },
+     "store_bytes": 16483269
+    },
+    {
+     "batch_rows": 1,
+     "commits": 300,
+     "commit_ms": {
+      "n": 300,
+      "p50": 6.27,
+      "p90": 8.648,
+      "p99": 9.968,
+      "min": 3.976,
+      "max": 144.781
+     },
+     "ms_per_row": 6.27,
+     "phase_p50_us": {
+      "apply_us": 324,
+      "closes_us": 0,
+      "current_us": 855,
+      "dict_us": 397,
+      "manifest_bytes": 1568,
+      "manifest_checkpoint": 0,
+      "manifest_us": 784,
+      "seal_us": 1230,
+      "segments_named": 305,
+      "stats_us": 0,
+      "total_us": 5490,
+      "wal_us": 460,
+      "write_us": 6270
+     },
+     "first_decile_us": {
+      "apply_us": 379,
+      "closes_us": 0,
+      "current_us": 865,
+      "dict_us": 400,
+      "manifest_bytes": 1565,
+      "manifest_checkpoint": 0,
+      "manifest_us": 757,
+      "seal_us": 1283,
+      "segments_named": 35,
+      "stats_us": 0,
+      "total_us": 3947,
+      "wal_us": 473,
+      "write_us": 4823
+     },
+     "last_decile_us": {
+      "apply_us": 304,
+      "closes_us": 0,
+      "current_us": 853,
+      "dict_us": 405,
+      "manifest_bytes": 1568,
+      "manifest_checkpoint": 0,
+      "manifest_us": 846,
+      "seal_us": 1228,
+      "segments_named": 575,
+      "stats_us": 0,
+      "total_us": 6842,
+      "wal_us": 470,
+      "write_us": 7615
+     },
+     "store_bytes": 16483273
+    },
+    {
+     "batch_rows": 1,
+     "commits": 300,
+     "commit_ms": {
+      "n": 300,
+      "p50": 6.175,
+      "p90": 7.716,
+      "p99": 9.962,
+      "min": 3.596,
+      "max": 147.098
+     },
+     "ms_per_row": 6.175,
+     "phase_p50_us": {
+      "apply_us": 356,
+      "closes_us": 0,
+      "current_us": 857,
+      "dict_us": 384,
+      "manifest_bytes": 1568,
+      "manifest_checkpoint": 0,
+      "manifest_us": 772,
+      "seal_us": 1240,
+      "segments_named": 305,
+      "stats_us": 0,
+      "total_us": 5430,
+      "wal_us": 468,
+      "write_us": 6175
+     },
+     "first_decile_us": {
+      "apply_us": 367,
+      "closes_us": 0,
+      "current_us": 854,
+      "dict_us": 379,
+      "manifest_bytes": 1565,
+      "manifest_checkpoint": 0,
+      "manifest_us": 754,
+      "seal_us": 1289,
+      "segments_named": 35,
+      "stats_us": 0,
+      "total_us": 4032,
+      "wal_us": 467,
+      "write_us": 4870
+     },
+     "last_decile_us": {
+      "apply_us": 352,
+      "closes_us": 0,
+      "current_us": 859,
+      "dict_us": 376,
+      "manifest_bytes": 1568,
+      "manifest_checkpoint": 0,
+      "manifest_us": 809,
+      "seal_us": 1217,
+      "segments_named": 575,
+      "stats_us": 0,
+      "total_us": 6721,
+      "wal_us": 470,
+      "write_us": 7535
+     },
+     "store_bytes": 16483298
+    }
+   ],
+   "treatment": [
+    {
+     "batch_rows": 1,
+     "commits": 300,
+     "commit_ms": {
+      "n": 300,
+      "p50": 6.345,
+      "p90": 8.473,
+      "p99": 10.16,
+      "min": 3.741,
+      "max": 142.207
+     },
+     "ms_per_row": 6.345,
+     "phase_p50_us": {
+      "apply_us": 343,
+      "closes_us": 0,
+      "current_us": 861,
+      "dict_us": 403,
+      "manifest_bytes": 1568,
+      "manifest_checkpoint": 0,
+      "manifest_us": 787,
+      "seal_us": 1251,
+      "segments_named": 305,
+      "stats_us": 0,
+      "total_us": 5478,
+      "wal_us": 467,
+      "write_us": 6345
+     },
+     "first_decile_us": {
+      "apply_us": 365,
+      "closes_us": 0,
+      "current_us": 865,
+      "dict_us": 397,
+      "manifest_bytes": 1565,
+      "manifest_checkpoint": 0,
+      "manifest_us": 755,
+      "seal_us": 1311,
+      "segments_named": 35,
+      "stats_us": 0,
+      "total_us": 3975,
+      "wal_us": 466,
+      "write_us": 4875
+     },
+     "last_decile_us": {
+      "apply_us": 315,
+      "closes_us": 0,
+      "current_us": 856,
+      "dict_us": 410,
+      "manifest_bytes": 1568,
+      "manifest_checkpoint": 0,
+      "manifest_us": 815,
+      "seal_us": 1212,
+      "segments_named": 575,
+      "stats_us": 0,
+      "total_us": 6655,
+      "wal_us": 473,
+      "write_us": 7437
+     },
+     "store_bytes": 16483240
+    },
+    {
+     "batch_rows": 1,
+     "commits": 300,
+     "commit_ms": {
+      "n": 300,
+      "p50": 6.201,
+      "p90": 8.615,
+      "p99": 9.963,
+      "min": 3.686,
+      "max": 141.044
+     },
+     "ms_per_row": 6.201,
+     "phase_p50_us": {
+      "apply_us": 346,
+      "closes_us": 0,
+      "current_us": 859,
+      "dict_us": 399,
+      "manifest_bytes": 1568,
+      "manifest_checkpoint": 0,
+      "manifest_us": 781,
+      "seal_us": 1233,
+      "segments_named": 305,
+      "stats_us": 0,
+      "total_us": 5320,
+      "wal_us": 468,
+      "write_us": 6201
+     },
+     "first_decile_us": {
+      "apply_us": 348,
+      "closes_us": 0,
+      "current_us": 863,
+      "dict_us": 397,
+      "manifest_bytes": 1565,
+      "manifest_checkpoint": 0,
+      "manifest_us": 762,
+      "seal_us": 1301,
+      "segments_named": 35,
+      "stats_us": 0,
+      "total_us": 3903,
+      "wal_us": 468,
+      "write_us": 4733
+     },
+     "last_decile_us": {
+      "apply_us": 439,
+      "closes_us": 0,
+      "current_us": 858,
+      "dict_us": 405,
+      "manifest_bytes": 1568,
+      "manifest_checkpoint": 0,
+      "manifest_us": 855,
+      "seal_us": 1274,
+      "segments_named": 575,
+      "stats_us": 0,
+      "total_us": 8193,
+      "wal_us": 477,
+      "write_us": 9210
+     },
+     "store_bytes": 16483241
+    },
+    {
+     "batch_rows": 1,
+     "commits": 300,
+     "commit_ms": {
+      "n": 300,
+      "p50": 6.572,
+      "p90": 8.454,
+      "p99": 9.662,
+      "min": 3.681,
+      "max": 153.111
+     },
+     "ms_per_row": 6.5725,
+     "phase_p50_us": {
+      "apply_us": 344,
+      "closes_us": 0,
+      "current_us": 862,
+      "dict_us": 389,
+      "manifest_bytes": 1568,
+      "manifest_checkpoint": 0,
+      "manifest_us": 813,
+      "seal_us": 1272,
+      "segments_named": 305,
+      "stats_us": 0,
+      "total_us": 5772,
+      "wal_us": 466,
+      "write_us": 6572
+     },
+     "first_decile_us": {
+      "apply_us": 364,
+      "closes_us": 0,
+      "current_us": 864,
+      "dict_us": 380,
+      "manifest_bytes": 1565,
+      "manifest_checkpoint": 0,
+      "manifest_us": 756,
+      "seal_us": 1265,
+      "segments_named": 35,
+      "stats_us": 0,
+      "total_us": 3926,
+      "wal_us": 469,
+      "write_us": 4753
+     },
+     "last_decile_us": {
+      "apply_us": 244,
+      "closes_us": 0,
+      "current_us": 784,
+      "dict_us": 353,
+      "manifest_bytes": 1568,
+      "manifest_checkpoint": 0,
+      "manifest_us": 779,
+      "seal_us": 1058,
+      "segments_named": 575,
+      "stats_us": 0,
+      "total_us": 6141,
+      "wal_us": 364,
+      "write_us": 6860
+     },
+     "store_bytes": 16483269
+    }
+   ],
+   "treatment_k128": [
+    {
+     "batch_rows": 1,
+     "commits": 300,
+     "commit_ms": {
+      "n": 300,
+      "p50": 5.183,
+      "p90": 7.079,
+      "p99": 9.072,
+      "min": 3.173,
+      "max": 145.29
+     },
+     "ms_per_row": 5.183,
+     "phase_p50_us": {
+      "apply_us": 200,
+      "closes_us": 0,
+      "current_us": 729,
+      "dict_us": 348,
+      "manifest_bytes": 1570,
+      "manifest_checkpoint": 0,
+      "manifest_us": 677,
+      "seal_us": 950,
+      "segments_named": 305,
+      "stats_us": 0,
+      "total_us": 4597,
+      "wal_us": 343,
+      "write_us": 5183
+     },
+     "first_decile_us": {
+      "apply_us": 210,
+      "closes_us": 0,
+      "current_us": 747,
+      "dict_us": 349,
+      "manifest_bytes": 1565,
+      "manifest_checkpoint": 0,
+      "manifest_us": 675,
+      "seal_us": 1024,
+      "segments_named": 35,
+      "stats_us": 0,
+      "total_us": 3266,
+      "wal_us": 375,
+      "write_us": 3887
+     },
+     "last_decile_us": {
+      "apply_us": 233,
+      "closes_us": 0,
+      "current_us": 729,
+      "dict_us": 350,
+      "manifest_bytes": 1570,
+      "manifest_checkpoint": 0,
+      "manifest_us": 721,
+      "seal_us": 990,
+      "segments_named": 575,
+      "stats_us": 0,
+      "total_us": 5937,
+      "wal_us": 348,
+      "write_us": 6515
+     },
+     "store_bytes": 16862674
+    }
+   ],
+   "treatment_k1024": [
+    {
+     "batch_rows": 1,
+     "commits": 300,
+     "commit_ms": {
+      "n": 300,
+      "p50": 6.091,
+      "p90": 8.684,
+      "p99": 10.541,
+      "min": 3.965,
+      "max": 145.133
+     },
+     "ms_per_row": 6.091,
+     "phase_p50_us": {
+      "apply_us": 335,
+      "closes_us": 0,
+      "current_us": 859,
+      "dict_us": 385,
+      "manifest_bytes": 1568,
+      "manifest_checkpoint": 0,
+      "manifest_us": 768,
+      "seal_us": 1232,
+      "segments_named": 305,
+      "stats_us": 0,
+      "total_us": 5276,
+      "wal_us": 456,
+      "write_us": 6091
+     },
+     "first_decile_us": {
+      "apply_us": 364,
+      "closes_us": 0,
+      "current_us": 862,
+      "dict_us": 379,
+      "manifest_bytes": 1565,
+      "manifest_checkpoint": 0,
+      "manifest_us": 754,
+      "seal_us": 1247,
+      "segments_named": 35,
+      "stats_us": 0,
+      "total_us": 3995,
+      "wal_us": 467,
+      "write_us": 4793
+     },
+     "last_decile_us": {
+      "apply_us": 369,
+      "closes_us": 0,
+      "current_us": 876,
+      "dict_us": 395,
+      "manifest_bytes": 1568,
+      "manifest_checkpoint": 0,
+      "manifest_us": 867,
+      "seal_us": 1324,
+      "segments_named": 575,
+      "stats_us": 0,
+      "total_us": 8285,
+      "wal_us": 452,
+      "write_us": 9187
+     },
+     "store_bytes": 16483260
+    }
+   ]
+  }
+ },
+ "b1c": {
+  "authoritative": {
+   "control_open_ms": [
+    1427.608,
+    2279.247,
+    2247.927
+   ],
+   "treatment_open_ms": [
+    1252.717,
+    1705.324,
+    2691.29
+   ],
+   "control_generation": 10759,
+   "treatment_generation": 11029,
+   "method": "NativeAdapter(path/'native') construction time -- the Rust-level NativeStore::open, NOT tgms.open() -- same corrected method as v1's b1c.authoritative. 3 reps in one process, back-to-back, immediately after the b1a run that built each store (no explicit cache-drop available on this host -- no root, per v1's own coldwarm note); first rep is process-cold, later reps warm.",
+   "component_breakdown": null,
+   "component_breakdown_note": "NativeAdapter() is a single opaque constructor call with no internal phase timer exposed to Python (unlike the commit path's phase_p50_us); a checkpoint-load vs delta-replay split was not measured and is flagged here rather than fabricated."
+  }
+ }
+}

@@ -1,0 +1,155 @@
+{
+ "schema_version": "1.0.0",
+ "git_commit": "7a5ff9871a0eb4a8cd858a8f911f30d510fa42ed",
+ "timestamp_utc": "2026-09-15T06:39:36Z",
+ "machine": {
+  "host": "xzgpu",
+  "platform": "Linux-5.4.0-216-generic-x86_64-with-glibc2.31",
+  "cpus": 40,
+  "ram_gb": 93
+ },
+ "config": {
+  "measurement": "Lane B1-v2 A/B: format-3 (reader torn-tail two-condition rule) vs. the format-2 engine already pinned for the 24h soak, per the same Addendum-3 manifest-forecast protocol v1's B1 A/B used",
+  "control_commit": "886805f600bcb447cb0bff16d432a796ba732339",
+  "control_note": "pre-pinned for the 24h longevity soak; MANIFEST_FORMAT_VERSION == 2, checkpoint-every default 512; not rebuilt for this lane",
+  "treatment_commit": "7a5ff9871a0eb4a8cd858a8f911f30d510fa42ed",
+  "treatment_note": "public main; MANIFEST_FORMAT_VERSION == 3 (torn-tail two-condition rule); built fresh into a new detached worktree work/tgms-xz-7a5ff98",
+  "b1a": {
+   "script": "scripts/build_snb_store.py",
+   "args": [
+    "--backend",
+    "native",
+    "--batch",
+    "250",
+    "--compact-every",
+    "0",
+    "--digest",
+    "manifest",
+    "--write-path",
+    "assert"
+   ],
+   "stop_rule": "killed at the 2,500,000 ops log line (matched ops between arms), identical to v1"
+  },
+  "b1b": {
+   "script": "scripts/eval_concurrency.py",
+   "args": [
+    "commitcost",
+    "--batch-sizes",
+    "1",
+    "--commits",
+    "300",
+    "--seed-rows",
+    "100000"
+   ],
+   "reps": 3,
+   "ksweep_env": "TGMS_MANIFEST_CHECKPOINT_EVERY",
+   "ksweep_values": [
+    128,
+    1024
+   ],
+   "ksweep_reps": 1,
+   "ksweep_note": "K=512 is the treatment default, already covered by the 3-rep run above; only the two off-default K values were swept, unlike v1 which additionally re-ran K=512 as part of the sweep"
+  },
+  "b1c": {
+   "method": "NativeAdapter(store/'native') construction time (the Rust-level NativeStore::open), NOT tgms.open() -- same corrected method v1 used for its authoritative b1c figures",
+   "generation_approx_control": 10759,
+   "generation_approx_treatment": 11029,
+   "checkpoint_every": 512,
+   "component_breakdown": "not available -- NativeAdapter() exposes no internal phase timer; see raw.b1c.authoritative.component_breakdown_note"
+  }
+ },
+ "seed": {
+  "value": null,
+  "reason": "b1a is a deterministic replay of the fixed LDBC SF1 CSV corpus (no RNG); b1b's commitcost harness seeds a 100k-row store deterministically by row index, not by an RNG seed argument -- see scripts/eval_concurrency.py cmd_commitcost"
+ },
+ "dataset": {
+  "name": "ldbc-sf1-composite-merged-fk-initial-snapshot",
+  "digest": "d8ccf1970f67f657d7121b3586399d180c727e867055f1da7c73d73caebe67d1",
+  "digest_kind": "store_digest",
+  "digest_note": "sha256 of the sorted (relative_path, size) listing of every file under the initial_snapshot directory, recomputed this run (find -printf '%P %s' | sort | sha256sum) -- structurally identical corpus to v1's B1 A/B (v1's own recorded digest string is 62 hex chars, 2 short of a full sha256; that appears to be a copy/truncation artifact in the v1 record, not a corpus difference -- this run's value is the correctly-lengthed 64-hex digest)"
+ },
+ "result_digest": "6fef0c783e98e7b2a789716c22013406fb8d503f9485463953e89e35dc23afae",
+ "protocol": {
+  "warmups": 0,
+  "reps": 3,
+  "ceilings": {
+   "b1a_stop_ops": 2500000
+  }
+ },
+ "record": "benchmarks/results-v1/b1-manifest-v2-ab-2026-09-raw.json",
+ "measurements": {
+  "bytes_at_2_5m_ops": {
+   "threshold": "62 MB +/- 5% (58.9-65.1 MB)",
+   "control_manifest_bytes": 73790679,
+   "treatment_manifest_bytes": 74403447,
+   "control_manifest_mb": 73.79,
+   "treatment_manifest_mb": 74.4,
+   "control_segment_bytes": 158966639,
+   "treatment_segment_bytes": 163447175
+  },
+  "commitcost_decile": {
+   "threshold": "<= 1.10x (refute >= 1.2x)",
+   "manifest_us_first_last_decile_ratio": {
+    "control_reps": [
+     1.115,
+     1.118,
+     1.073
+    ],
+    "treatment_reps": [
+     1.079,
+     1.122,
+     1.03
+    ],
+    "control_median": 1.115,
+    "treatment_median": 1.079
+   },
+   "engine_commit_total_us_first_last_decile_ratio": {
+    "control_reps": [
+     1.783,
+     1.733,
+     1.667
+    ],
+    "treatment_reps": [
+     1.674,
+     2.099,
+     1.564
+    ],
+    "control_median": 1.733,
+    "treatment_median": 1.674
+   }
+  },
+  "commitcost_p50": {
+   "threshold": "<= 0.70x control (paired) OR <= 5.58 ms absolute",
+   "control_total_us_p50_reps": [
+    4652,
+    5490,
+    5430
+   ],
+   "treatment_total_us_p50_reps": [
+    5478,
+    5320,
+    5772
+   ],
+   "control_median_us": 5430,
+   "treatment_median_us": 5478,
+   "treatment_median_ms": 5.478,
+   "paired_ratio_treatment_over_control": 1.009
+  },
+  "chain_open_cold_warm": {
+   "threshold": "<= 70 ms, component-scored",
+   "control_open_ms_reps": [
+    1427.608,
+    2279.247,
+    2247.927
+   ],
+   "treatment_open_ms_reps": [
+    1252.717,
+    1705.324,
+    2691.29
+   ],
+   "control_median_ms": 2247.9,
+   "treatment_median_ms": 1705.3,
+   "component_scoring": "not available -- see config.b1c.component_breakdown"
+  }
+ }
+}
