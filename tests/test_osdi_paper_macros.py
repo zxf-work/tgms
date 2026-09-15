@@ -355,6 +355,118 @@ def test_cli_check_mode_agrees_with_committed_output(tmp_path):
     assert result.returncode == 0, result.stderr
 
 
+def _out_path() -> Path:
+    return ROOT / "paper" / "osdi" / "generated" / "osdi-macros.tex"
+
+
+def _run_cli(*flags: str) -> subprocess.CompletedProcess:
+    return subprocess.run(
+        [_venv_python(), str(ROOT / "scripts" / "osdi_paper_macros.py"), *flags],
+        cwd=ROOT, capture_output=True, text=True)
+
+
+def test_cli_check_mode_regenerates_a_missing_tex_and_exits_zero():
+    """A fresh worktree (or one behind a merge) has no gitignored paper/
+    tree at all -- ``--check`` must heal that, not just refuse it."""
+    out_path = _out_path()
+    _run_cli()  # make sure a good copy exists first
+    good = out_path.read_text(encoding="utf-8")
+    out_path.unlink()
+    try:
+        result = _run_cli("--check")
+        assert result.returncode == 0, result.stderr
+        assert "regenerated" in result.stdout
+        assert out_path.exists()
+        assert out_path.read_text(encoding="utf-8") == good
+    finally:
+        if not out_path.exists():
+            out_path.write_text(good, encoding="utf-8")
+
+
+def test_cli_check_mode_regenerates_a_stale_tex_and_exits_zero():
+    out_path = _out_path()
+    _run_cli()
+    good = out_path.read_text(encoding="utf-8")
+    out_path.write_text(good + "% stale\n", encoding="utf-8")
+    try:
+        result = _run_cli("--check")
+        assert result.returncode == 0, result.stderr
+        assert "regenerated" in result.stdout
+        assert out_path.read_text(encoding="utf-8") == good
+    finally:
+        out_path.write_text(good, encoding="utf-8")
+
+
+def test_cli_check_mode_reports_up_to_date_and_does_not_rewrite():
+    out_path = _out_path()
+    _run_cli()
+    before = out_path.stat().st_mtime_ns
+    result = _run_cli("--check")
+    assert result.returncode == 0, result.stderr
+    assert "up to date" in result.stdout
+    assert out_path.stat().st_mtime_ns == before, "up-to-date --check must not rewrite the file"
+
+
+def test_cli_check_only_mode_fails_on_stale_without_writing():
+    out_path = _out_path()
+    _run_cli()
+    good = out_path.read_text(encoding="utf-8")
+    out_path.write_text(good + "% stale\n", encoding="utf-8")
+    before = out_path.stat().st_mtime_ns
+    try:
+        result = _run_cli("--check-only")
+        assert result.returncode == 1
+        assert "stale generated file" in result.stderr
+        assert out_path.stat().st_mtime_ns == before, "--check-only must never write"
+        assert out_path.read_text(encoding="utf-8") == good + "% stale\n"
+    finally:
+        out_path.write_text(good, encoding="utf-8")
+
+
+def test_cli_check_only_mode_fails_on_missing_without_writing():
+    out_path = _out_path()
+    _run_cli()
+    good = out_path.read_text(encoding="utf-8")
+    out_path.unlink()
+    try:
+        result = _run_cli("--check-only")
+        assert result.returncode == 1
+        assert "stale generated file" in result.stderr
+        assert not out_path.exists(), "--check-only must never write"
+    finally:
+        if not out_path.exists():
+            out_path.write_text(good, encoding="utf-8")
+
+
+def test_cli_check_only_mode_agrees_with_up_to_date_output_and_does_not_rewrite():
+    out_path = _out_path()
+    _run_cli()
+    before = out_path.stat().st_mtime_ns
+    result = _run_cli("--check-only")
+    assert result.returncode == 0, result.stderr
+    assert "up to date" in result.stdout
+    assert out_path.stat().st_mtime_ns == before
+
+
+def test_cli_no_write_alias_matches_check_only():
+    out_path = _out_path()
+    _run_cli()
+    good = out_path.read_text(encoding="utf-8")
+    out_path.write_text(good + "% stale\n", encoding="utf-8")
+    try:
+        result = _run_cli("--no-write")
+        assert result.returncode == 1
+        assert "stale generated file" in result.stderr
+    finally:
+        out_path.write_text(good, encoding="utf-8")
+
+
+def test_cli_check_and_check_only_are_mutually_exclusive():
+    result = _run_cli("--check", "--check-only")
+    assert result.returncode != 0
+    assert "mutually exclusive" in result.stderr
+
+
 # --------------------------------------------------------------------------
 # osdi_paper_macros.py: a tampered record fails loudly
 # --------------------------------------------------------------------------
