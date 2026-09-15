@@ -12,6 +12,57 @@ including interval-splitting corrections so `props_changed` is exercised);
 `tt_epoch1` captured at build so belief probes discriminate. Sizes: |V| =
 scale/100, edge versions ≈ scale + scale/200 corrections.
 
+**30M/100M builds: `scripts/build_synth_store.py`, same family, streamed.**
+`build_dataset` materializes `[_event(i, scale) for i in range(scale)]` as
+one Python list before `Store.ingest_events` ever chunks it — tens of GB of
+dicts at 100M before the store opens
+(`docs/design/SCALE_BUILD_FORECAST_2026-09-15.md` §1a). `build_synth_store.py`
+is the same generator math (`n_nodes`, `edge_life`, `_vt_s`, `COMMUNITY`,
+`INTRA_PCT`, the splitmix64 finalizer, and `build_dataset`'s full four-phase
+op sequence — bulk ingest, belief-epoch node assertion, epoch-2 corrections,
+partial mid-interval corrections, retractions — all reused verbatim), rebuilt
+to generate and commit one `--batch`-sized chunk at a time, resumable
+(`--resume`, `--stop-at-ops`), reporting progress, RSS and manifest/segment
+bytes as it goes. It adds one parameter `build_dataset` never had: `--seed`
+(folded into the two per-event splitmix64 draws by XORing it into the mix
+input before the finalizer); `--seed 0` reduces algebraically to
+`build_dataset`'s own unseeded formula, so it is the value every existing
+`synth-*` record (built before `--seed` existed) is consistent with.
+
+**Equivalence proof, and the one thing that cannot be proved.** `--n-entities
+50000 --seed 0 --batch 50000` (single-chunk, matching `build_dataset`'s own
+chunking at this scale — `INGEST_CHUNK` is also 50,000) produces a store
+whose *logical content* is identical to `build_dataset(50000)`'s, verified by
+a **content digest**: the same node/edge fields `Store.store_digest()` sorts
+and hashes, minus `vid`, `tt_s` and `tt_e`. Those three are excluded because
+`store.digest()` (`store_digest()`) itself can never be proved equal between
+*any* two independent builds of the same logical data, this pair included —
+already-settled fact, not a new finding: `tt_s` comes from
+`HybridLogicalClock.tick()` (`tgms/core/clock.py`), a wall-clock value, and
+`vid = sha256(identity:tt_s:vt_s)` inherits it. This file's own "Loading
+rule" above and `scripts/check_digest_stability.py`'s docstring both already
+state it (D-023): "independently built stores of the same data legitimately
+differ in tt and every derived id." So `build_synth_store.py`'s test suite
+(`tests/test_build_synth_store.py`) proves content-digest equality, not
+`store_digest()` equality — that is the record of truth for this family's
+reproducibility from here on, and `store_digest()` differing between two
+builds of the same `--seed` is expected, not a regression.
+
+One `--batch`-sensitive corner, inherited from `Store.ingest_events` itself
+and not introduced by this script: an auto-created bare node version's
+`vt_s` is the minimum `vt_s` among same-*chunk* occurrences before the
+node's first believed version is asserted; a node already known from an
+earlier chunk is never re-asserted regardless of a smaller `vt_s` arriving
+later. Every edge version's own identity, endpoints, `rel_type`, `vt_s`/
+`vt_e` and props are fully `--batch`-invariant (disc is stamped explicitly
+per event, `f"#{i}"`, never left to `ingest_events`'s own per-call offset
+default — see the script's module docstring for why relying on that default
+across multiple top-level calls is itself a trap: the offset resets to 0
+on every call, not just every internal chunk). `tests/
+test_build_synth_store.py::test_determinism_per_batch` checks the
+batch-invariant half (edge content) directly across two different `--batch`
+values.
+
 ## CollegeMsg (frozen replay)
 
 `benchmarks/frozen-v1/collegemsg.eventlog.jsonl` — 59,835 instantaneous
