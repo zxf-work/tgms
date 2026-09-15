@@ -63,6 +63,54 @@ test_build_synth_store.py::test_determinism_per_batch` checks the
 batch-invariant half (edge content) directly across two different `--batch`
 values.
 
+**`--digest {none,full,streaming}` (B7a).** `build_synth_store.py` used to
+call `store.digest()` unconditionally at the end of every build — the same
+`store_digest()` (`tgms/storage/base.py`) that sorts and canonical-JSON-
+encodes one Python dict per version, whole-store, in one shot. A 17.4M-edge
+SF1 store already showed what that costs at scale: a flat ~2.4 GB RSS
+through streaming ingest, spiking to ~25 GB in its own finalization pass
+(`benchmarks/results-v1/ldbc-sf1-campaign-fmt3-2026-09.README.md`); at
+100M+ entities `store.digest()` alone would exceed a 93 GB host. `--digest`
+now controls that pass: `full` (default below `DIGEST_AUTO_THRESHOLD` =
+10,000,000 `--n-entities`) is the old unconditional behavior; `none`
+(default at or above that threshold) skips both `store.digest()` and the
+script's own `content_digest()`, leaving the sidecar's `dataset.digest` as
+the O(1) generation + manifest-sha identity instead; `streaming` computes
+`store.digest_streaming()` in place of `store.digest()`. The streaming
+digest is **byte-identical to `store_digest()` for the same store, proved
+rather than assumed** (`tests/test_store_digest_streaming.py`,
+`tests/test_build_synth_store.py::test_digest_mode_full_and_streaming_agree`):
+`canonical_json`'s compact separators mean a row's JSON text never depends
+on where in the outer array it lands, so an external merge sort over
+disk-spilled, pre-sorted chunks can feed a running `sha256` the identical
+byte stream `store_digest()` builds in memory, bounded by `chunk_rows` (and
+by one buffered row per spilled chunk during the merge) rather than by the
+store's row count.
+
+Whether `scripts/build_snb_store.py`'s own SF1 build spike (above) is this
+same digest cost was checked directly, and it is not: that build's own
+provenance (the README cited above) used `--digest manifest`, and
+`_identity()`'s `manifest` branch (`build_snb_store.py`) never calls
+`store.digest()` at all — it reads `store.store_identity`,
+`adapter.generation`, and the engine's pre-computed `manifest_sha()`
+(`crates/tgms-engine-py/src/lib.rs`, a stored field, not a scan). The 25 GB
+spike traces to the finalization steps immediately before that identity is
+read: the forced end-of-build `compact()`+`gc(keep_last=2)`
+(`build_snb_store.py::build`, `maybe_compact(force=True)`) and
+`store.stats()`, whose `stats_accum()` (`crates/tgms-engine-core/
+src/read.rs`) walks every edge segment's `vt_s`/`vt_e`/`src_id`/`rel_code`
+columns into memory — already a rewrite away from an earlier, worse
+`all_edge_versions()` route per that function's own docstring, but still a
+whole-store pass. The README's own instrumentation samples RSS every 60s
+and cannot separate compaction from stats within that window ("the late
+spike is the whole-store stats/digest pass ... fidelity check + card
+write"), so which of the two dominates is not resolved here. Either way it
+is not `--digest`, which is why `build_snb_store.py`'s existing
+`none`/`manifest`/`full` flag (already defaulting to the cheap `manifest`
+mode, unlike `build_synth_store.py`'s old unconditional `full`) was left
+unchanged by this task — narrowing `stats()`/`compact()`'s own cost is a
+separate piece of work.
+
 ## CollegeMsg (frozen replay)
 
 `benchmarks/frozen-v1/collegemsg.eventlog.jsonl` — 59,835 instantaneous

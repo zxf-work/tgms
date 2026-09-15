@@ -82,6 +82,21 @@ reset per chunk), which `tests/test_build_synth_store.py`'s
 `test_determinism_per_batch` checks directly by comparing edge-only content
 digests across two different `--batch` values.
 
+**`--digest {none,full,streaming}`.** Everything above this point built the
+case for skipping `store.digest()` at 100M scale; this flag is what actually
+lets a dispatch do that. `full` (this driver's default below
+`DIGEST_AUTO_THRESHOLD` = 10,000,000 entities) computes `store.digest()` and
+`content_digest()` exactly as always. `none` (the default at or above that
+threshold) skips both -- the sidecar still gets a real, O(1) store identity
+(`_manifest_identity`: generation + the engine's own manifest sha), just not
+one that required walking every version. `streaming` computes
+`store.digest_streaming()` (`tgms/storage/base.py`) instead of
+`store.digest()` -- proved byte-identical to it on a small store
+(`tests/test_store_digest_streaming.py`) via an external merge sort in
+bounded memory, never `content_digest()` (which has no streaming form and is
+gated identically to `store.digest()` for the same reason). Pass `--digest`
+explicitly to override the scale-conditioned default in either direction.
+
 **Batching/cadence.** `--batch 250` and `--compact-every 1_000_000` are
 `SCALE_BUILD_FORECAST_2026-09-15.md` §1b's frozen values for the real
 30M/100M dispatch (bulk batch measured against `build_snb_store.py`'s
@@ -134,6 +149,34 @@ _M64 = (1 << 64) - 1
 #: ordinary flags below; these are only the argparse defaults.
 DEFAULT_BATCH = 250
 DEFAULT_COMPACT_EVERY = 1_000_000
+
+#: Scale at which the final digest pass switches its default from `full` to
+#: `none`. A store this size already showed the failure mode at hand: SF1
+#: (17.4M edges, `scripts/build_snb_store.py`) held a flat ~2.4 GB RSS
+#: through streaming ingest and then spiked to ~25 GB in its own
+#: finalization pass (`benchmarks/results-v1/
+#: ldbc-sf1-campaign-fmt3-2026-09.README.md`) -- and per that record's own
+#: analysis the spike is `store.stats()`'s full-segment walk plus the forced
+#: end-of-build `compact()`, not a `store_digest()` call at all (that build
+#: used `--digest manifest`, which never touches store content -- see
+#: `build_snb_store.py::_identity`). `store_digest()` itself is worse: it
+#: sorts and canonical-JSON-encodes one Python dict per version, which is
+#: exactly the route `stats_accum()` (`crates/tgms-engine-core/src/read.rs`)
+#: was rewritten *away* from after it caused a 2 GB-cap OOM at 10M rows. At
+#: 100M+ rows `store_digest()` alone would exceed a 93 GB host, so a build at
+#: or above this threshold defaults to skipping it rather than to inheriting
+#: SF1's spike from a different pass.
+DIGEST_AUTO_THRESHOLD = 10_000_000
+DIGEST_MODES = ("none", "full", "streaming")
+
+
+def default_digest_mode(n_entities: int) -> str:
+    """`none` at or above `DIGEST_AUTO_THRESHOLD`, `full` below it -- the
+    scale-conditioned default `--digest` resolves to when not given
+    explicitly (module docstring "Digest equivalence"; see also
+    `DIGEST_AUTO_THRESHOLD`'s own docstring for why `full`'s cost, not
+    SF1's actual spike, is what this guards against)."""
+    return "none" if n_entities >= DIGEST_AUTO_THRESHOLD else "full"
 
 #: "a progress line every 500k ops" (task spec) -- not exposed as a flag,
 #: since nothing about it is dataset- or scale-specific.
@@ -317,6 +360,28 @@ def _ram_gb() -> float:
         return 1.0
 
 
+def _manifest_identity(store: Any) -> dict[str, Any]:
+    """O(1) store identity -- generation plus the engine's own manifest sha
+    (a pre-computed field, `crates/tgms-engine-py/src/lib.rs::manifest_sha`,
+    never a store scan) -- available regardless of `digest_mode`.
+
+    Mirrors `build_snb_store.py::_identity`'s `manifest` mode, which exists
+    for exactly this reason there: a cheap, real identity for a store too
+    big to digest in full. Used here as the `--digest none`/`streaming`
+    fallback for the sidecar's schema-required `dataset.digest` (and, for
+    `none`, `result_digest` too) -- see `_make_record`."""
+    out: dict[str, Any] = {}
+    try:
+        out["generation"] = store.adapter.generation
+    except Exception:                                   # noqa: BLE001
+        pass
+    try:
+        out["manifest_sha"] = store.adapter._store.manifest_sha()  # noqa: SLF001
+    except Exception:                                   # noqa: BLE001
+        pass
+    return out
+
+
 def _engine_build_info() -> dict[str, Any] | None:
     try:
         from tgms.storage.native import NativeAdapter
@@ -467,9 +532,20 @@ def _phase_ranges(n_entities: int) -> dict[str, range]:
 
 
 def build(out: Path, n_entities: int, seed: int, batch: int, compact_every: int,
-         backend: str, resume: bool, stop_at_ops: int | None) -> dict[str, Any]:
+         backend: str, resume: bool, stop_at_ops: int | None,
+         digest_mode: str = "full") -> dict[str, Any]:
     """Run (or resume) one build. Returns a result dict; `result["complete"]`
-    is False if `--stop-at-ops` cut the build short."""
+    is False if `--stop-at-ops` cut the build short.
+
+    `digest_mode` picks the final digest pass: `full` computes both
+    `store.digest()` and `content_digest()` exactly as before (the default
+    here, matching every existing caller of this function that predates
+    `--digest`); `streaming` computes `store.digest_streaming()` instead of
+    `store.digest()`, in bounded memory; `none` skips both. `main()` resolves
+    the CLI's scale-conditioned default (`default_digest_mode`) before
+    calling this -- this parameter is never itself "auto"."""
+    if digest_mode not in DIGEST_MODES:
+        raise SystemExit(f"--digest must be one of {DIGEST_MODES}, got {digest_mode!r}")
     existing = (out / "eventlog.jsonl").exists()
     if existing and not resume:
         raise SystemExit(f"{out} already has a store -- pass --resume to continue it, "
@@ -549,15 +625,29 @@ def build(out: Path, n_entities: int, seed: int, batch: int, compact_every: int,
     b._compact()
     wall = time.time() - b.t0
     stats = store.stats()
-    store_digest = store.digest()
-    cdigest = content_digest(store)
+    # The pass this driver's own `--digest` flag exists to make optional at
+    # scale (module docstring "Digest equivalence"; `DIGEST_AUTO_THRESHOLD`).
+    # `content_digest()` walks the whole store exactly as `store.digest()`
+    # does (see its own docstring), so it is gated identically -- computing
+    # it under `streaming` would defeat the point of choosing `streaming`.
+    if digest_mode == "full":
+        store_digest = store.digest()
+        cdigest = content_digest(store)
+    elif digest_mode == "streaming":
+        store_digest = store.digest_streaming()
+        cdigest = None
+    else:  # "none"
+        store_digest = None
+        cdigest = None
     rss = _rss_kb()
     nbytes = _store_bytes(out)
+    manifest_identity = _manifest_identity(store)
     store.close()
     _progress_path(out).unlink(missing_ok=True)
     result = {"complete": True, "ops": b.ops, "wall_s": round(wall, 3), "stats": stats,
-             "compactions": b.compactions, "store_digest": store_digest,
-             "content_digest": cdigest, "rss": rss, "bytes": nbytes}
+             "compactions": b.compactions, "digest_mode": digest_mode,
+             "store_digest": store_digest, "content_digest": cdigest,
+             "manifest_identity": manifest_identity, "rss": rss, "bytes": nbytes}
     record = _make_record(out, n_entities, seed, batch, compact_every, backend, result)
     (out / "build-record.json").write_text(json.dumps(record, indent=1, sort_keys=True))
     result["record"] = record
@@ -576,15 +666,49 @@ def _safe_relative(p: Path) -> bool:
         return False
 
 
+def _dataset_identity(result: dict[str, Any]) -> dict[str, Any]:
+    """The sidecar's `dataset` block: a real `store_digest` when one was
+    computed (`full` or `streaming`), else the O(1) manifest identity
+    (`_manifest_identity`, always available) -- `digest_kind: "manifest"`,
+    the same fallback `build_snb_store.py::_identity`'s own `manifest` mode
+    uses for the same reason. Never null: the schema requires a non-empty
+    `digest` string unconditionally, and a `none`-mode build still owes the
+    sidecar *some* real, cheap identity for the store it built."""
+    if result["store_digest"] is not None:
+        return {"name": "synth", "digest": result["store_digest"],
+                "digest_kind": "store_digest"}
+    manifest_sha = (result.get("manifest_identity") or {}).get("manifest_sha")
+    return {"name": "synth", "digest": manifest_sha or "unavailable",
+            "digest_kind": "manifest"}
+
+
+def _result_digest(result: dict[str, Any], dataset: dict[str, Any]) -> str:
+    """The schema's top-level `result_digest` (non-empty, required
+    unconditionally): `content_digest` when computed (`full`), else the same
+    real digest already picked for `dataset.digest` above -- reusing it
+    rather than inventing a second placeholder, since under `streaming` that
+    is a real `store_digest` and under `none` it is the same manifest
+    identity `dataset.digest` already fell back to."""
+    return result["content_digest"] or dataset["digest"]
+
+
 def _make_record(out: Path, n_entities: int, seed: int, batch: int, compact_every: int,
                  backend: str, result: dict[str, Any]) -> dict[str, Any]:
     """`benchmarks/schema/result_manifest.schema.json`-conforming sidecar for
     one completed build, plus a `build_info` block with everything this
     driver measured. Written by `build()` itself (not `main()`) so a direct
     caller -- the test suite included -- gets the same sidecar a CLI run
-    would, without going through `argparse`."""
+    would, without going through `argparse`.
+
+    `--digest none`/`streaming` (see `build`) leave `result["store_digest"]`
+    and/or `result["content_digest"]` as `None` -- `_dataset_identity` and
+    `_result_digest` supply the schema's non-null fallbacks; `build_info`
+    below carries the literal `None`s (and `digest_mode` itself) so a reader
+    can always tell which pass was actually skipped, rather than confusing a
+    fallback identity for a real content digest."""
     sha = _git_commit()
     record_path = out / "build-record.json"
+    dataset = _dataset_identity(result)
     return {
         "schema_version": SCHEMA_VERSION,
         "git_commit": sha,
@@ -592,11 +716,11 @@ def _make_record(out: Path, n_entities: int, seed: int, batch: int, compact_ever
         "machine": {"host": platform.node(), "platform": platform.platform(),
                    "cpus": os.cpu_count() or 1, "ram_gb": _ram_gb()},
         "config": {"n_entities": n_entities, "batch": batch,
-                  "compact_every": compact_every, "backend": backend},
+                  "compact_every": compact_every, "backend": backend,
+                  "digest_mode": result["digest_mode"]},
         "seed": {"value": seed},
-        "dataset": {"name": "synth", "digest": result["store_digest"],
-                   "digest_kind": "store_digest"},
-        "result_digest": result["content_digest"],
+        "dataset": dataset,
+        "result_digest": _result_digest(result, dataset),
         "protocol": {"warmups": 0, "reps": 1, "ceilings": {}},
         "record": str(record_path.relative_to(ROOT)) if _safe_relative(record_path) else str(record_path),
         "build_info": {
@@ -611,7 +735,10 @@ def _make_record(out: Path, n_entities: int, seed: int, batch: int, compact_ever
             "peak_rss": result["rss"],
             "store_bytes": result["bytes"],
             "stats": result["stats"],
+            "digest_mode": result["digest_mode"],
+            "store_digest": result["store_digest"],
             "content_digest": result["content_digest"],
+            "manifest_identity": result["manifest_identity"],
         },
     }
 
@@ -640,16 +767,32 @@ def main() -> int:
     ap.add_argument("--stop-at-ops", type=int, default=None,
                     help="stop after this many total ops (A/B-style partial builds); "
                         "resumable with --resume")
+    ap.add_argument("--digest", default=None, choices=DIGEST_MODES, dest="digest",
+                    help="final digest pass: 'full' computes store.digest() and "
+                        "content_digest() as before; 'streaming' computes "
+                        "store.digest_streaming() instead, in bounded memory "
+                        "(see tgms/storage/base.py::store_digest_streaming); 'none' "
+                        "skips both. Default is scale-conditioned -- 'none' at or "
+                        f"above --n-entities {DIGEST_AUTO_THRESHOLD:,}, 'full' below "
+                        "it (DIGEST_AUTO_THRESHOLD) -- pass this to override")
     args = ap.parse_args()
+
+    digest_mode = args.digest if args.digest is not None else default_digest_mode(args.n_entities)
+    if args.digest is None:
+        print(f"digest_mode=auto -> {digest_mode!r} "
+              f"(n_entities={args.n_entities:,}, threshold={DIGEST_AUTO_THRESHOLD:,})", flush=True)
+    else:
+        print(f"digest_mode={digest_mode!r} (explicit)", flush=True)
 
     sha = _git_commit()
     print(f"RUN_STARTED commit={sha} dataset=synth n_entities={args.n_entities} "
           f"seed={args.seed} batch={args.batch} compact_every={args.compact_every} "
           f"out={args.out} backend={args.backend} resume={args.resume} "
-          f"host={platform.node()}", flush=True)
+          f"digest={digest_mode} host={platform.node()}", flush=True)
 
     result = build(args.out, args.n_entities, args.seed, args.batch,
-                   args.compact_every, args.backend, args.resume, args.stop_at_ops)
+                   args.compact_every, args.backend, args.resume, args.stop_at_ops,
+                   digest_mode)
 
     if not result["complete"]:
         print(f"\nSTOPPED at --stop-at-ops: {result['ops']:,} ops, "
@@ -662,6 +805,7 @@ def main() -> int:
          f"maxrss={result['rss'].get('maxrss_kb', 0) / 1024:.0f}MB "
          f"manifest={result['bytes']['manifest_bytes']:,}B "
          f"segment={result['bytes']['segment_bytes']:,}B")
+    print(f"digest_mode={result['digest_mode']}")
     print(f"store_digest={result['store_digest']}")
     print(f"content_digest={result['content_digest']}")
     print(f"record: {record_path}")

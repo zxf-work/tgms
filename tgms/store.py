@@ -664,6 +664,12 @@ class Store:
     def digest(self) -> str:
         return self.adapter.store_digest()
 
+    def digest_streaming(self, chunk_rows: int = 200_000) -> str:
+        """`digest()`, computed in bounded memory (`--digest streaming`,
+        `scripts/build_synth_store.py`) — see
+        `StorageAdapter.store_digest_streaming` for the equivalence proof."""
+        return self.adapter.store_digest_streaming(chunk_rows=chunk_rows)
+
     def stats(self) -> dict[str, Any]:
         return self.adapter.stats()
 
