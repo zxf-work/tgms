@@ -1415,27 +1415,27 @@ def main() -> int:
 
     # --------------------------------------- the pre-registered thresholds
     # Internal doc, cited by line the way the M3/M4 prose receipts already are.
-    m.add("tgPredE13AFalseRejMin",
+    m.add("tgPredEThirteenAFalseRejMin",
           grep_int(EVIDENCE_FREEZE, r"\*\*at least (\d+) are false rejections\*\*",
                    "freeze §B3 false-rejection floor"),
           "PAPER_A_EVIDENCE_FREEZE.md §B3 (P-E13-A): the pre-registered floor on false "
           "rejections among the 10 derived refusals")
-    m.add("tgPredC2Bound",
+    m.add("tgPredCTwoBound",
           grep_int(EVIDENCE_FREEZE, r"compiled core vs kernel\.\*\* Within \*\*(\d+)×\*\*",
                    "freeze §C2 compiled/kernel bound"),
           "PAPER_A_EVIDENCE_FREEZE.md §C2 (P-E14-C2): the pre-registered compiled/kernel bound")
-    m.add("tgPredC3MultMin",
+    m.add("tgPredCThreeMultMin",
           grep_int(EVIDENCE_FREEZE,
                    r"best `time_est_ms` multiplier at a 10 s budget is \*\*≥ (\d+)×\*\*",
                    "freeze §C3 multiplier floor"),
           "PAPER_A_EVIDENCE_FREEZE.md §C3 (P-E14-C3): the pre-registered floor on the best "
           "ceiling multiplier")
-    m.add("tgPredC4SpreadMin",
+    m.add("tgPredCFourSpreadMin",
           grep_int(EVIDENCE_FREEZE, r"spread at plan scope is \*\*≥ (\d+)×\*\*",
                    "freeze §C3 spread floor"),
           "PAPER_A_EVIDENCE_FREEZE.md §C3 (P-E14-C4): the pre-registered floor on "
           "estimate-error spread")
-    m.add("tgPredP1BandPct",
+    m.add("tgPredPOneBandPct",
           grep_int(EVIDENCE_FREEZE, r"leaf path is within the \*\*±(\d+)%\*\* between-day",
                    "freeze §C1 band width"),
           "PAPER_A_EVIDENCE_FREEZE.md §C1 (P1): the pre-registered between-day band, percent")
@@ -1488,18 +1488,23 @@ def main() -> int:
     eq(rman["build_info"]["manifest_format_version"], 3, "rerun: the format-3 engine")
     require(rman["complete"] is True, "rerun: the record declares itself complete")
     # The rerun carries its own pre-registered wall-time band, from P-SF1.  It
-    # is NOT P1's between-day band (tgPredP1BandPct) even though both read 20%:
+    # is NOT P1's between-day band (tgPredPOneBandPct) even though both read 20%:
     # PAPER_A_EVIDENCE_FREEZE §C's conceptual guard forbids citing one for the
     # other (D1, a measurement caveat, versus this, a prediction about an
     # engine change).  Two macros, two sources, deliberately.
+    #
+    # The provenance string below names the pre-registration but NOT the file:
+    # docs/design/OSDI27_AUDIT_AND_PLAN_2026-09-13.md §4.3b is an internal
+    # planning document for an unpublished campaign, and tgir-macros.tex ships
+    # in the arXiv source.  The path is here, in the source that reads it.
     rerun_band = grep_int(OSDI_PLAN,
                           r"\*\*P-SF1 — SF1 reruns at the format-3 engine\.\*\*[^\n]*?"
                           r"wall time within ±(\d+) ?% of each existing record",
                           "P-SF1 wall-time band")
     m.add("tgSfOneRerunBandPct", rerun_band,
-          "OSDI27_AUDIT_AND_PLAN_2026-09-13.md P-SF1: the rerun's own pre-registered "
+          "P-SF1 pre-registration (plan §4.3b): the rerun's own pre-registered "
           "wall-time band against each existing record, percent (distinct from "
-          "tgPredP1BandPct, which is P1's between-day band)")
+          "tgPredPOneBandPct, which is P1's between-day band)")
     m.add("tgSfOneRerunCommit", rman["commit"],
           "ldbc-sf1-campaign-fmt3-2026-09.json manifest.commit")
     m.add("tgSfOneRerunDate", rerun_date,
