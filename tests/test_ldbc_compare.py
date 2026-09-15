@@ -389,6 +389,25 @@ def test_run_all_records_a_missing_cypher_file_without_aborting(tmp_path):
     assert session.calls == []
 
 
+def test_default_cypher_name_covers_all_seven_is_ids():
+    """Pins the post-8b46159 `_IS_NUM` mapping (RUNBOOK.md §3.1's gap,
+    closed 2026-09-14) so IS1/IS4/IS5 can't regress back to `KeyError`,
+    alongside a BI and an IC spot-check and an unknown-id failure mode."""
+    assert R._default_cypher_name("IS1") == "interactive-short-1.cypher"
+    assert R._default_cypher_name("IS2") == "interactive-short-2.cypher"
+    assert R._default_cypher_name("IS3") == "interactive-short-3.cypher"
+    assert R._default_cypher_name("IS4") == "interactive-short-4.cypher"
+    assert R._default_cypher_name("IS5") == "interactive-short-5.cypher"
+    assert R._default_cypher_name("IS6") == "interactive-short-6.cypher"
+    assert R._default_cypher_name("IS7") == "interactive-short-7.cypher"
+
+    assert R._default_cypher_name("BI3") == "bi-3.cypher"
+    assert R._default_cypher_name("IC2") == "interactive-complex-2.cypher"
+
+    with pytest.raises(KeyError):
+        R._default_cypher_name("IS99")
+
+
 def test_canonicalize_value_passes_scalars_through_and_stringifies_the_rest():
     assert R.canonicalize_value(5) == 5
     assert R.canonicalize_value("x") == "x"
