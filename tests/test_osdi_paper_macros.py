@@ -28,6 +28,7 @@ import csv
 import hashlib
 import importlib.util
 import json
+import re
 import statistics
 import subprocess
 import sys
@@ -82,6 +83,7 @@ def _run_all_landed(mod):
     mod.compute_c2(m)
     mod.compute_ladder(m)
     mod.compute_longevity_soak(m)
+    mod.compute_longevity_rederived(m)
     return m
 
 
@@ -278,6 +280,22 @@ FROZEN_LANDED_VALUES = {
     "osdiSoakDigestStatus": "not computed",
     "osdiSoakReplayProjectedTB": "280.8",
     "osdiSoakCompactions": "2415",
+    "osdiSoakWriterWithinLifeSlopeMedianKBps": "3165.6",
+    "osdiSoakWriterWithinLifeSlopeMinKBps": "1921.1",
+    "osdiSoakWriterWithinLifeSlopeMaxKBps": "4154.2",
+    "osdiSoakWriterLivesFitted": "42",
+    "osdiSoakWriterLivesPositive": "42",
+    "osdiSoakReaderWithinLifeSlopeMedianKBps": "5.32",
+    "osdiSoakReaderWithinLifeSlopeMaxKBps": "47.07",
+    "osdiSoakFirstVsLastSlopeKBps": "111.6",
+    "osdiSoakCommitsPerSecMean": "20.2",
+    "osdiSoakBytesPerCommitLiveKB": "157",
+    "osdiSoakReplayOutcome": "aborted_oom",
+    "osdiSoakReplayOomRssGB": "83.0",
+    "osdiSoakReplayOomGeneration": "513{,}024",
+    "osdiSoakReplayFractionApplied": "0.476",
+    "osdiSoakReplayKBPerGeneration": "161.8",
+    "osdiSoakReplayElapsedH": "3.37",
 }
 
 
@@ -1067,6 +1085,177 @@ def test_longevity_digest_and_reader_death_cause_are_text_macros_not_numbers():
     assert values["osdiSoakDigestStatus"] == "not computed"
     assert values["osdiSoakReaderDeathCause"] == "reader torn-tail race, pre-fix engine"
     assert values["osdiSoakVerifyHealthy"] == "true"
+
+
+def test_tampered_longevity_summary_rederived_sha256_mismatch_fails(tmp_path):
+    """summary_rederived_2026-09-15.json is not in README.md's original
+    "Files here" sha256 table (that table is the original soak's five
+    files only) -- this generator freezes its own whole-file sha256 from
+    its first read of the committed copy instead. An edited copy (even a
+    field this generator never reads) must fail that check before any
+    within-life slope statistic is trusted."""
+    mod = _load("osdi_paper_macros")
+    data = json.loads(mod.LONGEVITY_SUMMARY_REDERIVED.read_text(encoding="utf-8"))
+    data["summary"]["compactions"] = 999999
+    tampered = tmp_path / "summary_rederived_2026-09-15.json"
+    tampered.write_text(json.dumps(data), encoding="utf-8")
+
+    mod.LONGEVITY_SUMMARY_REDERIVED = tampered
+    m = mod.Macros()
+    mod.compute_longevity_rederived(m)
+    assert mod.FAILURES, "an edited summary_rederived_2026-09-15.json must fail this " \
+        "generator's own frozen sha256 check"
+    assert any("sha256" in f.lower() for f in mod.FAILURES)
+
+
+def test_tampered_longevity_summary_rederived_provenance_mismatch_fails(tmp_path):
+    """The re-derivation's own derived_from.original_manifest_sha256 field
+    must equal the *actual* sha256 of longevity-synth-1m-native-0.json --
+    proof this re-derivation ran against the same soak, not a different
+    one. Patching the digest first (so the whole-file check above would
+    not itself catch it) and only then editing derived_from must still
+    fail."""
+    mod = _load("osdi_paper_macros")
+    data = json.loads(mod.LONGEVITY_SUMMARY_REDERIVED.read_text(encoding="utf-8"))
+    data["derived_from"]["original_manifest_sha256"] = "0" * 64
+    tampered = tmp_path / "summary_rederived_2026-09-15.json"
+    tampered.write_text(json.dumps(data), encoding="utf-8")
+    # patch the frozen sha256 constant to match the tampered file's own
+    # digest, isolating this test to the provenance cross-check alone
+    import hashlib as _hashlib
+    mod.LONGEVITY_SUMMARY_REDERIVED_SHA256 = _hashlib.sha256(tampered.read_bytes()).hexdigest()
+
+    mod.LONGEVITY_SUMMARY_REDERIVED = tampered
+    m = mod.Macros()
+    mod.compute_longevity_rederived(m)
+    assert mod.FAILURES, "a derived_from.original_manifest_sha256 that no longer matches " \
+        "the real manifest's sha256 must fail, even with a patched whole-file digest"
+    assert any("original_manifest_sha256" in f for f in mod.FAILURES)
+
+
+def test_tampered_longevity_replay_check_sha256_mismatch_fails(tmp_path):
+    """replay-check-2026-09-15.json's sha256 *is* independently recorded
+    (README.md's "Post-hoc replay check" section quotes it verbatim) --
+    an edited copy must fail before any OOM/generation/timing figure is
+    trusted."""
+    mod = _load("osdi_paper_macros")
+    data = json.loads(mod.LONGEVITY_REPLAY_CHECK.read_text(encoding="utf-8"))
+    data["summary"]["attempt_1"]["wall_s"] = 1.0
+    tampered = tmp_path / "replay-check-2026-09-15.json"
+    tampered.write_text(json.dumps(data), encoding="utf-8")
+
+    mod.LONGEVITY_REPLAY_CHECK = tampered
+    m = mod.Macros()
+    mod.compute_longevity_rederived(m)
+    assert mod.FAILURES, "an edited replay-check-2026-09-15.json must fail the sha256 " \
+        "check against README.md's own quoted value"
+    assert any("sha256" in f.lower() for f in mod.FAILURES)
+
+
+def test_tampered_longevity_replay_check_generation_arithmetic_fails_even_with_patched_digest(tmp_path):
+    """highest_manifest_generation_observed must equal
+    compactions_inferred * 501 (500 batch-commit generations + 1
+    compact()-commit generation per cycle, per the file's own
+    compaction_inference_basis text) -- editing the generation alone,
+    with the whole-file digest patched to match, must still fail this
+    internal arithmetic cross-check rather than silently emitting a wrong
+    osdiSoakReplayOomGeneration."""
+    mod = _load("osdi_paper_macros")
+    data = json.loads(mod.LONGEVITY_REPLAY_CHECK.read_text(encoding="utf-8"))
+    data["summary"]["attempt_1"]["highest_manifest_generation_observed"] = 513025
+    tampered = tmp_path / "replay-check-2026-09-15.json"
+    tampered.write_text(json.dumps(data), encoding="utf-8")
+    import hashlib as _hashlib
+    mod.LONGEVITY_REPLAY_CHECK_SHA256 = _hashlib.sha256(tampered.read_bytes()).hexdigest()
+
+    mod.LONGEVITY_REPLAY_CHECK = tampered
+    m = mod.Macros()
+    mod.compute_longevity_rederived(m)
+    assert mod.FAILURES, "a generation count that no longer factors as " \
+        "compactions_inferred * 501 must fail, even with a patched whole-file digest"
+    assert any("501" in f for f in mod.FAILURES)
+
+
+def test_longevity_rederived_replay_check_sha256_matches_readme_quoted_value():
+    """README.md's "Post-hoc replay check" section quotes
+    replay-check-2026-09-15.json's sha256 verbatim
+    ("Files: replay-check-2026-09-15.json (sha256 ...)") -- this
+    generator's frozen constant must be the same string, not just an
+    independently-frozen first-read digest like the two re-derived-report
+    files above."""
+    mod = _load("osdi_paper_macros")
+    readme_text = (mod.LONGEVITY_DIR / "README.md").read_text(encoding="utf-8")
+    assert f"sha256 `{mod.LONGEVITY_REPLAY_CHECK_SHA256}`" in readme_text
+    assert mod.sha256_file(mod.LONGEVITY_REPLAY_CHECK) == mod.LONGEVITY_REPLAY_CHECK_SHA256
+
+
+def test_longevity_rederived_bytes_per_commit_is_median_slope_over_mean_rate():
+    """osdiSoakBytesPerCommitLiveKB is arithmetic, not a measurement:
+    round(within-life median RSS slope / mean commits-per-s). Recomputed
+    independently here from the same two source macros' own underlying
+    floats (not the rounded macro strings) and checked against both the
+    generator's internal frozen value and the README's own ~157-158
+    KB/commit neighborhood."""
+    mod = _load("osdi_paper_macros")
+    summary_doc = json.loads(mod.LONGEVITY_SUMMARY_REDERIVED.read_text(encoding="utf-8"))
+    median_slope = summary_doc["writer_within_life_rss_slope"]["median_kb_per_s"]
+    drift = summary_doc["summary"]["drift"]
+    mean_rate = (drift["throughput_first_hour_avg"] + drift["throughput_last_hour_avg"]) / 2
+    bytes_per_commit = median_slope / mean_rate
+    assert 150 <= bytes_per_commit <= 165
+    assert round(bytes_per_commit) == 157
+
+    m = mod.Macros()
+    mod.compute_longevity_rederived(m)
+    values = {name: value for name, value, _ in m.items}
+    assert values["osdiSoakBytesPerCommitLiveKB"] == "157"
+    assert values["osdiSoakCommitsPerSecMean"] == "20.2"
+
+
+def test_longevity_rederived_oom_rss_gb_is_kb_over_1e6():
+    """osdiSoakReplayOomRssGB converts the dmesg-parsed anon-rss kB figure
+    to GB via decimal division by 1e6 (kilo/giga, not kibi/gibi) --
+    checked directly against the dmesg line's own literal figure, not the
+    macro string."""
+    mod = _load("osdi_paper_macros")
+    replay_doc = json.loads(mod.LONGEVITY_REPLAY_CHECK.read_text(encoding="utf-8"))
+    dmesg_line = replay_doc["summary"]["attempt_1"]["dmesg_line"]
+    match = re.search(r"anon-rss:(\d+)kB", dmesg_line)
+    assert match is not None
+    rss_kb = int(match.group(1))
+    assert rss_kb == 82_997_140
+    assert round(rss_kb / 1e6, 1) == 83.0
+
+    m = mod.Macros()
+    mod.compute_longevity_rederived(m)
+    values = {name: value for name, value, _ in m.items}
+    assert values["osdiSoakReplayOomRssGB"] == "83.0"
+
+
+def test_longevity_rederived_replay_outcome_is_a_text_macro_not_a_number():
+    """osdiSoakReplayOutcome ('aborted_oom') must render as literal text,
+    same discipline as osdiSoakDigestStatus above."""
+    mod = _load("osdi_paper_macros")
+    m = mod.Macros()
+    mod.compute_longevity_rederived(m)
+    values = {name: value for name, value, _ in m.items}
+    with pytest.raises(ValueError):
+        float(values["osdiSoakReplayOutcome"])
+    assert values["osdiSoakReplayOutcome"] == "aborted_oom"
+
+
+def test_longevity_rederived_first_vs_last_slope_is_labelled_superseded():
+    """osdiSoakFirstVsLastSlopeKBps carries the old two-point figure
+    forward unchanged for comparison, but its provenance string must
+    flag it as superseded by the within-life figures -- it must never be
+    read as this record's own memory-FAIL headline number."""
+    mod = _load("osdi_paper_macros")
+    m = mod.Macros()
+    mod.compute_longevity_rederived(m)
+    entry = next(item for item in m.items if item[0] == "osdiSoakFirstVsLastSlopeKBps")
+    _, value, provenance = entry
+    assert value == "111.6"
+    assert "SUPERSEDED" in provenance
 
 
 def test_r18_and_dag_pending_stubs_cite_the_main_grid_quota_block():
