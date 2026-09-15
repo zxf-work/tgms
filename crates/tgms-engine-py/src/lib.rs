@@ -248,6 +248,34 @@ impl NativeStore {
         Some(d)
     }
 
+    /// Where this handle's `open` call spent its microseconds, by phase.
+    /// Mirrors `last_commit_phases` on the open side: B1-v2's A/B
+    /// (`benchmarks/results-v1/b1-manifest-v2-ab-2026-09.README.md` §B1(c))
+    /// could not score "manifest-chain open <= 70 ms" because open had no
+    /// internal phase timer exposed to Python. Unlike `last_commit_phases`
+    /// this is never `None` — every live handle came from a successful open.
+    fn open_phase_us<'py>(&self, py: Python<'py>) -> Bound<'py, PyDict> {
+        let p = self.inner.open_phases();
+        let d = PyDict::new(py);
+        for (k, v) in [
+            ("checkpoint_read_parse_us", p.checkpoint_read_parse_us),
+            ("merkle_verify_us", p.merkle_verify_us),
+            ("state_build_us", p.state_build_us),
+            ("delta_replay_us", p.delta_replay_us),
+            ("delta_count", p.delta_count),
+            ("dictionary_open_us", p.dictionary_open_us),
+            ("other_us", p.other_us),
+            ("total_us", p.total_us),
+            // the format of the checkpoint the chain resolved to, so a
+            // harness can tell a fused format-3 Merkle build from an older
+            // chain's O(n) whole-document rehash without re-deriving it
+            ("chain_format", u64::from(p.chain_format)),
+        ] {
+            d.set_item(k, v).expect("fresh dict accepts u64 values");
+        }
+        d
+    }
+
     fn in_batch(&self) -> bool {
         self.inner.in_batch()
     }
@@ -1183,6 +1211,39 @@ fn core_version() -> &'static str {
     tgms_engine_core::VERSION
 }
 
+/// What this `.so` was built as, for every timing record to carry.
+///
+/// The 2026-09 engine-commit A/B diagnosis found 100% of the treatment's
+/// decile growth sitting in the untimed residual, and a debug-assertions
+/// build was the top candidate: `store::publish` runs an O(segments)
+/// `debug_assert_eq!` every commit (kept in test builds "as a real net over
+/// the incremental seal" — see its doc comment), which a release build never
+/// pays. A number without this is not comparable to one that has it.
+///
+/// `profile`/`opt_level` come from `build.rs` forwarding the two env vars
+/// Cargo sets only for build scripts (`PROFILE`, `OPT_LEVEL`) into
+/// compile-time env vars this crate can read; `"unknown"` if a build ever
+/// runs without that build script having seen them.
+#[pyfunction]
+fn build_info(py: Python<'_>) -> Bound<'_, PyDict> {
+    let d = PyDict::new(py);
+    for (k, v) in [
+        ("profile", env!("TGMS_BUILD_PROFILE")),
+        ("opt_level", env!("TGMS_BUILD_OPT_LEVEL")),
+        ("engine_version", tgms_engine_core::VERSION),
+    ] {
+        d.set_item(k, v).expect("fresh dict accepts &str values");
+    }
+    d.set_item("debug_assertions", cfg!(debug_assertions))
+        .expect("fresh dict accepts a bool value");
+    d.set_item(
+        "manifest_format_version",
+        tgms_engine_core::MANIFEST_FORMAT_VERSION,
+    )
+    .expect("fresh dict accepts a u32 value");
+    d
+}
+
 /// Engine constants are exported so the Python side can *assert* agreement
 /// with `tgms.core.model` rather than trusting two copies of one number.
 #[pymodule]
@@ -1192,6 +1253,7 @@ fn _engine(m: &Bound<'_, PyModule>) -> PyResult<()> {
     m.add_function(wrap_pyfunction!(motif_match, m)?)?;
     m.add_function(wrap_pyfunction!(ping, m)?)?;
     m.add_function(wrap_pyfunction!(core_version, m)?)?;
+    m.add_function(wrap_pyfunction!(build_info, m)?)?;
     m.add("FORMAT_VERSION", tgms_engine_core::FORMAT_VERSION)?;
     m.add(
         "MANIFEST_FORMAT_VERSION",

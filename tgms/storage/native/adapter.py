@@ -73,6 +73,21 @@ class NativeAdapter(StorageAdapter):
     def close(self) -> None:
         self._store.close()
 
+    @staticmethod
+    def build_info() -> dict[str, Any]:
+        """What the loaded `_engine.so` was built as.
+
+        No store needed — it is a property of the extension module, not of
+        an open handle — so this is a `staticmethod`: `NativeAdapter.build_info()`
+        works without constructing one. Every timing record (`open_phase_us`,
+        `last_commit_phases`) should be paired with this: the 2026-09
+        engine-commit A/B diagnosis found the untimed residual absorbing all
+        of the treatment's decile growth, and a debug-assertions build (which
+        runs `store::publish`'s O(segments) `debug_assert_eq!` every commit)
+        was the top candidate.
+        """
+        return dict(_engine.build_info())
+
     def tcsr(self):
         """The base lazy build, wrapped in generation-stamped persistence.
 

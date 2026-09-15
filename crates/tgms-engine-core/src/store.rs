@@ -174,6 +174,10 @@ pub struct NativeStore {
     current_only: bool,
     /// Where the last commit spent its time (instrumentation, not contract).
     last_commit: Option<CommitPhases>,
+    /// Where this handle's `open` call spent its time (instrumentation, not
+    /// contract) — always populated, since every live handle came from a
+    /// successful `open`.
+    open_phases: OpenPhases,
 }
 
 /// Wall-clock microseconds per phase of one commit, plus the two numbers
@@ -208,6 +212,46 @@ pub struct CommitPhases {
     /// design trades for; separating the two keeps that a measurement rather
     /// than an assumption.
     pub manifest_checkpoint: bool,
+}
+
+/// Wall-clock microseconds `open` spent, by phase — the open-path sibling of
+/// [`CommitPhases`], written for the same reason: B1-v2's A/B
+/// (`benchmarks/results-v1/b1-manifest-v2-ab-2026-09.README.md` §B1(c))
+/// could not score "manifest-chain open ≤ 70 ms" because nothing broke the
+/// open call down, and a single opaque number cannot tell a checkpoint-read
+/// cost from a delta-replay one.
+///
+/// Instrumentation only, exactly like `CommitPhases`: no behaviour change,
+/// nothing different on disk, and the only overhead beyond a normal open is
+/// the handful of `Instant::now()` calls this and `manifest_chain` add.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+pub struct OpenPhases {
+    /// Reading and JSON-deserializing the checkpoint the manifest chain
+    /// resolved to.
+    pub checkpoint_read_parse_us: u64,
+    /// Verifying that checkpoint — building the Merkle tree at format 3 and
+    /// up, or the O(n) whole-document digest recompute below it (see
+    /// `chain_format`).
+    pub merkle_verify_us: u64,
+    /// The format of the checkpoint the manifest chain resolved to, i.e.
+    /// which of the two `merkle_verify_us` shapes ran.
+    pub chain_format: u32,
+    /// Applying each delta above the checkpoint into the running
+    /// manifest/Merkle state.
+    pub state_build_us: u64,
+    /// Reading and JSON-deserializing each delta above the checkpoint.
+    pub delta_replay_us: u64,
+    /// How many deltas were replayed to reach this generation.
+    pub delta_count: u64,
+    /// `Dictionary::open`: reading and validating the dictionary tail.
+    pub dictionary_open_us: u64,
+    /// Everything else `open` does: directory creation, the genesis publish
+    /// on a fresh store, the gc pin, the current-only marker check, and
+    /// assembling the `NativeStore` itself. Total minus the six phases
+    /// above, so it absorbs whatever this list does not yet name rather than
+    /// silently dropping it.
+    pub other_us: u64,
+    pub total_us: u64,
 }
 
 /// Everything a commit has to be able to put back, and everything the delta
@@ -293,12 +337,13 @@ impl CommitBase {
 
 impl NativeStore {
     pub fn open(root: impl Into<PathBuf>) -> Result<Self> {
+        let open_start = std::time::Instant::now();
         let root = root.into();
         for sub in SUBDIRS {
             fs::create_dir_all(root.join(sub))
                 .map_err(|e| EngineError::from(e).at_file(root.join(sub)))?;
         }
-        let (manifest, checkpoint_gen, merkle) = if root.join(CURRENT).exists() {
+        let (manifest, checkpoint_gen, merkle, chain_phases) = if root.join(CURRENT).exists() {
             Self::load_current(&root)?
         } else {
             Self::refuse_if_populated_without_current(&root)?;
@@ -307,16 +352,39 @@ impl NativeStore {
             // somewhere, and there is no parent to diff against
             Self::publish(&root, None, &genesis, true, u64::MAX)?;
             let state = merkle::ManifestMerkle::from_manifest(&genesis);
-            (genesis, 0, Some(state))
+            let phases = manifest_chain::ChainOpenPhases {
+                chain_format: genesis.format,
+                ..Default::default()
+            };
+            (genesis, 0, Some(state), phases)
         };
+        let t = std::time::Instant::now();
         let dict = Dictionary::open(
             root.join(DICT),
             manifest.dict.records,
             manifest.dict.bytes,
         )?;
+        let dictionary_open_us = t.elapsed().as_micros() as u64;
         let pin_key = fs::canonicalize(&root).unwrap_or_else(|_| root.clone());
         crate::gc::pin(&pin_key, manifest.generation);
         let current_only = root.join(CURRENT_ONLY_MARKER).exists();
+        let total_us = open_start.elapsed().as_micros() as u64;
+        let named_us = chain_phases.checkpoint_read_parse_us
+            + chain_phases.merkle_verify_us
+            + chain_phases.state_build_us
+            + chain_phases.delta_replay_us
+            + dictionary_open_us;
+        let open_phases = OpenPhases {
+            checkpoint_read_parse_us: chain_phases.checkpoint_read_parse_us,
+            merkle_verify_us: chain_phases.merkle_verify_us,
+            chain_format: chain_phases.chain_format,
+            state_build_us: chain_phases.state_build_us,
+            delta_replay_us: chain_phases.delta_replay_us,
+            delta_count: chain_phases.delta_count,
+            dictionary_open_us,
+            other_us: total_us.saturating_sub(named_us),
+            total_us,
+        };
         Ok(Self {
             root,
             pin_key,
@@ -344,12 +412,20 @@ impl NativeStore {
             batch_tt: None,
             current_only,
             last_commit: None,
+            open_phases,
         })
     }
 
     /// Where the last commit spent its time, if this handle has committed.
     pub fn last_commit_phases(&self) -> Option<CommitPhases> {
         self.last_commit
+    }
+
+    /// Where this handle's `open` call spent its time, by phase. Unlike
+    /// [`Self::last_commit_phases`] this is never `None`: every live handle
+    /// came from a successful `open`.
+    pub fn open_phases(&self) -> OpenPhases {
+        self.open_phases
     }
 
     /// Whether this store is the stripped current-only configuration
@@ -394,7 +470,14 @@ impl NativeStore {
     /// cannot tell apart, because `manifest_sha` is the digest of the logical
     /// document either way.
     #[allow(clippy::type_complexity)]
-    fn load_current(root: &Path) -> Result<(Manifest, u64, Option<merkle::ManifestMerkle>)> {
+    fn load_current(
+        root: &Path,
+    ) -> Result<(
+        Manifest,
+        u64,
+        Option<merkle::ManifestMerkle>,
+        manifest_chain::ChainOpenPhases,
+    )> {
         let cur_path = root.join(CURRENT);
         let text = fs::read_to_string(&cur_path)
             .map_err(|e| EngineError::from(e).at_file(&cur_path))?;
@@ -429,7 +512,7 @@ impl NativeStore {
             ))
             .at_file(&m_path));
         }
-        Ok((manifest, resolved.checkpoint, resolved.merkle))
+        Ok((manifest, resolved.checkpoint, resolved.merkle, resolved.phases))
     }
 
     fn manifest_path(root: &Path, generation: u64) -> PathBuf {
@@ -2070,6 +2153,70 @@ mod tests {
         assert_eq!(re.dict().len(), 3);
         assert_eq!(re.dict().dense_id("n3"), Some(2));
         assert_eq!(re.manifest().parent, Some(1));
+    }
+
+    #[test]
+    fn open_phases_default_is_all_zero_and_sums_to_zero() {
+        // pure struct arithmetic, no I/O: the zero value every field of
+        // `OpenPhases` must agree on, and the sum-of-named-phases invariant
+        // an empty phase record trivially satisfies.
+        let p = OpenPhases::default();
+        assert_eq!(p.checkpoint_read_parse_us, 0);
+        assert_eq!(p.merkle_verify_us, 0);
+        assert_eq!(p.chain_format, 0);
+        assert_eq!(p.state_build_us, 0);
+        assert_eq!(p.delta_replay_us, 0);
+        assert_eq!(p.delta_count, 0);
+        assert_eq!(p.dictionary_open_us, 0);
+        assert_eq!(p.other_us, 0);
+        assert_eq!(p.total_us, 0);
+        let named = p.checkpoint_read_parse_us
+            + p.merkle_verify_us
+            + p.state_build_us
+            + p.delta_replay_us
+            + p.dictionary_open_us;
+        assert_eq!(named + p.other_us, p.total_us);
+    }
+
+    #[test]
+    fn open_phases_account_for_every_delta_and_sum_within_the_total() {
+        // B1-v2 (benchmarks/results-v1/b1-manifest-v2-ab-2026-09.README.md
+        // §B1(c)) could not score "manifest-chain open <= 70 ms" because
+        // NativeAdapter exposed no open-phase timing. This is that timing's
+        // contract: every key present, delta_count matching what was
+        // written, and the named phases never outrunning the total.
+        let root = tmp_root("open-phases");
+        let mut s = NativeStore::open(&root).unwrap();
+        s.set_checkpoint_every(Some(1_000_000)); // one checkpoint, then all deltas
+        const N: i64 = 12;
+        for tt in 1..=N {
+            s.begin(tt * 10).unwrap();
+            s.ensure_entity(&format!("n{tt}"), "Node").unwrap();
+            s.commit(EventLogRef::default()).unwrap();
+        }
+        drop(s);
+
+        for _ in 0..2 {
+            // opening the same store twice must yield the same delta_count
+            let re = NativeStore::open(&root).unwrap();
+            assert_eq!(re.generation(), N as u64);
+            let p = re.open_phases();
+            assert_eq!(p.delta_count, N as u64, "one delta per commit above the genesis checkpoint");
+            assert_eq!(p.chain_format, crate::MANIFEST_FORMAT_VERSION);
+            let named = p.checkpoint_read_parse_us
+                + p.merkle_verify_us
+                + p.state_build_us
+                + p.delta_replay_us
+                + p.dictionary_open_us;
+            assert!(
+                p.total_us >= named,
+                "total_us {} must cover the named phases {named} \
+                 (other_us {})",
+                p.total_us,
+                p.other_us
+            );
+            assert_eq!(p.other_us, p.total_us - named);
+        }
     }
 
     #[test]
