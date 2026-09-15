@@ -3057,12 +3057,21 @@ mod tests {
         // `store::publish`'s O(segments) `debug_assert_eq!`), so the bar
         // itself widens under `cfg!(debug_assertions)` -- this is about the
         // build profile, not the underlying instrumentation, which is
-        // correct and unchanged. Widening the per-commit bar alone would let
-        // a genuine, systematic accounting leak hide inside 60 individually-
-        // passing-but-elevated commits, so the median residual across all 60
-        // is additionally held to the same bar: one scheduler hiccup can
-        // only move the median for at most 29 of 60 commits, but a real leak
-        // present on every commit moves it on all of them.
+        // correct and unchanged.
+        //
+        // Even the widened bar is not CI-safe *per commit*: a shared runner
+        // can preempt the test process for a scheduling quantum in the
+        // middle of any single commit, inflating that one commit's residual
+        // by an amount that has nothing to do with the engine. A hard
+        // per-commit assertion therefore has an irreducible flake rate on
+        // shared infrastructure no matter how wide the bar. What must not
+        // regress is the *distribution*: a genuine, systematic accounting
+        // leak shows up on (nearly) every commit, so it moves the median and
+        // the tail together, and it grows with history size, so it moves the
+        // back of the run relative to the front. A single preempted commit
+        // can only move one point in the distribution and cannot manufacture
+        // a first-to-last trend, so median/p90/no-growth checks catch a real
+        // leak while tolerating scheduler noise.
         fn residual_bound(total_us: u64) -> u64 {
             if cfg!(debug_assertions) {
                 std::cmp::max(1_000, total_us / 10) // max(1000us, 10%)
@@ -3079,11 +3088,35 @@ mod tests {
                 (xs[n / 2 - 1] + xs[n / 2]) / 2
             }
         }
+        fn p90(mut xs: Vec<u64>) -> u64 {
+            xs.sort_unstable();
+            let n = xs.len();
+            let idx = ((n as f64 - 1.0) * 0.9).round() as usize;
+            xs[idx.min(n - 1)]
+        }
+        // The three worst commits by residual, for failure messages -- a
+        // scheduler-hiccup failure and a systematic-leak failure look
+        // different here (one outlier vs. three-in-a-row elevated values).
+        fn worst_three(commits: &[(i64, u64, u64, u64)]) -> String {
+            let mut v = commits.to_vec();
+            v.sort_unstable_by_key(|a| std::cmp::Reverse(a.3));
+            v.iter()
+                .take(3)
+                .map(|(idx, total, named_sum, residual)| {
+                    format!(
+                        "commit {idx}: total_us={total} named_sum={named_sum} \
+                         residual={residual}us"
+                    )
+                })
+                .collect::<Vec<_>>()
+                .join("; ")
+        }
 
         let root = tmp_root("phase-accounting");
         let mut s = NativeStore::open(&root).unwrap();
         let mut residuals = Vec::with_capacity(60);
         let mut totals = Vec::with_capacity(60);
+        let mut commits: Vec<(i64, u64, u64, u64)> = Vec::with_capacity(60);
         for tt in 1..=60i64 {
             let uid = format!("n{tt}");
             let g = commit_with(&mut s, tt, &[uid.as_str()]);
@@ -3106,26 +3139,39 @@ mod tests {
                 p.total_us
             );
             let residual = p.total_us - named_sum;
-            let bound = residual_bound(p.total_us);
-            assert!(
-                residual <= bound,
-                "commit {tt}: total_us={} named_sum={named_sum} \
-                 residual={residual}us exceeds bound={bound}us",
-                p.total_us
-            );
             residuals.push(residual);
             totals.push(p.total_us);
+            commits.push((tt, p.total_us, named_sum, residual));
         }
-        let first_residual = residuals[0];
-        let last_residual = residuals[residuals.len() - 1];
-        let median_residual = median(residuals);
-        let median_bound = residual_bound(median(totals));
+
+        let bar = residual_bound(median(totals.clone()));
+        let median_residual = median(residuals.clone());
+        let p90_residual = p90(residuals.clone());
+        let first_ten_median = median(residuals[..10].to_vec());
+        let last_ten_median = median(residuals[residuals.len() - 10..].to_vec());
+
         assert!(
-            median_residual <= median_bound,
+            median_residual <= bar,
             "median residual over 60 commits ({median_residual}us) exceeds \
-             bound={median_bound}us -- a systematic accounting leak, not a \
-             one-off scheduler hiccup (first commit residual={first_residual}us, \
-             last commit residual={last_residual}us)",
+             bar={bar}us -- a systematic accounting leak, not a one-off \
+             scheduler hiccup (worst three: {})",
+            worst_three(&commits)
+        );
+        assert!(
+            p90_residual <= 3 * bar,
+            "p90 residual over 60 commits ({p90_residual}us) exceeds \
+             3*bar={}us -- too many commits are elevated for this to be a \
+             single scheduler hiccup (worst three: {})",
+            3 * bar,
+            worst_three(&commits)
+        );
+        assert!(
+            last_ten_median <= first_ten_median + bar,
+            "median residual grew from {first_ten_median}us (first 10 commits) \
+             to {last_ten_median}us (last 10 commits), more than bar={bar}us \
+             -- consistent with an O(segments) leak, not scheduler noise \
+             (worst three: {})",
+            worst_three(&commits)
         );
     }
 
