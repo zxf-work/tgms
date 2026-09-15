@@ -1,0 +1,63 @@
+{
+ "schema_version": "1.0.0",
+ "git_commit": "ebe1dc2",
+ "timestamp_utc": "2026-09-15T12:41:51Z",
+ "machine": {
+  "host": "xzgpu",
+  "platform": "Linux-5.4.0-216-generic-x86_64-with-glibc2.31",
+  "cpus": 40,
+  "ram_gb": 93
+ },
+ "config": {
+  "measurement": "Lane P-CO7: chain-open re-measurement of the v2e B1(c) cell (manifest-chain component split + total open) on a host confirmed quiet at every precondition check -- no concurrent tar/rsync backup this time, unlike the v2e lane. No verdicts scored here -- that is the coordinator's job, per this repo's convention.",
+  "treatment_commit": "ebe1dc2 (main, includes the B1-v2f whitespace-tolerant manifest kind sniff)",
+  "treatment_note": "built fresh into detached worktree work/tgms-xz-ebe1dc2 (cargo build --release -p tgms-engine-py); build_info() confirmed profile=release, debug_assertions=False, manifest_format_version=3",
+  "control_commit": "886805f600bcb447cb0bff16d432a796ba732339",
+  "control_note": "pre-pinned format-2 engine (also pinned for the 24h longevity soak), not rebuilt; lacks open_phase_us() entirely -- timed via raw NativeAdapter() wall-clock construction, same method the v2/v2e lanes used",
+  "cell_a": {
+   "script": "scripts/bench_manifest_chain_open.py (treatment); raw NativeAdapter() wall-clock loop (control, no phase timer available)",
+   "store_setup": "scripts/build_snb_store.py --backend native --batch 250 --compact-every 0 --digest manifest --write-path assert, killed at the 2,500,000 ops log line, same as the v2/v2e lanes' B1(a)/(c)",
+   "reps": 3
+  }
+ },
+ "seed": {
+  "value": null,
+  "reason": "cell (a) replays the fixed LDBC SF1 CSV corpus deterministically (no RNG)"
+ },
+ "dataset": {
+  "name": "ldbc-sf1-composite-merged-fk-initial-snapshot",
+  "digest": "5600fe771ed412de7e219aa8046ac0fd0a06c4c1ff7192d35ea16dc6a4cf47a9",
+  "digest_kind": "store_digest",
+  "digest_method": "sha256 of benchmarks/results-v1/b1-manifest-co7-chain-open-2026-09-logs/dataset-manifest.txt, a per-file manifest -- one line per file: 'relative_path byte_size mtime_utc_iso sha256', sorted by path -- over every file under initial_snapshot/ on xzgpu (find -type f | sort, then stat + sha256sum per file, 55 files total). Computed fresh on xzgpu for this run; byte-identical to the v2e lane's digest (corpus unchanged)."
+ },
+ "result_digest": "0a06d6dd6bc8af62209d3a45d06f63a4b265eb7f7fd862a327a887e2382080f0",
+ "protocol": {
+  "warmups": 0,
+  "reps": 3,
+  "ceilings": {
+   "cell_a_stop_ops": 2500000
+  }
+ },
+ "record": "benchmarks/results-v1/b1-manifest-co7-chain-open-2026-09-raw.json",
+ "measurements": {
+  "cell_a_chain_open": {
+   "threshold_component_us": "<= 70,000 us (v2e frozen prediction: 87,055 us / 87.06 ms, refuted > 75,000 us)",
+   "threshold_open_component_breakdown_pct_of_v2e": "+-10% of v2e per-component figures (checkpoint_read_parse_us 42,124; merkle_verify_us 40,204; state_build_us 1,828; delta_replay_us 2,899; dictionary_open_us 1,066,460)",
+   "threshold_total_open_ratio": "<= 1.25x control at matched generation",
+   "treatment_generation": 10116,
+   "control_generation": 10042,
+   "treatment_checkpoint_read_parse_us_median": 12670,
+   "treatment_merkle_verify_us_median": 34858,
+   "treatment_state_build_us_median": 5935,
+   "treatment_delta_replay_us_median": 6256,
+   "treatment_manifest_chain_component_us_median_sum": 59719,
+   "treatment_dictionary_open_us_median": 1092729,
+   "treatment_total_us_median": 1155032,
+   "treatment_open_ms_median_wallclock": 1155.303,
+   "control_open_ms_median_wallclock": 10100.238,
+   "control_component_breakdown": "not available -- pinned format-2 engine predates open_phase_us()",
+   "total_open_ratio_treatment_over_control": 0.1144,
+   "note": "Host confirmed quiet at every precondition check (no longevity/eval/bench/replay/tar/rsync/sha256sum processes); control's open time (median 10.1s) is nonetheless close to the v2e lane's contended figure (10.4s under a concurrent tar backup) and far above the frozen quiet-control prediction (~2.2s). No cause investigated; printed as measured, no verdict."
+  }
+ }
+}
