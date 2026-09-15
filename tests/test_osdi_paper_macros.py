@@ -73,6 +73,7 @@ def _run_all_landed(mod):
     mod.compute_c7_dag(m)
     mod.compute_c7_r18(m)
     mod.compute_d160(m)
+    mod.compute_d160_llm_direct_fix(m)
     return m
 
 
@@ -144,6 +145,11 @@ FROZEN_LANDED_VALUES = {
     "osdiD160B5Em": "0.181",
     "osdiD160LlmDirectCarrying": "0",
     "osdiD160LlmDirectOverflowErrors": "216",
+    "osdiD160LlmDirectCoverageFixed": "0.000",
+    "osdiD160LlmDirectErrorsFixed": "0",
+    "osdiD160LlmDirectRawEmFixed": "0.064",
+    "osdiD160LlmDirectTokenizerFixed": "hf\\_real",
+    "osdiD160LlmDirectBudgetFixed": "8000",
     "osdiOldGateCoverage": "0.706",
     "osdiOldGateUcr": "0",
     "osdiOldGateCondAcc": "0.548",
@@ -173,7 +179,6 @@ def test_pending_macros_raise_a_latex_error_never_a_placeholder_number():
         "osdiStormSpeedupN1k", "osdiStormAvoidedN1k",
         "osdiLdbcExpressible", "osdiLdbcExecuted", "osdiLdbcValidated",
         "osdiLiveDays", "osdiLiveAdvisories", "osdiLiveCorrections",
-        "osdiD160LlmDirectCoverageFixed",
     }
     got_names = {name for name, _, _ in m.items}
     assert got_names == expected_names
@@ -193,7 +198,7 @@ def test_full_macro_set_has_no_duplicate_names_and_covers_every_skeleton_claim()
     mod.add_pending_stubs(m)
     names = [name for name, _, _ in m.items]
     assert len(names) == len(set(names)), "duplicate macro name"
-    assert len(names) == len(FROZEN_LANDED_VALUES) + 14
+    assert len(names) == len(FROZEN_LANDED_VALUES) + 13
 
 
 def test_cli_check_mode_agrees_with_committed_output(tmp_path):
@@ -398,6 +403,29 @@ def test_tampered_d160_rows_recomputed_coverage_fails_even_with_a_patched_digest
     assert mod.FAILURES, "an extra claim-carrying row must fail the frozen carrying-count/" \
         "coverage assertion, even though the digest was patched to match"
     assert any("carrying" in f.lower() or "coverage" in f.lower() for f in mod.FAILURES)
+
+
+def test_tampered_d160_llm_direct_fix_rows_digest_mismatch_fails(tmp_path):
+    """Same discipline as test_tampered_d160_rows_digest_mismatch_fails, for
+    the llm_direct follow-up record: editing rows-llm-direct-fix-2026-09-14.json
+    without updating its manifest's result_digest must be caught before any
+    of the fixed-record macros (coverage/errors/raw-em/tokenizer/budget) are
+    even computed."""
+    mod = _load("osdi_paper_macros")
+    rows = json.loads(mod.D160_ROWS_FIX.read_text(encoding="utf-8"))
+    for r in rows:
+        if r["system"] == "llm_direct":
+            r["meta"]["tokenizer_kind"] = "whitespace_approx"
+            break
+    tampered = tmp_path / "rows-llm-direct-fix-2026-09-14.json"
+    tampered.write_text(json.dumps(rows), encoding="utf-8")
+
+    mod.D160_ROWS_FIX = tampered
+    m = mod.Macros()
+    mod.compute_d160_llm_direct_fix(m)
+    assert mod.FAILURES, "an edited llm_direct-fix rows file must fail the sha256 digest " \
+        "check against its manifest's result_digest"
+    assert any("digest" in f.lower() for f in mod.FAILURES)
 
 
 def test_r18_and_dag_pending_stubs_cite_the_main_grid_quota_block():
