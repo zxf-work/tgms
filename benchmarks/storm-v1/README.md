@@ -380,6 +380,54 @@ the R-18 trip criterion) lives in the internal freeze.
 **Records**: `storm-r18-probe-2026-09.json`, `storm-r18-probe-2026-09-
 rows.jsonl`. `scripts/check_result_manifest.py` passes.
 
+## R-18 probe v2 (addendum-3) — run of record, v1 vs v2 comparison
+
+Job 212295 (`synth-iv-60k`, mix `c1`, N=10,000, seed 0, 5 batches, `sum`
+TTF, `--allow-r18-trip`): completed cleanly, `wall_s` 12452.8 (3:27:33),
+not wall-capped, all 5/5 batches realized. Commit `fdd393c` (D-161
+rollout); `git_commit`/`addendum_id`/`freeze_sha256` verified against
+212294's own values before landing this record. Same cell as the v1
+probe above (same store/mix/N/seed), so the two rows below are directly
+comparable pre- vs post-rollout. **Every v2 field is the per-batch median
+over its 5 batches, matching the v1 column's own convention.**
+
+| field | v1 probe (8962b78) | v2 probe (fdd393c) |
+|---|---:|---:|
+| `n_registered` (of 10,000 requested) | 8,922 | 8,922 |
+| median `intersects_calls`/batch | 13,009 | 29,193 |
+| median `lookup_wall_ms`/batch | 26.91 | 52.73 |
+| median `candidate_survivors`/batch | 6,360 | 2,524 |
+| median `check_wall_ms` (tgms-L1)/batch | 867,567.9 (≈867.6 s) | 336,866.8 (≈336.9 s) |
+| tgms-L1 `ttf_p50_ms` (== median `ttf_ms`) | 1,977,551.0 (≈1,977.6 s) | 806,289.8 (≈806.3 s) |
+| global-recompute `ttf_p50_ms` | 1,595,328.6 (≈1,595.3 s) | 1,569,251.2 (≈1,569.3 s) |
+| tgms-L1 `false_fresh` (summed over batches) | 0 | 0 |
+| tgms-L1 `false_stale` (summed over batches) | 28,873 | 8,409 |
+| tgms-L1 `avoided_recompute_decision` | 0.2989 | 0.7576 |
+| `summary.narrowing_coverage.n_all_top_term` | not measured (pre-addendum-4) | **0** (of 8,922 registered) |
+| total wall (job) | 17836.2 s | 12452.8 s |
+
+`n_registered` is identical (8,922 of 10,000; `n_registration_skipped`
+1,078 in both) — same seed, same population draw, independent of commit.
+`intersects_calls` roughly doubles while `candidate_survivors` drops by
+more than half: consistent with the D-161 rollout deriving real,
+narrower per-artifact scopes (`n_all_top_term=0` here, confirming
+addendum-3's own "all-top fraction predicted 0.00" at the full R-18
+scale, not just at smoke scale) — more targeted lookups, each surviving a
+smaller candidate set. `check_wall_ms`/`ttf_p50_ms`/`avoided_recompute_decision`
+are reported here as measured values only; no verdict on which arm this
+favors is drawn in this README (the coordinator scores).
+
+**Addendum-7 disc caveat** applies identically here — scored quantities
+above are computed from the checker's own digest comparison, independent
+of the correction generators' fixed-per-class `disc` assignment (see the
+storm-v2 main grid section above for the full explanation).
+
+**Records**: `storm-v2-r18-probe-2026-09-15.json`, `storm-v2-r18-probe-
+2026-09-15-rows.jsonl` (both committed directly — a single task's 5
+batches is small enough that, unlike the 36-cell main grid, no separate
+records tarball is needed; this is the same convention the v1 probe
+above uses). `scripts/check_result_manifest.py` passes.
+
 ## DAG phase v3 — run of record (addendum-3's `dag_phase_v3`, same 40-cell
 grid; jobs 211614 + 211700 + 211706; commit `fdd393c`, the D-161-rolled-out
 engine — this is the same `--dag-seed-from-affected` mechanism v2 tested,
