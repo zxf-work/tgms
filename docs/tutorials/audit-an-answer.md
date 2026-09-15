@@ -198,7 +198,9 @@ them is a common way to over-trust a result:
 - **Delivery completeness** — did you get back every row the *computed*
   result actually has (`rows_returned` vs. `rows_total`; `truncated`
   tells you). A page limit can make this false even when execution ran
-  fine.
+  fine. `rows_returned` — on the trace step and on the ECQR scope — is
+  the delivered page count; `rows_total`, on the step's stored result,
+  is the engine's full count before pagination.
 - **Execution completeness** — did the computation itself run to
   completion over its declared input, with no timeout or partial
   partition. This can be true even while delivery is truncated (the

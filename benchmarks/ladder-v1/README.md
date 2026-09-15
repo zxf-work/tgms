@@ -163,6 +163,20 @@ medians are equal). 1-step plans range 2648 (p12-compute-only) – 3825
 p02 6402, p09 7924, p10 7549 — all inside [4000, 90000]. **PASS**, and
 falsifier (b) (non-determinism) does not fire.
 
+**Note (2026-09-15):** the executor's trace field `rows_returned` was
+redefined on 2026-09-15 to the delivered page count (it previously carried
+`rows_total`, the engine's pre-pagination count, which duplicated
+`rows_total` and contradicted the ECQR scope's own `rows_returned`). The
+rung-3 byte counts above predate that change. `benchmarks/ladder-v1/raw/`
+records only the rung's `bytes_*` summary stats per plan (`bytes_all`,
+`bytes_median`, …), not per-step `truncated`/`rows_returned` values, so
+whether any plan's steps actually truncated their page (10 of the 12 plans
+in `benchmarks/ladder-v1/plans/` set a `limit`) cannot be determined from
+the stored raw files — exposure is unknown. Either way, a re-run would
+differ only in the digit width of `rows_returned` for steps whose page
+truncated (bounded by a few bytes per such step), and determinism
+(falsifier b) is unaffected.
+
 **Rung 4 — verify_ms** (predicted p50 in [1, 20]; falsifier if p50 > 200):
 every plan's median p50 lands in a narrow **4.97–5.30 ms** band regardless
 of plan shape — matching the freeze's own basis note ("dominated by fixed

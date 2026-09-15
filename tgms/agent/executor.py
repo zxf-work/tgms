@@ -4,13 +4,13 @@
   re-validates every resolved arg set against its JSON Schema (defense in
   depth — call_operator always validates).
 - Produces an execution trace: per step {step_id, op, resolved_args,
-  result_digest, rows_returned, truncated, wall_ms, status} plus full results
-  in a content-addressed store on disk keyed by digest. `refused:
-  "truncated_input"` marks a step the executor declined to dispatch — a
-  reducing `compute` whose input page was truncated (D-061); such a record
-  has no `wall_ms`/`result_digest`, and the plan's `answer_error` names it
-  as not completed. The plan's answer is never taken from an earlier step
-  in that case.
+  result_digest, rows_returned (the delivered page count), truncated,
+  wall_ms, status} plus full results in a content-addressed store on disk
+  keyed by digest. `refused: "truncated_input"` marks a step the executor
+  declined to dispatch — a reducing `compute` whose input page was
+  truncated (D-061); such a record has no `wall_ms`/`result_digest`, and
+  the plan's `answer_error` names it as not completed. The plan's answer
+  is never taken from an earlier step in that case.
 - Failure policy: a failed step fails its dependents; independent branches
   still run; E_COST / E_NOT_FOUND return control to the planner repair loop.
 - Hard limits per plan: <= 12 steps, <= 60 s wall clock, <= 50k rows
@@ -266,8 +266,18 @@ class Executor:
                 rec.update(status="failed", error=res)
                 failed.add(sid)
             else:
-                rows = res.get("rows_total", len(res.get("rows", [])) or 0)
-                total_rows += int(rows or 0)
+                rows_list = res.get("rows")
+                # the materialized-row budget is charged the engine's full
+                # logical result (rows_total), not the delivered page --
+                # conservative, and independent of the trace field below
+                rows_total = res.get("rows_total", len(rows_list or []) or 0)
+                total_rows += int(rows_total or 0)
+                # the trace field is the delivered page count, matching the
+                # ECQR scope's rows_returned (tgms/evidence/adapter_tgms.py);
+                # it must stay an int (never None) -- demo.py and
+                # trace_viewer.py format it for display, and row-less
+                # envelopes (e.g. compute) correctly record 0 here
+                rows_delivered = len(rows_list) if isinstance(rows_list, list) else 0
                 # the read's own capture supersedes the pre-call basis: it is
                 # the frontier this step was actually served from (D13.16)
                 rec.update({k: res[k] for k in FRESHNESS_KEYS if k in res})
@@ -277,7 +287,7 @@ class Executor:
                 if tgir:
                     rec["tgir"] = tgir
                 rec.update(status="ok", result_digest=res["result_digest"],
-                           rows_returned=rows,
+                           rows_returned=rows_delivered,
                            truncated=res.get("truncated", False),
                            upstream_truncated=upstream_truncated)
                 # every successful step carries its evidence descriptor;
