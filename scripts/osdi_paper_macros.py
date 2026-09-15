@@ -772,22 +772,46 @@ def compute_b1_v2e(m: Macros) -> None:
           "B1-v2e: recomputed treatment residual_last_us (mean of reps) matches "
           "manifest's own field")
 
-    # p50 -- phase_p50_us.total_us (the engine-internal commit total), median
-    # of reps; this is the field the manifest's own digested measurements
-    # block reports and the README's prose quotes (paired ratio 0.715x).
-    p50_trt = statistics.median(r["phase_p50_us"]["total_us"] for r in trt_reps)
-    p50_ctl = statistics.median(r["phase_p50_us"]["total_us"] for r in ctl_reps)
-    eq(p50_trt, 3365, "B1-v2e frozen: treatment engine-commit p50 total_us (median of 3 reps)")
-    eq(p50_ctl, 4704, "B1-v2e frozen: control engine-commit p50 total_us (median of 3 reps)")
-    eq(p50_trt, meas_cb["treatment_p50_median_us"],
-       "B1-v2e: recomputed treatment p50 matches manifest's own field")
-    eq(p50_ctl, meas_cb["control_p50_median_us"],
-       "B1-v2e: recomputed control p50 matches manifest's own field")
+    # engine-internal p50 -- phase_p50_us.total_us (the commit's engine-side
+    # total, excluding wal_us/apply_us), median of reps; this is the field
+    # the manifest's own digested measurements block reports and the
+    # README's prose quotes (paired ratio 0.715x). Named "Engine" to keep it
+    # unambiguous next to the wall-clock commit_ms.p50 figure below -- the
+    # frozen p50 metric Addenda 3/5/6 and osdiB1v2P50* actually track is the
+    # wall-clock one, not this one.
+    engine_p50_trt = statistics.median(r["phase_p50_us"]["total_us"] for r in trt_reps)
+    engine_p50_ctl = statistics.median(r["phase_p50_us"]["total_us"] for r in ctl_reps)
+    eq(engine_p50_trt, 3365,
+       "B1-v2e frozen: treatment engine-internal p50 total_us (median of 3 reps)")
+    eq(engine_p50_ctl, 4704,
+       "B1-v2e frozen: control engine-internal p50 total_us (median of 3 reps)")
+    eq(engine_p50_trt, meas_cb["treatment_p50_median_us"],
+       "B1-v2e: recomputed treatment engine-internal p50 matches manifest's own field")
+    eq(engine_p50_ctl, meas_cb["control_p50_median_us"],
+       "B1-v2e: recomputed control engine-internal p50 matches manifest's own field")
 
-    p50_paired = p50_trt / p50_ctl
-    close(p50_paired, 0.715, 0.001, "B1-v2e frozen: p50 paired ratio treatment/control")
-    close(p50_paired, meas_cb["paired_p50_ratio_treatment_over_control"], 0.001,
-          "B1-v2e: recomputed p50 paired ratio matches manifest's own field")
+    engine_p50_paired = engine_p50_trt / engine_p50_ctl
+    close(engine_p50_paired, 0.715, 0.001,
+          "B1-v2e frozen: engine-internal p50 paired ratio treatment/control")
+    close(engine_p50_paired, meas_cb["paired_p50_ratio_treatment_over_control"], 0.001,
+          "B1-v2e: recomputed engine-internal p50 paired ratio matches manifest's own field")
+
+    # wall-clock p50 -- commit_ms.p50 (the full per-commit latency
+    # `_timed_write` measures: wal fsync + apply_ops + engine commit), median
+    # of reps. This, not the engine-internal figure above, is the metric
+    # Addenda 3/5/6 and the existing osdiB1v2P50* macros track -- keeping
+    # both names apart here so a future reader of this file never has to
+    # guess which one a bare "P50" macro means.
+    wall_p50_trt = statistics.median(r["commit_ms"]["p50"] for r in trt_reps)
+    wall_p50_ctl = statistics.median(r["commit_ms"]["p50"] for r in ctl_reps)
+    close(wall_p50_trt, 4.274, 0.001,
+          "B1-v2e frozen: treatment wall-clock commit_ms.p50 (median of 3 reps)")
+    close(wall_p50_ctl, 5.303, 0.001,
+          "B1-v2e frozen: control wall-clock commit_ms.p50 (median of 3 reps)")
+
+    wall_p50_paired = wall_p50_trt / wall_p50_ctl
+    close(wall_p50_paired, 0.806, 0.001,
+          "B1-v2e frozen: wall-clock p50 paired ratio treatment/control")
 
     # --- cell (a): chain-open component split at G~10k, K=512 ---
     ca = raw["cell_a_chain_open"]
@@ -870,15 +894,29 @@ def compute_b1_v2e(m: Macros) -> None:
           f"{relpath(B1_V2E_RAW)}: mean(cell_b_commitcost.treatment_reps_full[*]."
           "residual_last_us) over 3 reps")
 
-    m.add("osdiB1v2eP50TreatmentMs", f"{p50_trt / 1000:.3f}",
+    m.add("osdiB1v2eEngineP50TreatmentMs", f"{engine_p50_trt / 1000:.3f}",
           f"{relpath(B1_V2E_RAW)}: cell_b_commitcost.treatment_reps_full[*]."
-          "phase_p50_us.total_us, median over 3 reps, /1000, ms")
-    m.add("osdiB1v2eP50ControlMs", f"{p50_ctl / 1000:.3f}",
+          "phase_p50_us.total_us, median over 3 reps, /1000, ms -- engine-internal "
+          "total_us p50 (excludes wal_us/apply_us); see osdiB1v2eP50TreatmentMs for "
+          "the wall-clock figure Addenda 3/5/6 actually track")
+    m.add("osdiB1v2eEngineP50ControlMs", f"{engine_p50_ctl / 1000:.3f}",
           f"{relpath(B1_V2E_RAW)}: cell_b_commitcost.control_reps_full[*]."
-          "phase_p50_us.total_us, median over 3 reps, /1000, ms")
-    m.add("osdiB1v2eP50Paired", f"{p50_paired:.3f}",
+          "phase_p50_us.total_us, median over 3 reps, /1000, ms -- engine-internal "
+          "total_us p50 (excludes wal_us/apply_us)")
+    m.add("osdiB1v2eEnginePaired", f"{engine_p50_paired:.3f}",
           f"{relpath(B1_V2E_RAW)}: median(treatment[*].phase_p50_us.total_us) / "
-          "median(control[*].phase_p50_us.total_us)")
+          "median(control[*].phase_p50_us.total_us) -- engine-internal total_us p50")
+
+    m.add("osdiB1v2eP50TreatmentMs", f"{wall_p50_trt:.3f}",
+          f"{relpath(B1_V2E_RAW)}: median(cell_b_commitcost.treatment_reps_full[*]."
+          "commit_ms.p50) over 3 reps, ms -- wall-clock (wal fsync + apply_ops + "
+          "engine commit), the metric Addenda 3/5/6 and osdiB1v2P50* track")
+    m.add("osdiB1v2eP50ControlMs", f"{wall_p50_ctl:.3f}",
+          f"{relpath(B1_V2E_RAW)}: median(cell_b_commitcost.control_reps_full[*]."
+          "commit_ms.p50) over 3 reps, ms -- wall-clock")
+    m.add("osdiB1v2eP50Paired", f"{wall_p50_paired:.3f}",
+          f"{relpath(B1_V2E_RAW)}: median(treatment[*].commit_ms.p50) / "
+          "median(control[*].commit_ms.p50) -- wall-clock paired ratio")
 
     m.add("osdiB1v2eOpenComponentMs", f"{component_us / 1000:.2f}",
           f"{relpath(B1_V2E_RAW)}: cell_a_chain_open.treatment.open_phase_p50_us -- "
