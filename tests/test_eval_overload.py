@@ -188,17 +188,46 @@ def test_dry_run_digest_mode_defaults_to_full_and_is_recorded(tmp_path):
     assert manifest["dataset"]["digest"]  # digest was actually computed
 
 
-def test_dry_run_digest_mode_streaming_raises_when_unavailable(tmp_path):
-    """`Store.digest_streaming` isn't present on this checkout (it lands
-    with the B7a streaming-digest merge); --digest-mode streaming must
-    raise a clear, actionable error rather than silently falling back to
-    'full' and mislabeling the manifest. If a future checkout adds
-    digest_streaming to tgms.store.Store, this test's premise no longer
-    holds and it should be revisited rather than left as a false negative."""
+def test_dry_run_digest_mode_streaming_raises_when_unavailable(tmp_path, monkeypatch):
+    """`--digest-mode streaming` must raise a clear, actionable error --
+    rather than silently falling back to 'full' and mislabeling the
+    manifest -- when `Store.digest_streaming` isn't available. `main` now
+    has `Store.digest_streaming` (it landed with the B7a streaming-digest
+    merge), so this test forces the unavailable case by monkeypatching the
+    method away instead of relying on the checkout predating that merge;
+    see `test_dry_run_digest_mode_streaming_matches_full_when_available`
+    below for the now-available happy path."""
     import tgms
-    assert not hasattr(tgms.Store, "digest_streaming"), (
-        "Store.digest_streaming now exists on this checkout -- update this "
-        "test (and consider flipping eval_overload.py's default) instead "
-        "of leaving a stale assumption in place")
+    monkeypatch.delattr(tgms.Store, "digest_streaming", raising=False)
     with pytest.raises(RuntimeError, match="digest_streaming"):
         OVERLOAD.run_dry(tmp_path, digest_mode="streaming")
+
+
+def test_dry_run_digest_mode_streaming_matches_full_when_available(tmp_path):
+    """`main` has `Store.digest_streaming` (byte-identical to `store_digest()`
+    per `tests/test_store_digest_streaming.py`), so `--dry-run --digest-mode
+    streaming` must succeed for real and record 'streaming' in the manifest.
+
+    `run_dry`'s synthetic store is regenerated from scratch on each call
+    (same seed=0 data, but a fresh `HybridLogicalClock` stamps `tt` from
+    wall-clock micros -- `tgms/core/clock.py` -- not from the seed), so a
+    full-mode digest and a streaming-mode digest computed from *separate*
+    `run_dry` calls are not expected to come out byte-identical even though
+    the underlying digest functions are: the `tt_s` fields baked into the
+    node/edge rows differ between the two stores. So this only checks the
+    shape (both are well-formed sha256 hex digests) and that the mode is
+    faithfully recorded -- not cross-run equality, which would need a
+    single store digested both ways to be meaningful (that equivalence is
+    already covered by `tests/test_store_digest_streaming.py`).
+    """
+    streaming = OVERLOAD.run_dry(tmp_path, digest_mode="streaming")
+    assert streaming["config"]["digest_mode"] == "streaming"
+    streaming_digest = streaming["dataset"]["digest"]
+    assert len(streaming_digest) == 64
+    int(streaming_digest, 16)  # well-formed hex
+
+    full = OVERLOAD.run_dry(tmp_path, digest_mode="full")
+    assert full["config"]["digest_mode"] == "full"
+    full_digest = full["dataset"]["digest"]
+    assert len(full_digest) == 64
+    int(full_digest, 16)
