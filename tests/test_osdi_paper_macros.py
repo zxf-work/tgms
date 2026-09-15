@@ -25,6 +25,7 @@ real committed record.
 from __future__ import annotations
 
 import csv
+import hashlib
 import importlib.util
 import json
 import subprocess
@@ -71,6 +72,7 @@ def _run_all_landed(mod):
     mod.compute_c8(m)
     mod.compute_c7_dag(m)
     mod.compute_c7_r18(m)
+    mod.compute_d160(m)
     return m
 
 
@@ -130,6 +132,21 @@ FROZEN_LANDED_VALUES = {
     "osdiR18Speedup": "0.807",
     "osdiR18Precision": "8.51",
     "osdiR18AvoidedRecompute": "29.9",
+    "osdiD160Tasks": "94",
+    "osdiD160TaskRuns": "282",
+    "osdiD160OursCarrying": "112",
+    "osdiD160OursCoverage": "0.397",
+    "osdiD160OursCondAcc": "0.509",
+    "osdiD160OursUcrGated": "0",
+    "osdiD160OursUcrPreGate": "0.212",
+    "osdiD160B6eCoverage": "0.830",
+    "osdiD160B6eCondAcc": "0.333",
+    "osdiD160B5Em": "0.181",
+    "osdiD160LlmDirectCarrying": "0",
+    "osdiD160LlmDirectOverflowErrors": "216",
+    "osdiOldGateCoverage": "0.706",
+    "osdiOldGateUcr": "0",
+    "osdiOldGateCondAcc": "0.548",
 }
 
 
@@ -156,6 +173,7 @@ def test_pending_macros_raise_a_latex_error_never_a_placeholder_number():
         "osdiStormSpeedupN1k", "osdiStormAvoidedN1k",
         "osdiLdbcExpressible", "osdiLdbcExecuted", "osdiLdbcValidated",
         "osdiLiveDays", "osdiLiveAdvisories", "osdiLiveCorrections",
+        "osdiD160LlmDirectCoverageFixed",
     }
     got_names = {name for name, _, _ in m.items}
     assert got_names == expected_names
@@ -175,7 +193,7 @@ def test_full_macro_set_has_no_duplicate_names_and_covers_every_skeleton_claim()
     mod.add_pending_stubs(m)
     names = [name for name, _, _ in m.items]
     assert len(names) == len(set(names)), "duplicate macro name"
-    assert len(names) == len(FROZEN_LANDED_VALUES) + 13
+    assert len(names) == len(FROZEN_LANDED_VALUES) + 14
 
 
 def test_cli_check_mode_agrees_with_committed_output(tmp_path):
@@ -321,6 +339,65 @@ def test_tampered_r18_probe_record_fails_the_frozen_speedup(tmp_path):
     mod.compute_c7_r18(m)
     assert mod.FAILURES, "a tampered ttf_ms must fail the cross-check against the record's " \
         "own summary.arms field and/or the frozen speedup range"
+
+
+def test_tampered_d160_rows_digest_mismatch_fails(tmp_path):
+    """The record's own manifest carries a sha256 of the rows file; editing
+    the rows without updating the manifest must be caught before any metric
+    is even computed."""
+    mod = _load("osdi_paper_macros")
+    rows = json.loads(mod.D160_ROWS.read_text(encoding="utf-8"))
+    for r in rows:
+        if r["system"] == "ours":
+            r["em"] = 1.0 if r["em"] == 0.0 else 0.0
+            break
+    tampered = tmp_path / "rows-2026-09-14.json"
+    tampered.write_text(json.dumps(rows), encoding="utf-8")
+
+    mod.D160_ROWS = tampered
+    m = mod.Macros()
+    mod.compute_d160(m)
+    assert mod.FAILURES, "an edited rows file must fail the sha256 digest check against " \
+        "the manifest's result_digest"
+    assert any("digest" in f.lower() for f in mod.FAILURES)
+
+
+def test_tampered_d160_rows_recomputed_coverage_fails_even_with_a_patched_digest(tmp_path):
+    """Patch both the rows file and the manifest's result_digest so the
+    digest check alone would pass -- proving the frozen carrying-count/
+    coverage assertion, not just the digest check, is what would catch a
+    doctored record."""
+    mod = _load("osdi_paper_macros")
+    rows = json.loads(mod.D160_ROWS.read_text(encoding="utf-8"))
+    changed = False
+    for r in rows:
+        if r["system"] == "ours" and not (r.get("answer_object") or {}).get("claims"):
+            r["answer_object"] = {
+                "claims": [{"id": "c1", "type": "count", "value": 0, "evidence": ["s1"]}],
+                "text": "tampered",
+            }
+            r["em"] = 0.0
+            r["ucr"] = 0.0
+            changed = True
+            break
+    assert changed, "fixture must contain a non-carrying ours row to tamper"
+
+    tampered_bytes = json.dumps(rows).encode("utf-8")
+    tampered_rows = tmp_path / "rows-2026-09-14.json"
+    tampered_rows.write_bytes(tampered_bytes)
+
+    manifest = json.loads(mod.D160_MANIFEST.read_text(encoding="utf-8"))
+    manifest["result_digest"] = hashlib.sha256(tampered_bytes).hexdigest()
+    tampered_manifest = tmp_path / "manifest-2026-09-14.json"
+    tampered_manifest.write_text(json.dumps(manifest), encoding="utf-8")
+
+    mod.D160_ROWS = tampered_rows
+    mod.D160_MANIFEST = tampered_manifest
+    m = mod.Macros()
+    mod.compute_d160(m)
+    assert mod.FAILURES, "an extra claim-carrying row must fail the frozen carrying-count/" \
+        "coverage assertion, even though the digest was patched to match"
+    assert any("carrying" in f.lower() or "coverage" in f.lower() for f in mod.FAILURES)
 
 
 def test_r18_and_dag_pending_stubs_cite_the_main_grid_quota_block():
@@ -476,6 +553,44 @@ def test_figure_rendering_without_matplotlib_fails_clearly(monkeypatch):
 
 
 # --------------------------------------------------------------------------
+# docs/site_facts.json: the new D-160 facts land beside the old ones, and
+# the site-facts CI gate (scripts/site_facts.py check) still passes.
+# --------------------------------------------------------------------------
+
+def test_site_facts_d160_facts_land_beside_the_old_gate_facts():
+    data = json.loads((ROOT / "docs" / "site_facts.json").read_text(encoding="utf-8"))
+    facts = data["facts"]
+
+    old = facts["unsupported_claims"]
+    assert old["value"] == "0", "the pre-D-160-gate fact's value must be unchanged"
+    assert "0 of 199" in old["prose"] and "21 of 220" in old["prose"], \
+        "the pre-D-160-gate fact's prose must be unchanged"
+    assert old["label_required"] == "pre-D-160 gate"
+
+    expected = {
+        "unsupported_claims_d160": "0",
+        "coverage_collegemsg_d160": "0.397",
+        "conditional_accuracy_collegemsg_d160": "0.509",
+    }
+    for key, value in expected.items():
+        assert key in facts, f"expected new D-160 fact {key!r} is missing"
+        fact = facts[key]
+        assert fact["value"] == value, f"{key}: value {fact['value']!r} != {value!r}"
+        assert fact["label_required"] == "D-160 gate", f"{key}: must be labelled 'D-160 gate'"
+        assert fact["snapshot"] == "benchmarks/d160-collegemsg-v1/manifest-2026-09-14.json"
+        assert "d-160" in fact["scope_required"].lower(), \
+            f"{key}: scope_required must name the D-160 gate"
+        assert "never" in fact["scope_required"].lower(), \
+            f"{key}: scope_required must forbid printing this number alone"
+
+
+def test_site_facts_check_gate_passes():
+    result = subprocess.run([_venv_python(), str(ROOT / "scripts" / "site_facts.py"), "check"],
+                             cwd=ROOT, capture_output=True, text=True)
+    assert result.returncode == 0, result.stdout + result.stderr
+
+
+# --------------------------------------------------------------------------
 # ruff
 # --------------------------------------------------------------------------
 
@@ -486,6 +601,7 @@ def test_ruff_clean():
     targets = [
         "scripts/osdi_paper_macros.py",
         "scripts/osdi_paper_figures.py",
+        "scripts/site_facts.py",
         "tests/test_osdi_paper_macros.py",
     ]
     result = subprocess.run([str(ruff), "check", *targets], cwd=ROOT,
