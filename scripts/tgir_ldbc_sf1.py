@@ -38,6 +38,7 @@ Outcome classes are reported separately and never absorbed into one another.
 from __future__ import annotations
 
 import argparse
+import hashlib
 import json
 import os
 import platform
@@ -50,6 +51,7 @@ from typing import Any
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
 
+from ldbc_compare import load_sort_keys, lookup_sort_keys  # noqa: E402
 from ldbc_snb_params import (  # noqa: E402
     CAMPAIGN_SEED, CAMPAIGN_SEED_SOURCE, LDBC_PLANS, PhantomAnchor, bind,
     export_bindings, substitute,
@@ -64,6 +66,76 @@ from tgms.tgir.loader import load  # noqa: E402
 
 #: The inverse of `HIERARCHY_TAG`, for `--emit-rows`'s decoded sibling column.
 _TAG_HIERARCHY: dict[int, str] = {v: k for k, v in HIERARCHY_TAG.items()}
+
+#: The 24 vendored templates' declared `ORDER BY` columns (`{plan_id: []}`
+#: when a template's own query carries no `ORDER BY` at all — "order-free" in
+#: `rows_digest`'s rule below), the same source `ldbc_compare.py --sort-keys`
+#: reads for its top-k tie rule. Loaded once; `sort_keys.yaml` does not change
+#: mid-campaign.
+SORT_KEYS_PATH = ROOT / "benchmarks" / "ldbc-ref-v1" / "sort_keys.yaml"
+
+#: `rows_digest`'s own rule, carried in every record's `manifest` so a reader
+#: two years from now does not have to find this file to know what the field
+#: means. Kept as one string, not re-derived from docstrings, so the manifest
+#: and this module cannot silently drift apart.
+ROWS_DIGEST_RULE = (
+    "sha256 over the plan's decoded result rows (the --emit-rows LDBC "
+    "decode: uid columns -> plain LDBC id plus a <col>__hierarchy sibling, "
+    "every other column passed through), each row serialized with "
+    "json.dumps(row, sort_keys=True, default=str) and the per-row strings "
+    "newline-joined in one order: for a template whose sort_keys.yaml "
+    "order_by is empty ('order-free' -- the vendored query carries no "
+    "ORDER BY of its own), the per-row strings are sorted lexicographically "
+    "before hashing, so any permutation of the same rows digests identically; "
+    "for a template with a declared order_by, the rows are hashed in the "
+    "engine's own returned order, unsorted, so a change in that order changes "
+    "the digest. A plan id with a template alias suffix (e.g. BI6.v2) resolves "
+    "to its base template's order_by the same way ldbc_compare.py's "
+    "lookup_sort_keys does; a plan absent from sort_keys.yaml is treated as "
+    "order-free (no known order to preserve). This never changes plan "
+    "execution, timings, or any existing record field -- rows_digest is an "
+    "additive key computed from the same envelope --emit-rows already reads."
+)
+
+
+def _sort_key_columns() -> dict[str, list[str]]:
+    """`{plan_id: [order_by columns]}`, cached at module scope — see
+    `SORT_KEYS_PATH`."""
+    if not hasattr(_sort_key_columns, "_cache"):
+        _sort_key_columns._cache = load_sort_keys(SORT_KEYS_PATH)  # type: ignore[attr-defined]
+    return _sort_key_columns._cache  # type: ignore[attr-defined]
+
+
+def _is_order_free(plan_id: str) -> bool:
+    """True when `plan_id`'s vendored template carries no `ORDER BY` (an
+    empty `order_by` in `sort_keys.yaml`), or is not in `sort_keys.yaml` at
+    all — both cases mean `rows_digest` has no declared row order to trust,
+    so it canonicalizes by sorting the decoded rows instead of hashing
+    them in returned order."""
+    return not lookup_sort_keys(_sort_key_columns(), plan_id)
+
+
+def _sort_keys_sha256() -> str:
+    """sha256 of `sort_keys.yaml`'s own bytes, so a campaign record pins
+    exactly which version of the order-free/ordered classification produced
+    its `rows_digest` values."""
+    return hashlib.sha256(SORT_KEYS_PATH.read_bytes()).hexdigest()
+
+
+def compute_rows_digest(decoded_rows: list[dict[str, Any]],
+                        order_free: bool) -> str:
+    """`ROWS_DIGEST_RULE`, applied. `decoded_rows` is the same LDBC-decoded
+    row list `write_rows_export` writes (see `decode_rows`) — decode happens
+    once, upstream, so a digest and a `--emit-rows` dump of the same run are
+    always over the same row values."""
+    keys = [json.dumps(row, sort_keys=True, default=str) for row in decoded_rows]
+    if order_free:
+        keys.sort()
+    h = hashlib.sha256()
+    for k in keys:
+        h.update(k.encode("utf-8"))
+        h.update(b"\n")
+    return h.hexdigest()
 
 #: §C5. The ceiling `external_workloads/FREEZE.md` already fixed for BIRD gold
 #: validation, adopted for continuity. No plan runs unbounded.
@@ -169,6 +241,17 @@ def _decode_row(row: dict[str, Any], schema: list[list[str]]) -> dict[str, Any]:
     return out
 
 
+def decode_rows(envelope: dict[str, Any]
+                ) -> tuple[list[list[str]], list[dict[str, Any]]]:
+    """`(schema, decoded_rows)` for one plan's envelope — the LDBC decode
+    both `write_rows_export` and `rows_digest` (`run_one`) apply, factored out
+    so a digest and a `--emit-rows` dump of the same run are always computed
+    from the identical decoded values."""
+    schema = envelope.get("tgir", {}).get("schema", [])
+    rows = [_decode_row(r, schema) for r in envelope.get("rows", [])]
+    return schema, rows
+
+
 def write_rows_export(out_dir: Path, plan_id: str, envelope: dict[str, Any],
                       params: dict[str, Any], arm: str, commit: str) -> Path:
     """`--emit-rows`: the envelope's full result, LDBC-decoded, to
@@ -177,9 +260,8 @@ def write_rows_export(out_dir: Path, plan_id: str, envelope: dict[str, Any],
     column order" is itself part of the comparison contract (design §6.1).
     A sibling file; the existing campaign record format is untouched.
     """
-    schema = envelope.get("tgir", {}).get("schema", [])
+    schema, rows = decode_rows(envelope)
     columns = [c[0] for c in schema]
-    rows = [_decode_row(r, schema) for r in envelope.get("rows", [])]
     doc = {
         "plan_id": plan_id, "schema": schema, "columns": columns, "rows": rows,
         "result_digest": envelope.get("result_digest"),
@@ -309,6 +391,9 @@ def run_one(plan_id: str, store: Any, params_root: Path, sf: str,
         rec["ms_all"] = [round(x, 3) for x in times]
         rec["rows"] = len(envelope.get("rows", []))
         rec["completeness"] = envelope.get("completeness")
+        _, decoded_rows = decode_rows(envelope)
+        rec["rows_digest"] = compute_rows_digest(
+            decoded_rows, order_free=_is_order_free(plan_id))
         if emit_rows_dir is not None:
             write_rows_export(emit_rows_dir, plan_id, envelope, rec["params"],
                               rec["arm"], _sha())
@@ -417,6 +502,8 @@ def main() -> int:
                 "campaign_seed": CAMPAIGN_SEED,
                 "campaign_seed_source": CAMPAIGN_SEED_SOURCE,
                 "csv_root": args.csv,
+                "rows_digest_rule": ROWS_DIGEST_RULE,
+                "sort_keys_sha256": _sort_keys_sha256(),
                 "arms": {
                     "scored-bi": "the 10 BI rows, bound to LDBC's own SF1 "
                                  "parameters. The only arm that carries a "

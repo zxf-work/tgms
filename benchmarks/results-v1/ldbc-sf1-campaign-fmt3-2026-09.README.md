@@ -68,6 +68,23 @@ either run), so a row-digest comparison via `scripts/ldbc_compare.py
 --sort-keys` was not possible — recorded as a method limitation, not
 skipped silently.
 
+**Fixed going forward.** `scripts/tgir_ldbc_sf1.py` now records a per-plan
+`rows_digest` on every `COMPLETED` row — a sha256 over the plan's
+`--emit-rows`-decoded result rows, sorted by their own canonical
+serialization first when the vendored template's `sort_keys.yaml` `order_by`
+is empty ("order-free", so a permutation of the same rows must digest
+identically) and left in the engine's returned order otherwise (the exact
+rule travels with every record, as the manifest's own `rows_digest_rule`
+field, alongside `sort_keys_sha256` pinning which `sort_keys.yaml` classified
+each template). Computing it costs nothing extra to run — it is derived from
+the same envelope `--emit-rows` already reads — and does not require
+`--emit-rows` itself; `--emit-rows DIR` remains available on top of it for a
+full `scripts/ldbc_compare.py --sort-keys` row-content diff. A future SF1
+rerun of this campaign is therefore comparable to this one at row level by
+comparing `rows_digest` values directly (a mismatch says the outputs differ
+without saying how), or, with `--emit-rows` used by both runs, at full row
+content.
+
 ## The outcome-class change (scored-bi arm unaffected; characterization-interactive arm entirely BIND_FAILED)
 
 All 14 characterization-interactive plans (the 11 original IC/IS rows plus
