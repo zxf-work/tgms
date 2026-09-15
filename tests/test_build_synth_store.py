@@ -124,6 +124,32 @@ def test_sidecar_conforms_to_result_manifest_schema(equivalence_pair):
     assert proc.returncode == 0, proc.stdout + proc.stderr
 
 
+def _baseline_peak_kb(tmp_path: Path) -> int:
+    """Peak RSS of a subprocess that does nothing but import `tgms` and open
+    (then close) an empty native store at a fresh path -- the interpreter +
+    import + engine-load footprint any `build_synth_store.py` subprocess
+    pays before it ingests a single event, independent of `--n-entities`.
+
+    Computed with the exact same platform-aware `ru_maxrss` handling as
+    `build_synth_store.py::_rss_kb` (kB on Linux, bytes on macOS) so it is
+    directly comparable to `build_info.peak_rss.maxrss_kb` from a real build.
+    """
+    out = tmp_path / "baseline_store"
+    script = (
+        "import sys, json, resource\n"
+        f"sys.path.insert(0, {str(ROOT)!r})\n"
+        "import tgms\n"
+        f"s = tgms.open({str(out)!r}, backend='native')\n"
+        "s.close()\n"
+        "ru = resource.getrusage(resource.RUSAGE_SELF).ru_maxrss\n"
+        "maxrss_kb = ru // 1024 if sys.platform == 'darwin' else ru\n"
+        "print(json.dumps({'maxrss_kb': maxrss_kb}))\n"
+    )
+    proc = subprocess.run([sys.executable, "-c", script], capture_output=True, text=True)
+    assert proc.returncode == 0, proc.stdout + proc.stderr
+    return json.loads(proc.stdout.strip().splitlines()[-1])["maxrss_kb"]
+
+
 def test_peak_rss_bounded_not_by_n_times_batches(tmp_path: Path):
     """`ru_maxrss` (`getrusage(2)`) is a **process-lifetime** high-water
     mark, not a per-call measurement. Reading `result["rss"]` from an
@@ -138,16 +164,36 @@ def test_peak_rss_bounded_not_by_n_times_batches(tmp_path: Path):
     figure, correct precisely because `_rss_kb()` always runs inside a
     single build's own process.
 
-    Bound checked two ways: an absolute ceiling (400 MB, generous headroom
-    over the ~200 MB measured for a 50k/batch=250 build on the authoring
-    laptop), and the actual property under test -- that peak RSS is a flat
-    constant tied to store size at a given N, not to N times the number of
-    batches (the regression this guards against is `build_dataset`'s own
-    bug, `[_event(i, scale) for i in range(scale)]` fully materialized
-    before any commit, whose cost grows with N). Both builds use the real
-    `--batch 250` dispatch shape (SCALE_BUILD_FORECAST §1b) -- not the
-    single-chunk `--batch 50000` `equivalence_pair` uses, which holds *more*
-    in memory at once, not less, so it cannot stand in for this property.
+    That subprocess fix was not enough by itself, though: on the GitHub
+    Actions Linux runner the *floor* one subprocess pays just importing
+    `tgms` (loading the compiled `_engine` extension, duckdb, numpy, ...)
+    was observed at ~1.6 GB for both N=10k and N=50k -- an absolute 400 MB
+    ceiling on `peak_rss` fails there even though the 2.5x N-scaling
+    assertion (the actual regression this test guards against) passes
+    cleanly. On macOS the same builds peak at ~80 MB / ~200 MB, i.e. the
+    import floor there is small enough that the old absolute-ceiling
+    version happened to pass. `_rss_kb()`'s unit handling (`ru_maxrss` is
+    kB on Linux, bytes on macOS -- `build_synth_store.py`'s own
+    `_rss_kb` already divides by 1024 only under `sys.platform ==
+    "darwin"`) was checked and is correct on both platforms; the ~1.6 GB
+    is a real, CI-specific import baseline, not a units bug.
+
+    So the ceiling is now measured *over that baseline*
+    (`_baseline_peak_kb`, a third subprocess that only imports `tgms` and
+    opens an empty store) rather than as an absolute figure, which makes it
+    portable across the two platforms' very different import footprints.
+    Bound checked two ways: peak-over-baseline at N=50k (400 MB, generous
+    headroom over the ~165 MB measured for a 50k/batch=250 build over its
+    own baseline on the authoring laptop -- 200 MB peak minus ~35 MB
+    baseline), and the actual property under test -- that peak RSS is a
+    flat constant tied to store size at a given N, not to N times the
+    number of batches (the regression this guards against is
+    `build_dataset`'s own bug, `[_event(i, scale) for i in range(scale)]`
+    fully materialized before any commit, whose cost grows with N). Both
+    builds use the real `--batch 250` dispatch shape (SCALE_BUILD_FORECAST
+    §1b) -- not the single-chunk `--batch 50000` `equivalence_pair` uses,
+    which holds *more* in memory at once, not less, so it cannot stand in
+    for this property.
     """
     def _build_peak_kb(n_entities: int, name: str) -> int:
         out = tmp_path / name
@@ -160,15 +206,19 @@ def test_peak_rss_bounded_not_by_n_times_batches(tmp_path: Path):
         record = json.loads((out / "build-record.json").read_text())
         return record["build_info"]["peak_rss"]["maxrss_kb"]
 
+    baseline_kb = _baseline_peak_kb(tmp_path)
     peak_10k = _build_peak_kb(10_000, "rss10k")
     peak_50k = _build_peak_kb(50_000, "rss50k")
 
     assert peak_10k > 0
     assert peak_50k > 0
-    assert peak_50k < 400_000, f"peak RSS {peak_50k} kB exceeds the 400 MB bound"
+    assert peak_50k - baseline_kb < 400_000, (
+        f"peak RSS over baseline exceeds the 400 MB bound: baseline={baseline_kb} kB, "
+        f"peak_10k={peak_10k} kB, peak_50k={peak_50k} kB, "
+        f"over_baseline={peak_50k - baseline_kb} kB")
     assert peak_50k <= 2.5 * peak_10k + 100_000, (
-        f"peak RSS scales with N: 10k={peak_10k} kB, 50k={peak_50k} kB "
-        f"(expected 50k <= 2.5x 10k + 100 MB)")
+        f"peak RSS scales with N: baseline={baseline_kb} kB, 10k={peak_10k} kB, "
+        f"50k={peak_50k} kB (expected 50k <= 2.5x 10k + 100 MB)")
 
 
 def test_determinism_per_batch(tmp_path: Path):
