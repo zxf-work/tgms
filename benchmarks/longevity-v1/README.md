@@ -369,6 +369,63 @@ the live writer's own within-life RSS slope shows the same defect on the
 the two numbers agree to within a few percent (see that section's
 arithmetic).
 
+## Post-hoc replay check — attempt 3 (post-D-087 fix) (2026-09-15)
+
+**What changed from attempts 1/2 above.** Two things, together: (1) the
+worktree is now pinned at `a6b3e94` (merge of `03100c1`/`ddc2f1e`, "engine:
+bound the identity postings across compaction cycles (D-087 — the
+soak/replay memory growth)"), not `039fda7`; `git diff 886805f a6b3e94 --
+tgms/storage/base.py` is still empty, so `store_digest()`'s definition is
+unchanged and this replay remains a valid check of the `886805f` soak's own
+digest. (2) the run was launched under `nohup` with an independent RSS
+watcher (`ps -o rss=` on the replay PID every 5 minutes, logged separately)
+rather than relying on a foreground terminal, so a second OOM would not
+also cost the watching session. `--compact-every 500` is unchanged from
+attempts 1/2.
+
+**Pre-step.** Before this replay, `tgms check` (full mode, read-only) was
+run against the *original, untouched* soak store
+(`/mnt/project/xzhang/tgms/longevity/2026-09-15/store`): 13,714 findings,
+all `row/believed-versions-overlap`, verdict `CORRUPT`, wall 26.37s.
+Verbatim output is in `verify-full-2026-09-15.txt` (first entry).
+
+**This run.** Pinned worktree `/mnt/project/xzhang/tgms/work/tgms-xz-a6b3e94`,
+engine `build_info()`: `profile: release`, `debug_assertions: False`,
+`manifest_format_version: 3`. Launched 2026-09-15T15:00:39Z,
+`replay-check-2.log` and `replay-check-2/native/CURRENT` last written
+2026-09-15T23:20:5{0,4}Z (wall 30,015 s ≈ 8h20m). `{"batches": 1074450,
+"stats": {...}}` written to `replay-check-2.log` on completion (1,074,450 of
+the log's 1,074,952 batches applied — the same shortfall pattern as
+attempts 1/2's partial runs, not new to this attempt). Manifest `CURRENT`
+generation reached 1,076,598; taking `compact_every=500` at face value (500
+batch-commit generations + 1 compact()-commit generation per cycle, as
+attempt 1 also assumed), `1076598 - 1074450 = 2148` compactions. RSS was
+sampled every 5 minutes for the full run (101 samples, all recorded in
+`replay-check-2-2026-09.json:summary.rss_series`): peak 4,329,996 KB at
+21:50:51Z, final sample 2,913,052 KB at 23:20:52Z. Peak out-directory size
+observed: 586 MB (watch ceiling was 20,000 MB; never approached). Neither
+the RSS abort ceiling (30 GB) nor the disk ceiling was reached.
+
+**Digest.** The replayed store's digest (`Store.digest()` →
+`NativeAdapter.store_digest()`, `tgms/storage/base.py` — the same routine
+`scripts/longevity_run.py::cmd_run` uses for its own replay-equivalence
+check; this codebase has no separately-named "streaming" digest entry
+point) was computed read-only against the completed replay store:
+`8eb9bc26fbf418df30b89fa85b5fd827c56ae90d14da84eb94a5f8683f6d9d72`. The
+pre-registered prediction was the soak manifest's own recorded
+`final_digest`, the same value.
+
+**Full verify of the replayed store.** `tgms check` (full mode, read-only)
+against `replay-check-2/`: 13,714 findings, all
+`row/believed-versions-overlap`, verdict `CORRUPT` — the same count and
+kind as the pre-step's check of the original soak store above. Verbatim
+output is in `verify-full-2026-09-15.txt` (second entry, appended after the
+pre-step's, which was left unedited).
+
+**Record.** `replay-check-2-2026-09.json` (schema-valid against
+`benchmarks/schema/result_manifest.schema.json`), `supersedes`:
+`replay-check-2026-09-15.json` (attempts 1/2, aborted on OOM).
+
 ## Honest limits
 
 - One host, one storage stack, one seed. 41 restarts, 2 reader crashes,
