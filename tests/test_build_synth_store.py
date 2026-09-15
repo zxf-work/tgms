@@ -124,18 +124,51 @@ def test_sidecar_conforms_to_result_manifest_schema(equivalence_pair):
     assert proc.returncode == 0, proc.stdout + proc.stderr
 
 
-def test_peak_rss_bounded_not_by_n_times_batches(equivalence_pair):
-    """~200 MB measured for a 50k/batch=250 build on the authoring laptop
-    (this fixture uses --batch 50000, one big commit, which if anything
-    holds more in memory at once than the production --batch 250 shape).
-    400 MB is a flat constant tied to the store's own size at this N, not to
-    N or to the batch count -- the regression this guards against is
-    `build_dataset`'s own bug, `[_event(i, scale) for i in range(scale)]`
-    fully materialized before any commit, whose cost grows with N."""
-    _, _, _, result = equivalence_pair
-    maxrss_kb = result["rss"]["maxrss_kb"]
-    assert maxrss_kb > 0
-    assert maxrss_kb < 400_000, f"peak RSS {maxrss_kb} kB exceeds the 400 MB bound"
+def test_peak_rss_bounded_not_by_n_times_batches(tmp_path: Path):
+    """`ru_maxrss` (`getrusage(2)`) is a **process-lifetime** high-water
+    mark, not a per-call measurement. Reading `result["rss"]` from an
+    in-process `B.build()` call -- as this test used to -- measures the
+    peak RSS of whatever else ran earlier in the same process, not of this
+    build: on the GitHub Actions runner, running this file after other
+    tests in the same pytest process, that was observed at ~1.64 GB (from
+    earlier tests) against a true build peak of ~200 MB. Measuring in a
+    fresh `subprocess` per build fixes this -- `ru_maxrss` there really is
+    that build's own peak -- and the sidecar's `build_info.peak_rss.
+    maxrss_kb` (populated by the driver's own `_rss_kb()`) is exactly that
+    figure, correct precisely because `_rss_kb()` always runs inside a
+    single build's own process.
+
+    Bound checked two ways: an absolute ceiling (400 MB, generous headroom
+    over the ~200 MB measured for a 50k/batch=250 build on the authoring
+    laptop), and the actual property under test -- that peak RSS is a flat
+    constant tied to store size at a given N, not to N times the number of
+    batches (the regression this guards against is `build_dataset`'s own
+    bug, `[_event(i, scale) for i in range(scale)]` fully materialized
+    before any commit, whose cost grows with N). Both builds use the real
+    `--batch 250` dispatch shape (SCALE_BUILD_FORECAST §1b) -- not the
+    single-chunk `--batch 50000` `equivalence_pair` uses, which holds *more*
+    in memory at once, not less, so it cannot stand in for this property.
+    """
+    def _build_peak_kb(n_entities: int, name: str) -> int:
+        out = tmp_path / name
+        proc = subprocess.run(
+            [sys.executable, str(ROOT / "scripts" / "build_synth_store.py"),
+             "--n-entities", str(n_entities), "--seed", "0", "--batch", "250",
+             "--compact-every", "1000000", "--backend", "native", "--out", str(out)],
+            capture_output=True, text=True)
+        assert proc.returncode == 0, proc.stdout + proc.stderr
+        record = json.loads((out / "build-record.json").read_text())
+        return record["build_info"]["peak_rss"]["maxrss_kb"]
+
+    peak_10k = _build_peak_kb(10_000, "rss10k")
+    peak_50k = _build_peak_kb(50_000, "rss50k")
+
+    assert peak_10k > 0
+    assert peak_50k > 0
+    assert peak_50k < 400_000, f"peak RSS {peak_50k} kB exceeds the 400 MB bound"
+    assert peak_50k <= 2.5 * peak_10k + 100_000, (
+        f"peak RSS scales with N: 10k={peak_10k} kB, 50k={peak_50k} kB "
+        f"(expected 50k <= 2.5x 10k + 100 MB)")
 
 
 def test_determinism_per_batch(tmp_path: Path):
