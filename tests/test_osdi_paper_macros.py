@@ -28,6 +28,7 @@ import csv
 import hashlib
 import importlib.util
 import json
+import statistics
 import subprocess
 import sys
 from pathlib import Path
@@ -128,9 +129,12 @@ FROZEN_LANDED_VALUES = {
     "osdiB1v2eTotalDecileControl": "1.696",
     "osdiB1v2eResidualFirstUs": "33.06",
     "osdiB1v2eResidualLastUs": "30.38",
-    "osdiB1v2eP50TreatmentMs": "3.365",
-    "osdiB1v2eP50ControlMs": "4.704",
-    "osdiB1v2eP50Paired": "0.715",
+    "osdiB1v2eEngineP50TreatmentMs": "3.365",
+    "osdiB1v2eEngineP50ControlMs": "4.704",
+    "osdiB1v2eEnginePaired": "0.715",
+    "osdiB1v2eP50TreatmentMs": "4.274",
+    "osdiB1v2eP50ControlMs": "5.303",
+    "osdiB1v2eP50Paired": "0.806",
     "osdiB1v2eOpenComponentMs": "87.06",
     "osdiB1v2eOpenCheckpointMs": "42.124",
     "osdiB1v2eOpenMerkleVerifyMs": "40.204",
@@ -484,6 +488,39 @@ def test_osdi_b1v2e_control_open_status_is_a_text_macro_not_a_number():
     assert status == "confounded (concurrent backup transfer)"
     with pytest.raises(ValueError):
         float(status)
+
+
+def test_osdi_b1v2e_p50_macros_distinguish_wall_clock_from_engine_internal(tmp_path):
+    """`osdiB1v2eP50*` is the wall-clock `commit_ms.p50` metric (Addenda
+    3/5/6 and the pre-existing `osdiB1v2P50*` macros track this, not the
+    engine-internal figure) and `osdiB1v2eEngineP50*`/`osdiB1v2eEnginePaired`
+    is the engine-internal `phase_p50_us.total_us` one this module used to
+    call `osdiB1v2eP50*` before the rename -- the two must never collapse
+    to the same value or the rename has lost its point."""
+    mod = _load("osdi_paper_macros")
+    raw = json.loads(mod.B1_V2E_RAW.read_text(encoding="utf-8"))
+    cb = raw["cell_b_commitcost"]
+
+    wall_trt = statistics.median(r["commit_ms"]["p50"] for r in cb["treatment_reps_full"])
+    wall_ctl = statistics.median(r["commit_ms"]["p50"] for r in cb["control_reps_full"])
+    engine_trt = statistics.median(
+        r["phase_p50_us"]["total_us"] for r in cb["treatment_reps_full"]) / 1000
+    engine_ctl = statistics.median(
+        r["phase_p50_us"]["total_us"] for r in cb["control_reps_full"]) / 1000
+
+    m = mod.Macros()
+    mod.compute_b1_v2e(m)
+    values = {name: value for name, value, _ in m.items}
+
+    assert float(values["osdiB1v2eP50TreatmentMs"]) == pytest.approx(wall_trt, abs=0.001)
+    assert float(values["osdiB1v2eP50ControlMs"]) == pytest.approx(wall_ctl, abs=0.001)
+    assert float(values["osdiB1v2eEngineP50TreatmentMs"]) == pytest.approx(engine_trt, abs=0.001)
+    assert float(values["osdiB1v2eEngineP50ControlMs"]) == pytest.approx(engine_ctl, abs=0.001)
+
+    # the point of the rename: these must not be the same number
+    assert values["osdiB1v2eP50TreatmentMs"] != values["osdiB1v2eEngineP50TreatmentMs"]
+    assert values["osdiB1v2eP50ControlMs"] != values["osdiB1v2eEngineP50ControlMs"]
+    assert values["osdiB1v2eP50Paired"] != values["osdiB1v2eEnginePaired"]
 
 
 def test_tampered_fault_matrix_record_fails_the_frozen_expectation(tmp_path):
