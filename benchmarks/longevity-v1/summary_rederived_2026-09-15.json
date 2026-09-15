@@ -1,0 +1,417 @@
+{
+  "derived_from": {
+    "original_manifest_path": "/mnt/project/xzhang/tgms/longevity/2026-09-15/longevity-synth-1m-native-0.json",
+    "original_manifest_sha256": "a94a0c2c3d343d84161c911f04c6a29b586a4b3ddfc113bffb38549d988b3500",
+    "script_commit": "ebe1dc22e1f125ee87fe60c7680422211fc06a39",
+    "note": "scripts/longevity_report.py and scripts/longevity_run.py were executed on xzgpu from the pinned worktree tgms-xz-039fda7 (a descendant of e5d4171, itself a descendant of this lane's base ebe1dc2); both files' sha256 were verified byte-identical between that worktree and this lane's own checkout at ebe1dc2 before running, so script_commit above names this lane's own commit rather than the execution worktree's later, unrelated commit."
+  },
+  "reader_rss_slope_by_idx": {
+    "0": {
+      "n_restarts": 0,
+      "n_samples": 1393,
+      "n_segments": 1,
+      "overall_first_vs_last_kb_per_s": 6.294063342756687,
+      "segment_sample_counts": [
+        1393
+      ],
+      "segment_slopes_kb_per_s": [
+        5.1225013132833235
+      ]
+    },
+    "1": {
+      "n_restarts": 0,
+      "n_samples": 1395,
+      "n_segments": 1,
+      "overall_first_vs_last_kb_per_s": 6.5505473924413335,
+      "segment_sample_counts": [
+        1395
+      ],
+      "segment_slopes_kb_per_s": [
+        5.12283964728093
+      ]
+    },
+    "2": {
+      "n_restarts": 0,
+      "n_samples": 1393,
+      "n_segments": 1,
+      "overall_first_vs_last_kb_per_s": 6.342485545932298,
+      "segment_sample_counts": [
+        1393
+      ],
+      "segment_slopes_kb_per_s": [
+        5.493058742139936
+      ]
+    },
+    "3": {
+      "n_restarts": 0,
+      "n_samples": 1393,
+      "n_segments": 1,
+      "overall_first_vs_last_kb_per_s": 6.925057365138878,
+      "segment_sample_counts": [
+        1393
+      ],
+      "segment_slopes_kb_per_s": [
+        5.203092802610131
+      ]
+    },
+    "4": {
+      "n_restarts": 0,
+      "n_samples": 1393,
+      "n_segments": 1,
+      "overall_first_vs_last_kb_per_s": 6.6216011631158,
+      "segment_sample_counts": [
+        1393
+      ],
+      "segment_slopes_kb_per_s": [
+        5.335635690235312
+      ]
+    },
+    "5": {
+      "n_restarts": 1,
+      "n_samples": 1392,
+      "n_segments": 2,
+      "overall_first_vs_last_kb_per_s": 5.368514446828312,
+      "segment_sample_counts": [
+        1364,
+        28
+      ],
+      "segment_slopes_kb_per_s": [
+        5.316532390431997,
+        47.0735802896658
+      ]
+    },
+    "6": {
+      "n_restarts": 1,
+      "n_samples": 1392,
+      "n_segments": 2,
+      "overall_first_vs_last_kb_per_s": 6.239447779033739,
+      "segment_sample_counts": [
+        1279,
+        113
+      ],
+      "segment_slopes_kb_per_s": [
+        5.330739612139224,
+        15.790325084963191
+      ]
+    },
+    "7": {
+      "n_restarts": 0,
+      "n_samples": 1393,
+      "n_segments": 1,
+      "overall_first_vs_last_kb_per_s": 6.579124608980898,
+      "segment_sample_counts": [
+        1393
+      ],
+      "segment_slopes_kb_per_s": [
+        5.279695132498577
+      ]
+    }
+  },
+  "reader_rss_slope_pooled": {
+    "max_kb_per_s": 47.0735802896658,
+    "median_kb_per_s": 5.32363600128561,
+    "min_kb_per_s": 5.1225013132833235,
+    "n_fitted_segments": 10
+  },
+  "summary": {
+    "compaction_stall_max_reader_p99_ms": 0.0,
+    "compactions": 2415,
+    "digest_equal": null,
+    "drift": {
+      "commit_p99_first_hour_max": 485.579,
+      "commit_p99_last_hour_max": 3740.529,
+      "throughput_first_hour_avg": 24.03,
+      "throughput_last_hour_avg": 16.412
+    },
+    "error_count": 249,
+    "final_stats": {
+      "max_out_degree": 1839,
+      "n_edge_versions": 1910268,
+      "n_entities": 1730492,
+      "n_node_versions": 241109,
+      "rel_type_counts": {
+        "LW": 908572,
+        "MSG": 1001696
+      },
+      "vt_max": 1730986916723477,
+      "vt_min": 0
+    },
+    "generation_final": 1076589.0,
+    "memory_slope_kb_per_s": 111.639263,
+    "metadata_growth_slope_bytes_per_s": {
+      "manifests": -3.384232,
+      "segments": 1341.110649
+    },
+    "reader_errors_total": 0,
+    "reader_queries_total": 6618112,
+    "reader_restarts": 2,
+    "reader_restarts_recorded": 2,
+    "recoveries": 41,
+    "replay_skipped": {
+      "limit_mb": 20000.0,
+      "projected_mb": 280791798.0,
+      "projection_kind": "uncompacted",
+      "reason": "projected_replay_exceeds_limit",
+      "replay_compact_every": null,
+      "total_batches": 1074952
+    },
+    "unexpected_writer_deaths": 0,
+    "verify_healthy": true,
+    "wall_s": 86523.3,
+    "writer_final": {
+      "appends": 13549,
+      "batches": 19000,
+      "checks": 29,
+      "compactions": 38,
+      "compactions_throttled": 0,
+      "corrections_applied": 3211,
+      "corrections_skipped": 2239,
+      "errors": 1,
+      "final": true,
+      "group_commit": {
+        "commits": 16008,
+        "max_group": 1,
+        "queue_depth": 0,
+        "rejected": 0,
+        "rows_per_commit": 1.0,
+        "solo_fallbacks": 1,
+        "submissions": 16008
+      },
+      "invalidations": 13,
+      "n": 1707634,
+      "refreshes": 13,
+      "ts": 1789449263.161451
+    },
+    "writer_totals_all_lives": {
+      "appends": 853817,
+      "artifact_checks": 3284,
+      "artifact_invalidations": 1264,
+      "artifact_refreshes": 1263,
+      "corrections_applied": 207850,
+      "corrections_skipped": 137163,
+      "errors": 249,
+      "lives": 42
+    }
+  },
+  "writer_within_life_rss_slope": {
+    "max_kb_per_s": 4154.168401187245,
+    "median_kb_per_s": 3165.582292490892,
+    "min_kb_per_s": 1921.0983400078355,
+    "n_lives_total_segments": 42,
+    "n_lives_with_fit": 42,
+    "n_positive_beyond_noise_5kb_s": 42,
+    "noise_threshold_kb_per_s": 5.0,
+    "per_life": [
+      {
+        "life": 0,
+        "n_samples": 27,
+        "slope_kb_per_s": 4154.168401187245
+      },
+      {
+        "life": 1,
+        "n_samples": 28,
+        "slope_kb_per_s": 3505.5418212187114
+      },
+      {
+        "life": 2,
+        "n_samples": 28,
+        "slope_kb_per_s": 3656.575641559926
+      },
+      {
+        "life": 3,
+        "n_samples": 28,
+        "slope_kb_per_s": 3310.279389815561
+      },
+      {
+        "life": 4,
+        "n_samples": 57,
+        "slope_kb_per_s": 2354.0583738712967
+      },
+      {
+        "life": 5,
+        "n_samples": 58,
+        "slope_kb_per_s": 2299.015898236121
+      },
+      {
+        "life": 6,
+        "n_samples": 28,
+        "slope_kb_per_s": 2372.0488991358407
+      },
+      {
+        "life": 7,
+        "n_samples": 28,
+        "slope_kb_per_s": 2791.3954053254383
+      },
+      {
+        "life": 8,
+        "n_samples": 58,
+        "slope_kb_per_s": 2612.230170393962
+      },
+      {
+        "life": 9,
+        "n_samples": 28,
+        "slope_kb_per_s": 2560.5071550201023
+      },
+      {
+        "life": 10,
+        "n_samples": 28,
+        "slope_kb_per_s": 2701.682893758694
+      },
+      {
+        "life": 11,
+        "n_samples": 28,
+        "slope_kb_per_s": 2772.9182665376816
+      },
+      {
+        "life": 12,
+        "n_samples": 28,
+        "slope_kb_per_s": 2881.0529148299574
+      },
+      {
+        "life": 13,
+        "n_samples": 28,
+        "slope_kb_per_s": 2565.0112921990126
+      },
+      {
+        "life": 14,
+        "n_samples": 27,
+        "slope_kb_per_s": 2870.6527569303034
+      },
+      {
+        "life": 15,
+        "n_samples": 27,
+        "slope_kb_per_s": 3322.919588505709
+      },
+      {
+        "life": 16,
+        "n_samples": 27,
+        "slope_kb_per_s": 2948.729587498676
+      },
+      {
+        "life": 17,
+        "n_samples": 27,
+        "slope_kb_per_s": 2952.9368480445933
+      },
+      {
+        "life": 18,
+        "n_samples": 56,
+        "slope_kb_per_s": 2931.7601370834263
+      },
+      {
+        "life": 19,
+        "n_samples": 28,
+        "slope_kb_per_s": 2923.5634707653103
+      },
+      {
+        "life": 20,
+        "n_samples": 28,
+        "slope_kb_per_s": 3180.210410883906
+      },
+      {
+        "life": 21,
+        "n_samples": 28,
+        "slope_kb_per_s": 2979.02399267369
+      },
+      {
+        "life": 22,
+        "n_samples": 28,
+        "slope_kb_per_s": 3367.2379178943015
+      },
+      {
+        "life": 23,
+        "n_samples": 27,
+        "slope_kb_per_s": 3514.1939231171073
+      },
+      {
+        "life": 24,
+        "n_samples": 27,
+        "slope_kb_per_s": 3156.829450530554
+      },
+      {
+        "life": 25,
+        "n_samples": 27,
+        "slope_kb_per_s": 3341.3725903648665
+      },
+      {
+        "life": 26,
+        "n_samples": 27,
+        "slope_kb_per_s": 3204.0893563601126
+      },
+      {
+        "life": 27,
+        "n_samples": 27,
+        "slope_kb_per_s": 3098.5182757204466
+      },
+      {
+        "life": 28,
+        "n_samples": 27,
+        "slope_kb_per_s": 3540.1200934588896
+      },
+      {
+        "life": 29,
+        "n_samples": 28,
+        "slope_kb_per_s": 3182.5427768952595
+      },
+      {
+        "life": 30,
+        "n_samples": 27,
+        "slope_kb_per_s": 3457.4075723577394
+      },
+      {
+        "life": 31,
+        "n_samples": 28,
+        "slope_kb_per_s": 3234.046057092012
+      },
+      {
+        "life": 32,
+        "n_samples": 27,
+        "slope_kb_per_s": 3239.605828578155
+      },
+      {
+        "life": 33,
+        "n_samples": 27,
+        "slope_kb_per_s": 3174.3351344512303
+      },
+      {
+        "life": 34,
+        "n_samples": 27,
+        "slope_kb_per_s": 3420.6158533804537
+      },
+      {
+        "life": 35,
+        "n_samples": 56,
+        "slope_kb_per_s": 2481.470991396141
+      },
+      {
+        "life": 36,
+        "n_samples": 27,
+        "slope_kb_per_s": 3322.153993962078
+      },
+      {
+        "life": 37,
+        "n_samples": 27,
+        "slope_kb_per_s": 3521.990895793649
+      },
+      {
+        "life": 38,
+        "n_samples": 27,
+        "slope_kb_per_s": 3030.773076178325
+      },
+      {
+        "life": 39,
+        "n_samples": 56,
+        "slope_kb_per_s": 1921.0983400078355
+      },
+      {
+        "life": 40,
+        "n_samples": 26,
+        "slope_kb_per_s": 3679.7247725399607
+      },
+      {
+        "life": 41,
+        "n_samples": 28,
+        "slope_kb_per_s": 3252.3919671548138
+      }
+    ]
+  }
+}

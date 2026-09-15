@@ -281,3 +281,46 @@ fields.
   "deterministic final state" is unverified, not confirmed, for this run.
 - The memory FAIL is real as computed but its interpretation (leak vs.
   dataset-growth baseline) is not resolved here.
+
+## Re-derived Gate E report (2026-09-15, post-fix harness)
+
+`gate_e_report_rederived_2026-09-15.md` / `summary_rederived_2026-09-15.json`
+re-derive Gate E for this same run using the **current** (post-fix)
+`scripts/longevity_run.py::summarize` and `scripts/longevity_report.py`,
+run read-only on xzgpu against the preserved raw inputs
+(`/mnt/project/xzhang/tgms/longevity/2026-09-15/`) — no new soak, no
+store open, no replay re-attempt; the original manifest above is
+unchanged, and `derived_from` in the JSON names its sha256 and the
+script commit used.
+
+| check | old report (886805f-era script) | re-derived (post-fix script) |
+|---|---|---|
+| deterministic final state | FAIL (digest_equal coerced `None` -> `False`) | NOT COMPUTED (replay skipped: `projected_replay_exceeds_limit`) — correctly distinguishes "never checked" from "checked, failed" |
+| no unbounded memory | FAIL, 111.639 kB/s first-vs-last (dismissed as restart saw-tooth) | **FAIL, 3,165.6 kB/s within-life median** — fitted separately within each of the 42 writer lives' own samples; **all 42 lives** land between 1,921.1 and 4,154.2 kB/s, every one of them far above the 5 kB/s noise floor |
+| errors observed | FLAG, 1 (last life only, via `counter_latest`) | FLAG, **249** (life-summed across all 42 lives, matching this README's own independently-computed `writer_error_counts_by_life.json` exactly) |
+
+**What changed and why**: the "restart saw-tooth, not a real trend"
+explanation this README gave earlier addressed a real flaw in the
+*first-vs-last* slope (it is dominated by wherever the first/last sample
+land across 41 saw-tooth resets), but it never actually checked whether
+memory grows *within* one writer life. It does — clearly, in every one
+of the 42 lives, at a median ~3.17 MB/s sustained over each ~35-minute
+life before the restart cycle resets it. The same re-derivation also
+fits the 8 reader processes' own RSS within their lives (they only
+restart on a crash, not on the 300s reopen cadence) and finds a much
+smaller but still positive and consistent slope (~5.1-5.5 kB/s across
+all 6 readers that never crashed) — see the full table in
+`gate_e_report_rederived_2026-09-15.md`.
+
+**This is a real, positive finding, not a re-interpretation of noise**:
+every one of 42 independent writer-life measurements agrees in sign and
+order of magnitude. It directly corroborates the separate 2026-09-15
+finding that a post-hoc `tgms replay` of this run's own log was
+OOM-killed at ≈83 GB RSS after ≈513k generations (≈160 KB/generation
+retained) — see `benchmarks/longevity-v1/replay-check-2026-09-15.json`
+and failure-ledger entry `D-087-replay-memory-growth` (both written by
+other lanes working that finding directly; referenced here by path only).
+The combination — a positive within-life slope in the live writer, and a
+much larger confirmed leak in `replay()` over the same log — points at a
+real, unbounded-growth defect in this codebase's generation/version
+retention path, not at a harness measurement artifact.
