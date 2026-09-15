@@ -772,13 +772,14 @@ def compute_b1_v2e(m: Macros) -> None:
           "B1-v2e: recomputed treatment residual_last_us (mean of reps) matches "
           "manifest's own field")
 
-    # engine-internal p50 -- phase_p50_us.total_us (the commit's engine-side
-    # total, excluding wal_us/apply_us), median of reps; this is the field
-    # the manifest's own digested measurements block reports and the
-    # README's prose quotes (paired ratio 0.715x). Named "Engine" to keep it
-    # unambiguous next to the wall-clock commit_ms.p50 figure below -- the
-    # frozen p50 metric Addenda 3/5/6 and osdiB1v2P50* actually track is the
-    # wall-clock one, not this one.
+    # engine-commit p50 -- phase_p50_us.total_us (the commit's engine-side
+    # total, excluding wal_us/apply_us), median of reps. This is the frozen
+    # Addendum 3 quantity: v1's README reports it as "engine-commit p50
+    # (total_us)", the 5.07 ms baseline and 5.58 ms bar are this quantity,
+    # and osdiB1v2P50* (5.478/5.430) already tracks it -- osdiB1v2eP50*
+    # below is the same quantity for this remeasurement, not a different
+    # one. The manifest's own digested measurements block reports it too,
+    # and the README's prose quotes it (paired ratio 0.715x).
     engine_p50_trt = statistics.median(r["phase_p50_us"]["total_us"] for r in trt_reps)
     engine_p50_ctl = statistics.median(r["phase_p50_us"]["total_us"] for r in ctl_reps)
     eq(engine_p50_trt, 3365,
@@ -797,11 +798,11 @@ def compute_b1_v2e(m: Macros) -> None:
           "B1-v2e: recomputed engine-internal p50 paired ratio matches manifest's own field")
 
     # wall-clock p50 -- commit_ms.p50 (the full per-commit latency
-    # `_timed_write` measures: wal fsync + apply_ops + engine commit), median
-    # of reps. This, not the engine-internal figure above, is the metric
-    # Addenda 3/5/6 and the existing osdiB1v2P50* macros track -- keeping
-    # both names apart here so a future reader of this file never has to
-    # guess which one a bare "P50" macro means.
+    # `_timed_write` measures: wal fsync + Python-side eventlog append +
+    # apply_ops + engine commit), median of reps. This is *not* the frozen
+    # Addendum 3 quantity above -- it is reported separately, under its own
+    # osdiB1v2eWallP50* names, so a future reader of this file never
+    # mistakes it for the number the paper's threshold actually binds.
     wall_p50_trt = statistics.median(r["commit_ms"]["p50"] for r in trt_reps)
     wall_p50_ctl = statistics.median(r["commit_ms"]["p50"] for r in ctl_reps)
     close(wall_p50_trt, 4.274, 0.001,
@@ -894,29 +895,31 @@ def compute_b1_v2e(m: Macros) -> None:
           f"{relpath(B1_V2E_RAW)}: mean(cell_b_commitcost.treatment_reps_full[*]."
           "residual_last_us) over 3 reps")
 
-    m.add("osdiB1v2eEngineP50TreatmentMs", f"{engine_p50_trt / 1000:.3f}",
+    m.add("osdiB1v2eP50TreatmentMs", f"{engine_p50_trt / 1000:.3f}",
           f"{relpath(B1_V2E_RAW)}: cell_b_commitcost.treatment_reps_full[*]."
-          "phase_p50_us.total_us, median over 3 reps, /1000, ms -- engine-internal "
-          "total_us p50 (excludes wal_us/apply_us); see osdiB1v2eP50TreatmentMs for "
-          "the wall-clock figure Addenda 3/5/6 actually track")
-    m.add("osdiB1v2eEngineP50ControlMs", f"{engine_p50_ctl / 1000:.3f}",
+          "phase_p50_us.total_us, median over 3 reps, /1000, ms -- engine-commit p50 "
+          "(total_us), the Addendum 3 quantity, same as osdiB1v2P50*")
+    m.add("osdiB1v2eP50ControlMs", f"{engine_p50_ctl / 1000:.3f}",
           f"{relpath(B1_V2E_RAW)}: cell_b_commitcost.control_reps_full[*]."
-          "phase_p50_us.total_us, median over 3 reps, /1000, ms -- engine-internal "
-          "total_us p50 (excludes wal_us/apply_us)")
-    m.add("osdiB1v2eEnginePaired", f"{engine_p50_paired:.3f}",
+          "phase_p50_us.total_us, median over 3 reps, /1000, ms -- engine-commit p50 "
+          "(total_us), the Addendum 3 quantity, same as osdiB1v2P50*")
+    m.add("osdiB1v2eP50Paired", f"{engine_p50_paired:.3f}",
           f"{relpath(B1_V2E_RAW)}: median(treatment[*].phase_p50_us.total_us) / "
-          "median(control[*].phase_p50_us.total_us) -- engine-internal total_us p50")
+          "median(control[*].phase_p50_us.total_us) -- engine-commit p50 (total_us), "
+          "the Addendum 3 quantity, same as osdiB1v2P50*")
 
-    m.add("osdiB1v2eP50TreatmentMs", f"{wall_p50_trt:.3f}",
+    m.add("osdiB1v2eWallP50TreatmentMs", f"{wall_p50_trt:.3f}",
           f"{relpath(B1_V2E_RAW)}: median(cell_b_commitcost.treatment_reps_full[*]."
-          "commit_ms.p50) over 3 reps, ms -- wall-clock (wal fsync + apply_ops + "
-          "engine commit), the metric Addenda 3/5/6 and osdiB1v2P50* track")
-    m.add("osdiB1v2eP50ControlMs", f"{wall_p50_ctl:.3f}",
+          "commit_ms.p50) over 3 reps, ms -- wall-clock commit_ms.p50 incl. "
+          "Python-side eventlog append -- not the frozen quantity")
+    m.add("osdiB1v2eWallP50ControlMs", f"{wall_p50_ctl:.3f}",
           f"{relpath(B1_V2E_RAW)}: median(cell_b_commitcost.control_reps_full[*]."
-          "commit_ms.p50) over 3 reps, ms -- wall-clock")
-    m.add("osdiB1v2eP50Paired", f"{wall_p50_paired:.3f}",
+          "commit_ms.p50) over 3 reps, ms -- wall-clock commit_ms.p50 incl. "
+          "Python-side eventlog append -- not the frozen quantity")
+    m.add("osdiB1v2eWallPaired", f"{wall_p50_paired:.3f}",
           f"{relpath(B1_V2E_RAW)}: median(treatment[*].commit_ms.p50) / "
-          "median(control[*].commit_ms.p50) -- wall-clock paired ratio")
+          "median(control[*].commit_ms.p50) -- wall-clock commit_ms.p50 incl. "
+          "Python-side eventlog append -- not the frozen quantity")
 
     m.add("osdiB1v2eOpenComponentMs", f"{component_us / 1000:.2f}",
           f"{relpath(B1_V2E_RAW)}: cell_a_chain_open.treatment.open_phase_p50_us -- "
