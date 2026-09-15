@@ -13,6 +13,20 @@ true sum over 42 lives was 249). The fix sums each life's own last-written
 `writer_progress-<life>.json` snapshot instead. These tests build a
 synthetic `--out` directory (metrics.jsonl + writer_progress files, no
 subprocess) and check the summed totals directly.
+
+The final-replay disk-guard projection has two formulas, depending on
+whether B7c's `replay(..., compact_every=N)` (`tgms/storage/eventlog.py`,
+landed on `main` after the soak) is in use: uncompacted, cost scales with
+the whole run's batch count (`243.0 * total_batches ** 2 / 1e6`, what the
+886805f-pinned soak measured); compacted, periodic `compact()`+`gc()`
+reclaims each cycle's growth before the next starts, so the guard only
+needs to budget for one cycle's own peak (`243.0 * min(compact_every,
+total_batches) ** 2 / 1e6`) — see
+`test_soak_numbers_project_under_the_guard_with_compaction`'s own
+docstring for the derivation and why a naive `compact_every *
+total_batches` product over-counts. `tests/test_replay_compaction.py`
+covers `replay()`'s own digest-equivalence guarantee under compaction;
+these tests cover `cmd_run`'s disk-guard arithmetic only.
 """
 
 from __future__ import annotations
@@ -123,29 +137,71 @@ def test_writer_counters_summed_with_no_progress_files(tmp_path: Path) -> None:
     assert summary["writer_totals_all_lives"]["errors"] == 0
 
 
-def test_replay_projection_matches_the_measured_soak() -> None:
-    """The final-replay disk projection (`cmd_run`'s own `projected_mb =
-    (243.0 * (total_batches ** 2)) / 1e6`) is deliberately based on the raw
-    event-log batch count, not on the live run's own compaction cadence —
-    `tgms.storage.eventlog.replay` has no mid-replay compaction hook (it
-    calls begin()/apply_ops()/commit() once per logged batch and nothing
-    else), so a replay always re-derives one uncompacted generation per
-    *every* batch in the log regardless of how often `--compact-every-
-    batches` fired live. This locks the formula's output against the real
-    24h soak's own numbers (benchmarks/longevity-v1/README.md,
-    `LEDGER disk_guard_replay_skip: total_batches=1074952,
+def test_uncompacted_replay_projection_matches_the_measured_soak() -> None:
+    """The **uncompacted** final-replay disk projection (`cmd_run`'s own
+    `projected_mb = 243.0 * total_batches ** 2 / 1e6`, used whenever
+    `replay_compact_every is None`) locks its output against the real 24h
+    soak's own numbers (benchmarks/longevity-v1/README.md, `LEDGER
+    disk_guard_replay_skip: total_batches=1074952,
     projected_mb=280791798.0`) so a future edit cannot silently change it.
+    This soak predates B7c (`tgms.storage.eventlog.replay(...,
+    compact_every=...)`, `tgms/storage/eventlog.py`), which is why its own
+    replay had no compaction cadence to use — see
+    `test_soak_numbers_project_under_the_guard_with_compaction` below for
+    what the *same* batch count projects to now that one is available.
     """
     total_batches = 1_074_952
     projected_mb = (243.0 * (total_batches ** 2)) / 1e6
     assert round(projected_mb, 1) == 280_791_798.0
 
-    # replay() has no compaction call in its loop — confirms the projection
-    # is not an approximation that ignores the live run's compaction
-    # cadence, since replay's own cost does not depend on it either.
+
+def test_soak_numbers_project_under_the_guard_with_compaction() -> None:
+    """B7c gave `replay()` a `compact_every` cadence (`tgms/storage/
+    eventlog.py`'s own `replay(..., compact_every=N)`, calling
+    `adapter.compact()`+`adapter.gc(keep_last=2)` every N applied batches).
+    Periodic compaction+gc *reclaims* each cycle's accumulated
+    segments/manifests before the next cycle starts — the same calibration
+    the 243 bytes/batch^2 constant comes from confirms this directly
+    (`scripts/build_snb_store.py`'s own `COMPACT_EVERY_OPS` comment:
+    compacting every 100,000 ops held manifests at ~0 MB at 600k ops, not
+    growing with the ops count) — so the worst case a disk guard must
+    budget for is the peak *within one compaction cycle*,
+    `243.0 * min(compact_every, total_batches) ** 2 / 1e6`, not a sum over
+    every cycle in the run (`243.0 * compact_every * total_batches / 1e6`
+    double-counts: it assumes each cycle's cost adds to the last, which is
+    exactly what `gc(keep_last=2)` prevents).
+
+    Plugging the real soak's own numbers (1,074,952 batches, this run's own
+    `--compact-every-batches 500`) into the compacted formula must land
+    comfortably under the `--max-disk-mb=20000` ceiling that formula's
+    uncompacted counterpart blew through by ~14,000x — i.e. from this
+    commit on, the same run's disk guard would NOT have skipped the final
+    replay/digest-equivalence check.
+    """
+    total_batches = 1_074_952
+    compact_every = 500
+    current_mb = 569.7   # this run's own LEDGER disk_guard_replay_skip current_mb
+    limit_mb = 20_000.0
+
+    cycle = min(compact_every, total_batches)
+    projected_mb = (243.0 * (cycle ** 2)) / 1e6
+
+    assert round(projected_mb, 2) == 60.75
+    assert current_mb + projected_mb < limit_mb, (
+        f"expected the compacted projection ({projected_mb} MB) plus the run's own "
+        f"current_mb ({current_mb} MB) to fit under the {limit_mb} MB guard")
+
+
+def test_replay_has_a_compact_every_hook() -> None:
+    """B7c added the hook the earlier (886805f-pinned) soak's own replay
+    step did not have — confirm it is actually wired up, not just assumed,
+    so a future revert of `tgms/storage/eventlog.py` fails loudly here
+    rather than silently reverting `cmd_run`'s own compacted projection to
+    an unreachable code path."""
     import inspect
 
     from tgms.storage.eventlog import replay as replay_fn
 
-    source = inspect.getsource(replay_fn)
-    assert "compact" not in source
+    params = inspect.signature(replay_fn).parameters
+    assert "compact_every" in params
+    assert params["compact_every"].default is None
