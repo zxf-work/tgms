@@ -221,6 +221,14 @@ impl NativeStore {
         self.inner.segment_cache_stats()
     }
 
+    /// `(by_identity_entries, by_vid_entries, indexed_segments)` of one row
+    /// kind's identity postings (D-087) — receipts that compaction cycles
+    /// are not multiplying the postings without bound.
+    fn postings_stats(&self, kind: &str) -> Res<(usize, usize, usize)> {
+        let k = kind_of(kind)?;
+        Ok(self.inner.postings_stats(k))
+    }
+
     /// Where the last commit spent its microseconds, by phase, or `None`
     /// before this handle has committed anything. Instrumentation for the
     /// singleton-write floor: the split says whether the cost is the fsyncs
