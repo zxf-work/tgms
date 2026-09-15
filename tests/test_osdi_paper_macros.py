@@ -66,6 +66,7 @@ def _run_all_landed(mod):
     m = mod.Macros()
     mod.compute_c1(m)
     mod.compute_c3(m)
+    mod.compute_b1_v2(m)
     mod.compute_c4(m)
     mod.compute_c5(m)
     mod.compute_c6(m)
@@ -96,6 +97,29 @@ FROZEN_LANDED_VALUES = {
     "osdiManifestBytesTrt": "62.0",
     "osdiManifestCommitRatio": "1.798",
     "osdiManifestColdOpen": "8.02",
+    "osdiB1v2ControlCommit": "886805f",
+    "osdiB1v2TreatmentCommit": "7a5ff98",
+    "osdiB1v2BytesControlMB": "73.8",
+    "osdiB1v2BytesTreatmentMB": "74.4",
+    "osdiB1v2BytesPaired": "1.008",
+    "osdiB1v2SegmentBytesControlMB": "159.0",
+    "osdiB1v2SegmentBytesTreatmentMB": "163.4",
+    "osdiB1v2ManifestDecileControl": "1.115",
+    "osdiB1v2ManifestDecileTreatment": "1.079",
+    "osdiB1v2ManifestDecileK128": "1.068",
+    "osdiB1v2ManifestDecileK1024": "1.150",
+    "osdiB1v2TotalDecileControl": "1.733",
+    "osdiB1v2TotalDecileTreatment": "1.674",
+    "osdiB1v2P50ControlMs": "5.430",
+    "osdiB1v2P50TreatmentMs": "5.478",
+    "osdiB1v2P50Paired": "1.009",
+    "osdiB1v2OpenControlMs": "2247.9",
+    "osdiB1v2OpenTreatmentMs": "1705.3",
+    "osdiB1v2OpenPaired": "0.76",
+    "osdiB1v2OpenControlGeneration": "10{,}759",
+    "osdiB1v2OpenTreatmentGeneration": "11{,}029",
+    "osdiB1v2BuildOpsPerSecRatioAt2p5M": "2.10",
+    "osdiB1v2OpenComponentStatus": "not computed",
     "osdiVhRss": "1.259",
     "osdiVhWall": "1.87",
     "osdiVhRatio": "7.32",
@@ -274,6 +298,42 @@ def test_tampered_crash_record_wall_time_mismatch_fails(tmp_path):
     m = mod.Macros()
     mod.compute_c1(m)
     assert any("wall_s" in f for f in mod.FAILURES)
+
+
+def test_tampered_b1_v2_manifest_digest_mismatch_fails(tmp_path):
+    """The B1-v2 (manifest format 3) record's own manifest carries a sha256
+    of its `measurements` block (canonical, sort_keys JSON) as
+    `result_digest`; editing a reported number without recomputing that
+    digest must be caught before any B1-v2 macro is even computed -- same
+    discipline as the D160 rows-digest tamper tests above, applied to this
+    record's own digest scheme."""
+    mod = _load("osdi_paper_macros")
+    manifest = json.loads(mod.B1_V2_MANIFEST.read_text(encoding="utf-8"))
+    manifest["measurements"]["bytes_at_2_5m_ops"]["treatment_manifest_mb"] = 999.9
+    tampered = tmp_path / "b1-manifest-v2-ab-2026-09.json"
+    tampered.write_text(json.dumps(manifest), encoding="utf-8")
+
+    mod.B1_V2_MANIFEST = tampered
+    m = mod.Macros()
+    mod.compute_b1_v2(m)
+    assert mod.FAILURES, "an edited measurements field must fail the sha256 digest check " \
+        "against the manifest's own result_digest"
+    assert any("digest" in f.lower() for f in mod.FAILURES)
+
+
+def test_osdi_b1v2_open_component_status_is_a_text_macro_not_a_number(tmp_path):
+    """B1-v2's chain-open component split (checkpoint-load vs. delta-replay)
+    was never measured -- NativeAdapter() exposes no internal phase timer.
+    The macro documenting that must render as the literal string "not
+    computed", not a placeholder number that could be mistaken for one."""
+    mod = _load("osdi_paper_macros")
+    m = mod.Macros()
+    mod.compute_b1_v2(m)
+    values = {name: value for name, value, _ in m.items}
+    status = values["osdiB1v2OpenComponentStatus"]
+    assert status == "not computed"
+    with pytest.raises(ValueError):
+        float(status)
 
 
 def test_tampered_fault_matrix_record_fails_the_frozen_expectation(tmp_path):
