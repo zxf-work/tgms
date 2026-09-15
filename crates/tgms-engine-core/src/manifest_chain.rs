@@ -669,34 +669,89 @@ enum RawRecord {
     Delta(ManifestDelta),
 }
 
+/// How many leading bytes of a manifest document [`sniff_tag`] scans before
+/// concluding a tag is absent (format 1 never wrote `kind` at all; no format
+/// writes `sha_kind` below format 3). `checkpoint_json`'s `Doc` wrapper puts
+/// `kind` first and `sha_kind` second; `ManifestDelta`'s field order puts
+/// `kind` second (right after `format`) and `sha_kind` third — either way
+/// both land well inside the first few dozen bytes of a
+/// `serde_json::to_string_pretty` document, long before the O(segments) body.
+/// Bounding the search keeps a miss (format 1, or `sha_kind` below format 3)
+/// an O(1) check rather than an O(document) scan that never matches.
+const TAG_SNIFF_WINDOW: usize = 1024;
+
+/// Read `"<key>": "<value>"` from the leading [`TAG_SNIFF_WINDOW`] bytes of a
+/// manifest document, without parsing it. `None` means the key is absent
+/// from that window.
+///
+/// Byte-level rather than a `serde_json::Value` sniff: the whole point is to
+/// avoid materialising the O(segments) body just to read two tag fields that
+/// every writer this build has ever used places ahead of it. This assumes
+/// the tag's own value contains no `"` — true of every value this build
+/// writes (`"checkpoint"`, `"delta"`, `"merkle-v1"`); a value that did would
+/// simply misread a truncated tag here, which then fails the subsequent
+/// typed parse or the `sha_kind` corruption check rather than silently
+/// succeeding.
+fn sniff_tag<'a>(text: &'a str, key: &str) -> Option<&'a str> {
+    let bytes = text.as_bytes();
+    let window = &bytes[..bytes.len().min(TAG_SNIFF_WINDOW)];
+    let needle = format!("\"{key}\": \"");
+    let start = find_bytes(window, needle.as_bytes())? + needle.len();
+    let end = find_bytes(&window[start..], b"\"")?;
+    std::str::from_utf8(&window[start..start + end]).ok()
+}
+
+fn find_bytes(haystack: &[u8], needle: &[u8]) -> Option<usize> {
+    haystack.windows(needle.len()).position(|w| w == needle)
+}
+
 /// JSON-parse and self-validate one manifest document, stopping short of the
 /// checkpoint branch's `verify_checkpoint` (the Merkle-build-or-whole-digest
 /// step) — everything a caller needs to know how long *that* step takes on
 /// its own.
+///
+/// One typed deserialisation, not two. The previous implementation parsed
+/// the whole document into a generic `serde_json::Value` just to sniff
+/// `kind`/`sha_kind`, then re-parsed that tree into the typed
+/// `Manifest`/`ManifestDelta` — on a ~5.2 MB checkpoint at G≈10k that
+/// `Value` pass was most of `checkpoint_read_parse_us`
+/// (`docs/design/MERKLE_VERIFY_AT_OPEN_NOTE_2026-09-15.md` §2: building a
+/// `Value` tree allocates a node per field per entry, which is typically
+/// *more* expensive than deserialising straight into a struct). `kind` is
+/// read by [`sniff_tag`] instead, and the document is then parsed exactly
+/// once, straight into the type the tag selects.
+///
+/// A syntactically invalid document is still reported as such
+/// (`serde_json::Error::is_syntax`/`is_eof`, the same test the old `Value`
+/// pass effectively ran first) rather than as "not a well-formed document" —
+/// so a genuinely malformed record and a wrong-shaped-but-parseable one keep
+/// their separate messages and error classes.
 fn parse_record_raw(text: &str) -> Result<RawRecord> {
-    let value: serde_json::Value = serde_json::from_str(text)
-        .map_err(|e| EngineError::corrupt(format!("manifest is not valid JSON: {e}")))?;
-    let kind = value
-        .get("kind")
-        .and_then(serde_json::Value::as_str)
-        .unwrap_or("checkpoint")
-        .to_string();
-    let sha_kind = value
-        .get("sha_kind")
-        .and_then(serde_json::Value::as_str)
-        .unwrap_or("")
-        .to_string();
-    match kind.as_str() {
+    let kind = sniff_tag(text, "kind").unwrap_or("checkpoint");
+    match kind {
         "checkpoint" => {
-            let m: Manifest = serde_json::from_value(value).map_err(|e| {
-                EngineError::corrupt(format!("manifest is not a well-formed document: {e}"))
+            #[cfg(test)]
+            test_support::note_typed_parse();
+            let m: Manifest = serde_json::from_str(text).map_err(|e| {
+                if e.is_syntax() || e.is_eof() {
+                    EngineError::corrupt(format!("manifest is not valid JSON: {e}"))
+                } else {
+                    EngineError::corrupt(format!("manifest is not a well-formed document: {e}"))
+                }
             })?;
-            check_sha_kind(m.format, &sha_kind)?;
+            let sha_kind = sniff_tag(text, "sha_kind").unwrap_or("");
+            check_sha_kind(m.format, sha_kind)?;
             Ok(RawRecord::Checkpoint(m))
         }
         "delta" => {
-            let d: ManifestDelta = serde_json::from_value(value).map_err(|e| {
-                EngineError::corrupt(format!("manifest delta is not a well-formed record: {e}"))
+            #[cfg(test)]
+            test_support::note_typed_parse();
+            let d: ManifestDelta = serde_json::from_str(text).map_err(|e| {
+                if e.is_syntax() || e.is_eof() {
+                    EngineError::corrupt(format!("manifest is not valid JSON: {e}"))
+                } else {
+                    EngineError::corrupt(format!("manifest delta is not a well-formed record: {e}"))
+                }
             })?;
             d.verify_self()?;
             Ok(RawRecord::Delta(d))
@@ -704,6 +759,37 @@ fn parse_record_raw(text: &str) -> Result<RawRecord> {
         other => Err(EngineError::corrupt(format!(
             "manifest document has unknown kind {other:?}"
         ))),
+    }
+}
+
+/// Test-only instrumentation: counts calls to the one place
+/// [`parse_record_raw`] deserialises a document into its typed shape, so a
+/// test can assert that happens exactly once per record (`tests::
+/// checkpoint_and_delta_records_are_each_deserialised_exactly_once`).
+/// Thread-local, not a shared global counter: the standard test harness runs
+/// each `#[test]` on its own thread, so a thread-local count is immune to
+/// unrelated tests calling `parse_record` concurrently, which a shared
+/// `AtomicUsize` would not be.
+#[cfg(test)]
+mod test_support {
+    use std::cell::Cell;
+
+    thread_local! {
+        static TYPED_PARSE_CALLS: Cell<u32> = const { Cell::new(0) };
+    }
+
+    pub fn note_typed_parse() {
+        TYPED_PARSE_CALLS.with(|c| c.set(c.get() + 1));
+    }
+
+    /// Reset this thread's count and return a guard-free snapshot function —
+    /// callers just read [`count`] after the call under test.
+    pub fn reset() {
+        TYPED_PARSE_CALLS.with(|c| c.set(0));
+    }
+
+    pub fn count() -> u32 {
+        TYPED_PARSE_CALLS.with(Cell::get)
     }
 }
 
@@ -1358,6 +1444,73 @@ mod tests {
         let json = checkpoint_json(&child).replace("\"checkpoint\"", "\"snapshot\"");
         let err = parse_record(&json).unwrap_err();
         assert_eq!(err.category, crate::error::Category::Corrupt);
+    }
+
+    /// The regression this change exists to fix: `parse_record_raw` used to
+    /// parse every document twice (once into a `serde_json::Value` to sniff
+    /// `kind`/`sha_kind`, once more via `from_value` into the typed struct).
+    /// `test_support` counts calls to the one place a document is now
+    /// deserialised into its typed shape; both a checkpoint and a delta must
+    /// trip it exactly once.
+    #[test]
+    fn checkpoint_and_delta_records_are_each_deserialised_exactly_once() {
+        let (parent, child) = pair();
+        let d = ManifestDelta::between(&parent, &child, 0).unwrap();
+
+        test_support::reset();
+        parse_record(&checkpoint_json(&child)).expect("checkpoint parses");
+        assert_eq!(
+            test_support::count(),
+            1,
+            "a checkpoint must be deserialised exactly once"
+        );
+
+        test_support::reset();
+        parse_record(&d.to_json()).expect("delta parses");
+        assert_eq!(
+            test_support::count(),
+            1,
+            "a delta must be deserialised exactly once"
+        );
+    }
+
+    /// Benchmark-style, not a correctness check: builds a synthetic 10,000
+    /// leaf checkpoint (the G≈10k / K=512 shape the design memo and note
+    /// measure against) and prints the single-parse wall time so it can be
+    /// quoted (labelled "laptop") next to the xzgpu record. `#[ignore]`d
+    /// because it is a timing report, not something CI should gate on; run
+    /// explicitly with `cargo test -p tgms-engine-core --release -- \
+    /// --ignored checkpoint_parse_of_10k_leaves`.
+    #[test]
+    #[ignore = "benchmark: prints laptop timing, run explicitly with --ignored"]
+    fn checkpoint_parse_of_10k_leaves_reports_laptop_timing() {
+        const LEAVES: u64 = 10_000;
+        const REPS: u32 = 20;
+
+        let mut m = Manifest::genesis();
+        for i in 0..LEAVES {
+            m.node_store.push(seg(i));
+        }
+        m.next_segment_id = LEAVES;
+        m.stats.n_node_versions = LEAVES;
+        m.seal();
+        let json = checkpoint_json(&m);
+
+        // one untimed parse first so the measured loop is not paying for any
+        // one-time allocator warm-up
+        parse_record(&json).expect("synthetic checkpoint parses");
+
+        let start = std::time::Instant::now();
+        for _ in 0..REPS {
+            let rec = parse_record(&json).expect("synthetic checkpoint parses");
+            std::hint::black_box(rec);
+        }
+        let elapsed = start.elapsed();
+        let ms_per = elapsed.as_secs_f64() * 1000.0 / f64::from(REPS);
+        println!(
+            "[laptop] checkpoint parse (single deserialisation), {LEAVES} leaves: \
+             {ms_per:.3} ms/parse ({REPS} reps, {elapsed:?} total)"
+        );
     }
 
     // --- format 3: the tag, and the chain it labels ---------------------- //
