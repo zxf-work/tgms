@@ -84,12 +84,22 @@ skeleton --
       a v1/v2 speedup comparison is prose-only until addendum-1 itself
       lands. The survivor-fraction/precision pair
       (``osdiStormV2SurvivorFractionC1Median``/``osdiStormV2PrecisionC1Median``)
-      stay PENDING even for the landed v2 grid: those are per-batch fields
-      (``candidate_survivors``/``changed_count``) that only the per-task
-      ``-rows.jsonl`` sidecars carry, and those sidecars stay on iTiger's
-      stage directory by design (``storm_campaign_merge.py``'s own module
-      note) -- never committed, unlike the per-cell summaries embedded in
-      ``storm-v2-main-grid-2026-09-15-rows.jsonl`` itself.
+      is a per-batch quantity (``candidate_survivors``/``changed_count``)
+      that only the per-task ``-rows.jsonl`` sidecars carry, and those
+      sidecars stay on iTiger's stage directory by design
+      (``storm_campaign_merge.py``'s own module note) -- never committed
+      individually, unlike the per-cell summaries embedded in
+      ``storm-v2-main-grid-2026-09-15-rows.jsonl`` itself. Lane W2l landed
+      this pair anyway: ``benchmarks/storm-v1/storm-v2-records-36-tasks.tar.gz``
+      (sha256-checked against ``benchmarks/storm-v1/README.md``'s own
+      quoted value) packs all 36 tasks' per-batch ``-rows.jsonl`` files as
+      transferred from the cluster, so the 12 c1-mix cells' 240 batches
+      (``osdiStormV2C1Batches``) are read from it in memory (``tarfile``,
+      nothing extracted to the repo) and matched to their cell via each
+      merged-grid row's own ``record`` field. The overall and per-store
+      medians (``osdiStormV2{SurvivorFraction,Precision}{Synth,CollegeMsg}
+      C1Median``) are computed in ``compute_c7_storm_v2`` below alongside
+      the rest of the c1-mix quantities.
 
   W2g (24h longevity soak, Lane B task B7a, Gate G1/Gate E) --
       benchmarks/longevity-v1/longevity-synth-1m-native-0.json (manifest) +
@@ -153,6 +163,7 @@ import json
 import re
 import statistics
 import sys
+import tarfile
 from decimal import ROUND_HALF_UP, Decimal
 from pathlib import Path
 
@@ -200,6 +211,12 @@ R18_PROBE = STORM_V1 / "storm-r18-probe-2026-09.json"
 R18_PROBE_ROWS = STORM_V1 / "storm-r18-probe-2026-09-rows.jsonl"
 STORM_V2_MAIN_GRID = STORM_V1 / "storm-v2-main-grid-2026-09-15.json"
 STORM_V2_MAIN_GRID_ROWS = STORM_V1 / "storm-v2-main-grid-2026-09-15-rows.jsonl"
+STORM_V1_README = STORM_V1 / "README.md"
+STORM_V2_RECORDS_TARBALL = STORM_V1 / "storm-v2-records-36-tasks.tar.gz"
+# Lane W2l: benchmarks/storm-v1/README.md's own "Per-batch rows" section
+# quotes this sha256 for the tarball; cross-checked against that quoted
+# text in compute_c7_storm_v2 below, not only frozen from a first read.
+STORM_V2_RECORDS_TARBALL_SHA256 = "f1acac9ed96a3fca8ea76aeba8657c6bced8d726244204a899ee6210a714ed0d"
 
 D160_DIR = ROOT / "benchmarks" / "d160-collegemsg-v1"
 D160_MANIFEST = D160_DIR / "manifest-2026-09-14.json"
@@ -2025,6 +2042,83 @@ def compute_c7_storm_v2(m: Macros) -> None:
     close(avoided_median, 0.7547, 0.001, "storm-v2 main grid frozen: median "
           "summary.arms.tgms-L1.avoided_recompute_decision over the 12 c1-mix cells")
 
+    # --- Lane W2l: c1-mix survivor-fraction/precision pair, from the
+    # per-task per-batch rows packed in storm-v2-records-36-tasks.tar.gz
+    # (never committed as individual files -- see the module docstring's
+    # C7 section). sha256-checked before anything inside it is trusted,
+    # and that frozen constant is itself cross-checked against README.md's
+    # own quoted value, not just asserted from a first read.
+    readme_text = STORM_V1_README.read_text(encoding="utf-8")
+    readme_sha_match = re.search(
+        r"storm-v2-records-36-tasks\.tar\.gz`\s*\n\(sha256 `([0-9a-f]{64})`\)", readme_text)
+    require(readme_sha_match is not None,
+            f"storm-v2 records tarball: {relpath(STORM_V1_README)} names a sha256 for "
+            "storm-v2-records-36-tasks.tar.gz in its Per-batch rows section")
+    if readme_sha_match is not None:
+        eq(readme_sha_match.group(1), STORM_V2_RECORDS_TARBALL_SHA256,
+           "storm-v2 records tarball: frozen sha256 constant matches "
+           f"{relpath(STORM_V1_README)}'s own quoted value")
+    eq(sha256_file(STORM_V2_RECORDS_TARBALL), STORM_V2_RECORDS_TARBALL_SHA256,
+       f"{relpath(STORM_V2_RECORDS_TARBALL)}: sha256 matches the frozen/README-quoted value")
+
+    survivor_fracs: list[float] = []
+    precisions: list[float] = []
+    per_store_survivor: dict[str, list[float]] = {"synth-iv-60k": [], "collegemsg": []}
+    per_store_precision: dict[str, list[float]] = {"synth-iv-60k": [], "collegemsg": []}
+    with tarfile.open(STORM_V2_RECORDS_TARBALL, "r:gz") as tf:
+        tar_names = set(tf.getnames())
+        for r in c1_rows:
+            tid = r["_task_id"]
+            # locate this cell's per-batch rows.jsonl inside the tarball via
+            # the merged grid's own `record` field (its provenance path
+            # ends in the same records/task-<N>/...-rows.jsonl the tarball
+            # holds), never by assuming task-<N> == _task_id
+            idx = r["record"].index("records/")
+            member = r["record"][idx:]
+            require(member in tar_names,
+                    f"storm-v2 records tarball: task {tid}'s own record field names a member "
+                    f"({member}) present in the tarball")
+            raw = tf.extractfile(member).read().decode("utf-8")
+            batch_rows = [json.loads(line) for line in raw.splitlines() if line.strip()]
+            eq(len(batch_rows), r["config"]["batches"],
+               f"storm-v2 records tarball task {tid}: batch row count matches "
+               "config.batches")
+            n_registered = r["config"]["n_registered"]
+            store = r["config"]["store"]
+            for br in batch_rows:
+                survivors = br["candidate_survivors"]
+                sf = survivors / n_registered
+                pr = br["changed_count"] / survivors
+                survivor_fracs.append(sf)
+                precisions.append(pr)
+                per_store_survivor[store].append(sf)
+                per_store_precision[store].append(pr)
+
+    eq(len(survivor_fracs), 240,
+       "storm-v2 c1 batches: total rows over the 12 c1-mix cells (12 x 20 batches)")
+    eq(len(precisions), 240,
+       "storm-v2 c1 batches: total rows over the 12 c1-mix cells (12 x 20 batches)")
+
+    survivor_median = statistics.median(survivor_fracs)
+    precision_median = statistics.median(precisions)
+    close(survivor_median, 0.262, 0.001, "storm-v2 c1 frozen: median candidate_survivors / "
+          "n_registered over the 240 c1-mix batches")
+    close(precision_median, 0.187, 0.001, "storm-v2 c1 frozen: median changed_count / "
+          "candidate_survivors over the 240 c1-mix batches")
+
+    synth_survivor_median = statistics.median(per_store_survivor["synth-iv-60k"])
+    collegemsg_survivor_median = statistics.median(per_store_survivor["collegemsg"])
+    synth_precision_median = statistics.median(per_store_precision["synth-iv-60k"])
+    collegemsg_precision_median = statistics.median(per_store_precision["collegemsg"])
+    close(synth_survivor_median, 0.266, 0.001, "storm-v2 c1 frozen: median "
+          "candidate_survivors / n_registered over the 120 synth-iv-60k c1-mix batches")
+    close(collegemsg_survivor_median, 0.257, 0.001, "storm-v2 c1 frozen: median "
+          "candidate_survivors / n_registered over the 120 collegemsg c1-mix batches")
+    close(synth_precision_median, 0.182, 0.001, "storm-v2 c1 frozen: median changed_count / "
+          "candidate_survivors over the 120 synth-iv-60k c1-mix batches")
+    close(collegemsg_precision_median, 0.194, 0.001, "storm-v2 c1 frozen: median changed_count "
+          "/ candidate_survivors over the 120 collegemsg c1-mix batches")
+
     def _speedup(r: dict) -> float:
         arms = r["summary"]["arms"]
         return arms["global-recompute"]["ttf_p50_ms"] / arms["tgms-L1"]["ttf_p50_ms"]
@@ -2093,6 +2187,27 @@ def compute_c7_storm_v2(m: Macros) -> None:
     m.add("osdiStormV2AvoidedDecisionC1Median", f"{avoided_median:.3f}",
           f"{relpath(STORM_V2_MAIN_GRID_ROWS)}: median(summary.arms.tgms-L1."
           "avoided_recompute_decision) over the 12 c1-mix cells")
+    m.add("osdiStormV2C1Batches", len(survivor_fracs),
+          f"{relpath(STORM_V2_RECORDS_TARBALL)}: total per-batch rows over the 12 c1-mix "
+          "cells' own -rows.jsonl files (12 cells x 20 batches)")
+    m.add("osdiStormV2SurvivorFractionC1Median", f"{survivor_median:.3f}",
+          f"{relpath(STORM_V2_RECORDS_TARBALL)}: median(candidate_survivors / "
+          "config.n_registered) over the 240 c1-mix batches")
+    m.add("osdiStormV2PrecisionC1Median", f"{precision_median:.3f}",
+          f"{relpath(STORM_V2_RECORDS_TARBALL)}: median(changed_count / candidate_survivors) "
+          "over the 240 c1-mix batches")
+    m.add("osdiStormV2SurvivorFractionSynthC1Median", f"{synth_survivor_median:.3f}",
+          f"{relpath(STORM_V2_RECORDS_TARBALL)}: median(candidate_survivors / "
+          "config.n_registered) over the 120 synth-iv-60k c1-mix batches")
+    m.add("osdiStormV2SurvivorFractionCollegeMsgC1Median", f"{collegemsg_survivor_median:.3f}",
+          f"{relpath(STORM_V2_RECORDS_TARBALL)}: median(candidate_survivors / "
+          "config.n_registered) over the 120 collegemsg c1-mix batches")
+    m.add("osdiStormV2PrecisionSynthC1Median", f"{synth_precision_median:.3f}",
+          f"{relpath(STORM_V2_RECORDS_TARBALL)}: median(changed_count / candidate_survivors) "
+          "over the 120 synth-iv-60k c1-mix batches")
+    m.add("osdiStormV2PrecisionCollegeMsgC1Median", f"{collegemsg_precision_median:.3f}",
+          f"{relpath(STORM_V2_RECORDS_TARBALL)}: median(changed_count / candidate_survivors) "
+          "over the 120 collegemsg c1-mix batches")
     m.add("osdiStormV2FalseFreshTgmsCellsNonzero", ff_nonzero,
           f"{relpath(STORM_V2_MAIN_GRID_ROWS)}: count of (cell, arm) pairs among tgms-L0/"
           "tgms-L1 over all 36 cells (72 total) with summary.arms[arm].false_fresh > 0")
@@ -3413,7 +3528,7 @@ def add_pending_stubs(m: Macros) -> None:
 
     # storm-v2-main-grid-2026-09-15 (addendum-3, post-D-161-rollout, commit
     # fdd393c) HAS landed and is fully scored -- see compute_c7_storm_v2
-    # above. Two things stay pending even against that landed grid:
+    # above. One thing stays pending even against that landed grid:
     m.add_pending("osdiStormV1SpeedupN1kSeed0", "C7 (storm-v1 time-to-fresh)",
                   "the pre-D-161-rollout N=1,000 c1 seed-0 cell (211319_0) has no merged-grid "
                   "record of its own on main -- only the post-rollout rerun "
@@ -3422,17 +3537,9 @@ def add_pending_stubs(m: Macros) -> None:
                   "cell's numbers appear only in benchmarks/storm-v1/README.md's R-18 probe "
                   "section table, which this generator does not treat as a record source "
                   "(same discipline as osdiStormSpeedupN1k above)")
-    m.add_pending("osdiStormV2SurvivorFractionC1Median", "C7 (storm-v2 time-to-fresh)",
-                  "storm-v2-main-grid-2026-09-15-rows.jsonl embeds only each task's per-cell "
-                  "summary.arms/narrowing_coverage blocks, not the per-batch "
-                  "candidate_survivors/changed_count fields the R-18 probe's own -rows.jsonl "
-                  "carries -- those per-task per-batch rows stay on iTiger's stage directory "
-                  "by design (storm_campaign_merge.py's own module note: 'per-batch rows are "
-                  "not' merged) and are not committed anywhere in this repo")
-    m.add_pending("osdiStormV2PrecisionC1Median", "C7 (storm-v2 time-to-fresh)",
-                  "same as osdiStormV2SurvivorFractionC1Median -- changed_count/"
-                  "candidate_survivors is a per-batch field, absent from the committed cell "
-                  "summaries")
+    # osdiStormV2SurvivorFractionC1Median/osdiStormV2PrecisionC1Median have
+    # landed (Lane W2l) -- see compute_c7_storm_v2's tarball read above --
+    # and are no longer emitted here.
 
     m.add_pending("osdiLdbcExpressible", "C9 (LDBC generality, four axes)",
                   "benchmarks/ldbc-fit-v1/classification.json exists but the independent-"
