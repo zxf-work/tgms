@@ -49,8 +49,8 @@ CC = _load_eval_concurrency_module()
 # alone controls the residual.
 _NAMED_PHASES = {
     "capture_us": 1, "seal_us": 2, "closes_us": 0, "stats_us": 0,
-    "dict_us": 3, "digest_us": 1, "delta_build_us": 1, "manifest_us": 4,
-    "current_us": 5,
+    "dict_us": 3, "digest_us": 1, "debug_verify_us": 0,
+    "delta_build_us": 1, "manifest_us": 4, "current_us": 5,
 }
 _NAMED_SUM = sum(_NAMED_PHASES.values())
 assert _NAMED_SUM == 17

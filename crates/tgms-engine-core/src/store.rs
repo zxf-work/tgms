@@ -3095,6 +3095,7 @@ mod tests {
                 + p.stats_us
                 + p.dict_us
                 + p.digest_us
+                + p.debug_verify_us
                 + p.delta_build_us
                 + p.manifest_us
                 + p.current_us;
@@ -3115,13 +3116,16 @@ mod tests {
             residuals.push(residual);
             totals.push(p.total_us);
         }
+        let first_residual = residuals[0];
+        let last_residual = residuals[residuals.len() - 1];
         let median_residual = median(residuals);
         let median_bound = residual_bound(median(totals));
         assert!(
             median_residual <= median_bound,
             "median residual over 60 commits ({median_residual}us) exceeds \
              bound={median_bound}us -- a systematic accounting leak, not a \
-             one-off scheduler hiccup",
+             one-off scheduler hiccup (first commit residual={first_residual}us, \
+             last commit residual={last_residual}us)",
         );
     }
 

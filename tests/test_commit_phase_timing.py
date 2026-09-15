@@ -7,7 +7,12 @@ that 100% of the B1 A/B's last/first-decile growth in engine-commit
 phases `last_commit_phases()` already named (`seal_us, closes_us, stats_us,
 dict_us, manifest_us, current_us`). B1-v2d adds three more phases
 (`capture_us`, `digest_us`, `delta_build_us`) so that residual should now be
-near zero on every commit, not just on average.
+near zero on every commit, not just on average. A follow-up closed a fourth
+gap specific to debug builds: `publish`'s O(segments) `debug_assert_eq!`
+manifest-digest recompute ran ahead of any timer, so its cost (growing with
+generation count) leaked into the residual under `cargo test`/`maturin
+develop`; `debug_verify_us` times it (always 0 in release, where the assert
+compiles away).
 
 Engine-level properties (per-phase arithmetic) belong in Rust
 (`crates/tgms-engine-core/src/store.rs`, which carries the same invariant
@@ -33,7 +38,8 @@ import tgms  # noqa: E402
 
 COMMIT_PHASE_KEYS = {
     "capture_us", "seal_us", "closes_us", "stats_us", "dict_us",
-    "digest_us", "delta_build_us", "manifest_us", "current_us", "total_us",
+    "digest_us", "debug_verify_us", "delta_build_us", "manifest_us",
+    "current_us", "total_us",
     "manifest_bytes", "segments_named", "manifest_checkpoint",
 }
 
