@@ -1,0 +1,667 @@
+{
+ "manifest": {
+  "arms": {
+   "characterization-interactive": "the 11 Interactive rows, whose LDBC parameters name entities of the separately generated Interactive dataset (\u00a7E addendum 4). Anchors are seeded draws from this corpus; execution-at-scale characterization only. Never summed with the scored arm.",
+   "scored-bi": "the 10 BI rows, bound to LDBC's own SF1 parameters. The only arm that carries a third-party-parameter claim."
+  },
+  "build_info": {
+   "debug_assertions": false,
+   "engine_version": "0.8.0",
+   "manifest_format_version": 3,
+   "opt_level": "3",
+   "profile": "release"
+  },
+  "bypass_ceiling_s": 600,
+  "campaign_seed": 5724984519806421702,
+  "campaign_seed_source": "paper-a-v1",
+  "ceilings": {
+   "expansions_est": 1280000000,
+   "rows_scanned_est": 5120000000,
+   "time_est_ms": 10000
+  },
+  "child_open_allowance_s": 420,
+  "commit": "a6b3e94c4ff1",
+  "complete": true,
+  "csv_root": "",
+  "dataset": {
+   "digest": "9b0373fa78b2be5dba12a8181115f064ab52735d7b4641e396df9622f1bda7ae",
+   "method": "sha256 of a per-file manifest (relative_path byte_size mtime_utc_iso sha256, sorted by path, 55 files) of the csv_root initial_snapshot directory; file at benchmarks/results-v1/ldbc-sf1-campaign-fmt3-2026-09-csv-manifest.txt"
+  },
+  "every_plan_in_a_child": true,
+  "host": "xzgpu",
+  "platform": "Linux-5.4.0-216-generic-x86_64-with-glibc2.31",
+  "policy_version": "guardrail-policy-v2",
+  "protocol": "warmups 1, reps 3 (1 when bypassed)",
+  "sf": "sf1",
+  "store": "stores/snb-sf1-xz-a6b3e94",
+  "store_dataset_card": "stores/snb-sf1-xz-a6b3e94/dataset_card.json (fidelity_gate PASS, 2,997,352 nodes / 17,369,790 edges, identical to reference store totals)",
+  "utc": "2026-09-15T14:50:57Z",
+  "wall_s": 4333.1
+ },
+ "records": [
+  {
+   "arm": "scored-bi",
+   "bypassed": true,
+   "ceilings_hit": [
+    "time_est_ms"
+   ],
+   "completeness": null,
+   "derived_admission": "refuse",
+   "estimate": {
+    "expansions_est": 412249685,
+    "rows_scanned_est": 866409367,
+    "time_est_ms": 170296
+   },
+   "ms": 11432.433128356934,
+   "ms_all": [
+    11432.433
+   ],
+   "or_expansion": null,
+   "outcome": "COMPLETED",
+   "param_source": "bi-10a.csv row 1",
+   "params": {
+    "country": "Italy",
+    "maxPathDistance": 4,
+    "nearMaxHops": 2,
+    "personId": "52776558163835",
+    "tagClass": "Thing"
+   },
+   "plan_id": "BI10",
+   "policy_version": "guardrail-policy-v2",
+   "refusal_certificate": {
+    "calibration_ref": "docs/eval_guardrail.md#frontier + docs/tgir/calib/expand-unbounded-2026-08-22.md",
+    "ceilings": {
+     "time_est_ms": 10000
+    },
+    "estimates": {
+     "expansions_est": 412249685,
+     "rows_scanned_est": 866409367,
+     "time_est_ms": 170296
+    },
+    "plan_digest": "BI10",
+    "policy_version": "guardrail-policy-v2",
+    "stage": "plan",
+    "suggestions": [
+     "narrow the valid-time window",
+     "add a node_filter / seed set",
+     "restrict rel_types",
+     "reduce hops / max_hops"
+    ]
+   },
+   "rows": 100,
+   "sampled_anchors": {},
+   "wall_s": 30.389
+  },
+  {
+   "arm": "scored-bi",
+   "bypassed": true,
+   "ceilings_hit": [
+    "time_est_ms"
+   ],
+   "completeness": null,
+   "derived_admission": "refuse",
+   "estimate": {
+    "expansions_est": 269016580,
+    "rows_scanned_est": 425999358,
+    "time_est_ms": 97927
+   },
+   "ms": 21864.85004425049,
+   "ms_all": [
+    21864.85
+   ],
+   "or_expansion": null,
+   "outcome": "COMPLETED",
+   "param_source": "bi-11.csv row 1",
+   "params": {
+    "country": "India",
+    "endDate": 1358294400000000,
+    "startDate": 1349308800000000
+   },
+   "plan_id": "BI11",
+   "policy_version": "guardrail-policy-v2",
+   "refusal_certificate": {
+    "calibration_ref": "docs/eval_guardrail.md#frontier + docs/tgir/calib/expand-unbounded-2026-08-22.md",
+    "ceilings": {
+     "time_est_ms": 10000
+    },
+    "estimates": {
+     "expansions_est": 269016580,
+     "rows_scanned_est": 425999358,
+     "time_est_ms": 97927
+    },
+    "plan_digest": "BI11",
+    "policy_version": "guardrail-policy-v2",
+    "stage": "plan",
+    "suggestions": [
+     "narrow the valid-time window",
+     "add a node_filter / seed set",
+     "restrict rel_types",
+     "reduce hops / max_hops"
+    ]
+   },
+   "rows": 1,
+   "sampled_anchors": {},
+   "wall_s": 50.828
+  },
+  {
+   "arm": "scored-bi",
+   "bypassed": true,
+   "ceilings_hit": [
+    "time_est_ms"
+   ],
+   "completeness": null,
+   "derived_admission": "refuse",
+   "estimate": {
+    "expansions_est": 34739580,
+    "rows_scanned_est": 190029755,
+    "time_est_ms": 33254
+   },
+   "ms": 98262.84122467041,
+   "ms_all": [
+    98262.841
+   ],
+   "or_expansion": {
+    "disjuncts": 3,
+    "param": "languages",
+    "values": [
+     "es",
+     "ta",
+     "pt"
+    ]
+   },
+   "outcome": "COMPLETED",
+   "param_source": "bi-12.csv row 1",
+   "params": {
+    "lengthThreshold": 115,
+    "startDate": 1338854400000000
+   },
+   "plan_id": "BI12",
+   "policy_version": "guardrail-policy-v2",
+   "refusal_certificate": {
+    "calibration_ref": "docs/eval_guardrail.md#frontier + docs/tgir/calib/expand-unbounded-2026-08-22.md",
+    "ceilings": {
+     "time_est_ms": 10000
+    },
+    "estimates": {
+     "expansions_est": 34739580,
+     "rows_scanned_est": 190029755,
+     "time_est_ms": 33254
+    },
+    "plan_digest": "BI12",
+    "policy_version": "guardrail-policy-v2",
+    "stage": "plan",
+    "suggestions": [
+     "narrow the valid-time window",
+     "add a node_filter / seed set",
+     "restrict rel_types",
+     "reduce hops / max_hops"
+    ]
+   },
+   "rows": 166,
+   "sampled_anchors": {},
+   "wall_s": 200.517
+  },
+  {
+   "arm": "scored-bi",
+   "bypassed": true,
+   "ceilings_hit": [
+    "rows_scanned_est",
+    "expansions_est",
+    "time_est_ms"
+   ],
+   "completeness": null,
+   "derived_admission": "refuse",
+   "estimate": {
+    "expansions_est": 909379487187,
+    "rows_scanned_est": 8394021205225,
+    "time_est_ms": 1278984344
+   },
+   "ms": 37361.49287223816,
+   "ms_all": [
+    37361.493
+   ],
+   "or_expansion": null,
+   "outcome": "COMPLETED",
+   "param_source": "bi-17.csv row 1",
+   "params": {
+    "deltaMicros": 43200000000,
+    "tagName": "Cosmic_Egg"
+   },
+   "plan_id": "BI17",
+   "policy_version": "guardrail-policy-v2",
+   "refusal_certificate": {
+    "calibration_ref": "docs/eval_guardrail.md#frontier + docs/tgir/calib/expand-unbounded-2026-08-22.md",
+    "ceilings": {
+     "expansions_est": 1280000000,
+     "rows_scanned_est": 5120000000,
+     "time_est_ms": 10000
+    },
+    "estimates": {
+     "expansions_est": 909379487187,
+     "rows_scanned_est": 8394021205225,
+     "time_est_ms": 1278984344
+    },
+    "plan_digest": "BI17",
+    "policy_version": "guardrail-policy-v2",
+    "stage": "plan",
+    "suggestions": [
+     "narrow the valid-time window",
+     "add a node_filter / seed set",
+     "restrict rel_types",
+     "reduce hops / max_hops"
+    ]
+   },
+   "rows": 0,
+   "sampled_anchors": {},
+   "wall_s": 82.952
+  },
+  {
+   "arm": "scored-bi",
+   "ceilings_hit": [],
+   "completeness": null,
+   "derived_admission": "admit",
+   "estimate": {
+    "expansions_est": 11989408,
+    "rows_scanned_est": 30665576,
+    "time_est_ms": 5918
+   },
+   "ms": 24646.167278289795,
+   "ms_all": [
+    24647.049,
+    24646.167,
+    24552.552
+   ],
+   "or_expansion": null,
+   "outcome": "COMPLETED",
+   "param_source": "bi-18.csv row 1",
+   "params": {
+    "tagName": "Fyodor_Dostoyevsky"
+   },
+   "plan_id": "BI18",
+   "policy_version": "guardrail-policy-v2",
+   "rows": 20,
+   "sampled_anchors": {},
+   "wall_s": 105.516
+  },
+  {
+   "arm": "scored-bi",
+   "bypassed": true,
+   "ceilings_hit": [
+    "rows_scanned_est",
+    "expansions_est",
+    "time_est_ms"
+   ],
+   "completeness": null,
+   "derived_admission": "refuse",
+   "estimate": {
+    "expansions_est": 7580131056,
+    "rows_scanned_est": 24600654498,
+    "time_est_ms": 5580034
+   },
+   "ms": 16688.11535835266,
+   "ms_all": [
+    16688.115
+   ],
+   "or_expansion": null,
+   "outcome": "COMPLETED",
+   "param_source": "bi-3.csv row 1",
+   "params": {
+    "country": "India",
+    "tagClass": "President"
+   },
+   "plan_id": "BI3",
+   "policy_version": "guardrail-policy-v2",
+   "refusal_certificate": {
+    "calibration_ref": "docs/eval_guardrail.md#frontier + docs/tgir/calib/expand-unbounded-2026-08-22.md",
+    "ceilings": {
+     "expansions_est": 1280000000,
+     "rows_scanned_est": 5120000000,
+     "time_est_ms": 10000
+    },
+    "estimates": {
+     "expansions_est": 7580131056,
+     "rows_scanned_est": 24600654498,
+     "time_est_ms": 5580034
+    },
+    "plan_digest": "BI3",
+    "policy_version": "guardrail-policy-v2",
+    "stage": "plan",
+    "suggestions": [
+     "narrow the valid-time window",
+     "add a node_filter / seed set",
+     "restrict rel_types",
+     "reduce hops / max_hops"
+    ]
+   },
+   "rows": 20,
+   "sampled_anchors": {},
+   "wall_s": 40.321
+  },
+  {
+   "arm": "scored-bi",
+   "bypassed": true,
+   "ceilings_hit": [
+    "time_est_ms"
+   ],
+   "completeness": null,
+   "derived_admission": "refuse",
+   "estimate": {
+    "expansions_est": 819379968,
+    "rows_scanned_est": 2713999849,
+    "time_est_ms": 471369
+   },
+   "ms": 36639.041900634766,
+   "ms_all": [
+    36639.042
+   ],
+   "or_expansion": null,
+   "outcome": "COMPLETED",
+   "param_source": "bi-4.csv row 1",
+   "params": {
+    "date": 1265932800000000
+   },
+   "plan_id": "BI4",
+   "policy_version": "guardrail-policy-v2",
+   "refusal_certificate": {
+    "calibration_ref": "docs/eval_guardrail.md#frontier + docs/tgir/calib/expand-unbounded-2026-08-22.md",
+    "ceilings": {
+     "time_est_ms": 10000
+    },
+    "estimates": {
+     "expansions_est": 819379968,
+     "rows_scanned_est": 2713999849,
+     "time_est_ms": 471369
+    },
+    "plan_digest": "BI4",
+    "policy_version": "guardrail-policy-v2",
+    "stage": "plan",
+    "suggestions": [
+     "narrow the valid-time window",
+     "add a node_filter / seed set",
+     "restrict rel_types",
+     "reduce hops / max_hops"
+    ]
+   },
+   "rows": 100,
+   "sampled_anchors": {},
+   "wall_s": 80.407
+  },
+  {
+   "arm": "scored-bi",
+   "bypassed": true,
+   "ceilings_hit": [
+    "time_est_ms"
+   ],
+   "derived_admission": "refuse",
+   "error": null,
+   "error_detail": "null join key 'likerId' on the left side at 535 row(s) \u2014 \u00a72.8 makes a null key an error, never a non-match",
+   "estimate": {
+    "expansions_est": 253426802,
+    "rows_scanned_est": 913100142,
+    "time_est_ms": 161120
+   },
+   "or_expansion": null,
+   "outcome": "ERRORED",
+   "param_source": "bi-6.csv row 1",
+   "params": {
+    "tagName": "Bob_Geldof"
+   },
+   "plan_id": "BI6",
+   "policy_version": "guardrail-policy-v2",
+   "refusal_certificate": {
+    "calibration_ref": "docs/eval_guardrail.md#frontier + docs/tgir/calib/expand-unbounded-2026-08-22.md",
+    "ceilings": {
+     "time_est_ms": 10000
+    },
+    "estimates": {
+     "expansions_est": 253426802,
+     "rows_scanned_est": 913100142,
+     "time_est_ms": 161120
+    },
+    "plan_digest": "BI6",
+    "policy_version": "guardrail-policy-v2",
+    "stage": "plan",
+    "suggestions": [
+     "narrow the valid-time window",
+     "add a node_filter / seed set",
+     "restrict rel_types",
+     "reduce hops / max_hops"
+    ]
+   },
+   "sampled_anchors": {},
+   "wall_s": 342.207
+  },
+  {
+   "arm": "scored-bi",
+   "bypassed": true,
+   "ceilings_hit": [
+    "time_est_ms"
+   ],
+   "completeness": null,
+   "derived_admission": "refuse",
+   "estimate": {
+    "expansions_est": 253426802,
+    "rows_scanned_est": 1416393722,
+    "time_est_ms": 230072
+   },
+   "ms": 291970.8707332611,
+   "ms_all": [
+    291970.871
+   ],
+   "or_expansion": null,
+   "outcome": "COMPLETED",
+   "param_source": "bi-6.csv row 1",
+   "params": {
+    "tagName": "Bob_Geldof"
+   },
+   "plan_id": "BI6.v2",
+   "policy_version": "guardrail-policy-v2",
+   "refusal_certificate": {
+    "calibration_ref": "docs/eval_guardrail.md#frontier + docs/tgir/calib/expand-unbounded-2026-08-22.md",
+    "ceilings": {
+     "time_est_ms": 10000
+    },
+    "estimates": {
+     "expansions_est": 253426802,
+     "rows_scanned_est": 1416393722,
+     "time_est_ms": 230072
+    },
+    "plan_digest": "BI6.v2",
+    "policy_version": "guardrail-policy-v2",
+    "stage": "plan",
+    "suggestions": [
+     "narrow the valid-time window",
+     "add a node_filter / seed set",
+     "restrict rel_types",
+     "reduce hops / max_hops"
+    ]
+   },
+   "rows": 100,
+   "sampled_anchors": {},
+   "wall_s": 638.398
+  },
+  {
+   "arm": "scored-bi",
+   "bypassed": true,
+   "ceilings_hit": [
+    "time_est_ms"
+   ],
+   "completeness": null,
+   "derived_admission": "refuse",
+   "estimate": {
+    "expansions_est": 718720094,
+    "rows_scanned_est": 1622002152,
+    "time_est_ms": 303037
+   },
+   "ms": 7336.116552352905,
+   "ms_all": [
+    7336.117
+   ],
+   "or_expansion": null,
+   "outcome": "COMPLETED",
+   "param_source": "bi-7.csv row 1",
+   "params": {
+    "tagName": "Slovenia"
+   },
+   "plan_id": "BI7",
+   "policy_version": "guardrail-policy-v2",
+   "refusal_certificate": {
+    "calibration_ref": "docs/eval_guardrail.md#frontier + docs/tgir/calib/expand-unbounded-2026-08-22.md",
+    "ceilings": {
+     "time_est_ms": 10000
+    },
+    "estimates": {
+     "expansions_est": 718720094,
+     "rows_scanned_est": 1622002152,
+     "time_est_ms": 303037
+    },
+    "plan_digest": "BI7",
+    "policy_version": "guardrail-policy-v2",
+    "stage": "plan",
+    "suggestions": [
+     "narrow the valid-time window",
+     "add a node_filter / seed set",
+     "restrict rel_types",
+     "reduce hops / max_hops"
+    ]
+   },
+   "rows": 100,
+   "sampled_anchors": {},
+   "wall_s": 21.583
+  },
+  {
+   "arm": "scored-bi",
+   "bypassed": true,
+   "ceilings_hit": [
+    "time_est_ms"
+   ],
+   "completeness": null,
+   "derived_admission": "refuse",
+   "estimate": {
+    "expansions_est": 34739580,
+    "rows_scanned_est": 144953024,
+    "time_est_ms": 31811
+   },
+   "ms": 60501.13797187805,
+   "ms_all": [
+    60501.138
+   ],
+   "or_expansion": null,
+   "outcome": "COMPLETED",
+   "param_source": "bi-9.csv row 1",
+   "params": {
+    "endDate": 1355097600000000,
+    "startDate": 1346284800000000
+   },
+   "plan_id": "BI9",
+   "policy_version": "guardrail-policy-v2",
+   "refusal_certificate": {
+    "calibration_ref": "docs/eval_guardrail.md#frontier + docs/tgir/calib/expand-unbounded-2026-08-22.md",
+    "ceilings": {
+     "time_est_ms": 10000
+    },
+    "estimates": {
+     "expansions_est": 34739580,
+     "rows_scanned_est": 144953024,
+     "time_est_ms": 31811
+    },
+    "plan_digest": "BI9",
+    "policy_version": "guardrail-policy-v2",
+    "stage": "plan",
+    "suggestions": [
+     "narrow the valid-time window",
+     "add a node_filter / seed set",
+     "restrict rel_types",
+     "reduce hops / max_hops"
+    ]
+   },
+   "rows": 100,
+   "sampled_anchors": {},
+   "wall_s": 125.317
+  },
+  {
+   "error": "IC11: bound id(s) ['246290604668947'] name no entity in the store (source: validation_params-sf1.csv, first row with all keys). Binding them would make the plan scan the whole store and return nothing.",
+   "outcome": "BIND_FAILED",
+   "phantom_anchor": true,
+   "plan_id": "IC11"
+  },
+  {
+   "error": "IC12: bound id(s) ['140737488420907'] name no entity in the store (source: validation_params-sf1.csv, first row with all keys). Binding them would make the plan scan the whole store and return nothing.",
+   "outcome": "BIND_FAILED",
+   "phantom_anchor": true,
+   "plan_id": "IC12"
+  },
+  {
+   "error": "IC2: bound id(s) ['140737488420907'] name no entity in the store (source: validation_params-sf1.csv, first row with all keys). Binding them would make the plan scan the whole store and return nothing.",
+   "outcome": "BIND_FAILED",
+   "phantom_anchor": true,
+   "plan_id": "IC2"
+  },
+  {
+   "error": "IC5: bound id(s) ['140737488440955'] name no entity in the store (source: validation_params-sf1.csv, first row with all keys). Binding them would make the plan scan the whole store and return nothing.",
+   "outcome": "BIND_FAILED",
+   "phantom_anchor": true,
+   "plan_id": "IC5"
+  },
+  {
+   "error": "IC6: bound id(s) ['246290604668947'] name no entity in the store (source: validation_params-sf1.csv, first row with all keys). Binding them would make the plan scan the whole store and return nothing.",
+   "outcome": "BIND_FAILED",
+   "phantom_anchor": true,
+   "plan_id": "IC6"
+  },
+  {
+   "error": "IC8: bound id(s) ['193514046550059'] name no entity in the store (source: validation_params-sf1.csv, first row with all keys). Binding them would make the plan scan the whole store and return nothing.",
+   "outcome": "BIND_FAILED",
+   "phantom_anchor": true,
+   "plan_id": "IC8"
+  },
+  {
+   "error": "IC9: bound id(s) ['105553116342675'] name no entity in the store (source: validation_params-sf1.csv, first row with all keys). Binding them would make the plan scan the whole store and return nothing.",
+   "outcome": "BIND_FAILED",
+   "phantom_anchor": true,
+   "plan_id": "IC9"
+  },
+  {
+   "error": "IS1: bound id(s) ['263882790714395'] name no entity in the store (source: validation_params-sf1.csv, first row with all keys). Binding them would make the plan scan the whole store and return nothing.",
+   "outcome": "BIND_FAILED",
+   "phantom_anchor": true,
+   "plan_id": "IS1"
+  },
+  {
+   "error": "IS2: bound id(s) ['263882790714395'] name no entity in the store (source: validation_params-sf1.csv, first row with all keys). Binding them would make the plan scan the whole store and return nothing.",
+   "outcome": "BIND_FAILED",
+   "phantom_anchor": true,
+   "plan_id": "IS2"
+  },
+  {
+   "error": "IS3: bound id(s) ['263882790714395'] name no entity in the store (source: validation_params-sf1.csv, first row with all keys). Binding them would make the plan scan the whole store and return nothing.",
+   "outcome": "BIND_FAILED",
+   "phantom_anchor": true,
+   "plan_id": "IS3"
+  },
+  {
+   "error": "IS4: bound id(s) ['17592192310105'] name no entity in the store (source: validation_params-sf1.csv, first row with all keys). Binding them would make the plan scan the whole store and return nothing.",
+   "outcome": "BIND_FAILED",
+   "phantom_anchor": true,
+   "plan_id": "IS4"
+  },
+  {
+   "error": "IS5: bound id(s) ['17592192310105'] name no entity in the store (source: validation_params-sf1.csv, first row with all keys). Binding them would make the plan scan the whole store and return nothing.",
+   "outcome": "BIND_FAILED",
+   "phantom_anchor": true,
+   "plan_id": "IS5"
+  },
+  {
+   "error": "IS6: bound id(s) ['17592192310105'] name no entity in the store (source: validation_params-sf1.csv, first row with all keys). Binding them would make the plan scan the whole store and return nothing.",
+   "outcome": "BIND_FAILED",
+   "phantom_anchor": true,
+   "plan_id": "IS6"
+  },
+  {
+   "error": "IS7: bound id(s) ['17592192310105'] name no entity in the store (source: validation_params-sf1.csv, first row with all keys). Binding them would make the plan scan the whole store and return nothing.",
+   "outcome": "BIND_FAILED",
+   "phantom_anchor": true,
+   "plan_id": "IS7"
+  }
+ ]
+}
