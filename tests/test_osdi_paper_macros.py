@@ -216,6 +216,13 @@ FROZEN_LANDED_VALUES = {
     "osdiStormV2NonComputeArtifacts": "29{,}826",
     "osdiStormV2SpeedupN1kSeed0": "5.173",
     "osdiStormV2AvoidedDecisionC1Median": "0.755",
+    "osdiStormV2C1Batches": "240",
+    "osdiStormV2SurvivorFractionC1Median": "0.262",
+    "osdiStormV2PrecisionC1Median": "0.187",
+    "osdiStormV2SurvivorFractionSynthC1Median": "0.266",
+    "osdiStormV2SurvivorFractionCollegeMsgC1Median": "0.257",
+    "osdiStormV2PrecisionSynthC1Median": "0.182",
+    "osdiStormV2PrecisionCollegeMsgC1Median": "0.194",
     "osdiStormV2FalseFreshTgmsCellsNonzero": "0",
     "osdiStormV2SpeedupSynthC1None": "5.173",
     "osdiStormV2SpeedupSynthC1Deep": "4.902",
@@ -342,8 +349,7 @@ def test_pending_macros_raise_a_latex_error_never_a_placeholder_number():
     expected_names = {
         "osdiTtfSpeedup", "osdiStormCells", "osdiStormFalseFresh",
         "osdiStormSpeedupN1k", "osdiStormAvoidedN1k",
-        "osdiStormV1SpeedupN1kSeed0", "osdiStormV2SurvivorFractionC1Median",
-        "osdiStormV2PrecisionC1Median",
+        "osdiStormV1SpeedupN1kSeed0",
         "osdiLdbcExpressible", "osdiLdbcExecuted", "osdiLdbcValidated",
         "osdiLiveDays", "osdiLiveAdvisories", "osdiLiveCorrections",
     }
@@ -365,7 +371,7 @@ def test_full_macro_set_has_no_duplicate_names_and_covers_every_skeleton_claim()
     mod.add_pending_stubs(m)
     names = [name for name, _, _ in m.items]
     assert len(names) == len(set(names)), "duplicate macro name"
-    assert len(names) == len(FROZEN_LANDED_VALUES) + 14
+    assert len(names) == len(FROZEN_LANDED_VALUES) + 12
 
 
 def test_cli_check_mode_agrees_with_committed_output(tmp_path):
@@ -956,6 +962,85 @@ def test_storm_v2_speedup_synth_c1_none_is_the_median_of_its_three_seeds():
     mod.compute_c7_storm_v2(m)
     values = {name: value for name, value, _ in m.items}
     assert values["osdiStormV2SpeedupSynthC1None"] == f"{expected_median:.3f}"
+
+
+def test_tampered_storm_v2_records_tarball_sha_mismatch_fails(tmp_path):
+    """Lane W2l: storm-v2-records-36-tasks.tar.gz holds the per-batch rows
+    the c1 survivor-fraction/precision macros are computed from, never
+    committed as individual files. A single flipped byte in the tarball
+    must fail the frozen/README-quoted sha256 check before anything inside
+    it is trusted, the same house rule already applied to every other
+    whole-file digest in this module."""
+    mod = _load("osdi_paper_macros")
+    original = mod.STORM_V2_RECORDS_TARBALL.read_bytes()
+    tampered_bytes = bytearray(original)
+    tampered_bytes[-1] ^= 0xFF  # flip the last byte -- still a well-formed gzip trailer byte
+    tampered = tmp_path / "storm-v2-records-36-tasks.tar.gz"
+    tampered.write_bytes(bytes(tampered_bytes))
+    assert tampered.read_bytes() != original
+
+    mod.STORM_V2_RECORDS_TARBALL = tampered
+    m = mod.Macros()
+    mod.compute_c7_storm_v2(m)
+    assert mod.FAILURES, "a tampered tarball byte must fail the sha256 check"
+    assert any("sha256" in f.lower() or "records tarball" in f.lower() for f in mod.FAILURES)
+
+
+def test_storm_v2_c1_survivor_fraction_and_precision_are_medians_over_240_batches():
+    """Arithmetic check, recomputed independently here (not trusted from
+    the generator's own arithmetic): the overall and per-store c1
+    survivor-fraction/precision medians must equal
+    statistics.median(candidate_survivors / config.n_registered) and
+    statistics.median(changed_count / candidate_survivors) over the c1-mix
+    cells' own per-batch rows inside storm-v2-records-36-tasks.tar.gz,
+    located via each cell's own `record` field, matching the generator's
+    own -- not just its stated -- values."""
+    mod = _load("osdi_paper_macros")
+    merged_rows = [json.loads(line) for line in mod.STORM_V2_MAIN_GRID_ROWS.read_text(
+        encoding="utf-8").splitlines() if line.strip()]
+    c1_rows = [r for r in merged_rows if r["config"]["mix"] == "c1"]
+    assert len(c1_rows) == 12
+
+    survivor_fracs: dict[str, list[float]] = {"synth-iv-60k": [], "collegemsg": []}
+    precisions: dict[str, list[float]] = {"synth-iv-60k": [], "collegemsg": []}
+    with mod.tarfile.open(mod.STORM_V2_RECORDS_TARBALL, "r:gz") as tf:
+        names = set(tf.getnames())
+        for r in c1_rows:
+            idx = r["record"].index("records/")
+            member = r["record"][idx:]
+            assert member in names
+            raw = tf.extractfile(member).read().decode("utf-8")
+            batch_rows = [json.loads(line) for line in raw.splitlines() if line.strip()]
+            assert len(batch_rows) == 20
+            n_registered = r["config"]["n_registered"]
+            store = r["config"]["store"]
+            for br in batch_rows:
+                survivor_fracs[store].append(br["candidate_survivors"] / n_registered)
+                precisions[store].append(br["changed_count"] / br["candidate_survivors"])
+
+    all_survivor = survivor_fracs["synth-iv-60k"] + survivor_fracs["collegemsg"]
+    all_precision = precisions["synth-iv-60k"] + precisions["collegemsg"]
+    assert len(all_survivor) == 240 and len(all_precision) == 240
+    expected_survivor_median = statistics.median(all_survivor)
+    expected_precision_median = statistics.median(all_precision)
+    expected_synth_survivor = statistics.median(survivor_fracs["synth-iv-60k"])
+    expected_collegemsg_survivor = statistics.median(survivor_fracs["collegemsg"])
+    expected_synth_precision = statistics.median(precisions["synth-iv-60k"])
+    expected_collegemsg_precision = statistics.median(precisions["collegemsg"])
+
+    m = mod.Macros()
+    mod.compute_c7_storm_v2(m)
+    values = {name: value for name, value, _ in m.items}
+    assert values["osdiStormV2C1Batches"] == "240"
+    assert values["osdiStormV2SurvivorFractionC1Median"] == f"{expected_survivor_median:.3f}"
+    assert values["osdiStormV2PrecisionC1Median"] == f"{expected_precision_median:.3f}"
+    assert (values["osdiStormV2SurvivorFractionSynthC1Median"]
+            == f"{expected_synth_survivor:.3f}")
+    assert (values["osdiStormV2SurvivorFractionCollegeMsgC1Median"]
+            == f"{expected_collegemsg_survivor:.3f}")
+    assert values["osdiStormV2PrecisionSynthC1Median"] == f"{expected_synth_precision:.3f}"
+    assert (values["osdiStormV2PrecisionCollegeMsgC1Median"]
+            == f"{expected_collegemsg_precision:.3f}")
 
 
 def test_tampered_d160_rows_digest_mismatch_fails(tmp_path):
