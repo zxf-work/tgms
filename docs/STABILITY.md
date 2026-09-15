@@ -830,3 +830,62 @@ only) are both kept and both reported; neither supersedes the other.
   the per-operator differential tests and the read-tracing property test
   (`tests/test_scope_read_tracing.py`). Records taken before this date
   (storm-v1) measured the 3-of-14 state and stand as measured.
+
+## 10. `Store.ingest_events`' default-`disc` offset no longer resets per
+## top-level call (fixed 2026-09-15, found in lane B7a)
+
+**Bug (pre-fix).** `tgms/storage/base.py::_ingest_events` gives every event
+without an explicit `disc` a default derived from its position in the bulk
+stream: `disc = f"#{offset + i}"`, where `i` is the event's index within one
+op's own `events` list and `offset` is supplied by the caller.
+`Store.ingest_events` (`tgms/store.py`) supplied that `offset` from a local
+variable reset to `0` at the top of *every* call to `ingest_events` —
+correct only across the `INGEST_CHUNK`-sized chunks *within* one call, since
+those chunks shared that call's own running `offset`. A caller that split
+one logical bulk load across several **top-level** `ingest_events` calls
+(batching) instead got the same default-`disc` sequence (`"#0"`, `"#1"`,
+…) from each call. Two events at the same intra-call index in different
+calls then collided into the same edge identity (`edge_eid(src, dst,
+rel_type, disc)`) whenever they shared `(src, dst, rel_type)` — two
+logically distinct edges silently merged into one.
+
+Found auditing `scripts/build_synth_store.py` (lane B7a), which had already
+worked around it by stamping `disc` explicitly per event rather than relying
+on the implicit default (see that script's module docstring and
+`_event()`). The audit found one other real caller on the affected path:
+`scripts/longevity_run.py::apply_correction_via_public_api`'s `a1_events`
+branch, which calls `store.ingest_events(op["events"], ...)` — a single,
+undecorated event, no explicit `disc` — once per correction, many times
+over the life of one longevity run. Every such call landed at intra-call
+index `i=0`, so any two `a1_events` corrections that happened to share
+`(src, dst, rel_type)` over a run's lifetime collided. See
+`ops/failure_ledger.jsonl` for the full per-caller audit and which records
+this could have reached.
+
+Related but **not** fixed by this change: `tgms/eval/corrections.py::
+_a1_events` bakes a literal `offset=0` into the `ingest_events` op it
+builds, and `tgms/eval/storm.py`'s `Storm._write` applies that op straight
+through `adapter.apply_ops`, bypassing `Store.ingest_events` (and this
+fix's counter) entirely — so a storm run applying repeated `a1_events`
+corrections can still collide the same way. This is a separate hazard
+sharing the same symptom, tracked in `ops/failure_ledger.jsonl` as a
+follow-up, not fixed here.
+
+**Fix.** `Store` now keeps the offset base as instance state,
+`self._ingest_offset_base`, initialized to `0` in `__init__` and advanced
+by each chunk's length after every write — never reset within a `Store`
+handle's lifetime, so two top-level `ingest_events` calls against the same
+open handle can never produce colliding default `disc` values. A store's
+*first* (or only) `ingest_events` call is unaffected: the instance counter
+starts at `0`, exactly the old per-call `offset`, so single-call callers
+(`scripts/eval_harness.py::build_dataset`, `scripts/build_snb_store.py`'s
+bulk path, `scripts/build_sx_store.py`, `scripts/build_synth_iv_store.py`,
+and the large majority of the test suite) get byte-identical `disc`
+assignments and digests — confirmed by `scripts/check_digest_stability.py`
+(38/38 unchanged) and the existing `ingest_events`/footprint/freshness test
+suites. This fix does **not** persist the counter to disk or otherwise
+protect across closing and reopening a `Store` handle — see the "related
+but not fixed" note above and the "not fixed" alternative bypass through
+raw `adapter.apply_ops` for what remains open.
+
+New regression coverage: `tests/test_ingest_events_disc_offset.py`.

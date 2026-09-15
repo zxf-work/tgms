@@ -101,6 +101,10 @@ class Store:
         self._store_identity: str | None = None
         self._seed_frontier()
         self._memories: list[Any] = []  # EvolutionMemory hooks (spec v1.1 WP2.4)
+        #: `ingest_events`'s default-`disc` offset base, carried **across**
+        #: top-level calls on this instance (never reset per call) — see
+        #: `ingest_events`'s own docstring for the collision this prevents.
+        self._ingest_offset_base = 0
 
     # --- the read basis (M2.1; FRESHNESS_SEMANTICS D13.16) ---------------- #
 
@@ -512,6 +516,24 @@ class Store:
         event batches then see them as already known and skip auto-creating
         bare versions for the same uids, and a collision refuses loudly rather
         than at the end of a long load.
+
+        **Default `disc`.** An event without an explicit `disc` gets one
+        derived from its position in the bulk stream (`tgms/storage/base.py::
+        _ingest_events`: `f"#{offset + i}"`), so it becomes its own logical
+        edge. That position counter (`offset`) is kept on **this Store
+        instance** — `self._ingest_offset_base` — and only ever advances, so
+        it is stable across separate top-level `ingest_events` calls, not just
+        across this call's own internal `INGEST_CHUNK` chunks. Before this
+        counter existed, `offset` restarted at 0 on every top-level call: a
+        caller that split one logical bulk load across several `ingest_events`
+        calls (batching) got the same default `disc` values from each call,
+        so distinct edges from different calls could collide into the same
+        edge identity whenever they shared `(src, dst, rel_type)` — see
+        `docs/STABILITY.md`'s dated note and `ops/failure_ledger.jsonl` for
+        the incident this fixed. A single top-level call's own digest is
+        unaffected: this instance's counter starts at 0, exactly the old
+        per-call `offset`, so a store's first (or only) `ingest_events` call
+        assigns identical `disc` values either way.
         """
         tt = self.clock.last_tt
         if nodes is not None:
@@ -519,12 +541,12 @@ class Store:
                 tt = self._write([make_op("ingest_events", events=[], nodes=chunk,
                                           node_label=node_label,
                                           source="ingest", provenance_ref=None)])
-        offset = 0
         for chunk in _chunks(events, INGEST_CHUNK):
-            tt = self._write([make_op("ingest_events", events=chunk, offset=offset,
+            tt = self._write([make_op("ingest_events", events=chunk,
+                                      offset=self._ingest_offset_base,
                                       node_label=node_label,
                                       source="ingest", provenance_ref=None)])
-            offset += len(chunk)
+            self._ingest_offset_base += len(chunk)
         return tt
 
     def _write(self, ops: list[dict[str, Any]]) -> int:
