@@ -464,7 +464,7 @@ class EventLog:
 
 
 def replay(eventlog_path: str | Path, adapter: Any, *,
-           thread_cursor: bool = False) -> int:
+           thread_cursor: bool = False, compact_every: int | None = None) -> int:
     """Replay a log into a fresh adapter; returns number of batches applied.
 
     Applies each batch at its recorded tt, so the resulting store content
@@ -478,8 +478,32 @@ def replay(eventlog_path: str | Path, adapter: Any, *,
     that file, and recovery verifies them loudly. `tgms replay` copies the
     log into place first and then threads the cursor; a caller replaying a
     foreign log into a throwaway store must not.
+
+    `compact_every`, when given, calls `adapter.compact()` then
+    `adapter.gc(keep_last=2)` after every `compact_every`-th *applied* batch.
+    This bounds the manifest-rewrite cost that would otherwise make replay
+    of a long, uncompacted history impractical (D-149's O(batches^2)
+    manifest growth): each rewrite here folds the manifest back down before
+    the next one grows, exactly as a live writer's own periodic compaction
+    does. Safe by construction, not just in practice: compaction is a
+    physical rewrite that does not advance transaction time (the compacted
+    generation inherits the pre-compaction `created_tt` unchanged — see
+    `NativeStore::compact` in `crates/tgms-engine-core/src/compact.rs`), so
+    it cannot make a later historical `tt` collide with or fall behind the
+    engine's own monotonicity floor, and this function's `prev_tt` check
+    above is tracked purely from the log's own records regardless. Only
+    adapters that expose `compact`/`gc` (the native engine) support this;
+    passing it for another adapter raises `TypeError`.
     """
     from tgms.core.errors import TgmsError
+
+    if compact_every is not None:
+        if compact_every <= 0:
+            raise ValueError(f"compact_every must be positive, got {compact_every}")
+        if not (hasattr(adapter, "compact") and hasattr(adapter, "gc")):
+            raise TypeError(
+                f"compact_every was given but {type(adapter).__name__} does "
+                f"not support compact()/gc() (only the native engine does)")
 
     log = EventLog(eventlog_path)
     note_cursor = getattr(adapter, "note_event_cursor", None) if thread_cursor \
@@ -506,4 +530,7 @@ def replay(eventlog_path: str | Path, adapter: Any, *,
         adapter.commit()
         prev_tt = tt
         n += 1
+        if compact_every is not None and n % compact_every == 0:
+            adapter.compact()
+            adapter.gc(keep_last=2)
     return n

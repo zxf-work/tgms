@@ -502,3 +502,54 @@ test_crash_adjacent_unacked_correction_does_not_false_positive_q1`), and
 this section's table is the corrected re-run — same seeds, same scale,
 `fired`/`calls_seen` identical field-by-field to the first attempt, now
 correctly classified. Full detail: `benchmarks/diskfull-v1/README.md`.
+
+## Replay with periodic compaction, 2026-09-15 (Lane B7c)
+
+**Makes the Gate E digest check feasible for long runs; the soak record
+predates it.** `benchmarks/longevity-v1/README.md`'s 24h soak could not run
+Gate E's replay/digest-equivalence check: replaying its 1,074,952
+uncompacted batches would have grown the rebuilt store's manifests along
+D-149's own uncompacted-manifest-growth curve to a projected ~280 TB, so
+`digest_equal` stayed `None` (never computed) for that run.
+
+`tgms.storage.eventlog.replay` now takes `compact_every: int | None`; when
+set, it calls `adapter.compact()` then `adapter.gc(keep_last=2)` after
+every `compact_every`-th applied batch, folding the manifest back down
+periodically during replay exactly as a live writer's own periodic
+`compact()`/`gc()` does. `tgms replay --compact-every N` exposes it on the
+CLI. Only the native engine's adapter exposes `compact()`/`gc()`; passing
+`compact_every` for another adapter raises `TypeError`.
+
+This is safe, not merely convenient — a candidate concern going in was
+that a compacted generation might record its own transaction time from the
+live/wall clock, which could then make replay's strict `tt` monotonicity
+check reject the next historical batch. Checked directly against the
+engine source and confirmed by test (`tests/test_replay_compaction.py`):
+
+- **(a)** compaction *does* record a `created_tt` on its published
+  generation, but it is inherited unchanged from the pre-compaction
+  generation's own `created_tt` — `NativeStore::compact`
+  (`crates/tgms-engine-core/src/compact.rs`) builds the next manifest via
+  `self.manifest().successor(self.manifest().created_tt)`, with the
+  comment "Compaction is a physical rewrite, so it does not advance
+  transaction time — no belief changed." `gc()` (`crates/tgms-engine-core/
+  src/gc.rs`) does not publish a new generation at all. Neither reads a
+  wall clock.
+- **(b)** the engine's own monotonicity gate, `NativeStore::begin`
+  (`crates/tgms-engine-core/src/store.rs` ~line 1351,
+  `if tt <= self.manifest.created_tt ... "transaction time must
+  advance"`), compares the next batch's `tt` against that same unchanged
+  `created_tt`, so compaction cannot move its threshold. Separately,
+  `tgms.storage.eventlog.replay`'s own `tt <= prev_tt` check is local to
+  the replay loop (`prev_tt` starts at `0` and is updated only from each
+  batch's own recorded `tt`) and never consults the store at all.
+- **(c)** `store_digest()` (`StorageAdapter.store_digest`,
+  `tgms/storage/base.py`) is computed purely from the sorted logical
+  node/edge rows, so compaction and gc — both physical-layout-only — leave
+  it unchanged; confirmed by test as well as by reading the method.
+
+`tests/test_replay_compaction.py` writes 600 batches through the normal
+writer with `compact()`/`gc()` every 100, records `store_digest()`, then
+replays the event log into a fresh store both without compaction and with
+`compact_every=100` — both replay digests equal the original. No engine
+change was needed; this was purely an eventlog/CLI addition.

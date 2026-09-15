@@ -53,6 +53,11 @@ def build_parser() -> argparse.ArgumentParser:
     p_rep.add_argument("--store", required=True)
     p_rep.add_argument("--backend", default=BACKEND_DEFAULT,
                        choices=BACKENDS, help=BACKEND_HELP)
+    p_rep.add_argument("--compact-every", type=int, default=None,
+                       help="compact()+gc() the store every N applied batches "
+                            "during replay, bounding the O(batches^2) "
+                            "uncompacted-manifest cost (D-149) on a long "
+                            "history (native backend only)")
 
     p_synth = sub.add_parser("synth", help="generate a synthetic dataset")
     p_synth.add_argument("out_dir")
@@ -574,7 +579,8 @@ def main(argv: list[str] | None = None) -> int:
         dst = Path(store.path) / "eventlog.jsonl"
         if Path(args.eventlog_jsonl).resolve() != dst.resolve():
             shutil.copyfile(args.eventlog_jsonl, dst)
-        n = replay(dst, store.adapter, thread_cursor=True)
+        n = replay(dst, store.adapter, thread_cursor=True,
+                   compact_every=args.compact_every)
         print(json.dumps({"batches": n, "stats": store.stats()}, default=str))
         store.close()
     elif args.cmd == "synth":
