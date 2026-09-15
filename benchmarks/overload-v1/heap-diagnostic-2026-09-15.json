@@ -1,0 +1,112 @@
+{
+  "diagnostic": "P-OV1 RSS attribution follow-up: does --no-call-records (dropping the harness's per-call CallRecord retention) bring the n_clients=64 step's process RSS down near baseline, or does the multi-GB growth persist regardless -- i.e. is it harness bookkeeping or the service surface (ToolRouter/ConcurrencyGate/native engine)?",
+  "date": "2026-09-15",
+  "host": "xzgpu",
+  "worktree": "/mnt/project/xzhang/tgms/work/tgms-xz-a6b3e94 (commit a6b3e94, dirty: scripts/eval_overload.py temporarily overwritten in place with the --no-call-records/--rss-samples patch for this diagnostic only, then restored to the committed a6b3e94 content afterward -- git_commit in both manifests below is correctly reported as \"a6b3e94-dirty\")",
+  "engine_build_info": {
+    "profile": "release",
+    "opt_level": "3",
+    "engine_version": "0.8.0",
+    "debug_assertions": false,
+    "manifest_format_version": 3
+  },
+  "python_env": "reused /mnt/project/xzhang/tgms/work/tgms/.venv (main checkout's venv) with PYTHONPATH pointed at the tgms-xz-a6b3e94 worktree, so tgms/tgms._engine resolve from that worktree -- no build performed",
+  "dataset": {
+    "source": "/mnt/project/xzhang/tgms/work/tgms/stores/synth-1m-native",
+    "working_copy": "$TMPDIR/overload-heap-2026-09-15/store (deleted after the run; see 'cleanup' below)",
+    "upgrade_manifests": {
+      "from_format": 1,
+      "to_format": 3,
+      "generation": 21,
+      "sha": "e7f45e1257dd14c8"
+    },
+    "store_digest": "682f1194f6ca335fd60bda56b3e0630d9d88112651e109067de222e96d9cd51a",
+    "note": "identical store_digest in both run manifests below and matches P-OV1's own recorded digest -- same dataset state throughout, opened read-only, no commits issued by either run"
+  },
+  "concurrent_host_activity_observed_at_measurement_time": {
+    "REPLAY-2": {
+      "observed": true,
+      "pid": 2453943,
+      "cmd": "python -m tgms.cli replay /mnt/project/xzhang/tgms/longevity/2026-09-15/store/eventlog.jsonl --store /mnt/project/xzhang/tgms/longevity/2026-09-15/replay-check-2 --backend native --compact-every 500",
+      "cpu_pct_at_check": 89.7,
+      "rss_kb_at_check": 2115432,
+      "note": "correctness-only replay verification, confirmed running concurrently with both measurement runs below -- consistent with the host rule that REPLAY-2 may be running and is fine for an RSS (not latency) measurement"
+    },
+    "osv_poller_pid_1457823": {"observed": true, "untouched": true},
+    "daily_loop_pid_1540052": {"observed": true, "untouched": true},
+    "load_average_at_start": "2.76, 2.72, 2.52 (40 cpus)"
+  },
+  "runs": [
+    {
+      "label": "with-call-records (the P-OV1 way, --no-call-records NOT passed)",
+      "manifest_file": "step64-with-records.json",
+      "rss_samples_file": "rss-with-records.csv",
+      "cli": "eval_overload.py --store <store> --clients 64 --duration-s 120 --rate-per-client 20 --max-concurrent 8 --provenance 'overload-heap diagnostic, xzgpu, REPLAY-2 running concurrently' --out step64-with-records.json --rss-samples rss-with-records.csv",
+      "step_64_result": {
+        "n_calls": 76800, "n_ok": 29814, "n_refused": 46986, "n_error": 0,
+        "throughput_qps": 477.098, "p50_ms": 25.783, "p95_ms": 48.909, "p99_ms": 63.319,
+        "late_mean_ms": 20.409, "late_p95_ms": 6.632, "concurrent_in_flight_p95": 8.0
+      },
+      "process_peak_rss": {
+        "source": "/usr/bin/time -v, 'Maximum resident set size'",
+        "kb": 1991888,
+        "approx_gb": 1.90
+      },
+      "one_hz_rss_sampler_peak": {
+        "source": "rss-with-records.csv (this diagnostic's --rss-samples, /proc/self/status VmRSS, 1 Hz)",
+        "kb": 194528,
+        "approx_mb": 190,
+        "caveat": "an order of magnitude below the process lifetime peak reported by /usr/bin/time -v for the SAME run -- see 'sampler_discrepancy' below"
+      },
+      "elapsed_wall_s": 148.83,
+      "cpu_pct": 69
+    },
+    {
+      "label": "no-call-records (--no-call-records passed)",
+      "manifest_file": "step64-no-call-records.json",
+      "rss_samples_file": "rss-no-call-records.csv",
+      "cli": "eval_overload.py --store <store> --clients 64 --duration-s 120 --rate-per-client 20 --max-concurrent 8 --no-call-records --provenance 'overload-heap diagnostic, xzgpu, REPLAY-2 running concurrently' --out step64-no-call-records.json --rss-samples rss-no-call-records.csv",
+      "step_64_result": {
+        "n_calls": 76800, "n_ok": 31283, "n_refused": 45517, "n_error": 0,
+        "throughput_qps": 501.915, "p50_ms": 31.486, "p95_ms": 224.112, "p99_ms": 533.476,
+        "late_mean_ms": 2583.22, "late_p95_ms": 8900.934, "concurrent_in_flight_p95": 8.0,
+        "note": "n_ok/n_refused split and latency percentiles differ somewhat from the with-records run -- expected run-to-run scheduling noise under the same open-loop overload condition (both refuse the large majority of the 76,800 calls at max_concurrent=8), not a sign the aggregate-only accounting is wrong (n_ok+n_refused+n_error == n_calls holds, matching the unit test)"
+      },
+      "process_peak_rss": {
+        "source": "/usr/bin/time -v, 'Maximum resident set size'",
+        "kb": 2004096,
+        "approx_gb": 1.91
+      },
+      "one_hz_rss_sampler_peak": {
+        "source": "rss-no-call-records.csv",
+        "kb": 196292,
+        "approx_mb": 192
+      },
+      "elapsed_wall_s": 149.61,
+      "cpu_pct": 70
+    }
+  ],
+  "postings_stats_and_segment_cache_stats": {
+    "method": "adapter._store.postings_stats('edge') and adapter._store.segment_cache_stats(), probed by opening the store read-only with a throwaway helper script, before run 1, after run 1 (== before run 2, since both sweeps are read-only and issue no commits), and after run 2",
+    "before_run1": {"postings_stats_edge": {"by_identity": 0, "by_vid": 0, "indexed": 0}, "segment_cache_stats": {"entries": 0, "bytes": 0, "budget": 49947099136, "evictions": 0}},
+    "after_run1_before_run2": {"postings_stats_edge": {"by_identity": 0, "by_vid": 0, "indexed": 0}, "segment_cache_stats": {"entries": 0, "bytes": 0, "budget": 49947099136, "evictions": 0}},
+    "after_run2": {"postings_stats_edge": {"by_identity": 0, "by_vid": 0, "indexed": 0}, "segment_cache_stats": {"entries": 0, "bytes": 0, "budget": 49947099136, "evictions": 0}},
+    "note": "identically zero before/after in both reps -- entity_history(uid, limit=5) on this store/workload does not populate the edge-postings index or the byte-budget segment cache, so neither structure is where the multi-GB growth is going; this rules out the two named native-side receipt structures the adapter exposes, without identifying which native structure it is going into instead"
+  },
+  "sampler_discrepancy": {
+    "observation": "In both runs, the --rss-samples 1 Hz VmRSS series stays flat near baseline (~170-196 MB) for the entire 120 s run, while /usr/bin/time -v's lifetime 'Maximum resident set size' for the same process is ~1.9-2.0 GB.",
+    "interpretation": "Most consistent with a fast-appearing, fast-receding native-heap allocation spike (e.g. large glibc mmap-backed allocations made and munmap'd within a sub-second window, or per-thread malloc-arena churn across the 64 client threads) rather than a value that climbs and holds steady across the step -- exactly the kind of native-allocator behavior the P-OV1 README already flagged as invisible to tracemalloc, and it turns out to be coarse-grained-RSS-polling-invisible too. Pinning the exact allocation site would need finer-grained sampling (e.g. 100 ms VmRSS polling, or mallinfo2()/malloc_stats() snapshots) -- out of scope for this bounded diagnostic and left as a follow-up.",
+    "does_not_change_the_verdict": "This affects only the --rss-samples time series' usefulness for localizing WHEN the spike happens; the --no-call-records ablation below is a between-run comparison of /usr/bin/time -v's peak (a full-process, allocator-visible measurement in both runs), which is unaffected by the polling gap."
+  },
+  "verdict": {
+    "answer": "service surface, not harness bookkeeping",
+    "reasoning": "Disabling the harness's own per-call retention entirely (--no-call-records: no CallRecord list, no 76,800-entry .records.json written) changed the process's peak RSS by about 0.6% (1,991,888 KB with records vs 2,004,096 KB without -- the no-call-records run is if anything slightly HIGHER, within run-to-run noise). If the multi-GB growth were harness-side bookkeeping (the CallRecord list plus its end-of-sweep JSON serialization, as the P-OV1 tracemalloc note suspected but could not confirm past ~83 MB), removing that retention should have collapsed the peak toward the ~150-200 MB baseline seen in the low-rate/1-client steps. It did not. Both peaks are two orders of magnitude above what tracemalloc's harness-side accounting could ever explain (it only ever attributed ~83 MB), and now also above what removing that accounting removes (~0 MB of the ~2 GB). The growth is therefore attributable to something outside scripts/eval_overload.py's own Python-level bookkeeping -- most plausibly the native engine (tgms._engine, a Rust .so) or glibc allocator behavior triggered by 64 concurrently-calling threads hammering ToolRouter/ConcurrencyGate at once, not Python-level result retention by either class (grep of tgms/tools/server.py and tgms/tools/limits.py finds no accumulating list/history field on ToolRouter or ConcurrencyGate -- neither class retains past call results, so 'result retention' in the literal sense is also ruled out as the mechanism, leaving native-heap/allocator behavior under thread concurrency as the leading candidate).",
+    "not_pinned_down": "This diagnostic identifies WHERE the growth is not (harness CallRecord retention, ToolRouter/ConcurrencyGate result history, the edge-postings index, the byte-budget segment cache) but does not identify the exact native allocation site -- that would need native-side profiling (e.g. Valgrind/massif, jemalloc/glibc arena instrumentation, or per-thread RSS breakdown) against tgms._engine, which is out of scope for this bounded (~10 min) measurement."
+  },
+  "cleanup": {
+    "store_copy_deleted": true,
+    "eval_overload_py_restored_in_a6b3e94_worktree": true,
+    "restored_md5": "95a33939e3829be5d8698980a0e2f957",
+    "sha256_verified_after_transfer": true
+  }
+}

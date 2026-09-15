@@ -44,6 +44,7 @@ import hashlib
 import json
 import os
 import platform
+import random
 import statistics
 import subprocess
 import sys
@@ -96,6 +97,46 @@ class CallRecord:
     refusal_stage: str | None
 
 
+#: `--no-call-records` mode keeps only a fixed-capacity uniform sample of
+#: latencies (Algorithm R) instead of one `CallRecord` per call, so a step's
+#: memory footprint stops scaling with `n_calls` -- this is the harness-side
+#: half of the P-OV1 RSS attribution diagnostic (see
+#: `benchmarks/overload-v1/README.md`'s RSS paragraph): does disabling this
+#: retention bring a 64-client step's process RSS down near baseline, or
+#: does it stay in the multi-GB range regardless (pointing at the service
+#: surface instead of harness bookkeeping).
+RESERVOIR_SIZE = 4096
+
+
+class _Reservoir:
+    """Thread-safe fixed-capacity uniform sample of a float stream. Cheap
+    enough per call (one lock, one list write) that steps at the sweep's
+    highest client counts don't need per-call retention to report
+    percentiles."""
+
+    __slots__ = ("_cap", "_seen", "_values", "_lock")
+
+    def __init__(self, cap: int = RESERVOIR_SIZE) -> None:
+        self._cap = cap
+        self._seen = 0
+        self._values: list[float] = []
+        self._lock = threading.Lock()
+
+    def add(self, value: float) -> None:
+        with self._lock:
+            self._seen += 1
+            if len(self._values) < self._cap:
+                self._values.append(value)
+            else:
+                j = random.randint(0, self._seen - 1)
+                if j < self._cap:
+                    self._values[j] = value
+
+    def values(self) -> list[float]:
+        with self._lock:
+            return list(self._values)
+
+
 @dataclass
 class StepResult:
     n_clients: int
@@ -138,12 +179,24 @@ def _percentile(values: list[float], q: float) -> float:
 
 
 def run_step(router: ToolRouter, op: str, args: dict[str, Any],
-            n_clients: int, rate_hz: float, duration_s: float) -> StepResult:
+            n_clients: int, rate_hz: float, duration_s: float, *,
+            keep_records: bool = True) -> tuple[StepResult, list[CallRecord]]:
     """One rate step: `n_clients` open-loop threads at `rate_hz` each
-    (aggregate arrival rate = `n_clients * rate_hz`), for `duration_s`."""
+    (aggregate arrival rate = `n_clients * rate_hz`), for `duration_s`.
+
+    `keep_records=False` (the `--no-call-records` path) drops the per-call
+    `CallRecord` list entirely and instead accumulates plain counters plus
+    two bounded `_Reservoir`s (ok-latency, lateness) shared across client
+    threads -- the step still reports the same `StepResult` fields, just
+    computed from a fixed-size sample instead of every call. The returned
+    record list is always empty in this mode."""
     schedule = token_bucket_schedule(rate_hz, duration_s)
     records: list[CallRecord] = []
     records_lock = threading.Lock()
+    counts = {"ok": 0, "refused": 0, "error": 0}
+    counts_lock = threading.Lock()
+    ok_latency_reservoir = _Reservoir()
+    late_reservoir = _Reservoir()
     in_flight_samples: list[int] = []
     stop_sampling = threading.Event()
 
@@ -155,6 +208,7 @@ def run_step(router: ToolRouter, op: str, args: dict[str, Any],
     def client(_client_id: int) -> None:
         t0 = time.perf_counter()
         local: list[CallRecord] = []
+        local_counts = {"ok": 0, "refused": 0, "error": 0}
         for sched in schedule:
             now = time.perf_counter() - t0
             if sched > now:
@@ -169,9 +223,20 @@ def run_step(router: ToolRouter, op: str, args: dict[str, Any],
                 details = env.get("details", {}) or {}
                 stage = details.get("stage")
                 outcome = "refused" if stage == "limit" else "error"
-            local.append(CallRecord(sched, late_ms, wall_ms, outcome, stage))
-        with records_lock:
-            records.extend(local)
+            if keep_records:
+                local.append(CallRecord(sched, late_ms, wall_ms, outcome, stage))
+            else:
+                local_counts[outcome] += 1
+                if outcome == "ok":
+                    ok_latency_reservoir.add(wall_ms)
+                late_reservoir.add(late_ms)
+        if keep_records:
+            with records_lock:
+                records.extend(local)
+        else:
+            with counts_lock:
+                for k, v in local_counts.items():
+                    counts[k] += v
 
     sampler_thread = threading.Thread(target=sampler, daemon=True)
     sampler_thread.start()
@@ -187,16 +252,23 @@ def run_step(router: ToolRouter, op: str, args: dict[str, Any],
 
     result = StepResult(n_clients=n_clients, target_rate_hz=rate_hz,
                         duration_s=duration_s)
-    result.n_calls = len(records)
-    result.n_ok = sum(1 for r in records if r.outcome == "ok")
-    result.n_refused = sum(1 for r in records if r.outcome == "refused")
-    result.n_error = sum(1 for r in records if r.outcome == "error")
+    if keep_records:
+        result.n_calls = len(records)
+        result.n_ok = sum(1 for r in records if r.outcome == "ok")
+        result.n_refused = sum(1 for r in records if r.outcome == "refused")
+        result.n_error = sum(1 for r in records if r.outcome == "error")
+        ok_latencies = [r.wall_ms for r in records if r.outcome == "ok"]
+        late = [r.late_ms for r in records]
+    else:
+        result.n_ok, result.n_refused, result.n_error = (
+            counts["ok"], counts["refused"], counts["error"])
+        result.n_calls = result.n_ok + result.n_refused + result.n_error
+        ok_latencies = ok_latency_reservoir.values()
+        late = late_reservoir.values()
     result.throughput_qps = result.n_ok / wall_elapsed if wall_elapsed > 0 else 0.0
-    ok_latencies = [r.wall_ms for r in records if r.outcome == "ok"]
     result.p50_ms = _percentile(ok_latencies, 0.50)
     result.p95_ms = _percentile(ok_latencies, 0.95)
     result.p99_ms = _percentile(ok_latencies, 0.99)
-    late = [r.late_ms for r in records]
     result.late_mean_ms = statistics.fmean(late) if late else 0.0
     result.late_p95_ms = _percentile(late, 0.95)
     result.concurrent_in_flight_p95 = _percentile(
@@ -207,6 +279,66 @@ def run_step(router: ToolRouter, op: str, args: dict[str, Any],
     # `tests/test_limits.py`, not by this read-side sweep).
     result.queue_depth = None
     return result, records
+
+
+# --------------------------------------------------------------------------- #
+# --rss-samples: once-a-second whole-process RSS, tagged by step             #
+# --------------------------------------------------------------------------- #
+
+def _vm_rss_kb() -> int | None:
+    """Current `VmRSS` from `/proc/self/status`, in kB. `None` off Linux or
+    if the file can't be read (e.g. macOS dev boxes) -- callers treat that
+    as "no sample", not an error."""
+    try:
+        for line in Path("/proc/self/status").read_text().splitlines():
+            if line.startswith("VmRSS:"):
+                return int(line.split()[1])
+    except OSError:
+        pass
+    return None
+
+
+class _RssSampler:
+    """Background once-per-second RSS sampler for the whole sweep, written
+    to `path` as `time,rss_kb,step` on `stop_and_write()`. `set_step` lets
+    the running sampler tag samples with whichever step is currently in
+    flight without the sampler needing to know the sweep's structure."""
+
+    def __init__(self, path: Path) -> None:
+        self.path = path
+        self._step = "init"
+        self._step_lock = threading.Lock()
+        self._rows: list[tuple[float, int, str]] = []
+        self._stop = threading.Event()
+        self._thread: threading.Thread | None = None
+
+    def set_step(self, label: str) -> None:
+        with self._step_lock:
+            self._step = label
+
+    def _run(self, t0: float) -> None:
+        while not self._stop.is_set():
+            rss = _vm_rss_kb()
+            if rss is not None:
+                with self._step_lock:
+                    step = self._step
+                self._rows.append((time.perf_counter() - t0, rss, step))
+            self._stop.wait(1.0)
+
+    def start(self) -> None:
+        t0 = time.perf_counter()
+        self._thread = threading.Thread(target=self._run, args=(t0,), daemon=True)
+        self._thread.start()
+
+    def stop_and_write(self) -> None:
+        self._stop.set()
+        if self._thread is not None:
+            self._thread.join(timeout=2)
+        self.path.parent.mkdir(parents=True, exist_ok=True)
+        with open(self.path, "w") as f:
+            f.write("time,rss_kb,step\n")
+            for t, rss, step in self._rows:
+                f.write(f"{t:.3f},{rss},{step}\n")
 
 
 # --------------------------------------------------------------------------- #
@@ -249,7 +381,8 @@ def build_manifest(*, store_path: str, store_digest: str, op: str,
                    args: dict[str, Any], limits: Limits, steps: list[StepResult],
                    recovery: StepResult, dry_run: bool,
                    records_path: str, provenance: str,
-                   dev_host_note: str | None = None) -> dict[str, Any]:
+                   dev_host_note: str | None = None,
+                   keep_call_records: bool = True) -> dict[str, Any]:
     steps_json = [s.to_json() for s in steps]
     digest_src = json.dumps({"steps": steps_json, "recovery": recovery.to_json()},
                             sort_keys=True).encode()
@@ -261,7 +394,7 @@ def build_manifest(*, store_path: str, store_digest: str, op: str,
         "config": {"store": store_path, "op": op, "args": args,
                   "max_concurrent": limits.max_concurrent,
                   "max_rows": limits.max_rows, "max_bytes": limits.max_bytes,
-                  "dry_run": dry_run},
+                  "dry_run": dry_run, "call_records": keep_call_records},
         "seed": {"value": None,
                 "reason": "open-loop arrival scheduling is deterministic "
                          "given (rate, duration); no RNG is used"},
@@ -307,51 +440,75 @@ def render_table(steps: list[StepResult], recovery: StepResult) -> str:
 def run_sweep(store_path: str, client_counts: list[int], duration_s: float,
              rate_per_client: float, max_concurrent: int | None,
              out_records: Path | None, provenance: str,
-             dev_host_note: str | None = None) -> dict[str, Any]:
+             dev_host_note: str | None = None, keep_call_records: bool = True,
+             rss_samples_path: Path | None = None) -> dict[str, Any]:
     store = tgms.open(store_path, read_only=True)
     uid = store.adapter.uids_for([0])[0]
     op, args = "entity_history", {"uid": uid, "limit": 5}
     limits = Limits(max_concurrent=max_concurrent)
     router = ToolRouter(store.adapter, tt_source=store, limits=limits)
 
-    per_step_s = duration_s / (len(client_counts) + 1)  # +1 for the recovery step
-    steps: list[StepResult] = []
-    all_records: list[dict[str, Any]] = []
-    for n in client_counts:
-        result, records = run_step(router, op, args, n, rate_per_client, per_step_s)
-        steps.append(result)
-        all_records.append({"step": "load", "n_clients": n,
-                           "records": [r.__dict__ for r in records]})
+    rss_sampler = _RssSampler(rss_samples_path) if rss_samples_path else None
+    if rss_sampler is not None:
+        rss_sampler.start()
 
-    # recovery: back down to a single, unhurried client and confirm the
-    # numbers look like the n_clients=1 step again, not a degraded tail.
-    recovery, recovery_records = run_step(router, op, args, 1,
-                                          rate_per_client, per_step_s)
-    all_records.append({"step": "recovery", "n_clients": 1,
-                       "records": [r.__dict__ for r in recovery_records]})
+    try:
+        per_step_s = duration_s / (len(client_counts) + 1)  # +1 for the recovery step
+        steps: list[StepResult] = []
+        all_records: list[dict[str, Any]] = []
+        for n in client_counts:
+            if rss_sampler is not None:
+                rss_sampler.set_step(f"load:{n}")
+            result, records = run_step(router, op, args, n, rate_per_client,
+                                       per_step_s, keep_records=keep_call_records)
+            steps.append(result)
+            if keep_call_records:
+                all_records.append({"step": "load", "n_clients": n,
+                                   "records": [r.__dict__ for r in records]})
+
+        # recovery: back down to a single, unhurried client and confirm the
+        # numbers look like the n_clients=1 step again, not a degraded tail.
+        if rss_sampler is not None:
+            rss_sampler.set_step("recovery")
+        recovery, recovery_records = run_step(router, op, args, 1, rate_per_client,
+                                              per_step_s, keep_records=keep_call_records)
+        if keep_call_records:
+            all_records.append({"step": "recovery", "n_clients": 1,
+                               "records": [r.__dict__ for r in recovery_records]})
+    finally:
+        if rss_sampler is not None:
+            rss_sampler.set_step("done")
+            rss_sampler.stop_and_write()
 
     store_digest = store.digest()
     store.close()
 
-    records_path_str = "(not written; pass --out to persist raw records)"
-    if out_records is not None:
+    if not keep_call_records:
+        records_path_str = ("(not written; --no-call-records was passed: "
+                            "only running aggregates were retained)")
+    elif out_records is not None:
         out_records.parent.mkdir(parents=True, exist_ok=True)
         with open(out_records, "w") as f:
             json.dump(all_records, f, indent=1, default=str)
         records_path_str = str(out_records.relative_to(ROOT)) \
             if out_records.is_relative_to(ROOT) else str(out_records)
+    else:
+        records_path_str = "(not written; pass --out to persist raw records)"
 
     manifest = build_manifest(store_path=store_path, store_digest=store_digest,
                               op=op, args=args, limits=limits, steps=steps,
                               recovery=recovery, dry_run=False,
                               records_path=records_path_str,
                               provenance=provenance,
-                              dev_host_note=dev_host_note)
+                              dev_host_note=dev_host_note,
+                              keep_call_records=keep_call_records)
     manifest["table"] = render_table(steps, recovery)
     return manifest
 
 
-def run_dry(tmp_dir: Path, dev_host_note: str | None = None) -> dict[str, Any]:
+def run_dry(tmp_dir: Path, dev_host_note: str | None = None,
+           keep_call_records: bool = True,
+           rss_samples_path: Path | None = None) -> dict[str, Any]:
     """A tiny, fast, self-contained sweep — no `stores/synth-300k` needed."""
     from tgms.data.synth import generate
 
@@ -365,7 +522,9 @@ def run_dry(tmp_dir: Path, dev_host_note: str | None = None) -> dict[str, Any]:
 
     return run_sweep(str(store_dir), client_counts=[1, 2], duration_s=1.0,
                      rate_per_client=20.0, max_concurrent=2, out_records=None,
-                     provenance=DRY_RUN_PROVENANCE, dev_host_note=dev_host_note)
+                     provenance=DRY_RUN_PROVENANCE, dev_host_note=dev_host_note,
+                     keep_call_records=keep_call_records,
+                     rss_samples_path=rss_samples_path)
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -390,12 +549,27 @@ def main(argv: list[str] | None = None) -> int:
                     help="explicit note marking this run as a dev-host "
                         "functional-verification run and not a reported "
                         "benchmark result; omitted (None) unless passed")
+    ap.add_argument("--no-call-records", action="store_true",
+                    help="drop the per-call CallRecord list; keep only "
+                        "running aggregates (counts, a bounded-size "
+                        "latency reservoir, refusals). Default behaviour "
+                        "(full per-call records, written to --out's "
+                        "*.records.json) is unchanged unless this is passed")
+    ap.add_argument("--rss-samples", default=None,
+                    help="path to write once-per-second whole-process RSS "
+                        "samples (time,rss_kb,step CSV, from /proc/self/"
+                        "status VmRSS) across the whole run; omitted by "
+                        "default")
     args = ap.parse_args(argv)
+    keep_call_records = not args.no_call_records
+    rss_samples_path = Path(args.rss_samples) if args.rss_samples else None
 
     if args.dry_run:
         import tempfile
         with tempfile.TemporaryDirectory() as tmp:
-            manifest = run_dry(Path(tmp), dev_host_note=args.dev_host_note)
+            manifest = run_dry(Path(tmp), dev_host_note=args.dev_host_note,
+                               keep_call_records=keep_call_records,
+                               rss_samples_path=rss_samples_path)
     else:
         if not args.store:
             ap.error("--store is required unless --dry-run")
@@ -405,7 +579,9 @@ def main(argv: list[str] | None = None) -> int:
         manifest = run_sweep(args.store, args.clients, args.duration_s,
                              args.rate_per_client, args.max_concurrent, out_records,
                              provenance=args.provenance,
-                             dev_host_note=args.dev_host_note)
+                             dev_host_note=args.dev_host_note,
+                             keep_call_records=keep_call_records,
+                             rss_samples_path=rss_samples_path)
 
     print(manifest.pop("table"))
     if args.out:

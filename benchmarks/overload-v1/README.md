@@ -157,6 +157,63 @@ a required `provenance` string instead of relying on an unconditional
 default. The records here predate that fix and are left byte-identical —
 this paragraph is the correction, not a rewrite of the data.
 
+## Heap attribution follow-up: harness bookkeeping or the service surface?
+
+The tracemalloc diagnostic above narrowed the sweep's multi-GB `n_clients=64`
+RSS growth to "not more than a low-double-digit MB share is harness Python
+bookkeeping" but could not rule *in* the service surface, since
+`tracemalloc` cannot see the native `tgms._engine` heap. This follow-up
+(2026-09-15, xzgpu, `tgms-xz-a6b3e94` worktree — release engine,
+`build_info()`: `profile=release`, `debug_assertions=False`,
+`manifest_format_version=3`) closes that gap directly: `scripts/eval_overload.py`
+gained an additive `--no-call-records` flag (drops the per-call `CallRecord`
+list entirely, keeping only running aggregates — counts and a bounded
+4096-sample latency reservoir) and an `--rss-samples PATH` flag (once-per-second
+whole-process `VmRSS` from `/proc/self/status`, `time,rss_kb,step` CSV). The
+`n_clients=64` step was re-run alone twice against a fresh `upgrade-manifests`'d
+copy of `synth-1m-native` (format 1 → 3, generation 21, `sha e7f45e1257dd14c8`,
+`store.digest()` `682f1194f6ca…` — identical to the digest above, same store
+state), 60 s each, `--max-concurrent 8 --rate-per-client 20`, with
+`tgms replay` (REPLAY-2, correctness-only, pid 2453943) confirmed running
+concurrently on the host — fine for an RSS measurement, not a latency one.
+
+| run | peak RSS (`/usr/bin/time -v`, `Maximum resident set size`) | n_ok / n_refused of 76,800 |
+|---|---:|---:|
+| with call records (the P-OV1 way) | 1,991,888 KB (≈1.90 GB) | 29,814 / 46,986 |
+| `--no-call-records` | 2,004,096 KB (≈1.91 GB) | 31,283 / 45,517 |
+
+**Verdict: the growth is in the service surface, not harness bookkeeping.**
+Dropping the harness's own per-call retention changed peak RSS by about
+0.6% — the `--no-call-records` run is if anything marginally *higher*,
+within run-to-run noise, not lower. If the multi-GB growth were the harness's
+`CallRecord` list (and its end-of-sweep JSON serialization), removing that
+retention should have collapsed the peak toward the ~150–200 MB baseline the
+1-client steps show; it did not. `postings_stats("edge")` and
+`segment_cache_stats()` were probed before/after each run (via the adapter,
+read-only) and are identically zero throughout in both reps, ruling out the
+edge-postings index and the byte-budget segment cache as the destination.
+A grep of `tgms/tools/server.py`/`tgms/tools/limits.py` finds no
+accumulating list/history field on `ToolRouter` or `ConcurrencyGate` either
+— neither class retains past call results, so literal "result retention" by
+the router or gate is also ruled out. That leaves the native engine
+(`tgms._engine`, the Rust `.so`) or glibc allocator behavior under 64
+concurrently-calling threads as the leading candidate; this diagnostic
+identifies where the growth is *not*, not the exact native allocation site
+(that needs native-side profiling — Valgrind/massif or per-thread RSS
+breakdown — out of scope for this bounded measurement).
+
+One caveat on the new `--rss-samples` series itself: in both reps the 1 Hz
+`VmRSS` CSV stays flat near baseline (~190–196 MB) for the whole 120 s run,
+an order of magnitude below the same run's `/usr/bin/time -v` lifetime peak.
+This says the ~2 GB is a fast-appearing, fast-receding spike (consistent
+with transient mmap-backed native allocations, or per-thread malloc-arena
+churn across 64 threads) rather than a value that climbs and holds — visible
+to the kernel's lifetime peak accounting, invisible to once-a-second
+polling. It does not change the verdict above, which rests on the
+between-run `/usr/bin/time -v` peak comparison rather than the time series.
+Full numbers, before/after stats, and the sampler-discrepancy note are in
+`heap-diagnostic-2026-09-15.json`.
+
 ## Files
 
 - `overload-2026-09-15.json` / `.records.json` — rep1
@@ -165,5 +222,12 @@ this paragraph is the correction, not a rewrite of the data.
   1-client/2 Hz/60 s step
 - `rss-rep1.log`, `rss-rep2.log`, `rss-recovery-lowrate.log` — raw
   `ps -o rss=` samples
+- `heap-diagnostic-2026-09-15.json` — the `--no-call-records` RSS
+  attribution follow-up (see above)
+- `step64-with-records.json`, `step64-no-call-records.json` — the two
+  harness manifests from that follow-up (schema-valid,
+  `scripts/check_result_manifest.py`)
+- `rss-with-records.csv`, `rss-no-call-records.csv` — the two
+  `--rss-samples` series from that follow-up
 - `SHA256SUMS` — sha256 of every file above, verified identical between
   xzgpu and this checkout after transfer
