@@ -165,6 +165,10 @@ FROZEN_LANDED_VALUES = {
     "osdiCorruptionSilentPost": "0",
     "osdiCorruptionBlobDetectedPre": "0/621",
     "osdiCorruptionBlobDetectedPost": "621/621",
+    "osdiCorruptionBlobTrials": "710",
+    "osdiCorruptionBlobDetectedAllPre": "89/710",
+    "osdiCorruptionBlobDetectedAllPost": "710/710",
+    "osdiCorruptionBlobMutationAlreadyDetected": "delete\\_file",
     "osdiCorruptionCellsMovedPost": "0",
     "osdiLadderPlans": "12",
     "osdiLadderOperatorsCovered": "14",
@@ -500,6 +504,39 @@ def test_tampered_corruption_post_record_blob_count_fails_even_with_patched_dige
     mod.compute_c2(m)
     assert mod.FAILURES, "a de-detected artifact_blob trial must fail the frozen 621-of-621 " \
         "post-A10 assertion, even though the digest was patched to match"
+
+
+def test_tampered_corruption_pre_record_breaks_the_already_detected_partition(tmp_path):
+    """osdiCorruptionBlobMutationAlreadyDetected's own trial count must equal
+    its DETECTED count exactly (every one of delete_file's 89 pre-A10 trials
+    was DETECTED) for the six-mutation-plus-one partition of the 710 blob
+    trials to hold; a single trial flipped away from DETECTED must be
+    caught, not averaged into the 89 count as noise."""
+    mod = _load("osdi_paper_macros")
+    data = json.loads(mod.CORRUPTION_PRE.read_text(encoding="utf-8"))
+    changed = False
+    for r in data["results"]:
+        if r["class"] == "artifact_blob" and r["mutation"] == "delete_file" \
+                and r["verdict"] == "DETECTED":
+            r["verdict"] = "BENIGN"
+            changed = True
+            break
+    assert changed, "fixture must contain a DETECTED artifact_blob|delete_file trial to tamper"
+
+    canon = sorted(data["results"],
+                    key=lambda r: (r["class"], r["mutation"], r.get("task_id", -1), r["trial"]))
+    blob = json.dumps(canon, sort_keys=True, separators=(",", ":")).encode()
+    data["result_digest"] = hashlib.sha256(blob).hexdigest()
+    tampered = tmp_path / "eval-corruption-campaign-2026-09-14.json"
+    tampered.write_text(json.dumps(data), encoding="utf-8")
+
+    mod.CORRUPTION_PRE = tampered
+    m = mod.Macros()
+    mod.compute_c2(m)
+    assert mod.FAILURES, "an un-DETECTED delete_file trial must fail the already-detected " \
+        "mutation's own every-trial-DETECTED assertion, even though the digest was patched " \
+        "to match"
+    assert any("every one of its own pre-A10 trials" in f for f in mod.FAILURES)
 
 
 def test_tampered_ladder_raw_record_digest_mismatch_fails(tmp_path):
