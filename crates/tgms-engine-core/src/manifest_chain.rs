@@ -53,6 +53,7 @@
 
 use std::fs;
 use std::path::{Path, PathBuf};
+use std::time::Instant;
 
 use serde::{Deserialize, Serialize};
 
@@ -654,6 +655,25 @@ fn check_sha_kind(format: u32, sha_kind: &str) -> Result<()> {
 pub fn parse_record_with_state(
     text: &str,
 ) -> Result<(ManifestRecord, Option<merkle::ManifestMerkle>)> {
+    let raw = parse_record_raw(text)?;
+    finish_raw_record(raw)
+}
+
+/// The two shapes a manifest document parses into, before the checkpoint
+/// branch's verification (which is also where its Merkle state, if any, gets
+/// built) has run. Split out of [`parse_record_with_state`] so the open-path
+/// instrumentation in [`read_record_with_state_timed`] can time the parse and
+/// the verify separately without duplicating the JSON handling.
+enum RawRecord {
+    Checkpoint(Manifest),
+    Delta(ManifestDelta),
+}
+
+/// JSON-parse and self-validate one manifest document, stopping short of the
+/// checkpoint branch's `verify_checkpoint` (the Merkle-build-or-whole-digest
+/// step) — everything a caller needs to know how long *that* step takes on
+/// its own.
+fn parse_record_raw(text: &str) -> Result<RawRecord> {
     let value: serde_json::Value = serde_json::from_str(text)
         .map_err(|e| EngineError::corrupt(format!("manifest is not valid JSON: {e}")))?;
     let kind = value
@@ -672,19 +692,28 @@ pub fn parse_record_with_state(
                 EngineError::corrupt(format!("manifest is not a well-formed document: {e}"))
             })?;
             check_sha_kind(m.format, &sha_kind)?;
-            let state = verify_checkpoint(&m)?;
-            Ok((ManifestRecord::Checkpoint(m), state))
+            Ok(RawRecord::Checkpoint(m))
         }
         "delta" => {
             let d: ManifestDelta = serde_json::from_value(value).map_err(|e| {
                 EngineError::corrupt(format!("manifest delta is not a well-formed record: {e}"))
             })?;
             d.verify_self()?;
-            Ok((ManifestRecord::Delta(d), None))
+            Ok(RawRecord::Delta(d))
         }
         other => Err(EngineError::corrupt(format!(
             "manifest document has unknown kind {other:?}"
         ))),
+    }
+}
+
+fn finish_raw_record(raw: RawRecord) -> Result<(ManifestRecord, Option<merkle::ManifestMerkle>)> {
+    match raw {
+        RawRecord::Checkpoint(m) => {
+            let state = verify_checkpoint(&m)?;
+            Ok((ManifestRecord::Checkpoint(m), state))
+        }
+        RawRecord::Delta(d) => Ok((ManifestRecord::Delta(d), None)),
     }
 }
 
@@ -738,6 +767,83 @@ pub fn read_record(root: &Path, generation: u64) -> Result<ManifestRecord> {
     read_record_with_state(root, generation).map(|(rec, _)| rec)
 }
 
+/// [`read_record_with_state`], timing the read-and-parse against the verify
+/// step and folding both into `phases` — a checkpoint's into
+/// `checkpoint_read_parse_us` / `merkle_verify_us` (and `chain_format`), a
+/// delta's read into `delta_replay_us` (its application is timed separately,
+/// by the caller, into `state_build_us`).
+fn read_record_with_state_timed(
+    root: &Path,
+    generation: u64,
+    phases: &mut ChainOpenPhases,
+) -> Result<(ManifestRecord, Option<merkle::ManifestMerkle>)> {
+    let path = manifest_path(root, generation);
+    let t = Instant::now();
+    let raw_text = fs::read_to_string(&path).map_err(|e| EngineError::from(e).at_file(&path))?;
+    let raw = parse_record_raw(&raw_text).map_err(|e| e.at_file(&path))?;
+    let read_parse_us = t.elapsed().as_micros() as u64;
+    match &raw {
+        RawRecord::Checkpoint(m) => {
+            phases.checkpoint_read_parse_us += read_parse_us;
+            phases.chain_format = m.format;
+        }
+        RawRecord::Delta(_) => phases.delta_replay_us += read_parse_us,
+    }
+    let t = Instant::now();
+    let (rec, state) = finish_raw_record(raw).map_err(|e| e.at_file(&path))?;
+    if rec.is_checkpoint() {
+        phases.merkle_verify_us += t.elapsed().as_micros() as u64;
+    }
+    if rec.generation() != generation {
+        return Err(EngineError::corrupt(format!(
+            "manifest says generation {} but is filed as {generation}",
+            rec.generation()
+        ))
+        .at_file(&path));
+    }
+    Ok((rec, state))
+}
+
+/// Wall-clock microseconds spent reconstructing a manifest chain, split by
+/// phase. Instrumentation only (memo: "instrumentation, not contract", the
+/// same stance `store::CommitPhases` takes on the commit side) — it changes
+/// no behaviour and nothing on disk, and the only overhead it adds over the
+/// untimed path is the `Instant::now()` calls themselves.
+///
+/// A chain below the current writable format has no Merkle state to build
+/// incrementally, so its one digest check is the O(n) whole-document rehash
+/// done once at the head (`Walk::finish`) rather than the O(1) per-delta
+/// check format-3-and-up chains do — both are timed into
+/// [`merkle_verify_us`](Self::merkle_verify_us); `chain_format` says which
+/// shape ran.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+pub struct ChainOpenPhases {
+    /// Reading and JSON-deserializing the checkpoint record this chain
+    /// resolved to (the head itself, if it is a checkpoint, or the
+    /// checkpoint a delta head named or fell back to).
+    pub checkpoint_read_parse_us: u64,
+    /// Verifying that checkpoint: at format 3 and up, building the Merkle
+    /// tree verification already has to build; below it, the whole-document
+    /// digest recompute, wherever in the walk it happens to run.
+    pub merkle_verify_us: u64,
+    /// The format of the checkpoint this chain resolved to — which of the
+    /// two `merkle_verify_us` shapes above applies.
+    pub chain_format: u32,
+    /// Reading and JSON-deserializing each delta above the checkpoint,
+    /// summed over every delta read (including one a failed forward attempt
+    /// already read, on the rare fallback to `replay_backward`).
+    pub delta_replay_us: u64,
+    /// Deltas actually applied into the running state (`Walk::step_delta`
+    /// calls that returned `Ok`).
+    pub delta_count: u64,
+    /// Applying each read delta into the running manifest/Merkle state
+    /// (`ManifestDelta::apply_into` plus, at format 3 and up, the per-delta
+    /// incremental digest check) — the cost of *building* the reconstructed
+    /// state, as distinct from the I/O and parsing already counted in
+    /// `delta_replay_us`.
+    pub state_build_us: u64,
+}
+
 /// What a reconstruction resolved.
 #[derive(Clone, Debug)]
 pub struct Reconstructed {
@@ -753,6 +859,10 @@ pub struct Reconstructed {
     /// checkpoint plus the deltas above it. Reported so the bound is a test
     /// rather than an argument.
     pub records_read: u64,
+    /// Where this reconstruction spent its time. Always computed (the
+    /// timers are cheap enough not to gate behind a flag); B1-v2's
+    /// `NativeAdapter.open_phase_us` is what surfaces it to Python.
+    pub phases: ChainOpenPhases,
 }
 
 /// Materialize generation `G` from disk alone (memo §4, "Open / recovery").
@@ -769,7 +879,8 @@ pub struct Reconstructed {
 ///
 /// A missing or out-of-order link is `Corrupt`, exactly like a bad checksum.
 pub fn reconstruct(root: &Path, generation: u64) -> Result<Reconstructed> {
-    let (head, state) = read_record_with_state(root, generation)?;
+    let mut phases = ChainOpenPhases::default();
+    let (head, state) = read_record_with_state_timed(root, generation, &mut phases)?;
     let head = match head {
         ManifestRecord::Checkpoint(m) => {
             return Ok(Reconstructed {
@@ -778,6 +889,7 @@ pub fn reconstruct(root: &Path, generation: u64) -> Result<Reconstructed> {
                 deltas: 0,
                 merkle: state,
                 records_read: 1,
+                phases,
             })
         }
         ManifestRecord::Delta(d) => d,
@@ -800,28 +912,38 @@ pub fn reconstruct(root: &Path, generation: u64) -> Result<Reconstructed> {
     // `checkpoint` field and replay upward. It is a hint, not the authority,
     // so *any* failure retries the backward walk, which resolves the nearest
     // checkpoint actually on disk and owns every error this module reports.
-    match replay_forward(root, generation, &head) {
+    //
+    // `phases` already carries the head delta's own read; a failed forward
+    // attempt keeps accumulating into it before the backward retry, so the
+    // reported total stays an honest account of wall-clock actually spent,
+    // retry included.
+    match replay_forward(root, generation, &head, phases) {
         Ok(done) => Ok(done),
-        Err(_) => replay_backward(root, generation, head),
+        Err(_) => replay_backward(root, generation, head, phases),
     }
 }
 
 /// Replay `C+1..=G` from the checkpoint the head names.
-fn replay_forward(root: &Path, generation: u64, head: &ManifestDelta) -> Result<Reconstructed> {
+fn replay_forward(
+    root: &Path,
+    generation: u64,
+    head: &ManifestDelta,
+    mut phases: ChainOpenPhases,
+) -> Result<Reconstructed> {
     if head.checkpoint >= generation {
         return Err(EngineError::corrupt(format!(
             "manifest delta {generation} names checkpoint {} at or above itself",
             head.checkpoint
         )));
     }
-    let (base, state) = read_record_with_state(root, head.checkpoint)?;
+    let (base, state) = read_record_with_state_timed(root, head.checkpoint, &mut phases)?;
     let ManifestRecord::Checkpoint(base) = base else {
         return Err(EngineError::corrupt(format!(
             "generation {} is named as a checkpoint but is a delta",
             head.checkpoint
         )));
     };
-    let mut walk = Walk::new(base, state, head.checkpoint);
+    let mut walk = Walk::new(base, state, head.checkpoint, phases);
     let mut records_read = 1;
     for g in head.checkpoint + 1..=generation {
         if g == generation {
@@ -829,7 +951,8 @@ fn replay_forward(root: &Path, generation: u64, head: &ManifestDelta) -> Result<
             continue;
         }
         records_read += 1;
-        let (rec, state) = read_record_with_state(root, g).map_err(|e| chain_below(root, generation, g, e))?;
+        let (rec, state) = read_record_with_state_timed(root, g, walk.phases_mut())
+            .map_err(|e| chain_below(root, generation, g, e))?;
         match rec {
             // gc can materialize a nearer checkpoint than the head names.
             // Adopting it keeps `checkpoint` the *nearest* one, so the value
@@ -843,15 +966,20 @@ fn replay_forward(root: &Path, generation: u64, head: &ManifestDelta) -> Result<
 }
 
 /// Walk parent links down to the nearest checkpoint on disk, then replay up.
-fn replay_backward(root: &Path, generation: u64, head: ManifestDelta) -> Result<Reconstructed> {
+fn replay_backward(
+    root: &Path,
+    generation: u64,
+    head: ManifestDelta,
+    mut phases: ChainOpenPhases,
+) -> Result<Reconstructed> {
     let mut chain: Vec<ManifestDelta> = vec![head];
     let mut g = generation - 1;
     let (base, state) = loop {
         // A link below the generation asked for is part of the chain, so its
         // absence is corruption of that chain rather than a plain read
         // failure — same verdict a bad checksum gets (memo §4).
-        let (rec, state) =
-            read_record_with_state(root, g).map_err(|e| chain_below(root, generation, g, e))?;
+        let (rec, state) = read_record_with_state_timed(root, g, &mut phases)
+            .map_err(|e| chain_below(root, generation, g, e))?;
         match rec {
             ManifestRecord::Checkpoint(m) => break (m, state),
             ManifestRecord::Delta(d) => {
@@ -875,7 +1003,7 @@ fn replay_backward(root: &Path, generation: u64, head: ManifestDelta) -> Result<
         }
     };
     let records_read = chain.len() as u64 + 1;
-    let mut walk = Walk::new(base, state, g);
+    let mut walk = Walk::new(base, state, g, phases);
     // chain was collected newest-first; replay it oldest-first
     for d in chain.iter().rev() {
         walk.step_delta(root, d)?;
@@ -903,16 +1031,30 @@ struct Walk {
     merkle: Option<merkle::ManifestMerkle>,
     checkpoint: u64,
     deltas: u64,
+    phases: ChainOpenPhases,
 }
 
 impl Walk {
-    fn new(base: Manifest, merkle: Option<merkle::ManifestMerkle>, checkpoint: u64) -> Self {
+    fn new(
+        base: Manifest,
+        merkle: Option<merkle::ManifestMerkle>,
+        checkpoint: u64,
+        phases: ChainOpenPhases,
+    ) -> Self {
         Self {
             manifest: base,
             merkle,
             checkpoint,
             deltas: 0,
+            phases,
         }
+    }
+
+    /// The phase accumulator, for a caller reading another record (e.g. a
+    /// mid-walk checkpoint or the next delta) to fold its own timing into
+    /// before handing it back via [`Self::step_delta`] or [`Self::restart`].
+    fn phases_mut(&mut self) -> &mut ChainOpenPhases {
+        &mut self.phases
     }
 
     /// A checkpoint met mid-walk replaces the base outright: its content is
@@ -940,14 +1082,26 @@ impl Walk {
             ))
             .at_file(manifest_path(root, d.generation)));
         }
+        // Everything from here on is *building* the state from an
+        // already-read, already-self-verified delta — as distinct from the
+        // read-and-parse `read_record_with_state_timed` already timed into
+        // `delta_replay_us`.
+        let t = Instant::now();
         d.apply_into(&mut self.manifest, self.merkle.as_mut());
         // O(1) against the maintained state. Kept per step rather than only
         // at the head because it costs one 200-byte hash and it names the
         // generation the divergence starts at, which is what an operator
         // reading the error actually needs.
-        if let Some(state) = &self.merkle {
+        let check = if let Some(state) = &self.merkle {
             let expected = self.manifest.digest_with(state);
-            if expected != d.manifest_sha {
+            let mismatch = expected != d.manifest_sha;
+            Some((expected, mismatch))
+        } else {
+            None
+        };
+        self.phases.state_build_us += t.elapsed().as_micros() as u64;
+        if let Some((expected, mismatch)) = check {
+            if mismatch {
                 return Err(EngineError::corrupt(format!(
                     "reconstructed manifest {} hashes to {expected} but the delta records {}",
                     self.manifest.generation, d.manifest_sha
@@ -956,11 +1110,13 @@ impl Walk {
             }
         }
         self.deltas += 1;
+        self.phases.delta_count += 1;
         Ok(())
     }
 
     fn finish(self, generation: u64, records_read: u64) -> Result<Reconstructed> {
         let m = self.manifest;
+        let mut phases = self.phases;
         if m.generation != generation {
             return Err(EngineError::corrupt(format!(
                 "reconstruction produced generation {} rather than {generation}",
@@ -968,9 +1124,13 @@ impl Walk {
             )));
         }
         // Below format 3 there is no incremental digest, so the
-        // whole-document rule is applied once here rather than at every step.
+        // whole-document rule is applied once here rather than at every step
+        // — the O(n) head hash the module doc above promises stays timed
+        // into `merkle_verify_us`, just at the point it actually runs.
         if self.merkle.is_none() && self.deltas > 0 {
+            let t = Instant::now();
             let expected = m.digest();
+            phases.merkle_verify_us += t.elapsed().as_micros() as u64;
             if expected != m.manifest_sha {
                 return Err(EngineError::corrupt(format!(
                     "reconstructed manifest {generation} hashes to {expected} but the \
@@ -986,6 +1146,7 @@ impl Walk {
             deltas: self.deltas,
             merkle: self.merkle,
             records_read,
+            phases,
         })
     }
 }

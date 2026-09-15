@@ -576,6 +576,24 @@ CHILDREN = {"reader": child_reader, "writer": child_writer,
             "residency": child_residency}
 
 
+def _engine_build_info() -> dict[str, Any] | None:
+    """`NativeAdapter.build_info()`, or `None` off the native backend.
+
+    The 2026-09 engine-commit A/B diagnosis (`commitcost` mode below is that
+    lane's B1(b) script) found 100% of the treatment's decile growth sitting
+    in the untimed residual, and a debug-assertions build — which runs
+    `store::publish`'s O(segments) `debug_assert_eq!` every commit — was the
+    top candidate. Every commitcost record must be able to say which build
+    profile it ran; `None` here (rather than a fabricated value) is itself
+    the signal that this run never touched the native engine.
+    """
+    try:
+        from tgms.storage.native import NativeAdapter
+    except ImportError:
+        return None
+    return NativeAdapter.build_info()
+
+
 def _provenance() -> dict[str, Any]:
     """Enough to say whether two runs are comparable (spec §8.4)."""
     import platform
@@ -589,6 +607,7 @@ def _provenance() -> dict[str, Any]:
 
     return {"commit": sh("git", "rev-parse", "--short", "HEAD"),
             "dirty": bool(sh("git", "status", "--porcelain", "-uno")),
+            "build_info": _engine_build_info(),
             "python": platform.python_version(),
             "platform": f"{platform.system()} {platform.release()} "
                         f"{platform.machine()}",
@@ -629,6 +648,8 @@ def main() -> int:
     args = ap.parse_args()
 
     print(f"# {args.mode}", flush=True)
+    if args.mode == "commitcost":
+        print(f"  build_info: {_engine_build_info()}", flush=True)
     t0 = time.time()
     rc, payload = {"mixed": cmd_mixed, "commitcost": cmd_commitcost,
                    "groupcommit": cmd_groupcommit,
