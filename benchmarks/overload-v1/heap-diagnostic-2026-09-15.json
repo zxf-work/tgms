@@ -1,0 +1,183 @@
+{
+  "diagnostic": "P-OV1 RSS attribution follow-up: does --no-call-records (dropping the harness's per-call CallRecord retention) bring the n_clients=64 step's process RSS down near baseline, or does the multi-GB growth persist regardless -- i.e. is it harness bookkeeping or the service surface (ToolRouter/ConcurrencyGate/native engine)?",
+  "date": "2026-09-15",
+  "host": "xzgpu",
+  "worktree": "/mnt/project/xzhang/tgms/work/tgms-xz-a6b3e94 (commit a6b3e94, dirty: scripts/eval_overload.py temporarily overwritten in place with the --no-call-records/--rss-samples patch for this diagnostic only, then restored to the committed a6b3e94 content afterward -- git_commit in both manifests below is correctly reported as \"a6b3e94-dirty\")",
+  "engine_build_info": {
+    "profile": "release",
+    "opt_level": "3",
+    "engine_version": "0.8.0",
+    "debug_assertions": false,
+    "manifest_format_version": 3
+  },
+  "python_env": "reused /mnt/project/xzhang/tgms/work/tgms/.venv (main checkout's venv) with PYTHONPATH pointed at the tgms-xz-a6b3e94 worktree, so tgms/tgms._engine resolve from that worktree -- no build performed",
+  "dataset": {
+    "source": "/mnt/project/xzhang/tgms/work/tgms/stores/synth-1m-native",
+    "working_copy": "$TMPDIR/overload-heap-2026-09-15/store (deleted after the run; see 'cleanup' below)",
+    "upgrade_manifests": {
+      "from_format": 1,
+      "to_format": 3,
+      "generation": 21,
+      "sha": "e7f45e1257dd14c8"
+    },
+    "store_digest": "682f1194f6ca335fd60bda56b3e0630d9d88112651e109067de222e96d9cd51a",
+    "note": "identical store_digest in both run manifests below and matches P-OV1's own recorded digest -- same dataset state throughout, opened read-only, no commits issued by either run"
+  },
+  "concurrent_host_activity_observed_at_measurement_time": {
+    "REPLAY-2": {
+      "observed": true,
+      "pid": 2453943,
+      "cmd": "python -m tgms.cli replay /mnt/project/xzhang/tgms/longevity/2026-09-15/store/eventlog.jsonl --store /mnt/project/xzhang/tgms/longevity/2026-09-15/replay-check-2 --backend native --compact-every 500",
+      "cpu_pct_at_check": 89.7,
+      "rss_kb_at_check": 2115432,
+      "note": "correctness-only replay verification, confirmed running concurrently with both measurement runs below -- consistent with the host rule that REPLAY-2 may be running and is fine for an RSS (not latency) measurement"
+    },
+    "osv_poller_pid_1457823": {"observed": true, "untouched": true},
+    "daily_loop_pid_1540052": {"observed": true, "untouched": true},
+    "load_average_at_start": "2.76, 2.72, 2.52 (40 cpus)"
+  },
+  "runs": [
+    {
+      "label": "with-call-records (the P-OV1 way, --no-call-records NOT passed)",
+      "manifest_file": "step64-with-records.json",
+      "rss_samples_file": "rss-with-records.csv",
+      "cli": "eval_overload.py --store <store> --clients 64 --duration-s 120 --rate-per-client 20 --max-concurrent 8 --provenance 'overload-heap diagnostic, xzgpu, REPLAY-2 running concurrently' --out step64-with-records.json --rss-samples rss-with-records.csv",
+      "step_64_result": {
+        "n_calls": 76800, "n_ok": 29814, "n_refused": 46986, "n_error": 0,
+        "throughput_qps": 477.098, "p50_ms": 25.783, "p95_ms": 48.909, "p99_ms": 63.319,
+        "late_mean_ms": 20.409, "late_p95_ms": 6.632, "concurrent_in_flight_p95": 8.0
+      },
+      "process_peak_rss": {
+        "source": "/usr/bin/time -v, 'Maximum resident set size'",
+        "kb": 1991888,
+        "approx_gb": 1.90
+      },
+      "one_hz_rss_sampler_peak": {
+        "source": "rss-with-records.csv (this diagnostic's --rss-samples, /proc/self/status VmRSS, 1 Hz)",
+        "kb": 194528,
+        "approx_mb": 190,
+        "caveat": "an order of magnitude below the process lifetime peak reported by /usr/bin/time -v for the SAME run -- see 'sampler_discrepancy' below"
+      },
+      "elapsed_wall_s": 148.83,
+      "cpu_pct": 69
+    },
+    {
+      "label": "no-call-records (--no-call-records passed)",
+      "manifest_file": "step64-no-call-records.json",
+      "rss_samples_file": "rss-no-call-records.csv",
+      "cli": "eval_overload.py --store <store> --clients 64 --duration-s 120 --rate-per-client 20 --max-concurrent 8 --no-call-records --provenance 'overload-heap diagnostic, xzgpu, REPLAY-2 running concurrently' --out step64-no-call-records.json --rss-samples rss-no-call-records.csv",
+      "step_64_result": {
+        "n_calls": 76800, "n_ok": 31283, "n_refused": 45517, "n_error": 0,
+        "throughput_qps": 501.915, "p50_ms": 31.486, "p95_ms": 224.112, "p99_ms": 533.476,
+        "late_mean_ms": 2583.22, "late_p95_ms": 8900.934, "concurrent_in_flight_p95": 8.0,
+        "note": "n_ok/n_refused split and latency percentiles differ somewhat from the with-records run -- expected run-to-run scheduling noise under the same open-loop overload condition (both refuse the large majority of the 76,800 calls at max_concurrent=8), not a sign the aggregate-only accounting is wrong (n_ok+n_refused+n_error == n_calls holds, matching the unit test)"
+      },
+      "process_peak_rss": {
+        "source": "/usr/bin/time -v, 'Maximum resident set size'",
+        "kb": 2004096,
+        "approx_gb": 1.91
+      },
+      "one_hz_rss_sampler_peak": {
+        "source": "rss-no-call-records.csv",
+        "kb": 196292,
+        "approx_mb": 192
+      },
+      "elapsed_wall_s": 149.61,
+      "cpu_pct": 70
+    }
+  ],
+  "postings_stats_and_segment_cache_stats": {
+    "method": "adapter._store.postings_stats('edge') and adapter._store.segment_cache_stats(), probed by opening the store read-only with a throwaway helper script, before run 1, after run 1 (== before run 2, since both sweeps are read-only and issue no commits), and after run 2",
+    "before_run1": {"postings_stats_edge": {"by_identity": 0, "by_vid": 0, "indexed": 0}, "segment_cache_stats": {"entries": 0, "bytes": 0, "budget": 49947099136, "evictions": 0}},
+    "after_run1_before_run2": {"postings_stats_edge": {"by_identity": 0, "by_vid": 0, "indexed": 0}, "segment_cache_stats": {"entries": 0, "bytes": 0, "budget": 49947099136, "evictions": 0}},
+    "after_run2": {"postings_stats_edge": {"by_identity": 0, "by_vid": 0, "indexed": 0}, "segment_cache_stats": {"entries": 0, "bytes": 0, "budget": 49947099136, "evictions": 0}},
+    "note": "identically zero before/after in both reps -- entity_history(uid, limit=5) on this store/workload does not populate the edge-postings index or the byte-budget segment cache, so neither structure is where the multi-GB growth is going; this rules out the two named native-side receipt structures the adapter exposes, without identifying which native structure it is going into instead"
+  },
+  "sampler_discrepancy": {
+    "observation": "In both runs, the --rss-samples 1 Hz VmRSS series stays flat near baseline (~170-196 MB) for the entire 120 s run, while /usr/bin/time -v's lifetime 'Maximum resident set size' for the same process is ~1.9-2.0 GB.",
+    "interpretation": "Most consistent with a fast-appearing, fast-receding native-heap allocation spike (e.g. large glibc mmap-backed allocations made and munmap'd within a sub-second window, or per-thread malloc-arena churn across the 64 client threads) rather than a value that climbs and holds steady across the step -- exactly the kind of native-allocator behavior the P-OV1 README already flagged as invisible to tracemalloc, and it turns out to be coarse-grained-RSS-polling-invisible too. Pinning the exact allocation site would need finer-grained sampling (e.g. 100 ms VmRSS polling, or mallinfo2()/malloc_stats() snapshots) -- out of scope for this bounded diagnostic and left as a follow-up.",
+    "does_not_change_the_verdict": "This affects only the --rss-samples time series' usefulness for localizing WHEN the spike happens; the --no-call-records ablation below is a between-run comparison of /usr/bin/time -v's peak (a full-process, allocator-visible measurement in both runs), which is unaffected by the polling gap."
+  },
+  "verdict_v1_superseded_2026_09_15": {
+    "answer": "service surface, not harness bookkeeping",
+    "status": "HELD by the coordinator -- see hwm_checkpoint_followup_v2 and the amended top-level verdict below. Kept verbatim for the record, not because it is now believed correct as stated.",
+    "reasoning": "Disabling the harness's own per-call retention entirely (--no-call-records: no CallRecord list, no 76,800-entry .records.json written) changed the process's peak RSS by about 0.6% (1,991,888 KB with records vs 2,004,096 KB without -- the no-call-records run is if anything slightly HIGHER, within run-to-run noise). If the multi-GB growth were harness-side bookkeeping (the CallRecord list plus its end-of-sweep JSON serialization, as the P-OV1 tracemalloc note suspected but could not confirm past ~83 MB), removing that retention should have collapsed the peak toward the ~150-200 MB baseline seen in the low-rate/1-client steps. It did not. Both peaks are two orders of magnitude above what tracemalloc's harness-side accounting could ever explain (it only ever attributed ~83 MB), and now also above what removing that accounting removes (~0 MB of the ~2 GB). The growth is therefore attributable to something outside scripts/eval_overload.py's own Python-level bookkeeping -- most plausibly the native engine (tgms._engine, a Rust .so) or glibc allocator behavior triggered by 64 concurrently-calling threads hammering ToolRouter/ConcurrencyGate at once, not Python-level result retention by either class (grep of tgms/tools/server.py and tgms/tools/limits.py finds no accumulating list/history field on ToolRouter or ConcurrencyGate -- neither class retains past call results, so 'result retention' in the literal sense is also ruled out as the mechanism, leaving native-heap/allocator behavior under thread concurrency as the leading candidate).",
+    "not_pinned_down": "This diagnostic identifies WHERE the growth is not (harness CallRecord retention, ToolRouter/ConcurrencyGate result history, the edge-postings index, the byte-budget segment cache) but does not identify the exact native allocation site -- that would need native-side profiling (e.g. Valgrind/massif, jemalloc/glibc arena instrumentation, or per-thread RSS breakdown) against tgms._engine, which is out of scope for this bounded (~10 min) measurement.",
+    "why_held": "The coordinator flagged that /usr/bin/time -v reports a process-LIFETIME peak, while the 1 Hz --rss-samples series sat at ~190 MB throughout the 64-client step -- so the ~2 GB could belong to a pre-step phase (store copy/upgrade-manifests/open) rather than to the service under load, which this run's between-run comparison alone could not distinguish."
+  },
+  "hwm_checkpoint_followup_v2": {
+    "date": "2026-09-15",
+    "purpose": "Localize the ~2 GB peak to a phase of the run using VmHWM (monotonic non-decreasing lifetime-peak-so-far, from /proc/self/status) at four checkpoints -- after imports, after store open (post-upgrade), immediately before the n_clients=64 step, immediately after it -- plus a 10 Hz (0.1 s) --rss-samples series instead of 1 Hz, so a fast spike would be visible. One bounded run, --no-call-records, otherwise identical protocol to the v1 no-call-records run above (fresh synth-1m-native copy, upgrade-manifests format 1->3 generation 21 sha e7f45e1257dd14c8 -- identical, confirming the same store state; REPLAY-2 pid 2453943 confirmed running concurrently throughout, CPU 89.8%, RSS ~2.1 GB; OSV poller pid 1457823 and daily loop pid 1540052 untouched).",
+    "manifest_file": "step64-no-call-records-v2.json",
+    "rss_samples_file": "rss-no-call-records-10hz.csv",
+    "hwm_checkpoints_file": "hwm-checkpoints.json",
+    "cli": "eval_overload.py --store <store> --clients 64 --duration-s 120 --rate-per-client 20 --max-concurrent 8 --no-call-records --rss-sample-interval-s 0.1 --hwm-checkpoints hwm-checkpoints.json --provenance 'overload-heap diagnostic v2 (HWM checkpoints + 10Hz RSS), xzgpu, REPLAY-2 running concurrently' --out step64-no-call-records-v2.json --rss-samples rss-no-call-records-10hz.csv",
+    "hwm_checkpoints_kb": {
+      "after_imports": 40752,
+      "after_store_open": 99488,
+      "before_step_n64": 99488,
+      "after_step_n64": 226928
+    },
+    "hwm_checkpoints_note": "VmHWM only ever increases within a process's life, so a checkpoint's value already reflects any peak reached up to that point even if RSS later receded -- it cannot miss a spike the way a VmRSS poll can. after_store_open == before_step_n64 (99,488 KB): building the ToolRouter/Limits/ConcurrencyGate over an already-open store costs essentially nothing. after_step_n64 is 226,928 KB -- 2.3x the post-open baseline, but nowhere near the ~2 GB process lifetime peak.",
+    "process_peak_rss": {
+      "source": "/usr/bin/time -v, 'Maximum resident set size', same run",
+      "kb": 2016400,
+      "approx_gb": 1.92
+    },
+    "ten_hz_rss_sampler_peak": {
+      "source": "rss-no-call-records-10hz.csv, /proc/self/status VmRSS at 10 Hz",
+      "kb": 220476,
+      "approx_mb": 215,
+      "note": "863 samples over the full ~150 s run (load:64 then recovery); flat at ~194,772 kB for the entire recovery portion checked (from t=133.988s onward) -- the 10x faster sampling still shows no spike anywhere near 2 GB, consistent with the after_step_n64 HWM checkpoint"
+    },
+    "localization": "Neither store open (99,488 KB) nor the n_clients=64 step itself, up to and including the moment all 64 client threads join (226,928 KB HWM) accounts for the ~2 GB peak -- both are now ruled OUT as the growth's location, contradicting both the original v1 framing ('the step under load') and the coordinator's alternative hypothesis ('pre-step phases: store copy/upgrade-manifests/open'). Since VmHWM cannot decrease, the ~1.79 GB gap between after_step_n64 (226,928 KB) and the process's final peak (2,016,400 KB) must open during the remainder of the run: the recovery step (1 client, 20 Hz, ~60 s) and/or the final teardown (store.digest(), store.close(), writing the manifest/records files, interpreter shutdown). The 10 Hz RSS series covers that remainder too and stays flat there as well, so whatever is responsible is invisible to VmRSS polling at both 1 Hz and 10 Hz -- same blind spot as the v1 sampler_discrepancy, now narrowed to a smaller window but not yet resolved to a single phase.",
+    "not_yet_checkpointed": "This run only added the four checkpoints the coordinator asked for. A fifth (after the recovery step, immediately before store.close()) and a sixth (immediately before process exit) would split the remaining ~1.79 GB between 'recovery step' and 'teardown/shutdown' -- left as the next bounded step, not run here to keep this measurement to its ~10 min budget."
+  },
+  "verdict_v2_superseded_2026_09_15": {
+    "answer": "HELD/AMENDED, 2026-09-15: not resolved to 'service under 64-client load' or 'harness bookkeeping' as originally framed -- both are narrowed but the growth's phase is now known more precisely, and it is NOT where either original hypothesis placed it.",
+    "status": "SUPERSEDED by hwm_checkpoint_pinning_v3 below, which adds the two checkpoints this verdict names as missing and pins the phase directly. Kept verbatim for the record.",
+    "reasoning": "The HWM-checkpoint run rules out two candidates directly: (1) store open/upgrade-manifests footprint -- only 99,488 KB, not ~1.9 GB, so the coordinator's 'startup/open footprint' hypothesis is refuted; (2) the n_clients=64 step's own execution -- VmHWM right after all 64 client threads join is only 226,928 KB, and VmHWM cannot decrease, so the step itself never drove RSS anywhere near 2 GB while its threads were alive. That also means the v1 --no-call-records ablation's conclusion ('service surface under load') needs qualification: the ablation correctly shows the ~2 GB is not the harness's CallRecord list (removing it didn't move the peak), but the HWM checkpoints now show it isn't happening DURING the load step's threads either -- it opens later, in the recovery step and/or store.digest()/store.close()/teardown, a phase neither v1 run instrumented and which the 1 Hz AND 10 Hz RSS pollers both still fail to see (flat throughout). So: harness per-call bookkeeping remains ruled out (unchanged from v1); 'growth under 64-client load, visible while the load is applied' is now also ruled out; the leading candidate shifts to store/engine teardown (store.digest()/store.close()) or the low-rate recovery step, still on the service/native side (not eval_overload.py's own retained state), but not yet the specific location v1 implied.",
+    "next_step_not_taken_here": "Two more HWM checkpoints (after the recovery step; immediately before process exit) would attribute the remaining ~1.79 GB to 'recovery step' vs. 'teardown' directly. Not run in this pass to hold to the bounded measurement budget -- recorded as the concrete next step rather than left implicit."
+  },
+  "hwm_checkpoint_pinning_v3": {
+    "date": "2026-09-15",
+    "purpose": "Pin the exact phase: add checkpoints after the recovery step, after the harness's finalization call (named per the actual call made -- after_store_digest_<mode>, then after_store_close), and just before the sweep returns (before_exit). One bounded run, --no-call-records, otherwise identical protocol (fresh synth-1m-native copy, upgrade-manifests format 1->3 generation 21 sha e7f45e1257dd14c8 -- identical again; REPLAY-2 pid 2453943 confirmed running concurrently throughout, CPU 89.9%, RSS ~2.96 GB; OSV poller pid 1457823 and daily loop pid 1540052 untouched).",
+    "manifest_file": "step64-no-call-records-v3.json",
+    "rss_samples_file": "rss-no-call-records-v3-10hz.csv",
+    "hwm_checkpoints_file": "hwm-checkpoints-v3.json",
+    "cli": "eval_overload.py --store <store> --clients 64 --duration-s 120 --rate-per-client 20 --max-concurrent 8 --no-call-records --rss-sample-interval-s 0.1 --hwm-checkpoints hwm-checkpoints-v3.json --provenance 'overload-heap diagnostic v3 (pin phase: recovery/digest/close/exit checkpoints), xzgpu, REPLAY-2 running concurrently' --out step64-no-call-records-v3.json --rss-samples rss-no-call-records-v3-10hz.csv",
+    "hwm_checkpoints_kb": {
+      "after_imports": 40876,
+      "after_store_open": 98900,
+      "before_step_n64": 98900,
+      "after_step_n64": 227280,
+      "after_recovery_step": 227280,
+      "after_store_digest_full": 1999968,
+      "after_store_close": 1999968,
+      "before_exit": 1999968
+    },
+    "process_peak_rss": {
+      "source": "/usr/bin/time -v, 'Maximum resident set size', same run",
+      "kb": 1999968,
+      "approx_gb": 1.91,
+      "note": "identical to the after_store_digest_full checkpoint (kb-for-kb) -- the checkpoint directly caught the peak in real time, not inferred from a polling gap"
+    },
+    "pinned_phase": "store.digest() (Store.digest(), tgms/store.py -> StorageAdapter.store_digest(), tgms/storage/base.py). VmHWM is flat at 227,280 KB through after_step_n64 AND after_recovery_step (the recovery step adds exactly 0 KB), then jumps by 1,772,688 KB (227,280 -> 1,999,968) at the single after_store_digest_full checkpoint, then stays flat through after_store_close and before_exit (0 KB added by either). No other single call in the run's remaining lifetime touches HWM at all -- the coordinator's hypothesis is confirmed exactly: store_digest() (tgms/storage/base.py) builds `sorted((v.to_json() for v in self.all_node_versions()), ...)` and the same for edges -- materializing every node/edge version row into a Python list before hashing -- so its peak scales with total row count, not with anything the 64-client load actually did.",
+    "not_service_under_load": "This retroactively corrects both the v1 and v2 framing: the ~1.9-2.0 GB is not the service surface responding to concurrent load (ToolRouter/ConcurrencyGate/native engine during the 64-client step) and not the recovery step either -- it is the harness's own end-of-sweep bookkeeping call (`store_digest = store.digest()` in `scripts/eval_overload.py::run_sweep`), made once per sweep regardless of how many clients or calls preceded it. In that specific sense the v1 '--no-call-records didn't move the peak, so it's not harness bookkeeping' conclusion was right about CallRecord retention but wrong about the mechanism being outside the harness's control -- digest() is a harness-side finalization step, just not the one v1 tested."
+  },
+  "verdict": {
+    "answer": "PINNED, 2026-09-15: the ~1.9-2.0 GB lifetime peak is `Store.digest()`, called once at the end of scripts/eval_overload.py::run_sweep to populate the manifest's dataset digest -- not the service surface under 64-client load, not the recovery step, and not per-call harness bookkeeping (CallRecord retention).",
+    "service_surface_hwm_through_the_step": "227,280 KB (≈227 MB, after_step_n64 and after_recovery_step -- identical) -- this is the true footprint of ToolRouter/ConcurrencyGate/the native engine actually serving 76,800 calls at max_concurrent=8 plus a 1200-call recovery step. It is flat, small, and unremarkable.",
+    "lifetime_peak_belongs_to": "store.digest() -- confirmed by a direct before/after checkpoint straddling the single call, not inferred from a polling gap: 227,280 KB immediately before, 1,999,968 KB immediately after, no further growth through close()/exit.",
+    "fix": "Store.digest_streaming() (tgms/store.py -> StorageAdapter.store_digest_streaming(), tgms/storage/base.py), merged to main via the B7a streaming-digest work (commits c5c03a9/3731a67, merge 4930213) after this lane's branch point (23bf664) -- proved byte-identical to Store.digest() in tests/test_store_digest_streaming.py, and bounded-memory by construction (an external merge sort over chunk_rows-sized spilled batches instead of materializing every row). scripts/eval_overload.py now takes an additive --digest-mode {full,streaming} flag (default 'full', unchanged behaviour) that calls digest_streaming() instead when set to 'streaming'; on a checkout that lacks it (this lane's own branch included, since it predates the merge) it raises a clear RuntimeError naming the missing method and the commits that add it, rather than silently falling back to 'full' and mislabeling the manifest. --digest-mode is recorded in every manifest's config for provenance. Not exercised live in this diagnostic (this branch doesn't have digest_streaming yet); the fix is landed in the harness and ready to flip once this lane rebases onto or merges a main that includes it.",
+    "not_pinned_down": "Why store_digest() costs ~1.77 GB specifically for this store (row count, per-row JSON overhead, the sort's own temporary lists) is not measured here -- only that the call is the single location of the growth. The B7a commit message already gives an approximate figure for a different store size (17.4M-edge store: 25 GB), consistent in direction with this store's smaller ~1.77 GB for ~1M rows."
+  },
+  "cleanup": {
+    "v1_store_copy_deleted": true,
+    "v2_store_copy_deleted": true,
+    "v3_store_copy_deleted": true,
+    "eval_overload_py_restored_in_a6b3e94_worktree_after_v1_v2_and_v3": true,
+    "restored_md5": "95a33939e3829be5d8698980a0e2f957",
+    "sha256_verified_after_transfer": true
+  }
+}

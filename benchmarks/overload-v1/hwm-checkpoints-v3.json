@@ -1,0 +1,42 @@
+[
+ {
+  "label": "after_imports",
+  "t": 0.0,
+  "vm_hwm_kb": 40876
+ },
+ {
+  "label": "after_store_open",
+  "t": 2.295,
+  "vm_hwm_kb": 98900
+ },
+ {
+  "label": "before_step_n64",
+  "t": 2.298,
+  "vm_hwm_kb": 98900
+ },
+ {
+  "label": "after_step_n64",
+  "t": 65.119,
+  "vm_hwm_kb": 227280
+ },
+ {
+  "label": "after_recovery_step",
+  "t": 125.078,
+  "vm_hwm_kb": 227280
+ },
+ {
+  "label": "after_store_digest_full",
+  "t": 149.182,
+  "vm_hwm_kb": 1999968
+ },
+ {
+  "label": "after_store_close",
+  "t": 149.182,
+  "vm_hwm_kb": 1999968
+ },
+ {
+  "label": "before_exit",
+  "t": 149.202,
+  "vm_hwm_kb": 1999968
+ }
+]

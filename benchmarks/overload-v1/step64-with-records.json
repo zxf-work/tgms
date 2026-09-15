@@ -1,0 +1,80 @@
+{
+ "schema_version": "1.0.0",
+ "git_commit": "a6b3e94-dirty",
+ "timestamp_utc": "2026-09-15T15:19:14.420474+00:00",
+ "machine": {
+  "host": "xzgpu",
+  "platform": "Linux-5.4.0-216-generic-x86_64-with-glibc2.31",
+  "cpus": 40,
+  "ram_gb": 93.0
+ },
+ "config": {
+  "store": "/mnt/project/xzhang/tgms/tmp/overload-heap-2026-09-15/store",
+  "op": "entity_history",
+  "args": {
+   "uid": "n16945",
+   "limit": 5
+  },
+  "max_concurrent": 8,
+  "max_rows": null,
+  "max_bytes": null,
+  "dry_run": false,
+  "call_records": true
+ },
+ "seed": {
+  "value": null,
+  "reason": "open-loop arrival scheduling is deterministic given (rate, duration); no RNG is used"
+ },
+ "dataset": {
+  "name": "store",
+  "digest": "682f1194f6ca335fd60bda56b3e0630d9d88112651e109067de222e96d9cd51a",
+  "digest_kind": "store_digest"
+ },
+ "result_digest": "b7bac5c22f14617cda243635a629020ce60e90b6640bb599d9cb662e0ab6cd3d",
+ "protocol": {
+  "warmups": 0,
+  "reps": 1,
+  "ceilings": {
+   "max_concurrent": 8
+  }
+ },
+ "record": "/mnt/project/xzhang/tgms/tmp/overload-heap-2026-09-15/step64-with-records.records.json",
+ "steps": [
+  {
+   "n_clients": 64,
+   "target_rate_hz": 20.0,
+   "duration_s": 60.0,
+   "n_calls": 76800,
+   "n_ok": 29814,
+   "n_refused": 46986,
+   "n_error": 0,
+   "throughput_qps": 477.098,
+   "p50_ms": 25.783,
+   "p95_ms": 48.909,
+   "p99_ms": 63.319,
+   "late_mean_ms": 20.409,
+   "late_p95_ms": 6.632,
+   "concurrent_in_flight_p95": 8.0,
+   "queue_depth": null
+  }
+ ],
+ "recovery": {
+  "n_clients": 1,
+  "target_rate_hz": 20.0,
+  "duration_s": 60.0,
+  "n_calls": 1200,
+  "n_ok": 1200,
+  "n_refused": 0,
+  "n_error": 0,
+  "throughput_qps": 20.016,
+  "p50_ms": 1.722,
+  "p95_ms": 1.85,
+  "p99_ms": 1.894,
+  "late_mean_ms": 0.119,
+  "late_p95_ms": 0.133,
+  "concurrent_in_flight_p95": 0.0,
+  "queue_depth": null
+ },
+ "dev_host_note": null,
+ "provenance": "overload-heap diagnostic, xzgpu, REPLAY-2 running concurrently"
+}

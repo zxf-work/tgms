@@ -157,6 +157,160 @@ a required `provenance` string instead of relying on an unconditional
 default. The records here predate that fix and are left byte-identical —
 this paragraph is the correction, not a rewrite of the data.
 
+## Heap attribution follow-up: harness bookkeeping or the service surface?
+
+The tracemalloc diagnostic above narrowed the sweep's multi-GB `n_clients=64`
+RSS growth to "not more than a low-double-digit MB share is harness Python
+bookkeeping" but could not rule *in* the service surface, since
+`tracemalloc` cannot see the native `tgms._engine` heap. This follow-up
+(2026-09-15, xzgpu, `tgms-xz-a6b3e94` worktree — release engine,
+`build_info()`: `profile=release`, `debug_assertions=False`,
+`manifest_format_version=3`) closes that gap directly: `scripts/eval_overload.py`
+gained an additive `--no-call-records` flag (drops the per-call `CallRecord`
+list entirely, keeping only running aggregates — counts and a bounded
+4096-sample latency reservoir) and an `--rss-samples PATH` flag (once-per-second
+whole-process `VmRSS` from `/proc/self/status`, `time,rss_kb,step` CSV). The
+`n_clients=64` step was re-run alone twice against a fresh `upgrade-manifests`'d
+copy of `synth-1m-native` (format 1 → 3, generation 21, `sha e7f45e1257dd14c8`,
+`store.digest()` `682f1194f6ca…` — identical to the digest above, same store
+state), 60 s each, `--max-concurrent 8 --rate-per-client 20`, with
+`tgms replay` (REPLAY-2, correctness-only, pid 2453943) confirmed running
+concurrently on the host — fine for an RSS measurement, not a latency one.
+
+| run | peak RSS (`/usr/bin/time -v`, `Maximum resident set size`) | n_ok / n_refused of 76,800 |
+|---|---:|---:|
+| with call records (the P-OV1 way) | 1,991,888 KB (≈1.90 GB) | 29,814 / 46,986 |
+| `--no-call-records` | 2,004,096 KB (≈1.91 GB) | 31,283 / 45,517 |
+
+**Verdict (v1, HELD — see the amendment below): the growth is in the
+service surface, not harness bookkeeping.** Dropping the harness's own
+per-call retention changed peak RSS by about 0.6% — the `--no-call-records`
+run is if anything marginally *higher*, within run-to-run noise, not lower.
+If the multi-GB growth were the harness's `CallRecord` list (and its
+end-of-sweep JSON serialization), removing that retention should have
+collapsed the peak toward the ~150–200 MB baseline the 1-client steps show;
+it did not. `postings_stats("edge")` and `segment_cache_stats()` were
+probed before/after each run (via the adapter, read-only) and are
+identically zero throughout in both reps, ruling out the edge-postings
+index and the byte-budget segment cache as the destination. A grep of
+`tgms/tools/server.py`/`tgms/tools/limits.py` finds no accumulating
+list/history field on `ToolRouter` or `ConcurrencyGate` either — neither
+class retains past call results, so literal "result retention" by the
+router or gate is also ruled out. That leaves the native engine
+(`tgms._engine`, the Rust `.so`) or glibc allocator behavior under 64
+concurrently-calling threads as the leading candidate; this diagnostic
+identifies where the growth is *not*, not the exact native allocation site
+(that needs native-side profiling — Valgrind/massif or per-thread RSS
+breakdown — out of scope for this bounded measurement).
+
+One caveat on the `--rss-samples` series itself: in both reps the 1 Hz
+`VmRSS` CSV stays flat near baseline (~190–196 MB) for the whole 120 s run,
+an order of magnitude below the same run's `/usr/bin/time -v` lifetime peak.
+This says the ~2 GB is a fast-appearing, fast-receding spike (consistent
+with transient mmap-backed native allocations, or per-thread malloc-arena
+churn across 64 threads) rather than a value that climbs and holds — visible
+to the kernel's lifetime peak accounting, invisible to once-a-second
+polling. Full numbers, before/after stats, and the sampler-discrepancy note
+are in `heap-diagnostic-2026-09-15.json`.
+
+### Amendment v2 (2026-09-15, superseded — see "Pinned" below)
+
+The v1 verdict above was **held**: `/usr/bin/time -v` reports a
+process-*lifetime* peak, while the 1 Hz series sat at baseline through the
+whole step, so the ~2 GB could belong to a pre-step phase (store
+copy/`upgrade-manifests`/open) rather than to the service under load — the
+v1 between-run comparison alone couldn't tell the two apart. A second
+bounded run (`--no-call-records`, otherwise identical protocol, same store
+state — `upgrade-manifests` format 1 → 3 generation 21
+`sha e7f45e1257dd14c8` again) added `--hwm-checkpoints` (`VmHWM`, the
+lifetime peak-so-far, which — unlike a `VmRSS` poll — cannot miss a spike
+that has already receded) at four points, plus a 10 Hz `--rss-samples`
+series:
+
+| checkpoint | `VmHWM` (kB) |
+|---|---:|
+| after imports | 40,752 |
+| after store open (post-upgrade) | 99,488 |
+| immediately before the 64-client step | 99,488 |
+| immediately after the 64-client step | 226,928 |
+
+Same run's `/usr/bin/time -v` peak: **2,016,400 KB (≈1.92 GB)**. The 10 Hz
+`VmRSS` series stays flat (~195–220 MB) through the step and the whole
+low-rate recovery step that follows it.
+
+**Both the original framing and the coordinator's alternative are now
+ruled out.** Store open/upgrade is cheap (99,488 KB) — not a "startup
+footprint" of ~1.9 GB. And `VmHWM` right after all 64 client threads join
+is only 226,928 KB — since `VmHWM` never decreases, the step itself never
+drove RSS anywhere near 2 GB while its threads were alive, contradicting
+v1's "growth under 64-client load" framing too. The v1 `--no-call-records`
+ablation still stands on its own narrower claim (the ~2 GB isn't the
+harness's `CallRecord` list), but the growth's *location* is now known to
+be neither store-open nor the load step's execution — it opens somewhere
+in the remaining ~1.79 GB gap, during the recovery step and/or
+`store.digest()`/`store.close()`/teardown, a phase the 10 Hz poller also
+fails to see (flat throughout). **Verdict: still service/native-side, not
+harness bookkeeping, but not the phase either prior hypothesis named —
+localizing it to "recovery" vs. "teardown" needs two more checkpoints, not
+run here to hold to the bounded measurement budget.** Full detail in
+`hwm_checkpoint_followup_v2` in `heap-diagnostic-2026-09-15.json`.
+
+### Pinned (2026-09-15)
+
+A third bounded run added the two missing checkpoints — after the recovery
+step, and after each of the harness's own finalization calls
+(`store.digest()`, then `store.close()`) — plus one just before the sweep
+returns:
+
+| checkpoint | `VmHWM` (kB) |
+|---|---:|
+| after the 64-client step | 227,280 |
+| after the recovery step | 227,280 |
+| after `store.digest()` | **1,999,968** |
+| after `store.close()` | 1,999,968 |
+| before exit | 1,999,968 |
+
+Same run's `/usr/bin/time -v` peak: **1,999,968 KB** — identical, kB for
+kB, to the `after_store_digest_full` checkpoint. The recovery step adds
+exactly 0 KB; `store.digest()` adds 1,772,688 KB in one call; nothing
+after it adds anything.
+
+**Pinned verdict: the service surface `VmHWM` stays ≈227 MB through the
+entire 64-client step (and the recovery step that follows it) — the
+1.9 GB lifetime peak belongs to `scripts/eval_overload.py`'s own
+end-of-sweep `store.digest()` call**, not to `ToolRouter`/`ConcurrencyGate`
+under load, not to the recovery step, and not to per-call `CallRecord`
+retention (the v1 ablation's finding stands, just not for the reason v1
+assumed — `store.digest()` is itself a harness-side finalization call, so
+"not harness bookkeeping" was wrong in scope even though "not the
+`CallRecord` list" was right). `Store.digest()`
+(`tgms/storage/base.py::store_digest`) materializes every node/edge
+version row into a sorted Python list before hashing — its cost scales
+with total row count, not with anything the load actually did, which is
+exactly why disabling `--no-call-records` never moved the peak (v1) and
+why the peak was already fully formed the instant `store.digest()`
+returned (v3).
+
+**The fix:** `Store.digest_streaming()` (`tgms/store.py`, backed by
+`StorageAdapter.store_digest_streaming` in `tgms/storage/base.py`) landed
+on `main` via the B7a streaming-digest work (commits
+`c5c03a9`/`3731a67`, merge `4930213`) after this lane's branch point
+(`23bf664`) — proved byte-identical to `store.digest()`
+(`tests/test_store_digest_streaming.py`) and bounded-memory by
+construction (an external merge sort over spilled, `chunk_rows`-sized
+batches instead of materializing every row). `scripts/eval_overload.py`
+now takes an additive `--digest-mode {full,streaming}` flag (default
+`full`, unchanged behaviour); `streaming` calls `digest_streaming()`
+instead, and on a checkout that lacks the method — including this lane's
+own branch, which predates the merge — it raises a clear `RuntimeError`
+naming the missing method and the commits that add it, rather than
+silently falling back to `full` and mislabeling the manifest.
+`digest_mode` is recorded in every manifest's `config` for provenance.
+Not exercised live here (this branch doesn't have `digest_streaming` yet);
+the flag is landed and ready to flip once this lane rebases onto or merges
+a `main` that includes it. Full detail in `hwm_checkpoint_pinning_v3` in
+`heap-diagnostic-2026-09-15.json`.
+
 ## Files
 
 - `overload-2026-09-15.json` / `.records.json` — rep1
@@ -165,5 +319,17 @@ this paragraph is the correction, not a rewrite of the data.
   1-client/2 Hz/60 s step
 - `rss-rep1.log`, `rss-rep2.log`, `rss-recovery-lowrate.log` — raw
   `ps -o rss=` samples
+- `heap-diagnostic-2026-09-15.json` — the `--no-call-records` RSS
+  attribution follow-up (see above)
+- `step64-with-records.json`, `step64-no-call-records.json` — the two
+  harness manifests from that follow-up (schema-valid,
+  `scripts/check_result_manifest.py`)
+- `rss-with-records.csv`, `rss-no-call-records.csv` — the two
+  `--rss-samples` series from that follow-up
+- `step64-no-call-records-v2.json`, `rss-no-call-records-10hz.csv`,
+  `hwm-checkpoints.json` — the held/amended phase-localization re-check
+  (see "Amendment v2" above, superseded)
+- `step64-no-call-records-v3.json`, `rss-no-call-records-v3-10hz.csv`,
+  `hwm-checkpoints-v3.json` — the pinning run (see "Pinned" above)
 - `SHA256SUMS` — sha256 of every file above, verified identical between
   xzgpu and this checkout after transfer
