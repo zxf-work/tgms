@@ -682,23 +682,55 @@ const TAG_SNIFF_WINDOW: usize = 1024;
 
 /// Read `"<key>": "<value>"` from the leading [`TAG_SNIFF_WINDOW`] bytes of a
 /// manifest document, without parsing it. `None` means the key is absent
-/// from that window.
+/// from that window — either genuinely absent (format 1 never wrote `kind`;
+/// no format below 3 writes `sha_kind`), or, in principle, present but
+/// pushed past the window by something unusual ahead of it; either way
+/// [`parse_record_raw`] falls back to the typed parse's own error rather
+/// than guessing.
 ///
 /// Byte-level rather than a `serde_json::Value` sniff: the whole point is to
 /// avoid materialising the O(segments) body just to read two tag fields that
-/// every writer this build has ever used places ahead of it. This assumes
-/// the tag's own value contains no `"` — true of every value this build
-/// writes (`"checkpoint"`, `"delta"`, `"merkle-v1"`); a value that did would
-/// simply misread a truncated tag here, which then fails the subsequent
-/// typed parse or the `sha_kind` corruption check rather than silently
-/// succeeding.
+/// every writer this build has ever used places ahead of it — confirmed from
+/// the source, not assumed: `checkpoint_json` and `ManifestDelta::to_json`
+/// (this file) are the only two constructors of on-disk manifest JSON
+/// `store.rs` ever calls (`write_atomic` sites), and both go through
+/// `serde_json::to_string_pretty`, never the compact `to_string`. This sniff
+/// does not depend on that pretty-printing, though: the match is tolerant of
+/// whitespace (`"<key>"`, optional whitespace, `:`, optional whitespace,
+/// `"`) so a compact, differently-indented, or hand-written document with
+/// the ordinary `"key": "value"` shape is still read correctly — it exists
+/// for the case where whitespace does *not* matter, not because it does.
+///
+/// This assumes the tag's own value contains no `"` — true of every value
+/// this build writes (`"checkpoint"`, `"delta"`, `"merkle-v1"`); a value
+/// that did would simply misread a truncated tag here, which then fails the
+/// subsequent typed parse or the `sha_kind` corruption check rather than
+/// silently succeeding.
 fn sniff_tag<'a>(text: &'a str, key: &str) -> Option<&'a str> {
     let bytes = text.as_bytes();
     let window = &bytes[..bytes.len().min(TAG_SNIFF_WINDOW)];
-    let needle = format!("\"{key}\": \"");
-    let start = find_bytes(window, needle.as_bytes())? + needle.len();
+    let key_needle = format!("\"{key}\"");
+    let mut i = find_bytes(window, key_needle.as_bytes())? + key_needle.len();
+    i += skip_ws(&window[i..]);
+    if window.get(i) != Some(&b':') {
+        return None;
+    }
+    i += 1;
+    i += skip_ws(&window[i..]);
+    if window.get(i) != Some(&b'"') {
+        return None;
+    }
+    let start = i + 1;
     let end = find_bytes(&window[start..], b"\"")?;
     std::str::from_utf8(&window[start..start + end]).ok()
+}
+
+/// How many leading bytes of `s` are JSON insignificant whitespace (space,
+/// tab, CR, LF — the four RFC 8259 permits between tokens).
+fn skip_ws(s: &[u8]) -> usize {
+    s.iter()
+        .take_while(|b| matches!(b, b' ' | b'\t' | b'\r' | b'\n'))
+        .count()
 }
 
 fn find_bytes(haystack: &[u8], needle: &[u8]) -> Option<usize> {
@@ -1471,6 +1503,128 @@ mod tests {
             test_support::count(),
             1,
             "a delta must be deserialised exactly once"
+        );
+    }
+
+    /// The same `kind`/`sha_kind`-then-flattened-`Manifest` shape
+    /// `checkpoint_json` writes, reusable from tests: `checkpoint_json`'s own
+    /// `Doc` wrapper is private to that function, and serializing through
+    /// `serde_json::Value` (this crate does not enable serde_json's
+    /// `preserve_order`) would reorder every field alphabetically — pushing
+    /// `node_store`/`edge_lanes`/`close_runs` ahead of `sha_kind` and
+    /// defeating the very window this helper exists to stay inside.
+    /// Serializing this struct directly keeps `kind`/`sha_kind` first, field
+    /// order matching the real writer, whatever the formatter below does
+    /// with whitespace.
+    #[derive(Serialize)]
+    struct CheckpointDoc<'a> {
+        kind: &'a str,
+        sha_kind: &'a str,
+        #[serde(flatten)]
+        manifest: &'a Manifest,
+    }
+
+    fn checkpoint_doc(m: &Manifest) -> CheckpointDoc<'_> {
+        CheckpointDoc {
+            kind: "checkpoint",
+            sha_kind: sha_kind_for(m.format),
+            manifest: m,
+        }
+    }
+
+    /// Serialize `value` with no insignificant whitespace at all — a shape
+    /// this engine has never written (`kind`/`sha_kind` only ever reach disk
+    /// via `serde_json::to_string_pretty`, confirmed in [`sniff_tag`]'s doc
+    /// comment) but [`sniff_tag`] must still read correctly, since its match
+    /// does not depend on pretty-printing.
+    fn compact<T: Serialize>(value: &T) -> String {
+        serde_json::to_string(value).unwrap()
+    }
+
+    /// Serialize `value` with tab indentation in place of
+    /// `to_string_pretty`'s two spaces — again, not a shape the engine
+    /// writes, but one the whitespace-tolerant sniff must read. (The
+    /// key/value separator stays `": "` either way — `PrettyFormatter` only
+    /// changes the indentation string — so this and `compact` together cover
+    /// both axes: presence of a space after `:`, and presence/kind of
+    /// indentation.)
+    fn tab_indented<T: Serialize>(value: &T) -> String {
+        let mut buf = Vec::new();
+        let formatter = serde_json::ser::PrettyFormatter::with_indent(b"\t");
+        let mut ser = serde_json::Serializer::with_formatter(&mut buf, formatter);
+        value.serialize(&mut ser).unwrap();
+        String::from_utf8(buf).unwrap()
+    }
+
+    #[test]
+    fn sniff_tag_reads_kind_regardless_of_whitespace_style() {
+        // the regression this hardening pass exists to fix: the sniff used
+        // to match the literal `"kind": "` (colon, one space) byte-for-byte,
+        // so anything but the engine's own to_string_pretty formatting would
+        // miss the tag and misreport a perfectly valid record as malformed.
+        let (parent, child) = pair();
+        let d = ManifestDelta::between(&parent, &child, 0).unwrap();
+        let ckpt_doc = checkpoint_doc(&child);
+
+        for (label, ckpt_text, delta_text) in [
+            ("pretty (to_string_pretty, what the engine writes)",
+                checkpoint_json(&child), d.to_json()),
+            ("compact (no whitespace)",
+                compact(&ckpt_doc), compact(&d)),
+            ("tab-indented",
+                tab_indented(&ckpt_doc), tab_indented(&d)),
+        ] {
+            match parse_record(&ckpt_text) {
+                Ok(ManifestRecord::Checkpoint(m)) => assert_eq!(m, child, "{label}: checkpoint body"),
+                other => panic!("{label}: checkpoint should parse, got {other:?}"),
+            }
+            match parse_record(&delta_text) {
+                Ok(ManifestRecord::Delta(got)) => assert_eq!(got, d, "{label}: delta body"),
+                other => panic!("{label}: delta should parse, got {other:?}"),
+            }
+        }
+    }
+
+    /// When `kind` sits beyond [`TAG_SNIFF_WINDOW`] — here forced by an
+    /// artificial 2,000-byte filler field the real writer would never
+    /// produce (every real `kind` lands in the first few dozen bytes; see
+    /// [`TAG_SNIFF_WINDOW`]'s doc comment) — [`sniff_tag`] returns `None`
+    /// and [`parse_record_raw`] defaults to `"checkpoint"`.
+    ///
+    /// Decision, documented here because it is easy to get backwards: that
+    /// default can never *silently* misclassify a delta as a valid
+    /// checkpoint. `Manifest` has no `#[serde(default)]` on `widths`,
+    /// `node_store`, `edge_lanes` or `close_runs`, so attempting to
+    /// deserialise a delta's body (which has none of those keys) as a
+    /// `Manifest` always fails with a serde "missing field" data error —
+    /// the ordinary "manifest is not a well-formed document" path, the
+    /// typed parse's own error, not a fabricated one. (The symmetric case —
+    /// a genuine checkpoint whose `kind` is pushed past the window — simply
+    /// parses correctly under the same default, since it really is one;
+    /// there is no silent-misclassification risk on that side because a
+    /// misread here can only go towards the shape that most on-disk
+    /// documents already are.)
+    #[test]
+    fn a_kind_tag_beyond_the_sniff_window_falls_back_to_the_typed_parse_error() {
+        let (parent, child) = pair();
+        let d = ManifestDelta::between(&parent, &child, 0).unwrap();
+        let json = d.to_json();
+        assert!(
+            sniff_tag(&json, "kind").is_some(),
+            "fixture must start with kind inside the window, or the padding below proves nothing"
+        );
+
+        // pad well past the window regardless of how long the un-padded
+        // fixture happens to be
+        let filler = "x".repeat(TAG_SNIFF_WINDOW + 200);
+        let padded = json.replacen('{', &format!("{{\n  \"padding\": \"{filler}\","), 1);
+        assert!(sniff_tag(&padded, "kind").is_none(), "the fixture must actually miss the window");
+
+        let err = parse_record(&padded).unwrap_err();
+        assert_eq!(err.category, crate::error::Category::Corrupt);
+        assert!(
+            err.to_string().contains("manifest is not a well-formed document"),
+            "expected the typed (Manifest) parse's own error, got: {err}"
         );
     }
 
