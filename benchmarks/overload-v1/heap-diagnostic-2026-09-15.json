@@ -98,14 +98,50 @@
     "interpretation": "Most consistent with a fast-appearing, fast-receding native-heap allocation spike (e.g. large glibc mmap-backed allocations made and munmap'd within a sub-second window, or per-thread malloc-arena churn across the 64 client threads) rather than a value that climbs and holds steady across the step -- exactly the kind of native-allocator behavior the P-OV1 README already flagged as invisible to tracemalloc, and it turns out to be coarse-grained-RSS-polling-invisible too. Pinning the exact allocation site would need finer-grained sampling (e.g. 100 ms VmRSS polling, or mallinfo2()/malloc_stats() snapshots) -- out of scope for this bounded diagnostic and left as a follow-up.",
     "does_not_change_the_verdict": "This affects only the --rss-samples time series' usefulness for localizing WHEN the spike happens; the --no-call-records ablation below is a between-run comparison of /usr/bin/time -v's peak (a full-process, allocator-visible measurement in both runs), which is unaffected by the polling gap."
   },
-  "verdict": {
+  "verdict_v1_superseded_2026_09_15": {
     "answer": "service surface, not harness bookkeeping",
+    "status": "HELD by the coordinator -- see hwm_checkpoint_followup_v2 and the amended top-level verdict below. Kept verbatim for the record, not because it is now believed correct as stated.",
     "reasoning": "Disabling the harness's own per-call retention entirely (--no-call-records: no CallRecord list, no 76,800-entry .records.json written) changed the process's peak RSS by about 0.6% (1,991,888 KB with records vs 2,004,096 KB without -- the no-call-records run is if anything slightly HIGHER, within run-to-run noise). If the multi-GB growth were harness-side bookkeeping (the CallRecord list plus its end-of-sweep JSON serialization, as the P-OV1 tracemalloc note suspected but could not confirm past ~83 MB), removing that retention should have collapsed the peak toward the ~150-200 MB baseline seen in the low-rate/1-client steps. It did not. Both peaks are two orders of magnitude above what tracemalloc's harness-side accounting could ever explain (it only ever attributed ~83 MB), and now also above what removing that accounting removes (~0 MB of the ~2 GB). The growth is therefore attributable to something outside scripts/eval_overload.py's own Python-level bookkeeping -- most plausibly the native engine (tgms._engine, a Rust .so) or glibc allocator behavior triggered by 64 concurrently-calling threads hammering ToolRouter/ConcurrencyGate at once, not Python-level result retention by either class (grep of tgms/tools/server.py and tgms/tools/limits.py finds no accumulating list/history field on ToolRouter or ConcurrencyGate -- neither class retains past call results, so 'result retention' in the literal sense is also ruled out as the mechanism, leaving native-heap/allocator behavior under thread concurrency as the leading candidate).",
-    "not_pinned_down": "This diagnostic identifies WHERE the growth is not (harness CallRecord retention, ToolRouter/ConcurrencyGate result history, the edge-postings index, the byte-budget segment cache) but does not identify the exact native allocation site -- that would need native-side profiling (e.g. Valgrind/massif, jemalloc/glibc arena instrumentation, or per-thread RSS breakdown) against tgms._engine, which is out of scope for this bounded (~10 min) measurement."
+    "not_pinned_down": "This diagnostic identifies WHERE the growth is not (harness CallRecord retention, ToolRouter/ConcurrencyGate result history, the edge-postings index, the byte-budget segment cache) but does not identify the exact native allocation site -- that would need native-side profiling (e.g. Valgrind/massif, jemalloc/glibc arena instrumentation, or per-thread RSS breakdown) against tgms._engine, which is out of scope for this bounded (~10 min) measurement.",
+    "why_held": "The coordinator flagged that /usr/bin/time -v reports a process-LIFETIME peak, while the 1 Hz --rss-samples series sat at ~190 MB throughout the 64-client step -- so the ~2 GB could belong to a pre-step phase (store copy/upgrade-manifests/open) rather than to the service under load, which this run's between-run comparison alone could not distinguish."
+  },
+  "hwm_checkpoint_followup_v2": {
+    "date": "2026-09-15",
+    "purpose": "Localize the ~2 GB peak to a phase of the run using VmHWM (monotonic non-decreasing lifetime-peak-so-far, from /proc/self/status) at four checkpoints -- after imports, after store open (post-upgrade), immediately before the n_clients=64 step, immediately after it -- plus a 10 Hz (0.1 s) --rss-samples series instead of 1 Hz, so a fast spike would be visible. One bounded run, --no-call-records, otherwise identical protocol to the v1 no-call-records run above (fresh synth-1m-native copy, upgrade-manifests format 1->3 generation 21 sha e7f45e1257dd14c8 -- identical, confirming the same store state; REPLAY-2 pid 2453943 confirmed running concurrently throughout, CPU 89.8%, RSS ~2.1 GB; OSV poller pid 1457823 and daily loop pid 1540052 untouched).",
+    "manifest_file": "step64-no-call-records-v2.json",
+    "rss_samples_file": "rss-no-call-records-10hz.csv",
+    "hwm_checkpoints_file": "hwm-checkpoints.json",
+    "cli": "eval_overload.py --store <store> --clients 64 --duration-s 120 --rate-per-client 20 --max-concurrent 8 --no-call-records --rss-sample-interval-s 0.1 --hwm-checkpoints hwm-checkpoints.json --provenance 'overload-heap diagnostic v2 (HWM checkpoints + 10Hz RSS), xzgpu, REPLAY-2 running concurrently' --out step64-no-call-records-v2.json --rss-samples rss-no-call-records-10hz.csv",
+    "hwm_checkpoints_kb": {
+      "after_imports": 40752,
+      "after_store_open": 99488,
+      "before_step_n64": 99488,
+      "after_step_n64": 226928
+    },
+    "hwm_checkpoints_note": "VmHWM only ever increases within a process's life, so a checkpoint's value already reflects any peak reached up to that point even if RSS later receded -- it cannot miss a spike the way a VmRSS poll can. after_store_open == before_step_n64 (99,488 KB): building the ToolRouter/Limits/ConcurrencyGate over an already-open store costs essentially nothing. after_step_n64 is 226,928 KB -- 2.3x the post-open baseline, but nowhere near the ~2 GB process lifetime peak.",
+    "process_peak_rss": {
+      "source": "/usr/bin/time -v, 'Maximum resident set size', same run",
+      "kb": 2016400,
+      "approx_gb": 1.92
+    },
+    "ten_hz_rss_sampler_peak": {
+      "source": "rss-no-call-records-10hz.csv, /proc/self/status VmRSS at 10 Hz",
+      "kb": 220476,
+      "approx_mb": 215,
+      "note": "863 samples over the full ~150 s run (load:64 then recovery); flat at ~194,772 kB for the entire recovery portion checked (from t=133.988s onward) -- the 10x faster sampling still shows no spike anywhere near 2 GB, consistent with the after_step_n64 HWM checkpoint"
+    },
+    "localization": "Neither store open (99,488 KB) nor the n_clients=64 step itself, up to and including the moment all 64 client threads join (226,928 KB HWM) accounts for the ~2 GB peak -- both are now ruled OUT as the growth's location, contradicting both the original v1 framing ('the step under load') and the coordinator's alternative hypothesis ('pre-step phases: store copy/upgrade-manifests/open'). Since VmHWM cannot decrease, the ~1.79 GB gap between after_step_n64 (226,928 KB) and the process's final peak (2,016,400 KB) must open during the remainder of the run: the recovery step (1 client, 20 Hz, ~60 s) and/or the final teardown (store.digest(), store.close(), writing the manifest/records files, interpreter shutdown). The 10 Hz RSS series covers that remainder too and stays flat there as well, so whatever is responsible is invisible to VmRSS polling at both 1 Hz and 10 Hz -- same blind spot as the v1 sampler_discrepancy, now narrowed to a smaller window but not yet resolved to a single phase.",
+    "not_yet_checkpointed": "This run only added the four checkpoints the coordinator asked for. A fifth (after the recovery step, immediately before store.close()) and a sixth (immediately before process exit) would split the remaining ~1.79 GB between 'recovery step' and 'teardown/shutdown' -- left as the next bounded step, not run here to keep this measurement to its ~10 min budget."
+  },
+  "verdict": {
+    "answer": "HELD/AMENDED, 2026-09-15: not resolved to 'service under 64-client load' or 'harness bookkeeping' as originally framed -- both are narrowed but the growth's phase is now known more precisely, and it is NOT where either original hypothesis placed it.",
+    "reasoning": "The HWM-checkpoint run rules out two candidates directly: (1) store open/upgrade-manifests footprint -- only 99,488 KB, not ~1.9 GB, so the coordinator's 'startup/open footprint' hypothesis is refuted; (2) the n_clients=64 step's own execution -- VmHWM right after all 64 client threads join is only 226,928 KB, and VmHWM cannot decrease, so the step itself never drove RSS anywhere near 2 GB while its threads were alive. That also means the v1 --no-call-records ablation's conclusion ('service surface under load') needs qualification: the ablation correctly shows the ~2 GB is not the harness's CallRecord list (removing it didn't move the peak), but the HWM checkpoints now show it isn't happening DURING the load step's threads either -- it opens later, in the recovery step and/or store.digest()/store.close()/teardown, a phase neither v1 run instrumented and which the 1 Hz AND 10 Hz RSS pollers both still fail to see (flat throughout). So: harness per-call bookkeeping remains ruled out (unchanged from v1); 'growth under 64-client load, visible while the load is applied' is now also ruled out; the leading candidate shifts to store/engine teardown (store.digest()/store.close()) or the low-rate recovery step, still on the service/native side (not eval_overload.py's own retained state), but not yet the specific location v1 implied.",
+    "next_step_not_taken_here": "Two more HWM checkpoints (after the recovery step; immediately before process exit) would attribute the remaining ~1.79 GB to 'recovery step' vs. 'teardown' directly. Not run in this pass to hold to the bounded measurement budget -- recorded as the concrete next step rather than left implicit."
   },
   "cleanup": {
-    "store_copy_deleted": true,
-    "eval_overload_py_restored_in_a6b3e94_worktree": true,
+    "v1_store_copy_deleted": true,
+    "v2_store_copy_deleted": true,
+    "eval_overload_py_restored_in_a6b3e94_worktree_after_v1_and_after_v2": true,
     "restored_md5": "95a33939e3829be5d8698980a0e2f957",
     "sha256_verified_after_transfer": true
   }

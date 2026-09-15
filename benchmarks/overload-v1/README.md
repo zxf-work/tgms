@@ -182,37 +182,78 @@ concurrently on the host — fine for an RSS measurement, not a latency one.
 | with call records (the P-OV1 way) | 1,991,888 KB (≈1.90 GB) | 29,814 / 46,986 |
 | `--no-call-records` | 2,004,096 KB (≈1.91 GB) | 31,283 / 45,517 |
 
-**Verdict: the growth is in the service surface, not harness bookkeeping.**
-Dropping the harness's own per-call retention changed peak RSS by about
-0.6% — the `--no-call-records` run is if anything marginally *higher*,
-within run-to-run noise, not lower. If the multi-GB growth were the harness's
-`CallRecord` list (and its end-of-sweep JSON serialization), removing that
-retention should have collapsed the peak toward the ~150–200 MB baseline the
-1-client steps show; it did not. `postings_stats("edge")` and
-`segment_cache_stats()` were probed before/after each run (via the adapter,
-read-only) and are identically zero throughout in both reps, ruling out the
-edge-postings index and the byte-budget segment cache as the destination.
-A grep of `tgms/tools/server.py`/`tgms/tools/limits.py` finds no
-accumulating list/history field on `ToolRouter` or `ConcurrencyGate` either
-— neither class retains past call results, so literal "result retention" by
-the router or gate is also ruled out. That leaves the native engine
+**Verdict (v1, HELD — see the amendment below): the growth is in the
+service surface, not harness bookkeeping.** Dropping the harness's own
+per-call retention changed peak RSS by about 0.6% — the `--no-call-records`
+run is if anything marginally *higher*, within run-to-run noise, not lower.
+If the multi-GB growth were the harness's `CallRecord` list (and its
+end-of-sweep JSON serialization), removing that retention should have
+collapsed the peak toward the ~150–200 MB baseline the 1-client steps show;
+it did not. `postings_stats("edge")` and `segment_cache_stats()` were
+probed before/after each run (via the adapter, read-only) and are
+identically zero throughout in both reps, ruling out the edge-postings
+index and the byte-budget segment cache as the destination. A grep of
+`tgms/tools/server.py`/`tgms/tools/limits.py` finds no accumulating
+list/history field on `ToolRouter` or `ConcurrencyGate` either — neither
+class retains past call results, so literal "result retention" by the
+router or gate is also ruled out. That leaves the native engine
 (`tgms._engine`, the Rust `.so`) or glibc allocator behavior under 64
 concurrently-calling threads as the leading candidate; this diagnostic
 identifies where the growth is *not*, not the exact native allocation site
 (that needs native-side profiling — Valgrind/massif or per-thread RSS
 breakdown — out of scope for this bounded measurement).
 
-One caveat on the new `--rss-samples` series itself: in both reps the 1 Hz
+One caveat on the `--rss-samples` series itself: in both reps the 1 Hz
 `VmRSS` CSV stays flat near baseline (~190–196 MB) for the whole 120 s run,
 an order of magnitude below the same run's `/usr/bin/time -v` lifetime peak.
 This says the ~2 GB is a fast-appearing, fast-receding spike (consistent
 with transient mmap-backed native allocations, or per-thread malloc-arena
 churn across 64 threads) rather than a value that climbs and holds — visible
 to the kernel's lifetime peak accounting, invisible to once-a-second
-polling. It does not change the verdict above, which rests on the
-between-run `/usr/bin/time -v` peak comparison rather than the time series.
-Full numbers, before/after stats, and the sampler-discrepancy note are in
-`heap-diagnostic-2026-09-15.json`.
+polling. Full numbers, before/after stats, and the sampler-discrepancy note
+are in `heap-diagnostic-2026-09-15.json`.
+
+### Amendment (2026-09-15, held pending a phase-localized re-check)
+
+The v1 verdict above was **held**: `/usr/bin/time -v` reports a
+process-*lifetime* peak, while the 1 Hz series sat at baseline through the
+whole step, so the ~2 GB could belong to a pre-step phase (store
+copy/`upgrade-manifests`/open) rather than to the service under load — the
+v1 between-run comparison alone couldn't tell the two apart. A second
+bounded run (`--no-call-records`, otherwise identical protocol, same store
+state — `upgrade-manifests` format 1 → 3 generation 21
+`sha e7f45e1257dd14c8` again) added `--hwm-checkpoints` (`VmHWM`, the
+lifetime peak-so-far, which — unlike a `VmRSS` poll — cannot miss a spike
+that has already receded) at four points, plus a 10 Hz `--rss-samples`
+series:
+
+| checkpoint | `VmHWM` (kB) |
+|---|---:|
+| after imports | 40,752 |
+| after store open (post-upgrade) | 99,488 |
+| immediately before the 64-client step | 99,488 |
+| immediately after the 64-client step | 226,928 |
+
+Same run's `/usr/bin/time -v` peak: **2,016,400 KB (≈1.92 GB)**. The 10 Hz
+`VmRSS` series stays flat (~195–220 MB) through the step and the whole
+low-rate recovery step that follows it.
+
+**Both the original framing and the coordinator's alternative are now
+ruled out.** Store open/upgrade is cheap (99,488 KB) — not a "startup
+footprint" of ~1.9 GB. And `VmHWM` right after all 64 client threads join
+is only 226,928 KB — since `VmHWM` never decreases, the step itself never
+drove RSS anywhere near 2 GB while its threads were alive, contradicting
+v1's "growth under 64-client load" framing too. The v1 `--no-call-records`
+ablation still stands on its own narrower claim (the ~2 GB isn't the
+harness's `CallRecord` list), but the growth's *location* is now known to
+be neither store-open nor the load step's execution — it opens somewhere
+in the remaining ~1.79 GB gap, during the recovery step and/or
+`store.digest()`/`store.close()`/teardown, a phase the 10 Hz poller also
+fails to see (flat throughout). **Verdict: still service/native-side, not
+harness bookkeeping, but not the phase either prior hypothesis named —
+localizing it to "recovery" vs. "teardown" needs two more checkpoints, not
+run here to hold to the bounded measurement budget.** Full detail in
+`hwm_checkpoint_followup_v2` in `heap-diagnostic-2026-09-15.json`.
 
 ## Files
 
@@ -229,5 +270,8 @@ Full numbers, before/after stats, and the sampler-discrepancy note are in
   `scripts/check_result_manifest.py`)
 - `rss-with-records.csv`, `rss-no-call-records.csv` — the two
   `--rss-samples` series from that follow-up
+- `step64-no-call-records-v2.json`, `rss-no-call-records-10hz.csv`,
+  `hwm-checkpoints.json` — the held/amended phase-localization re-check
+  (see "Amendment" above)
 - `SHA256SUMS` — sha256 of every file above, verified identical between
   xzgpu and this checkout after transfer

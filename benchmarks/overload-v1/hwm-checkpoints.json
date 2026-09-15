@@ -1,0 +1,22 @@
+[
+ {
+  "label": "after_imports",
+  "t": 0.0,
+  "vm_hwm_kb": 40752
+ },
+ {
+  "label": "after_store_open",
+  "t": 2.34,
+  "vm_hwm_kb": 99488
+ },
+ {
+  "label": "before_step_n64",
+  "t": 2.344,
+  "vm_hwm_kb": 99488
+ },
+ {
+  "label": "after_step_n64",
+  "t": 78.335,
+  "vm_hwm_kb": 226928
+ }
+]

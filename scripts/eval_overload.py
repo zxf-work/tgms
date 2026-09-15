@@ -298,14 +298,30 @@ def _vm_rss_kb() -> int | None:
     return None
 
 
-class _RssSampler:
-    """Background once-per-second RSS sampler for the whole sweep, written
-    to `path` as `time,rss_kb,step` on `stop_and_write()`. `set_step` lets
-    the running sampler tag samples with whichever step is currently in
-    flight without the sampler needing to know the sweep's structure."""
+def _vm_hwm_kb() -> int | None:
+    """Current `VmHWM` (the process's lifetime peak RSS so far) from
+    `/proc/self/status`, in kB. Unlike a `VmRSS` poll, this can't miss a
+    spike that has already receded by the next sample -- the kernel updates
+    it at allocation time, not read time. `None` off Linux or unreadable."""
+    try:
+        for line in Path("/proc/self/status").read_text().splitlines():
+            if line.startswith("VmHWM:"):
+                return int(line.split()[1])
+    except OSError:
+        pass
+    return None
 
-    def __init__(self, path: Path) -> None:
+
+class _RssSampler:
+    """Background RSS sampler for the whole sweep (default once per second,
+    `interval_s` to sample faster), written to `path` as `time,rss_kb,step`
+    on `stop_and_write()`. `set_step` lets the running sampler tag samples
+    with whichever step is currently in flight without the sampler needing
+    to know the sweep's structure."""
+
+    def __init__(self, path: Path, interval_s: float = 1.0) -> None:
         self.path = path
+        self.interval_s = interval_s
         self._step = "init"
         self._step_lock = threading.Lock()
         self._rows: list[tuple[float, int, str]] = []
@@ -323,7 +339,7 @@ class _RssSampler:
                 with self._step_lock:
                     step = self._step
                 self._rows.append((time.perf_counter() - t0, rss, step))
-            self._stop.wait(1.0)
+            self._stop.wait(self.interval_s)
 
     def start(self) -> None:
         t0 = time.perf_counter()
@@ -339,6 +355,34 @@ class _RssSampler:
             f.write("time,rss_kb,step\n")
             for t, rss, step in self._rows:
                 f.write(f"{t:.3f},{rss},{step}\n")
+
+
+class _HwmCheckpoints:
+    """Records `VmHWM` (lifetime peak RSS so far) at named checkpoints --
+    e.g. "after imports", "after store open", "before/after the load step
+    under test" -- to localize a growth to a phase of the run rather than
+    reading it off a single end-of-run peak. `VmHWM` only ever increases, so
+    the checkpoint deltas partition the process's total peak-RSS growth
+    across whichever phases were checkpointed."""
+
+    def __init__(self, path: Path | None) -> None:
+        self.path = path
+        self._t0 = time.perf_counter()
+        self.checkpoints: list[dict[str, Any]] = []
+
+    def record(self, label: str) -> int | None:
+        hwm = _vm_hwm_kb()
+        self.checkpoints.append({"label": label, "t": round(time.perf_counter() - self._t0, 3),
+                                 "vm_hwm_kb": hwm})
+        print(f"[hwm-checkpoint] {label}: VmHWM={hwm} kB", file=sys.stderr)
+        return hwm
+
+    def write(self) -> None:
+        if self.path is None:
+            return
+        self.path.parent.mkdir(parents=True, exist_ok=True)
+        with open(self.path, "w") as f:
+            json.dump(self.checkpoints, f, indent=1)
 
 
 # --------------------------------------------------------------------------- #
@@ -441,14 +485,18 @@ def run_sweep(store_path: str, client_counts: list[int], duration_s: float,
              rate_per_client: float, max_concurrent: int | None,
              out_records: Path | None, provenance: str,
              dev_host_note: str | None = None, keep_call_records: bool = True,
-             rss_samples_path: Path | None = None) -> dict[str, Any]:
+             rss_samples_path: Path | None = None, rss_sample_interval_s: float = 1.0,
+             hwm_checkpoints: "_HwmCheckpoints | None" = None) -> dict[str, Any]:
     store = tgms.open(store_path, read_only=True)
+    if hwm_checkpoints is not None:
+        hwm_checkpoints.record("after_store_open")
     uid = store.adapter.uids_for([0])[0]
     op, args = "entity_history", {"uid": uid, "limit": 5}
     limits = Limits(max_concurrent=max_concurrent)
     router = ToolRouter(store.adapter, tt_source=store, limits=limits)
 
-    rss_sampler = _RssSampler(rss_samples_path) if rss_samples_path else None
+    rss_sampler = _RssSampler(rss_samples_path, interval_s=rss_sample_interval_s) \
+        if rss_samples_path else None
     if rss_sampler is not None:
         rss_sampler.start()
 
@@ -459,8 +507,12 @@ def run_sweep(store_path: str, client_counts: list[int], duration_s: float,
         for n in client_counts:
             if rss_sampler is not None:
                 rss_sampler.set_step(f"load:{n}")
+            if hwm_checkpoints is not None:
+                hwm_checkpoints.record(f"before_step_n{n}")
             result, records = run_step(router, op, args, n, rate_per_client,
                                        per_step_s, keep_records=keep_call_records)
+            if hwm_checkpoints is not None:
+                hwm_checkpoints.record(f"after_step_n{n}")
             steps.append(result)
             if keep_call_records:
                 all_records.append({"step": "load", "n_clients": n,
@@ -495,6 +547,9 @@ def run_sweep(store_path: str, client_counts: list[int], duration_s: float,
     else:
         records_path_str = "(not written; pass --out to persist raw records)"
 
+    if hwm_checkpoints is not None:
+        hwm_checkpoints.write()
+
     manifest = build_manifest(store_path=store_path, store_digest=store_digest,
                               op=op, args=args, limits=limits, steps=steps,
                               recovery=recovery, dry_run=False,
@@ -508,7 +563,9 @@ def run_sweep(store_path: str, client_counts: list[int], duration_s: float,
 
 def run_dry(tmp_dir: Path, dev_host_note: str | None = None,
            keep_call_records: bool = True,
-           rss_samples_path: Path | None = None) -> dict[str, Any]:
+           rss_samples_path: Path | None = None,
+           rss_sample_interval_s: float = 1.0,
+           hwm_checkpoints_path: Path | None = None) -> dict[str, Any]:
     """A tiny, fast, self-contained sweep — no `stores/synth-300k` needed."""
     from tgms.data.synth import generate
 
@@ -520,11 +577,17 @@ def run_dry(tmp_dir: Path, dev_host_note: str | None = None,
         store.ingest_events(json.loads(line) for line in f if line.strip())
     store.close()
 
+    hwm_checkpoints = _HwmCheckpoints(hwm_checkpoints_path) if hwm_checkpoints_path else None
+    if hwm_checkpoints is not None:
+        hwm_checkpoints.record("after_imports")
+
     return run_sweep(str(store_dir), client_counts=[1, 2], duration_s=1.0,
                      rate_per_client=20.0, max_concurrent=2, out_records=None,
                      provenance=DRY_RUN_PROVENANCE, dev_host_note=dev_host_note,
                      keep_call_records=keep_call_records,
-                     rss_samples_path=rss_samples_path)
+                     rss_samples_path=rss_samples_path,
+                     rss_sample_interval_s=rss_sample_interval_s,
+                     hwm_checkpoints=hwm_checkpoints)
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -556,32 +619,52 @@ def main(argv: list[str] | None = None) -> int:
                         "(full per-call records, written to --out's "
                         "*.records.json) is unchanged unless this is passed")
     ap.add_argument("--rss-samples", default=None,
-                    help="path to write once-per-second whole-process RSS "
-                        "samples (time,rss_kb,step CSV, from /proc/self/"
-                        "status VmRSS) across the whole run; omitted by "
-                        "default")
+                    help="path to write whole-process RSS samples "
+                        "(time,rss_kb,step CSV, from /proc/self/status "
+                        "VmRSS) across the whole run, once per second "
+                        "unless --rss-sample-interval-s says otherwise; "
+                        "omitted by default")
+    ap.add_argument("--rss-sample-interval-s", type=float, default=1.0,
+                    help="sampling interval for --rss-samples, in seconds "
+                        "(e.g. 0.1 for 10 Hz); default 1.0 (1 Hz), no "
+                        "effect without --rss-samples")
+    ap.add_argument("--hwm-checkpoints", default=None,
+                    help="path to write VmHWM (lifetime peak RSS so far, "
+                        "from /proc/self/status) at named checkpoints -- "
+                        "after imports, after store open, and before/after "
+                        "each load step -- as a JSON list; each checkpoint "
+                        "is also logged to stderr as it's recorded. "
+                        "Omitted by default")
     args = ap.parse_args(argv)
     keep_call_records = not args.no_call_records
     rss_samples_path = Path(args.rss_samples) if args.rss_samples else None
+    hwm_checkpoints_path = Path(args.hwm_checkpoints) if args.hwm_checkpoints else None
 
     if args.dry_run:
         import tempfile
         with tempfile.TemporaryDirectory() as tmp:
             manifest = run_dry(Path(tmp), dev_host_note=args.dev_host_note,
                                keep_call_records=keep_call_records,
-                               rss_samples_path=rss_samples_path)
+                               rss_samples_path=rss_samples_path,
+                               rss_sample_interval_s=args.rss_sample_interval_s,
+                               hwm_checkpoints_path=hwm_checkpoints_path)
     else:
         if not args.store:
             ap.error("--store is required unless --dry-run")
         if not args.provenance:
             ap.error("--provenance is required unless --dry-run")
         out_records = Path(args.out).with_suffix(".records.json") if args.out else None
+        hwm_checkpoints = _HwmCheckpoints(hwm_checkpoints_path) if hwm_checkpoints_path else None
+        if hwm_checkpoints is not None:
+            hwm_checkpoints.record("after_imports")
         manifest = run_sweep(args.store, args.clients, args.duration_s,
                              args.rate_per_client, args.max_concurrent, out_records,
                              provenance=args.provenance,
                              dev_host_note=args.dev_host_note,
                              keep_call_records=keep_call_records,
-                             rss_samples_path=rss_samples_path)
+                             rss_samples_path=rss_samples_path,
+                             rss_sample_interval_s=args.rss_sample_interval_s,
+                             hwm_checkpoints=hwm_checkpoints)
 
     print(manifest.pop("table"))
     if args.out:
