@@ -74,6 +74,8 @@ def _run_all_landed(mod):
     mod.compute_c7_r18(m)
     mod.compute_d160(m)
     mod.compute_d160_llm_direct_fix(m)
+    mod.compute_c2(m)
+    mod.compute_ladder(m)
     return m
 
 
@@ -153,6 +155,30 @@ FROZEN_LANDED_VALUES = {
     "osdiOldGateCoverage": "0.706",
     "osdiOldGateUcr": "0",
     "osdiOldGateCondAcc": "0.548",
+    "osdiCorruptionTrials": "10{,}000",
+    "osdiCorruptionClasses": "13",
+    "osdiCorruptionMutations": "7",
+    "osdiCorruptionDetected": "6587",
+    "osdiCorruptionDetectedPre": "5966",
+    "osdiCorruptionDetectedPost": "6587",
+    "osdiCorruptionSilentPre": "0",
+    "osdiCorruptionSilentPost": "0",
+    "osdiCorruptionBlobDetectedPre": "0/621",
+    "osdiCorruptionBlobDetectedPost": "621/621",
+    "osdiCorruptionCellsMovedPost": "0",
+    "osdiLadderPlans": "12",
+    "osdiLadderOperatorsCovered": "14",
+    "osdiLadderRung1Min": "0.992",
+    "osdiLadderRung1Max": "1.064",
+    "osdiLadderRung2EntityHistory": "1.13",
+    "osdiLadderRung2VersionHistory": "2.54",
+    "osdiLadderRung3BytesOneStepMedian": "3309",
+    "osdiLadderRung3BytesThreeStepMedian": "7549",
+    "osdiLadderRung3Deterministic": "12",
+    "osdiLadderRung4VerifyMsMedian": "5.06",
+    "osdiLadderRung5TokensMedian": "1811.5",
+    "osdiLadderRung5ToolCallsEqualExecutedSteps": "12",
+    "osdiLadderPlansTruncated": "2",
 }
 
 
@@ -174,7 +200,6 @@ def test_pending_macros_raise_a_latex_error_never_a_placeholder_number():
     m = mod.Macros()
     mod.add_pending_stubs(m)
     expected_names = {
-        "osdiCorruptionClasses", "osdiCorruptionDetected",
         "osdiTtfSpeedup", "osdiStormCells", "osdiStormFalseFresh",
         "osdiStormSpeedupN1k", "osdiStormAvoidedN1k",
         "osdiLdbcExpressible", "osdiLdbcExecuted", "osdiLdbcValidated",
@@ -198,7 +223,7 @@ def test_full_macro_set_has_no_duplicate_names_and_covers_every_skeleton_claim()
     mod.add_pending_stubs(m)
     names = [name for name, _, _ in m.items]
     assert len(names) == len(set(names)), "duplicate macro name"
-    assert len(names) == len(FROZEN_LANDED_VALUES) + 13
+    assert len(names) == len(FROZEN_LANDED_VALUES) + 11
 
 
 def test_cli_check_mode_agrees_with_committed_output(tmp_path):
@@ -428,6 +453,95 @@ def test_tampered_d160_llm_direct_fix_rows_digest_mismatch_fails(tmp_path):
     assert any("digest" in f.lower() for f in mod.FAILURES)
 
 
+def test_tampered_corruption_pre_record_digest_mismatch_fails(tmp_path):
+    """The corruption record's own result_digest is a sha256 over the sorted
+    per-trial results (corruption_campaign_merge.py's scheme); editing a
+    trial's verdict without recomputing that digest must be caught before
+    any count is even trusted."""
+    mod = _load("osdi_paper_macros")
+    data = json.loads(mod.CORRUPTION_PRE.read_text(encoding="utf-8"))
+    for r in data["results"]:
+        if r["class"] == "artifact_blob" and r["mutation"] == "append_garbage":
+            r["verdict"] = "DETECTED"
+            break
+    tampered = tmp_path / "eval-corruption-campaign-2026-09-14.json"
+    tampered.write_text(json.dumps(data), encoding="utf-8")
+
+    mod.CORRUPTION_PRE = tampered
+    m = mod.Macros()
+    mod.compute_c2(m)
+    assert mod.FAILURES, "an edited verdict must fail the result_digest check"
+    assert any("digest" in f.lower() for f in mod.FAILURES)
+
+
+def test_tampered_corruption_post_record_blob_count_fails_even_with_patched_digest(tmp_path):
+    """Patch both the results and result_digest so the digest check alone
+    would pass -- proving the frozen 621-of-621 blob-fix assertion, not
+    just the digest, is what would catch a doctored post-A10 record."""
+    mod = _load("osdi_paper_macros")
+    data = json.loads(mod.CORRUPTION_POST.read_text(encoding="utf-8"))
+    changed = False
+    for r in data["results"]:
+        if r["class"] == "artifact_blob" and r["mutation"] == "flip_bit" and r["verdict"] == "DETECTED":
+            r["verdict"] = "BENIGN"
+            changed = True
+            break
+    assert changed, "fixture must contain a DETECTED artifact_blob|flip_bit trial to tamper"
+
+    canon = sorted(data["results"],
+                    key=lambda r: (r["class"], r["mutation"], r.get("task_id", -1), r["trial"]))
+    blob = json.dumps(canon, sort_keys=True, separators=(",", ":")).encode()
+    data["result_digest"] = hashlib.sha256(blob).hexdigest()
+    tampered = tmp_path / "eval-corruption-campaign-2026-09-14-post-a10.json"
+    tampered.write_text(json.dumps(data), encoding="utf-8")
+
+    mod.CORRUPTION_POST = tampered
+    m = mod.Macros()
+    mod.compute_c2(m)
+    assert mod.FAILURES, "a de-detected artifact_blob trial must fail the frozen 621-of-621 " \
+        "post-A10 assertion, even though the digest was patched to match"
+
+
+def test_tampered_ladder_raw_record_digest_mismatch_fails(tmp_path):
+    """Each per-seed raw ladder record's result_digest is sha256 over its
+    own rows; editing a row without recomputing that digest must be caught
+    before any rung's median is trusted."""
+    mod = _load("osdi_paper_macros")
+    data = json.loads(mod.LADDER_RAW[0].read_text(encoding="utf-8"))
+    for row in data["rows"]:
+        if row["rung"] == 4 and row["plan_id"] == "p01-entity-history":
+            row["p50_ms"] = 999.0
+            break
+    tampered = tmp_path / "overhead-ladder-bitcoinotc-seed0-job212303.json"
+    tampered.write_text(json.dumps(data), encoding="utf-8")
+
+    mod.LADDER_RAW = [tampered, mod.LADDER_RAW[1], mod.LADDER_RAW[2]]
+    m = mod.Macros()
+    mod.compute_ladder(m)
+    assert mod.FAILURES, "an edited raw row must fail the result_digest check"
+    assert any("digest" in f.lower() for f in mod.FAILURES)
+
+
+def test_tampered_ladder_merged_summary_fails_the_frozen_rung3_value(tmp_path):
+    """Patch the merged record's summary and its own result_digest together
+    (so the digest check alone would pass) and confirm the frozen
+    bytes-median assertion catches a doctored trace_bytes number."""
+    mod = _load("osdi_paper_macros")
+    data = json.loads(mod.LADDER_MERGED.read_text(encoding="utf-8"))
+    data["summary"]["rung3_trace_bytes"]["p01-entity-history"]["bytes_median"] = 9999
+
+    blob = json.dumps(data["summary"], sort_keys=True, separators=(",", ":")).encode()
+    data["result_digest"] = hashlib.sha256(blob).hexdigest()
+    tampered = tmp_path / "ladder-2026-09-14.json"
+    tampered.write_text(json.dumps(data), encoding="utf-8")
+
+    mod.LADDER_MERGED = tampered
+    m = mod.Macros()
+    mod.compute_ladder(m)
+    assert mod.FAILURES, "a doctored rung-3 bytes_median must fail the raw-vs-summary " \
+        "cross-check, even though the digest was patched to match"
+
+
 def test_r18_and_dag_pending_stubs_cite_the_main_grid_quota_block():
     mod = _load("osdi_paper_macros")
     m = mod.Macros()
@@ -534,6 +648,46 @@ def test_r18_crossover_csv_has_five_batches_a_p50_row_and_a_pending_n1000_row(tm
     pending_row = rows[-1]
     assert pending_row[0] == "N=1000 c1 seed0"
     assert all(cell == "PENDING" for cell in pending_row[1:])
+
+
+def test_corruption_matrix_csv_matches_frozen_values(tmp_path, monkeypatch):
+    fig_mod = _load_figures()
+    monkeypatch.setattr(fig_mod, "OUT_DIR", tmp_path)
+    data = fig_mod.build_corruption_matrix_data()
+    assert len(data["classes"]) == 13
+    assert len(data["mutations"]) == 7
+    assert len(data["rows"]) == 85  # 13x7 minus 6 classes with no swap_same_class cell
+    by_key = {(r["class"], r["mutation"]): r for r in data["rows"]}
+    blob = by_key[("artifact_blob", "append_garbage")]
+    assert blob["trials_pre"] == 106 and blob["detected_pre"] == 0
+    assert blob["trials_post"] == 106 and blob["detected_post"] == 106
+    text = fig_mod.write_corruption_matrix_csv(data)
+    rows = list(csv.reader(text.splitlines()))
+    assert rows[0] == ["class", "mutation", "trials_pre", "detected_pre", "detection_rate_pre",
+                        "trials_post", "detected_post", "detection_rate_post"]
+    assert len(rows) == 1 + 85
+
+
+def test_overhead_ladder_csv_covers_all_five_rungs_and_twelve_plans(tmp_path, monkeypatch):
+    fig_mod = _load_figures()
+    monkeypatch.setattr(fig_mod, "OUT_DIR", tmp_path)
+    data = fig_mod.build_ladder_data()
+    assert len(data["rung1"]) == 14
+    assert len(data["plans"]) == 12
+    assert len(data["rung3"]) == 12
+    assert len(data["rung4"]) == 12
+    assert len(data["rung5"]) == 12
+    text = fig_mod.write_ladder_csv(data)
+    rows = list(csv.reader(text.splitlines()))
+    assert rows[0] == ["rung", "series", "n_steps", "value", "band_low", "band_high"]
+    # header + 14 (rung1) + 2 (rung2) + 12*3 (rungs 3/4/5)
+    assert len(rows) == 1 + 14 + 2 + 36
+    rung_col = [r[0] for r in rows[1:]]
+    assert rung_col.count("1") == 14
+    assert rung_col.count("2") == 2
+    assert rung_col.count("3") == 12
+    assert rung_col.count("4") == 12
+    assert rung_col.count("5") == 12
 
 
 def test_cli_csv_only_mode_is_idempotent(tmp_path):
