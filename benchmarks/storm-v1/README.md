@@ -465,6 +465,62 @@ ids 211614 + 211700 + 211706), `storm-campaign-dag-v3-2026-09-rows.jsonl`,
 passes. **Not yet committed** — held in the worktree pending the
 coordinator's scoring.
 
+## storm-v2 main grid — run of record (addendum-3, same 36-cell grid as
+addendum-1: 2 stores x {c1,c3,c4} x {none,deep} x N=1000 x seeds{0,1,2},
+end-to-end TTF only; job 212294; commit `fdd393c`, the D-161-rolled-out
+engine)
+
+All 36 cells COMPLETED on the first submission (no resubmission needed).
+Every cell's own record carries `git_commit=fdd393c`,
+`config.addendum_id=storm-v1-addendum-3`,
+`config.freeze_sha256=c85fb0c8bb3b17e0b9f02a92a5ee0d5273298f43574583206582e5e5aa34d309`
+— verified across all 36 before merging. Both campaign gates pass over
+the whole grid:
+
+| gate | result |
+|---|---|
+| G-S1 (`tgms-L0`/`tgms-L1` false-fresh = 0, every cell) | **PASS**, 0/36 failing cells |
+| G-S2 (false-safe = 0; trivial here — no DAG phase in the main grid) | **PASS**, 0/36 failing cells |
+
+**Per-(store, mix, age) median across seeds, `tgms-L1` arm** (avoided-
+recompute decision rate and TTF p50; `false_fresh=0` in all 36 cells, so
+omitted from the table):
+
+| store | mix | age | avoided_recompute_decision (median) | ttf_p50_ms (median) |
+|---|---|---|---:|---:|
+| collegemsg | c1 | deep | 0.757 | 30,012 |
+| collegemsg | c1 | none | 0.738 | 31,597 |
+| collegemsg | c3 | deep | 0.767 | 29,795 |
+| collegemsg | c3 | none | 0.765 | 29,573 |
+| collegemsg | c4 | deep | 0.788 | 25,514 |
+| collegemsg | c4 | none | 0.797 | 26,223 |
+| synth-iv-60k | c1 | deep | 0.753 | 31,366 |
+| synth-iv-60k | c1 | none | 0.756 | 29,156 |
+| synth-iv-60k | c3 | deep | 0.768 | 28,398 |
+| synth-iv-60k | c3 | none | 0.773 | 25,144 |
+| synth-iv-60k | c4 | deep | 0.766 | 30,604 |
+| synth-iv-60k | c4 | none | 0.786 | 21,953 |
+
+Full per-seed detail (36 rows, all six arms) is in the merged record's
+own `per_cell` table, not restated here.
+
+**Correction-generator `disc` caveat (storm freeze Addendum 7).** After
+these runs were frozen, the correction generators' `disc` assignment was
+found to be fixed-per-class rather than drawn per correction: class `a1`
+always stamps `disc="#0"`, class `a2` always stamps `disc="a2-disjoint"`.
+Every quantity scored above (false-fresh/false-stale counts, avoided-
+recompute rates, TTF percentiles, the G-S1/G-S2 gates) is computed from
+the checker's own re-execution/digest comparison and does not read
+`disc` at all, so this finding does not affect any measured number in
+this section. `correction_class` in the per-cell/per-row data is reported
+exactly as generated (i.e. as `a1`/`a2`/etc., not reinterpreted), per
+Addendum 7.
+
+**Records**: `storm-v2-main-grid-2026-09-15.json` (merged, provenance job
+212294; per-cell `source_job` field added post-merge since every cell in
+this campaign came from the one job), `storm-v2-main-grid-2026-09-15-rows.jsonl`.
+`scripts/check_result_manifest.py` passes.
+
 ## Regenerating (once the C6 freeze creates `campaign.yaml`/`FREEZE_BINDING`)
 
 ```sh
