@@ -41,8 +41,14 @@ skeleton --
       `unsupported_claims` fact and cross-checked against that same
       STABILITY.md section, never hard-coded independently of both. The
       `llm_direct` follow-up re-run under the real-tokenizer budget fix
-      (`manifest-llm-direct-fix-2026-09-14.json`) has not landed, so
-      `osdiD160LlmDirectCoverageFixed` is PENDING.
+      (`manifest-llm-direct-fix-2026-09-14.json` /
+      `rows-llm-direct-fix-2026-09-14.json`, job 212231) has now landed --
+      `osdiD160LlmDirectCoverageFixed` and its siblings
+      (`osdiD160LlmDirectErrorsFixed`/`RawEmFixed`/`TokenizerFixed`/
+      `BudgetFixed`) are computed by `compute_d160_llm_direct_fix` below.
+      The pre-fix record's own numbers (`osdiD160LlmDirectCarrying`,
+      `osdiD160LlmDirectOverflowErrors`) are unchanged and still stand
+      beside them, per the campaign's non-overwrite discipline.
   C7  (partial) benchmarks/storm-v1/storm-campaign-dag-{,v2-,v3-}2026-09.json
       (+ each one's -rows.jsonl) -- the DAG-phase v1/v2/v3 grids, all 40/40
       cells each -- and benchmarks/storm-v1/storm-r18-probe-2026-09.json
@@ -120,6 +126,9 @@ R18_PROBE_ROWS = STORM_V1 / "storm-r18-probe-2026-09-rows.jsonl"
 D160_DIR = ROOT / "benchmarks" / "d160-collegemsg-v1"
 D160_MANIFEST = D160_DIR / "manifest-2026-09-14.json"
 D160_ROWS = D160_DIR / "rows-2026-09-14.json"
+D160_MANIFEST_FIX = D160_DIR / "manifest-llm-direct-fix-2026-09-14.json"
+D160_ROWS_FIX = D160_DIR / "rows-llm-direct-fix-2026-09-14.json"
+D160_SUITE = ROOT / "benchmarks" / "frozen-v1" / "suite-collegemsg.json"
 SITE_FACTS = ROOT / "docs" / "site_facts.json"
 STABILITY_MD = ROOT / "docs" / "STABILITY.md"
 
@@ -1113,6 +1122,101 @@ def compute_d160(m: Macros) -> None:
 
 
 # --------------------------------------------------------------------------
+# D-160 llm_direct follow-up (Lane W2d): the whitespace-token budget
+# approximation that produced 216/282 task_error rows in compute_d160's
+# first-shipped llm_direct arm is fixed in tgms/eval/baselines.py (a real
+# HF tokenizer, commits dab5c2a/8de040f) -- this re-runs llm_direct only,
+# same task set/model/seeds, under that fix (job 212231). It does not
+# touch or overwrite compute_d160's numbers or docs/site_facts.json; see
+# benchmarks/d160-collegemsg-v1/README.md.
+# --------------------------------------------------------------------------
+
+def compute_d160_llm_direct_fix(m: Macros) -> None:
+    manifest = json.loads(D160_MANIFEST_FIX.read_text(encoding="utf-8"))
+    rows_bytes = D160_ROWS_FIX.read_bytes()
+    digest = hashlib.sha256(rows_bytes).hexdigest()
+    eq(digest, manifest["result_digest"],
+       "D160 fix: sha256(rows-llm-direct-fix-2026-09-14.json) matches manifest.result_digest")
+
+    rows = json.loads(rows_bytes)
+    eq(len(rows), 282, "D160 fix frozen: total row count")
+    eq(len(rows), manifest["provenance"]["n_rows"],
+       "D160 fix: row count matches manifest n_rows")
+
+    llm_direct = [r for r in rows if r["system"] == "llm_direct"]
+    eq(len(llm_direct), len(rows), "D160 fix frozen: every row is system==llm_direct")
+
+    task_ids = {r["task_id"] for r in llm_direct}
+    eq(len(task_ids), 94, "D160 fix frozen: distinct CollegeMsg task count")
+    seeds = sorted({r["seed"] for r in llm_direct})
+    eq(seeds, [0, 1, 2], "D160 fix: three seeds, 0/1/2")
+
+    # ---- 0 task_error rows: the fix's whole point ----
+    errors = [r for r in llm_direct if r.get("task_error")]
+    eq(len(errors), 0, "D160 fix frozen: llm_direct task_error row count")
+
+    # ---- still 0 claim-carrying rows: the fix removes the context-overflow
+    # crash, not the gate's verdict on this arm's claims ----
+    carry = [r for r in llm_direct if _carries_claim(r)]
+    eq(len(carry), 0, "D160 fix frozen: llm_direct pooled claim-carrying row count")
+    coverage = len(carry) / len(llm_direct)
+    eq(coverage, 0.0, "D160 fix frozen: llm_direct pooled coverage")
+
+    # ---- meta.tokenizer_kind / meta.budget_effective_tokens: uniform
+    # across all 282 rows, confirming the fix measured the real tokenizer
+    # and the nominal budget in real tokens, not whitespace-approximated
+    # ones ----
+    tokenizer_kinds = {r["meta"]["tokenizer_kind"] for r in llm_direct}
+    eq(tokenizer_kinds, {"hf_real"},
+       "D160 fix: meta.tokenizer_kind must be uniformly 'hf_real' across all 282 rows")
+    budgets = {r["meta"]["budget_effective_tokens"] for r in llm_direct}
+    eq(budgets, {8000},
+       "D160 fix: meta.budget_effective_tokens must be uniformly 8000 across all 282 rows")
+    eq(manifest["protocol"]["ceilings"]["llm_direct_budget_tokens"], 8000,
+       "D160 fix: manifest's nominal llm_direct_budget_tokens is 8000, matching every row's "
+       "meta.budget_effective_tokens")
+
+    # ---- raw pre-gate EM: score meta.pre_gate_answer (the answer before
+    # GATED_VERDICTS dropped anything) against the frozen suite's gold
+    # answers, via the same tgms.eval.metrics.score_answer/extract_pred the
+    # harness itself uses to score every row's post-gate `em`. This is
+    # exactly the README's "raw pre-gate exact-match 0.064" computation. ----
+    from tgms.eval.metrics import extract_pred, score_answer
+    suite = json.loads(D160_SUITE.read_text(encoding="utf-8"))
+    tasks_by_id = {t["id"]: t for t in suite["test"]}
+    eq(len(tasks_by_id), 94, "D160 fix: frozen suite has 94 distinct test tasks")
+
+    pre_gate_ems = []
+    for r in llm_direct:
+        pga = r["meta"]["pre_gate_answer"]
+        task = tasks_by_id[r["task_id"]]
+        pred = extract_pred(task["answer_kind"], pga)
+        pre_gate_ems.append(score_answer(task["answer_kind"], task["gold"], pred)["em"])
+    eq(len(pre_gate_ems), 282,
+       "D160 fix: every row scored pre-gate (0 errors, meta.pre_gate_answer present throughout)")
+    raw_em = statistics.mean(pre_gate_ems)
+    close(raw_em, 0.064, 0.001, "D160 fix frozen: llm_direct raw pre-gate EM")
+
+    m.add("osdiD160LlmDirectCoverageFixed", f"{coverage:.3f}",
+          f"{relpath(D160_ROWS_FIX)}: llm_direct rows with answer_object.claims non-empty / "
+          "282, pooled over 3 seeds -- the fixed-budget re-run of osdiD160LlmDirectCarrying, "
+          "still 0.000 (the fix removes the context-overflow crash, not the gate's verdict)")
+    m.add("osdiD160LlmDirectErrorsFixed", len(errors),
+          f"{relpath(D160_ROWS_FIX)}: llm_direct task_error row count, of 282 -- 0 after the "
+          "real-tokenizer budget fix, vs osdiD160LlmDirectOverflowErrors (216) before it")
+    m.add("osdiD160LlmDirectRawEmFixed", f"{raw_em:.3f}",
+          f"{relpath(D160_ROWS_FIX)}: mean(em) of meta.pre_gate_answer scored via "
+          "tgms.eval.metrics.score_answer/extract_pred against "
+          "benchmarks/frozen-v1/suite-collegemsg.json's gold/answer_kind fields, over all 282 "
+          "rows (complete, vs the pre-fix record's partial n=66 easy-task-only sample)")
+    m.add("osdiD160LlmDirectTokenizerFixed", r"hf\_real",
+          f"{relpath(D160_ROWS_FIX)}: meta.tokenizer_kind, asserted uniform across all 282 rows")
+    m.add("osdiD160LlmDirectBudgetFixed", 8000,
+          f"{relpath(D160_ROWS_FIX)}: meta.budget_effective_tokens, asserted uniform across all "
+          "282 rows (== manifest protocol.ceilings.llm_direct_budget_tokens)")
+
+
+# --------------------------------------------------------------------------
 # pending stubs (records not yet landed)
 # --------------------------------------------------------------------------
 
@@ -1163,14 +1267,6 @@ def add_pending_stubs(m: Macros) -> None:
     m.add_pending("osdiLiveCorrections", "C10 (live OSV workload)",
                   "the live-correction count is not yet in a committed record")
 
-    m.add_pending("osdiD160LlmDirectCoverageFixed", "D160-collegemsg (llm_direct tokenizer fix)",
-                  "manifest-llm-direct-fix-2026-09-14.json / rows-llm-direct-fix-2026-09-14.json "
-                  "have not landed -- job 212231 (real-tokenizer-aware budget, "
-                  "tgms/eval/baselines.py commits dab5c2a/8de040f) was running as of the "
-                  "benchmarks/d160-collegemsg-v1 commit; this record's own llm_direct coverage "
-                  "(osdiD160LlmDirectCarrying, 0/282) stands as first shipped and is not "
-                  "silently overwritten by this stub")
-
 
 # --------------------------------------------------------------------------
 # main
@@ -1191,6 +1287,7 @@ def main() -> int:
     compute_c7_dag(m)
     compute_c7_r18(m)
     compute_d160(m)
+    compute_d160_llm_direct_fix(m)
     add_pending_stubs(m)
 
     if FAILURES:
