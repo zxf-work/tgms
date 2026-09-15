@@ -646,12 +646,21 @@ Headline numbers, not a substitute for that README's caveats:
   artifacts of this harness, not necessarily engine findings.
 - **`digest_equal` is `null` (not computed), not `false`**: the final
   replay/digest-equivalence step never ran — 1,074,952 uncompacted batches
-  (this mix's writer ran effectively unthrottled) projected to ~268 PB of
+  (this mix's writer ran effectively unthrottled) projected to 280,791,798
+  MB, i.e. ≈280.8 TB (not the "~268 PB" this section previously said — a
+  units error, off by roughly 1000x; corrected 2026-09-15), of
   D-149-pathology manifests under replay, which the `--max-disk-mb=20000`
-  guard correctly refused to pay for. `verify_healthy=true` (the store's
-  own internal check) did pass. No `--max-disk-mb` this section would
-  plausibly recommend avoids this; the real requirement is seven orders of
-  magnitude larger.
+  guard correctly refused to pay for. The projection is
+  `scripts/longevity_run.py::cmd_run`'s own `projected_mb = (243.0 *
+  (total_batches ** 2)) / 1e6` — quadratic because `tgms.storage.eventlog.
+  replay` has no mid-replay compaction hook, so every one of a run's
+  uncompacted batches replays into its own manifest whose on-disk size
+  grows with how many generations have already accumulated, independent of
+  how often the *live* run itself compacted. `verify_healthy=true` (the
+  store's own internal check) did pass. No `--max-disk-mb` this section
+  would plausibly recommend avoids this; the real requirement (≈280.8 TB)
+  is roughly four orders of magnitude (~14,000x) larger than the
+  20,000 MB ceiling this run used.
 - **`errors observed` says 1; the real count is 249.** `summarize()`
   aggregates unlabeled per-life writer counters via `counter_latest`,
   which — for any run with writer restarts — keeps only the last life's
@@ -674,10 +683,40 @@ Headline numbers, not a substitute for that README's caveats:
   final `3a664a8` — the two-condition rule: torn record at/after the
   applied offset **and** `writer.lock` currently held) but *not* in this
   run's pinned, pre-fix commit `886805f`. **Reader 5 died the same way**
-  90 minutes later (offset 311080182) and is not named in the ledger's
-  `observed_in_the_wild` note, which only covers reader 6 — see the README
-  for why that note is incomplete on this point. Both recovered cleanly;
-  the store was undamaged.
+  90 minutes later (offset 311080182) and, as of this soak's own reporting,
+  was not named in the ledger's `observed_in_the_wild` note, which only
+  covered reader 6 (see below — this has since been fixed). Both recovered
+  cleanly; the store was undamaged.
+
+**2026-09-15 note — the reporting fixes above landed on `main`, after this
+soak's own record.** `benchmarks/longevity-v1/`'s 24h soak (measured at
+pinned commit `886805f`) surfaced three harness reporting defects in
+`scripts/longevity_run.py`/`scripts/longevity_report.py` itself, as
+opposed to engine findings: (1) `summarize()`'s writer-side counters
+(errors, appends, corrections, artifact checks/invalidations/refreshes)
+were aggregated via `counter_latest`, keyed without a life index, so a run
+with `--restart-every` set kept only the last writer life's counts —
+`error_count` read 1 instead of the true 249; counters are now summed
+across every life's own `writer_progress-<life>.json` snapshot
+(`summary.writer_totals_all_lives`). (2) A replay skipped by the disk
+guard left `digest_equal: null`, which `longevity_report.py` rendered as a
+plain `FAIL` indistinguishable from a checked-and-mismatched replay; the
+manifest now also carries a structured `summary.replay_skipped` (reason,
+total_batches, projected_mb, limit_mb) and the report prints `NOT COMPUTED
+(replay skipped: ...)` with an explicit "Gate E inconclusive on this row"
+note instead. (3) The writer's `do_append`/`do_correction` except-block
+incremented `writer_errors_total` without recording the exception type or
+message anywhere, unlike the reader path — the writer path now labels the
+counter by `type(e).__name__` and logs class + message + counter name to
+the writer life's own log and to `longevity_ledger.jsonl`. The
+`ops/failure_ledger.jsonl` `D-086-reader-torn-tail-race` entry's
+`observed_in_the_wild` note has also been extended to name both reader 6
+and reader 5's occurrences. None of this touches
+`benchmarks/longevity-v1/`'s own committed record, which stays exactly as
+measured at `886805f` — re-deriving its Gate E numbers with the fixed
+aggregation/report logic requires re-running `longevity_report.py` against
+the preserved `metrics.jsonl` still held on xzgpu, which is a separate,
+not-yet-done step.
 
 ---
 

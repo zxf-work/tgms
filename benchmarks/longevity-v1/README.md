@@ -66,12 +66,19 @@ LEDGER disk_guard_replay_skip: total_batches=1074952, projected_mb=280791798.0, 
 SKIPPING final replay: 1074952 uncompacted batches would project to ~280791798 MB of manifests (D-149's own O(batches^2) pathology), which would push --out over --max-disk-mb=20000; digest equivalence not checked this run.
 ```
 
-`do_replay` was `False` because the projected replay cost (~280.8 **million**
-MB, i.e. ~268 PB — D-149's O(batches²) manifest-growth pathology the
-harness's own module docstring names, applied to this run's real 1,074,952
-uncompacted batches at ~243 bytes/batch²) would have blown through
-`--max-disk-mb=20000` by roughly seven orders of magnitude, so the
-mandatory final replay/digest-equivalence step never ran. `digest_equal`
+`do_replay` was `False` because the projected replay cost (280,791,798 MB,
+i.e. ≈280.8 TB — not the "~268 PB" an earlier version of this note said, a
+units error off by roughly 1000x, corrected 2026-09-15; computed by
+`scripts/longevity_run.py::cmd_run`'s own `projected_mb = (243.0 *
+(total_batches ** 2)) / 1e6`, D-149's O(batches²) manifest-growth
+pathology the harness's own module docstring names — quadratic because
+`tgms.storage.eventlog.replay` has no mid-replay compaction hook, so every
+uncompacted batch in the *whole* event log replays into its own manifest
+regardless of how often this run's own `--compact-every-batches 500` fired
+live — applied to this run's real 1,074,952 uncompacted batches at ~243
+bytes/batch²) would have blown through `--max-disk-mb=20000` by roughly
+four orders of magnitude (~14,000x), so the mandatory final
+replay/digest-equivalence step never ran. `digest_equal`
 therefore stayed `None` — "not computed", never "computed and found equal
 to False" — and `manifest["summary"]["digest_equal"]` is `null` in the
 JSON, not `false`.

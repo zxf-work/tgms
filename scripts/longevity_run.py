@@ -792,9 +792,22 @@ def child_writer(cfg: dict[str, Any]) -> None:
             else:
                 do_append()
                 appends += 1
-        except Exception:                  # noqa: BLE001 — recorded, not raised
+        except Exception as e:              # noqa: BLE001 — recorded, not raised
             errors += 1
-            metrics.counter("writer_errors_total")
+            # Labeled by exception type, like the reader path already does
+            # (child_reader's reader_errors_total carries error=type(e).__name__)
+            # — the writer path did not before this fix, so the soak's 249
+            # errors had no recoverable cause (benchmarks/longevity-v1/
+            # README.md's own "errors observed" section). The ledger entry
+            # (out_dir/longevity_ledger.jsonl, shared across every writer
+            # life) and this life's own stderr (folded into
+            # logs/writer-<life>.log by _spawn) both get the exception
+            # class and message so a future run's errors are diagnosable.
+            metrics.counter("writer_errors_total", error=type(e).__name__)
+            _write_ledger(store_path.parent, "writer_op_error",
+                          op=("correction" if is_corr else "append"),
+                          error_type=type(e).__name__, error_msg=str(e),
+                          life_progress_path=str(progress_path))
         else:
             commit_lat.append((time.perf_counter() - t0) * 1e3)
         batches += 1
@@ -1156,27 +1169,47 @@ def cmd_run(args: argparse.Namespace) -> int:
     # paying for it, using the same constant the docstring's own citation
     # implies (scripts/build_snb_store.py:70-90: 10,147 uncompacted
     # generations -> 25 GB of manifests, ~243 bytes/batch^2).
+    #
+    # This projection is deliberately keyed on the *raw* event-log batch
+    # count, not on how often the *live* run itself compacted
+    # (--compact-every-batches): `tgms.storage.eventlog.replay` (below) has
+    # no mid-replay compaction hook at all — it calls `adapter.begin()` /
+    # `apply_ops()` / `commit()` once per logged batch and nothing else, so
+    # a replay always materializes one uncompacted generation per batch in
+    # the *whole* log, regardless of what the original writer's own
+    # compaction cadence was. A live run compacting every 500 batches does
+    # not make its replay any cheaper — replay re-derives the store from
+    # the event log alone, which remembers every batch, compacted or not.
+    # So `total_batches` (the full event-log batch count) is exactly the
+    # right input here, not an approximation that ignores compaction.
     from tgms.storage.eventlog import EventLog as _EventLog
     from tgms.storage.eventlog import replay as replay_log
 
     total_batches = sum(1 for _ in _EventLog(live_store / "eventlog.jsonl").batches_from(0))
     do_replay = True
-    replay_skipped_reason: str | None = None
+    replay_skipped: dict[str, Any] | None = None
     if args.max_disk_mb is not None:
         projected_mb = (243.0 * (total_batches ** 2)) / 1e6
         current_mb = _dir_size_bytes(out_dir) / 1e6
         if current_mb + projected_mb > args.max_disk_mb:
             do_replay = False
-            replay_skipped_reason = "projected_replay_exceeds_limit"
+            replay_skipped = {
+                "reason": "projected_replay_exceeds_limit",
+                "total_batches": total_batches,
+                "projected_mb": round(projected_mb, 1),
+                "limit_mb": args.max_disk_mb,
+            }
             _write_ledger(out_dir, "disk_guard_replay_skip",
                           total_batches=total_batches,
                           projected_mb=round(projected_mb, 1),
                           current_mb=round(current_mb, 1), limit_mb=args.max_disk_mb)
             print(f"  SKIPPING final replay: {total_batches} uncompacted batches would "
-                  f"project to ~{projected_mb:.0f} MB of manifests (D-149's own "
-                  f"O(batches^2) pathology), which would push --out over "
-                  f"--max-disk-mb={args.max_disk_mb:.0f}; digest equivalence not "
-                  f"checked this run.", flush=True)
+                  f"project to ~{projected_mb:.0f} MB (~{projected_mb / 1e6:.1f} TB) of "
+                  f"manifests (D-149's own O(batches^2) pathology; this projection is "
+                  f"exact regardless of the live run's own --compact-every-batches, "
+                  f"since tgms.storage.eventlog.replay never compacts mid-replay), "
+                  f"which would push --out over --max-disk-mb={args.max_disk_mb:.0f}; "
+                  f"digest equivalence not checked this run.", flush=True)
 
     replay_digest: str | None = None
     digest_equal: bool | None = None
@@ -1210,8 +1243,15 @@ def cmd_run(args: argparse.Namespace) -> int:
         "final_stats": final_stats,
         "recoveries": recoveries, "unexpected_writer_deaths": unexpected_writer_deaths,
         "reader_restarts": reader_restart_count,
+        # `digest_equal` stays `None` ("not computed") rather than being
+        # coerced to `False` ("computed and found unequal") whenever the
+        # disk guard skips the replay step — `replay_skipped` is the only
+        # place that distinguishes those two very different outcomes, and
+        # scripts/longevity_report.py must read it before treating a `None`
+        # digest_equal as a FAIL. `None` when the replay ran (whether or not
+        # digests matched).
         "digest_equal": digest_equal,
-        "replay_skipped_reason": replay_skipped_reason,
+        "replay_skipped": replay_skipped,
         "total_batches": total_batches,
     })
 
@@ -1334,17 +1374,57 @@ def summarize(out_dir: Path, metrics_path: Path, t_start: float, end_at: float,
                             key=lambda p: int(p.stem.rsplit("-", 1)[-1]))
     writer_prog = (_read_json(progress_files[-1]) or {}) if progress_files else {}
 
+    # --- writer counters: life-summed, not counter_latest ---------------- #
+    # `child_writer`'s own accumulators (`errors`, `appends`,
+    # `corrections_applied`, `corrections_skipped`, and the checker
+    # thread's `checks`/`invalidations`/`refreshes`) start at 0 in every
+    # fresh writer process ("life") and are mirrored into the shared
+    # metrics sink as *unlabeled* counters (no life index in the label
+    # set) — so `counter_latest` above, keyed only on (name, labels),
+    # collapses every life onto one key and keeps only the sample with the
+    # latest timestamp, i.e. the last life's own count. For any run with
+    # `--restart-every` set this silently discards every earlier life's
+    # counters (see benchmarks/longevity-v1/README.md's "errors observed"
+    # section: 42 lives, manifest said 1, the true sum was 249).
+    #
+    # Each life's own last-written `writer_progress-<life>.json` (one file
+    # per life, already written by `child_writer` regardless of whether
+    # that life ended cleanly or was killed mid-flight — the last periodic
+    # flush before a kill is still that life's true final count, since
+    # these are monotonic non-negative accumulators within a life) carries
+    # exactly what counter_latest was missing. Summing each life's own
+    # last snapshot, one term per life, gives the true run total.
+    life_progress = [_read_json(p) or {} for p in progress_files]
+
+    def life_summed(key: str) -> int:
+        return int(sum(p.get(key, 0) or 0 for p in life_progress))
+
+    writer_errors_life_summed = life_summed("errors")
+    writer_totals_all_lives = {
+        "errors": writer_errors_life_summed,
+        "appends": life_summed("appends"),
+        "corrections_applied": life_summed("corrections_applied"),
+        "corrections_skipped": life_summed("corrections_skipped"),
+        "artifact_checks": life_summed("checks"),
+        "artifact_invalidations": life_summed("invalidations"),
+        "artifact_refreshes": life_summed("refreshes"),
+        "lives": len(life_progress),
+    }
+
     reader_done_total = int(counter_sum("queries_total"))
     reader_errors_total = int(counter_sum("reader_errors_total"))
-    writer_errors_total = int(counter_sum("writer_errors_total"))
 
     recoveries_recorded = _read_jsonl(recoveries_path)
     unexpected_recoveries = sum(1 for r in recoveries_recorded if r.get("kind") == "unexpected")
-    error_count = writer_errors_total + reader_errors_total + unexpected_recoveries
+    error_count = writer_errors_life_summed + reader_errors_total + unexpected_recoveries
 
     return {
         "wall_s": round(time.time() - t_start, 1),
+        # `writer_final` is the LAST life's own final progress snapshot
+        # only — never a run total (see writer_totals_all_lives, which is
+        # summed across every life, for the true totals).
         "writer_final": writer_prog,
+        "writer_totals_all_lives": writer_totals_all_lives,
         "reader_queries_total": reader_done_total,
         "reader_errors_total": reader_errors_total,
         "reader_restarts_recorded": len(_read_jsonl(reader_restarts_path)),
