@@ -525,6 +525,22 @@ in-memory record volume for that step, not the known commit-path
 memory-growth defect under repair on `main` (irrelevant here regardless:
 this harness opens the store read-only and issues no commits).
 
+**2026-09-15 — harness fix: `dev_host_note` is no longer hard-coded.** The
+`dev_host_note` text quoted earlier in this section
+("**This section is protocol only — no numbers**... a dev-host run is for
+functional verification...") was written unconditionally into every
+manifest `scripts/eval_overload.py` produced, regardless of which host ran
+it — so the calibrated xzgpu run of record just above carried a disclaimer
+that was false for it. Fixed for runs from here on: `dev_host_note` is
+`None` unless a caller explicitly passes `--dev-host-note`, and every
+manifest now carries a required `provenance` string (`--provenance`; no
+silent default — `--dry-run` supplies its own dev-host provenance
+automatically). The three 2026-09-15 manifests predate this fix and are
+left byte-identical, still carrying the old hard-coded text; see
+`benchmarks/overload-v1/README.md`'s "Note on `dev_host_note`" for how to
+read that discrepancy against the `machine.host` field and the
+coordinator's plan, which scores them as the calibrated run regardless.
+
 ## §24 The longevity harness (2026-09-13)
 
 P4.5 of `docs/design/M5_EXECUTION_PLAN_2026-08-27.md` §7 — "the phase's

@@ -138,6 +138,25 @@ attributable to any specific line by this method and is most plausibly
 native-heap/allocator behavior outside `tracemalloc`'s visibility, not
 confirmed as either harness or service code.
 
+## Note on `dev_host_note`
+
+Every manifest listed below (`overload-2026-09-15.json`, `-rep2`, and
+`-recovery-lowrate.json`) carries a `dev_host_note` field reading
+"measured on a development host for functional verification ... NOT a
+reported benchmark result ...". That text was hard-coded into every
+manifest `scripts/eval_overload.py` produced, regardless of which host
+ran it — it is not an assessment of this run in particular, and it reads
+as false here: each manifest's own `machine.host` field says `"xzgpu"`
+(40 CPUs, 93 GB RAM, quiet-host verified — see Environment above), and
+the coordinator's plan scores these three manifests as **P-OV1's
+calibrated run**, not a dev-host smoke test. The harness has since been
+fixed (commit `8c125f9`, "eval_overload: require explicit --provenance,
+drop hard-coded dev_host_note"): `dev_host_note` is now emitted only when
+a caller explicitly passes `--dev-host-note`, and every manifest carries
+a required `provenance` string instead of relying on an unconditional
+default. The records here predate that fix and are left byte-identical —
+this paragraph is the correction, not a rewrite of the data.
+
 ## Files
 
 - `overload-2026-09-15.json` / `.records.json` — rep1
