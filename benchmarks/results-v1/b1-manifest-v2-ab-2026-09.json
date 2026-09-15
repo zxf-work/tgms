@@ -64,9 +64,10 @@
  },
  "dataset": {
   "name": "ldbc-sf1-composite-merged-fk-initial-snapshot",
-  "digest": "d8ccf1970f67f657d7121b3586399d180c727e867055f1da7c73d73caebe67d1",
+  "digest": "8b4168aa72042193a13648a003acd308f23c59922c8a0cf39b79a31246d0d590",
   "digest_kind": "store_digest",
-  "digest_note": "sha256 of the sorted (relative_path, size) listing of every file under the initial_snapshot directory, recomputed this run (find -printf '%P %s' | sort | sha256sum) -- structurally identical corpus to v1's B1 A/B (v1's own recorded digest string is 62 hex chars, 2 short of a full sha256; that appears to be a copy/truncation artifact in the v1 record, not a corpus difference -- this run's value is the correctly-lengthed 64-hex digest)"
+  "digest_method": "sha256 of benchmarks/results-v1/b1-manifest-v2-ab-2026-09-logs/dataset-manifest.txt, a per-file manifest (one line per file, tab-separated relative_path/byte_size/mtime_utc_iso/sha256, sorted by path) generated on xzgpu 2026-09-15 over every file under initial_snapshot/ (find -type f | sort, then stat + sha256sum per file); recomputed independently of any prior recorded digest.",
+  "digest_note": "CORRECTED 2026-09-15: the digest this record originally carried (d8ccf1970f67f657d7121b3586399d180c727e867055f1da7c73d73caebe67d1) was not independently computed -- it is v1's own recorded digest (b1-manifest-ab-2026-09.json's 62-hex-char string, itself uncomputed/unverified) with the two characters 'd1' appended to reach 64 hex chars, confirmed by exact prefix match. This field now holds a real sha256 of a real per-file listing (see digest_method). Corpus-identity evidence: v1's -logs/ recorded only the CSV input path (identical string in both b1a-control.log and b1a-treatment.log, and identical to the path used for this v2 record) -- no file listing, sizes, or hashes were recorded by v1. Every file's mtime in the freshly-generated listing is 2022-04-26 (LDBC dataset generation time), years before either the v1 (2026-09-14) or v2 (2026-09-15) run, which is consistent with (but does not prove) the corpus being unmodified across both runs; v1's placeholder digest carries no evidentiary weight either way."
  },
  "result_digest": "6fef0c783e98e7b2a789716c22013406fb8d503f9485463953e89e35dc23afae",
  "protocol": {
