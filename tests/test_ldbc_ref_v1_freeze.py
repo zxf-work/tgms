@@ -1,13 +1,17 @@
 """`benchmarks/ldbc-ref-v1` — the frozen LDBC reference-correctness campaign
-(lane D1-prep, OSDI'27 Claim C9). tmp_path/in-memory only, seconds: this file
-never opens a store, never touches a network, and never requires the
-vendored LDBC Cypher trees to be checked out (they are not part of `main` —
-`benchmarks/ldbc-ref-v1/RUNBOOK.md` §1.1). It checks the frozen campaign's
-own contract: the yaml parses, its 24 template ids resolve to a plan file on
-disk and to the vendored-cypher filename the reference runner's own naming
-convention would produce, the parameter-binding mechanism knows every one of
-those ids, and the documented result-manifest layout (RUNBOOK.md §9)
-validates against `benchmarks/schema/result_manifest.schema.json`.
+(lane D1-prep/D1-fix, OSDI'27 Claim C9). tmp_path/in-memory only, seconds:
+this file never opens a store and never touches a network. As of lane D1-fix
+(2026-09-14) the vendored LDBC Cypher trees (`external_workloads/ldbc/bi/neo4j/`,
+`external_workloads/ldbc/interactive_v1/cypher/`) are on `main`
+(`external_workloads/ldbc/README.md`), so a handful of tests below exercise
+`ldbc_reference_run.run_all()` against the real vendored `.cypher` files with
+a fake, no-network `neo4j` session injected — still no driver install, no
+Neo4j instance, no store. It checks the frozen campaign's own contract: the
+yaml parses, its 24 template ids resolve to a plan file on disk and to the
+vendored-cypher filename the reference runner's own naming convention would
+produce, the parameter-binding mechanism knows every one of those ids, and
+the documented result-manifest layout (RUNBOOK.md §9) validates against
+`benchmarks/schema/result_manifest.schema.json`.
 """
 
 from __future__ import annotations
@@ -26,6 +30,10 @@ RUNBOOK_PATH = ROOT / "benchmarks" / "ldbc-ref-v1" / "RUNBOOK.md"
 PLANS_DIR = ROOT / "benchmarks" / "tgir-v1" / "plans"
 SCHEMA_PATH = ROOT / "benchmarks" / "schema" / "result_manifest.schema.json"
 CONTRACTS_PATH = ROOT / "tests" / "fixtures" / "ldbc_ref" / "contracts.json"
+
+BI_CYPHER_DIR = ROOT / "external_workloads" / "ldbc" / "bi" / "neo4j" / "queries"
+IV_CYPHER_DIR = (ROOT / "external_workloads" / "ldbc" / "interactive_v1"
+                / "cypher" / "queries")
 
 SCRIPTS = ROOT / "scripts"
 if str(SCRIPTS) not in sys.path:
@@ -118,18 +126,14 @@ def test_bi6_uses_the_v2_artifact_not_the_v1_evidence_file(campaign):
 # vendored tree itself, which is not part of this checkout — RUNBOOK §1.1)  #
 # --------------------------------------------------------------------------- #
 
-#: `scripts/ldbc_reference_run.py`'s `_IS_NUM`/`_IC_NUM` tables, as they
-#: exist *today* -- deliberately not extended here. IS1/IS4/IS5 are absent
-#: from `_IS_NUM` (RUNBOOK.md §3.1's documented gap): they were added to the
-#: parameter binder (`ldbc_snb_params.IV_SOURCES`) but never to the
-#: reference runner's filename table, so `_default_cypher_name` raises for
-#: them today. This is asserted below as a known, load-bearing limitation --
-#: not a design fact this file invents, but the shipped module's own
-#: behaviour, pinned so a silent fix (or regression) shows up as a test
-#: change instead of surprising the xzgpu lane mid-run.
-_KNOWN_MISSING_FROM_IS_NUM = {"IS1", "IS4", "IS5"}
-
-
+#: `scripts/ldbc_reference_run.py`'s `_IS_NUM`/`_IC_NUM` tables. RUNBOOK.md
+#: §3.1 documented a gap here -- IS1/IS4/IS5 were added to the parameter
+#: binder (`ldbc_snb_params.IV_SOURCES`) but not to this filename table, so
+#: `_default_cypher_name` raised `KeyError` for them. Lane D1-fix
+#: (2026-09-14) closed that gap in `ldbc_reference_run.py`'s `_IS_NUM`; this
+#: test now asserts the fix -- every one of the 24 campaign template ids
+#: resolves through `_default_cypher_name` with no exception, consistently
+#: with the plan artifacts' `provenance.reference_cypher` fields.
 @pytest.mark.parametrize(
     "template_id",
     [t for t in yaml.safe_load(CAMPAIGN_PATH.read_text())["templates"]],
@@ -139,16 +143,17 @@ def test_cypher_field_matches_the_reference_runners_naming_convention(template_i
     t = template_id  # parametrize handed us the whole dict
     pid = t["id"]
     expected_basename = Path(t["cypher"]).name
-    if pid in _KNOWN_MISSING_FROM_IS_NUM:
-        with pytest.raises(KeyError):
-            R._default_cypher_name(pid)
-        # the campaign file still records the filename the convention
-        # *would* produce once RUNBOOK.md §3.1's fix lands -- check that by
-        # hand, the same way _default_cypher_name would for a present entry
-        n = {"IS1": 1, "IS4": 4, "IS5": 5}[pid]
-        assert expected_basename == f"interactive-short-{n}.cypher"
-        return
     assert R._default_cypher_name(pid) == expected_basename, pid
+
+
+def test_is1_is4_is5_no_longer_raise_keyerror():
+    """The specific regression RUNBOOK.md §3.1 named: `run_all()` used to
+    raise `KeyError: no known vendored filename convention` for these three
+    ids. Pinned here by name so a future edit that re-narrows `_IS_NUM`
+    fails loudly instead of silently reopening the gap."""
+    assert R._default_cypher_name("IS1") == "interactive-short-1.cypher"
+    assert R._default_cypher_name("IS4") == "interactive-short-4.cypher"
+    assert R._default_cypher_name("IS5") == "interactive-short-5.cypher"
 
 
 def test_bi10_is_the_only_template_flagged_as_needing_apoc(campaign):
@@ -250,3 +255,51 @@ def test_gates_reference_the_real_schema_path(campaign):
     assert campaign["gates"]["G-R2_record_validates"]["schema"] == \
         "benchmarks/schema/result_manifest.schema.json"
     assert SCHEMA_PATH.is_file()
+
+
+# --------------------------------------------------------------------------- #
+# every campaign template id resolves through the runner's own tables, end   #
+# to end, against the real vendored .cypher files now on `main` -- no        #
+# driver install, no Neo4j instance, no store: a fake session stands in for  #
+# the real `neo4j` driver session (RUNBOOK.md's own module docstring: the    #
+# small surface `run_query` uses is `.run(query, params) -> Result` with     #
+# `.keys()` + iteration).                                                    #
+# --------------------------------------------------------------------------- #
+
+class _FakeResult:
+    def keys(self):
+        return []
+
+    def __iter__(self):
+        return iter(())
+
+
+class _FakeSession:
+    def run(self, cypher_text, params):  # noqa: ARG002 -- fixed fake surface
+        assert isinstance(cypher_text, str) and cypher_text  # file was read
+        return _FakeResult()
+
+
+def test_every_campaign_template_id_resolves_through_run_all(campaign):
+    """RUNBOOK.md §3.1's gap, closed: every one of the 24 ids must resolve to
+    an existing vendored `.cypher` file and run with no `"error"` key in the
+    result -- not just `_default_cypher_name` not raising (the parametrized
+    test above), but the full `run_all()` path a real xzgpu invocation takes,
+    split into the same two `--cypher-dir` invocations RUNBOOK.md §5.3
+    documents."""
+    ids = [t["id"] for t in campaign["templates"]]
+    bi_ids = [pid for pid in ids if pid.startswith("BI")]
+    iv_ids = [pid for pid in ids if not pid.startswith("BI")]
+    assert bi_ids and iv_ids
+
+    params_doc = {"rows": {pid: {"cypher": {}} for pid in ids}}
+    session = _FakeSession()
+
+    bi_results = R.run_all(params_doc, BI_CYPHER_DIR, session, plan_ids=bi_ids)
+    iv_results = R.run_all(params_doc, IV_CYPHER_DIR, session, plan_ids=iv_ids)
+
+    errors = {pid: r["error"] for pid, r in {**bi_results, **iv_results}.items()
+             if "error" in r}
+    assert errors == {}
+    assert set(bi_results) == set(bi_ids)
+    assert set(iv_results) == set(iv_ids)
