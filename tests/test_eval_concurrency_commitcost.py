@@ -15,9 +15,11 @@ explained.
 
 from __future__ import annotations
 
+import argparse
 import importlib.util
 import statistics
 import sys
+import types
 from pathlib import Path
 
 import pytest
@@ -159,3 +161,93 @@ def test_dir_entry_counts_reads_seg_and_manifests_subdirs(tmp_path):
 def test_dir_entry_counts_is_zero_for_a_store_that_has_not_opened_yet(tmp_path):
     counts = CC._dir_entry_counts(tmp_path / "native")
     assert counts == {"seg": 0, "manifests": 0}
+
+
+# --------------------------------------------------------------------------
+# the 2026-09-15 chain-format guard (`_check_chain_format`) -- these need the
+# native engine extension actually built, unlike everything above.
+# --------------------------------------------------------------------------
+
+FORMAT2_FIXTURE = ROOT / "tests" / "fixtures" / "format2_store"
+
+
+def _legacy_store_copy(tmp_path: Path):
+    """A writable copy of the vendored format-2 fixture `test_manifest_
+    format2.py` also uses (built at 89c98b3, before format 3) -- copied
+    rather than opened in place so a test failure never mutates the
+    committed fixture."""
+    import shutil
+
+    dst = tmp_path / FORMAT2_FIXTURE.name
+    shutil.copytree(FORMAT2_FIXTURE, dst)
+    return dst
+
+
+def test_check_chain_format_passes_on_a_fresh_store():
+    """`cmd_commitcost` always builds its own store fresh via `tgms.open` --
+    the guard must not reject the ordinary case."""
+    pytest.importorskip("tgms._engine", reason="native engine extension not built")
+    import tempfile
+
+    import tgms
+    from tgms import _engine
+
+    root = Path(tempfile.mkdtemp(prefix="tgms-cc-guard-")) / "s"
+    store = tgms.open(root, backend="native")
+    try:
+        got = CC._check_chain_format(store, allow_legacy=False)
+        assert got == _engine.MANIFEST_FORMAT_VERSION
+    finally:
+        store.close()
+
+
+def test_check_chain_format_refuses_a_downgraded_format2_store(tmp_path):
+    """The exact failure mode the B1-v2 A/B's 2026-09-15 correction found:
+    a store whose manifest chain is older than the loaded engine writes
+    must be refused, loudly, naming both format numbers -- not silently
+    timed as if it were current."""
+    pytest.importorskip("tgms._engine", reason="native engine extension not built")
+    from tgms import _engine
+    from tgms.storage.native import NativeAdapter
+
+    if not FORMAT2_FIXTURE.exists():
+        pytest.skip("format2_store fixture not present in this checkout")
+
+    root = _legacy_store_copy(tmp_path)
+    try:
+        adapter = NativeAdapter(root / "native")
+    except Exception as e:  # noqa: BLE001 -- "if it opens under the current
+        # engine": an incompatible fixture is a skip, not a failure, of this
+        # guard test -- test_manifest_format2.py is what pins compatibility.
+        pytest.skip(f"format2_store fixture did not open under this engine: {e}")
+
+    try:
+        assert adapter.manifest_format() == 2
+        fake_store = types.SimpleNamespace(adapter=adapter)
+
+        with pytest.raises(SystemExit) as excinfo:
+            CC._check_chain_format(fake_store, allow_legacy=False)
+        message = str(excinfo.value)
+        assert "2" in message
+        assert str(_engine.MANIFEST_FORMAT_VERSION) in message
+
+        # the escape hatch: explicitly allowed, the legacy format is
+        # returned rather than refused
+        assert CC._check_chain_format(fake_store, allow_legacy=True) == 2
+    finally:
+        adapter.close()
+
+
+def test_cmd_commitcost_records_the_chain_format_field():
+    """Every commitcost row must say which manifest chain format it ran
+    against -- the field the 2026-09-15 correction found missing entirely
+    from the B1-v2 A/B's records."""
+    pytest.importorskip("tgms._engine", reason="native engine extension not built")
+    from tgms import _engine
+
+    args = argparse.Namespace(
+        batch_sizes="1", seed_rows=50, commits=5, allow_legacy_chain=False)
+    rc, payload = CC.cmd_commitcost(args)
+    assert rc == 0
+    assert len(payload["records"]) == 1
+    assert payload["records"][0]["chain_format"] == _engine.MANIFEST_FORMAT_VERSION

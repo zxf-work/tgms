@@ -67,6 +67,8 @@ def _run_all_landed(mod):
     mod.compute_c1(m)
     mod.compute_c3(m)
     mod.compute_b1_v2(m)
+    mod._void_b1_v2_treatment_provenance(m)
+    mod.compute_b1_v2e(m)
     mod.compute_c4(m)
     mod.compute_c5(m)
     mod.compute_c6(m)
@@ -120,6 +122,25 @@ FROZEN_LANDED_VALUES = {
     "osdiB1v2OpenTreatmentGeneration": "11{,}029",
     "osdiB1v2BuildOpsPerSecRatioAt2p5M": "2.10",
     "osdiB1v2OpenComponentStatus": "not computed",
+    "osdiB1v2eTreatmentCommit": "e5d4171",
+    "osdiB1v2eTotalDecileTreatment": "1.017",
+    "osdiB1v2eTotalDecileControl": "1.696",
+    "osdiB1v2eResidualFirstUs": "33.06",
+    "osdiB1v2eResidualLastUs": "30.38",
+    "osdiB1v2eP50TreatmentMs": "3.365",
+    "osdiB1v2eP50ControlMs": "4.704",
+    "osdiB1v2eP50Paired": "0.715",
+    "osdiB1v2eOpenComponentMs": "87.06",
+    "osdiB1v2eOpenCheckpointMs": "42.124",
+    "osdiB1v2eOpenMerkleVerifyMs": "40.204",
+    "osdiB1v2eOpenStateBuildMs": "1.828",
+    "osdiB1v2eOpenDeltaReplayMs": "2.899",
+    "osdiB1v2eOpenDictionaryMs": "1066.5",
+    "osdiB1v2eOpenTotalMs": "1191.8",
+    "osdiB1v2eOpenGeneration": "10{,}365",
+    "osdiB1v2eControlOpenStatus": "confounded (concurrent backup transfer)",
+    "osdiB1v2eManifestBytesTreatment": "1592",
+    "osdiB1v2eManifestBytesControl": "1565",
     "osdiVhRss": "1.259",
     "osdiVhWall": "1.87",
     "osdiVhRatio": "7.32",
@@ -332,6 +353,110 @@ def test_osdi_b1v2_open_component_status_is_a_text_macro_not_a_number(tmp_path):
     values = {name: value for name, value, _ in m.items}
     status = values["osdiB1v2OpenComponentStatus"]
     assert status == "not computed"
+    with pytest.raises(ValueError):
+        float(status)
+
+
+# --------------------------------------------------------------------------
+# osdi_paper_macros.py: B1-v2e (chain-format correction) macros
+# --------------------------------------------------------------------------
+
+def test_b1_v2_treatment_provenance_is_voided_without_changing_values(tmp_path):
+    """The 2026-09-15 correction found the v2 A/B's commit-cost treatment
+    reps measured a format-2 chain under the format-3 binary. The frozen
+    v2 macro *values* must not move (they are what was actually measured,
+    including the mistake) -- only their provenance strings gain a void
+    notice pointing at osdiB1v2e*, and every other v2 macro (chain-open,
+    B1(a) bytes, the K-sweep manifest-decile-only figures) is untouched."""
+    mod = _load("osdi_paper_macros")
+    m = mod.Macros()
+    mod.compute_b1_v2(m)
+    before = {name: value for name, value, _ in m.items}
+    mod._void_b1_v2_treatment_provenance(m)
+    after = {name: (value, provenance) for name, value, provenance in m.items}
+
+    voided = {
+        "osdiB1v2TotalDecileTreatment", "osdiB1v2ManifestDecileTreatment",
+        "osdiB1v2ManifestDecileK128", "osdiB1v2ManifestDecileK1024",
+        "osdiB1v2P50TreatmentMs", "osdiB1v2P50Paired",
+    }
+    for name in voided:
+        value, provenance = after[name]
+        assert value == before[name], f"{name}: value must not change"
+        assert "VOID AS A FORMAT-3 MEASUREMENT" in provenance
+        assert "osdiB1v2e" in provenance
+
+    untouched = {
+        "osdiB1v2ControlCommit", "osdiB1v2TreatmentCommit",
+        "osdiB1v2BytesControlMB", "osdiB1v2BytesTreatmentMB",
+        "osdiB1v2TotalDecileControl", "osdiB1v2ManifestDecileControl",
+        "osdiB1v2P50ControlMs", "osdiB1v2OpenControlMs", "osdiB1v2OpenTreatmentMs",
+    }
+    for name in untouched:
+        value, provenance = after[name]
+        assert value == before[name]
+        assert "VOID" not in provenance
+
+
+def test_tampered_b1_v2e_manifest_digest_mismatch_fails(tmp_path):
+    """Unlike B1-v2's own manifest (sha256 of its *own* `measurements`
+    block), the v2e record's `result_digest` is the sha256 of the raw
+    records *file's bytes* -- editing the raw file without recomputing that
+    digest into the summary manifest must be caught before any B1-v2e
+    macro trusts a number out of it."""
+    mod = _load("osdi_paper_macros")
+    raw = json.loads(mod.B1_V2E_RAW.read_text(encoding="utf-8"))
+    raw["cell_b_commitcost"]["treatment_summary"]["phase_p50_us_total_us_median"] = 9999
+    tampered_raw = tmp_path / "b1-manifest-v2e-remeasure-2026-09-raw.json"
+    tampered_raw.write_text(json.dumps(raw), encoding="utf-8")
+
+    mod.B1_V2E_RAW = tampered_raw
+    m = mod.Macros()
+    mod.compute_b1_v2e(m)
+    assert mod.FAILURES, "an edited raw record must fail the sha256 digest check " \
+        "against the summary manifest's own result_digest"
+    assert any("digest" in f.lower() for f in mod.FAILURES)
+
+
+def test_tampered_b1_v2e_raw_manifest_bytes_fails_even_with_a_patched_digest(tmp_path):
+    """Same discipline as the D160 rows-digest tests: patch `result_digest`
+    to match a tampered raw file so the digest check alone would pass, and
+    confirm the format-evidence macros (`osdiB1v2eManifestBytesTreatment`/
+    `Control`) are still caught -- because they are recomputed per rep and
+    cross-checked for internal agreement, not read off the manifest's own
+    summary fields."""
+    mod = _load("osdi_paper_macros")
+    raw = json.loads(mod.B1_V2E_RAW.read_text(encoding="utf-8"))
+    raw["cell_b_commitcost"]["treatment_reps_full"][0]["first_decile_us"]["manifest_bytes"] = 1565
+    tampered_bytes = json.dumps(raw).encode("utf-8")
+    tampered_raw = tmp_path / "b1-manifest-v2e-remeasure-2026-09-raw.json"
+    tampered_raw.write_bytes(tampered_bytes)
+
+    manifest = json.loads(mod.B1_V2E_MANIFEST.read_text(encoding="utf-8"))
+    manifest["result_digest"] = hashlib.sha256(tampered_bytes).hexdigest()
+    tampered_manifest = tmp_path / "b1-manifest-v2e-remeasure-2026-09.json"
+    tampered_manifest.write_text(json.dumps(manifest), encoding="utf-8")
+
+    mod.B1_V2E_RAW = tampered_raw
+    mod.B1_V2E_MANIFEST = tampered_manifest
+    m = mod.Macros()
+    mod.compute_b1_v2e(m)
+    assert mod.FAILURES, "a rep whose manifest_bytes disagrees with the other two " \
+        "must fail the format-evidence constancy check even with a self-consistent digest"
+    assert any("1{,}592" in f or "1592" in f or "manifest_bytes" in f.lower()
+               for f in mod.FAILURES)
+
+
+def test_osdi_b1v2e_control_open_status_is_a_text_macro_not_a_number():
+    """Cell (a)'s control open time was measured under a concurrent phase-2
+    backup transfer and is flagged confounded, not a comparable number --
+    the macro must render as that literal text, never a placeholder ratio."""
+    mod = _load("osdi_paper_macros")
+    m = mod.Macros()
+    mod.compute_b1_v2e(m)
+    values = {name: value for name, value, _ in m.items}
+    status = values["osdiB1v2eControlOpenStatus"]
+    assert status == "confounded (concurrent backup transfer)"
     with pytest.raises(ValueError):
         float(status)
 
