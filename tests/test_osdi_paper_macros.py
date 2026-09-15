@@ -70,6 +70,7 @@ def _run_all_landed(mod):
     mod.compute_b1_v2(m)
     mod._void_b1_v2_treatment_provenance(m)
     mod.compute_b1_v2e(m)
+    mod.compute_b1_co7(m)
     mod.compute_c4(m)
     mod.compute_c5(m)
     mod.compute_c6(m)
@@ -146,6 +147,26 @@ FROZEN_LANDED_VALUES = {
     "osdiB1v2eControlOpenStatus": "confounded (concurrent backup transfer)",
     "osdiB1v2eManifestBytesTreatment": "1592",
     "osdiB1v2eManifestBytesControl": "1565",
+    "osdiB1co7TreatmentCommit": "ebe1dc2",
+    "osdiB1co7CheckpointReadParseMs": "12.67",
+    "osdiB1co7MerkleVerifyMs": "34.86",
+    "osdiB1co7StateBuildMs": "5.94",
+    "osdiB1co7DeltaReplayMs": "6.26",
+    "osdiB1co7ComponentMs": "59.72",
+    "osdiB1co7DictionaryOpenMs": "1092.7",
+    "osdiB1co7TotalMs": "1155.0",
+    "osdiB1co7Generation": "10{,}116",
+    "osdiB1co7DeltaCount": "388",
+    "osdiB1co7CheckpointGeneration": "9728",
+    "osdiB1co7StateBuildPerDeltaUs": "15.3",
+    "osdiB1co7DeltaReplayPerDeltaUs": "16.1",
+    "osdiB1co7ControlOpenMs": "10100.2",
+    "osdiB1co7ControlGeneration": "10{,}042",
+    "osdiB1co7ControlDeltaCount": "314",
+    "osdiB1co7ControlPerDeltaMs": "28.7",
+    "osdiB1co7OpenRatio": "0.114",
+    "osdiB1WorstPhaseOpenTreatmentMs": "63.6",
+    "osdiB1WorstPhaseOpenControlS": "14.7",
     "osdiVhRss": "1.259",
     "osdiVhWall": "1.87",
     "osdiVhRatio": "7.32",
@@ -521,6 +542,101 @@ def test_osdi_b1v2e_p50_macros_distinguish_engine_commit_from_wall_clock(tmp_pat
     assert values["osdiB1v2eP50TreatmentMs"] != values["osdiB1v2eWallP50TreatmentMs"]
     assert values["osdiB1v2eP50ControlMs"] != values["osdiB1v2eWallP50ControlMs"]
     assert values["osdiB1v2eP50Paired"] != values["osdiB1v2eWallPaired"]
+
+
+def test_tampered_b1_co7_raw_digest_mismatch_fails(tmp_path):
+    """Same digest discipline as B1-v2e: the co7 record's result_digest is
+    the sha256 of the raw records file's own bytes. Editing the raw file
+    without recomputing that digest into the summary manifest must be
+    caught before any osdiB1co7* macro trusts a number out of it."""
+    mod = _load("osdi_paper_macros")
+    raw = json.loads(mod.B1_CO7_RAW.read_text(encoding="utf-8"))
+    raw["cell_a_chain_open"]["treatment"]["open_phase_p50_us"]["dictionary_open_us"] = 1
+    tampered_raw = tmp_path / "b1-manifest-co7-chain-open-2026-09-raw.json"
+    tampered_raw.write_text(json.dumps(raw), encoding="utf-8")
+
+    mod.B1_CO7_RAW = tampered_raw
+    m = mod.Macros()
+    mod.compute_b1_co7(m)
+    assert mod.FAILURES, "an edited raw record must fail the sha256 digest check " \
+        "against the summary manifest's own result_digest"
+    assert any("digest" in f.lower() for f in mod.FAILURES)
+
+
+def test_tampered_b1_co7_raw_component_fails_even_with_a_patched_digest(tmp_path):
+    """Patch result_digest to match a tampered raw file (so the digest check
+    alone would pass) and confirm a precomputed aggregate figure that
+    disagrees with the per-rep data underneath it is still caught -- because
+    every osdiB1co7* component is recomputed as a median of the 3
+    ``open_phase_us`` reps and cross-checked against the raw record's own
+    ``open_phase_p50_us`` aggregate, not read off that aggregate directly.
+    Only the aggregate field is edited here; the reps it should match are
+    left alone, so a generator that trusted the aggregate without
+    recomputing it would sail through."""
+    mod = _load("osdi_paper_macros")
+    raw = json.loads(mod.B1_CO7_RAW.read_text(encoding="utf-8"))
+    raw["cell_a_chain_open"]["treatment"]["open_phase_p50_us"]["state_build_us"] = 1234
+    tampered_bytes = json.dumps(raw).encode("utf-8")
+    tampered_raw = tmp_path / "b1-manifest-co7-chain-open-2026-09-raw.json"
+    tampered_raw.write_bytes(tampered_bytes)
+
+    manifest = json.loads(mod.B1_CO7_MANIFEST.read_text(encoding="utf-8"))
+    manifest["result_digest"] = hashlib.sha256(tampered_bytes).hexdigest()
+    tampered_manifest = tmp_path / "b1-manifest-co7-chain-open-2026-09.json"
+    tampered_manifest.write_text(json.dumps(manifest), encoding="utf-8")
+
+    mod.B1_CO7_RAW = tampered_raw
+    mod.B1_CO7_MANIFEST = tampered_manifest
+    m = mod.Macros()
+    mod.compute_b1_co7(m)
+    assert mod.FAILURES, "a precomputed aggregate that disagrees with the per-rep " \
+        "data underneath it must fail even with a self-consistent digest"
+    assert any("state_build_us" in f.lower() for f in mod.FAILURES)
+
+
+def test_osdi_b1_worst_phase_open_macros_are_arithmetic_on_measured_per_delta_costs():
+    """`osdiB1WorstPhaseOpenTreatmentMs`/`ControlS` are not measurements --
+    they project the co7 lane's measured per-delta manifest-chain costs
+    forward to K-1=511 deltas (the generation just before the next
+    checkpoint reset). Recompute both independently from the emitted
+    osdiB1co7* macro values and confirm the generator's own numbers agree,
+    proving the projection is arithmetic on those macros and not a separately
+    fabricated figure."""
+    mod = _load("osdi_paper_macros")
+    m = mod.Macros()
+    mod.compute_b1_co7(m)
+    values = {name: value for name, value, _ in m.items}
+
+    checkpoint_ms = float(values["osdiB1co7CheckpointReadParseMs"])
+    merkle_ms = float(values["osdiB1co7MerkleVerifyMs"])
+    state_build_per_delta_us = float(values["osdiB1co7StateBuildPerDeltaUs"])
+    delta_replay_per_delta_us = float(values["osdiB1co7DeltaReplayPerDeltaUs"])
+    control_per_delta_ms = float(values["osdiB1co7ControlPerDeltaMs"])
+
+    expected_trt_ms = (
+        checkpoint_ms + merkle_ms
+        + (state_build_per_delta_us + delta_replay_per_delta_us) * 511 / 1000
+    )
+    expected_ctl_s = control_per_delta_ms * 511 / 1000
+
+    assert float(values["osdiB1WorstPhaseOpenTreatmentMs"]) == pytest.approx(
+        expected_trt_ms, abs=0.1)
+    assert float(values["osdiB1WorstPhaseOpenControlS"]) == pytest.approx(
+        expected_ctl_s, abs=0.1)
+
+
+def test_osdi_b1_worst_phase_open_macros_have_derived_not_measured_provenance():
+    """The two projected-cost macros must carry provenance that says
+    'derived, not measured' rather than pointing at a raw record field --
+    a reader must not mistake this arithmetic for a fourth measurement."""
+    mod = _load("osdi_paper_macros")
+    m = mod.Macros()
+    mod.compute_b1_co7(m)
+    provenance = {name: prov for name, _, prov in m.items}
+    for name in ("osdiB1WorstPhaseOpenTreatmentMs", "osdiB1WorstPhaseOpenControlS"):
+        assert provenance[name].startswith("derived, not measured"), (
+            f"{name}: provenance must flag this as arithmetic, not a measurement, "
+            f"got {provenance[name]!r}")
 
 
 def test_tampered_fault_matrix_record_fails_the_frozen_expectation(tmp_path):
