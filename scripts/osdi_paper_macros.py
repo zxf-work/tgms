@@ -105,13 +105,28 @@ above, are emitted as PENDING stubs (see ``Macros.add_pending``) that
 raise a real LaTeX error (``\\errmessage``) if the paper ever expands one,
 rather than silently emitting a placeholder number.
 
-Usage:  $HOME/.venvs/tgms/bin/python scripts/osdi_paper_macros.py [--check]
+Usage:  $HOME/.venvs/tgms/bin/python scripts/osdi_paper_macros.py [--check | --check-only]
 
-``--check`` regenerates into memory and fails if the output on disk at
-``paper/osdi/generated/osdi-macros.tex`` would differ. Nothing under
-``paper/`` is committed (``paper/`` is gitignored publicly); this is the
-local convention this script and ``scripts/osdi_paper_figures.py`` share
-for that directory.
+Every mode first recomputes and verifies all macros (assert, do not trust,
+per the house rule above); a verification failure exits 1 regardless of
+flags. With no flag, the script writes
+``paper/osdi/generated/osdi-macros.tex`` unconditionally (creating
+``paper/osdi/generated/`` if needed). ``--check`` additionally regenerates
+that file when it is stale or missing -- e.g. a fresh worktree, or after a
+merge, whose gitignored ``paper/`` tree lags the committed records it is
+derived from -- and re-verifies the write, printing "regenerated" or "up to
+date"; it exits 0 once the file matches, never failing merely because the
+file was stale. ``--check-only`` (alias ``--no-write``) is the old strict
+contract: it never writes, and exits 1 with "stale generated file: ..." if
+the file would differ -- use this where a write is undesired (e.g. a CI
+gate). Nothing under ``paper/`` is committed (``paper/`` is gitignored
+publicly); this is the local convention this script and
+``scripts/osdi_paper_figures.py`` share for that directory. As of 2026-09
+no CI workflow invokes this script at all (nothing under ``.github/workflows/``
+references it) -- there is no committed generated file for CI to check
+staleness against, so CI's actual paper-side gate is just that this script
+and its test suite (``tests/test_osdi_paper_macros.py``) pass; ``--check-only``
+is provided for if/when a workflow starts calling it directly.
 """
 
 from __future__ import annotations
@@ -3171,8 +3186,22 @@ def add_pending_stubs(m: Macros) -> None:
 
 def main() -> int:
     ap = argparse.ArgumentParser()
-    ap.add_argument("--check", action="store_true", help="fail if output would change")
+    ap.add_argument(
+        "--check", action="store_true",
+        help=("verify every macro, then regenerate the .tex if it is stale "
+              "or missing and re-verify the write; exits 0 once the file "
+              "matches (this WRITES when stale -- use --check-only for a "
+              "read-only gate)"),
+    )
+    ap.add_argument(
+        "--check-only", "--no-write", dest="check_only", action="store_true",
+        help=("verify every macro and exit 1 if the generated .tex is stale "
+              "or missing, without writing anything -- the old strict "
+              "--check behavior, kept for CI"),
+    )
     args = ap.parse_args()
+    if args.check and args.check_only:
+        ap.error("--check and --check-only/--no-write are mutually exclusive")
 
     m = Macros()
     compute_c1(m)
@@ -3205,18 +3234,39 @@ def main() -> int:
     text = m.render()
     old = out_path.read_text(encoding="utf-8") if out_path.exists() else None
     changed = old != text
-    if changed and not args.check:
-        OUT_DIR.mkdir(parents=True, exist_ok=True)
-        out_path.write_text(text, encoding="utf-8")
-    if args.check and changed:
-        print(f"stale generated file: {out_path.name}", file=sys.stderr)
-        return 1
+
+    if args.check_only:
+        # today's strict contract: verify only, never write.
+        if changed:
+            print(f"stale generated file: {out_path.name}", file=sys.stderr)
+            return 1
+        status = "up to date"
+    elif args.check:
+        # verify, and heal a stale/missing file rather than just refusing --
+        # a fresh worktree or a merge that outran the gitignored paper/ tree
+        # is not a verification failure, it is just an unwritten file.
+        if changed:
+            OUT_DIR.mkdir(parents=True, exist_ok=True)
+            out_path.write_text(text, encoding="utf-8")
+            reread = out_path.read_text(encoding="utf-8")
+            if reread != text:
+                print(f"error: {out_path.name} did not verify after "
+                      "regeneration", file=sys.stderr)
+                return 1
+            status = "regenerated"
+        else:
+            status = "up to date"
+    else:
+        if changed:
+            OUT_DIR.mkdir(parents=True, exist_ok=True)
+            out_path.write_text(text, encoding="utf-8")
+        status = "wrote"
 
     landed = sum(1 for _, v, _ in m.items if not v.startswith("\\errmessage"))
     pending = len(m.items) - landed
     print(f"osdi_paper_macros: {landed} landed macros, {pending} pending stubs, "
           f"{CHECKS} verifications, all passed.")
-    print(f"  {'up to date' if args.check else 'wrote'}: {out_path}")
+    print(f"  {status}: {out_path}")
     return 0
 
 
