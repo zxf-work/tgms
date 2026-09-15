@@ -66,6 +66,8 @@ def trace_summary(plan: Plan, trace: Trace, results: ResultStore | None,
             line["result"] = excerpt
         elif rec.get("error"):
             line["error"] = rec["error"].get("error")
+            if rec.get("refused"):
+                line["refused"] = rec["refused"]
         parts.append(canonical_json(line))
     parts.append(canonical_json(
         {"final_answer": _truncate_for_prompt(

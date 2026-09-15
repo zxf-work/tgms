@@ -5,7 +5,12 @@
   depth — call_operator always validates).
 - Produces an execution trace: per step {step_id, op, resolved_args,
   result_digest, rows_returned, truncated, wall_ms, status} plus full results
-  in a content-addressed store on disk keyed by digest.
+  in a content-addressed store on disk keyed by digest. `refused:
+  "truncated_input"` marks a step the executor declined to dispatch — a
+  reducing `compute` whose input page was truncated (D-061); such a record
+  has no `wall_ms`/`result_digest`, and the plan's `answer_error` names it
+  as not completed. The plan's answer is never taken from an earlier step
+  in that case.
 - Failure policy: a failed step fails its dependents; independent branches
   still run; E_COST / E_NOT_FOUND return control to the planner repair loop.
 - Hard limits per plan: <= 12 steps, <= 60 s wall clock, <= 50k rows
@@ -222,7 +227,16 @@ class Executor:
                 # single-shot plan DAG cannot express — Session 4 measured
                 # 10 of 10 such repairs failing to converge. Advise only
                 # what a plan can actually do.
+                #
+                # `refused` is the machine-readable marker for this
+                # pre-dispatch refusal: `self.router.call` never runs, so
+                # this record carries no `wall_ms`/`result_digest`. The
+                # E_LIMIT code alone does not identify it — the wall-clock
+                # skip above shares the code (status "skipped", never
+                # dispatched) and so does the materialized-rows cap below
+                # (status "failed", but dispatched and carrying `wall_ms`).
                 rec.update(status="failed", upstream_truncated=True,
+                           refused="truncated_input",
                            error=LimitError(
                                f"compute {resolved['fn']} would reduce a "
                                f"truncated result to one number, which is a "

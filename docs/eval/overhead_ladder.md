@@ -104,6 +104,42 @@ exists so this harness runs with zero extra dependencies; treat `approx`
 numbers as size-of-payload proxies, not as a claim about what an LLM
 provider would actually bill.
 
+### Refused steps: `tool_calls` counts dispatched steps, not plan steps
+
+`Executor.run` (`tgms/agent/executor.py`) refuses to dispatch a step whose
+input page was truncated when that step is a `compute` with `fn` in
+`REDUCING_FNS` (count/sum/min/max/mean/median/ratio/diff/percent/topk):
+reducing a truncated page to one number produces a wrong number, not a
+partial one (D-061). The refusal happens **before** `ToolRouter.call` —
+which is where this harness's `CountingRouter` counts a tool call — so a
+plan whose trailing reducing step is refused reports rung 5's `tool_calls`
+smaller than `n_steps` by exactly the number of refused steps. This is why
+`campaign.yaml` falsifier (a) is worded over the number of **executed**
+steps rather than compared naively against `n_steps`.
+
+In the trace, a refused step is marked `status: "failed"`,
+`error.error: "E_LIMIT"`, `upstream_truncated: true`, and
+`refused: "truncated_input"`, and carries no `wall_ms`/`result_digest`
+(both are set only after the call is dispatched). The plan's
+`answer_error` then names the refused step as not completed — the answer
+is never silently taken from the truncated upstream step instead.
+
+Downstream of the refusal: rung 3's trace bytes include the refused
+record (with its long `E_LIMIT` advisory message) and no result for that
+step; rung 4's `mechanical_answer` for a `kind: count` answer spec still
+produces one claim, `{"type": "count", "value": None, "from": "s3.value",
+"evidence": ["s3"]}`, i.e. a claim citing the refused step; rung 5's
+`tokens.tool_response` sums only the payloads of steps with
+`status == "ok"`, so the refused step contributes nothing there either.
+
+ladder-v1's **p02-compiled-entity-and-version** and
+**p10-reachability-and-paths** hit exactly this on `stores/bitcoinotc` —
+see this README's rung-5 finding above (`tool_calls=2` against `n_steps=3`
+for both plans, identically across all seeds). A plan that wants the exact
+row count of a page that may truncate should read the producing step's
+`rows_total` field directly instead of running a trailing `compute(fn=count)`
+over it.
+
 ## Command line
 
 ```
@@ -146,3 +182,6 @@ exact on a known two-call plan (and *not* inflated by a step that never
 reached the router because its dependency failed); each `(rung, plan)`
 condition the orchestrator drives running in its own process (distinct
 pid); `--plans` accepting both a directory and a comma-separated list.
+Also covers rung 5's tool-call count excluding a trailing reducing
+`compute` the executor refused over a truncated page (`refused:
+"truncated_input"` in the trace).
