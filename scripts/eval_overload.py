@@ -63,6 +63,13 @@ from tgms.tools.server import ToolRouter  # noqa: E402
 
 SCHEMA_VERSION = "1.0.0"
 
+#: `--dry-run` is always a dev-host functional-verification run (a tiny
+#: synthetic store, ~1s), so it supplies its own provenance automatically
+#: instead of requiring the caller to pass `--provenance` for a run that
+#: was never going to be a reported benchmark result.
+DRY_RUN_PROVENANCE = ("dry-run: local functional verification against a "
+                     "tiny synthetic store; not a reported benchmark result")
+
 
 # --------------------------------------------------------------------------- #
 # open-loop scheduling                                                        #
@@ -241,7 +248,8 @@ def _machine_info() -> dict[str, Any]:
 def build_manifest(*, store_path: str, store_digest: str, op: str,
                    args: dict[str, Any], limits: Limits, steps: list[StepResult],
                    recovery: StepResult, dry_run: bool,
-                   records_path: str) -> dict[str, Any]:
+                   records_path: str, provenance: str,
+                   dev_host_note: str | None = None) -> dict[str, Any]:
     steps_json = [s.to_json() for s in steps]
     digest_src = json.dumps({"steps": steps_json, "recovery": recovery.to_json()},
                             sort_keys=True).encode()
@@ -265,11 +273,8 @@ def build_manifest(*, store_path: str, store_digest: str, op: str,
         "record": records_path,
         "steps": steps_json,
         "recovery": recovery.to_json(),
-        "dev_host_note": "measured on a development host for functional "
-                        "verification of the backpressure mechanism, per "
-                        "the task instruction this is NOT a reported "
-                        "benchmark result and carries no reproducibility "
-                        "claim beyond this host/run.",
+        "dev_host_note": dev_host_note,
+        "provenance": provenance,
     }
 
 
@@ -301,7 +306,8 @@ def render_table(steps: list[StepResult], recovery: StepResult) -> str:
 
 def run_sweep(store_path: str, client_counts: list[int], duration_s: float,
              rate_per_client: float, max_concurrent: int | None,
-             out_records: Path | None) -> dict[str, Any]:
+             out_records: Path | None, provenance: str,
+             dev_host_note: str | None = None) -> dict[str, Any]:
     store = tgms.open(store_path, read_only=True)
     uid = store.adapter.uids_for([0])[0]
     op, args = "entity_history", {"uid": uid, "limit": 5}
@@ -338,12 +344,14 @@ def run_sweep(store_path: str, client_counts: list[int], duration_s: float,
     manifest = build_manifest(store_path=store_path, store_digest=store_digest,
                               op=op, args=args, limits=limits, steps=steps,
                               recovery=recovery, dry_run=False,
-                              records_path=records_path_str)
+                              records_path=records_path_str,
+                              provenance=provenance,
+                              dev_host_note=dev_host_note)
     manifest["table"] = render_table(steps, recovery)
     return manifest
 
 
-def run_dry(tmp_dir: Path) -> dict[str, Any]:
+def run_dry(tmp_dir: Path, dev_host_note: str | None = None) -> dict[str, Any]:
     """A tiny, fast, self-contained sweep — no `stores/synth-300k` needed."""
     from tgms.data.synth import generate
 
@@ -356,7 +364,8 @@ def run_dry(tmp_dir: Path) -> dict[str, Any]:
     store.close()
 
     return run_sweep(str(store_dir), client_counts=[1, 2], duration_s=1.0,
-                     rate_per_client=20.0, max_concurrent=2, out_records=None)
+                     rate_per_client=20.0, max_concurrent=2, out_records=None,
+                     provenance=DRY_RUN_PROVENANCE, dev_host_note=dev_host_note)
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -371,18 +380,32 @@ def main(argv: list[str] | None = None) -> int:
     ap.add_argument("--out", default=None, help="write the manifest JSON here")
     ap.add_argument("--dry-run", action="store_true",
                     help="tiny synthetic store, ~1s total, no --store needed")
+    ap.add_argument("--provenance", default=None,
+                    help="required unless --dry-run: a short description of "
+                        "this run's provenance, e.g. 'calibrated run on "
+                        "xzgpu, quiet host verified' (no silent default -- "
+                        "a manifest with no provenance would be as "
+                        "misleading as one with the wrong provenance)")
+    ap.add_argument("--dev-host-note", default=None,
+                    help="explicit note marking this run as a dev-host "
+                        "functional-verification run and not a reported "
+                        "benchmark result; omitted (None) unless passed")
     args = ap.parse_args(argv)
 
     if args.dry_run:
         import tempfile
         with tempfile.TemporaryDirectory() as tmp:
-            manifest = run_dry(Path(tmp))
+            manifest = run_dry(Path(tmp), dev_host_note=args.dev_host_note)
     else:
         if not args.store:
             ap.error("--store is required unless --dry-run")
+        if not args.provenance:
+            ap.error("--provenance is required unless --dry-run")
         out_records = Path(args.out).with_suffix(".records.json") if args.out else None
         manifest = run_sweep(args.store, args.clients, args.duration_s,
-                             args.rate_per_client, args.max_concurrent, out_records)
+                             args.rate_per_client, args.max_concurrent, out_records,
+                             provenance=args.provenance,
+                             dev_host_note=args.dev_host_note)
 
     print(manifest.pop("table"))
     if args.out:
