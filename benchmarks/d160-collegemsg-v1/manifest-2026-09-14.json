@@ -1,0 +1,46 @@
+{
+  "schema_version": "1.0.0",
+  "git_commit": "64817fa0af0e0f7f4723645feee1105e292a4e75",
+  "timestamp_utc": "2026-09-14T23:59:20Z",
+  "machine": {
+    "host": "itiger07",
+    "platform": "Linux-5.14.0-427.31.1.el9_4.x86_64-x86_64-with-glibc2.34",
+    "cpus": 8,
+    "ram_gb": 128,
+    "gpu": "NVIDIA RTX 5000 Ada Generation, 32760 MiB"
+  },
+  "config": "configs/matrix-d160-collegemsg-4arm.yaml",
+  "seed": {
+    "value": null,
+    "reason": "campaign pools three seeds (0, 1, 2); see the additive `seeds` field and each row's own `seed`"
+  },
+  "seeds": [0, 1, 2],
+  "dataset": {
+    "name": "collegemsg",
+    "digest": "f80b506b3bce6e67e15659a08a49f9253f7fff5e6dcb935ed7390a44dc791ef6",
+    "digest_kind": "store_digest",
+    "digest_note": "sha256 of stores/collegemsg/store.duckdb, built via `tgms replay benchmarks/frozen-v1/collegemsg.eventlog.jsonl --store stores/collegemsg --backend duckdb`; eventlog sha256 e1d4f611ab5f60c552e0f22b0c36603eb060122a11deb465c656c20ab0ccc037 verified byte-identical between this worktree and the iTiger checkout before the store was built"
+  },
+  "result_digest": "02f3936a9be37ea195d878e63d96641c1e44b9bf1003c56b4d4966c7b8ce1005",
+  "protocol": {
+    "warmups": 0,
+    "reps": 3,
+    "ceilings": {
+      "max_repairs": 3,
+      "llm_direct_budget_tokens": 8000,
+      "duckdb_max_temp_mb": 4096,
+      "duckdb_memory_limit_gb": 96
+    }
+  },
+  "record": "benchmarks/d160-collegemsg-v1/rows-2026-09-14.json",
+  "provenance": {
+    "systems": ["ours", "b5", "b6e", "llm_direct"],
+    "task_set": "benchmarks/frozen-v1/suite-collegemsg.json test split (94 tasks)",
+    "model": "openai/Qwen/Qwen2.5-14B-Instruct-AWQ",
+    "n_rows": 1128,
+    "n_task_errors": 216,
+    "gate": "tgms.eval.plan_faults.GATED_VERDICTS == (\"unsupported\", \"unverifiable\") -- D-160, unchanged by this campaign",
+    "note": "Per-task results resume-cached across five submissions on the same out_dir (no result was recomputed once cached): 211581 (commit 92c63b9e4fccc6fbffa6d98f0666efd08e483b7a, OOM'd at 1:13:54 after producing 280 error-free rows: 94 ours + 94 b5 + 65/94 b6e, seed 0) -> 211705 (tripped the frozen-split guard, 0 new rows) -> 211890 (deployment-sequencing bug, 0 new rows) -> 211978 (correct code, wrong provenance stamp, cancelled for that reason after producing rows up to 420, all retained) -> 212000 (commit 64817fa0af0e0f7f4723645feee1105e292a4e75, completed cleanly, exit 0, wall 02:16:38, produced the remaining 708 rows to reach 1128/1128). The gate logic (GATED_VERDICTS) and every metric definition were unchanged across this whole span; only defensive/infrastructure code changed (DuckDB temp/memory bounds, --mem, log placement, commit stamping) -- see scripts/d160_collegemsg.slurm's own postmortem comments for the full sequence.",
+    "known_limitation": "llm_direct's 216 task_error rows (72/94 per seed, all `litellm.ContextWindowExceededError`) were produced under the PRE-fix whitespace-token budget approximation, which undercounts real BPE tokens 3-7x on this corpus (samples: 24,910-54,320 real input tokens against a 28,672 model limit). A separate one-arm re-run under the fix (real-tokenizer-aware budget, tgms/eval/baselines.py commit dab5c2a) is tracked in benchmarks/d160-collegemsg-v1/manifest-llm-direct-fix-2026-09-14.json. This record's own llm_direct numbers are kept as first shipped, not overwritten."
+  }
+}
