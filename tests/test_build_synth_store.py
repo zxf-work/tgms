@@ -327,6 +327,34 @@ def test_digest_mode_none_writes_null_with_mode_recorded(tmp_path: Path):
     jsonschema.validate(record, schema)
 
 
+def test_finalisation_phases_present_on_a_20k_build(tmp_path: Path):
+    """B7b (`SCALE_BUILD_FORECAST_2026-09-15.md` addendum 2): the sidecar
+    records RSS-before/after and wall time for each of the four finalisation
+    phases -- compact, gc, stats, digest -- separately, so a real run at
+    30M/100M can show which one actually spiked instead of one lump
+    60s-cadence RSS sample spanning all of them (which is what made the
+    digest and the compact()+gc()+stats() sequence indistinguishable at
+    P-SF1 scale in the first place)."""
+    out = tmp_path / "finalisation"
+    result = B.build(out, N_DIGEST, 0, 2_000, 1_000_000, "native", False, None, "streaming")
+    assert result["complete"]
+
+    phases = result["finalisation_phases"]
+    for name in ("compact", "gc", "stats", "digest"):
+        assert name in phases, f"missing finalisation phase {name!r}: {sorted(phases)}"
+        entry = phases[name]
+        assert set(entry) == {"rss_kb_before", "rss_kb_after", "wall_s"}
+        assert isinstance(entry["rss_kb_before"], dict) and entry["rss_kb_before"]
+        assert isinstance(entry["rss_kb_after"], dict) and entry["rss_kb_after"]
+        assert isinstance(entry["wall_s"], (int, float)) and entry["wall_s"] >= 0
+
+    record = json.loads((out / "build-record.json").read_text())
+    assert record["build_info"]["finalisation_phases"] == phases
+
+    schema = json.loads((ROOT / "benchmarks/schema/result_manifest.schema.json").read_text())
+    jsonschema.validate(record, schema)
+
+
 def test_digest_mode_default_scales_with_n_entities():
     assert B.default_digest_mode(0) == "full"
     assert B.default_digest_mode(B.DIGEST_AUTO_THRESHOLD - 1) == "full"
