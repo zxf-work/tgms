@@ -263,3 +263,56 @@ derived_admission:
       expansions_est: 624
       derived_admission: admit
       ceilings_hit: []
+
+# APPEND-ONLY addenda (dated). Nothing above this line is rewritten; a changed
+# prediction requires its own dated addendum in docs/design/PAPER_A_EVIDENCE_FREEZE.md
+# §E, never an edit to `code_anchor` or to any row above.
+addenda:
+  - date: '2026-09-15'
+    title: code_anchor resolved; acquisition checksums recorded
+    code_anchor:
+      resolved_commit: 8fd1581a6ad2f0140b0ba17b6a6b9ea9ca5f1ebc
+      resolved_commit_short: 8fd1581a6ad2
+      source: benchmarks/results-v1/ldbc-sf1-campaign.json manifest.commit
+      manifest_date: '2026-08-24'
+      host: xzgpu
+      wall_s: 4233.0
+      utc: '2026-08-24T16:41:11Z'
+      policy_version: guardrail-policy-v2
+      note: >-
+        The `code_anchor: PENDING` line above (line 17) is left untouched per
+        the append-only discipline; this is where it resolves. The campaign
+        commit 8fd1581a6ad2 is the code_anchor named by line 17's own comment
+        ("set to the commit that lands guardrail-policy-v2"): guardrail-policy-v2
+        (the 343.8 ms_per_m coefficient) itself landed earlier, at commit
+        d227249 (2026-08-23), which 8fd1581a6ad2 contains as an ancestor.
+    rerun_anchor:
+      commit_short: a6b3e94c4ff1
+      source: benchmarks/results-v1/ldbc-sf1-campaign-fmt3-2026-09.json manifest.commit
+      manifest_date: '2026-09-15'
+      note: >-
+        The 2026-09-15 format-3 rerun record. Recorded here as a rerun
+        anchor only, NOT as code_anchor -- code_anchor above still names the
+        campaign that first resolved it.
+    acquisition_checksums:
+      directory: SF1 initial_snapshot (bi-sf1-composite-merged-fk), 55 files
+      manifest_format: 'relative_path byte_size mtime_utc_iso sha256, sorted by path'
+      total_bytes: 165693985
+      manifests:
+        - path: benchmarks/results-v1/b1-manifest-v2-ab-2026-09-logs/dataset-manifest.txt
+          file_sha256: 8b4168aa72042193a13648a003acd308f23c59922c8a0cf39b79a31246d0d590
+        - path: benchmarks/results-v1/ldbc-sf1-campaign-fmt3-2026-09-csv-manifest.txt
+          file_sha256: 9b0373fa78b2be5dba12a8181115f064ab52735d7b4641e396df9622f1bda7ae
+      note: >-
+        Both manifests list the same 55 paths with identical per-file sha256,
+        byte size and mtime (all 2022-04-26T18:13:0*Z); the two file-level
+        digests above differ only because one manifest prefixes paths with
+        "./" and separates fields with spaces where the other uses a bare
+        relative path and tabs. The original 2026-08-24 campaign
+        (`ldbc-sf1-campaign.json`) recorded only the `csv_root` path string
+        (/mnt/project/xzhang/tgms/ldbc-sf1/bi-sf1-composite-merged-fk/graphs/csv/bi/composite-merged-fk/initial_snapshot);
+        "same corpus" for that run rests on that path string and the
+        unchanged 2022-04-26 mtimes, not on a digest taken at the time. The
+        tar.zst / zip artifact md5 bundles named in the freeze's §A2 were
+        never recorded anywhere and are not recorded here either -- not
+        recorded, not invented.
