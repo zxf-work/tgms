@@ -1,0 +1,15 @@
+{
+  "batches": 120262,
+  "compact_every": 5000,
+  "compactions": 24,
+  "digest_compare": {
+    "digest_equal": true,
+    "replayed_digest": "239118cae2044e5928b68d82423e0e996b6bc96654cbfd34266747486aa7e6d8",
+    "src_digest": "239118cae2044e5928b68d82423e0e996b6bc96654cbfd34266747486aa7e6d8"
+  },
+  "job_id": "213187",
+  "replay_exit": 0,
+  "replay_store": "/project/xzhang12/tgms-b7/stores/synth-30m-native-replayed-ce5000-213187",
+  "replay_wall_s": 2656.9436292648315,
+  "store": "/project/xzhang12/tgms-b7/stores/synth-30m-native"
+}

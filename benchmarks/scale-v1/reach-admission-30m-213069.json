@@ -1,0 +1,23 @@
+{
+  "admitted": true,
+  "args": {
+    "src": "n1",
+    "window": {
+      "t_a": 0,
+      "t_b": 3000000
+    }
+  },
+  "estimate": {
+    "expansions_est": 22857344,
+    "rows_scanned_est": 2857168,
+    "time_est_ms": 4371
+  },
+  "exec_ms": 4596.694,
+  "executed_ok": true,
+  "id": "reach.window",
+  "op": "temporal_reachability",
+  "refusal_details": null,
+  "rows": 299986,
+  "scale": 30000000,
+  "time_est_ms": 4371
+}

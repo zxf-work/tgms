@@ -1,0 +1,84 @@
+{
+  "band_s": 120,
+  "canonical_run": {
+    "job_id": "213174",
+    "raw": {
+      "believed_rows": 30300010,
+      "close_runs_checked": 0,
+      "closes": 0,
+      "dict_records": 300000,
+      "findings": [],
+      "generation": 120293,
+      "healthy": true,
+      "identities_checked": 30300000,
+      "manifest_checkpoint": 120293,
+      "manifest_deltas": 0,
+      "manifest_format": 3,
+      "max_tt_s_runs": 9361,
+      "mode": "full",
+      "problems": [],
+      "readable": true,
+      "rows": 30300272,
+      "rows_walked": 30300272,
+      "segments_checked": 16,
+      "store": "/project/xzhang12/tgms-b7/stores/synth-30m-native",
+      "tt_s_runs": 124520
+    },
+    "wall_s": 98.673
+  },
+  "config": {
+    "backend": "native",
+    "n_entities": 30000000
+  },
+  "contended_run": {
+    "job_id": "213069",
+    "raw": {
+      "believed_rows": 30300010,
+      "close_runs_checked": 0,
+      "closes": 0,
+      "dict_records": 300000,
+      "findings": [],
+      "generation": 120293,
+      "healthy": true,
+      "identities_checked": 30300000,
+      "manifest_checkpoint": 120293,
+      "manifest_deltas": 0,
+      "manifest_format": 3,
+      "max_tt_s_runs": 9361,
+      "mode": "full",
+      "problems": [],
+      "readable": true,
+      "rows": 30300272,
+      "rows_walked": 30300272,
+      "segments_checked": 16,
+      "store": "/project/xzhang12/tgms-b7/stores/synth-30m-native",
+      "tt_s_runs": 124520
+    },
+    "wall_s": 83.704
+  },
+  "dataset": {
+    "digest": "239118cae2044e5928b68d82423e0e996b6bc96654cbfd34266747486aa7e6d8",
+    "digest_kind": "store_digest",
+    "name": "synth"
+  },
+  "git_commit": "b159bd10aa53ad5de5f4e8ff7af1c87789d6afd0",
+  "machine": {
+    "cpus": 64,
+    "host": "itiger07",
+    "platform": "Linux-5.14.0-427.31.1.el9_4.x86_64-x86_64-with-glibc2.34",
+    "ram_gb": 503.68
+  },
+  "protocol": {
+    "ceilings": {},
+    "reps": 1,
+    "warmups": 0
+  },
+  "record": "benchmarks/scale-v1/check-full-30m.json",
+  "result_digest": "239118cae2044e5928b68d82423e0e996b6bc96654cbfd34266747486aa7e6d8",
+  "schema_version": "1.0.0",
+  "seed": {
+    "value": 0
+  },
+  "timestamp_utc": "2026-09-16T04:30:29Z",
+  "verdict": "PASS"
+}

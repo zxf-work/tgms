@@ -1,0 +1,175 @@
+{
+  "band": {
+    "vmhwm_gb": 4,
+    "wall_s": 20
+  },
+  "call": {
+    "belief": "all",
+    "kind": "edge",
+    "limit": 10,
+    "window": "[vt_min, vt_max+1)"
+  },
+  "clean_alone": {
+    "concurrent_on_node": [],
+    "job_id": "213175",
+    "n": 3,
+    "node": "itiger08",
+    "reps": [
+      {
+        "call": {
+          "belief": "all",
+          "kind": "edge",
+          "limit": 10,
+          "window": {
+            "t_a": 0,
+            "t_b": 31500000
+          }
+        },
+        "op": "version_history",
+        "open_ms": 68040.453,
+        "rows_total": 30000269,
+        "store": "/project/xzhang12/tgms-b7/stores/synth-30m-native",
+        "vmhwm_kb": 3862700,
+        "vmrss_kb": 2456020,
+        "wall_ms": 5517.393
+      },
+      {
+        "call": {
+          "belief": "all",
+          "kind": "edge",
+          "limit": 10,
+          "window": {
+            "t_a": 0,
+            "t_b": 31500000
+          }
+        },
+        "op": "version_history",
+        "open_ms": 69111.81,
+        "rows_total": 30000269,
+        "store": "/project/xzhang12/tgms-b7/stores/synth-30m-native",
+        "vmhwm_kb": 3863368,
+        "vmrss_kb": 2456252,
+        "wall_ms": 5491.778
+      },
+      {
+        "call": {
+          "belief": "all",
+          "kind": "edge",
+          "limit": 10,
+          "window": {
+            "t_a": 0,
+            "t_b": 31500000
+          }
+        },
+        "op": "version_history",
+        "open_ms": 69817.491,
+        "rows_total": 30000269,
+        "store": "/project/xzhang12/tgms-b7/stores/synth-30m-native",
+        "vmhwm_kb": 3863148,
+        "vmrss_kb": 2455828,
+        "wall_ms": 5495.967
+      }
+    ],
+    "rows_total": 30000269,
+    "vmhwm_kb_median": 3863148,
+    "wall_ms_median": 5495.967
+  },
+  "config": {
+    "backend": "native",
+    "n_entities": 30000000
+  },
+  "contended_first_run": {
+    "concurrent_with": [
+      "213068",
+      "213069"
+    ],
+    "job_id": "213070",
+    "n": 3,
+    "node": "itiger07",
+    "reps": [
+      {
+        "call": {
+          "belief": "all",
+          "kind": "edge",
+          "limit": 10,
+          "window": {
+            "t_a": 0,
+            "t_b": 31500000
+          }
+        },
+        "op": "version_history",
+        "open_ms": 71150.199,
+        "rows_total": 30000269,
+        "store": "/project/xzhang12/tgms-b7/stores/synth-30m-native",
+        "vmhwm_kb": 3865380,
+        "vmrss_kb": 2457860,
+        "wall_ms": 5607.06
+      },
+      {
+        "call": {
+          "belief": "all",
+          "kind": "edge",
+          "limit": 10,
+          "window": {
+            "t_a": 0,
+            "t_b": 31500000
+          }
+        },
+        "op": "version_history",
+        "open_ms": 69438.987,
+        "rows_total": 30000269,
+        "store": "/project/xzhang12/tgms-b7/stores/synth-30m-native",
+        "vmhwm_kb": 3863168,
+        "vmrss_kb": 2456516,
+        "wall_ms": 5511.233
+      },
+      {
+        "call": {
+          "belief": "all",
+          "kind": "edge",
+          "limit": 10,
+          "window": {
+            "t_a": 0,
+            "t_b": 31500000
+          }
+        },
+        "op": "version_history",
+        "open_ms": 69130.405,
+        "rows_total": 30000269,
+        "store": "/project/xzhang12/tgms-b7/stores/synth-30m-native",
+        "vmhwm_kb": 3864100,
+        "vmrss_kb": 2456472,
+        "wall_ms": 5530.243
+      }
+    ],
+    "rows_total": 30000269,
+    "vmhwm_kb_median": 3864100,
+    "wall_ms_median": 5530.243
+  },
+  "dataset": {
+    "digest": "239118cae2044e5928b68d82423e0e996b6bc96654cbfd34266747486aa7e6d8",
+    "digest_kind": "store_digest",
+    "name": "synth"
+  },
+  "git_commit": "b159bd10aa53ad5de5f4e8ff7af1c87789d6afd0",
+  "machine": {
+    "cpus": 64,
+    "host": "itiger08",
+    "platform": "Linux-5.14.0-427.31.1.el9_4.x86_64-x86_64-with-glibc2.34",
+    "ram_gb": 503.68
+  },
+  "pct_diff_wall_clean_vs_contended": 0.62,
+  "protocol": {
+    "ceilings": {},
+    "reps": 1,
+    "warmups": 0
+  },
+  "record": "benchmarks/scale-v1/version-history-30m.json",
+  "result_digest": "239118cae2044e5928b68d82423e0e996b6bc96654cbfd34266747486aa7e6d8",
+  "schema_version": "1.0.0",
+  "seed": {
+    "value": 0
+  },
+  "timestamp_utc": "2026-09-16T04:34:25Z",
+  "verdict": "PASS (both runs well within the <=20s/<=4GB band)"
+}

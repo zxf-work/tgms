@@ -1,0 +1,36 @@
+RUN_STARTED commit=b159bd10aa53ad5de5f4e8ff7af1c87789d6afd0
+BUILD_INFO {"profile": "release", "opt_level": "3", "engine_version": "0.8.0", "debug_assertions": false, "manifest_format_version": 3}
+TGMS_SEGMENT_CACHE_BYTES=46500000000
+SLURM_JOB_ID=213174 SLURM_NODELIST=itiger07 NODE=itiger07
+CPU_MODEL=AMD EPYC 7513 32-Core Processor
+PRODUCING_SCRIPT=scripts/eval_harness.py commit=b159bd10aa53ad5de5f4e8ff7af1c87789d6afd0
+phase-0 harness — 13 queries x 1 systems on synth @ 30,000,000 events
+  commit unknown (dirty) | Linux 5.14.0-427.31.1.el9_4.x86_64 x86_64 | 64 cores
+  WARNING: not xzgpu — development run, timings are not comparable with reported numbers
+
+  native: loaded in 538.3s
+
+  query                 rows      native  agree
+  ---------------------------------------------
+  hist.single              2        1.0  yes
+  hist.asof                2        1.0  yes
+  snap.hop2              155     1531.5  yes
+  diff.global        2249999     7505.4  yes
+  reach.window        299986     2354.5  yes
+  paths.k                 30        8.6  yes
+  series.count           100      128.1  yes
+  burst.zscore             1      129.4  yes
+  nbr.evolution           20      100.2  yes
+  coactive.narrow        435      302.5  yes
+  resolve.substr      111111      342.6  yes
+  agg.rel_bucket         194      176.5  yes
+  motif.filtered         298       76.2  yes
+
+  all 13 queries agree across native
+  wrote /home/xzhang12/b7-work-h/records/scale-curve-30m-raw.json
+EVAL_HARNESS_EXIT=0
+CHECK_FULL_EXIT=0
+CHECK_FULL_WALL_S=98.67280411720276
+{"admitted": true, "time_est_ms": 4371, "executed_ok": true, "exec_ms": 4558.87}
+REACH_ADMISSION_PROBE_EXIT=0
+RUN_FINISHED commit=b159bd10aa53ad5de5f4e8ff7af1c87789d6afd0 eval_exit=0 check_exit=0 reach_probe_exit=0

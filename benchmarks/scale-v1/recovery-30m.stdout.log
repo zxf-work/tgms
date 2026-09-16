@@ -1,0 +1,12 @@
+PROJECT_DU_BEFORE_MB=34401
+RUN_STARTED commit=b159bd10aa53ad5de5f4e8ff7af1c87789d6afd0
+BUILD_INFO {"profile": "release", "opt_level": "3", "engine_version": "0.8.0", "debug_assertions": false, "manifest_format_version": 3}
+TGMS_SEGMENT_CACHE_BYTES=46500000000
+SLURM_JOB_ID=213071 SLURM_NODELIST=itiger08 NODE=itiger08
+CPU_MODEL=AMD EPYC 7513 32-Core Processor
+{"batches": 120262, "stats": {"n_entities": 300000, "n_node_versions": 300003, "n_edge_versions": 30000269, "vt_min": 0, "vt_max": 31499999, "rel_type_counts": {"R": 20000000, "S": 10000269}, "max_out_degree": 149}}
+REPLAY_EXIT=0
+REPLAY_WALL_S=14618.56109905243
+DIGEST_COMPARE {"src_digest": "239118cae2044e5928b68d82423e0e996b6bc96654cbfd34266747486aa7e6d8", "replayed_digest": "239118cae2044e5928b68d82423e0e996b6bc96654cbfd34266747486aa7e6d8", "digest_equal": true}
+PROJECT_DU_AFTER_MB=38732
+RUN_FINISHED commit=b159bd10aa53ad5de5f4e8ff7af1c87789d6afd0 replay_exit=0 wall_s=14618.56109905243

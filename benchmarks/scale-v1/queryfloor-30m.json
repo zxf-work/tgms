@@ -1,0 +1,102 @@
+{
+  "log": "/project/xzhang12/tgms-b7/stores/synth-30m-native/eventlog.jsonl",
+  "n_ok": 13,
+  "n_queries": 13,
+  "open_ms": 76881.678,
+  "queries": [
+    {
+      "id": "hist.single",
+      "ms": 3800.703,
+      "ok": true,
+      "op": "entity_history",
+      "rows": 2
+    },
+    {
+      "id": "hist.asof",
+      "ms": 2.298,
+      "ok": true,
+      "op": "entity_history",
+      "rows": 0
+    },
+    {
+      "id": "snap.hop2",
+      "ms": 3933.438,
+      "ok": true,
+      "op": "snapshot_subgraph",
+      "rows": 155
+    },
+    {
+      "id": "diff.global",
+      "ms": 7501.748,
+      "ok": true,
+      "op": "diff_snapshots",
+      "rows": 2249999
+    },
+    {
+      "id": "reach.window",
+      "ms": 2154.085,
+      "ok": true,
+      "op": "temporal_reachability",
+      "rows": 299986
+    },
+    {
+      "id": "paths.k",
+      "ms": 11283.376,
+      "ok": true,
+      "op": "temporal_paths",
+      "rows": 30
+    },
+    {
+      "id": "series.count",
+      "ms": 106.798,
+      "ok": true,
+      "op": "graph_metric_timeseries",
+      "rows": 100
+    },
+    {
+      "id": "burst.zscore",
+      "ms": 108.813,
+      "ok": true,
+      "op": "burst_detection",
+      "rows": 1
+    },
+    {
+      "id": "nbr.evolution",
+      "ms": 100.133,
+      "ok": true,
+      "op": "neighborhood_evolution",
+      "rows": 20
+    },
+    {
+      "id": "coactive.narrow",
+      "ms": 218.557,
+      "ok": true,
+      "op": "co_active",
+      "rows": 435
+    },
+    {
+      "id": "resolve.substr",
+      "ms": 342.92,
+      "ok": true,
+      "op": "resolve_entities",
+      "rows": 111111
+    },
+    {
+      "id": "agg.rel_bucket",
+      "ms": 157.477,
+      "ok": true,
+      "op": "aggregate_events",
+      "rows": 194
+    },
+    {
+      "id": "motif.filtered",
+      "ms": 61.786,
+      "ok": true,
+      "op": "count_temporal_motifs",
+      "rows": 229
+    }
+  ],
+  "store": "/project/xzhang12/tgms-b7/stores/synth-30m-native",
+  "vmhwm_kb": 6810596,
+  "vmrss_kb": 6532848
+}

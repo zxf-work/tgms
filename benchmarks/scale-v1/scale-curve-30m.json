@@ -1,0 +1,300 @@
+{
+  "check_full": {
+    "band_s": 120,
+    "clean_213174": {
+      "believed_rows": 30300010,
+      "close_runs_checked": 0,
+      "closes": 0,
+      "dict_records": 300000,
+      "findings": [],
+      "generation": 120293,
+      "healthy": true,
+      "identities_checked": 30300000,
+      "manifest_checkpoint": 120293,
+      "manifest_deltas": 0,
+      "manifest_format": 3,
+      "max_tt_s_runs": 9361,
+      "mode": "full",
+      "problems": [],
+      "readable": true,
+      "rows": 30300272,
+      "rows_walked": 30300272,
+      "segments_checked": 16,
+      "store": "/project/xzhang12/tgms-b7/stores/synth-30m-native",
+      "tt_s_runs": 124520
+    },
+    "clean_wall_s": 98.673,
+    "contended_213069": {
+      "believed_rows": 30300010,
+      "close_runs_checked": 0,
+      "closes": 0,
+      "dict_records": 300000,
+      "findings": [],
+      "generation": 120293,
+      "healthy": true,
+      "identities_checked": 30300000,
+      "manifest_checkpoint": 120293,
+      "manifest_deltas": 0,
+      "manifest_format": 3,
+      "max_tt_s_runs": 9361,
+      "mode": "full",
+      "problems": [],
+      "readable": true,
+      "rows": 30300272,
+      "rows_walked": 30300272,
+      "segments_checked": 16,
+      "store": "/project/xzhang12/tgms-b7/stores/synth-30m-native",
+      "tt_s_runs": 124520
+    },
+    "contended_wall_s": 83.704,
+    "verdict": "PASS (both walls well under the <=2min band; identical healthy output on an unchanged store)"
+  },
+  "config": {
+    "n_entities": 30000000,
+    "systems": [
+      "native"
+    ]
+  },
+  "dataset": {
+    "digest": "239118cae2044e5928b68d82423e0e996b6bc96654cbfd34266747486aa7e6d8",
+    "digest_kind": "store_digest",
+    "name": "synth"
+  },
+  "eval_protocol": {
+    "note": "reps_fast=30 when the first (post-warmup) rep is under 1000ms, else reps_slow=10 -- same eval_harness.py convention as eval-10m-agg.json / itiger-calib-10m.json",
+    "reps_fast": 30,
+    "reps_slow": 10,
+    "stats": "median and p95 over measured reps",
+    "warmup": 5
+  },
+  "git_commit": "b159bd10aa53ad5de5f4e8ff7af1c87789d6afd0",
+  "invocation": "scripts/eval_harness.py --scale 30000000 --systems native --json <out>",
+  "machine": {
+    "cpus": 64,
+    "host": "itiger07",
+    "platform": "Linux-5.14.0-427.31.1.el9_4.x86_64-x86_64-with-glibc2.34",
+    "ram_gb": 503.68
+  },
+  "per_operator_p50_ms": {
+    "agg.rel_bucket": {
+      "anchor_10m_p50_ms": 119.597,
+      "bar_ms": 203.315,
+      "clean_213174_p50_ms": 176.492,
+      "concurrent_with_note": false,
+      "contended_213069_p50_ms": 169.596,
+      "multiplier": 1.7,
+      "pct_diff_clean_vs_contended": 4.07,
+      "verdict": "PASS"
+    },
+    "burst.zscore": {
+      "anchor_10m_p50_ms": 96.372,
+      "bar_ms": 144.558,
+      "clean_213174_p50_ms": 129.433,
+      "concurrent_with_note": false,
+      "contended_213069_p50_ms": 124.056,
+      "multiplier": 1.5,
+      "pct_diff_clean_vs_contended": 4.33,
+      "verdict": "PASS"
+    },
+    "coactive.narrow": {
+      "anchor_10m_p50_ms": 233.52,
+      "bar_ms": 303.576,
+      "clean_213174_p50_ms": 302.473,
+      "concurrent_with_note": false,
+      "contended_213069_p50_ms": 292.808,
+      "multiplier": 1.3,
+      "pct_diff_clean_vs_contended": 3.3,
+      "verdict": "PASS"
+    },
+    "diff.global": {
+      "anchor_10m_p50_ms": 2114.156,
+      "bar_ms": 8456.624,
+      "clean_213174_p50_ms": 7505.374,
+      "concurrent_with_note": false,
+      "contended_213069_p50_ms": 7322.452,
+      "multiplier": 4.0,
+      "pct_diff_clean_vs_contended": 2.5,
+      "verdict": "PASS"
+    },
+    "hist.asof": {
+      "anchor_10m_p50_ms": 0.412,
+      "bar_ms": 0.659,
+      "clean_213174_p50_ms": 0.98,
+      "concurrent_with_note": false,
+      "contended_213069_p50_ms": 0.878,
+      "multiplier": 1.6,
+      "pct_diff_clean_vs_contended": 11.62,
+      "verdict": "FALSIFIED (p50 exceeds bar)"
+    },
+    "hist.single": {
+      "anchor_10m_p50_ms": 0.398,
+      "bar_ms": 0.716,
+      "clean_213174_p50_ms": 0.977,
+      "concurrent_with_note": false,
+      "contended_213069_p50_ms": 0.906,
+      "multiplier": 1.8,
+      "pct_diff_clean_vs_contended": 7.84,
+      "verdict": "FALSIFIED (p50 exceeds bar)"
+    },
+    "motif.filtered": {
+      "anchor_10m_p50_ms": 78.507,
+      "bar_ms": 102.059,
+      "clean_213174_p50_ms": 76.195,
+      "concurrent_with_note": false,
+      "contended_213069_p50_ms": 76.42,
+      "multiplier": 1.3,
+      "pct_diff_clean_vs_contended": 0.29,
+      "verdict": "PASS"
+    },
+    "nbr.evolution": {
+      "anchor_10m_p50_ms": 44.4,
+      "bar_ms": 115.44,
+      "clean_213174_p50_ms": 100.237,
+      "concurrent_with_note": false,
+      "contended_213069_p50_ms": 97.281,
+      "multiplier": 2.6,
+      "pct_diff_clean_vs_contended": 3.04,
+      "verdict": "PASS"
+    },
+    "paths.k": {
+      "anchor_10m_p50_ms": 10.2,
+      "bar_ms": 12.24,
+      "clean_213174_p50_ms": 8.621,
+      "concurrent_with_note": false,
+      "contended_213069_p50_ms": 8.59,
+      "multiplier": 1.2,
+      "pct_diff_clean_vs_contended": 0.36,
+      "verdict": "PASS"
+    },
+    "reach.window": {
+      "anchor_10m_p50_ms": 493.5,
+      "bar_ms": 1628.55,
+      "clean_213174_p50_ms": 2354.494,
+      "concurrent_with_note": false,
+      "contended_213069_p50_ms": 2344.221,
+      "multiplier": 3.3,
+      "pct_diff_clean_vs_contended": 0.44,
+      "verdict": "FALSIFIED (p50 exceeds bar)"
+    },
+    "resolve.substr": {
+      "anchor_10m_p50_ms": 54.2,
+      "bar_ms": 243.9,
+      "clean_213174_p50_ms": 342.604,
+      "concurrent_with_note": false,
+      "contended_213069_p50_ms": 349.571,
+      "multiplier": 4.5,
+      "pct_diff_clean_vs_contended": 1.99,
+      "verdict": "FALSIFIED (p50 exceeds bar)"
+    },
+    "series.count": {
+      "anchor_10m_p50_ms": 98.4,
+      "bar_ms": 147.6,
+      "clean_213174_p50_ms": 128.144,
+      "concurrent_with_note": false,
+      "contended_213069_p50_ms": 122.883,
+      "multiplier": 1.5,
+      "pct_diff_clean_vs_contended": 4.28,
+      "verdict": "PASS"
+    },
+    "snap.hop2": {
+      "anchor_10m_p50_ms": 486.8,
+      "bar_ms": 1606.44,
+      "clean_213174_p50_ms": 1531.519,
+      "concurrent_with_note": false,
+      "contended_213069_p50_ms": 1524.627,
+      "multiplier": 3.3,
+      "pct_diff_clean_vs_contended": 0.45,
+      "verdict": "PASS"
+    }
+  },
+  "protocol": {
+    "ceilings": {
+      "time_est_ms": 10000
+    },
+    "reps": 30,
+    "warmups": 5
+  },
+  "reach_window_admission": {
+    "clean_213174": {
+      "admitted": true,
+      "args": {
+        "src": "n1",
+        "window": {
+          "t_a": 0,
+          "t_b": 3000000
+        }
+      },
+      "estimate": {
+        "expansions_est": 22857344,
+        "rows_scanned_est": 2857168,
+        "time_est_ms": 4371
+      },
+      "exec_ms": 4558.87,
+      "executed_ok": true,
+      "id": "reach.window",
+      "op": "temporal_reachability",
+      "refusal_details": null,
+      "rows": 299986,
+      "scale": 30000000,
+      "time_est_ms": 4371
+    },
+    "contended_213069": {
+      "admitted": true,
+      "args": {
+        "src": "n1",
+        "window": {
+          "t_a": 0,
+          "t_b": 3000000
+        }
+      },
+      "estimate": {
+        "expansions_est": 22857344,
+        "rows_scanned_est": 2857168,
+        "time_est_ms": 4371
+      },
+      "exec_ms": 4596.694,
+      "executed_ok": true,
+      "id": "reach.window",
+      "op": "temporal_reachability",
+      "refusal_details": null,
+      "rows": 299986,
+      "scale": 30000000,
+      "time_est_ms": 4371
+    },
+    "note": "Addendum 5's second re-examination predicted admission (not refusal) at 30M/100M; confirmed both runs: admitted, time_est_ms=4371 < 10,000 ceiling."
+  },
+  "record": "benchmarks/scale-v1/scale-curve-30m.json",
+  "result_digest": "239118cae2044e5928b68d82423e0e996b6bc96654cbfd34266747486aa7e6d8",
+  "runs": {
+    "clean_alone": {
+      "concurrent_on_node": [
+        "213188"
+      ],
+      "concurrent_on_node_note": "213188 is the separate lane's 100M build on the same node (itiger07) -- CPU/IO node sharing only; store-level isolation held (different store paths, no lock contention). Ran 'alone' with respect to the 30M store, per the coordinator's rerun instruction.",
+      "concurrent_on_node_window": [
+        "2026-09-16T04:08:31",
+        "2026-09-16T04:30:29"
+      ],
+      "end": "2026-09-16T04:30:29",
+      "job_id": "213174",
+      "node": "itiger07",
+      "raw_record": "benchmarks/scale-v1/scale-curve-30m-raw.json",
+      "start": "2026-09-16T03:58:25"
+    },
+    "contended_first_run": {
+      "concurrent_with": [
+        "213068",
+        "213070"
+      ],
+      "concurrent_with_note": "213068 (query-floor, failed 33s in with WriterLockedError) and 213070 (version_history) all started together once the build's afterok dependency released them simultaneously. Kept on record, not discarded or averaged.",
+      "job_id": "213069",
+      "node": "itiger07",
+      "raw_record": "benchmarks/scale-v1/scale-curve-30m-raw-213069.json"
+    }
+  },
+  "schema_version": "1.0.0",
+  "seed": {
+    "value": 0
+  },
+  "timestamp_utc": "2026-09-16T04:30:29Z"
+}
