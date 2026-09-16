@@ -1,6 +1,6 @@
 """`scripts/tgir_paper_macros.py`'s pure helpers and its `--root` re-rooting.
 
-The generator itself is self-checking — it runs 583 assertions over the
+The generator itself is self-checking — it runs 585 assertions over the
 row-level records and refuses to write on any failure — so there is nothing
 useful to re-assert about its *values* here.  What a test can pin, and what
 this repository cannot exercise end to end, is different:
