@@ -1,5 +1,15 @@
 # Dataset cards
 
+## LDBC SNB SF1 (BI initial data set)
+
+Full card: `docs/eval/LDBC_SF1_CARD.md` — source, version pins, license
+(CC-BY 4.0, LDBC disclaimer), the M1-M12 mapping rules and their two
+pre-ingest amendments, sizes and the mapping-fidelity gate, the acquisition
+checksums, the 21 frozen templates, the scored-bi / characterization-interactive
+arms and the `--csv` anchor-binding rule that voided the 2026-09-15 rerun's
+interactive arm, the BI6 defect and its BI6.v2 repair, and the gold arm's
+unavailability.
+
 ## synth (200k / 1M / 10M events)
 
 Generator: `scripts/eval_harness.py::build_dataset` — deterministic from
