@@ -1371,6 +1371,25 @@ def main() -> int:
           "e14-p3-frontier.json characterization arm: false admissions at the best "
           "multiplier (0.01x) --- no ceiling reaches zero")
 
+    # ------------------------------------------------------------- IS2: a cite
+    is2 = crecs_by_id["IS2"]
+    eq(is2["plan_id"], "IS2", "IS2: plan id")
+    eq(is2["arm"], "characterization-interactive", "IS2: arm")
+    eq(is2["outcome"], "COMPLETED", "IS2: outcome")
+    eq(is2["rows"], 10, "IS2: delivered rows")
+    eq(round(is2["ms"]), 12307, "IS2: actual ms rounds to 12,307")
+    eq(is2["estimate"]["time_est_ms"], 840, "IS2: estimated cost, ms")
+    is2_char = {p["plan_id"]: p["classifier"] for p in char_plans}["IS2"]
+    eq(is2_char, "false-admission",
+       "e14-p3-frontier.json characterization arm: IS2's classifier")
+    m.add("tgIsTwoActualMs", tex_num(round(is2["ms"])),
+          "ldbc-sf1-campaign.json IS2 record: ms, rounded to the nearest ms")
+    m.add("tgIsTwoRows", is2["rows"], "ldbc-sf1-campaign.json IS2 record: rows")
+    m.add("tgIsTwoEstMs", tex_num(is2["estimate"]["time_est_ms"]),
+          "ldbc-sf1-campaign.json IS2 record: estimate.time_est_ms")
+    m.add("tgIsTwoClassifier", is2_char,
+          "e14-p3-frontier.json arms.characterization-interactive.per_plan: IS2 classifier")
+
     # ------------------------------------------- E14 P1: what the leaf costs
     p1_lo, p1_hi = 0.8, 1.2
     p1 = {}
@@ -1749,7 +1768,7 @@ LADDER_CAPTION_VLDB = (
 def render_ladder_table(ladder, style="arxiv") -> str:
     if style == "vldb":
         pretty = {
-            "v1-core (R1, R2, R3, R3b, R5)": "v1-core (A1 to A3b, A5)",
+            "v1-core (R1, R2, R3, R3b, R5)": "core (A1 to A3b, A5)",
             "+ var-length-bounded": "$+$ \\texttt{var-length-bounded}",
             "+ var-length-unbounded": "$+$ \\texttt{var-length-unbounded} \\;$\\leftarrow$ TGIR",
             "+ path family (7 labels)": "$+$ path family (7 labels)",
