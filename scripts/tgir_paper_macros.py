@@ -1674,10 +1674,9 @@ def render_main_table(measured, suite_stats, suites, suite_label, style="arxiv")
         lines = [BANNER, "\\begin{table}[t]", "\\centering", "\\footnotesize",
                  "\\setlength{\\tabcolsep}{3pt}",
                  "\\caption{Pre-registered forecast against measurement, by suite.  "
-                 "\\emph{Predicted unlocked} was pre-registered on \\tgFreezeDate\\ against "
-                 "spec anchor \\texttt{\\tgSpecAnchor}, before any implementation; "
-                 "\\emph{delivered} is the number of those rows whose measured verdict "
-                 "reached or exceeded its predicted level.  Over-deliveries are counted "
+                 "\\emph{Predicted unlocked} was pre-registered on \\tgFreezeDate, before any "
+                 "implementation; \\emph{delivered} is the number of those rows whose measured "
+                 "verdict reached or exceeded its predicted level.  Over-deliveries are counted "
                  "separately and never netted against a miss; there were \\tgOverDelivered.}",
                  "\\label{tab:main}",
                  "\\begin{tabular}{lrrrl}", "\\toprule",
@@ -1806,7 +1805,7 @@ def render_sf1_table(sf1_rows, style="arxiv") -> str:
                  "\\caption{The scored set of the \\tgSfOneDate\\ scale experiment: "
                  "\\tgSfOneScored\\ LDBC Business Intelligence plans against a real SF1 "
                  "instance (\\tgSfOneVersionsM\\,M versions), bound to LDBC's own SF1 "
-                 "parameters, at \\texttt{\\tgSfOneCommit}.  \\emph{admission} is the "
+                 "parameters.  \\emph{admission} is the "
                  "guard's verdict at the pre-registered policy; the guard's verdict was "
                  "recorded but not enforced, so every plan ran and the verdict can be "
                  "scored against what the plan actually cost.  \\emph{est/actual} below~1 "
