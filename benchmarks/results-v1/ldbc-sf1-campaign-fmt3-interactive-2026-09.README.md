@@ -158,3 +158,21 @@ xzgpu after the record was verified. The engine worktree
 (`ldbc-sf1-campaign-fmt3-2026-09.json` / `.README.md`) are unedited; this
 file supersedes only its characterization-interactive arm, as recorded in
 `manifest.supersedes` of the JSON above.
+
+## Addendum: driver provenance (post-merge-review)
+
+This record was produced by `scripts/run_interactive_arm.py`, now committed
+alongside it (sha256
+`a0373d9151b4de6c0b78eaa676d76e9a2924276e3c3f806d97feed275a4c55f5`, byte-
+identical between the xzgpu worktree and this laptop worktree) — it was
+initially left untracked, which meant the run was not reproducible from any
+commit; a coordinator review caught the gap. The script changes nothing
+about plan binding, admission, or execution: it is an arm-only driver over
+`tgir_ldbc_sf1.py`'s own internals (`run_child`, `CAMPAIGN_SEED`,
+`DEFAULT_CEILINGS`, etc.), needed only because that tracked script's
+`--plan` flag has no arm-level filter (`all` or one id). The run itself
+took two attempts, as described above under "Interactive-arm run": the
+first invocation completed 11 of 14 plans before an outer orchestration
+timeout (not a plan or ceiling failure) ended it, and a second,
+`--resume`d invocation completed IS5/IS6/IS7 without re-running the 11
+already on disk.
