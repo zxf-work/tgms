@@ -1,6 +1,6 @@
 """`scripts/tgir_paper_macros.py`'s pure helpers and its `--root` re-rooting.
 
-The generator itself is self-checking — it runs 585 assertions over the
+The generator itself is self-checking — it runs 592 assertions over the
 row-level records and refuses to write on any failure — so there is nothing
 useful to re-assert about its *values* here.  What a test can pin, and what
 this repository cannot exercise end to end, is different:
@@ -37,6 +37,7 @@ matching name would inflate a published number with meta-work.
 
 from __future__ import annotations
 
+import json
 import re
 import sys
 from pathlib import Path
@@ -120,6 +121,28 @@ def test_tex_num_leaves_four_digits_unseparated() -> None:
     assert TPM.tex_num(10000) == "10{,}000"
     assert TPM.tex_num(1278984344) == "1{,}278{,}984{,}344"
     assert TPM.tex_num(0) == "0"
+
+
+def test_is2_macro_values_pin_the_ldbc_short_read() -> None:
+    """IS2's paper-cited numbers, recomputed from the checked-in benchmark
+    records --- no docs/design/ needed, unlike most of this generator's
+    sources.  \\tgIsTwoActualMs is 12,307 ms (rounded), \\tgIsTwoRows is 10,
+    \\tgIsTwoEstMs is 840, and the characterization arm's guard classifier for
+    IS2 is a false admission (the guard would have admitted a plan that in
+    fact cost 12.3 s against an 840 ms estimate).
+    """
+    campaign = json.loads(TPM.SF1_CAMPAIGN.read_text(encoding="utf-8"))
+    is2 = next(r for r in campaign["records"] if r["plan_id"] == "IS2")
+    assert is2["arm"] == "characterization-interactive"
+    assert is2["outcome"] == "COMPLETED"
+    assert is2["rows"] == 10
+    assert TPM.tex_num(round(is2["ms"])) == "12{,}307"
+    assert TPM.tex_num(is2["estimate"]["time_est_ms"]) == "840"
+
+    frontier = json.loads(TPM.FRONTIER.read_text(encoding="utf-8"))
+    char_plans = frontier["arms"]["characterization-interactive"]["per_plan"]
+    is2_classifier = next(p["classifier"] for p in char_plans if p["plan_id"] == "IS2")
+    assert is2_classifier == "false-admission"
 
 
 def test_set_root_repoints_every_source(tmp_path: Path) -> None:
