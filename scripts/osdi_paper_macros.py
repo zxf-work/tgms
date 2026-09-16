@@ -70,9 +70,10 @@ skeleton --
       12/36 cells complete, 24 blocked on an iTiger disk-quota incident) was
       never committed and stays a dead end -- its own quantities
       (``osdiStormCells``/``osdiStormFalseFresh``/``osdiTtfSpeedup``/
-      ``osdiStormSpeedupN1k``/``osdiStormAvoidedN1k``) stay PENDING below,
-      unresolved by anything in this section, since no record under that
-      name ever landed. Addendum-1's grid itself since **has** landed under
+      ``osdiStormSpeedupN1k``/``osdiStormAvoidedN1k``) were retired (no
+      longer emitted, PENDING or otherwise) since no record under that
+      name ever landed and no paper text references those legacy names.
+      Addendum-1's grid itself since **has** landed under
       a different name and seam (Lane W2m; ``storm-v1-main-grid-2026-09-15
       .json`` + its -rows.jsonl, five submissions across the same quota
       incident, 36/36 cells, commit ``8962b78``, pre-D-161-rollout) -- its
@@ -2521,10 +2522,11 @@ def compute_c7_storm_v2_probe(m: Macros) -> None:
 # embedded verbatim (storm_campaign_merge.py's own "why per-task manifests
 # are embedded whole" module note) -- config/summary/dag, never the raw
 # per-batch rows (those stay on iTiger's stage directory). `osdiStormV2*`
-# macros stand beside the still-unlanded addendum-1 pending stubs
-# (`osdiStormCells` et al., in add_pending_stubs below) without resolving
-# or overwriting them -- different grid, different commit, no v1-vs-v2
-# comparison macro here.
+# macros stand beside `osdiStormV1*` (compute_c7_storm_v1 above) without
+# resolving or overwriting them -- different grid, different commit, no
+# v1-vs-v2 comparison macro here. (The addendum-1 dead-end's own legacy
+# names -- `osdiStormCells` et al. -- were retired; see the module
+# docstring's C7 section.)
 # --------------------------------------------------------------------------
 
 _STORM_V2_STORE_TOKEN = {"synth-iv-60k": "Synth", "collegemsg": "CollegeMsg"}
@@ -4230,34 +4232,16 @@ def add_pending_stubs(m: Macros) -> None:
     # batches), and the addendum-1 main correction-storm cell grid (36/36
     # cells, storm-v1-main-grid-2026-09-15.json, Lane W2m) are all now
     # landed and scored -- see compute_c7_dag, compute_c7_r18, and
-    # compute_c7_storm_v1 above. What stays pending below is a single
-    # earlier, never-committed attempt at that same grid under a different
-    # file name (storm-campaign-2026-09.json: 12/36 cells complete, the
-    # other 24 blocked on an iTiger disk-quota incident, 2026-09-14, see
-    # benchmarks/storm-v1/README.md and SUBMISSION_NOTE.txt on iTiger) --
-    # a dead end this generator never reads from, superseded by the
-    # five-job-seam resubmission that became storm-v1-main-grid-2026-09-15
-    # .json, not the same record and not resolved by it.
-    m.add_pending("osdiTtfSpeedup", "C7 (storm-v1 time-to-fresh)",
-                  "main grid 12/36, blocked on cluster quota")
-    m.add_pending("osdiStormCells", "C7 (storm-v1 time-to-fresh)",
-                  "main grid 12/36, blocked on cluster quota")
-    m.add_pending("osdiStormFalseFresh", "C7 (storm-v1 time-to-fresh)",
-                  "main grid 12/36, blocked on cluster quota")
-    m.add_pending("osdiStormSpeedupN1k", "C7 (storm-v1 time-to-fresh)",
-                  "the N=1,000 c1 seed-0 cell (211319_0) is not a merged main-grid record on "
-                  "main yet -- its numbers appear only in benchmarks/storm-v1/README.md's R-18 "
-                  "section table, which this generator does not treat as a record source; "
-                  "main grid 12/36, blocked on cluster quota")
-    m.add_pending("osdiStormAvoidedN1k", "C7 (storm-v1 time-to-fresh)",
-                  "same as osdiStormSpeedupN1k -- the N=1,000 c1 seed-0 cell has not landed as "
-                  "a committed main-grid record; main grid 12/36, blocked on cluster quota")
-
-    # osdiStormV1SpeedupN1kSeed0 (the pre-D-161-rollout N=1,000 c1 seed-0
-    # speedup) and osdiStormV2SurvivorFractionC1Median/
-    # osdiStormV2PrecisionC1Median have all landed (Lane W2m/W2l) -- see
-    # compute_c7_storm_v1/compute_c7_storm_v2's own tarball reads above --
-    # and are no longer emitted here.
+    # compute_c7_storm_v1 above. The five legacy stub names that once stood
+    # in for that same grid under an earlier, never-committed attempt
+    # (storm-campaign-2026-09.json: 12/36 cells complete, the other 24
+    # blocked on an iTiger disk-quota incident, 2026-09-14) --
+    # osdiTtfSpeedup, osdiStormCells, osdiStormFalseFresh,
+    # osdiStormSpeedupN1k, osdiStormAvoidedN1k -- are retired: superseded
+    # by the landed osdiStormV1* macros (compute_c7_storm_v1 above) and
+    # referenced nowhere in the paper skeleton or paper/ under their own
+    # names, so there is nothing left for them to stand in for. See the
+    # module docstring's C7 section for the full provenance trail.
 
     m.add_pending("osdiLdbcExpressible", "C9 (LDBC generality, four axes)",
                   "benchmarks/ldbc-fit-v1/classification.json exists but the independent-"

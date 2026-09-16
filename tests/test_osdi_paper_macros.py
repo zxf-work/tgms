@@ -397,8 +397,6 @@ def test_pending_macros_raise_a_latex_error_never_a_placeholder_number():
     m = mod.Macros()
     mod.add_pending_stubs(m)
     expected_names = {
-        "osdiTtfSpeedup", "osdiStormCells", "osdiStormFalseFresh",
-        "osdiStormSpeedupN1k", "osdiStormAvoidedN1k",
         "osdiLdbcExpressible", "osdiLdbcExecuted", "osdiLdbcValidated",
     }
     got_names = {name for name, _, _ in m.items}
@@ -419,7 +417,7 @@ def test_full_macro_set_has_no_duplicate_names_and_covers_every_skeleton_claim()
     mod.add_pending_stubs(m)
     names = [name for name, _, _ in m.items]
     assert len(names) == len(set(names)), "duplicate macro name"
-    assert len(names) == len(FROZEN_LANDED_VALUES) + 8
+    assert len(names) == len(FROZEN_LANDED_VALUES) + 3
 
 
 def test_cli_check_mode_agrees_with_committed_output(tmp_path):
@@ -1827,18 +1825,6 @@ def test_live_osv_snapshot_sha256_matches_readme_quoted_value():
     readme_text = (mod.LIVE_OSV_DIR / "README.md").read_text(encoding="utf-8")
     assert f"`{mod.LIVE_OSV_SNAPSHOT_SHA256}`" in readme_text
     assert mod.sha256_file(mod.LIVE_OSV_SNAPSHOT) == mod.LIVE_OSV_SNAPSHOT_SHA256
-
-
-def test_r18_and_dag_pending_stubs_cite_the_main_grid_quota_block():
-    mod = _load("osdi_paper_macros")
-    m = mod.Macros()
-    mod.add_pending_stubs(m)
-    values = {name: (value, provenance) for name, value, provenance in m.items}
-    for name in ("osdiTtfSpeedup", "osdiStormCells", "osdiStormFalseFresh",
-                 "osdiStormSpeedupN1k", "osdiStormAvoidedN1k"):
-        _, provenance = values[name]
-        assert "main grid 12/36" in provenance, f"{name}: reason no longer cites the main-grid " \
-            "quota block, update it if the situation has actually changed"
 
 
 # --------------------------------------------------------------------------
