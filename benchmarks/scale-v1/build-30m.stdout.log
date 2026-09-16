@@ -1,0 +1,78 @@
+PROJECT_DU_BEFORE_MB=30076
+RUN_STARTED commit=b159bd10aa53ad5de5f4e8ff7af1c87789d6afd0
+BUILD_INFO {"profile": "release", "opt_level": "3", "engine_version": "0.8.0", "debug_assertions": false, "manifest_format_version": 3}
+TGMS_SEGMENT_CACHE_BYTES=46500000000
+SLURM_JOB_ID=213067 SLURM_NODELIST=itiger07 NODE=itiger07
+CPU_MODEL=AMD EPYC 7513 32-Core Processor
+BUILD_PID=1467743
+digest_mode='streaming' (explicit)
+RUN_STARTED commit=b159bd10aa53ad5de5f4e8ff7af1c87789d6afd0 dataset=synth n_entities=30000000 seed=0 batch=250 compact_every=1000000 out=/project/xzhang12/tgms-b7/stores/synth-30m-native backend=native resume=False digest=streaming host=itiger07
+         500,000 ops      11,956 ops/s  elapsed     41.8s  maxrss 218 MB  manifest 6,206,538 B  segment 23,198,575 B  compactions 0
+       1,000,000 ops       7,552 ops/s  elapsed    132.4s  maxrss 2182 MB  manifest 3,824,078 B  segment 72,196,430 B  compactions 1
+       1,500,000 ops       8,343 ops/s  elapsed    179.8s  maxrss 2182 MB  manifest 8,410,307 B  segment 88,384,566 B  compactions 1
+       2,000,000 ops       8,393 ops/s  elapsed    238.3s  maxrss 4042 MB  manifest 2,230,440 B  segment 117,313,983 B  compactions 2
+       2,500,000 ops       9,660 ops/s  elapsed    258.8s  maxrss 4042 MB  manifest 6,410,025 B  segment 132,819,740 B  compactions 2
+       3,000,000 ops      10,145 ops/s  elapsed    295.7s  maxrss 5504 MB  manifest 2,056,361 B  segment 167,626,403 B  compactions 3
+       3,500,000 ops      10,443 ops/s  elapsed    335.1s  maxrss 5504 MB  manifest 6,437,477 B  segment 183,130,232 B  compactions 3
+       4,000,000 ops      10,667 ops/s  elapsed    375.0s  maxrss 6745 MB  manifest 2,056,397 B  segment 218,629,643 B  compactions 4
+       4,500,000 ops      11,400 ops/s  elapsed    394.7s  maxrss 6745 MB  manifest 6,632,457 B  segment 234,133,425 B  compactions 4
+       5,000,000 ops      11,412 ops/s  elapsed    438.1s  maxrss 7971 MB  manifest 2,056,914 B  segment 269,635,702 B  compactions 5
+       5,500,000 ops      11,996 ops/s  elapsed    458.5s  maxrss 7971 MB  manifest 5,796,728 B  segment 285,140,313 B  compactions 5
+       6,000,000 ops      11,872 ops/s  elapsed    505.4s  maxrss 9202 MB  manifest 2,057,431 B  segment 320,641,490 B  compactions 6
+       6,500,000 ops      12,361 ops/s  elapsed    525.8s  maxrss 9202 MB  manifest 5,974,815 B  segment 336,145,361 B  compactions 6
+       7,000,000 ops      12,130 ops/s  elapsed    577.1s  maxrss 10426 MB  manifest 2,057,947 B  segment 371,646,013 B  compactions 7
+       7,500,000 ops      12,567 ops/s  elapsed    596.8s  maxrss 10426 MB  manifest 6,172,331 B  segment 387,149,962 B  compactions 7
+       8,000,000 ops      11,935 ops/s  elapsed    670.3s  maxrss 11790 MB  manifest 2,058,464 B  segment 422,651,710 B  compactions 8
+       8,500,000 ops      12,194 ops/s  elapsed    697.1s  maxrss 11790 MB  manifest 6,367,796 B  segment 438,155,342 B  compactions 8
+       9,000,000 ops      11,391 ops/s  elapsed    790.1s  maxrss 13018 MB  manifest 2,060,467 B  segment 473,655,013 B  compactions 9
+       9,500,000 ops      11,721 ops/s  elapsed    810.5s  maxrss 13018 MB  manifest 6,571,183 B  segment 489,158,561 B  compactions 9
+      10,000,000 ops      11,223 ops/s  elapsed    891.0s  maxrss 14244 MB  manifest 2,062,987 B  segment 524,661,423 B  compactions 10
+      10,500,000 ops      11,528 ops/s  elapsed    910.9s  maxrss 14244 MB  manifest 6,801,122 B  segment 540,233,379 B  compactions 10
+      11,000,000 ops      11,272 ops/s  elapsed    975.9s  maxrss 15473 MB  manifest 2,079,509 B  segment 576,012,931 B  compactions 11
+      11,500,000 ops      11,545 ops/s  elapsed    996.1s  maxrss 15473 MB  manifest 5,954,881 B  segment 591,583,717 B  compactions 11
+      12,000,000 ops      11,273 ops/s  elapsed   1064.5s  maxrss 16703 MB  manifest 2,080,033 B  segment 627,460,037 B  compactions 12
+      12,500,000 ops      11,332 ops/s  elapsed   1103.1s  maxrss 16703 MB  manifest 6,154,329 B  segment 643,030,830 B  compactions 12
+      13,000,000 ops      11,058 ops/s  elapsed   1175.6s  maxrss 17936 MB  manifest 2,080,555 B  segment 678,934,703 B  compactions 13
+      13,500,000 ops      11,288 ops/s  elapsed   1195.9s  maxrss 17936 MB  manifest 6,351,695 B  segment 694,505,570 B  compactions 13
+      14,000,000 ops      10,849 ops/s  elapsed   1290.5s  maxrss 19167 MB  manifest 2,081,077 B  segment 730,411,465 B  compactions 14
+      14,500,000 ops      11,065 ops/s  elapsed   1310.4s  maxrss 19167 MB  manifest 6,551,141 B  segment 745,982,242 B  compactions 14
+      15,000,000 ops      10,586 ops/s  elapsed   1416.9s  maxrss 20664 MB  manifest 2,081,599 B  segment 781,886,931 B  compactions 15
+      15,500,000 ops      10,776 ops/s  elapsed   1438.4s  maxrss 20664 MB  manifest 6,748,507 B  segment 797,005,713 B  compactions 15
+      16,000,000 ops      10,494 ops/s  elapsed   1524.7s  maxrss 21896 MB  manifest 2,081,600 B  segment 831,709,238 B  compactions 16
+      16,500,000 ops      10,660 ops/s  elapsed   1547.8s  maxrss 21896 MB  manifest 5,889,087 B  segment 846,828,065 B  compactions 16
+      17,000,000 ops      10,339 ops/s  elapsed   1644.2s  maxrss 23122 MB  manifest 2,082,121 B  segment 882,524,180 B  compactions 17
+      17,500,000 ops      10,515 ops/s  elapsed   1664.2s  maxrss 23122 MB  manifest 6,083,929 B  segment 898,095,032 B  compactions 17
+      18,000,000 ops      10,150 ops/s  elapsed   1773.5s  maxrss 24355 MB  manifest 2,082,643 B  segment 934,087,432 B  compactions 18
+      18,500,000 ops      10,314 ops/s  elapsed   1793.6s  maxrss 24355 MB  manifest 6,281,295 B  segment 949,658,293 B  compactions 18
+      19,000,000 ops      10,018 ops/s  elapsed   1896.6s  maxrss 25584 MB  manifest 2,083,165 B  segment 985,564,312 B  compactions 19
+      19,500,000 ops      10,173 ops/s  elapsed   1916.9s  maxrss 25584 MB  manifest 6,480,741 B  segment 1,001,135,007 B  compactions 19
+      20,000,000 ops       9,875 ops/s  elapsed   2025.3s  maxrss 26843 MB  manifest 2,083,687 B  segment 1,037,040,507 B  compactions 20
+      20,500,000 ops      10,021 ops/s  elapsed   2045.7s  maxrss 26843 MB  manifest 6,678,107 B  segment 1,052,612,712 B  compactions 20
+      21,000,000 ops       9,728 ops/s  elapsed   2158.7s  maxrss 28041 MB  manifest 2,084,209 B  segment 1,088,491,546 B  compactions 21
+      21,500,000 ops       9,781 ops/s  elapsed   2198.1s  maxrss 28041 MB  manifest 6,877,553 B  segment 1,104,062,370 B  compactions 21
+      22,000,000 ops       9,536 ops/s  elapsed   2307.0s  maxrss 29270 MB  manifest 2,084,731 B  segment 1,139,937,072 B  compactions 22
+      22,500,000 ops       9,632 ops/s  elapsed   2336.0s  maxrss 29270 MB  manifest 6,014,055 B  segment 1,155,508,000 B  compactions 22
+      23,000,000 ops       9,285 ops/s  elapsed   2477.0s  maxrss 30502 MB  manifest 2,085,252 B  segment 1,191,413,636 B  compactions 23
+      23,500,000 ops       9,410 ops/s  elapsed   2497.4s  maxrss 30502 MB  manifest 6,213,496 B  segment 1,206,984,447 B  compactions 23
+      24,000,000 ops       9,074 ops/s  elapsed   2644.8s  maxrss 31734 MB  manifest 2,085,776 B  segment 1,242,887,970 B  compactions 24
+      24,500,000 ops       9,193 ops/s  elapsed   2665.0s  maxrss 31734 MB  manifest 6,412,868 B  segment 1,258,458,699 B  compactions 24
+      25,000,000 ops       8,974 ops/s  elapsed   2785.9s  maxrss 32965 MB  manifest 2,085,782 B  segment 1,294,364,057 B  compactions 25
+      25,500,000 ops       9,088 ops/s  elapsed   2805.9s  maxrss 32965 MB  manifest 6,615,710 B  segment 1,309,935,855 B  compactions 25
+      26,000,000 ops       8,878 ops/s  elapsed   2928.7s  maxrss 34223 MB  manifest 2,086,303 B  segment 1,345,841,888 B  compactions 26
+      26,500,000 ops       8,987 ops/s  elapsed   2948.6s  maxrss 34223 MB  manifest 6,815,155 B  segment 1,361,412,830 B  compactions 26
+      27,000,000 ops       8,666 ops/s  elapsed   3115.5s  maxrss 35424 MB  manifest 2,086,825 B  segment 1,397,315,640 B  compactions 27
+      27,500,000 ops       8,750 ops/s  elapsed   3142.8s  maxrss 35424 MB  manifest 5,951,657 B  segment 1,412,886,579 B  compactions 27
+      28,000,000 ops       8,541 ops/s  elapsed   3278.2s  maxrss 36683 MB  manifest 2,087,347 B  segment 1,448,792,241 B  compactions 28
+      28,500,000 ops       8,640 ops/s  elapsed   3298.6s  maxrss 36683 MB  manifest 6,151,103 B  segment 1,464,363,076 B  compactions 28
+      29,000,000 ops       8,446 ops/s  elapsed   3433.6s  maxrss 37886 MB  manifest 2,087,869 B  segment 1,500,266,497 B  compactions 29
+      29,500,000 ops       8,541 ops/s  elapsed   3453.9s  maxrss 37886 MB  manifest 6,348,469 B  segment 1,515,837,385 B  compactions 29
+      30,000,000 ops       8,330 ops/s  elapsed   3601.3s  maxrss 39658 MB  manifest 2,088,391 B  segment 1,551,743,678 B  compactions 30
+
+DONE ops=30,000,262 wall=3786.004s compactions=31 maxrss=57923MB manifest=175,244B segment=1,548,718,378B
+digest_mode=streaming
+store_digest=239118cae2044e5928b68d82423e0e996b6bc96654cbfd34266747486aa7e6d8
+content_digest=None
+record: /project/xzhang12/tgms-b7/stores/synth-30m-native/build-record.json
+PROJECT_DU_AFTER_MB=34401
+BUILD_EXIT=0
+RUN_FINISHED commit=b159bd10aa53ad5de5f4e8ff7af1c87789d6afd0 exit=0

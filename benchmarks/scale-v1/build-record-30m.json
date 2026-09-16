@@ -1,0 +1,132 @@
+{
+ "build_info": {
+  "batch": 250,
+  "compact_every": 1000000,
+  "compactions": 31,
+  "content_digest": null,
+  "digest_mode": "streaming",
+  "engine": {
+   "debug_assertions": false,
+   "engine_version": "0.8.0",
+   "manifest_format_version": 3,
+   "opt_level": "3",
+   "profile": "release"
+  },
+  "finalisation_phases": {
+   "compact": {
+    "rss_kb_after": {
+     "maxrss_kb": 54213132,
+     "vmhwm": 54213132,
+     "vmrss": 35603032
+    },
+    "rss_kb_before": {
+     "maxrss_kb": 40609700,
+     "vmhwm": 40609700,
+     "vmrss": 25055648
+    },
+    "wall_s": 113.195
+   },
+   "digest": {
+    "rss_kb_after": {
+     "maxrss_kb": 59313264,
+     "vmhwm": 59313264,
+     "vmrss": 35670168
+    },
+    "rss_kb_before": {
+     "maxrss_kb": 54213132,
+     "vmhwm": 54213132,
+     "vmrss": 34841368
+    },
+    "wall_s": 697.049
+   },
+   "gc": {
+    "rss_kb_after": {
+     "maxrss_kb": 54213132,
+     "vmhwm": 54213132,
+     "vmrss": 34841376
+    },
+    "rss_kb_before": {
+     "maxrss_kb": 54213132,
+     "vmhwm": 54213132,
+     "vmrss": 35603032
+    },
+    "wall_s": 12.389
+   },
+   "stats": {
+    "rss_kb_after": {
+     "maxrss_kb": 54213132,
+     "vmhwm": 54213132,
+     "vmrss": 34841368
+    },
+    "rss_kb_before": {
+     "maxrss_kb": 54213132,
+     "vmhwm": 54213132,
+     "vmrss": 34841376
+    },
+    "wall_s": 9.695
+   }
+  },
+  "manifest_identity": {
+   "generation": 120293,
+   "manifest_sha": "93f75e74025e8b43"
+  },
+  "n_entities": 30000000,
+  "ops": 30000262,
+  "peak_rss": {
+   "maxrss_kb": 59313264,
+   "vmhwm": 59313264,
+   "vmrss": 35670168
+  },
+  "seed": 0,
+  "stats": {
+   "max_out_degree": 149,
+   "n_edge_versions": 30000269,
+   "n_entities": 300000,
+   "n_node_versions": 300003,
+   "rel_type_counts": {
+    "R": 20000000,
+    "S": 10000269
+   },
+   "vt_max": 31499999,
+   "vt_min": 0
+  },
+  "store_bytes": {
+   "manifest_bytes": 175244,
+   "segment_bytes": 1548718378,
+   "total_bytes": 4522454601
+  },
+  "store_digest": "239118cae2044e5928b68d82423e0e996b6bc96654cbfd34266747486aa7e6d8",
+  "wall_s": 3786.004
+ },
+ "config": {
+  "backend": "native",
+  "batch": 250,
+  "compact_every": 1000000,
+  "digest_mode": "streaming",
+  "n_entities": 30000000
+ },
+ "dataset": {
+  "digest": "239118cae2044e5928b68d82423e0e996b6bc96654cbfd34266747486aa7e6d8",
+  "digest_kind": "store_digest",
+  "name": "synth"
+ },
+ "git_commit": "b159bd10aa53ad5de5f4e8ff7af1c87789d6afd0",
+ "machine": {
+  "cpus": 64,
+  "host": "itiger07",
+  "platform": "Linux-5.14.0-427.31.1.el9_4.x86_64-x86_64-with-glibc2.34",
+  "ram_gb": 503.68
+ },
+ "protocol": {
+  "ceilings": {},
+  "reps": 1,
+  "warmups": 0
+ },
+ "record": "stores/synth-30m-native/build-record.json",
+ "result_digest": "239118cae2044e5928b68d82423e0e996b6bc96654cbfd34266747486aa7e6d8",
+ "schema_version": "1.0.0",
+ "seed": {
+  "value": 0
+ },
+ "timestamp_utc": "2026-09-16T04:27:34Z"
+}

@@ -1,0 +1,15 @@
+Traceback (most recent call last):
+  File "/home/xzhang12/b7-work-h/tools/query_floor.py", line 104, in <module>
+    sys.exit(main())
+             ^^^^^^
+  File "/home/xzhang12/b7-work-h/tools/query_floor.py", line 60, in main
+    store = tgms.open(args.store, backend="native")
+            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/project/xzhang12/tgms-b7/tgms/store.py", line 715, in open
+    return Store(path, backend=backend, paranoid=paranoid, read_only=read_only)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/project/xzhang12/tgms-b7/tgms/store.py", line 84, in __init__
+    self._acquire_writer_lock()
+  File "/project/xzhang12/tgms-b7/tgms/store.py", line 438, in _acquire_writer_lock
+    raise WriterLockedError(
+tgms.store.WriterLockedError: another process is already the writer for /project/xzhang12/tgms-b7/stores/synth-30m-native (writer.lock held by pid 1468411); a second concurrent writer is undefined (spec §1). Open with read_only=True instead, or wait for that process to exit.

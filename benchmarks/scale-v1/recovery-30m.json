@@ -1,0 +1,50 @@
+{
+  "band_min": [
+    29,
+    46
+  ],
+  "batches": 120262,
+  "compact_every": 500,
+  "compactions": 240,
+  "config": {
+    "backend": "native",
+    "n_entities": 30000000
+  },
+  "dataset": {
+    "digest": "239118cae2044e5928b68d82423e0e996b6bc96654cbfd34266747486aa7e6d8",
+    "digest_kind": "store_digest",
+    "name": "synth"
+  },
+  "digest_compare": {
+    "digest_equal": true,
+    "replayed_digest": "239118cae2044e5928b68d82423e0e996b6bc96654cbfd34266747486aa7e6d8",
+    "src_digest": "239118cae2044e5928b68d82423e0e996b6bc96654cbfd34266747486aa7e6d8"
+  },
+  "git_commit": "b159bd10aa53ad5de5f4e8ff7af1c87789d6afd0",
+  "job_id": "213071",
+  "machine": {
+    "cpus": 64,
+    "host": "itiger08",
+    "platform": "Linux-5.14.0-427.31.1.el9_4.x86_64-x86_64-with-glibc2.34",
+    "ram_gb": 503.68
+  },
+  "node": "itiger08",
+  "protocol": {
+    "ceilings": {},
+    "reps": 1,
+    "warmups": 0
+  },
+  "protocol_note": "Frozen protocol: --compact-every 500 (batches), identical to the Stage-0/EXP-A4 1M recovery cadence. NOT relabeled or superseded by recovery-30m-ce5000.json -- both stand.",
+  "record": "benchmarks/scale-v1/recovery-30m.json",
+  "replay_store": "/project/xzhang12/tgms-b7/stores/synth-30m-native-replayed-213071",
+  "replay_wall_h": 4.061,
+  "replay_wall_s": 14618.56109905243,
+  "result_digest": "239118cae2044e5928b68d82423e0e996b6bc96654cbfd34266747486aa7e6d8",
+  "schema_version": "1.0.0",
+  "seed": {
+    "value": 0
+  },
+  "source_store": "/project/xzhang12/tgms-b7/stores/synth-30m-native",
+  "timestamp_utc": "2026-09-16T04:34:25Z",
+  "verdict": "REFUTED (5.3x the 46-minute upper bound); digest_equal true. Mechanism (Addendum 6): each of the 240 compactions materialises the whole store (D-164, compact.rs) -- replay cost is super-linear under this fixed cadence over a 30M-entity log."
+}

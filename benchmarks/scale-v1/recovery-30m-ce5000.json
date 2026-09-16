@@ -1,0 +1,50 @@
+{
+  "band_min": [
+    35,
+    70
+  ],
+  "batches": 120262,
+  "compact_every": 5000,
+  "compactions": 24,
+  "config": {
+    "backend": "native",
+    "n_entities": 30000000
+  },
+  "dataset": {
+    "digest": "239118cae2044e5928b68d82423e0e996b6bc96654cbfd34266747486aa7e6d8",
+    "digest_kind": "store_digest",
+    "name": "synth"
+  },
+  "digest_compare": {
+    "digest_equal": true,
+    "replayed_digest": "239118cae2044e5928b68d82423e0e996b6bc96654cbfd34266747486aa7e6d8",
+    "src_digest": "239118cae2044e5928b68d82423e0e996b6bc96654cbfd34266747486aa7e6d8"
+  },
+  "git_commit": "b159bd10aa53ad5de5f4e8ff7af1c87789d6afd0",
+  "job_id": "213187",
+  "machine": {
+    "cpus": 64,
+    "host": "itiger08",
+    "platform": "Linux-5.14.0-427.31.1.el9_4.x86_64-x86_64-with-glibc2.34",
+    "ram_gb": 503.68
+  },
+  "node": "itiger08",
+  "protocol": {
+    "ceilings": {},
+    "reps": 1,
+    "warmups": 0
+  },
+  "protocol_note": "Forecast Addendum 6 cadence-isolation run: identical to recovery-30m.json except --compact-every 5000, run alone after the 30M reruns finished (--dependency=afterany:213175). Pre-registered prediction: 35-70 min, digest equal.",
+  "record": "benchmarks/scale-v1/recovery-30m-ce5000.json",
+  "replay_store": "/project/xzhang12/tgms-b7/stores/synth-30m-native-replayed-ce5000-213187",
+  "replay_wall_min": 44.28,
+  "replay_wall_s": 2656.9436292648315,
+  "result_digest": "239118cae2044e5928b68d82423e0e996b6bc96654cbfd34266747486aa7e6d8",
+  "schema_version": "1.0.0",
+  "seed": {
+    "value": 0
+  },
+  "source_store": "/project/xzhang12/tgms-b7/stores/synth-30m-native",
+  "timestamp_utc": "2026-09-16T10:43:57Z",
+  "verdict": "PASS (44.28 min, within [35,70] band); digest_equal true. Confirms Addendum 6's cadence x D-164 attribution: 24 compactions (vs 240 at ce500) -> ~5.5x less wall (2,656.9s vs 14,618.6s) for the same replayed content (identical digest)."
+}

@@ -1,0 +1,1235 @@
+{
+  "build_info": {
+    "batch": 250,
+    "compact_every": 1000000,
+    "compactions": 31,
+    "content_digest": null,
+    "digest_mode": "streaming",
+    "engine": {
+      "debug_assertions": false,
+      "engine_version": "0.8.0",
+      "manifest_format_version": 3,
+      "opt_level": "3",
+      "profile": "release"
+    },
+    "finalisation_phases": {
+      "compact": {
+        "rss_kb_after": {
+          "maxrss_kb": 54213132,
+          "vmhwm": 54213132,
+          "vmrss": 35603032
+        },
+        "rss_kb_before": {
+          "maxrss_kb": 40609700,
+          "vmhwm": 40609700,
+          "vmrss": 25055648
+        },
+        "wall_s": 113.195
+      },
+      "digest": {
+        "rss_kb_after": {
+          "maxrss_kb": 59313264,
+          "vmhwm": 59313264,
+          "vmrss": 35670168
+        },
+        "rss_kb_before": {
+          "maxrss_kb": 54213132,
+          "vmhwm": 54213132,
+          "vmrss": 34841368
+        },
+        "wall_s": 697.049
+      },
+      "gc": {
+        "rss_kb_after": {
+          "maxrss_kb": 54213132,
+          "vmhwm": 54213132,
+          "vmrss": 34841376
+        },
+        "rss_kb_before": {
+          "maxrss_kb": 54213132,
+          "vmhwm": 54213132,
+          "vmrss": 35603032
+        },
+        "wall_s": 12.389
+      },
+      "stats": {
+        "rss_kb_after": {
+          "maxrss_kb": 54213132,
+          "vmhwm": 54213132,
+          "vmrss": 34841368
+        },
+        "rss_kb_before": {
+          "maxrss_kb": 54213132,
+          "vmhwm": 54213132,
+          "vmrss": 34841376
+        },
+        "wall_s": 9.695
+      }
+    },
+    "manifest_identity": {
+      "generation": 120293,
+      "manifest_sha": "93f75e74025e8b43"
+    },
+    "n_entities": 30000000,
+    "ops": 30000262,
+    "ops_per_s_by_decile": [
+      {
+        "bracket_elapsed_s": [
+          0.0,
+          295.7
+        ],
+        "bracket_ops": [
+          0,
+          3000000
+        ],
+        "decile": 1,
+        "ops_per_s": 10145.4
+      },
+      {
+        "bracket_elapsed_s": [
+          295.7,
+          505.4
+        ],
+        "bracket_ops": [
+          3000000,
+          6000000
+        ],
+        "decile": 2,
+        "ops_per_s": 14306.2
+      },
+      {
+        "bracket_elapsed_s": [
+          505.4,
+          790.1
+        ],
+        "bracket_ops": [
+          6000000,
+          9000000
+        ],
+        "decile": 3,
+        "ops_per_s": 10537.4
+      },
+      {
+        "bracket_elapsed_s": [
+          790.1,
+          1064.5
+        ],
+        "bracket_ops": [
+          9000000,
+          12000000
+        ],
+        "decile": 4,
+        "ops_per_s": 10932.9
+      },
+      {
+        "bracket_elapsed_s": [
+          1064.5,
+          1416.9
+        ],
+        "bracket_ops": [
+          12000000,
+          15000000
+        ],
+        "decile": 5,
+        "ops_per_s": 8513.1
+      },
+      {
+        "bracket_elapsed_s": [
+          1416.9,
+          1773.5
+        ],
+        "bracket_ops": [
+          15000000,
+          18000000
+        ],
+        "decile": 6,
+        "ops_per_s": 8412.8
+      },
+      {
+        "bracket_elapsed_s": [
+          1773.5,
+          2158.7
+        ],
+        "bracket_ops": [
+          18000000,
+          21000000
+        ],
+        "decile": 7,
+        "ops_per_s": 7788.2
+      },
+      {
+        "bracket_elapsed_s": [
+          2158.7,
+          2644.8
+        ],
+        "bracket_ops": [
+          21000000,
+          24000000
+        ],
+        "decile": 8,
+        "ops_per_s": 6171.6
+      },
+      {
+        "bracket_elapsed_s": [
+          2644.8,
+          3115.5
+        ],
+        "bracket_ops": [
+          24000000,
+          27000000
+        ],
+        "decile": 9,
+        "ops_per_s": 6373.5
+      },
+      {
+        "bracket_elapsed_s": [
+          3115.5,
+          3601.3
+        ],
+        "bracket_ops": [
+          27000000,
+          30000000
+        ],
+        "decile": 10,
+        "ops_per_s": 6175.4
+      }
+    ],
+    "peak_rss": {
+      "maxrss_kb": 59313264,
+      "vmhwm": 59313264,
+      "vmrss": 35670168
+    },
+    "rss_series_30s": [
+      {
+        "pid": 1467743,
+        "ts": "2026-09-16T03:12:41Z",
+        "vmhwm_kb": 13312,
+        "vmrss_kb": 13312
+      },
+      {
+        "pid": 1467743,
+        "ts": "2026-09-16T03:13:11Z",
+        "vmhwm_kb": 216668,
+        "vmrss_kb": 216668
+      },
+      {
+        "pid": 1467743,
+        "ts": "2026-09-16T03:13:41Z",
+        "vmhwm_kb": 234224,
+        "vmrss_kb": 234224
+      },
+      {
+        "pid": 1467743,
+        "ts": "2026-09-16T03:14:11Z",
+        "vmhwm_kb": 238832,
+        "vmrss_kb": 238832
+      },
+      {
+        "pid": 1467743,
+        "ts": "2026-09-16T03:14:41Z",
+        "vmhwm_kb": 241392,
+        "vmrss_kb": 241392
+      },
+      {
+        "pid": 1467743,
+        "ts": "2026-09-16T03:15:11Z",
+        "vmhwm_kb": 2234520,
+        "vmrss_kb": 1259896
+      },
+      {
+        "pid": 1467743,
+        "ts": "2026-09-16T03:15:41Z",
+        "vmhwm_kb": 2234520,
+        "vmrss_kb": 1263480
+      },
+      {
+        "pid": 1467743,
+        "ts": "2026-09-16T03:16:11Z",
+        "vmhwm_kb": 2234520,
+        "vmrss_kb": 1264136
+      },
+      {
+        "pid": 1467743,
+        "ts": "2026-09-16T03:16:41Z",
+        "vmhwm_kb": 4139404,
+        "vmrss_kb": 2158284
+      },
+      {
+        "pid": 1467743,
+        "ts": "2026-09-16T03:17:11Z",
+        "vmhwm_kb": 4139404,
+        "vmrss_kb": 2160332
+      },
+      {
+        "pid": 1467743,
+        "ts": "2026-09-16T03:17:41Z",
+        "vmhwm_kb": 5635800,
+        "vmrss_kb": 3077160
+      },
+      {
+        "pid": 1467743,
+        "ts": "2026-09-16T03:18:11Z",
+        "vmhwm_kb": 5635800,
+        "vmrss_kb": 3077160
+      },
+      {
+        "pid": 1467743,
+        "ts": "2026-09-16T03:18:41Z",
+        "vmhwm_kb": 5635800,
+        "vmrss_kb": 4066492
+      },
+      {
+        "pid": 1467743,
+        "ts": "2026-09-16T03:19:11Z",
+        "vmhwm_kb": 6906396,
+        "vmrss_kb": 4399388
+      },
+      {
+        "pid": 1467743,
+        "ts": "2026-09-16T03:19:41Z",
+        "vmhwm_kb": 6906396,
+        "vmrss_kb": 5544016
+      },
+      {
+        "pid": 1467743,
+        "ts": "2026-09-16T03:20:11Z",
+        "vmhwm_kb": 8161868,
+        "vmrss_kb": 4870768
+      },
+      {
+        "pid": 1467743,
+        "ts": "2026-09-16T03:20:41Z",
+        "vmhwm_kb": 8161868,
+        "vmrss_kb": 4928112
+      },
+      {
+        "pid": 1467743,
+        "ts": "2026-09-16T03:21:11Z",
+        "vmhwm_kb": 9422436,
+        "vmrss_kb": 5532348
+      },
+      {
+        "pid": 1467743,
+        "ts": "2026-09-16T03:21:41Z",
+        "vmhwm_kb": 9422436,
+        "vmrss_kb": 5532348
+      },
+      {
+        "pid": 1467743,
+        "ts": "2026-09-16T03:22:11Z",
+        "vmhwm_kb": 10676564,
+        "vmrss_kb": 10476048
+      },
+      {
+        "pid": 1467743,
+        "ts": "2026-09-16T03:22:42Z",
+        "vmhwm_kb": 10676564,
+        "vmrss_kb": 5811288
+      },
+      {
+        "pid": 1467743,
+        "ts": "2026-09-16T03:23:12Z",
+        "vmhwm_kb": 10676564,
+        "vmrss_kb": 5811288
+      },
+      {
+        "pid": 1467743,
+        "ts": "2026-09-16T03:23:42Z",
+        "vmhwm_kb": 12073180,
+        "vmrss_kb": 11890388
+      },
+      {
+        "pid": 1467743,
+        "ts": "2026-09-16T03:24:12Z",
+        "vmhwm_kb": 12073180,
+        "vmrss_kb": 6987824
+      },
+      {
+        "pid": 1467743,
+        "ts": "2026-09-16T03:24:42Z",
+        "vmhwm_kb": 12073180,
+        "vmrss_kb": 6987824
+      },
+      {
+        "pid": 1467743,
+        "ts": "2026-09-16T03:25:12Z",
+        "vmhwm_kb": 12748656,
+        "vmrss_kb": 12748656
+      },
+      {
+        "pid": 1467743,
+        "ts": "2026-09-16T03:25:42Z",
+        "vmhwm_kb": 13330428,
+        "vmrss_kb": 7488216
+      },
+      {
+        "pid": 1467743,
+        "ts": "2026-09-16T03:26:12Z",
+        "vmhwm_kb": 13330428,
+        "vmrss_kb": 7282684
+      },
+      {
+        "pid": 1467743,
+        "ts": "2026-09-16T03:26:42Z",
+        "vmhwm_kb": 13330428,
+        "vmrss_kb": 7282684
+      },
+      {
+        "pid": 1467743,
+        "ts": "2026-09-16T03:27:12Z",
+        "vmhwm_kb": 13330428,
+        "vmrss_kb": 12837996
+      },
+      {
+        "pid": 1467743,
+        "ts": "2026-09-16T03:27:42Z",
+        "vmhwm_kb": 14585408,
+        "vmrss_kb": 7936916
+      },
+      {
+        "pid": 1467743,
+        "ts": "2026-09-16T03:28:12Z",
+        "vmhwm_kb": 14585408,
+        "vmrss_kb": 7936916
+      },
+      {
+        "pid": 1467743,
+        "ts": "2026-09-16T03:28:42Z",
+        "vmhwm_kb": 15844604,
+        "vmrss_kb": 15510772
+      },
+      {
+        "pid": 1467743,
+        "ts": "2026-09-16T03:29:12Z",
+        "vmhwm_kb": 15844604,
+        "vmrss_kb": 8628392
+      },
+      {
+        "pid": 1467743,
+        "ts": "2026-09-16T03:29:42Z",
+        "vmhwm_kb": 15844604,
+        "vmrss_kb": 8743592
+      },
+      {
+        "pid": 1467743,
+        "ts": "2026-09-16T03:30:12Z",
+        "vmhwm_kb": 17103924,
+        "vmrss_kb": 16674656
+      },
+      {
+        "pid": 1467743,
+        "ts": "2026-09-16T03:30:42Z",
+        "vmhwm_kb": 17103924,
+        "vmrss_kb": 9264084
+      },
+      {
+        "pid": 1467743,
+        "ts": "2026-09-16T03:31:12Z",
+        "vmhwm_kb": 17103924,
+        "vmrss_kb": 9264084
+      },
+      {
+        "pid": 1467743,
+        "ts": "2026-09-16T03:31:42Z",
+        "vmhwm_kb": 17103924,
+        "vmrss_kb": 12743436
+      },
+      {
+        "pid": 1467743,
+        "ts": "2026-09-16T03:32:12Z",
+        "vmhwm_kb": 18366448,
+        "vmrss_kb": 10233700
+      },
+      {
+        "pid": 1467743,
+        "ts": "2026-09-16T03:32:42Z",
+        "vmhwm_kb": 18366448,
+        "vmrss_kb": 9928000
+      },
+      {
+        "pid": 1467743,
+        "ts": "2026-09-16T03:33:12Z",
+        "vmhwm_kb": 18366448,
+        "vmrss_kb": 9928000
+      },
+      {
+        "pid": 1467743,
+        "ts": "2026-09-16T03:33:42Z",
+        "vmhwm_kb": 18366448,
+        "vmrss_kb": 15654740
+      },
+      {
+        "pid": 1467743,
+        "ts": "2026-09-16T03:34:12Z",
+        "vmhwm_kb": 19627216,
+        "vmrss_kb": 10611660
+      },
+      {
+        "pid": 1467743,
+        "ts": "2026-09-16T03:34:42Z",
+        "vmhwm_kb": 19627216,
+        "vmrss_kb": 10611660
+      },
+      {
+        "pid": 1467743,
+        "ts": "2026-09-16T03:35:12Z",
+        "vmhwm_kb": 19627216,
+        "vmrss_kb": 14472268
+      },
+      {
+        "pid": 1467743,
+        "ts": "2026-09-16T03:35:42Z",
+        "vmhwm_kb": 21160196,
+        "vmrss_kb": 20880724
+      },
+      {
+        "pid": 1467743,
+        "ts": "2026-09-16T03:36:12Z",
+        "vmhwm_kb": 21160196,
+        "vmrss_kb": 12264132
+      },
+      {
+        "pid": 1467743,
+        "ts": "2026-09-16T03:36:42Z",
+        "vmhwm_kb": 21160196,
+        "vmrss_kb": 11908556
+      },
+      {
+        "pid": 1467743,
+        "ts": "2026-09-16T03:37:12Z",
+        "vmhwm_kb": 21160196,
+        "vmrss_kb": 12196300
+      },
+      {
+        "pid": 1467743,
+        "ts": "2026-09-16T03:37:42Z",
+        "vmhwm_kb": 22421540,
+        "vmrss_kb": 22353456
+      },
+      {
+        "pid": 1467743,
+        "ts": "2026-09-16T03:38:12Z",
+        "vmhwm_kb": 22421540,
+        "vmrss_kb": 12251124
+      },
+      {
+        "pid": 1467743,
+        "ts": "2026-09-16T03:38:42Z",
+        "vmhwm_kb": 22421540,
+        "vmrss_kb": 12251124
+      },
+      {
+        "pid": 1467743,
+        "ts": "2026-09-16T03:39:13Z",
+        "vmhwm_kb": 22421540,
+        "vmrss_kb": 16671320
+      },
+      {
+        "pid": 1467743,
+        "ts": "2026-09-16T03:39:43Z",
+        "vmhwm_kb": 23677276,
+        "vmrss_kb": 23676648
+      },
+      {
+        "pid": 1467743,
+        "ts": "2026-09-16T03:40:13Z",
+        "vmhwm_kb": 23677276,
+        "vmrss_kb": 12861948
+      },
+      {
+        "pid": 1467743,
+        "ts": "2026-09-16T03:40:43Z",
+        "vmhwm_kb": 23677276,
+        "vmrss_kb": 12861948
+      },
+      {
+        "pid": 1467743,
+        "ts": "2026-09-16T03:41:13Z",
+        "vmhwm_kb": 23677276,
+        "vmrss_kb": 14771736
+      },
+      {
+        "pid": 1467743,
+        "ts": "2026-09-16T03:41:43Z",
+        "vmhwm_kb": 24572248,
+        "vmrss_kb": 24572248
+      },
+      {
+        "pid": 1467743,
+        "ts": "2026-09-16T03:42:13Z",
+        "vmhwm_kb": 24939220,
+        "vmrss_kb": 13955988
+      },
+      {
+        "pid": 1467743,
+        "ts": "2026-09-16T03:42:43Z",
+        "vmhwm_kb": 24939220,
+        "vmrss_kb": 13525256
+      },
+      {
+        "pid": 1467743,
+        "ts": "2026-09-16T03:43:13Z",
+        "vmhwm_kb": 24939220,
+        "vmrss_kb": 17279384
+      },
+      {
+        "pid": 1467743,
+        "ts": "2026-09-16T03:43:43Z",
+        "vmhwm_kb": 24939220,
+        "vmrss_kb": 24408652
+      },
+      {
+        "pid": 1467743,
+        "ts": "2026-09-16T03:44:13Z",
+        "vmhwm_kb": 26198088,
+        "vmrss_kb": 16034880
+      },
+      {
+        "pid": 1467743,
+        "ts": "2026-09-16T03:44:43Z",
+        "vmhwm_kb": 26198088,
+        "vmrss_kb": 14209548
+      },
+      {
+        "pid": 1467743,
+        "ts": "2026-09-16T03:45:13Z",
+        "vmhwm_kb": 26198088,
+        "vmrss_kb": 17356000
+      },
+      {
+        "pid": 1467743,
+        "ts": "2026-09-16T03:45:43Z",
+        "vmhwm_kb": 27455596,
+        "vmrss_kb": 27121712
+      },
+      {
+        "pid": 1467743,
+        "ts": "2026-09-16T03:46:13Z",
+        "vmhwm_kb": 27487148,
+        "vmrss_kb": 20179092
+      },
+      {
+        "pid": 1467743,
+        "ts": "2026-09-16T03:46:43Z",
+        "vmhwm_kb": 27487148,
+        "vmrss_kb": 14853468
+      },
+      {
+        "pid": 1467743,
+        "ts": "2026-09-16T03:47:13Z",
+        "vmhwm_kb": 27487148,
+        "vmrss_kb": 15026012
+      },
+      {
+        "pid": 1467743,
+        "ts": "2026-09-16T03:47:43Z",
+        "vmhwm_kb": 27487148,
+        "vmrss_kb": 20471092
+      },
+      {
+        "pid": 1467743,
+        "ts": "2026-09-16T03:48:13Z",
+        "vmhwm_kb": 28714428,
+        "vmrss_kb": 28714164
+      },
+      {
+        "pid": 1467743,
+        "ts": "2026-09-16T03:48:43Z",
+        "vmhwm_kb": 28714428,
+        "vmrss_kb": 15603180
+      },
+      {
+        "pid": 1467743,
+        "ts": "2026-09-16T03:49:13Z",
+        "vmhwm_kb": 28714428,
+        "vmrss_kb": 15603180
+      },
+      {
+        "pid": 1467743,
+        "ts": "2026-09-16T03:49:43Z",
+        "vmhwm_kb": 28714428,
+        "vmrss_kb": 15718892
+      },
+      {
+        "pid": 1467743,
+        "ts": "2026-09-16T03:50:13Z",
+        "vmhwm_kb": 28714428,
+        "vmrss_kb": 22975660
+      },
+      {
+        "pid": 1467743,
+        "ts": "2026-09-16T03:50:43Z",
+        "vmhwm_kb": 29972332,
+        "vmrss_kb": 29632736
+      },
+      {
+        "pid": 1467743,
+        "ts": "2026-09-16T03:51:13Z",
+        "vmhwm_kb": 29972332,
+        "vmrss_kb": 16201404
+      },
+      {
+        "pid": 1467743,
+        "ts": "2026-09-16T03:51:43Z",
+        "vmhwm_kb": 29972332,
+        "vmrss_kb": 16201404
+      },
+      {
+        "pid": 1467743,
+        "ts": "2026-09-16T03:52:13Z",
+        "vmhwm_kb": 29972332,
+        "vmrss_kb": 16317116
+      },
+      {
+        "pid": 1467743,
+        "ts": "2026-09-16T03:52:43Z",
+        "vmhwm_kb": 29972332,
+        "vmrss_kb": 22354204
+      },
+      {
+        "pid": 1467743,
+        "ts": "2026-09-16T03:53:13Z",
+        "vmhwm_kb": 31233700,
+        "vmrss_kb": 31084908
+      },
+      {
+        "pid": 1467743,
+        "ts": "2026-09-16T03:53:43Z",
+        "vmhwm_kb": 31233700,
+        "vmrss_kb": 17424148
+      },
+      {
+        "pid": 1467743,
+        "ts": "2026-09-16T03:54:13Z",
+        "vmhwm_kb": 31233700,
+        "vmrss_kb": 16868156
+      },
+      {
+        "pid": 1467743,
+        "ts": "2026-09-16T03:54:43Z",
+        "vmhwm_kb": 31233700,
+        "vmrss_kb": 16868156
+      },
+      {
+        "pid": 1467743,
+        "ts": "2026-09-16T03:55:13Z",
+        "vmhwm_kb": 31233700,
+        "vmrss_kb": 17099068
+      },
+      {
+        "pid": 1467743,
+        "ts": "2026-09-16T03:55:43Z",
+        "vmhwm_kb": 31233700,
+        "vmrss_kb": 23288456
+      },
+      {
+        "pid": 1467743,
+        "ts": "2026-09-16T03:56:14Z",
+        "vmhwm_kb": 32495332,
+        "vmrss_kb": 31895852
+      },
+      {
+        "pid": 1467743,
+        "ts": "2026-09-16T03:56:44Z",
+        "vmhwm_kb": 32495332,
+        "vmrss_kb": 18176512
+      },
+      {
+        "pid": 1467743,
+        "ts": "2026-09-16T03:57:14Z",
+        "vmhwm_kb": 32495332,
+        "vmrss_kb": 17595040
+      },
+      {
+        "pid": 1467743,
+        "ts": "2026-09-16T03:57:44Z",
+        "vmhwm_kb": 32495332,
+        "vmrss_kb": 21349028
+      },
+      {
+        "pid": 1467743,
+        "ts": "2026-09-16T03:58:14Z",
+        "vmhwm_kb": 32495332,
+        "vmrss_kb": 27699068
+      },
+      {
+        "pid": 1467743,
+        "ts": "2026-09-16T03:58:44Z",
+        "vmhwm_kb": 33756216,
+        "vmrss_kb": 33687044
+      },
+      {
+        "pid": 1467743,
+        "ts": "2026-09-16T03:59:14Z",
+        "vmhwm_kb": 33756216,
+        "vmrss_kb": 18198156
+      },
+      {
+        "pid": 1467743,
+        "ts": "2026-09-16T03:59:44Z",
+        "vmhwm_kb": 33756216,
+        "vmrss_kb": 18198156
+      },
+      {
+        "pid": 1467743,
+        "ts": "2026-09-16T04:00:14Z",
+        "vmhwm_kb": 33756216,
+        "vmrss_kb": 24379108
+      },
+      {
+        "pid": 1467743,
+        "ts": "2026-09-16T04:00:44Z",
+        "vmhwm_kb": 34772480,
+        "vmrss_kb": 34772480
+      },
+      {
+        "pid": 1467743,
+        "ts": "2026-09-16T04:01:14Z",
+        "vmhwm_kb": 35044028,
+        "vmrss_kb": 34789128
+      },
+      {
+        "pid": 1467743,
+        "ts": "2026-09-16T04:01:44Z",
+        "vmhwm_kb": 35044028,
+        "vmrss_kb": 18955020
+      },
+      {
+        "pid": 1467743,
+        "ts": "2026-09-16T04:02:14Z",
+        "vmhwm_kb": 35044028,
+        "vmrss_kb": 19070732
+      },
+      {
+        "pid": 1467743,
+        "ts": "2026-09-16T04:02:44Z",
+        "vmhwm_kb": 35044028,
+        "vmrss_kb": 26176020
+      },
+      {
+        "pid": 1467743,
+        "ts": "2026-09-16T04:03:14Z",
+        "vmhwm_kb": 36273744,
+        "vmrss_kb": 36203676
+      },
+      {
+        "pid": 1467743,
+        "ts": "2026-09-16T04:03:44Z",
+        "vmhwm_kb": 36273744,
+        "vmrss_kb": 36260372
+      },
+      {
+        "pid": 1467743,
+        "ts": "2026-09-16T04:04:14Z",
+        "vmhwm_kb": 36273744,
+        "vmrss_kb": 20178892
+      },
+      {
+        "pid": 1467743,
+        "ts": "2026-09-16T04:04:44Z",
+        "vmhwm_kb": 36273744,
+        "vmrss_kb": 19522684
+      },
+      {
+        "pid": 1467743,
+        "ts": "2026-09-16T04:05:14Z",
+        "vmhwm_kb": 36273744,
+        "vmrss_kb": 19522684
+      },
+      {
+        "pid": 1467743,
+        "ts": "2026-09-16T04:05:44Z",
+        "vmhwm_kb": 36273744,
+        "vmrss_kb": 23883416
+      },
+      {
+        "pid": 1467743,
+        "ts": "2026-09-16T04:06:14Z",
+        "vmhwm_kb": 36273744,
+        "vmrss_kb": 30141548
+      },
+      {
+        "pid": 1467743,
+        "ts": "2026-09-16T04:06:44Z",
+        "vmhwm_kb": 37533908,
+        "vmrss_kb": 37194612
+      },
+      {
+        "pid": 1467743,
+        "ts": "2026-09-16T04:07:14Z",
+        "vmhwm_kb": 37563496,
+        "vmrss_kb": 20964544
+      },
+      {
+        "pid": 1467743,
+        "ts": "2026-09-16T04:07:44Z",
+        "vmhwm_kb": 37563496,
+        "vmrss_kb": 20283220
+      },
+      {
+        "pid": 1467743,
+        "ts": "2026-09-16T04:08:14Z",
+        "vmhwm_kb": 37563496,
+        "vmrss_kb": 23430028
+      },
+      {
+        "pid": 1467743,
+        "ts": "2026-09-16T04:08:44Z",
+        "vmhwm_kb": 37563496,
+        "vmrss_kb": 28039012
+      },
+      {
+        "pid": 1467743,
+        "ts": "2026-09-16T04:09:14Z",
+        "vmhwm_kb": 38795008,
+        "vmrss_kb": 38595448
+      },
+      {
+        "pid": 1467743,
+        "ts": "2026-09-16T04:09:44Z",
+        "vmhwm_kb": 38795008,
+        "vmrss_kb": 33341032
+      },
+      {
+        "pid": 1467743,
+        "ts": "2026-09-16T04:10:14Z",
+        "vmhwm_kb": 38795008,
+        "vmrss_kb": 20850392
+      },
+      {
+        "pid": 1467743,
+        "ts": "2026-09-16T04:10:44Z",
+        "vmhwm_kb": 38795008,
+        "vmrss_kb": 21080792
+      },
+      {
+        "pid": 1467743,
+        "ts": "2026-09-16T04:11:14Z",
+        "vmhwm_kb": 38795008,
+        "vmrss_kb": 28873632
+      },
+      {
+        "pid": 1467743,
+        "ts": "2026-09-16T04:11:44Z",
+        "vmhwm_kb": 40609700,
+        "vmrss_kb": 39891148
+      },
+      {
+        "pid": 1467743,
+        "ts": "2026-09-16T04:12:14Z",
+        "vmhwm_kb": 40609700,
+        "vmrss_kb": 40549456
+      },
+      {
+        "pid": 1467743,
+        "ts": "2026-09-16T04:12:45Z",
+        "vmhwm_kb": 40609700,
+        "vmrss_kb": 22199384
+      },
+      {
+        "pid": 1467743,
+        "ts": "2026-09-16T04:13:15Z",
+        "vmhwm_kb": 40609700,
+        "vmrss_kb": 22719576
+      },
+      {
+        "pid": 1467743,
+        "ts": "2026-09-16T04:13:45Z",
+        "vmhwm_kb": 40609700,
+        "vmrss_kb": 25055648
+      },
+      {
+        "pid": 1467743,
+        "ts": "2026-09-16T04:14:15Z",
+        "vmhwm_kb": 40609700,
+        "vmrss_kb": 37533164
+      },
+      {
+        "pid": 1467743,
+        "ts": "2026-09-16T04:14:45Z",
+        "vmhwm_kb": 54213132,
+        "vmrss_kb": 53872828
+      },
+      {
+        "pid": 1467743,
+        "ts": "2026-09-16T04:15:15Z",
+        "vmhwm_kb": 54213132,
+        "vmrss_kb": 53960748
+      },
+      {
+        "pid": 1467743,
+        "ts": "2026-09-16T04:15:45Z",
+        "vmhwm_kb": 54213132,
+        "vmrss_kb": 34841376
+      },
+      {
+        "pid": 1467743,
+        "ts": "2026-09-16T04:16:15Z",
+        "vmhwm_kb": 54213132,
+        "vmrss_kb": 35348248
+      },
+      {
+        "pid": 1467743,
+        "ts": "2026-09-16T04:16:45Z",
+        "vmhwm_kb": 58477680,
+        "vmrss_kb": 58477680
+      },
+      {
+        "pid": 1467743,
+        "ts": "2026-09-16T04:17:15Z",
+        "vmhwm_kb": 59313264,
+        "vmrss_kb": 52178852
+      },
+      {
+        "pid": 1467743,
+        "ts": "2026-09-16T04:17:45Z",
+        "vmhwm_kb": 59313264,
+        "vmrss_kb": 52877732
+      },
+      {
+        "pid": 1467743,
+        "ts": "2026-09-16T04:18:15Z",
+        "vmhwm_kb": 59313264,
+        "vmrss_kb": 54038436
+      },
+      {
+        "pid": 1467743,
+        "ts": "2026-09-16T04:18:45Z",
+        "vmhwm_kb": 59313264,
+        "vmrss_kb": 55236516
+      },
+      {
+        "pid": 1467743,
+        "ts": "2026-09-16T04:19:15Z",
+        "vmhwm_kb": 59313264,
+        "vmrss_kb": 56744868
+      },
+      {
+        "pid": 1467743,
+        "ts": "2026-09-16T04:19:45Z",
+        "vmhwm_kb": 59313264,
+        "vmrss_kb": 58176932
+      },
+      {
+        "pid": 1467743,
+        "ts": "2026-09-16T04:20:15Z",
+        "vmhwm_kb": 59313264,
+        "vmrss_kb": 56873436
+      },
+      {
+        "pid": 1467743,
+        "ts": "2026-09-16T04:20:45Z",
+        "vmhwm_kb": 59313264,
+        "vmrss_kb": 56873440
+      },
+      {
+        "pid": 1467743,
+        "ts": "2026-09-16T04:21:15Z",
+        "vmhwm_kb": 59313264,
+        "vmrss_kb": 56869860
+      },
+      {
+        "pid": 1467743,
+        "ts": "2026-09-16T04:21:45Z",
+        "vmhwm_kb": 59313264,
+        "vmrss_kb": 56871908
+      },
+      {
+        "pid": 1467743,
+        "ts": "2026-09-16T04:22:15Z",
+        "vmhwm_kb": 59313264,
+        "vmrss_kb": 56873988
+      },
+      {
+        "pid": 1467743,
+        "ts": "2026-09-16T04:22:45Z",
+        "vmhwm_kb": 59313264,
+        "vmrss_kb": 56870932
+      },
+      {
+        "pid": 1467743,
+        "ts": "2026-09-16T04:23:15Z",
+        "vmhwm_kb": 59313264,
+        "vmrss_kb": 56874052
+      },
+      {
+        "pid": 1467743,
+        "ts": "2026-09-16T04:23:45Z",
+        "vmhwm_kb": 59313264,
+        "vmrss_kb": 56874052
+      },
+      {
+        "pid": 1467743,
+        "ts": "2026-09-16T04:24:15Z",
+        "vmhwm_kb": 59313264,
+        "vmrss_kb": 56874052
+      },
+      {
+        "pid": 1467743,
+        "ts": "2026-09-16T04:24:45Z",
+        "vmhwm_kb": 59313264,
+        "vmrss_kb": 56874008
+      },
+      {
+        "pid": 1467743,
+        "ts": "2026-09-16T04:25:15Z",
+        "vmhwm_kb": 59313264,
+        "vmrss_kb": 56874056
+      },
+      {
+        "pid": 1467743,
+        "ts": "2026-09-16T04:25:45Z",
+        "vmhwm_kb": 59313264,
+        "vmrss_kb": 35710904
+      },
+      {
+        "pid": 1467743,
+        "ts": "2026-09-16T04:26:15Z",
+        "vmhwm_kb": 59313264,
+        "vmrss_kb": 35710904
+      },
+      {
+        "pid": 1467743,
+        "ts": "2026-09-16T04:26:45Z",
+        "vmhwm_kb": 59313264,
+        "vmrss_kb": 35710904
+      },
+      {
+        "pid": 1467743,
+        "ts": "2026-09-16T04:27:15Z",
+        "vmhwm_kb": 59313264,
+        "vmrss_kb": 35710904
+      },
+      {
+        "pid": 1467743,
+        "ts": "2026-09-16T04:27:45Z",
+        "vmhwm_kb": 59313264,
+        "vmrss_kb": 35650024
+      }
+    ],
+    "rss_series_source": "tools/rss_sampler.py, /proc/<pid>/status VmHWM/VmRSS, 30s interval, job 213067",
+    "seed": 0,
+    "stats": {
+      "max_out_degree": 149,
+      "n_edge_versions": 30000269,
+      "n_entities": 300000,
+      "n_node_versions": 300003,
+      "rel_type_counts": {
+        "R": 20000000,
+        "S": 10000269
+      },
+      "vt_max": 31499999,
+      "vt_min": 0
+    },
+    "steady_decile_median_ops_per_s": 8463.0,
+    "store_bytes": {
+      "manifest_bytes": 175244,
+      "segment_bytes": 1548718378,
+      "total_bytes": 4522454601
+    },
+    "store_digest": "239118cae2044e5928b68d82423e0e996b6bc96654cbfd34266747486aa7e6d8",
+    "wall_s": 3786.004
+  },
+  "config": {
+    "backend": "native",
+    "batch": 250,
+    "compact_every": 1000000,
+    "digest_mode": "streaming",
+    "host_controls": {
+      "commit_stamp_mechanism": "Stage 0's .HEAD_COMMIT + TGMS_COMMIT (git absent on iTiger compute nodes); RUN_STARTED/ABORT guard verified against b159bd10aa53ad5de5f4e8ff7af1c87789d6afd0",
+      "cpu_model": "AMD EPYC 7513 32-Core Processor",
+      "slurm_cpus_per_task": 8,
+      "slurm_exclude": "itiger04,itiger05",
+      "slurm_gres": "gpu:rtx_5000:1",
+      "slurm_job_id": "213067",
+      "slurm_mem": "128G",
+      "slurm_node": "itiger07",
+      "slurm_partition": "bigTiger",
+      "slurm_time_limit": "06:00:00",
+      "tgms_segment_cache_bytes": 46500000000
+    },
+    "n_entities": 30000000
+  },
+  "dataset": {
+    "digest": "239118cae2044e5928b68d82423e0e996b6bc96654cbfd34266747486aa7e6d8",
+    "digest_kind": "store_digest",
+    "name": "synth"
+  },
+  "falsifiers": {
+    "build_vmhwm_h1_h2": {
+      "h1_cache_bound_gb": 50,
+      "h2_linear_band_gb": [
+        55,
+        65
+      ],
+      "measured_gb": 56.57,
+      "trajectory": "ingest plateau ~40.6 GB -> compact ~54.2 GB -> streaming digest ~59.3 GB",
+      "verdict": "H2 (linear) named, H1 refuted"
+    },
+    "build_wall": {
+      "band_s": [
+        1500,
+        5400
+      ],
+      "measured_s": 3786.004,
+      "verdict": "PASS (in [25min, 1.5h] band)"
+    },
+    "manifest_bytes": {
+      "band_gb": 4,
+      "measured_bytes": 175244,
+      "verdict": "PASS"
+    },
+    "segment_bytes": {
+      "measured_gb": 1.549,
+      "predicted_gb": 1.5,
+      "verdict": "PASS"
+    },
+    "steady_decile_ops_per_s": {
+      "floor": 10000,
+      "measured": 8463.0,
+      "verdict": "TRIPPED (< 10,000) -- throughput decays through the build; per Addendum 6, each decile window's compactions materialise every row (D-164) and cost grows with rows compacted, not an ingest-rate change."
+    }
+  },
+  "git_commit": "b159bd10aa53ad5de5f4e8ff7af1c87789d6afd0",
+  "machine": {
+    "cpus": 64,
+    "host": "itiger07",
+    "platform": "Linux-5.14.0-427.31.1.el9_4.x86_64-x86_64-with-glibc2.34",
+    "ram_gb": 503.68
+  },
+  "protocol": {
+    "ceilings": {},
+    "reps": 1,
+    "warmups": 0
+  },
+  "query_ready_floor": {
+    "band_gb": [
+      5.5,
+      7.5
+    ],
+    "description": "Addendum 5 Stage 1 row 'query-ready floor': a FRESH process cold-opens the finished store (read_only=True) and runs the 13-operator registry once each; VmHWM of that process.",
+    "job_id": "213173",
+    "n_ok": 13,
+    "n_queries": 13,
+    "note": "First attempt (job 213068) FAILED after 33s with WriterLockedError (writer.lock held by another pid) -- the tool opened the store non-read-only and raced 213069/213070, which started concurrently once the build's afterok dependency released all three at once. Fixed in scripts/query_floor.py (added read_only=True) and re-run alone with --dependency=afterany:213071 (job 213173).",
+    "reruns": [
+      {
+        "exception": "WriterLockedError: writer.lock held by pid 1468411",
+        "failed_job_id": "213068",
+        "fix": "scripts/query_floor.py: tgms.open(..., read_only=True)",
+        "wall_s": 33
+      }
+    ],
+    "verdict": "PASS",
+    "vmhwm_gb": 6.495,
+    "vmhwm_kb": 6810596,
+    "vmrss_kb": 6532848
+  },
+  "record": "benchmarks/scale-v1/build-30m.json",
+  "result_digest": "239118cae2044e5928b68d82423e0e996b6bc96654cbfd34266747486aa7e6d8",
+  "schema_version": "1.0.0",
+  "seed": {
+    "value": 0
+  },
+  "timestamp_utc": "2026-09-16T04:27:34Z"
+}
