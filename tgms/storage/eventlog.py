@@ -201,19 +201,41 @@ class EventLog:
         end-of-file. `None` (the default) withholds tolerance entirely, so
         any tail defect raises — the pre-extension, strict reading.
 
+        Stale-snapshot retry (D-086-reader-stale-tail-snapshot-race): the
+        `end` captured above is itself a snapshot, taken at the moment
+        `readline()` first met the defect. A writer's `append()` is one
+        `write()` then `fsync()` then return; if that single call finishes
+        the very record this method is looking at, in the window between
+        the defect-finding `readline()` and the fresh `size = f.seek(0,
+        2)`, the file has grown past the stale `end` and `end >= size`
+        reads False even though the record is now whole on disk.
+        Comparing a stale `end` against a fresh `size` is the bug, not a
+        missing gate, so when `end < size` for a torn/unparseable
+        candidate, this seeks back to `start` and `readline()`s once more
+        before concluding anything: if the fresh `raw` now ends with `\n`
+        and parses, it was exactly that race — the record is treated as a
+        normal one (yielded, chain and cursor advance from its fresh
+        `end`). If it is still torn or unparseable after the retry, the
+        `end >= size` / `writer_active` decision below is redone with that
+        retry's own fresh `end` and a fresh `size` — one retry only, no
+        loop, no sleep: a second stale read in the same window would mean
+        the writer is still mid-append, which `writer_active` (or a
+        following raise) already handles correctly.
+
         A candidate is only actually forgiven when `writer_active` — called
-        at most once, lazily, exactly at this point, and *never* otherwise
-        — returns `True`. This is deliberately the last and only
-        conditional call: a torn final record at/after the floor is rare
-        (almost every open meets none at all), and `writer_active` is
-        expected to be `Store._writer_lock_is_held`, a non-blocking `flock`
-        probe on `writer.lock` — cheap, but not free of side effects worth
-        confining to the moment they are actually needed (see that
-        method's own docstring for the hazard eagerly probing on every open
-        used to create). `writer_active=None` forgives nothing (treated as
-        "cannot confirm a writer is active"), so a caller that passes a
-        floor without a callback gets the strict reading for any candidate,
-        never silent unconditional tolerance.
+        at most once, lazily, exactly at this point (or, after a stale-
+        snapshot retry, at the equivalent point for the re-read record),
+        and *never* otherwise — returns `True`. This is deliberately the
+        last and only conditional call: a torn final record at/after the
+        floor is rare (almost every open meets none at all), and
+        `writer_active` is expected to be `Store._writer_lock_is_held`, a
+        non-blocking `flock` probe on `writer.lock` — cheap, but not free
+        of side effects worth confining to the moment they are actually
+        needed (see that method's own docstring for the hazard eagerly
+        probing on every open used to create). `writer_active=None`
+        forgives nothing (treated as "cannot confirm a writer is active"),
+        so a caller that passes a floor without a callback gets the strict
+        reading for any candidate, never silent unconditional tolerance.
 
         A defect that fails either gate — start before the floor, or
         `writer_active` (once actually called) returning `False` — stops
@@ -245,17 +267,30 @@ class EventLog:
                 if not raw.strip():
                     continue
                 end = f.tell()
-                parse_error: json.JSONDecodeError | None = None
-                batch: dict[str, Any] | None = None
-                if raw.endswith(b"\n"):
-                    try:
-                        batch = json.loads(raw)
-                    except json.JSONDecodeError as e:
-                        parse_error = e
+                parse_error, batch = self._parse_record(raw)
                 if parse_error is not None or not raw.endswith(b"\n"):
                     if (tolerate_torn_tail_from is not None
                             and start >= tolerate_torn_tail_from):
                         size = f.seek(0, 2)
+                        if end < size:
+                            # the file grew past our stale snapshot: the
+                            # writer's append() may have completed this very
+                            # record in the window between the readline()
+                            # above and this size re-stat. Re-read it once —
+                            # one retry only, no loop — before trusting a
+                            # "not last" verdict built on stale inputs.
+                            f.seek(start)
+                            raw = f.readline()
+                            end = f.tell()
+                            parse_error, batch = self._parse_record(raw)
+                            if parse_error is None and raw.endswith(b"\n"):
+                                assert batch is not None
+                                yield batch, end, raw
+                                continue
+                            # still torn/unparseable after the retry: redo
+                            # the decision with the retry's fresh end and a
+                            # fresh size.
+                            size = f.seek(0, 2)
                         if end >= size:
                             # a genuine torn-final-record candidate: the one
                             # moment `writer_active` is ever called
@@ -275,6 +310,19 @@ class EventLog:
                     )
                 assert batch is not None
                 yield batch, end, raw
+
+    @staticmethod
+    def _parse_record(
+            raw: bytes) -> tuple[json.JSONDecodeError | None, dict[str, Any] | None]:
+        """Parse one raw record line, mirroring `batches_from`'s own rule:
+        a record missing its terminating newline is never even attempted
+        (it cannot be a complete JSON value on a properly-appended log)."""
+        if not raw.endswith(b"\n"):
+            return None, None
+        try:
+            return None, json.loads(raw)
+        except json.JSONDecodeError as e:
+            return e, None
 
     def chain_of_prefix(self, offset: int) -> str:
         """The rolling chain over every record ending at or before `offset`.

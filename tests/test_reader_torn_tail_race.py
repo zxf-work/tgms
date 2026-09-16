@@ -20,13 +20,14 @@ This is not the JSONDecodeError-shaped race D-086-reader-torn-tail-race
 already covers (a torn record with no forgiveness gate at all); it is the
 "no terminating newline and is not the log's last record" message
 (`eventlog.py:270-275`), raised precisely because the gate's *inputs* are
-stale rather than because tolerance was refused correctly. Fixing this
-needs the gate to re-read the record before trusting a "not last" verdict
-based on a snapshot the writer has since outgrown — see the ledger entry
-for the proposed fix. This test is `xfail(strict=True)`: it currently
-reproduces the raise (documenting the open bug), and must fail loudly
-(XPASS) the day someone fixes `batches_from` without also updating or
-removing this marker.
+stale rather than because tolerance was refused correctly. Fixed by
+`EventLog.batches_from`'s one-retry rule: when a torn/unparseable
+candidate's stale `end` is behind a freshly re-stat'd `size`, it seeks
+back to the record's `start` and `readline()`s once more before trusting
+a "not last" verdict — see the ledger entry (D-086-reader-stale-tail-
+snapshot-race) and the docstring of `batches_from` for the mechanism.
+This test was `xfail(strict=True)` until that fix landed; the marker is
+gone and it now asserts the fix directly.
 """
 
 from __future__ import annotations
@@ -73,15 +74,6 @@ class _CompleteRecordOnFinalSeek:
         self._real.__exit__(*exc)
 
 
-@pytest.mark.xfail(
-    reason="D-086-reader-torn-tail-race (second race, CI run 35036538129): "
-           "batches_from's torn-tail gate compares a stale read snapshot "
-           "against a freshly re-stat'd size, so a writer completing the "
-           "SAME record between the two checks is mis-reported as damage "
-           "instead of re-read and found sound. Remove this xfail only in "
-           "the commit that fixes tgms/storage/eventlog.py::batches_from.",
-    strict=True,
-)
 def test_writer_completing_the_torn_record_between_read_and_size_check_is_not_damage(
         tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     log_path = tmp_path / "eventlog.jsonl"
@@ -126,7 +118,7 @@ def test_writer_completing_the_torn_record_between_read_and_size_check_is_not_da
     batches = list(EventLog(log_path).batches_from(
         0, tolerate_torn_tail_from=0, writer_active=lambda: True))
 
-    assert [b["tt"] for b in batches] == [10, 20], (
+    assert [batch["tt"] for batch, _end, _raw in batches] == [10, 20], (
         "the reader should see BOTH records once the writer's append() "
         "actually completed the torn one — re-reading a torn tail before "
         "trusting a stale 'not last' verdict is what the fix must add")
