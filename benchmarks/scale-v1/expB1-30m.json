@@ -1,0 +1,103 @@
+{
+  "schema_version": "1.0.0",
+  "git_commit": "b159bd10aa53ad5de5f4e8ff7af1c87789d6afd0",
+  "timestamp_utc": "2026-09-16T00:00:00Z",
+  "machine": {
+    "cpus": 64,
+    "host": "itiger07",
+    "platform": "Linux-5.14.0-427.31.1.el9_4.x86_64-x86_64-with-glibc2.34",
+    "ram_gb": 503.68
+  },
+  "config": {
+    "n_entities": 30000000,
+    "scale": "30m",
+    "backend": "native",
+    "derived_from": [
+      "benchmarks/scale-v1/build-30m.json",
+      "benchmarks/scale-v1/queryfloor-30m.json",
+      "benchmarks/scale-v1/scale-curve-30m.json",
+      "benchmarks/scale-v1/scale-curve-30m-raw.json",
+      "benchmarks/scale-v1/version-history-30m.json"
+    ]
+  },
+  "seed": {
+    "value": 0
+  },
+  "dataset": {
+    "name": "synth",
+    "digest": "239118cae2044e5928b68d82423e0e996b6bc96654cbfd34266747486aa7e6d8",
+    "digest_kind": "store_digest"
+  },
+  "result_digest": "20758d726234d99e263d628181ed270aa94701405f78456fe74b95d8238ddc91",
+  "protocol": {
+    "warmups": 0,
+    "reps": 1,
+    "ceilings": {},
+    "note": "this record performs no new measurement -- it assembles the EXP-B1 four-row column set (docs/HANDOFF-ENGINE.md:218-224, the D-071 100M-costed table's row labels) from four already-committed 30M records. warmups/reps/ceilings above describe this assembly step itself (a single pass), not the underlying measurements -- each row's own protocol is unchanged from its source record (see rows.*.source)."
+  },
+  "record": "benchmarks/scale-v1/expB1-30m.json",
+  "exp_b1": {
+    "description": "EXP-B1 / D-071's four-row column set (docs/HANDOFF-ENGINE.md \u00a74, \"100M, costed\": store on disk, query-ready floor (VmHWM), columnar scan, version_history) at the 30M scale point, per docs/design/SCALE_BUILD_FORECAST_2026-09-15.md \u00a74's expB1-{30,100}m.json layout. Every value below is read from a field already committed on main under benchmarks/scale-v1/ -- no new measurement was taken to produce this file. The 100M point is a separate file (expB1-100m.json), not yet produced (100M chain still running on iTiger).",
+    "rows": {
+      "store_on_disk": {
+        "label": "store on disk",
+        "value_bytes": 4522454601,
+        "value_gb": 4.522,
+        "components": {
+          "manifest_bytes": 175244,
+          "segment_bytes": 1548718378
+        },
+        "note": "total_bytes is build_info.store_bytes.total_bytes as recorded; it exceeds manifest_bytes + segment_bytes (the store's own eventlog / working-copy overhead is not itemized further in the source record, so no additional breakdown is claimed here).",
+        "source": {
+          "file": "benchmarks/scale-v1/build-30m.json",
+          "field": "build_info.store_bytes.{total_bytes,manifest_bytes,segment_bytes}"
+        }
+      },
+      "query_ready_floor": {
+        "label": "query-ready floor (VmHWM)",
+        "value_kb": 6810596,
+        "value_gb": 6.81,
+        "job_id": "213173",
+        "n_ok": 13,
+        "n_queries": 13,
+        "note": "fresh read-only process, cold-opens the finished store and runs the 13-operator registry once each; VmHWM of that process. Job 213173 (the fixed, alone rerun -- see README's Deviations \u00a71 for the writer-lock bug in the discarded first attempt, job 213068).",
+        "source": {
+          "file": "benchmarks/scale-v1/queryfloor-30m.json",
+          "field": "vmhwm_kb",
+          "cross_checked_against": "benchmarks/scale-v1/build-30m.json: query_ready_floor.vmhwm_kb (same value, embedded copy)"
+        }
+      },
+      "columnar_scan": {
+        "label": "columnar scan (aggregate_events, query id agg.rel_bucket)",
+        "value_ms": 176.492,
+        "value_ms_contended": 169.596,
+        "anchor_10m_p50_ms": 119.597,
+        "rows_returned": 194,
+        "note": "\"columnar scan\" is this operator's label in docs/TECHNICAL_REPORT.md's D-058-vs-D-069 comparison (\"columnar control (aggregate_events)\"), reused here as the HANDOFF-ENGINE table's third row. clean_213174_p50_ms is the clean (alone) rerun; contended_213069_p50_ms is job 213069's concurrent-run figure, kept on record per the campaign's non-overwrite discipline, not averaged in.",
+        "source": {
+          "file": "benchmarks/scale-v1/scale-curve-30m.json",
+          "field": "per_operator_p50_ms.\"agg.rel_bucket\".{clean_213174_p50_ms,contended_213069_p50_ms,anchor_10m_p50_ms}",
+          "recomputed_from": "benchmarks/scale-v1/scale-curve-30m-raw.json: results.native[query==\"agg.rel_bucket\"].timings_ms (median), matches p50_ms and clean_213174_p50_ms exactly -- see compute_b7_scale's own cross-check for this row"
+        }
+      },
+      "version_history": {
+        "label": "version_history (post D-069)",
+        "wall_s": 5.496,
+        "vmhwm_gb": 3.863,
+        "rows_total": 30000269,
+        "job_id": "213175",
+        "call": {
+          "belief": "all",
+          "kind": "edge",
+          "limit": 10,
+          "window": "[vt_min, vt_max+1)"
+        },
+        "note": "clean_alone (job 213175), median over 3 reps of wall_ms and vmhwm_kb -- not the contended_first_run (job 213070), kept on record separately.",
+        "source": {
+          "file": "benchmarks/scale-v1/version-history-30m.json",
+          "field": "clean_alone.{wall_ms_median,vmhwm_kb_median,rows_total}"
+        }
+      }
+    }
+  }
+}
