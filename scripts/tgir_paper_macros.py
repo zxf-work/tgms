@@ -1725,19 +1725,33 @@ LADDER_CAPTION = (
     "is the single largest increment on the ladder."
 )
 
+# vldb: the draft names the adjudication rules A1-A7 (renamed one-to-one from
+# the derivation's own R1-R7), never "TGIR-v1" (just "TGIR"), and the ladder's
+# +8 at the targeted rung ties the path family's +8 -- "single largest
+# increment" is contradicted by the table it captions, so the review round
+# asked for the qualified claim below instead.
+LADDER_CAPTION_VLDB = (
+    "The coverage ladder over the \\tgRows\\ blocked workloads, cumulative.  "
+    "\\emph{unlocked} $=$ \\textsf{yes} $+$ \\textsf{partial-columns} under adjudication "
+    "rule A4.  The rung TGIR targets is marked; it was chosen before implementation "
+    "because it is the largest increment attributable to a single capability (the path "
+    "family's equal increment needs seven), and variable-length expansion is the sole "
+    "residual on \\tgVarLenSole\\ rows."
+)
+
 
 def render_ladder_table(ladder, style="arxiv") -> str:
     if style == "vldb":
         pretty = {
-            "v1-core (R1, R2, R3, R3b, R5)": "v1-core (R1 to R3b, R5)",
+            "v1-core (R1, R2, R3, R3b, R5)": "v1-core (A1 to A3b, A5)",
             "+ var-length-bounded": "$+$ \\texttt{var-length-bounded}",
-            "+ var-length-unbounded": "$+$ \\texttt{var-length-unbounded} \\;$\\leftarrow$ TGIR-v1",
+            "+ var-length-unbounded": "$+$ \\texttt{var-length-unbounded} \\;$\\leftarrow$ TGIR",
             "+ path family (7 labels)": "$+$ path family (7 labels)",
             "everything": "everything",
         }
         lines = [BANNER, "\\begin{table}[t]", "\\centering", "\\footnotesize",
                  "\\setlength{\\tabcolsep}{3pt}",
-                 f"\\caption{{{LADDER_CAPTION}}}",
+                 f"\\caption{{{LADDER_CAPTION_VLDB}}}",
                  "\\label{tab:ladder}",
                  "\\begin{tabular}{lrrrrrr}", "\\toprule",
                  "rung & \\textsf{yes} & \\textsf{p-cols} & \\textsf{p-rows} & \\textsf{no} & "
@@ -1848,15 +1862,26 @@ def render_sf1_table(sf1_rows, style="arxiv") -> str:
 
 def render_demand_table(demand, core, pm_norm, join_norm, style="arxiv") -> str:
     # Already a single-column `table` float set in `\small`, the vldb style's
-    # own requirements for this table -- nothing to change between styles.
-    del style
+    # own requirements for this table -- only the caption's rule names change.
+    if style == "vldb":
+        caption = (
+            "Per-primitive demand across the \\tgRows\\ blocked workloads: the number "
+            "of rows whose decomposition names the primitive.  No primitive is demanded by fewer "
+            "than \\tgMinDemand.  Two counts rise once adjudication rules A1 and A3/A3b are "
+            "applied, shown in parentheses; those are the normalised counts the algebra is "
+            "justified against."
+        )
+    else:
+        caption = (
+            "Per-primitive demand across the \\tgRows\\ blocked workloads: the number "
+            "of rows whose decomposition names the primitive.  No primitive is demanded by fewer "
+            "than \\tgMinDemand.  Two counts rise once rulings~R1 and~R3/R3b are applied, shown "
+            "in parentheses; those are the normalised counts the algebra is justified against."
+        )
     order = sorted(core, key=lambda p: (-demand[p], p))
     note = {"PatternMatch": pm_norm, "Join": join_norm}
     lines = [BANNER, "\\begin{table}[t]", "\\centering", "\\small",
-             "\\caption{Per-primitive demand across the \\tgRows\\ blocked workloads: the number "
-             "of rows whose decomposition names the primitive.  No primitive is demanded by fewer "
-             "than \\tgMinDemand.  Two counts rise once rulings~R1 and~R3/R3b are applied, shown "
-             "in parentheses; those are the normalised counts the algebra is justified against.}",
+             f"\\caption{{{caption}}}",
              "\\label{tab:demand}",
              "\\begin{tabular}{lr@{\\qquad}lr}", "\\toprule",
              "primitive & rows & primitive & rows \\\\", "\\midrule"]
