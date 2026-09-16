@@ -37,6 +37,7 @@ matching name would inflate a published number with meta-work.
 
 from __future__ import annotations
 
+import re
 import sys
 from pathlib import Path
 
@@ -44,6 +45,27 @@ ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "scripts"))
 
 import tgir_paper_macros as TPM  # noqa: E402
+
+# The PVLDB terminology sheet's banned words (paper/tgir-vldb/PAPER_MAP.md):
+# internal-process vocabulary that must never reach a reader-facing caption.
+BANNED_CAPTION_WORDS = (
+    "arm", "campaign", "frozen", "bypassed-but-recording", "receipt", "instrument",
+)
+
+
+def _caption_line(tex: str) -> str:
+    cap_lines = [ln for ln in tex.splitlines() if ln.startswith("\\caption{")]
+    assert len(cap_lines) == 1, "expected exactly one caption line in the rendered table"
+    return cap_lines[0]
+
+
+def _numeric_cells(tex: str) -> list[str]:
+    """The tabular body's numeric tokens, in order, ignoring float/caption prose."""
+    lines = tex.splitlines()
+    start = next(i for i, ln in enumerate(lines) if ln.strip() == "\\midrule") + 1
+    end = next(i for i, ln in enumerate(lines) if ln.strip() == "\\bottomrule")
+    body = "\n".join(lines[start:end])
+    return re.findall(r"-?\d[\d,{}]*(?:\.\d+)?", body)
 
 
 def test_sf1_ratio_uses_three_decimals_below_one() -> None:
@@ -109,3 +131,52 @@ def test_set_root_is_idempotent() -> None:
         assert TPM.MEASURED == once
     finally:
         TPM.set_root(original)
+
+
+# A hand-built fixture, not read from any source of record: this table only
+# checks the *rendering*, so the numbers just need to exercise every cell
+# shape sf1_rows can carry (an admit, a refuse, and the unscoreable row with
+# actual/ratio/rows all None).
+_SF1_FIXTURE = [
+    ("BI18", "admit", 5918, 29734.52877998352, 5918 / 29734.52877998352, 20, "false-admission"),
+    ("BI10", "refuse", 170296, 19193.984508514404, 170296 / 19193.984508514404, 100, "true-rejection"),
+    ("BI6", "refuse", 161120, None, None, None, "unscoreable"),
+]
+
+
+def test_vldb_style_keeps_the_same_numbers_as_arxiv() -> None:
+    """--style vldb only changes the float wrapping and caption prose.
+
+    Every number the table renders --- the actual data, never invented here
+    --- must come out identical between styles: the vldb caption rewrite and
+    the narrower single-column tabular must not touch a single cell value.
+    """
+    arxiv_tex = TPM.render_sf1_table(_SF1_FIXTURE, style="arxiv")
+    vldb_tex = TPM.render_sf1_table(_SF1_FIXTURE, style="vldb")
+    assert _numeric_cells(arxiv_tex) == _numeric_cells(vldb_tex)
+    assert _numeric_cells(vldb_tex)  # the fixture actually exercises some cells
+
+
+def test_vldb_style_float_is_single_column() -> None:
+    """table* spans both acmart columns; vldb needs the narrower `table`."""
+    arxiv_tex = TPM.render_sf1_table(_SF1_FIXTURE, style="arxiv")
+    vldb_tex = TPM.render_sf1_table(_SF1_FIXTURE, style="vldb")
+    assert "\\begin{table*}" in arxiv_tex
+    assert "\\begin{table*}" not in vldb_tex
+    assert "\\begin{table}" in vldb_tex
+
+
+def test_vldb_caption_carries_none_of_the_banned_words() -> None:
+    """PAPER_MAP.md's terminology sheet bans "arm", "campaign", "frozen",
+    "bypassed-but-recording", "receipt" and "instrument" from reader-facing
+    text.  The arxiv caption is the pre-existing draft prose and is checked
+    first to confirm the fixture actually exercises the banned vocabulary --
+    otherwise the vldb-side assertion would pass vacuously.
+    """
+    arxiv_caption = _caption_line(TPM.render_sf1_table(_SF1_FIXTURE, style="arxiv")).lower()
+    hit = [w for w in BANNED_CAPTION_WORDS if w in arxiv_caption]
+    assert hit, "fixture is stale: the arxiv caption no longer uses any banned word"
+
+    vldb_caption = _caption_line(TPM.render_sf1_table(_SF1_FIXTURE, style="vldb")).lower()
+    hit = [w for w in BANNED_CAPTION_WORDS if w in vldb_caption]
+    assert not hit, f"vldb caption still carries banned word(s): {hit}"
