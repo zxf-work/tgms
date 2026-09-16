@@ -50,10 +50,13 @@ import tgir_paper_macros as TPM  # noqa: E402
 # internal-process vocabulary that must never reach a reader-facing caption.
 # "ruling" and "tgir-v1" were added after a review-round note: the draft names
 # the adjudication rules A1-A7 (never the derivation's own R1-R7 "rulings"),
-# and the system is "TGIR", never "TGIR-v1".
+# and the system is "TGIR", never "TGIR-v1".  "\tgspecanchor" and
+# "\tgsfonecommit" were added after a second note: §9.1 states the
+# pre-registration anchors once, so the per-table captions drop the commit
+# hashes and keep only the date.
 BANNED_CAPTION_WORDS = (
     "arm", "campaign", "frozen", "bypassed-but-recording", "receipt", "instrument",
-    "ruling", "tgir-v1",
+    "ruling", "tgir-v1", "\\tgspecanchor", "\\tgsfonecommit",
 )
 
 # A bare rule letter like "R4" or "R3b" (as opposed to its vldb rename "A4" /
@@ -266,3 +269,33 @@ def test_vldb_demand_table_renames_rules() -> None:
     assert "adjudication rules A1 and A3/A3b" in vldb_tex
 
     assert _numeric_cells(arxiv_tex) == _numeric_cells(vldb_tex)
+
+
+_MAIN_FIXTURE_MEASURED = {"totals": {"rows": 4, "predicted_unlocked": 4, "delivered": 4,
+                                      "scoreable_rows": 4, "over_delivered": 0}}
+_MAIN_FIXTURE_SUITES = ["ldbc-is"]
+_MAIN_FIXTURE_STATS = {"ldbc-is": (4, 4, 4)}
+_MAIN_FIXTURE_LABELS = {"ldbc-is": "LDBC Interactive Short"}
+
+
+def test_vldb_drops_the_pre_registration_anchors_from_captions() -> None:
+    """A review-round note: Sec 9.1 states \\tgSpecAnchor and \\tgSfOneCommit
+
+    once, so the per-table vldb captions must not restate them -- only the
+    pre-registration/campaign date stays.  arxiv keeps both anchors.
+    """
+    main_arxiv = _caption_line(TPM.render_main_table(
+        _MAIN_FIXTURE_MEASURED, _MAIN_FIXTURE_STATS, _MAIN_FIXTURE_SUITES,
+        _MAIN_FIXTURE_LABELS, style="arxiv"))
+    main_vldb = _caption_line(TPM.render_main_table(
+        _MAIN_FIXTURE_MEASURED, _MAIN_FIXTURE_STATS, _MAIN_FIXTURE_SUITES,
+        _MAIN_FIXTURE_LABELS, style="vldb"))
+    assert "\\tgSpecAnchor" in main_arxiv, "fixture is stale: no tgSpecAnchor in arxiv tab-main"
+    assert "\\tgSpecAnchor" not in main_vldb
+    assert "\\tgFreezeDate" in main_vldb
+
+    sf1_arxiv = _caption_line(TPM.render_sf1_table(_SF1_FIXTURE, style="arxiv"))
+    sf1_vldb = _caption_line(TPM.render_sf1_table(_SF1_FIXTURE, style="vldb"))
+    assert "\\tgSfOneCommit" in sf1_arxiv, "fixture is stale: no tgSfOneCommit in arxiv tab-sf1"
+    assert "\\tgSfOneCommit" not in sf1_vldb
+    assert "\\tgSfOneDate" in sf1_vldb
