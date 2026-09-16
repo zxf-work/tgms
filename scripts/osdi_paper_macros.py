@@ -158,6 +158,21 @@ snapshot's own embedded per-cycle rows (``live_osv.cycles_raw``) and
 cross-checked against its pre-aggregated fields, plus a whole-file sha256
 tamper check against README.md's own quoted value.
 
+B7 (scale campaign) -- ``docs/design/SCALE_BUILD_FORECAST_2026-09-15.md``
+(gitignored, internal; not shipped with this script, but every field below
+is read from a committed record). Stage 0 (iTiger calibration,
+``benchmarks/scale-v1/itiger-calib-{1m,10m}.json``) supplies k_build/
+k_recover and the 10M scale-curve anchor; Stage 1 30M
+(``build-30m.json`` + eight sidecars, scored in the pre-registration's
+Addendum 7) is fully landed. ``compute_b7_scale`` below computes every
+``osdiB7*30M`` macro plus the Stage-0 anchors and the (scale-independent)
+``osdiB7300MGate``, whole-file sha256-checking every record it reads
+against the sha256 table in its own README (``benchmarks/scale-v1/
+README.md`` for Stage 1, ``itiger-calib-2026-09.README.md`` for Stage 0)
+before trusting anything inside it. The 100M chain is still running on
+iTiger (a separate, concurrent lane) -- every ``osdiB7*100M`` name is a
+PENDING stub (see ``add_pending_stubs``) until its record lands on main.
+
 Claim C9 (LDBC generality, four axes -- the Neo4j reference run is
 pending) has no landed record yet; its macros, plus the still-unlanded
 slice of C7 above, are emitted as PENDING stubs (see ``Macros.add_pending``)
@@ -338,6 +353,53 @@ LIVE_OSV_SNAPSHOT = LIVE_OSV_DIR / "snapshot-2026-09-16.json"
 # below, not only frozen from a first read.
 LIVE_OSV_SNAPSHOT_SHA256 = "1978d6a692f9768dfa51b7260f11d00e13bce203b2765ff1b20de3f8109a3699"
 
+# Lane B7 (scale campaign) -- benchmarks/scale-v1/. Stage 0 (iTiger
+# calibration) and Stage 1 (30M) are both landed; 100M is a separate,
+# concurrently-running lane whose records are not here yet (see
+# add_pending_stubs). Every sha256 this lane cares about is checked
+# against the table in the record's own README (B7_README for Stage 1,
+# B7_ITIGER_CALIB_README for Stage 0) by _readme_sha256_table below, not
+# hard-coded here -- there is no separate frozen-constant copy to drift.
+B7_SCALE_DIR = ROOT / "benchmarks" / "scale-v1"
+B7_README = B7_SCALE_DIR / "README.md"
+B7_ITIGER_CALIB_README = B7_SCALE_DIR / "itiger-calib-2026-09.README.md"
+B7_ITIGER_CALIB_1M = B7_SCALE_DIR / "itiger-calib-1m.json"
+B7_ITIGER_CALIB_10M = B7_SCALE_DIR / "itiger-calib-10m.json"
+B7_BUILD_30M = B7_SCALE_DIR / "build-30m.json"
+B7_SCALE_CURVE_30M = B7_SCALE_DIR / "scale-curve-30m.json"
+B7_SCALE_CURVE_30M_RAW = B7_SCALE_DIR / "scale-curve-30m-raw.json"
+B7_CHECK_FULL_30M = B7_SCALE_DIR / "check-full-30m.json"
+B7_RECOVERY_30M = B7_SCALE_DIR / "recovery-30m.json"
+B7_RECOVERY_30M_CE5000 = B7_SCALE_DIR / "recovery-30m-ce5000.json"
+B7_VERSION_HISTORY_30M = B7_SCALE_DIR / "version-history-30m.json"
+B7_QUERYFLOOR_30M = B7_SCALE_DIR / "queryfloor-30m.json"
+
+# The 13-operator scale-curve registry (query id -> CamelCase macro
+# fragment), same ids as scale-curve-30m.json/queryfloor-30m.json's
+# per_operator_p50_ms / queries[*].id.
+B7_SCALE_CURVE_OPS = {
+    "hist.single": "HistSingle",
+    "hist.asof": "HistAsof",
+    "snap.hop2": "SnapHop2",
+    "diff.global": "DiffGlobal",
+    "reach.window": "ReachWindow",
+    "paths.k": "PathsK",
+    "series.count": "SeriesCount",
+    "burst.zscore": "BurstZscore",
+    "nbr.evolution": "NbrEvolution",
+    "coactive.narrow": "CoactiveNarrow",
+    "resolve.substr": "ResolveSubstr",
+    "agg.rel_bucket": "AggRelBucket",
+    "motif.filtered": "MotifFiltered",
+}
+
+# The 30M store's content digest (store_digest, streaming) -- shared by
+# build-30m.json, scale-curve-30m.json, check-full-30m.json,
+# recovery-30m{,-ce5000}.json and version-history-30m.json alike, since
+# none of them modify the store; compute_b7_scale cross-checks every one
+# of those records' own digest fields against this single frozen value.
+B7_30M_STORE_DIGEST = "239118cae2044e5928b68d82423e0e996b6bc96654cbfd34266747486aa7e6d8"
+
 
 # --------------------------------------------------------------------------
 # verification helpers (copied from scripts/tgir_paper_macros.py)
@@ -371,6 +433,14 @@ def load_jsonl(path: Path) -> list[dict]:
 
 def sha256_file(path: Path) -> str:
     return hashlib.sha256(path.read_bytes()).hexdigest()
+
+
+def _readme_sha256_table(text: str) -> dict[str, str]:
+    """Parse every ``| `file` ... | `<sha256>` |`` markdown table row in
+    ``text`` into ``{file: sha256}``. Used by compute_b7_scale to check a
+    record's sha256 against its own README's table rather than a second,
+    driftable frozen constant."""
+    return dict(re.findall(r"\|\s*`([^`]+)`[^|]*\|\s*`([0-9a-f]{64})`\s*\|", text))
 
 
 def relpath(p: Path) -> str:
@@ -407,6 +477,17 @@ def tex_num(n: int) -> str:
             out.append("{,}")
         out.append(ch)
     return "".join(reversed(out))
+
+
+def tex_float(val: float) -> str:
+    """Like tex_num, but for a float: LaTeX-safe thousands separator on
+    the integer part, the value's own decimal digits kept exactly as
+    given (no forced rounding/padding beyond what the caller already
+    did)."""
+    s = repr(val)
+    whole, sep, frac = s.partition(".")
+    grouped = tex_num(int(whole))
+    return f"{grouped}.{frac}" if sep else grouped
 
 
 class Macros:
@@ -4224,6 +4305,332 @@ def compute_c10_live_osv(m: Macros) -> None:
 
 
 # --------------------------------------------------------------------------
+# B7 -- scale campaign (Stage 0 iTiger calibration + Stage 1 30M)
+# --------------------------------------------------------------------------
+
+def _b7_check_sha256(path: Path, table: dict[str, str]) -> None:
+    name = path.name
+    require(name in table, f"B7: {relpath(path)}: {name} not found in "
+            f"{relpath(path.parent)}'s README sha256 table")
+    if name not in table:
+        return
+    eq(sha256_file(path), table[name],
+       f"{relpath(path)}: sha256 matches its own README's sha256 table")
+
+
+def compute_b7_scale(m: Macros) -> None:
+    """Lane B7 (see the module docstring's B7 section). Every whole-file
+    sha256 below is checked against the sha256 table in the record's own
+    README before anything inside that file is trusted; every aggregate
+    (medians, sums) is recomputed from row-level data and cross-checked
+    against the record's own pre-computed field, never taken on trust."""
+    readme_sha = _readme_sha256_table(B7_README.read_text(encoding="utf-8"))
+    calib_readme_sha = _readme_sha256_table(B7_ITIGER_CALIB_README.read_text(encoding="utf-8"))
+
+    for path in (B7_BUILD_30M, B7_SCALE_CURVE_30M, B7_SCALE_CURVE_30M_RAW,
+                 B7_CHECK_FULL_30M, B7_RECOVERY_30M, B7_RECOVERY_30M_CE5000,
+                 B7_VERSION_HISTORY_30M, B7_QUERYFLOOR_30M):
+        _b7_check_sha256(path, readme_sha)
+    for path in (B7_ITIGER_CALIB_1M, B7_ITIGER_CALIB_10M):
+        _b7_check_sha256(path, calib_readme_sha)
+
+    build = json.loads(B7_BUILD_30M.read_text(encoding="utf-8"))
+    curve = json.loads(B7_SCALE_CURVE_30M.read_text(encoding="utf-8"))
+    curve_raw = json.loads(B7_SCALE_CURVE_30M_RAW.read_text(encoding="utf-8"))
+    check_full = json.loads(B7_CHECK_FULL_30M.read_text(encoding="utf-8"))
+    rec500 = json.loads(B7_RECOVERY_30M.read_text(encoding="utf-8"))
+    rec5000 = json.loads(B7_RECOVERY_30M_CE5000.read_text(encoding="utf-8"))
+    vh = json.loads(B7_VERSION_HISTORY_30M.read_text(encoding="utf-8"))
+    qf = json.loads(B7_QUERYFLOOR_30M.read_text(encoding="utf-8"))
+    calib1m = json.loads(B7_ITIGER_CALIB_1M.read_text(encoding="utf-8"))
+    calib10m = json.loads(B7_ITIGER_CALIB_10M.read_text(encoding="utf-8"))
+
+    # --- one content digest ties every 30M sidecar to the same store ---
+    eq(build["dataset"]["digest"], B7_30M_STORE_DIGEST,
+       f"{relpath(B7_BUILD_30M)}: dataset.digest matches the frozen 30M store digest")
+    eq(build["result_digest"], B7_30M_STORE_DIGEST,
+       f"{relpath(B7_BUILD_30M)}: result_digest matches the frozen 30M store digest")
+    eq(curve["dataset"]["digest"], B7_30M_STORE_DIGEST,
+       f"{relpath(B7_SCALE_CURVE_30M)}: dataset.digest matches the frozen 30M store digest")
+    eq(curve["result_digest"], B7_30M_STORE_DIGEST,
+       f"{relpath(B7_SCALE_CURVE_30M)}: result_digest matches the frozen 30M store digest")
+    eq(check_full["dataset"]["digest"], B7_30M_STORE_DIGEST,
+       f"{relpath(B7_CHECK_FULL_30M)}: dataset.digest matches the frozen 30M store digest")
+    for rec, path in ((rec500, B7_RECOVERY_30M), (rec5000, B7_RECOVERY_30M_CE5000)):
+        require(rec["digest_compare"]["digest_equal"] is True,
+                f"{relpath(path)}: digest_compare.digest_equal is true")
+        eq(rec["digest_compare"]["src_digest"], B7_30M_STORE_DIGEST,
+           f"{relpath(path)}: digest_compare.src_digest matches the frozen 30M store digest")
+        eq(rec["digest_compare"]["replayed_digest"], B7_30M_STORE_DIGEST,
+           f"{relpath(path)}: digest_compare.replayed_digest matches the frozen 30M store digest")
+    eq(vh["dataset"]["digest"], B7_30M_STORE_DIGEST,
+       f"{relpath(B7_VERSION_HISTORY_30M)}: dataset.digest matches the frozen 30M store digest")
+    eq(vh["result_digest"], B7_30M_STORE_DIGEST,
+       f"{relpath(B7_VERSION_HISTORY_30M)}: result_digest matches the frozen 30M store digest")
+
+    # --- build: wall, peak RSS, manifest/segment bytes, steady-decile median ---
+    bi = build["build_info"]
+    wall_s = bi["wall_s"]
+    eq(wall_s, build["falsifiers"]["build_wall"]["measured_s"],
+       f"{relpath(B7_BUILD_30M)}: build_info.wall_s matches falsifiers.build_wall.measured_s")
+    eq(round(wall_s, 3), 3786.004, "B7 frozen: 30M build wall_s")
+
+    peak_vmhwm_kb = bi["peak_rss"]["vmhwm"]
+    peak_rss_gb = round(peak_vmhwm_kb / 1e6, 2)
+    readme_peak_row = re.search(
+        r"peak RSS \(VmHWM\)\s*\|\s*([\d,]+) KB \(([\d.]+) GB\)", B7_README.read_text(encoding="utf-8"))
+    require(readme_peak_row is not None, f"{relpath(B7_README)}: peak RSS (VmHWM) row found")
+    if readme_peak_row is not None:
+        eq(int(readme_peak_row.group(1).replace(",", "")), peak_vmhwm_kb,
+           f"{relpath(B7_README)}: peak RSS row's KB figure matches build_info.peak_rss.vmhwm")
+        eq(float(readme_peak_row.group(2)), peak_rss_gb,
+           f"{relpath(B7_README)}: peak RSS row's GB figure matches vmhwm/1e6, rounded 2dp")
+    eq(peak_rss_gb, 59.31, "B7 frozen: 30M build peak RSS, GB")
+
+    manifest_bytes = bi["store_bytes"]["manifest_bytes"]
+    eq(manifest_bytes, build["falsifiers"]["manifest_bytes"]["measured_bytes"],
+       f"{relpath(B7_BUILD_30M)}: build_info.store_bytes.manifest_bytes matches "
+       "falsifiers.manifest_bytes.measured_bytes")
+    eq(manifest_bytes, 175244, "B7 frozen: 30M manifest bytes")
+
+    segment_bytes = bi["store_bytes"]["segment_bytes"]
+    segment_gb = round(segment_bytes / 1e9, 3)
+    eq(segment_gb, build["falsifiers"]["segment_bytes"]["measured_gb"],
+       f"{relpath(B7_BUILD_30M)}: build_info.store_bytes.segment_bytes / 1e9, rounded 3dp, "
+       "matches falsifiers.segment_bytes.measured_gb")
+    eq(segment_gb, 1.549, "B7 frozen: 30M segment bytes, GB")
+
+    decile_ops = [d["ops_per_s"] for d in bi["ops_per_s_by_decile"]]
+    eq(len(decile_ops), 10, "B7 frozen: 30M build decile count")
+    decile_median = statistics.median(decile_ops)
+    close(decile_median, bi["steady_decile_median_ops_per_s"], 0.06,
+          f"{relpath(B7_BUILD_30M)}: recomputed median(ops_per_s_by_decile[*].ops_per_s) "
+          "matches build_info.steady_decile_median_ops_per_s")
+    close(decile_median, build["falsifiers"]["steady_decile_ops_per_s"]["measured"], 0.06,
+          f"{relpath(B7_BUILD_30M)}: recomputed decile median matches "
+          "falsifiers.steady_decile_ops_per_s.measured")
+    steady_decile_median = bi["steady_decile_median_ops_per_s"]
+    eq(steady_decile_median, 8463.0, "B7 frozen: 30M steady-decile median ops/s")
+
+    # --- query-ready floor: queryfloor-30m.json cross-checked against the
+    # copy build-30m.json itself carries ---
+    qf_vmhwm_kb = qf["vmhwm_kb"]
+    eq(qf_vmhwm_kb, build["query_ready_floor"]["vmhwm_kb"],
+       f"{relpath(B7_QUERYFLOOR_30M)}: vmhwm_kb matches build-30m.json's own "
+       "query_ready_floor.vmhwm_kb")
+    eq(qf["n_ok"], qf["n_queries"], f"{relpath(B7_QUERYFLOOR_30M)}: n_ok == n_queries (13/13)")
+    query_floor_gb = round(qf_vmhwm_kb / 1e6, 2)
+    require(f"{query_floor_gb} GB (job 213173)" in B7_README.read_text(encoding="utf-8"),
+            f"{relpath(B7_README)}: quotes the recomputed query-ready floor GB figure "
+            "(job 213173) verbatim")
+    eq(query_floor_gb, 6.81, "B7 frozen: 30M query-ready floor, GB")
+
+    # --- check --full: canonical (clean, job 213174) run ---
+    check_wall = check_full["canonical_run"]["wall_s"]
+    eq(check_full["canonical_run"]["job_id"], "213174",
+       f"{relpath(B7_CHECK_FULL_30M)}: canonical_run is the clean rerun, job 213174")
+    require(check_full["canonical_run"]["raw"]["healthy"] is True,
+            f"{relpath(B7_CHECK_FULL_30M)}: canonical_run.raw.healthy is true")
+    eq(check_wall, 98.673, "B7 frozen: 30M check --full wall_s (clean, 213174)")
+
+    # --- recovery: frozen cadence 500, and the Addendum-6 cadence 5000 ---
+    recovery_500_s = round(rec500["replay_wall_s"], 1)
+    eq(recovery_500_s, 14618.6, "B7 frozen: 30M recovery wall_s, cadence 500")
+    recovery_5000_s = round(rec5000["replay_wall_s"], 1)
+    eq(recovery_5000_s, 2656.9, "B7 frozen: 30M recovery wall_s, cadence 5000 (Addendum 6)")
+
+    # --- version_history: clean (job 213175) run, wall/RSS medians
+    # recomputed from the 3 reps, not trusted from the record's own
+    # pre-aggregated *_median fields ---
+    clean_vh = vh["clean_alone"]
+    eq(clean_vh["job_id"], "213175",
+       f"{relpath(B7_VERSION_HISTORY_30M)}: clean_alone is the clean rerun, job 213175")
+    reps = clean_vh["reps"]
+    eq(len(reps), 3, f"{relpath(B7_VERSION_HISTORY_30M)}: clean_alone has 3 reps")
+    vh_wall_median = statistics.median(r["wall_ms"] for r in reps)
+    eq(vh_wall_median, clean_vh["wall_ms_median"],
+       f"{relpath(B7_VERSION_HISTORY_30M)}: recomputed median(reps[*].wall_ms) matches "
+       "clean_alone.wall_ms_median")
+    vh_rss_median_kb = statistics.median(r["vmhwm_kb"] for r in reps)
+    eq(vh_rss_median_kb, clean_vh["vmhwm_kb_median"],
+       f"{relpath(B7_VERSION_HISTORY_30M)}: recomputed median(reps[*].vmhwm_kb) matches "
+       "clean_alone.vmhwm_kb_median")
+    vh_wall_s = round(vh_wall_median / 1000, 3)
+    vh_rss_gb = round(vh_rss_median_kb / 1e6, 3)
+    eq(vh_wall_s, 5.496, "B7 frozen: 30M version_history wall_s (clean, 213175)")
+    eq(vh_rss_gb, 3.863, "B7 frozen: 30M version_history VmHWM, GB (clean, 213175)")
+
+    # --- scale-curve: 13-operator p50s, recomputed from the raw per-rep
+    # timings, cross-checked against the raw file's own p50_ms and the
+    # aggregated summary's clean_213174_p50_ms ---
+    eq(set(curve["per_operator_p50_ms"]), set(B7_SCALE_CURVE_OPS),
+       f"{relpath(B7_SCALE_CURVE_30M)}: per_operator_p50_ms operator set matches "
+       "the known 13-operator registry")
+    raw_by_query = {r["query"]: r for r in curve_raw["results"]["native"]}
+    eq(set(raw_by_query), set(B7_SCALE_CURVE_OPS),
+       f"{relpath(B7_SCALE_CURVE_30M_RAW)}: results.native operator set matches "
+       "the known 13-operator registry")
+    p50_by_op: dict[str, float] = {}
+    for op_id in B7_SCALE_CURVE_OPS:
+        summary = curve["per_operator_p50_ms"][op_id]
+        raw_row = raw_by_query[op_id]
+        recomputed = statistics.median(raw_row["timings_ms"])
+        close(recomputed, raw_row["p50_ms"], 0.01,
+              f"{relpath(B7_SCALE_CURVE_30M_RAW)}: {op_id}: recomputed median(timings_ms) "
+              "matches this row's own p50_ms")
+        eq(raw_row["p50_ms"], summary["clean_213174_p50_ms"],
+           f"{relpath(B7_SCALE_CURVE_30M)}: {op_id}: per_operator_p50_ms.clean_213174_p50_ms "
+           f"matches {relpath(B7_SCALE_CURVE_30M_RAW)}'s own p50_ms")
+        p50_by_op[op_id] = summary["clean_213174_p50_ms"]
+
+    # --- reach.window admission: predicted admitted (not refused) under
+    # the revised (Addendum 5's second re-examination) admission policy;
+    # confirmed both clean and contended runs ---
+    reach = curve["reach_window_admission"]
+    require(reach["clean_213174"]["admitted"] is True,
+            f"{relpath(B7_SCALE_CURVE_30M)}: reach_window_admission.clean_213174.admitted "
+            "is true")
+    require("Addendum 5" in reach["note"] and "admission" in reach["note"],
+            f"{relpath(B7_SCALE_CURVE_30M)}: reach_window_admission.note names the "
+            "Addendum-5 admission-policy re-examination")
+    estimate_ms = reach["clean_213174"]["estimate"]["time_est_ms"]
+    eq(estimate_ms, reach["clean_213174"]["time_est_ms"],
+       f"{relpath(B7_SCALE_CURVE_30M)}: reach_window_admission.clean_213174.estimate."
+       "time_est_ms matches its own top-level time_est_ms")
+    eq(estimate_ms, reach["contended_213069"]["time_est_ms"],
+       f"{relpath(B7_SCALE_CURVE_30M)}: reach.window time_est_ms agrees between the "
+       "clean and contended reruns (the estimator, not the store, produced it)")
+    eq(estimate_ms, 4371, "B7 frozen: 30M reach.window admission estimate, ms")
+
+    # --- Stage 0 (iTiger calibration): k_build/k_recover and the 10M anchors ---
+    cbi = calib10m["build_info"]
+    calib10m_wall = cbi["wall_s"]
+    eq(calib10m_wall, 865.592, "B7 frozen: Stage-0 10M calib build wall_s")
+    calib10m_decs = [d["ops_per_s"] for d in cbi["ops_per_s_by_decile"]]
+    eq(len(calib10m_decs), 10, "B7 frozen: Stage-0 10M calib decile count")
+    calib10m_median = statistics.median(calib10m_decs)
+    close(calib10m_median, 24390.8, 0.05,
+          f"{relpath(B7_ITIGER_CALIB_10M)}: recomputed median(ops_per_s_by_decile[*]."
+          "ops_per_s) matches the calibration README's own quoted 24,390.8 ops/s")
+
+    calib10m_peak_kb = cbi["peak_rss"]["vmhwm"]
+    calib_readme_text = B7_ITIGER_CALIB_README.read_text(encoding="utf-8")
+    peak_row = re.search(
+        r"peak RSS.*\|\s*[\d,]+ KB \([\d.]+ GB\)\s*\|\s*([\d,]+) KB \(([\d.]+) GB\)",
+        calib_readme_text)
+    require(peak_row is not None,
+            f"{relpath(B7_ITIGER_CALIB_README)}: peak RSS row (1M | 10M columns) found")
+    calib10m_peak_gb_quoted = None
+    if peak_row is not None:
+        eq(int(peak_row.group(1).replace(",", "")), calib10m_peak_kb,
+           f"{relpath(B7_ITIGER_CALIB_README)}: peak RSS row's 10M KB figure matches "
+           "itiger-calib-10m.json's build_info.peak_rss.vmhwm")
+        calib10m_peak_gb_quoted = peak_row.group(2)
+    eq(calib10m_peak_gb_quoted, "19.43",
+       "B7 frozen: Stage-0 10M calib peak RSS, GB, as quoted by the calibration README "
+       "(its KB-to-GB divisor is not restated here; the KB figure above is the "
+       "independently recomputed one)")
+
+    recovery_1m = calib1m["recovery"]
+    require(recovery_1m["digest_equal"] is True,
+            f"{relpath(B7_ITIGER_CALIB_1M)}: recovery.digest_equal is true")
+    recovery_1m_wall = recovery_1m["wall_s"]
+    close(round(recovery_1m_wall, 3), 75.860, 0.001,
+          "B7 frozen: Stage-0 1M calib recovery wall_s")
+
+    k_build = calib10m_median / 5300
+    close(round(k_build, 3), 4.602, 0.0005,
+          f"{relpath(B7_ITIGER_CALIB_10M)}: recomputed (10M steady-decile-median ops/s) / "
+          f"5,300 (the xzgpu bulk-rate basis quoted by {relpath(B7_ITIGER_CALIB_README)}) "
+          "matches that README's own quoted k_build = 4.602")
+    k_recover = recovery_1m_wall / 91.01
+    close(round(k_recover, 3), 0.834, 0.0005,
+          f"{relpath(B7_ITIGER_CALIB_1M)}: recomputed (1M replay wall_s) / 91.01 (the xzgpu "
+          f"1% anchor quoted by {relpath(B7_ITIGER_CALIB_README)}) matches that README's "
+          "own quoted k_recover = 0.834")
+
+    # ---------------------------------------------------------------
+    # macros
+    # ---------------------------------------------------------------
+    m.add("osdiB7BuildWall30M", tex_float(round(wall_s, 3)),
+          f"{relpath(B7_BUILD_30M)}: build_info.wall_s, seconds")
+    m.add("osdiB7PeakRSS30M", f"{peak_rss_gb:.2f}",
+          f"{relpath(B7_BUILD_30M)}: build_info.peak_rss.vmhwm / 1e6, GB, 2dp "
+          f"({tex_num(peak_vmhwm_kb)} KB)")
+    m.add("osdiB7VersionHistoryWall30M", f"{vh_wall_s:.3f}",
+          f"{relpath(B7_VERSION_HISTORY_30M)}: clean_alone (job 213175), median(reps[*]."
+          "wall_ms) / 1000, seconds")
+    m.add("osdiB7VersionHistoryRSS30M", f"{vh_rss_gb:.3f}",
+          f"{relpath(B7_VERSION_HISTORY_30M)}: clean_alone (job 213175), "
+          "median(reps[*].vmhwm_kb) / 1e6, GB")
+    m.add("osdiB7ManifestBytes30M", tex_num(manifest_bytes),
+          f"{relpath(B7_BUILD_30M)}: build_info.store_bytes.manifest_bytes")
+    m.add("osdiB7SegmentBytes30M", f"{segment_gb:.3f}",
+          f"{relpath(B7_BUILD_30M)}: build_info.store_bytes.segment_bytes / 1e9, GB")
+    m.add("osdiB7CheckFullWall30M", f"{check_wall:.3f}",
+          f"{relpath(B7_CHECK_FULL_30M)}: canonical_run (clean, job 213174), wall_s")
+    m.add("osdiB7Recovery30M", tex_float(recovery_500_s),
+          f"{relpath(B7_RECOVERY_30M)}: replay_wall_s, rounded 1dp, seconds "
+          "(frozen cadence 500, same as the Stage-0/EXP-A4 1M recovery); "
+          "digest_compare.digest_equal true")
+    m.add("osdiB7RecoveryCe5000At30M", tex_float(recovery_5000_s),
+          f"{relpath(B7_RECOVERY_30M_CE5000)}: replay_wall_s, rounded 1dp, seconds "
+          "(Addendum 6 cadence-isolation run, compact_every=5000); "
+          "digest_compare.digest_equal true; does not supersede osdiB7Recovery30M "
+          "(both stand, per the campaign's non-overwrite discipline)")
+    for op_id, frag in B7_SCALE_CURVE_OPS.items():
+        val = p50_by_op[op_id]
+        m.add(f"osdiB7ScaleCurveP50{frag}30M", tex_float(val),
+              f"{relpath(B7_SCALE_CURVE_30M)}: per_operator_p50_ms.{op_id}."
+              "clean_213174_p50_ms, ms (clean, job 213174), recomputed from "
+              f"{relpath(B7_SCALE_CURVE_30M_RAW)}'s own timings_ms")
+    m.add("osdiB7ReachWindowRefused30M", "false",
+          f"{relpath(B7_SCALE_CURVE_30M)}: reach_window_admission.clean_213174.admitted "
+          "is true (not refused) -- Addendum 5's second re-examination revised the "
+          "admission-policy prediction from refused to admitted at 30M/100M, confirmed "
+          "by both the clean and contended reruns")
+    m.add("osdiB7QueryFloor30M", f"{query_floor_gb:.2f}",
+          f"{relpath(B7_QUERYFLOOR_30M)}: vmhwm_kb / 1e6, GB (fresh read-only process, "
+          "cold-open, job 213173, alone)")
+    m.add("osdiB7BuildSteadyDecileMedian30M", tex_float(steady_decile_median),
+          f"{relpath(B7_BUILD_30M)}: build_info.steady_decile_median_ops_per_s, "
+          "recomputed as median(ops_per_s_by_decile[*].ops_per_s), ops/s")
+    m.add("osdiB7ReachWindowEstimateMs30M", tex_num(estimate_ms),
+          f"{relpath(B7_SCALE_CURVE_30M)}: reach_window_admission.clean_213174."
+          "estimate.time_est_ms, ms")
+
+    # osdiB7300MGate: not a measurement -- the pre-registration's §3 ruling
+    # ("RULED MOOT", the PI's "300M dropped" superseding the blueprint's
+    # "300M only if 100M is clean") means no 300M step is planned or
+    # pre-registered at all; scale-independent, so no {30M,100M} suffix.
+    m.add("osdiB7300MGate", "false",
+          "docs/design/SCALE_BUILD_FORECAST_2026-09-15.md §3 (gitignored, internal): "
+          "\"RULED MOOT\" -- the PI's later ruling (\"300M dropped\") supersedes the "
+          "blueprint's \"300M only if 100M is clean\"; no 300M step is planned or "
+          "pre-registered. Not a record-derived measurement, unlike every other macro "
+          "in this function")
+
+    m.add("osdiB7Calib10MBuildWall", f"{calib10m_wall:.3f}",
+          f"{relpath(B7_ITIGER_CALIB_10M)}: build_info.wall_s, seconds")
+    m.add("osdiB7Calib10MPeakRSS", calib10m_peak_gb_quoted,
+          f"{relpath(B7_ITIGER_CALIB_10M)}: build_info.peak_rss.vmhwm = "
+          f"{tex_num(calib10m_peak_kb)} KB; GB figure quoted from "
+          f"{relpath(B7_ITIGER_CALIB_README)}'s own peak-RSS table (10M column) since "
+          "its KB-to-GB divisor is not independently documented")
+    m.add("osdiB7Calib10MSteadyOps", tex_float(round(calib10m_median, 1)),
+          f"{relpath(B7_ITIGER_CALIB_10M)}: recomputed median(ops_per_s_by_decile[*]."
+          "ops_per_s), ops/s")
+    m.add("osdiB7KBuild", f"{k_build:.3f}",
+          f"{relpath(B7_ITIGER_CALIB_10M)}: (10M steady-decile-median ops/s) / 5,300 "
+          f"(xzgpu bulk basis, quoted by {relpath(B7_ITIGER_CALIB_README)}); retired as "
+          "a Stage-1 scaling factor (Addendum 5) but kept as a recorded observation")
+    m.add("osdiB7KRecover", f"{k_recover:.3f}",
+          f"{relpath(B7_ITIGER_CALIB_1M)}: recovery.wall_s / 91.01 (xzgpu 1% anchor, "
+          f"quoted by {relpath(B7_ITIGER_CALIB_README)}); used as Addendum 4/5's Stage-1 "
+          "recovery-band scaling factor")
+
+
+# --------------------------------------------------------------------------
 # pending stubs (records not yet landed)
 # --------------------------------------------------------------------------
 
@@ -4256,6 +4663,34 @@ def add_pending_stubs(m: Macros) -> None:
     # benchmarks/live-osv-v1/snapshot-2026-09-16.json, the first committed
     # record snapshot of the live-osv poller running on xzgpu. No longer
     # emitted here.
+
+    # B7 100M: still running on iTiger as a separate, concurrent lane (see
+    # the module docstring's B7 section and compute_b7_scale above, which
+    # has already landed every 30M/Stage-0 macro plus the scale-independent
+    # osdiB7300MGate). Every 100M name below waits on that chain's own
+    # build-100m.json + sidecars landing on main.
+    _b7_100m_reason = ("benchmarks/scale-v1/build-100m.json and its sidecars "
+                        "(scale-curve-100m.json, check-full-100m.json, "
+                        "recovery-100m.json) have not landed yet -- the 100M chain "
+                        "is a separate, concurrently-running iTiger lane (see "
+                        "compute_b7_scale's landed 30M/Stage-0 macros)")
+    for _name in ("osdiB7BuildWall100M", "osdiB7PeakRSS100M",
+                  "osdiB7VersionHistoryWall100M", "osdiB7VersionHistoryRSS100M",
+                  "osdiB7ManifestBytes100M", "osdiB7SegmentBytes100M",
+                  "osdiB7CheckFullWall100M", "osdiB7Recovery100M",
+                  "osdiB7ReachWindowRefused100M", "osdiB7QueryFloor100M",
+                  "osdiB7BuildSteadyDecileMedian100M",
+                  "osdiB7ReachWindowEstimateMs100M"):
+        m.add_pending(_name, "B7 (scale campaign, 100M)", _b7_100m_reason)
+    for _frag in B7_SCALE_CURVE_OPS.values():
+        m.add_pending(f"osdiB7ScaleCurveP50{_frag}100M", "B7 (scale campaign, 100M)",
+                      _b7_100m_reason)
+    m.add_pending("osdiB7CompactionShare100M", "B7 (scale campaign, 100M)",
+                  "needs build-100m.json to state its compaction-share method "
+                  "(Addendum 3's open design item: compaction peak RSS / segment "
+                  "bytes at that point, or an equivalent stated method) -- not yet "
+                  "landed, and not computable from the 30M record alone since 30M's "
+                  "own finalisation_phases were not scored against this ratio")
 
 
 # --------------------------------------------------------------------------
@@ -4304,6 +4739,7 @@ def main() -> int:
     compute_longevity_soak(m)
     compute_longevity_rederived(m)
     compute_c10_live_osv(m)
+    compute_b7_scale(m)
     add_pending_stubs(m)
 
     if FAILURES:

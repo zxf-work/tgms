@@ -88,6 +88,7 @@ def _run_all_landed(mod):
     mod.compute_longevity_soak(m)
     mod.compute_longevity_rederived(m)
     mod.compute_c10_live_osv(m)
+    mod.compute_b7_scale(m)
     return m
 
 
@@ -376,6 +377,38 @@ FROZEN_LANDED_VALUES = {
     "osdiLiveDays": "1.89",
     "osdiLiveAdvisories": "32{,}827",
     "osdiLiveCorrections": "1",
+    "osdiB7BuildWall30M": "3786.004",
+    "osdiB7PeakRSS30M": "59.31",
+    "osdiB7VersionHistoryWall30M": "5.496",
+    "osdiB7VersionHistoryRSS30M": "3.863",
+    "osdiB7ManifestBytes30M": "175{,}244",
+    "osdiB7SegmentBytes30M": "1.549",
+    "osdiB7CheckFullWall30M": "98.673",
+    "osdiB7Recovery30M": "14{,}618.6",
+    "osdiB7RecoveryCe5000At30M": "2656.9",
+    "osdiB7ScaleCurveP50HistSingle30M": "0.977",
+    "osdiB7ScaleCurveP50HistAsof30M": "0.98",
+    "osdiB7ScaleCurveP50SnapHop230M": "1531.519",
+    "osdiB7ScaleCurveP50DiffGlobal30M": "7505.374",
+    "osdiB7ScaleCurveP50ReachWindow30M": "2354.494",
+    "osdiB7ScaleCurveP50PathsK30M": "8.621",
+    "osdiB7ScaleCurveP50SeriesCount30M": "128.144",
+    "osdiB7ScaleCurveP50BurstZscore30M": "129.433",
+    "osdiB7ScaleCurveP50NbrEvolution30M": "100.237",
+    "osdiB7ScaleCurveP50CoactiveNarrow30M": "302.473",
+    "osdiB7ScaleCurveP50ResolveSubstr30M": "342.604",
+    "osdiB7ScaleCurveP50AggRelBucket30M": "176.492",
+    "osdiB7ScaleCurveP50MotifFiltered30M": "76.195",
+    "osdiB7ReachWindowRefused30M": "false",
+    "osdiB7QueryFloor30M": "6.81",
+    "osdiB7BuildSteadyDecileMedian30M": "8463.0",
+    "osdiB7ReachWindowEstimateMs30M": "4371",
+    "osdiB7300MGate": "false",
+    "osdiB7Calib10MBuildWall": "865.592",
+    "osdiB7Calib10MPeakRSS": "19.43",
+    "osdiB7Calib10MSteadyOps": "24{,}390.8",
+    "osdiB7KBuild": "4.602",
+    "osdiB7KRecover": "0.834",
 }
 
 
@@ -398,7 +431,14 @@ def test_pending_macros_raise_a_latex_error_never_a_placeholder_number():
     mod.add_pending_stubs(m)
     expected_names = {
         "osdiLdbcExpressible", "osdiLdbcExecuted", "osdiLdbcValidated",
-    }
+        "osdiB7BuildWall100M", "osdiB7PeakRSS100M",
+        "osdiB7VersionHistoryWall100M", "osdiB7VersionHistoryRSS100M",
+        "osdiB7ManifestBytes100M", "osdiB7SegmentBytes100M",
+        "osdiB7CheckFullWall100M", "osdiB7Recovery100M",
+        "osdiB7ReachWindowRefused100M", "osdiB7QueryFloor100M",
+        "osdiB7BuildSteadyDecileMedian100M", "osdiB7ReachWindowEstimateMs100M",
+        "osdiB7CompactionShare100M",
+    } | {f"osdiB7ScaleCurveP50{frag}100M" for frag in mod.B7_SCALE_CURVE_OPS.values()}
     got_names = {name for name, _, _ in m.items}
     assert got_names == expected_names
     for name, value, provenance in m.items:
@@ -417,7 +457,10 @@ def test_full_macro_set_has_no_duplicate_names_and_covers_every_skeleton_claim()
     mod.add_pending_stubs(m)
     names = [name for name, _, _ in m.items]
     assert len(names) == len(set(names)), "duplicate macro name"
-    assert len(names) == len(FROZEN_LANDED_VALUES) + 3
+    # 3 pre-existing LDBC (C9) pending stubs + 26 B7-100M pending stubs
+    # (12 core names + osdiB7CompactionShare100M + one per scale-curve operator)
+    n_b7_100m_pending = 12 + 1 + len(mod.B7_SCALE_CURVE_OPS)
+    assert len(names) == len(FROZEN_LANDED_VALUES) + 3 + n_b7_100m_pending
 
 
 def test_cli_check_mode_agrees_with_committed_output(tmp_path):
@@ -1825,6 +1868,153 @@ def test_live_osv_snapshot_sha256_matches_readme_quoted_value():
     readme_text = (mod.LIVE_OSV_DIR / "README.md").read_text(encoding="utf-8")
     assert f"`{mod.LIVE_OSV_SNAPSHOT_SHA256}`" in readme_text
     assert mod.sha256_file(mod.LIVE_OSV_SNAPSHOT) == mod.LIVE_OSV_SNAPSHOT_SHA256
+
+
+# --------------------------------------------------------------------------
+# B7 -- scale campaign (Stage 0 iTiger calibration + Stage 1 30M)
+# --------------------------------------------------------------------------
+
+def test_b7_scale_macros_match_frozen_values():
+    """The 30M/Stage-0 macros compute_b7_scale emits, checked against the
+    values benchmarks/scale-v1/README.md and itiger-calib-2026-09.README.md
+    already quote in prose."""
+    mod = _load("osdi_paper_macros")
+    m = mod.Macros()
+    mod.compute_b7_scale(m)
+    values = {name: value for name, value, _ in m.items}
+
+    assert values["osdiB7BuildWall30M"] == "3786.004"
+    assert values["osdiB7PeakRSS30M"] == "59.31"
+    assert values["osdiB7VersionHistoryWall30M"] == "5.496"
+    assert values["osdiB7VersionHistoryRSS30M"] == "3.863"
+    assert values["osdiB7ManifestBytes30M"] == "175{,}244"
+    assert values["osdiB7SegmentBytes30M"] == "1.549"
+    assert values["osdiB7CheckFullWall30M"] == "98.673"
+    assert values["osdiB7Recovery30M"] == "14{,}618.6"
+    assert values["osdiB7RecoveryCe5000At30M"] == "2656.9"
+    assert values["osdiB7ReachWindowRefused30M"] == "false"
+    assert values["osdiB7QueryFloor30M"] == "6.81"
+    assert values["osdiB7BuildSteadyDecileMedian30M"] == "8463.0"
+    assert values["osdiB7ReachWindowEstimateMs30M"] == "4371"
+    assert values["osdiB7300MGate"] == "false"
+    assert values["osdiB7Calib10MBuildWall"] == "865.592"
+    assert values["osdiB7Calib10MPeakRSS"] == "19.43"
+    assert values["osdiB7Calib10MSteadyOps"] == "24{,}390.8"
+    assert values["osdiB7KBuild"] == "4.602"
+    assert values["osdiB7KRecover"] == "0.834"
+
+    # every one of the 13 scale-curve operators landed, all 30M
+    for frag in mod.B7_SCALE_CURVE_OPS.values():
+        assert f"osdiB7ScaleCurveP50{frag}30M" in values
+    assert values["osdiB7ScaleCurveP50HistSingle30M"] == "0.977"
+    assert values["osdiB7ScaleCurveP50ReachWindow30M"] == "2354.494"
+    assert values["osdiB7ScaleCurveP50DiffGlobal30M"] == "7505.374"
+
+
+def test_tampered_b7_build_30m_sha256_mismatch_fails(tmp_path):
+    """An edited copy of build-30m.json must fail the whole-file sha256
+    check against benchmarks/scale-v1/README.md's own table before any
+    wall/RSS/byte figure inside it is trusted."""
+    mod = _load("osdi_paper_macros")
+    data = json.loads(mod.B7_BUILD_30M.read_text(encoding="utf-8"))
+    data["build_info"]["wall_s"] = 1.0
+    tampered = tmp_path / "build-30m.json"
+    tampered.write_text(json.dumps(data), encoding="utf-8")
+
+    mod.B7_BUILD_30M = tampered
+    m = mod.Macros()
+    mod.compute_b7_scale(m)
+    assert mod.FAILURES, "an edited build-30m.json must fail the sha256 check " \
+        "against README.md's own sha256 table"
+    assert any("sha256" in f.lower() for f in mod.FAILURES)
+
+
+def test_tampered_b7_scale_curve_30m_operator_p50_mismatch_fails_even_with_patched_digest(tmp_path):
+    """per_operator_p50_ms.<op>.clean_213174_p50_ms must equal the raw
+    per-rep file's own p50_ms for that operator -- editing the aggregated
+    summary's figure alone, with the whole-file sha256 patched to match,
+    must still fail rather than silently emitting a wrong scale-curve
+    macro."""
+    mod = _load("osdi_paper_macros")
+    data = json.loads(mod.B7_SCALE_CURVE_30M.read_text(encoding="utf-8"))
+    data["per_operator_p50_ms"]["hist.single"]["clean_213174_p50_ms"] = 999.0
+    tampered = tmp_path / "scale-curve-30m.json"
+    tampered.write_text(json.dumps(data), encoding="utf-8")
+    import hashlib as _hashlib
+    readme_text = mod.B7_README.read_text(encoding="utf-8")
+    # keep the sha256 table's entry pointed at the tampered copy so this
+    # test isolates the row-level check, not the whole-file digest check
+    patched_sha = _hashlib.sha256(tampered.read_bytes()).hexdigest()
+    readme_patched = tmp_path / "README.md"
+    readme_patched.write_text(
+        readme_text.replace(
+            "`48bd1d13c17dd07a24993a3479db4c937e84a7c2e0b66d4108a148307ceda381`",
+            f"`{patched_sha}`"),
+        encoding="utf-8")
+
+    mod.B7_SCALE_CURVE_30M = tampered
+    mod.B7_README = readme_patched
+    m = mod.Macros()
+    mod.compute_b7_scale(m)
+    assert mod.FAILURES, "a clean_213174_p50_ms that no longer matches the raw file's " \
+        "own p50_ms for that operator must fail, even with a patched whole-file digest"
+    assert any("hist.single" in f for f in mod.FAILURES)
+
+
+def test_tampered_b7_recovery_30m_digest_mismatch_fails(tmp_path):
+    """recovery-30m.json's digest_compare.{src,replayed}_digest must equal
+    the 30M store's frozen content digest -- editing one, with the
+    whole-file sha256 patched to match, must still fail."""
+    mod = _load("osdi_paper_macros")
+    data = json.loads(mod.B7_RECOVERY_30M.read_text(encoding="utf-8"))
+    data["digest_compare"]["replayed_digest"] = "0" * 64
+    tampered = tmp_path / "recovery-30m.json"
+    tampered.write_text(json.dumps(data), encoding="utf-8")
+    import hashlib as _hashlib
+    readme_text = mod.B7_README.read_text(encoding="utf-8")
+    patched_sha = _hashlib.sha256(tampered.read_bytes()).hexdigest()
+    readme_patched = tmp_path / "README.md"
+    readme_patched.write_text(
+        readme_text.replace(
+            "`4c2f08c89a1cbf050881e3678410b19e4e181af70f2728f2ae0b788779847a5b`",
+            f"`{patched_sha}`"),
+        encoding="utf-8")
+
+    mod.B7_RECOVERY_30M = tampered
+    mod.B7_README = readme_patched
+    m = mod.Macros()
+    mod.compute_b7_scale(m)
+    assert mod.FAILURES, "a replayed_digest that no longer matches the frozen 30M store " \
+        "digest must fail, even with a patched whole-file digest"
+    assert any("replayed_digest" in f for f in mod.FAILURES)
+
+
+def test_b7_scale_100m_names_are_pending_stubs():
+    """Every osdiB7*100M name (the core set, all 13 scale-curve operators,
+    and osdiB7CompactionShare100M) must be PENDING until the 100M chain's
+    own records land -- 30M-only names (osdiB7*30M, osdiB7300MGate, the
+    Stage-0 calib anchors) must not be."""
+    mod = _load("osdi_paper_macros")
+    m = mod.Macros()
+    mod.compute_b7_scale(m)
+    mod.add_pending_stubs(m)
+    values = {name: value for name, value, _ in m.items}
+
+    core_100m = ["osdiB7BuildWall100M", "osdiB7PeakRSS100M",
+                 "osdiB7VersionHistoryWall100M", "osdiB7VersionHistoryRSS100M",
+                 "osdiB7ManifestBytes100M", "osdiB7SegmentBytes100M",
+                 "osdiB7CheckFullWall100M", "osdiB7Recovery100M",
+                 "osdiB7ReachWindowRefused100M", "osdiB7QueryFloor100M",
+                 "osdiB7BuildSteadyDecileMedian100M",
+                 "osdiB7ReachWindowEstimateMs100M", "osdiB7CompactionShare100M"]
+    for name in core_100m:
+        assert values[name].startswith("\\errmessage"), f"{name} should still be PENDING"
+    for frag in mod.B7_SCALE_CURVE_OPS.values():
+        name = f"osdiB7ScaleCurveP50{frag}100M"
+        assert values[name].startswith("\\errmessage"), f"{name} should still be PENDING"
+
+    assert not values["osdiB7BuildWall30M"].startswith("\\errmessage")
+    assert not values["osdiB7300MGate"].startswith("\\errmessage")
 
 
 # --------------------------------------------------------------------------

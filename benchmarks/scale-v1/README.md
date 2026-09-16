@@ -134,11 +134,21 @@ sub-millisecond point lookups — noise at that scale); no operator differs
 by more than 20%. Both runs are kept in `scale-curve-30m.json`, neither
 discarded or averaged, per the coordinator's instruction.
 
-**`expB1-30m.json` — not produced.** The §4 4-row D-071/`HANDOFF-ENGINE.md`
-column set could not be computed: `docs/HANDOFF-ENGINE.md` is not present in
-this worktree (git history search confirms it has never been committed to
-this branch/main), so the exact column definitions could not be verified.
-Flagged for the coordinator rather than guessed.
+**`expB1-30m.json` — produced (records-only follow-up lane).** The §4 4-row
+D-071/`HANDOFF-ENGINE.md` column set (`docs/HANDOFF-ENGINE.md:218-224`:
+store on disk, query-ready floor (VmHWM), columnar scan, `version_history`)
+is now assembled from the records already on this page — no new
+measurement. Values: store on disk **4.522 GB** (`build-30m.json`
+`build_info.store_bytes.total_bytes`); query-ready floor **6.81 GB**
+(`queryfloor-30m.json` `vmhwm_kb`, job 213173); columnar scan
+(`aggregate_events`/`agg.rel_bucket`, the `docs/TECHNICAL_REPORT.md`
+D-058-vs-D-069 control) **176.492 ms** clean / 169.596 ms contended
+(`scale-curve-30m.json` `per_operator_p50_ms."agg.rel_bucket"`);
+`version_history` **5.496 s / 3.863 GB** (`version-history-30m.json`
+`clean_alone`, job 213175 — the same figures already in the table above).
+Every field is cited to its source file in `expB1-30m.json`'s own
+`exp_b1.rows.*.source`; nothing was estimated. `expB1-100m.json` is a
+separate file, not yet produced (100M chain still running on iTiger).
 
 ### Deviations from the literal Stage-1 recipe
 
@@ -197,13 +207,19 @@ Flagged for the coordinator rather than guessed.
 | `version-history-30m-213070-contended.json` | `b203b7bc4c29b19716987570813fd77314fe50da7f65d6d678a1262fcc1d3871` |
 | `version-history-30m-raw-213070-contended.jsonl` | `cf0d1f38d5e195b0c13125a90986fd9458a4cd1681c396d171e204c19332617f` |
 | `rss-30m.jsonl` | `f491670ba0d8d19ed041ae07193464120a4e847f00161cf5b24707d9a8bb03dd` |
+| `expB1-30m.json` (locally assembled, not cluster-transferred — see note below) | `caac6b4d3fbaf420df88c442c0d920a4423d230c598ae101137e5fda1dd58f66` |
 
-Every file above was sha256-verified byte-identical between its source
-path on the cluster and the copy in this worktree (spot-checked directly
+Every file above except `expB1-30m.json` was sha256-verified byte-identical
+between its source path on the cluster and the copy in this worktree
+(spot-checked directly
 against `/project/xzhang12/tgms-b7/...` and `/home/xzhang12/b7-work-h/...`
-at commit time). All six schema-bearing records (`build-30m.json`,
-`scale-curve-30m.json`, `check-full-30m.json`, `recovery-30m.json`,
-`recovery-30m-ce5000.json`, `version-history-30m.json`) validate against
+at commit time); `expB1-30m.json` was instead assembled locally, in this
+worktree, from those already-verified records (see "`expB1-30m.json` —
+produced" above) — its sha256 above is a tamper check on this worktree's
+own copy, not a cluster-vs-worktree transfer check. All seven schema-
+bearing records (`build-30m.json`, `scale-curve-30m.json`,
+`check-full-30m.json`, `recovery-30m.json`, `recovery-30m-ce5000.json`,
+`version-history-30m.json`, `expB1-30m.json`) validate against
 `benchmarks/schema/result_manifest.schema.json`
 (`scripts/check_result_manifest.py`, this worktree's `uv`-managed venv).
 
