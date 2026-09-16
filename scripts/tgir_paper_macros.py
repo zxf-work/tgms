@@ -171,10 +171,17 @@ def grep_int(path: Path, pattern: str, what: str) -> int:
     return int(raw.replace(",", "").replace("{,}", "").replace(",", "")) if raw else -1
 
 
-def tex_num(n: int) -> str:
-    """LaTeX thousands separator that survives both text and math mode."""
+def tex_num(n: int, min_digits: int = 5) -> str:
+    """LaTeX thousands separator that survives both text and math mode.
+
+    `min_digits` is the shortest digit-length that gets a separator; the
+    default (5) matches every pre-existing call site's behaviour (no comma
+    below 10,000). Pass 4 at a call site whose value sits beside a sibling
+    macro that already carries a separator at 1,000, so the pair reads
+    consistently.
+    """
     s = str(n)
-    if len(s) <= 4:
+    if len(s) < min_digits:
         return s
     out = []
     for i, ch in enumerate(reversed(s)):
@@ -913,7 +920,7 @@ def main() -> int:
     m.add("tgAdmFalseRej", len(fr_rows),
           "e14-p3-frontier.json arms.scored-bi.per_plan at the live ceiling: false-rejection count")
     m.add("tgAdmFalseAdmRow", fa_rows[0]["plan_id"], "e14-p3-frontier.json: which plan is the false admission")
-    m.add("tgAdmFalseAdmEstMs", tex_num(fa_rows[0]["est_ms"]), "e14-p3-frontier.json: BI18 estimated cost")
+    m.add("tgAdmFalseAdmEstMs", tex_num(fa_rows[0]["est_ms"], min_digits=4), "e14-p3-frontier.json: BI18 estimated cost")
     m.add("tgAdmFalseAdmActualMs", f"{fa_rows[0]['actual_ms']:,.1f}".replace(",", "{,}"),
           "e14-p3-frontier.json: BI18 actual cost")
 
