@@ -1,0 +1,36 @@
+RUN_STARTED commit=b159bd10aa53ad5de5f4e8ff7af1c87789d6afd0
+BUILD_INFO {"profile": "release", "opt_level": "3", "engine_version": "0.8.0", "debug_assertions": false, "manifest_format_version": 3}
+TGMS_SEGMENT_CACHE_BYTES=46500000000
+SLURM_JOB_ID=213045 SLURM_NODELIST=itiger11 NODE=itiger11
+CPU_MODEL=AMD EPYC 7513 32-Core Processor
+BUILD_PID=1667073
+digest_mode='streaming' (explicit)
+RUN_STARTED commit=b159bd10aa53ad5de5f4e8ff7af1c87789d6afd0 dataset=synth n_entities=10000000 seed=0 batch=250 compact_every=1000000 out=/project/xzhang12/tgms-b7/stores/synth-10m-native backend=native resume=False digest=streaming host=itiger11
+         500,000 ops      12,126 ops/s  elapsed     41.2s  maxrss 99 MB  manifest 5,766,718 B  segment 19,177,859 B  compactions 0
+       1,000,000 ops       8,870 ops/s  elapsed    112.7s  maxrss 1929 MB  manifest 2,683,142 B  segment 60,974,975 B  compactions 1
+       1,500,000 ops      10,391 ops/s  elapsed    144.4s  maxrss 1929 MB  manifest 6,663,998 B  segment 76,222,826 B  compactions 1
+       2,000,000 ops      11,095 ops/s  elapsed    180.3s  maxrss 3777 MB  manifest 2,055,352 B  segment 108,582,654 B  compactions 2
+       2,500,000 ops      11,365 ops/s  elapsed    220.0s  maxrss 3777 MB  manifest 6,232,831 B  segment 123,830,447 B  compactions 2
+       3,000,000 ops      11,676 ops/s  elapsed    256.9s  maxrss 5160 MB  manifest 2,055,876 B  segment 158,590,461 B  compactions 3
+       3,500,000 ops      12,629 ops/s  elapsed    277.1s  maxrss 5160 MB  manifest 6,436,984 B  segment 173,838,184 B  compactions 3
+       4,000,000 ops      12,623 ops/s  elapsed    316.9s  maxrss 6457 MB  manifest 2,056,393 B  segment 208,595,269 B  compactions 4
+       4,500,000 ops      13,341 ops/s  elapsed    337.3s  maxrss 6457 MB  manifest 6,632,445 B  segment 223,843,043 B  compactions 4
+       5,000,000 ops      13,136 ops/s  elapsed    380.6s  maxrss 7685 MB  manifest 2,056,910 B  segment 258,601,226 B  compactions 5
+       5,500,000 ops      13,727 ops/s  elapsed    400.7s  maxrss 7685 MB  manifest 5,796,718 B  segment 273,415,256 B  compactions 5
+       6,000,000 ops      13,405 ops/s  elapsed    447.6s  maxrss 8910 MB  manifest 2,057,427 B  segment 307,810,678 B  compactions 6
+       6,500,000 ops      13,896 ops/s  elapsed    467.7s  maxrss 8910 MB  manifest 5,974,803 B  segment 323,058,638 B  compactions 6
+       7,000,000 ops      13,507 ops/s  elapsed    518.3s  maxrss 10139 MB  manifest 2,057,943 B  segment 357,888,178 B  compactions 7
+       7,500,000 ops      13,917 ops/s  elapsed    538.9s  maxrss 10139 MB  manifest 6,172,319 B  segment 373,136,107 B  compactions 7
+       8,000,000 ops      13,516 ops/s  elapsed    591.9s  maxrss 11502 MB  manifest 2,058,460 B  segment 407,893,768 B  compactions 8
+       8,500,000 ops      13,775 ops/s  elapsed    617.1s  maxrss 11502 MB  manifest 6,367,784 B  segment 423,141,410 B  compactions 8
+       9,000,000 ops      12,475 ops/s  elapsed    721.4s  maxrss 12731 MB  manifest 2,058,462 B  segment 457,897,130 B  compactions 9
+       9,500,000 ops      12,810 ops/s  elapsed    741.6s  maxrss 12731 MB  manifest 6,562,726 B  segment 473,144,741 B  compactions 9
+      10,000,000 ops      12,455 ops/s  elapsed    802.9s  maxrss 13958 MB  manifest 2,060,981 B  segment 507,903,579 B  compactions 10
+
+DONE ops=10,000,262 wall=865.592s compactions=11 maxrss=19431MB manifest=164,859B segment=504,374,563B
+digest_mode=streaming
+store_digest=41e0699853e82b0f11a0eddbebffb2b3446d30f185fc1e76d84071caf2698483
+content_digest=None
+record: /project/xzhang12/tgms-b7/stores/synth-10m-native/build-record.json
+BUILD_EXIT=0
+RUN_FINISHED commit=b159bd10aa53ad5de5f4e8ff7af1c87789d6afd0 exit=0

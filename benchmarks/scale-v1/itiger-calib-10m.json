@@ -1,0 +1,666 @@
+{
+  "build_info": {
+    "batch": 250,
+    "compact_every": 1000000,
+    "compactions": 11,
+    "content_digest": null,
+    "digest_mode": "streaming",
+    "engine": {
+      "debug_assertions": false,
+      "engine_version": "0.8.0",
+      "manifest_format_version": 3,
+      "opt_level": "3",
+      "profile": "release"
+    },
+    "finalisation_phases": {
+      "compact": {
+        "rss_kb_after": {
+          "maxrss_kb": 18324888,
+          "vmhwm": 18324888,
+          "vmrss": 12009204
+        },
+        "rss_kb_before": {
+          "maxrss_kb": 14292644,
+          "vmhwm": 14292644,
+          "vmrss": 7890676
+        },
+        "wall_s": 35.163
+      },
+      "digest": {
+        "rss_kb_after": {
+          "maxrss_kb": 19897476,
+          "vmhwm": 19897476,
+          "vmrss": 12089552
+        },
+        "rss_kb_before": {
+          "maxrss_kb": 18324888,
+          "vmhwm": 18324888,
+          "vmrss": 11757172
+        },
+        "wall_s": 213.085
+      },
+      "gc": {
+        "rss_kb_after": {
+          "maxrss_kb": 18324888,
+          "vmhwm": 18324888,
+          "vmrss": 11757364
+        },
+        "rss_kb_before": {
+          "maxrss_kb": 18324888,
+          "vmhwm": 18324888,
+          "vmrss": 12009204
+        },
+        "wall_s": 11.848
+      },
+      "stats": {
+        "rss_kb_after": {
+          "maxrss_kb": 18324888,
+          "vmhwm": 18324888,
+          "vmrss": 11757172
+        },
+        "rss_kb_before": {
+          "maxrss_kb": 18324888,
+          "vmhwm": 18324888,
+          "vmrss": 11757364
+        },
+        "wall_s": 3.129
+      }
+    },
+    "manifest_identity": {
+      "generation": 40273,
+      "manifest_sha": "d2f10524b975be80"
+    },
+    "n_entities": 10000000,
+    "ops": 10000262,
+    "ops_per_s_by_decile": [
+      {
+        "bracket_elapsed_s": [
+          112.7,
+          144.4
+        ],
+        "bracket_ops": [
+          1000000,
+          1500000
+        ],
+        "cum_ops_target": 1000026,
+        "decile": 1,
+        "ops_per_s": 15772.9
+      },
+      {
+        "bracket_elapsed_s": [
+          180.3,
+          220.0
+        ],
+        "bracket_ops": [
+          2000000,
+          2500000
+        ],
+        "cum_ops_target": 2000052,
+        "decile": 2,
+        "ops_per_s": 12594.5
+      },
+      {
+        "bracket_elapsed_s": [
+          256.9,
+          277.1
+        ],
+        "bracket_ops": [
+          3000000,
+          3500000
+        ],
+        "cum_ops_target": 3000078,
+        "decile": 3,
+        "ops_per_s": 24752.5
+      },
+      {
+        "bracket_elapsed_s": [
+          316.9,
+          337.3
+        ],
+        "bracket_ops": [
+          4000000,
+          4500000
+        ],
+        "cum_ops_target": 4000104,
+        "decile": 4,
+        "ops_per_s": 24509.8
+      },
+      {
+        "bracket_elapsed_s": [
+          380.6,
+          400.7
+        ],
+        "bracket_ops": [
+          5000000,
+          5500000
+        ],
+        "cum_ops_target": 5000131,
+        "decile": 5,
+        "ops_per_s": 24875.6
+      },
+      {
+        "bracket_elapsed_s": [
+          447.6,
+          467.7
+        ],
+        "bracket_ops": [
+          6000000,
+          6500000
+        ],
+        "cum_ops_target": 6000157,
+        "decile": 6,
+        "ops_per_s": 24875.6
+      },
+      {
+        "bracket_elapsed_s": [
+          518.3,
+          538.9
+        ],
+        "bracket_ops": [
+          7000000,
+          7500000
+        ],
+        "cum_ops_target": 7000183,
+        "decile": 7,
+        "ops_per_s": 24271.8
+      },
+      {
+        "bracket_elapsed_s": [
+          591.9,
+          617.1
+        ],
+        "bracket_ops": [
+          8000000,
+          8500000
+        ],
+        "cum_ops_target": 8000209,
+        "decile": 8,
+        "ops_per_s": 19841.3
+      },
+      {
+        "bracket_elapsed_s": [
+          721.4,
+          741.6
+        ],
+        "bracket_ops": [
+          9000000,
+          9500000
+        ],
+        "cum_ops_target": 9000235,
+        "decile": 9,
+        "ops_per_s": 24752.5
+      },
+      {
+        "bracket_elapsed_s": [
+          741.6,
+          802.9
+        ],
+        "bracket_ops": [
+          9500000,
+          10000000
+        ],
+        "cum_ops_target": 10000262,
+        "decile": 10,
+        "ops_per_s": 8156.6
+      }
+    ],
+    "peak_rss": {
+      "maxrss_kb": 19897476,
+      "vmhwm": 19897476,
+      "vmrss": 12088528
+    },
+    "rss_series_30s": [
+      {
+        "pid": 1667073,
+        "ts": "2026-09-16T02:26:04Z",
+        "vmhwm_kb": 13312,
+        "vmrss_kb": 13312
+      },
+      {
+        "pid": 1667073,
+        "ts": "2026-09-16T02:26:34Z",
+        "vmhwm_kb": 99988,
+        "vmrss_kb": 99988
+      },
+      {
+        "pid": 1667073,
+        "ts": "2026-09-16T02:27:04Z",
+        "vmhwm_kb": 103060,
+        "vmrss_kb": 103060
+      },
+      {
+        "pid": 1667073,
+        "ts": "2026-09-16T02:27:34Z",
+        "vmhwm_kb": 107224,
+        "vmrss_kb": 106288
+      },
+      {
+        "pid": 1667073,
+        "ts": "2026-09-16T02:28:05Z",
+        "vmhwm_kb": 1975344,
+        "vmrss_kb": 1055960
+      },
+      {
+        "pid": 1667073,
+        "ts": "2026-09-16T02:28:35Z",
+        "vmhwm_kb": 1975344,
+        "vmrss_kb": 1056472
+      },
+      {
+        "pid": 1667073,
+        "ts": "2026-09-16T02:29:05Z",
+        "vmhwm_kb": 3867560,
+        "vmrss_kb": 1989196
+      },
+      {
+        "pid": 1667073,
+        "ts": "2026-09-16T02:29:35Z",
+        "vmhwm_kb": 3867560,
+        "vmrss_kb": 1982516
+      },
+      {
+        "pid": 1667073,
+        "ts": "2026-09-16T02:30:05Z",
+        "vmhwm_kb": 3867560,
+        "vmrss_kb": 1982516
+      },
+      {
+        "pid": 1667073,
+        "ts": "2026-09-16T02:30:35Z",
+        "vmhwm_kb": 5284060,
+        "vmrss_kb": 2735952
+      },
+      {
+        "pid": 1667073,
+        "ts": "2026-09-16T02:31:05Z",
+        "vmhwm_kb": 5284060,
+        "vmrss_kb": 2792272
+      },
+      {
+        "pid": 1667073,
+        "ts": "2026-09-16T02:31:35Z",
+        "vmhwm_kb": 6612140,
+        "vmrss_kb": 3631756
+      },
+      {
+        "pid": 1667073,
+        "ts": "2026-09-16T02:32:05Z",
+        "vmhwm_kb": 6612140,
+        "vmrss_kb": 3688076
+      },
+      {
+        "pid": 1667073,
+        "ts": "2026-09-16T02:32:35Z",
+        "vmhwm_kb": 7869040,
+        "vmrss_kb": 4198252
+      },
+      {
+        "pid": 1667073,
+        "ts": "2026-09-16T02:33:05Z",
+        "vmhwm_kb": 7869040,
+        "vmrss_kb": 4198252
+      },
+      {
+        "pid": 1667073,
+        "ts": "2026-09-16T02:33:35Z",
+        "vmhwm_kb": 9123732,
+        "vmrss_kb": 4859152
+      },
+      {
+        "pid": 1667073,
+        "ts": "2026-09-16T02:34:05Z",
+        "vmhwm_kb": 9123732,
+        "vmrss_kb": 4861200
+      },
+      {
+        "pid": 1667073,
+        "ts": "2026-09-16T02:34:35Z",
+        "vmhwm_kb": 10381844,
+        "vmrss_kb": 10240196
+      },
+      {
+        "pid": 1667073,
+        "ts": "2026-09-16T02:35:05Z",
+        "vmhwm_kb": 10381844,
+        "vmrss_kb": 5522632
+      },
+      {
+        "pid": 1667073,
+        "ts": "2026-09-16T02:35:35Z",
+        "vmhwm_kb": 10381844,
+        "vmrss_kb": 7662608
+      },
+      {
+        "pid": 1667073,
+        "ts": "2026-09-16T02:36:05Z",
+        "vmhwm_kb": 11778132,
+        "vmrss_kb": 6323108
+      },
+      {
+        "pid": 1667073,
+        "ts": "2026-09-16T02:36:35Z",
+        "vmhwm_kb": 11778132,
+        "vmrss_kb": 6323108
+      },
+      {
+        "pid": 1667073,
+        "ts": "2026-09-16T02:37:05Z",
+        "vmhwm_kb": 11778132,
+        "vmrss_kb": 8179776
+      },
+      {
+        "pid": 1667073,
+        "ts": "2026-09-16T02:37:35Z",
+        "vmhwm_kb": 13036144,
+        "vmrss_kb": 7234364
+      },
+      {
+        "pid": 1667073,
+        "ts": "2026-09-16T02:38:05Z",
+        "vmhwm_kb": 13036144,
+        "vmrss_kb": 7105908
+      },
+      {
+        "pid": 1667073,
+        "ts": "2026-09-16T02:38:35Z",
+        "vmhwm_kb": 13036144,
+        "vmrss_kb": 7032204
+      },
+      {
+        "pid": 1667073,
+        "ts": "2026-09-16T02:39:05Z",
+        "vmhwm_kb": 13036144,
+        "vmrss_kb": 11314288
+      },
+      {
+        "pid": 1667073,
+        "ts": "2026-09-16T02:39:35Z",
+        "vmhwm_kb": 14292644,
+        "vmrss_kb": 7815924
+      },
+      {
+        "pid": 1667073,
+        "ts": "2026-09-16T02:40:05Z",
+        "vmhwm_kb": 18324888,
+        "vmrss_kb": 18316316
+      },
+      {
+        "pid": 1667073,
+        "ts": "2026-09-16T02:40:35Z",
+        "vmhwm_kb": 18324888,
+        "vmrss_kb": 11814004
+      },
+      {
+        "pid": 1667073,
+        "ts": "2026-09-16T02:41:05Z",
+        "vmhwm_kb": 19897476,
+        "vmrss_kb": 17811080
+      },
+      {
+        "pid": 1667073,
+        "ts": "2026-09-16T02:41:35Z",
+        "vmhwm_kb": 19897476,
+        "vmrss_kb": 19171464
+      },
+      {
+        "pid": 1667073,
+        "ts": "2026-09-16T02:42:05Z",
+        "vmhwm_kb": 19897476,
+        "vmrss_kb": 19155796
+      },
+      {
+        "pid": 1667073,
+        "ts": "2026-09-16T02:42:35Z",
+        "vmhwm_kb": 19897476,
+        "vmrss_kb": 19138388
+      },
+      {
+        "pid": 1667073,
+        "ts": "2026-09-16T02:43:05Z",
+        "vmhwm_kb": 19897476,
+        "vmrss_kb": 19155308
+      },
+      {
+        "pid": 1667073,
+        "ts": "2026-09-16T02:43:35Z",
+        "vmhwm_kb": 19897476,
+        "vmrss_kb": 12099780
+      },
+      {
+        "pid": 1667073,
+        "ts": "2026-09-16T02:44:05Z",
+        "vmhwm_kb": 19897476,
+        "vmrss_kb": 12099780
+      }
+    ],
+    "rss_series_source": "external sampler (/proc/<pid>/status VmHWM every 30s) independent of the harness's own periodic maxrss figure",
+    "seed": 0,
+    "stats": {
+      "max_out_degree": 147,
+      "n_edge_versions": 10000269,
+      "n_entities": 100000,
+      "n_node_versions": 100003,
+      "rel_type_counts": {
+        "R": 6666846,
+        "S": 3333423
+      },
+      "vt_max": 10499999,
+      "vt_min": 0
+    },
+    "store_bytes": {
+      "manifest_bytes": 164859,
+      "segment_bytes": 504374563,
+      "total_bytes": 1458873662
+    },
+    "store_digest": "41e0699853e82b0f11a0eddbebffb2b3446d30f185fc1e76d84071caf2698483",
+    "wall_s": 865.592
+  },
+  "check_full": {
+    "exit_code": 0,
+    "findings_count": 0,
+    "healthy": true,
+    "problems_count": 0,
+    "raw": {
+      "believed_rows": 10100010,
+      "close_runs_checked": 0,
+      "closes": 0,
+      "dict_records": 100000,
+      "findings": [],
+      "generation": 40273,
+      "healthy": true,
+      "identities_checked": 10100000,
+      "manifest_checkpoint": 40273,
+      "manifest_deltas": 0,
+      "manifest_format": 3,
+      "max_tt_s_runs": 9418,
+      "mode": "full",
+      "problems": [],
+      "readable": true,
+      "rows": 10100272,
+      "rows_walked": 10100272,
+      "segments_checked": 7,
+      "store": "/project/xzhang12/tgms-b7/stores/synth-10m-native",
+      "tt_s_runs": 41742
+    },
+    "store": "stores/synth-10m-native",
+    "wall_s": 27.276970386505127
+  },
+  "config": {
+    "backend": "native",
+    "batch": 250,
+    "compact_every": 1000000,
+    "digest_mode": "streaming",
+    "host_controls": {
+      "cpu_model": "AMD EPYC 7513 32-Core Processor",
+      "slurm_cpus_per_task": 8,
+      "slurm_exclude": "itiger04,itiger05",
+      "slurm_gres": "gpu:rtx_5000:1",
+      "slurm_job_id": "213045",
+      "slurm_mem": "64G",
+      "slurm_node": "itiger11",
+      "slurm_partition": "bigTiger",
+      "slurm_time_limit": "06:00:00",
+      "tgms_segment_cache_bytes": 46500000000
+    },
+    "n_entities": 10000000
+  },
+  "dataset": {
+    "digest": "41e0699853e82b0f11a0eddbebffb2b3446d30f185fc1e76d84071caf2698483",
+    "digest_kind": "store_digest",
+    "name": "synth"
+  },
+  "git_commit": "b159bd10aa53ad5de5f4e8ff7af1c87789d6afd0",
+  "machine": {
+    "cpus": 64,
+    "host": "itiger11",
+    "platform": "Linux-5.14.0-427.31.1.el9_4.x86_64-x86_64-with-glibc2.34",
+    "ram_gb": 503.68
+  },
+  "protocol": {
+    "ceilings": {},
+    "reps": 1,
+    "warmups": 0
+  },
+  "record": "stores/synth-10m-native/build-record.json",
+  "result_digest": "41e0699853e82b0f11a0eddbebffb2b3446d30f185fc1e76d84071caf2698483",
+  "scale_curve": {
+    "invocation": "eval_harness.py --scale 10000000 --systems native --json <out>",
+    "manifest": {
+      "_commit_patch_note": "git binary is absent on iTiger compute nodes (confirmed via srun probe on itiger11); eval_harness.py::manifest() shells out to git directly with no env override, so it originally recorded commit='unknown', dirty=True (bool('unknown')) here -- both spurious. Patched post-hoc from the worktree's pinned/verified HEAD, itself checked against RUN_STARTED at job start.",
+      "cache_state": "warm",
+      "commit": "b159bd1",
+      "commit_full": "b159bd10aa53ad5de5f4e8ff7af1c87789d6afd0",
+      "cpu_count": 64,
+      "dataset": "synth",
+      "dirty": false,
+      "measurement_host": "xzgpu",
+      "on_measurement_host": false,
+      "platform": "Linux 5.14.0-427.31.1.el9_4.x86_64 x86_64",
+      "protocol": {
+        "reps_fast": 30,
+        "reps_slow": 10,
+        "stats": "median and p95 over measured reps",
+        "warmup": 5
+      },
+      "python": "3.12.13",
+      "rustc": "rustc 1.98.1 (48a229cea 2026-09-01)",
+      "scale_events": 10000000,
+      "systems": [
+        "native"
+      ]
+    },
+    "per_operator_p50_ms": {
+      "agg.rel_bucket": {
+        "error": null,
+        "ok": true,
+        "p50_ms": 119.597,
+        "p95_ms": 190.167,
+        "rows": 196
+      },
+      "burst.zscore": {
+        "error": null,
+        "ok": true,
+        "p50_ms": 96.372,
+        "p95_ms": 119.53,
+        "rows": 1
+      },
+      "coactive.narrow": {
+        "error": null,
+        "ok": true,
+        "p50_ms": 233.52,
+        "p95_ms": 251.244,
+        "rows": 489
+      },
+      "diff.global": {
+        "error": null,
+        "ok": true,
+        "p50_ms": 2114.156,
+        "p95_ms": 2123.31,
+        "rows": 749999
+      },
+      "hist.asof": {
+        "error": null,
+        "ok": true,
+        "p50_ms": 0.412,
+        "p95_ms": 0.425,
+        "rows": 2
+      },
+      "hist.single": {
+        "error": null,
+        "ok": true,
+        "p50_ms": 0.398,
+        "p95_ms": 0.413,
+        "rows": 2
+      },
+      "motif.filtered": {
+        "error": null,
+        "ok": true,
+        "p50_ms": 78.507,
+        "p95_ms": 99.501,
+        "rows": 303
+      },
+      "nbr.evolution": {
+        "error": null,
+        "ok": true,
+        "p50_ms": 44.365,
+        "p95_ms": 45.002,
+        "rows": 18
+      },
+      "paths.k": {
+        "error": null,
+        "ok": true,
+        "p50_ms": 10.189,
+        "p95_ms": 10.38,
+        "rows": 42
+      },
+      "reach.window": {
+        "error": null,
+        "ok": true,
+        "p50_ms": 493.456,
+        "p95_ms": 499.221,
+        "rows": 99993
+      },
+      "resolve.substr": {
+        "error": null,
+        "ok": true,
+        "p50_ms": 54.235,
+        "p95_ms": 59.542,
+        "rows": 11111
+      },
+      "series.count": {
+        "error": null,
+        "ok": true,
+        "p50_ms": 98.415,
+        "p95_ms": 141.262,
+        "rows": 100
+      },
+      "snap.hop2": {
+        "error": null,
+        "ok": true,
+        "p50_ms": 486.843,
+        "p95_ms": 506.461,
+        "rows": 151
+      }
+    },
+    "producing_script": "scripts/eval_harness.py",
+    "producing_script_commit": "b159bd10aa53ad5de5f4e8ff7af1c87789d6afd0",
+    "protocol": {
+      "reps_fast": 30,
+      "reps_slow": 10,
+      "stats": "median and p95 over measured reps",
+      "warmup": 5
+    },
+    "raw_record": "benchmarks/scale-v1/itiger-scale-curve-10m-raw.json",
+    "reach_window_deviation": {
+      "expected": "refused with CostError (xzgpu eval-10m-agg.json native/duckdb: 'CostError: estimated cost for temporal_reachability exceeds ceilings')",
+      "note": "The pre-execution admission estimate in tgms/temporal/guardrails.py (DEFAULT_CEILINGS['time_est_ms']=10000, TIME_COEFF_MS_PER_M['temporal_reachability']=170.0) is a static per-operator ms/M coefficient over dataset-shape estimates (rows/expansions), not a host-speed measurement -- it should not depend on which machine runs the query. Not root-caused in Stage 0 (out of scope); flagged for the coordinator: either the synth generator's graph shape has drifted since the eval-10m-agg.json commit (d12b30f) changing the reachability estimate, or an admission-path difference exists between environments. Actual query answer (rows=99993) matches xzgpu's clickhouse baseline row count exactly, so the *executed* answer is not in question -- only whether it should have been admitted at all.",
+      "observed": "EXECUTED on iTiger -- ok=True, rows=99993, p50_ms=493.5, no CostError raised",
+      "verdict": "DEVIATION from SCALE_BUILD_FORECAST_2026-09-15.md Addendum 4 / section 2h ('falsified if it executes instead of being refused')"
+    }
+  },
+  "schema_version": "1.0.0",
+  "seed": {
+    "value": 0
+  },
+  "timestamp_utc": "2026-09-16T02:44:06Z"
+}
