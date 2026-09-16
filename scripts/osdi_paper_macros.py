@@ -148,12 +148,20 @@ skeleton --
       re-measurements/re-derivations against the W2g soak's own preserved
       raw inputs -- no new soak, no new replay attempt. No verdict macro.
 
-Claims C2 (corruption-detection campaign), C9 (LDBC generality, four axes
--- the Neo4j reference run is pending), and C10 (live OSV workload) have
-no landed record yet; their macros, plus the still-unlanded slice of C7
-above, are emitted as PENDING stubs (see ``Macros.add_pending``) that
-raise a real LaTeX error (``\\errmessage``) if the paper ever expands one,
-rather than silently emitting a placeholder number.
+C10 (live OSV workload) -- benchmarks/live-osv-v1/snapshot-2026-09-16.json,
+Lane C10-snap's first committed record snapshot of the live-osv poller
+running on xzgpu (docs/design/LIVE_WORKLOAD_OSV_DESIGN_2026-09-13.md).
+``osdiLiveDays``/``osdiLiveAdvisories``/``osdiLiveCorrections`` are computed
+by ``compute_c10_live_osv`` below, every number recomputed from the
+snapshot's own embedded per-cycle rows (``live_osv.cycles_raw``) and
+cross-checked against its pre-aggregated fields, plus a whole-file sha256
+tamper check against README.md's own quoted value.
+
+Claim C9 (LDBC generality, four axes -- the Neo4j reference run is
+pending) has no landed record yet; its macros, plus the still-unlanded
+slice of C7 above, are emitted as PENDING stubs (see ``Macros.add_pending``)
+that raise a real LaTeX error (``\\errmessage``) if the paper ever expands
+one, rather than silently emitting a placeholder number.
 
 Usage:  $HOME/.venvs/tgms/bin/python scripts/osdi_paper_macros.py [--check | --check-only]
 
@@ -321,6 +329,13 @@ LONGEVITY_GATE_E_REPORT_REDERIVED_SHA256 = "8ad5cf1fd22306d41255ab1560d72e50b525
 LONGEVITY_REPLAY_CHECK_SHA256 = "a5c7a93c79af6a97160f7262fd16c98ff99cb982f22d282e896f3805ab7e4d9b"
 
 FAILURE_LEDGER = ROOT / "ops" / "failure_ledger.jsonl"
+
+LIVE_OSV_DIR = ROOT / "benchmarks" / "live-osv-v1"
+LIVE_OSV_SNAPSHOT = LIVE_OSV_DIR / "snapshot-2026-09-16.json"
+# README.md's own "Snapshot" section quotes this sha256 for the manifest
+# file; cross-checked against that quoted text in compute_c10_live_osv
+# below, not only frozen from a first read.
+LIVE_OSV_SNAPSHOT_SHA256 = "1978d6a692f9768dfa51b7260f11d00e13bce203b2765ff1b20de3f8109a3699"
 
 
 # --------------------------------------------------------------------------
@@ -4097,6 +4112,116 @@ def compute_longevity_rederived(m: Macros) -> None:
 
 
 # --------------------------------------------------------------------------
+# C10 --- live OSV advisory-feed workload, first committed snapshot
+# --------------------------------------------------------------------------
+
+def compute_c10_live_osv(m: Macros) -> None:
+    """Lane C10-snap: `benchmarks/live-osv-v1/snapshot-2026-09-16.json`, the
+    first committed record snapshot of the live-osv poller
+    (`docs/design/LIVE_WORKLOAD_OSV_DESIGN_2026-09-13.md`) running on xzgpu.
+    Resolves the three macros that were PENDING for lack of any committed
+    record: `osdiLiveDays`, `osdiLiveAdvisories`, `osdiLiveCorrections`.
+
+    Every number below is recomputed from the snapshot's own row-level
+    fields (`live_osv.cycles_raw`, the 38 raw per-cycle metrics lines the
+    poller itself wrote) and cross-checked against the snapshot's own
+    pre-computed aggregates -- never taken from an aggregate field on
+    trust alone, the house rule this whole file follows."""
+    eq(sha256_file(LIVE_OSV_SNAPSHOT), LIVE_OSV_SNAPSHOT_SHA256,
+       f"{relpath(LIVE_OSV_SNAPSHOT)}: sha256 matches README.md's own quoted value "
+       "in its \"Snapshot\" section")
+
+    doc = json.loads(LIVE_OSV_SNAPSHOT.read_text(encoding="utf-8"))
+    live = doc["live_osv"]
+    cycles = live["cycles_raw"]
+    eq(len(cycles), 38, "C10 frozen: live-osv-v1 snapshot cycle count")
+
+    # --- recompute the per-cycle sums from the raw rows, not from the
+    # manifest's own pre-aggregated `corrections` block ---
+    sum_keys = ("records_seen", "revisions_seen", "corrections_written",
+                "noop_revisions", "retractions", "withdrawn_seen",
+                "events_appended", "feed_errors")
+    recomputed = {k: sum(c.get(k, 0) for c in cycles) for k in sum_keys}
+
+    corrections = live["corrections"]
+    for k in sum_keys:
+        eq(recomputed[k], corrections[k],
+           f"{relpath(LIVE_OSV_SNAPSHOT)}: recomputed sum(cycles_raw[*].{k}) matches "
+           f"live_osv.corrections.{k}")
+
+    eq(recomputed["records_seen"], 95, "C10 frozen: total records_seen across all 38 cycles")
+    eq(recomputed["revisions_seen"], 95, "C10 frozen: total revisions_seen across all 38 cycles")
+    eq(recomputed["corrections_written"], 1, "C10 frozen: total corrections_written")
+    eq(recomputed["noop_revisions"], 41, "C10 frozen: total noop_revisions")
+    eq(recomputed["retractions"], 1, "C10 frozen: total retractions")
+    eq(recomputed["withdrawn_seen"], 1, "C10 frozen: total withdrawn_seen")
+    eq(recomputed["events_appended"], 989, "C10 frozen: total events_appended")
+    eq(recomputed["feed_errors"], 0, "C10 frozen: total feed_errors (clean run, no restarts)")
+
+    # --- advisories: bootstrap + live delta must equal the live total ---
+    advisories = live["advisories"]
+    eq(advisories["bootstrap"], 32787, "C10 frozen: bootstrap advisory count")
+    eq(advisories["total_at_snapshot"], advisories["bootstrap"] + advisories["new_since_bootstrap"],
+       f"{relpath(LIVE_OSV_SNAPSHOT)}: advisories.total_at_snapshot == "
+       "advisories.bootstrap + advisories.new_since_bootstrap")
+    eq(advisories["total_at_snapshot"], 32827, "C10 frozen: total advisories ingested at snapshot")
+
+    # --- days of operation: recomputed from the raw epoch fields, not
+    # trusted from the record's own rounded days_of_operation field ---
+    operation = live["operation"]
+    first_epoch = cycles[0]["ts"]
+    eq(first_epoch, operation["first_record_epoch"],
+       f"{relpath(LIVE_OSV_SNAPSHOT)}: cycles_raw[0].ts matches "
+       "live_osv.operation.first_record_epoch")
+    snapshot_epoch = operation["snapshot_epoch"]
+    days = (snapshot_epoch - first_epoch) / 86400.0
+    close(round(days, 3), operation["days_of_operation"], 1e-9,
+          f"{relpath(LIVE_OSV_SNAPSHOT)}: recomputed (snapshot_epoch - first_record_epoch) "
+          "/ 86400 matches live_osv.operation.days_of_operation")
+    days_2dp = round(days, 2)
+    eq(days_2dp, 1.89, "C10 frozen: days of operation (snapshot_epoch - first poll cycle), 2dp")
+
+    # --- result_digest: recomputed over the same canonical counts object
+    # scripts in this lane's own snapshot-building step hashed, a tamper
+    # test on the manifest's headline numbers independent of the
+    # whole-file sha256 check above ---
+    counts = {
+        "advisories_bootstrap": advisories["bootstrap"],
+        "advisories_total_at_snapshot": advisories["total_at_snapshot"],
+        "advisories_new_since_bootstrap": advisories["new_since_bootstrap"],
+        "corrections_written": corrections["corrections_written"],
+        "retractions": corrections["retractions"],
+        "noop_revisions": corrections["noop_revisions"],
+        "withdrawn_seen": corrections["withdrawn_seen"],
+        "revisions_seen": corrections["revisions_seen"],
+        "records_seen": corrections["records_seen"],
+        "events_appended": corrections["events_appended"],
+        "feed_errors": corrections["feed_errors"],
+        "cycles": len(cycles),
+        "days_of_operation": round(days, 6),
+        "first_record_utc": operation["first_record_ts_utc"],
+        "snapshot_utc": operation["snapshot_ts_utc"],
+    }
+    recomputed_digest = hashlib.sha256(
+        json.dumps(counts, sort_keys=True, separators=(",", ":")).encode("utf-8")
+    ).hexdigest()
+    eq(recomputed_digest, doc["result_digest"],
+       f"{relpath(LIVE_OSV_SNAPSHOT)}: recomputed sha256 over the canonical counts object "
+       "matches the manifest's own top-level result_digest")
+
+    m.add("osdiLiveDays", f"{days_2dp:.2f}",
+          f"{relpath(LIVE_OSV_SNAPSHOT)}: live_osv.operation, "
+          "(snapshot_epoch - first_record_epoch) / 86400, recomputed from cycles_raw[0].ts")
+    m.add("osdiLiveAdvisories", tex_num(advisories["total_at_snapshot"]),
+          f"{relpath(LIVE_OSV_SNAPSHOT)}: live_osv.advisories.total_at_snapshot "
+          f"({tex_num(advisories['bootstrap'])} bootstrap + "
+          f"{advisories['new_since_bootstrap']} live-ingested)")
+    m.add("osdiLiveCorrections", tex_num(corrections["corrections_written"]),
+          f"{relpath(LIVE_OSV_SNAPSHOT)}: live_osv.corrections.corrections_written, "
+          "recomputed as sum(cycles_raw[*].corrections_written)")
+
+
+# --------------------------------------------------------------------------
 # pending stubs (records not yet landed)
 # --------------------------------------------------------------------------
 
@@ -4142,14 +4267,11 @@ def add_pending_stubs(m: Macros) -> None:
     m.add_pending("osdiLdbcValidated", "C9 (LDBC generality, four axes)",
                   "same as osdiLdbcExpressible -- 0/41 pending the Neo4j reference run")
 
-    m.add_pending("osdiLiveDays", "C10 (live OSV workload)",
-                  "live-osv/ is running on xzgpu but the days-of-operation count is not yet "
-                  "in a committed record")
-    m.add_pending("osdiLiveAdvisories", "C10 (live OSV workload)",
-                  "only the bootstrap count (32,787) is documented in prose "
-                  "(LIVE_WORKLOAD_OSV_DESIGN_2026-09-13.md); no committed record snapshot exists")
-    m.add_pending("osdiLiveCorrections", "C10 (live OSV workload)",
-                  "the live-correction count is not yet in a committed record")
+    # osdiLiveDays/osdiLiveAdvisories/osdiLiveCorrections (C10, live OSV
+    # workload) have landed -- see compute_c10_live_osv above, reading
+    # benchmarks/live-osv-v1/snapshot-2026-09-16.json, the first committed
+    # record snapshot of the live-osv poller running on xzgpu. No longer
+    # emitted here.
 
 
 # --------------------------------------------------------------------------
@@ -4197,6 +4319,7 @@ def main() -> int:
     compute_ladder(m)
     compute_longevity_soak(m)
     compute_longevity_rederived(m)
+    compute_c10_live_osv(m)
     add_pending_stubs(m)
 
     if FAILURES:

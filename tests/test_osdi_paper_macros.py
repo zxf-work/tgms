@@ -87,6 +87,7 @@ def _run_all_landed(mod):
     mod.compute_ladder(m)
     mod.compute_longevity_soak(m)
     mod.compute_longevity_rederived(m)
+    mod.compute_c10_live_osv(m)
     return m
 
 
@@ -372,6 +373,9 @@ FROZEN_LANDED_VALUES = {
     "osdiSoakReplayFractionApplied": "0.476",
     "osdiSoakReplayKBPerGeneration": "161.8",
     "osdiSoakReplayElapsedH": "3.37",
+    "osdiLiveDays": "1.89",
+    "osdiLiveAdvisories": "32{,}827",
+    "osdiLiveCorrections": "1",
 }
 
 
@@ -396,7 +400,6 @@ def test_pending_macros_raise_a_latex_error_never_a_placeholder_number():
         "osdiTtfSpeedup", "osdiStormCells", "osdiStormFalseFresh",
         "osdiStormSpeedupN1k", "osdiStormAvoidedN1k",
         "osdiLdbcExpressible", "osdiLdbcExecuted", "osdiLdbcValidated",
-        "osdiLiveDays", "osdiLiveAdvisories", "osdiLiveCorrections",
     }
     got_names = {name for name, _, _ in m.items}
     assert got_names == expected_names
@@ -416,7 +419,7 @@ def test_full_macro_set_has_no_duplicate_names_and_covers_every_skeleton_claim()
     mod.add_pending_stubs(m)
     names = [name for name, _, _ in m.items]
     assert len(names) == len(set(names)), "duplicate macro name"
-    assert len(names) == len(FROZEN_LANDED_VALUES) + 11
+    assert len(names) == len(FROZEN_LANDED_VALUES) + 8
 
 
 def test_cli_check_mode_agrees_with_committed_output(tmp_path):
@@ -1719,6 +1722,111 @@ def test_longevity_rederived_first_vs_last_slope_is_labelled_superseded():
     _, value, provenance = entry
     assert value == "111.6"
     assert "SUPERSEDED" in provenance
+
+
+def test_c10_live_osv_macros_match_frozen_values():
+    """osdiLiveDays/osdiLiveAdvisories/osdiLiveCorrections, the C10 macros
+    resolved by benchmarks/live-osv-v1/snapshot-2026-09-16.json (Lane
+    C10-snap's first committed live-osv record snapshot)."""
+    mod = _load("osdi_paper_macros")
+    m = mod.Macros()
+    mod.compute_c10_live_osv(m)
+    values = {name: value for name, value, _ in m.items}
+    assert values["osdiLiveDays"] == "1.89"
+    assert values["osdiLiveAdvisories"] == "32{,}827"
+    assert values["osdiLiveCorrections"] == "1"
+
+
+def test_tampered_live_osv_snapshot_sha256_mismatch_fails(tmp_path):
+    """An edited copy of snapshot-2026-09-16.json (even a field this
+    generator never otherwise reads) must fail the whole-file sha256
+    check against README.md's own quoted value before any advisory/
+    correction/days-of-operation figure is trusted."""
+    mod = _load("osdi_paper_macros")
+    data = json.loads(mod.LIVE_OSV_SNAPSHOT.read_text(encoding="utf-8"))
+    data["config"]["compact_every_cycles"] = 999
+    tampered = tmp_path / "snapshot-2026-09-16.json"
+    tampered.write_text(json.dumps(data), encoding="utf-8")
+
+    mod.LIVE_OSV_SNAPSHOT = tampered
+    m = mod.Macros()
+    mod.compute_c10_live_osv(m)
+    assert mod.FAILURES, "an edited snapshot-2026-09-16.json must fail the sha256 check " \
+        "against README.md's own quoted value"
+    assert any("sha256" in f.lower() for f in mod.FAILURES)
+
+
+def test_tampered_live_osv_cycles_raw_sum_mismatch_fails_even_with_patched_digest(tmp_path):
+    """live_osv.corrections.corrections_written must equal
+    sum(cycles_raw[*].corrections_written) -- editing the pre-aggregated
+    field alone, with the whole-file sha256 patched to match, must still
+    fail this row-level recomputation rather than silently emitting a
+    wrong osdiLiveCorrections."""
+    mod = _load("osdi_paper_macros")
+    data = json.loads(mod.LIVE_OSV_SNAPSHOT.read_text(encoding="utf-8"))
+    data["live_osv"]["corrections"]["corrections_written"] = 999
+    tampered = tmp_path / "snapshot-2026-09-16.json"
+    tampered.write_text(json.dumps(data), encoding="utf-8")
+    import hashlib as _hashlib
+    mod.LIVE_OSV_SNAPSHOT_SHA256 = _hashlib.sha256(tampered.read_bytes()).hexdigest()
+
+    mod.LIVE_OSV_SNAPSHOT = tampered
+    m = mod.Macros()
+    mod.compute_c10_live_osv(m)
+    assert mod.FAILURES, "corrections_written that no longer equals " \
+        "sum(cycles_raw[*].corrections_written) must fail, even with a patched whole-file digest"
+    assert any("corrections_written" in f for f in mod.FAILURES)
+
+
+def test_tampered_live_osv_advisories_arithmetic_fails_even_with_patched_digest(tmp_path):
+    """advisories.total_at_snapshot must equal bootstrap +
+    new_since_bootstrap -- breaking that arithmetic, with the whole-file
+    sha256 patched to match, must still fail rather than silently
+    emitting a wrong osdiLiveAdvisories."""
+    mod = _load("osdi_paper_macros")
+    data = json.loads(mod.LIVE_OSV_SNAPSHOT.read_text(encoding="utf-8"))
+    data["live_osv"]["advisories"]["total_at_snapshot"] = 40000
+    tampered = tmp_path / "snapshot-2026-09-16.json"
+    tampered.write_text(json.dumps(data), encoding="utf-8")
+    import hashlib as _hashlib
+    mod.LIVE_OSV_SNAPSHOT_SHA256 = _hashlib.sha256(tampered.read_bytes()).hexdigest()
+
+    mod.LIVE_OSV_SNAPSHOT = tampered
+    m = mod.Macros()
+    mod.compute_c10_live_osv(m)
+    assert mod.FAILURES, "a total_at_snapshot that no longer equals bootstrap + " \
+        "new_since_bootstrap must fail, even with a patched whole-file digest"
+    assert any("total_at_snapshot" in f for f in mod.FAILURES)
+
+
+def test_tampered_live_osv_result_digest_mismatch_fails_even_with_patched_file_digest(tmp_path):
+    """The top-level result_digest (sha256 over the canonical counts
+    object) must match a fresh recomputation -- editing it directly,
+    with the whole-file sha256 patched to match, must still fail."""
+    mod = _load("osdi_paper_macros")
+    data = json.loads(mod.LIVE_OSV_SNAPSHOT.read_text(encoding="utf-8"))
+    data["result_digest"] = "0" * 64
+    tampered = tmp_path / "snapshot-2026-09-16.json"
+    tampered.write_text(json.dumps(data), encoding="utf-8")
+    import hashlib as _hashlib
+    mod.LIVE_OSV_SNAPSHOT_SHA256 = _hashlib.sha256(tampered.read_bytes()).hexdigest()
+
+    mod.LIVE_OSV_SNAPSHOT = tampered
+    m = mod.Macros()
+    mod.compute_c10_live_osv(m)
+    assert mod.FAILURES, "a result_digest that no longer matches the recomputed canonical " \
+        "counts hash must fail, even with a patched whole-file digest"
+    assert any("result_digest" in f for f in mod.FAILURES)
+
+
+def test_live_osv_snapshot_sha256_matches_readme_quoted_value():
+    """README.md's "Snapshot" section quotes snapshot-2026-09-16.json's
+    sha256 verbatim -- this generator's frozen constant must be the same
+    string."""
+    mod = _load("osdi_paper_macros")
+    readme_text = (mod.LIVE_OSV_DIR / "README.md").read_text(encoding="utf-8")
+    assert f"`{mod.LIVE_OSV_SNAPSHOT_SHA256}`" in readme_text
+    assert mod.sha256_file(mod.LIVE_OSV_SNAPSHOT) == mod.LIVE_OSV_SNAPSHOT_SHA256
 
 
 def test_r18_and_dag_pending_stubs_cite_the_main_grid_quota_block():
