@@ -16,15 +16,21 @@ contract a paper build and a source reviewer both depend on:
     `fig-neo4j.pdf` is the documented placeholder and `figures.json` says so,
     rather than the script failing or silently fabricating a comparison.
 
-Requires matplotlib in the interpreter running pytest (the same requirement
-the generator itself has); skipped if it is not importable, matching the
-generator's own graceful refusal rather than failing the whole suite in an
-interpreter that was never meant to have it (see the generator's docstring
-for how to get matplotlib without touching the project .venv via uv).
+Every test that actually runs the generator needs matplotlib in the
+interpreter running pytest (the generator imports it lazily, inside
+`main()` via `_require_matplotlib()`, but still needs it to render); those
+are marked `@requires_matplotlib` and skip individually rather than via a
+module-level `pytest.importorskip`, which would make pytest report "no
+tests collected" (exit 5) when this file is the only one selected -- a
+result some CI treats as a failure rather than a skip. One test,
+`test_module_importable_without_matplotlib`, runs unconditionally: it pins
+the lazy-import contract itself, so it must run in exactly the interpreter
+that lacks matplotlib (the project .venv, today) to mean anything.
 """
 
 from __future__ import annotations
 
+import importlib
 import json
 import re
 import subprocess
@@ -37,7 +43,21 @@ import pytest
 ROOT = Path(__file__).resolve().parents[1]
 SCRIPT = ROOT / "scripts" / "tgir_paper_figures.py"
 
-pytest.importorskip("matplotlib")
+
+def _matplotlib_available() -> bool:
+    try:
+        import matplotlib  # noqa: F401
+    except ModuleNotFoundError:
+        return False
+    return True
+
+
+requires_matplotlib = pytest.mark.skipif(
+    not _matplotlib_available(),
+    reason="matplotlib not importable in this interpreter -- see "
+           "scripts/tgir_paper_figures.py's docstring for how to get it "
+           "without `uv pip install`-ing it into the project .venv",
+)
 
 
 _PAREN_STRING = re.compile(rb"\((?:[^()\\]|\\.)*\)", re.S)
@@ -77,6 +97,21 @@ def _run(tmp_path: Path) -> tuple[subprocess.CompletedProcess, Path]:
     return proc, out_dir
 
 
+def test_module_importable_without_matplotlib() -> None:
+    """scripts/tgir_paper_figures.py must import cleanly with no matplotlib
+    in the interpreter (true of the project .venv today) -- only `main()`,
+    via `_require_matplotlib()`, actually needs it. Deliberately not gated
+    by `requires_matplotlib`: this is the one test that means something
+    specifically when matplotlib is absent, and it must also keep passing
+    when matplotlib happens to be present (the lazy-import contract holds
+    either way)."""
+    sys.path.insert(0, str(ROOT / "scripts"))
+    mod = importlib.import_module("tgir_paper_figures")
+    assert callable(mod._require_matplotlib)
+    assert hasattr(mod, "plt")  # None until _require_matplotlib() runs
+
+
+@requires_matplotlib
 def test_writes_three_pdfs_and_figures_json(tmp_path: Path) -> None:
     proc, out_dir = _run(tmp_path)
     assert proc.returncode == 0, proc.stderr
@@ -84,6 +119,7 @@ def test_writes_three_pdfs_and_figures_json(tmp_path: Path) -> None:
         assert (out_dir / name).exists(), f"{name} missing; stderr:\n{proc.stderr}"
 
 
+@requires_matplotlib
 def test_pdfs_are_acmart_single_column_sized(tmp_path: Path) -> None:
     """3.3in x 2.2in, in PDF points (1 pt = 1/72 in): 237.6 x 158.4 pt."""
     proc, out_dir = _run(tmp_path)
@@ -102,6 +138,7 @@ def test_pdfs_are_acmart_single_column_sized(tmp_path: Path) -> None:
         assert height == pytest.approx(158.4, abs=0.5), f"{name}: height {height}pt"
 
 
+@requires_matplotlib
 def test_admission_points_equal_the_source_record(tmp_path: Path) -> None:
     proc, out_dir = _run(tmp_path)
     assert proc.returncode == 0, proc.stderr
@@ -135,6 +172,7 @@ def test_admission_points_equal_the_source_record(tmp_path: Path) -> None:
     assert admission["ceiling_ms"] == frontier["manifest"]["budget_ms"]
 
 
+@requires_matplotlib
 def test_neo4j_figure_is_the_placeholder_when_records_are_absent(tmp_path: Path) -> None:
     """As of this writing benchmarks/ldbc-ref-v1/{tgms,neo4j}-campaign.json do
     not exist (only campaign.yaml / RUNBOOK.md / sort_keys.yaml do) -- the
@@ -157,6 +195,7 @@ def test_neo4j_figure_is_the_placeholder_when_records_are_absent(tmp_path: Path)
     assert "NEED EXPERIMENTAL RESULT: ldbc-ref-v1" in text, text
 
 
+@requires_matplotlib
 def test_summary_lines_printed_for_each_figure(tmp_path: Path) -> None:
     proc, _ = _run(tmp_path)
     assert proc.returncode == 0, proc.stderr
