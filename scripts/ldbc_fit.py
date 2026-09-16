@@ -39,16 +39,18 @@ CollegeMsg/Bitcoin-OTC questions never did:
        answer and neither accepts edge weights.
 
 THE MAPPING THIS CLASSIFICATION ASSUMES (stated because the verdicts are
-only meaningful relative to one). Node -> node version, uid
-`"<Type>:<id>"`, label = the LDBC type, props = the remaining attributes,
-`vt_s` = `creationDate` where the type has one and `vt_e` = OPEN_END.
-Edge -> edge version, `rel_type` = the LDBC edge type, `vt_s` =
-`creationDate` for the three edge types that carry one. Fifteen of the
-schema's twenty edge-type rows carry no attribute at all
-(`tables/table-relations.tex`), so their valid time is *invented* by the
-adapter; the classification charitably assumes the best available choice
-(the later of the two endpoints' creation dates, which the spec's
-referential-integrity rule permits) and never penalises a query for it.
+only meaningful relative to one). D-050 classified against an earlier
+mapping: node uid `"<Type>:<id>"`, `vt_s` = `creationDate` where the type
+has one, and for the fifteen attribute-free edge types an invented valid
+time, the later of the two endpoints' creation dates. The corpus loaded
+for Paper A instead follows the frozen M1-M12 rules
+(`docs/eval/LDBC_SF1_CARD.md` "Mapping rules"; `tgms/data/snb_loader.py`):
+uid is `id * 8 + hierarchy_tag` per hierarchy (`snb_uid`, lines 84-89),
+and an attribute-free edge's `vt_s` is inherited from its source entity, 0
+if static (`edge_events`, lines 404-423) — not the later-endpoint rule
+above. These verdicts were not re-derived under M1-M12; no `need` tag here
+encodes a dependence on identity or endpoint choice, so neither difference
+is expected to move a class, though that has not been re-checked.
 
 WHAT THE `temporal_predicate` FIELD MEANS. True when the template filters,
 buckets, or compares on a temporal attribute at all. It is deliberately
