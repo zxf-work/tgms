@@ -51,20 +51,39 @@ import statistics
 import sys
 from pathlib import Path
 
-try:
-    import matplotlib
-    matplotlib.use("Agg")
-    import matplotlib.pyplot as plt
-except ModuleNotFoundError:
-    sys.exit(
-        "matplotlib is required to render the TGIR paper figures and is not "
-        "importable in this interpreter.\n"
-        "Do NOT `uv pip install matplotlib` into the project .venv.\n"
-        "Instead, run this script with whatever interpreter already has "
-        "matplotlib, or — only if /usr/bin/python3 itself lacks it — "
-        "install it there with:\n"
-        "    /usr/bin/python3 -m pip install --user matplotlib"
-    )
+# matplotlib is imported lazily, inside `_require_matplotlib()` (called once
+# from `main()`), rather than at module scope: this module is safe to import
+# — e.g. for `import tgir_paper_figures` from a test, or a lint/collection
+# pass — in an interpreter that never plots anything and does not carry
+# matplotlib (the project .venv is exactly such an interpreter today). Only
+# actually rendering a figure requires it.
+plt = None  # populated by _require_matplotlib()
+
+
+def _require_matplotlib():
+    """Import matplotlib on first use and cache it in the module-level `plt`.
+    Every plotting function below references that global, so calling this
+    once at the top of `main()` — before any figure is built — is enough."""
+    global plt
+    if plt is not None:
+        return plt
+    try:
+        import matplotlib
+        matplotlib.use("Agg")
+        import matplotlib.pyplot as _plt
+    except ModuleNotFoundError:
+        sys.exit(
+            "matplotlib is required to render the TGIR paper figures and is not "
+            "importable in this interpreter.\n"
+            "Do NOT `uv pip install matplotlib` into the project .venv.\n"
+            "Instead, run this script with whatever interpreter already has "
+            "matplotlib, or — only if /usr/bin/python3 itself lacks it — "
+            "install it there with:\n"
+            "    /usr/bin/python3 -m pip install --user matplotlib"
+        )
+    plt = _plt
+    return plt
+
 
 ROOT = Path(__file__).resolve().parent.parent
 RESULTS_REL = Path("benchmarks/results-v1")
@@ -475,6 +494,7 @@ def plot_neo4j(data: dict, out_dir: Path) -> str:
 # --------------------------------------------------------------------------
 
 def main() -> int:
+    _require_matplotlib()
     ap = argparse.ArgumentParser()
     ap.add_argument("--root", type=Path, default=ROOT, metavar="PATH",
                     help="repository root to resolve every source of record "
