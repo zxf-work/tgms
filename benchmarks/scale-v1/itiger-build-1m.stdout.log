@@ -1,0 +1,18 @@
+RUN_STARTED commit=b159bd10aa53ad5de5f4e8ff7af1c87789d6afd0
+BUILD_INFO {"profile": "release", "opt_level": "3", "engine_version": "0.8.0", "debug_assertions": false, "manifest_format_version": 3}
+TGMS_SEGMENT_CACHE_BYTES=46500000000
+SLURM_JOB_ID=213044 SLURM_NODELIST=itiger11 NODE=itiger11
+CPU_MODEL=AMD EPYC 7513 32-Core Processor
+BUILD_PID=1667019
+digest_mode='streaming' (explicit)
+RUN_STARTED commit=b159bd10aa53ad5de5f4e8ff7af1c87789d6afd0 dataset=synth n_entities=1000000 seed=0 batch=250 compact_every=1000000 out=/project/xzhang12/tgms-b7/stores/synth-1m-native backend=native resume=False digest=streaming host=itiger11
+         500,000 ops      12,431 ops/s  elapsed     40.2s  maxrss 49 MB  manifest 3,991,267 B  segment 15,375,617 B  compactions 0
+       1,000,000 ops      14,607 ops/s  elapsed     68.5s  maxrss 1820 MB  manifest 2,096,842 B  segment 54,701,202 B  compactions 1
+
+DONE ops=1,000,262 wall=78.339s compactions=2 maxrss=2316MB manifest=159,394B segment=49,673,103B
+digest_mode=streaming
+store_digest=ebcf12aa17c57ff3a2a8b7f86fca5bab6fa19ec5499155ad6d24021874e6ca65
+content_digest=None
+record: /project/xzhang12/tgms-b7/stores/synth-1m-native/build-record.json
+BUILD_EXIT=0
+RUN_FINISHED commit=b159bd10aa53ad5de5f4e8ff7af1c87789d6afd0 exit=0

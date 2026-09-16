@@ -1,0 +1,313 @@
+{
+  "build_info": {
+    "batch": 250,
+    "compact_every": 1000000,
+    "compactions": 2,
+    "content_digest": null,
+    "digest_mode": "streaming",
+    "engine": {
+      "debug_assertions": false,
+      "engine_version": "0.8.0",
+      "manifest_format_version": 3,
+      "opt_level": "3",
+      "profile": "release"
+    },
+    "finalisation_phases": {
+      "compact": {
+        "rss_kb_after": {
+          "maxrss_kb": 2371648,
+          "vmhwm": 2371648,
+          "vmrss": 1477704
+        },
+        "rss_kb_before": {
+          "maxrss_kb": 1863532,
+          "vmhwm": 1863532,
+          "vmrss": 1000596
+        },
+        "wall_s": 2.881
+      },
+      "digest": {
+        "rss_kb_after": {
+          "maxrss_kb": 2371648,
+          "vmhwm": 2371648,
+          "vmrss": 1498532
+        },
+        "rss_kb_before": {
+          "maxrss_kb": 2371648,
+          "vmhwm": 2371648,
+          "vmrss": 1447000
+        },
+        "wall_s": 20.15
+      },
+      "gc": {
+        "rss_kb_after": {
+          "maxrss_kb": 2371648,
+          "vmhwm": 2371648,
+          "vmrss": 1445848
+        },
+        "rss_kb_before": {
+          "maxrss_kb": 2371648,
+          "vmhwm": 2371648,
+          "vmrss": 1477704
+        },
+        "wall_s": 3.975
+      },
+      "stats": {
+        "rss_kb_after": {
+          "maxrss_kb": 2371648,
+          "vmhwm": 2371648,
+          "vmrss": 1447000
+        },
+        "rss_kb_before": {
+          "maxrss_kb": 2371648,
+          "vmhwm": 2371648,
+          "vmrss": 1445848
+        },
+        "wall_s": 0.305
+      }
+    },
+    "manifest_identity": {
+      "generation": 4264,
+      "manifest_sha": "d4cccfe30fd3e023"
+    },
+    "n_entities": 1000000,
+    "ops": 1000262,
+    "ops_per_s_by_decile": [
+      {
+        "bracket_elapsed_s": [
+          0.0,
+          40.2
+        ],
+        "bracket_ops": [
+          0,
+          500000
+        ],
+        "cum_ops_target": 100026,
+        "decile": 1,
+        "ops_per_s": 12437.8
+      },
+      {
+        "bracket_elapsed_s": [
+          0.0,
+          40.2
+        ],
+        "bracket_ops": [
+          0,
+          500000
+        ],
+        "cum_ops_target": 200052,
+        "decile": 2,
+        "ops_per_s": 12437.8
+      },
+      {
+        "bracket_elapsed_s": [
+          0.0,
+          40.2
+        ],
+        "bracket_ops": [
+          0,
+          500000
+        ],
+        "cum_ops_target": 300078,
+        "decile": 3,
+        "ops_per_s": 12437.8
+      },
+      {
+        "bracket_elapsed_s": [
+          0.0,
+          40.2
+        ],
+        "bracket_ops": [
+          0,
+          500000
+        ],
+        "cum_ops_target": 400104,
+        "decile": 4,
+        "ops_per_s": 12437.8
+      },
+      {
+        "bracket_elapsed_s": [
+          40.2,
+          68.5
+        ],
+        "bracket_ops": [
+          500000,
+          1000000
+        ],
+        "cum_ops_target": 500131,
+        "decile": 5,
+        "ops_per_s": 17667.8
+      },
+      {
+        "bracket_elapsed_s": [
+          40.2,
+          68.5
+        ],
+        "bracket_ops": [
+          500000,
+          1000000
+        ],
+        "cum_ops_target": 600157,
+        "decile": 6,
+        "ops_per_s": 17667.8
+      },
+      {
+        "bracket_elapsed_s": [
+          40.2,
+          68.5
+        ],
+        "bracket_ops": [
+          500000,
+          1000000
+        ],
+        "cum_ops_target": 700183,
+        "decile": 7,
+        "ops_per_s": 17667.8
+      },
+      {
+        "bracket_elapsed_s": [
+          40.2,
+          68.5
+        ],
+        "bracket_ops": [
+          500000,
+          1000000
+        ],
+        "cum_ops_target": 800209,
+        "decile": 8,
+        "ops_per_s": 17667.8
+      },
+      {
+        "bracket_elapsed_s": [
+          40.2,
+          68.5
+        ],
+        "bracket_ops": [
+          500000,
+          1000000
+        ],
+        "cum_ops_target": 900235,
+        "decile": 9,
+        "ops_per_s": 17667.8
+      },
+      {
+        "bracket_elapsed_s": [
+          40.2,
+          68.5
+        ],
+        "bracket_ops": [
+          500000,
+          1000000
+        ],
+        "cum_ops_target": 1000262,
+        "decile": 10,
+        "ops_per_s": 17667.8
+      }
+    ],
+    "peak_rss": {
+      "maxrss_kb": 2371648,
+      "vmhwm": 2371648,
+      "vmrss": 1498532
+    },
+    "rss_series_30s": [
+      {
+        "pid": 1667019,
+        "ts": "2026-09-16T02:25:42Z",
+        "vmhwm_kb": 13824,
+        "vmrss_kb": 13824
+      },
+      {
+        "pid": 1667019,
+        "ts": "2026-09-16T02:26:12Z",
+        "vmhwm_kb": 49808,
+        "vmrss_kb": 49808
+      },
+      {
+        "pid": 1667019,
+        "ts": "2026-09-16T02:26:42Z",
+        "vmhwm_kb": 49808,
+        "vmrss_kb": 49808
+      },
+      {
+        "pid": 1667019,
+        "ts": "2026-09-16T02:27:12Z",
+        "vmhwm_kb": 2371648,
+        "vmrss_kb": 2268440
+      }
+    ],
+    "rss_series_source": "external sampler (/proc/<pid>/status VmHWM every 30s) independent of the harness's own periodic maxrss figure",
+    "seed": 0,
+    "stats": {
+      "max_out_degree": 147,
+      "n_edge_versions": 1000269,
+      "n_entities": 10000,
+      "n_node_versions": 10003,
+      "rel_type_counts": {
+        "R": 666846,
+        "S": 333423
+      },
+      "vt_max": 1049999,
+      "vt_min": 0
+    },
+    "store_bytes": {
+      "manifest_bytes": 159394,
+      "segment_bytes": 49673103,
+      "total_bytes": 140318881
+    },
+    "store_digest": "ebcf12aa17c57ff3a2a8b7f86fca5bab6fa19ec5499155ad6d24021874e6ca65",
+    "wall_s": 78.339
+  },
+  "config": {
+    "backend": "native",
+    "batch": 250,
+    "compact_every": 1000000,
+    "digest_mode": "streaming",
+    "host_controls": {
+      "cpu_model": "AMD EPYC 7513 32-Core Processor",
+      "slurm_cpus_per_task": 8,
+      "slurm_exclude": "itiger04,itiger05",
+      "slurm_gres": "gpu:rtx_5000:1",
+      "slurm_job_id": "213044",
+      "slurm_mem": "64G",
+      "slurm_node": "itiger11",
+      "slurm_partition": "bigTiger",
+      "slurm_time_limit": "06:00:00",
+      "tgms_segment_cache_bytes": 46500000000
+    },
+    "n_entities": 1000000
+  },
+  "dataset": {
+    "digest": "ebcf12aa17c57ff3a2a8b7f86fca5bab6fa19ec5499155ad6d24021874e6ca65",
+    "digest_kind": "store_digest",
+    "name": "synth"
+  },
+  "git_commit": "b159bd10aa53ad5de5f4e8ff7af1c87789d6afd0",
+  "machine": {
+    "cpus": 64,
+    "host": "itiger11",
+    "platform": "Linux-5.14.0-427.31.1.el9_4.x86_64-x86_64-with-glibc2.34",
+    "ram_gb": 503.68
+  },
+  "protocol": {
+    "ceilings": {},
+    "reps": 1,
+    "warmups": 0
+  },
+  "record": "stores/synth-1m-native/build-record.json",
+  "recovery": {
+    "digest_equal": true,
+    "digest_kind": "store_digest_streaming",
+    "exit_code": 0,
+    "invocation": "python -m tgms.cli replay <store>/eventlog.jsonl --store <fresh> --backend native --compact-every 500",
+    "replayed_digest": "ebcf12aa17c57ff3a2a8b7f86fca5bab6fa19ec5499155ad6d24021874e6ca65",
+    "slurm_job_id": "213046",
+    "src_digest": "ebcf12aa17c57ff3a2a8b7f86fca5bab6fa19ec5499155ad6d24021874e6ca65",
+    "wall_s": 75.85964751243591
+  },
+  "result_digest": "ebcf12aa17c57ff3a2a8b7f86fca5bab6fa19ec5499155ad6d24021874e6ca65",
+  "schema_version": "1.0.0",
+  "seed": {
+    "value": 0
+  },
+  "timestamp_utc": "2026-09-16T02:27:21Z"
+}
