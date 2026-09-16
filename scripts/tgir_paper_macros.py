@@ -575,6 +575,10 @@ def main() -> int:
                    "PAT-vs-PatternMatch, the other way"),
           "TGIR_WORKLOAD_DECOMPOSITION.md §7: rows needing PatternMatch under R1 that carry "
           "no `PAT` tag")
+    m.add("tgDecompDefectiveRows",
+          grep_int(DECOMP, r"caught \*\*(\d+) defective rows", "adversarial consistency pass"),
+          "TGIR_WORKLOAD_DECOMPOSITION.md: rows the consistency check found defective before "
+          "the merge")
     stale_rows = re.findall(r"disagreed with the live script on `(cm\d+)`|and `(cm\d+)` \(class",
                             DECOMP.read_text(encoding="utf-8"))
     stale_named = sorted({x for pair in stale_rows for x in pair if x})
@@ -1347,12 +1351,14 @@ def main() -> int:
     # ------------------------------------------- E14 P1: what the leaf costs
     p1_lo, p1_hi = 0.8, 1.2
     p1 = {}
+    p1_store_stats = {}
     for label, path in (("bitcoinotc", P1_BITCOIN), ("collegemsg", P1_COLLEGE)):
         doc = json.loads(path.read_text(encoding="utf-8"))
         eq(doc["manifest"]["store"], f"stores/{label}", f"P1 {label}: store")
         eq(doc["manifest"]["backend"], "native", f"P1 {label}: backend")
         require(f"{p1_lo}-{p1_hi}" in doc["manifest"]["band"],
                 f"P1 {label}: the record declares the 0.8-1.2 band this script applies")
+        p1_store_stats[label] = doc["manifest"]["store_stats"]
         cells = []
         for row in doc["rows"]:
             for arm in ("direct", "leaf"):
@@ -1412,6 +1418,15 @@ def main() -> int:
           "e14-p1-leaf-overhead-collegemsg.json rows[compute]: leaf/direct p50")
     m.add("tgPOneComputeBitcoin", f"{compute['bitcoinotc']:.3f}",
           "e14-p1-leaf-overhead-bitcoinotc.json rows[compute]: leaf/direct p50")
+    college_stats = p1_store_stats["collegemsg"]
+    eq(college_stats["n_node_versions"], college_stats["n_entities"],
+       "e14-p1-leaf-overhead-collegemsg.json manifest.store_stats: node versions equal entities")
+    college_ents = f"{college_stats['n_entities']:,}"
+    college_edges = f"{college_stats['n_edge_versions']:,}"
+    m.add("tgCollegeEntities", college_ents.replace(",", "{,}"),
+          "e14-p1-leaf-overhead-collegemsg.json manifest.store_stats.n_entities")
+    m.add("tgCollegeEdges", college_edges.replace(",", "{,}"),
+          "e14-p1-leaf-overhead-collegemsg.json manifest.store_stats.n_edge_versions")
 
     # --------------------------------------- the pre-registered thresholds
     # Internal doc, cited by line the way the M3/M4 prose receipts already are.
