@@ -88,6 +88,8 @@ def _run_all_landed(mod):
     mod.compute_longevity_soak(m)
     mod.compute_longevity_rederived(m)
     mod.compute_longevity_soak_two(m)
+    mod.compute_longevity_verify_and_replay2(m)
+    mod.compute_overload(m)
     mod.compute_c10_live_osv(m)
     mod.compute_b7_scale(m)
     return m
@@ -466,6 +468,46 @@ FROZEN_LANDED_VALUES = {
     "osdiB7BuildSteadyDecileMedian100M": "3738.9",
     "osdiB7ReachWindowEstimateMs100M": "14{,}571",
     "osdiB7CompactionShare100M": "83.76",
+    # Lane W-lane: the original soak's writer corrections (true totals, 42
+    # lives) and the writer within-life noise floor -- compute_longevity_soak
+    # / compute_longevity_rederived above.
+    "osdiSoakCorrectionsAppliedTrue": "207{,}850",
+    "osdiSoakCorrectionsSkippedTrue": "137{,}163",
+    "osdiSoakWriterNoiseFloorKBps": "5",
+    # Lane W-lane: the original soak's full-mode verify (two `tgms check`
+    # entries) and REPLAY-2 (the post-D-087-fix replay that completed) --
+    # compute_longevity_verify_and_replay2 above.
+    "osdiSoakVerifyFullGeneration": "1{,}076{,}872",
+    "osdiSoakVerifyFullOverlapCount": "13{,}714",
+    "osdiSoakVerifyFullVerdict": "CORRUPT",
+    "osdiSoakReplay2VerifyGeneration": "1{,}076{,}598",
+    "osdiSoakReplay2VerifyOverlapCount": "13{,}714",
+    "osdiSoakReplay2VerifyVerdict": "CORRUPT",
+    "osdiSoakReplay2BatchesApplied": "1{,}074{,}450",
+    "osdiSoakReplay2Compactions": "2148",
+    "osdiSoakReplay2WallS": "30{,}015",
+    "osdiSoakReplay2ElapsedH": "8.34",
+    "osdiSoakReplay2PeakRssKB": "4{,}329{,}996",
+    "osdiSoakReplay2PeakRssGB": "4.33",
+    "osdiSoakReplay2PeakDiskMB": "586",
+    "osdiSoakReplay2RssSamples": "101",
+    "osdiSoakReplay2DigestEqual": "true",
+    "osdiSoakReplay2DigestPrefix": "8eb9bc26",
+    # Lane W-lane: P-OV1, the xzgpu-calibrated overload sweep -- compute_overload above.
+    "osdiOverloadCommit": "ebe1dc2",
+    "osdiOverloadMaxConcurrent": "8",
+    "osdiOverloadClientsMax": "64",
+    "osdiOverloadRefusalKindConcurrencyOnly": "true",
+    "osdiOverloadOperatorErrorsTotal": "0",
+    "osdiOverloadRefusedCapAtMaxRep1": "4438",
+    "osdiOverloadRefusedCapAtMaxRep2": "285",
+    "osdiOverloadRefusalRepRatio": "15.6",
+    "osdiOverloadAdmittedConcurrencyP95AtMax": "8.0",
+    "osdiOverloadP99At32ClientsMs": "40.39",
+    "osdiOverloadRecoveryQps": "20.13",
+    "osdiOverloadRecoveryP50Ms": "1.43",
+    "osdiOverloadServiceHighWaterKB": "227{,}280",
+    "osdiOverloadServiceHighWaterMB": "227.3",
 }
 
 
@@ -1987,6 +2029,145 @@ def test_tampered_verify_full_soak2_overlap_finding_fails_even_with_patched_dige
     assert mod.FAILURES, "a fabricated believed-versions-overlap finding must fail, " \
         "even with a patched whole-file digest"
     assert any("PROBLEMS" in f or "believed-versions-overlap" in f for f in mod.FAILURES)
+
+
+def test_tampered_longevity_verify_full_sha256_mismatch_fails(tmp_path):
+    """verify-full-2026-09-15.txt has no README-quoted sha256 (it predates
+    the soak's original Files-here table), so it is frozen here from this
+    lane's own first read -- an edited copy must fail that check before
+    either entry's PROBLEMS/generation is even parsed."""
+    mod = _load("osdi_paper_macros")
+    text = mod.LONGEVITY_VERIFY_FULL.read_text(encoding="utf-8")
+    tampered = tmp_path / "verify-full-2026-09-15.txt"
+    tampered.write_text(text + "\n# tampered\n", encoding="utf-8")
+
+    mod.LONGEVITY_VERIFY_FULL = tampered
+    m = mod.Macros()
+    mod.compute_longevity_verify_and_replay2(m)
+    assert mod.FAILURES, "an edited verify-full-2026-09-15.txt must fail this " \
+        "generator's own frozen sha256 check"
+    assert any("sha256" in f.lower() for f in mod.FAILURES)
+
+
+def test_tampered_longevity_verify_full_overlap_counts_diverge_fails_even_with_patched_sha256(tmp_path):
+    """The whole point of landing both entries is that REPLAY-2's replayed
+    store finds the *identical* 13,714 overlaps as the original store --
+    inflating the second entry's PROBLEMS(N) header (and one matching
+    bullet, so the recomputed bullet count still agrees with its own
+    header) must still fail the identical-count cross-check, even with a
+    patched whole-file digest."""
+    mod = _load("osdi_paper_macros")
+    text = mod.LONGEVITY_VERIFY_FULL.read_text(encoding="utf-8")
+    entries = text.split("store:      ")
+    assert len(entries) == 3, "expected exactly two `store:` blocks in this fixture"
+    second = "store:      " + entries[2]
+    tampered_second = second.replace(
+        "PROBLEMS (13714):\n",
+        "PROBLEMS (13715):\n"
+        "  - [row/believed-versions-overlap]: fabricated for this test\n",
+        1)
+    assert tampered_second != second
+    tampered_text = entries[0] + "store:      " + entries[1] + tampered_second
+    tampered = tmp_path / "verify-full-2026-09-15.txt"
+    tampered.write_text(tampered_text, encoding="utf-8")
+    mod.LONGEVITY_VERIFY_FULL_SHA256 = hashlib.sha256(tampered.read_bytes()).hexdigest()
+
+    mod.LONGEVITY_VERIFY_FULL = tampered
+    m = mod.Macros()
+    mod.compute_longevity_verify_and_replay2(m)
+    assert mod.FAILURES, "a REPLAY-2 overlap count that diverges from the original " \
+        "store's must fail, even with a patched whole-file digest"
+    assert any("identical" in f for f in mod.FAILURES)
+
+
+def test_tampered_longevity_replay_check_2_sha256_mismatch_fails(tmp_path):
+    """replay-check-2-2026-09.json has no README-quoted sha256 either
+    (README.md quotes the digests inside it, not the file's own hash), so
+    it too is frozen from this lane's own first read."""
+    mod = _load("osdi_paper_macros")
+    data = json.loads(mod.LONGEVITY_REPLAY_CHECK_2.read_text(encoding="utf-8"))
+    data["summary"]["peak_rss_kb"] = 1
+    tampered = tmp_path / "replay-check-2-2026-09.json"
+    tampered.write_text(json.dumps(data), encoding="utf-8")
+
+    mod.LONGEVITY_REPLAY_CHECK_2 = tampered
+    m = mod.Macros()
+    mod.compute_longevity_verify_and_replay2(m)
+    assert mod.FAILURES, "an edited replay-check-2-2026-09.json must fail this " \
+        "generator's own frozen sha256 check"
+    assert any("sha256" in f.lower() for f in mod.FAILURES)
+
+
+def test_tampered_longevity_replay_check_2_digest_equal_false_fails_even_with_patched_sha256(tmp_path):
+    """REPLAY-2's whole point is that the replayed store's digest equalled
+    the soak's pre-registered final_digest -- a manifest reporting
+    digest_equal=False must fail, even with a patched whole-file digest,
+    rather than silently emitting a wrong 'true' macro."""
+    mod = _load("osdi_paper_macros")
+    data = json.loads(mod.LONGEVITY_REPLAY_CHECK_2.read_text(encoding="utf-8"))
+    data["summary"]["digest_equal"] = False
+    tampered = tmp_path / "replay-check-2-2026-09.json"
+    tampered.write_text(json.dumps(data), encoding="utf-8")
+    mod.LONGEVITY_REPLAY_CHECK_2_SHA256 = hashlib.sha256(tampered.read_bytes()).hexdigest()
+
+    mod.LONGEVITY_REPLAY_CHECK_2 = tampered
+    m = mod.Macros()
+    mod.compute_longevity_verify_and_replay2(m)
+    assert mod.FAILURES, "summary.digest_equal == False must fail the generator's own " \
+        "require(... is True) check, even with a patched whole-file digest"
+    assert any("digest_equal" in f for f in mod.FAILURES)
+
+
+def test_tampered_overload_rep1_sha256_not_in_sums_fails(tmp_path):
+    """Every overload-v1 record this script reads is checked by sha256
+    membership against benchmarks/overload-v1/SHA256SUMS (that file's own
+    rep1 entry is misnamed, so membership rather than a filename-keyed
+    lookup is the right check) -- an edited copy's hash must not be in
+    that set."""
+    mod = _load("osdi_paper_macros")
+    data = json.loads(mod.OVERLOAD_REP1.read_text(encoding="utf-8"))
+    data["config"]["max_concurrent"] = 999
+    tampered = tmp_path / "overload-2026-09-15.json"
+    tampered.write_text(json.dumps(data), encoding="utf-8")
+
+    mod.OVERLOAD_REP1 = tampered
+    m = mod.Macros()
+    mod.compute_overload(m)
+    assert mod.FAILURES, "an edited overload-2026-09-15.json must have a sha256 that is " \
+        "not in SHA256SUMS's set of digests"
+    assert any("SHA256SUMS" in f for f in mod.FAILURES)
+
+
+def test_tampered_overload_refusal_stage_not_concurrency_only_fails_even_with_sums_patched(tmp_path):
+    """README.md's \"cap-only refusals\" claim (0 result-size, 0 operator
+    errors) rests on every n=64 refusal carrying refusal_stage==\"limit\"
+    -- relabelling one must fail that recomputed-set check, even once the
+    tampered file's hash is added to a patched copy of SHA256SUMS."""
+    mod = _load("osdi_paper_macros")
+    records = json.loads(mod.OVERLOAD_REP1_RECORDS.read_text(encoding="utf-8"))
+    step64 = next(s for s in records if s["n_clients"] == 64)
+    relabelled = False
+    for r in step64["records"]:
+        if r["outcome"] == "refused":
+            r["refusal_stage"] = "result_size"
+            relabelled = True
+            break
+    assert relabelled, "expected at least one refused record in the n=64 step"
+    tampered = tmp_path / "overload-2026-09-15.records.json"
+    tampered.write_text(json.dumps(records), encoding="utf-8")
+    tampered_sums = (mod.OVERLOAD_SHA256SUMS.read_text(encoding="utf-8") +
+                      f"\n{hashlib.sha256(tampered.read_bytes()).hexdigest()}  "
+                      "overload-2026-09-15.records.json\n")
+    tampered_sums_path = tmp_path / "SHA256SUMS"
+    tampered_sums_path.write_text(tampered_sums, encoding="utf-8")
+
+    mod.OVERLOAD_REP1_RECORDS = tampered
+    mod.OVERLOAD_SHA256SUMS = tampered_sums_path
+    m = mod.Macros()
+    mod.compute_overload(m)
+    assert mod.FAILURES, "a refusal_stage other than \"limit\" must fail the " \
+        "concurrency-cap-only recomputed-set check, even with a patched SHA256SUMS"
+    assert any("limit" in f for f in mod.FAILURES)
 
 
 def test_c10_live_osv_macros_match_frozen_values():
