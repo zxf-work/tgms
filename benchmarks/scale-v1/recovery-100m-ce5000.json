@@ -1,0 +1,50 @@
+{
+  "band_h": [
+    3.0,
+    6.0
+  ],
+  "batches": 400262,
+  "compact_every": 5000,
+  "compactions": 80,
+  "config": {
+    "backend": "native",
+    "n_entities": 100000000
+  },
+  "dataset": {
+    "digest": "48bcb256874e6ad7ed8712ebff668fb25f81c6eafd78d7274efa245efa8a2d97",
+    "digest_kind": "store_digest",
+    "name": "synth"
+  },
+  "digest_compare": {
+    "digest_equal": true,
+    "replayed_digest": "48bcb256874e6ad7ed8712ebff668fb25f81c6eafd78d7274efa245efa8a2d97",
+    "src_digest": "48bcb256874e6ad7ed8712ebff668fb25f81c6eafd78d7274efa245efa8a2d97"
+  },
+  "git_commit": "b159bd10aa53ad5de5f4e8ff7af1c87789d6afd0",
+  "job_id": "213192",
+  "machine": {
+    "cpus": 64,
+    "host": "itiger07",
+    "platform": "Linux-5.14.0-427.31.1.el9_4.x86_64-x86_64-with-glibc2.34",
+    "ram_gb": 503.68
+  },
+  "node": "itiger07",
+  "protocol": {
+    "ceilings": {},
+    "reps": 1,
+    "warmups": 0
+  },
+  "protocol_note": "Addendum 6 100M recovery-cadence pre-registration: identical to the 30M cadence-isolation run in kind but there is no 500-cadence 100M run to reconcile against (unlike 30M's own frozen-protocol run) -- 45h at ce500 was pre-judged infeasible within the 2-day Slurm wall and would only re-measure D-164, so this is the campaign's single 100M recovery measurement, run alone via --dependency=afterany, nothing else touching the store.",
+  "record": "benchmarks/scale-v1/recovery-100m-ce5000.json",
+  "replay_store": "/project/xzhang12/tgms-b7/stores/synth-100m-native-replayed-ce5000-213192",
+  "replay_wall_h": 6.31,
+  "replay_wall_s": 22717.685107946396,
+  "result_digest": "48bcb256874e6ad7ed8712ebff668fb25f81c6eafd78d7274efa245efa8a2d97",
+  "schema_version": "1.0.0",
+  "seed": {
+    "value": 0
+  },
+  "source_store": "/project/xzhang12/tgms-b7/stores/synth-100m-native",
+  "timestamp_utc": "2026-09-17T04:27:58Z",
+  "verdict": "MISS-not-refuted (6.310h exceeds the 6h upper bound by 1.052x, but falsifier is >2x upper (12.0h) -- not tripped); digest_equal=True"
+}

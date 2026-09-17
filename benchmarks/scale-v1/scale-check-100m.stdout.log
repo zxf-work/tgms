@@ -1,0 +1,43 @@
+RUN_STARTED commit=b159bd10aa53ad5de5f4e8ff7af1c87789d6afd0
+BUILD_INFO {"profile": "release", "opt_level": "3", "engine_version": "0.8.0", "debug_assertions": false, "manifest_format_version": 3}
+TGMS_SEGMENT_CACHE_BYTES=46500000000
+SLURM_JOB_ID=213190 SLURM_NODELIST=itiger07 NODE=itiger07
+CPU_MODEL=AMD EPYC 7513 32-Core Processor
+PRODUCING_SCRIPT=scripts/eval_harness.py commit=b159bd10aa53ad5de5f4e8ff7af1c87789d6afd0
+phase-0 harness — 13 queries x 1 systems on synth @ 100,000,000 events
+  commit unknown (dirty) | Linux 5.14.0-427.31.1.el9_4.x86_64 x86_64 | 64 cores
+  WARNING: not xzgpu — development run, timings are not comparable with reported numbers
+
+  native: loaded in 2492.3s
+
+  query                 rows      native  agree
+  ---------------------------------------------
+  hist.single              2       13.0  yes
+  hist.asof                2       13.0  yes
+  snap.hop2                -        n/a  partial
+  diff.global              -        n/a  partial
+  reach.window             -        n/a  partial
+  paths.k                 78       20.2  yes
+  series.count           100      291.5  yes
+  burst.zscore             1      294.2  yes
+  nbr.evolution            -        n/a  partial
+  coactive.narrow          -        n/a  partial
+  resolve.substr           -        n/a  partial
+  agg.rel_bucket           -        n/a  partial
+  motif.filtered         311      110.9  yes
+
+  no answer: native/snap.hop2 — CostError: estimated cost for snapshot_subgraph exceeds ceilings
+  no answer: native/diff.global — CostError: estimated cost for diff_snapshots exceeds ceilings
+  no answer: native/reach.window — CostError: estimated cost for temporal_reachability exceeds ceilings
+  no answer: native/nbr.evolution — CostError: estimated cost for neighborhood_evolution exceeds ceilings
+  no answer: native/coactive.narrow — CostError: estimated cost for co_active exceeds ceilings
+  no answer: native/resolve.substr — CostError: estimated cost for resolve_entities exceeds ceilings
+  no answer: native/agg.rel_bucket — CostError: estimated cost for aggregate_events exceeds ceilings
+  all 13 queries agree across native
+  wrote /home/xzhang12/b7-work-h/records/scale-curve-100m-raw-213190.json
+EVAL_HARNESS_EXIT=0
+CHECK_FULL_EXIT=0
+CHECK_FULL_WALL_S=336.3530869483948
+{"admitted": false, "time_est_ms": 14571, "executed_ok": null, "exec_ms": null}
+REACH_ADMISSION_PROBE_EXIT=0
+RUN_FINISHED commit=b159bd10aa53ad5de5f4e8ff7af1c87789d6afd0 eval_exit=0 check_exit=0 reach_probe_exit=0

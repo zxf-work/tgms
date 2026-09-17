@@ -1,0 +1,224 @@
+{
+  "check_full": {
+    "band_s": 360,
+    "raw": {
+      "believed_rows": 101000010,
+      "close_runs_checked": 0,
+      "closes": 0,
+      "dict_records": 1000000,
+      "findings": [],
+      "generation": 400363,
+      "healthy": true,
+      "identities_checked": 101000000,
+      "manifest_checkpoint": 400363,
+      "manifest_deltas": 0,
+      "manifest_format": 3,
+      "max_tt_s_runs": 13656,
+      "mode": "full",
+      "problems": [],
+      "readable": true,
+      "rows": 101000272,
+      "rows_walked": 101000272,
+      "segments_checked": 46,
+      "store": "/project/xzhang12/tgms-b7/stores/synth-100m-native",
+      "tt_s_runs": 414089
+    },
+    "verdict": "PASS",
+    "wall_s": 336.3530869483948
+  },
+  "config": {
+    "n_entities": 100000000,
+    "systems": [
+      "native"
+    ]
+  },
+  "dataset": {
+    "digest": "48bcb256874e6ad7ed8712ebff668fb25f81c6eafd78d7274efa245efa8a2d97",
+    "digest_kind": "store_digest",
+    "name": "synth"
+  },
+  "eval_protocol": {
+    "note": "reps_fast=30 when the first (post-warmup) rep is under 1000ms, else reps_slow=10 -- same eval_harness.py convention as eval-10m-agg.json / itiger-calib-10m.json / scale-curve-30m.json",
+    "reps_fast": 30,
+    "reps_slow": 10,
+    "stats": "median and p95 over measured reps",
+    "warmup": 5
+  },
+  "git_commit": "b159bd10aa53ad5de5f4e8ff7af1c87789d6afd0",
+  "invocation": "scripts/eval_harness.py --scale 100000000 --systems native --json <out>",
+  "machine": {
+    "cpus": 64,
+    "host": "itiger07",
+    "platform": "Linux-5.14.0-427.31.1.el9_4.x86_64-x86_64-with-glibc2.34",
+    "ram_gb": 503.68
+  },
+  "per_operator_p50_ms": {
+    "agg.rel_bucket": {
+      "anchor_10m_p50_ms": 119.597,
+      "bar_ms": 657.784,
+      "error": "CostError: estimated cost for aggregate_events exceeds ceilings",
+      "measured_p50_ms": null,
+      "multiplier": 5.5,
+      "verdict": "REFUSED (CostError) -- NOT anticipated by SCALE_BUILD_FORECAST_2026-09-15.md; new finding"
+    },
+    "burst.zscore": {
+      "anchor_10m_p50_ms": 96.372,
+      "bar_ms": 481.86,
+      "measured_p50_ms": 294.233,
+      "measured_p95_ms": 300.522,
+      "multiplier": 5,
+      "verdict": "PASS"
+    },
+    "coactive.narrow": {
+      "anchor_10m_p50_ms": 233.52,
+      "bar_ms": 467.04,
+      "error": "CostError: estimated cost for co_active exceeds ceilings",
+      "measured_p50_ms": null,
+      "multiplier": 2,
+      "verdict": "REFUSED (CostError) -- NOT anticipated by SCALE_BUILD_FORECAST_2026-09-15.md; new finding"
+    },
+    "diff.global": {
+      "anchor_10m_p50_ms": 2114.156,
+      "bar_ms": 31712.34,
+      "error": "CostError: estimated cost for diff_snapshots exceeds ceilings",
+      "measured_p50_ms": null,
+      "multiplier": 15,
+      "verdict": "REFUSED (CostError) -- NOT anticipated by SCALE_BUILD_FORECAST_2026-09-15.md; new finding"
+    },
+    "hist.asof": {
+      "anchor_10m_p50_ms": 0.412,
+      "bar_ms": 2.06,
+      "measured_p50_ms": 12.998,
+      "measured_p95_ms": 13.569,
+      "multiplier": 5,
+      "verdict": "FALSIFIED (p50 exceeds bar)"
+    },
+    "hist.single": {
+      "anchor_10m_p50_ms": 0.398,
+      "bar_ms": 2.388,
+      "measured_p50_ms": 12.965,
+      "measured_p95_ms": 13.872,
+      "multiplier": 6,
+      "verdict": "FALSIFIED (p50 exceeds bar)"
+    },
+    "motif.filtered": {
+      "anchor_10m_p50_ms": 78.507,
+      "bar_ms": 157.014,
+      "measured_p50_ms": 110.861,
+      "measured_p95_ms": 113.712,
+      "multiplier": 2,
+      "verdict": "PASS"
+    },
+    "nbr.evolution": {
+      "anchor_10m_p50_ms": 44.365,
+      "bar_ms": 399.285,
+      "error": "CostError: estimated cost for neighborhood_evolution exceeds ceilings",
+      "measured_p50_ms": null,
+      "multiplier": 9,
+      "verdict": "REFUSED (CostError) -- NOT anticipated by SCALE_BUILD_FORECAST_2026-09-15.md; new finding"
+    },
+    "paths.k": {
+      "anchor_10m_p50_ms": 10.189,
+      "bar_ms": 20.378,
+      "measured_p50_ms": 20.164,
+      "measured_p95_ms": 21.308,
+      "multiplier": 2,
+      "verdict": "PASS"
+    },
+    "reach.window": {
+      "anchor_10m_p50_ms": 493.456,
+      "bar_ms": null,
+      "error": "CostError: estimated cost for temporal_reachability exceeds ceilings",
+      "measured_p50_ms": null,
+      "multiplier": null,
+      "verdict": "REFUSED (CostError) -- anticipated per Addendum 5's restated reach.window prediction, honest outcome"
+    },
+    "resolve.substr": {
+      "anchor_10m_p50_ms": 54.235,
+      "bar_ms": 867.76,
+      "error": "CostError: estimated cost for resolve_entities exceeds ceilings",
+      "measured_p50_ms": null,
+      "multiplier": 16,
+      "verdict": "REFUSED (CostError) -- NOT anticipated by SCALE_BUILD_FORECAST_2026-09-15.md; new finding"
+    },
+    "series.count": {
+      "anchor_10m_p50_ms": 98.415,
+      "bar_ms": 492.075,
+      "measured_p50_ms": 291.521,
+      "measured_p95_ms": 323.094,
+      "multiplier": 5,
+      "verdict": "PASS"
+    },
+    "snap.hop2": {
+      "anchor_10m_p50_ms": 486.843,
+      "bar_ms": 5355.273,
+      "error": "CostError: estimated cost for snapshot_subgraph exceeds ceilings",
+      "measured_p50_ms": null,
+      "multiplier": 11,
+      "verdict": "REFUSED (CostError) -- NOT anticipated by SCALE_BUILD_FORECAST_2026-09-15.md; new finding"
+    }
+  },
+  "protocol": {
+    "ceilings": {
+      "time_est_ms": 10000
+    },
+    "reps": 30,
+    "warmups": 5
+  },
+  "reach_window_admission": {
+    "note": "Addendum 5's restated prediction: admitted unless time_est_ms > 10,000. Here time_est_ms=14,571 > ceiling -> refused. This is the anticipated fallback branch (\"the estimate must show why (> 10,000 ms), and that is the honest outcome, not a failure\"), not a deviation.",
+    "run": {
+      "admitted": false,
+      "args": {
+        "src": "n1",
+        "window": {
+          "t_a": 0,
+          "t_b": 10000000
+        }
+      },
+      "estimate": {
+        "expansions_est": 76190680,
+        "rows_scanned_est": 9523835,
+        "time_est_ms": 14571
+      },
+      "exec_ms": null,
+      "executed_ok": null,
+      "id": "reach.window",
+      "op": "temporal_reachability",
+      "refusal_details": {
+        "ceilings": {
+          "time_est_ms": 10000
+        },
+        "estimate": {
+          "expansions_est": 76190680,
+          "rows_scanned_est": 9523835,
+          "time_est_ms": 14571
+        },
+        "suggestions": [
+          "narrow the valid-time window",
+          "add a node_filter / seed set",
+          "restrict rel_types",
+          "reduce hops / max_hops"
+        ]
+      },
+      "rows": null,
+      "scale": 100000000,
+      "time_est_ms": 14571
+    }
+  },
+  "record": "benchmarks/scale-v1/scale-curve-100m.json",
+  "result_digest": "48bcb256874e6ad7ed8712ebff668fb25f81c6eafd78d7274efa245efa8a2d97",
+  "runs": {
+    "single_run": {
+      "job_id": "213190",
+      "node": "itiger07",
+      "note": "Single run, no contended/clean pair needed -- unlike the 30M lane, this job did not race a concurrently-dispatched duplicate; it ran strictly after queryfloor-100m (job 213189) via --dependency=afterany, and before version-history-100m (213191), on the same store, with nothing else touching it.",
+      "raw_record": "benchmarks/scale-v1/scale-curve-100m-raw.json"
+    }
+  },
+  "schema_version": "1.0.0",
+  "seed": {
+    "value": 0
+  },
+  "timestamp_utc": "2026-09-16T20:33:13Z"
+}

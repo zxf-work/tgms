@@ -1,0 +1,385 @@
+{
+  "build_info": {
+    "batch": 250,
+    "compact_every": 1000000,
+    "compaction_wall_share": {
+      "compaction_only_share_of_wall_pct": 83.76,
+      "compaction_plus_all_finalization_share_of_wall_pct": 93.75,
+      "final_compaction_wall_s_authoritative": 571.91,
+      "gc_wall_s_authoritative": 38.848,
+      "in_loop_compaction_overhead_estimate_s": 23194.3,
+      "in_loop_compactions": 100,
+      "in_loop_overhead_range_s": [
+        29.1,
+        524.0
+      ],
+      "instrumentation_cross_check_note": "The stdout ticks' cumulative 'elapsed' at the 100,000,000-op checkpoint is 27586.7s; wall_s (DONE line, matches build-record.json) is 28372.936s -- a gap of only 786.236s. But build-record.json's authoritative finalisation_phases sum to 3405.467s (compact 571.91 + digest 2759.624 + gc 38.848 + stats 35.085), which does not reconcile with the 786.236s tick-based gap (short by ~2619.2s). Not root-caused here (possibly the tick print lags under heavy finalization I/O, or the finalisation timers overlap the last ingest tick's window) -- flagged for the coordinator, not resolved. The authoritative finalisation_phases and the overall wall_s (both from build-record.json / the DONE line) are used for scoring; the tick-based gap is reported only as a cross-check that did not close.",
+      "method": "build_synth_store.py's checkpoint log has no native per-compaction timer for the 100 in-loop compactions; their combined cost is estimated from checkpoint-delta pairs within each 1,000,000-op cycle (second 500k-op half minus first 500k-op half, same-cycle steady-rate assumption). The FINAL (101st) compaction, streaming digest, gc, and stats phases are separately and authoritatively timed in build-record.json's build_info.finalisation_phases.",
+      "stats_wall_s_authoritative": 35.085,
+      "streaming_digest_wall_s_authoritative": 2759.624,
+      "total_wall_s": 28372.936
+    },
+    "compactions": 101,
+    "content_digest": null,
+    "digest_mode": "streaming",
+    "engine": {
+      "debug_assertions": false,
+      "engine_version": "0.8.0",
+      "manifest_format_version": 3,
+      "opt_level": "3",
+      "profile": "release"
+    },
+    "finalisation_phases": {
+      "compact": {
+        "rss_kb_after": {
+          "maxrss_kb": 167269524,
+          "vmhwm": 167269524,
+          "vmrss": 107337620
+        },
+        "rss_kb_before": {
+          "maxrss_kb": 130816548,
+          "vmhwm": 130816548,
+          "vmrss": 73109316
+        },
+        "wall_s": 571.91
+      },
+      "digest": {
+        "rss_kb_after": {
+          "maxrss_kb": 186422544,
+          "vmhwm": 186422544,
+          "vmrss": 107413948
+        },
+        "rss_kb_before": {
+          "maxrss_kb": 167269524,
+          "vmhwm": 167269524,
+          "vmrss": 104784224
+        },
+        "wall_s": 2759.624
+      },
+      "gc": {
+        "rss_kb_after": {
+          "maxrss_kb": 167269524,
+          "vmhwm": 167269524,
+          "vmrss": 104784432
+        },
+        "rss_kb_before": {
+          "maxrss_kb": 167269524,
+          "vmhwm": 167269524,
+          "vmrss": 107337620
+        },
+        "wall_s": 38.848
+      },
+      "stats": {
+        "rss_kb_after": {
+          "maxrss_kb": 167269524,
+          "vmhwm": 167269524,
+          "vmrss": 104784224
+        },
+        "rss_kb_before": {
+          "maxrss_kb": 167269524,
+          "vmhwm": 167269524,
+          "vmrss": 104784432
+        },
+        "wall_s": 35.085
+      }
+    },
+    "manifest_identity": {
+      "generation": 400363,
+      "manifest_sha": "9c78af27ceb74140"
+    },
+    "n_entities": 100000000,
+    "ops": 100000262,
+    "ops_per_s_by_decile": [
+      {
+        "bracket_elapsed_s": [
+          0.0,
+          980.4
+        ],
+        "bracket_ops": [
+          0,
+          10000000
+        ],
+        "decile": 1,
+        "ops_per_s": 10199.9
+      },
+      {
+        "bracket_elapsed_s": [
+          980.4,
+          2131.2
+        ],
+        "bracket_ops": [
+          10000000,
+          20000000
+        ],
+        "decile": 2,
+        "ops_per_s": 8689.6
+      },
+      {
+        "bracket_elapsed_s": [
+          2131.2,
+          3754.7
+        ],
+        "bracket_ops": [
+          20000000,
+          30000000
+        ],
+        "decile": 3,
+        "ops_per_s": 6159.5
+      },
+      {
+        "bracket_elapsed_s": [
+          3754.7,
+          5792.1
+        ],
+        "bracket_ops": [
+          30000000,
+          40000000
+        ],
+        "decile": 4,
+        "ops_per_s": 4908.2
+      },
+      {
+        "bracket_elapsed_s": [
+          5792.1,
+          8264.9
+        ],
+        "bracket_ops": [
+          40000000,
+          50000000
+        ],
+        "decile": 5,
+        "ops_per_s": 4044.0
+      },
+      {
+        "bracket_elapsed_s": [
+          8264.9,
+          11177.1
+        ],
+        "bracket_ops": [
+          50000000,
+          60000000
+        ],
+        "decile": 6,
+        "ops_per_s": 3433.8
+      },
+      {
+        "bracket_elapsed_s": [
+          11177.1,
+          14554.4
+        ],
+        "bracket_ops": [
+          60000000,
+          70000000
+        ],
+        "decile": 7,
+        "ops_per_s": 2960.9
+      },
+      {
+        "bracket_elapsed_s": [
+          14554.4,
+          18396.3
+        ],
+        "bracket_ops": [
+          70000000,
+          80000000
+        ],
+        "decile": 8,
+        "ops_per_s": 2602.9
+      },
+      {
+        "bracket_elapsed_s": [
+          18396.3,
+          22680.6
+        ],
+        "bracket_ops": [
+          80000000,
+          90000000
+        ],
+        "decile": 9,
+        "ops_per_s": 2334.1
+      },
+      {
+        "bracket_elapsed_s": [
+          22680.6,
+          27586.7
+        ],
+        "bracket_ops": [
+          90000000,
+          100000000
+        ],
+        "decile": 10,
+        "ops_per_s": 2038.3
+      }
+    ],
+    "ops_per_s_by_decile_source": "derived from build-100m.stdout.log progress ticks -- build-record.json's own field was null for this run, unlike the 10M/30M records",
+    "peak_rss": {
+      "maxrss_kb": 186422544,
+      "vmhwm": 186422544,
+      "vmrss": 107413948
+    },
+    "rss_series_30s_file": "benchmarks/scale-v1/rss-100m.jsonl",
+    "rss_series_source": "external sampler (/proc/<pid>/status VmHWM every 30s) independent of the harness's own periodic maxrss figure -- same convention as Stage 0/30M",
+    "seed": 0,
+    "stats": {
+      "max_out_degree": 151,
+      "n_edge_versions": 100000269,
+      "n_entities": 1000000,
+      "n_node_versions": 1000003,
+      "rel_type_counts": {
+        "R": 66666846,
+        "S": 33333423
+      },
+      "vt_max": 104999999,
+      "vt_min": 0
+    },
+    "store_bytes": {
+      "manifest_bytes": 206946,
+      "segment_bytes": 5218378406,
+      "total_bytes": 15262662259
+    },
+    "store_digest": "48bcb256874e6ad7ed8712ebff668fb25f81c6eafd78d7274efa245efa8a2d97",
+    "wall_s": 28372.936
+  },
+  "config": {
+    "backend": "native",
+    "batch": 250,
+    "compact_every": 1000000,
+    "digest_mode": "streaming",
+    "host_controls": {
+      "commit_stamp_mechanism": "Stage 0's .HEAD_COMMIT + TGMS_COMMIT (git absent on iTiger compute nodes); RUN_STARTED/ABORT guard verified against b159bd10aa53ad5de5f4e8ff7af1c87789d6afd0",
+      "cpu_model": "AMD EPYC 7513 32-Core Processor",
+      "slurm_cpus_per_task": 8,
+      "slurm_exclude": "itiger04,itiger05",
+      "slurm_gres": "gpu:rtx_5000:1",
+      "slurm_job_id": "213188",
+      "slurm_mem": "256G",
+      "slurm_node": "itiger07",
+      "slurm_partition": "bigTiger",
+      "slurm_time_limit": "36:00:00",
+      "tgms_segment_cache_bytes": 46500000000
+    },
+    "n_entities": 100000000
+  },
+  "dataset": {
+    "digest": "48bcb256874e6ad7ed8712ebff668fb25f81c6eafd78d7274efa245efa8a2d97",
+    "digest_kind": "store_digest",
+    "name": "synth"
+  },
+  "falsifiers": {
+    "build_vmhwm_h1_h2": {
+      "falsifier_gb": 260,
+      "h1_cache_bound_gb": 55,
+      "h2_linear_band_gb": [
+        180,
+        200
+      ],
+      "measured_gb": 186.42,
+      "measured_kb": 186422544,
+      "trajectory": "ingest plateau climbed ~linearly from ~0.4GB (500K ops) to ~127.75GB (100,000,000-op checkpoint) -> final compaction -> 167.27GB -> streaming digest -> 186.42GB peak",
+      "unit_note": "'GB' here = vmhwm_kb / 1,000,000, the same convention the campaign's Stage-0/30M records use (verified against the Stage-0 10M anchor: vmhwm_kb=19,897,476 -> 19.9 'GB', matching Addendum 5's own '19.9GB' prose) -- NOT true decimal GB (19,897,476 KiB is actually 20.87 true GB / 18.98 GiB). Using the campaign's own convention resolves this run's H1/H2 call unambiguously in-band; true GiB (177.79) would sit just under the 180 lower bound -- flagged here so the unit choice is auditable, not silent.",
+      "verdict": "H2 (linear) confirmed again at 100M (in the 180-200GB band); H1 refuted"
+    },
+    "build_wall": {
+      "band_h": [
+        1.5,
+        5.0
+      ],
+      "measured_h": 7.881,
+      "measured_s": 28372.936,
+      "note": "Coordinator's own pre-written expectation (Addendum 6, before this run): 'the wall band will be exceeded because the 30M decay extrapolates to ~100 compactions averaging minutes each (~8-10h total)'. Measured 7.882h sits inside that stated expectation, i.e. the exceedance was anticipated, not a surprise.",
+      "verdict": "REFUTED (> 1.25x the 5.0h upper bound = 6.25h; measured 7.881h)"
+    },
+    "check_full": {
+      "band_s": 360,
+      "measured_s": 336.353,
+      "verdict": "PASS (93.4% of the 6-min ceiling)"
+    },
+    "manifest_bytes": {
+      "band_gb": 4,
+      "measured_bytes": 206946,
+      "verdict": "PASS"
+    },
+    "query_ready_floor": {
+      "band_gb": [
+        18,
+        24
+      ],
+      "description": "Addendum 5/6 Stage 1 100M row 'query-ready floor': a FRESH process cold-opens the finished store (read_only=True) and runs the 13-operator registry once each; VmHWM of that process.",
+      "falsifier_gb": 25,
+      "job_id": "213189",
+      "n_ok": 6,
+      "n_queries": 13,
+      "note": "Ran once, cleanly, via --dependency=afterany:213188 with nothing else touching the store -- no writer-lock race like the 30M lane's first attempt (query_floor.py's read_only=True fix, landed by the 30M lane, was already in place for this run).",
+      "verdict": "PASS",
+      "vmhwm_gb": 19.67,
+      "vmhwm_kb": 19665016,
+      "vmrss_kb": 18876416
+    },
+    "recovery_ce5000": {
+      "band_h": [
+        3.0,
+        6.0
+      ],
+      "digest_equal": true,
+      "measured_h": 6.31,
+      "verdict": "MISS-not-refuted (6.310h exceeds the 6h upper bound by 1.052x, but falsifier is >2x upper (12.0h) -- not tripped); digest_equal=True"
+    },
+    "scale_curve": {
+      "note": "6/13 operators executed, 7/13 refused by the cost guardrail. Of the 6 executed, hist.single/hist.asof REFUTED their bars by ~30x (12.97/13.00ms vs 2.40/2.05ms bars); paths.k/series.count/burst.zscore/motif.filtered PASS. Only reach.window's refusal was anticipated by Addendum 5; the other six refusals (snap.hop2, diff.global, nbr.evolution, coactive.narrow, resolve.substr, agg.rel_bucket) are a new finding -- see scale-curve-100m.json for the full per-operator table."
+    },
+    "segment_bytes": {
+      "falsifier": "> 2x predicted (> 10 GB)",
+      "measured_gb": 5.218,
+      "predicted_gb": 5.0,
+      "verdict": "PASS"
+    },
+    "steady_decile_ops_per_s": {
+      "floor": 10000,
+      "measured": 3738.9,
+      "verdict": "TRIPPED (< 10,000) -- compaction cost per decile window grows with rows compacted (D-164), throughput decays monotonically through the whole build, more steeply than the 30M run (30M median 8,463.0; 100M median 3738.9)"
+    },
+    "version_history": {
+      "band_gb": 10,
+      "band_s": 60,
+      "falsifier_gb": 25,
+      "measured_gb": 12.817,
+      "measured_s": 18.982472,
+      "verdict": "wall PASS (18.982s, well under the <=60s band); VmHWM 12.817 GB exceeds the <=10GB point prediction but is well under the documented ~25GB falsifier line -- scored MISS-not-refuted (prediction exceeded, falsifier not tripped), not REFUTED"
+    }
+  },
+  "git_commit": "b159bd10aa53ad5de5f4e8ff7af1c87789d6afd0",
+  "machine": {
+    "cpus": 64,
+    "host": "itiger07",
+    "platform": "Linux-5.14.0-427.31.1.el9_4.x86_64-x86_64-with-glibc2.34",
+    "ram_gb": 503.68
+  },
+  "protocol": {
+    "ceilings": {},
+    "reps": 1,
+    "warmups": 0
+  },
+  "query_ready_floor": {
+    "band_gb": [
+      18,
+      24
+    ],
+    "description": "Addendum 5/6 Stage 1 100M row 'query-ready floor': a FRESH process cold-opens the finished store (read_only=True) and runs the 13-operator registry once each; VmHWM of that process.",
+    "falsifier_gb": 25,
+    "job_id": "213189",
+    "n_ok": 6,
+    "n_queries": 13,
+    "note": "Ran once, cleanly, via --dependency=afterany:213188 with nothing else touching the store -- no writer-lock race like the 30M lane's first attempt (query_floor.py's read_only=True fix, landed by the 30M lane, was already in place for this run).",
+    "verdict": "PASS",
+    "vmhwm_gb": 19.67,
+    "vmhwm_kb": 19665016,
+    "vmrss_kb": 18876416
+  },
+  "record": "stores/synth-100m-native/build-record.json",
+  "result_digest": "48bcb256874e6ad7ed8712ebff668fb25f81c6eafd78d7274efa245efa8a2d97",
+  "schema_version": "1.0.0",
+  "seed": {
+    "value": 0
+  },
+  "timestamp_utc": "2026-09-16T17:50:02Z"
+}

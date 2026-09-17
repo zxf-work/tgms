@@ -1,0 +1,22 @@
+{
+  "believed_rows": 101000010,
+  "close_runs_checked": 0,
+  "closes": 0,
+  "dict_records": 1000000,
+  "findings": [],
+  "generation": 400363,
+  "healthy": true,
+  "identities_checked": 101000000,
+  "manifest_checkpoint": 400363,
+  "manifest_deltas": 0,
+  "manifest_format": 3,
+  "max_tt_s_runs": 13656,
+  "mode": "full",
+  "problems": [],
+  "readable": true,
+  "rows": 101000272,
+  "rows_walked": 101000272,
+  "segments_checked": 46,
+  "store": "/project/xzhang12/tgms-b7/stores/synth-100m-native",
+  "tt_s_runs": 414089
+}

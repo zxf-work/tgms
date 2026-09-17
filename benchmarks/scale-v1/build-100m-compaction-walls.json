@@ -1,0 +1,17 @@
+{
+  "compaction_only_share_of_wall_pct": 83.76,
+  "compaction_plus_all_finalization_share_of_wall_pct": 93.75,
+  "final_compaction_wall_s_authoritative": 571.91,
+  "gc_wall_s_authoritative": 38.848,
+  "in_loop_compaction_overhead_estimate_s": 23194.3,
+  "in_loop_compactions": 100,
+  "in_loop_overhead_range_s": [
+    29.1,
+    524.0
+  ],
+  "instrumentation_cross_check_note": "The stdout ticks' cumulative 'elapsed' at the 100,000,000-op checkpoint is 27586.7s; wall_s (DONE line, matches build-record.json) is 28372.936s -- a gap of only 786.236s. But build-record.json's authoritative finalisation_phases sum to 3405.467s (compact 571.91 + digest 2759.624 + gc 38.848 + stats 35.085), which does not reconcile with the 786.236s tick-based gap (short by ~2619.2s). Not root-caused here (possibly the tick print lags under heavy finalization I/O, or the finalisation timers overlap the last ingest tick's window) -- flagged for the coordinator, not resolved. The authoritative finalisation_phases and the overall wall_s (both from build-record.json / the DONE line) are used for scoring; the tick-based gap is reported only as a cross-check that did not close.",
+  "method": "build_synth_store.py's checkpoint log has no native per-compaction timer for the 100 in-loop compactions; their combined cost is estimated from checkpoint-delta pairs within each 1,000,000-op cycle (second 500k-op half minus first 500k-op half, same-cycle steady-rate assumption). The FINAL (101st) compaction, streaming digest, gc, and stats phases are separately and authoritatively timed in build-record.json's build_info.finalisation_phases.",
+  "stats_wall_s_authoritative": 35.085,
+  "streaming_digest_wall_s_authoritative": 2759.624,
+  "total_wall_s": 28372.936
+}
