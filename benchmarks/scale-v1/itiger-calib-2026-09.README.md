@@ -219,3 +219,18 @@ replay), 213054 (10M scale-curve + check --full). All four `RUN_STARTED`/
 `RUN_FINISHED` lines and `BUILD_INFO`/cache-pin stamps are preserved
 verbatim in `itiger-build-{1m,10m}.stdout.log` and in the two calibration
 JSON files' `build_info`/`config.host_controls` blocks.
+
+## Unit note
+
+The peak-RSS row in the "Build results" table above quotes "(2.32 GB)" and
+"(19.43 GB)" for the 1M and 10M columns. Both parentheticals divide the
+kB figure by 1024 and then by 1000 -- a mixed-unit slip, not the campaign's
+convention. Under this campaign's kB/1e6 convention (used by every other
+B7 peak-RSS figure), the same record fields -- `itiger-calib-1m.json`'s
+`build_info.peak_rss.vmhwm` (2,371,648 kB) and `itiger-calib-10m.json`'s
+`build_info.peak_rss.vmhwm` (19,897,476 kB) -- are **2.37 GB** and
+**19.90 GB** (18.98 GiB, if binary units are wanted for the 10M figure).
+The record fields are authoritative; the table's "(2.32 GB)" / "(19.43 GB)"
+parentheticals above are left as originally written rather than silently
+edited, and should be read as superseded by this note. Instrument-error
+catalogue entry 13 cites this note.
