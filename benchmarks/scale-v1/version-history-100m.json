@@ -1,0 +1,106 @@
+{
+  "band": {
+    "falsifier_vmhwm_gb": 25,
+    "vmhwm_gb": 10,
+    "wall_s": 60
+  },
+  "call": {
+    "belief": "all",
+    "kind": "edge",
+    "limit": 10,
+    "window": "[0, 105000000)"
+  },
+  "config": {
+    "backend": "native",
+    "n_entities": 100000000
+  },
+  "dataset": {
+    "digest": "48bcb256874e6ad7ed8712ebff668fb25f81c6eafd78d7274efa245efa8a2d97",
+    "digest_kind": "store_digest",
+    "name": "synth"
+  },
+  "git_commit": "b159bd10aa53ad5de5f4e8ff7af1c87789d6afd0",
+  "machine": {
+    "cpus": 64,
+    "host": "itiger07",
+    "platform": "Linux-5.14.0-427.31.1.el9_4.x86_64-x86_64-with-glibc2.34",
+    "ram_gb": 503.68
+  },
+  "protocol": {
+    "ceilings": {},
+    "reps": 1,
+    "warmups": 0
+  },
+  "record": "benchmarks/scale-v1/version-history-100m.json",
+  "result_digest": "48bcb256874e6ad7ed8712ebff668fb25f81c6eafd78d7274efa245efa8a2d97",
+  "schema_version": "1.0.0",
+  "seed": {
+    "value": 0
+  },
+  "single_run": {
+    "job_id": "213191",
+    "n": 3,
+    "node": "itiger07",
+    "reps": [
+      {
+        "call": {
+          "belief": "all",
+          "kind": "edge",
+          "limit": 10,
+          "window": {
+            "t_a": 0,
+            "t_b": 105000000
+          }
+        },
+        "op": "version_history",
+        "open_ms": 235227.524,
+        "rows_total": 100000269,
+        "store": "/project/xzhang12/tgms-b7/stores/synth-100m-native",
+        "vmhwm_kb": 12816512,
+        "vmrss_kb": 8127708,
+        "wall_ms": 18755.222
+      },
+      {
+        "call": {
+          "belief": "all",
+          "kind": "edge",
+          "limit": 10,
+          "window": {
+            "t_a": 0,
+            "t_b": 105000000
+          }
+        },
+        "op": "version_history",
+        "open_ms": 228421.452,
+        "rows_total": 100000269,
+        "store": "/project/xzhang12/tgms-b7/stores/synth-100m-native",
+        "vmhwm_kb": 12815376,
+        "vmrss_kb": 8127532,
+        "wall_ms": 18982.472
+      },
+      {
+        "call": {
+          "belief": "all",
+          "kind": "edge",
+          "limit": 10,
+          "window": {
+            "t_a": 0,
+            "t_b": 105000000
+          }
+        },
+        "op": "version_history",
+        "open_ms": 229240.899,
+        "rows_total": 100000269,
+        "store": "/project/xzhang12/tgms-b7/stores/synth-100m-native",
+        "vmhwm_kb": 12817328,
+        "vmrss_kb": 8128732,
+        "wall_ms": 18989.636
+      }
+    ],
+    "rows_total": 100000269,
+    "vmhwm_kb_median": 12816512,
+    "wall_ms_median": 18982.472
+  },
+  "timestamp_utc": "2026-09-16T20:46:27Z",
+  "verdict": "wall PASS (18.982s, well under the <=60s band); VmHWM 12.817 GB exceeds the <=10GB point prediction but is well under the documented ~25GB falsifier line -- scored MISS-not-refuted (prediction exceeded, falsifier not tripped), not REFUTED"
+}

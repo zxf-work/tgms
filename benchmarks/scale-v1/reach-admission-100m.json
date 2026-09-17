@@ -1,0 +1,38 @@
+{
+  "admitted": false,
+  "args": {
+    "src": "n1",
+    "window": {
+      "t_a": 0,
+      "t_b": 10000000
+    }
+  },
+  "estimate": {
+    "expansions_est": 76190680,
+    "rows_scanned_est": 9523835,
+    "time_est_ms": 14571
+  },
+  "exec_ms": null,
+  "executed_ok": null,
+  "id": "reach.window",
+  "op": "temporal_reachability",
+  "refusal_details": {
+    "ceilings": {
+      "time_est_ms": 10000
+    },
+    "estimate": {
+      "expansions_est": 76190680,
+      "rows_scanned_est": 9523835,
+      "time_est_ms": 14571
+    },
+    "suggestions": [
+      "narrow the valid-time window",
+      "add a node_filter / seed set",
+      "restrict rel_types",
+      "reduce hops / max_hops"
+    ]
+  },
+  "rows": null,
+  "scale": 100000000,
+  "time_est_ms": 14571
+}

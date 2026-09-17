@@ -1,0 +1,58 @@
+{
+  "band_s": 360,
+  "config": {
+    "backend": "native",
+    "n_entities": 100000000
+  },
+  "dataset": {
+    "digest": "48bcb256874e6ad7ed8712ebff668fb25f81c6eafd78d7274efa245efa8a2d97",
+    "digest_kind": "store_digest",
+    "name": "synth"
+  },
+  "git_commit": "b159bd10aa53ad5de5f4e8ff7af1c87789d6afd0",
+  "machine": {
+    "cpus": 64,
+    "host": "itiger07",
+    "platform": "Linux-5.14.0-427.31.1.el9_4.x86_64-x86_64-with-glibc2.34",
+    "ram_gb": 503.68
+  },
+  "protocol": {
+    "ceilings": {},
+    "reps": 1,
+    "warmups": 0
+  },
+  "record": "benchmarks/scale-v1/check-full-100m.json",
+  "result_digest": "48bcb256874e6ad7ed8712ebff668fb25f81c6eafd78d7274efa245efa8a2d97",
+  "schema_version": "1.0.0",
+  "seed": {
+    "value": 0
+  },
+  "single_run": {
+    "job_id": "213190",
+    "raw": {
+      "believed_rows": 101000010,
+      "close_runs_checked": 0,
+      "closes": 0,
+      "dict_records": 1000000,
+      "findings": [],
+      "generation": 400363,
+      "healthy": true,
+      "identities_checked": 101000000,
+      "manifest_checkpoint": 400363,
+      "manifest_deltas": 0,
+      "manifest_format": 3,
+      "max_tt_s_runs": 13656,
+      "mode": "full",
+      "problems": [],
+      "readable": true,
+      "rows": 101000272,
+      "rows_walked": 101000272,
+      "segments_checked": 46,
+      "store": "/project/xzhang12/tgms-b7/stores/synth-100m-native",
+      "tt_s_runs": 414089
+    },
+    "wall_s": 336.3530869483948
+  },
+  "timestamp_utc": "2026-09-16T20:33:13Z",
+  "verdict": "PASS (wall 336.353s = 5.61 min, within the <=6 min Addendum-6 100M band; healthy, 0 findings, 0 problems, exit 0; 93.4% of the band ceiling)"
+}

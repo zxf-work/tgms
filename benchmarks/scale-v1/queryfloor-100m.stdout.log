@@ -1,0 +1,8 @@
+RUN_STARTED commit=b159bd10aa53ad5de5f4e8ff7af1c87789d6afd0
+BUILD_INFO {"profile": "release", "opt_level": "3", "engine_version": "0.8.0", "debug_assertions": false, "manifest_format_version": 3}
+TGMS_SEGMENT_CACHE_BYTES=46500000000
+SLURM_JOB_ID=213189 SLURM_NODELIST=itiger07 NODE=itiger07
+CPU_MODEL=AMD EPYC 7513 32-Core Processor
+{"vmhwm_kb": 19665016, "vmrss_kb": 18876416, "n_queries": 13, "n_ok": 6}
+QUERY_FLOOR_EXIT=0
+RUN_FINISHED commit=b159bd10aa53ad5de5f4e8ff7af1c87789d6afd0 queryfloor_exit=0

@@ -1,0 +1,214 @@
+{
+  "log": "/project/xzhang12/tgms-b7/stores/synth-100m-native/eventlog.jsonl",
+  "n_ok": 6,
+  "n_queries": 13,
+  "open_ms": 283898.045,
+  "queries": [
+    {
+      "id": "hist.single",
+      "ms": 14500.981,
+      "ok": true,
+      "op": "entity_history",
+      "rows": 2
+    },
+    {
+      "id": "hist.asof",
+      "ms": 7.79,
+      "ok": true,
+      "op": "entity_history",
+      "rows": 0
+    },
+    {
+      "details": {
+        "ceilings": {
+          "time_est_ms": 10000
+        },
+        "estimate": {
+          "expansions_est": 0,
+          "rows_scanned_est": 101000272,
+          "time_est_ms": 11615
+        },
+        "suggestions": [
+          "narrow the valid-time window",
+          "add a node_filter / seed set",
+          "restrict rel_types",
+          "reduce hops / max_hops"
+        ]
+      },
+      "error": "CostError: estimated cost for snapshot_subgraph exceeds ceilings",
+      "id": "snap.hop2",
+      "ms": 8.775,
+      "ok": false,
+      "op": "snapshot_subgraph"
+    },
+    {
+      "details": {
+        "ceilings": {
+          "time_est_ms": 10000
+        },
+        "estimate": {
+          "expansions_est": 0,
+          "rows_scanned_est": 101000272,
+          "time_est_ms": 11615
+        },
+        "suggestions": [
+          "narrow the valid-time window",
+          "add a node_filter / seed set",
+          "restrict rel_types",
+          "reduce hops / max_hops"
+        ]
+      },
+      "error": "CostError: estimated cost for diff_snapshots exceeds ceilings",
+      "id": "diff.global",
+      "ms": 8.179,
+      "ok": false,
+      "op": "diff_snapshots"
+    },
+    {
+      "details": {
+        "ceilings": {
+          "time_est_ms": 10000
+        },
+        "estimate": {
+          "expansions_est": 76190680,
+          "rows_scanned_est": 9523835,
+          "time_est_ms": 14571
+        },
+        "suggestions": [
+          "narrow the valid-time window",
+          "add a node_filter / seed set",
+          "restrict rel_types",
+          "reduce hops / max_hops"
+        ]
+      },
+      "error": "CostError: estimated cost for temporal_reachability exceeds ceilings",
+      "id": "reach.window",
+      "ms": 8.586,
+      "ok": false,
+      "op": "temporal_reachability"
+    },
+    {
+      "id": "paths.k",
+      "ms": 47907.272,
+      "ok": true,
+      "op": "temporal_paths",
+      "rows": 78
+    },
+    {
+      "id": "series.count",
+      "ms": 296.117,
+      "ok": true,
+      "op": "graph_metric_timeseries",
+      "rows": 100
+    },
+    {
+      "id": "burst.zscore",
+      "ms": 300.103,
+      "ok": true,
+      "op": "burst_detection",
+      "rows": 1
+    },
+    {
+      "details": {
+        "ceilings": {
+          "time_est_ms": 10000
+        },
+        "estimate": {
+          "expansions_est": 0,
+          "rows_scanned_est": 101000272,
+          "time_est_ms": 17170
+        },
+        "suggestions": [
+          "narrow the valid-time window",
+          "add a node_filter / seed set",
+          "restrict rel_types",
+          "reduce hops / max_hops"
+        ]
+      },
+      "error": "CostError: estimated cost for neighborhood_evolution exceeds ceilings",
+      "id": "nbr.evolution",
+      "ms": 8.137,
+      "ok": false,
+      "op": "neighborhood_evolution"
+    },
+    {
+      "details": {
+        "ceilings": {
+          "time_est_ms": 10000
+        },
+        "estimate": {
+          "expansions_est": 0,
+          "rows_scanned_est": 101000272,
+          "time_est_ms": 11615
+        },
+        "suggestions": [
+          "narrow the valid-time window",
+          "add a node_filter / seed set",
+          "restrict rel_types",
+          "reduce hops / max_hops"
+        ]
+      },
+      "error": "CostError: estimated cost for co_active exceeds ceilings",
+      "id": "coactive.narrow",
+      "ms": 9.751,
+      "ok": false,
+      "op": "co_active"
+    },
+    {
+      "details": {
+        "ceilings": {
+          "time_est_ms": 10000
+        },
+        "estimate": {
+          "expansions_est": 0,
+          "rows_scanned_est": 101000272,
+          "time_est_ms": 17170
+        },
+        "suggestions": [
+          "narrow the valid-time window",
+          "add a node_filter / seed set",
+          "restrict rel_types",
+          "reduce hops / max_hops"
+        ]
+      },
+      "error": "CostError: estimated cost for resolve_entities exceeds ceilings",
+      "id": "resolve.substr",
+      "ms": 6.573,
+      "ok": false,
+      "op": "resolve_entities"
+    },
+    {
+      "details": {
+        "ceilings": {
+          "time_est_ms": 10000
+        },
+        "estimate": {
+          "expansions_est": 0,
+          "rows_scanned_est": 96238355,
+          "time_est_ms": 16360
+        },
+        "suggestions": [
+          "narrow the valid-time window",
+          "add a node_filter / seed set",
+          "restrict rel_types",
+          "reduce hops / max_hops"
+        ]
+      },
+      "error": "CostError: estimated cost for aggregate_events exceeds ceilings",
+      "id": "agg.rel_bucket",
+      "ms": 13.812,
+      "ok": false,
+      "op": "aggregate_events"
+    },
+    {
+      "id": "motif.filtered",
+      "ms": 119.219,
+      "ok": true,
+      "op": "count_temporal_motifs",
+      "rows": 266
+    }
+  ],
+  "store": "/project/xzhang12/tgms-b7/stores/synth-100m-native",
+  "vmhwm_kb": 19665016,
+  "vmrss_kb": 18876416
+}

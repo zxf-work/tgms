@@ -2,9 +2,9 @@
 
 Pre-registration: `docs/design/SCALE_BUILD_FORECAST_2026-09-15.md`, Addenda
 4-6. Stage 0 (iTiger calibration, 1M/10M) is `itiger-calib-2026-09.README.md`
-in this directory. This file covers **Stage 1** (30M now; 100M is a
-separate, concurrently-running lane using `*-100m` file names — not
-authored here, added by that lane once its own record lands).
+in this directory. This file covers **Stage 1**: 30M (lane B7-S1-30M) and
+100M (lane B7-S1-100M, below), a separate lane that shared the same
+cluster worktree/engine/tools and used `*-100m` file names throughout.
 
 ## Stage 1 — 30M
 
@@ -255,3 +255,288 @@ against the running copy before submission, or immediately after for
 | `benchmarks/scale-v1/jobs/version_history_30m.slurm` | `1a02a2b33f630257f70c698b1b671df04a35b23ff4fb6b2c596cfe191d90b21f` |
 | `benchmarks/scale-v1/jobs/recovery_30m.slurm` | `5637e891e55e76fa50afc24235868bcea024128e826cc8586871eacaeb879eea` |
 | `benchmarks/scale-v1/jobs/recovery_30m_ce5000.slurm` | `2a99fc57316121f17620f50776924448bfb7e9931dafaf89ab6f5693c4be2c65` |
+
+## Stage 1 — 100M
+
+Lane B7-S1-100M. GO per `SCALE_BUILD_FORECAST_2026-09-15.md` Addendum 6
+("100M: GO, frozen now"). Shared the same cluster worktree
+(`/project/xzhang12/tgms-b7`, engine `b159bd1`
+= `b159bd10aa53ad5de5f4e8ff7af1c87789d6afd0`), the same job-script/tool
+conventions (`.HEAD_COMMIT`+`TGMS_COMMIT` stamping,
+`TGMS_SEGMENT_CACHE_BYTES=46500000000`, live write test on `/home`,
+`du -sm /project/xzhang12` fail-fast) and the same
+`tools/{query_floor.py,version_history_probe.py,rss_sampler.py}` as the
+concurrently-running B7-S1-30M lane, used unchanged. Slurm:
+`bigTiger`, `--exclude=itiger04,itiger05`, `--gres=gpu:rtx_5000:1`,
+`--cpus-per-task=8`, `--mem=256G` on every job (per Addendum 6's 100M
+shape); build `--time=36:00:00`, recovery `--time=24:00:00`, the three
+middle jobs `06:00:00`/`12:00:00`. All five jobs ran strictly serialized
+via `--dependency=afterany` chains (never two jobs touching the store at
+once) and all landed on node **itiger07** (the 30M lane's `scale-check-30m`
+job 213174 shared that node with this lane's build 213188 for part of its
+run — CPU/IO sharing only, different stores, recorded on both sides).
+`du -sm /project/xzhang12`: 38,966 MB before this lane's build, 57,945 MB
+after the build, 73,377 MB after the recovery replay (well inside the
+~187 GB effective quota; ~129 GB headroom remained even before the
+recovery copy landed).
+
+### What ran (jobs, in order)
+
+1. **Build** (job 213188, `--mem=256G --time=36:00:00`) —
+   `scripts/build_synth_store.py --n-entities 100000000 --batch 250
+   --compact-every 1000000 --digest streaming --backend native`, with the
+   external 30s `tools/rss_sampler.py` sampler alongside the harness's own
+   per-tick figures. `BUILD_EXIT=0`. Sacct wall (queue+setup+run) 08:41:31;
+   the harness's own measured `wall_s` (used for all scoring below, same
+   convention as Stage 0/30M) is 28,372.936 s.
+2. **Query-ready floor** (job 213189, `--dependency=afterany:213188`) —
+   ran once, cleanly (no writer-lock race: the 30M lane's `read_only=True`
+   fix to `scripts/query_floor.py` was already in place). `n_ok=6/13`.
+3. **Scale-curve + check --full + reach-admission probe** (job 213190,
+   `--dependency=afterany:213189`) — `scripts/eval_harness.py --scale
+   100000000 --systems native`, then `tgms check <store> --json`, then the
+   dedicated `temporal_reachability` admission-estimate probe (same script
+   shape as the 30M lane's).
+4. **version_history probe** (job 213191, `--dependency=afterany:213190`)
+   — 3 reps, separate processes, `kind=edge belief=all window=[0,105e6)
+   limit=10`.
+5. **Recovery replay, `--compact-every 5000`** (job 213192,
+   `--dependency=afterany:213191`) — Addendum 6's 100M recovery-cadence
+   pre-registration: `--compact-every 500` was ruled out before dispatch
+   (the 30M frozen-protocol result extrapolates to ~45h at 100M, infeasible
+   within the 2-day Slurm wall and would only re-measure D-164), so this is
+   the campaign's **only** 100M recovery measurement — no 500-cadence
+   100M run exists to reconcile against.
+
+No failed/rerun jobs, no writer-lock races, no filename collisions — the
+whole chain ran clean on the first attempt.
+
+### Build results
+
+| quantity | value |
+|---|---:|
+| wall (harness `wall_s`) | 28,372.936 s (7.882 h) |
+| total ops | 100,000,262 |
+| compactions | 101 (100 in-loop + 1 trailing, before digest) |
+| peak RSS (VmHWM) | 186,422,544 KB (186.42 "GB", campaign convention -- see falsifier note below; 177.79 true GiB) |
+| final manifest bytes | 206,946 B |
+| final segment bytes | 5,218,378,406 B (5.218 GB) |
+| store digest (streaming) | `48bcb256874e6ad7ed8712ebff668fb25f81c6eafd78d7274efa245efa8a2d97` |
+
+**Finalisation phases** (`build-record.json build_info.finalisation_phases`,
+authoritative, separately timed): final compaction (the 101st) 571.910 s,
+streaming digest 2,759.624 s, gc 38.848 s, stats 35.085 s -- sum 3,405.467 s.
+
+**Per-decile bulk ops/s** (10 deciles of 10,000,000 ops each; `build-
+record.json`'s own `ops_per_s_by_decile` field was **null** for this run,
+unlike the 10M/30M records -- flagged, not silently patched; the table below
+is derived from `build-100m.stdout.log`'s progress ticks, same arithmetic
+Stage 0/30M used):
+
+| decile | ops range | ops/s |
+|---:|---|---:|
+| 1 | 0-10M | 10,199.9 |
+| 2 | 10-20M | 8,689.6 |
+| 3 | 20-30M | 6,159.5 |
+| 4 | 30-40M | 4,908.2 |
+| 5 | 40-50M | 4,044.0 |
+| 6 | 50-60M | 3,433.8 |
+| 7 | 60-70M | 2,960.9 |
+| 8 | 70-80M | 2,602.9 |
+| 9 | 80-90M | 2,334.1 |
+| 10 | 90-100M | 2,038.3 |
+
+**Median: 3,738.9 ops/s** -- well under the 30M run's 8,463.0 ops/s median,
+consistent with D-164 (`compact()` materialises the whole store per call,
+so cost grows with rows compacted, and grows faster the larger the store
+already is).
+
+**Compaction share of the build wall** (`build-100m-compaction-walls.json`)
+-- the checkpoint log carries no native per-compaction timer for the 100
+in-loop compactions, so their combined cost is *estimated* from
+checkpoint-delta pairs (each 1,000,000-op cycle's second 500K-op half minus
+its first half, a same-cycle steady-rate assumption): **23,194.3 s**
+(range 29.1 s early / up to ~524 s late-cycle). Added to the authoritative
+final-compaction phase (571.910 s): **23,766.2 s, or 83.76% of the total
+28,372.936 s wall**, is compaction time. This does not reconcile cleanly
+with the stdout ticks' own cumulative-elapsed gap at the finalization
+boundary (786.2 s vs the authoritative finalisation-phase sum of
+3,405.467 s, short by ~2,619 s) -- not root-caused here, flagged in the JSON
+file's `instrumentation_cross_check_note` for the coordinator. The
+authoritative `wall_s` and `finalisation_phases` (both from
+`build-record.json`) are what is scored; the tick-based cross-check is
+reported only as a discrepancy that did not close.
+
+### Addendum 5 / 6 quantities and falsifier scoring
+
+| quantity | band (Addendum 5/6, 100M) | measured | verdict |
+|---|---|---:|---|
+| build wall | 1.5 h - 5 h | 7.882 h | **REFUTED** (> 1.25x upper bound of 6.25h) -- but matches the coordinator's own pre-written expectation ("~8-10h total") exactly |
+| steady-decile ops/s | > 10,000 | 3,738.9 | **TRIPPED** |
+| build VmHWM (H1 vs H2) | H1 <= 55 GB; H2 180-200 GB (falsifier > 260 GB) | 186.42 "GB" (campaign convention; 177.79 true GiB) | **H2 named again, H1 refuted** -- see unit note below |
+| query-ready floor VmHWM | 18-24 GB (falsifier > 25/60 GB) | 19.67 GB | **PASS** |
+| `check --full` | healthy, <= 6 min | healthy, 336.353 s = 5.606 min | **PASS** (93.4% of the ceiling) |
+| recovery (`--compact-every 5000`) | 3-6 h, digest equal | 22,717.685 s = 6.310 h, digest equal | **MISS-not-refuted** (5.2% over the upper bound; falsifier is > 2x upper = 12h, not tripped) |
+| manifest bytes | <= 4 GB | 206,946 B | **PASS** |
+| segment bytes | ~5.0 GB (falsifier > 2x) | 5.218 GB | **PASS** |
+| `version_history` (kind=edge, belief=all) | <= 60 s / <= 10 GB (falsifier > 25 GB) | 18.982 s / 12.817 GB | wall **PASS**; VmHWM **MISS-not-refuted** (exceeds the 10GB point prediction, well under the 25GB falsifier) |
+| `reach.window` admission | admitted unless `time_est_ms` > 10,000 | `time_est_ms=14,571`, refused | **anticipated** (Addendum 5's restated fallback branch -- honest outcome, not a failure) |
+| `hist.single`/`hist.asof` p50 vs bar | <= 2.40 / <= 2.05 ms | 12.965 / 12.998 ms | **REFUTED** (~30x; both anchors were sub-millisecond, plausibly near fixed-overhead noise at the anchor point -- flagged, not resolved) |
+| `paths.k`/`series.count`/`burst.zscore`/`motif.filtered` | per §2h multiplier | 20.164 / 291.521 / 294.233 / 110.861 ms | **PASS** (all 4) |
+| `snap.hop2`/`diff.global`/`nbr.evolution`/`coactive.narrow`/`resolve.substr`/`agg.rel_bucket` | per §2h multiplier | refused (CostError, cost guardrail) | **new finding, not anticipated** -- only `reach.window`'s refusal was pre-registered; these six refusing at 100M was not predicted by any addendum |
+
+**Unit note on "GB" for VmHWM figures.** This README (and the campaign's
+existing Stage-0/30M records) report VmHWM "GB" as `vmhwm_kb / 1,000,000`
+-- verified against the Stage-0 10M anchor (`vmhwm_kb=19,897,476` ->
+Addendum 5's own "19.9GB" prose) -- not true decimal GB or GiB
+(19,897,476 KiB is actually 20.87 true GB / 18.98 GiB). Using the
+campaign's own established convention places this run's 100M build VmHWM
+unambiguously inside the H2 180-200GB band; true GiB (177.79) would sit
+just under the 180 lower bound. Recorded explicitly in
+`build-100m.json`'s `falsifiers.build_vmhwm_h1_h2.unit_note` so the choice
+is auditable, not silent.
+
+**Scale-curve -- 6/13 executed, 7/13 refused.** Of the 6 that ran,
+`paths.k`/`series.count`/`burst.zscore`/`motif.filtered` pass their
+Addendum-5 bars; `hist.single`/`hist.asof` (both simple `entity_history`
+point lookups) blow through theirs by ~30x. `reach.window`'s refusal
+(`time_est_ms=14,571 > 10,000`) is the fallback branch Addendum 5
+explicitly restated as an honest, non-failing outcome. The other six
+refusals (`snap.hop2`, `diff.global`, `nbr.evolution`, `coactive.narrow`,
+`resolve.substr`, `agg.rel_bucket`) were **not** anticipated by the design
+doc -- at 30M all thirteen operators executed (some past their bars); at
+100M the cost guardrail now refuses more than half the registry outright.
+Full per-operator detail (bars, multipliers, measured p50/p95, refusal
+estimates) in `scale-curve-100m.json`.
+
+**Recovery.** `--compact-every 5000` fired 80 compactions over 400,262
+replay batches (400,262 // 5000 = 80), replay wall 22,717.685 s = 6.310 h
+-- just over the pre-registered 3-6 h band (not the 2x falsifier).
+`digest_equal: true` (both source and replayed store hash to
+`48bcb256...a8f2d97`). Unlike the 30M lane, there is no companion
+500-cadence 100M run: Addendum 6 pre-judged that infeasible (~45h
+extrapolated, over the 2-day Slurm wall, and would only re-measure D-164
+again rather than answer a new question), so this is the campaign's single
+100M recovery data point.
+
+### Deviations from the literal Stage-1 recipe
+
+1. **`build-record.json`'s `ops_per_s_by_decile` field was null** for this
+   run (populated for the 10M/30M records). Not root-caused; the per-decile
+   table above is derived from the stdout progress ticks instead, same
+   arithmetic the campaign already uses elsewhere.
+2. **Tick-based finalization gap does not reconcile with the authoritative
+   finalisation-phase sum** (786.2 s vs 3,405.467 s, short by ~2,619 s).
+   See `build-100m-compaction-walls.json`'s `instrumentation_cross_check_note`.
+   Scoring uses the authoritative `build-record.json` figures throughout;
+   the tick-based number is reported only as a cross-check that did not
+   close.
+3. **Six scale-curve operators refused by the cost guardrail at 100M**
+   that were not predicted to refuse by `SCALE_BUILD_FORECAST_2026-09-15.md`
+   (only `reach.window`'s refusal was pre-registered, in Addendum 5's
+   second re-examination). See "Scale-curve" above.
+4. **`hist.single`/`hist.asof` REFUTED by ~30x** against their Addendum-5
+   bars -- both operators' 10M anchors were sub-millisecond (0.398/0.412 ms),
+   so the multiplier-based bar (2.40/2.05 ms) is extremely tight; the
+   100M measured values (12.965/12.998 ms) are plausibly dominated by a
+   fixed per-call cost rather than true O(scale) growth, but this is not
+   resolved here -- flagged for the coordinator.
+5. **Recovery wall (6.310 h) exceeds the pre-registered 3-6 h band's upper
+   bound by 5.2%** -- not the >2x falsifier, scored MISS-not-refuted.
+6. **`version_history` VmHWM (12.817 GB) exceeds the <=10 GB point
+   prediction** but stays well under the ~25 GB falsifier line -- scored
+   MISS-not-refuted, not REFUTED.
+
+No writer-lock races, no filename collisions, no contended/duplicate runs
+occurred in this lane (unlike 30M's query-floor/scale-curve/version-history
+first attempts) -- the dependency chain kept every job strictly serialized
+on a store nothing else was touching.
+
+### Files and provenance (sha256)
+
+| file | sha256 |
+|---|---|
+| `build-100m.json` | `7eee07251a5e89bbedd6fc0c6f562729e298c885ea2dea6f1affa23151729ca8` |
+| `build-100m.stdout.log` | `cb1d615c4279ee0d3a9fcdd29fde92f6366bb6bdef70981d7b324aec8aabadc9` |
+| `build-record-100m.json` | `fd75d5afe84121584a3dd08f26c952f401eea24296565f1bc1f4c6f79ab844bf` |
+| `build-100m-compaction-walls.json` | `d8bbadbfc44caa77804f65fee6e79dda1b58b5316a255b833866874c06793da6` |
+| `rss-100m.jsonl` | `be3db7be7273777a54f77f12a22726d0d40fb5f93050d3f2126562ce685839c2` |
+| `queryfloor-100m.json` | `b426aa5caf82ecbc4f05b3a2a12c8335ee218ea15e4b64209a97a677a9745d08` |
+| `queryfloor-100m.stdout.log` | `d28d81ecd95f6d5b02482860341b3b2bf5bee7422ec20b53134eb16cfa8b023f` |
+| `scale-curve-100m.json` | `8f39ca9a2b8508ce26d953d05303cc7aae46a47a8208853f4e981ce0933a3c83` |
+| `scale-curve-100m-raw.json` | `bed58346dc34ea12f158868e7e12e86611e9d3291a4b552aef4ea52fa703dcd4` |
+| `scale-check-100m.stdout.log` | `c7e30a096f4e24cc6b8732129442945e2a652ccffdf10728bbc566f27f4bd769` |
+| `check-full-100m.json` | `00dac49960007364d8e1754bc6b201774bab15c16ac75f42ce4664b901d2756e` |
+| `check-full-100m-raw.json` | `04de67ef5d62eab0916aff9546dcc2159da6fa7fdf8328d7d8efd612dadc8ef2` |
+| `reach-admission-100m.json` | `1b111f052fe1a77c096b2a7eaa24e6bc05801cf1e3077829ab167aa601a31140` |
+| `version-history-100m.json` | `08e2a5424dcfae09da0b03e5f47c6cb0fa0aa1c93f4b9680f78291684f9f6a28` |
+| `version-history-100m-raw.jsonl` | `fbb72251683d1528697f86cbf22e4b98a861b328bc90a435aa0305f3e9c026d4` |
+| `version-history-100m.stdout.log` | `61d08153b6be26579522a08e1b928e90b4560bbc602e0e3b17f227e125826e7f` |
+| `recovery-100m-ce5000.json` | `6f6498b8559f31abb781004b7a6d6930467dd37d9ee3fcb2e4365fafad8c95e2` |
+| `recovery-100m-ce5000.stdout.log` | `e99811104717cda715ce11957ec9bfd2b137df9bcd142dd6aebcde1ef80849e5` |
+
+Every file above was sha256-verified byte-identical between its source
+path on the cluster (`/project/xzhang12/tgms-b7/stores/synth-100m-native/`
+or `/home/xzhang12/b7-work-h/{logs,records}/`) and the copy transferred to
+this worktree, at transfer time (not only at commit time). The five
+schema-bearing records (`build-100m.json`, `scale-curve-100m.json`,
+`check-full-100m.json`, `recovery-100m-ce5000.json`,
+`version-history-100m.json`) validate against
+`benchmarks/schema/result_manifest.schema.json`
+(`scripts/check_result_manifest.py`, run via the cluster worktree's
+`.venv` -- `jsonschema==4.26.0` -- since this laptop worktree carries no
+Python env, same workaround the 30M lane used).
+
+The cluster worktree `/project/xzhang12/tgms-b7`, its
+`stores/synth-100m-native/`, and the replay copy
+(`synth-100m-native-replayed-ce5000-213192`) are left in place on iTiger
+(never deleted, per policy).
+
+Slurm job IDs: 213188 (build), 213189 (query-floor), 213190
+(scale-curve + check --full + reach-admission probe), 213191
+(version_history), 213192 (recovery, `--compact-every 5000`).
+
+Tool scripts used **unchanged** from the 30M lane (not recopied/recommitted
+here -- same files, same sha256, already on record in this README's Stage
+1 -- 30M section above): `scripts/query_floor.py`,
+`scripts/version_history_probe.py`, `scripts/rss_sampler.py`.
+
+Job scripts: `benchmarks/scale-v1/jobs/{build_100m,queryfloor_100m,
+scale_check_100m,version_history_100m,recovery_100m_ce5000}.slurm`, each
+transferred byte-identical from the cluster (sha256-verified both before
+submission and again at commit time).
+
+| script | sha256 |
+|---|---|
+| `benchmarks/scale-v1/jobs/build_100m.slurm` | `376643ee02eb817a5b85aca74dca4233d36c17f361c0293bc2c1324dd22a39ba` |
+| `benchmarks/scale-v1/jobs/queryfloor_100m.slurm` | `9bee9f1e08f082cff1adbe2548302e1313b4ff9c5743db4960c4ce364190e6f3` |
+| `benchmarks/scale-v1/jobs/scale_check_100m.slurm` | `52f94d06e1628de55c1bc88d5a3ac781947bc8ff63820204ae27c390d7363cc3` |
+| `benchmarks/scale-v1/jobs/version_history_100m.slurm` | `6cba706098d7b704c4c87bcb6b06e10ba1dd9f78b0d00ebbb0dfdb49976c6c34` |
+| `benchmarks/scale-v1/jobs/recovery_100m_ce5000.slurm` | `8083ab5a0787d17b803c0acde51e147db643ae3c1783494cd2a04a40326a22f1` |
+
+### The §3 "100M is clean" acceptance checklist (informational -- the gate itself is moot)
+
+Per `SCALE_BUILD_FORECAST_2026-09-15.md` §3, the PI's "300M dropped" ruling
+means no 300M step is gated on this checklist; the seven conditions are
+still scored here as the acceptance definition of the 100M record itself.
+**Not all seven hold** -- reported as such, per §3's own instruction ("any
+failure is reported as such"):
+
+1. §2a not tripped x1.25 -- **TRIPPED** (build wall 7.882h > 6.25h)
+2. §2b VmHWM <= 24GB / <= 60GB outer bar -- query-ready floor **PASS**
+   (19.67GB); build VmHWM is a different row (H1/H2), not this one --
+   H2 named, not falsified (<=260GB)
+3. §2c <= 10GB/<= 60s -- wall PASS, VmHWM MISS-not-refuted (<=25GB held)
+4. §2d <= 4GB manifest -- **PASS**
+5. §2f exits 0 -- **PASS**
+6. §2g recovery not tripped -- **MISS-not-refuted** (not the >2x falsifier)
+7. §2h no operator over bar and `reach.window` refused as predicted --
+   **NOT MET**: `hist.single`/`hist.asof` REFUTED, six operators refused
+   unpredicted
+
+**Verdict: the 100M point is reported as not fully clean** by the §3
+definition -- two of seven conditions are outright tripped/not-met
+(build-wall falsifier, §2h), three are MISS-not-refuted rather than clean
+PASSes (§2c VmHWM, §2g recovery, and the general softness of "not tripped"
+readings), and only §2b/§2d/§2f are unambiguous PASSes. This is reported
+factually, per §3's instruction, not smoothed over.
