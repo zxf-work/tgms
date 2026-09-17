@@ -1,0 +1,37 @@
+RUN_STARTED same-data-gate commit=0b7198dfdf7a 2026-09-16T21:41:47Z
+node Place          merged=     1460 projected=     1460 OK
+node Organisation   merged=     7955 projected=     7955 OK
+node TagClass       merged=       71 projected=       71 OK
+node Tag            merged=    16080 projected=    16080 OK
+node Person         merged=    10295 projected=    10295 OK
+node Forum          merged=   100827 projected=   100827 OK
+node Post           merged=  1121226 projected=  1121226 OK
+node Comment        merged=  1739438 projected=  1739438 OK
+rel  Comment_hasTag_Tag                 merged=  2176131 projected=  2176131 OK
+rel  Forum_hasMember_Person             merged=  2909768 projected=  2909768 OK
+rel  Forum_hasTag_Tag                   merged=   328584 projected=   328584 OK
+rel  Person_hasInterest_Tag             merged=   238052 projected=   238052 OK
+rel  Person_knows_Person                merged=   173014 projected=   173014 OK
+rel  Person_likes_Comment               merged=  1109813 projected=  1109813 OK
+rel  Person_likes_Post                  merged=   760455 projected=   760455 OK
+rel  Person_studyAt_University          merged=     8309 projected=     8309 OK
+rel  Person_workAt_Company              merged=    22044 projected=    22044 OK
+rel  Post_hasTag_Tag                    merged=   751933 projected=   751933 OK
+rel  Place_isPartOf_Place               merged=     1454 projected=     1454 OK
+rel  Organisation_isLocatedIn_Place     merged=     7955 projected=     7955 OK
+rel  TagClass_isSubclassOf_TagClass     merged=       70 projected=       70 OK
+rel  Tag_hasType_TagClass               merged=    16080 projected=    16080 OK
+rel  Person_isLocatedIn_City            merged=    10295 projected=    10295 OK
+rel  Forum_hasModerator_Person          merged=   100827 projected=   100827 OK
+rel  Post_hasCreator_Person             merged=  1121226 projected=  1121226 OK
+rel  Forum_containerOf_Post             merged=  1121226 projected=  1121226 OK
+rel  Post_isLocatedIn_Country           merged=  1121226 projected=  1121226 OK
+rel  Comment_hasCreator_Person          merged=  1739438 projected=  1739438 OK
+rel  Comment_isLocatedIn_Country        merged=  1739438 projected=  1739438 OK
+rel  Comment_replyOf_Post               merged=   950418 projected=   950418 OK
+rel  Comment_replyOf_Comment            merged=   789020 projected=   789020 OK
+
+nodes 2997352 / 2997352 (required 2997352)
+edges 17196776 / 17196776 (required 17196776)
+GATE PASSED
+GATE_EXIT=0 2026-09-16T21:42:48Z

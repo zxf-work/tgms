@@ -670,3 +670,68 @@ def test_emit_rows_output_is_directly_readable_by_ldbc_compare(tmp_path):
     assert verdict["compared"] == len(doc["rows"]) > 0
     assert verdict["disagreeing"] == 0
     assert verdict["verdict"] == "agreeing"
+
+
+# --------------------------------------------------------------------------
+# 6. temporal parameters reach the driver as temporal values
+# --------------------------------------------------------------------------
+
+def test_iso_parameters_are_handed_to_the_driver_as_datetimes():
+    """`params.json` stores a temporal parameter as its ISO-8601 spelling
+    because it is JSON. Cypher must receive a *temporal value*: comparing a
+    DATETIME property against a STRING does not raise in Neo4j 5, it yields
+    null, so the predicate is never true and the query returns zero rows with
+    no error anywhere. Reproduces LDBC's own
+    `cast_parameter_to_driver_input` (bi/neo4j/queries.py)."""
+    import datetime
+
+    got = R.driverize_params({
+        "date": "2010-02-12T00:00:00.000+00:00",
+        "country": "India",
+        "tag": "Bob_Geldof",
+        "languages": ["es", "ta"],
+        "lengthThreshold": 115,
+        "personId": 8796093025922,
+    })
+    assert got["date"] == datetime.datetime(
+        2010, 2, 12, tzinfo=datetime.timezone.utc)
+    # everything that is not an ISO-8601 UTC timestamp passes through untouched
+    assert got["country"] == "India"
+    assert got["tag"] == "Bob_Geldof"
+    assert got["languages"] == ["es", "ta"]
+    assert got["lengthThreshold"] == 115
+    assert got["personId"] == 8796093025922
+
+
+def test_a_string_that_merely_looks_datelike_is_not_converted():
+    """The match is on the full `us_to_iso` spelling, not on 'contains digits
+    and dashes' — a tag or country name must never become a timestamp."""
+    got = R.driverize_params({"tag": "2010-02-12", "other": "2010-02-12T00:00:00"})
+    assert got["tag"] == "2010-02-12"
+    assert got["other"] == "2010-02-12T00:00:00"
+
+
+def test_run_query_sends_the_converted_parameters(monkeypatch):
+    """The conversion is at the driver boundary, so it applies to every query
+    the runner issues, not only to the ones a test remembers to convert."""
+    import datetime
+
+    seen: dict = {}
+
+    class _Result:
+        def keys(self):
+            return []
+
+        def __iter__(self):
+            return iter(())
+
+    class _Session:
+        def run(self, text, params):
+            seen.update(params)
+            return _Result()
+
+    R.run_query(_Session(), "MATCH (n) WHERE n.d > $date RETURN n",
+                {"date": "2010-02-12T00:00:00.000+00:00", "country": "India"})
+    assert seen["date"] == datetime.datetime(
+        2010, 2, 12, tzinfo=datetime.timezone.utc)
+    assert seen["country"] == "India"

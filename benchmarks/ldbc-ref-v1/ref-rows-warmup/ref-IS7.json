@@ -1,0 +1,32 @@
+{
+ "columns": [
+  "commentId",
+  "commentContent",
+  "commentCreationDate",
+  "replyAuthorId",
+  "replyAuthorFirstName",
+  "replyAuthorLastName",
+  "replyAuthorKnowsOriginalMessageAuthor"
+ ],
+ "commit": "0b7198dfdf7a",
+ "host": "xzgpu",
+ "params": {
+  "messageId": 2061590679825
+ },
+ "plan_id": "IS7",
+ "query_file": "external_workloads/ldbc/interactive_v1/cypher/queries/interactive-short-7.cypher",
+ "query_sha256": "7ac858ff9f60f84dfe9833f1f8285cbd2b58cd4834d8eccb2d4beaf7f41656a7",
+ "result_digest": "be2154449591b9880e4265615116c81477b414a5a11b5f79dd70bf20d8d07543",
+ "rows": [
+  {
+   "commentContent": "right",
+   "commentCreationDate": 1344490369818,
+   "commentId": 2061590679826,
+   "replyAuthorFirstName": "Farhad",
+   "replyAuthorId": 4835,
+   "replyAuthorKnowsOriginalMessageAuthor": true,
+   "replyAuthorLastName": "Amin"
+  }
+ ],
+ "wall_s": 0.107
+}

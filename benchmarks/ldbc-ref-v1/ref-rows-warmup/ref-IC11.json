@@ -1,0 +1,22 @@
+{
+ "columns": [
+  "personId",
+  "personFirstName",
+  "personLastName",
+  "organizationName",
+  "organizationWorkFromYear"
+ ],
+ "commit": "0b7198dfdf7a",
+ "host": "xzgpu",
+ "params": {
+  "countryName": "Laos",
+  "personId": 8796093030621,
+  "workFromYear": 2010
+ },
+ "plan_id": "IC11",
+ "query_file": "external_workloads/ldbc/interactive_v1/cypher/queries/interactive-complex-11.cypher",
+ "query_sha256": "677b80887429445c5319a0d621d86b7df1c07889ae94e40447aacf853729fea1",
+ "result_digest": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+ "rows": [],
+ "wall_s": 0.089
+}

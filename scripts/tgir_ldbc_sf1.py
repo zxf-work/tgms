@@ -195,12 +195,27 @@ def _time(fn: Any, reps: int) -> tuple[list[float], Any]:
     return times, out
 
 
-def _last_json(text: str, phase: str | None) -> dict[str, Any]:
+def _last_json(text: str | bytes, phase: str | None) -> dict[str, Any]:
     """The last JSON line of a child, optionally restricted to one phase.
 
     `TimeoutExpired` carries whatever the child managed to write, which is why
     the child emits its identity and estimate up front.
+
+    That payload arrives as **bytes even when `subprocess.run` was given
+    `text=True`**: the decoding wrapper is applied to the returned
+    `CompletedProcess`, not to the exception raised on the way out
+    (CPython `subprocess._communicate` stores the raw buffers on
+    `TimeoutExpired`). Handling both here rather than at the call site keeps
+    the one caller that can be handed bytes from having to know that, and is
+    load-bearing: without it the *timeout handler itself* raises
+    `TypeError: startswith first arg must be bytes...`, which escapes
+    `run_child` and aborts the whole campaign at the first plan to reach the
+    ceiling — 9 of 25 plans in, with nothing written (ldbc-ref-v1,
+    2026-09-17: BI6.v2 timed out at 1020 s and took the run down with it).
+    A ceiling hit must be one recorded `TIMEOUT` row, never a lost campaign.
     """
+    if isinstance(text, bytes):
+        text = text.decode("utf-8", "replace")
     out: dict[str, Any] = {}
     for line in text.splitlines():
         if not line.startswith("{"):

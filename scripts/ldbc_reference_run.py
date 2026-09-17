@@ -106,13 +106,58 @@ def canonicalize_value(value: Any) -> Any:
     return str(value)
 
 
+#: The exact wire form `ldbc_snb_params.us_to_iso` writes into `params.json`,
+#: which is also the exact form LDBC's own Neo4j driver parses
+#: (`external_workloads/ldbc/bi/neo4j/queries.py:46`,
+#: `cast_parameter_to_driver_input`, the DATETIME branch:
+#: `strptime(value, '%Y-%m-%dT%H:%M:%S.%f+00:00')`). No other LDBC parameter
+#: is a string of this shape — the rest are country, tag, tagClass and
+#: language names — so matching on it cannot capture a non-temporal value.
+_ISO_UTC = "%Y-%m-%dT%H:%M:%S.%f+00:00"
+
+
+def driverize_params(params: dict[str, Any]) -> dict[str, Any]:
+    """`params.json` -> what the driver must actually be handed.
+
+    A temporal parameter has to reach Cypher as a *temporal value*, not as its
+    ISO-8601 spelling. `bi-4.cypher` says so in its own header
+    (`:params { date: datetime('2010-01-29') }`) and LDBC's driver does the
+    conversion in `cast_parameter_to_driver_input`; this is that same
+    conversion, at the same boundary, reproduced rather than reinvented —
+    same format string, same UTC construction.
+
+    It is not cosmetic. `WHERE forum.creationDate > $date` with a DATETIME
+    property and a STRING parameter does not raise in Neo4j 5: the comparison
+    evaluates to null, the predicate is never true, and the query returns
+    **zero rows, silently**. Measured (ldbc-ref-v1, 2026-09-17): BI4, BI9,
+    BI12, IC2 and IC9 each returned 0 or 1 reference rows against a TGIR side
+    returning 100/100/166/20/20 — five "disagreements" that were entirely an
+    artifact of this boundary, i.e. exactly `campaign.yaml`'s falsifier (b).
+
+    `params.json` itself keeps the JSON-serializable string: it is a record,
+    read by both sides, and the two spellings name the same instant.
+    """
+    out: dict[str, Any] = {}
+    for key, value in params.items():
+        if isinstance(value, str):
+            try:
+                naive = datetime.datetime.strptime(value, _ISO_UTC)
+            except ValueError:
+                out[key] = value
+                continue
+            out[key] = naive.replace(tzinfo=datetime.timezone.utc)
+        else:
+            out[key] = value
+    return out
+
+
 def run_query(session: Any, cypher_text: str,
              params: dict[str, Any]) -> tuple[list[str], list[dict[str, Any]]]:
     """One query, one set of parameters, against an injected session.
     Returns `(columns, rows)`; `columns` is the result's own declared order
     (`Result.keys()`), never re-sorted — the same "envelope's declared
     column order" rule `--emit-rows` follows on the TGMS side."""
-    result = session.run(cypher_text, params)
+    result = session.run(cypher_text, driverize_params(params))
     columns = list(result.keys())
     rows = [{name: canonicalize_value(record[name]) for name in columns}
            for record in result]

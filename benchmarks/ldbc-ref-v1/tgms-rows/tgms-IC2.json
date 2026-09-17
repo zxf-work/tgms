@@ -1,0 +1,248 @@
+{
+ "arm": "characterization-interactive",
+ "columns": [
+  "personId",
+  "personFirstName",
+  "personLastName",
+  "messageId",
+  "messageContent",
+  "messageCreationDate"
+ ],
+ "commit": "0b7198dfdf7a",
+ "host": "xzgpu",
+ "params": {
+  "maxDate": 1354060800000000,
+  "personId": "70368744207379"
+ },
+ "plan_digest": "ac9704a6ab25b9b1f22a0cb2992444469e64cba6a8ea40bab61070bda0ffdc79",
+ "plan_id": "IC2",
+ "result_digest": "4645869ef518eb59f0f00e072c473f09bf49161524ba7053145bca13a708991d",
+ "rows": [
+  {
+   "messageContent": "About Leon Trotsky, ring the early days of the Soviet Union, he served fir",
+   "messageCreationDate": 1354060345478000,
+   "messageId": 2336465009710,
+   "messageId__hierarchy": "Message",
+   "personFirstName": "Rahul",
+   "personId": 26388279067181,
+   "personId__hierarchy": "Person",
+   "personLastName": "Singh"
+  },
+  {
+   "messageContent": "About Leon Trotsky, ring the early days of the Soviet Union, he served fir",
+   "messageCreationDate": 1354060345478000,
+   "messageId": 2336465009710,
+   "messageId__hierarchy": "Message",
+   "personFirstName": "Rahul",
+   "personId": 26388279067181,
+   "personId__hierarchy": "Person",
+   "personLastName": "Singh"
+  },
+  {
+   "messageContent": "right",
+   "messageCreationDate": 1354056977739000,
+   "messageId": 2336466826139,
+   "messageId__hierarchy": "Message",
+   "personFirstName": "K.",
+   "personId": 26388279070832,
+   "personId__hierarchy": "Person",
+   "personLastName": "Sharma"
+  },
+  {
+   "messageContent": "right",
+   "messageCreationDate": 1354056977739000,
+   "messageId": 2336466826139,
+   "messageId__hierarchy": "Message",
+   "personFirstName": "K.",
+   "personId": 26388279070832,
+   "personId__hierarchy": "Person",
+   "personLastName": "Sharma"
+  },
+  {
+   "messageContent": "thx",
+   "messageCreationDate": 1354056935208000,
+   "messageId": 2336466848373,
+   "messageId__hierarchy": "Message",
+   "personFirstName": "K.",
+   "personId": 35184372094002,
+   "personId__hierarchy": "Person",
+   "personLastName": "Sharma"
+  },
+  {
+   "messageContent": "thx",
+   "messageCreationDate": 1354056935208000,
+   "messageId": 2336466848373,
+   "messageId__hierarchy": "Message",
+   "personFirstName": "K.",
+   "personId": 35184372094002,
+   "personId__hierarchy": "Person",
+   "personLastName": "Sharma"
+  },
+  {
+   "messageContent": "About Fr\u00e9d\u00e9ric Chopin, ed from poor health; About Where Is the Love, umber one on",
+   "messageCreationDate": 1354056560250000,
+   "messageId": 2336466788171,
+   "messageId__hierarchy": "Message",
+   "personFirstName": "R.",
+   "personId": 4398046520505,
+   "personId__hierarchy": "Person",
+   "personLastName": "Sharma"
+  },
+  {
+   "messageContent": "About Fr\u00e9d\u00e9ric Chopin, ed from poor health; About Where Is the Love, umber one on",
+   "messageCreationDate": 1354056560250000,
+   "messageId": 2336466788171,
+   "messageId__hierarchy": "Message",
+   "personFirstName": "R.",
+   "personId": 4398046520505,
+   "personId__hierarchy": "Person",
+   "personLastName": "Sharma"
+  },
+  {
+   "messageContent": "good",
+   "messageCreationDate": 1354056499922000,
+   "messageId": 2336465058562,
+   "messageId__hierarchy": "Message",
+   "personFirstName": "James",
+   "personId": 37383395349053,
+   "personId__hierarchy": "Person",
+   "personLastName": "Omar"
+  },
+  {
+   "messageContent": "good",
+   "messageCreationDate": 1354056499922000,
+   "messageId": 2336465058562,
+   "messageId__hierarchy": "Message",
+   "personFirstName": "James",
+   "personId": 37383395349053,
+   "personId__hierarchy": "Person",
+   "personLastName": "Omar"
+  },
+  {
+   "messageContent": "duh",
+   "messageCreationDate": 1354055913446000,
+   "messageId": 2336465058610,
+   "messageId__hierarchy": "Message",
+   "personFirstName": "James",
+   "personId": 37383395349053,
+   "personId__hierarchy": "Person",
+   "personLastName": "Omar"
+  },
+  {
+   "messageContent": "duh",
+   "messageCreationDate": 1354055913446000,
+   "messageId": 2336465058610,
+   "messageId__hierarchy": "Message",
+   "personFirstName": "James",
+   "personId": 37383395349053,
+   "personId__hierarchy": "Person",
+   "personLastName": "Omar"
+  },
+  {
+   "messageContent": "I see",
+   "messageCreationDate": 1354055804889000,
+   "messageId": 2336465058634,
+   "messageId__hierarchy": "Message",
+   "personFirstName": "James",
+   "personId": 37383395349053,
+   "personId__hierarchy": "Person",
+   "personLastName": "Omar"
+  },
+  {
+   "messageContent": "I see",
+   "messageCreationDate": 1354055804889000,
+   "messageId": 2336465058634,
+   "messageId__hierarchy": "Message",
+   "personFirstName": "James",
+   "personId": 37383395349053,
+   "personId__hierarchy": "Person",
+   "personLastName": "Omar"
+  },
+  {
+   "messageContent": "About Tom Gehrels,  and shipping tAbout Achaemenid Empire, sed approximateAbout Holy",
+   "messageCreationDate": 1354054872236000,
+   "messageId": 2336464607546,
+   "messageId__hierarchy": "Message",
+   "personFirstName": "Shweta",
+   "personId": 28587302329901,
+   "personId__hierarchy": "Person",
+   "personLastName": "Khan"
+  },
+  {
+   "messageContent": "About Tom Gehrels,  and shipping tAbout Achaemenid Empire, sed approximateAbout Holy",
+   "messageCreationDate": 1354054872236000,
+   "messageId": 2336464607546,
+   "messageId__hierarchy": "Message",
+   "personFirstName": "Shweta",
+   "personId": 28587302329901,
+   "personId__hierarchy": "Person",
+   "personLastName": "Khan"
+  },
+  {
+   "messageContent": "duh",
+   "messageCreationDate": 1354054212652000,
+   "messageId": 2336467285055,
+   "messageId__hierarchy": "Message",
+   "personFirstName": "Shweta",
+   "personId": 28587302329901,
+   "personId__hierarchy": "Person",
+   "personLastName": "Khan"
+  },
+  {
+   "messageContent": "duh",
+   "messageCreationDate": 1354054212652000,
+   "messageId": 2336467285055,
+   "messageId__hierarchy": "Message",
+   "personFirstName": "Shweta",
+   "personId": 28587302329901,
+   "personId__hierarchy": "Person",
+   "personLastName": "Khan"
+  },
+  {
+   "messageContent": "LOL",
+   "messageCreationDate": 1354052564216000,
+   "messageId": 2336464959691,
+   "messageId__hierarchy": "Message",
+   "personFirstName": "Rahul",
+   "personId": 6597069771930,
+   "personId__hierarchy": "Person",
+   "personLastName": "Reddy"
+  },
+  {
+   "messageContent": "LOL",
+   "messageCreationDate": 1354052564216000,
+   "messageId": 2336464959691,
+   "messageId__hierarchy": "Message",
+   "personFirstName": "Rahul",
+   "personId": 6597069771930,
+   "personId__hierarchy": "Person",
+   "personLastName": "Reddy"
+  }
+ ],
+ "schema": [
+  [
+   "personId",
+   "uid"
+  ],
+  [
+   "personFirstName",
+   "json?"
+  ],
+  [
+   "personLastName",
+   "json?"
+  ],
+  [
+   "messageId",
+   "uid"
+  ],
+  [
+   "messageContent",
+   "json?"
+  ],
+  [
+   "messageCreationDate",
+   "json?"
+  ]
+ ]
+}

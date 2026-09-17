@@ -43,6 +43,7 @@ import argparse
 import calendar
 import hashlib
 import json
+import subprocess
 import sys
 import time
 from pathlib import Path
@@ -488,21 +489,47 @@ def _cypher_side(plan_id: str, alias: dict[str, str], raw: dict[str, Any],
     (never `snb_uid`-encoded), ISO-8601 for anything that names a clock, the
     list itself for BI12's `languages` (§E addendum 3 — the OR-expansion is a
     TGIR-side rule; Cypher takes the `STRING[]` LDBC already supplies), and
-    every other value passed through as LDBC's own file gave it."""
+    every other value passed through as LDBC's own file gave it.
+
+    **Which name each value is filed under** is not the same question on the
+    two sides of the alias table, because the two source formats name things
+    differently, and the answer is fixed by what the vendored `.cypher` file
+    itself declares as `$param`:
+
+    * BI: the parameter CSV's column name *is* the query's parameter name
+      (`bi-10.cypher` reads `$country`, `$tagClass`, `$personId`; `bi-10a.csv`
+      heads those columns identically), so the **ldbc_key** is the right name.
+      The plan_key is TGIR's internal one and differs (`nearMaxHops` is
+      derived from `minPathDistance`, `tagName` from `tag`).
+    * Interactive: the query's parameter name is LDBC's *spec* name —
+      `interactive-short-1.cypher` reads `$personId` — while the ldbc_key is a
+      column of `validation_params-sf1.csv`, whose one row packs every
+      operation's parameters at once and therefore disambiguates them
+      (`personIdSQ1`, `personIdQ2`, `messageIdContent`, `messageRepliesId`).
+      Those suffixed names are an artifact of that file's layout and no query
+      ever asks for them, so the **plan_key** is the right name.
+
+    Verified mechanically over all 24 templates by
+    `test_every_exported_cypher_binding_names_the_parameters_its_query_asks_for`,
+    which greps each vendored query's own `$param` occurrences — the check
+    that makes this a property of the queries rather than a claim about them.
+    """
     temporal = (_bi_temporal_keys(params_root, sf, BI_SOURCES[plan_id][0])
                 if plan_id in BI_SOURCES else IV_TEMPORAL_LDBC_KEYS)
+    interactive = plan_id in IV_SOURCES
     out: dict[str, Any] = {}
     for plan_key, ldbc_key in alias.items():
         value = raw[ldbc_key]
+        name = plan_key if interactive else ldbc_key
         if plan_key in ID_HIERARCHY:
-            out[ldbc_key] = int(value)
+            out[name] = int(value)
         elif isinstance(value, list):
-            out[ldbc_key] = list(value)
+            out[name] = list(value)
         elif ldbc_key in temporal:
             us = value if plan_id in BI_SOURCES else int(value) * 1000
-            out[ldbc_key] = us_to_iso(us)
+            out[name] = us_to_iso(us)
         else:
-            out[ldbc_key] = value
+            out[name] = value
     return out
 
 
@@ -529,9 +556,31 @@ def export_bindings(params_root: Path, sf: str = "sf1",
             else:
                 alias = IV_SOURCES[pid]
                 raw = read_iv_first(params_root, sf, alias)
+            cypher_side = _cypher_side(pid, alias, raw, params_root, sf)
+            #: **One draw, two consumers** (design §3; RUNBOOK.md §5.1: "a
+            #: disagreement can never be attributed to a parameter drawn
+            #: differently between the two runs being compared"). Where
+            #: `bind()` *sampled* an anchor from the corpus (§E addendum 4,
+            #: the characterization-interactive arm), `_cypher_side` above
+            #: has no way to see that draw: it projects `raw`, the
+            #: validation file's own ids, which come from the separately
+            #: generated Interactive dataset and are **not present in this
+            #: BI substrate** (measured, ldbc-ref-v1 2026-09-16: the IS1
+            #: validation id 32985348839299 matches no Person row in the SF1
+            #: BI corpus, while the sampled anchor 4398046520371 does). Left
+            #: uncorrected, all 14 Interactive templates would send Neo4j a
+            #: parameter naming no entity — zero reference rows and a
+            #: guaranteed "disagreement" that says nothing about TGIR.
+            #: The sampled id is therefore carried across to the Cypher side
+            #: in LDBC's own name and raw (un-`snb_uid`-encoded) form, which
+            #: is exactly what `_cypher_side` does for every id it can see.
+            #: sampled anchors only ever occur on the Interactive arm, whose
+            #: Cypher-side names are the plan_keys (see `_cypher_side`).
+            for key, draw in b["sampled_anchors"].items():
+                cypher_side[key] = int(draw["ldbc_id"])
             rec: dict[str, Any] = {
                 "arm": b["arm"], "source": b["source"],
-                "cypher": _cypher_side(pid, alias, raw, params_root, sf),
+                "cypher": cypher_side,
                 "tgir": dict(b["params"]),
             }
             if b["sampled_anchors"]:
@@ -545,13 +594,57 @@ def export_bindings(params_root: Path, sf: str = "sf1",
             "rows": rows}
 
 
+def _git_sha() -> str:
+    """The checkout that produced a params.json, stamped into it."""
+    try:
+        return subprocess.run(["git", "rev-parse", "--short=12", "HEAD"],
+                              cwd=Path(__file__).resolve().parents[1],
+                              capture_output=True, text=True,
+                              check=True).stdout.strip()
+    except Exception:                                      # noqa: BLE001
+        return "unknown"
+
+
 def main() -> int:
     ap = argparse.ArgumentParser()
     ap.add_argument("--params", required=True, help="the params root")
     ap.add_argument("--sf", default="sf1")
     ap.add_argument("--plan", default="all")
+    #: RUNBOOK.md §5.1 documents this entry point as the thing that "writes
+    #: benchmarks/ldbc-ref-v1/params.json via export_bindings()". It did not:
+    #: `main()` only ever printed `bind()`'s TGIR side, so the two-sided file
+    #: both runners consume had no command that produced it. These two flags
+    #: are that command. `--csv` is the corpus the characterization-interactive
+    #: anchors are sampled from (§E addendum 4); omit it and those rows bind
+    #: to LDBC's own wrong-dataset ids, which is the honest default but not a
+    #: runnable campaign.
+    ap.add_argument("--csv", default="",
+                    help="initial_snapshot root; required for the Interactive "
+                         "arm's sampled anchors")
+    ap.add_argument("--out", default="",
+                    help="write the two-sided params.json here "
+                         "(export_bindings); without it, print bindings only")
     args = ap.parse_args()
     ids = LDBC_PLANS if args.plan == "all" else [args.plan]
+
+    if args.out:
+        doc = export_bindings(
+            Path(args.params), args.sf,
+            csv_root=Path(args.csv) if args.csv else None,
+            plan_ids=None if args.plan == "all" else [args.plan],
+            campaign_commit=_git_sha())
+        Path(args.out).parent.mkdir(parents=True, exist_ok=True)
+        Path(args.out).write_text(
+            json.dumps(doc, indent=1, sort_keys=True, default=str) + "\n")
+        bad = {p: r["error"] for p, r in doc["rows"].items() if "error" in r}
+        for pid in sorted(doc["rows"]):
+            row = doc["rows"][pid]
+            flag = "ERROR" if "error" in row else "ok   "
+            print(f"{flag} {pid:6s} {row.get('error', row['source'])}")
+        print(f"\nwrote {args.out}: {len(doc['rows']) - len(bad)}/"
+              f"{len(doc['rows'])} plans bound, seed {doc['seed']}")
+        return 1 if bad else 0
+
     out = {}
     for pid in ids:
         b = bind(pid, Path(args.params), args.sf)

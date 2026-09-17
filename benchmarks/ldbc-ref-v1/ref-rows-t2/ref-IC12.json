@@ -1,0 +1,68 @@
+{
+ "columns": [
+  "personId",
+  "personFirstName",
+  "personLastName",
+  "tagNames",
+  "replyCount"
+ ],
+ "commit": "0b7198dfdf7a",
+ "host": "xzgpu",
+ "params": {
+  "personId": 37383395349902,
+  "tagClassName": "BasketballPlayer"
+ },
+ "plan_id": "IC12",
+ "query_file": "external_workloads/ldbc/interactive_v1/cypher/queries/interactive-complex-12.cypher",
+ "query_sha256": "eda861f84d905e43433cd8f589212a2f934ad0bd9b6f9e58c19ade52922a9100",
+ "result_digest": "831e9c9a91ed3ac04cef9c69e1e4de7ca6a5513366bd8806cc953953dacafcfe",
+ "rows": [
+  {
+   "personFirstName": "Samir",
+   "personId": 28587302329167,
+   "personLastName": "Al-Fayez",
+   "replyCount": 3,
+   "tagNames": [
+    "Michael_Jordan",
+    "Yao_Ming"
+   ]
+  },
+  {
+   "personFirstName": "Aleksej",
+   "personId": 21990232560612,
+   "personLastName": "Linchuk",
+   "replyCount": 1,
+   "tagNames": [
+    "Michael_Jordan"
+   ]
+  },
+  {
+   "personFirstName": "Aleksandr",
+   "personId": 28587302325677,
+   "personLastName": "Basov",
+   "replyCount": 1,
+   "tagNames": [
+    "Michael_Jordan"
+   ]
+  },
+  {
+   "personFirstName": "Jerzy",
+   "personId": 35184372094310,
+   "personLastName": "Alter",
+   "replyCount": 1,
+   "tagNames": [
+    "Michael_Jordan"
+   ]
+  },
+  {
+   "personFirstName": "Zhang",
+   "personId": 35184372096487,
+   "personLastName": "Hu",
+   "replyCount": 1,
+   "tagNames": [
+    "Michael_Jordan"
+   ]
+  }
+ ],
+ "wall_s": 0.295
+}

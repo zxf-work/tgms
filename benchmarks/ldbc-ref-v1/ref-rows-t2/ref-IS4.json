@@ -1,0 +1,22 @@
+{
+ "columns": [
+  "messageCreationDate",
+  "messageContent"
+ ],
+ "commit": "0b7198dfdf7a",
+ "host": "xzgpu",
+ "params": {
+  "messageId": 962074860980
+ },
+ "plan_id": "IS4",
+ "query_file": "external_workloads/ldbc/interactive_v1/cypher/queries/interactive-short-4.cypher",
+ "query_sha256": "b579231518cf36352fe0237f4a36bbce5a9a96a0763565b8e17e07d9b0704642",
+ "result_digest": "6fcfb9f2586190a2930d6a40b91061f3eb3db0bad8a6fd80e8024462ce7a1ffd",
+ "rows": [
+  {
+   "messageContent": "photo962074860980.jpg",
+   "messageCreationDate": 1301010177879
+  }
+ ],
+ "wall_s": 0.009
+}

@@ -1,0 +1,59 @@
+{
+ "columns": [
+  "tagName",
+  "postCount"
+ ],
+ "commit": "0b7198dfdf7a",
+ "host": "xzgpu",
+ "params": {
+  "personId": 4398046514859,
+  "tagName": "Angola"
+ },
+ "plan_id": "IC6",
+ "query_file": "external_workloads/ldbc/interactive_v1/cypher/queries/interactive-complex-6.cypher",
+ "query_sha256": "ea2a20b7095c2f79f7535831b54176a55c30b9d4618589160e4a3a2abc099c6e",
+ "result_digest": "56b52154f39eb6f0b119ba93c58224564706b29450e75dc4ad0c7fd0067732f7",
+ "rows": [
+  {
+   "postCount": 4,
+   "tagName": "Muammar_Gaddafi"
+  },
+  {
+   "postCount": 3,
+   "tagName": "Marc_Gicquel"
+  },
+  {
+   "postCount": 2,
+   "tagName": "Gil_Kane"
+  },
+  {
+   "postCount": 2,
+   "tagName": "Humayun"
+  },
+  {
+   "postCount": 2,
+   "tagName": "Joe_Strummer"
+  },
+  {
+   "postCount": 2,
+   "tagName": "Robert_Fripp"
+  },
+  {
+   "postCount": 2,
+   "tagName": "Scotland"
+  },
+  {
+   "postCount": 1,
+   "tagName": "10,000_Days"
+  },
+  {
+   "postCount": 1,
+   "tagName": "Achaemenid_Empire"
+  },
+  {
+   "postCount": 1,
+   "tagName": "Alexander_Hamilton"
+  }
+ ],
+ "wall_s": 0.494
+}

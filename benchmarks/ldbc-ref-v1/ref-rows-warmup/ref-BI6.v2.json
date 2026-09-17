@@ -1,0 +1,418 @@
+{
+ "columns": [
+  "person1.id",
+  "authorityScore"
+ ],
+ "commit": "0b7198dfdf7a",
+ "host": "xzgpu",
+ "params": {
+  "tag": "Bob_Geldof"
+ },
+ "plan_id": "BI6",
+ "query_file": "external_workloads/ldbc/bi/neo4j/queries/bi-6.cypher",
+ "query_sha256": "cbe935ef1e48d99010417de1026ad418eb27f5d9627555a1d28e42e8ab530e48",
+ "result_digest": "919ee3c790e529b6981371dfb3272a6a20b6a14081f10c15ae109e0036e24711",
+ "rows": [
+  {
+   "authorityScore": 65214,
+   "person1.id": 10995116278639
+  },
+  {
+   "authorityScore": 51479,
+   "person1.id": 21990232559802
+  },
+  {
+   "authorityScore": 50946,
+   "person1.id": 32985348837247
+  },
+  {
+   "authorityScore": 39017,
+   "person1.id": 21990232556992
+  },
+  {
+   "authorityScore": 39017,
+   "person1.id": 26388279074760
+  },
+  {
+   "authorityScore": 39017,
+   "person1.id": 32985348842998
+  },
+  {
+   "authorityScore": 30823,
+   "person1.id": 17592186047799
+  },
+  {
+   "authorityScore": 27912,
+   "person1.id": 21990232558345
+  },
+  {
+   "authorityScore": 20476,
+   "person1.id": 2199023263408
+  },
+  {
+   "authorityScore": 17492,
+   "person1.id": 2199023262183
+  },
+  {
+   "authorityScore": 16881,
+   "person1.id": 10995116282476
+  },
+  {
+   "authorityScore": 15441,
+   "person1.id": 24189255818812
+  },
+  {
+   "authorityScore": 9344,
+   "person1.id": 19791209306646
+  },
+  {
+   "authorityScore": 6769,
+   "person1.id": 17592186054552
+  },
+  {
+   "authorityScore": 5222,
+   "person1.id": 21990232557756
+  },
+  {
+   "authorityScore": 2204,
+   "person1.id": 24189255813105
+  },
+  {
+   "authorityScore": 2204,
+   "person1.id": 28587302330494
+  },
+  {
+   "authorityScore": 1699,
+   "person1.id": 15393162793576
+  },
+  {
+   "authorityScore": 1674,
+   "person1.id": 10995116286814
+  },
+  {
+   "authorityScore": 1559,
+   "person1.id": 26388279073722
+  },
+  {
+   "authorityScore": 856,
+   "person1.id": 6597069771930
+  },
+  {
+   "authorityScore": 831,
+   "person1.id": 19791209310240
+  },
+  {
+   "authorityScore": 815,
+   "person1.id": 24189255816982
+  },
+  {
+   "authorityScore": 802,
+   "person1.id": 7402
+  },
+  {
+   "authorityScore": 683,
+   "person1.id": 21990232564251
+  },
+  {
+   "authorityScore": 643,
+   "person1.id": 15393162796905
+  },
+  {
+   "authorityScore": 327,
+   "person1.id": 10995116283030
+  },
+  {
+   "authorityScore": 318,
+   "person1.id": 6597069774064
+  },
+  {
+   "authorityScore": 233,
+   "person1.id": 13194139537210
+  },
+  {
+   "authorityScore": 199,
+   "person1.id": 4398046518031
+  },
+  {
+   "authorityScore": 199,
+   "person1.id": 24189255818900
+  },
+  {
+   "authorityScore": 182,
+   "person1.id": 4398046514439
+  },
+  {
+   "authorityScore": 150,
+   "person1.id": 30786325580499
+  },
+  {
+   "authorityScore": 91,
+   "person1.id": 15393162789011
+  },
+  {
+   "authorityScore": 63,
+   "person1.id": 2199023260638
+  },
+  {
+   "authorityScore": 0,
+   "person1.id": 261
+  },
+  {
+   "authorityScore": 0,
+   "person1.id": 358
+  },
+  {
+   "authorityScore": 0,
+   "person1.id": 2239
+  },
+  {
+   "authorityScore": 0,
+   "person1.id": 2565
+  },
+  {
+   "authorityScore": 0,
+   "person1.id": 2662
+  },
+  {
+   "authorityScore": 0,
+   "person1.id": 2735
+  },
+  {
+   "authorityScore": 0,
+   "person1.id": 3283
+  },
+  {
+   "authorityScore": 0,
+   "person1.id": 3470
+  },
+  {
+   "authorityScore": 0,
+   "person1.id": 4478
+  },
+  {
+   "authorityScore": 0,
+   "person1.id": 4857
+  },
+  {
+   "authorityScore": 0,
+   "person1.id": 6444
+  },
+  {
+   "authorityScore": 0,
+   "person1.id": 7139
+  },
+  {
+   "authorityScore": 0,
+   "person1.id": 7780
+  },
+  {
+   "authorityScore": 0,
+   "person1.id": 9533
+  },
+  {
+   "authorityScore": 0,
+   "person1.id": 9802
+  },
+  {
+   "authorityScore": 0,
+   "person1.id": 9874
+  },
+  {
+   "authorityScore": 0,
+   "person1.id": 9995
+  },
+  {
+   "authorityScore": 0,
+   "person1.id": 2199023255976
+  },
+  {
+   "authorityScore": 0,
+   "person1.id": 2199023256108
+  },
+  {
+   "authorityScore": 0,
+   "person1.id": 2199023256625
+  },
+  {
+   "authorityScore": 0,
+   "person1.id": 2199023256642
+  },
+  {
+   "authorityScore": 0,
+   "person1.id": 2199023256826
+  },
+  {
+   "authorityScore": 0,
+   "person1.id": 2199023257601
+  },
+  {
+   "authorityScore": 0,
+   "person1.id": 2199023257639
+  },
+  {
+   "authorityScore": 0,
+   "person1.id": 2199023257807
+  },
+  {
+   "authorityScore": 0,
+   "person1.id": 2199023258092
+  },
+  {
+   "authorityScore": 0,
+   "person1.id": 2199023258884
+  },
+  {
+   "authorityScore": 0,
+   "person1.id": 2199023259874
+  },
+  {
+   "authorityScore": 0,
+   "person1.id": 2199023260517
+  },
+  {
+   "authorityScore": 0,
+   "person1.id": 2199023260815
+  },
+  {
+   "authorityScore": 0,
+   "person1.id": 2199023261231
+  },
+  {
+   "authorityScore": 0,
+   "person1.id": 2199023261845
+  },
+  {
+   "authorityScore": 0,
+   "person1.id": 2199023263286
+  },
+  {
+   "authorityScore": 0,
+   "person1.id": 2199023263756
+  },
+  {
+   "authorityScore": 0,
+   "person1.id": 2199023264003
+  },
+  {
+   "authorityScore": 0,
+   "person1.id": 2199023264490
+  },
+  {
+   "authorityScore": 0,
+   "person1.id": 2199023265878
+  },
+  {
+   "authorityScore": 0,
+   "person1.id": 4398046511484
+  },
+  {
+   "authorityScore": 0,
+   "person1.id": 4398046512578
+  },
+  {
+   "authorityScore": 0,
+   "person1.id": 4398046512589
+  },
+  {
+   "authorityScore": 0,
+   "person1.id": 4398046513036
+  },
+  {
+   "authorityScore": 0,
+   "person1.id": 4398046513439
+  },
+  {
+   "authorityScore": 0,
+   "person1.id": 4398046514321
+  },
+  {
+   "authorityScore": 0,
+   "person1.id": 4398046514865
+  },
+  {
+   "authorityScore": 0,
+   "person1.id": 4398046515379
+  },
+  {
+   "authorityScore": 0,
+   "person1.id": 4398046517444
+  },
+  {
+   "authorityScore": 0,
+   "person1.id": 4398046518040
+  },
+  {
+   "authorityScore": 0,
+   "person1.id": 4398046519441
+  },
+  {
+   "authorityScore": 0,
+   "person1.id": 4398046519890
+  },
+  {
+   "authorityScore": 0,
+   "person1.id": 4398046519964
+  },
+  {
+   "authorityScore": 0,
+   "person1.id": 4398046521053
+  },
+  {
+   "authorityScore": 0,
+   "person1.id": 4398046521089
+  },
+  {
+   "authorityScore": 0,
+   "person1.id": 6597069768666
+  },
+  {
+   "authorityScore": 0,
+   "person1.id": 6597069768950
+  },
+  {
+   "authorityScore": 0,
+   "person1.id": 6597069768955
+  },
+  {
+   "authorityScore": 0,
+   "person1.id": 6597069769047
+  },
+  {
+   "authorityScore": 0,
+   "person1.id": 6597069769684
+  },
+  {
+   "authorityScore": 0,
+   "person1.id": 6597069771425
+  },
+  {
+   "authorityScore": 0,
+   "person1.id": 6597069771666
+  },
+  {
+   "authorityScore": 0,
+   "person1.id": 6597069773566
+  },
+  {
+   "authorityScore": 0,
+   "person1.id": 6597069773673
+  },
+  {
+   "authorityScore": 0,
+   "person1.id": 6597069774528
+  },
+  {
+   "authorityScore": 0,
+   "person1.id": 6597069776460
+  },
+  {
+   "authorityScore": 0,
+   "person1.id": 6597069776679
+  },
+  {
+   "authorityScore": 0,
+   "person1.id": 8796093022752
+  }
+ ],
+ "wall_s": 1.86
+}

@@ -1,0 +1,43 @@
+{
+ "arm": "characterization-interactive",
+ "columns": [
+  "personId",
+  "personFirstName",
+  "personLastName",
+  "organizationName",
+  "organizationWorkFromYear"
+ ],
+ "commit": "0b7198dfdf7a",
+ "host": "xzgpu",
+ "params": {
+  "countryName": "Laos",
+  "personId": "70368744244971",
+  "workFromYear": 2010
+ },
+ "plan_digest": "c3c457c26fa34652e41c9ca73d7f615d9e6b335b5917bf79e395d94496f9c420",
+ "plan_id": "IC11",
+ "result_digest": "5aa6671c762a729801a2c98a87dbc41230f4c93b1bea0c82c8f37f6bf2535c6c",
+ "rows": [],
+ "schema": [
+  [
+   "personId",
+   "uid"
+  ],
+  [
+   "personFirstName",
+   "json?"
+  ],
+  [
+   "personLastName",
+   "json?"
+  ],
+  [
+   "organizationName",
+   "json?"
+  ],
+  [
+   "organizationWorkFromYear",
+   "json?"
+  ]
+ ]
+}

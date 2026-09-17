@@ -1,0 +1,68 @@
+{
+ "arm": "characterization-interactive",
+ "columns": [
+  "firstName",
+  "lastName",
+  "birthday",
+  "locationIP",
+  "browserUsed",
+  "cityId",
+  "gender",
+  "creationDate"
+ ],
+ "commit": "0b7198dfdf7a",
+ "host": "xzgpu",
+ "params": {
+  "personId": "35184372162971"
+ },
+ "plan_digest": "c7ab87785c47841bcc02271fa5dea2fa82e3927eb1efb49ce1d6d75a71ab49b2",
+ "plan_id": "IS1",
+ "result_digest": "9a61d08027729ce02c449119d0937f884e72a6f4754aec4047c7bfe0aed13044",
+ "rows": [
+  {
+   "birthday": 383184000000000,
+   "browserUsed": "Firefox",
+   "cityId": 282,
+   "cityId__hierarchy": "Place",
+   "creationDate": 1273606356004000,
+   "firstName": "Prakash",
+   "gender": "male",
+   "lastName": "Kumar",
+   "locationIP": "49.205.208.136"
+  }
+ ],
+ "schema": [
+  [
+   "firstName",
+   "json?"
+  ],
+  [
+   "lastName",
+   "json?"
+  ],
+  [
+   "birthday",
+   "json?"
+  ],
+  [
+   "locationIP",
+   "json?"
+  ],
+  [
+   "browserUsed",
+   "json?"
+  ],
+  [
+   "cityId",
+   "uid"
+  ],
+  [
+   "gender",
+   "json?"
+  ],
+  [
+   "creationDate",
+   "json?"
+  ]
+ ]
+}

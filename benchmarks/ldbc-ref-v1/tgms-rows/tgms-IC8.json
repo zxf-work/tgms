@@ -1,0 +1,157 @@
+{
+ "arm": "characterization-interactive",
+ "columns": [
+  "personId",
+  "personFirstName",
+  "personLastName",
+  "commentId",
+  "commentCreationDate",
+  "commentContent"
+ ],
+ "commit": "0b7198dfdf7a",
+ "host": "xzgpu",
+ "params": {
+  "personId": "281474976767723"
+ },
+ "plan_digest": "453dbf5f61e58818da1a131a2e0ca19491151800f02898b2f0dfad99330ae575",
+ "plan_id": "IC8",
+ "result_digest": "71ee634e11108561dbdae099f11234210dbb3429bf5d81e035327b33da665122",
+ "rows": [
+  {
+   "commentContent": "no",
+   "commentCreationDate": 1353820049260000,
+   "commentId": 2336464613607,
+   "commentId__hierarchy": "Message",
+   "personFirstName": "Vladimir",
+   "personId": 21990232556384,
+   "personId__hierarchy": "Person",
+   "personLastName": "Foxx"
+  },
+  {
+   "commentContent": "ok",
+   "commentCreationDate": 1353806099497000,
+   "commentId": 2336464613612,
+   "commentId__hierarchy": "Message",
+   "personFirstName": "Shweta",
+   "personId": 15393162797132,
+   "personId__hierarchy": "Person",
+   "personLastName": "Kapoor"
+  },
+  {
+   "commentContent": "fine",
+   "commentCreationDate": 1353282074669000,
+   "commentId": 2336464613433,
+   "commentId__hierarchy": "Message",
+   "personFirstName": "Charles",
+   "personId": 4398046518543,
+   "personId__hierarchy": "Person",
+   "personLastName": "Coetzee"
+  },
+  {
+   "commentContent": "About P. G. Wodehouse,  by contemporaries such as Hilaire Belloc, Evelyn Waugh",
+   "commentCreationDate": 1353036183679000,
+   "commentId": 2336464613428,
+   "commentId__hierarchy": "Message",
+   "personFirstName": "Eugene Moke",
+   "personId": 19791209301067,
+   "personId__hierarchy": "Person",
+   "personLastName": "Bemba"
+  },
+  {
+   "commentContent": "LOL",
+   "commentCreationDate": 1353006548134000,
+   "commentId": 2336464613427,
+   "commentId__hierarchy": "Message",
+   "personFirstName": "Chen",
+   "personId": 1450,
+   "personId__hierarchy": "Person",
+   "personLastName": "Yan"
+  },
+  {
+   "commentContent": "roflol",
+   "commentCreationDate": 1352999977394000,
+   "commentId": 2336464613429,
+   "commentId__hierarchy": "Message",
+   "personFirstName": "Friedrich",
+   "personId": 26388279076388,
+   "personId__hierarchy": "Person",
+   "personLastName": "Herzigov\u00e1"
+  },
+  {
+   "commentContent": "ok",
+   "commentCreationDate": 1351344542676000,
+   "commentId": 2199025660039,
+   "commentId__hierarchy": "Message",
+   "personFirstName": "Tom",
+   "personId": 4398046513986,
+   "personId__hierarchy": "Person",
+   "personLastName": "Williams"
+  },
+  {
+   "commentContent": "yes",
+   "commentCreationDate": 1351344053837000,
+   "commentId": 2199025660034,
+   "commentId__hierarchy": "Message",
+   "personFirstName": "Yang",
+   "personId": 9922,
+   "personId__hierarchy": "Person",
+   "personLastName": "Zhang"
+  },
+  {
+   "commentContent": "duh",
+   "commentCreationDate": 1351291470854000,
+   "commentId": 2199025660037,
+   "commentId__hierarchy": "Message",
+   "personFirstName": "Carlos",
+   "personId": 26388279069749,
+   "personId__hierarchy": "Person",
+   "personLastName": "Gonzalez"
+  },
+  {
+   "commentContent": "right",
+   "commentCreationDate": 1351279159941000,
+   "commentId": 2199025660038,
+   "commentId__hierarchy": "Message",
+   "personFirstName": "Jorge",
+   "personId": 30786325579605,
+   "personId__hierarchy": "Person",
+   "personLastName": "Gonzalez"
+  },
+  {
+   "commentContent": "About Pitcairn Islands, ed miles of ocean and have a total land areAbout Big Bad Joh",
+   "commentCreationDate": 1351275541146000,
+   "commentId": 2199025660040,
+   "commentId__hierarchy": "Message",
+   "personFirstName": "Ion",
+   "personId": 251,
+   "personId__hierarchy": "Person",
+   "personLastName": "Bologan"
+  }
+ ],
+ "schema": [
+  [
+   "personId",
+   "uid"
+  ],
+  [
+   "personFirstName",
+   "json?"
+  ],
+  [
+   "personLastName",
+   "json?"
+  ],
+  [
+   "commentId",
+   "uid"
+  ],
+  [
+   "commentCreationDate",
+   "json?"
+  ],
+  [
+   "commentContent",
+   "json?"
+  ]
+ ]
+}

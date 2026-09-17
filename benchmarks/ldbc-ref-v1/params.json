@@ -1,0 +1,459 @@
+{
+ "campaign_commit": "0b7198dfdf7a",
+ "rows": {
+  "BI10": {
+   "arm": "scored-bi",
+   "cypher": {
+    "country": "Italy",
+    "maxPathDistance": 4,
+    "minPathDistance": 3,
+    "personId": 6597069770479,
+    "tagClass": "Thing"
+   },
+   "source": "bi-10a.csv row 1",
+   "tgir": {
+    "country": "Italy",
+    "maxPathDistance": 4,
+    "nearMaxHops": 2,
+    "personId": "52776558163835",
+    "tagClass": "Thing"
+   }
+  },
+  "BI11": {
+   "arm": "scored-bi",
+   "cypher": {
+    "country": "India",
+    "endDate": "2013-01-16T00:00:00.000+00:00",
+    "startDate": "2012-10-04T00:00:00.000+00:00"
+   },
+   "source": "bi-11.csv row 1",
+   "tgir": {
+    "country": "India",
+    "endDate": 1358294400000000,
+    "startDate": 1349308800000000
+   }
+  },
+  "BI12": {
+   "arm": "scored-bi",
+   "cypher": {
+    "languages": [
+     "es",
+     "ta",
+     "pt"
+    ],
+    "lengthThreshold": 115,
+    "startDate": "2012-06-05T00:00:00.000+00:00"
+   },
+   "or_expansion": {
+    "disjuncts": 3,
+    "param": "languages",
+    "values": [
+     "es",
+     "ta",
+     "pt"
+    ]
+   },
+   "source": "bi-12.csv row 1",
+   "tgir": {
+    "lengthThreshold": 115,
+    "startDate": 1338854400000000
+   }
+  },
+  "BI17": {
+   "arm": "scored-bi",
+   "cypher": {
+    "delta": 12,
+    "tag": "Cosmic_Egg"
+   },
+   "source": "bi-17.csv row 1",
+   "tgir": {
+    "deltaMicros": 43200000000,
+    "tagName": "Cosmic_Egg"
+   }
+  },
+  "BI18": {
+   "arm": "scored-bi",
+   "cypher": {
+    "tag": "Fyodor_Dostoyevsky"
+   },
+   "source": "bi-18.csv row 1",
+   "tgir": {
+    "tagName": "Fyodor_Dostoyevsky"
+   }
+  },
+  "BI3": {
+   "arm": "scored-bi",
+   "cypher": {
+    "country": "India",
+    "tagClass": "President"
+   },
+   "source": "bi-3.csv row 1",
+   "tgir": {
+    "country": "India",
+    "tagClass": "President"
+   }
+  },
+  "BI4": {
+   "arm": "scored-bi",
+   "cypher": {
+    "date": "2010-02-12T00:00:00.000+00:00"
+   },
+   "source": "bi-4.csv row 1",
+   "tgir": {
+    "date": 1265932800000000
+   }
+  },
+  "BI6": {
+   "arm": "scored-bi",
+   "cypher": {
+    "tag": "Bob_Geldof"
+   },
+   "source": "bi-6.csv row 1",
+   "tgir": {
+    "tagName": "Bob_Geldof"
+   }
+  },
+  "BI6.v2": {
+   "arm": "scored-bi",
+   "cypher": {
+    "tag": "Bob_Geldof"
+   },
+   "source": "bi-6.csv row 1",
+   "tgir": {
+    "tagName": "Bob_Geldof"
+   }
+  },
+  "BI7": {
+   "arm": "scored-bi",
+   "cypher": {
+    "tag": "Slovenia"
+   },
+   "source": "bi-7.csv row 1",
+   "tgir": {
+    "tagName": "Slovenia"
+   }
+  },
+  "BI9": {
+   "arm": "scored-bi",
+   "cypher": {
+    "endDate": "2012-12-10T00:00:00.000+00:00",
+    "startDate": "2012-08-30T00:00:00.000+00:00"
+   },
+   "source": "bi-9.csv row 1",
+   "tgir": {
+    "endDate": 1355097600000000,
+    "startDate": 1346284800000000
+   }
+  },
+  "IC11": {
+   "anchors": [
+    {
+     "index": 2699,
+     "ldbc_id": 8796093030621,
+     "param": "personId",
+     "population": "Person",
+     "seed": 5724984519806421702,
+     "size": 10295,
+     "uid": "70368744244971"
+    }
+   ],
+   "arm": "characterization-interactive",
+   "cypher": {
+    "countryName": "Laos",
+    "personId": 8796093030621,
+    "workFromYear": 2010
+   },
+   "source": "SAMPLED anchors (seed 5724984519806421702) + non-id parameters from validation_params-sf1.csv, first row with all keys",
+   "tgir": {
+    "countryName": "Laos",
+    "personId": "70368744244971",
+    "workFromYear": 2010
+   }
+  },
+  "IC12": {
+   "anchors": [
+    {
+     "index": 9606,
+     "ldbc_id": 37383395349902,
+     "param": "personId",
+     "population": "Person",
+     "seed": 5724984519806421702,
+     "size": 10295,
+     "uid": "299067162799219"
+    }
+   ],
+   "arm": "characterization-interactive",
+   "cypher": {
+    "personId": 37383395349902,
+    "tagClassName": "BasketballPlayer"
+   },
+   "source": "SAMPLED anchors (seed 5724984519806421702) + non-id parameters from validation_params-sf1.csv, first row with all keys",
+   "tgir": {
+    "personId": "299067162799219",
+    "tagClassName": "BasketballPlayer"
+   }
+  },
+  "IC2": {
+   "anchors": [
+    {
+     "index": 2451,
+     "ldbc_id": 8796093025922,
+     "param": "personId",
+     "population": "Person",
+     "seed": 5724984519806421702,
+     "size": 10295,
+     "uid": "70368744207379"
+    }
+   ],
+   "arm": "characterization-interactive",
+   "cypher": {
+    "maxDate": "2012-11-28T00:00:00.000+00:00",
+    "personId": 8796093025922
+   },
+   "source": "SAMPLED anchors (seed 5724984519806421702) + non-id parameters from validation_params-sf1.csv, first row with all keys",
+   "tgir": {
+    "maxDate": 1354060800000000,
+    "personId": "70368744207379"
+   }
+  },
+  "IC5": {
+   "anchors": [
+    {
+     "index": 1143,
+     "ldbc_id": 4398046511273,
+     "param": "personId",
+     "population": "Person",
+     "seed": 5724984519806421702,
+     "size": 10295,
+     "uid": "35184372090187"
+    }
+   ],
+   "arm": "characterization-interactive",
+   "cypher": {
+    "minDate": "2012-09-27T00:00:00.000+00:00",
+    "personId": 4398046511273
+   },
+   "source": "SAMPLED anchors (seed 5724984519806421702) + non-id parameters from validation_params-sf1.csv, first row with all keys",
+   "tgir": {
+    "minDate": 1348704000000000,
+    "personId": "35184372090187"
+   }
+  },
+  "IC6": {
+   "anchors": [
+    {
+     "index": 1339,
+     "ldbc_id": 4398046514859,
+     "param": "personId",
+     "population": "Person",
+     "seed": 5724984519806421702,
+     "size": 10295,
+     "uid": "35184372118875"
+    }
+   ],
+   "arm": "characterization-interactive",
+   "cypher": {
+    "personId": 4398046514859,
+    "tagName": "Angola"
+   },
+   "source": "SAMPLED anchors (seed 5724984519806421702) + non-id parameters from validation_params-sf1.csv, first row with all keys",
+   "tgir": {
+    "personId": "35184372118875",
+    "tagName": "Angola"
+   }
+  },
+  "IC8": {
+   "anchors": [
+    {
+     "index": 9331,
+     "ldbc_id": 35184372095965,
+     "param": "personId",
+     "population": "Person",
+     "seed": 5724984519806421702,
+     "size": 10295,
+     "uid": "281474976767723"
+    }
+   ],
+   "arm": "characterization-interactive",
+   "cypher": {
+    "personId": 35184372095965
+   },
+   "source": "SAMPLED anchors (seed 5724984519806421702) + non-id parameters from validation_params-sf1.csv, first row with all keys",
+   "tgir": {
+    "personId": "281474976767723"
+   }
+  },
+  "IC9": {
+   "anchors": [
+    {
+     "index": 6009,
+     "ldbc_id": 21990232563047,
+     "param": "personId",
+     "population": "Person",
+     "seed": 5724984519806421702,
+     "size": 10295,
+     "uid": "175921860504379"
+    }
+   ],
+   "arm": "characterization-interactive",
+   "cypher": {
+    "maxDate": "2011-12-17T00:00:00.000+00:00",
+    "personId": 21990232563047
+   },
+   "source": "SAMPLED anchors (seed 5724984519806421702) + non-id parameters from validation_params-sf1.csv, first row with all keys",
+   "tgir": {
+    "maxDate": 1324080000000000,
+    "personId": "175921860504379"
+   }
+  },
+  "IS1": {
+   "anchors": [
+    {
+     "index": 1634,
+     "ldbc_id": 4398046520371,
+     "param": "personId",
+     "population": "Person",
+     "seed": 5724984519806421702,
+     "size": 10295,
+     "uid": "35184372162971"
+    }
+   ],
+   "arm": "characterization-interactive",
+   "cypher": {
+    "personId": 4398046520371
+   },
+   "source": "SAMPLED anchors (seed 5724984519806421702) + non-id parameters from validation_params-sf1.csv, first row with all keys",
+   "tgir": {
+    "personId": "35184372162971"
+   }
+  },
+  "IS2": {
+   "anchors": [
+    {
+     "index": 3929,
+     "ldbc_id": 13194139543744,
+     "param": "personId",
+     "population": "Person",
+     "seed": 5724984519806421702,
+     "size": 10295,
+     "uid": "105553116349955"
+    }
+   ],
+   "arm": "characterization-interactive",
+   "cypher": {
+    "personId": 13194139543744
+   },
+   "source": "SAMPLED anchors (seed 5724984519806421702) + non-id parameters from validation_params-sf1.csv, first row with all keys",
+   "tgir": {
+    "personId": "105553116349955"
+   }
+  },
+  "IS3": {
+   "anchors": [
+    {
+     "index": 3441,
+     "ldbc_id": 13194139534529,
+     "param": "personId",
+     "population": "Person",
+     "seed": 5724984519806421702,
+     "size": 10295,
+     "uid": "105553116276235"
+    }
+   ],
+   "arm": "characterization-interactive",
+   "cypher": {
+    "personId": 13194139534529
+   },
+   "source": "SAMPLED anchors (seed 5724984519806421702) + non-id parameters from validation_params-sf1.csv, first row with all keys",
+   "tgir": {
+    "personId": "105553116276235"
+   }
+  },
+  "IS4": {
+   "anchors": [
+    {
+     "index": 355190,
+     "ldbc_id": 962074860980,
+     "param": "messageId",
+     "population": "Post+Comment",
+     "seed": 5724984519806421702,
+     "size": 2860664,
+     "uid": "7696598887841"
+    }
+   ],
+   "arm": "characterization-interactive",
+   "cypher": {
+    "messageId": 962074860980
+   },
+   "source": "SAMPLED anchors (seed 5724984519806421702) + non-id parameters from validation_params-sf1.csv, first row with all keys",
+   "tgir": {
+    "messageId": "7696598887841"
+   }
+  },
+  "IS5": {
+   "anchors": [
+    {
+     "index": 1534205,
+     "ldbc_id": 2061585116626,
+     "param": "messageId",
+     "population": "Post+Comment",
+     "seed": 5724984519806421702,
+     "size": 2860664,
+     "uid": "16492680933009"
+    }
+   ],
+   "arm": "characterization-interactive",
+   "cypher": {
+    "messageId": 2061585116626
+   },
+   "source": "SAMPLED anchors (seed 5724984519806421702) + non-id parameters from validation_params-sf1.csv, first row with all keys",
+   "tgir": {
+    "messageId": "16492680933009"
+   }
+  },
+  "IS6": {
+   "anchors": [
+    {
+     "index": 934119,
+     "ldbc_id": 1649272534038,
+     "param": "messageId",
+     "population": "Post+Comment",
+     "seed": 5724984519806421702,
+     "size": 2860664,
+     "uid": "13194180272305"
+    }
+   ],
+   "arm": "characterization-interactive",
+   "cypher": {
+    "messageId": 1649272534038
+   },
+   "source": "SAMPLED anchors (seed 5724984519806421702) + non-id parameters from validation_params-sf1.csv, first row with all keys",
+   "tgir": {
+    "messageId": "13194180272305"
+   }
+  },
+  "IS7": {
+   "anchors": [
+    {
+     "index": 1010397,
+     "ldbc_id": 2061590679825,
+     "param": "messageId",
+     "population": "Post+Comment",
+     "seed": 5724984519806421702,
+     "size": 2860664,
+     "uid": "16492725438601"
+    }
+   ],
+   "arm": "characterization-interactive",
+   "cypher": {
+    "messageId": 2061590679825
+   },
+   "source": "SAMPLED anchors (seed 5724984519806421702) + non-id parameters from validation_params-sf1.csv, first row with all keys",
+   "tgir": {
+    "messageId": "16492725438601"
+   }
+  }
+ },
+ "seed": 5724984519806421702,
+ "sf": "sf1"
+}

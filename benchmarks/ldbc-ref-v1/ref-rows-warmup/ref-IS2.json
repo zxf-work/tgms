@@ -1,0 +1,113 @@
+{
+ "columns": [
+  "messageId",
+  "messageContent",
+  "messageCreationDate",
+  "postId",
+  "personId",
+  "personFirstName",
+  "personLastName"
+ ],
+ "commit": "0b7198dfdf7a",
+ "host": "xzgpu",
+ "params": {
+  "personId": 13194139543744
+ },
+ "plan_id": "IS2",
+ "query_file": "external_workloads/ldbc/interactive_v1/cypher/queries/interactive-short-2.cypher",
+ "query_sha256": "e278ea45644325be102e0574d8cc7f768633e990aa6c7b3976a84b22e66f996d",
+ "result_digest": "cbd05e98fb0ee169cbb3aa274978be1035bf39caa9baf7c9a81c2fe70d71ae61",
+ "rows": [
+  {
+   "messageContent": "no way!",
+   "messageCreationDate": 1353981881566,
+   "messageId": 2336462628956,
+   "personFirstName": "Peter",
+   "personId": 2199023256206,
+   "personLastName": "Smith",
+   "postId": 824634140751
+  },
+  {
+   "messageContent": "right",
+   "messageCreationDate": 1353977185426,
+   "messageId": 2336462627662,
+   "personFirstName": "Peter",
+   "personId": 2199023256206,
+   "personLastName": "Smith",
+   "postId": 824634139469
+  },
+  {
+   "messageContent": "maybe",
+   "messageCreationDate": 1353969612899,
+   "messageId": 2336462629639,
+   "personFirstName": "Peter",
+   "personId": 2199023256206,
+   "personLastName": "Smith",
+   "postId": 412317281022
+  },
+  {
+   "messageContent": "duh",
+   "messageCreationDate": 1353969462536,
+   "messageId": 2336462628359,
+   "personFirstName": "Peter",
+   "personId": 2199023256206,
+   "personLastName": "Smith",
+   "postId": 2061584721409
+  },
+  {
+   "messageContent": "duh",
+   "messageCreationDate": 1353943850018,
+   "messageId": 2336462628764,
+   "personFirstName": "Peter",
+   "personId": 2199023256206,
+   "personLastName": "Smith",
+   "postId": 2061584721805
+  },
+  {
+   "messageContent": "thanks",
+   "messageCreationDate": 1353941622131,
+   "messageId": 2336462629164,
+   "personFirstName": "Peter",
+   "personId": 2199023256206,
+   "personLastName": "Smith",
+   "postId": 687195187485
+  },
+  {
+   "messageContent": "I see",
+   "messageCreationDate": 1353935211307,
+   "messageId": 2336462628309,
+   "personFirstName": "Peter",
+   "personId": 2199023256206,
+   "personLastName": "Smith",
+   "postId": 1786706814411
+  },
+  {
+   "messageContent": "About Mary Pickford, n of her contributions to AmerAbout German Empire, Wilhelm I as Ge",
+   "messageCreationDate": 1353934031763,
+   "messageId": 2336462628563,
+   "personFirstName": "Peter",
+   "personId": 2199023256206,
+   "personLastName": "Smith",
+   "postId": 1786706814663
+  },
+  {
+   "messageContent": "fine",
+   "messageCreationDate": 1353928058594,
+   "messageId": 2336462629151,
+   "personFirstName": "Peter",
+   "personId": 2199023256206,
+   "personLastName": "Smith",
+   "postId": 687195187485
+  },
+  {
+   "messageContent": "fine",
+   "messageCreationDate": 1353922505517,
+   "messageId": 2336462628302,
+   "personFirstName": "Peter",
+   "personId": 2199023256206,
+   "personLastName": "Smith",
+   "postId": 1786706814411
+  }
+ ],
+ "wall_s": 0.094
+}

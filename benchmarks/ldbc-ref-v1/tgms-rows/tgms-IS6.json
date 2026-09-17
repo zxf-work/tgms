@@ -1,0 +1,51 @@
+{
+ "arm": "characterization-interactive",
+ "columns": [
+  "forumId",
+  "forumTitle",
+  "moderatorId",
+  "moderatorFirstName",
+  "moderatorLastName"
+ ],
+ "commit": "0b7198dfdf7a",
+ "host": "xzgpu",
+ "params": {
+  "messageId": "13194180272305"
+ },
+ "plan_digest": "0bdd7b61a11093bf5c86fa4226826bdafb8db12c968611ef9bd04dbc326acad8",
+ "plan_id": "IS6",
+ "result_digest": "72021946e3d4899cc9613601fba1737b348ab8ee7cb7970270f257528a24bef6",
+ "rows": [
+  {
+   "forumId": 1649267525892,
+   "forumId__hierarchy": "Forum",
+   "forumTitle": "Album 0 of Abhishek Reddy",
+   "moderatorFirstName": "Abhishek",
+   "moderatorId": 24189255812000,
+   "moderatorId__hierarchy": "Person",
+   "moderatorLastName": "Reddy"
+  }
+ ],
+ "schema": [
+  [
+   "forumId",
+   "uid"
+  ],
+  [
+   "forumTitle",
+   "json?"
+  ],
+  [
+   "moderatorId",
+   "uid"
+  ],
+  [
+   "moderatorFirstName",
+   "json?"
+  ],
+  [
+   "moderatorLastName",
+   "json?"
+  ]
+ ]
+}

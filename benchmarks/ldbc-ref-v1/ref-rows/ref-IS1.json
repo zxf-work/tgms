@@ -1,0 +1,34 @@
+{
+ "columns": [
+  "firstName",
+  "lastName",
+  "birthday",
+  "locationIP",
+  "browserUsed",
+  "cityId",
+  "gender",
+  "creationDate"
+ ],
+ "commit": "0b7198dfdf7a",
+ "host": "xzgpu",
+ "params": {
+  "personId": 4398046520371
+ },
+ "plan_id": "IS1",
+ "query_file": "external_workloads/ldbc/interactive_v1/cypher/queries/interactive-short-1.cypher",
+ "query_sha256": "313fccbebf9ff29880d15514984ddf48d77f921908d1bd42b7b9626bd96479dc",
+ "result_digest": "4dbfc97ac56f29cdf0a89c07b502660a048041d45ad2bf7d7c5af14d9117832e",
+ "rows": [
+  {
+   "birthday": 383184000000,
+   "browserUsed": "Firefox",
+   "cityId": 282,
+   "creationDate": 1273606356004,
+   "firstName": "Prakash",
+   "gender": "male",
+   "lastName": "Kumar",
+   "locationIP": "49.205.208.136"
+  }
+ ],
+ "wall_s": 0.01
+}

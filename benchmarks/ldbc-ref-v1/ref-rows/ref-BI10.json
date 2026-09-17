@@ -1,0 +1,523 @@
+{
+ "columns": [
+  "expertCandidatePerson.id",
+  "tag.name",
+  "messageCount"
+ ],
+ "commit": "0b7198dfdf7a",
+ "host": "xzgpu",
+ "params": {
+  "country": "Italy",
+  "maxPathDistance": 4,
+  "minPathDistance": 3,
+  "personId": 6597069770479,
+  "tagClass": "Thing"
+ },
+ "plan_id": "BI10",
+ "query_file": "external_workloads/ldbc/bi/neo4j/queries/bi-10.cypher",
+ "query_sha256": "087adda85ccdd32ca6b2a2fcea6d94c3daee7c681209110f1e4f887d97dde6f4",
+ "result_digest": "3387589635659a59c49798b66641ca4a239d326f2569e453892b06f618d0e4e4",
+ "rows": [
+  {
+   "expertCandidatePerson.id": 2199023257601,
+   "messageCount": 3,
+   "tag.name": "Ralph_Vaughan_Williams"
+  },
+  {
+   "expertCandidatePerson.id": 2199023257601,
+   "messageCount": 2,
+   "tag.name": "Aristophanes"
+  },
+  {
+   "expertCandidatePerson.id": 15393162799165,
+   "messageCount": 2,
+   "tag.name": "Aristophanes"
+  },
+  {
+   "expertCandidatePerson.id": 19791209309107,
+   "messageCount": 2,
+   "tag.name": "Aristophanes"
+  },
+  {
+   "expertCandidatePerson.id": 6079,
+   "messageCount": 2,
+   "tag.name": "Augustine_of_Hippo"
+  },
+  {
+   "expertCandidatePerson.id": 30786325585300,
+   "messageCount": 2,
+   "tag.name": "Bob_Hope"
+  },
+  {
+   "expertCandidatePerson.id": 2199023257601,
+   "messageCount": 2,
+   "tag.name": "Canada"
+  },
+  {
+   "expertCandidatePerson.id": 15393162799165,
+   "messageCount": 2,
+   "tag.name": "Dmitry_Medvedev"
+  },
+  {
+   "expertCandidatePerson.id": 2199023259874,
+   "messageCount": 2,
+   "tag.name": "Franklin_D._Roosevelt"
+  },
+  {
+   "expertCandidatePerson.id": 15393162793184,
+   "messageCount": 2,
+   "tag.name": "Interpol"
+  },
+  {
+   "expertCandidatePerson.id": 2199023257601,
+   "messageCount": 2,
+   "tag.name": "Jean-Baptiste_Lamarck"
+  },
+  {
+   "expertCandidatePerson.id": 2199023261968,
+   "messageCount": 2,
+   "tag.name": "Johannes_Brahms"
+  },
+  {
+   "expertCandidatePerson.id": 19791209309107,
+   "messageCount": 2,
+   "tag.name": "John_Cage"
+  },
+  {
+   "expertCandidatePerson.id": 19791209309107,
+   "messageCount": 2,
+   "tag.name": "Leonard_Bernstein"
+  },
+  {
+   "expertCandidatePerson.id": 2199023259874,
+   "messageCount": 2,
+   "tag.name": "Ludwig_van_Beethoven"
+  },
+  {
+   "expertCandidatePerson.id": 4398046512280,
+   "messageCount": 2,
+   "tag.name": "Muammar_Gaddafi"
+  },
+  {
+   "expertCandidatePerson.id": 2199023257601,
+   "messageCount": 2,
+   "tag.name": "Mughal_Empire"
+  },
+  {
+   "expertCandidatePerson.id": 30786325581417,
+   "messageCount": 2,
+   "tag.name": "Pl\u00e1cido_Domingo"
+  },
+  {
+   "expertCandidatePerson.id": 2199023257601,
+   "messageCount": 2,
+   "tag.name": "Slavoj_\u017di\u017eek"
+  },
+  {
+   "expertCandidatePerson.id": 30786325581417,
+   "messageCount": 2,
+   "tag.name": "Wayne_Gretzky"
+  },
+  {
+   "expertCandidatePerson.id": 2199023261968,
+   "messageCount": 2,
+   "tag.name": "Wolfgang_Amadeus_Mozart"
+  },
+  {
+   "expertCandidatePerson.id": 9043,
+   "messageCount": 1,
+   "tag.name": "14th_Dalai_Lama"
+  },
+  {
+   "expertCandidatePerson.id": 2199023257601,
+   "messageCount": 1,
+   "tag.name": "14th_Dalai_Lama"
+  },
+  {
+   "expertCandidatePerson.id": 4398046512280,
+   "messageCount": 1,
+   "tag.name": "14th_Dalai_Lama"
+  },
+  {
+   "expertCandidatePerson.id": 217,
+   "messageCount": 1,
+   "tag.name": "99_Luftballons"
+  },
+  {
+   "expertCandidatePerson.id": 30786325585300,
+   "messageCount": 1,
+   "tag.name": "A_Day_Without_Rain"
+  },
+  {
+   "expertCandidatePerson.id": 28587302322352,
+   "messageCount": 1,
+   "tag.name": "A_Kind_of_Magic"
+  },
+  {
+   "expertCandidatePerson.id": 2199023259874,
+   "messageCount": 1,
+   "tag.name": "A_Little_Bit_Me,_a_Little_Bit_You"
+  },
+  {
+   "expertCandidatePerson.id": 7684,
+   "messageCount": 1,
+   "tag.name": "A_Whiter_Shade_of_Pale"
+  },
+  {
+   "expertCandidatePerson.id": 15393162793184,
+   "messageCount": 1,
+   "tag.name": "Aaron_Copland"
+  },
+  {
+   "expertCandidatePerson.id": 17592186053088,
+   "messageCount": 1,
+   "tag.name": "Abbasid_Caliphate"
+  },
+  {
+   "expertCandidatePerson.id": 32985348842018,
+   "messageCount": 1,
+   "tag.name": "Adolf_Hitler"
+  },
+  {
+   "expertCandidatePerson.id": 217,
+   "messageCount": 1,
+   "tag.name": "Alan_Moore"
+  },
+  {
+   "expertCandidatePerson.id": 19791209309107,
+   "messageCount": 1,
+   "tag.name": "Albert_Einstein"
+  },
+  {
+   "expertCandidatePerson.id": 217,
+   "messageCount": 1,
+   "tag.name": "Alexander_Downer"
+  },
+  {
+   "expertCandidatePerson.id": 19791209310154,
+   "messageCount": 1,
+   "tag.name": "Alexander_Pushkin"
+  },
+  {
+   "expertCandidatePerson.id": 4398046517288,
+   "messageCount": 1,
+   "tag.name": "Alfred,_Lord_Tennyson"
+  },
+  {
+   "expertCandidatePerson.id": 2199023259874,
+   "messageCount": 1,
+   "tag.name": "Alfred_Hitchcock"
+  },
+  {
+   "expertCandidatePerson.id": 9043,
+   "messageCount": 1,
+   "tag.name": "Ali"
+  },
+  {
+   "expertCandidatePerson.id": 2199023257601,
+   "messageCount": 1,
+   "tag.name": "Ali"
+  },
+  {
+   "expertCandidatePerson.id": 4398046512280,
+   "messageCount": 1,
+   "tag.name": "Ali"
+  },
+  {
+   "expertCandidatePerson.id": 21990232560354,
+   "messageCount": 1,
+   "tag.name": "Ali"
+  },
+  {
+   "expertCandidatePerson.id": 21990232564061,
+   "messageCount": 1,
+   "tag.name": "All_the_Roadrunning"
+  },
+  {
+   "expertCandidatePerson.id": 32985348842085,
+   "messageCount": 1,
+   "tag.name": "Ammon"
+  },
+  {
+   "expertCandidatePerson.id": 6079,
+   "messageCount": 1,
+   "tag.name": "Andrew_Jackson"
+  },
+  {
+   "expertCandidatePerson.id": 19791209309107,
+   "messageCount": 1,
+   "tag.name": "Angola"
+  },
+  {
+   "expertCandidatePerson.id": 30786325581056,
+   "messageCount": 1,
+   "tag.name": "Another_One_Bites_the_Dust"
+  },
+  {
+   "expertCandidatePerson.id": 2199023257601,
+   "messageCount": 1,
+   "tag.name": "Anton_Chekhov"
+  },
+  {
+   "expertCandidatePerson.id": 4398046512280,
+   "messageCount": 1,
+   "tag.name": "Are_You_Experienced"
+  },
+  {
+   "expertCandidatePerson.id": 21990232564061,
+   "messageCount": 1,
+   "tag.name": "Arenberg"
+  },
+  {
+   "expertCandidatePerson.id": 217,
+   "messageCount": 1,
+   "tag.name": "Aristophanes"
+  },
+  {
+   "expertCandidatePerson.id": 2199023259874,
+   "messageCount": 1,
+   "tag.name": "Aristophanes"
+  },
+  {
+   "expertCandidatePerson.id": 30786325585300,
+   "messageCount": 1,
+   "tag.name": "Aristophanes"
+  },
+  {
+   "expertCandidatePerson.id": 6079,
+   "messageCount": 1,
+   "tag.name": "Aristotle"
+  },
+  {
+   "expertCandidatePerson.id": 10995116279128,
+   "messageCount": 1,
+   "tag.name": "Arnold_Schwarzenegger"
+  },
+  {
+   "expertCandidatePerson.id": 32985348842085,
+   "messageCount": 1,
+   "tag.name": "Arthur_William_Baden_Powell"
+  },
+  {
+   "expertCandidatePerson.id": 19791209309107,
+   "messageCount": 1,
+   "tag.name": "Ashikaga_shogunate"
+  },
+  {
+   "expertCandidatePerson.id": 30786325585300,
+   "messageCount": 1,
+   "tag.name": "At_Last"
+  },
+  {
+   "expertCandidatePerson.id": 28587302322352,
+   "messageCount": 1,
+   "tag.name": "At_War_with_the_Mystics"
+  },
+  {
+   "expertCandidatePerson.id": 30786325581417,
+   "messageCount": 1,
+   "tag.name": "Augustin_Pyramus_de_Candolle"
+  },
+  {
+   "expertCandidatePerson.id": 10995116285979,
+   "messageCount": 1,
+   "tag.name": "Augustine_of_Hippo"
+  },
+  {
+   "expertCandidatePerson.id": 32985348842085,
+   "messageCount": 1,
+   "tag.name": "Augustine_of_Hippo"
+  },
+  {
+   "expertCandidatePerson.id": 9043,
+   "messageCount": 1,
+   "tag.name": "Austrian_Empire"
+  },
+  {
+   "expertCandidatePerson.id": 19791209310154,
+   "messageCount": 1,
+   "tag.name": "Banned_in_the_U.S.A."
+  },
+  {
+   "expertCandidatePerson.id": 2199023257601,
+   "messageCount": 1,
+   "tag.name": "Barbra_Streisand"
+  },
+  {
+   "expertCandidatePerson.id": 2199023257601,
+   "messageCount": 1,
+   "tag.name": "Barrio_Fino"
+  },
+  {
+   "expertCandidatePerson.id": 2199023259874,
+   "messageCount": 1,
+   "tag.name": "Barry_Manilow"
+  },
+  {
+   "expertCandidatePerson.id": 2199023259874,
+   "messageCount": 1,
+   "tag.name": "Before_You_Were_Punk"
+  },
+  {
+   "expertCandidatePerson.id": 30786325581417,
+   "messageCount": 1,
+   "tag.name": "Benjamin_Harrison"
+  },
+  {
+   "expertCandidatePerson.id": 30786325585300,
+   "messageCount": 1,
+   "tag.name": "Bertolt_Brecht"
+  },
+  {
+   "expertCandidatePerson.id": 19791209309107,
+   "messageCount": 1,
+   "tag.name": "Bill_Clinton"
+  },
+  {
+   "expertCandidatePerson.id": 30786325585300,
+   "messageCount": 1,
+   "tag.name": "Bill_Clinton"
+  },
+  {
+   "expertCandidatePerson.id": 32985348842018,
+   "messageCount": 1,
+   "tag.name": "Blood_Sugar_Sex_Magik"
+  },
+  {
+   "expertCandidatePerson.id": 2199023257601,
+   "messageCount": 1,
+   "tag.name": "Bob_Dole"
+  },
+  {
+   "expertCandidatePerson.id": 19791209309107,
+   "messageCount": 1,
+   "tag.name": "Bob_Dylan"
+  },
+  {
+   "expertCandidatePerson.id": 32985348842085,
+   "messageCount": 1,
+   "tag.name": "Botswana"
+  },
+  {
+   "expertCandidatePerson.id": 10995116279128,
+   "messageCount": 1,
+   "tag.name": "Break_Like_the_Wind"
+  },
+  {
+   "expertCandidatePerson.id": 30786325585300,
+   "messageCount": 1,
+   "tag.name": "Breathe_Again"
+  },
+  {
+   "expertCandidatePerson.id": 21990232564061,
+   "messageCount": 1,
+   "tag.name": "British_Ceylon"
+  },
+  {
+   "expertCandidatePerson.id": 2199023261968,
+   "messageCount": 1,
+   "tag.name": "British_Empire"
+  },
+  {
+   "expertCandidatePerson.id": 2199023257601,
+   "messageCount": 1,
+   "tag.name": "Burma"
+  },
+  {
+   "expertCandidatePerson.id": 19791209309107,
+   "messageCount": 1,
+   "tag.name": "Busta_Rhymes"
+  },
+  {
+   "expertCandidatePerson.id": 30786325581417,
+   "messageCount": 1,
+   "tag.name": "Busta_Rhymes"
+  },
+  {
+   "expertCandidatePerson.id": 30786325585300,
+   "messageCount": 1,
+   "tag.name": "B\u00e9la_Bart\u00f3k"
+  },
+  {
+   "expertCandidatePerson.id": 19791209309107,
+   "messageCount": 1,
+   "tag.name": "C._S._Lewis"
+  },
+  {
+   "expertCandidatePerson.id": 21990232564061,
+   "messageCount": 1,
+   "tag.name": "Cameroon"
+  },
+  {
+   "expertCandidatePerson.id": 35184372093958,
+   "messageCount": 1,
+   "tag.name": "Cannot_Buy_My_Soul"
+  },
+  {
+   "expertCandidatePerson.id": 2199023257601,
+   "messageCount": 1,
+   "tag.name": "Cape_Verde"
+  },
+  {
+   "expertCandidatePerson.id": 19791209310154,
+   "messageCount": 1,
+   "tag.name": "Carl_Gustaf_Emil_Mannerheim"
+  },
+  {
+   "expertCandidatePerson.id": 4398046518779,
+   "messageCount": 1,
+   "tag.name": "Chaka_Khan"
+  },
+  {
+   "expertCandidatePerson.id": 2199023259874,
+   "messageCount": 1,
+   "tag.name": "Champa"
+  },
+  {
+   "expertCandidatePerson.id": 7684,
+   "messageCount": 1,
+   "tag.name": "Charles_Dickens"
+  },
+  {
+   "expertCandidatePerson.id": 32985348842085,
+   "messageCount": 1,
+   "tag.name": "Charles_II_of_England"
+  },
+  {
+   "expertCandidatePerson.id": 30786325585300,
+   "messageCount": 1,
+   "tag.name": "Charles_I_of_England"
+  },
+  {
+   "expertCandidatePerson.id": 15393162793184,
+   "messageCount": 1,
+   "tag.name": "Charlton_Heston"
+  },
+  {
+   "expertCandidatePerson.id": 4398046517288,
+   "messageCount": 1,
+   "tag.name": "Che_Guevara"
+  },
+  {
+   "expertCandidatePerson.id": 30786325581417,
+   "messageCount": 1,
+   "tag.name": "Christopher_Columbus"
+  },
+  {
+   "expertCandidatePerson.id": 2199023257601,
+   "messageCount": 1,
+   "tag.name": "Chrome_Dreams_II"
+  },
+  {
+   "expertCandidatePerson.id": 10995116279128,
+   "messageCount": 1,
+   "tag.name": "Claude_Debussy"
+  },
+  {
+   "expertCandidatePerson.id": 10995116285979,
+   "messageCount": 1,
+   "tag.name": "Claude_Debussy"
+  }
+ ],
+ "wall_s": 0.293
+}

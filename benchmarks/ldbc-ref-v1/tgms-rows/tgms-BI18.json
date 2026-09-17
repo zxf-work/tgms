@@ -1,0 +1,172 @@
+{
+ "arm": "scored-bi",
+ "columns": [
+  "person1Id",
+  "person2Id",
+  "mutualFriendCount"
+ ],
+ "commit": "0b7198dfdf7a",
+ "host": "xzgpu",
+ "params": {
+  "tagName": "Fyodor_Dostoyevsky"
+ },
+ "plan_digest": "fa5b6977f76e95780b837edc2185bba8bae54d6e6412f091102cbb89b66414d6",
+ "plan_id": "BI18",
+ "result_digest": "92bd691bf68348bd9df97e20b78c4b0715086fe5d71fa3722af772918c28a17d",
+ "rows": [
+  {
+   "mutualFriendCount": 31,
+   "person1Id": 2199023256539,
+   "person1Id__hierarchy": "Person",
+   "person2Id": 24189255821523,
+   "person2Id__hierarchy": "Person"
+  },
+  {
+   "mutualFriendCount": 31,
+   "person1Id": 24189255821523,
+   "person1Id__hierarchy": "Person",
+   "person2Id": 2199023256539,
+   "person2Id__hierarchy": "Person"
+  },
+  {
+   "mutualFriendCount": 25,
+   "person1Id": 15393162796970,
+   "person1Id__hierarchy": "Person",
+   "person2Id": 24189255820514,
+   "person2Id__hierarchy": "Person"
+  },
+  {
+   "mutualFriendCount": 25,
+   "person1Id": 24189255820514,
+   "person1Id__hierarchy": "Person",
+   "person2Id": 15393162796970,
+   "person2Id__hierarchy": "Person"
+  },
+  {
+   "mutualFriendCount": 23,
+   "person1Id": 4398046511410,
+   "person1Id__hierarchy": "Person",
+   "person2Id": 13194139543082,
+   "person2Id__hierarchy": "Person"
+  },
+  {
+   "mutualFriendCount": 23,
+   "person1Id": 10995116284091,
+   "person1Id__hierarchy": "Person",
+   "person2Id": 24189255815677,
+   "person2Id__hierarchy": "Person"
+  },
+  {
+   "mutualFriendCount": 23,
+   "person1Id": 13194139543082,
+   "person1Id__hierarchy": "Person",
+   "person2Id": 4398046511410,
+   "person2Id__hierarchy": "Person"
+  },
+  {
+   "mutualFriendCount": 23,
+   "person1Id": 24189255815677,
+   "person1Id__hierarchy": "Person",
+   "person2Id": 10995116284091,
+   "person2Id__hierarchy": "Person"
+  },
+  {
+   "mutualFriendCount": 20,
+   "person1Id": 24189255819695,
+   "person1Id__hierarchy": "Person",
+   "person2Id": 24189255821523,
+   "person2Id__hierarchy": "Person"
+  },
+  {
+   "mutualFriendCount": 20,
+   "person1Id": 24189255821523,
+   "person1Id__hierarchy": "Person",
+   "person2Id": 24189255819695,
+   "person2Id__hierarchy": "Person"
+  },
+  {
+   "mutualFriendCount": 18,
+   "person1Id": 24189255820514,
+   "person1Id__hierarchy": "Person",
+   "person2Id": 24189255821523,
+   "person2Id__hierarchy": "Person"
+  },
+  {
+   "mutualFriendCount": 18,
+   "person1Id": 24189255821523,
+   "person1Id__hierarchy": "Person",
+   "person2Id": 24189255820514,
+   "person2Id__hierarchy": "Person"
+  },
+  {
+   "mutualFriendCount": 17,
+   "person1Id": 2199023256539,
+   "person1Id__hierarchy": "Person",
+   "person2Id": 15393162796970,
+   "person2Id__hierarchy": "Person"
+  },
+  {
+   "mutualFriendCount": 17,
+   "person1Id": 2199023256539,
+   "person1Id__hierarchy": "Person",
+   "person2Id": 24189255819695,
+   "person2Id__hierarchy": "Person"
+  },
+  {
+   "mutualFriendCount": 17,
+   "person1Id": 13194139536963,
+   "person1Id__hierarchy": "Person",
+   "person2Id": 13194139543082,
+   "person2Id__hierarchy": "Person"
+  },
+  {
+   "mutualFriendCount": 17,
+   "person1Id": 13194139543082,
+   "person1Id__hierarchy": "Person",
+   "person2Id": 13194139536963,
+   "person2Id__hierarchy": "Person"
+  },
+  {
+   "mutualFriendCount": 17,
+   "person1Id": 15393162796970,
+   "person1Id__hierarchy": "Person",
+   "person2Id": 2199023256539,
+   "person2Id__hierarchy": "Person"
+  },
+  {
+   "mutualFriendCount": 17,
+   "person1Id": 17592186050431,
+   "person1Id__hierarchy": "Person",
+   "person2Id": 26388279069225,
+   "person2Id__hierarchy": "Person"
+  },
+  {
+   "mutualFriendCount": 17,
+   "person1Id": 24189255819695,
+   "person1Id__hierarchy": "Person",
+   "person2Id": 2199023256539,
+   "person2Id__hierarchy": "Person"
+  },
+  {
+   "mutualFriendCount": 17,
+   "person1Id": 26388279069225,
+   "person1Id__hierarchy": "Person",
+   "person2Id": 17592186050431,
+   "person2Id__hierarchy": "Person"
+  }
+ ],
+ "schema": [
+  [
+   "person1Id",
+   "uid"
+  ],
+  [
+   "person2Id",
+   "uid"
+  ],
+  [
+   "mutualFriendCount",
+   "int"
+  ]
+ ]
+}

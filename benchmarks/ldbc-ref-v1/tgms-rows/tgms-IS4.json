@@ -1,0 +1,31 @@
+{
+ "arm": "characterization-interactive",
+ "columns": [
+  "messageCreationDate",
+  "messageContent"
+ ],
+ "commit": "0b7198dfdf7a",
+ "host": "xzgpu",
+ "params": {
+  "messageId": "7696598887841"
+ },
+ "plan_digest": "41d442f215724bca6d8da50989ffc6fdbf00cdaeb25276634848577872f8bf7c",
+ "plan_id": "IS4",
+ "result_digest": "d055c5a63034f2b9f86b44e54f0ab645a8e3a0bad3201d5236d656f899564128",
+ "rows": [
+  {
+   "messageContent": "photo962074860980.jpg",
+   "messageCreationDate": 1301010177879000
+  }
+ ],
+ "schema": [
+  [
+   "messageCreationDate",
+   "json?"
+  ],
+  [
+   "messageContent",
+   "json?"
+  ]
+ ]
+}

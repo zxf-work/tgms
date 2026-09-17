@@ -309,3 +309,135 @@ falsifiers:
 # No addenda yet — this is the initial freeze. Any change to `templates`,
 # `neo4j`, `gates`, `predictions` or `falsifiers` above lands as a dated
 # `addendum_N` block below, never as an edit to the blocks above.
+
+# ==========================================================================
+addendum_1:
+  date: 2026-09-17
+  by: xzgpu execution lane (ldbc-ref-v1 run of record)
+  what: >-
+    Scoring of the frozen predictions above against the executed run. Appended,
+    never edited into the blocks above. The full account is README.md next to
+    this file; the run's own records are compare-2026-09-17.json,
+    timings-2026-09-17.json and manifest-2026-09-17.json.
+  run:
+    host: xzgpu
+    commit: 0b7198dfdf7a-dirty   # five uncommitted harness fixes, README §6
+    neo4j: 5.26.0 + apoc-5.26.0-core, Temurin 21.0.12+8, driver 5.28.6
+    import_wall_s: 42
+    index_wall_s: 14
+    tgms_wall_s: 8187.2
+    store: stores/snb-sf1
+
+  gates:
+    G-R1_every_attempted_has_a_result_or_refusal: PASS   # 24/24; BI6.v2's ceiling hit is a recorded TIMEOUT, not a skip
+    G-R2_record_validates: PASS                          # check_result_manifest.py: conforms
+    G-R3_same_data: PASS                                 # 2,997,352 nodes / 17,196,776 edges, both serializations, id digests equal
+
+  # ------------------------------------------------------------------
+  # The scoring bar below is `predictions:`' own, applied as written. It is
+  # applied to a REDUCED denominator, because 8 of the 24 templates produced
+  # no valid comparison for reasons that are properties of the harness and of
+  # a frozen host, not of TGIR:
+  #   - 7 (BI4 BI9 BI11 BI12 IC2 IC5 IC9) have an INVALID REFERENCE SIDE: their
+  #     temporal parameters reached Neo4j as ISO-8601 strings, and
+  #     `DATETIME > STRING` yields null rather than raising, so the reference
+  #     returned 0 or 1 rows silently. Fix written and tested
+  #     (ldbc_reference_run.driverize_params) but NOT executed: host compute
+  #     was frozen for a 6-hour soak before the reference could be re-run.
+  #   - 1 (BI6, i.e. BI6.v2) hit the 1020 s TGIR ceiling and produced no rows.
+  # Scoring those 8 either way would be inventing evidence, so they are
+  # reported NOT SCOREABLE rather than folded into any ratio.
+  # ------------------------------------------------------------------
+  scoring:
+    per_template:
+      verdict: REFUTED
+      on: IS3
+      detail: >-
+        `refuted_if` reads "any non-risk-flagged template shows a disagreeing
+        row with cause other than ORDERING/TIE or REFERENCE-SIDE-QUIRK". IS3 is
+        non-risk-flagged and disagrees: TGIR returns 48 rows where Neo4j
+        returns 24, exactly 2x, because the store encodes one KNOWS CSV row as
+        two edge versions (snb_loader `both_ways=True`, M7) and
+        interactive-short-3.cypher matches `-[:KNOWS]-` undirected. The cause
+        is neither ORDERING/TIE nor REFERENCE-SIDE-QUIRK, so the prediction is
+        refuted as written. RUNBOOK.md §4.3's own M7 line pre-classifies this
+        outcome ("any KNOWS-count doubling in a result is a defect to report,
+        not a normalization to apply"), and the prior P-SF1b record shows the
+        same 48, so it is a standing property of the M7 encoding rather than a
+        regression introduced by this run. Reported, not normalized away.
+      not_scoreable: [BI4, BI9, BI11, BI12, IC2, IC5, IC9, BI6]
+    overall_agreement:
+      verdict: NOT SCOREABLE
+      detail: >-
+        The bar pools every compared row across all 24 templates; with 8
+        templates uncomparable the pooled ratio would be a statement about the
+        harness, not about agreement. Reported instead, over the 16 templates
+        that DID produce a valid comparison: 281 of 329 compared rows agree
+        (0.854), where the 48 disagreeing rows are IS3's doubling alone. That
+        figure is itself conditional on a column correspondence table that this
+        lane did NOT invent (see below), so it is reported as an upper-bound
+        reading of the evidence and not as a score against the frozen bar.
+    bi6_is_not_a_semantic_gap:
+      verdict: NOT SCOREABLE (vacuous)
+      detail: >-
+        `pass_if` is "BI6.v2's verdict has zero TGIR-SEMANTIC-GAP-caused
+        disagreements". BI6.v2 timed out at the 1020 s ceiling and produced no
+        rows, so it has zero disagreements of every cause and passes
+        vacuously. That is not evidence for D2's triage and is not claimed as
+        such. BI6.json (the v1 artifact) did ERROR at SF1, exactly as RUNBOOK
+        §6 said it should, so the v1 defect is confirmed to still reproduce.
+
+  falsifiers:
+    a_inexpressible_template: NOT TRIGGERED
+    b_explained_away_row_hiding_a_defect:
+      status: AT RISK — flagged deliberately
+      detail: >-
+        This run explains several disagreements as harness artifacts (string
+        temporal parameters; a `ts` column kind that never fired; divergent
+        column names). Each is evidenced rather than asserted — the IS1 rows
+        are the same person differing only by exactly 1000x, the BI3/BI7/BI10/
+        IS2 rows are byte-identical to the reference under positional column
+        pairing — but the coordinator should audit them before any of this is
+        cited, since "explained away" is precisely what falsifier b warns of.
+    c_same_data_gate_fails: NOT TRIGGERED   # G-R3 PASS
+    d_reference_side_timeout:
+      status: ANALOGUE TRIGGERED, other side
+      detail: >-
+        No reference-side timeout occurred anywhere; BI10, the template named
+        as most likely to approach the 600 s ceiling, ran in 0.29 s, and the
+        whole Neo4j timed range is 0.007-1.974 s. The timeout fell on the TGIR
+        side instead (BI6.v2, 1020 s), and is reported NOT-ATTEMPTED for
+        comparison purposes rather than folded into the agreement denominator,
+        which is the treatment falsifier d prescribes.
+    e_systematic_path_residual:
+      verdict: NOT TRIGGERED
+      detail: >-
+        0 of the 5 risk-flagged templates (BI3 BI10 BI17 IC5 IC12) show a
+        TGIR-SEMANTIC-GAP disagreement. BI3 and BI10 return values identical to
+        the reference; BI17 returns 0 rows on both sides; IC5's reference is
+        invalid (0 rows both sides regardless); IC12 agrees on all 5 rows of
+        the 4 columns it projects. The design memo §7 var-length/path residual
+        did NOT materialise as a systematic effect at SF1.
+
+  caveats_for_the_reader:
+    - >-
+      `ldbc_compare.py` matches columns BY NAME on both sides despite its own
+      docstring ("by column kind, never by column name"), and 10 templates'
+      two sides use different names (BI3's `forumId` vs `forum.id`, BI7's
+      `relatedTagCount` vs `count`, ...). Four of them (BI3 BI7 BI10 IS2) are
+      byte-identical to the reference once columns are paired positionally and
+      the µs/ms rule is applied, but positional pairing is NOT universally
+      safe — IC8 carries the same names in a different order, where name-based
+      matching is right and positional matching would be wrong. A column
+      correspondence table is a design decision and was deliberately left to
+      the coordinator rather than improvised mid-run.
+    - >-
+      The comparator only compares the columns the TGIR schema declares, so a
+      reference column the TGIR plan does not project is invisible to it.
+      IC12's `tagNames` and three of BI4's five columns fall in this hole, and
+      IC12's `agreeing` verdict is over-generous as a result.
+    - >-
+      Wall times on the two sides are NOT a speed ratio: Neo4j ran 1 warm-up +
+      3 timed executions against a warm server, TGIR ran its own warmups-1/
+      reps-3 protocol (1 rep when bypassed) and its `ms` excludes a 150-270 s
+      per-plan store open. They are reported per side and never divided.

@@ -1,0 +1,28 @@
+{
+ "columns": [
+  "forumId",
+  "forumTitle",
+  "moderatorId",
+  "moderatorFirstName",
+  "moderatorLastName"
+ ],
+ "commit": "0b7198dfdf7a",
+ "host": "xzgpu",
+ "params": {
+  "messageId": 1649272534038
+ },
+ "plan_id": "IS6",
+ "query_file": "external_workloads/ldbc/interactive_v1/cypher/queries/interactive-short-6.cypher",
+ "query_sha256": "1ac9125f6817402cd5df456b5201fc44187b646ffe6bf8497070db2abae84bce",
+ "result_digest": "9ea6b6452ceb6f8403bed2f7baaef58bfcefdd33dd0c6b7aa7f467f3ecc89dc4",
+ "rows": [
+  {
+   "forumId": 1649267525892,
+   "forumTitle": "Album 0 of Abhishek Reddy",
+   "moderatorFirstName": "Abhishek",
+   "moderatorId": 24189255812000,
+   "moderatorLastName": "Reddy"
+  }
+ ],
+ "wall_s": 0.01
+}

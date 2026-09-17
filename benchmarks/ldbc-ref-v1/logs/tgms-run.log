@@ -1,0 +1,39 @@
+RUN_STARTED ldbc-ref-v1-tgms commit=0b7198dfdf7a 2026-09-17T20:35:10Z
+RUN_STARTED commit=0b7198dfdf7a store=stores/snb-sf1 sf=sf1 plans=25 policy=guardrail-policy-v2 host=xzgpu
+  BI10   refuse -> COMPLETED      est       170296 ms  actual 24465.12269973755  rows      100  [246.4s]
+  BI11   refuse -> COMPLETED      est        97927 ms  actual 38233.81447792053  rows        1  [268.7s]
+  BI12   refuse -> COMPLETED      est        33254 ms  actual 148134.9799633026  rows      166  [478.9s]
+  BI17   refuse -> COMPLETED      est   1278984344 ms  actual 71798.79426956177  rows        0  [375.2s]
+  BI18    admit -> COMPLETED      est         5918 ms  actual 54327.404737472534  rows       20  [428.4s]
+  BI3    refuse -> COMPLETED      est      5580034 ms  actual 35310.08505821228  rows       20  [279.2s]
+  BI4    refuse -> COMPLETED      est       471369 ms  actual 77064.22114372253  rows      100  [362.6s]
+  BI6    refuse -> ERRORED        est       161120 ms  actual            —  rows        —  [745.8s]
+  BI6.v2 refuse -> TIMEOUT        est       230072 ms  actual            —  rows        —  [1021.7s]
+  BI7    refuse -> COMPLETED      est       303037 ms  actual 13052.186727523804  rows      100  [183.4s]
+  BI9    refuse -> COMPLETED      est        31811 ms  actual 105390.9981250763  rows      100  [407.9s]
+  IC11    admit -> COMPLETED      est            9 ms  actual 5043.84446144104  rows        0  [230.5s]
+  IC12   refuse -> COMPLETED      est        69265 ms  actual 20427.979707717896  rows        5  [252.5s]
+  IC2     admit -> COMPLETED      est            0 ms  actual 6403.944969177246  rows       20  [251.4s]
+  IC5     admit -> COMPLETED      est           35 ms  actual 18871.45161628723  rows        0  [283.5s]
+  IC6     admit -> COMPLETED      est            2 ms  actual 59059.01265144348  rows       10  [438.1s]
+  IC8     admit -> COMPLETED      est            0 ms  actual 5500.169515609741  rows       11  [179.9s]
+  IC9     admit -> COMPLETED      est            1 ms  actual 47401.288747787476  rows       20  [392.9s]
+  IS1     admit -> COMPLETED      est            0 ms  actual 3588.3069038391113  rows        1  [204.4s]
+  IS2     admit -> COMPLETED      est          840 ms  actual 6665.143251419067  rows       10  [183.2s]
+  IS3     admit -> COMPLETED      est            0 ms  actual 687.713623046875  rows       48  [155.0s]
+  IS4     admit -> COMPLETED      est            0 ms  actual 120.81360816955566  rows        1  [145.5s]
+  IS5     admit -> COMPLETED      est            0 ms  actual 4486.585378646851  rows        1  [207.6s]
+  IS6     admit -> COMPLETED      est         3669 ms  actual 4271.604776382446  rows        1  [219.8s]
+  IS7     admit -> COMPLETED      est            0 ms  actual 8010.096073150635  rows        1  [244.8s]
+
+SCORED — BI rows, LDBC parameters  (11 plans)
+  derived: 10 refuse / 1 admit
+    COMPLETED        9
+    TIMEOUT          1
+    ERRORED          1
+
+CHARACTERIZATION — Interactive rows, sampled anchors  (14 plans)
+  derived: 1 refuse / 13 admit
+    COMPLETED        14
+record: benchmarks/ldbc-ref-v1/tgms-campaign-ldbc-ref-v1.json
+TGMS_DONE exit=0 2026-09-17T22:51:38Z
