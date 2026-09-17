@@ -1270,33 +1270,49 @@ def plot_scale_costs(data: dict) -> None:
         by_quantity.setdefault(r["quantity"], []).append(
             (_SCALE_COSTS_X[r["scale"]], r["value"], r))
 
+    # Short labels: at this panel's 0.58-0.64\textwidth placement (~2in per
+    # subplot after the 2x2 split) a longer label like the former
+    # "query-ready floor VmHWM, GB" runs off the canvas and "recovery wall,
+    # s (cadence labelled)" overlaps its neighbor's "build VmHWM, GB" -- the
+    # cadence detail lives in the legend instead (see below), so the axis
+    # label does not need to carry it.
     panels = [
-        ("build_wall_s", "build wall, s"),
-        ("build_vmhwm_gb", "build VmHWM, GB"),
-        ("query_ready_floor_vmhwm_gb", "query-ready floor VmHWM, GB"),
-        ("recovery", "recovery wall, s (cadence labelled)"),
+        ("build_wall_s", "build wall (s)"),
+        ("build_vmhwm_gb", "VmHWM (GB)"),
+        ("query_ready_floor_vmhwm_gb", "floor VmHWM (GB)"),
+        ("recovery", "recovery (s)"),
     ]
 
-    # This figure alone is placed at ~0.64\textwidth in the manuscript (the
-    # other figures in DELIVERABLES run at or near full column width), which
-    # shrank the default STYLE's 9pt tick labels down to an unreadable ~5pt.
-    # Fix: halve the figure's own physical size (so the same target width
-    # covers proportionally less of it, i.e. everything renders bigger
-    # relative to that width) and pin tick/axis-label sizes explicitly
-    # instead of inheriting STYLE's font.size -- this panel's own style, not
-    # a change to the shared STYLE dict every other figure also uses. No
-    # data change.
+    # This figure alone is placed at ~0.58-0.64\textwidth in the manuscript
+    # (the other figures in DELIVERABLES run at or near full column width),
+    # which shrank the default STYLE's 9pt tick labels down to an unreadable
+    # ~5pt. Fix: halve the figure's own physical size (so the same target
+    # width covers proportionally less of it, i.e. everything renders
+    # bigger relative to that width), pin tick/axis-label sizes explicitly
+    # (>=7pt at the rendered size) instead of inheriting STYLE's font.size,
+    # and use constrained_layout instead of tight_layout so the 2x2 grid's
+    # axis labels, tick labels, and suptitle are all accounted for together
+    # rather than a single post-hoc padding pass -- this panel's own style,
+    # not a change to the shared STYLE dict every other figure also uses.
+    # No data change.
     scale_costs_style = {
         **STYLE,
-        "xtick.labelsize": 8,
-        "ytick.labelsize": 8,
-        "axes.labelsize": 8,
+        "xtick.labelsize": 7,
+        "ytick.labelsize": 7,
+        "axes.labelsize": 7,
+        "legend.fontsize": 6,
     }
 
     with plt.rc_context(scale_costs_style):
-        fig, axes = plt.subplots(2, 2, figsize=(4.25, 3.25))
+        fig, axes = plt.subplots(2, 2, figsize=(4.25, 3.25), constrained_layout=True)
         for ax, (key, ylabel) in zip(axes.flat, panels):
             if key == "recovery":
+                # Two cadences share this panel; the legend's own entries
+                # ("cadence 500" / "cadence 5000") carry that distinction,
+                # so no per-point annotation is drawn -- at this panel's
+                # size, per-point "ce500"/"ce5000" text (even with
+                # annotation_clip=True) has nowhere to sit without
+                # overlapping the marker next to it or the axes' edge.
                 for quantity, marker in (("recovery_wall_s_ce500", "o"),
                                           ("recovery_wall_s_ce5000", "s")):
                     pts = sorted(by_quantity.get(quantity, []))
@@ -1307,16 +1323,17 @@ def plot_scale_costs(data: dict) -> None:
                     cadence = "500" if quantity.endswith("ce500") else "5000"
                     ax.plot(xs, ys, marker=marker, color="black", linestyle="--",
                             label=f"cadence {cadence}")
-                    for x, y in zip(xs, ys):
-                        ax.annotate(f"ce{cadence}", (x, y), fontsize=5,
-                                    textcoords="offset points", xytext=(4, 4))
-                ax.legend(fontsize=5)
+                ax.legend(loc="best", frameon=False, handlelength=1.5,
+                          borderaxespad=0.2)
             else:
                 pts = sorted(by_quantity.get(key, []))
                 xs = [p[0] for p in pts]
                 ys = [p[1] for p in pts]
                 ax.plot(xs, ys, marker="o", color="black")
             ax.set_xscale("log")
+            # Every quantity here spans at least one full decade (build
+            # wall alone runs ~78s to ~28,000s across 1M-100M) -- a log
+            # y-axis throughout, not just for the widest-spanning panel.
             ax.set_yscale("log")
             ax.set_xticks([1, 10, 30, 100])
             ax.set_xticklabels(["1M", "10M", "30M", "100M"])
@@ -1324,7 +1341,6 @@ def plot_scale_costs(data: dict) -> None:
             ax.set_ylabel(ylabel)
 
         fig.suptitle("B7 scale costs: build / query-ready floor / recovery, 1M-100M", fontsize=8)
-        fig.tight_layout()
         _savefig(fig, OUT_DIR / "f11_b7_scale_costs")
 
 

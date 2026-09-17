@@ -2817,6 +2817,23 @@ def test_scale_costs_csv_has_expected_rows_and_no_fabricated_values(tmp_path, mo
     assert len(rows) == 1 + 14
 
 
+def test_scale_costs_csv_is_byte_identical_to_the_frozen_hash(tmp_path, monkeypatch):
+    """f11_b7_scale_costs's --csv-only output must not move when its plot
+    layout changes (short y-labels, constrained_layout, dropped per-point
+    annotations, etc.) -- the CSV writer never touches matplotlib, so this
+    pins its exact bytes with a frozen sha256 as the "no data change"
+    receipt for that layout work.
+    """
+    fig_mod = _load_figures()
+    monkeypatch.setattr(fig_mod, "OUT_DIR", tmp_path)
+    data = fig_mod.build_scale_costs_data()
+    text = fig_mod.write_scale_costs_csv(data)
+    digest = hashlib.sha256(text.encode("utf-8")).hexdigest()
+    assert digest == "4ce62f101d3a07c57d89a25d78bb06031e95f642df5fdd8aa366af4eadc3c774", (
+        "f11_b7_scale_costs.csv content changed -- this must stay byte-identical "
+        "across figure-layout-only edits")
+
+
 def test_cli_csv_only_mode_is_idempotent(tmp_path):
     result1 = subprocess.run(
         [_venv_python(), str(ROOT / "scripts" / "osdi_paper_figures.py"), "--csv-only"],
