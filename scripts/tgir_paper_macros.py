@@ -28,6 +28,11 @@ Sources of record (nothing else is read for a number):
   benchmarks/results-v1/ldbc-sf1-campaign.json  the E13 SF1 campaign, 21 plan records
   benchmarks/results-v1/e14-p1-leaf-overhead-{bitcoinotc,collegemsg}.json  the P1 cells
   benchmarks/results-v1/ldbc-sf1-campaign-fmt3-2026-09{.json,.README.md}  the 2026-09 rerun
+  benchmarks/results-v1/ldbc-sf1-campaign-fmt3-interactive-2026-09.json  its corrected
+                                              interactive arm (2026-09-16)
+  benchmarks/ldbc-ref-v1/{compare,timings,manifest}-2026-09-17.json  the external
+                                              Neo4j reference run
+  benchmarks/ldbc-ref-v1/{tgms-campaign-ldbc-ref-v1.json,campaign.yaml,README.md}
   benchmarks/paper-a-v1/forecast.yaml         the frozen E13/E14 pre-registration
   docs/design/PAPER_A_EVIDENCE_FREEZE.md      the pre-registered thresholds (regex-checked)
   docs/design/PAPER_A_EVIDENCE_REPORT.md      prose receipts for E13/E14 (regex-checked)
@@ -61,6 +66,7 @@ from __future__ import annotations
 import argparse
 import json
 import re
+import statistics
 import sys
 from collections import Counter
 from pathlib import Path
@@ -116,6 +122,23 @@ EVIDENCE_FREEZE = Path("docs/design/PAPER_A_EVIDENCE_FREEZE.md")
 EVIDENCE_REPORT = Path("docs/design/PAPER_A_EVIDENCE_REPORT.md")
 FORECAST_FREEZE = Path("docs/design/TGIR_FORECAST_FREEZE.md")
 OSDI_PLAN = Path("docs/design/OSDI27_AUDIT_AND_PLAN_2026-09-13.md")
+
+# --- the external Neo4j reference run (ldbc-ref-v1, executed 2026-09-17) ---
+# The reference side is an independently loaded, unmodified-query Neo4j 5.26.0
+# over the same LDBC SF1 data; `compare` carries the per-template verdicts and
+# per-row agree counts, `timings` the paired wall times, `campaign.yaml`'s
+# addendum_2 the scoring of those verdicts against the frozen predictions, and
+# README.md the human-readable table this generator asserts itself against.
+REF_COMPARE = Path("benchmarks/ldbc-ref-v1/compare-2026-09-17.json")
+REF_TIMINGS = Path("benchmarks/ldbc-ref-v1/timings-2026-09-17.json")
+REF_MANIFEST = Path("benchmarks/ldbc-ref-v1/manifest-2026-09-17.json")
+REF_TGMS_CAMPAIGN = Path("benchmarks/ldbc-ref-v1/tgms-campaign-ldbc-ref-v1.json")
+REF_CAMPAIGN_YAML = Path("benchmarks/ldbc-ref-v1/campaign.yaml")
+REF_README = Path("benchmarks/ldbc-ref-v1/README.md")
+
+# --- the corrected interactive-set reproduction (2026-09-16) ---------------
+SF1_CHAR_RERUN = Path(
+    "benchmarks/results-v1/ldbc-sf1-campaign-fmt3-interactive-2026-09.json")
 
 # captured before set_root() makes them absolute: name -> path relative to ROOT
 _RELATIVE_SOURCES = {n: v for n, v in list(globals().items())
@@ -1639,6 +1662,270 @@ def main() -> int:
           "ldbc-sf1-campaign-fmt3-2026-09.json: Interactive plans attempted in the rerun")
     m.add("tgSfOneRerunCharBindFailed", len(bind_failed),
           "ldbc-sf1-campaign-fmt3-2026-09.json: Interactive plans recording BIND_FAILED")
+
+    # ------------------------------- the corrected interactive reproduction
+    # The rerun above invoked the driver without --csv, so all 14 Interactive
+    # plans bound raw validation_params ids and recorded BIND_FAILED.  This
+    # record re-runs exactly those 14 with sample_anchor() draws from the
+    # store's own corpus; its `supersedes` block names the arm it replaces,
+    # and the invalid rerun's scored-bi arm is untouched by it.
+    char_rerun = json.loads(SF1_CHAR_RERUN.read_text(encoding="utf-8"))
+    chman = char_rerun["manifest"]
+    chrecs = {r["plan_id"]: r for r in char_rerun["records"]}
+    char_date = chman["utc"].split("T")[0]
+    eq(char_date, "2026-09-16", "char rerun: the record's date")
+    eq(chman["policy_version"], cman["policy_version"],
+       "char rerun: same policy as the campaign")
+    eq(chman["ceilings"], cman["ceilings"], "char rerun: same ceilings as the campaign")
+    eq(chman["campaign_seed"], cman["campaign_seed"],
+       "char rerun: same anchor seed as the campaign")
+    eq(chman["build_info"]["manifest_format_version"], 3, "char rerun: the format-3 engine")
+    require(chman["complete"] is True, "char rerun: the record declares itself complete")
+    eq(chman["supersedes"]["record"], str(SF1_RERUN.relative_to(ROOT)),
+       "char rerun: it supersedes the invalid rerun's Interactive arm")
+    eq(chman["supersedes"]["arm"], "characterization-interactive",
+       "char rerun: and only that arm")
+    char_completed = [r for r in char_rerun["records"] if r["outcome"] == "COMPLETED"]
+    eq(len(char_completed), len(char_rerun["records"]),
+       "char rerun: every record COMPLETED --- no BIND_FAILED survives")
+    eq(len(char_rerun["records"]), len(interactive),
+       "char rerun: the same Interactive plans the invalid rerun attempted")
+    eq(sorted(chrecs), sorted(r["plan_id"] for r in interactive),
+       "char rerun: the same Interactive plan ids")
+
+    # against the *original* campaign: only its 11 Interactive rows have a
+    # baseline (IS1/IS4/IS5 are m6/D2 additions with nothing to compare to).
+    orig_char = sorted(p for p, r in crecs_by_id.items()
+                       if r["arm"] == "characterization-interactive")
+    eq(len(orig_char), sf1_char, "char rerun: the original campaign's Interactive plans")
+    char_ratios = {}
+    char_count_equal = 0
+    for pid in orig_char:
+        old, new = crecs_by_id[pid], chrecs[pid]
+        eq(new["outcome"], old["outcome"], f"char rerun {pid}: outcome class unchanged")
+        if new["rows"] == old["rows"]:
+            char_count_equal += 1
+        char_ratios[pid] = new["ms"] / old["ms"]
+    eq(char_count_equal, len(orig_char),
+       "char rerun: every original Interactive plan reproduces its row count")
+    c_min_id = min(char_ratios, key=char_ratios.get)
+    c_max_id = max(char_ratios, key=char_ratios.get)
+    eq((c_min_id, c_max_id), ("IS3", "IC9"),
+       "char rerun: which plans hold the wall ratio extremes")
+    require(max(char_ratios.values()) < 1.0,
+            "char rerun: every original Interactive plan got faster, none slower")
+    m.add("tgSfOneCharCompleted", len(char_completed),
+          "ldbc-sf1-campaign-fmt3-interactive-2026-09.json: records with outcome COMPLETED "
+          "(of tgSfOneRerunCharTotal attempted)")
+    m.add("tgSfOneCharCountEqual", char_count_equal,
+          "of the original campaign's 11 Interactive plans, those whose `rows` equals the "
+          "original record's `rows`")
+    m.add("tgSfOneCharWallMin", f"{char_ratios[c_min_id]:.2f}",
+          "min new_ms/original_ms over those 11 plans")
+    m.add("tgSfOneCharWallMax", f"{char_ratios[c_max_id]:.2f}",
+          "max new_ms/original_ms over those 11 plans")
+    m.add("tgSfOneCharRerunCommit", chman["commit"],
+          "ldbc-sf1-campaign-fmt3-interactive-2026-09.json manifest.commit")
+    m.add("tgSfOneCharRerunDate", char_date,
+          "ldbc-sf1-campaign-fmt3-interactive-2026-09.json manifest.utc, date part")
+
+    # ------------------------- the external Neo4j reference run (ldbc-ref-v1)
+    refcmp = json.loads(REF_COMPARE.read_text(encoding="utf-8"))
+    reftim = json.loads(REF_TIMINGS.read_text(encoding="utf-8"))
+    refman = json.loads(REF_MANIFEST.read_text(encoding="utf-8"))
+    refrun = json.loads(REF_TGMS_CAMPAIGN.read_text(encoding="utf-8"))
+    refcamp = yaml.safe_load(REF_CAMPAIGN_YAML.read_text(encoding="utf-8"))
+    refreadme = REF_README.read_text(encoding="utf-8")
+
+    # A verdict's `plan_id` is the *plan artifact*'s id ("BI6.v2"); the timing
+    # record and the README key on the *template* ("BI6").  One spelling of the
+    # reduction, used everywhere below, so the two records can never be joined
+    # on different keys by accident.
+    def ref_template(plan_id: str) -> str:
+        return plan_id.split(".")[0]
+
+    verdicts = refcmp["verdicts"]
+    reftpl = {e["template"]: e for e in reftim["templates"]}
+    n_ref = eq(len(verdicts), refcmp["manifest"]["plans"],
+               "ref-v1: verdict rows == manifest.plans")
+    eq(sorted(ref_template(v["plan_id"]) for v in verdicts), sorted(reftpl),
+       "ref-v1: compare and timings cover the same templates")
+    m.add("tgRefTemplates", n_ref,
+          "compare-2026-09-17.json manifest.plans: LDBC templates TGIR can express, "
+          "each run against the Neo4j reference")
+
+    # The six verdict classes.  `compare`'s own `verdict` field carries four of
+    # them; the timeout is a TGIR *outcome* (the comparator never saw a row
+    # dump for it), and the split of `disagreeing` into "not comparable"
+    # (invalid reference side) and the one genuine disagreement is
+    # campaign.yaml addendum_2's ratified scoring.  Both sides are read and
+    # cross-checked rather than either being trusted alone.
+    ref_classes = Counter(v.get("verdict") for v in verdicts)
+    ref_counts = refcamp["addendum_2"]["verdict_counts"]
+    ref_outcomes = Counter(e["tgir"]["outcome"] for e in reftim["templates"])
+    n_ref_agree = eq(ref_classes["agreeing"], ref_counts["agree"],
+                     "ref-v1: agreeing templates")
+    n_ref_notproj = eq(ref_classes["reference-column-not-projected"],
+                       ref_counts["reference_column_not_projected"],
+                       "ref-v1: reference-column-not-projected templates")
+    n_ref_notcomp = ref_counts["disagreeing_but_not_comparable"]
+    n_ref_disagree = ref_counts["disagreeing_genuine"]
+    eq(ref_classes["disagreeing"], n_ref_notcomp + n_ref_disagree,
+       "ref-v1: the disagreeing class splits into not-comparable and genuine")
+    n_ref_timeout = eq(ref_outcomes["TIMEOUT"], ref_counts["timeout"], "ref-v1: TGIR timeouts")
+    n_ref_error = eq(ref_outcomes["ERRORED"], ref_counts["error"], "ref-v1: TGIR errors")
+    eq(n_ref_agree + n_ref_notproj + n_ref_notcomp + n_ref_disagree
+       + n_ref_timeout + n_ref_error, n_ref,
+       "ref-v1: the six verdict classes partition the templates")
+    require(f"**Counts ({n_ref} templates): {n_ref_agree} agree · {n_ref_notproj} "
+            f"`reference-column-not-projected`" in refreadme,
+            "ref-v1 README §5: the verdict counts as stated")
+    m.add("tgRefAgree", n_ref_agree,
+          "compare-2026-09-17.json verdicts: verdict == agreeing")
+    m.add("tgRefRefColNotProjected", n_ref_notproj,
+          "compare-2026-09-17.json verdicts: verdict == reference-column-not-projected "
+          "(the reference projects a column no TGIR column maps to)")
+    m.add("tgRefNotComparable", n_ref_notcomp,
+          "campaign.yaml addendum_2 verdict_counts.disagreeing_but_not_comparable: "
+          "disagreeing against a reference side that returned zero rows silently")
+    m.add("tgRefDisagree", n_ref_disagree,
+          "campaign.yaml addendum_2 verdict_counts.disagreeing_genuine")
+    m.add("tgRefTimeout", n_ref_timeout,
+          "timings-2026-09-17.json templates: TGIR outcome == TIMEOUT")
+    m.add("tgRefError", n_ref_error,
+          "timings-2026-09-17.json templates: TGIR outcome == ERRORED")
+
+    # The comparable subset: everything addendum_2 marks not scoreable is the
+    # 7 invalid-reference templates plus the one that timed out.
+    not_scoreable = set(refcamp["addendum_2"]["scoring"]["per_template"]["not_scoreable"])
+    ref_comparable = [v for v in verdicts if ref_template(v["plan_id"]) not in not_scoreable]
+    n_ref_comparable = eq(len(ref_comparable), n_ref - len(not_scoreable),
+                          "ref-v1: templates with a comparable reference")
+    m.add("tgRefComparable", n_ref_comparable,
+          "compare-2026-09-17.json verdicts minus campaign.yaml addendum_2's "
+          "not_scoreable list: templates that produced a comparison at all")
+
+    ref_rows_agree = sum(v["agreeing"] for v in ref_comparable)
+    ref_rows_total = sum(v["compared"] for v in ref_comparable)
+    eq(ref_rows_agree, sum(v["agreeing"] for v in verdicts),
+       "ref-v1: every agreeing row lies in a comparable template")
+    ref_frac = ref_rows_agree / ref_rows_total
+    stated = (f"{ref_rows_agree} of {ref_rows_total} compared rows agree "
+              f"({ref_frac:.3f})")
+    require(f"**{stated}**" in refreadme, "ref-v1 README §5: the agreeing-row fraction")
+    require(stated in refcamp["addendum_2"]["scoring"]["overall_agreement"]["detail"],
+            "ref-v1 campaign.yaml addendum_2: the same fraction, re-stated")
+    require(f"Over the {n_ref_comparable} templates that DID produce a comparison"
+            in refcamp["addendum_2"]["scoring"]["overall_agreement"]["detail"],
+            "ref-v1 campaign.yaml addendum_2: the comparable-template denominator")
+    m.add("tgRefRowsAgree", ref_rows_agree,
+          "compare-2026-09-17.json: agreeing rows summed over the comparable templates")
+    m.add("tgRefRowsTotal", ref_rows_total,
+          "compare-2026-09-17.json: compared rows summed over the same templates")
+    m.add("tgRefRowsAgreeFrac", f"{ref_frac:.3f}",
+          "tgRefRowsAgree / tgRefRowsTotal, three decimals as README §5 prints it")
+
+    # the one genuine disagreement, and the shape of it
+    ref_disagree_rows = [v for v in ref_comparable if v["disagreeing"]]
+    eq(len(ref_disagree_rows), n_ref_disagree,
+       "ref-v1: exactly one comparable template disagrees")
+    is3v = ref_disagree_rows[0]
+    eq(is3v["disagreeing"], ref_rows_total - ref_rows_agree,
+       "ref-v1: every disagreeing row is that template's")
+    is3t = reftpl[ref_template(is3v["plan_id"])]
+    eq(is3t["tgir"]["rows"], 2 * is3t["neo4j"]["rows"],
+       "ref-v1 IS3: TGIR returns exactly twice the reference's rows (M7 KNOWS doubling)")
+    m.add("tgRefDisagreeRow", is3v["plan_id"],
+          "compare-2026-09-17.json: the one comparable template that disagrees")
+    m.add("tgRefIsThreeTgir", is3t["tgir"]["rows"],
+          "timings-2026-09-17.json IS3: TGIR rows")
+    m.add("tgRefIsThreeNeo", is3t["neo4j"]["rows"],
+          "timings-2026-09-17.json IS3: Neo4j rows --- exactly half")
+
+    # the timeout, at the pre-registered ceiling (never re-budgeted)
+    ref_timeout_tpl = [e for e in reftim["templates"] if e["tgir"]["outcome"] == "TIMEOUT"]
+    eq(len(ref_timeout_tpl), n_ref_timeout, "ref-v1: the timeout is a single template")
+    timeout_plan = ref_timeout_tpl[0]["tgir_plan"].removesuffix(".json")
+    ceilings = refman["protocol"]["ceilings"]
+    ceiling_s = ceilings["tgir_bypass_ceiling_s"] + ceilings["tgir_child_open_allowance_s"]
+    require(f"{timeout_plan} hit the {ceiling_s} s ceiling "
+            f"({ceilings['tgir_bypass_ceiling_s']} s + "
+            f"{ceilings['tgir_child_open_allowance_s']} s store-open allowance)" in refreadme,
+            "ref-v1 README §5: the timeout ceiling, as its two components")
+    m.add("tgRefTimeoutRow", timeout_plan,
+          "timings-2026-09-17.json: the plan whose TGIR outcome is TIMEOUT")
+    m.add("tgRefTimeoutCeilingS", ceiling_s,
+          "manifest-2026-09-17.json protocol.ceilings: tgir_bypass_ceiling_s + "
+          "tgir_child_open_allowance_s, seconds")
+
+    # per group (the three LDBC query families)
+    ref_groups = ("BI", "IC", "IS")
+    ref_group_n = Counter(ref_template(v["plan_id"])[:2] for v in verdicts)
+    ref_group_agree = Counter(ref_template(v["plan_id"])[:2] for v in verdicts
+                              if v.get("verdict") == "agreeing")
+    eq(sorted(ref_group_n), sorted(ref_groups), "ref-v1: the template families")
+    eq(sum(ref_group_n[g] for g in ref_groups), n_ref,
+       "ref-v1: the family counts sum to the templates")
+    eq(sum(ref_group_agree[g] for g in ref_groups), n_ref_agree,
+       "ref-v1: the family agree counts sum to tgRefAgree")
+    for g, suffix in zip(ref_groups, ("Bi", "Ic", "Is")):
+        m.add(f"tgRef{suffix}", ref_group_n[g],
+              f"compare-2026-09-17.json: {g} templates")
+        m.add(f"tgRefAgree{suffix}", ref_group_agree[g],
+              f"compare-2026-09-17.json: {g} templates with verdict == agreeing")
+
+    # --- timing.  The two sides are reported per side and NEVER divided: see
+    # timings-2026-09-17.json's `protocol.note` (different rep counts, and the
+    # TGIR figure excludes a store open the Neo4j figure has no analogue for).
+    neo_median = {t: statistics.median([e["neo4j"]["wall_s"][k] for k in ("t1", "t2", "t3")])
+                  for t, e in reftpl.items()}
+    neo_runs = [e["neo4j"]["wall_s"][k] for e in reftpl.values() for k in ("t1", "t2", "t3")]
+    require(f"**Neo4j timed wall range: {min(neo_runs):.3f} s – {max(neo_runs):.3f} s.**"
+            in refreadme, "ref-v1 README §5: the Neo4j per-run wall range")
+    m.add("tgRefNeoMinS", f"{min(neo_median.values()):.3f}",
+          "timings-2026-09-17.json: smallest per-template median of the three timed "
+          "Neo4j runs, seconds")
+    m.add("tgRefNeoMaxS", f"{max(neo_median.values()):.3f}",
+          "timings-2026-09-17.json: largest such median, seconds")
+
+    # TGIR's own figure, cross-checked plan by plan against the TGIR-side
+    # campaign record, which is the same shape as ldbc-sf1-campaign.json.
+    refrecs = {r["plan_id"]: r for r in refrun["records"]}
+    for t, e in reftpl.items():
+        pid = e["tgir_plan"].removesuffix(".json")
+        require(pid in refrecs, f"ref-v1 {t}: {pid} is in the TGIR campaign record")
+        if pid in refrecs:
+            eq(refrecs[pid]["outcome"], e["tgir"]["outcome"],
+               f"ref-v1 {t}: outcome agrees with the campaign record")
+            eq(refrecs[pid].get("ms"), e["tgir"]["ms"],
+               f"ref-v1 {t}: ms agrees with the campaign record")
+    ref_tgir_ms = {t: e["tgir"]["ms"] for t, e in reftpl.items() if e["tgir"]["ms"] is not None}
+    eq(len(ref_tgir_ms), n_ref - n_ref_timeout, "ref-v1: TGIR plans that completed")
+    require(f"**TGIR range: {min(ref_tgir_ms.values()):.1f} ms – "
+            f"{max(ref_tgir_ms.values()):.1f} ms**, over {len(ref_tgir_ms)} completed plans."
+            in refreadme, "ref-v1 README §5: the TGIR range, in ms")
+    m.add("tgRefTgirMinS", f"{min(ref_tgir_ms.values()) / 1000:.1f}",
+          "timings-2026-09-17.json: smallest TGIR `ms` over the completed plans, seconds")
+    m.add("tgRefTgirMaxS", f"{max(ref_tgir_ms.values()) / 1000:.1f}",
+          "timings-2026-09-17.json: largest such figure, seconds")
+
+    neo_version = refman["config"]["neo4j_version"]
+    require(f"Community **{neo_version}**" in refreadme,
+            "ref-v1 README §1: the Neo4j version, as the manifest records it")
+    m.add("tgRefNeoVersion", neo_version,
+          "manifest-2026-09-17.json config.neo4j_version")
+    # The import wall appears in README §1 prose but NOT in the manifest, which
+    # carries only the import log's digest.  No macro is emitted for a number
+    # this generator cannot resolve through a record; see README's Pending.
+    if "import_wall_s" in refman["config"]:  # pragma: no cover - not in today's record
+        m.add("tgRefNeoImportS", refman["config"]["import_wall_s"],
+              "manifest-2026-09-17.json config.import_wall_s")
+
+    # the running example: IS2, both sides
+    m.add("tgRefIsTwoNeoMedianS", f"{neo_median['IS2']:.3f}",
+          "timings-2026-09-17.json IS2: median of the three timed Neo4j runs, seconds")
+    m.add("tgRefIsTwoTgirS", f"{ref_tgir_ms['IS2'] / 1000:.1f}",
+          "timings-2026-09-17.json IS2: TGIR `ms` / 1000, seconds")
 
     # ---------------------------------------------------------------- write
     if FAILURES:

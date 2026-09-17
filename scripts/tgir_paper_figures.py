@@ -25,8 +25,22 @@ color alone):
                          ratio at 1M/10M before/after the fix, from
                          e14-p2-compiled-{1m,10m}{,-after}.json
   3. fig-neo4j.pdf       per-template wall time, TGIR vs. Neo4j, from
-                         benchmarks/ldbc-ref-v1/{tgms,neo4j}-campaign.json —
-                         a placeholder PDF when those records do not exist yet
+                         benchmarks/ldbc-ref-v1/timings-2026-09-17.json —
+                         paired horizontal bars on a log axis, rows grouped
+                         BI/IC/IS; the Neo4j side is the median of that
+                         record's three timed runs (the warm-up excluded) and
+                         the TGIR side its `ms` in seconds, each TGIR value
+                         cross-checked against tgms-campaign-ldbc-ref-v1.json;
+                         a template whose TGIR side timed out is drawn at the
+                         ceiling manifest-2026-09-17.json pre-registers, with
+                         its own hatch, never as a measurement.  Still a
+                         placeholder PDF when that record does not exist.
+
+  The two sides' wall times are NOT a speed ratio and the figure never draws
+  one: they are different rep counts against different systems, and TGIR's
+  `ms` excludes a per-plan store open the warm Neo4j server has no analogue
+  for (timings-2026-09-17.json's own `protocol.note`).  Both are plotted per
+  side, on a shared axis, and left to the caption to qualify.
 
 Also emits ``figures.json`` (the plotted values per figure, so a reviewer of
 the source can trace every point back to its record) and prints a one-line
@@ -47,6 +61,7 @@ from __future__ import annotations
 import argparse
 import json
 import math
+import re
 import statistics
 import sys
 from pathlib import Path
@@ -58,19 +73,21 @@ from pathlib import Path
 # matplotlib (the project .venv is exactly such an interpreter today). Only
 # actually rendering a figure requires it.
 plt = None  # populated by _require_matplotlib()
+Patch = None  # ditto: matplotlib.patches.Patch, for hand-built legends
 
 
 def _require_matplotlib():
     """Import matplotlib on first use and cache it in the module-level `plt`.
     Every plotting function below references that global, so calling this
     once at the top of `main()` — before any figure is built — is enough."""
-    global plt
+    global plt, Patch
     if plt is not None:
         return plt
     try:
         import matplotlib
         matplotlib.use("Agg")
         import matplotlib.pyplot as _plt
+        from matplotlib.patches import Patch as _Patch
     except ModuleNotFoundError:
         sys.exit(
             "matplotlib is required to render the TGIR paper figures and is not "
@@ -82,6 +99,7 @@ def _require_matplotlib():
             "    /usr/bin/python3 -m pip install --user matplotlib"
         )
     plt = _plt
+    Patch = _Patch
     return plt
 
 
@@ -375,87 +393,144 @@ def plot_cost(data: dict, out_dir: Path) -> str:
 # fig-neo4j: per-template wall time, TGIR vs. Neo4j (LDBC reference)
 # --------------------------------------------------------------------------
 
-def _median_or_scalar(values, scalar):
-    """Prefer the median of a `*_runs` list when present and non-empty;
-    otherwise the scalar field. Both readers below share this rule so a
-    campaign carrying either shape (or both) is read the same way."""
-    if values:
-        return statistics.median(values)
-    return scalar
+REF_TIMINGS_REL = Path("timings-2026-09-17.json")
+REF_MANIFEST_REL = Path("manifest-2026-09-17.json")
+REF_CAMPAIGN_REL = Path("tgms-campaign-ldbc-ref-v1.json")
+
+# The three LDBC query families, in the order the paper presents them.  The
+# figure groups its rows by family and orders each family by template number
+# (BI3 before BI10), which neither a lexicographic nor an insertion order gives.
+REF_GROUPS = ("BI", "IC", "IS")
+_TEMPLATE_RE = re.compile(r"^([A-Z]+)(\d+)")
 
 
-def read_tgms_campaign(path: Path) -> dict[str, float] | None:
-    """The tgms side of the LDBC reference comparison, in the same record
-    shape as benchmarks/results-v1/ldbc-sf1-campaign.json: a top-level
-    `records` list, each carrying `plan_id`, `ms` (and, like that file,
-    possibly `ms_all`, a list of individual timed runs), `outcome`. Returns
-    plan_id -> wall time in seconds, or None if the file does not exist."""
+def ref_sort_key(template: str) -> tuple[int, int, str]:
+    m = _TEMPLATE_RE.match(template)
+    if not m:
+        return (len(REF_GROUPS), 0, template)
+    family, number = m.group(1), int(m.group(2))
+    index = REF_GROUPS.index(family) if family in REF_GROUPS else len(REF_GROUPS)
+    return (index, number, template)
+
+
+def read_ref_timings(path: Path) -> dict | None:
+    """The executed reference run's paired wall times,
+    ``benchmarks/ldbc-ref-v1/timings-2026-09-17.json``.
+
+    Each entry of ``templates`` carries the Neo4j side as a warm-up plus three
+    timed executions (``neo4j.wall_s.{warmup,t1,t2,t3}``, seconds) and the TGIR
+    side as ``tgir.{ms,outcome}``.  **The warm-up is excluded** and the three
+    timed runs are reduced by their median, which is what the figure plots;
+    TGIR's ``ms`` is converted to seconds so both sides share one axis.  A
+    template whose TGIR side did not complete carries ``ms: null`` and is
+    returned separately, by outcome, rather than silently dropped.
+
+    Returns None when the record does not exist (the figure then falls back to
+    its placeholder), so a checkout without the run still builds the paper.
+    """
     if not path.exists():
         return None
     doc = json.loads(path.read_text(encoding="utf-8"))
-    records = doc.get("records") if isinstance(doc, dict) else doc
-    if not isinstance(records, list):
+    templates = doc.get("templates") if isinstance(doc, dict) else None
+    if not isinstance(templates, list):
         return None
-    out: dict[str, float] = {}
-    for r in records:
-        pid = r.get("plan_id")
-        if not pid:
+    neo4j: dict[str, float] = {}
+    tgms: dict[str, float] = {}
+    incomplete: dict[str, str] = {}
+    for entry in templates:
+        template = entry.get("template")
+        if not template:
             continue
-        ms = _median_or_scalar(r.get("ms_all"), r.get("ms"))
-        if ms is not None:
-            out[pid] = ms / 1000.0
-    return out
+        wall = (entry.get("neo4j") or {}).get("wall_s") or {}
+        timed = [wall[k] for k in ("t1", "t2", "t3") if wall.get(k) is not None]
+        if timed:
+            neo4j[template] = statistics.median(timed)
+        tgir = entry.get("tgir") or {}
+        if tgir.get("ms") is not None:
+            tgms[template] = tgir["ms"] / 1000.0
+        else:
+            incomplete[template] = tgir.get("outcome") or "UNKNOWN"
+    return {"neo4j": neo4j, "tgms": tgms, "incomplete": incomplete}
 
 
-def read_neo4j_campaign(path: Path) -> dict[str, float] | None:
-    """The neo4j side. scripts/ldbc_reference_run.py's own per-plan record
-    (write_ref_exports' `ref-{pid}.json`) carries `plan_id` and `wall_s`; a
-    campaign aggregating those into one file could reasonably do so either
-    as a `records`/`rows` list of such dicts or as a plan_id -> dict mapping,
-    and either might additionally carry `wall_s_runs` (a list of repeated
-    timed runs) instead of, or alongside, a single `wall_s` scalar — this
-    reader tolerates all of those shapes and takes the median of
-    `wall_s_runs` when present. Returns None if the file does not exist."""
+def read_ref_ceiling(path: Path) -> float | None:
+    """The pre-registered TGIR ceiling a timed-out template is drawn at:
+    ``manifest-2026-09-17.json``'s bypass ceiling plus its store-open
+    allowance, in seconds.  A timeout is not a measurement, so the bar is
+    drawn *at* the ceiling and hatched differently rather than being given a
+    number the run never produced."""
     if not path.exists():
         return None
-    doc = json.loads(path.read_text(encoding="utf-8"))
-    records = None
-    if isinstance(doc, list):
-        records = doc
-    elif isinstance(doc, dict):
-        for key in ("records", "rows"):
-            if isinstance(doc.get(key), list):
-                records = doc[key]
-                break
-        if records is None and all(isinstance(v, dict) for v in doc.values()):
-            # a plan_id -> record mapping
-            records = [dict(v, plan_id=v.get("plan_id", k)) for k, v in doc.items()]
-    if records is None:
+    ceilings = (json.loads(path.read_text(encoding="utf-8"))
+                .get("protocol", {}).get("ceilings", {}))
+    if "tgir_bypass_ceiling_s" not in ceilings:
         return None
-    out: dict[str, float] = {}
-    for r in records:
-        pid = r.get("plan_id")
-        if not pid:
-            continue
-        wall = _median_or_scalar(r.get("wall_s_runs"), r.get("wall_s"))
-        if wall is not None:
-            out[pid] = wall
-    return out
+    return float(ceilings["tgir_bypass_ceiling_s"]
+                 + ceilings.get("tgir_child_open_allowance_s", 0))
+
+
+def cross_check_tgms(campaign_path: Path, tgms: dict[str, float],
+                     timings_path: Path) -> None:
+    """The TGIR side also exists as its own campaign record, in the same shape
+    as ``ldbc-sf1-campaign.json``.  Plotting one and citing the other is the
+    class of drift this script exists to prevent, so every plotted TGIR value
+    is asserted equal to that record's own ``ms``."""
+    if not campaign_path.exists():
+        return
+    doc = json.loads(campaign_path.read_text(encoding="utf-8"))
+    records = {r["plan_id"]: r for r in doc.get("records", []) if r.get("plan_id")}
+    timings = json.loads(timings_path.read_text(encoding="utf-8"))
+    plan_of = {e["template"]: (e.get("tgir_plan") or "").removesuffix(".json")
+               for e in timings.get("templates", [])}
+    for template, seconds in tgms.items():
+        plan_id = plan_of.get(template)
+        rec = records.get(plan_id)
+        require(rec is not None,
+                f"{campaign_path.name}: no record for {template}'s plan {plan_id!r}")
+        if rec is not None:
+            eq(round(rec["ms"] / 1000.0, 9), round(seconds, 9),
+               f"{template}: plotted TGIR seconds against the campaign record's ms")
 
 
 def build_neo4j(root: Path) -> dict:
-    tgms_src = root / LDBC_REF_REL / "tgms-campaign.json"
-    neo4j_src = root / LDBC_REF_REL / "neo4j-campaign.json"
-    tgms = read_tgms_campaign(tgms_src)
-    neo4j = read_neo4j_campaign(neo4j_src)
-    common = sorted(set(tgms) & set(neo4j)) if (tgms and neo4j) else []
+    timings_src = root / LDBC_REF_REL / REF_TIMINGS_REL
+    manifest_src = root / LDBC_REF_REL / REF_MANIFEST_REL
+    campaign_src = root / LDBC_REF_REL / REF_CAMPAIGN_REL
+    timings = read_ref_timings(timings_src)
+    ceiling = read_ref_ceiling(manifest_src)
+
+    if timings is None:
+        return {
+            "timings_source": str(timings_src.relative_to(root)),
+            "manifest_source": str(manifest_src.relative_to(root)),
+            "campaign_source": str(campaign_src.relative_to(root)),
+            "available": False,
+            "ceiling_s": None,
+            "tgms": {},
+            "neo4j": {},
+            "timed_out": [],
+            "common_plan_ids": [],
+        }
+
+    neo4j, tgms = timings["neo4j"], timings["tgms"]
+    timed_out = sorted((t for t, outcome in timings["incomplete"].items()
+                        if outcome == "TIMEOUT" and t in neo4j), key=ref_sort_key)
+    require(not timed_out or ceiling is not None,
+            f"{manifest_src.name}: a timed-out template needs the ceiling to draw it at")
+    cross_check_tgms(campaign_src, tgms, timings_src)
+
+    plan_ids = sorted((t for t in neo4j if t in tgms or t in timed_out), key=ref_sort_key)
+    require(bool(plan_ids), f"{timings_src.name}: no template has both sides")
     return {
-        "tgms_source": str(tgms_src.relative_to(root)),
-        "neo4j_source": str(neo4j_src.relative_to(root)),
-        "available": bool(common),
-        "tgms": tgms or {},
-        "neo4j": neo4j or {},
-        "common_plan_ids": common,
+        "timings_source": str(timings_src.relative_to(root)),
+        "manifest_source": str(manifest_src.relative_to(root)),
+        "campaign_source": str(campaign_src.relative_to(root)),
+        "available": True,
+        "ceiling_s": ceiling,
+        "tgms": {t: tgms[t] for t in plan_ids if t in tgms},
+        "neo4j": {t: neo4j[t] for t in plan_ids},
+        "timed_out": timed_out,
+        "common_plan_ids": plan_ids,
     }
 
 
@@ -463,30 +538,62 @@ def plot_neo4j(data: dict, out_dir: Path) -> str:
     if not data["available"]:
         placeholder_pdf(out_dir / "fig-neo4j.pdf",
                         "[NEED EXPERIMENTAL RESULT: ldbc-ref-v1]")
-        return (f"fig-neo4j.pdf: PLACEHOLDER (no records at "
-                f"{data['tgms_source']} / {data['neo4j_source']})")
+        return (f"fig-neo4j.pdf: PLACEHOLDER (no record at "
+                f"{data['timings_source']})")
 
     plan_ids = data["common_plan_ids"]
+    timed_out = set(data["timed_out"])
+    ceiling = data["ceiling_s"]
+    floor = min([v for v in data["neo4j"].values()] + list(data["tgms"].values())) / 2
+
     with plt.rc_context(STYLE):
         fig, ax = plt.subplots(figsize=(COLUMN_WIDTH_IN, MAX_HEIGHT_IN))
         y = list(range(len(plan_ids)))
-        h = 0.34
-        tgms_vals = [data["tgms"][p] for p in plan_ids]
-        neo4j_vals = [data["neo4j"][p] for p in plan_ids]
-        ax.barh([i + h / 2 for i in y], tgms_vals, height=h, color="black",
-               edgecolor="black", label="TGIR")
-        ax.barh([i - h / 2 for i in y], neo4j_vals, height=h, color="none",
-               edgecolor="black", hatch="///", label="Neo4j")
+        h = 0.38
+        for i, template in enumerate(plan_ids):
+            if template in timed_out:
+                ax.barh(i + h / 2, ceiling - floor, left=floor, height=h,
+                        color="none", edgecolor="black", hatch="xxx", linewidth=0.5)
+            else:
+                ax.barh(i + h / 2, data["tgms"][template] - floor, left=floor,
+                        height=h, color="black", edgecolor="black", linewidth=0.5)
+            ax.barh(i - h / 2, data["neo4j"][template] - floor, left=floor,
+                    height=h, color="none", edgecolor="black", hatch="///",
+                    linewidth=0.5)
+        # a hairline between families, so BI / IC / IS read as three blocks
+        for i in range(1, len(plan_ids)):
+            if ref_sort_key(plan_ids[i])[0] != ref_sort_key(plan_ids[i - 1])[0]:
+                ax.axhline(i - 0.5, color="black", linewidth=0.4, linestyle=":")
+        if ceiling is not None:
+            ax.axvline(ceiling, color="black", linewidth=0.5, linestyle="--")
         ax.set_xscale("log")
+        ax.set_xlim(left=floor)
         ax.set_yticks(y)
-        ax.set_yticklabels(plan_ids, fontsize=5)
-        ax.set_xlabel("wall time (s)")
+        ax.set_yticklabels(plan_ids, fontsize=4)
+        ax.set_xlabel("wall time (s, log scale)")
         ax.invert_yaxis()
-        ax.legend(loc="lower right", frameon=False, fontsize=6)
+        handles = [
+            Patch(facecolor="black", edgecolor="black", label="TGIR"),
+            Patch(facecolor="none", edgecolor="black", hatch="///", label="Neo4j"),
+        ]
+        if timed_out:
+            handles.append(Patch(facecolor="none", edgecolor="black", hatch="xxx",
+                                 label=f"TGIR timeout ({ceiling:.0f} s)"))
+        # Above the axes, in one row, rather than inside them: every row of
+        # this figure carries a bar from the left edge, so an in-axes legend
+        # would sit on top of one and clip its length where the reader reads
+        # its value.
+        ax.legend(handles=handles, ncol=len(handles), frameon=False, fontsize=5,
+                  loc="lower left", bbox_to_anchor=(0, 1.0, 1, 0.1), mode="expand",
+                  borderaxespad=0.2, handlelength=1.4, handletextpad=0.4)
         fig.tight_layout(pad=0.3)
         savefig(fig, out_dir / "fig-neo4j.pdf")
 
-    return f"fig-neo4j.pdf: {len(plan_ids)} paired templates, TGIR vs Neo4j"
+    per_family = ", ".join(
+        f"{g} {sum(1 for t in plan_ids if t.startswith(g))}" for g in REF_GROUPS)
+    return (f"fig-neo4j.pdf: {len(plan_ids)} paired templates ({per_family}), "
+            f"Neo4j median of 3 timed runs vs TGIR, "
+            f"{len(timed_out)} TGIR timeout(s) drawn at the {ceiling:.0f} s ceiling")
 
 
 # --------------------------------------------------------------------------
@@ -545,11 +652,14 @@ def main() -> int:
             "compiled_kernel": cost["compiled_kernel"],
         },
         "fig-neo4j": {
-            "tgms_source": neo4j["tgms_source"],
-            "neo4j_source": neo4j["neo4j_source"],
+            "timings_source": neo4j["timings_source"],
+            "manifest_source": neo4j["manifest_source"],
+            "campaign_source": neo4j["campaign_source"],
             "available": neo4j["available"],
+            "ceiling_s": neo4j["ceiling_s"],
             "tgms": neo4j["tgms"],
             "neo4j": neo4j["neo4j"],
+            "timed_out": neo4j["timed_out"],
             "common_plan_ids": neo4j["common_plan_ids"],
         },
     }
