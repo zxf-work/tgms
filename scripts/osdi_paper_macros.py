@@ -5354,20 +5354,24 @@ def compute_b7_scale(m: Macros) -> None:
     calib10m_peak_kb = cbi["peak_rss"]["vmhwm"]
     calib_readme_text = B7_ITIGER_CALIB_README.read_text(encoding="utf-8")
     peak_row = re.search(
-        r"peak RSS.*\|\s*[\d,]+ KB \([\d.]+ GB\)\s*\|\s*([\d,]+) KB \(([\d.]+) GB\)",
+        r"peak RSS.*\|\s*[\d,]+ KB \([\d.]+ GB\)\s*\|\s*([\d,]+) KB \([\d.]+ GB\)",
         calib_readme_text)
     require(peak_row is not None,
             f"{relpath(B7_ITIGER_CALIB_README)}: peak RSS row (1M | 10M columns) found")
-    calib10m_peak_gb_quoted = None
     if peak_row is not None:
         eq(int(peak_row.group(1).replace(",", "")), calib10m_peak_kb,
            f"{relpath(B7_ITIGER_CALIB_README)}: peak RSS row's 10M KB figure matches "
            "itiger-calib-10m.json's build_info.peak_rss.vmhwm")
-        calib10m_peak_gb_quoted = peak_row.group(2)
-    eq(calib10m_peak_gb_quoted, "19.43",
-       "B7 frozen: Stage-0 10M calib peak RSS, GB, as quoted by the calibration README "
-       "(its KB-to-GB divisor is not restated here; the KB figure above is the "
-       "independently recomputed one)")
+    # The calibration README's own peak-RSS-row prose ("19.43 GB") divides kB by
+    # 1024 then by 1000 -- a mixed-unit slip, not this campaign's convention.
+    # Every other B7 peak-RSS macro (e.g. osdiB7PeakRSS30M above) computes GB
+    # as kB/1e6; recompute this one the same way, from the record field alone,
+    # never from the README's prose GB figure. See itiger-calib-2026-09.
+    # README.md's appended "Unit note".
+    calib10m_peak_gb = round(calib10m_peak_kb / 1e6, 2)
+    eq(calib10m_peak_gb, 19.90,
+       "B7 frozen: Stage-0 10M calib peak RSS, GB (kB/1e6, the campaign convention -- "
+       "NOT the calibration README's own mixed-unit-slip prose figure of 19.43 GB)")
 
     recovery_1m = calib1m["recovery"]
     require(recovery_1m["digest_equal"] is True,
@@ -5375,6 +5379,24 @@ def compute_b7_scale(m: Macros) -> None:
     recovery_1m_wall = recovery_1m["wall_s"]
     close(round(recovery_1m_wall, 3), 75.860, 0.001,
           "B7 frozen: Stage-0 1M calib recovery wall_s")
+
+    # --- Stage 0 (iTiger calibration): the 1M anchors (build wall, peak RSS,
+    # recovery, final segment bytes) -- itiger-calib-1m.json was missing its
+    # own macros even though itiger-calib-2026-09.README.md's build-results
+    # table quotes its 1M column throughout ---
+    cbi1m = calib1m["build_info"]
+    calib1m_wall = cbi1m["wall_s"]
+    eq(round(calib1m_wall, 3), 78.339, "B7 frozen: Stage-0 1M calib build wall_s")
+    calib1m_peak_kb = cbi1m["peak_rss"]["vmhwm"]
+    calib1m_peak_gb = round(calib1m_peak_kb / 1e6, 2)
+    eq(calib1m_peak_gb, 2.37,
+       "B7 frozen: Stage-0 1M calib peak RSS, GB (kB/1e6, same convention as "
+       "osdiB7Calib10MPeakRSS above)")
+    calib1m_segment_bytes = cbi1m["store_bytes"]["segment_bytes"]
+    calib1m_segment_gb = round(calib1m_segment_bytes / 1e9, 3)
+    eq(calib1m_segment_gb, 0.050, "B7 frozen: Stage-0 1M calib final segment bytes, GB")
+    close(round(recovery_1m_wall, 2), 75.86, 0.005,
+          "B7 frozen: Stage-0 1M calib recovery wall_s, 2dp")
 
     k_build = calib10m_median / 5300
     close(round(k_build, 3), 4.602, 0.0005,
@@ -5450,11 +5472,12 @@ def compute_b7_scale(m: Macros) -> None:
 
     m.add("osdiB7Calib10MBuildWall", f"{calib10m_wall:.3f}",
           f"{relpath(B7_ITIGER_CALIB_10M)}: build_info.wall_s, seconds")
-    m.add("osdiB7Calib10MPeakRSS", calib10m_peak_gb_quoted,
-          f"{relpath(B7_ITIGER_CALIB_10M)}: build_info.peak_rss.vmhwm = "
-          f"{tex_num(calib10m_peak_kb)} KB; GB figure quoted from "
-          f"{relpath(B7_ITIGER_CALIB_README)}'s own peak-RSS table (10M column) since "
-          "its KB-to-GB divisor is not independently documented")
+    m.add("osdiB7Calib10MPeakRSS", f"{calib10m_peak_gb:.2f}",
+          f"{relpath(B7_ITIGER_CALIB_10M)}: build_info.peak_rss.vmhwm "
+          f"({tex_num(calib10m_peak_kb)} kB) / 1e6, GB, 2dp -- this campaign's kB/1e6 "
+          "convention (same as every other B7 peak-RSS macro), NOT the calibration "
+          f"README's own mixed-unit-slip prose figure; see "
+          f"{relpath(B7_ITIGER_CALIB_README)}'s appended Unit note")
     m.add("osdiB7Calib10MSteadyOps", tex_float(round(calib10m_median, 1)),
           f"{relpath(B7_ITIGER_CALIB_10M)}: recomputed median(ops_per_s_by_decile[*]."
           "ops_per_s), ops/s")
@@ -5466,6 +5489,21 @@ def compute_b7_scale(m: Macros) -> None:
           f"{relpath(B7_ITIGER_CALIB_1M)}: recovery.wall_s / 91.01 (xzgpu 1% anchor, "
           f"quoted by {relpath(B7_ITIGER_CALIB_README)}); used as Addendum 4/5's Stage-1 "
           "recovery-band scaling factor")
+    m.add("osdiB7Calib1MBuildWall", f"{calib1m_wall:.3f}",
+          f"{relpath(B7_ITIGER_CALIB_1M)}: build_info.wall_s, seconds")
+    m.add("osdiB7Calib1MPeakRSS", f"{calib1m_peak_gb:.2f}",
+          f"{relpath(B7_ITIGER_CALIB_1M)}: build_info.peak_rss.vmhwm "
+          f"({tex_num(calib1m_peak_kb)} kB) / 1e6, GB, 2dp -- same kB/1e6 convention as "
+          "osdiB7Calib10MPeakRSS")
+    m.add("osdiB7Calib1MRecovery", f"{recovery_1m_wall:.2f}",
+          f"{relpath(B7_ITIGER_CALIB_1M)}: recovery.wall_s, seconds (EXP-A4 replay, "
+          "compact_every=500, the same cadence as osdiB7Recovery30M); "
+          "recovery.digest_equal is true")
+    m.add("osdiB7Calib1MSegmentBytes", f"{calib1m_segment_gb:.3f}",
+          f"{relpath(B7_ITIGER_CALIB_1M)}: build_info.store_bytes.segment_bytes / 1e9, GB")
+    # osdiB7Calib10MRecovery: itiger-calib-10m.json carries no "recovery" field
+    # (Stage 0's EXP-A4 recovery replay ran only at 1M, per the calibration
+    # README's "What ran" §3) -- so no such macro exists, deliberately.
 
     # =================================================================
     # 100M (Stage 1, landed -- merge of fe52997)

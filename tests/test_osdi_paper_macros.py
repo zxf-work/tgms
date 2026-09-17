@@ -440,10 +440,14 @@ FROZEN_LANDED_VALUES = {
     "osdiB7ReachWindowEstimateMs30M": "4371",
     "osdiB7300MGate": "false",
     "osdiB7Calib10MBuildWall": "865.592",
-    "osdiB7Calib10MPeakRSS": "19.43",
+    "osdiB7Calib10MPeakRSS": "19.90",
     "osdiB7Calib10MSteadyOps": "24{,}390.8",
     "osdiB7KBuild": "4.602",
     "osdiB7KRecover": "0.834",
+    "osdiB7Calib1MBuildWall": "78.339",
+    "osdiB7Calib1MPeakRSS": "2.37",
+    "osdiB7Calib1MRecovery": "75.86",
+    "osdiB7Calib1MSegmentBytes": "0.050",
     "osdiB7BuildWall100M": "28{,}372.936",
     "osdiB7PeakRSS100M": "186.42",
     "osdiB7VersionHistoryWall100M": "18.982",
@@ -2305,10 +2309,22 @@ def test_b7_scale_macros_match_frozen_values():
     assert values["osdiB7ReachWindowEstimateMs30M"] == "4371"
     assert values["osdiB7300MGate"] == "false"
     assert values["osdiB7Calib10MBuildWall"] == "865.592"
-    assert values["osdiB7Calib10MPeakRSS"] == "19.43"
+    assert values["osdiB7Calib10MPeakRSS"] == "19.90"
     assert values["osdiB7Calib10MSteadyOps"] == "24{,}390.8"
     assert values["osdiB7KBuild"] == "4.602"
     assert values["osdiB7KRecover"] == "0.834"
+    assert values["osdiB7Calib1MBuildWall"] == "78.339"
+    assert values["osdiB7Calib1MPeakRSS"] == "2.37"
+    assert values["osdiB7Calib1MRecovery"] == "75.86"
+    assert values["osdiB7Calib1MSegmentBytes"] == "0.050"
+    assert "osdiB7Calib10MRecovery" not in values, (
+        "itiger-calib-10m.json carries no recovery field -- no such macro should exist")
+
+    # the 10M peak-RSS macro must be the record field's own kB / 1e6, never
+    # the calibration README's mixed-unit-slip prose figure (19.43 GB)
+    calib10m = json.loads(mod.B7_ITIGER_CALIB_10M.read_text(encoding="utf-8"))
+    calib10m_peak_kb = calib10m["build_info"]["peak_rss"]["vmhwm"]
+    assert values["osdiB7Calib10MPeakRSS"] == f"{calib10m_peak_kb / 1e6:.2f}"
 
     # every one of the 13 scale-curve operators landed, all 30M
     for frag in mod.B7_SCALE_CURVE_OPS.values():

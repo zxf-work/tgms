@@ -1277,8 +1277,24 @@ def plot_scale_costs(data: dict) -> None:
         ("recovery", "recovery wall, s (cadence labelled)"),
     ]
 
-    with plt.rc_context(STYLE):
-        fig, axes = plt.subplots(2, 2, figsize=(8.5, 6.5))
+    # This figure alone is placed at ~0.64\textwidth in the manuscript (the
+    # other figures in DELIVERABLES run at or near full column width), which
+    # shrank the default STYLE's 9pt tick labels down to an unreadable ~5pt.
+    # Fix: halve the figure's own physical size (so the same target width
+    # covers proportionally less of it, i.e. everything renders bigger
+    # relative to that width) and pin tick/axis-label sizes explicitly
+    # instead of inheriting STYLE's font.size -- this panel's own style, not
+    # a change to the shared STYLE dict every other figure also uses. No
+    # data change.
+    scale_costs_style = {
+        **STYLE,
+        "xtick.labelsize": 8,
+        "ytick.labelsize": 8,
+        "axes.labelsize": 8,
+    }
+
+    with plt.rc_context(scale_costs_style):
+        fig, axes = plt.subplots(2, 2, figsize=(4.25, 3.25))
         for ax, (key, ylabel) in zip(axes.flat, panels):
             if key == "recovery":
                 for quantity, marker in (("recovery_wall_s_ce500", "o"),
@@ -1292,9 +1308,9 @@ def plot_scale_costs(data: dict) -> None:
                     ax.plot(xs, ys, marker=marker, color="black", linestyle="--",
                             label=f"cadence {cadence}")
                     for x, y in zip(xs, ys):
-                        ax.annotate(f"ce{cadence}", (x, y), fontsize=6,
+                        ax.annotate(f"ce{cadence}", (x, y), fontsize=5,
                                     textcoords="offset points", xytext=(4, 4))
-                ax.legend(fontsize=6)
+                ax.legend(fontsize=5)
             else:
                 pts = sorted(by_quantity.get(key, []))
                 xs = [p[0] for p in pts]
@@ -1307,7 +1323,7 @@ def plot_scale_costs(data: dict) -> None:
             ax.set_xlabel("scale (entities)")
             ax.set_ylabel(ylabel)
 
-        fig.suptitle("B7 scale costs: build / query-ready floor / recovery, 1M-100M", fontsize=9)
+        fig.suptitle("B7 scale costs: build / query-ready floor / recovery, 1M-100M", fontsize=8)
         fig.tight_layout()
         _savefig(fig, OUT_DIR / "f11_b7_scale_costs")
 
