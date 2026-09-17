@@ -162,16 +162,24 @@ B7 (scale campaign) -- ``docs/design/SCALE_BUILD_FORECAST_2026-09-15.md``
 (gitignored, internal; not shipped with this script, but every field below
 is read from a committed record). Stage 0 (iTiger calibration,
 ``benchmarks/scale-v1/itiger-calib-{1m,10m}.json``) supplies k_build/
-k_recover and the 10M scale-curve anchor; Stage 1 30M
-(``build-30m.json`` + eight sidecars, scored in the pre-registration's
-Addendum 7) is fully landed. ``compute_b7_scale`` below computes every
-``osdiB7*30M`` macro plus the Stage-0 anchors and the (scale-independent)
-``osdiB7300MGate``, whole-file sha256-checking every record it reads
-against the sha256 table in its own README (``benchmarks/scale-v1/
-README.md`` for Stage 1, ``itiger-calib-2026-09.README.md`` for Stage 0)
-before trusting anything inside it. The 100M chain is still running on
-iTiger (a separate, concurrent lane) -- every ``osdiB7*100M`` name is a
-PENDING stub (see ``add_pending_stubs``) until its record lands on main.
+k_recover and the 10M scale-curve anchor; Stage 1 30M (``build-30m.json``
++ eight sidecars, scored in the pre-registration's Addendum 7) and Stage 1
+100M (``build-100m.json`` + seven sidecars, merge of ``fe52997``) are both
+fully landed. ``compute_b7_scale`` below computes every ``osdiB7*{30M,100M}``
+macro, the Stage-0 anchors, and the (scale-independent) ``osdiB7300MGate``,
+whole-file sha256-checking every record it reads against the sha256 table
+in its own README (``benchmarks/scale-v1/README.md`` for Stage 1,
+``itiger-calib-2026-09.README.md`` for Stage 0) before trusting anything
+inside it. At 100M, 7 of the 13 scale-curve operators are refused by the
+cost guardrail: ``reach.window`` (anticipated by Addendum 5, carries a
+numeric ``time_est_ms`` estimate) stays a PENDING
+``osdiB7ScaleCurveP50ReachWindow100M`` naming that estimate as the reason;
+the other six (unanticipated, no numeric estimate in the record) land as
+``osdiB7Refused<Op>100M = true`` instead of a fabricated p50.
+``osdiB7Recovery100M`` aliases ``osdiB7RecoveryCe5000At100M`` since no
+cadence-500 100M run exists or was ever planned (Addendum 6 pre-judged it
+infeasible). Nothing here is PENDING for lack of a landed record anymore;
+only the LDBC (C9) stubs and the one guardrail-refused p50 remain.
 
 Claim C9 (LDBC generality, four axes -- the Neo4j reference run is
 pending) has no landed record yet; its macros, plus the still-unlanded
@@ -374,6 +382,15 @@ B7_RECOVERY_30M_CE5000 = B7_SCALE_DIR / "recovery-30m-ce5000.json"
 B7_VERSION_HISTORY_30M = B7_SCALE_DIR / "version-history-30m.json"
 B7_QUERYFLOOR_30M = B7_SCALE_DIR / "queryfloor-30m.json"
 
+B7_BUILD_100M = B7_SCALE_DIR / "build-100m.json"
+B7_BUILD_COMPACTION_WALLS_100M = B7_SCALE_DIR / "build-100m-compaction-walls.json"
+B7_SCALE_CURVE_100M = B7_SCALE_DIR / "scale-curve-100m.json"
+B7_SCALE_CURVE_100M_RAW = B7_SCALE_DIR / "scale-curve-100m-raw.json"
+B7_CHECK_FULL_100M = B7_SCALE_DIR / "check-full-100m.json"
+B7_RECOVERY_100M_CE5000 = B7_SCALE_DIR / "recovery-100m-ce5000.json"
+B7_VERSION_HISTORY_100M = B7_SCALE_DIR / "version-history-100m.json"
+B7_QUERYFLOOR_100M = B7_SCALE_DIR / "queryfloor-100m.json"
+
 # The 13-operator scale-curve registry (query id -> CamelCase macro
 # fragment), same ids as scale-curve-30m.json/queryfloor-30m.json's
 # per_operator_p50_ms / queries[*].id.
@@ -393,12 +410,25 @@ B7_SCALE_CURVE_OPS = {
     "motif.filtered": "MotifFiltered",
 }
 
-# The 30M store's content digest (store_digest, streaming) -- shared by
-# build-30m.json, scale-curve-30m.json, check-full-30m.json,
-# recovery-30m{,-ce5000}.json and version-history-30m.json alike, since
-# none of them modify the store; compute_b7_scale cross-checks every one
-# of those records' own digest fields against this single frozen value.
+# At 100M, 7 of the 13 operators are refused by the cost guardrail
+# (CostError). reach.window's refusal carries a numeric time_est_ms
+# estimate (a dedicated admission probe, same as 30M's); the other six
+# carry only a "CostError: ... exceeds ceilings" string, no estimate --
+# per the coordinator's ruling, those six get a landed osdiB7Refused<Op>
+# 100M = true macro instead of a PENDING osdiB7ScaleCurveP50<Op>100M (no
+# invented p50, and no fabricated estimate for a refusal that has none).
+B7_SCALE_CURVE_100M_REFUSED_NO_ESTIMATE = (
+    "snap.hop2", "diff.global", "nbr.evolution", "coactive.narrow",
+    "resolve.substr", "agg.rel_bucket",
+)
+
+# The 30M/100M stores' content digests (store_digest, streaming) -- shared
+# by each scale's build/scale-curve/check-full/recovery/version-history
+# records alike, since none of them modify the store; compute_b7_scale
+# cross-checks every one of those records' own digest fields against
+# these frozen values.
 B7_30M_STORE_DIGEST = "239118cae2044e5928b68d82423e0e996b6bc96654cbfd34266747486aa7e6d8"
+B7_100M_STORE_DIGEST = "48bcb256874e6ad7ed8712ebff668fb25f81c6eafd78d7274efa245efa8a2d97"
 
 
 # --------------------------------------------------------------------------
@@ -4629,6 +4659,304 @@ def compute_b7_scale(m: Macros) -> None:
           f"quoted by {relpath(B7_ITIGER_CALIB_README)}); used as Addendum 4/5's Stage-1 "
           "recovery-band scaling factor")
 
+    # =================================================================
+    # 100M (Stage 1, landed -- merge of fe52997)
+    # =================================================================
+    for path in (B7_BUILD_100M, B7_SCALE_CURVE_100M, B7_SCALE_CURVE_100M_RAW,
+                 B7_CHECK_FULL_100M, B7_RECOVERY_100M_CE5000,
+                 B7_VERSION_HISTORY_100M, B7_QUERYFLOOR_100M,
+                 B7_BUILD_COMPACTION_WALLS_100M):
+        _b7_check_sha256(path, readme_sha)
+
+    build100 = json.loads(B7_BUILD_100M.read_text(encoding="utf-8"))
+    curve100 = json.loads(B7_SCALE_CURVE_100M.read_text(encoding="utf-8"))
+    curve100_raw = json.loads(B7_SCALE_CURVE_100M_RAW.read_text(encoding="utf-8"))
+    check100 = json.loads(B7_CHECK_FULL_100M.read_text(encoding="utf-8"))
+    rec100_5000 = json.loads(B7_RECOVERY_100M_CE5000.read_text(encoding="utf-8"))
+    vh100 = json.loads(B7_VERSION_HISTORY_100M.read_text(encoding="utf-8"))
+    qf100 = json.loads(B7_QUERYFLOOR_100M.read_text(encoding="utf-8"))
+    walls100 = json.loads(B7_BUILD_COMPACTION_WALLS_100M.read_text(encoding="utf-8"))
+
+    # --- one content digest ties every 100M sidecar to the same store ---
+    for rec, path in ((build100, B7_BUILD_100M), (curve100, B7_SCALE_CURVE_100M),
+                       (check100, B7_CHECK_FULL_100M), (vh100, B7_VERSION_HISTORY_100M)):
+        eq(rec["dataset"]["digest"], B7_100M_STORE_DIGEST,
+           f"{relpath(path)}: dataset.digest matches the frozen 100M store digest")
+        eq(rec["result_digest"], B7_100M_STORE_DIGEST,
+           f"{relpath(path)}: result_digest matches the frozen 100M store digest")
+    require(rec100_5000["digest_compare"]["digest_equal"] is True,
+            f"{relpath(B7_RECOVERY_100M_CE5000)}: digest_compare.digest_equal is true")
+    eq(rec100_5000["digest_compare"]["src_digest"], B7_100M_STORE_DIGEST,
+       f"{relpath(B7_RECOVERY_100M_CE5000)}: digest_compare.src_digest matches the "
+       "frozen 100M store digest")
+    eq(rec100_5000["digest_compare"]["replayed_digest"], B7_100M_STORE_DIGEST,
+       f"{relpath(B7_RECOVERY_100M_CE5000)}: digest_compare.replayed_digest matches "
+       "the frozen 100M store digest")
+
+    # --- build: wall, peak RSS, manifest/segment bytes ---
+    bi100 = build100["build_info"]
+    wall100_s = bi100["wall_s"]
+    eq(wall100_s, build100["falsifiers"]["build_wall"]["measured_s"],
+       f"{relpath(B7_BUILD_100M)}: build_info.wall_s matches falsifiers.build_wall.measured_s")
+    eq(round(wall100_s, 3), 28372.936, "B7 frozen: 100M build wall_s")
+
+    peak100_vmhwm_kb = bi100["peak_rss"]["vmhwm"]
+    eq(peak100_vmhwm_kb, build100["falsifiers"]["build_vmhwm_h1_h2"]["measured_kb"],
+       f"{relpath(B7_BUILD_100M)}: build_info.peak_rss.vmhwm matches "
+       "falsifiers.build_vmhwm_h1_h2.measured_kb")
+    # Campaign convention (stated and cross-checked against the Stage-0 10M
+    # anchor in falsifiers.build_vmhwm_h1_h2.unit_note): "GB" = vmhwm_kb /
+    # 1e6, not true decimal GB or GiB -- recomputed here, not trusted.
+    peak100_rss_gb = round(peak100_vmhwm_kb / 1e6, 2)
+    eq(peak100_rss_gb, build100["falsifiers"]["build_vmhwm_h1_h2"]["measured_gb"],
+       f"{relpath(B7_BUILD_100M)}: vmhwm/1e6, rounded 2dp, matches "
+       "falsifiers.build_vmhwm_h1_h2.measured_gb (the campaign's own 'GB' convention)")
+    require("vmhwm_kb / 1,000,000" in build100["falsifiers"]["build_vmhwm_h1_h2"]["unit_note"],
+            f"{relpath(B7_BUILD_100M)}: falsifiers.build_vmhwm_h1_h2.unit_note states the "
+            "campaign's vmhwm_kb/1e6 'GB' convention")
+    eq(peak100_rss_gb, 186.42, "B7 frozen: 100M build peak RSS, campaign-convention GB")
+
+    manifest100_bytes = bi100["store_bytes"]["manifest_bytes"]
+    eq(manifest100_bytes, build100["falsifiers"]["manifest_bytes"]["measured_bytes"],
+       f"{relpath(B7_BUILD_100M)}: build_info.store_bytes.manifest_bytes matches "
+       "falsifiers.manifest_bytes.measured_bytes")
+    eq(manifest100_bytes, 206946, "B7 frozen: 100M manifest bytes")
+
+    segment100_bytes = bi100["store_bytes"]["segment_bytes"]
+    segment100_gb = round(segment100_bytes / 1e9, 3)
+    eq(segment100_gb, build100["falsifiers"]["segment_bytes"]["measured_gb"],
+       f"{relpath(B7_BUILD_100M)}: build_info.store_bytes.segment_bytes / 1e9, rounded "
+       "3dp, matches falsifiers.segment_bytes.measured_gb")
+    eq(segment100_gb, 5.218, "B7 frozen: 100M segment bytes, GB")
+
+    # steady-decile median: build_info.steady_decile_median_ops_per_s is
+    # null for this run (build_info.ops_per_s_by_decile_source: the
+    # harness's own field was null, so ops_per_s_by_decile itself is
+    # derived from build-100m.stdout.log's progress ticks, not the
+    # harness) -- recomputed here and cross-checked against the one
+    # aggregate this record does carry, falsifiers.steady_decile_ops_per_s.
+    require(bi100.get("steady_decile_median_ops_per_s") is None,
+            f"{relpath(B7_BUILD_100M)}: build_info.steady_decile_median_ops_per_s is "
+            "null/absent, as flagged by ops_per_s_by_decile_source")
+    decile100_ops = [d["ops_per_s"] for d in bi100["ops_per_s_by_decile"]]
+    eq(len(decile100_ops), 10, "B7 frozen: 100M build decile count")
+    decile100_median = statistics.median(decile100_ops)
+    close(decile100_median, build100["falsifiers"]["steady_decile_ops_per_s"]["measured"], 0.06,
+          f"{relpath(B7_BUILD_100M)}: recomputed median(ops_per_s_by_decile[*].ops_per_s) "
+          "matches falsifiers.steady_decile_ops_per_s.measured")
+    eq(round(decile100_median, 1), 3738.9, "B7 frozen: 100M steady-decile median ops/s")
+
+    # --- compaction share of the build wall (build-100m-compaction-
+    # walls.json, cross-checked against build_info's own embedded copy) ---
+    eq(bi100["compaction_wall_share"], walls100,
+       f"{relpath(B7_BUILD_100M)}: build_info.compaction_wall_share matches "
+       f"{relpath(B7_BUILD_COMPACTION_WALLS_100M)} verbatim (the same content, embedded)")
+    compaction_only_pct = walls100["compaction_only_share_of_wall_pct"]
+    recomputed_compaction_s = (walls100["in_loop_compaction_overhead_estimate_s"]
+                                + walls100["final_compaction_wall_s_authoritative"])
+    close(round(100 * recomputed_compaction_s / walls100["total_wall_s"], 2), compaction_only_pct,
+          0.01,
+          f"{relpath(B7_BUILD_COMPACTION_WALLS_100M)}: recomputed 100 * (in_loop_compaction_"
+          "overhead_estimate_s + final_compaction_wall_s_authoritative) / total_wall_s "
+          "matches compaction_only_share_of_wall_pct")
+    eq(walls100["total_wall_s"], wall100_s,
+       f"{relpath(B7_BUILD_COMPACTION_WALLS_100M)}: total_wall_s matches "
+       f"{relpath(B7_BUILD_100M)}'s build_info.wall_s")
+    eq(compaction_only_pct, 83.76, "B7 frozen: 100M compaction share of build wall, %")
+
+    # --- query-ready floor: queryfloor-100m.json cross-checked against
+    # the copy build-100m.json itself carries ---
+    qf100_vmhwm_kb = qf100["vmhwm_kb"]
+    eq(qf100_vmhwm_kb, build100["query_ready_floor"]["vmhwm_kb"],
+       f"{relpath(B7_QUERYFLOOR_100M)}: vmhwm_kb matches build-100m.json's own "
+       "query_ready_floor.vmhwm_kb")
+    eq(qf100["n_ok"], 6, f"{relpath(B7_QUERYFLOOR_100M)}: n_ok is 6/13 (7 operators refused "
+       "by the cost guardrail even at the query-ready-floor probe)")
+    query100_floor_gb = round(qf100_vmhwm_kb / 1e6, 2)
+    eq(query100_floor_gb, build100["query_ready_floor"]["vmhwm_gb"],
+       f"{relpath(B7_QUERYFLOOR_100M)}: vmhwm_kb/1e6, rounded 2dp, matches build-100m.json's "
+       "own query_ready_floor.vmhwm_gb")
+    eq(query100_floor_gb, 19.67, "B7 frozen: 100M query-ready floor, GB")
+
+    # --- check --full: single run (no clean/contended split at 100M) ---
+    check100_wall = check100["single_run"]["wall_s"]
+    eq(check100["single_run"]["job_id"], "213190",
+       f"{relpath(B7_CHECK_FULL_100M)}: single_run.job_id is 213190")
+    require(check100["single_run"]["raw"]["healthy"] is True,
+            f"{relpath(B7_CHECK_FULL_100M)}: single_run.raw.healthy is true")
+    eq(round(check100_wall, 3), 336.353, "B7 frozen: 100M check --full wall_s")
+
+    # --- recovery: cadence 5000 only -- no cadence-500 100M run exists
+    # (recovery-100m-ce5000.json's own protocol_note says so explicitly:
+    # ~45h at ce500 was pre-judged infeasible within the 2-day Slurm wall
+    # and would only re-measure D-164 again). osdiB7Recovery100M aliases
+    # this single measurement rather than sitting PENDING forever for a
+    # run that was never planned -- the §4 record layout has no
+    # recovery-100m.json file at all, only recovery-100m-ce5000.json.
+    require("no 500-cadence 100M run" in rec100_5000["protocol_note"],
+            f"{relpath(B7_RECOVERY_100M_CE5000)}: protocol_note states there is no "
+            "500-cadence 100M run to reconcile against")
+    recovery100_5000_s = round(rec100_5000["replay_wall_s"], 1)
+    eq(recovery100_5000_s, 22717.7, "B7 frozen: 100M recovery wall_s, cadence 5000")
+
+    # --- version_history: single run (3 reps), medians recomputed ---
+    sr_vh100 = vh100["single_run"]
+    eq(sr_vh100["job_id"], "213191", f"{relpath(B7_VERSION_HISTORY_100M)}: single_run.job_id")
+    reps100 = sr_vh100["reps"]
+    eq(len(reps100), 3, f"{relpath(B7_VERSION_HISTORY_100M)}: single_run has 3 reps")
+    vh100_wall_median = statistics.median(r["wall_ms"] for r in reps100)
+    eq(vh100_wall_median, sr_vh100["wall_ms_median"],
+       f"{relpath(B7_VERSION_HISTORY_100M)}: recomputed median(reps[*].wall_ms) matches "
+       "single_run.wall_ms_median")
+    vh100_rss_median_kb = statistics.median(r["vmhwm_kb"] for r in reps100)
+    eq(vh100_rss_median_kb, sr_vh100["vmhwm_kb_median"],
+       f"{relpath(B7_VERSION_HISTORY_100M)}: recomputed median(reps[*].vmhwm_kb) matches "
+       "single_run.vmhwm_kb_median")
+    vh100_wall_s = round(vh100_wall_median / 1000, 3)
+    vh100_rss_gb = round(vh100_rss_median_kb / 1e6, 3)
+    eq(vh100_wall_s, 18.982, "B7 frozen: 100M version_history wall_s")
+    eq(vh100_rss_gb, 12.817, "B7 frozen: 100M version_history VmHWM, GB")
+
+    # --- scale-curve: 6/13 executed, 7/13 refused by the cost guardrail.
+    # Executed operators' p50s recomputed from the raw per-rep timings,
+    # cross-checked against the raw file's own p50_ms and the aggregated
+    # summary's measured_p50_ms (single run, no clean/contended split). ---
+    pops100 = curve100["per_operator_p50_ms"]
+    eq(set(pops100), set(B7_SCALE_CURVE_OPS),
+       f"{relpath(B7_SCALE_CURVE_100M)}: per_operator_p50_ms operator set matches "
+       "the known 13-operator registry")
+    raw100_by_query = {r["query"]: r for r in curve100_raw["results"]["native"]}
+    eq(set(raw100_by_query), set(B7_SCALE_CURVE_OPS),
+       f"{relpath(B7_SCALE_CURVE_100M_RAW)}: results.native operator set matches "
+       "the known 13-operator registry")
+    refused100_ops = {op for op in B7_SCALE_CURVE_OPS if "error" in pops100[op]}
+    eq(refused100_ops, set(B7_SCALE_CURVE_100M_REFUSED_NO_ESTIMATE) | {"reach.window"},
+       f"{relpath(B7_SCALE_CURVE_100M)}: exactly 7 operators refused (reach.window + the "
+       "six unanticipated CostError refusals)")
+    executed100_p50_by_op: dict[str, float] = {}
+    for op_id in B7_SCALE_CURVE_OPS:
+        if op_id in refused100_ops:
+            eq(pops100[op_id]["measured_p50_ms"], None,
+               f"{relpath(B7_SCALE_CURVE_100M)}: {op_id}: refused operator's "
+               "measured_p50_ms is null, not a fabricated figure")
+            raw_row = raw100_by_query[op_id]
+            require(raw_row["ok"] is False and raw_row["p50_ms"] is None,
+                    f"{relpath(B7_SCALE_CURVE_100M_RAW)}: {op_id}: refused in the raw "
+                    "file too (ok=false, p50_ms=null)")
+            continue
+        summary = pops100[op_id]
+        raw_row = raw100_by_query[op_id]
+        recomputed = statistics.median(raw_row["timings_ms"])
+        close(recomputed, raw_row["p50_ms"], 0.01,
+              f"{relpath(B7_SCALE_CURVE_100M_RAW)}: {op_id}: recomputed median(timings_ms) "
+              "matches this row's own p50_ms")
+        eq(raw_row["p50_ms"], summary["measured_p50_ms"],
+           f"{relpath(B7_SCALE_CURVE_100M)}: {op_id}: per_operator_p50_ms.measured_p50_ms "
+           f"matches {relpath(B7_SCALE_CURVE_100M_RAW)}'s own p50_ms")
+        executed100_p50_by_op[op_id] = summary["measured_p50_ms"]
+    eq(len(executed100_p50_by_op), 6, "B7 frozen: 100M scale-curve executed-operator count")
+
+    # reach.window: refused, but with a numeric estimate (a dedicated
+    # admission probe, same shape as 30M's) -- this is the one refused
+    # operator whose ScaleCurveP50 macro stays PENDING-with-reason rather
+    # than becoming an osdiB7Refused* macro.
+    reach100 = curve100["reach_window_admission"]
+    require(reach100["run"]["admitted"] is False,
+            f"{relpath(B7_SCALE_CURVE_100M)}: reach_window_admission.run.admitted is false")
+    require("time_est_ms=14,571" in reach100["note"],
+            f"{relpath(B7_SCALE_CURVE_100M)}: reach_window_admission.note names the "
+            "time_est_ms=14,571 estimate that tripped the ceiling")
+    estimate100_ms = reach100["run"]["estimate"]["time_est_ms"]
+    eq(estimate100_ms, reach100["run"]["time_est_ms"],
+       f"{relpath(B7_SCALE_CURVE_100M)}: reach_window_admission.run.estimate.time_est_ms "
+       "matches its own top-level time_est_ms")
+    eq(estimate100_ms, 14571, "B7 frozen: 100M reach.window admission estimate, ms")
+
+    # ---------------------------------------------------------------
+    # 100M macros
+    # ---------------------------------------------------------------
+    m.add("osdiB7BuildWall100M", tex_float(round(wall100_s, 3)),
+          f"{relpath(B7_BUILD_100M)}: build_info.wall_s, seconds")
+    m.add("osdiB7PeakRSS100M", f"{peak100_rss_gb:.2f}",
+          f"{relpath(B7_BUILD_100M)}: build_info.peak_rss.vmhwm / 1e6, GB, 2dp "
+          f"({tex_num(peak100_vmhwm_kb)} KB) -- campaign convention per "
+          "falsifiers.build_vmhwm_h1_h2.unit_note, not true decimal GB/GiB")
+    m.add("osdiB7VersionHistoryWall100M", f"{vh100_wall_s:.3f}",
+          f"{relpath(B7_VERSION_HISTORY_100M)}: single_run (job 213191), "
+          "median(reps[*].wall_ms) / 1000, seconds")
+    m.add("osdiB7VersionHistoryRSS100M", f"{vh100_rss_gb:.3f}",
+          f"{relpath(B7_VERSION_HISTORY_100M)}: single_run (job 213191), "
+          "median(reps[*].vmhwm_kb) / 1e6, GB")
+    m.add("osdiB7ManifestBytes100M", tex_num(manifest100_bytes),
+          f"{relpath(B7_BUILD_100M)}: build_info.store_bytes.manifest_bytes")
+    m.add("osdiB7SegmentBytes100M", f"{segment100_gb:.3f}",
+          f"{relpath(B7_BUILD_100M)}: build_info.store_bytes.segment_bytes / 1e9, GB")
+    m.add("osdiB7CheckFullWall100M", f"{check100_wall:.3f}",
+          f"{relpath(B7_CHECK_FULL_100M)}: single_run (job 213190), wall_s")
+    m.add("osdiB7RecoveryCe5000At100M", tex_float(recovery100_5000_s),
+          f"{relpath(B7_RECOVERY_100M_CE5000)}: replay_wall_s, rounded 1dp, seconds "
+          "(compact_every=5000, job 213192); digest_compare.digest_equal true")
+    m.add("osdiB7Recovery100M", tex_float(recovery100_5000_s),
+          f"ALIAS of osdiB7RecoveryCe5000At100M -- {relpath(B7_RECOVERY_100M_CE5000)}'s "
+          "own protocol_note states there is no cadence-500 100M run (Addendum 6 "
+          "pre-judged it infeasible, ~45h extrapolated, over the 2-day Slurm wall, and "
+          "would only re-measure D-164 again); the §4 record layout has no separate "
+          "recovery-100m.json for a base cadence, so this macro reuses the campaign's "
+          "single 100M recovery measurement rather than staying pending for a run that "
+          "was never planned")
+    for op_id, val in executed100_p50_by_op.items():
+        frag = B7_SCALE_CURVE_OPS[op_id]
+        m.add(f"osdiB7ScaleCurveP50{frag}100M", tex_float(val),
+              f"{relpath(B7_SCALE_CURVE_100M)}: per_operator_p50_ms.{op_id}."
+              "measured_p50_ms, ms (single run, job 213190), recomputed from "
+              f"{relpath(B7_SCALE_CURVE_100M_RAW)}'s own timings_ms")
+    m.add_pending("osdiB7ScaleCurveP50ReachWindow100M", "B7 (100M, cost guardrail)",
+                  f"refused by the cost guardrail (time_est_ms {estimate100_ms}) -- "
+                  f"{relpath(B7_SCALE_CURVE_100M)}: reach_window_admission.run, anticipated "
+                  "by Addendum 5's restated reach.window prediction (the only refusal the "
+                  "pre-registration foresaw); see osdiB7ReachWindowRefused100M and "
+                  "osdiB7ReachWindowEstimateMs100M")
+    for op_id in B7_SCALE_CURVE_100M_REFUSED_NO_ESTIMATE:
+        frag = B7_SCALE_CURVE_OPS[op_id]
+        m.add(f"osdiB7Refused{frag}100M", "true",
+              f"{relpath(B7_SCALE_CURVE_100M)}: per_operator_p50_ms.{op_id}.error = "
+              f"{pops100[op_id]['error']!r} -- refused by the cost guardrail with no "
+              "numeric time_est_ms in the record (unlike reach.window's dedicated "
+              "admission probe); NOT anticipated by SCALE_BUILD_FORECAST_2026-09-15.md "
+              "(a new finding at 100M -- all 13 operators executed at 30M). No "
+              "osdiB7ScaleCurveP50 macro is emitted for this operator at 100M: no "
+              "measured p50 exists and no estimate exists to explain a PENDING one")
+    m.add("osdiB7ReachWindowRefused100M", "true",
+          f"{relpath(B7_SCALE_CURVE_100M)}: reach_window_admission.run.admitted is false "
+          "(time_est_ms=14,571 > the 10,000 ceiling) -- unlike 30M (admitted), 100M's "
+          "reach.window is refused, exactly as Addendum 5's restated admission policy "
+          "predicted for this scale")
+    m.add("osdiB7QueryFloor100M", f"{query100_floor_gb:.2f}",
+          f"{relpath(B7_QUERYFLOOR_100M)}: vmhwm_kb / 1e6, GB (fresh read-only process, "
+          "cold-open, job 213189, n_ok=6/13 -- 7 operators refused even at the "
+          "query-ready-floor probe)")
+    m.add("osdiB7BuildSteadyDecileMedian100M", tex_float(round(decile100_median, 1)),
+          f"{relpath(B7_BUILD_100M)}: recomputed median(ops_per_s_by_decile[*].ops_per_s) "
+          "-- build_info.steady_decile_median_ops_per_s itself is null for this run "
+          "(ops_per_s_by_decile_source flags it), cross-checked instead against "
+          "falsifiers.steady_decile_ops_per_s.measured, ops/s")
+    m.add("osdiB7ReachWindowEstimateMs100M", tex_num(estimate100_ms),
+          f"{relpath(B7_SCALE_CURVE_100M)}: reach_window_admission.run.estimate."
+          "time_est_ms, ms")
+    m.add("osdiB7CompactionShare100M", f"{compaction_only_pct:.2f}",
+          f"{relpath(B7_BUILD_COMPACTION_WALLS_100M)}: compaction_only_share_of_wall_pct "
+          "= 100 * (in_loop_compaction_overhead_estimate_s [checkpoint-delta-pair "
+          "estimate over the 100 in-loop compactions, method field quoted below] + "
+          "final_compaction_wall_s_authoritative [the 101st compaction, separately and "
+          "authoritatively timed in build_info.finalisation_phases]) / total_wall_s. "
+          f"method: {walls100['method']!r}. A wider "
+          f"compaction_plus_all_finalization_share_of_wall_pct = "
+          f"{walls100['compaction_plus_all_finalization_share_of_wall_pct']}% (adds gc+"
+          "stats+digest) is also on record but not emitted as a separate macro")
+
+    # osdiB7300MGate already covers both scales (scale-independent) --
+    # see the 30M section above.
+
 
 # --------------------------------------------------------------------------
 # pending stubs (records not yet landed)
@@ -4664,33 +4992,13 @@ def add_pending_stubs(m: Macros) -> None:
     # record snapshot of the live-osv poller running on xzgpu. No longer
     # emitted here.
 
-    # B7 100M: still running on iTiger as a separate, concurrent lane (see
-    # the module docstring's B7 section and compute_b7_scale above, which
-    # has already landed every 30M/Stage-0 macro plus the scale-independent
-    # osdiB7300MGate). Every 100M name below waits on that chain's own
-    # build-100m.json + sidecars landing on main.
-    _b7_100m_reason = ("benchmarks/scale-v1/build-100m.json and its sidecars "
-                        "(scale-curve-100m.json, check-full-100m.json, "
-                        "recovery-100m.json) have not landed yet -- the 100M chain "
-                        "is a separate, concurrently-running iTiger lane (see "
-                        "compute_b7_scale's landed 30M/Stage-0 macros)")
-    for _name in ("osdiB7BuildWall100M", "osdiB7PeakRSS100M",
-                  "osdiB7VersionHistoryWall100M", "osdiB7VersionHistoryRSS100M",
-                  "osdiB7ManifestBytes100M", "osdiB7SegmentBytes100M",
-                  "osdiB7CheckFullWall100M", "osdiB7Recovery100M",
-                  "osdiB7ReachWindowRefused100M", "osdiB7QueryFloor100M",
-                  "osdiB7BuildSteadyDecileMedian100M",
-                  "osdiB7ReachWindowEstimateMs100M"):
-        m.add_pending(_name, "B7 (scale campaign, 100M)", _b7_100m_reason)
-    for _frag in B7_SCALE_CURVE_OPS.values():
-        m.add_pending(f"osdiB7ScaleCurveP50{_frag}100M", "B7 (scale campaign, 100M)",
-                      _b7_100m_reason)
-    m.add_pending("osdiB7CompactionShare100M", "B7 (scale campaign, 100M)",
-                  "needs build-100m.json to state its compaction-share method "
-                  "(Addendum 3's open design item: compaction peak RSS / segment "
-                  "bytes at that point, or an equivalent stated method) -- not yet "
-                  "landed, and not computable from the 30M record alone since 30M's "
-                  "own finalisation_phases were not scored against this ratio")
+    # B7 100M: landed -- see compute_b7_scale above (merge of fe52997). Every
+    # core 100M macro, 6/13 executed scale-curve p50s, and the 6 unestimated
+    # refusals (osdiB7Refused<Op>100M) are landed; only
+    # osdiB7ScaleCurveP50ReachWindow100M stays PENDING, with a reason naming
+    # its own time_est_ms rather than "not landed yet" (compute_b7_scale
+    # calls add_pending directly for that one, since the reason is derived
+    # from the just-read record).
 
 
 # --------------------------------------------------------------------------

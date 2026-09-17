@@ -409,6 +409,32 @@ FROZEN_LANDED_VALUES = {
     "osdiB7Calib10MSteadyOps": "24{,}390.8",
     "osdiB7KBuild": "4.602",
     "osdiB7KRecover": "0.834",
+    "osdiB7BuildWall100M": "28{,}372.936",
+    "osdiB7PeakRSS100M": "186.42",
+    "osdiB7VersionHistoryWall100M": "18.982",
+    "osdiB7VersionHistoryRSS100M": "12.817",
+    "osdiB7ManifestBytes100M": "206{,}946",
+    "osdiB7SegmentBytes100M": "5.218",
+    "osdiB7CheckFullWall100M": "336.353",
+    "osdiB7RecoveryCe5000At100M": "22{,}717.7",
+    "osdiB7Recovery100M": "22{,}717.7",
+    "osdiB7ScaleCurveP50HistSingle100M": "12.965",
+    "osdiB7ScaleCurveP50HistAsof100M": "12.998",
+    "osdiB7ScaleCurveP50PathsK100M": "20.164",
+    "osdiB7ScaleCurveP50SeriesCount100M": "291.521",
+    "osdiB7ScaleCurveP50BurstZscore100M": "294.233",
+    "osdiB7ScaleCurveP50MotifFiltered100M": "110.861",
+    "osdiB7RefusedSnapHop2100M": "true",
+    "osdiB7RefusedDiffGlobal100M": "true",
+    "osdiB7RefusedNbrEvolution100M": "true",
+    "osdiB7RefusedCoactiveNarrow100M": "true",
+    "osdiB7RefusedResolveSubstr100M": "true",
+    "osdiB7RefusedAggRelBucket100M": "true",
+    "osdiB7ReachWindowRefused100M": "true",
+    "osdiB7QueryFloor100M": "19.67",
+    "osdiB7BuildSteadyDecileMedian100M": "3738.9",
+    "osdiB7ReachWindowEstimateMs100M": "14{,}571",
+    "osdiB7CompactionShare100M": "83.76",
 }
 
 
@@ -426,19 +452,16 @@ def test_frozen_macro_values_match_the_generator():
 
 
 def test_pending_macros_raise_a_latex_error_never_a_placeholder_number():
+    """add_pending_stubs itself only carries the 3 LDBC (C9) stubs now --
+    every B7 100M name has landed except osdiB7ScaleCurveP50ReachWindow100M,
+    which compute_b7_scale adds directly (see
+    test_b7_scale_100m_reach_window_p50_is_pending_with_its_estimate)."""
     mod = _load("osdi_paper_macros")
     m = mod.Macros()
     mod.add_pending_stubs(m)
     expected_names = {
         "osdiLdbcExpressible", "osdiLdbcExecuted", "osdiLdbcValidated",
-        "osdiB7BuildWall100M", "osdiB7PeakRSS100M",
-        "osdiB7VersionHistoryWall100M", "osdiB7VersionHistoryRSS100M",
-        "osdiB7ManifestBytes100M", "osdiB7SegmentBytes100M",
-        "osdiB7CheckFullWall100M", "osdiB7Recovery100M",
-        "osdiB7ReachWindowRefused100M", "osdiB7QueryFloor100M",
-        "osdiB7BuildSteadyDecileMedian100M", "osdiB7ReachWindowEstimateMs100M",
-        "osdiB7CompactionShare100M",
-    } | {f"osdiB7ScaleCurveP50{frag}100M" for frag in mod.B7_SCALE_CURVE_OPS.values()}
+    }
     got_names = {name for name, _, _ in m.items}
     assert got_names == expected_names
     for name, value, provenance in m.items:
@@ -457,10 +480,10 @@ def test_full_macro_set_has_no_duplicate_names_and_covers_every_skeleton_claim()
     mod.add_pending_stubs(m)
     names = [name for name, _, _ in m.items]
     assert len(names) == len(set(names)), "duplicate macro name"
-    # 3 pre-existing LDBC (C9) pending stubs + 26 B7-100M pending stubs
-    # (12 core names + osdiB7CompactionShare100M + one per scale-curve operator)
-    n_b7_100m_pending = 12 + 1 + len(mod.B7_SCALE_CURVE_OPS)
-    assert len(names) == len(FROZEN_LANDED_VALUES) + 3 + n_b7_100m_pending
+    # 3 pre-existing LDBC (C9) pending stubs + 1 B7 100M pending stub
+    # (osdiB7ScaleCurveP50ReachWindow100M, added by compute_b7_scale itself,
+    # already present in `m` via _run_all_landed before add_pending_stubs runs)
+    assert len(names) == len(FROZEN_LANDED_VALUES) + 3 + 1
 
 
 def test_cli_check_mode_agrees_with_committed_output(tmp_path):
@@ -1989,32 +2012,98 @@ def test_tampered_b7_recovery_30m_digest_mismatch_fails(tmp_path):
     assert any("replayed_digest" in f for f in mod.FAILURES)
 
 
-def test_b7_scale_100m_names_are_pending_stubs():
-    """Every osdiB7*100M name (the core set, all 13 scale-curve operators,
-    and osdiB7CompactionShare100M) must be PENDING until the 100M chain's
-    own records land -- 30M-only names (osdiB7*30M, osdiB7300MGate, the
-    Stage-0 calib anchors) must not be."""
+def test_b7_scale_100m_macros_are_landed():
+    """Every core osdiB7*100M name, the 6 executed scale-curve operators,
+    the 6 osdiB7Refused<Op>100M refusal macros, and
+    osdiB7CompactionShare100M must be landed (not PENDING) now that
+    build-100m.json + sidecars are on main."""
     mod = _load("osdi_paper_macros")
     m = mod.Macros()
     mod.compute_b7_scale(m)
-    mod.add_pending_stubs(m)
     values = {name: value for name, value, _ in m.items}
 
     core_100m = ["osdiB7BuildWall100M", "osdiB7PeakRSS100M",
                  "osdiB7VersionHistoryWall100M", "osdiB7VersionHistoryRSS100M",
                  "osdiB7ManifestBytes100M", "osdiB7SegmentBytes100M",
-                 "osdiB7CheckFullWall100M", "osdiB7Recovery100M",
-                 "osdiB7ReachWindowRefused100M", "osdiB7QueryFloor100M",
-                 "osdiB7BuildSteadyDecileMedian100M",
+                 "osdiB7CheckFullWall100M", "osdiB7RecoveryCe5000At100M",
+                 "osdiB7Recovery100M", "osdiB7ReachWindowRefused100M",
+                 "osdiB7QueryFloor100M", "osdiB7BuildSteadyDecileMedian100M",
                  "osdiB7ReachWindowEstimateMs100M", "osdiB7CompactionShare100M"]
     for name in core_100m:
-        assert values[name].startswith("\\errmessage"), f"{name} should still be PENDING"
-    for frag in mod.B7_SCALE_CURVE_OPS.values():
+        assert not values[name].startswith("\\errmessage"), f"{name} should be landed"
+
+    executed_100m = ["HistSingle", "HistAsof", "PathsK", "SeriesCount",
+                      "BurstZscore", "MotifFiltered"]
+    for frag in executed_100m:
         name = f"osdiB7ScaleCurveP50{frag}100M"
-        assert values[name].startswith("\\errmessage"), f"{name} should still be PENDING"
+        assert not values[name].startswith("\\errmessage"), f"{name} should be landed"
+
+    for op_id in mod.B7_SCALE_CURVE_100M_REFUSED_NO_ESTIMATE:
+        frag = mod.B7_SCALE_CURVE_OPS[op_id]
+        name = f"osdiB7Refused{frag}100M"
+        assert values[name] == "true", f"{name} should be a landed refusal macro"
+        # no ScaleCurveP50 macro at all for these six at 100M
+        assert f"osdiB7ScaleCurveP50{frag}100M" not in values
 
     assert not values["osdiB7BuildWall30M"].startswith("\\errmessage")
     assert not values["osdiB7300MGate"].startswith("\\errmessage")
+
+
+def test_b7_scale_100m_reach_window_p50_is_pending_with_its_estimate():
+    """osdiB7ScaleCurveP50ReachWindow100M is the one refused-operator
+    exception: it stays PENDING (reach.window's refusal carries a numeric
+    time_est_ms, unlike the other six), and the estimate must be inside
+    the rendered \\errmessage, not just the comment."""
+    mod = _load("osdi_paper_macros")
+    m = mod.Macros()
+    mod.compute_b7_scale(m)
+    values = {name: value for name, value, _ in m.items}
+    name = "osdiB7ScaleCurveP50ReachWindow100M"
+    assert values[name].startswith("\\errmessage")
+    assert "time_est_ms 14571" in values[name]
+    assert "cost guardrail" in values[name]
+
+
+def test_b7_scale_100m_recovery_is_an_alias_of_the_ce5000_measurement():
+    """No cadence-500 100M run exists or was ever planned -- osdiB7Recovery100M
+    must equal osdiB7RecoveryCe5000At100M exactly, not a separate figure."""
+    mod = _load("osdi_paper_macros")
+    m = mod.Macros()
+    mod.compute_b7_scale(m)
+    values = {name: value for name, value, _ in m.items}
+    assert values["osdiB7Recovery100M"] == values["osdiB7RecoveryCe5000At100M"]
+    assert values["osdiB7Recovery100M"] == "22{,}717.7"
+
+
+def test_tampered_b7_scale_curve_100m_refused_operator_missing_error_field_fails(tmp_path):
+    """A refused operator's per_operator_p50_ms entry must carry a
+    measured_p50_ms of null and a raw row with ok=false -- if a tampered
+    copy fabricates a measured_p50_ms for a refused operator (with the
+    whole-file sha256 patched to match), that must fail rather than
+    silently emitting a real-looking p50 for an operator the guardrail
+    actually refused."""
+    mod = _load("osdi_paper_macros")
+    data = json.loads(mod.B7_SCALE_CURVE_100M.read_text(encoding="utf-8"))
+    data["per_operator_p50_ms"]["agg.rel_bucket"]["measured_p50_ms"] = 42.0
+    tampered = tmp_path / "scale-curve-100m.json"
+    tampered.write_text(json.dumps(data), encoding="utf-8")
+    import hashlib as _hashlib
+    readme_text = mod.B7_README.read_text(encoding="utf-8")
+    patched_sha = _hashlib.sha256(tampered.read_bytes()).hexdigest()
+    readme_patched = tmp_path / "README.md"
+    readme_patched.write_text(
+        readme_text.replace(
+            "`8f39ca9a2b8508ce26d953d05303cc7aae46a47a8208853f4e981ce0933a3c83`",
+            f"`{patched_sha}`"),
+        encoding="utf-8")
+
+    mod.B7_SCALE_CURVE_100M = tampered
+    mod.B7_README = readme_patched
+    m = mod.Macros()
+    mod.compute_b7_scale(m)
+    assert mod.FAILURES, "a refused operator with a fabricated measured_p50_ms must fail, " \
+        "even with a patched whole-file digest"
+    assert any("agg.rel_bucket" in f for f in mod.FAILURES)
 
 
 # --------------------------------------------------------------------------
