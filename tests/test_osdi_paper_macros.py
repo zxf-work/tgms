@@ -87,6 +87,7 @@ def _run_all_landed(mod):
     mod.compute_ladder(m)
     mod.compute_longevity_soak(m)
     mod.compute_longevity_rederived(m)
+    mod.compute_longevity_soak_two(m)
     mod.compute_c10_live_osv(m)
     mod.compute_b7_scale(m)
     return m
@@ -374,6 +375,36 @@ FROZEN_LANDED_VALUES = {
     "osdiSoakReplayFractionApplied": "0.476",
     "osdiSoakReplayKBPerGeneration": "161.8",
     "osdiSoakReplayElapsedH": "3.37",
+    "osdiSoakCommitTwo": "eed91c0",
+    "osdiSoakHoursTwo": "24",
+    "osdiSoakWriterLivesTwo": "4",
+    "osdiSoakRecoveriesTwo": "3",
+    "osdiSoakRecoveriesSigabrtTwo": "2",
+    "osdiSoakRecoveriesExit137Two": "1",
+    "osdiSoakUnexpectedRecoveriesTwo": "0",
+    "osdiSoakWriterWithinLifeSlopeMedianKBpsTwo": "27.965",
+    "osdiSoakWriterWithinLifeSlopeMinKBpsTwo": "20.978",
+    "osdiSoakWriterWithinLifeSlopeMaxKBpsTwo": "43.494",
+    "osdiSoakReaderWithinLifeSlopeMinKBpsTwo": "7.212",
+    "osdiSoakReaderWithinLifeSlopeMaxKBpsTwo": "8.098",
+    "osdiSoakDigestEqualTwo": "true",
+    "osdiSoakBatchesTwo": "1{,}891{,}962",
+    "osdiSoakFullVerifyOverlapCountTwo": "0",
+    "osdiSoakFullVerifyVerdictTwo": "healthy",
+    "osdiSoakWriterErrorsTrueTwo": "616",
+    "osdiSoakWriterErrorsClassTwo": "NotFoundError",
+    "osdiSoakReaderErrorsTrueTwo": "150{,}476{,}512",
+    "osdiSoakReaderErrorsOSErrorTwo": "150{,}278{,}720",
+    "osdiSoakReaderErrorsStateErrorTwo": "197{,}792",
+    "osdiSoakReaderQueriesTwo": "16{,}055{,}124",
+    "osdiSoakThroughputStartTwo": "39.91",
+    "osdiSoakThroughputEndTwo": "19.117",
+    "osdiSoakP99StartMsTwo": "60.42",
+    "osdiSoakP99EndMsTwo": "82.075",
+    "osdiSoakManifestGrowthBpsTwo": "3.141",
+    "osdiSoakSegmentGrowthBpsTwo": "2{,}396.455",
+    "osdiSoakEntitiesEndTwo": "3{,}092{,}488",
+    "osdiSoakCompactionsTwo": "4215",
     "osdiLiveDays": "1.89",
     "osdiLiveAdvisories": "32{,}827",
     "osdiLiveCorrections": "1",
@@ -1786,6 +1817,176 @@ def test_longevity_rederived_first_vs_last_slope_is_labelled_superseded():
     _, value, provenance = entry
     assert value == "111.6"
     assert "SUPERSEDED" in provenance
+
+
+def test_longevity_soak_two_true_error_totals_match_frozen_and_manifest():
+    """Soak2's own cumulative counters are correct (unlike W2g's
+    counter_latest label-collision defect) -- the true per-life writer sum
+    (616) and the true OSError+StateError reader sum (150,476,512) must
+    both equal the manifest's own error_count arithmetic
+    (writer + reader + unexpected_writer_deaths == summary.error_count),
+    not just self-consistently recompute to the same wrong number."""
+    mod = _load("osdi_paper_macros")
+    by_life = json.loads(mod.LONGEVITY_WRITER_ERRORS_BY_LIFE_TWO.read_text(encoding="utf-8"))
+    true_writer_errors = sum(row["errors"] for row in by_life["per_life"].values())
+    assert true_writer_errors == 616
+    assert true_writer_errors == by_life["true_total_writer_errors_all_lives"]
+
+    reader_by_class = json.loads(
+        mod.LONGEVITY_READER_ERRORS_BY_CLASS_TWO.read_text(encoding="utf-8"))
+    true_reader_errors = int(reader_by_class["by_class_total"]["OSError"]) + \
+        int(reader_by_class["by_class_total"]["StateError"])
+    assert true_reader_errors == 150_476_512
+
+    manifest = json.loads(mod.LONGEVITY_MANIFEST_TWO.read_text(encoding="utf-8"))
+    assert manifest["summary"]["error_count"] == true_writer_errors + true_reader_errors
+
+    m = mod.Macros()
+    mod.compute_longevity_soak_two(m)
+    values = {name: value for name, value, _ in m.items}
+    assert values["osdiSoakWriterErrorsTrueTwo"] == "616"
+    assert values["osdiSoakReaderErrorsTrueTwo"] == "150{,}476{,}512"
+
+
+def test_longevity_soak_two_text_macros_are_never_numbers():
+    """osdiSoakDigestEqualTwo ('true'), osdiSoakFullVerifyVerdictTwo
+    ('healthy'), and osdiSoakWriterErrorsClassTwo ('NotFoundError') must
+    all render as literal text, same discipline as W2g's
+    osdiSoakDigestStatus/osdiSoakReaderDeathCause above."""
+    mod = _load("osdi_paper_macros")
+    m = mod.Macros()
+    mod.compute_longevity_soak_two(m)
+    values = {name: value for name, value, _ in m.items}
+    for name in ("osdiSoakDigestEqualTwo", "osdiSoakFullVerifyVerdictTwo",
+                 "osdiSoakWriterErrorsClassTwo"):
+        with pytest.raises(ValueError):
+            float(values[name])
+    assert values["osdiSoakDigestEqualTwo"] == "true"
+    assert values["osdiSoakFullVerifyVerdictTwo"] == "healthy"
+    assert values["osdiSoakWriterErrorsClassTwo"] == "NotFoundError"
+
+
+def test_tampered_longevity_manifest_two_sha256_mismatch_fails(tmp_path):
+    """longevity-synth-1m-native-1.json is in README.md's "Soak 2
+    (post-fix)" Files-added-here sha256 table -- an edited copy (even a
+    field this generator never reads) must fail before any commit/
+    duration/error-count figure is trusted."""
+    mod = _load("osdi_paper_macros")
+    data = json.loads(mod.LONGEVITY_MANIFEST_TWO.read_text(encoding="utf-8"))
+    data["summary"]["compactions"] = 999999
+    tampered = tmp_path / "longevity-synth-1m-native-1.json"
+    tampered.write_text(json.dumps(data), encoding="utf-8")
+
+    mod.LONGEVITY_MANIFEST_TWO = tampered
+    m = mod.Macros()
+    mod.compute_longevity_soak_two(m)
+    assert mod.FAILURES, "an edited longevity-synth-1m-native-1.json must fail the " \
+        "sha256 check against README.md's Files-added-here table"
+    assert any("sha256" in f.lower() for f in mod.FAILURES)
+
+
+def test_tampered_longevity_rss_slopes_two_sha256_mismatch_fails(tmp_path):
+    """rss_slopes-2.json is also in that sha256 table -- an edited copy
+    must fail before any within-life writer/reader slope macro is
+    trusted."""
+    mod = _load("osdi_paper_macros")
+    data = json.loads(mod.LONGEVITY_RSS_SLOPES_TWO.read_text(encoding="utf-8"))
+    data["writer_lives"][0]["slope_kb_per_s_least_squares"] = 0.0
+    tampered = tmp_path / "rss_slopes-2.json"
+    tampered.write_text(json.dumps(data), encoding="utf-8")
+
+    mod.LONGEVITY_RSS_SLOPES_TWO = tampered
+    m = mod.Macros()
+    mod.compute_longevity_soak_two(m)
+    assert mod.FAILURES, "an edited rss_slopes-2.json must fail the sha256 check"
+    assert any("sha256" in f.lower() for f in mod.FAILURES)
+
+
+def test_tampered_writer_error_counts_by_life_two_sum_mismatch_fails_even_with_patched_digest(tmp_path):
+    """Unlike W2g's un-hashed writer_error_counts_by_life.json,
+    writer_error_counts_by_life-2.json *is* in the sha256 table -- so
+    patch the frozen digest to isolate the internal recomputed-sum
+    cross-check (sum(per_life[*].errors) ==
+    true_total_writer_errors_all_lives) from the whole-file check."""
+    mod = _load("osdi_paper_macros")
+    data = json.loads(mod.LONGEVITY_WRITER_ERRORS_BY_LIFE_TWO.read_text(encoding="utf-8"))
+    data["per_life"]["0"]["errors"] += 1
+    tampered = tmp_path / "writer_error_counts_by_life-2.json"
+    tampered.write_text(json.dumps(data), encoding="utf-8")
+    mod.LONGEVITY_WRITER_ERRORS_BY_LIFE_TWO_SHA256 = hashlib.sha256(
+        tampered.read_bytes()).hexdigest()
+
+    mod.LONGEVITY_WRITER_ERRORS_BY_LIFE_TWO = tampered
+    m = mod.Macros()
+    mod.compute_longevity_soak_two(m)
+    assert mod.FAILURES, "a per-life error count that no longer sums to " \
+        "true_total_writer_errors_all_lives must fail, even with a patched whole-file digest"
+    assert any("true_total_writer_errors_all_lives" in f for f in mod.FAILURES)
+
+
+def test_tampered_reader_error_counts_by_class_two_total_mismatch_fails_even_with_patched_digest(tmp_path):
+    """reader_error_counts_by_class-2.json's own total_reader_errors_total
+    field must equal the recomputed OSError + StateError sum -- editing
+    one class total alone, with the whole-file digest patched to match,
+    must still fail this internal cross-check."""
+    mod = _load("osdi_paper_macros")
+    data = json.loads(mod.LONGEVITY_READER_ERRORS_BY_CLASS_TWO.read_text(encoding="utf-8"))
+    data["by_class_total"]["OSError"] += 1
+    tampered = tmp_path / "reader_error_counts_by_class-2.json"
+    tampered.write_text(json.dumps(data), encoding="utf-8")
+    mod.LONGEVITY_READER_ERRORS_BY_CLASS_TWO_SHA256 = hashlib.sha256(
+        tampered.read_bytes()).hexdigest()
+
+    mod.LONGEVITY_READER_ERRORS_BY_CLASS_TWO = tampered
+    m = mod.Macros()
+    mod.compute_longevity_soak_two(m)
+    assert mod.FAILURES, "an OSError total that no longer matches " \
+        "total_reader_errors_total must fail, even with a patched whole-file digest"
+    assert any("total_reader_errors_total" in f for f in mod.FAILURES)
+
+
+def test_tampered_longevity_soak_two_digest_equal_false_fails_even_with_patched_digest(tmp_path):
+    """The whole point of osdiSoakDigestEqualTwo is that P-SOAK2's replay
+    actually completed and matched (True, unlike W2g's null) -- a
+    manifest reporting False must fail this generator's own require()
+    check rather than silently emitting a wrong 'true' macro."""
+    mod = _load("osdi_paper_macros")
+    manifest = json.loads(mod.LONGEVITY_MANIFEST_TWO.read_text(encoding="utf-8"))
+    manifest["summary"]["digest_equal"] = False
+    tampered = tmp_path / "longevity-synth-1m-native-1.json"
+    tampered.write_text(json.dumps(manifest), encoding="utf-8")
+    mod.LONGEVITY_MANIFEST_TWO_SHA256 = hashlib.sha256(tampered.read_bytes()).hexdigest()
+
+    mod.LONGEVITY_MANIFEST_TWO = tampered
+    m = mod.Macros()
+    mod.compute_longevity_soak_two(m)
+    assert mod.FAILURES, "summary.digest_equal == False must fail the generator's own " \
+        "require(... is True) check, even with a patched whole-file digest"
+    assert any("digest_equal" in f for f in mod.FAILURES)
+
+
+def test_tampered_verify_full_soak2_overlap_finding_fails_even_with_patched_digest(tmp_path):
+    """verify-full-soak2-2026-09-17.txt's clean, 0-overlap verdict is the
+    record's second strong positive signal (alongside digest_equal) --
+    injecting a fabricated PROBLEMS/believed-versions-overlap finding,
+    with the whole-file digest patched to match, must still fail the
+    overlap-count and no-overlap-text checks."""
+    mod = _load("osdi_paper_macros")
+    text = mod.LONGEVITY_VERIFY_FULL_TWO.read_text(encoding="utf-8")
+    tampered_text = text.replace(
+        "\nverdict: healthy",
+        "\nPROBLEMS (1):\n  - [row/believed-versions-overlap]: fabricated for this test"
+        "\n\nverdict: healthy")
+    tampered = tmp_path / "verify-full-soak2-2026-09-17.txt"
+    tampered.write_text(tampered_text, encoding="utf-8")
+    mod.LONGEVITY_VERIFY_FULL_TWO_SHA256 = hashlib.sha256(tampered.read_bytes()).hexdigest()
+
+    mod.LONGEVITY_VERIFY_FULL_TWO = tampered
+    m = mod.Macros()
+    mod.compute_longevity_soak_two(m)
+    assert mod.FAILURES, "a fabricated believed-versions-overlap finding must fail, " \
+        "even with a patched whole-file digest"
+    assert any("PROBLEMS" in f or "believed-versions-overlap" in f for f in mod.FAILURES)
 
 
 def test_c10_live_osv_macros_match_frozen_values():

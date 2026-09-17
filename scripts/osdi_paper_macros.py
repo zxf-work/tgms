@@ -149,6 +149,24 @@ skeleton --
       re-measurements/re-derivations against the W2g soak's own preserved
       raw inputs -- no new soak, no new replay attempt. No verdict macro.
 
+  W2p (P-SOAK2, post-fix second soak, OSDI'27 plan Sec 4.3b) --
+      benchmarks/longevity-v1/longevity-synth-1m-native-1.json (manifest,
+      commit ``eed91c0``, 4 writer lives at ``--restart-every 6h``) +
+      rss_slopes-2.json, reader_error_counts_by_class-2.json,
+      writer_error_counts_by_life-2.json, gate_e_report-2.md,
+      verify-full-soak2-2026-09-17.txt, and recoveries-2.jsonl, every one
+      whole-file sha256-checked against README.md's "Soak 2 (post-fix)"
+      section's own "Files added here" table. Unlike W2g, the end-of-run
+      replay/digest step actually ran this time (``digest_equal: True``)
+      and the dedicated full-mode ``tgms check`` cleared the
+      believed-versions-overlap class entirely (0 findings, vs. W2g's
+      13,714) -- both are the record's strongest positive signals. The
+      new, unpredicted finding is a reader-side ``OSError``/``StateError``
+      failure storm (150,476,512 reader errors, 0 in W2g) that this script
+      also verifies down to the by-class totals. ``compute_longevity_soak_two``
+      below computes every ``osdiSoak*Two`` macro; the Gate E table's own
+      verdict column is prose (gate_e_report-2.md), not emitted here.
+
 C10 (live OSV workload) -- benchmarks/live-osv-v1/snapshot-2026-09-16.json,
 Lane C10-snap's first committed record snapshot of the live-osv poller
 running on xzgpu (docs/design/LIVE_WORKLOAD_OSV_DESIGN_2026-09-13.md).
@@ -351,6 +369,26 @@ LONGEVITY_GATE_E_REPORT_REDERIVED_SHA256 = "8ad5cf1fd22306d41255ab1560d72e50b525
 # (sha256 ...)"), so this constant is cross-checked against that quoted
 # text below, not only frozen from a first read.
 LONGEVITY_REPLAY_CHECK_SHA256 = "a5c7a93c79af6a97160f7262fd16c98ff99cb982f22d282e896f3805ab7e4d9b"
+
+# Lane W2p -- P-SOAK2, the post-fix second soak (commit eed91c0). Every
+# path below is whole-file sha256-checked against
+# benchmarks/longevity-v1/README.md's "Soak 2 (post-fix)" section's own
+# "Files added here" table, exactly as W2g's five-file table is checked
+# above -- not an independently-frozen first-read digest like W2j's pair.
+LONGEVITY_MANIFEST_TWO = LONGEVITY_DIR / "longevity-synth-1m-native-1.json"
+LONGEVITY_RECOVERIES_TWO = LONGEVITY_DIR / "recoveries-2.jsonl"
+LONGEVITY_GATE_E_REPORT_TWO = LONGEVITY_DIR / "gate_e_report-2.md"
+LONGEVITY_WRITER_ERRORS_BY_LIFE_TWO = LONGEVITY_DIR / "writer_error_counts_by_life-2.json"
+LONGEVITY_READER_ERRORS_BY_CLASS_TWO = LONGEVITY_DIR / "reader_error_counts_by_class-2.json"
+LONGEVITY_RSS_SLOPES_TWO = LONGEVITY_DIR / "rss_slopes-2.json"
+LONGEVITY_VERIFY_FULL_TWO = LONGEVITY_DIR / "verify-full-soak2-2026-09-17.txt"
+LONGEVITY_MANIFEST_TWO_SHA256 = "19b597db12c6830859f5317ec8bdb630e4599c2fed8924ed26d41edc1cc23f68"
+LONGEVITY_RECOVERIES_TWO_SHA256 = "23a70f0e38c89ab1478a13389c93e86112aceabc2b07b91fc18ca669ad34827b"
+LONGEVITY_GATE_E_REPORT_TWO_SHA256 = "4a02fb42f092be22c39dfc2eed21170310e9c5dfd88836b42d459a1bb9da9814"
+LONGEVITY_WRITER_ERRORS_BY_LIFE_TWO_SHA256 = "d46fa237e5b02c6420c0735f7375454e82051a6c666ec6b3bb32183d13ef6126"
+LONGEVITY_READER_ERRORS_BY_CLASS_TWO_SHA256 = "e6d8624fc410c26289541557b17de132aeb08597b4c9bf83327c3cf22de34f41"
+LONGEVITY_RSS_SLOPES_TWO_SHA256 = "8a690ece6a9579b2ccd5d8a4473cb7f7c6b07ada390657e6a7ea5dee188c3054"
+LONGEVITY_VERIFY_FULL_TWO_SHA256 = "f18892a01759422854d3d09e4bfb04a6b4cc65b18d2e60aee55f5c8c711bdb59"
 
 FAILURE_LEDGER = ROOT / "ops" / "failure_ledger.jsonl"
 
@@ -4224,6 +4262,334 @@ def compute_longevity_rederived(m: Macros) -> None:
           f"{relpath(LONGEVITY_REPLAY_CHECK)}: summary.attempt_1.wall_s / 3600")
 
 
+def compute_longevity_soak_two(m: Macros) -> None:
+    """Lane W2p: P-SOAK2, the post-fix second soak (commit ``eed91c0``,
+    OSDI'27 plan Sec 4.3b) -- see benchmarks/longevity-v1/README.md's
+    "Soak 2 (post-fix)" section. Unlike W2g, the replay/digest step
+    actually completed (``digest_equal: True``) and the dedicated
+    full-mode ``tgms check`` cleared the believed-versions-overlap class
+    W2g found (0 findings here, vs. 13,714 there); the new, unpredicted
+    finding is a reader-side OSError/StateError failure storm. No verdict
+    macro -- Gate E's own PASS/FAIL/FLAG table is gate_e_report-2.md, not
+    this script."""
+    # --- whole-file digest checks against README.md's "Files added here" table ---
+    eq(sha256_file(LONGEVITY_MANIFEST_TWO), LONGEVITY_MANIFEST_TWO_SHA256,
+       f"{relpath(LONGEVITY_MANIFEST_TWO)}: sha256 matches README.md's Files-added-here table")
+    eq(sha256_file(LONGEVITY_RECOVERIES_TWO), LONGEVITY_RECOVERIES_TWO_SHA256,
+       f"{relpath(LONGEVITY_RECOVERIES_TWO)}: sha256 matches README.md's Files-added-here table")
+    eq(sha256_file(LONGEVITY_GATE_E_REPORT_TWO), LONGEVITY_GATE_E_REPORT_TWO_SHA256,
+       f"{relpath(LONGEVITY_GATE_E_REPORT_TWO)}: sha256 matches README.md's Files-added-here table")
+    eq(sha256_file(LONGEVITY_WRITER_ERRORS_BY_LIFE_TWO), LONGEVITY_WRITER_ERRORS_BY_LIFE_TWO_SHA256,
+       f"{relpath(LONGEVITY_WRITER_ERRORS_BY_LIFE_TWO)}: sha256 matches README.md's "
+       "Files-added-here table")
+    eq(sha256_file(LONGEVITY_READER_ERRORS_BY_CLASS_TWO), LONGEVITY_READER_ERRORS_BY_CLASS_TWO_SHA256,
+       f"{relpath(LONGEVITY_READER_ERRORS_BY_CLASS_TWO)}: sha256 matches README.md's "
+       "Files-added-here table")
+    eq(sha256_file(LONGEVITY_RSS_SLOPES_TWO), LONGEVITY_RSS_SLOPES_TWO_SHA256,
+       f"{relpath(LONGEVITY_RSS_SLOPES_TWO)}: sha256 matches README.md's Files-added-here table")
+    eq(sha256_file(LONGEVITY_VERIFY_FULL_TWO), LONGEVITY_VERIFY_FULL_TWO_SHA256,
+       f"{relpath(LONGEVITY_VERIFY_FULL_TWO)}: sha256 matches README.md's Files-added-here table")
+
+    manifest = json.loads(LONGEVITY_MANIFEST_TWO.read_text(encoding="utf-8"))
+    summary = manifest["summary"]
+
+    # --- commit + duration ---
+    eq(manifest["git_commit"], "eed91c0", "Soak2 frozen: measured commit")
+    duration_s = manifest["config"]["duration_s"]
+    eq(duration_s, 86400.0, "Soak2 frozen: configured soak duration_s")
+    hours = duration_s / 3600.0
+    eq(hours, 24.0, "Soak2: config.duration_s / 3600 is exactly 24 hours")
+
+    # --- writer lives (4, up from W2g's 42 -- --restart-every 6h instead
+    # of 30m, so a leak cannot hide behind frequent restarts) ---
+    writer_totals = summary["writer_totals_all_lives"]
+    writer_lives = writer_totals["lives"]
+    eq(writer_lives, 4, "Soak2 frozen: summary.writer_totals_all_lives.lives")
+
+    by_life = json.loads(LONGEVITY_WRITER_ERRORS_BY_LIFE_TWO.read_text(encoding="utf-8"))
+    per_life = by_life["per_life"]
+    eq(len(per_life), writer_lives,
+       "Soak2: writer_error_counts_by_life-2.json per_life row count matches "
+       "summary.writer_totals_all_lives.lives")
+
+    # --- designed restarts (3 = 4 lives - 1), by cause, with recovery times ---
+    recoveries_rows = load_jsonl(LONGEVITY_RECOVERIES_TWO)
+    eq(len(recoveries_rows), 3, "Soak2 frozen: recoveries-2.jsonl row count")
+    eq(len(recoveries_rows), summary["recoveries"],
+       "Soak2: recoveries-2.jsonl row count matches summary.recoveries")
+    require(all(r["kind"] == "designed" for r in recoveries_rows),
+            "Soak2: every recovery row is the harness's own designed restart cycle")
+    n_sigabrt = sum(1 for r in recoveries_rows if r["returncode"] == -6)
+    n_exit137 = sum(1 for r in recoveries_rows if r["returncode"] == 137)
+    eq(n_sigabrt, 2, "Soak2 frozen: SIGABRT (-6) recovery count")
+    eq(n_exit137, 1, "Soak2 frozen: os._exit(137) recovery count")
+    eq(n_sigabrt + n_exit137, len(recoveries_rows),
+       "Soak2: every recovery row is one of exactly these two returncodes")
+    eq(sorted(r["life_index"] for r in recoveries_rows), [0, 1, 2],
+       "Soak2 frozen: the restart cycle kills the ends of lives 0, 1, 2 (life 3 is "
+       "still running at RUN_DONE)")
+    recovery_times = sorted(r["recovery_s"] for r in recoveries_rows)
+    close(recovery_times[0], 17.505, 1e-2, "Soak2 frozen: shortest recovery time, s")
+    close(recovery_times[1], 29.130, 1e-2, "Soak2 frozen: middle recovery time, s")
+    close(recovery_times[2], 43.510, 1e-2, "Soak2 frozen: longest recovery time, s")
+    unexpected = summary["unexpected_writer_deaths"]
+    eq(unexpected, 0, "Soak2 frozen: unexpected_writer_deaths")
+    reader_restarts = summary["reader_restarts"]
+    eq(reader_restarts, 0,
+       "Soak2 frozen: summary.reader_restarts (no reader_restarts.jsonl counterpart "
+       "for this soak per README.md -- one is never written when it would be empty)")
+
+    require(summary["verify_healthy"] is True,
+            "Soak2: summary.verify_healthy is the JSON literal true")
+
+    # --- digest_equal: unlike W2g, the replay/digest step actually ran ---
+    require(summary["digest_equal"] is True,
+            "Soak2: summary.digest_equal is the JSON literal true -- the replay/digest "
+            "step actually completed this time, unlike W2g's disk-guard skip")
+    require(summary["replay_skipped"] is None,
+            "Soak2: summary.replay_skipped is JSON null -- the replay was not skipped")
+
+    total_batches = summary["total_batches"]
+    eq(total_batches, 1_891_962, "Soak2 frozen: summary.total_batches (the replay's own "
+       "batch count, now that digest_equal actually computed)")
+
+    # --- writer within-life RSS slopes per life, and the whole-run
+    # first-vs-last figure that the frozen bound does NOT gate on ---
+    rss_doc = json.loads(LONGEVITY_RSS_SLOPES_TWO.read_text(encoding="utf-8"))
+    writer_life_rows = rss_doc["writer_lives"]
+    eq(len(writer_life_rows), writer_lives,
+       "Soak2: rss_slopes-2.json writer_lives row count matches "
+       "summary.writer_totals_all_lives.lives")
+    writer_life_slopes = [row["slope_kb_per_s_least_squares"] for row in writer_life_rows]
+    require(list(range(writer_lives)) == [row["life"] for row in writer_life_rows],
+            "Soak2: rss_slopes-2.json writer_lives rows are ordered life 0, 1, 2, 3")
+    life0, life1, life2, life3 = writer_life_slopes
+    eq(round(life0, 3), 43.494, "Soak2 frozen: writer life 0 within-life RSS slope, kB/s")
+    eq(round(life1, 3), 32.365, "Soak2 frozen: writer life 1 within-life RSS slope, kB/s")
+    eq(round(life2, 3), 20.978, "Soak2 frozen: writer life 2 within-life RSS slope, kB/s")
+    eq(round(life3, 3), 23.564, "Soak2 frozen: writer life 3 within-life RSS slope, kB/s")
+    frozen_bound_writer = rss_doc["frozen_bound_writer_kb_per_s"]
+    eq(frozen_bound_writer, 50, "Soak2 frozen: rss_slopes-2.json frozen_bound_writer_kb_per_s")
+    require(all(s <= frozen_bound_writer for s in writer_life_slopes),
+            "Soak2: every writer life's within-life RSS slope clears the frozen 50 kB/s bound")
+    writer_median = statistics.median(writer_life_slopes)
+    writer_min = min(writer_life_slopes)
+    writer_max = max(writer_life_slopes)
+    median_kb = round(writer_median, 3)
+    min_kb = round(writer_min, 3)
+    max_kb = round(writer_max, 3)
+    eq(median_kb, 27.965, "Soak2 frozen: writer within-life slope median, kB/s")
+    eq(min_kb, 20.978, "Soak2 frozen: writer within-life slope min, kB/s")
+    eq(max_kb, 43.494, "Soak2 frozen: writer within-life slope max, kB/s")
+
+    first_vs_last = summary["memory_slope_kb_per_s"]
+    eq(round(first_vs_last, 3), 56.275,
+       "Soak2 frozen: summary.memory_slope_kb_per_s (whole-run first-vs-last, FAILs the "
+       "frozen bound even though every within-life fit above PASSes it)")
+
+    # --- reader within-life RSS slopes: 8 readers, reader_restarts=0 so
+    # exactly one fitted segment each ---
+    reader_rows = rss_doc["readers"]
+    eq(len(reader_rows), 8, "Soak2 frozen: rss_slopes-2.json readers row count")
+    reader_slopes = [row["slope_kb_per_s_least_squares"] for row in reader_rows.values()]
+    frozen_bound_reader = rss_doc["frozen_bound_reader_kb_per_s"]
+    eq(frozen_bound_reader, 10, "Soak2 frozen: rss_slopes-2.json frozen_bound_reader_kb_per_s")
+    require(all(s <= frozen_bound_reader for s in reader_slopes),
+            "Soak2: every reader's within-life RSS slope clears the frozen 10 kB/s bound, "
+            "including the readers hit hardest by the OSError storm below")
+    reader_min = min(reader_slopes)
+    reader_max = max(reader_slopes)
+    reader_min_kb = round(reader_min, 3)
+    reader_max_kb = round(reader_max, 3)
+    eq(reader_min_kb, 7.212, "Soak2 frozen: reader within-life slope min, kB/s")
+    eq(reader_max_kb, 8.098, "Soak2 frozen: reader within-life slope max, kB/s")
+
+    # --- writer errors: true total (616), cross-checked against the
+    # manifest's own writer_totals_all_lives.errors, and by exception class ---
+    per_life_errors = [row["errors"] for row in per_life.values()]
+    true_writer_errors = sum(per_life_errors)
+    eq(true_writer_errors, 616, "Soak2 frozen: true total writer errors, summed over 4 lives")
+    eq(true_writer_errors, by_life["true_total_writer_errors_all_lives"],
+       "Soak2: recomputed sum(per_life[*].errors) matches the file's own "
+       "true_total_writer_errors_all_lives field")
+    eq(true_writer_errors, writer_totals["errors"],
+       "Soak2: recomputed sum(per_life[*].errors) matches manifest's own "
+       "writer_totals_all_lives.errors -- unlike W2g, this manifest's own cumulative "
+       "counter is correct")
+    writer_error_classes: set[str] = set()
+    for row in per_life.values():
+        writer_error_classes.update(row["errors_by_class"].keys())
+    eq(writer_error_classes, {"NotFoundError"},
+       "Soak2 frozen: every writer error across all 4 lives is NotFoundError")
+    writer_errors_by_class_total = sum(
+        row["errors_by_class"].get("NotFoundError", 0) for row in per_life.values())
+    eq(writer_errors_by_class_total, true_writer_errors,
+       "Soak2: sum(per_life[*].errors_by_class.NotFoundError) matches the true writer total "
+       "(NotFoundError is the only class)")
+
+    # --- reader errors: the headline finding -- 150,476,512 total, split
+    # OSError/StateError, cross-checked against the manifest and against
+    # the harness's now-correct error_count arithmetic ---
+    reader_by_class = json.loads(LONGEVITY_READER_ERRORS_BY_CLASS_TWO.read_text(encoding="utf-8"))
+    by_class_total = reader_by_class["by_class_total"]
+    reader_oserror = int(by_class_total["OSError"])
+    reader_stateerror = int(by_class_total["StateError"])
+    eq(reader_oserror, 150_278_720, "Soak2 frozen: reader OSError total")
+    eq(reader_stateerror, 197_792, "Soak2 frozen: reader StateError total")
+    true_reader_errors = reader_oserror + reader_stateerror
+    eq(true_reader_errors, int(reader_by_class["total_reader_errors_total"]),
+       "Soak2: recomputed OSError + StateError matches "
+       "reader_error_counts_by_class-2.json's own total_reader_errors_total field")
+    eq(true_reader_errors, summary["reader_errors_total"],
+       "Soak2: recomputed reader error total matches manifest's own reader_errors_total")
+
+    reader_queries = summary["reader_queries_total"]
+    eq(reader_queries, 16_055_124, "Soak2 frozen: summary.reader_queries_total")
+
+    # --- the harness's own error_count arithmetic, now correct (unlike W2g) ---
+    manifest_error_count = summary["error_count"]
+    eq(manifest_error_count, 150_477_128, "Soak2 frozen: summary.error_count")
+    eq(manifest_error_count, true_writer_errors + true_reader_errors + unexpected,
+       "Soak2: summary.error_count == true writer errors + true reader errors + "
+       "unexpected_writer_deaths -- this run's own cumulative counter is correct, "
+       "unlike W2g's counter_latest label-collision defect")
+
+    # --- throughput / p99 drift, first hour vs. last hour ---
+    drift = summary["drift"]
+    throughput_start = drift["throughput_first_hour_avg"]
+    throughput_end = drift["throughput_last_hour_avg"]
+    eq(throughput_start, 39.91, "Soak2 frozen: first-hour throughput, commits/s")
+    eq(throughput_end, 19.117, "Soak2 frozen: last-hour throughput, commits/s")
+    p99_start = drift["commit_p99_first_hour_max"]
+    p99_end = drift["commit_p99_last_hour_max"]
+    eq(p99_start, 60.42, "Soak2 frozen: first-hour commit p99, ms")
+    eq(p99_end, 82.075, "Soak2 frozen: last-hour commit p99, ms")
+
+    # --- metadata growth slopes ---
+    growth = summary["metadata_growth_slope_bytes_per_s"]
+    manifest_growth = round(growth["manifests"], 3)
+    segment_growth = round(growth["segments"], 3)
+    eq(manifest_growth, 3.141, "Soak2 frozen: manifest-bytes growth slope, B/s")
+    eq(segment_growth, 2396.455, "Soak2 frozen: segment-bytes growth slope, B/s")
+
+    # --- compactions ---
+    compactions = summary["compactions"]
+    eq(compactions, 4_215, "Soak2 frozen: summary.compactions")
+
+    # --- final entity count: cross-checked between the manifest's own
+    # field and the independent full-mode verify side-file's dictionary-
+    # record count (this macro cites the manifest field; both agree) ---
+    entities_end = summary["final_stats"]["n_entities"]
+    eq(entities_end, 3_092_488, "Soak2 frozen: summary.final_stats.n_entities")
+
+    # --- full-mode tgms check: 0 believed-versions-overlap findings (vs.
+    # W2g's 13,714), and the verdict text ---
+    verify_text = LONGEVITY_VERIFY_FULL_TWO.read_text(encoding="utf-8")
+    require("verdict: healthy" in verify_text,
+            f"{relpath(LONGEVITY_VERIFY_FULL_TWO)}: verdict line reads healthy")
+    problems_match = re.search(r"PROBLEMS \((\d+)\):", verify_text)
+    overlap_count = int(problems_match.group(1)) if problems_match else 0
+    eq(overlap_count, 0,
+       f"{relpath(LONGEVITY_VERIFY_FULL_TWO)}: PROBLEMS count (0 -- no PROBLEMS section "
+       "at all, consistent with the healthy verdict)")
+    require("believed-versions-overlap" not in verify_text,
+            f"{relpath(LONGEVITY_VERIFY_FULL_TWO)}: no believed-versions-overlap findings "
+            "text present anywhere in the file")
+    verify_generation_match = re.search(r"generation:\s*(\d+)", verify_text)
+    require(verify_generation_match is not None,
+            f"{relpath(LONGEVITY_VERIFY_FULL_TWO)}: carries a generation: <N> line")
+    verify_generation = int(verify_generation_match.group(1))
+    eq(verify_generation, 1_894_946, "Soak2 frozen: verify-full-soak2 generation")
+    require(verify_generation >= int(summary["generation_final"]),
+            "Soak2: full-verify's generation is at/after the manifest's own "
+            "generation_final -- the check ran against a store no older than RUN_DONE")
+    verify_entities_match = re.search(r"(\d+) dictionary records", verify_text)
+    require(verify_entities_match is not None,
+            f"{relpath(LONGEVITY_VERIFY_FULL_TWO)}: carries a '<N> dictionary records' line")
+    verify_entities = int(verify_entities_match.group(1))
+    eq(verify_entities, entities_end,
+       "Soak2: verify-full-soak2's dictionary-records count matches manifest's "
+       "final_stats.n_entities -- two independent sources for the same figure")
+
+    # --- emit macros ---
+    m.add("osdiSoakCommitTwo", manifest["git_commit"],
+          f"{relpath(LONGEVITY_MANIFEST_TWO)}: git_commit")
+    m.add("osdiSoakHoursTwo", tex_num(int(hours)),
+          f"{relpath(LONGEVITY_MANIFEST_TWO)}: config.duration_s / 3600")
+    m.add("osdiSoakWriterLivesTwo", tex_num(writer_lives),
+          f"{relpath(LONGEVITY_MANIFEST_TWO)}: summary.writer_totals_all_lives.lives")
+    m.add("osdiSoakRecoveriesTwo", tex_num(len(recoveries_rows)),
+          f"{relpath(LONGEVITY_RECOVERIES_TWO)}: row count, == summary.recoveries")
+    m.add("osdiSoakRecoveriesSigabrtTwo", tex_num(n_sigabrt),
+          f"{relpath(LONGEVITY_RECOVERIES_TWO)}: rows with returncode == -6 (SIGABRT)")
+    m.add("osdiSoakRecoveriesExit137Two", tex_num(n_exit137),
+          f"{relpath(LONGEVITY_RECOVERIES_TWO)}: rows with returncode == 137 (os._exit(137))")
+    m.add("osdiSoakUnexpectedRecoveriesTwo", tex_num(unexpected),
+          f"{relpath(LONGEVITY_MANIFEST_TWO)}: summary.unexpected_writer_deaths")
+    m.add("osdiSoakWriterWithinLifeSlopeMedianKBpsTwo", f"{median_kb:.3f}",
+          f"{relpath(LONGEVITY_RSS_SLOPES_TWO)}: median(writer_lives[*]."
+          "slope_kb_per_s_least_squares), 4 lives")
+    m.add("osdiSoakWriterWithinLifeSlopeMinKBpsTwo", f"{min_kb:.3f}",
+          f"{relpath(LONGEVITY_RSS_SLOPES_TWO)}: min(writer_lives[*]."
+          "slope_kb_per_s_least_squares)")
+    m.add("osdiSoakWriterWithinLifeSlopeMaxKBpsTwo", f"{max_kb:.3f}",
+          f"{relpath(LONGEVITY_RSS_SLOPES_TWO)}: max(writer_lives[*]."
+          "slope_kb_per_s_least_squares)")
+    m.add("osdiSoakReaderWithinLifeSlopeMinKBpsTwo", f"{reader_min_kb:.3f}",
+          f"{relpath(LONGEVITY_RSS_SLOPES_TWO)}: min(readers[*].slope_kb_per_s_least_squares), "
+          "8 readers (reader_restarts=0, one fitted segment each)")
+    m.add("osdiSoakReaderWithinLifeSlopeMaxKBpsTwo", f"{reader_max_kb:.3f}",
+          f"{relpath(LONGEVITY_RSS_SLOPES_TWO)}: max(readers[*].slope_kb_per_s_least_squares)")
+    m.add("osdiSoakDigestEqualTwo", "true",
+          f"{relpath(LONGEVITY_MANIFEST_TWO)}: summary.digest_equal is the JSON literal "
+          "true -- the replay/digest step actually completed, unlike W2g's disk-guard skip")
+    m.add("osdiSoakBatchesTwo", tex_num(total_batches),
+          f"{relpath(LONGEVITY_MANIFEST_TWO)}: summary.total_batches")
+    m.add("osdiSoakFullVerifyOverlapCountTwo", tex_num(overlap_count),
+          f"{relpath(LONGEVITY_VERIFY_FULL_TWO)}: PROBLEMS count (believed-versions-overlap "
+          "class), 0 vs. W2g's 13,714 on the pre-fix store")
+    m.add("osdiSoakFullVerifyVerdictTwo", "healthy",
+          f"{relpath(LONGEVITY_VERIFY_FULL_TWO)}: verdict line (text macro, not a number)")
+    m.add("osdiSoakWriterErrorsTrueTwo", tex_num(true_writer_errors),
+          f"{relpath(LONGEVITY_WRITER_ERRORS_BY_LIFE_TWO)}: sum(per_life[*].errors), 4 lives, "
+          "cross-checked against manifest's own writer_totals_all_lives.errors")
+    m.add("osdiSoakWriterErrorsClassTwo", "NotFoundError",
+          f"{relpath(LONGEVITY_WRITER_ERRORS_BY_LIFE_TWO)}: the sole exception class across "
+          "every writer error in all 4 lives (text macro, not a number)")
+    m.add("osdiSoakReaderErrorsTrueTwo", tex_num(true_reader_errors),
+          f"{relpath(LONGEVITY_READER_ERRORS_BY_CLASS_TWO)}: OSError + StateError totals, "
+          "cross-checked against manifest's own reader_errors_total")
+    m.add("osdiSoakReaderErrorsOSErrorTwo", tex_num(reader_oserror),
+          f"{relpath(LONGEVITY_READER_ERRORS_BY_CLASS_TWO)}: by_class_total.OSError -- new "
+          "to this soak, 0 in W2g's metrics.jsonl")
+    m.add("osdiSoakReaderErrorsStateErrorTwo", tex_num(reader_stateerror),
+          f"{relpath(LONGEVITY_READER_ERRORS_BY_CLASS_TWO)}: by_class_total.StateError")
+    m.add("osdiSoakReaderQueriesTwo", tex_num(reader_queries),
+          f"{relpath(LONGEVITY_MANIFEST_TWO)}: summary.reader_queries_total")
+    m.add("osdiSoakThroughputStartTwo", str(throughput_start),
+          f"{relpath(LONGEVITY_MANIFEST_TWO)}: summary.drift.throughput_first_hour_avg, "
+          "commits/s")
+    m.add("osdiSoakThroughputEndTwo", str(throughput_end),
+          f"{relpath(LONGEVITY_MANIFEST_TWO)}: summary.drift.throughput_last_hour_avg, "
+          "commits/s")
+    m.add("osdiSoakP99StartMsTwo", str(p99_start),
+          f"{relpath(LONGEVITY_MANIFEST_TWO)}: summary.drift.commit_p99_first_hour_max, ms")
+    m.add("osdiSoakP99EndMsTwo", str(p99_end),
+          f"{relpath(LONGEVITY_MANIFEST_TWO)}: summary.drift.commit_p99_last_hour_max, ms")
+    m.add("osdiSoakManifestGrowthBpsTwo", f"{manifest_growth:.3f}",
+          f"{relpath(LONGEVITY_MANIFEST_TWO)}: summary.metadata_growth_slope_bytes_per_s."
+          "manifests")
+    m.add("osdiSoakSegmentGrowthBpsTwo", f"{segment_growth:,.3f}".replace(",", "{,}"),
+          f"{relpath(LONGEVITY_MANIFEST_TWO)}: summary.metadata_growth_slope_bytes_per_s."
+          "segments")
+    m.add("osdiSoakEntitiesEndTwo", tex_num(entities_end),
+          f"{relpath(LONGEVITY_MANIFEST_TWO)}: summary.final_stats.n_entities, "
+          "cross-checked against verify-full-soak2-2026-09-17.txt's own dictionary-records "
+          "count (both agree)")
+    m.add("osdiSoakCompactionsTwo", tex_num(compactions),
+          f"{relpath(LONGEVITY_MANIFEST_TWO)}: summary.compactions")
+
+
 # --------------------------------------------------------------------------
 # C10 --- live OSV advisory-feed workload, first committed snapshot
 # --------------------------------------------------------------------------
@@ -5046,6 +5412,7 @@ def main() -> int:
     compute_ladder(m)
     compute_longevity_soak(m)
     compute_longevity_rederived(m)
+    compute_longevity_soak_two(m)
     compute_c10_live_osv(m)
     compute_b7_scale(m)
     add_pending_stubs(m)
