@@ -225,6 +225,17 @@ slice of C7 above, are emitted as PENDING stubs (see ``Macros.add_pending``)
 that raise a real LaTeX error (``\\errmessage``) if the paper ever expands
 one, rather than silently emitting a placeholder number.
 
+Every macro is emitted as
+``\\expandafter\\newcommand\\csname osdi<Name>\\endcsname{<value>}`` rather
+than a bare ``\\newcommand{\\osdi<Name>}``: roughly two-thirds of the ~400
+names carry digit tokens (e.g. ``osdiB7BuildWall30M``), and a LaTeX
+control-sequence name may not contain a digit outside ``\\csname``. The
+file also defines, once at its top, ``\\providecommand{\\osdi}[1]{\\csname
+osdi#1\\endcsname}`` so manuscript prose can write ``\\osdi{B7BuildWall30M}``
+instead of the raw ``\\csname`` form. Digit-free names still work under
+their bare ``\\osdiFoo`` spelling unmodified, since ``\\csname
+osdiFoo\\endcsname`` denotes that same control sequence.
+
 Usage:  $HOME/.venvs/tgms/bin/python scripts/osdi_paper_macros.py [--check | --check-only]
 
 Every mode first recomputes and verifies all macros (assert, do not trust,
@@ -660,12 +671,24 @@ class Macros:
             "% on any failure. A macro whose provenance begins 'PENDING' raises",
             "% a LaTeX error if the manuscript expands it -- its record has not",
             "% landed and no placeholder number is emitted for it.",
+            "%",
+            "% Every name below is defined via \\csname...\\endcsname, not a bare",
+            "% \\newcommand{\\name}: most names carry digits (e.g.",
+            "% osdiB7BuildWall30M) and a LaTeX control-sequence name may not,",
+            "% outside \\csname. \\csname osdiFoo\\endcsname is the same control",
+            "% sequence as \\osdiFoo, so digit-free names still work under their",
+            "% bare \\osdiFoo spelling. The \\osdi{Name} accessor just below is",
+            "% \\csname osdi<Name>\\endcsname for prose that prefers it.",
+            "",
+            r"\providecommand{\osdi}[1]{\csname osdi#1\endcsname}",
             "",
         ]
         width = max(len(n) for n, _, _ in self.items)
         for name, value, prov in self.items:
             pad = " " * (width - len(name))
-            lines.append(f"\\newcommand{{\\{name}}}{{{value}}}{pad}  % {prov}")
+            lines.append(
+                f"\\expandafter\\newcommand\\csname {name}\\endcsname{{{value}}}{pad}  % {prov}"
+            )
         lines.append("")
         return "\n".join(lines)
 

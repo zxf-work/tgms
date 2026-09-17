@@ -29,9 +29,11 @@ import hashlib
 import importlib.util
 import json
 import re
+import shutil
 import statistics
 import subprocess
 import sys
+import tempfile
 from pathlib import Path
 
 import pytest
@@ -2704,6 +2706,78 @@ def test_site_facts_check_gate_passes():
     result = subprocess.run([_venv_python(), str(ROOT / "scripts" / "site_facts.py"), "check"],
                              cwd=ROOT, capture_output=True, text=True)
     assert result.returncode == 0, result.stdout + result.stderr
+
+
+# --------------------------------------------------------------------------
+# csname emission: no \newcommand{\osdi<digit>...} form; \osdi{} accessor
+#
+# The defect this fixes: \newcommand{\osdiFoo30M}{...} is not a legal LaTeX
+# control sequence definition -- macro names built without \csname may not
+# contain digits -- yet 267 of the file's 401 names do (e.g.
+# osdiB7BuildWall30M), so the file could not be \input without a catcode
+# shim. \csname...\endcsname has no such restriction.
+# --------------------------------------------------------------------------
+
+_BARE_DIGIT_NEWCOMMAND_RE = re.compile(r"\\newcommand\{\\osdi[A-Za-z0-9]*\d[A-Za-z0-9]*\}")
+
+
+def test_rendered_macros_never_use_bare_newcommand_with_a_digit_in_the_name():
+    """Every digit-bearing name must go through \\csname...\\endcsname, never
+    a bare \\newcommand{\\osdi...} (which \\TeX{} would refuse to parse)."""
+    mod = _load("osdi_paper_macros")
+    m = _run_all_landed(mod)
+    mod.add_pending_stubs(m)
+    rendered = m.render()
+    assert not _BARE_DIGIT_NEWCOMMAND_RE.search(rendered), (
+        "found a bare \\newcommand{\\osdi...} control sequence with a digit in its name")
+    # sanity: there really are digit-bearing names in this run, so the
+    # assertion above is exercising something real, not vacuously true.
+    digit_bearing = [name for name, _, _ in m.items if any(c.isdigit() for c in name)]
+    assert len(digit_bearing) > 0
+    for name, _, _ in m.items:
+        assert f"\\expandafter\\newcommand\\csname {name}\\endcsname" in rendered, (
+            f"{name}: not emitted via \\csname")
+
+
+def test_rendered_macros_include_the_osdi_accessor():
+    """\\providecommand{\\osdi}[1]{\\csname osdi#1\\endcsname} must appear once,
+    near the top, ahead of any macro definition, so prose can write
+    \\osdi{B7BuildWall30M} instead of the raw \\csname form."""
+    mod = _load("osdi_paper_macros")
+    m = _run_all_landed(mod)
+    rendered = m.render()
+    accessor = r"\providecommand{\osdi}[1]{\csname osdi#1\endcsname}"
+    assert rendered.count(accessor) == 1
+    first_macro = rendered.index("\\expandafter\\newcommand\\csname")
+    assert rendered.index(accessor) < first_macro
+
+
+@pytest.mark.skipif(shutil.which("tectonic") is None, reason="tectonic not installed")
+def test_generated_tex_compiles_under_tectonic():
+    """The actual regression: a real LaTeX engine must accept the generated
+    file, exercising both the \\osdi{...} accessor and a bare digit-bearing
+    control sequence used directly (\\osdiSoakHoursTwo has no digit and
+    already worked before this fix; \\osdi{B7BuildWall30M} names a macro
+    that did not compile before it)."""
+    subprocess.run([_venv_python(), str(ROOT / "scripts" / "osdi_paper_macros.py")],
+                    cwd=ROOT, check=True, capture_output=True, text=True)
+    tex_src = _out_path()
+    with tempfile.TemporaryDirectory() as tmpdir:
+        work = Path(tmpdir)
+        shutil.copy(tex_src, work / "osdi-macros.tex")
+        (work / "doc.tex").write_text(
+            r"""\documentclass{article}
+\input{osdi-macros.tex}
+\begin{document}
+\osdi{B7BuildWall30M} \osdiSoakHoursTwo
+\end{document}
+""",
+            encoding="utf-8",
+        )
+        result = subprocess.run(["tectonic", "doc.tex"], cwd=work,
+                                 capture_output=True, text=True)
+        assert result.returncode == 0, result.stdout + result.stderr
+        assert (work / "doc.pdf").exists()
 
 
 # --------------------------------------------------------------------------
