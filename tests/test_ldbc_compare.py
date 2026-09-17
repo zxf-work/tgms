@@ -735,3 +735,69 @@ def test_run_query_sends_the_converted_parameters(monkeypatch):
     assert seen["date"] == datetime.datetime(
         2010, 2, 12, tzinfo=datetime.timezone.utc)
     assert seen["country"] == "India"
+
+
+# --------------------------------------------------------------------------
+# 7. the column correspondence, and the reference column nobody projects
+# --------------------------------------------------------------------------
+
+def _docs(tgms_cols, tgms_row, ref_row):
+    return ({"plan_id": "X", "params": {"a": 1},
+             "schema": [[c, "str"] for c in tgms_cols],
+             "columns": tgms_cols, "rows": [tgms_row]},
+            {"plan_id": "X", "columns": list(ref_row), "rows": [ref_row]})
+
+
+def test_the_column_map_renames_the_reference_side_before_matching():
+    """Identical values under different column names must agree once the
+    correspondence is supplied — that is the whole point of the table."""
+    tgms_doc, ref_doc = _docs(
+        ["forumId", "forumTitle"],
+        {"forumId": 7, "forumTitle": "Wall"},
+        {"forum.id": 7, "forum.title": "Wall"})
+    contract = {"claim_full_contract": "CURRENT_ECQR_FRAGMENT"}
+
+    without = C.compare_plan("X", tgms_doc, ref_doc, contract)
+    assert without["verdict"] == "disagreeing", "premise: names differ"
+
+    with_map = C.compare_plan(
+        "X", tgms_doc, ref_doc, contract,
+        column_map={"rule": "positional", "unmatched": [],
+                    "map": {"forum.id": "forumId", "forum.title": "forumTitle"}})
+    assert with_map["verdict"] == "agreeing"
+    assert with_map["agreeing"] == 1
+    assert with_map["column_map_rule"] == "positional"
+
+
+def test_a_reference_column_no_tgir_column_projects_is_its_own_verdict():
+    """The comparator only compares the columns the TGIR schema declares, so a
+    reference column outside it used to be invisible and the template could be
+    scored `agreeing` on a strict subset of the answer (IC12's `tagNames`)."""
+    tgms_doc, ref_doc = _docs(
+        ["personId", "replyCount"],
+        {"personId": 3, "replyCount": 9},
+        {"personId": 3, "tagNames": ["a"], "replyCount": 9})
+
+    rec = C.compare_plan(
+        "IC12", tgms_doc, ref_doc,
+        {"claim_full_contract": "CURRENT_ECQR_FRAGMENT"},
+        column_map={"rule": "name-partial", "unmatched": ["tagNames"],
+                    "map": {"personId": "personId",
+                            "replyCount": "replyCount"}})
+
+    assert rec["verdict"] == "reference-column-not-projected"
+    assert rec["reference_columns_not_projected"] == ["tagNames"]
+    # the rows themselves still agree on the columns that DO correspond, and
+    # that is reported rather than thrown away
+    assert rec["agreeing"] == 1
+    assert any(c["cause"] == "REFERENCE-COLUMN-NOT-PROJECTED"
+               for c in rec["causes"])
+
+
+def test_lookup_column_map_resolves_bi6_v2_to_the_bi6_template():
+    """The correspondence is a property of the query, and BI6.v2 answers BI6."""
+    table = {"BI6": {"rule": "positional", "map": {"a": "b"}, "unmatched": []}}
+    assert C.lookup_column_map(table, "BI6.v2") == table["BI6"]
+    assert C.lookup_column_map(table, "BI6") == table["BI6"]
+    assert C.lookup_column_map(table, "IS3") is None
+    assert C.lookup_column_map(None, "BI6") is None

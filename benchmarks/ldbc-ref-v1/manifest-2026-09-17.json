@@ -8,6 +8,7 @@
     "apoc_version": "5.26.0-core",
     "bolt": "bolt://127.0.0.1:7687",
     "column_kinds_file": "benchmarks/ldbc-ref-v1/column_kinds.json",
+    "column_map_file": "benchmarks/ldbc-ref-v1/column_map.yaml",
     "contracts_file": "tests/fixtures/ldbc_ref/contracts.json",
     "import_log_sha256": "4e91d196019ce422127204c4cfec3b6774dd03fa7434b56049c65bad10276d9a",
     "jdk": "Temurin 21.0.12+8",
@@ -41,7 +42,7 @@
     "warmups": 1
   },
   "record": "benchmarks/ldbc-ref-v1/compare-2026-09-17.json",
-  "result_digest": "69c1a931de07bfc88de9e19bda26eb5bd7ad82c15964060efc06520e92ffd39c",
+  "result_digest": "5263399e0f7109aabdbb56e92bda3b6e8d949df4f6e85f194eaeb748ddced169",
   "schema_version": "1.0.0",
   "seed": {
     "reason": null,

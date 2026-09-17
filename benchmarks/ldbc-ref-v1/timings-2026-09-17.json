@@ -16,12 +16,14 @@
   "templates": [
     {
       "compare": {
-        "agreeing": 0,
+        "agreeing": 20,
+        "column_map_rule": "positional",
         "compared": 20,
         "contract": "REQUIRES_TOP_K",
-        "disagreeing": 40,
+        "disagreeing": 0,
+        "reference_columns_not_projected": [],
         "tie_ambiguous": 0,
-        "verdict": "disagreeing"
+        "verdict": "agreeing"
       },
       "neo4j": {
         "error": null,
@@ -52,11 +54,17 @@
     {
       "compare": {
         "agreeing": 0,
+        "column_map_rule": "name-partial",
         "compared": 100,
         "contract": "REQUIRES_TOP_K",
         "disagreeing": 100,
+        "reference_columns_not_projected": [
+          "personFirstName",
+          "personLastName",
+          "personCreationDate"
+        ],
         "tie_ambiguous": 0,
-        "verdict": "disagreeing"
+        "verdict": "reference-column-not-projected"
       },
       "neo4j": {
         "error": null,
@@ -87,9 +95,11 @@
     {
       "compare": {
         "agreeing": 0,
+        "column_map_rule": null,
         "compared": 0,
         "contract": null,
         "disagreeing": 0,
+        "reference_columns_not_projected": null,
         "tie_ambiguous": 0,
         "verdict": null
       },
@@ -119,12 +129,14 @@
     },
     {
       "compare": {
-        "agreeing": 0,
+        "agreeing": 100,
+        "column_map_rule": "positional",
         "compared": 100,
         "contract": "REQUIRES_TOP_K",
-        "disagreeing": 200,
+        "disagreeing": 0,
+        "reference_columns_not_projected": [],
         "tie_ambiguous": 0,
-        "verdict": "disagreeing"
+        "verdict": "agreeing"
       },
       "neo4j": {
         "error": null,
@@ -155,9 +167,11 @@
     {
       "compare": {
         "agreeing": 0,
+        "column_map_rule": "positional",
         "compared": 100,
         "contract": "REQUIRES_TOP_K",
         "disagreeing": 100,
+        "reference_columns_not_projected": [],
         "tie_ambiguous": 0,
         "verdict": "disagreeing"
       },
@@ -189,12 +203,14 @@
     },
     {
       "compare": {
-        "agreeing": 0,
+        "agreeing": 100,
+        "column_map_rule": "positional",
         "compared": 100,
         "contract": "REQUIRES_TOP_K",
-        "disagreeing": 200,
+        "disagreeing": 0,
+        "reference_columns_not_projected": [],
         "tie_ambiguous": 0,
-        "verdict": "disagreeing"
+        "verdict": "agreeing"
       },
       "neo4j": {
         "error": null,
@@ -225,9 +241,11 @@
     {
       "compare": {
         "agreeing": 0,
+        "column_map_rule": "positional",
         "compared": 1,
         "contract": "CURRENT_ECQR_FRAGMENT",
         "disagreeing": 2,
+        "reference_columns_not_projected": [],
         "tie_ambiguous": 0,
         "verdict": "disagreeing"
       },
@@ -260,9 +278,11 @@
     {
       "compare": {
         "agreeing": 0,
+        "column_map_rule": "name",
         "compared": 166,
         "contract": "REQUIRES_ORDERED_RESULT",
         "disagreeing": 166,
+        "reference_columns_not_projected": [],
         "tie_ambiguous": 0,
         "verdict": "disagreeing"
       },
@@ -295,9 +315,11 @@
     {
       "compare": {
         "agreeing": 0,
+        "column_map_rule": "positional",
         "compared": 0,
         "contract": "REQUIRES_TOP_K",
         "disagreeing": 0,
+        "reference_columns_not_projected": [],
         "tie_ambiguous": 0,
         "verdict": "agreeing"
       },
@@ -330,9 +352,11 @@
     {
       "compare": {
         "agreeing": 20,
+        "column_map_rule": "name",
         "compared": 20,
         "contract": "REQUIRES_TOP_K",
         "disagreeing": 0,
+        "reference_columns_not_projected": [],
         "tie_ambiguous": 0,
         "verdict": "agreeing"
       },
@@ -367,9 +391,11 @@
     {
       "compare": {
         "agreeing": 0,
+        "column_map_rule": "positional",
         "compared": 20,
         "contract": "REQUIRES_TOP_K",
         "disagreeing": 20,
+        "reference_columns_not_projected": [],
         "tie_ambiguous": 0,
         "verdict": "disagreeing"
       },
@@ -404,11 +430,15 @@
     {
       "compare": {
         "agreeing": 0,
+        "column_map_rule": "name-partial",
         "compared": 0,
         "contract": "REQUIRES_TOP_K",
         "disagreeing": 0,
+        "reference_columns_not_projected": [
+          "forumName"
+        ],
         "tie_ambiguous": 0,
-        "verdict": "agreeing"
+        "verdict": "reference-column-not-projected"
       },
       "neo4j": {
         "error": null,
@@ -441,9 +471,11 @@
     {
       "compare": {
         "agreeing": 10,
+        "column_map_rule": "name",
         "compared": 10,
         "contract": "REQUIRES_TOP_K",
         "disagreeing": 0,
+        "reference_columns_not_projected": [],
         "tie_ambiguous": 0,
         "verdict": "agreeing"
       },
@@ -478,9 +510,11 @@
     {
       "compare": {
         "agreeing": 11,
+        "column_map_rule": "name",
         "compared": 11,
         "contract": "REQUIRES_TOP_K",
         "disagreeing": 0,
+        "reference_columns_not_projected": [],
         "tie_ambiguous": 0,
         "verdict": "agreeing"
       },
@@ -515,9 +549,11 @@
     {
       "compare": {
         "agreeing": 0,
+        "column_map_rule": "positional",
         "compared": 20,
         "contract": "REQUIRES_TOP_K",
         "disagreeing": 20,
+        "reference_columns_not_projected": [],
         "tie_ambiguous": 0,
         "verdict": "disagreeing"
       },
@@ -552,9 +588,11 @@
     {
       "compare": {
         "agreeing": 0,
+        "column_map_rule": "name",
         "compared": 0,
         "contract": "REQUIRES_TOP_K",
         "disagreeing": 0,
+        "reference_columns_not_projected": [],
         "tie_ambiguous": 0,
         "verdict": "agreeing"
       },
@@ -589,11 +627,15 @@
     {
       "compare": {
         "agreeing": 5,
+        "column_map_rule": "name-partial",
         "compared": 5,
         "contract": "REQUIRES_TOP_K",
         "disagreeing": 0,
+        "reference_columns_not_projected": [
+          "tagNames"
+        ],
         "tie_ambiguous": 0,
-        "verdict": "agreeing"
+        "verdict": "reference-column-not-projected"
       },
       "neo4j": {
         "error": null,
@@ -624,9 +666,11 @@
     {
       "compare": {
         "agreeing": 1,
+        "column_map_rule": "name",
         "compared": 1,
         "contract": "CURRENT_ECQR_FRAGMENT",
         "disagreeing": 0,
+        "reference_columns_not_projected": [],
         "tie_ambiguous": 0,
         "verdict": "agreeing"
       },
@@ -660,12 +704,14 @@
     },
     {
       "compare": {
-        "agreeing": 0,
+        "agreeing": 10,
+        "column_map_rule": "positional",
         "compared": 10,
         "contract": "REQUIRES_TOP_K",
-        "disagreeing": 20,
+        "disagreeing": 0,
+        "reference_columns_not_projected": [],
         "tie_ambiguous": 0,
-        "verdict": "disagreeing"
+        "verdict": "agreeing"
       },
       "neo4j": {
         "error": null,
@@ -697,10 +743,12 @@
     },
     {
       "compare": {
-        "agreeing": 0,
+        "agreeing": 1,
+        "column_map_rule": "positional",
         "compared": 48,
         "contract": "REQUIRES_ORDERED_RESULT",
-        "disagreeing": 48,
+        "disagreeing": 47,
+        "reference_columns_not_projected": [],
         "tie_ambiguous": 0,
         "verdict": "disagreeing"
       },
@@ -735,9 +783,11 @@
     {
       "compare": {
         "agreeing": 1,
+        "column_map_rule": "name",
         "compared": 1,
         "contract": "CURRENT_ECQR_FRAGMENT",
         "disagreeing": 0,
+        "reference_columns_not_projected": [],
         "tie_ambiguous": 0,
         "verdict": "agreeing"
       },
@@ -772,9 +822,11 @@
     {
       "compare": {
         "agreeing": 1,
+        "column_map_rule": "name",
         "compared": 1,
         "contract": "CURRENT_ECQR_FRAGMENT",
         "disagreeing": 0,
+        "reference_columns_not_projected": [],
         "tie_ambiguous": 0,
         "verdict": "agreeing"
       },
@@ -809,9 +861,11 @@
     {
       "compare": {
         "agreeing": 1,
+        "column_map_rule": "name",
         "compared": 1,
         "contract": "CURRENT_ECQR_FRAGMENT",
         "disagreeing": 0,
+        "reference_columns_not_projected": [],
         "tie_ambiguous": 0,
         "verdict": "agreeing"
       },
@@ -846,9 +900,11 @@
     {
       "compare": {
         "agreeing": 1,
+        "column_map_rule": "name",
         "compared": 1,
         "contract": "REQUIRES_ORDERED_RESULT",
         "disagreeing": 0,
+        "reference_columns_not_projected": [],
         "tie_ambiguous": 0,
         "verdict": "agreeing"
       },

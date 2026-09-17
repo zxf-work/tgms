@@ -1,9 +1,10 @@
-8fa8535226341857c3ca481727f8db6228c9995affad0ac81d37b82ea023b159  benchmarks/ldbc-ref-v1/README.md
+7ecdaa188d5da27c7c67bf31fe836efc75ccdfc98e34609bddcb2eb341472b9b  benchmarks/ldbc-ref-v1/README.md
 de4440bd833a748bfd006d0697f38eb37fe21ac3b2c8c4c9b86e9d6dec6c6324  benchmarks/ldbc-ref-v1/RUNBOOK.md
-940cb7b534993632f4d1b82df76bbb4851fe7e1435caca28fc7c8aa70aca4a2b  benchmarks/ldbc-ref-v1/campaign.yaml
+40ee56a44dd2713ce4c5b2dd74e3394bbaf965f713d8ab4fa7ff7e8885c6fb47  benchmarks/ldbc-ref-v1/campaign.yaml
 bf78d193d169b7139fd0e76d2dd4ae720aa6323da2fb4c4d1a1d0f16c3ca9cac  benchmarks/ldbc-ref-v1/column_kinds.json
-3ce0462ecbf969a40edf282e38c2f3d9dc21a3347c836e9871c82bff0de46a93  benchmarks/ldbc-ref-v1/compare-2026-09-17.json
-037b3a77ec67aafe56481d0dbb436aa6ee6e29c41026e9883dd0920ae29fc172  benchmarks/ldbc-ref-v1/compare-2026-09-17.md
+6537f8b35c328b7086e68a69785af6cf04655cf9c7f0d670c4c61ebd9b8771a3  benchmarks/ldbc-ref-v1/column_map.yaml
+ea5a078ef417e58127c21804d5fbd69adc336168704f2782e05adc6ff103c4f5  benchmarks/ldbc-ref-v1/compare-2026-09-17.json
+351e31b184eb1b3f8ce786dc29ba7d2f5baf44e8aee7630b4a25d2eae675179d  benchmarks/ldbc-ref-v1/compare-2026-09-17.md
 4e91d196019ce422127204c4cfec3b6774dd03fa7434b56049c65bad10276d9a  benchmarks/ldbc-ref-v1/logs/import.log
 e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855  benchmarks/ldbc-ref-v1/logs/md5check.log
 e201b69674c7fb604277712ceae4649a376886360b8bc1b4e0e7238cba20c1e6  benchmarks/ldbc-ref-v1/logs/neo4j-queries.log
@@ -12,7 +13,7 @@ fa275e860282e8ade8bd531a3d9ee232da94b3c936936cb5fa7aba51697e06ae  benchmarks/ldb
 6081bb05642523591774a9fec44bdad7c59dda70495b475fd8fae7d407aaad54  benchmarks/ldbc-ref-v1/logs/start-indices.log
 4c2b2ecc1d1c9b86a7ab2d20d1ed88097370985fad18479d9003498f131cedfa  benchmarks/ldbc-ref-v1/logs/strip-headers.log
 a731e155ad1cf0fd6eb1e2540ac23961cc7d0c03819f71860ce1db85ad47db97  benchmarks/ldbc-ref-v1/logs/tgms-run.log
-87415cca6471b3b8b67b9096f6feb3a8c3cba79c7118ee9ffae9752951390b4c  benchmarks/ldbc-ref-v1/manifest-2026-09-17.json
+f7d03ebd059a3793a89f1ebc8360c3cfc9895abcd0e4b25000418667de3349ab  benchmarks/ldbc-ref-v1/manifest-2026-09-17.json
 f0899e248169138c3a916bda3e06c1ab56d3715ba3c8a55a696ff7c541d70a23  benchmarks/ldbc-ref-v1/params.json
 a3eedfdd33bc5198d0cf0165880b87901f05fa7cdbd31363cdf7163734c6f003  benchmarks/ldbc-ref-v1/ref-rows-t2/ref-BI10.json
 19dbc6fa6f5e4aca7c50f4552e7ed229bc42e3d95ffa26cc123f9d5e6d508ab7  benchmarks/ldbc-ref-v1/ref-rows-t2/ref-BI11.json
@@ -156,4 +157,4 @@ eb11beabc01c917a034f367c6bbc262e41f3670fa7a4c050b3ea071c23df25cc  benchmarks/ldb
 b5c34c6ecac91256c6f3676de3aa6ce1712548710852edb1e557eaf98858eac8  benchmarks/ldbc-ref-v1/tgms-rows/tgms-IS5.json
 d3ac3cf692f231064809989e66f6ec08dd353d34e1d3ca1ee9fb4258994684ee  benchmarks/ldbc-ref-v1/tgms-rows/tgms-IS6.json
 938860d72d1c6a9ef59ef0d29bcebce20c42b404e62e3ebf46cfb00434ba2daf  benchmarks/ldbc-ref-v1/tgms-rows/tgms-IS7.json
-2d3781b25e104076808175728de84ad406936fd72208ba239e851dd048930cd1  benchmarks/ldbc-ref-v1/timings-2026-09-17.json
+7e1bf9290eba786fdbb817b0a11d1670ac4ca0b8f03737f4fc04fe72cf5d533e  benchmarks/ldbc-ref-v1/timings-2026-09-17.json

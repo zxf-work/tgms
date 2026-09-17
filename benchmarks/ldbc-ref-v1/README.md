@@ -178,134 +178,158 @@ it.
 
 ## 5. Per-template results
 
-`agree?` is the recorded verdict in `compare-2026-09-17.json`. `ms` is TGIR's
-reported figure; `w/t1/t2/t3` are the Neo4j warm-up and three timed wall times
-in **seconds**.
+Verdicts are `compare-2026-09-17.json`'s, produced with the ratified column
+correspondence (`column_map.yaml`, §5.1) and column kinds (`column_kinds.json`,
+§5.2) applied. `ms` is TGIR's reported figure; `w/t1/t2/t3` are the Neo4j
+warm-up and three timed wall times in **seconds**.
 
-| template | TGIR rows | Neo4j rows | agree? | TGIR ms | N4J w | N4J t1 | N4J t2 | N4J t3 |
+**Counts (24 templates): 14 agree · 3 `reference-column-not-projected`
+(BI4, IC5, IC12) · 5 `disagreeing` but NOT comparable (invalid reference:
+BI9, BI11, BI12, IC2, IC9) · 1 genuine disagreement (IS3) · 1 timeout
+(BI6.v2) · 0 error.** BI4 and IC5 carry both an unprojected reference column
+*and* an invalid reference, so the 7 invalid-reference templates split 5/2
+across those two classes.
+
+| template | TGIR rows | Neo4j rows | verdict | TGIR ms | N4J w | N4J t1 | N4J t2 | N4J t3 |
 |---|---:|---:|:---|---:|---:|---:|---:|---:|
-| BI3  | 20  | 20  | values identical¹ | 35310.1 | 1.111 | 1.052 | 1.111 | 1.063 |
-| BI4  | 100 | 0   | **ref invalid**² | 77064.2 | 0.013 | 0.011 | 0.013 | 0.013 |
-| BI6  | —   | 100 | **TIGR timeout**³ | — | 1.860 | 1.693 | 1.816 | 1.974 |
-| BI7  | 100 | 100 | values identical¹ | 13052.2 | 0.061 | 0.051 | 0.067 | 0.067 |
+| BI3  | 20  | 20  | **agree** (positional) | 35310.1 | 1.111 | 1.052 | 1.111 | 1.063 |
+| BI4  | 100 | 0   | ref-column-not-projected + **ref invalid**² | 77064.2 | 0.013 | 0.011 | 0.013 | 0.013 |
+| BI6  | —   | 100 | **TGIR timeout**³ | — | 1.860 | 1.693 | 1.816 | 1.974 |
+| BI7  | 100 | 100 | **agree** (positional) | 13052.2 | 0.061 | 0.051 | 0.067 | 0.067 |
 | BI9  | 100 | 0   | **ref invalid**² | 105391.0 | 0.009 | 0.009 | 0.009 | 0.010 |
-| BI10 | 100 | 100 | values identical¹ | 24465.1 | 0.313 | 0.293 | 0.245 | 0.196 |
+| BI10 | 100 | 100 | **agree** (positional) | 24465.1 | 0.313 | 0.293 | 0.245 | 0.196 |
 | BI11 | 1   | 1   | **ref invalid**² | 38233.8 | 0.102 | 0.098 | 0.104 | 0.098 |
 | BI12 | 166 | 1   | **ref invalid**² | 148135.0 | 0.028 | 0.027 | 0.025 | 0.025 |
-| BI17 | 0   | 0   | yes (vacuous) | 71798.8 | 0.047 | 0.033 | 0.033 | 0.031 |
-| BI18 | 20  | 20  | **yes** | 54327.4 | 0.529 | 0.502 | 0.485 | 0.507 |
+| BI17 | 0   | 0   | agree (vacuous, 0/0) | 71798.8 | 0.047 | 0.033 | 0.033 | 0.031 |
+| BI18 | 20  | 20  | **agree** (name) | 54327.4 | 0.529 | 0.502 | 0.485 | 0.507 |
 | IC2  | 20  | 0   | **ref invalid**² | 6403.9 | 0.131 | 0.035 | 0.036 | 0.034 |
-| IC5  | 0   | 0   | **ref invalid**² | 18871.5 | 0.350 | 0.185 | 0.178 | 0.180 |
-| IC6  | 10  | 10  | **yes** | 59059.0 | 0.494 | 0.374 | 0.345 | 0.351 |
-| IC8  | 11  | 11  | **yes** | 5500.2 | 0.079 | 0.014 | 0.014 | 0.014 |
+| IC5  | 0   | 0   | ref-column-not-projected + **ref invalid**² | 18871.5 | 0.350 | 0.185 | 0.178 | 0.180 |
+| IC6  | 10  | 10  | **agree** (name) | 59059.0 | 0.494 | 0.374 | 0.345 | 0.351 |
+| IC8  | 11  | 11  | **agree** (name)⁴ | 5500.2 | 0.079 | 0.014 | 0.014 | 0.014 |
 | IC9  | 20  | 0   | **ref invalid**² | 47401.3 | 1.711 | 1.488 | 1.496 | 1.629 |
-| IC11 | 0   | 0   | yes (vacuous) | 5043.8 | 0.089 | 0.007 | 0.008 | 0.009 |
-| IC12 | 5   | 5   | yes, but⁴ | 20428.0 | 0.557 | 0.271 | 0.295 | 0.254 |
-| IS1  | 1   | 1   | **yes** | 3588.3 | 0.054 | 0.010 | 0.012 | 0.012 |
-| IS2  | 10  | 10  | values identical¹ | 6665.1 | 0.094 | 0.018 | 0.016 | 0.013 |
-| IS3  | 48  | 24  | **NO — real** ⁵ | 687.7 | 0.065 | 0.047 | 0.026 | 0.011 |
-| IS4  | 1   | 1   | **yes** | 120.8 | 0.041 | 0.007 | 0.009 | 0.010 |
-| IS5  | 1   | 1   | **yes** | 4486.6 | 0.049 | 0.009 | 0.011 | 0.017 |
-| IS6  | 1   | 1   | **yes** | 4271.6 | 0.092 | 0.010 | 0.011 | 0.009 |
-| IS7  | 1   | 1   | **yes** | 8010.1 | 0.107 | 0.011 | 0.011 | 0.011 |
+| IC11 | 0   | 0   | agree (vacuous, 0/0) | 5043.8 | 0.089 | 0.007 | 0.008 | 0.009 |
+| IC12 | 5   | 5   | **ref-column-not-projected**⁵ | 20428.0 | 0.557 | 0.271 | 0.295 | 0.254 |
+| IS1  | 1   | 1   | **agree** (name) | 3588.3 | 0.054 | 0.010 | 0.012 | 0.012 |
+| IS2  | 10  | 10  | **agree** (positional) | 6665.1 | 0.094 | 0.018 | 0.016 | 0.013 |
+| IS3  | 48  | 24  | **DISAGREE — MAPPING-RULE**⁶ | 687.7 | 0.065 | 0.047 | 0.026 | 0.011 |
+| IS4  | 1   | 1   | **agree** (name) | 120.8 | 0.041 | 0.007 | 0.009 | 0.010 |
+| IS5  | 1   | 1   | **agree** (name) | 4486.6 | 0.049 | 0.009 | 0.011 | 0.017 |
+| IS6  | 1   | 1   | **agree** (name) | 4271.6 | 0.092 | 0.010 | 0.011 | 0.009 |
+| IS7  | 1   | 1   | **agree** (name) | 8010.1 | 0.107 | 0.011 | 0.011 | 0.011 |
 
 **Neo4j timed wall range: 0.007 s – 1.974 s.** (BI10, the template the design
 memo flagged as most likely to approach the 600 s ceiling, ran in 0.29 s. No
 reference-side timeout occurred anywhere.)
 **TGIR range: 120.8 ms – 148135.0 ms**, over 23 completed plans.
 
-¹ The two sides return **identical values** but under **different column
-names**, so the recorded name-based verdict is `disagreeing`. See §5.1.
+Agreeing rows over the 16 templates with a comparable reference:
+**282 of 329 compared rows agree (0.857)**; all 47 disagreeing rows are IS3's.
+
 ² Reference side invalid — temporal parameter passed as a string (see top).
 ³ BI6.v2 hit the 1020 s ceiling (600 s + 420 s store-open allowance); recorded
-as `TIMEOUT`. BI6.json (the v1 artifact) `ERRORED`, as RUNBOOK §6 predicted it
+as `TIMEOUT` and **not re-budgeted**. On the earlier `a6b3e94` build the same
+artifact COMPLETED in 291,970.9 ms (~292 s measured, 638.4 s child wall;
+`benchmarks/results-v1/ldbc-sf1-campaign-fmt3-2026-09.json`, store
+`snb-sf1-xz-a6b3e94`), so this is a **build-to-build difference**, not a
+re-budgeting question: the same plan on the same data went from ~292 s to over
+the ceiling. BI6.json (the v1 artifact) `ERRORED`, as RUNBOOK §6 predicted it
 still would — kept as evidence the v1 defect reproduces at SF1.
-⁴ IC12's reference projects 5 columns and TGIR's plan projects 4 (`tagNames`
-is missing). The comparator only compares the TGIR schema's columns, so the
-extra reference column is invisible to it and the `agreeing` verdict is
-over-generous. See §5.2.
-⁵ The one genuine disagreement. See §5.3.
+⁴ IC8 is the template that forbids a blanket positional rule — see §5.1.
+⁵ See §5.3.
+⁶ See §5.4.
 
-### 5.1 Column-name divergence (BI3, BI7, BI10, IS2 — and BI9, BI11, BI17, IC2, IC9, IS3)
+### 5.1 The column correspondence (`column_map.yaml`)
 
-`ldbc_compare.py`'s docstring says it compares "both sides by column *kind*,
-never by column name", but `rows_match` looks columns up **by name on both
-sides**. The reference side's names come from the vendored Cypher's own
-`RETURN … AS` aliases; the TGIR side's from the plan artifact's projection.
-They were never guaranteed to coincide, and for 10 templates they do not:
+The two sides name their columns differently: the reference's names are the
+vendored Cypher's own `RETURN … AS` aliases (and Neo4j's default name for an
+unaliased expression, e.g. `forum.id`), TGIR's are its plan's output schema.
+`ldbc_compare.py` looked both up by the TGIR name, so every reference lookup
+returned `None` and every row faulted — while the values were identical.
 
-| template | TGIR columns | Neo4j columns |
-|---|---|---|
-| BI3  | `forumId, forumTitle, forumCreationDate, moderatorId, messageCount` | `forum.id, forum.title, forum.creationDate, person.id, messageCount` |
-| BI7  | `relatedTagName, relatedTagCount` | `relatedTag.name, count` |
-| BI10 | `candidateId, tagName, messageCount` | `expertCandidatePerson.id, tag.name, messageCount` |
-| IS2  | `…, originalPostId, originalPostAuthorId, …` | `…, postId, personId, …` |
+`scripts/ldbc_column_map.py` derives the correspondence from two frozen
+inputs — each plan artifact's own `Plan.out_schema` (TGIR's static derivation,
+substituted with the artifact's own frozen `params`, so it reads no run
+output), and each vendored `.cypher`'s final top-level `RETURN` aliases in
+order, parsed with `ldbc_sort_keys.py`'s own splitter and alias regex:
 
-Every lookup on the reference side returns `None`, so every row faults. But the
-**values are the same**. BI3's first row, side by side:
+- **Rule A (by name)** where every reference column has a same-named TGIR
+  column — 10 templates. This is the *only* correct rule for **IC8**, whose two
+  sides carry the same six names in a **different order**
+  (`…, commentId, commentCreationDate, …` against
+  `…, commentCreationDate, commentId, …`): pairing positionally would compare a
+  timestamp against an id.
+- **Rule B (by position, kind-checked)** where names differ and the counts
+  match — 11 templates, including BI3. A position is paired only if the two
+  columns' derived kinds agree (`uid`/`ts`/`scalar`), so a mis-ordered pair
+  cannot slip through.
+- **Otherwise `unmatched`** — 3 templates (§5.3).
 
-```
-tgms: forumCreationDate 1278060831585000  forumId 274877932867  forumTitle "Wall of Abhishek Sharma"  moderatorId 4398046517450  messageCount 304
-ref:  forum.creationDate  1278060831585   forum.id 274877932867  forum.title  "Wall of Abhishek Sharma"  person.id   4398046517450  messageCount 304
-```
+Applying it moved BI3, BI7, BI10 and IS2 from "every row faults" to full
+agreement. `tests/test_ldbc_column_map.py` regenerates the table and asserts
+byte equality, and pins IC8-by-name and BI3-by-position specifically.
 
-Pairing the two sides' declared column orders positionally and applying the
-µs/ms rule, **BI3, BI7, BI10 and IS2 are byte-identical to the reference**
-(`run-scripts/` triage, reproduced in the log). They are reported above as
-"values identical" rather than as agreement, because making that the recorded
-verdict needs a **column correspondence table** this lane did not invent:
-positional pairing is *not* universally safe — IC8 has the same column names in
-a **different order** (`commentId, commentCreationDate` vs
-`commentCreationDate, commentId`), where name-based matching is right and
-positional matching would be wrong. A correspondence table is a design decision
-for the coordinator, not a mid-run improvisation (RUNBOOK's own rule against
-explaining a row away, `campaign.yaml` falsifier b).
-
-### 5.2 The µs/ms rule was not firing at all (fixed)
+### 5.2 The µs/ms rule was not firing at all
 
 RUNBOOK §4.3 lists the µs vs ms divergence as acting at "compare time only",
 via `ldbc_compare.py`'s `ts` column kind, which multiplies the reference side
 by 1000. That kind exists and is tested — but nothing produced it.
-`tgir_ldbc_sf1.py --emit-rows` writes each dump's `schema` from the plan
-artifact's projection, where a property read carries no TGIR type, so every
-temporal column arrived as `json?`, which `normalize_value` passes through
-untouched.
+`--emit-rows` writes each dump's `schema` from the plan, where a *property*
+read carries no TGIR type, so every temporal column arrived as `json?`, which
+`normalize_value` passes through untouched.
 
 IS1 is the clean demonstration: both sides returned the *same person* —
 identical `firstName`, `lastName`, `gender`, `browserUsed`, `locationIP`,
 `cityId` — differing only in `birthday` (383184000000000 vs 383184000000) and
-`creationDate` (1273606356004000 vs 1273606356004), each exactly 1000×. The
-five templates that agreed outright before this fix (BI18, IC6, IC12, IS5, IS6)
-are precisely the five projecting no temporal column.
+`creationDate` (1273606356004000 vs 1273606356004), each exactly 1000×.
 
-Fixed by generating the missing table mechanically rather than by hand — the
-same discipline `scripts/ldbc_sort_keys.py` follows for `sort_keys.yaml`:
-`scripts/ldbc_column_kinds.py` derives it from two frozen inputs that both
-predate this run (each plan artifact's `Project` bindings, and
-`tgms.data.snb_loader`'s `NODES`/`EDGES` property-kind tables). A column is
-`ts` because the loader declares the property it reads to be a clock — **never
-because its values happened to differ by 1000**. Output: `column_kinds.json`
-(17 plans, 9 temporal columns). Applying it moved IC8, IS1, IS4 and IS7 from
-"every row faults" to full agreement.
+`scripts/ldbc_column_kinds.py` generates the missing table from the plan
+artifacts' `Project` bindings and `snb_loader`'s frozen property kinds. A
+column is `ts` because the loader declares the property it reads to be a clock
+— **never because its values happened to differ by 1000**.
 
-### 5.3 IS3 — the one genuine disagreement: `MAPPING-RULE` / M7 KNOWS doubling
+### 5.3 `reference-column-not-projected` — BI4, IC5, IC12
+
+The comparator only ever compares the columns the **TGIR** schema declares, so
+a reference column outside it was invisible: the template could be scored
+`agreeing` on a strict subset of the query's answer. That is now its own
+verdict class rather than silent agreement:
+
+| template | reference projects | TGIR does not project |
+|---|---|---|
+| IC12 | 5 columns | `tagNames` |
+| BI4  | 5 columns | `personFirstName`, `personLastName`, `personCreationDate` |
+| IC5  | 2 columns | `forumName` (TGIR projects `forumId`/`forumTitle` instead) |
+
+IC12's five rows agree on the four columns that do correspond — that is
+reported, not discarded — but the template is **not** recorded as agreeing.
+
+### 5.4 IS3 — the one genuine disagreement: `MAPPING-RULE` (M7 KNOWS doubling)
 
 TGIR returns **48** rows, Neo4j **24** — exactly 2×. The store holds
 `KNOWS` 346028 = 2 × 173014, because `snb_loader` writes one CSV row as two
 edge versions (`both_ways=True`, M7: "Cypher's KNOWS is undirected and the
-pattern evaluator does not consult `directed`"). `interactive-short-3.cypher`
-matches `-[:KNOWS]-` undirected, so each friendship is one reference row and
-two TGIR rows.
+pattern evaluator does not consult `directed`"). `IS3.json`'s plan then expands
+`Expand(from=p, into=friend, dir="both", exact(1), rel_type=KNOWS)`, so each
+friendship is traversed **twice** — once as the anchor→friend edge and once as
+the friend→anchor edge read in reverse.
 
-RUNBOOK §4.3's M7 line pre-classifies this exactly: *"any KNOWS-count doubling
-in a result is a defect to report, not a normalization to apply."* Reported
-accordingly, and **not** normalized away. The prior P-SF1b record shows the
-same 48 (`ldbc-sf1-campaign-fmt3-interactive-2026-09.json`), so this is a
-standing property of the store's M7 encoding, not a regression from this run.
+**Could the plan deduplicate?** Yes, and cheaply. Neither half is wrong alone;
+the composition double-counts. Either fix removes it:
 
-This is the one row-level finding of the campaign, and it is the reason the
-pre-registered per-template prediction is scored **REFUTED** (see
-`campaign.yaml` `addendum_1`).
+- expand `dir="out"` instead of `dir="both"` — because the loader already
+  materialises both directions, an outgoing expansion alone reaches every
+  friend exactly once; or
+- add a `Distinct` on `(friendId, friendshipCreationDate)` above the expand.
+
+The first is the narrower change and preserves the plan's shape. This is a
+plan/encoding interaction to fix in `IS3.json`, not a TGIR engine defect and
+not a reference quirk — so it is classified `MAPPING-RULE` and **reported, not
+normalized away**, exactly as RUNBOOK §4.3's M7 line requires ("any KNOWS-count
+doubling in a result is a defect to report, not a normalization to apply").
+The prior P-SF1b record shows the same 48, so it is a standing property of the
+M7 encoding, not a regression from this run. One row agrees (the ordered
+comparison's first position); the other 47 are the duplicates and the resulting
+positional shift.
 
 ## 6. Harness defects found by executing this runbook
 
@@ -378,24 +402,26 @@ remain:
 2. **Re-run BI6.v2**, which timed out at 1020 s, or raise its allowance. Until
    then `campaign.yaml`'s `bi6_is_not_a_semantic_gap` prediction is vacuous,
    not confirmed.
-3. **Ratify (or reject) a column correspondence table** for the 10 templates
-   whose two sides use different column names (§5.1), then re-run
-   `ldbc_compare.py`. Four templates (BI3, BI7, BI10, IS2) are byte-identical
-   to the reference under positional pairing and would move to full agreement.
-4. **Decide whether the comparator should fault a reference column the TGIR
-   plan does not project** (IC12's `tagNames`, BI4's three missing columns).
-   Today they are silently ignored.
+3. ~~Ratify a column correspondence table~~ — **done** (coordinator, 2026-09-17).
+   `column_map.yaml` is generated, tested and applied; BI3, BI7, BI10 and IS2
+   now agree outright. See §5.1.
+4. ~~Decide whether the comparator should fault a reference column the TGIR
+   plan does not project~~ — **done**: it does, as
+   `reference-column-not-projected`. BI4, IC5 and IC12 carry that verdict. The
+   follow-up is a TGIR-side question, not a harness one — whether IC12's
+   `tagNames`, BI4's three person columns and IC5's `forumName` should be added
+   to those plan artifacts' projections.
 5. **Re-run three engine-dependent tests on the host.** On the laptop worktree
-   `tests/test_ldbc_compare.py` reports `105 passed, 3 failed`; all three
+   `tests/test_ldbc_compare.py` reports `115 passed, 3 failed`; all three
    failures are `ImportError: cannot import name '_engine' from 'tgms'` —
    the compiled extension is not built here and those three tests construct a
    fixture store (`test_rows_digest_stable_across_two_runs_against_a_tmp_fixture_store`,
    `test_rows_digest_against_a_tmp_fixture_store_changes_with_the_rows`,
    `test_emit_rows_output_is_directly_readable_by_ldbc_compare`). They are
    unrelated to the changes in §6 and passed on the host earlier in this run,
-   but the `--column-kinds` change (§5.2) landed after the host was frozen and
-   has only been exercised on the laptop. `ruff check tgms/ tests/ scripts/`
-   passes clean.
+   but the `--column-kinds` (§5.2) and `--column-map` (§5.1) changes landed
+   after the host was frozen and have only been exercised on the laptop.
+   `ruff check tgms/ tests/ scripts/` passes clean.
 
 Nothing in this run required the host after the freeze; no compute was started
 on it after the coordinator's instruction, and the Neo4j server was stopped.
@@ -407,6 +433,7 @@ on it after the coordinator's instruction, and the Neo4j server was stopped.
 | `same-data-gate.json` | the §2 gate, per-type counts and id digests |
 | `params.json` | the one binding, both sides, 25/25 plans |
 | `column_kinds.json` | generated compare-time column kinds (§5.2) |
+| `column_map.yaml` | generated reference->TGIR column correspondence (§5.1) |
 | `tgms-campaign-ldbc-ref-v1.json` | the TGIR side; **companion to** (never supersedes) `benchmarks/results-v1/ldbc-sf1-campaign-fmt3-interactive-2026-09.json` |
 | `tgms-rows/`, `ref-rows/` | per-template row dumps (compared pair) |
 | `ref-rows-warmup/`, `ref-rows-t2/`, `ref-rows-t3/` | the other three Neo4j executions (wall times only) |
