@@ -474,18 +474,39 @@ on a store nothing else was touching.
 | `version-history-100m.stdout.log` | `61d08153b6be26579522a08e1b928e90b4560bbc602e0e3b17f227e125826e7f` |
 | `recovery-100m-ce5000.json` | `6f6498b8559f31abb781004b7a6d6930467dd37d9ee3fcb2e4365fafad8c95e2` |
 | `recovery-100m-ce5000.stdout.log` | `e99811104717cda715ce11957ec9bfd2b137df9bcd142dd6aebcde1ef80849e5` |
+| `expB1-100m.json` (locally assembled, not cluster-transferred — see note below) | `d3eff4033ce5293c37c2e48cfbd07004bc7977b6a12ac5370ae5708f3acfcd71` |
 
-Every file above was sha256-verified byte-identical between its source
-path on the cluster (`/project/xzhang12/tgms-b7/stores/synth-100m-native/`
+Every file above except `expB1-100m.json` was sha256-verified byte-identical
+between its source path on the cluster
+(`/project/xzhang12/tgms-b7/stores/synth-100m-native/`
 or `/home/xzhang12/b7-work-h/{logs,records}/`) and the copy transferred to
-this worktree, at transfer time (not only at commit time). The five
-schema-bearing records (`build-100m.json`, `scale-curve-100m.json`,
-`check-full-100m.json`, `recovery-100m-ce5000.json`,
-`version-history-100m.json`) validate against
+this worktree, at transfer time (not only at commit time); `expB1-100m.json`
+was instead assembled locally, in this worktree, from those
+already-verified records (see "`expB1-100m.json` — produced" below) — its
+sha256 above is a tamper check on this worktree's own copy, not a
+cluster-vs-worktree transfer check. The six schema-bearing records
+(`build-100m.json`, `scale-curve-100m.json`, `check-full-100m.json`,
+`recovery-100m-ce5000.json`, `version-history-100m.json`,
+`expB1-100m.json`) validate against
 `benchmarks/schema/result_manifest.schema.json`
 (`scripts/check_result_manifest.py`, run via the cluster worktree's
 `.venv` -- `jsonschema==4.26.0` -- since this laptop worktree carries no
-Python env, same workaround the 30M lane used).
+Python env, same workaround the 30M lane used, plus this laptop's own
+`.venv` for `expB1-100m.json` itself).
+
+**`expB1-100m.json` — produced (records-only follow-up, same lane as the
+30M column set).** The same §4 4-row column set, this time at 100M, from
+`build-100m.json`, `queryfloor-100m.json`, `scale-curve-100m.json`, and
+`version-history-100m.json` — no new measurement. Values: store on disk
+**15.263 GB**; query-ready floor **19.67 GB** (job 213189, n_ok=6/13 — see
+below); `version_history` **18.982 s / 12.817 GB** (job 213191, the same
+figures already in the table above). The third row, columnar scan
+(`aggregate_events`/`agg.rel_bucket`), is **null**: that operator is one
+of the six refused-without-estimate operators at 100M (a new finding —
+all 13 operators, including this one, executed at 30M, where it measured
+176.492 ms); the record carries only a `CostError` string with no numeric
+`time_est_ms`, so nothing is estimated in its place. Every field is cited
+to its source file in `expB1-100m.json`'s own `exp_b1.rows.*.source`.
 
 The cluster worktree `/project/xzhang12/tgms-b7`, its
 `stores/synth-100m-native/`, and the replay copy

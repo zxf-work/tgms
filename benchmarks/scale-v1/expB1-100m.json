@@ -1,0 +1,100 @@
+{
+  "schema_version": "1.0.0",
+  "git_commit": "b159bd10aa53ad5de5f4e8ff7af1c87789d6afd0",
+  "timestamp_utc": "2026-09-17T00:00:00Z",
+  "machine": {
+    "cpus": 64,
+    "host": "itiger07",
+    "platform": "Linux-5.14.0-427.31.1.el9_4.x86_64-x86_64-with-glibc2.34",
+    "ram_gb": 503.68
+  },
+  "config": {
+    "n_entities": 100000000,
+    "scale": "100m",
+    "backend": "native",
+    "derived_from": [
+      "benchmarks/scale-v1/build-100m.json",
+      "benchmarks/scale-v1/queryfloor-100m.json",
+      "benchmarks/scale-v1/scale-curve-100m.json",
+      "benchmarks/scale-v1/version-history-100m.json"
+    ]
+  },
+  "seed": {
+    "value": 0
+  },
+  "dataset": {
+    "name": "synth",
+    "digest": "48bcb256874e6ad7ed8712ebff668fb25f81c6eafd78d7274efa245efa8a2d97",
+    "digest_kind": "store_digest"
+  },
+  "result_digest": "c27e669a8d5de15a9194396a330f23898f81c667a6851c13516fe1226da5db34",
+  "protocol": {
+    "warmups": 0,
+    "reps": 1,
+    "ceilings": {},
+    "note": "this record performs no new measurement -- it assembles the EXP-B1 four-row column set (docs/HANDOFF-ENGINE.md:218-224, the D-071 100M-costed table's row labels) from already-committed 100M records, exactly as expB1-30m.json did for 30M. warmups/reps/ceilings above describe this assembly step itself (a single pass), not the underlying measurements -- each row's own protocol is unchanged from its source record (see rows.*.source). The columnar_scan row is null: that operator (aggregate_events / agg.rel_bucket) is refused by the cost guardrail at 100M, one of six unanticipated refusals at this scale -- see rows.columnar_scan.value_ms_reason. No value is estimated."
+  },
+  "record": "benchmarks/scale-v1/expB1-100m.json",
+  "exp_b1": {
+    "description": "EXP-B1 / D-071's four-row column set (docs/HANDOFF-ENGINE.md \u00a74, \"100M, costed\": store on disk, query-ready floor (VmHWM), columnar scan, version_history) at the 100M scale point, per docs/design/SCALE_BUILD_FORECAST_2026-09-15.md \u00a74's expB1-{30,100}m.json layout. Every value below is read from a field already committed on main under benchmarks/scale-v1/ -- no new measurement was taken to produce this file. Unlike expB1-30m.json, the columnar_scan row is null: aggregate_events is refused by the cost guardrail at 100M (a new finding at this scale, not anticipated by the pre-registration; all 13 operators, including this one, executed at 30M).",
+    "rows": {
+      "store_on_disk": {
+        "label": "store on disk",
+        "value_bytes": 15262662259,
+        "value_gb": 15.263,
+        "components": {
+          "manifest_bytes": 206946,
+          "segment_bytes": 5218378406
+        },
+        "note": "total_bytes is build_info.store_bytes.total_bytes as recorded; it exceeds manifest_bytes + segment_bytes (the store's own eventlog / working-copy overhead is not itemized further in the source record, so no additional breakdown is claimed here).",
+        "source": {
+          "file": "benchmarks/scale-v1/build-100m.json",
+          "field": "build_info.store_bytes.{total_bytes,manifest_bytes,segment_bytes}"
+        }
+      },
+      "query_ready_floor": {
+        "label": "query-ready floor (VmHWM)",
+        "value_kb": 19665016,
+        "value_gb": 19.67,
+        "job_id": "213189",
+        "n_ok": 6,
+        "n_queries": 13,
+        "note": "fresh read-only process, cold-opens the finished store and runs the 13-operator registry once each; VmHWM of that process. Job 213189, run once cleanly (no writer-lock race, no rerun needed -- the 30M lane's read_only=True fix was already in place). n_ok=6/13: 7 operators refused by the cost guardrail even at this floor probe (same guardrail as the scale-curve refusals below), which does not change the VmHWM figure -- the process still opened the store and ran every admitted query.",
+        "source": {
+          "file": "benchmarks/scale-v1/queryfloor-100m.json",
+          "field": "vmhwm_kb",
+          "cross_checked_against": "benchmarks/scale-v1/build-100m.json: query_ready_floor.vmhwm_kb (same value, embedded copy)"
+        }
+      },
+      "columnar_scan": {
+        "label": "columnar scan (aggregate_events, query id agg.rel_bucket)",
+        "value_ms": null,
+        "value_ms_reason": "refused by the cost guardrail at 100M -- 'CostError: estimated cost for aggregate_events exceeds ceilings' -- one of six unanticipated refusals at this scale (all thirteen operators, including this one, executed at 30M: see expB1-30m.json's columnar_scan row, 176.492 ms). No numeric time_est_ms is carried in the record for this refusal (unlike reach.window's dedicated admission probe), so none is reported here -- left null, not estimated, per this file's own no-new-measurement rule.",
+        "anchor_10m_p50_ms": 119.597,
+        "note": "\"columnar scan\" is this operator's label in docs/TECHNICAL_REPORT.md's D-058-vs-D-069 comparison (\"columnar control (aggregate_events)\"), reused here as the HANDOFF-ENGINE table's third row, same as expB1-30m.json. See osdiB7RefusedAggRelBucket100M in scripts/osdi_paper_macros.py::compute_b7_scale.",
+        "source": {
+          "file": "benchmarks/scale-v1/scale-curve-100m.json",
+          "field": "per_operator_p50_ms.\"agg.rel_bucket\".{measured_p50_ms,error,anchor_10m_p50_ms}"
+        }
+      },
+      "version_history": {
+        "label": "version_history (post D-069)",
+        "wall_s": 18.982,
+        "vmhwm_gb": 12.817,
+        "rows_total": 100000269,
+        "job_id": "213191",
+        "call": {
+          "belief": "all",
+          "kind": "edge",
+          "limit": 10,
+          "window": "[0, 105000000)"
+        },
+        "note": "single_run (job 213191, no clean/contended split needed at 100M -- the whole chain ran serialized with nothing else touching the store), median over 3 reps of wall_ms and vmhwm_kb.",
+        "source": {
+          "file": "benchmarks/scale-v1/version-history-100m.json",
+          "field": "single_run.{wall_ms_median,vmhwm_kb_median,rows_total}"
+        }
+      }
+    }
+  }
+}
