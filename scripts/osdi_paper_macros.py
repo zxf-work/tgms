@@ -167,6 +167,26 @@ skeleton --
       below computes every ``osdiSoak*Two`` macro; the Gate E table's own
       verdict column is prose (gate_e_report-2.md), not emitted here.
 
+  W-lane (the original soak's full-mode verify + REPLAY-2) --
+      benchmarks/longevity-v1/verify-full-2026-09-15.txt (two `tgms check`
+      entries concatenated: the pre-replay check of the original store,
+      then the post-hoc full verify of REPLAY-2's own replayed store) and
+      replay-check-2-2026-09.json (REPLAY-2 itself, the post-D-087-fix
+      replay that completed, unlike W2j's OOM-killed attempts 1/2 above).
+      Both whole-file sha256-checked (frozen here, same discipline as
+      W2j's pair). ``compute_longevity_verify_and_replay2`` below computes
+      every ``osdiSoakVerifyFull*``/``osdiSoakReplay2*`` macro; no verdict
+      macro (``CORRUPT`` is the verifier's own text, not scored here).
+
+  W-lane (P-OV1, the xzgpu-calibrated overload sweep, EXP-B4) --
+      benchmarks/overload-v1/{overload-2026-09-15,overload-2026-09-15-rep2}.json
+      (2 reps, `--clients 1 2 4 8 16 32 64 --max-concurrent 8`,
+      `entity_history` under load) + hwm-checkpoints-v3.json (the "Pinned"
+      VmHWM localization). ``compute_overload`` below computes every
+      ``osdiOverload*`` macro, sha256-checked by hash membership against
+      benchmarks/overload-v1/SHA256SUMS; no verdict macro (the per-clause
+      PASS/REFUTED scoring is README.md's own prose).
+
 C10 (live OSV workload) -- benchmarks/live-osv-v1/snapshot-2026-09-16.json,
 Lane C10-snap's first committed record snapshot of the live-osv poller
 running on xzgpu (docs/design/LIVE_WORKLOAD_OSV_DESIGN_2026-09-13.md).
@@ -468,6 +488,43 @@ B7_SCALE_CURVE_100M_REFUSED_NO_ESTIMATE = (
 B7_30M_STORE_DIGEST = "239118cae2044e5928b68d82423e0e996b6bc96654cbfd34266747486aa7e6d8"
 B7_100M_STORE_DIGEST = "48bcb256874e6ad7ed8712ebff668fb25f81c6eafd78d7274efa245efa8a2d97"
 
+# Lane W-lane -- P-OV1, the xzgpu-calibrated overload sweep (EXP-B4):
+# benchmarks/overload-v1/{overload-2026-09-15,overload-2026-09-15-rep2}.json
+# (2 reps, --clients 1 2 4 8 16 32 64 --max-concurrent 8) and
+# hwm-checkpoints-v3.json (the "Pinned" VmHWM localization: the service
+# surface's own high-water mark stays ~227 MB through the 64-client and
+# recovery steps; the ~2 GB lifetime peak belongs to the harness's own
+# end-of-sweep store.digest() call, not to ToolRouter/ConcurrencyGate under
+# load -- see README.md's "Pinned" section). Every sha256 below is checked
+# against benchmarks/overload-v1/SHA256SUMS (note: that file's own entry for
+# rep1 is misnamed "overload-2026-09-15-rep1.json" even though the
+# committed file is "overload-2026-09-15.json" -- a naming quirk in the
+# sums file itself, not a hash mismatch; checked by hash membership below,
+# not by filename).
+OVERLOAD_DIR = ROOT / "benchmarks" / "overload-v1"
+OVERLOAD_REP1 = OVERLOAD_DIR / "overload-2026-09-15.json"
+OVERLOAD_REP2 = OVERLOAD_DIR / "overload-2026-09-15-rep2.json"
+OVERLOAD_REP1_RECORDS = OVERLOAD_DIR / "overload-2026-09-15.records.json"
+OVERLOAD_HWM_CHECKPOINTS_V3 = OVERLOAD_DIR / "hwm-checkpoints-v3.json"
+OVERLOAD_SHA256SUMS = OVERLOAD_DIR / "SHA256SUMS"
+
+# Lane W-lane -- the 2026-09-15 full-mode verify of the original soak store
+# (benchmarks/longevity-v1/verify-full-2026-09-15.txt, two `tgms check`
+# entries concatenated: the pre-replay check of the original store, then
+# the post-hoc full verify of REPLAY-2's replayed store, appended after it
+# unedited -- see README.md's "Post-hoc replay check -- attempt 3" section)
+# and REPLAY-2 itself (replay-check-2-2026-09.json, the post-D-087-fix
+# replay that actually completed, unlike the OOM-killed attempts 1/2 this
+# script already reads as LONGEVITY_REPLAY_CHECK above). Neither file
+# appears in README.md's original "Files here" table (that soak predates
+# both), so their whole-file sha256 is frozen here from this lane's own
+# first read of the committed copies, the same discipline W2j's pair uses
+# above.
+LONGEVITY_VERIFY_FULL = LONGEVITY_DIR / "verify-full-2026-09-15.txt"
+LONGEVITY_REPLAY_CHECK_2 = LONGEVITY_DIR / "replay-check-2-2026-09.json"
+LONGEVITY_VERIFY_FULL_SHA256 = "4a84460725df097cb6df81eec8d55a7c8b28b2d906c2cb709712f3a0c1be6a68"
+LONGEVITY_REPLAY_CHECK_2_SHA256 = "45c6b2561b3a63f4164874a88c97f42c5c4bf1f11888d075340659aca41b2c66"
+
 
 # --------------------------------------------------------------------------
 # verification helpers (copied from scripts/tgir_paper_macros.py)
@@ -509,6 +566,16 @@ def _readme_sha256_table(text: str) -> dict[str, str]:
     record's sha256 against its own README's table rather than a second,
     driftable frozen constant."""
     return dict(re.findall(r"\|\s*`([^`]+)`[^|]*\|\s*`([0-9a-f]{64})`\s*\|", text))
+
+
+def _sha256sums_table(text: str) -> set[str]:
+    """Parse a plain ``sha256sum``-style manifest (``<hex>␠␠<filename>`` per
+    line) into the set of hex digests it names. Used by compute_overload to
+    check a record's sha256 against benchmarks/overload-v1/SHA256SUMS by
+    hash membership rather than by filename -- that file's own entry for
+    rep1 is misnamed (see OVERLOAD_REP1's module comment above), so a
+    filename-keyed lookup would be wrong for the right reason."""
+    return set(re.findall(r"^([0-9a-f]{64})\s+\S+\s*$", text, re.MULTILINE))
 
 
 def relpath(p: Path) -> str:
@@ -3844,6 +3911,17 @@ def compute_longevity_soak(m: Macros) -> None:
             "Longevity: the true per-life sum must differ from the manifest's single-life "
             "figure -- this is the harness defect the README documents, not a no-op check")
 
+    # --- writer corrections applied/skipped, all 42 lives (same
+    # counter_latest label-collision defect as the error count above --
+    # writer_error_counts_by_life.json's own aggregate fields, no per-life
+    # breakdown array exists for these two, unlike per_life_errors) ---
+    corrections_applied = by_life["true_total_corrections_applied_all_lives"]
+    corrections_skipped = by_life["true_total_corrections_skipped_all_lives"]
+    eq(corrections_applied, 207_850,
+       "Longevity frozen: true total corrections applied, 42 lives")
+    eq(corrections_skipped, 137_163,
+       "Longevity frozen: true total corrections skipped, 42 lives")
+
     # --- recoveries: designed restart cycle, by cause ---
     recoveries_rows = load_jsonl(LONGEVITY_RECOVERIES)
     eq(len(recoveries_rows), 41, "Longevity frozen: recoveries.jsonl row count")
@@ -3992,6 +4070,13 @@ def compute_longevity_soak(m: Macros) -> None:
           "not a run total")
     m.add("osdiSoakWriterErrorsTrue", tex_num(true_total_errors),
           f"{relpath(LONGEVITY_WRITER_ERRORS_BY_LIFE)}: sum(per_life_errors), 42 lives")
+    m.add("osdiSoakCorrectionsAppliedTrue", tex_num(corrections_applied),
+          f"{relpath(LONGEVITY_WRITER_ERRORS_BY_LIFE)}: "
+          "true_total_corrections_applied_all_lives, 42 lives -- ops issued, not "
+          "identities landed (see README.md's \"errors observed\" section)")
+    m.add("osdiSoakCorrectionsSkippedTrue", tex_num(corrections_skipped),
+          f"{relpath(LONGEVITY_WRITER_ERRORS_BY_LIFE)}: "
+          "true_total_corrections_skipped_all_lives, 42 lives")
     m.add("osdiSoakThroughputStart", f"{throughput_start:.2f}",
           f"{relpath(LONGEVITY_MANIFEST)}: summary.drift.throughput_first_hour_avg, commits/s")
     m.add("osdiSoakThroughputEnd", f"{throughput_end:.2f}",
@@ -4222,6 +4307,9 @@ def compute_longevity_rederived(m: Macros) -> None:
           f"{relpath(LONGEVITY_SUMMARY_REDERIVED)}: recomputed count(per_life[*]."
           "slope_kb_per_s > noise_threshold_kb_per_s=5.0), matches the file's own "
           "n_positive_beyond_noise_5kb_s")
+    m.add("osdiSoakWriterNoiseFloorKBps", tex_num(int(noise_floor)),
+          f"{relpath(LONGEVITY_SUMMARY_REDERIVED)}: writer_within_life_rss_slope."
+          "noise_threshold_kb_per_s")
     m.add("osdiSoakReaderWithinLifeSlopeMedianKBps", f"{reader_median_kb:.2f}",
           f"{relpath(LONGEVITY_SUMMARY_REDERIVED)}: median of every fitted segment slope "
           "across reader_rss_slope_by_idx (10 segments, 8 readers), matches "
@@ -4588,6 +4676,337 @@ def compute_longevity_soak_two(m: Macros) -> None:
           "count (both agree)")
     m.add("osdiSoakCompactionsTwo", tex_num(compactions),
           f"{relpath(LONGEVITY_MANIFEST_TWO)}: summary.compactions")
+
+
+# --------------------------------------------------------------------------
+# W-lane -- the original soak's full-mode verify (benchmarks/longevity-v1/
+# verify-full-2026-09-15.txt, two `tgms check` entries concatenated: the
+# pre-replay check of the original store, then the post-hoc full verify of
+# REPLAY-2's own replayed store) and REPLAY-2 itself
+# (replay-check-2-2026-09.json, the post-D-087-fix replay that completed).
+# Both are read-only re-measurements against the W2g soak's own preserved
+# raw inputs (the eventlog), same discipline as compute_longevity_rederived
+# above. No verdict macro -- "CORRUPT" here is the verifier's own verdict
+# string, reported as a text macro, not scored by this script.
+# --------------------------------------------------------------------------
+
+def compute_longevity_verify_and_replay2(m: Macros) -> None:
+    eq(sha256_file(LONGEVITY_VERIFY_FULL), LONGEVITY_VERIFY_FULL_SHA256,
+       f"{relpath(LONGEVITY_VERIFY_FULL)}: sha256 matches this lane's frozen value")
+    eq(sha256_file(LONGEVITY_REPLAY_CHECK_2), LONGEVITY_REPLAY_CHECK_2_SHA256,
+       f"{relpath(LONGEVITY_REPLAY_CHECK_2)}: sha256 matches this lane's frozen value")
+
+    text = LONGEVITY_VERIFY_FULL.read_text(encoding="utf-8")
+
+    # The file is two `tgms check --mode full` runs concatenated (the
+    # original soak store, then REPLAY-2's replayed store, appended
+    # unedited per README.md's "Post-hoc replay check -- attempt 3"
+    # section) -- parse both header blocks and both verdict lines rather
+    # than trusting the header count alone.
+    generations = [int(g) for g in re.findall(r"^generation:\s*(\d+)", text, re.MULTILINE)]
+    problem_counts = [int(n) for n in re.findall(r"^PROBLEMS \((\d+)\):", text, re.MULTILINE)]
+    verdicts = re.findall(r"^verdict:\s*(\S+)", text, re.MULTILINE)
+    bullet_counts = [
+        len(re.findall(r"^\s*-\s*\[row/believed-versions-overlap\]:", block, re.MULTILINE))
+        for block in re.split(r"^verdict:.*$", text, flags=re.MULTILINE)[:-1]
+    ]
+
+    eq(len(generations), 2, "Longevity verify-full frozen: two `generation:` header lines "
+       "(one per tgms-check run)")
+    eq(len(problem_counts), 2, "Longevity verify-full frozen: two `PROBLEMS (N):` headers")
+    eq(len(verdicts), 2, "Longevity verify-full frozen: two `verdict:` lines")
+    eq(bullet_counts, problem_counts,
+       "Longevity verify-full: recomputed row/believed-versions-overlap bullet count per "
+       "run matches that run's own PROBLEMS(N) header")
+
+    orig_generation, replay_generation = generations
+    orig_problems, replay_problems = problem_counts
+    orig_verdict, replay_verdict = verdicts
+
+    eq(orig_generation, 1_076_872, "Longevity verify-full frozen: original store's generation")
+    eq(replay_generation, 1_076_598,
+       "Longevity verify-full frozen: REPLAY-2 store's generation")
+    eq(orig_problems, 13_714,
+       "Longevity verify-full frozen: original store's row/believed-versions-overlap count")
+    eq(replay_problems, 13_714,
+       "Longevity verify-full frozen: REPLAY-2 store's row/believed-versions-overlap count "
+       "-- identical to the original store's, the same corpus/ingest-semantics defect "
+       "(disc \"#0\"), not a storage/compaction/replay-introduced one")
+    eq(orig_problems, replay_problems,
+       "Longevity verify-full: the two runs' problem counts are identical")
+    require(orig_verdict == "CORRUPT" and replay_verdict == "CORRUPT",
+            "Longevity verify-full frozen: both runs' verdict is CORRUPT")
+
+    replay = json.loads(LONGEVITY_REPLAY_CHECK_2.read_text(encoding="utf-8"))
+    eq(replay["git_commit"], "a6b3e94",
+       "Longevity REPLAY-2 frozen: git_commit (post-D-087-fix worktree)")
+    eq(replay["outcome"], "completed", "Longevity REPLAY-2 frozen: outcome")
+    summary = replay["summary"]
+    eq(summary["digest_equal"], True, "Longevity REPLAY-2 frozen: summary.digest_equal")
+    eq(replay["result_digest"], summary["predicted_digest"],
+       "Longevity REPLAY-2: the manifest's own top-level result_digest matches "
+       "summary.predicted_digest (the soak's pre-registered final_digest)")
+    eq(replay["dataset"]["total_batches"], 1_074_952,
+       "Longevity REPLAY-2 frozen: dataset.total_batches (matches the soak's own "
+       "summary.total_batches, W2g's osdiSoakBatches)")
+    batches_applied = summary["batches_applied"]
+    eq(batches_applied, 1_074_450, "Longevity REPLAY-2 frozen: summary.batches_applied")
+    compactions_inferred = summary["compactions_inferred"]
+    eq(compactions_inferred, 2_148, "Longevity REPLAY-2 frozen: summary.compactions_inferred")
+    eq(summary["manifest_current_generation"] - batches_applied, compactions_inferred,
+       "Longevity REPLAY-2: manifest_current_generation - batches_applied matches "
+       "compactions_inferred (the file's own compaction_inference_basis arithmetic)")
+    eq(summary["manifest_current_generation"], replay_generation,
+       "Longevity REPLAY-2: summary.manifest_current_generation matches "
+       "verify-full-2026-09-15.txt's own (second-entry) generation header")
+
+    wall_s = summary["wall_s"]
+    eq(wall_s, 30_015.0, "Longevity REPLAY-2 frozen: summary.wall_s")
+    elapsed_h = round(wall_s / 3600.0, 2)
+    eq(elapsed_h, 8.34, "Longevity REPLAY-2: wall_s / 3600, hours")
+
+    peak_rss_kb = summary["peak_rss_kb"]
+    eq(peak_rss_kb, 4_329_996, "Longevity REPLAY-2 frozen: summary.peak_rss_kb")
+    peak_rss_gb = round(peak_rss_kb / 1e6, 2)
+    eq(peak_rss_gb, 4.33, "Longevity REPLAY-2: peak_rss_kb / 1e6, GB")
+
+    peak_disk_mb = summary["peak_disk_mb_observed"]
+    eq(peak_disk_mb, 586, "Longevity REPLAY-2 frozen: summary.peak_disk_mb_observed")
+
+    rss_series = summary["rss_series"]
+    eq(len(rss_series), 101, "Longevity REPLAY-2 frozen: summary.rss_series sample count")
+    recomputed_peak_kb = max(s["rss_kb"] for s in rss_series)
+    eq(recomputed_peak_kb, peak_rss_kb,
+       "Longevity REPLAY-2: recomputed max(rss_series[*].rss_kb) matches "
+       "summary.peak_rss_kb")
+
+    result_digest = replay["result_digest"]
+    require(result_digest == summary["predicted_digest"],
+            "Longevity REPLAY-2: top-level result_digest matches summary.predicted_digest "
+            "(the digest equality this record measures)")
+    digest_prefix = result_digest[:8]
+    eq(digest_prefix, "8eb9bc26", "Longevity REPLAY-2 frozen: result_digest's first 8 hex "
+       "characters")
+
+    fv = summary["full_verify_of_replayed_store"]
+    eq(fv["problems"], 13_714,
+       "Longevity REPLAY-2 frozen: summary.full_verify_of_replayed_store.problems")
+    eq(fv["problems"], replay_problems,
+       "Longevity REPLAY-2: summary.full_verify_of_replayed_store.problems matches "
+       "verify-full-2026-09-15.txt's own (second-entry) PROBLEMS(N) header")
+    eq(fv["verdict"], "CORRUPT",
+       "Longevity REPLAY-2 frozen: summary.full_verify_of_replayed_store.verdict")
+
+    # --- emit macros ---
+    m.add("osdiSoakVerifyFullGeneration", tex_num(orig_generation),
+          f"{relpath(LONGEVITY_VERIFY_FULL)}: first entry's generation: header (the "
+          "original, pre-replay soak store)")
+    m.add("osdiSoakVerifyFullOverlapCount", tex_num(orig_problems),
+          f"{relpath(LONGEVITY_VERIFY_FULL)}: first entry's PROBLEMS(N) header, "
+          "recomputed as len(row/believed-versions-overlap bullets) in that entry")
+    m.add("osdiSoakVerifyFullVerdict", orig_verdict,
+          f"{relpath(LONGEVITY_VERIFY_FULL)}: first entry's verdict: line (text macro, "
+          "not a number)")
+    m.add("osdiSoakReplay2VerifyGeneration", tex_num(replay_generation),
+          f"{relpath(LONGEVITY_VERIFY_FULL)}: second entry's generation: header (REPLAY-2's "
+          "replayed store), cross-checked against replay-check-2-2026-09.json's own "
+          "summary.manifest_current_generation")
+    m.add("osdiSoakReplay2VerifyOverlapCount", tex_num(replay_problems),
+          f"{relpath(LONGEVITY_VERIFY_FULL)}: second entry's PROBLEMS(N) header -- "
+          "identical to osdiSoakVerifyFullOverlapCount, cross-checked against "
+          "replay-check-2-2026-09.json's own summary.full_verify_of_replayed_store.problems")
+    m.add("osdiSoakReplay2VerifyVerdict", replay_verdict,
+          f"{relpath(LONGEVITY_VERIFY_FULL)}: second entry's verdict: line (text macro, "
+          "not a number)")
+    m.add("osdiSoakReplay2BatchesApplied", tex_num(batches_applied),
+          f"{relpath(LONGEVITY_REPLAY_CHECK_2)}: summary.batches_applied, of "
+          "dataset.total_batches (== osdiSoakBatches)")
+    m.add("osdiSoakReplay2Compactions", tex_num(compactions_inferred),
+          f"{relpath(LONGEVITY_REPLAY_CHECK_2)}: summary.compactions_inferred, "
+          "cross-checked against manifest_current_generation - batches_applied")
+    m.add("osdiSoakReplay2WallS", tex_num(int(wall_s)),
+          f"{relpath(LONGEVITY_REPLAY_CHECK_2)}: summary.wall_s")
+    m.add("osdiSoakReplay2ElapsedH", f"{elapsed_h:.2f}",
+          f"{relpath(LONGEVITY_REPLAY_CHECK_2)}: summary.wall_s / 3600, hours (≈ 8h20m)")
+    m.add("osdiSoakReplay2PeakRssKB", tex_num(peak_rss_kb),
+          f"{relpath(LONGEVITY_REPLAY_CHECK_2)}: summary.peak_rss_kb, recomputed as "
+          "max(summary.rss_series[*].rss_kb)")
+    m.add("osdiSoakReplay2PeakRssGB", f"{peak_rss_gb:.2f}",
+          f"{relpath(LONGEVITY_REPLAY_CHECK_2)}: summary.peak_rss_kb / 1e6, GB")
+    m.add("osdiSoakReplay2PeakDiskMB", tex_num(peak_disk_mb),
+          f"{relpath(LONGEVITY_REPLAY_CHECK_2)}: summary.peak_disk_mb_observed")
+    m.add("osdiSoakReplay2RssSamples", tex_num(len(rss_series)),
+          f"{relpath(LONGEVITY_REPLAY_CHECK_2)}: len(summary.rss_series)")
+    m.add("osdiSoakReplay2DigestEqual", "true",
+          f"{relpath(LONGEVITY_REPLAY_CHECK_2)}: summary.digest_equal is the JSON literal "
+          "true (text macro, not a number)")
+    m.add("osdiSoakReplay2DigestPrefix", digest_prefix,
+          f"{relpath(LONGEVITY_REPLAY_CHECK_2)}: result_digest[:8] (== summary."
+          "predicted_digest[:8], the soak's pre-registered final_digest) (text macro, "
+          "not a number)")
+
+
+# --------------------------------------------------------------------------
+# W-lane -- P-OV1, the xzgpu-calibrated overload sweep (EXP-B4):
+# does tgms.tools.limits.ConcurrencyGate engage once open-loop callers
+# outrun the service, and does the service recover once load drops.
+# benchmarks/overload-v1/{overload-2026-09-15,overload-2026-09-15-rep2}.json
+# (2 reps, --clients 1 2 4 8 16 32 64 --max-concurrent 8, `entity_history`
+# under load) + hwm-checkpoints-v3.json (the "Pinned" VmHWM localization).
+# No verdict macro -- the per-clause PASS/REFUTED scoring is README.md's
+# own prose (a/b/c/d/e in its own words), not emitted here.
+# --------------------------------------------------------------------------
+
+def compute_overload(m: Macros) -> None:
+    sums_hashes = _sha256sums_table(OVERLOAD_SHA256SUMS.read_text(encoding="utf-8"))
+    for path in (OVERLOAD_REP1, OVERLOAD_REP2, OVERLOAD_REP1_RECORDS,
+                 OVERLOAD_HWM_CHECKPOINTS_V3):
+        require(sha256_file(path) in sums_hashes,
+                f"{relpath(path)}: sha256 is one of the digests listed in "
+                f"{relpath(OVERLOAD_SHA256SUMS)} (checked by hash membership, not by "
+                "filename -- that file's own rep1 entry is misnamed, see OVERLOAD_REP1's "
+                "module comment)")
+
+    rep1 = json.loads(OVERLOAD_REP1.read_text(encoding="utf-8"))
+    rep2 = json.loads(OVERLOAD_REP2.read_text(encoding="utf-8"))
+
+    eq(rep1["git_commit"], "ebe1dc2", "Overload frozen: rep1 git_commit")
+    eq(rep2["git_commit"], rep1["git_commit"], "Overload: rep2 git_commit matches rep1's")
+    max_concurrent = rep1["config"]["max_concurrent"]
+    eq(max_concurrent, 8, "Overload frozen: config.max_concurrent (the harness's own CLI "
+       "default under test, not a value read from `tgms serve`)")
+    eq(rep2["config"]["max_concurrent"], max_concurrent,
+       "Overload: rep2 config.max_concurrent matches rep1's")
+    eq(rep1["dataset"]["digest"], rep2["dataset"]["digest"],
+       "Overload: rep1 and rep2 ran against the identical store state (store.digest() "
+       "matches across reps)")
+
+    def steps_by_clients(rec):
+        return {s["n_clients"]: s for s in rec["steps"]}
+
+    rep1_steps = steps_by_clients(rep1)
+    rep2_steps = steps_by_clients(rep2)
+    eq(sorted(rep1_steps), [1, 2, 4, 8, 16, 32, 64],
+       "Overload frozen: rep1 steps.n_clients ladder")
+    eq(sorted(rep2_steps), sorted(rep1_steps), "Overload: rep2 has the same clients ladder")
+    clients_max = max(rep1_steps)
+    eq(clients_max, 64, "Overload frozen: max(steps[*].n_clients) -- the gate-engagement cell")
+
+    # --- refusal attribution at the n=64 cell: every refusal is a
+    # concurrency-cap refusal (refusal_stage=="limit"), never a result-size
+    # limit or an uncaught operator error -- recomputed from the per-call
+    # records, not trusted from the summary's n_refused/n_error alone. ---
+    records = json.loads(OVERLOAD_REP1_RECORDS.read_text(encoding="utf-8"))
+    step64_records = next(s for s in records if s["n_clients"] == 64)["records"]
+    eq(len(step64_records), rep1_steps[64]["n_calls"],
+       "Overload: overload-2026-09-15.records.json's n=64 record count matches "
+       "the manifest's own steps[64].n_calls")
+    refused_records = [r for r in step64_records if r["outcome"] == "refused"]
+    eq(len(refused_records), rep1_steps[64]["n_refused"],
+       "Overload: recomputed count(outcome==refused) at n=64 matches steps[64].n_refused")
+    refusal_stages = {r["refusal_stage"] for r in refused_records}
+    eq(refusal_stages, {"limit"},
+       "Overload frozen: every n=64 refusal (rep1) carries refusal_stage==\"limit\" "
+       "(ConcurrencyGate's own check) -- never a result-size limit or an operator error")
+    n_error_total = sum(s["n_error"] for s in rep1_steps.values()) + \
+        sum(s["n_error"] for s in rep2_steps.values())
+    eq(n_error_total, 0,
+       "Overload frozen: sum(steps[*].n_error) is 0 across every step, both reps -- "
+       "0 operator errors observed")
+
+    refused_cap_rep1_at64 = rep1_steps[64]["n_refused"]
+    refused_cap_rep2_at64 = rep2_steps[64]["n_refused"]
+    eq(refused_cap_rep1_at64, 4_438, "Overload frozen: rep1 steps[64].n_refused")
+    eq(refused_cap_rep2_at64, 285, "Overload frozen: rep2 steps[64].n_refused")
+    refusal_ratio = refused_cap_rep1_at64 / refused_cap_rep2_at64
+    close(round(refusal_ratio, 1), 15.6, 1e-9,
+          "Overload: rep1/rep2 refused-at-64 ratio, rounded to 1 decimal")
+
+    admitted_p95_at64 = rep1_steps[64]["concurrent_in_flight_p95"]
+    eq(admitted_p95_at64, 8.0, "Overload frozen: rep1 steps[64].concurrent_in_flight_p95")
+    require(admitted_p95_at64 <= max_concurrent,
+            "Overload: p95 admitted concurrency at n=64 does not exceed the cap")
+
+    p99_at32_rep1 = rep1_steps[32]["p99_ms"]
+    eq(round(p99_at32_rep1, 1), 40.4, "Overload frozen: rep1 steps[32].p99_ms, rounded")
+    eq(rep1_steps[32]["n_refused"], 0,
+       "Overload frozen: rep1 steps[32].n_refused is 0 -- the p99 REFUTED clause's own "
+       "n=32 cell admits every call")
+
+    # --- recovery step: "exactly" the 1-client step, same rep ---
+    recovery_qps = rep1["recovery"]["throughput_qps"]
+    recovery_p50 = rep1["recovery"]["p50_ms"]
+    eq(round(recovery_qps, 2), 20.13, "Overload frozen: rep1 recovery.throughput_qps")
+    eq(round(recovery_p50, 2), 1.43, "Overload frozen: rep1 recovery.p50_ms")
+    n1_step = rep1_steps[1]
+    close(recovery_qps, n1_step["throughput_qps"], 0.01,
+          "Overload: recovery.throughput_qps matches steps[n_clients=1].throughput_qps "
+          "(same rep) -- \"recovery, exactly\"")
+    close(recovery_p50, n1_step["p50_ms"], 0.05,
+          "Overload: recovery.p50_ms is within 0.05ms of steps[n_clients=1].p50_ms "
+          "(same rep) -- \"recovery, exactly\"")
+
+    # --- service-surface high-water mark: the "Pinned" VmHWM localization,
+    # not the harness's own end-of-sweep store.digest() lifetime peak
+    # (~2 GB, a harness-side finalization call, not the service under
+    # load -- see README.md's "Pinned" section; that ~2GB figure is
+    # deliberately not landed as a macro here, it names what the high-water
+    # figure is NOT). ---
+    checkpoints = {c["label"]: c["vm_hwm_kb"] for c in
+                   json.loads(OVERLOAD_HWM_CHECKPOINTS_V3.read_text(encoding="utf-8"))}
+    hwm_after_step = checkpoints["after_step_n64"]
+    hwm_after_recovery = checkpoints["after_recovery_step"]
+    eq(hwm_after_step, 227_280,
+       "Overload frozen: hwm-checkpoints-v3.json after_step_n64.vm_hwm_kb")
+    eq(hwm_after_recovery, hwm_after_step,
+       "Overload: VmHWM after the recovery step equals VmHWM after the 64-client step -- "
+       "the recovery step adds exactly 0 KB (README.md's own \"Pinned\" finding)")
+    hwm_after_digest = checkpoints["after_store_digest_full"]
+    require(hwm_after_digest > hwm_after_step,
+            "Overload: VmHWM jumps only after the harness's own store.digest() call, not "
+            "during the 64-client step or the recovery step")
+    high_water_mb = round(hwm_after_step / 1000, 1)
+    eq(high_water_mb, 227.3, "Overload: service-surface VmHWM / 1000, MB")
+
+    # --- emit macros ---
+    m.add("osdiOverloadCommit", rep1["git_commit"],
+          f"{relpath(OVERLOAD_REP1)}: git_commit (same in rep2)")
+    m.add("osdiOverloadMaxConcurrent", tex_num(max_concurrent),
+          f"{relpath(OVERLOAD_REP1)}: config.max_concurrent (== protocol.ceilings."
+          "max_concurrent), the harness's own CLI default under test")
+    m.add("osdiOverloadClientsMax", tex_num(clients_max),
+          f"{relpath(OVERLOAD_REP1)}: max(steps[*].n_clients) -- the gate engages at this "
+          "cell in both reps")
+    m.add("osdiOverloadRefusalKindConcurrencyOnly", "true",
+          f"{relpath(OVERLOAD_REP1_RECORDS)}: the set of refusal_stage values over every "
+          "n=64 record with outcome==\"refused\" is exactly {\"limit\"} -- every refusal "
+          "is a concurrency-cap refusal, never a result-size limit (text macro, not a "
+          "number)")
+    m.add("osdiOverloadOperatorErrorsTotal", tex_num(n_error_total),
+          f"{relpath(OVERLOAD_REP1)}+{relpath(OVERLOAD_REP2)}: sum(steps[*].n_error) over "
+          "every step, both reps")
+    m.add("osdiOverloadRefusedCapAtMaxRep1", tex_num(refused_cap_rep1_at64),
+          f"{relpath(OVERLOAD_REP1)}: steps[n_clients=64].n_refused")
+    m.add("osdiOverloadRefusedCapAtMaxRep2", tex_num(refused_cap_rep2_at64),
+          f"{relpath(OVERLOAD_REP2)}: steps[n_clients=64].n_refused")
+    m.add("osdiOverloadRefusalRepRatio", f"{refusal_ratio:.1f}",
+          "derived: rep1/rep2 refused-at-n=64 ratio (rep-to-rep variance at the knee, "
+          "not a measured field)")
+    m.add("osdiOverloadAdmittedConcurrencyP95AtMax", f"{admitted_p95_at64:.1f}",
+          f"{relpath(OVERLOAD_REP1)}: steps[n_clients=64].concurrent_in_flight_p95")
+    m.add("osdiOverloadP99At32ClientsMs", f"{p99_at32_rep1:.2f}",
+          f"{relpath(OVERLOAD_REP1)}: steps[n_clients=32].p99_ms, with n_refused==0 at "
+          "that cell -- the bounded-latency prediction's REFUTED evidence")
+    m.add("osdiOverloadRecoveryQps", f"{recovery_qps:.2f}",
+          f"{relpath(OVERLOAD_REP1)}: recovery.throughput_qps")
+    m.add("osdiOverloadRecoveryP50Ms", f"{recovery_p50:.2f}",
+          f"{relpath(OVERLOAD_REP1)}: recovery.p50_ms")
+    m.add("osdiOverloadServiceHighWaterKB", tex_num(hwm_after_step),
+          f"{relpath(OVERLOAD_HWM_CHECKPOINTS_V3)}: after_step_n64.vm_hwm_kb (== "
+          "after_recovery_step.vm_hwm_kb) -- the \"Pinned\" localization, not the "
+          "harness's own end-of-sweep store.digest() lifetime peak")
+    m.add("osdiOverloadServiceHighWaterMB", f"{high_water_mb:.1f}",
+          f"{relpath(OVERLOAD_HWM_CHECKPOINTS_V3)}: after_step_n64.vm_hwm_kb / 1000, MB")
 
 
 # --------------------------------------------------------------------------
@@ -5413,6 +5832,8 @@ def main() -> int:
     compute_longevity_soak(m)
     compute_longevity_rederived(m)
     compute_longevity_soak_two(m)
+    compute_longevity_verify_and_replay2(m)
+    compute_overload(m)
     compute_c10_live_osv(m)
     compute_b7_scale(m)
     add_pending_stubs(m)
