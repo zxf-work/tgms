@@ -590,6 +590,67 @@ def apply_correction_via_public_api(store: Any, gc_writer: Any, correction: Any)
 # child: reader                                                               #
 # --------------------------------------------------------------------------- #
 
+#: Bounded per-reader cap on distinct (class, message) pairs captured in
+#: detail — see `ReaderErrorDetail`. 150M raw error *events* (P-SOAK2,
+#: ops/failure_ledger.jsonl's D-088) must not become 150M ledger lines.
+READER_ERROR_DETAIL_CAP = 20
+
+#: Exception message text is truncated to this many characters before being
+#: used as part of the dedup key or written to the ledger.
+READER_ERROR_MESSAGE_CHARS = 120
+
+
+class ReaderErrorDetail:
+    """Bounded per-reader capture of exception *message* text.
+
+    `reader_errors_total` (metrics.jsonl) and `errors` (the reader's own
+    progress file) have only ever carried the exception *class*
+    (`type(e).__name__`) — enough to count a storm, not to diagnose one
+    (docs/design/READER_FD_STORM_DIAGNOSIS_2026-09-17.md,
+    ops/failure_ledger.jsonl's D-088: pyo3's default `std::io::Error ->
+    PyErr` conversion drops the errno, so "OSError" alone cannot be told
+    apart from EMFILE vs. ENOENT vs. anything else).
+
+    This tracks the first `cap` distinct `(class, message[:120])` pairs a
+    reader hits. Each is written **once**, the moment it is first seen, as
+    a `reader_op_error` ledger event; every later occurrence of an
+    already-seen pair only increments an in-memory counter, and a pair
+    seen for the first time after the cap is full is not tracked in detail
+    at all (its count still shows up in `reader_errors_total`, just not
+    broken out by message) — no per-event logging.
+    """
+
+    def __init__(self, cap: int = READER_ERROR_DETAIL_CAP,
+                message_chars: int = READER_ERROR_MESSAGE_CHARS) -> None:
+        self.cap = cap
+        self.message_chars = message_chars
+        self._seen: dict[tuple[str, str], dict[str, Any]] = {}
+
+    def record(self, exc: BaseException,
+              ts: float | None = None) -> dict[str, Any] | None:
+        """Update the bounded counters for `exc`. Returns the fields for a
+        new `reader_op_error` ledger entry the first time this
+        `(class, message)` pair is seen; `None` on every later occurrence,
+        including any distinct pair seen only after the cap filled up."""
+        key = (type(exc).__name__, str(exc)[:self.message_chars])
+        entry = self._seen.get(key)
+        if entry is not None:
+            entry["count"] += 1
+            return None
+        if len(self._seen) >= self.cap:
+            return None
+        ts = time.time() if ts is None else ts
+        self._seen[key] = {"first_seen_ts": ts, "count": 1}
+        return {"class": key[0], "message": key[1],
+                "first_seen_ts": ts, "count_at_first_seen": 1}
+
+    def snapshot(self) -> list[dict[str, Any]]:
+        """Current counts, one row per distinct `(class, message)` pair
+        captured so far — for the periodic progress-file flush."""
+        return [{"class": cls, "message": msg, "count": v["count"],
+                 "first_seen_ts": v["first_seen_ts"]}
+                for (cls, msg), v in self._seen.items()]
+
 
 def child_reader(cfg: dict[str, Any]) -> None:
     import tgms
@@ -613,6 +674,8 @@ def child_reader(cfg: dict[str, Any]) -> None:
     progress_path = Path(cfg["progress_path"])
     timings: dict[str, list[float]] = {q["id"]: [] for q in mix}
     errors: dict[str, int] = {}
+    error_detail = ReaderErrorDetail()
+    ledger_dir = Path(store_path).parent
     done = 0
     reopens = 0
     minute_t0 = time.perf_counter()
@@ -639,6 +702,10 @@ def child_reader(cfg: dict[str, Any]) -> None:
                 errors[q["id"]] = errors.get(q["id"], 0) + 1
                 metrics.counter("reader_errors_total", reader=idx, query=q["id"],
                                 error=type(e).__name__)
+                new_detail = error_detail.record(e)
+                if new_detail is not None:
+                    _write_ledger(ledger_dir, "reader_op_error", reader=idx,
+                                  query=q["id"], **new_detail)
         if reopen_every_s and time.perf_counter() - last_reopen >= reopen_every_s:
             store.close()
             store = tgms.open(store_path, backend="native", read_only=True)
@@ -662,13 +729,14 @@ def child_reader(cfg: dict[str, Any]) -> None:
             metrics.flush()
             progress_path.write_text(json.dumps(
                 {"idx": idx, "done": done, "errors": errors, "reopens": reopens,
-                 "ts": now}))
+                 "error_details": error_detail.snapshot(), "ts": now}))
             done = 0
             minute_t0 = time.perf_counter()
             last_flush = now
     metrics.flush()
     progress_path.write_text(json.dumps({"idx": idx, "done": done, "errors": errors,
                                          "reopens": reopens,
+                                         "error_details": error_detail.snapshot(),
                                          "ts": time.time(), "final": True}))
     store.close()
 
