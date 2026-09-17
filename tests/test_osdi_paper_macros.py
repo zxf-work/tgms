@@ -2626,6 +2626,58 @@ def test_overhead_ladder_csv_covers_all_five_rungs_and_twelve_plans(tmp_path, mo
     assert rung_col.count("5") == 12
 
 
+def test_scale_curve_csv_has_13_operators_at_3_scales_with_refused_rows(tmp_path, monkeypatch):
+    fig_mod = _load_figures()
+    monkeypatch.setattr(fig_mod, "OUT_DIR", tmp_path)
+    data = fig_mod.build_scale_curve_data()
+    assert len(data["operators"]) == 13
+    # 6/13 executed, 7/13 refused at 100M (benchmarks/scale-v1/README.md);
+    # reach.window refuses with a numeric time_est_ms (Addendum 5's
+    # restated admission ceiling), the other six with only a CostError
+    # string and no numeric estimate anywhere in the record.
+    assert data["refused_100m"] == [
+        "agg.rel_bucket", "coactive.narrow", "diff.global", "nbr.evolution",
+        "reach.window", "resolve.substr", "snap.hop2",
+    ]
+
+    text = fig_mod.write_scale_curve_csv(data)
+    rows = list(csv.reader(text.splitlines()))
+    assert rows[0] == ["operator", "scale", "p50_ms", "refused", "time_est_ms", "bar_ms"]
+    assert len(rows) == 1 + 13 * 3  # header + 13 operators x 3 scales
+
+    by_op_scale = {(r[0], r[1]): r for r in rows[1:]}
+
+    # No operator refuses at 10M or 30M -- every row has a p50 and no reason.
+    for op in data["operators"]:
+        for scale in ("10M", "30M"):
+            row = by_op_scale[(op, scale)]
+            assert row[2] != "", f"{op}/{scale}: expected a p50, got none"
+            assert row[3] == "False", f"{op}/{scale}: unexpectedly marked refused"
+
+    # Refused rows at 100M: empty p50, refused=True.
+    for op in data["refused_100m"]:
+        row = by_op_scale[(op, "100M")]
+        assert row[2] == "", f"{op}/100M: refused row must not carry a fabricated p50"
+        assert row[3] == "True"
+
+    # reach.window is the only refused-at-100M operator with a numeric
+    # time_est_ms (from reach_window_admission, not from a fabricated
+    # estimate); the other six refused ops carry no estimate at all.
+    reach_100m = by_op_scale[("reach.window", "100M")]
+    assert reach_100m[4] == "14571"
+    for op in data["refused_100m"]:
+        if op == "reach.window":
+            continue
+        row = by_op_scale[(op, "100M")]
+        assert row[4] == "", f"{op}/100M: must not fabricate a time_est_ms"
+
+    # Executed operators at 100M carry a real p50 and the corresponding
+    # forecast bar as a reference figure, e.g. motif.filtered (a PASS).
+    motif_100m = by_op_scale[("motif.filtered", "100M")]
+    assert motif_100m[2] == "110.861"
+    assert motif_100m[5] == "157.014"
+
+
 def test_cli_csv_only_mode_is_idempotent(tmp_path):
     result1 = subprocess.run(
         [_venv_python(), str(ROOT / "scripts" / "osdi_paper_figures.py"), "--csv-only"],

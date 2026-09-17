@@ -25,6 +25,14 @@ record path):
      per-batch check/lookup/global cost + ttf p50;
      the N=1,000 point is a PENDING annotation
      until the main grid lands                     (C7, partial)
+  9. corruption-detection matrix: class x mutation
+     detection rate, pre vs post A10                (C2)
+ 10. overhead ladder: per rung, per plan/op medians
+     with the freeze's predicted band shaded         (D4/D4b)
+ 11. B7 scale curve: per-operator query p50 (log
+     scale) at 10M/30M/100M, refused operators at
+     100M (and reach.window's admission at each
+     scale) flagged rather than fabricated           (B7)
 
 Every deliverable is emitted as a CSV (the underlying data table, always,
 independent of matplotlib) and, when matplotlib is importable in the
@@ -88,6 +96,11 @@ LADDER_RAW = [
     LADDER_DIR / "raw" / "overhead-ladder-bitcoinotc-seed1-job212304.json",
     LADDER_DIR / "raw" / "overhead-ladder-bitcoinotc-seed2-job212305.json",
 ]
+
+SCALE_V1 = ROOT / "benchmarks" / "scale-v1"
+SCALE_10M = SCALE_V1 / "itiger-calib-10m.json"
+SCALE_30M = SCALE_V1 / "scale-curve-30m.json"
+SCALE_100M = SCALE_V1 / "scale-curve-100m.json"
 
 
 def load_jsonl(path: Path) -> list[dict]:
@@ -960,6 +973,169 @@ def plot_ladder(data: dict) -> None:
 
 
 # --------------------------------------------------------------------------
+# 11. B7 scale curve: per-operator query p50 at 10M/30M/100M, refused
+#     operators at 100M flagged rather than fabricated (B7)
+# --------------------------------------------------------------------------
+
+def _scale_reach_admission(rec: dict) -> dict | None:
+    """Pull a `reach.window` admission decision out of a scale-curve
+    record's top-level ``reach_window_admission`` (present at 30M/100M;
+    absent at 10M, where the same operator's story lives instead in
+    ``scale_curve.reach_window_deviation`` -- a differently shaped record
+    documenting that it unexpectedly *executed* there rather than being
+    refused). 30M carries a clean/contended pair (both agree: admitted);
+    100M carries a single ``run``. Either way, return one
+    ``{"admitted": bool, "time_est_ms": int}`` from whichever sub-record
+    is present.
+    """
+    admission = rec.get("reach_window_admission")
+    if admission is None:
+        return None
+    run = admission.get("run") or admission.get("clean_213174") or admission.get("contended_213069")
+    return {"admitted": run["admitted"], "time_est_ms": run["estimate"]["time_est_ms"]}
+
+
+def build_scale_curve_data() -> dict:
+    calib_10m = json.loads(SCALE_10M.read_text(encoding="utf-8"))
+    sc_10m = calib_10m["scale_curve"]["per_operator_p50_ms"]
+    rec_30m = json.loads(SCALE_30M.read_text(encoding="utf-8"))
+    sc_30m = rec_30m["per_operator_p50_ms"]
+    rec_100m = json.loads(SCALE_100M.read_text(encoding="utf-8"))
+    sc_100m = rec_100m["per_operator_p50_ms"]
+
+    operators = sorted(sc_10m)
+    assert operators == sorted(sc_30m) == sorted(sc_100m), "operator registry differs across scales"
+
+    reach_30m = _scale_reach_admission(rec_30m)
+    reach_100m = _scale_reach_admission(rec_100m)
+
+    rows = []
+    for op in operators:
+        # 10M (itiger-calib-10m.json): a flat record layout --
+        # {"error", "ok", "p50_ms", "p95_ms", "rows"}. Every operator here
+        # executed (ok=True); `reach.window` executing at all is itself a
+        # deviation (scale_curve.reach_window_deviation), not a refusal,
+        # so it is carried through like any other executed op at 10M.
+        e10 = sc_10m[op]
+        assert e10["ok"] and e10["p50_ms"] is not None, f"{op} unexpectedly refused at 10M"
+        rows.append({"operator": op, "scale": "10M", "p50_ms": e10["p50_ms"],
+                     "refused": False, "time_est_ms": None, "bar_ms": None})
+
+        # 30M (scale-curve-30m.json, the clean rerun): a different record
+        # layout again -- no bare "p50_ms"/"ok"; instead a clean/contended
+        # pair plus the forecast's "bar_ms". Per this deliverable, use the
+        # clean run's figure. No 30M operator refuses (reach.window is
+        # admitted here too, confirmed below).
+        e30 = sc_30m[op]
+        assert "clean_213174_p50_ms" in e30, f"{op} missing the clean rerun figure at 30M"
+        if op == "reach.window":
+            assert reach_30m is not None and reach_30m["admitted"], "reach.window not admitted at 30M"
+        rows.append({"operator": op, "scale": "30M", "p50_ms": e30["clean_213174_p50_ms"],
+                     "refused": False, "time_est_ms": None, "bar_ms": e30["bar_ms"]})
+
+        # 100M (scale-curve-100m.json): a third record layout --
+        # "measured_p50_ms" (None when refused) plus "bar_ms" (None only
+        # for reach.window, whose bar is undefined once its own admission
+        # estimate exceeds the ceiling) and an "error" string for every
+        # refused op. Never fabricate a p50 for a refused op: only
+        # reach.window carries a numeric time_est_ms anywhere in the
+        # record (reach_window_admission); the other six refused ops
+        # carry only the CostError string, so their time_est_ms stays
+        # empty here (per benchmarks/scale-v1/README.md: "the record
+        # carries only a CostError string ... nothing is estimated in
+        # its place").
+        e100 = sc_100m[op]
+        refused = e100["measured_p50_ms"] is None
+        time_est_ms = None
+        if op == "reach.window":
+            assert refused and reach_100m is not None and not reach_100m["admitted"], (
+                "reach.window expected refused (not admitted) at 100M")
+            time_est_ms = reach_100m["time_est_ms"]
+        rows.append({"operator": op, "scale": "100M", "p50_ms": e100["measured_p50_ms"],
+                     "refused": refused, "time_est_ms": time_est_ms, "bar_ms": e100["bar_ms"]})
+
+    refused_100m = sorted(r["operator"] for r in rows if r["scale"] == "100M" and r["refused"])
+    return {"operators": operators, "rows": rows, "refused_100m": refused_100m,
+            "commit_10m": calib_10m["git_commit"], "commit_30m": rec_30m["git_commit"],
+            "commit_100m": rec_100m["git_commit"]}
+
+
+def write_scale_curve_csv(data: dict) -> str:
+    header = ["operator", "scale", "p50_ms", "refused", "time_est_ms", "bar_ms"]
+    rows = []
+    for r in data["rows"]:
+        rows.append([
+            r["operator"], r["scale"],
+            "" if r["p50_ms"] is None else r["p50_ms"],
+            r["refused"],
+            "" if r["time_est_ms"] is None else r["time_est_ms"],
+            "" if r["bar_ms"] is None else r["bar_ms"],
+        ])
+    return write_csv(OUT_DIR / "f_b7_scale_curve.csv", header, rows)
+
+
+def plot_scale_curve(data: dict) -> None:
+    _require_mpl()
+    scales = ["10M", "30M", "100M"]
+    x = [10, 30, 100]  # million entities -- a log-scale x axis
+    by_op = {op: {r["scale"]: r for r in data["rows"] if r["operator"] == op}
+             for op in data["operators"]}
+    executed_p50s = [r["p50_ms"] for r in data["rows"] if r["p50_ms"] is not None]
+    refused_y = max(executed_p50s) * 1.6  # a distinct marker pinned above the real data
+
+    with plt.rc_context(STYLE):
+        fig, ax = plt.subplots(figsize=(8.5, 5.0))
+        cmap = plt.get_cmap("tab20", len(data["operators"]))
+
+        for i, op in enumerate(data["operators"]):
+            color = cmap(i)
+            series = by_op[op]
+            xs = [xv for scale, xv in zip(scales, x) if series[scale]["p50_ms"] is not None]
+            ys = [series[scale]["p50_ms"] for scale in scales if series[scale]["p50_ms"] is not None]
+            ax.plot(xs, ys, marker="o", markersize=4, linewidth=1, color=color, label=op)
+
+            for scale, xv in zip(scales, x):
+                r = series[scale]
+                # Faint per-operator forecast bar, where the record carries
+                # one, as a reference tick only -- never plotted as data.
+                if r["bar_ms"] is not None:
+                    ax.plot(xv, r["bar_ms"], marker="_", color=color, alpha=0.35,
+                            markersize=14, markeredgewidth=2, zorder=1)
+                # Refused operators pinned at the top of the axis, distinct
+                # from any executed p50.
+                if r["refused"]:
+                    ax.plot(xv, refused_y, marker="x", color=color, markersize=8,
+                            markeredgewidth=2, zorder=3)
+
+        ax.axhline(refused_y, color="0.7", linestyle=":", linewidth=1, zorder=0)
+        ax.set_xscale("log")
+        ax.set_xticks(x)
+        ax.set_xticklabels(scales)
+        ax.set_yscale("log")
+        ax.set_xlim(8, 130)
+        ax.set_xlabel("scale (entities)")
+        ax.set_ylabel("query p50, ms (log scale); x = refused")
+        ax.set_title("B7 scale curve: per-operator p50 at 10M / 30M / 100M\n"
+                      f"(commits {data['commit_10m']}/{data['commit_30m']}/{data['commit_100m']})",
+                      fontsize=8)
+
+        refused_labels = []
+        for op in data["operators"]:
+            r100 = by_op[op]["100M"]
+            if r100["refused"]:
+                if r100["time_est_ms"] is not None:
+                    refused_labels.append(f"{op}: refused (time_est_ms {r100['time_est_ms']})")
+                else:
+                    refused_labels.append(f"{op}: refused")
+        ax.annotate("100M refusals:\n" + "\n".join(refused_labels), xy=(1.02, 0.5),
+                    xycoords="axes fraction", fontsize=5.5, va="center", ha="left")
+
+        ax.legend(fontsize=5.5, loc="upper left", bbox_to_anchor=(1.02, 1.0))
+        fig.tight_layout()
+        _savefig(fig, OUT_DIR / "f_b7_scale_curve")
+
+
+# --------------------------------------------------------------------------
 # main
 # --------------------------------------------------------------------------
 
@@ -980,6 +1156,8 @@ DELIVERABLES = [
      plot_corruption_matrix, "f_corruption_matrix.csv"),
     ("overhead_ladder", build_ladder_data, write_ladder_csv, plot_ladder,
      "f_overhead_ladder.csv"),
+    ("scale_curve", build_scale_curve_data, write_scale_curve_csv, plot_scale_curve,
+     "f_b7_scale_curve.csv"),
 ]
 # `csv_filename` (not a precomputed path) so every consumer -- main() below,
 # and tests that monkeypatch module-level OUT_DIR -- resolves the path
