@@ -2678,6 +2678,129 @@ def test_scale_curve_csv_has_13_operators_at_3_scales_with_refused_rows(tmp_path
     assert motif_100m[5] == "157.014"
 
 
+def test_scale_curve_title_is_short_and_commits_move_to_a_caption(tmp_path, monkeypatch):
+    """f_b7_scale_curve's rendered title used to overprint a long
+    commit-hash string (one per scale, three total); the title must now be
+    just the figure name, with per-record commit provenance moved to a
+    caption instead -- a functional-equivalence check, not a data change."""
+    fig_mod = _load_figures()
+    if not fig_mod.HAVE_MPL:
+        pytest.skip(
+            "matplotlib is not installed in this interpreter "
+            f"({sys.executable}); scripts/osdi_paper_figures.py falls back to "
+            "CSV-only generation in this environment (see its HAVE_MPL guard). "
+            "Install matplotlib in $HOME/.venvs/tgms to exercise this check.")
+    monkeypatch.setattr(fig_mod, "OUT_DIR", tmp_path)
+    captured = {}
+    monkeypatch.setattr(fig_mod, "_savefig", lambda fig, stem: captured.setdefault("fig", fig))
+
+    data = fig_mod.build_scale_curve_data()
+    fig_mod.plot_scale_curve(data)
+    fig = captured["fig"]
+    try:
+        title = fig.axes[0].get_title()
+        assert title == "B7 scale curve: per-operator p50 at 10M / 30M / 100M"
+        for commit in (data["commit_10m"], data["commit_30m"], data["commit_100m"]):
+            assert commit not in title, f"commit {commit} must not be in the title anymore"
+        caption_texts = [t.get_text() for t in fig.texts]
+        assert any(
+            data["commit_10m"] in t and data["commit_30m"] in t and data["commit_100m"] in t
+            for t in caption_texts
+        ), "all three commits must be recoverable from a caption, not the title"
+    finally:
+        fig_mod.plt.close(fig)
+
+
+def test_scale_costs_csv_has_expected_rows_and_no_fabricated_values(tmp_path, monkeypatch):
+    """f11_b7_scale_costs: every (scale, quantity) the source records
+    actually carry must appear exactly once, nothing else -- a quantity a
+    record does not carry (query-ready floor at 1M/10M; any recovery
+    figure at 10M; the ce500 cadence at 100M, which was never run) must be
+    a gap, never an estimated or interpolated point. Every value is
+    checked against the exact record field it cites, loaded independently
+    of the module under test.
+    """
+    fig_mod = _load_figures()
+    monkeypatch.setattr(fig_mod, "OUT_DIR", tmp_path)
+    data = fig_mod.build_scale_costs_data()
+
+    expected = {
+        ("1M", "build_wall_s"), ("1M", "build_vmhwm_gb"), ("1M", "recovery_wall_s_ce500"),
+        ("10M", "build_wall_s"), ("10M", "build_vmhwm_gb"),
+        ("30M", "build_wall_s"), ("30M", "build_vmhwm_gb"),
+        ("30M", "query_ready_floor_vmhwm_gb"),
+        ("30M", "recovery_wall_s_ce500"), ("30M", "recovery_wall_s_ce5000"),
+        ("100M", "build_wall_s"), ("100M", "build_vmhwm_gb"),
+        ("100M", "query_ready_floor_vmhwm_gb"), ("100M", "recovery_wall_s_ce5000"),
+    }
+    actual = {(r["scale"], r["quantity"]) for r in data["rows"]}
+    assert actual == expected, f"row set differs from expected: {actual ^ expected}"
+    assert len(data["rows"]) == 14
+
+    # Points no record carries -- must never appear as a fabricated gap-fill.
+    for missing in (
+        ("1M", "query_ready_floor_vmhwm_gb"),
+        ("10M", "query_ready_floor_vmhwm_gb"),
+        ("10M", "recovery_wall_s_ce500"),
+        ("10M", "recovery_wall_s_ce5000"),
+        ("100M", "recovery_wall_s_ce500"),
+    ):
+        assert missing not in actual, f"{missing} has no source record and must be a gap"
+
+    by_key = {(r["scale"], r["quantity"]): r for r in data["rows"]}
+
+    def load(name):
+        return json.loads((ROOT / "benchmarks" / "scale-v1" / name).read_text(encoding="utf-8"))
+
+    calib_1m = load("itiger-calib-1m.json")
+    calib_10m = load("itiger-calib-10m.json")
+    build_30m = load("build-30m.json")
+    build_100m = load("build-100m.json")
+    qf_30m = load("queryfloor-30m.json")
+    qf_100m = load("queryfloor-100m.json")
+    rec_30m_ce500 = load("recovery-30m.json")
+    rec_30m_ce5000 = load("recovery-30m-ce5000.json")
+    rec_100m_ce5000 = load("recovery-100m-ce5000.json")
+
+    assert by_key[("1M", "build_wall_s")]["value"] == calib_1m["build_info"]["wall_s"]
+    assert by_key[("1M", "build_vmhwm_gb")]["value"] == round(
+        calib_1m["build_info"]["peak_rss"]["vmhwm"] / 1_000_000, 6)
+    assert by_key[("1M", "recovery_wall_s_ce500")]["value"] == calib_1m["recovery"]["wall_s"]
+    assert "--compact-every 500" in calib_1m["recovery"]["invocation"]
+
+    assert by_key[("10M", "build_wall_s")]["value"] == calib_10m["build_info"]["wall_s"]
+    assert by_key[("10M", "build_vmhwm_gb")]["value"] == round(
+        calib_10m["build_info"]["peak_rss"]["vmhwm"] / 1_000_000, 6)
+    assert "recovery" not in calib_10m, "itiger-calib-10m.json has no recovery sub-record"
+
+    assert by_key[("30M", "build_wall_s")]["value"] == build_30m["build_info"]["wall_s"]
+    assert by_key[("30M", "build_wall_s")]["value"] == 3786.004
+    assert by_key[("30M", "build_vmhwm_gb")]["value"] == round(
+        build_30m["build_info"]["peak_rss"]["vmhwm"] / 1_000_000, 6)
+    assert by_key[("30M", "query_ready_floor_vmhwm_gb")]["value"] == round(
+        qf_30m["vmhwm_kb"] / 1_000_000, 6)
+    assert round(by_key[("30M", "query_ready_floor_vmhwm_gb")]["value"], 2) == 6.81  # README prose
+    assert by_key[("30M", "recovery_wall_s_ce500")]["value"] == rec_30m_ce500["replay_wall_s"]
+    assert rec_30m_ce500["compact_every"] == 500
+    assert by_key[("30M", "recovery_wall_s_ce5000")]["value"] == rec_30m_ce5000["replay_wall_s"]
+    assert rec_30m_ce5000["compact_every"] == 5000
+
+    assert by_key[("100M", "build_wall_s")]["value"] == build_100m["build_info"]["wall_s"]
+    assert by_key[("100M", "build_wall_s")]["value"] == 28372.936
+    assert by_key[("100M", "build_vmhwm_gb")]["value"] == round(
+        build_100m["build_info"]["peak_rss"]["vmhwm"] / 1_000_000, 6)
+    assert by_key[("100M", "query_ready_floor_vmhwm_gb")]["value"] == round(
+        qf_100m["vmhwm_kb"] / 1_000_000, 6)
+    assert round(by_key[("100M", "query_ready_floor_vmhwm_gb")]["value"], 2) == 19.67  # README prose
+    assert by_key[("100M", "recovery_wall_s_ce5000")]["value"] == rec_100m_ce5000["replay_wall_s"]
+    assert rec_100m_ce5000["compact_every"] == 5000
+
+    text = fig_mod.write_scale_costs_csv(data)
+    rows = list(csv.reader(text.splitlines()))
+    assert rows[0] == ["scale", "quantity", "value", "unit", "source_file", "note"]
+    assert len(rows) == 1 + 14
+
+
 def test_cli_csv_only_mode_is_idempotent(tmp_path):
     result1 = subprocess.run(
         [_venv_python(), str(ROOT / "scripts" / "osdi_paper_figures.py"), "--csv-only"],

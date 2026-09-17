@@ -33,6 +33,12 @@ record path):
      scale) at 10M/30M/100M, refused operators at
      100M (and reach.window's admission at each
      scale) flagged rather than fabricated           (B7)
+ 12. B7 scale costs: build wall/VmHWM, query-ready
+     floor VmHWM, and cadence-labelled recovery wall
+     across 1M/10M/30M/100M -- points the source
+     record does not carry (e.g. no query-ready-floor
+     figure at 1M/10M, no recovery record at 10M) are
+     gaps, never estimated                            (B7)
 
 Every deliverable is emitted as a CSV (the underlying data table, always,
 independent of matplotlib) and, when matplotlib is importable in the
@@ -101,6 +107,16 @@ SCALE_V1 = ROOT / "benchmarks" / "scale-v1"
 SCALE_10M = SCALE_V1 / "itiger-calib-10m.json"
 SCALE_30M = SCALE_V1 / "scale-curve-30m.json"
 SCALE_100M = SCALE_V1 / "scale-curve-100m.json"
+
+SCALE_CALIB_1M = SCALE_V1 / "itiger-calib-1m.json"
+SCALE_CALIB_10M = SCALE_V1 / "itiger-calib-10m.json"
+SCALE_BUILD_30M = SCALE_V1 / "build-30m.json"
+SCALE_BUILD_100M = SCALE_V1 / "build-100m.json"
+SCALE_QUERYFLOOR_30M = SCALE_V1 / "queryfloor-30m.json"
+SCALE_QUERYFLOOR_100M = SCALE_V1 / "queryfloor-100m.json"
+SCALE_RECOVERY_30M_CE500 = SCALE_V1 / "recovery-30m.json"
+SCALE_RECOVERY_30M_CE5000 = SCALE_V1 / "recovery-30m-ce5000.json"
+SCALE_RECOVERY_100M_CE5000 = SCALE_V1 / "recovery-100m-ce5000.json"
 
 
 def load_jsonl(path: Path) -> list[dict]:
@@ -1115,9 +1131,14 @@ def plot_scale_curve(data: dict) -> None:
         ax.set_xlim(8, 130)
         ax.set_xlabel("scale (entities)")
         ax.set_ylabel("query p50, ms (log scale); x = refused")
-        ax.set_title("B7 scale curve: per-operator p50 at 10M / 30M / 100M\n"
-                      f"(commits {data['commit_10m']}/{data['commit_30m']}/{data['commit_100m']})",
-                      fontsize=8)
+        ax.set_title("B7 scale curve: per-operator p50 at 10M / 30M / 100M", fontsize=8)
+        # Provenance (the three source records' commits) lives in the
+        # caption, not the title -- a title-line commit-hash string used to
+        # overprint the plot title above.
+        fig.text(0.01, 0.01,
+                  f"commits: 10M {data['commit_10m']} / 30M {data['commit_30m']} / "
+                  f"100M {data['commit_100m']}",
+                  fontsize=5, ha="left", va="bottom")
 
         refused_labels = []
         for op in data["operators"]:
@@ -1133,6 +1154,162 @@ def plot_scale_curve(data: dict) -> None:
         ax.legend(fontsize=5.5, loc="upper left", bbox_to_anchor=(1.02, 1.0))
         fig.tight_layout()
         _savefig(fig, OUT_DIR / "f_b7_scale_curve")
+
+
+# --------------------------------------------------------------------------
+# 12. B7 scale costs: build wall/VmHWM, query-ready floor VmHWM, and
+#     cadence-labelled recovery wall, across 1M/10M/30M/100M (B7)
+# --------------------------------------------------------------------------
+
+# campaign convention throughout benchmarks/scale-v1/README.md: "GB" for a
+# VmHWM figure means vmhwm_kb / 1,000,000, not true decimal GB or GiB (see
+# the README's own "Unit note on 'GB'" -- verified there against the 10M
+# anchor). Reused here so this figure's GB column matches the README's own
+# 6.81/19.67 prose exactly.
+_KB_PER_CAMPAIGN_GB = 1_000_000
+
+
+def build_scale_costs_data() -> dict:
+    """One row per (scale, quantity) actually present in a landed record.
+    A quantity a given scale's record does not carry (no query-ready-floor
+    figure at 1M/10M in itiger-calib-*.json; no recovery record at all in
+    itiger-calib-10m.json) is simply not emitted -- a gap in the panel, not
+    an estimated or interpolated point.
+    """
+    calib_1m = json.loads(SCALE_CALIB_1M.read_text(encoding="utf-8"))
+    calib_10m = json.loads(SCALE_CALIB_10M.read_text(encoding="utf-8"))
+    build_30m = json.loads(SCALE_BUILD_30M.read_text(encoding="utf-8"))
+    build_100m = json.loads(SCALE_BUILD_100M.read_text(encoding="utf-8"))
+    qf_30m = json.loads(SCALE_QUERYFLOOR_30M.read_text(encoding="utf-8"))
+    qf_100m = json.loads(SCALE_QUERYFLOOR_100M.read_text(encoding="utf-8"))
+    rec_30m_ce500 = json.loads(SCALE_RECOVERY_30M_CE500.read_text(encoding="utf-8"))
+    rec_30m_ce5000 = json.loads(SCALE_RECOVERY_30M_CE5000.read_text(encoding="utf-8"))
+    rec_100m_ce5000 = json.loads(SCALE_RECOVERY_100M_CE5000.read_text(encoding="utf-8"))
+
+    rows = []
+
+    def build_wall(scale, rec, source):
+        rows.append({"scale": scale, "quantity": "build_wall_s",
+                     "value": rec["build_info"]["wall_s"], "unit": "s",
+                     "source_file": source, "note": ""})
+
+    def build_vmhwm(scale, rec, source):
+        vmhwm_kb = rec["build_info"]["peak_rss"]["vmhwm"]
+        rows.append({"scale": scale, "quantity": "build_vmhwm_gb",
+                     "value": round(vmhwm_kb / _KB_PER_CAMPAIGN_GB, 6), "unit": "GB",
+                     "source_file": source,
+                     "note": "campaign convention: vmhwm_kb / 1e6, see README's unit note"})
+
+    build_wall("1M", calib_1m, "itiger-calib-1m.json")
+    build_vmhwm("1M", calib_1m, "itiger-calib-1m.json")
+    # itiger-calib-1m.json's own "recovery" sub-record is the frozen
+    # --compact-every 500 protocol (its own invocation string names the
+    # cadence); no query-ready-floor figure exists in this record.
+    rows.append({"scale": "1M", "quantity": "recovery_wall_s_ce500",
+                 "value": calib_1m["recovery"]["wall_s"], "unit": "s",
+                 "source_file": "itiger-calib-1m.json",
+                 "note": "cadence 500 (frozen protocol), digest_equal="
+                         f"{calib_1m['recovery']['digest_equal']}"})
+
+    build_wall("10M", calib_10m, "itiger-calib-10m.json")
+    build_vmhwm("10M", calib_10m, "itiger-calib-10m.json")
+    # No query-ready-floor figure and no recovery sub-record at all in
+    # itiger-calib-10m.json -- both left as gaps, not estimated.
+
+    build_wall("30M", build_30m, "build-30m.json")
+    build_vmhwm("30M", build_30m, "build-30m.json")
+    rows.append({"scale": "30M", "quantity": "query_ready_floor_vmhwm_gb",
+                 "value": round(qf_30m["vmhwm_kb"] / _KB_PER_CAMPAIGN_GB, 6), "unit": "GB",
+                 "source_file": "queryfloor-30m.json",
+                 "note": f"n_ok={qf_30m['n_ok']}/{qf_30m['n_queries']}, job 213173 (clean, "
+                         "read_only=True fix)"})
+    rows.append({"scale": "30M", "quantity": "recovery_wall_s_ce500",
+                 "value": rec_30m_ce500["replay_wall_s"], "unit": "s",
+                 "source_file": "recovery-30m.json",
+                 "note": "cadence 500 (frozen protocol), digest_equal="
+                         f"{rec_30m_ce500['digest_compare']['digest_equal']}"})
+    rows.append({"scale": "30M", "quantity": "recovery_wall_s_ce5000",
+                 "value": rec_30m_ce5000["replay_wall_s"], "unit": "s",
+                 "source_file": "recovery-30m-ce5000.json",
+                 "note": "cadence 5000 (Addendum 6), digest_equal="
+                         f"{rec_30m_ce5000['digest_compare']['digest_equal']}"})
+
+    build_wall("100M", build_100m, "build-100m.json")
+    build_vmhwm("100M", build_100m, "build-100m.json")
+    rows.append({"scale": "100M", "quantity": "query_ready_floor_vmhwm_gb",
+                 "value": round(qf_100m["vmhwm_kb"] / _KB_PER_CAMPAIGN_GB, 6), "unit": "GB",
+                 "source_file": "queryfloor-100m.json",
+                 "note": f"n_ok={qf_100m['n_ok']}/{qf_100m['n_queries']}, job 213189"})
+    # No 500-cadence 100M recovery run exists or was ever planned
+    # (Addendum 6 ruled it infeasible, ~45h extrapolated) -- ce5000 is the
+    # campaign's only 100M recovery data point.
+    rows.append({"scale": "100M", "quantity": "recovery_wall_s_ce5000",
+                 "value": rec_100m_ce5000["replay_wall_s"], "unit": "s",
+                 "source_file": "recovery-100m-ce5000.json",
+                 "note": "cadence 5000 (only 100M recovery point; no ce500 100M run exists), "
+                         "digest_equal="
+                         f"{rec_100m_ce5000['digest_compare']['digest_equal']}"})
+
+    return {"rows": rows}
+
+
+def write_scale_costs_csv(data: dict) -> str:
+    header = ["scale", "quantity", "value", "unit", "source_file", "note"]
+    rows = [[r["scale"], r["quantity"], r["value"], r["unit"], r["source_file"], r["note"]]
+            for r in data["rows"]]
+    return write_csv(OUT_DIR / "f11_b7_scale_costs.csv", header, rows)
+
+
+_SCALE_COSTS_X = {"1M": 1, "10M": 10, "30M": 30, "100M": 100}
+
+
+def plot_scale_costs(data: dict) -> None:
+    _require_mpl()
+    by_quantity: dict[str, list[tuple[int, float, dict]]] = {}
+    for r in data["rows"]:
+        by_quantity.setdefault(r["quantity"], []).append(
+            (_SCALE_COSTS_X[r["scale"]], r["value"], r))
+
+    panels = [
+        ("build_wall_s", "build wall, s"),
+        ("build_vmhwm_gb", "build VmHWM, GB"),
+        ("query_ready_floor_vmhwm_gb", "query-ready floor VmHWM, GB"),
+        ("recovery", "recovery wall, s (cadence labelled)"),
+    ]
+
+    with plt.rc_context(STYLE):
+        fig, axes = plt.subplots(2, 2, figsize=(8.5, 6.5))
+        for ax, (key, ylabel) in zip(axes.flat, panels):
+            if key == "recovery":
+                for quantity, marker in (("recovery_wall_s_ce500", "o"),
+                                          ("recovery_wall_s_ce5000", "s")):
+                    pts = sorted(by_quantity.get(quantity, []))
+                    if not pts:
+                        continue
+                    xs = [p[0] for p in pts]
+                    ys = [p[1] for p in pts]
+                    cadence = "500" if quantity.endswith("ce500") else "5000"
+                    ax.plot(xs, ys, marker=marker, color="black", linestyle="--",
+                            label=f"cadence {cadence}")
+                    for x, y in zip(xs, ys):
+                        ax.annotate(f"ce{cadence}", (x, y), fontsize=6,
+                                    textcoords="offset points", xytext=(4, 4))
+                ax.legend(fontsize=6)
+            else:
+                pts = sorted(by_quantity.get(key, []))
+                xs = [p[0] for p in pts]
+                ys = [p[1] for p in pts]
+                ax.plot(xs, ys, marker="o", color="black")
+            ax.set_xscale("log")
+            ax.set_yscale("log")
+            ax.set_xticks([1, 10, 30, 100])
+            ax.set_xticklabels(["1M", "10M", "30M", "100M"])
+            ax.set_xlabel("scale (entities)")
+            ax.set_ylabel(ylabel)
+
+        fig.suptitle("B7 scale costs: build / query-ready floor / recovery, 1M-100M", fontsize=9)
+        fig.tight_layout()
+        _savefig(fig, OUT_DIR / "f11_b7_scale_costs")
 
 
 # --------------------------------------------------------------------------
@@ -1158,6 +1335,8 @@ DELIVERABLES = [
      "f_overhead_ladder.csv"),
     ("scale_curve", build_scale_curve_data, write_scale_curve_csv, plot_scale_curve,
      "f_b7_scale_curve.csv"),
+    ("scale_costs", build_scale_costs_data, write_scale_costs_csv, plot_scale_costs,
+     "f11_b7_scale_costs.csv"),
 ]
 # `csv_filename` (not a precomputed path) so every consumer -- main() below,
 # and tests that monkeypatch module-level OUT_DIR -- resolves the path
