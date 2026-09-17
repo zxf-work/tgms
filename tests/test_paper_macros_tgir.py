@@ -1,6 +1,6 @@
 """`scripts/tgir_paper_macros.py`'s pure helpers and its `--root` re-rooting.
 
-The generator itself is self-checking — it runs 592 assertions over the
+The generator itself is self-checking — it runs 716 assertions over the
 row-level records and refuses to write on any failure — so there is nothing
 useful to re-assert about its *values* here.  What a test can pin, and what
 this repository cannot exercise end to end, is different:
@@ -39,8 +39,12 @@ from __future__ import annotations
 
 import json
 import re
+import statistics
 import sys
+from collections import Counter
 from pathlib import Path
+
+import yaml
 
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "scripts"))
@@ -143,6 +147,128 @@ def test_is2_macro_values_pin_the_ldbc_short_read() -> None:
     char_plans = frontier["arms"]["characterization-interactive"]["per_plan"]
     is2_classifier = next(p["classifier"] for p in char_plans if p["plan_id"] == "IS2")
     assert is2_classifier == "false-admission"
+
+
+def test_ref_v1_macro_values_pin_the_external_baseline() -> None:
+    """The \\tgRef* family, recomputed from the checked-in ldbc-ref-v1 records
+    --- like the IS2 test above, this needs no docs/design/.
+
+    What is worth pinning here is not arithmetic but *which* arithmetic: the
+    six verdict classes have to partition the 24 templates with the timeout
+    counted from the TGIR outcome rather than from a verdict (the comparator
+    never saw a row dump for it), the row fraction has to be taken over the 16
+    templates that produced a comparison rather than over all 24 (7 have an
+    invalid reference side, and pooling them would silently deflate it), and
+    the Neo4j figure has to be the median of the three *timed* runs with the
+    warm-up excluded.  Each of those is a plausible wrong reading, and each
+    would still produce a number.
+    """
+    compare = json.loads(TPM.REF_COMPARE.read_text(encoding="utf-8"))
+    timings = json.loads(TPM.REF_TIMINGS.read_text(encoding="utf-8"))
+    manifest = json.loads(TPM.REF_MANIFEST.read_text(encoding="utf-8"))
+    campaign = yaml.safe_load(TPM.REF_CAMPAIGN_YAML.read_text(encoding="utf-8"))
+
+    verdicts = compare["verdicts"]
+    entries = {e["template"]: e for e in timings["templates"]}
+    assert len(verdicts) == compare["manifest"]["plans"] == 24      # \tgRefTemplates
+    assert sorted(entries) == sorted(v["plan_id"].split(".")[0] for v in verdicts)
+
+    classes = Counter(v.get("verdict") for v in verdicts)
+    counts = campaign["addendum_2"]["verdict_counts"]
+    outcomes = Counter(e["tgir"]["outcome"] for e in timings["templates"])
+    assert classes["agreeing"] == counts["agree"] == 14             # \tgRefAgree
+    assert (classes["reference-column-not-projected"]
+            == counts["reference_column_not_projected"] == 3)       # \tgRefRefColNotProjected
+    assert counts["disagreeing_but_not_comparable"] == 5            # \tgRefNotComparable
+    assert counts["disagreeing_genuine"] == 1                       # \tgRefDisagree
+    assert classes["disagreeing"] == 5 + 1
+    assert outcomes["TIMEOUT"] == counts["timeout"] == 1            # \tgRefTimeout
+    assert outcomes["ERRORED"] == counts["error"] == 0              # \tgRefError
+    assert 14 + 3 + 5 + 1 + 1 + 0 == len(verdicts)
+
+    # the comparable subset, and the row fraction over exactly it
+    not_scoreable = set(campaign["addendum_2"]["scoring"]["per_template"]["not_scoreable"])
+    comparable = [v for v in verdicts if v["plan_id"].split(".")[0] not in not_scoreable]
+    assert len(comparable) == 16                                    # \tgRefComparable
+    rows_agree = sum(v["agreeing"] for v in comparable)
+    rows_total = sum(v["compared"] for v in comparable)
+    assert (rows_agree, rows_total) == (282, 329)                   # \tgRefRows{Agree,Total}
+    assert f"{rows_agree / rows_total:.3f}" == "0.857"              # \tgRefRowsAgreeFrac
+    assert rows_agree == sum(v["agreeing"] for v in verdicts)
+    # pooling the invalid-reference templates in would be the wrong reading
+    assert sum(v["compared"] for v in verdicts) > rows_total
+
+    disagreeing = [v for v in comparable if v["disagreeing"]]
+    assert [v["plan_id"] for v in disagreeing] == ["IS3"]           # \tgRefDisagreeRow
+    assert disagreeing[0]["disagreeing"] == rows_total - rows_agree == 47
+    assert entries["IS3"]["tgir"]["rows"] == 48                     # \tgRefIsThreeTgir
+    assert entries["IS3"]["neo4j"]["rows"] == 24                    # \tgRefIsThreeNeo
+    assert entries["IS3"]["tgir"]["rows"] == 2 * entries["IS3"]["neo4j"]["rows"]
+
+    timed_out = [e for e in timings["templates"] if e["tgir"]["outcome"] == "TIMEOUT"]
+    assert [e["tgir_plan"] for e in timed_out] == ["BI6.v2.json"]   # \tgRefTimeoutRow
+    ceilings = manifest["protocol"]["ceilings"]
+    assert (ceilings["tgir_bypass_ceiling_s"]
+            + ceilings["tgir_child_open_allowance_s"]) == 1020      # \tgRefTimeoutCeilingS
+
+    families = Counter(v["plan_id"][:2] for v in verdicts)
+    agreeing = Counter(v["plan_id"][:2] for v in verdicts if v.get("verdict") == "agreeing")
+    assert (families["BI"], families["IC"], families["IS"]) == (10, 7, 7)
+    assert (agreeing["BI"], agreeing["IC"], agreeing["IS"]) == (5, 3, 6)
+    assert sum(families.values()) == 24 and sum(agreeing.values()) == 14
+
+    # the median of t1/t2/t3 --- never the warm-up, which is systematically slower
+    median = {t: statistics.median([e["neo4j"]["wall_s"][k] for k in ("t1", "t2", "t3")])
+              for t, e in entries.items()}
+    assert f"{min(median.values()):.3f}" == "0.008"                 # \tgRefNeoMinS
+    assert f"{max(median.values()):.3f}" == "1.816"                 # \tgRefNeoMaxS
+    warmups = {t: e["neo4j"]["wall_s"]["warmup"] for t, e in entries.items()}
+    assert median != warmups
+
+    ms = {t: e["tgir"]["ms"] for t, e in entries.items() if e["tgir"]["ms"] is not None}
+    assert len(ms) == 23
+    assert f"{min(ms.values()) / 1000:.1f}" == "0.1"                # \tgRefTgirMinS
+    assert f"{max(ms.values()) / 1000:.1f}" == "148.1"              # \tgRefTgirMaxS
+    assert manifest["config"]["neo4j_version"] == "5.26.0"          # \tgRefNeoVersion
+    # no import wall is recorded in the manifest, so no macro is emitted for one
+    assert "import_wall_s" not in manifest["config"]
+
+    assert f"{median['IS2']:.3f}" == "0.016"                        # \tgRefIsTwoNeoMedianS
+    assert f"{ms['IS2'] / 1000:.1f}" == "6.7"                       # \tgRefIsTwoTgirS
+
+
+def test_char_rerun_macro_values_pin_the_reproduction() -> None:
+    """The \\tgSfOneChar* family: the corrected interactive-set reproduction
+    against the original campaign's 11 Interactive rows.
+
+    The denominator is the trap.  The reproduction ran 14 plans (the original
+    11 plus the three post-freeze IS1/IS4/IS5 rows), but only 11 of them have
+    anything to be compared against, so the row-count and wall-ratio claims
+    are over 11 while the completion claim is over 14.
+    """
+    rerun = json.loads(TPM.SF1_CHAR_RERUN.read_text(encoding="utf-8"))
+    original = json.loads(TPM.SF1_CAMPAIGN.read_text(encoding="utf-8"))
+
+    assert rerun["manifest"]["commit"] == "54dcab03b311"      # \tgSfOneCharRerunCommit
+    assert rerun["manifest"]["utc"].split("T")[0] == "2026-09-16"  # \tgSfOneCharRerunDate
+    assert rerun["manifest"]["supersedes"]["arm"] == "characterization-interactive"
+
+    records = {r["plan_id"]: r for r in rerun["records"]}
+    completed = [r for r in rerun["records"] if r["outcome"] == "COMPLETED"]
+    assert len(completed) == len(records) == 14              # \tgSfOneCharCompleted
+
+    originals = {r["plan_id"]: r for r in original["records"]
+                 if r["arm"] == "characterization-interactive"}
+    assert len(originals) == 11
+    assert set(originals) < set(records)
+    assert sorted(set(records) - set(originals)) == ["IS1", "IS4", "IS5"]
+
+    equal = sum(1 for p, o in originals.items() if records[p]["rows"] == o["rows"])
+    assert equal == 11                                       # \tgSfOneCharCountEqual
+    ratios = {p: records[p]["ms"] / o["ms"] for p, o in originals.items()}
+    assert f"{min(ratios.values()):.2f}" == "0.07"           # \tgSfOneCharWallMin
+    assert f"{max(ratios.values()):.2f}" == "0.96"           # \tgSfOneCharWallMax
+    assert max(ratios.values()) < 1.0
 
 
 def test_set_root_repoints_every_source(tmp_path: Path) -> None:

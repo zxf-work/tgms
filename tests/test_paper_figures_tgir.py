@@ -11,8 +11,13 @@ contract a paper build and a source reviewer both depend on:
     the *same* dicts as `e14-p3-frontier.json`'s own `per_plan` records, so a
     reviewer of the source can trace every plotted point back to its record
     without trusting the plotting code in between;
-  - when `benchmarks/ldbc-ref-v1/{tgms,neo4j}-campaign.json` do not exist
-    (true as of this writing -- the LDBC reference campaign has not landed),
+  - `figures.json`'s neo4j series are the *executed* reference run's own
+    numbers: the Neo4j side is the median of `timings-2026-09-17.json`'s three
+    timed runs per template (the warm-up excluded, which is the easy thing to
+    get wrong) and the TGIR side that record's `ms` in seconds, with the one
+    timed-out template carried as a timeout at the pre-registered ceiling
+    rather than as a measured value;
+  - the placeholder path still works -- on a root without that record,
     `fig-neo4j.pdf` is the documented placeholder and `figures.json` says so,
     rather than the script failing or silently fabricating a comparison.
 
@@ -33,6 +38,7 @@ from __future__ import annotations
 import importlib
 import json
 import re
+import statistics
 import subprocess
 import sys
 import zlib
@@ -172,27 +178,83 @@ def test_admission_points_equal_the_source_record(tmp_path: Path) -> None:
     assert admission["ceiling_ms"] == frontier["manifest"]["budget_ms"]
 
 
-@requires_matplotlib
-def test_neo4j_figure_is_the_placeholder_when_records_are_absent(tmp_path: Path) -> None:
-    """As of this writing benchmarks/ldbc-ref-v1/{tgms,neo4j}-campaign.json do
-    not exist (only campaign.yaml / RUNBOOK.md / sort_keys.yaml do) -- the
-    reader must be tolerant of that and the paper must still build."""
-    ref_dir = ROOT / "benchmarks" / "ldbc-ref-v1"
-    assert not (ref_dir / "tgms-campaign.json").exists()
-    assert not (ref_dir / "neo4j-campaign.json").exists()
+def _figures_module():
+    sys.path.insert(0, str(ROOT / "scripts"))
+    return importlib.import_module("tgir_paper_figures")
 
+
+@requires_matplotlib
+def test_neo4j_figure_is_the_placeholder_when_the_record_is_absent(tmp_path: Path) -> None:
+    """A checkout without `benchmarks/ldbc-ref-v1/timings-2026-09-17.json`
+    (a public worktree, or this repository before 2026-09-17) must still build
+    the paper: the reader returns None, the figure is the documented
+    placeholder, and `figures.json` says `available: false` rather than
+    carrying an empty comparison that reads like a real one.
+
+    Driven through `build_neo4j`/`plot_neo4j` on an empty root rather than
+    through the whole script, because the *other* two figures' records do
+    exist and a root missing everything would fail for unrelated reasons."""
+    mod = _figures_module()
+    mod._require_matplotlib()
+
+    data = mod.build_neo4j(tmp_path)
+    assert data["available"] is False
+    assert data["tgms"] == {}
+    assert data["neo4j"] == {}
+    assert data["timed_out"] == []
+    assert data["ceiling_s"] is None
+    assert data["common_plan_ids"] == []
+    assert data["timings_source"] == "benchmarks/ldbc-ref-v1/timings-2026-09-17.json"
+
+    summary = mod.plot_neo4j(data, tmp_path)
+    assert "PLACEHOLDER" in summary
+    text = _extract_pdf_text(tmp_path / "fig-neo4j.pdf")
+    assert "NEED EXPERIMENTAL RESULT: ldbc-ref-v1" in text, text
+
+
+@requires_matplotlib
+def test_neo4j_points_are_the_records_medians(tmp_path: Path) -> None:
+    """The plotted Neo4j value is the median of the record's three *timed*
+    runs -- not the mean, and not any of them individually, and above all not
+    the warm-up, which `timings-2026-09-17.json` reports alongside them and
+    which a reader of the figure must never be shown."""
     proc, out_dir = _run(tmp_path)
     assert proc.returncode == 0, proc.stderr
 
-    figures = json.loads((out_dir / "figures.json").read_text(encoding="utf-8"))
-    neo4j = figures["fig-neo4j"]
-    assert neo4j["available"] is False
-    assert neo4j["tgms"] == {}
-    assert neo4j["neo4j"] == {}
-    assert neo4j["common_plan_ids"] == []
+    ref_dir = ROOT / "benchmarks" / "ldbc-ref-v1"
+    timings = json.loads((ref_dir / "timings-2026-09-17.json").read_text(encoding="utf-8"))
+    manifest = json.loads((ref_dir / "manifest-2026-09-17.json").read_text(encoding="utf-8"))
+    entries = {e["template"]: e for e in timings["templates"]}
 
-    text = _extract_pdf_text(out_dir / "fig-neo4j.pdf")
-    assert "NEED EXPERIMENTAL RESULT: ldbc-ref-v1" in text, text
+    neo4j = json.loads((out_dir / "figures.json").read_text(encoding="utf-8"))["fig-neo4j"]
+    assert neo4j["available"] is True
+    assert set(neo4j["common_plan_ids"]) == set(entries)
+
+    for template, plotted in neo4j["neo4j"].items():
+        wall = entries[template]["neo4j"]["wall_s"]
+        timed = [wall["t1"], wall["t2"], wall["t3"]]
+        assert plotted == statistics.median(timed), template
+    # and the series as a whole is not the warm-up series
+    warmups = {t: entries[t]["neo4j"]["wall_s"]["warmup"] for t in neo4j["neo4j"]}
+    assert neo4j["neo4j"] != warmups
+
+    for template, plotted in neo4j["tgms"].items():
+        assert plotted == entries[template]["tgir"]["ms"] / 1000.0, template
+
+    # a timeout is not a measurement: it carries no `ms` and is drawn at the
+    # ceiling the manifest pre-registers (600 s bypass + 420 s store open).
+    timed_out = neo4j["timed_out"]
+    assert timed_out == [t for t, e in entries.items() if e["tgir"]["outcome"] == "TIMEOUT"]
+    assert set(timed_out).isdisjoint(neo4j["tgms"])
+    ceilings = manifest["protocol"]["ceilings"]
+    assert neo4j["ceiling_s"] == float(
+        ceilings["tgir_bypass_ceiling_s"] + ceilings["tgir_child_open_allowance_s"])
+
+    # rows are grouped BI / IC / IS, and numerically inside each family
+    families = [t[:2] for t in neo4j["common_plan_ids"]]
+    assert families == sorted(families, key=("BI", "IC", "IS").index)
+    bi = [t for t in neo4j["common_plan_ids"] if t.startswith("BI")]
+    assert bi == sorted(bi, key=lambda t: int(t[2:]))
 
 
 @requires_matplotlib
