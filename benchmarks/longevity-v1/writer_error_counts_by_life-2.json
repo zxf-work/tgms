@@ -1,0 +1,54 @@
+{
+  "per_life": {
+    "0": {
+      "appends": 496943,
+      "artifact_checks": 333,
+      "artifact_invalidations": 160,
+      "artifact_refreshes": 160,
+      "corrections_applied": 120076,
+      "corrections_skipped": 79261,
+      "errors": 220,
+      "errors_by_class": {
+        "NotFoundError": 220
+      }
+    },
+    "1": {
+      "appends": 397791,
+      "artifact_checks": 42,
+      "artifact_invalidations": 19,
+      "artifact_refreshes": 19,
+      "corrections_applied": 96236,
+      "corrections_skipped": 63815,
+      "errors": 159,
+      "errors_by_class": {
+        "NotFoundError": 159
+      }
+    },
+    "2": {
+      "appends": 329759,
+      "artifact_checks": 24,
+      "artifact_invalidations": 1,
+      "artifact_refreshes": 1,
+      "corrections_applied": 79944,
+      "corrections_skipped": 52666,
+      "errors": 131,
+      "errors_by_class": {
+        "NotFoundError": 131
+      }
+    },
+    "3": {
+      "appends": 297839,
+      "artifact_checks": 18,
+      "artifact_invalidations": 1,
+      "artifact_refreshes": 1,
+      "corrections_applied": 72119,
+      "corrections_skipped": 47936,
+      "errors": 106,
+      "errors_by_class": {
+        "NotFoundError": 106
+      }
+    }
+  },
+  "source": "writer_progress-<life>.json (totals) + longevity_ledger.jsonl event=writer_op_error (by exception class)",
+  "true_total_writer_errors_all_lives": 616
+}

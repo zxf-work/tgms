@@ -1,0 +1,153 @@
+{
+  "by_class_total": {
+    "OSError": 150278720.0,
+    "StateError": 197792.0
+  },
+  "note": "OSError values are near-identical across the 4 query ids for a given reader because the underlying store handle fails uniformly once broken; StateError values differ slightly by query id. Exception CLASS only is recorded in metrics labels (no message text), so the pin addendum's specific message ('no terminating newline and is not the log's last record') cannot be isolated from the sibling StateError raise site ('... Expecting ... delimiter ... may not be on a record boundary') in tgms/storage/eventlog.py without raw text; both raise StateError.",
+  "osrror_storm_onset_by_reader": {
+    "0": {
+      "final_t_plus_s": 86201.8,
+      "final_value": 7809559.0,
+      "onset_t_plus_s": 71207.9
+    },
+    "1": {
+      "final_t_plus_s": 86201.4,
+      "final_value": 4798681.0,
+      "onset_t_plus_s": 66567.4
+    },
+    "2": {
+      "final_t_plus_s": 86201.4,
+      "final_value": 3916090.0,
+      "onset_t_plus_s": 72379.0
+    },
+    "3": {
+      "final_t_plus_s": 86201.4,
+      "final_value": 3160064.0,
+      "onset_t_plus_s": 67179.0
+    },
+    "4": {
+      "final_t_plus_s": 86201.5,
+      "final_value": 5499845.0,
+      "onset_t_plus_s": 75993.1
+    },
+    "5": {
+      "final_t_plus_s": 86201.4,
+      "final_value": 2319881.0,
+      "onset_t_plus_s": 65263.4
+    },
+    "6": {
+      "final_t_plus_s": 86215.0,
+      "final_value": 3860011.0,
+      "onset_t_plus_s": 61417.1
+    },
+    "7": {
+      "final_t_plus_s": 86201.5,
+      "final_value": 6205549.0,
+      "onset_t_plus_s": 66920.8
+    }
+  },
+  "per_reader_by_class_by_query": {
+    "0": {
+      "OSError": {
+        "coactive.narrow": 7809559.0,
+        "hist.single": 7809559.0,
+        "series.count": 7809559.0,
+        "snap.hop2": 7809559.0
+      },
+      "StateError": {
+        "coactive.narrow": 8156.0,
+        "hist.single": 5825.0,
+        "series.count": 8156.0,
+        "snap.hop2": 8156.0
+      }
+    },
+    "1": {
+      "OSError": {
+        "coactive.narrow": 4798681.0,
+        "hist.single": 4798681.0,
+        "series.count": 4798681.0,
+        "snap.hop2": 4798681.0
+      },
+      "StateError": {
+        "coactive.narrow": 8429.0,
+        "hist.single": 6021.0,
+        "series.count": 8429.0,
+        "snap.hop2": 8429.0
+      }
+    },
+    "2": {
+      "OSError": {
+        "coactive.narrow": 3916090.0,
+        "hist.single": 3916090.0,
+        "series.count": 3916090.0,
+        "snap.hop2": 3916090.0
+      },
+      "StateError": {
+        "coactive.narrow": 8280.0,
+        "hist.single": 5835.0,
+        "series.count": 8280.0,
+        "snap.hop2": 8280.0
+      }
+    },
+    "3": {
+      "OSError": {
+        "coactive.narrow": 3160064.0,
+        "hist.single": 3160064.0,
+        "series.count": 3160064.0,
+        "snap.hop2": 3160064.0
+      }
+    },
+    "4": {
+      "OSError": {
+        "coactive.narrow": 5499845.0,
+        "hist.single": 5499845.0,
+        "series.count": 5499845.0,
+        "snap.hop2": 5499845.0
+      },
+      "StateError": {
+        "coactive.narrow": 6004.0,
+        "hist.single": 6004.0,
+        "series.count": 6004.0,
+        "snap.hop2": 6004.0
+      }
+    },
+    "5": {
+      "OSError": {
+        "coactive.narrow": 2319881.0,
+        "hist.single": 2319881.0,
+        "series.count": 2319881.0,
+        "snap.hop2": 2319881.0
+      },
+      "StateError": {
+        "coactive.narrow": 16485.0,
+        "hist.single": 8289.0,
+        "series.count": 16485.0,
+        "snap.hop2": 16485.0
+      }
+    },
+    "6": {
+      "OSError": {
+        "coactive.narrow": 3860011.0,
+        "hist.single": 3860011.0,
+        "series.count": 3860011.0,
+        "snap.hop2": 3860011.0
+      }
+    },
+    "7": {
+      "OSError": {
+        "coactive.narrow": 6205549.0,
+        "hist.single": 6205549.0,
+        "series.count": 6205549.0,
+        "snap.hop2": 6205549.0
+      },
+      "StateError": {
+        "coactive.narrow": 5939.0,
+        "hist.single": 5939.0,
+        "series.count": 5939.0,
+        "snap.hop2": 5939.0
+      }
+    }
+  },
+  "source": "metrics.jsonl kind=counter name=reader_errors_total, latest value per (reader,query,error) key",
+  "total_reader_errors_total": 150476512.0
+}

@@ -1,0 +1,8 @@
+store:      /mnt/project/xzhang/tgms/longevity/2026-09-16-soak2/store
+mode:       full
+generation: 1894946
+checked:    5 segments (3022877 rows), 0 close runs (0 closes), 3092488 dictionary records
+walked:     3022877 rows (2734334 believed) across 2647008 identities
+layout:     1995715 tt_s runs across live segments, 1583554 in the worst one
+
+verdict: healthy — every referenced file passed its checksums, every cross-reference resolved, and every bitemporal invariant held

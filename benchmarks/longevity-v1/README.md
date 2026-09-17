@@ -552,3 +552,285 @@ under. Two things it does affect:
 `disc`, never the implicit default or a hard-coded literal) after this soak
 ran; this caveat documents what the already-committed record above
 measured, not a re-run.
+
+## Soak 2 (post-fix)
+
+**Pre-registration (OSDI'27 plan §4.3b, P-SOAK2).** Same harness and
+parameters as the first soak above (`stores/synth-1m-native`, `--mix
+balanced --readers 8 --compact-every-batches 500
+--compact-min-interval-s 5 --reader-reopen-every-s 300 --artifacts 500
+--seed 0 --max-disk-mb 20000 --duration 24h`), with two frozen changes:
+`--restart-every 6h` (4 writer lives instead of 42, so a leak cannot hide
+behind frequent restarts) and the end-of-run replay/digest step left ON
+(the harness now compacts every 500 applied batches during replay by
+default, per B7c). **Pin addendum (2026-09-16, before dispatch):** moved
+from `54dcab0` to `eed91c0` — `54dcab0` + the D-086 stale-snapshot reader
+fix (`tgms/storage/eventlog.py`) + the storm-v1 macros script;
+`git diff 54dcab0 eed91c0 -- crates/` is empty (confirmed before the
+build), so the engine is unchanged and this remains a valid measurement
+of the D-086 fix's effect on the read path the soak's 8 reopening readers
+exercise.
+
+- **commit measured**: `eed91c0`, pinned worktree
+  `/mnt/project/xzhang/tgms/work/tgms-xz-eed91c0` on xzgpu, engine built
+  release (`build_info()`: `profile: release`, `debug_assertions: False`,
+  `manifest_format_version: 3`; `build_info-2.log`)
+- **launched**: 2026-09-16T00:53:01Z; **`RUN_DONE`**: 2026-09-17T18:27:06Z
+  (`digest_equal=True verify_healthy=True recoveries=3 reader_restarts=0
+  errors=150477128` — the last figure is explained below, not corrected)
+- **wall clock**: 149,616.5 s per the manifest's own `summary.wall_s`
+  (includes the final `verify()` + replay/digest check + the full-mode
+  `tgms check` this record adds below; the soak's own `--duration 24h`
+  elapsed at 86,400s as designed)
+- **manifest**: `longevity-synth-1m-native-1.json`, conforms to
+  `benchmarks/schema/result_manifest.schema.json`
+  (`scripts/check_result_manifest.py` — exit 0)
+- **manifest sha256**:
+  `19b597db12c6830859f5317ec8bdb630e4599c2fed8924ed26d41edc1cc23f68`
+- **result_digest**: `4d1f4c3b5fba78373759de5b8cbef599b7ab5cdfd75174c4ac4d35d130b86644`
+- as with the first soak, `metrics.jsonl` (40.8 MB) and the store copy
+  stay on xzgpu (`/mnt/project/xzhang/tgms/longevity/2026-09-16-soak2/`);
+  this directory holds only the manifest and small side-record files.
+
+### Gate E table (`gate_e_report-2.md`, `scripts/longevity_report.py`, current harness)
+
+| check | verdict | detail |
+|---|---|---|
+| deterministic final state (verify() clean + replay digest equality) | **PASS** | verify_healthy=True digest_equal=**True** (the replay actually ran this time — `compact_every=500` kept the disk-guard projection to ≈61 MB, as the first soak's own follow-up predicted) |
+| bounded metadata growth (manifest bytes slope) | FAIL | manifests 3.141 B/s, segments 2,396.455 B/s |
+| no unbounded memory (RSS slope, whole-run first-vs-last) | FAIL | 56.275 kB/s |
+| no unbounded memory (RSS slope, **within-life**, the frozen prediction's own metric) | **PASS** | median 27.965 kB/s; all 4 lives 20.98-43.49 kB/s, every one **under the 50 kB/s frozen bound** and an order of magnitude below the first soak's 1,921.1-4,154.2 kB/s per-life range |
+| throughput/latency drift (first hour vs. last hour) | FAIL | throughput 39.91 -> 19.12 commits/s, p99 60.42 -> 82.08 ms |
+| compaction stalls | info | 0.000 ms max reader p99 during a compaction window |
+| errors observed | **FLAG** | manifest says **150,477,128** — real, not a double-counting artifact (see below); dominated by a reader-side failure storm that is this soak's headline finding |
+| recoveries / reader restarts | info | 3 designed / 0 | 
+
+**Reading the FAIL rows.** "Bounded metadata growth" and "throughput/latency
+drift" are FAIL under the *current* `longevity_report.py`'s own verdict
+logic, which is a genuine discrepancy against this run's own pre-registered
+prediction ("metadata growth PASS", "throughput/p99 drift within the frozen
+bar") — flagged here, not explained away. The formal refutation clause in
+the pre-registration names four specific conditions only (any life's
+within-life RSS slope > 50 kB/s, the digest differing, a reader dying, or
+full verify reporting any overlap); none of those four occurred, so P-SOAK2
+is **not refuted** by its own stated bar, but the metadata-growth and
+drift-verdict mismatches against the softer, descriptive predictions are
+real and unresolved — not investigated further here (out of this record
+step's scope).
+
+### `errors observed`: 150,477,128 is real, not a delta-vs-cumulative bug — it is a reader-side failure storm
+
+The coordinator's first suspect was the `54dcab0` cumulative-vs-delta
+counter fix (`_emit_cumulative_counters`, see the first soak's own "errors
+observed" section above) recurring in a new form. **Checked and ruled
+out**: every `metrics.counter()` call site in this commit's
+`scripts/longevity_run.py` (`writer_errors_total`, `reader_errors_total`,
+`reader_reopens_total`, `queries_total`, `artifact_*_total`,
+`compactions*_total`) passes a genuine per-event or per-period **delta**
+(mostly the implicit default of 1, once per exception or event), not a
+snapshotted running total; `Metrics.flush()` rewrites every tracked key's
+current in-memory value on every call, so `summarize()`'s `counter_sum`
+(latest value per `(name, labels)` key, summed across keys) is
+mathematically the correct total regardless of flush frequency. Cross-checked
+directly: `reader_error_counts_by_class-2.json`'s per-reader totals (from
+`metrics.jsonl`'s own latest-per-key counter values) match each reader's
+own final `errors` dict in `reader-<idx>-progress.json` exactly (e.g.
+reader 0: `hist.single=7,809,559` both places, modulo one final flush's
+worth of drift). The number is real.
+
+`error_count = writer_errors_life_summed (616) + reader_errors_total
+(150,476,512) + unexpected_recoveries (0) = 150,477,128`.
+
+**Writer side (616, unremarkable, same shape as soak 1's 249):**
+`writer_error_counts_by_life-2.json`, re-derived from the 4
+`writer_progress-<life>.json` files plus `longevity_ledger-2.jsonl`'s 616
+`writer_op_error` entries (this run's ledger carries `error_type` +
+`error_msg` per event, unlike soak 1's):
+
+| life | errors | exception class |
+|---|---:|---|
+| 0 | 220 | `NotFoundError` (100%) |
+| 1 | 159 | `NotFoundError` (100%) |
+| 2 | 131 | `NotFoundError` (100%) |
+| 3 | 106 | `NotFoundError` (100%) |
+
+All 616 are `NotFoundError: no believed node version of <id> overlaps vt`
+(a correction racing ahead of its target's visibility window — the same
+class the harness's own module docstring already expects from an
+unthrottled correction stream) and decline monotonically life-over-life
+(220 -> 106) as the store grows, consistent with the first soak's
+observation that this is a routine, recurring event, not a regression.
+
+**Reader side (150,476,512 — the real story):** `reader_error_counts_by_class-2.json`
+breaks it down by exception class and by reader:
+
+| exception class | total (8 readers x 4 queries) | first soak's equivalent |
+|---|---:|---|
+| `OSError` | 150,278,720 | **0 records of any kind** — `reader_errors_total` never fired once in soak 1's `metrics.jsonl` |
+| `StateError` | 197,792 | 0 (soak 1's only reader-side StateErrors were 2 fatal, uncaught ones that killed and restarted the process — see soak 1's "Reader restarts" section) |
+
+Both classes are **new to this run** — soak 1's `metrics.jsonl` has zero
+`reader_errors_total` records of any kind (checked directly). This is the
+headline, unpredicted finding of P-SOAK2, not a metrics artifact:
+
+- **`OSError` (150.28M events).** All 4 query ids in the mix fail with an
+  identical count for a given reader in most windows — i.e. once a
+  reader's store handle enters this state, every operator call on it
+  fails, not just one query shape. Onset is clustered late in the run:
+  earliest at t+61,417s (reader 6, still inside writer life 2, which
+  spans roughly t+43,003 to t+64,621s) and latest at t+75,993s (reader 4,
+  well into life 3); every affected reader is still erroring at the last
+  sample before `RUN_DONE` (t+86,201-86,215s). None of the 272 periodic
+  reopens (`--reader-reopen-every-s 300`) any affected reader performed
+  after its onset appears to have cleared the condition — the storm is
+  monotonic and does not self-heal. `reader_error_counts_by_class-2.json`
+  has the exact onset timestamp and final count per reader (2.32M-31.24M
+  per reader in OSError-events terms, i.e. summed across its 4 queries).
+  Despite this, `reader_queries_total` (16,055,124, in the manifest) shows
+  real work continued to complete throughout — the storm degrades
+  throughput severely without producing a hard reader crash
+  (`reader_restarts=0` — every affected reader stayed alive and kept
+  retrying). **Root cause not established here.** `pyo3`'s default
+  `std::io::Error -> PyErr` conversion (a bare `OSError`, not the
+  errno-specific subclass CPython's own `OSError.__new__` would pick,
+  because no message-text capture reached this counter's labels) means
+  the label alone cannot say *which* I/O failure this is; onset timing
+  (late in the run, correlated with accumulated store size — `n_entities`
+  reached 3,092,488 by the end, roughly 1.8x soak 1's final count) is
+  consistent with, but does not prove, a compaction-cadence-vs-store-size
+  interaction: this run compacted every ~40s on average (4,215
+  compactions over 86,400s) against a `--reader-reopen-every-s 300`
+  window that was sized for the first soak's much smaller, faster-to-scan
+  store. This needs a dedicated follow-up with message-text capture added
+  to `reader_errors_total`'s labels before it can be root-caused; it is
+  reported here as a real, serious, previously-unobserved regression
+  between `886805f` and `eed91c0`, not resolved.
+- **`StateError` (197,792 events, present in 6 of 8 readers — 3 and 6
+  show none).** `tgms/storage/eventlog.py`'s `EventLog.batches_from` has
+  exactly two `StateError` raise sites, both reachable by a reader racing
+  a live writer's tail: "... is not readable at offset ...: {parse_error}
+  — the replay cursor may not be on a record boundary" (a JSON parse
+  failure) and "... record at offset ... has no terminating newline and
+  is not the log's last record — the replay cursor may not be on a record
+  boundary" (the literal message the pin addendum's added observation
+  named). **This observation is refuted by its own stated bar**: the pin
+  addendum predicted this class of reader-open failure "must not raise it
+  above 0" (soak 1's `reader_errors_total` was 0 under the old rule,
+  though that comparison is confounded — soak 1 never populated this
+  counter for *any* reader error, so "0" there measured "the counter path
+  never fired," not "the specific race never happened"). This run's total
+  is 197,792, unambiguously above 0. The metrics label carries only the
+  exception class, not the message text, so the two raise sites cannot be
+  distinguished here and the exact predicted message cannot be isolated
+  from its sibling — but both indicate the D-086 fix did not eliminate
+  torn-tail races against a live writer at this reopen cadence, only
+  reduced their consequence from "the process dies" (soak 1: 2 reader
+  deaths) to "the process catches it and keeps going" (this run: caught,
+  counted, retried, no death). That direction-of-change is itself
+  consistent with D-086's own design (tolerate more torn-tail cases
+  instead of refusing them) even though the raw count went up, not to 0.
+
+### Per-life / per-reader RSS: least-squares slopes (`rss_slopes-2.json`)
+
+Ordinary least squares of `rss_kb` vs. wall-clock seconds, fit separately
+within each of the writer's 4 lives (split at the 3 recorded restart death
+timestamps in `recoveries-2.jsonl`) and within each of the 8 readers' single
+life each (`reader_restarts=0`, so no reader ever restarts):
+
+| writer life | span (s) | rss first -> last (kB) | slope (kB/s, least squares) | frozen bound |
+|---|---:|---|---:|---:|
+| 0 | 21,412.4 | 2,175,344 -> 3,052,040 | **43.494** | <= 50 |
+| 1 | 21,469.7 | 3,444,068 -> 4,313,180 | **32.365** | <= 50 |
+| 2 | 21,463.3 | 4,054,572 -> 4,919,352 | **20.978** | <= 50 |
+| 3 | 21,412.1 | 3,942,752 -> 4,997,444 | **23.564** | <= 50 |
+
+All 4 lives PASS the frozen 50 kB/s bound (median 27.97 kB/s), an order of
+magnitude below soak 1's 1,921.1-4,154.2 kB/s per-life range — the
+strongest positive signal in this record that the memory-growth-within-a-life
+defect soak 1 found is substantially fixed. (Life 0/1/2's 43.49/32.37/20.98
+kB/s match the coordinator's own independently-computed fit exactly.)
+
+| reader | span (s) | rss first -> last (kB) | slope (kB/s, least squares) | frozen bound |
+|---|---:|---|---:|---:|
+| 0 | 86,334.6 | 137,920 -> 930,948 | 7.212 | <= 10 |
+| 1 | 86,334.4 | 137,864 -> 867,248 | 7.682 | <= 10 |
+| 2 | 86,334.3 | 137,876 -> 887,768 | 8.098 | <= 10 |
+| 3 | 86,334.4 | 137,692 -> 944,276 | 7.599 | <= 10 |
+| 4 | 86,334.5 | 137,724 -> 923,316 | 7.952 | <= 10 |
+| 5 | 86,334.3 | 137,780 -> 941,584 | 7.822 | <= 10 |
+| 6 | 86,347.9 | 138,072 -> 837,628 | 7.772 | <= 10 |
+| 7 | 86,334.3 | 139,416 -> 833,404 | 7.999 | <= 10 |
+
+All 8 readers PASS the frozen 10 kB/s bound, including the readers hit
+hardest by the OSError storm above — the storm degrades read throughput,
+not (visibly) reader memory.
+
+### Full-mode `tgms check` of the final soak store (`verify-full-soak2-2026-09-17.txt`)
+
+Run read-only against the live store as left by the writer at `RUN_DONE`
+(`/mnt/project/xzhang/tgms/longevity/2026-09-16-soak2/store`, generation
+1,894,946; not the throwaway replay store), wall 1m15.8s:
+
+```
+checked:    5 segments (3022877 rows), 0 close runs (0 closes), 3092488 dictionary records
+walked:     3022877 rows (2734334 believed) across 2647008 identities
+layout:     1995715 tt_s runs across live segments, 1583554 in the worst one
+
+verdict: healthy — every referenced file passed its checksums, every cross-reference resolved, and every bitemporal invariant held
+```
+
+**0 `believed-versions-overlap` findings — the pre-registered prediction
+holds**, against soak 1's 13,714 findings (all that same kind, `CORRUPT`)
+on the pre-fix store. This is the second strong positive signal in this
+record, alongside the within-life RSS slopes: the two problems soak 1's
+post-hoc analysis found (per-life memory growth, and a full-mode-only
+corruption class invisible to fast-mode `verify()`) both look fixed by the
+commits between `886805f` and `eed91c0`, even as the reader OSError storm
+above shows a new, different problem was introduced somewhere in that same
+range.
+
+### Files added here
+
+| file | sha256 |
+|---|---|
+| `longevity-synth-1m-native-1.json` | `19b597db12c6830859f5317ec8bdb630e4599c2fed8924ed26d41edc1cc23f68` |
+| `recoveries-2.jsonl` | `23a70f0e38c89ab1478a13389c93e86112aceabc2b07b91fc18ca669ad34827b` |
+| `longevity_ledger-2.jsonl` | `c418a0e303ec763cb4270f0e67d763e4cf886aa6af061ff19ebd348c618516af` |
+| `orchestrator-2.log` | `1938772baab3d58729d02fa6766f9831f4daf359a52ece0060a02c906fc78cfa` |
+| `gate_e_report-2.md` | `4a02fb42f092be22c39dfc2eed21170310e9c5dfd88836b42d459a1bb9da9814` |
+| `writer_error_counts_by_life-2.json` | `d46fa237e5b02c6420c0735f7375454e82051a6c666ec6b3bb32183d13ef6126` |
+| `reader_error_counts_by_class-2.json` | `e6d8624fc410c26289541557b17de132aeb08597b4c9bf83327c3cf22de34f41` |
+| `rss_slopes-2.json` | `8a690ece6a9579b2ccd5d8a4473cb7f7c6b07ada390657e6a7ea5dee188c3054` |
+| `verify-full-soak2-2026-09-17.txt` | `f18892a01759422854d3d09e4bfb04a6b4cc65b18d2e60aee55f5c8c711bdb59` |
+| `build_info-2.log` | `e6045d966013189e36236fca8f8015c962e8e37b45898cc8b05beecce6124905` |
+
+All ten verified byte-identical (sha256) between xzgpu
+(`/mnt/project/xzhang/tgms/longevity/2026-09-16-soak2/`) and this copy
+before commit. `reader_restarts.jsonl` has no soak-2 counterpart: the file
+is only ever written on a reader restart, and this run had zero
+(`reader_restarts=0`), so it was never created. `metrics.jsonl` (40.8 MB)
+and the live store copy stay on xzgpu per the same PI ruling as soak 1;
+`rss_slopes-2.json` and `reader_error_counts_by_class-2.json` are derived
+from it (method documented in each file) rather than copying it.
+
+### Honest limits
+
+- One host, one storage stack, one seed, four writer lives. The reader
+  OSError storm's root cause is not established — this record documents
+  its existence, timing, and scale, not its mechanism.
+- The `StateError` class total (197,792) cannot be split between the pin
+  addendum's specific predicted message and its sibling raise site without
+  message-text capture the current harness does not have; the addendum's
+  observation is reported as refuted by class-total evidence, not by an
+  exact string match.
+- "Bounded metadata growth" and "throughput/latency drift" read FAIL under
+  the current `longevity_report.py` against this run's own softer,
+  descriptive predictions ("PASS", "within the frozen bar") — flagged, not
+  investigated further; the formal refutation clause (the four explicit
+  conditions in the pre-registration) does not depend on these two rows,
+  and none of those four conditions occurred.
+- `verify_healthy=True` in the manifest is the harness's own final
+  `verify()` call (documented elsewhere in this file as fast-mode); the
+  dedicated **full**-mode check reported above is the one that actually
+  clears the `believed-versions-overlap` class soak 1 found, and it is
+  clean.
