@@ -141,7 +141,7 @@ def _build(path, both_ways: bool):
         for src, dst in pairs:
             edges.append({"src": src, "dst": dst, "rel_type": "KNOWS",
                           "vt_s": when, "props": {"creationDate": when}})
-    store.ingest_events([{"nodes": nodes, "edges": edges}])
+    store.ingest_events(edges, nodes=nodes)
     return store
 
 
@@ -178,7 +178,8 @@ def test_is3_v2_returns_each_friend_once_where_is3_doubles(tmp_path):
     finally:
         store.close()
 
-    assert sorted(v1) == sorted(v1[:len(v1) // 2] * 2 or v1), \
+    from collections import Counter
+    assert set(Counter(v1).values()) == {2}, \
         "premise: IS3 returns every friend twice on a both-ways store"
     assert len(v1) == 6 and len(set(v1)) == 3
     assert len(v2) == 3 and len(set(v2)) == 3
