@@ -2258,6 +2258,42 @@ def main() -> int:
           "compare-2026-09-18.json verdicts: verdict == agreeing AND the plan is "
           "primitive-only (no registry-leaf operator node)")
 
+    # ---- the class-{1,2} baseline (instrument L, benchmarks/ldbc-fit-v1/
+    # classification.json) among the 24 reference templates.  `base_ids` /
+    # `ldbc_base` are `\tgLdbcBaseline`'s own derivation, over all 41 LDBC
+    # templates instrument L classifies (§ "the two public axes", above) --
+    # reused rather than re-read, so the two macros can never disagree about
+    # which rows are baseline. What's new here is restricting that baseline
+    # to the 24 this external run actually exercises (IS1/IS4/IS5 all are:
+    # `reftpl` is keyed by exactly those 24 template ids), and asking whether
+    # every baseline template also agrees against Neo4j -- which, if false,
+    # would mean the registry's *existing* execution path disagrees with the
+    # reference, a strictly worse finding than a TGIR-side gap.
+    ref_baseline_ids = sorted(set(base_ids) & set(reftpl))
+    eq(ref_baseline_ids, base_ids,
+       "ref-v1: instrument L's class-{1,2} baseline rows are all among the 24")
+    eq(len(ref_baseline_ids), ldbc_base,
+       "ref-v1: baseline-template count matches \\tgLdbcBaseline")
+    eq(ref_baseline_ids, ["IS1", "IS4", "IS5"], "ref-v1: baseline templates are IS1/IS4/IS5")
+    m.add("tgRefBaselineTemplates", len(ref_baseline_ids),
+          "benchmarks/ldbc-fit-v1/classification.json: of the 24 ldbc-ref-v1 templates, "
+          "those the registry could already execute before TGIR (class in {1,2} -- "
+          "IS1/IS4/IS5), matching \\tgLdbcBaseline")
+
+    verdict_by_template = {ref_template(v["plan_id"]): v.get("verdict") for v in verdicts}
+    require(all(verdict_by_template.get(t) == "agreeing" for t in ref_baseline_ids),
+            "ref-v1: every baseline template (IS1/IS4/IS5) has verdict == agreeing")
+    beyond_baseline = sorted(t for t in reftpl if t not in ref_baseline_ids)
+    eq(len(beyond_baseline), n_ref - len(ref_baseline_ids),
+       "ref-v1: 24 - baseline templates == templates beyond the baseline")
+    n_ref_agree_beyond_baseline = eq(
+        sum(1 for t in beyond_baseline if verdict_by_template.get(t) == "agreeing"),
+        n_ref_agree - len(ref_baseline_ids),
+        "ref-v1: agreeing-beyond-baseline == \\tgRefAgree minus the (all-agreeing) baseline")
+    m.add("tgRefAgreeBeyondBaseline", n_ref_agree_beyond_baseline,
+          "compare-2026-09-18.json verdicts: verdict == agreeing, among the 21 templates "
+          "beyond the class-{1,2} baseline (IS1/IS4/IS5 excluded)")
+
     # ---------------------------------------------------------------- write
     if FAILURES:
         print(f"VERIFICATION FAILED after {CHECKS} checks:", file=sys.stderr)
