@@ -96,6 +96,11 @@ IV_SOURCES: dict[str, dict[str, str]] = {
     "IS1":  {"personId": "personIdSQ1"},
     "IS2":  {"personId": "personIdSQ2"},
     "IS3":  {"personId": "personIdSQ3"},
+    # IS3.v2 (ldbc-ref-v1, 2026-09-18): the repaired plan binds exactly like
+    # IS3 — same file, same column, same §A9 rule and the same §E addendum 4
+    # sampled anchor. Only the expand's direction differs, and a direction is
+    # not a parameter. Mirrors the BI6/BI6.v2 pair above.
+    "IS3.v2": {"personId": "personIdSQ3"},
     "IS4":  {"messageId": "messageIdContent"},
     "IS5":  {"messageId": "messageIdCreator"},
     "IS6":  {"messageId": "messageForumId"},

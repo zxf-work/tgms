@@ -1,0 +1,125 @@
+{
+ "plan_format": 1,
+ "plan_id": "IS3.v2",
+ "row": {
+  "suite": "ldbc-is",
+  "predicted_v1_support": "yes",
+  "predicted_verdict_detail": "yes",
+  "compilation_source": "Lane ldbc-ref-v1 (2026-09-18), superseding `IS3.json` for the template's reported row. **v1 is a plan defect, not a TGIR gap** \u2014 see the ops/failure_ledger.jsonl entry `D-090-is3-knows-both-ways-double-count` and benchmarks/ldbc-ref-v1/README.md \u00a75.4.",
+  "note": "NodeScan(uids=[$personId], labels=[Person]) -> Expand(dir=out, exact(1), into=friend, edge_var=r) -> Project(r.vt_s as friendshipCreationDate) -> Order. Identical to IS3.json in every respect but the expand's `dir`, which is `out` here and `both` in v1. `tgms/data/snb_loader.py`'s KNOWS spec carries `both_ways=True` (M3/M7: one CSV row becomes two edge versions, because Cypher's KNOWS is undirected and the pattern evaluator does not consult `directed`), so the store already holds both p->f and f->p. Expanding `both` over that materialisation therefore traverses every friendship twice \u2014 once forward and once as the reverse edge read backwards \u2014 and v1 returned 48 rows at SF1 where the unmodified reference query returns 24 (benchmarks/ldbc-ref-v1, 2026-09-17). Expanding `out` alone reaches every friend exactly once and is the narrower of the two available repairs; the other, a Distinct on (friendId, friendshipCreationDate) above the expand, would also work but changes the plan's shape. Neither half is wrong alone: the loader's both-ways materialisation is required for undirected matching, and `dir=both` is the faithful reading of `-[:KNOWS]-`; it is the composition that double-counts.",
+  "supersedes": "IS3"
+ },
+ "params": {
+  "personId": "1"
+ },
+ "sigma": {
+  "t_v": [
+   [
+    0,
+    4611686018427387904
+   ]
+  ],
+  "t_b": 4611686018427387904
+ },
+ "root": {
+  "op": "Order",
+  "keys": [
+   {
+    "key": {
+     "col": "friendshipCreationDate"
+    },
+    "dir": "desc",
+    "nulls": "nulls_last"
+   },
+   {
+    "key": {
+     "cast": {
+      "col": "friendId"
+     },
+     "to": "int"
+    },
+    "dir": "asc",
+    "nulls": "nulls_last"
+   }
+  ],
+  "inputs": [
+   {
+    "op": "Project",
+    "keep": "listed",
+    "bindings": [
+     [
+      "friendId",
+      {
+       "col": "friend.uid"
+      }
+     ],
+     [
+      "friendFirstName",
+      {
+       "prop": [
+        "friend.props",
+        "firstName"
+       ]
+      }
+     ],
+     [
+      "friendLastName",
+      {
+       "prop": [
+        "friend.props",
+        "lastName"
+       ]
+      }
+     ],
+     [
+      "friendshipCreationDate",
+      {
+       "col": "r.vt_s"
+      }
+     ]
+    ],
+    "inputs": [
+     {
+      "op": "Expand",
+      "from": "p",
+      "into": "friend",
+      "dir": "out",
+      "hops": {
+       "exact": 1
+      },
+      "rel_type": "KNOWS",
+      "edge_var": "r",
+      "inputs": [
+       {
+        "op": "NodeScan",
+        "as": "p",
+        "uids": [
+         "$personId"
+        ],
+        "labels": [
+         "Person"
+        ],
+        "belief": "current",
+        "vt_mode": "overlap"
+       }
+      ]
+     }
+    ]
+   }
+  ]
+ },
+ "provenance": {
+  "reference_cypher": "external_workloads/ldbc/interactive_v1/cypher/queries/interactive-short-3.cypher",
+  "reference_repo": "https://github.com/ldbc/ldbc_snb_interactive_v1_impls",
+  "reference_title": "IS3. Friends of a person",
+  "declared_output_schema": [
+   "friendId",
+   "friendFirstName",
+   "friendLastName",
+   "friendshipCreationDate"
+  ],
+  "schema_note": "Unchanged from IS3.json \u2014 the repair is to the expand's direction, not to the projection.",
+  "params_note": "`$personId` binds exactly as `IS3` does (`IV_SOURCES['IS3.v2'] = {'personId': 'personIdSQ3'}`, the same sampled-anchor rule, \u00a7E addendum 4). The frozen value here is the `stores/ldbc-fixture` anchor IS3.json carries.",
+  "licence": "LDBC material used under CC-BY 4.0. This is not an LDBC Benchmark and nothing produced here is an LDBC Benchmark Result."
+ }
+}
