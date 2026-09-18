@@ -145,7 +145,7 @@ def test_every_frozen_plan_has_a_parameter_source(params_root):
     # matrix and the contracts fixture already counted inside the 24 expressible
     # templates. The census moves when the census grows; the *rules* it guards
     # (identity, units, selection) are unchanged and tested above.
-    assert len(P.LDBC_PLANS) == 25  # +BI6.v2 (D2)
+    assert len(P.LDBC_PLANS) == 26  # +BI6.v2 (D2), +IS3.v2 (ldbc-ref-v1)
     assert set(P.POST_FREEZE_IV_PLANS) <= set(P.LDBC_PLANS)
     for pid in P.LDBC_PLANS:
         b = P.bind(pid, params_root)
@@ -400,7 +400,8 @@ def test_every_exported_cypher_binding_names_the_parameters_its_query_asks_for(
             f"ParameterMissing and the template would produce no reference "
             f"rows at all.")
         checked += 1
-    assert checked == 25, f"expected the 24 templates + BI6.v2, got {checked}"
+    assert checked == 26, (
+        f"expected the 24 templates + BI6.v2 + IS3.v2, got {checked}")
 
 
 def test_the_bi_arm_keeps_ldbcs_own_ids_on_both_sides(params_root):
