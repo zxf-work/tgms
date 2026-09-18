@@ -390,6 +390,44 @@ def test_ref_v1_core_macro_values_pin_the_leaf_classification() -> None:
     assert agreeing_and_core == agreeing == 18
 
 
+def test_ref_v1_baseline_macro_values_pin_the_pre_tgir_registry() -> None:
+    """The \\tgRefBaselineTemplates / \\tgRefAgreeBeyondBaseline pair: of the
+    24 ldbc-ref-v1 templates, which ones the *registry* could already
+    execute before TGIR existed (instrument L's class-in-{1,2} rows,
+    ``benchmarks/ldbc-fit-v1/classification.json`` -- the same rows
+    \\tgLdbcBaseline counts over all 41 LDBC templates it classifies), and how
+    many of the other 21 agree against Neo4j.
+
+    Recomputed independently of `tgir_paper_macros.py`'s own derivation,
+    which reuses (rather than re-reads) the \\tgLdbcBaseline computation's
+    own `base_ids`/`ldbc_base` -- this test instead re-derives both from the
+    classification file directly, so the two can never silently drift onto
+    different rows.
+    """
+    ldbc = json.loads(TPM.LDBC_INSTRUMENT.read_text(encoding="utf-8"))
+    assert len(ldbc) == 41
+    base_ids = sorted(r["id"] for r in ldbc if r["class"] in (1, 2))
+    assert base_ids == ["IS1", "IS4", "IS5"]                         # \tgLdbcBaseline's own rows
+
+    compare = json.loads(TPM.REF_COMPARE.read_text(encoding="utf-8"))
+    verdicts = compare["verdicts"]
+    assert len(verdicts) == 24
+    ref_templates = {v["plan_id"].split(".")[0] for v in verdicts}
+    assert set(base_ids) <= ref_templates                    # all three are among the 24
+    assert len(set(base_ids) & ref_templates) == 3           # \tgRefBaselineTemplates
+
+    verdict_by_template = {v["plan_id"].split(".")[0]: v.get("verdict") for v in verdicts}
+    assert all(verdict_by_template[t] == "agreeing" for t in base_ids)  # all three agree
+
+    beyond_baseline = ref_templates - set(base_ids)
+    assert len(beyond_baseline) == 21
+    agree_beyond_baseline = sum(1 for t in beyond_baseline if verdict_by_template[t] == "agreeing")
+    assert agree_beyond_baseline == 15                       # \tgRefAgreeBeyondBaseline
+    # the baseline templates are all agreeing, so this is exactly \tgRefAgree (18) minus 3
+    agreeing_total = sum(1 for v in verdict_by_template.values() if v == "agreeing")
+    assert agreeing_total == 18 and agree_beyond_baseline == agreeing_total - len(base_ids)
+
+
 def test_char_rerun_macro_values_pin_the_reproduction() -> None:
     """The \\tgSfOneChar* family: the corrected interactive-set reproduction
     against the original campaign's 11 Interactive rows.
