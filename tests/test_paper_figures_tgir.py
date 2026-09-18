@@ -12,11 +12,12 @@ contract a paper build and a source reviewer both depend on:
     reviewer of the source can trace every plotted point back to its record
     without trusting the plotting code in between;
   - `figures.json`'s neo4j series are the *executed* reference run's own
-    numbers: the Neo4j side is the median of `timings-2026-09-17.json`'s three
-    timed runs per template (the warm-up excluded, which is the easy thing to
-    get wrong) and the TGIR side that record's `ms` in seconds, with the one
-    timed-out template carried as a timeout at the pre-registered ceiling
-    rather than as a measured value;
+    numbers: the Neo4j side is the median of `timings-2026-09-18.json`'s (the
+    revision of record; `timings-2026-09-17.json` is superseded and used only
+    as a fallback when 09-18 is absent) three timed runs per template (the
+    warm-up excluded, which is the easy thing to get wrong) and the TGIR side
+    that record's `ms` in seconds, with the one timed-out template carried as
+    a timeout at the pre-registered ceiling rather than as a measured value;
   - the placeholder path still works -- on a root without that record,
     `fig-neo4j.pdf` is the documented placeholder and `figures.json` says so,
     rather than the script failing or silently fabricating a comparison.
@@ -185,11 +186,12 @@ def _figures_module():
 
 @requires_matplotlib
 def test_neo4j_figure_is_the_placeholder_when_the_record_is_absent(tmp_path: Path) -> None:
-    """A checkout without `benchmarks/ldbc-ref-v1/timings-2026-09-17.json`
-    (a public worktree, or this repository before 2026-09-17) must still build
-    the paper: the reader returns None, the figure is the documented
-    placeholder, and `figures.json` says `available: false` rather than
-    carrying an empty comparison that reads like a real one.
+    """A checkout without either `benchmarks/ldbc-ref-v1/timings-2026-09-18.json`
+    or its superseded `-2026-09-17.json` fallback (a public worktree, or this
+    repository before 2026-09-17) must still build the paper: the reader
+    returns None, the figure is the documented placeholder, and
+    `figures.json` says `available: false` rather than carrying an empty
+    comparison that reads like a real one.
 
     Driven through `build_neo4j`/`plot_neo4j` on an empty root rather than
     through the whole script, because the *other* two figures' records do
@@ -204,6 +206,10 @@ def test_neo4j_figure_is_the_placeholder_when_the_record_is_absent(tmp_path: Pat
     assert data["timed_out"] == []
     assert data["ceiling_s"] is None
     assert data["common_plan_ids"] == []
+    # neither revision's file exists under this empty root, so resolve_ref_source
+    # falls back to naming the superseded -2026-09-17 file (it does not itself
+    # require that fallback file to exist -- build_neo4j's own existence check,
+    # just below, is what actually returns None)
     assert data["timings_source"] == "benchmarks/ldbc-ref-v1/timings-2026-09-17.json"
 
     summary = mod.plot_neo4j(data, tmp_path)
@@ -216,14 +222,15 @@ def test_neo4j_figure_is_the_placeholder_when_the_record_is_absent(tmp_path: Pat
 def test_neo4j_points_are_the_records_medians(tmp_path: Path) -> None:
     """The plotted Neo4j value is the median of the record's three *timed*
     runs -- not the mean, and not any of them individually, and above all not
-    the warm-up, which `timings-2026-09-17.json` reports alongside them and
-    which a reader of the figure must never be shown."""
+    the warm-up, which `timings-2026-09-18.json` (the revision of record)
+    reports alongside them and which a reader of the figure must never be
+    shown."""
     proc, out_dir = _run(tmp_path)
     assert proc.returncode == 0, proc.stderr
 
     ref_dir = ROOT / "benchmarks" / "ldbc-ref-v1"
-    timings = json.loads((ref_dir / "timings-2026-09-17.json").read_text(encoding="utf-8"))
-    manifest = json.loads((ref_dir / "manifest-2026-09-17.json").read_text(encoding="utf-8"))
+    timings = json.loads((ref_dir / "timings-2026-09-18.json").read_text(encoding="utf-8"))
+    manifest = json.loads((ref_dir / "manifest-2026-09-18.json").read_text(encoding="utf-8"))
     entries = {e["template"]: e for e in timings["templates"]}
 
     neo4j = json.loads((out_dir / "figures.json").read_text(encoding="utf-8"))["fig-neo4j"]

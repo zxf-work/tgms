@@ -1,6 +1,6 @@
 """`scripts/tgir_paper_macros.py`'s pure helpers and its `--root` re-rooting.
 
-The generator itself is self-checking — it runs 724 assertions over the
+The generator itself is self-checking — it runs 759 assertions over the
 row-level records and refuses to write on any failure — so there is nothing
 useful to re-assert about its *values* here.  What a test can pin, and what
 this repository cannot exercise end to end, is different:
@@ -37,6 +37,7 @@ matching name would inflate a published number with meta-work.
 
 from __future__ import annotations
 
+import ast
 import json
 import re
 import statistics
@@ -153,12 +154,16 @@ def test_ref_v1_macro_values_pin_the_external_baseline() -> None:
     """The \\tgRef* family, recomputed from the checked-in ldbc-ref-v1 records
     --- like the IS2 test above, this needs no docs/design/.
 
-    What is worth pinning here is not arithmetic but *which* arithmetic: the
-    six verdict classes have to partition the 24 templates with the timeout
-    counted from the TGIR outcome rather than from a verdict (the comparator
-    never saw a row dump for it), the row fraction has to be taken over the 16
-    templates that produced a comparison rather than over all 24 (7 have an
-    invalid reference side, and pooling them would silently deflate it), and
+    2026-09-18 is the revision of record: the 7 templates whose reference side
+    was invalid on 2026-09-17 (BI4 BI9 BI11 BI12 IC2 IC5 IC9) were re-run with
+    valid temporal parameters.  Five of them (BI9 BI11 BI12 IC9, plus BI4 on
+    99/100 rows) turned out to agree; the sixth, IC2, turned out to hide the
+    same KNOWS both-ways defect IS3 already showed.  What is worth pinning
+    here is not arithmetic but *which* arithmetic: the six verdict classes
+    have to partition the 24 templates with the timeout counted from the TGIR
+    outcome rather than from a verdict (the comparator never saw a row dump
+    for it), the row fraction has to be taken over the 23 templates that
+    produced a comparison rather than over all 24 (only BI6.v2 has none), and
     the Neo4j figure has to be the median of the three *timed* runs with the
     warm-up excluded.  Each of those is a plausible wrong reading, and each
     would still produce a number.
@@ -168,42 +173,70 @@ def test_ref_v1_macro_values_pin_the_external_baseline() -> None:
     manifest = json.loads(TPM.REF_MANIFEST.read_text(encoding="utf-8"))
     campaign = yaml.safe_load(TPM.REF_CAMPAIGN_YAML.read_text(encoding="utf-8"))
 
+    # the revision of record supersedes 2026-09-17, which is kept, not deleted
+    assert compare["manifest"]["supersedes"] == "compare-2026-09-17.json"
+    assert TPM.REF_COMPARE_SUPERSEDED.exists()
+    assert TPM.REF_TIMINGS_SUPERSEDED.exists()
+    assert TPM.REF_MANIFEST_SUPERSEDED.exists()
+
     verdicts = compare["verdicts"]
     entries = {e["template"]: e for e in timings["templates"]}
     assert len(verdicts) == compare["manifest"]["plans"] == 24      # \tgRefTemplates
     assert sorted(entries) == sorted(v["plan_id"].split(".")[0] for v in verdicts)
 
     classes = Counter(v.get("verdict") for v in verdicts)
-    counts = campaign["addendum_2"]["verdict_counts"]
+    counts = campaign["addendum_3"]["verdict_counts"]
     outcomes = Counter(e["tgir"]["outcome"] for e in timings["templates"])
-    assert classes["agreeing"] == counts["agree"] == 14             # \tgRefAgree
+    assert classes["agreeing"] == counts["agree"] == 18             # \tgRefAgree
     assert (classes["reference-column-not-projected"]
             == counts["reference_column_not_projected"] == 3)       # \tgRefRefColNotProjected
-    assert counts["disagreeing_but_not_comparable"] == 5            # \tgRefNotComparable
-    assert counts["disagreeing_genuine"] == 1                       # \tgRefDisagree
-    assert classes["disagreeing"] == 5 + 1
+    assert classes["disagreeing"] == counts["disagree"] == 2        # \tgRefDisagree
+    assert counts["not_comparable"] == 0                            # \tgRefNotComparable
     assert outcomes["TIMEOUT"] == counts["timeout"] == 1            # \tgRefTimeout
     assert outcomes["ERRORED"] == counts["error"] == 0              # \tgRefError
-    assert 14 + 3 + 5 + 1 + 1 + 0 == len(verdicts)
+    assert 18 + 3 + 0 + 2 + 1 + 0 == len(verdicts)
 
-    # the comparable subset, and the row fraction over exactly it
-    not_scoreable = set(campaign["addendum_2"]["scoring"]["per_template"]["not_scoreable"])
-    comparable = [v for v in verdicts if v["plan_id"].split(".")[0] not in not_scoreable]
-    assert len(comparable) == 16                                    # \tgRefComparable
+    # the comparable subset (only BI6.v2 never produced a verdict), and the
+    # row fraction over exactly it
+    comparable = [v for v in verdicts if v.get("verdict") is not None]
+    assert len(comparable) == 23                                    # \tgRefComparable
     rows_agree = sum(v["agreeing"] for v in comparable)
     rows_total = sum(v["compared"] for v in comparable)
-    assert (rows_agree, rows_total) == (282, 329)                   # \tgRefRows{Agree,Total}
-    assert f"{rows_agree / rows_total:.3f}" == "0.857"              # \tgRefRowsAgreeFrac
+    assert (rows_agree, rows_total) == (678, 736)                   # \tgRefRows{Agree,Total}
+    assert f"{rows_agree / rows_total:.3f}" == "0.921"              # \tgRefRowsAgreeFrac
+    assert round(rows_agree / rows_total, 4) == campaign["addendum_3"]["row_agreement"]["ratio"]
     assert rows_agree == sum(v["agreeing"] for v in verdicts)
-    # pooling the invalid-reference templates in would be the wrong reading
-    assert sum(v["compared"] for v in verdicts) > rows_total
+    # pooling BI6.v2 in would be the wrong reading (it contributes 0 either way)
+    assert sum(v["compared"] for v in verdicts) == rows_total
 
-    disagreeing = [v for v in comparable if v["disagreeing"]]
-    assert [v["plan_id"] for v in disagreeing] == ["IS3"]           # \tgRefDisagreeRow
-    assert disagreeing[0]["disagreeing"] == rows_total - rows_agree == 47
+    disagreeing = {v["plan_id"].split(".")[0]: v for v in comparable if v.get("verdict") == "disagreeing"}
+    assert sorted(disagreeing) == ["IC2", "IS3"]                    # \tgRefDisagreeRows
+    assert "IS3" in disagreeing and "IC2" in disagreeing            # \tgRefDisagreeRow (IS3)
     assert entries["IS3"]["tgir"]["rows"] == 48                     # \tgRefIsThreeTgir
     assert entries["IS3"]["neo4j"]["rows"] == 24                    # \tgRefIsThreeNeo
     assert entries["IS3"]["tgir"]["rows"] == 2 * entries["IS3"]["neo4j"]["rows"]
+
+    # IC2: newly visible at 09-18 -- 20 rows on both sides, but only 10 of
+    # TGIR's are distinct (the LIMIT 20 hides the KNOWS both-ways doubling as
+    # a row count rather than a 2x row-count blowup the way IS3 shows it)
+    assert entries["IC2"]["tgir"]["rows"] == 20                     # \tgRefIcTwoTgir
+    assert entries["IC2"]["neo4j"]["rows"] == 20                    # \tgRefIcTwoNeo
+    ic2_rows = json.loads(TPM.REF_TGMS_IC2_ROWS.read_text(encoding="utf-8"))["rows"]
+    assert len(ic2_rows) == 20
+    assert len({r["messageId"] for r in ic2_rows}) == 10            # \tgRefIcTwoDistinct
+
+    # BI4: reference-column-not-projected, but on the 2 columns it does
+    # project, 99 of its 100 rows agree exactly -- the one exception is a
+    # genuine count mismatch (419 vs 435) for the same person, structured in
+    # compare's own `causes`
+    bi4 = next(v for v in verdicts if v["plan_id"] == "BI4")
+    tgms_only = next(c["detail"] for c in bi4["causes"] if c["detail"].startswith("tgms-only row:"))
+    ref_only = next(c["detail"] for c in bi4["causes"] if c["detail"].startswith("reference-only row:"))
+    tgms_row = ast.literal_eval(tgms_only.split("tgms-only row: ", 1)[1])
+    ref_row = ast.literal_eval(ref_only.split("reference-only row: ", 1)[1])
+    assert tgms_row["personId"] == ref_row["personId"]
+    assert tgms_row["messageCount"] == 419                          # \tgRefBiFourTgirCount
+    assert ref_row["messageCount"] == 435                           # \tgRefBiFourNeoCount
 
     timed_out = [e for e in timings["templates"] if e["tgir"]["outcome"] == "TIMEOUT"]
     assert [e["tgir_plan"] for e in timed_out] == ["BI6.v2.json"]   # \tgRefTimeoutRow
@@ -213,22 +246,62 @@ def test_ref_v1_macro_values_pin_the_external_baseline() -> None:
 
     families = Counter(v["plan_id"][:2] for v in verdicts)
     agreeing = Counter(v["plan_id"][:2] for v in verdicts if v.get("verdict") == "agreeing")
-    assert (families["BI"], families["IC"], families["IS"]) == (10, 7, 7)
-    assert (agreeing["BI"], agreeing["IC"], agreeing["IS"]) == (5, 3, 6)
-    assert sum(families.values()) == 24 and sum(agreeing.values()) == 14
+    assert (families["BI"], families["IC"], families["IS"]) == (10, 7, 7)  # \tgRef{Bi,Ic,Is}
+    assert (agreeing["BI"], agreeing["IC"], agreeing["IS"]) == (8, 4, 6)   # \tgRefAgree{Bi,Ic,Is}
+    assert sum(families.values()) == 24 and sum(agreeing.values()) == 18
 
-    # one group cell of the per-group, per-class breakdown: the 3 BI templates
-    # among the 5 "disagreeing against an invalid reference" (not_scoreable)
-    notcomp_bi = sum(1 for v in verdicts if v.get("verdict") == "disagreeing"
-                      and v["plan_id"][:2] == "BI"
-                      and v["plan_id"].split(".")[0] in not_scoreable)
-    assert notcomp_bi == 3                                           # \tgRefNotComparableBi
+    # not_comparable is 0 in every group at this revision -- the 09-17 defect
+    # it used to count is exactly what the 09-18 re-run fixed
+    notcomp_any = sum(1 for v in verdicts if v.get("verdict") == "disagreeing"
+                      and v["plan_id"].split(".")[0] not in disagreeing)
+    assert notcomp_any == 0                                          # \tgRefNotComparable{Bi,Ic,Is}
+
+    # per-group row agreement (new at 09-18), cross-checked against
+    # campaign.yaml addendum_3's own by_group block
+    by_group = campaign["addendum_3"]["row_agreement"]["by_group"]
+    group_rows: dict[str, tuple[int, int]] = {}
+    for g in ("BI", "IC", "IS"):
+        members = [v for v in comparable if v["plan_id"][:2] == g]
+        group_rows[g] = (sum(v["agreeing"] for v in members), sum(v["compared"] for v in members))
+    assert group_rows["BI"] == (606, 607)                            # \tgRefRowsAgreeBi / TotalBi
+    assert group_rows["IC"] == (56, 66)                              # \tgRefRowsAgreeIc / TotalIc
+    assert group_rows["IS"] == (16, 63)                              # \tgRefRowsAgreeIs / TotalIs
+    for g, (agree, total) in group_rows.items():
+        assert f"{agree}/{total}" == by_group[g]["rows"]
+        assert round(agree / total, 4) == by_group[g]["ratio"]
+
+    # the KNOWS both-ways defect behind both disagreements: nine plan
+    # artifacts expand KNOWS with dir="both" (README §5.5, ledger D-090)
+    def _expands_knows_both(node) -> bool:
+        if isinstance(node, dict):
+            if (node.get("op") == "Expand" and node.get("dir") == "both"
+                    and node.get("rel_type") == "KNOWS"):
+                return True
+            return any(_expands_knows_both(v) for v in node.values())
+        if isinstance(node, list):
+            return any(_expands_knows_both(item) for item in node)
+        return False
+
+    knows_both = {p.stem for p in TPM.PLANS_DIR.glob("*.json")
+                  if _expands_knows_both(json.loads(p.read_text(encoding="utf-8")).get("root", {}))}
+    assert knows_both == {"BI10", "IC2", "IC5", "IC6", "IC9", "IC11", "IC12", "IS3", "IS7"}
+    assert len(knows_both) == 9                                      # \tgRefKnowsBothPlans
+
+    # ops/failure_ledger.jsonl D-090, read from this script's own checkout
+    # (FAILURE_LEDGER is fixed to it, immune to --root)
+    assert TPM.FAILURE_LEDGER.exists()
+    ledger = [json.loads(line) for line in
+              TPM.FAILURE_LEDGER.read_text(encoding="utf-8").splitlines() if line.strip()]
+    d090 = [e for e in ledger if e.get("id", "").startswith("D-090")]
+    assert len(d090) == 1
+    assert d090[0]["id"] == "D-090-is3-knows-both-ways-double-count"  # \tgRefLedgerId
+    assert "IS3 and IC2" in d090[0]["root_cause"]
 
     # the median of t1/t2/t3 --- never the warm-up, which is systematically slower
     median = {t: statistics.median([e["neo4j"]["wall_s"][k] for k in ("t1", "t2", "t3")])
               for t, e in entries.items()}
     assert f"{min(median.values()):.3f}" == "0.008"                 # \tgRefNeoMinS
-    assert f"{max(median.values()):.3f}" == "1.816"                 # \tgRefNeoMaxS
+    assert f"{max(median.values()):.3f}" == "24.754"                # \tgRefNeoMaxS
     warmups = {t: e["neo4j"]["wall_s"]["warmup"] for t, e in entries.items()}
     assert median != warmups
 
@@ -289,12 +362,20 @@ def test_set_root_repoints_every_source(tmp_path: Path) -> None:
         TPM.set_root(tmp_path)
         assert TPM.ROOT == tmp_path.resolve()
         paths = {name: value for name, value in vars(TPM).items()
-                 if isinstance(value, Path) and name.isupper() and name != "ROOT"}
+                 if isinstance(value, Path) and name.isupper() and name != "ROOT"
+                 # FAILURE_LEDGER is deliberately fixed to this script's own
+                 # checkout (like osdi_paper_macros.py's constant of the same
+                 # name) -- ops/failure_ledger.jsonl is a public-worktree
+                 # file, not one --root's docs/paper indirection reaches.
+                 and name != "FAILURE_LEDGER"}
         assert paths, "the module should expose its sources as upper-case Path constants"
         for name, value in paths.items():
             assert value.is_absolute(), f"{name} is not absolute after set_root"
             assert value.is_relative_to(tmp_path.resolve()), f"{name} was left behind"
         assert TPM.OUT_DIR == tmp_path.resolve() / "paper" / "tgir"
+        # the one deliberate exception: FAILURE_LEDGER stays put
+        assert TPM.FAILURE_LEDGER == original / "ops" / "failure_ledger.jsonl"
+        assert not TPM.FAILURE_LEDGER.is_relative_to(tmp_path.resolve())
     finally:
         TPM.set_root(original)
     assert TPM.ROOT == original
