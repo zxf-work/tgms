@@ -1874,6 +1874,49 @@ def main() -> int:
         m.add(f"tgRefAgree{suffix}", ref_group_agree[g],
               f"compare-2026-09-17.json: {g} templates with verdict == agreeing")
 
+    # The remaining five verdict classes, broken out by family the same way
+    # tgRefAgree{Bi,Ic,Is} is above.  Each group is attributed by exactly the
+    # rule its class-total macro (above) uses -- the `verdict` field for
+    # not-projected, `not_scoreable` membership for the disagreeing split, the
+    # TGIR outcome for timeout/error -- so a group cell can never drift from a
+    # different partition than the total macro it must sum to.
+    ref_group_notproj = Counter(
+        ref_template(v["plan_id"])[:2] for v in verdicts
+        if v.get("verdict") == "reference-column-not-projected")
+    ref_group_notcomp = Counter(
+        ref_template(v["plan_id"])[:2] for v in verdicts
+        if v.get("verdict") == "disagreeing"
+        and ref_template(v["plan_id"]) in not_scoreable)
+    ref_group_disagree = Counter(
+        ref_template(v["plan_id"])[:2] for v in verdicts
+        if v.get("verdict") == "disagreeing"
+        and ref_template(v["plan_id"]) not in not_scoreable)
+    ref_group_timeout = Counter(
+        e["template"][:2] for e in reftim["templates"]
+        if e["tgir"]["outcome"] == "TIMEOUT")
+    ref_group_error = Counter(
+        e["template"][:2] for e in reftim["templates"]
+        if e["tgir"]["outcome"] == "ERRORED")
+    ref_group_classes = {
+        "NotProjected": (ref_group_notproj, n_ref_notproj),
+        "NotComparable": (ref_group_notcomp, n_ref_notcomp),
+        "Disagree": (ref_group_disagree, n_ref_disagree),
+        "Timeout": (ref_group_timeout, n_ref_timeout),
+        "Error": (ref_group_error, n_ref_error),
+    }
+    for cls, (per_group, total) in ref_group_classes.items():
+        eq(sum(per_group[g] for g in ref_groups), total,
+           f"ref-v1: the {cls} family counts sum to tgRef{cls}'s total")
+    for g in ref_groups:
+        six = ref_group_agree[g] + sum(per_group[g] for per_group, _ in ref_group_classes.values())
+        eq(six, ref_group_n[g],
+           f"ref-v1: the six verdict classes partition {g}'s templates")
+    for g, suffix in zip(ref_groups, ("Bi", "Ic", "Is")):
+        for cls, (per_group, _) in ref_group_classes.items():
+            m.add(f"tgRef{cls}{suffix}", per_group[g],
+                  f"compare-2026-09-17.json / campaign.yaml addendum_2: {g} templates "
+                  f"classified {cls}")
+
     # --- timing.  The two sides are reported per side and NEVER divided: see
     # timings-2026-09-17.json's `protocol.note` (different rep counts, and the
     # TGIR figure excludes a store open the Neo4j figure has no analogue for).
@@ -1920,6 +1963,27 @@ def main() -> int:
     if "import_wall_s" in refman["config"]:  # pragma: no cover - not in today's record
         m.add("tgRefNeoImportS", refman["config"]["import_wall_s"],
               "manifest-2026-09-17.json config.import_wall_s")
+
+    # An index count, if the manifest ever carries one under `config` (no
+    # macro today's record: `config` has no key naming an index count).
+    index_keys = ("index_count", "num_indexes", "indexes", "n_indexes")
+    index_key = next((k for k in index_keys if k in refman["config"]), None)
+    if index_key is not None:  # pragma: no cover - not in today's record
+        m.add("tgRefIndexes", refman["config"][index_key],
+              f"manifest-2026-09-17.json config.{index_key}")
+
+    # Per-plan store-open seconds, if the TGIR-side campaign record (or the
+    # manifest) ever carries one (no macro today: neither `records` nor
+    # `manifest` carries a per-plan open-seconds field, only the *allowance*
+    # budgets `child_open_allowance_s` / `tgir_child_open_allowance_s`, which
+    # are ceilings, not measurements).
+    open_s_keys = ("open_s", "child_open_s", "store_open_s")
+    open_s_vals = [r[k] for r in refrun["records"] for k in open_s_keys if k in r]
+    if open_s_vals:  # pragma: no cover - not in today's record
+        m.add("tgRefStoreOpenMinS", f"{min(open_s_vals):.3f}",
+              "tgms-campaign-ldbc-ref-v1.json records: smallest per-plan store-open seconds")
+        m.add("tgRefStoreOpenMaxS", f"{max(open_s_vals):.3f}",
+              "tgms-campaign-ldbc-ref-v1.json records: largest per-plan store-open seconds")
 
     # the running example: IS2, both sides
     m.add("tgRefIsTwoNeoMedianS", f"{neo_median['IS2']:.3f}",
