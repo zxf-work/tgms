@@ -30,9 +30,17 @@ Sources of record (nothing else is read for a number):
   benchmarks/results-v1/ldbc-sf1-campaign-fmt3-2026-09{.json,.README.md}  the 2026-09 rerun
   benchmarks/results-v1/ldbc-sf1-campaign-fmt3-interactive-2026-09.json  its corrected
                                               interactive arm (2026-09-16)
-  benchmarks/ldbc-ref-v1/{compare,timings,manifest}-2026-09-17.json  the external
-                                              Neo4j reference run
+  benchmarks/ldbc-ref-v1/{compare,timings,manifest}-2026-09-18.json  the external
+                                              Neo4j reference run, revision of record
+                                              (supersedes the -2026-09-17 files, kept
+                                              on record; 7 templates had an invalid
+                                              reference side there and were re-run)
   benchmarks/ldbc-ref-v1/{tgms-campaign-ldbc-ref-v1.json,campaign.yaml,README.md}
+  ops/failure_ledger.jsonl                    D-090 (IS3/IC2's KNOWS both-ways double
+                                              count), read from this script's own
+                                              checkout regardless of --root (a
+                                              public-worktree file, like the script
+                                              itself -- see FAILURE_LEDGER below)
   benchmarks/paper-a-v1/forecast.yaml         the frozen E13/E14 pre-registration
   docs/design/PAPER_A_EVIDENCE_FREEZE.md      the pre-registered thresholds (regex-checked)
   docs/design/PAPER_A_EVIDENCE_REPORT.md      prose receipts for E13/E14 (regex-checked)
@@ -64,6 +72,7 @@ which reads the internal tree's sources and writes the internal tree's
 from __future__ import annotations
 
 import argparse
+import ast
 import json
 import re
 import statistics
@@ -80,6 +89,13 @@ except ModuleNotFoundError:  # pragma: no cover - environment guard
     )
 
 ROOT = Path(__file__).resolve().parent.parent
+
+# ops/failure_ledger.jsonl is a public-worktree file -- like this script
+# itself, it lives in the checkout that is actually running, not in the
+# docs/paper tree --root points at.  Fixed to this file's own location (never
+# re-pointed by set_root/--root), exactly as osdi_paper_macros.py's
+# FAILURE_LEDGER is.
+FAILURE_LEDGER = ROOT / "ops" / "failure_ledger.jsonl"
 
 # Every source of record, written relative to ROOT.  ``set_root`` re-points all
 # of them at once (see --root), so a path can never be half-moved: the names
@@ -123,18 +139,32 @@ EVIDENCE_REPORT = Path("docs/design/PAPER_A_EVIDENCE_REPORT.md")
 FORECAST_FREEZE = Path("docs/design/TGIR_FORECAST_FREEZE.md")
 OSDI_PLAN = Path("docs/design/OSDI27_AUDIT_AND_PLAN_2026-09-13.md")
 
-# --- the external Neo4j reference run (ldbc-ref-v1, executed 2026-09-17) ---
+# --- the external Neo4j reference run (ldbc-ref-v1; revision of record is the
+# --- 2026-09-18 re-run) -----------------------------------------------------
 # The reference side is an independently loaded, unmodified-query Neo4j 5.26.0
 # over the same LDBC SF1 data; `compare` carries the per-template verdicts and
 # per-row agree counts, `timings` the paired wall times, `campaign.yaml`'s
-# addendum_2 the scoring of those verdicts against the frozen predictions, and
+# addendum_3 the scoring of those verdicts against the frozen predictions, and
 # README.md the human-readable table this generator asserts itself against.
-REF_COMPARE = Path("benchmarks/ldbc-ref-v1/compare-2026-09-17.json")
-REF_TIMINGS = Path("benchmarks/ldbc-ref-v1/timings-2026-09-17.json")
-REF_MANIFEST = Path("benchmarks/ldbc-ref-v1/manifest-2026-09-17.json")
+# The 2026-09-17 files are the superseded interim revision (7 templates had an
+# invalid reference side there -- their temporal parameters reached Neo4j as
+# ISO-8601 strings, and `DATETIME > STRING` yields null rather than raising, so
+# the reference returned 0 or 1 rows silently); kept on record, never deleted,
+# and asserted present below rather than merely cited.
+REF_COMPARE = Path("benchmarks/ldbc-ref-v1/compare-2026-09-18.json")
+REF_TIMINGS = Path("benchmarks/ldbc-ref-v1/timings-2026-09-18.json")
+REF_MANIFEST = Path("benchmarks/ldbc-ref-v1/manifest-2026-09-18.json")
+REF_COMPARE_SUPERSEDED = Path("benchmarks/ldbc-ref-v1/compare-2026-09-17.json")
+REF_TIMINGS_SUPERSEDED = Path("benchmarks/ldbc-ref-v1/timings-2026-09-17.json")
+REF_MANIFEST_SUPERSEDED = Path("benchmarks/ldbc-ref-v1/manifest-2026-09-17.json")
 REF_TGMS_CAMPAIGN = Path("benchmarks/ldbc-ref-v1/tgms-campaign-ldbc-ref-v1.json")
 REF_CAMPAIGN_YAML = Path("benchmarks/ldbc-ref-v1/campaign.yaml")
 REF_README = Path("benchmarks/ldbc-ref-v1/README.md")
+# IC2's TGMS-side row dump: neither `compare` nor `timings` carries a distinct-
+# messageId count, so tgRefIcTwoDistinct is counted from the row-level dump
+# itself (README §5.5 cites the same figure in prose; cross-checked, not
+# trusted alone).
+REF_TGMS_IC2_ROWS = Path("benchmarks/ldbc-ref-v1/tgms-rows/tgms-IC2.json")
 
 # --- the corrected interactive-set reproduction (2026-09-16) ---------------
 SF1_CHAR_RERUN = Path(
@@ -1730,12 +1760,25 @@ def main() -> int:
           "ldbc-sf1-campaign-fmt3-interactive-2026-09.json manifest.utc, date part")
 
     # ------------------------- the external Neo4j reference run (ldbc-ref-v1)
+    # 2026-09-18 is the revision of record: the 7 templates whose reference
+    # side was invalid on 2026-09-17 (temporal parameters reached Neo4j as
+    # ISO-8601 strings; `DATETIME > STRING` yields null rather than raising)
+    # were re-run with ldbc_reference_run.driverize_params, same protocol. The
+    # 09-17 files are kept on record rather than deleted -- asserted present,
+    # not merely cited -- and `compare`'s own `supersedes` field is checked
+    # against the kept name so the two can never drift apart silently.
     refcmp = json.loads(REF_COMPARE.read_text(encoding="utf-8"))
     reftim = json.loads(REF_TIMINGS.read_text(encoding="utf-8"))
     refman = json.loads(REF_MANIFEST.read_text(encoding="utf-8"))
     refrun = json.loads(REF_TGMS_CAMPAIGN.read_text(encoding="utf-8"))
     refcamp = yaml.safe_load(REF_CAMPAIGN_YAML.read_text(encoding="utf-8"))
     refreadme = REF_README.read_text(encoding="utf-8")
+    refreadme_flat = re.sub(r"\s+", " ", refreadme)  # for checks a markdown line-wrap would break
+
+    eq(refcmp["manifest"]["supersedes"], REF_COMPARE_SUPERSEDED.name,
+       "ref-v1: compare-2026-09-18.json manifest.supersedes names the 09-17 file")
+    for old in (REF_COMPARE_SUPERSEDED, REF_TIMINGS_SUPERSEDED, REF_MANIFEST_SUPERSEDED):
+        require(old.exists(), f"ref-v1: superseded record {old.name} is kept on record, not deleted")
 
     # A verdict's `plan_id` is the *plan artifact*'s id ("BI6.v2"); the timing
     # record and the README key on the *template* ("BI6").  One spelling of the
@@ -1751,27 +1794,29 @@ def main() -> int:
     eq(sorted(ref_template(v["plan_id"]) for v in verdicts), sorted(reftpl),
        "ref-v1: compare and timings cover the same templates")
     m.add("tgRefTemplates", n_ref,
-          "compare-2026-09-17.json manifest.plans: LDBC templates TGIR can express, "
+          "compare-2026-09-18.json manifest.plans: LDBC templates TGIR can express, "
           "each run against the Neo4j reference")
 
-    # The six verdict classes.  `compare`'s own `verdict` field carries four of
-    # them; the timeout is a TGIR *outcome* (the comparator never saw a row
-    # dump for it), and the split of `disagreeing` into "not comparable"
-    # (invalid reference side) and the one genuine disagreement is
-    # campaign.yaml addendum_2's ratified scoring.  Both sides are read and
-    # cross-checked rather than either being trusted alone.
+    # The six verdict classes.  `compare`'s own `verdict` field now carries
+    # agree / not-projected / disagree directly -- at 09-18 every template
+    # except BI6.v2 has a valid reference, so `disagreeing` is no longer split
+    # into "not comparable" and "genuine" (that split, and its `not_scoreable`
+    # list, is addendum_1/addendum_2's; addendum_3 is the ratified scoring at
+    # this revision).  The timeout is a TGIR *outcome* (the comparator never
+    # saw a row dump for it).  Both sides are read and cross-checked rather
+    # than either being trusted alone.
     ref_classes = Counter(v.get("verdict") for v in verdicts)
-    ref_counts = refcamp["addendum_2"]["verdict_counts"]
+    ref_counts = refcamp["addendum_3"]["verdict_counts"]
     ref_outcomes = Counter(e["tgir"]["outcome"] for e in reftim["templates"])
     n_ref_agree = eq(ref_classes["agreeing"], ref_counts["agree"],
                      "ref-v1: agreeing templates")
     n_ref_notproj = eq(ref_classes["reference-column-not-projected"],
                        ref_counts["reference_column_not_projected"],
                        "ref-v1: reference-column-not-projected templates")
-    n_ref_notcomp = ref_counts["disagreeing_but_not_comparable"]
-    n_ref_disagree = ref_counts["disagreeing_genuine"]
-    eq(ref_classes["disagreeing"], n_ref_notcomp + n_ref_disagree,
-       "ref-v1: the disagreeing class splits into not-comparable and genuine")
+    n_ref_disagree = eq(ref_classes["disagreeing"], ref_counts["disagree"],
+                        "ref-v1: disagreeing templates")
+    n_ref_notcomp = eq(0, ref_counts["not_comparable"],
+                       "ref-v1: not-comparable templates -- the 09-17 defect is fixed")
     n_ref_timeout = eq(ref_outcomes["TIMEOUT"], ref_counts["timeout"], "ref-v1: TGIR timeouts")
     n_ref_error = eq(ref_outcomes["ERRORED"], ref_counts["error"], "ref-v1: TGIR errors")
     eq(n_ref_agree + n_ref_notproj + n_ref_notcomp + n_ref_disagree
@@ -1781,66 +1826,185 @@ def main() -> int:
             f"`reference-column-not-projected`" in refreadme,
             "ref-v1 README §5: the verdict counts as stated")
     m.add("tgRefAgree", n_ref_agree,
-          "compare-2026-09-17.json verdicts: verdict == agreeing")
+          "compare-2026-09-18.json verdicts: verdict == agreeing")
     m.add("tgRefRefColNotProjected", n_ref_notproj,
-          "compare-2026-09-17.json verdicts: verdict == reference-column-not-projected "
+          "compare-2026-09-18.json verdicts: verdict == reference-column-not-projected "
           "(the reference projects a column no TGIR column maps to)")
     m.add("tgRefNotComparable", n_ref_notcomp,
-          "campaign.yaml addendum_2 verdict_counts.disagreeing_but_not_comparable: "
-          "disagreeing against a reference side that returned zero rows silently")
+          "campaign.yaml addendum_3 verdict_counts.not_comparable: every template except "
+          "BI6.v2 now has a valid reference")
     m.add("tgRefDisagree", n_ref_disagree,
-          "campaign.yaml addendum_2 verdict_counts.disagreeing_genuine")
+          "campaign.yaml addendum_3 verdict_counts.disagree")
     m.add("tgRefTimeout", n_ref_timeout,
-          "timings-2026-09-17.json templates: TGIR outcome == TIMEOUT")
+          "timings-2026-09-18.json templates: TGIR outcome == TIMEOUT")
     m.add("tgRefError", n_ref_error,
-          "timings-2026-09-17.json templates: TGIR outcome == ERRORED")
+          "timings-2026-09-18.json templates: TGIR outcome == ERRORED")
 
-    # The comparable subset: everything addendum_2 marks not scoreable is the
-    # 7 invalid-reference templates plus the one that timed out.
-    not_scoreable = set(refcamp["addendum_2"]["scoring"]["per_template"]["not_scoreable"])
-    ref_comparable = [v for v in verdicts if ref_template(v["plan_id"]) not in not_scoreable]
-    n_ref_comparable = eq(len(ref_comparable), n_ref - len(not_scoreable),
+    # The comparable subset: only BI6.v2 (the timeout) never produced a
+    # verdict at all, so it is the only exclusion at this revision.
+    ref_comparable = [v for v in verdicts if v.get("verdict") is not None]
+    n_ref_comparable = eq(len(ref_comparable), n_ref - n_ref_timeout - n_ref_error,
                           "ref-v1: templates with a comparable reference")
+    row_agreement = refcamp["addendum_3"]["row_agreement"]
+    eq(n_ref_comparable, row_agreement["comparable_templates"],
+       "ref-v1: comparable-template count matches campaign.yaml addendum_3")
     m.add("tgRefComparable", n_ref_comparable,
-          "compare-2026-09-17.json verdicts minus campaign.yaml addendum_2's "
-          "not_scoreable list: templates that produced a comparison at all")
+          "compare-2026-09-18.json verdicts with a non-null verdict: templates that "
+          "produced a comparison at all (only BI6.v2 did not)")
 
     ref_rows_agree = sum(v["agreeing"] for v in ref_comparable)
     ref_rows_total = sum(v["compared"] for v in ref_comparable)
     eq(ref_rows_agree, sum(v["agreeing"] for v in verdicts),
        "ref-v1: every agreeing row lies in a comparable template")
+    eq(ref_rows_agree, row_agreement["agreeing"],
+       "ref-v1: agreeing-row sum matches campaign.yaml addendum_3")
+    eq(ref_rows_total, row_agreement["compared"],
+       "ref-v1: compared-row sum matches campaign.yaml addendum_3")
     ref_frac = ref_rows_agree / ref_rows_total
-    stated = (f"{ref_rows_agree} of {ref_rows_total} compared rows agree "
-              f"({ref_frac:.3f})")
-    require(f"**{stated}**" in refreadme, "ref-v1 README §5: the agreeing-row fraction")
-    require(stated in refcamp["addendum_2"]["scoring"]["overall_agreement"]["detail"],
-            "ref-v1 campaign.yaml addendum_2: the same fraction, re-stated")
-    require(f"Over the {n_ref_comparable} templates that DID produce a comparison"
-            in refcamp["addendum_2"]["scoring"]["overall_agreement"]["detail"],
-            "ref-v1 campaign.yaml addendum_2: the comparable-template denominator")
+    eq(round(ref_frac, 4), row_agreement["ratio"],
+       "ref-v1: row-agreement ratio matches campaign.yaml addendum_3")
+    stated = f"{ref_rows_agree} / {ref_rows_total} = {ref_frac:.3f}"
+    require(f"**Row agreement over the {n_ref_comparable} comparable templates: {stated}.**"
+            in refreadme, "ref-v1 README §5: the agreeing-row fraction")
     m.add("tgRefRowsAgree", ref_rows_agree,
-          "compare-2026-09-17.json: agreeing rows summed over the comparable templates")
+          "compare-2026-09-18.json: agreeing rows summed over the comparable templates")
     m.add("tgRefRowsTotal", ref_rows_total,
-          "compare-2026-09-17.json: compared rows summed over the same templates")
+          "compare-2026-09-18.json: compared rows summed over the same templates")
     m.add("tgRefRowsAgreeFrac", f"{ref_frac:.3f}",
           "tgRefRowsAgree / tgRefRowsTotal, three decimals as README §5 prints it")
 
-    # the one genuine disagreement, and the shape of it
-    ref_disagree_rows = [v for v in ref_comparable if v["disagreeing"]]
-    eq(len(ref_disagree_rows), n_ref_disagree,
-       "ref-v1: exactly one comparable template disagrees")
-    is3v = ref_disagree_rows[0]
-    eq(is3v["disagreeing"], ref_rows_total - ref_rows_agree,
-       "ref-v1: every disagreeing row is that template's")
-    is3t = reftpl[ref_template(is3v["plan_id"])]
+    # the two genuine disagreements at this revision -- IS3 (unchanged across
+    # both revisions) and IC2 (newly visible now that its reference is valid)
+    # -- both the same root cause, ops/failure_ledger.jsonl D-090.
+    ref_disagree_rows = [v for v in ref_comparable if v.get("verdict") == "disagreeing"]
+    eq(len(ref_disagree_rows), n_ref_disagree, "ref-v1: exactly two comparable templates disagree")
+    # NOTE: `compared - agreeing` (the row-agreement gap tallied above) is
+    # NOT the same quantity as the `disagreeing` field summed over just these
+    # two templates -- BI4 (verdict reference-column-not-projected) also
+    # carries one mismatched row of its own (tgRefBiFourTgirCount/NeoCount,
+    # below), and a template's `disagreeing` field can double-count an
+    # unpaired row (once as tgms-only, once as reference-only) rather than
+    # being bounded by `compared`.  Not cross-checked against the pooled gap
+    # for that reason; each template's own figures are checked in their own
+    # section instead (IS3 below, IC2 below, BI4 below).
+    disagree_by_template = {ref_template(v["plan_id"]): v for v in ref_disagree_rows}
+    eq(set(disagree_by_template), {"IS3", "IC2"},
+       "ref-v1: the two disagreeing templates are exactly IS3 and IC2")
+    is3v = disagree_by_template["IS3"]
+    ic2v = disagree_by_template["IC2"]
+    is3t = reftpl["IS3"]
     eq(is3t["tgir"]["rows"], 2 * is3t["neo4j"]["rows"],
        "ref-v1 IS3: TGIR returns exactly twice the reference's rows (M7 KNOWS doubling)")
+    # tgRefDisagreeRow is kept singular and pinned to IS3 -- the evaluation.tex
+    # narrative this macro feeds ("the one genuine disagreement ...") is about
+    # IS3 specifically and is unchanged text; tgRefDisagreeRows (below) is the
+    # new, revision-accurate pair.
     m.add("tgRefDisagreeRow", is3v["plan_id"],
-          "compare-2026-09-17.json: the one comparable template that disagrees")
+          "compare-2026-09-18.json: IS3, the worked-example disagreement (IC2 is the "
+          "second at this revision -- see tgRefDisagreeRows)")
     m.add("tgRefIsThreeTgir", is3t["tgir"]["rows"],
-          "timings-2026-09-17.json IS3: TGIR rows")
+          "timings-2026-09-18.json IS3: TGIR rows")
     m.add("tgRefIsThreeNeo", is3t["neo4j"]["rows"],
-          "timings-2026-09-17.json IS3: Neo4j rows --- exactly half")
+          "timings-2026-09-18.json IS3: Neo4j rows --- exactly half")
+
+    disagree_order = ["IS3", "IC2"]
+    eq(set(disagree_order), set(disagree_by_template),
+       "ref-v1: tgRefDisagreeRows names exactly the two disagreeing templates")
+    disagree_rows_str = " and ".join(disagree_order)
+    require(disagree_rows_str in refreadme_flat,
+            "ref-v1 README §5.5: the 'IS3 and IC2' phrase")
+    m.add("tgRefDisagreeRows", disagree_rows_str,
+          "compare-2026-09-18.json verdicts: the two disagreeing templates, in the order "
+          "README §5.5 and ops/failure_ledger.jsonl D-090 name them")
+
+    # IC2's own figures.  Neither `compare` nor `timings` carries a distinct-
+    # messageId count, so it is counted from the row-level TGMS dump itself
+    # (source stated in the macro's provenance); README §5.5 states the same
+    # number in prose, cross-checked rather than trusted alone.
+    ic2t = reftpl["IC2"]
+    eq(ic2t["tgir"]["rows"], ic2v["compared"], "ref-v1 IC2: TGIR rows == compare's compared rows")
+    ic2_tgms = json.loads(REF_TGMS_IC2_ROWS.read_text(encoding="utf-8"))
+    eq(len(ic2_tgms["rows"]), ic2t["tgir"]["rows"],
+       "ref-v1 IC2: tgms-rows dump length == timings tgir.rows")
+    ic2_distinct = len({r["messageId"] for r in ic2_tgms["rows"]})
+    require(f"only **{ic2_distinct} distinct `messageId`s**" in refreadme_flat,
+            "ref-v1 README §5.5: the distinct-messageId count, stated in prose")
+    m.add("tgRefIcTwoTgir", ic2t["tgir"]["rows"], "timings-2026-09-18.json IC2: TGIR rows")
+    m.add("tgRefIcTwoNeo", ic2t["neo4j"]["rows"], "timings-2026-09-18.json IC2: Neo4j rows")
+    m.add("tgRefIcTwoDistinct", ic2_distinct,
+          "benchmarks/ldbc-ref-v1/tgms-rows/tgms-IC2.json: distinct messageId values over "
+          "the 20 TGIR rows -- SOURCE: neither compare-2026-09-18.json nor "
+          "timings-2026-09-18.json carries this count, so it is counted from the row dump "
+          "itself; README §5.5 states the same number in prose (cross-checked above)")
+
+    # BI4's one disagreeing row (README §5.0): the two counts are structured
+    # in compare's own `causes`, not just prose -- parsed, not eyeballed.
+    bi4v = next(v for v in verdicts if v["plan_id"] == "BI4")
+    bi4_tgms_only = next(c["detail"] for c in bi4v["causes"]
+                         if c["detail"].startswith("tgms-only row:"))
+    bi4_ref_only = next(c["detail"] for c in bi4v["causes"]
+                        if c["detail"].startswith("reference-only row:"))
+    bi4_tgms = ast.literal_eval(bi4_tgms_only.split("tgms-only row: ", 1)[1])
+    bi4_ref = ast.literal_eval(bi4_ref_only.split("reference-only row: ", 1)[1])
+    eq(bi4_tgms["personId"], bi4_ref["personId"],
+       "ref-v1 BI4: the one disagreeing row is the same person on both sides")
+    require(f"TGIR **{bi4_tgms['messageCount']}**, reference **{bi4_ref['messageCount']}**."
+            in refreadme_flat, "ref-v1 README §5.0: BI4's TGIR vs reference counts")
+    bi4_also_noted = refcamp["addendum_3"]["scoring"]["per_template"]["also_noted"]
+    require(str(bi4_tgms["messageCount"]) in bi4_also_noted
+            and str(bi4_ref["messageCount"]) in bi4_also_noted,
+            "ref-v1 campaign.yaml addendum_3: BI4's counts, re-stated in also_noted "
+            "(cross-check only)")
+    m.add("tgRefBiFourTgirCount", bi4_tgms["messageCount"],
+          "compare-2026-09-18.json BI4 causes: tgms-only row messageCount")
+    m.add("tgRefBiFourNeoCount", bi4_ref["messageCount"],
+          "compare-2026-09-18.json BI4 causes: reference-only row messageCount")
+
+    # The KNOWS both-ways interaction behind both disagreements (README §5.5,
+    # ops/failure_ledger.jsonl D-090): counted mechanically over the plan
+    # artifacts themselves, then cross-checked against README's own list
+    # rather than a hardcoded one.
+    def _expands_knows_both(node) -> bool:
+        if isinstance(node, dict):
+            if (node.get("op") == "Expand" and node.get("dir") == "both"
+                    and node.get("rel_type") == "KNOWS"):
+                return True
+            return any(_expands_knows_both(v) for v in node.values())
+        if isinstance(node, list):
+            return any(_expands_knows_both(item) for item in node)
+        return False
+
+    knows_both_plans = sorted(
+        p.stem for p in PLANS_DIR.glob("*.json")
+        if _expands_knows_both(json.loads(p.read_text(encoding="utf-8")).get("root", {})))
+    knows_list_match = re.search(
+        r'found \*\*nine\*\* expanding `KNOWS` with\s*`dir="both"`\s*\(([^)]+)\)',
+        refreadme, re.DOTALL)
+    require(knows_list_match is not None,
+            "ref-v1 README §5.5: the KNOWS-both-ways plan list, spelled 'nine'")
+    readme_knows_list = ({t.strip() for t in knows_list_match.group(1).split(",")}
+                          if knows_list_match else set())
+    eq(set(knows_both_plans), readme_knows_list,
+       "ref-v1: mechanically counted KNOWS-both-ways plans match README §5.5's list")
+    m.add("tgRefKnowsBothPlans", len(knows_both_plans),
+          "benchmarks/tgir-v1/plans/*.json, mechanically counted: plan artifacts whose "
+          "tree contains an Expand node with dir==\"both\" and rel_type==\"KNOWS\"")
+
+    # ops/failure_ledger.jsonl D-090 -- read from this script's own checkout
+    # (FAILURE_LEDGER, fixed above), not through --root: the ledger is a
+    # public-worktree file, like the script itself.
+    require(FAILURE_LEDGER.exists(), "ref-v1: ops/failure_ledger.jsonl exists")
+    ledger_entries = ([json.loads(line) for line in
+                       FAILURE_LEDGER.read_text(encoding="utf-8").splitlines() if line.strip()]
+                      if FAILURE_LEDGER.exists() else [])
+    d090 = [e for e in ledger_entries if e.get("id", "").startswith("D-090")]
+    eq(len(d090), 1, "ref-v1: exactly one D-090 entry in ops/failure_ledger.jsonl")
+    ledger_id = d090[0]["id"] if d090 else ""
+    if d090:
+        require("IS3 and IC2" in d090[0].get("root_cause", ""),
+                "ref-v1: the D-090 ledger entry names IS3 and IC2 (cross-check only)")
+    m.add("tgRefLedgerId", ledger_id,
+          "ops/failure_ledger.jsonl: the D-090 entry's own id string")
 
     # the timeout, at the pre-registered ceiling (never re-budgeted)
     ref_timeout_tpl = [e for e in reftim["templates"] if e["tgir"]["outcome"] == "TIMEOUT"]
@@ -1849,13 +2013,13 @@ def main() -> int:
     ceilings = refman["protocol"]["ceilings"]
     ceiling_s = ceilings["tgir_bypass_ceiling_s"] + ceilings["tgir_child_open_allowance_s"]
     require(f"{timeout_plan} hit the {ceiling_s} s ceiling "
-            f"({ceilings['tgir_bypass_ceiling_s']} s + "
+            f"({ceilings['tgir_bypass_ceiling_s']} s bypass + "
             f"{ceilings['tgir_child_open_allowance_s']} s store-open allowance)" in refreadme,
             "ref-v1 README §5: the timeout ceiling, as its two components")
     m.add("tgRefTimeoutRow", timeout_plan,
-          "timings-2026-09-17.json: the plan whose TGIR outcome is TIMEOUT")
+          "timings-2026-09-18.json: the plan whose TGIR outcome is TIMEOUT")
     m.add("tgRefTimeoutCeilingS", ceiling_s,
-          "manifest-2026-09-17.json protocol.ceilings: tgir_bypass_ceiling_s + "
+          "manifest-2026-09-18.json protocol.ceilings: tgir_bypass_ceiling_s + "
           "tgir_child_open_allowance_s, seconds")
 
     # per group (the three LDBC query families)
@@ -1870,27 +2034,26 @@ def main() -> int:
        "ref-v1: the family agree counts sum to tgRefAgree")
     for g, suffix in zip(ref_groups, ("Bi", "Ic", "Is")):
         m.add(f"tgRef{suffix}", ref_group_n[g],
-              f"compare-2026-09-17.json: {g} templates")
+              f"compare-2026-09-18.json: {g} templates")
         m.add(f"tgRefAgree{suffix}", ref_group_agree[g],
-              f"compare-2026-09-17.json: {g} templates with verdict == agreeing")
+              f"compare-2026-09-18.json: {g} templates with verdict == agreeing")
 
     # The remaining five verdict classes, broken out by family the same way
     # tgRefAgree{Bi,Ic,Is} is above.  Each group is attributed by exactly the
     # rule its class-total macro (above) uses -- the `verdict` field for
-    # not-projected, `not_scoreable` membership for the disagreeing split, the
-    # TGIR outcome for timeout/error -- so a group cell can never drift from a
-    # different partition than the total macro it must sum to.
+    # not-projected/disagreeing, the TGIR outcome for timeout/error -- so a
+    # group cell can never drift from a different partition than the total
+    # macro it must sum to.  `not_comparable` is 0 in every group at this
+    # revision (see tgRefNotComparable above); kept as its own class, rather
+    # than dropped, so a future regression in the reference harness reappears
+    # here instead of silently vanishing into `disagreeing`.
     ref_group_notproj = Counter(
         ref_template(v["plan_id"])[:2] for v in verdicts
         if v.get("verdict") == "reference-column-not-projected")
-    ref_group_notcomp = Counter(
-        ref_template(v["plan_id"])[:2] for v in verdicts
-        if v.get("verdict") == "disagreeing"
-        and ref_template(v["plan_id"]) in not_scoreable)
+    ref_group_notcomp: Counter = Counter()
     ref_group_disagree = Counter(
         ref_template(v["plan_id"])[:2] for v in verdicts
-        if v.get("verdict") == "disagreeing"
-        and ref_template(v["plan_id"]) not in not_scoreable)
+        if v.get("verdict") == "disagreeing")
     ref_group_timeout = Counter(
         e["template"][:2] for e in reftim["templates"]
         if e["tgir"]["outcome"] == "TIMEOUT")
@@ -1914,22 +2077,54 @@ def main() -> int:
     for g, suffix in zip(ref_groups, ("Bi", "Ic", "Is")):
         for cls, (per_group, _) in ref_group_classes.items():
             m.add(f"tgRef{cls}{suffix}", per_group[g],
-                  f"compare-2026-09-17.json / campaign.yaml addendum_2: {g} templates "
+                  f"compare-2026-09-18.json / campaign.yaml addendum_3: {g} templates "
                   f"classified {cls}")
 
+    # per-group row agreement -- new at this revision.  Cross-checked against
+    # campaign.yaml addendum_3's own by_group block and README §5's line,
+    # both of which state the same three (agree, total, ratio) triples.
+    ref_group_row_agree: Counter = Counter()
+    ref_group_row_total: Counter = Counter()
+    ref_group_comparable_n: Counter = Counter()
+    for v in ref_comparable:
+        g = ref_template(v["plan_id"])[:2]
+        ref_group_row_agree[g] += v["agreeing"]
+        ref_group_row_total[g] += v["compared"]
+        ref_group_comparable_n[g] += 1
+    by_group = row_agreement["by_group"]
+    for g in ref_groups:
+        eq(ref_group_comparable_n[g], by_group[g]["templates"],
+           f"ref-v1: {g} comparable-template count matches campaign.yaml addendum_3")
+        eq(ref_group_agree[g], by_group[g]["agreeing_verdicts"],
+           f"ref-v1: {g} agreeing-verdict count matches campaign.yaml addendum_3")
+        eq(f"{ref_group_row_agree[g]}/{ref_group_row_total[g]}", by_group[g]["rows"],
+           f"ref-v1: {g} rows string matches campaign.yaml addendum_3")
+        group_ratio = ref_group_row_agree[g] / ref_group_row_total[g]
+        eq(round(group_ratio, 4), by_group[g]["ratio"],
+           f"ref-v1: {g} row ratio matches campaign.yaml addendum_3")
+        require(f"**{g} {ref_group_row_agree[g]}/{ref_group_row_total[g]} = "
+                f"{group_ratio:.3f}**" in refreadme_flat,
+                f"ref-v1 README §5: {g}'s row-agreement line")
+    for g, suffix in zip(ref_groups, ("Bi", "Ic", "Is")):
+        m.add(f"tgRefRowsAgree{suffix}", ref_group_row_agree[g],
+              f"compare-2026-09-18.json: {g} agreeing rows summed over its comparable "
+              f"templates")
+        m.add(f"tgRefRowsTotal{suffix}", ref_group_row_total[g],
+              f"compare-2026-09-18.json: {g} compared rows summed over the same templates")
+
     # --- timing.  The two sides are reported per side and NEVER divided: see
-    # timings-2026-09-17.json's `protocol.note` (different rep counts, and the
+    # timings-2026-09-18.json's `protocol.note` (different rep counts, and the
     # TGIR figure excludes a store open the Neo4j figure has no analogue for).
     neo_median = {t: statistics.median([e["neo4j"]["wall_s"][k] for k in ("t1", "t2", "t3")])
                   for t, e in reftpl.items()}
     neo_runs = [e["neo4j"]["wall_s"][k] for e in reftpl.values() for k in ("t1", "t2", "t3")]
-    require(f"**Neo4j timed wall range: {min(neo_runs):.3f} s – {max(neo_runs):.3f} s.**"
+    require(f"**Neo4j timed wall range: {min(neo_runs):.3f} s – {max(neo_runs):.3f} s**"
             in refreadme, "ref-v1 README §5: the Neo4j per-run wall range")
     m.add("tgRefNeoMinS", f"{min(neo_median.values()):.3f}",
-          "timings-2026-09-17.json: smallest per-template median of the three timed "
+          "timings-2026-09-18.json: smallest per-template median of the three timed "
           "Neo4j runs, seconds")
     m.add("tgRefNeoMaxS", f"{max(neo_median.values()):.3f}",
-          "timings-2026-09-17.json: largest such median, seconds")
+          "timings-2026-09-18.json: largest such median, seconds")
 
     # TGIR's own figure, cross-checked plan by plan against the TGIR-side
     # campaign record, which is the same shape as ldbc-sf1-campaign.json.
@@ -1948,21 +2143,21 @@ def main() -> int:
             f"{max(ref_tgir_ms.values()):.1f} ms**, over {len(ref_tgir_ms)} completed plans."
             in refreadme, "ref-v1 README §5: the TGIR range, in ms")
     m.add("tgRefTgirMinS", f"{min(ref_tgir_ms.values()) / 1000:.1f}",
-          "timings-2026-09-17.json: smallest TGIR `ms` over the completed plans, seconds")
+          "timings-2026-09-18.json: smallest TGIR `ms` over the completed plans, seconds")
     m.add("tgRefTgirMaxS", f"{max(ref_tgir_ms.values()) / 1000:.1f}",
-          "timings-2026-09-17.json: largest such figure, seconds")
+          "timings-2026-09-18.json: largest such figure, seconds")
 
     neo_version = refman["config"]["neo4j_version"]
     require(f"Community **{neo_version}**" in refreadme,
             "ref-v1 README §1: the Neo4j version, as the manifest records it")
     m.add("tgRefNeoVersion", neo_version,
-          "manifest-2026-09-17.json config.neo4j_version")
+          "manifest-2026-09-18.json config.neo4j_version")
     # The import wall appears in README §1 prose but NOT in the manifest, which
     # carries only the import log's digest.  No macro is emitted for a number
     # this generator cannot resolve through a record; see README's Pending.
     if "import_wall_s" in refman["config"]:  # pragma: no cover - not in today's record
         m.add("tgRefNeoImportS", refman["config"]["import_wall_s"],
-              "manifest-2026-09-17.json config.import_wall_s")
+              "manifest-2026-09-18.json config.import_wall_s")
 
     # An index count, if the manifest ever carries one under `config` (no
     # macro today's record: `config` has no key naming an index count).
@@ -1970,7 +2165,7 @@ def main() -> int:
     index_key = next((k for k in index_keys if k in refman["config"]), None)
     if index_key is not None:  # pragma: no cover - not in today's record
         m.add("tgRefIndexes", refman["config"][index_key],
-              f"manifest-2026-09-17.json config.{index_key}")
+              f"manifest-2026-09-18.json config.{index_key}")
 
     # Per-plan store-open seconds, if the TGIR-side campaign record (or the
     # manifest) ever carries one (no macro today: neither `records` nor
@@ -1987,9 +2182,9 @@ def main() -> int:
 
     # the running example: IS2, both sides
     m.add("tgRefIsTwoNeoMedianS", f"{neo_median['IS2']:.3f}",
-          "timings-2026-09-17.json IS2: median of the three timed Neo4j runs, seconds")
+          "timings-2026-09-18.json IS2: median of the three timed Neo4j runs, seconds")
     m.add("tgRefIsTwoTgirS", f"{ref_tgir_ms['IS2'] / 1000:.1f}",
-          "timings-2026-09-17.json IS2: TGIR `ms` / 1000, seconds")
+          "timings-2026-09-18.json IS2: TGIR `ms` / 1000, seconds")
 
     # ---------------------------------------------------------------- write
     if FAILURES:

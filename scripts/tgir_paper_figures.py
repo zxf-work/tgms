@@ -25,21 +25,24 @@ color alone):
                          ratio at 1M/10M before/after the fix, from
                          e14-p2-compiled-{1m,10m}{,-after}.json
   3. fig-neo4j.pdf       per-template wall time, TGIR vs. Neo4j, from
-                         benchmarks/ldbc-ref-v1/timings-2026-09-17.json —
-                         paired horizontal bars on a log axis, rows grouped
-                         BI/IC/IS; the Neo4j side is the median of that
-                         record's three timed runs (the warm-up excluded) and
-                         the TGIR side its `ms` in seconds, each TGIR value
-                         cross-checked against tgms-campaign-ldbc-ref-v1.json;
-                         a template whose TGIR side timed out is drawn at the
-                         ceiling manifest-2026-09-17.json pre-registers, with
-                         its own hatch, never as a measurement.  Still a
-                         placeholder PDF when that record does not exist.
+                         benchmarks/ldbc-ref-v1/timings-2026-09-18.json, the
+                         revision of record (falls back to the superseded
+                         timings-2026-09-17.json only if 09-18 is not present
+                         in this checkout) — paired horizontal bars on a log
+                         axis, rows grouped BI/IC/IS; the Neo4j side is the
+                         median of that record's three timed runs (the
+                         warm-up excluded) and the TGIR side its `ms` in
+                         seconds, each TGIR value cross-checked against
+                         tgms-campaign-ldbc-ref-v1.json; a template whose TGIR
+                         side timed out is drawn at the ceiling the matching
+                         manifest-*.json pre-registers, with its own hatch,
+                         never as a measurement.  Still a placeholder PDF when
+                         neither revision's record exists.
 
   The two sides' wall times are NOT a speed ratio and the figure never draws
   one: they are different rep counts against different systems, and TGIR's
   `ms` excludes a per-plan store open the warm Neo4j server has no analogue
-  for (timings-2026-09-17.json's own `protocol.note`).  Both are plotted per
+  for (the timings record's own `protocol.note`).  Both are plotted per
   side, on a shared axis, and left to the caption to qualify.
 
 Also emits ``figures.json`` (the plotted values per figure, so a reviewer of
@@ -393,9 +396,22 @@ def plot_cost(data: dict, out_dir: Path) -> str:
 # fig-neo4j: per-template wall time, TGIR vs. Neo4j (LDBC reference)
 # --------------------------------------------------------------------------
 
-REF_TIMINGS_REL = Path("timings-2026-09-17.json")
-REF_MANIFEST_REL = Path("manifest-2026-09-17.json")
+REF_TIMINGS_REL_1809 = Path("timings-2026-09-18.json")
+REF_TIMINGS_REL_1709 = Path("timings-2026-09-17.json")
+REF_MANIFEST_REL_1809 = Path("manifest-2026-09-18.json")
+REF_MANIFEST_REL_1709 = Path("manifest-2026-09-17.json")
 REF_CAMPAIGN_REL = Path("tgms-campaign-ldbc-ref-v1.json")
+
+
+def resolve_ref_source(root: Path, rel_1809: Path, rel_1709: Path) -> Path:
+    """The revision of record is -2026-09-18; -2026-09-17 is the superseded
+    interim revision (7 of the 24 templates had an invalid reference side
+    there — see benchmarks/ldbc-ref-v1/README.md §5), used only when 09-18 is
+    not present in this checkout."""
+    p1809 = root / LDBC_REF_REL / rel_1809
+    if p1809.exists():
+        return p1809
+    return root / LDBC_REF_REL / rel_1709
 
 # The three LDBC query families, in the order the paper presents them.  The
 # figure groups its rows by family and orders each family by template number
@@ -415,7 +431,8 @@ def ref_sort_key(template: str) -> tuple[int, int, str]:
 
 def read_ref_timings(path: Path) -> dict | None:
     """The executed reference run's paired wall times,
-    ``benchmarks/ldbc-ref-v1/timings-2026-09-17.json``.
+    ``benchmarks/ldbc-ref-v1/timings-2026-09-18.json`` (or the superseded
+    ``-2026-09-17.json``, see ``resolve_ref_source``).
 
     Each entry of ``templates`` carries the Neo4j side as a warm-up plus three
     timed executions (``neo4j.wall_s.{warmup,t1,t2,t3}``, seconds) and the TGIR
@@ -454,9 +471,10 @@ def read_ref_timings(path: Path) -> dict | None:
 
 
 def read_ref_ceiling(path: Path) -> float | None:
-    """The pre-registered TGIR ceiling a timed-out template is drawn at:
-    ``manifest-2026-09-17.json``'s bypass ceiling plus its store-open
-    allowance, in seconds.  A timeout is not a measurement, so the bar is
+    """The pre-registered TGIR ceiling a timed-out template is drawn at: the
+    manifest's bypass ceiling plus its store-open allowance, in seconds
+    (unchanged between the 09-17 and 09-18 revisions).  A timeout is not a
+    measurement, so the bar is
     drawn *at* the ceiling and hatched differently rather than being given a
     number the run never produced."""
     if not path.exists():
@@ -493,8 +511,8 @@ def cross_check_tgms(campaign_path: Path, tgms: dict[str, float],
 
 
 def build_neo4j(root: Path) -> dict:
-    timings_src = root / LDBC_REF_REL / REF_TIMINGS_REL
-    manifest_src = root / LDBC_REF_REL / REF_MANIFEST_REL
+    timings_src = resolve_ref_source(root, REF_TIMINGS_REL_1809, REF_TIMINGS_REL_1709)
+    manifest_src = resolve_ref_source(root, REF_MANIFEST_REL_1809, REF_MANIFEST_REL_1709)
     campaign_src = root / LDBC_REF_REL / REF_CAMPAIGN_REL
     timings = read_ref_timings(timings_src)
     ceiling = read_ref_ceiling(manifest_src)
