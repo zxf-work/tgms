@@ -1,0 +1,60 @@
+RUN_STARTED ldbc-ref-v1-start-indices 2026-09-17T18:35:00Z
+Directories in use:
+home:         /mnt/project/xzhang/neo4j/neo4j-community-5.26.0
+config:       /mnt/project/xzhang/neo4j/neo4j-community-5.26.0/conf
+logs:         /mnt/project/xzhang/neo4j/logs-ldbc-ref
+plugins:      /mnt/project/xzhang/neo4j/neo4j-community-5.26.0/plugins
+import:       /mnt/project/xzhang/neo4j/neo4j-community-5.26.0/import
+data:         /mnt/project/xzhang/neo4j/data-ldbc-ref
+certificates: /mnt/project/xzhang/neo4j/neo4j-community-5.26.0/certificates
+licenses:     /mnt/project/xzhang/neo4j/neo4j-community-5.26.0/licenses
+run:          /mnt/project/xzhang/neo4j/neo4j-community-5.26.0/run
+Starting Neo4j.
+Started neo4j (pid:4102502). It is available at http://127.0.0.1:7475
+There may be a short delay until the server is ready.
+BOLT_READY after 1s 2026-09-17T18:35:13Z
+=== indices (vendored DDL, unmodified) ===
+=== awaiting index population ===
+INDEX_WALL_S=14
+=== loaded graph counts (must match the same-data gate) ===
+nodes
+2997352
+relationships
+17196776
+=== per-label ===
+label, count
+"City", 1343
+"Comment", 1739438
+"Company", 1575
+"Continent", 6
+"Country", 111
+"Forum", 100827
+"Message", 2860664
+"Organisation", 7955
+"Person", 10295
+"Place", 1460
+"Post", 1121226
+"Tag", 16080
+"TagClass", 71
+"University", 6380
+=== per-relationship-type ===
+t, count
+"CONTAINER_OF", 1121226
+"HAS_CREATOR", 2860664
+"HAS_INTEREST", 238052
+"HAS_MEMBER", 2909768
+"HAS_MODERATOR", 100827
+"HAS_TAG", 3256648
+"HAS_TYPE", 16080
+"IS_LOCATED_IN", 2878914
+"IS_PART_OF", 1454
+"IS_SUBCLASS_OF", 70
+"KNOWS", 173014
+"LIKES", 1870268
+"REPLY_OF", 1739438
+"STUDY_AT", 8309
+"WORK_AT", 22044
+=== APOC present? (BI10 needs apoc.path.subgraphNodes) ===
+name
+"apoc.path.subgraphNodes"
+START_INDICES_DONE 2026-09-17T18:35:39Z

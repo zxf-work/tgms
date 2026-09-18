@@ -1,0 +1,418 @@
+{
+ "columns": [
+  "relatedTag.name",
+  "count"
+ ],
+ "commit": "0b7198dfdf7a",
+ "host": "xzgpu",
+ "params": {
+  "tag": "Slovenia"
+ },
+ "plan_id": "BI7",
+ "query_file": "external_workloads/ldbc/bi/neo4j/queries/bi-7.cypher",
+ "query_sha256": "e1d1f3f5f78f14e4de5e76f43f425c25c93b953f326298b23027d23939c1d687",
+ "result_digest": "90eb1bdf2ada9e8d803949b2a5c973861b5aa4fe19e0e9117bf8475f82e5922e",
+ "rows": [
+  {
+   "count": 10,
+   "relatedTag.name": "Humayun"
+  },
+  {
+   "count": 9,
+   "relatedTag.name": "Genghis_Khan"
+  },
+  {
+   "count": 9,
+   "relatedTag.name": "Muammar_Gaddafi"
+  },
+  {
+   "count": 8,
+   "relatedTag.name": "Sammy_Sosa"
+  },
+  {
+   "count": 7,
+   "relatedTag.name": "Thomas_Hardy"
+  },
+  {
+   "count": 6,
+   "relatedTag.name": "Dalai_Lama"
+  },
+  {
+   "count": 6,
+   "relatedTag.name": "Fernando_Gonz\u00e1lez"
+  },
+  {
+   "count": 6,
+   "relatedTag.name": "Haile_Selassie_I"
+  },
+  {
+   "count": 6,
+   "relatedTag.name": "Mariano_Rivera"
+  },
+  {
+   "count": 6,
+   "relatedTag.name": "Peter_Hain"
+  },
+  {
+   "count": 6,
+   "relatedTag.name": "Ronald_Reagan"
+  },
+  {
+   "count": 5,
+   "relatedTag.name": "Bertrand_Russell"
+  },
+  {
+   "count": 5,
+   "relatedTag.name": "Bill_Clinton"
+  },
+  {
+   "count": 5,
+   "relatedTag.name": "Bob_Dole"
+  },
+  {
+   "count": 5,
+   "relatedTag.name": "Diana,_Princess_of_Wales"
+  },
+  {
+   "count": 5,
+   "relatedTag.name": "Dimitri_Tiomkin"
+  },
+  {
+   "count": 5,
+   "relatedTag.name": "Duchy_of_Warsaw"
+  },
+  {
+   "count": 5,
+   "relatedTag.name": "Dustin_Hoffman"
+  },
+  {
+   "count": 5,
+   "relatedTag.name": "Gerald_Ford"
+  },
+  {
+   "count": 5,
+   "relatedTag.name": "Indonesia"
+  },
+  {
+   "count": 5,
+   "relatedTag.name": "Julius_Caesar"
+  },
+  {
+   "count": 5,
+   "relatedTag.name": "Monaco"
+  },
+  {
+   "count": 5,
+   "relatedTag.name": "Netherlands"
+  },
+  {
+   "count": 5,
+   "relatedTag.name": "Nicaragua"
+  },
+  {
+   "count": 5,
+   "relatedTag.name": "Poland"
+  },
+  {
+   "count": 5,
+   "relatedTag.name": "Sierra_Leone"
+  },
+  {
+   "count": 5,
+   "relatedTag.name": "Silvio_Berlusconi"
+  },
+  {
+   "count": 5,
+   "relatedTag.name": "Soviet_Union"
+  },
+  {
+   "count": 5,
+   "relatedTag.name": "Sudan"
+  },
+  {
+   "count": 5,
+   "relatedTag.name": "Tiger_Woods"
+  },
+  {
+   "count": 4,
+   "relatedTag.name": "Albert_Einstein"
+  },
+  {
+   "count": 4,
+   "relatedTag.name": "Arthur_Wellesley,_1st_Duke_of_Wellington"
+  },
+  {
+   "count": 4,
+   "relatedTag.name": "Australia"
+  },
+  {
+   "count": 4,
+   "relatedTag.name": "Axis_powers"
+  },
+  {
+   "count": 4,
+   "relatedTag.name": "Batavian_Republic"
+  },
+  {
+   "count": 4,
+   "relatedTag.name": "Bosnia_and_Herzegovina"
+  },
+  {
+   "count": 4,
+   "relatedTag.name": "Clark_Gable"
+  },
+  {
+   "count": 4,
+   "relatedTag.name": "Colin_Powell"
+  },
+  {
+   "count": 4,
+   "relatedTag.name": "Edward_IV_of_England"
+  },
+  {
+   "count": 4,
+   "relatedTag.name": "Elizabeth_II"
+  },
+  {
+   "count": 4,
+   "relatedTag.name": "Etruscan_civilization"
+  },
+  {
+   "count": 4,
+   "relatedTag.name": "Fidel_Castro"
+  },
+  {
+   "count": 4,
+   "relatedTag.name": "Freddie_Mercury"
+  },
+  {
+   "count": 4,
+   "relatedTag.name": "George_Gershwin"
+  },
+  {
+   "count": 4,
+   "relatedTag.name": "German_Empire"
+  },
+  {
+   "count": 4,
+   "relatedTag.name": "Ghana"
+  },
+  {
+   "count": 4,
+   "relatedTag.name": "Greece"
+  },
+  {
+   "count": 4,
+   "relatedTag.name": "Gustav_Mahler"
+  },
+  {
+   "count": 4,
+   "relatedTag.name": "Imelda_Marcos"
+  },
+  {
+   "count": 4,
+   "relatedTag.name": "India"
+  },
+  {
+   "count": 4,
+   "relatedTag.name": "James_Buchanan"
+  },
+  {
+   "count": 4,
+   "relatedTag.name": "Joseph_Stalin"
+  },
+  {
+   "count": 4,
+   "relatedTag.name": "Leo_Tolstoy"
+  },
+  {
+   "count": 4,
+   "relatedTag.name": "Lewis_Carroll"
+  },
+  {
+   "count": 4,
+   "relatedTag.name": "Louis_Philippe_I"
+  },
+  {
+   "count": 4,
+   "relatedTag.name": "Martin_Luther"
+  },
+  {
+   "count": 4,
+   "relatedTag.name": "Martin_Luther_King,_Jr."
+  },
+  {
+   "count": 4,
+   "relatedTag.name": "Montenegro"
+  },
+  {
+   "count": 4,
+   "relatedTag.name": "Monty_Python"
+  },
+  {
+   "count": 4,
+   "relatedTag.name": "Moon_River"
+  },
+  {
+   "count": 4,
+   "relatedTag.name": "Nicolas_Sarkozy"
+  },
+  {
+   "count": 4,
+   "relatedTag.name": "Puerto_Rico"
+  },
+  {
+   "count": 4,
+   "relatedTag.name": "Raphael"
+  },
+  {
+   "count": 4,
+   "relatedTag.name": "Richard_Rodgers"
+  },
+  {
+   "count": 4,
+   "relatedTag.name": "Rwanda"
+  },
+  {
+   "count": 4,
+   "relatedTag.name": "Saint_Pierre_and_Miquelon"
+  },
+  {
+   "count": 4,
+   "relatedTag.name": "Samuel_Pepys"
+  },
+  {
+   "count": 4,
+   "relatedTag.name": "The_Bahamas"
+  },
+  {
+   "count": 4,
+   "relatedTag.name": "Tori_Amos"
+  },
+  {
+   "count": 4,
+   "relatedTag.name": "Turks_and_Caicos_Islands"
+  },
+  {
+   "count": 4,
+   "relatedTag.name": "Under_Pressure"
+  },
+  {
+   "count": 4,
+   "relatedTag.name": "Vatican_City"
+  },
+  {
+   "count": 4,
+   "relatedTag.name": "Vladimir_Lenin"
+  },
+  {
+   "count": 4,
+   "relatedTag.name": "Wales"
+  },
+  {
+   "count": 4,
+   "relatedTag.name": "William_McKinley"
+  },
+  {
+   "count": 3,
+   "relatedTag.name": "Abraham_Lincoln"
+  },
+  {
+   "count": 3,
+   "relatedTag.name": "Al_Gore"
+  },
+  {
+   "count": 3,
+   "relatedTag.name": "Alfred,_Lord_Tennyson"
+  },
+  {
+   "count": 3,
+   "relatedTag.name": "Algeria"
+  },
+  {
+   "count": 3,
+   "relatedTag.name": "Andy_Roddick"
+  },
+  {
+   "count": 3,
+   "relatedTag.name": "Aristophanes"
+  },
+  {
+   "count": 3,
+   "relatedTag.name": "Azad_Hind"
+  },
+  {
+   "count": 3,
+   "relatedTag.name": "Baby,_I_Love_Your_Way"
+  },
+  {
+   "count": 3,
+   "relatedTag.name": "Bangladesh"
+  },
+  {
+   "count": 3,
+   "relatedTag.name": "Batman"
+  },
+  {
+   "count": 3,
+   "relatedTag.name": "Bill_Cosby"
+  },
+  {
+   "count": 3,
+   "relatedTag.name": "Bing_Crosby"
+  },
+  {
+   "count": 3,
+   "relatedTag.name": "Bolivia"
+  },
+  {
+   "count": 3,
+   "relatedTag.name": "British_North_America"
+  },
+  {
+   "count": 3,
+   "relatedTag.name": "British_Overseas_Territories"
+  },
+  {
+   "count": 3,
+   "relatedTag.name": "Burma"
+  },
+  {
+   "count": 3,
+   "relatedTag.name": "Carl_Gustaf_Emil_Mannerheim"
+  },
+  {
+   "count": 3,
+   "relatedTag.name": "Cecil_B._DeMille"
+  },
+  {
+   "count": 3,
+   "relatedTag.name": "Charles,_Prince_of_Wales"
+  },
+  {
+   "count": 3,
+   "relatedTag.name": "Charles_de_Gaulle"
+  },
+  {
+   "count": 3,
+   "relatedTag.name": "Charlton_Heston"
+  },
+  {
+   "count": 3,
+   "relatedTag.name": "Christina_Aguilera"
+  },
+  {
+   "count": 3,
+   "relatedTag.name": "Christopher_Lee"
+  },
+  {
+   "count": 3,
+   "relatedTag.name": "Chuck_Berry"
+  },
+  {
+   "count": 3,
+   "relatedTag.name": "Chulalongkorn"
+  }
+ ],
+ "wall_s": 0.061
+}

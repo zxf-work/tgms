@@ -1,0 +1,164 @@
+{
+ "columns": [
+  "personId",
+  "firstName",
+  "lastName",
+  "friendshipCreationDate"
+ ],
+ "commit": "0b7198dfdf7a",
+ "host": "xzgpu",
+ "params": {
+  "personId": 13194139534529
+ },
+ "plan_id": "IS3",
+ "query_file": "external_workloads/ldbc/interactive_v1/cypher/queries/interactive-short-3.cypher",
+ "query_sha256": "424bda25c79699433d5cf6a18893b6431980155a573a97220867c00be547d323",
+ "result_digest": "801dcf176fd2ea1b424f67c6c78818462403641141adad7cde53a14229b5d007",
+ "rows": [
+  {
+   "firstName": "Binh",
+   "friendshipCreationDate": 1354082151622,
+   "lastName": "Ha",
+   "personId": 35184372096829
+  },
+  {
+   "firstName": "Ge",
+   "friendshipCreationDate": 1353559515417,
+   "lastName": "Wei",
+   "personId": 15393162789356
+  },
+  {
+   "firstName": "Peng",
+   "friendshipCreationDate": 1351850580919,
+   "lastName": "Zhang",
+   "personId": 30786325587579
+  },
+  {
+   "firstName": "Lei",
+   "friendshipCreationDate": 1349122268575,
+   "lastName": "Zhang",
+   "personId": 35184372096170
+  },
+  {
+   "firstName": "Hao",
+   "friendshipCreationDate": 1346647950676,
+   "lastName": "Li",
+   "personId": 30786325579308
+  },
+  {
+   "firstName": "Sam",
+   "friendshipCreationDate": 1345286463771,
+   "lastName": "Huang",
+   "personId": 19791209308287
+  },
+  {
+   "firstName": "Hao",
+   "friendshipCreationDate": 1345155329348,
+   "lastName": "Wang",
+   "personId": 21990232564056
+  },
+  {
+   "firstName": "A.",
+   "friendshipCreationDate": 1344237523088,
+   "lastName": "Nair",
+   "personId": 26388279074760
+  },
+  {
+   "firstName": "Zhong",
+   "friendshipCreationDate": 1343082287850,
+   "lastName": "Wei",
+   "personId": 10995116285249
+  },
+  {
+   "firstName": "Hoang Yen",
+   "friendshipCreationDate": 1338574523296,
+   "lastName": "Nguyen",
+   "personId": 21990232557614
+  },
+  {
+   "firstName": "Chris",
+   "friendshipCreationDate": 1333167048008,
+   "lastName": "Hall",
+   "personId": 24189255811663
+  },
+  {
+   "firstName": "Lei",
+   "friendshipCreationDate": 1332592932164,
+   "lastName": "Wu",
+   "personId": 13194139540984
+  },
+  {
+   "firstName": "John",
+   "friendshipCreationDate": 1329688837594,
+   "lastName": "Khan",
+   "personId": 10995116284819
+  },
+  {
+   "firstName": "Zheng",
+   "friendshipCreationDate": 1324046270871,
+   "lastName": "Wang",
+   "personId": 10995116279993
+  },
+  {
+   "firstName": "Jie",
+   "friendshipCreationDate": 1323487676156,
+   "lastName": "Zhu",
+   "personId": 21990232563317
+  },
+  {
+   "firstName": "Wei",
+   "friendshipCreationDate": 1318749987172,
+   "lastName": "Li",
+   "personId": 6597069771347
+  },
+  {
+   "firstName": "Yang",
+   "friendshipCreationDate": 1315972100462,
+   "lastName": "Chen",
+   "personId": 10995116278639
+  },
+  {
+   "firstName": "Bing",
+   "friendshipCreationDate": 1311935811138,
+   "lastName": "Wang",
+   "personId": 10995116284358
+  },
+  {
+   "firstName": "Wei",
+   "friendshipCreationDate": 1310330934862,
+   "lastName": "Wang",
+   "personId": 8796093024008
+  },
+  {
+   "firstName": "Wei",
+   "friendshipCreationDate": 1305072024244,
+   "lastName": "Liu",
+   "personId": 8796093028790
+  },
+  {
+   "firstName": "Hao",
+   "friendshipCreationDate": 1305066657678,
+   "lastName": "Lei",
+   "personId": 10995116285998
+  },
+  {
+   "firstName": "Shweta",
+   "friendshipCreationDate": 1304770109765,
+   "lastName": "Kapoor",
+   "personId": 15393162797132
+  },
+  {
+   "firstName": "Ramon",
+   "friendshipCreationDate": 1304178840642,
+   "lastName": "Reyes",
+   "personId": 6597069775211
+  },
+  {
+   "firstName": "Eva",
+   "friendshipCreationDate": 1301889151278,
+   "lastName": "Redl",
+   "personId": 8796093024108
+  }
+ ],
+ "wall_s": 0.011
+}

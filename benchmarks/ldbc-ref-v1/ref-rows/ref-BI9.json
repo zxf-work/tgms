@@ -1,0 +1,722 @@
+{
+ "columns": [
+  "person.id",
+  "person.firstName",
+  "person.lastName",
+  "threadCount",
+  "messageCount"
+ ],
+ "commit": "0b7198dfdf7a",
+ "host": "xzgpu",
+ "params": {
+  "endDate": "2012-12-10T00:00:00.000+00:00",
+  "startDate": "2012-08-30T00:00:00.000+00:00"
+ },
+ "plan_id": "BI9",
+ "query_file": "external_workloads/ldbc/bi/neo4j/queries/bi-9.cypher",
+ "query_sha256": "4c5fb4553a704213ad9e58ede3b2e590d1237c068df658ad33298a1ba21ff168",
+ "result_digest": "24fe5289aab482b10b119c87b6e3d3fb77f11bb70e9f17816e87abba847dfce1",
+ "rows": [
+  {
+   "messageCount": 2001,
+   "person.firstName": "Robert",
+   "person.id": 8796093032299,
+   "person.lastName": "Brown",
+   "threadCount": 144
+  },
+  {
+   "messageCount": 1386,
+   "person.firstName": "Andrei",
+   "person.id": 26388279073672,
+   "person.lastName": "Condariuc",
+   "threadCount": 187
+  },
+  {
+   "messageCount": 1258,
+   "person.firstName": "Dan",
+   "person.id": 24189255815615,
+   "person.lastName": "Andersson",
+   "threadCount": 127
+  },
+  {
+   "messageCount": 1145,
+   "person.firstName": "Mark",
+   "person.id": 10995116284458,
+   "person.lastName": "Coetzee",
+   "threadCount": 97
+  },
+  {
+   "messageCount": 1091,
+   "person.firstName": "Chris",
+   "person.id": 24189255811663,
+   "person.lastName": "Hall",
+   "threadCount": 198
+  },
+  {
+   "messageCount": 1085,
+   "person.firstName": "Samir",
+   "person.id": 28587302329167,
+   "person.lastName": "Al-Fayez",
+   "threadCount": 272
+  },
+  {
+   "messageCount": 1057,
+   "person.firstName": "Ayesha",
+   "person.id": 6597069774064,
+   "person.lastName": "Ahmed",
+   "threadCount": 130
+  },
+  {
+   "messageCount": 940,
+   "person.firstName": "Shweta",
+   "person.id": 15393162797132,
+   "person.lastName": "Kapoor",
+   "threadCount": 115
+  },
+  {
+   "messageCount": 924,
+   "person.firstName": "Jorge",
+   "person.id": 30786325579605,
+   "person.lastName": "Gonzalez",
+   "threadCount": 75
+  },
+  {
+   "messageCount": 806,
+   "person.firstName": "Ali",
+   "person.id": 10995116284554,
+   "person.lastName": "Lo",
+   "threadCount": 69
+  },
+  {
+   "messageCount": 804,
+   "person.firstName": "Alexander",
+   "person.id": 28587302323380,
+   "person.lastName": "Hleb",
+   "threadCount": 103
+  },
+  {
+   "messageCount": 749,
+   "person.firstName": "Sam",
+   "person.id": 28587302326380,
+   "person.lastName": "Carter",
+   "threadCount": 80
+  },
+  {
+   "messageCount": 723,
+   "person.firstName": "Ahmad Rafiq",
+   "person.id": 4398046519825,
+   "person.lastName": "Akbar",
+   "threadCount": 104
+  },
+  {
+   "messageCount": 709,
+   "person.firstName": "Monja",
+   "person.id": 8796093030850,
+   "person.lastName": "Tsiranana",
+   "threadCount": 98
+  },
+  {
+   "messageCount": 708,
+   "person.firstName": "Francisco",
+   "person.id": 15393162792602,
+   "person.lastName": "Gonzalez",
+   "threadCount": 92
+  },
+  {
+   "messageCount": 701,
+   "person.firstName": "Rudolf",
+   "person.id": 17592186045301,
+   "person.lastName": "Engel",
+   "threadCount": 53
+  },
+  {
+   "messageCount": 700,
+   "person.firstName": "Benedict",
+   "person.id": 13194139535893,
+   "person.lastName": "Wang",
+   "threadCount": 55
+  },
+  {
+   "messageCount": 697,
+   "person.firstName": "Bobby",
+   "person.id": 19791209306158,
+   "person.lastName": "Garcia",
+   "threadCount": 61
+  },
+  {
+   "messageCount": 695,
+   "person.firstName": "Bingbing",
+   "person.id": 32985348835002,
+   "person.lastName": "Liu",
+   "threadCount": 88
+  },
+  {
+   "messageCount": 684,
+   "person.firstName": "Peng",
+   "person.id": 19791209304449,
+   "person.lastName": "Li",
+   "threadCount": 46
+  },
+  {
+   "messageCount": 658,
+   "person.firstName": "Peter",
+   "person.id": 2199023265458,
+   "person.lastName": "Hall",
+   "threadCount": 75
+  },
+  {
+   "messageCount": 629,
+   "person.firstName": "Baruch",
+   "person.id": 21990232559659,
+   "person.lastName": "Dego",
+   "threadCount": 109
+  },
+  {
+   "messageCount": 626,
+   "person.firstName": "K.",
+   "person.id": 8796093030826,
+   "person.lastName": "Sharma",
+   "threadCount": 92
+  },
+  {
+   "messageCount": 623,
+   "person.firstName": "George",
+   "person.id": 26388279070147,
+   "person.lastName": "Nagy",
+   "threadCount": 74
+  },
+  {
+   "messageCount": 602,
+   "person.firstName": "Jun",
+   "person.id": 24189255814889,
+   "person.lastName": "Zhang",
+   "threadCount": 79
+  },
+  {
+   "messageCount": 569,
+   "person.firstName": "Sombat",
+   "person.id": 24189255819865,
+   "person.lastName": "Amarttayakul",
+   "threadCount": 74
+  },
+  {
+   "messageCount": 559,
+   "person.firstName": "James",
+   "person.id": 8478,
+   "person.lastName": "Moore",
+   "threadCount": 44
+  },
+  {
+   "messageCount": 556,
+   "person.firstName": "Shweta",
+   "person.id": 28587302329901,
+   "person.lastName": "Khan",
+   "threadCount": 63
+  },
+  {
+   "messageCount": 536,
+   "person.firstName": "Avraham",
+   "person.id": 21990232563252,
+   "person.lastName": "Alhouthi",
+   "threadCount": 102
+  },
+  {
+   "messageCount": 529,
+   "person.firstName": "Anh",
+   "person.id": 24189255812073,
+   "person.lastName": "Pham",
+   "threadCount": 40
+  },
+  {
+   "messageCount": 507,
+   "person.firstName": "Abdul Rahman",
+   "person.id": 2199023258646,
+   "person.lastName": "Budjana",
+   "threadCount": 76
+  },
+  {
+   "messageCount": 496,
+   "person.firstName": "K.",
+   "person.id": 8796093023472,
+   "person.lastName": "Bose",
+   "threadCount": 81
+  },
+  {
+   "messageCount": 480,
+   "person.firstName": "Edward",
+   "person.id": 24189255812627,
+   "person.lastName": "Ouma",
+   "threadCount": 43
+  },
+  {
+   "messageCount": 473,
+   "person.firstName": "Sam",
+   "person.id": 19791209308287,
+   "person.lastName": "Huang",
+   "threadCount": 33
+  },
+  {
+   "messageCount": 472,
+   "person.firstName": "Helen",
+   "person.id": 26388279066798,
+   "person.lastName": "Carr",
+   "threadCount": 63
+  },
+  {
+   "messageCount": 464,
+   "person.firstName": "Maria",
+   "person.id": 10995116283619,
+   "person.lastName": "Kibona",
+   "threadCount": 99
+  },
+  {
+   "messageCount": 463,
+   "person.firstName": "Abdulwahab",
+   "person.id": 24189255814904,
+   "person.lastName": "Gillett",
+   "threadCount": 57
+  },
+  {
+   "messageCount": 455,
+   "person.firstName": "Alfred",
+   "person.id": 15393162789959,
+   "person.lastName": "Hoffmann",
+   "threadCount": 82
+  },
+  {
+   "messageCount": 450,
+   "person.firstName": "Robert",
+   "person.id": 15393162795695,
+   "person.lastName": "Bratianu",
+   "threadCount": 33
+  },
+  {
+   "messageCount": 447,
+   "person.firstName": "John",
+   "person.id": 28587302326092,
+   "person.lastName": "Sen",
+   "threadCount": 49
+  },
+  {
+   "messageCount": 442,
+   "person.firstName": "Piotr",
+   "person.id": 2199023263408,
+   "person.lastName": "Dobrowolski",
+   "threadCount": 60
+  },
+  {
+   "messageCount": 442,
+   "person.firstName": "Aaron",
+   "person.id": 15393162791403,
+   "person.lastName": "Cruz",
+   "threadCount": 73
+  },
+  {
+   "messageCount": 441,
+   "person.firstName": "Rajiv",
+   "person.id": 26388279073393,
+   "person.lastName": "Singh",
+   "threadCount": 37
+  },
+  {
+   "messageCount": 441,
+   "person.firstName": "Adrian",
+   "person.id": 26388279074683,
+   "person.lastName": "Popescu",
+   "threadCount": 59
+  },
+  {
+   "messageCount": 435,
+   "person.firstName": "Eli",
+   "person.id": 8796093032304,
+   "person.lastName": "Chihab",
+   "threadCount": 64
+  },
+  {
+   "messageCount": 427,
+   "person.firstName": "Yang",
+   "person.id": 32985348843490,
+   "person.lastName": "Li",
+   "threadCount": 39
+  },
+  {
+   "messageCount": 420,
+   "person.firstName": "Howard",
+   "person.id": 21990232563874,
+   "person.lastName": "Ha",
+   "threadCount": 29
+  },
+  {
+   "messageCount": 419,
+   "person.firstName": "Huu",
+   "person.id": 19791209308584,
+   "person.lastName": "Ho",
+   "threadCount": 30
+  },
+  {
+   "messageCount": 417,
+   "person.firstName": "Manuel",
+   "person.id": 17592186054998,
+   "person.lastName": "Cosio",
+   "threadCount": 45
+  },
+  {
+   "messageCount": 413,
+   "person.firstName": "Joe",
+   "person.id": 10995116283889,
+   "person.lastName": "Wong",
+   "threadCount": 28
+  },
+  {
+   "messageCount": 407,
+   "person.firstName": "Jun",
+   "person.id": 28587302327742,
+   "person.lastName": "Li",
+   "threadCount": 33
+  },
+  {
+   "messageCount": 398,
+   "person.firstName": "Jose",
+   "person.id": 24189255820411,
+   "person.lastName": "Sotto",
+   "threadCount": 33
+  },
+  {
+   "messageCount": 397,
+   "person.firstName": "Joseph",
+   "person.id": 8796093023326,
+   "person.lastName": "Sharma",
+   "threadCount": 29
+  },
+  {
+   "messageCount": 395,
+   "person.firstName": "Chen",
+   "person.id": 2199023260815,
+   "person.lastName": "Li",
+   "threadCount": 36
+  },
+  {
+   "messageCount": 393,
+   "person.firstName": "Babar",
+   "person.id": 17592186052709,
+   "person.lastName": "Hussain",
+   "threadCount": 80
+  },
+  {
+   "messageCount": 390,
+   "person.firstName": "Fatmir",
+   "person.id": 24189255811542,
+   "person.lastName": "Mojsov",
+   "threadCount": 74
+  },
+  {
+   "messageCount": 385,
+   "person.firstName": "Abhishek",
+   "person.id": 21990232561742,
+   "person.lastName": "Roy",
+   "threadCount": 60
+  },
+  {
+   "messageCount": 377,
+   "person.firstName": "Natalia Barbu",
+   "person.id": 17592186049517,
+   "person.lastName": "Goma",
+   "threadCount": 118
+  },
+  {
+   "messageCount": 373,
+   "person.firstName": "Yang",
+   "person.id": 17592186052516,
+   "person.lastName": "Yang",
+   "threadCount": 26
+  },
+  {
+   "messageCount": 372,
+   "person.firstName": "Hoang Yen",
+   "person.id": 21990232557614,
+   "person.lastName": "Nguyen",
+   "threadCount": 69
+  },
+  {
+   "messageCount": 369,
+   "person.firstName": "Adriaan",
+   "person.id": 19791209309084,
+   "person.lastName": "Dijk",
+   "threadCount": 50
+  },
+  {
+   "messageCount": 368,
+   "person.firstName": "Mohamed",
+   "person.id": 28587302326226,
+   "person.lastName": "Achiou",
+   "threadCount": 74
+  },
+  {
+   "messageCount": 365,
+   "person.firstName": "Emperor of Brazil",
+   "person.id": 2199023256462,
+   "person.lastName": "Dom Pedro II",
+   "threadCount": 70
+  },
+  {
+   "messageCount": 363,
+   "person.firstName": "Carlos",
+   "person.id": 35184372092691,
+   "person.lastName": "Escobar",
+   "threadCount": 42
+  },
+  {
+   "messageCount": 355,
+   "person.firstName": "Fritz",
+   "person.id": 15393162799448,
+   "person.lastName": "Muller",
+   "threadCount": 56
+  },
+  {
+   "messageCount": 338,
+   "person.firstName": "Abdul Haris",
+   "person.id": 6597069770739,
+   "person.lastName": "Gallagher",
+   "threadCount": 30
+  },
+  {
+   "messageCount": 338,
+   "person.firstName": "Kunal",
+   "person.id": 10995116281358,
+   "person.lastName": "Kumar",
+   "threadCount": 23
+  },
+  {
+   "messageCount": 337,
+   "person.firstName": "Ning",
+   "person.id": 17592186050645,
+   "person.lastName": "Zhang",
+   "threadCount": 80
+  },
+  {
+   "messageCount": 336,
+   "person.firstName": "Andrea",
+   "person.id": 17592186046498,
+   "person.lastName": "Blanco",
+   "threadCount": 144
+  },
+  {
+   "messageCount": 332,
+   "person.firstName": "Manuel",
+   "person.id": 19791209302061,
+   "person.lastName": "Martins",
+   "threadCount": 81
+  },
+  {
+   "messageCount": 328,
+   "person.firstName": "Rahul",
+   "person.id": 10995116279521,
+   "person.lastName": "Nair",
+   "threadCount": 54
+  },
+  {
+   "messageCount": 322,
+   "person.firstName": "Alexander G.",
+   "person.id": 19791209302125,
+   "person.lastName": "Arif",
+   "threadCount": 87
+  },
+  {
+   "messageCount": 321,
+   "person.firstName": "Koji",
+   "person.id": 10995116285747,
+   "person.lastName": "Tanaka",
+   "threadCount": 27
+  },
+  {
+   "messageCount": 318,
+   "person.firstName": "Zhang",
+   "person.id": 4398046512960,
+   "person.lastName": "Chen",
+   "threadCount": 116
+  },
+  {
+   "messageCount": 318,
+   "person.firstName": "Carlos",
+   "person.id": 28587302326788,
+   "person.lastName": "Rodriguez",
+   "threadCount": 66
+  },
+  {
+   "messageCount": 314,
+   "person.firstName": "Isabel",
+   "person.id": 32985348835600,
+   "person.lastName": "Diaz",
+   "threadCount": 48
+  },
+  {
+   "messageCount": 310,
+   "person.firstName": "Grigore",
+   "person.id": 6597069767028,
+   "person.lastName": "Bologan",
+   "threadCount": 68
+  },
+  {
+   "messageCount": 307,
+   "person.firstName": "Ivan Ignatyevich",
+   "person.id": 17592186049899,
+   "person.lastName": "Aleksandrov",
+   "threadCount": 44
+  },
+  {
+   "messageCount": 305,
+   "person.firstName": "Abderrahmane",
+   "person.id": 26388279072682,
+   "person.lastName": "Ferrer",
+   "threadCount": 96
+  },
+  {
+   "messageCount": 304,
+   "person.firstName": "Agustiar",
+   "person.id": 15393162796126,
+   "person.lastName": "Irama",
+   "threadCount": 28
+  },
+  {
+   "messageCount": 304,
+   "person.firstName": "Aditya",
+   "person.id": 26388279067483,
+   "person.lastName": "Khan",
+   "threadCount": 26
+  },
+  {
+   "messageCount": 302,
+   "person.firstName": "Bruna",
+   "person.id": 8796093023499,
+   "person.lastName": "Costa",
+   "threadCount": 94
+  },
+  {
+   "messageCount": 301,
+   "person.firstName": "Wei",
+   "person.id": 17592186047024,
+   "person.lastName": "Zhu",
+   "threadCount": 65
+  },
+  {
+   "messageCount": 299,
+   "person.firstName": "Rafael",
+   "person.id": 2783,
+   "person.lastName": "Alonso",
+   "threadCount": 71
+  },
+  {
+   "messageCount": 298,
+   "person.firstName": "Bing",
+   "person.id": 2199023260487,
+   "person.lastName": "Yang",
+   "threadCount": 52
+  },
+  {
+   "messageCount": 298,
+   "person.firstName": "Charles",
+   "person.id": 4398046520667,
+   "person.lastName": "Bona",
+   "threadCount": 52
+  },
+  {
+   "messageCount": 291,
+   "person.firstName": "Koji",
+   "person.id": 26388279068136,
+   "person.lastName": "Kato",
+   "threadCount": 20
+  },
+  {
+   "messageCount": 290,
+   "person.firstName": "Benhalima",
+   "person.id": 19791209300230,
+   "person.lastName": "Ferrer",
+   "threadCount": 44
+  },
+  {
+   "messageCount": 287,
+   "person.firstName": "K.",
+   "person.id": 15393162789362,
+   "person.lastName": "Kumar",
+   "threadCount": 24
+  },
+  {
+   "messageCount": 287,
+   "person.firstName": "Emperor of Brazil",
+   "person.id": 19791209306276,
+   "person.lastName": "Alves",
+   "threadCount": 62
+  },
+  {
+   "messageCount": 283,
+   "person.firstName": "K.",
+   "person.id": 24189255815184,
+   "person.lastName": "Kumar",
+   "threadCount": 31
+  },
+  {
+   "messageCount": 282,
+   "person.firstName": "Ashok",
+   "person.id": 17592186051871,
+   "person.lastName": "Sharma",
+   "threadCount": 56
+  },
+  {
+   "messageCount": 280,
+   "person.firstName": "Pablo",
+   "person.id": 17592186050809,
+   "person.lastName": "Cosio",
+   "threadCount": 29
+  },
+  {
+   "messageCount": 279,
+   "person.firstName": "Fritz",
+   "person.id": 17592186054199,
+   "person.lastName": "Fischer",
+   "threadCount": 63
+  },
+  {
+   "messageCount": 277,
+   "person.firstName": "Martin",
+   "person.id": 19791209305198,
+   "person.lastName": "Muller",
+   "threadCount": 39
+  },
+  {
+   "messageCount": 271,
+   "person.firstName": "Jose",
+   "person.id": 19791209301504,
+   "person.lastName": "Costa",
+   "threadCount": 18
+  },
+  {
+   "messageCount": 270,
+   "person.firstName": "Wei",
+   "person.id": 2199023265231,
+   "person.lastName": "Wang",
+   "threadCount": 84
+  },
+  {
+   "messageCount": 268,
+   "person.firstName": "Jie",
+   "person.id": 8796093028247,
+   "person.lastName": "Wang",
+   "threadCount": 19
+  },
+  {
+   "messageCount": 267,
+   "person.firstName": "Ge",
+   "person.id": 15393162799092,
+   "person.lastName": "Wang",
+   "threadCount": 31
+  },
+  {
+   "messageCount": 264,
+   "person.firstName": "Carlos",
+   "person.id": 10995116286217,
+   "person.lastName": "Mendez",
+   "threadCount": 19
+  }
+ ],
+ "wall_s": 2.12
+}

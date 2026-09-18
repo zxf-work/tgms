@@ -1,0 +1,119 @@
+{
+ "columns": [
+  "person1Id",
+  "person2Id",
+  "mutualFriendCount"
+ ],
+ "commit": "0b7198dfdf7a",
+ "host": "xzgpu",
+ "params": {
+  "tag": "Fyodor_Dostoyevsky"
+ },
+ "plan_id": "BI18",
+ "query_file": "external_workloads/ldbc/bi/neo4j/queries/bi-18.cypher",
+ "query_sha256": "e1dd19f7c6e496b070e1beca5fb35e6b5849f64e7a12963a29bbc81441924776",
+ "result_digest": "aead26fd5c34378fb6a60e5315e1cb67cffa9e97f085514a4c6607c76a36236d",
+ "rows": [
+  {
+   "mutualFriendCount": 31,
+   "person1Id": 2199023256539,
+   "person2Id": 24189255821523
+  },
+  {
+   "mutualFriendCount": 31,
+   "person1Id": 24189255821523,
+   "person2Id": 2199023256539
+  },
+  {
+   "mutualFriendCount": 25,
+   "person1Id": 15393162796970,
+   "person2Id": 24189255820514
+  },
+  {
+   "mutualFriendCount": 25,
+   "person1Id": 24189255820514,
+   "person2Id": 15393162796970
+  },
+  {
+   "mutualFriendCount": 23,
+   "person1Id": 4398046511410,
+   "person2Id": 13194139543082
+  },
+  {
+   "mutualFriendCount": 23,
+   "person1Id": 10995116284091,
+   "person2Id": 24189255815677
+  },
+  {
+   "mutualFriendCount": 23,
+   "person1Id": 13194139543082,
+   "person2Id": 4398046511410
+  },
+  {
+   "mutualFriendCount": 23,
+   "person1Id": 24189255815677,
+   "person2Id": 10995116284091
+  },
+  {
+   "mutualFriendCount": 20,
+   "person1Id": 24189255819695,
+   "person2Id": 24189255821523
+  },
+  {
+   "mutualFriendCount": 20,
+   "person1Id": 24189255821523,
+   "person2Id": 24189255819695
+  },
+  {
+   "mutualFriendCount": 18,
+   "person1Id": 24189255820514,
+   "person2Id": 24189255821523
+  },
+  {
+   "mutualFriendCount": 18,
+   "person1Id": 24189255821523,
+   "person2Id": 24189255820514
+  },
+  {
+   "mutualFriendCount": 17,
+   "person1Id": 2199023256539,
+   "person2Id": 15393162796970
+  },
+  {
+   "mutualFriendCount": 17,
+   "person1Id": 2199023256539,
+   "person2Id": 24189255819695
+  },
+  {
+   "mutualFriendCount": 17,
+   "person1Id": 13194139536963,
+   "person2Id": 13194139543082
+  },
+  {
+   "mutualFriendCount": 17,
+   "person1Id": 13194139543082,
+   "person2Id": 13194139536963
+  },
+  {
+   "mutualFriendCount": 17,
+   "person1Id": 15393162796970,
+   "person2Id": 2199023256539
+  },
+  {
+   "mutualFriendCount": 17,
+   "person1Id": 17592186050431,
+   "person2Id": 26388279069225
+  },
+  {
+   "mutualFriendCount": 17,
+   "person1Id": 24189255819695,
+   "person2Id": 2199023256539
+  },
+  {
+   "mutualFriendCount": 17,
+   "person1Id": 26388279069225,
+   "person2Id": 17592186050431
+  }
+ ],
+ "wall_s": 0.502
+}

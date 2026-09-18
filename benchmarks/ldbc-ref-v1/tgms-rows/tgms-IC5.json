@@ -1,0 +1,32 @@
+{
+ "arm": "characterization-interactive",
+ "columns": [
+  "forumId",
+  "forumTitle",
+  "postCount"
+ ],
+ "commit": "0b7198dfdf7a",
+ "host": "xzgpu",
+ "params": {
+  "minDate": 1348704000000000,
+  "personId": "35184372090187"
+ },
+ "plan_digest": "5a32ccdbd5a52c712ee62e9f6e1d12e1d4f190d684b2b2faf0b454b3135f3b05",
+ "plan_id": "IC5",
+ "result_digest": "5aa6671c762a729801a2c98a87dbc41230f4c93b1bea0c82c8f37f6bf2535c6c",
+ "rows": [],
+ "schema": [
+  [
+   "forumId",
+   "uid"
+  ],
+  [
+   "forumTitle",
+   "json?"
+  ],
+  [
+   "postCount",
+   "int"
+  ]
+ ]
+}

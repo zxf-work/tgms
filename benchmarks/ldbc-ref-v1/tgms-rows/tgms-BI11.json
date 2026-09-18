@@ -1,0 +1,27 @@
+{
+ "arm": "scored-bi",
+ "columns": [
+  "triangleCount"
+ ],
+ "commit": "0b7198dfdf7a",
+ "host": "xzgpu",
+ "params": {
+  "country": "India",
+  "endDate": 1358294400000000,
+  "startDate": 1349308800000000
+ },
+ "plan_digest": "61f5713e95ff79078cd7c710fb78c62dfc0763a1a16dd67edf218a81412dc48a",
+ "plan_id": "BI11",
+ "result_digest": "b23e0dda3cb3c374df0c15f4dcb94f49f48655ab6d8d11ba62155b298054b22a",
+ "rows": [
+  {
+   "triangleCount": 718
+  }
+ ],
+ "schema": [
+  [
+   "triangleCount",
+   "int"
+  ]
+ ]
+}

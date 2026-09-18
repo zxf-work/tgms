@@ -1,0 +1,58 @@
+{
+  "companion": {
+    "record": "benchmarks/results-v1/ldbc-sf1-campaign-fmt3-interactive-2026-09.json",
+    "relation": "companion, NOT superseded",
+    "why": "that record covers the characterization-interactive arm only (14/14 COMPLETED at 54dcab0); this one covers all 25 plan artifacts and adds the Neo4j reference comparison. Same seed, same csv_root, same store totals, same TGIR protocol."
+  },
+  "config": {
+    "apoc_version": "5.26.0-core",
+    "bolt": "bolt://127.0.0.1:7687",
+    "column_kinds_file": "benchmarks/ldbc-ref-v1/column_kinds.json",
+    "column_map_file": "benchmarks/ldbc-ref-v1/column_map.yaml",
+    "contracts_file": "tests/fixtures/ldbc_ref/contracts.json",
+    "import_log_sha256": "4e91d196019ce422127204c4cfec3b6774dd03fa7434b56049c65bad10276d9a",
+    "jdk": "Temurin 21.0.12+8",
+    "neo4j_conf_sha256": "b22fb1a80eac03284f4d046a7b6c3d4813e153bb2e7bde8e2c3c7b98583a6fac",
+    "neo4j_python_driver": "5.28.6",
+    "neo4j_version": "5.26.0",
+    "params_file": "benchmarks/ldbc-ref-v1/params.json",
+    "sort_keys_file": "benchmarks/ldbc-ref-v1/sort_keys.yaml",
+    "tgms_store": "stores/snb-sf1"
+  },
+  "dataset": {
+    "digest": "81b9b099f44c803e3b42c779e496107aa47a30be2cb4ce8590bd0051a18e7660",
+    "digest_kind": "manifest",
+    "name": "ldbc-sf1-bi-composite-projected-fk"
+  },
+  "git_commit": "0b7198dfdf7a-dirty",
+  "machine": {
+    "cpus": 40,
+    "host": "xzgpu",
+    "platform": "Linux-5.4.0-216-generic-x86_64-with-glibc2.31",
+    "ram_gb": 93
+  },
+  "protocol": {
+    "ceilings": {
+      "query_timeout_s": 600,
+      "tgir_bypass_ceiling_s": 600,
+      "tgir_child_open_allowance_s": 420
+    },
+    "note": "RUNBOOK \u00a79 specifies warmups 0 / reps 1 for the correctness comparison; the coordinator's brief adds per-template wall times on both sides, so each Neo4j template ran 1 warm-up + 3 timed executions. The compared rows are the first timed execution's.",
+    "reps": 3,
+    "warmups": 1
+  },
+  "record": "benchmarks/ldbc-ref-v1/compare-2026-09-18.json",
+  "result_digest": "fa57aca5f37c1788a5aef2ff8794b0783425baeab32584e0010d198923c13726",
+  "schema_version": "1.0.0",
+  "seed": {
+    "reason": null,
+    "value": 5724984519806421702
+  },
+  "supersedes": {
+    "compare": "compare-2026-09-17.json",
+    "manifest": "manifest-2026-09-17.json",
+    "reason": "the 7 templates whose reference side was invalid (temporal parameters passed as strings) were re-run on 2026-09-18 with driverize_params, same protocol. The 09-17 files are kept in place as the interim record.",
+    "timings": "timings-2026-09-17.json"
+  },
+  "timestamp_utc": "2026-09-17T18:28:47Z"
+}

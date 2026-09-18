@@ -1,0 +1,22 @@
+{
+ "columns": [
+  "count"
+ ],
+ "commit": "0b7198dfdf7a",
+ "host": "xzgpu",
+ "params": {
+  "country": "India",
+  "endDate": "2013-01-16T00:00:00.000+00:00",
+  "startDate": "2012-10-04T00:00:00.000+00:00"
+ },
+ "plan_id": "BI11",
+ "query_file": "external_workloads/ldbc/bi/neo4j/queries/bi-11.cypher",
+ "query_sha256": "55eaa5ddfae1f09d741d281c9913d1f2de84369eba37f4da068c80633cf17189",
+ "result_digest": "81ce51d9c755d7a7c49a215962bc6c47957030dffb2a9305897f4403cffe0c0a",
+ "rows": [
+  {
+   "count": 718
+  }
+ ],
+ "wall_s": 0.655
+}

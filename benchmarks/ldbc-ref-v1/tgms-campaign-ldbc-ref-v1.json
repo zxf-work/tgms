@@ -1,0 +1,1130 @@
+{
+ "manifest": {
+  "arms": {
+   "characterization-interactive": "the 11 Interactive rows, whose LDBC parameters name entities of the separately generated Interactive dataset (\u00a7E addendum 4). Anchors are seeded draws from this corpus; execution-at-scale characterization only. Never summed with the scored arm.",
+   "scored-bi": "the 10 BI rows, bound to LDBC's own SF1 parameters. The only arm that carries a third-party-parameter claim."
+  },
+  "bypass_ceiling_s": 600,
+  "campaign_seed": 5724984519806421702,
+  "campaign_seed_source": "paper-a-v1",
+  "ceilings": {
+   "expansions_est": 1280000000,
+   "rows_scanned_est": 5120000000,
+   "time_est_ms": 10000
+  },
+  "child_open_allowance_s": 420,
+  "commit": "0b7198dfdf7a",
+  "complete": true,
+  "csv_root": "/mnt/project/xzhang/tgms/ldbc-sf1/bi-sf1-composite-merged-fk/graphs/csv/bi/composite-merged-fk/initial_snapshot",
+  "every_plan_in_a_child": true,
+  "host": "xzgpu",
+  "platform": "Linux-5.4.0-216-generic-x86_64-with-glibc2.31",
+  "policy_version": "guardrail-policy-v2",
+  "protocol": "warmups 1, reps 3 (1 when bypassed)",
+  "rows_digest_rule": "sha256 over the plan's decoded result rows (the --emit-rows LDBC decode: uid columns -> plain LDBC id plus a <col>__hierarchy sibling, every other column passed through), each row serialized with json.dumps(row, sort_keys=True, default=str) and the per-row strings newline-joined in one order: for a template whose sort_keys.yaml order_by is empty ('order-free' -- the vendored query carries no ORDER BY of its own), the per-row strings are sorted lexicographically before hashing, so any permutation of the same rows digests identically; for a template with a declared order_by, the rows are hashed in the engine's own returned order, unsorted, so a change in that order changes the digest. A plan id with a template alias suffix (e.g. BI6.v2) resolves to its base template's order_by the same way ldbc_compare.py's lookup_sort_keys does; a plan absent from sort_keys.yaml is treated as order-free (no known order to preserve). This never changes plan execution, timings, or any existing record field -- rows_digest is an additive key computed from the same envelope --emit-rows already reads.",
+  "sf": "sf1",
+  "sort_keys_sha256": "2dbcbbb2fbaa9f52cb108ef2719c4f370e074e7f643b6f784be2a40e48dd4610",
+  "store": "stores/snb-sf1",
+  "utc": "2026-09-17T22:51:38Z",
+  "wall_s": 8187.2
+ },
+ "records": [
+  {
+   "arm": "scored-bi",
+   "bypassed": true,
+   "ceilings_hit": [
+    "time_est_ms"
+   ],
+   "completeness": null,
+   "derived_admission": "refuse",
+   "estimate": {
+    "expansions_est": 412249685,
+    "rows_scanned_est": 866409367,
+    "time_est_ms": 170296
+   },
+   "ms": 24465.12269973755,
+   "ms_all": [
+    24465.123
+   ],
+   "or_expansion": null,
+   "outcome": "COMPLETED",
+   "param_source": "bi-10a.csv row 1",
+   "params": {
+    "country": "Italy",
+    "maxPathDistance": 4,
+    "nearMaxHops": 2,
+    "personId": "52776558163835",
+    "tagClass": "Thing"
+   },
+   "plan_id": "BI10",
+   "policy_version": "guardrail-policy-v2",
+   "refusal_certificate": {
+    "calibration_ref": "docs/eval_guardrail.md#frontier + docs/tgir/calib/expand-unbounded-2026-08-22.md",
+    "ceilings": {
+     "time_est_ms": 10000
+    },
+    "estimates": {
+     "expansions_est": 412249685,
+     "rows_scanned_est": 866409367,
+     "time_est_ms": 170296
+    },
+    "plan_digest": "BI10",
+    "policy_version": "guardrail-policy-v2",
+    "stage": "plan",
+    "suggestions": [
+     "narrow the valid-time window",
+     "add a node_filter / seed set",
+     "restrict rel_types",
+     "reduce hops / max_hops"
+    ]
+   },
+   "rows": 100,
+   "rows_digest": "9209a3c33f6a28533f732d32c2b3f1096d4193fc753b8e1908c20fb2dc792944",
+   "sampled_anchors": {},
+   "wall_s": 58.216
+  },
+  {
+   "arm": "scored-bi",
+   "bypassed": true,
+   "ceilings_hit": [
+    "time_est_ms"
+   ],
+   "completeness": null,
+   "derived_admission": "refuse",
+   "estimate": {
+    "expansions_est": 269016580,
+    "rows_scanned_est": 425999358,
+    "time_est_ms": 97927
+   },
+   "ms": 38233.81447792053,
+   "ms_all": [
+    38233.814
+   ],
+   "or_expansion": null,
+   "outcome": "COMPLETED",
+   "param_source": "bi-11.csv row 1",
+   "params": {
+    "country": "India",
+    "endDate": 1358294400000000,
+    "startDate": 1349308800000000
+   },
+   "plan_id": "BI11",
+   "policy_version": "guardrail-policy-v2",
+   "refusal_certificate": {
+    "calibration_ref": "docs/eval_guardrail.md#frontier + docs/tgir/calib/expand-unbounded-2026-08-22.md",
+    "ceilings": {
+     "time_est_ms": 10000
+    },
+    "estimates": {
+     "expansions_est": 269016580,
+     "rows_scanned_est": 425999358,
+     "time_est_ms": 97927
+    },
+    "plan_digest": "BI11",
+    "policy_version": "guardrail-policy-v2",
+    "stage": "plan",
+    "suggestions": [
+     "narrow the valid-time window",
+     "add a node_filter / seed set",
+     "restrict rel_types",
+     "reduce hops / max_hops"
+    ]
+   },
+   "rows": 1,
+   "rows_digest": "9f02e6ee472061576321d5ee4d651cbfb2918d7a1d7bb4d275df1db41962e468",
+   "sampled_anchors": {},
+   "wall_s": 85.918
+  },
+  {
+   "arm": "scored-bi",
+   "bypassed": true,
+   "ceilings_hit": [
+    "time_est_ms"
+   ],
+   "completeness": null,
+   "derived_admission": "refuse",
+   "estimate": {
+    "expansions_est": 34739580,
+    "rows_scanned_est": 190029755,
+    "time_est_ms": 33254
+   },
+   "ms": 148134.9799633026,
+   "ms_all": [
+    148134.98
+   ],
+   "or_expansion": {
+    "disjuncts": 3,
+    "param": "languages",
+    "values": [
+     "es",
+     "ta",
+     "pt"
+    ]
+   },
+   "outcome": "COMPLETED",
+   "param_source": "bi-12.csv row 1",
+   "params": {
+    "lengthThreshold": 115,
+    "startDate": 1338854400000000
+   },
+   "plan_id": "BI12",
+   "policy_version": "guardrail-policy-v2",
+   "refusal_certificate": {
+    "calibration_ref": "docs/eval_guardrail.md#frontier + docs/tgir/calib/expand-unbounded-2026-08-22.md",
+    "ceilings": {
+     "time_est_ms": 10000
+    },
+    "estimates": {
+     "expansions_est": 34739580,
+     "rows_scanned_est": 190029755,
+     "time_est_ms": 33254
+    },
+    "plan_digest": "BI12",
+    "policy_version": "guardrail-policy-v2",
+    "stage": "plan",
+    "suggestions": [
+     "narrow the valid-time window",
+     "add a node_filter / seed set",
+     "restrict rel_types",
+     "reduce hops / max_hops"
+    ]
+   },
+   "rows": 166,
+   "rows_digest": "e71c6eb52a6b676ea0a5a027093806a3edb920b6d8548e4dac5eee6e1db4f557",
+   "sampled_anchors": {},
+   "wall_s": 299.971
+  },
+  {
+   "arm": "scored-bi",
+   "bypassed": true,
+   "ceilings_hit": [
+    "rows_scanned_est",
+    "expansions_est",
+    "time_est_ms"
+   ],
+   "completeness": null,
+   "derived_admission": "refuse",
+   "estimate": {
+    "expansions_est": 909379487187,
+    "rows_scanned_est": 8394021205225,
+    "time_est_ms": 1278984344
+   },
+   "ms": 71798.79426956177,
+   "ms_all": [
+    71798.794
+   ],
+   "or_expansion": null,
+   "outcome": "COMPLETED",
+   "param_source": "bi-17.csv row 1",
+   "params": {
+    "deltaMicros": 43200000000,
+    "tagName": "Cosmic_Egg"
+   },
+   "plan_id": "BI17",
+   "policy_version": "guardrail-policy-v2",
+   "refusal_certificate": {
+    "calibration_ref": "docs/eval_guardrail.md#frontier + docs/tgir/calib/expand-unbounded-2026-08-22.md",
+    "ceilings": {
+     "expansions_est": 1280000000,
+     "rows_scanned_est": 5120000000,
+     "time_est_ms": 10000
+    },
+    "estimates": {
+     "expansions_est": 909379487187,
+     "rows_scanned_est": 8394021205225,
+     "time_est_ms": 1278984344
+    },
+    "plan_digest": "BI17",
+    "policy_version": "guardrail-policy-v2",
+    "stage": "plan",
+    "suggestions": [
+     "narrow the valid-time window",
+     "add a node_filter / seed set",
+     "restrict rel_types",
+     "reduce hops / max_hops"
+    ]
+   },
+   "rows": 0,
+   "rows_digest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+   "sampled_anchors": {},
+   "wall_s": 164.335
+  },
+  {
+   "arm": "scored-bi",
+   "ceilings_hit": [],
+   "completeness": null,
+   "derived_admission": "admit",
+   "estimate": {
+    "expansions_est": 11989408,
+    "rows_scanned_est": 30665576,
+    "time_est_ms": 5918
+   },
+   "ms": 54327.404737472534,
+   "ms_all": [
+    54327.405,
+    56750.313,
+    50031.827
+   ],
+   "or_expansion": null,
+   "outcome": "COMPLETED",
+   "param_source": "bi-18.csv row 1",
+   "params": {
+    "tagName": "Fyodor_Dostoyevsky"
+   },
+   "plan_id": "BI18",
+   "policy_version": "guardrail-policy-v2",
+   "rows": 20,
+   "rows_digest": "1a6865d7aaca511fa0861d9fd3456a8c8f60b2a8878602a8c90ed3655c192c88",
+   "sampled_anchors": {},
+   "wall_s": 219.141
+  },
+  {
+   "arm": "scored-bi",
+   "bypassed": true,
+   "ceilings_hit": [
+    "rows_scanned_est",
+    "expansions_est",
+    "time_est_ms"
+   ],
+   "completeness": null,
+   "derived_admission": "refuse",
+   "estimate": {
+    "expansions_est": 7580131056,
+    "rows_scanned_est": 24600654498,
+    "time_est_ms": 5580034
+   },
+   "ms": 35310.08505821228,
+   "ms_all": [
+    35310.085
+   ],
+   "or_expansion": null,
+   "outcome": "COMPLETED",
+   "param_source": "bi-3.csv row 1",
+   "params": {
+    "country": "India",
+    "tagClass": "President"
+   },
+   "plan_id": "BI3",
+   "policy_version": "guardrail-policy-v2",
+   "refusal_certificate": {
+    "calibration_ref": "docs/eval_guardrail.md#frontier + docs/tgir/calib/expand-unbounded-2026-08-22.md",
+    "ceilings": {
+     "expansions_est": 1280000000,
+     "rows_scanned_est": 5120000000,
+     "time_est_ms": 10000
+    },
+    "estimates": {
+     "expansions_est": 7580131056,
+     "rows_scanned_est": 24600654498,
+     "time_est_ms": 5580034
+    },
+    "plan_digest": "BI3",
+    "policy_version": "guardrail-policy-v2",
+    "stage": "plan",
+    "suggestions": [
+     "narrow the valid-time window",
+     "add a node_filter / seed set",
+     "restrict rel_types",
+     "reduce hops / max_hops"
+    ]
+   },
+   "rows": 20,
+   "rows_digest": "c11fc5d65fc3de2304c1e1a11d6ceb4f20182ffb04722be8f93f43b83d566109",
+   "sampled_anchors": {},
+   "wall_s": 79.535
+  },
+  {
+   "arm": "scored-bi",
+   "bypassed": true,
+   "ceilings_hit": [
+    "time_est_ms"
+   ],
+   "completeness": null,
+   "derived_admission": "refuse",
+   "estimate": {
+    "expansions_est": 819379968,
+    "rows_scanned_est": 2713999849,
+    "time_est_ms": 471369
+   },
+   "ms": 77064.22114372253,
+   "ms_all": [
+    77064.221
+   ],
+   "or_expansion": null,
+   "outcome": "COMPLETED",
+   "param_source": "bi-4.csv row 1",
+   "params": {
+    "date": 1265932800000000
+   },
+   "plan_id": "BI4",
+   "policy_version": "guardrail-policy-v2",
+   "refusal_certificate": {
+    "calibration_ref": "docs/eval_guardrail.md#frontier + docs/tgir/calib/expand-unbounded-2026-08-22.md",
+    "ceilings": {
+     "time_est_ms": 10000
+    },
+    "estimates": {
+     "expansions_est": 819379968,
+     "rows_scanned_est": 2713999849,
+     "time_est_ms": 471369
+    },
+    "plan_digest": "BI4",
+    "policy_version": "guardrail-policy-v2",
+    "stage": "plan",
+    "suggestions": [
+     "narrow the valid-time window",
+     "add a node_filter / seed set",
+     "restrict rel_types",
+     "reduce hops / max_hops"
+    ]
+   },
+   "rows": 100,
+   "rows_digest": "8a30b3044f8f283aa4a1ae73757589aa9b936c48ef1252ce5fd3ae59ad1d4dd2",
+   "sampled_anchors": {},
+   "wall_s": 156.234
+  },
+  {
+   "arm": "scored-bi",
+   "bypassed": true,
+   "ceilings_hit": [
+    "time_est_ms"
+   ],
+   "derived_admission": "refuse",
+   "error": null,
+   "error_detail": "null join key 'likerId' on the left side at 535 row(s) \u2014 \u00a72.8 makes a null key an error, never a non-match",
+   "estimate": {
+    "expansions_est": 253426802,
+    "rows_scanned_est": 913100142,
+    "time_est_ms": 161120
+   },
+   "or_expansion": null,
+   "outcome": "ERRORED",
+   "param_source": "bi-6.csv row 1",
+   "params": {
+    "tagName": "Bob_Geldof"
+   },
+   "plan_id": "BI6",
+   "policy_version": "guardrail-policy-v2",
+   "refusal_certificate": {
+    "calibration_ref": "docs/eval_guardrail.md#frontier + docs/tgir/calib/expand-unbounded-2026-08-22.md",
+    "ceilings": {
+     "time_est_ms": 10000
+    },
+    "estimates": {
+     "expansions_est": 253426802,
+     "rows_scanned_est": 913100142,
+     "time_est_ms": 161120
+    },
+    "plan_digest": "BI6",
+    "policy_version": "guardrail-policy-v2",
+    "stage": "plan",
+    "suggestions": [
+     "narrow the valid-time window",
+     "add a node_filter / seed set",
+     "restrict rel_types",
+     "reduce hops / max_hops"
+    ]
+   },
+   "sampled_anchors": {},
+   "wall_s": 551.88
+  },
+  {
+   "arm": "scored-bi",
+   "ceilings_hit": [
+    "time_est_ms"
+   ],
+   "derived_admission": "refuse",
+   "estimate": {
+    "expansions_est": 253426802,
+    "rows_scanned_est": 1416393722,
+    "time_est_ms": 230072
+   },
+   "note": "killed at the 600s ceiling (+420s store-open allowance)",
+   "or_expansion": null,
+   "outcome": "TIMEOUT",
+   "param_source": "bi-6.csv row 1",
+   "params": {
+    "tagName": "Bob_Geldof"
+   },
+   "plan_id": "BI6.v2",
+   "policy_version": "guardrail-policy-v2",
+   "sampled_anchors": {},
+   "wall_s": 1021.7
+  },
+  {
+   "arm": "scored-bi",
+   "bypassed": true,
+   "ceilings_hit": [
+    "time_est_ms"
+   ],
+   "completeness": null,
+   "derived_admission": "refuse",
+   "estimate": {
+    "expansions_est": 718720094,
+    "rows_scanned_est": 1622002152,
+    "time_est_ms": 303037
+   },
+   "ms": 13052.186727523804,
+   "ms_all": [
+    13052.187
+   ],
+   "or_expansion": null,
+   "outcome": "COMPLETED",
+   "param_source": "bi-7.csv row 1",
+   "params": {
+    "tagName": "Slovenia"
+   },
+   "plan_id": "BI7",
+   "policy_version": "guardrail-policy-v2",
+   "refusal_certificate": {
+    "calibration_ref": "docs/eval_guardrail.md#frontier + docs/tgir/calib/expand-unbounded-2026-08-22.md",
+    "ceilings": {
+     "time_est_ms": 10000
+    },
+    "estimates": {
+     "expansions_est": 718720094,
+     "rows_scanned_est": 1622002152,
+     "time_est_ms": 303037
+    },
+    "plan_digest": "BI7",
+    "policy_version": "guardrail-policy-v2",
+    "stage": "plan",
+    "suggestions": [
+     "narrow the valid-time window",
+     "add a node_filter / seed set",
+     "restrict rel_types",
+     "reduce hops / max_hops"
+    ]
+   },
+   "rows": 100,
+   "rows_digest": "600af5b7d86895270b4e309ce6a36e27fa840c0a7463c1d263e9406449a388d8",
+   "sampled_anchors": {},
+   "wall_s": 31.722
+  },
+  {
+   "arm": "scored-bi",
+   "bypassed": true,
+   "ceilings_hit": [
+    "time_est_ms"
+   ],
+   "completeness": null,
+   "derived_admission": "refuse",
+   "estimate": {
+    "expansions_est": 34739580,
+    "rows_scanned_est": 144953024,
+    "time_est_ms": 31811
+   },
+   "ms": 105390.9981250763,
+   "ms_all": [
+    105390.998
+   ],
+   "or_expansion": null,
+   "outcome": "COMPLETED",
+   "param_source": "bi-9.csv row 1",
+   "params": {
+    "endDate": 1355097600000000,
+    "startDate": 1346284800000000
+   },
+   "plan_id": "BI9",
+   "policy_version": "guardrail-policy-v2",
+   "refusal_certificate": {
+    "calibration_ref": "docs/eval_guardrail.md#frontier + docs/tgir/calib/expand-unbounded-2026-08-22.md",
+    "ceilings": {
+     "time_est_ms": 10000
+    },
+    "estimates": {
+     "expansions_est": 34739580,
+     "rows_scanned_est": 144953024,
+     "time_est_ms": 31811
+    },
+    "plan_digest": "BI9",
+    "policy_version": "guardrail-policy-v2",
+    "stage": "plan",
+    "suggestions": [
+     "narrow the valid-time window",
+     "add a node_filter / seed set",
+     "restrict rel_types",
+     "reduce hops / max_hops"
+    ]
+   },
+   "rows": 100,
+   "rows_digest": "5394eb8272dc6da4e05cde461e2037aa4bc91786061ee28e23b52028543ed323",
+   "sampled_anchors": {},
+   "wall_s": 213.269
+  },
+  {
+   "arm": "characterization-interactive",
+   "ceilings_hit": [],
+   "completeness": null,
+   "derived_admission": "admit",
+   "estimate": {
+    "expansions_est": 12715,
+    "rows_scanned_est": 56856,
+    "time_est_ms": 9
+   },
+   "ms": 5043.84446144104,
+   "ms_all": [
+    3486.827,
+    5133.188,
+    5043.844
+   ],
+   "or_expansion": null,
+   "outcome": "COMPLETED",
+   "param_source": "SAMPLED anchors (seed 5724984519806421702) + non-id parameters from validation_params-sf1.csv, first row with all keys",
+   "params": {
+    "countryName": "Laos",
+    "personId": "70368744244971",
+    "workFromYear": 2010
+   },
+   "plan_id": "IC11",
+   "policy_version": "guardrail-policy-v2",
+   "rows": 0,
+   "rows_digest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+   "sampled_anchors": {
+    "personId": {
+     "index": 2699,
+     "ldbc_id": 8796093030621,
+     "param": "personId",
+     "population": "Person",
+     "seed": 5724984519806421702,
+     "size": 10295,
+     "uid": "70368744244971"
+    }
+   },
+   "wall_s": 27.931
+  },
+  {
+   "arm": "characterization-interactive",
+   "bypassed": true,
+   "ceilings_hit": [
+    "time_est_ms"
+   ],
+   "completeness": null,
+   "derived_admission": "refuse",
+   "estimate": {
+    "expansions_est": 118039289,
+    "rows_scanned_est": 378671074,
+    "time_est_ms": 69265
+   },
+   "ms": 20427.979707717896,
+   "ms_all": [
+    20427.98
+   ],
+   "or_expansion": null,
+   "outcome": "COMPLETED",
+   "param_source": "SAMPLED anchors (seed 5724984519806421702) + non-id parameters from validation_params-sf1.csv, first row with all keys",
+   "params": {
+    "personId": "299067162799219",
+    "tagClassName": "BasketballPlayer"
+   },
+   "plan_id": "IC12",
+   "policy_version": "guardrail-policy-v2",
+   "refusal_certificate": {
+    "calibration_ref": "docs/eval_guardrail.md#frontier + docs/tgir/calib/expand-unbounded-2026-08-22.md",
+    "ceilings": {
+     "time_est_ms": 10000
+    },
+    "estimates": {
+     "expansions_est": 118039289,
+     "rows_scanned_est": 378671074,
+     "time_est_ms": 69265
+    },
+    "plan_digest": "IC12",
+    "policy_version": "guardrail-policy-v2",
+    "stage": "plan",
+    "suggestions": [
+     "narrow the valid-time window",
+     "add a node_filter / seed set",
+     "restrict rel_types",
+     "reduce hops / max_hops"
+    ]
+   },
+   "rows": 5,
+   "rows_digest": "1fd346f88ce6eb52920641328ac2be5c4c50b72f1a2c52fbba5a48b6a8b2665b",
+   "sampled_anchors": {
+    "personId": {
+     "index": 9606,
+     "ldbc_id": 37383395349902,
+     "param": "personId",
+     "population": "Person",
+     "seed": 5724984519806421702,
+     "size": 10295,
+     "uid": "299067162799219"
+    }
+   },
+   "wall_s": 51.759
+  },
+  {
+   "arm": "characterization-interactive",
+   "ceilings_hit": [],
+   "completeness": null,
+   "derived_admission": "admit",
+   "estimate": {
+    "expansions_est": 312,
+    "rows_scanned_est": 1438,
+    "time_est_ms": 0
+   },
+   "ms": 6403.944969177246,
+   "ms_all": [
+    5083.975,
+    6403.945,
+    6841.217
+   ],
+   "or_expansion": null,
+   "outcome": "COMPLETED",
+   "param_source": "SAMPLED anchors (seed 5724984519806421702) + non-id parameters from validation_params-sf1.csv, first row with all keys",
+   "params": {
+    "maxDate": 1354060800000000,
+    "personId": "70368744207379"
+   },
+   "plan_id": "IC2",
+   "policy_version": "guardrail-policy-v2",
+   "rows": 20,
+   "rows_digest": "49b6a68569659bbe9bf491c0e085db526db34d6dc435f8166a563b42af13ee4b",
+   "sampled_anchors": {
+    "personId": {
+     "index": 2451,
+     "ldbc_id": 8796093025922,
+     "param": "personId",
+     "population": "Person",
+     "seed": 5724984519806421702,
+     "size": 10295,
+     "uid": "70368744207379"
+    }
+   },
+   "wall_s": 34.53
+  },
+  {
+   "arm": "characterization-interactive",
+   "ceilings_hit": [],
+   "completeness": null,
+   "derived_admission": "admit",
+   "estimate": {
+    "expansions_est": 38051,
+    "rows_scanned_est": 216357,
+    "time_est_ms": 35
+   },
+   "ms": 18871.45161628723,
+   "ms_all": [
+    17722.152,
+    18871.452,
+    20413.115
+   ],
+   "or_expansion": null,
+   "outcome": "COMPLETED",
+   "param_source": "SAMPLED anchors (seed 5724984519806421702) + non-id parameters from validation_params-sf1.csv, first row with all keys",
+   "params": {
+    "minDate": 1348704000000000,
+    "personId": "35184372090187"
+   },
+   "plan_id": "IC5",
+   "policy_version": "guardrail-policy-v2",
+   "rows": 0,
+   "rows_digest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+   "sampled_anchors": {
+    "personId": {
+     "index": 1143,
+     "ldbc_id": 4398046511273,
+     "param": "personId",
+     "population": "Person",
+     "seed": 5724984519806421702,
+     "size": 10295,
+     "uid": "35184372090187"
+    }
+   },
+   "wall_s": 86.042
+  },
+  {
+   "arm": "characterization-interactive",
+   "ceilings_hit": [],
+   "completeness": null,
+   "derived_admission": "admit",
+   "estimate": {
+    "expansions_est": 5790,
+    "rows_scanned_est": 11280,
+    "time_est_ms": 2
+   },
+   "ms": 59059.01265144348,
+   "ms_all": [
+    52642.323,
+    63787.909,
+    59059.013
+   ],
+   "or_expansion": null,
+   "outcome": "COMPLETED",
+   "param_source": "SAMPLED anchors (seed 5724984519806421702) + non-id parameters from validation_params-sf1.csv, first row with all keys",
+   "params": {
+    "personId": "35184372118875",
+    "tagName": "Angola"
+   },
+   "plan_id": "IC6",
+   "policy_version": "guardrail-policy-v2",
+   "rows": 10,
+   "rows_digest": "b9eb55e8c2b32d1c7ea50841beb597c67bc0a1afa08ed1402dfd2f8f08968b89",
+   "sampled_anchors": {
+    "personId": {
+     "index": 1339,
+     "ldbc_id": 4398046514859,
+     "param": "personId",
+     "population": "Person",
+     "seed": 5724984519806421702,
+     "size": 10295,
+     "uid": "35184372118875"
+    }
+   },
+   "wall_s": 236.756
+  },
+  {
+   "arm": "characterization-interactive",
+   "ceilings_hit": [],
+   "completeness": null,
+   "derived_admission": "admit",
+   "estimate": {
+    "expansions_est": 1853,
+    "rows_scanned_est": 5263,
+    "time_est_ms": 0
+   },
+   "ms": 5500.169515609741,
+   "ms_all": [
+    5261.985,
+    5500.17,
+    6062.207
+   ],
+   "or_expansion": null,
+   "outcome": "COMPLETED",
+   "param_source": "SAMPLED anchors (seed 5724984519806421702) + non-id parameters from validation_params-sf1.csv, first row with all keys",
+   "params": {
+    "personId": "281474976767723"
+   },
+   "plan_id": "IC8",
+   "policy_version": "guardrail-policy-v2",
+   "rows": 11,
+   "rows_digest": "ac396e15c56a12ce73f584091509fa4ca7c23ba93be8de90120e32735dd6262d",
+   "sampled_anchors": {
+    "personId": {
+     "index": 9331,
+     "ldbc_id": 35184372095965,
+     "param": "personId",
+     "population": "Person",
+     "seed": 5724984519806421702,
+     "size": 10295,
+     "uid": "281474976767723"
+    }
+   },
+   "wall_s": 29.125
+  },
+  {
+   "arm": "characterization-interactive",
+   "ceilings_hit": [],
+   "completeness": null,
+   "derived_admission": "admit",
+   "estimate": {
+    "expansions_est": 2140,
+    "rows_scanned_est": 9456,
+    "time_est_ms": 1
+   },
+   "ms": 47401.288747787476,
+   "ms_all": [
+    43579.144,
+    47566.206,
+    47401.289
+   ],
+   "or_expansion": null,
+   "outcome": "COMPLETED",
+   "param_source": "SAMPLED anchors (seed 5724984519806421702) + non-id parameters from validation_params-sf1.csv, first row with all keys",
+   "params": {
+    "maxDate": 1324080000000000,
+    "personId": "175921860504379"
+   },
+   "plan_id": "IC9",
+   "policy_version": "guardrail-policy-v2",
+   "rows": 20,
+   "rows_digest": "615680d39fe143943cb26433791bc3b54bffc466eba689490b76b5828543c3c7",
+   "sampled_anchors": {
+    "personId": {
+     "index": 6009,
+     "ldbc_id": 21990232563047,
+     "param": "personId",
+     "population": "Person",
+     "seed": 5724984519806421702,
+     "size": 10295,
+     "uid": "175921860504379"
+    }
+   },
+   "wall_s": 203.405
+  },
+  {
+   "arm": "characterization-interactive",
+   "ceilings_hit": [],
+   "completeness": null,
+   "derived_admission": "admit",
+   "estimate": {
+    "expansions_est": 46,
+    "rows_scanned_est": 108,
+    "time_est_ms": 0
+   },
+   "ms": 3588.3069038391113,
+   "ms_all": [
+    3568.371,
+    4262.26,
+    3588.307
+   ],
+   "or_expansion": null,
+   "outcome": "COMPLETED",
+   "param_source": "SAMPLED anchors (seed 5724984519806421702) + non-id parameters from validation_params-sf1.csv, first row with all keys",
+   "params": {
+    "personId": "35184372162971"
+   },
+   "plan_id": "IS1",
+   "policy_version": "guardrail-policy-v2",
+   "rows": 1,
+   "rows_digest": "441bde63101424ff3f61634727df7614f478c9d38818fd716e40891e3d8f5c75",
+   "sampled_anchors": {
+    "personId": {
+     "index": 1634,
+     "ldbc_id": 4398046520371,
+     "param": "personId",
+     "population": "Person",
+     "seed": 5724984519806421702,
+     "size": 10295,
+     "uid": "35184372162971"
+    }
+   },
+   "wall_s": 23.046
+  },
+  {
+   "arm": "characterization-interactive",
+   "ceilings_hit": [],
+   "completeness": null,
+   "derived_admission": "admit",
+   "estimate": {
+    "expansions_est": 2573594,
+    "rows_scanned_est": 2952405,
+    "time_est_ms": 840
+   },
+   "ms": 6665.143251419067,
+   "ms_all": [
+    5531.905,
+    6665.143,
+    6821.249
+   ],
+   "or_expansion": null,
+   "outcome": "COMPLETED",
+   "param_source": "SAMPLED anchors (seed 5724984519806421702) + non-id parameters from validation_params-sf1.csv, first row with all keys",
+   "params": {
+    "personId": "105553116349955"
+   },
+   "plan_id": "IS2",
+   "policy_version": "guardrail-policy-v2",
+   "rows": 10,
+   "rows_digest": "4b6b5441a437918bd897548e1bdc40da4f6c6d0885df452cfdff1522dbd5d112",
+   "sampled_anchors": {
+    "personId": {
+     "index": 3929,
+     "ldbc_id": 13194139543744,
+     "param": "personId",
+     "population": "Person",
+     "seed": 5724984519806421702,
+     "size": 10295,
+     "uid": "105553116349955"
+    }
+   },
+   "wall_s": 32.174
+  },
+  {
+   "arm": "characterization-interactive",
+   "ceilings_hit": [],
+   "completeness": null,
+   "derived_admission": "admit",
+   "estimate": {
+    "expansions_est": 46,
+    "rows_scanned_est": 108,
+    "time_est_ms": 0
+   },
+   "ms": 687.713623046875,
+   "ms_all": [
+    687.824,
+    686.454,
+    687.714
+   ],
+   "or_expansion": null,
+   "outcome": "COMPLETED",
+   "param_source": "SAMPLED anchors (seed 5724984519806421702) + non-id parameters from validation_params-sf1.csv, first row with all keys",
+   "params": {
+    "personId": "105553116276235"
+   },
+   "plan_id": "IS3",
+   "policy_version": "guardrail-policy-v2",
+   "rows": 48,
+   "rows_digest": "d35f68c9a423ccc8ffcf5abe3b3e1989f8d00b692bb2db2341b9903a303ac7b7",
+   "sampled_anchors": {
+    "personId": {
+     "index": 3441,
+     "ldbc_id": 13194139534529,
+     "param": "personId",
+     "population": "Person",
+     "seed": 5724984519806421702,
+     "size": 10295,
+     "uid": "105553116276235"
+    }
+   },
+   "wall_s": 12.97
+  },
+  {
+   "arm": "characterization-interactive",
+   "ceilings_hit": [],
+   "completeness": null,
+   "derived_admission": "admit",
+   "estimate": {
+    "expansions_est": 0,
+    "rows_scanned_est": 16,
+    "time_est_ms": 0
+   },
+   "ms": 120.81360816955566,
+   "ms_all": [
+    141.159,
+    120.405,
+    120.814
+   ],
+   "or_expansion": null,
+   "outcome": "COMPLETED",
+   "param_source": "SAMPLED anchors (seed 5724984519806421702) + non-id parameters from validation_params-sf1.csv, first row with all keys",
+   "params": {
+    "messageId": "7696598887841"
+   },
+   "plan_id": "IS4",
+   "policy_version": "guardrail-policy-v2",
+   "rows": 1,
+   "rows_digest": "b0dd22c72fc0dbaabc02209e6079963a68c08a2dfa828109c766c56798f8af8f",
+   "sampled_anchors": {
+    "messageId": {
+     "index": 355190,
+     "ldbc_id": 962074860980,
+     "param": "messageId",
+     "population": "Post+Comment",
+     "seed": 5724984519806421702,
+     "size": 2860664,
+     "uid": "7696598887841"
+    }
+   },
+   "wall_s": 7.998
+  },
+  {
+   "arm": "characterization-interactive",
+   "ceilings_hit": [],
+   "completeness": null,
+   "derived_admission": "admit",
+   "estimate": {
+    "expansions_est": 46,
+    "rows_scanned_est": 108,
+    "time_est_ms": 0
+   },
+   "ms": 4486.585378646851,
+   "ms_all": [
+    4600.538,
+    4486.585,
+    4444.639
+   ],
+   "or_expansion": null,
+   "outcome": "COMPLETED",
+   "param_source": "SAMPLED anchors (seed 5724984519806421702) + non-id parameters from validation_params-sf1.csv, first row with all keys",
+   "params": {
+    "messageId": "16492680933009"
+   },
+   "plan_id": "IS5",
+   "policy_version": "guardrail-policy-v2",
+   "rows": 1,
+   "rows_digest": "bcf72427cd38caecb190b87c8457f0b563336c525c9f39a6981ca04e2e0ada53",
+   "sampled_anchors": {
+    "messageId": {
+     "index": 1534205,
+     "ldbc_id": 2061585116626,
+     "param": "messageId",
+     "population": "Post+Comment",
+     "seed": 5724984519806421702,
+     "size": 2860664,
+     "uid": "16492680933009"
+    }
+   },
+   "wall_s": 28.72
+  },
+  {
+   "arm": "characterization-interactive",
+   "ceilings_hit": [],
+   "completeness": null,
+   "derived_admission": "admit",
+   "estimate": {
+    "expansions_est": 12234043,
+    "rows_scanned_est": 12537050,
+    "time_est_ms": 3669
+   },
+   "ms": 4271.604776382446,
+   "ms_all": [
+    4271.605,
+    4688.372,
+    4023.918
+   ],
+   "or_expansion": null,
+   "outcome": "COMPLETED",
+   "param_source": "SAMPLED anchors (seed 5724984519806421702) + non-id parameters from validation_params-sf1.csv, first row with all keys",
+   "params": {
+    "messageId": "13194180272305"
+   },
+   "plan_id": "IS6",
+   "policy_version": "guardrail-policy-v2",
+   "rows": 1,
+   "rows_digest": "a903c543039991172c8f5b3f734f5b59dcd9d23f5b7c00731cfc4f4ea79f8714",
+   "sampled_anchors": {
+    "messageId": {
+     "index": 934119,
+     "ldbc_id": 1649272534038,
+     "param": "messageId",
+     "population": "Post+Comment",
+     "seed": 5724984519806421702,
+     "size": 2860664,
+     "uid": "13194180272305"
+    }
+   },
+   "wall_s": 24.045
+  },
+  {
+   "arm": "characterization-interactive",
+   "ceilings_hit": [],
+   "completeness": null,
+   "derived_admission": "admit",
+   "estimate": {
+    "expansions_est": 624,
+    "rows_scanned_est": 1234,
+    "time_est_ms": 0
+   },
+   "ms": 8010.096073150635,
+   "ms_all": [
+    8160.306,
+    8010.096,
+    7626.249
+   ],
+   "or_expansion": null,
+   "outcome": "COMPLETED",
+   "param_source": "SAMPLED anchors (seed 5724984519806421702) + non-id parameters from validation_params-sf1.csv, first row with all keys",
+   "params": {
+    "messageId": "16492725438601"
+   },
+   "plan_id": "IS7",
+   "policy_version": "guardrail-policy-v2",
+   "rows": 1,
+   "rows_digest": "b1f875d4b4712872e92fbc3266c2d74c05d10c32589e9719f042762ddb6cb062",
+   "sampled_anchors": {
+    "messageId": {
+     "index": 1010397,
+     "ldbc_id": 2061590679825,
+     "param": "messageId",
+     "population": "Post+Comment",
+     "seed": 5724984519806421702,
+     "size": 2860664,
+     "uid": "16492725438601"
+    }
+   },
+   "wall_s": 41.225
+  }
+ ]
+}

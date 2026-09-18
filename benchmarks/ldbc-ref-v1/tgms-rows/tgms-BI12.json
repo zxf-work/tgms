@@ -1,0 +1,692 @@
+{
+ "arm": "scored-bi",
+ "columns": [
+  "messageCount",
+  "personCount"
+ ],
+ "commit": "0b7198dfdf7a",
+ "host": "xzgpu",
+ "params": {
+  "lengthThreshold": 115,
+  "startDate": 1338854400000000
+ },
+ "plan_digest": "6083a582685bf80f891ff2c51cd6363ce5694a296448d9d6f77b5a757b216eb8",
+ "plan_id": "BI12",
+ "result_digest": "575ff62dde1131f12adbfcfcf8b6fc1ebdcb64aca773a1d5db9010c81b10187a",
+ "rows": [
+  {
+   "messageCount": 0,
+   "personCount": 3850
+  },
+  {
+   "messageCount": 1,
+   "personCount": 641
+  },
+  {
+   "messageCount": 2,
+   "personCount": 576
+  },
+  {
+   "messageCount": 3,
+   "personCount": 445
+  },
+  {
+   "messageCount": 4,
+   "personCount": 442
+  },
+  {
+   "messageCount": 5,
+   "personCount": 356
+  },
+  {
+   "messageCount": 6,
+   "personCount": 324
+  },
+  {
+   "messageCount": 7,
+   "personCount": 271
+  },
+  {
+   "messageCount": 8,
+   "personCount": 255
+  },
+  {
+   "messageCount": 9,
+   "personCount": 230
+  },
+  {
+   "messageCount": 10,
+   "personCount": 196
+  },
+  {
+   "messageCount": 11,
+   "personCount": 184
+  },
+  {
+   "messageCount": 12,
+   "personCount": 176
+  },
+  {
+   "messageCount": 13,
+   "personCount": 170
+  },
+  {
+   "messageCount": 14,
+   "personCount": 139
+  },
+  {
+   "messageCount": 15,
+   "personCount": 133
+  },
+  {
+   "messageCount": 16,
+   "personCount": 123
+  },
+  {
+   "messageCount": 18,
+   "personCount": 101
+  },
+  {
+   "messageCount": 17,
+   "personCount": 98
+  },
+  {
+   "messageCount": 19,
+   "personCount": 97
+  },
+  {
+   "messageCount": 20,
+   "personCount": 85
+  },
+  {
+   "messageCount": 22,
+   "personCount": 83
+  },
+  {
+   "messageCount": 21,
+   "personCount": 79
+  },
+  {
+   "messageCount": 23,
+   "personCount": 69
+  },
+  {
+   "messageCount": 24,
+   "personCount": 64
+  },
+  {
+   "messageCount": 28,
+   "personCount": 59
+  },
+  {
+   "messageCount": 26,
+   "personCount": 54
+  },
+  {
+   "messageCount": 29,
+   "personCount": 47
+  },
+  {
+   "messageCount": 25,
+   "personCount": 46
+  },
+  {
+   "messageCount": 33,
+   "personCount": 45
+  },
+  {
+   "messageCount": 27,
+   "personCount": 43
+  },
+  {
+   "messageCount": 31,
+   "personCount": 42
+  },
+  {
+   "messageCount": 32,
+   "personCount": 41
+  },
+  {
+   "messageCount": 30,
+   "personCount": 37
+  },
+  {
+   "messageCount": 35,
+   "personCount": 31
+  },
+  {
+   "messageCount": 37,
+   "personCount": 29
+  },
+  {
+   "messageCount": 34,
+   "personCount": 28
+  },
+  {
+   "messageCount": 39,
+   "personCount": 24
+  },
+  {
+   "messageCount": 36,
+   "personCount": 24
+  },
+  {
+   "messageCount": 42,
+   "personCount": 21
+  },
+  {
+   "messageCount": 38,
+   "personCount": 21
+  },
+  {
+   "messageCount": 43,
+   "personCount": 19
+  },
+  {
+   "messageCount": 52,
+   "personCount": 18
+  },
+  {
+   "messageCount": 45,
+   "personCount": 18
+  },
+  {
+   "messageCount": 41,
+   "personCount": 18
+  },
+  {
+   "messageCount": 40,
+   "personCount": 16
+  },
+  {
+   "messageCount": 57,
+   "personCount": 15
+  },
+  {
+   "messageCount": 54,
+   "personCount": 14
+  },
+  {
+   "messageCount": 47,
+   "personCount": 14
+  },
+  {
+   "messageCount": 46,
+   "personCount": 14
+  },
+  {
+   "messageCount": 44,
+   "personCount": 14
+  },
+  {
+   "messageCount": 49,
+   "personCount": 13
+  },
+  {
+   "messageCount": 55,
+   "personCount": 12
+  },
+  {
+   "messageCount": 61,
+   "personCount": 11
+  },
+  {
+   "messageCount": 51,
+   "personCount": 11
+  },
+  {
+   "messageCount": 50,
+   "personCount": 11
+  },
+  {
+   "messageCount": 53,
+   "personCount": 10
+  },
+  {
+   "messageCount": 56,
+   "personCount": 9
+  },
+  {
+   "messageCount": 48,
+   "personCount": 9
+  },
+  {
+   "messageCount": 70,
+   "personCount": 8
+  },
+  {
+   "messageCount": 65,
+   "personCount": 8
+  },
+  {
+   "messageCount": 94,
+   "personCount": 7
+  },
+  {
+   "messageCount": 85,
+   "personCount": 7
+  },
+  {
+   "messageCount": 71,
+   "personCount": 7
+  },
+  {
+   "messageCount": 69,
+   "personCount": 7
+  },
+  {
+   "messageCount": 66,
+   "personCount": 7
+  },
+  {
+   "messageCount": 62,
+   "personCount": 7
+  },
+  {
+   "messageCount": 60,
+   "personCount": 7
+  },
+  {
+   "messageCount": 59,
+   "personCount": 7
+  },
+  {
+   "messageCount": 75,
+   "personCount": 6
+  },
+  {
+   "messageCount": 72,
+   "personCount": 6
+  },
+  {
+   "messageCount": 68,
+   "personCount": 6
+  },
+  {
+   "messageCount": 117,
+   "personCount": 5
+  },
+  {
+   "messageCount": 79,
+   "personCount": 5
+  },
+  {
+   "messageCount": 76,
+   "personCount": 5
+  },
+  {
+   "messageCount": 73,
+   "personCount": 5
+  },
+  {
+   "messageCount": 63,
+   "personCount": 5
+  },
+  {
+   "messageCount": 58,
+   "personCount": 5
+  },
+  {
+   "messageCount": 123,
+   "personCount": 4
+  },
+  {
+   "messageCount": 99,
+   "personCount": 4
+  },
+  {
+   "messageCount": 89,
+   "personCount": 4
+  },
+  {
+   "messageCount": 84,
+   "personCount": 4
+  },
+  {
+   "messageCount": 82,
+   "personCount": 4
+  },
+  {
+   "messageCount": 74,
+   "personCount": 4
+  },
+  {
+   "messageCount": 67,
+   "personCount": 4
+  },
+  {
+   "messageCount": 144,
+   "personCount": 3
+  },
+  {
+   "messageCount": 137,
+   "personCount": 3
+  },
+  {
+   "messageCount": 106,
+   "personCount": 3
+  },
+  {
+   "messageCount": 101,
+   "personCount": 3
+  },
+  {
+   "messageCount": 95,
+   "personCount": 3
+  },
+  {
+   "messageCount": 93,
+   "personCount": 3
+  },
+  {
+   "messageCount": 92,
+   "personCount": 3
+  },
+  {
+   "messageCount": 91,
+   "personCount": 3
+  },
+  {
+   "messageCount": 88,
+   "personCount": 3
+  },
+  {
+   "messageCount": 77,
+   "personCount": 3
+  },
+  {
+   "messageCount": 64,
+   "personCount": 3
+  },
+  {
+   "messageCount": 177,
+   "personCount": 2
+  },
+  {
+   "messageCount": 151,
+   "personCount": 2
+  },
+  {
+   "messageCount": 145,
+   "personCount": 2
+  },
+  {
+   "messageCount": 140,
+   "personCount": 2
+  },
+  {
+   "messageCount": 134,
+   "personCount": 2
+  },
+  {
+   "messageCount": 132,
+   "personCount": 2
+  },
+  {
+   "messageCount": 128,
+   "personCount": 2
+  },
+  {
+   "messageCount": 124,
+   "personCount": 2
+  },
+  {
+   "messageCount": 122,
+   "personCount": 2
+  },
+  {
+   "messageCount": 115,
+   "personCount": 2
+  },
+  {
+   "messageCount": 112,
+   "personCount": 2
+  },
+  {
+   "messageCount": 108,
+   "personCount": 2
+  },
+  {
+   "messageCount": 102,
+   "personCount": 2
+  },
+  {
+   "messageCount": 98,
+   "personCount": 2
+  },
+  {
+   "messageCount": 96,
+   "personCount": 2
+  },
+  {
+   "messageCount": 90,
+   "personCount": 2
+  },
+  {
+   "messageCount": 86,
+   "personCount": 2
+  },
+  {
+   "messageCount": 83,
+   "personCount": 2
+  },
+  {
+   "messageCount": 78,
+   "personCount": 2
+  },
+  {
+   "messageCount": 525,
+   "personCount": 1
+  },
+  {
+   "messageCount": 471,
+   "personCount": 1
+  },
+  {
+   "messageCount": 403,
+   "personCount": 1
+  },
+  {
+   "messageCount": 382,
+   "personCount": 1
+  },
+  {
+   "messageCount": 354,
+   "personCount": 1
+  },
+  {
+   "messageCount": 353,
+   "personCount": 1
+  },
+  {
+   "messageCount": 324,
+   "personCount": 1
+  },
+  {
+   "messageCount": 310,
+   "personCount": 1
+  },
+  {
+   "messageCount": 261,
+   "personCount": 1
+  },
+  {
+   "messageCount": 257,
+   "personCount": 1
+  },
+  {
+   "messageCount": 245,
+   "personCount": 1
+  },
+  {
+   "messageCount": 244,
+   "personCount": 1
+  },
+  {
+   "messageCount": 237,
+   "personCount": 1
+  },
+  {
+   "messageCount": 224,
+   "personCount": 1
+  },
+  {
+   "messageCount": 218,
+   "personCount": 1
+  },
+  {
+   "messageCount": 216,
+   "personCount": 1
+  },
+  {
+   "messageCount": 214,
+   "personCount": 1
+  },
+  {
+   "messageCount": 210,
+   "personCount": 1
+  },
+  {
+   "messageCount": 205,
+   "personCount": 1
+  },
+  {
+   "messageCount": 203,
+   "personCount": 1
+  },
+  {
+   "messageCount": 198,
+   "personCount": 1
+  },
+  {
+   "messageCount": 197,
+   "personCount": 1
+  },
+  {
+   "messageCount": 173,
+   "personCount": 1
+  },
+  {
+   "messageCount": 172,
+   "personCount": 1
+  },
+  {
+   "messageCount": 170,
+   "personCount": 1
+  },
+  {
+   "messageCount": 165,
+   "personCount": 1
+  },
+  {
+   "messageCount": 164,
+   "personCount": 1
+  },
+  {
+   "messageCount": 161,
+   "personCount": 1
+  },
+  {
+   "messageCount": 160,
+   "personCount": 1
+  },
+  {
+   "messageCount": 153,
+   "personCount": 1
+  },
+  {
+   "messageCount": 152,
+   "personCount": 1
+  },
+  {
+   "messageCount": 149,
+   "personCount": 1
+  },
+  {
+   "messageCount": 148,
+   "personCount": 1
+  },
+  {
+   "messageCount": 147,
+   "personCount": 1
+  },
+  {
+   "messageCount": 138,
+   "personCount": 1
+  },
+  {
+   "messageCount": 133,
+   "personCount": 1
+  },
+  {
+   "messageCount": 131,
+   "personCount": 1
+  },
+  {
+   "messageCount": 130,
+   "personCount": 1
+  },
+  {
+   "messageCount": 129,
+   "personCount": 1
+  },
+  {
+   "messageCount": 126,
+   "personCount": 1
+  },
+  {
+   "messageCount": 125,
+   "personCount": 1
+  },
+  {
+   "messageCount": 120,
+   "personCount": 1
+  },
+  {
+   "messageCount": 119,
+   "personCount": 1
+  },
+  {
+   "messageCount": 118,
+   "personCount": 1
+  },
+  {
+   "messageCount": 116,
+   "personCount": 1
+  },
+  {
+   "messageCount": 111,
+   "personCount": 1
+  },
+  {
+   "messageCount": 110,
+   "personCount": 1
+  },
+  {
+   "messageCount": 109,
+   "personCount": 1
+  },
+  {
+   "messageCount": 103,
+   "personCount": 1
+  },
+  {
+   "messageCount": 97,
+   "personCount": 1
+  },
+  {
+   "messageCount": 81,
+   "personCount": 1
+  }
+ ],
+ "schema": [
+  [
+   "messageCount",
+   "int"
+  ],
+  [
+   "personCount",
+   "int"
+  ]
+ ]
+}

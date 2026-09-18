@@ -1,0 +1,18 @@
+{
+ "columns": [
+  "person1.id",
+  "messageCount"
+ ],
+ "commit": "0b7198dfdf7a",
+ "host": "xzgpu",
+ "params": {
+  "delta": 12,
+  "tag": "Cosmic_Egg"
+ },
+ "plan_id": "BI17",
+ "query_file": "external_workloads/ldbc/bi/neo4j/queries/bi-17.cypher",
+ "query_sha256": "0d2187fd021e4570c602124ee367bf2392f48870474187045eee27dd908539c7",
+ "result_digest": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+ "rows": [],
+ "wall_s": 0.047
+}

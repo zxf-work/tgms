@@ -1,0 +1,84 @@
+{
+ "_provenance": {
+  "from": [
+   "benchmarks/tgir-v1/plans/*.json (Project bindings)",
+   "tgms/data/snb_loader.py (NODES/EDGES property kinds)"
+  ],
+  "generated_by": "scripts/ldbc_column_kinds.py",
+  "rule": "a column is `ts` iff the property it projects is declared `ts` or `date` by the loader; a column binding `<var>.uid` is `uid`. Never inferred from any result value.",
+  "why": "RUNBOOK.md \u00a74.3: the \u00b5s/ms divergence acts at compare time, via ldbc_compare.py's `ts` kind. The --emit-rows schema types property reads as `json?`, so that kind never fired."
+ },
+ "plans": {
+  "BI10": {
+   "candidateId": "uid",
+   "messageId": "uid"
+  },
+  "BI17": {
+   "forum1Id": "uid",
+   "person1Id": "uid"
+  },
+  "BI3": {
+   "forumCreationDate": "ts",
+   "forumId": "uid",
+   "messageId": "uid",
+   "moderatorId": "uid"
+  },
+  "BI6": {
+   "likedMessageId": "uid",
+   "likerId": "uid"
+  },
+  "BI7": {
+   "taggedMessageId": "uid"
+  },
+  "IC11": {
+   "personId": "uid"
+  },
+  "IC2": {
+   "messageCreationDate": "ts",
+   "messageId": "uid",
+   "personId": "uid"
+  },
+  "IC8": {
+   "commentCreationDate": "ts",
+   "commentId": "uid",
+   "personId": "uid"
+  },
+  "IC9": {
+   "messageCreationDate": "ts",
+   "messageId": "uid",
+   "personId": "uid"
+  },
+  "IS1": {
+   "birthday": "ts",
+   "cityId": "uid",
+   "creationDate": "ts"
+  },
+  "IS2": {
+   "messageCreationDate": "ts",
+   "messageId": "uid",
+   "originalPostAuthorId": "uid",
+   "originalPostId": "uid"
+  },
+  "IS3": {
+   "friendId": "uid"
+  },
+  "IS4": {
+   "messageCreationDate": "ts"
+  },
+  "IS5": {
+   "personId": "uid"
+  },
+  "IS6": {
+   "forumId": "uid",
+   "moderatorId": "uid"
+  },
+  "IS7": {
+   "commentCreationDate": "ts",
+   "commentId": "uid",
+   "replyAuthorId": "uid"
+  },
+  "bo33": {
+   "x": "uid"
+  }
+ }
+}

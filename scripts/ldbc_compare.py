@@ -104,6 +104,18 @@ def load_sort_keys(path: Path) -> dict[str, list[str]]:
             for pid, row in doc.get("templates", {}).items()}
 
 
+def lookup_column_map(column_map: dict[str, Any] | None,
+                      plan_id: str) -> dict[str, Any] | None:
+    """`column_map.yaml` is keyed by the 24 LDBC template ids (`BI6`, not
+    `BI6.v2`): the correspondence is a property of the query's RETURN and the
+    artifact answering it, and `BI6.v2` answers `BI6`."""
+    if not column_map:
+        return None
+    if plan_id in column_map:
+        return column_map[plan_id]
+    return column_map.get(plan_id.rsplit(".", 1)[0])
+
+
 def lookup_sort_keys(sort_keys: dict[str, list[str]] | None,
                      plan_id: str) -> list[str] | None:
     """`sort_keys.yaml` is keyed by the 24 LDBC template ids (`BI6`, not
@@ -303,7 +315,9 @@ def compare_ordered(tgms_rows: list[dict[str, Any]],
 def compare_plan(plan_id: str, tgms_doc: dict[str, Any] | None,
                  ref_doc: dict[str, Any] | None,
                  contract_row: dict[str, Any] | None,
-                 sort_keys: list[str] | None = None) -> dict[str, Any]:
+                 sort_keys: list[str] | None = None,
+                 column_kinds: dict[str, str] | None = None,
+                 column_map: dict[str, Any] | None = None) -> dict[str, Any]:
     """One template's verdict record — never collapsed into a ratio."""
     rec: dict[str, Any] = {
         "plan_id": plan_id,
@@ -336,10 +350,34 @@ def compare_plan(plan_id: str, tgms_doc: dict[str, Any] | None,
     # part of the LDBC projection (design §4's "projected columns") — comparing
     # them would fault every row on a column the reference side never has.
     schema = [pair for pair in schema if not pair[0].endswith("__hierarchy")]
+    # `scripts/ldbc_column_kinds.py`'s table, derived from the plan artifacts'
+    # own projections and the loader's frozen property kinds. `--emit-rows`
+    # types a property read as `json?` whatever the property is, so without
+    # this the `ts` kind -- the compare-time half of RUNBOOK.md §4.3's µs/ms
+    # rule -- never fires and every row carrying a timestamp mismatches.
+    if column_kinds:
+        schema = [[name, column_kinds.get(name, tau)] for name, tau in schema]
     contract = (contract_row or {}).get("claim_full_contract",
                                         "CURRENT_ECQR_FRAGMENT")
     tgms_rows = tgms_doc["rows"]
     ref_rows = ref_doc["rows"]
+
+    # `scripts/ldbc_column_map.py`'s table. The two sides name their columns
+    # differently (the vendored query's RETURN aliases vs the plan's own output
+    # schema), and this module used to look both up by the TGIR name, so every
+    # reference lookup returned None and every row faulted while the values
+    # were identical. Renaming the reference side once, here, leaves every
+    # matcher below untouched.
+    not_projected: list[str] = []
+    if column_map:
+        renames = column_map.get("map") or {}
+        not_projected = list(column_map.get("unmatched") or [])
+        rec["column_map_rule"] = column_map.get("rule")
+        if renames:
+            ref_rows = [{renames.get(k, k): v for k, v in row.items()}
+                        for row in ref_rows]
+    rec["reference_columns_not_projected"] = not_projected
+
     rec["compared"] = max(len(tgms_rows), len(ref_rows))
 
     if contract == "REQUIRES_ORDERED_RESULT":
@@ -356,6 +394,20 @@ def compare_plan(plan_id: str, tgms_doc: dict[str, Any] | None,
     rec["disagreeing"] = out["disagreeing"]
     rec["causes"] = out["causes"]
     rec["verdict"] = out["verdict"]
+
+    # A reference column that no TGIR column maps to is a fault in its own
+    # right, not an absence: the comparator only ever compares the columns the
+    # TGIR schema declares, so such a column was previously invisible and the
+    # template could be scored `agreeing` on a strict subset of the answer
+    # (IC12's `tagNames`, three of BI4's five). Reported as its own class.
+    if not_projected:
+        rec["verdict"] = "reference-column-not-projected"
+        rec["causes"] = list(rec["causes"]) + [{
+            "cause": "REFERENCE-COLUMN-NOT-PROJECTED",
+            "detail": ("the reference projects " + ", ".join(not_projected) +
+                       "; the TGIR plan does not, so the rows above were "
+                       "compared on a strict subset of the query's answer"),
+        }]
     return rec
 
 
@@ -381,7 +433,9 @@ def render_markdown(verdicts: list[dict[str, Any]]) -> str:
 
 def compare_all(tgms_dir: Path, ref_dir: Path, contracts: dict[str, Any],
                 plan_ids: list[str],
-                sort_keys: dict[str, list[str]] | None = None
+                sort_keys: dict[str, list[str]] | None = None,
+                column_kinds: dict[str, dict[str, str]] | None = None,
+                column_map: dict[str, Any] | None = None
                 ) -> dict[str, Any]:
     import platform
     import time
@@ -395,7 +449,9 @@ def compare_all(tgms_dir: Path, ref_dir: Path, contracts: dict[str, Any],
         ref_doc = json.loads(ref_path.read_text()) if ref_path.exists() else None
         keys = lookup_sort_keys(sort_keys, pid)
         verdicts.append(compare_plan(pid, tgms_doc, ref_doc,
-                                     contracts.get(pid), keys))
+                                     contracts.get(pid), keys,
+                                     (column_kinds or {}).get(pid),
+                                     lookup_column_map(column_map, pid)))
     return {
         "manifest": {"commit": _sha(), "host": platform.node(),
                     "utc": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
@@ -421,13 +477,35 @@ def main() -> int:
                          "(benchmarks/ldbc-ref-v1/sort_keys.yaml); supplies "
                          "the REQUIRES_TOP_K tie-break columns RUNBOOK.md §8 "
                          "otherwise requires building by hand")
+    ap.add_argument("--column-kinds", default=None,
+                    help="path to scripts/ldbc_column_kinds.py's output "
+                         "(benchmarks/ldbc-ref-v1/column_kinds.json); supplies "
+                         "the `ts`/`uid` column kinds the --emit-rows schema "
+                         "cannot carry, without which RUNBOOK.md §4.3's µs/ms "
+                         "rule never fires")
+    ap.add_argument("--column-map", default=None,
+                    help="path to scripts/ldbc_column_map.py's output "
+                         "(benchmarks/ldbc-ref-v1/column_map.yaml); maps each "
+                         "reference column to the TGIR column it corresponds "
+                         "to, and names the reference columns no TGIR column "
+                         "projects")
     args = ap.parse_args()
 
     contracts = load_contracts(Path(args.contracts))
     plan_ids = args.plan or sorted(contracts)
     sort_keys = load_sort_keys(Path(args.sort_keys)) if args.sort_keys else None
+    column_kinds = None
+    if args.column_kinds:
+        column_kinds = json.loads(
+            Path(args.column_kinds).read_text()).get("plans", {})
+    column_map = None
+    if args.column_map:
+        import yaml  # noqa: PLC0415 — only needed when the flag is given
+        column_map = yaml.safe_load(
+            Path(args.column_map).read_text()).get("plans", {})
     result = compare_all(Path(args.tgms_dir), Path(args.ref_dir), contracts,
-                         plan_ids, sort_keys=sort_keys)
+                         plan_ids, sort_keys=sort_keys,
+                         column_kinds=column_kinds, column_map=column_map)
 
     out = Path(args.out)
     out.parent.mkdir(parents=True, exist_ok=True)

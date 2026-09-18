@@ -1,0 +1,527 @@
+{
+ "arm": "scored-bi",
+ "columns": [
+  "personId",
+  "messageCount"
+ ],
+ "commit": "0b7198dfdf7a",
+ "host": "xzgpu",
+ "params": {
+  "date": 1265932800000000
+ },
+ "plan_digest": "8727d7b128a0f03f92e5f18c0791bde9c57984685c55a704debe229528d65794",
+ "plan_id": "BI4",
+ "result_digest": "104b7d8a282a8781a477739ac1c14bccaaa16ee5b9f2efdde95157daf3bc24a3",
+ "rows": [
+  {
+   "messageCount": 1195,
+   "personId": 4398046519825,
+   "personId__hierarchy": "Person"
+  },
+  {
+   "messageCount": 948,
+   "personId": 6597069774064,
+   "personId__hierarchy": "Person"
+  },
+  {
+   "messageCount": 835,
+   "personId": 15393162797132,
+   "personId__hierarchy": "Person"
+  },
+  {
+   "messageCount": 738,
+   "personId": 2199023265231,
+   "personId__hierarchy": "Person"
+  },
+  {
+   "messageCount": 419,
+   "personId": 24189255819865,
+   "personId__hierarchy": "Person"
+  },
+  {
+   "messageCount": 402,
+   "personId": 2199023260815,
+   "personId__hierarchy": "Person"
+  },
+  {
+   "messageCount": 382,
+   "personId": 10995116284819,
+   "personId__hierarchy": "Person"
+  },
+  {
+   "messageCount": 345,
+   "personId": 2866,
+   "personId__hierarchy": "Person"
+  },
+  {
+   "messageCount": 292,
+   "personId": 6597069770739,
+   "personId__hierarchy": "Person"
+  },
+  {
+   "messageCount": 261,
+   "personId": 28587302329901,
+   "personId__hierarchy": "Person"
+  },
+  {
+   "messageCount": 151,
+   "personId": 15393162799092,
+   "personId__hierarchy": "Person"
+  },
+  {
+   "messageCount": 64,
+   "personId": 32985348840714,
+   "personId__hierarchy": "Person"
+  },
+  {
+   "messageCount": 54,
+   "personId": 10995116279311,
+   "personId__hierarchy": "Person"
+  },
+  {
+   "messageCount": 48,
+   "personId": 28587302327043,
+   "personId__hierarchy": "Person"
+  },
+  {
+   "messageCount": 48,
+   "personId": 32985348841684,
+   "personId__hierarchy": "Person"
+  },
+  {
+   "messageCount": 46,
+   "personId": 4398046518418,
+   "personId__hierarchy": "Person"
+  },
+  {
+   "messageCount": 46,
+   "personId": 10995116285596,
+   "personId__hierarchy": "Person"
+  },
+  {
+   "messageCount": 46,
+   "personId": 26388279068970,
+   "personId__hierarchy": "Person"
+  },
+  {
+   "messageCount": 44,
+   "personId": 8796093028172,
+   "personId__hierarchy": "Person"
+  },
+  {
+   "messageCount": 44,
+   "personId": 28587302328636,
+   "personId__hierarchy": "Person"
+  },
+  {
+   "messageCount": 44,
+   "personId": 28587302329156,
+   "personId__hierarchy": "Person"
+  },
+  {
+   "messageCount": 43,
+   "personId": 6597069775034,
+   "personId__hierarchy": "Person"
+  },
+  {
+   "messageCount": 43,
+   "personId": 19791209304987,
+   "personId__hierarchy": "Person"
+  },
+  {
+   "messageCount": 43,
+   "personId": 26388279071390,
+   "personId__hierarchy": "Person"
+  },
+  {
+   "messageCount": 42,
+   "personId": 32985348843490,
+   "personId__hierarchy": "Person"
+  },
+  {
+   "messageCount": 41,
+   "personId": 7937,
+   "personId__hierarchy": "Person"
+  },
+  {
+   "messageCount": 41,
+   "personId": 2199023261398,
+   "personId__hierarchy": "Person"
+  },
+  {
+   "messageCount": 41,
+   "personId": 26388279074760,
+   "personId__hierarchy": "Person"
+  },
+  {
+   "messageCount": 40,
+   "personId": 6597069768174,
+   "personId__hierarchy": "Person"
+  },
+  {
+   "messageCount": 38,
+   "personId": 24189255820986,
+   "personId__hierarchy": "Person"
+  },
+  {
+   "messageCount": 37,
+   "personId": 13194139541713,
+   "personId__hierarchy": "Person"
+  },
+  {
+   "messageCount": 37,
+   "personId": 17592186048064,
+   "personId__hierarchy": "Person"
+  },
+  {
+   "messageCount": 37,
+   "personId": 21990232556039,
+   "personId__hierarchy": "Person"
+  },
+  {
+   "messageCount": 37,
+   "personId": 21990232559111,
+   "personId__hierarchy": "Person"
+  },
+  {
+   "messageCount": 37,
+   "personId": 30786325582458,
+   "personId__hierarchy": "Person"
+  },
+  {
+   "messageCount": 36,
+   "personId": 4398046512214,
+   "personId__hierarchy": "Person"
+  },
+  {
+   "messageCount": 36,
+   "personId": 6597069773793,
+   "personId__hierarchy": "Person"
+  },
+  {
+   "messageCount": 36,
+   "personId": 15393162788923,
+   "personId__hierarchy": "Person"
+  },
+  {
+   "messageCount": 36,
+   "personId": 17592186054998,
+   "personId__hierarchy": "Person"
+  },
+  {
+   "messageCount": 36,
+   "personId": 32985348841739,
+   "personId__hierarchy": "Person"
+  },
+  {
+   "messageCount": 35,
+   "personId": 2208,
+   "personId__hierarchy": "Person"
+  },
+  {
+   "messageCount": 35,
+   "personId": 2199023263560,
+   "personId__hierarchy": "Person"
+  },
+  {
+   "messageCount": 35,
+   "personId": 6597069768442,
+   "personId__hierarchy": "Person"
+  },
+  {
+   "messageCount": 35,
+   "personId": 17592186051684,
+   "personId__hierarchy": "Person"
+  },
+  {
+   "messageCount": 35,
+   "personId": 19791209309552,
+   "personId__hierarchy": "Person"
+  },
+  {
+   "messageCount": 35,
+   "personId": 26388279073421,
+   "personId__hierarchy": "Person"
+  },
+  {
+   "messageCount": 35,
+   "personId": 28587302327725,
+   "personId__hierarchy": "Person"
+  },
+  {
+   "messageCount": 35,
+   "personId": 30786325580960,
+   "personId__hierarchy": "Person"
+  },
+  {
+   "messageCount": 35,
+   "personId": 30786325581241,
+   "personId__hierarchy": "Person"
+  },
+  {
+   "messageCount": 34,
+   "personId": 15393162798428,
+   "personId__hierarchy": "Person"
+  },
+  {
+   "messageCount": 34,
+   "personId": 17592186051872,
+   "personId__hierarchy": "Person"
+  },
+  {
+   "messageCount": 34,
+   "personId": 28587302329829,
+   "personId__hierarchy": "Person"
+  },
+  {
+   "messageCount": 33,
+   "personId": 5452,
+   "personId__hierarchy": "Person"
+  },
+  {
+   "messageCount": 33,
+   "personId": 2199023264344,
+   "personId__hierarchy": "Person"
+  },
+  {
+   "messageCount": 33,
+   "personId": 8796093023211,
+   "personId__hierarchy": "Person"
+  },
+  {
+   "messageCount": 33,
+   "personId": 13194139542917,
+   "personId__hierarchy": "Person"
+  },
+  {
+   "messageCount": 33,
+   "personId": 19791209305377,
+   "personId__hierarchy": "Person"
+  },
+  {
+   "messageCount": 33,
+   "personId": 19791209306643,
+   "personId__hierarchy": "Person"
+  },
+  {
+   "messageCount": 33,
+   "personId": 35184372090954,
+   "personId__hierarchy": "Person"
+  },
+  {
+   "messageCount": 32,
+   "personId": 6597069771115,
+   "personId__hierarchy": "Person"
+  },
+  {
+   "messageCount": 32,
+   "personId": 6597069774644,
+   "personId__hierarchy": "Person"
+  },
+  {
+   "messageCount": 32,
+   "personId": 6597069777069,
+   "personId__hierarchy": "Person"
+  },
+  {
+   "messageCount": 32,
+   "personId": 13194139543607,
+   "personId__hierarchy": "Person"
+  },
+  {
+   "messageCount": 32,
+   "personId": 21990232559935,
+   "personId__hierarchy": "Person"
+  },
+  {
+   "messageCount": 32,
+   "personId": 21990232565605,
+   "personId__hierarchy": "Person"
+  },
+  {
+   "messageCount": 32,
+   "personId": 26388279076723,
+   "personId__hierarchy": "Person"
+  },
+  {
+   "messageCount": 32,
+   "personId": 28587302331910,
+   "personId__hierarchy": "Person"
+  },
+  {
+   "messageCount": 32,
+   "personId": 30786325588075,
+   "personId__hierarchy": "Person"
+  },
+  {
+   "messageCount": 32,
+   "personId": 32985348843444,
+   "personId__hierarchy": "Person"
+  },
+  {
+   "messageCount": 31,
+   "personId": 10281,
+   "personId__hierarchy": "Person"
+  },
+  {
+   "messageCount": 31,
+   "personId": 6597069768018,
+   "personId__hierarchy": "Person"
+  },
+  {
+   "messageCount": 31,
+   "personId": 13194139534180,
+   "personId__hierarchy": "Person"
+  },
+  {
+   "messageCount": 31,
+   "personId": 13194139539554,
+   "personId__hierarchy": "Person"
+  },
+  {
+   "messageCount": 31,
+   "personId": 13194139543101,
+   "personId__hierarchy": "Person"
+  },
+  {
+   "messageCount": 31,
+   "personId": 19791209302082,
+   "personId__hierarchy": "Person"
+  },
+  {
+   "messageCount": 31,
+   "personId": 19791209304789,
+   "personId__hierarchy": "Person"
+  },
+  {
+   "messageCount": 31,
+   "personId": 26388279071096,
+   "personId__hierarchy": "Person"
+  },
+  {
+   "messageCount": 31,
+   "personId": 30786325582257,
+   "personId__hierarchy": "Person"
+  },
+  {
+   "messageCount": 30,
+   "personId": 2435,
+   "personId__hierarchy": "Person"
+  },
+  {
+   "messageCount": 30,
+   "personId": 2199023261346,
+   "personId__hierarchy": "Person"
+  },
+  {
+   "messageCount": 30,
+   "personId": 4398046517801,
+   "personId__hierarchy": "Person"
+  },
+  {
+   "messageCount": 30,
+   "personId": 8796093029212,
+   "personId__hierarchy": "Person"
+  },
+  {
+   "messageCount": 30,
+   "personId": 15393162789525,
+   "personId__hierarchy": "Person"
+  },
+  {
+   "messageCount": 30,
+   "personId": 21990232561857,
+   "personId__hierarchy": "Person"
+  },
+  {
+   "messageCount": 30,
+   "personId": 26388279076501,
+   "personId__hierarchy": "Person"
+  },
+  {
+   "messageCount": 30,
+   "personId": 28587302327643,
+   "personId__hierarchy": "Person"
+  },
+  {
+   "messageCount": 30,
+   "personId": 30786325579031,
+   "personId__hierarchy": "Person"
+  },
+  {
+   "messageCount": 30,
+   "personId": 30786325580998,
+   "personId__hierarchy": "Person"
+  },
+  {
+   "messageCount": 30,
+   "personId": 30786325581320,
+   "personId__hierarchy": "Person"
+  },
+  {
+   "messageCount": 30,
+   "personId": 30786325583499,
+   "personId__hierarchy": "Person"
+  },
+  {
+   "messageCount": 30,
+   "personId": 35184372094081,
+   "personId__hierarchy": "Person"
+  },
+  {
+   "messageCount": 29,
+   "personId": 3903,
+   "personId__hierarchy": "Person"
+  },
+  {
+   "messageCount": 29,
+   "personId": 2199023258884,
+   "personId__hierarchy": "Person"
+  },
+  {
+   "messageCount": 29,
+   "personId": 6597069767028,
+   "personId__hierarchy": "Person"
+  },
+  {
+   "messageCount": 29,
+   "personId": 6597069772286,
+   "personId__hierarchy": "Person"
+  },
+  {
+   "messageCount": 29,
+   "personId": 6597069775770,
+   "personId__hierarchy": "Person"
+  },
+  {
+   "messageCount": 29,
+   "personId": 8796093032553,
+   "personId__hierarchy": "Person"
+  },
+  {
+   "messageCount": 29,
+   "personId": 10995116282430,
+   "personId__hierarchy": "Person"
+  },
+  {
+   "messageCount": 29,
+   "personId": 10995116282865,
+   "personId__hierarchy": "Person"
+  },
+  {
+   "messageCount": 29,
+   "personId": 10995116286396,
+   "personId__hierarchy": "Person"
+  }
+ ],
+ "schema": [
+  [
+   "personId",
+   "uid"
+  ],
+  [
+   "messageCount",
+   "int"
+  ]
+ ]
+}

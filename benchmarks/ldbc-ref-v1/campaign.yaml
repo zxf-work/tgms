@@ -309,3 +309,355 @@ falsifiers:
 # No addenda yet — this is the initial freeze. Any change to `templates`,
 # `neo4j`, `gates`, `predictions` or `falsifiers` above lands as a dated
 # `addendum_N` block below, never as an edit to the blocks above.
+
+# ==========================================================================
+addendum_1:
+  date: 2026-09-17
+  by: xzgpu execution lane (ldbc-ref-v1 run of record)
+  what: >-
+    Scoring of the frozen predictions above against the executed run. Appended,
+    never edited into the blocks above. The full account is README.md next to
+    this file; the run's own records are compare-2026-09-17.json,
+    timings-2026-09-17.json and manifest-2026-09-17.json.
+  run:
+    host: xzgpu
+    commit: 0b7198dfdf7a-dirty   # five uncommitted harness fixes, README §6
+    neo4j: 5.26.0 + apoc-5.26.0-core, Temurin 21.0.12+8, driver 5.28.6
+    import_wall_s: 42
+    index_wall_s: 14
+    tgms_wall_s: 8187.2
+    store: stores/snb-sf1
+
+  gates:
+    G-R1_every_attempted_has_a_result_or_refusal: PASS   # 24/24; BI6.v2's ceiling hit is a recorded TIMEOUT, not a skip
+    G-R2_record_validates: PASS                          # check_result_manifest.py: conforms
+    G-R3_same_data: PASS                                 # 2,997,352 nodes / 17,196,776 edges, both serializations, id digests equal
+
+  # ------------------------------------------------------------------
+  # The scoring bar below is `predictions:`' own, applied as written. It is
+  # applied to a REDUCED denominator, because 8 of the 24 templates produced
+  # no valid comparison for reasons that are properties of the harness and of
+  # a frozen host, not of TGIR:
+  #   - 7 (BI4 BI9 BI11 BI12 IC2 IC5 IC9) have an INVALID REFERENCE SIDE: their
+  #     temporal parameters reached Neo4j as ISO-8601 strings, and
+  #     `DATETIME > STRING` yields null rather than raising, so the reference
+  #     returned 0 or 1 rows silently. Fix written and tested
+  #     (ldbc_reference_run.driverize_params) but NOT executed: host compute
+  #     was frozen for a 6-hour soak before the reference could be re-run.
+  #   - 1 (BI6, i.e. BI6.v2) hit the 1020 s TGIR ceiling and produced no rows.
+  # Scoring those 8 either way would be inventing evidence, so they are
+  # reported NOT SCOREABLE rather than folded into any ratio.
+  # ------------------------------------------------------------------
+  scoring:
+    per_template:
+      verdict: REFUTED
+      on: IS3
+      detail: >-
+        `refuted_if` reads "any non-risk-flagged template shows a disagreeing
+        row with cause other than ORDERING/TIE or REFERENCE-SIDE-QUIRK". IS3 is
+        non-risk-flagged and disagrees: TGIR returns 48 rows where Neo4j
+        returns 24, exactly 2x, because the store encodes one KNOWS CSV row as
+        two edge versions (snb_loader `both_ways=True`, M7) and
+        interactive-short-3.cypher matches `-[:KNOWS]-` undirected. The cause
+        is neither ORDERING/TIE nor REFERENCE-SIDE-QUIRK, so the prediction is
+        refuted as written. RUNBOOK.md §4.3's own M7 line pre-classifies this
+        outcome ("any KNOWS-count doubling in a result is a defect to report,
+        not a normalization to apply"), and the prior P-SF1b record shows the
+        same 48, so it is a standing property of the M7 encoding rather than a
+        regression introduced by this run. Reported, not normalized away.
+      not_scoreable: [BI4, BI9, BI11, BI12, IC2, IC5, IC9, BI6]
+    overall_agreement:
+      verdict: NOT SCOREABLE
+      detail: >-
+        The bar pools every compared row across all 24 templates; with 8
+        templates uncomparable the pooled ratio would be a statement about the
+        harness, not about agreement. Reported instead, over the 16 templates
+        that DID produce a valid comparison: 281 of 329 compared rows agree
+        (0.854), where the 48 disagreeing rows are IS3's doubling alone. That
+        figure is itself conditional on a column correspondence table that this
+        lane did NOT invent (see below), so it is reported as an upper-bound
+        reading of the evidence and not as a score against the frozen bar.
+    bi6_is_not_a_semantic_gap:
+      verdict: NOT SCOREABLE (vacuous)
+      detail: >-
+        `pass_if` is "BI6.v2's verdict has zero TGIR-SEMANTIC-GAP-caused
+        disagreements". BI6.v2 timed out at the 1020 s ceiling and produced no
+        rows, so it has zero disagreements of every cause and passes
+        vacuously. That is not evidence for D2's triage and is not claimed as
+        such. BI6.json (the v1 artifact) did ERROR at SF1, exactly as RUNBOOK
+        §6 said it should, so the v1 defect is confirmed to still reproduce.
+
+  falsifiers:
+    a_inexpressible_template: NOT TRIGGERED
+    b_explained_away_row_hiding_a_defect:
+      status: AT RISK — flagged deliberately
+      detail: >-
+        This run explains several disagreements as harness artifacts (string
+        temporal parameters; a `ts` column kind that never fired; divergent
+        column names). Each is evidenced rather than asserted — the IS1 rows
+        are the same person differing only by exactly 1000x, the BI3/BI7/BI10/
+        IS2 rows are byte-identical to the reference under positional column
+        pairing — but the coordinator should audit them before any of this is
+        cited, since "explained away" is precisely what falsifier b warns of.
+    c_same_data_gate_fails: NOT TRIGGERED   # G-R3 PASS
+    d_reference_side_timeout:
+      status: ANALOGUE TRIGGERED, other side
+      detail: >-
+        No reference-side timeout occurred anywhere; BI10, the template named
+        as most likely to approach the 600 s ceiling, ran in 0.29 s, and the
+        whole Neo4j timed range is 0.007-1.974 s. The timeout fell on the TGIR
+        side instead (BI6.v2, 1020 s), and is reported NOT-ATTEMPTED for
+        comparison purposes rather than folded into the agreement denominator,
+        which is the treatment falsifier d prescribes.
+    e_systematic_path_residual:
+      verdict: NOT TRIGGERED
+      detail: >-
+        0 of the 5 risk-flagged templates (BI3 BI10 BI17 IC5 IC12) show a
+        TGIR-SEMANTIC-GAP disagreement. BI3 and BI10 return values identical to
+        the reference; BI17 returns 0 rows on both sides; IC5's reference is
+        invalid (0 rows both sides regardless); IC12 agrees on all 5 rows of
+        the 4 columns it projects. The design memo §7 var-length/path residual
+        did NOT materialise as a systematic effect at SF1.
+
+  caveats_for_the_reader:
+    - >-
+      `ldbc_compare.py` matches columns BY NAME on both sides despite its own
+      docstring ("by column kind, never by column name"), and 10 templates'
+      two sides use different names (BI3's `forumId` vs `forum.id`, BI7's
+      `relatedTagCount` vs `count`, ...). Four of them (BI3 BI7 BI10 IS2) are
+      byte-identical to the reference once columns are paired positionally and
+      the µs/ms rule is applied, but positional pairing is NOT universally
+      safe — IC8 carries the same names in a different order, where name-based
+      matching is right and positional matching would be wrong. A column
+      correspondence table is a design decision and was deliberately left to
+      the coordinator rather than improvised mid-run.
+    - >-
+      The comparator only compares the columns the TGIR schema declares, so a
+      reference column the TGIR plan does not project is invisible to it.
+      IC12's `tagNames` and three of BI4's five columns fall in this hole, and
+      IC12's `agreeing` verdict is over-generous as a result.
+    - >-
+      Wall times on the two sides are NOT a speed ratio: Neo4j ran 1 warm-up +
+      3 timed executions against a warm server, TGIR ran its own warmups-1/
+      reps-3 protocol (1 rep when bypassed) and its `ms` excludes a 150-270 s
+      per-plan store open. They are reported per side and never divided.
+
+# ==========================================================================
+addendum_2:
+  date: 2026-09-17
+  by: xzgpu execution lane, after the coordinator's ratifications
+  what: >-
+    Re-scoring of the same frozen predictions with the ratified column
+    correspondence applied. Appended; addendum_1 is left exactly as written,
+    including the readings it reached before the correspondence existed. Same
+    row dumps, same reference results, same parameters — only the comparator
+    changed, and only in the two ways the coordinator ratified: it now looks
+    reference columns up through column_map.yaml, and it reports a reference
+    column no TGIR column projects as its own class instead of ignoring it.
+  changed_since_addendum_1:
+    - >-
+      benchmarks/ldbc-ref-v1/column_map.yaml, generated by
+      scripts/ldbc_column_map.py from each plan artifact's own Plan.out_schema
+      and each vendored .cypher's final RETURN aliases. Rule A (by name) for
+      10 templates, rule B (positional, kind-checked) for 11, `unmatched` for
+      3. IC8 resolves by name (same six names, different order — positional
+      pairing there would compare a timestamp against an id); BI3 by position.
+      tests/test_ldbc_column_map.py regenerates the table and asserts byte
+      equality, and pins the IC8 and BI3 cases by name.
+    - >-
+      ldbc_compare.py reports `reference-column-not-projected` where the
+      reference projects a column no TGIR column maps to, instead of comparing
+      a strict subset of the answer and calling it agreement.
+  result_digest_now: 5263399e0f7109aabdbb56e92bda3b6e8d949df4f6e85f194eaeb748ddced169
+
+  verdict_counts:
+    agree: 14                                  # BI3 BI7 BI10 BI17 BI18 IC6 IC8 IC11 IS1 IS2 IS4 IS5 IS6 IS7
+    reference_column_not_projected: 3          # BI4 IC5 IC12
+    disagreeing_but_not_comparable: 5          # BI9 BI11 BI12 IC2 IC9 -- invalid reference, see addendum_1
+    disagreeing_genuine: 1                     # IS3
+    timeout: 1                                 # BI6.v2, at the pre-registered ceiling
+    error: 0
+    # BI4 and IC5 carry BOTH an unprojected reference column and an invalid
+    # reference; the 7 invalid-reference templates split 5/2 across the two
+    # classes above.
+
+  scoring:
+    per_template:
+      verdict: REFUTED
+      on: IS3
+      unchanged_from: addendum_1
+      detail: >-
+        The correspondence moved BI3, BI7, BI10 and IS2 from "every row faults"
+        to full agreement, and moved IC12 from a too-generous `agreeing` to
+        `reference-column-not-projected`. Neither changes the scoring: IS3 is
+        still a non-risk-flagged template disagreeing with a cause that is
+        neither ORDERING/TIE nor REFERENCE-SIDE-QUIRK, which is what
+        `refuted_if` names. Cause MAPPING-RULE, ratified: the store
+        materialises KNOWS both ways (M7) and IS3.json expands
+        `dir="both"` over it, so each friendship is traversed twice -- 48 rows
+        against the reference's 24. The plan COULD deduplicate: expanding
+        `dir="out"` alone reaches every friend exactly once given the
+        both-ways materialisation, or a Distinct on
+        (friendId, friendshipCreationDate) above the expand. Fix belongs in
+        IS3.json; not an engine defect, not a reference quirk.
+      not_scoreable: [BI4, BI9, BI11, BI12, IC2, IC5, IC9, BI6]
+    overall_agreement:
+      verdict: NOT SCOREABLE
+      unchanged_from: addendum_1
+      detail: >-
+        Still not scoreable against the frozen bar, which pools every compared
+        row across all 24 templates: 7 templates have no valid reference and 1
+        timed out. Over the 16 templates that DID produce a comparison,
+        282 of 329 compared rows agree (0.857), every one of the 47
+        disagreeing rows being IS3's duplicates. That is now a measurement
+        rather than the conditional reading addendum_1 had to give, since the
+        column correspondence it depended on is ratified and tested -- but the
+        denominator is still two thirds of the campaign, so it is reported and
+        not scored. Had the bar been applied to this subset it would sit
+        between `pass_if` (>= 0.90) and `refuted_if` (< 0.75), i.e. neither.
+    bi6_is_not_a_semantic_gap:
+      verdict: NOT SCOREABLE (vacuous)
+      unchanged_from: addendum_1
+      detail: >-
+        BI6.v2 timed out at the pre-registered 1020 s ceiling (600 s bypass +
+        420 s store-open allowance) and the ceiling STANDS -- not re-budgeted.
+        It therefore has zero disagreements of every cause and passes
+        vacuously, which is not evidence for D2's triage and is not claimed as
+        such. Noted as a build-to-build difference rather than a budgeting
+        question: the same artifact COMPLETED on the a6b3e94 build in
+        291,970.9 ms measured (638.4 s child wall) --
+        benchmarks/results-v1/ldbc-sf1-campaign-fmt3-2026-09.json, store
+        snb-sf1-xz-a6b3e94 -- so the same plan over the same data went from
+        ~292 s to over the ceiling between builds. Worth a bisect; out of
+        scope for this lane.
+
+  falsifiers:
+    b_explained_away_row_hiding_a_defect:
+      status: RESOLVED for the column-name class
+      detail: >-
+        addendum_1 flagged this deliberately, because four templates were being
+        explained away on this lane's own reading. The explanation is now a
+        generated, tested artifact derived from frozen inputs
+        (column_map.yaml), reviewed and ratified by the coordinator, and the
+        one class it could have hidden -- a reference column silently dropped
+        -- is now its own reported verdict rather than an absence. The
+        remaining exposure is the 7 invalid-reference templates, which are
+        excluded rather than explained.
+    e_systematic_path_residual:
+      verdict: NOT TRIGGERED (strengthened)
+      detail: >-
+        0 of the 5 risk-flagged templates (BI3 BI10 BI17 IC5 IC12) show a
+        TGIR-SEMANTIC-GAP. With the correspondence applied BI3 and BI10 now
+        agree on every one of their 20 and 100 rows outright, rather than
+        merely "having identical values" as addendum_1 could only say. IC12's
+        finding is a missing projected column, not a path residual.
+    a_inexpressible_template: NOT TRIGGERED
+    c_same_data_gate_fails: NOT TRIGGERED
+    d_reference_side_timeout: ANALOGUE ON THE TGIR SIDE (BI6.v2), as addendum_1
+
+# ==========================================================================
+addendum_3:
+  date: 2026-09-18
+  by: xzgpu execution lane -- final state
+  what: >-
+    Final scoring, after the 7 invalid-reference templates were re-run with
+    ldbc_reference_run.driverize_params. Appended; addendum_1 and addendum_2
+    are left exactly as written, including the readings they reached while
+    those 7 had no valid reference. Same TGIR row dumps, same parameters, same
+    column map and column kinds as addendum_2 -- only the reference side of
+    those 7 templates changed.
+  revision_of_record:
+    compare: compare-2026-09-18.json
+    timings: timings-2026-09-18.json
+    manifest: manifest-2026-09-18.json
+    supersedes: [compare-2026-09-17.json, timings-2026-09-17.json, manifest-2026-09-17.json]
+    superseded_reference_dumps: ref-rows-invalid-2026-09-17/
+  result_digest_now: fa57aca5f37c1788a5aef2ff8794b0783425baeab32584e0010d198923c13726
+
+  verdict_counts:
+    agree: 18
+    reference_column_not_projected: 3     # BI4 IC5 IC12
+    disagree: 2                           # IC2 IS3 -- the same root cause
+    timeout: 1                            # BI6.v2, at the pre-registered ceiling
+    error: 0
+    not_comparable: 0                     # every template except BI6.v2 now has a valid reference
+  row_agreement:
+    comparable_templates: 23
+    compared: 736
+    agreeing: 678
+    ratio: 0.9212
+    by_group:
+      BI: {templates: 9, agreeing_verdicts: 8, rows: "606/607", ratio: 0.9984}
+      IC: {templates: 7, agreeing_verdicts: 4, rows: "56/66", ratio: 0.8485}
+      IS: {templates: 7, agreeing_verdicts: 6, rows: "16/63", ratio: 0.2540}
+    note: >-
+      The IS group's row ratio is IS3's 47 duplicate rows and nothing else;
+      every other IS template agrees exactly. Row ratios per group are
+      dominated by a handful of large templates (BI12 alone is 166 of BI's
+      607), so the verdict counts are the more honest summary.
+
+  scoring:
+    per_template:
+      verdict: REFUTED
+      on: [IS3, IC2]
+      changed_since_addendum_2: >-
+        IC2 JOINS IS3 as a refuting template. It could not be scored before:
+        its reference returned 0 rows, so there was nothing to disagree with.
+        With a valid reference it returns 20 rows against TGIR's 20 -- of which
+        only 10 are distinct. Same root cause as IS3 (dir="both" over the M7
+        both-ways materialisation), hidden by LIMIT 20 rather than showing as a
+        row-count doubling. Both are non-risk-flagged templates disagreeing
+        with a cause that is neither ORDERING/TIE nor REFERENCE-SIDE-QUIRK,
+        which is what refuted_if names.
+      also_noted: >-
+        BI4 agrees on 99 of its 100 rows and disagrees on one -- the same
+        person with count 419 (TGIR) vs 435 (reference), a genuine content
+        difference at the LIMIT 100 boundary of a REPLY_OF*0.. carve. Left
+        UNTRIAGED: one row is too thin a basis for a confident cause, and a
+        guess here is exactly what falsifier b warns against.
+      not_scoreable: [BI6]
+    overall_agreement:
+      verdict: PASS (on the comparable subset), NOT SCOREABLE as written
+      detail: >-
+        The frozen bar pools every compared row across all 24 templates; BI6.v2
+        still produced none, so the denominator is 23 of 24 templates rather
+        than 24 and the bar cannot be applied exactly as written. On what was
+        actually comparable, 678 of 736 rows agree = 0.921, which clears
+        `pass_if` (>= 0.90) and is just under the 0.95 `predicted`. Reported
+        as PASS-on-subset rather than PASS, because the one missing template is
+        missing for a reason (a ceiling hit) rather than at random.
+    bi6_is_not_a_semantic_gap:
+      verdict: NOT SCOREABLE (vacuous)
+      unchanged_from: addendum_2
+
+  falsifiers:
+    e_systematic_path_residual:
+      verdict: NOT TRIGGERED
+      detail: >-
+        Still 0 of the 5 risk-flagged templates (BI3 BI10 BI17 IC5 IC12) show a
+        TGIR-SEMANTIC-GAP. BI3, BI10 agree on every row; BI17 returns 0 on both
+        sides; IC5 returns 0 on both sides with a column its plan does not
+        project; IC12 agrees on all 5 rows of the 4 columns it projects. The
+        design memo §7 var-length/path residual did not materialise. The two
+        real disagreements are a KNOWS encoding interaction, which §7 did not
+        predict and which is not a path residual.
+    b_explained_away_row_hiding_a_defect:
+      status: RESOLVED, and it caught one
+      detail: >-
+        The re-run is the test of addendum_1's flag. Five of the seven
+        templates that addendum_1 EXCLUDED rather than explained turned out to
+        agree fully once their reference was valid (BI9 BI11 BI12 IC9, plus
+        BI4 on 99/100) -- the exclusion was right. The sixth, IC2, turned out
+        to hide a real TGIR defect, which is precisely the outcome falsifier b
+        exists to catch and the reason those rows were never scored as
+        agreement. Excluding them rather than explaining them was what made
+        that defect findable.
+    a_inexpressible_template: NOT TRIGGERED
+    c_same_data_gate_fails: NOT TRIGGERED
+    d_reference_side_timeout: ANALOGUE ON THE TGIR SIDE (BI6.v2), as addendum_1
+
+  follow_ups:
+    - "IC2 needs its own repaired artifact (IC2.v2.json), as IS3 got IS3.v2.json -- ops/failure_ledger.jsonl D-090's note."
+    - "BI6.v2's ~292 s (a6b3e94) -> >600 s regression wants a bisect."
+    - "BI4's single disagreeing row wants a targeted triage."
+    - "tests/test_ldbc_is3_v2.py's two executing tests are UNVERIFIED -- skipped where tgms._engine is not built, which is this laptop worktree."

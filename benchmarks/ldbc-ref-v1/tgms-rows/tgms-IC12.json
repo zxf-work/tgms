@@ -1,0 +1,73 @@
+{
+ "arm": "characterization-interactive",
+ "columns": [
+  "personId",
+  "personFirstName",
+  "personLastName",
+  "replyCount"
+ ],
+ "commit": "0b7198dfdf7a",
+ "host": "xzgpu",
+ "params": {
+  "personId": "299067162799219",
+  "tagClassName": "BasketballPlayer"
+ },
+ "plan_digest": "bdeb6ad6c9a49d75b332c1eb6b5b77f7b1af256f6d76e8ed6f5986d61c8d5ef3",
+ "plan_id": "IC12",
+ "result_digest": "c948001a21ec81834cac2a7383fab1dde794bd0fbcc0ea528fbecc0ee0b3ec8a",
+ "rows": [
+  {
+   "personFirstName": "Samir",
+   "personId": 28587302329167,
+   "personId__hierarchy": "Person",
+   "personLastName": "Al-Fayez",
+   "replyCount": 3
+  },
+  {
+   "personFirstName": "Aleksej",
+   "personId": 21990232560612,
+   "personId__hierarchy": "Person",
+   "personLastName": "Linchuk",
+   "replyCount": 1
+  },
+  {
+   "personFirstName": "Aleksandr",
+   "personId": 28587302325677,
+   "personId__hierarchy": "Person",
+   "personLastName": "Basov",
+   "replyCount": 1
+  },
+  {
+   "personFirstName": "Jerzy",
+   "personId": 35184372094310,
+   "personId__hierarchy": "Person",
+   "personLastName": "Alter",
+   "replyCount": 1
+  },
+  {
+   "personFirstName": "Zhang",
+   "personId": 35184372096487,
+   "personId__hierarchy": "Person",
+   "personLastName": "Hu",
+   "replyCount": 1
+  }
+ ],
+ "schema": [
+  [
+   "personId",
+   "uid"
+  ],
+  [
+   "personFirstName",
+   "json?"
+  ],
+  [
+   "personLastName",
+   "json?"
+  ],
+  [
+   "replyCount",
+   "int"
+  ]
+ ]
+}

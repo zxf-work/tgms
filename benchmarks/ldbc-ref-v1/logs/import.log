@@ -1,0 +1,282 @@
+RUN_STARTED ldbc-ref-v1-import 2026-09-17T18:33:53Z
+M8: only initial_snapshot/ is referenced; deletes/ and inserts/ are not touched.
+  (the source tarball's siblings, never read by this command nor copied
+   into the headerless tree strip_headers.sh built:)
+    deletes
+    initial_snapshot
+    inserts
+  (the headerless tree this import reads contains only:)
+    initial_snapshot
+Neo4j version: 5.26.0
+Importing the contents of these files into /mnt/project/xzhang/neo4j/data-ldbc-ref/databases/neo4j:
+Nodes:
+  [Comment, Message]:
+  /mnt/project/xzhang/tgms/work/tgms/external_workloads/ldbc/bi/neo4j/headers/dynamic/Comment.csv
+  /mnt/project/xzhang/tgms/ldbc-sf1/bi-sf1-composite-projected-fk-headerless/initial_snapshot/dynamic/Comment/part-00000-42632749-63ab-48ae-a8a3-e0cf92455cd5-c000.csv.gz
+  /mnt/project/xzhang/tgms/ldbc-sf1/bi-sf1-composite-projected-fk-headerless/initial_snapshot/dynamic/Comment/part-00011-42632749-63ab-48ae-a8a3-e0cf92455cd5-c000.csv.gz
+  /mnt/project/xzhang/tgms/ldbc-sf1/bi-sf1-composite-projected-fk-headerless/initial_snapshot/dynamic/Comment/part-00022-42632749-63ab-48ae-a8a3-e0cf92455cd5-c000.csv.gz
+
+  [Organisation]:
+  /mnt/project/xzhang/tgms/work/tgms/external_workloads/ldbc/bi/neo4j/headers/static/Organisation.csv
+  /mnt/project/xzhang/tgms/ldbc-sf1/bi-sf1-composite-projected-fk-headerless/initial_snapshot/static/Organisation/part-00000-47a2b721-f60c-4fff-9642-204e6b6bd9f9-c000.csv.gz
+
+  [Tag]:
+  /mnt/project/xzhang/tgms/work/tgms/external_workloads/ldbc/bi/neo4j/headers/static/Tag.csv
+  /mnt/project/xzhang/tgms/ldbc-sf1/bi-sf1-composite-projected-fk-headerless/initial_snapshot/static/Tag/part-00000-2cd84ed6-0979-46a6-a4ee-392b1aec9423-c000.csv.gz
+
+  [TagClass]:
+  /mnt/project/xzhang/tgms/work/tgms/external_workloads/ldbc/bi/neo4j/headers/static/TagClass.csv
+  /mnt/project/xzhang/tgms/ldbc-sf1/bi-sf1-composite-projected-fk-headerless/initial_snapshot/static/TagClass/part-00000-bd8ee518-a0d0-46d9-ac2a-0a6391af032c-c000.csv.gz
+
+  [Person]:
+  /mnt/project/xzhang/tgms/work/tgms/external_workloads/ldbc/bi/neo4j/headers/dynamic/Person.csv
+  /mnt/project/xzhang/tgms/ldbc-sf1/bi-sf1-composite-projected-fk-headerless/initial_snapshot/dynamic/Person/part-00000-810b194e-a37e-4d81-b400-1048b71fc508-c000.csv.gz
+  /mnt/project/xzhang/tgms/ldbc-sf1/bi-sf1-composite-projected-fk-headerless/initial_snapshot/dynamic/Person/part-00001-810b194e-a37e-4d81-b400-1048b71fc508-c000.csv.gz
+
+  [Message, Post]:
+  /mnt/project/xzhang/tgms/work/tgms/external_workloads/ldbc/bi/neo4j/headers/dynamic/Post.csv
+  /mnt/project/xzhang/tgms/ldbc-sf1/bi-sf1-composite-projected-fk-headerless/initial_snapshot/dynamic/Post/part-00000-56a47534-5c7d-4346-a01f-d486046b956d-c000.csv.gz
+  /mnt/project/xzhang/tgms/ldbc-sf1/bi-sf1-composite-projected-fk-headerless/initial_snapshot/dynamic/Post/part-00003-56a47534-5c7d-4346-a01f-d486046b956d-c000.csv.gz
+  /mnt/project/xzhang/tgms/ldbc-sf1/bi-sf1-composite-projected-fk-headerless/initial_snapshot/dynamic/Post/part-00008-56a47534-5c7d-4346-a01f-d486046b956d-c000.csv.gz
+
+  [Place]:
+  /mnt/project/xzhang/tgms/work/tgms/external_workloads/ldbc/bi/neo4j/headers/static/Place.csv
+  /mnt/project/xzhang/tgms/ldbc-sf1/bi-sf1-composite-projected-fk-headerless/initial_snapshot/static/Place/part-00000-a7174a9e-ada5-48f6-821a-96ee595aca47-c000.csv.gz
+
+  [Forum]:
+  /mnt/project/xzhang/tgms/work/tgms/external_workloads/ldbc/bi/neo4j/headers/dynamic/Forum.csv
+  /mnt/project/xzhang/tgms/ldbc-sf1/bi-sf1-composite-projected-fk-headerless/initial_snapshot/dynamic/Forum/part-00000-606b20d6-8bb0-412f-8112-bdb85b3c6c59-c000.csv.gz
+  /mnt/project/xzhang/tgms/ldbc-sf1/bi-sf1-composite-projected-fk-headerless/initial_snapshot/dynamic/Forum/part-00001-606b20d6-8bb0-412f-8112-bdb85b3c6c59-c000.csv.gz
+
+Relationships:
+  IS_LOCATED_IN:
+  /mnt/project/xzhang/tgms/work/tgms/external_workloads/ldbc/bi/neo4j/headers/static/Organisation_isLocatedIn_Place.csv
+  /mnt/project/xzhang/tgms/ldbc-sf1/bi-sf1-composite-projected-fk-headerless/initial_snapshot/static/Organisation_isLocatedIn_Place/part-00000-7a91a11d-64fb-4b32-ac13-f956a97a46f3-c000.csv.gz
+  /mnt/project/xzhang/tgms/work/tgms/external_workloads/ldbc/bi/neo4j/headers/dynamic/Comment_isLocatedIn_Country.csv
+  /mnt/project/xzhang/tgms/ldbc-sf1/bi-sf1-composite-projected-fk-headerless/initial_snapshot/dynamic/Comment_isLocatedIn_Country/part-00000-7a0543c2-9e2c-4130-b9e3-915a00d87697-c000.csv.gz
+  /mnt/project/xzhang/tgms/ldbc-sf1/bi-sf1-composite-projected-fk-headerless/initial_snapshot/dynamic/Comment_isLocatedIn_Country/part-00011-7a0543c2-9e2c-4130-b9e3-915a00d87697-c000.csv.gz
+  /mnt/project/xzhang/tgms/ldbc-sf1/bi-sf1-composite-projected-fk-headerless/initial_snapshot/dynamic/Comment_isLocatedIn_Country/part-00022-7a0543c2-9e2c-4130-b9e3-915a00d87697-c000.csv.gz
+  /mnt/project/xzhang/tgms/work/tgms/external_workloads/ldbc/bi/neo4j/headers/dynamic/Person_isLocatedIn_City.csv
+  /mnt/project/xzhang/tgms/ldbc-sf1/bi-sf1-composite-projected-fk-headerless/initial_snapshot/dynamic/Person_isLocatedIn_City/part-00000-ad39c1d9-b90e-496a-a095-1d3c5447e373-c000.csv.gz
+  /mnt/project/xzhang/tgms/ldbc-sf1/bi-sf1-composite-projected-fk-headerless/initial_snapshot/dynamic/Person_isLocatedIn_City/part-00001-ad39c1d9-b90e-496a-a095-1d3c5447e373-c000.csv.gz
+  /mnt/project/xzhang/tgms/work/tgms/external_workloads/ldbc/bi/neo4j/headers/dynamic/Post_isLocatedIn_Country.csv
+  /mnt/project/xzhang/tgms/ldbc-sf1/bi-sf1-composite-projected-fk-headerless/initial_snapshot/dynamic/Post_isLocatedIn_Country/part-00000-5bb7405a-24dc-438b-afb6-d52bde1988b1-c000.csv.gz
+  /mnt/project/xzhang/tgms/ldbc-sf1/bi-sf1-composite-projected-fk-headerless/initial_snapshot/dynamic/Post_isLocatedIn_Country/part-00003-5bb7405a-24dc-438b-afb6-d52bde1988b1-c000.csv.gz
+  /mnt/project/xzhang/tgms/ldbc-sf1/bi-sf1-composite-projected-fk-headerless/initial_snapshot/dynamic/Post_isLocatedIn_Country/part-00008-5bb7405a-24dc-438b-afb6-d52bde1988b1-c000.csv.gz
+
+  REPLY_OF:
+  /mnt/project/xzhang/tgms/work/tgms/external_workloads/ldbc/bi/neo4j/headers/dynamic/Comment_replyOf_Comment.csv
+  /mnt/project/xzhang/tgms/ldbc-sf1/bi-sf1-composite-projected-fk-headerless/initial_snapshot/dynamic/Comment_replyOf_Comment/part-00000-844bcc3c-b761-46e4-b315-c97250a1a3fe-c000.csv.gz
+  /mnt/project/xzhang/tgms/ldbc-sf1/bi-sf1-composite-projected-fk-headerless/initial_snapshot/dynamic/Comment_replyOf_Comment/part-00011-844bcc3c-b761-46e4-b315-c97250a1a3fe-c000.csv.gz
+  /mnt/project/xzhang/tgms/ldbc-sf1/bi-sf1-composite-projected-fk-headerless/initial_snapshot/dynamic/Comment_replyOf_Comment/part-00022-844bcc3c-b761-46e4-b315-c97250a1a3fe-c000.csv.gz
+  /mnt/project/xzhang/tgms/work/tgms/external_workloads/ldbc/bi/neo4j/headers/dynamic/Comment_replyOf_Post.csv
+  /mnt/project/xzhang/tgms/ldbc-sf1/bi-sf1-composite-projected-fk-headerless/initial_snapshot/dynamic/Comment_replyOf_Post/part-00000-f47a2d83-b1cb-47af-83d5-e2f2111d2ab0-c000.csv.gz
+  /mnt/project/xzhang/tgms/ldbc-sf1/bi-sf1-composite-projected-fk-headerless/initial_snapshot/dynamic/Comment_replyOf_Post/part-00011-f47a2d83-b1cb-47af-83d5-e2f2111d2ab0-c000.csv.gz
+  /mnt/project/xzhang/tgms/ldbc-sf1/bi-sf1-composite-projected-fk-headerless/initial_snapshot/dynamic/Comment_replyOf_Post/part-00022-f47a2d83-b1cb-47af-83d5-e2f2111d2ab0-c000.csv.gz
+
+  STUDY_AT:
+  /mnt/project/xzhang/tgms/work/tgms/external_workloads/ldbc/bi/neo4j/headers/dynamic/Person_studyAt_University.csv
+  /mnt/project/xzhang/tgms/ldbc-sf1/bi-sf1-composite-projected-fk-headerless/initial_snapshot/dynamic/Person_studyAt_University/part-00000-6bf7586c-0910-4e75-9105-bde764969d3b-c000.csv.gz
+  /mnt/project/xzhang/tgms/ldbc-sf1/bi-sf1-composite-projected-fk-headerless/initial_snapshot/dynamic/Person_studyAt_University/part-00001-6bf7586c-0910-4e75-9105-bde764969d3b-c000.csv.gz
+
+  LIKES:
+  /mnt/project/xzhang/tgms/work/tgms/external_workloads/ldbc/bi/neo4j/headers/dynamic/Person_likes_Comment.csv
+  /mnt/project/xzhang/tgms/ldbc-sf1/bi-sf1-composite-projected-fk-headerless/initial_snapshot/dynamic/Person_likes_Comment/part-00000-939c8db8-69cc-449c-a1c1-4d839b076f23-c000.csv.gz
+  /mnt/project/xzhang/tgms/ldbc-sf1/bi-sf1-composite-projected-fk-headerless/initial_snapshot/dynamic/Person_likes_Comment/part-00001-939c8db8-69cc-449c-a1c1-4d839b076f23-c000.csv.gz
+  /mnt/project/xzhang/tgms/ldbc-sf1/bi-sf1-composite-projected-fk-headerless/initial_snapshot/dynamic/Person_likes_Comment/part-00004-939c8db8-69cc-449c-a1c1-4d839b076f23-c000.csv.gz
+  /mnt/project/xzhang/tgms/work/tgms/external_workloads/ldbc/bi/neo4j/headers/dynamic/Person_likes_Post.csv
+  /mnt/project/xzhang/tgms/ldbc-sf1/bi-sf1-composite-projected-fk-headerless/initial_snapshot/dynamic/Person_likes_Post/part-00000-9781b1ab-c4e6-413c-b72c-c0edf8808a06-c000.csv.gz
+  /mnt/project/xzhang/tgms/ldbc-sf1/bi-sf1-composite-projected-fk-headerless/initial_snapshot/dynamic/Person_likes_Post/part-00002-9781b1ab-c4e6-413c-b72c-c0edf8808a06-c000.csv.gz
+
+  KNOWS:
+  /mnt/project/xzhang/tgms/work/tgms/external_workloads/ldbc/bi/neo4j/headers/dynamic/Person_knows_Person.csv
+  /mnt/project/xzhang/tgms/ldbc-sf1/bi-sf1-composite-projected-fk-headerless/initial_snapshot/dynamic/Person_knows_Person/part-00000-1aa77020-70f8-479e-94d6-67b289736cb3-c000.csv.gz
+  /mnt/project/xzhang/tgms/ldbc-sf1/bi-sf1-composite-projected-fk-headerless/initial_snapshot/dynamic/Person_knows_Person/part-00001-1aa77020-70f8-479e-94d6-67b289736cb3-c000.csv.gz
+
+  HAS_INTEREST:
+  /mnt/project/xzhang/tgms/work/tgms/external_workloads/ldbc/bi/neo4j/headers/dynamic/Person_hasInterest_Tag.csv
+  /mnt/project/xzhang/tgms/ldbc-sf1/bi-sf1-composite-projected-fk-headerless/initial_snapshot/dynamic/Person_hasInterest_Tag/part-00000-9abf812e-ed76-4829-bf7a-ddff7f556510-c000.csv.gz
+  /mnt/project/xzhang/tgms/ldbc-sf1/bi-sf1-composite-projected-fk-headerless/initial_snapshot/dynamic/Person_hasInterest_Tag/part-00001-9abf812e-ed76-4829-bf7a-ddff7f556510-c000.csv.gz
+
+  HAS_MEMBER:
+  /mnt/project/xzhang/tgms/work/tgms/external_workloads/ldbc/bi/neo4j/headers/dynamic/Forum_hasMember_Person.csv
+  /mnt/project/xzhang/tgms/ldbc-sf1/bi-sf1-composite-projected-fk-headerless/initial_snapshot/dynamic/Forum_hasMember_Person/part-00000-a2674f6d-0045-43bf-a377-5af5286c011b-c000.csv.gz
+  /mnt/project/xzhang/tgms/ldbc-sf1/bi-sf1-composite-projected-fk-headerless/initial_snapshot/dynamic/Forum_hasMember_Person/part-00001-a2674f6d-0045-43bf-a377-5af5286c011b-c000.csv.gz
+  /mnt/project/xzhang/tgms/ldbc-sf1/bi-sf1-composite-projected-fk-headerless/initial_snapshot/dynamic/Forum_hasMember_Person/part-00003-a2674f6d-0045-43bf-a377-5af5286c011b-c000.csv.gz
+
+  HAS_TYPE:
+  /mnt/project/xzhang/tgms/work/tgms/external_workloads/ldbc/bi/neo4j/headers/static/Tag_hasType_TagClass.csv
+  /mnt/project/xzhang/tgms/ldbc-sf1/bi-sf1-composite-projected-fk-headerless/initial_snapshot/static/Tag_hasType_TagClass/part-00000-87209329-6c6c-4b2e-9897-d6f368f85907-c000.csv.gz
+
+  CONTAINER_OF:
+  /mnt/project/xzhang/tgms/work/tgms/external_workloads/ldbc/bi/neo4j/headers/dynamic/Forum_containerOf_Post.csv
+  /mnt/project/xzhang/tgms/ldbc-sf1/bi-sf1-composite-projected-fk-headerless/initial_snapshot/dynamic/Forum_containerOf_Post/part-00000-d28f3a22-1fce-469d-b968-fd013a74f6df-c000.csv.gz
+  /mnt/project/xzhang/tgms/ldbc-sf1/bi-sf1-composite-projected-fk-headerless/initial_snapshot/dynamic/Forum_containerOf_Post/part-00003-d28f3a22-1fce-469d-b968-fd013a74f6df-c000.csv.gz
+  /mnt/project/xzhang/tgms/ldbc-sf1/bi-sf1-composite-projected-fk-headerless/initial_snapshot/dynamic/Forum_containerOf_Post/part-00008-d28f3a22-1fce-469d-b968-fd013a74f6df-c000.csv.gz
+
+  WORK_AT:
+  /mnt/project/xzhang/tgms/work/tgms/external_workloads/ldbc/bi/neo4j/headers/dynamic/Person_workAt_Company.csv
+  /mnt/project/xzhang/tgms/ldbc-sf1/bi-sf1-composite-projected-fk-headerless/initial_snapshot/dynamic/Person_workAt_Company/part-00000-2adfb00d-db5b-4756-9bc4-2fa1f64770de-c000.csv.gz
+  /mnt/project/xzhang/tgms/ldbc-sf1/bi-sf1-composite-projected-fk-headerless/initial_snapshot/dynamic/Person_workAt_Company/part-00001-2adfb00d-db5b-4756-9bc4-2fa1f64770de-c000.csv.gz
+
+  HAS_MODERATOR:
+  /mnt/project/xzhang/tgms/work/tgms/external_workloads/ldbc/bi/neo4j/headers/dynamic/Forum_hasModerator_Person.csv
+  /mnt/project/xzhang/tgms/ldbc-sf1/bi-sf1-composite-projected-fk-headerless/initial_snapshot/dynamic/Forum_hasModerator_Person/part-00000-ab996d30-c314-4f19-9e67-6dc45ebef33e-c000.csv.gz
+  /mnt/project/xzhang/tgms/ldbc-sf1/bi-sf1-composite-projected-fk-headerless/initial_snapshot/dynamic/Forum_hasModerator_Person/part-00001-ab996d30-c314-4f19-9e67-6dc45ebef33e-c000.csv.gz
+
+  HAS_CREATOR:
+  /mnt/project/xzhang/tgms/work/tgms/external_workloads/ldbc/bi/neo4j/headers/dynamic/Comment_hasCreator_Person.csv
+  /mnt/project/xzhang/tgms/ldbc-sf1/bi-sf1-composite-projected-fk-headerless/initial_snapshot/dynamic/Comment_hasCreator_Person/part-00000-c088431c-eebc-452e-bbf5-5203599f827f-c000.csv.gz
+  /mnt/project/xzhang/tgms/ldbc-sf1/bi-sf1-composite-projected-fk-headerless/initial_snapshot/dynamic/Comment_hasCreator_Person/part-00011-c088431c-eebc-452e-bbf5-5203599f827f-c000.csv.gz
+  /mnt/project/xzhang/tgms/ldbc-sf1/bi-sf1-composite-projected-fk-headerless/initial_snapshot/dynamic/Comment_hasCreator_Person/part-00022-c088431c-eebc-452e-bbf5-5203599f827f-c000.csv.gz
+  /mnt/project/xzhang/tgms/work/tgms/external_workloads/ldbc/bi/neo4j/headers/dynamic/Post_hasCreator_Person.csv
+  /mnt/project/xzhang/tgms/ldbc-sf1/bi-sf1-composite-projected-fk-headerless/initial_snapshot/dynamic/Post_hasCreator_Person/part-00000-9805029c-725b-498f-8310-c7ad90697a7f-c000.csv.gz
+  /mnt/project/xzhang/tgms/ldbc-sf1/bi-sf1-composite-projected-fk-headerless/initial_snapshot/dynamic/Post_hasCreator_Person/part-00003-9805029c-725b-498f-8310-c7ad90697a7f-c000.csv.gz
+  /mnt/project/xzhang/tgms/ldbc-sf1/bi-sf1-composite-projected-fk-headerless/initial_snapshot/dynamic/Post_hasCreator_Person/part-00008-9805029c-725b-498f-8310-c7ad90697a7f-c000.csv.gz
+
+  IS_SUBCLASS_OF:
+  /mnt/project/xzhang/tgms/work/tgms/external_workloads/ldbc/bi/neo4j/headers/static/TagClass_isSubclassOf_TagClass.csv
+  /mnt/project/xzhang/tgms/ldbc-sf1/bi-sf1-composite-projected-fk-headerless/initial_snapshot/static/TagClass_isSubclassOf_TagClass/part-00000-a6cff386-6663-4846-85b2-b7fa460c26ff-c000.csv.gz
+
+  IS_PART_OF:
+  /mnt/project/xzhang/tgms/work/tgms/external_workloads/ldbc/bi/neo4j/headers/static/Place_isPartOf_Place.csv
+  /mnt/project/xzhang/tgms/ldbc-sf1/bi-sf1-composite-projected-fk-headerless/initial_snapshot/static/Place_isPartOf_Place/part-00000-da077f04-d6a8-468e-93a0-44ac20c8ff35-c000.csv.gz
+
+  HAS_TAG:
+  /mnt/project/xzhang/tgms/work/tgms/external_workloads/ldbc/bi/neo4j/headers/dynamic/Forum_hasTag_Tag.csv
+  /mnt/project/xzhang/tgms/ldbc-sf1/bi-sf1-composite-projected-fk-headerless/initial_snapshot/dynamic/Forum_hasTag_Tag/part-00000-f1e8e2d9-dbf0-4c33-a358-3466d0e6d104-c000.csv.gz
+  /mnt/project/xzhang/tgms/ldbc-sf1/bi-sf1-composite-projected-fk-headerless/initial_snapshot/dynamic/Forum_hasTag_Tag/part-00001-f1e8e2d9-dbf0-4c33-a358-3466d0e6d104-c000.csv.gz
+  /mnt/project/xzhang/tgms/work/tgms/external_workloads/ldbc/bi/neo4j/headers/dynamic/Comment_hasTag_Tag.csv
+  /mnt/project/xzhang/tgms/ldbc-sf1/bi-sf1-composite-projected-fk-headerless/initial_snapshot/dynamic/Comment_hasTag_Tag/part-00000-f27f0804-6c70-4512-8e28-f2a00a9e28c9-c000.csv.gz
+  /mnt/project/xzhang/tgms/ldbc-sf1/bi-sf1-composite-projected-fk-headerless/initial_snapshot/dynamic/Comment_hasTag_Tag/part-00002-f27f0804-6c70-4512-8e28-f2a00a9e28c9-c000.csv.gz
+  /mnt/project/xzhang/tgms/ldbc-sf1/bi-sf1-composite-projected-fk-headerless/initial_snapshot/dynamic/Comment_hasTag_Tag/part-00004-f27f0804-6c70-4512-8e28-f2a00a9e28c9-c000.csv.gz
+  /mnt/project/xzhang/tgms/work/tgms/external_workloads/ldbc/bi/neo4j/headers/dynamic/Post_hasTag_Tag.csv
+  /mnt/project/xzhang/tgms/ldbc-sf1/bi-sf1-composite-projected-fk-headerless/initial_snapshot/dynamic/Post_hasTag_Tag/part-00000-2de0ccf5-d900-4492-aaf2-6bc60cc1b61c-c000.csv.gz
+  /mnt/project/xzhang/tgms/ldbc-sf1/bi-sf1-composite-projected-fk-headerless/initial_snapshot/dynamic/Post_hasTag_Tag/part-00002-2de0ccf5-d900-4492-aaf2-6bc60cc1b61c-c000.csv.gz
+
+
+Available resources:
+  Total machine memory: 93.03GiB
+  Free machine memory: 29.00GiB
+  Max heap memory : 7.111GiB
+  Max worker threads: 40
+  Configured max memory: 19.88GiB
+  High parallel IO: true
+
+
+Import starting 2026-09-17 18:34:08.412+0000
+  Estimated number of nodes: 2.87 M
+  Estimated number of node properties: 17.15 M
+  Estimated number of relationships: 17.16 M
+  Estimated number of relationship properties: 17.16 M
+  Estimated disk space usage: 1.776GiB
+  Estimated required memory usage: 1.034GiB
+
+(1/4) Node import 2026-09-17 18:34:08.421+0000
+  Estimated number of nodes: 2.87 M
+  Estimated disk space usage: 587.2MiB
+  Estimated required memory usage: 1.034GiB
+.......... .......... .......... .......... ..........   5% ∆1s 301ms [1s 301ms]
+.......... .......... .......... .......... ..........  10% ∆403ms [1s 704ms]
+.......... .......... .......... .......... ..........  15% ∆401ms [2s 105ms]
+.......... .......... .......... .......... ..........  20% ∆401ms [2s 506ms]
+.......... .......... .......... .......... ..........  25% ∆401ms [2s 907ms]
+.......... .......... .......... .......... ..........  30% ∆401ms [3s 309ms]
+.......... .......... .......... .......... -.........  35% ∆802ms [4s 112ms]
+.......... .......... .......... .......... ..........  40% ∆0ms [4s 112ms]
+.......... .......... .......... .......... ..........  45% ∆0ms [4s 112ms]
+.......... .......... .......... .......... ..........  50% ∆200ms [4s 313ms]
+.......... .......... .......... .......... ..........  55% ∆401ms [4s 714ms]
+.......... .......... .......... .......... ..........  60% ∆0ms [4s 715ms]
+.......... .......... .......... .......... ..........  65% ∆0ms [4s 715ms]
+.......... .......... .......... .......... ..........  70% ∆0ms [4s 715ms]
+.......... .......... .......... .......... ..........  75% ∆200ms [4s 916ms]
+.......... .......... .......... .......... ..........  80% ∆59ms [4s 976ms]
+.......... .......... .......... .......... ..........  85% ∆0ms [4s 976ms]
+.......... .......... .......... .......... ..........  90% ∆0ms [4s 976ms]
+.......... .......... .......... .......... ..........  95% ∆0ms [4s 976ms]
+.......... .......... .......... .......... .......... 100% ∆0ms [4s 977ms]
+Node import COMPLETED in 5s 26ms
+
+(2/4) Relationship import 2026-09-17 18:34:13.448+0000
+  Estimated number of relationships: 17.16 M
+  Estimated disk space usage: 1.203GiB
+  Estimated required memory usage: 1.037GiB
+.......... .......... .......... .......... ..........   5% ∆1s 427ms [1s 427ms]
+.......... .......... .......... .......... ..........  10% ∆401ms [1s 829ms]
+.......... .......... .......... .......... ..........  15% ∆200ms [2s 29ms]
+.......... .......... .......... .......... ..........  20% ∆226ms [2s 256ms]
+.......... .......... .......... .......... ..........  25% ∆413ms [2s 669ms]
+.......... .......... .......... .......... ..........  30% ∆605ms [3s 274ms]
+.......... .......... .......... .......... ..........  35% ∆401ms [3s 676ms]
+.......... .......... .......... .......... ..........  40% ∆400ms [4s 76ms]
+.......... .......... .......... .......... ..........  45% ∆601ms [4s 678ms]
+.......... .......... .......... .......... ..........  50% ∆200ms [4s 878ms]
+.......... .......... .......... .......... ..........  55% ∆200ms [5s 79ms]
+.......... .......... .......... .......... ..........  60% ∆400ms [5s 479ms]
+.......... .......... .......... .......... ..........  65% ∆884ms [6s 364ms]
+.......... .......... .......... .......... ..........  70% ∆400ms [6s 764ms]
+.......... .......... .......... .......... ..........  75% ∆601ms [7s 366ms]
+.......... .......... .......... .......... ..........  80% ∆432ms [7s 798ms]
+.......... .......... .......... .......... ..........  85% ∆400ms [8s 199ms]
+.......... .......... .......... .......... ..........  90% ∆402ms [8s 601ms]
+.......... .......... .......... .......... ..........  95% ∆200ms [8s 802ms]
+.......... .......... .......... .......... .......... 100% ∆277ms [9s 80ms]
+Relationship import COMPLETED in 9s 81ms
+
+(3/4) Relationship linking 2026-09-17 18:34:22.530+0000
+  Estimated required memory usage: 1.027GiB
+.......... .......... .......... .......... ..........   5% ∆601ms [601ms]
+.......... .......... .......... .......... ..........  10% ∆401ms [1s 2ms]
+.......... ....-..... .......... .......... ..........  15% ∆761ms [1s 764ms]
+.......... .......... .......... .......... ..........  20% ∆200ms [1s 965ms]
+.......... .......... .......... .......... ..........  25% ∆400ms [2s 366ms]
+.......... .......... .......... .......... ..........  30% ∆802ms [3s 168ms]
+.......... .......... .......... .......... ..........  35% ∆602ms [3s 770ms]
+.......... .......... .......... .......... ..........  40% ∆402ms [4s 173ms]
+.......... .......... .......... .......... ..........  45% ∆200ms [4s 373ms]
+.......... .......... .......... .......... ..........  50% ∆200ms [4s 574ms]
+.........- .......... .......... .......... ..........  55% ∆1s 289ms [5s 863ms]
+.......... .......... .......... .......... ..........  60% ∆601ms [6s 465ms]
+.......... .......... .......... .......... ..........  65% ∆802ms [7s 268ms]
+.......... .......... .......... .......... ..........  70% ∆601ms [7s 869ms]
+.......... .......... .......... .......... ..........  75% ∆200ms [8s 69ms]
+.......... .......... .......... .......... ..........  80% ∆404ms [8s 474ms]
+.......... .......... .......... .......... ..........  85% ∆0ms [8s 474ms]
+.......... .......... .......... .......... ..........  90% ∆150ms [8s 624ms]
+.......... .......... .......... .......... ..........  95% ∆0ms [8s 624ms]
+.......... .......... .......... .......... .......... 100% ∆0ms [8s 624ms]
+Relationship linking COMPLETED in 8s 625ms
+
+(4/4) Post processing 2026-09-17 18:34:31.156+0000
+  Estimated required memory usage: 1020MiB
+-......... .......... .......... .......... ..........   5% ∆1s 233ms [1s 233ms]
+.......... .......... .......... .......... ......-...  10% ∆313ms [1s 547ms]
+.......... .......... .......... .......... ..........  15% ∆0ms [1s 547ms]
+.......... .......... .......... .......... ..........  20% ∆0ms [1s 547ms]
+.......... .......... .......... .......... ..........  25% ∆202ms [1s 749ms]
+.......... .......... .......... .......... ..........  30% ∆0ms [1s 750ms]
+.......... .......... .......... .......... ..........  35% ∆0ms [1s 750ms]
+.......... .......... .......... .......... ..........  40% ∆200ms [1s 950ms]
+.......... .......... .......... .......... ..........  45% ∆0ms [1s 951ms]
+.......... .......... .......... .......... ..........  50% ∆0ms [1s 951ms]
+.......... .......... .......... .......... ..........  55% ∆200ms [2s 151ms]
+.......... .......... .......... .......... ..........  60% ∆0ms [2s 152ms]
+.......... .......... .......... .......... ..........  65% ∆0ms [2s 152ms]
+.......... .......... .......... .......... ..........  70% ∆200ms [2s 352ms]
+.......... .......... .......... .......... ..........  75% ∆0ms [2s 352ms]
+.......... .......... .......... .......... ..........  80% ∆0ms [2s 353ms]
+.......... .......... .......... .......... ..........  85% ∆224ms [2s 577ms]
+.......... .......... .......... .......... ..........  90% ∆0ms [2s 577ms]
+.......... .......... .......... .......... ..........  95% ∆0ms [2s 577ms]
+.......... .......... .......... .......... .......... 100% ∆0ms [2s 577ms]
+Post processing COMPLETED in 2s 579ms
+
+
+IMPORT DONE in 36s 771ms. 
+Imported:
+  2997352 nodes
+  17196776 relationships
+  35076475 properties
+Peak memory usage: 1.060GiB
+IMPORT_DONE 2026-09-17T18:34:35Z

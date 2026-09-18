@@ -1,0 +1,306 @@
+RUN_STARTED ldbc-ref-v1-neo4j-queries commit=0b7198dfdf7a 2026-09-17T18:41:49Z
+--- BI3 warmup 2026-09-17T18:41:49Z
+  BI3    20 rows
+record: benchmarks/ldbc-ref-v1/ref-rows-warmup (1 ok, 0 error)
+--- BI3 t1 2026-09-17T18:41:50Z
+  BI3    20 rows
+record: benchmarks/ldbc-ref-v1/ref-rows (1 ok, 0 error)
+--- BI3 t2 2026-09-17T18:41:52Z
+  BI3    20 rows
+record: benchmarks/ldbc-ref-v1/ref-rows-t2 (1 ok, 0 error)
+--- BI3 t3 2026-09-17T18:41:54Z
+  BI3    20 rows
+record: benchmarks/ldbc-ref-v1/ref-rows-t3 (1 ok, 0 error)
+--- BI4 warmup 2026-09-17T18:41:56Z
+Received notification from DBMS server: {severity: WARNING} {code: Neo.ClientNotification.Statement.FeatureDeprecationWarning} {category: DEPRECATION} {title: This feature is deprecated and will be removed in future versions.} {description: CALL subquery without a variable scope clause is now deprecated. Use CALL (topForums, topForums) { ... }} {position: line: 14, column: 1, offset: 421} for query: "// Q4. Top message creators in a country\n/*\n:params { date: datetime('2010-01-29') }\n*/\nMATCH (country:Country)<-[:IS_PART_OF]-(:City)<-[:IS_LOCATED_IN]-(person:Person)<-[:HAS_MEMBER]-(forum:Forum)\nWHERE forum.creationDate > $date\nWITH country, forum, count(person) AS numberOfMembers\nORDER BY numberOfMembers DESC, forum.id ASC, country.id\nWITH DISTINCT forum AS topForum\nLIMIT 100\n\nWITH collect(topForum) AS topForums\n\nCALL {\n  WITH topForums\n  UNWIND topForums AS topForum1\n  MATCH (topForum1)-[:CONTAINER_OF]->(post:Post)<-[:REPLY_OF*0..]-(message:Message)-[:HAS_CREATOR]->(person:Person)<-[:HAS_MEMBER]-(topForum2:Forum)\n  WITH person, message, topForum2\n  WHERE topForum2 IN topForums\n  RETURN person, count(DISTINCT message) AS messageCount\nUNION ALL\n  // Ensure that people who are members of top forums but have 0 messages are also returned.\n  // To this end, we return each person with a 0 messageCount\n  WITH topForums\n  UNWIND topForums AS topForum1\n  MATCH (person:Person)<-[:HAS_MEMBER]-(topForum1:Forum)\n  RETURN person, 0 AS messageCount\n}\nRETURN\n  person.id AS personId,\n  person.firstName AS personFirstName,\n  person.lastName AS personLastName,\n  person.creationDate AS personCreationDate,\n  sum(messageCount) AS messageCount\nORDER BY\n  messageCount DESC,\n  person.id ASC\nLIMIT 100\n"
+  BI4    0 rows
+record: benchmarks/ldbc-ref-v1/ref-rows-warmup (1 ok, 0 error)
+--- BI4 t1 2026-09-17T18:41:56Z
+Received notification from DBMS server: {severity: WARNING} {code: Neo.ClientNotification.Statement.FeatureDeprecationWarning} {category: DEPRECATION} {title: This feature is deprecated and will be removed in future versions.} {description: CALL subquery without a variable scope clause is now deprecated. Use CALL (topForums, topForums) { ... }} {position: line: 14, column: 1, offset: 421} for query: "// Q4. Top message creators in a country\n/*\n:params { date: datetime('2010-01-29') }\n*/\nMATCH (country:Country)<-[:IS_PART_OF]-(:City)<-[:IS_LOCATED_IN]-(person:Person)<-[:HAS_MEMBER]-(forum:Forum)\nWHERE forum.creationDate > $date\nWITH country, forum, count(person) AS numberOfMembers\nORDER BY numberOfMembers DESC, forum.id ASC, country.id\nWITH DISTINCT forum AS topForum\nLIMIT 100\n\nWITH collect(topForum) AS topForums\n\nCALL {\n  WITH topForums\n  UNWIND topForums AS topForum1\n  MATCH (topForum1)-[:CONTAINER_OF]->(post:Post)<-[:REPLY_OF*0..]-(message:Message)-[:HAS_CREATOR]->(person:Person)<-[:HAS_MEMBER]-(topForum2:Forum)\n  WITH person, message, topForum2\n  WHERE topForum2 IN topForums\n  RETURN person, count(DISTINCT message) AS messageCount\nUNION ALL\n  // Ensure that people who are members of top forums but have 0 messages are also returned.\n  // To this end, we return each person with a 0 messageCount\n  WITH topForums\n  UNWIND topForums AS topForum1\n  MATCH (person:Person)<-[:HAS_MEMBER]-(topForum1:Forum)\n  RETURN person, 0 AS messageCount\n}\nRETURN\n  person.id AS personId,\n  person.firstName AS personFirstName,\n  person.lastName AS personLastName,\n  person.creationDate AS personCreationDate,\n  sum(messageCount) AS messageCount\nORDER BY\n  messageCount DESC,\n  person.id ASC\nLIMIT 100\n"
+  BI4    0 rows
+record: benchmarks/ldbc-ref-v1/ref-rows (1 ok, 0 error)
+--- BI4 t2 2026-09-17T18:41:57Z
+Received notification from DBMS server: {severity: WARNING} {code: Neo.ClientNotification.Statement.FeatureDeprecationWarning} {category: DEPRECATION} {title: This feature is deprecated and will be removed in future versions.} {description: CALL subquery without a variable scope clause is now deprecated. Use CALL (topForums, topForums) { ... }} {position: line: 14, column: 1, offset: 421} for query: "// Q4. Top message creators in a country\n/*\n:params { date: datetime('2010-01-29') }\n*/\nMATCH (country:Country)<-[:IS_PART_OF]-(:City)<-[:IS_LOCATED_IN]-(person:Person)<-[:HAS_MEMBER]-(forum:Forum)\nWHERE forum.creationDate > $date\nWITH country, forum, count(person) AS numberOfMembers\nORDER BY numberOfMembers DESC, forum.id ASC, country.id\nWITH DISTINCT forum AS topForum\nLIMIT 100\n\nWITH collect(topForum) AS topForums\n\nCALL {\n  WITH topForums\n  UNWIND topForums AS topForum1\n  MATCH (topForum1)-[:CONTAINER_OF]->(post:Post)<-[:REPLY_OF*0..]-(message:Message)-[:HAS_CREATOR]->(person:Person)<-[:HAS_MEMBER]-(topForum2:Forum)\n  WITH person, message, topForum2\n  WHERE topForum2 IN topForums\n  RETURN person, count(DISTINCT message) AS messageCount\nUNION ALL\n  // Ensure that people who are members of top forums but have 0 messages are also returned.\n  // To this end, we return each person with a 0 messageCount\n  WITH topForums\n  UNWIND topForums AS topForum1\n  MATCH (person:Person)<-[:HAS_MEMBER]-(topForum1:Forum)\n  RETURN person, 0 AS messageCount\n}\nRETURN\n  person.id AS personId,\n  person.firstName AS personFirstName,\n  person.lastName AS personLastName,\n  person.creationDate AS personCreationDate,\n  sum(messageCount) AS messageCount\nORDER BY\n  messageCount DESC,\n  person.id ASC\nLIMIT 100\n"
+  BI4    0 rows
+record: benchmarks/ldbc-ref-v1/ref-rows-t2 (1 ok, 0 error)
+--- BI4 t3 2026-09-17T18:41:58Z
+Received notification from DBMS server: {severity: WARNING} {code: Neo.ClientNotification.Statement.FeatureDeprecationWarning} {category: DEPRECATION} {title: This feature is deprecated and will be removed in future versions.} {description: CALL subquery without a variable scope clause is now deprecated. Use CALL (topForums, topForums) { ... }} {position: line: 14, column: 1, offset: 421} for query: "// Q4. Top message creators in a country\n/*\n:params { date: datetime('2010-01-29') }\n*/\nMATCH (country:Country)<-[:IS_PART_OF]-(:City)<-[:IS_LOCATED_IN]-(person:Person)<-[:HAS_MEMBER]-(forum:Forum)\nWHERE forum.creationDate > $date\nWITH country, forum, count(person) AS numberOfMembers\nORDER BY numberOfMembers DESC, forum.id ASC, country.id\nWITH DISTINCT forum AS topForum\nLIMIT 100\n\nWITH collect(topForum) AS topForums\n\nCALL {\n  WITH topForums\n  UNWIND topForums AS topForum1\n  MATCH (topForum1)-[:CONTAINER_OF]->(post:Post)<-[:REPLY_OF*0..]-(message:Message)-[:HAS_CREATOR]->(person:Person)<-[:HAS_MEMBER]-(topForum2:Forum)\n  WITH person, message, topForum2\n  WHERE topForum2 IN topForums\n  RETURN person, count(DISTINCT message) AS messageCount\nUNION ALL\n  // Ensure that people who are members of top forums but have 0 messages are also returned.\n  // To this end, we return each person with a 0 messageCount\n  WITH topForums\n  UNWIND topForums AS topForum1\n  MATCH (person:Person)<-[:HAS_MEMBER]-(topForum1:Forum)\n  RETURN person, 0 AS messageCount\n}\nRETURN\n  person.id AS personId,\n  person.firstName AS personFirstName,\n  person.lastName AS personLastName,\n  person.creationDate AS personCreationDate,\n  sum(messageCount) AS messageCount\nORDER BY\n  messageCount DESC,\n  person.id ASC\nLIMIT 100\n"
+  BI4    0 rows
+record: benchmarks/ldbc-ref-v1/ref-rows-t3 (1 ok, 0 error)
+--- BI6 warmup 2026-09-17T18:41:59Z
+Received notification from DBMS server: {severity: WARNING} {code: Neo.ClientNotification.Statement.AggregationSkippedNull} {category: UNRECOGNIZED} {title: The query contains an aggregation function that skips null values.} {description: null value eliminated in set function.} {position: None} for query: "// Q6. Most authoritative users on a given topic\n/*\n:params { tag: 'Arnold_Schwarzenegger' }\n*/\nMATCH (tag:Tag {name: $tag})<-[:HAS_TAG]-(message1:Message)-[:HAS_CREATOR]->(person1:Person)\nOPTIONAL MATCH (message1)<-[:LIKES]-(person2:Person)\nOPTIONAL MATCH (person2)<-[:HAS_CREATOR]-(message2:Message)<-[like:LIKES]-(person3:Person)\nRETURN\n  person1.id,\n  // Using 'DISTINCT like' here ensures that each person2's popularity score is only added once for each person1\n  count(DISTINCT like) AS authorityScore\nORDER BY\n  authorityScore DESC,\n  person1.id ASC\nLIMIT 100\n\n// We need to use a redundant computation due to the lack of composable graph queries in the currently supported Cypher version.\n// This might change in the future with new Cypher versions and GQL.\n"
+  BI6    100 rows
+record: benchmarks/ldbc-ref-v1/ref-rows-warmup (1 ok, 0 error)
+--- BI6 t1 2026-09-17T18:42:01Z
+Received notification from DBMS server: {severity: WARNING} {code: Neo.ClientNotification.Statement.AggregationSkippedNull} {category: UNRECOGNIZED} {title: The query contains an aggregation function that skips null values.} {description: null value eliminated in set function.} {position: None} for query: "// Q6. Most authoritative users on a given topic\n/*\n:params { tag: 'Arnold_Schwarzenegger' }\n*/\nMATCH (tag:Tag {name: $tag})<-[:HAS_TAG]-(message1:Message)-[:HAS_CREATOR]->(person1:Person)\nOPTIONAL MATCH (message1)<-[:LIKES]-(person2:Person)\nOPTIONAL MATCH (person2)<-[:HAS_CREATOR]-(message2:Message)<-[like:LIKES]-(person3:Person)\nRETURN\n  person1.id,\n  // Using 'DISTINCT like' here ensures that each person2's popularity score is only added once for each person1\n  count(DISTINCT like) AS authorityScore\nORDER BY\n  authorityScore DESC,\n  person1.id ASC\nLIMIT 100\n\n// We need to use a redundant computation due to the lack of composable graph queries in the currently supported Cypher version.\n// This might change in the future with new Cypher versions and GQL.\n"
+  BI6    100 rows
+record: benchmarks/ldbc-ref-v1/ref-rows (1 ok, 0 error)
+--- BI6 t2 2026-09-17T18:42:04Z
+Received notification from DBMS server: {severity: WARNING} {code: Neo.ClientNotification.Statement.AggregationSkippedNull} {category: UNRECOGNIZED} {title: The query contains an aggregation function that skips null values.} {description: null value eliminated in set function.} {position: None} for query: "// Q6. Most authoritative users on a given topic\n/*\n:params { tag: 'Arnold_Schwarzenegger' }\n*/\nMATCH (tag:Tag {name: $tag})<-[:HAS_TAG]-(message1:Message)-[:HAS_CREATOR]->(person1:Person)\nOPTIONAL MATCH (message1)<-[:LIKES]-(person2:Person)\nOPTIONAL MATCH (person2)<-[:HAS_CREATOR]-(message2:Message)<-[like:LIKES]-(person3:Person)\nRETURN\n  person1.id,\n  // Using 'DISTINCT like' here ensures that each person2's popularity score is only added once for each person1\n  count(DISTINCT like) AS authorityScore\nORDER BY\n  authorityScore DESC,\n  person1.id ASC\nLIMIT 100\n\n// We need to use a redundant computation due to the lack of composable graph queries in the currently supported Cypher version.\n// This might change in the future with new Cypher versions and GQL.\n"
+  BI6    100 rows
+record: benchmarks/ldbc-ref-v1/ref-rows-t2 (1 ok, 0 error)
+--- BI6 t3 2026-09-17T18:42:06Z
+Received notification from DBMS server: {severity: WARNING} {code: Neo.ClientNotification.Statement.AggregationSkippedNull} {category: UNRECOGNIZED} {title: The query contains an aggregation function that skips null values.} {description: null value eliminated in set function.} {position: None} for query: "// Q6. Most authoritative users on a given topic\n/*\n:params { tag: 'Arnold_Schwarzenegger' }\n*/\nMATCH (tag:Tag {name: $tag})<-[:HAS_TAG]-(message1:Message)-[:HAS_CREATOR]->(person1:Person)\nOPTIONAL MATCH (message1)<-[:LIKES]-(person2:Person)\nOPTIONAL MATCH (person2)<-[:HAS_CREATOR]-(message2:Message)<-[like:LIKES]-(person3:Person)\nRETURN\n  person1.id,\n  // Using 'DISTINCT like' here ensures that each person2's popularity score is only added once for each person1\n  count(DISTINCT like) AS authorityScore\nORDER BY\n  authorityScore DESC,\n  person1.id ASC\nLIMIT 100\n\n// We need to use a redundant computation due to the lack of composable graph queries in the currently supported Cypher version.\n// This might change in the future with new Cypher versions and GQL.\n"
+  BI6    100 rows
+record: benchmarks/ldbc-ref-v1/ref-rows-t3 (1 ok, 0 error)
+--- BI7 warmup 2026-09-17T18:42:09Z
+  BI7    100 rows
+record: benchmarks/ldbc-ref-v1/ref-rows-warmup (1 ok, 0 error)
+--- BI7 t1 2026-09-17T18:42:10Z
+  BI7    100 rows
+record: benchmarks/ldbc-ref-v1/ref-rows (1 ok, 0 error)
+--- BI7 t2 2026-09-17T18:42:10Z
+  BI7    100 rows
+record: benchmarks/ldbc-ref-v1/ref-rows-t2 (1 ok, 0 error)
+--- BI7 t3 2026-09-17T18:42:11Z
+  BI7    100 rows
+record: benchmarks/ldbc-ref-v1/ref-rows-t3 (1 ok, 0 error)
+--- BI9 warmup 2026-09-17T18:42:12Z
+  BI9    0 rows
+record: benchmarks/ldbc-ref-v1/ref-rows-warmup (1 ok, 0 error)
+--- BI9 t1 2026-09-17T18:42:13Z
+  BI9    0 rows
+record: benchmarks/ldbc-ref-v1/ref-rows (1 ok, 0 error)
+--- BI9 t2 2026-09-17T18:42:14Z
+  BI9    0 rows
+record: benchmarks/ldbc-ref-v1/ref-rows-t2 (1 ok, 0 error)
+--- BI9 t3 2026-09-17T18:42:14Z
+  BI9    0 rows
+record: benchmarks/ldbc-ref-v1/ref-rows-t3 (1 ok, 0 error)
+--- BI10 warmup 2026-09-17T18:42:15Z
+  BI10   100 rows
+record: benchmarks/ldbc-ref-v1/ref-rows-warmup (1 ok, 0 error)
+--- BI10 t1 2026-09-17T18:42:16Z
+  BI10   100 rows
+record: benchmarks/ldbc-ref-v1/ref-rows (1 ok, 0 error)
+--- BI10 t2 2026-09-17T18:42:17Z
+  BI10   100 rows
+record: benchmarks/ldbc-ref-v1/ref-rows-t2 (1 ok, 0 error)
+--- BI10 t3 2026-09-17T18:42:18Z
+  BI10   100 rows
+record: benchmarks/ldbc-ref-v1/ref-rows-t3 (1 ok, 0 error)
+--- BI11 warmup 2026-09-17T18:42:19Z
+  BI11   1 rows
+record: benchmarks/ldbc-ref-v1/ref-rows-warmup (1 ok, 0 error)
+--- BI11 t1 2026-09-17T18:42:20Z
+  BI11   1 rows
+record: benchmarks/ldbc-ref-v1/ref-rows (1 ok, 0 error)
+--- BI11 t2 2026-09-17T18:42:21Z
+  BI11   1 rows
+record: benchmarks/ldbc-ref-v1/ref-rows-t2 (1 ok, 0 error)
+--- BI11 t3 2026-09-17T18:42:21Z
+  BI11   1 rows
+record: benchmarks/ldbc-ref-v1/ref-rows-t3 (1 ok, 0 error)
+--- BI12 warmup 2026-09-17T18:42:22Z
+Received notification from DBMS server: {severity: WARNING} {code: Neo.ClientNotification.Statement.AggregationSkippedNull} {category: UNRECOGNIZED} {title: The query contains an aggregation function that skips null values.} {description: null value eliminated in set function.} {position: None} for query: "// Q12. How many persons have a given number of posts\n/*\n:params {\n  startDate: datetime('2010-07-22'),\n  lengthThreshold: 20,\n  languages: ['ar', 'hu']\n}\n*/\nMATCH (person:Person)\nOPTIONAL MATCH (person)<-[:HAS_CREATOR]-(message:Message)-[:REPLY_OF*0..]->(post:Post)\nWHERE message.content IS NOT NULL\n  AND message.length < $lengthThreshold\n  AND message.creationDate > $startDate\n  AND post.language IN $languages\nWITH\n  person,\n  count(message) AS messageCount\nRETURN\n  messageCount,\n  count(person) AS personCount\nORDER BY\n  personCount DESC,\n  messageCount DESC\n"
+  BI12   1 rows
+record: benchmarks/ldbc-ref-v1/ref-rows-warmup (1 ok, 0 error)
+--- BI12 t1 2026-09-17T18:42:23Z
+Received notification from DBMS server: {severity: WARNING} {code: Neo.ClientNotification.Statement.AggregationSkippedNull} {category: UNRECOGNIZED} {title: The query contains an aggregation function that skips null values.} {description: null value eliminated in set function.} {position: None} for query: "// Q12. How many persons have a given number of posts\n/*\n:params {\n  startDate: datetime('2010-07-22'),\n  lengthThreshold: 20,\n  languages: ['ar', 'hu']\n}\n*/\nMATCH (person:Person)\nOPTIONAL MATCH (person)<-[:HAS_CREATOR]-(message:Message)-[:REPLY_OF*0..]->(post:Post)\nWHERE message.content IS NOT NULL\n  AND message.length < $lengthThreshold\n  AND message.creationDate > $startDate\n  AND post.language IN $languages\nWITH\n  person,\n  count(message) AS messageCount\nRETURN\n  messageCount,\n  count(person) AS personCount\nORDER BY\n  personCount DESC,\n  messageCount DESC\n"
+  BI12   1 rows
+record: benchmarks/ldbc-ref-v1/ref-rows (1 ok, 0 error)
+--- BI12 t2 2026-09-17T18:42:24Z
+Received notification from DBMS server: {severity: WARNING} {code: Neo.ClientNotification.Statement.AggregationSkippedNull} {category: UNRECOGNIZED} {title: The query contains an aggregation function that skips null values.} {description: null value eliminated in set function.} {position: None} for query: "// Q12. How many persons have a given number of posts\n/*\n:params {\n  startDate: datetime('2010-07-22'),\n  lengthThreshold: 20,\n  languages: ['ar', 'hu']\n}\n*/\nMATCH (person:Person)\nOPTIONAL MATCH (person)<-[:HAS_CREATOR]-(message:Message)-[:REPLY_OF*0..]->(post:Post)\nWHERE message.content IS NOT NULL\n  AND message.length < $lengthThreshold\n  AND message.creationDate > $startDate\n  AND post.language IN $languages\nWITH\n  person,\n  count(message) AS messageCount\nRETURN\n  messageCount,\n  count(person) AS personCount\nORDER BY\n  personCount DESC,\n  messageCount DESC\n"
+  BI12   1 rows
+record: benchmarks/ldbc-ref-v1/ref-rows-t2 (1 ok, 0 error)
+--- BI12 t3 2026-09-17T18:42:25Z
+Received notification from DBMS server: {severity: WARNING} {code: Neo.ClientNotification.Statement.AggregationSkippedNull} {category: UNRECOGNIZED} {title: The query contains an aggregation function that skips null values.} {description: null value eliminated in set function.} {position: None} for query: "// Q12. How many persons have a given number of posts\n/*\n:params {\n  startDate: datetime('2010-07-22'),\n  lengthThreshold: 20,\n  languages: ['ar', 'hu']\n}\n*/\nMATCH (person:Person)\nOPTIONAL MATCH (person)<-[:HAS_CREATOR]-(message:Message)-[:REPLY_OF*0..]->(post:Post)\nWHERE message.content IS NOT NULL\n  AND message.length < $lengthThreshold\n  AND message.creationDate > $startDate\n  AND post.language IN $languages\nWITH\n  person,\n  count(message) AS messageCount\nRETURN\n  messageCount,\n  count(person) AS personCount\nORDER BY\n  personCount DESC,\n  messageCount DESC\n"
+  BI12   1 rows
+record: benchmarks/ldbc-ref-v1/ref-rows-t3 (1 ok, 0 error)
+--- BI17 warmup 2026-09-17T18:42:25Z
+  BI17   0 rows
+record: benchmarks/ldbc-ref-v1/ref-rows-warmup (1 ok, 0 error)
+--- BI17 t1 2026-09-17T18:42:26Z
+  BI17   0 rows
+record: benchmarks/ldbc-ref-v1/ref-rows (1 ok, 0 error)
+--- BI17 t2 2026-09-17T18:42:27Z
+  BI17   0 rows
+record: benchmarks/ldbc-ref-v1/ref-rows-t2 (1 ok, 0 error)
+--- BI17 t3 2026-09-17T18:42:28Z
+  BI17   0 rows
+record: benchmarks/ldbc-ref-v1/ref-rows-t3 (1 ok, 0 error)
+--- BI18 warmup 2026-09-17T18:42:29Z
+  BI18   20 rows
+record: benchmarks/ldbc-ref-v1/ref-rows-warmup (1 ok, 0 error)
+--- BI18 t1 2026-09-17T18:42:30Z
+  BI18   20 rows
+record: benchmarks/ldbc-ref-v1/ref-rows (1 ok, 0 error)
+--- BI18 t2 2026-09-17T18:42:31Z
+  BI18   20 rows
+record: benchmarks/ldbc-ref-v1/ref-rows-t2 (1 ok, 0 error)
+--- BI18 t3 2026-09-17T18:42:32Z
+  BI18   20 rows
+record: benchmarks/ldbc-ref-v1/ref-rows-t3 (1 ok, 0 error)
+--- IC2 warmup 2026-09-17T18:42:34Z
+  IC2    0 rows
+record: benchmarks/ldbc-ref-v1/ref-rows-warmup (1 ok, 0 error)
+--- IC2 t1 2026-09-17T18:42:34Z
+  IC2    0 rows
+record: benchmarks/ldbc-ref-v1/ref-rows (1 ok, 0 error)
+--- IC2 t2 2026-09-17T18:42:35Z
+  IC2    0 rows
+record: benchmarks/ldbc-ref-v1/ref-rows-t2 (1 ok, 0 error)
+--- IC2 t3 2026-09-17T18:42:36Z
+  IC2    0 rows
+record: benchmarks/ldbc-ref-v1/ref-rows-t3 (1 ok, 0 error)
+--- IC5 warmup 2026-09-17T18:42:37Z
+Received notification from DBMS server: {severity: WARNING} {code: Neo.ClientNotification.Statement.UnknownPropertyKeyWarning} {category: UNRECOGNIZED} {title: The provided property key is not in the database} {description: One of the property names in your query is not available in the database, make sure you didn't misspell it or that the label is available when you run this statement in your application (the missing property name is: joinDate)} {position: line: 14, column: 16, offset: 306} for query: '// Q5. New groups\n/*\n:param [{ personId, minDate }] => { RETURN\n  6597069766734 AS personId,\n  1288612800000 AS minDate\n}\n*/\nMATCH (person:Person { id: $personId })-[:KNOWS*1..2]-(friend)\nWHERE\n    NOT person=friend\nWITH DISTINCT friend\nMATCH (friend)<-[membership:HAS_MEMBER]-(forum)\nWHERE\n    membership.joinDate > $minDate\nWITH\n    forum,\n    collect(friend) AS friends\nOPTIONAL MATCH (friend)<-[:HAS_CREATOR]-(post)<-[:CONTAINER_OF]-(forum)\nWHERE\n    friend IN friends\nWITH\n    forum,\n    count(post) AS postCount\nRETURN\n    forum.title AS forumName,\n    postCount\nORDER BY\n    postCount DESC,\n    forum.id ASC\nLIMIT 20\n'
+  IC5    0 rows
+record: benchmarks/ldbc-ref-v1/ref-rows-warmup (1 ok, 0 error)
+--- IC5 t1 2026-09-17T18:42:38Z
+Received notification from DBMS server: {severity: WARNING} {code: Neo.ClientNotification.Statement.UnknownPropertyKeyWarning} {category: UNRECOGNIZED} {title: The provided property key is not in the database} {description: One of the property names in your query is not available in the database, make sure you didn't misspell it or that the label is available when you run this statement in your application (the missing property name is: joinDate)} {position: line: 14, column: 16, offset: 306} for query: '// Q5. New groups\n/*\n:param [{ personId, minDate }] => { RETURN\n  6597069766734 AS personId,\n  1288612800000 AS minDate\n}\n*/\nMATCH (person:Person { id: $personId })-[:KNOWS*1..2]-(friend)\nWHERE\n    NOT person=friend\nWITH DISTINCT friend\nMATCH (friend)<-[membership:HAS_MEMBER]-(forum)\nWHERE\n    membership.joinDate > $minDate\nWITH\n    forum,\n    collect(friend) AS friends\nOPTIONAL MATCH (friend)<-[:HAS_CREATOR]-(post)<-[:CONTAINER_OF]-(forum)\nWHERE\n    friend IN friends\nWITH\n    forum,\n    count(post) AS postCount\nRETURN\n    forum.title AS forumName,\n    postCount\nORDER BY\n    postCount DESC,\n    forum.id ASC\nLIMIT 20\n'
+  IC5    0 rows
+record: benchmarks/ldbc-ref-v1/ref-rows (1 ok, 0 error)
+--- IC5 t2 2026-09-17T18:42:38Z
+Received notification from DBMS server: {severity: WARNING} {code: Neo.ClientNotification.Statement.UnknownPropertyKeyWarning} {category: UNRECOGNIZED} {title: The provided property key is not in the database} {description: One of the property names in your query is not available in the database, make sure you didn't misspell it or that the label is available when you run this statement in your application (the missing property name is: joinDate)} {position: line: 14, column: 16, offset: 306} for query: '// Q5. New groups\n/*\n:param [{ personId, minDate }] => { RETURN\n  6597069766734 AS personId,\n  1288612800000 AS minDate\n}\n*/\nMATCH (person:Person { id: $personId })-[:KNOWS*1..2]-(friend)\nWHERE\n    NOT person=friend\nWITH DISTINCT friend\nMATCH (friend)<-[membership:HAS_MEMBER]-(forum)\nWHERE\n    membership.joinDate > $minDate\nWITH\n    forum,\n    collect(friend) AS friends\nOPTIONAL MATCH (friend)<-[:HAS_CREATOR]-(post)<-[:CONTAINER_OF]-(forum)\nWHERE\n    friend IN friends\nWITH\n    forum,\n    count(post) AS postCount\nRETURN\n    forum.title AS forumName,\n    postCount\nORDER BY\n    postCount DESC,\n    forum.id ASC\nLIMIT 20\n'
+  IC5    0 rows
+record: benchmarks/ldbc-ref-v1/ref-rows-t2 (1 ok, 0 error)
+--- IC5 t3 2026-09-17T18:42:39Z
+Received notification from DBMS server: {severity: WARNING} {code: Neo.ClientNotification.Statement.UnknownPropertyKeyWarning} {category: UNRECOGNIZED} {title: The provided property key is not in the database} {description: One of the property names in your query is not available in the database, make sure you didn't misspell it or that the label is available when you run this statement in your application (the missing property name is: joinDate)} {position: line: 14, column: 16, offset: 306} for query: '// Q5. New groups\n/*\n:param [{ personId, minDate }] => { RETURN\n  6597069766734 AS personId,\n  1288612800000 AS minDate\n}\n*/\nMATCH (person:Person { id: $personId })-[:KNOWS*1..2]-(friend)\nWHERE\n    NOT person=friend\nWITH DISTINCT friend\nMATCH (friend)<-[membership:HAS_MEMBER]-(forum)\nWHERE\n    membership.joinDate > $minDate\nWITH\n    forum,\n    collect(friend) AS friends\nOPTIONAL MATCH (friend)<-[:HAS_CREATOR]-(post)<-[:CONTAINER_OF]-(forum)\nWHERE\n    friend IN friends\nWITH\n    forum,\n    count(post) AS postCount\nRETURN\n    forum.title AS forumName,\n    postCount\nORDER BY\n    postCount DESC,\n    forum.id ASC\nLIMIT 20\n'
+  IC5    0 rows
+record: benchmarks/ldbc-ref-v1/ref-rows-t3 (1 ok, 0 error)
+--- IC6 warmup 2026-09-17T18:42:40Z
+  IC6    10 rows
+record: benchmarks/ldbc-ref-v1/ref-rows-warmup (1 ok, 0 error)
+--- IC6 t1 2026-09-17T18:42:41Z
+  IC6    10 rows
+record: benchmarks/ldbc-ref-v1/ref-rows (1 ok, 0 error)
+--- IC6 t2 2026-09-17T18:42:42Z
+  IC6    10 rows
+record: benchmarks/ldbc-ref-v1/ref-rows-t2 (1 ok, 0 error)
+--- IC6 t3 2026-09-17T18:42:44Z
+  IC6    10 rows
+record: benchmarks/ldbc-ref-v1/ref-rows-t3 (1 ok, 0 error)
+--- IC8 warmup 2026-09-17T18:42:45Z
+  IC8    11 rows
+record: benchmarks/ldbc-ref-v1/ref-rows-warmup (1 ok, 0 error)
+--- IC8 t1 2026-09-17T18:42:45Z
+  IC8    11 rows
+record: benchmarks/ldbc-ref-v1/ref-rows (1 ok, 0 error)
+--- IC8 t2 2026-09-17T18:42:46Z
+  IC8    11 rows
+record: benchmarks/ldbc-ref-v1/ref-rows-t2 (1 ok, 0 error)
+--- IC8 t3 2026-09-17T18:42:47Z
+  IC8    11 rows
+record: benchmarks/ldbc-ref-v1/ref-rows-t3 (1 ok, 0 error)
+--- IC9 warmup 2026-09-17T18:42:48Z
+  IC9    0 rows
+record: benchmarks/ldbc-ref-v1/ref-rows-warmup (1 ok, 0 error)
+--- IC9 t1 2026-09-17T18:42:50Z
+  IC9    0 rows
+record: benchmarks/ldbc-ref-v1/ref-rows (1 ok, 0 error)
+--- IC9 t2 2026-09-17T18:42:52Z
+  IC9    0 rows
+record: benchmarks/ldbc-ref-v1/ref-rows-t2 (1 ok, 0 error)
+--- IC9 t3 2026-09-17T18:42:54Z
+  IC9    0 rows
+record: benchmarks/ldbc-ref-v1/ref-rows-t3 (1 ok, 0 error)
+--- IC11 warmup 2026-09-17T18:42:57Z
+  IC11   0 rows
+record: benchmarks/ldbc-ref-v1/ref-rows-warmup (1 ok, 0 error)
+--- IC11 t1 2026-09-17T18:42:58Z
+  IC11   0 rows
+record: benchmarks/ldbc-ref-v1/ref-rows (1 ok, 0 error)
+--- IC11 t2 2026-09-17T18:42:58Z
+  IC11   0 rows
+record: benchmarks/ldbc-ref-v1/ref-rows-t2 (1 ok, 0 error)
+--- IC11 t3 2026-09-17T18:42:59Z
+  IC11   0 rows
+record: benchmarks/ldbc-ref-v1/ref-rows-t3 (1 ok, 0 error)
+--- IC12 warmup 2026-09-17T18:43:00Z
+  IC12   5 rows
+record: benchmarks/ldbc-ref-v1/ref-rows-warmup (1 ok, 0 error)
+--- IC12 t1 2026-09-17T18:43:01Z
+  IC12   5 rows
+record: benchmarks/ldbc-ref-v1/ref-rows (1 ok, 0 error)
+--- IC12 t2 2026-09-17T18:43:02Z
+  IC12   5 rows
+record: benchmarks/ldbc-ref-v1/ref-rows-t2 (1 ok, 0 error)
+--- IC12 t3 2026-09-17T18:43:03Z
+  IC12   5 rows
+record: benchmarks/ldbc-ref-v1/ref-rows-t3 (1 ok, 0 error)
+--- IS1 warmup 2026-09-17T18:43:04Z
+  IS1    1 rows
+record: benchmarks/ldbc-ref-v1/ref-rows-warmup (1 ok, 0 error)
+--- IS1 t1 2026-09-17T18:43:05Z
+  IS1    1 rows
+record: benchmarks/ldbc-ref-v1/ref-rows (1 ok, 0 error)
+--- IS1 t2 2026-09-17T18:43:05Z
+  IS1    1 rows
+record: benchmarks/ldbc-ref-v1/ref-rows-t2 (1 ok, 0 error)
+--- IS1 t3 2026-09-17T18:43:06Z
+  IS1    1 rows
+record: benchmarks/ldbc-ref-v1/ref-rows-t3 (1 ok, 0 error)
+--- IS2 warmup 2026-09-17T18:43:07Z
+  IS2    10 rows
+record: benchmarks/ldbc-ref-v1/ref-rows-warmup (1 ok, 0 error)
+--- IS2 t1 2026-09-17T18:43:08Z
+  IS2    10 rows
+record: benchmarks/ldbc-ref-v1/ref-rows (1 ok, 0 error)
+--- IS2 t2 2026-09-17T18:43:09Z
+  IS2    10 rows
+record: benchmarks/ldbc-ref-v1/ref-rows-t2 (1 ok, 0 error)
+--- IS2 t3 2026-09-17T18:43:09Z
+  IS2    10 rows
+record: benchmarks/ldbc-ref-v1/ref-rows-t3 (1 ok, 0 error)
+--- IS3 warmup 2026-09-17T18:43:10Z
+  IS3    24 rows
+record: benchmarks/ldbc-ref-v1/ref-rows-warmup (1 ok, 0 error)
+--- IS3 t1 2026-09-17T18:43:11Z
+  IS3    24 rows
+record: benchmarks/ldbc-ref-v1/ref-rows (1 ok, 0 error)
+--- IS3 t2 2026-09-17T18:43:12Z
+  IS3    24 rows
+record: benchmarks/ldbc-ref-v1/ref-rows-t2 (1 ok, 0 error)
+--- IS3 t3 2026-09-17T18:43:12Z
+  IS3    24 rows
+record: benchmarks/ldbc-ref-v1/ref-rows-t3 (1 ok, 0 error)
+--- IS4 warmup 2026-09-17T18:43:13Z
+  IS4    1 rows
+record: benchmarks/ldbc-ref-v1/ref-rows-warmup (1 ok, 0 error)
+--- IS4 t1 2026-09-17T18:43:14Z
+  IS4    1 rows
+record: benchmarks/ldbc-ref-v1/ref-rows (1 ok, 0 error)
+--- IS4 t2 2026-09-17T18:43:15Z
+  IS4    1 rows
+record: benchmarks/ldbc-ref-v1/ref-rows-t2 (1 ok, 0 error)
+--- IS4 t3 2026-09-17T18:43:15Z
+  IS4    1 rows
+record: benchmarks/ldbc-ref-v1/ref-rows-t3 (1 ok, 0 error)
+--- IS5 warmup 2026-09-17T18:43:16Z
+  IS5    1 rows
+record: benchmarks/ldbc-ref-v1/ref-rows-warmup (1 ok, 0 error)
+--- IS5 t1 2026-09-17T18:43:17Z
+  IS5    1 rows
+record: benchmarks/ldbc-ref-v1/ref-rows (1 ok, 0 error)
+--- IS5 t2 2026-09-17T18:43:18Z
+  IS5    1 rows
+record: benchmarks/ldbc-ref-v1/ref-rows-t2 (1 ok, 0 error)
+--- IS5 t3 2026-09-17T18:43:18Z
+  IS5    1 rows
+record: benchmarks/ldbc-ref-v1/ref-rows-t3 (1 ok, 0 error)
+--- IS6 warmup 2026-09-17T18:43:19Z
+  IS6    1 rows
+record: benchmarks/ldbc-ref-v1/ref-rows-warmup (1 ok, 0 error)
+--- IS6 t1 2026-09-17T18:43:20Z
+  IS6    1 rows
+record: benchmarks/ldbc-ref-v1/ref-rows (1 ok, 0 error)
+--- IS6 t2 2026-09-17T18:43:21Z
+  IS6    1 rows
+record: benchmarks/ldbc-ref-v1/ref-rows-t2 (1 ok, 0 error)
+--- IS6 t3 2026-09-17T18:43:22Z
+  IS6    1 rows
+record: benchmarks/ldbc-ref-v1/ref-rows-t3 (1 ok, 0 error)
+--- IS7 warmup 2026-09-17T18:43:22Z
+  IS7    1 rows
+record: benchmarks/ldbc-ref-v1/ref-rows-warmup (1 ok, 0 error)
+--- IS7 t1 2026-09-17T18:43:23Z
+  IS7    1 rows
+record: benchmarks/ldbc-ref-v1/ref-rows (1 ok, 0 error)
+--- IS7 t2 2026-09-17T18:43:24Z
+  IS7    1 rows
+record: benchmarks/ldbc-ref-v1/ref-rows-t2 (1 ok, 0 error)
+--- IS7 t3 2026-09-17T18:43:25Z
+  IS7    1 rows
+record: benchmarks/ldbc-ref-v1/ref-rows-t3 (1 ok, 0 error)
+NEO4J_QUERIES_DONE 2026-09-17T18:43:25Z

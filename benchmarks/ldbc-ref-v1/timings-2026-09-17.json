@@ -1,0 +1,940 @@
+{
+  "bi6_v1_defect_evidence": {
+    "error": null,
+    "note": "RUNBOOK \u00a76: kept as evidence the v1 defect still reproduces at SF1. The template's own row is BI6.v2.",
+    "outcome": "ERRORED",
+    "plan_artifact": "BI6.json",
+    "rows": null
+  },
+  "date": "2026-09-17",
+  "protocol": {
+    "neo4j": "1 warm-up + 3 timed executions per template, back to back per template; ref-rows/ is the first timed execution. Each execution is its own ldbc_reference_run.py invocation (fresh driver + session), so wall_s excludes process start but includes connection setup.",
+    "note": "the two sides' wall times are NOT comparable as a speed ratio: different rep counts, and the TGIR figure excludes a store open the Neo4j figure has no analogue for (the server was already up). They are reported per side, never divided.",
+    "query_timeout_s": 600,
+    "tgir": "tgir_ldbc_sf1.py's own protocol: warmups 1, reps 3, and 1 rep when the guard is bypassed (which it is for the BI rows). `ms` is the reported figure, `ms_all` the per-rep list. Each plan runs in its own child process, so its campaign wall also includes a ~150-270 s store open that `ms` excludes."
+  },
+  "templates": [
+    {
+      "compare": {
+        "agreeing": 20,
+        "column_map_rule": "positional",
+        "compared": 20,
+        "contract": "REQUIRES_TOP_K",
+        "disagreeing": 0,
+        "reference_columns_not_projected": [],
+        "tie_ambiguous": 0,
+        "verdict": "agreeing"
+      },
+      "neo4j": {
+        "error": null,
+        "query_file": "external_workloads/ldbc/bi/neo4j/queries/bi-3.cypher",
+        "query_sha256": "4fc05066885b85e0defafeea0f78eaea54a24434b80961b045c0d59cdca77da1",
+        "result_digest": "901043e9d2cdd2c432290205dc0adb70225b2906072bdd6726d00b225afeefbc",
+        "rows": 20,
+        "wall_s": {
+          "t1": 1.052,
+          "t2": 1.111,
+          "t3": 1.063,
+          "warmup": 1.111
+        }
+      },
+      "template": "BI3",
+      "tgir": {
+        "bypassed": true,
+        "error": null,
+        "ms": 35310.08505821228,
+        "ms_all": [
+          35310.085
+        ],
+        "outcome": "COMPLETED",
+        "rows": 20
+      },
+      "tgir_plan": "BI3.json"
+    },
+    {
+      "compare": {
+        "agreeing": 0,
+        "column_map_rule": "name-partial",
+        "compared": 100,
+        "contract": "REQUIRES_TOP_K",
+        "disagreeing": 100,
+        "reference_columns_not_projected": [
+          "personFirstName",
+          "personLastName",
+          "personCreationDate"
+        ],
+        "tie_ambiguous": 0,
+        "verdict": "reference-column-not-projected"
+      },
+      "neo4j": {
+        "error": null,
+        "query_file": "external_workloads/ldbc/bi/neo4j/queries/bi-4.cypher",
+        "query_sha256": "92f3385fc493b725b0785b76d929854af18969bc8090fe652894723c20ba1be2",
+        "result_digest": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+        "rows": 0,
+        "wall_s": {
+          "t1": 0.011,
+          "t2": 0.013,
+          "t3": 0.013,
+          "warmup": 0.013
+        }
+      },
+      "template": "BI4",
+      "tgir": {
+        "bypassed": true,
+        "error": null,
+        "ms": 77064.22114372253,
+        "ms_all": [
+          77064.221
+        ],
+        "outcome": "COMPLETED",
+        "rows": 100
+      },
+      "tgir_plan": "BI4.json"
+    },
+    {
+      "compare": {
+        "agreeing": 0,
+        "column_map_rule": null,
+        "compared": 0,
+        "contract": null,
+        "disagreeing": 0,
+        "reference_columns_not_projected": null,
+        "tie_ambiguous": 0,
+        "verdict": null
+      },
+      "neo4j": {
+        "error": null,
+        "query_file": "external_workloads/ldbc/bi/neo4j/queries/bi-6.cypher",
+        "query_sha256": "cbe935ef1e48d99010417de1026ad418eb27f5d9627555a1d28e42e8ab530e48",
+        "result_digest": "919ee3c790e529b6981371dfb3272a6a20b6a14081f10c15ae109e0036e24711",
+        "rows": 100,
+        "wall_s": {
+          "t1": 1.693,
+          "t2": 1.816,
+          "t3": 1.974,
+          "warmup": 1.86
+        }
+      },
+      "template": "BI6",
+      "tgir": {
+        "bypassed": null,
+        "error": null,
+        "ms": null,
+        "ms_all": null,
+        "outcome": "TIMEOUT",
+        "rows": null
+      },
+      "tgir_plan": "BI6.v2.json"
+    },
+    {
+      "compare": {
+        "agreeing": 100,
+        "column_map_rule": "positional",
+        "compared": 100,
+        "contract": "REQUIRES_TOP_K",
+        "disagreeing": 0,
+        "reference_columns_not_projected": [],
+        "tie_ambiguous": 0,
+        "verdict": "agreeing"
+      },
+      "neo4j": {
+        "error": null,
+        "query_file": "external_workloads/ldbc/bi/neo4j/queries/bi-7.cypher",
+        "query_sha256": "e1d1f3f5f78f14e4de5e76f43f425c25c93b953f326298b23027d23939c1d687",
+        "result_digest": "90eb1bdf2ada9e8d803949b2a5c973861b5aa4fe19e0e9117bf8475f82e5922e",
+        "rows": 100,
+        "wall_s": {
+          "t1": 0.051,
+          "t2": 0.067,
+          "t3": 0.067,
+          "warmup": 0.061
+        }
+      },
+      "template": "BI7",
+      "tgir": {
+        "bypassed": true,
+        "error": null,
+        "ms": 13052.186727523804,
+        "ms_all": [
+          13052.187
+        ],
+        "outcome": "COMPLETED",
+        "rows": 100
+      },
+      "tgir_plan": "BI7.json"
+    },
+    {
+      "compare": {
+        "agreeing": 0,
+        "column_map_rule": "positional",
+        "compared": 100,
+        "contract": "REQUIRES_TOP_K",
+        "disagreeing": 100,
+        "reference_columns_not_projected": [],
+        "tie_ambiguous": 0,
+        "verdict": "disagreeing"
+      },
+      "neo4j": {
+        "error": null,
+        "query_file": "external_workloads/ldbc/bi/neo4j/queries/bi-9.cypher",
+        "query_sha256": "4c5fb4553a704213ad9e58ede3b2e590d1237c068df658ad33298a1ba21ff168",
+        "result_digest": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+        "rows": 0,
+        "wall_s": {
+          "t1": 0.009,
+          "t2": 0.009,
+          "t3": 0.01,
+          "warmup": 0.009
+        }
+      },
+      "template": "BI9",
+      "tgir": {
+        "bypassed": true,
+        "error": null,
+        "ms": 105390.9981250763,
+        "ms_all": [
+          105390.998
+        ],
+        "outcome": "COMPLETED",
+        "rows": 100
+      },
+      "tgir_plan": "BI9.json"
+    },
+    {
+      "compare": {
+        "agreeing": 100,
+        "column_map_rule": "positional",
+        "compared": 100,
+        "contract": "REQUIRES_TOP_K",
+        "disagreeing": 0,
+        "reference_columns_not_projected": [],
+        "tie_ambiguous": 0,
+        "verdict": "agreeing"
+      },
+      "neo4j": {
+        "error": null,
+        "query_file": "external_workloads/ldbc/bi/neo4j/queries/bi-10.cypher",
+        "query_sha256": "087adda85ccdd32ca6b2a2fcea6d94c3daee7c681209110f1e4f887d97dde6f4",
+        "result_digest": "3387589635659a59c49798b66641ca4a239d326f2569e453892b06f618d0e4e4",
+        "rows": 100,
+        "wall_s": {
+          "t1": 0.293,
+          "t2": 0.245,
+          "t3": 0.196,
+          "warmup": 0.313
+        }
+      },
+      "template": "BI10",
+      "tgir": {
+        "bypassed": true,
+        "error": null,
+        "ms": 24465.12269973755,
+        "ms_all": [
+          24465.123
+        ],
+        "outcome": "COMPLETED",
+        "rows": 100
+      },
+      "tgir_plan": "BI10.json"
+    },
+    {
+      "compare": {
+        "agreeing": 0,
+        "column_map_rule": "positional",
+        "compared": 1,
+        "contract": "CURRENT_ECQR_FRAGMENT",
+        "disagreeing": 2,
+        "reference_columns_not_projected": [],
+        "tie_ambiguous": 0,
+        "verdict": "disagreeing"
+      },
+      "neo4j": {
+        "error": null,
+        "query_file": "external_workloads/ldbc/bi/neo4j/queries/bi-11.cypher",
+        "query_sha256": "55eaa5ddfae1f09d741d281c9913d1f2de84369eba37f4da068c80633cf17189",
+        "result_digest": "cd0e5efe267810586a780ddd18fc10f8c60b9328fa26879735dac63a8145fe4d",
+        "rows": 1,
+        "wall_s": {
+          "t1": 0.098,
+          "t2": 0.104,
+          "t3": 0.098,
+          "warmup": 0.102
+        }
+      },
+      "template": "BI11",
+      "tgir": {
+        "bypassed": true,
+        "error": null,
+        "ms": 38233.81447792053,
+        "ms_all": [
+          38233.814
+        ],
+        "outcome": "COMPLETED",
+        "rows": 1
+      },
+      "tgir_plan": "BI11.json"
+    },
+    {
+      "compare": {
+        "agreeing": 0,
+        "column_map_rule": "name",
+        "compared": 166,
+        "contract": "REQUIRES_ORDERED_RESULT",
+        "disagreeing": 166,
+        "reference_columns_not_projected": [],
+        "tie_ambiguous": 0,
+        "verdict": "disagreeing"
+      },
+      "neo4j": {
+        "error": null,
+        "query_file": "external_workloads/ldbc/bi/neo4j/queries/bi-12.cypher",
+        "query_sha256": "011f7b378f34a4f9600f2abb51be77799c30a4756b9dd6424ba879cd6028af01",
+        "result_digest": "34a1cd88fa037208a0a0499f8cb8b60932454d91b8c2af058472d5175e4648bc",
+        "rows": 1,
+        "wall_s": {
+          "t1": 0.027,
+          "t2": 0.025,
+          "t3": 0.025,
+          "warmup": 0.028
+        }
+      },
+      "template": "BI12",
+      "tgir": {
+        "bypassed": true,
+        "error": null,
+        "ms": 148134.9799633026,
+        "ms_all": [
+          148134.98
+        ],
+        "outcome": "COMPLETED",
+        "rows": 166
+      },
+      "tgir_plan": "BI12.json"
+    },
+    {
+      "compare": {
+        "agreeing": 0,
+        "column_map_rule": "positional",
+        "compared": 0,
+        "contract": "REQUIRES_TOP_K",
+        "disagreeing": 0,
+        "reference_columns_not_projected": [],
+        "tie_ambiguous": 0,
+        "verdict": "agreeing"
+      },
+      "neo4j": {
+        "error": null,
+        "query_file": "external_workloads/ldbc/bi/neo4j/queries/bi-17.cypher",
+        "query_sha256": "0d2187fd021e4570c602124ee367bf2392f48870474187045eee27dd908539c7",
+        "result_digest": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+        "rows": 0,
+        "wall_s": {
+          "t1": 0.033,
+          "t2": 0.033,
+          "t3": 0.031,
+          "warmup": 0.047
+        }
+      },
+      "template": "BI17",
+      "tgir": {
+        "bypassed": true,
+        "error": null,
+        "ms": 71798.79426956177,
+        "ms_all": [
+          71798.794
+        ],
+        "outcome": "COMPLETED",
+        "rows": 0
+      },
+      "tgir_plan": "BI17.json"
+    },
+    {
+      "compare": {
+        "agreeing": 20,
+        "column_map_rule": "name",
+        "compared": 20,
+        "contract": "REQUIRES_TOP_K",
+        "disagreeing": 0,
+        "reference_columns_not_projected": [],
+        "tie_ambiguous": 0,
+        "verdict": "agreeing"
+      },
+      "neo4j": {
+        "error": null,
+        "query_file": "external_workloads/ldbc/bi/neo4j/queries/bi-18.cypher",
+        "query_sha256": "e1dd19f7c6e496b070e1beca5fb35e6b5849f64e7a12963a29bbc81441924776",
+        "result_digest": "aead26fd5c34378fb6a60e5315e1cb67cffa9e97f085514a4c6607c76a36236d",
+        "rows": 20,
+        "wall_s": {
+          "t1": 0.502,
+          "t2": 0.485,
+          "t3": 0.507,
+          "warmup": 0.529
+        }
+      },
+      "template": "BI18",
+      "tgir": {
+        "bypassed": null,
+        "error": null,
+        "ms": 54327.404737472534,
+        "ms_all": [
+          54327.405,
+          56750.313,
+          50031.827
+        ],
+        "outcome": "COMPLETED",
+        "rows": 20
+      },
+      "tgir_plan": "BI18.json"
+    },
+    {
+      "compare": {
+        "agreeing": 0,
+        "column_map_rule": "positional",
+        "compared": 20,
+        "contract": "REQUIRES_TOP_K",
+        "disagreeing": 20,
+        "reference_columns_not_projected": [],
+        "tie_ambiguous": 0,
+        "verdict": "disagreeing"
+      },
+      "neo4j": {
+        "error": null,
+        "query_file": "external_workloads/ldbc/interactive_v1/cypher/queries/interactive-complex-2.cypher",
+        "query_sha256": "434d4215e299eb00fa4d0bfc9a5111b00f1a806c7b8220044df7963da3f06de2",
+        "result_digest": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+        "rows": 0,
+        "wall_s": {
+          "t1": 0.035,
+          "t2": 0.036,
+          "t3": 0.034,
+          "warmup": 0.131
+        }
+      },
+      "template": "IC2",
+      "tgir": {
+        "bypassed": null,
+        "error": null,
+        "ms": 6403.944969177246,
+        "ms_all": [
+          5083.975,
+          6403.945,
+          6841.217
+        ],
+        "outcome": "COMPLETED",
+        "rows": 20
+      },
+      "tgir_plan": "IC2.json"
+    },
+    {
+      "compare": {
+        "agreeing": 0,
+        "column_map_rule": "name-partial",
+        "compared": 0,
+        "contract": "REQUIRES_TOP_K",
+        "disagreeing": 0,
+        "reference_columns_not_projected": [
+          "forumName"
+        ],
+        "tie_ambiguous": 0,
+        "verdict": "reference-column-not-projected"
+      },
+      "neo4j": {
+        "error": null,
+        "query_file": "external_workloads/ldbc/interactive_v1/cypher/queries/interactive-complex-5.cypher",
+        "query_sha256": "db86d129f842cf7b7f461355bd10698cf0af34b019d018d9267d8adb324e0358",
+        "result_digest": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+        "rows": 0,
+        "wall_s": {
+          "t1": 0.185,
+          "t2": 0.178,
+          "t3": 0.18,
+          "warmup": 0.35
+        }
+      },
+      "template": "IC5",
+      "tgir": {
+        "bypassed": null,
+        "error": null,
+        "ms": 18871.45161628723,
+        "ms_all": [
+          17722.152,
+          18871.452,
+          20413.115
+        ],
+        "outcome": "COMPLETED",
+        "rows": 0
+      },
+      "tgir_plan": "IC5.json"
+    },
+    {
+      "compare": {
+        "agreeing": 10,
+        "column_map_rule": "name",
+        "compared": 10,
+        "contract": "REQUIRES_TOP_K",
+        "disagreeing": 0,
+        "reference_columns_not_projected": [],
+        "tie_ambiguous": 0,
+        "verdict": "agreeing"
+      },
+      "neo4j": {
+        "error": null,
+        "query_file": "external_workloads/ldbc/interactive_v1/cypher/queries/interactive-complex-6.cypher",
+        "query_sha256": "ea2a20b7095c2f79f7535831b54176a55c30b9d4618589160e4a3a2abc099c6e",
+        "result_digest": "56b52154f39eb6f0b119ba93c58224564706b29450e75dc4ad0c7fd0067732f7",
+        "rows": 10,
+        "wall_s": {
+          "t1": 0.374,
+          "t2": 0.345,
+          "t3": 0.351,
+          "warmup": 0.494
+        }
+      },
+      "template": "IC6",
+      "tgir": {
+        "bypassed": null,
+        "error": null,
+        "ms": 59059.01265144348,
+        "ms_all": [
+          52642.323,
+          63787.909,
+          59059.013
+        ],
+        "outcome": "COMPLETED",
+        "rows": 10
+      },
+      "tgir_plan": "IC6.json"
+    },
+    {
+      "compare": {
+        "agreeing": 11,
+        "column_map_rule": "name",
+        "compared": 11,
+        "contract": "REQUIRES_TOP_K",
+        "disagreeing": 0,
+        "reference_columns_not_projected": [],
+        "tie_ambiguous": 0,
+        "verdict": "agreeing"
+      },
+      "neo4j": {
+        "error": null,
+        "query_file": "external_workloads/ldbc/interactive_v1/cypher/queries/interactive-complex-8.cypher",
+        "query_sha256": "d393a6d23e5162a4894a4629f9cc18aed69f61c1e6f683b04a2630a26135c357",
+        "result_digest": "198f7befa2dc5c510ef75dc0900306081db9941417af77dc5ae5f72376eac289",
+        "rows": 11,
+        "wall_s": {
+          "t1": 0.014,
+          "t2": 0.014,
+          "t3": 0.014,
+          "warmup": 0.079
+        }
+      },
+      "template": "IC8",
+      "tgir": {
+        "bypassed": null,
+        "error": null,
+        "ms": 5500.169515609741,
+        "ms_all": [
+          5261.985,
+          5500.17,
+          6062.207
+        ],
+        "outcome": "COMPLETED",
+        "rows": 11
+      },
+      "tgir_plan": "IC8.json"
+    },
+    {
+      "compare": {
+        "agreeing": 0,
+        "column_map_rule": "positional",
+        "compared": 20,
+        "contract": "REQUIRES_TOP_K",
+        "disagreeing": 20,
+        "reference_columns_not_projected": [],
+        "tie_ambiguous": 0,
+        "verdict": "disagreeing"
+      },
+      "neo4j": {
+        "error": null,
+        "query_file": "external_workloads/ldbc/interactive_v1/cypher/queries/interactive-complex-9.cypher",
+        "query_sha256": "84d05a4cc87a0680b490fc98aa303ff211f363204cc81d936cd5d442bf85cfe7",
+        "result_digest": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+        "rows": 0,
+        "wall_s": {
+          "t1": 1.488,
+          "t2": 1.496,
+          "t3": 1.629,
+          "warmup": 1.711
+        }
+      },
+      "template": "IC9",
+      "tgir": {
+        "bypassed": null,
+        "error": null,
+        "ms": 47401.288747787476,
+        "ms_all": [
+          43579.144,
+          47566.206,
+          47401.289
+        ],
+        "outcome": "COMPLETED",
+        "rows": 20
+      },
+      "tgir_plan": "IC9.json"
+    },
+    {
+      "compare": {
+        "agreeing": 0,
+        "column_map_rule": "name",
+        "compared": 0,
+        "contract": "REQUIRES_TOP_K",
+        "disagreeing": 0,
+        "reference_columns_not_projected": [],
+        "tie_ambiguous": 0,
+        "verdict": "agreeing"
+      },
+      "neo4j": {
+        "error": null,
+        "query_file": "external_workloads/ldbc/interactive_v1/cypher/queries/interactive-complex-11.cypher",
+        "query_sha256": "677b80887429445c5319a0d621d86b7df1c07889ae94e40447aacf853729fea1",
+        "result_digest": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+        "rows": 0,
+        "wall_s": {
+          "t1": 0.007,
+          "t2": 0.008,
+          "t3": 0.009,
+          "warmup": 0.089
+        }
+      },
+      "template": "IC11",
+      "tgir": {
+        "bypassed": null,
+        "error": null,
+        "ms": 5043.84446144104,
+        "ms_all": [
+          3486.827,
+          5133.188,
+          5043.844
+        ],
+        "outcome": "COMPLETED",
+        "rows": 0
+      },
+      "tgir_plan": "IC11.json"
+    },
+    {
+      "compare": {
+        "agreeing": 5,
+        "column_map_rule": "name-partial",
+        "compared": 5,
+        "contract": "REQUIRES_TOP_K",
+        "disagreeing": 0,
+        "reference_columns_not_projected": [
+          "tagNames"
+        ],
+        "tie_ambiguous": 0,
+        "verdict": "reference-column-not-projected"
+      },
+      "neo4j": {
+        "error": null,
+        "query_file": "external_workloads/ldbc/interactive_v1/cypher/queries/interactive-complex-12.cypher",
+        "query_sha256": "eda861f84d905e43433cd8f589212a2f934ad0bd9b6f9e58c19ade52922a9100",
+        "result_digest": "831e9c9a91ed3ac04cef9c69e1e4de7ca6a5513366bd8806cc953953dacafcfe",
+        "rows": 5,
+        "wall_s": {
+          "t1": 0.271,
+          "t2": 0.295,
+          "t3": 0.254,
+          "warmup": 0.557
+        }
+      },
+      "template": "IC12",
+      "tgir": {
+        "bypassed": true,
+        "error": null,
+        "ms": 20427.979707717896,
+        "ms_all": [
+          20427.98
+        ],
+        "outcome": "COMPLETED",
+        "rows": 5
+      },
+      "tgir_plan": "IC12.json"
+    },
+    {
+      "compare": {
+        "agreeing": 1,
+        "column_map_rule": "name",
+        "compared": 1,
+        "contract": "CURRENT_ECQR_FRAGMENT",
+        "disagreeing": 0,
+        "reference_columns_not_projected": [],
+        "tie_ambiguous": 0,
+        "verdict": "agreeing"
+      },
+      "neo4j": {
+        "error": null,
+        "query_file": "external_workloads/ldbc/interactive_v1/cypher/queries/interactive-short-1.cypher",
+        "query_sha256": "313fccbebf9ff29880d15514984ddf48d77f921908d1bd42b7b9626bd96479dc",
+        "result_digest": "4dbfc97ac56f29cdf0a89c07b502660a048041d45ad2bf7d7c5af14d9117832e",
+        "rows": 1,
+        "wall_s": {
+          "t1": 0.01,
+          "t2": 0.012,
+          "t3": 0.012,
+          "warmup": 0.054
+        }
+      },
+      "template": "IS1",
+      "tgir": {
+        "bypassed": null,
+        "error": null,
+        "ms": 3588.3069038391113,
+        "ms_all": [
+          3568.371,
+          4262.26,
+          3588.307
+        ],
+        "outcome": "COMPLETED",
+        "rows": 1
+      },
+      "tgir_plan": "IS1.json"
+    },
+    {
+      "compare": {
+        "agreeing": 10,
+        "column_map_rule": "positional",
+        "compared": 10,
+        "contract": "REQUIRES_TOP_K",
+        "disagreeing": 0,
+        "reference_columns_not_projected": [],
+        "tie_ambiguous": 0,
+        "verdict": "agreeing"
+      },
+      "neo4j": {
+        "error": null,
+        "query_file": "external_workloads/ldbc/interactive_v1/cypher/queries/interactive-short-2.cypher",
+        "query_sha256": "e278ea45644325be102e0574d8cc7f768633e990aa6c7b3976a84b22e66f996d",
+        "result_digest": "cbd05e98fb0ee169cbb3aa274978be1035bf39caa9baf7c9a81c2fe70d71ae61",
+        "rows": 10,
+        "wall_s": {
+          "t1": 0.018,
+          "t2": 0.016,
+          "t3": 0.013,
+          "warmup": 0.094
+        }
+      },
+      "template": "IS2",
+      "tgir": {
+        "bypassed": null,
+        "error": null,
+        "ms": 6665.143251419067,
+        "ms_all": [
+          5531.905,
+          6665.143,
+          6821.249
+        ],
+        "outcome": "COMPLETED",
+        "rows": 10
+      },
+      "tgir_plan": "IS2.json"
+    },
+    {
+      "compare": {
+        "agreeing": 1,
+        "column_map_rule": "positional",
+        "compared": 48,
+        "contract": "REQUIRES_ORDERED_RESULT",
+        "disagreeing": 47,
+        "reference_columns_not_projected": [],
+        "tie_ambiguous": 0,
+        "verdict": "disagreeing"
+      },
+      "neo4j": {
+        "error": null,
+        "query_file": "external_workloads/ldbc/interactive_v1/cypher/queries/interactive-short-3.cypher",
+        "query_sha256": "424bda25c79699433d5cf6a18893b6431980155a573a97220867c00be547d323",
+        "result_digest": "801dcf176fd2ea1b424f67c6c78818462403641141adad7cde53a14229b5d007",
+        "rows": 24,
+        "wall_s": {
+          "t1": 0.047,
+          "t2": 0.026,
+          "t3": 0.011,
+          "warmup": 0.065
+        }
+      },
+      "template": "IS3",
+      "tgir": {
+        "bypassed": null,
+        "error": null,
+        "ms": 687.713623046875,
+        "ms_all": [
+          687.824,
+          686.454,
+          687.714
+        ],
+        "outcome": "COMPLETED",
+        "rows": 48
+      },
+      "tgir_plan": "IS3.json"
+    },
+    {
+      "compare": {
+        "agreeing": 1,
+        "column_map_rule": "name",
+        "compared": 1,
+        "contract": "CURRENT_ECQR_FRAGMENT",
+        "disagreeing": 0,
+        "reference_columns_not_projected": [],
+        "tie_ambiguous": 0,
+        "verdict": "agreeing"
+      },
+      "neo4j": {
+        "error": null,
+        "query_file": "external_workloads/ldbc/interactive_v1/cypher/queries/interactive-short-4.cypher",
+        "query_sha256": "b579231518cf36352fe0237f4a36bbce5a9a96a0763565b8e17e07d9b0704642",
+        "result_digest": "6fcfb9f2586190a2930d6a40b91061f3eb3db0bad8a6fd80e8024462ce7a1ffd",
+        "rows": 1,
+        "wall_s": {
+          "t1": 0.007,
+          "t2": 0.009,
+          "t3": 0.01,
+          "warmup": 0.041
+        }
+      },
+      "template": "IS4",
+      "tgir": {
+        "bypassed": null,
+        "error": null,
+        "ms": 120.81360816955566,
+        "ms_all": [
+          141.159,
+          120.405,
+          120.814
+        ],
+        "outcome": "COMPLETED",
+        "rows": 1
+      },
+      "tgir_plan": "IS4.json"
+    },
+    {
+      "compare": {
+        "agreeing": 1,
+        "column_map_rule": "name",
+        "compared": 1,
+        "contract": "CURRENT_ECQR_FRAGMENT",
+        "disagreeing": 0,
+        "reference_columns_not_projected": [],
+        "tie_ambiguous": 0,
+        "verdict": "agreeing"
+      },
+      "neo4j": {
+        "error": null,
+        "query_file": "external_workloads/ldbc/interactive_v1/cypher/queries/interactive-short-5.cypher",
+        "query_sha256": "28d461db14b3817cfe00140fbabc7f7af796a2661b8c2492d8cf950ffce40fcd",
+        "result_digest": "58ee24478dbbb81ff582b2610840e40f98ccba2ca63e3f1078effd85a32e3658",
+        "rows": 1,
+        "wall_s": {
+          "t1": 0.009,
+          "t2": 0.011,
+          "t3": 0.017,
+          "warmup": 0.049
+        }
+      },
+      "template": "IS5",
+      "tgir": {
+        "bypassed": null,
+        "error": null,
+        "ms": 4486.585378646851,
+        "ms_all": [
+          4600.538,
+          4486.585,
+          4444.639
+        ],
+        "outcome": "COMPLETED",
+        "rows": 1
+      },
+      "tgir_plan": "IS5.json"
+    },
+    {
+      "compare": {
+        "agreeing": 1,
+        "column_map_rule": "name",
+        "compared": 1,
+        "contract": "CURRENT_ECQR_FRAGMENT",
+        "disagreeing": 0,
+        "reference_columns_not_projected": [],
+        "tie_ambiguous": 0,
+        "verdict": "agreeing"
+      },
+      "neo4j": {
+        "error": null,
+        "query_file": "external_workloads/ldbc/interactive_v1/cypher/queries/interactive-short-6.cypher",
+        "query_sha256": "1ac9125f6817402cd5df456b5201fc44187b646ffe6bf8497070db2abae84bce",
+        "result_digest": "9ea6b6452ceb6f8403bed2f7baaef58bfcefdd33dd0c6b7aa7f467f3ecc89dc4",
+        "rows": 1,
+        "wall_s": {
+          "t1": 0.01,
+          "t2": 0.011,
+          "t3": 0.009,
+          "warmup": 0.092
+        }
+      },
+      "template": "IS6",
+      "tgir": {
+        "bypassed": null,
+        "error": null,
+        "ms": 4271.604776382446,
+        "ms_all": [
+          4271.605,
+          4688.372,
+          4023.918
+        ],
+        "outcome": "COMPLETED",
+        "rows": 1
+      },
+      "tgir_plan": "IS6.json"
+    },
+    {
+      "compare": {
+        "agreeing": 1,
+        "column_map_rule": "name",
+        "compared": 1,
+        "contract": "REQUIRES_ORDERED_RESULT",
+        "disagreeing": 0,
+        "reference_columns_not_projected": [],
+        "tie_ambiguous": 0,
+        "verdict": "agreeing"
+      },
+      "neo4j": {
+        "error": null,
+        "query_file": "external_workloads/ldbc/interactive_v1/cypher/queries/interactive-short-7.cypher",
+        "query_sha256": "7ac858ff9f60f84dfe9833f1f8285cbd2b58cd4834d8eccb2d4beaf7f41656a7",
+        "result_digest": "be2154449591b9880e4265615116c81477b414a5a11b5f79dd70bf20d8d07543",
+        "rows": 1,
+        "wall_s": {
+          "t1": 0.011,
+          "t2": 0.011,
+          "t3": 0.011,
+          "warmup": 0.107
+        }
+      },
+      "template": "IS7",
+      "tgir": {
+        "bypassed": null,
+        "error": null,
+        "ms": 8010.096073150635,
+        "ms_all": [
+          8160.306,
+          8010.096,
+          7626.249
+        ],
+        "outcome": "COMPLETED",
+        "rows": 1
+      },
+      "tgir_plan": "IS7.json"
+    }
+  ]
+}

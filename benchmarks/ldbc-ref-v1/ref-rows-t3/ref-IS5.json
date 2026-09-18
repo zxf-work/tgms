@@ -1,0 +1,24 @@
+{
+ "columns": [
+  "personId",
+  "firstName",
+  "lastName"
+ ],
+ "commit": "0b7198dfdf7a",
+ "host": "xzgpu",
+ "params": {
+  "messageId": 2061585116626
+ },
+ "plan_id": "IS5",
+ "query_file": "external_workloads/ldbc/interactive_v1/cypher/queries/interactive-short-5.cypher",
+ "query_sha256": "28d461db14b3817cfe00140fbabc7f7af796a2661b8c2492d8cf950ffce40fcd",
+ "result_digest": "58ee24478dbbb81ff582b2610840e40f98ccba2ca63e3f1078effd85a32e3658",
+ "rows": [
+  {
+   "firstName": "Ajuma Nasenyana",
+   "lastName": "Ngoche",
+   "personId": 664
+  }
+ ],
+ "wall_s": 0.017
+}

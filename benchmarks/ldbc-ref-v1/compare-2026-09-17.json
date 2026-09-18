@@ -1,0 +1,2297 @@
+{
+ "manifest": {
+  "commit": "2ad86351b5e7",
+  "disagreement_causes": [
+   "MAPPING-RULE",
+   "ORDERING/TIE",
+   "TGIR-SEMANTIC-GAP",
+   "ENGINE-DEFECT",
+   "REFERENCE-SIDE-QUIRK"
+  ],
+  "host": "Xiaofeis-Mac-mini.local",
+  "plans": 24,
+  "ref_dir": "benchmarks/ldbc-ref-v1/ref-rows",
+  "tgms_dir": "benchmarks/ldbc-ref-v1/tgms-rows",
+  "utc": "2026-09-17T23:27:55Z"
+ },
+ "verdicts": [
+  {
+   "agreeing": 20,
+   "attempted": true,
+   "both_sides_completed": true,
+   "bound": true,
+   "causes": [],
+   "column_map_rule": "positional",
+   "compared": 20,
+   "contract": "REQUIRES_TOP_K",
+   "disagreeing": 0,
+   "note": null,
+   "plan_id": "BI3",
+   "ref_digest": "901043e9d2cdd2c432290205dc0adb70225b2906072bdd6726d00b225afeefbc",
+   "reference_columns_not_projected": [],
+   "tgms_digest": "59100e39f8c555d2aef40ce865e4a22239191351c62bb4f466816f53a4fbc202",
+   "tie_ambiguous": 0,
+   "verdict": "agreeing"
+  },
+  {
+   "agreeing": 0,
+   "attempted": true,
+   "both_sides_completed": true,
+   "bound": true,
+   "causes": [
+    {
+     "cause": "UNTRIAGED",
+     "detail": "tgms-only row: {'messageCount': 1195, 'personId': 4398046519825, 'personId__hierarchy': 'Person'}"
+    },
+    {
+     "cause": "UNTRIAGED",
+     "detail": "tgms-only row: {'messageCount': 948, 'personId': 6597069774064, 'personId__hierarchy': 'Person'}"
+    },
+    {
+     "cause": "UNTRIAGED",
+     "detail": "tgms-only row: {'messageCount': 835, 'personId': 15393162797132, 'personId__hierarchy': 'Person'}"
+    },
+    {
+     "cause": "UNTRIAGED",
+     "detail": "tgms-only row: {'messageCount': 738, 'personId': 2199023265231, 'personId__hierarchy': 'Person'}"
+    },
+    {
+     "cause": "UNTRIAGED",
+     "detail": "tgms-only row: {'messageCount': 419, 'personId': 24189255819865, 'personId__hierarchy': 'Person'}"
+    },
+    {
+     "cause": "UNTRIAGED",
+     "detail": "tgms-only row: {'messageCount': 402, 'personId': 2199023260815, 'personId__hierarchy': 'Person'}"
+    },
+    {
+     "cause": "UNTRIAGED",
+     "detail": "tgms-only row: {'messageCount': 382, 'personId': 10995116284819, 'personId__hierarchy': 'Person'}"
+    },
+    {
+     "cause": "UNTRIAGED",
+     "detail": "tgms-only row: {'messageCount': 345, 'personId': 2866, 'personId__hierarchy': 'Person'}"
+    },
+    {
+     "cause": "UNTRIAGED",
+     "detail": "tgms-only row: {'messageCount': 292, 'personId': 6597069770739, 'personId__hierarchy': 'Person'}"
+    },
+    {
+     "cause": "UNTRIAGED",
+     "detail": "tgms-only row: {'messageCount': 261, 'personId': 28587302329901, 'personId__hierarchy': 'Person'}"
+    },
+    {
+     "cause": "UNTRIAGED",
+     "detail": "tgms-only row: {'messageCount': 151, 'personId': 15393162799092, 'personId__hierarchy': 'Person'}"
+    },
+    {
+     "cause": "UNTRIAGED",
+     "detail": "tgms-only row: {'messageCount': 64, 'personId': 32985348840714, 'personId__hierarchy': 'Person'}"
+    },
+    {
+     "cause": "UNTRIAGED",
+     "detail": "tgms-only row: {'messageCount': 54, 'personId': 10995116279311, 'personId__hierarchy': 'Person'}"
+    },
+    {
+     "cause": "UNTRIAGED",
+     "detail": "tgms-only row: {'messageCount': 48, 'personId': 28587302327043, 'personId__hierarchy': 'Person'}"
+    },
+    {
+     "cause": "UNTRIAGED",
+     "detail": "tgms-only row: {'messageCount': 48, 'personId': 32985348841684, 'personId__hierarchy': 'Person'}"
+    },
+    {
+     "cause": "UNTRIAGED",
+     "detail": "tgms-only row: {'messageCount': 46, 'personId': 4398046518418, 'personId__hierarchy': 'Person'}"
+    },
+    {
+     "cause": "UNTRIAGED",
+     "detail": "tgms-only row: {'messageCount': 46, 'personId': 10995116285596, 'personId__hierarchy': 'Person'}"
+    },
+    {
+     "cause": "UNTRIAGED",
+     "detail": "tgms-only row: {'messageCount': 46, 'personId': 26388279068970, 'personId__hierarchy': 'Person'}"
+    },
+    {
+     "cause": "UNTRIAGED",
+     "detail": "tgms-only row: {'messageCount': 44, 'personId': 8796093028172, 'personId__hierarchy': 'Person'}"
+    },
+    {
+     "cause": "UNTRIAGED",
+     "detail": "tgms-only row: {'messageCount': 44, 'personId': 28587302328636, 'personId__hierarchy': 'Person'}"
+    },
+    {
+     "cause": "UNTRIAGED",
+     "detail": "tgms-only row: {'messageCount': 44, 'personId': 28587302329156, 'personId__hierarchy': 'Person'}"
+    },
+    {
+     "cause": "UNTRIAGED",
+     "detail": "tgms-only row: {'messageCount': 43, 'personId': 6597069775034, 'personId__hierarchy': 'Person'}"
+    },
+    {
+     "cause": "UNTRIAGED",
+     "detail": "tgms-only row: {'messageCount': 43, 'personId': 19791209304987, 'personId__hierarchy': 'Person'}"
+    },
+    {
+     "cause": "UNTRIAGED",
+     "detail": "tgms-only row: {'messageCount': 43, 'personId': 26388279071390, 'personId__hierarchy': 'Person'}"
+    },
+    {
+     "cause": "UNTRIAGED",
+     "detail": "tgms-only row: {'messageCount': 42, 'personId': 32985348843490, 'personId__hierarchy': 'Person'}"
+    },
+    {
+     "cause": "UNTRIAGED",
+     "detail": "tgms-only row: {'messageCount': 41, 'personId': 7937, 'personId__hierarchy': 'Person'}"
+    },
+    {
+     "cause": "UNTRIAGED",
+     "detail": "tgms-only row: {'messageCount': 41, 'personId': 2199023261398, 'personId__hierarchy': 'Person'}"
+    },
+    {
+     "cause": "UNTRIAGED",
+     "detail": "tgms-only row: {'messageCount': 41, 'personId': 26388279074760, 'personId__hierarchy': 'Person'}"
+    },
+    {
+     "cause": "UNTRIAGED",
+     "detail": "tgms-only row: {'messageCount': 40, 'personId': 6597069768174, 'personId__hierarchy': 'Person'}"
+    },
+    {
+     "cause": "UNTRIAGED",
+     "detail": "tgms-only row: {'messageCount': 38, 'personId': 24189255820986, 'personId__hierarchy': 'Person'}"
+    },
+    {
+     "cause": "UNTRIAGED",
+     "detail": "tgms-only row: {'messageCount': 37, 'personId': 13194139541713, 'personId__hierarchy': 'Person'}"
+    },
+    {
+     "cause": "UNTRIAGED",
+     "detail": "tgms-only row: {'messageCount': 37, 'personId': 17592186048064, 'personId__hierarchy': 'Person'}"
+    },
+    {
+     "cause": "UNTRIAGED",
+     "detail": "tgms-only row: {'messageCount': 37, 'personId': 21990232556039, 'personId__hierarchy': 'Person'}"
+    },
+    {
+     "cause": "UNTRIAGED",
+     "detail": "tgms-only row: {'messageCount': 37, 'personId': 21990232559111, 'personId__hierarchy': 'Person'}"
+    },
+    {
+     "cause": "UNTRIAGED",
+     "detail": "tgms-only row: {'messageCount': 37, 'personId': 30786325582458, 'personId__hierarchy': 'Person'}"
+    },
+    {
+     "cause": "UNTRIAGED",
+     "detail": "tgms-only row: {'messageCount': 36, 'personId': 4398046512214, 'personId__hierarchy': 'Person'}"
+    },
+    {
+     "cause": "UNTRIAGED",
+     "detail": "tgms-only row: {'messageCount': 36, 'personId': 6597069773793, 'personId__hierarchy': 'Person'}"
+    },
+    {
+     "cause": "UNTRIAGED",
+     "detail": "tgms-only row: {'messageCount': 36, 'personId': 15393162788923, 'personId__hierarchy': 'Person'}"
+    },
+    {
+     "cause": "UNTRIAGED",
+     "detail": "tgms-only row: {'messageCount': 36, 'personId': 17592186054998, 'personId__hierarchy': 'Person'}"
+    },
+    {
+     "cause": "UNTRIAGED",
+     "detail": "tgms-only row: {'messageCount': 36, 'personId': 32985348841739, 'personId__hierarchy': 'Person'}"
+    },
+    {
+     "cause": "UNTRIAGED",
+     "detail": "tgms-only row: {'messageCount': 35, 'personId': 2208, 'personId__hierarchy': 'Person'}"
+    },
+    {
+     "cause": "UNTRIAGED",
+     "detail": "tgms-only row: {'messageCount': 35, 'personId': 2199023263560, 'personId__hierarchy': 'Person'}"
+    },
+    {
+     "cause": "UNTRIAGED",
+     "detail": "tgms-only row: {'messageCount': 35, 'personId': 6597069768442, 'personId__hierarchy': 'Person'}"
+    },
+    {
+     "cause": "UNTRIAGED",
+     "detail": "tgms-only row: {'messageCount': 35, 'personId': 17592186051684, 'personId__hierarchy': 'Person'}"
+    },
+    {
+     "cause": "UNTRIAGED",
+     "detail": "tgms-only row: {'messageCount': 35, 'personId': 19791209309552, 'personId__hierarchy': 'Person'}"
+    },
+    {
+     "cause": "UNTRIAGED",
+     "detail": "tgms-only row: {'messageCount': 35, 'personId': 26388279073421, 'personId__hierarchy': 'Person'}"
+    },
+    {
+     "cause": "UNTRIAGED",
+     "detail": "tgms-only row: {'messageCount': 35, 'personId': 28587302327725, 'personId__hierarchy': 'Person'}"
+    },
+    {
+     "cause": "UNTRIAGED",
+     "detail": "tgms-only row: {'messageCount': 35, 'personId': 30786325580960, 'personId__hierarchy': 'Person'}"
+    },
+    {
+     "cause": "UNTRIAGED",
+     "detail": "tgms-only row: {'messageCount': 35, 'personId': 30786325581241, 'personId__hierarchy': 'Person'}"
+    },
+    {
+     "cause": "UNTRIAGED",
+     "detail": "tgms-only row: {'messageCount': 34, 'personId': 15393162798428, 'personId__hierarchy': 'Person'}"
+    },
+    {
+     "cause": "UNTRIAGED",
+     "detail": "tgms-only row: {'messageCount': 34, 'personId': 17592186051872, 'personId__hierarchy': 'Person'}"
+    },
+    {
+     "cause": "UNTRIAGED",
+     "detail": "tgms-only row: {'messageCount': 34, 'personId': 28587302329829, 'personId__hierarchy': 'Person'}"
+    },
+    {
+     "cause": "UNTRIAGED",
+     "detail": "tgms-only row: {'messageCount': 33, 'personId': 5452, 'personId__hierarchy': 'Person'}"
+    },
+    {
+     "cause": "UNTRIAGED",
+     "detail": "tgms-only row: {'messageCount': 33, 'personId': 2199023264344, 'personId__hierarchy': 'Person'}"
+    },
+    {
+     "cause": "UNTRIAGED",
+     "detail": "tgms-only row: {'messageCount': 33, 'personId': 8796093023211, 'personId__hierarchy': 'Person'}"
+    },
+    {
+     "cause": "UNTRIAGED",
+     "detail": "tgms-only row: {'messageCount': 33, 'personId': 13194139542917, 'personId__hierarchy': 'Person'}"
+    },
+    {
+     "cause": "UNTRIAGED",
+     "detail": "tgms-only row: {'messageCount': 33, 'personId': 19791209305377, 'personId__hierarchy': 'Person'}"
+    },
+    {
+     "cause": "UNTRIAGED",
+     "detail": "tgms-only row: {'messageCount': 33, 'personId': 19791209306643, 'personId__hierarchy': 'Person'}"
+    },
+    {
+     "cause": "UNTRIAGED",
+     "detail": "tgms-only row: {'messageCount': 33, 'personId': 35184372090954, 'personId__hierarchy': 'Person'}"
+    },
+    {
+     "cause": "UNTRIAGED",
+     "detail": "tgms-only row: {'messageCount': 32, 'personId': 6597069771115, 'personId__hierarchy': 'Person'}"
+    },
+    {
+     "cause": "UNTRIAGED",
+     "detail": "tgms-only row: {'messageCount': 32, 'personId': 6597069774644, 'personId__hierarchy': 'Person'}"
+    },
+    {
+     "cause": "UNTRIAGED",
+     "detail": "tgms-only row: {'messageCount': 32, 'personId': 6597069777069, 'personId__hierarchy': 'Person'}"
+    },
+    {
+     "cause": "UNTRIAGED",
+     "detail": "tgms-only row: {'messageCount': 32, 'personId': 13194139543607, 'personId__hierarchy': 'Person'}"
+    },
+    {
+     "cause": "UNTRIAGED",
+     "detail": "tgms-only row: {'messageCount': 32, 'personId': 21990232559935, 'personId__hierarchy': 'Person'}"
+    },
+    {
+     "cause": "UNTRIAGED",
+     "detail": "tgms-only row: {'messageCount': 32, 'personId': 21990232565605, 'personId__hierarchy': 'Person'}"
+    },
+    {
+     "cause": "UNTRIAGED",
+     "detail": "tgms-only row: {'messageCount': 32, 'personId': 26388279076723, 'personId__hierarchy': 'Person'}"
+    },
+    {
+     "cause": "UNTRIAGED",
+     "detail": "tgms-only row: {'messageCount': 32, 'personId': 28587302331910, 'personId__hierarchy': 'Person'}"
+    },
+    {
+     "cause": "UNTRIAGED",
+     "detail": "tgms-only row: {'messageCount': 32, 'personId': 30786325588075, 'personId__hierarchy': 'Person'}"
+    },
+    {
+     "cause": "UNTRIAGED",
+     "detail": "tgms-only row: {'messageCount': 32, 'personId': 32985348843444, 'personId__hierarchy': 'Person'}"
+    },
+    {
+     "cause": "UNTRIAGED",
+     "detail": "tgms-only row: {'messageCount': 31, 'personId': 10281, 'personId__hierarchy': 'Person'}"
+    },
+    {
+     "cause": "UNTRIAGED",
+     "detail": "tgms-only row: {'messageCount': 31, 'personId': 6597069768018, 'personId__hierarchy': 'Person'}"
+    },
+    {
+     "cause": "UNTRIAGED",
+     "detail": "tgms-only row: {'messageCount': 31, 'personId': 13194139534180, 'personId__hierarchy': 'Person'}"
+    },
+    {
+     "cause": "UNTRIAGED",
+     "detail": "tgms-only row: {'messageCount': 31, 'personId': 13194139539554, 'personId__hierarchy': 'Person'}"
+    },
+    {
+     "cause": "UNTRIAGED",
+     "detail": "tgms-only row: {'messageCount': 31, 'personId': 13194139543101, 'personId__hierarchy': 'Person'}"
+    },
+    {
+     "cause": "UNTRIAGED",
+     "detail": "tgms-only row: {'messageCount': 31, 'personId': 19791209302082, 'personId__hierarchy': 'Person'}"
+    },
+    {
+     "cause": "UNTRIAGED",
+     "detail": "tgms-only row: {'messageCount': 31, 'personId': 19791209304789, 'personId__hierarchy': 'Person'}"
+    },
+    {
+     "cause": "UNTRIAGED",
+     "detail": "tgms-only row: {'messageCount': 31, 'personId': 26388279071096, 'personId__hierarchy': 'Person'}"
+    },
+    {
+     "cause": "UNTRIAGED",
+     "detail": "tgms-only row: {'messageCount': 31, 'personId': 30786325582257, 'personId__hierarchy': 'Person'}"
+    },
+    {
+     "cause": "UNTRIAGED",
+     "detail": "tgms-only row: {'messageCount': 30, 'personId': 2435, 'personId__hierarchy': 'Person'}"
+    },
+    {
+     "cause": "UNTRIAGED",
+     "detail": "tgms-only row: {'messageCount': 30, 'personId': 2199023261346, 'personId__hierarchy': 'Person'}"
+    },
+    {
+     "cause": "UNTRIAGED",
+     "detail": "tgms-only row: {'messageCount': 30, 'personId': 4398046517801, 'personId__hierarchy': 'Person'}"
+    },
+    {
+     "cause": "UNTRIAGED",
+     "detail": "tgms-only row: {'messageCount': 30, 'personId': 8796093029212, 'personId__hierarchy': 'Person'}"
+    },
+    {
+     "cause": "UNTRIAGED",
+     "detail": "tgms-only row: {'messageCount': 30, 'personId': 15393162789525, 'personId__hierarchy': 'Person'}"
+    },
+    {
+     "cause": "UNTRIAGED",
+     "detail": "tgms-only row: {'messageCount': 30, 'personId': 21990232561857, 'personId__hierarchy': 'Person'}"
+    },
+    {
+     "cause": "UNTRIAGED",
+     "detail": "tgms-only row: {'messageCount': 30, 'personId': 26388279076501, 'personId__hierarchy': 'Person'}"
+    },
+    {
+     "cause": "UNTRIAGED",
+     "detail": "tgms-only row: {'messageCount': 30, 'personId': 28587302327643, 'personId__hierarchy': 'Person'}"
+    },
+    {
+     "cause": "UNTRIAGED",
+     "detail": "tgms-only row: {'messageCount': 30, 'personId': 30786325579031, 'personId__hierarchy': 'Person'}"
+    },
+    {
+     "cause": "UNTRIAGED",
+     "detail": "tgms-only row: {'messageCount': 30, 'personId': 30786325580998, 'personId__hierarchy': 'Person'}"
+    },
+    {
+     "cause": "UNTRIAGED",
+     "detail": "tgms-only row: {'messageCount': 30, 'personId': 30786325581320, 'personId__hierarchy': 'Person'}"
+    },
+    {
+     "cause": "UNTRIAGED",
+     "detail": "tgms-only row: {'messageCount': 30, 'personId': 30786325583499, 'personId__hierarchy': 'Person'}"
+    },
+    {
+     "cause": "UNTRIAGED",
+     "detail": "tgms-only row: {'messageCount': 30, 'personId': 35184372094081, 'personId__hierarchy': 'Person'}"
+    },
+    {
+     "cause": "UNTRIAGED",
+     "detail": "tgms-only row: {'messageCount': 29, 'personId': 3903, 'personId__hierarchy': 'Person'}"
+    },
+    {
+     "cause": "UNTRIAGED",
+     "detail": "tgms-only row: {'messageCount': 29, 'personId': 2199023258884, 'personId__hierarchy': 'Person'}"
+    },
+    {
+     "cause": "UNTRIAGED",
+     "detail": "tgms-only row: {'messageCount': 29, 'personId': 6597069767028, 'personId__hierarchy': 'Person'}"
+    },
+    {
+     "cause": "UNTRIAGED",
+     "detail": "tgms-only row: {'messageCount': 29, 'personId': 6597069772286, 'personId__hierarchy': 'Person'}"
+    },
+    {
+     "cause": "UNTRIAGED",
+     "detail": "tgms-only row: {'messageCount': 29, 'personId': 6597069775770, 'personId__hierarchy': 'Person'}"
+    },
+    {
+     "cause": "UNTRIAGED",
+     "detail": "tgms-only row: {'messageCount': 29, 'personId': 8796093032553, 'personId__hierarchy': 'Person'}"
+    },
+    {
+     "cause": "UNTRIAGED",
+     "detail": "tgms-only row: {'messageCount': 29, 'personId': 10995116282430, 'personId__hierarchy': 'Person'}"
+    },
+    {
+     "cause": "UNTRIAGED",
+     "detail": "tgms-only row: {'messageCount': 29, 'personId': 10995116282865, 'personId__hierarchy': 'Person'}"
+    },
+    {
+     "cause": "UNTRIAGED",
+     "detail": "tgms-only row: {'messageCount': 29, 'personId': 10995116286396, 'personId__hierarchy': 'Person'}"
+    },
+    {
+     "cause": "REFERENCE-COLUMN-NOT-PROJECTED",
+     "detail": "the reference projects personFirstName, personLastName, personCreationDate; the TGIR plan does not, so the rows above were compared on a strict subset of the query's answer"
+    }
+   ],
+   "column_map_rule": "name-partial",
+   "compared": 100,
+   "contract": "REQUIRES_TOP_K",
+   "disagreeing": 100,
+   "note": null,
+   "plan_id": "BI4",
+   "ref_digest": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+   "reference_columns_not_projected": [
+    "personFirstName",
+    "personLastName",
+    "personCreationDate"
+   ],
+   "tgms_digest": "104b7d8a282a8781a477739ac1c14bccaaa16ee5b9f2efdde95157daf3bc24a3",
+   "tie_ambiguous": 0,
+   "verdict": "reference-column-not-projected"
+  },
+  {
+   "agreeing": 0,
+   "attempted": false,
+   "both_sides_completed": false,
+   "bound": false,
+   "causes": [],
+   "compared": 0,
+   "contract": null,
+   "disagreeing": 0,
+   "note": "no comparison: missing TGMS-side export",
+   "plan_id": "BI6.v2",
+   "ref_digest": "919ee3c790e529b6981371dfb3272a6a20b6a14081f10c15ae109e0036e24711",
+   "tgms_digest": null,
+   "tie_ambiguous": 0
+  },
+  {
+   "agreeing": 100,
+   "attempted": true,
+   "both_sides_completed": true,
+   "bound": true,
+   "causes": [],
+   "column_map_rule": "positional",
+   "compared": 100,
+   "contract": "REQUIRES_TOP_K",
+   "disagreeing": 0,
+   "note": null,
+   "plan_id": "BI7",
+   "ref_digest": "90eb1bdf2ada9e8d803949b2a5c973861b5aa4fe19e0e9117bf8475f82e5922e",
+   "reference_columns_not_projected": [],
+   "tgms_digest": "5ab2e9734b5f1e93fc3387368d7b02ad54988a120a0cd96e56ff07651100e5b5",
+   "tie_ambiguous": 0,
+   "verdict": "agreeing"
+  },
+  {
+   "agreeing": 0,
+   "attempted": true,
+   "both_sides_completed": true,
+   "bound": true,
+   "causes": [
+    {
+     "cause": "UNTRIAGED",
+     "detail": "tgms-only row: {'messageCount': 2001, 'personFirstName': 'Robert', 'personId': 8796093032299, 'personId__hierarchy': 'Person', 'personLastName': 'Brown', 'threadCount': 144}"
+    },
+    {
+     "cause": "UNTRIAGED",
+     "detail": "tgms-only row: {'messageCount': 1386, 'personFirstName': 'Andrei', 'personId': 26388279073672, 'personId__hierarchy': 'Person', 'personLastName': 'Condariuc', 'threadCount': 187}"
+    },
+    {
+     "cause": "UNTRIAGED",
+     "detail": "tgms-only row: {'messageCount': 1258, 'personFirstName': 'Dan', 'personId': 24189255815615, 'personId__hierarchy': 'Person', 'personLastName': 'Andersson', 'threadCount': 127}"
+    },
+    {
+     "cause": "UNTRIAGED",
+     "detail": "tgms-only row: {'messageCount': 1145, 'personFirstName': 'Mark', 'personId': 10995116284458, 'personId__hierarchy': 'Person', 'personLastName': 'Coetzee', 'threadCount': 97}"
+    },
+    {
+     "cause": "UNTRIAGED",
+     "detail": "tgms-only row: {'messageCount': 1091, 'personFirstName': 'Chris', 'personId': 24189255811663, 'personId__hierarchy': 'Person', 'personLastName': 'Hall', 'threadCount': 198}"
+    },
+    {
+     "cause": "UNTRIAGED",
+     "detail": "tgms-only row: {'messageCount': 1085, 'personFirstName': 'Samir', 'personId': 28587302329167, 'personId__hierarchy': 'Person', 'personLastName': 'Al-Fayez', 'threadCount': 272}"
+    },
+    {
+     "cause": "UNTRIAGED",
+     "detail": "tgms-only row: {'messageCount': 1057, 'personFirstName': 'Ayesha', 'personId': 6597069774064, 'personId__hierarchy': 'Person', 'personLastName': 'Ahmed', 'threadCount': 130}"
+    },
+    {
+     "cause": "UNTRIAGED",
+     "detail": "tgms-only row: {'messageCount': 940, 'personFirstName': 'Shweta', 'personId': 15393162797132, 'personId__hierarchy': 'Person', 'personLastName': 'Kapoor', 'threadCount': 115}"
+    },
+    {
+     "cause": "UNTRIAGED",
+     "detail": "tgms-only row: {'messageCount': 924, 'personFirstName': 'Jorge', 'personId': 30786325579605, 'personId__hierarchy': 'Person', 'personLastName': 'Gonzalez', 'threadCount': 75}"
+    },
+    {
+     "cause": "UNTRIAGED",
+     "detail": "tgms-only row: {'messageCount': 806, 'personFirstName': 'Ali', 'personId': 10995116284554, 'personId__hierarchy': 'Person', 'personLastName': 'Lo', 'threadCount': 69}"
+    },
+    {
+     "cause": "UNTRIAGED",
+     "detail": "tgms-only row: {'messageCount': 804, 'personFirstName': 'Alexander', 'personId': 28587302323380, 'personId__hierarchy': 'Person', 'personLastName': 'Hleb', 'threadCount': 103}"
+    },
+    {
+     "cause": "UNTRIAGED",
+     "detail": "tgms-only row: {'messageCount': 749, 'personFirstName': 'Sam', 'personId': 28587302326380, 'personId__hierarchy': 'Person', 'personLastName': 'Carter', 'threadCount': 80}"
+    },
+    {
+     "cause": "UNTRIAGED",
+     "detail": "tgms-only row: {'messageCount': 723, 'personFirstName': 'Ahmad Rafiq', 'personId': 4398046519825, 'personId__hierarchy': 'Person', 'personLastName': 'Akbar', 'threadCount': 104}"
+    },
+    {
+     "cause": "UNTRIAGED",
+     "detail": "tgms-only row: {'messageCount': 709, 'personFirstName': 'Monja', 'personId': 8796093030850, 'personId__hierarchy': 'Person', 'personLastName': 'Tsiranana', 'threadCount': 98}"
+    },
+    {
+     "cause": "UNTRIAGED",
+     "detail": "tgms-only row: {'messageCount': 708, 'personFirstName': 'Francisco', 'personId': 15393162792602, 'personId__hierarchy': 'Person', 'personLastName': 'Gonzalez', 'threadCount': 92}"
+    },
+    {
+     "cause": "UNTRIAGED",
+     "detail": "tgms-only row: {'messageCount': 701, 'personFirstName': 'Rudolf', 'personId': 17592186045301, 'personId__hierarchy': 'Person', 'personLastName': 'Engel', 'threadCount': 53}"
+    },
+    {
+     "cause": "UNTRIAGED",
+     "detail": "tgms-only row: {'messageCount': 700, 'personFirstName': 'Benedict', 'personId': 13194139535893, 'personId__hierarchy': 'Person', 'personLastName': 'Wang', 'threadCount': 55}"
+    },
+    {
+     "cause": "UNTRIAGED",
+     "detail": "tgms-only row: {'messageCount': 697, 'personFirstName': 'Bobby', 'personId': 19791209306158, 'personId__hierarchy': 'Person', 'personLastName': 'Garcia', 'threadCount': 61}"
+    },
+    {
+     "cause": "UNTRIAGED",
+     "detail": "tgms-only row: {'messageCount': 695, 'personFirstName': 'Bingbing', 'personId': 32985348835002, 'personId__hierarchy': 'Person', 'personLastName': 'Liu', 'threadCount': 88}"
+    },
+    {
+     "cause": "UNTRIAGED",
+     "detail": "tgms-only row: {'messageCount': 684, 'personFirstName': 'Peng', 'personId': 19791209304449, 'personId__hierarchy': 'Person', 'personLastName': 'Li', 'threadCount': 46}"
+    },
+    {
+     "cause": "UNTRIAGED",
+     "detail": "tgms-only row: {'messageCount': 658, 'personFirstName': 'Peter', 'personId': 2199023265458, 'personId__hierarchy': 'Person', 'personLastName': 'Hall', 'threadCount': 75}"
+    },
+    {
+     "cause": "UNTRIAGED",
+     "detail": "tgms-only row: {'messageCount': 629, 'personFirstName': 'Baruch', 'personId': 21990232559659, 'personId__hierarchy': 'Person', 'personLastName': 'Dego', 'threadCount': 109}"
+    },
+    {
+     "cause": "UNTRIAGED",
+     "detail": "tgms-only row: {'messageCount': 626, 'personFirstName': 'K.', 'personId': 8796093030826, 'personId__hierarchy': 'Person', 'personLastName': 'Sharma', 'threadCount': 92}"
+    },
+    {
+     "cause": "UNTRIAGED",
+     "detail": "tgms-only row: {'messageCount': 623, 'personFirstName': 'George', 'personId': 26388279070147, 'personId__hierarchy': 'Person', 'personLastName': 'Nagy', 'threadCount': 74}"
+    },
+    {
+     "cause": "UNTRIAGED",
+     "detail": "tgms-only row: {'messageCount': 602, 'personFirstName': 'Jun', 'personId': 24189255814889, 'personId__hierarchy': 'Person', 'personLastName': 'Zhang', 'threadCount': 79}"
+    },
+    {
+     "cause": "UNTRIAGED",
+     "detail": "tgms-only row: {'messageCount': 569, 'personFirstName': 'Sombat', 'personId': 24189255819865, 'personId__hierarchy': 'Person', 'personLastName': 'Amarttayakul', 'threadCount': 74}"
+    },
+    {
+     "cause": "UNTRIAGED",
+     "detail": "tgms-only row: {'messageCount': 559, 'personFirstName': 'James', 'personId': 8478, 'personId__hierarchy': 'Person', 'personLastName': 'Moore', 'threadCount': 44}"
+    },
+    {
+     "cause": "UNTRIAGED",
+     "detail": "tgms-only row: {'messageCount': 556, 'personFirstName': 'Shweta', 'personId': 28587302329901, 'personId__hierarchy': 'Person', 'personLastName': 'Khan', 'threadCount': 63}"
+    },
+    {
+     "cause": "UNTRIAGED",
+     "detail": "tgms-only row: {'messageCount': 536, 'personFirstName': 'Avraham', 'personId': 21990232563252, 'personId__hierarchy': 'Person', 'personLastName': 'Alhouthi', 'threadCount': 102}"
+    },
+    {
+     "cause": "UNTRIAGED",
+     "detail": "tgms-only row: {'messageCount': 529, 'personFirstName': 'Anh', 'personId': 24189255812073, 'personId__hierarchy': 'Person', 'personLastName': 'Pham', 'threadCount': 40}"
+    },
+    {
+     "cause": "UNTRIAGED",
+     "detail": "tgms-only row: {'messageCount': 507, 'personFirstName': 'Abdul Rahman', 'personId': 2199023258646, 'personId__hierarchy': 'Person', 'personLastName': 'Budjana', 'threadCount': 76}"
+    },
+    {
+     "cause": "UNTRIAGED",
+     "detail": "tgms-only row: {'messageCount': 496, 'personFirstName': 'K.', 'personId': 8796093023472, 'personId__hierarchy': 'Person', 'personLastName': 'Bose', 'threadCount': 81}"
+    },
+    {
+     "cause": "UNTRIAGED",
+     "detail": "tgms-only row: {'messageCount': 480, 'personFirstName': 'Edward', 'personId': 24189255812627, 'personId__hierarchy': 'Person', 'personLastName': 'Ouma', 'threadCount': 43}"
+    },
+    {
+     "cause": "UNTRIAGED",
+     "detail": "tgms-only row: {'messageCount': 473, 'personFirstName': 'Sam', 'personId': 19791209308287, 'personId__hierarchy': 'Person', 'personLastName': 'Huang', 'threadCount': 33}"
+    },
+    {
+     "cause": "UNTRIAGED",
+     "detail": "tgms-only row: {'messageCount': 472, 'personFirstName': 'Helen', 'personId': 26388279066798, 'personId__hierarchy': 'Person', 'personLastName': 'Carr', 'threadCount': 63}"
+    },
+    {
+     "cause": "UNTRIAGED",
+     "detail": "tgms-only row: {'messageCount': 464, 'personFirstName': 'Maria', 'personId': 10995116283619, 'personId__hierarchy': 'Person', 'personLastName': 'Kibona', 'threadCount': 99}"
+    },
+    {
+     "cause": "UNTRIAGED",
+     "detail": "tgms-only row: {'messageCount': 463, 'personFirstName': 'Abdulwahab', 'personId': 24189255814904, 'personId__hierarchy': 'Person', 'personLastName': 'Gillett', 'threadCount': 57}"
+    },
+    {
+     "cause": "UNTRIAGED",
+     "detail": "tgms-only row: {'messageCount': 455, 'personFirstName': 'Alfred', 'personId': 15393162789959, 'personId__hierarchy': 'Person', 'personLastName': 'Hoffmann', 'threadCount': 82}"
+    },
+    {
+     "cause": "UNTRIAGED",
+     "detail": "tgms-only row: {'messageCount': 450, 'personFirstName': 'Robert', 'personId': 15393162795695, 'personId__hierarchy': 'Person', 'personLastName': 'Bratianu', 'threadCount': 33}"
+    },
+    {
+     "cause": "UNTRIAGED",
+     "detail": "tgms-only row: {'messageCount': 447, 'personFirstName': 'John', 'personId': 28587302326092, 'personId__hierarchy': 'Person', 'personLastName': 'Sen', 'threadCount': 49}"
+    },
+    {
+     "cause": "UNTRIAGED",
+     "detail": "tgms-only row: {'messageCount': 442, 'personFirstName': 'Piotr', 'personId': 2199023263408, 'personId__hierarchy': 'Person', 'personLastName': 'Dobrowolski', 'threadCount': 60}"
+    },
+    {
+     "cause": "UNTRIAGED",
+     "detail": "tgms-only row: {'messageCount': 442, 'personFirstName': 'Aaron', 'personId': 15393162791403, 'personId__hierarchy': 'Person', 'personLastName': 'Cruz', 'threadCount': 73}"
+    },
+    {
+     "cause": "UNTRIAGED",
+     "detail": "tgms-only row: {'messageCount': 441, 'personFirstName': 'Rajiv', 'personId': 26388279073393, 'personId__hierarchy': 'Person', 'personLastName': 'Singh', 'threadCount': 37}"
+    },
+    {
+     "cause": "UNTRIAGED",
+     "detail": "tgms-only row: {'messageCount': 441, 'personFirstName': 'Adrian', 'personId': 26388279074683, 'personId__hierarchy': 'Person', 'personLastName': 'Popescu', 'threadCount': 59}"
+    },
+    {
+     "cause": "UNTRIAGED",
+     "detail": "tgms-only row: {'messageCount': 435, 'personFirstName': 'Eli', 'personId': 8796093032304, 'personId__hierarchy': 'Person', 'personLastName': 'Chihab', 'threadCount': 64}"
+    },
+    {
+     "cause": "UNTRIAGED",
+     "detail": "tgms-only row: {'messageCount': 427, 'personFirstName': 'Yang', 'personId': 32985348843490, 'personId__hierarchy': 'Person', 'personLastName': 'Li', 'threadCount': 39}"
+    },
+    {
+     "cause": "UNTRIAGED",
+     "detail": "tgms-only row: {'messageCount': 420, 'personFirstName': 'Howard', 'personId': 21990232563874, 'personId__hierarchy': 'Person', 'personLastName': 'Ha', 'threadCount': 29}"
+    },
+    {
+     "cause": "UNTRIAGED",
+     "detail": "tgms-only row: {'messageCount': 419, 'personFirstName': 'Huu', 'personId': 19791209308584, 'personId__hierarchy': 'Person', 'personLastName': 'Ho', 'threadCount': 30}"
+    },
+    {
+     "cause": "UNTRIAGED",
+     "detail": "tgms-only row: {'messageCount': 417, 'personFirstName': 'Manuel', 'personId': 17592186054998, 'personId__hierarchy': 'Person', 'personLastName': 'Cosio', 'threadCount': 45}"
+    },
+    {
+     "cause": "UNTRIAGED",
+     "detail": "tgms-only row: {'messageCount': 413, 'personFirstName': 'Joe', 'personId': 10995116283889, 'personId__hierarchy': 'Person', 'personLastName': 'Wong', 'threadCount': 28}"
+    },
+    {
+     "cause": "UNTRIAGED",
+     "detail": "tgms-only row: {'messageCount': 407, 'personFirstName': 'Jun', 'personId': 28587302327742, 'personId__hierarchy': 'Person', 'personLastName': 'Li', 'threadCount': 33}"
+    },
+    {
+     "cause": "UNTRIAGED",
+     "detail": "tgms-only row: {'messageCount': 398, 'personFirstName': 'Jose', 'personId': 24189255820411, 'personId__hierarchy': 'Person', 'personLastName': 'Sotto', 'threadCount': 33}"
+    },
+    {
+     "cause": "UNTRIAGED",
+     "detail": "tgms-only row: {'messageCount': 397, 'personFirstName': 'Joseph', 'personId': 8796093023326, 'personId__hierarchy': 'Person', 'personLastName': 'Sharma', 'threadCount': 29}"
+    },
+    {
+     "cause": "UNTRIAGED",
+     "detail": "tgms-only row: {'messageCount': 395, 'personFirstName': 'Chen', 'personId': 2199023260815, 'personId__hierarchy': 'Person', 'personLastName': 'Li', 'threadCount': 36}"
+    },
+    {
+     "cause": "UNTRIAGED",
+     "detail": "tgms-only row: {'messageCount': 393, 'personFirstName': 'Babar', 'personId': 17592186052709, 'personId__hierarchy': 'Person', 'personLastName': 'Hussain', 'threadCount': 80}"
+    },
+    {
+     "cause": "UNTRIAGED",
+     "detail": "tgms-only row: {'messageCount': 390, 'personFirstName': 'Fatmir', 'personId': 24189255811542, 'personId__hierarchy': 'Person', 'personLastName': 'Mojsov', 'threadCount': 74}"
+    },
+    {
+     "cause": "UNTRIAGED",
+     "detail": "tgms-only row: {'messageCount': 385, 'personFirstName': 'Abhishek', 'personId': 21990232561742, 'personId__hierarchy': 'Person', 'personLastName': 'Roy', 'threadCount': 60}"
+    },
+    {
+     "cause": "UNTRIAGED",
+     "detail": "tgms-only row: {'messageCount': 377, 'personFirstName': 'Natalia Barbu', 'personId': 17592186049517, 'personId__hierarchy': 'Person', 'personLastName': 'Goma', 'threadCount': 118}"
+    },
+    {
+     "cause": "UNTRIAGED",
+     "detail": "tgms-only row: {'messageCount': 373, 'personFirstName': 'Yang', 'personId': 17592186052516, 'personId__hierarchy': 'Person', 'personLastName': 'Yang', 'threadCount': 26}"
+    },
+    {
+     "cause": "UNTRIAGED",
+     "detail": "tgms-only row: {'messageCount': 372, 'personFirstName': 'Hoang Yen', 'personId': 21990232557614, 'personId__hierarchy': 'Person', 'personLastName': 'Nguyen', 'threadCount': 69}"
+    },
+    {
+     "cause": "UNTRIAGED",
+     "detail": "tgms-only row: {'messageCount': 369, 'personFirstName': 'Adriaan', 'personId': 19791209309084, 'personId__hierarchy': 'Person', 'personLastName': 'Dijk', 'threadCount': 50}"
+    },
+    {
+     "cause": "UNTRIAGED",
+     "detail": "tgms-only row: {'messageCount': 368, 'personFirstName': 'Mohamed', 'personId': 28587302326226, 'personId__hierarchy': 'Person', 'personLastName': 'Achiou', 'threadCount': 74}"
+    },
+    {
+     "cause": "UNTRIAGED",
+     "detail": "tgms-only row: {'messageCount': 365, 'personFirstName': 'Emperor of Brazil', 'personId': 2199023256462, 'personId__hierarchy': 'Person', 'personLastName': 'Dom Pedro II', 'threadCount': 70}"
+    },
+    {
+     "cause": "UNTRIAGED",
+     "detail": "tgms-only row: {'messageCount': 363, 'personFirstName': 'Carlos', 'personId': 35184372092691, 'personId__hierarchy': 'Person', 'personLastName': 'Escobar', 'threadCount': 42}"
+    },
+    {
+     "cause": "UNTRIAGED",
+     "detail": "tgms-only row: {'messageCount': 355, 'personFirstName': 'Fritz', 'personId': 15393162799448, 'personId__hierarchy': 'Person', 'personLastName': 'Muller', 'threadCount': 56}"
+    },
+    {
+     "cause": "UNTRIAGED",
+     "detail": "tgms-only row: {'messageCount': 338, 'personFirstName': 'Abdul Haris', 'personId': 6597069770739, 'personId__hierarchy': 'Person', 'personLastName': 'Gallagher', 'threadCount': 30}"
+    },
+    {
+     "cause": "UNTRIAGED",
+     "detail": "tgms-only row: {'messageCount': 338, 'personFirstName': 'Kunal', 'personId': 10995116281358, 'personId__hierarchy': 'Person', 'personLastName': 'Kumar', 'threadCount': 23}"
+    },
+    {
+     "cause": "UNTRIAGED",
+     "detail": "tgms-only row: {'messageCount': 337, 'personFirstName': 'Ning', 'personId': 17592186050645, 'personId__hierarchy': 'Person', 'personLastName': 'Zhang', 'threadCount': 80}"
+    },
+    {
+     "cause": "UNTRIAGED",
+     "detail": "tgms-only row: {'messageCount': 336, 'personFirstName': 'Andrea', 'personId': 17592186046498, 'personId__hierarchy': 'Person', 'personLastName': 'Blanco', 'threadCount': 144}"
+    },
+    {
+     "cause": "UNTRIAGED",
+     "detail": "tgms-only row: {'messageCount': 332, 'personFirstName': 'Manuel', 'personId': 19791209302061, 'personId__hierarchy': 'Person', 'personLastName': 'Martins', 'threadCount': 81}"
+    },
+    {
+     "cause": "UNTRIAGED",
+     "detail": "tgms-only row: {'messageCount': 328, 'personFirstName': 'Rahul', 'personId': 10995116279521, 'personId__hierarchy': 'Person', 'personLastName': 'Nair', 'threadCount': 54}"
+    },
+    {
+     "cause": "UNTRIAGED",
+     "detail": "tgms-only row: {'messageCount': 322, 'personFirstName': 'Alexander G.', 'personId': 19791209302125, 'personId__hierarchy': 'Person', 'personLastName': 'Arif', 'threadCount': 87}"
+    },
+    {
+     "cause": "UNTRIAGED",
+     "detail": "tgms-only row: {'messageCount': 321, 'personFirstName': 'Koji', 'personId': 10995116285747, 'personId__hierarchy': 'Person', 'personLastName': 'Tanaka', 'threadCount': 27}"
+    },
+    {
+     "cause": "UNTRIAGED",
+     "detail": "tgms-only row: {'messageCount': 318, 'personFirstName': 'Zhang', 'personId': 4398046512960, 'personId__hierarchy': 'Person', 'personLastName': 'Chen', 'threadCount': 116}"
+    },
+    {
+     "cause": "UNTRIAGED",
+     "detail": "tgms-only row: {'messageCount': 318, 'personFirstName': 'Carlos', 'personId': 28587302326788, 'personId__hierarchy': 'Person', 'personLastName': 'Rodriguez', 'threadCount': 66}"
+    },
+    {
+     "cause": "UNTRIAGED",
+     "detail": "tgms-only row: {'messageCount': 314, 'personFirstName': 'Isabel', 'personId': 32985348835600, 'personId__hierarchy': 'Person', 'personLastName': 'Diaz', 'threadCount': 48}"
+    },
+    {
+     "cause": "UNTRIAGED",
+     "detail": "tgms-only row: {'messageCount': 310, 'personFirstName': 'Grigore', 'personId': 6597069767028, 'personId__hierarchy': 'Person', 'personLastName': 'Bologan', 'threadCount': 68}"
+    },
+    {
+     "cause": "UNTRIAGED",
+     "detail": "tgms-only row: {'messageCount': 307, 'personFirstName': 'Ivan Ignatyevich', 'personId': 17592186049899, 'personId__hierarchy': 'Person', 'personLastName': 'Aleksandrov', 'threadCount': 44}"
+    },
+    {
+     "cause": "UNTRIAGED",
+     "detail": "tgms-only row: {'messageCount': 305, 'personFirstName': 'Abderrahmane', 'personId': 26388279072682, 'personId__hierarchy': 'Person', 'personLastName': 'Ferrer', 'threadCount': 96}"
+    },
+    {
+     "cause": "UNTRIAGED",
+     "detail": "tgms-only row: {'messageCount': 304, 'personFirstName': 'Agustiar', 'personId': 15393162796126, 'personId__hierarchy': 'Person', 'personLastName': 'Irama', 'threadCount': 28}"
+    },
+    {
+     "cause": "UNTRIAGED",
+     "detail": "tgms-only row: {'messageCount': 304, 'personFirstName': 'Aditya', 'personId': 26388279067483, 'personId__hierarchy': 'Person', 'personLastName': 'Khan', 'threadCount': 26}"
+    },
+    {
+     "cause": "UNTRIAGED",
+     "detail": "tgms-only row: {'messageCount': 302, 'personFirstName': 'Bruna', 'personId': 8796093023499, 'personId__hierarchy': 'Person', 'personLastName': 'Costa', 'threadCount': 94}"
+    },
+    {
+     "cause": "UNTRIAGED",
+     "detail": "tgms-only row: {'messageCount': 301, 'personFirstName': 'Wei', 'personId': 17592186047024, 'personId__hierarchy': 'Person', 'personLastName': 'Zhu', 'threadCount': 65}"
+    },
+    {
+     "cause": "UNTRIAGED",
+     "detail": "tgms-only row: {'messageCount': 299, 'personFirstName': 'Rafael', 'personId': 2783, 'personId__hierarchy': 'Person', 'personLastName': 'Alonso', 'threadCount': 71}"
+    },
+    {
+     "cause": "UNTRIAGED",
+     "detail": "tgms-only row: {'messageCount': 298, 'personFirstName': 'Bing', 'personId': 2199023260487, 'personId__hierarchy': 'Person', 'personLastName': 'Yang', 'threadCount': 52}"
+    },
+    {
+     "cause": "UNTRIAGED",
+     "detail": "tgms-only row: {'messageCount': 298, 'personFirstName': 'Charles', 'personId': 4398046520667, 'personId__hierarchy': 'Person', 'personLastName': 'Bona', 'threadCount': 52}"
+    },
+    {
+     "cause": "UNTRIAGED",
+     "detail": "tgms-only row: {'messageCount': 291, 'personFirstName': 'Koji', 'personId': 26388279068136, 'personId__hierarchy': 'Person', 'personLastName': 'Kato', 'threadCount': 20}"
+    },
+    {
+     "cause": "UNTRIAGED",
+     "detail": "tgms-only row: {'messageCount': 290, 'personFirstName': 'Benhalima', 'personId': 19791209300230, 'personId__hierarchy': 'Person', 'personLastName': 'Ferrer', 'threadCount': 44}"
+    },
+    {
+     "cause": "UNTRIAGED",
+     "detail": "tgms-only row: {'messageCount': 287, 'personFirstName': 'K.', 'personId': 15393162789362, 'personId__hierarchy': 'Person', 'personLastName': 'Kumar', 'threadCount': 24}"
+    },
+    {
+     "cause": "UNTRIAGED",
+     "detail": "tgms-only row: {'messageCount': 287, 'personFirstName': 'Emperor of Brazil', 'personId': 19791209306276, 'personId__hierarchy': 'Person', 'personLastName': 'Alves', 'threadCount': 62}"
+    },
+    {
+     "cause": "UNTRIAGED",
+     "detail": "tgms-only row: {'messageCount': 283, 'personFirstName': 'K.', 'personId': 24189255815184, 'personId__hierarchy': 'Person', 'personLastName': 'Kumar', 'threadCount': 31}"
+    },
+    {
+     "cause": "UNTRIAGED",
+     "detail": "tgms-only row: {'messageCount': 282, 'personFirstName': 'Ashok', 'personId': 17592186051871, 'personId__hierarchy': 'Person', 'personLastName': 'Sharma', 'threadCount': 56}"
+    },
+    {
+     "cause": "UNTRIAGED",
+     "detail": "tgms-only row: {'messageCount': 280, 'personFirstName': 'Pablo', 'personId': 17592186050809, 'personId__hierarchy': 'Person', 'personLastName': 'Cosio', 'threadCount': 29}"
+    },
+    {
+     "cause": "UNTRIAGED",
+     "detail": "tgms-only row: {'messageCount': 279, 'personFirstName': 'Fritz', 'personId': 17592186054199, 'personId__hierarchy': 'Person', 'personLastName': 'Fischer', 'threadCount': 63}"
+    },
+    {
+     "cause": "UNTRIAGED",
+     "detail": "tgms-only row: {'messageCount': 277, 'personFirstName': 'Martin', 'personId': 19791209305198, 'personId__hierarchy': 'Person', 'personLastName': 'Muller', 'threadCount': 39}"
+    },
+    {
+     "cause": "UNTRIAGED",
+     "detail": "tgms-only row: {'messageCount': 271, 'personFirstName': 'Jose', 'personId': 19791209301504, 'personId__hierarchy': 'Person', 'personLastName': 'Costa', 'threadCount': 18}"
+    },
+    {
+     "cause": "UNTRIAGED",
+     "detail": "tgms-only row: {'messageCount': 270, 'personFirstName': 'Wei', 'personId': 2199023265231, 'personId__hierarchy': 'Person', 'personLastName': 'Wang', 'threadCount': 84}"
+    },
+    {
+     "cause": "UNTRIAGED",
+     "detail": "tgms-only row: {'messageCount': 268, 'personFirstName': 'Jie', 'personId': 8796093028247, 'personId__hierarchy': 'Person', 'personLastName': 'Wang', 'threadCount': 19}"
+    },
+    {
+     "cause": "UNTRIAGED",
+     "detail": "tgms-only row: {'messageCount': 267, 'personFirstName': 'Ge', 'personId': 15393162799092, 'personId__hierarchy': 'Person', 'personLastName': 'Wang', 'threadCount': 31}"
+    },
+    {
+     "cause": "UNTRIAGED",
+     "detail": "tgms-only row: {'messageCount': 264, 'personFirstName': 'Carlos', 'personId': 10995116286217, 'personId__hierarchy': 'Person', 'personLastName': 'Mendez', 'threadCount': 19}"
+    }
+   ],
+   "column_map_rule": "positional",
+   "compared": 100,
+   "contract": "REQUIRES_TOP_K",
+   "disagreeing": 100,
+   "note": null,
+   "plan_id": "BI9",
+   "ref_digest": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+   "reference_columns_not_projected": [],
+   "tgms_digest": "8424d2279bf7982c25bf5411eda50a5672504efd7fff3c0be696224f126877a4",
+   "tie_ambiguous": 0,
+   "verdict": "disagreeing"
+  },
+  {
+   "agreeing": 100,
+   "attempted": true,
+   "both_sides_completed": true,
+   "bound": true,
+   "causes": [],
+   "column_map_rule": "positional",
+   "compared": 100,
+   "contract": "REQUIRES_TOP_K",
+   "disagreeing": 0,
+   "note": null,
+   "plan_id": "BI10",
+   "ref_digest": "3387589635659a59c49798b66641ca4a239d326f2569e453892b06f618d0e4e4",
+   "reference_columns_not_projected": [],
+   "tgms_digest": "81642fe36bea61d617fd73c0a2ac1e41e26712000c913375ebb8789643d31b58",
+   "tie_ambiguous": 0,
+   "verdict": "agreeing"
+  },
+  {
+   "agreeing": 0,
+   "attempted": true,
+   "both_sides_completed": true,
+   "bound": true,
+   "causes": [
+    {
+     "cause": "UNTRIAGED",
+     "detail": "tgms-only row: {'triangleCount': 718}"
+    },
+    {
+     "cause": "UNTRIAGED",
+     "detail": "reference-only row: {'triangleCount': 0}"
+    }
+   ],
+   "column_map_rule": "positional",
+   "compared": 1,
+   "contract": "CURRENT_ECQR_FRAGMENT",
+   "disagreeing": 2,
+   "note": null,
+   "plan_id": "BI11",
+   "ref_digest": "cd0e5efe267810586a780ddd18fc10f8c60b9328fa26879735dac63a8145fe4d",
+   "reference_columns_not_projected": [],
+   "tgms_digest": "b23e0dda3cb3c374df0c15f4dcb94f49f48655ab6d8d11ba62155b298054b22a",
+   "tie_ambiguous": 0,
+   "verdict": "disagreeing"
+  },
+  {
+   "agreeing": 0,
+   "attempted": true,
+   "both_sides_completed": true,
+   "bound": true,
+   "causes": [
+    {
+     "cause": "UNTRIAGED",
+     "detail": "row 0: tgms={'messageCount': 0, 'personCount': 3850} ref={'messageCount': 0, 'personCount': 10295}"
+    },
+    {
+     "cause": "UNTRIAGED",
+     "detail": "row 1: tgms={'messageCount': 1, 'personCount': 641} ref=None"
+    },
+    {
+     "cause": "UNTRIAGED",
+     "detail": "row 2: tgms={'messageCount': 2, 'personCount': 576} ref=None"
+    },
+    {
+     "cause": "UNTRIAGED",
+     "detail": "row 3: tgms={'messageCount': 3, 'personCount': 445} ref=None"
+    },
+    {
+     "cause": "UNTRIAGED",
+     "detail": "row 4: tgms={'messageCount': 4, 'personCount': 442} ref=None"
+    },
+    {
+     "cause": "UNTRIAGED",
+     "detail": "row 5: tgms={'messageCount': 5, 'personCount': 356} ref=None"
+    },
+    {
+     "cause": "UNTRIAGED",
+     "detail": "row 6: tgms={'messageCount': 6, 'personCount': 324} ref=None"
+    },
+    {
+     "cause": "UNTRIAGED",
+     "detail": "row 7: tgms={'messageCount': 7, 'personCount': 271} ref=None"
+    },
+    {
+     "cause": "UNTRIAGED",
+     "detail": "row 8: tgms={'messageCount': 8, 'personCount': 255} ref=None"
+    },
+    {
+     "cause": "UNTRIAGED",
+     "detail": "row 9: tgms={'messageCount': 9, 'personCount': 230} ref=None"
+    },
+    {
+     "cause": "UNTRIAGED",
+     "detail": "row 10: tgms={'messageCount': 10, 'personCount': 196} ref=None"
+    },
+    {
+     "cause": "UNTRIAGED",
+     "detail": "row 11: tgms={'messageCount': 11, 'personCount': 184} ref=None"
+    },
+    {
+     "cause": "UNTRIAGED",
+     "detail": "row 12: tgms={'messageCount': 12, 'personCount': 176} ref=None"
+    },
+    {
+     "cause": "UNTRIAGED",
+     "detail": "row 13: tgms={'messageCount': 13, 'personCount': 170} ref=None"
+    },
+    {
+     "cause": "UNTRIAGED",
+     "detail": "row 14: tgms={'messageCount': 14, 'personCount': 139} ref=None"
+    },
+    {
+     "cause": "UNTRIAGED",
+     "detail": "row 15: tgms={'messageCount': 15, 'personCount': 133} ref=None"
+    },
+    {
+     "cause": "UNTRIAGED",
+     "detail": "row 16: tgms={'messageCount': 16, 'personCount': 123} ref=None"
+    },
+    {
+     "cause": "UNTRIAGED",
+     "detail": "row 17: tgms={'messageCount': 18, 'personCount': 101} ref=None"
+    },
+    {
+     "cause": "UNTRIAGED",
+     "detail": "row 18: tgms={'messageCount': 17, 'personCount': 98} ref=None"
+    },
+    {
+     "cause": "UNTRIAGED",
+     "detail": "row 19: tgms={'messageCount': 19, 'personCount': 97} ref=None"
+    },
+    {
+     "cause": "UNTRIAGED",
+     "detail": "row 20: tgms={'messageCount': 20, 'personCount': 85} ref=None"
+    },
+    {
+     "cause": "UNTRIAGED",
+     "detail": "row 21: tgms={'messageCount': 22, 'personCount': 83} ref=None"
+    },
+    {
+     "cause": "UNTRIAGED",
+     "detail": "row 22: tgms={'messageCount': 21, 'personCount': 79} ref=None"
+    },
+    {
+     "cause": "UNTRIAGED",
+     "detail": "row 23: tgms={'messageCount': 23, 'personCount': 69} ref=None"
+    },
+    {
+     "cause": "UNTRIAGED",
+     "detail": "row 24: tgms={'messageCount': 24, 'personCount': 64} ref=None"
+    },
+    {
+     "cause": "UNTRIAGED",
+     "detail": "row 25: tgms={'messageCount': 28, 'personCount': 59} ref=None"
+    },
+    {
+     "cause": "UNTRIAGED",
+     "detail": "row 26: tgms={'messageCount': 26, 'personCount': 54} ref=None"
+    },
+    {
+     "cause": "UNTRIAGED",
+     "detail": "row 27: tgms={'messageCount': 29, 'personCount': 47} ref=None"
+    },
+    {
+     "cause": "UNTRIAGED",
+     "detail": "row 28: tgms={'messageCount': 25, 'personCount': 46} ref=None"
+    },
+    {
+     "cause": "UNTRIAGED",
+     "detail": "row 29: tgms={'messageCount': 33, 'personCount': 45} ref=None"
+    },
+    {
+     "cause": "UNTRIAGED",
+     "detail": "row 30: tgms={'messageCount': 27, 'personCount': 43} ref=None"
+    },
+    {
+     "cause": "UNTRIAGED",
+     "detail": "row 31: tgms={'messageCount': 31, 'personCount': 42} ref=None"
+    },
+    {
+     "cause": "UNTRIAGED",
+     "detail": "row 32: tgms={'messageCount': 32, 'personCount': 41} ref=None"
+    },
+    {
+     "cause": "UNTRIAGED",
+     "detail": "row 33: tgms={'messageCount': 30, 'personCount': 37} ref=None"
+    },
+    {
+     "cause": "UNTRIAGED",
+     "detail": "row 34: tgms={'messageCount': 35, 'personCount': 31} ref=None"
+    },
+    {
+     "cause": "UNTRIAGED",
+     "detail": "row 35: tgms={'messageCount': 37, 'personCount': 29} ref=None"
+    },
+    {
+     "cause": "UNTRIAGED",
+     "detail": "row 36: tgms={'messageCount': 34, 'personCount': 28} ref=None"
+    },
+    {
+     "cause": "UNTRIAGED",
+     "detail": "row 37: tgms={'messageCount': 39, 'personCount': 24} ref=None"
+    },
+    {
+     "cause": "UNTRIAGED",
+     "detail": "row 38: tgms={'messageCount': 36, 'personCount': 24} ref=None"
+    },
+    {
+     "cause": "UNTRIAGED",
+     "detail": "row 39: tgms={'messageCount': 42, 'personCount': 21} ref=None"
+    },
+    {
+     "cause": "UNTRIAGED",
+     "detail": "row 40: tgms={'messageCount': 38, 'personCount': 21} ref=None"
+    },
+    {
+     "cause": "UNTRIAGED",
+     "detail": "row 41: tgms={'messageCount': 43, 'personCount': 19} ref=None"
+    },
+    {
+     "cause": "UNTRIAGED",
+     "detail": "row 42: tgms={'messageCount': 52, 'personCount': 18} ref=None"
+    },
+    {
+     "cause": "UNTRIAGED",
+     "detail": "row 43: tgms={'messageCount': 45, 'personCount': 18} ref=None"
+    },
+    {
+     "cause": "UNTRIAGED",
+     "detail": "row 44: tgms={'messageCount': 41, 'personCount': 18} ref=None"
+    },
+    {
+     "cause": "UNTRIAGED",
+     "detail": "row 45: tgms={'messageCount': 40, 'personCount': 16} ref=None"
+    },
+    {
+     "cause": "UNTRIAGED",
+     "detail": "row 46: tgms={'messageCount': 57, 'personCount': 15} ref=None"
+    },
+    {
+     "cause": "UNTRIAGED",
+     "detail": "row 47: tgms={'messageCount': 54, 'personCount': 14} ref=None"
+    },
+    {
+     "cause": "UNTRIAGED",
+     "detail": "row 48: tgms={'messageCount': 47, 'personCount': 14} ref=None"
+    },
+    {
+     "cause": "UNTRIAGED",
+     "detail": "row 49: tgms={'messageCount': 46, 'personCount': 14} ref=None"
+    },
+    {
+     "cause": "UNTRIAGED",
+     "detail": "row 50: tgms={'messageCount': 44, 'personCount': 14} ref=None"
+    },
+    {
+     "cause": "UNTRIAGED",
+     "detail": "row 51: tgms={'messageCount': 49, 'personCount': 13} ref=None"
+    },
+    {
+     "cause": "UNTRIAGED",
+     "detail": "row 52: tgms={'messageCount': 55, 'personCount': 12} ref=None"
+    },
+    {
+     "cause": "UNTRIAGED",
+     "detail": "row 53: tgms={'messageCount': 61, 'personCount': 11} ref=None"
+    },
+    {
+     "cause": "UNTRIAGED",
+     "detail": "row 54: tgms={'messageCount': 51, 'personCount': 11} ref=None"
+    },
+    {
+     "cause": "UNTRIAGED",
+     "detail": "row 55: tgms={'messageCount': 50, 'personCount': 11} ref=None"
+    },
+    {
+     "cause": "UNTRIAGED",
+     "detail": "row 56: tgms={'messageCount': 53, 'personCount': 10} ref=None"
+    },
+    {
+     "cause": "UNTRIAGED",
+     "detail": "row 57: tgms={'messageCount': 56, 'personCount': 9} ref=None"
+    },
+    {
+     "cause": "UNTRIAGED",
+     "detail": "row 58: tgms={'messageCount': 48, 'personCount': 9} ref=None"
+    },
+    {
+     "cause": "UNTRIAGED",
+     "detail": "row 59: tgms={'messageCount': 70, 'personCount': 8} ref=None"
+    },
+    {
+     "cause": "UNTRIAGED",
+     "detail": "row 60: tgms={'messageCount': 65, 'personCount': 8} ref=None"
+    },
+    {
+     "cause": "UNTRIAGED",
+     "detail": "row 61: tgms={'messageCount': 94, 'personCount': 7} ref=None"
+    },
+    {
+     "cause": "UNTRIAGED",
+     "detail": "row 62: tgms={'messageCount': 85, 'personCount': 7} ref=None"
+    },
+    {
+     "cause": "UNTRIAGED",
+     "detail": "row 63: tgms={'messageCount': 71, 'personCount': 7} ref=None"
+    },
+    {
+     "cause": "UNTRIAGED",
+     "detail": "row 64: tgms={'messageCount': 69, 'personCount': 7} ref=None"
+    },
+    {
+     "cause": "UNTRIAGED",
+     "detail": "row 65: tgms={'messageCount': 66, 'personCount': 7} ref=None"
+    },
+    {
+     "cause": "UNTRIAGED",
+     "detail": "row 66: tgms={'messageCount': 62, 'personCount': 7} ref=None"
+    },
+    {
+     "cause": "UNTRIAGED",
+     "detail": "row 67: tgms={'messageCount': 60, 'personCount': 7} ref=None"
+    },
+    {
+     "cause": "UNTRIAGED",
+     "detail": "row 68: tgms={'messageCount': 59, 'personCount': 7} ref=None"
+    },
+    {
+     "cause": "UNTRIAGED",
+     "detail": "row 69: tgms={'messageCount': 75, 'personCount': 6} ref=None"
+    },
+    {
+     "cause": "UNTRIAGED",
+     "detail": "row 70: tgms={'messageCount': 72, 'personCount': 6} ref=None"
+    },
+    {
+     "cause": "UNTRIAGED",
+     "detail": "row 71: tgms={'messageCount': 68, 'personCount': 6} ref=None"
+    },
+    {
+     "cause": "UNTRIAGED",
+     "detail": "row 72: tgms={'messageCount': 117, 'personCount': 5} ref=None"
+    },
+    {
+     "cause": "UNTRIAGED",
+     "detail": "row 73: tgms={'messageCount': 79, 'personCount': 5} ref=None"
+    },
+    {
+     "cause": "UNTRIAGED",
+     "detail": "row 74: tgms={'messageCount': 76, 'personCount': 5} ref=None"
+    },
+    {
+     "cause": "UNTRIAGED",
+     "detail": "row 75: tgms={'messageCount': 73, 'personCount': 5} ref=None"
+    },
+    {
+     "cause": "UNTRIAGED",
+     "detail": "row 76: tgms={'messageCount': 63, 'personCount': 5} ref=None"
+    },
+    {
+     "cause": "UNTRIAGED",
+     "detail": "row 77: tgms={'messageCount': 58, 'personCount': 5} ref=None"
+    },
+    {
+     "cause": "UNTRIAGED",
+     "detail": "row 78: tgms={'messageCount': 123, 'personCount': 4} ref=None"
+    },
+    {
+     "cause": "UNTRIAGED",
+     "detail": "row 79: tgms={'messageCount': 99, 'personCount': 4} ref=None"
+    },
+    {
+     "cause": "UNTRIAGED",
+     "detail": "row 80: tgms={'messageCount': 89, 'personCount': 4} ref=None"
+    },
+    {
+     "cause": "UNTRIAGED",
+     "detail": "row 81: tgms={'messageCount': 84, 'personCount': 4} ref=None"
+    },
+    {
+     "cause": "UNTRIAGED",
+     "detail": "row 82: tgms={'messageCount': 82, 'personCount': 4} ref=None"
+    },
+    {
+     "cause": "UNTRIAGED",
+     "detail": "row 83: tgms={'messageCount': 74, 'personCount': 4} ref=None"
+    },
+    {
+     "cause": "UNTRIAGED",
+     "detail": "row 84: tgms={'messageCount': 67, 'personCount': 4} ref=None"
+    },
+    {
+     "cause": "UNTRIAGED",
+     "detail": "row 85: tgms={'messageCount': 144, 'personCount': 3} ref=None"
+    },
+    {
+     "cause": "UNTRIAGED",
+     "detail": "row 86: tgms={'messageCount': 137, 'personCount': 3} ref=None"
+    },
+    {
+     "cause": "UNTRIAGED",
+     "detail": "row 87: tgms={'messageCount': 106, 'personCount': 3} ref=None"
+    },
+    {
+     "cause": "UNTRIAGED",
+     "detail": "row 88: tgms={'messageCount': 101, 'personCount': 3} ref=None"
+    },
+    {
+     "cause": "UNTRIAGED",
+     "detail": "row 89: tgms={'messageCount': 95, 'personCount': 3} ref=None"
+    },
+    {
+     "cause": "UNTRIAGED",
+     "detail": "row 90: tgms={'messageCount': 93, 'personCount': 3} ref=None"
+    },
+    {
+     "cause": "UNTRIAGED",
+     "detail": "row 91: tgms={'messageCount': 92, 'personCount': 3} ref=None"
+    },
+    {
+     "cause": "UNTRIAGED",
+     "detail": "row 92: tgms={'messageCount': 91, 'personCount': 3} ref=None"
+    },
+    {
+     "cause": "UNTRIAGED",
+     "detail": "row 93: tgms={'messageCount': 88, 'personCount': 3} ref=None"
+    },
+    {
+     "cause": "UNTRIAGED",
+     "detail": "row 94: tgms={'messageCount': 77, 'personCount': 3} ref=None"
+    },
+    {
+     "cause": "UNTRIAGED",
+     "detail": "row 95: tgms={'messageCount': 64, 'personCount': 3} ref=None"
+    },
+    {
+     "cause": "UNTRIAGED",
+     "detail": "row 96: tgms={'messageCount': 177, 'personCount': 2} ref=None"
+    },
+    {
+     "cause": "UNTRIAGED",
+     "detail": "row 97: tgms={'messageCount': 151, 'personCount': 2} ref=None"
+    },
+    {
+     "cause": "UNTRIAGED",
+     "detail": "row 98: tgms={'messageCount': 145, 'personCount': 2} ref=None"
+    },
+    {
+     "cause": "UNTRIAGED",
+     "detail": "row 99: tgms={'messageCount': 140, 'personCount': 2} ref=None"
+    },
+    {
+     "cause": "UNTRIAGED",
+     "detail": "row 100: tgms={'messageCount': 134, 'personCount': 2} ref=None"
+    },
+    {
+     "cause": "UNTRIAGED",
+     "detail": "row 101: tgms={'messageCount': 132, 'personCount': 2} ref=None"
+    },
+    {
+     "cause": "UNTRIAGED",
+     "detail": "row 102: tgms={'messageCount': 128, 'personCount': 2} ref=None"
+    },
+    {
+     "cause": "UNTRIAGED",
+     "detail": "row 103: tgms={'messageCount': 124, 'personCount': 2} ref=None"
+    },
+    {
+     "cause": "UNTRIAGED",
+     "detail": "row 104: tgms={'messageCount': 122, 'personCount': 2} ref=None"
+    },
+    {
+     "cause": "UNTRIAGED",
+     "detail": "row 105: tgms={'messageCount': 115, 'personCount': 2} ref=None"
+    },
+    {
+     "cause": "UNTRIAGED",
+     "detail": "row 106: tgms={'messageCount': 112, 'personCount': 2} ref=None"
+    },
+    {
+     "cause": "UNTRIAGED",
+     "detail": "row 107: tgms={'messageCount': 108, 'personCount': 2} ref=None"
+    },
+    {
+     "cause": "UNTRIAGED",
+     "detail": "row 108: tgms={'messageCount': 102, 'personCount': 2} ref=None"
+    },
+    {
+     "cause": "UNTRIAGED",
+     "detail": "row 109: tgms={'messageCount': 98, 'personCount': 2} ref=None"
+    },
+    {
+     "cause": "UNTRIAGED",
+     "detail": "row 110: tgms={'messageCount': 96, 'personCount': 2} ref=None"
+    },
+    {
+     "cause": "UNTRIAGED",
+     "detail": "row 111: tgms={'messageCount': 90, 'personCount': 2} ref=None"
+    },
+    {
+     "cause": "UNTRIAGED",
+     "detail": "row 112: tgms={'messageCount': 86, 'personCount': 2} ref=None"
+    },
+    {
+     "cause": "UNTRIAGED",
+     "detail": "row 113: tgms={'messageCount': 83, 'personCount': 2} ref=None"
+    },
+    {
+     "cause": "UNTRIAGED",
+     "detail": "row 114: tgms={'messageCount': 78, 'personCount': 2} ref=None"
+    },
+    {
+     "cause": "UNTRIAGED",
+     "detail": "row 115: tgms={'messageCount': 525, 'personCount': 1} ref=None"
+    },
+    {
+     "cause": "UNTRIAGED",
+     "detail": "row 116: tgms={'messageCount': 471, 'personCount': 1} ref=None"
+    },
+    {
+     "cause": "UNTRIAGED",
+     "detail": "row 117: tgms={'messageCount': 403, 'personCount': 1} ref=None"
+    },
+    {
+     "cause": "UNTRIAGED",
+     "detail": "row 118: tgms={'messageCount': 382, 'personCount': 1} ref=None"
+    },
+    {
+     "cause": "UNTRIAGED",
+     "detail": "row 119: tgms={'messageCount': 354, 'personCount': 1} ref=None"
+    },
+    {
+     "cause": "UNTRIAGED",
+     "detail": "row 120: tgms={'messageCount': 353, 'personCount': 1} ref=None"
+    },
+    {
+     "cause": "UNTRIAGED",
+     "detail": "row 121: tgms={'messageCount': 324, 'personCount': 1} ref=None"
+    },
+    {
+     "cause": "UNTRIAGED",
+     "detail": "row 122: tgms={'messageCount': 310, 'personCount': 1} ref=None"
+    },
+    {
+     "cause": "UNTRIAGED",
+     "detail": "row 123: tgms={'messageCount': 261, 'personCount': 1} ref=None"
+    },
+    {
+     "cause": "UNTRIAGED",
+     "detail": "row 124: tgms={'messageCount': 257, 'personCount': 1} ref=None"
+    },
+    {
+     "cause": "UNTRIAGED",
+     "detail": "row 125: tgms={'messageCount': 245, 'personCount': 1} ref=None"
+    },
+    {
+     "cause": "UNTRIAGED",
+     "detail": "row 126: tgms={'messageCount': 244, 'personCount': 1} ref=None"
+    },
+    {
+     "cause": "UNTRIAGED",
+     "detail": "row 127: tgms={'messageCount': 237, 'personCount': 1} ref=None"
+    },
+    {
+     "cause": "UNTRIAGED",
+     "detail": "row 128: tgms={'messageCount': 224, 'personCount': 1} ref=None"
+    },
+    {
+     "cause": "UNTRIAGED",
+     "detail": "row 129: tgms={'messageCount': 218, 'personCount': 1} ref=None"
+    },
+    {
+     "cause": "UNTRIAGED",
+     "detail": "row 130: tgms={'messageCount': 216, 'personCount': 1} ref=None"
+    },
+    {
+     "cause": "UNTRIAGED",
+     "detail": "row 131: tgms={'messageCount': 214, 'personCount': 1} ref=None"
+    },
+    {
+     "cause": "UNTRIAGED",
+     "detail": "row 132: tgms={'messageCount': 210, 'personCount': 1} ref=None"
+    },
+    {
+     "cause": "UNTRIAGED",
+     "detail": "row 133: tgms={'messageCount': 205, 'personCount': 1} ref=None"
+    },
+    {
+     "cause": "UNTRIAGED",
+     "detail": "row 134: tgms={'messageCount': 203, 'personCount': 1} ref=None"
+    },
+    {
+     "cause": "UNTRIAGED",
+     "detail": "row 135: tgms={'messageCount': 198, 'personCount': 1} ref=None"
+    },
+    {
+     "cause": "UNTRIAGED",
+     "detail": "row 136: tgms={'messageCount': 197, 'personCount': 1} ref=None"
+    },
+    {
+     "cause": "UNTRIAGED",
+     "detail": "row 137: tgms={'messageCount': 173, 'personCount': 1} ref=None"
+    },
+    {
+     "cause": "UNTRIAGED",
+     "detail": "row 138: tgms={'messageCount': 172, 'personCount': 1} ref=None"
+    },
+    {
+     "cause": "UNTRIAGED",
+     "detail": "row 139: tgms={'messageCount': 170, 'personCount': 1} ref=None"
+    },
+    {
+     "cause": "UNTRIAGED",
+     "detail": "row 140: tgms={'messageCount': 165, 'personCount': 1} ref=None"
+    },
+    {
+     "cause": "UNTRIAGED",
+     "detail": "row 141: tgms={'messageCount': 164, 'personCount': 1} ref=None"
+    },
+    {
+     "cause": "UNTRIAGED",
+     "detail": "row 142: tgms={'messageCount': 161, 'personCount': 1} ref=None"
+    },
+    {
+     "cause": "UNTRIAGED",
+     "detail": "row 143: tgms={'messageCount': 160, 'personCount': 1} ref=None"
+    },
+    {
+     "cause": "UNTRIAGED",
+     "detail": "row 144: tgms={'messageCount': 153, 'personCount': 1} ref=None"
+    },
+    {
+     "cause": "UNTRIAGED",
+     "detail": "row 145: tgms={'messageCount': 152, 'personCount': 1} ref=None"
+    },
+    {
+     "cause": "UNTRIAGED",
+     "detail": "row 146: tgms={'messageCount': 149, 'personCount': 1} ref=None"
+    },
+    {
+     "cause": "UNTRIAGED",
+     "detail": "row 147: tgms={'messageCount': 148, 'personCount': 1} ref=None"
+    },
+    {
+     "cause": "UNTRIAGED",
+     "detail": "row 148: tgms={'messageCount': 147, 'personCount': 1} ref=None"
+    },
+    {
+     "cause": "UNTRIAGED",
+     "detail": "row 149: tgms={'messageCount': 138, 'personCount': 1} ref=None"
+    },
+    {
+     "cause": "UNTRIAGED",
+     "detail": "row 150: tgms={'messageCount': 133, 'personCount': 1} ref=None"
+    },
+    {
+     "cause": "UNTRIAGED",
+     "detail": "row 151: tgms={'messageCount': 131, 'personCount': 1} ref=None"
+    },
+    {
+     "cause": "UNTRIAGED",
+     "detail": "row 152: tgms={'messageCount': 130, 'personCount': 1} ref=None"
+    },
+    {
+     "cause": "UNTRIAGED",
+     "detail": "row 153: tgms={'messageCount': 129, 'personCount': 1} ref=None"
+    },
+    {
+     "cause": "UNTRIAGED",
+     "detail": "row 154: tgms={'messageCount': 126, 'personCount': 1} ref=None"
+    },
+    {
+     "cause": "UNTRIAGED",
+     "detail": "row 155: tgms={'messageCount': 125, 'personCount': 1} ref=None"
+    },
+    {
+     "cause": "UNTRIAGED",
+     "detail": "row 156: tgms={'messageCount': 120, 'personCount': 1} ref=None"
+    },
+    {
+     "cause": "UNTRIAGED",
+     "detail": "row 157: tgms={'messageCount': 119, 'personCount': 1} ref=None"
+    },
+    {
+     "cause": "UNTRIAGED",
+     "detail": "row 158: tgms={'messageCount': 118, 'personCount': 1} ref=None"
+    },
+    {
+     "cause": "UNTRIAGED",
+     "detail": "row 159: tgms={'messageCount': 116, 'personCount': 1} ref=None"
+    },
+    {
+     "cause": "UNTRIAGED",
+     "detail": "row 160: tgms={'messageCount': 111, 'personCount': 1} ref=None"
+    },
+    {
+     "cause": "UNTRIAGED",
+     "detail": "row 161: tgms={'messageCount': 110, 'personCount': 1} ref=None"
+    },
+    {
+     "cause": "UNTRIAGED",
+     "detail": "row 162: tgms={'messageCount': 109, 'personCount': 1} ref=None"
+    },
+    {
+     "cause": "UNTRIAGED",
+     "detail": "row 163: tgms={'messageCount': 103, 'personCount': 1} ref=None"
+    },
+    {
+     "cause": "UNTRIAGED",
+     "detail": "row 164: tgms={'messageCount': 97, 'personCount': 1} ref=None"
+    },
+    {
+     "cause": "UNTRIAGED",
+     "detail": "row 165: tgms={'messageCount': 81, 'personCount': 1} ref=None"
+    }
+   ],
+   "column_map_rule": "name",
+   "compared": 166,
+   "contract": "REQUIRES_ORDERED_RESULT",
+   "disagreeing": 166,
+   "note": null,
+   "plan_id": "BI12",
+   "ref_digest": "34a1cd88fa037208a0a0499f8cb8b60932454d91b8c2af058472d5175e4648bc",
+   "reference_columns_not_projected": [],
+   "tgms_digest": "575ff62dde1131f12adbfcfcf8b6fc1ebdcb64aca773a1d5db9010c81b10187a",
+   "tie_ambiguous": 0,
+   "verdict": "disagreeing"
+  },
+  {
+   "agreeing": 0,
+   "attempted": true,
+   "both_sides_completed": true,
+   "bound": true,
+   "causes": [],
+   "column_map_rule": "positional",
+   "compared": 0,
+   "contract": "REQUIRES_TOP_K",
+   "disagreeing": 0,
+   "note": null,
+   "plan_id": "BI17",
+   "ref_digest": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+   "reference_columns_not_projected": [],
+   "tgms_digest": "5aa6671c762a729801a2c98a87dbc41230f4c93b1bea0c82c8f37f6bf2535c6c",
+   "tie_ambiguous": 0,
+   "verdict": "agreeing"
+  },
+  {
+   "agreeing": 20,
+   "attempted": true,
+   "both_sides_completed": true,
+   "bound": true,
+   "causes": [],
+   "column_map_rule": "name",
+   "compared": 20,
+   "contract": "REQUIRES_TOP_K",
+   "disagreeing": 0,
+   "note": null,
+   "plan_id": "BI18",
+   "ref_digest": "aead26fd5c34378fb6a60e5315e1cb67cffa9e97f085514a4c6607c76a36236d",
+   "reference_columns_not_projected": [],
+   "tgms_digest": "92bd691bf68348bd9df97e20b78c4b0715086fe5d71fa3722af772918c28a17d",
+   "tie_ambiguous": 0,
+   "verdict": "agreeing"
+  },
+  {
+   "agreeing": 0,
+   "attempted": true,
+   "both_sides_completed": true,
+   "bound": true,
+   "causes": [
+    {
+     "cause": "UNTRIAGED",
+     "detail": "tgms-only row: {'messageContent': 'About Leon Trotsky, ring the early days of the Soviet Union, he served fir', 'messageCreationDate': 1354060345478000, 'messageId': 2336465009710, 'messageId__hierarchy': 'Message', 'personFirstName': 'Rahul', 'personId': 26388279067181, 'personId__hierarchy': 'Person', 'personLastName': 'Singh'}"
+    },
+    {
+     "cause": "UNTRIAGED",
+     "detail": "tgms-only row: {'messageContent': 'About Leon Trotsky, ring the early days of the Soviet Union, he served fir', 'messageCreationDate': 1354060345478000, 'messageId': 2336465009710, 'messageId__hierarchy': 'Message', 'personFirstName': 'Rahul', 'personId': 26388279067181, 'personId__hierarchy': 'Person', 'personLastName': 'Singh'}"
+    },
+    {
+     "cause": "UNTRIAGED",
+     "detail": "tgms-only row: {'messageContent': 'right', 'messageCreationDate': 1354056977739000, 'messageId': 2336466826139, 'messageId__hierarchy': 'Message', 'personFirstName': 'K.', 'personId': 26388279070832, 'personId__hierarchy': 'Person', 'personLastName': 'Sharma'}"
+    },
+    {
+     "cause": "UNTRIAGED",
+     "detail": "tgms-only row: {'messageContent': 'right', 'messageCreationDate': 1354056977739000, 'messageId': 2336466826139, 'messageId__hierarchy': 'Message', 'personFirstName': 'K.', 'personId': 26388279070832, 'personId__hierarchy': 'Person', 'personLastName': 'Sharma'}"
+    },
+    {
+     "cause": "UNTRIAGED",
+     "detail": "tgms-only row: {'messageContent': 'thx', 'messageCreationDate': 1354056935208000, 'messageId': 2336466848373, 'messageId__hierarchy': 'Message', 'personFirstName': 'K.', 'personId': 35184372094002, 'personId__hierarchy': 'Person', 'personLastName': 'Sharma'}"
+    },
+    {
+     "cause": "UNTRIAGED",
+     "detail": "tgms-only row: {'messageContent': 'thx', 'messageCreationDate': 1354056935208000, 'messageId': 2336466848373, 'messageId__hierarchy': 'Message', 'personFirstName': 'K.', 'personId': 35184372094002, 'personId__hierarchy': 'Person', 'personLastName': 'Sharma'}"
+    },
+    {
+     "cause": "UNTRIAGED",
+     "detail": "tgms-only row: {'messageContent': 'About Fr\u00e9d\u00e9ric Chopin, ed from poor health; About Where Is the Love, umber one on', 'messageCreationDate': 1354056560250000, 'messageId': 2336466788171, 'messageId__hierarchy': 'Message', 'personFirstName': 'R.', 'personId': 4398046520505, 'personId__hierarchy': 'Person', 'personLastName': 'Sharma'}"
+    },
+    {
+     "cause": "UNTRIAGED",
+     "detail": "tgms-only row: {'messageContent': 'About Fr\u00e9d\u00e9ric Chopin, ed from poor health; About Where Is the Love, umber one on', 'messageCreationDate': 1354056560250000, 'messageId': 2336466788171, 'messageId__hierarchy': 'Message', 'personFirstName': 'R.', 'personId': 4398046520505, 'personId__hierarchy': 'Person', 'personLastName': 'Sharma'}"
+    },
+    {
+     "cause": "UNTRIAGED",
+     "detail": "tgms-only row: {'messageContent': 'good', 'messageCreationDate': 1354056499922000, 'messageId': 2336465058562, 'messageId__hierarchy': 'Message', 'personFirstName': 'James', 'personId': 37383395349053, 'personId__hierarchy': 'Person', 'personLastName': 'Omar'}"
+    },
+    {
+     "cause": "UNTRIAGED",
+     "detail": "tgms-only row: {'messageContent': 'good', 'messageCreationDate': 1354056499922000, 'messageId': 2336465058562, 'messageId__hierarchy': 'Message', 'personFirstName': 'James', 'personId': 37383395349053, 'personId__hierarchy': 'Person', 'personLastName': 'Omar'}"
+    },
+    {
+     "cause": "UNTRIAGED",
+     "detail": "tgms-only row: {'messageContent': 'duh', 'messageCreationDate': 1354055913446000, 'messageId': 2336465058610, 'messageId__hierarchy': 'Message', 'personFirstName': 'James', 'personId': 37383395349053, 'personId__hierarchy': 'Person', 'personLastName': 'Omar'}"
+    },
+    {
+     "cause": "UNTRIAGED",
+     "detail": "tgms-only row: {'messageContent': 'duh', 'messageCreationDate': 1354055913446000, 'messageId': 2336465058610, 'messageId__hierarchy': 'Message', 'personFirstName': 'James', 'personId': 37383395349053, 'personId__hierarchy': 'Person', 'personLastName': 'Omar'}"
+    },
+    {
+     "cause": "UNTRIAGED",
+     "detail": "tgms-only row: {'messageContent': 'I see', 'messageCreationDate': 1354055804889000, 'messageId': 2336465058634, 'messageId__hierarchy': 'Message', 'personFirstName': 'James', 'personId': 37383395349053, 'personId__hierarchy': 'Person', 'personLastName': 'Omar'}"
+    },
+    {
+     "cause": "UNTRIAGED",
+     "detail": "tgms-only row: {'messageContent': 'I see', 'messageCreationDate': 1354055804889000, 'messageId': 2336465058634, 'messageId__hierarchy': 'Message', 'personFirstName': 'James', 'personId': 37383395349053, 'personId__hierarchy': 'Person', 'personLastName': 'Omar'}"
+    },
+    {
+     "cause": "UNTRIAGED",
+     "detail": "tgms-only row: {'messageContent': 'About Tom Gehrels,  and shipping tAbout Achaemenid Empire, sed approximateAbout Holy', 'messageCreationDate': 1354054872236000, 'messageId': 2336464607546, 'messageId__hierarchy': 'Message', 'personFirstName': 'Shweta', 'personId': 28587302329901, 'personId__hierarchy': 'Person', 'personLastName': 'Khan'}"
+    },
+    {
+     "cause": "UNTRIAGED",
+     "detail": "tgms-only row: {'messageContent': 'About Tom Gehrels,  and shipping tAbout Achaemenid Empire, sed approximateAbout Holy', 'messageCreationDate': 1354054872236000, 'messageId': 2336464607546, 'messageId__hierarchy': 'Message', 'personFirstName': 'Shweta', 'personId': 28587302329901, 'personId__hierarchy': 'Person', 'personLastName': 'Khan'}"
+    },
+    {
+     "cause": "UNTRIAGED",
+     "detail": "tgms-only row: {'messageContent': 'duh', 'messageCreationDate': 1354054212652000, 'messageId': 2336467285055, 'messageId__hierarchy': 'Message', 'personFirstName': 'Shweta', 'personId': 28587302329901, 'personId__hierarchy': 'Person', 'personLastName': 'Khan'}"
+    },
+    {
+     "cause": "UNTRIAGED",
+     "detail": "tgms-only row: {'messageContent': 'duh', 'messageCreationDate': 1354054212652000, 'messageId': 2336467285055, 'messageId__hierarchy': 'Message', 'personFirstName': 'Shweta', 'personId': 28587302329901, 'personId__hierarchy': 'Person', 'personLastName': 'Khan'}"
+    },
+    {
+     "cause": "UNTRIAGED",
+     "detail": "tgms-only row: {'messageContent': 'LOL', 'messageCreationDate': 1354052564216000, 'messageId': 2336464959691, 'messageId__hierarchy': 'Message', 'personFirstName': 'Rahul', 'personId': 6597069771930, 'personId__hierarchy': 'Person', 'personLastName': 'Reddy'}"
+    },
+    {
+     "cause": "UNTRIAGED",
+     "detail": "tgms-only row: {'messageContent': 'LOL', 'messageCreationDate': 1354052564216000, 'messageId': 2336464959691, 'messageId__hierarchy': 'Message', 'personFirstName': 'Rahul', 'personId': 6597069771930, 'personId__hierarchy': 'Person', 'personLastName': 'Reddy'}"
+    }
+   ],
+   "column_map_rule": "positional",
+   "compared": 20,
+   "contract": "REQUIRES_TOP_K",
+   "disagreeing": 20,
+   "note": null,
+   "plan_id": "IC2",
+   "ref_digest": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+   "reference_columns_not_projected": [],
+   "tgms_digest": "4645869ef518eb59f0f00e072c473f09bf49161524ba7053145bca13a708991d",
+   "tie_ambiguous": 0,
+   "verdict": "disagreeing"
+  },
+  {
+   "agreeing": 0,
+   "attempted": true,
+   "both_sides_completed": true,
+   "bound": true,
+   "causes": [
+    {
+     "cause": "REFERENCE-COLUMN-NOT-PROJECTED",
+     "detail": "the reference projects forumName; the TGIR plan does not, so the rows above were compared on a strict subset of the query's answer"
+    }
+   ],
+   "column_map_rule": "name-partial",
+   "compared": 0,
+   "contract": "REQUIRES_TOP_K",
+   "disagreeing": 0,
+   "note": null,
+   "plan_id": "IC5",
+   "ref_digest": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+   "reference_columns_not_projected": [
+    "forumName"
+   ],
+   "tgms_digest": "5aa6671c762a729801a2c98a87dbc41230f4c93b1bea0c82c8f37f6bf2535c6c",
+   "tie_ambiguous": 0,
+   "verdict": "reference-column-not-projected"
+  },
+  {
+   "agreeing": 10,
+   "attempted": true,
+   "both_sides_completed": true,
+   "bound": true,
+   "causes": [],
+   "column_map_rule": "name",
+   "compared": 10,
+   "contract": "REQUIRES_TOP_K",
+   "disagreeing": 0,
+   "note": null,
+   "plan_id": "IC6",
+   "ref_digest": "56b52154f39eb6f0b119ba93c58224564706b29450e75dc4ad0c7fd0067732f7",
+   "reference_columns_not_projected": [],
+   "tgms_digest": "81bfbfcf0090a6b6d7960ccf8606a95df9009a92d2984bdbe71f77b3c6d7efd4",
+   "tie_ambiguous": 0,
+   "verdict": "agreeing"
+  },
+  {
+   "agreeing": 11,
+   "attempted": true,
+   "both_sides_completed": true,
+   "bound": true,
+   "causes": [],
+   "column_map_rule": "name",
+   "compared": 11,
+   "contract": "REQUIRES_TOP_K",
+   "disagreeing": 0,
+   "note": null,
+   "plan_id": "IC8",
+   "ref_digest": "198f7befa2dc5c510ef75dc0900306081db9941417af77dc5ae5f72376eac289",
+   "reference_columns_not_projected": [],
+   "tgms_digest": "71ee634e11108561dbdae099f11234210dbb3429bf5d81e035327b33da665122",
+   "tie_ambiguous": 0,
+   "verdict": "agreeing"
+  },
+  {
+   "agreeing": 0,
+   "attempted": true,
+   "both_sides_completed": true,
+   "bound": true,
+   "causes": [
+    {
+     "cause": "UNTRIAGED",
+     "detail": "tgms-only row: {'messageContent': 'thx', 'messageCreationDate': 1324079808688000, 'messageId': 1511829346932, 'messageId__hierarchy': 'Message', 'personFirstName': 'Ahmed', 'personId': 13194139537798, 'personId__hierarchy': 'Person', 'personLastName': 'Abdeslam'}"
+    },
+    {
+     "cause": "UNTRIAGED",
+     "detail": "tgms-only row: {'messageContent': 'About Thomas Jefferson, esolutions, which attempteAbout Socialist Federal Rep', 'messageCreationDate': 1324079734424000, 'messageId': 1511832728048, 'messageId__hierarchy': 'Message', 'personFirstName': 'Ladji', 'personId': 15393162793010, 'personId__hierarchy': 'Person', 'personLastName': 'Dia'}"
+    },
+    {
+     "cause": "UNTRIAGED",
+     "detail": "tgms-only row: {'messageContent': 'About Sergei Eisenstein, attleship Potemkin (1925) and October About This I', 'messageCreationDate': 1324079615173000, 'messageId': 1511833503855, 'messageId__hierarchy': 'Message', 'personFirstName': 'Javad', 'personId': 17592186047743, 'personId__hierarchy': 'Person', 'personLastName': 'Karimi'}"
+    },
+    {
+     "cause": "UNTRIAGED",
+     "detail": "tgms-only row: {'messageContent': 'right', 'messageCreationDate': 1324079385917000, 'messageId': 1511829215563, 'messageId__hierarchy': 'Message', 'personFirstName': 'Hao', 'personId': 6597069769862, 'personId__hierarchy': 'Person', 'personLastName': 'Zhang'}"
+    },
+    {
+     "cause": "UNTRIAGED",
+     "detail": "tgms-only row: {'messageContent': 'LOL', 'messageCreationDate': 1324079267865000, 'messageId': 1511833375868, 'messageId__hierarchy': 'Message', 'personFirstName': 'Boris', 'personId': 19791209309812, 'personId__hierarchy': 'Person', 'personLastName': 'Kuzmina'}"
+    },
+    {
+     "cause": "UNTRIAGED",
+     "detail": "tgms-only row: {'messageContent': \"About Benicio del Toro,  Rican to win anAbout Jane Austen, w's A Memoir of Abo\", 'messageCreationDate': 1324079039136000, 'messageId': 1511830796186, 'messageId__hierarchy': 'Message', 'personFirstName': 'Rico', 'personId': 4398046521694, 'personId__hierarchy': 'Person', 'personLastName': 'Perez'}"
+    },
+    {
+     "cause": "UNTRIAGED",
+     "detail": "tgms-only row: {'messageContent': 'right', 'messageCreationDate': 1324079007699000, 'messageId': 1511831203149, 'messageId__hierarchy': 'Message', 'personFirstName': 'K.', 'personId': 17592186046450, 'personId__hierarchy': 'Person', 'personLastName': 'Anand'}"
+    },
+    {
+     "cause": "UNTRIAGED",
+     "detail": "tgms-only row: {'messageContent': 'roflol', 'messageCreationDate': 1324078862109000, 'messageId': 1511831383061, 'messageId__hierarchy': 'Message', 'personFirstName': 'Patricia', 'personId': 8796093026925, 'personId__hierarchy': 'Person', 'personLastName': 'Castillo'}"
+    },
+    {
+     "cause": "UNTRIAGED",
+     "detail": "tgms-only row: {'messageContent': 'no', 'messageCreationDate': 1324078614082000, 'messageId': 1511829342782, 'messageId__hierarchy': 'Message', 'personFirstName': 'Mihai', 'personId': 6597069774750, 'personId__hierarchy': 'Person', 'personLastName': 'Kovacs'}"
+    },
+    {
+     "cause": "UNTRIAGED",
+     "detail": "tgms-only row: {'messageContent': 'good', 'messageCreationDate': 1324078596971000, 'messageId': 1511830784337, 'messageId__hierarchy': 'Message', 'personFirstName': 'Alawwe', 'personId': 4398046513439, 'personId__hierarchy': 'Person', 'personLastName': 'Fernando'}"
+    },
+    {
+     "cause": "UNTRIAGED",
+     "detail": "tgms-only row: {'messageContent': 'About Muammar Gaddafi, ary 2009 to 31 JanuarAbout Pope John Paul II, John Paul II', 'messageCreationDate': 1324078487477000, 'messageId': 1511833299374, 'messageId__hierarchy': 'Message', 'personFirstName': 'Wei', 'personId': 17592186047024, 'personId__hierarchy': 'Person', 'personLastName': 'Zhu'}"
+    },
+    {
+     "cause": "UNTRIAGED",
+     "detail": "tgms-only row: {'messageContent': 'ok', 'messageCreationDate': 1324078405493000, 'messageId': 1511831264798, 'messageId__hierarchy': 'Message', 'personFirstName': 'Ali', 'personId': 10995116284554, 'personId__hierarchy': 'Person', 'personLastName': 'Lo'}"
+    },
+    {
+     "cause": "UNTRIAGED",
+     "detail": "tgms-only row: {'messageContent': 'About Jim Carrey, et to star as Mr. Applegate About Gilbert du Motier, marquis de Lafayette,  visited all twen', 'messageCreationDate': 1324078223385000, 'messageId': 1511828747692, 'messageId__hierarchy': 'Message', 'personFirstName': 'Abdoulaye Khouma', 'personId': 6916, 'personId__hierarchy': 'Person', 'personLastName': 'Niang'}"
+    },
+    {
+     "cause": "UNTRIAGED",
+     "detail": "tgms-only row: {'messageContent': 'no way!', 'messageCreationDate': 1324078081519000, 'messageId': 1511833058065, 'messageId__hierarchy': 'Message', 'personFirstName': 'Jun', 'personId': 19791209304241, 'personId__hierarchy': 'Person', 'personLastName': 'Lu'}"
+    },
+    {
+     "cause": "UNTRIAGED",
+     "detail": "tgms-only row: {'messageContent': 'About There Is a Light That Never Goes Out,  the song as a double A-side live single in', 'messageCreationDate': 1324078061286000, 'messageId': 1511828877418, 'messageId__hierarchy': 'Message', 'personFirstName': 'Jose', 'personId': 8796093022752, 'personId__hierarchy': 'Person', 'personLastName': 'Cruz'}"
+    },
+    {
+     "cause": "UNTRIAGED",
+     "detail": "tgms-only row: {'messageContent': 'duh', 'messageCreationDate': 1324078007795000, 'messageId': 1511828512717, 'messageId__hierarchy': 'Message', 'personFirstName': 'Rahul', 'personId': 6597069771930, 'personId__hierarchy': 'Person', 'personLastName': 'Reddy'}"
+    },
+    {
+     "cause": "UNTRIAGED",
+     "detail": "tgms-only row: {'messageContent': 'About Bryan Adams, ASCAP, and American Music awards. In addition, he has won two Ivor Novello Awards for song compositio', 'messageCreationDate': 1324077888492000, 'messageId': 1511829348837, 'messageId__hierarchy': 'Message', 'personFirstName': 'Edward', 'personId': 4398046514495, 'personId__hierarchy': 'Person', 'personLastName': 'Popov'}"
+    },
+    {
+     "cause": "UNTRIAGED",
+     "detail": "tgms-only row: {'messageContent': 'no way!', 'messageCreationDate': 1324077843538000, 'messageId': 1511829609499, 'messageId__hierarchy': 'Message', 'personFirstName': 'Abdullah', 'personId': 24189255819469, 'personId__hierarchy': 'Person', 'personLastName': 'Leong'}"
+    },
+    {
+     "cause": "UNTRIAGED",
+     "detail": "tgms-only row: {'messageContent': 'great', 'messageCreationDate': 1324077807104000, 'messageId': 1511833059010, 'messageId__hierarchy': 'Message', 'personFirstName': 'Jun', 'personId': 19791209304241, 'personId__hierarchy': 'Person', 'personLastName': 'Lu'}"
+    },
+    {
+     "cause": "UNTRIAGED",
+     "detail": "tgms-only row: {'messageContent': 'About Augustine of Hippo, his contemporary, Jerome, Augustine establisAbout Bede, a Do', 'messageCreationDate': 1324077787439000, 'messageId': 1511833298765, 'messageId__hierarchy': 'Message', 'personFirstName': 'Wei', 'personId': 17592186047024, 'personId__hierarchy': 'Person', 'personLastName': 'Zhu'}"
+    }
+   ],
+   "column_map_rule": "positional",
+   "compared": 20,
+   "contract": "REQUIRES_TOP_K",
+   "disagreeing": 20,
+   "note": null,
+   "plan_id": "IC9",
+   "ref_digest": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+   "reference_columns_not_projected": [],
+   "tgms_digest": "51615616cd7abe671990c095d818b30bd1e21e1bc345cd1f2e02e52e6c89e5d4",
+   "tie_ambiguous": 0,
+   "verdict": "disagreeing"
+  },
+  {
+   "agreeing": 0,
+   "attempted": true,
+   "both_sides_completed": true,
+   "bound": true,
+   "causes": [],
+   "column_map_rule": "name",
+   "compared": 0,
+   "contract": "REQUIRES_TOP_K",
+   "disagreeing": 0,
+   "note": null,
+   "plan_id": "IC11",
+   "ref_digest": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+   "reference_columns_not_projected": [],
+   "tgms_digest": "5aa6671c762a729801a2c98a87dbc41230f4c93b1bea0c82c8f37f6bf2535c6c",
+   "tie_ambiguous": 0,
+   "verdict": "agreeing"
+  },
+  {
+   "agreeing": 5,
+   "attempted": true,
+   "both_sides_completed": true,
+   "bound": true,
+   "causes": [
+    {
+     "cause": "REFERENCE-COLUMN-NOT-PROJECTED",
+     "detail": "the reference projects tagNames; the TGIR plan does not, so the rows above were compared on a strict subset of the query's answer"
+    }
+   ],
+   "column_map_rule": "name-partial",
+   "compared": 5,
+   "contract": "REQUIRES_TOP_K",
+   "disagreeing": 0,
+   "note": null,
+   "plan_id": "IC12",
+   "ref_digest": "831e9c9a91ed3ac04cef9c69e1e4de7ca6a5513366bd8806cc953953dacafcfe",
+   "reference_columns_not_projected": [
+    "tagNames"
+   ],
+   "tgms_digest": "c948001a21ec81834cac2a7383fab1dde794bd0fbcc0ea528fbecc0ee0b3ec8a",
+   "tie_ambiguous": 0,
+   "verdict": "reference-column-not-projected"
+  },
+  {
+   "agreeing": 1,
+   "attempted": true,
+   "both_sides_completed": true,
+   "bound": true,
+   "causes": [],
+   "column_map_rule": "name",
+   "compared": 1,
+   "contract": "CURRENT_ECQR_FRAGMENT",
+   "disagreeing": 0,
+   "note": null,
+   "plan_id": "IS1",
+   "ref_digest": "4dbfc97ac56f29cdf0a89c07b502660a048041d45ad2bf7d7c5af14d9117832e",
+   "reference_columns_not_projected": [],
+   "tgms_digest": "9a61d08027729ce02c449119d0937f884e72a6f4754aec4047c7bfe0aed13044",
+   "tie_ambiguous": 0,
+   "verdict": "agreeing"
+  },
+  {
+   "agreeing": 10,
+   "attempted": true,
+   "both_sides_completed": true,
+   "bound": true,
+   "causes": [],
+   "column_map_rule": "positional",
+   "compared": 10,
+   "contract": "REQUIRES_TOP_K",
+   "disagreeing": 0,
+   "note": null,
+   "plan_id": "IS2",
+   "ref_digest": "cbd05e98fb0ee169cbb3aa274978be1035bf39caa9baf7c9a81c2fe70d71ae61",
+   "reference_columns_not_projected": [],
+   "tgms_digest": "1a895800eb40a924f36f685e63e62df365b45deaf099a352f1fc864582a58371",
+   "tie_ambiguous": 0,
+   "verdict": "agreeing"
+  },
+  {
+   "agreeing": 1,
+   "attempted": true,
+   "both_sides_completed": true,
+   "bound": true,
+   "causes": [
+    {
+     "cause": "UNTRIAGED",
+     "detail": "row 1: tgms={'friendFirstName': 'Binh', 'friendId': 35184372096829, 'friendId__hierarchy': 'Person', 'friendLastName': 'Ha', 'friendshipCreationDate': 1354082151622000} ref={'friendFirstName': 'Ge', 'friendshipCreationDate': 1353559515417, 'friendLastName': 'Wei', 'friendId': 15393162789356}"
+    },
+    {
+     "cause": "UNTRIAGED",
+     "detail": "row 2: tgms={'friendFirstName': 'Ge', 'friendId': 15393162789356, 'friendId__hierarchy': 'Person', 'friendLastName': 'Wei', 'friendshipCreationDate': 1353559515417000} ref={'friendFirstName': 'Peng', 'friendshipCreationDate': 1351850580919, 'friendLastName': 'Zhang', 'friendId': 30786325587579}"
+    },
+    {
+     "cause": "UNTRIAGED",
+     "detail": "row 3: tgms={'friendFirstName': 'Ge', 'friendId': 15393162789356, 'friendId__hierarchy': 'Person', 'friendLastName': 'Wei', 'friendshipCreationDate': 1353559515417000} ref={'friendFirstName': 'Lei', 'friendshipCreationDate': 1349122268575, 'friendLastName': 'Zhang', 'friendId': 35184372096170}"
+    },
+    {
+     "cause": "UNTRIAGED",
+     "detail": "row 4: tgms={'friendFirstName': 'Peng', 'friendId': 30786325587579, 'friendId__hierarchy': 'Person', 'friendLastName': 'Zhang', 'friendshipCreationDate': 1351850580919000} ref={'friendFirstName': 'Hao', 'friendshipCreationDate': 1346647950676, 'friendLastName': 'Li', 'friendId': 30786325579308}"
+    },
+    {
+     "cause": "UNTRIAGED",
+     "detail": "row 5: tgms={'friendFirstName': 'Peng', 'friendId': 30786325587579, 'friendId__hierarchy': 'Person', 'friendLastName': 'Zhang', 'friendshipCreationDate': 1351850580919000} ref={'friendFirstName': 'Sam', 'friendshipCreationDate': 1345286463771, 'friendLastName': 'Huang', 'friendId': 19791209308287}"
+    },
+    {
+     "cause": "UNTRIAGED",
+     "detail": "row 6: tgms={'friendFirstName': 'Lei', 'friendId': 35184372096170, 'friendId__hierarchy': 'Person', 'friendLastName': 'Zhang', 'friendshipCreationDate': 1349122268575000} ref={'friendFirstName': 'Hao', 'friendshipCreationDate': 1345155329348, 'friendLastName': 'Wang', 'friendId': 21990232564056}"
+    },
+    {
+     "cause": "UNTRIAGED",
+     "detail": "row 7: tgms={'friendFirstName': 'Lei', 'friendId': 35184372096170, 'friendId__hierarchy': 'Person', 'friendLastName': 'Zhang', 'friendshipCreationDate': 1349122268575000} ref={'friendFirstName': 'A.', 'friendshipCreationDate': 1344237523088, 'friendLastName': 'Nair', 'friendId': 26388279074760}"
+    },
+    {
+     "cause": "UNTRIAGED",
+     "detail": "row 8: tgms={'friendFirstName': 'Hao', 'friendId': 30786325579308, 'friendId__hierarchy': 'Person', 'friendLastName': 'Li', 'friendshipCreationDate': 1346647950676000} ref={'friendFirstName': 'Zhong', 'friendshipCreationDate': 1343082287850, 'friendLastName': 'Wei', 'friendId': 10995116285249}"
+    },
+    {
+     "cause": "UNTRIAGED",
+     "detail": "row 9: tgms={'friendFirstName': 'Hao', 'friendId': 30786325579308, 'friendId__hierarchy': 'Person', 'friendLastName': 'Li', 'friendshipCreationDate': 1346647950676000} ref={'friendFirstName': 'Hoang Yen', 'friendshipCreationDate': 1338574523296, 'friendLastName': 'Nguyen', 'friendId': 21990232557614}"
+    },
+    {
+     "cause": "UNTRIAGED",
+     "detail": "row 10: tgms={'friendFirstName': 'Sam', 'friendId': 19791209308287, 'friendId__hierarchy': 'Person', 'friendLastName': 'Huang', 'friendshipCreationDate': 1345286463771000} ref={'friendFirstName': 'Chris', 'friendshipCreationDate': 1333167048008, 'friendLastName': 'Hall', 'friendId': 24189255811663}"
+    },
+    {
+     "cause": "UNTRIAGED",
+     "detail": "row 11: tgms={'friendFirstName': 'Sam', 'friendId': 19791209308287, 'friendId__hierarchy': 'Person', 'friendLastName': 'Huang', 'friendshipCreationDate': 1345286463771000} ref={'friendFirstName': 'Lei', 'friendshipCreationDate': 1332592932164, 'friendLastName': 'Wu', 'friendId': 13194139540984}"
+    },
+    {
+     "cause": "UNTRIAGED",
+     "detail": "row 12: tgms={'friendFirstName': 'Hao', 'friendId': 21990232564056, 'friendId__hierarchy': 'Person', 'friendLastName': 'Wang', 'friendshipCreationDate': 1345155329348000} ref={'friendFirstName': 'John', 'friendshipCreationDate': 1329688837594, 'friendLastName': 'Khan', 'friendId': 10995116284819}"
+    },
+    {
+     "cause": "UNTRIAGED",
+     "detail": "row 13: tgms={'friendFirstName': 'Hao', 'friendId': 21990232564056, 'friendId__hierarchy': 'Person', 'friendLastName': 'Wang', 'friendshipCreationDate': 1345155329348000} ref={'friendFirstName': 'Zheng', 'friendshipCreationDate': 1324046270871, 'friendLastName': 'Wang', 'friendId': 10995116279993}"
+    },
+    {
+     "cause": "UNTRIAGED",
+     "detail": "row 14: tgms={'friendFirstName': 'A.', 'friendId': 26388279074760, 'friendId__hierarchy': 'Person', 'friendLastName': 'Nair', 'friendshipCreationDate': 1344237523088000} ref={'friendFirstName': 'Jie', 'friendshipCreationDate': 1323487676156, 'friendLastName': 'Zhu', 'friendId': 21990232563317}"
+    },
+    {
+     "cause": "UNTRIAGED",
+     "detail": "row 15: tgms={'friendFirstName': 'A.', 'friendId': 26388279074760, 'friendId__hierarchy': 'Person', 'friendLastName': 'Nair', 'friendshipCreationDate': 1344237523088000} ref={'friendFirstName': 'Wei', 'friendshipCreationDate': 1318749987172, 'friendLastName': 'Li', 'friendId': 6597069771347}"
+    },
+    {
+     "cause": "UNTRIAGED",
+     "detail": "row 16: tgms={'friendFirstName': 'Zhong', 'friendId': 10995116285249, 'friendId__hierarchy': 'Person', 'friendLastName': 'Wei', 'friendshipCreationDate': 1343082287850000} ref={'friendFirstName': 'Yang', 'friendshipCreationDate': 1315972100462, 'friendLastName': 'Chen', 'friendId': 10995116278639}"
+    },
+    {
+     "cause": "UNTRIAGED",
+     "detail": "row 17: tgms={'friendFirstName': 'Zhong', 'friendId': 10995116285249, 'friendId__hierarchy': 'Person', 'friendLastName': 'Wei', 'friendshipCreationDate': 1343082287850000} ref={'friendFirstName': 'Bing', 'friendshipCreationDate': 1311935811138, 'friendLastName': 'Wang', 'friendId': 10995116284358}"
+    },
+    {
+     "cause": "UNTRIAGED",
+     "detail": "row 18: tgms={'friendFirstName': 'Hoang Yen', 'friendId': 21990232557614, 'friendId__hierarchy': 'Person', 'friendLastName': 'Nguyen', 'friendshipCreationDate': 1338574523296000} ref={'friendFirstName': 'Wei', 'friendshipCreationDate': 1310330934862, 'friendLastName': 'Wang', 'friendId': 8796093024008}"
+    },
+    {
+     "cause": "UNTRIAGED",
+     "detail": "row 19: tgms={'friendFirstName': 'Hoang Yen', 'friendId': 21990232557614, 'friendId__hierarchy': 'Person', 'friendLastName': 'Nguyen', 'friendshipCreationDate': 1338574523296000} ref={'friendFirstName': 'Wei', 'friendshipCreationDate': 1305072024244, 'friendLastName': 'Liu', 'friendId': 8796093028790}"
+    },
+    {
+     "cause": "UNTRIAGED",
+     "detail": "row 20: tgms={'friendFirstName': 'Chris', 'friendId': 24189255811663, 'friendId__hierarchy': 'Person', 'friendLastName': 'Hall', 'friendshipCreationDate': 1333167048008000} ref={'friendFirstName': 'Hao', 'friendshipCreationDate': 1305066657678, 'friendLastName': 'Lei', 'friendId': 10995116285998}"
+    },
+    {
+     "cause": "UNTRIAGED",
+     "detail": "row 21: tgms={'friendFirstName': 'Chris', 'friendId': 24189255811663, 'friendId__hierarchy': 'Person', 'friendLastName': 'Hall', 'friendshipCreationDate': 1333167048008000} ref={'friendFirstName': 'Shweta', 'friendshipCreationDate': 1304770109765, 'friendLastName': 'Kapoor', 'friendId': 15393162797132}"
+    },
+    {
+     "cause": "UNTRIAGED",
+     "detail": "row 22: tgms={'friendFirstName': 'Lei', 'friendId': 13194139540984, 'friendId__hierarchy': 'Person', 'friendLastName': 'Wu', 'friendshipCreationDate': 1332592932164000} ref={'friendFirstName': 'Ramon', 'friendshipCreationDate': 1304178840642, 'friendLastName': 'Reyes', 'friendId': 6597069775211}"
+    },
+    {
+     "cause": "UNTRIAGED",
+     "detail": "row 23: tgms={'friendFirstName': 'Lei', 'friendId': 13194139540984, 'friendId__hierarchy': 'Person', 'friendLastName': 'Wu', 'friendshipCreationDate': 1332592932164000} ref={'friendFirstName': 'Eva', 'friendshipCreationDate': 1301889151278, 'friendLastName': 'Redl', 'friendId': 8796093024108}"
+    },
+    {
+     "cause": "UNTRIAGED",
+     "detail": "row 24: tgms={'friendFirstName': 'John', 'friendId': 10995116284819, 'friendId__hierarchy': 'Person', 'friendLastName': 'Khan', 'friendshipCreationDate': 1329688837594000} ref=None"
+    },
+    {
+     "cause": "UNTRIAGED",
+     "detail": "row 25: tgms={'friendFirstName': 'John', 'friendId': 10995116284819, 'friendId__hierarchy': 'Person', 'friendLastName': 'Khan', 'friendshipCreationDate': 1329688837594000} ref=None"
+    },
+    {
+     "cause": "UNTRIAGED",
+     "detail": "row 26: tgms={'friendFirstName': 'Zheng', 'friendId': 10995116279993, 'friendId__hierarchy': 'Person', 'friendLastName': 'Wang', 'friendshipCreationDate': 1324046270871000} ref=None"
+    },
+    {
+     "cause": "UNTRIAGED",
+     "detail": "row 27: tgms={'friendFirstName': 'Zheng', 'friendId': 10995116279993, 'friendId__hierarchy': 'Person', 'friendLastName': 'Wang', 'friendshipCreationDate': 1324046270871000} ref=None"
+    },
+    {
+     "cause": "UNTRIAGED",
+     "detail": "row 28: tgms={'friendFirstName': 'Jie', 'friendId': 21990232563317, 'friendId__hierarchy': 'Person', 'friendLastName': 'Zhu', 'friendshipCreationDate': 1323487676156000} ref=None"
+    },
+    {
+     "cause": "UNTRIAGED",
+     "detail": "row 29: tgms={'friendFirstName': 'Jie', 'friendId': 21990232563317, 'friendId__hierarchy': 'Person', 'friendLastName': 'Zhu', 'friendshipCreationDate': 1323487676156000} ref=None"
+    },
+    {
+     "cause": "UNTRIAGED",
+     "detail": "row 30: tgms={'friendFirstName': 'Wei', 'friendId': 6597069771347, 'friendId__hierarchy': 'Person', 'friendLastName': 'Li', 'friendshipCreationDate': 1318749987172000} ref=None"
+    },
+    {
+     "cause": "UNTRIAGED",
+     "detail": "row 31: tgms={'friendFirstName': 'Wei', 'friendId': 6597069771347, 'friendId__hierarchy': 'Person', 'friendLastName': 'Li', 'friendshipCreationDate': 1318749987172000} ref=None"
+    },
+    {
+     "cause": "UNTRIAGED",
+     "detail": "row 32: tgms={'friendFirstName': 'Yang', 'friendId': 10995116278639, 'friendId__hierarchy': 'Person', 'friendLastName': 'Chen', 'friendshipCreationDate': 1315972100462000} ref=None"
+    },
+    {
+     "cause": "UNTRIAGED",
+     "detail": "row 33: tgms={'friendFirstName': 'Yang', 'friendId': 10995116278639, 'friendId__hierarchy': 'Person', 'friendLastName': 'Chen', 'friendshipCreationDate': 1315972100462000} ref=None"
+    },
+    {
+     "cause": "UNTRIAGED",
+     "detail": "row 34: tgms={'friendFirstName': 'Bing', 'friendId': 10995116284358, 'friendId__hierarchy': 'Person', 'friendLastName': 'Wang', 'friendshipCreationDate': 1311935811138000} ref=None"
+    },
+    {
+     "cause": "UNTRIAGED",
+     "detail": "row 35: tgms={'friendFirstName': 'Bing', 'friendId': 10995116284358, 'friendId__hierarchy': 'Person', 'friendLastName': 'Wang', 'friendshipCreationDate': 1311935811138000} ref=None"
+    },
+    {
+     "cause": "UNTRIAGED",
+     "detail": "row 36: tgms={'friendFirstName': 'Wei', 'friendId': 8796093024008, 'friendId__hierarchy': 'Person', 'friendLastName': 'Wang', 'friendshipCreationDate': 1310330934862000} ref=None"
+    },
+    {
+     "cause": "UNTRIAGED",
+     "detail": "row 37: tgms={'friendFirstName': 'Wei', 'friendId': 8796093024008, 'friendId__hierarchy': 'Person', 'friendLastName': 'Wang', 'friendshipCreationDate': 1310330934862000} ref=None"
+    },
+    {
+     "cause": "UNTRIAGED",
+     "detail": "row 38: tgms={'friendFirstName': 'Wei', 'friendId': 8796093028790, 'friendId__hierarchy': 'Person', 'friendLastName': 'Liu', 'friendshipCreationDate': 1305072024244000} ref=None"
+    },
+    {
+     "cause": "UNTRIAGED",
+     "detail": "row 39: tgms={'friendFirstName': 'Wei', 'friendId': 8796093028790, 'friendId__hierarchy': 'Person', 'friendLastName': 'Liu', 'friendshipCreationDate': 1305072024244000} ref=None"
+    },
+    {
+     "cause": "UNTRIAGED",
+     "detail": "row 40: tgms={'friendFirstName': 'Hao', 'friendId': 10995116285998, 'friendId__hierarchy': 'Person', 'friendLastName': 'Lei', 'friendshipCreationDate': 1305066657678000} ref=None"
+    },
+    {
+     "cause": "UNTRIAGED",
+     "detail": "row 41: tgms={'friendFirstName': 'Hao', 'friendId': 10995116285998, 'friendId__hierarchy': 'Person', 'friendLastName': 'Lei', 'friendshipCreationDate': 1305066657678000} ref=None"
+    },
+    {
+     "cause": "UNTRIAGED",
+     "detail": "row 42: tgms={'friendFirstName': 'Shweta', 'friendId': 15393162797132, 'friendId__hierarchy': 'Person', 'friendLastName': 'Kapoor', 'friendshipCreationDate': 1304770109765000} ref=None"
+    },
+    {
+     "cause": "UNTRIAGED",
+     "detail": "row 43: tgms={'friendFirstName': 'Shweta', 'friendId': 15393162797132, 'friendId__hierarchy': 'Person', 'friendLastName': 'Kapoor', 'friendshipCreationDate': 1304770109765000} ref=None"
+    },
+    {
+     "cause": "UNTRIAGED",
+     "detail": "row 44: tgms={'friendFirstName': 'Ramon', 'friendId': 6597069775211, 'friendId__hierarchy': 'Person', 'friendLastName': 'Reyes', 'friendshipCreationDate': 1304178840642000} ref=None"
+    },
+    {
+     "cause": "UNTRIAGED",
+     "detail": "row 45: tgms={'friendFirstName': 'Ramon', 'friendId': 6597069775211, 'friendId__hierarchy': 'Person', 'friendLastName': 'Reyes', 'friendshipCreationDate': 1304178840642000} ref=None"
+    },
+    {
+     "cause": "UNTRIAGED",
+     "detail": "row 46: tgms={'friendFirstName': 'Eva', 'friendId': 8796093024108, 'friendId__hierarchy': 'Person', 'friendLastName': 'Redl', 'friendshipCreationDate': 1301889151278000} ref=None"
+    },
+    {
+     "cause": "UNTRIAGED",
+     "detail": "row 47: tgms={'friendFirstName': 'Eva', 'friendId': 8796093024108, 'friendId__hierarchy': 'Person', 'friendLastName': 'Redl', 'friendshipCreationDate': 1301889151278000} ref=None"
+    }
+   ],
+   "column_map_rule": "positional",
+   "compared": 48,
+   "contract": "REQUIRES_ORDERED_RESULT",
+   "disagreeing": 47,
+   "note": null,
+   "plan_id": "IS3",
+   "ref_digest": "801dcf176fd2ea1b424f67c6c78818462403641141adad7cde53a14229b5d007",
+   "reference_columns_not_projected": [],
+   "tgms_digest": "6e06f960429dac1860e87d474d1f775786bf34e509d4696f51dd30acb07ffc65",
+   "tie_ambiguous": 0,
+   "verdict": "disagreeing"
+  },
+  {
+   "agreeing": 1,
+   "attempted": true,
+   "both_sides_completed": true,
+   "bound": true,
+   "causes": [],
+   "column_map_rule": "name",
+   "compared": 1,
+   "contract": "CURRENT_ECQR_FRAGMENT",
+   "disagreeing": 0,
+   "note": null,
+   "plan_id": "IS4",
+   "ref_digest": "6fcfb9f2586190a2930d6a40b91061f3eb3db0bad8a6fd80e8024462ce7a1ffd",
+   "reference_columns_not_projected": [],
+   "tgms_digest": "d055c5a63034f2b9f86b44e54f0ab645a8e3a0bad3201d5236d656f899564128",
+   "tie_ambiguous": 0,
+   "verdict": "agreeing"
+  },
+  {
+   "agreeing": 1,
+   "attempted": true,
+   "both_sides_completed": true,
+   "bound": true,
+   "causes": [],
+   "column_map_rule": "name",
+   "compared": 1,
+   "contract": "CURRENT_ECQR_FRAGMENT",
+   "disagreeing": 0,
+   "note": null,
+   "plan_id": "IS5",
+   "ref_digest": "58ee24478dbbb81ff582b2610840e40f98ccba2ca63e3f1078effd85a32e3658",
+   "reference_columns_not_projected": [],
+   "tgms_digest": "78777b9bfeded73ca8d0bac434bc030f8f893b497ff54e97476f5c6104075404",
+   "tie_ambiguous": 0,
+   "verdict": "agreeing"
+  },
+  {
+   "agreeing": 1,
+   "attempted": true,
+   "both_sides_completed": true,
+   "bound": true,
+   "causes": [],
+   "column_map_rule": "name",
+   "compared": 1,
+   "contract": "CURRENT_ECQR_FRAGMENT",
+   "disagreeing": 0,
+   "note": null,
+   "plan_id": "IS6",
+   "ref_digest": "9ea6b6452ceb6f8403bed2f7baaef58bfcefdd33dd0c6b7aa7f467f3ecc89dc4",
+   "reference_columns_not_projected": [],
+   "tgms_digest": "72021946e3d4899cc9613601fba1737b348ab8ee7cb7970270f257528a24bef6",
+   "tie_ambiguous": 0,
+   "verdict": "agreeing"
+  },
+  {
+   "agreeing": 1,
+   "attempted": true,
+   "both_sides_completed": true,
+   "bound": true,
+   "causes": [],
+   "column_map_rule": "name",
+   "compared": 1,
+   "contract": "REQUIRES_ORDERED_RESULT",
+   "disagreeing": 0,
+   "note": null,
+   "plan_id": "IS7",
+   "ref_digest": "be2154449591b9880e4265615116c81477b414a5a11b5f79dd70bf20d8d07543",
+   "reference_columns_not_projected": [],
+   "tgms_digest": "529e7f46f07ebd23de7bff2d32f41c1eed3241c3f39a534af2b6c11bdb22002d",
+   "tie_ambiguous": 0,
+   "verdict": "agreeing"
+  }
+ ]
+}

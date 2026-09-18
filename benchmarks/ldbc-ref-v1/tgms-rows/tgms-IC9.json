@@ -1,0 +1,248 @@
+{
+ "arm": "characterization-interactive",
+ "columns": [
+  "personId",
+  "personFirstName",
+  "personLastName",
+  "messageId",
+  "messageContent",
+  "messageCreationDate"
+ ],
+ "commit": "0b7198dfdf7a",
+ "host": "xzgpu",
+ "params": {
+  "maxDate": 1324080000000000,
+  "personId": "175921860504379"
+ },
+ "plan_digest": "ca60ae0b94f7275136db777332080d0f45b2f806262e93657d26f3fbf0a532f5",
+ "plan_id": "IC9",
+ "result_digest": "51615616cd7abe671990c095d818b30bd1e21e1bc345cd1f2e02e52e6c89e5d4",
+ "rows": [
+  {
+   "messageContent": "thx",
+   "messageCreationDate": 1324079808688000,
+   "messageId": 1511829346932,
+   "messageId__hierarchy": "Message",
+   "personFirstName": "Ahmed",
+   "personId": 13194139537798,
+   "personId__hierarchy": "Person",
+   "personLastName": "Abdeslam"
+  },
+  {
+   "messageContent": "About Thomas Jefferson, esolutions, which attempteAbout Socialist Federal Rep",
+   "messageCreationDate": 1324079734424000,
+   "messageId": 1511832728048,
+   "messageId__hierarchy": "Message",
+   "personFirstName": "Ladji",
+   "personId": 15393162793010,
+   "personId__hierarchy": "Person",
+   "personLastName": "Dia"
+  },
+  {
+   "messageContent": "About Sergei Eisenstein, attleship Potemkin (1925) and October About This I",
+   "messageCreationDate": 1324079615173000,
+   "messageId": 1511833503855,
+   "messageId__hierarchy": "Message",
+   "personFirstName": "Javad",
+   "personId": 17592186047743,
+   "personId__hierarchy": "Person",
+   "personLastName": "Karimi"
+  },
+  {
+   "messageContent": "right",
+   "messageCreationDate": 1324079385917000,
+   "messageId": 1511829215563,
+   "messageId__hierarchy": "Message",
+   "personFirstName": "Hao",
+   "personId": 6597069769862,
+   "personId__hierarchy": "Person",
+   "personLastName": "Zhang"
+  },
+  {
+   "messageContent": "LOL",
+   "messageCreationDate": 1324079267865000,
+   "messageId": 1511833375868,
+   "messageId__hierarchy": "Message",
+   "personFirstName": "Boris",
+   "personId": 19791209309812,
+   "personId__hierarchy": "Person",
+   "personLastName": "Kuzmina"
+  },
+  {
+   "messageContent": "About Benicio del Toro,  Rican to win anAbout Jane Austen, w's A Memoir of Abo",
+   "messageCreationDate": 1324079039136000,
+   "messageId": 1511830796186,
+   "messageId__hierarchy": "Message",
+   "personFirstName": "Rico",
+   "personId": 4398046521694,
+   "personId__hierarchy": "Person",
+   "personLastName": "Perez"
+  },
+  {
+   "messageContent": "right",
+   "messageCreationDate": 1324079007699000,
+   "messageId": 1511831203149,
+   "messageId__hierarchy": "Message",
+   "personFirstName": "K.",
+   "personId": 17592186046450,
+   "personId__hierarchy": "Person",
+   "personLastName": "Anand"
+  },
+  {
+   "messageContent": "roflol",
+   "messageCreationDate": 1324078862109000,
+   "messageId": 1511831383061,
+   "messageId__hierarchy": "Message",
+   "personFirstName": "Patricia",
+   "personId": 8796093026925,
+   "personId__hierarchy": "Person",
+   "personLastName": "Castillo"
+  },
+  {
+   "messageContent": "no",
+   "messageCreationDate": 1324078614082000,
+   "messageId": 1511829342782,
+   "messageId__hierarchy": "Message",
+   "personFirstName": "Mihai",
+   "personId": 6597069774750,
+   "personId__hierarchy": "Person",
+   "personLastName": "Kovacs"
+  },
+  {
+   "messageContent": "good",
+   "messageCreationDate": 1324078596971000,
+   "messageId": 1511830784337,
+   "messageId__hierarchy": "Message",
+   "personFirstName": "Alawwe",
+   "personId": 4398046513439,
+   "personId__hierarchy": "Person",
+   "personLastName": "Fernando"
+  },
+  {
+   "messageContent": "About Muammar Gaddafi, ary 2009 to 31 JanuarAbout Pope John Paul II, John Paul II",
+   "messageCreationDate": 1324078487477000,
+   "messageId": 1511833299374,
+   "messageId__hierarchy": "Message",
+   "personFirstName": "Wei",
+   "personId": 17592186047024,
+   "personId__hierarchy": "Person",
+   "personLastName": "Zhu"
+  },
+  {
+   "messageContent": "ok",
+   "messageCreationDate": 1324078405493000,
+   "messageId": 1511831264798,
+   "messageId__hierarchy": "Message",
+   "personFirstName": "Ali",
+   "personId": 10995116284554,
+   "personId__hierarchy": "Person",
+   "personLastName": "Lo"
+  },
+  {
+   "messageContent": "About Jim Carrey, et to star as Mr. Applegate About Gilbert du Motier, marquis de Lafayette,  visited all twen",
+   "messageCreationDate": 1324078223385000,
+   "messageId": 1511828747692,
+   "messageId__hierarchy": "Message",
+   "personFirstName": "Abdoulaye Khouma",
+   "personId": 6916,
+   "personId__hierarchy": "Person",
+   "personLastName": "Niang"
+  },
+  {
+   "messageContent": "no way!",
+   "messageCreationDate": 1324078081519000,
+   "messageId": 1511833058065,
+   "messageId__hierarchy": "Message",
+   "personFirstName": "Jun",
+   "personId": 19791209304241,
+   "personId__hierarchy": "Person",
+   "personLastName": "Lu"
+  },
+  {
+   "messageContent": "About There Is a Light That Never Goes Out,  the song as a double A-side live single in",
+   "messageCreationDate": 1324078061286000,
+   "messageId": 1511828877418,
+   "messageId__hierarchy": "Message",
+   "personFirstName": "Jose",
+   "personId": 8796093022752,
+   "personId__hierarchy": "Person",
+   "personLastName": "Cruz"
+  },
+  {
+   "messageContent": "duh",
+   "messageCreationDate": 1324078007795000,
+   "messageId": 1511828512717,
+   "messageId__hierarchy": "Message",
+   "personFirstName": "Rahul",
+   "personId": 6597069771930,
+   "personId__hierarchy": "Person",
+   "personLastName": "Reddy"
+  },
+  {
+   "messageContent": "About Bryan Adams, ASCAP, and American Music awards. In addition, he has won two Ivor Novello Awards for song compositio",
+   "messageCreationDate": 1324077888492000,
+   "messageId": 1511829348837,
+   "messageId__hierarchy": "Message",
+   "personFirstName": "Edward",
+   "personId": 4398046514495,
+   "personId__hierarchy": "Person",
+   "personLastName": "Popov"
+  },
+  {
+   "messageContent": "no way!",
+   "messageCreationDate": 1324077843538000,
+   "messageId": 1511829609499,
+   "messageId__hierarchy": "Message",
+   "personFirstName": "Abdullah",
+   "personId": 24189255819469,
+   "personId__hierarchy": "Person",
+   "personLastName": "Leong"
+  },
+  {
+   "messageContent": "great",
+   "messageCreationDate": 1324077807104000,
+   "messageId": 1511833059010,
+   "messageId__hierarchy": "Message",
+   "personFirstName": "Jun",
+   "personId": 19791209304241,
+   "personId__hierarchy": "Person",
+   "personLastName": "Lu"
+  },
+  {
+   "messageContent": "About Augustine of Hippo, his contemporary, Jerome, Augustine establisAbout Bede, a Do",
+   "messageCreationDate": 1324077787439000,
+   "messageId": 1511833298765,
+   "messageId__hierarchy": "Message",
+   "personFirstName": "Wei",
+   "personId": 17592186047024,
+   "personId__hierarchy": "Person",
+   "personLastName": "Zhu"
+  }
+ ],
+ "schema": [
+  [
+   "personId",
+   "uid"
+  ],
+  [
+   "personFirstName",
+   "json?"
+  ],
+  [
+   "personLastName",
+   "json?"
+  ],
+  [
+   "messageId",
+   "uid"
+  ],
+  [
+   "messageContent",
+   "json?"
+  ],
+  [
+   "messageCreationDate",
+   "json?"
+  ]
+ ]
+}

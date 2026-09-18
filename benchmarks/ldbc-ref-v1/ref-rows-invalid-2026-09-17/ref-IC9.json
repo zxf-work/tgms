@@ -1,0 +1,22 @@
+{
+ "columns": [
+  "personId",
+  "personFirstName",
+  "personLastName",
+  "commentOrPostId",
+  "commentOrPostContent",
+  "commentOrPostCreationDate"
+ ],
+ "commit": "0b7198dfdf7a",
+ "host": "xzgpu",
+ "params": {
+  "maxDate": "2011-12-17T00:00:00.000+00:00",
+  "personId": 21990232563047
+ },
+ "plan_id": "IC9",
+ "query_file": "external_workloads/ldbc/interactive_v1/cypher/queries/interactive-complex-9.cypher",
+ "query_sha256": "84d05a4cc87a0680b490fc98aa303ff211f363204cc81d936cd5d442bf85cfe7",
+ "result_digest": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+ "rows": [],
+ "wall_s": 1.488
+}

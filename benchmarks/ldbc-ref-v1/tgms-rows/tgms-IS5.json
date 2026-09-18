@@ -1,0 +1,38 @@
+{
+ "arm": "characterization-interactive",
+ "columns": [
+  "personId",
+  "firstName",
+  "lastName"
+ ],
+ "commit": "0b7198dfdf7a",
+ "host": "xzgpu",
+ "params": {
+  "messageId": "16492680933009"
+ },
+ "plan_digest": "c2a0d3003d45062fb8f61732d1e0615ba594de48c318fa1fcba9a51a9b9981d9",
+ "plan_id": "IS5",
+ "result_digest": "78777b9bfeded73ca8d0bac434bc030f8f893b497ff54e97476f5c6104075404",
+ "rows": [
+  {
+   "firstName": "Ajuma Nasenyana",
+   "lastName": "Ngoche",
+   "personId": 664,
+   "personId__hierarchy": "Person"
+  }
+ ],
+ "schema": [
+  [
+   "personId",
+   "uid"
+  ],
+  [
+   "firstName",
+   "json?"
+  ],
+  [
+   "lastName",
+   "json?"
+  ]
+ ]
+}

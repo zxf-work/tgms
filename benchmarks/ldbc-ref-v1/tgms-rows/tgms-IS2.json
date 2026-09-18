@@ -1,0 +1,172 @@
+{
+ "arm": "characterization-interactive",
+ "columns": [
+  "messageId",
+  "messageContent",
+  "messageCreationDate",
+  "originalPostId",
+  "originalPostAuthorId",
+  "originalPostAuthorFirstName",
+  "originalPostAuthorLastName"
+ ],
+ "commit": "0b7198dfdf7a",
+ "host": "xzgpu",
+ "params": {
+  "personId": "105553116349955"
+ },
+ "plan_digest": "0ad92aacb306f7be99fd5e43384434f647fe61e8247d26edaaee065563359219",
+ "plan_id": "IS2",
+ "result_digest": "1a895800eb40a924f36f685e63e62df365b45deaf099a352f1fc864582a58371",
+ "rows": [
+  {
+   "messageContent": "no way!",
+   "messageCreationDate": 1353981881566000,
+   "messageId": 2336462628956,
+   "messageId__hierarchy": "Message",
+   "originalPostAuthorFirstName": "Peter",
+   "originalPostAuthorId": 2199023256206,
+   "originalPostAuthorId__hierarchy": "Person",
+   "originalPostAuthorLastName": "Smith",
+   "originalPostId": 824634140751,
+   "originalPostId__hierarchy": "Message"
+  },
+  {
+   "messageContent": "right",
+   "messageCreationDate": 1353977185426000,
+   "messageId": 2336462627662,
+   "messageId__hierarchy": "Message",
+   "originalPostAuthorFirstName": "Peter",
+   "originalPostAuthorId": 2199023256206,
+   "originalPostAuthorId__hierarchy": "Person",
+   "originalPostAuthorLastName": "Smith",
+   "originalPostId": 824634139469,
+   "originalPostId__hierarchy": "Message"
+  },
+  {
+   "messageContent": "maybe",
+   "messageCreationDate": 1353969612899000,
+   "messageId": 2336462629639,
+   "messageId__hierarchy": "Message",
+   "originalPostAuthorFirstName": "Peter",
+   "originalPostAuthorId": 2199023256206,
+   "originalPostAuthorId__hierarchy": "Person",
+   "originalPostAuthorLastName": "Smith",
+   "originalPostId": 412317281022,
+   "originalPostId__hierarchy": "Message"
+  },
+  {
+   "messageContent": "duh",
+   "messageCreationDate": 1353969462536000,
+   "messageId": 2336462628359,
+   "messageId__hierarchy": "Message",
+   "originalPostAuthorFirstName": "Peter",
+   "originalPostAuthorId": 2199023256206,
+   "originalPostAuthorId__hierarchy": "Person",
+   "originalPostAuthorLastName": "Smith",
+   "originalPostId": 2061584721409,
+   "originalPostId__hierarchy": "Message"
+  },
+  {
+   "messageContent": "duh",
+   "messageCreationDate": 1353943850018000,
+   "messageId": 2336462628764,
+   "messageId__hierarchy": "Message",
+   "originalPostAuthorFirstName": "Peter",
+   "originalPostAuthorId": 2199023256206,
+   "originalPostAuthorId__hierarchy": "Person",
+   "originalPostAuthorLastName": "Smith",
+   "originalPostId": 2061584721805,
+   "originalPostId__hierarchy": "Message"
+  },
+  {
+   "messageContent": "thanks",
+   "messageCreationDate": 1353941622131000,
+   "messageId": 2336462629164,
+   "messageId__hierarchy": "Message",
+   "originalPostAuthorFirstName": "Peter",
+   "originalPostAuthorId": 2199023256206,
+   "originalPostAuthorId__hierarchy": "Person",
+   "originalPostAuthorLastName": "Smith",
+   "originalPostId": 687195187485,
+   "originalPostId__hierarchy": "Message"
+  },
+  {
+   "messageContent": "I see",
+   "messageCreationDate": 1353935211307000,
+   "messageId": 2336462628309,
+   "messageId__hierarchy": "Message",
+   "originalPostAuthorFirstName": "Peter",
+   "originalPostAuthorId": 2199023256206,
+   "originalPostAuthorId__hierarchy": "Person",
+   "originalPostAuthorLastName": "Smith",
+   "originalPostId": 1786706814411,
+   "originalPostId__hierarchy": "Message"
+  },
+  {
+   "messageContent": "About Mary Pickford, n of her contributions to AmerAbout German Empire, Wilhelm I as Ge",
+   "messageCreationDate": 1353934031763000,
+   "messageId": 2336462628563,
+   "messageId__hierarchy": "Message",
+   "originalPostAuthorFirstName": "Peter",
+   "originalPostAuthorId": 2199023256206,
+   "originalPostAuthorId__hierarchy": "Person",
+   "originalPostAuthorLastName": "Smith",
+   "originalPostId": 1786706814663,
+   "originalPostId__hierarchy": "Message"
+  },
+  {
+   "messageContent": "fine",
+   "messageCreationDate": 1353928058594000,
+   "messageId": 2336462629151,
+   "messageId__hierarchy": "Message",
+   "originalPostAuthorFirstName": "Peter",
+   "originalPostAuthorId": 2199023256206,
+   "originalPostAuthorId__hierarchy": "Person",
+   "originalPostAuthorLastName": "Smith",
+   "originalPostId": 687195187485,
+   "originalPostId__hierarchy": "Message"
+  },
+  {
+   "messageContent": "fine",
+   "messageCreationDate": 1353922505517000,
+   "messageId": 2336462628302,
+   "messageId__hierarchy": "Message",
+   "originalPostAuthorFirstName": "Peter",
+   "originalPostAuthorId": 2199023256206,
+   "originalPostAuthorId__hierarchy": "Person",
+   "originalPostAuthorLastName": "Smith",
+   "originalPostId": 1786706814411,
+   "originalPostId__hierarchy": "Message"
+  }
+ ],
+ "schema": [
+  [
+   "messageId",
+   "uid"
+  ],
+  [
+   "messageContent",
+   "json?"
+  ],
+  [
+   "messageCreationDate",
+   "json?"
+  ],
+  [
+   "originalPostId",
+   "uid"
+  ],
+  [
+   "originalPostAuthorId",
+   "uid"
+  ],
+  [
+   "originalPostAuthorFirstName",
+   "json?"
+  ],
+  [
+   "originalPostAuthorLastName",
+   "json?"
+  ]
+ ]
+}

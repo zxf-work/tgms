@@ -1,0 +1,213 @@
+{
+  "failures": [],
+  "gate_digest_sha256": "81b9b099f44c803e3b42c779e496107aa47a30be2cb4ce8590bd0051a18e7660",
+  "merged_fk_root": "/mnt/project/xzhang/tgms/ldbc-sf1/bi-sf1-composite-merged-fk/graphs/csv/bi/composite-merged-fk/initial_snapshot",
+  "nodes": {
+    "Comment": {
+      "agree": true,
+      "merged_id_sha256": "2ecb0dfa904d6f09bfa285e7946e4379044b216f8dd15fa27473027721321d46",
+      "merged_rows": 1739438,
+      "projected_id_sha256": "2ecb0dfa904d6f09bfa285e7946e4379044b216f8dd15fa27473027721321d46",
+      "projected_rows": 1739438
+    },
+    "Forum": {
+      "agree": true,
+      "merged_id_sha256": "46b7a2e432a2c835fe0754e9dc6a9c78e3eef35a31478e46c45238b69ed798cf",
+      "merged_rows": 100827,
+      "projected_id_sha256": "46b7a2e432a2c835fe0754e9dc6a9c78e3eef35a31478e46c45238b69ed798cf",
+      "projected_rows": 100827
+    },
+    "Organisation": {
+      "agree": true,
+      "merged_id_sha256": "5b01de60a96991147826f4607ae16624a653645429ba4fbff2fc3a0d48cc5011",
+      "merged_rows": 7955,
+      "projected_id_sha256": "5b01de60a96991147826f4607ae16624a653645429ba4fbff2fc3a0d48cc5011",
+      "projected_rows": 7955
+    },
+    "Person": {
+      "agree": true,
+      "merged_id_sha256": "97b091a2a426fa45578edc009fee5766742627fdaea2c80fd3e2fdd420ebb2cd",
+      "merged_rows": 10295,
+      "projected_id_sha256": "97b091a2a426fa45578edc009fee5766742627fdaea2c80fd3e2fdd420ebb2cd",
+      "projected_rows": 10295
+    },
+    "Place": {
+      "agree": true,
+      "merged_id_sha256": "dd67d9325615e862dcd86fafb1c6863af4618a2af1b76c58768a983208dcb3e4",
+      "merged_rows": 1460,
+      "projected_id_sha256": "dd67d9325615e862dcd86fafb1c6863af4618a2af1b76c58768a983208dcb3e4",
+      "projected_rows": 1460
+    },
+    "Post": {
+      "agree": true,
+      "merged_id_sha256": "8ce97a487b91a173b50e1cd9335f70c563c7805e47649fb092b9ebc05b0a5f41",
+      "merged_rows": 1121226,
+      "projected_id_sha256": "8ce97a487b91a173b50e1cd9335f70c563c7805e47649fb092b9ebc05b0a5f41",
+      "projected_rows": 1121226
+    },
+    "Tag": {
+      "agree": true,
+      "merged_id_sha256": "8030ece5cdf442fab440ebe34886675967d53099bdfdce93bb7becdbc9419a53",
+      "merged_rows": 16080,
+      "projected_id_sha256": "8030ece5cdf442fab440ebe34886675967d53099bdfdce93bb7becdbc9419a53",
+      "projected_rows": 16080
+    },
+    "TagClass": {
+      "agree": true,
+      "merged_id_sha256": "1685c7c150b3c4fac3656edda712dd6c490cae4783897f98e9e83602d8f57dd5",
+      "merged_rows": 71,
+      "projected_id_sha256": "1685c7c150b3c4fac3656edda712dd6c490cae4783897f98e9e83602d8f57dd5",
+      "projected_rows": 71
+    }
+  },
+  "passed": true,
+  "projected_fk_root": "/mnt/project/xzhang/tgms/ldbc-sf1/bi-sf1-composite-projected-fk/bi-sf1-composite-projected-fk/graphs/csv/bi/composite-projected-fk/initial_snapshot",
+  "relationships": {
+    "Comment_hasCreator_Person": {
+      "agree": true,
+      "kind": "fk-merged-into-Comment.CreatorPersonId",
+      "merged_rows": 1739438,
+      "projected_rows": 1739438
+    },
+    "Comment_hasTag_Tag": {
+      "agree": true,
+      "kind": "standalone-both-sides",
+      "merged_rows": 2176131,
+      "projected_rows": 2176131
+    },
+    "Comment_isLocatedIn_Country": {
+      "agree": true,
+      "kind": "fk-merged-into-Comment.LocationCountryId",
+      "merged_rows": 1739438,
+      "projected_rows": 1739438
+    },
+    "Comment_replyOf_Comment": {
+      "agree": true,
+      "kind": "fk-merged-into-Comment.ParentCommentId",
+      "merged_rows": 789020,
+      "projected_rows": 789020
+    },
+    "Comment_replyOf_Post": {
+      "agree": true,
+      "kind": "fk-merged-into-Comment.ParentPostId",
+      "merged_rows": 950418,
+      "projected_rows": 950418
+    },
+    "Forum_containerOf_Post": {
+      "agree": true,
+      "kind": "fk-merged-into-Post.ContainerForumId",
+      "merged_rows": 1121226,
+      "projected_rows": 1121226
+    },
+    "Forum_hasMember_Person": {
+      "agree": true,
+      "kind": "standalone-both-sides",
+      "merged_rows": 2909768,
+      "projected_rows": 2909768
+    },
+    "Forum_hasModerator_Person": {
+      "agree": true,
+      "kind": "fk-merged-into-Forum.ModeratorPersonId",
+      "merged_rows": 100827,
+      "projected_rows": 100827
+    },
+    "Forum_hasTag_Tag": {
+      "agree": true,
+      "kind": "standalone-both-sides",
+      "merged_rows": 328584,
+      "projected_rows": 328584
+    },
+    "Organisation_isLocatedIn_Place": {
+      "agree": true,
+      "kind": "fk-merged-into-Organisation.LocationPlaceId",
+      "merged_rows": 7955,
+      "projected_rows": 7955
+    },
+    "Person_hasInterest_Tag": {
+      "agree": true,
+      "kind": "standalone-both-sides",
+      "merged_rows": 238052,
+      "projected_rows": 238052
+    },
+    "Person_isLocatedIn_City": {
+      "agree": true,
+      "kind": "fk-merged-into-Person.LocationCityId",
+      "merged_rows": 10295,
+      "projected_rows": 10295
+    },
+    "Person_knows_Person": {
+      "agree": true,
+      "kind": "standalone-both-sides",
+      "merged_rows": 173014,
+      "projected_rows": 173014
+    },
+    "Person_likes_Comment": {
+      "agree": true,
+      "kind": "standalone-both-sides",
+      "merged_rows": 1109813,
+      "projected_rows": 1109813
+    },
+    "Person_likes_Post": {
+      "agree": true,
+      "kind": "standalone-both-sides",
+      "merged_rows": 760455,
+      "projected_rows": 760455
+    },
+    "Person_studyAt_University": {
+      "agree": true,
+      "kind": "standalone-both-sides",
+      "merged_rows": 8309,
+      "projected_rows": 8309
+    },
+    "Person_workAt_Company": {
+      "agree": true,
+      "kind": "standalone-both-sides",
+      "merged_rows": 22044,
+      "projected_rows": 22044
+    },
+    "Place_isPartOf_Place": {
+      "agree": true,
+      "kind": "fk-merged-into-Place.PartOfPlaceId",
+      "merged_rows": 1454,
+      "projected_rows": 1454
+    },
+    "Post_hasCreator_Person": {
+      "agree": true,
+      "kind": "fk-merged-into-Post.CreatorPersonId",
+      "merged_rows": 1121226,
+      "projected_rows": 1121226
+    },
+    "Post_hasTag_Tag": {
+      "agree": true,
+      "kind": "standalone-both-sides",
+      "merged_rows": 751933,
+      "projected_rows": 751933
+    },
+    "Post_isLocatedIn_Country": {
+      "agree": true,
+      "kind": "fk-merged-into-Post.LocationCountryId",
+      "merged_rows": 1121226,
+      "projected_rows": 1121226
+    },
+    "TagClass_isSubclassOf_TagClass": {
+      "agree": true,
+      "kind": "fk-merged-into-TagClass.SubclassOfTagClassId",
+      "merged_rows": 70,
+      "projected_rows": 70
+    },
+    "Tag_hasType_TagClass": {
+      "agree": true,
+      "kind": "fk-merged-into-Tag.TypeTagClassId",
+      "merged_rows": 16080,
+      "projected_rows": 16080
+    }
+  },
+  "totals": {
+    "merged_edges": 17196776,
+    "merged_nodes": 2997352,
+    "projected_edges": 17196776,
+    "projected_nodes": 2997352,
+    "required_edges": 17196776,
+    "required_nodes": 2997352
+  }
+}

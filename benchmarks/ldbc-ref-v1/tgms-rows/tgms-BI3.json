@@ -1,0 +1,223 @@
+{
+ "arm": "scored-bi",
+ "columns": [
+  "forumId",
+  "forumTitle",
+  "forumCreationDate",
+  "moderatorId",
+  "messageCount"
+ ],
+ "commit": "0b7198dfdf7a",
+ "host": "xzgpu",
+ "params": {
+  "country": "India",
+  "tagClass": "President"
+ },
+ "plan_digest": "68bb4621c31246cebf196b93444447c837acd5ab4b3568b2551e498185ecec6d",
+ "plan_id": "BI3",
+ "result_digest": "59100e39f8c555d2aef40ce865e4a22239191351c62bb4f466816f53a4fbc202",
+ "rows": [
+  {
+   "forumCreationDate": 1278060831585000,
+   "forumId": 274877932867,
+   "forumId__hierarchy": "Forum",
+   "forumTitle": "Wall of Abhishek Sharma",
+   "messageCount": 304,
+   "moderatorId": 4398046517450,
+   "moderatorId__hierarchy": "Person"
+  },
+  {
+   "forumCreationDate": 1267997932621000,
+   "forumId": 137438971815,
+   "forumId__hierarchy": "Forum",
+   "forumTitle": "Wall of A. Khan",
+   "messageCount": 235,
+   "moderatorId": 2199023264350,
+   "moderatorId__hierarchy": "Person"
+  },
+  {
+   "forumCreationDate": 1265237024081000,
+   "forumId": 1914,
+   "forumId__hierarchy": "Forum",
+   "forumTitle": "Wall of Nikhil Khan",
+   "messageCount": 190,
+   "moderatorId": 2239,
+   "moderatorId__hierarchy": "Person"
+  },
+  {
+   "forumCreationDate": 1273606366004000,
+   "forumId": 274877935397,
+   "forumId__hierarchy": "Forum",
+   "forumTitle": "Wall of Prakash Kumar",
+   "messageCount": 171,
+   "moderatorId": 4398046520371,
+   "moderatorId__hierarchy": "Person"
+  },
+  {
+   "forumCreationDate": 1303008778739000,
+   "forumId": 962072740087,
+   "forumId__hierarchy": "Forum",
+   "forumTitle": "Wall of Shweta Kapoor",
+   "messageCount": 166,
+   "moderatorId": 15393162797132,
+   "moderatorId__hierarchy": "Person"
+  },
+  {
+   "forumCreationDate": 1272992473785000,
+   "forumId": 274877930308,
+   "forumId__hierarchy": "Forum",
+   "forumTitle": "Wall of Abhishek Irani",
+   "messageCount": 165,
+   "moderatorId": 4398046514467,
+   "moderatorId__hierarchy": "Person"
+  },
+  {
+   "forumCreationDate": 1288369866428000,
+   "forumId": 549756865169,
+   "forumId__hierarchy": "Forum",
+   "forumTitle": "Wall of K. Sharma",
+   "messageCount": 128,
+   "moderatorId": 8796093030826,
+   "moderatorId__hierarchy": "Person"
+  },
+  {
+   "forumCreationDate": 1270787634907000,
+   "forumId": 137438964366,
+   "forumId__hierarchy": "Forum",
+   "forumTitle": "Wall of Arjun Kumar",
+   "messageCount": 112,
+   "moderatorId": 2199023255976,
+   "moderatorId__hierarchy": "Person"
+  },
+  {
+   "forumCreationDate": 1288021761175000,
+   "forumId": 549755852834,
+   "forumId__hierarchy": "Forum",
+   "forumTitle": "Wall of K. Bose",
+   "messageCount": 98,
+   "moderatorId": 8796093023472,
+   "moderatorId__hierarchy": "Person"
+  },
+  {
+   "forumCreationDate": 1278597893603000,
+   "forumId": 412316890868,
+   "forumId__hierarchy": "Forum",
+   "forumTitle": "Wall of Anupam Reddy",
+   "messageCount": 81,
+   "moderatorId": 6597069767941,
+   "moderatorId__hierarchy": "Person"
+  },
+  {
+   "forumCreationDate": 1284225620021000,
+   "forumId": 549755860072,
+   "forumId__hierarchy": "Forum",
+   "forumTitle": "Wall of Shweta Khan",
+   "messageCount": 81,
+   "moderatorId": 8796093032132,
+   "moderatorId__hierarchy": "Person"
+  },
+  {
+   "forumCreationDate": 1326230689085000,
+   "forumId": 1649267530101,
+   "forumId__hierarchy": "Forum",
+   "forumTitle": "Wall of Aditya Khan",
+   "messageCount": 74,
+   "moderatorId": 26388279067483,
+   "moderatorId__hierarchy": "Person"
+  },
+  {
+   "forumCreationDate": 1283899766640000,
+   "forumId": 549755852591,
+   "forumId__hierarchy": "Forum",
+   "forumTitle": "Wall of A. Kapoor",
+   "messageCount": 68,
+   "moderatorId": 8796093023054,
+   "moderatorId__hierarchy": "Person"
+  },
+  {
+   "forumCreationDate": 1291500571234000,
+   "forumId": 687194816787,
+   "forumId__hierarchy": "Forum",
+   "forumTitle": "Wall of Kunal Kumar",
+   "messageCount": 67,
+   "moderatorId": 10995116281358,
+   "moderatorId__hierarchy": "Person"
+  },
+  {
+   "forumCreationDate": 1269034147976000,
+   "forumId": 137438966044,
+   "forumId__hierarchy": "Forum",
+   "forumTitle": "Wall of Deepak Rao",
+   "messageCount": 66,
+   "moderatorId": 2199023258114,
+   "moderatorId__hierarchy": "Person"
+  },
+  {
+   "forumCreationDate": 1263538605947000,
+   "forumId": 5640,
+   "forumId__hierarchy": "Forum",
+   "forumTitle": "Wall of Arjun Chopra",
+   "messageCount": 63,
+   "moderatorId": 6003,
+   "moderatorId__hierarchy": "Person"
+  },
+  {
+   "forumCreationDate": 1290331805764000,
+   "forumId": 687194818301,
+   "forumId__hierarchy": "Forum",
+   "forumTitle": "Wall of Ashok Kumar",
+   "messageCount": 62,
+   "moderatorId": 10995116284413,
+   "moderatorId__hierarchy": "Person"
+  },
+  {
+   "forumCreationDate": 1316778968941000,
+   "forumId": 1374389615660,
+   "forumId__hierarchy": "Forum",
+   "forumTitle": "Wall of Meera Kapoor",
+   "messageCount": 61,
+   "moderatorId": 21990232559935,
+   "moderatorId__hierarchy": "Person"
+  },
+  {
+   "forumCreationDate": 1265067026221000,
+   "forumId": 5046,
+   "forumId__hierarchy": "Forum",
+   "forumTitle": "Wall of Aditya Nair",
+   "messageCount": 60,
+   "moderatorId": 5320,
+   "moderatorId__hierarchy": "Person"
+  },
+  {
+   "forumCreationDate": 1275403325597000,
+   "forumId": 274877928110,
+   "forumId__hierarchy": "Forum",
+   "forumTitle": "Wall of Rahul Reddy",
+   "messageCount": 60,
+   "moderatorId": 4398046511934,
+   "moderatorId__hierarchy": "Person"
+  }
+ ],
+ "schema": [
+  [
+   "forumId",
+   "uid"
+  ],
+  [
+   "forumTitle",
+   "json?"
+  ],
+  [
+   "forumCreationDate",
+   "json?"
+  ],
+  [
+   "moderatorId",
+   "uid"
+  ],
+  [
+   "messageCount",
+   "int"
+  ]
+ ]
+}

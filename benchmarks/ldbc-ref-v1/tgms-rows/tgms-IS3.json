@@ -1,0 +1,373 @@
+{
+ "arm": "characterization-interactive",
+ "columns": [
+  "friendId",
+  "friendFirstName",
+  "friendLastName",
+  "friendshipCreationDate"
+ ],
+ "commit": "0b7198dfdf7a",
+ "host": "xzgpu",
+ "params": {
+  "personId": "105553116276235"
+ },
+ "plan_digest": "f1bee792a478d9890935ccd7c1fcff6f8d4cabec7ae3de91a6185a7ede44d361",
+ "plan_id": "IS3",
+ "result_digest": "6e06f960429dac1860e87d474d1f775786bf34e509d4696f51dd30acb07ffc65",
+ "rows": [
+  {
+   "friendFirstName": "Binh",
+   "friendId": 35184372096829,
+   "friendId__hierarchy": "Person",
+   "friendLastName": "Ha",
+   "friendshipCreationDate": 1354082151622000
+  },
+  {
+   "friendFirstName": "Binh",
+   "friendId": 35184372096829,
+   "friendId__hierarchy": "Person",
+   "friendLastName": "Ha",
+   "friendshipCreationDate": 1354082151622000
+  },
+  {
+   "friendFirstName": "Ge",
+   "friendId": 15393162789356,
+   "friendId__hierarchy": "Person",
+   "friendLastName": "Wei",
+   "friendshipCreationDate": 1353559515417000
+  },
+  {
+   "friendFirstName": "Ge",
+   "friendId": 15393162789356,
+   "friendId__hierarchy": "Person",
+   "friendLastName": "Wei",
+   "friendshipCreationDate": 1353559515417000
+  },
+  {
+   "friendFirstName": "Peng",
+   "friendId": 30786325587579,
+   "friendId__hierarchy": "Person",
+   "friendLastName": "Zhang",
+   "friendshipCreationDate": 1351850580919000
+  },
+  {
+   "friendFirstName": "Peng",
+   "friendId": 30786325587579,
+   "friendId__hierarchy": "Person",
+   "friendLastName": "Zhang",
+   "friendshipCreationDate": 1351850580919000
+  },
+  {
+   "friendFirstName": "Lei",
+   "friendId": 35184372096170,
+   "friendId__hierarchy": "Person",
+   "friendLastName": "Zhang",
+   "friendshipCreationDate": 1349122268575000
+  },
+  {
+   "friendFirstName": "Lei",
+   "friendId": 35184372096170,
+   "friendId__hierarchy": "Person",
+   "friendLastName": "Zhang",
+   "friendshipCreationDate": 1349122268575000
+  },
+  {
+   "friendFirstName": "Hao",
+   "friendId": 30786325579308,
+   "friendId__hierarchy": "Person",
+   "friendLastName": "Li",
+   "friendshipCreationDate": 1346647950676000
+  },
+  {
+   "friendFirstName": "Hao",
+   "friendId": 30786325579308,
+   "friendId__hierarchy": "Person",
+   "friendLastName": "Li",
+   "friendshipCreationDate": 1346647950676000
+  },
+  {
+   "friendFirstName": "Sam",
+   "friendId": 19791209308287,
+   "friendId__hierarchy": "Person",
+   "friendLastName": "Huang",
+   "friendshipCreationDate": 1345286463771000
+  },
+  {
+   "friendFirstName": "Sam",
+   "friendId": 19791209308287,
+   "friendId__hierarchy": "Person",
+   "friendLastName": "Huang",
+   "friendshipCreationDate": 1345286463771000
+  },
+  {
+   "friendFirstName": "Hao",
+   "friendId": 21990232564056,
+   "friendId__hierarchy": "Person",
+   "friendLastName": "Wang",
+   "friendshipCreationDate": 1345155329348000
+  },
+  {
+   "friendFirstName": "Hao",
+   "friendId": 21990232564056,
+   "friendId__hierarchy": "Person",
+   "friendLastName": "Wang",
+   "friendshipCreationDate": 1345155329348000
+  },
+  {
+   "friendFirstName": "A.",
+   "friendId": 26388279074760,
+   "friendId__hierarchy": "Person",
+   "friendLastName": "Nair",
+   "friendshipCreationDate": 1344237523088000
+  },
+  {
+   "friendFirstName": "A.",
+   "friendId": 26388279074760,
+   "friendId__hierarchy": "Person",
+   "friendLastName": "Nair",
+   "friendshipCreationDate": 1344237523088000
+  },
+  {
+   "friendFirstName": "Zhong",
+   "friendId": 10995116285249,
+   "friendId__hierarchy": "Person",
+   "friendLastName": "Wei",
+   "friendshipCreationDate": 1343082287850000
+  },
+  {
+   "friendFirstName": "Zhong",
+   "friendId": 10995116285249,
+   "friendId__hierarchy": "Person",
+   "friendLastName": "Wei",
+   "friendshipCreationDate": 1343082287850000
+  },
+  {
+   "friendFirstName": "Hoang Yen",
+   "friendId": 21990232557614,
+   "friendId__hierarchy": "Person",
+   "friendLastName": "Nguyen",
+   "friendshipCreationDate": 1338574523296000
+  },
+  {
+   "friendFirstName": "Hoang Yen",
+   "friendId": 21990232557614,
+   "friendId__hierarchy": "Person",
+   "friendLastName": "Nguyen",
+   "friendshipCreationDate": 1338574523296000
+  },
+  {
+   "friendFirstName": "Chris",
+   "friendId": 24189255811663,
+   "friendId__hierarchy": "Person",
+   "friendLastName": "Hall",
+   "friendshipCreationDate": 1333167048008000
+  },
+  {
+   "friendFirstName": "Chris",
+   "friendId": 24189255811663,
+   "friendId__hierarchy": "Person",
+   "friendLastName": "Hall",
+   "friendshipCreationDate": 1333167048008000
+  },
+  {
+   "friendFirstName": "Lei",
+   "friendId": 13194139540984,
+   "friendId__hierarchy": "Person",
+   "friendLastName": "Wu",
+   "friendshipCreationDate": 1332592932164000
+  },
+  {
+   "friendFirstName": "Lei",
+   "friendId": 13194139540984,
+   "friendId__hierarchy": "Person",
+   "friendLastName": "Wu",
+   "friendshipCreationDate": 1332592932164000
+  },
+  {
+   "friendFirstName": "John",
+   "friendId": 10995116284819,
+   "friendId__hierarchy": "Person",
+   "friendLastName": "Khan",
+   "friendshipCreationDate": 1329688837594000
+  },
+  {
+   "friendFirstName": "John",
+   "friendId": 10995116284819,
+   "friendId__hierarchy": "Person",
+   "friendLastName": "Khan",
+   "friendshipCreationDate": 1329688837594000
+  },
+  {
+   "friendFirstName": "Zheng",
+   "friendId": 10995116279993,
+   "friendId__hierarchy": "Person",
+   "friendLastName": "Wang",
+   "friendshipCreationDate": 1324046270871000
+  },
+  {
+   "friendFirstName": "Zheng",
+   "friendId": 10995116279993,
+   "friendId__hierarchy": "Person",
+   "friendLastName": "Wang",
+   "friendshipCreationDate": 1324046270871000
+  },
+  {
+   "friendFirstName": "Jie",
+   "friendId": 21990232563317,
+   "friendId__hierarchy": "Person",
+   "friendLastName": "Zhu",
+   "friendshipCreationDate": 1323487676156000
+  },
+  {
+   "friendFirstName": "Jie",
+   "friendId": 21990232563317,
+   "friendId__hierarchy": "Person",
+   "friendLastName": "Zhu",
+   "friendshipCreationDate": 1323487676156000
+  },
+  {
+   "friendFirstName": "Wei",
+   "friendId": 6597069771347,
+   "friendId__hierarchy": "Person",
+   "friendLastName": "Li",
+   "friendshipCreationDate": 1318749987172000
+  },
+  {
+   "friendFirstName": "Wei",
+   "friendId": 6597069771347,
+   "friendId__hierarchy": "Person",
+   "friendLastName": "Li",
+   "friendshipCreationDate": 1318749987172000
+  },
+  {
+   "friendFirstName": "Yang",
+   "friendId": 10995116278639,
+   "friendId__hierarchy": "Person",
+   "friendLastName": "Chen",
+   "friendshipCreationDate": 1315972100462000
+  },
+  {
+   "friendFirstName": "Yang",
+   "friendId": 10995116278639,
+   "friendId__hierarchy": "Person",
+   "friendLastName": "Chen",
+   "friendshipCreationDate": 1315972100462000
+  },
+  {
+   "friendFirstName": "Bing",
+   "friendId": 10995116284358,
+   "friendId__hierarchy": "Person",
+   "friendLastName": "Wang",
+   "friendshipCreationDate": 1311935811138000
+  },
+  {
+   "friendFirstName": "Bing",
+   "friendId": 10995116284358,
+   "friendId__hierarchy": "Person",
+   "friendLastName": "Wang",
+   "friendshipCreationDate": 1311935811138000
+  },
+  {
+   "friendFirstName": "Wei",
+   "friendId": 8796093024008,
+   "friendId__hierarchy": "Person",
+   "friendLastName": "Wang",
+   "friendshipCreationDate": 1310330934862000
+  },
+  {
+   "friendFirstName": "Wei",
+   "friendId": 8796093024008,
+   "friendId__hierarchy": "Person",
+   "friendLastName": "Wang",
+   "friendshipCreationDate": 1310330934862000
+  },
+  {
+   "friendFirstName": "Wei",
+   "friendId": 8796093028790,
+   "friendId__hierarchy": "Person",
+   "friendLastName": "Liu",
+   "friendshipCreationDate": 1305072024244000
+  },
+  {
+   "friendFirstName": "Wei",
+   "friendId": 8796093028790,
+   "friendId__hierarchy": "Person",
+   "friendLastName": "Liu",
+   "friendshipCreationDate": 1305072024244000
+  },
+  {
+   "friendFirstName": "Hao",
+   "friendId": 10995116285998,
+   "friendId__hierarchy": "Person",
+   "friendLastName": "Lei",
+   "friendshipCreationDate": 1305066657678000
+  },
+  {
+   "friendFirstName": "Hao",
+   "friendId": 10995116285998,
+   "friendId__hierarchy": "Person",
+   "friendLastName": "Lei",
+   "friendshipCreationDate": 1305066657678000
+  },
+  {
+   "friendFirstName": "Shweta",
+   "friendId": 15393162797132,
+   "friendId__hierarchy": "Person",
+   "friendLastName": "Kapoor",
+   "friendshipCreationDate": 1304770109765000
+  },
+  {
+   "friendFirstName": "Shweta",
+   "friendId": 15393162797132,
+   "friendId__hierarchy": "Person",
+   "friendLastName": "Kapoor",
+   "friendshipCreationDate": 1304770109765000
+  },
+  {
+   "friendFirstName": "Ramon",
+   "friendId": 6597069775211,
+   "friendId__hierarchy": "Person",
+   "friendLastName": "Reyes",
+   "friendshipCreationDate": 1304178840642000
+  },
+  {
+   "friendFirstName": "Ramon",
+   "friendId": 6597069775211,
+   "friendId__hierarchy": "Person",
+   "friendLastName": "Reyes",
+   "friendshipCreationDate": 1304178840642000
+  },
+  {
+   "friendFirstName": "Eva",
+   "friendId": 8796093024108,
+   "friendId__hierarchy": "Person",
+   "friendLastName": "Redl",
+   "friendshipCreationDate": 1301889151278000
+  },
+  {
+   "friendFirstName": "Eva",
+   "friendId": 8796093024108,
+   "friendId__hierarchy": "Person",
+   "friendLastName": "Redl",
+   "friendshipCreationDate": 1301889151278000
+  }
+ ],
+ "schema": [
+  [
+   "friendId",
+   "uid"
+  ],
+  [
+   "friendFirstName",
+   "json?"
+  ],
+  [
+   "friendLastName",
+   "json?"
+  ],
+  [
+   "friendshipCreationDate",
+   "ts"
+  ]
+ ]
+}

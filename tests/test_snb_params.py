@@ -11,17 +11,27 @@ from __future__ import annotations
 
 import importlib.util
 import json
+import re
 from pathlib import Path
 
 import pytest
 
 from tgms.data.snb_loader import snb_uid
 
+ROOT = Path(__file__).resolve().parents[1]
+
 _spec = importlib.util.spec_from_file_location(
-    "ldbc_snb_params",
-    Path(__file__).resolve().parents[1] / "scripts" / "ldbc_snb_params.py")
+    "ldbc_snb_params", ROOT / "scripts" / "ldbc_snb_params.py")
 P = importlib.util.module_from_spec(_spec)
 _spec.loader.exec_module(P)
+
+_ref_spec = importlib.util.spec_from_file_location(
+    "ldbc_reference_run", ROOT / "scripts" / "ldbc_reference_run.py")
+_REF = importlib.util.module_from_spec(_ref_spec)
+_ref_spec.loader.exec_module(_REF)
+#: the one naming convention, borrowed rather than re-spelled, so this test
+#: cannot drift from the runner it is guarding.
+_cypher_filename = _REF._default_cypher_name
 
 
 @pytest.fixture
@@ -135,7 +145,7 @@ def test_every_frozen_plan_has_a_parameter_source(params_root):
     # matrix and the contracts fixture already counted inside the 24 expressible
     # templates. The census moves when the census grows; the *rules* it guards
     # (identity, units, selection) are unchanged and tested above.
-    assert len(P.LDBC_PLANS) == 25  # +BI6.v2 (D2)
+    assert len(P.LDBC_PLANS) == 26  # +BI6.v2 (D2), +IS3.v2 (ldbc-ref-v1)
     assert set(P.POST_FREEZE_IV_PLANS) <= set(P.LDBC_PLANS)
     for pid in P.LDBC_PLANS:
         b = P.bind(pid, params_root)
@@ -320,6 +330,88 @@ def test_without_a_csv_root_the_interactive_rows_keep_their_phantom_ids(params_r
     ic = P.bind("IC2", params_root)
     assert ic["sampled_anchors"] == {}
     assert ic["params"]["personId"] == snb_uid("Person", 17592186052613)
+
+
+def test_both_sides_of_the_export_carry_the_same_sampled_anchor(params_root,
+                                                               tmp_path,
+                                                               monkeypatch):
+    """One draw, two consumers (design §3).
+
+    `_cypher_side` projects the *validation file's* ids, which belong to the
+    separately generated Interactive dataset and name no entity in the BI
+    substrate both sides are loaded from. If the export let that projection
+    stand while `bind()` sampled a real anchor for the TGIR side, every
+    Interactive template would ask Neo4j about a nonexistent person: zero
+    reference rows, and a "disagreement" attributable entirely to the
+    parameter having been drawn differently between the two runs being
+    compared — the one thing RUNBOOK.md §5.1 says must never be possible.
+    """
+    monkeypatch.setattr(P, "population",
+                        lambda root, files: list(range(1000, 1500)))
+    doc = P.export_bindings(params_root, csv_root=tmp_path,
+                            plan_ids=["IC2"])
+    row = doc["rows"]["IC2"]
+    (anchor,) = row["anchors"]
+
+    assert row["tgir"]["personId"] == snb_uid("Person", anchor["ldbc_id"])
+    # `personId`, not the validation file's `personIdQ2`: the name
+    # interactive-complex-2.cypher actually reads. See `_cypher_side`.
+    assert row["cypher"]["personId"] == anchor["ldbc_id"]
+    assert isinstance(row["cypher"]["personId"], int), "LDBC-native, not a uid"
+    # the non-id parameters still come from LDBC's own file, untouched
+    assert row["cypher"]["maxDate"] == "2012-11-28T00:00:00.000+00:00"
+
+
+def test_every_exported_cypher_binding_names_the_parameters_its_query_asks_for(
+        params_root, tmp_path, monkeypatch):
+    """The end-to-end guard on `_cypher_side`'s naming rule.
+
+    `params.json`'s `cypher` half is handed to the driver as-is, so a key the
+    vendored query does not declare is not a mismatch that degrades a result —
+    it is `Neo.ClientError.Statement.ParameterMissing`, no rows at all. The two
+    source formats name parameters differently (a BI parameter CSV's columns
+    are the query's own `$names`; `validation_params-sf1.csv` packs every
+    operation into one row and so suffixes them, `personIdSQ1`/`personIdQ2`),
+    which is why the rule cannot be "always the ldbc_key" or "always the
+    plan_key". Rather than restate the rule, this reads each vendored query's
+    own `$param` occurrences and requires the export to cover them.
+    """
+    monkeypatch.setattr(P, "population",
+                        lambda root, files: list(range(1000, 1500)))
+    doc = P.export_bindings(params_root, csv_root=tmp_path)
+
+    bi_dir = ROOT / "external_workloads/ldbc/bi/neo4j/queries"
+    iv_dir = ROOT / "external_workloads/ldbc/interactive_v1/cypher/queries"
+
+    checked = 0
+    for pid, row in sorted(doc["rows"].items()):
+        assert "error" not in row, f"{pid} failed to bind: {row.get('error')}"
+        template = pid[:-3] if pid.endswith(".v2") else pid
+        path = ((bi_dir if template.startswith("BI") else iv_dir)
+                / _cypher_filename(template))
+        if not path.exists():           # vendored tree absent in this checkout
+            pytest.skip(f"vendored query missing: {path}")
+        wanted = set(re.findall(r"\$(\w+)", path.read_text()))
+        missing = wanted - set(row["cypher"])
+        assert not missing, (
+            f"{pid}: {path.name} reads {sorted(missing)}, which params.json's "
+            f"cypher side does not supply (it supplies "
+            f"{sorted(row['cypher'])}). The driver would raise "
+            f"ParameterMissing and the template would produce no reference "
+            f"rows at all.")
+        checked += 1
+    assert checked == 26, (
+        f"expected the 24 templates + BI6.v2 + IS3.v2, got {checked}")
+
+
+def test_the_bi_arm_keeps_ldbcs_own_ids_on_both_sides(params_root):
+    """The correction above is scoped to sampled anchors: a scored-BI row has
+    none, so both sides keep the third-party parameter verbatim."""
+    doc = P.export_bindings(params_root, plan_ids=["BI10"])
+    row = doc["rows"]["BI10"]
+    assert "anchors" not in row
+    assert row["cypher"]["personId"] == 6597069770479
+    assert row["tgir"]["personId"] == snb_uid("Person", 6597069770479)
 
 
 # --------------------------------------------------------------------------

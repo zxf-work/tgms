@@ -1,0 +1,63 @@
+{
+ "arm": "characterization-interactive",
+ "columns": [
+  "commentId",
+  "commentContent",
+  "commentCreationDate",
+  "replyAuthorId",
+  "replyAuthorFirstName",
+  "replyAuthorLastName",
+  "replyAuthorKnowsOriginalMessageAuthor"
+ ],
+ "commit": "0b7198dfdf7a",
+ "host": "xzgpu",
+ "params": {
+  "messageId": "16492725438601"
+ },
+ "plan_digest": "1891c63b0a49e4b9a3b5678c7483ec64b695247c65d1bf95cac3e84c8cfc1653",
+ "plan_id": "IS7",
+ "result_digest": "529e7f46f07ebd23de7bff2d32f41c1eed3241c3f39a534af2b6c11bdb22002d",
+ "rows": [
+  {
+   "commentContent": "right",
+   "commentCreationDate": 1344490369818000,
+   "commentId": 2061590679826,
+   "commentId__hierarchy": "Message",
+   "replyAuthorFirstName": "Farhad",
+   "replyAuthorId": 4835,
+   "replyAuthorId__hierarchy": "Person",
+   "replyAuthorKnowsOriginalMessageAuthor": true,
+   "replyAuthorLastName": "Amin"
+  }
+ ],
+ "schema": [
+  [
+   "commentId",
+   "uid"
+  ],
+  [
+   "commentContent",
+   "json?"
+  ],
+  [
+   "commentCreationDate",
+   "json?"
+  ],
+  [
+   "replyAuthorId",
+   "uid"
+  ],
+  [
+   "replyAuthorFirstName",
+   "json?"
+  ],
+  [
+   "replyAuthorLastName",
+   "json?"
+  ],
+  [
+   "replyAuthorKnowsOriginalMessageAuthor",
+   "bool"
+  ]
+ ]
+}
