@@ -36,7 +36,15 @@ color alone):
                          tgms-campaign-ldbc-ref-v1.json; a template whose TGIR
                          side timed out is drawn at the ceiling the matching
                          manifest-*.json pre-registers, with its own hatch,
-                         never as a measurement.  Still a placeholder PDF when
+                         never as a measurement.  Each template's y-axis label
+                         also carries a verdict glyph, read from
+                         compare-2026-09-18.json's own `verdict` field
+                         (agree/reference-column-not-projected/disagree, plus
+                         `timeout` for the one template whose comparator never
+                         saw a TGIR row dump) -- so the figure carries
+                         per-template agreement without a second table; a
+                         compact legend line under the x-axis label spells the
+                         four glyphs out.  Still a placeholder PDF when
                          neither revision's record exists.
 
   The two sides' wall times are NOT a speed ratio and the figure never draws
@@ -67,6 +75,7 @@ import math
 import re
 import statistics
 import sys
+from collections import Counter
 from pathlib import Path
 
 # matplotlib is imported lazily, inside `_require_matplotlib()` (called once
@@ -400,7 +409,39 @@ REF_TIMINGS_REL_1809 = Path("timings-2026-09-18.json")
 REF_TIMINGS_REL_1709 = Path("timings-2026-09-17.json")
 REF_MANIFEST_REL_1809 = Path("manifest-2026-09-18.json")
 REF_MANIFEST_REL_1709 = Path("manifest-2026-09-17.json")
+REF_COMPARE_REL_1809 = Path("compare-2026-09-18.json")
+REF_COMPARE_REL_1709 = Path("compare-2026-09-17.json")
 REF_CAMPAIGN_REL = Path("tgms-campaign-ldbc-ref-v1.json")
+
+# The four per-template verdict classes `compare-*.json` partitions the 24
+# reference templates into (README §5): three read straight off its own
+# `verdict` field, plus `timeout` for the one template (BI6.v2, at the
+# revision of record) whose `verdict` is null because the comparator never
+# saw a TGIR row dump to compare -- that is a TGIR *outcome*, not a fourth
+# string `verdict` ever takes, so it is cross-checked against the timings
+# record's own TIMEOUT rather than trusted from `compare` alone (see
+# `read_ref_verdicts`). Order here is the order the legend prints them in.
+VERDICT_CLASSES = ("agree", "reference-column-not-projected", "disagree", "timeout")
+_VERDICT_FIELD_TO_CLASS = {
+    "agreeing": "agree",
+    "reference-column-not-projected": "reference-column-not-projected",
+    "disagreeing": "disagree",
+}
+# DejaVu Sans (matplotlib's default) has no glyph for U+23F1 STOPWATCH, so
+# the timeout marker is the letter "T" rather than a tofu box; the other
+# three are all present in that font.
+VERDICT_GLYPH = {
+    "agree": "●",                              # ● BLACK CIRCLE
+    "reference-column-not-projected": "◐",      # ◐ CIRCLE, LEFT HALF BLACK
+    "disagree": "✕",                            # ✕ MULTIPLICATION X
+    "timeout": "T",
+}
+VERDICT_LEGEND_LABEL = {
+    "agree": "agree",
+    "reference-column-not-projected": "ref. col. not projected",
+    "disagree": "disagree",
+    "timeout": "TGIR timeout",
+}
 
 
 def resolve_ref_source(root: Path, rel_1809: Path, rel_1709: Path) -> Path:
@@ -510,9 +551,61 @@ def cross_check_tgms(campaign_path: Path, tgms: dict[str, float],
                f"{template}: plotted TGIR seconds against the campaign record's ms")
 
 
+def ref_plan_of_template(timings_path: Path) -> dict[str, str]:
+    """A verdict's ``plan_id`` is the *plan artifact*'s id (``"BI6.v2"``); the
+    timings record keys on the *template* (``"BI6"``).  One spelling of that
+    reduction (mirrors ``cross_check_tgms`` and
+    ``tgir_paper_macros.py``'s ``ref_template``), used everywhere a verdict
+    row has to be joined back onto a template."""
+    if not timings_path.exists():
+        return {}
+    doc = json.loads(timings_path.read_text(encoding="utf-8"))
+    return {e["template"]: (e.get("tgir_plan") or "").removesuffix(".json")
+            for e in doc.get("templates", [])}
+
+
+def read_ref_verdicts(path: Path, plan_of: dict[str, str],
+                      timed_out: set[str]) -> dict[str, str]:
+    """Per-template verdict class from ``compare-*.json``'s own ``verdict``
+    field (``benchmarks/ldbc-ref-v1/compare-2026-09-18.json``, the revision of
+    record, resolved by ``resolve_ref_source`` the same way as the timings and
+    manifest): ``agree`` / ``reference-column-not-projected`` / ``disagree``.
+
+    The fourth class, ``timeout``, is not a string ``verdict`` ever takes --
+    it is a TGIR *outcome* (the comparator never saw a row dump to compare
+    against Neo4j's), so a null ``verdict`` is accepted only when it lines up
+    with that template already being in the timed-out set derived from the
+    timings record; anything else is a hard failure rather than a silently
+    dropped row."""
+    if not path.exists():
+        return {}
+    doc = json.loads(path.read_text(encoding="utf-8"))
+    verdicts = doc.get("verdicts")
+    if not isinstance(verdicts, list):
+        return {}
+    template_of_plan_id = {p: t for t, p in plan_of.items()}
+    out: dict[str, str] = {}
+    for entry in verdicts:
+        plan_id = entry.get("plan_id")
+        template = template_of_plan_id.get(plan_id)
+        if template is None:
+            continue
+        raw = entry.get("verdict")
+        if raw is None:
+            require(template in timed_out,
+                    f"{path.name}: {plan_id}'s null verdict is not a TGIR timeout")
+            out[template] = "timeout"
+        else:
+            require(raw in _VERDICT_FIELD_TO_CLASS,
+                    f"{path.name}: {plan_id} has an unrecognized verdict {raw!r}")
+            out[template] = _VERDICT_FIELD_TO_CLASS.get(raw, raw)
+    return out
+
+
 def build_neo4j(root: Path) -> dict:
     timings_src = resolve_ref_source(root, REF_TIMINGS_REL_1809, REF_TIMINGS_REL_1709)
     manifest_src = resolve_ref_source(root, REF_MANIFEST_REL_1809, REF_MANIFEST_REL_1709)
+    compare_src = resolve_ref_source(root, REF_COMPARE_REL_1809, REF_COMPARE_REL_1709)
     campaign_src = root / LDBC_REF_REL / REF_CAMPAIGN_REL
     timings = read_ref_timings(timings_src)
     ceiling = read_ref_ceiling(manifest_src)
@@ -522,12 +615,14 @@ def build_neo4j(root: Path) -> dict:
             "timings_source": str(timings_src.relative_to(root)),
             "manifest_source": str(manifest_src.relative_to(root)),
             "campaign_source": str(campaign_src.relative_to(root)),
+            "verdicts_source": str(compare_src.relative_to(root)),
             "available": False,
             "ceiling_s": None,
             "tgms": {},
             "neo4j": {},
             "timed_out": [],
             "common_plan_ids": [],
+            "verdicts": {},
         }
 
     neo4j, tgms = timings["neo4j"], timings["tgms"]
@@ -539,16 +634,25 @@ def build_neo4j(root: Path) -> dict:
 
     plan_ids = sorted((t for t in neo4j if t in tgms or t in timed_out), key=ref_sort_key)
     require(bool(plan_ids), f"{timings_src.name}: no template has both sides")
+
+    plan_of = ref_plan_of_template(timings_src)
+    verdict_of = read_ref_verdicts(compare_src, plan_of, set(timed_out))
+    missing_verdict = [t for t in plan_ids if t not in verdict_of]
+    require(not missing_verdict,
+            f"{compare_src.name}: no verdict for {missing_verdict}")
+
     return {
         "timings_source": str(timings_src.relative_to(root)),
         "manifest_source": str(manifest_src.relative_to(root)),
         "campaign_source": str(campaign_src.relative_to(root)),
+        "verdicts_source": str(compare_src.relative_to(root)),
         "available": True,
         "ceiling_s": ceiling,
         "tgms": {t: tgms[t] for t in plan_ids if t in tgms},
         "neo4j": {t: neo4j[t] for t in plan_ids},
         "timed_out": timed_out,
         "common_plan_ids": plan_ids,
+        "verdicts": {t: verdict_of[t] for t in plan_ids if t in verdict_of},
     }
 
 
@@ -562,6 +666,7 @@ def plot_neo4j(data: dict, out_dir: Path) -> str:
     plan_ids = data["common_plan_ids"]
     timed_out = set(data["timed_out"])
     ceiling = data["ceiling_s"]
+    verdict_of = data["verdicts"]
     floor = min([v for v in data["neo4j"].values()] + list(data["tgms"].values())) / 2
 
     with plt.rc_context(STYLE):
@@ -587,8 +692,17 @@ def plot_neo4j(data: dict, out_dir: Path) -> str:
         ax.set_xscale("log")
         ax.set_xlim(left=floor)
         ax.set_yticks(y)
-        ax.set_yticklabels(plan_ids, fontsize=4)
-        ax.set_xlabel("wall time (s, log scale)")
+        # One glyph per verdict class, at the left of its template's label
+        # (README §5's four classes: agree / reference-column-not-projected /
+        # disagree / timeout) -- so the figure carries per-template agreement
+        # without a second table; the compact legend line below the x-axis
+        # label spells the four glyphs out once rather than per row.
+        labels = [f"{VERDICT_GLYPH[verdict_of[t]]} {t}" for t in plan_ids]
+        ax.set_yticklabels(labels, fontsize=4)
+        glyph_legend = "   ".join(f"{VERDICT_GLYPH[c]} {VERDICT_LEGEND_LABEL[c]}"
+                                  for c in VERDICT_CLASSES)
+        ax.set_xlabel(f"wall time (s, log scale)\n{glyph_legend}",
+                      fontsize=6, linespacing=1.8)
         ax.invert_yaxis()
         handles = [
             Patch(facecolor="black", edgecolor="black", label="TGIR"),
@@ -609,7 +723,11 @@ def plot_neo4j(data: dict, out_dir: Path) -> str:
 
     per_family = ", ".join(
         f"{g} {sum(1 for t in plan_ids if t.startswith(g))}" for g in REF_GROUPS)
+    verdict_counts = Counter(verdict_of[t] for t in plan_ids)
+    verdict_summary = ", ".join(f"{VERDICT_GLYPH[c]} {verdict_counts.get(c, 0)}"
+                                for c in VERDICT_CLASSES)
     return (f"fig-neo4j.pdf: {len(plan_ids)} paired templates ({per_family}), "
+            f"verdicts [{verdict_summary}], "
             f"Neo4j median of 3 timed runs vs TGIR, "
             f"{len(timed_out)} TGIR timeout(s) drawn at the {ceiling:.0f} s ceiling")
 
@@ -673,12 +791,14 @@ def main() -> int:
             "timings_source": neo4j["timings_source"],
             "manifest_source": neo4j["manifest_source"],
             "campaign_source": neo4j["campaign_source"],
+            "verdicts_source": neo4j["verdicts_source"],
             "available": neo4j["available"],
             "ceiling_s": neo4j["ceiling_s"],
             "tgms": neo4j["tgms"],
             "neo4j": neo4j["neo4j"],
             "timed_out": neo4j["timed_out"],
             "common_plan_ids": neo4j["common_plan_ids"],
+            "verdicts": neo4j["verdicts"],
         },
     }
     (out_dir / "figures.json").write_text(

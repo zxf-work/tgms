@@ -2186,6 +2186,78 @@ def main() -> int:
     m.add("tgRefIsTwoTgirS", f"{ref_tgir_ms['IS2'] / 1000:.1f}",
           "timings-2026-09-18.json IS2: TGIR `ms` / 1000, seconds")
 
+    # core (primitive-only) vs. registry-leaf plans, among the 24 reference
+    # templates.  A plan node's JSON `"op"` is either one of the twelve
+    # `CORE_NODE_TYPES` names (tgms/tgir/node.py) or, for a registry-backed
+    # leaf, the *registry operator's own name* -- `OpaqueLeaf.op` returns
+    # `self.op_name`, never the literal string "OpaqueLeaf" (node.py's
+    # `OpaqueLeaf.op` property) -- so a leaf is detected by its `"op"` value
+    # falling in the fifteen-name `tgms.temporal.algebra.REGISTRY`, not by any
+    # "OpaqueLeaf" string ever appearing in a plan artifact. Both sets are
+    # spelled out here rather than imported so this generator keeps working
+    # against a public worktree's plan artifacts without importing `tgms`.
+    REF_CORE_OPS = frozenset({
+        "NodeScan", "EdgeScan", "Expand", "Filter", "PropertyPredicate",
+        "TypeConstraint", "Project", "Join", "PatternMatch", "Aggregate",
+        "Order", "Limit",
+    })
+    REF_REGISTRY_OPS = frozenset({
+        "aggregate_events", "burst_detection", "co_active", "compute",
+        "count_temporal_motifs", "diff_snapshots", "entity_history",
+        "find_temporal_motif_instances", "graph_metric_timeseries",
+        "neighborhood_evolution", "resolve_entities", "snapshot_subgraph",
+        "temporal_paths", "temporal_reachability", "version_history",
+    })
+    eq(len(REF_CORE_OPS), 12, "REF_CORE_OPS: the twelve primitive operators")
+    eq(len(REF_REGISTRY_OPS), 15, "REF_REGISTRY_OPS: the fifteen registry operators")
+
+    def _plan_ops(node, into: set[str]) -> None:
+        if isinstance(node, dict):
+            op = node.get("op")
+            if isinstance(op, str):
+                into.add(op)
+            for v in node.values():
+                _plan_ops(v, into)
+        elif isinstance(node, list):
+            for v in node:
+                _plan_ops(v, into)
+
+    ref_is_leaf_backed: dict[str, bool] = {}
+    for v in verdicts:
+        plan_id = v["plan_id"]
+        plan_path = PLANS_DIR / f"{plan_id}.json"
+        require(plan_path.exists(), f"ref-v1: plan artifact {plan_path.name} exists")
+        ops: set[str] = set()
+        if plan_path.exists():
+            _plan_ops(json.loads(plan_path.read_text(encoding="utf-8")).get("root"), ops)
+        unknown = ops - REF_CORE_OPS - REF_REGISTRY_OPS
+        require(not unknown,
+                f"ref-v1: {plan_path.name} has op(s) outside both the core and "
+                f"the registry vocabulary: {sorted(unknown)}")
+        ref_is_leaf_backed[plan_id] = bool(ops & REF_REGISTRY_OPS)
+
+    ref_leaf_backed = sorted(pid for pid, leafy in ref_is_leaf_backed.items() if leafy)
+    ref_core_ids = sorted(pid for pid, leafy in ref_is_leaf_backed.items() if not leafy)
+    n_ref_core = eq(len(ref_core_ids), n_ref - len(ref_leaf_backed),
+                    f"ref-v1: 24 - core templates == leaf-backed plan(s) "
+                    f"{ref_leaf_backed if ref_leaf_backed else '(none)'}")
+    print(f"tgir_paper_macros: ref-v1 leaf-backed plan(s) among the 24: "
+          f"{', '.join(ref_leaf_backed) if ref_leaf_backed else 'none'}")
+    m.add("tgRefCoreTemplates", n_ref_core,
+          "benchmarks/tgir-v1/plans/*.json: of the 24 ldbc-ref-v1 templates, those "
+          "whose plan artifact is primitive-only (no node whose op is one of the "
+          "fifteen registry operators)")
+
+    ref_agree_core = sorted(v["plan_id"] for v in verdicts
+                            if v.get("verdict") == "agreeing"
+                            and not ref_is_leaf_backed[v["plan_id"]])
+    n_ref_agree_core = eq(len(ref_agree_core), n_ref_agree - sum(
+        1 for v in verdicts if v.get("verdict") == "agreeing" and ref_is_leaf_backed[v["plan_id"]]),
+        "ref-v1: agreeing-and-core count matches agreeing minus agreeing-and-leaf-backed")
+    m.add("tgRefAgreeCore", n_ref_agree_core,
+          "compare-2026-09-18.json verdicts: verdict == agreeing AND the plan is "
+          "primitive-only (no registry-leaf operator node)")
+
     # ---------------------------------------------------------------- write
     if FAILURES:
         print(f"VERIFICATION FAILED after {CHECKS} checks:", file=sys.stderr)
