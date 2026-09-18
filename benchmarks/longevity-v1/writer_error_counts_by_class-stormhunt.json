@@ -1,0 +1,18 @@
+{
+  "capture_code_commit": "c3a5592",
+  "note": "c3a5592 (merged 9df74af, D-088 instrumentation) added bounded reader-side error-message capture to this harness. This run recorded 0 reader_op_error events and 0 reader errors of any kind (reader_errors_total never incremented in metrics.jsonl; reader_op_error is absent from longevity_ledger.jsonl) — the D-088 capture path was armed for the whole 6h run and simply had nothing to capture, i.e. the reader-side failure storm seen in the prior 24h soak (P-SOAK2, OSError/StateError, see benchmarks/longevity-v1/README.md's Soak 2 section) did not recur here. All 175 errors this run reported are on the writer side.",
+  "reader_errors_total": 0,
+  "reader_op_error_events": 0,
+  "source": "longevity_ledger-stormhunt.jsonl (175 lines, all event=writer_op_error) cross-checked against manifest summary.reader_errors_total=0 and summary.error_count=175",
+  "total_writer_errors": 175,
+  "writer_by_class": {
+    "NotFoundError": 175
+  },
+  "writer_by_class_and_op": {
+    "NotFoundError": {
+      "correction": 175
+    }
+  },
+  "writer_error_message_pattern": "no believed node version of <id> overlaps vt",
+  "writer_note": "All 175 are NotFoundError raised out of the writer's correction path (op=correction in the ledger), the same expected class documented for soak 1 (249 total) and soak 2 (616 total): a correction racing ahead of its target's visibility window. corrections_applied=93045, corrections_skipped=60882 this run (manifest summary.writer_final) — these 175 errors are a small subset of skipped corrections that raised rather than silently skipping; not a new failure mode."
+}

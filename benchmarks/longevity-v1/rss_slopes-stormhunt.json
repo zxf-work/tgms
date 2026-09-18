@@ -1,0 +1,75 @@
+{
+  "frozen_bound_reader_kb_per_s": 10,
+  "frozen_bound_writer_kb_per_s": 50,
+  "host_load_caveat": "co-tenant load average (1-min, hourly samples, host_load.log) ranged 10.79-48.95 on 40 cores across the 7 samples spanning the run's own 6h window (23:01:21Z-05:01:21Z); one further sample at 06:01:21Z, taken during the unscored post-run verify/replay step after the soak's own --duration clock had already elapsed, recorded a drop to 3.56 as reflected in these slopes' tail. Co-tenant load was elevated and variable throughout, not quiet; that is offered as context for the reader-side slopes below, not as an explanation ruled in or out.",
+  "method": "ordinary least squares of rss_kb (y) vs wall-clock seconds since the run's first sample (x), one fit for the writer (restart_every_s=0.0, so a single life) and one fit per reader over its whole run (reader_restarts=0, so readers never restart and have a single life each).",
+  "raw_series_location": "xzgpu:/mnt/project/xzhang/tgms/longevity/2026-09-17-stormhunt/metrics.jsonl (kind=gauge name=rss_kb) — not copied into this repo (multi-MB; same PI ruling as soak1/soak2)",
+  "readers": {
+    "0": {
+      "n_points": 351,
+      "rss_first_kb": 138188,
+      "rss_last_kb": 367732,
+      "slope_kb_per_s_least_squares": 12.248653,
+      "span_s": 21528.5
+    },
+    "1": {
+      "n_points": 351,
+      "rss_first_kb": 138252,
+      "rss_last_kb": 325728,
+      "slope_kb_per_s_least_squares": 11.362495,
+      "span_s": 21527.9
+    },
+    "2": {
+      "n_points": 351,
+      "rss_first_kb": 138344,
+      "rss_last_kb": 393696,
+      "slope_kb_per_s_least_squares": 11.949791,
+      "span_s": 21529.5
+    },
+    "3": {
+      "n_points": 352,
+      "rss_first_kb": 138376,
+      "rss_last_kb": 441040,
+      "slope_kb_per_s_least_squares": 12.036177,
+      "span_s": 21529.2
+    },
+    "4": {
+      "n_points": 351,
+      "rss_first_kb": 138236,
+      "rss_last_kb": 381240,
+      "slope_kb_per_s_least_squares": 11.738911,
+      "span_s": 21528.8
+    },
+    "5": {
+      "n_points": 351,
+      "rss_first_kb": 138240,
+      "rss_last_kb": 403580,
+      "slope_kb_per_s_least_squares": 12.542626,
+      "span_s": 21529.7
+    },
+    "6": {
+      "n_points": 351,
+      "rss_first_kb": 138188,
+      "rss_last_kb": 380888,
+      "slope_kb_per_s_least_squares": 12.027981,
+      "span_s": 21529.1
+    },
+    "7": {
+      "n_points": 351,
+      "rss_first_kb": 138096,
+      "rss_last_kb": 389696,
+      "slope_kb_per_s_least_squares": 12.357881,
+      "span_s": 21529.1
+    }
+  },
+  "writer_lives": [
+    {
+      "life": 0,
+      "n_points": 330,
+      "rss_first_kb": 2010868,
+      "rss_last_kb": 2625128,
+      "slope_kb_per_s_least_squares": 20.444385,
+      "span_s": 21261.2
+    }
+  ]
+}

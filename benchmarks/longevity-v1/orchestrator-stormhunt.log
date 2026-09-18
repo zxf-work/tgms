@@ -1,0 +1,22 @@
+BUILD_INFO {'profile': 'release', 'opt_level': '3', 'engine_version': '0.8.0', 'debug_assertions': False, 'manifest_format_version': 3}
+=== HOST_LOAD 2026-09-17T23:01:21Z ===
+ 23:01:21 up 356 days, 41 min,  2 users,  load average: 32.05, 33.53, 32.84
+USER     %CPU COMMAND
+jding     793 duckdb
+jding    99.5 rptg_v4
+jding    99.4 rptg_v4
+jding    99.3 rptg_v4
+jding    99.3 rptg_v4
+jding    99.3 rptg_v4
+jding    99.3 rptg_v4
+HOURLY_HOSTLOG_WATCHDOG_PID=428913
+RUN_STARTED commit=57952fa
+  copying /mnt/project/xzhang/tgms/work/tgms/stores/synth-1m-native -> /mnt/project/xzhang/tgms/longevity/2026-09-17-stormhunt/store ...
+  store manifest format 1 detected; running 'tgms store upgrade-manifests' before the writer opens it ...
+  soak running for 21600s: mix=balanced readers=8 compact_every=500 restart_every=never
+  duration elapsed; waiting for children to stop ...
+  verifying final store ...
+  replaying 476813 batches into a fresh store (compacting every 500 batches) ...
+  wrote /mnt/project/xzhang/tgms/longevity/2026-09-17-stormhunt/longevity-synth-1m-native-0.json
+  manifest conforms to result_manifest.schema.json
+RUN_DONE digest_equal=True verify_healthy=True recoveries=0 reader_restarts=0 errors=175

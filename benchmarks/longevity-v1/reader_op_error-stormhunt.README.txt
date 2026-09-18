@@ -1,0 +1,1 @@
+Empty: P-STORM-HUNT (2026-09-17/18, commit 57952fa) recorded 0 reader_op_error events over the full 6h run (longevity_ledger-stormhunt.jsonl has 175 lines, all writer_op_error; the D-088 bounded reader-error-message capture added in c3a5592 was armed throughout and never fired) — see writer_error_counts_by_class-stormhunt.json.

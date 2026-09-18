@@ -834,3 +834,134 @@ from it (method documented in each file) rather than copying it.
   dedicated **full**-mode check reported above is the one that actually
   clears the `believed-versions-overlap` class soak 1 found, and it is
   clean.
+
+## P-STORM-HUNT (6 h observation run, 2026-09-17/18)
+
+**Pre-registration.** Same harness and store as P-SOAK2 (`stores/synth-1m-native`,
+`--mix balanced --readers 8 --compact-every-batches 500
+--compact-min-interval-s 5 --reader-reopen-every-s 300 --artifacts 500
+--seed 0 --max-disk-mb 20000`), with no restarts (`--restart-every` unset /
+never, a single writer life) and a shortened window, `--duration 6h`, run
+at commit `57952fa`, engine built release (`build_info-stormhunt.log`:
+`profile: release`, `debug_assertions: False`, `engine_version: 0.8.0`,
+`manifest_format_version: 3`). Purpose: a soak whose only job was to try to
+capture reader-side exception messages if the P-SOAK2 reader error pattern
+(the `OSError`/`StateError` storm documented above) recurred, using the
+D-088 bounded reader-error-message capture merged at `c3a5592`.
+
+- **commit measured**: `57952fa`, pinned worktree
+  `/mnt/project/xzhang/tgms/work/tgms-xz-57952fa` on xzgpu
+- **launched**: 2026-09-17T23:01:21Z; **`RUN_DONE`**:
+  `digest_equal=True verify_healthy=True recoveries=0 reader_restarts=0
+  errors=175` (`orchestrator-stormhunt.log`)
+- **manifest**: `stormhunt-2026-09-17.json`, conforms to
+  `benchmarks/schema/result_manifest.schema.json`
+  (`scripts/check_result_manifest.py` — exit 0, re-checked for this record
+  step; the record was not rewritten)
+- **result_digest**: `78b445786e86782185b5a5ab6759cc877d36faad9b3197f88098e93e89fee7f0`
+- **end-of-run replay**: 476,813 batches replayed into a fresh store
+  (compacting every 500 applied batches, per B7c) to compute
+  `digest_equal` — this step is unscored (not part of the 6h observation
+  window) and, per the harness's current design, could not be disabled.
+- `metrics.jsonl` (10.0 MB) and the store/replay-store copies stay on
+  xzgpu (`/mnt/project/xzhang/tgms/longevity/2026-09-17-stormhunt/`); this
+  directory holds only the manifest and small side-record files, as with
+  both soaks above.
+
+**Outcome, stated exactly as the pre-registration's clause (e):** the
+reader error pattern was not reproduced within 6 h at 1.40M edge rows;
+this is not evidence that it is gone; the capture stays armed for the
+next 24 h soak.
+
+### RSS slopes (`rss_slopes-stormhunt.json`)
+
+Ordinary least squares of `rss_kb` vs. wall-clock seconds, one fit for the
+writer (single life, no restarts) and one fit per reader (`reader_restarts=0`):
+
+| process | span (s) | rss first -> last (kB) | slope (kB/s, least squares) | frozen bound |
+|---|---:|---|---:|---:|
+| writer | 21,261.2 | 2,010,868 -> 2,625,128 (2.01 -> 2.63 GB) | **20.444** | <= 50 |
+| reader 0 | 21,528.5 | 138,188 -> 367,732 | 12.249 | <= 10 |
+| reader 1 | 21,527.9 | 138,252 -> 325,728 | 11.362 | <= 10 |
+| reader 2 | 21,529.5 | 138,344 -> 393,696 | 11.950 | <= 10 |
+| reader 3 | 21,529.2 | 138,376 -> 441,040 | 12.036 | <= 10 |
+| reader 4 | 21,528.8 | 138,236 -> 381,240 | 11.739 | <= 10 |
+| reader 5 | 21,529.7 | 138,240 -> 403,580 | 12.543 | <= 10 |
+| reader 6 | 21,529.1 | 138,188 -> 380,888 | 12.028 | <= 10 |
+| reader 7 | 21,529.1 | 138,096 -> 389,696 | 12.358 | <= 10 |
+
+The writer's fit (20.444 kB/s, 2.01 -> 2.63 GB) agrees with the
+coordinator's own independently-computed value (20.4 kB/s) to within
+0.1 kB/s and **PASSes** the 50 kB/s frozen bound. All 8 readers
+(11.4-12.5 kB/s, first -> last 0.14 -> 0.33-0.44 GB, matching the
+coordinator's own fit to the same tolerance) **exceed** the 10 kB/s
+frozen reader bound — unlike P-SOAK2, where every reader passed under
+that same bound. `rss_slopes-stormhunt.json` records the exact method,
+per-process series, and a host-load caveat: co-tenant load averaged
+10.79-48.95 (1-min, hourly samples) on 40 cores throughout the run's own
+6h window (`host_load.log`, 23:01:21Z-05:01:21Z), with one further
+post-run sample at 06:01:21Z (during the unscored verify/replay step)
+recording a drop to 3.56. This run's host was not idle or quiet; that
+context is offered alongside the reader-slope bound miss, not as an
+explanation for it — root cause not established here.
+
+### Errors: 175, all writer-side, 0 reader errors (`writer_error_counts_by_class-stormhunt.json`)
+
+`longevity_ledger-stormhunt.jsonl` has exactly 175 lines, all
+`event=writer_op_error`, `op=correction`, `error_type=NotFoundError`
+(`no believed node version of <id> overlaps vt`) — 100% one class, the
+same recurring correction-races-visibility-window pattern documented for
+soak 1 (249) and soak 2 (616), not a new failure mode
+(`corrections_applied=93045`, `corrections_skipped=60882` this run per
+the manifest; these 175 are a small subset of skipped corrections that
+raised rather than silently skipping).
+
+**Reader side: 0 errors, 0 `reader_op_error` events, explicitly.** The
+manifest's `summary.reader_errors_total` is 0 and
+`longevity_ledger-stormhunt.jsonl` contains zero `reader_op_error` lines.
+The D-088 bounded reader-error-message capture merged at `c3a5592` was
+armed for the entire 6h run and simply had nothing to capture: the
+P-SOAK2 reader-side `OSError`/`StateError` storm did not recur here. See
+`reader_op_error-stormhunt.jsonl` (empty, 0 bytes) and its sidecar
+`reader_op_error-stormhunt.README.txt`.
+
+### Files added here
+
+| file | sha256 |
+|---|---|
+| `stormhunt-2026-09-17.json` | `74ba7c15651bc6cd04895a3deb4b25dfd61a93d5c0d123ffb6923679e2fda661` |
+| `build_info-stormhunt.log` | `a7e203c8ec88a1b24cb54783140391ac829089e1b31d06f37233ddcf40614df3` |
+| `gate_e_report-stormhunt.md` | `5bd449c5b981542b8e105f801e1ba5f63b7f3e0aeb2a3bdd7d21645dc578b84f` |
+| `host_load-stormhunt.log` | `5e12bf9a411462e5dea3502ec6f68618001c9d985b5b43a1c055ac9f63b936cb` |
+| `longevity_ledger-stormhunt.jsonl` | `8e7d212d37721ab003068fc47dd2e3debe46df98670089bffdfaf6ea87dcf28c` |
+| `orchestrator-stormhunt.log` | `1048b76aac90239067861dc587576d49da0967c0a2f86332b2f359b66b919fb9` |
+| `rss_slopes-stormhunt.json` | `1f766e6076782f4d3296eafd9c54aabede2292ce72f57cc4632d74722c33f45e` |
+| `writer_error_counts_by_class-stormhunt.json` | `ce02014fae5781cfbac6aed5d9eb6199543c26e6570e0fd6975f039fb9f20775` |
+| `reader_op_error-stormhunt.jsonl` | `e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855` |
+| `reader_op_error-stormhunt.README.txt` | `d95919f0a2c7ec09a80aca4644e41e1b7210755622ea4f1e78d4aa908c9bacfe` |
+
+All ten verified byte-identical (sha256) between xzgpu
+(`/mnt/project/xzhang/tgms/work/tgms-xz-57952fa/benchmarks/longevity-v1/`
+and, for the raw record inputs, `/mnt/project/xzhang/tgms/longevity/2026-09-17-stormhunt/`)
+and the laptop worktree copy committed alongside this README change.
+`metrics.jsonl` (10.0 MB) and the store/replay-store copies stay on
+xzgpu per the same PI ruling as both soaks above; `rss_slopes-stormhunt.json`
+is derived from it (method documented in the file) rather than copying it.
+
+### Honest limits
+
+- One host, one storage stack, one seed, one writer life, 6 h instead of
+  24 h. A negative result (pattern not reproduced) at this duration and
+  edge-row count is not evidence the P-SOAK2 pattern is gone — the
+  pre-registration's own clause (e), reproduced verbatim above, is the
+  full and only claim this run supports.
+- Co-tenant host load (10.79-48.95 on 40 cores, hourly samples) was
+  elevated and variable throughout, unlike a dedicated/idle host; whether
+  it affects reader RSS growth or error-storm onset timing is untested
+  here.
+- Both reader RSS slopes (11.4-12.5 kB/s) exceed the 10 kB/s frozen
+  reader bound the P-SOAK2 readers all passed under — flagged here, not
+  investigated further; root cause not established.
+- The end-of-run replay/digest step (476,813 batches) is unscored and,
+  per the current harness design, could not be disabled for this
+  observation-only run.
