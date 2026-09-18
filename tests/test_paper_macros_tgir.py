@@ -1,6 +1,6 @@
 """`scripts/tgir_paper_macros.py`'s pure helpers and its `--root` re-rooting.
 
-The generator itself is self-checking — it runs 716 assertions over the
+The generator itself is self-checking — it runs 724 assertions over the
 row-level records and refuses to write on any failure — so there is nothing
 useful to re-assert about its *values* here.  What a test can pin, and what
 this repository cannot exercise end to end, is different:
@@ -216,6 +216,13 @@ def test_ref_v1_macro_values_pin_the_external_baseline() -> None:
     assert (families["BI"], families["IC"], families["IS"]) == (10, 7, 7)
     assert (agreeing["BI"], agreeing["IC"], agreeing["IS"]) == (5, 3, 6)
     assert sum(families.values()) == 24 and sum(agreeing.values()) == 14
+
+    # one group cell of the per-group, per-class breakdown: the 3 BI templates
+    # among the 5 "disagreeing against an invalid reference" (not_scoreable)
+    notcomp_bi = sum(1 for v in verdicts if v.get("verdict") == "disagreeing"
+                      and v["plan_id"][:2] == "BI"
+                      and v["plan_id"].split(".")[0] in not_scoreable)
+    assert notcomp_bi == 3                                           # \tgRefNotComparableBi
 
     # the median of t1/t2/t3 --- never the warm-up, which is systematically slower
     median = {t: statistics.median([e["neo4j"]["wall_s"][k] for k in ("t1", "t2", "t3")])
