@@ -16,7 +16,168 @@
  "plan_id": "IC2",
  "query_file": "external_workloads/ldbc/interactive_v1/cypher/queries/interactive-complex-2.cypher",
  "query_sha256": "434d4215e299eb00fa4d0bfc9a5111b00f1a806c7b8220044df7963da3f06de2",
- "result_digest": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
- "rows": [],
- "wall_s": 0.035
+ "result_digest": "f32d745693c41358a9b91d3148f76977153ba3ce5b6ec6be2425f30c2439ed56",
+ "rows": [
+  {
+   "personFirstName": "Rahul",
+   "personId": 26388279067181,
+   "personLastName": "Singh",
+   "postOrCommentContent": "About Leon Trotsky, ring the early days of the Soviet Union, he served fir",
+   "postOrCommentCreationDate": 1354060345478,
+   "postOrCommentId": 2336465009710
+  },
+  {
+   "personFirstName": "K.",
+   "personId": 26388279070832,
+   "personLastName": "Sharma",
+   "postOrCommentContent": "right",
+   "postOrCommentCreationDate": 1354056977739,
+   "postOrCommentId": 2336466826139
+  },
+  {
+   "personFirstName": "K.",
+   "personId": 35184372094002,
+   "personLastName": "Sharma",
+   "postOrCommentContent": "thx",
+   "postOrCommentCreationDate": 1354056935208,
+   "postOrCommentId": 2336466848373
+  },
+  {
+   "personFirstName": "R.",
+   "personId": 4398046520505,
+   "personLastName": "Sharma",
+   "postOrCommentContent": "About Fr\u00e9d\u00e9ric Chopin, ed from poor health; About Where Is the Love, umber one on",
+   "postOrCommentCreationDate": 1354056560250,
+   "postOrCommentId": 2336466788171
+  },
+  {
+   "personFirstName": "James",
+   "personId": 37383395349053,
+   "personLastName": "Omar",
+   "postOrCommentContent": "good",
+   "postOrCommentCreationDate": 1354056499922,
+   "postOrCommentId": 2336465058562
+  },
+  {
+   "personFirstName": "James",
+   "personId": 37383395349053,
+   "personLastName": "Omar",
+   "postOrCommentContent": "duh",
+   "postOrCommentCreationDate": 1354055913446,
+   "postOrCommentId": 2336465058610
+  },
+  {
+   "personFirstName": "James",
+   "personId": 37383395349053,
+   "personLastName": "Omar",
+   "postOrCommentContent": "I see",
+   "postOrCommentCreationDate": 1354055804889,
+   "postOrCommentId": 2336465058634
+  },
+  {
+   "personFirstName": "Shweta",
+   "personId": 28587302329901,
+   "personLastName": "Khan",
+   "postOrCommentContent": "About Tom Gehrels,  and shipping tAbout Achaemenid Empire, sed approximateAbout Holy",
+   "postOrCommentCreationDate": 1354054872236,
+   "postOrCommentId": 2336464607546
+  },
+  {
+   "personFirstName": "Shweta",
+   "personId": 28587302329901,
+   "personLastName": "Khan",
+   "postOrCommentContent": "duh",
+   "postOrCommentCreationDate": 1354054212652,
+   "postOrCommentId": 2336467285055
+  },
+  {
+   "personFirstName": "Rahul",
+   "personId": 6597069771930,
+   "personLastName": "Reddy",
+   "postOrCommentContent": "LOL",
+   "postOrCommentCreationDate": 1354052564216,
+   "postOrCommentId": 2336464959691
+  },
+  {
+   "personFirstName": "Rahul",
+   "personId": 6597069771930,
+   "personLastName": "Reddy",
+   "postOrCommentContent": "fine",
+   "postOrCommentCreationDate": 1354048048848,
+   "postOrCommentId": 2336464959686
+  },
+  {
+   "personFirstName": "Shweta",
+   "personId": 28587302329901,
+   "personLastName": "Khan",
+   "postOrCommentContent": "About George Michael, alist anAbout Leonardo DiCaprio,  his perAbout Carry That",
+   "postOrCommentCreationDate": 1354045951908,
+   "postOrCommentId": 2336463023862
+  },
+  {
+   "personFirstName": "Rahul",
+   "personId": 17592186054655,
+   "personLastName": "Kumar",
+   "postOrCommentContent": "thanks",
+   "postOrCommentCreationDate": 1354043913759,
+   "postOrCommentId": 2336462346700
+  },
+  {
+   "personFirstName": "Rahul",
+   "personId": 17592186054655,
+   "personLastName": "Kumar",
+   "postOrCommentContent": "yes",
+   "postOrCommentCreationDate": 1354041774635,
+   "postOrCommentId": 2336463426593
+  },
+  {
+   "personFirstName": "James",
+   "personId": 37383395349053,
+   "personLastName": "Omar",
+   "postOrCommentContent": "maybe",
+   "postOrCommentCreationDate": 1354041551128,
+   "postOrCommentId": 2336466755120
+  },
+  {
+   "personFirstName": "John",
+   "personId": 563,
+   "personLastName": "Chopra",
+   "postOrCommentContent": "maybe",
+   "postOrCommentCreationDate": 1354039147658,
+   "postOrCommentId": 2336468660995
+  },
+  {
+   "personFirstName": "Rahul",
+   "personId": 17592186054655,
+   "personLastName": "Kumar",
+   "postOrCommentContent": "yes",
+   "postOrCommentCreationDate": 1354038830431,
+   "postOrCommentId": 2336465310852
+  },
+  {
+   "personFirstName": "K.",
+   "personId": 26388279070832,
+   "personLastName": "Sharma",
+   "postOrCommentContent": "About Nicaragua, is a representative democratic republic, and has experien",
+   "postOrCommentCreationDate": 1354037992578,
+   "postOrCommentId": 2336463027847
+  },
+  {
+   "personFirstName": "K.",
+   "personId": 35184372094002,
+   "personLastName": "Sharma",
+   "postOrCommentContent": "yes",
+   "postOrCommentCreationDate": 1354037906014,
+   "postOrCommentId": 2336466848471
+  },
+  {
+   "personFirstName": "Ashok",
+   "personId": 30786325582257,
+   "personLastName": "Sharma",
+   "postOrCommentContent": "roflol",
+   "postOrCommentCreationDate": 1354036092369,
+   "postOrCommentId": 2336466642754
+  }
+ ],
+ "wall_s": 0.065
 }

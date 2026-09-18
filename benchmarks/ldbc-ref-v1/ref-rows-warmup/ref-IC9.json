@@ -16,7 +16,168 @@
  "plan_id": "IC9",
  "query_file": "external_workloads/ldbc/interactive_v1/cypher/queries/interactive-complex-9.cypher",
  "query_sha256": "84d05a4cc87a0680b490fc98aa303ff211f363204cc81d936cd5d442bf85cfe7",
- "result_digest": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
- "rows": [],
- "wall_s": 1.711
+ "result_digest": "dba142a3737f5df691eb792c54790b902b9bee66ad7d9eb1de74618943d2cc2e",
+ "rows": [
+  {
+   "commentOrPostContent": "thx",
+   "commentOrPostCreationDate": 1324079808688,
+   "commentOrPostId": 1511829346932,
+   "personFirstName": "Ahmed",
+   "personId": 13194139537798,
+   "personLastName": "Abdeslam"
+  },
+  {
+   "commentOrPostContent": "About Thomas Jefferson, esolutions, which attempteAbout Socialist Federal Rep",
+   "commentOrPostCreationDate": 1324079734424,
+   "commentOrPostId": 1511832728048,
+   "personFirstName": "Ladji",
+   "personId": 15393162793010,
+   "personLastName": "Dia"
+  },
+  {
+   "commentOrPostContent": "About Sergei Eisenstein, attleship Potemkin (1925) and October About This I",
+   "commentOrPostCreationDate": 1324079615173,
+   "commentOrPostId": 1511833503855,
+   "personFirstName": "Javad",
+   "personId": 17592186047743,
+   "personLastName": "Karimi"
+  },
+  {
+   "commentOrPostContent": "right",
+   "commentOrPostCreationDate": 1324079385917,
+   "commentOrPostId": 1511829215563,
+   "personFirstName": "Hao",
+   "personId": 6597069769862,
+   "personLastName": "Zhang"
+  },
+  {
+   "commentOrPostContent": "LOL",
+   "commentOrPostCreationDate": 1324079267865,
+   "commentOrPostId": 1511833375868,
+   "personFirstName": "Boris",
+   "personId": 19791209309812,
+   "personLastName": "Kuzmina"
+  },
+  {
+   "commentOrPostContent": "About Benicio del Toro,  Rican to win anAbout Jane Austen, w's A Memoir of Abo",
+   "commentOrPostCreationDate": 1324079039136,
+   "commentOrPostId": 1511830796186,
+   "personFirstName": "Rico",
+   "personId": 4398046521694,
+   "personLastName": "Perez"
+  },
+  {
+   "commentOrPostContent": "right",
+   "commentOrPostCreationDate": 1324079007699,
+   "commentOrPostId": 1511831203149,
+   "personFirstName": "K.",
+   "personId": 17592186046450,
+   "personLastName": "Anand"
+  },
+  {
+   "commentOrPostContent": "roflol",
+   "commentOrPostCreationDate": 1324078862109,
+   "commentOrPostId": 1511831383061,
+   "personFirstName": "Patricia",
+   "personId": 8796093026925,
+   "personLastName": "Castillo"
+  },
+  {
+   "commentOrPostContent": "no",
+   "commentOrPostCreationDate": 1324078614082,
+   "commentOrPostId": 1511829342782,
+   "personFirstName": "Mihai",
+   "personId": 6597069774750,
+   "personLastName": "Kovacs"
+  },
+  {
+   "commentOrPostContent": "good",
+   "commentOrPostCreationDate": 1324078596971,
+   "commentOrPostId": 1511830784337,
+   "personFirstName": "Alawwe",
+   "personId": 4398046513439,
+   "personLastName": "Fernando"
+  },
+  {
+   "commentOrPostContent": "About Muammar Gaddafi, ary 2009 to 31 JanuarAbout Pope John Paul II, John Paul II",
+   "commentOrPostCreationDate": 1324078487477,
+   "commentOrPostId": 1511833299374,
+   "personFirstName": "Wei",
+   "personId": 17592186047024,
+   "personLastName": "Zhu"
+  },
+  {
+   "commentOrPostContent": "ok",
+   "commentOrPostCreationDate": 1324078405493,
+   "commentOrPostId": 1511831264798,
+   "personFirstName": "Ali",
+   "personId": 10995116284554,
+   "personLastName": "Lo"
+  },
+  {
+   "commentOrPostContent": "About Jim Carrey, et to star as Mr. Applegate About Gilbert du Motier, marquis de Lafayette,  visited all twen",
+   "commentOrPostCreationDate": 1324078223385,
+   "commentOrPostId": 1511828747692,
+   "personFirstName": "Abdoulaye Khouma",
+   "personId": 6916,
+   "personLastName": "Niang"
+  },
+  {
+   "commentOrPostContent": "no way!",
+   "commentOrPostCreationDate": 1324078081519,
+   "commentOrPostId": 1511833058065,
+   "personFirstName": "Jun",
+   "personId": 19791209304241,
+   "personLastName": "Lu"
+  },
+  {
+   "commentOrPostContent": "About There Is a Light That Never Goes Out,  the song as a double A-side live single in",
+   "commentOrPostCreationDate": 1324078061286,
+   "commentOrPostId": 1511828877418,
+   "personFirstName": "Jose",
+   "personId": 8796093022752,
+   "personLastName": "Cruz"
+  },
+  {
+   "commentOrPostContent": "duh",
+   "commentOrPostCreationDate": 1324078007795,
+   "commentOrPostId": 1511828512717,
+   "personFirstName": "Rahul",
+   "personId": 6597069771930,
+   "personLastName": "Reddy"
+  },
+  {
+   "commentOrPostContent": "About Bryan Adams, ASCAP, and American Music awards. In addition, he has won two Ivor Novello Awards for song compositio",
+   "commentOrPostCreationDate": 1324077888492,
+   "commentOrPostId": 1511829348837,
+   "personFirstName": "Edward",
+   "personId": 4398046514495,
+   "personLastName": "Popov"
+  },
+  {
+   "commentOrPostContent": "no way!",
+   "commentOrPostCreationDate": 1324077843538,
+   "commentOrPostId": 1511829609499,
+   "personFirstName": "Abdullah",
+   "personId": 24189255819469,
+   "personLastName": "Leong"
+  },
+  {
+   "commentOrPostContent": "great",
+   "commentOrPostCreationDate": 1324077807104,
+   "commentOrPostId": 1511833059010,
+   "personFirstName": "Jun",
+   "personId": 19791209304241,
+   "personLastName": "Lu"
+  },
+  {
+   "commentOrPostContent": "About Augustine of Hippo, his contemporary, Jerome, Augustine establisAbout Bede, a Do",
+   "commentOrPostCreationDate": 1324077787439,
+   "commentOrPostId": 1511833298765,
+   "personFirstName": "Wei",
+   "personId": 17592186047024,
+   "personLastName": "Zhu"
+  }
+ ],
+ "wall_s": 1.552
 }

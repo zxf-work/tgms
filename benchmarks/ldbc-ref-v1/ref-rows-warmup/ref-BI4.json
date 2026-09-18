@@ -14,7 +14,708 @@
  "plan_id": "BI4",
  "query_file": "external_workloads/ldbc/bi/neo4j/queries/bi-4.cypher",
  "query_sha256": "92f3385fc493b725b0785b76d929854af18969bc8090fe652894723c20ba1be2",
- "result_digest": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
- "rows": [],
- "wall_s": 0.013
+ "result_digest": "62f67095200b7d6e09520b72cc0489a07c4946271e22d49fab8c6058a6b3ed26",
+ "rows": [
+  {
+   "messageCount": 1195,
+   "personCreationDate": 1274621083393,
+   "personFirstName": "Ahmad Rafiq",
+   "personId": 4398046519825,
+   "personLastName": "Akbar"
+  },
+  {
+   "messageCount": 948,
+   "personCreationDate": 1282737530853,
+   "personFirstName": "Ayesha",
+   "personId": 6597069774064,
+   "personLastName": "Ahmed"
+  },
+  {
+   "messageCount": 835,
+   "personCreationDate": 1303008768739,
+   "personFirstName": "Shweta",
+   "personId": 15393162797132,
+   "personLastName": "Kapoor"
+  },
+  {
+   "messageCount": 738,
+   "personCreationDate": 1271813263705,
+   "personFirstName": "Wei",
+   "personId": 2199023265231,
+   "personLastName": "Wang"
+  },
+  {
+   "messageCount": 435,
+   "personCreationDate": 1321131865195,
+   "personFirstName": "Sombat",
+   "personId": 24189255819865,
+   "personLastName": "Amarttayakul"
+  },
+  {
+   "messageCount": 402,
+   "personCreationDate": 1272376908888,
+   "personFirstName": "Chen",
+   "personId": 2199023260815,
+   "personLastName": "Li"
+  },
+  {
+   "messageCount": 382,
+   "personCreationDate": 1293212469731,
+   "personFirstName": "John",
+   "personId": 10995116284819,
+   "personLastName": "Khan"
+  },
+  {
+   "messageCount": 345,
+   "personCreationDate": 1265339221196,
+   "personFirstName": "Eve-Mary Thai",
+   "personId": 2866,
+   "personLastName": "Hoang"
+  },
+  {
+   "messageCount": 292,
+   "personCreationDate": 1283044435834,
+   "personFirstName": "Abdul Haris",
+   "personId": 6597069770739,
+   "personLastName": "Gallagher"
+  },
+  {
+   "messageCount": 261,
+   "personCreationDate": 1333100012228,
+   "personFirstName": "Shweta",
+   "personId": 28587302329901,
+   "personLastName": "Khan"
+  },
+  {
+   "messageCount": 151,
+   "personCreationDate": 1301082481039,
+   "personFirstName": "Ge",
+   "personId": 15393162799092,
+   "personLastName": "Wang"
+  },
+  {
+   "messageCount": 64,
+   "personCreationDate": 1343001968096,
+   "personFirstName": "John",
+   "personId": 32985348840714,
+   "personLastName": "Singh"
+  },
+  {
+   "messageCount": 54,
+   "personCreationDate": 1291490821714,
+   "personFirstName": "Abhishek",
+   "personId": 10995116279311,
+   "personLastName": "Kumar"
+  },
+  {
+   "messageCount": 48,
+   "personCreationDate": 1334819013413,
+   "personFirstName": "A.",
+   "personId": 28587302327043,
+   "personLastName": "Kumar"
+  },
+  {
+   "messageCount": 48,
+   "personCreationDate": 1346582246120,
+   "personFirstName": "Jie",
+   "personId": 32985348841684,
+   "personLastName": "Zhu"
+  },
+  {
+   "messageCount": 46,
+   "personCreationDate": 1274642932655,
+   "personFirstName": "Yang",
+   "personId": 4398046518418,
+   "personLastName": "Li"
+  },
+  {
+   "messageCount": 46,
+   "personCreationDate": 1293290181391,
+   "personFirstName": "Taufik",
+   "personId": 10995116285596,
+   "personLastName": "Budjana"
+  },
+  {
+   "messageCount": 46,
+   "personCreationDate": 1328732286166,
+   "personFirstName": "Amit",
+   "personId": 26388279068970,
+   "personLastName": "Reddy"
+  },
+  {
+   "messageCount": 44,
+   "personCreationDate": 1286681064860,
+   "personFirstName": "Karan",
+   "personId": 8796093028172,
+   "personLastName": "Khan"
+  },
+  {
+   "messageCount": 44,
+   "personCreationDate": 1334258415578,
+   "personFirstName": "Anh",
+   "personId": 28587302328636,
+   "personLastName": "Ha"
+  },
+  {
+   "messageCount": 44,
+   "personCreationDate": 1335258106435,
+   "personFirstName": "A.",
+   "personId": 28587302329156,
+   "personLastName": "Singh"
+  },
+  {
+   "messageCount": 43,
+   "personCreationDate": 1282855761329,
+   "personFirstName": "Abdul Jamil",
+   "personId": 6597069775034,
+   "personLastName": "Qureshi"
+  },
+  {
+   "messageCount": 43,
+   "personCreationDate": 1312867105450,
+   "personFirstName": "John",
+   "personId": 19791209304987,
+   "personLastName": "Singh"
+  },
+  {
+   "messageCount": 43,
+   "personCreationDate": 1327112663843,
+   "personFirstName": "Rahul",
+   "personId": 26388279071390,
+   "personLastName": "Khan"
+  },
+  {
+   "messageCount": 42,
+   "personCreationDate": 1342130983580,
+   "personFirstName": "Yang",
+   "personId": 32985348843490,
+   "personLastName": "Li"
+  },
+  {
+   "messageCount": 41,
+   "personCreationDate": 1264255661044,
+   "personFirstName": "Rahul",
+   "personId": 7937,
+   "personLastName": "Kumar"
+  },
+  {
+   "messageCount": 41,
+   "personCreationDate": 1267920553471,
+   "personFirstName": "Nguyen Huu",
+   "personId": 2199023261398,
+   "personLastName": "Nguyen"
+  },
+  {
+   "messageCount": 41,
+   "personCreationDate": 1329952727392,
+   "personFirstName": "A.",
+   "personId": 26388279074760,
+   "personLastName": "Nair"
+  },
+  {
+   "messageCount": 40,
+   "personCreationDate": 1281132289717,
+   "personFirstName": "Jun",
+   "personId": 6597069768174,
+   "personLastName": "He"
+  },
+  {
+   "messageCount": 38,
+   "personCreationDate": 1321560166129,
+   "personFirstName": "Bichang",
+   "personId": 24189255820986,
+   "personLastName": "Zhang"
+  },
+  {
+   "messageCount": 37,
+   "personCreationDate": 1295796998709,
+   "personFirstName": "Deepak",
+   "personId": 13194139541713,
+   "personLastName": "Singh"
+  },
+  {
+   "messageCount": 37,
+   "personCreationDate": 1305268480153,
+   "personFirstName": "V.",
+   "personId": 17592186048064,
+   "personLastName": "Joshi"
+  },
+  {
+   "messageCount": 37,
+   "personCreationDate": 1319658913777,
+   "personFirstName": "Naresh",
+   "personId": 21990232556039,
+   "personLastName": "Kumar"
+  },
+  {
+   "messageCount": 37,
+   "personCreationDate": 1318461829411,
+   "personFirstName": "Karan",
+   "personId": 21990232559111,
+   "personLastName": "Sharma"
+  },
+  {
+   "messageCount": 37,
+   "personCreationDate": 1341464507042,
+   "personFirstName": "R.",
+   "personId": 30786325582458,
+   "personLastName": "Kapoor"
+  },
+  {
+   "messageCount": 36,
+   "personCreationDate": 1277170792845,
+   "personFirstName": "Zheng",
+   "personId": 4398046512214,
+   "personLastName": "Li"
+  },
+  {
+   "messageCount": 36,
+   "personCreationDate": 1279370321010,
+   "personFirstName": "Jun",
+   "personId": 6597069773793,
+   "personLastName": "Wang"
+  },
+  {
+   "messageCount": 36,
+   "personCreationDate": 1299772141365,
+   "personFirstName": "Rahul",
+   "personId": 15393162788923,
+   "personLastName": "Sharma"
+  },
+  {
+   "messageCount": 36,
+   "personCreationDate": 1304992992983,
+   "personFirstName": "Manuel",
+   "personId": 17592186054998,
+   "personLastName": "Cosio"
+  },
+  {
+   "messageCount": 36,
+   "personCreationDate": 1345780610790,
+   "personFirstName": "Anupam",
+   "personId": 32985348841739,
+   "personLastName": "Rao"
+  },
+  {
+   "messageCount": 35,
+   "personCreationDate": 1263660035139,
+   "personFirstName": "Shweta",
+   "personId": 2208,
+   "personLastName": "Sharma"
+  },
+  {
+   "messageCount": 35,
+   "personCreationDate": 1269802523334,
+   "personFirstName": "Wuttichai",
+   "personId": 2199023263560,
+   "personLastName": "Boy"
+  },
+  {
+   "messageCount": 35,
+   "personCreationDate": 1283364691748,
+   "personFirstName": "Abhishek",
+   "personId": 6597069768442,
+   "personLastName": "Kapoor"
+  },
+  {
+   "messageCount": 35,
+   "personCreationDate": 1309604724354,
+   "personFirstName": "Abhishek",
+   "personId": 17592186051684,
+   "personLastName": "Singh"
+  },
+  {
+   "messageCount": 35,
+   "personCreationDate": 1311785994637,
+   "personFirstName": "Abdul Haris",
+   "personId": 19791209309552,
+   "personLastName": "Anwar"
+  },
+  {
+   "messageCount": 35,
+   "personCreationDate": 1329368827084,
+   "personFirstName": "Mirza Kalich",
+   "personId": 26388279073421,
+   "personLastName": "Ahmed"
+  },
+  {
+   "messageCount": 35,
+   "personCreationDate": 1333930954226,
+   "personFirstName": "Aama",
+   "personId": 28587302327725,
+   "personLastName": "Shrestha"
+  },
+  {
+   "messageCount": 35,
+   "personCreationDate": 1337094295025,
+   "personFirstName": "Duleep",
+   "personId": 30786325580960,
+   "personLastName": "Banda"
+  },
+  {
+   "messageCount": 35,
+   "personCreationDate": 1337609651353,
+   "personFirstName": "Jean",
+   "personId": 30786325581241,
+   "personLastName": "Arnaud"
+  },
+  {
+   "messageCount": 34,
+   "personCreationDate": 1299893001165,
+   "personFirstName": "Chen",
+   "personId": 15393162798428,
+   "personLastName": "Zhang"
+  },
+  {
+   "messageCount": 34,
+   "personCreationDate": 1307778662867,
+   "personFirstName": "John",
+   "personId": 17592186051872,
+   "personLastName": "Sharma"
+  },
+  {
+   "messageCount": 34,
+   "personCreationDate": 1335958299054,
+   "personFirstName": "Oleg",
+   "personId": 28587302329829,
+   "personLastName": "Chezhina"
+  },
+  {
+   "messageCount": 33,
+   "personCreationDate": 1262632467142,
+   "personFirstName": "Agustiar",
+   "personId": 5452,
+   "personLastName": "Balawan"
+  },
+  {
+   "messageCount": 33,
+   "personCreationDate": 1272605091797,
+   "personFirstName": "R.",
+   "personId": 2199023264344,
+   "personLastName": "Kapoor"
+  },
+  {
+   "messageCount": 33,
+   "personCreationDate": 1288486997379,
+   "personFirstName": "Amir",
+   "personId": 8796093023211,
+   "personLastName": "Chen"
+  },
+  {
+   "messageCount": 33,
+   "personCreationDate": 1295057399710,
+   "personFirstName": "Lei",
+   "personId": 13194139542917,
+   "personLastName": "Li"
+  },
+  {
+   "messageCount": 33,
+   "personCreationDate": 1312127307794,
+   "personFirstName": "John",
+   "personId": 19791209305377,
+   "personLastName": "Singh"
+  },
+  {
+   "messageCount": 33,
+   "personCreationDate": 1311788881487,
+   "personFirstName": "John",
+   "personId": 19791209306643,
+   "personLastName": "Sen"
+  },
+  {
+   "messageCount": 33,
+   "personCreationDate": 1351131127425,
+   "personFirstName": "Arun",
+   "personId": 35184372090954,
+   "personLastName": "Chopra"
+  },
+  {
+   "messageCount": 32,
+   "personCreationDate": 1283184052716,
+   "personFirstName": "Ami",
+   "personId": 6597069771115,
+   "personLastName": "Chatterjee"
+  },
+  {
+   "messageCount": 32,
+   "personCreationDate": 1280756360452,
+   "personFirstName": "Zhang",
+   "personId": 6597069774644,
+   "personLastName": "Chen"
+  },
+  {
+   "messageCount": 32,
+   "personCreationDate": 1281058956282,
+   "personFirstName": "Wei",
+   "personId": 6597069777069,
+   "personLastName": "Wang"
+  },
+  {
+   "messageCount": 32,
+   "personCreationDate": 1297034599378,
+   "personFirstName": "A.",
+   "personId": 13194139543607,
+   "personLastName": "Khan"
+  },
+  {
+   "messageCount": 32,
+   "personCreationDate": 1316778958941,
+   "personFirstName": "Meera",
+   "personId": 21990232559935,
+   "personLastName": "Kapoor"
+  },
+  {
+   "messageCount": 32,
+   "personCreationDate": 1320563824122,
+   "personFirstName": "Prakash",
+   "personId": 21990232565605,
+   "personLastName": "Price"
+  },
+  {
+   "messageCount": 32,
+   "personCreationDate": 1328898381335,
+   "personFirstName": "Deepak",
+   "personId": 26388279076723,
+   "personLastName": "Kumar"
+  },
+  {
+   "messageCount": 32,
+   "personCreationDate": 1335496605436,
+   "personFirstName": "Isabel",
+   "personId": 28587302331910,
+   "personLastName": "Reyes"
+  },
+  {
+   "messageCount": 32,
+   "personCreationDate": 1340446577317,
+   "personFirstName": "Anupam",
+   "personId": 30786325588075,
+   "personLastName": "Rao"
+  },
+  {
+   "messageCount": 32,
+   "personCreationDate": 1343641963390,
+   "personFirstName": "Wei",
+   "personId": 32985348843444,
+   "personLastName": "Chen"
+  },
+  {
+   "messageCount": 31,
+   "personCreationDate": 1263385203403,
+   "personFirstName": "James",
+   "personId": 10281,
+   "personLastName": "Raghu"
+  },
+  {
+   "messageCount": 31,
+   "personCreationDate": 1280009297051,
+   "personFirstName": "Rahul",
+   "personId": 6597069768018,
+   "personLastName": "Singh"
+  },
+  {
+   "messageCount": 31,
+   "personCreationDate": 1296147931134,
+   "personFirstName": "Arjun",
+   "personId": 13194139534180,
+   "personLastName": "Khan"
+  },
+  {
+   "messageCount": 31,
+   "personCreationDate": 1295256004865,
+   "personFirstName": "K.",
+   "personId": 13194139539554,
+   "personLastName": "Sharma"
+  },
+  {
+   "messageCount": 31,
+   "personCreationDate": 1297244885320,
+   "personFirstName": "Shweta",
+   "personId": 13194139543101,
+   "personLastName": "Kapoor"
+  },
+  {
+   "messageCount": 31,
+   "personCreationDate": 1314872067166,
+   "personFirstName": "K.",
+   "personId": 19791209302082,
+   "personLastName": "Kumar"
+  },
+  {
+   "messageCount": 31,
+   "personCreationDate": 1313218548125,
+   "personFirstName": "Amit",
+   "personId": 19791209304789,
+   "personLastName": "Rao"
+  },
+  {
+   "messageCount": 31,
+   "personCreationDate": 1328055517691,
+   "personFirstName": "Prakash",
+   "personId": 26388279071096,
+   "personLastName": "Khan"
+  },
+  {
+   "messageCount": 31,
+   "personCreationDate": 1336806520547,
+   "personFirstName": "Ashok",
+   "personId": 30786325582257,
+   "personLastName": "Sharma"
+  },
+  {
+   "messageCount": 30,
+   "personCreationDate": 1264289840444,
+   "personFirstName": "Bibit",
+   "personId": 2435,
+   "personLastName": "Balawan"
+  },
+  {
+   "messageCount": 30,
+   "personCreationDate": 1272417158381,
+   "personFirstName": "Peng",
+   "personId": 2199023261346,
+   "personLastName": "Li"
+  },
+  {
+   "messageCount": 30,
+   "personCreationDate": 1275415187303,
+   "personFirstName": "Jun",
+   "personId": 4398046517801,
+   "personLastName": "Wang"
+  },
+  {
+   "messageCount": 30,
+   "personCreationDate": 1288655860370,
+   "personFirstName": "Jie",
+   "personId": 8796093029212,
+   "personLastName": "Zhang"
+  },
+  {
+   "messageCount": 30,
+   "personCreationDate": 1300770236918,
+   "personFirstName": "Albaye Papa",
+   "personId": 15393162789525,
+   "personLastName": "Faye"
+  },
+  {
+   "messageCount": 30,
+   "personCreationDate": 1319242351924,
+   "personFirstName": "Paul",
+   "personId": 21990232561857,
+   "personLastName": "Clerc"
+  },
+  {
+   "messageCount": 30,
+   "personCreationDate": 1326400279036,
+   "personFirstName": "Chen",
+   "personId": 26388279076501,
+   "personLastName": "Li"
+  },
+  {
+   "messageCount": 30,
+   "personCreationDate": 1332196703233,
+   "personFirstName": "Deepak",
+   "personId": 28587302327643,
+   "personLastName": "Reddy"
+  },
+  {
+   "messageCount": 30,
+   "personCreationDate": 1337703142233,
+   "personFirstName": "Amir",
+   "personId": 30786325579031,
+   "personLastName": "Lee"
+  },
+  {
+   "messageCount": 30,
+   "personCreationDate": 1337520449263,
+   "personFirstName": "John",
+   "personId": 30786325580998,
+   "personLastName": "Singh"
+  },
+  {
+   "messageCount": 30,
+   "personCreationDate": 1337253822909,
+   "personFirstName": "Deepak",
+   "personId": 30786325581320,
+   "personLastName": "Roy"
+  },
+  {
+   "messageCount": 30,
+   "personCreationDate": 1337358368414,
+   "personFirstName": "Ashok",
+   "personId": 30786325583499,
+   "personLastName": "Reddy"
+  },
+  {
+   "messageCount": 30,
+   "personCreationDate": 1348849791372,
+   "personFirstName": "Faisal",
+   "personId": 35184372094081,
+   "personLastName": "Malik"
+  },
+  {
+   "messageCount": 29,
+   "personCreationDate": 1265184727624,
+   "personFirstName": "Wei",
+   "personId": 3903,
+   "personLastName": "Li"
+  },
+  {
+   "messageCount": 29,
+   "personCreationDate": 1268949072030,
+   "personFirstName": "Peng",
+   "personId": 2199023258884,
+   "personLastName": "Chen"
+  },
+  {
+   "messageCount": 29,
+   "personCreationDate": 1282259553496,
+   "personFirstName": "Grigore",
+   "personId": 6597069767028,
+   "personLastName": "Bologan"
+  },
+  {
+   "messageCount": 29,
+   "personCreationDate": 1282499038802,
+   "personFirstName": "Arun",
+   "personId": 6597069772286,
+   "personLastName": "Rao"
+  },
+  {
+   "messageCount": 29,
+   "personCreationDate": 1281115705712,
+   "personFirstName": "Pol",
+   "personId": 6597069775770,
+   "personLastName": "Nath"
+  },
+  {
+   "messageCount": 29,
+   "personCreationDate": 1287081480870,
+   "personFirstName": "Priyanka",
+   "personId": 8796093032553,
+   "personLastName": "Singh"
+  },
+  {
+   "messageCount": 29,
+   "personCreationDate": 1293939835824,
+   "personFirstName": "Batong",
+   "personId": 10995116282430,
+   "personLastName": "Tran"
+  },
+  {
+   "messageCount": 29,
+   "personCreationDate": 1290752943990,
+   "personFirstName": "Ashok",
+   "personId": 10995116282865,
+   "personLastName": "Khan"
+  },
+  {
+   "messageCount": 29,
+   "personCreationDate": 1293279400949,
+   "personFirstName": "Yang",
+   "personId": 10995116286396,
+   "personLastName": "Li"
+  }
+ ],
+ "wall_s": 32.69
 }

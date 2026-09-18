@@ -12,11 +12,11 @@
  "plan_id": "BI11",
  "query_file": "external_workloads/ldbc/bi/neo4j/queries/bi-11.cypher",
  "query_sha256": "55eaa5ddfae1f09d741d281c9913d1f2de84369eba37f4da068c80633cf17189",
- "result_digest": "cd0e5efe267810586a780ddd18fc10f8c60b9328fa26879735dac63a8145fe4d",
+ "result_digest": "81ce51d9c755d7a7c49a215962bc6c47957030dffb2a9305897f4403cffe0c0a",
  "rows": [
   {
-   "count": 0
+   "count": 718
   }
  ],
- "wall_s": 0.104
+ "wall_s": 0.655
 }

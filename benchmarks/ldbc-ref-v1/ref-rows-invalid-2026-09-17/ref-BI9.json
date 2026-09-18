@@ -1,0 +1,21 @@
+{
+ "columns": [
+  "person.id",
+  "person.firstName",
+  "person.lastName",
+  "threadCount",
+  "messageCount"
+ ],
+ "commit": "0b7198dfdf7a",
+ "host": "xzgpu",
+ "params": {
+  "endDate": "2012-12-10T00:00:00.000+00:00",
+  "startDate": "2012-08-30T00:00:00.000+00:00"
+ },
+ "plan_id": "BI9",
+ "query_file": "external_workloads/ldbc/bi/neo4j/queries/bi-9.cypher",
+ "query_sha256": "4c5fb4553a704213ad9e58ede3b2e590d1237c068df658ad33298a1ba21ff168",
+ "result_digest": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+ "rows": [],
+ "wall_s": 0.009
+}

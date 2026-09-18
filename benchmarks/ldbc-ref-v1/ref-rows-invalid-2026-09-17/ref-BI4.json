@@ -1,0 +1,20 @@
+{
+ "columns": [
+  "personId",
+  "personFirstName",
+  "personLastName",
+  "personCreationDate",
+  "messageCount"
+ ],
+ "commit": "0b7198dfdf7a",
+ "host": "xzgpu",
+ "params": {
+  "date": "2010-02-12T00:00:00.000+00:00"
+ },
+ "plan_id": "BI4",
+ "query_file": "external_workloads/ldbc/bi/neo4j/queries/bi-4.cypher",
+ "query_sha256": "92f3385fc493b725b0785b76d929854af18969bc8090fe652894723c20ba1be2",
+ "result_digest": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+ "rows": [],
+ "wall_s": 0.011
+}

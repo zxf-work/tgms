@@ -1,0 +1,751 @@
+{
+ "manifest": {
+  "commit": "25874ad81c04",
+  "disagreement_causes": [
+   "MAPPING-RULE",
+   "ORDERING/TIE",
+   "TGIR-SEMANTIC-GAP",
+   "ENGINE-DEFECT",
+   "REFERENCE-SIDE-QUIRK"
+  ],
+  "host": "Xiaofeis-Mac-mini.local",
+  "plans": 24,
+  "ref_dir": "benchmarks/ldbc-ref-v1/ref-rows",
+  "supersedes": "compare-2026-09-17.json",
+  "supersedes_reason": "the 2026-09-17 revision was produced while 7 templates (BI4 BI9 BI11 BI12 IC2 IC5 IC9) had an invalid reference side: their temporal parameters reached Neo4j as ISO-8601 strings, and DATETIME > STRING yields null rather than raising, so those queries returned 0 or 1 rows silently. Those 7 were re-run on 2026-09-18 with ldbc_reference_run.driverize_params, same protocol (1 warm-up + 3 timed). Everything else is unchanged: same TGIR row dumps, same parameters, same column map and column kinds. The superseded reference dumps are kept under ref-rows-invalid-2026-09-17/.",
+  "tgms_dir": "benchmarks/ldbc-ref-v1/tgms-rows",
+  "utc": "2026-09-18T08:23:58Z"
+ },
+ "verdicts": [
+  {
+   "agreeing": 20,
+   "attempted": true,
+   "both_sides_completed": true,
+   "bound": true,
+   "causes": [],
+   "column_map_rule": "positional",
+   "compared": 20,
+   "contract": "REQUIRES_TOP_K",
+   "disagreeing": 0,
+   "note": null,
+   "plan_id": "BI3",
+   "ref_digest": "901043e9d2cdd2c432290205dc0adb70225b2906072bdd6726d00b225afeefbc",
+   "reference_columns_not_projected": [],
+   "tgms_digest": "59100e39f8c555d2aef40ce865e4a22239191351c62bb4f466816f53a4fbc202",
+   "tie_ambiguous": 0,
+   "verdict": "agreeing"
+  },
+  {
+   "agreeing": 99,
+   "attempted": true,
+   "both_sides_completed": true,
+   "bound": true,
+   "causes": [
+    {
+     "cause": "UNTRIAGED",
+     "detail": "tgms-only row: {'messageCount': 419, 'personId': 24189255819865, 'personId__hierarchy': 'Person'}"
+    },
+    {
+     "cause": "UNTRIAGED",
+     "detail": "reference-only row: {'messageCount': 435, 'personCreationDate': 1321131865195, 'personFirstName': 'Sombat', 'personId': 24189255819865, 'personLastName': 'Amarttayakul'}"
+    },
+    {
+     "cause": "REFERENCE-COLUMN-NOT-PROJECTED",
+     "detail": "the reference projects personFirstName, personLastName, personCreationDate; the TGIR plan does not, so the rows above were compared on a strict subset of the query's answer"
+    }
+   ],
+   "column_map_rule": "name-partial",
+   "compared": 100,
+   "contract": "REQUIRES_TOP_K",
+   "disagreeing": 2,
+   "note": null,
+   "plan_id": "BI4",
+   "ref_digest": "62f67095200b7d6e09520b72cc0489a07c4946271e22d49fab8c6058a6b3ed26",
+   "reference_columns_not_projected": [
+    "personFirstName",
+    "personLastName",
+    "personCreationDate"
+   ],
+   "tgms_digest": "104b7d8a282a8781a477739ac1c14bccaaa16ee5b9f2efdde95157daf3bc24a3",
+   "tie_ambiguous": 0,
+   "verdict": "reference-column-not-projected"
+  },
+  {
+   "agreeing": 0,
+   "attempted": false,
+   "both_sides_completed": false,
+   "bound": false,
+   "causes": [],
+   "compared": 0,
+   "contract": null,
+   "disagreeing": 0,
+   "note": "no comparison: missing TGMS-side export",
+   "plan_id": "BI6.v2",
+   "ref_digest": "919ee3c790e529b6981371dfb3272a6a20b6a14081f10c15ae109e0036e24711",
+   "tgms_digest": null,
+   "tie_ambiguous": 0
+  },
+  {
+   "agreeing": 100,
+   "attempted": true,
+   "both_sides_completed": true,
+   "bound": true,
+   "causes": [],
+   "column_map_rule": "positional",
+   "compared": 100,
+   "contract": "REQUIRES_TOP_K",
+   "disagreeing": 0,
+   "note": null,
+   "plan_id": "BI7",
+   "ref_digest": "90eb1bdf2ada9e8d803949b2a5c973861b5aa4fe19e0e9117bf8475f82e5922e",
+   "reference_columns_not_projected": [],
+   "tgms_digest": "5ab2e9734b5f1e93fc3387368d7b02ad54988a120a0cd96e56ff07651100e5b5",
+   "tie_ambiguous": 0,
+   "verdict": "agreeing"
+  },
+  {
+   "agreeing": 100,
+   "attempted": true,
+   "both_sides_completed": true,
+   "bound": true,
+   "causes": [],
+   "column_map_rule": "positional",
+   "compared": 100,
+   "contract": "REQUIRES_TOP_K",
+   "disagreeing": 0,
+   "note": null,
+   "plan_id": "BI9",
+   "ref_digest": "24fe5289aab482b10b119c87b6e3d3fb77f11bb70e9f17816e87abba847dfce1",
+   "reference_columns_not_projected": [],
+   "tgms_digest": "8424d2279bf7982c25bf5411eda50a5672504efd7fff3c0be696224f126877a4",
+   "tie_ambiguous": 0,
+   "verdict": "agreeing"
+  },
+  {
+   "agreeing": 100,
+   "attempted": true,
+   "both_sides_completed": true,
+   "bound": true,
+   "causes": [],
+   "column_map_rule": "positional",
+   "compared": 100,
+   "contract": "REQUIRES_TOP_K",
+   "disagreeing": 0,
+   "note": null,
+   "plan_id": "BI10",
+   "ref_digest": "3387589635659a59c49798b66641ca4a239d326f2569e453892b06f618d0e4e4",
+   "reference_columns_not_projected": [],
+   "tgms_digest": "81642fe36bea61d617fd73c0a2ac1e41e26712000c913375ebb8789643d31b58",
+   "tie_ambiguous": 0,
+   "verdict": "agreeing"
+  },
+  {
+   "agreeing": 1,
+   "attempted": true,
+   "both_sides_completed": true,
+   "bound": true,
+   "causes": [],
+   "column_map_rule": "positional",
+   "compared": 1,
+   "contract": "CURRENT_ECQR_FRAGMENT",
+   "disagreeing": 0,
+   "note": null,
+   "plan_id": "BI11",
+   "ref_digest": "81ce51d9c755d7a7c49a215962bc6c47957030dffb2a9305897f4403cffe0c0a",
+   "reference_columns_not_projected": [],
+   "tgms_digest": "b23e0dda3cb3c374df0c15f4dcb94f49f48655ab6d8d11ba62155b298054b22a",
+   "tie_ambiguous": 0,
+   "verdict": "agreeing"
+  },
+  {
+   "agreeing": 166,
+   "attempted": true,
+   "both_sides_completed": true,
+   "bound": true,
+   "causes": [],
+   "column_map_rule": "name",
+   "compared": 166,
+   "contract": "REQUIRES_ORDERED_RESULT",
+   "disagreeing": 0,
+   "note": null,
+   "plan_id": "BI12",
+   "ref_digest": "34655901660b85035ae39105bf95be7b525723e43b602f82f16dc12eb093d572",
+   "reference_columns_not_projected": [],
+   "tgms_digest": "575ff62dde1131f12adbfcfcf8b6fc1ebdcb64aca773a1d5db9010c81b10187a",
+   "tie_ambiguous": 0,
+   "verdict": "agreeing"
+  },
+  {
+   "agreeing": 0,
+   "attempted": true,
+   "both_sides_completed": true,
+   "bound": true,
+   "causes": [],
+   "column_map_rule": "positional",
+   "compared": 0,
+   "contract": "REQUIRES_TOP_K",
+   "disagreeing": 0,
+   "note": null,
+   "plan_id": "BI17",
+   "ref_digest": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+   "reference_columns_not_projected": [],
+   "tgms_digest": "5aa6671c762a729801a2c98a87dbc41230f4c93b1bea0c82c8f37f6bf2535c6c",
+   "tie_ambiguous": 0,
+   "verdict": "agreeing"
+  },
+  {
+   "agreeing": 20,
+   "attempted": true,
+   "both_sides_completed": true,
+   "bound": true,
+   "causes": [],
+   "column_map_rule": "name",
+   "compared": 20,
+   "contract": "REQUIRES_TOP_K",
+   "disagreeing": 0,
+   "note": null,
+   "plan_id": "BI18",
+   "ref_digest": "aead26fd5c34378fb6a60e5315e1cb67cffa9e97f085514a4c6607c76a36236d",
+   "reference_columns_not_projected": [],
+   "tgms_digest": "92bd691bf68348bd9df97e20b78c4b0715086fe5d71fa3722af772918c28a17d",
+   "tie_ambiguous": 0,
+   "verdict": "agreeing"
+  },
+  {
+   "agreeing": 10,
+   "attempted": true,
+   "both_sides_completed": true,
+   "bound": true,
+   "causes": [
+    {
+     "cause": "UNTRIAGED",
+     "detail": "tgms-only row: {'messageContent': 'About Leon Trotsky, ring the early days of the Soviet Union, he served fir', 'messageCreationDate': 1354060345478000, 'messageId': 2336465009710, 'messageId__hierarchy': 'Message', 'personFirstName': 'Rahul', 'personId': 26388279067181, 'personId__hierarchy': 'Person', 'personLastName': 'Singh'}"
+    },
+    {
+     "cause": "UNTRIAGED",
+     "detail": "tgms-only row: {'messageContent': 'right', 'messageCreationDate': 1354056977739000, 'messageId': 2336466826139, 'messageId__hierarchy': 'Message', 'personFirstName': 'K.', 'personId': 26388279070832, 'personId__hierarchy': 'Person', 'personLastName': 'Sharma'}"
+    },
+    {
+     "cause": "UNTRIAGED",
+     "detail": "tgms-only row: {'messageContent': 'thx', 'messageCreationDate': 1354056935208000, 'messageId': 2336466848373, 'messageId__hierarchy': 'Message', 'personFirstName': 'K.', 'personId': 35184372094002, 'personId__hierarchy': 'Person', 'personLastName': 'Sharma'}"
+    },
+    {
+     "cause": "UNTRIAGED",
+     "detail": "tgms-only row: {'messageContent': 'About Fr\u00e9d\u00e9ric Chopin, ed from poor health; About Where Is the Love, umber one on', 'messageCreationDate': 1354056560250000, 'messageId': 2336466788171, 'messageId__hierarchy': 'Message', 'personFirstName': 'R.', 'personId': 4398046520505, 'personId__hierarchy': 'Person', 'personLastName': 'Sharma'}"
+    },
+    {
+     "cause": "UNTRIAGED",
+     "detail": "tgms-only row: {'messageContent': 'good', 'messageCreationDate': 1354056499922000, 'messageId': 2336465058562, 'messageId__hierarchy': 'Message', 'personFirstName': 'James', 'personId': 37383395349053, 'personId__hierarchy': 'Person', 'personLastName': 'Omar'}"
+    },
+    {
+     "cause": "UNTRIAGED",
+     "detail": "tgms-only row: {'messageContent': 'duh', 'messageCreationDate': 1354055913446000, 'messageId': 2336465058610, 'messageId__hierarchy': 'Message', 'personFirstName': 'James', 'personId': 37383395349053, 'personId__hierarchy': 'Person', 'personLastName': 'Omar'}"
+    },
+    {
+     "cause": "UNTRIAGED",
+     "detail": "tgms-only row: {'messageContent': 'I see', 'messageCreationDate': 1354055804889000, 'messageId': 2336465058634, 'messageId__hierarchy': 'Message', 'personFirstName': 'James', 'personId': 37383395349053, 'personId__hierarchy': 'Person', 'personLastName': 'Omar'}"
+    },
+    {
+     "cause": "UNTRIAGED",
+     "detail": "tgms-only row: {'messageContent': 'About Tom Gehrels,  and shipping tAbout Achaemenid Empire, sed approximateAbout Holy', 'messageCreationDate': 1354054872236000, 'messageId': 2336464607546, 'messageId__hierarchy': 'Message', 'personFirstName': 'Shweta', 'personId': 28587302329901, 'personId__hierarchy': 'Person', 'personLastName': 'Khan'}"
+    },
+    {
+     "cause": "UNTRIAGED",
+     "detail": "tgms-only row: {'messageContent': 'duh', 'messageCreationDate': 1354054212652000, 'messageId': 2336467285055, 'messageId__hierarchy': 'Message', 'personFirstName': 'Shweta', 'personId': 28587302329901, 'personId__hierarchy': 'Person', 'personLastName': 'Khan'}"
+    },
+    {
+     "cause": "UNTRIAGED",
+     "detail": "tgms-only row: {'messageContent': 'LOL', 'messageCreationDate': 1354052564216000, 'messageId': 2336464959691, 'messageId__hierarchy': 'Message', 'personFirstName': 'Rahul', 'personId': 6597069771930, 'personId__hierarchy': 'Person', 'personLastName': 'Reddy'}"
+    },
+    {
+     "cause": "UNTRIAGED",
+     "detail": "reference-only row: {'personFirstName': 'Rahul', 'personId': 6597069771930, 'personLastName': 'Reddy', 'messageContent': 'fine', 'messageCreationDate': 1354048048848, 'messageId': 2336464959686}"
+    },
+    {
+     "cause": "UNTRIAGED",
+     "detail": "reference-only row: {'personFirstName': 'Shweta', 'personId': 28587302329901, 'personLastName': 'Khan', 'messageContent': 'About George Michael, alist anAbout Leonardo DiCaprio,  his perAbout Carry That', 'messageCreationDate': 1354045951908, 'messageId': 2336463023862}"
+    },
+    {
+     "cause": "UNTRIAGED",
+     "detail": "reference-only row: {'personFirstName': 'Rahul', 'personId': 17592186054655, 'personLastName': 'Kumar', 'messageContent': 'thanks', 'messageCreationDate': 1354043913759, 'messageId': 2336462346700}"
+    },
+    {
+     "cause": "UNTRIAGED",
+     "detail": "reference-only row: {'personFirstName': 'Rahul', 'personId': 17592186054655, 'personLastName': 'Kumar', 'messageContent': 'yes', 'messageCreationDate': 1354041774635, 'messageId': 2336463426593}"
+    },
+    {
+     "cause": "UNTRIAGED",
+     "detail": "reference-only row: {'personFirstName': 'James', 'personId': 37383395349053, 'personLastName': 'Omar', 'messageContent': 'maybe', 'messageCreationDate': 1354041551128, 'messageId': 2336466755120}"
+    },
+    {
+     "cause": "UNTRIAGED",
+     "detail": "reference-only row: {'personFirstName': 'John', 'personId': 563, 'personLastName': 'Chopra', 'messageContent': 'maybe', 'messageCreationDate': 1354039147658, 'messageId': 2336468660995}"
+    },
+    {
+     "cause": "UNTRIAGED",
+     "detail": "reference-only row: {'personFirstName': 'Rahul', 'personId': 17592186054655, 'personLastName': 'Kumar', 'messageContent': 'yes', 'messageCreationDate': 1354038830431, 'messageId': 2336465310852}"
+    },
+    {
+     "cause": "UNTRIAGED",
+     "detail": "reference-only row: {'personFirstName': 'K.', 'personId': 26388279070832, 'personLastName': 'Sharma', 'messageContent': 'About Nicaragua, is a representative democratic republic, and has experien', 'messageCreationDate': 1354037992578, 'messageId': 2336463027847}"
+    },
+    {
+     "cause": "UNTRIAGED",
+     "detail": "reference-only row: {'personFirstName': 'K.', 'personId': 35184372094002, 'personLastName': 'Sharma', 'messageContent': 'yes', 'messageCreationDate': 1354037906014, 'messageId': 2336466848471}"
+    },
+    {
+     "cause": "UNTRIAGED",
+     "detail": "reference-only row: {'personFirstName': 'Ashok', 'personId': 30786325582257, 'personLastName': 'Sharma', 'messageContent': 'roflol', 'messageCreationDate': 1354036092369, 'messageId': 2336466642754}"
+    }
+   ],
+   "column_map_rule": "positional",
+   "compared": 20,
+   "contract": "REQUIRES_TOP_K",
+   "disagreeing": 20,
+   "note": null,
+   "plan_id": "IC2",
+   "ref_digest": "f32d745693c41358a9b91d3148f76977153ba3ce5b6ec6be2425f30c2439ed56",
+   "reference_columns_not_projected": [],
+   "tgms_digest": "4645869ef518eb59f0f00e072c473f09bf49161524ba7053145bca13a708991d",
+   "tie_ambiguous": 0,
+   "verdict": "disagreeing"
+  },
+  {
+   "agreeing": 0,
+   "attempted": true,
+   "both_sides_completed": true,
+   "bound": true,
+   "causes": [
+    {
+     "cause": "REFERENCE-COLUMN-NOT-PROJECTED",
+     "detail": "the reference projects forumName; the TGIR plan does not, so the rows above were compared on a strict subset of the query's answer"
+    }
+   ],
+   "column_map_rule": "name-partial",
+   "compared": 0,
+   "contract": "REQUIRES_TOP_K",
+   "disagreeing": 0,
+   "note": null,
+   "plan_id": "IC5",
+   "ref_digest": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+   "reference_columns_not_projected": [
+    "forumName"
+   ],
+   "tgms_digest": "5aa6671c762a729801a2c98a87dbc41230f4c93b1bea0c82c8f37f6bf2535c6c",
+   "tie_ambiguous": 0,
+   "verdict": "reference-column-not-projected"
+  },
+  {
+   "agreeing": 10,
+   "attempted": true,
+   "both_sides_completed": true,
+   "bound": true,
+   "causes": [],
+   "column_map_rule": "name",
+   "compared": 10,
+   "contract": "REQUIRES_TOP_K",
+   "disagreeing": 0,
+   "note": null,
+   "plan_id": "IC6",
+   "ref_digest": "56b52154f39eb6f0b119ba93c58224564706b29450e75dc4ad0c7fd0067732f7",
+   "reference_columns_not_projected": [],
+   "tgms_digest": "81bfbfcf0090a6b6d7960ccf8606a95df9009a92d2984bdbe71f77b3c6d7efd4",
+   "tie_ambiguous": 0,
+   "verdict": "agreeing"
+  },
+  {
+   "agreeing": 11,
+   "attempted": true,
+   "both_sides_completed": true,
+   "bound": true,
+   "causes": [],
+   "column_map_rule": "name",
+   "compared": 11,
+   "contract": "REQUIRES_TOP_K",
+   "disagreeing": 0,
+   "note": null,
+   "plan_id": "IC8",
+   "ref_digest": "198f7befa2dc5c510ef75dc0900306081db9941417af77dc5ae5f72376eac289",
+   "reference_columns_not_projected": [],
+   "tgms_digest": "71ee634e11108561dbdae099f11234210dbb3429bf5d81e035327b33da665122",
+   "tie_ambiguous": 0,
+   "verdict": "agreeing"
+  },
+  {
+   "agreeing": 20,
+   "attempted": true,
+   "both_sides_completed": true,
+   "bound": true,
+   "causes": [],
+   "column_map_rule": "positional",
+   "compared": 20,
+   "contract": "REQUIRES_TOP_K",
+   "disagreeing": 0,
+   "note": null,
+   "plan_id": "IC9",
+   "ref_digest": "dba142a3737f5df691eb792c54790b902b9bee66ad7d9eb1de74618943d2cc2e",
+   "reference_columns_not_projected": [],
+   "tgms_digest": "51615616cd7abe671990c095d818b30bd1e21e1bc345cd1f2e02e52e6c89e5d4",
+   "tie_ambiguous": 0,
+   "verdict": "agreeing"
+  },
+  {
+   "agreeing": 0,
+   "attempted": true,
+   "both_sides_completed": true,
+   "bound": true,
+   "causes": [],
+   "column_map_rule": "name",
+   "compared": 0,
+   "contract": "REQUIRES_TOP_K",
+   "disagreeing": 0,
+   "note": null,
+   "plan_id": "IC11",
+   "ref_digest": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+   "reference_columns_not_projected": [],
+   "tgms_digest": "5aa6671c762a729801a2c98a87dbc41230f4c93b1bea0c82c8f37f6bf2535c6c",
+   "tie_ambiguous": 0,
+   "verdict": "agreeing"
+  },
+  {
+   "agreeing": 5,
+   "attempted": true,
+   "both_sides_completed": true,
+   "bound": true,
+   "causes": [
+    {
+     "cause": "REFERENCE-COLUMN-NOT-PROJECTED",
+     "detail": "the reference projects tagNames; the TGIR plan does not, so the rows above were compared on a strict subset of the query's answer"
+    }
+   ],
+   "column_map_rule": "name-partial",
+   "compared": 5,
+   "contract": "REQUIRES_TOP_K",
+   "disagreeing": 0,
+   "note": null,
+   "plan_id": "IC12",
+   "ref_digest": "831e9c9a91ed3ac04cef9c69e1e4de7ca6a5513366bd8806cc953953dacafcfe",
+   "reference_columns_not_projected": [
+    "tagNames"
+   ],
+   "tgms_digest": "c948001a21ec81834cac2a7383fab1dde794bd0fbcc0ea528fbecc0ee0b3ec8a",
+   "tie_ambiguous": 0,
+   "verdict": "reference-column-not-projected"
+  },
+  {
+   "agreeing": 1,
+   "attempted": true,
+   "both_sides_completed": true,
+   "bound": true,
+   "causes": [],
+   "column_map_rule": "name",
+   "compared": 1,
+   "contract": "CURRENT_ECQR_FRAGMENT",
+   "disagreeing": 0,
+   "note": null,
+   "plan_id": "IS1",
+   "ref_digest": "4dbfc97ac56f29cdf0a89c07b502660a048041d45ad2bf7d7c5af14d9117832e",
+   "reference_columns_not_projected": [],
+   "tgms_digest": "9a61d08027729ce02c449119d0937f884e72a6f4754aec4047c7bfe0aed13044",
+   "tie_ambiguous": 0,
+   "verdict": "agreeing"
+  },
+  {
+   "agreeing": 10,
+   "attempted": true,
+   "both_sides_completed": true,
+   "bound": true,
+   "causes": [],
+   "column_map_rule": "positional",
+   "compared": 10,
+   "contract": "REQUIRES_TOP_K",
+   "disagreeing": 0,
+   "note": null,
+   "plan_id": "IS2",
+   "ref_digest": "cbd05e98fb0ee169cbb3aa274978be1035bf39caa9baf7c9a81c2fe70d71ae61",
+   "reference_columns_not_projected": [],
+   "tgms_digest": "1a895800eb40a924f36f685e63e62df365b45deaf099a352f1fc864582a58371",
+   "tie_ambiguous": 0,
+   "verdict": "agreeing"
+  },
+  {
+   "agreeing": 1,
+   "attempted": true,
+   "both_sides_completed": true,
+   "bound": true,
+   "causes": [
+    {
+     "cause": "UNTRIAGED",
+     "detail": "row 1: tgms={'friendFirstName': 'Binh', 'friendId': 35184372096829, 'friendId__hierarchy': 'Person', 'friendLastName': 'Ha', 'friendshipCreationDate': 1354082151622000} ref={'friendFirstName': 'Ge', 'friendshipCreationDate': 1353559515417, 'friendLastName': 'Wei', 'friendId': 15393162789356}"
+    },
+    {
+     "cause": "UNTRIAGED",
+     "detail": "row 2: tgms={'friendFirstName': 'Ge', 'friendId': 15393162789356, 'friendId__hierarchy': 'Person', 'friendLastName': 'Wei', 'friendshipCreationDate': 1353559515417000} ref={'friendFirstName': 'Peng', 'friendshipCreationDate': 1351850580919, 'friendLastName': 'Zhang', 'friendId': 30786325587579}"
+    },
+    {
+     "cause": "UNTRIAGED",
+     "detail": "row 3: tgms={'friendFirstName': 'Ge', 'friendId': 15393162789356, 'friendId__hierarchy': 'Person', 'friendLastName': 'Wei', 'friendshipCreationDate': 1353559515417000} ref={'friendFirstName': 'Lei', 'friendshipCreationDate': 1349122268575, 'friendLastName': 'Zhang', 'friendId': 35184372096170}"
+    },
+    {
+     "cause": "UNTRIAGED",
+     "detail": "row 4: tgms={'friendFirstName': 'Peng', 'friendId': 30786325587579, 'friendId__hierarchy': 'Person', 'friendLastName': 'Zhang', 'friendshipCreationDate': 1351850580919000} ref={'friendFirstName': 'Hao', 'friendshipCreationDate': 1346647950676, 'friendLastName': 'Li', 'friendId': 30786325579308}"
+    },
+    {
+     "cause": "UNTRIAGED",
+     "detail": "row 5: tgms={'friendFirstName': 'Peng', 'friendId': 30786325587579, 'friendId__hierarchy': 'Person', 'friendLastName': 'Zhang', 'friendshipCreationDate': 1351850580919000} ref={'friendFirstName': 'Sam', 'friendshipCreationDate': 1345286463771, 'friendLastName': 'Huang', 'friendId': 19791209308287}"
+    },
+    {
+     "cause": "UNTRIAGED",
+     "detail": "row 6: tgms={'friendFirstName': 'Lei', 'friendId': 35184372096170, 'friendId__hierarchy': 'Person', 'friendLastName': 'Zhang', 'friendshipCreationDate': 1349122268575000} ref={'friendFirstName': 'Hao', 'friendshipCreationDate': 1345155329348, 'friendLastName': 'Wang', 'friendId': 21990232564056}"
+    },
+    {
+     "cause": "UNTRIAGED",
+     "detail": "row 7: tgms={'friendFirstName': 'Lei', 'friendId': 35184372096170, 'friendId__hierarchy': 'Person', 'friendLastName': 'Zhang', 'friendshipCreationDate': 1349122268575000} ref={'friendFirstName': 'A.', 'friendshipCreationDate': 1344237523088, 'friendLastName': 'Nair', 'friendId': 26388279074760}"
+    },
+    {
+     "cause": "UNTRIAGED",
+     "detail": "row 8: tgms={'friendFirstName': 'Hao', 'friendId': 30786325579308, 'friendId__hierarchy': 'Person', 'friendLastName': 'Li', 'friendshipCreationDate': 1346647950676000} ref={'friendFirstName': 'Zhong', 'friendshipCreationDate': 1343082287850, 'friendLastName': 'Wei', 'friendId': 10995116285249}"
+    },
+    {
+     "cause": "UNTRIAGED",
+     "detail": "row 9: tgms={'friendFirstName': 'Hao', 'friendId': 30786325579308, 'friendId__hierarchy': 'Person', 'friendLastName': 'Li', 'friendshipCreationDate': 1346647950676000} ref={'friendFirstName': 'Hoang Yen', 'friendshipCreationDate': 1338574523296, 'friendLastName': 'Nguyen', 'friendId': 21990232557614}"
+    },
+    {
+     "cause": "UNTRIAGED",
+     "detail": "row 10: tgms={'friendFirstName': 'Sam', 'friendId': 19791209308287, 'friendId__hierarchy': 'Person', 'friendLastName': 'Huang', 'friendshipCreationDate': 1345286463771000} ref={'friendFirstName': 'Chris', 'friendshipCreationDate': 1333167048008, 'friendLastName': 'Hall', 'friendId': 24189255811663}"
+    },
+    {
+     "cause": "UNTRIAGED",
+     "detail": "row 11: tgms={'friendFirstName': 'Sam', 'friendId': 19791209308287, 'friendId__hierarchy': 'Person', 'friendLastName': 'Huang', 'friendshipCreationDate': 1345286463771000} ref={'friendFirstName': 'Lei', 'friendshipCreationDate': 1332592932164, 'friendLastName': 'Wu', 'friendId': 13194139540984}"
+    },
+    {
+     "cause": "UNTRIAGED",
+     "detail": "row 12: tgms={'friendFirstName': 'Hao', 'friendId': 21990232564056, 'friendId__hierarchy': 'Person', 'friendLastName': 'Wang', 'friendshipCreationDate': 1345155329348000} ref={'friendFirstName': 'John', 'friendshipCreationDate': 1329688837594, 'friendLastName': 'Khan', 'friendId': 10995116284819}"
+    },
+    {
+     "cause": "UNTRIAGED",
+     "detail": "row 13: tgms={'friendFirstName': 'Hao', 'friendId': 21990232564056, 'friendId__hierarchy': 'Person', 'friendLastName': 'Wang', 'friendshipCreationDate': 1345155329348000} ref={'friendFirstName': 'Zheng', 'friendshipCreationDate': 1324046270871, 'friendLastName': 'Wang', 'friendId': 10995116279993}"
+    },
+    {
+     "cause": "UNTRIAGED",
+     "detail": "row 14: tgms={'friendFirstName': 'A.', 'friendId': 26388279074760, 'friendId__hierarchy': 'Person', 'friendLastName': 'Nair', 'friendshipCreationDate': 1344237523088000} ref={'friendFirstName': 'Jie', 'friendshipCreationDate': 1323487676156, 'friendLastName': 'Zhu', 'friendId': 21990232563317}"
+    },
+    {
+     "cause": "UNTRIAGED",
+     "detail": "row 15: tgms={'friendFirstName': 'A.', 'friendId': 26388279074760, 'friendId__hierarchy': 'Person', 'friendLastName': 'Nair', 'friendshipCreationDate': 1344237523088000} ref={'friendFirstName': 'Wei', 'friendshipCreationDate': 1318749987172, 'friendLastName': 'Li', 'friendId': 6597069771347}"
+    },
+    {
+     "cause": "UNTRIAGED",
+     "detail": "row 16: tgms={'friendFirstName': 'Zhong', 'friendId': 10995116285249, 'friendId__hierarchy': 'Person', 'friendLastName': 'Wei', 'friendshipCreationDate': 1343082287850000} ref={'friendFirstName': 'Yang', 'friendshipCreationDate': 1315972100462, 'friendLastName': 'Chen', 'friendId': 10995116278639}"
+    },
+    {
+     "cause": "UNTRIAGED",
+     "detail": "row 17: tgms={'friendFirstName': 'Zhong', 'friendId': 10995116285249, 'friendId__hierarchy': 'Person', 'friendLastName': 'Wei', 'friendshipCreationDate': 1343082287850000} ref={'friendFirstName': 'Bing', 'friendshipCreationDate': 1311935811138, 'friendLastName': 'Wang', 'friendId': 10995116284358}"
+    },
+    {
+     "cause": "UNTRIAGED",
+     "detail": "row 18: tgms={'friendFirstName': 'Hoang Yen', 'friendId': 21990232557614, 'friendId__hierarchy': 'Person', 'friendLastName': 'Nguyen', 'friendshipCreationDate': 1338574523296000} ref={'friendFirstName': 'Wei', 'friendshipCreationDate': 1310330934862, 'friendLastName': 'Wang', 'friendId': 8796093024008}"
+    },
+    {
+     "cause": "UNTRIAGED",
+     "detail": "row 19: tgms={'friendFirstName': 'Hoang Yen', 'friendId': 21990232557614, 'friendId__hierarchy': 'Person', 'friendLastName': 'Nguyen', 'friendshipCreationDate': 1338574523296000} ref={'friendFirstName': 'Wei', 'friendshipCreationDate': 1305072024244, 'friendLastName': 'Liu', 'friendId': 8796093028790}"
+    },
+    {
+     "cause": "UNTRIAGED",
+     "detail": "row 20: tgms={'friendFirstName': 'Chris', 'friendId': 24189255811663, 'friendId__hierarchy': 'Person', 'friendLastName': 'Hall', 'friendshipCreationDate': 1333167048008000} ref={'friendFirstName': 'Hao', 'friendshipCreationDate': 1305066657678, 'friendLastName': 'Lei', 'friendId': 10995116285998}"
+    },
+    {
+     "cause": "UNTRIAGED",
+     "detail": "row 21: tgms={'friendFirstName': 'Chris', 'friendId': 24189255811663, 'friendId__hierarchy': 'Person', 'friendLastName': 'Hall', 'friendshipCreationDate': 1333167048008000} ref={'friendFirstName': 'Shweta', 'friendshipCreationDate': 1304770109765, 'friendLastName': 'Kapoor', 'friendId': 15393162797132}"
+    },
+    {
+     "cause": "UNTRIAGED",
+     "detail": "row 22: tgms={'friendFirstName': 'Lei', 'friendId': 13194139540984, 'friendId__hierarchy': 'Person', 'friendLastName': 'Wu', 'friendshipCreationDate': 1332592932164000} ref={'friendFirstName': 'Ramon', 'friendshipCreationDate': 1304178840642, 'friendLastName': 'Reyes', 'friendId': 6597069775211}"
+    },
+    {
+     "cause": "UNTRIAGED",
+     "detail": "row 23: tgms={'friendFirstName': 'Lei', 'friendId': 13194139540984, 'friendId__hierarchy': 'Person', 'friendLastName': 'Wu', 'friendshipCreationDate': 1332592932164000} ref={'friendFirstName': 'Eva', 'friendshipCreationDate': 1301889151278, 'friendLastName': 'Redl', 'friendId': 8796093024108}"
+    },
+    {
+     "cause": "UNTRIAGED",
+     "detail": "row 24: tgms={'friendFirstName': 'John', 'friendId': 10995116284819, 'friendId__hierarchy': 'Person', 'friendLastName': 'Khan', 'friendshipCreationDate': 1329688837594000} ref=None"
+    },
+    {
+     "cause": "UNTRIAGED",
+     "detail": "row 25: tgms={'friendFirstName': 'John', 'friendId': 10995116284819, 'friendId__hierarchy': 'Person', 'friendLastName': 'Khan', 'friendshipCreationDate': 1329688837594000} ref=None"
+    },
+    {
+     "cause": "UNTRIAGED",
+     "detail": "row 26: tgms={'friendFirstName': 'Zheng', 'friendId': 10995116279993, 'friendId__hierarchy': 'Person', 'friendLastName': 'Wang', 'friendshipCreationDate': 1324046270871000} ref=None"
+    },
+    {
+     "cause": "UNTRIAGED",
+     "detail": "row 27: tgms={'friendFirstName': 'Zheng', 'friendId': 10995116279993, 'friendId__hierarchy': 'Person', 'friendLastName': 'Wang', 'friendshipCreationDate': 1324046270871000} ref=None"
+    },
+    {
+     "cause": "UNTRIAGED",
+     "detail": "row 28: tgms={'friendFirstName': 'Jie', 'friendId': 21990232563317, 'friendId__hierarchy': 'Person', 'friendLastName': 'Zhu', 'friendshipCreationDate': 1323487676156000} ref=None"
+    },
+    {
+     "cause": "UNTRIAGED",
+     "detail": "row 29: tgms={'friendFirstName': 'Jie', 'friendId': 21990232563317, 'friendId__hierarchy': 'Person', 'friendLastName': 'Zhu', 'friendshipCreationDate': 1323487676156000} ref=None"
+    },
+    {
+     "cause": "UNTRIAGED",
+     "detail": "row 30: tgms={'friendFirstName': 'Wei', 'friendId': 6597069771347, 'friendId__hierarchy': 'Person', 'friendLastName': 'Li', 'friendshipCreationDate': 1318749987172000} ref=None"
+    },
+    {
+     "cause": "UNTRIAGED",
+     "detail": "row 31: tgms={'friendFirstName': 'Wei', 'friendId': 6597069771347, 'friendId__hierarchy': 'Person', 'friendLastName': 'Li', 'friendshipCreationDate': 1318749987172000} ref=None"
+    },
+    {
+     "cause": "UNTRIAGED",
+     "detail": "row 32: tgms={'friendFirstName': 'Yang', 'friendId': 10995116278639, 'friendId__hierarchy': 'Person', 'friendLastName': 'Chen', 'friendshipCreationDate': 1315972100462000} ref=None"
+    },
+    {
+     "cause": "UNTRIAGED",
+     "detail": "row 33: tgms={'friendFirstName': 'Yang', 'friendId': 10995116278639, 'friendId__hierarchy': 'Person', 'friendLastName': 'Chen', 'friendshipCreationDate': 1315972100462000} ref=None"
+    },
+    {
+     "cause": "UNTRIAGED",
+     "detail": "row 34: tgms={'friendFirstName': 'Bing', 'friendId': 10995116284358, 'friendId__hierarchy': 'Person', 'friendLastName': 'Wang', 'friendshipCreationDate': 1311935811138000} ref=None"
+    },
+    {
+     "cause": "UNTRIAGED",
+     "detail": "row 35: tgms={'friendFirstName': 'Bing', 'friendId': 10995116284358, 'friendId__hierarchy': 'Person', 'friendLastName': 'Wang', 'friendshipCreationDate': 1311935811138000} ref=None"
+    },
+    {
+     "cause": "UNTRIAGED",
+     "detail": "row 36: tgms={'friendFirstName': 'Wei', 'friendId': 8796093024008, 'friendId__hierarchy': 'Person', 'friendLastName': 'Wang', 'friendshipCreationDate': 1310330934862000} ref=None"
+    },
+    {
+     "cause": "UNTRIAGED",
+     "detail": "row 37: tgms={'friendFirstName': 'Wei', 'friendId': 8796093024008, 'friendId__hierarchy': 'Person', 'friendLastName': 'Wang', 'friendshipCreationDate': 1310330934862000} ref=None"
+    },
+    {
+     "cause": "UNTRIAGED",
+     "detail": "row 38: tgms={'friendFirstName': 'Wei', 'friendId': 8796093028790, 'friendId__hierarchy': 'Person', 'friendLastName': 'Liu', 'friendshipCreationDate': 1305072024244000} ref=None"
+    },
+    {
+     "cause": "UNTRIAGED",
+     "detail": "row 39: tgms={'friendFirstName': 'Wei', 'friendId': 8796093028790, 'friendId__hierarchy': 'Person', 'friendLastName': 'Liu', 'friendshipCreationDate': 1305072024244000} ref=None"
+    },
+    {
+     "cause": "UNTRIAGED",
+     "detail": "row 40: tgms={'friendFirstName': 'Hao', 'friendId': 10995116285998, 'friendId__hierarchy': 'Person', 'friendLastName': 'Lei', 'friendshipCreationDate': 1305066657678000} ref=None"
+    },
+    {
+     "cause": "UNTRIAGED",
+     "detail": "row 41: tgms={'friendFirstName': 'Hao', 'friendId': 10995116285998, 'friendId__hierarchy': 'Person', 'friendLastName': 'Lei', 'friendshipCreationDate': 1305066657678000} ref=None"
+    },
+    {
+     "cause": "UNTRIAGED",
+     "detail": "row 42: tgms={'friendFirstName': 'Shweta', 'friendId': 15393162797132, 'friendId__hierarchy': 'Person', 'friendLastName': 'Kapoor', 'friendshipCreationDate': 1304770109765000} ref=None"
+    },
+    {
+     "cause": "UNTRIAGED",
+     "detail": "row 43: tgms={'friendFirstName': 'Shweta', 'friendId': 15393162797132, 'friendId__hierarchy': 'Person', 'friendLastName': 'Kapoor', 'friendshipCreationDate': 1304770109765000} ref=None"
+    },
+    {
+     "cause": "UNTRIAGED",
+     "detail": "row 44: tgms={'friendFirstName': 'Ramon', 'friendId': 6597069775211, 'friendId__hierarchy': 'Person', 'friendLastName': 'Reyes', 'friendshipCreationDate': 1304178840642000} ref=None"
+    },
+    {
+     "cause": "UNTRIAGED",
+     "detail": "row 45: tgms={'friendFirstName': 'Ramon', 'friendId': 6597069775211, 'friendId__hierarchy': 'Person', 'friendLastName': 'Reyes', 'friendshipCreationDate': 1304178840642000} ref=None"
+    },
+    {
+     "cause": "UNTRIAGED",
+     "detail": "row 46: tgms={'friendFirstName': 'Eva', 'friendId': 8796093024108, 'friendId__hierarchy': 'Person', 'friendLastName': 'Redl', 'friendshipCreationDate': 1301889151278000} ref=None"
+    },
+    {
+     "cause": "UNTRIAGED",
+     "detail": "row 47: tgms={'friendFirstName': 'Eva', 'friendId': 8796093024108, 'friendId__hierarchy': 'Person', 'friendLastName': 'Redl', 'friendshipCreationDate': 1301889151278000} ref=None"
+    }
+   ],
+   "column_map_rule": "positional",
+   "compared": 48,
+   "contract": "REQUIRES_ORDERED_RESULT",
+   "disagreeing": 47,
+   "note": null,
+   "plan_id": "IS3",
+   "ref_digest": "801dcf176fd2ea1b424f67c6c78818462403641141adad7cde53a14229b5d007",
+   "reference_columns_not_projected": [],
+   "tgms_digest": "6e06f960429dac1860e87d474d1f775786bf34e509d4696f51dd30acb07ffc65",
+   "tie_ambiguous": 0,
+   "verdict": "disagreeing"
+  },
+  {
+   "agreeing": 1,
+   "attempted": true,
+   "both_sides_completed": true,
+   "bound": true,
+   "causes": [],
+   "column_map_rule": "name",
+   "compared": 1,
+   "contract": "CURRENT_ECQR_FRAGMENT",
+   "disagreeing": 0,
+   "note": null,
+   "plan_id": "IS4",
+   "ref_digest": "6fcfb9f2586190a2930d6a40b91061f3eb3db0bad8a6fd80e8024462ce7a1ffd",
+   "reference_columns_not_projected": [],
+   "tgms_digest": "d055c5a63034f2b9f86b44e54f0ab645a8e3a0bad3201d5236d656f899564128",
+   "tie_ambiguous": 0,
+   "verdict": "agreeing"
+  },
+  {
+   "agreeing": 1,
+   "attempted": true,
+   "both_sides_completed": true,
+   "bound": true,
+   "causes": [],
+   "column_map_rule": "name",
+   "compared": 1,
+   "contract": "CURRENT_ECQR_FRAGMENT",
+   "disagreeing": 0,
+   "note": null,
+   "plan_id": "IS5",
+   "ref_digest": "58ee24478dbbb81ff582b2610840e40f98ccba2ca63e3f1078effd85a32e3658",
+   "reference_columns_not_projected": [],
+   "tgms_digest": "78777b9bfeded73ca8d0bac434bc030f8f893b497ff54e97476f5c6104075404",
+   "tie_ambiguous": 0,
+   "verdict": "agreeing"
+  },
+  {
+   "agreeing": 1,
+   "attempted": true,
+   "both_sides_completed": true,
+   "bound": true,
+   "causes": [],
+   "column_map_rule": "name",
+   "compared": 1,
+   "contract": "CURRENT_ECQR_FRAGMENT",
+   "disagreeing": 0,
+   "note": null,
+   "plan_id": "IS6",
+   "ref_digest": "9ea6b6452ceb6f8403bed2f7baaef58bfcefdd33dd0c6b7aa7f467f3ecc89dc4",
+   "reference_columns_not_projected": [],
+   "tgms_digest": "72021946e3d4899cc9613601fba1737b348ab8ee7cb7970270f257528a24bef6",
+   "tie_ambiguous": 0,
+   "verdict": "agreeing"
+  },
+  {
+   "agreeing": 1,
+   "attempted": true,
+   "both_sides_completed": true,
+   "bound": true,
+   "causes": [],
+   "column_map_rule": "name",
+   "compared": 1,
+   "contract": "REQUIRES_ORDERED_RESULT",
+   "disagreeing": 0,
+   "note": null,
+   "plan_id": "IS7",
+   "ref_digest": "be2154449591b9880e4265615116c81477b414a5a11b5f79dd70bf20d8d07543",
+   "reference_columns_not_projected": [],
+   "tgms_digest": "529e7f46f07ebd23de7bff2d32f41c1eed3241c3f39a534af2b6c11bdb22002d",
+   "tie_ambiguous": 0,
+   "verdict": "agreeing"
+  }
+ ]
+}

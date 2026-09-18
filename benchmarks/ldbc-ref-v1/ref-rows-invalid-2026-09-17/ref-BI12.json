@@ -1,0 +1,28 @@
+{
+ "columns": [
+  "messageCount",
+  "personCount"
+ ],
+ "commit": "0b7198dfdf7a",
+ "host": "xzgpu",
+ "params": {
+  "languages": [
+   "es",
+   "ta",
+   "pt"
+  ],
+  "lengthThreshold": 115,
+  "startDate": "2012-06-05T00:00:00.000+00:00"
+ },
+ "plan_id": "BI12",
+ "query_file": "external_workloads/ldbc/bi/neo4j/queries/bi-12.cypher",
+ "query_sha256": "011f7b378f34a4f9600f2abb51be77799c30a4756b9dd6424ba879cd6028af01",
+ "result_digest": "34a1cd88fa037208a0a0499f8cb8b60932454d91b8c2af058472d5175e4648bc",
+ "rows": [
+  {
+   "messageCount": 0,
+   "personCount": 10295
+  }
+ ],
+ "wall_s": 0.027
+}

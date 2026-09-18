@@ -1,10 +1,11 @@
 # ldbc-ref-v1 — LDBC reference-correctness and performance run (executed)
 
-**Run of record: 2026-09-17, host `xzgpu`.** This directory was prep-only until
+**Executed 2026-09-17/18 on host `xzgpu`.** This directory was prep-only until
 this run; `RUNBOOK.md` is the how, `campaign.yaml` the pre-registered what, and
 this file is what actually happened. The scoring against `campaign.yaml`'s
-frozen predictions is appended there as `addendum_1`, never edited into the
-frozen blocks.
+frozen predictions is appended there as `addendum_1` (interim),
+`addendum_2` (column correspondence) and `addendum_3` (final) — appended, never
+edited into the frozen blocks or into each other.
 
 > **This is not an LDBC Benchmark, this is not an implementation of an LDBC
 > Benchmark, and nothing produced here is an LDBC Benchmark Result.**
@@ -15,25 +16,27 @@ express. LDBC material is used under CC-BY 4.0.
 
 ---
 
-## Read this first: 7 of 24 templates have an invalid reference side
+## Revision of record: **2026-09-18**
 
-The Neo4j side of **BI4, BI9, BI11, BI12, IC2, IC5 and IC9** was run with
-temporal parameters passed as ISO-8601 *strings* rather than as Cypher
-temporal values. In Neo4j 5, `DATETIME > STRING` does not raise — it evaluates
-to null, the predicate is never satisfied, and the query returns **zero rows,
-silently**. Those seven templates' reference results are not evidence of
-anything and are **excluded from every agreement figure below**, not scored as
-disagreements.
+`compare-2026-09-18.json` / `.md`, `timings-2026-09-18.json` and
+`manifest-2026-09-18.json` are the revision of record. The `2026-09-17` files
+are the **interim** record and are kept in place, not overwritten: they were
+produced while 7 templates had an invalid reference side.
 
-The fix is written and tested (`scripts/ldbc_reference_run.py::driverize_params`,
-reproducing LDBC's own `cast_parameter_to_driver_input`,
-`external_workloads/ldbc/bi/neo4j/queries.py:45-47`), but it **could not be
-executed**: the coordinator froze all compute on `xzgpu` at 2026-09-17 ~22:5xZ
-for a 6-hour reader-storm soak, after the TGMS side finished and before the
-reference side could be re-run. Re-running those seven templates is the single
-outstanding item — see [Pending](#pending-needs-the-host).
+Those 7 (BI4, BI9, BI11, BI12, IC2, IC5, IC9) had their temporal parameters
+reach Neo4j as ISO-8601 *strings*. In Neo4j 5, `DATETIME > STRING` does not
+raise — it evaluates to null, the predicate is never satisfied, and the query
+returns **zero rows, silently**. They were re-run on 2026-09-18 with
+`ldbc_reference_run.driverize_params` (which reproduces LDBC's own
+`cast_parameter_to_driver_input`), same protocol, same parameters, same TGIR
+row dumps. The superseded reference dumps are kept under
+`ref-rows-invalid-2026-09-17/`.
 
----
+Four of the seven moved straight to full agreement (BI9 100/100, BI11 1/1,
+BI12 166/166, IC9 20/20). Two more became comparable and are now reported on
+their real content (BI4, IC5). **The seventh, IC2, surfaced a second instance
+of the IS3 defect that had been invisible while its reference returned nothing**
+— see §5.5.
 
 ## 1. Setup and versions
 
@@ -176,67 +179,71 @@ sampled from the merged-fk corpus. The two runners do not share `params.json`
 determinism; `run-scripts/check_params_agree.py` checks it rather than assuming
 it.
 
-## 5. Per-template results
+## 5. Per-template results (revision of record, 2026-09-18)
 
-Verdicts are `compare-2026-09-17.json`'s, produced with the ratified column
-correspondence (`column_map.yaml`, §5.1) and column kinds (`column_kinds.json`,
-§5.2) applied. `ms` is TGIR's reported figure; `w/t1/t2/t3` are the Neo4j
-warm-up and three timed wall times in **seconds**.
+Verdicts are `compare-2026-09-18.json`'s, with the ratified column
+correspondence (§5.1) and column kinds (§5.2) applied. `ms` is TGIR's reported
+figure; `w/t1/t2/t3` are the Neo4j warm-up and three timed wall times in
+**seconds**.
 
-**Counts (24 templates): 14 agree · 3 `reference-column-not-projected`
-(BI4, IC5, IC12) · 5 `disagreeing` but NOT comparable (invalid reference:
-BI9, BI11, BI12, IC2, IC9) · 1 genuine disagreement (IS3) · 1 timeout
-(BI6.v2) · 0 error.** BI4 and IC5 carry both an unprojected reference column
-*and* an invalid reference, so the 7 invalid-reference templates split 5/2
-across those two classes.
+**Counts (24 templates): 18 agree · 3 `reference-column-not-projected`
+(BI4, IC5, IC12) · 2 disagree (IC2, IS3) · 1 timeout (BI6.v2) · 0 error ·
+0 not-comparable.** Every template except BI6.v2 now has a valid reference.
+
+**Row agreement over the 23 comparable templates: 678 / 736 = 0.921.**
+Per group: **BI 606/607 = 0.998** (8 of 9 agreeing verdicts) ·
+**IC 56/66 = 0.848** (4 of 7) · **IS 16/63 = 0.254** (6 of 7). The IS row ratio
+is dragged down entirely by IS3's 47 duplicate rows; every other IS template
+agrees exactly.
 
 | template | TGIR rows | Neo4j rows | verdict | TGIR ms | N4J w | N4J t1 | N4J t2 | N4J t3 |
 |---|---:|---:|:---|---:|---:|---:|---:|---:|
 | BI3  | 20  | 20  | **agree** (positional) | 35310.1 | 1.111 | 1.052 | 1.111 | 1.063 |
-| BI4  | 100 | 0   | ref-column-not-projected + **ref invalid**² | 77064.2 | 0.013 | 0.011 | 0.013 | 0.013 |
-| BI6  | —   | 100 | **TGIR timeout**³ | — | 1.860 | 1.693 | 1.816 | 1.974 |
+| BI4  | 100 | 100 | **ref-column-not-projected**¹ | 77064.2 | 32.690 | 25.847 | 24.754 | 24.347 |
+| BI6  | —   | 100 | **TGIR timeout**² | — | 1.860 | 1.693 | 1.816 | 1.974 |
 | BI7  | 100 | 100 | **agree** (positional) | 13052.2 | 0.061 | 0.051 | 0.067 | 0.067 |
-| BI9  | 100 | 0   | **ref invalid**² | 105391.0 | 0.009 | 0.009 | 0.009 | 0.010 |
+| BI9  | 100 | 100 | **agree** (positional) | 105391.0 | 16.797 | 2.120 | 2.230 | 2.340 |
 | BI10 | 100 | 100 | **agree** (positional) | 24465.1 | 0.313 | 0.293 | 0.245 | 0.196 |
-| BI11 | 1   | 1   | **ref invalid**² | 38233.8 | 0.102 | 0.098 | 0.104 | 0.098 |
-| BI12 | 166 | 1   | **ref invalid**² | 148135.0 | 0.028 | 0.027 | 0.025 | 0.025 |
+| BI11 | 1   | 1   | **agree** (positional) | 38233.8 | 1.356 | 0.678 | 0.655 | 0.663 |
+| BI12 | 166 | 166 | **agree** (name) | 148135.0 | 13.330 | 8.958 | 8.793 | 8.595 |
 | BI17 | 0   | 0   | agree (vacuous, 0/0) | 71798.8 | 0.047 | 0.033 | 0.033 | 0.031 |
 | BI18 | 20  | 20  | **agree** (name) | 54327.4 | 0.529 | 0.502 | 0.485 | 0.507 |
-| IC2  | 20  | 0   | **ref invalid**² | 6403.9 | 0.131 | 0.035 | 0.036 | 0.034 |
-| IC5  | 0   | 0   | ref-column-not-projected + **ref invalid**² | 18871.5 | 0.350 | 0.185 | 0.178 | 0.180 |
+| IC2  | 20  | 20  | **DISAGREE — MAPPING-RULE**³ | 6403.9 | 0.209 | 0.065 | 0.058 | 0.058 |
+| IC5  | 0   | 0   | **ref-column-not-projected**¹ | 18871.5 | 0.351 | 0.164 | 0.165 | 0.158 |
 | IC6  | 10  | 10  | **agree** (name) | 59059.0 | 0.494 | 0.374 | 0.345 | 0.351 |
 | IC8  | 11  | 11  | **agree** (name)⁴ | 5500.2 | 0.079 | 0.014 | 0.014 | 0.014 |
-| IC9  | 20  | 0   | **ref invalid**² | 47401.3 | 1.711 | 1.488 | 1.496 | 1.629 |
+| IC9  | 20  | 20  | **agree** (positional) | 47401.3 | 1.552 | 1.359 | 1.446 | 1.297 |
 | IC11 | 0   | 0   | agree (vacuous, 0/0) | 5043.8 | 0.089 | 0.007 | 0.008 | 0.009 |
-| IC12 | 5   | 5   | **ref-column-not-projected**⁵ | 20428.0 | 0.557 | 0.271 | 0.295 | 0.254 |
+| IC12 | 5   | 5   | **ref-column-not-projected**¹ | 20428.0 | 0.557 | 0.271 | 0.295 | 0.254 |
 | IS1  | 1   | 1   | **agree** (name) | 3588.3 | 0.054 | 0.010 | 0.012 | 0.012 |
 | IS2  | 10  | 10  | **agree** (positional) | 6665.1 | 0.094 | 0.018 | 0.016 | 0.013 |
-| IS3  | 48  | 24  | **DISAGREE — MAPPING-RULE**⁶ | 687.7 | 0.065 | 0.047 | 0.026 | 0.011 |
+| IS3  | 48  | 24  | **DISAGREE — MAPPING-RULE**³ | 687.7 | 0.065 | 0.047 | 0.026 | 0.011 |
 | IS4  | 1   | 1   | **agree** (name) | 120.8 | 0.041 | 0.007 | 0.009 | 0.010 |
 | IS5  | 1   | 1   | **agree** (name) | 4486.6 | 0.049 | 0.009 | 0.011 | 0.017 |
 | IS6  | 1   | 1   | **agree** (name) | 4271.6 | 0.092 | 0.010 | 0.011 | 0.009 |
 | IS7  | 1   | 1   | **agree** (name) | 8010.1 | 0.107 | 0.011 | 0.011 | 0.011 |
 
-**Neo4j timed wall range: 0.007 s – 1.974 s.** (BI10, the template the design
-memo flagged as most likely to approach the 600 s ceiling, ran in 0.29 s. No
-reference-side timeout occurred anywhere.)
+**Neo4j timed wall range: 0.007 s – 25.847 s** (BI4's 25.8 s is the new
+maximum: it does real work now that its `$date` binds as a datetime; BI10, the
+template the design memo flagged as the likeliest to approach the 600 s ceiling,
+still runs in 0.29 s). No reference-side timeout occurred anywhere.
 **TGIR range: 120.8 ms – 148135.0 ms**, over 23 completed plans.
 
-Agreeing rows over the 16 templates with a comparable reference:
-**282 of 329 compared rows agree (0.857)**; all 47 disagreeing rows are IS3's.
+¹ §5.3. ² §5.6. ³ §5.4 (IS3) and §5.5 (IC2). ⁴ IC8 is the template that forbids
+a blanket positional rule — §5.1.
 
-² Reference side invalid — temporal parameter passed as a string (see top).
-³ BI6.v2 hit the 1020 s ceiling (600 s + 420 s store-open allowance); recorded
-as `TIMEOUT` and **not re-budgeted**. On the earlier `a6b3e94` build the same
-artifact COMPLETED in 291,970.9 ms (~292 s measured, 638.4 s child wall;
-`benchmarks/results-v1/ldbc-sf1-campaign-fmt3-2026-09.json`, store
-`snb-sf1-xz-a6b3e94`), so this is a **build-to-build difference**, not a
-re-budgeting question: the same plan on the same data went from ~292 s to over
-the ceiling. BI6.json (the v1 artifact) `ERRORED`, as RUNBOOK §6 predicted it
-still would — kept as evidence the v1 defect reproduces at SF1.
-⁴ IC8 is the template that forbids a blanket positional rule — see §5.1.
-⁵ See §5.3.
-⁶ See §5.4.
+### 5.0 BI4's one disagreeing row
+
+BI4 is `reference-column-not-projected` (the TGIR plan projects 2 of the
+reference's 5 columns), and on the 2 columns it does project **99 of its 100
+rows agree exactly**. The single disagreeing pair is the *same person*
+(`personId` 24189255819865) with a different count: TGIR **419**, reference
+**435**. That is a genuine content difference, not a naming or unit artefact,
+and it sits at the `LIMIT 100` boundary of a query whose shape is the
+`REPLY_OF*0..` var-length carve the design memo §7 named as a residual risk.
+It is left **UNTRIAGED** rather than assigned a cause: one row is too thin a
+basis, and BI4 is not one of the risk-flagged templates, so a confident
+classification here would be a guess. Worth a targeted follow-up.
 
 ### 5.1 The column correspondence (`column_map.yaml`)
 
@@ -303,33 +310,76 @@ verdict class rather than silent agreement:
 IC12's five rows agree on the four columns that do correspond — that is
 reported, not discarded — but the template is **not** recorded as agreeing.
 
-### 5.4 IS3 — the one genuine disagreement: `MAPPING-RULE` (M7 KNOWS doubling)
+### 5.4 IS3 — `MAPPING-RULE`, the M7 KNOWS double count
 
-TGIR returns **48** rows, Neo4j **24** — exactly 2×. The store holds
-`KNOWS` 346028 = 2 × 173014, because `snb_loader` writes one CSV row as two
-edge versions (`both_ways=True`, M7: "Cypher's KNOWS is undirected and the
-pattern evaluator does not consult `directed`"). `IS3.json`'s plan then expands
-`Expand(from=p, into=friend, dir="both", exact(1), rel_type=KNOWS)`, so each
-friendship is traversed **twice** — once as the anchor→friend edge and once as
-the friend→anchor edge read in reverse.
+TGIR returns **48** rows, Neo4j **24** — exactly 2×, every friendship twice
+with identical values (the TGMS dump's 48 rows carry only 24 distinct). The
+store holds `KNOWS` 346028 = 2 × 173014, because `snb_loader` writes one CSV
+row as two edge versions (`both_ways=True`, M7: "Cypher's KNOWS is undirected
+and the pattern evaluator does not consult `directed`"). `IS3.json` then
+expands `Expand(from=p, into=friend, dir="both", exact(1), rel_type=KNOWS)`
+over that materialisation, so each friendship is traversed twice — once
+forward, once as the already-materialised reverse edge read backwards.
 
-**Could the plan deduplicate?** Yes, and cheaply. Neither half is wrong alone;
-the composition double-counts. Either fix removes it:
+Neither half is wrong alone; the composition double-counts. Filed as
+`ops/failure_ledger.jsonl` **`D-090-is3-knows-both-ways-double-count`**, and
+repaired the way BI6/BI6.v2 was: `IS3.json` is **not** edited — the frozen
+artifact stays as the evidence — and `benchmarks/tgir-v1/plans/IS3.v2.json` is
+added, identical in every respect but the expand's `dir`, which is `out`.
+`IV_SOURCES` gains an `IS3.v2` row binding exactly as `IS3` does.
 
-- expand `dir="out"` instead of `dir="both"` — because the loader already
-  materialises both directions, an outgoing expansion alone reaches every
-  friend exactly once; or
-- add a `Distinct` on `(friendId, friendshipCreationDate)` above the expand.
+> **The repair depends on the store's encoding.** `dir="out"` is complete *iff*
+> the store holds both directions. `scripts/build_ldbc_fixture.py` deliberately
+> writes **one** edge per friendship ("Writing both directions would double
+> every friend row and turn a fixture artefact into a plan defect"), so the
+> existing LDBC fixture cannot reproduce this defect at all — `IS3.json` is
+> already correct there, and `IS3.v2.json` would *under*-report. The regression
+> test therefore builds a both-ways store of its own and pins **both** facts.
+> The alternative repair — a `Distinct` on `(friendId, friendshipCreationDate)`
+> above the expand — is correct under either encoding, at the cost of changing
+> the plan's shape. If encoding-independence matters more than plan shape, that
+> is the variant to take instead.
 
-The first is the narrower change and preserves the plan's shape. This is a
-plan/encoding interaction to fix in `IS3.json`, not a TGIR engine defect and
-not a reference quirk — so it is classified `MAPPING-RULE` and **reported, not
-normalized away**, exactly as RUNBOOK §4.3's M7 line requires ("any KNOWS-count
-doubling in a result is a defect to report, not a normalization to apply").
-The prior P-SF1b record shows the same 48, so it is a standing property of the
-M7 encoding, not a regression from this run. One row agrees (the ordered
-comparison's first position); the other 47 are the duplicates and the resulting
-positional shift.
+Classified `MAPPING-RULE` and **reported, not normalized away**, exactly as
+RUNBOOK §4.3's M7 line requires. The prior P-SF1b record shows the same 48, so
+it is a standing property of the encoding, not a regression from this run.
+
+### 5.5 IC2 — a second instance of the same defect, newly visible
+
+**This is new at 2026-09-18 and was invisible before.** While IC2's reference
+returned 0 rows (the temporal-parameter defect), there was nothing to compare
+against. With a valid reference, IC2 returns 20 rows on both sides — and
+TGIR's 20 carry only **10 distinct `messageId`s**. The `LIMIT 20` hides the
+doubling as a row count: TGIR's 10 real rows are duplicated to fill the limit,
+so the reference's correct top-20 and TGIR's share exactly 10 rows.
+
+Same root cause as IS3: `interactive-complex-2.cypher` matches
+`(:Person {id: $personId})-[:KNOWS]-(friend)<-[:HAS_CREATOR]-(message)`, and
+`IC2.json` expands `KNOWS` with `dir="both"` at `exact(1)` over the both-ways
+materialisation, so every friend — and therefore every message — is reached
+twice.
+
+A survey of all 24 artifacts found **nine** expanding `KNOWS` with
+`dir="both"` (BI10, IC2, IC5, IC6, IC9, IC11, IC12, IS3, IS7). Only the two
+that project per-edge rows at `exact(1)` without an aggregate or `DISTINCT`
+above them — **IS3 and IC2** — surface it as duplicate rows at SF1; the other
+seven collapse the duplicates in their aggregation and agree exactly. So the
+defect is latent in nine plans and observable in two.
+
+**IC2 is not repaired here.** It needs its own `IC2.v2.json` plus the matching
+binder row, which is the coordinator's call and out of this lane's ratified
+scope. It is listed as pending and recorded in the ledger entry's note.
+
+### 5.6 BI6.v2 — timeout at the pre-registered ceiling
+
+BI6.v2 hit the 1020 s ceiling (600 s bypass + 420 s store-open allowance),
+recorded as `TIMEOUT` and **not re-budgeted**. On the earlier `a6b3e94` build
+the same artifact COMPLETED in 291,970.9 ms (~292 s measured, 638.4 s child
+wall; `benchmarks/results-v1/ldbc-sf1-campaign-fmt3-2026-09.json`, store
+`snb-sf1-xz-a6b3e94`), so this is a **build-to-build difference**: the same
+plan over the same data went from ~292 s to over the ceiling. Worth a bisect;
+out of scope for this lane. `BI6.json` (the v1 artifact) `ERRORED`, as
+RUNBOOK §6 predicted — kept as evidence the v1 defect reproduces at SF1.
 
 ## 6. Harness defects found by executing this runbook
 
@@ -389,42 +439,45 @@ Plus one runbook correction that is not a code defect:
 | **G-R2** manifest validates against `result_manifest.schema.json` | **PASS** — `check_result_manifest.py`: "conforms" |
 | **G-R3** same-data gate passes before any query | **PASS** — §2 |
 
-## Pending (needs the host)
+## Pending
 
-Compute on `xzgpu` was frozen mid-run for a 6-hour reader-storm soak. These
-remain:
+1. ~~Re-run the Neo4j side for BI4, BI9, BI11, BI12, IC2, IC5, IC9~~ —
+   **done 2026-09-18** with `driverize_params`, same protocol. All seven now
+   have a valid reference; the superseded dumps are in
+   `ref-rows-invalid-2026-09-17/`.
+2. **BI6.v2's timeout** stands at the pre-registered ceiling, not re-budgeted
+   (§5.6). Open question is the ~292 s → >600 s build-to-build regression,
+   which wants a bisect.
+3. ~~Ratify a column correspondence table~~ — **done** (§5.1).
+4. ~~Decide whether the comparator should fault an unprojected reference
+   column~~ — **done**: `reference-column-not-projected` (§5.3). The remaining
+   question is TGIR-side: whether IC12's `tagNames`, BI4's three person columns
+   and IC5's `forumName` should be added to those artifacts' projections.
+5. **Repair IC2** — the second instance of `D-090` (§5.5). Needs an
+   `IC2.v2.json` expanding one direction plus the matching `IV_SOURCES` row,
+   mirroring `IS3.v2`. Not done here: out of this lane's ratified scope.
+6. **Run `tests/test_ldbc_is3_v2.py`'s two executing tests on a checkout with
+   the built engine.** On this laptop worktree `tgms._engine` is not built, so
+   the four static tests pass and the two that build a store are **skipped and
+   therefore unverified** — including the regression test named in the ledger
+   entry. The same limitation hits three pre-existing tests in
+   `tests/test_ldbc_compare.py`. `ruff check tgms/ tests/ scripts/` passes.
+7. **Triage BI4's single disagreeing row** (§5.0), left UNTRIAGED on purpose.
+8. **Repoint the paper macros to the 2026-09-18 revision.**
+   `scripts/tgir_paper_macros.py:132-134` pins
+   `{compare,timings,manifest}-2026-09-17.json` by name. Those files are
+   deliberately kept, so that lane's tests still pass — but the macros are
+   reading the **interim** record, in which 7 templates had an invalid
+   reference and IC2's defect was invisible. Any paper table built from them
+   today understates agreement and omits a real finding. Not changed here:
+   `tgir_paper_macros.py` belongs to another lane.
 
-1. **Re-run the Neo4j side for BI4, BI9, BI11, BI12, IC2, IC5, IC9** with
-   `driverize_params` (fixed and tested, never executed). Until then those
-   seven templates have no valid reference and are excluded from every
-   agreement figure. `run-scripts/run_neo4j_queries.sh` re-runs all 24 in
-   ~3 minutes with the server up.
-2. **Re-run BI6.v2**, which timed out at 1020 s, or raise its allowance. Until
-   then `campaign.yaml`'s `bi6_is_not_a_semantic_gap` prediction is vacuous,
-   not confirmed.
-3. ~~Ratify a column correspondence table~~ — **done** (coordinator, 2026-09-17).
-   `column_map.yaml` is generated, tested and applied; BI3, BI7, BI10 and IS2
-   now agree outright. See §5.1.
-4. ~~Decide whether the comparator should fault a reference column the TGIR
-   plan does not project~~ — **done**: it does, as
-   `reference-column-not-projected`. BI4, IC5 and IC12 carry that verdict. The
-   follow-up is a TGIR-side question, not a harness one — whether IC12's
-   `tagNames`, BI4's three person columns and IC5's `forumName` should be added
-   to those plan artifacts' projections.
-5. **Re-run three engine-dependent tests on the host.** On the laptop worktree
-   `tests/test_ldbc_compare.py` reports `115 passed, 3 failed`; all three
-   failures are `ImportError: cannot import name '_engine' from 'tgms'` —
-   the compiled extension is not built here and those three tests construct a
-   fixture store (`test_rows_digest_stable_across_two_runs_against_a_tmp_fixture_store`,
-   `test_rows_digest_against_a_tmp_fixture_store_changes_with_the_rows`,
-   `test_emit_rows_output_is_directly_readable_by_ldbc_compare`). They are
-   unrelated to the changes in §6 and passed on the host earlier in this run,
-   but the `--column-kinds` (§5.2) and `--column-map` (§5.1) changes landed
-   after the host was frozen and have only been exercised on the laptop.
-   `ruff check tgms/ tests/ scripts/` passes clean.
+### Provenance note — removed sync artefacts
 
-Nothing in this run required the host after the freeze; no compute was started
-on it after the coordinator's instruction, and the Neo4j server was stopped.
+15 untracked files whose names contained `" 2."` (iCloud sync duplicates:
+8 under `logs/`, 7 under `ref-rows-t3/`) were removed on 2026-09-18 before
+`SHA256SUMS.txt` was recomputed. Each was verified byte-identical to its
+sibling (sha256) before deletion; none differed, and none was tracked by git.
 
 ## Files
 
@@ -437,8 +490,10 @@ on it after the coordinator's instruction, and the Neo4j server was stopped.
 | `tgms-campaign-ldbc-ref-v1.json` | the TGIR side; **companion to** (never supersedes) `benchmarks/results-v1/ldbc-sf1-campaign-fmt3-interactive-2026-09.json` |
 | `tgms-rows/`, `ref-rows/` | per-template row dumps (compared pair) |
 | `ref-rows-warmup/`, `ref-rows-t2/`, `ref-rows-t3/` | the other three Neo4j executions (wall times only) |
-| `compare-2026-09-17.json` / `.md` | the verdicts |
-| `timings-2026-09-17.json` | per-template wall times, both sides |
-| `manifest-2026-09-17.json` | the §9 manifest (validates) |
+| `compare-2026-09-18.json` / `.md` | **the verdicts (revision of record)** |
+| `compare-2026-09-17.json` / `.md` | the interim verdicts, superseded, kept |
+| `ref-rows-invalid-2026-09-17/` | the 7 superseded (string-parameter) reference dumps |
+| `timings-2026-09-18.json` / `manifest-2026-09-18.json` | **revision of record** (both validate) |
+| `timings-2026-09-17.json` / `manifest-2026-09-17.json` | interim, superseded, kept |
 | `run-scripts/` | every script this run executed |
 | `logs/` | import, gate, query, TGMS-run and header-strip logs |

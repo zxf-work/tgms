@@ -554,3 +554,110 @@ addendum_2:
     a_inexpressible_template: NOT TRIGGERED
     c_same_data_gate_fails: NOT TRIGGERED
     d_reference_side_timeout: ANALOGUE ON THE TGIR SIDE (BI6.v2), as addendum_1
+
+# ==========================================================================
+addendum_3:
+  date: 2026-09-18
+  by: xzgpu execution lane -- final state
+  what: >-
+    Final scoring, after the 7 invalid-reference templates were re-run with
+    ldbc_reference_run.driverize_params. Appended; addendum_1 and addendum_2
+    are left exactly as written, including the readings they reached while
+    those 7 had no valid reference. Same TGIR row dumps, same parameters, same
+    column map and column kinds as addendum_2 -- only the reference side of
+    those 7 templates changed.
+  revision_of_record:
+    compare: compare-2026-09-18.json
+    timings: timings-2026-09-18.json
+    manifest: manifest-2026-09-18.json
+    supersedes: [compare-2026-09-17.json, timings-2026-09-17.json, manifest-2026-09-17.json]
+    superseded_reference_dumps: ref-rows-invalid-2026-09-17/
+  result_digest_now: fa57aca5f37c1788a5aef2ff8794b0783425baeab32584e0010d198923c13726
+
+  verdict_counts:
+    agree: 18
+    reference_column_not_projected: 3     # BI4 IC5 IC12
+    disagree: 2                           # IC2 IS3 -- the same root cause
+    timeout: 1                            # BI6.v2, at the pre-registered ceiling
+    error: 0
+    not_comparable: 0                     # every template except BI6.v2 now has a valid reference
+  row_agreement:
+    comparable_templates: 23
+    compared: 736
+    agreeing: 678
+    ratio: 0.9212
+    by_group:
+      BI: {templates: 9, agreeing_verdicts: 8, rows: "606/607", ratio: 0.9984}
+      IC: {templates: 7, agreeing_verdicts: 4, rows: "56/66", ratio: 0.8485}
+      IS: {templates: 7, agreeing_verdicts: 6, rows: "16/63", ratio: 0.2540}
+    note: >-
+      The IS group's row ratio is IS3's 47 duplicate rows and nothing else;
+      every other IS template agrees exactly. Row ratios per group are
+      dominated by a handful of large templates (BI12 alone is 166 of BI's
+      607), so the verdict counts are the more honest summary.
+
+  scoring:
+    per_template:
+      verdict: REFUTED
+      on: [IS3, IC2]
+      changed_since_addendum_2: >-
+        IC2 JOINS IS3 as a refuting template. It could not be scored before:
+        its reference returned 0 rows, so there was nothing to disagree with.
+        With a valid reference it returns 20 rows against TGIR's 20 -- of which
+        only 10 are distinct. Same root cause as IS3 (dir="both" over the M7
+        both-ways materialisation), hidden by LIMIT 20 rather than showing as a
+        row-count doubling. Both are non-risk-flagged templates disagreeing
+        with a cause that is neither ORDERING/TIE nor REFERENCE-SIDE-QUIRK,
+        which is what refuted_if names.
+      also_noted: >-
+        BI4 agrees on 99 of its 100 rows and disagrees on one -- the same
+        person with count 419 (TGIR) vs 435 (reference), a genuine content
+        difference at the LIMIT 100 boundary of a REPLY_OF*0.. carve. Left
+        UNTRIAGED: one row is too thin a basis for a confident cause, and a
+        guess here is exactly what falsifier b warns against.
+      not_scoreable: [BI6]
+    overall_agreement:
+      verdict: PASS (on the comparable subset), NOT SCOREABLE as written
+      detail: >-
+        The frozen bar pools every compared row across all 24 templates; BI6.v2
+        still produced none, so the denominator is 23 of 24 templates rather
+        than 24 and the bar cannot be applied exactly as written. On what was
+        actually comparable, 678 of 736 rows agree = 0.921, which clears
+        `pass_if` (>= 0.90) and is just under the 0.95 `predicted`. Reported
+        as PASS-on-subset rather than PASS, because the one missing template is
+        missing for a reason (a ceiling hit) rather than at random.
+    bi6_is_not_a_semantic_gap:
+      verdict: NOT SCOREABLE (vacuous)
+      unchanged_from: addendum_2
+
+  falsifiers:
+    e_systematic_path_residual:
+      verdict: NOT TRIGGERED
+      detail: >-
+        Still 0 of the 5 risk-flagged templates (BI3 BI10 BI17 IC5 IC12) show a
+        TGIR-SEMANTIC-GAP. BI3, BI10 agree on every row; BI17 returns 0 on both
+        sides; IC5 returns 0 on both sides with a column its plan does not
+        project; IC12 agrees on all 5 rows of the 4 columns it projects. The
+        design memo §7 var-length/path residual did not materialise. The two
+        real disagreements are a KNOWS encoding interaction, which §7 did not
+        predict and which is not a path residual.
+    b_explained_away_row_hiding_a_defect:
+      status: RESOLVED, and it caught one
+      detail: >-
+        The re-run is the test of addendum_1's flag. Five of the seven
+        templates that addendum_1 EXCLUDED rather than explained turned out to
+        agree fully once their reference was valid (BI9 BI11 BI12 IC9, plus
+        BI4 on 99/100) -- the exclusion was right. The sixth, IC2, turned out
+        to hide a real TGIR defect, which is precisely the outcome falsifier b
+        exists to catch and the reason those rows were never scored as
+        agreement. Excluding them rather than explaining them was what made
+        that defect findable.
+    a_inexpressible_template: NOT TRIGGERED
+    c_same_data_gate_fails: NOT TRIGGERED
+    d_reference_side_timeout: ANALOGUE ON THE TGIR SIDE (BI6.v2), as addendum_1
+
+  follow_ups:
+    - "IC2 needs its own repaired artifact (IC2.v2.json), as IS3 got IS3.v2.json -- ops/failure_ledger.jsonl D-090's note."
+    - "BI6.v2's ~292 s (a6b3e94) -> >600 s regression wants a bisect."
+    - "BI4's single disagreeing row wants a targeted triage."
+    - "tests/test_ldbc_is3_v2.py's two executing tests are UNVERIFIED -- skipped where tgms._engine is not built, which is this laptop worktree."
