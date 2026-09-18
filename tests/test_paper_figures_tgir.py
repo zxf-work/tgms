@@ -43,6 +43,7 @@ import statistics
 import subprocess
 import sys
 import zlib
+from collections import Counter
 from pathlib import Path
 
 import pytest
@@ -262,6 +263,115 @@ def test_neo4j_points_are_the_records_medians(tmp_path: Path) -> None:
     assert families == sorted(families, key=("BI", "IC", "IS").index)
     bi = [t for t in neo4j["common_plan_ids"] if t.startswith("BI")]
     assert bi == sorted(bi, key=lambda t: int(t[2:]))
+
+
+def test_read_ref_verdicts_classifies_the_four_classes() -> None:
+    """`read_ref_verdicts` is pure JSON handling -- no matplotlib needed, and
+    deliberately not gated by `@requires_matplotlib` -- and is the ground
+    truth the two tests below build on: it must return exactly the four
+    verdict classes README §5 documents (agree /
+    reference-column-not-projected / disagree / timeout), with the one
+    timeout attributed to BI6.v2's TGIR outcome rather than trusted blindly
+    from its null `verdict` field."""
+    mod = _figures_module()
+    ref_dir = ROOT / "benchmarks" / "ldbc-ref-v1"
+    plan_of = mod.ref_plan_of_template(ref_dir / "timings-2026-09-18.json")
+    assert plan_of["BI6"] == "BI6.v2"
+
+    compare_path = ref_dir / "compare-2026-09-18.json"
+    compare = json.loads(compare_path.read_text(encoding="utf-8"))
+    template_of_plan = {p: t for t, p in plan_of.items()}
+    timed_out_templates = {template_of_plan[v["plan_id"]] for v in compare["verdicts"]
+                           if v.get("verdict") is None}
+    assert timed_out_templates == {"BI6"}
+
+    verdict_of = mod.read_ref_verdicts(compare_path, plan_of, timed_out_templates)
+    assert len(verdict_of) == 24
+    assert Counter(verdict_of.values()) == Counter(
+        {"agree": 18, "reference-column-not-projected": 3, "disagree": 2, "timeout": 1})
+    assert verdict_of["BI6"] == "timeout"
+    assert verdict_of["IS3"] == "disagree" and verdict_of["IC2"] == "disagree"
+    assert verdict_of["BI4"] == verdict_of["IC5"] == verdict_of["IC12"] \
+        == "reference-column-not-projected"
+    assert set(verdict_of.values()) <= set(mod.VERDICT_CLASSES)
+    assert set(mod.VERDICT_GLYPH) == set(mod.VERDICT_LEGEND_LABEL) == set(mod.VERDICT_CLASSES)
+
+
+@requires_matplotlib
+def test_neo4j_verdict_glyphs_pin_the_compare_record(tmp_path: Path) -> None:
+    """`figures.json`'s `fig-neo4j.verdicts` --- the per-template class the
+    y-axis glyph is drawn from --- must be the *same* classification
+    `compare-2026-09-18.json` itself carries, recomputed independently of
+    `build_neo4j`/`read_ref_verdicts` here (mirrors
+    `test_neo4j_points_are_the_records_medians`'s independent recomputation
+    of the wall-time series). The generator's own stdout summary line is
+    pinned too, since that is what a reader scans without opening the PDF.
+    """
+    proc, out_dir = _run(tmp_path)
+    assert proc.returncode == 0, proc.stderr
+
+    ref_dir = ROOT / "benchmarks" / "ldbc-ref-v1"
+    timings = json.loads((ref_dir / "timings-2026-09-18.json").read_text(encoding="utf-8"))
+    compare = json.loads((ref_dir / "compare-2026-09-18.json").read_text(encoding="utf-8"))
+    plan_of = {e["template"]: (e.get("tgir_plan") or "").removesuffix(".json")
+               for e in timings["templates"]}
+    template_of_plan = {p: t for t, p in plan_of.items()}
+    field_to_class = {"agreeing": "agree",
+                      "reference-column-not-projected": "reference-column-not-projected",
+                      "disagreeing": "disagree"}
+    expected: dict[str, str] = {}
+    for v in compare["verdicts"]:
+        template = template_of_plan.get(v["plan_id"])
+        if template is None:
+            continue
+        raw = v.get("verdict")
+        expected[template] = field_to_class[raw] if raw is not None else "timeout"
+    assert len(expected) == 24
+
+    figures = json.loads((out_dir / "figures.json").read_text(encoding="utf-8"))
+    neo4j = figures["fig-neo4j"]
+    assert neo4j["verdicts"] == expected
+    assert neo4j["verdicts_source"] == "benchmarks/ldbc-ref-v1/compare-2026-09-18.json"
+    counts = Counter(neo4j["verdicts"].values())
+    assert counts == Counter(
+        {"agree": 18, "reference-column-not-projected": 3, "disagree": 2, "timeout": 1})
+
+    # the stdout summary line spells out all four classes and their counts,
+    # in the module's own glyph/order -- so a reader never needs a second
+    # table, and doesn't need to open the PDF either
+    mod = _figures_module()
+    expected_summary = "verdicts [" + ", ".join(
+        f"{mod.VERDICT_GLYPH[c]} {counts.get(c, 0)}" for c in mod.VERDICT_CLASSES) + "]"
+    assert expected_summary in proc.stdout, proc.stdout
+
+
+@requires_matplotlib
+def test_neo4j_legend_and_labels_render_in_the_pdf(tmp_path: Path) -> None:
+    """The compact glyph legend and the glyph-prefixed template labels this
+    fig-neo4j.pdf carries so the paper needs no second per-template
+    agreement table -- checked at the text-content level, the same way
+    `test_neo4j_figure_is_the_placeholder_when_the_record_is_absent` checks
+    the placeholder's caption."""
+    proc, out_dir = _run(tmp_path)
+    assert proc.returncode == 0, proc.stderr
+    text = _extract_pdf_text(out_dir / "fig-neo4j.pdf")
+
+    # the legend line's plain-ASCII words survive this extractor even though
+    # the glyph characters themselves are font-specific single-byte codes it
+    # cannot map back to Unicode (see the module docstring on DejaVu Sans
+    # glyph coverage) -- so this asserts the legend rendered, not each glyph.
+    for word in ("agree", "ref. col. not projected", "disagree", "TGIR timeout"):
+        assert word in text, (word, text)
+    # every one of the 24 template ids is present as a y-tick label
+    for template in ("BI3", "BI4", "BI6", "IC2", "IC5", "IC12", "IS3"):
+        assert template in text, (template, text)
+    # the size and type contract from the other two figures still holds --
+    # the legend line is an extra xlabel row, not an extra figure
+    raw = (out_dir / "fig-neo4j.pdf").read_bytes()
+    m = next(line for line in raw.split(b"\n") if b"/MediaBox" in line)
+    nums = [float(x) for x in m.split(b"[")[1].split(b"]")[0].split()]
+    assert nums[2] == pytest.approx(237.6, abs=0.5)
+    assert nums[3] == pytest.approx(158.4, abs=0.5)
 
 
 @requires_matplotlib

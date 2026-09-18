@@ -317,6 +317,79 @@ def test_ref_v1_macro_values_pin_the_external_baseline() -> None:
     assert f"{ms['IS2'] / 1000:.1f}" == "6.7"                       # \tgRefIsTwoTgirS
 
 
+def test_ref_v1_core_macro_values_pin_the_leaf_classification() -> None:
+    """The \\tgRefCoreTemplates / \\tgRefAgreeCore pair: which of the 24
+    ldbc-ref-v1 templates' plan artifacts are primitive-only, and how many of
+    the 18 agreeing ones are among them --- recomputed independently of
+    `tgir_paper_macros.py`'s own walk, like the KNOWS-both-ways helper above.
+
+    A plan node's JSON ``"op"`` is either one of the twelve
+    ``CORE_NODE_TYPES`` names (``tgms/tgir/node.py``) or, for a
+    registry-backed leaf, the registry operator's own name --
+    ``OpaqueLeaf.op`` returns ``self.op_name``, never the literal string
+    ``"OpaqueLeaf"`` -- so a leaf is detected by its ``"op"`` value falling
+    in the fifteen-name ``tgms.temporal.algebra.REGISTRY``, not by any
+    ``"OpaqueLeaf"`` string ever appearing in a plan artifact. At this
+    revision the plan *loader* itself only ever builds the twelve core types
+    (``tgms/tgir/loader.py``), so today's finding is that none of the 24 are
+    leaf-backed -- but the test recomputes the classification from the JSON
+    rather than asserting that absence by fiat, so a future leaf-backed
+    reference plan would be caught here, not just at the paper.
+    """
+    core_ops = {
+        "NodeScan", "EdgeScan", "Expand", "Filter", "PropertyPredicate",
+        "TypeConstraint", "Project", "Join", "PatternMatch", "Aggregate",
+        "Order", "Limit",
+    }
+    registry_ops = {
+        "aggregate_events", "burst_detection", "co_active", "compute",
+        "count_temporal_motifs", "diff_snapshots", "entity_history",
+        "find_temporal_motif_instances", "graph_metric_timeseries",
+        "neighborhood_evolution", "resolve_entities", "snapshot_subgraph",
+        "temporal_paths", "temporal_reachability", "version_history",
+    }
+    assert len(core_ops) == 12
+    assert len(registry_ops) == 15
+
+    def _plan_ops(node, into: set) -> None:
+        if isinstance(node, dict):
+            op = node.get("op")
+            if isinstance(op, str):
+                into.add(op)
+            for v in node.values():
+                _plan_ops(v, into)
+        elif isinstance(node, list):
+            for v in node:
+                _plan_ops(v, into)
+
+    compare = json.loads(TPM.REF_COMPARE.read_text(encoding="utf-8"))
+    verdicts = compare["verdicts"]
+    assert len(verdicts) == 24
+
+    is_leaf_backed: dict[str, bool] = {}
+    for v in verdicts:
+        plan_path = TPM.PLANS_DIR / f"{v['plan_id']}.json"
+        assert plan_path.exists(), plan_path
+        ops: set = set()
+        _plan_ops(json.loads(plan_path.read_text(encoding="utf-8")).get("root"), ops)
+        assert ops <= core_ops | registry_ops, (v["plan_id"], sorted(ops - core_ops - registry_ops))
+        is_leaf_backed[v["plan_id"]] = bool(ops & registry_ops)
+
+    leaf_backed = sorted(pid for pid, leafy in is_leaf_backed.items() if leafy)
+    core_templates = sum(1 for leafy in is_leaf_backed.values() if not leafy)
+    assert leaf_backed == []                                        # none, at this revision
+    assert 24 - core_templates == len(leaf_backed)
+    assert core_templates == 24                                     # \tgRefCoreTemplates
+
+    agreeing_and_core = sum(1 for v in verdicts if v.get("verdict") == "agreeing"
+                            and not is_leaf_backed[v["plan_id"]])
+    assert agreeing_and_core == 18                                  # \tgRefAgreeCore
+    # every agreeing template is core (no leaf-backed plan disagrees or agrees
+    # either, since there are none), so the two macros coincide at this revision
+    agreeing = sum(1 for v in verdicts if v.get("verdict") == "agreeing")
+    assert agreeing_and_core == agreeing == 18
+
+
 def test_char_rerun_macro_values_pin_the_reproduction() -> None:
     """The \\tgSfOneChar* family: the corrected interactive-set reproduction
     against the original campaign's 11 Interactive rows.
