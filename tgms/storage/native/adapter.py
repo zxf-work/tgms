@@ -14,10 +14,11 @@ than a list of records, so an ingest chunk of 50,000 events is one crossing.
 
 from __future__ import annotations
 
+import errno
 import json
 import time
 from pathlib import Path
-from typing import Any, Iterable, Sequence
+from typing import Any, Callable, Iterable, Sequence, TypeVar
 
 import numpy as np
 
@@ -33,6 +34,9 @@ except ImportError as e:  # pragma: no cover - packaging failure, not a code pat
         "Install a wheel (`pip install tgms`), or build from source with a "
         "Rust toolchain (`uv sync --reinstall-package tgms`)."
     ) from e
+
+
+_T = TypeVar("_T")
 
 
 def _translate(e: Exception) -> Exception:
@@ -79,9 +83,81 @@ class NativeAdapter(StorageAdapter):
             self._store = _engine.NativeStore(str(self.path))
         except Exception as e:
             raise _translate(e) from None
+        # D-088 reopen-on-ENOENT net counter (see `_read_op`). Per-adapter,
+        # not per native handle, because a reopen replaces `self._store`
+        # entirely -- a soak reading this across many periodic reopens needs
+        # it to keep counting across all of them.
+        self._reopen_on_enoent_total = 0
 
     def close(self) -> None:
         self._store.close()
+
+    # --- D-088 reopen-on-ENOENT net --------------------------------------- #
+    #
+    # Pin-at-open (`crates/tgms-engine-core/src/store.rs::pin_generation_
+    # files`) maps every segment a reader's generation names, so a
+    # cross-process reader keeps answering through a writer's `gc(keep_last=
+    # ...)` unlinks. The residual the design memo leaves open (§2(a), failure
+    # mode (iv)): a reader that resolves `CURRENT` microseconds before gc's
+    # unlink pass can still miss a file pinning would otherwise have caught
+    # -- and so can a store over `TGMS_PIN_MAX_SEGMENTS`, where pinning is
+    # disabled outright. Both surface as a *detected* `OSError` naming the
+    # missing file, never silently wrong data (the durability objective,
+    # blueprint §1) -- this is the net that turns that detected error into a
+    # transparent retry instead of a failed read.
+
+    def reopen_on_enoent_total(self) -> int:
+        """How many times a read operator hit the D-088 net: an engine
+        `OSError` with `errno == ENOENT`, healed by reopening the native
+        handle against the latest `CURRENT` and retrying the whole operator
+        once. 0 across a healthy run; nonzero-but-still-succeeding is the net
+        doing its job, which is why soaks track it as its own counter rather
+        than folding it into a general error count."""
+        return self._reopen_on_enoent_total
+
+    def _reopen(self) -> None:
+        """Re-resolve `CURRENT`: open a fresh native handle at whatever
+        generation is live now, and let the stale one go.
+
+        `NativeStore.close()` is presently a Rust no-op (the mmaps and the
+        gc pin release when CPython drops the object), so dropping the old
+        reference here -- rather than keeping both alive -- is what keeps
+        this handle from pinning two generations' files at once across a
+        long-running reader's many reopens.
+        """
+        stale = self._store
+        self._store = _engine.NativeStore(str(self.path))
+        try:
+            stale.close()
+        except Exception:
+            pass
+
+    def _read_op(self, fn: Callable[[Any], _T]) -> _T:
+        """Run one read-only engine call, with the D-088 net: `fn(self._store)`,
+        and on an `OSError` whose `errno` is exactly `ENOENT`, reopen and
+        retry `fn` against the new handle exactly once before giving up.
+
+        Every other exception -- including any other `OSError`, which is a
+        real I/O problem to surface, not paper over -- translates and raises
+        immediately, as every read method here already did before this net
+        existed. The retry re-runs the *whole* operator against the new
+        generation rather than resuming mid-flight, which is what keeps one
+        answer from ever mixing rows out of two generations (§2(d) of the
+        design memo).
+        """
+        try:
+            return fn(self._store)
+        except OSError as e:
+            if e.errno != errno.ENOENT:
+                raise _translate(e) from None
+            self._reopen_on_enoent_total += 1
+            self._reopen()
+        except Exception as e:
+            raise _translate(e) from None
+        try:
+            return fn(self._store)
+        except Exception as e:
+            raise _translate(e) from None
 
     @staticmethod
     def build_info() -> dict[str, Any]:
@@ -358,36 +434,30 @@ class NativeAdapter(StorageAdapter):
         ]
 
     def believed_node_versions(self, uid: str, as_of_tt: int = OPEN_END) -> list[NodeVersion]:
-        try:
-            return self._nodes(self._store.believed("node", uid, clamp_tt(as_of_tt)))
-        except Exception as e:
-            raise _translate(e) from None
+        return self._nodes(self._read_op(
+            lambda s: s.believed("node", uid, clamp_tt(as_of_tt))))
 
     def believed_edge_versions(self, eid: str, as_of_tt: int = OPEN_END, *,
                                src: str | None = None, dst: str | None = None) -> list[EdgeVersion]:
         # src/dst are performance hints for backends that can anchor on them
         # (Kùzu); the native engine's `eid` lookup is already a hash-map hit,
         # so there is nothing to anchor and the hints are ignored.
-        try:
-            return self._edges(self._store.believed("edge", eid, clamp_tt(as_of_tt)))
-        except Exception as e:
-            raise _translate(e) from None
+        return self._edges(self._read_op(
+            lambda s: s.believed("edge", eid, clamp_tt(as_of_tt))))
 
     def nodes_with_believed_versions(
         self, uids: Sequence[str], as_of_tt: int = OPEN_END
     ) -> set[str]:
         if not uids:
             return set()
-        try:
-            return set(self._store.believed_any(list(uids), clamp_tt(as_of_tt)))
-        except Exception as e:
-            raise _translate(e) from None
+        return set(self._read_op(
+            lambda s: s.believed_any(list(uids), clamp_tt(as_of_tt))))
 
     def all_node_versions(self) -> Iterable[NodeVersion]:
-        return self._nodes(self._store.all_versions("node"))
+        return self._nodes(self._read_op(lambda s: s.all_versions("node")))
 
     def all_edge_versions(self) -> Iterable[EdgeVersion]:
-        return self._edges(self._store.all_versions("edge"))
+        return self._edges(self._read_op(lambda s: s.all_versions("edge")))
 
     def versions_page(
         self,
@@ -416,14 +486,11 @@ class NativeAdapter(StorageAdapter):
         cache budget, not ~1,060 bytes per stored version
         (`docs/design/BOUNDED_VERSION_HISTORY_FORECAST_2026-09-13.md` §1, §4).
         """
-        try:
-            got = self._store.version_page(
-                kind, clamp_tt(as_of), t_a, t_b, belief,
-                list(rel_types) if rel_types is not None else None,
-                offset, limit,
-            )
-        except Exception as e:
-            raise _translate(e) from None
+        got = self._read_op(lambda s: s.version_page(
+            kind, clamp_tt(as_of), t_a, t_b, belief,
+            list(rel_types) if rel_types is not None else None,
+            offset, limit,
+        ))
         # int columns arrive as int64 arrays, string columns as lists of str
         # — the same two shapes the ABC default's object arrays present at
         # `cols[c][i]`, so the row build above them is unchanged.
@@ -433,10 +500,7 @@ class NativeAdapter(StorageAdapter):
     def props_for_vids(self, kind: str, vids: Sequence[str]) -> dict[str, dict]:
         if not vids:
             return {}
-        try:
-            raw = self._store.props_for_vids(kind, list(vids))
-        except Exception as e:
-            raise _translate(e) from None
+        raw = self._read_op(lambda s: s.props_for_vids(kind, list(vids)))
         return {vid: json.loads(text) for vid, text in raw.items()}
 
     # --- columnar read path ----------------------------------------------------- #
@@ -451,22 +515,19 @@ class NativeAdapter(StorageAdapter):
         touching_ids: Sequence[int] | None = None,
         touching_both: bool = False,
     ) -> dict[str, np.ndarray]:
-        try:
-            got = self._store.scan_edges(
-                as_of_tt=clamp_tt(as_of_tt),
-                vt_min=vt_min,
-                vt_max=vt_max,
-                rel_types=list(rel_types) if rel_types is not None else None,
-                touching_ids=[int(i) for i in touching_ids]
-                if touching_ids is not None
-                else None,
-                touching_both=touching_both,
-                limit=None,
-                # a real pushdown: unprojected string columns are never built
-                columns=list(columns) if columns is not None else None,
-            )
-        except Exception as e:
-            raise _translate(e) from None
+        got = self._read_op(lambda s: s.scan_edges(
+            as_of_tt=clamp_tt(as_of_tt),
+            vt_min=vt_min,
+            vt_max=vt_max,
+            rel_types=list(rel_types) if rel_types is not None else None,
+            touching_ids=[int(i) for i in touching_ids]
+            if touching_ids is not None
+            else None,
+            touching_both=touching_both,
+            limit=None,
+            # a real pushdown: unprojected string columns are never built
+            columns=list(columns) if columns is not None else None,
+        ))
         out: dict[str, np.ndarray] = {}
         for c in self.EDGE_INT_COLS:
             if columns is None or c in columns:
@@ -502,19 +563,16 @@ class NativeAdapter(StorageAdapter):
         selections, fixed-width group codes, canonical order). Returns key
         code columns plus rehydration tables; the operator pages in Python.
         """
-        try:
-            got = self._store.aggregate_edges(
-                as_of_tt=clamp_tt(as_of_tt),
-                t_a=int(t_a),
-                t_b=int(t_b),
-                rel_types=list(rel_types) if rel_types is not None else None,
-                stride=None if stride is None else int(stride),
-                group_by=[(d, r) for d, r in group_by],
-                aggregates=[(a, o) for a, o in aggregates],
-                max_groups=int(max_groups),
-            )
-        except Exception as e:
-            raise _translate(e) from None
+        got = self._read_op(lambda s: s.aggregate_edges(
+            as_of_tt=clamp_tt(as_of_tt),
+            t_a=int(t_a),
+            t_b=int(t_b),
+            rel_types=list(rel_types) if rel_types is not None else None,
+            stride=None if stride is None else int(stride),
+            group_by=[(d, r) for d, r in group_by],
+            aggregates=[(a, o) for a, o in aggregates],
+            max_groups=int(max_groups),
+        ))
         return {
             "rows_total": int(got["rows_total"]),
             "keys": [np.asarray(k, dtype=np.int64) for k in got["keys"]],
@@ -531,11 +589,8 @@ class NativeAdapter(StorageAdapter):
         valid only against the generation that produced them — the engine
         refuses ids the current generation does not name.
         """
-        try:
-            eids, rels = self._store.edge_idents_at(
-                [int(i) for i in seg_ids], [int(r) for r in seg_rows])
-        except Exception as e:
-            raise _translate(e) from None
+        eids, rels = self._read_op(lambda s: s.edge_idents_at(
+            [int(i) for i in seg_ids], [int(r) for r in seg_rows]))
         return np.asarray(eids, dtype=object), np.asarray(rels, dtype=object)
 
     def nodes_columnar(
@@ -544,12 +599,9 @@ class NativeAdapter(StorageAdapter):
         vt_min: int | None = None,
         vt_max: int | None = None,
     ) -> dict[str, np.ndarray]:
-        try:
-            got = self._store.scan_nodes(
-                as_of_tt=clamp_tt(as_of_tt), vt_min=vt_min, vt_max=vt_max
-            )
-        except Exception as e:
-            raise _translate(e) from None
+        got = self._read_op(lambda s: s.scan_nodes(
+            as_of_tt=clamp_tt(as_of_tt), vt_min=vt_min, vt_max=vt_max
+        ))
         out = {c: np.asarray(got[c], dtype=np.int64) for c in ("uid_id", "vt_s", "vt_e")}
         out.update({c: np.asarray(got[c], dtype=object) for c in ("uid", "vid", "label")})
         return out
@@ -638,10 +690,7 @@ class NativeAdapter(StorageAdapter):
         Present only on this backend; `ops_snapshot.resolve_entities` uses it
         when available and otherwise falls back to its portable scan.
         """
-        try:
-            return self._store.resolve_entities(query, clamp_tt(as_of_tt))
-        except Exception as e:
-            raise _translate(e) from None
+        return self._read_op(lambda s: s.resolve_entities(query, clamp_tt(as_of_tt)))
 
     def verify(self, mode: str = "fast") -> dict[str, Any]:
         """Check this store's integrity. Read-only, in both modes.

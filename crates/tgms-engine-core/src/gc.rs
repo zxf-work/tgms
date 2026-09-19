@@ -17,13 +17,34 @@
 //! table keyed by canonical store root, so a reader that opened at generation
 //! N keeps N's manifest and files on disk until it drops. There is no
 //! cross-process reader registry, deliberately — the single-writer contract
-//! already makes a second *writer* undefined, and a reader in another process
-//! holds its manifest in memory and its segments via mmap, so on POSIX even a
-//! collected file stays readable through handles it already opened. The one
-//! exposure is a cross-process reader lazily opening a segment it has never
-//! touched after gc removed it: that fails with a *detected* IO error naming
-//! the file — never silently wrong data — which is the durability objective's
-//! bar (blueprint §1). Run gc from the writer; that is where the CLI puts it.
+//! already makes a second *writer* undefined.
+//!
+//! **D-088 correction (2026-09-19).** This section used to claim a reader in
+//! another process "holds its segments via mmap, so on POSIX even a
+//! collected file stays readable through handles it already opened" — false:
+//! mapping was per-first-touch in `open_segment`, so the actually-protected
+//! set was whatever subset of the generation a reader's queries happened to
+//! reach, not the generation itself. Measured at soak scale that gap is the
+//! steady state, not an edge case (a reader was exposed ≈ 84% of every
+//! 300 s reopen window once the store outgrew what its queries had already
+//! touched). The fix (`store.rs::pin_generation_files`, called from `open`
+//! and every commit/compaction) maps every file the manifest names at open,
+//! which is what makes the claim above true rather than aspirational — for
+//! stores under `TGMS_PIN_MAX_SEGMENTS` (default `defaults::PIN_MAX_SEGMENTS`).
+//! A store whose segment count compaction does not bound falls back to the
+//! lazy path this section used to describe as the whole story. Two residuals
+//! survive pinning and are accepted, not fixed: (i) a reader that resolves
+//! `CURRENT` microseconds before pass 3 below can still miss a file pinning
+//! would otherwise have covered — the reopen-on-ENOENT net at the Python
+//! adapter boundary is what covers *that*; (ii) the guarantee is local-POSIX
+//! only (unlink-while-open differs on Windows and NFS). A pinned map also
+//! means `bytes_reclaimed` below is an unlink count, not necessarily free
+//! space, until every reader holding a generation's map reopens or drops —
+//! bounded in practice by how often readers cycle, not by this pass.
+//! Whichever path serves a segment, a lazily-opened one that gc has already
+//! removed still fails with a *detected* IO error naming the file — never
+//! silently wrong data — which is the durability objective's bar (blueprint
+//! §1). Run gc from the writer; that is where the CLI puts it.
 //!
 //! **Crash safety.** Deletion happens in dependency order: superseded
 //! manifests first, then the directory is fsynced, and only files that no

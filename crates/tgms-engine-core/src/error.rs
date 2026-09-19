@@ -73,6 +73,14 @@ pub struct EngineError {
     /// Actionable remedy, surfaced verbatim to the user. Corruption errors
     /// must always carry one.
     pub remedy: Option<String>,
+    /// The originating `io::Error`'s raw OS error code, when this was built
+    /// `From<std::io::Error>`. `message` already renders as prose
+    /// (`Display`, above) and that text must not change — other layers key
+    /// off it — so this rides alongside purely for the pyo3 boundary to
+    /// attach `.errno` to the raised `OSError` (D-088's reopen-on-ENOENT net
+    /// needs to tell "a pinned reader's file vanished under gc" apart from
+    /// any other I/O failure without parsing the message).
+    pub raw_os_error: Option<i32>,
 }
 
 impl EngineError {
@@ -82,6 +90,7 @@ impl EngineError {
             message: message.into(),
             location: Location::default(),
             remedy: None,
+            raw_os_error: None,
         }
     }
 
@@ -140,7 +149,10 @@ impl std::error::Error for EngineError {}
 
 impl From<std::io::Error> for EngineError {
     fn from(e: std::io::Error) -> Self {
-        EngineError::new(Category::Io, e.to_string())
+        let raw_os_error = e.raw_os_error();
+        let mut err = EngineError::new(Category::Io, e.to_string());
+        err.raw_os_error = raw_os_error;
+        err
     }
 }
 

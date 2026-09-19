@@ -45,7 +45,21 @@ fn err(e: EngineError) -> PyErr {
     match e.category {
         Category::NotFound => PyKeyError::new_err(msg),
         Category::Capacity => PyOverflowError::new_err(msg),
-        Category::Io => PyIOError::new_err(msg),
+        Category::Io => {
+            // The message stays exactly the engine's prose (other layers key
+            // off it), but `.errno` is attached when the originating
+            // `io::Error` carried a raw OS error code, so the D-088
+            // reopen-on-ENOENT net at the Python adapter boundary can tell
+            // "a pinned reader's segment vanished under gc" apart from any
+            // other I/O failure without parsing `msg`.
+            let py_err = PyIOError::new_err(msg);
+            if let Some(errno) = e.raw_os_error {
+                Python::attach(|py| {
+                    let _ = py_err.value(py).setattr("errno", errno);
+                });
+            }
+            py_err
+        }
         Category::Corrupt | Category::Invariant => PyRuntimeError::new_err(msg),
     }
 }
