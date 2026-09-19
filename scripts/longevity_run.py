@@ -965,15 +965,35 @@ def child_writer(cfg: dict[str, Any]) -> None:
             else:
                 os.environ.pop("TGMS_CRASH_POINT", None)
                 ct0 = time.perf_counter()
+                ts0 = time.time()
                 report = store.adapter.compact()
                 gc_report = store.adapter.gc(keep_last=2)
                 compactions += 1
                 last_compact_t = time.perf_counter()
                 ct1 = last_compact_t
+                ts1 = time.time()
                 metrics.counter("compactions_total")
                 metrics.gauge("compaction_ms", (ct1 - ct0) * 1e3)
                 with open(compactions_path, "a", encoding="utf-8") as fh:
+                    # `t_start`/`t_end` are `time.perf_counter()` (an
+                    # arbitrary monotonic reference, not comparable across
+                    # processes or to wall clock) — kept as-is, existing
+                    # records and any tooling that reads them for duration
+                    # (ct1 - ct0) rely on them. `ts_start`/`ts_end` are the
+                    # paired `time.time()` (epoch) readings, added so
+                    # `summarize()` can line this window up against
+                    # `metrics.jsonl`'s epoch-timestamped gauges (D-091:
+                    # comparing perf_counter against epoch directly made
+                    # every compaction-stall window empty, silently
+                    # reporting 0.000 ms in every soak to date). `life` is
+                    # this writer process's life index (cheap: passed
+                    # through cfg by spawn_writer, one per process) so a
+                    # restart-cycling run's compaction records can be
+                    # matched back to the writer_progress-<life>.json that
+                    # produced them.
                     fh.write(json.dumps({"t_start": ct0, "t_end": ct1,
+                                         "ts_start": ts0, "ts_end": ts1,
+                                         "life": cfg.get("life_index"),
                                          "batches": batches, "compact": report,
                                          "gc": gc_report}) + "\n")
 
@@ -1173,7 +1193,7 @@ def cmd_run(args: argparse.Namespace) -> int:
                "progress_path": str(writer_progress_path(life_index)),
                "compactions_path": str(compactions_path),
                "metrics_path": str(metrics_path), "report_every_s": 60,
-               "writer_sleep_s": args.writer_sleep_s}
+               "writer_sleep_s": args.writer_sleep_s, "life_index": life_index}
         return _spawn("writer", cfg, out_dir / "logs" / f"writer-{life_index}.log", env_extra)
 
     def spawn_reader(idx: int, life_index: int) -> subprocess.Popen:
@@ -1536,9 +1556,22 @@ def summarize(out_dir: Path, metrics_path: Path, t_start: float, end_at: float,
     compactions = _read_jsonl(compactions_path)
     reader_p99_all = [pt for (n, _l), pts in gauges.items() if n == "query_p99_ms"
                       for pt in pts]
+    # D-091: `t_start`/`t_end` on a compaction record are `time.perf_counter()`
+    # (an arbitrary per-process monotonic reference), while every gauge in
+    # `metrics.jsonl` (including `query_p99_ms` above) carries `ts` from
+    # `time.time()` (epoch) — comparing the two directly, as this used to,
+    # makes every window empty (perf_counter's origin is not epoch 0), so
+    # `compaction_stall_p99` silently stayed 0.0 in every soak to date, a
+    # false "no stall" reading rather than an error. `ts_start`/`ts_end`
+    # (epoch, paired with `t_start`/`t_end`) are the fix; older compaction
+    # records (written before this fix) carry only `t_start`/`t_end` and
+    # cannot be lined up against epoch gauges at all, so they are reported
+    # as not computable rather than silently folded into a 0.000 number.
+    usable_compactions = [c for c in compactions if "ts_start" in c and "ts_end" in c]
+    compaction_stall_computable = not compactions or bool(usable_compactions)
     compaction_stall_p99 = 0.0
-    for c in compactions:
-        window = [v for t, v in reader_p99_all if c["t_start"] - 60 <= t <= c["t_end"] + 60]
+    for c in usable_compactions:
+        window = [v for t, v in reader_p99_all if c["ts_start"] - 60 <= t <= c["ts_end"] + 60]
         if window:
             compaction_stall_p99 = max(compaction_stall_p99, max(window))
 
@@ -1636,7 +1669,9 @@ def summarize(out_dir: Path, metrics_path: Path, t_start: float, end_at: float,
             "segments": round(slope(segment_bytes), 6),
         },
         "generation_final": generation[-1][1] if generation else None,
-        "compaction_stall_max_reader_p99_ms": round(compaction_stall_p99, 3),
+        "compaction_stall_max_reader_p99_ms": (
+            round(compaction_stall_p99, 3) if compaction_stall_computable else None),
+        "compaction_stall_computable": compaction_stall_computable,
         "error_count": int(error_count),
     }
 

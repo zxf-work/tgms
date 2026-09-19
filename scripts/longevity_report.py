@@ -281,7 +281,10 @@ def build_table(manifest: dict[str, Any], *, label: str | None = None,
          f"p99 {_fmt(drift.get('commit_p99_first_hour_max'), ' ms')} -> "
          f"{_fmt(drift.get('commit_p99_last_hour_max'), ' ms')}"),
         ("compaction stalls (max reader p99 during a compaction window)",
-         "info", f"{_fmt(s.get('compaction_stall_max_reader_p99_ms'), ' ms')}"),
+         "info",
+         (f"{_fmt(s.get('compaction_stall_max_reader_p99_ms'), ' ms')}"
+          if s.get("compaction_stall_computable", True) is not False
+          else "not computable (compactions log predates epoch timestamps)")),
         ("errors observed", "info" if error_count == 0 else "FLAG", str(error_count)),
         ("recoveries / reader restarts", "info",
          f"{s.get('recoveries', 0)} / {s.get('reader_restarts', 0)}"),
