@@ -167,6 +167,26 @@ skeleton --
       below computes every ``osdiSoak*Two`` macro; the Gate E table's own
       verdict column is prose (gate_e_report-2.md), not emitted here.
 
+  W2u (P-STORM-HUNT, a 6h observation-only run, commit ``57952fa``) --
+      benchmarks/longevity-v1/stormhunt-2026-09-17.json (manifest, single
+      writer life, no restarts) + rss_slopes-stormhunt.json,
+      writer_error_counts_by_class-stormhunt.json, host_load-stormhunt.log,
+      reader_op_error-stormhunt.jsonl (empty) + its README.txt,
+      gate_e_report-stormhunt.md, and build_info-stormhunt.log, every one
+      whole-file sha256-checked against README.md's "P-STORM-HUNT (6 h
+      observation run, 2026-09-17/18)" section's own "Files added here"
+      table. Purpose: try to capture the P-SOAK2 reader-side
+      ``OSError``/``StateError`` storm recurring, under the D-088 bounded
+      reader-error-message capture merged at ``c3a5592``; it did not recur
+      (0 reader errors, 0 ``reader_op_error`` events) -- all 175 errors are
+      the same writer-side ``NotFoundError`` correction-race class seen in
+      both soaks. Both reader RSS slopes (11.4-12.5 kB/s) exceed the 10
+      kB/s frozen bound every P-SOAK2 reader passed under.
+      ``compute_longevity_soak_hunt`` below computes every ``osdiSoak*Hunt``
+      macro; ``osdiSoakHuntPatternReproduced`` states the pre-registration's
+      own clause (e) non-conclusion (a negative 6h result is not evidence
+      the pattern is gone) as its provenance, not as a number.
+
   W-lane (the original soak's full-mode verify + REPLAY-2) --
       benchmarks/longevity-v1/verify-full-2026-09-15.txt (two `tgms check`
       entries concatenated: the pre-replay check of the original store,
@@ -286,6 +306,7 @@ import re
 import statistics
 import sys
 import tarfile
+from datetime import datetime, timedelta
 from decimal import ROUND_HALF_UP, Decimal
 from pathlib import Path
 
@@ -553,6 +574,29 @@ LONGEVITY_REPLAY_CHECK_2 = LONGEVITY_DIR / "replay-check-2-2026-09.json"
 LONGEVITY_VERIFY_FULL_SHA256 = "4a84460725df097cb6df81eec8d55a7c8b28b2d906c2cb709712f3a0c1be6a68"
 LONGEVITY_REPLAY_CHECK_2_SHA256 = "45c6b2561b3a63f4164874a88c97f42c5c4bf1f11888d075340659aca41b2c66"
 
+# Lane W2u -- P-STORM-HUNT, a 6h observation-only run (commit 57952fa,
+# single writer life, --restart-every unset/never) whose only job was to
+# see whether P-SOAK2's reader-side OSError/StateError failure storm would
+# recur under the D-088 bounded reader-error-message capture (merged
+# c3a5592) -- see README.md's "P-STORM-HUNT (6 h observation run,
+# 2026-09-17/18)" section. Every whole-file sha256 below is checked
+# against that section's own "Files added here" table, parsed out of
+# README.md itself via _readme_sha256_table -- scoped to just this
+# section (via _readme_section) because the table shares field labels
+# like **launched**: with P-SOAK2's section above, and a whole-README
+# regex search for those labels would risk matching the wrong lane's row.
+# Same discipline as B7's README-table checks above -- no separate
+# frozen-constant copy to drift.
+LONGEVITY_README = LONGEVITY_DIR / "README.md"
+LONGEVITY_MANIFEST_HUNT = LONGEVITY_DIR / "stormhunt-2026-09-17.json"
+LONGEVITY_RSS_SLOPES_HUNT = LONGEVITY_DIR / "rss_slopes-stormhunt.json"
+LONGEVITY_WRITER_ERRORS_BY_CLASS_HUNT = LONGEVITY_DIR / "writer_error_counts_by_class-stormhunt.json"
+LONGEVITY_HOST_LOAD_HUNT = LONGEVITY_DIR / "host_load-stormhunt.log"
+LONGEVITY_READER_OP_ERROR_HUNT = LONGEVITY_DIR / "reader_op_error-stormhunt.jsonl"
+LONGEVITY_READER_OP_ERROR_README_HUNT = LONGEVITY_DIR / "reader_op_error-stormhunt.README.txt"
+LONGEVITY_GATE_E_REPORT_HUNT = LONGEVITY_DIR / "gate_e_report-stormhunt.md"
+LONGEVITY_BUILD_INFO_HUNT = LONGEVITY_DIR / "build_info-stormhunt.log"
+
 # Lane W2t -- benchmarks/ldbc-ref-v1/, the LDBC reference-correctness run
 # (Claim C9's independent-validation axis). compare-2026-09-18.json is the
 # revision of record (README.md's "Revision of record" section);
@@ -610,6 +654,19 @@ def _readme_sha256_table(text: str) -> dict[str, str]:
     record's sha256 against its own README's table rather than a second,
     driftable frozen constant."""
     return dict(re.findall(r"\|\s*`([^`]+)`[^|]*\|\s*`([0-9a-f]{64})`\s*\|", text))
+
+
+def _readme_section(text: str, heading: str) -> str:
+    """Slice out one ``## <heading>...`` section of a README.md (from that
+    ``##`` heading to the next ``## `` heading, or EOF). Used so a per-lane
+    regex/table parse against a README with several lanes' sections never
+    accidentally matches another lane's row sharing the same field label
+    (e.g. benchmarks/longevity-v1/README.md's P-SOAK2 and P-STORM-HUNT
+    sections both have a ``**launched**:`` line)."""
+    match = re.search(rf"^## {re.escape(heading)}\b.*?(?=^## |\Z)", text,
+                       re.DOTALL | re.MULTILINE)
+    require(match is not None, f"README.md: no '## {heading}' section found")
+    return match.group(0) if match else ""
 
 
 def _sha256sums_table(text: str) -> set[str]:
@@ -4917,6 +4974,300 @@ def compute_longevity_verify_and_replay2(m: Macros) -> None:
 
 
 # --------------------------------------------------------------------------
+# W2u -- P-STORM-HUNT, the 6h observation-only run (commit 57952fa)
+# --------------------------------------------------------------------------
+
+def compute_longevity_soak_hunt(m: Macros) -> None:
+    """Lane W2u: P-STORM-HUNT, a 6h observation-only run (commit
+    ``57952fa``, single writer life, ``--restart-every`` unset) whose only
+    job was to see whether P-SOAK2's reader-side ``OSError``/``StateError``
+    failure storm would recur under the D-088 bounded reader-error-message
+    capture merged at ``c3a5592`` -- see README.md's "P-STORM-HUNT (6 h
+    observation run, 2026-09-17/18)" section. It did not recur (0 reader
+    errors, 0 ``reader_op_error`` events); all 175 errors this run reported
+    are the same writer-side ``NotFoundError`` correction-race class
+    documented for both soaks. Unlike P-SOAK2, both reader RSS slopes
+    (11.4-12.5 kB/s) exceed the 10 kB/s frozen bound. No verdict macro --
+    Gate E's own PASS/FAIL/FLAG table is gate_e_report-stormhunt.md, not
+    this script; ``osdiSoakHuntPatternReproduced`` states the
+    pre-registration's own clause (e) non-conclusion in its provenance,
+    not as a scored number.
+    """
+    readme_text = LONGEVITY_README.read_text(encoding="utf-8")
+    section = _readme_section(readme_text, "P-STORM-HUNT")
+    readme_sha = _readme_sha256_table(section)
+
+    for path in (LONGEVITY_MANIFEST_HUNT, LONGEVITY_RSS_SLOPES_HUNT,
+                 LONGEVITY_WRITER_ERRORS_BY_CLASS_HUNT, LONGEVITY_HOST_LOAD_HUNT,
+                 LONGEVITY_READER_OP_ERROR_HUNT, LONGEVITY_READER_OP_ERROR_README_HUNT,
+                 LONGEVITY_GATE_E_REPORT_HUNT, LONGEVITY_BUILD_INFO_HUNT):
+        name = path.name
+        require(name in readme_sha,
+                f"{relpath(path)}: {name} not found in README.md's P-STORM-HUNT "
+                "Files-added-here table")
+        if name in readme_sha:
+            eq(sha256_file(path), readme_sha[name],
+               f"{relpath(path)}: sha256 matches README.md's P-STORM-HUNT "
+               "Files-added-here table")
+
+    # --- commit, duration, single writer life, no designed restarts ---
+    manifest = json.loads(LONGEVITY_MANIFEST_HUNT.read_text(encoding="utf-8"))
+    summary = manifest["summary"]
+    eq(manifest["git_commit"], "57952fa", "StormHunt frozen: measured commit")
+    config = manifest["config"]
+    duration_s = config["duration_s"]
+    eq(duration_s, 21_600.0, "StormHunt frozen: configured soak duration_s (6h)")
+    eq(config["restart_every_s"], 0.0,
+       "StormHunt frozen: config.restart_every_s is 0.0 -- --restart-every unset/never")
+    writer_lives = summary["writer_totals_all_lives"]["lives"]
+    eq(writer_lives, 1, "StormHunt frozen: summary.writer_totals_all_lives.lives")
+    recoveries = summary["recoveries"]
+    eq(recoveries, 0, "StormHunt frozen: summary.recoveries (designed restarts)")
+    reader_restarts = summary["reader_restarts"]
+    eq(reader_restarts, 0, "StormHunt frozen: summary.reader_restarts")
+
+    require(summary["verify_healthy"] is True,
+            "StormHunt: summary.verify_healthy is the JSON literal true")
+    require(summary["digest_equal"] is True,
+            "StormHunt: summary.digest_equal is the JSON literal true -- the (unscored) "
+            "end-of-run replay completed")
+
+    total_batches = summary["total_batches"]
+    eq(total_batches, 476_813,
+       "StormHunt frozen: summary.total_batches (the unscored end-of-run replay's own "
+       "batch count)")
+
+    # --- end-of-phase edge rows: the manifest's own final_stats field
+    # carries it directly, so no compactions.jsonl fallback is needed here
+    # (unlike a record that omits it) ---
+    n_edge_versions = summary["final_stats"]["n_edge_versions"]
+    eq(n_edge_versions, 1_402_818, "StormHunt frozen: summary.final_stats.n_edge_versions")
+
+    # --- writer within-run RSS slope (single life, no restarts -> one fit) ---
+    rss_doc = json.loads(LONGEVITY_RSS_SLOPES_HUNT.read_text(encoding="utf-8"))
+    writer_life_rows = rss_doc["writer_lives"]
+    eq(len(writer_life_rows), writer_lives,
+       "StormHunt: rss_slopes-stormhunt.json writer_lives row count matches "
+       "summary.writer_totals_all_lives.lives")
+    eq(writer_life_rows[0]["life"], 0, "StormHunt: the sole writer life is life 0")
+    writer_slope = writer_life_rows[0]["slope_kb_per_s_least_squares"]
+    eq(round(writer_slope, 3), 20.444,
+       "StormHunt frozen: writer within-run RSS slope, kB/s (least squares)")
+    frozen_bound_writer = rss_doc["frozen_bound_writer_kb_per_s"]
+    eq(frozen_bound_writer, 50, "StormHunt frozen: rss_slopes-stormhunt.json "
+       "frozen_bound_writer_kb_per_s")
+    require(writer_slope <= frozen_bound_writer,
+            "StormHunt: the writer's within-run RSS slope PASSes the frozen 50 kB/s bound")
+    writer_slope_1dp = round(writer_slope, 1)
+    eq(f"{writer_slope_1dp:.1f}", "20.4",
+       "StormHunt frozen: writer slope rounded to 1dp matches README.md's own "
+       "\"coordinator's independently-computed value\" of 20.4 kB/s")
+
+    # --- reader within-run RSS slopes: 8 readers, reader_restarts=0 so
+    # exactly one fitted segment each -- unlike P-SOAK2, EVERY reader here
+    # exceeds (fails) the frozen 10 kB/s bound ---
+    reader_rows = rss_doc["readers"]
+    eq(len(reader_rows), 8, "StormHunt frozen: rss_slopes-stormhunt.json readers row count")
+    reader_slopes = [row["slope_kb_per_s_least_squares"] for row in reader_rows.values()]
+    frozen_bound_reader = rss_doc["frozen_bound_reader_kb_per_s"]
+    eq(frozen_bound_reader, 10, "StormHunt frozen: rss_slopes-stormhunt.json "
+       "frozen_bound_reader_kb_per_s")
+    require(all(s > frozen_bound_reader for s in reader_slopes),
+            "StormHunt: every reader's within-run RSS slope EXCEEDS the frozen 10 kB/s "
+            "bound -- unlike P-SOAK2, where every reader passed under it")
+    reader_min = min(reader_slopes)
+    reader_max = max(reader_slopes)
+    eq(round(reader_min, 3), 11.362, "StormHunt frozen: reader within-run slope min, kB/s")
+    eq(round(reader_max, 3), 12.543, "StormHunt frozen: reader within-run slope max, kB/s")
+    reader_min_1dp = round(reader_min, 1)
+    reader_max_1dp = round(reader_max, 1)
+    eq(f"{reader_min_1dp:.1f}", "11.4",
+       "StormHunt frozen: reader slope min rounded to 1dp matches README.md's stated range")
+    eq(f"{reader_max_1dp:.1f}", "12.5",
+       "StormHunt frozen: reader slope max rounded to 1dp matches README.md's stated range")
+
+    # --- writer errors: 175, all one exception class, cross-checked
+    # against the manifest's own cumulative counters ---
+    by_class = json.loads(LONGEVITY_WRITER_ERRORS_BY_CLASS_HUNT.read_text(encoding="utf-8"))
+    total_writer_errors = by_class["total_writer_errors"]
+    eq(total_writer_errors, 175,
+       "StormHunt frozen: writer_error_counts_by_class-stormhunt.json total_writer_errors")
+    writer_by_class = by_class["writer_by_class"]
+    eq(writer_by_class, {"NotFoundError": 175},
+       "StormHunt frozen: writer_by_class -- the sole exception class, and its full count")
+    eq(total_writer_errors, summary["error_count"],
+       "StormHunt: total_writer_errors matches manifest's own summary.error_count "
+       "(reader_errors_total=0 and unexpected_writer_deaths=0, so the two totals coincide)")
+    eq(total_writer_errors, summary["writer_totals_all_lives"]["errors"],
+       "StormHunt: total_writer_errors matches manifest's own "
+       "writer_totals_all_lives.errors")
+
+    # --- reader errors: 0, and 0 reader_op_error events captured despite
+    # the D-088 capture (c3a5592) being armed for the whole run ---
+    reader_errors_total = by_class["reader_errors_total"]
+    eq(reader_errors_total, 0,
+       "StormHunt frozen: writer_error_counts_by_class-stormhunt.json reader_errors_total")
+    eq(reader_errors_total, summary["reader_errors_total"],
+       "StormHunt: reader_errors_total matches manifest's own summary.reader_errors_total")
+    reader_op_error_events = by_class["reader_op_error_events"]
+    eq(reader_op_error_events, 0,
+       "StormHunt frozen: writer_error_counts_by_class-stormhunt.json reader_op_error_events")
+    capture_commit = by_class["capture_code_commit"]
+    eq(capture_commit, "c3a5592",
+       "StormHunt frozen: writer_error_counts_by_class-stormhunt.json capture_code_commit "
+       "(D-088, the bounded reader-error-message capture)")
+
+    reader_op_error_text = LONGEVITY_READER_OP_ERROR_HUNT.read_text(encoding="utf-8")
+    require(reader_op_error_text == "",
+            f"{relpath(LONGEVITY_READER_OP_ERROR_HUNT)}: file is empty (0 bytes) -- 0 "
+            "reader_op_error events captured over the whole run")
+    reader_op_error_readme = LONGEVITY_READER_OP_ERROR_README_HUNT.read_text(encoding="utf-8")
+    require("0 reader_op_error events" in reader_op_error_readme,
+            f"{relpath(LONGEVITY_READER_OP_ERROR_README_HUNT)}: names the 0 "
+            "reader_op_error events finding")
+    require(capture_commit in reader_op_error_readme,
+            f"{relpath(LONGEVITY_READER_OP_ERROR_README_HUNT)}: names the same capture "
+            f"commit ({capture_commit}) as writer_error_counts_by_class-stormhunt.json")
+
+    # --- build info: release build, matching commit, cross-checked
+    # against README.md's own quoted build_info fields ---
+    build_info_text = LONGEVITY_BUILD_INFO_HUNT.read_text(encoding="utf-8")
+    build_fields = dict(re.findall(r"(\w+)=(\S+)", build_info_text))
+    eq(build_fields.get("commit"), manifest["git_commit"],
+       f"{relpath(LONGEVITY_BUILD_INFO_HUNT)}: commit matches manifest's own git_commit")
+    eq(build_fields.get("profile"), "release",
+       f"{relpath(LONGEVITY_BUILD_INFO_HUNT)}: profile")
+    eq(build_fields.get("debug_assertions"), "False",
+       f"{relpath(LONGEVITY_BUILD_INFO_HUNT)}: debug_assertions")
+    eq(build_fields.get("engine_version"), "0.8.0",
+       f"{relpath(LONGEVITY_BUILD_INFO_HUNT)}: engine_version")
+    eq(build_fields.get("manifest_format_version"), "3",
+       f"{relpath(LONGEVITY_BUILD_INFO_HUNT)}: manifest_format_version")
+
+    # --- host load (1-min averages), scoped to the run's own 6h window --
+    # the log carries one further post-run sample (taken during the
+    # unscored verify/replay step) that README.md's own prose explicitly
+    # excludes from the range it states, so the window boundary is derived
+    # from the section's own **launched**: timestamp + config.duration_s,
+    # not hard-coded as "drop the last line" ---
+    launched_match = re.search(r"\*\*launched\*\*:\s*([0-9T:Z-]+);", section)
+    require(launched_match is not None,
+            "README.md: P-STORM-HUNT section has a **launched**: timestamp")
+    launched_dt = datetime.strptime(launched_match.group(1), "%Y-%m-%dT%H:%M:%SZ")
+    window_end_dt = launched_dt + timedelta(seconds=duration_s)
+
+    host_load_text = LONGEVITY_HOST_LOAD_HUNT.read_text(encoding="utf-8")
+    blocks = re.findall(
+        r"=== HOST_LOAD (\S+) ===\n(.*?)(?=(?:=== HOST_LOAD |\Z))",
+        host_load_text, re.DOTALL)
+    eq(len(blocks), 8,
+       "StormHunt frozen: host_load-stormhunt.log HOST_LOAD sample count "
+       "(7 in-window + 1 post-run verify/replay sample)")
+    samples: list[tuple[datetime, float]] = []
+    for ts_str, block in blocks:
+        load_match = re.search(r"load average:\s*([\d.]+),", block)
+        require(load_match is not None,
+                f"host_load-stormhunt.log: HOST_LOAD {ts_str} block has a load average line")
+        if load_match:
+            samples.append((datetime.strptime(ts_str, "%Y-%m-%dT%H:%M:%SZ"),
+                             float(load_match.group(1))))
+    in_window = [load for ts, load in samples if ts <= window_end_dt]
+    post_run = [load for ts, load in samples if ts > window_end_dt]
+    eq(len(in_window), 7,
+       "StormHunt: host_load-stormhunt.log samples at/before launched + duration_s "
+       "(the run's own 6h window)")
+    eq(len(post_run), 1,
+       "StormHunt: exactly one host_load-stormhunt.log sample after the run's own 6h "
+       "window (the unscored post-run verify/replay step)")
+    eq(round(post_run[0], 2), 3.56,
+       "StormHunt frozen: the one post-run sample's 1-min load average")
+    host_load_min = min(in_window)
+    host_load_max = max(in_window)
+    eq(round(host_load_min, 2), 10.79, "StormHunt frozen: in-window host load min, 1-min avg")
+    eq(round(host_load_max, 2), 48.95, "StormHunt frozen: in-window host load max, 1-min avg")
+
+    # --- clause (e): the pre-registration's own non-conclusion for a
+    # negative result at this duration/edge-row count, quoted from
+    # README.md's own Outcome paragraph rather than paraphrased here ---
+    outcome_match = re.search(
+        r"\*\*Outcome, stated exactly as the pre-registration's clause \(e\):\*\*\s*(.+?)\n\n",
+        section, re.DOTALL)
+    require(outcome_match is not None,
+            "README.md: P-STORM-HUNT section has an Outcome/clause (e) paragraph")
+    outcome_text = " ".join(outcome_match.group(1).split()) if outcome_match else ""
+    require("not reproduced within 6 h at 1.40M edge rows" in outcome_text,
+            "README.md: clause (e) outcome names the not-reproduced-within-6h-at-1.40M-"
+            "edge-rows finding")
+    require("not evidence that it is gone" in outcome_text,
+            "README.md: clause (e) outcome carries the not-evidence-it-is-gone qualifier")
+    eq(round(n_edge_versions / 1e6, 2), 1.40,
+       "StormHunt: recomputed final_stats.n_edge_versions / 1e6 matches the outcome "
+       "paragraph's own \"1.40M edge rows\" figure")
+
+    # --- emit macros ---
+    m.add("osdiSoakCommitHunt", manifest["git_commit"],
+          f"{relpath(LONGEVITY_MANIFEST_HUNT)}: git_commit")
+    m.add("osdiSoakDurationSHunt", tex_num(int(duration_s)),
+          f"{relpath(LONGEVITY_MANIFEST_HUNT)}: config.duration_s")
+    m.add("osdiSoakWriterLivesHunt", tex_num(writer_lives),
+          f"{relpath(LONGEVITY_MANIFEST_HUNT)}: summary.writer_totals_all_lives.lives")
+    m.add("osdiSoakRecoveriesHunt", tex_num(recoveries),
+          f"{relpath(LONGEVITY_MANIFEST_HUNT)}: summary.recoveries (designed restarts; "
+          "config.restart_every_s == 0.0, so none were scheduled)")
+    m.add("osdiSoakWriterWithinLifeSlopeKBpsHunt", f"{writer_slope_1dp:.1f}",
+          f"{relpath(LONGEVITY_RSS_SLOPES_HUNT)}: writer_lives[0]."
+          "slope_kb_per_s_least_squares, rounded to 1dp (single writer life, no restarts)")
+    m.add("osdiSoakReaderWithinLifeSlopeMinKBpsHunt", f"{reader_min_1dp:.1f}",
+          f"{relpath(LONGEVITY_RSS_SLOPES_HUNT)}: min(readers[*].slope_kb_per_s_least_squares), "
+          "8 readers, rounded to 1dp")
+    m.add("osdiSoakReaderWithinLifeSlopeMaxKBpsHunt", f"{reader_max_1dp:.1f}",
+          f"{relpath(LONGEVITY_RSS_SLOPES_HUNT)}: max(readers[*].slope_kb_per_s_least_squares), "
+          "rounded to 1dp")
+    m.add("osdiSoakDigestEqualHunt", "true",
+          f"{relpath(LONGEVITY_MANIFEST_HUNT)}: summary.digest_equal is the JSON literal "
+          "true (text macro, not a number)")
+    m.add("osdiSoakBatchesHunt", tex_num(total_batches),
+          f"{relpath(LONGEVITY_MANIFEST_HUNT)}: summary.total_batches (the unscored "
+          "end-of-run replay's own batch count)")
+    m.add("osdiSoakVerifyHealthyHunt", "true",
+          f"{relpath(LONGEVITY_MANIFEST_HUNT)}: summary.verify_healthy is the JSON literal "
+          "true (text macro, not a number)")
+    m.add("osdiSoakWriterErrorsTrueHunt", tex_num(total_writer_errors),
+          f"{relpath(LONGEVITY_WRITER_ERRORS_BY_CLASS_HUNT)}: total_writer_errors, "
+          "cross-checked against manifest's own error_count and "
+          "writer_totals_all_lives.errors")
+    m.add("osdiSoakWriterErrorsClassHunt", "NotFoundError",
+          f"{relpath(LONGEVITY_WRITER_ERRORS_BY_CLASS_HUNT)}: the sole key of "
+          "writer_by_class (text macro, not a number)")
+    m.add("osdiSoakReaderErrorsTrueHunt", tex_num(reader_errors_total),
+          f"{relpath(LONGEVITY_WRITER_ERRORS_BY_CLASS_HUNT)}: reader_errors_total, "
+          "cross-checked against manifest's own summary.reader_errors_total")
+    m.add("osdiSoakReaderOpErrorEventsHunt", tex_num(reader_op_error_events),
+          f"{relpath(LONGEVITY_WRITER_ERRORS_BY_CLASS_HUNT)}: reader_op_error_events -- "
+          f"cross-checked against {relpath(LONGEVITY_READER_OP_ERROR_HUNT)} being empty "
+          "(0 bytes)")
+    m.add("osdiSoakReaderOpErrorCaptureCommitHunt", capture_commit,
+          f"{relpath(LONGEVITY_WRITER_ERRORS_BY_CLASS_HUNT)}: capture_code_commit -- D-088, "
+          "the bounded reader-error-message capture, armed for the whole 6h run (text "
+          "macro, not a number)")
+    m.add("osdiSoakEdgeRowsHunt", tex_num(n_edge_versions),
+          f"{relpath(LONGEVITY_MANIFEST_HUNT)}: summary.final_stats.n_edge_versions "
+          "(the record carries this field directly; no compactions.jsonl fallback needed)")
+    m.add("osdiSoakHostLoadMinHunt", f"{host_load_min:.2f}",
+          f"{relpath(LONGEVITY_HOST_LOAD_HUNT)}: min(1-min load averages), the 7 samples "
+          "at/before launched + config.duration_s (the run's own 6h window)")
+    m.add("osdiSoakHostLoadMaxHunt", f"{host_load_max:.2f}",
+          f"{relpath(LONGEVITY_HOST_LOAD_HUNT)}: max(1-min load averages), same window "
+          "(excludes the one post-run verify/replay-step sample)")
+    m.add("osdiSoakHuntPatternReproduced", "false",
+          f"README.md P-STORM-HUNT section, quoted verbatim (its own clause (e) wording): "
+          f"\"{outcome_text}\" -- the P-SOAK2 reader OSError/StateError storm "
+          "(osdiSoakReaderErrorsTrueHunt = 0) was not reproduced within this 6h/1.40M-"
+          "edge-row observation window; per the pre-registration's own clause (e), that "
+          "negative result is not evidence the pattern is gone (text macro, not a number)")
+
+
+# --------------------------------------------------------------------------
 # W-lane -- P-OV1, the xzgpu-calibrated overload sweep (EXP-B4):
 # does tgms.tools.limits.ConcurrencyGate engage once open-loop callers
 # outrun the service, and does the service recover once load drops.
@@ -6250,6 +6601,7 @@ def main() -> int:
     compute_longevity_rederived(m)
     compute_longevity_soak_two(m)
     compute_longevity_verify_and_replay2(m)
+    compute_longevity_soak_hunt(m)
     compute_overload(m)
     compute_c10_live_osv(m)
     compute_ldbc_ref_v1(m)

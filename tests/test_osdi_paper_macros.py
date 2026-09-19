@@ -91,6 +91,7 @@ def _run_all_landed(mod):
     mod.compute_longevity_rederived(m)
     mod.compute_longevity_soak_two(m)
     mod.compute_longevity_verify_and_replay2(m)
+    mod.compute_longevity_soak_hunt(m)
     mod.compute_overload(m)
     mod.compute_c10_live_osv(m)
     mod.compute_ldbc_ref_v1(m)
@@ -500,6 +501,27 @@ FROZEN_LANDED_VALUES = {
     "osdiSoakReplay2RssSamples": "101",
     "osdiSoakReplay2DigestEqual": "true",
     "osdiSoakReplay2DigestPrefix": "8eb9bc26",
+    # Lane W2u: P-STORM-HUNT, the 6h observation-only run (commit 57952fa)
+    # -- compute_longevity_soak_hunt above.
+    "osdiSoakCommitHunt": "57952fa",
+    "osdiSoakDurationSHunt": "21{,}600",
+    "osdiSoakWriterLivesHunt": "1",
+    "osdiSoakRecoveriesHunt": "0",
+    "osdiSoakWriterWithinLifeSlopeKBpsHunt": "20.4",
+    "osdiSoakReaderWithinLifeSlopeMinKBpsHunt": "11.4",
+    "osdiSoakReaderWithinLifeSlopeMaxKBpsHunt": "12.5",
+    "osdiSoakDigestEqualHunt": "true",
+    "osdiSoakBatchesHunt": "476{,}813",
+    "osdiSoakVerifyHealthyHunt": "true",
+    "osdiSoakWriterErrorsTrueHunt": "175",
+    "osdiSoakWriterErrorsClassHunt": "NotFoundError",
+    "osdiSoakReaderErrorsTrueHunt": "0",
+    "osdiSoakReaderOpErrorEventsHunt": "0",
+    "osdiSoakReaderOpErrorCaptureCommitHunt": "c3a5592",
+    "osdiSoakEdgeRowsHunt": "1{,}402{,}818",
+    "osdiSoakHostLoadMinHunt": "10.79",
+    "osdiSoakHostLoadMaxHunt": "48.95",
+    "osdiSoakHuntPatternReproduced": "false",
     # Lane W-lane: P-OV1, the xzgpu-calibrated overload sweep -- compute_overload above.
     "osdiOverloadCommit": "ebe1dc2",
     "osdiOverloadMaxConcurrent": "8",
@@ -2141,6 +2163,141 @@ def test_tampered_longevity_replay_check_2_digest_equal_false_fails_even_with_pa
     mod.compute_longevity_verify_and_replay2(m)
     assert mod.FAILURES, "summary.digest_equal == False must fail the generator's own " \
         "require(... is True) check, even with a patched whole-file digest"
+    assert any("digest_equal" in f for f in mod.FAILURES)
+
+
+def test_longevity_soak_hunt_text_macros_are_never_numbers():
+    """osdiSoakDigestEqualHunt/osdiSoakVerifyHealthyHunt ('true'),
+    osdiSoakWriterErrorsClassHunt ('NotFoundError'),
+    osdiSoakReaderOpErrorCaptureCommitHunt ('c3a5592'), and
+    osdiSoakHuntPatternReproduced ('false') must render as those exact
+    strings, not get coerced through int()/float() anywhere upstream."""
+    mod = _load("osdi_paper_macros")
+    m = mod.Macros()
+    mod.compute_longevity_soak_hunt(m)
+    assert mod.FAILURES == []
+    values = {name: value for name, value, _ in m.items}
+    for name in ("osdiSoakDigestEqualHunt", "osdiSoakVerifyHealthyHunt",
+                 "osdiSoakWriterErrorsClassHunt", "osdiSoakReaderOpErrorCaptureCommitHunt",
+                 "osdiSoakHuntPatternReproduced"):
+        with pytest.raises(ValueError):
+            float(values[name])
+    assert values["osdiSoakDigestEqualHunt"] == "true"
+    assert values["osdiSoakVerifyHealthyHunt"] == "true"
+    assert values["osdiSoakWriterErrorsClassHunt"] == "NotFoundError"
+    assert values["osdiSoakReaderOpErrorCaptureCommitHunt"] == "c3a5592"
+    assert values["osdiSoakHuntPatternReproduced"] == "false"
+
+
+def test_longevity_soak_hunt_pattern_reproduced_quotes_readme_clause_e():
+    """osdiSoakHuntPatternReproduced's provenance must quote README.md's
+    own clause (e) outcome sentence verbatim (not a paraphrase), and the
+    macro's own value must be the literal string 'false'."""
+    mod = _load("osdi_paper_macros")
+    m = mod.Macros()
+    mod.compute_longevity_soak_hunt(m)
+    assert mod.FAILURES == []
+    by_name = {name: (value, provenance) for name, value, provenance in m.items}
+    value, provenance = by_name["osdiSoakHuntPatternReproduced"]
+    assert value == "false"
+    assert "not reproduced within 6 h at 1.40M edge rows" in provenance
+    assert "not evidence that it is gone" in provenance
+
+
+def test_longevity_soak_hunt_reader_slopes_all_exceed_frozen_bound():
+    """Unlike P-SOAK2 (every reader passes the 10 kB/s bound), every
+    P-STORM-HUNT reader EXCEEDS it -- min/max must both be > 10, and the
+    generator's own require() must have checked this, not just recomputed
+    a min/max that happens to be consistent with it."""
+    mod = _load("osdi_paper_macros")
+    m = mod.Macros()
+    mod.compute_longevity_soak_hunt(m)
+    assert mod.FAILURES == []
+    values = {name: value for name, value, _ in m.items}
+    assert float(values["osdiSoakReaderWithinLifeSlopeMinKBpsHunt"]) > 10.0
+    assert float(values["osdiSoakReaderWithinLifeSlopeMaxKBpsHunt"]) > 10.0
+
+
+def test_longevity_soak_hunt_host_load_min_max_exclude_post_run_sample():
+    """host_load-stormhunt.log carries one further sample (06:01:21Z, load
+    3.56) taken after the run's own --duration 6h clock elapsed, during
+    the unscored post-run verify/replay step. The frozen min/max
+    (10.79/48.95) must come from the 7 in-window samples only -- if the
+    window boundary were computed wrong (or dropped) and the 3.56 sample
+    leaked in, the min would come out 3.56, not 10.79."""
+    mod = _load("osdi_paper_macros")
+    m = mod.Macros()
+    mod.compute_longevity_soak_hunt(m)
+    assert mod.FAILURES == []
+    values = {name: value for name, value, _ in m.items}
+    assert values["osdiSoakHostLoadMinHunt"] == "10.79"
+    assert values["osdiSoakHostLoadMaxHunt"] == "48.95"
+
+
+def test_tampered_longevity_manifest_hunt_sha256_mismatch_fails(tmp_path):
+    """stormhunt-2026-09-17.json is in README.md's "P-STORM-HUNT (6 h
+    observation run, 2026-09-17/18)" Files-added-here sha256 table -- an
+    edited copy (even a field this generator never reads) must fail
+    before any commit/duration/error-count figure is trusted."""
+    mod = _load("osdi_paper_macros")
+    data = json.loads(mod.LONGEVITY_MANIFEST_HUNT.read_text(encoding="utf-8"))
+    data["summary"]["compactions"] = 999999
+    tampered = tmp_path / "stormhunt-2026-09-17.json"
+    tampered.write_text(json.dumps(data), encoding="utf-8")
+
+    mod.LONGEVITY_MANIFEST_HUNT = tampered
+    m = mod.Macros()
+    mod.compute_longevity_soak_hunt(m)
+    assert mod.FAILURES, "an edited stormhunt-2026-09-17.json must fail the sha256 " \
+        "check against README.md's P-STORM-HUNT Files-added-here table"
+    assert any("sha256" in f.lower() for f in mod.FAILURES)
+
+
+def test_tampered_longevity_rss_slopes_hunt_sha256_mismatch_fails(tmp_path):
+    """rss_slopes-stormhunt.json is also in that sha256 table -- an edited
+    copy must fail even though every value it carries (writer/reader
+    slopes, frozen bounds) would otherwise recompute self-consistently."""
+    mod = _load("osdi_paper_macros")
+    data = json.loads(mod.LONGEVITY_RSS_SLOPES_HUNT.read_text(encoding="utf-8"))
+    data["readers"]["0"]["slope_kb_per_s_least_squares"] = 1.0
+    tampered = tmp_path / "rss_slopes-stormhunt.json"
+    tampered.write_text(json.dumps(data), encoding="utf-8")
+
+    mod.LONGEVITY_RSS_SLOPES_HUNT = tampered
+    m = mod.Macros()
+    mod.compute_longevity_soak_hunt(m)
+    assert mod.FAILURES, "an edited rss_slopes-stormhunt.json must fail the sha256 " \
+        "check against README.md's P-STORM-HUNT Files-added-here table"
+    assert any("sha256" in f.lower() for f in mod.FAILURES)
+
+
+def test_tampered_longevity_soak_hunt_digest_equal_false_fails_even_with_patched_readme_sha256(tmp_path):
+    """A manifest reporting digest_equal=False must fail the generator's
+    own require(... is True) check, even with a patched copy of
+    README.md's own sha256 table that matches the tampered file, rather
+    than silently emitting a wrong 'true' macro."""
+    mod = _load("osdi_paper_macros")
+    data = json.loads(mod.LONGEVITY_MANIFEST_HUNT.read_text(encoding="utf-8"))
+    data["summary"]["digest_equal"] = False
+    tampered_manifest = tmp_path / "stormhunt-2026-09-17.json"
+    tampered_manifest.write_text(json.dumps(data), encoding="utf-8")
+    new_hash = hashlib.sha256(tampered_manifest.read_bytes()).hexdigest()
+
+    readme_text = mod.LONGEVITY_README.read_text(encoding="utf-8")
+    old_row = ("| `stormhunt-2026-09-17.json` | "
+               "`74ba7c15651bc6cd04895a3deb4b25dfd61a93d5c0d123ffb6923679e2fda661` |")
+    assert old_row in readme_text, "the literal table row to patch was not found"
+    patched_readme_text = readme_text.replace(
+        old_row, f"| `stormhunt-2026-09-17.json` | `{new_hash}` |")
+    tampered_readme = tmp_path / "README.md"
+    tampered_readme.write_text(patched_readme_text, encoding="utf-8")
+
+    mod.LONGEVITY_README = tampered_readme
+    mod.LONGEVITY_MANIFEST_HUNT = tampered_manifest
+    m = mod.Macros()
+    mod.compute_longevity_soak_hunt(m)
+    assert mod.FAILURES, "summary.digest_equal == False must fail the generator's own " \
+        "require(... is True) check, even with a patched README sha256 table"
     assert any("digest_equal" in f for f in mod.FAILURES)
 
 
