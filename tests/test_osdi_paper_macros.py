@@ -411,6 +411,10 @@ FROZEN_LANDED_VALUES = {
     "osdiSoakSegmentGrowthBpsTwo": "2{,}396.455",
     "osdiSoakEntitiesEndTwo": "3{,}092{,}488",
     "osdiSoakCompactionsTwo": "4215",
+    "osdiSoakReaderOnsetEarliestRowsTwo": "2{,}235{,}044",
+    "osdiSoakReaderOnsetLatestRowsTwo": "2{,}450{,}815",
+    "osdiSoakReaderOnsetEarliestSTwo": "61417.1",
+    "osdiSoakReaderOnsetLatestSTwo": "75993.1",
     "osdiLiveDays": "1.89",
     "osdiLiveAdvisories": "32{,}827",
     "osdiLiveCorrections": "1",
@@ -2077,6 +2081,65 @@ def test_tampered_verify_full_soak2_overlap_finding_fails_even_with_patched_dige
     assert mod.FAILURES, "a fabricated believed-versions-overlap finding must fail, " \
         "even with a patched whole-file digest"
     assert any("PROBLEMS" in f or "believed-versions-overlap" in f for f in mod.FAILURES)
+
+
+def test_tampered_longevity_compactions_two_sha256_mismatch_fails(tmp_path):
+    """compactions-2.jsonl (appended 2026-09-18) is in README.md's Soak 2
+    Files-added-here table -- an edited copy (even a line the generator
+    never re-derives from directly) must fail before the reader-onset
+    edge-row macros are trusted."""
+    mod = _load("osdi_paper_macros")
+    lines = mod.LONGEVITY_COMPACTIONS_TWO.read_text(encoding="utf-8").splitlines()
+    lines[0] = lines[0].replace('"edge_rows": 1000376', '"edge_rows": 999999')
+    tampered = tmp_path / "compactions-2.jsonl"
+    tampered.write_text("\n".join(lines) + "\n", encoding="utf-8")
+
+    mod.LONGEVITY_COMPACTIONS_TWO = tampered
+    m = mod.Macros()
+    mod.compute_longevity_soak_two(m)
+    assert mod.FAILURES, "an edited compactions-2.jsonl must fail the sha256 check " \
+        "against README.md's Files-added-here table"
+    assert any("sha256" in f.lower() for f in mod.FAILURES)
+
+
+def test_tampered_reader_onset_rows_two_sha256_mismatch_fails(tmp_path):
+    """reader_onset_rows-2.json (appended 2026-09-18) is also in that
+    sha256 table -- an edited copy must fail before either
+    osdiSoakReaderOnset*Two macro is trusted."""
+    mod = _load("osdi_paper_macros")
+    data = json.loads(mod.LONGEVITY_READER_ONSET_ROWS_TWO.read_text(encoding="utf-8"))
+    data["earliest_reader_onset"]["last_compaction_before"]["edge_rows"] = 1
+    tampered = tmp_path / "reader_onset_rows-2.json"
+    tampered.write_text(json.dumps(data), encoding="utf-8")
+
+    mod.LONGEVITY_READER_ONSET_ROWS_TWO = tampered
+    m = mod.Macros()
+    mod.compute_longevity_soak_two(m)
+    assert mod.FAILURES, "an edited reader_onset_rows-2.json must fail the sha256 check"
+    assert any("sha256" in f.lower() for f in mod.FAILURES)
+
+
+def test_tampered_reader_onset_rows_two_wrong_reader_fails_even_with_patched_digest(tmp_path):
+    """reader_onset_rows-2.json's earliest/latest onset must actually be the
+    minimum/maximum onset_t_plus_s across all 8 readers in
+    reader_error_counts_by_class-2.json's own osrror_storm_onset_by_reader --
+    swapping in a reader that is not the true extremum, with the whole-file
+    digest patched to match, must still fail that cross-check."""
+    mod = _load("osdi_paper_macros")
+    data = json.loads(mod.LONGEVITY_READER_ONSET_ROWS_TWO.read_text(encoding="utf-8"))
+    data["earliest_reader_onset"]["reader"] = 4
+    data["earliest_reader_onset"]["onset_t_plus_s"] = 75993.1
+    tampered = tmp_path / "reader_onset_rows-2.json"
+    tampered.write_text(json.dumps(data), encoding="utf-8")
+    mod.LONGEVITY_READER_ONSET_ROWS_TWO_SHA256 = hashlib.sha256(
+        tampered.read_bytes()).hexdigest()
+
+    mod.LONGEVITY_READER_ONSET_ROWS_TWO = tampered
+    m = mod.Macros()
+    mod.compute_longevity_soak_two(m)
+    assert mod.FAILURES, "an earliest_reader_onset that is not the true minimum " \
+        "onset_t_plus_s across all 8 readers must fail, even with a patched whole-file digest"
+    assert any("minimum onset_t_plus_s" in f for f in mod.FAILURES)
 
 
 def test_tampered_longevity_verify_full_sha256_mismatch_fails(tmp_path):
