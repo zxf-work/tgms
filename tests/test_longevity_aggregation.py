@@ -205,3 +205,77 @@ def test_replay_has_a_compact_every_hook() -> None:
     params = inspect.signature(replay_fn).parameters
     assert "compact_every" in params
     assert params["compact_every"].default is None
+
+
+def test_compaction_stall_computed_from_epoch_timestamps(tmp_path: Path) -> None:
+    """D-091: a compaction record's `t_start`/`t_end` are `time.perf_counter()`
+    (an arbitrary monotonic reference), never comparable to `metrics.jsonl`'s
+    `ts` (`time.time()`, epoch). This record carries the epoch-paired
+    `ts_start`/`ts_end` fields the fix adds; `summarize()` must use those
+    (not `t_start`/`t_end`) to window the reader p99 gauges and produce an
+    actual stall number."""
+    out_dir = tmp_path / "run-out"
+    out_dir.mkdir()
+
+    metrics_records = [
+        # Far before the compaction window (t in [1940, 2061]): must not
+        # contribute to the max.
+        {"ts": 1000.0, "kind": "gauge", "name": "query_p99_ms", "labels": {}, "value": 5.0},
+        # Inside the window: this is the value the stall must pick up.
+        {"ts": 2000.5, "kind": "gauge", "name": "query_p99_ms", "labels": {}, "value": 42.0},
+        # Far after the window: must not contribute either.
+        {"ts": 5000.0, "kind": "gauge", "name": "query_p99_ms", "labels": {}, "value": 7.0},
+    ]
+    _write_jsonl(out_dir / "metrics.jsonl", metrics_records)
+
+    compactions_path = out_dir / "compactions.jsonl"
+    _write_jsonl(compactions_path, [
+        {"t_start": 100.0, "t_end": 101.0, "ts_start": 2000.0, "ts_end": 2001.0,
+         "life": 0, "batches": 10, "compact": {}, "gc": {}},
+    ])
+
+    recoveries_path = out_dir / "recoveries.jsonl"
+    reader_restarts_path = out_dir / "reader_restarts.jsonl"
+    _write_jsonl(recoveries_path, [])
+    _write_jsonl(reader_restarts_path, [])
+
+    summary = LR.summarize(out_dir, out_dir / "metrics.jsonl", t_start=0.0,
+                           end_at=1.0, recoveries_path=recoveries_path,
+                           reader_restarts_path=reader_restarts_path,
+                           compactions_path=compactions_path)
+
+    assert summary["compaction_stall_computable"] is True
+    assert summary["compaction_stall_max_reader_p99_ms"] == 42.0
+
+
+def test_compaction_stall_not_computable_without_epoch_timestamps(tmp_path: Path) -> None:
+    """A compaction record written before this fix carries only `t_start`/
+    `t_end` (perf_counter). `summarize()` must not compare those against
+    epoch gauge timestamps (that comparison is the D-091 bug, and it always
+    silently produced 0.000 rather than an error) — it must instead report
+    the row as not computable."""
+    out_dir = tmp_path / "run-out"
+    out_dir.mkdir()
+
+    metrics_records = [
+        {"ts": 2000.5, "kind": "gauge", "name": "query_p99_ms", "labels": {}, "value": 42.0},
+    ]
+    _write_jsonl(out_dir / "metrics.jsonl", metrics_records)
+
+    compactions_path = out_dir / "compactions.jsonl"
+    _write_jsonl(compactions_path, [
+        {"t_start": 100.0, "t_end": 101.0, "batches": 10, "compact": {}, "gc": {}},
+    ])
+
+    recoveries_path = out_dir / "recoveries.jsonl"
+    reader_restarts_path = out_dir / "reader_restarts.jsonl"
+    _write_jsonl(recoveries_path, [])
+    _write_jsonl(reader_restarts_path, [])
+
+    summary = LR.summarize(out_dir, out_dir / "metrics.jsonl", t_start=0.0,
+                           end_at=1.0, recoveries_path=recoveries_path,
+                           reader_restarts_path=reader_restarts_path,
+                           compactions_path=compactions_path)
+
+    assert summary["compaction_stall_computable"] is False
+    assert summary["compaction_stall_max_reader_p99_ms"] is None
