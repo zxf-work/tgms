@@ -166,6 +166,22 @@ pub struct NativeStore {
     /// latency for memory. `TGMS_SEGMENT_CACHE_BYTES` overrides (0 =
     /// unbounded); the default is half of detected physical RAM (D-041).
     segments: std::sync::Mutex<SegmentCache>,
+    /// Bytes for every segment file this handle's generation names, mapped
+    /// once at open and re-pinned on every commit, compaction, or format
+    /// upgrade (D-088: `pin_generation_files`). This is the fix, not the
+    /// cache above: `open_segment`/`open_segment_uncached` serve from here
+    /// when present, so the protected set is the whole generation rather
+    /// than the subset a query happened to touch — gc's own doc comment
+    /// used to claim "segments via mmap" as the reason a collected file
+    /// stays readable, when mapping was really per-first-touch. Empty when
+    /// `TGMS_PIN_MAX_SEGMENTS` disables pinning for this handle (a store
+    /// whose segment count compaction does not bound), in which case
+    /// `open_segment` falls back to the pre-fix lazy `MmapSource::load`.
+    pinned_sources: std::sync::Mutex<HashMap<String, MmapSource>>,
+    /// Set once this handle has logged the `TGMS_PIN_MAX_SEGMENTS` fallback,
+    /// so a store that hovers around the cap does not spam a line per
+    /// commit.
+    pin_fallback_logged: std::sync::atomic::AtomicBool,
     /// Transaction time of the open batch, if any (`begin` .. `commit`).
     batch_tt: Option<i64>,
     /// True when the `CURRENT_ONLY` marker is present: the stripped
@@ -410,7 +426,7 @@ impl NativeStore {
             other_us: total_us.saturating_sub(named_us),
             total_us,
         };
-        Ok(Self {
+        let store = Self {
             root,
             pin_key,
             dict,
@@ -434,11 +450,22 @@ impl NativeStore {
                 std::env::var("TGMS_SEGMENT_CACHE_BYTES").ok().as_deref(),
                 detected_ram_bytes(),
             ))),
+            pinned_sources: std::sync::Mutex::new(HashMap::new()),
+            pin_fallback_logged: std::sync::atomic::AtomicBool::new(false),
             batch_tt: None,
             current_only,
             last_commit: None,
             open_phases,
-        })
+        };
+        // D-088: pin every file this generation's manifest names before
+        // handing back a handle a reader might carry across a writer's
+        // `gc(keep_last=…)`. Best-effort — a file missing here is either the
+        // open-vs-gc race the design memo accepts as (d)'s residual, or the
+        // `TGMS_PIN_MAX_SEGMENTS` ceiling, and either way `open_segment`'s
+        // lazy fallback (and the reopen-on-ENOENT net above the engine) is
+        // what actually surfaces a real problem.
+        store.pin_generation_files();
+        Ok(store)
     }
 
     /// Where the last commit spent its time, if this handle has committed.
@@ -739,6 +766,12 @@ impl NativeStore {
         self.merkle = manifest_chain::is_writable_format(next.format)
             .then(|| merkle::ManifestMerkle::from_manifest(&next));
         self.manifest = next;
+        // D-088: re-pin to the adopted generation's file set — compaction
+        // and the format upgrade both replace the whole segment list, so
+        // this is where a pinned source for a file the new generation no
+        // longer names gets dropped (mirrors `evict_segments_not_in` for
+        // the decoded cache).
+        self.pin_generation_files();
     }
 
     /// Move this handle's reader pin. Taken explicitly rather than read off
@@ -748,6 +781,104 @@ impl NativeStore {
     /// pin and stop gc from ever collecting that generation.
     fn repin(&self, from: u64, to: u64) {
         crate::gc::repin(&self.pin_key, from, to);
+    }
+
+    /// Map every segment file `self.manifest` currently names into
+    /// `pinned_sources`, dropping entries for files it no longer names, and
+    /// warm `close_cache` for this generation (D-088).
+    ///
+    /// Best-effort by design, not by omission: a segment file missing here
+    /// is either the open-vs-gc race the design memo's candidate (a) leaves
+    /// as (d)'s job, or corruption `verify`/the next real read will catch —
+    /// either way, failing the caller (open, a commit that already
+    /// published, a compaction that already installed) would be the wrong
+    /// failure mode. Above `TGMS_PIN_MAX_SEGMENTS` segments, pinning is
+    /// disabled for this handle entirely (logged once) and every segment
+    /// falls back to the pre-fix per-touch `MmapSource::load` in
+    /// `open_segment`/`open_segment_uncached`.
+    fn pin_generation_files(&self) {
+        let files = self.segment_files();
+        let total = files.edge.len() + files.node.len();
+        let cap = pin_max_segments();
+        {
+            let mut pinned = self
+                .pinned_sources
+                .lock()
+                .expect("pinned-sources mutex poisoned");
+            if total > cap {
+                pinned.clear();
+                self.log_pin_fallback(total, cap);
+            } else {
+                let names: std::collections::HashSet<&str> = files
+                    .edge
+                    .values()
+                    .chain(files.node.values())
+                    .map(String::as_str)
+                    .collect();
+                pinned.retain(|name, _| names.contains(name.as_str()));
+                for name in names {
+                    if pinned.contains_key(name) {
+                        continue;
+                    }
+                    match MmapSource::load(&self.root.join(name)) {
+                        Ok(src) => {
+                            pinned.insert(name.to_string(), src);
+                        }
+                        Err(e) => {
+                            // Not fatal here — see the doc comment above.
+                            // `open_segment`'s lazy fallback (and the
+                            // reopen-on-ENOENT net above the engine) is
+                            // where a genuine problem is meant to surface.
+                            eprintln!(
+                                "tgms: pin-at-open could not map {name} at generation {}: {e}",
+                                self.manifest.generation
+                            );
+                        }
+                    }
+                }
+            }
+        }
+        // Eagerly load close runs (the memo's "second lazy surface"): this
+        // reads every close-run file `read_close_run` would otherwise defer
+        // to the first query, while they are certainly still on disk, and
+        // caches the folded result in `close_cache` keyed by this exact
+        // generation — so a later `committed_close_index()` call at the same
+        // generation returns from cache rather than re-reading a file gc may
+        // since have unlinked. Errors are swallowed for the same reason as
+        // above.
+        let _ = self.committed_close_index();
+    }
+
+    /// Log the `TGMS_PIN_MAX_SEGMENTS` fallback once per handle — a store
+    /// hovering around the cap across many commits should not spam a line
+    /// per commit.
+    fn log_pin_fallback(&self, total: usize, cap: usize) {
+        if !self
+            .pin_fallback_logged
+            .swap(true, std::sync::atomic::Ordering::Relaxed)
+        {
+            eprintln!(
+                "tgms: {} has {total} segments, over TGMS_PIN_MAX_SEGMENTS={cap} — \
+                 pin-at-open (D-088) is disabled for this handle; falling back to \
+                 lazy per-segment loading",
+                self.root.display()
+            );
+        }
+    }
+
+    /// The bytes backing `file`: the pinned map from the last
+    /// `pin_generation_files` call, or a fresh `MmapSource::load` when this
+    /// file was not pinned (the cap fallback, or the open-vs-gc race).
+    fn segment_source(&self, file: &str, path: &Path) -> Result<MmapSource> {
+        if let Some(src) = self
+            .pinned_sources
+            .lock()
+            .expect("pinned-sources mutex poisoned")
+            .get(file)
+        {
+            return Ok(src.clone());
+        }
+        MmapSource::load(path)
     }
 
     /// Drop cached segments gc just removed from disk. Sound because ids are
@@ -1032,10 +1163,11 @@ impl NativeStore {
         };
         // mapped, not read: a point lookup touches a few pages, and reading
         // the whole file per open made `believed_*` cost a full scan even
-        // when it wanted one row
+        // when it wanted one row. `segment_source` serves the generation's
+        // pinned map when one exists (D-088) rather than mapping fresh.
         let seg = std::sync::Arc::new(crate::segment::Segment::open(
             &path,
-            MmapSource::load(&path)?,
+            self.segment_source(file, &path)?,
             first_time,
         )?);
         if first_time {
@@ -1076,7 +1208,7 @@ impl NativeStore {
             let seen = self.verified.lock().expect("verified-set mutex poisoned");
             !seen.contains(file)
         };
-        let seg = crate::segment::Segment::open(&path, MmapSource::load(&path)?, first_time)?;
+        let seg = crate::segment::Segment::open(&path, self.segment_source(file, &path)?, first_time)?;
         if first_time {
             self.verified
                 .lock()
@@ -1844,6 +1976,12 @@ impl NativeStore {
         phases.manifest_checkpoint = checkpoint_gen == self.manifest.generation;
         self.checkpoint_gen = checkpoint_gen;
         self.repin(base.generation, self.manifest.generation);
+        // D-088: an ordinary commit only appends segments, but pin the new
+        // set anyway (cheap — it is only the newly sealed files that are not
+        // already pinned) so this handle's own reads never fall onto the
+        // lazy path just because they were staged in the batch that just
+        // published rather than seen by a prior `pin_generation_files` call.
+        self.pin_generation_files();
         self.staging.clear();
         self.staged_closes.clear();
         self.pending_closes.clear();
@@ -2118,6 +2256,18 @@ impl SegmentCache {
     fn stats(&self) -> (usize, u64, Option<u64>, u64) {
         (self.entries.len(), self.total_bytes, self.budget, self.evictions)
     }
+}
+
+/// Resolve the pin-at-open ceiling (D-088): `TGMS_PIN_MAX_SEGMENTS` if it
+/// parses to a positive integer, otherwise `defaults::PIN_MAX_SEGMENTS`. A
+/// tuning knob must never make a store fail to open, so garbage or zero is
+/// treated as unset rather than as an error.
+fn pin_max_segments() -> usize {
+    std::env::var("TGMS_PIN_MAX_SEGMENTS")
+        .ok()
+        .and_then(|v| v.trim().parse::<usize>().ok())
+        .filter(|&n| n > 0)
+        .unwrap_or(crate::defaults::PIN_MAX_SEGMENTS)
 }
 
 /// Resolve the segment-cache budget: the env override wins, otherwise half

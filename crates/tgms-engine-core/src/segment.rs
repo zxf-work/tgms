@@ -686,7 +686,18 @@ impl SegmentSource for MemorySource {
     }
 }
 
-pub struct MmapSource(memmap2::Mmap);
+/// Backed by `Arc<Mmap>` rather than a bare `Mmap` so one mapping can be
+/// shared between the store's pinned-at-open table (D-088) and every
+/// `Segment` opened from it — cloning a source is then an `Arc` bump, not a
+/// fresh `mmap(2)` call. `load` still does exactly one `File::open` +
+/// `Mmap::map` per call; the `File` is dropped immediately after, as before.
+pub struct MmapSource(std::sync::Arc<memmap2::Mmap>);
+
+impl Clone for MmapSource {
+    fn clone(&self) -> Self {
+        Self(self.0.clone())
+    }
+}
 
 impl MmapSource {
     pub fn load(path: &Path) -> Result<Self> {
@@ -696,7 +707,7 @@ impl MmapSource {
         // so the mapping cannot observe a concurrent modification.
         let map = unsafe { memmap2::Mmap::map(&f) }
             .map_err(|e| EngineError::from(e).at_file(path))?;
-        Ok(Self(map))
+        Ok(Self(std::sync::Arc::new(map)))
     }
 }
 

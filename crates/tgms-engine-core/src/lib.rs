@@ -115,6 +115,17 @@ pub mod defaults {
     /// one full generation of headroom behind `CURRENT` for post-incident
     /// inspection while still bounding manifest growth.
     pub const GC_KEEP_GENERATIONS: u64 = 2;
+    /// Segment-count ceiling above which pin-at-open (D-088) falls back to
+    /// lazy per-segment loading instead of mapping the whole generation.
+    /// ¼ of Linux's default `vm.max_map_count` (65,530): a compaction-bounded
+    /// store sits two orders of magnitude under this (416 VMAs at 2.28M rows
+    /// in the soak that motivated the fix; 46 segments at 100M events,
+    /// `SEGMENT_TARGET_BYTES`-bounded); the failure mode this guards is a
+    /// store whose segment count is *not* bounded by compaction
+    /// (`--compact-every=0` held 3,579 segments at 800k events, extrapolating
+    /// to ~450k at 100M — an order of magnitude over the ceiling).
+    /// `TGMS_PIN_MAX_SEGMENTS` overrides.
+    pub const PIN_MAX_SEGMENTS: usize = 16_384;
     /// Candidate rows (sum over scan targets) below which the scan stages
     /// stay serial. Recalibrated 2026-08-01 from the §14.3 sweep
     /// (`docs/eval_resources.md`): parallel select was *slower* than serial
