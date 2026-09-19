@@ -803,6 +803,8 @@ range.
 | `rss_slopes-2.json` | `8a690ece6a9579b2ccd5d8a4473cb7f7c6b07ada390657e6a7ea5dee188c3054` |
 | `verify-full-soak2-2026-09-17.txt` | `f18892a01759422854d3d09e4bfb04a6b4cc65b18d2e60aee55f5c8c711bdb59` |
 | `build_info-2.log` | `e6045d966013189e36236fca8f8015c962e8e37b45898cc8b05beecce6124905` |
+| `compactions-2.jsonl` | `f17788eb7a1ca197dafefe8a627ea7441641e5a3f6786752f0638a2aa2e0673b` |
+| `reader_onset_rows-2.json` | `48597e90f8146318afa60ad668403492b3464cd5c29933a329804341a9c6c0e7` |
 
 All ten verified byte-identical (sha256) between xzgpu
 (`/mnt/project/xzhang/tgms/longevity/2026-09-16-soak2/`) and this copy
@@ -812,6 +814,26 @@ is only ever written on a reader restart, and this run had zero
 and the live store copy stay on xzgpu per the same PI ruling as soak 1;
 `rss_slopes-2.json` and `reader_error_counts_by_class-2.json` are derived
 from it (method documented in each file) rather than copying it.
+
+**Added later (2026-09-18): `compactions-2.jsonl` and
+`reader_onset_rows-2.json`.** `compactions-2.jsonl` (4,215 lines, one per
+compaction the writer performed) is copied from xzgpu
+(`.../2026-09-16-soak2/compactions.jsonl`), sha256-verified byte-identical
+between xzgpu and this copy before commit, same as the ten files above.
+`reader_onset_rows-2.json` answers "what was the edge-row count when the
+reader OSError/StateError storm's onset began" (earliest and latest onset
+across the 8 readers, per `reader_error_counts_by_class-2.json`'s own
+`osrror_storm_onset_by_reader`) by reconciling that field's wall-clock
+`onset_t_plus_s` (elapsed seconds since RUN_STARTED) against
+`compactions-2.jsonl`'s `t_start`/`t_end` (the writer child's
+`time.perf_counter()`, a different, monotonic-but-not-epoch clock that
+resets at each of the 4 writer lives) via `metrics.jsonl`'s
+`compactions_total` counter and `generation` gauge (kept on xzgpu, not
+copied; read read-only, nothing written back to the host). It is derived
+locally in this worktree, not copied from an xzgpu twin (no such twin
+exists) — its own `method` field states the full reconciliation procedure,
+both clocks, and the bound on the mapping error (bracketed by the ~60-72s
+metrics flush interval, up to 3 ambiguous compaction rows per onset).
 
 ### Honest limits
 
@@ -834,6 +856,12 @@ from it (method documented in each file) rather than copying it.
   dedicated **full**-mode check reported above is the one that actually
   clears the `believed-versions-overlap` class soak 1 found, and it is
   clean.
+- `reader_onset_rows-2.json`'s edge-row counts at the earliest/latest
+  reader-error onset are only as precise as the ~60-72s metrics flush
+  interval used to reconcile the writer's `perf_counter` compaction clock
+  against the reader's wall-clock onset times; up to 3 compactions per
+  onset fall inside that bracket and cannot be ordered against the onset
+  from these files (see the file's own `ambiguous_range` fields).
 
 ## P-STORM-HUNT (6 h observation run, 2026-09-17/18)
 

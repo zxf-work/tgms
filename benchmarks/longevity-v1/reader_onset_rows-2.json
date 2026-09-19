@@ -1,0 +1,105 @@
+{
+  "clock_compactions_jsonl": "writer child process time.perf_counter() (t_start/t_end fields); monotonic, resets to a new arbitrary reference at each writer restart, not epoch time, not directly comparable to onset_t_plus_s",
+  "clock_reader_onset": "onset_t_plus_s in reader_error_counts_by_class-2.json; wall-clock seconds elapsed since RUN_STARTED (epoch time.time(), metrics.jsonl 'ts' field)",
+  "earliest_reader_onset": {
+    "ambiguous_range": {
+      "edge_rows_upper": 2236168,
+      "lines_0indexed": [
+        3242,
+        3243,
+        3244
+      ],
+      "note": "3 further compactions (lines 3242-3244) fall inside the same ~71.6s flush bracket as the reader-onset epoch and cannot be ordered against it from these files; edge_rows would range up to this value if all 3 actually preceded the onset"
+    },
+    "last_compaction_before": {
+      "assigned_epoch_lower_bound": 1789581307.0605335,
+      "assigned_epoch_upper_bound": 1789581378.629386,
+      "batches": 394000,
+      "compactions_jsonl_line_0indexed": 3241,
+      "edge_rows": 2235044,
+      "writer_life": 2
+    },
+    "onset_epoch_s": 1789581398.1,
+    "onset_t_plus_s": 61417.1,
+    "reader": 6
+  },
+  "latest_reader_onset": {
+    "ambiguous_range": {
+      "edge_rows_upper": 2451933,
+      "lines_0indexed": [
+        3818,
+        3819,
+        3820
+      ],
+      "note": "3 further compactions (lines 3818-3820) fall inside the same ~72.3s flush bracket as the reader-onset epoch and cannot be ordered against it from these files; edge_rows would range up to this value if all 3 actually preceded the onset"
+    },
+    "last_compaction_before": {
+      "assigned_epoch_lower_bound": 1789595850.7922657,
+      "assigned_epoch_upper_bound": 1789595923.098782,
+      "batches": 219500,
+      "compactions_jsonl_line_0indexed": 3817,
+      "edge_rows": 2450815,
+      "writer_life": 3
+    },
+    "onset_epoch_s": 1789595974.1,
+    "onset_t_plus_s": 75993.1,
+    "reader": 4
+  },
+  "life_segments": {
+    "life_0": {
+      "compactions": 1338,
+      "epoch_window": [
+        1789519981.0,
+        1789541621.4196286
+      ],
+      "lines": [
+        0,
+        1338
+      ]
+    },
+    "life_1": {
+      "compactions": 1116,
+      "epoch_window": [
+        1789541638.9246256,
+        1789563211.6243196
+      ],
+      "lines": [
+        1338,
+        2454
+      ]
+    },
+    "life_2": {
+      "compactions": 925,
+      "epoch_window": [
+        1789563240.7539608,
+        1789584829.3419867
+      ],
+      "lines": [
+        2454,
+        3379
+      ]
+    },
+    "life_3": {
+      "compactions": 836,
+      "epoch_window": [
+        1789584872.8521125,
+        null
+      ],
+      "lines": [
+        3379,
+        4215
+      ]
+    },
+    "note": "compactions-2.jsonl 0-indexed line ranges per writer life, cross-checked against metrics.jsonl's compactions_total counter (final in-window value matches the line count exactly in all 4 lives) and against recoveries-2.jsonl's t_death/recovery_s"
+  },
+  "method": "Reconciles two independent clocks that neither compactions-2.jsonl nor reader_error_counts_by_class-2.json shares directly. (1) compactions-2.jsonl's t_start/t_end are the writer child process's time.perf_counter() readings (scripts/longevity_run.py's compaction block) -- monotonic but reset to a new arbitrary reference at each of this soak's 3 designed writer restarts (4 writer lives), and never epoch time. (2) reader_error_counts_by_class-2.json's onset_t_plus_s is elapsed wall-clock seconds since RUN_STARTED, built from metrics.jsonl's reader_errors_total counter, whose 'ts' field is time.time() (tgms/telemetry/metrics.py:Metrics.flush -- 'ts = time.time()'). metrics.jsonl also carries a 'compactions_total' counter, incremented in the same code path and in the same order as compactions-2.jsonl's own line-per-compaction log (scripts/longevity_run.py, the 'batches % compact_every == 0' block calls metrics.counter('compactions_total') immediately after appending to compactions_path). Both counters reset to 0 at each writer restart (fresh process, fresh in-memory Metrics/compaction-loop state), so within one writer life the k-th line written to compactions-2.jsonl is exactly the compaction that brought compactions_total's in-life value to k. Procedure: (a) split compactions-2.jsonl into its 4 writer-life segments by where its own 'batches' field resets to a smaller value than the previous line (life boundaries at 0-indexed lines 1338, 2454, 3379); (b) fetch metrics.jsonl's compactions_total (counter) and generation (gauge) series from xzgpu read-only (grep-filtered scan, nothing written back to the host, /mnt/project/xzhang/tgms/longevity/2026-09-16-soak2/metrics.jsonl -- not copied into this repo, same PI ruling as the rest of this soak's per-process series); (c) partition that series into the same 4 life windows using recoveries-2.jsonl's t_death (epoch) + recovery_s for each restart, with the run's own RUN_STARTED epoch (README.md 'Soak 2 (post-fix)': launched 2026-09-16T00:53:01Z = epoch 1789519981.0) opening life 0 and RUN_DONE closing life 3; (d) cross-checked this partition before using it: the last compactions_total sample inside each of the 4 life windows is exactly 1338.0, 1116.0, 925.0, 836.0 -- identically matching compactions-2.jsonl's own per-life line counts (1338, 1116, 925, 836; sum 4215), and the 'generation' gauge (a second, independently-emitted counter from the same flush) steps up by the same compaction-count granularity in every window inspected, confirming the life partition and the counter-to-log alignment rather than assuming it; (e) for compaction k in a given life, assign it the epoch timestamp of the FIRST metrics flush (report_every_s=60s nominal cadence) at which that life's compactions_total series reaches value >= k -- an upper bound on the compaction's true epoch time, since it can only be known to have happened at or before the flush that reports it and after the previous flush (a lower bound); (f) for a target reader-onset epoch T = RUN_STARTED_epoch + onset_t_plus_s, the reported 'last compaction before T' is the largest-index compaction whose assigned upper-bound timestamp is <= T -- a conservative (guaranteed-correct) choice, since its real time is bounded by its own upper bound, which is already <= T. The mapping error this introduces is bounded by the metrics flush interval bracketing T (observed 71.6s near the earliest onset, 72.3s near the latest, close to the nominal 60s plus scheduling jitter) -- during which observed cadence, at most 3 further compactions occurred whose true time cannot be resolved as before or after T from these files; their edge_rows values are reported as the ambiguous upper end of the range below, not chosen as the answer.",
+  "run_started_epoch_s": 1789519981.0,
+  "run_started_utc": "2026-09-16T00:53:01Z",
+  "source_files": {
+    "compactions_log": "benchmarks/longevity-v1/compactions-2.jsonl",
+    "manifest": "benchmarks/longevity-v1/longevity-synth-1m-native-1.json",
+    "metrics_series_not_copied": "xzgpu:/mnt/project/xzhang/tgms/longevity/2026-09-16-soak2/metrics.jsonl, kind=counter name=compactions_total and kind=gauge name=generation, read-only grep-filtered scan, 1312 points each series, nothing written back to the host",
+    "reader_onset": "benchmarks/longevity-v1/reader_error_counts_by_class-2.json",
+    "recoveries": "benchmarks/longevity-v1/recoveries-2.jsonl"
+  }
+}
