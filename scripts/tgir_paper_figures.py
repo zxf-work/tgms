@@ -283,7 +283,8 @@ def plot_admission(data: dict, out_dir: Path) -> str:
 
         ax.set_xlabel("estimated cost (ms)")
         ax.set_ylabel("measured cost (ms)")
-        note = ("○ characterization   ■ scored   ★ false admission\n"
+        note = ("○ Interactive plans, sampled anchors   "
+                "■ BI plans, LDBC parameters   ★ false admission\n"
                 f"est=0 shown at floor ({', '.join(data['zero_est_plans'])})")
         ax.text(0.02, 0.02, note, transform=ax.transAxes, fontsize=4.6,
                 va="bottom", ha="left")
@@ -389,7 +390,7 @@ def plot_cost(data: dict, out_dir: Path) -> str:
         axb.set_xlim(-0.6, len(vals) - 0.4)
         axb.set_xticks(xb)
         axb.set_xticklabels(labels, fontsize=4.8, linespacing=1.3)
-        axb.set_ylabel("compiled/kernel ratio")
+        axb.set_ylabel("compiled/native ratio")
 
         fig.tight_layout(pad=0.3, w_pad=1.0)
         savefig(fig, out_dir / "fig-cost.pdf")
