@@ -93,6 +93,7 @@ def _run_all_landed(mod):
     mod.compute_longevity_verify_and_replay2(m)
     mod.compute_overload(m)
     mod.compute_c10_live_osv(m)
+    mod.compute_ldbc_ref_v1(m)
     mod.compute_b7_scale(m)
     return m
 
@@ -514,6 +515,33 @@ FROZEN_LANDED_VALUES = {
     "osdiOverloadRecoveryP50Ms": "1.43",
     "osdiOverloadServiceHighWaterKB": "227{,}280",
     "osdiOverloadServiceHighWaterMB": "227.3",
+    # Lane W2t: benchmarks/ldbc-ref-v1/ -- compute_ldbc_ref_v1 above.
+    "osdiLdbcTemplates": "24",
+    "osdiLdbcExpressible": "24",
+    "osdiLdbcExecuted": "23",
+    "osdiLdbcValidated": "18",
+    "osdiLdbcAgree": "18",
+    "osdiLdbcNotProjected": "3",
+    "osdiLdbcDisagree": "2",
+    "osdiLdbcTimeout": "1",
+    "osdiLdbcComparableTemplates": "23",
+    "osdiLdbcRowsCompared": "736",
+    "osdiLdbcRowsAgreeing": "678",
+    "osdiLdbcRowAgreementFraction": "0.921",
+    "osdiLdbcGate": "0.90",
+    "osdiLdbcGateMet": "true",
+    "osdiLdbcTemplateAgreementFraction": "0.75",
+    "osdiLdbcRowsBIAgreeing": "606",
+    "osdiLdbcRowsBICompared": "607",
+    "osdiLdbcRowsICAgreeing": "56",
+    "osdiLdbcRowsICCompared": "66",
+    "osdiLdbcRowsISAgreeing": "16",
+    "osdiLdbcRowsISCompared": "63",
+    "osdiLdbcDefectId": "D-090",
+    "osdiLdbcDefectTemplates": "IS3, IC2",
+    "osdiLdbcInterimAgree": "14",
+    "osdiLdbcInterimRowsAgreeing": "282",
+    "osdiLdbcInterimRowsCompared": "329",
 }
 
 
@@ -531,26 +559,17 @@ def test_frozen_macro_values_match_the_generator():
 
 
 def test_pending_macros_raise_a_latex_error_never_a_placeholder_number():
-    """add_pending_stubs itself only carries the 3 LDBC (C9) stubs now --
-    every B7 100M name has landed except osdiB7ScaleCurveP50ReachWindow100M,
-    which compute_b7_scale adds directly (see
-    test_b7_scale_100m_reach_window_p50_is_pending_with_its_estimate)."""
+    """add_pending_stubs itself now carries no stubs of its own -- the 3
+    LDBC (C9) stubs it used to hold have landed (compute_ldbc_ref_v1). The
+    one remaining PENDING macro in the whole generator,
+    osdiB7ScaleCurveP50ReachWindow100M, is added directly by
+    compute_b7_scale (see
+    test_b7_scale_100m_reach_window_p50_is_pending_with_its_estimate), not
+    by add_pending_stubs, so this function now emits nothing."""
     mod = _load("osdi_paper_macros")
     m = mod.Macros()
     mod.add_pending_stubs(m)
-    expected_names = {
-        "osdiLdbcExpressible", "osdiLdbcExecuted", "osdiLdbcValidated",
-    }
-    got_names = {name for name, _, _ in m.items}
-    assert got_names == expected_names
-    for name, value, provenance in m.items:
-        assert value.startswith(r"\errmessage{"), (
-            f"{name}: pending macro must render to \\errmessage, got {value!r}")
-        assert provenance.startswith("PENDING -- "), f"{name}: provenance must flag PENDING"
-        # the lane name must be inside the rendered LaTeX error, not just the comment,
-        # since \newcommand{...}{\errmessage{...}} is what actually halts compilation
-        lane = provenance.split("PENDING -- ", 1)[1].split(":", 1)[0]
-        assert lane in value, f"{name}: lane {lane!r} missing from the rendered errmessage"
+    assert m.items == []
 
 
 def test_full_macro_set_has_no_duplicate_names_and_covers_every_skeleton_claim():
@@ -559,10 +578,11 @@ def test_full_macro_set_has_no_duplicate_names_and_covers_every_skeleton_claim()
     mod.add_pending_stubs(m)
     names = [name for name, _, _ in m.items]
     assert len(names) == len(set(names)), "duplicate macro name"
-    # 3 pre-existing LDBC (C9) pending stubs + 1 B7 100M pending stub
-    # (osdiB7ScaleCurveP50ReachWindow100M, added by compute_b7_scale itself,
-    # already present in `m` via _run_all_landed before add_pending_stubs runs)
-    assert len(names) == len(FROZEN_LANDED_VALUES) + 3 + 1
+    # 1 B7 100M pending stub (osdiB7ScaleCurveP50ReachWindow100M, added by
+    # compute_b7_scale itself, already present in `m` via _run_all_landed
+    # before add_pending_stubs runs, which itself adds nothing now that the
+    # 3 LDBC (C9) stubs have landed as ordinary FROZEN_LANDED_VALUES entries)
+    assert len(names) == len(FROZEN_LANDED_VALUES) + 1
 
 
 def test_cli_check_mode_agrees_with_committed_output(tmp_path):
@@ -2504,6 +2524,125 @@ def test_tampered_b7_scale_curve_100m_refused_operator_missing_error_field_fails
     assert mod.FAILURES, "a refused operator with a fabricated measured_p50_ms must fail, " \
         "even with a patched whole-file digest"
     assert any("agg.rel_bucket" in f for f in mod.FAILURES)
+
+
+def test_tampered_ldbc_ref_v1_compare_sha256_mismatch_fails(tmp_path):
+    """An edited copy of compare-2026-09-18.json must fail the whole-file
+    sha256 check against benchmarks/ldbc-ref-v1/SHA256SUMS.txt before any
+    verdict-count or row-agreement figure inside it is trusted."""
+    mod = _load("osdi_paper_macros")
+    data = json.loads(mod.LDBC_REF_V1_COMPARE.read_text(encoding="utf-8"))
+    data["manifest"]["host"] = "tampered-host"
+    tampered = tmp_path / "compare-2026-09-18.json"
+    tampered.write_text(json.dumps(data), encoding="utf-8")
+
+    mod.LDBC_REF_V1_COMPARE = tampered
+    m = mod.Macros()
+    mod.compute_ldbc_ref_v1(m)
+    assert mod.FAILURES, "an edited compare-2026-09-18.json must fail the sha256 check " \
+        "against SHA256SUMS.txt"
+    assert any("sha256" in f.lower() for f in mod.FAILURES)
+
+
+def _ldbc_ref_v1_patched_sums(mod, tmp_path: Path, tampered_path: Path) -> Path:
+    """A copy of SHA256SUMS.txt with `tampered_path`'s basename's entry
+    updated to its actual (tampered) digest -- isolates a row-level check
+    from the whole-file sha256 gate, the same technique
+    test_tampered_b7_scale_curve_100m_refused_operator_missing_error_field_fails
+    uses against a README's own sha256 table."""
+    import hashlib as _hashlib
+    text = mod.LDBC_REF_V1_SHA256SUMS.read_text(encoding="utf-8")
+    old_hash = mod._sha256sums_by_name(text)[tampered_path.name]
+    new_hash = _hashlib.sha256(tampered_path.read_bytes()).hexdigest()
+    patched = tmp_path / "SHA256SUMS.txt"
+    patched.write_text(text.replace(old_hash, new_hash), encoding="utf-8")
+    return patched
+
+
+def test_tampered_ldbc_ref_v1_row_agreement_mismatch_fails_even_with_patched_sums(tmp_path):
+    """Editing one verdict's agreeing count (without touching compared, or
+    any other row) must break the frozen 678/736 row-agreement total --
+    even with SHA256SUMS.txt patched to match, so the whole-file sha256
+    gate is not what catches this."""
+    mod = _load("osdi_paper_macros")
+    data = json.loads(mod.LDBC_REF_V1_COMPARE.read_text(encoding="utf-8"))
+    by_id = {v["plan_id"]: v for v in data["verdicts"]}
+    by_id["BI3"]["agreeing"] = 19  # was 20 of 20 -- must not silently pass as 20/20
+    tampered = tmp_path / "compare-2026-09-18.json"
+    tampered.write_text(json.dumps(data), encoding="utf-8")
+
+    mod.LDBC_REF_V1_COMPARE = tampered
+    mod.LDBC_REF_V1_SHA256SUMS = _ldbc_ref_v1_patched_sums(mod, tmp_path, tampered)
+    m = mod.Macros()
+    mod.compute_ldbc_ref_v1(m)
+    assert mod.FAILURES, "an edited per-template agreeing count must fail the recomputed " \
+        "row-agreement total, even with a patched whole-file digest"
+    assert any("736" in f or "row agreement" in f for f in mod.FAILURES)
+
+
+def test_tampered_ldbc_ref_v1_verdict_label_disagrees_with_reference_columns_field_fails(
+        tmp_path):
+    """A verdict relabelled to 'agreeing' while its
+    reference_columns_not_projected list stays non-empty (or vice versa)
+    must fail the cross-check between the two fields, even with
+    SHA256SUMS.txt patched to match."""
+    mod = _load("osdi_paper_macros")
+    data = json.loads(mod.LDBC_REF_V1_COMPARE.read_text(encoding="utf-8"))
+    by_id = {v["plan_id"]: v for v in data["verdicts"]}
+    by_id["BI4"]["verdict"] = "agreeing"  # BI4 still carries 3 unprojected reference columns
+    tampered = tmp_path / "compare-2026-09-18.json"
+    tampered.write_text(json.dumps(data), encoding="utf-8")
+
+    mod.LDBC_REF_V1_COMPARE = tampered
+    mod.LDBC_REF_V1_SHA256SUMS = _ldbc_ref_v1_patched_sums(mod, tmp_path, tampered)
+    m = mod.Macros()
+    mod.compute_ldbc_ref_v1(m)
+    assert mod.FAILURES, "a verdict label that disagrees with its own " \
+        "reference_columns_not_projected field must fail, even with a patched digest"
+
+
+def test_tampered_ldbc_ref_v1_interim_exclusion_set_derivation_fails_even_with_patched_sums(
+        tmp_path):
+    """The interim scoring excludes exactly the 7 templates
+    manifest.supersedes_reason names as having had an invalid reference
+    side (plus the always-timed-out BI6.v2) -- editing that list (without
+    touching the interim record itself) must fail the frozen count/list
+    checks derived from it, even with SHA256SUMS.txt patched to match."""
+    mod = _load("osdi_paper_macros")
+    data = json.loads(mod.LDBC_REF_V1_COMPARE.read_text(encoding="utf-8"))
+    data["manifest"]["supersedes_reason"] = data["manifest"]["supersedes_reason"].replace(
+        "7 templates (BI4 BI9 BI11 BI12 IC2 IC5 IC9)",
+        "6 templates (BI4 BI9 BI11 BI12 IC2 IC5)")
+    tampered = tmp_path / "compare-2026-09-18.json"
+    tampered.write_text(json.dumps(data), encoding="utf-8")
+
+    mod.LDBC_REF_V1_COMPARE = tampered
+    mod.LDBC_REF_V1_SHA256SUMS = _ldbc_ref_v1_patched_sums(mod, tmp_path, tampered)
+    m = mod.Macros()
+    mod.compute_ldbc_ref_v1(m)
+    assert mod.FAILURES, "a supersedes_reason edited to drop IC9 from the invalid-reference " \
+        "list must fail the frozen 7-template list check, even with a patched digest"
+
+
+def test_tampered_ldbc_ref_v1_ledger_entry_id_mismatch_fails(tmp_path):
+    """The D-090 cross-check against ops/failure_ledger.jsonl must fail if
+    the ledger's own entry no longer names both IS3 and IC2 in its
+    symptom -- a cross-check on the defect-templates macro, independent
+    of the compare record itself."""
+    mod = _load("osdi_paper_macros")
+    entries = mod.load_jsonl(mod.FAILURE_LEDGER)
+    for e in entries:
+        if e.get("id") == "D-090-is3-knows-both-ways-double-count":
+            e["symptom"] = e["symptom"].replace("IC2", "a different template")
+    tampered = tmp_path / "failure_ledger.jsonl"
+    tampered.write_text("\n".join(json.dumps(e) for e in entries) + "\n", encoding="utf-8")
+
+    mod.FAILURE_LEDGER = tampered
+    m = mod.Macros()
+    mod.compute_ldbc_ref_v1(m)
+    assert mod.FAILURES, "a D-090 ledger entry that no longer names IC2 in its symptom " \
+        "must fail the cross-check"
+    assert any("D-090" in f for f in mod.FAILURES)
 
 
 # --------------------------------------------------------------------------

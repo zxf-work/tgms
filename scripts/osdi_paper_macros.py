@@ -217,13 +217,30 @@ the other six (unanticipated, no numeric estimate in the record) land as
 ``osdiB7Recovery100M`` aliases ``osdiB7RecoveryCe5000At100M`` since no
 cadence-500 100M run exists or was ever planned (Addendum 6 pre-judged it
 infeasible). Nothing here is PENDING for lack of a landed record anymore;
-only the LDBC (C9) stubs and the one guardrail-refused p50 remain.
+only the one guardrail-refused p50 remains.
 
-Claim C9 (LDBC generality, four axes -- the Neo4j reference run is
-pending) has no landed record yet; its macros, plus the still-unlanded
-slice of C7 above, are emitted as PENDING stubs (see ``Macros.add_pending``)
-that raise a real LaTeX error (``\\errmessage``) if the paper ever expands
-one, rather than silently emitting a placeholder number.
+Claim C9, independent-validation axis (Lane W2t, ldbc-ref-v1) --
+``benchmarks/ldbc-ref-v1/compare-2026-09-18.json`` (revision of record,
+manifest + per-template verdicts), cross-checked against
+``README.md``'s verdict table and ``campaign.yaml``'s addendum_3 (the
+frozen gate/scoring addendum; addenda 1/2 are superseded readings kept
+for provenance and never a number source here), and against the
+superseded interim ``compare-2026-09-17.json`` for the two
+``osdiLdbcInterim*`` macros that let the paper cite the reference-side
+fix. This resolves the three stubs that used to stand here
+(``osdiLdbcExpressible``/``osdiLdbcExecuted``/``osdiLdbcValidated``) and
+lands the rest of the scorecard beside them --
+``compute_ldbc_ref_v1`` below computes every ``osdiLdbc*`` macro, every
+whole-file sha256 checked against the run's own ``SHA256SUMS.txt`` and
+every count recomputed from the compare record's row-level
+``attempted``/``compared``/``agreeing``/``disagreeing`` fields, never
+taken from its own aggregate or from prose. This lane's scope is the
+independent-validation axis only; the broader four-axis LDBC generality
+claim's other axes are outside it and are not addressed here. The
+still-unlanded slice of C7 above and the one guardrail-refused B7 p50
+are emitted as PENDING stubs (see ``Macros.add_pending``) that raise a
+real LaTeX error (``\\errmessage``) if the paper ever expands one,
+rather than silently emitting a placeholder number.
 
 Every macro is emitted as
 ``\\expandafter\\newcommand\\csname osdi<Name>\\endcsname{<value>}`` rather
@@ -536,6 +553,22 @@ LONGEVITY_REPLAY_CHECK_2 = LONGEVITY_DIR / "replay-check-2-2026-09.json"
 LONGEVITY_VERIFY_FULL_SHA256 = "4a84460725df097cb6df81eec8d55a7c8b28b2d906c2cb709712f3a0c1be6a68"
 LONGEVITY_REPLAY_CHECK_2_SHA256 = "45c6b2561b3a63f4164874a88c97f42c5c4bf1f11888d075340659aca41b2c66"
 
+# Lane W2t -- benchmarks/ldbc-ref-v1/, the LDBC reference-correctness run
+# (Claim C9's independent-validation axis). compare-2026-09-18.json is the
+# revision of record (README.md's "Revision of record" section);
+# compare-2026-09-17.json is the superseded interim, kept in place rather
+# than overwritten (7 templates had an invalid reference side until the
+# temporal-parameter fix). Every whole-file sha256 below is checked against
+# the run's own SHA256SUMS.txt, not a separate frozen-constant table --
+# there is no drift to guard against beyond that one file.
+LDBC_REF_V1_DIR = ROOT / "benchmarks" / "ldbc-ref-v1"
+LDBC_REF_V1_README = LDBC_REF_V1_DIR / "README.md"
+LDBC_REF_V1_CAMPAIGN_YAML = LDBC_REF_V1_DIR / "campaign.yaml"
+LDBC_REF_V1_SHA256SUMS = LDBC_REF_V1_DIR / "SHA256SUMS.txt"
+LDBC_REF_V1_COMPARE = LDBC_REF_V1_DIR / "compare-2026-09-18.json"
+LDBC_REF_V1_COMPARE_INTERIM = LDBC_REF_V1_DIR / "compare-2026-09-17.json"
+LDBC_REF_V1_TGMS_CAMPAIGN = LDBC_REF_V1_DIR / "tgms-campaign-ldbc-ref-v1.json"
+
 
 # --------------------------------------------------------------------------
 # verification helpers (copied from scripts/tgir_paper_macros.py)
@@ -587,6 +620,20 @@ def _sha256sums_table(text: str) -> set[str]:
     rep1 is misnamed (see OVERLOAD_REP1's module comment above), so a
     filename-keyed lookup would be wrong for the right reason."""
     return set(re.findall(r"^([0-9a-f]{64})\s+\S+\s*$", text, re.MULTILINE))
+
+
+def _sha256sums_by_name(text: str) -> dict[str, str]:
+    """Parse a plain ``sha256sum``-style manifest into ``{basename: sha256}``,
+    same convention ``_b7_check_sha256`` below uses against a README's own
+    table: keyed by filename rather than the full path the manifest names,
+    so a tampered copy under a test's ``tmp_path`` (same basename, moved
+    directory) is still looked up correctly. Safe here because none of the
+    specific files this lane looks up share a basename with each other
+    anywhere in ``benchmarks/ldbc-ref-v1/SHA256SUMS.txt`` (unlike the
+    ``ref-<ID>.json`` rows/warmup/tN sidecars, which repeat basenames across
+    directories and are never looked up by this dict)."""
+    return dict((Path(path).name, digest) for digest, path in
+                re.findall(r"^([0-9a-f]{64})\s+(\S+)\s*$", text, re.MULTILINE))
 
 
 def relpath(p: Path) -> str:
@@ -5143,6 +5190,316 @@ def compute_c10_live_osv(m: Macros) -> None:
 
 
 # --------------------------------------------------------------------------
+# C9, independent-validation axis -- LDBC reference-correctness run
+# (Lane W2t, benchmarks/ldbc-ref-v1/)
+# --------------------------------------------------------------------------
+
+def _ldbc_family(plan_id: str) -> str:
+    for prefix in ("BI", "IC", "IS"):
+        if plan_id.startswith(prefix):
+            return prefix
+    raise AssertionError(f"unrecognised LDBC ref-v1 template family: {plan_id!r}")
+
+
+def compute_ldbc_ref_v1(m: Macros) -> None:
+    """Lane W2t: `benchmarks/ldbc-ref-v1/`, the LDBC reference-correctness
+    run -- Claim C9's independent-validation axis (TGIR's output vs. an
+    independently loaded, unmodified-query Neo4j reference over the 24
+    templates TGIR can express). Resolves the three stubs that used to
+    stand PENDING here (`osdiLdbcExpressible`/`osdiLdbcExecuted`/
+    `osdiLdbcValidated`) and lands the rest of the scorecard beside them.
+
+    Every whole-file sha256 below is checked against the run's own
+    `SHA256SUMS.txt` before anything inside is trusted. Every count is
+    recomputed from `compare-2026-09-18.json`'s (the revision of record,
+    per README.md's "Revision of record" section) per-template verdicts --
+    `attempted`/`compared`/`agreeing`/`disagreeing`/
+    `reference_columns_not_projected` -- never taken from the record's own
+    aggregate, and then cross-checked against both README.md's stated
+    verdict table and `campaign.yaml`'s addendum_3 (the frozen final
+    gate/scoring addendum; addenda 1/2 are superseded readings reached
+    before the temporal-parameter fix and before the column-correspondence
+    ratification, kept in the file for provenance and never a number
+    source here). `campaign.yaml` itself is prose-only provenance in this
+    docstring and in the frozen literals below -- like the M5 freeze doc in
+    the C6 section of the module docstring, nothing here parses it as
+    YAML.
+
+    24 templates have a vendored TGIR plan and ran (`osdiLdbcExpressible`);
+    23 of those completed within the ceiling -- BI6.v2 hit the
+    pre-registered ceiling (`bypass_ceiling_s` + `child_open_allowance_s`
+    from the TGMS-side campaign record) and produced no rows -- giving
+    `osdiLdbcExecuted`; 18 agree per campaign.yaml's addendum_3 scoring
+    rule, giving `osdiLdbcValidated`.
+    """
+    sha_table = _sha256sums_by_name(LDBC_REF_V1_SHA256SUMS.read_text(encoding="utf-8"))
+    for path in (LDBC_REF_V1_README, LDBC_REF_V1_CAMPAIGN_YAML, LDBC_REF_V1_COMPARE,
+                 LDBC_REF_V1_COMPARE_INTERIM, LDBC_REF_V1_TGMS_CAMPAIGN):
+        name = path.name
+        require(name in sha_table,
+                f"{relpath(path)}: {name} not found in benchmarks/ldbc-ref-v1/SHA256SUMS.txt")
+        if name in sha_table:
+            eq(sha256_file(path), sha_table[name],
+               f"{relpath(path)}: sha256 matches benchmarks/ldbc-ref-v1/SHA256SUMS.txt")
+
+    doc = json.loads(LDBC_REF_V1_COMPARE.read_text(encoding="utf-8"))
+    manifest = doc["manifest"]
+    verdicts = doc["verdicts"]
+    eq(manifest["plans"], 24, f"{relpath(LDBC_REF_V1_COMPARE)}: manifest.plans")
+    eq(len(verdicts), 24, f"{relpath(LDBC_REF_V1_COMPARE)}: verdicts row count")
+    eq(manifest["supersedes"], "compare-2026-09-17.json",
+       f"{relpath(LDBC_REF_V1_COMPARE)}: manifest.supersedes names the interim record")
+
+    by_id = {v["plan_id"]: v for v in verdicts}
+    eq(len(by_id), len(verdicts), f"{relpath(LDBC_REF_V1_COMPARE)}: plan_id is unique per row")
+
+    # --- verdict-class counts, recomputed from each row's own fields, not
+    # from any pre-aggregated field (the record carries none) ---
+    timed_out = [v for v in verdicts if not v["attempted"]]
+    attempted = [v for v in verdicts if v["attempted"]]
+    agree = [v for v in attempted if v.get("verdict") == "agreeing"]
+    not_projected = [v for v in attempted if v.get("verdict") == "reference-column-not-projected"]
+    disagree = [v for v in attempted if v.get("verdict") == "disagreeing"]
+    errored = [v for v in attempted if v.get("verdict") == "error"]
+    not_comparable = [v for v in attempted if v.get("verdict") == "not-comparable"]
+    eq(len(agree) + len(not_projected) + len(disagree) + len(errored)
+       + len(not_comparable) + len(timed_out), 24,
+       f"{relpath(LDBC_REF_V1_COMPARE)}: every verdict class partitions the 24 templates "
+       "exactly once")
+
+    # cross-check against README.md's stated verdict table ("18 agree / 3
+    # reference-column-not-projected / 2 disagree / 1 timeout / 0 error / 0
+    # not comparable") and campaign.yaml's addendum_3 verdict_counts block
+    eq(len(agree), 18, "LDBC ref-v1 frozen (README.md / campaign.yaml addendum_3): agree count")
+    eq(len(not_projected), 3,
+       "LDBC ref-v1 frozen: reference-column-not-projected count")
+    eq(len(disagree), 2, "LDBC ref-v1 frozen: disagree count")
+    eq(len(timed_out), 1, "LDBC ref-v1 frozen: timeout count")
+    eq(len(errored), 0, "LDBC ref-v1 frozen: error count")
+    eq(len(not_comparable), 0, "LDBC ref-v1 frozen: not-comparable count")
+
+    eq(sorted(v["plan_id"] for v in not_projected), ["BI4", "IC12", "IC5"],
+       "LDBC ref-v1 frozen: the reference-column-not-projected templates (BI4, IC5, IC12)")
+    eq(sorted(v["plan_id"] for v in disagree), ["IC2", "IS3"],
+       "LDBC ref-v1 frozen: the disagreeing templates (IC2, IS3)")
+    eq([v["plan_id"] for v in timed_out], ["BI6.v2"],
+       "LDBC ref-v1 frozen: the timed-out template (BI6.v2)")
+
+    # the reference_columns_not_projected field must agree with the verdict
+    # label independently -- a tamper to one without the other is caught
+    eq(sorted(v["plan_id"] for v in verdicts if v.get("reference_columns_not_projected")),
+       sorted(v["plan_id"] for v in not_projected),
+       f"{relpath(LDBC_REF_V1_COMPARE)}: reference_columns_not_projected non-empty iff "
+       "verdict == reference-column-not-projected")
+
+    # --- row agreement over the 23 comparable templates (every attempted
+    # template; BI6.v2 never ran) ---
+    eq(len(attempted), 23, "LDBC ref-v1 frozen: comparable (attempted) template count")
+    rows_compared = sum(v["compared"] for v in attempted)
+    rows_agreeing = sum(v["agreeing"] for v in attempted)
+    eq(rows_compared, 736, "LDBC ref-v1 frozen: total compared rows over the 23 comparable templates")
+    eq(rows_agreeing, 678, "LDBC ref-v1 frozen: total agreeing rows over the 23 comparable templates")
+    row_fraction = rows_agreeing / rows_compared
+    close(round(row_fraction, 4), 0.9212, 1e-9,
+          "LDBC ref-v1: recomputed row agreement fraction matches campaign.yaml addendum_3's "
+          "row_agreement.ratio")
+    row_fraction_3dp = f"{row_fraction:.3f}"
+    eq(row_fraction_3dp, "0.921", "LDBC ref-v1 frozen: row agreement fraction, 3dp (README.md)")
+
+    gate = 0.90
+    require(row_fraction >= gate,
+            "LDBC ref-v1: recomputed row agreement fraction clears campaign.yaml's pass_if "
+            "(>= 0.90) gate")
+
+    # --- per-family (BI/IC/IS) template and row breakdown, cross-checked
+    # against campaign.yaml addendum_3's row_agreement.by_group block ---
+    fam_expect = {
+        "BI": dict(templates=9, agree_verdicts=8, compared=607, agreeing=606),
+        "IC": dict(templates=7, agree_verdicts=4, compared=66, agreeing=56),
+        "IS": dict(templates=7, agree_verdicts=6, compared=63, agreeing=16),
+    }
+    fam_rows: dict[str, tuple[int, int]] = {}
+    for fam, expect in fam_expect.items():
+        entries = [v for v in attempted if _ldbc_family(v["plan_id"]) == fam]
+        fam_agree_verdicts = sum(1 for v in entries if v.get("verdict") == "agreeing")
+        fam_compared = sum(v["compared"] for v in entries)
+        fam_agreeing = sum(v["agreeing"] for v in entries)
+        eq(len(entries), expect["templates"],
+           f"LDBC ref-v1 frozen: {fam} comparable template count")
+        eq(fam_agree_verdicts, expect["agree_verdicts"],
+           f"LDBC ref-v1 frozen: {fam} agreeing-verdict count")
+        eq(fam_compared, expect["compared"], f"LDBC ref-v1 frozen: {fam} rows compared")
+        eq(fam_agreeing, expect["agreeing"], f"LDBC ref-v1 frozen: {fam} rows agreeing")
+        fam_rows[fam] = (fam_agreeing, fam_compared)
+    eq(sum(c for _, c in fam_rows.values()), rows_compared,
+       "LDBC ref-v1: per-family compared rows sum to the overall total")
+    eq(sum(a for a, _ in fam_rows.values()), rows_agreeing,
+       "LDBC ref-v1: per-family agreeing rows sum to the overall total")
+
+    template_fraction = len(agree) / 24
+    eq(f"{template_fraction:.2f}", "0.75",
+       "LDBC ref-v1 frozen: template agreement fraction, 18/24")
+
+    # --- D-090 (the M7 KNOWS-both-ways double count): the two disagreeing
+    # templates are exactly its two instances, per README.md §5.4/§5.5 and
+    # ops/failure_ledger.jsonl. IS3 is the original finding, IC2 the second
+    # instance "newly visible" once its reference side became valid --
+    # reported in that order (README.md's own §5 ordering), not
+    # alphabetically.
+    defect_id = "D-090"
+    defect_templates_ordered = ["IS3", "IC2"]
+    eq(set(defect_templates_ordered), {v["plan_id"] for v in disagree},
+       "LDBC ref-v1: the D-090 defect template list matches the disagreeing verdicts exactly")
+    if FAILURE_LEDGER.exists():
+        ledger_entries = load_jsonl(FAILURE_LEDGER)
+        d090 = [e for e in ledger_entries
+                if e.get("id") == "D-090-is3-knows-both-ways-double-count"]
+        require(len(d090) == 1,
+                "LDBC ref-v1: exactly one D-090-is3-knows-both-ways-double-count entry in "
+                "ops/failure_ledger.jsonl (cross-check only, not this macro's source)")
+        if d090:
+            entry_id = d090[0]["id"]
+            eq(entry_id.split("-", 2)[0] + "-" + entry_id.split("-", 2)[1], defect_id,
+               "LDBC ref-v1: the ledger entry's own id starts with D-090 (cross-check only)")
+            symptom = d090[0].get("symptom", "")
+            require("IS3" in symptom and "IC2" in symptom,
+                    "LDBC ref-v1: the D-090 ledger entry's symptom names both IS3 and IC2 "
+                    "(cross-check only)")
+
+    # --- the pre-registered TGIR-side ceiling BI6.v2 hit, read from the
+    # TGMS-side campaign record rather than hard-coded independently ---
+    tgms_campaign = json.loads(LDBC_REF_V1_TGMS_CAMPAIGN.read_text(encoding="utf-8"))
+    tgms_manifest = tgms_campaign["manifest"]
+    ceiling_s = tgms_manifest["bypass_ceiling_s"] + tgms_manifest["child_open_allowance_s"]
+    eq(ceiling_s, 1020,
+       f"{relpath(LDBC_REF_V1_TGMS_CAMPAIGN)}: manifest.bypass_ceiling_s + "
+       "manifest.child_open_allowance_s (BI6.v2's timeout ceiling, README.md §5.6)")
+    tgms_records = tgms_campaign["records"]
+    eq(sum(1 for r in tgms_records if r["outcome"] == "COMPLETED"), 23,
+       f"{relpath(LDBC_REF_V1_TGMS_CAMPAIGN)}: COMPLETED record count matches the 23 "
+       "comparable templates")
+    eq(sum(1 for r in tgms_records if r["outcome"] == "TIMEOUT"), 1,
+       f"{relpath(LDBC_REF_V1_TGMS_CAMPAIGN)}: TIMEOUT record count (BI6.v2)")
+    eq(sum(1 for r in tgms_records if r["outcome"] == "ERRORED"), 1,
+       f"{relpath(LDBC_REF_V1_TGMS_CAMPAIGN)}: ERRORED record count (BI6.json, the v1 "
+       "artifact kept as defect evidence per RUNBOOK.md §6 -- not one of the 24 "
+       "scored templates)")
+    eq(len(tgms_records), 25,
+       f"{relpath(LDBC_REF_V1_TGMS_CAMPAIGN)}: 24 scored templates + BI6's v1-artifact "
+       "evidence row")
+
+    # --- the superseded interim (compare-2026-09-17.json), landed as
+    # osdiLdbcInterim* so the paper can cite the reference-side fix. The
+    # excluded set (7 templates with an invalid reference side at that
+    # point, plus the always-timed-out BI6.v2) is read out of the revision
+    # of record's own manifest.supersedes_reason text, not hard-coded
+    # independently of it. ---
+    invalid_ref_match = re.search(
+        r"(\d+) templates \(([^)]+)\) had an invalid reference side",
+        manifest["supersedes_reason"])
+    require(invalid_ref_match is not None,
+            f"{relpath(LDBC_REF_V1_COMPARE)}: manifest.supersedes_reason names the invalid-"
+            "reference template count and list")
+    invalid_ref_ids: list[str] = []
+    excluded_ids: set[str] = set()
+    if invalid_ref_match:
+        invalid_ref_ids = invalid_ref_match.group(2).split()
+        eq(len(invalid_ref_ids), int(invalid_ref_match.group(1)),
+           f"{relpath(LDBC_REF_V1_COMPARE)}: supersedes_reason's own count matches its own list")
+        eq(sorted(invalid_ref_ids), ["BI11", "BI12", "BI4", "BI9", "IC2", "IC5", "IC9"],
+           "LDBC ref-v1 frozen: the 7 templates with an invalid reference side on 2026-09-17")
+        excluded_ids = set(invalid_ref_ids) | {v["plan_id"] for v in timed_out}
+        eq(len(excluded_ids), 8, "LDBC ref-v1: 7 invalid-reference + 1 timeout excluded")
+
+    interim_doc = json.loads(LDBC_REF_V1_COMPARE_INTERIM.read_text(encoding="utf-8"))
+    interim_verdicts = interim_doc["verdicts"]
+    eq(len(interim_verdicts), 24,
+       f"{relpath(LDBC_REF_V1_COMPARE_INTERIM)}: verdicts row count")
+
+    interim_agree = sum(1 for v in interim_verdicts if v.get("verdict") == "agreeing")
+    eq(interim_agree, 14, "LDBC ref-v1 frozen: interim (2026-09-17) agree count")
+
+    interim_scoreable = [v for v in interim_verdicts if v["plan_id"] not in excluded_ids]
+    eq(len(interim_scoreable), 16,
+       f"{relpath(LDBC_REF_V1_COMPARE_INTERIM)}: templates that produced a valid comparison "
+       "on 2026-09-17 (24 - 7 invalid-reference - 1 timeout)")
+    interim_rows_compared = sum(v["compared"] for v in interim_scoreable)
+    interim_rows_agreeing = sum(v["agreeing"] for v in interim_scoreable)
+    eq(interim_rows_compared, 329,
+       "LDBC ref-v1 frozen: interim compared rows over the 16 templates with a valid "
+       "comparison (campaign.yaml addendum_2)")
+    eq(interim_rows_agreeing, 282,
+       "LDBC ref-v1 frozen: interim agreeing rows over the same 16 templates")
+
+    # --- emit ---
+    m.add("osdiLdbcTemplates", tex_num(24),
+          f"{relpath(LDBC_REF_V1_COMPARE)}: manifest.plans -- the 24 LDBC templates with a "
+          "vendored TGIR plan run by this campaign")
+    m.add("osdiLdbcExpressible", tex_num(24),
+          f"{relpath(LDBC_REF_V1_COMPARE)}: manifest.plans -- templates the vendored TGIR "
+          "plans cover of the 24 in this campaign")
+    m.add("osdiLdbcExecuted", tex_num(len(attempted)),
+          f"{relpath(LDBC_REF_V1_COMPARE)}: count of verdicts with attempted == true -- "
+          f"templates whose TGMS side completed within the {tex_num(ceiling_s)} s ceiling "
+          "(BI6.v2 timed out at that ceiling, README.md §5.6)")
+    m.add("osdiLdbcValidated", tex_num(len(agree)),
+          f"{relpath(LDBC_REF_V1_COMPARE)}: count of verdicts with verdict == agreeing -- "
+          "templates agreeing per campaign.yaml addendum_3's scoring rule")
+    m.add("osdiLdbcAgree", tex_num(len(agree)),
+          f"{relpath(LDBC_REF_V1_COMPARE)}: count of verdict == agreeing")
+    m.add("osdiLdbcNotProjected", tex_num(len(not_projected)),
+          f"{relpath(LDBC_REF_V1_COMPARE)}: count of verdict == reference-column-not-projected "
+          "(BI4, IC5, IC12)")
+    m.add("osdiLdbcDisagree", tex_num(len(disagree)),
+          f"{relpath(LDBC_REF_V1_COMPARE)}: count of verdict == disagreeing (IC2, IS3)")
+    m.add("osdiLdbcTimeout", tex_num(len(timed_out)),
+          f"{relpath(LDBC_REF_V1_COMPARE)}: count of attempted == false (BI6.v2)")
+    m.add("osdiLdbcComparableTemplates", tex_num(len(attempted)),
+          f"{relpath(LDBC_REF_V1_COMPARE)}: count of attempted == true -- the denominator of "
+          "the row-agreement fraction")
+    m.add("osdiLdbcRowsCompared", tex_num(rows_compared),
+          f"{relpath(LDBC_REF_V1_COMPARE)}: sum(compared) over the 23 comparable templates")
+    m.add("osdiLdbcRowsAgreeing", tex_num(rows_agreeing),
+          f"{relpath(LDBC_REF_V1_COMPARE)}: sum(agreeing) over the 23 comparable templates")
+    m.add("osdiLdbcRowAgreementFraction", row_fraction_3dp,
+          f"{relpath(LDBC_REF_V1_COMPARE)}: sum(agreeing) / sum(compared) over the 23 "
+          "comparable templates, 3dp")
+    m.add("osdiLdbcGate", f"{gate:.2f}",
+          "campaign.yaml addendum_3 scoring.overall_agreement: the pre-registered pass_if bar")
+    m.add("osdiLdbcGateMet", "true" if row_fraction >= gate else "false",
+          f"{relpath(LDBC_REF_V1_COMPARE)}: recomputed row agreement fraction "
+          f"({row_fraction_3dp}) >= campaign.yaml's pass_if gate (0.90)")
+    m.add("osdiLdbcTemplateAgreementFraction", f"{template_fraction:.2f}",
+          f"{relpath(LDBC_REF_V1_COMPARE)}: count(verdict == agreeing) / 24")
+
+    for fam, (fam_agreeing, fam_compared) in fam_rows.items():
+        m.add(f"osdiLdbcRows{fam}Agreeing", tex_num(fam_agreeing),
+              f"{relpath(LDBC_REF_V1_COMPARE)}: sum(agreeing) over the {fam} family's "
+              "comparable templates (campaign.yaml addendum_3 row_agreement.by_group)")
+        m.add(f"osdiLdbcRows{fam}Compared", tex_num(fam_compared),
+              f"{relpath(LDBC_REF_V1_COMPARE)}: sum(compared) over the {fam} family's "
+              "comparable templates (campaign.yaml addendum_3 row_agreement.by_group)")
+
+    m.add("osdiLdbcDefectId", defect_id,
+          "ops/failure_ledger.jsonl: D-090-is3-knows-both-ways-double-count")
+    m.add("osdiLdbcDefectTemplates", ", ".join(defect_templates_ordered),
+          f"{relpath(LDBC_REF_V1_COMPARE)}: the disagreeing verdicts (IC2, IS3), both the "
+          "M7 KNOWS-both-ways double count (D-090) per README.md §5.4/§5.5 -- IS3 "
+          "the original finding, IC2 the second instance found once its reference became "
+          "valid, reported in that order")
+
+    m.add("osdiLdbcInterimAgree", tex_num(interim_agree),
+          f"{relpath(LDBC_REF_V1_COMPARE_INTERIM)}: count of verdict == agreeing in the "
+          "superseded 2026-09-17 revision")
+    m.add("osdiLdbcInterimRowsAgreeing", tex_num(interim_rows_agreeing),
+          f"{relpath(LDBC_REF_V1_COMPARE_INTERIM)}: sum(agreeing) over the 16 templates that "
+          "produced a valid comparison on 2026-09-17 (excludes the 7 templates named in this "
+          "record's own manifest.supersedes_reason plus BI6.v2)")
+    m.add("osdiLdbcInterimRowsCompared", tex_num(interim_rows_compared),
+          f"{relpath(LDBC_REF_V1_COMPARE_INTERIM)}: sum(compared) over the same 16 templates")
+
+
+# --------------------------------------------------------------------------
 # B7 -- scale campaign (Stage 0 iTiger calibration + Stage 1 30M)
 # --------------------------------------------------------------------------
 
@@ -5809,6 +6166,7 @@ def compute_b7_scale(m: Macros) -> None:
 # --------------------------------------------------------------------------
 
 def add_pending_stubs(m: Macros) -> None:
+    pass
     # The DAG-phase (v1/v2/v3, all 40/40 cells), the R-18 probe (5/5
     # batches), and the addendum-1 main correction-storm cell grid (36/36
     # cells, storm-v1-main-grid-2026-09-15.json, Lane W2m) are all now
@@ -5824,13 +6182,11 @@ def add_pending_stubs(m: Macros) -> None:
     # names, so there is nothing left for them to stand in for. See the
     # module docstring's C7 section for the full provenance trail.
 
-    m.add_pending("osdiLdbcExpressible", "C9 (LDBC generality, four axes)",
-                  "benchmarks/ldbc-fit-v1/classification.json exists but the independent-"
-                  "validation axis (Neo4j reference run, Lane E3-ldbc) has not landed")
-    m.add_pending("osdiLdbcExecuted", "C9 (LDBC generality, four axes)",
-                  "same as osdiLdbcExpressible -- the Neo4j reference run is pending")
-    m.add_pending("osdiLdbcValidated", "C9 (LDBC generality, four axes)",
-                  "same as osdiLdbcExpressible -- 0/41 pending the Neo4j reference run")
+    # osdiLdbcExpressible/osdiLdbcExecuted/osdiLdbcValidated (C9,
+    # independent-validation axis) have landed -- see compute_ldbc_ref_v1
+    # above, reading benchmarks/ldbc-ref-v1/compare-2026-09-18.json (Lane
+    # W2t, the Neo4j reference run that this stub named as the reason to
+    # wait). No longer emitted here.
 
     # osdiLiveDays/osdiLiveAdvisories/osdiLiveCorrections (C10, live OSV
     # workload) have landed -- see compute_c10_live_osv above, reading
@@ -5896,6 +6252,7 @@ def main() -> int:
     compute_longevity_verify_and_replay2(m)
     compute_overload(m)
     compute_c10_live_osv(m)
+    compute_ldbc_ref_v1(m)
     compute_b7_scale(m)
     add_pending_stubs(m)
 
