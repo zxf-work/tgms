@@ -105,6 +105,17 @@ pub(crate) fn repin(root: &Path, old: u64, new: u64) {
     }
 }
 
+/// Force-drop one handle's pin without going through `Drop` — a test-only
+/// emulation of a reader that lives in a *different process*, whose pin (if
+/// it had one) this process's `PINS` table could never see in the first
+/// place. A second in-process reader handle cannot stand in for that case:
+/// `PINS` protects it for real, which is exactly why D-088's same-process
+/// diagnosis came back null. See `gc.rs` tests using this.
+#[cfg(test)]
+pub(crate) fn test_unpin(root: &Path, generation: u64) {
+    unpin(root, generation);
+}
+
 fn pinned(root: &Path) -> HashSet<u64> {
     pins()
         .lock()
@@ -316,6 +327,7 @@ mod tests {
     use crate::derive::{edge_eid, version_vid};
     use crate::manifest::EventLogRef;
     use crate::row::{EdgeRow, RowKind};
+    use crate::staging::PartitionMap;
 
     fn tmp_root(name: &str) -> PathBuf {
         let mut p = std::env::temp_dir();
@@ -521,6 +533,90 @@ mod tests {
         let report = w.gc(1).unwrap();
         assert_eq!(report.manifests_removed, 1, "unpinned generation collected");
         assert_eq!(manifest_gens(&root), vec![3]);
+    }
+
+    /// D-088 regression gate.
+    ///
+    /// The bug: a cross-process `read_only=True` reader at generation *G*
+    /// failed every operator with a detected `OSError`/ENOENT once the
+    /// writer's `gc(keep_last=…)` unlinked a segment *G*'s manifest names
+    /// that the reader had never yet queried — because `open_segment` mapped
+    /// segments lazily, per first touch, so the actually-protected set was
+    /// whatever subset of *G* a reader's own queries had reached, not *G*
+    /// itself (soak measurement: a reader was exposed ≈84% of every 300 s
+    /// reopen window once the store outgrew what it had already touched).
+    ///
+    /// A second **in-process** handle cannot reproduce this: `PINS` (this
+    /// module, top) protects a live handle's generation for real, which is
+    /// exactly why the original 6 h diagnosis's same-process probe came back
+    /// null. `test_unpin` emulates the cross-process case directly — a
+    /// reader in another process was never in this process's `PINS` table
+    /// to begin with.
+    ///
+    /// The fix under test (`store.rs::pin_generation_files`, called from
+    /// `open` and every commit/compaction) maps every segment a generation's
+    /// manifest names *at open*, so the reader's own mapping keeps serving
+    /// bytes through the (POSIX) unlink even after gc removes the directory
+    /// entry — before the fix, this exact scenario raised a `Category::Io`
+    /// "No such file or directory" from `MmapSource::load`'s lazy call.
+    #[test]
+    fn a_cross_process_reader_survives_gc_because_pin_at_open_maps_its_whole_generation() {
+        let root = tmp_root("cross-process-pin");
+        let mut w = NativeStore::open(&root).unwrap();
+        // A tiny segment target so a modest batch actually splits across
+        // more than one file — the design memo's "small segment_target_bytes
+        // so >= 2 segments exist".
+        w.set_layout(PartitionMap::default(), 48);
+        let rows = commit_edges(&mut w, 10, 24); // generation 1
+        let gen1_segs = seg_files(&root);
+        assert!(
+            gen1_segs.len() >= 2,
+            "the layout must actually split generation 1 across segments, or \
+             this test does not exercise the multi-segment case the design \
+             memo requires (got {} segment(s))",
+            gen1_segs.len()
+        );
+
+        // D-088: `open` pins every one of generation 1's segment files here,
+        // before this test does anything to any of them.
+        let reader = NativeStore::open(&root).unwrap();
+        let g = reader.generation();
+        assert_eq!(g, 1);
+
+        // Emulate the cross-process case (see the doc comment above).
+        test_unpin(reader.pin_key(), g);
+
+        // Enough further commits and compactions that generation 1 falls
+        // below the retention floor and gc actually has something to do.
+        commit_edges(&mut w, 20, 24); // generation 2
+        w.compact().unwrap(); // generation 3, supersedes 1 and 2's segments
+        commit_edges(&mut w, 30, 24); // generation 4
+        w.compact().unwrap(); // generation 5, supersedes 3 and 4's segments
+        w.gc(1).unwrap(); // keep_last=1: only 5 (+ CURRENT, which is 5) retained
+
+        // Assert first: gc actually removed a file generation 1's manifest
+        // named, on disk — otherwise everything below passes vacuously.
+        let removed: Vec<&String> = gen1_segs
+            .iter()
+            .filter(|f| !root.join("seg").join(f).exists())
+            .collect();
+        assert!(
+            !removed.is_empty(),
+            "gc must have collected at least one of generation 1's segments \
+             for this test to prove anything; none were removed"
+        );
+
+        // The reader still answers correctly, reading through a file gc
+        // considers gone. This is the fix: pin-at-open mapped every one of
+        // these segments when `reader` was opened, above, so the bytes stay
+        // reachable through that mapping regardless of what gc did to the
+        // directory entry afterward.
+        let seen = reader.all_edge_versions().unwrap();
+        let mut got: Vec<String> = seen.iter().map(|v| v.vid.clone()).collect();
+        got.sort();
+        let mut want: Vec<String> = rows.iter().map(|r| r.vid.to_hex()).collect();
+        want.sort();
+        assert_eq!(got, want, "the reader's own generation must read intact");
     }
 
     #[test]
