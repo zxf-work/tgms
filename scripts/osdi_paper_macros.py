@@ -166,6 +166,15 @@ skeleton --
       also verifies down to the by-class totals. ``compute_longevity_soak_two``
       below computes every ``osdiSoak*Two`` macro; the Gate E table's own
       verdict column is prose (gate_e_report-2.md), not emitted here.
+      Added later (2026-09-18, lane W2v): compactions-2.jsonl (the writer's
+      raw per-compaction log, copied from xzgpu) and reader_onset_rows-2.json
+      (the edge-row count at the reader-error storm's earliest/latest
+      onset, reconciling compactions-2.jsonl's ``time.perf_counter()``
+      clock against reader_error_counts_by_class-2.json's wall-clock onset
+      via metrics.jsonl's ``compactions_total`` counter -- method and
+      error bound in the side-file itself) round out the same
+      ``compute_longevity_soak_two`` function's ``osdiSoakReaderOnset*Two``
+      macros.
 
   W2u (P-STORM-HUNT, a 6h observation-only run, commit ``57952fa``) --
       benchmarks/longevity-v1/stormhunt-2026-09-17.json (manifest, single
@@ -451,6 +460,14 @@ LONGEVITY_WRITER_ERRORS_BY_LIFE_TWO = LONGEVITY_DIR / "writer_error_counts_by_li
 LONGEVITY_READER_ERRORS_BY_CLASS_TWO = LONGEVITY_DIR / "reader_error_counts_by_class-2.json"
 LONGEVITY_RSS_SLOPES_TWO = LONGEVITY_DIR / "rss_slopes-2.json"
 LONGEVITY_VERIFY_FULL_TWO = LONGEVITY_DIR / "verify-full-soak2-2026-09-17.txt"
+# Added later (2026-09-18, lane W2v): the raw per-compaction log copied
+# from xzgpu, and the side-file that reconciles its perf_counter clock
+# against reader_error_counts_by_class-2.json's wall-clock onset times to
+# answer "what edge-row count was the store at when the reader
+# OSError/StateError storm's onset began" -- see both files' own sha256
+# rows appended (append-only) to README.md's "Files added here" table.
+LONGEVITY_COMPACTIONS_TWO = LONGEVITY_DIR / "compactions-2.jsonl"
+LONGEVITY_READER_ONSET_ROWS_TWO = LONGEVITY_DIR / "reader_onset_rows-2.json"
 LONGEVITY_MANIFEST_TWO_SHA256 = "19b597db12c6830859f5317ec8bdb630e4599c2fed8924ed26d41edc1cc23f68"
 LONGEVITY_RECOVERIES_TWO_SHA256 = "23a70f0e38c89ab1478a13389c93e86112aceabc2b07b91fc18ca669ad34827b"
 LONGEVITY_GATE_E_REPORT_TWO_SHA256 = "4a02fb42f092be22c39dfc2eed21170310e9c5dfd88836b42d459a1bb9da9814"
@@ -458,6 +475,8 @@ LONGEVITY_WRITER_ERRORS_BY_LIFE_TWO_SHA256 = "d46fa237e5b02c6420c0735f7375454e82
 LONGEVITY_READER_ERRORS_BY_CLASS_TWO_SHA256 = "e6d8624fc410c26289541557b17de132aeb08597b4c9bf83327c3cf22de34f41"
 LONGEVITY_RSS_SLOPES_TWO_SHA256 = "8a690ece6a9579b2ccd5d8a4473cb7f7c6b07ada390657e6a7ea5dee188c3054"
 LONGEVITY_VERIFY_FULL_TWO_SHA256 = "f18892a01759422854d3d09e4bfb04a6b4cc65b18d2e60aee55f5c8c711bdb59"
+LONGEVITY_COMPACTIONS_TWO_SHA256 = "f17788eb7a1ca197dafefe8a627ea7441641e5a3f6786752f0638a2aa2e0673b"
+LONGEVITY_READER_ONSET_ROWS_TWO_SHA256 = "48597e90f8146318afa60ad668403492b3464cd5c29933a329804341a9c6c0e7"
 
 FAILURE_LEDGER = ROOT / "ops" / "failure_ledger.jsonl"
 
@@ -4504,6 +4523,12 @@ def compute_longevity_soak_two(m: Macros) -> None:
        f"{relpath(LONGEVITY_RSS_SLOPES_TWO)}: sha256 matches README.md's Files-added-here table")
     eq(sha256_file(LONGEVITY_VERIFY_FULL_TWO), LONGEVITY_VERIFY_FULL_TWO_SHA256,
        f"{relpath(LONGEVITY_VERIFY_FULL_TWO)}: sha256 matches README.md's Files-added-here table")
+    eq(sha256_file(LONGEVITY_COMPACTIONS_TWO), LONGEVITY_COMPACTIONS_TWO_SHA256,
+       f"{relpath(LONGEVITY_COMPACTIONS_TWO)}: sha256 matches README.md's Files-added-here table "
+       "(appended 2026-09-18)")
+    eq(sha256_file(LONGEVITY_READER_ONSET_ROWS_TWO), LONGEVITY_READER_ONSET_ROWS_TWO_SHA256,
+       f"{relpath(LONGEVITY_READER_ONSET_ROWS_TWO)}: sha256 matches README.md's Files-added-here "
+       "table (appended 2026-09-18)")
 
     manifest = json.loads(LONGEVITY_MANIFEST_TWO.read_text(encoding="utf-8"))
     summary = manifest["summary"]
@@ -4803,6 +4828,67 @@ def compute_longevity_soak_two(m: Macros) -> None:
           "count (both agree)")
     m.add("osdiSoakCompactionsTwo", tex_num(compactions),
           f"{relpath(LONGEVITY_MANIFEST_TWO)}: summary.compactions")
+
+    # --- reader-onset edge-row counts (added 2026-09-18, lane W2v) --
+    # reader_onset_rows-2.json reconciles compactions-2.jsonl's writer-
+    # perf_counter clock against reader_error_counts_by_class-2.json's
+    # wall-clock onset_t_plus_s via metrics.jsonl's compactions_total
+    # counter (see the file's own "method" field for the full procedure
+    # and its stated mapping-error bound); cross-checked here against the
+    # onset source file's own osrror_storm_onset_by_reader, not only
+    # against frozen constants.
+    onset_rows = json.loads(LONGEVITY_READER_ONSET_ROWS_TWO.read_text(encoding="utf-8"))
+    onset_by_reader = reader_by_class["osrror_storm_onset_by_reader"]
+    earliest = onset_rows["earliest_reader_onset"]
+    latest = onset_rows["latest_reader_onset"]
+    eq(earliest["reader"], 6, "Soak2 frozen: earliest reader-error onset is reader 6")
+    eq(latest["reader"], 4, "Soak2 frozen: latest reader-error onset is reader 4")
+    eq(earliest["onset_t_plus_s"], onset_by_reader[str(earliest["reader"])]["onset_t_plus_s"],
+       "Soak2: reader_onset_rows-2.json earliest onset_t_plus_s matches "
+       "reader_error_counts_by_class-2.json's own osrror_storm_onset_by_reader")
+    eq(latest["onset_t_plus_s"], onset_by_reader[str(latest["reader"])]["onset_t_plus_s"],
+       "Soak2: reader_onset_rows-2.json latest onset_t_plus_s matches "
+       "reader_error_counts_by_class-2.json's own osrror_storm_onset_by_reader")
+    require(earliest["onset_t_plus_s"] == min(v["onset_t_plus_s"] for v in onset_by_reader.values()),
+            "Soak2: reader_onset_rows-2.json's earliest onset really is the minimum "
+            "onset_t_plus_s across all 8 readers")
+    require(latest["onset_t_plus_s"] == max(v["onset_t_plus_s"] for v in onset_by_reader.values()),
+            "Soak2: reader_onset_rows-2.json's latest onset really is the maximum "
+            "onset_t_plus_s across all 8 readers")
+    onset_earliest_s = earliest["onset_t_plus_s"]
+    onset_latest_s = latest["onset_t_plus_s"]
+    eq(onset_earliest_s, 61417.1, "Soak2 frozen: earliest reader-error onset, s into the run")
+    eq(onset_latest_s, 75993.1, "Soak2 frozen: latest reader-error onset, s into the run")
+    onset_earliest_rows = earliest["last_compaction_before"]["edge_rows"]
+    onset_latest_rows = latest["last_compaction_before"]["edge_rows"]
+    eq(onset_earliest_rows, 2_235_044,
+       "Soak2 frozen: edge_rows of the last compaction before the earliest reader onset")
+    eq(onset_latest_rows, 2_450_815,
+       "Soak2 frozen: edge_rows of the last compaction before the latest reader onset")
+    require(onset_earliest_rows < onset_latest_rows,
+            "Soak2: edge-row count grows from the earliest to the latest reader-error onset, "
+            "consistent with a monotonically growing store")
+
+    m.add("osdiSoakReaderOnsetEarliestRowsTwo", tex_num(onset_earliest_rows),
+          f"{relpath(LONGEVITY_READER_ONSET_ROWS_TWO)}: earliest_reader_onset."
+          "last_compaction_before.edge_rows -- the last compaction (compactions-2.jsonl) "
+          "before reader 6's onset_t_plus_s=61417.1s, mapped from that file's own "
+          "perf_counter clock onto reader_error_counts_by_class-2.json's wall-clock "
+          "onset via metrics.jsonl's compactions_total counter (method and the mapping's "
+          "own error bound, ~60-72s / up to 3 ambiguous rows, stated in the side-file)")
+    m.add("osdiSoakReaderOnsetLatestRowsTwo", tex_num(onset_latest_rows),
+          f"{relpath(LONGEVITY_READER_ONSET_ROWS_TWO)}: latest_reader_onset."
+          "last_compaction_before.edge_rows -- the last compaction before reader 4's "
+          "onset_t_plus_s=75993.1s, same reconciliation method as "
+          "osdiSoakReaderOnsetEarliestRowsTwo")
+    m.add("osdiSoakReaderOnsetEarliestSTwo", f"{onset_earliest_s:.1f}",
+          f"{relpath(LONGEVITY_READER_ERRORS_BY_CLASS_TWO)}: "
+          "osrror_storm_onset_by_reader.6.onset_t_plus_s, s into the run (RUN_STARTED "
+          "2026-09-16T00:53:01Z) -- the minimum onset_t_plus_s across all 8 readers")
+    m.add("osdiSoakReaderOnsetLatestSTwo", f"{onset_latest_s:.1f}",
+          f"{relpath(LONGEVITY_READER_ERRORS_BY_CLASS_TWO)}: "
+          "osrror_storm_onset_by_reader.4.onset_t_plus_s, s into the run -- the maximum "
+          "onset_t_plus_s across all 8 readers")
 
 
 # --------------------------------------------------------------------------
