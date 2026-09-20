@@ -20,6 +20,7 @@ their being written by someone else.
 
 from __future__ import annotations
 
+import os
 import tempfile
 from dataclasses import replace
 from pathlib import Path
@@ -27,6 +28,7 @@ from typing import Any
 
 import pytest
 
+import tgms.tgir.check as check_mod
 from tgms.core.model import OPEN_END, edge_eid
 from tgms.storage.base import make_op
 from tgms.storage.eventlog import SEED_CHAIN, EventLog
@@ -824,6 +826,49 @@ def test_a_tampered_prefix_is_caught_with_the_cache_in_hand():
     assert b'"lead"' in raw[2]
     log.path.write_bytes(b"\n".join(raw))
     assert check(scope, log, chain_cache=cache).reason == "log-rewritten"
+
+
+def test_a_same_tick_same_size_tamper_is_caught_with_the_cache_in_hand(monkeypatch):
+    """D-162: the stat key alone cannot rule out a stale entry.
+
+    On the `xzws` baseline host (Linux 5.4.0-216, `HZ=250`) `st_mtime_ns` and
+    `st_ctime_ns` advance only on a 4 ms jiffy, so a same-size in-place rewrite
+    finishing inside one tick leaves every stat field byte-identical — on tmpfs
+    (`/dev/shm`) that is the common case. Freezing `_stat` at its pre-tamper
+    value reproduces that aliasing on any host, whatever its timestamp
+    resolution; the content digest is what must catch it.
+    """
+    log = _log((900, [NODE_A]), (1500, [MID]), (2500, [OP0]))
+    ends = [e for _b, e, _r in log.batches_from(0)]
+    scope = _scope(log, T1a, tt_q=1600,
+                   checkpoints=(Checkpoint(ends[1], log.chain_of_prefix(ends[1])),))
+    cache = ChainCache()
+    assert check(scope, log, chain_cache=cache).state == "possibly-stale"
+
+    frozen = os.stat(log.path)
+    raw = log.path.read_bytes().split(b"\n")
+    raw[2] = raw[2].replace(b'"silv"', b'"lead"')   # inside the checkpointed prefix
+    assert b'"lead"' in raw[2]
+    tampered = b"\n".join(raw)
+    assert len(tampered) == frozen.st_size
+    log.path.write_bytes(tampered)
+
+    monkeypatch.setattr(check_mod, "_stat", lambda p: frozen)
+    assert check(scope, log, chain_cache=cache).reason == "log-rewritten"
+    assert cache.misses == 2
+
+
+def test_the_frozen_stat_path_still_hits_when_the_bytes_are_unchanged(monkeypatch):
+    """The digest must not cost a spurious miss: with the stat key frozen and
+    the file untouched, the second call is still a hit."""
+    log = _log((900, [NODE_A]), (2000, [OP0, OP1]))
+    scope = _scope(log, T1a, T1b, T1c, T2, tt_q=1000)
+    cache = ChainCache()
+    monkeypatch.setattr(check_mod, "_stat", lambda p: os.stat(log.path))
+    first = check(scope, log, chain_cache=cache)
+    second = check(scope, log, chain_cache=cache)
+    assert first.to_json() == second.to_json()
+    assert cache.hits == 1 and cache.misses == 1
 
 
 def test_a_rewrite_BEYOND_the_checkpoint_is_not_tamper_evident_and_should_not_be():
