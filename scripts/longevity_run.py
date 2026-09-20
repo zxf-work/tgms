@@ -920,10 +920,45 @@ def child_writer(cfg: dict[str, Any]) -> None:
                 # 60s stale.
                 metrics.flush()
                 write_progress(time.time())
-                os.environ["TGMS_CRASH_POINT"] = boundary
+                # MAINT_BOUNDARIES are two distinct crash sites in two
+                # distinct engine calls (`compact.rs::crash_point
+                # ("compact_before_install")` vs. `gc.rs::crash_point
+                # ("gc_mid_delete")`, confirmed by grep — compact() never
+                # calls gc() and vice versa) — mirroring
+                # eval_durability.py's `_crash_child` (the reference
+                # implementation these ten boundaries are borrowed from,
+                # module docstring above), which calls `compact()` for
+                # "compact_before_install" and `gc(keep_last=0)` for
+                # "gc_mid_delete", with an unarmed clean `compact()` first
+                # so gc has victims to delete. Before this fix this branch
+                # always called `store.adapter.compact()` regardless of
+                # which MAINT boundary was armed, so an armed
+                # "gc_mid_delete" set TGMS_CRASH_POINT to a name compact()
+                # never checks; compact() then ran to completion, and the
+                # only gc() call left in the writer is the periodic
+                # maintenance one below, which unconditionally pops
+                # TGMS_CRASH_POINT (see the comment there) before it runs
+                # — so gc() always saw the crash point already cleared.
+                # The result: an armed "gc_mid_delete" restart silently
+                # never fires; the life keeps running until the
+                # orchestrator's *next* `--restart-every` boundary happens
+                # to draw a different boundary (soak3 2026-09-19:
+                # `writer_control.json` sat at
+                # {"seq": 7, "boundary": "gc_mid_delete"} for 6+ hours
+                # with no restart; life 4 likewise ran 12h, double its
+                # 6h period, because the boundary armed at its first
+                # 6h mark was this same one).
                 if boundary in MAINT_BOUNDARIES:
-                    store.adapter.compact()   # dies here (os._exit(137))
-                # otherwise falls through and dies inside the next write below
+                    if boundary == "gc_mid_delete":
+                        store.adapter.compact()  # clean pass so gc has victims
+                        os.environ["TGMS_CRASH_POINT"] = boundary
+                        store.adapter.gc(keep_last=0)  # dies here (engine abort, rc=-6)
+                    else:  # "compact_before_install"
+                        os.environ["TGMS_CRASH_POINT"] = boundary
+                        store.adapter.compact()   # dies here (engine abort, rc=-6)
+                else:
+                    os.environ["TGMS_CRASH_POINT"] = boundary
+                    # falls through and dies inside the next write below
 
         is_corr = rng.random() < (mix["correction"] / weight_total)
         t0 = time.perf_counter()
