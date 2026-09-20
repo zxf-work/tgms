@@ -36,6 +36,7 @@ import subprocess
 import sys
 from pathlib import Path
 
+import numpy as np
 import pytest
 
 pytest.importorskip("tgms._engine", reason="native engine extension not built")
@@ -394,16 +395,33 @@ def test_tcsr_rebuilds_after_the_upgrade(tmp_path, fixture, format_version):
     first, _ = adapter.tcsr()
     index = adapter.path / "index" / "tcsr.npz"
     assert index.exists(), "the permutation should have been persisted"
-    stamp_before = index.stat().st_mtime_ns
+    # Not mtime: inode timestamps can have jiffy granularity (4 ms on Linux
+    # 5.4/HZ=250), and on tmpfs the whole close->reopen->upgrade->rebuild
+    # round trip fits inside one tick, so two samples can collide (triage
+    # memo of 2026-09-19). What the stamp check actually guarantees is
+    # checked directly: the persisted (generation, manifest_sha) and the
+    # inode identity of the file that was `os.replace`'d into place.
+    with np.load(index) as z:
+        stamp_before = (int(z["generation"]), str(z["manifest_sha"]))
+    ino_before = index.stat().st_ino
+    live_before = (adapter._store.generation(), adapter._store.manifest_sha())
+    assert stamp_before == live_before, \
+        "the persisted stamp should match the generation that built it"
     adapter.close()
 
     adapter = NativeAdapter(root / "native")
     adapter.upgrade_manifests()
     second, _ = adapter.tcsr()
-    # a stale stamp must not be served: the file is rewritten for the new
-    # generation, and the answer is the same
-    assert index.stat().st_mtime_ns != stamp_before
-    import numpy as np
+    # a stale stamp must not be served: the persisted stamp now matches the
+    # upgraded generation (so what tcsr() returned cannot have been read
+    # off the old permutation), and the file installed by os.replace is a
+    # genuinely different inode, i.e. a rewrite rather than a touch.
+    with np.load(index) as z:
+        stamp_after = (int(z["generation"]), str(z["manifest_sha"]))
+    live_after = (adapter._store.generation(), adapter._store.manifest_sha())
+    assert stamp_after != stamp_before
+    assert stamp_after == live_after
+    assert index.stat().st_ino != ino_before
     for direction in ("out", "inn"):
         for field in ("offsets", "nbr", "vt_s", "vt_e", "row"):
             np.testing.assert_array_equal(
