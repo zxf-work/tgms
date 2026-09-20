@@ -36,6 +36,7 @@ restriction, enforced by `scripts/check_freshness_boundary.py`.
 
 from __future__ import annotations
 
+import hashlib
 import os
 from dataclasses import dataclass
 from enum import Enum
@@ -432,8 +433,34 @@ def UNDECIDABLE(reason: str, degraded: tuple[str, ...] = ()) -> Verdict:
 # the chain cache (§3.9)
 # ---------------------------------------------------------------------------
 
+def _stat(path: Any) -> os.stat_result:
+    """The cache's one stat call, behind a module-level name so a test can
+    freeze it and reproduce a same-tick rewrite on any host."""
+    return os.stat(path)
+
+
+def _fingerprint(path: Any, size: int) -> str:
+    """`sha256` over exactly the first `size` bytes of `path`."""
+    h = hashlib.sha256()
+    with open(path, "rb") as fh:
+        remaining = size
+        while remaining > 0:
+            chunk = fh.read(min(remaining, 1 << 20))
+            if not chunk:
+                break
+            remaining -= len(chunk)
+            h.update(chunk)
+    return h.hexdigest()
+
+
+@dataclass(frozen=True, slots=True)
+class _CacheEntry:
+    walk: "LogWalk"
+    fingerprint: str
+
+
 class ChainCache:
-    """A memo over `{(path, size, mtime): {offset: chain}}`.
+    """A memo over `{(path, size, mtime_ns, ino, ctime_ns): (walk, sha256)}`.
 
     `chain_of_prefix(offset)` iterates from byte 0, and D13.24 step 6 requires
     it for **every** checkpoint, so a naive checker is O(whole log) per check
@@ -445,31 +472,52 @@ class ChainCache:
     unless a cache is handed to it — which is what lets the report state the
     number with and without rather than quietly reporting the cached one.
 
-    Keyed on size *and* mtime, not size alone: the walk is also the
-    tamper-evidence check (D13.18), and a cache that answered from a stale
-    entry would be answering the one question it exists to verify. A caller
-    auditing an adversarial log should still pass `None`.
+    Keyed on size, mtime, **inode and ctime** — and, on every stat-key hit, the
+    entry is served only after a `sha256` over the first `size` bytes of the
+    file matches the digest taken when the entry was populated (D-162,
+    2026-09-19). The walk is also the tamper-evidence check (D13.18), and a
+    cache that answered from a stale entry would be answering the one question
+    it exists to verify — but a stat key alone cannot rule that out. On the
+    `xzws` baseline host (Linux 5.4.0-216, `HZ=250`) `st_mtime_ns` and
+    `st_ctime_ns` advance only on a 4 ms jiffy, so a same-size in-place rewrite
+    that completes inside one tick leaves every stat field byte-identical and
+    aliases the pre-rewrite entry; on tmpfs (`/dev/shm`) that is the common
+    case, not the rare one.
+
+    The digest must cover the **whole cached prefix**: a cheaper "last block"
+    fingerprint would not catch the memo's own failing case, a same-length
+    rewrite in the *middle* of the checkpointed prefix. A plain digest is one
+    sequential read with no JSON parsing and no chain arithmetic, so a hit is
+    still much cheaper than the walk, while a stale entry can no longer be
+    served whatever the host's timestamp resolution.
+
+    Behaviour is otherwise unchanged: the cache stays opt-in, verdicts with and
+    without it are identical, and the counters keep their meaning — a
+    fingerprint mismatch is a **miss** (the log is re-walked and the entry
+    replaced). A caller auditing an adversarial log should still pass `None`.
     """
 
     def __init__(self) -> None:
-        self._entries: dict[tuple[str, int, int], LogWalk] = {}
+        self._entries: dict[tuple[str, int, int, int, int], _CacheEntry] = {}
         self.hits = 0
         self.misses = 0
 
     @staticmethod
-    def _key(log: EventLog) -> tuple[str, int, int]:
-        st = os.stat(log.path)
-        return (str(log.path), st.st_size, st.st_mtime_ns)
+    def _key(log: EventLog) -> tuple[str, int, int, int, int]:
+        st = _stat(log.path)
+        return (str(log.path), st.st_size, st.st_mtime_ns, st.st_ino, st.st_ctime_ns)
 
     def walk(self, log: EventLog) -> "LogWalk":
         key = self._key(log)
+        size = key[1]
         cached = self._entries.get(key)
         if cached is not None:
-            self.hits += 1
-            return cached
+            if _fingerprint(log.path, size) == cached.fingerprint:
+                self.hits += 1
+                return cached.walk
         self.misses += 1
         walked = _walk(log)
-        self._entries[key] = walked
+        self._entries[key] = _CacheEntry(walked, _fingerprint(log.path, size))
         return walked
 
     def prefix_chains(self, log: EventLog) -> dict[int, str]:

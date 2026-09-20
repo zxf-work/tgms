@@ -391,6 +391,19 @@ key simply ignores it and computes today's (sound) verdict. Measured over
 sx-mathoverflow), the exemption avoided the invalidation its unexempted
 counterpart flagged in every trial.
 
+**The optional `ChainCache` no longer trusts a stat key alone (fixed
+2026-09-19).** It now keys on inode and ctime as well as size and mtime, and
+on every key hit it re-reads the cached prefix and verifies a full-content
+`sha256` digest before serving the entry. A same-size in-place rewrite that
+completes inside one clock tick — on a host whose `mtime_ns`/`ctime_ns`
+advance only on a jiffy, every stat field is then byte-identical — can no
+longer be answered from a stale entry, which matters because the walk the
+cache memoizes *is* the tamper-evidence check. Verdicts with and without the
+cache are unchanged, as they were before, and the cache remains opt-in and off
+by default. The cost of a hit changes: it is one sequential read of the log
+(no JSON parsing, no chain arithmetic) rather than O(1), still well below the
+walk it replaces.
+
 ---
 
 ## 5. Compaction layout and disk retention (fixed 2026-08-24, shipped v0.8.0)
