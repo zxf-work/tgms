@@ -691,6 +691,23 @@ def child_reader(cfg: dict[str, Any]) -> None:
     # *whole* handle on a schedule instead.
     reopen_every_s = cfg.get("reopen_every_s", 60.0)
     last_reopen = time.perf_counter()
+    # D-088's reopen-on-ENOENT net (`NativeAdapter.reopen_on_enoent_total()`)
+    # counts against one adapter *instance*, and `tgms.open()` just below
+    # builds a brand-new adapter every time this reader replaces its handle
+    # on the `reopen_every_s` schedule -- so the net's own counter goes back
+    # to 0 on every scheduled reopen even though the reader's life keeps
+    # going. `reopen_on_enoent_accum` is this reader's own running total
+    # across its whole life: whatever the retiring handle had counted is
+    # folded in right before that handle is dropped, and `_adapter_reopen_
+    # on_enoent` reads 0 (never raises) for a backend whose adapter does not
+    # expose the method at all.
+    reopen_on_enoent_accum = 0
+    reopen_on_enoent_emitted = 0
+
+    def _adapter_reopen_on_enoent(adapter: Any) -> int:
+        fn = getattr(adapter, "reopen_on_enoent_total", None)
+        return int(fn()) if fn is not None else 0
+
     while time.time() < end_at:
         for q in mix:
             try:
@@ -707,6 +724,7 @@ def child_reader(cfg: dict[str, Any]) -> None:
                     _write_ledger(ledger_dir, "reader_op_error", reader=idx,
                                   query=q["id"], **new_detail)
         if reopen_every_s and time.perf_counter() - last_reopen >= reopen_every_s:
+            reopen_on_enoent_accum += _adapter_reopen_on_enoent(a)
             store.close()
             store = tgms.open(store_path, backend="native", read_only=True)
             a = store.adapter
@@ -726,17 +744,26 @@ def child_reader(cfg: dict[str, Any]) -> None:
                 timings[q["id"]] = []
             metrics.gauge("qps", done / elapsed, reader=idx)
             metrics.gauge("rss_kb", _vm_status().get("vmrss_kb", 0), reader=idx)
+            reopen_on_enoent_total = reopen_on_enoent_accum + _adapter_reopen_on_enoent(a)
+            metrics.counter("reader_reopen_on_enoent_total",
+                            reopen_on_enoent_total - reopen_on_enoent_emitted, reader=idx)
+            reopen_on_enoent_emitted = reopen_on_enoent_total
             metrics.flush()
             progress_path.write_text(json.dumps(
                 {"idx": idx, "done": done, "errors": errors, "reopens": reopens,
-                 "error_details": error_detail.snapshot(), "ts": now}))
+                 "error_details": error_detail.snapshot(),
+                 "reopen_on_enoent_total": reopen_on_enoent_total, "ts": now}))
             done = 0
             minute_t0 = time.perf_counter()
             last_flush = now
+    reopen_on_enoent_total = reopen_on_enoent_accum + _adapter_reopen_on_enoent(a)
+    metrics.counter("reader_reopen_on_enoent_total",
+                    reopen_on_enoent_total - reopen_on_enoent_emitted, reader=idx)
     metrics.flush()
     progress_path.write_text(json.dumps({"idx": idx, "done": done, "errors": errors,
                                          "reopens": reopens,
                                          "error_details": error_detail.snapshot(),
+                                         "reopen_on_enoent_total": reopen_on_enoent_total,
                                          "ts": time.time(), "final": True}))
     store.close()
 
@@ -1676,6 +1703,7 @@ def summarize(out_dir: Path, metrics_path: Path, t_start: float, end_at: float,
 
     reader_done_total = int(counter_sum("queries_total"))
     reader_errors_total = int(counter_sum("reader_errors_total"))
+    reader_reopen_on_enoent_total = int(counter_sum("reader_reopen_on_enoent_total"))
 
     recoveries_recorded = _read_jsonl(recoveries_path)
     unexpected_recoveries = sum(1 for r in recoveries_recorded if r.get("kind") == "unexpected")
@@ -1690,6 +1718,7 @@ def summarize(out_dir: Path, metrics_path: Path, t_start: float, end_at: float,
         "writer_totals_all_lives": writer_totals_all_lives,
         "reader_queries_total": reader_done_total,
         "reader_errors_total": reader_errors_total,
+        "reader_reopen_on_enoent_total": reader_reopen_on_enoent_total,
         "reader_restarts_recorded": len(_read_jsonl(reader_restarts_path)),
         "compactions": len(compactions),
         "drift": {
