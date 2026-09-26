@@ -202,21 +202,21 @@ skeleton --
       recoveries-3.jsonl, host_load-3.log and verify-full-3.txt (all five
       whole-file sha256-checked against that section's own "Files added
       here" table), plus rss_slopes-3.json, throughput-3.json,
-      reader_op_error-3.json and reader_onset_rows-3.json (derived
-      locally, no xzgpu twin to hash against, per that section's own
-      note). Only 9 of the pre-registered 12 writer lives ran (the
-      ``gc_mid_delete`` restart-arming defect, fixed later at
-      ``3267725``/``7b5d6ba``, both after ``9e21a83``). Unlike P-SOAK2's
-      monotonic, never-healing reader OSError/StateError storm, the D-088
-      ledger's 17 first-onset lines understate a reconstructed 662 true
-      active/healed episodes across 8 readers x 2 classes (every
-      combination heals repeatedly) -- root cause not established here;
-      P-SOAK4 re-measures the fixed engine. ``compute_longevity_soak_three``
-      below computes every ``osdiSoak*Three`` macro; the writer-error
-      exception class has no committed per-soak3 side-file to recompute
-      it from, so ``osdiSoakWriterErrorsClassThree`` stays a PENDING stub
-      (added directly by that function, like ``osdiB7ScaleCurveP50ReachWindow100M``).
-      No verdict macro -- Gate E scoring is the coordinator's.
+      reader_op_error-3.json, reader_onset_rows-3.json and
+      writer_error_counts_by_class-3.json (derived locally, no xzgpu twin
+      to hash against, per that section's own note). Only 9 of the
+      pre-registered 12 writer lives ran (the ``gc_mid_delete``
+      restart-arming defect, fixed later at ``3267725``/``7b5d6ba``, both
+      after ``9e21a83``). Unlike P-SOAK2's monotonic, never-healing reader
+      OSError/StateError storm, the D-088 ledger's 17 first-onset lines
+      understate a reconstructed 662 true active/healed episodes across 8
+      readers x 2 classes (every combination heals repeatedly) -- root
+      cause not established here; P-SOAK4 re-measures the fixed engine.
+      ``compute_longevity_soak_three`` below computes every
+      ``osdiSoak*Three`` macro, including ``osdiSoakWriterErrorsClassThree``
+      (recomputed from writer_error_counts_by_class-3.json, this lane's own
+      per-life/per-class writer-error side-file). No verdict macro -- Gate E
+      scoring is the coordinator's.
 
   W-lane (the original soak's full-mode verify + REPLAY-2) --
       benchmarks/longevity-v1/verify-full-2026-09-15.txt (two `tgms check`
@@ -659,6 +659,7 @@ LONGEVITY_RSS_SLOPES_THREE = LONGEVITY_DIR / "rss_slopes-3.json"
 LONGEVITY_THROUGHPUT_THREE = LONGEVITY_DIR / "throughput-3.json"
 LONGEVITY_READER_OP_ERROR_THREE = LONGEVITY_DIR / "reader_op_error-3.json"
 LONGEVITY_READER_ONSET_ROWS_THREE = LONGEVITY_DIR / "reader_onset_rows-3.json"
+LONGEVITY_WRITER_ERRORS_BY_CLASS_THREE = LONGEVITY_DIR / "writer_error_counts_by_class-3.json"
 LONGEVITY_MANIFEST_THREE_SHA256 = "e094fd5acbcb95e523f3f00fa544e634a531d3b3c991525422a6546981c2251a"
 LONGEVITY_COMPACTIONS_THREE_SHA256 = "9c66241d34b45c9b550b931fe78471e6789113338e163c3f4a7ba293e89a0bdf"
 LONGEVITY_RECOVERIES_THREE_SHA256 = "36032c9ad858150e0d914d98e6399b62124492238b8dd013a9c15c8f78b9329b"
@@ -5420,11 +5421,12 @@ def compute_longevity_soak_three(m: Macros) -> None:
     not this script's.
 
     The writer-error exception class (100% NotFoundError per README.md
-    (h)) is NOT emitted as a landed macro here: unlike P-SOAK2's
-    writer_error_counts_by_life-2.json, this soak has no committed
-    per-life/per-class writer-error side-file, so that class label is not
-    recomputable from any file this lane owns -- see
-    osdiSoakWriterErrorsClassThree's PENDING stub below.
+    (h)) is landed as ``osdiSoakWriterErrorsClassThree``, recomputed from
+    writer_error_counts_by_class-3.json -- this soak's own per-life/
+    per-class writer-error side-file, built read-only from xzgpu's
+    longevity_ledger.jsonl (854 writer_op_error lines, all NotFoundError)
+    split per life via each writer_progress-<life>.json, the same
+    convention as P-SOAK2's writer_error_counts_by_life-2.json.
     """
     # --- whole-file sha256 checks against README.md's Soak 3 "Files added
     # here" table (the 5 files with an xzgpu twin) ---
@@ -5540,11 +5542,34 @@ def compute_longevity_soak_three(m: Macros) -> None:
 
     # --- writer errors: true total (854), cross-checked against the
     # manifest's own writer_totals_all_lives.errors; the exception class
-    # (100% NotFoundError per README.md (h)) has no committed per-life/
-    # per-class side-file for this soak, so it is NOT recomputed here --
-    # see osdiSoakWriterErrorsClassThree's PENDING stub below ---
+    # (100% NotFoundError per README.md (h)) is now recomputed from
+    # writer_error_counts_by_class-3.json, this lane's own per-life/
+    # per-class writer-error side-file (built read-only from xzgpu's
+    # longevity_ledger.jsonl, see that file's own "source"/"method"
+    # fields) ---
     writer_errors_true = summary["writer_totals_all_lives"]["errors"]
     eq(writer_errors_true, 854, "Soak3 frozen: summary.writer_totals_all_lives.errors")
+
+    writer_by_class_doc = json.loads(
+        LONGEVITY_WRITER_ERRORS_BY_CLASS_THREE.read_text(encoding="utf-8"))
+    eq(writer_by_class_doc["total_writer_errors"], writer_errors_true,
+       "Soak3: writer_error_counts_by_class-3.json total_writer_errors matches "
+       "summary.writer_totals_all_lives.errors")
+    writer_by_class = writer_by_class_doc["writer_by_class"]
+    eq(writer_by_class, {"NotFoundError": 854},
+       "Soak3 frozen: writer_error_counts_by_class-3.json writer_by_class -- the sole "
+       "exception class, and its full count")
+    per_life_errors_three = writer_by_class_doc["per_life"]
+    eq(len(per_life_errors_three), writer_lives,
+       "Soak3: writer_error_counts_by_class-3.json per_life row count matches "
+       "summary.writer_totals_all_lives.lives")
+    per_life_errors_three_values = [
+        per_life_errors_three[str(life)]["errors"] for life in range(writer_lives)]
+    eq(per_life_errors_three_values, [174, 125, 86, 97, 132, 90, 62, 36, 52],
+       "Soak3 frozen: writer_error_counts_by_class-3.json per-life error counts, lives 0-8, "
+       "matches README.md (h)'s own reported figures")
+    eq(sum(per_life_errors_three_values), writer_errors_true,
+       "Soak3: writer_error_counts_by_class-3.json per-life errors sum to the true total")
 
     # --- reader errors: true total, split OSError/StateError, recomputed
     # from reader_op_error-3.json's per-reader per_reader_totals_by_class
@@ -5733,6 +5758,13 @@ def compute_longevity_soak_three(m: Macros) -> None:
           "restart cycles")
     m.add("osdiSoakRecoveryMaxSThree", f"{recovery_max_s:.3f}",
           f"{relpath(LONGEVITY_RECOVERIES_THREE)}: max(recovery_s)")
+    m.add("osdiSoakUnexpectedRecoveriesThree", tex_num(unexpected),
+          f"{relpath(LONGEVITY_MANIFEST_THREE)}: summary.unexpected_writer_deaths -- all 8 "
+          "recoveries are the harness's own designed restart cycle (kind==\"designed\")")
+    m.add("osdiSoakReaderDeathsThree", tex_num(reader_restarts),
+          f"{relpath(LONGEVITY_MANIFEST_THREE)}: summary.reader_restarts -- no reader ever "
+          "died or was restarted this run (unlike soak1's 2), no reader_restarts-3.jsonl "
+          "file to cross-check a row count against")
     m.add("osdiSoakDigestEqualThree", "true",
           f"{relpath(LONGEVITY_MANIFEST_THREE)}: summary.digest_equal is the JSON literal "
           "true, confirmed by the 19.6h end-of-run replay (known fact 4)")
@@ -5827,16 +5859,11 @@ def compute_longevity_soak_three(m: Macros) -> None:
           f"{relpath(LONGEVITY_HOST_LOAD_THREE)}: max(1-min load averages), same (unwindowed) "
           "93-sample set")
 
-    m.add_pending(
-        "osdiSoakWriterErrorsClassThree", "P-SOAK3 (Lane W2x)",
-        "README.md (h) states all writer errors are NotFoundError, cross-checked there against "
-        "longevity_ledger.jsonl's 854 writer_op_error lines and each "
-        "writer_progress-<life>.json's own errors field -- but neither a per-soak3 "
-        "ledger nor a writer_error_counts_by_{life,class}-3.json side-file is committed "
-        "to this repo (unlike P-SOAK2's writer_error_counts_by_life-2.json or "
-        "P-STORM-HUNT's writer_error_counts_by_class-stormhunt.json), so this lane has "
-        "no committed file to recompute the exception-class label from. "
-        "osdiSoakWriterErrorsTrueThree (854) is landed from the manifest directly.")
+    m.add("osdiSoakWriterErrorsClassThree", "NotFoundError",
+          f"{relpath(LONGEVITY_WRITER_ERRORS_BY_CLASS_THREE)}: the sole exception class "
+          "across every writer error in all 9 lives (text macro, not a number) -- "
+          "cross-checked there against README.md (h), longevity_ledger.jsonl's 854 "
+          "writer_op_error lines, and each writer_progress-<life>.json's own errors field")
 
 
 # --------------------------------------------------------------------------
