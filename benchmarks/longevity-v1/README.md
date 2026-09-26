@@ -1308,12 +1308,17 @@ directly against `longevity_ledger.jsonl`'s 854 `writer_op_error` lines
 
 All five verified byte-identical (sha256) between xzgpu and this copy
 before commit. `rss_slopes-3.json`, `throughput-3.json`,
-`reader_op_error-3.json` and `reader_onset_rows-3.json` are derived
-locally from `metrics.jsonl` and the files above (no xzgpu twin to hash
-against — each file's own `method` field documents the full procedure,
-same convention as soak2's `reader_onset_rows-2.json`). `metrics.jsonl`
-(118 MB) and the store/replay-store copies stay on xzgpu, per the PI
-ruling reiterated at the top of this section.
+`reader_op_error-3.json`, `reader_onset_rows-3.json` and
+`writer_error_counts_by_class-3.json` are derived locally from
+`metrics.jsonl`, `longevity_ledger.jsonl` and the files above (no xzgpu
+twin to hash against — each file's own `method` field documents the full
+procedure, same convention as soak2's `reader_onset_rows-2.json`).
+`writer_error_counts_by_class-3.json` gives the per-life breakdown behind
+(h) above (174/125/86/97/132/90/62/36/52, all `NotFoundError`), read
+directly off `longevity_ledger.jsonl`'s `writer_op_error` events and
+cross-checked against each `writer_progress-<life>.json`'s own `errors`
+field. `metrics.jsonl` (118 MB) and the store/replay-store copies stay on
+xzgpu, per the PI ruling reiterated at the top of this section.
 
 ### Honest limits
 

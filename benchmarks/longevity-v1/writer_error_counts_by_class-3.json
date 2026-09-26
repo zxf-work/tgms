@@ -1,0 +1,69 @@
+{
+  "total_writer_errors": 854,
+  "writer_by_class": {
+    "NotFoundError": 854
+  },
+  "writer_by_class_pct": {
+    "NotFoundError": 100.0
+  },
+  "writer_error_message_pattern": "no believed node version of <id> overlaps vt",
+  "per_life": {
+    "0": {
+      "errors": 174,
+      "errors_by_class": {
+        "NotFoundError": 174
+      }
+    },
+    "1": {
+      "errors": 125,
+      "errors_by_class": {
+        "NotFoundError": 125
+      }
+    },
+    "2": {
+      "errors": 86,
+      "errors_by_class": {
+        "NotFoundError": 86
+      }
+    },
+    "3": {
+      "errors": 97,
+      "errors_by_class": {
+        "NotFoundError": 97
+      }
+    },
+    "4": {
+      "errors": 132,
+      "errors_by_class": {
+        "NotFoundError": 132
+      }
+    },
+    "5": {
+      "errors": 90,
+      "errors_by_class": {
+        "NotFoundError": 90
+      }
+    },
+    "6": {
+      "errors": 62,
+      "errors_by_class": {
+        "NotFoundError": 62
+      }
+    },
+    "7": {
+      "errors": 36,
+      "errors_by_class": {
+        "NotFoundError": 36
+      }
+    },
+    "8": {
+      "errors": 52,
+      "errors_by_class": {
+        "NotFoundError": 52
+      }
+    }
+  },
+  "source": "longevity_ledger.jsonl on xzgpu:/mnt/project/xzhang/tgms/longevity/2026-09-19-soak3 (read-only; 854 lines with event=writer_op_error, all op=correction, all error_type=NotFoundError), split per writer life via each event's own life_progress_path field (which names writer_progress-<life>.json, life 0-8) and cross-checked against that file's own cumulative errors field and against recoveries-3.jsonl's 8 designed deaths (t_death/life_index rows) splitting the 72h run into 9 lives; the grand total is cross-checked against longevity-synth-1m-native-2.json's manifest.summary.writer_totals_all_lives.errors=854 and matches benchmarks/longevity-v1/README.md's (h) Writer-errors-by-class section exactly.",
+  "method": "For every longevity_ledger.jsonl line with event=writer_op_error, incremented a per-life counter keyed by the event's life_progress_path (basename maps 1:1 to writer_progress-<life>.json) and a per-class counter keyed by the event's error_type field. Per-life totals matched each writer_progress-<life>.json's own errors field exactly: 174/125/86/97/132/90/62/36/52 for lives 0-8 (sums to 854). Every one of the 854 events carries error_type=NotFoundError and op=correction -- no other class or op appears. No discrepancy found against the record lane's own reported figures.",
+  "generated_at": "2026-09-26T02:39:18Z"
+}
