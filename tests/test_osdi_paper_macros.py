@@ -570,9 +570,7 @@ FROZEN_LANDED_VALUES = {
     "osdiLdbcInterimRowsAgreeing": "282",
     "osdiLdbcInterimRowsCompared": "329",
     # Lane W2x: benchmarks/longevity-v1/, "Soak 3 (72 h)" -- compute_longevity_soak_three
-    # above. osdiSoakWriterErrorsClassThree is deliberately NOT here: it is the
-    # generator's one other PENDING stub (see
-    # test_full_macro_set_has_no_duplicate_names_and_covers_every_skeleton_claim).
+    # above.
     "osdiSoakCommitThree": "9e21a83",
     "osdiSoakHoursThree": "72",
     "osdiSoakWallHoursThree": "92.05",
@@ -580,6 +578,8 @@ FROZEN_LANDED_VALUES = {
     "osdiSoakRecoveriesThree": "8",
     "osdiSoakRecoveryMinSThree": "25.667",
     "osdiSoakRecoveryMaxSThree": "96.352",
+    "osdiSoakUnexpectedRecoveriesThree": "0",
+    "osdiSoakReaderDeathsThree": "0",
     "osdiSoakDigestEqualThree": "true",
     "osdiSoakBatchesThree": "3{,}618{,}225",
     "osdiSoakReplayCadenceThree": "5000",
@@ -588,6 +588,7 @@ FROZEN_LANDED_VALUES = {
     "osdiSoakReaderWithinLifeSlopeMinKBpsThree": "4.271",
     "osdiSoakReaderWithinLifeSlopeMaxKBpsThree": "4.796",
     "osdiSoakWriterErrorsTrueThree": "854",
+    "osdiSoakWriterErrorsClassThree": "NotFoundError",
     "osdiSoakReaderErrorsTrueThree": "2{,}203{,}551{,}806",
     "osdiSoakReaderErrorsOSErrorThree": "2{,}202{,}621{,}096",
     "osdiSoakReaderErrorsStateErrorThree": "930{,}710",
@@ -627,15 +628,14 @@ def test_frozen_macro_values_match_the_generator():
 
 def test_pending_macros_raise_a_latex_error_never_a_placeholder_number():
     """add_pending_stubs itself now carries no stubs of its own -- the 3
-    LDBC (C9) stubs it used to hold have landed (compute_ldbc_ref_v1). The
-    two remaining PENDING macros in the whole generator,
-    osdiB7ScaleCurveP50ReachWindow100M and osdiSoakWriterErrorsClassThree,
-    are each added directly by their own compute_* function
-    (compute_b7_scale, see
-    test_b7_scale_100m_reach_window_p50_is_pending_with_its_estimate;
-    compute_longevity_soak_three, see
-    test_longevity_soak_three_writer_errors_class_is_pending), not by
-    add_pending_stubs, so this function now emits nothing."""
+    LDBC (C9) stubs it used to hold have landed (compute_ldbc_ref_v1), and
+    P-SOAK3's osdiSoakWriterErrorsClassThree has since landed too (see
+    writer_error_counts_by_class-3.json, compute_longevity_soak_three). The
+    one remaining PENDING macro in the whole generator,
+    osdiB7ScaleCurveP50ReachWindow100M, is added directly by its own
+    compute_* function (compute_b7_scale, see
+    test_b7_scale_100m_reach_window_p50_is_pending_with_its_estimate), not
+    by add_pending_stubs, so this function now emits nothing."""
     mod = _load("osdi_paper_macros")
     m = mod.Macros()
     mod.add_pending_stubs(m)
@@ -648,14 +648,13 @@ def test_full_macro_set_has_no_duplicate_names_and_covers_every_skeleton_claim()
     mod.add_pending_stubs(m)
     names = [name for name, _, _ in m.items]
     assert len(names) == len(set(names)), "duplicate macro name"
-    # 2 pending stubs, both added directly by their own compute_* function
-    # (already present in `m` via _run_all_landed before add_pending_stubs
-    # runs, which itself adds nothing now that the 3 LDBC (C9) stubs have
-    # landed as ordinary FROZEN_LANDED_VALUES entries): B7 100M's
-    # osdiB7ScaleCurveP50ReachWindow100M (compute_b7_scale) and P-SOAK3's
-    # osdiSoakWriterErrorsClassThree (compute_longevity_soak_three -- no
-    # committed per-soak3 writer-error-class side-file to recompute it from).
-    assert len(names) == len(FROZEN_LANDED_VALUES) + 2
+    # 1 pending stub, added directly by its own compute_* function (already
+    # present in `m` via _run_all_landed before add_pending_stubs runs,
+    # which itself adds nothing now that the 3 LDBC (C9) stubs and
+    # P-SOAK3's osdiSoakWriterErrorsClassThree have all landed as ordinary
+    # FROZEN_LANDED_VALUES entries): B7 100M's
+    # osdiB7ScaleCurveP50ReachWindow100M (compute_b7_scale).
+    assert len(names) == len(FROZEN_LANDED_VALUES) + 1
 
 
 def test_cli_check_mode_agrees_with_committed_output(tmp_path):
@@ -2437,35 +2436,49 @@ def test_longevity_soak_three_reader_episode_reconstruction_matches_frozen():
     assert values["osdiSoakReaderErrorLongestHealedIntervalSThree"] == "37272.1"
 
 
-def test_longevity_soak_three_writer_errors_class_is_pending():
-    """Unlike P-SOAK2 (writer_error_counts_by_life-2.json) and P-STORM-HUNT
-    (writer_error_counts_by_class-stormhunt.json), P-SOAK3 has no committed
-    per-life/per-class writer-error side-file, so the exception-class label
-    README.md (h) states (100% NotFoundError) cannot be recomputed here --
-    it must render as a PENDING \\errmessage, never a hard-coded guess, and
-    the landed writer-error total (854) must still land normally."""
+def test_longevity_soak_three_writer_errors_class_is_landed():
+    """Unlike the earlier state of this lane, P-SOAK3 now has a committed
+    per-life/per-class writer-error side-file
+    (writer_error_counts_by_class-3.json, built read-only from xzgpu's
+    longevity_ledger.jsonl), so the exception-class label README.md (h)
+    states (100% NotFoundError) is recomputed from it and lands as an
+    ordinary text macro -- no PENDING stub, same discipline as P-SOAK2's
+    osdiSoakWriterErrorsClassTwo and P-STORM-HUNT's
+    osdiSoakWriterErrorsClassHunt. The per-life breakdown (174/125/86/97/
+    132/90/62/36/52, lives 0-8) and the landed writer-error total (854)
+    are cross-checked against the same file."""
     mod = _load("osdi_paper_macros")
     m = mod.Macros()
     mod.compute_longevity_soak_three(m)
     values = {name: value for name, value, _ in m.items}
-    assert values["osdiSoakWriterErrorsClassThree"].startswith("\\errmessage")
-    assert "PENDING" in values["osdiSoakWriterErrorsClassThree"]
+    assert values["osdiSoakWriterErrorsClassThree"] == "NotFoundError"
     assert values["osdiSoakWriterErrorsTrueThree"] == "854"
+
+    by_class_doc = json.loads(mod.LONGEVITY_WRITER_ERRORS_BY_CLASS_THREE.read_text(
+        encoding="utf-8"))
+    assert by_class_doc["total_writer_errors"] == 854
+    assert by_class_doc["writer_by_class"] == {"NotFoundError": 854}
+    per_life = by_class_doc["per_life"]
+    assert [per_life[str(i)]["errors"] for i in range(9)] == [
+        174, 125, 86, 97, 132, 90, 62, 36, 52]
 
 
 def test_longevity_soak_three_text_macros_are_never_numbers():
-    """osdiSoakCommitThree ('9e21a83') and osdiSoakDigestEqualThree
-    ('true') must both render as literal text, same discipline as
-    P-SOAK2/P-STORM-HUNT's equivalents above."""
+    """osdiSoakCommitThree ('9e21a83'), osdiSoakDigestEqualThree ('true')
+    and osdiSoakWriterErrorsClassThree ('NotFoundError') must all render
+    as literal text, same discipline as P-SOAK2/P-STORM-HUNT's
+    equivalents above."""
     mod = _load("osdi_paper_macros")
     m = mod.Macros()
     mod.compute_longevity_soak_three(m)
     values = {name: value for name, value, _ in m.items}
-    for name in ("osdiSoakCommitThree", "osdiSoakDigestEqualThree"):
+    for name in ("osdiSoakCommitThree", "osdiSoakDigestEqualThree",
+                 "osdiSoakWriterErrorsClassThree"):
         with pytest.raises(ValueError):
             float(values[name])
     assert values["osdiSoakCommitThree"] == "9e21a83"
     assert values["osdiSoakDigestEqualThree"] == "true"
+    assert values["osdiSoakWriterErrorsClassThree"] == "NotFoundError"
 
 
 def test_tampered_longevity_manifest_three_sha256_mismatch_fails(tmp_path):
