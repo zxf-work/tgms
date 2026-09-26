@@ -3137,21 +3137,29 @@ def test_dag_versions_csv_matches_frozen_values(tmp_path, monkeypatch):
     assert len(rows) == 4  # header + v1/v2/v3
 
 
-def test_r18_crossover_csv_has_five_batches_a_p50_row_and_a_pending_n1000_row(tmp_path, monkeypatch):
+def test_r18_crossover_csv_has_five_batches_a_p50_row_and_a_landed_n1000_row(tmp_path, monkeypatch):
+    """The main correction-load grid (storm-v1-main-grid-2026-09-15) landed
+    at 36/36 cells, so f8's N=1,000 c1 seed-0 point is no longer a PENDING
+    annotation -- it reads the same cell
+    scripts/osdi_paper_macros.py's compute_c7_storm_v1 lands as
+    osdiStormV1SpeedupN1kSeed0 (frozen at 1.938, close tol 0.001 there)."""
     fig_mod = _load_figures()
     monkeypatch.setattr(fig_mod, "OUT_DIR", tmp_path)
     data = fig_mod.build_r18_crossover_data()
     assert len(data["batches"]) == 5
     assert 0.80 <= data["ttf_global_p50_s"] / data["ttf_l1_p50_s"] <= 0.82
+    assert data["n1000_status"] == "measured"
+    assert abs(data["n1000_speedup"] - 1.938) < 0.001
     text = fig_mod.write_r18_crossover_csv(data)
     rows = list(csv.reader(text.splitlines()))
     assert rows[0] == ["batch_index", "check_seconds_tgms_L1", "lookup_ms",
                         "global_recompute_seconds", "ttf_tgms_L1_seconds",
                         "ttf_global_recompute_seconds"]
-    assert len(rows) == 1 + 5 + 1 + 1  # header + 5 batches + p50 row + PENDING N=1000 row
-    pending_row = rows[-1]
-    assert pending_row[0] == "N=1000 c1 seed0"
-    assert all(cell == "PENDING" for cell in pending_row[1:])
+    assert len(rows) == 1 + 5 + 1 + 1  # header + 5 batches + p50 row + N=1000 row
+    n1000_row = rows[-1]
+    assert n1000_row[0] == "N=1000 c1 seed0"
+    assert float(n1000_row[4]) > 0 and float(n1000_row[5]) > 0
+    assert abs(float(n1000_row[5]) / float(n1000_row[4]) - 1.938) < 0.001
 
 
 def test_corruption_matrix_csv_matches_frozen_values(tmp_path, monkeypatch):
