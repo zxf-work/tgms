@@ -1,0 +1,170 @@
+{
+  "clock_compactions_jsonl": "writer child process CLOCK_MONOTONIC-derived t_start/t_end fields (values ~3.09e7 s, consistent with the host's own multi-hundred-day uptime, not time.perf_counter()'s arbitrary per-process reference and not epoch time); reset to a new reference at each of this run's 8 designed writer restarts. Fields are named t_start/t_end, NOT ts_start/ts_end -- the D-091 epoch-timestamp fix is NOT present in compactions.jsonl for this run (checked directly: no ts_start/ts_end key on any row).",
+  "clock_reader_onset": "first_seen_ts in each reader's reader-<idx>-progress.json error_details[]; wall-clock epoch seconds (time.time()), identical field also appears in the matching longevity_ledger.jsonl reader_op_error line's first_seen_ts.",
+  "run_started_epoch_s": 1789778802.173033,
+  "run_started_utc": "2026-09-19T00:46:42Z",
+  "earliest_reader_onset": {
+    "reader": 1,
+    "class": "OSError",
+    "onset_epoch_s": 1789844457.9805295,
+    "onset_t_plus_s": 65655.8,
+    "last_compaction_before": {
+      "writer_life": 3,
+      "compactions_jsonl_line_0indexed": 2504,
+      "batches": 11500,
+      "edge_rows": 1950613,
+      "assigned_epoch_lower_bound": 1789844412.7450073,
+      "assigned_epoch_upper_bound": 1789844412.7450073
+    },
+    "ambiguous_range": {
+      "lines_0indexed": [
+        2505,
+        2506,
+        2507
+      ],
+      "edge_rows_upper": 1951769,
+      "note": "3 further compaction(s) fall inside the same metrics-flush bracket as the reader-onset epoch and cannot be ordered against it from these files"
+    }
+  },
+  "latest_reader_onset": {
+    "reader": 2,
+    "class": "StateError",
+    "onset_epoch_s": 1789873571.544392,
+    "onset_t_plus_s": 94769.4,
+    "last_compaction_before": {
+      "writer_life": 4,
+      "compactions_jsonl_line_0indexed": 3587,
+      "batches": 150000,
+      "edge_rows": 2356519,
+      "assigned_epoch_lower_bound": 1789873518.4244103,
+      "assigned_epoch_upper_bound": 1789873518.4244103
+    },
+    "ambiguous_range": {
+      "lines_0indexed": [
+        3588,
+        3589
+      ],
+      "edge_rows_upper": 2357267,
+      "note": "2 further compaction(s) fall inside the same metrics-flush bracket as the reader-onset epoch and cannot be ordered against it from these files"
+    }
+  },
+  "life_segments": {
+    "life_0": {
+      "compactions": 1034,
+      "lines": [
+        0,
+        1034
+      ],
+      "epoch_window": [
+        1789778802.173033,
+        1789800341.696043
+      ],
+      "final_compactions_total_in_window": 1034.0
+    },
+    "life_1": {
+      "compactions": 780,
+      "lines": [
+        1034,
+        1814
+      ],
+      "epoch_window": [
+        1789800341.696043,
+        1789821939.2906435
+      ],
+      "final_compactions_total_in_window": 780.0
+    },
+    "life_2": {
+      "compactions": 668,
+      "lines": [
+        1814,
+        2482
+      ],
+      "epoch_window": [
+        1789821939.2906435,
+        1789843547.7141745
+      ],
+      "final_compactions_total_in_window": 668.0
+    },
+    "life_3": {
+      "compactions": 806,
+      "lines": [
+        2482,
+        3288
+      ],
+      "epoch_window": [
+        1789843547.7141745,
+        1789865139.2952077
+      ],
+      "final_compactions_total_in_window": 806.0
+    },
+    "life_4": {
+      "compactions": 1416,
+      "lines": [
+        3288,
+        4704
+      ],
+      "epoch_window": [
+        1789865139.2952077,
+        1789908353.7031677
+      ],
+      "final_compactions_total_in_window": 1416.0
+    },
+    "life_5": {
+      "compactions": 1263,
+      "lines": [
+        4704,
+        5967
+      ],
+      "epoch_window": [
+        1789908353.7031677,
+        1789951556.7582173
+      ],
+      "final_compactions_total_in_window": 1263.0
+    },
+    "life_6": {
+      "compactions": 617,
+      "lines": [
+        5967,
+        6584
+      ],
+      "epoch_window": [
+        1789951556.7582173,
+        1789973152.8062146
+      ],
+      "final_compactions_total_in_window": 617.0
+    },
+    "life_7": {
+      "compactions": 542,
+      "lines": [
+        6584,
+        7126
+      ],
+      "epoch_window": [
+        1789973152.8062146,
+        1789994752.2382956
+      ],
+      "final_compactions_total_in_window": 542.0
+    },
+    "life_8": {
+      "compactions": 1021,
+      "lines": [
+        7126,
+        8147
+      ],
+      "epoch_window": [
+        1789994752.2382956,
+        1790037966.1442862
+      ],
+      "final_compactions_total_in_window": 1021.0
+    }
+  },
+  "source_files": {
+    "compactions_log": "benchmarks/longevity-v1/compactions-3.jsonl",
+    "manifest": "benchmarks/longevity-v1/longevity-synth-1m-native-2.json",
+    "metrics_series_not_copied": "xzgpu:/mnt/project/xzhang/tgms/longevity/2026-09-19-soak3/metrics.jsonl, kind=counter name=compactions_total, read-only full scan, nothing written back to the host",
+    "reader_onset": "benchmarks/longevity-v1/reader_op_error-3.json (per-reader error_details, sourced from reader-<idx>-progress.json)",
+    "recoveries": "benchmarks/longevity-v1/recoveries-3.jsonl"
+  },
+  "method": "Same reconciliation as soak-2's reader_onset_rows-2.json, generalized from 4 to 9 writer lives. compactions.jsonl's t_start/t_end are NOT epoch and NOT ts_start/ts_end (D-091 not present in this build), so this run's reconciliation -- like soak2's -- goes through metrics.jsonl's compactions_total counter instead of the log's own timestamps: (a) split compactions.jsonl into its 9 writer-life segments at the 8 points where 'batches' resets to a smaller value (line boundaries recorded in life_segments); (b) within a life, compactions_total resets to 0 at writer start and its k-th increment corresponds exactly to the k-th line written to compactions.jsonl in that life (same in-process counter, same code path, confirmed here by the final compactions_total sample in each life window matching that life's own compactions.jsonl line count exactly -- see life_segments[*].final_compactions_total_in_window vs .compactions); (c) for compaction k, assign it the epoch timestamp of the first metrics.jsonl flush at which that life's compactions_total series reaches >= k (an upper bound; the previous flush is the lower bound); (d) for a target reader-onset epoch T (=run_started_epoch + onset_t_plus_s, read directly from reader-<idx>-progress.json's first_seen_ts, no clock conversion needed since it is already epoch time, unlike soak2's onset_t_plus_s which had to be converted from an elapsed-seconds field), report the largest-index compaction whose assigned upper bound is <= T as 'last compaction before T' (a conservative, guaranteed-correct choice); any further compactions whose assigned upper bound falls in the same flush bracket as T cannot be ordered against it and are reported in ambiguous_range instead of being guessed.",
+  "compactions_jsonl_ts_start_ts_end_epoch_fields_present": false
+}

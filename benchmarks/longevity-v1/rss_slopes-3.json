@@ -1,0 +1,156 @@
+{
+  "method": "ordinary least squares of rss_kb (y) vs wall-clock seconds since the life/run's first sample (x); one fit per writer life (split at the 8 recorded restart death timestamps in recoveries.jsonl, giving 9 lives), one fit per reader over its whole run (reader_restarts=0, so readers never restart and have a single life each).",
+  "frozen_bound_writer_kb_per_s": 50,
+  "frozen_bound_reader_kb_per_s": 10,
+  "raw_series_location": "xzgpu:/mnt/project/xzhang/tgms/longevity/2026-09-19-soak3/metrics.jsonl (kind=gauge name=rss_kb) -- not copied into this repo (118 MB; same PI ruling as soak1/soak2)",
+  "writer_lives": [
+    {
+      "life": 0,
+      "n_points": 323,
+      "span_s": 21391.0,
+      "rss_first_kb": 2150016,
+      "rss_last_kb": 2748648,
+      "slope_kb_per_s_least_squares": 24.867305,
+      "t_first": 1789778949.2976172,
+      "t_last": 1789800340.265777
+    },
+    {
+      "life": 1,
+      "n_points": 327,
+      "span_s": 21464.3,
+      "rss_first_kb": 2511888,
+      "rss_last_kb": 3038892,
+      "slope_kb_per_s_least_squares": 12.909779,
+      "t_first": 1789800473.4023173,
+      "t_last": 1789821937.7050924
+    },
+    {
+      "life": 2,
+      "n_points": 331,
+      "span_s": 21402.3,
+      "rss_first_kb": 3161176,
+      "rss_last_kb": 3925844,
+      "slope_kb_per_s_least_squares": 17.097606,
+      "t_first": 1789822137.8908403,
+      "t_last": 1789843540.1594915
+    },
+    {
+      "life": 3,
+      "n_points": 319,
+      "span_s": 21389.3,
+      "rss_first_kb": 3732884,
+      "rss_last_kb": 5082832,
+      "slope_kb_per_s_least_squares": 12.526592,
+      "t_first": 1789843749.0362616,
+      "t_last": 1789865138.3725042
+    },
+    {
+      "life": 4,
+      "n_points": 666,
+      "span_s": 43018.8,
+      "rss_first_kb": 4612452,
+      "rss_last_kb": 5752196,
+      "slope_kb_per_s_least_squares": 11.767836,
+      "t_first": 1789865328.7714417,
+      "t_last": 1789908347.5835621
+    },
+    {
+      "life": 5,
+      "n_points": 634,
+      "span_s": 42969.2,
+      "rss_first_kb": 4733224,
+      "rss_last_kb": 6037844,
+      "slope_kb_per_s_least_squares": 16.11124,
+      "t_first": 1789908580.3450954,
+      "t_last": 1789951549.5605211
+    },
+    {
+      "life": 6,
+      "n_points": 310,
+      "span_s": 21332.3,
+      "rss_first_kb": 5159892,
+      "rss_last_kb": 7021092,
+      "slope_kb_per_s_least_squares": 28.833519,
+      "t_first": 1789951812.965138,
+      "t_last": 1789973145.2453973
+    },
+    {
+      "life": 7,
+      "n_points": 276,
+      "span_s": 21311.4,
+      "rss_first_kb": 5354280,
+      "rss_last_kb": 6844388,
+      "slope_kb_per_s_least_squares": 16.877504,
+      "t_first": 1789973432.1043148,
+      "t_last": 1789994743.4567645
+    },
+    {
+      "life": 8,
+      "n_points": 552,
+      "span_s": 42895.0,
+      "rss_first_kb": 6149324,
+      "rss_last_kb": 8208448,
+      "slope_kb_per_s_least_squares": 16.629842,
+      "t_first": 1789995071.1448977,
+      "t_last": 1790037966.1442862
+    }
+  ],
+  "readers": {
+    "0": {
+      "n_points": 3891,
+      "span_s": 259134.0,
+      "rss_first_kb": 138056,
+      "rss_last_kb": 1441360,
+      "slope_kb_per_s_least_squares": 4.572192
+    },
+    "1": {
+      "n_points": 3887,
+      "span_s": 259133.8,
+      "rss_first_kb": 138308,
+      "rss_last_kb": 1330864,
+      "slope_kb_per_s_least_squares": 4.271363
+    },
+    "2": {
+      "n_points": 3886,
+      "span_s": 259163.3,
+      "rss_first_kb": 138128,
+      "rss_last_kb": 1395140,
+      "slope_kb_per_s_least_squares": 4.70361
+    },
+    "3": {
+      "n_points": 3892,
+      "span_s": 259133.9,
+      "rss_first_kb": 138192,
+      "rss_last_kb": 1712864,
+      "slope_kb_per_s_least_squares": 4.63319
+    },
+    "4": {
+      "n_points": 3891,
+      "span_s": 259133.9,
+      "rss_first_kb": 138148,
+      "rss_last_kb": 1463764,
+      "slope_kb_per_s_least_squares": 4.408619
+    },
+    "5": {
+      "n_points": 3896,
+      "span_s": 259133.7,
+      "rss_first_kb": 138348,
+      "rss_last_kb": 1473728,
+      "slope_kb_per_s_least_squares": 4.785672
+    },
+    "6": {
+      "n_points": 3886,
+      "span_s": 259134.1,
+      "rss_first_kb": 138228,
+      "rss_last_kb": 1530204,
+      "slope_kb_per_s_least_squares": 4.37175
+    },
+    "7": {
+      "n_points": 3891,
+      "span_s": 259134.2,
+      "rss_first_kb": 138048,
+      "rss_last_kb": 1488940,
+      "slope_kb_per_s_least_squares": 4.796214
+    }
+  }
+}

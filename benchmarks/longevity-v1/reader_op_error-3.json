@@ -1,0 +1,3703 @@
+{
+  "n_ledger_reader_op_error_events": 17,
+  "ledger_events_verbatim": [
+    {
+      "ts": 1789844457.9805655,
+      "event": "reader_op_error",
+      "reader": 1,
+      "query": "hist.single",
+      "class": "OSError",
+      "message": "io: No such file or directory (os error 2) [file=/mnt/project/xzhang/tgms/longevity/2026-09-19-soak3/store/native/seg/00",
+      "first_seen_ts": 1789844457.9805295,
+      "count_at_first_seen": 1
+    },
+    {
+      "ts": 1789847561.9953184,
+      "event": "reader_op_error",
+      "reader": 6,
+      "query": "hist.single",
+      "class": "OSError",
+      "message": "io: No such file or directory (os error 2) [file=/mnt/project/xzhang/tgms/longevity/2026-09-19-soak3/store/native/seg/00",
+      "first_seen_ts": 1789847561.9953022,
+      "count_at_first_seen": 1
+    },
+    {
+      "ts": 1789848862.7011864,
+      "event": "reader_op_error",
+      "reader": 6,
+      "query": "hist.single",
+      "class": "StateError",
+      "message": "io: No such file or directory (os error 2) [file=/mnt/project/xzhang/tgms/longevity/2026-09-19-soak3/store/native/seg/00",
+      "first_seen_ts": 1789848862.7011707,
+      "count_at_first_seen": 1
+    },
+    {
+      "ts": 1789849547.0530639,
+      "event": "reader_op_error",
+      "reader": 0,
+      "query": "hist.single",
+      "class": "OSError",
+      "message": "io: No such file or directory (os error 2) [file=/mnt/project/xzhang/tgms/longevity/2026-09-19-soak3/store/native/seg/00",
+      "first_seen_ts": 1789849547.0530517,
+      "count_at_first_seen": 1
+    },
+    {
+      "ts": 1789867562.7343488,
+      "event": "reader_op_error",
+      "reader": 4,
+      "query": "hist.single",
+      "class": "OSError",
+      "message": "io: No such file or directory (os error 2) [file=/mnt/project/xzhang/tgms/longevity/2026-09-19-soak3/store/native/seg/00",
+      "first_seen_ts": 1789867562.7343297,
+      "count_at_first_seen": 1
+    },
+    {
+      "ts": 1789868309.5976367,
+      "event": "reader_op_error",
+      "reader": 3,
+      "query": "snap.hop2",
+      "class": "StateError",
+      "message": "io: No such file or directory (os error 2) [file=/mnt/project/xzhang/tgms/longevity/2026-09-19-soak3/store/native/seg/00",
+      "first_seen_ts": 1789868309.5976233,
+      "count_at_first_seen": 1
+    },
+    {
+      "ts": 1789871742.8911042,
+      "event": "reader_op_error",
+      "reader": 7,
+      "query": "hist.single",
+      "class": "OSError",
+      "message": "io: No such file or directory (os error 2) [file=/mnt/project/xzhang/tgms/longevity/2026-09-19-soak3/store/native/seg/00",
+      "first_seen_ts": 1789871742.8910887,
+      "count_at_first_seen": 1
+    },
+    {
+      "ts": 1789873517.9466417,
+      "event": "reader_op_error",
+      "reader": 5,
+      "query": "hist.single",
+      "class": "OSError",
+      "message": "io: No such file or directory (os error 2) [file=/mnt/project/xzhang/tgms/longevity/2026-09-19-soak3/store/native/seg/00",
+      "first_seen_ts": 1789873517.9466236,
+      "count_at_first_seen": 1
+    },
+    {
+      "ts": 1789873571.5444076,
+      "event": "reader_op_error",
+      "reader": 2,
+      "query": "snap.hop2",
+      "class": "StateError",
+      "message": "io: No such file or directory (os error 2) [file=/mnt/project/xzhang/tgms/longevity/2026-09-19-soak3/store/native/seg/00",
+      "first_seen_ts": 1789873571.544392,
+      "count_at_first_seen": 1
+    },
+    {
+      "ts": 1789873709.5045478,
+      "event": "reader_op_error",
+      "reader": 7,
+      "query": "snap.hop2",
+      "class": "StateError",
+      "message": "io: No such file or directory (os error 2) [file=/mnt/project/xzhang/tgms/longevity/2026-09-19-soak3/store/native/seg/00",
+      "first_seen_ts": 1789873709.504533,
+      "count_at_first_seen": 1
+    },
+    {
+      "ts": 1789876501.6110623,
+      "event": "reader_op_error",
+      "reader": 5,
+      "query": "snap.hop2",
+      "class": "StateError",
+      "message": "io: No such file or directory (os error 2) [file=/mnt/project/xzhang/tgms/longevity/2026-09-19-soak3/store/native/seg/00",
+      "first_seen_ts": 1789876501.6110308,
+      "count_at_first_seen": 1
+    },
+    {
+      "ts": 1789884421.3169985,
+      "event": "reader_op_error",
+      "reader": 1,
+      "query": "hist.single",
+      "class": "StateError",
+      "message": "io: No such file or directory (os error 2) [file=/mnt/project/xzhang/tgms/longevity/2026-09-19-soak3/store/native/seg/00",
+      "first_seen_ts": 1789884421.3169866,
+      "count_at_first_seen": 1
+    },
+    {
+      "ts": 1789891917.8132887,
+      "event": "reader_op_error",
+      "reader": 4,
+      "query": "snap.hop2",
+      "class": "StateError",
+      "message": "io: No such file or directory (os error 2) [file=/mnt/project/xzhang/tgms/longevity/2026-09-19-soak3/store/native/seg/00",
+      "first_seen_ts": 1789891917.8132744,
+      "count_at_first_seen": 1
+    },
+    {
+      "ts": 1789898368.4050202,
+      "event": "reader_op_error",
+      "reader": 2,
+      "query": "hist.single",
+      "class": "OSError",
+      "message": "io: No such file or directory (os error 2) [file=/mnt/project/xzhang/tgms/longevity/2026-09-19-soak3/store/native/seg/00",
+      "first_seen_ts": 1789898368.4050055,
+      "count_at_first_seen": 1
+    },
+    {
+      "ts": 1789905752.6875231,
+      "event": "reader_op_error",
+      "reader": 0,
+      "query": "snap.hop2",
+      "class": "StateError",
+      "message": "io: No such file or directory (os error 2) [file=/mnt/project/xzhang/tgms/longevity/2026-09-19-soak3/store/native/seg/00",
+      "first_seen_ts": 1789905752.68751,
+      "count_at_first_seen": 1
+    },
+    {
+      "ts": 1789908903.2897692,
+      "event": "reader_op_error",
+      "reader": 3,
+      "query": "hist.single",
+      "class": "OSError",
+      "message": "io: No such file or directory (os error 2) [file=/mnt/project/xzhang/tgms/longevity/2026-09-19-soak3/store/native/seg/00",
+      "first_seen_ts": 1789908903.2897563,
+      "count_at_first_seen": 1
+    },
+    {
+      "ts": 1789962367.6888208,
+      "event": "reader_op_error",
+      "reader": 1,
+      "query": "hist.single",
+      "class": "StateError",
+      "message": "io: No such file or directory (os error 2) [file=/mnt/project/xzhang/tgms/longevity/2026-09-19-soak3/store/native/close/",
+      "first_seen_ts": 1789962367.6888115,
+      "count_at_first_seen": 1
+    }
+  ],
+  "per_reader_totals_by_class": {
+    "0": {
+      "OSError": 267715496,
+      "StateError": 56538
+    },
+    "1": {
+      "OSError": 323141508,
+      "StateError": 120950
+    },
+    "2": {
+      "StateError": 99621,
+      "OSError": 280365688
+    },
+    "3": {
+      "StateError": 154965,
+      "OSError": 283866604
+    },
+    "4": {
+      "OSError": 266644756,
+      "StateError": 103589
+    },
+    "5": {
+      "OSError": 231967960,
+      "StateError": 120778
+    },
+    "6": {
+      "OSError": 280540608,
+      "StateError": 121937
+    },
+    "7": {
+      "OSError": 268378476,
+      "StateError": 152332
+    }
+  },
+  "per_reader_episode_count": {
+    "0": 2,
+    "1": 3,
+    "2": 2,
+    "3": 2,
+    "4": 2,
+    "5": 2,
+    "6": 2,
+    "7": 2
+  },
+  "total_episodes": 17,
+  "healed_at_next_reopen_evidence": {
+    "reader0_OSError": {
+      "n_samples_from_onset": 2766,
+      "onset_value": 561188.0,
+      "final_value": 267715496.0,
+      "max_internal_plateau_s": 35382.5,
+      "tail_flat_span_s": 32.5,
+      "reopen_interval_s": 300,
+      "healed_at_any_reopen": true,
+      "n_healing_intervals_ge_reopen_interval": 68,
+      "active_run_count": 69,
+      "total_healed_time_s": 156422.0,
+      "healing_intervals": [
+        {
+          "start_ts": 1789849868.8110723,
+          "end_ts": 1789854411.4444652,
+          "duration_s": 4542.6
+        },
+        {
+          "start_ts": 1789854734.8671107,
+          "end_ts": 1789856693.392608,
+          "duration_s": 1958.5
+        },
+        {
+          "start_ts": 1789857018.1894019,
+          "end_ts": 1789873371.126424,
+          "duration_s": 16352.9
+        },
+        {
+          "start_ts": 1789873699.0999348,
+          "end_ts": 1789909081.6404438,
+          "duration_s": 35382.5
+        },
+        {
+          "start_ts": 1789909414.2773404,
+          "end_ts": 1789912082.67393,
+          "duration_s": 2668.4
+        },
+        {
+          "start_ts": 1789912415.9347155,
+          "end_ts": 1789914086.1943517,
+          "duration_s": 1670.3
+        },
+        {
+          "start_ts": 1789914420.000378,
+          "end_ts": 1789915423.7622018,
+          "duration_s": 1003.8
+        },
+        {
+          "start_ts": 1789916091.97648,
+          "end_ts": 1789918099.653661,
+          "duration_s": 2007.7
+        },
+        {
+          "start_ts": 1789918434.3780057,
+          "end_ts": 1789919104.9454937,
+          "duration_s": 670.6
+        },
+        {
+          "start_ts": 1789919440.03666,
+          "end_ts": 1789921119.064156,
+          "duration_s": 1679.0
+        },
+        {
+          "start_ts": 1789921454.5210288,
+          "end_ts": 1789931232.3998775,
+          "duration_s": 9777.9
+        },
+        {
+          "start_ts": 1789931570.4829671,
+          "end_ts": 1789936646.455856,
+          "duration_s": 5076.0
+        },
+        {
+          "start_ts": 1789936984.7299225,
+          "end_ts": 1789938679.967344,
+          "duration_s": 1695.2
+        },
+        {
+          "start_ts": 1789939018.5058153,
+          "end_ts": 1789940036.4895535,
+          "duration_s": 1018.0
+        },
+        {
+          "start_ts": 1789940375.4769924,
+          "end_ts": 1789944796.037836,
+          "duration_s": 4420.6
+        },
+        {
+          "start_ts": 1789945135.5507083,
+          "end_ts": 1789946158.9971936,
+          "duration_s": 1023.4
+        },
+        {
+          "start_ts": 1789946498.9022617,
+          "end_ts": 1789949225.1631167,
+          "duration_s": 2726.3
+        },
+        {
+          "start_ts": 1789949565.970238,
+          "end_ts": 1789952971.9260714,
+          "duration_s": 3406.0
+        },
+        {
+          "start_ts": 1789953653.9233303,
+          "end_ts": 1789956042.1329176,
+          "duration_s": 2388.2
+        },
+        {
+          "start_ts": 1789956383.0618181,
+          "end_ts": 1789957065.9386542,
+          "duration_s": 682.9
+        },
+        {
+          "start_ts": 1789957406.8381445,
+          "end_ts": 1789958774.2252023,
+          "duration_s": 1367.4
+        },
+        {
+          "start_ts": 1789959115.406462,
+          "end_ts": 1789959800.0467582,
+          "duration_s": 684.6
+        },
+        {
+          "start_ts": 1789960142.0915859,
+          "end_ts": 1789960826.5398855,
+          "duration_s": 684.4
+        },
+        {
+          "start_ts": 1789961168.2265453,
+          "end_ts": 1789961853.145605,
+          "duration_s": 684.9
+        },
+        {
+          "start_ts": 1789962537.0997078,
+          "end_ts": 1789963565.1087947,
+          "duration_s": 1028.0
+        },
+        {
+          "start_ts": 1789963907.3903368,
+          "end_ts": 1789964250.3347547,
+          "duration_s": 342.9
+        },
+        {
+          "start_ts": 1789964936.3100553,
+          "end_ts": 1789965964.8730204,
+          "duration_s": 1028.6
+        },
+        {
+          "start_ts": 1789967337.1921692,
+          "end_ts": 1789967680.524195,
+          "duration_s": 343.3
+        },
+        {
+          "start_ts": 1789968024.1279354,
+          "end_ts": 1789968713.0588148,
+          "duration_s": 688.9
+        },
+        {
+          "start_ts": 1789969056.0608356,
+          "end_ts": 1789971124.9859996,
+          "duration_s": 2068.9
+        },
+        {
+          "start_ts": 1789971469.6786323,
+          "end_ts": 1789973541.633169,
+          "duration_s": 2072.0
+        },
+        {
+          "start_ts": 1789973905.5336978,
+          "end_ts": 1789974258.0933301,
+          "duration_s": 352.6
+        },
+        {
+          "start_ts": 1789974606.1445708,
+          "end_ts": 1789978428.306078,
+          "duration_s": 3822.2
+        },
+        {
+          "start_ts": 1789978773.6677907,
+          "end_ts": 1789980182.9886916,
+          "duration_s": 1409.3
+        },
+        {
+          "start_ts": 1789980534.8617558,
+          "end_ts": 1789981237.915347,
+          "duration_s": 703.1
+        },
+        {
+          "start_ts": 1789981586.356702,
+          "end_ts": 1789982635.226947,
+          "duration_s": 1048.9
+        },
+        {
+          "start_ts": 1789982983.3466284,
+          "end_ts": 1789983332.1549766,
+          "duration_s": 348.8
+        },
+        {
+          "start_ts": 1789983680.6094809,
+          "end_ts": 1789984381.382768,
+          "duration_s": 700.8
+        },
+        {
+          "start_ts": 1789985081.5113966,
+          "end_ts": 1789987544.727437,
+          "duration_s": 2463.2
+        },
+        {
+          "start_ts": 1789987894.586508,
+          "end_ts": 1789989305.871915,
+          "duration_s": 1411.3
+        },
+        {
+          "start_ts": 1789989658.7968853,
+          "end_ts": 1789991069.2843182,
+          "duration_s": 1410.5
+        },
+        {
+          "start_ts": 1789991420.5299335,
+          "end_ts": 1789992124.394116,
+          "duration_s": 703.9
+        },
+        {
+          "start_ts": 1789992829.0334496,
+          "end_ts": 1789993887.1656942,
+          "duration_s": 1058.1
+        },
+        {
+          "start_ts": 1789994238.1140957,
+          "end_ts": 1789996351.8292544,
+          "duration_s": 2113.7
+        },
+        {
+          "start_ts": 1789997055.5034504,
+          "end_ts": 1789999868.411425,
+          "duration_s": 2812.9
+        },
+        {
+          "start_ts": 1790000219.0641024,
+          "end_ts": 1790000924.4991736,
+          "duration_s": 705.4
+        },
+        {
+          "start_ts": 1790001276.7976303,
+          "end_ts": 1790002336.4355614,
+          "duration_s": 1059.6
+        },
+        {
+          "start_ts": 1790003038.6249924,
+          "end_ts": 1790004093.170372,
+          "duration_s": 1054.5
+        },
+        {
+          "start_ts": 1790004444.6867678,
+          "end_ts": 1790005148.4646883,
+          "duration_s": 703.8
+        },
+        {
+          "start_ts": 1790005499.8081226,
+          "end_ts": 1790005851.6565535,
+          "duration_s": 351.8
+        },
+        {
+          "start_ts": 1790006202.3274064,
+          "end_ts": 1790007263.026482,
+          "duration_s": 1060.7
+        },
+        {
+          "start_ts": 1790007969.418907,
+          "end_ts": 1790010097.2918856,
+          "duration_s": 2127.9
+        },
+        {
+          "start_ts": 1790010452.0170481,
+          "end_ts": 1790010808.1900172,
+          "duration_s": 356.2
+        },
+        {
+          "start_ts": 1790011162.7042332,
+          "end_ts": 1790011517.3845084,
+          "duration_s": 354.7
+        },
+        {
+          "start_ts": 1790011871.6611447,
+          "end_ts": 1790012935.5372603,
+          "duration_s": 1063.9
+        },
+        {
+          "start_ts": 1790013999.5005944,
+          "end_ts": 1790016129.126952,
+          "duration_s": 2129.6
+        },
+        {
+          "start_ts": 1790016485.602043,
+          "end_ts": 1790017198.6940427,
+          "duration_s": 713.1
+        },
+        {
+          "start_ts": 1790017552.5349839,
+          "end_ts": 1790017906.620763,
+          "duration_s": 354.1
+        },
+        {
+          "start_ts": 1790018259.7012894,
+          "end_ts": 1790021080.8661327,
+          "duration_s": 2821.2
+        },
+        {
+          "start_ts": 1790021785.6712887,
+          "end_ts": 1790022491.9002788,
+          "duration_s": 706.2
+        },
+        {
+          "start_ts": 1790023197.259326,
+          "end_ts": 1790024257.451588,
+          "duration_s": 1060.2
+        },
+        {
+          "start_ts": 1790024963.4428844,
+          "end_ts": 1790026731.50251,
+          "duration_s": 1768.1
+        },
+        {
+          "start_ts": 1790027085.0384853,
+          "end_ts": 1790027793.1241615,
+          "duration_s": 708.1
+        },
+        {
+          "start_ts": 1790028501.65096,
+          "end_ts": 1790028856.8197284,
+          "duration_s": 355.2
+        },
+        {
+          "start_ts": 1790029564.4965417,
+          "end_ts": 1790032511.410378,
+          "duration_s": 2946.9
+        },
+        {
+          "start_ts": 1790033589.2612793,
+          "end_ts": 1790034670.5074365,
+          "duration_s": 1081.2
+        },
+        {
+          "start_ts": 1790035749.5008814,
+          "end_ts": 1790036108.7825212,
+          "duration_s": 359.3
+        },
+        {
+          "start_ts": 1790036468.4043021,
+          "end_ts": 1790037544.8389807,
+          "duration_s": 1076.4
+        }
+      ],
+      "note": "healed_at_any_reopen=True means an INTERNAL plateau of >= one reopen interval (300s, zero delta in the summed 4-query reader_errors_total counter) was observed, followed by renewed growth later in the run -- i.e. the error class actually stopped firing for a while and later recurred. Cross-checked against queries_total for the same reader over one such window (reader 0, OSError, 1789873699-1789909082, 35382.5s): queries_total climbs steadily and slowly throughout (298->406, i.e. real completed query cycles), while reader_errors_total is exactly flat -- this is genuine intermittent recovery, not a metrics-reporting gap (the sampling cadence stays ~60-70s throughout, matching rss_kb's own regular cadence for the same reader). active_run_count = n_healing_intervals + 1 is therefore the reader's TRUE number of distinct error episodes for this class, which is larger than the ledger's onset count (D-088 only logs the FIRST-ever occurrence of a given (reader,class) signature, not each time it recurs after healing). tail_flat_span_s is the flat run (if any) that extends to the reader's last sample -- not itself evidence of healing, since the run simply ends there."
+    },
+    "reader0_StateError": {
+      "n_samples_from_onset": 1911,
+      "onset_value": 1353.0,
+      "final_value": 56538.0,
+      "max_internal_plateau_s": 23280.2,
+      "tail_flat_span_s": 0.0,
+      "reopen_interval_s": 300,
+      "healed_at_any_reopen": true,
+      "n_healing_intervals_ge_reopen_interval": 11,
+      "active_run_count": 12,
+      "total_healed_time_s": 128295.8,
+      "healing_intervals": [
+        {
+          "start_ts": 1789906082.9038167,
+          "end_ts": 1789916760.6954622,
+          "duration_s": 10677.8
+        },
+        {
+          "start_ts": 1789917095.2686274,
+          "end_ts": 1789940375.4769924,
+          "duration_s": 23280.2
+        },
+        {
+          "start_ts": 1789940715.7147384,
+          "end_ts": 1789954676.8308651,
+          "duration_s": 13961.1
+        },
+        {
+          "start_ts": 1789955017.7431068,
+          "end_ts": 1789960484.440813,
+          "duration_s": 5466.7
+        },
+        {
+          "start_ts": 1789960826.5398855,
+          "end_ts": 1789970432.3653998,
+          "duration_s": 9605.8
+        },
+        {
+          "start_ts": 1789970780.04903,
+          "end_ts": 1789987192.7965453,
+          "duration_s": 16412.7
+        },
+        {
+          "start_ts": 1789987544.727437,
+          "end_ts": 1789998114.2805204,
+          "duration_s": 10569.6
+        },
+        {
+          "start_ts": 1789998466.5568852,
+          "end_ts": 1790018259.7012894,
+          "duration_s": 19793.1
+        },
+        {
+          "start_ts": 1790018612.570303,
+          "end_ts": 1790031705.7434936,
+          "duration_s": 13093.2
+        },
+        {
+          "start_ts": 1790032108.9184318,
+          "end_ts": 1790035749.5008814,
+          "duration_s": 3640.6
+        },
+        {
+          "start_ts": 1790036108.7825212,
+          "end_ts": 1790037903.7194948,
+          "duration_s": 1794.9
+        }
+      ],
+      "note": "healed_at_any_reopen=True means an INTERNAL plateau of >= one reopen interval (300s, zero delta in the summed 4-query reader_errors_total counter) was observed, followed by renewed growth later in the run -- i.e. the error class actually stopped firing for a while and later recurred. Cross-checked against queries_total for the same reader over one such window (reader 0, OSError, 1789873699-1789909082, 35382.5s): queries_total climbs steadily and slowly throughout (298->406, i.e. real completed query cycles), while reader_errors_total is exactly flat -- this is genuine intermittent recovery, not a metrics-reporting gap (the sampling cadence stays ~60-70s throughout, matching rss_kb's own regular cadence for the same reader). active_run_count = n_healing_intervals + 1 is therefore the reader's TRUE number of distinct error episodes for this class, which is larger than the ledger's onset count (D-088 only logs the FIRST-ever occurrence of a given (reader,class) signature, not each time it recurs after healing). tail_flat_span_s is the flat run (if any) that extends to the reader's last sample -- not itself evidence of healing, since the run simply ends there."
+    },
+    "reader1_OSError": {
+      "n_samples_from_onset": 2842,
+      "onset_value": 302656.0,
+      "final_value": 323141508.0,
+      "max_internal_plateau_s": 23187.0,
+      "tail_flat_span_s": 0.0,
+      "reopen_interval_s": 300,
+      "healed_at_any_reopen": true,
+      "n_healing_intervals_ge_reopen_interval": 64,
+      "active_run_count": 65,
+      "total_healed_time_s": 155111.1,
+      "healing_intervals": [
+        {
+          "start_ts": 1789845103.9861681,
+          "end_ts": 1789850314.295435,
+          "duration_s": 5210.3
+        },
+        {
+          "start_ts": 1789850639.5178,
+          "end_ts": 1789851298.5338871,
+          "duration_s": 659.0
+        },
+        {
+          "start_ts": 1789851628.8542225,
+          "end_ts": 1789857492.1623623,
+          "duration_s": 5863.3
+        },
+        {
+          "start_ts": 1789857831.2360764,
+          "end_ts": 1789873877.180484,
+          "duration_s": 16045.9
+        },
+        {
+          "start_ts": 1789874205.9353418,
+          "end_ts": 1789881447.7407525,
+          "duration_s": 7241.8
+        },
+        {
+          "start_ts": 1789881774.9948611,
+          "end_ts": 1789886404.766296,
+          "duration_s": 4629.8
+        },
+        {
+          "start_ts": 1789886733.4391775,
+          "end_ts": 1789909920.4317875,
+          "duration_s": 23187.0
+        },
+        {
+          "start_ts": 1789910253.2766461,
+          "end_ts": 1789910920.3856719,
+          "duration_s": 667.1
+        },
+        {
+          "start_ts": 1789911253.426448,
+          "end_ts": 1789916599.6306362,
+          "duration_s": 5346.2
+        },
+        {
+          "start_ts": 1789916933.7483084,
+          "end_ts": 1789920958.591749,
+          "duration_s": 4024.8
+        },
+        {
+          "start_ts": 1789921293.9987667,
+          "end_ts": 1789926005.700752,
+          "duration_s": 4711.7
+        },
+        {
+          "start_ts": 1789926342.0683024,
+          "end_ts": 1789929041.1856964,
+          "duration_s": 2699.1
+        },
+        {
+          "start_ts": 1789929378.875784,
+          "end_ts": 1789939533.7226982,
+          "duration_s": 10154.8
+        },
+        {
+          "start_ts": 1789939872.5604296,
+          "end_ts": 1789944971.5095854,
+          "duration_s": 5098.9
+        },
+        {
+          "start_ts": 1789945311.472959,
+          "end_ts": 1789946333.1582239,
+          "duration_s": 1021.7
+        },
+        {
+          "start_ts": 1789946673.278722,
+          "end_ts": 1789947014.3467937,
+          "duration_s": 341.1
+        },
+        {
+          "start_ts": 1789947694.5803466,
+          "end_ts": 1789952463.016362,
+          "duration_s": 4768.4
+        },
+        {
+          "start_ts": 1789952803.4025009,
+          "end_ts": 1789953824.8586257,
+          "duration_s": 1021.5
+        },
+        {
+          "start_ts": 1789954165.3329027,
+          "end_ts": 1789956896.0925603,
+          "duration_s": 2730.8
+        },
+        {
+          "start_ts": 1789957577.9152515,
+          "end_ts": 1789958604.103949,
+          "duration_s": 1026.2
+        },
+        {
+          "start_ts": 1789959286.8370934,
+          "end_ts": 1789960997.7734554,
+          "duration_s": 1710.9
+        },
+        {
+          "start_ts": 1789961339.875393,
+          "end_ts": 1789962024.3130465,
+          "duration_s": 684.4
+        },
+        {
+          "start_ts": 1789962365.9891274,
+          "end_ts": 1789962708.3771951,
+          "duration_s": 342.4
+        },
+        {
+          "start_ts": 1789963050.180261,
+          "end_ts": 1789963392.840171,
+          "duration_s": 342.7
+        },
+        {
+          "start_ts": 1789964076.566082,
+          "end_ts": 1789964419.2321403,
+          "duration_s": 342.7
+        },
+        {
+          "start_ts": 1789965445.9721658,
+          "end_ts": 1789966818.392559,
+          "duration_s": 1372.4
+        },
+        {
+          "start_ts": 1789967846.0952194,
+          "end_ts": 1789968532.763871,
+          "duration_s": 686.7
+        },
+        {
+          "start_ts": 1789969905.0692985,
+          "end_ts": 1789970252.0854836,
+          "duration_s": 347.0
+        },
+        {
+          "start_ts": 1789970943.9169657,
+          "end_ts": 1789973012.8261998,
+          "duration_s": 2068.9
+        },
+        {
+          "start_ts": 1789973357.0953767,
+          "end_ts": 1789975157.1836724,
+          "duration_s": 1800.1
+        },
+        {
+          "start_ts": 1789975854.3359606,
+          "end_ts": 1789976551.637291,
+          "duration_s": 697.3
+        },
+        {
+          "start_ts": 1789976897.5465784,
+          "end_ts": 1789980390.6451218,
+          "duration_s": 3493.1
+        },
+        {
+          "start_ts": 1789980741.052312,
+          "end_ts": 1789981443.0841193,
+          "duration_s": 702.0
+        },
+        {
+          "start_ts": 1789981791.9617462,
+          "end_ts": 1789982488.8560057,
+          "duration_s": 696.9
+        },
+        {
+          "start_ts": 1789982834.7633061,
+          "end_ts": 1789983181.734472,
+          "duration_s": 347.0
+        },
+        {
+          "start_ts": 1789983879.419881,
+          "end_ts": 1789984229.8594644,
+          "duration_s": 350.4
+        },
+        {
+          "start_ts": 1789985278.5749345,
+          "end_ts": 1789986331.3839183,
+          "duration_s": 1052.8
+        },
+        {
+          "start_ts": 1789986683.8170912,
+          "end_ts": 1789987386.1332138,
+          "duration_s": 702.3
+        },
+        {
+          "start_ts": 1789988085.6375368,
+          "end_ts": 1789989140.9180286,
+          "duration_s": 1055.3
+        },
+        {
+          "start_ts": 1789989492.3493476,
+          "end_ts": 1789990898.2510464,
+          "duration_s": 1405.9
+        },
+        {
+          "start_ts": 1789991248.421024,
+          "end_ts": 1789994056.8609629,
+          "duration_s": 2808.4
+        },
+        {
+          "start_ts": 1789994409.5470564,
+          "end_ts": 1789995116.6511593,
+          "duration_s": 707.1
+        },
+        {
+          "start_ts": 1789996524.2633069,
+          "end_ts": 1789997582.6109138,
+          "duration_s": 1058.3
+        },
+        {
+          "start_ts": 1789997936.626153,
+          "end_ts": 1789998288.4043589,
+          "duration_s": 351.8
+        },
+        {
+          "start_ts": 1789998641.4941025,
+          "end_ts": 1789999342.5010927,
+          "duration_s": 701.0
+        },
+        {
+          "start_ts": 1789999692.688892,
+          "end_ts": 1790001094.3739655,
+          "duration_s": 1401.7
+        },
+        {
+          "start_ts": 1790001445.771089,
+          "end_ts": 1790002146.8777356,
+          "duration_s": 701.1
+        },
+        {
+          "start_ts": 1790002847.4362571,
+          "end_ts": 1790003198.595617,
+          "duration_s": 351.2
+        },
+        {
+          "start_ts": 1790003549.367063,
+          "end_ts": 1790003901.0675213,
+          "duration_s": 351.7
+        },
+        {
+          "start_ts": 1790004604.078686,
+          "end_ts": 1790006039.7026057,
+          "duration_s": 1435.6
+        },
+        {
+          "start_ts": 1790006406.004306,
+          "end_ts": 1790007467.8772194,
+          "duration_s": 1061.9
+        },
+        {
+          "start_ts": 1790008530.1384346,
+          "end_ts": 1790009238.682416,
+          "duration_s": 708.5
+        },
+        {
+          "start_ts": 1790009945.2957225,
+          "end_ts": 1790013497.3787177,
+          "duration_s": 3552.1
+        },
+        {
+          "start_ts": 1790014207.5418482,
+          "end_ts": 1790015272.2072918,
+          "duration_s": 1064.7
+        },
+        {
+          "start_ts": 1790015626.184641,
+          "end_ts": 1790016336.6597164,
+          "duration_s": 710.5
+        },
+        {
+          "start_ts": 1790016691.4730177,
+          "end_ts": 1790018111.2296853,
+          "duration_s": 1419.8
+        },
+        {
+          "start_ts": 1790020930.4921103,
+          "end_ts": 1790022696.057548,
+          "duration_s": 1765.6
+        },
+        {
+          "start_ts": 1790023754.3978643,
+          "end_ts": 1790024814.9627957,
+          "duration_s": 1060.6
+        },
+        {
+          "start_ts": 1790025167.9769847,
+          "end_ts": 1790026938.395258,
+          "duration_s": 1770.4
+        },
+        {
+          "start_ts": 1790027291.910609,
+          "end_ts": 1790029062.7052178,
+          "duration_s": 1770.8
+        },
+        {
+          "start_ts": 1790031238.5058463,
+          "end_ts": 1790032382.525525,
+          "duration_s": 1144.0
+        },
+        {
+          "start_ts": 1790033823.991819,
+          "end_ts": 1790034944.7289746,
+          "duration_s": 1120.7
+        },
+        {
+          "start_ts": 1790035302.8166559,
+          "end_ts": 1790035663.5706878,
+          "duration_s": 360.8
+        },
+        {
+          "start_ts": 1790036381.7761629,
+          "end_ts": 1790037463.889606,
+          "duration_s": 1082.1
+        }
+      ],
+      "note": "healed_at_any_reopen=True means an INTERNAL plateau of >= one reopen interval (300s, zero delta in the summed 4-query reader_errors_total counter) was observed, followed by renewed growth later in the run -- i.e. the error class actually stopped firing for a while and later recurred. Cross-checked against queries_total for the same reader over one such window (reader 0, OSError, 1789873699-1789909082, 35382.5s): queries_total climbs steadily and slowly throughout (298->406, i.e. real completed query cycles), while reader_errors_total is exactly flat -- this is genuine intermittent recovery, not a metrics-reporting gap (the sampling cadence stays ~60-70s throughout, matching rss_kb's own regular cadence for the same reader). active_run_count = n_healing_intervals + 1 is therefore the reader's TRUE number of distinct error episodes for this class, which is larger than the ledger's onset count (D-088 only logs the FIRST-ever occurrence of a given (reader,class) signature, not each time it recurs after healing). tail_flat_span_s is the flat run (if any) that extends to the reader's last sample -- not itself evidence of healing, since the run simply ends there."
+    },
+    "reader1_StateError": {
+      "n_samples_from_onset": 2232,
+      "onset_value": 4344.0,
+      "final_value": 120950.0,
+      "max_internal_plateau_s": 20180.5,
+      "tail_flat_span_s": 3752.4,
+      "reopen_interval_s": 300,
+      "healed_at_any_reopen": true,
+      "n_healing_intervals_ge_reopen_interval": 17,
+      "active_run_count": 18,
+      "total_healed_time_s": 143197.1,
+      "healing_intervals": [
+        {
+          "start_ts": 1789884750.0388882,
+          "end_ts": 1789898951.802124,
+          "duration_s": 14201.8
+        },
+        {
+          "start_ts": 1789899282.9589598,
+          "end_ts": 1789912922.0678985,
+          "duration_s": 13639.1
+        },
+        {
+          "start_ts": 1789913256.4154196,
+          "end_ts": 1789933436.8979716,
+          "duration_s": 20180.5
+        },
+        {
+          "start_ts": 1789933775.0387185,
+          "end_ts": 1789942590.8925848,
+          "duration_s": 8815.9
+        },
+        {
+          "start_ts": 1789942931.374459,
+          "end_ts": 1789943271.126014,
+          "duration_s": 339.8
+        },
+        {
+          "start_ts": 1789943610.544711,
+          "end_ts": 1789949398.423116,
+          "duration_s": 5787.9
+        },
+        {
+          "start_ts": 1789949738.832372,
+          "end_ts": 1789962365.9891274,
+          "duration_s": 12627.2
+        },
+        {
+          "start_ts": 1789962708.3771951,
+          "end_ts": 1789966475.154774,
+          "duration_s": 3766.8
+        },
+        {
+          "start_ts": 1789966818.392559,
+          "end_ts": 1789973740.3476744,
+          "duration_s": 6922.0
+        },
+        {
+          "start_ts": 1789974089.7827506,
+          "end_ts": 1789978985.664445,
+          "duration_s": 4895.9
+        },
+        {
+          "start_ts": 1789979336.3544924,
+          "end_ts": 1789980741.052312,
+          "duration_s": 1404.7
+        },
+        {
+          "start_ts": 1789981092.6376479,
+          "end_ts": 1789993002.7795851,
+          "duration_s": 11910.1
+        },
+        {
+          "start_ts": 1789993353.0273552,
+          "end_ts": 1789998641.4941025,
+          "duration_s": 5288.5
+        },
+        {
+          "start_ts": 1789999342.5010927,
+          "end_ts": 1790014207.5418482,
+          "duration_s": 14865.0
+        },
+        {
+          "start_ts": 1790014563.062564,
+          "end_ts": 1790017403.2492685,
+          "duration_s": 2840.2
+        },
+        {
+          "start_ts": 1790017758.213823,
+          "end_ts": 1790027291.910609,
+          "duration_s": 9533.7
+        },
+        {
+          "start_ts": 1790027645.7127514,
+          "end_ts": 1790033823.991819,
+          "duration_s": 6178.3
+        }
+      ],
+      "note": "healed_at_any_reopen=True means an INTERNAL plateau of >= one reopen interval (300s, zero delta in the summed 4-query reader_errors_total counter) was observed, followed by renewed growth later in the run -- i.e. the error class actually stopped firing for a while and later recurred. Cross-checked against queries_total for the same reader over one such window (reader 0, OSError, 1789873699-1789909082, 35382.5s): queries_total climbs steadily and slowly throughout (298->406, i.e. real completed query cycles), while reader_errors_total is exactly flat -- this is genuine intermittent recovery, not a metrics-reporting gap (the sampling cadence stays ~60-70s throughout, matching rss_kb's own regular cadence for the same reader). active_run_count = n_healing_intervals + 1 is therefore the reader's TRUE number of distinct error episodes for this class, which is larger than the ledger's onset count (D-088 only logs the FIRST-ever occurrence of a given (reader,class) signature, not each time it recurs after healing). tail_flat_span_s is the flat run (if any) that extends to the reader's last sample -- not itself evidence of healing, since the run simply ends there."
+    },
+    "reader2_OSError": {
+      "n_samples_from_onset": 2016,
+      "onset_value": 569440.0,
+      "final_value": 280365688.0,
+      "max_internal_plateau_s": 6036.6,
+      "tail_flat_span_s": 358.8,
+      "reopen_interval_s": 300,
+      "healed_at_any_reopen": true,
+      "n_healing_intervals_ge_reopen_interval": 71,
+      "active_run_count": 72,
+      "total_healed_time_s": 105007.2,
+      "healing_intervals": [
+        {
+          "start_ts": 1789898699.382985,
+          "end_ts": 1789903035.7320628,
+          "duration_s": 4336.3
+        },
+        {
+          "start_ts": 1789903369.082867,
+          "end_ts": 1789904705.4935665,
+          "duration_s": 1336.4
+        },
+        {
+          "start_ts": 1789905039.105326,
+          "end_ts": 1789909052.1012938,
+          "duration_s": 4013.0
+        },
+        {
+          "start_ts": 1789909385.9158545,
+          "end_ts": 1789915422.4674172,
+          "duration_s": 6036.6
+        },
+        {
+          "start_ts": 1789916093.5244884,
+          "end_ts": 1789921818.2139885,
+          "duration_s": 5724.7
+        },
+        {
+          "start_ts": 1789922155.144791,
+          "end_ts": 1789922492.3070357,
+          "duration_s": 337.2
+        },
+        {
+          "start_ts": 1789922829.8339453,
+          "end_ts": 1789928236.7282443,
+          "duration_s": 5406.9
+        },
+        {
+          "start_ts": 1789928574.6263194,
+          "end_ts": 1789928913.284046,
+          "duration_s": 338.7
+        },
+        {
+          "start_ts": 1789929251.2662027,
+          "end_ts": 1789930944.4551482,
+          "duration_s": 1693.2
+        },
+        {
+          "start_ts": 1789931282.7837412,
+          "end_ts": 1789931960.9690266,
+          "duration_s": 678.2
+        },
+        {
+          "start_ts": 1789932299.4450145,
+          "end_ts": 1789937395.402336,
+          "duration_s": 5096.0
+        },
+        {
+          "start_ts": 1789937735.435975,
+          "end_ts": 1789939778.369831,
+          "duration_s": 2042.9
+        },
+        {
+          "start_ts": 1789940118.4805253,
+          "end_ts": 1789941822.5241315,
+          "duration_s": 1704.0
+        },
+        {
+          "start_ts": 1789942503.7944143,
+          "end_ts": 1789942845.0273814,
+          "duration_s": 341.2
+        },
+        {
+          "start_ts": 1789943185.7874768,
+          "end_ts": 1789946261.4992883,
+          "duration_s": 3075.7
+        },
+        {
+          "start_ts": 1789946602.6854436,
+          "end_ts": 1789947629.2746878,
+          "duration_s": 1026.6
+        },
+        {
+          "start_ts": 1789947971.252698,
+          "end_ts": 1789949681.8174222,
+          "duration_s": 1710.6
+        },
+        {
+          "start_ts": 1789950023.2279446,
+          "end_ts": 1789951049.3692753,
+          "duration_s": 1026.1
+        },
+        {
+          "start_ts": 1789951390.7881498,
+          "end_ts": 1789952074.3401415,
+          "duration_s": 683.6
+        },
+        {
+          "start_ts": 1789952416.0865395,
+          "end_ts": 1789952758.3506322,
+          "duration_s": 342.3
+        },
+        {
+          "start_ts": 1789953099.960959,
+          "end_ts": 1789953442.2790122,
+          "duration_s": 342.3
+        },
+        {
+          "start_ts": 1789953784.2892723,
+          "end_ts": 1789956868.5887814,
+          "duration_s": 3084.3
+        },
+        {
+          "start_ts": 1789957211.2733417,
+          "end_ts": 1789957554.4252582,
+          "duration_s": 343.2
+        },
+        {
+          "start_ts": 1789957896.9995937,
+          "end_ts": 1789959269.8267937,
+          "duration_s": 1372.8
+        },
+        {
+          "start_ts": 1789959613.0400887,
+          "end_ts": 1789962707.0386527,
+          "duration_s": 3094.0
+        },
+        {
+          "start_ts": 1789963050.8801723,
+          "end_ts": 1789963394.911618,
+          "duration_s": 344.0
+        },
+        {
+          "start_ts": 1789964082.4883041,
+          "end_ts": 1789964426.6149895,
+          "duration_s": 344.1
+        },
+        {
+          "start_ts": 1789964770.439117,
+          "end_ts": 1789968563.8992212,
+          "duration_s": 3793.5
+        },
+        {
+          "start_ts": 1789969598.4257355,
+          "end_ts": 1789970292.940917,
+          "duration_s": 694.5
+        },
+        {
+          "start_ts": 1789970987.669328,
+          "end_ts": 1789971679.4958646,
+          "duration_s": 691.8
+        },
+        {
+          "start_ts": 1789972025.1777692,
+          "end_ts": 1789974151.0731785,
+          "duration_s": 2125.9
+        },
+        {
+          "start_ts": 1789974505.1287825,
+          "end_ts": 1789974854.4849677,
+          "duration_s": 349.4
+        },
+        {
+          "start_ts": 1789975218.0797637,
+          "end_ts": 1789975918.2815592,
+          "duration_s": 700.2
+        },
+        {
+          "start_ts": 1789976266.214696,
+          "end_ts": 1789976963.6264727,
+          "duration_s": 697.4
+        },
+        {
+          "start_ts": 1789977311.5991933,
+          "end_ts": 1789981519.0195806,
+          "duration_s": 4207.4
+        },
+        {
+          "start_ts": 1789981869.4896102,
+          "end_ts": 1789982568.7852397,
+          "duration_s": 699.3
+        },
+        {
+          "start_ts": 1789982915.621769,
+          "end_ts": 1789983961.2202508,
+          "duration_s": 1045.6
+        },
+        {
+          "start_ts": 1789985361.5085013,
+          "end_ts": 1789986413.7518005,
+          "duration_s": 1052.2
+        },
+        {
+          "start_ts": 1789986762.8769977,
+          "end_ts": 1789987462.3425784,
+          "duration_s": 699.5
+        },
+        {
+          "start_ts": 1789988168.3177724,
+          "end_ts": 1789989226.0287142,
+          "duration_s": 1057.7
+        },
+        {
+          "start_ts": 1789989579.479767,
+          "end_ts": 1789990639.1321106,
+          "duration_s": 1059.7
+        },
+        {
+          "start_ts": 1789990992.0790002,
+          "end_ts": 1789992048.7846673,
+          "duration_s": 1056.7
+        },
+        {
+          "start_ts": 1789992753.2345998,
+          "end_ts": 1789993812.3835516,
+          "duration_s": 1059.1
+        },
+        {
+          "start_ts": 1789994164.9811995,
+          "end_ts": 1789996282.46515,
+          "duration_s": 2117.5
+        },
+        {
+          "start_ts": 1789996634.49035,
+          "end_ts": 1789996987.8612382,
+          "duration_s": 353.4
+        },
+        {
+          "start_ts": 1789997340.6160128,
+          "end_ts": 1789998405.924792,
+          "duration_s": 1065.3
+        },
+        {
+          "start_ts": 1789998758.130584,
+          "end_ts": 1789999110.8146622,
+          "duration_s": 352.7
+        },
+        {
+          "start_ts": 1789999814.2268622,
+          "end_ts": 1790001224.0688918,
+          "duration_s": 1409.8
+        },
+        {
+          "start_ts": 1790001576.2136538,
+          "end_ts": 1790001954.5910616,
+          "duration_s": 378.4
+        },
+        {
+          "start_ts": 1790003011.486845,
+          "end_ts": 1790003364.246261,
+          "duration_s": 352.8
+        },
+        {
+          "start_ts": 1790004069.0762393,
+          "end_ts": 1790004774.8372672,
+          "duration_s": 705.8
+        },
+        {
+          "start_ts": 1790005128.6514854,
+          "end_ts": 1790005482.0967453,
+          "duration_s": 353.4
+        },
+        {
+          "start_ts": 1790005834.4181767,
+          "end_ts": 1790006188.4532855,
+          "duration_s": 354.0
+        },
+        {
+          "start_ts": 1790007248.9415734,
+          "end_ts": 1790009029.381112,
+          "duration_s": 1780.4
+        },
+        {
+          "start_ts": 1790009385.1224313,
+          "end_ts": 1790010098.0063524,
+          "duration_s": 712.9
+        },
+        {
+          "start_ts": 1790010453.5165884,
+          "end_ts": 1790010809.7639894,
+          "duration_s": 356.2
+        },
+        {
+          "start_ts": 1790011164.4641814,
+          "end_ts": 1790011519.6303334,
+          "duration_s": 355.2
+        },
+        {
+          "start_ts": 1790011876.0347195,
+          "end_ts": 1790013655.576558,
+          "duration_s": 1779.5
+        },
+        {
+          "start_ts": 1790014369.2738435,
+          "end_ts": 1790014725.3565662,
+          "duration_s": 356.1
+        },
+        {
+          "start_ts": 1790015080.5052142,
+          "end_ts": 1790016509.628868,
+          "duration_s": 1429.1
+        },
+        {
+          "start_ts": 1790017224.128386,
+          "end_ts": 1790017580.8022602,
+          "duration_s": 356.7
+        },
+        {
+          "start_ts": 1790017935.7604601,
+          "end_ts": 1790018645.808572,
+          "duration_s": 710.0
+        },
+        {
+          "start_ts": 1790019353.7700143,
+          "end_ts": 1790021127.0441372,
+          "duration_s": 1773.3
+        },
+        {
+          "start_ts": 1790021835.8551798,
+          "end_ts": 1790025387.590981,
+          "duration_s": 3551.7
+        },
+        {
+          "start_ts": 1790025742.4580915,
+          "end_ts": 1790026810.1550705,
+          "duration_s": 1067.7
+        },
+        {
+          "start_ts": 1790027165.2960613,
+          "end_ts": 1790027876.0634055,
+          "duration_s": 710.8
+        },
+        {
+          "start_ts": 1790028231.5407224,
+          "end_ts": 1790028942.6404967,
+          "duration_s": 711.1
+        },
+        {
+          "start_ts": 1790030364.679887,
+          "end_ts": 1790032163.7196248,
+          "duration_s": 1799.0
+        },
+        {
+          "start_ts": 1790032544.934256,
+          "end_ts": 1790034350.324704,
+          "duration_s": 1805.4
+        },
+        {
+          "start_ts": 1790035443.9706166,
+          "end_ts": 1790035805.3959904,
+          "duration_s": 361.4
+        },
+        {
+          "start_ts": 1790036164.260102,
+          "end_ts": 1790037247.054557,
+          "duration_s": 1082.8
+        }
+      ],
+      "note": "healed_at_any_reopen=True means an INTERNAL plateau of >= one reopen interval (300s, zero delta in the summed 4-query reader_errors_total counter) was observed, followed by renewed growth later in the run -- i.e. the error class actually stopped firing for a while and later recurred. Cross-checked against queries_total for the same reader over one such window (reader 0, OSError, 1789873699-1789909082, 35382.5s): queries_total climbs steadily and slowly throughout (298->406, i.e. real completed query cycles), while reader_errors_total is exactly flat -- this is genuine intermittent recovery, not a metrics-reporting gap (the sampling cadence stays ~60-70s throughout, matching rss_kb's own regular cadence for the same reader). active_run_count = n_healing_intervals + 1 is therefore the reader's TRUE number of distinct error episodes for this class, which is larger than the ledger's onset count (D-088 only logs the FIRST-ever occurrence of a given (reader,class) signature, not each time it recurs after healing). tail_flat_span_s is the flat run (if any) that extends to the reader's last sample -- not itself evidence of healing, since the run simply ends there."
+    },
+    "reader2_StateError": {
+      "n_samples_from_onset": 2391,
+      "onset_value": 1272.0,
+      "final_value": 99621.0,
+      "max_internal_plateau_s": 33383.9,
+      "tail_flat_span_s": 718.5,
+      "reopen_interval_s": 300,
+      "healed_at_any_reopen": true,
+      "n_healing_intervals_ge_reopen_interval": 12,
+      "active_run_count": 13,
+      "total_healed_time_s": 159215.6,
+      "healing_intervals": [
+        {
+          "start_ts": 1789873898.5516706,
+          "end_ts": 1789877191.6057,
+          "duration_s": 3293.1
+        },
+        {
+          "start_ts": 1789877520.5534792,
+          "end_ts": 1789897701.7349553,
+          "duration_s": 20181.2
+        },
+        {
+          "start_ts": 1789898034.254487,
+          "end_ts": 1789901366.9243994,
+          "duration_s": 3332.7
+        },
+        {
+          "start_ts": 1789901700.1527877,
+          "end_ts": 1789910389.287683,
+          "duration_s": 8689.1
+        },
+        {
+          "start_ts": 1789910724.304431,
+          "end_ts": 1789937055.2671897,
+          "duration_s": 26331.0
+        },
+        {
+          "start_ts": 1789937395.402336,
+          "end_ts": 1789960988.2243583,
+          "duration_s": 23592.8
+        },
+        {
+          "start_ts": 1789961331.7056117,
+          "end_ts": 1789962019.285408,
+          "duration_s": 687.6
+        },
+        {
+          "start_ts": 1789962363.2921565,
+          "end_ts": 1789980464.5222654,
+          "duration_s": 18101.2
+        },
+        {
+          "start_ts": 1789980815.8989656,
+          "end_ts": 1789995577.059173,
+          "duration_s": 14761.2
+        },
+        {
+          "start_ts": 1789995928.6952565,
+          "end_ts": 1789997697.084785,
+          "duration_s": 1768.4
+        },
+        {
+          "start_ts": 1789998051.4012258,
+          "end_ts": 1790031435.2832837,
+          "duration_s": 33383.9
+        },
+        {
+          "start_ts": 1790031793.4913785,
+          "end_ts": 1790036886.9838562,
+          "duration_s": 5093.5
+        }
+      ],
+      "note": "healed_at_any_reopen=True means an INTERNAL plateau of >= one reopen interval (300s, zero delta in the summed 4-query reader_errors_total counter) was observed, followed by renewed growth later in the run -- i.e. the error class actually stopped firing for a while and later recurred. Cross-checked against queries_total for the same reader over one such window (reader 0, OSError, 1789873699-1789909082, 35382.5s): queries_total climbs steadily and slowly throughout (298->406, i.e. real completed query cycles), while reader_errors_total is exactly flat -- this is genuine intermittent recovery, not a metrics-reporting gap (the sampling cadence stays ~60-70s throughout, matching rss_kb's own regular cadence for the same reader). active_run_count = n_healing_intervals + 1 is therefore the reader's TRUE number of distinct error episodes for this class, which is larger than the ledger's onset count (D-088 only logs the FIRST-ever occurrence of a given (reader,class) signature, not each time it recurs after healing). tail_flat_span_s is the flat run (if any) that extends to the reader's last sample -- not itself evidence of healing, since the run simply ends there."
+    },
+    "reader3_OSError": {
+      "n_samples_from_onset": 1862,
+      "onset_value": 600460.0,
+      "final_value": 283866604.0,
+      "max_internal_plateau_s": 6341.7,
+      "tail_flat_span_s": 2238.1,
+      "reopen_interval_s": 300,
+      "healed_at_any_reopen": true,
+      "n_healing_intervals_ge_reopen_interval": 60,
+      "active_run_count": 61,
+      "total_healed_time_s": 92866.3,
+      "healing_intervals": [
+        {
+          "start_ts": 1789909234.5357409,
+          "end_ts": 1789915576.25365,
+          "duration_s": 6341.7
+        },
+        {
+          "start_ts": 1789915910.3077018,
+          "end_ts": 1789917583.489333,
+          "duration_s": 1673.2
+        },
+        {
+          "start_ts": 1789917917.892303,
+          "end_ts": 1789923289.053949,
+          "duration_s": 5371.2
+        },
+        {
+          "start_ts": 1789923624.9271467,
+          "end_ts": 1789924971.3601682,
+          "duration_s": 1346.4
+        },
+        {
+          "start_ts": 1789925307.4244876,
+          "end_ts": 1789931378.4410367,
+          "duration_s": 6071.0
+        },
+        {
+          "start_ts": 1789931715.6732874,
+          "end_ts": 1789933067.8140826,
+          "duration_s": 1352.1
+        },
+        {
+          "start_ts": 1789933742.9829152,
+          "end_ts": 1789936796.2798367,
+          "duration_s": 3053.3
+        },
+        {
+          "start_ts": 1789937135.4663913,
+          "end_ts": 1789940877.1366343,
+          "duration_s": 3741.7
+        },
+        {
+          "start_ts": 1789941217.2871625,
+          "end_ts": 1789941898.6159964,
+          "duration_s": 681.3
+        },
+        {
+          "start_ts": 1789942578.7744043,
+          "end_ts": 1789947354.0332758,
+          "duration_s": 4775.3
+        },
+        {
+          "start_ts": 1789947694.8943033,
+          "end_ts": 1789949402.7017179,
+          "duration_s": 1707.8
+        },
+        {
+          "start_ts": 1789949742.613278,
+          "end_ts": 1789952463.8971803,
+          "duration_s": 2721.3
+        },
+        {
+          "start_ts": 1789952804.0896835,
+          "end_ts": 1789953825.9315164,
+          "duration_s": 1021.8
+        },
+        {
+          "start_ts": 1789954166.2494662,
+          "end_ts": 1789956896.0130665,
+          "duration_s": 2729.8
+        },
+        {
+          "start_ts": 1789957577.6501327,
+          "end_ts": 1789958944.1161997,
+          "duration_s": 1366.5
+        },
+        {
+          "start_ts": 1789959285.2060406,
+          "end_ts": 1789960312.5593376,
+          "duration_s": 1027.4
+        },
+        {
+          "start_ts": 1789960656.8728402,
+          "end_ts": 1789961000.126176,
+          "duration_s": 343.3
+        },
+        {
+          "start_ts": 1789961342.793288,
+          "end_ts": 1789961686.298763,
+          "duration_s": 343.5
+        },
+        {
+          "start_ts": 1789962715.1204748,
+          "end_ts": 1789968565.8453004,
+          "duration_s": 5850.7
+        },
+        {
+          "start_ts": 1789969598.9007046,
+          "end_ts": 1789970291.7696698,
+          "duration_s": 692.9
+        },
+        {
+          "start_ts": 1789970640.6382585,
+          "end_ts": 1789974144.5853684,
+          "duration_s": 3503.9
+        },
+        {
+          "start_ts": 1789974846.4718974,
+          "end_ts": 1789976259.4989853,
+          "duration_s": 1413.0
+        },
+        {
+          "start_ts": 1789976606.6114998,
+          "end_ts": 1789976953.3336983,
+          "duration_s": 346.7
+        },
+        {
+          "start_ts": 1789977299.1152053,
+          "end_ts": 1789977645.2531614,
+          "duration_s": 346.1
+        },
+        {
+          "start_ts": 1789978336.710912,
+          "end_ts": 1789979034.0691822,
+          "duration_s": 697.4
+        },
+        {
+          "start_ts": 1789979734.4868574,
+          "end_ts": 1789980787.0551348,
+          "duration_s": 1052.6
+        },
+        {
+          "start_ts": 1789981137.918696,
+          "end_ts": 1789981837.6032083,
+          "duration_s": 699.7
+        },
+        {
+          "start_ts": 1789982185.5033586,
+          "end_ts": 1789982532.9042962,
+          "duration_s": 347.4
+        },
+        {
+          "start_ts": 1789982878.9290986,
+          "end_ts": 1789983924.20872,
+          "duration_s": 1045.3
+        },
+        {
+          "start_ts": 1789984622.992988,
+          "end_ts": 1789984973.429236,
+          "duration_s": 350.4
+        },
+        {
+          "start_ts": 1789985322.5475104,
+          "end_ts": 1789986373.4738426,
+          "duration_s": 1050.9
+        },
+        {
+          "start_ts": 1789986723.8801987,
+          "end_ts": 1789987427.4324198,
+          "duration_s": 703.6
+        },
+        {
+          "start_ts": 1789988128.860668,
+          "end_ts": 1789989188.8643143,
+          "duration_s": 1060.0
+        },
+        {
+          "start_ts": 1789989893.7185924,
+          "end_ts": 1789990597.0150404,
+          "duration_s": 703.3
+        },
+        {
+          "start_ts": 1789990946.6819,
+          "end_ts": 1789991648.6623626,
+          "duration_s": 702.0
+        },
+        {
+          "start_ts": 1789993753.639319,
+          "end_ts": 1789994456.0149126,
+          "duration_s": 702.4
+        },
+        {
+          "start_ts": 1789994806.4760823,
+          "end_ts": 1789995158.5936728,
+          "duration_s": 352.1
+        },
+        {
+          "start_ts": 1789996213.5263388,
+          "end_ts": 1789997272.4524257,
+          "duration_s": 1058.9
+        },
+        {
+          "start_ts": 1789997977.7023625,
+          "end_ts": 1789998331.1724308,
+          "duration_s": 353.5
+        },
+        {
+          "start_ts": 1789999731.7950706,
+          "end_ts": 1790002910.427605,
+          "duration_s": 3178.6
+        },
+        {
+          "start_ts": 1790003260.2330644,
+          "end_ts": 1790005016.8992238,
+          "duration_s": 1756.7
+        },
+        {
+          "start_ts": 1790005367.1722393,
+          "end_ts": 1790006107.596977,
+          "duration_s": 740.4
+        },
+        {
+          "start_ts": 1790006810.4471855,
+          "end_ts": 1790008223.4725761,
+          "duration_s": 1413.0
+        },
+        {
+          "start_ts": 1790008931.228764,
+          "end_ts": 1790009284.8784323,
+          "duration_s": 353.6
+        },
+        {
+          "start_ts": 1790009639.6304827,
+          "end_ts": 1790010346.4862766,
+          "duration_s": 706.9
+        },
+        {
+          "start_ts": 1790010699.9549305,
+          "end_ts": 1790013533.646499,
+          "duration_s": 2833.7
+        },
+        {
+          "start_ts": 1790014242.8248074,
+          "end_ts": 1790014597.7167387,
+          "duration_s": 354.9
+        },
+        {
+          "start_ts": 1790014958.757567,
+          "end_ts": 1790015314.880272,
+          "duration_s": 356.1
+        },
+        {
+          "start_ts": 1790015668.516647,
+          "end_ts": 1790016732.5497255,
+          "duration_s": 1064.0
+        },
+        {
+          "start_ts": 1790017088.6148062,
+          "end_ts": 1790018505.4126933,
+          "duration_s": 1416.8
+        },
+        {
+          "start_ts": 1790018858.8267057,
+          "end_ts": 1790019211.12928,
+          "duration_s": 352.3
+        },
+        {
+          "start_ts": 1790020968.5583038,
+          "end_ts": 1790022731.5731924,
+          "duration_s": 1763.0
+        },
+        {
+          "start_ts": 1790023083.406342,
+          "end_ts": 1790024495.7349107,
+          "duration_s": 1412.3
+        },
+        {
+          "start_ts": 1790024848.433582,
+          "end_ts": 1790025554.8190777,
+          "duration_s": 706.4
+        },
+        {
+          "start_ts": 1790026260.408281,
+          "end_ts": 1790026613.595611,
+          "duration_s": 353.2
+        },
+        {
+          "start_ts": 1790026966.1886616,
+          "end_ts": 1790027672.1372678,
+          "duration_s": 705.9
+        },
+        {
+          "start_ts": 1790028024.759176,
+          "end_ts": 1790028378.4662433,
+          "duration_s": 353.7
+        },
+        {
+          "start_ts": 1790028731.4555707,
+          "end_ts": 1790031261.155007,
+          "duration_s": 2529.7
+        },
+        {
+          "start_ts": 1790032807.3182988,
+          "end_ts": 1790033884.2803452,
+          "duration_s": 1077.0
+        },
+        {
+          "start_ts": 1790034243.3668044,
+          "end_ts": 1790034980.0691707,
+          "duration_s": 736.7
+        }
+      ],
+      "note": "healed_at_any_reopen=True means an INTERNAL plateau of >= one reopen interval (300s, zero delta in the summed 4-query reader_errors_total counter) was observed, followed by renewed growth later in the run -- i.e. the error class actually stopped firing for a while and later recurred. Cross-checked against queries_total for the same reader over one such window (reader 0, OSError, 1789873699-1789909082, 35382.5s): queries_total climbs steadily and slowly throughout (298->406, i.e. real completed query cycles), while reader_errors_total is exactly flat -- this is genuine intermittent recovery, not a metrics-reporting gap (the sampling cadence stays ~60-70s throughout, matching rss_kb's own regular cadence for the same reader). active_run_count = n_healing_intervals + 1 is therefore the reader's TRUE number of distinct error episodes for this class, which is larger than the ledger's onset count (D-088 only logs the FIRST-ever occurrence of a given (reader,class) signature, not each time it recurs after healing). tail_flat_span_s is the flat run (if any) that extends to the reader's last sample -- not itself evidence of healing, since the run simply ends there."
+    },
+    "reader3_StateError": {
+      "n_samples_from_onset": 2477,
+      "onset_value": 3336.0,
+      "final_value": 154965.0,
+      "max_internal_plateau_s": 37272.1,
+      "tail_flat_span_s": 1521.6,
+      "reopen_interval_s": 300,
+      "healed_at_any_reopen": true,
+      "n_healing_intervals_ge_reopen_interval": 22,
+      "active_run_count": 23,
+      "total_healed_time_s": 160208.3,
+      "healing_intervals": [
+        {
+          "start_ts": 1789868634.5967038,
+          "end_ts": 1789870927.6098375,
+          "duration_s": 2293.0
+        },
+        {
+          "start_ts": 1789871255.0593576,
+          "end_ts": 1789872568.173996,
+          "duration_s": 1313.1
+        },
+        {
+          "start_ts": 1789872896.3751628,
+          "end_ts": 1789875853.9646118,
+          "duration_s": 2957.6
+        },
+        {
+          "start_ts": 1789876182.1046476,
+          "end_ts": 1789888042.9691339,
+          "duration_s": 11860.9
+        },
+        {
+          "start_ts": 1789888371.7286105,
+          "end_ts": 1789925643.7813127,
+          "duration_s": 37272.1
+        },
+        {
+          "start_ts": 1789925979.8132918,
+          "end_ts": 1789926316.4234896,
+          "duration_s": 336.6
+        },
+        {
+          "start_ts": 1789926653.1516452,
+          "end_ts": 1789937814.8071675,
+          "duration_s": 11161.7
+        },
+        {
+          "start_ts": 1789938154.4513404,
+          "end_ts": 1789946330.5161254,
+          "duration_s": 8176.1
+        },
+        {
+          "start_ts": 1789946671.4518943,
+          "end_ts": 1789947012.7539942,
+          "duration_s": 341.3
+        },
+        {
+          "start_ts": 1789947354.0332758,
+          "end_ts": 1789949742.613278,
+          "duration_s": 2388.6
+        },
+        {
+          "start_ts": 1789950082.5257695,
+          "end_ts": 1789967187.5848768,
+          "duration_s": 17105.1
+        },
+        {
+          "start_ts": 1789967531.5821161,
+          "end_ts": 1789970640.6382585,
+          "duration_s": 3109.1
+        },
+        {
+          "start_ts": 1789970986.2973456,
+          "end_ts": 1789975911.8367915,
+          "duration_s": 4925.5
+        },
+        {
+          "start_ts": 1789976259.4989853,
+          "end_ts": 1789979734.4868574,
+          "duration_s": 3475.0
+        },
+        {
+          "start_ts": 1789980085.6840594,
+          "end_ts": 1790001134.474658,
+          "duration_s": 21048.8
+        },
+        {
+          "start_ts": 1790001485.12414,
+          "end_ts": 1790008931.228764,
+          "duration_s": 7446.1
+        },
+        {
+          "start_ts": 1790009284.8784323,
+          "end_ts": 1790017444.3656132,
+          "duration_s": 8159.5
+        },
+        {
+          "start_ts": 1790017798.7420099,
+          "end_ts": 1790018858.8267057,
+          "duration_s": 1060.1
+        },
+        {
+          "start_ts": 1790019211.12928,
+          "end_ts": 1790024848.433582,
+          "duration_s": 5637.3
+        },
+        {
+          "start_ts": 1790025201.440601,
+          "end_ts": 1790026966.1886616,
+          "duration_s": 1764.7
+        },
+        {
+          "start_ts": 1790027319.203865,
+          "end_ts": 1790034243.3668044,
+          "duration_s": 6924.2
+        },
+        {
+          "start_ts": 1790034604.1159513,
+          "end_ts": 1790036056.2664378,
+          "duration_s": 1452.2
+        }
+      ],
+      "note": "healed_at_any_reopen=True means an INTERNAL plateau of >= one reopen interval (300s, zero delta in the summed 4-query reader_errors_total counter) was observed, followed by renewed growth later in the run -- i.e. the error class actually stopped firing for a while and later recurred. Cross-checked against queries_total for the same reader over one such window (reader 0, OSError, 1789873699-1789909082, 35382.5s): queries_total climbs steadily and slowly throughout (298->406, i.e. real completed query cycles), while reader_errors_total is exactly flat -- this is genuine intermittent recovery, not a metrics-reporting gap (the sampling cadence stays ~60-70s throughout, matching rss_kb's own regular cadence for the same reader). active_run_count = n_healing_intervals + 1 is therefore the reader's TRUE number of distinct error episodes for this class, which is larger than the ledger's onset count (D-088 only logs the FIRST-ever occurrence of a given (reader,class) signature, not each time it recurs after healing). tail_flat_span_s is the flat run (if any) that extends to the reader's last sample -- not itself evidence of healing, since the run simply ends there."
+    },
+    "reader4_OSError": {
+      "n_samples_from_onset": 2486,
+      "onset_value": 536420.0,
+      "final_value": 266644756.0,
+      "max_internal_plateau_s": 36654.0,
+      "tail_flat_span_s": 372.1,
+      "reopen_interval_s": 300,
+      "healed_at_any_reopen": true,
+      "n_healing_intervals_ge_reopen_interval": 67,
+      "active_run_count": 68,
+      "total_healed_time_s": 137642.7,
+      "healing_intervals": [
+        {
+          "start_ts": 1789867887.8471875,
+          "end_ts": 1789904541.851109,
+          "duration_s": 36654.0
+        },
+        {
+          "start_ts": 1789904875.554038,
+          "end_ts": 1789910217.9382415,
+          "duration_s": 5342.4
+        },
+        {
+          "start_ts": 1789910885.6707854,
+          "end_ts": 1789911220.262138,
+          "duration_s": 334.6
+        },
+        {
+          "start_ts": 1789911888.2453043,
+          "end_ts": 1789917585.168841,
+          "duration_s": 5696.9
+        },
+        {
+          "start_ts": 1789917920.4864688,
+          "end_ts": 1789918256.649769,
+          "duration_s": 336.2
+        },
+        {
+          "start_ts": 1789918592.2224786,
+          "end_ts": 1789919264.3134322,
+          "duration_s": 672.1
+        },
+        {
+          "start_ts": 1789919600.3655672,
+          "end_ts": 1789920610.3336985,
+          "duration_s": 1010.0
+        },
+        {
+          "start_ts": 1789920946.6788032,
+          "end_ts": 1789922632.4894185,
+          "duration_s": 1685.8
+        },
+        {
+          "start_ts": 1789923305.786481,
+          "end_ts": 1789926005.1788774,
+          "duration_s": 2699.4
+        },
+        {
+          "start_ts": 1789926341.9349642,
+          "end_ts": 1789933440.4757574,
+          "duration_s": 7098.5
+        },
+        {
+          "start_ts": 1789933778.5009768,
+          "end_ts": 1789937170.7274969,
+          "duration_s": 3392.2
+        },
+        {
+          "start_ts": 1789937849.2103136,
+          "end_ts": 1789938867.957205,
+          "duration_s": 1018.7
+        },
+        {
+          "start_ts": 1789939207.2754395,
+          "end_ts": 1789939887.6703453,
+          "duration_s": 680.4
+        },
+        {
+          "start_ts": 1789940227.27818,
+          "end_ts": 1789942951.108744,
+          "duration_s": 2723.8
+        },
+        {
+          "start_ts": 1789943291.5793195,
+          "end_ts": 1789944655.45484,
+          "duration_s": 1363.9
+        },
+        {
+          "start_ts": 1789944996.0302563,
+          "end_ts": 1789947386.4450366,
+          "duration_s": 2390.4
+        },
+        {
+          "start_ts": 1789947727.4430394,
+          "end_ts": 1789949436.3182645,
+          "duration_s": 1708.9
+        },
+        {
+          "start_ts": 1789949776.6171458,
+          "end_ts": 1789952848.8573244,
+          "duration_s": 3072.2
+        },
+        {
+          "start_ts": 1789953190.1675763,
+          "end_ts": 1789954216.0871825,
+          "duration_s": 1025.9
+        },
+        {
+          "start_ts": 1789954557.3030815,
+          "end_ts": 1789955583.8700552,
+          "duration_s": 1026.6
+        },
+        {
+          "start_ts": 1789955925.2759888,
+          "end_ts": 1789957979.966827,
+          "duration_s": 2054.7
+        },
+        {
+          "start_ts": 1789958322.1899896,
+          "end_ts": 1789959007.6265883,
+          "duration_s": 685.4
+        },
+        {
+          "start_ts": 1789959349.6889307,
+          "end_ts": 1789960378.683808,
+          "duration_s": 1029.0
+        },
+        {
+          "start_ts": 1789960721.3271823,
+          "end_ts": 1789961064.671985,
+          "duration_s": 343.3
+        },
+        {
+          "start_ts": 1789961407.0743575,
+          "end_ts": 1789962093.5957556,
+          "duration_s": 686.5
+        },
+        {
+          "start_ts": 1789962436.5318522,
+          "end_ts": 1789962780.4817548,
+          "duration_s": 343.9
+        },
+        {
+          "start_ts": 1789963123.6419864,
+          "end_ts": 1789963467.0606751,
+          "duration_s": 343.4
+        },
+        {
+          "start_ts": 1789963810.141813,
+          "end_ts": 1789967939.3475497,
+          "duration_s": 4129.2
+        },
+        {
+          "start_ts": 1789968283.2076762,
+          "end_ts": 1789969316.268568,
+          "duration_s": 1033.1
+        },
+        {
+          "start_ts": 1789970349.0468433,
+          "end_ts": 1789971388.5448217,
+          "duration_s": 1039.5
+        },
+        {
+          "start_ts": 1789971733.349538,
+          "end_ts": 1789973115.187405,
+          "duration_s": 1381.8
+        },
+        {
+          "start_ts": 1789973460.5525053,
+          "end_ts": 1789975959.4972434,
+          "duration_s": 2498.9
+        },
+        {
+          "start_ts": 1789976306.1892157,
+          "end_ts": 1789981200.6782231,
+          "duration_s": 4894.5
+        },
+        {
+          "start_ts": 1789981549.2685227,
+          "end_ts": 1789982597.626916,
+          "duration_s": 1048.4
+        },
+        {
+          "start_ts": 1789982945.1170983,
+          "end_ts": 1789983293.3161447,
+          "duration_s": 348.2
+        },
+        {
+          "start_ts": 1789983640.9370048,
+          "end_ts": 1789984339.9341626,
+          "duration_s": 699.0
+        },
+        {
+          "start_ts": 1789984689.2081282,
+          "end_ts": 1789986093.568462,
+          "duration_s": 1404.4
+        },
+        {
+          "start_ts": 1789986445.975089,
+          "end_ts": 1789987501.5221167,
+          "duration_s": 1055.5
+        },
+        {
+          "start_ts": 1789988202.8063822,
+          "end_ts": 1789989260.2486331,
+          "duration_s": 1057.4
+        },
+        {
+          "start_ts": 1789989612.352911,
+          "end_ts": 1789989964.12769,
+          "duration_s": 351.8
+        },
+        {
+          "start_ts": 1789990316.8942206,
+          "end_ts": 1789991723.6140666,
+          "duration_s": 1406.7
+        },
+        {
+          "start_ts": 1789992075.615696,
+          "end_ts": 1789992427.3745086,
+          "duration_s": 351.8
+        },
+        {
+          "start_ts": 1789993834.7965753,
+          "end_ts": 1789994538.4594915,
+          "duration_s": 703.7
+        },
+        {
+          "start_ts": 1789994891.433568,
+          "end_ts": 1789997359.1082468,
+          "duration_s": 2467.7
+        },
+        {
+          "start_ts": 1789997711.3273,
+          "end_ts": 1789998417.4804614,
+          "duration_s": 706.2
+        },
+        {
+          "start_ts": 1789999120.6039553,
+          "end_ts": 1789999824.0130386,
+          "duration_s": 703.4
+        },
+        {
+          "start_ts": 1790000175.6654153,
+          "end_ts": 1790001956.8117585,
+          "duration_s": 1781.1
+        },
+        {
+          "start_ts": 1790002308.3114,
+          "end_ts": 1790003366.3316822,
+          "duration_s": 1058.0
+        },
+        {
+          "start_ts": 1790004070.895666,
+          "end_ts": 1790004775.3617046,
+          "duration_s": 704.5
+        },
+        {
+          "start_ts": 1790005128.6057315,
+          "end_ts": 1790005481.6508443,
+          "duration_s": 353.0
+        },
+        {
+          "start_ts": 1790005833.0175395,
+          "end_ts": 1790006186.0636797,
+          "duration_s": 353.0
+        },
+        {
+          "start_ts": 1790006890.3364356,
+          "end_ts": 1790008663.7148802,
+          "duration_s": 1773.4
+        },
+        {
+          "start_ts": 1790009727.4723067,
+          "end_ts": 1790010438.1134882,
+          "duration_s": 710.6
+        },
+        {
+          "start_ts": 1790010791.916891,
+          "end_ts": 1790011147.087393,
+          "duration_s": 355.2
+        },
+        {
+          "start_ts": 1790011501.4548151,
+          "end_ts": 1790011857.2600985,
+          "duration_s": 355.8
+        },
+        {
+          "start_ts": 1790013275.8675778,
+          "end_ts": 1790014344.0789068,
+          "duration_s": 1068.2
+        },
+        {
+          "start_ts": 1790014699.6832979,
+          "end_ts": 1790015056.0632205,
+          "duration_s": 356.4
+        },
+        {
+          "start_ts": 1790015411.666723,
+          "end_ts": 1790016123.9419794,
+          "duration_s": 712.3
+        },
+        {
+          "start_ts": 1790016479.1512086,
+          "end_ts": 1790017193.9774384,
+          "duration_s": 714.8
+        },
+        {
+          "start_ts": 1790017548.4752574,
+          "end_ts": 1790017903.3928208,
+          "duration_s": 354.9
+        },
+        {
+          "start_ts": 1790018258.4445465,
+          "end_ts": 1790019674.8726037,
+          "duration_s": 1416.4
+        },
+        {
+          "start_ts": 1790021442.4997308,
+          "end_ts": 1790024984.9919527,
+          "duration_s": 3542.5
+        },
+        {
+          "start_ts": 1790025693.1712742,
+          "end_ts": 1790026403.0509229,
+          "duration_s": 709.9
+        },
+        {
+          "start_ts": 1790026757.734192,
+          "end_ts": 1790027467.7857833,
+          "duration_s": 710.1
+        },
+        {
+          "start_ts": 1790027822.0009334,
+          "end_ts": 1790032132.6409523,
+          "duration_s": 4310.6
+        },
+        {
+          "start_ts": 1790032526.0967937,
+          "end_ts": 1790033968.2247536,
+          "duration_s": 1442.1
+        },
+        {
+          "start_ts": 1790034328.6177301,
+          "end_ts": 1790036487.9900322,
+          "duration_s": 2159.4
+        }
+      ],
+      "note": "healed_at_any_reopen=True means an INTERNAL plateau of >= one reopen interval (300s, zero delta in the summed 4-query reader_errors_total counter) was observed, followed by renewed growth later in the run -- i.e. the error class actually stopped firing for a while and later recurred. Cross-checked against queries_total for the same reader over one such window (reader 0, OSError, 1789873699-1789909082, 35382.5s): queries_total climbs steadily and slowly throughout (298->406, i.e. real completed query cycles), while reader_errors_total is exactly flat -- this is genuine intermittent recovery, not a metrics-reporting gap (the sampling cadence stays ~60-70s throughout, matching rss_kb's own regular cadence for the same reader). active_run_count = n_healing_intervals + 1 is therefore the reader's TRUE number of distinct error episodes for this class, which is larger than the ledger's onset count (D-088 only logs the FIRST-ever occurrence of a given (reader,class) signature, not each time it recurs after healing). tail_flat_span_s is the flat run (if any) that extends to the reader's last sample -- not itself evidence of healing, since the run simply ends there."
+    },
+    "reader4_StateError": {
+      "n_samples_from_onset": 2116,
+      "onset_value": 1320.0,
+      "final_value": 103589.0,
+      "max_internal_plateau_s": 22595.6,
+      "tail_flat_span_s": 6558.7,
+      "reopen_interval_s": 300,
+      "healed_at_any_reopen": true,
+      "n_healing_intervals_ge_reopen_interval": 16,
+      "active_run_count": 17,
+      "total_healed_time_s": 133634.7,
+      "healing_intervals": [
+        {
+          "start_ts": 1789892246.4005444,
+          "end_ts": 1789901209.6090965,
+          "duration_s": 8963.2
+        },
+        {
+          "start_ts": 1789901542.6491117,
+          "end_ts": 1789914901.391138,
+          "duration_s": 13358.7
+        },
+        {
+          "start_ts": 1789915236.4865234,
+          "end_ts": 1789915572.001581,
+          "duration_s": 335.5
+        },
+        {
+          "start_ts": 1789915907.485482,
+          "end_ts": 1789919600.3655672,
+          "duration_s": 3692.9
+        },
+        {
+          "start_ts": 1789919936.7679257,
+          "end_ts": 1789933101.8390508,
+          "duration_s": 13165.1
+        },
+        {
+          "start_ts": 1789933440.4757574,
+          "end_ts": 1789937849.2103136,
+          "duration_s": 4408.7
+        },
+        {
+          "start_ts": 1789938188.4588168,
+          "end_ts": 1789948411.3635166,
+          "duration_s": 10222.9
+        },
+        {
+          "start_ts": 1789948753.1415844,
+          "end_ts": 1789949776.6171458,
+          "duration_s": 1023.5
+        },
+        {
+          "start_ts": 1789950117.4765844,
+          "end_ts": 1789950800.5618467,
+          "duration_s": 683.1
+        },
+        {
+          "start_ts": 1789951141.9083297,
+          "end_ts": 1789953532.2059572,
+          "duration_s": 2390.3
+        },
+        {
+          "start_ts": 1789953874.5032985,
+          "end_ts": 1789961750.4218495,
+          "duration_s": 7875.9
+        },
+        {
+          "start_ts": 1789962093.5957556,
+          "end_ts": 1789984689.2081282,
+          "duration_s": 22595.6
+        },
+        {
+          "start_ts": 1789985039.2117054,
+          "end_ts": 1790000879.264758,
+          "duration_s": 15840.1
+        },
+        {
+          "start_ts": 1790001231.197171,
+          "end_ts": 1790006890.3364356,
+          "duration_s": 5659.1
+        },
+        {
+          "start_ts": 1790007244.3420372,
+          "end_ts": 1790027822.0009334,
+          "duration_s": 20577.7
+        },
+        {
+          "start_ts": 1790028176.9728994,
+          "end_ts": 1790031019.4192438,
+          "duration_s": 2842.4
+        }
+      ],
+      "note": "healed_at_any_reopen=True means an INTERNAL plateau of >= one reopen interval (300s, zero delta in the summed 4-query reader_errors_total counter) was observed, followed by renewed growth later in the run -- i.e. the error class actually stopped firing for a while and later recurred. Cross-checked against queries_total for the same reader over one such window (reader 0, OSError, 1789873699-1789909082, 35382.5s): queries_total climbs steadily and slowly throughout (298->406, i.e. real completed query cycles), while reader_errors_total is exactly flat -- this is genuine intermittent recovery, not a metrics-reporting gap (the sampling cadence stays ~60-70s throughout, matching rss_kb's own regular cadence for the same reader). active_run_count = n_healing_intervals + 1 is therefore the reader's TRUE number of distinct error episodes for this class, which is larger than the ledger's onset count (D-088 only logs the FIRST-ever occurrence of a given (reader,class) signature, not each time it recurs after healing). tail_flat_span_s is the flat run (if any) that extends to the reader's last sample -- not itself evidence of healing, since the run simply ends there."
+    },
+    "reader5_OSError": {
+      "n_samples_from_onset": 2401,
+      "onset_value": 318912.0,
+      "final_value": 231967960.0,
+      "max_internal_plateau_s": 30031.1,
+      "tail_flat_span_s": 0.0,
+      "reopen_interval_s": 300,
+      "healed_at_any_reopen": true,
+      "n_healing_intervals_ge_reopen_interval": 56,
+      "active_run_count": 57,
+      "total_healed_time_s": 137260.8,
+      "healing_intervals": [
+        {
+          "start_ts": 1789874195.687868,
+          "end_ts": 1789904226.7761667,
+          "duration_s": 30031.1
+        },
+        {
+          "start_ts": 1789904559.2808394,
+          "end_ts": 1789910214.050452,
+          "duration_s": 5654.8
+        },
+        {
+          "start_ts": 1789910546.8097224,
+          "end_ts": 1789920578.9213874,
+          "duration_s": 10032.1
+        },
+        {
+          "start_ts": 1789920913.8487225,
+          "end_ts": 1789926291.1383488,
+          "duration_s": 5377.3
+        },
+        {
+          "start_ts": 1789926627.3989372,
+          "end_ts": 1789926964.463354,
+          "duration_s": 337.1
+        },
+        {
+          "start_ts": 1789927300.8527303,
+          "end_ts": 1789927974.8220851,
+          "duration_s": 674.0
+        },
+        {
+          "start_ts": 1789928311.207819,
+          "end_ts": 1789928648.2851226,
+          "duration_s": 337.1
+        },
+        {
+          "start_ts": 1789928985.0464196,
+          "end_ts": 1789931010.0864203,
+          "duration_s": 2025.0
+        },
+        {
+          "start_ts": 1789931347.1649468,
+          "end_ts": 1789935744.412547,
+          "duration_s": 4397.2
+        },
+        {
+          "start_ts": 1789936082.2827713,
+          "end_ts": 1789939811.268232,
+          "duration_s": 3729.0
+        },
+        {
+          "start_ts": 1789940149.8302755,
+          "end_ts": 1789940489.3837228,
+          "duration_s": 339.6
+        },
+        {
+          "start_ts": 1789940828.264436,
+          "end_ts": 1789942525.0873303,
+          "duration_s": 1696.8
+        },
+        {
+          "start_ts": 1789942864.0761702,
+          "end_ts": 1789944902.3610225,
+          "duration_s": 2038.3
+        },
+        {
+          "start_ts": 1789945581.448466,
+          "end_ts": 1789946261.87043,
+          "duration_s": 680.4
+        },
+        {
+          "start_ts": 1789946601.7679527,
+          "end_ts": 1789951366.275124,
+          "duration_s": 4764.5
+        },
+        {
+          "start_ts": 1789951706.2497387,
+          "end_ts": 1789953408.2067378,
+          "duration_s": 1702.0
+        },
+        {
+          "start_ts": 1789953748.4311783,
+          "end_ts": 1789954088.8692482,
+          "duration_s": 340.4
+        },
+        {
+          "start_ts": 1789954429.2941043,
+          "end_ts": 1789956475.470311,
+          "duration_s": 2046.2
+        },
+        {
+          "start_ts": 1789956816.2397976,
+          "end_ts": 1789958181.0825868,
+          "duration_s": 1364.8
+        },
+        {
+          "start_ts": 1789958522.053317,
+          "end_ts": 1789959204.4483862,
+          "duration_s": 682.4
+        },
+        {
+          "start_ts": 1789959545.749097,
+          "end_ts": 1789961256.080863,
+          "duration_s": 1710.3
+        },
+        {
+          "start_ts": 1789961597.8912935,
+          "end_ts": 1789965364.7016582,
+          "duration_s": 3766.8
+        },
+        {
+          "start_ts": 1789966049.2070322,
+          "end_ts": 1789970517.6509755,
+          "duration_s": 4468.4
+        },
+        {
+          "start_ts": 1789970861.6712592,
+          "end_ts": 1789971895.9605083,
+          "duration_s": 1034.3
+        },
+        {
+          "start_ts": 1789972584.3372386,
+          "end_ts": 1789976063.8085942,
+          "duration_s": 3479.5
+        },
+        {
+          "start_ts": 1789976757.4642892,
+          "end_ts": 1789977104.0220675,
+          "duration_s": 346.6
+        },
+        {
+          "start_ts": 1789978142.715067,
+          "end_ts": 1789978840.840171,
+          "duration_s": 698.1
+        },
+        {
+          "start_ts": 1789979195.5351849,
+          "end_ts": 1789979546.843299,
+          "duration_s": 351.3
+        },
+        {
+          "start_ts": 1789980249.7038069,
+          "end_ts": 1789980954.0734813,
+          "duration_s": 704.4
+        },
+        {
+          "start_ts": 1789981308.0564904,
+          "end_ts": 1789983440.5066636,
+          "duration_s": 2132.5
+        },
+        {
+          "start_ts": 1789983789.238232,
+          "end_ts": 1789985538.6032467,
+          "duration_s": 1749.4
+        },
+        {
+          "start_ts": 1789986237.8334363,
+          "end_ts": 1789986937.874035,
+          "duration_s": 700.0
+        },
+        {
+          "start_ts": 1789987289.735125,
+          "end_ts": 1789987993.3205392,
+          "duration_s": 703.6
+        },
+        {
+          "start_ts": 1789989043.5492835,
+          "end_ts": 1789991154.0167644,
+          "duration_s": 2110.5
+        },
+        {
+          "start_ts": 1789991504.6459022,
+          "end_ts": 1789992207.808618,
+          "duration_s": 703.2
+        },
+        {
+          "start_ts": 1789992557.6197479,
+          "end_ts": 1789994669.0942702,
+          "duration_s": 2111.5
+        },
+        {
+          "start_ts": 1789995019.5527763,
+          "end_ts": 1789996428.8189852,
+          "duration_s": 1409.3
+        },
+        {
+          "start_ts": 1789997131.0474143,
+          "end_ts": 1790001702.2817924,
+          "duration_s": 4571.2
+        },
+        {
+          "start_ts": 1790002054.2360232,
+          "end_ts": 1790004862.133845,
+          "duration_s": 2807.9
+        },
+        {
+          "start_ts": 1790005211.7960181,
+          "end_ts": 1790006270.1404426,
+          "duration_s": 1058.3
+        },
+        {
+          "start_ts": 1790007329.361159,
+          "end_ts": 1790008742.3036463,
+          "duration_s": 1412.9
+        },
+        {
+          "start_ts": 1790009095.6107523,
+          "end_ts": 1790009451.4379053,
+          "duration_s": 355.8
+        },
+        {
+          "start_ts": 1790010160.1777833,
+          "end_ts": 1790010514.839251,
+          "duration_s": 354.7
+        },
+        {
+          "start_ts": 1790010869.060839,
+          "end_ts": 1790011930.8681598,
+          "duration_s": 1061.8
+        },
+        {
+          "start_ts": 1790012285.292938,
+          "end_ts": 1790014059.644272,
+          "duration_s": 1774.4
+        },
+        {
+          "start_ts": 1790014413.643781,
+          "end_ts": 1790016903.2079098,
+          "duration_s": 2489.6
+        },
+        {
+          "start_ts": 1790017257.7812967,
+          "end_ts": 1790017612.6472652,
+          "duration_s": 354.9
+        },
+        {
+          "start_ts": 1790017964.0279636,
+          "end_ts": 1790019724.9096365,
+          "duration_s": 1760.9
+        },
+        {
+          "start_ts": 1790021482.0726798,
+          "end_ts": 1790022891.5190248,
+          "duration_s": 1409.4
+        },
+        {
+          "start_ts": 1790023243.559055,
+          "end_ts": 1790024654.9067705,
+          "duration_s": 1411.3
+        },
+        {
+          "start_ts": 1790025007.4696221,
+          "end_ts": 1790026772.399955,
+          "duration_s": 1764.9
+        },
+        {
+          "start_ts": 1790027124.7108157,
+          "end_ts": 1790027832.3318071,
+          "duration_s": 707.6
+        },
+        {
+          "start_ts": 1790028185.685503,
+          "end_ts": 1790032126.756271,
+          "duration_s": 3941.1
+        },
+        {
+          "start_ts": 1790032882.2459598,
+          "end_ts": 1790033599.7894483,
+          "duration_s": 717.5
+        },
+        {
+          "start_ts": 1790033957.3819458,
+          "end_ts": 1790035757.8139648,
+          "duration_s": 1800.4
+        },
+        {
+          "start_ts": 1790036116.3203886,
+          "end_ts": 1790037192.824496,
+          "duration_s": 1076.5
+        }
+      ],
+      "note": "healed_at_any_reopen=True means an INTERNAL plateau of >= one reopen interval (300s, zero delta in the summed 4-query reader_errors_total counter) was observed, followed by renewed growth later in the run -- i.e. the error class actually stopped firing for a while and later recurred. Cross-checked against queries_total for the same reader over one such window (reader 0, OSError, 1789873699-1789909082, 35382.5s): queries_total climbs steadily and slowly throughout (298->406, i.e. real completed query cycles), while reader_errors_total is exactly flat -- this is genuine intermittent recovery, not a metrics-reporting gap (the sampling cadence stays ~60-70s throughout, matching rss_kb's own regular cadence for the same reader). active_run_count = n_healing_intervals + 1 is therefore the reader's TRUE number of distinct error episodes for this class, which is larger than the ledger's onset count (D-088 only logs the FIRST-ever occurrence of a given (reader,class) signature, not each time it recurs after healing). tail_flat_span_s is the flat run (if any) that extends to the reader's last sample -- not itself evidence of healing, since the run simply ends there."
+    },
+    "reader5_StateError": {
+      "n_samples_from_onset": 2356,
+      "onset_value": 1248.0,
+      "final_value": 120778.0,
+      "max_internal_plateau_s": 25240.6,
+      "tail_flat_span_s": 8690.8,
+      "reopen_interval_s": 300,
+      "healed_at_any_reopen": true,
+      "n_healing_intervals_ge_reopen_interval": 16,
+      "active_run_count": 17,
+      "total_healed_time_s": 146577.2,
+      "healing_intervals": [
+        {
+          "start_ts": 1789876828.9101126,
+          "end_ts": 1789891320.8080854,
+          "duration_s": 14491.9
+        },
+        {
+          "start_ts": 1789891650.1337595,
+          "end_ts": 1789916890.771906,
+          "duration_s": 25240.6
+        },
+        {
+          "start_ts": 1789917225.1175783,
+          "end_ts": 1789919907.9412456,
+          "duration_s": 2682.8
+        },
+        {
+          "start_ts": 1789920243.0780892,
+          "end_ts": 1789930672.9139812,
+          "duration_s": 10429.8
+        },
+        {
+          "start_ts": 1789931010.0864203,
+          "end_ts": 1789935405.5181034,
+          "duration_s": 4395.4
+        },
+        {
+          "start_ts": 1789935744.412547,
+          "end_ts": 1789948645.6439826,
+          "duration_s": 12901.2
+        },
+        {
+          "start_ts": 1789948986.1176188,
+          "end_ts": 1789949326.6779633,
+          "duration_s": 340.6
+        },
+        {
+          "start_ts": 1789949666.8646898,
+          "end_ts": 1789953068.2391164,
+          "duration_s": 3401.4
+        },
+        {
+          "start_ts": 1789953408.2067378,
+          "end_ts": 1789969825.1819866,
+          "duration_s": 16417.0
+        },
+        {
+          "start_ts": 1789970170.4505029,
+          "end_ts": 1789972584.3372386,
+          "duration_s": 2413.9
+        },
+        {
+          "start_ts": 1789972929.280442,
+          "end_ts": 1789982703.3195198,
+          "duration_s": 9774.0
+        },
+        {
+          "start_ts": 1789983049.6641893,
+          "end_ts": 1789989748.9942546,
+          "duration_s": 6699.3
+        },
+        {
+          "start_ts": 1789990098.8097136,
+          "end_ts": 1789999940.673294,
+          "duration_s": 9841.9
+        },
+        {
+          "start_ts": 1790000290.9375658,
+          "end_ts": 1790002757.3685703,
+          "duration_s": 2466.4
+        },
+        {
+          "start_ts": 1790003458.1683493,
+          "end_ts": 1790011223.0859425,
+          "duration_s": 7764.9
+        },
+        {
+          "start_ts": 1790011576.571877,
+          "end_ts": 1790028892.5405078,
+          "duration_s": 17316.0
+        }
+      ],
+      "note": "healed_at_any_reopen=True means an INTERNAL plateau of >= one reopen interval (300s, zero delta in the summed 4-query reader_errors_total counter) was observed, followed by renewed growth later in the run -- i.e. the error class actually stopped firing for a while and later recurred. Cross-checked against queries_total for the same reader over one such window (reader 0, OSError, 1789873699-1789909082, 35382.5s): queries_total climbs steadily and slowly throughout (298->406, i.e. real completed query cycles), while reader_errors_total is exactly flat -- this is genuine intermittent recovery, not a metrics-reporting gap (the sampling cadence stays ~60-70s throughout, matching rss_kb's own regular cadence for the same reader). active_run_count = n_healing_intervals + 1 is therefore the reader's TRUE number of distinct error episodes for this class, which is larger than the ledger's onset count (D-088 only logs the FIRST-ever occurrence of a given (reader,class) signature, not each time it recurs after healing). tail_flat_span_s is the flat run (if any) that extends to the reader's last sample -- not itself evidence of healing, since the run simply ends there."
+    },
+    "reader6_OSError": {
+      "n_samples_from_onset": 2791,
+      "onset_value": 290876.0,
+      "final_value": 280540608.0,
+      "max_internal_plateau_s": 35709.5,
+      "tail_flat_span_s": 1475.8,
+      "reopen_interval_s": 300,
+      "healed_at_any_reopen": true,
+      "n_healing_intervals_ge_reopen_interval": 68,
+      "active_run_count": 69,
+      "total_healed_time_s": 154582.4,
+      "healing_intervals": [
+        {
+          "start_ts": 1789847881.2356157,
+          "end_ts": 1789849200.47209,
+          "duration_s": 1319.2
+        },
+        {
+          "start_ts": 1789849522.7984183,
+          "end_ts": 1789852119.7442706,
+          "duration_s": 2596.9
+        },
+        {
+          "start_ts": 1789853122.17262,
+          "end_ts": 1789854109.1778042,
+          "duration_s": 987.0
+        },
+        {
+          "start_ts": 1789854432.566525,
+          "end_ts": 1789857371.0536919,
+          "duration_s": 2938.5
+        },
+        {
+          "start_ts": 1789857695.4944296,
+          "end_ts": 1789859363.366689,
+          "duration_s": 1667.9
+        },
+        {
+          "start_ts": 1789859687.8440118,
+          "end_ts": 1789860682.1880352,
+          "duration_s": 994.3
+        },
+        {
+          "start_ts": 1789861006.9577272,
+          "end_ts": 1789873436.3300319,
+          "duration_s": 12429.4
+        },
+        {
+          "start_ts": 1789874092.8923132,
+          "end_ts": 1789909802.431662,
+          "duration_s": 35709.5
+        },
+        {
+          "start_ts": 1789910135.2266192,
+          "end_ts": 1789912470.681193,
+          "duration_s": 2335.5
+        },
+        {
+          "start_ts": 1789912804.2354326,
+          "end_ts": 1789914474.4091713,
+          "duration_s": 1670.2
+        },
+        {
+          "start_ts": 1789914808.3067248,
+          "end_ts": 1789917485.5931087,
+          "duration_s": 2677.3
+        },
+        {
+          "start_ts": 1789917819.8849576,
+          "end_ts": 1789923866.5921454,
+          "duration_s": 6046.7
+        },
+        {
+          "start_ts": 1789924202.5814126,
+          "end_ts": 1789925549.4222422,
+          "duration_s": 1346.8
+        },
+        {
+          "start_ts": 1789925885.6921823,
+          "end_ts": 1789926896.8797467,
+          "duration_s": 1011.2
+        },
+        {
+          "start_ts": 1789927233.534813,
+          "end_ts": 1789930610.436475,
+          "duration_s": 3376.9
+        },
+        {
+          "start_ts": 1789930947.9562786,
+          "end_ts": 1789931962.1797833,
+          "duration_s": 1014.2
+        },
+        {
+          "start_ts": 1789932299.5080023,
+          "end_ts": 1789937717.4984322,
+          "duration_s": 5418.0
+        },
+        {
+          "start_ts": 1789938056.0828972,
+          "end_ts": 1789940772.4787288,
+          "duration_s": 2716.4
+        },
+        {
+          "start_ts": 1789941111.638988,
+          "end_ts": 1789942810.27563,
+          "duration_s": 1698.6
+        },
+        {
+          "start_ts": 1789943149.7441077,
+          "end_ts": 1789944510.5360458,
+          "duration_s": 1360.8
+        },
+        {
+          "start_ts": 1789944850.3115168,
+          "end_ts": 1789948255.780279,
+          "duration_s": 3405.5
+        },
+        {
+          "start_ts": 1789948595.9623852,
+          "end_ts": 1789951329.9324348,
+          "duration_s": 2734.0
+        },
+        {
+          "start_ts": 1789951671.5011432,
+          "end_ts": 1789952013.5857358,
+          "duration_s": 342.1
+        },
+        {
+          "start_ts": 1789952354.9668372,
+          "end_ts": 1789953038.3446486,
+          "duration_s": 683.4
+        },
+        {
+          "start_ts": 1789953721.8184726,
+          "end_ts": 1789954749.2389896,
+          "duration_s": 1027.4
+        },
+        {
+          "start_ts": 1789955091.3315568,
+          "end_ts": 1789959206.474019,
+          "duration_s": 4115.1
+        },
+        {
+          "start_ts": 1789959549.069479,
+          "end_ts": 1789960235.7789705,
+          "duration_s": 686.7
+        },
+        {
+          "start_ts": 1789960577.5255527,
+          "end_ts": 1789961262.4483328,
+          "duration_s": 684.9
+        },
+        {
+          "start_ts": 1789961604.5726206,
+          "end_ts": 1789962633.348592,
+          "duration_s": 1028.8
+        },
+        {
+          "start_ts": 1789962975.7952259,
+          "end_ts": 1789964003.330613,
+          "duration_s": 1027.5
+        },
+        {
+          "start_ts": 1789964345.7333717,
+          "end_ts": 1789965030.9193008,
+          "duration_s": 685.2
+        },
+        {
+          "start_ts": 1789965373.7178693,
+          "end_ts": 1789967090.8347232,
+          "duration_s": 1717.1
+        },
+        {
+          "start_ts": 1789967776.6092722,
+          "end_ts": 1789968807.055738,
+          "duration_s": 1030.4
+        },
+        {
+          "start_ts": 1789969837.221157,
+          "end_ts": 1789973637.530729,
+          "duration_s": 3800.3
+        },
+        {
+          "start_ts": 1789973986.3041341,
+          "end_ts": 1789974335.500117,
+          "duration_s": 349.2
+        },
+        {
+          "start_ts": 1789974686.4864886,
+          "end_ts": 1789975389.0921865,
+          "duration_s": 702.6
+        },
+        {
+          "start_ts": 1789976085.6326413,
+          "end_ts": 1789978871.9878201,
+          "duration_s": 2786.4
+        },
+        {
+          "start_ts": 1789979573.6807253,
+          "end_ts": 1789980628.9132671,
+          "duration_s": 1055.2
+        },
+        {
+          "start_ts": 1789980979.9116304,
+          "end_ts": 1789981682.5826085,
+          "duration_s": 702.7
+        },
+        {
+          "start_ts": 1789982032.1313887,
+          "end_ts": 1789982381.7268484,
+          "duration_s": 349.6
+        },
+        {
+          "start_ts": 1789982731.1144986,
+          "end_ts": 1789983815.8873022,
+          "duration_s": 1084.8
+        },
+        {
+          "start_ts": 1789984166.6974032,
+          "end_ts": 1789985218.873766,
+          "duration_s": 1052.2
+        },
+        {
+          "start_ts": 1789985916.0011446,
+          "end_ts": 1789986617.5555506,
+          "duration_s": 701.6
+        },
+        {
+          "start_ts": 1789987668.2365134,
+          "end_ts": 1789990128.7980275,
+          "duration_s": 2460.6
+        },
+        {
+          "start_ts": 1789990480.902941,
+          "end_ts": 1789991888.403342,
+          "duration_s": 1407.5
+        },
+        {
+          "start_ts": 1789992942.015465,
+          "end_ts": 1789993292.9764552,
+          "duration_s": 351.0
+        },
+        {
+          "start_ts": 1789993996.0370312,
+          "end_ts": 1789994700.862449,
+          "duration_s": 704.8
+        },
+        {
+          "start_ts": 1789995052.7315946,
+          "end_ts": 1789996464.462564,
+          "duration_s": 1411.7
+        },
+        {
+          "start_ts": 1789996819.0857143,
+          "end_ts": 1790000346.234551,
+          "duration_s": 3527.1
+        },
+        {
+          "start_ts": 1790000697.9961371,
+          "end_ts": 1790002107.9259074,
+          "duration_s": 1409.9
+        },
+        {
+          "start_ts": 1790002812.8175583,
+          "end_ts": 1790003518.8697915,
+          "duration_s": 706.1
+        },
+        {
+          "start_ts": 1790004223.5816646,
+          "end_ts": 1790004576.5739834,
+          "duration_s": 353.0
+        },
+        {
+          "start_ts": 1790004928.614639,
+          "end_ts": 1790006381.6539161,
+          "duration_s": 1453.0
+        },
+        {
+          "start_ts": 1790007090.0121236,
+          "end_ts": 1790008868.909126,
+          "duration_s": 1778.9
+        },
+        {
+          "start_ts": 1790009226.8481863,
+          "end_ts": 1790009937.8792696,
+          "duration_s": 711.0
+        },
+        {
+          "start_ts": 1790010291.8019955,
+          "end_ts": 1790010646.7445612,
+          "duration_s": 354.9
+        },
+        {
+          "start_ts": 1790011001.5973606,
+          "end_ts": 1790011358.4861019,
+          "duration_s": 356.9
+        },
+        {
+          "start_ts": 1790011713.2156649,
+          "end_ts": 1790012423.5966923,
+          "duration_s": 710.4
+        },
+        {
+          "start_ts": 1790014203.5629256,
+          "end_ts": 1790015273.2926123,
+          "duration_s": 1069.7
+        },
+        {
+          "start_ts": 1790015629.4299939,
+          "end_ts": 1790016344.3841195,
+          "duration_s": 715.0
+        },
+        {
+          "start_ts": 1790016701.420155,
+          "end_ts": 1790017415.046672,
+          "duration_s": 713.6
+        },
+        {
+          "start_ts": 1790017771.1468089,
+          "end_ts": 1790022737.9441195,
+          "duration_s": 4966.8
+        },
+        {
+          "start_ts": 1790024156.454218,
+          "end_ts": 1790025222.7884557,
+          "duration_s": 1066.3
+        },
+        {
+          "start_ts": 1790025577.4181676,
+          "end_ts": 1790027711.8277004,
+          "duration_s": 2134.4
+        },
+        {
+          "start_ts": 1790028066.7068894,
+          "end_ts": 1790028423.1446223,
+          "duration_s": 356.4
+        },
+        {
+          "start_ts": 1790030199.565231,
+          "end_ts": 1790031300.0355778,
+          "duration_s": 1100.5
+        },
+        {
+          "start_ts": 1790031683.4086668,
+          "end_ts": 1790033933.5488687,
+          "duration_s": 2250.1
+        },
+        {
+          "start_ts": 1790034654.4655085,
+          "end_ts": 1790036099.0635207,
+          "duration_s": 1444.6
+        }
+      ],
+      "note": "healed_at_any_reopen=True means an INTERNAL plateau of >= one reopen interval (300s, zero delta in the summed 4-query reader_errors_total counter) was observed, followed by renewed growth later in the run -- i.e. the error class actually stopped firing for a while and later recurred. Cross-checked against queries_total for the same reader over one such window (reader 0, OSError, 1789873699-1789909082, 35382.5s): queries_total climbs steadily and slowly throughout (298->406, i.e. real completed query cycles), while reader_errors_total is exactly flat -- this is genuine intermittent recovery, not a metrics-reporting gap (the sampling cadence stays ~60-70s throughout, matching rss_kb's own regular cadence for the same reader). active_run_count = n_healing_intervals + 1 is therefore the reader's TRUE number of distinct error episodes for this class, which is larger than the ledger's onset count (D-088 only logs the FIRST-ever occurrence of a given (reader,class) signature, not each time it recurs after healing). tail_flat_span_s is the flat run (if any) that extends to the reader's last sample -- not itself evidence of healing, since the run simply ends there."
+    },
+    "reader6_StateError": {
+      "n_samples_from_onset": 2771,
+      "onset_value": 3756.0,
+      "final_value": 121937.0,
+      "max_internal_plateau_s": 35047.6,
+      "tail_flat_span_s": 10936.3,
+      "reopen_interval_s": 300,
+      "healed_at_any_reopen": true,
+      "n_healing_intervals_ge_reopen_interval": 17,
+      "active_run_count": 18,
+      "total_healed_time_s": 171624.9,
+      "healing_intervals": [
+        {
+          "start_ts": 1789849200.47209,
+          "end_ts": 1789874092.8923132,
+          "duration_s": 24892.4
+        },
+        {
+          "start_ts": 1789874421.4930246,
+          "end_ts": 1789909469.080211,
+          "duration_s": 35047.6
+        },
+        {
+          "start_ts": 1789909802.431662,
+          "end_ts": 1789913138.0058982,
+          "duration_s": 3335.6
+        },
+        {
+          "start_ts": 1789913806.024186,
+          "end_ts": 1789922184.6968539,
+          "duration_s": 8378.7
+        },
+        {
+          "start_ts": 1789922520.9714456,
+          "end_ts": 1789926222.792999,
+          "duration_s": 3701.8
+        },
+        {
+          "start_ts": 1789926559.8468442,
+          "end_ts": 1789928582.8881516,
+          "duration_s": 2023.0
+        },
+        {
+          "start_ts": 1789928920.1350977,
+          "end_ts": 1789938056.0828972,
+          "duration_s": 9135.9
+        },
+        {
+          "start_ts": 1789938395.4634936,
+          "end_ts": 1789947915.0249174,
+          "duration_s": 9519.6
+        },
+        {
+          "start_ts": 1789948255.780279,
+          "end_ts": 1789955433.7772322,
+          "duration_s": 7178.0
+        },
+        {
+          "start_ts": 1789955775.705603,
+          "end_ts": 1789958176.5695639,
+          "duration_s": 2400.9
+        },
+        {
+          "start_ts": 1789958519.6033928,
+          "end_ts": 1789964688.371795,
+          "duration_s": 6168.8
+        },
+        {
+          "start_ts": 1789965030.9193008,
+          "end_ts": 1789974686.4864886,
+          "duration_s": 9655.6
+        },
+        {
+          "start_ts": 1789975041.1222072,
+          "end_ts": 1789996819.0857143,
+          "duration_s": 21778.0
+        },
+        {
+          "start_ts": 1789997172.43313,
+          "end_ts": 1790001050.8243518,
+          "duration_s": 3878.4
+        },
+        {
+          "start_ts": 1790001403.26199,
+          "end_ts": 1790007090.0121236,
+          "duration_s": 5686.8
+        },
+        {
+          "start_ts": 1790007445.4331934,
+          "end_ts": 1790009582.7814894,
+          "duration_s": 2137.3
+        },
+        {
+          "start_ts": 1790009937.8792696,
+          "end_ts": 1790026644.505006,
+          "duration_s": 16706.6
+        }
+      ],
+      "note": "healed_at_any_reopen=True means an INTERNAL plateau of >= one reopen interval (300s, zero delta in the summed 4-query reader_errors_total counter) was observed, followed by renewed growth later in the run -- i.e. the error class actually stopped firing for a while and later recurred. Cross-checked against queries_total for the same reader over one such window (reader 0, OSError, 1789873699-1789909082, 35382.5s): queries_total climbs steadily and slowly throughout (298->406, i.e. real completed query cycles), while reader_errors_total is exactly flat -- this is genuine intermittent recovery, not a metrics-reporting gap (the sampling cadence stays ~60-70s throughout, matching rss_kb's own regular cadence for the same reader). active_run_count = n_healing_intervals + 1 is therefore the reader's TRUE number of distinct error episodes for this class, which is larger than the ledger's onset count (D-088 only logs the FIRST-ever occurrence of a given (reader,class) signature, not each time it recurs after healing). tail_flat_span_s is the flat run (if any) that extends to the reader's last sample -- not itself evidence of healing, since the run simply ends there."
+    },
+    "reader7_OSError": {
+      "n_samples_from_onset": 2421,
+      "onset_value": 537256.0,
+      "final_value": 268378476.0,
+      "max_internal_plateau_s": 27744.9,
+      "tail_flat_span_s": 1473.2,
+      "reopen_interval_s": 300,
+      "healed_at_any_reopen": true,
+      "n_healing_intervals_ge_reopen_interval": 64,
+      "active_run_count": 65,
+      "total_healed_time_s": 132362.3,
+      "healing_intervals": [
+        {
+          "start_ts": 1789872068.95688,
+          "end_ts": 1789899813.8714714,
+          "duration_s": 27744.9
+        },
+        {
+          "start_ts": 1789900145.920869,
+          "end_ts": 1789910154.688537,
+          "duration_s": 10008.8
+        },
+        {
+          "start_ts": 1789910488.5752616,
+          "end_ts": 1789911826.7802746,
+          "duration_s": 1338.2
+        },
+        {
+          "start_ts": 1789912160.833387,
+          "end_ts": 1789918194.2616324,
+          "duration_s": 6033.4
+        },
+        {
+          "start_ts": 1789918529.9548907,
+          "end_ts": 1789919201.691683,
+          "duration_s": 671.7
+        },
+        {
+          "start_ts": 1789919538.0774682,
+          "end_ts": 1789919874.5655057,
+          "duration_s": 336.5
+        },
+        {
+          "start_ts": 1789920210.5494037,
+          "end_ts": 1789920546.93212,
+          "duration_s": 336.4
+        },
+        {
+          "start_ts": 1789920883.3299592,
+          "end_ts": 1789922905.0818255,
+          "duration_s": 2021.8
+        },
+        {
+          "start_ts": 1789923242.2065942,
+          "end_ts": 1789925939.6686628,
+          "duration_s": 2697.5
+        },
+        {
+          "start_ts": 1789926276.5175445,
+          "end_ts": 1789928301.0548842,
+          "duration_s": 2024.5
+        },
+        {
+          "start_ts": 1789928638.093928,
+          "end_ts": 1789928975.9648366,
+          "duration_s": 337.9
+        },
+        {
+          "start_ts": 1789929313.49633,
+          "end_ts": 1789933370.8817859,
+          "duration_s": 4057.4
+        },
+        {
+          "start_ts": 1789933708.9161377,
+          "end_ts": 1789940840.64746,
+          "duration_s": 7131.7
+        },
+        {
+          "start_ts": 1789941180.5568714,
+          "end_ts": 1789941861.2928953,
+          "duration_s": 680.7
+        },
+        {
+          "start_ts": 1789942541.5604491,
+          "end_ts": 1789942882.6821742,
+          "duration_s": 341.1
+        },
+        {
+          "start_ts": 1789943222.8132617,
+          "end_ts": 1789947315.11928,
+          "duration_s": 4092.3
+        },
+        {
+          "start_ts": 1789947655.9554508,
+          "end_ts": 1789949364.5161452,
+          "duration_s": 1708.6
+        },
+        {
+          "start_ts": 1789949704.7804916,
+          "end_ts": 1789952435.7751403,
+          "duration_s": 2731.0
+        },
+        {
+          "start_ts": 1789952776.833862,
+          "end_ts": 1789954484.7504013,
+          "duration_s": 1707.9
+        },
+        {
+          "start_ts": 1789954825.8935654,
+          "end_ts": 1789955509.5962162,
+          "duration_s": 683.7
+        },
+        {
+          "start_ts": 1789956192.541641,
+          "end_ts": 1789956534.873799,
+          "duration_s": 342.3
+        },
+        {
+          "start_ts": 1789956876.5990856,
+          "end_ts": 1789958246.41605,
+          "duration_s": 1369.8
+        },
+        {
+          "start_ts": 1789958588.4207501,
+          "end_ts": 1789959272.7586377,
+          "duration_s": 684.3
+        },
+        {
+          "start_ts": 1789959615.2057645,
+          "end_ts": 1789961328.8717513,
+          "duration_s": 1713.7
+        },
+        {
+          "start_ts": 1789961671.9185076,
+          "end_ts": 1789963733.036781,
+          "duration_s": 2061.1
+        },
+        {
+          "start_ts": 1789964076.2501593,
+          "end_ts": 1789964419.4159782,
+          "duration_s": 343.2
+        },
+        {
+          "start_ts": 1789965105.956678,
+          "end_ts": 1789966137.6624355,
+          "duration_s": 1031.7
+        },
+        {
+          "start_ts": 1789967168.808261,
+          "end_ts": 1789968200.9895132,
+          "duration_s": 1032.2
+        },
+        {
+          "start_ts": 1789968545.2155104,
+          "end_ts": 1789971310.29972,
+          "duration_s": 2765.1
+        },
+        {
+          "start_ts": 1789971655.044748,
+          "end_ts": 1789972000.3879857,
+          "duration_s": 345.3
+        },
+        {
+          "start_ts": 1789973036.2624154,
+          "end_ts": 1789973765.9330888,
+          "duration_s": 729.7
+        },
+        {
+          "start_ts": 1789974115.4852498,
+          "end_ts": 1789974818.791558,
+          "duration_s": 703.3
+        },
+        {
+          "start_ts": 1789975183.420441,
+          "end_ts": 1789975881.079412,
+          "duration_s": 697.7
+        },
+        {
+          "start_ts": 1789976228.2515185,
+          "end_ts": 1789976924.617653,
+          "duration_s": 696.4
+        },
+        {
+          "start_ts": 1789977272.054541,
+          "end_ts": 1789981120.968288,
+          "duration_s": 3848.9
+        },
+        {
+          "start_ts": 1789981469.8151653,
+          "end_ts": 1789983214.6191525,
+          "duration_s": 1744.8
+        },
+        {
+          "start_ts": 1789983913.183639,
+          "end_ts": 1789984263.6366694,
+          "duration_s": 350.5
+        },
+        {
+          "start_ts": 1789984965.530731,
+          "end_ts": 1789987773.6231077,
+          "duration_s": 2808.1
+        },
+        {
+          "start_ts": 1789988122.5886939,
+          "end_ts": 1789989182.320446,
+          "duration_s": 1059.7
+        },
+        {
+          "start_ts": 1789989535.1829681,
+          "end_ts": 1789990943.6023319,
+          "duration_s": 1408.4
+        },
+        {
+          "start_ts": 1789991293.2835982,
+          "end_ts": 1789991645.7725947,
+          "duration_s": 352.5
+        },
+        {
+          "start_ts": 1789993757.8680801,
+          "end_ts": 1789994461.1090782,
+          "duration_s": 703.2
+        },
+        {
+          "start_ts": 1789994812.1565194,
+          "end_ts": 1789997279.0220087,
+          "duration_s": 2466.9
+        },
+        {
+          "start_ts": 1789997983.5744622,
+          "end_ts": 1789998687.8235507,
+          "duration_s": 704.2
+        },
+        {
+          "start_ts": 1789999740.1808674,
+          "end_ts": 1790000795.8270552,
+          "duration_s": 1055.6
+        },
+        {
+          "start_ts": 1790001147.227638,
+          "end_ts": 1790003644.3297253,
+          "duration_s": 2497.1
+        },
+        {
+          "start_ts": 1790003995.04824,
+          "end_ts": 1790004700.2594063,
+          "duration_s": 705.2
+        },
+        {
+          "start_ts": 1790005052.1005075,
+          "end_ts": 1790007542.2304192,
+          "duration_s": 2490.1
+        },
+        {
+          "start_ts": 1790008249.585063,
+          "end_ts": 1790010023.0355804,
+          "duration_s": 1773.5
+        },
+        {
+          "start_ts": 1790010377.2520323,
+          "end_ts": 1790011442.1248446,
+          "duration_s": 1064.9
+        },
+        {
+          "start_ts": 1790011796.753447,
+          "end_ts": 1790013574.0942786,
+          "duration_s": 1777.3
+        },
+        {
+          "start_ts": 1790014284.6239688,
+          "end_ts": 1790014640.483732,
+          "duration_s": 355.9
+        },
+        {
+          "start_ts": 1790014995.1568656,
+          "end_ts": 1790015706.3385978,
+          "duration_s": 711.2
+        },
+        {
+          "start_ts": 1790016062.208576,
+          "end_ts": 1790016418.3883479,
+          "duration_s": 356.2
+        },
+        {
+          "start_ts": 1790017129.072045,
+          "end_ts": 1790018903.544271,
+          "duration_s": 1774.5
+        },
+        {
+          "start_ts": 1790019610.4715385,
+          "end_ts": 1790019964.3145463,
+          "duration_s": 353.8
+        },
+        {
+          "start_ts": 1790020317.5869565,
+          "end_ts": 1790021732.953872,
+          "duration_s": 1415.4
+        },
+        {
+          "start_ts": 1790022440.0169628,
+          "end_ts": 1790024212.4747198,
+          "duration_s": 1772.5
+        },
+        {
+          "start_ts": 1790024566.0617914,
+          "end_ts": 1790026693.513894,
+          "duration_s": 2127.5
+        },
+        {
+          "start_ts": 1790027047.0086114,
+          "end_ts": 1790027757.593633,
+          "duration_s": 710.6
+        },
+        {
+          "start_ts": 1790028112.2838225,
+          "end_ts": 1790028822.3233385,
+          "duration_s": 710.0
+        },
+        {
+          "start_ts": 1790030241.355705,
+          "end_ts": 1790032503.7758536,
+          "duration_s": 2262.4
+        },
+        {
+          "start_ts": 1790032864.1227949,
+          "end_ts": 1790034304.7010796,
+          "duration_s": 1440.6
+        },
+        {
+          "start_ts": 1790035744.4000914,
+          "end_ts": 1790036103.524536,
+          "duration_s": 359.1
+        }
+      ],
+      "note": "healed_at_any_reopen=True means an INTERNAL plateau of >= one reopen interval (300s, zero delta in the summed 4-query reader_errors_total counter) was observed, followed by renewed growth later in the run -- i.e. the error class actually stopped firing for a while and later recurred. Cross-checked against queries_total for the same reader over one such window (reader 0, OSError, 1789873699-1789909082, 35382.5s): queries_total climbs steadily and slowly throughout (298->406, i.e. real completed query cycles), while reader_errors_total is exactly flat -- this is genuine intermittent recovery, not a metrics-reporting gap (the sampling cadence stays ~60-70s throughout, matching rss_kb's own regular cadence for the same reader). active_run_count = n_healing_intervals + 1 is therefore the reader's TRUE number of distinct error episodes for this class, which is larger than the ledger's onset count (D-088 only logs the FIRST-ever occurrence of a given (reader,class) signature, not each time it recurs after healing). tail_flat_span_s is the flat run (if any) that extends to the reader's last sample -- not itself evidence of healing, since the run simply ends there."
+    },
+    "reader7_StateError": {
+      "n_samples_from_onset": 2391,
+      "onset_value": 1275.0,
+      "final_value": 152332.0,
+      "max_internal_plateau_s": 26586.0,
+      "tail_flat_span_s": 37.9,
+      "reopen_interval_s": 300,
+      "healed_at_any_reopen": true,
+      "n_healing_intervals_ge_reopen_interval": 17,
+      "active_run_count": 18,
+      "total_healed_time_s": 158005.7,
+      "healing_intervals": [
+        {
+          "start_ts": 1789874035.243922,
+          "end_ts": 1789876334.2109363,
+          "duration_s": 2299.0
+        },
+        {
+          "start_ts": 1789876662.9521952,
+          "end_ts": 1789884239.9045596,
+          "duration_s": 7577.0
+        },
+        {
+          "start_ts": 1789884571.4834003,
+          "end_ts": 1789911157.4614203,
+          "duration_s": 26586.0
+        },
+        {
+          "start_ts": 1789911492.0321734,
+          "end_ts": 1789914504.4776268,
+          "duration_s": 3012.4
+        },
+        {
+          "start_ts": 1789914839.1733434,
+          "end_ts": 1789920210.5494037,
+          "duration_s": 5371.4
+        },
+        {
+          "start_ts": 1789920546.93212,
+          "end_ts": 1789932693.9701076,
+          "duration_s": 12147.0
+        },
+        {
+          "start_ts": 1789933032.3002687,
+          "end_ts": 1789935743.5789144,
+          "duration_s": 2711.3
+        },
+        {
+          "start_ts": 1789936082.358531,
+          "end_ts": 1789950728.5085416,
+          "duration_s": 14646.2
+        },
+        {
+          "start_ts": 1789951070.0312731,
+          "end_ts": 1789962701.8949022,
+          "duration_s": 11631.9
+        },
+        {
+          "start_ts": 1789963045.485727,
+          "end_ts": 1789984965.530731,
+          "duration_s": 21920.0
+        },
+        {
+          "start_ts": 1789985314.8091621,
+          "end_ts": 1789987422.393905,
+          "duration_s": 2107.6
+        },
+        {
+          "start_ts": 1789987773.6231077,
+          "end_ts": 1789997983.5744622,
+          "duration_s": 10210.0
+        },
+        {
+          "start_ts": 1789998335.5145085,
+          "end_ts": 1790008249.585063,
+          "duration_s": 9914.1
+        },
+        {
+          "start_ts": 1790008604.1864476,
+          "end_ts": 1790018548.9619114,
+          "duration_s": 9944.8
+        },
+        {
+          "start_ts": 1790018903.544271,
+          "end_ts": 1790027047.0086114,
+          "duration_s": 8143.5
+        },
+        {
+          "start_ts": 1790027401.9986699,
+          "end_ts": 1790028467.3224888,
+          "duration_s": 1065.3
+        },
+        {
+          "start_ts": 1790028822.3233385,
+          "end_ts": 1790037540.7255177,
+          "duration_s": 8718.4
+        }
+      ],
+      "note": "healed_at_any_reopen=True means an INTERNAL plateau of >= one reopen interval (300s, zero delta in the summed 4-query reader_errors_total counter) was observed, followed by renewed growth later in the run -- i.e. the error class actually stopped firing for a while and later recurred. Cross-checked against queries_total for the same reader over one such window (reader 0, OSError, 1789873699-1789909082, 35382.5s): queries_total climbs steadily and slowly throughout (298->406, i.e. real completed query cycles), while reader_errors_total is exactly flat -- this is genuine intermittent recovery, not a metrics-reporting gap (the sampling cadence stays ~60-70s throughout, matching rss_kb's own regular cadence for the same reader). active_run_count = n_healing_intervals + 1 is therefore the reader's TRUE number of distinct error episodes for this class, which is larger than the ledger's onset count (D-088 only logs the FIRST-ever occurrence of a given (reader,class) signature, not each time it recurs after healing). tail_flat_span_s is the flat run (if any) that extends to the reader's last sample -- not itself evidence of healing, since the run simply ends there."
+    }
+  },
+  "method": "ledger_events_verbatim is every longevity_ledger.jsonl line with event=reader_op_error, copied verbatim (this is the D-088 bounded reader-error-message capture). per_reader_totals_by_class sums each reader's error_details[].count from reader-<idx>-progress.json (final cumulative counts), grouped by exception class -- these match the manifest's reader_errors_total (2,203,551,806) when summed across all readers/classes. per_reader_episode_count is the number of distinct (class, message/file-pattern) onset entries in that reader's error_details, which is a 1:1 match with that reader's ledger reader_op_error lines (each ledger line is emitted once, at first occurrence of a new (reader,class) combination with count_at_first_seen=1). healed_at_next_reopen_evidence checks metrics.jsonl's reader_errors_total counter series per (reader,class) for any plateau of >= one reader-reopen interval (300s) after onset followed by renewed growth; none found means the condition never cleared at any of that reader's 777-779 reopens before RUN_DONE.",
+  "reopens_per_reader": {
+    "0": 778,
+    "1": 777,
+    "2": 777,
+    "3": 778,
+    "4": 778,
+    "5": 779,
+    "6": 777,
+    "7": 778
+  }
+}

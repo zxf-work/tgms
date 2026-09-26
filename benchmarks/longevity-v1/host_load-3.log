@@ -1,0 +1,931 @@
+BUILD_INFO {'profile': 'release', 'opt_level': '3', 'engine_version': '0.8.0', 'debug_assertions': False, 'manifest_format_version': 3}
+=== HOST_LOAD 2026-09-19T00:45:06Z ===
+ 00:45:06 up 357 days,  2:25,  1 user,  load average: 1.21, 1.28, 1.35
+USER     %CPU COMMAND
+xzhang   55.3 python
+xzhang    7.6 clickhouse
+jding     2.6 claude
+root      2.0 sshd
+jding     1.8 claude
+root      1.0 systemd-udevd
+jding     1.0 weaviate
+=== HOST_LOAD 2026-09-19T01:45:06Z ===
+ 01:45:06 up 357 days,  3:25,  1 user,  load average: 10.26, 10.47, 10.95
+USER     %CPU COMMAND
+xzhang    100 python
+xzhang    100 python
+xzhang    100 python
+xzhang    100 python
+xzhang    100 python
+xzhang    100 python
+xzhang    100 python
+=== HOST_LOAD 2026-09-19T02:45:06Z ===
+ 02:45:06 up 357 days,  4:25,  1 user,  load average: 30.27, 30.34, 27.60
+USER     %CPU COMMAND
+xzhang    100 python
+xzhang    100 python
+xzhang    100 python
+xzhang    100 python
+xzhang   99.9 python
+xzhang   99.9 python
+xzhang   99.9 python
+=== HOST_LOAD 2026-09-19T03:45:06Z ===
+ 03:45:06 up 357 days,  5:25,  1 user,  load average: 21.08, 21.17, 24.32
+USER     %CPU COMMAND
+xzhang    100 python
+xzhang    100 python
+xzhang    100 python
+xzhang   99.9 python
+xzhang   99.9 python
+xzhang   99.9 python
+xzhang   99.9 python
+=== HOST_LOAD 2026-09-19T04:45:06Z ===
+ 04:45:06 up 357 days,  6:25,  1 user,  load average: 23.22, 23.23, 23.02
+USER     %CPU COMMAND
+xzhang    100 python
+xzhang    100 python
+jding     100 python
+xzhang   99.9 python
+xzhang   99.9 python
+xzhang   99.9 python
+xzhang   99.9 python
+=== HOST_LOAD 2026-09-19T05:45:06Z ===
+ 05:45:06 up 357 days,  7:25,  1 user,  load average: 23.50, 23.54, 23.53
+USER     %CPU COMMAND
+xzhang    100 python
+xzhang    100 python
+xzhang   99.9 python
+xzhang   99.9 python
+xzhang   99.9 python
+xzhang   99.9 python
+xzhang   99.9 python
+=== HOST_LOAD 2026-09-19T06:45:06Z ===
+ 06:45:06 up 357 days,  8:25,  1 user,  load average: 24.11, 23.81, 23.70
+USER     %CPU COMMAND
+xzhang    100 python
+xzhang    100 python
+jding     100 python
+jding     100 python
+xzhang   99.9 python
+xzhang   99.9 python
+xzhang   99.9 python
+=== HOST_LOAD 2026-09-19T07:45:06Z ===
+ 07:45:06 up 357 days,  9:25,  1 user,  load average: 24.07, 23.81, 23.68
+USER     %CPU COMMAND
+xzhang    100 python
+jding     100 python
+jding     100 python
+xzhang   99.9 python
+xzhang   99.9 python
+xzhang   99.9 python
+xzhang   99.9 python
+=== HOST_LOAD 2026-09-19T08:45:06Z ===
+ 08:45:06 up 357 days, 10:25,  1 user,  load average: 22.24, 22.31, 22.44
+USER     %CPU COMMAND
+xzhang    100 python
+xzhang   99.9 python
+xzhang   99.9 python
+xzhang   99.9 python
+xzhang   99.9 python
+xzhang   99.9 python
+xzhang   99.9 python
+=== HOST_LOAD 2026-09-19T09:45:06Z ===
+ 09:45:06 up 357 days, 11:25,  1 user,  load average: 22.36, 22.42, 22.44
+USER     %CPU COMMAND
+xzhang    100 python
+xzhang   99.9 python
+xzhang   99.9 python
+xzhang   99.9 python
+xzhang   99.9 python
+xzhang   99.9 python
+xzhang   99.9 python
+=== HOST_LOAD 2026-09-19T10:45:06Z ===
+ 10:45:06 up 357 days, 12:25,  1 user,  load average: 23.05, 22.69, 22.54
+USER     %CPU COMMAND
+xzhang    100 python
+xzhang   99.9 python
+xzhang   99.9 python
+xzhang   99.9 python
+xzhang   99.9 python
+xzhang   99.9 python
+xzhang   99.9 python
+=== HOST_LOAD 2026-09-19T11:45:06Z ===
+ 11:45:06 up 357 days, 13:25,  1 user,  load average: 22.15, 22.37, 22.48
+USER     %CPU COMMAND
+xzhang    100 python
+jding     100 python
+xzhang   99.9 python
+xzhang   99.9 python
+xzhang   99.9 python
+xzhang   99.9 python
+xzhang   99.9 python
+=== HOST_LOAD 2026-09-19T12:45:06Z ===
+ 12:45:06 up 357 days, 14:25,  1 user,  load average: 22.40, 22.52, 22.52
+USER     %CPU COMMAND
+xzhang    100 python
+xzhang   99.9 python
+xzhang   99.9 python
+xzhang   99.9 python
+xzhang   99.9 python
+xzhang   99.9 python
+xzhang   99.9 python
+=== HOST_LOAD 2026-09-19T13:45:06Z ===
+ 13:45:06 up 357 days, 15:25,  1 user,  load average: 22.31, 22.45, 22.49
+USER     %CPU COMMAND
+xzhang   99.9 python
+xzhang   99.9 python
+xzhang   99.9 python
+xzhang   99.9 python
+xzhang   99.9 python
+xzhang   99.9 python
+xzhang   99.9 python
+=== HOST_LOAD 2026-09-19T14:45:06Z ===
+ 14:45:06 up 357 days, 16:25,  1 user,  load average: 22.35, 22.48, 22.44
+USER     %CPU COMMAND
+jding     100 python
+xzhang   99.9 python
+xzhang   99.9 python
+xzhang   99.9 python
+xzhang   99.9 python
+xzhang   99.9 python
+xzhang   99.9 python
+=== HOST_LOAD 2026-09-19T15:45:06Z ===
+ 15:45:06 up 357 days, 17:25,  1 user,  load average: 23.20, 22.85, 22.60
+USER     %CPU COMMAND
+jding     100 python
+xzhang   99.9 python
+xzhang   99.9 python
+xzhang   99.9 python
+xzhang   99.9 python
+xzhang   99.9 python
+xzhang   99.9 python
+=== HOST_LOAD 2026-09-19T16:45:06Z ===
+ 16:45:06 up 357 days, 18:25,  1 user,  load average: 22.59, 22.39, 22.40
+USER     %CPU COMMAND
+jding     100 python
+jding     100 python
+xzhang   99.9 python
+xzhang   99.9 python
+xzhang   99.9 python
+xzhang   99.9 python
+xzhang   99.9 python
+=== HOST_LOAD 2026-09-19T17:45:06Z ===
+ 17:45:06 up 357 days, 19:25,  1 user,  load average: 21.52, 21.46, 21.46
+USER     %CPU COMMAND
+jding     100 python
+jding     100 python
+jding     100 python
+xzhang   99.9 python
+xzhang   99.9 python
+xzhang   99.9 python
+xzhang   99.9 python
+=== HOST_LOAD 2026-09-19T18:45:07Z ===
+ 18:45:07 up 357 days, 20:25,  1 user,  load average: 21.29, 21.33, 21.37
+USER     %CPU COMMAND
+jding     100 python
+jding     100 python
+jding     100 python
+xzhang   99.9 python
+xzhang   99.9 python
+xzhang   99.9 python
+xzhang   99.9 python
+=== HOST_LOAD 2026-09-19T19:45:07Z ===
+ 19:45:07 up 357 days, 21:25,  1 user,  load average: 21.26, 21.41, 21.48
+USER     %CPU COMMAND
+jding     100 python
+jding     100 python
+jding     100 python
+jding     100 python
+jding     100 python
+xzhang   99.9 python
+xzhang   99.9 python
+=== HOST_LOAD 2026-09-19T20:45:07Z ===
+ 20:45:07 up 357 days, 22:25,  1 user,  load average: 21.54, 21.49, 21.46
+USER     %CPU COMMAND
+jding     100 python
+jding     100 python
+jding     100 python
+xzhang   99.9 python
+xzhang   99.9 python
+xzhang   99.9 python
+xzhang   99.9 python
+=== HOST_LOAD 2026-09-19T21:45:07Z ===
+ 21:45:07 up 357 days, 23:25,  1 user,  load average: 21.52, 21.62, 21.55
+USER     %CPU COMMAND
+jding     100 python
+jding     100 python
+xzhang   99.9 python
+xzhang   99.9 python
+xzhang   99.9 python
+xzhang   99.9 python
+xzhang   99.9 python
+=== HOST_LOAD 2026-09-19T22:45:07Z ===
+ 22:45:07 up 358 days, 25 min,  1 user,  load average: 21.64, 21.67, 21.52
+USER     %CPU COMMAND
+jding     100 python
+xzhang   99.9 python
+xzhang   99.9 python
+xzhang   99.9 python
+xzhang   99.9 python
+xzhang   99.9 python
+xzhang   99.9 python
+=== HOST_LOAD 2026-09-19T23:45:07Z ===
+ 23:45:07 up 358 days,  1:25,  1 user,  load average: 19.84, 20.36, 20.84
+USER     %CPU COMMAND
+xzhang   99.9 python
+xzhang   99.9 python
+xzhang   99.9 python
+xzhang   99.9 python
+xzhang   99.9 python
+xzhang   99.9 python
+xzhang   99.9 python
+=== HOST_LOAD 2026-09-20T00:45:07Z ===
+ 00:45:07 up 358 days,  2:25,  1 user,  load average: 20.77, 20.47, 20.45
+USER     %CPU COMMAND
+xzhang   99.9 python
+xzhang   99.9 python
+xzhang   99.9 python
+xzhang   99.9 python
+xzhang   99.9 python
+xzhang   99.9 python
+xzhang   99.9 python
+=== HOST_LOAD 2026-09-20T01:45:07Z ===
+ 01:45:07 up 358 days,  3:25,  1 user,  load average: 20.41, 20.44, 20.42
+USER     %CPU COMMAND
+xzhang   99.9 python
+xzhang   99.9 python
+xzhang   99.9 python
+xzhang   99.9 python
+xzhang   99.9 python
+xzhang   99.9 python
+xzhang   99.9 python
+=== HOST_LOAD 2026-09-20T02:45:07Z ===
+ 02:45:07 up 358 days,  4:25,  1 user,  load average: 20.47, 20.45, 20.49
+USER     %CPU COMMAND
+jding     100 python
+xzhang   99.9 python
+xzhang   99.9 python
+xzhang   99.9 python
+xzhang   99.9 python
+xzhang   99.9 python
+xzhang   99.9 python
+=== HOST_LOAD 2026-09-20T03:45:07Z ===
+ 03:45:07 up 358 days,  5:25,  1 user,  load average: 20.18, 20.28, 20.42
+USER     %CPU COMMAND
+xzhang   99.9 python
+xzhang   99.9 python
+xzhang   99.9 python
+xzhang   99.9 python
+xzhang   99.9 python
+xzhang   99.9 python
+xzhang   99.9 python
+=== HOST_LOAD 2026-09-20T04:45:07Z ===
+ 04:45:07 up 358 days,  6:25,  1 user,  load average: 13.82, 14.65, 16.53
+USER     %CPU COMMAND
+xzhang   99.9 python
+xzhang   99.9 python
+xzhang   99.9 python
+xzhang   99.9 python
+xzhang   99.9 python
+xzhang   99.9 python
+xzhang   99.9 python
+=== HOST_LOAD 2026-09-20T05:45:07Z ===
+ 05:45:07 up 358 days,  7:25,  1 user,  load average: 21.50, 21.41, 20.56
+USER     %CPU COMMAND
+jding     100 python
+xzhang   99.9 python
+xzhang   99.9 python
+xzhang   99.9 python
+xzhang   99.9 python
+xzhang   99.9 python
+xzhang   99.9 python
+=== HOST_LOAD 2026-09-20T06:45:07Z ===
+ 06:45:07 up 358 days,  8:25,  1 user,  load average: 16.68, 18.68, 19.16
+USER     %CPU COMMAND
+xzhang   99.9 python
+xzhang   99.9 python
+xzhang   99.9 python
+xzhang   99.9 python
+xzhang   99.9 python
+xzhang   99.9 python
+xzhang   99.9 python
+=== HOST_LOAD 2026-09-20T07:45:07Z ===
+ 07:45:07 up 358 days,  9:25,  1 user,  load average: 13.51, 13.72, 13.70
+USER     %CPU COMMAND
+xzhang   99.9 python
+xzhang   99.9 python
+xzhang   99.9 python
+xzhang   99.9 python
+xzhang   99.9 python
+xzhang   99.9 python
+xzhang   99.9 python
+=== HOST_LOAD 2026-09-20T08:45:07Z ===
+ 08:45:07 up 358 days, 10:25,  1 user,  load average: 14.09, 13.59, 13.48
+USER     %CPU COMMAND
+xzhang   99.9 python
+xzhang   99.9 python
+xzhang   99.9 python
+xzhang   99.9 python
+xzhang   99.9 python
+xzhang   99.9 python
+xzhang   99.9 python
+=== HOST_LOAD 2026-09-20T09:45:07Z ===
+ 09:45:07 up 358 days, 11:25,  1 user,  load average: 13.24, 13.37, 13.44
+USER     %CPU COMMAND
+xzhang   99.9 python
+xzhang   99.9 python
+xzhang   99.9 python
+xzhang   99.9 python
+xzhang   99.9 python
+xzhang   99.9 python
+xzhang   99.9 python
+=== HOST_LOAD 2026-09-20T10:45:07Z ===
+ 10:45:07 up 358 days, 12:25,  1 user,  load average: 13.47, 13.45, 13.45
+USER     %CPU COMMAND
+xzhang   99.9 python
+xzhang   99.9 python
+xzhang   99.9 python
+xzhang   99.9 python
+xzhang   99.9 python
+xzhang   99.9 python
+xzhang   99.9 python
+=== HOST_LOAD 2026-09-20T11:45:07Z ===
+ 11:45:07 up 358 days, 13:25,  1 user,  load average: 13.46, 13.43, 13.47
+USER     %CPU COMMAND
+xzhang   99.9 python
+xzhang   99.9 python
+xzhang   99.9 python
+xzhang   99.9 python
+xzhang   99.9 python
+xzhang   99.9 python
+xzhang   99.9 python
+=== HOST_LOAD 2026-09-20T12:45:07Z ===
+ 12:45:07 up 358 days, 14:25,  1 user,  load average: 12.33, 12.80, 13.20
+USER     %CPU COMMAND
+xzhang   99.9 python
+xzhang   99.9 python
+xzhang   99.9 python
+xzhang   99.9 python
+xzhang   99.9 python
+xzhang   99.9 python
+xzhang   99.9 python
+=== HOST_LOAD 2026-09-20T13:45:07Z ===
+ 13:45:07 up 358 days, 15:25,  1 user,  load average: 12.66, 12.56, 12.55
+USER     %CPU COMMAND
+xzhang   99.9 python
+xzhang   99.9 python
+xzhang   99.9 python
+xzhang   99.9 python
+xzhang   99.9 python
+xzhang   99.9 python
+xzhang   99.9 python
+=== HOST_LOAD 2026-09-20T14:45:07Z ===
+ 14:45:07 up 358 days, 16:25,  1 user,  load average: 12.28, 12.47, 12.50
+USER     %CPU COMMAND
+xzhang   99.9 python
+xzhang   99.9 python
+xzhang   99.9 python
+xzhang   99.9 python
+xzhang   99.9 python
+xzhang   99.9 python
+xzhang   99.9 python
+=== HOST_LOAD 2026-09-20T15:45:07Z ===
+ 15:45:07 up 358 days, 17:25,  1 user,  load average: 12.47, 12.67, 12.57
+USER     %CPU COMMAND
+xzhang   99.9 python
+xzhang   99.9 python
+xzhang   99.9 python
+xzhang   99.9 python
+xzhang   99.9 python
+xzhang   99.9 python
+xzhang   99.9 python
+=== HOST_LOAD 2026-09-20T16:45:07Z ===
+ 16:45:07 up 358 days, 18:25,  1 user,  load average: 13.01, 12.53, 12.46
+USER     %CPU COMMAND
+xzhang   99.9 python
+xzhang   99.9 python
+xzhang   99.9 python
+xzhang   99.9 python
+xzhang   99.9 python
+xzhang   99.9 python
+xzhang   99.9 python
+=== HOST_LOAD 2026-09-20T17:45:07Z ===
+ 17:45:07 up 358 days, 19:25,  1 user,  load average: 11.34, 11.52, 11.94
+USER     %CPU COMMAND
+xzhang   99.9 python
+xzhang   99.9 python
+xzhang   99.9 python
+xzhang   99.9 python
+xzhang   99.9 python
+xzhang   99.9 python
+xzhang   99.9 python
+=== HOST_LOAD 2026-09-20T18:45:07Z ===
+ 18:45:07 up 358 days, 20:25,  1 user,  load average: 11.35, 12.16, 12.01
+USER     %CPU COMMAND
+xzhang   99.9 python
+xzhang   99.9 python
+xzhang   99.9 python
+xzhang   99.9 python
+xzhang   99.9 python
+xzhang   99.9 python
+xzhang   99.9 python
+=== HOST_LOAD 2026-09-20T19:45:08Z ===
+ 19:45:07 up 358 days, 21:25,  1 user,  load average: 11.55, 11.42, 11.46
+USER     %CPU COMMAND
+xzhang   99.9 python
+xzhang   99.9 python
+xzhang   99.9 python
+xzhang   99.9 python
+xzhang   99.9 python
+xzhang   99.9 python
+xzhang   99.9 python
+=== HOST_LOAD 2026-09-20T20:45:08Z ===
+ 20:45:08 up 358 days, 22:25,  1 user,  load average: 11.25, 11.34, 11.43
+USER     %CPU COMMAND
+xzhang   99.9 python
+xzhang   99.9 python
+xzhang   99.9 python
+xzhang   99.9 python
+xzhang   99.9 python
+xzhang   99.9 python
+xzhang   99.9 python
+=== HOST_LOAD 2026-09-20T21:45:08Z ===
+ 21:45:08 up 358 days, 23:25,  1 user,  load average: 11.36, 11.59, 11.57
+USER     %CPU COMMAND
+xzhang   99.9 python
+xzhang   99.9 python
+xzhang   99.9 python
+xzhang   99.9 python
+xzhang   99.9 python
+xzhang   99.9 python
+xzhang   99.9 python
+=== HOST_LOAD 2026-09-20T22:45:08Z ===
+ 22:45:08 up 359 days, 25 min,  1 user,  load average: 11.21, 11.54, 11.54
+USER     %CPU COMMAND
+xzhang   99.9 python
+xzhang   99.9 python
+xzhang   99.9 python
+xzhang   99.9 python
+xzhang   99.9 python
+xzhang   99.9 python
+xzhang   99.9 python
+=== HOST_LOAD 2026-09-20T23:45:08Z ===
+ 23:45:08 up 359 days,  1:25,  1 user,  load average: 11.42, 11.63, 11.55
+USER     %CPU COMMAND
+xzhang   99.9 python
+xzhang   99.9 python
+xzhang   99.9 python
+xzhang   99.9 python
+xzhang   99.9 python
+xzhang   99.9 python
+xzhang   99.9 python
+=== HOST_LOAD 2026-09-21T00:45:08Z ===
+ 00:45:08 up 359 days,  2:25,  1 user,  load average: 10.42, 9.86, 9.78
+USER     %CPU COMMAND
+xzhang   99.9 python
+xzhang   99.9 python
+xzhang   99.9 python
+xzhang   99.9 python
+xzhang   99.9 python
+xzhang   99.9 python
+xzhang   99.9 python
+=== HOST_LOAD 2026-09-21T01:45:08Z ===
+ 01:45:08 up 359 days,  3:25,  1 user,  load average: 9.45, 9.35, 9.42
+USER     %CPU COMMAND
+xzhang   99.9 python
+xzhang   99.9 python
+xzhang   99.9 python
+xzhang   99.9 python
+xzhang   99.9 python
+xzhang   99.9 python
+xzhang   99.9 python
+=== HOST_LOAD 2026-09-21T02:45:08Z ===
+ 02:45:08 up 359 days,  4:25,  1 user,  load average: 9.17, 9.33, 9.42
+USER     %CPU COMMAND
+xzhang   99.9 python
+xzhang   99.9 python
+xzhang   99.9 python
+xzhang   99.9 python
+xzhang   99.9 python
+xzhang   99.9 python
+xzhang   99.9 python
+=== HOST_LOAD 2026-09-21T03:45:08Z ===
+ 03:45:08 up 359 days,  5:25,  1 user,  load average: 9.35, 9.39, 9.54
+USER     %CPU COMMAND
+xzhang   99.9 python
+xzhang   99.9 python
+xzhang   99.9 python
+xzhang   99.9 python
+xzhang   99.9 python
+xzhang   99.9 python
+xzhang   99.9 python
+=== HOST_LOAD 2026-09-21T04:45:08Z ===
+ 04:45:08 up 359 days,  6:25,  1 user,  load average: 9.52, 9.47, 9.49
+USER     %CPU COMMAND
+xzhang   99.9 python
+xzhang   99.9 python
+xzhang   99.9 python
+xzhang   99.9 python
+xzhang   99.9 python
+xzhang   99.9 python
+xzhang   99.9 python
+=== HOST_LOAD 2026-09-21T05:45:08Z ===
+ 05:45:08 up 359 days,  7:25,  1 user,  load average: 9.21, 9.35, 9.45
+USER     %CPU COMMAND
+xzhang   99.9 python
+xzhang   99.9 python
+xzhang   99.9 python
+xzhang   99.9 python
+xzhang   99.9 python
+xzhang   99.9 python
+xzhang   99.9 python
+=== HOST_LOAD 2026-09-21T06:45:08Z ===
+ 06:45:08 up 359 days,  8:25,  1 user,  load average: 11.31, 11.46, 11.60
+USER     %CPU COMMAND
+jding     100 python
+jding     100 python
+xzhang   99.9 python
+xzhang   99.9 python
+xzhang   99.9 python
+xzhang   99.9 python
+xzhang   99.9 python
+=== HOST_LOAD 2026-09-21T07:45:08Z ===
+ 07:45:08 up 359 days,  9:25,  1 user,  load average: 14.23, 15.48, 17.60
+USER     %CPU COMMAND
+jding     242 python
+xzhang   99.9 python
+xzhang   99.9 python
+xzhang   99.9 python
+xzhang   99.9 python
+xzhang   99.9 python
+xzhang   99.9 python
+=== HOST_LOAD 2026-09-21T08:45:08Z ===
+ 08:45:08 up 359 days, 10:25,  1 user,  load average: 21.09, 19.59, 18.29
+USER     %CPU COMMAND
+jding     261 python
+jding     251 python
+jding     243 python
+jding     118 python
+jding     100 python
+xzhang   99.9 python
+xzhang   99.9 python
+=== HOST_LOAD 2026-09-21T09:45:08Z ===
+ 09:45:08 up 359 days, 11:25,  1 user,  load average: 17.10, 17.72, 17.61
+USER     %CPU COMMAND
+jding     228 python
+jding     207 python
+jding     118 python
+jding     118 python
+xzhang   99.9 python
+xzhang   99.9 python
+xzhang   99.9 python
+=== HOST_LOAD 2026-09-21T10:45:08Z ===
+ 10:45:08 up 359 days, 12:25,  1 user,  load average: 17.20, 17.88, 17.87
+USER     %CPU COMMAND
+jding     231 python
+jding     222 python
+jding     193 python
+jding     113 python
+xzhang   99.9 python
+xzhang   99.9 python
+xzhang   99.9 python
+=== HOST_LOAD 2026-09-21T11:45:08Z ===
+ 11:45:08 up 359 days, 13:25,  1 user,  load average: 17.22, 17.55, 17.80
+USER     %CPU COMMAND
+jding     235 python
+jding     223 python
+jding     118 python
+jding     113 python
+xzhang   99.9 python
+xzhang   99.9 python
+xzhang   99.9 python
+=== HOST_LOAD 2026-09-21T12:45:08Z ===
+ 12:45:08 up 359 days, 14:25,  1 user,  load average: 16.38, 17.13, 17.30
+USER     %CPU COMMAND
+jding     226 python
+jding     217 python
+jding     117 python
+jding     115 python
+xzhang   99.9 python
+xzhang   99.9 python
+xzhang   99.9 python
+=== HOST_LOAD 2026-09-21T13:45:08Z ===
+ 13:45:08 up 359 days, 15:25,  1 user,  load average: 15.91, 16.79, 17.19
+USER     %CPU COMMAND
+jding     232 python
+jding     216 python
+jding     118 python
+jding     117 python
+xzhang   99.9 python
+xzhang   99.9 python
+xzhang   99.9 python
+=== HOST_LOAD 2026-09-21T14:45:08Z ===
+ 14:45:08 up 359 days, 16:25,  1 user,  load average: 37.89, 24.06, 18.34
+USER     %CPU COMMAND
+jding     131 cc1plus
+jding     119 cc1plus
+jding     118 python
+jding     118 python
+jding     109 cc1plus
+jding     109 cc1plus
+jding     109 cc1plus
+=== HOST_LOAD 2026-09-21T15:45:08Z ===
+ 15:45:08 up 359 days, 17:25,  1 user,  load average: 14.82, 14.89, 14.73
+USER     %CPU COMMAND
+jding     234 python
+jding     100 python
+jding     100 python
+xzhang   99.9 python
+xzhang   99.9 python
+xzhang   99.9 python
+xzhang   99.9 python
+=== HOST_LOAD 2026-09-21T16:45:08Z ===
+ 16:45:08 up 359 days, 18:25,  1 user,  load average: 17.82, 17.46, 17.38
+USER     %CPU COMMAND
+jding     239 python
+jding     235 python
+xzhang   99.9 python
+xzhang   99.9 python
+xzhang   99.9 python
+xzhang   99.9 python
+xzhang   99.9 python
+=== HOST_LOAD 2026-09-21T17:45:08Z ===
+ 17:45:08 up 359 days, 19:25,  1 user,  load average: 18.32, 18.45, 17.87
+USER     %CPU COMMAND
+jding     299 python
+jding     235 python
+jding     100 python
+jding     100 python
+xzhang   99.9 python
+xzhang   99.9 python
+xzhang   99.9 python
+=== HOST_LOAD 2026-09-21T18:45:09Z ===
+ 18:45:08 up 359 days, 20:25,  1 user,  load average: 16.05, 16.63, 17.05
+USER     %CPU COMMAND
+jding     226 python
+jding     193 python
+jding     100 python
+jding     100 python
+xzhang   99.9 python
+xzhang   99.9 python
+xzhang   99.9 python
+=== HOST_LOAD 2026-09-21T19:45:09Z ===
+ 19:45:09 up 359 days, 21:25,  1 user,  load average: 12.36, 12.62, 13.78
+USER     %CPU COMMAND
+jding     100 python
+jding     100 python
+xzhang   99.9 python
+xzhang   99.9 python
+xzhang   99.9 python
+xzhang   99.9 python
+xzhang   99.9 python
+=== HOST_LOAD 2026-09-21T20:45:09Z ===
+ 20:45:09 up 359 days, 22:25,  1 user,  load average: 12.60, 12.46, 12.56
+USER     %CPU COMMAND
+jding     119 python
+jding     100 python
+xzhang   99.9 python
+xzhang   99.9 python
+xzhang   99.9 python
+xzhang   99.9 python
+xzhang   99.9 python
+=== HOST_LOAD 2026-09-21T21:45:09Z ===
+ 21:45:09 up 359 days, 23:25,  1 user,  load average: 13.19, 13.06, 13.01
+USER     %CPU COMMAND
+jding     119 python
+jding     118 python
+xzhang   99.9 python
+xzhang   99.9 python
+xzhang   99.9 python
+xzhang   99.9 python
+xzhang   99.9 python
+=== HOST_LOAD 2026-09-21T22:45:09Z ===
+ 22:45:09 up 360 days, 25 min,  1 user,  load average: 13.01, 12.89, 12.84
+USER     %CPU COMMAND
+jding     119 python
+jding     118 python
+xzhang   99.9 python
+xzhang   99.9 python
+xzhang   99.9 python
+xzhang   99.9 python
+xzhang   99.9 python
+=== HOST_LOAD 2026-09-21T23:45:09Z ===
+ 23:45:09 up 360 days,  1:25,  1 user,  load average: 18.98, 18.82, 19.61
+USER     %CPU COMMAND
+jding     230 python
+jding     210 python
+jding     172 pt_main_thread
+jding     118 python
+jding     117 python
+xzhang   99.9 python
+xzhang   99.9 python
+=== HOST_LOAD 2026-09-22T00:45:09Z ===
+ 00:45:09 up 360 days,  2:25,  1 user,  load average: 17.26, 17.49, 18.16
+USER     %CPU COMMAND
+jding     249 python
+jding     235 python
+jding     117 python
+jding     117 python
+xzhang   99.9 python
+xzhang   99.9 python
+xzhang   99.9 python
+=== HOST_LOAD 2026-09-22T01:45:09Z ===
+ 01:45:09 up 360 days,  3:25,  1 user,  load average: 10.14, 9.75, 10.07
+USER     %CPU COMMAND
+jding     240 python
+jding     232 python
+jding     118 python
+jding     117 python
+xzhang   52.5 python
+xzhang    7.5 clickhouse
+jding     2.8 claude
+=== HOST_LOAD 2026-09-22T02:45:09Z ===
+ 02:45:09 up 360 days,  4:25,  1 user,  load average: 22.83, 21.68, 17.55
+USER     %CPU COMMAND
+jding     640 python
+jding     485 python
+jding     118 python
+jding     117 python
+jding    99.3 rptg_v5d
+jding    99.3 rptg_v5d
+jding    99.3 rptg_v5d
+=== HOST_LOAD 2026-09-22T03:45:09Z ===
+ 03:45:09 up 360 days,  5:25,  1 user,  load average: 113.77, 158.18, 102.45
+USER     %CPU COMMAND
+jding     786 duckdb
+jding     532 python
+jding     207 python
+jding     155 java
+jding     117 python
+jding    94.2 conda
+jding    92.8 python
+=== HOST_LOAD 2026-09-22T04:45:09Z ===
+ 04:45:09 up 360 days,  6:25,  1 user,  load average: 33.62, 67.11, 87.33
+USER     %CPU COMMAND
+jding     709 duckdb
+jding     509 python
+jding     392 python
+jding     368 python
+jding     214 python
+jding     179 java
+jding     161 python
+=== HOST_LOAD 2026-09-22T05:45:18Z ===
+ 05:45:20 up 360 days,  7:25,  1 user,  load average: 188.27, 137.74, 117.61
+USER     %CPU COMMAND
+jding     467 python
+jding     344 python
+jding     273 python
+jding     184 java
+jding     159 python
+jding     126 python
+jding    91.2 python
+=== HOST_LOAD 2026-09-22T06:45:28Z ===
+ 06:45:28 up 360 days,  8:25,  1 user,  load average: 24.93, 40.33, 55.29
+USER     %CPU COMMAND
+jding     799 duckdb
+jding     469 python
+jding     291 python
+jding     196 python
+jding     176 java
+jding     173 python
+jding    98.0 pt_main_thread
+=== HOST_LOAD 2026-09-22T07:45:36Z ===
+ 07:45:38 up 360 days,  9:25,  1 user,  load average: 154.76, 163.42, 148.70
+USER     %CPU COMMAND
+jding     144 java
+jding    85.2 python
+jding    78.9 pt_main_thread
+jding    76.4 python
+jding    67.8 python
+xzhang   53.1 python
+jding    47.5 python
+=== HOST_LOAD 2026-09-22T08:45:55Z ===
+ 08:45:58 up 360 days, 10:26,  1 user,  load average: 161.25, 167.21, 164.02
+USER     %CPU COMMAND
+jding     119 java
+jding    63.7 python
+xzhang   52.8 python
+jding    52.1 python
+jding    37.1 python
+jding    28.1 pt_main_thread
+jding    16.8 python
+=== HOST_LOAD 2026-09-22T09:47:09Z ===
+ 09:47:11 up 360 days, 11:27,  1 user,  load average: 85.41, 90.90, 100.85
+USER     %CPU COMMAND
+jding     102 java
+jding    54.6 python
+xzhang   52.6 python
+jding    37.8 python
+jding    25.7 python
+jding    17.8 pt_main_thread
+jding    10.6 python
+=== HOST_LOAD 2026-09-22T10:47:24Z ===
+ 10:47:29 up 360 days, 12:27,  1 user,  load average: 151.31, 147.76, 150.66
+USER     %CPU COMMAND
+jding    89.5 java
+xzhang   52.3 python
+jding    47.9 python
+jding    29.9 python
+jding    19.8 python
+jding    13.2 pt_main_thread
+xzhang   10.0 ps
+=== HOST_LOAD 2026-09-22T11:48:13Z ===
+ 11:48:17 up 360 days, 13:28,  1 user,  load average: 145.67, 149.34, 154.41
+USER     %CPU COMMAND
+jding    79.5 java
+xzhang   52.0 python
+jding    42.6 python
+jding    24.8 python
+jding    16.1 python
+jding    10.6 pt_main_thread
+xzhang    7.6 clickhouse
+=== HOST_LOAD 2026-09-22T12:49:26Z ===
+ 12:49:26 up 360 days, 14:29,  1 user,  load average: 171.10, 194.09, 151.09
+USER     %CPU COMMAND
+jding     827 pt_main_thread
+jding     545 duckdb
+jding     143 python
+jding    92.5 python
+jding    74.3 java
+xzhang   51.8 python
+jding    49.0 python
+=== HOST_LOAD 2026-09-22T13:49:26Z ===
+ 13:49:26 up 360 days, 15:29,  1 user,  load average: 71.09, 70.31, 64.23
+USER     %CPU COMMAND
+jding     614 python
+jding     483 duckdb
+jding     476 python
+jding     192 python
+jding     163 python
+jding     155 pt_main_thread
+jding    70.7 python
+=== HOST_LOAD 2026-09-22T14:49:26Z ===
+ 14:49:26 up 360 days, 16:29,  1 user,  load average: 21.62, 40.28, 44.30
+USER     %CPU COMMAND
+jding     849 python
+jding     566 python
+jding     242 python
+jding     167 python
+jding     101 colmap
+jding    66.0 java
+xzhang   52.0 python
+=== HOST_LOAD 2026-09-22T15:49:26Z ===
+ 15:49:26 up 360 days, 17:29,  1 user,  load average: 20.06, 26.61, 25.30
+USER     %CPU COMMAND
+jding     619 python
+jding     541 python
+jding     192 python
+jding     115 pt_main_thread
+jding    60.9 java
+xzhang   52.2 python
+jding    51.8 python
+=== HOST_LOAD 2026-09-22T16:49:26Z ===
+ 16:49:26 up 360 days, 18:29,  1 user,  load average: 10.48, 13.69, 15.35
+USER     %CPU COMMAND
+jding     471 python
+jding     397 python
+jding     118 python
+jding    56.5 java
+jding    56.2 python
+xzhang   52.5 python
+xzhang    8.9 python
+=== HOST_LOAD 2026-09-22T17:49:27Z ===
+ 17:49:27 up 360 days, 19:29,  1 user,  load average: 13.38, 15.31, 15.38
+USER     %CPU COMMAND
+jding     602 python
+jding     515 python
+jding     117 python
+jding    60.3 python
+jding    52.7 java
+xzhang   52.7 python
+xzhang    9.7 python
+=== HOST_LOAD 2026-09-22T18:49:27Z ===
+ 18:49:27 up 360 days, 20:29,  1 user,  load average: 14.44, 14.44, 14.64
+USER     %CPU COMMAND
+jding     534 python
+jding     327 python
+jding     117 python
+jding    63.9 python
+xzhang   52.9 python
+jding    49.3 java
+xzhang   10.6 python
+=== HOST_LOAD 2026-09-22T19:49:27Z ===
+ 19:49:27 up 360 days, 21:29,  1 user,  load average: 14.19, 15.04, 15.05
+USER     %CPU COMMAND
+jding     544 python
+jding     503 python
+jding     117 python
+jding     117 python
+xzhang   53.1 python
+jding    46.4 java
+xzhang   11.4 python
+=== HOST_LOAD 2026-09-22T20:49:27Z ===
+ 20:49:27 up 360 days, 22:29,  1 user,  load average: 10.04, 12.63, 13.84
+USER     %CPU COMMAND
+jding     548 python
+jding     117 python
+jding     117 python
+xzhang   53.4 python
+jding    43.8 java
+xzhang    7.7 clickhouse
+jding     1.4 claude

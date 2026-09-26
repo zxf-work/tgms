@@ -1,0 +1,124 @@
+{
+  "config": {
+    "artifacts": 500,
+    "compact_every_batches": 500,
+    "compact_min_interval_s": 5.0,
+    "duration_s": 259200.0,
+    "max_disk_mb": 20000.0,
+    "metrics": "/mnt/project/xzhang/tgms/longevity/2026-09-19-soak3/metrics.jsonl",
+    "mix": "balanced",
+    "out": "/mnt/project/xzhang/tgms/longevity/2026-09-19-soak3",
+    "reader_reopen_every_s": 300.0,
+    "readers": 8,
+    "replay_compact_every": 5000,
+    "restart_every_s": 21600.0,
+    "seed": 0,
+    "store": "/mnt/project/xzhang/tgms/work/tgms/stores/synth-1m-native",
+    "store_name": "synth-1m-native",
+    "writer_sleep_s": null
+  },
+  "dataset": {
+    "digest": "682f1194f6ca335fd60bda56b3e0630d9d88112651e109067de222e96d9cd51a",
+    "digest_kind": "store_digest",
+    "name": "synth-1m-native"
+  },
+  "git_commit": "9e21a83",
+  "machine": {
+    "cpus": 40,
+    "host": "xzgpu",
+    "platform": "Linux 5.4.0-216-generic x86_64",
+    "ram_gb": 93.03
+  },
+  "protocol": {
+    "ceilings": {
+      "compact_every_batches": 500,
+      "duration_s": 259200.0,
+      "restart_every_s": 21600.0
+    },
+    "reps": 1,
+    "warmups": 0
+  },
+  "record": "/mnt/project/xzhang/tgms/longevity/2026-09-19-soak3/metrics.jsonl",
+  "result_digest": "a9441352a2f988b7dc227d6826a54429400889a91092382767484f72d5da3b3c",
+  "schema_version": "1.0.0",
+  "seed": {
+    "value": 0
+  },
+  "summary": {
+    "compaction_stall_max_reader_p99_ms": 0.0,
+    "compactions": 8147,
+    "digest_equal": true,
+    "drift": {
+      "commit_p99_first_hour_max": 78.429,
+      "commit_p99_last_hour_max": 105.727,
+      "throughput_first_hour_avg": 40.648,
+      "throughput_last_hour_avg": 11.014
+    },
+    "error_count": 2203552660,
+    "final_stats": {
+      "max_out_degree": 5146,
+      "n_edge_versions": 4064201,
+      "n_entities": 5887903,
+      "n_node_versions": 772491,
+      "rel_type_counts": {
+        "LW": 3044939,
+        "MSG": 1019262
+      },
+      "vt_max": 1736149742488079,
+      "vt_min": 0
+    },
+    "generation_final": 3624668.0,
+    "memory_slope_kb_per_s": 31.1401,
+    "metadata_growth_slope_bytes_per_s": {
+      "manifests": -0.076852,
+      "segments": 1526.309169
+    },
+    "reader_errors_total": 2203551806,
+    "reader_queries_total": 21773367,
+    "reader_restarts": 0,
+    "reader_restarts_recorded": 0,
+    "recoveries": 8,
+    "replay_skipped": null,
+    "total_batches": 3618225,
+    "unexpected_writer_deaths": 0,
+    "verify_healthy": true,
+    "wall_s": 331364.8,
+    "writer_final": {
+      "appends": 364195,
+      "batches": 510500,
+      "checks": 12,
+      "compactions": 1021,
+      "compactions_throttled": 0,
+      "corrections_applied": 81083,
+      "corrections_skipped": 65170,
+      "errors": 52,
+      "final": true,
+      "group_commit": {
+        "commits": 427145,
+        "max_group": 1,
+        "queue_depth": 0,
+        "rejected": 0,
+        "rows_per_commit": 1.0,
+        "solo_fallbacks": 52,
+        "submissions": 427145
+      },
+      "invalidations": 1,
+      "n": 5834184,
+      "refreshes": 1,
+      "ts": 1790037966.1541448
+    },
+    "writer_totals_all_lives": {
+      "appends": 2917092,
+      "artifact_checks": 348,
+      "artifact_invalidations": 136,
+      "artifact_refreshes": 136,
+      "compactions": 8147,
+      "compactions_throttled": 33,
+      "corrections_applied": 699397,
+      "corrections_skipped": 473025,
+      "errors": 854,
+      "lives": 9
+    }
+  },
+  "timestamp_utc": "2026-09-22T20:48:21Z"
+}
