@@ -5909,6 +5909,134 @@ def compute_longevity_soak_three(m: Macros) -> None:
 
 
 # --------------------------------------------------------------------------
+# Lane W2z -- compaction cadence macros (soak 2 and soak 3), replacing the
+# draft's unrecorded "~24s"/"48s" D-088 constants. compactions-2.jsonl and
+# compactions-3.jsonl carry no `life` field, and their own t_start/t_end
+# clock is monotonic-but-not-epoch with no documented per-life reset
+# (README.md's "Added later" section for soak2, "known fact 2" for soak3)
+# -- reconciling it against recoveries-*.jsonl's epoch t_death would need
+# the same metrics.jsonl compactions_total-counter procedure
+# reader_onset_rows-{2,3}.json used, which is not committed here. Instead
+# _split_compaction_lives below uses the one life-boundary signal these
+# files carry on their own: both soaks ran with
+# --compact-every-batches 500, so every writer life's first compaction is
+# always batches==500, and a drop in `batches` relative to the previous
+# row marks a new life. The resulting life count is cross-checked against
+# recoveries-{2,3}.jsonl's own row count + 1 below (3+1=4 for soak2,
+# 8+1=9 for soak3) as an independent confirmation that the split lands on
+# the same boundaries the harness's own restart cycle produced.
+# --------------------------------------------------------------------------
+
+def _split_compaction_lives(rows: list[dict], expected_lives: int, what: str) -> list[list[dict]]:
+    """Split one compactions-*.jsonl's rows into per-writer-life groups by
+    `batches` resetting to a smaller value than the previous row (see the
+    section comment above for why this, not the file's own t_start/t_end
+    clock or a `life` field, is the life-boundary signal used here)."""
+    lives: list[list[dict]] = [[rows[0]]]
+    for prev, row in zip(rows, rows[1:]):
+        if row["batches"] < prev["batches"]:
+            lives.append([row])
+        else:
+            lives[-1].append(row)
+    eq(len(lives), expected_lives,
+       f"{what}: batches-reset life-boundary count matches recoveries row count + 1")
+    return lives
+
+
+def compute_longevity_compaction_cadence(m: Macros) -> None:
+    """Lane W2z: replaces the draft's unrecorded "~24s"/"48s" D-088
+    compaction-cadence constants with macros computed from
+    compactions-2.jsonl (soak2) and compactions-3.jsonl (soak3) -- the same
+    committed per-compaction logs compute_longevity_soak_two and
+    compute_longevity_soak_three already sha256-check and read (for the
+    reader-onset edge-row reconciliation and the D-088
+    gc.generations_retained constant respectively).
+
+    The inter-compaction interval is the gap between one writer life's own
+    consecutive t_start values, pooled across all of that soak's lives
+    after splitting on _split_compaction_lives above -- never the gap
+    that spans a restart, which would conflate ordinary cadence with
+    recovery downtime. The compaction duration is t_end - t_start,
+    pooled across every compaction regardless of life (a single
+    compaction's own interval never spans a restart). The
+    generation-validity window is gc.generations_retained * median
+    interval: the store retains that many compaction generations before a
+    generation becomes collectible, so that many median inter-compaction
+    intervals is the window a generation stays valid for.
+    """
+    eq(sha256_file(LONGEVITY_COMPACTIONS_TWO), LONGEVITY_COMPACTIONS_TWO_SHA256,
+       f"{relpath(LONGEVITY_COMPACTIONS_TWO)}: sha256 matches README.md's Files-added-here "
+       "table (appended 2026-09-18)")
+    eq(sha256_file(LONGEVITY_RECOVERIES_TWO), LONGEVITY_RECOVERIES_TWO_SHA256,
+       f"{relpath(LONGEVITY_RECOVERIES_TWO)}: sha256 matches README.md's Files-added-here table")
+    eq(sha256_file(LONGEVITY_COMPACTIONS_THREE), LONGEVITY_COMPACTIONS_THREE_SHA256,
+       f"{relpath(LONGEVITY_COMPACTIONS_THREE)}: sha256 matches README.md's Soak 3 "
+       "Files-added-here table")
+    eq(sha256_file(LONGEVITY_RECOVERIES_THREE), LONGEVITY_RECOVERIES_THREE_SHA256,
+       f"{relpath(LONGEVITY_RECOVERIES_THREE)}: sha256 matches README.md's Soak 3 "
+       "Files-added-here table")
+
+    rows_two = load_jsonl(LONGEVITY_COMPACTIONS_TWO)
+    rows_three = load_jsonl(LONGEVITY_COMPACTIONS_THREE)
+    recoveries_two = load_jsonl(LONGEVITY_RECOVERIES_TWO)
+    recoveries_three = load_jsonl(LONGEVITY_RECOVERIES_THREE)
+    eq(len(rows_two), 4215, f"{relpath(LONGEVITY_COMPACTIONS_TWO)}: row count")
+    eq(len(rows_three), 8147, f"{relpath(LONGEVITY_COMPACTIONS_THREE)}: row count")
+    eq(len(recoveries_two), 3, f"{relpath(LONGEVITY_RECOVERIES_TWO)}: row count")
+    eq(len(recoveries_three), 8, f"{relpath(LONGEVITY_RECOVERIES_THREE)}: row count")
+
+    def cadence(rows: list[dict], expected_lives: int, what: str) -> tuple[float, float, int]:
+        lives = _split_compaction_lives(rows, expected_lives, what)
+        intervals: list[float] = []
+        durations: list[float] = []
+        for life in lives:
+            ts = [r["t_start"] for r in life]
+            intervals.extend(ts[i] - ts[i - 1] for i in range(1, len(ts)))
+            durations.extend(r["t_end"] - r["t_start"] for r in life)
+        gens = {r["gc"]["generations_retained"] for r in rows}
+        eq(gens, {2}, f"{what}: gc.generations_retained, uniform across every row")
+        return statistics.median(intervals), statistics.median(durations), next(iter(gens))
+
+    interval_two, duration_two, gens_two = cadence(
+        rows_two, len(recoveries_two) + 1, relpath(LONGEVITY_COMPACTIONS_TWO))
+    interval_three, duration_three, gens_three = cadence(
+        rows_three, len(recoveries_three) + 1, relpath(LONGEVITY_COMPACTIONS_THREE))
+
+    close(interval_two, 20.4605, 0.01, "Soak2 frozen: median inter-compaction interval, s")
+    close(duration_two, 12.0557, 0.01, "Soak2 frozen: median compaction duration, s")
+    close(interval_three, 31.5257, 0.01, "Soak3 frozen: median inter-compaction interval, s")
+    close(duration_three, 20.0500, 0.01, "Soak3 frozen: median compaction duration, s")
+
+    window_two = gens_two * interval_two
+    window_three = gens_three * interval_three
+
+    m.add("osdiSoakCompactionIntervalMedianSTwo", f"{interval_two:.1f}",
+          f"{relpath(LONGEVITY_COMPACTIONS_TWO)}: median(t_start[i] - t_start[i-1]) within "
+          "each of the 4 writer lives (life boundaries: batches resets to 500, "
+          f"{relpath(LONGEVITY_RECOVERIES_TWO)}'s 3 rows -> 4 lives), pooled over all 4 "
+          "lives' own intervals, s")
+    m.add("osdiSoakCompactionDurationMedianSTwo", f"{duration_two:.1f}",
+          f"{relpath(LONGEVITY_COMPACTIONS_TWO)}: median(t_end - t_start) over all "
+          f"{len(rows_two)} compactions, s")
+    m.add("osdiSoakGenerationWindowSTwo", f"{window_two:.1f}",
+          f"gc.generations_retained ({gens_two}, {relpath(LONGEVITY_COMPACTIONS_TWO)}, "
+          "osdiD088GenerationsRetained) * osdiSoakCompactionIntervalMedianSTwo -- the "
+          "generation-validity window, s")
+    m.add("osdiSoakCompactionIntervalMedianSThree", f"{interval_three:.1f}",
+          f"{relpath(LONGEVITY_COMPACTIONS_THREE)}: median(t_start[i] - t_start[i-1]) within "
+          "each of the 9 writer lives (life boundaries: batches resets to 500, "
+          f"{relpath(LONGEVITY_RECOVERIES_THREE)}'s 8 rows -> 9 lives), pooled over all 9 "
+          "lives' own intervals, s")
+    m.add("osdiSoakCompactionDurationMedianSThree", f"{duration_three:.1f}",
+          f"{relpath(LONGEVITY_COMPACTIONS_THREE)}: median(t_end - t_start) over all "
+          f"{len(rows_three)} compactions, s")
+    m.add("osdiSoakGenerationWindowSThree", f"{window_three:.1f}",
+          f"gc.generations_retained ({gens_three}, {relpath(LONGEVITY_COMPACTIONS_THREE)}, "
+          "osdiD088GenerationsRetained) * osdiSoakCompactionIntervalMedianSThree -- the "
+          "generation-validity window, s")
+
+
+# --------------------------------------------------------------------------
 # W-lane -- P-OV1, the xzgpu-calibrated overload sweep (EXP-B4):
 # does tgms.tools.limits.ConcurrencyGate engage once open-loop callers
 # outrun the service, and does the service recover once load drops.
@@ -7244,6 +7372,7 @@ def main() -> int:
     compute_longevity_verify_and_replay2(m)
     compute_longevity_soak_hunt(m)
     compute_longevity_soak_three(m)
+    compute_longevity_compaction_cadence(m)
     compute_overload(m)
     compute_c10_live_osv(m)
     compute_ldbc_ref_v1(m)
