@@ -4750,6 +4750,12 @@ def compute_longevity_soak_two(m: Macros) -> None:
     throughput_end = drift["throughput_last_hour_avg"]
     eq(throughput_start, 39.91, "Soak2 frozen: first-hour throughput, commits/s")
     eq(throughput_end, 19.117, "Soak2 frozen: last-hour throughput, commits/s")
+    throughput_ratio_end_over_start = throughput_end / throughput_start
+    eq(round(throughput_ratio_end_over_start, 3), 0.479,
+       "Soak2 frozen: ratio, last-hour throughput average / first-hour throughput "
+       "average -- the 'last/first $0.479$' figure the eval paragraph currently "
+       "types directly rather than through a macro (soak3's analogous figure is "
+       "osdiSoakThroughputLastOverFirstDayRatioThree)")
     p99_start = drift["commit_p99_first_hour_max"]
     p99_end = drift["commit_p99_last_hour_max"]
     eq(p99_start, 60.42, "Soak2 frozen: first-hour commit p99, ms")
@@ -4862,6 +4868,12 @@ def compute_longevity_soak_two(m: Macros) -> None:
     m.add("osdiSoakThroughputEndTwo", str(throughput_end),
           f"{relpath(LONGEVITY_MANIFEST_TWO)}: summary.drift.throughput_last_hour_avg, "
           "commits/s")
+    m.add("osdiSoakThroughputLastOverFirstRatioTwo", f"{throughput_ratio_end_over_start:.3f}",
+          f"{relpath(LONGEVITY_MANIFEST_TWO)}: summary.drift.throughput_last_hour_avg / "
+          "summary.drift.throughput_first_hour_avg, recomputed here from this record's own "
+          "two figures (soak3's analogous macro is osdiSoakThroughputLastOverFirstDayRatioThree, "
+          "sourced from throughput-3.json's own precomputed ratio field instead -- soak2 has "
+          "no equivalent side-file, only the manifest's first/last-hour drift block)")
     m.add("osdiSoakP99StartMsTwo", str(p99_start),
           f"{relpath(LONGEVITY_MANIFEST_TWO)}: summary.drift.commit_p99_first_hour_max, ms")
     m.add("osdiSoakP99EndMsTwo", str(p99_end),
@@ -5864,6 +5876,36 @@ def compute_longevity_soak_three(m: Macros) -> None:
           "across every writer error in all 9 lives (text macro, not a number) -- "
           "cross-checked there against README.md (h), longevity_ledger.jsonl's 854 "
           "writer_op_error lines, and each writer_progress-<life>.json's own errors field")
+
+    # --- D-088 mechanism constants: the reader's --reader-reopen-every-s
+    # window and the writer's gc(keep_last=N) retention depth, the two
+    # figures the D-088 paragraph's "300s reopen ... gc(keep_last=2) ...
+    # unlinked about 48s later" arithmetic is built from. No existing
+    # macro family named these (they are neither a Soak-Two/-Three
+    # measurement nor a B7/storm/DAG one), so they land under a fresh
+    # osdiD088... prefix, the same way osdiD160... did for D-160.
+    # reader_reopen_every_s is read from this record's own config (soak2's
+    # config carries the identical 300.0); generations_retained is
+    # cross-checked against every row of compactions-3.jsonl's own gc
+    # block rather than typed from scripts/longevity_run.py's
+    # gc(keep_last=2) call, so it is on record rather than merely quoted
+    # from the harness source. ---
+    reopen_interval_s = config["reader_reopen_every_s"]
+    eq(reopen_interval_s, 300.0, "Soak3 frozen: config.reader_reopen_every_s")
+    compaction_rows_for_gc = load_jsonl(LONGEVITY_COMPACTIONS_THREE)
+    generations_retained_values = {
+        row["gc"]["generations_retained"] for row in compaction_rows_for_gc}
+    eq(generations_retained_values, {2},
+       f"Soak3: all {len(compaction_rows_for_gc)} compactions-3.jsonl rows report "
+       "gc.generations_retained == 2 -- the gc(keep_last=2) depth, confirmed on "
+       "record rather than read from scripts/longevity_run.py")
+    m.add("osdiD088ReopenIntervalS", tex_num(int(reopen_interval_s)),
+          f"{relpath(LONGEVITY_MANIFEST_THREE)}: config.reader_reopen_every_s -- the "
+          "reader's --reader-reopen-every-s window (identical in soak2's config)")
+    m.add("osdiD088GenerationsRetained", tex_num(next(iter(generations_retained_values))),
+          f"{relpath(LONGEVITY_COMPACTIONS_THREE)}: gc.generations_retained, uniform "
+          f"across all {len(compaction_rows_for_gc)} rows -- the writer's "
+          "gc(keep_last=N) retention depth")
 
 
 # --------------------------------------------------------------------------
