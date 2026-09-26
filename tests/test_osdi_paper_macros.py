@@ -93,9 +93,11 @@ def _run_all_landed(mod):
     mod.compute_longevity_verify_and_replay2(m)
     mod.compute_longevity_soak_hunt(m)
     mod.compute_longevity_soak_three(m)
+    mod.compute_longevity_compaction_cadence(m)
     mod.compute_overload(m)
     mod.compute_c10_live_osv(m)
     mod.compute_ldbc_ref_v1(m)
+    mod.compute_ldbc_format3_rebuild(m)
     mod.compute_b7_scale(m)
     return m
 
@@ -613,6 +615,15 @@ FROZEN_LANDED_VALUES = {
     "osdiSoakFullVerifyGenerationThree": "3{,}624{,}668",
     "osdiSoakHostLoadMinThree": "1.21",
     "osdiSoakHostLoadMaxThree": "188.27",
+    # Lane W2z
+    "osdiSoakCompactionIntervalMedianSTwo": "20.5",
+    "osdiSoakCompactionDurationMedianSTwo": "12.1",
+    "osdiSoakGenerationWindowSTwo": "40.9",
+    "osdiSoakCompactionIntervalMedianSThree": "31.5",
+    "osdiSoakCompactionDurationMedianSThree": "20.1",
+    "osdiSoakGenerationWindowSThree": "63.1",
+    "osdiStormV2CleanCells": "34",
+    "osdiLdbcFormatThreeRebuildPct": "12.8",
 }
 
 
