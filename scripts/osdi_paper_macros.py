@@ -196,6 +196,28 @@ skeleton --
       own clause (e) non-conclusion (a negative 6h result is not evidence
       the pattern is gone) as its provenance, not as a number.
 
+  W2x (P-SOAK3, the 72h third soak, commit 9e21a83 pre-fix engine) --
+      benchmarks/longevity-v1/README.md's "Soak 3 (72 h)" section --
+      longevity-synth-1m-native-2.json (manifest), compactions-3.jsonl,
+      recoveries-3.jsonl, host_load-3.log and verify-full-3.txt (all five
+      whole-file sha256-checked against that section's own "Files added
+      here" table), plus rss_slopes-3.json, throughput-3.json,
+      reader_op_error-3.json and reader_onset_rows-3.json (derived
+      locally, no xzgpu twin to hash against, per that section's own
+      note). Only 9 of the pre-registered 12 writer lives ran (the
+      ``gc_mid_delete`` restart-arming defect, fixed later at
+      ``3267725``/``7b5d6ba``, both after ``9e21a83``). Unlike P-SOAK2's
+      monotonic, never-healing reader OSError/StateError storm, the D-088
+      ledger's 17 first-onset lines understate a reconstructed 662 true
+      active/healed episodes across 8 readers x 2 classes (every
+      combination heals repeatedly) -- root cause not established here;
+      P-SOAK4 re-measures the fixed engine. ``compute_longevity_soak_three``
+      below computes every ``osdiSoak*Three`` macro; the writer-error
+      exception class has no committed per-soak3 side-file to recompute
+      it from, so ``osdiSoakWriterErrorsClassThree`` stays a PENDING stub
+      (added directly by that function, like ``osdiB7ScaleCurveP50ReachWindow100M``).
+      No verdict macro -- Gate E scoring is the coordinator's.
+
   W-lane (the original soak's full-mode verify + REPLAY-2) --
       benchmarks/longevity-v1/verify-full-2026-09-15.txt (two `tgms check`
       entries concatenated: the pre-replay check of the original store,
@@ -615,6 +637,33 @@ LONGEVITY_READER_OP_ERROR_HUNT = LONGEVITY_DIR / "reader_op_error-stormhunt.json
 LONGEVITY_READER_OP_ERROR_README_HUNT = LONGEVITY_DIR / "reader_op_error-stormhunt.README.txt"
 LONGEVITY_GATE_E_REPORT_HUNT = LONGEVITY_DIR / "gate_e_report-stormhunt.md"
 LONGEVITY_BUILD_INFO_HUNT = LONGEVITY_DIR / "build_info-stormhunt.log"
+
+# Lane W2x -- P-SOAK3, the 72h third soak (commit 9e21a83, pre-fix engine --
+# the gc_mid_delete restart-arming defect this run's harness carries is
+# fixed later at 3267725/7b5d6ba, both after 9e21a83). Every path below is
+# whole-file sha256-checked against benchmarks/longevity-v1/README.md's
+# "Soak 3 (72 h)" section's own "Files added here" table, same discipline
+# as P-SOAK2's five-file table above -- not an independently-frozen
+# first-read digest. rss_slopes-3.json, throughput-3.json,
+# reader_op_error-3.json and reader_onset_rows-3.json have no xzgpu twin to
+# hash against (derived locally from metrics.jsonl, which stays on xzgpu
+# per the same PI ruling as every earlier soak/stormhunt) -- README.md
+# says so explicitly, so this lane reads them without a sha256 gate,
+# same as reader_onset_rows-2.json's own convention.
+LONGEVITY_MANIFEST_THREE = LONGEVITY_DIR / "longevity-synth-1m-native-2.json"
+LONGEVITY_COMPACTIONS_THREE = LONGEVITY_DIR / "compactions-3.jsonl"
+LONGEVITY_RECOVERIES_THREE = LONGEVITY_DIR / "recoveries-3.jsonl"
+LONGEVITY_HOST_LOAD_THREE = LONGEVITY_DIR / "host_load-3.log"
+LONGEVITY_VERIFY_FULL_THREE = LONGEVITY_DIR / "verify-full-3.txt"
+LONGEVITY_RSS_SLOPES_THREE = LONGEVITY_DIR / "rss_slopes-3.json"
+LONGEVITY_THROUGHPUT_THREE = LONGEVITY_DIR / "throughput-3.json"
+LONGEVITY_READER_OP_ERROR_THREE = LONGEVITY_DIR / "reader_op_error-3.json"
+LONGEVITY_READER_ONSET_ROWS_THREE = LONGEVITY_DIR / "reader_onset_rows-3.json"
+LONGEVITY_MANIFEST_THREE_SHA256 = "e094fd5acbcb95e523f3f00fa544e634a531d3b3c991525422a6546981c2251a"
+LONGEVITY_COMPACTIONS_THREE_SHA256 = "9c66241d34b45c9b550b931fe78471e6789113338e163c3f4a7ba293e89a0bdf"
+LONGEVITY_RECOVERIES_THREE_SHA256 = "36032c9ad858150e0d914d98e6399b62124492238b8dd013a9c15c8f78b9329b"
+LONGEVITY_HOST_LOAD_THREE_SHA256 = "93836026f0c88eb8733b746a1114d716ad463eb2b9e81898291d6be93419e02d"
+LONGEVITY_VERIFY_FULL_THREE_SHA256 = "6643bbda8fd0508c53715346b0a00796a733b8aa55326fe3275fa40f79e9c89b"
 
 # Lane W2t -- benchmarks/ldbc-ref-v1/, the LDBC reference-correctness run
 # (Claim C9's independent-validation axis). compare-2026-09-18.json is the
@@ -5353,6 +5402,443 @@ def compute_longevity_soak_hunt(m: Macros) -> None:
           "negative result is not evidence the pattern is gone (text macro, not a number)")
 
 
+def compute_longevity_soak_three(m: Macros) -> None:
+    """Lane W2x: P-SOAK3, the 72h third soak (commit ``9e21a83``, pre-fix
+    engine -- the ``gc_mid_delete`` restart-arming defect this run's
+    harness carries is fixed later, at ``3267725``/``7b5d6ba``, both after
+    ``9e21a83``) -- see benchmarks/longevity-v1/README.md's "Soak 3 (72 h)"
+    section. Only 9 of the pre-registered 12 writer lives ran (known fact
+    1, a consequence of that same pre-fix harness). Unlike P-SOAK2's
+    monotonic, never-healing reader OSError/StateError storm, this run's
+    D-088 bounded reader-error capture (17 first-onset ledger lines) plus
+    a reconstruction from metrics.jsonl's own reader_errors_total counter
+    (reader_op_error-3.json's healed_at_next_reopen_evidence) shows 662
+    true active/healed episodes across the 8 readers x 2 classes, with
+    every combination healing repeatedly. Root cause is explicitly not
+    established here (README.md's Honest limits); P-SOAK4 re-measures the
+    fixed engine. No verdict macro -- Gate E scoring is the coordinator's,
+    not this script's.
+
+    The writer-error exception class (100% NotFoundError per README.md
+    (h)) is NOT emitted as a landed macro here: unlike P-SOAK2's
+    writer_error_counts_by_life-2.json, this soak has no committed
+    per-life/per-class writer-error side-file, so that class label is not
+    recomputable from any file this lane owns -- see
+    osdiSoakWriterErrorsClassThree's PENDING stub below.
+    """
+    # --- whole-file sha256 checks against README.md's Soak 3 "Files added
+    # here" table (the 5 files with an xzgpu twin) ---
+    eq(sha256_file(LONGEVITY_MANIFEST_THREE), LONGEVITY_MANIFEST_THREE_SHA256,
+       f"{relpath(LONGEVITY_MANIFEST_THREE)}: sha256 matches README.md's Soak 3 "
+       "Files-added-here table")
+    eq(sha256_file(LONGEVITY_COMPACTIONS_THREE), LONGEVITY_COMPACTIONS_THREE_SHA256,
+       f"{relpath(LONGEVITY_COMPACTIONS_THREE)}: sha256 matches README.md's Soak 3 "
+       "Files-added-here table")
+    eq(sha256_file(LONGEVITY_RECOVERIES_THREE), LONGEVITY_RECOVERIES_THREE_SHA256,
+       f"{relpath(LONGEVITY_RECOVERIES_THREE)}: sha256 matches README.md's Soak 3 "
+       "Files-added-here table")
+    eq(sha256_file(LONGEVITY_HOST_LOAD_THREE), LONGEVITY_HOST_LOAD_THREE_SHA256,
+       f"{relpath(LONGEVITY_HOST_LOAD_THREE)}: sha256 matches README.md's Soak 3 "
+       "Files-added-here table")
+    eq(sha256_file(LONGEVITY_VERIFY_FULL_THREE), LONGEVITY_VERIFY_FULL_THREE_SHA256,
+       f"{relpath(LONGEVITY_VERIFY_FULL_THREE)}: sha256 matches README.md's Soak 3 "
+       "Files-added-here table")
+
+    manifest = json.loads(LONGEVITY_MANIFEST_THREE.read_text(encoding="utf-8"))
+    summary = manifest["summary"]
+    config = manifest["config"]
+
+    # --- commit, duration, wall clock ---
+    eq(manifest["git_commit"], "9e21a83",
+       "Soak3 frozen: measured commit (pre-fix engine, by design)")
+    duration_s = config["duration_s"]
+    eq(duration_s, 259_200.0, "Soak3 frozen: configured soak duration_s (72h)")
+    hours = duration_s / 3600.0
+    eq(hours, 72.0, "Soak3: config.duration_s / 3600 is exactly 72 hours")
+    wall_s = summary["wall_s"]
+    eq(wall_s, 331_364.8, "Soak3 frozen: summary.wall_s")
+    wall_hours = wall_s / 3600.0
+    eq(round(wall_hours, 2), 92.05,
+       "Soak3: summary.wall_s / 3600, rounded to 2dp (includes the final verify(), the "
+       "end-of-run replay/digest check, and the full-mode tgms check -- not just the "
+       "configured 72h duration_s)")
+
+    # --- writer lives: 9 ran, not the pre-registered 12 (known fact 1: the
+    # gc_mid_delete restart-arming defect, fixed later at 3267725/7b5d6ba,
+    # both postdating this run's 9e21a83 build -- compact() never called
+    # gc() in that harness copy, so the designed-restart boundary for that
+    # scenario never fired) ---
+    writer_lives = summary["writer_totals_all_lives"]["lives"]
+    eq(writer_lives, 9, "Soak3 frozen: summary.writer_totals_all_lives.lives")
+
+    # --- 8 designed restarts (9 lives - 1), by recovery time ---
+    recoveries_rows = load_jsonl(LONGEVITY_RECOVERIES_THREE)
+    eq(len(recoveries_rows), 8, "Soak3 frozen: recoveries-3.jsonl row count")
+    eq(len(recoveries_rows), summary["recoveries"],
+       "Soak3: recoveries-3.jsonl row count matches summary.recoveries")
+    require(all(r["kind"] == "designed" for r in recoveries_rows),
+            "Soak3: every recovery row is the harness's own designed restart cycle")
+    require(len(recoveries_rows) + 1 == writer_lives,
+            "Soak3: 8 designed deaths give 9 lives")
+    recovery_times = sorted(r["recovery_s"] for r in recoveries_rows)
+    recovery_min_s = recovery_times[0]
+    recovery_max_s = recovery_times[-1]
+    eq(round(recovery_min_s, 3), 25.667, "Soak3 frozen: shortest recovery time, s")
+    eq(round(recovery_max_s, 3), 96.352, "Soak3 frozen: longest recovery time, s")
+    unexpected = summary["unexpected_writer_deaths"]
+    eq(unexpected, 0, "Soak3 frozen: unexpected_writer_deaths")
+    reader_restarts = summary["reader_restarts"]
+    eq(reader_restarts, 0, "Soak3 frozen: summary.reader_restarts -- no reader ever died "
+       "or was restarted")
+
+    require(summary["verify_healthy"] is True,
+            "Soak3: summary.verify_healthy is the JSON literal true")
+    require(summary["digest_equal"] is True,
+            "Soak3: summary.digest_equal is the JSON literal true -- confirmed by the "
+            "19.6h end-of-run replay (known fact 4)")
+    require(summary["replay_skipped"] is None,
+            "Soak3: summary.replay_skipped is JSON null -- the replay was not skipped")
+
+    total_batches = summary["total_batches"]
+    eq(total_batches, 3_618_225,
+       "Soak3 frozen: summary.total_batches (the end-of-run replay's own batch count)")
+    replay_cadence = config["replay_compact_every"]
+    eq(replay_cadence, 5000, "Soak3 frozen: config.replay_compact_every")
+
+    # --- writer within-life RSS slopes, 9 lives ---
+    rss_doc = json.loads(LONGEVITY_RSS_SLOPES_THREE.read_text(encoding="utf-8"))
+    writer_life_rows = rss_doc["writer_lives"]
+    eq(len(writer_life_rows), writer_lives,
+       "Soak3: rss_slopes-3.json writer_lives row count matches "
+       "summary.writer_totals_all_lives.lives")
+    require(list(range(writer_lives)) == [row["life"] for row in writer_life_rows],
+            "Soak3: rss_slopes-3.json writer_lives rows are ordered life 0..8")
+    writer_life_slopes = [row["slope_kb_per_s_least_squares"] for row in writer_life_rows]
+    frozen_bound_writer = rss_doc["frozen_bound_writer_kb_per_s"]
+    eq(frozen_bound_writer, 50, "Soak3 frozen: rss_slopes-3.json frozen_bound_writer_kb_per_s")
+    require(all(s <= frozen_bound_writer for s in writer_life_slopes),
+            "Soak3: every writer life's within-life RSS slope clears the frozen 50 kB/s bound")
+    writer_median_kb = round(statistics.median(writer_life_slopes), 3)
+    writer_max_kb = round(max(writer_life_slopes), 3)
+    eq(writer_median_kb, 16.630, "Soak3 frozen: writer within-life slope median, kB/s")
+    eq(writer_max_kb, 28.834, "Soak3 frozen: writer within-life slope max, kB/s (life 6)")
+
+    # --- reader within-life RSS slopes: 8 readers, reader_restarts=0 so
+    # exactly one fitted segment each, over the full ~259,134-259,163s span ---
+    reader_rows = rss_doc["readers"]
+    eq(len(reader_rows), 8, "Soak3 frozen: rss_slopes-3.json readers row count")
+    reader_slopes = [row["slope_kb_per_s_least_squares"] for row in reader_rows.values()]
+    frozen_bound_reader = rss_doc["frozen_bound_reader_kb_per_s"]
+    eq(frozen_bound_reader, 10, "Soak3 frozen: rss_slopes-3.json frozen_bound_reader_kb_per_s")
+    require(all(s <= frozen_bound_reader for s in reader_slopes),
+            "Soak3: every reader's within-life RSS slope clears the frozen 10 kB/s bound -- "
+            "better than both P-SOAK2 (7.2-8.1) and P-STORM-HUNT's failing 11.4-12.5 kB/s")
+    reader_min_kb = round(min(reader_slopes), 3)
+    reader_max_kb = round(max(reader_slopes), 3)
+    eq(reader_min_kb, 4.271, "Soak3 frozen: reader within-life slope min, kB/s")
+    eq(reader_max_kb, 4.796, "Soak3 frozen: reader within-life slope max, kB/s")
+
+    # --- writer errors: true total (854), cross-checked against the
+    # manifest's own writer_totals_all_lives.errors; the exception class
+    # (100% NotFoundError per README.md (h)) has no committed per-life/
+    # per-class side-file for this soak, so it is NOT recomputed here --
+    # see osdiSoakWriterErrorsClassThree's PENDING stub below ---
+    writer_errors_true = summary["writer_totals_all_lives"]["errors"]
+    eq(writer_errors_true, 854, "Soak3 frozen: summary.writer_totals_all_lives.errors")
+
+    # --- reader errors: true total, split OSError/StateError, recomputed
+    # from reader_op_error-3.json's per-reader per_reader_totals_by_class
+    # (itself sourced from each reader's own reader-<idx>-progress.json
+    # error_details[].count, per that file's own "method" field) and
+    # cross-checked against the manifest's own reader_errors_total and
+    # error_count arithmetic ---
+    reader_op_error_doc = json.loads(LONGEVITY_READER_OP_ERROR_THREE.read_text(encoding="utf-8"))
+    per_reader_totals = reader_op_error_doc["per_reader_totals_by_class"]
+    eq(len(per_reader_totals), 8,
+       "Soak3: reader_op_error-3.json per_reader_totals_by_class reader count")
+    reader_oserror = sum(int(v["OSError"]) for v in per_reader_totals.values())
+    reader_stateerror = sum(int(v["StateError"]) for v in per_reader_totals.values())
+    eq(reader_oserror, 2_202_621_096, "Soak3 frozen: reader OSError total, summed over 8 readers")
+    eq(reader_stateerror, 930_710,
+       "Soak3 frozen: reader StateError total, summed over 8 readers")
+    reader_errors_true = reader_oserror + reader_stateerror
+    eq(reader_errors_true, summary["reader_errors_total"],
+       "Soak3: recomputed OSError + StateError matches manifest's own reader_errors_total")
+    eq(summary["error_count"], writer_errors_true + reader_errors_true + unexpected,
+       "Soak3: summary.error_count == true writer errors + true reader errors + "
+       "unexpected_writer_deaths")
+
+    # --- reopens per reader (reader-reopen-every-s=300, so this is a
+    # count of --reader-reopen-every-s cycles completed, not an error
+    # count) ---
+    reopens_per_reader = reader_op_error_doc["reopens_per_reader"]
+    eq(len(reopens_per_reader), 8, "Soak3: reader_op_error-3.json reopens_per_reader count")
+    reopens_min = min(reopens_per_reader.values())
+    reopens_max = max(reopens_per_reader.values())
+    eq(reopens_min, 777, "Soak3 frozen: reopens per reader, min")
+    eq(reopens_max, 779, "Soak3 frozen: reopens per reader, max")
+
+    # --- D-088 ledger first-onset count: 17, not soak2's per-reader-once
+    # pattern (reader 1 has 3 onset lines here, every other reader has 2) --
+    # cross-checked three ways within the file itself (top-level count,
+    # verbatim ledger-line count, and sum of per-reader onset counts) ---
+    n_ledger_events = reader_op_error_doc["n_ledger_reader_op_error_events"]
+    eq(n_ledger_events, 17, "Soak3 frozen: reader_op_error-3.json n_ledger_reader_op_error_events")
+    eq(n_ledger_events, len(reader_op_error_doc["ledger_events_verbatim"]),
+       "Soak3: n_ledger_reader_op_error_events matches len(ledger_events_verbatim)")
+    eq(n_ledger_events, sum(reader_op_error_doc["per_reader_episode_count"].values()),
+       "Soak3: n_ledger_reader_op_error_events matches sum(per_reader_episode_count[*])")
+
+    # --- reconstructed true episode count (662, NOT the ledger's 17 --
+    # the ledger only records each (reader,class)'s first-ever onset, per
+    # the file's own method field): sum of active_run_count across all 16
+    # reader x class combinations in healed_at_next_reopen_evidence, each
+    # an active/healed transition-count reconstructed from metrics.jsonl's
+    # reader_errors_total counter. The longest single healed interval
+    # across all 16 combinations (37,272.1s, reader3_StateError) is the
+    # max of every healing_intervals[*].duration_s entry, not the
+    # reader0_OSError single-interval figure (35,382.5s) that
+    # README.md's (g) quotes only as one cross-check example. ---
+    healed_evidence = reader_op_error_doc["healed_at_next_reopen_evidence"]
+    eq(len(healed_evidence), 16,
+       "Soak3: reader_op_error-3.json healed_at_next_reopen_evidence has 16 "
+       "(8 readers x 2 classes) entries")
+    require(all(v["healed_at_any_reopen"] is True for v in healed_evidence.values()),
+            "Soak3: every (reader,class) combination healed at least once at some reopen -- "
+            "materially different from soak2's monotonic, never-healing storm")
+    true_episode_count = sum(v["active_run_count"] for v in healed_evidence.values())
+    eq(true_episode_count, 662,
+       "Soak3 frozen: reconstructed true episode count, summed over all 16 (reader,class) "
+       "combinations (57-72 each) -- one to two orders of magnitude more than the "
+       "ledger's 17 first-onset events")
+    longest_healed_s = max(
+        interval["duration_s"]
+        for v in healed_evidence.values()
+        for interval in v["healing_intervals"]
+    )
+    eq(round(longest_healed_s, 1), 37272.1,
+       "Soak3 frozen: longest single healed interval across all 16 (reader,class) "
+       "combinations, s (reader3_StateError)")
+
+    # --- reader-onset edge-row counts, reconciled the same way as
+    # soak2's reader_onset_rows-2.json, generalized from 4 to 9 writer
+    # lives (see that file's own "method" field) ---
+    onset_doc = json.loads(LONGEVITY_READER_ONSET_ROWS_THREE.read_text(encoding="utf-8"))
+    earliest = onset_doc["earliest_reader_onset"]
+    latest = onset_doc["latest_reader_onset"]
+    eq(earliest["reader"], 1, "Soak3 frozen: earliest reader-error onset is reader 1 (OSError)")
+    eq(latest["reader"], 2, "Soak3 frozen: latest reader-error onset is reader 2 (StateError)")
+    onset_earliest_s = earliest["onset_t_plus_s"]
+    onset_latest_s = latest["onset_t_plus_s"]
+    eq(onset_earliest_s, 65655.8, "Soak3 frozen: earliest reader-error onset, s into the run")
+    eq(onset_latest_s, 94769.4, "Soak3 frozen: latest reader-error onset, s into the run")
+    onset_earliest_rows = earliest["last_compaction_before"]["edge_rows"]
+    onset_latest_rows = latest["last_compaction_before"]["edge_rows"]
+    eq(onset_earliest_rows, 1_950_613,
+       "Soak3 frozen: edge_rows of the last compaction before the earliest reader onset")
+    eq(onset_latest_rows, 2_356_519,
+       "Soak3 frozen: edge_rows of the last compaction before the latest reader onset")
+    require(onset_earliest_rows < onset_latest_rows,
+            "Soak3: edge-row count grows from the earliest to the latest reader-error onset")
+
+    # --- throughput: manifest's own first-hour/last-hour drift figures,
+    # plus this record's independently-bucketed first-day/last-day
+    # averages and their ratio (throughput-3.json) ---
+    drift = summary["drift"]
+    throughput_start = drift["throughput_first_hour_avg"]
+    throughput_end = drift["throughput_last_hour_avg"]
+    eq(throughput_start, 40.648, "Soak3 frozen: first-hour throughput, commits/s")
+    eq(throughput_end, 11.014, "Soak3 frozen: last-hour throughput, commits/s")
+
+    throughput_doc = json.loads(LONGEVITY_THROUGHPUT_THREE.read_text(encoding="utf-8"))
+    eq(throughput_doc["manifest_drift"], drift,
+       "Soak3: throughput-3.json's own manifest_drift copy matches the manifest's "
+       "summary.drift exactly")
+    first_day_avg = throughput_doc["first_day_avg_commits_per_s"]
+    last_day_avg = throughput_doc["last_day_avg_commits_per_s_soak_window"]
+    ratio_last_over_first = throughput_doc["ratio_last_over_first_soak_window"]
+    eq(round(first_day_avg, 3), 19.713,
+       "Soak3 frozen: first-day (hours 0-23) throughput average, commits/s")
+    eq(round(last_day_avg, 3), 12.952,
+       "Soak3 frozen: last-day (hours 48-71) throughput average, commits/s")
+    eq(round(ratio_last_over_first, 3), 0.657,
+       "Soak3 frozen: ratio, last-day average / first-day average")
+    require(abs(ratio_last_over_first - last_day_avg / first_day_avg) < 1e-9,
+            "Soak3: ratio_last_over_first_soak_window recomputes as last_day_avg / "
+            "first_day_avg from this same file's own two averages")
+
+    # --- full-mode tgms check of the final store: 0 believed-versions-
+    # overlap findings (0 findings of any kind), generation cross-checked
+    # against the manifest's own generation_final ---
+    verify_text = LONGEVITY_VERIFY_FULL_THREE.read_text(encoding="utf-8")
+    require("verdict: healthy" in verify_text,
+            f"{relpath(LONGEVITY_VERIFY_FULL_THREE)}: verdict line reads healthy")
+    problems_match = re.search(r"PROBLEMS \((\d+)\):", verify_text)
+    overlap_count = int(problems_match.group(1)) if problems_match else 0
+    eq(overlap_count, 0,
+       f"{relpath(LONGEVITY_VERIFY_FULL_THREE)}: PROBLEMS count (0 -- no PROBLEMS section "
+       "at all, consistent with the healthy verdict)")
+    require("believed-versions-overlap" not in verify_text,
+            f"{relpath(LONGEVITY_VERIFY_FULL_THREE)}: no believed-versions-overlap findings "
+            "text present anywhere in the file")
+    verify_generation_match = re.search(r"generation:\s*(\d+)", verify_text)
+    require(verify_generation_match is not None,
+            f"{relpath(LONGEVITY_VERIFY_FULL_THREE)}: carries a generation: <N> line")
+    verify_generation = int(verify_generation_match.group(1)) if verify_generation_match else 0
+    eq(verify_generation, 3_624_668, "Soak3 frozen: verify-full-3 generation")
+    eq(verify_generation, int(summary["generation_final"]),
+       "Soak3: full-verify's generation matches the manifest's own generation_final exactly")
+
+    # --- co-tenant host load (1-min averages): known fact 3 states the
+    # co-tenant ran throughout this run, including especially hard during
+    # the post-soak replay wind-down -- unlike P-STORM-HUNT's log (which
+    # this script windows to the run's own duration_s and excludes one
+    # post-run sample), README.md's own stated 93-sample min/max for this
+    # soak covers the WHOLE committed file including that wind-down
+    # window, so this lane takes min/max over every sample rather than
+    # windowing to config.duration_s. ---
+    host_load_text = LONGEVITY_HOST_LOAD_THREE.read_text(encoding="utf-8")
+    blocks = re.findall(
+        r"=== HOST_LOAD (\S+) ===\n(.*?)(?=(?:=== HOST_LOAD |\Z))",
+        host_load_text, re.DOTALL)
+    eq(len(blocks), 93, "Soak3 frozen: host_load-3.log HOST_LOAD sample count")
+    host_loads: list[float] = []
+    for ts_str, block in blocks:
+        load_match = re.search(r"load average:\s*([\d.]+),", block)
+        require(load_match is not None,
+                f"host_load-3.log: HOST_LOAD {ts_str} block has a load average line")
+        if load_match:
+            host_loads.append(float(load_match.group(1)))
+    host_load_min = min(host_loads)
+    host_load_max = max(host_loads)
+    eq(round(host_load_min, 2), 1.21, "Soak3 frozen: host load min, 1-min avg")
+    eq(round(host_load_max, 2), 188.27, "Soak3 frozen: host load max, 1-min avg")
+
+    # --- emit macros ---
+    m.add("osdiSoakCommitThree", manifest["git_commit"],
+          f"{relpath(LONGEVITY_MANIFEST_THREE)}: git_commit")
+    m.add("osdiSoakHoursThree", tex_num(int(hours)),
+          f"{relpath(LONGEVITY_MANIFEST_THREE)}: config.duration_s / 3600")
+    m.add("osdiSoakWallHoursThree", f"{wall_hours:.2f}",
+          f"{relpath(LONGEVITY_MANIFEST_THREE)}: summary.wall_s / 3600 -- includes the "
+          "final verify(), the end-of-run replay/digest check, and the full-mode "
+          "tgms check this record adds, not just the configured 72h duration_s")
+    m.add("osdiSoakWriterLivesThree", tex_num(writer_lives),
+          f"{relpath(LONGEVITY_MANIFEST_THREE)}: summary.writer_totals_all_lives.lives -- "
+          "9, not the pre-registered 12 (known fact 1)")
+    m.add("osdiSoakRecoveriesThree", tex_num(len(recoveries_rows)),
+          f"{relpath(LONGEVITY_RECOVERIES_THREE)}: row count, == summary.recoveries")
+    m.add("osdiSoakRecoveryMinSThree", f"{recovery_min_s:.3f}",
+          f"{relpath(LONGEVITY_RECOVERIES_THREE)}: min(recovery_s), the 8 designed "
+          "restart cycles")
+    m.add("osdiSoakRecoveryMaxSThree", f"{recovery_max_s:.3f}",
+          f"{relpath(LONGEVITY_RECOVERIES_THREE)}: max(recovery_s)")
+    m.add("osdiSoakDigestEqualThree", "true",
+          f"{relpath(LONGEVITY_MANIFEST_THREE)}: summary.digest_equal is the JSON literal "
+          "true, confirmed by the 19.6h end-of-run replay (known fact 4)")
+    m.add("osdiSoakBatchesThree", tex_num(total_batches),
+          f"{relpath(LONGEVITY_MANIFEST_THREE)}: summary.total_batches (the end-of-run "
+          "replay's own batch count)")
+    m.add("osdiSoakReplayCadenceThree", tex_num(replay_cadence),
+          f"{relpath(LONGEVITY_MANIFEST_THREE)}: config.replay_compact_every")
+    m.add("osdiSoakWriterWithinLifeSlopeMedianKBpsThree", f"{writer_median_kb:.3f}",
+          f"{relpath(LONGEVITY_RSS_SLOPES_THREE)}: median(writer_lives[*]."
+          "slope_kb_per_s_least_squares), 9 lives")
+    m.add("osdiSoakWriterWithinLifeSlopeMaxKBpsThree", f"{writer_max_kb:.3f}",
+          f"{relpath(LONGEVITY_RSS_SLOPES_THREE)}: max(writer_lives[*]."
+          "slope_kb_per_s_least_squares) (life 6)")
+    m.add("osdiSoakReaderWithinLifeSlopeMinKBpsThree", f"{reader_min_kb:.3f}",
+          f"{relpath(LONGEVITY_RSS_SLOPES_THREE)}: min(readers[*].slope_kb_per_s_least_squares), "
+          "8 readers (reader_restarts=0, one fitted segment each)")
+    m.add("osdiSoakReaderWithinLifeSlopeMaxKBpsThree", f"{reader_max_kb:.3f}",
+          f"{relpath(LONGEVITY_RSS_SLOPES_THREE)}: max(readers[*].slope_kb_per_s_least_squares)")
+    m.add("osdiSoakWriterErrorsTrueThree", tex_num(writer_errors_true),
+          f"{relpath(LONGEVITY_MANIFEST_THREE)}: summary.writer_totals_all_lives.errors")
+    m.add("osdiSoakReaderErrorsTrueThree", tex_num(reader_errors_true),
+          f"{relpath(LONGEVITY_READER_OP_ERROR_THREE)}: OSError + StateError totals, "
+          "cross-checked against manifest's own reader_errors_total")
+    m.add("osdiSoakReaderErrorsOSErrorThree", tex_num(reader_oserror),
+          f"{relpath(LONGEVITY_READER_OP_ERROR_THREE)}: sum(per_reader_totals_by_class[*]."
+          "OSError), 8 readers")
+    m.add("osdiSoakReaderErrorsStateErrorThree", tex_num(reader_stateerror),
+          f"{relpath(LONGEVITY_READER_OP_ERROR_THREE)}: sum(per_reader_totals_by_class[*]."
+          "StateError), 8 readers")
+    m.add("osdiSoakReaderReopensMinThree", tex_num(reopens_min),
+          f"{relpath(LONGEVITY_READER_OP_ERROR_THREE)}: min(reopens_per_reader[*]), "
+          "--reader-reopen-every-s=300 cycles completed per reader")
+    m.add("osdiSoakReaderReopensMaxThree", tex_num(reopens_max),
+          f"{relpath(LONGEVITY_READER_OP_ERROR_THREE)}: max(reopens_per_reader[*])")
+    m.add("osdiSoakReaderOpErrorEventsThree", tex_num(n_ledger_events),
+          f"{relpath(LONGEVITY_READER_OP_ERROR_THREE)}: n_ledger_reader_op_error_events -- "
+          "the D-088 bounded capture's first-onset ledger line count (17, not soak2's "
+          "strictly-one-per-reader pattern: reader 1 has 3 onset lines here)")
+    m.add("osdiSoakReaderErrorEpisodesThree", tex_num(true_episode_count),
+          f"{relpath(LONGEVITY_READER_OP_ERROR_THREE)}: sum(healed_at_next_reopen_evidence"
+          "[*].active_run_count), 16 (reader,class) combinations -- the reconstructed true "
+          "active/healed episode count, NOT the ledger's 17 first-onset events")
+    m.add("osdiSoakReaderErrorLongestHealedIntervalSThree", f"{longest_healed_s:.1f}",
+          f"{relpath(LONGEVITY_READER_OP_ERROR_THREE)}: max(healed_at_next_reopen_evidence"
+          "[*].healing_intervals[*].duration_s) over all 16 combinations (reader3_StateError)")
+    m.add("osdiSoakReaderOnsetEarliestRowsThree", tex_num(onset_earliest_rows),
+          f"{relpath(LONGEVITY_READER_ONSET_ROWS_THREE)}: earliest_reader_onset."
+          "last_compaction_before.edge_rows -- the last compaction before reader 1's "
+          "OSError onset_t_plus_s=65655.8s, reconciled via metrics.jsonl's "
+          "compactions_total counter (same method as soak2's reader_onset_rows-2.json, "
+          "generalized from 4 to 9 writer lives)")
+    m.add("osdiSoakReaderOnsetLatestRowsThree", tex_num(onset_latest_rows),
+          f"{relpath(LONGEVITY_READER_ONSET_ROWS_THREE)}: latest_reader_onset."
+          "last_compaction_before.edge_rows -- the last compaction before reader 2's "
+          "StateError onset_t_plus_s=94769.4s, same reconciliation method")
+    m.add("osdiSoakReaderOnsetEarliestSThree", f"{onset_earliest_s:.1f}",
+          f"{relpath(LONGEVITY_READER_ONSET_ROWS_THREE)}: earliest_reader_onset."
+          "onset_t_plus_s, s into the run (RUN_STARTED 2026-09-19T00:46:42Z) -- reader 1, "
+          "OSError, the minimum first-onset time across all 8 readers x 2 classes")
+    m.add("osdiSoakReaderOnsetLatestSThree", f"{onset_latest_s:.1f}",
+          f"{relpath(LONGEVITY_READER_ONSET_ROWS_THREE)}: latest_reader_onset.onset_t_plus_s, "
+          "s into the run -- reader 2, StateError, the maximum first-onset time")
+    m.add("osdiSoakThroughputStartThree", str(throughput_start),
+          f"{relpath(LONGEVITY_MANIFEST_THREE)}: summary.drift.throughput_first_hour_avg, "
+          "commits/s")
+    m.add("osdiSoakThroughputEndThree", str(throughput_end),
+          f"{relpath(LONGEVITY_MANIFEST_THREE)}: summary.drift.throughput_last_hour_avg, "
+          "commits/s")
+    m.add("osdiSoakThroughputFirstDayAvgThree", f"{first_day_avg:.3f}",
+          f"{relpath(LONGEVITY_THROUGHPUT_THREE)}: first_day_avg_commits_per_s (hours 0-23), "
+          "commits/s")
+    m.add("osdiSoakThroughputLastDayAvgThree", f"{last_day_avg:.3f}",
+          f"{relpath(LONGEVITY_THROUGHPUT_THREE)}: "
+          "last_day_avg_commits_per_s_soak_window (hours 48-71, the last 24h of the "
+          "pre-registered 72h window), commits/s")
+    m.add("osdiSoakThroughputLastOverFirstDayRatioThree", f"{ratio_last_over_first:.3f}",
+          f"{relpath(LONGEVITY_THROUGHPUT_THREE)}: ratio_last_over_first_soak_window, "
+          "recomputed here as last_day_avg / first_day_avg from this same file")
+    m.add("osdiSoakFullVerifyOverlapCountThree", tex_num(overlap_count),
+          f"{relpath(LONGEVITY_VERIFY_FULL_THREE)}: PROBLEMS count (believed-versions-"
+          "overlap class), 0 -- matching soak2's clean full-mode result")
+    m.add("osdiSoakFullVerifyGenerationThree", tex_num(verify_generation),
+          f"{relpath(LONGEVITY_VERIFY_FULL_THREE)}: generation, cross-checked against "
+          "the manifest's own summary.generation_final")
+    m.add("osdiSoakHostLoadMinThree", f"{host_load_min:.2f}",
+          f"{relpath(LONGEVITY_HOST_LOAD_THREE)}: min(1-min load averages), all 93 samples "
+          "(known fact 3: a co-tenant ran throughout this record's whole wall-clock window, "
+          "including the post-soak replay wind-down -- unlike P-STORM-HUNT's log, this "
+          "is not windowed to config.duration_s)")
+    m.add("osdiSoakHostLoadMaxThree", f"{host_load_max:.2f}",
+          f"{relpath(LONGEVITY_HOST_LOAD_THREE)}: max(1-min load averages), same (unwindowed) "
+          "93-sample set")
+
+    m.add_pending(
+        "osdiSoakWriterErrorsClassThree", "P-SOAK3 (Lane W2x)",
+        "README.md (h) states all writer errors are NotFoundError, cross-checked there against "
+        "longevity_ledger.jsonl's 854 writer_op_error lines and each "
+        "writer_progress-<life>.json's own errors field -- but neither a per-soak3 "
+        "ledger nor a writer_error_counts_by_{life,class}-3.json side-file is committed "
+        "to this repo (unlike P-SOAK2's writer_error_counts_by_life-2.json or "
+        "P-STORM-HUNT's writer_error_counts_by_class-stormhunt.json), so this lane has "
+        "no committed file to recompute the exception-class label from. "
+        "osdiSoakWriterErrorsTrueThree (854) is landed from the manifest directly.")
+
+
 # --------------------------------------------------------------------------
 # W-lane -- P-OV1, the xzgpu-calibrated overload sweep (EXP-B4):
 # does tgms.tools.limits.ConcurrencyGate engage once open-loop callers
@@ -6688,6 +7174,7 @@ def main() -> int:
     compute_longevity_soak_two(m)
     compute_longevity_verify_and_replay2(m)
     compute_longevity_soak_hunt(m)
+    compute_longevity_soak_three(m)
     compute_overload(m)
     compute_c10_live_osv(m)
     compute_ldbc_ref_v1(m)
