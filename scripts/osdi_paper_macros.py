@@ -682,6 +682,23 @@ LDBC_REF_V1_COMPARE = LDBC_REF_V1_DIR / "compare-2026-09-18.json"
 LDBC_REF_V1_COMPARE_INTERIM = LDBC_REF_V1_DIR / "compare-2026-09-17.json"
 LDBC_REF_V1_TGMS_CAMPAIGN = LDBC_REF_V1_DIR / "tgms-campaign-ldbc-ref-v1.json"
 
+# Lane W2z: eval.tex:120's "the store rebuild costs 12.8% more, in band" --
+# P-SF1's format-3 baseline store build (ldbc-sf1-campaign-fmt3-2026-09,
+# treatment a6b3e94) vs. P-SF1b's corrected characterization-interactive
+# rerun's own store build (ldbc-sf1-campaign-fmt3-interactive-2026-09,
+# treatment 54dcab0 -- same store-build flags, a fresh build because the
+# original P-SF1 store build predates the --csv bind fix). Both wall times
+# are prose-only in these READMEs (no JSON sidecar carries the store-build
+# wall clock), so this lane reads them the same way the module's other
+# README-prose macros do: whole-file sha256-checked below, then the exact
+# number pulled by a regex anchored on its own surrounding sentence.
+LDBC_FMT3_README = ROOT / "benchmarks" / "results-v1" / "ldbc-sf1-campaign-fmt3-2026-09.README.md"
+LDBC_FMT3_INTERACTIVE_README = (
+    ROOT / "benchmarks" / "results-v1" / "ldbc-sf1-campaign-fmt3-interactive-2026-09.README.md")
+LDBC_FMT3_README_SHA256 = "2868631a2d6e4dd1be6816e2138f0b18218a8f26e27af90457284abb0a695c7b"
+LDBC_FMT3_INTERACTIVE_README_SHA256 = (
+    "fd75776917dc49865e78998cc6e51c828a76394d9bd2bc653b96418be6fc8930")
+
 
 # --------------------------------------------------------------------------
 # verification helpers (copied from scripts/tgir_paper_macros.py)
@@ -3061,6 +3078,35 @@ def compute_c7_storm_v2(m: Macros) -> None:
     eq(all_top_term_total, 0, "storm-v2 main grid frozen: sum of "
        "summary.narrowing_coverage.n_all_top_term over all 36 cells")
 
+    # P4 ("avoided recomputation (wall clock) < the decision count", same
+    # per-cell check as compute_c7_storm_v1's p4_violations above, restated
+    # here for the v2 grid): clean_cells is counted directly from each
+    # cell's own summary.arms.tgms-L1 fields, never derived as
+    # len(rows) - a separately-counted violation total, so a record with a
+    # different violation count (or a different total cell count) cannot
+    # silently leave this macro at its old value.
+    p4_clean_cells = 0
+    p4_violation_cells: list[int] = []
+    for r in rows:
+        a = r["summary"]["arms"]["tgms-L1"]
+        if a["avoided_recompute_wall"] < a["avoided_recompute_decision"]:
+            p4_clean_cells += 1
+        else:
+            p4_violation_cells.append(r["_task_id"])
+    eq(p4_clean_cells + len(p4_violation_cells), len(rows),
+       "storm-v2 main grid: every cell is either P4-clean or a P4 violation, no double count")
+    eq(len(p4_violation_cells), 2, "storm-v2 main grid frozen: P4 violations (cells where "
+       "tgms-L1's avoided_recompute_wall is not < avoided_recompute_decision), of 36")
+    eq(p4_clean_cells, 34, "storm-v2 main grid frozen: P4-clean cells (wrong.tex row 12's "
+       "\"34 of StormV2Cells\"), of 36")
+    violation_configs = [
+        (r["config"]["store"], r["config"]["mix"], r["config"]["age"])
+        for r in rows if r["_task_id"] in p4_violation_cells]
+    violation_configs.sort(key=lambda cfg: (cfg[0], cfg[1], cfg[2] is None, cfg[2]))
+    eq(violation_configs, [("collegemsg", "c4", "deep"), ("collegemsg", "c4", None)],
+       "storm-v2 main grid frozen: the two P4-violation cells are collegemsg/c4 at both ages "
+       "(the fourth correction class, per wrong.tex's own prose)")
+
     c1_rows = [r for r in rows if r["config"]["mix"] == "c1"]
     eq(len(c1_rows), 12, "storm-v2 main grid: c1-mix cell count (2 stores x 2 ages x 3 seeds)")
     c1_avoided = [r["summary"]["arms"]["tgms-L1"]["avoided_recompute_decision"]
@@ -3201,6 +3247,12 @@ def compute_c7_storm_v2(m: Macros) -> None:
     m.add("osdiStormV2CellsFailed", len(failing_cells),
           f"{relpath(STORM_V2_MAIN_GRID_ROWS)}: cells recomputed to fail G-S1 or G-S2, of 36 "
           f"(== union of {relpath(STORM_V2_MAIN_GRID)}'s own gates.g_s{{1,2}}_failing_cells)")
+    m.add("osdiStormV2CleanCells", tex_num(p4_clean_cells),
+          f"{relpath(STORM_V2_MAIN_GRID_ROWS)}: cells (of osdiStormV2Cells==36) where "
+          "summary.arms.tgms-L1.avoided_recompute_wall < avoided_recompute_decision (P4), "
+          "counted directly from each cell's own per-cell status, not derived from "
+          "osdiStormV2Cells minus a separately-counted violation total -- wrong.tex row 12's "
+          "\"34 of StormV2Cells\"")
     m.add("osdiStormV2AllTopTerms", all_top_term_total,
           f"{relpath(STORM_V2_MAIN_GRID_ROWS)}: sum of summary.narrowing_coverage."
           "n_all_top_term over all 36 cells")
@@ -6620,6 +6672,74 @@ def compute_ldbc_ref_v1(m: Macros) -> None:
 
 
 # --------------------------------------------------------------------------
+# Lane W2z -- eval.tex:120's "the store rebuild costs 12.8% more, in band"
+# (the format-3 LDBC SF1 store-rebuild cost). Both READMEs are prose-only
+# records (no JSON sidecar carries the store-build wall clock); each is
+# whole-file sha256-checked before its own wall-time sentence is pulled
+# out by regex, and the percentage is recomputed from both wall times
+# rather than trusted from the interactive README's own typed "+12.8%".
+# --------------------------------------------------------------------------
+
+def compute_ldbc_format3_rebuild(m: Macros) -> None:
+    """The P-SF1 format-3 baseline store build (a6b3e94,
+    ldbc-sf1-campaign-fmt3-2026-09.README.md) vs. P-SF1b's corrected
+    characterization-interactive rerun's own fresh store build (54dcab0,
+    ldbc-sf1-campaign-fmt3-interactive-2026-09.README.md -- rerun because
+    P-SF1's original invocation predates the --csv bind fix, see that
+    README's own "The bug" section). Both store builds share the same
+    `scripts/build_snb_store.py` flags and input dataset; only the wall
+    clock differs. eval.tex:120 reports the increase as "12.8%, in
+    band" (the interactive README's own ±20% tolerance) -- recomputed
+    here from both wall times, not read off the interactive README's own
+    typed "+12.8%" string.
+    """
+    eq(sha256_file(LDBC_FMT3_README), LDBC_FMT3_README_SHA256,
+       f"{relpath(LDBC_FMT3_README)}: sha256 matches this lane's frozen value")
+    eq(sha256_file(LDBC_FMT3_INTERACTIVE_README), LDBC_FMT3_INTERACTIVE_README_SHA256,
+       f"{relpath(LDBC_FMT3_INTERACTIVE_README)}: sha256 matches this lane's frozen value")
+
+    base_text = LDBC_FMT3_README.read_text(encoding="utf-8")
+    inter_text = LDBC_FMT3_INTERACTIVE_README.read_text(encoding="utf-8")
+
+    base_match = re.search(r"Wall:\s*(\d+\.\d+)\s*s \(streaming", base_text)
+    require(base_match is not None,
+            f"{relpath(LDBC_FMT3_README)}: store-build 'Wall: <n> s (streaming' sentence found")
+    inter_match = re.search(r"Wall:\s*(\d+\.\d+)\s*s \(streaming", inter_text)
+    require(inter_match is not None,
+            f"{relpath(LDBC_FMT3_INTERACTIVE_README)}: store-build 'Wall: <n> s (streaming' "
+            "sentence found")
+    # cross-check: the interactive README also quotes both wall times and its
+    # own typed percentage in one sentence -- pulled independently so a typo
+    # in either README's number is caught by disagreement, not by trusting
+    # either copy alone.
+    quoted_match = re.search(
+        r"of the [\d.]+\s*s\)\s*—\s*\+([\d.]+)%\s*vs P-SF1's\s+([\d.]+)\s*s", inter_text)
+    require(quoted_match is not None,
+            f"{relpath(LDBC_FMT3_INTERACTIVE_README)}: '+<pct>% vs P-SF1's <n> s' sentence found")
+
+    base_wall = float(base_match.group(1))
+    inter_wall = float(inter_match.group(1))
+    eq(base_wall, 780.8, "LDBC format-3 rebuild frozen: P-SF1 baseline store-build wall, s")
+    eq(inter_wall, 881.0,
+       "LDBC format-3 rebuild frozen: P-SF1b rerun store-build wall, s")
+    eq(float(quoted_match.group(2)), base_wall,
+       f"{relpath(LDBC_FMT3_INTERACTIVE_README)}: its own quoted P-SF1 baseline wall matches "
+       f"{relpath(LDBC_FMT3_README)}'s own 'Wall:' sentence")
+
+    rebuild_pct = (inter_wall - base_wall) / base_wall * 100.0
+    close(rebuild_pct, float(quoted_match.group(1)), 0.05,
+          f"{relpath(LDBC_FMT3_INTERACTIVE_README)}: recomputed (881.0-780.8)/780.8*100 "
+          "matches its own quoted +12.8% figure")
+    close(rebuild_pct, 12.8, 0.05, "LDBC format-3 rebuild frozen: rebuild cost increase, %")
+
+    m.add("osdiLdbcFormatThreeRebuildPct", f"{rebuild_pct:.1f}",
+          f"({relpath(LDBC_FMT3_INTERACTIVE_README)}'s Wall - {relpath(LDBC_FMT3_README)}'s "
+          f"Wall) / {relpath(LDBC_FMT3_README)}'s Wall * 100 -- 881.0 s vs 780.8 s, both "
+          "store builds via scripts/build_snb_store.py with identical flags, eval.tex:120's "
+          "\"12.8% more, in band\"")
+
+
+# --------------------------------------------------------------------------
 # B7 -- scale campaign (Stage 0 iTiger calibration + Stage 1 30M)
 # --------------------------------------------------------------------------
 
@@ -7376,6 +7496,7 @@ def main() -> int:
     compute_overload(m)
     compute_c10_live_osv(m)
     compute_ldbc_ref_v1(m)
+    compute_ldbc_format3_rebuild(m)
     compute_b7_scale(m)
     add_pending_stubs(m)
 
