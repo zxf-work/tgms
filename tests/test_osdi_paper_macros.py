@@ -92,6 +92,7 @@ def _run_all_landed(mod):
     mod.compute_longevity_soak_two(m)
     mod.compute_longevity_verify_and_replay2(m)
     mod.compute_longevity_soak_hunt(m)
+    mod.compute_longevity_soak_three(m)
     mod.compute_overload(m)
     mod.compute_c10_live_osv(m)
     mod.compute_ldbc_ref_v1(m)
@@ -568,6 +569,46 @@ FROZEN_LANDED_VALUES = {
     "osdiLdbcInterimAgree": "14",
     "osdiLdbcInterimRowsAgreeing": "282",
     "osdiLdbcInterimRowsCompared": "329",
+    # Lane W2x: benchmarks/longevity-v1/, "Soak 3 (72 h)" -- compute_longevity_soak_three
+    # above. osdiSoakWriterErrorsClassThree is deliberately NOT here: it is the
+    # generator's one other PENDING stub (see
+    # test_full_macro_set_has_no_duplicate_names_and_covers_every_skeleton_claim).
+    "osdiSoakCommitThree": "9e21a83",
+    "osdiSoakHoursThree": "72",
+    "osdiSoakWallHoursThree": "92.05",
+    "osdiSoakWriterLivesThree": "9",
+    "osdiSoakRecoveriesThree": "8",
+    "osdiSoakRecoveryMinSThree": "25.667",
+    "osdiSoakRecoveryMaxSThree": "96.352",
+    "osdiSoakDigestEqualThree": "true",
+    "osdiSoakBatchesThree": "3{,}618{,}225",
+    "osdiSoakReplayCadenceThree": "5000",
+    "osdiSoakWriterWithinLifeSlopeMedianKBpsThree": "16.630",
+    "osdiSoakWriterWithinLifeSlopeMaxKBpsThree": "28.834",
+    "osdiSoakReaderWithinLifeSlopeMinKBpsThree": "4.271",
+    "osdiSoakReaderWithinLifeSlopeMaxKBpsThree": "4.796",
+    "osdiSoakWriterErrorsTrueThree": "854",
+    "osdiSoakReaderErrorsTrueThree": "2{,}203{,}551{,}806",
+    "osdiSoakReaderErrorsOSErrorThree": "2{,}202{,}621{,}096",
+    "osdiSoakReaderErrorsStateErrorThree": "930{,}710",
+    "osdiSoakReaderReopensMinThree": "777",
+    "osdiSoakReaderReopensMaxThree": "779",
+    "osdiSoakReaderOpErrorEventsThree": "17",
+    "osdiSoakReaderErrorEpisodesThree": "662",
+    "osdiSoakReaderErrorLongestHealedIntervalSThree": "37272.1",
+    "osdiSoakReaderOnsetEarliestRowsThree": "1{,}950{,}613",
+    "osdiSoakReaderOnsetLatestRowsThree": "2{,}356{,}519",
+    "osdiSoakReaderOnsetEarliestSThree": "65655.8",
+    "osdiSoakReaderOnsetLatestSThree": "94769.4",
+    "osdiSoakThroughputStartThree": "40.648",
+    "osdiSoakThroughputEndThree": "11.014",
+    "osdiSoakThroughputFirstDayAvgThree": "19.713",
+    "osdiSoakThroughputLastDayAvgThree": "12.952",
+    "osdiSoakThroughputLastOverFirstDayRatioThree": "0.657",
+    "osdiSoakFullVerifyOverlapCountThree": "0",
+    "osdiSoakFullVerifyGenerationThree": "3{,}624{,}668",
+    "osdiSoakHostLoadMinThree": "1.21",
+    "osdiSoakHostLoadMaxThree": "188.27",
 }
 
 
@@ -587,11 +628,14 @@ def test_frozen_macro_values_match_the_generator():
 def test_pending_macros_raise_a_latex_error_never_a_placeholder_number():
     """add_pending_stubs itself now carries no stubs of its own -- the 3
     LDBC (C9) stubs it used to hold have landed (compute_ldbc_ref_v1). The
-    one remaining PENDING macro in the whole generator,
-    osdiB7ScaleCurveP50ReachWindow100M, is added directly by
-    compute_b7_scale (see
-    test_b7_scale_100m_reach_window_p50_is_pending_with_its_estimate), not
-    by add_pending_stubs, so this function now emits nothing."""
+    two remaining PENDING macros in the whole generator,
+    osdiB7ScaleCurveP50ReachWindow100M and osdiSoakWriterErrorsClassThree,
+    are each added directly by their own compute_* function
+    (compute_b7_scale, see
+    test_b7_scale_100m_reach_window_p50_is_pending_with_its_estimate;
+    compute_longevity_soak_three, see
+    test_longevity_soak_three_writer_errors_class_is_pending), not by
+    add_pending_stubs, so this function now emits nothing."""
     mod = _load("osdi_paper_macros")
     m = mod.Macros()
     mod.add_pending_stubs(m)
@@ -604,11 +648,14 @@ def test_full_macro_set_has_no_duplicate_names_and_covers_every_skeleton_claim()
     mod.add_pending_stubs(m)
     names = [name for name, _, _ in m.items]
     assert len(names) == len(set(names)), "duplicate macro name"
-    # 1 B7 100M pending stub (osdiB7ScaleCurveP50ReachWindow100M, added by
-    # compute_b7_scale itself, already present in `m` via _run_all_landed
-    # before add_pending_stubs runs, which itself adds nothing now that the
-    # 3 LDBC (C9) stubs have landed as ordinary FROZEN_LANDED_VALUES entries)
-    assert len(names) == len(FROZEN_LANDED_VALUES) + 1
+    # 2 pending stubs, both added directly by their own compute_* function
+    # (already present in `m` via _run_all_landed before add_pending_stubs
+    # runs, which itself adds nothing now that the 3 LDBC (C9) stubs have
+    # landed as ordinary FROZEN_LANDED_VALUES entries): B7 100M's
+    # osdiB7ScaleCurveP50ReachWindow100M (compute_b7_scale) and P-SOAK3's
+    # osdiSoakWriterErrorsClassThree (compute_longevity_soak_three -- no
+    # committed per-soak3 writer-error-class side-file to recompute it from).
+    assert len(names) == len(FROZEN_LANDED_VALUES) + 2
 
 
 def test_cli_check_mode_agrees_with_committed_output(tmp_path):
@@ -2362,6 +2409,125 @@ def test_tampered_longevity_soak_hunt_digest_equal_false_fails_even_with_patched
     assert mod.FAILURES, "summary.digest_equal == False must fail the generator's own " \
         "require(... is True) check, even with a patched README sha256 table"
     assert any("digest_equal" in f for f in mod.FAILURES)
+
+
+def test_longevity_soak_three_reader_episode_reconstruction_matches_frozen():
+    """P-SOAK3's D-088 ledger records only 17 first-onset lines (Soak2's
+    monotonic-storm ledger convention), but the true reconstructed episode
+    count -- sum(active_run_count) over all 8 readers x 2 classes in
+    reader_op_error-3.json's healed_at_next_reopen_evidence -- is 662, one
+    to two orders of magnitude larger, and every combination healed at
+    least once. This must not be confused with reader_op_error-3.json's
+    own top-level total_episodes field, which (per that file's own method
+    field) is just a second name for the same 17 ledger-onset count, not
+    the reconstructed 662."""
+    mod = _load("osdi_paper_macros")
+    doc = json.loads(mod.LONGEVITY_READER_OP_ERROR_THREE.read_text(encoding="utf-8"))
+    assert doc["total_episodes"] == doc["n_ledger_reader_op_error_events"] == 17
+    true_episode_count = sum(
+        v["active_run_count"] for v in doc["healed_at_next_reopen_evidence"].values())
+    assert true_episode_count == 662
+    assert true_episode_count != doc["total_episodes"]
+
+    m = mod.Macros()
+    mod.compute_longevity_soak_three(m)
+    values = {name: value for name, value, _ in m.items}
+    assert values["osdiSoakReaderOpErrorEventsThree"] == "17"
+    assert values["osdiSoakReaderErrorEpisodesThree"] == "662"
+    assert values["osdiSoakReaderErrorLongestHealedIntervalSThree"] == "37272.1"
+
+
+def test_longevity_soak_three_writer_errors_class_is_pending():
+    """Unlike P-SOAK2 (writer_error_counts_by_life-2.json) and P-STORM-HUNT
+    (writer_error_counts_by_class-stormhunt.json), P-SOAK3 has no committed
+    per-life/per-class writer-error side-file, so the exception-class label
+    README.md (h) states (100% NotFoundError) cannot be recomputed here --
+    it must render as a PENDING \\errmessage, never a hard-coded guess, and
+    the landed writer-error total (854) must still land normally."""
+    mod = _load("osdi_paper_macros")
+    m = mod.Macros()
+    mod.compute_longevity_soak_three(m)
+    values = {name: value for name, value, _ in m.items}
+    assert values["osdiSoakWriterErrorsClassThree"].startswith("\\errmessage")
+    assert "PENDING" in values["osdiSoakWriterErrorsClassThree"]
+    assert values["osdiSoakWriterErrorsTrueThree"] == "854"
+
+
+def test_longevity_soak_three_text_macros_are_never_numbers():
+    """osdiSoakCommitThree ('9e21a83') and osdiSoakDigestEqualThree
+    ('true') must both render as literal text, same discipline as
+    P-SOAK2/P-STORM-HUNT's equivalents above."""
+    mod = _load("osdi_paper_macros")
+    m = mod.Macros()
+    mod.compute_longevity_soak_three(m)
+    values = {name: value for name, value, _ in m.items}
+    for name in ("osdiSoakCommitThree", "osdiSoakDigestEqualThree"):
+        with pytest.raises(ValueError):
+            float(values[name])
+    assert values["osdiSoakCommitThree"] == "9e21a83"
+    assert values["osdiSoakDigestEqualThree"] == "true"
+
+
+def test_tampered_longevity_manifest_three_sha256_mismatch_fails(tmp_path):
+    """longevity-synth-1m-native-2.json is in README.md's "Soak 3 (72 h)"
+    Files-added-here sha256 table -- an edited copy (even a field this
+    generator never reads) must fail before any commit/duration/error-count
+    figure is trusted."""
+    mod = _load("osdi_paper_macros")
+    data = json.loads(mod.LONGEVITY_MANIFEST_THREE.read_text(encoding="utf-8"))
+    data["summary"]["compactions"] = 999999
+    tampered = tmp_path / "longevity-synth-1m-native-2.json"
+    tampered.write_text(json.dumps(data), encoding="utf-8")
+
+    mod.LONGEVITY_MANIFEST_THREE = tampered
+    m = mod.Macros()
+    mod.compute_longevity_soak_three(m)
+    assert mod.FAILURES, "an edited longevity-synth-1m-native-2.json must fail the " \
+        "sha256 check against README.md's Soak 3 Files-added-here table"
+    assert any("sha256" in f.lower() for f in mod.FAILURES)
+
+
+def test_tampered_longevity_soak_three_digest_equal_false_fails_even_with_patched_digest(tmp_path):
+    """A manifest reporting digest_equal=False must fail the generator's
+    own require(... is True) check, even with a patched whole-file digest,
+    rather than silently emitting a wrong 'true' macro."""
+    mod = _load("osdi_paper_macros")
+    manifest = json.loads(mod.LONGEVITY_MANIFEST_THREE.read_text(encoding="utf-8"))
+    manifest["summary"]["digest_equal"] = False
+    tampered = tmp_path / "longevity-synth-1m-native-2.json"
+    tampered.write_text(json.dumps(manifest), encoding="utf-8")
+    mod.LONGEVITY_MANIFEST_THREE_SHA256 = hashlib.sha256(tampered.read_bytes()).hexdigest()
+
+    mod.LONGEVITY_MANIFEST_THREE = tampered
+    m = mod.Macros()
+    mod.compute_longevity_soak_three(m)
+    assert mod.FAILURES, "summary.digest_equal == False must fail the generator's own " \
+        "require(... is True) check, even with a patched whole-file digest"
+    assert any("digest_equal" in f for f in mod.FAILURES)
+
+
+def test_tampered_verify_full_three_overlap_finding_fails_even_with_patched_digest(tmp_path):
+    """verify-full-3.txt's clean, 0-overlap verdict is one of this record's
+    strong positive signals (alongside digest_equal) -- injecting a
+    fabricated PROBLEMS/believed-versions-overlap finding, with the
+    whole-file digest patched to match, must still fail the overlap-count
+    and no-overlap-text checks."""
+    mod = _load("osdi_paper_macros")
+    text = mod.LONGEVITY_VERIFY_FULL_THREE.read_text(encoding="utf-8")
+    tampered_text = text.replace(
+        "\nverdict: healthy",
+        "\nPROBLEMS (1):\n  - [row/believed-versions-overlap]: fabricated for this test"
+        "\n\nverdict: healthy")
+    tampered = tmp_path / "verify-full-3.txt"
+    tampered.write_text(tampered_text, encoding="utf-8")
+    mod.LONGEVITY_VERIFY_FULL_THREE_SHA256 = hashlib.sha256(tampered.read_bytes()).hexdigest()
+
+    mod.LONGEVITY_VERIFY_FULL_THREE = tampered
+    m = mod.Macros()
+    mod.compute_longevity_soak_three(m)
+    assert mod.FAILURES, "a fabricated believed-versions-overlap finding must fail, " \
+        "even with a patched whole-file digest"
+    assert any("PROBLEMS" in f or "believed-versions-overlap" in f for f in mod.FAILURES)
 
 
 def test_tampered_overload_rep1_sha256_not_in_sums_fails(tmp_path):
