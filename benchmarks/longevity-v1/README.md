@@ -993,3 +993,351 @@ is derived from it (method documented in the file) rather than copying it.
 - The end-of-run replay/digest step (476,813 batches) is unscored and,
   per the current harness design, could not be disabled for this
   observation-only run.
+
+## Soak 3 (72 h) (2026-09-19/22)
+
+**Pre-registration.** Same harness and store as P-SOAK2/P-STORM-HUNT
+(`stores/synth-1m-native`, `--mix balanced --readers 8
+--compact-every-batches 500 --compact-min-interval-s 5
+--reader-reopen-every-s 300 --artifacts 500 --seed 0 --max-disk-mb
+20000`), extended to `--duration 72h` with `--restart-every 6h` (12 writer
+lives pre-registered). Run directory on xzgpu:
+`/mnt/project/xzhang/tgms/longevity/2026-09-19-soak3` (kept read-only for
+this record step). Engine/harness commit `9e21a83`, engine built release
+(`build_info()`: `profile: release`, `debug_assertions: False`,
+`engine_version: 0.8.0`, `manifest_format_version: 3`), pinned worktree
+`/mnt/project/xzhang/tgms/work/tgms-xz-9e21a83` on xzgpu.
+
+- **launched**: 2026-09-19T00:46:42Z (run_started_epoch, `min` timestamp
+  over `metrics.jsonl`); **`RUN_DONE`**: `digest_equal=True
+  verify_healthy=True recoveries=8 reader_restarts=0
+  errors=2203552660` (`run.log`)
+- **wall clock**: 331,364.8 s per the manifest's own `summary.wall_s`
+  (includes the final `verify()`, the end-of-run replay/digest check, and
+  the full-mode `tgms check` this record adds below; the soak's own
+  metrics stop at 2026-09-22T00:46:06Z, 259,164.0 s ≈ 71h59m24s after
+  launch, matching the configured `duration_s=259200`)
+- **manifest**: `longevity-synth-1m-native-2.json` (pre-registered name
+  for this record; the harness's own output file on xzgpu is named
+  `longevity-synth-1m-native-0.json` — a fresh numbering the harness
+  started from for this run directory, not a soak-0 artifact), conforms
+  to `benchmarks/schema/result_manifest.schema.json`
+  (`.venv/bin/python scripts/check_result_manifest.py` — exit 0)
+- **manifest sha256**:
+  `e094fd5acbcb95e523f3f00fa544e634a531d3b3c991525422a6546981c2251a`
+  (verified byte-identical between xzgpu and this copy before commit)
+- **result_digest**: `a9441352a2f988b7dc227d6826a54429400889a91092382767484f72d5da3b3c`
+- `metrics.jsonl` (118 MB) and the store/replay-store copies stay on
+  xzgpu (`/mnt/project/xzhang/tgms/longevity/2026-09-19-soak3/`), per the
+  same PI ruling as soak1/soak2/stormhunt; this directory holds only the
+  manifest and small side-record files. `rss_slopes-3.json`,
+  `throughput-3.json`, `reader_op_error-3.json` and
+  `reader_onset_rows-3.json` are derived from it read-only (method
+  documented in each file), not copies of it.
+
+**Known facts, stated up front (not re-derived as findings below):**
+
+1. **Only 9 writer lives ran, not the pre-registered 12.** The harness
+   copy that actually ran predates the `gc_mid_delete` restart-arming fix
+   now on main (`3267725` / `7b5d6ba`, both after `9e21a83`) — a defect
+   in which `compact()` never called `gc()`, so the harness's own
+   designed-restart boundary for that scenario never fired. `recoveries.jsonl`
+   has exactly 8 designed writer deaths (returncodes alternating `-6`
+   /`137`), giving 9 lives: lives 4, 5 and 8 ran ~12 h each
+   (42,895.0-43,018.8 s), the other 6 ran ~6 h each (21,311.4-21,469.7 s).
+   This is a known harness-vintage limitation, not a store defect.
+2. **The compaction-stall row is NOT COMPUTABLE, not zero.** The
+   manifest's `summary.compaction_stall_max_reader_p99_ms` reads `0.0`.
+   Checked directly: none of `compactions.jsonl`'s 8,147 rows carry
+   `ts_start`/`ts_end` epoch fields — only `t_start`/`t_end`, whose values
+   (~3.09e7 s) match the host's own multi-hundred-day uptime
+   (`CLOCK_MONOTONIC`), not epoch time and not `time.perf_counter()`'s
+   per-process reference either. The D-091 fix that would add epoch
+   timestamps to this log is not present in the `9e21a83` build. Without
+   an epoch-comparable compaction window, this row cannot be computed
+   from these files at all; the `0.0` in the manifest is a default, not a
+   measurement, and must not be read as "no stalls observed."
+3. **A co-tenant ran on xzgpu throughout, and especially hard during
+   wind-down.** `host_load-3.log` (hourly 1-min load average, 93
+   samples, min 1.21 / max 188.27) shows user `jding` present alongside
+   `xzhang` the entire time, load ≈20-24 (1-min) through 2026-09-19 and
+   ≈10-20 on 09-20/21. During the post-soak replay
+   (2026-09-22 ~01:12-20:48Z) the host ran three `run_kuzu.py`
+   processes, a Neo4j JVM and two DyGFormer GPU trainings concurrently
+   with the replay, swap was fully used, and xzgpu's `sshd` was
+   unreachable from ~06:35Z onward (the replay process itself kept
+   running server-side and finished regardless — only remote access was
+   affected). **Every measurement below — RSS slopes, throughput,
+   reader-error timing — was made under shared, at times extreme, host
+   load, not a dedicated or idle host.**
+4. **The end-of-run replay (3,618,225 batches at `replay_compact_every`
+   5000) is a digest check, not a timing measurement.** It took ≈19.6 h
+   (2026-09-22 01:12Z→20:48Z); its rate fell from ≈11.9k to ≈1.2k
+   batches/min as each 5,000-batch compaction rewrote the growing replay
+   store (parent `write_bytes` reached 1.19 TB) under the co-tenant load
+   described above. `digest_equal=True` — the replay completed and
+   matched the live store's digest despite all of this.
+
+### (a) Writer within-life RSS slopes (`rss_slopes-3.json`)
+
+Ordinary least squares of `rss_kb` (gauge, writer, unlabeled series) vs.
+wall-clock seconds since each life's first sample, split at the 8
+recorded restart death timestamps in `recoveries-3.jsonl`:
+
+| life | duration | span (s) | rss first → last (kB) | slope (kB/s, OLS) |
+|---|---|---:|---|---:|
+| 0 | 6h | 21,391.0 | 2,150,016 → 2,748,648 | **24.867** |
+| 1 | 6h | 21,464.3 | 2,511,888 → 3,038,892 | **12.910** |
+| 2 | 6h | 21,402.3 | 3,161,176 → 3,925,844 | **17.098** |
+| 3 | 6h | 21,389.3 | 3,732,884 → 5,082,832 | **12.527** |
+| 4 | 12h | 43,018.8 | 4,612,452 → 5,752,196 | **11.768** |
+| 5 | 12h | 42,969.2 | 4,733,224 → 6,037,844 | **16.111** |
+| 6 | 6h | 21,332.3 | 5,159,892 → 7,021,092 | **28.834** |
+| 7 | 6h | 21,311.4 | 5,354,280 → 6,844,388 | **16.878** |
+| 8 (final, ran to `RUN_DONE`) | 12h | 42,895.0 | 6,149,324 → 8,208,448 | **16.630** |
+
+Median 16.630 kB/s; every life is well under the 50 kB/s frozen bound
+(max 28.834, life 6) — the same order-of-magnitude-fixed picture soak2
+first established, holding over 9 lives and up to 12 h each instead of 4
+lives of 6 h. **Matches the coordinator's independent fit** (24.9 / 12.9
+/ 17.1 / 12.5 / 11.8 / 16.1 / 28.8 / 16.9 / 16.6, median 16.6) to within
+rounding on all 9 lives — no disagreement.
+
+### (b) Reader RSS slopes, full 72 h run (`rss_slopes-3.json`)
+
+`reader_restarts=0`, so each reader is a single life, OLS over the full
+259,133.7-259,163.3 s span:
+
+| reader | rss first → last (kB) | slope (kB/s, OLS) |
+|---|---|---:|
+| 0 | 138,056 → 1,441,360 | 4.572 |
+| 1 | 138,308 → 1,330,864 | 4.271 |
+| 2 | 138,128 → 1,395,140 | 4.704 |
+| 3 | 138,192 → 1,712,864 | 4.633 |
+| 4 | 138,148 → 1,463,764 | 4.409 |
+| 5 | 138,348 → 1,473,728 | 4.786 |
+| 6 | 138,228 → 1,530,204 | 4.372 |
+| 7 | 138,048 → 1,488,940 | 4.796 |
+
+All 8 readers are well under the 10 kB/s frozen bound — better than
+soak2 (7.2-8.1 kB/s) and much better than stormhunt's failing 11.4-12.5
+kB/s. **Matches the coordinator's independent fit** (4.57/4.27/4.70/4.63/
+4.41/4.79/4.37/4.80 kB/s; first ≈138 MB, last 1.33-1.71 GB) to within
+rounding on all 8 readers — no disagreement.
+
+### (c) Reader deaths, unexpected recoveries
+
+Zero. `reader_restarts=0` and `reader_restarts_recorded=0` in the
+manifest; no reader ever died or was restarted. `unexpected_writer_deaths=0`
+— all 8 writer deaths in `recoveries-3.jsonl` are `"kind": "designed"`
+(the restart-arming cycle), recovery times 25.667 / 45.686 / 67.501 /
+49.925 / 64.023 / 77.665 / 86.796 / 96.352 s, increasing with store size
+across the run exactly as soak2 first observed. **Matches the
+coordinator's independent fit** (25.7/45.7/67.5/49.9/64.0/77.7/86.8/96.4 s)
+— no disagreement.
+
+### (d) `digest_equal`
+
+`True` (manifest `summary.digest_equal`), confirmed by the 19.6h
+end-of-run replay described in known fact 4 above.
+
+### (e) Full-mode `tgms check` of the final store (`verify-full-3.txt`)
+
+Run read-only against the live store as left by the writer at `RUN_DONE`
+(`/mnt/project/xzhang/tgms/longevity/2026-09-19-soak3/store`; not the
+throwaway replay store), from a fresh worktree
+`/mnt/project/xzhang/tgms/work/tgms-xz-b6cdde0` built off the
+`repo.git` mirror at current main (`b6cdde0` — `crates/` has changed
+since `9e21a83`, so the run's own `9e21a83` engine build could not be
+reused for this check; the extension was rebuilt with `cargo build
+--release -p tgms-engine-py`, `PYO3_PYTHON` pinned at
+`/mnt/project/xzhang/tgms/venv/bin/python3`, verified both `tgms.__file__`
+and `tgms._engine.__file__` resolve under the new worktree before
+running), `nice -n 19`, wall 1m13.6s:
+
+```
+store:      /mnt/project/xzhang/tgms/longevity/2026-09-19-soak3/store
+mode:       full
+generation: 3624668
+checked:    5 segments (4836692 rows), 0 close runs (0 closes), 5887903 dictionary records
+walked:     4836692 rows (4293685 believed) across 4117913 identities
+layout:     3808211 tt_s runs across live segments, 2684355 in the worst one
+
+verdict: healthy — every referenced file passed its checksums, every cross-reference resolved, and every bitemporal invariant held
+```
+
+**0 `believed-versions-overlap` findings — 0 findings of any kind**
+(`--json` form: `"findings": [], "problems": [], "healthy": true`),
+matching soak2's clean full-mode result and confirming `generation:
+3624668` against the manifest's own `summary.generation_final=3624668.0`.
+
+### (f) Writer throughput (`throughput-3.json`)
+
+`commits_per_s` gauge, hourly buckets = `floor((ts - run_started_epoch) /
+3600)`:
+
+| quantity | value |
+|---|---:|
+| manifest's own first-hour avg → last-hour avg | 40.648 → 11.014 commits/s |
+| this record's hour-0 avg → hour-71 avg (independently bucketed) | 40.736 → 11.014 (exact match at the tail; hour-0 differs by 0.2%, most likely a different hour-0 clock origin — the harness's own internal start reference vs. this record's `min(ts)` over all of `metrics.jsonl` — not a computation error) |
+| first-day avg (hours 0-23) | 19.713 commits/s |
+| last-day avg (hours 48-71, the last 24 h of the pre-registered 72 h soak window) | 12.952 commits/s |
+| **ratio, last day / first day** | **0.657** |
+
+Per-life first-hour average (commits/s): life0 40.736, life1 21.082,
+life2 17.249, life3 19.375, life4 18.836, life5 16.781, life6 15.382,
+life7 12.814, life8 12.679 — declining life-over-life as the store grows,
+consistent with the manifest's own drift figures. `throughput-3.json`
+also carries the full 72-hour `hourly_commits_per_s_avg` series and an
+`hourly_edge_row_count_avg` series so the throughput decline can be read
+against store growth directly: edge rows grew from ≈1.05M (hour 0) to
+≈4.05M (hour 71). `writer_progress-*.json` carries no edge-row field, so
+the edge-row series is reconciled from `compactions-3.jsonl`'s
+`compact.edge_rows` via `metrics.jsonl`'s `compactions_total` counter —
+the same per-life counter-to-line-number correspondence documented in
+`reader_onset_rows-3.json` (§ below), not a new method.
+
+### (g) D-088 reader error pattern (`reader_op_error-3.json`, `reader_onset_rows-3.json`)
+
+`longevity_ledger.jsonl` carries **17** `reader_op_error` lines (the
+D-088 bounded reader-error-message capture, armed throughout this run) —
+**not 16 as the coordinator's independent fit states**; every one of the
+17 lines is reproduced verbatim in `reader_op_error-3.json`. Per-reader
+totals by class (summed from each reader's own `error_details[].count`
+in `reader-<idx>-progress.json`) match the coordinator's fit exactly:
+
+| reader | OSError | StateError | total | ledger onset lines |
+|---|---:|---:|---:|---:|
+| 0 | 267,715,496 | 56,538 | 267,772,034 | 2 |
+| 1 | 323,141,508 | 120,950 | 323,262,458 | **3** |
+| 2 | 280,365,688 | 99,621 | 280,465,309 | 2 |
+| 3 | 283,866,604 | 154,965 | 284,021,569 | 2 |
+| 4 | 266,644,756 | 103,589 | 266,748,345 | 2 |
+| 5 | 231,967,960 | 120,778 | 232,088,738 | 2 |
+| 6 | 280,540,608 | 121,937 | 280,662,545 | 2 |
+| 7 | 268,378,476 | 152,332 | 268,530,808 | 2 |
+| **sum** | | | **2,203,551,806** | **17** |
+
+The sum matches `manifest.summary.reader_errors_total` exactly, and
+`2,203,551,806 + 854 writer errors + 0 unexpected recoveries =
+2,203,552,660` matches `manifest.summary.error_count` exactly.
+
+**Two corrections against the coordinator's fit, both in
+`reader_op_error-3.json`'s verbatim ledger dump:**
+
+1. **17 events, not 16** (reader 1 has 3 onset lines, not the 2 every
+   other reader has).
+2. **Not every message matches `.../seg/00…`.** 16 of the 17 do; the
+   17th (reader 1's third onset, `ts=1789962367.6888`, StateError, deep
+   into life 6) reads `io: No such file or directory (os error 2)
+   [file=.../store/native/close/` — a different file class (a *close
+   run* file, not a *segment* file). This is reader 1's only StateError
+   onset that is not the seg/00 pattern; it happens ~78,000s after
+   reader 1's first StateError onset (seg/00) and may be a distinct
+   underlying cause, not investigated further here.
+
+**Every episode counted by the ledger keeps erroring/every reopen fails
+to clear it — this is FALSE for soak3, unlike soak2.** The ledger only
+records the *first-ever* occurrence of a given (reader, class) signature
+(D-088's own design), so its 17-event, 2-3-per-reader count is not the
+number of times the condition actually fired. Reconstructing the true
+episode structure from `metrics.jsonl`'s `reader_errors_total` counter
+(summed across each reader's 4 per-query sub-counters, which are
+independent accumulators; a single flush occasionally lands at slightly
+different values per query, cross-checked and confirmed additive against
+each reader's final `errors` dict) shows a starkly different pattern from
+soak2's "storm is monotonic and does not self-heal": **every
+(reader, class) combination cycles repeatedly between short, extremely
+bursty active-error runs (up to hundreds of millions of `OSError`s
+accumulating in roughly a minute of rapid retries) and genuinely healed
+intervals lasting thousands to tens of thousands of seconds, in which the
+error counter is exactly flat while the reader's own `queries_total`
+counter keeps climbing at its normal, slow, real-query cadence** — cross-
+checked directly for reader 0's OSError class over its single largest
+healed interval (35,382.5 s, 1789873699→1789909082): `reader_errors_total`
+stays pinned at 8,804,476 for the entire window while `queries_total`
+climbs steadily from 298 to 406 (real completed query cycles), and the
+metrics-flush cadence stays regular (~66-70 s, matching `rss_kb`'s own
+steady sampling for the same reader) throughout — ruling out a metrics-
+reporting gap as the explanation. Counting these active/healed
+transitions directly gives, per (reader, class), 57-72 true error
+episodes (662 total across all 16 reader×class combinations) — one to
+two orders of magnitude more than the ledger's 17 first-onset events —
+with 43-91% of each combination's post-onset observation window spent in
+a healed state (`total_healed_time_s` in `reader_op_error-3.json`'s
+`healed_at_next_reopen_evidence`, per reader×class, alongside the full
+list of healing-interval start/end times). **`healed_at_next_reopen`:
+yes, for all 8 readers and both error classes, repeatedly** — a materially
+different answer from soak2's monotonic, never-healing storm for what is
+very likely the same underlying missing-segment defect. Root cause
+(what makes the condition clear and later recur, and whether the 6/12 h
+restart-arming cadence or the host contention in known fact 3 plays a
+role) is not established here.
+
+`reader_onset_rows-3.json` reconciles the earliest (reader 1, OSError,
+t+65,655.8s, life 3, edge_rows≈1,950,613-1,951,769) and latest (reader 2,
+StateError, t+94,769.4s, life 4, edge_rows≈2,356,519-2,357,267) first-ever
+onsets against `compactions-3.jsonl`, generalizing soak2's
+`compactions_total`-counter reconciliation from 4 to this run's 9 writer
+lives (confirmed exact: each life's final `compactions_total` sample
+matches that life's own compaction-log line count). As in soak2,
+`compactions.jsonl`'s own `t_start`/`t_end` cannot be used directly
+(known fact 2 above) — the reconciliation goes through the metrics
+counter, not the log's own clock.
+
+### (h) Writer errors by class
+
+854 total (`manifest.summary.writer_totals_all_lives.errors`), **100%
+`NotFoundError`** (`no believed node version of <id> overlaps vt`) —
+the same recurring correction-races-visibility-window pattern as every
+prior soak (249 in soak1, 616 in soak2, 175 in stormhunt), confirmed
+directly against `longevity_ledger.jsonl`'s 854 `writer_op_error` lines
+(all `error_type=NotFoundError`). Per life: 174 / 125 / 86 / 97 / 132 /
+90 / 62 / 36 / 52 (lives 0-8; sums to 854), from each
+`writer_progress-<life>.json`'s own `errors` field.
+
+### Files added here
+
+| file | sha256 |
+|---|---|
+| `longevity-synth-1m-native-2.json` | `e094fd5acbcb95e523f3f00fa544e634a531d3b3c991525422a6546981c2251a` |
+| `compactions-3.jsonl` | `9c66241d34b45c9b550b931fe78471e6789113338e163c3f4a7ba293e89a0bdf` |
+| `recoveries-3.jsonl` | `36032c9ad858150e0d914d98e6399b62124492238b8dd013a9c15c8f78b9329b` |
+| `host_load-3.log` | `93836026f0c88eb8733b746a1114d716ad463eb2b9e81898291d6be93419e02d` |
+| `verify-full-3.txt` | `6643bbda8fd0508c53715346b0a00796a733b8aa55326fe3275fa40f79e9c89b` |
+
+All five verified byte-identical (sha256) between xzgpu and this copy
+before commit. `rss_slopes-3.json`, `throughput-3.json`,
+`reader_op_error-3.json` and `reader_onset_rows-3.json` are derived
+locally from `metrics.jsonl` and the files above (no xzgpu twin to hash
+against — each file's own `method` field documents the full procedure,
+same convention as soak2's `reader_onset_rows-2.json`). `metrics.jsonl`
+(118 MB) and the store/replay-store copies stay on xzgpu, per the PI
+ruling reiterated at the top of this section.
+
+### Honest limits
+
+- One host, one storage stack, one seed. Only 9 of the pre-registered 12
+  writer lives ran (known fact 1); the pre-registration's own per-life
+  RSS-slope bound is still checked and passed on every life that did run,
+  but this is not the full 12-life design.
+- The compaction-stall row is not computable from this run's files
+  (known fact 2) — reported as such, not as a measured `0.0`.
+- Every measurement in this section was made under shared, sometimes
+  extreme, co-tenant host load (known fact 3), including during the
+  reader-error-onset window and the full 72 h RSS/throughput series. No
+  attempt is made here to separate host-contention effects from the
+  store's own behavior.
+- The intermittent-healing finding in (g) is new to this run and not
+  investigated for root cause: it is not established here whether it is
+  driven by the larger number of writer restarts (9 lives vs. soak2's 4),
+  the co-tenant host load (known fact 3), the larger store, or something
+  else.
+- `reader_op_error-3.json`'s `healed_at_next_reopen_evidence` uses a
+  300 s (one reopen interval) threshold to call a plateau a genuine heal;
+  shorter flat spans between individual metrics flushes are not counted
+  and are not claimed to be meaningful.
+- `reader_onset_rows-3.json`'s edge-row counts at the two reported onsets
+  carry the same bracketing-flush-interval ambiguity soak2's version
+  documented (up to 3 further compactions per onset cannot be ordered
+  against it from these files); see each onset's own `ambiguous_range`.
