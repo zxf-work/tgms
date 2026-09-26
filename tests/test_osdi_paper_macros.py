@@ -422,6 +422,16 @@ FROZEN_LANDED_VALUES = {
     "osdiLiveDays": "1.89",
     "osdiLiveAdvisories": "32{,}827",
     "osdiLiveCorrections": "1",
+    # W2aa: the remaining C10 (live OSV) figures the draft still typed --
+    # compute_c10_live_osv above.
+    "osdiLiveCycles": "38",
+    "osdiLiveRestarts": "0",
+    "osdiLiveFeedErrors": "0",
+    "osdiLiveNoopRevisions": "41",
+    "osdiLiveRecordsSeen": "95",
+    "osdiLiveRetractions": "1",
+    "osdiLiveNodes": "247{,}845",
+    "osdiLiveEdges": "497{,}522",
     "osdiB7BuildWall30M": "3786.004",
     "osdiB7PeakRSS30M": "59.31",
     "osdiB7VersionHistoryWall30M": "5.496",
@@ -431,6 +441,10 @@ FROZEN_LANDED_VALUES = {
     "osdiB7CheckFullWall30M": "98.673",
     "osdiB7Recovery30M": "14{,}618.6",
     "osdiB7RecoveryCe5000At30M": "2656.9",
+    # W2aa: the 30M recovery ratios the draft typed as "5.3x" and "5.5
+    # times" -- compute_b7_scale above.
+    "osdiB7RecoveryBoundRatioAt30M": "5.3",
+    "osdiB7RecoveryCadenceRatioAt30M": "5.5",
     "osdiB7ScaleCurveP50HistSingle30M": "0.977",
     "osdiB7ScaleCurveP50HistAsof30M": "0.98",
     "osdiB7ScaleCurveP50SnapHop230M": "1531.519",
@@ -467,6 +481,9 @@ FROZEN_LANDED_VALUES = {
     "osdiB7CheckFullWall100M": "336.353",
     "osdiB7RecoveryCe5000At100M": "22{,}717.7",
     "osdiB7Recovery100M": "22{,}717.7",
+    # W2aa: the 100M recovery miss the draft typed as "a 5% miss" --
+    # compute_b7_scale above.
+    "osdiB7RecoveryCe5000MissPctAt100M": "5",
     "osdiB7ScaleCurveP50HistSingle100M": "12.965",
     "osdiB7ScaleCurveP50HistAsof100M": "12.998",
     "osdiB7ScaleCurveP50PathsK100M": "20.164",
@@ -529,6 +546,9 @@ FROZEN_LANDED_VALUES = {
     "osdiSoakEdgeRowsHunt": "1{,}402{,}818",
     "osdiSoakHostLoadMinHunt": "10.79",
     "osdiSoakHostLoadMaxHunt": "48.95",
+    # W2aa: the P-STORM-HUNT host's core count the draft typed as "40
+    # cores" -- compute_longevity_soak_hunt above.
+    "osdiSoakHostCoresHunt": "40",
     "osdiSoakHuntPatternReproduced": "false",
     # Lane W-lane: P-OV1, the xzgpu-calibrated overload sweep -- compute_overload above.
     "osdiOverloadCommit": "ebe1dc2",
