@@ -5214,6 +5214,9 @@ def compute_longevity_soak_hunt(m: Macros) -> None:
     manifest = json.loads(LONGEVITY_MANIFEST_HUNT.read_text(encoding="utf-8"))
     summary = manifest["summary"]
     eq(manifest["git_commit"], "57952fa", "StormHunt frozen: measured commit")
+    eq(manifest["machine"]["host"], "xzgpu", "StormHunt frozen: machine.host")
+    host_cores_hunt = manifest["machine"]["cpus"]
+    eq(host_cores_hunt, 40, "StormHunt frozen: machine.cpus (eval.tex's \"40 cores\")")
     config = manifest["config"]
     duration_s = config["duration_s"]
     eq(duration_s, 21_600.0, "StormHunt frozen: configured soak duration_s (6h)")
@@ -5459,6 +5462,8 @@ def compute_longevity_soak_hunt(m: Macros) -> None:
     m.add("osdiSoakHostLoadMaxHunt", f"{host_load_max:.2f}",
           f"{relpath(LONGEVITY_HOST_LOAD_HUNT)}: max(1-min load averages), same window "
           "(excludes the one post-run verify/replay-step sample)")
+    m.add("osdiSoakHostCoresHunt", tex_num(host_cores_hunt),
+          f"{relpath(LONGEVITY_MANIFEST_HUNT)}: machine.cpus (machine.host == \"xzgpu\")")
     m.add("osdiSoakHuntPatternReproduced", "false",
           f"README.md P-STORM-HUNT section, quoted verbatim (its own clause (e) wording): "
           f"\"{outcome_text}\" -- the P-SOAK2 reader OSError/StateError storm "
@@ -6298,6 +6303,22 @@ def compute_c10_live_osv(m: Macros) -> None:
     eq(recomputed["events_appended"], 989, "C10 frozen: total events_appended")
     eq(recomputed["feed_errors"], 0, "C10 frozen: total feed_errors (clean run, no restarts)")
 
+    # --- poller identity: cycle count and restart count, cross-checked
+    # against the raw row count rather than trusted from the manifest's
+    # own pre-aggregated poller block alone ---
+    poller = live["poller"]
+    eq(poller["cycles_completed"], len(cycles),
+       f"{relpath(LIVE_OSV_SNAPSHOT)}: live_osv.poller.cycles_completed matches "
+       "len(cycles_raw)")
+    eq(poller["cycles_completed"], 38, "C10 frozen: poller.cycles_completed")
+    eq(poller["restart_count"], 0, "C10 frozen: poller.restart_count (one continuous life)")
+
+    # --- store identity at snapshot time: node/edge counts, a distinct
+    # field from every corrections/advisories count above ---
+    store_identity = live["store_identity_at_snapshot"]
+    eq(store_identity["nodes"], 247_845, "C10 frozen: store_identity_at_snapshot.nodes")
+    eq(store_identity["edges"], 497_522, "C10 frozen: store_identity_at_snapshot.edges")
+
     # --- advisories: bootstrap + live delta must equal the live total ---
     advisories = live["advisories"]
     eq(advisories["bootstrap"], 32787, "C10 frozen: bootstrap advisory count")
@@ -6359,6 +6380,31 @@ def compute_c10_live_osv(m: Macros) -> None:
     m.add("osdiLiveCorrections", tex_num(corrections["corrections_written"]),
           f"{relpath(LIVE_OSV_SNAPSHOT)}: live_osv.corrections.corrections_written, "
           "recomputed as sum(cycles_raw[*].corrections_written)")
+    m.add("osdiLiveCycles", tex_num(poller["cycles_completed"]),
+          f"{relpath(LIVE_OSV_SNAPSHOT)}: live_osv.poller.cycles_completed, cross-checked "
+          "against len(cycles_raw) (eval.tex's \"38 hourly poller cycles\")")
+    m.add("osdiLiveRestarts", tex_num(poller["restart_count"]),
+          f"{relpath(LIVE_OSV_SNAPSHOT)}: live_osv.poller.restart_count "
+          "(eval.tex's \"0 restarts\")")
+    m.add("osdiLiveFeedErrors", tex_num(corrections["feed_errors"]),
+          f"{relpath(LIVE_OSV_SNAPSHOT)}: live_osv.corrections.feed_errors, recomputed as "
+          "sum(cycles_raw[*].feed_errors) (eval.tex's \"0 feed errors\")")
+    m.add("osdiLiveNoopRevisions", tex_num(corrections["noop_revisions"]),
+          f"{relpath(LIVE_OSV_SNAPSHOT)}: live_osv.corrections.noop_revisions, recomputed as "
+          "sum(cycles_raw[*].noop_revisions) (eval.tex's \"41 no-op revisions\")")
+    m.add("osdiLiveRecordsSeen", tex_num(corrections["records_seen"]),
+          f"{relpath(LIVE_OSV_SNAPSHOT)}: live_osv.corrections.records_seen, recomputed as "
+          "sum(cycles_raw[*].records_seen) (eval.tex's \"95 records seen\", the denominator)")
+    m.add("osdiLiveRetractions", tex_num(corrections["retractions"]),
+          f"{relpath(LIVE_OSV_SNAPSHOT)}: live_osv.corrections.retractions, recomputed as "
+          "sum(cycles_raw[*].retractions) (eval.tex's \"one retraction\"; numerically equal "
+          "to osdiLiveCorrections in this snapshot but a distinct record field)")
+    m.add("osdiLiveNodes", tex_num(store_identity["nodes"]),
+          f"{relpath(LIVE_OSV_SNAPSHOT)}: live_osv.store_identity_at_snapshot.nodes "
+          "(eval.tex's \"247,845 nodes\")")
+    m.add("osdiLiveEdges", tex_num(store_identity["edges"]),
+          f"{relpath(LIVE_OSV_SNAPSHOT)}: live_osv.store_identity_at_snapshot.edges "
+          "(eval.tex's \"497,522 edges\")")
 
 
 # --------------------------------------------------------------------------
@@ -6874,6 +6920,27 @@ def compute_b7_scale(m: Macros) -> None:
     recovery_5000_s = round(rec5000["replay_wall_s"], 1)
     eq(recovery_5000_s, 2656.9, "B7 frozen: 30M recovery wall_s, cadence 5000 (Addendum 6)")
 
+    # --- recovery ratios: cadence-500 wall vs its own frozen 46-minute upper
+    # bound (wrong.tex's "$5.3\times$ its bar"), and cadence-500 wall vs
+    # cadence-5000 wall on the same 30M store (eval.tex's "5.5 times less
+    # wall") -- both recomputed from replay_wall_s and cross-checked against
+    # the record's own verdict-string wording, never taken from that prose
+    # alone ---
+    bound_500_upper_min = rec500["band_min"][1]
+    eq(bound_500_upper_min, 46,
+       f"{relpath(B7_RECOVERY_30M)}: band_min[1], the cadence-500 upper bound, minutes")
+    require(f"{bound_500_upper_min}-minute upper bound" in rec500["verdict"],
+            f"{relpath(B7_RECOVERY_30M)}: verdict names the same 46-minute upper bound")
+    recovery_bound_ratio_30m = round(rec500["replay_wall_s"] / (bound_500_upper_min * 60), 1)
+    eq(recovery_bound_ratio_30m, 5.3,
+       "B7 frozen: 30M recovery wall_s / (cadence-500 band_min upper bound * 60s)")
+
+    recovery_cadence_ratio_30m = round(rec500["replay_wall_s"] / rec5000["replay_wall_s"], 1)
+    eq(recovery_cadence_ratio_30m, 5.5,
+       "B7 frozen: 30M recovery wall_s ratio, cadence 500 / cadence 5000 (Addendum 6)")
+    require("5.5x less wall" in rec5000["verdict"],
+            f"{relpath(B7_RECOVERY_30M_CE5000)}: verdict names the same ~5.5x figure")
+
     # --- version_history: clean (job 213175) run, wall/RSS medians
     # recomputed from the 3 reps, not trusted from the record's own
     # pre-aggregated *_median fields ---
@@ -7035,6 +7102,14 @@ def compute_b7_scale(m: Macros) -> None:
           "(Addendum 6 cadence-isolation run, compact_every=5000); "
           "digest_compare.digest_equal true; does not supersede osdiB7Recovery30M "
           "(both stand, per the campaign's non-overwrite discipline)")
+    m.add("osdiB7RecoveryBoundRatioAt30M", tex_float(recovery_bound_ratio_30m),
+          f"{relpath(B7_RECOVERY_30M)}: replay_wall_s / (band_min[1] * 60s), rounded 1dp -- "
+          "the cadence-500 recovery's own multiple of its frozen 46-minute upper bound "
+          "(eval.tex's \"$5.3\\times$ its bar\")")
+    m.add("osdiB7RecoveryCadenceRatioAt30M", tex_float(recovery_cadence_ratio_30m),
+          f"{relpath(B7_RECOVERY_30M)}/{relpath(B7_RECOVERY_30M_CE5000)}: replay_wall_s "
+          "ratio, cadence 500 / cadence 5000, rounded 1dp, same 30M store and digest "
+          "(\"5.5 times less wall for ten times fewer compactions\")")
     for op_id, frag in B7_SCALE_CURVE_OPS.items():
         val = p50_by_op[op_id]
         m.add(f"osdiB7ScaleCurveP50{frag}30M", tex_float(val),
@@ -7242,6 +7317,23 @@ def compute_b7_scale(m: Macros) -> None:
     recovery100_5000_s = round(rec100_5000["replay_wall_s"], 1)
     eq(recovery100_5000_s, 22717.7, "B7 frozen: 100M recovery wall_s, cadence 5000")
 
+    # --- miss ratio: how far the 100M cadence-5000 wall exceeds its own
+    # frozen 6h upper bound (eval.tex's "a 5% miss rather than a
+    # refutation") -- recomputed from band_h and replay_wall_s, cross-
+    # checked against the record's own verdict-string wording ---
+    bound_100_upper_h = rec100_5000["band_h"][1]
+    eq(bound_100_upper_h, 6.0,
+       f"{relpath(B7_RECOVERY_100M_CE5000)}: band_h[1], the cadence-5000 upper bound, hours")
+    require("exceeds the 6h upper bound" in rec100_5000["verdict"],
+            f"{relpath(B7_RECOVERY_100M_CE5000)}: verdict names the same 6h upper bound")
+    recovery100_miss_pct = round(
+        (rec100_5000["replay_wall_s"] / (bound_100_upper_h * 3600) - 1) * 100, 1)
+    eq(recovery100_miss_pct, 5.2,
+       "B7 frozen: 100M recovery wall_s / (cadence-5000 band_h upper bound * 3600s) - 1, %")
+    recovery100_miss_pct_rounded = round(recovery100_miss_pct)
+    eq(recovery100_miss_pct_rounded, 5,
+       "B7 frozen: 100M recovery miss, rounded to the nearest percent (eval.tex's \"5%\")")
+
     # --- version_history: single run (3 reps), medians recomputed ---
     sr_vh100 = vh100["single_run"]
     eq(sr_vh100["job_id"], "213191", f"{relpath(B7_VERSION_HISTORY_100M)}: single_run.job_id")
@@ -7339,6 +7431,11 @@ def compute_b7_scale(m: Macros) -> None:
     m.add("osdiB7RecoveryCe5000At100M", tex_float(recovery100_5000_s),
           f"{relpath(B7_RECOVERY_100M_CE5000)}: replay_wall_s, rounded 1dp, seconds "
           "(compact_every=5000, job 213192); digest_compare.digest_equal true")
+    m.add("osdiB7RecoveryCe5000MissPctAt100M", tex_num(recovery100_miss_pct_rounded),
+          f"{relpath(B7_RECOVERY_100M_CE5000)}: replay_wall_s / (band_h[1] * 3600s) - 1, "
+          f"%, rounded to the nearest percent ({recovery100_miss_pct:.1f}% before rounding) "
+          "-- the 100M cadence-5000 control's own miss against its 6h upper bound "
+          "(eval.tex's \"a 5% miss rather than a refutation\")")
     m.add("osdiB7Recovery100M", tex_float(recovery100_5000_s),
           f"ALIAS of osdiB7RecoveryCe5000At100M -- {relpath(B7_RECOVERY_100M_CE5000)}'s "
           "own protocol_note states there is no cadence-500 100M run (Addendum 6 "
