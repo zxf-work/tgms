@@ -23,8 +23,8 @@ record path):
      false-safe cells + extra visits per seed      (C7, partial)
   8. R-18 probe crossover, N=10,000 c1 seed 0:
      per-batch check/lookup/global cost + ttf p50;
-     the N=1,000 point is a PENDING annotation
-     until the main grid lands                     (C7, partial)
+     the N=1,000 point now reads its speedup from
+     the landed 36/36 main correction-load grid    (C7, partial)
   9. corruption-detection matrix: class x mutation
      detection rate, pre vs post A10                (C2)
  10. overhead ladder: per rung, per plan/op medians
@@ -90,6 +90,10 @@ DAG_V1 = STORM_V1 / "storm-campaign-dag-2026-09.json"
 DAG_V2 = STORM_V1 / "storm-campaign-dag-v2-2026-09.json"
 DAG_V3 = STORM_V1 / "storm-campaign-dag-v3-2026-09.json"
 R18_PROBE_ROWS = STORM_V1 / "storm-r18-probe-2026-09-rows.jsonl"
+# the now-complete 36/36 main correction-load grid (see
+# scripts/osdi_paper_macros.py's compute_c7_storm_v1, osdiStormV1SpeedupN1kSeed0)
+# -- read here for the N=1,000 point f8's title used to wait on.
+STORM_V1_MAIN_GRID_ROWS = STORM_V1 / "storm-v1-main-grid-2026-09-15-rows.jsonl"
 
 CORRUPTION_PRE = ROOT / "benchmarks" / "corruption-v1" / "eval-corruption-campaign-2026-09-14.json"
 CORRUPTION_POST = (ROOT / "benchmarks" / "corruption-v1"
@@ -704,6 +708,31 @@ def build_r18_crossover_data() -> dict:
     ttf_l1_s = [r["arms"]["tgms-L1"]["ttf_ms"] / 1000 for r in rows]
     ttf_global_s = [r["arms"]["global-recompute"]["ttf_ms"] / 1000 for r in rows]
 
+    # N=1,000's own c1 seed-0 point: the main correction-load grid is now
+    # complete (36/36 cells, storm-v1-main-grid-2026-09-15{,-rows.jsonl}),
+    # so this reads the same (store=synth-iv-60k, mix=c1, age=None, seed=0)
+    # cell scripts/osdi_paper_macros.py's compute_c7_storm_v1 lands as
+    # osdiStormV1SpeedupN1kSeed0, computed the same way here: the ratio of
+    # that cell's own summary.arms.{global-recompute,tgms-L1}.ttf_p50_ms.
+    main_grid_rows = load_jsonl(STORM_V1_MAIN_GRID_ROWS)
+    n1000_target = [r for r in main_grid_rows if r["config"]["store"] == "synth-iv-60k"
+                    and r["config"]["mix"] == "c1" and r["config"]["age"] is None
+                    and r["config"]["seed"] == 0]
+    if len(n1000_target) == 1 and n1000_target[0]["config"]["n_artifacts"] == 1000:
+        arms = n1000_target[0]["summary"]["arms"]
+        n1000_ttf_global_s = arms["global-recompute"]["ttf_p50_ms"] / 1000
+        n1000_ttf_l1_s = arms["tgms-L1"]["ttf_p50_ms"] / 1000
+        n1000_speedup = n1000_ttf_global_s / n1000_ttf_l1_s
+        n1000_status = "measured"
+    else:
+        # honest fallback: the record's own shape no longer matches what
+        # this figure expects (e.g. more/fewer than one matching cell, or
+        # a different n_artifacts) -- report that from the record's own
+        # fields, never a typed placeholder string.
+        n1000_ttf_global_s = n1000_ttf_l1_s = n1000_speedup = None
+        n1000_status = (f"unresolved: {len(n1000_target)} matching cells in "
+                         f"{STORM_V1_MAIN_GRID_ROWS.name} (expected 1 at n_artifacts=1000)")
+
     return {
         "batches": batches,
         "check_s_l1": check_s_l1,
@@ -713,10 +742,10 @@ def build_r18_crossover_data() -> dict:
         "ttf_global_s": ttf_global_s,
         "ttf_l1_p50_s": statistics.median(ttf_l1_s),
         "ttf_global_p50_s": statistics.median(ttf_global_s),
-        # N=1,000's own c1 seed-0 point is not a merged main-grid record on
-        # main yet (only in README.md's R-18 section prose table); left as
-        # a PENDING annotation, never a number pulled from that prose.
-        "n1000_pending": True,
+        "n1000_ttf_global_s": n1000_ttf_global_s,
+        "n1000_ttf_l1_s": n1000_ttf_l1_s,
+        "n1000_speedup": n1000_speedup,
+        "n1000_status": n1000_status,
     }
 
 
@@ -729,7 +758,12 @@ def write_r18_crossover_csv(data: dict) -> str:
                                             data["ttf_l1_s"], data["ttf_global_s"])]
     rows.append(["p50", "", "", "", round(data["ttf_l1_p50_s"], 3),
                  round(data["ttf_global_p50_s"], 3)])
-    rows.append(["N=1000 c1 seed0", "PENDING", "PENDING", "PENDING", "PENDING", "PENDING"])
+    if data["n1000_speedup"] is not None:
+        rows.append(["N=1000 c1 seed0", "", "", "",
+                     round(data["n1000_ttf_l1_s"], 3), round(data["n1000_ttf_global_s"], 3)])
+    else:
+        rows.append(["N=1000 c1 seed0", data["n1000_status"], data["n1000_status"],
+                     data["n1000_status"], data["n1000_status"], data["n1000_status"]])
     return write_csv(OUT_DIR / "f8_r18_crossover.csv", header, rows)
 
 
@@ -762,7 +796,11 @@ def plot_r18_crossover(data: dict) -> None:
         ax.set_xticklabels(["global-recompute", "tgms-L1"])
         ax.set_ylabel("time-to-fresh p50, s")
         ratio = data["ttf_global_p50_s"] / data["ttf_l1_p50_s"]
-        ax.set_title(f"N=10,000: speedup {ratio:.2f}x\nN=1,000: PENDING (main grid 12/36)")
+        if data["n1000_speedup"] is not None:
+            n1000_line = f"N=1,000: speedup {data['n1000_speedup']:.2f}x (main grid 36/36)"
+        else:
+            n1000_line = f"N=1,000: {data['n1000_status']}"
+        ax.set_title(f"N=10,000: speedup {ratio:.2f}x\n{n1000_line}")
 
         fig.tight_layout()
         _savefig(fig, OUT_DIR / "f8_r18_crossover")
