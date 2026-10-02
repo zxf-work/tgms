@@ -4,15 +4,15 @@ version = "0.1.0"
 edition = "2021"
 publish = false
 description = """
-P-EXT2 differential-dataflow IVM configuration for the TGMS external-baseline
-campaign (docs/design/EXTERNAL_BASELINES_DESIGN_2026-10-02.md §3). Consumes
-one lane-X1 exported storm-v2 cell, maintains one dataflow per registered
-artifact family (13 families; `iterate` for temporal_reachability), applies
-each burst's corrections as retraction+re-insertion at valid time, and
-measures per-burst refresh wall + output digests for the C1 checker.
+Differential-dataflow incremental view maintenance configuration for the
+TGMS external-baseline comparison. Consumes one exported storm-v2 cell,
+maintains one dataflow per registered artifact family (13 families;
+`iterate` for temporal_reachability), applies each burst's corrections as
+retraction + re-insertion at valid time, and measures per-burst refresh
+wall time and output digests for the oracle checker.
 """
 
-# Deliberately its own workspace root (memo §3.1): this crate must never be
+# Deliberately its own workspace root: this crate must never be
 # pulled into the repo's top-level `[workspace]`
 # (crates/tgms-engine-core, crates/tgms-engine-py) -- an empty workspace
 # table here is what stops `cargo` from trying.

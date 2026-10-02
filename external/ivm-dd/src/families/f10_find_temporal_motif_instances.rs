@@ -1,12 +1,40 @@
 //! F10 `find_temporal_motif_instances`, motif `M_2node_pingpong`
-//! (`ops_motifs.find_temporal_motif_instances`). Routed Global.
+//! (`ops_motifs.find_temporal_motif_instances`). `compute` is the
+//! whole-window reference; the maintained dataflow (`views.rs`) keeps, per
+//! (artifact, endpoint pair), that pair's first `offset + limit` instances
+//! and its instance count, and merges them per artifact with
+//! `payload_from_window`.
 
-use super::motif_common::{events_in_window, pingpong_triples, Event};
+use super::motif_common::{events_in_window, pingpong_triples, Event, Inst, MEv};
 use crate::model::VersionRow;
 use serde_json::{json, Value};
 
-fn edge_json(e: &Event) -> Value {
+fn edge_json(e: &MEv) -> Value {
     json!({"src": e.src, "dst": e.dst, "t": e.t, "eid": e.eid, "rel_type": e.rel_type})
+}
+
+fn owned(e: &Event) -> MEv {
+    MEv {
+        t: e.t,
+        eid: e.eid.to_string(),
+        src: e.src.to_string(),
+        dst: e.dst.to_string(),
+        rel_type: e.rel_type.to_string(),
+    }
+}
+
+pub fn inst_of(events: &[Event], (a, b, c): (usize, usize, usize)) -> Inst {
+    Inst { a: owned(&events[a]), b: owned(&events[b]), c: owned(&events[c]) }
+}
+
+pub fn inst_json(i: &Inst) -> Value {
+    json!({"edges": [edge_json(&i.a), edge_json(&i.b), edge_json(&i.c)]})
+}
+
+/// The paginated payload from the instances at sorted positions
+/// `[offset, offset + limit)` and the total instance count.
+pub fn payload_from_window(window: &[Inst], total: usize, offset: usize) -> Value {
+    crate::families::paginate_window(window.iter().map(inst_json).collect(), total, offset)
 }
 
 pub fn compute(args: &Value, edges: &[VersionRow]) -> Value {
@@ -22,16 +50,8 @@ pub fn compute(args: &Value, edges: &[VersionRow]) -> Value {
 
     let as_of = crate::families::args_as_of_tt(args);
     let events = events_in_window(edges, t_a, t_b, as_of, &node_filter);
-    let mut triples = pingpong_triples(&events, delta);
-    triples.sort_by(|&(a1, b1, c1), &(a2, b2, c2)| {
-        let key = |a: usize, b: usize, c: usize| {
-            (events[a].t, events[a].eid, events[b].t, events[b].eid, events[c].t, events[c].eid)
-        };
-        key(a1, b1, c1).cmp(&key(a2, b2, c2))
-    });
-    let rows: Vec<Value> = triples
-        .iter()
-        .map(|&(a, b, c)| json!({"edges": [edge_json(&events[a]), edge_json(&events[b]), edge_json(&events[c])]}))
-        .collect();
+    let mut insts: Vec<Inst> = pingpong_triples(&events, delta).into_iter().map(|t| inst_of(&events, t)).collect();
+    insts.sort();
+    let rows: Vec<Value> = insts.iter().map(inst_json).collect();
     crate::families::paginate(&rows, limit, cursor.as_deref())
 }

@@ -1,7 +1,6 @@
-//! The 37th cell -- withheld correction (memo §3.5; pre-registration P-EXT2
-//! (c)). Base cell `synth-iv-60k/c4/deep/seed0`, batch 10's changelog
-//! delivered one interval late (together with batch 11). Two feeder
-//! configurations:
+//! The withheld-correction cell: the campaign's 37th cell. Base cell
+//! `synth-iv-60k/c4/deep/seed0`, batch 10's changelog delivered one
+//! interval late (together with batch 11). Two feeder configurations:
 //!   - **F-epoch**: the input frontier advances on the interval clock
 //!     regardless of whether burst 10's data has arrived -- at R10 the
 //!     probe reports complete through epoch 10 even though it is not.
@@ -9,16 +8,18 @@
 //!     transaction time not yet delivered -- at R10 the probe correctly
 //!     reports "complete only through 9".
 //!
-//! **Implementation note (deviation, flagged):** this module does not
-//! stand up a second timely/differential-dataflow pipeline. "What does the
-//! maintained view report at read point R" is, for every family in this
-//! crate's design, exactly `dataflow::compute_payload_pub(family, args,
-//! nodes, edges)` over whichever rows have been *delivered* by R (F11
-//! substitutes `families::f11_temporal_reachability::fixpoint_arrivals`,
-//! the same fixpoint the DD `iterate` converges to) -- the real dataflow's
-//! `reduce` closures call that same function on that same row set, so this
-//! is not an approximation of the maintained view, it is the maintained
-//! view's own formula evaluated directly. What a second DD pipeline would
+//! **Implementation note (deviation, recorded in the result's
+//! `deviations`):** this module does not stand up a second
+//! timely/differential-dataflow pipeline. "What does the maintained view
+//! report at read point R" is evaluated as
+//! `dataflow::compute_payload_pub(family, args, nodes, edges)` -- each
+//! family's whole-store reference -- over whichever rows have been
+//! *delivered* by R (F11 via `fixpoint_arrivals`, the least fixpoint the
+//! dataflow's `iterate` computes). The maintained dataflow's output equals
+//! that reference at every epoch under insertions and retractions
+//! (`tests/maintained_tests.rs`, 1,620 randomized comparisons over all 12
+//! data-reading families, plus the fixture's oracle check), so this is the
+//! maintained view's value at R, not an approximation. What a second DD pipeline would
 //! add is incrementality, which this check does not need: it is a single
 //! read at a single instant under two delivery schedules, not a wall-clock
 //! measurement (that is what `dataflow::run` on the ordinary 37-cell path
@@ -26,7 +27,7 @@
 //!
 //! What this module *does* need, and provides honestly: the frontier
 //! semantics that distinguish F-epoch from F-watermark, and the "was any
-//! signal available" question (memo: "none is expected: say so in the
+//! signal available" question ("none is expected: say so in the
 //! output rather than inventing one" -- `signalled` below is hard-coded
 //! `false` under F-epoch for exactly that reason; it is a `bool`, not a
 //! guess).
@@ -47,10 +48,10 @@ pub struct ArtifactAtR10 {
 pub struct FeederResult {
     pub feeder: &'static str,
     /// Whether the probe would report "complete through epoch 10" at R10
-    /// under this feeder (memo: F-epoch yes, F-watermark no).
+    /// under this feeder (F-epoch yes, F-watermark no).
     pub probe_reports_complete_through_10: bool,
     /// Whether any staleness *signal* was available to a reader at R10
-    /// beyond the probe's own complete/incomplete report (memo: none is
+    /// beyond the probe's own complete/incomplete report (none is
     /// expected under either feeder -- this crate has no separate
     /// watermark-signal channel distinct from the probe itself).
     pub signalled: bool,
@@ -146,7 +147,7 @@ pub fn run_withheld_check(bundle: &CellBundle, epoch0: &[VersionRow], updates: &
             let served_digest = crate::digest::sha256_hex(&canon);
             let oracle_digest = oracle10.get(name).cloned().flatten();
             // False-fresh *only* makes sense when the probe claims
-            // completeness (memo: "IVM false-fresh = artifacts whose
+            // completeness ("IVM false-fresh = artifacts whose
             // served value != oracle while the probe reports complete
             // through 10"). Under F-watermark the probe does not claim
             // completeness, so nothing here is scored false-fresh even

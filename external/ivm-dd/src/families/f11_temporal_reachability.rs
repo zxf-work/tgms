@@ -1,18 +1,13 @@
 //! F11 `temporal_reachability`, `direction="out"`, `delta_max_wait=null`
-//! ("no wait bound", memo table) in every grid registration
+//! ("no wait bound") in every grid registration
 //! (`ops_paths.temporal_reachability`).
 //!
-//! The memo names this the one family needing DD's `iterate`
-//! (§3.3); `dataflow.rs`'s module doc records why this crate does not
-//! currently do that -- a genuine `iterate`-based dataflow was built and
-//! failed to re-derive correctly after a pure retraction on
-//! `tests/fixtures/tiny1`, a bug this session could not root-cause in the
-//! time remaining. `fixpoint_arrivals` below (a plain-Rust label-
-//! correcting fixpoint, `ops_paths.py`'s own vectorized version without
-//! `delta_max_wait`) is therefore what `dataflow.rs` actually calls, fresh
-//! on every change, via the ordinary Global route+reduce path -- correct,
-//! not incremental at the sub-artifact level the memo intends.
-//! `format_payload` is the row/pagination formatting shared by this path.
+//! `fixpoint_arrivals` (a plain-Rust label-correcting fixpoint,
+//! `ops_paths.py`'s own vectorized version without `delta_max_wait`) is the
+//! reference. The maintained dataflow (`views.rs`) computes the same
+//! least fixpoint with differential dataflow's `iterate`, and formats it
+//! with `format_sorted`; `tests/maintained_tests.rs` pins the two against
+//! each other under insertions and retractions.
 
 use crate::model::{VersionRow, OPEN_END};
 use serde_json::{json, Value};
@@ -65,8 +60,14 @@ pub fn fixpoint_arrivals(
 }
 
 pub fn format_payload(arr: &HashMap<String, i64>, limit: usize, cursor: Option<&str>) -> Value {
-    let mut rows: Vec<(i64, &String)> = arr.iter().map(|(u, &a)| (a, u)).collect();
+    let mut rows: Vec<(i64, &str)> = arr.iter().map(|(u, &a)| (a, u.as_str())).collect();
     rows.sort();
+    format_sorted(&rows, limit, cursor)
+}
+
+/// Payload from `(earliest_arrival, uid)` rows already sorted ascending
+/// (the source itself excluded).
+pub fn format_sorted(rows: &[(i64, &str)], limit: usize, cursor: Option<&str>) -> Value {
     let json_rows: Vec<Value> = rows
         .iter()
         .map(|(a, u)| json!({"uid": u, "earliest_arrival": a}))

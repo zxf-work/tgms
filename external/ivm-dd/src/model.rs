@@ -1,5 +1,5 @@
-//! Bitemporal version row, mirroring `tgms/core/model.py` (spec §1) and the
-//! lane-X1 export bundle's `versions-epoch0.jsonl` / `deltas.jsonl` row shape
+//! Bitemporal version row, mirroring `tgms/core/model.py` and the export
+//! bundle's `versions-epoch0.jsonl` / `deltas.jsonl` row shape
 //! (`scripts/export_storm_workload.py::_version_table`).
 //!
 //! All timestamps are int64 epoch microseconds, UTC. `OPEN_END` is the open

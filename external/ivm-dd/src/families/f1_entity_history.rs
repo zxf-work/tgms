@@ -1,7 +1,7 @@
-//! F1 `entity_history` (`ops_snapshot.entity_history`). Routed by `uid`
-//! (memo table: "params keyed by uid ⋈ nodes_by_uid, ⋈ edges_by_src ∪
-//! edges_by_dst ... reduce per artifact: order by (vt_s, vid), first 100,
-//! totals").
+//! F1 `entity_history` (`ops_snapshot.entity_history`). Takes the uid's own
+//! node versions and its incident edges (params keyed by uid ⋈
+//! `nodes_by_uid`, ⋈ `edges_by_src` ∪ `edges_by_dst`, self-loops once);
+//! orders by (vt_s, vid), first `limit`, totals.
 
 use crate::families::{args_as_of_tt, args_cursor, args_limit, paginate};
 use crate::model::VersionRow;

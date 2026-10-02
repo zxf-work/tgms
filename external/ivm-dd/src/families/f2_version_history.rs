@@ -1,8 +1,8 @@
 //! F2 `version_history` (`ops_versions.version_history`), node kind only in
-//! every grid registration (memo table). Routed by `kind` -- a whole
-//! population scan filtered by window/belief inside this function (memo
-//! §3.2's bucket routing would prune by window; this crate routes coarser,
-//! see README "Routing").
+//! every grid registration. The maintained dataflow (`views.rs`) hands this
+//! function only the versions of the artifact's kind that its valid-time
+//! band join matched (overlapping the window, `tt_s <= as_of`); the
+//! window/belief filters here are exact.
 
 use crate::families::{args_as_of_tt, args_cursor, args_limit, paginate};
 use crate::model::{VersionRow, OPEN_END};

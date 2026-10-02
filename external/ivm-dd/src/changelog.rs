@@ -1,4 +1,4 @@
-//! Changelog encoding (memo §3.1): a version row is inserted (+1) at the
+//! Changelog encoding: a version row is inserted (+1) at the
 //! epoch of its `tt_s` and retracted (−1) at the epoch whose transaction
 //! closed it (`tt_e`); a correction is exactly retraction of the superseded
 //! believed version(s) + insertion of the corrected ones at their valid
@@ -19,7 +19,7 @@ use crate::model::{VersionRow, OPEN_END};
 use std::collections::HashMap;
 
 /// One closed version's valid-time span, for the `retracted_vt_span`
-/// covariate (memo A6: "the retracted version's valid interval"). `None`
+/// covariate (the retracted version's valid interval). `None`
 /// when the believed version's valid-time end was itself still open
 /// (`vt_e == OPEN_END`) -- reported as open, never summed as a number.
 #[derive(Clone, Copy, Debug)]
@@ -111,9 +111,9 @@ pub fn build(bundle: &CellBundle) -> Changelog {
 
 impl EpochUpdate {
     /// Sum of closed spans that are not open-ended, plus the count of
-    /// open-ended ones -- the honest aggregate the record reports (memo
-    /// A6's covariate is "the span of history the retractions touch";
-    /// summing an open span as a number would silently understate it).
+    /// open-ended ones -- the aggregate the record reports (the covariate
+    /// is the span of history the retractions touch; summing an open span
+    /// as a number would understate it).
     pub fn retracted_vt_span_summary(&self) -> (i64, usize, usize) {
         let mut sum = 0i64;
         let mut n_finite = 0usize;

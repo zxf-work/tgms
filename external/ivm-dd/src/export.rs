@@ -1,7 +1,6 @@
-//! Loader for one lane-X1 exported cell bundle
-//! (`scripts/export_storm_workload.py`; memo §1.3, as actually implemented
-//! -- see the module-level NOTE in that script for where the memo's
-//! description of the bundle did not survive contact with the repo).
+//! Loader for one exported cell bundle, as written by
+//! `scripts/export_storm_workload.py` (see the module-level NOTE in that
+//! script for the bundle's exact contents).
 //!
 //! Bundle layout, per `<export-root>/<cell_id>/`:
 //!   `versions-epoch0.jsonl`   one `VersionRow` per line (epoch-0 state)

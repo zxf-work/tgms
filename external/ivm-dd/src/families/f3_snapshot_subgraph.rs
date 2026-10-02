@@ -1,7 +1,9 @@
 //! F3 `snapshot_subgraph`, hops=1, single seed in every grid registration
-//! (`ops_snapshot.snapshot_subgraph`). Routed Global (see
-//! `families::mod`'s note on why -- needs a neighbour's own node row, not
-//! just the edge to it).
+//! (`ops_snapshot.snapshot_subgraph`). The maintained dataflow (`views.rs`)
+//! hands this function the node versions of the candidate set (seeds plus
+//! every endpoint of an incident edge valid at `t_valid`, one join per hop)
+//! and the edges among that set valid at `t_valid`; the BFS here is exact
+//! over that superset.
 
 use crate::model::VersionRow;
 use serde_json::{json, Value};

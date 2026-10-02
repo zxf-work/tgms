@@ -1,17 +1,34 @@
-# ivm-dd — differential-dataflow IVM configuration (P-EXT2)
+# ivm-dd — incremental view maintenance of TGMS artifacts with differential dataflow
 
-Implements `docs/design/EXTERNAL_BASELINES_DESIGN_2026-10-02.md` **§3** ("P-EXT2 —
-incremental view maintenance with differential dataflow") for the TGMS
-external-baseline campaign, per the pre-registration in
-`docs/design/OSDI27_AUDIT_AND_PLAN_2026-09-13.md` §4.3b (P-EXT2 / Addendum
-EXT-A). Also implements §1's export-format consumption (the lane-X1 bundle,
-as actually produced by `scripts/export_storm_workload.py`), §4.1's per-burst
-quantities, and §3.5's withheld-correction check.
+**What it consumes.** One exported storm-v2 cell, as written by
+`scripts/export_storm_workload.py`: the epoch-0 version table
+(`versions-epoch0.jsonl`), the registered artifacts (`artifacts.jsonl`,
+`{name, op, args}`), one line of corrections per burst (`deltas.jsonl`:
+closed and inserted versions), TGMS's own result digest for every artifact
+at every epoch (`oracle.jsonl`) and the manifest (`export-manifest.json`).
+`src/export.rs` documents the exact bundle shape.
 
-**Crate location.** This task placed the crate at `external/ivm-dd/`. The
-memo's own §3.1 says `benchmarks/external-v1/ivm-dd/`. That is a real
-discrepancy between the two documents this crate was built against — reported
-here and in the lane report, not silently resolved either way.
+**What it emits.** For each burst k: `refresh_ms` (push the burst's
+retractions and insertions, then maintain every view until the probe has
+passed epoch k), `publish_ms` (hash the changed payloads), the artifacts
+whose output changed, `retracted_vt_span`, and each changed artifact's
+payload digest — the canonical-JSON sha256 that TGMS's `result_digest`
+computes, so every value is checked against the oracle. `ivm-dd run`
+writes this as `result.json` + `run.log` (`src/record.rs`).
+
+**What it is for.** It is the incremental-view-maintenance configuration
+in TGMS's external comparison: the same event log consumed as a
+changelog, corrections applied as retraction plus re-insertion at their
+valid time, every artifact family a maintained dataflow, "fresh" meaning
+the view has absorbed the burst. Its per-burst numbers are what the
+campaign's pre-registered predictions for this comparison are scored on;
+which families are maintained incrementally, and what each update
+re-evaluates, is stated below so that the scope of the "genuine IVM" claim
+can be read off this file ("Family → dataflow" and "What is recomputed per
+update").
+
+The crate lives at `external/ivm-dd/` (the campaign design placed it at
+`benchmarks/external-v1/ivm-dd/`; the result records name the path used).
 
 ## Versions
 
@@ -22,206 +39,243 @@ here and in the lane report, not silently resolved either way.
   committed `Cargo.lock`
 - `serde`/`serde_json` 1.x, `sha2` 0.10, `clap` 4.x
 
-## Build (on xzgpu; never on the laptop — see "Where this ran")
+## Build (on xzgpu)
 
 ```sh
 cd external/ivm-dd
 cargo build --release
 ```
 
-This crate declares its own empty `[workspace]` in `Cargo.toml` specifically
-so `cargo build` from the repo root never tries to pull it into
-`crates/tgms-engine-core`/`crates/tgms-engine-py`'s workspace (memo §3.1).
+The crate declares its own empty `[workspace]` so `cargo` never pulls it
+into the repository's engine workspace (`crates/tgms-engine-core`,
+`crates/tgms-engine-py`).
 
 ## CLI
 
 ```sh
 ivm-dd run <cell-dir> --out <out-dir>        # full per-burst run; writes result.json + run.log
-ivm-dd shape-test <cell-dir>                 # epoch-0 digest vs oracle.jsonl, every family
-ivm-dd withheld <cell-dir> --out <out-dir>   # the 37th-cell F-epoch/F-watermark check (needs >=11 batches)
+ivm-dd shape-test <cell-dir>                 # epoch-0 digest vs oracle.jsonl, every artifact
+ivm-dd withheld <cell-dir> --out <out-dir>   # the withheld-correction check (needs >= 11 bursts)
 ```
-
-`<cell-dir>` is one lane-X1 exported cell directory (`versions-epoch0.jsonl`,
-`artifacts.jsonl`, `deltas.jsonl`, `oracle.jsonl`, `export-manifest.json` —
-see `src/export.rs`'s doc comment for the exact bundle shape as
-`scripts/export_storm_workload.py` actually produces it, which differs in a
-few particulars from memo §1.3's description; `src/export.rs` follows the
-real script).
 
 ## Architecture
 
 - `src/model.rs` — the bitemporal `VersionRow` (mirrors
   `tgms.core.model.NodeVersion`/`EdgeVersion`).
-- `src/digest.rs` — canonical-JSON + sha256, independently reimplemented to
-  match `tgms.core.model.canonical_json`/`digest` and
-  `tgms.temporal.algebra._canonicalize_floats` byte-for-byte (pinned in
-  `tests/digest_tests.rs` against literal values computed by the real Python
-  on the laptop). The Python side of the same contract lives at
-  `external/neo4j-recompute/neo4j_recompute/canon.py` (lane N1); the two are
-  independent implementations that must agree, not a shared module — Rust and
-  Python can't share code here, only the contract.
-- `src/changelog.rs` — memo §3.1's changelog encoding: a version is inserted
-  (+1) at the epoch of its `tt_s`, retracted (−1) at the epoch whose
-  transaction closed it. Replays the export bundle's `deltas.jsonl` forward
-  through its own live table to recover the exact old row a `closed` entry
-  needs retracted, and computes the `retracted_vt_span` covariate (memo A6).
-- `src/dataflow.rs` — the maintained dataflow: one timely worker (memo §3.4),
-  built with `differential-dataflow` 0.25.1's actual API (`Collection::reduce`/
-  `join_map`/`consolidate`/`arrange_by_key`, all inherent methods — no
-  separate trait imports needed in this version). See its module doc for the
-  routing scheme and every deviation from the memo, in detail.
-- `src/families/*.rs` — the 13 registered operator families as pure payload
-  functions (`tgms/temporal/ops_*.py`'s logic reimplemented in Rust), each
-  unit-tested directly and cross-checked end to end against real TGMS oracle
-  digests via `tests/fixtures/tiny1/`.
-- `src/withheld.rs` — the 37th-cell withheld-correction check (memo §3.5).
+- `src/digest.rs` — canonical JSON + sha256, reimplemented to match
+  `tgms.core.model.canonical_json`/`digest` and
+  `tgms.temporal.algebra._canonicalize_floats` byte for byte (pinned in
+  `tests/digest_tests.rs` against values computed by the Python code).
+- `src/changelog.rs` — the changelog encoding: a version is inserted (+1)
+  at the epoch of its `tt_s` and retracted (−1) at the epoch whose
+  transaction closed it. A closed version stays in the collection as a
+  historical row (the open row is retracted and re-inserted with its
+  finite `tt_e`), which is what `version_history`/`entity_history` report.
+  Every operator that reads "the current graph" therefore filters
+  `believed_at(as_of)` itself.
+- `src/views.rs` — **the maintained dataflows**, one per family, with the
+  artifacts as data (a static `params` collection inserted at epoch 0),
+  and the valid-time bucketing.
+- `src/dataflow.rs` — the driver: one timely worker (the scored
+  configuration), the input sessions, per-burst push / advance / step until
+  the probe passes the epoch, `inspect`-captured output changes, timing.
+  Also `compute_payload_pub`, each family's whole-store reference.
+- `src/families/*.rs` — the 13 operator families' payload logic
+  (`tgms/temporal/ops_*.py` reimplemented): each family's `compute` is the
+  whole-store reference, and the payload assembly helpers
+  (`payload_from_counts`, `payload_from_items`, `payload_from_paths`, …)
+  are shared by the reference and the maintained dataflow, so the two
+  cannot drift apart in formatting.
+- `src/withheld.rs` — the withheld-correction check (F-epoch and
+  F-watermark feeders).
 - `src/record.rs` — `result.json`/`run.log` writer.
 
-## Family → dataflow table, as implemented (vs. memo §3.3)
+## Valid-time routing
 
-| F | family | memo's design | as implemented | deviation |
-|---|---|---|---|---|
-| F1 | entity_history | join params⋈nodes_by_uid⋈edges; reduce per artifact | Uid route; reduce calls `f1_entity_history::compute` | none (matches) |
-| F2 | version_history | interval routing⋈params; filter; reduce | Kind route (`k:node`/`k:edge`); reduce filters window/belief inside the closure | routing coarser (whole-kind scan, not window-bucketed) |
-| F3 | snapshot_subgraph | params by seed⋈incident edges⋈nodes; reduce | **Global** route; reduce does the 1-hop BFS over the full snapshot | routing coarser — F3 needs a neighbour's own node row (different uid than the seed), which a flat uid route can't see without a second dependent join |
-| F4 | diff_snapshots | instant routing at t1/t2; reduce | Global route; reduce computes both snapshots + diff | none beyond routing (memo's own registered instances are all `scope: null`, i.e. already whole-graph) |
-| F5 | neighborhood_evolution | params by uid⋈incident edges; reduce | Uid route; reduce calls `f5_neighborhood_evolution::compute` | none (matches) |
-| F6 | aggregate_events | event routing⋈params; count; reduce | Global route; reduce groups+counts | routing coarser |
-| F7 | graph_metric_timeseries | event routing⋈params; count; reduce | Global route; reduce buckets+counts | routing coarser |
-| F8 | burst_detection | params by uid⋈incident edges; reduce | Uid route; reduce computes the z-score series | none (matches) |
-| F9 | count_temporal_motifs | event routing⋈params ⇒ per-(art,pair); reduce per pair; map+count | Global route; reduce does a direct O(events³)-worst-case (art,pair) scan inline (`families::motif_common`) | not per-(art,pair) keyed in DD — one (larger) reduce per artifact instead; **flagged for the memo's own Opus review of F9–F12** |
-| F10 | find_temporal_motif_instances | as F9 + per-pair top-k merge | Global route; same inline scan, global sort+paginate | same as F9 |
-| F11 | temporal_reachability | **`iterate`**: arrivals⋈edges_by_src; `reduce(min)`; seed `concat` | Global route; reduce calls `fixpoint_arrivals` (plain-Rust label-correcting fixpoint) fresh every time | **does not use `iterate`** — see "F11: the iterate finding" below. This is the one departure from both the memo *and* this task's explicit instruction; reported, not silently patched. |
-| F12 | temporal_paths | four unrolled hop-joins; reduce: count, top-k | Global route; reduce runs a plain-Rust bounded DFS (`families::f12_temporal_paths::dfs_paths`), then sorts+caps top-k | not expressed as four static DD joins; **flagged for Opus review**, same reasoning as F9/F10 |
-| F13 | compute (∅-scope control) | trivial, never changes | seeded once directly into `state` at epoch 0, outside the join/reduce machinery entirely (`RouteKind::None`) | none — matches "trivial" exactly |
+B = 256 equal buckets over the store's epoch-0 valid-time extent
+`[lo, hi)` (smallest `vt_s` to the largest finite end), plus one overflow
+bucket for everything at or past `hi` — open-ended intervals and
+corrections placed past the extent land there. The extent is recorded in
+`result.json` (`config.routing.valid_time_extent`). Bucketing is only an
+index: every bucket join is followed by the exact predicate.
 
-**Routing, overall (deviation from memo §3.2, flagged):** the memo's
-256-bucket valid-time routing bounds how many *artifacts* a single changed
-version can fan out to, at 60k-edge scale. This crate routes by natural key
-instead — a version fans out to its own node uid(s) (`"u:<uid>"`), a kind
-bucket (`"k:node"`/`"k:edge"`), or a global bucket (`"g:all"`) — which is
-correct (every artifact's route key is guaranteed to receive every row it
-needs) but coarser for the families that are whole-population scans anyway
-(F2, F3, F4, F6, F7, F9, F10, F11, F12). This is a scalability simplification
-made under this session's time constraints, not a correctness one; it is the
-first thing to revisit if a real cell's per-burst wall at scale disagrees
-badly with the estimate below.
+- **Event families** (F6, F7, F9, F10): an edge event is routed to the
+  bucket of its `vt_s` (one copy); an artifact registers in every bucket
+  its window `[t_a, t_b)` covers. A changed event reaches only the
+  artifacts whose windows cover its bucket.
+- **Interval family** (F2): a version is arranged by its start bucket
+  (`iv_start`) and by every further bucket it covers (`iv_cont`); the
+  artifact's window by every bucket it covers and by its start bucket. The
+  band join is two joins — version start bucket inside the window's
+  buckets, or window start bucket strictly inside the version's later
+  buckets — so each overlapping (version, artifact) pair is emitted
+  exactly once, at the later of the two start buckets. Only a compact
+  reference (vid, valid and transaction times) is routed; the full row is
+  fetched by `vid` for matched pairs only.
+- **Instant family** (F4): the artifact registers in the bucket of `t1`
+  and of `t2`; a version meets it through `iv_start ∪ iv_cont`, once per
+  instant it is valid at.
+- **Uid families** (F1, F3, F5, F8) join on uid with `nodes_by_uid` and the
+  uid's incident edges (`edges_by_src ∪ edges_by_dst`, self-loops once).
+- **Traversal families** (F11, F12) follow `edges_by_src` from the
+  artifact's source; the window and belief predicates are applied per hop.
 
-### F11: the `iterate` finding
+**Fan-out.** Registered windows are 5, 10, 25 or 50 % of the extent, so an
+event-family artifact sits in about 13 to 129 buckets and an event in
+exactly one; a changed event reaches the artifacts whose window bucket
+range contains its bucket — on average about the window fraction of that
+family's artifacts, not all of them. Interval routing copies a version
+into every bucket it covers: collegemsg edges are instants (`vt_e = vt_s +
+1`, one bucket each) and its 1,899 node versions are open-ended (up to 257
+compact references each, about 0.5 M in total); for synth-iv-60k (60k
+edges, intervals 0.5–50 % of the extent) the expectation is ≈ 64 buckets
+per edge, ≈ 4 M compact references — only built when F2 or F4 artifacts are
+registered, and only for the kinds they read. A retraction of a long-lived
+version is exactly where this fan-out bites, which is the mechanism the
+deep-age prediction is about.
 
-The memo names `temporal_reachability` as the one family needing DD's
-`iterate` (§3.3), and the task instructions require it. A genuine
-`iterate`-based dataflow was built: a shared `edges_by_src` arrangement built
-once outside the loop, entered into the iterative subscope each round,
-`join_core`'d against the current per-artifact arrival frontier (re-keyed to
-join on plain uid, then re-keyed back to `(artifact, uid)`), `concat`'d with
-the re-supplied seed, and `reduce(min)`'d to the next round's frontier — the
-textbook pattern (cf. `differential_dataflow::algorithms::graphs::bfs`).
+## Family → dataflow, as implemented
 
-It passed two of the three correction epochs on `tests/fixtures/tiny1`, but
-failed the third: epoch 3's correction is a pure **retraction** (an edge
-realizing the then-current-best arrival is retracted with no replacement
-inserted). The maintained fixpoint did not fall back to the next-best path
-through the graph — it kept reporting the pre-retraction answer. That is a
-genuine incremental-maintenance bug inside the `iterate` wiring (every other
-family handles the identical retraction correctly on the same fixture, via
-the ordinary route+reduce path), and this session could not root-cause it in
-the time remaining — plausible suspects (not confirmed): the per-round
-`reduce(min)`'s consolidation interacting with the re-supplied `seed` in a way
-that masks the retraction, or a subtlety of how `Product<T, u64>` timestamps
-inside the iterative subscope interact with the outer epoch's retraction
-arriving at the same outer time as later insertions.
+"Maintained": every operator upstream of the final per-artifact `reduce` is
+incremental (joins, `count_total`, `distinct`, `iterate`), and that final
+`reduce` only formats the artifact's maintained input group (next
+section). F9/F10 are maintained at endpoint-pair granularity: the pair's
+instance count and first instances are re-evaluated over that pair's
+events when one of them changes.
 
-Per this task's instruction to "stop and report rather than improvise": F11 is
-therefore wired through the same Global route+reduce path as F9/F10/F12,
-calling the already-tested `fixpoint_arrivals` fresh on every change. This is
-correct (confirmed by `tests/fixtures/tiny1`, which checks F11 like every
-other family) but not incremental at the sub-artifact level the memo intends,
-and is the first candidate for the Opus review the memo already calls for on
-F9–F12 — that review should now cover F11's `iterate` wiring too, which is
-preserved in the git history (the commit immediately before the fallback) for
-whoever picks this up.
+| F | family | dataflow (DD operators) | status |
+|---|---|---|---|
+| F1 | entity_history | params by uid ⋈ `nodes_by_uid`, ⋈ `edges_by_src` ∪ `edges_by_dst`; reduce per artifact | maintained |
+| F2 | version_history | valid-time band join (`iv_start`/`iv_cont` × window buckets), filter overlap and `tt_s ≤ as_of`, ⋈ `versions_by_vid`; reduce per artifact | maintained |
+| F3 | snapshot_subgraph | seeds ⋈ incident edges valid and believed at `t_valid`, one join per hop (`distinct` node set); set ⋈ `nodes_by_uid`; induced edges = set ⋈ `edges_by_src`, semijoin dst ∈ set; reduce per artifact | maintained |
+| F4 | diff_snapshots | instant routing at t1 and t2 ⋈ `iv_start ∪ iv_cont`, filter valid and believed, ⋈ `versions_by_vid`; reduce per (artifact, entity) → added / removed / props-changed item, only when different; reduce per artifact over the items | maintained |
+| F5 | neighborhood_evolution | params by uid ⋈ incident edges (believed, valid at t1/t2 or overlapping [t1, t2)); reduce per artifact | maintained |
+| F6 | aggregate_events | event routing ⋈ window buckets, filter window, belief, `rel_types`; `count_total` per (artifact, src or dst); reduce per artifact sorts the groups | maintained |
+| F7 | graph_metric_timeseries | event routing; `count_total` per (artifact, series bucket); reduce assembles the series | maintained |
+| F8 | burst_detection | params by uid ⋈ incident edges, filter belief and window; `count_total` per (artifact, series bucket); reduce computes the z-score flags | maintained |
+| F9 | count_temporal_motifs | event routing ⇒ events per (artifact, unordered endpoint pair); reduce per (artifact, pair) counts that pair's instances (O(events × delta-run)); `explode` + `count_total` sums per artifact; `count_total` of window events | maintained at pair granularity |
+| F10 | find_temporal_motif_instances | as F9; the per-(artifact, pair) reduce also emits the pair's first `offset + limit` instances; reduce per artifact takes the first `offset + limit` of their union (sorted) | maintained at pair granularity |
+| F11 | temporal_reachability | **`iterate`**: arrivals (artifact, node) → min τ; body = arrivals ⋈ `edges_by_src` (entered), filter belief and τ' = max(τ, vt_s) < min(vt_e, t_b), `concat` the seeds (artifact, src, t_a), `reduce(min)`; `consolidate` after `leave`; reduce per artifact paginates | maintained |
+| F12 | temporal_paths | prefixes from (artifact, src) extended by one join per hop along `edges_by_src` (unrolled to the largest registered `max_hops`, 4), filter per hop (belief, τ monotone and < min(vt_e, t_b), node-simple, interior ≠ dst); last hop joined directly on (node, dst); hop pruning: a prefix continues only if dst is within the remaining hops (backward feasible-edge distance, maintained by joins + `distinct`); reduce per artifact: count and top-k by (arrival, hops, key) | maintained |
+| F13 | compute (∅-scope control) | constant, seeded once at epoch 0 | trivial |
 
-## Validation performed
+`co_active` has no registered instances and is not built. Every family is
+expressed as a dataflow; none is removed from the comparison on
+expressibility grounds.
 
-1. **Unit tests** (`cargo test`, all on xzgpu): changelog encoder
-   (`tests/changelog_tests.rs`), canonical-JSON/digest against literal Python
-   output (`tests/digest_tests.rs`), each family's pure logic on hand-worked
-   cases (`tests/family_tests.rs`), the withheld-correction check on a
-   hand-built 11-batch bundle (`tests/withheld_tests.rs`) — 30 tests, all
-   green.
-2. **Shape test against a deterministic tiny synthetic cell**
-   (`tests/fixtures/tiny1/`, generated by
-   `tests/fixtures/generate_tiny1.py` from the *real* TGMS Python harness: 6
-   nodes, 10 edges, 13 artifacts — one per family — 3 corrections, with every
-   `oracle.jsonl` digest computed by the actual
-   `tgms.artifact.refresh.refresh` call path, never hand-rolled):
-   `tests/tiny_cell_tests.rs` asserts every artifact's digest from this
-   crate's `dataflow::run` equals the real oracle's digest at epoch 0 *and*
-   after every one of the 3 bursts. **13/13 families agree, every epoch.**
-   This is the real shape test's offline, always-available twin — see "What
-   is still blocked" for why the real one (memo §4.6 item 3, against an
-   exported collegemsg cell) could not be run this session.
-3. `cargo clippy --release --all-targets -- -D warnings`: clean.
-4. **Smoke run** (`ivm-dd run tests/fixtures/tiny1`, `nice -n 19`, xzgpu):
-   3 bursts, `load_ms ≈ 2.6`, per-burst `refresh_ms` 1.3–1.8, `publish_ms`
-   0.04–0.11, oracle agreement 52/52 at every epoch including all three
-   bursts. See "Wall estimate" below for why this cannot calibrate the real
-   grid.
+## What is recomputed per update
 
-## What is still blocked
+Differential dataflow's `reduce` re-evaluates its closure over the whole
+input group of every key whose input changed. These are the reduce keys
+and their groups; nothing else in the crate is re-evaluated from scratch on
+an update.
 
-Lane X1 (`scripts/export_storm_workload.py`) has not yet produced any real
-exported cell on xzgpu: `/mnt/project/xzhang/tgms/external-v1/export/` does
-not exist, and no `export_storm_workload.py`/`ext_export.py` process was
-running at the time this crate was built and tested (checked directly: no
-matching process, no output directory, `synth-iv-60k` absent from
-`stores/`). This blocks:
+| F | reduce key | group re-read when it changes |
+|---|---|---|
+| F1 | artifact | the uid's node versions and incident edges (all beliefs) |
+| F2 | artifact | versions of the artifact's kind overlapping its window |
+| F3 | artifact | node versions of the 1-hop candidate set; edges among it valid at `t_valid` |
+| F4 | (artifact, entity) | that entity's versions valid at t1 / t2 (one or two rows) |
+| F4 | artifact | the entities that differ between t1 and t2 |
+| F5 | artifact | the uid's incident edges relevant to t1, t2, [t1, t2) |
+| F6 | artifact | one count per group key in the window |
+| F7, F8 | artifact | one count per series bucket (≤ 17) |
+| F9, F10 | (artifact, endpoint pair) | the pair's events in the window |
+| F9 | artifact | two totals |
+| F10 | artifact | the union of the pairs' first `offset + limit` instances, and the total |
+| F11 | (artifact, node), inside `iterate` | candidate arrivals for that node (min) |
+| F11 | artifact | the reachable set (for pagination) |
+| F12 | (artifact, node) | backward-distance candidates (min) |
+| F12 | artifact | the artifact's complete paths (count, top-k) |
 
-- Validation step (2) in the task's own ordering — a shape test against a
-  real exported collegemsg cell, checked against its own committed
-  `oracle.jsonl`/TGMS result digest. `tests/fixtures/tiny1/`'s shape test is
-  real, but it is not *that* test.
-- The withheld-correction check against the real 37th cell
-  (`synth-iv-60k/c4/deep/seed0`), which needs `synth-iv-60k` built (absent on
-  xzgpu) and ≥11 committed batches; `tests/withheld_tests.rs` exercises the
-  same code path on a hand-built bundle instead.
-- A calibrated smoke-run wall estimate at real scale (900–10,000 artifacts,
-  up to 60k edges) — `tests/fixtures/tiny1`'s 6-node/10-edge/13-artifact
-  scale says nothing about the cost of this crate's deliberately coarser
-  routing or F9/F10/F12's O(events³)-worst-case/DFS reduce closures at that
-  scale.
+The largest groups are F2's (every node version is open-ended, so a window
+overlaps all of them), F11's reachable set and F12's complete-path set;
+each is re-read only when a change reaches that artifact.
 
-This is reported as a blocker, not worked around with a fabricated cell.
+## F11: the `iterate` retraction bug and its fix
 
-## Wall estimate for 43 cells + probe (uncalibrated — see above)
+The earlier build of this crate abandoned `iterate` for F11 after it
+failed on `tests/fixtures/tiny1`'s third burst: a pure retraction of the
+edge realizing node n2's best arrival (n0 → n2 at 150) left the maintained
+answer at the pre-retraction value instead of falling back to n0 → n1 → n2
+(200). The failing `iterate` code was not kept, so it was rebuilt as
+described (arrivals ⋈ entered `edges_by_src`, `concat` seeds, `reduce(min)`)
+in a minimal F11-only probe. **Root cause:** the changelog keeps a closed
+version as a historical row — the burst retracts the open row and
+re-inserts the same row with its finite `tt_e` — and a loop body that joins
+arrivals with every edge row without the `believed_at(as_of)` filter still
+traverses the superseded n0 → n2 version and still derives 150; the probe
+reproduces the reported symptom exactly in that case and only then. Differential dataflow's
+`iterate` was not at fault: the variable at round k+1 is the body applied
+to round k, starting from the seeds, so once the superseded row is not
+traversable the old arrival has no derivation and is withdrawn. A second,
+independent hazard was also present in that shape: without `consolidate`
+after `leave`, the output carries cancelling ± updates from different
+rounds at the same outer epoch, and applying them in arrival order can drop
+a still-valid arrival (seen as n5 disappearing after a pure insertion).
+Both reproduce in a minimal F11-only probe on the fixture (no filter:
+epochs 0–2 agree, epoch 3 stays at 150; filter, no consolidation: epoch 2
+loses n5; both: all epochs agree), and both are fixed in `views.rs`. The
+regression tests are `tests/maintained_tests.rs`
+(`f11_iterate_falls_back_to_next_best_path_on_pure_retraction`,
+`tiny1_epoch3_shape_superseded_row_is_not_traversable`).
 
-The memo's own §3.7 estimate (load ≈1–3 min/cell, bursts ms–s, checking ≈5
-min ⇒ 36 cells ≈4–6 h; probe ≈1 h; 37th cell ≈0.5 h; 8-worker rerun ≈1.5 h ⇒
-**≈8 h total**) is the only estimate available until a real exported cell
-lands — `tests/fixtures/tiny1` is 1,500–2,000× smaller than the storm-v2
-grid's N≈900 cells (6 nodes/10 edges vs. hundreds of nodes/tens of thousands
-of edges, 13 artifacts vs. ~900) and its sub-2-ms refresh times cannot be
-scaled up responsibly.
+## Validation performed (xzgpu)
 
-Two reasons this crate's actual number is likely to come in **above** the
-memo's estimate, worth a recalibration pass before the timed grid runs:
+1. `cargo test --release`: 37 tests — changelog encoder, digests against
+   Python-computed values, each family's reference on hand-worked cases,
+   the withheld-correction check, and `tests/maintained_tests.rs`:
+   - F11 under pure retraction, double retraction, re-insertion and a
+     corrected re-insertion; F11/F12 never traverse a superseded row;
+   - a seeded randomized changelog (7 nodes, 54 edges, 8 bursts of
+     closures, edge corrections that move valid time past the epoch-0
+     extent, edge and node property corrections, insertions) with 36
+     artifacts over all 12 data-reading families (different windows,
+     `belief` modes, `kind`s, hops, `max_hops`, `limit`/`cursor`,
+     `node_filter`, roles): maintained output equals the reference at every
+     epoch, 1,620 comparisons over 5 seeds, every family non-trivial in at
+     least one;
+   - per-pair motif counting and first-k enumeration against the reference
+     enumeration; monotonicity and coverage of the bucketing.
+2. `cargo clippy --release --all-targets -- -D warnings`: clean.
+3. **Oracle check on `tests/fixtures/tiny1/`** (6 nodes, 10 edges, one
+   artifact per family, 3 bursts, every digest computed by TGMS's own
+   refresh path by `tests/fixtures/generate_tiny1.py`): `ivm-dd
+   shape-test` 13 agree, 0 disagree; `ivm-dd run` oracle agreement 52/52
+   (13 artifacts × epochs 0–3), 0 disagree.
+4. **Scale feasibility on real rows** (not a measurement for any record):
+   the epoch-0 rows and 934 registered artifacts of the exported cell
+   `collegemsg-c3-none-n1000-s0` (61,734 versions; its bursts were not yet
+   exported) plus five synthetic bursts of 20 corrections each. Epoch-0
+   load 1.75 s, 0.79 GB RSS; synthetic bursts refreshed in 4–19 ms;
+   maintained output equal to the reference for all 934 artifacts at all
+   six epochs (5,604 comparisons). The earlier build (per-artifact
+   recomputation over globally routed rows) aborted on allocation at a
+   25 GB address-space limit during the same epoch-0 load.
+5. **Traversal state on a synth-iv-shaped graph** (synthetic: 600 nodes,
+   60k edges, intervals 0.5–50 % of the extent, windows 5–50 %): F11 ≈ 6 MB
+   and 0.07 s of epoch-0 load per artifact; F12 ≈ 150 MB and 0.7 s per
+   artifact (40 artifacts: 6.2 GB, 29 s).
 
-- **Routing.** Every F2/F3/F4/F6/F7/F9/F10/F11/F12 artifact (9 of 13 families)
-  re-scans its *entire* relevant row set on *every* burst that touches
-  anything in that scope, rather than only the bucket-routed subset the memo's
-  §3.2 scheme would give it. At N≈900 this is probably fine; at the N=10,000
-  probe (8,922 artifacts, memo §4.5's own flagged risk cell for F12) it may
-  not be.
-- **F9/F10/F12 algorithmic shape.** Direct O(events³)-worst-case motif
-  enumeration and a plain recursive DFS, not the memo's windowed
-  engine-kernel index or unrolled joins. Memo §4.5 already flags this exact
-  risk ("F12 (and F9/F10) blow-up... 4-hop prefixes can reach 10⁶ per
-  artifact") independently of this crate's routing choice.
+## Risks and what is still open
 
-**Recommendation:** once X1 produces even one real cell, run `ivm-dd run` on
-it under `nice -n 19` (untimed) before scheduling the timed grid, exactly as
-the task's validation step (4) asks — this crate's own per-burst wall at that
-point either confirms the memo's ≈8 h estimate or gives the coordinator a
-real number to re-plan against. This session's own position: do not start the
-timed grid on the memo's estimate alone.
+- **F12 state at N = 10,000.** At ≈ 150 MB per F12 artifact on a
+  synth-iv-shaped graph, the probe's 317 F12 artifacts project to ≈ 48 GB,
+  at the state cap; synth-iv-60k N = 1,000 cells (≈ 70 F12 artifacts)
+  project to ≈ 10 GB. If the cap is exceeded, the family is removed for
+  that cell and recorded. The projection is from a synthetic graph and has
+  to be confirmed on the real store.
+- **No finished exported cell yet.** At the time of writing the export
+  root holds one cell directory with only `versions-epoch0.jsonl` and
+  `artifacts.jsonl`, and no `INDEX.json`; the oracle shape test on a real
+  cell and a per-burst calibration of the wall estimate wait for it.
+- **F12 expansion budget.** TGMS gives up on a `temporal_paths` call after
+  2,000,000 expansions and the oracle records it as refused (not
+  compared); the dataflow has no such budget and always enumerates every
+  path.
+- **Withheld-correction check.** `withheld.rs` evaluates each family's
+  reference over the rows delivered by the read point instead of replaying
+  the dataflow; the two are equal by the tests above. (Its reference for
+  F1 and F5 now scopes the snapshot to the uid, as the maintained join
+  does; before, it handed them the whole snapshot and would have reported
+  spurious false-fresh artifacts.)

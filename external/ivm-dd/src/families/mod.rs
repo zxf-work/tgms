@@ -1,12 +1,13 @@
-//! The 13 registered operator families as pure payload functions (memo §3.3
-//! "families as maintained dataflows"; `dataflow.rs` wires each one behind
-//! the DD routing/join/reduce machinery -- this module is the part that has
-//! to agree, field for field, with the Python kernels in
-//! `tgms/temporal/ops_*.py`, so it is kept independent of timely/differential
-//! and unit-testable on a plain `&[VersionRow]`).
+//! The 13 registered operator families as pure payload functions
+//! (`views.rs` builds the maintained dataflow for each one -- this module
+//! is the part that has to agree, field for field, with the Python kernels
+//! in `tgms/temporal/ops_*.py`, so it is kept independent of
+//! timely/differential and unit-testable on a plain `&[VersionRow]`).
 //!
-//! Every `compute` function takes the *whole* relevant row set for its key
-//! (not a pre-filtered one) and returns the exact JSON payload
+//! Each family's `compute` is its whole-store reference: given every row it
+//! may read (F1/F5: the uid's own versions and incident edges, which
+//! `dataflow::compute_payload_pub` selects from a full snapshot), it
+//! applies its own window/belief filters and returns the exact JSON payload
 //! `tgms.temporal.algebra.call_operator` would digest (i.e. the kernel
 //! function's own return value, **before** the envelope is added and
 //! **before** float canonicalization -- `crate::digest::result_digest`
@@ -20,7 +21,7 @@ pub mod f5_neighborhood_evolution;
 pub mod f6_aggregate_events;
 pub mod f7_graph_metric_timeseries;
 pub mod f8_burst_detection;
-mod motif_common;
+pub mod motif_common;
 pub mod f9_count_temporal_motifs;
 pub mod f10_find_temporal_motif_instances;
 pub mod f11_temporal_reachability;
@@ -49,7 +50,7 @@ pub enum Family {
 impl Family {
     /// Maps `artifacts.jsonl`'s own `op` field (== the TGMS operator-registry
     /// name) to a family. `co_active` is deliberately absent: 0 instances
-    /// are ever registered in the grid (memo A8) -- a bundle that somehow
+    /// are ever registered in the grid -- a bundle that somehow
     /// carries one is a shape-test failure, not a silently-ignored row.
     pub fn from_op(op: &str) -> Option<Family> {
         use Family::*;
@@ -90,45 +91,27 @@ impl Family {
         }
     }
 
-    /// Whether this family's maintained dataflow needs DD's `iterate`
-    /// (memo §3.3: "F11 is the only one needing `iterate`").
+    /// Whether this family's maintained dataflow uses DD's `iterate` (F11
+    /// only; F12's bounded paths are unrolled joins).
     pub fn needs_iterate(&self) -> bool {
         matches!(self, Family::F11TemporalReachability)
     }
 
-    /// The route key this family's artifacts register under
-    /// (`dataflow.rs::route_key_for`); documented here so the family table
-    /// and the routing table cannot silently drift apart.
+    /// How this family's artifacts meet the version collections in
+    /// `views.rs` (see the README's "Family -> dataflow" table and
+    /// "Routing" section for the fan-out analysis).
     pub fn route_kind(&self) -> RouteKind {
         use Family::*;
         match self {
             F1EntityHistory | F5NeighborhoodEvolution | F8BurstDetection => RouteKind::Uid,
-            F2VersionHistory => RouteKind::Kind,
-            // F3 needs 1-hop neighbours' own node rows (a different uid
-            // from the seed), which a flat uid route cannot see without a
-            // second dependent join -- scoped to Global (see README
-            // "Routing"), not the seed-only key the memo's table implies.
-            F3SnapshotSubgraph
-            | F4DiffSnapshots
-            | F6AggregateEvents
+            F3SnapshotSubgraph => RouteKind::UidExpansion,
+            F2VersionHistory => RouteKind::IntervalBucket,
+            F4DiffSnapshots => RouteKind::InstantBucket,
+            F6AggregateEvents
             | F7GraphMetricTimeseries
             | F9CountTemporalMotifs
-            | F10FindTemporalMotifInstances
-            // F12's DFS also runs inside the Global route+reduce closure
-            // (see dataflow.rs's module doc -- a deliberate deviation from
-            // memo §3.3's four unrolled joins, not a routing bug).
-            | F12TemporalPaths
-            // F11 *should* be `iterate` per the memo (see `needs_iterate`)
-            // -- a DD-`iterate`-based dataflow was built and passed two of
-            // three correction epochs on `tests/fixtures/tiny1`, but failed
-            // to re-derive a worse fallback path after its best path was
-            // *retracted* (the fixpoint stayed at its pre-retraction
-            // answer). That is a real incrementality bug this session
-            // could not root-cause in the remaining time, so F11 is wired
-            // through the same Global route+reduce path as F12, calling
-            // the tested, already-correct `fixpoint_arrivals` fresh every
-            // time -- flagged for the Opus review the memo calls for.
-            | F11TemporalReachability => RouteKind::Global,
+            | F10FindTemporalMotifInstances => RouteKind::EventBucket,
+            F11TemporalReachability | F12TemporalPaths => RouteKind::Traversal,
             F13Compute => RouteKind::None,
         }
     }
@@ -155,6 +138,27 @@ pub fn paginate(rows: &[serde_json::Value], limit: usize, cursor: Option<&str>) 
     })
 }
 
+/// `paginate` for a caller that already holds only the requested window
+/// (the rows at sorted positions `[offset, offset + limit)`) and the total
+/// row count -- the maintained families (F10) that never materialize the
+/// full ordered list. Same output shape and `truncated`/`cursor` rule as
+/// `paginate`.
+pub fn paginate_window(window: Vec<serde_json::Value>, total: usize, offset: usize) -> serde_json::Value {
+    let truncated = offset + window.len() < total;
+    let next = offset + window.len();
+    serde_json::json!({
+        "rows": window,
+        "rows_total": total,
+        "truncated": truncated,
+        "cursor": if truncated { Some(next.to_string()) } else { None },
+    })
+}
+
+/// The plaintext decimal offset a `cursor` arg encodes (0 when absent).
+pub fn args_offset(args: &serde_json::Value) -> usize {
+    args_cursor(args).and_then(|c| c.parse().ok()).unwrap_or(0)
+}
+
 pub fn args_limit(args: &serde_json::Value) -> usize {
     args.get("limit")
         .and_then(|v| v.as_u64())
@@ -173,18 +177,27 @@ pub fn args_as_of_tt(args: &serde_json::Value) -> i64 {
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum RouteKind {
-    /// Keyed by a single uid named in the artifact's own args (its `uid`,
-    /// or its first `seeds`/`src` entry).
+    /// Parameters keyed by the uid named in the artifact's args, joined
+    /// with `nodes_by_uid` and/or the uid's incident edges
+    /// (`edges_by_src` and `edges_by_dst`).
     Uid,
-    /// Keyed by `kind` ("node"/"edge") -- a whole-population scan filtered
-    /// by window/belief inside the family's own `compute`.
-    Kind,
-    /// Keyed by a single fixed global bucket -- the family needs the whole
-    /// store (memo-flagged simplification; see README "Routing" section).
-    Global,
-    /// No store data needed at all (F13's control).
-    None,
-    /// Wired as a dedicated dataflow in `dataflow.rs`, not the generic
-    /// route-and-reduce helper (F11's `iterate`, F12's unrolled joins).
+    /// Seed uids joined with incident edges valid at the instant, one
+    /// unrolled join per hop, then the induced edges among the node set.
+    UidExpansion,
+    /// Valid-time band join: a version is routed to every bucket its
+    /// `[vt_s, vt_e)` covers, an artifact to every bucket its window covers;
+    /// each (version, artifact) pair is emitted once, at the later of the
+    /// two start buckets.
+    IntervalBucket,
+    /// An artifact is routed to the bucket of each instant it reads
+    /// (`t1`, `t2`), a version to every bucket it covers.
+    InstantBucket,
+    /// An edge event is routed to the bucket of its `vt_s`, an artifact to
+    /// every bucket its window covers.
+    EventBucket,
+    /// Traversal along `edges_by_src` from the artifact's source: F11 by
+    /// `iterate`, F12 by unrolled per-hop joins.
     Traversal,
+    /// No store data (F13's control).
+    None,
 }

@@ -1,9 +1,10 @@
-//! `result.json` + `run.log` writer (memo §2.8's per-cell record shape,
-//! adapted for DD per §2.8's own closing line: "The P-EXT2 README has the
-//! same sections with crate versions, `Cargo.lock`/binary sha256, workers
-//! and the two feeder configurations in place of the Neo4j items."). This
-//! is this crate's own interpretation of that layout -- §4.1's shared field
-//! names are used wherever they apply; nothing here is a frozen schema.
+//! `result.json` + `run.log` writer: one record per exported cell, with the
+//! crate versions, `Cargo.lock`/binary sha256, worker count, the routing
+//! configuration, host snapshots, one row per burst (epoch, correction
+//! class, generator, placement, `retracted_vt_span`, `refresh_ms`,
+//! `publish_ms`, artifacts whose output changed) and the oracle agreement
+//! gate. The field names are the ones shared with the other external
+//! configuration's records; nothing here is a frozen schema.
 
 use crate::dataflow::RunOutcome;
 use crate::export::CellBundle;
@@ -39,9 +40,9 @@ fn median(xs: &mut [f64]) -> Option<f64> {
     Some(if n % 2 == 1 { xs[n / 2] } else { (xs[n / 2 - 1] + xs[n / 2]) / 2.0 })
 }
 
-/// Oracle agreement for the epochs covered (memo §2.6/§4.1): per epoch,
+/// Oracle agreement for the epochs covered: per epoch,
 /// compares this run's sha256 result digest to the export's own oracle
-/// digest (`oracle.jsonl`, itself TGMS's `result_digest`, memo §1.5) for
+/// digest (`oracle.jsonl`, itself TGMS's `result_digest`) for
 /// every artifact named in both. An artifact absent from this run's digest
 /// map for an epoch where nothing changed is not a disagreement -- it is
 /// looked up from the most recent epoch at which this run *did* emit a
@@ -136,8 +137,14 @@ pub fn build_result_json(
         "config": {
             "export_config": bundle.manifest.config,
             "workers": 1,
-            "routing": "natural-key (uid / kind / global), not memo §3.2's 256-bucket valid-time routing -- see dataflow.rs module doc",
-            "families_f12_routing": "Global route + reduce-closure DFS, not memo §3.3's four static unrolled joins -- see dataflow.rs module doc",
+            "routing": {
+                "valid_time_buckets": crate::views::B,
+                "overflow_bucket": true,
+                "valid_time_extent": [outcome.valid_time_extent.0, outcome.valid_time_extent.1],
+                "interval_and_event_families": "F2 interval band join, F4 instant routing, F6/F7/F9/F10 event routing on valid-time buckets",
+                "uid_families": "F1, F3, F5, F8 joined on uid with nodes_by_uid / incident edges",
+                "traversal_families": "F11 iterate, F12 one join per hop, along edges_by_src",
+            },
         },
         "versions": {
             "crate_version": versions.crate_version,
@@ -164,7 +171,7 @@ pub fn build_result_json(
                 "epoch": e, "artifact": n, "oracle_digest": o, "our_digest": m,
             })).collect::<Vec<_>>(), "disagree_count": disagree.len(), "not_answered": not_answered},
         },
-        "deviations_from_memo": deviations,
+        "deviations": deviations,
     })
 }
 

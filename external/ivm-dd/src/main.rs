@@ -1,4 +1,4 @@
-//! `ivm-dd` CLI (memo §3.7 / this task's validation steps):
+//! `ivm-dd` CLI:
 //!
 //!   ivm-dd run <cell-dir> --out <out-dir>        full per-burst run, writes result.json + run.log
 //!   ivm-dd shape-test <cell-dir>                 epoch-0 digest vs oracle.jsonl, every family
@@ -25,7 +25,7 @@ enum Cmd {
     },
     /// Epoch-0 shape test: this crate's digest vs the export's own oracle digest, per family.
     ShapeTest { cell_dir: PathBuf },
-    /// The 37th-cell withheld-correction check (F-epoch / F-watermark), memo §3.5.
+    /// The withheld-correction check (F-epoch / F-watermark feeders).
     Withheld {
         cell_dir: PathBuf,
         #[arg(long)]
@@ -85,24 +85,17 @@ fn host_snapshot(label: &str) -> record::HostSnapshot {
 }
 
 const DEVIATIONS: &[&str] = &[
-    "Routing is by natural key (uid / kind / global), not memo §3.2's 256-bucket \
-     valid-time routing -- correctness-preserving, coarser fan-out; see dataflow.rs.",
-    "F11 temporal_reachability does NOT use DD's iterate, contrary to the memo and \
-     this task's explicit instruction: an iterate-based dataflow was built and failed \
-     to re-derive correctly after a pure retraction on tests/fixtures/tiny1 (stuck at \
-     its pre-retraction answer); root cause not found in time. F11 is computed fresh \
-     via the same Global route+reduce path as F9/F10/F12 instead. See dataflow.rs's \
-     module doc for the full account; flagged for the Opus review the memo calls for.",
-    "F12 temporal_paths runs its DFS inside a Global route+reduce closure, not \
-     memo §3.3's four static unrolled joins; see dataflow.rs and the F12 module doc.",
-    "F9/F10 motif matching is a direct O(events^3)-worst-case enumeration per the \
-     Cypher text, not the native engine's windowed event index; flagged for the \
-     Opus review the memo itself calls for on F9-F12.",
-    "The crate path is external/ivm-dd/ per this task's explicit instruction, not \
-     memo §3.1's benchmarks/external-v1/ivm-dd/ -- reported, not silently changed.",
-    "refresh_ms/publish_ms split: this crate times dataflow-maintain-and-serialize \
-     as refresh_ms and sha256-of-already-serialized-strings as publish_ms, not \
-     memo §3.4's maintain-only vs serialize-and-hash split.",
+    "The crate lives at external/ivm-dd/; the campaign design placed it at \
+     benchmarks/external-v1/ivm-dd/.",
+    "refresh_ms covers push + maintenance including each changed payload's \
+     canonical-JSON serialization (it happens inside the per-artifact reduce); \
+     publish_ms is the sha256 of the already-serialized changed payloads.",
+    "F12 temporal_paths has no expansion budget: TGMS (and this crate's \
+     reference DFS) give up after 2,000,000 expansions and the oracle records \
+     the artifact as refused (not compared); the dataflow enumerates every path.",
+    "The withheld-correction check evaluates each family's reference formula \
+     over the rows delivered by the read point rather than replaying the \
+     maintained dataflow (the two are pinned equal by tests/maintained_tests.rs).",
 ];
 
 fn main() {
