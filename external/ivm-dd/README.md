@@ -243,15 +243,18 @@ regression tests are `tests/maintained_tests.rs`
    refresh path by `tests/fixtures/generate_tiny1.py`): `ivm-dd
    shape-test` 13 agree, 0 disagree; `ivm-dd run` oracle agreement 52/52
    (13 artifacts × epochs 0–3), 0 disagree.
-4. **Scale feasibility on real rows** (not a measurement for any record):
-   the epoch-0 rows and 934 registered artifacts of the exported cell
-   `collegemsg-c3-none-n1000-s0` (61,734 versions; its bursts were not yet
-   exported) plus five synthetic bursts of 20 corrections each. Epoch-0
-   load 1.75 s, 0.79 GB RSS; synthetic bursts refreshed in 4–19 ms;
-   maintained output equal to the reference for all 934 artifacts at all
-   six epochs (5,604 comparisons). The earlier build (per-artifact
-   recomputation over globally routed rows) aborted on allocation at a
-   25 GB address-space limit during the same epoch-0 load.
+4. **First real exported cell** (`collegemsg-c3-none-n1000-s0`, 61,734
+   versions, 934 artifacts over all 13 families, 20 bursts; export
+   manifest's file hashes verified; untimed, `nice -n 19`, shared box at
+   load ≈ 3, 2026-10-02T22:22Z): `ivm-dd shape-test` 934 agree, 0
+   disagree; `ivm-dd run` oracle agreement 19,614/19,614 (934 artifacts ×
+   epochs 0–20), 0 disagree, 0 not answered. Epoch-0 load 1.77 s, 0.58 GB
+   RSS; per-burst `refresh_ms` median 4.1 (1.2–41.0, the maximum on the
+   class-D `d2_full` burst), `refresh_ms + publish_ms` median 4.4. These
+   are a calibration, not a scored measurement. The earlier build
+   (per-artifact recomputation over globally routed rows) aborted on
+   allocation at a 25 GB address-space limit during the same cell's
+   epoch-0 load.
 5. **Traversal state on a synth-iv-shaped graph** (synthetic: 600 nodes,
    60k edges, intervals 0.5–50 % of the extent, windows 5–50 %): F11 ≈ 6 MB
    and 0.07 s of epoch-0 load per artifact; F12 ≈ 150 MB and 0.7 s per
@@ -265,10 +268,10 @@ regression tests are `tests/maintained_tests.rs`
   project to ≈ 10 GB. If the cap is exceeded, the family is removed for
   that cell and recorded. The projection is from a synthetic graph and has
   to be confirmed on the real store.
-- **No finished exported cell yet.** At the time of writing the export
-  root holds one cell directory with only `versions-epoch0.jsonl` and
-  `artifacts.jsonl`, and no `INDEX.json`; the oracle shape test on a real
-  cell and a per-burst calibration of the wall estimate wait for it.
+- **One real cell so far.** Only `collegemsg-c3-none-n1000-s0` was
+  exported at the time of writing; synth-iv-60k (interval-valued edges,
+  where F2/F4 fan-out and F12 state are largest) has not been checked on
+  real rows.
 - **F12 expansion budget.** TGMS gives up on a `temporal_paths` call after
   2,000,000 expansions and the oracle records it as refused (not
   compared); the dataflow has no such budget and always enumerates every
