@@ -1,0 +1,344 @@
+"""Unit tests for `scripts/external_record.py` — the external-baseline
+campaign record assembler (lane C1).
+
+As in `tests/test_external_check.py`, everything is a tiny synthetic cell
+built in `tmp_path`; the one real exported cell
+(`collegemsg-c3-none-n1000-s0`, on xzgpu) is never copied to the laptop.
+These tests cover: cell-id construction, the committed storm-v2 lookup
+(against a tiny hand-built grid file, not the real 36-cell one, so the
+test is not coupled to that file's contents), age-band classification,
+prediction arithmetic for both campaigns, and that the assembled record
+validates against `benchmarks/schema/result_manifest.schema.json`.
+"""
+
+from __future__ import annotations
+
+import importlib.util
+import json
+import sys
+from pathlib import Path
+
+import jsonschema
+import pytest
+
+ROOT = Path(__file__).resolve().parent.parent
+SCHEMA_PATH = ROOT / "benchmarks" / "schema" / "result_manifest.schema.json"
+
+MODULE_PATH = ROOT / "scripts" / "external_record.py"
+_spec = importlib.util.spec_from_file_location("external_record", MODULE_PATH)
+external_record = importlib.util.module_from_spec(_spec)
+sys.modules.setdefault("external_record", external_record)
+assert _spec.loader is not None
+_spec.loader.exec_module(external_record)
+
+CHECK_MODULE_PATH = ROOT / "scripts" / "external_check.py"
+_check_spec = importlib.util.spec_from_file_location("external_check", CHECK_MODULE_PATH)
+external_check = importlib.util.module_from_spec(_check_spec)
+sys.modules.setdefault("external_check", external_check)
+assert _check_spec.loader is not None
+_check_spec.loader.exec_module(external_check)
+
+
+# ---------------------------------------------------------------------------
+# cell identity
+# ---------------------------------------------------------------------------
+
+def test_cell_id_matches_export_storm_workload_convention() -> None:
+    assert external_record.cell_id("collegemsg", "c3", None, 1000, 0) == \
+        "collegemsg-c3-none-n1000-s0"
+    assert external_record.cell_id("synth-iv-60k", "c4", "deep", 1000, 2) == \
+        "synth-iv-60k-c4-deep-n1000-s2"
+    # the main grid's lean `per_cell` rows store age as the string "none"
+    # rather than null -- both must produce the same id (module docstring).
+    assert external_record.cell_id("collegemsg", "c3", "none", 1000, 0) == \
+        "collegemsg-c3-none-n1000-s0"
+
+
+# ---------------------------------------------------------------------------
+# committed storm-v2 lookup
+# ---------------------------------------------------------------------------
+
+def _write_tiny_main_grid(path: Path) -> None:
+    grid = {
+        "per_cell": [
+            {"task_id": 0, "store": "collegemsg", "mix": "c3", "age": "none",
+             "n_artifacts": 1000, "seed": 0,
+             "arms": {
+                 "global-recompute": {"ttf_p50_ms": 100000.0, "false_fresh": 0,
+                                      "false_stale": 900},
+                 "tgms-L1": {"ttf_p50_ms": 5000.0, "false_fresh": 0, "false_stale": 900},
+             }},
+            {"task_id": 1, "store": "synth-iv-60k", "mix": "c4", "age": "deep",
+             "n_artifacts": 1000, "seed": 0,
+             "arms": {
+                 "global-recompute": {"ttf_p50_ms": 200000.0},
+                 "tgms-L1": {"ttf_p50_ms": 8000.0},
+             }},
+        ],
+    }
+    path.write_text(json.dumps(grid))
+
+
+def _write_tiny_probe(path: Path) -> None:
+    probe = {
+        "config": {"store": "synth-iv-60k", "mix": "c1", "age": None,
+                  "n_artifacts": 10000, "seed": 0},
+        "summary": {"arms": {
+            "global-recompute": {"ttf_p50_ms": 806290.0},
+            "tgms-L1": {"ttf_p50_ms": 300000.0},
+        }},
+    }
+    path.write_text(json.dumps(probe))
+
+
+def test_load_storm_v2_committed(tmp_path: Path) -> None:
+    grid_path = tmp_path / "grid.json"
+    probe_path = tmp_path / "probe.json"
+    _write_tiny_main_grid(grid_path)
+    _write_tiny_probe(probe_path)
+
+    committed = external_record.load_storm_v2_committed(grid_path, probe_path)
+    assert "collegemsg-c3-none-n1000-s0" in committed
+    assert committed["collegemsg-c3-none-n1000-s0"]["arms"]["tgms-L1"]["ttf_p50_ms"] == 5000.0
+    assert "synth-iv-60k-c4-deep-n1000-s0" in committed
+    assert "synth-iv-60k-c1-none-n10000-s0" in committed  # the probe cell
+    assert committed["synth-iv-60k-c1-none-n10000-s0"]["source"].endswith("probe.json")
+
+
+def test_load_storm_v2_committed_missing_files_is_empty(tmp_path: Path) -> None:
+    committed = external_record.load_storm_v2_committed(
+        tmp_path / "nope.json", tmp_path / "nope2.json")
+    assert committed == {}
+
+
+# ---------------------------------------------------------------------------
+# age-band classification (memo A5/A6)
+# ---------------------------------------------------------------------------
+
+@pytest.mark.parametrize("generator,mix,expected", [
+    ("age_recent", "c3", "recent"),
+    ("age_hours", "c3", "hours"),
+    ("age_days", "c3", "days"),
+    ("c4_burst", "c4", "deep"),
+    ("c4_burst", "c1", None),  # same name, wrong mix -- not a deep burst (A5)
+    ("a1_events", "c3", None),  # ordinary class-A burst, not age-banded at all
+])
+def test_band_for_burst(generator: str, mix: str, expected: str | None) -> None:
+    assert external_record.band_for_burst(generator, mix) == expected
+
+
+def test_load_burst_generators(tmp_path: Path) -> None:
+    export_dir = tmp_path / "cell"
+    export_dir.mkdir()
+    (export_dir / "deltas.jsonl").write_text(
+        json.dumps({"epoch": 1, "generator": "age_recent", "tt": 1,
+                   "correction_class": "A", "placement": "x",
+                   "closed": [], "inserted": []}) + "\n"
+        + json.dumps({"epoch": 2, "generator": "age_hours", "tt": 2,
+                     "correction_class": "A", "placement": "x",
+                     "closed": [], "inserted": []}) + "\n")
+    gens = external_record.load_burst_generators(export_dir)
+    assert gens == {1: "age_recent", 2: "age_hours"}
+
+
+def test_load_burst_generators_missing_file(tmp_path: Path) -> None:
+    assert external_record.load_burst_generators(tmp_path / "nope") == {}
+
+
+# ---------------------------------------------------------------------------
+# a full synthetic cell, end to end
+# ---------------------------------------------------------------------------
+
+def _write_cell(export_dir: Path, *, cell_id: str, mix: str, age: str | None,
+                n_artifacts: int) -> None:
+    export_dir.mkdir(parents=True, exist_ok=True)
+    (export_dir / "export-manifest.json").write_text(json.dumps({
+        "cell_id": cell_id, "cell_digest": "abc123",
+        "config": {"store": "tiny", "mix": mix, "age": age, "n_artifacts": n_artifacts,
+                  "seed": 0},
+    }))
+    (export_dir / "digests.json").write_text(json.dumps({
+        "cell_id": cell_id, "equality_level": "L2-partial",
+    }))
+    (export_dir / "deltas.jsonl").write_text(
+        json.dumps({"epoch": 1, "generator": "age_recent", "tt": 1,
+                   "correction_class": "A", "placement": "x",
+                   "closed": [], "inserted": []}) + "\n"
+        + json.dumps({"epoch": 2, "generator": "age_recent", "tt": 2,
+                     "correction_class": "A", "placement": "x",
+                     "closed": [], "inserted": []}) + "\n")
+
+
+def _write_check(check_path: Path, *, config_kind: str, cell_id: str = "x") -> None:
+    check_path.write_text(json.dumps({
+        "schema_version": "1.0.0", "cell_id": cell_id, "cell_digest": "abc123",
+        "export_manifest_verified": True, "config_kind": config_kind,
+        "n_registered": 10, "epochs": [0, 1, 2],
+        "per_burst": [], "notes": [],
+        "totals": {"n_compared": 20, "agree": 20, "disagree": 0, "not_answered": 0,
+                  "oracle_refused": 0, "false_fresh": 0, "false_stale": None},
+    }))
+
+
+def _write_ivmdd_result(result_path: Path) -> None:
+    result_path.write_text(json.dumps({
+        "config": {"routing": {}},
+        "versions": {"crate_version": "0.1.0", "timely": "0.31.0",
+                    "differential_dataflow": "0.25.1"},
+        "host_snapshots": [{"label": "start", "loadavg1": 1.0},
+                          {"label": "end", "loadavg1": 1.2}],
+        "per_burst": [
+            {"epoch": 1, "artifacts_refreshed": ["a"], "artifacts_refreshed_count": 1,
+             "refresh_ms": 2.0, "publish_ms": 0.2, "refresh_plus_publish_ms": 2.2},
+            {"epoch": 2, "artifacts_refreshed": ["b"], "artifacts_refreshed_count": 1,
+             "refresh_ms": 3.0, "publish_ms": 0.3, "refresh_plus_publish_ms": 3.3},
+        ],
+        "gates": {"oracle_agreement": {"agree": 20, "disagree": [], "disagree_count": 0,
+                                       "not_answered": 0}},
+    }))
+
+
+def _write_neo4j_result(result_path: Path) -> None:
+    result_path.write_text(json.dumps({
+        "config": {"cypher": {}, "neo4j_version": "5.26.0", "apoc_version": "5.26.0-core",
+                  "jdk_version": "Temurin 21.0.12", "driver_version": "5.28.6"},
+        "machine": {"host": "xzgpu", "platform": "Linux", "cpus": 40, "ram_gb": 93.0},
+        "per_cell": {"per_burst": [
+            {"epoch": 1, "apply_ms": 1.0, "recompute_ms": 50.0, "wall_ms": 51.0,
+             "agree": 10, "disagree": [], "not_answered": [], "oracle_refused": []},
+            {"epoch": 2, "apply_ms": 1.0, "recompute_ms": 60.0, "wall_ms": 61.0,
+             "agree": 10, "disagree": [], "not_answered": [], "oracle_refused": []},
+        ]},
+    }))
+
+
+def test_build_record_ivm_differential(tmp_path: Path) -> None:
+    export_dir = tmp_path / "export" / "tiny-c3-recent-n100-s0"
+    _write_cell(export_dir, cell_id="tiny-c3-recent-n100-s0", mix="c3", age="recent",
+               n_artifacts=100)
+    result_path = tmp_path / "result.json"
+    _write_ivmdd_result(result_path)
+    check_path = tmp_path / "check.json"
+    _write_check(check_path, config_kind="ivm-dd", cell_id="tiny-c3-recent-n100-s0")
+
+    grid_path = tmp_path / "grid.json"
+    probe_path = tmp_path / "probe.json"
+    _write_tiny_main_grid(grid_path)
+    # add a committed row for the recent-band cell itself so the ratio is computable:
+    grid = json.loads(grid_path.read_text())
+    grid["per_cell"].append({"task_id": 2, "store": "tiny", "mix": "c3", "age": "recent",
+                             "n_artifacts": 100, "seed": 0,
+                             "arms": {"tgms-L1": {"ttf_p50_ms": 2.0}}})
+    grid_path.write_text(json.dumps(grid))
+
+    ci = external_record.CellInput(export_dir, result_path, check_path)
+    committed = external_record.load_storm_v2_committed(grid_path, probe_path)
+    record, rows = external_record.build_record(
+        "ivm-differential", [ci], git_commit="deadbeef", timestamp_utc="2026-10-02T00:00:00Z",
+        committed=committed)
+
+    assert record["schema_version"] == "1.0.0"
+    assert record["config"]["campaign"] == "ivm-differential"
+    assert len(rows) == 1
+    assert rows[0]["cell_id"] == "tiny-c3-recent-n100-s0"
+    assert rows[0]["equality_level"] == "L2-partial"
+
+    per_cell = record["summary"]["per_cell"][0]
+    assert per_cell["refresh_wall_ms"]["median"] == 2.75  # median(2.2, 3.3)
+    assert per_cell["refresh_wall_ms"]["sum"] == pytest.approx(5.5)
+    assert per_cell["oracle_agreement"]["agree"] == 20
+
+    ext2 = record["summary"]["predictions_measured"]["ext2"]
+    recent = ext2["a_b_per_band"]["recent"]
+    assert recent["n_bursts_ivm"] == 2  # both bursts are generator "age_recent"
+    assert recent["ivm_median_ms"] == 2.75
+    assert recent["tgms_l1_median_ms"] == 2.0
+    assert recent["ratio_ivm_over_l1"] == pytest.approx(2.75 / 2.0)
+    assert ext2["d_pass"] is True
+    assert ext2["d_disagree_total"] == 0
+
+
+def test_build_record_neo4j_recompute(tmp_path: Path) -> None:
+    export_dir = tmp_path / "export" / "tiny-c3-none-n100-s0"
+    _write_cell(export_dir, cell_id="tiny-c3-none-n100-s0", mix="c3", age=None,
+               n_artifacts=100)
+    result_path = tmp_path / "result.json"
+    _write_neo4j_result(result_path)
+    check_path = tmp_path / "check.json"
+    _write_check(check_path, config_kind="neo4j", cell_id="tiny-c3-none-n100-s0")
+
+    grid_path = tmp_path / "grid.json"
+    grid = {"per_cell": [{"task_id": 0, "store": "tiny", "mix": "c3", "age": "none",
+                         "n_artifacts": 100, "seed": 0,
+                         "arms": {"global-recompute": {"ttf_p50_ms": 100.0},
+                                 "tgms-L1": {"ttf_p50_ms": 10.0}}}]}
+    grid_path.write_text(json.dumps(grid))
+
+    ci = external_record.CellInput(export_dir, result_path, check_path)
+    committed = external_record.load_storm_v2_committed(grid_path, tmp_path / "noprobe.json")
+    record, rows = external_record.build_record(
+        "neo4j-recompute", [ci], git_commit="deadbeef", timestamp_utc="2026-10-02T00:00:00Z",
+        committed=committed)
+
+    ext1 = record["summary"]["predictions_measured"]["ext1"]
+    # median(recompute_ms) = median(50, 60) = 55
+    assert ext1["a_ratio_gr_median"] == pytest.approx(55.0 / 100.0)
+    assert ext1["b_speedup_median"] == pytest.approx(55.0 / 10.0)
+    assert ext1["b_n_cells_meeting_half_margin"] == 1  # 5.5 >= 2.586
+    assert ext1["d_pass"] is True
+    assert ext1["per_cell"]["tiny-c3-none-n100-s0"]["committed_source"].endswith("grid.json")
+
+
+def test_build_record_missing_committed_row_is_null_not_guessed(tmp_path: Path) -> None:
+    export_dir = tmp_path / "export" / "tiny-c3-none-n100-s0"
+    _write_cell(export_dir, cell_id="tiny-c3-none-n100-s0", mix="c3", age=None,
+               n_artifacts=100)
+    result_path = tmp_path / "result.json"
+    _write_neo4j_result(result_path)
+    check_path = tmp_path / "check.json"
+    _write_check(check_path, config_kind="neo4j", cell_id="tiny-c3-none-n100-s0")
+
+    ci = external_record.CellInput(export_dir, result_path, check_path)
+    record, _ = external_record.build_record(
+        "neo4j-recompute", [ci], git_commit="deadbeef", timestamp_utc="2026-10-02T00:00:00Z",
+        committed={})  # no committed grid at all
+
+    ext1 = record["summary"]["predictions_measured"]["ext1"]
+    assert ext1["a_ratio_gr_median"] is None
+    assert ext1["b_speedup_median"] is None
+    assert "no committed storm-v2 row" in ext1["per_cell"]["tiny-c3-none-n100-s0"]["note"]
+
+
+# ---------------------------------------------------------------------------
+# schema conformance + round trip through write_record
+# ---------------------------------------------------------------------------
+
+def test_written_record_conforms_to_result_manifest_schema(tmp_path: Path) -> None:
+    export_dir = tmp_path / "export" / "tiny-c3-none-n100-s0"
+    _write_cell(export_dir, cell_id="tiny-c3-none-n100-s0", mix="c3", age=None,
+               n_artifacts=100)
+    result_path = tmp_path / "result.json"
+    _write_ivmdd_result(result_path)
+    check_path = tmp_path / "check.json"
+    _write_check(check_path, config_kind="ivm-dd", cell_id="tiny-c3-none-n100-s0")
+
+    ci = external_record.CellInput(export_dir, result_path, check_path)
+    record, rows = external_record.build_record(
+        "ivm-differential", [ci], git_commit="deadbeef", timestamp_utc="2026-10-02T00:00:00Z",
+        committed={})
+
+    out_dir = tmp_path / "out"
+    record_path, rows_path = external_record.write_record(
+        record, rows, out_dir, "ivm-differential", "2026-10-02")
+    assert record_path.exists() and rows_path.exists()
+    assert len(rows_path.read_text().splitlines()) == 1
+
+    schema = json.loads(SCHEMA_PATH.read_text())
+    written = json.loads(record_path.read_text())
+    jsonschema.Draft202012Validator(schema).validate(written)
+
+
+def test_build_record_rejects_unknown_campaign(tmp_path: Path) -> None:
+    with pytest.raises(ValueError):
+        external_record.build_record("not-a-campaign", [], git_commit="x",
+                                     timestamp_utc="2026-10-02T00:00:00Z", committed={})
