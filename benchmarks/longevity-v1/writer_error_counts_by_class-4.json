@@ -1,0 +1,39 @@
+{
+  "total_writer_errors": 595,
+  "writer_by_class": {
+    "NotFoundError": 595
+  },
+  "writer_by_class_pct": {
+    "NotFoundError": 100.0
+  },
+  "writer_error_message_pattern": "no believed node version of <id> overlaps vt",
+  "per_life": {
+    "0": {
+      "errors": 218,
+      "errors_by_class": {
+        "NotFoundError": 218
+      }
+    },
+    "1": {
+      "errors": 166,
+      "errors_by_class": {
+        "NotFoundError": 166
+      }
+    },
+    "2": {
+      "errors": 126,
+      "errors_by_class": {
+        "NotFoundError": 126
+      }
+    },
+    "3": {
+      "errors": 85,
+      "errors_by_class": {
+        "NotFoundError": 85
+      }
+    }
+  },
+  "source": "longevity_ledger.jsonl on xzgpu:/mnt/project/xzhang/tgms/longevity/2026-09-26-soak4 (read-only; 595 lines, all event=writer_op_error, all op=correction, all error_type=NotFoundError), split per writer life via each event's own life_progress_path field (writer_progress-<life>.json, life 0-3) and cross-checked against that file's own cumulative errors field and against recoveries-4.jsonl's 3 designed deaths splitting the 24h run into 4 lives; the grand total is cross-checked against longevity-synth-1m-native-3.json's manifest.summary.writer_totals_all_lives.errors=595 and against metrics.jsonl's writer_errors_total counter, whose per-life max (counter resets to 0 at each writer restart) is 218/166/126/85 for lives 0-3 -- identical to the ledger/progress-file per-life counts.",
+  "method": "For every longevity_ledger.jsonl line with event=writer_op_error, incremented a per-life counter keyed by the event's life_progress_path (basename maps 1:1 to writer_progress-<life>.json) and a per-class counter keyed by error_type. Per-life totals matched each writer_progress-<life>.json's own errors field exactly: 218/166/126/85 for lives 0-3 (sums to 595). Cross-checked a second, fully independent way against metrics.jsonl's writer_errors_total gauge-like counter (which restarts at 0 on every writer process restart): max value observed inside each life's own [t_death(i), t_death(i+1)) window was 218/166/126/85 -- an exact match, not a coincidence of rounding. The coordinator's independent fit states 'metrics max per class NotFoundError 218' and flags that 'the counter restarts per life; the ledger's life-summed total should be 595 -- reconcile'; this reconciles exactly: 218 is life 0's count (the max any single life's counter reached), and the life-summed total across all 4 lives is 595, matching the manifest and the ledger exactly. No discrepancy found.",
+  "generated_at": "2026-10-02T01:55:40Z"
+}

@@ -1,0 +1,96 @@
+{
+  "all_zero": true,
+  "reader_errors_total": 0,
+  "by_class_total": {},
+  "note": "Zero reader errors occurred in this run (the D-088-fixed engine's headline result for this soak). No reader_errors_total-labeled error counter and no per-(reader,query) error-class counter line appears anywhere in metrics.jsonl -- the harness emits these counters lazily, only once an error fires (soak2/soak3 had hundreds of millions of such lines; this run has none at all), so their total absence here IS the zero, not an artifact of filtering. Confirmed three ways: (1) metrics.jsonl's kind/name enumeration contains no counter named for reader errors (only writer_errors_total exists, for the writer side); (2) every reader-<idx>-progress.json carries \"errors\": {} (empty) and \"error_details\": []; (3) longevity_ledger.jsonl's 595 lines are 100% event=writer_op_error -- zero event=reader_op_error lines of any kind, including zero of the D-086 torn-tail StateError class (pre-registration clause (f)).",
+  "per_query_counters_summed": {
+    "description": "The per-(reader, query) completed-query counters that an error counter would have been compared against, had any fired (queries_total, gauge-sampled final value per reader x query id; sums to manifest.summary.reader_queries_total=13423132 exactly). These are NOT error counts -- they are provided so the all-zero error claim is checkable against real activity, not against an idle reader.",
+    "per_reader_queries_total": {
+      "0": {
+        "hist.single": 427614.0,
+        "snap.hop2": 427614.0,
+        "series.count": 427614.0,
+        "coactive.narrow": 427614.0
+      },
+      "1": {
+        "hist.single": 414891.0,
+        "snap.hop2": 414891.0,
+        "series.count": 414891.0,
+        "coactive.narrow": 414891.0
+      },
+      "2": {
+        "hist.single": 416098.0,
+        "snap.hop2": 416098.0,
+        "series.count": 416098.0,
+        "coactive.narrow": 416098.0
+      },
+      "3": {
+        "hist.single": 418844.0,
+        "snap.hop2": 418844.0,
+        "series.count": 418844.0,
+        "coactive.narrow": 418844.0
+      },
+      "4": {
+        "hist.single": 421460.0,
+        "snap.hop2": 421460.0,
+        "series.count": 421460.0,
+        "coactive.narrow": 421460.0
+      },
+      "5": {
+        "hist.single": 417397.0,
+        "snap.hop2": 417397.0,
+        "series.count": 417397.0,
+        "coactive.narrow": 417397.0
+      },
+      "6": {
+        "hist.single": 415412.0,
+        "snap.hop2": 415412.0,
+        "series.count": 415412.0,
+        "coactive.narrow": 415412.0
+      },
+      "7": {
+        "hist.single": 424067.0,
+        "snap.hop2": 424067.0,
+        "series.count": 424067.0,
+        "coactive.narrow": 424067.0
+      }
+    },
+    "grand_total_queries": 13423132.0,
+    "matches_manifest_reader_queries_total": true
+  },
+  "per_reader_error_details_from_progress_files": {
+    "0": {
+      "errors": {},
+      "error_details": []
+    },
+    "1": {
+      "errors": {},
+      "error_details": []
+    },
+    "2": {
+      "errors": {},
+      "error_details": []
+    },
+    "3": {
+      "errors": {},
+      "error_details": []
+    },
+    "4": {
+      "errors": {},
+      "error_details": []
+    },
+    "5": {
+      "errors": {},
+      "error_details": []
+    },
+    "6": {
+      "errors": {},
+      "error_details": []
+    },
+    "7": {
+      "errors": {},
+      "error_details": []
+    }
+  },
+  "generated_at": "2026-10-02T01:55:40Z"
+}

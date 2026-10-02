@@ -1,0 +1,48 @@
+{
+  "all_zero": true,
+  "manifest_reader_reopen_on_enoent_total": 0,
+  "per_reader": {
+    "0": {
+      "reopen_on_enoent_total_metrics_counter": 0.0,
+      "reopen_on_enoent_total_progress_file": 0,
+      "reopens_total_progress_file": 272
+    },
+    "1": {
+      "reopen_on_enoent_total_metrics_counter": 0.0,
+      "reopen_on_enoent_total_progress_file": 0,
+      "reopens_total_progress_file": 272
+    },
+    "2": {
+      "reopen_on_enoent_total_metrics_counter": 0.0,
+      "reopen_on_enoent_total_progress_file": 0,
+      "reopens_total_progress_file": 272
+    },
+    "3": {
+      "reopen_on_enoent_total_metrics_counter": 0.0,
+      "reopen_on_enoent_total_progress_file": 0,
+      "reopens_total_progress_file": 272
+    },
+    "4": {
+      "reopen_on_enoent_total_metrics_counter": 0.0,
+      "reopen_on_enoent_total_progress_file": 0,
+      "reopens_total_progress_file": 272
+    },
+    "5": {
+      "reopen_on_enoent_total_metrics_counter": 0.0,
+      "reopen_on_enoent_total_progress_file": 0,
+      "reopens_total_progress_file": 272
+    },
+    "6": {
+      "reopen_on_enoent_total_metrics_counter": 0.0,
+      "reopen_on_enoent_total_progress_file": 0,
+      "reopens_total_progress_file": 272
+    },
+    "7": {
+      "reopen_on_enoent_total_metrics_counter": 0.0,
+      "reopen_on_enoent_total_progress_file": 0,
+      "reopens_total_progress_file": 272
+    }
+  },
+  "method": "Two independent sources, both read-only off xzgpu: (1) metrics.jsonl's reader_reopen_on_enoent_total counter (10895 samples across all 8 readers), max final value taken per reader; (2) each reader-<idx>-progress.json's own reopen_on_enoent_total field (written once, at the reader's final flush, final=true). Both agree exactly: 0 for every reader. reopens (plain reopen count, not on-ENOENT) is 272 for all 8 readers -- the designed --reader-reopen-every-s 300 cadence over the ~86334s run (86334/300 ~ 288, close to 272 after accounting for the reopen interval starting partway through the first minute and the run's final partial interval), none of which hit ENOENT.",
+  "generated_at": "2026-10-02T01:55:40Z"
+}

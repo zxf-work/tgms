@@ -1,0 +1,22 @@
+{
+  "method": "For every row in compactions-4.jsonl (4213 total; this run's log carries epoch ts_start/ts_end directly, unlike soak3's host-CLOCK_MONOTONIC-only t_start/t_end, so the window IS directly epoch-comparable here -- the first soak in this campaign where this row is computable at all), formed the window [ts_start-60, ts_end+60] and collected every query_p99_ms gauge sample (metrics.jsonl, labels {reader, query}, any reader, any of the 4 query ids) whose ts falls in that window. compaction_stall_max_reader_p99_ms is the max value across every sample in every window; a window is 'non-empty' if at least one query_p99_ms sample falls inside it.",
+  "manifest_value": 222.871,
+  "manifest_compaction_stall_computable": true,
+  "this_record_max_reader_p99_ms": 222.871,
+  "matches_manifest": true,
+  "n_compactions_total": 4213,
+  "n_windows_nonempty": 4213,
+  "n_windows_empty": 0,
+  "max_detail": {
+    "ts": 1790471368.7645233,
+    "value": 222.871,
+    "reader": 0,
+    "query": "coactive.narrow",
+    "life": 3,
+    "compact_ts_start": 1790471308.6629934,
+    "compact_ts_end": 1790471325.5241725
+  },
+  "coordinator_fit": 222.871,
+  "agreement_with_coordinator": true,
+  "generated_at": "2026-10-02T01:55:40Z"
+}

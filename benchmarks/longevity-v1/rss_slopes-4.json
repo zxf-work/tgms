@@ -1,0 +1,342 @@
+{
+  "method": "Writer: ordinary least squares of rss_kb (gauge, unlabeled series in metrics.jsonl) vs. wall-clock seconds since each life's first sample, split at the 3 recorded restart death timestamps in recoveries-4.jsonl (giving 4 lives). Reader (harness series): OLS of rss_kb (gauge, labels={'reader': idx}) vs. wall-clock seconds since the run's first sample, one fit per reader over its whole run (reader_restarts=0, so readers never restart and have a single life each); this is the same metrics.jsonl gauge the writer series uses, sampled on each reader's own query-loop cadence (~1362 points over the reader's ~86334.4s span, i.e. essentially the full 24h run) rather than on a fixed wall-clock tick. Reader (sampler/composition series): OLS of VmSize/VmRSS/RssAnon/RssFile (kB, from /proc/<pid>/status via the coordinator's independent sampler, copied verbatim to rss_composition-4.log) vs. wall-clock seconds since that pid's first sample in the log; rows with role='[_child ]' are excluded per the pre-registration (that role is a miscellaneous/unidentified child, not a reader or writer). The sampler log carries pid and role only, not the harness's own reader index; the 8 reader pids are mapped to idx 0..7 by ascending pid order, which matches both the spawn order (pids are assigned sequentially by the OS at fork time, lowest-to-highest in idx order) and watch.log's own per_child_rss listing, which enumerates the same 8 pids directly after the writer's pid at every 300s sample. This mapping is corroborative, not independently proven, but the resulting VmRSS/RssAnon/RssFile/VmSize slope ranges exactly reproduce the coordinator's own quoted ranges (VmRSS 5.85-6.45, RssAnon 4.81-5.41, RssFile 1.03-1.06, VmSize 6.62-7.17 kB/s) to within rounding, so a mislabeling would have to be a same-valued permutation to go undetected -- treated here as strong corroboration, not proof.",
+  "frozen_bound_writer_kb_per_s": 50,
+  "frozen_bound_reader_kb_per_s": 10,
+  "frozen_bound_reader_pin_attributable_kb_per_s": 0.01,
+  "pin_attribution_limit": "The pre-registration's clause (c) caps the pin-attributable part of the reader RSS slope at <=0.01 kB/s, distinct from VSZ (not scored). No pre-fix (i.e. D-088-broken-engine) file-backed RSS series exists for this store/config to difference against -- P-SOAK4 is the first run of the fixed engine, so there is no prior broken-engine sample at the same store size to isolate a 'pin' delta from. The composition series below (RssFile slope 1.03-1.06 kB/s across all 8 readers) shows file-backed memory growing slowly but non-trivially over 24h; whether any part of that is pin-attributable cannot be determined from these instruments (no before/after-fix pair, no pin-specific counter). This is stated plainly rather than guessed at: the pin-attributable clause of (c) is NOT CHECKED by this record, same category of honest limit as soak3's compaction-stall row.",
+  "raw_series_location": "xzgpu:/mnt/project/xzhang/tgms/longevity/2026-09-26-soak4/metrics.jsonl (kind=gauge name=rss_kb; 39 MB) -- not copied into this repo, same PI ruling as soak1/soak2/soak3. The sampler/composition series is rss_composition-4.log (247 KB), copied verbatim from xzgpu:/mnt/project/xzhang/tgms/tmp/soak4-rss-composition.log.",
+  "writer_lives": [
+    {
+      "life": 0,
+      "n_points": 344,
+      "span_s": 21396.4,
+      "rss_first_kb": 2138988,
+      "rss_last_kb": 2996384,
+      "slope_kb_per_s_least_squares": 37.87978532724747,
+      "t_first": 1790387399.9769754,
+      "t_last": 1790408796.4164171
+    },
+    {
+      "life": 1,
+      "n_points": 337,
+      "span_s": 21486.6,
+      "rss_first_kb": 3156184,
+      "rss_last_kb": 4207204,
+      "slope_kb_per_s_least_squares": 23.19323397519618,
+      "t_first": 1790408918.189457,
+      "t_last": 1790430404.8321114
+    },
+    {
+      "life": 2,
+      "n_points": 322,
+      "span_s": 21444.3,
+      "rss_first_kb": 3963684,
+      "rss_last_kb": 4792936,
+      "slope_kb_per_s_least_squares": 20.97604108190339,
+      "t_first": 1790430561.5992835,
+      "t_last": 1790452005.8772821
+    },
+    {
+      "life": 3,
+      "n_points": 311,
+      "span_s": 21422.7,
+      "rss_first_kb": 4153476,
+      "rss_last_kb": 5191208,
+      "slope_kb_per_s_least_squares": 17.848761856866208,
+      "t_first": 1790452198.4638102,
+      "t_last": 1790473621.1771522
+    }
+  ],
+  "readers_harness_series": {
+    "0": {
+      "n_points": 1362,
+      "span_s": 86334.4,
+      "rss_first_kb": 138716,
+      "rss_last_kb": 975432,
+      "slope_kb_per_s_least_squares": 8.230898285310627,
+      "t_first": 1790387261.0572238,
+      "t_last": 1790473595.5040033
+    },
+    "1": {
+      "n_points": 1362,
+      "span_s": 86334.3,
+      "rss_first_kb": 138836,
+      "rss_last_kb": 963444,
+      "slope_kb_per_s_least_squares": 8.163484016607386,
+      "t_first": 1790387261.0750945,
+      "t_last": 1790473595.4162726
+    },
+    "2": {
+      "n_points": 1362,
+      "span_s": 86334.5,
+      "rss_first_kb": 138888,
+      "rss_last_kb": 961732,
+      "slope_kb_per_s_least_squares": 8.095556290238141,
+      "t_first": 1790387260.9786491,
+      "t_last": 1790473595.5020053
+    },
+    "3": {
+      "n_points": 1363,
+      "span_s": 86334.7,
+      "rss_first_kb": 138608,
+      "rss_last_kb": 940016,
+      "slope_kb_per_s_least_squares": 8.177266323547073,
+      "t_first": 1790387260.9885032,
+      "t_last": 1790473595.6451707
+    },
+    "4": {
+      "n_points": 1362,
+      "span_s": 86334.4,
+      "rss_first_kb": 138388,
+      "rss_last_kb": 958020,
+      "slope_kb_per_s_least_squares": 7.956618890390807,
+      "t_first": 1790387260.985927,
+      "t_last": 1790473595.3686812
+    },
+    "5": {
+      "n_points": 1361,
+      "span_s": 86334.4,
+      "rss_first_kb": 138644,
+      "rss_last_kb": 826904,
+      "slope_kb_per_s_least_squares": 8.398561754328973,
+      "t_first": 1790387261.019139,
+      "t_last": 1790473595.4060113
+    },
+    "6": {
+      "n_points": 1361,
+      "span_s": 86334.6,
+      "rss_first_kb": 138696,
+      "rss_last_kb": 741248,
+      "slope_kb_per_s_least_squares": 8.055222711685223,
+      "t_first": 1790387261.0849307,
+      "t_last": 1790473595.684828
+    },
+    "7": {
+      "n_points": 1362,
+      "span_s": 86334.4,
+      "rss_first_kb": 138804,
+      "rss_last_kb": 955224,
+      "slope_kb_per_s_least_squares": 8.181475483185276,
+      "t_first": 1790387260.9926705,
+      "t_last": 1790473595.4278276
+    }
+  },
+  "readers_composition_series": {
+    "0": {
+      "pid": 3419861,
+      "n_points": 211,
+      "span_s": 63028.0,
+      "t_first_epoch": 1790410512.0,
+      "t_last_epoch": 1790473540.0,
+      "VmSize_kb": {
+        "first": 2294460,
+        "last": 2687676,
+        "slope_kb_per_s": 7.03661762484314
+      },
+      "VmRSS_kb": {
+        "first": 590140,
+        "last": 975432,
+        "slope_kb_per_s": 6.327422585138927
+      },
+      "RssAnon_kb": {
+        "first": 503716,
+        "last": 823848,
+        "slope_kb_per_s": 5.286208223076516
+      },
+      "RssFile_kb": {
+        "first": 86424,
+        "last": 151584,
+        "slope_kb_per_s": 1.041214362062412
+      }
+    },
+    "1": {
+      "pid": 3419862,
+      "n_points": 211,
+      "span_s": 63028.0,
+      "t_first_epoch": 1790410512.0,
+      "t_last_epoch": 1790473540.0,
+      "VmSize_kb": {
+        "first": 2303168,
+        "last": 2710380,
+        "slope_kb_per_s": 6.998433114723818
+      },
+      "VmRSS_kb": {
+        "first": 590980,
+        "last": 966608,
+        "slope_kb_per_s": 6.24086899711626
+      },
+      "RssAnon_kb": {
+        "first": 506200,
+        "last": 814888,
+        "slope_kb_per_s": 5.199614709031618
+      },
+      "RssFile_kb": {
+        "first": 84780,
+        "last": 151720,
+        "slope_kb_per_s": 1.041254288084642
+      }
+    },
+    "2": {
+      "pid": 3419863,
+      "n_points": 211,
+      "span_s": 63028.0,
+      "t_first_epoch": 1790410512.0,
+      "t_last_epoch": 1790473540.0,
+      "VmSize_kb": {
+        "first": 2262144,
+        "last": 2673480,
+        "slope_kb_per_s": 6.835208396348609
+      },
+      "VmRSS_kb": {
+        "first": 550440,
+        "last": 961732,
+        "slope_kb_per_s": 6.141158607839778
+      },
+      "RssAnon_kb": {
+        "first": 465424,
+        "last": 809928,
+        "slope_kb_per_s": 5.084917742641032
+      },
+      "RssFile_kb": {
+        "first": 85016,
+        "last": 151804,
+        "slope_kb_per_s": 1.0562408651987467
+      }
+    },
+    "3": {
+      "pid": 3419864,
+      "n_points": 211,
+      "span_s": 63028.0,
+      "t_first_epoch": 1790410512.0,
+      "t_last_epoch": 1790473540.0,
+      "VmSize_kb": {
+        "first": 2286436,
+        "last": 2652188,
+        "slope_kb_per_s": 7.1402438157050225
+      },
+      "VmRSS_kb": {
+        "first": 581660,
+        "last": 940016,
+        "slope_kb_per_s": 6.451030632108141
+      },
+      "RssAnon_kb": {
+        "first": 495336,
+        "last": 786852,
+        "slope_kb_per_s": 5.413053565173764
+      },
+      "RssFile_kb": {
+        "first": 86324,
+        "last": 153164,
+        "slope_kb_per_s": 1.0379770669343769
+      }
+    },
+    "4": {
+      "pid": 3419865,
+      "n_points": 211,
+      "span_s": 63028.0,
+      "t_first_epoch": 1790410512.0,
+      "t_last_epoch": 1790473540.0,
+      "VmSize_kb": {
+        "first": 2306912,
+        "last": 2670084,
+        "slope_kb_per_s": 6.664090427348526
+      },
+      "VmRSS_kb": {
+        "first": 586896,
+        "last": 958020,
+        "slope_kb_per_s": 5.970901951198447
+      },
+      "RssAnon_kb": {
+        "first": 502304,
+        "last": 804788,
+        "slope_kb_per_s": 4.919512938003855
+      },
+      "RssFile_kb": {
+        "first": 84592,
+        "last": 153232,
+        "slope_kb_per_s": 1.0513890131945915
+      }
+    },
+    "5": {
+      "pid": 3419866,
+      "n_points": 211,
+      "span_s": 63028.0,
+      "t_first_epoch": 1790410512.0,
+      "t_last_epoch": 1790473540.0,
+      "VmSize_kb": {
+        "first": 2272460,
+        "last": 3038928,
+        "slope_kb_per_s": 7.169742999797529
+      },
+      "VmRSS_kb": {
+        "first": 563740,
+        "last": 1170472,
+        "slope_kb_per_s": 6.4173377546912205
+      },
+      "RssAnon_kb": {
+        "first": 479196,
+        "last": 1017816,
+        "slope_kb_per_s": 5.382960274484469
+      },
+      "RssFile_kb": {
+        "first": 84544,
+        "last": 152656,
+        "slope_kb_per_s": 1.0343774802067516
+      }
+    },
+    "6": {
+      "pid": 3419867,
+      "n_points": 211,
+      "span_s": 63028.0,
+      "t_first_epoch": 1790410512.0,
+      "t_last_epoch": 1790473540.0,
+      "VmSize_kb": {
+        "first": 2294624,
+        "last": 3065264,
+        "slope_kb_per_s": 6.617744950146459
+      },
+      "VmRSS_kb": {
+        "first": 582276,
+        "last": 1196788,
+        "slope_kb_per_s": 5.847831891432124
+      },
+      "RssAnon_kb": {
+        "first": 497104,
+        "last": 1043704,
+        "slope_kb_per_s": 4.811382306086552
+      },
+      "RssFile_kb": {
+        "first": 85172,
+        "last": 153084,
+        "slope_kb_per_s": 1.0364495853455717
+      }
+    },
+    "7": {
+      "pid": 3419868,
+      "n_points": 211,
+      "span_s": 63028.0,
+      "t_first_epoch": 1790410512.0,
+      "t_last_epoch": 1790473540.0,
+      "VmSize_kb": {
+        "first": 2297972,
+        "last": 2667368,
+        "slope_kb_per_s": 6.925881278708195
+      },
+      "VmRSS_kb": {
+        "first": 585720,
+        "last": 955224,
+        "slope_kb_per_s": 6.27311649568783
+      },
+      "RssAnon_kb": {
+        "first": 499244,
+        "last": 801856,
+        "slope_kb_per_s": 5.233609441820853
+      },
+      "RssFile_kb": {
+        "first": 86476,
+        "last": 153368,
+        "slope_kb_per_s": 1.0395070538669773
+      }
+    }
+  }
+}
