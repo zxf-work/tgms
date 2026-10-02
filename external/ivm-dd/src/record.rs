@@ -9,7 +9,7 @@
 use crate::dataflow::RunOutcome;
 use crate::export::CellBundle;
 use serde_json::json;
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 use std::path::Path;
 
 pub const SCHEMA_VERSION: &str = "1.0.0";
@@ -47,20 +47,36 @@ fn median(xs: &mut [f64]) -> Option<f64> {
 /// map for an epoch where nothing changed is not a disagreement -- it is
 /// looked up from the most recent epoch at which this run *did* emit a
 /// digest for it (DD's own "unchanged, so no diff" semantics).
+///
+/// A name in that epoch's own `refused` list is excluded from the
+/// comparison entirely rather than counted as agree/disagree/not_answered:
+/// TGMS's full-recompute oracle could not produce a ground-truth digest
+/// for it this epoch, so `oracle.jsonl` carries forward the *previous*
+/// epoch's digest for that name (not fresh ground truth, see
+/// `tests/fixtures/generate_tiny1.py`) -- comparing our fresh output
+/// against that stale carried-forward value would be meaningless. Such
+/// names are tallied separately as `oracle_refused`, matching
+/// `scripts/external_check.py`'s independent reconstruction.
 /// `(epoch, artifact_name, oracle_digest, our_digest)`.
 pub type Disagreement = (u64, String, String, String);
 
 pub fn oracle_agreement(
     bundle: &CellBundle,
     outcome: &RunOutcome,
-) -> (usize, Vec<Disagreement>, usize) {
+) -> (usize, Vec<Disagreement>, usize, usize) {
     let mut running: HashMap<String, String> = outcome.epoch0_digests.clone();
     let mut agree = 0usize;
     let mut disagree: Vec<Disagreement> = Vec::new();
     let mut not_answered = 0usize;
+    let mut oracle_refused = 0usize;
 
     if let Some(row0) = bundle.oracle.first() {
+        let refused: HashSet<&str> = row0.refused.iter().map(|s| s.as_str()).collect();
         for (name, oracle_digest) in &row0.digests {
+            if refused.contains(name.as_str()) {
+                oracle_refused += 1;
+                continue;
+            }
             match (oracle_digest, running.get(name)) {
                 (Some(od), Some(ours)) => {
                     if od == ours {
@@ -79,7 +95,12 @@ pub fn oracle_agreement(
         for (name, digest) in &burst.digests {
             running.insert(name.clone(), digest.clone());
         }
+        let refused: HashSet<&str> = oracle_row.refused.iter().map(|s| s.as_str()).collect();
         for (name, oracle_digest) in &oracle_row.digests {
+            if refused.contains(name.as_str()) {
+                oracle_refused += 1;
+                continue;
+            }
             match (oracle_digest, running.get(name)) {
                 (Some(od), Some(ours)) => {
                     if od == ours {
@@ -93,7 +114,7 @@ pub fn oracle_agreement(
             }
         }
     }
-    (agree, disagree, not_answered)
+    (agree, disagree, not_answered, oracle_refused)
 }
 
 pub fn build_result_json(
@@ -104,7 +125,7 @@ pub fn build_result_json(
     host_end: &HostSnapshot,
     deviations: &[&str],
 ) -> serde_json::Value {
-    let (agree, disagree, not_answered) = oracle_agreement(bundle, outcome);
+    let (agree, disagree, not_answered, oracle_refused) = oracle_agreement(bundle, outcome);
 
     let per_burst: Vec<serde_json::Value> = outcome
         .bursts
@@ -169,7 +190,8 @@ pub fn build_result_json(
         "gates": {
             "oracle_agreement": {"agree": agree, "disagree": disagree.iter().map(|(e,n,o,m)| json!({
                 "epoch": e, "artifact": n, "oracle_digest": o, "our_digest": m,
-            })).collect::<Vec<_>>(), "disagree_count": disagree.len(), "not_answered": not_answered},
+            })).collect::<Vec<_>>(), "disagree_count": disagree.len(), "not_answered": not_answered,
+                "oracle_refused": oracle_refused},
         },
         "deviations": deviations,
     })
