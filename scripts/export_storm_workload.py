@@ -132,9 +132,21 @@ from tgms.eval.storm import Storm, build_mix, narrowing_coverage  # noqa: E402
 
 SCHEMA_VERSION = "1.0.0"
 
-MAIN_GRID_ROWS = ROOT / "benchmarks" / "storm-v1" / "storm-v2-main-grid-2026-09-15-rows.jsonl"
-PROBE_MANIFEST = ROOT / "benchmarks" / "storm-v1" / "storm-v2-r18-probe-2026-09-15.json"
-PROBE_ROWS = ROOT / "benchmarks" / "storm-v1" / "storm-v2-r18-probe-2026-09-15-rows.jsonl"
+def _grid_paths(grid_root: Path) -> tuple[Path, Path, Path]:
+    """The three committed files `load_grid_cells` reads, under
+    `grid_root/benchmarks/storm-v1/`. `grid_root` is deliberately a
+    *separate* knob from `ROOT` (where this script's own `sys.path`
+    insertion points, so `import tgms.eval.storm` resolves the harness at
+    whatever commit the script itself is checked out at): the grid's own
+    commit `fdd393c` (memo §1.2) predates the commit that landed these
+    files on `main` (`4c609c9`, 33 commits later) by construction -- a
+    worktree pinned at `fdd393c` for harness fidelity does not carry them.
+    Point `--grid-root` at any checkout that has `main` (or later) merged
+    in; it is read-only reference data, never replayed itself."""
+    base = grid_root / "benchmarks" / "storm-v1"
+    return (base / "storm-v2-main-grid-2026-09-15-rows.jsonl",
+           base / "storm-v2-r18-probe-2026-09-15.json",
+           base / "storm-v2-r18-probe-2026-09-15-rows.jsonl")
 
 BUNDLE_FILES: tuple[str, ...] = (
     "versions-epoch0.jsonl", "artifacts.jsonl", "eventlog-tail.jsonl", "deltas.jsonl",
@@ -200,13 +212,14 @@ class CellSpec:
     source: str  # "main-grid" | "probe" | "extra"
 
 
-def load_grid_cells() -> dict[str, CellSpec]:
+def load_grid_cells(grid_root: Path = ROOT) -> dict[str, CellSpec]:
     """The 36 committed storm-v2 main-grid cells plus the N=10,000 probe
     cell -- 37 in total, read straight from the committed benchmark files
-    (never hand-copied), keyed by `cell_id`."""
+    under `grid_root` (never hand-copied), keyed by `cell_id`."""
+    main_grid_rows, probe_manifest_path, probe_rows_path = _grid_paths(grid_root)
     cells: dict[str, CellSpec] = {}
 
-    for line in MAIN_GRID_ROWS.read_text().splitlines():
+    for line in main_grid_rows.read_text().splitlines():
         if not line.strip():
             continue
         row = json.loads(line)
@@ -224,10 +237,10 @@ def load_grid_cells() -> dict[str, CellSpec]:
             committed_refused_count=None, source="main-grid",
         )
 
-    probe_manifest = json.loads(PROBE_MANIFEST.read_text())
+    probe_manifest = json.loads(probe_manifest_path.read_text())
     pc = probe_manifest["config"]
     probe_rows = sorted(
-        (json.loads(line) for line in PROBE_ROWS.read_text().splitlines() if line.strip()),
+        (json.loads(line) for line in probe_rows_path.read_text().splitlines() if line.strip()),
         key=lambda r: r["batch_index"])
     pcid = cell_id(pc["store"], pc["mix"], pc["age"], pc["n_artifacts"], pc["seed"])
     cells[pcid] = CellSpec(
@@ -587,7 +600,7 @@ def export_cell(
 # ---------------------------------------------------------------------------
 
 def cmd_list_cells(args: argparse.Namespace) -> int:
-    cells = load_grid_cells()
+    cells = load_grid_cells(args.grid_root)
     if args.extra_cells:
         cells.update(load_extra_cells(args.extra_cells))
     for cid in sorted(cells):
@@ -597,7 +610,7 @@ def cmd_list_cells(args: argparse.Namespace) -> int:
 
 
 def cmd_export(args: argparse.Namespace) -> int:
-    cells = load_grid_cells()
+    cells = load_grid_cells(args.grid_root)
     if args.extra_cells:
         cells.update(load_extra_cells(args.extra_cells))
 
@@ -698,6 +711,11 @@ def main(argv: list[str] | None = None) -> int:
 
     p_list = sub.add_parser("list-cells", help="print every known cell id")
     p_list.add_argument("--extra-cells", type=Path, default=None)
+    p_list.add_argument("--grid-root", type=Path, default=ROOT,
+                        help="checkout to read benchmarks/storm-v1/ from (default: this "
+                             "script's own ROOT); separate from ROOT because a worktree "
+                             "pinned at the grid's harness commit (fdd393c) predates the "
+                             "commit that landed the grid files on main")
     p_list.set_defaults(fn=cmd_list_cells)
 
     p_export = sub.add_parser("export", help="export one or more cells")
@@ -709,6 +727,8 @@ def main(argv: list[str] | None = None) -> int:
                           help="rebuild synth-iv-60k fresh (A3) if absent from --stores-dir")
     p_export.add_argument("--extra-cells", type=Path, default=None,
                           help="JSON file of Addendum-A2-style cells, not added by default")
+    p_export.add_argument("--grid-root", type=Path, default=ROOT,
+                          help="checkout to read benchmarks/storm-v1/ from; see list-cells")
     p_export.add_argument("--max-attempts-factor", type=int, default=4)
     p_export.set_defaults(fn=cmd_export)
 
