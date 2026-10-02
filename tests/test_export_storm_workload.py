@@ -252,3 +252,76 @@ def test_ensure_store_present(tmp_path: Path) -> None:
 def test_ensure_store_missing_without_build_raises(tmp_path: Path) -> None:
     with pytest.raises(FileNotFoundError):
         export_storm_workload.ensure_store("tiny", tmp_path / "stores", build_missing=False)
+
+
+# ---------------------------------------------------------------------------
+# _maybe_upgrade_manifests -- a format mismatch misreported as "mix starved"
+#
+# Found live on xzgpu (2026-10-02): the collegemsg-c3-none-n1000-s0 smoke
+# cell reported "0/20 batches realized (mix starved)" even though mix()
+# returned 38 correction candidates on every attempt. The real cause was
+# that the shared `collegemsg` store had been written by an engine that
+# predates this worktree's manifest format, so every `_write` raised
+# `StateError` (a `TgmsError`), which `run_batch_export` -- like the
+# harness's own `Storm.run_batch` -- catches and turns into "no correction
+# was realizable this attempt", indistinguishable at the call site from an
+# empty mix. `export_cell` now calls `_maybe_upgrade_manifests` on its own
+# scratch copy, right after `shutil.copytree`, before any replay.
+# ---------------------------------------------------------------------------
+
+FORMAT1_FIXTURE = Path(__file__).parent / "fixtures" / "format1_store"
+
+
+def test_maybe_upgrade_manifests_upgrades_an_older_format_store(tmp_path: Path) -> None:
+    pytest.importorskip("tgms._engine", reason="native engine extension not built")
+    import shutil as _shutil
+
+    store_copy = tmp_path / "format1_store"
+    _shutil.copytree(FORMAT1_FIXTURE, store_copy)
+
+    probe = tgms.open(store_copy, backend="native", read_only=True)
+    try:
+        before_fmt = probe.adapter.verify().get("manifest_format")
+    finally:
+        probe.close()
+    assert before_fmt == 1  # the vendored fixture, confirmed stale on purpose
+
+    export_storm_workload._maybe_upgrade_manifests(store_copy)
+
+    after = tgms.open(store_copy, backend="native", read_only=True)
+    try:
+        report = after.adapter.verify()
+    finally:
+        after.close()
+    assert report["manifest_format"] == 3
+    assert report["healthy"], report["problems"]
+
+    # and a write -- the thing that was silently failing -- now succeeds
+    writer = tgms.open(store_copy, backend="native")
+    try:
+        writer.ingest_events([{"src": "n0", "dst": "n1", "rel_type": "R", "vt_s": 999}])
+    finally:
+        writer.close()
+
+
+def test_maybe_upgrade_manifests_is_a_noop_on_an_already_current_store(
+    tmp_path: Path,
+) -> None:
+    stores_dir = tmp_path / "stores"
+    _build_fixture_store(stores_dir / "tiny")
+
+    before = tgms.open(stores_dir / "tiny", backend="native", read_only=True)
+    try:
+        before_report = before.adapter.verify()
+    finally:
+        before.close()
+    assert before_report["manifest_format"] == 3
+
+    export_storm_workload._maybe_upgrade_manifests(stores_dir / "tiny")  # must not raise
+
+    after = tgms.open(stores_dir / "tiny", backend="native", read_only=True)
+    try:
+        after_report = after.adapter.verify()
+    finally:
+        after.close()
+    assert after_report == before_report
