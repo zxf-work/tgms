@@ -1,4 +1,4 @@
-//! Unit test for the 37th-cell withheld-correction check (memo §3.5),
+//! Unit test for the withheld-correction check,
 //! on a hand-built 11-batch bundle (no real synth-iv-60k cell is
 //! available to this session -- see the crate README). Exercises
 //! `withheld::run_withheld_check`'s slicing (`table_through(9)` for both
@@ -73,7 +73,7 @@ fn withheld_check_reads_the_pre_correction_table_under_both_feeders() {
 
     let f_epoch = results.iter().find(|r| r.feeder == "F-epoch").unwrap();
     assert!(f_epoch.probe_reports_complete_through_10);
-    assert!(!f_epoch.signalled, "memo: no staleness signal is expected under either feeder");
+    assert!(!f_epoch.signalled, "no staleness signal is expected under either feeder");
     // The served table is table_through(9), which still has a->b believed
     // -- so the artifact's served digest disagrees with the epoch-10
     // oracle digest, and the probe claims completeness: false-fresh.
@@ -83,7 +83,7 @@ fn withheld_check_reads_the_pre_correction_table_under_both_feeders() {
     let f_watermark = results.iter().find(|r| r.feeder == "F-watermark").unwrap();
     assert!(!f_watermark.probe_reports_complete_through_10);
     // Same served value, but the probe does NOT claim completeness, so
-    // nothing here is scored false-fresh (memo §3.5's whole point).
+    // nothing here is scored false-fresh (the point of the watermark feeder).
     assert_eq!(f_watermark.false_fresh_count, 0);
     assert!(!f_watermark.artifacts[0].false_fresh);
 

@@ -131,7 +131,7 @@ def _build_initial_ops() -> list[dict[str, Any]]:
 
 
 # ---------------------------------------------------------------------------
-# the 13 registered operators (storm-v2 grid's catalogue, task-spec args)
+# the 13 registered operators (storm-v2 grid catalogue, registration-shaped args)
 # ---------------------------------------------------------------------------
 
 ARTIFACTS: tuple[tuple[str, str, dict[str, Any]], ...] = (

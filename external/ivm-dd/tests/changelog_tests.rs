@@ -1,9 +1,9 @@
-//! Unit tests for the changelog encoder (memo §3.1): a version is
+//! Unit tests for the changelog encoder: a version is
 //! inserted (+1) at the epoch of its `tt_s`, retracted (−1) at the epoch
 //! whose transaction closed it, and a correction is exactly
 //! retraction-of-superseded + insertion-of-corrected at the same epoch.
 //! Hand-built fixtures (no files) so these are independent of the
-//! lane-X1 export format and of any real cell.
+//! export format and of any real cell.
 
 use ivm_dd::changelog::build;
 use ivm_dd::export::{ArtifactSpec, CellBundle, ClosedEntry, DeltaRow, ExportManifest, OracleRow};
