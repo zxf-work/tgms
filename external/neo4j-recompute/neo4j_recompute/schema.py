@@ -9,7 +9,7 @@ from .canon import OPEN_END
 #: storm artifact reads at `as_of_tt = OPEN_END` (default), so every query in
 #: `queries.py` filters on this constant rather than taking `as_of_tt` as a
 #: live parameter.
-O = OPEN_END
+OPEN = OPEN_END
 
 #: DDL, run once per fresh database after CSV import, before the epoch-0 pass.
 #: Order matters only for the uniqueness constraint (cheap, run first); every

@@ -1,8 +1,10 @@
 #!/usr/bin/env python3
 """Lane X1 — export the committed storm-v2 correction-grid workload.
 
-`docs/design/EXTERNAL_BASELINES_DESIGN_2026-10-02.md` §1 (gates P-EXT1/P-EXT2);
-`docs/design/OSDI27_AUDIT_AND_PLAN_2026-09-13.md` §4.3b P-EXT1/P-EXT2.
+This export bundle is the frozen input against which gates P-EXT1/P-EXT2
+(global recompute externalized on an independent engine) are checked: the
+campaign's pre-registered predictions for this comparison are scored
+against it, never recomputed from a live run.
 
 For each cell (store x mix x age x n_artifacts x seed) of the committed
 storm-v2 grid, this script replays the cell **deterministically at this

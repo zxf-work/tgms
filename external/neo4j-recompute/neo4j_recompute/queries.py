@@ -25,7 +25,7 @@ from __future__ import annotations
 
 from .canon import OPEN_END
 
-O = OPEN_END
+OPEN = OPEN_END
 
 
 class NotExpressibleError(ValueError):
@@ -50,7 +50,7 @@ def f1_params(args: dict, limit: int = 100) -> dict:
         raise NotExpressibleError("entity_history: only as_of_tt=OPEN_END is frozen-scope")
     if not args.get("include_edges", False):
         raise NotExpressibleError("entity_history: registered scope always has include_edges=True")
-    return {"uid": args["uid"], "O": O, "lim": args.get("limit", limit)}
+    return {"uid": args["uid"], "O": OPEN, "lim": args.get("limit", limit)}
 
 
 # --------------------------------------------------------------------------- #
@@ -69,7 +69,7 @@ def f2_params(args: dict, limit: int = 100) -> dict:
     if args.get("rel_types") is not None:
         raise NotExpressibleError("version_history: rel_types filter is out of frozen scope")
     w = args["window"]
-    return {"t_a": w["t_a"], "t_b": w["t_b"], "O": O, "lim": args.get("limit", limit)}
+    return {"t_a": w["t_a"], "t_b": w["t_b"], "O": OPEN, "lim": args.get("limit", limit)}
 
 
 # --------------------------------------------------------------------------- #
@@ -93,7 +93,7 @@ def f3_params(args: dict, limit: int = 100) -> dict:
         raise NotExpressibleError("snapshot_subgraph: only a single seed at hops=1 is frozen-scope")
     if args.get("rel_types") is not None:
         raise NotExpressibleError("snapshot_subgraph: rel_types filter is out of frozen scope")
-    return {"seed": args["seeds"][0], "t": args["t_valid"], "O": O, "lim": args.get("limit", limit)}
+    return {"seed": args["seeds"][0], "t": args["t_valid"], "O": OPEN, "lim": args.get("limit", limit)}
 
 
 # --------------------------------------------------------------------------- #
@@ -133,7 +133,7 @@ RETURN na[0..$lim] AS nodes_added, size(na) AS nodes_added_total,
 def f4_params(args: dict, limit: int = 100) -> dict:
     if args.get("scope") is not None:
         raise NotExpressibleError("diff_snapshots: scoped (hop-restricted) diff is out of frozen scope")
-    return {"t1": args["t1"], "t2": args["t2"], "O": O, "lim": args.get("limit", limit)}
+    return {"t1": args["t1"], "t2": args["t2"], "O": OPEN, "lim": args.get("limit", limit)}
 
 
 # --------------------------------------------------------------------------- #
@@ -154,7 +154,7 @@ RETURN g[0..$lim] AS neighbors_gained, size(g) AS neighbors_gained_total, l[0..$
 
 def f5_params(args: dict, limit: int = 100) -> dict:
     return {"uid": args["uid"], "t1": args["t1"], "t2": args["t2"],
-            "stride": args["stride"], "O": O, "lim": args.get("limit", limit)}
+            "stride": args["stride"], "O": OPEN, "lim": args.get("limit", limit)}
 
 
 # --------------------------------------------------------------------------- #
@@ -174,7 +174,7 @@ def f6_params(args: dict, limit: int = 100) -> dict:
         raise NotExpressibleError("aggregate_events: only group_by=[endpoint/src], "
                                   "aggregates=[count] is frozen-scope")
     w = args["window"]
-    return {"t_a": w["t_a"], "t_b": w["t_b"], "O": O, "lim": args.get("limit", limit)}
+    return {"t_a": w["t_a"], "t_b": w["t_b"], "O": OPEN, "lim": args.get("limit", limit)}
 
 
 # --------------------------------------------------------------------------- #
@@ -192,7 +192,7 @@ def f7_params(args: dict, limit: int = 100) -> dict:
     if args.get("metric") != "edge_event_count":
         raise NotExpressibleError("graph_metric_timeseries: only metric=edge_event_count is frozen-scope")
     w = args["window"]
-    return {"t_a": w["t_a"], "t_b": w["t_b"], "stride": args["stride"], "O": O,
+    return {"t_a": w["t_a"], "t_b": w["t_b"], "stride": args["stride"], "O": OPEN,
             "lim": args.get("limit", limit)}
 
 
@@ -221,7 +221,7 @@ def f8_params(args: dict, limit: int = 100) -> dict:
     p = args.get("params") or {}
     return {"uid": args["target"]["uid"], "t_a": w["t_a"], "t_b": w["t_b"],
             "stride": args["stride"], "w": p.get("w", 10), "z": p.get("z", 3.0),
-            "O": O, "lim": args.get("limit", limit)}
+            "O": OPEN, "lim": args.get("limit", limit)}
 
 
 # --------------------------------------------------------------------------- #
@@ -242,7 +242,7 @@ def f9_params(args: dict, limit: int = 100) -> dict:
         raise NotExpressibleError("count_temporal_motifs: only motif=M_2node_pingpong, "
                                   "node_filter=null is frozen-scope")
     w = args["window"]
-    return {"t_a": w["t_a"], "t_b": w["t_b"], "d": args["delta"], "O": O}
+    return {"t_a": w["t_a"], "t_b": w["t_b"], "d": args["delta"], "O": OPEN}
 
 
 # --------------------------------------------------------------------------- #
@@ -276,7 +276,7 @@ def f10_params(args: dict, limit: int = 25) -> dict:
         raise NotExpressibleError("find_temporal_motif_instances: only motif=M_2node_pingpong, "
                                   "node_filter=null is frozen-scope")
     w = args["window"]
-    return {"t_a": w["t_a"], "t_b": w["t_b"], "d": args["delta"], "O": O,
+    return {"t_a": w["t_a"], "t_b": w["t_b"], "d": args["delta"], "O": OPEN,
             "lim": args.get("limit", limit)}
 
 
@@ -300,7 +300,7 @@ def f11_window_params(args: dict) -> dict:
     if args.get("direction", "out") != "out":
         raise NotExpressibleError("temporal_reachability: only direction=out is frozen-scope")
     w = args["window"]
-    return {"t_a": w["t_a"], "t_b": w["t_b"], "O": O}
+    return {"t_a": w["t_a"], "t_b": w["t_b"], "O": OPEN}
 
 
 # --------------------------------------------------------------------------- #
@@ -363,7 +363,7 @@ def f12_params(args: dict) -> dict:
         raise NotExpressibleError("temporal_paths: only as_of_tt=OPEN_END is frozen-scope")
     w = args["window"]
     return {"src": args["src"], "dst": args["dst"], "t_a": w["t_a"], "t_b": w["t_b"],
-            "k": args.get("k", 5), "O": O}, args.get("max_hops", 4)
+            "k": args.get("k", 5), "O": OPEN}, args.get("max_hops", 4)
 
 
 # --------------------------------------------------------------------------- #

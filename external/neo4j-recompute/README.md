@@ -1,15 +1,14 @@
 # external-v1: Neo4j 5 recompute configuration for P-EXT1
 
-Lane N1's implementation of the Neo4j side of the external-baseline campaign
-P-EXT1 (global recompute externalized on Neo4j 5), per the internal design
-memo `docs/design/EXTERNAL_BASELINES_DESIGN_2026-10-02.md` §2 (property-graph
-schema, loading path, Cypher per artifact family, the recompute protocol per
-burst, correctness vs. the oracle, host protocol, record layout) and the
-frozen pre-registration "P-EXT1" + "Addendum EXT-A" in
-`docs/design/OSDI27_AUDIT_AND_PLAN_2026-09-13.md` §4.3b. This directory and
-its tests are the only parts of that work committed to the public tree;
-`docs/design/` and `paper/` are read-only reference and are never committed
-from here.
+This package implements the Neo4j side of the external-baseline campaign
+P-EXT1 (global recompute externalized on Neo4j 5): the property-graph
+schema and loading path (§2–3 below), the Cypher text for every registered
+artifact family (§4), the per-burst recompute protocol — apply the delta,
+then answer every registered artifact's query and score it against the
+TGMS oracle (§5) — and the record/output layout (§6). This directory and
+its tests are the only parts of this work committed to the public tree.
+Correctness and wall-time here are checked against the campaign's
+pre-registered predictions for this comparison, frozen before any cell ran.
 
 **This is not an LDBC Benchmark** and nothing here is an LDBC Benchmark
 Result — it is a correctness-and-wall-time comparison between TGMS's own
