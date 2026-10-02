@@ -1,0 +1,13 @@
+{"args":{"as_of_tt":4611686018427387904,"cursor":null,"include_edges":true,"limit":100,"uid":"u1"},"name":"art00_entity_history","op":"entity_history"}
+{"args":{"as_of_tt":4611686018427387904,"belief":"current","cursor":null,"kind":"node","limit":100,"rel_types":null,"window":{"t_a":0,"t_b":1000}},"name":"art01_version_history","op":"version_history"}
+{"args":{"as_of_tt":4611686018427387904,"cursor":null,"hops":1,"limit":100,"rel_types":null,"seeds":["u1"],"t_valid":160},"name":"art02_snapshot_subgraph","op":"snapshot_subgraph"}
+{"args":{"as_of_tt":4611686018427387904,"limit":100,"scope":null,"t1":60,"t2":410},"name":"art03_diff_snapshots","op":"diff_snapshots"}
+{"args":{"as_of_tt":4611686018427387904,"limit":100,"stride":100,"t1":0,"t2":800,"uid":"u1"},"name":"art04_neighborhood_evolution","op":"neighborhood_evolution"}
+{"args":{"aggregates":[{"agg":"count"}],"as_of_tt":4611686018427387904,"cursor":null,"endpoint_filter":null,"group_by":[{"dim":"endpoint","role":"src"}],"limit":100,"pair_mode":null,"prop_filter":null,"rel_types":null,"stride":null,"window":{"t_a":0,"t_b":1000}},"name":"art05_aggregate_events","op":"aggregate_events"}
+{"args":{"as_of_tt":4611686018427387904,"cursor":null,"limit":100,"metric":"edge_event_count","stride":125,"window":{"t_a":0,"t_b":1000}},"name":"art06_graph_metric_timeseries","op":"graph_metric_timeseries"}
+{"args":{"as_of_tt":4611686018427387904,"cursor":null,"limit":100,"method":"zscore","params":{"r":3.0,"w":10,"z":3.0},"stride":62,"target":{"kind":"node_activity","rel_type":null,"uid":"u1"},"window":{"t_a":0,"t_b":1000}},"name":"art07_burst_detection","op":"burst_detection"}
+{"args":{"as_of_tt":4611686018427387904,"delta":125,"mode":"exact","motif":"M_2node_pingpong","node_filter":null,"seed":null,"window":{"t_a":0,"t_b":1000}},"name":"art08_count_temporal_motifs","op":"count_temporal_motifs"}
+{"args":{"as_of_tt":4611686018427387904,"cursor":null,"delta":125,"limit":25,"mode":"exact","motif":"M_2node_pingpong","node_filter":null,"seed":null,"window":{"t_a":0,"t_b":1000}},"name":"art09_find_temporal_motif_instances","op":"find_temporal_motif_instances"}
+{"args":{"as_of_tt":4611686018427387904,"cursor":null,"delta_max_wait":null,"direction":"out","limit":100,"src":"u1","window":{"t_a":0,"t_b":1000}},"name":"art10_temporal_reachability","op":"temporal_reachability"}
+{"args":{"as_of_tt":4611686018427387904,"dst":"u3","k":2,"max_hops":4,"src":"u1","window":{"t_a":0,"t_b":1000}},"name":"art11_temporal_paths","op":"temporal_paths"}
+{"args":{"field":null,"fn":"count","group_by":null,"input":[{"x":1},{"x":2}]},"name":"art12_compute","op":"compute"}
