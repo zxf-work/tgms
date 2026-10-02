@@ -666,6 +666,37 @@ LONGEVITY_RECOVERIES_THREE_SHA256 = "36032c9ad858150e0d914d98e6399b62124492238b8
 LONGEVITY_HOST_LOAD_THREE_SHA256 = "93836026f0c88eb8733b746a1114d716ad463eb2b9e81898291d6be93419e02d"
 LONGEVITY_VERIFY_FULL_THREE_SHA256 = "6643bbda8fd0508c53715346b0a00796a733b8aa55326fe3275fa40f79e9c89b"
 
+# Lane W2ab -- P-SOAK4, the 24h fourth soak (commit b6cdde0, the D-088
+# reader-error fix) -- see benchmarks/longevity-v1/README.md's "Soak 4
+# (24 h, D-088-fixed engine)" section. Every path below is whole-file
+# sha256-checked against that section's own "Files added here" table,
+# same discipline as soak3's five-file table above. rss_slopes-4.json,
+# throughput-4.json, reader_error_counts_by_class-4.json,
+# reader_reopen_on_enoent-4.json, writer_error_counts_by_class-4.json and
+# compaction_stall-4.json have no xzgpu twin to hash against (derived
+# locally from metrics.jsonl/longevity_ledger.jsonl/rss_composition-4.log,
+# which stay on xzgpu per the same PI ruling as every earlier soak) --
+# README.md says so explicitly, so this lane reads them without a sha256
+# gate, same as soak3's reader_op_error-3.json convention.
+LONGEVITY_MANIFEST_FOUR = LONGEVITY_DIR / "longevity-synth-1m-native-3.json"
+LONGEVITY_COMPACTIONS_FOUR = LONGEVITY_DIR / "compactions-4.jsonl"
+LONGEVITY_RECOVERIES_FOUR = LONGEVITY_DIR / "recoveries-4.jsonl"
+LONGEVITY_HOST_LOAD_FOUR = LONGEVITY_DIR / "host_load-4.log"
+LONGEVITY_VERIFY_FULL_FOUR = LONGEVITY_DIR / "verify-full-4.txt"
+LONGEVITY_RSS_COMPOSITION_FOUR = LONGEVITY_DIR / "rss_composition-4.log"
+LONGEVITY_RSS_SLOPES_FOUR = LONGEVITY_DIR / "rss_slopes-4.json"
+LONGEVITY_THROUGHPUT_FOUR = LONGEVITY_DIR / "throughput-4.json"
+LONGEVITY_READER_ERRORS_BY_CLASS_FOUR = LONGEVITY_DIR / "reader_error_counts_by_class-4.json"
+LONGEVITY_READER_REOPEN_ON_ENOENT_FOUR = LONGEVITY_DIR / "reader_reopen_on_enoent-4.json"
+LONGEVITY_WRITER_ERRORS_BY_CLASS_FOUR = LONGEVITY_DIR / "writer_error_counts_by_class-4.json"
+LONGEVITY_COMPACTION_STALL_FOUR = LONGEVITY_DIR / "compaction_stall-4.json"
+LONGEVITY_MANIFEST_FOUR_SHA256 = "fcb55a4f3126002c5d474593730bca1652e1880dfc6537aa65ae8b49d0f4de49"
+LONGEVITY_COMPACTIONS_FOUR_SHA256 = "aedcd152ac470b188e74eb9a54f56750577ceeaa8e8bf64584547d403e790783"
+LONGEVITY_RECOVERIES_FOUR_SHA256 = "44460cb97274195606acbb7d166d3121deb6da816defc08f9023a87f9ae5ce45"
+LONGEVITY_HOST_LOAD_FOUR_SHA256 = "aa6b9ac89d978c6641766cf44f8be3eea015d0cd7ca6aa0e548492fd349eda56"
+LONGEVITY_VERIFY_FULL_FOUR_SHA256 = "118f4fd726ffee67396c63f698eed879346dbfee942152442305ae55a7dc6742"
+LONGEVITY_RSS_COMPOSITION_FOUR_SHA256 = "06a0972eee02a0f35b129e7d9e9715493ce3f5c4538c72b5b79b2ca09bdc9006"
+
 # Lane W2t -- benchmarks/ldbc-ref-v1/, the LDBC reference-correctness run
 # (Claim C9's independent-validation axis). compare-2026-09-18.json is the
 # revision of record (README.md's "Revision of record" section);
@@ -6094,6 +6125,616 @@ def compute_longevity_compaction_cadence(m: Macros) -> None:
 
 
 # --------------------------------------------------------------------------
+# Lane W2ab -- P-SOAK4, the 24h fourth soak (commit b6cdde0, the D-088
+# reader-error fix -- see benchmarks/longevity-v1/README.md's "Soak 4
+# (24 h, D-088-fixed engine)" section). Mirrors compute_longevity_soak_three
+# above (whole-file sha256 gate against README.md's own "Files added here"
+# table, then recompute every macro from the row-level files underneath)
+# plus the W2z compaction-cadence function (_split_compaction_lives) for
+# the cadence/generation-window pair. Headline result: 0 reader errors of
+# any kind over the full 24h run (predictions (a)/(b)/(e)/(f) all met; no
+# event for (f)), the first soak in this campaign past the D-088 fix.
+# --------------------------------------------------------------------------
+
+def compute_longevity_soak_four(m: Macros) -> None:
+    """Lane W2ab: P-SOAK4, the 24h fourth soak, re-measuring the D-088
+    reader-error fix (engine commit ``b6cdde0``) on the same
+    ``synth-1m-native`` store/harness recipe as soaks 1-3. 4 of the
+    pre-registered 4 writer lives ran (3 designed restarts,
+    ``--restart-every 6h``), unlike soak3's 9-of-12 shortfall -- this
+    harness vintage carries the ``gc_mid_delete`` restart-arming fix
+    soak3 lacked. 0 reader errors of any class fired over the whole run
+    (manifest's own ``reader_errors_total=0``, cross-checked three ways
+    in ``reader_error_counts_by_class-4.json``): predictions (a) and (b)
+    are met outright, (e) (``digest_equal``/0 reader deaths/0 unexpected
+    recoveries/0 full-verify overlaps) is met, and (f) (the D-086
+    torn-tail ``StateError`` class is not credited) has no event to
+    credit or discredit, reported as such rather than as a pass/fail.
+    The pin-attributable sub-clause of (c) stays explicitly NOT CHECKED
+    here (README.md's Honest limits): no pre-fix (D-088-broken-engine)
+    file-backed RSS series exists at a matching store size to difference
+    against, and the PI ruled no control run -- stated as a limit, not
+    guessed at.
+
+    ``compactions-4.jsonl`` carries both the batches-resets-to-500
+    life-boundary signal _split_compaction_lives uses AND its own ``life``
+    field directly (unlike soaks 2/3) -- this lane uses the ``batches``
+    split for consistency with the W2z cadence function, then asserts
+    both land on the same groups as an independent confirmation. Its
+    rows also carry epoch ``ts_start``/``ts_end`` directly (unlike soak3's
+    host-``CLOCK_MONOTONIC``-only ``t_start``/``t_end``), so the
+    compaction-stall window (``compaction_stall-4.json``) is directly
+    epoch-comparable against reader ``query_p99_ms`` samples -- the first
+    soak in this campaign where that row is computable at all.
+
+    The full-mode check's own ``generation: 1897091`` is 341 generations
+    ahead of the manifest's ``summary.generation_final=1896750.0``
+    (README.md's "Full-mode tgms check" section): the ``generation``
+    gauge in ``metrics.jsonl`` simply stopped being updated a few seconds
+    before the writer's true final commit, not a store defect (confirmed
+    there via the store's own ``native/manifests/`` directory, numbered up
+    to ``00000000000001897091.json``). This lane lands the check's own
+    value (the on-disk truth) as ``osdiSoakFullVerifyGenerationFour`` and
+    documents the 341-generation gap with a require(), rather than
+    asserting the two numbers equal -- they are not expected to be.
+    """
+    # --- whole-file sha256 checks against README.md's Soak 4 "Files added
+    # here" table (the 6 files with an xzgpu twin) ---
+    eq(sha256_file(LONGEVITY_MANIFEST_FOUR), LONGEVITY_MANIFEST_FOUR_SHA256,
+       f"{relpath(LONGEVITY_MANIFEST_FOUR)}: sha256 matches README.md's Soak 4 "
+       "Files-added-here table")
+    eq(sha256_file(LONGEVITY_COMPACTIONS_FOUR), LONGEVITY_COMPACTIONS_FOUR_SHA256,
+       f"{relpath(LONGEVITY_COMPACTIONS_FOUR)}: sha256 matches README.md's Soak 4 "
+       "Files-added-here table")
+    eq(sha256_file(LONGEVITY_RECOVERIES_FOUR), LONGEVITY_RECOVERIES_FOUR_SHA256,
+       f"{relpath(LONGEVITY_RECOVERIES_FOUR)}: sha256 matches README.md's Soak 4 "
+       "Files-added-here table")
+    eq(sha256_file(LONGEVITY_HOST_LOAD_FOUR), LONGEVITY_HOST_LOAD_FOUR_SHA256,
+       f"{relpath(LONGEVITY_HOST_LOAD_FOUR)}: sha256 matches README.md's Soak 4 "
+       "Files-added-here table")
+    eq(sha256_file(LONGEVITY_VERIFY_FULL_FOUR), LONGEVITY_VERIFY_FULL_FOUR_SHA256,
+       f"{relpath(LONGEVITY_VERIFY_FULL_FOUR)}: sha256 matches README.md's Soak 4 "
+       "Files-added-here table")
+    eq(sha256_file(LONGEVITY_RSS_COMPOSITION_FOUR), LONGEVITY_RSS_COMPOSITION_FOUR_SHA256,
+       f"{relpath(LONGEVITY_RSS_COMPOSITION_FOUR)}: sha256 matches README.md's Soak 4 "
+       "Files-added-here table")
+
+    manifest = json.loads(LONGEVITY_MANIFEST_FOUR.read_text(encoding="utf-8"))
+    summary = manifest["summary"]
+    config = manifest["config"]
+
+    # --- commit, duration, wall clock ---
+    eq(manifest["git_commit"], "b6cdde0",
+       "Soak4 frozen: measured commit (the D-088 reader-error fix)")
+    duration_s = config["duration_s"]
+    eq(duration_s, 86_400.0, "Soak4 frozen: configured soak duration_s (24h)")
+    hours = duration_s / 3600.0
+    eq(hours, 24.0, "Soak4: config.duration_s / 3600 is exactly 24 hours")
+    wall_s = summary["wall_s"]
+    eq(wall_s, 102_498.0, "Soak4 frozen: summary.wall_s")
+    wall_hours = wall_s / 3600.0
+    eq(round(wall_hours, 2), 28.47,
+       "Soak4: summary.wall_s / 3600, rounded to 2dp (includes the final verify(), the "
+       "end-of-run replay/digest check, and the full-mode tgms check -- not just the "
+       "configured 24h duration_s)")
+
+    # --- writer lives: 4 of the pre-registered 4 ran (unlike soak3's
+    # 9-of-12 shortfall -- this harness vintage carries the
+    # gc_mid_delete restart-arming fix soak3 lacked) ---
+    writer_lives = summary["writer_totals_all_lives"]["lives"]
+    eq(writer_lives, 4, "Soak4 frozen: summary.writer_totals_all_lives.lives")
+
+    # --- 3 designed restarts (4 lives - 1), by recovery time ---
+    recoveries_rows = load_jsonl(LONGEVITY_RECOVERIES_FOUR)
+    eq(len(recoveries_rows), 3, "Soak4 frozen: recoveries-4.jsonl row count")
+    eq(len(recoveries_rows), summary["recoveries"],
+       "Soak4: recoveries-4.jsonl row count matches summary.recoveries")
+    require(all(r["kind"] == "designed" for r in recoveries_rows),
+            "Soak4: every recovery row is the harness's own designed restart cycle")
+    require(len(recoveries_rows) + 1 == writer_lives,
+            "Soak4: 3 designed deaths give 4 lives")
+    recovery_times = sorted(r["recovery_s"] for r in recoveries_rows)
+    recovery_min_s = recovery_times[0]
+    recovery_max_s = recovery_times[-1]
+    eq(round(recovery_min_s, 3), 17.636, "Soak4 frozen: shortest recovery time, s")
+    eq(round(recovery_max_s, 3), 47.114, "Soak4 frozen: longest recovery time, s")
+    unexpected = summary["unexpected_writer_deaths"]
+    eq(unexpected, 0, "Soak4 frozen: unexpected_writer_deaths")
+    reader_restarts = summary["reader_restarts"]
+    eq(reader_restarts, 0, "Soak4 frozen: summary.reader_restarts -- no reader ever died "
+       "or was restarted")
+
+    require(summary["verify_healthy"] is True,
+            "Soak4: summary.verify_healthy is the JSON literal true")
+    require(summary["digest_equal"] is True,
+            "Soak4: summary.digest_equal is the JSON literal true")
+    require(summary["replay_skipped"] is None,
+            "Soak4: summary.replay_skipped is JSON null -- the replay was not skipped")
+
+    total_batches = summary["total_batches"]
+    eq(total_batches, 1_894_067,
+       "Soak4 frozen: summary.total_batches (the end-of-run replay's own batch count)")
+    replay_cadence = config["replay_compact_every"]
+    eq(replay_cadence, 5000, "Soak4 frozen: config.replay_compact_every")
+
+    # --- writer within-life RSS slopes, 4 lives ---
+    rss_doc = json.loads(LONGEVITY_RSS_SLOPES_FOUR.read_text(encoding="utf-8"))
+    writer_life_rows = rss_doc["writer_lives"]
+    eq(len(writer_life_rows), writer_lives,
+       "Soak4: rss_slopes-4.json writer_lives row count matches "
+       "summary.writer_totals_all_lives.lives")
+    require(list(range(writer_lives)) == [row["life"] for row in writer_life_rows],
+            "Soak4: rss_slopes-4.json writer_lives rows are ordered life 0..3")
+    writer_life_slopes = [row["slope_kb_per_s_least_squares"] for row in writer_life_rows]
+    frozen_bound_writer = rss_doc["frozen_bound_writer_kb_per_s"]
+    eq(frozen_bound_writer, 50, "Soak4 frozen: rss_slopes-4.json frozen_bound_writer_kb_per_s")
+    require(all(s <= frozen_bound_writer for s in writer_life_slopes),
+            "Soak4: every writer life's within-life RSS slope clears the frozen 50 kB/s "
+            "bound (prediction (d))")
+    writer_median_kb = round(statistics.median(writer_life_slopes), 3)
+    writer_max_kb = round(max(writer_life_slopes), 3)
+    eq(writer_median_kb, 22.085, "Soak4 frozen: writer within-life slope median, kB/s")
+    eq(writer_max_kb, 37.880, "Soak4 frozen: writer within-life slope max, kB/s (life 0)")
+
+    # --- reader within-life RSS slopes (harness series): 8 readers,
+    # reader_restarts=0 so one fitted segment each, over the full
+    # ~86,334.4s (~24h) span -- the primary instrument for prediction
+    # (c)'s <=10 kB/s bound ---
+    reader_harness_rows = rss_doc["readers_harness_series"]
+    eq(len(reader_harness_rows), 8, "Soak4 frozen: rss_slopes-4.json readers_harness_series "
+       "row count")
+    reader_harness_slopes = [row["slope_kb_per_s_least_squares"]
+                              for row in reader_harness_rows.values()]
+    frozen_bound_reader = rss_doc["frozen_bound_reader_kb_per_s"]
+    eq(frozen_bound_reader, 10, "Soak4 frozen: rss_slopes-4.json frozen_bound_reader_kb_per_s")
+    require(all(s <= frozen_bound_reader for s in reader_harness_slopes),
+            "Soak4: every reader's within-life (harness-series) RSS slope clears the "
+            "frozen 10 kB/s bound (prediction (c))")
+    reader_min_kb = round(min(reader_harness_slopes), 3)
+    reader_max_kb = round(max(reader_harness_slopes), 3)
+    eq(reader_min_kb, 7.957, "Soak4 frozen: reader within-life (harness-series) slope min, "
+       "kB/s, full ~86,334.4s (~24h) run")
+    eq(reader_max_kb, 8.399, "Soak4 frozen: reader within-life (harness-series) slope max, "
+       "kB/s, same full-run window")
+
+    # --- reader RSS slopes (sampler/composition series): the coordinator's
+    # independent /proc/<pid>/status sampler, over its own 17.5h window
+    # (211 samples/reader, starting ~6.5h into the run -- NOT the full
+    # 24h the harness-series fit above covers). RssAnon/RssFile/VmSize
+    # min/max over the 8 readers; the pin-attributable sub-clause of (c)
+    # is NOT CHECKED here (no pre-fix file-backed series to difference
+    # against -- stated as a limit in rss_doc's own pin_attribution_limit
+    # field, not computed as a number). VmRSS itself is not landed as a
+    # macro (no paper claim cites it directly; RssAnon+RssFile sum to it). ---
+    reader_comp_rows = rss_doc["readers_composition_series"]
+    eq(len(reader_comp_rows), 8, "Soak4 frozen: rss_slopes-4.json readers_composition_series "
+       "row count")
+    comp_spans = {row["span_s"] for row in reader_comp_rows.values()}
+    eq(comp_spans, {63_028.0},
+       "Soak4 frozen: readers_composition_series span_s is uniform across all 8 readers "
+       "-- the sampler's own 17.5h window (63,028s), not the full 24h run")
+    rssanon_slopes = [row["RssAnon_kb"]["slope_kb_per_s"] for row in reader_comp_rows.values()]
+    rssfile_slopes = [row["RssFile_kb"]["slope_kb_per_s"] for row in reader_comp_rows.values()]
+    vmsize_slopes = [row["VmSize_kb"]["slope_kb_per_s"] for row in reader_comp_rows.values()]
+    rssanon_min_kb = round(min(rssanon_slopes), 3)
+    rssanon_max_kb = round(max(rssanon_slopes), 3)
+    rssfile_min_kb = round(min(rssfile_slopes), 3)
+    rssfile_max_kb = round(max(rssfile_slopes), 3)
+    vmsize_min_kb = round(min(vmsize_slopes), 3)
+    vmsize_max_kb = round(max(vmsize_slopes), 3)
+    eq(rssanon_min_kb, 4.811, "Soak4 frozen: sampler RssAnon slope min, kB/s, 17.5h window")
+    eq(rssanon_max_kb, 5.413, "Soak4 frozen: sampler RssAnon slope max, kB/s, 17.5h window")
+    eq(rssfile_min_kb, 1.034, "Soak4 frozen: sampler RssFile slope min, kB/s, 17.5h window -- "
+       "a narrow band regardless of reader, consistent with store-size-driven file-backed "
+       "page residency")
+    eq(rssfile_max_kb, 1.056, "Soak4 frozen: sampler RssFile slope max, kB/s, 17.5h window")
+    eq(vmsize_min_kb, 6.618, "Soak4 frozen: sampler VmSize slope min, kB/s, 17.5h window")
+    eq(vmsize_max_kb, 7.170, "Soak4 frozen: sampler VmSize slope max, kB/s, 17.5h window")
+
+    # --- writer errors: true total (595), cross-checked against the
+    # manifest's own writer_totals_all_lives.errors; the exception class
+    # (100% NotFoundError) is recomputed from
+    # writer_error_counts_by_class-4.json, this soak's own per-life/
+    # per-class writer-error side-file, built read-only from xzgpu's
+    # longevity_ledger.jsonl, same convention as soak3's ---
+    writer_errors_true = summary["writer_totals_all_lives"]["errors"]
+    eq(writer_errors_true, 595, "Soak4 frozen: summary.writer_totals_all_lives.errors")
+
+    writer_by_class_doc = json.loads(
+        LONGEVITY_WRITER_ERRORS_BY_CLASS_FOUR.read_text(encoding="utf-8"))
+    eq(writer_by_class_doc["total_writer_errors"], writer_errors_true,
+       "Soak4: writer_error_counts_by_class-4.json total_writer_errors matches "
+       "summary.writer_totals_all_lives.errors")
+    writer_by_class = writer_by_class_doc["writer_by_class"]
+    eq(writer_by_class, {"NotFoundError": 595},
+       "Soak4 frozen: writer_error_counts_by_class-4.json writer_by_class -- the sole "
+       "exception class, and its full count")
+    per_life_errors_four = writer_by_class_doc["per_life"]
+    eq(len(per_life_errors_four), writer_lives,
+       "Soak4: writer_error_counts_by_class-4.json per_life row count matches "
+       "summary.writer_totals_all_lives.lives")
+    per_life_errors_four_values = [
+        per_life_errors_four[str(life)]["errors"] for life in range(writer_lives)]
+    eq(per_life_errors_four_values, [218, 166, 126, 85],
+       "Soak4 frozen: writer_error_counts_by_class-4.json per-life error counts, lives 0-3, "
+       "matches README.md's per-life table")
+    eq(sum(per_life_errors_four_values), writer_errors_true,
+       "Soak4: writer_error_counts_by_class-4.json per-life errors sum to the true total")
+
+    # --- reader errors: 0 of any class (prediction (a); the D-086
+    # torn-tail StateError class of prediction (f) is included in this
+    # zero, reported separately below as "no event", not a pass/fail).
+    # Cross-checked against the manifest's own reader_errors_total and
+    # against reader_reopen_on_enoent-4.json's independent 0. ---
+    reader_errors_doc = json.loads(
+        LONGEVITY_READER_ERRORS_BY_CLASS_FOUR.read_text(encoding="utf-8"))
+    require(reader_errors_doc["all_zero"] is True,
+            "Soak4: reader_error_counts_by_class-4.json all_zero is the JSON literal true")
+    reader_errors_true = reader_errors_doc["reader_errors_total"]
+    eq(reader_errors_true, 0, "Soak4 frozen: reader_error_counts_by_class-4.json "
+       "reader_errors_total -- 0 reader errors of any class over the whole 24h run")
+    eq(reader_errors_true, summary["reader_errors_total"],
+       "Soak4: reader_error_counts_by_class-4.json reader_errors_total matches the "
+       "manifest's own summary.reader_errors_total")
+    eq(reader_errors_doc["by_class_total"], {},
+       "Soak4 frozen: reader_error_counts_by_class-4.json by_class_total -- empty, no "
+       "OSError/StateError/any class fired (prediction (f): the D-086 torn-tail "
+       "StateError class has no event to credit or discredit)")
+    reader_oserror = 0
+    reader_stateerror = 0
+    eq(summary["error_count"], writer_errors_true + reader_errors_true + unexpected,
+       "Soak4: summary.error_count == true writer errors + true reader errors + "
+       "unexpected_writer_deaths")
+
+    # --- reopens per reader (reader-reopen-every-s=300) and
+    # reopen-on-ENOENT (prediction (b)): both independent sources
+    # (metrics.jsonl's own counter and each reader's progress-file field)
+    # agree exactly at 0 for every reader ---
+    reopen_doc = json.loads(LONGEVITY_READER_REOPEN_ON_ENOENT_FOUR.read_text(encoding="utf-8"))
+    require(reopen_doc["all_zero"] is True,
+            "Soak4: reader_reopen_on_enoent-4.json all_zero is the JSON literal true")
+    eq(reopen_doc["manifest_reader_reopen_on_enoent_total"], 0,
+       "Soak4 frozen: reader_reopen_on_enoent-4.json manifest_reader_reopen_on_enoent_total")
+    eq(reopen_doc["manifest_reader_reopen_on_enoent_total"],
+       summary["reader_reopen_on_enoent_total"],
+       "Soak4: reader_reopen_on_enoent-4.json manifest_reader_reopen_on_enoent_total "
+       "matches the manifest's own summary.reader_reopen_on_enoent_total")
+    per_reader_reopen = reopen_doc["per_reader"]
+    eq(len(per_reader_reopen), 8, "Soak4: reader_reopen_on_enoent-4.json per_reader count")
+    reopens_per_reader = [v["reopens_total_progress_file"] for v in per_reader_reopen.values()]
+    enoent_per_reader_metrics = [v["reopen_on_enoent_total_metrics_counter"]
+                                  for v in per_reader_reopen.values()]
+    enoent_per_reader_progress = [v["reopen_on_enoent_total_progress_file"]
+                                   for v in per_reader_reopen.values()]
+    reopens_min = min(reopens_per_reader)
+    reopens_max = max(reopens_per_reader)
+    eq(reopens_min, 272, "Soak4 frozen: reopens per reader, min -- uniform across all 8 "
+       "readers over the ~86,334s run")
+    eq(reopens_max, 272, "Soak4 frozen: reopens per reader, max")
+    enoent_max = max(enoent_per_reader_progress)
+    eq(enoent_max, 0, "Soak4 frozen: reader_reopen_on_enoent-4.json reopen_on_enoent_total, "
+       "max over all 8 readers (progress-file source)")
+    eq(max(enoent_per_reader_metrics), 0.0,
+       "Soak4: metrics.jsonl's own reopen_on_enoent_total counter agrees exactly (0) with "
+       "the progress-file source, the second of the two independent sources this file reads")
+
+    # --- throughput: manifest's own first-hour/last-hour drift figures
+    # (prediction (d)'s throughput clause), plus this record's
+    # independently-bucketed hour-0/hour-23 averages and their ratio
+    # (throughput-4.json) ---
+    drift = summary["drift"]
+    throughput_start = drift["throughput_first_hour_avg"]
+    throughput_end = drift["throughput_last_hour_avg"]
+    eq(throughput_start, 40.552, "Soak4 frozen: first-hour throughput, commits/s")
+    eq(throughput_end, 19.164, "Soak4 frozen: last-hour throughput, commits/s")
+
+    throughput_doc = json.loads(LONGEVITY_THROUGHPUT_FOUR.read_text(encoding="utf-8"))
+    eq(throughput_doc["manifest_drift"], drift,
+       "Soak4: throughput-4.json's own manifest_drift copy matches the manifest's "
+       "summary.drift exactly")
+    this_record_first_hour = throughput_doc["this_record_first_hour_avg_commits_per_s"]
+    this_record_last_hour = throughput_doc["this_record_last_hour_avg_commits_per_s"]
+    ratio_last_over_first = throughput_doc["ratio_last_over_first"]
+    eq(round(this_record_first_hour, 3), 40.543,
+       "Soak4 frozen: this record's own independently hour-0-bucketed average, commits/s")
+    eq(round(this_record_last_hour, 3), 19.246,
+       "Soak4 frozen: this record's own independently hour-23-bucketed average, commits/s")
+    eq(round(ratio_last_over_first, 3), 0.475,
+       "Soak4 frozen: ratio, this record's own last-hour average / first-hour average")
+    require(abs(ratio_last_over_first - this_record_last_hour / this_record_first_hour) < 1e-9,
+            "Soak4: ratio_last_over_first recomputes as this_record_last_hour_avg / "
+            "this_record_first_hour_avg from this same file's own two averages")
+
+    # --- full-mode tgms check of the final store: 0 believed-versions-
+    # overlap findings (0 findings of any kind, prediction (e)). The
+    # check's own generation (1,897,091) is 341 ahead of the manifest's
+    # generation_final (1,896,750) -- README.md's "Full-mode tgms check"
+    # section explains this as the generation gauge freezing a few
+    # seconds before the writer's true final commit, confirmed via the
+    # store's own native/manifests/ directory, not a store defect. This
+    # is documented with a require() on the 341-generation gap, not
+    # asserted equal -- the two numbers are not expected to match. ---
+    verify_text = LONGEVITY_VERIFY_FULL_FOUR.read_text(encoding="utf-8")
+    require("verdict: healthy" in verify_text,
+            f"{relpath(LONGEVITY_VERIFY_FULL_FOUR)}: verdict line reads healthy")
+    problems_match = re.search(r"PROBLEMS \((\d+)\):", verify_text)
+    overlap_count = int(problems_match.group(1)) if problems_match else 0
+    eq(overlap_count, 0,
+       f"{relpath(LONGEVITY_VERIFY_FULL_FOUR)}: PROBLEMS count (0 -- no PROBLEMS section "
+       "at all, consistent with the healthy verdict)")
+    require("believed-versions-overlap" not in verify_text,
+            f"{relpath(LONGEVITY_VERIFY_FULL_FOUR)}: no believed-versions-overlap findings "
+            "text present anywhere in the file")
+    verify_generation_match = re.search(r"generation:\s*(\d+)", verify_text)
+    require(verify_generation_match is not None,
+            f"{relpath(LONGEVITY_VERIFY_FULL_FOUR)}: carries a generation: <N> line")
+    verify_generation = int(verify_generation_match.group(1)) if verify_generation_match else 0
+    eq(verify_generation, 1_897_091, "Soak4 frozen: verify-full-4 generation")
+    manifest_generation_final = int(summary["generation_final"])
+    eq(manifest_generation_final, 1_896_750,
+       "Soak4 frozen: manifest's own summary.generation_final")
+    generation_gap = verify_generation - manifest_generation_final
+    eq(generation_gap, 341,
+       "Soak4: full-verify's generation is 341 ahead of the manifest's own "
+       "generation_final -- the generation gauge in metrics.jsonl froze a few seconds "
+       "before the writer's true final commit (README.md's Full-mode tgms check "
+       "section), not a store defect; the check's own value (the on-disk truth) is what "
+       "this lane lands, not the manifest's last-sampled-gauge-value summary field")
+
+    # --- compaction stall window (prediction (e) has no stall clause,
+    # but the window computation documents that every reader p99 sample
+    # in the run is correctly windowed against compactions-4.jsonl's own
+    # epoch ts_start/ts_end -- the first soak in this campaign where this
+    # row is computable at all) ---
+    stall_doc = json.loads(LONGEVITY_COMPACTION_STALL_FOUR.read_text(encoding="utf-8"))
+    require(summary["compaction_stall_computable"] is True,
+            "Soak4: manifest's own summary.compaction_stall_computable is the JSON "
+            "literal true")
+    stall_max = stall_doc["this_record_max_reader_p99_ms"]
+    eq(stall_max, 222.871, "Soak4 frozen: compaction_stall-4.json this_record_max_reader_p99_ms")
+    eq(stall_max, summary["compaction_stall_max_reader_p99_ms"],
+       "Soak4: compaction_stall-4.json this_record_max_reader_p99_ms matches the "
+       "manifest's own summary.compaction_stall_max_reader_p99_ms exactly")
+    eq(stall_doc["n_windows_empty"], 0,
+       "Soak4 frozen: compaction_stall-4.json n_windows_empty -- every one of the "
+       f"{stall_doc['n_compactions_total']} compaction windows had >=1 reader p99 sample")
+
+    # --- co-tenant host load (1-min averages), 33 hourly samples ---
+    host_load_text = LONGEVITY_HOST_LOAD_FOUR.read_text(encoding="utf-8")
+    blocks = re.findall(
+        r"=== HOST_LOAD (\S+) ===\n(.*?)(?=(?:=== HOST_LOAD |\Z))",
+        host_load_text, re.DOTALL)
+    eq(len(blocks), 33, "Soak4 frozen: host_load-4.log HOST_LOAD sample count")
+    host_loads: list[float] = []
+    for ts_str, block in blocks:
+        load_match = re.search(r"load average:\s*([\d.]+),", block)
+        require(load_match is not None,
+                f"host_load-4.log: HOST_LOAD {ts_str} block has a load average line")
+        if load_match:
+            host_loads.append(float(load_match.group(1)))
+    host_load_min = min(host_loads)
+    host_load_max = max(host_loads)
+    eq(round(host_load_min, 2), 0.09, "Soak4 frozen: host load min, 1-min avg")
+    eq(round(host_load_max, 2), 12.48, "Soak4 frozen: host load max, 1-min avg")
+
+    # --- final edge-version count (manifest's own final_stats, the
+    # store-size figure predictions (a)/(f) measure past the soak-2
+    # onset band 2,235,044-2,450,815 rows against) ---
+    final_edge_rows = summary["final_stats"]["n_edge_versions"]
+    eq(final_edge_rows, 2_600_501,
+       "Soak4 frozen: summary.final_stats.n_edge_versions")
+
+    # --- emit macros ---
+    m.add("osdiSoakCommitFour", manifest["git_commit"],
+          f"{relpath(LONGEVITY_MANIFEST_FOUR)}: git_commit")
+    m.add("osdiSoakHoursFour", tex_num(int(hours)),
+          f"{relpath(LONGEVITY_MANIFEST_FOUR)}: config.duration_s / 3600")
+    m.add("osdiSoakWallHoursFour", f"{wall_hours:.2f}",
+          f"{relpath(LONGEVITY_MANIFEST_FOUR)}: summary.wall_s / 3600 -- includes the "
+          "final verify(), the end-of-run replay/digest check, and the full-mode "
+          "tgms check this record adds, not just the configured 24h duration_s")
+    m.add("osdiSoakWriterLivesFour", tex_num(writer_lives),
+          f"{relpath(LONGEVITY_MANIFEST_FOUR)}: summary.writer_totals_all_lives.lives -- "
+          "4 of the pre-registered 4, unlike soak3's 9-of-12 shortfall")
+    m.add("osdiSoakRecoveriesFour", tex_num(len(recoveries_rows)),
+          f"{relpath(LONGEVITY_RECOVERIES_FOUR)}: row count, == summary.recoveries")
+    m.add("osdiSoakRecoveryMinSFour", f"{recovery_min_s:.3f}",
+          f"{relpath(LONGEVITY_RECOVERIES_FOUR)}: min(recovery_s), the 3 designed "
+          "restart cycles")
+    m.add("osdiSoakRecoveryMaxSFour", f"{recovery_max_s:.3f}",
+          f"{relpath(LONGEVITY_RECOVERIES_FOUR)}: max(recovery_s)")
+    m.add("osdiSoakUnexpectedRecoveriesFour", tex_num(unexpected),
+          f"{relpath(LONGEVITY_MANIFEST_FOUR)}: summary.unexpected_writer_deaths -- all 3 "
+          "recoveries are the harness's own designed restart cycle (kind==\"designed\")")
+    m.add("osdiSoakReaderDeathsFour", tex_num(reader_restarts),
+          f"{relpath(LONGEVITY_MANIFEST_FOUR)}: summary.reader_restarts -- no reader ever "
+          "died or was restarted this run")
+    m.add("osdiSoakDigestEqualFour", "true",
+          f"{relpath(LONGEVITY_MANIFEST_FOUR)}: summary.digest_equal is the JSON literal "
+          "true")
+    m.add("osdiSoakBatchesFour", tex_num(total_batches),
+          f"{relpath(LONGEVITY_MANIFEST_FOUR)}: summary.total_batches (the end-of-run "
+          "replay's own batch count)")
+    m.add("osdiSoakReplayCadenceFour", tex_num(replay_cadence),
+          f"{relpath(LONGEVITY_MANIFEST_FOUR)}: config.replay_compact_every")
+    m.add("osdiSoakWriterWithinLifeSlopeMedianKBpsFour", f"{writer_median_kb:.3f}",
+          f"{relpath(LONGEVITY_RSS_SLOPES_FOUR)}: median(writer_lives[*]."
+          "slope_kb_per_s_least_squares), 4 lives")
+    m.add("osdiSoakWriterWithinLifeSlopeMaxKBpsFour", f"{writer_max_kb:.3f}",
+          f"{relpath(LONGEVITY_RSS_SLOPES_FOUR)}: max(writer_lives[*]."
+          "slope_kb_per_s_least_squares) (life 0)")
+    m.add("osdiSoakReaderWithinLifeSlopeMinKBpsFour", f"{reader_min_kb:.3f}",
+          f"{relpath(LONGEVITY_RSS_SLOPES_FOUR)}: min(readers_harness_series[*]."
+          "slope_kb_per_s_least_squares), 8 readers, full ~86,334.4s (~24h) run "
+          "(reader_restarts=0, one fitted segment each)")
+    m.add("osdiSoakReaderWithinLifeSlopeMaxKBpsFour", f"{reader_max_kb:.3f}",
+          f"{relpath(LONGEVITY_RSS_SLOPES_FOUR)}: max(readers_harness_series[*]."
+          "slope_kb_per_s_least_squares), same full-run window")
+    m.add("osdiSoakReaderRssAnonSlopeMinKBpsFour", f"{rssanon_min_kb:.3f}",
+          f"{relpath(LONGEVITY_RSS_SLOPES_FOUR)}: min(readers_composition_series[*]."
+          "RssAnon_kb.slope_kb_per_s), 8 readers, the sampler's own 17.5h window "
+          "(63,028s, starting ~6.5h into the run) -- not the full 24h")
+    m.add("osdiSoakReaderRssAnonSlopeMaxKBpsFour", f"{rssanon_max_kb:.3f}",
+          f"{relpath(LONGEVITY_RSS_SLOPES_FOUR)}: max(readers_composition_series[*]."
+          "RssAnon_kb.slope_kb_per_s), same 17.5h sampler window")
+    m.add("osdiSoakReaderRssFileSlopeMinKBpsFour", f"{rssfile_min_kb:.3f}",
+          f"{relpath(LONGEVITY_RSS_SLOPES_FOUR)}: min(readers_composition_series[*]."
+          "RssFile_kb.slope_kb_per_s), same 17.5h sampler window")
+    m.add("osdiSoakReaderRssFileSlopeMaxKBpsFour", f"{rssfile_max_kb:.3f}",
+          f"{relpath(LONGEVITY_RSS_SLOPES_FOUR)}: max(readers_composition_series[*]."
+          "RssFile_kb.slope_kb_per_s), same 17.5h sampler window")
+    m.add("osdiSoakReaderVmSizeSlopeMinKBpsFour", f"{vmsize_min_kb:.3f}",
+          f"{relpath(LONGEVITY_RSS_SLOPES_FOUR)}: min(readers_composition_series[*]."
+          "VmSize_kb.slope_kb_per_s), same 17.5h sampler window")
+    m.add("osdiSoakReaderVmSizeSlopeMaxKBpsFour", f"{vmsize_max_kb:.3f}",
+          f"{relpath(LONGEVITY_RSS_SLOPES_FOUR)}: max(readers_composition_series[*]."
+          "VmSize_kb.slope_kb_per_s), same 17.5h sampler window")
+    m.add("osdiSoakWriterErrorsTrueFour", tex_num(writer_errors_true),
+          f"{relpath(LONGEVITY_MANIFEST_FOUR)}: summary.writer_totals_all_lives.errors")
+    m.add("osdiSoakWriterErrorsClassFour", "NotFoundError",
+          f"{relpath(LONGEVITY_WRITER_ERRORS_BY_CLASS_FOUR)}: the sole exception class "
+          "across every writer error in all 4 lives (text macro, not a number)")
+    m.add("osdiSoakReaderErrorsTrueFour", tex_num(reader_errors_true),
+          f"{relpath(LONGEVITY_READER_ERRORS_BY_CLASS_FOUR)}: reader_errors_total -- 0 "
+          "reader errors of any class over the whole 24h run (prediction (a))")
+    m.add("osdiSoakReaderErrorsOSErrorFour", tex_num(reader_oserror),
+          f"{relpath(LONGEVITY_READER_ERRORS_BY_CLASS_FOUR)}: by_class_total has no "
+          "OSError key -- 0, same all-zero record as the StateError class")
+    m.add("osdiSoakReaderErrorsStateErrorFour", tex_num(reader_stateerror),
+          f"{relpath(LONGEVITY_READER_ERRORS_BY_CLASS_FOUR)}: by_class_total has no "
+          "StateError key -- 0 (prediction (f): the D-086 torn-tail class has no event "
+          "to credit or discredit)")
+    m.add("osdiSoakReaderReopensMinFour", tex_num(reopens_min),
+          f"{relpath(LONGEVITY_READER_REOPEN_ON_ENOENT_FOUR)}: min(per_reader[*]."
+          "reopens_total_progress_file), --reader-reopen-every-s=300 cycles completed "
+          "per reader")
+    m.add("osdiSoakReaderReopensMaxFour", tex_num(reopens_max),
+          f"{relpath(LONGEVITY_READER_REOPEN_ON_ENOENT_FOUR)}: max(per_reader[*]."
+          "reopens_total_progress_file) -- uniform at 272 across all 8 readers")
+    m.add("osdiSoakReaderReopenOnEnoentMaxFour", tex_num(enoent_max),
+          f"{relpath(LONGEVITY_READER_REOPEN_ON_ENOENT_FOUR)}: max(per_reader[*]."
+          "reopen_on_enoent_total_progress_file), cross-checked against "
+          "metrics.jsonl's own counter (prediction (b)): 0 for every reader")
+    m.add("osdiSoakThroughputStartFour", str(throughput_start),
+          f"{relpath(LONGEVITY_MANIFEST_FOUR)}: summary.drift.throughput_first_hour_avg, "
+          "commits/s")
+    m.add("osdiSoakThroughputEndFour", str(throughput_end),
+          f"{relpath(LONGEVITY_MANIFEST_FOUR)}: summary.drift.throughput_last_hour_avg, "
+          "commits/s")
+    m.add("osdiSoakThroughputFirstHourAvgFour", str(throughput_start),
+          f"{relpath(LONGEVITY_MANIFEST_FOUR)}: summary.drift.throughput_first_hour_avg "
+          "(same field as osdiSoakThroughputStartFour, landed separately for prediction "
+          "(d)'s +-5%-of-soak2 throughput clause)")
+    m.add("osdiSoakThroughputLastOverFirstRatioFour", f"{ratio_last_over_first:.3f}",
+          f"{relpath(LONGEVITY_THROUGHPUT_FOUR)}: ratio_last_over_first, recomputed here "
+          "as this_record_last_hour_avg_commits_per_s / "
+          "this_record_first_hour_avg_commits_per_s from this same file's own two averages")
+    m.add("osdiSoakFullVerifyOverlapCountFour", tex_num(overlap_count),
+          f"{relpath(LONGEVITY_VERIFY_FULL_FOUR)}: PROBLEMS count (believed-versions-"
+          "overlap class), 0 -- matching soak2/soak3's clean full-mode result "
+          "(prediction (e))")
+    m.add("osdiSoakFullVerifyGenerationFour", tex_num(verify_generation),
+          f"{relpath(LONGEVITY_VERIFY_FULL_FOUR)}: generation -- 341 ahead of the "
+          "manifest's own summary.generation_final=1,896,750 (the gauge froze a few "
+          "seconds early, README.md's Full-mode tgms check section; this is the "
+          "on-disk-confirmed true final generation, not a disagreement to resolve by "
+          "equality)")
+    m.add("osdiSoakCompactionStallMaxReaderP99MsFour", f"{stall_max:.3f}",
+          f"{relpath(LONGEVITY_COMPACTION_STALL_FOUR)}: this_record_max_reader_p99_ms -- "
+          "max query_p99_ms sample inside any of the 4,213 compaction windows "
+          "([ts_start-60, ts_end+60]), matching manifest.summary."
+          "compaction_stall_max_reader_p99_ms exactly; the first soak in this campaign "
+          "where this row is computable at all")
+    m.add("osdiSoakHostLoadMinFour", f"{host_load_min:.2f}",
+          f"{relpath(LONGEVITY_HOST_LOAD_FOUR)}: min(1-min load averages), all 33 samples")
+    m.add("osdiSoakHostLoadMaxFour", f"{host_load_max:.2f}",
+          f"{relpath(LONGEVITY_HOST_LOAD_FOUR)}: max(1-min load averages), same 33-sample "
+          "set")
+    m.add("osdiSoakFinalEdgeRowsFour", tex_num(final_edge_rows),
+          f"{relpath(LONGEVITY_MANIFEST_FOUR)}: summary.final_stats.n_edge_versions -- "
+          "the final store size this run reached, past the soak-2 onset band "
+          "2,235,044-2,450,815 rows (predictions (a)/(f))")
+
+    # --- derived first-hour throughput band around soak2's own
+    # first-hour figure (osdiSoakThroughputStartTwo), used to state
+    # prediction (d)'s +-5% clause as a concrete [lo, hi] interval rather
+    # than leaving the +-5% arithmetic to the manuscript's prose.
+    # Computed from LONGEVITY_MANIFEST_TWO's own
+    # drift.throughput_first_hour_avg at generation time (39.91), never
+    # typed independently of it. ---
+    manifest_two = json.loads(LONGEVITY_MANIFEST_TWO.read_text(encoding="utf-8"))
+    throughput_start_two = manifest_two["summary"]["drift"]["throughput_first_hour_avg"]
+    eq(throughput_start_two, 39.91,
+       "Soak2 frozen (re-read for the soak4 band): summary.drift.throughput_first_hour_avg, "
+       "commits/s -- the same value osdiSoakThroughputStartTwo lands")
+    band_lo = 0.95 * throughput_start_two
+    band_hi = 1.05 * throughput_start_two
+    m.add("osdiSoakFourFirstHourBandLo", f"{band_lo:.4f}",
+          f"0.95 * {relpath(LONGEVITY_MANIFEST_TWO)}'s summary.drift."
+          "throughput_first_hour_avg (osdiSoakThroughputStartTwo, 39.91 commits/s) -- "
+          "the lower edge of soak4 prediction (d)'s +-5%-of-soak2 first-hour-throughput "
+          "band")
+    m.add("osdiSoakFourFirstHourBandHi", f"{band_hi:.4f}",
+          f"1.05 * {relpath(LONGEVITY_MANIFEST_TWO)}'s summary.drift."
+          "throughput_first_hour_avg (osdiSoakThroughputStartTwo, 39.91 commits/s) -- "
+          "the upper edge of the same band; osdiSoakThroughputFirstHourAvgFour=40.552 "
+          "falls inside [osdiSoakFourFirstHourBandLo, osdiSoakFourFirstHourBandHi]")
+
+    # --- compaction cadence (median inter-compaction interval/duration)
+    # and the generation-validity window, same convention as the W2z
+    # cadence function above (_split_compaction_lives), generalized to
+    # this soak's own epoch ts_start/ts_end fields. compactions-4.jsonl
+    # (unlike compactions-2/3.jsonl) also carries its own `life` field
+    # directly -- assert it lands on exactly the same groups as the
+    # batches-reset split, an independent confirmation that the split is
+    # correct here, not just assumed from the soak2/soak3 precedent. ---
+    rows_four = load_jsonl(LONGEVITY_COMPACTIONS_FOUR)
+    eq(len(rows_four), 4213, f"{relpath(LONGEVITY_COMPACTIONS_FOUR)}: row count")
+    lives_four = _split_compaction_lives(
+        rows_four, len(recoveries_rows) + 1, relpath(LONGEVITY_COMPACTIONS_FOUR))
+    for life_idx, group in enumerate(lives_four):
+        require({row["life"] for row in group} == {life_idx},
+                f"{relpath(LONGEVITY_COMPACTIONS_FOUR)}: batches-reset life group {life_idx} "
+                "agrees with this file's own `life` field for every row in the group")
+
+    cadence_intervals: list[float] = []
+    cadence_durations: list[float] = []
+    for life in lives_four:
+        ts = [r["ts_start"] for r in life]
+        cadence_intervals.extend(ts[i] - ts[i - 1] for i in range(1, len(ts)))
+        cadence_durations.extend(r["ts_end"] - r["ts_start"] for r in life)
+    cadence_gens = {r["gc"]["generations_retained"] for r in rows_four}
+    eq(cadence_gens, {2},
+       f"{relpath(LONGEVITY_COMPACTIONS_FOUR)}: gc.generations_retained, uniform across "
+       "every row")
+    interval_four = statistics.median(cadence_intervals)
+    duration_four = statistics.median(cadence_durations)
+
+    close(interval_four, 20.4881, 0.01,
+          "Soak4 frozen: median inter-compaction interval (epoch ts_start), s")
+    close(duration_four, 12.2326, 0.01,
+          "Soak4 frozen: median compaction duration (epoch ts_end - ts_start), s")
+
+    cadence_gens_retained = next(iter(cadence_gens))
+    window_four = cadence_gens_retained * interval_four
+
+    m.add("osdiSoakCompactionIntervalMedianSFour", f"{interval_four:.1f}",
+          f"{relpath(LONGEVITY_COMPACTIONS_FOUR)}: median(ts_start[i] - ts_start[i-1]) "
+          "within each of the 4 writer lives (life boundaries: batches resets to 500, "
+          f"{relpath(LONGEVITY_RECOVERIES_FOUR)}'s 3 rows -> 4 lives, cross-checked "
+          "against this file's own `life` field), pooled over all 4 lives' own "
+          "intervals, s -- this run's compaction log carries epoch ts_start/ts_end "
+          "directly, unlike soak3's host-CLOCK_MONOTONIC-only t_start/t_end")
+    m.add("osdiSoakCompactionDurationMedianSFour", f"{duration_four:.1f}",
+          f"{relpath(LONGEVITY_COMPACTIONS_FOUR)}: median(ts_end - ts_start) over all "
+          f"{len(rows_four)} compactions, s")
+    m.add("osdiSoakGenerationWindowSFour", f"{window_four:.1f}",
+          f"gc.generations_retained ({cadence_gens_retained}, "
+          f"{relpath(LONGEVITY_COMPACTIONS_FOUR)}, osdiD088GenerationsRetained) * "
+          "osdiSoakCompactionIntervalMedianSFour -- the generation-validity window, s")
+
+
+# --------------------------------------------------------------------------
 # W-lane -- P-OV1, the xzgpu-calibrated overload sweep (EXP-B4):
 # does tgms.tools.limits.ConcurrencyGate engage once open-loop callers
 # outrun the service, and does the service recover once load drops.
@@ -7590,6 +8231,7 @@ def main() -> int:
     compute_longevity_soak_hunt(m)
     compute_longevity_soak_three(m)
     compute_longevity_compaction_cadence(m)
+    compute_longevity_soak_four(m)
     compute_overload(m)
     compute_c10_live_osv(m)
     compute_ldbc_ref_v1(m)
