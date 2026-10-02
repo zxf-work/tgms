@@ -83,10 +83,12 @@ external-baselines memo's own §0 item A2) but the same command adds them
 later without a code change: `--extra-cells <file.json>`, a JSON list of
 `{"store", "mix", "age", "n_artifacts", "seed", "batches"}` objects. An
 extra cell has no committed grid row, so its `digests.json` reports
-`"no_reference"` (or `"L1"` if some other reference digest is supplied by
-hand and happens to match) rather than a fabricated equality claim --
-exactly the memo's own note that A2/T1 cells "have no committed digest;
-their L1 reference is T1's own record."
+`"new cell (no committed digest)"` (or `"L1"` if some other reference
+digest is supplied by hand and happens to match) rather than a fabricated
+equality claim -- exactly the memo's own note that A2/T1 cells "have no
+committed digest; their L1 reference is T1's own record." Once the PI
+rules A2 in, this export's own digest IS that reference for the T1
+control and both external configurations -- `INDEX.json` says so.
 
 Usage:
 
@@ -397,12 +399,14 @@ def score_equality(
 
     if spec.source == "extra" and spec.committed_dataset_digest is None:
         return {
-            "cell_id": spec.cell_id, "equality_level": "L1" if l1 else "no_reference",
+            "cell_id": spec.cell_id,
+            "equality_level": "L1" if l1 else "new cell (no committed digest)",
             "checks": {"l1_eventlog_sha_match": l1, "final_log_sha256": final_log_sha256,
                       "committed_dataset_digest": None},
-            "note": "extra cell (Addendum-A2-style); no committed grid row, so no L2 "
-                    "reference exists -- the memo's own ruling is that such cells' L1 "
-                    "reference is T1's own record, not this grid",
+            "note": "extra cell (Addendum-A2-style); no committed grid row, so there is no "
+                    "L1/L2 reference to check against -- this export's own digest becomes "
+                    "the reference for the T1 control and both external configurations, "
+                    "per the memo's own A2/T1 ruling",
         }
 
     checks: dict[str, Any] = {
@@ -646,6 +650,7 @@ def cmd_aggregate(args: argparse.Namespace) -> int:
         digests = json.loads(digests_path.read_text())
         manifest = json.loads(manifest_path.read_text())
         size_bytes = sum(f.stat().st_size for f in d.iterdir() if f.is_file())
+        is_new_cell = digests["equality_level"] == "new cell (no committed digest)"
         index[d.name] = {
             "paths": {name: str(d / name) for name in BUNDLE_FILES}
             | {"export-manifest.json": str(manifest_path), "digests.json": str(digests_path)},
@@ -656,8 +661,19 @@ def cmd_aggregate(args: argparse.Namespace) -> int:
             "store_status": manifest.get("store_status"),
             "wall_s": manifest.get("wall_s"),
         }
+        if is_new_cell:
+            # Addendum-A2 cells (PI-accepted): no committed record exists, so
+            # THIS export's own cell_digest is the reference the T1 control and
+            # both external configurations (Neo4j, differential dataflow) must
+            # match against -- stated here rather than left implicit.
+            index[d.name]["reference_role"] = (
+                "no committed grid row; this cell's own cell_digest/files sha256 "
+                "(above) is the reference digest for the T1 same-host control and "
+                "for both P-EXT1/P-EXT2 external configurations")
     out_path.write_text(json.dumps(index, indent=2, sort_keys=True) + "\n")
-    print(f"wrote {out_path} ({len(index)} cells)")
+    n_new = sum(1 for v in index.values() if v["equality_level"] == "new cell (no committed digest)")
+    print(f"wrote {out_path} ({len(index)} cells, {n_new} new/Addendum-A2 cells with no "
+         f"committed reference)")
     return 0
 
 
