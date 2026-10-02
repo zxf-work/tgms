@@ -1397,6 +1397,14 @@ def cmd_run(args: argparse.Namespace) -> int:
     verify_report = final.adapter.verify()
     final_digest = final.digest()
     final_stats = final.stats()
+    # The store's own publication counter, read fresh off this
+    # just-reopened handle — the authoritative final generation, as
+    # opposed to `summarize()`'s gauge-derived `generation_final_gauge`
+    # (see summarize()'s own docstring: the periodic
+    # `metrics.gauge("generation", ...)` sample in `child_writer` can be
+    # stale by however many further batches committed between the last
+    # periodic flush and the writer's actual stop).
+    final_generation = final.adapter.generation
     final.close()
 
     # --- final replay / digest equivalence ------------------------------ #
@@ -1506,7 +1514,8 @@ def cmd_run(args: argparse.Namespace) -> int:
                   f"replay={replay_digest[:16]}", file=sys.stderr)
 
     summary = summarize(out_dir, metrics_path, t_start, end_at,
-                        recoveries_path, reader_restarts_path, compactions_path)
+                        recoveries_path, reader_restarts_path, compactions_path,
+                        final_generation=final_generation)
     summary.update({
         "verify_healthy": bool(verify_report.get("healthy")),
         "final_stats": final_stats,
@@ -1566,10 +1575,32 @@ def _rel_or_abs(p: Path) -> str:
 
 def summarize(out_dir: Path, metrics_path: Path, t_start: float, end_at: float,
              recoveries_path: Path, reader_restarts_path: Path,
-             compactions_path: Path) -> dict[str, Any]:
+             compactions_path: Path,
+             final_generation: int | None = None) -> dict[str, Any]:
     """Gate E's own vocabulary: bounded metadata growth, no unbounded memory,
     throughput/latency drift, compaction stalls — computed from the metrics
-    JSONL and the sidecar event logs the run wrote."""
+    JSONL and the sidecar event logs the run wrote.
+
+    `final_generation`, when given, is the final store's own publication
+    counter (`final.adapter.generation`, read by the caller off the
+    just-reopened store right after the run stops) and becomes
+    `summary["generation_final"]` directly — the authoritative number.
+    Soak 4 (benchmarks/longevity-v1/README.md, "Full-mode `tgms check` of
+    the final store") found this matters: `child_writer`'s periodic
+    `metrics.gauge("generation", ...)` sample (emitted only on the
+    `report_every_s`-cadenced flush inside the commit loop, not re-sampled
+    by the shutdown code that runs after the loop exits) froze at
+    1,896,750 for its last two samples while the writer kept committing
+    batches (each one its own generation, by this harness's own "one
+    generation per batch by default" design) for several more seconds
+    before its designed stop — landing the store's true final generation
+    341 ahead, at 1,897,091, confirmed independently by `tgms check`'s
+    full-mode walk and by the on-disk `native/manifests/` listing. Callers
+    with no live store to reopen (e.g. this function's own direct-call
+    tests) omit it, and `generation_final` falls back to the gauge-derived
+    value — the same number is also always kept, labeled, as
+    `generation_final_gauge`, so old records (and any manifest written
+    before this fix) stay interpretable."""
     lines = _read_jsonl(metrics_path)
     gauges: dict[tuple[str, str], list[tuple[float, float]]] = {}
     for rec in lines:
@@ -1732,7 +1763,10 @@ def summarize(out_dir: Path, metrics_path: Path, t_start: float, end_at: float,
             "manifests": round(slope(manifest_bytes), 6),
             "segments": round(slope(segment_bytes), 6),
         },
-        "generation_final": generation[-1][1] if generation else None,
+        "generation_final": (
+            float(final_generation) if final_generation is not None
+            else (generation[-1][1] if generation else None)),
+        "generation_final_gauge": generation[-1][1] if generation else None,
         "compaction_stall_max_reader_p99_ms": (
             round(compaction_stall_p99, 3) if compaction_stall_computable else None),
         "compaction_stall_computable": compaction_stall_computable,
