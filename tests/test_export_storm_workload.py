@@ -157,7 +157,7 @@ def test_score_equality_extra_cell_has_no_reference() -> None:
         committed_correction_meta=None, committed_refused_count=None, source="extra",
     )
     out = export_storm_workload.score_equality(spec, "zzz", [100], 5, {}, [])
-    assert out["equality_level"] == "no_reference"
+    assert out["equality_level"] == "new cell (no committed digest)"
 
 
 # ---------------------------------------------------------------------------
@@ -174,7 +174,7 @@ def test_export_cell_writes_the_full_bundle_and_is_internally_consistent(
     result = export_storm_workload.export_cell(
         tiny_cell_spec, stores_dir, export_root, build_missing=False)
 
-    assert result["equality_level"] == "no_reference"
+    assert result["equality_level"] == "new cell (no committed digest)"
     out_dir = export_root / "tiny-c1-none-n5-s1"
     for name in export_storm_workload.BUNDLE_FILES:
         assert (out_dir / name).exists(), name
