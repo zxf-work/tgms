@@ -1,5 +1,5 @@
-"""Unit tests for `scripts/export_storm_workload.py` (Lane X1, workload
-export; `docs/design/EXTERNAL_BASELINES_DESIGN_2026-10-02.md` §1).
+"""Unit tests for `scripts/export_storm_workload.py` (workload export for
+the external-baseline campaign's gates P-EXT1/P-EXT2).
 
 Everything here runs against a tiny synthetic store built in `tmp_path` --
 per the standing rule that the laptop runs code and unit tests only, never a
