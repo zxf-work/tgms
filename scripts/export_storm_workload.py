@@ -90,6 +90,22 @@ committed digest; their L1 reference is T1's own record." Once the PI
 rules A2 in, this export's own digest IS that reference for the T1
 control and both external configurations -- `INDEX.json` says so.
 
+**A second memo assumption that did not survive contact with the repo
+(found running the collegemsg-c3-none-n1000-s0 smoke cell on xzgpu,
+2026-10-02):** `export_cell` now calls `_maybe_upgrade_manifests` on its
+own scratch copy of the store, right after copying it, before any replay.
+A store copied onto a shared host can have been written by an engine that
+predates this worktree's manifest format; this build's native engine then
+opens it **read-only**, and every correction `_write` raises `StateError`
+(a `TgmsError`), which `run_batch_export` -- like the harness's own
+`Storm.run_batch` -- catches and treats as "no correction was realizable
+this attempt". The visible symptom is indistinguishable from an empty mix:
+`export_cell`'s bounded-attempt loop exhausts its cap and raises "only
+realized 0/N batches ... (mix starved)", even though `Mix.__call__` was
+returning candidates on every attempt. `_maybe_upgrade_manifests` is
+idempotent and touches only the scratch copy, never the shared source
+store under `--stores-dir`.
+
 Usage:
 
     uv run python scripts/export_storm_workload.py list-cells
@@ -282,6 +298,57 @@ def load_extra_cells(path: Path) -> dict[str, CellSpec]:
 # ---------------------------------------------------------------------------
 # store resolution (A3: synth-iv-60k is absent on xzgpu)
 # ---------------------------------------------------------------------------
+
+def _maybe_upgrade_manifests(store_path: Path) -> None:
+    """A store copied onto a shared host can have been written by an older
+    engine build (manifest format 1 or 2); this build's native engine
+    writes format 3 and opens an older-format store **read-only** -- every
+    write then raises `StateError` from `adapter.commit()`.
+    `ExportStorm.run_batch_export` (like `Storm.run_batch`) catches
+    `TgmsError` (which `StateError` is) around `self._write(...)` and
+    returns `None`, so the symptom at the call site is indistinguishable
+    from "the mix had nothing to draw this attempt" -- `export_cell`'s
+    bounded-attempt loop exhausts its cap and reports "0/N batches
+    realized (mix starved)", which is not what happened. (Found live:
+    the collegemsg-c3-none-n1000-s0 smoke cell on xzgpu, 2026-10-02 --
+    `mix()` returned 38 correction candidates on every attempt; every
+    `_write` failed with exactly this `StateError`, because the
+    `collegemsg` store under `/mnt/project/xzhang/tgms/work/tgms/stores`
+    was written by an engine that predates this worktree's manifest
+    format.)
+
+    Mirrors `scripts/longevity_run.py::_maybe_upgrade_manifests`'s own
+    feature-detect-then-upgrade shape (there, ahead of a long-running
+    writer; here, ahead of the replay), reading the real
+    `verify()["manifest_format"]` field. Called only on `store_path`,
+    which by the time this runs is always `export_cell`'s own scratch
+    copy under a `tempfile.mkdtemp()` dir -- never the shared source
+    store under `--stores-dir`, so the fix cannot touch a committed or
+    shared store. Idempotent (`upgrade_manifests()` reports `upgraded:
+    False` on an already-format-3 store) and "touches nothing else" per
+    its own docstring (one checkpoint written, `CURRENT` flipped; the
+    logical rows are unchanged, so it cannot perturb the replay the way a
+    real content edit would)."""
+    import tgms
+
+    probe = tgms.open(store_path, backend="native", read_only=True)
+    try:
+        fmt = probe.adapter.verify().get("manifest_format")
+    finally:
+        probe.close()
+    if fmt is None or fmt >= 3:
+        return
+    print(f"  {store_path}: manifest format {fmt} (older engine); running "
+          f"upgrade-manifests on this scratch copy before replay ...", flush=True)
+    result = subprocess.run(
+        [sys.executable, "-m", "tgms.cli", "store", "upgrade-manifests",
+         "--store", str(store_path)],
+        capture_output=True, text=True, cwd=ROOT)
+    if result.returncode != 0:
+        raise RuntimeError(
+            f"upgrade-manifests failed for {store_path} (rc={result.returncode}): "
+            f"{result.stderr.strip()}")
+
 
 def ensure_store(name: str, stores_dir: Path, *, build_missing: bool) -> tuple[Path, str]:
     path = stores_dir / name
@@ -490,6 +557,7 @@ def export_cell(
     work_root = Path(tempfile.mkdtemp(prefix=f"export-{spec.cell_id}-"))
     work_store = work_root / "store"
     shutil.copytree(store_path, work_store)
+    _maybe_upgrade_manifests(work_store)
     out_dir = export_root / spec.cell_id
     out_dir.mkdir(parents=True, exist_ok=True)
 
