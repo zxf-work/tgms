@@ -8140,6 +8140,65 @@ def compute_b7_scale(m: Macros) -> None:
 
 
 # --------------------------------------------------------------------------
+# external baselines (Neo4j 5 recompute / differential-dataflow IVM) --
+# pending until either campaign's record lands (Lane C1)
+# --------------------------------------------------------------------------
+
+def compute_external_baselines(m: Macros) -> None:
+    """Two external comparisons run against the same storm-v2 workload this
+    file's own ``compute_c7_storm_v2``/``compute_c7_storm_v2_probe`` score
+    TGMS's own arms on: a full-recompute configuration on Neo4j 5.26 (every
+    registered artifact's query re-run after each burst) and an
+    incrementally-maintained configuration in differential dataflow (one
+    maintained view per operator family, fed a changelog of retractions
+    and insertions). Lane C1's own tooling for this
+    (``scripts/external_check.py``, the independent oracle-agreement
+    checker; ``scripts/external_record.py``, the record assembler) is
+    landed and has its own tests; what has not landed is either
+    campaign's record -- as of this writing only one cell has been
+    exported and run at all (``collegemsg-c3-none-n1000-s0``, age-none),
+    and `external/ivm-dd/README.md`'s own "First real exported cell"
+    entry calls that a calibration run, explicitly not a scored one; the
+    same-host TGMS control run neither record's ratios depend on has not
+    started either. Every macro below is a PENDING stub naming the record
+    path it will read once that record exists; none is computed from the
+    one calibration cell, which was never meant to be scored, so none of
+    these numbers exist to be typed in its place.
+    """
+    neo4j_record = "benchmarks/external-v1/neo4j-recompute-<date>.json"
+    ivm_record = "benchmarks/external-v1/ivm-differential-<date>.json"
+    neo4j_reason = (
+        f"{neo4j_record} has not landed -- the Neo4j 5.26 full-recompute "
+        "configuration has not yet run the committed 36-cell grid or the "
+        "N=10,000 probe (that run is a separate, not-yet-started lane); "
+        "only the tooling that will assemble and check this record "
+        "(scripts/external_check.py, scripts/external_record.py) is landed")
+    ivm_reason = (
+        f"{ivm_record} has not landed -- the differential-dataflow "
+        "incremental-view-maintenance configuration has run exactly one "
+        "calibration cell so far (collegemsg-c3-none-n1000-s0, age-none; "
+        "external/ivm-dd/README.md states this is a calibration run, not a "
+        "scored one), not the committed grid, the age-banded cells, or the "
+        "withheld-correction cell")
+
+    for name in ("osdiExt1NeoVersion", "osdiExt1Families", "osdiExt1IteratedFamilies",
+                "osdiExt1Cells", "osdiExt1RatioGrMedian", "osdiExt1RatioGrMin",
+                "osdiExt1RatioGrMax", "osdiExt1RatioGrSameHostMedian",
+                "osdiExt1SpeedupLOneMedian", "osdiExt1SpeedupLOneMin",
+                "osdiExt1SpeedupCellsMeeting", "osdiExt1ProbeRatio",
+                "osdiExt1AgreeCells", "osdiExt1Disagreements", "osdiExt1RecomputeMedianS"):
+        m.add_pending(name, "C1 (external baselines, Neo4j recompute)", neo4j_reason)
+
+    for name in ("osdiExt2DdVersion", "osdiExt2Families", "osdiExt2RefreshMedianMs",
+                "osdiExt2RatioRecent", "osdiExt2RatioHours", "osdiExt2RatioDays",
+                "osdiExt2RatioDeep", "osdiExt2CrossoverBand",
+                "osdiExt2WithheldFalseFreshIvm", "osdiExt2WithheldFalseFreshWatermark",
+                "osdiExt2WithheldFalseFreshTgms", "osdiExt2UnanswerableMs",
+                "osdiExt2AgreeCells", "osdiExt2Workers"):
+        m.add_pending(name, "C1 (external baselines, differential-dataflow IVM)", ivm_reason)
+
+
+# --------------------------------------------------------------------------
 # pending stubs (records not yet landed)
 # --------------------------------------------------------------------------
 
@@ -8237,6 +8296,7 @@ def main() -> int:
     compute_ldbc_ref_v1(m)
     compute_ldbc_format3_rebuild(m)
     compute_b7_scale(m)
+    compute_external_baselines(m)
     add_pending_stubs(m)
 
     if FAILURES:
