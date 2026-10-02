@@ -1,0 +1,20 @@
+{
+  "cell_digest": "2c60d9dfae80d1d5e2cc2acb6bdc054ff504438c53d15cb7e41abc59c5138b66",
+  "cell_id": "tiny1",
+  "config": {
+    "description": "synthetic test fixture for the ivm-dd Rust crate's unit tests \u2014 NOT a real storm-v2 grid cell",
+    "generator": "external/ivm-dd/tests/fixtures/generate_tiny1.py",
+    "n_artifacts": 13,
+    "n_corrections": 3,
+    "n_edges": 10,
+    "n_nodes": 6
+  },
+  "files": {
+    "artifacts.jsonl": "2342cb04316a30a20b5bb8f1d86461aea96831fdf0dcdb0d4b7a9c4c7034488b",
+    "deltas.jsonl": "6ff773dc1c38a042b02a6e103597fd9866c0b08a8870c56e91da2c3e830fec22",
+    "eventlog-tail.jsonl": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "oracle.jsonl": "3808e26748b559b4555b8b1935665620a848333e918a945ec78bac2ee79413b2",
+    "versions-epoch0.jsonl": "1d2a0659c9e445965e96ace6fed3f44ba263a84097d5b8d38817a59ec43255c4"
+  },
+  "schema_version": "1.0.0"
+}

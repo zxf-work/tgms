@@ -1,0 +1,13 @@
+{"args": {"include_edges": true, "uid": "n0"}, "name": "entity_history", "op": "entity_history"}
+{"args": {"kind": "node", "window": {"t_a": 0, "t_b": 1000}}, "name": "version_history", "op": "version_history"}
+{"args": {"hops": 1, "seeds": ["n0"], "t_valid": 100}, "name": "snapshot_subgraph", "op": "snapshot_subgraph"}
+{"args": {"scope": null, "t1": 50, "t2": 250}, "name": "diff_snapshots", "op": "diff_snapshots"}
+{"args": {"t1": 0, "t2": 600, "uid": "n0"}, "name": "neighborhood_evolution", "op": "neighborhood_evolution"}
+{"args": {"aggregates": [{"agg": "count"}], "group_by": [{"dim": "endpoint", "role": "src"}], "window": {"t_a": 0, "t_b": 1000}}, "name": "aggregate_events", "op": "aggregate_events"}
+{"args": {"metric": "edge_event_count", "stride": 100, "window": {"t_a": 0, "t_b": 1000}}, "name": "graph_metric_timeseries", "op": "graph_metric_timeseries"}
+{"args": {"stride": 50, "target": {"kind": "node_activity", "uid": "n0"}, "window": {"t_a": 0, "t_b": 1000}}, "name": "burst_detection", "op": "burst_detection"}
+{"args": {"delta": 100, "motif": "M_2node_pingpong", "window": {"t_a": 0, "t_b": 1000}}, "name": "count_temporal_motifs", "op": "count_temporal_motifs"}
+{"args": {"delta": 100, "limit": 25, "motif": "M_2node_pingpong", "window": {"t_a": 0, "t_b": 1000}}, "name": "find_temporal_motif_instances", "op": "find_temporal_motif_instances"}
+{"args": {"src": "n0", "window": {"t_a": 0, "t_b": 1000}}, "name": "temporal_reachability", "op": "temporal_reachability"}
+{"args": {"dst": "n4", "k": 2, "max_hops": 4, "src": "n0", "window": {"t_a": 0, "t_b": 1000}}, "name": "temporal_paths", "op": "temporal_paths"}
+{"args": {"fn": "count", "input": [{"x": 1}, {"x": 2}]}, "name": "compute", "op": "compute"}
