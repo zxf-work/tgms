@@ -94,6 +94,7 @@ def _run_all_landed(mod):
     mod.compute_longevity_soak_hunt(m)
     mod.compute_longevity_soak_three(m)
     mod.compute_longevity_compaction_cadence(m)
+    mod.compute_longevity_soak_four(m)
     mod.compute_overload(m)
     mod.compute_c10_live_osv(m)
     mod.compute_ldbc_ref_v1(m)
@@ -644,6 +645,52 @@ FROZEN_LANDED_VALUES = {
     "osdiSoakGenerationWindowSThree": "63.1",
     "osdiStormV2CleanCells": "34",
     "osdiLdbcFormatThreeRebuildPct": "12.8",
+    # Lane W2ab (P-SOAK4, 24h, D-088-fixed engine)
+    "osdiSoakCommitFour": "b6cdde0",
+    "osdiSoakHoursFour": "24",
+    "osdiSoakWallHoursFour": "28.47",
+    "osdiSoakWriterLivesFour": "4",
+    "osdiSoakRecoveriesFour": "3",
+    "osdiSoakRecoveryMinSFour": "17.636",
+    "osdiSoakRecoveryMaxSFour": "47.114",
+    "osdiSoakUnexpectedRecoveriesFour": "0",
+    "osdiSoakReaderDeathsFour": "0",
+    "osdiSoakDigestEqualFour": "true",
+    "osdiSoakBatchesFour": "1{,}894{,}067",
+    "osdiSoakReplayCadenceFour": "5000",
+    "osdiSoakWriterWithinLifeSlopeMedianKBpsFour": "22.085",
+    "osdiSoakWriterWithinLifeSlopeMaxKBpsFour": "37.880",
+    "osdiSoakReaderWithinLifeSlopeMinKBpsFour": "7.957",
+    "osdiSoakReaderWithinLifeSlopeMaxKBpsFour": "8.399",
+    "osdiSoakReaderRssAnonSlopeMinKBpsFour": "4.811",
+    "osdiSoakReaderRssAnonSlopeMaxKBpsFour": "5.413",
+    "osdiSoakReaderRssFileSlopeMinKBpsFour": "1.034",
+    "osdiSoakReaderRssFileSlopeMaxKBpsFour": "1.056",
+    "osdiSoakReaderVmSizeSlopeMinKBpsFour": "6.618",
+    "osdiSoakReaderVmSizeSlopeMaxKBpsFour": "7.170",
+    "osdiSoakWriterErrorsTrueFour": "595",
+    "osdiSoakWriterErrorsClassFour": "NotFoundError",
+    "osdiSoakReaderErrorsTrueFour": "0",
+    "osdiSoakReaderErrorsOSErrorFour": "0",
+    "osdiSoakReaderErrorsStateErrorFour": "0",
+    "osdiSoakReaderReopensMinFour": "272",
+    "osdiSoakReaderReopensMaxFour": "272",
+    "osdiSoakReaderReopenOnEnoentMaxFour": "0",
+    "osdiSoakThroughputStartFour": "40.552",
+    "osdiSoakThroughputEndFour": "19.164",
+    "osdiSoakThroughputFirstHourAvgFour": "40.552",
+    "osdiSoakThroughputLastOverFirstRatioFour": "0.475",
+    "osdiSoakFullVerifyOverlapCountFour": "0",
+    "osdiSoakFullVerifyGenerationFour": "1{,}897{,}091",
+    "osdiSoakCompactionStallMaxReaderP99MsFour": "222.871",
+    "osdiSoakHostLoadMinFour": "0.09",
+    "osdiSoakHostLoadMaxFour": "12.48",
+    "osdiSoakFinalEdgeRowsFour": "2{,}600{,}501",
+    "osdiSoakFourFirstHourBandLo": "37.9145",
+    "osdiSoakFourFirstHourBandHi": "41.9055",
+    "osdiSoakCompactionIntervalMedianSFour": "20.5",
+    "osdiSoakCompactionDurationMedianSFour": "12.2",
+    "osdiSoakGenerationWindowSFour": "41.0",
 }
 
 
