@@ -1,4 +1,4 @@
-"""`scripts/ldbc_sort_keys.py` (lane D1-fix, OSDI'27 Claim C9) — the mechanical
+"""`scripts/ldbc_sort_keys.py` (lane D1-fix, the submission campaign's Claim C9) — the mechanical
 `ORDER BY` -> `sort_keys.yaml` generator, and `ldbc_compare.py`'s
 `--sort-keys` consumption of its output.
 

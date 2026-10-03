@@ -548,7 +548,7 @@ centerpiece" — is a sustained soak, not a trial: everything above this
 section runs for seconds to tens of seconds, one condition at a time, and
 stops. `scripts/longevity_run.py` runs the write path, the read path, and
 the artifact/freshness path together for hours (Gate G1's 24h run, the
-OSDI plan's 72h Phase-4 run), because D-149's own class of bug — O(batches²)
+campaign plan's 72h Phase-4 run), because D-149's own class of bug — O(batches²)
 manifest growth — was found by a production build running long, not by any
 test. This section describes the protocol only; it carries no numbers,
 because no number here is a reported one until the 24h/72h runs land (the
@@ -813,7 +813,7 @@ measured at `886805f` — a commit that predates `compact_every` entirely.
 Everything above is the native engine's own concurrency contract: segments,
 manifests, readers. `tgms/artifact/` sits beside it as a second piece of
 on-disk state (`artifacts.jsonl`, the registry) with its own concurrency
-questions, and the OSDI27 fault-matrix design memo (§7) named three of them
+questions, and an internal design memo (trust-boundary fault matrix, 2026-09-13, §7) named three of them
 as untested. This section records what each test found, not numbers — the
 point of these tests is which of a small number of qualitative outcomes
 happens, never a rate or a latency.

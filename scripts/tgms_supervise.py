@@ -244,7 +244,7 @@ def _append_ledger_entry(ledger_path: Path, *, request_id: str, pid: int | None,
                       "requires an out-of-process supervisor (this script)",
         "fix_commit": _git_head_sha(),
         "regression_test": "tests/test_supervisor.py",
-        "decision_ref": "tgms-osdi-lane-b5-f2-wall-clock-supervisor",
+        "decision_ref": "tgms-campaign-lane-b5-f2-wall-clock-supervisor",
     }
     ledger_path.parent.mkdir(parents=True, exist_ok=True)
     with open(ledger_path, "a", encoding="utf-8") as f:

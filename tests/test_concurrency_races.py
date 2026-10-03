@@ -1,7 +1,6 @@
-"""F4 — concurrency faults (OSDI27 fault-matrix memo §7, Lane E task E2).
+"""F4 — concurrency faults (an internal design memo, trust-boundary fault matrix, 2026-09-13, §7, Lane E task E2).
 
-Three untested races, per the design memo
-(`docs/design/TRUST_BOUNDARY_FAULT_MATRIX_DESIGN_2026-09-13.md` §7) plus two
+Three untested races, per that design memo (§7) plus two
 smaller gaps the same memo calls out alongside them: the `pace_s` slow-writer
 knob wired into a stress variant of `tests/test_concurrency.py`'s own
 property 1 (added there, not here), and the missing one-process test for

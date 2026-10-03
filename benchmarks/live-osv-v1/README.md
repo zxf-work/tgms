@@ -24,15 +24,15 @@ at snapshot time and was at no point built, run, or opened for a write).
 
 ## The three numbers this unblocks
 
-`scripts/osdi_paper_macros.py`'s `osdiLiveDays`, `osdiLiveAdvisories`, and
-`osdiLiveCorrections` (C10) were PENDING because no committed record existed
+`scripts/osdi_paper_macros.py`'s `recLiveDays`, `recLiveAdvisories`, and
+`recLiveCorrections` (C10) were PENDING because no committed record existed
 for the live-osv workload; this snapshot is that record.
 
 | macro | value | source field in the snapshot |
 |---|---|---|
-| `osdiLiveDays` | 1.89 days | `live_osv.operation.days_of_operation` |
-| `osdiLiveAdvisories` | 32,827 (32,787 bootstrap + 40 live-ingested) | `live_osv.advisories.{bootstrap,total_at_snapshot,new_since_bootstrap}` |
-| `osdiLiveCorrections` | 1 | `live_osv.corrections.corrections_written` |
+| `recLiveDays` | 1.89 days | `live_osv.operation.days_of_operation` |
+| `recLiveAdvisories` | 32,827 (32,787 bootstrap + 40 live-ingested) | `live_osv.advisories.{bootstrap,total_at_snapshot,new_since_bootstrap}` |
+| `recLiveCorrections` | 1 | `live_osv.corrections.corrections_written` |
 
 **Days of operation** is computed as `(snapshot_epoch - first_record_epoch)
 / 86400`, where `first_record_epoch` is the `ts` field of line 1 of the
@@ -136,8 +136,8 @@ needs to live off-repo; see the manifest's own `live_osv.note`).
 
 This is a snapshot of a workload still running — 1.89 days into what the
 design projects as a ~60-day campaign (2026-09-22 through 2026-11-21). It
-is not the final C10 record: `osdiLiveDays`/`osdiLiveAdvisories`/
-`osdiLiveCorrections` will need to be recomputed from a later snapshot
+is not the final C10 record: `recLiveDays`/`recLiveAdvisories`/
+`recLiveCorrections` will need to be recomputed from a later snapshot
 before the campaign closes, the same way other claims in this repo carry a
 non-overwrite discipline across re-measurements. This file exists so those
 three macros stop being PENDING now, from real data, rather than staying

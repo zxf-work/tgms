@@ -475,8 +475,8 @@ def test_set_root_repoints_every_source(tmp_path: Path) -> None:
         paths = {name: value for name, value in vars(TPM).items()
                  if isinstance(value, Path) and name.isupper() and name != "ROOT"
                  # FAILURE_LEDGER is deliberately fixed to this script's own
-                 # checkout (like osdi_paper_macros.py's constant of the same
-                 # name) -- ops/failure_ledger.jsonl is a public-worktree
+                 # checkout (like the sibling paper-macros script's constant
+                 # of the same name) -- ops/failure_ledger.jsonl is a public-worktree
                  # file, not one --root's docs/paper indirection reaches.
                  and name != "FAILURE_LEDGER"}
         assert paths, "the module should expose its sources as upper-case Path constants"

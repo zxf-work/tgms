@@ -9,7 +9,7 @@
 #SBATCH --output=/project/xzhang12/overhead-ladder-work/logs/%j.out
 #SBATCH --error=/project/xzhang12/overhead-ladder-work/logs/%j.err
 #
-# The five-rung overhead ladder (OSDI'27 lane D4), one store, one run:
+# The five-rung overhead ladder (the submission campaign's lane D4), one store, one run:
 # `scripts/bench_overhead_ladder.py --rungs 1,2,3,4,5`. Single task, single
 # node -- there is no grid here (one store x one plan set x one seed per
 # submission), so this does not need `storm_campaign.slurm`'s array-index

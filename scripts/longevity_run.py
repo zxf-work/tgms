@@ -1,6 +1,6 @@
 """The longevity (soak) harness — M5 execution plan §7 P4.5, "the phase's
 centerpiece" (`docs/design/M5_EXECUTION_PLAN_2026-08-27.md`); Gate G1's 24h
-run and Phase 4's 72h run in the OSDI plan.
+run and Phase 4's 72h run in the campaign plan.
 
 No prior harness runs the write path for hours: `scripts/eval_durability.py`
 crashes a process at one instrumented boundary per trial on a small store;

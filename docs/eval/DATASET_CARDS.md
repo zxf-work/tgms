@@ -187,7 +187,7 @@ Addendum 6.
 
 ## osv-live (live workload, added 2026-09-13, Lane F3 P0.5)
 
-The OSDI paper's live-ingestion arm: a real, continuously-revised feed
+The paper's live-ingestion arm: a real, continuously-revised feed
 rather than a frozen replay. Design of record:
 `docs/design/LIVE_WORKLOAD_OSV_DESIGN_2026-09-13.md`. Loader:
 `tgms/data/osv_loader.py`; service: `scripts/live_osv_poller.py` +

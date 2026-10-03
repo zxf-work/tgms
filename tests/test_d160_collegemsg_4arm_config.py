@@ -4,7 +4,7 @@ parses and all four arms (`ours`, `b5`, `b6e`, `llm_direct`) dispatch through
 
 This is a local smoke test only -- fake LLM, tiny synth store, tmp_path
 throughout, no network, no real model (PI rule: measurement runs happen on
-iTiger, never on the laptop; see the OSDI'27 D-160 lane brief). It exists to
+iTiger, never on the laptop; see the submission campaign's D-160 lane brief). It exists to
 catch config-shape drift (a typo'd system code, a key `build_systems` does
 not recognize, a store backend the arms cannot use) before the real campaign
 spends GPU time on it, not to reproduce the campaign's numbers.

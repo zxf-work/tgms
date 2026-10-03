@@ -1,7 +1,7 @@
 # crash-v1 — EXP-A1, the ≥10,000-trial seeded crash/recovery campaign
 
 `eval-crash-campaign-2026-09-13.json` is the committed record for **EXP-A1**
-(Lane A, OSDI plan task A7): a Slurm array running `scripts/
+(Lane A, campaign plan task A7): a Slurm array running `scripts/
 eval_durability.py` (P0.7, D-086) at scale — 10 boundaries × 1,000 seeded
 trials each, **10,000 trials total**, every trial independently
 reproducible from its `(seed, boundary, trial)`.

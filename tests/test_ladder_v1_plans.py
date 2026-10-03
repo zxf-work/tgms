@@ -1,5 +1,5 @@
 """`benchmarks/ladder-v1` — the frozen overhead-ladder plan set and campaign
-(lane D4b, OSDI'27). tmp_path/subprocess-only, seconds: this file never
+(lane D4b, the submission campaign). tmp_path/subprocess-only, seconds: this file never
 opens a store under `stores/` and never measures a reported number — it
 checks the frozen artifacts' own contract (they parse, they cover the
 operator catalogue, their sha256s match the freeze, and they run end to end

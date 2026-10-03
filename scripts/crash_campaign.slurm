@@ -9,7 +9,7 @@
 #SBATCH --error=/project/xzhang12/crash-v1-work/logs/task-%a.err
 #
 # EXP-A1 — the >=10,000-trial seeded crash/recovery campaign (Lane A, task
-# A7; OSDI plan). 20 array tasks x 50 trials x 10 boundaries = 10,000 trials
+# A7; campaign plan). 20 array tasks x 50 trials x 10 boundaries = 10,000 trials
 # of scripts/eval_durability.py (P0.7), each task a distinct seed
 # (BASE_SEED + SLURM_ARRAY_TASK_ID) so every trial in the campaign is
 # independently reproducible from its recorded (seed, boundary, trial).

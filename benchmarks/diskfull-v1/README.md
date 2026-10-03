@@ -1,7 +1,7 @@
 # diskfull-v1 — EXP-A5, the ≥2,000-trial disk-full / short-write injection sweep
 
 `eval-diskfull-campaign-2026-09-14.json` is the committed record for
-**EXP-A5** (Lane A, OSDI plan task A9, building on task A5's design in
+**EXP-A5** (Lane A, campaign plan task A9, building on task A5's design in
 `docs/eval_durability.md`): a Slurm array running `scripts/
 eval_diskfull.py` at scale — 20 tasks × 100 seeded trials each, **2,000
 trials total**, every trial independently reproducible from its

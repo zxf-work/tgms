@@ -1,5 +1,5 @@
 """The five-rung overhead ladder harness (`scripts/bench_overhead_ladder.py`,
-OSDI'27 lane D4). tmp_path-only: every store here is built fresh under
+the submission campaign's lane D4). tmp_path-only: every store here is built fresh under
 pytest's tmp_path, never copied from `stores/` (disk-tight laptop rule).
 
 What is tested is the harness's own contract, not any reported number:

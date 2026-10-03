@@ -1,5 +1,5 @@
 """`benchmarks/ldbc-ref-v1` — the frozen LDBC reference-correctness campaign
-(lane D1-prep/D1-fix, OSDI'27 Claim C9). tmp_path/in-memory only, seconds:
+(lane D1-prep/D1-fix, the submission campaign's Claim C9). tmp_path/in-memory only, seconds:
 this file never opens a store and never touches a network. As of lane D1-fix
 (2026-09-14) the vendored LDBC Cypher trees (`external_workloads/ldbc/bi/neo4j/`,
 `external_workloads/ldbc/interactive_v1/cypher/`) are on `main`

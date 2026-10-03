@@ -34,7 +34,7 @@ value is *also* computed and exposed (`Registry.checkpoint()`), so a future
 external holder — mirroring `DependencyScope.checkpoints` — has the same
 primitive `check.py` already trusts, ready to use, the moment one exists.
 
-**Cross-process append lock (OSDI27 fault-matrix memo §7 F4-2).** `append`
+**Cross-process append lock (an internal design memo, trust-boundary fault matrix, 2026-09-13, §7 F4-2).** `append`
 used to be an unlocked check-then-act: it read `prior = self.current(name)`
 from this object's own in-memory fold, computed `expected_generation =
 prior.generation + 1`, and only then appended. Two processes each holding a

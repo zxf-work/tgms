@@ -127,7 +127,7 @@ encoded the wrong contract, and the instrument corrected its author.
 
 ## EXP-A1 — 10,000 seeded trials (2026-09-13)
 
-Lane A task A7 (OSDI plan): the 30-trial result above, scaled three orders
+Lane A task A7 (campaign plan): the 30-trial result above, scaled three orders
 of magnitude on the seeded/randomized workload generator (D-086 P0.7,
 `--seed`) rather than the fixed legacy workload, as a Slurm array on the
 iTiger cluster (20 tasks × 50 trials × 10 boundaries = **10,000 trials**,

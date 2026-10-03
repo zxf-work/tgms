@@ -1,7 +1,7 @@
 # corruption-v1 — EXP-A3, the ≥10,000-trial seeded corruption-detection sweep
 
 `eval-corruption-campaign-2026-09-14.json` is the committed record for
-**EXP-A3** (Lane A, OSDI plan task A9, building on task A4's design in
+**EXP-A3** (Lane A, campaign plan task A9, building on task A4's design in
 `docs/eval_durability.md`): a Slurm array running `scripts/
 eval_corruption.py` at scale — 40 tasks × 250 seeded trials each,
 **10,000 trials total**, every trial independently reproducible from its

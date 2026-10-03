@@ -305,7 +305,7 @@ def ext1_predictions(cells: list[CellInput], committed: dict[str, dict]) -> dict
         "b_speedup_median": statistics.median(speedups) if speedups else None,
         "b_speedup_min": min(speedups) if speedups else None,
         "b_n_cells_meeting_half_margin": sum(
-            1 for s in speedups if s >= 2.586  # 0.5 x osdiStormV2SpeedupN1kSeed0, memo A7
+            1 for s in speedups if s >= 2.586  # 0.5 x recStormV2SpeedupN1kSeed0, memo A7
         ),
         "b_n_cells": len(speedups),
         "c_probe_ratio_gr": probe_ratio,
