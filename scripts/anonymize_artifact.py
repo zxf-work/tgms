@@ -16,7 +16,7 @@ What it does:
 
 1. Walks a default include set (``benchmarks/**/*.json``, ``*.jsonl``,
    ``*.md``, ``*.yaml``; ``benchmarks/schema/**``; the paper-cited
-   ``docs/*.md`` pages; the two ``osdi_paper_*`` scripts; ``README.md``;
+   ``docs/*.md`` pages; the two ``sys_paper_*`` scripts; ``README.md``;
    ``LICENSE``), minus a hard-excluded set (``docs/design/**``,
    ``paper/**``, ``docs/DECISIONS.md``, ``.git``, anything gitignored) and
    minus ``ops/failure_ledger.jsonl`` unless ``--include`` names it.
@@ -78,8 +78,8 @@ DEFAULT_INCLUDE_GLOBS = [
     "docs/system_invariants.md",
     "docs/STABILITY.md",
     "docs/eval/*.md",
-    "scripts/osdi_paper_macros.py",
-    "scripts/osdi_paper_figures.py",
+    "scripts/sys_paper_macros.py",
+    "scripts/sys_paper_figures.py",
     "README.md",
     "LICENSE",
 ]

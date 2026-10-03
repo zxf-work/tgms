@@ -1,10 +1,10 @@
 #!/usr/bin/env python
-"""Generate the OSDI paper's figures and tables for claims with landed data.
+"""Generate the submission campaign's figures and tables for claims with landed data.
 
-Companion to ``scripts/osdi_paper_macros.py`` (read that file's docstring
+Companion to ``scripts/sys_paper_macros.py`` (read that file's docstring
 first -- the "assert, do not trust" discipline and the record inventory
 are shared). This script covers the figure/table plan's landed-data
-subset (``docs/design/OSDI27_PAPER_SKELETON_2026-09-15.md`` S4, gitignored
+subset (an internal design memo (paper skeleton, 2026-09-15) S4, gitignored
 and not read by this script -- every deliverable below documents its own
 record path):
 
@@ -46,10 +46,10 @@ running interpreter, as a PDF and a PNG. The CSV and the numbers going
 into the figure come from the same data-building function, so a figure
 can never show a number its CSV disagrees with.
 
-Output goes to ``paper/osdi/generated/`` (gitignored, not committed --
-see ``scripts/osdi_paper_macros.py``'s docstring for the convention).
+Output goes to ``paper/sys/generated/`` (gitignored, not committed --
+see ``scripts/sys_paper_macros.py``'s docstring for the convention).
 
-Usage:  $HOME/.venvs/tgms/bin/python scripts/osdi_paper_figures.py [--check]
+Usage:  $HOME/.venvs/tgms/bin/python scripts/sys_paper_figures.py [--check]
 
 ``--check`` regenerates the CSVs into memory and fails if they would
 differ from what is on disk; it does not re-render PDFs/PNGs (matplotlib
@@ -69,7 +69,7 @@ import sys
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
-OUT_DIR = ROOT / "paper" / "osdi" / "generated"
+OUT_DIR = ROOT / "paper" / "sys" / "generated"
 
 CRASH_V1 = ROOT / "benchmarks" / "crash-v1" / "eval-crash-campaign-2026-09-13.json"
 B1_RAW = ROOT / "benchmarks" / "results-v1" / "b1-manifest-ab-2026-09-raw.json"
@@ -91,7 +91,7 @@ DAG_V2 = STORM_V1 / "storm-campaign-dag-v2-2026-09.json"
 DAG_V3 = STORM_V1 / "storm-campaign-dag-v3-2026-09.json"
 R18_PROBE_ROWS = STORM_V1 / "storm-r18-probe-2026-09-rows.jsonl"
 # the now-complete 36/36 main correction-load grid (see
-# scripts/osdi_paper_macros.py's compute_c7_storm_v1, osdiStormV1SpeedupN1kSeed0)
+# scripts/sys_paper_macros.py's compute_c7_storm_v1, recStormV1SpeedupN1kSeed0)
 # -- read here for the N=1,000 point f8's title used to wait on.
 STORM_V1_MAIN_GRID_ROWS = STORM_V1 / "storm-v1-main-grid-2026-09-15-rows.jsonl"
 
@@ -171,7 +171,7 @@ def _require_mpl() -> None:
         raise SystemExit(
             "matplotlib is required to render figures and is not installed in this "
             "interpreter. Run with the project venv "
-            "($HOME/.venvs/tgms/bin/python scripts/osdi_paper_figures.py); CSVs can "
+            "($HOME/.venvs/tgms/bin/python scripts/sys_paper_figures.py); CSVs can "
             "still be generated without it via write_all_csv()."
         )
 
@@ -711,8 +711,8 @@ def build_r18_crossover_data() -> dict:
     # N=1,000's own c1 seed-0 point: the main correction-load grid is now
     # complete (36/36 cells, storm-v1-main-grid-2026-09-15{,-rows.jsonl}),
     # so this reads the same (store=synth-iv-60k, mix=c1, age=None, seed=0)
-    # cell scripts/osdi_paper_macros.py's compute_c7_storm_v1 lands as
-    # osdiStormV1SpeedupN1kSeed0, computed the same way here: the ratio of
+    # cell scripts/sys_paper_macros.py's compute_c7_storm_v1 lands as
+    # recStormV1SpeedupN1kSeed0, computed the same way here: the ratio of
     # that cell's own summary.arms.{global-recompute,tgms-L1}.ttf_p50_ms.
     main_grid_rows = load_jsonl(STORM_V1_MAIN_GRID_ROWS)
     n1000_target = [r for r in main_grid_rows if r["config"]["store"] == "synth-iv-60k"
@@ -892,7 +892,7 @@ def plot_corruption_matrix(data: dict) -> None:
 
 # The freeze's own numeric predicted/pass_if bands (benchmarks/ladder-v1/campaign.yaml
 # predictions.*), reproduced here only as shading anchors for the figure --
-# never as a source for any number scripts/osdi_paper_macros.py emits.
+# never as a source for any number scripts/sys_paper_macros.py emits.
 LADDER_BANDS = {
     1: (0.8, 1.3),        # rung1_leaf_overhead: predicted
     2: (1, 2000),         # rung2_compiled_vs_kernel: entity_history pass_if
@@ -1440,7 +1440,7 @@ def main() -> int:
         return 1
 
     mode = "checked" if args.check else ("csv" if not render_figures else "csv+pdf+png")
-    print(f"osdi_paper_figures: {len(DELIVERABLES)} deliverables ({mode}) -> {OUT_DIR}")
+    print(f"sys_paper_figures: {len(DELIVERABLES)} deliverables ({mode}) -> {OUT_DIR}")
     if not HAVE_MPL and not args.check and not args.csv_only:
         print("  note: matplotlib not installed in this interpreter -- PDF/PNG rendering "
               "was skipped; only CSVs were written", file=sys.stderr)

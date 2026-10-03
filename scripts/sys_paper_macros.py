@@ -1,19 +1,19 @@
 #!/usr/bin/env python
-"""Generate the OSDI paper's number macros from committed receipts.
+"""Generate the submission campaign's number macros from committed receipts.
 
 House rule (copied verbatim from ``scripts/tgir_paper_macros.py`` and
 ``scripts/paper_macros.py``): **assert, do not trust.** Every macro this
 script emits is recomputed from the row-level fields of the record that
 owns it, cross-checked against whatever aggregate the record states for
 itself, and then checked against a frozen expected value in
-``tests/test_osdi_paper_macros.py``. A disagreement anywhere in that chain
+``tests/test_sys_paper_macros.py``. A disagreement anywhere in that chain
 is a hard failure -- the script refuses to write output, never silently
 adjusts a number, and never falls back to a record's own summary field
 without first recomputing it from the rows underneath.
 
-This is Lane W (task W2)'s receipts machinery for the OSDI paper. The
+This is Lane W (task W2)'s receipts machinery for the submission campaign. The
 claims -> evidence map that assigns every macro name to a claim and a
-record is ``docs/design/OSDI27_PAPER_SKELETON_2026-09-15.md`` S3 (gitignored,
+record is an internal design memo (paper skeleton, 2026-09-15) S3 (gitignored,
 internal; not shipped with this script, but every macro below documents
 its own record path and field so the mapping is reconstructable without
 it). Implemented here: every claim whose record has LANDED per that
@@ -23,14 +23,14 @@ skeleton --
   C3  benchmarks/results-v1/b1-manifest-ab-2026-09{,-raw}.json (v1 B1 A/B) and
       benchmarks/results-v1/b1-manifest-v2-ab-2026-09{,-raw}.json (Lane W2f's
       B1-v2, manifest format 3 -- the reader torn-tail fix -- vs. the pinned
-      format-2 soak engine; ``osdiB1v2*`` macros stand beside the v1-era
-      ``osdiManifest*`` ones without overwriting them; no verdict macro --
+      format-2 soak engine; ``recB1v2*`` macros stand beside the v1-era
+      ``recManifest*`` ones without overwriting them; no verdict macro --
       scoring is the coordinator's, per the internal freeze doc) and
       benchmarks/results-v1/b1-manifest-co7-chain-open-2026-09{,-raw}.json
       (Lane P-CO7's chain-open re-measurement on a confirmed-quiet host,
-      treatment ``ebe1dc2``; ``osdiB1co7*`` macros stand beside the v2e-era
-      ``osdiB1v2e*`` ones without overwriting them; the two
-      ``osdiB1WorstPhaseOpen*`` macros are arithmetic on the co7 per-delta
+      treatment ``ebe1dc2``; ``recB1co7*`` macros stand beside the v2e-era
+      ``recB1v2e*`` ones without overwriting them; the two
+      ``recB1WorstPhaseOpen*`` macros are arithmetic on the co7 per-delta
       costs projected to K-1=511 deltas, labelled as such, not a
       measurement; no verdict macro here either)
   C4  benchmarks/results-v1/b2-version-history-ab-2026-09{,-raw}.json
@@ -43,23 +43,23 @@ skeleton --
       this file's comments; every number below is recomputed from the
       m5-v1 JSON files' own rows)
   C8  benchmarks/faults-v1/fault-matrix-campaign-2026-09-{13,15-d160}.json
-  D160-collegemsg (Lane W2c, not in the OSDI27 skeleton's C-numbering --
+  D160-collegemsg (Lane W2c, not in the design memo's C-numbering --
       the coordinator's D-160 ruling deliverable) --
       benchmarks/d160-collegemsg-v1/{manifest,rows}-2026-09-14.json, the
       CollegeMsg coverage/conditional-accuracy/UCR re-measurement under the
       production claim gate that also drops `unverifiable` claims (see
       docs/STABILITY.md section 9). Its pre-D-160-gate counterparts
-      (osdiOldGate*) are parsed out of docs/site_facts.json's
+      (recOldGate*) are parsed out of docs/site_facts.json's
       `unsupported_claims` fact and cross-checked against that same
       STABILITY.md section, never hard-coded independently of both. The
       `llm_direct` follow-up re-run under the real-tokenizer budget fix
       (`manifest-llm-direct-fix-2026-09-14.json` /
       `rows-llm-direct-fix-2026-09-14.json`, job 212231) has now landed --
-      `osdiD160LlmDirectCoverageFixed` and its siblings
-      (`osdiD160LlmDirectErrorsFixed`/`RawEmFixed`/`TokenizerFixed`/
+      `recD160LlmDirectCoverageFixed` and its siblings
+      (`recD160LlmDirectErrorsFixed`/`RawEmFixed`/`TokenizerFixed`/
       `BudgetFixed`) are computed by `compute_d160_llm_direct_fix` below.
-      The pre-fix record's own numbers (`osdiD160LlmDirectCarrying`,
-      `osdiD160LlmDirectOverflowErrors`) are unchanged and still stand
+      The pre-fix record's own numbers (`recD160LlmDirectCarrying`,
+      `recD160LlmDirectOverflowErrors`) are unchanged and still stand
       beside them, per the campaign's non-overwrite discipline.
   C7  (partial) benchmarks/storm-v1/storm-campaign-dag-{,v2-,v3-}2026-09.json
       (+ each one's -rows.jsonl) -- the DAG-phase v1/v2/v3 grids, all 40/40
@@ -69,16 +69,16 @@ skeleton --
       correction-storm cell grid (addendum-1, ``storm-campaign-2026-09.json``,
       12/36 cells complete, 24 blocked on an iTiger disk-quota incident) was
       never committed and stays a dead end -- its own quantities
-      (``osdiStormCells``/``osdiStormFalseFresh``/``osdiTtfSpeedup``/
-      ``osdiStormSpeedupN1k``/``osdiStormAvoidedN1k``) were retired (no
+      (``recStormCells``/``recStormFalseFresh``/``recTtfSpeedup``/
+      ``recStormSpeedupN1k``/``recStormAvoidedN1k``) were retired (no
       longer emitted, PENDING or otherwise) since no record under that
       name ever landed and no paper text references those legacy names.
       Addendum-1's grid itself since **has** landed under
       a different name and seam (Lane W2m; ``storm-v1-main-grid-2026-09-15
       .json`` + its -rows.jsonl, five submissions across the same quota
       incident, 36/36 cells, commit ``8962b78``, pre-D-161-rollout) -- its
-      macros are ``osdiStormV1*`` (``compute_c7_storm_v1`` below), which
-      resolves the previously-PENDING ``osdiStormV1SpeedupN1kSeed0`` stub
+      macros are ``recStormV1*`` (``compute_c7_storm_v1`` below), which
+      resolves the previously-PENDING ``recStormV1SpeedupN1kSeed0`` stub
       with a value read from this record instead of from
       benchmarks/storm-v1/README.md's prose. The v1-scoring quantities the
       C6 pre-registration template asked for -- row-touch/entity-touch/
@@ -91,12 +91,12 @@ skeleton --
       read below. A *different* 36-cell grid -- the same (store x mix x age
       x seed) recipe, rerun post-D-161-rollout under commit ``fdd393c``
       (addendum-3, ``storm-v2-main-grid-2026-09-15.json`` + its -rows.jsonl,
-      job 212294) -- **has** also landed; its macros are ``osdiStormV2*``
-      (``compute_c7_storm_v2`` below) and stand beside ``osdiStormV1*``
+      job 212294) -- **has** also landed; its macros are ``recStormV2*``
+      (``compute_c7_storm_v2`` below) and stand beside ``recStormV1*``
       without overwriting or resolving them -- a v1/v2 speedup comparison
       is prose-only (README.md's own two main-grid sections), never a
       macro. The survivor-fraction/precision pair
-      (``osdiStormV2SurvivorFractionC1Median``/``osdiStormV2PrecisionC1Median``)
+      (``recStormV2SurvivorFractionC1Median``/``recStormV2PrecisionC1Median``)
       is a per-batch quantity (``candidate_survivors``/``changed_count``)
       that only the per-task ``-rows.jsonl`` sidecars carry, and those
       sidecars stay on iTiger's stage directory by design
@@ -107,10 +107,10 @@ skeleton --
       (sha256-checked against ``benchmarks/storm-v1/README.md``'s own
       quoted value) packs all 36 tasks' per-batch ``-rows.jsonl`` files as
       transferred from the cluster, so the 12 c1-mix cells' 240 batches
-      (``osdiStormV2C1Batches``) are read from it in memory (``tarfile``,
+      (``recStormV2C1Batches``) are read from it in memory (``tarfile``,
       nothing extracted to the repo) and matched to their cell via each
       merged-grid row's own ``record`` field. The overall and per-store
-      medians (``osdiStormV2{SurvivorFraction,Precision}{Synth,CollegeMsg}
+      medians (``recStormV2{SurvivorFraction,Precision}{Synth,CollegeMsg}
       C1Median``) are computed in ``compute_c7_storm_v2`` below alongside
       the rest of the c1-mix quantities.
 
@@ -118,12 +118,12 @@ skeleton --
       benchmarks/storm-v1/storm-v2-r18-probe-2026-09-15.json (+
       -rows.jsonl), the same cell as the v1 R-18 probe above
       (synth-iv-60k/c1/N=10,000/seed=0/5 batches) rerun post-D-161-rollout
-      under commit ``fdd393c``. ``osdiStormV2Probe*``
+      under commit ``fdd393c``. ``recStormV2Probe*``
       (``compute_c7_storm_v2_probe`` below) land beside the still-untouched
-      ``osdiR18*`` (v1) macros and beside ``osdiStormV2*`` (the different
+      ``recR18*`` (v1) macros and beside ``recStormV2*`` (the different
       36-cell main-grid record) -- no v1-vs-v2 or probe-vs-grid comparison
       macro here, only prose (README.md's own "R-18 probe v2 (addendum-3)"
-      table); ``osdiStormSpeedupShrinksWithN`` in particular is a verdict,
+      table); ``recStormSpeedupShrinksWithN`` in particular is a verdict,
       not a macro, and is deliberately never added.
 
   W2g (24h longevity soak, Lane B task B7a, Gate G1/Gate E) --
@@ -149,7 +149,7 @@ skeleton --
       re-measurements/re-derivations against the W2g soak's own preserved
       raw inputs -- no new soak, no new replay attempt. No verdict macro.
 
-  W2p (P-SOAK2, post-fix second soak, OSDI'27 plan Sec 4.3b) --
+  W2p (P-SOAK2, post-fix second soak, internal plan memo Sec 4.3b) --
       benchmarks/longevity-v1/longevity-synth-1m-native-1.json (manifest,
       commit ``eed91c0``, 4 writer lives at ``--restart-every 6h``) +
       rss_slopes-2.json, reader_error_counts_by_class-2.json,
@@ -164,7 +164,7 @@ skeleton --
       new, unpredicted finding is a reader-side ``OSError``/``StateError``
       failure storm (150,476,512 reader errors, 0 in W2g) that this script
       also verifies down to the by-class totals. ``compute_longevity_soak_two``
-      below computes every ``osdiSoak*Two`` macro; the Gate E table's own
+      below computes every ``recSoak*Two`` macro; the Gate E table's own
       verdict column is prose (gate_e_report-2.md), not emitted here.
       Added later (2026-09-18, lane W2v): compactions-2.jsonl (the writer's
       raw per-compaction log, copied from xzgpu) and reader_onset_rows-2.json
@@ -173,7 +173,7 @@ skeleton --
       clock against reader_error_counts_by_class-2.json's wall-clock onset
       via metrics.jsonl's ``compactions_total`` counter -- method and
       error bound in the side-file itself) round out the same
-      ``compute_longevity_soak_two`` function's ``osdiSoakReaderOnset*Two``
+      ``compute_longevity_soak_two`` function's ``recSoakReaderOnset*Two``
       macros.
 
   W2u (P-STORM-HUNT, a 6h observation-only run, commit ``57952fa``) --
@@ -191,8 +191,8 @@ skeleton --
       the same writer-side ``NotFoundError`` correction-race class seen in
       both soaks. Both reader RSS slopes (11.4-12.5 kB/s) exceed the 10
       kB/s frozen bound every P-SOAK2 reader passed under.
-      ``compute_longevity_soak_hunt`` below computes every ``osdiSoak*Hunt``
-      macro; ``osdiSoakHuntPatternReproduced`` states the pre-registration's
+      ``compute_longevity_soak_hunt`` below computes every ``recSoak*Hunt``
+      macro; ``recSoakHuntPatternReproduced`` states the pre-registration's
       own clause (e) non-conclusion (a negative 6h result is not evidence
       the pattern is gone) as its provenance, not as a number.
 
@@ -213,7 +213,7 @@ skeleton --
       readers x 2 classes (every combination heals repeatedly) -- root
       cause not established here; P-SOAK4 re-measures the fixed engine.
       ``compute_longevity_soak_three`` below computes every
-      ``osdiSoak*Three`` macro, including ``osdiSoakWriterErrorsClassThree``
+      ``recSoak*Three`` macro, including ``recSoakWriterErrorsClassThree``
       (recomputed from writer_error_counts_by_class-3.json, this lane's own
       per-life/per-class writer-error side-file). No verdict macro -- Gate E
       scoring is the coordinator's.
@@ -226,7 +226,7 @@ skeleton --
       replay that completed, unlike W2j's OOM-killed attempts 1/2 above).
       Both whole-file sha256-checked (frozen here, same discipline as
       W2j's pair). ``compute_longevity_verify_and_replay2`` below computes
-      every ``osdiSoakVerifyFull*``/``osdiSoakReplay2*`` macro; no verdict
+      every ``recSoakVerifyFull*``/``recSoakReplay2*`` macro; no verdict
       macro (``CORRUPT`` is the verifier's own text, not scored here).
 
   W-lane (P-OV1, the xzgpu-calibrated overload sweep, EXP-B4) --
@@ -234,14 +234,14 @@ skeleton --
       (2 reps, `--clients 1 2 4 8 16 32 64 --max-concurrent 8`,
       `entity_history` under load) + hwm-checkpoints-v3.json (the "Pinned"
       VmHWM localization). ``compute_overload`` below computes every
-      ``osdiOverload*`` macro, sha256-checked by hash membership against
+      ``recOverload*`` macro, sha256-checked by hash membership against
       benchmarks/overload-v1/SHA256SUMS; no verdict macro (the per-clause
       PASS/REFUTED scoring is README.md's own prose).
 
 C10 (live OSV workload) -- benchmarks/live-osv-v1/snapshot-2026-09-16.json,
 Lane C10-snap's first committed record snapshot of the live-osv poller
 running on xzgpu (docs/design/LIVE_WORKLOAD_OSV_DESIGN_2026-09-13.md).
-``osdiLiveDays``/``osdiLiveAdvisories``/``osdiLiveCorrections`` are computed
+``recLiveDays``/``recLiveAdvisories``/``recLiveCorrections`` are computed
 by ``compute_c10_live_osv`` below, every number recomputed from the
 snapshot's own embedded per-cycle rows (``live_osv.cycles_raw``) and
 cross-checked against its pre-aggregated fields, plus a whole-file sha256
@@ -254,18 +254,18 @@ is read from a committed record). Stage 0 (iTiger calibration,
 k_recover and the 10M scale-curve anchor; Stage 1 30M (``build-30m.json``
 + eight sidecars, scored in the pre-registration's Addendum 7) and Stage 1
 100M (``build-100m.json`` + seven sidecars, merge of ``fe52997``) are both
-fully landed. ``compute_b7_scale`` below computes every ``osdiB7*{30M,100M}``
-macro, the Stage-0 anchors, and the (scale-independent) ``osdiB7300MGate``,
+fully landed. ``compute_b7_scale`` below computes every ``recB7*{30M,100M}``
+macro, the Stage-0 anchors, and the (scale-independent) ``recB7300MGate``,
 whole-file sha256-checking every record it reads against the sha256 table
 in its own README (``benchmarks/scale-v1/README.md`` for Stage 1,
 ``itiger-calib-2026-09.README.md`` for Stage 0) before trusting anything
 inside it. At 100M, 7 of the 13 scale-curve operators are refused by the
 cost guardrail: ``reach.window`` (anticipated by Addendum 5, carries a
 numeric ``time_est_ms`` estimate) stays a PENDING
-``osdiB7ScaleCurveP50ReachWindow100M`` naming that estimate as the reason;
+``recB7ScaleCurveP50ReachWindow100M`` naming that estimate as the reason;
 the other six (unanticipated, no numeric estimate in the record) land as
-``osdiB7Refused<Op>100M = true`` instead of a fabricated p50.
-``osdiB7Recovery100M`` aliases ``osdiB7RecoveryCe5000At100M`` since no
+``recB7Refused<Op>100M = true`` instead of a fabricated p50.
+``recB7Recovery100M`` aliases ``recB7RecoveryCe5000At100M`` since no
 cadence-500 100M run exists or was ever planned (Addendum 6 pre-judged it
 infeasible). Nothing here is PENDING for lack of a landed record anymore;
 only the one guardrail-refused p50 remains.
@@ -277,11 +277,11 @@ manifest + per-template verdicts), cross-checked against
 frozen gate/scoring addendum; addenda 1/2 are superseded readings kept
 for provenance and never a number source here), and against the
 superseded interim ``compare-2026-09-17.json`` for the two
-``osdiLdbcInterim*`` macros that let the paper cite the reference-side
+``recLdbcInterim*`` macros that let the paper cite the reference-side
 fix. This resolves the three stubs that used to stand here
-(``osdiLdbcExpressible``/``osdiLdbcExecuted``/``osdiLdbcValidated``) and
+(``recLdbcExpressible``/``recLdbcExecuted``/``recLdbcValidated``) and
 lands the rest of the scorecard beside them --
-``compute_ldbc_ref_v1`` below computes every ``osdiLdbc*`` macro, every
+``compute_ldbc_ref_v1`` below computes every ``recLdbc*`` macro, every
 whole-file sha256 checked against the run's own ``SHA256SUMS.txt`` and
 every count recomputed from the compare record's row-level
 ``attempted``/``compared``/``agreeing``/``disagreeing`` fields, never
@@ -294,23 +294,23 @@ real LaTeX error (``\\errmessage``) if the paper ever expands one,
 rather than silently emitting a placeholder number.
 
 Every macro is emitted as
-``\\expandafter\\newcommand\\csname osdi<Name>\\endcsname{<value>}`` rather
-than a bare ``\\newcommand{\\osdi<Name>}``: roughly two-thirds of the ~400
-names carry digit tokens (e.g. ``osdiB7BuildWall30M``), and a LaTeX
+``\\expandafter\\newcommand\\csname rec<Name>\\endcsname{<value>}`` rather
+than a bare ``\\newcommand{\\rec<Name>}``: roughly two-thirds of the ~400
+names carry digit tokens (e.g. ``recB7BuildWall30M``), and a LaTeX
 control-sequence name may not contain a digit outside ``\\csname``. The
-file also defines, once at its top, ``\\providecommand{\\osdi}[1]{\\csname
-osdi#1\\endcsname}`` so manuscript prose can write ``\\osdi{B7BuildWall30M}``
+file also defines, once at its top, ``\\providecommand{\\rec}[1]{\\csname
+rec#1\\endcsname}`` so manuscript prose can write ``\\rec{B7BuildWall30M}``
 instead of the raw ``\\csname`` form. Digit-free names still work under
-their bare ``\\osdiFoo`` spelling unmodified, since ``\\csname
-osdiFoo\\endcsname`` denotes that same control sequence.
+their bare ``\\recFoo`` spelling unmodified, since ``\\csname
+recFoo\\endcsname`` denotes that same control sequence.
 
-Usage:  $HOME/.venvs/tgms/bin/python scripts/osdi_paper_macros.py [--check | --check-only]
+Usage:  $HOME/.venvs/tgms/bin/python scripts/sys_paper_macros.py [--check | --check-only]
 
 Every mode first recomputes and verifies all macros (assert, do not trust,
 per the house rule above); a verification failure exits 1 regardless of
 flags. With no flag, the script writes
-``paper/osdi/generated/osdi-macros.tex`` unconditionally (creating
-``paper/osdi/generated/`` if needed). ``--check`` additionally regenerates
+``paper/sys/generated/sys-paper-macros.tex`` unconditionally (creating
+``paper/sys/generated/`` if needed). ``--check`` additionally regenerates
 that file when it is stale or missing -- e.g. a fresh worktree, or after a
 merge, whose gitignored ``paper/`` tree lags the committed records it is
 derived from -- and re-verifies the write, printing "regenerated" or "up to
@@ -320,11 +320,11 @@ contract: it never writes, and exits 1 with "stale generated file: ..." if
 the file would differ -- use this where a write is undesired (e.g. a CI
 gate). Nothing under ``paper/`` is committed (``paper/`` is gitignored
 publicly); this is the local convention this script and
-``scripts/osdi_paper_figures.py`` share for that directory. As of 2026-09
+``scripts/sys_paper_figures.py`` share for that directory. As of 2026-09
 no CI workflow invokes this script at all (nothing under ``.github/workflows/``
 references it) -- there is no committed generated file for CI to check
 staleness against, so CI's actual paper-side gate is just that this script
-and its test suite (``tests/test_osdi_paper_macros.py``) pass; ``--check-only``
+and its test suite (``tests/test_sys_paper_macros.py``) pass; ``--check-only``
 is provided for if/when a workflow starts calling it directly.
 """
 
@@ -342,7 +342,7 @@ from decimal import ROUND_HALF_UP, Decimal
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
-OUT_DIR = ROOT / "paper" / "osdi" / "generated"
+OUT_DIR = ROOT / "paper" / "sys" / "generated"
 
 CRASH_V1 = ROOT / "benchmarks" / "crash-v1" / "eval-crash-campaign-2026-09-13.json"
 
@@ -562,8 +562,8 @@ B7_SCALE_CURVE_OPS = {
 # (CostError). reach.window's refusal carries a numeric time_est_ms
 # estimate (a dedicated admission probe, same as 30M's); the other six
 # carry only a "CostError: ... exceeds ceilings" string, no estimate --
-# per the coordinator's ruling, those six get a landed osdiB7Refused<Op>
-# 100M = true macro instead of a PENDING osdiB7ScaleCurveP50<Op>100M (no
+# per the coordinator's ruling, those six get a landed recB7Refused<Op>
+# 100M = true macro instead of a PENDING recB7ScaleCurveP50<Op>100M (no
 # invented p50, and no fabricated estimate for a refusal that has none).
 B7_SCALE_CURVE_100M_REFUSED_NO_ESTIMATE = (
     "snap.hop2", "diff.global", "nbr.evolution", "coactive.narrow",
@@ -876,18 +876,18 @@ class Macros:
         """
         assert name not in self.seen, f"duplicate macro {name}"
         self.seen.add(name)
-        msg = f"osdi_paper_macros: {name} is PENDING ({lane}): {reason}"
+        msg = f"sys_paper_macros: {name} is PENDING ({lane}): {reason}"
         value = r"\errmessage{" + msg.replace("{", "(").replace("}", ")") + "}"
         self.items.append((name, value, f"PENDING -- {lane}: {reason}"))
 
     def render(self) -> str:
         lines = [
-            "% osdi-macros.tex --- GENERATED by scripts/osdi_paper_macros.py.",
+            "% sys-paper-macros.tex --- GENERATED by scripts/sys_paper_macros.py.",
             "% Do not hand-edit; re-run the generator.",
             "%",
             "% Every landed-record number in the manuscript resolves through one",
             "% of these; each was recomputed from row-level data and checked",
-            "% against a frozen expectation in tests/test_osdi_paper_macros.py.",
+            "% against a frozen expectation in tests/test_sys_paper_macros.py.",
             f"% This run performed {CHECKS} such assertions and refused to write",
             "% on any failure. A macro whose provenance begins 'PENDING' raises",
             "% a LaTeX error if the manuscript expands it -- its record has not",
@@ -895,13 +895,13 @@ class Macros:
             "%",
             "% Every name below is defined via \\csname...\\endcsname, not a bare",
             "% \\newcommand{\\name}: most names carry digits (e.g.",
-            "% osdiB7BuildWall30M) and a LaTeX control-sequence name may not,",
-            "% outside \\csname. \\csname osdiFoo\\endcsname is the same control",
-            "% sequence as \\osdiFoo, so digit-free names still work under their",
-            "% bare \\osdiFoo spelling. The \\osdi{Name} accessor just below is",
-            "% \\csname osdi<Name>\\endcsname for prose that prefers it.",
+            "% recB7BuildWall30M) and a LaTeX control-sequence name may not,",
+            "% outside \\csname. \\csname recFoo\\endcsname is the same control",
+            "% sequence as \\recFoo, so digit-free names still work under their",
+            "% bare \\recFoo spelling. The \\rec{Name} accessor just below is",
+            "% \\csname rec<Name>\\endcsname for prose that prefers it.",
             "",
-            r"\providecommand{\osdi}[1]{\csname osdi#1\endcsname}",
+            r"\providecommand{\rec}[1]{\csname rec#1\endcsname}",
             "",
         ]
         width = max(len(n) for n, _, _ in self.items)
@@ -954,13 +954,13 @@ def compute_c1(m: Macros) -> None:
     eq(len(boundaries), 10, "C1 frozen: boundary count")
     eq(recomputed_wall, 4912.85, "C1 frozen: summed wall_s")
 
-    m.add("osdiCrashTrials", tex_num(d["total_trials"]),
+    m.add("recCrashTrials", tex_num(d["total_trials"]),
           f"{relpath(CRASH_V1)}: len(results), == total_trials")
-    m.add("osdiCrashProblems", recomputed_problems,
+    m.add("recCrashProblems", recomputed_problems,
           f"{relpath(CRASH_V1)}: trials with a non-empty problems list")
-    m.add("osdiCrashBoundaries", len(boundaries),
+    m.add("recCrashBoundaries", len(boundaries),
           f"{relpath(CRASH_V1)}: distinct per_boundary keys")
-    m.add("osdiCrashWall", f"{recomputed_wall:,.2f}".replace(",", "{,}"),
+    m.add("recCrashWall", f"{recomputed_wall:,.2f}".replace(",", "{,}"),
           f"{relpath(CRASH_V1)}: sum of results[*].wall_s, seconds")
 
 
@@ -1011,14 +1011,14 @@ def compute_c3(m: Macros) -> None:
     close(cold_open_ratio, 8.03, 0.02, "C3 frozen: cold-open slowdown ratio")
     require(trt_open_med > 100, "C3: F3's <=100ms falsifier bar is refuted by treatment open")
 
-    m.add("osdiManifestBytesCtl", f"{bytes_ctl / 1e9:.2f}",
+    m.add("recManifestBytesCtl", f"{bytes_ctl / 1e9:.2f}",
           f"{relpath(B1_RAW)}: b1a.control.manifest_bytes_at_stop, decimal GB")
-    m.add("osdiManifestBytesTrt", f"{bytes_trt / 1e6:.1f}",
+    m.add("recManifestBytesTrt", f"{bytes_trt / 1e6:.1f}",
           f"{relpath(B1_RAW)}: b1a.treatment.manifest_bytes_at_stop, decimal MB")
-    m.add("osdiManifestCommitRatio", f"{ratio_trt:.3f}",
+    m.add("recManifestCommitRatio", f"{ratio_trt:.3f}",
           f"{relpath(B1_RAW)}: b1b.summary.treatment.total_us last/first decile "
           "(the F2 falsifier: refuted, bar <=1.2x)")
-    m.add("osdiManifestColdOpen", f"{cold_open_ratio:.2f}",
+    m.add("recManifestColdOpen", f"{cold_open_ratio:.2f}",
           f"{relpath(B1_RAW)}: b1c.authoritative median(treatment_open_ms) / "
           "median(control_open_ms) at G~10k (the F3 falsifier: refuted, bar <=100ms)")
 
@@ -1030,7 +1030,7 @@ def compute_c3(m: Macros) -> None:
 # SF1 manifest bytes at matched 2.5M ops, SS20 batch=1 commitcost phase
 # deciles/p50 (300 commits, 100k-row seed store), chain-open at G~10k
 # K=512, plus the off-default K=128/K=1024 sweep (1 rep each). These
-# osdiB1v2* macros stand beside the osdiManifest* ones above as v2-era
+# recB1v2* macros stand beside the recManifest* ones above as v2-era
 # measurements -- v1's numbers are never overwritten. No verdict macro:
 # the brief's thresholds and pass/fail scoring live in the internal
 # freeze doc, not here.
@@ -1196,71 +1196,71 @@ def compute_b1_v2(m: Macros) -> None:
             "B1-v2: component_breakdown is genuinely absent (flagged), not fabricated")
 
     # --- emit macros ---
-    m.add("osdiB1v2ControlCommit", ctl_commit[:7],
+    m.add("recB1v2ControlCommit", ctl_commit[:7],
           f"{relpath(B1_V2_MANIFEST)}: config.control_commit, short sha")
-    m.add("osdiB1v2TreatmentCommit", trt_commit[:7],
+    m.add("recB1v2TreatmentCommit", trt_commit[:7],
           f"{relpath(B1_V2_MANIFEST)}: config.treatment_commit, short sha")
 
-    m.add("osdiB1v2BytesControlMB", f"{bytes_ctl / 1e6:.1f}",
+    m.add("recB1v2BytesControlMB", f"{bytes_ctl / 1e6:.1f}",
           f"{relpath(B1_V2_RAW)}: b1a.control.manifest_bytes_at_stop, decimal MB")
-    m.add("osdiB1v2BytesTreatmentMB", f"{bytes_trt / 1e6:.1f}",
+    m.add("recB1v2BytesTreatmentMB", f"{bytes_trt / 1e6:.1f}",
           f"{relpath(B1_V2_RAW)}: b1a.treatment.manifest_bytes_at_stop, decimal MB")
-    m.add("osdiB1v2BytesPaired", f"{bytes_paired:.3f}",
+    m.add("recB1v2BytesPaired", f"{bytes_paired:.3f}",
           f"{relpath(B1_V2_RAW)}: b1a.treatment.manifest_bytes_at_stop / "
           "b1a.control.manifest_bytes_at_stop")
-    m.add("osdiB1v2SegmentBytesControlMB", f"{seg_ctl / 1e6:.1f}",
+    m.add("recB1v2SegmentBytesControlMB", f"{seg_ctl / 1e6:.1f}",
           f"{relpath(B1_V2_RAW)}: b1a.control.segment_bytes_at_stop, decimal MB")
-    m.add("osdiB1v2SegmentBytesTreatmentMB", f"{seg_trt / 1e6:.1f}",
+    m.add("recB1v2SegmentBytesTreatmentMB", f"{seg_trt / 1e6:.1f}",
           f"{relpath(B1_V2_RAW)}: b1a.treatment.segment_bytes_at_stop, decimal MB")
 
-    m.add("osdiB1v2ManifestDecileControl", f"{manifest_decile_ctl:.3f}",
+    m.add("recB1v2ManifestDecileControl", f"{manifest_decile_ctl:.3f}",
           f"{relpath(B1_V2_RAW)}: b1b.raw.control[*].last_decile_us.manifest_us / "
           "[*].first_decile_us.manifest_us, median over 3 reps")
-    m.add("osdiB1v2ManifestDecileTreatment", f"{manifest_decile_trt:.3f}",
+    m.add("recB1v2ManifestDecileTreatment", f"{manifest_decile_trt:.3f}",
           f"{relpath(B1_V2_RAW)}: b1b.raw.treatment[*].last_decile_us.manifest_us / "
           "[*].first_decile_us.manifest_us, median over 3 reps")
-    m.add("osdiB1v2ManifestDecileK128", f"{manifest_decile_k128:.3f}",
+    m.add("recB1v2ManifestDecileK128", f"{manifest_decile_k128:.3f}",
           f"{relpath(B1_V2_RAW)}: b1b.raw.treatment_k128[0].last_decile_us.manifest_us / "
           "first_decile_us.manifest_us (1 rep)")
-    m.add("osdiB1v2ManifestDecileK1024", f"{manifest_decile_k1024:.3f}",
+    m.add("recB1v2ManifestDecileK1024", f"{manifest_decile_k1024:.3f}",
           f"{relpath(B1_V2_RAW)}: b1b.raw.treatment_k1024[0].last_decile_us.manifest_us / "
           "first_decile_us.manifest_us (1 rep)")
 
-    m.add("osdiB1v2TotalDecileControl", f"{total_decile_ctl:.3f}",
+    m.add("recB1v2TotalDecileControl", f"{total_decile_ctl:.3f}",
           f"{relpath(B1_V2_RAW)}: b1b.raw.control[*].last_decile_us.total_us / "
           "[*].first_decile_us.total_us, median over 3 reps")
-    m.add("osdiB1v2TotalDecileTreatment", f"{total_decile_trt:.3f}",
+    m.add("recB1v2TotalDecileTreatment", f"{total_decile_trt:.3f}",
           f"{relpath(B1_V2_RAW)}: b1b.raw.treatment[*].last_decile_us.total_us / "
           "[*].first_decile_us.total_us, median over 3 reps")
 
-    m.add("osdiB1v2P50ControlMs", f"{p50_ctl / 1000:.3f}",
+    m.add("recB1v2P50ControlMs", f"{p50_ctl / 1000:.3f}",
           f"{relpath(B1_V2_RAW)}: b1b.raw.control[*].phase_p50_us.total_us, "
           "median over 3 reps, /1000, ms")
-    m.add("osdiB1v2P50TreatmentMs", f"{p50_trt / 1000:.3f}",
+    m.add("recB1v2P50TreatmentMs", f"{p50_trt / 1000:.3f}",
           f"{relpath(B1_V2_RAW)}: b1b.raw.treatment[*].phase_p50_us.total_us, "
           "median over 3 reps, /1000, ms")
-    m.add("osdiB1v2P50Paired", f"{p50_paired:.3f}",
+    m.add("recB1v2P50Paired", f"{p50_paired:.3f}",
           f"{relpath(B1_V2_RAW)}: median(treatment[*].phase_p50_us.total_us) / "
           "median(control[*].phase_p50_us.total_us)")
 
-    m.add("osdiB1v2OpenControlMs", f"{ctl_open_med:.1f}",
+    m.add("recB1v2OpenControlMs", f"{ctl_open_med:.1f}",
           f"{relpath(B1_V2_RAW)}: median(b1c.authoritative.control_open_ms), 3 reps, ms")
-    m.add("osdiB1v2OpenTreatmentMs", f"{trt_open_med:.1f}",
+    m.add("recB1v2OpenTreatmentMs", f"{trt_open_med:.1f}",
           f"{relpath(B1_V2_RAW)}: median(b1c.authoritative.treatment_open_ms), 3 reps, ms")
-    m.add("osdiB1v2OpenPaired", f"{open_paired:.2f}",
+    m.add("recB1v2OpenPaired", f"{open_paired:.2f}",
           f"{relpath(B1_V2_RAW)}: median(b1c.authoritative.treatment_open_ms) / "
           "median(b1c.authoritative.control_open_ms)")
-    m.add("osdiB1v2OpenControlGeneration", tex_num(ctl_generation),
+    m.add("recB1v2OpenControlGeneration", tex_num(ctl_generation),
           f"{relpath(B1_V2_RAW)}: b1c.authoritative.control_generation")
-    m.add("osdiB1v2OpenTreatmentGeneration", tex_num(trt_generation),
+    m.add("recB1v2OpenTreatmentGeneration", tex_num(trt_generation),
           f"{relpath(B1_V2_RAW)}: b1c.authoritative.treatment_generation")
 
-    m.add("osdiB1v2BuildOpsPerSecRatioAt2p5M", f"{ops_ratio:.2f}",
+    m.add("recB1v2BuildOpsPerSecRatioAt2p5M", f"{ops_ratio:.2f}",
           f"{relpath(B1_V2_RAW)}: b1a.treatment.ops_series[-1][1] (5335) / "
           "b1a.control.ops_series[-1][1] (2543), build ops/s at the 2.5M-op "
           "checkpoint -- observation only, no claim attached")
 
-    m.add("osdiB1v2OpenComponentStatus", "not computed",
+    m.add("recB1v2OpenComponentStatus", "not computed",
           f"{relpath(B1_V2_RAW)}: b1c.authoritative.component_breakdown is null -- "
           "NativeAdapter() exposes no internal phase timer to split checkpoint-load "
           "from delta-replay (text macro, not a number -- see "
@@ -1272,7 +1272,7 @@ def compute_b1_v2(m: Macros) -> None:
 # under the fully-timed B1-v2d harness (`open_phase_us`, `build_info`,
 # per-commit phase decile/residual fields).
 #
-# `osdiB1v2*ManifestDecile*`/`osdiB1v2TotalDecile*`/`osdiB1v2P50*` (the v2
+# `recB1v2*ManifestDecile*`/`recB1v2TotalDecile*`/`recB1v2P50*` (the v2
 # commit-cost treatment macros above) are LEFT UNCHANGED here -- values and
 # all -- but the B1-v2 A/B's 2026-09-15 README correction found their
 # provenance strings understate what they actually measured: the v2 A/B's
@@ -1286,7 +1286,7 @@ def compute_b1_v2(m: Macros) -> None:
 # is prose correction, the same discipline as the README's own "Correction
 # (2026-09-15)" paragraph, applied to the generated macros file.
 #
-# The `osdiB1v2e*` macros below are new: recomputed from
+# The `recB1v2e*` macros below are new: recomputed from
 # `b1-manifest-v2e-remeasure-2026-09{,-raw}.json`, the re-measurement that
 # supersedes v2's commit-cost and chain-open cells (treatment `e5d4171`,
 # built and verified on a genuine format-3 chain -- `build_info()` and the
@@ -1302,7 +1302,7 @@ _VOID_AS_FORMAT3 = (
     "manifest's own `format` field, so this arm measured a format-2 chain "
     "(O(segments) legacy_body_sha) under the format-3 binary, not the "
     "format-3 path. Superseded for commit cost and chain-open by "
-    "osdiB1v2e* below; values here are unchanged (frozen as measured)."
+    "recB1v2e* below; values here are unchanged (frozen as measured)."
 )
 
 
@@ -1317,16 +1317,16 @@ def _void_b1_v2_treatment_provenance(m: Macros) -> None:
     other macro it emitted is already in `m.items` to relabel.
     """
     voided = {
-        "osdiB1v2TotalDecileTreatment", "osdiB1v2ManifestDecileTreatment",
-        "osdiB1v2ManifestDecileK128", "osdiB1v2ManifestDecileK1024",
-        "osdiB1v2P50TreatmentMs", "osdiB1v2P50Paired",
+        "recB1v2TotalDecileTreatment", "recB1v2ManifestDecileTreatment",
+        "recB1v2ManifestDecileK128", "recB1v2ManifestDecileK1024",
+        "recB1v2P50TreatmentMs", "recB1v2P50Paired",
     }
     found = set()
     for i, (name, value, provenance) in enumerate(m.items):
         if name in voided:
             m.items[i] = (name, value, provenance + _VOID_AS_FORMAT3)
             found.add(name)
-    eq(found, voided, "osdi_paper_macros: every v2 commit-cost treatment "
+    eq(found, voided, "sys_paper_macros: every v2 commit-cost treatment "
        "macro named for relabeling was actually emitted by compute_b1_v2")
 
 
@@ -1400,7 +1400,7 @@ def compute_b1_v2e(m: Macros) -> None:
     # total, excluding wal_us/apply_us), median of reps. This is the frozen
     # Addendum 3 quantity: v1's README reports it as "engine-commit p50
     # (total_us)", the 5.07 ms baseline and 5.58 ms bar are this quantity,
-    # and osdiB1v2P50* (5.478/5.430) already tracks it -- osdiB1v2eP50*
+    # and recB1v2P50* (5.478/5.430) already tracks it -- recB1v2eP50*
     # below is the same quantity for this remeasurement, not a different
     # one. The manifest's own digested measurements block reports it too,
     # and the README's prose quotes it (paired ratio 0.715x).
@@ -1425,7 +1425,7 @@ def compute_b1_v2e(m: Macros) -> None:
     # `_timed_write` measures: wal fsync + Python-side eventlog append +
     # apply_ops + engine commit), median of reps. This is *not* the frozen
     # Addendum 3 quantity above -- it is reported separately, under its own
-    # osdiB1v2eWallP50* names, so a future reader of this file never
+    # recB1v2eWallP50* names, so a future reader of this file never
     # mistakes it for the number the paper's threshold actually binds.
     wall_p50_trt = statistics.median(r["commit_ms"]["p50"] for r in trt_reps)
     wall_p50_ctl = statistics.median(r["commit_ms"]["p50"] for r in ctl_reps)
@@ -1500,88 +1500,88 @@ def compute_b1_v2e(m: Macros) -> None:
             "caveat for cell (a)")
 
     # --- emit macros ---
-    m.add("osdiB1v2eTreatmentCommit", trt_commit[:7],
+    m.add("recB1v2eTreatmentCommit", trt_commit[:7],
           f"{relpath(B1_V2E_MANIFEST)}: git_commit, short sha")
 
-    m.add("osdiB1v2eTotalDecileTreatment", f"{total_decile_trt:.3f}",
+    m.add("recB1v2eTotalDecileTreatment", f"{total_decile_trt:.3f}",
           f"{relpath(B1_V2E_RAW)}: cell_b_commitcost.treatment_reps_full[*]."
           "last_decile_us.total_us / [*].first_decile_us.total_us, median over 3 reps "
-          "-- supersedes osdiB1v2TotalDecileTreatment, which measured a format-2 chain")
-    m.add("osdiB1v2eTotalDecileControl", f"{total_decile_ctl:.3f}",
+          "-- supersedes recB1v2TotalDecileTreatment, which measured a format-2 chain")
+    m.add("recB1v2eTotalDecileControl", f"{total_decile_ctl:.3f}",
           f"{relpath(B1_V2E_RAW)}: cell_b_commitcost.control_reps_full[*]."
           "last_decile_us.total_us / [*].first_decile_us.total_us, median over 3 reps")
 
-    m.add("osdiB1v2eResidualFirstUs", f"{residual_first:.2f}",
+    m.add("recB1v2eResidualFirstUs", f"{residual_first:.2f}",
           f"{relpath(B1_V2E_RAW)}: mean(cell_b_commitcost.treatment_reps_full[*]."
           "residual_first_us) over 3 reps -- the B1V2_AB_DIAGNOSIS memo's Q1 metric, "
           "now ~30us against a ~3,300-3,400us total_us (closed, not hidden)")
-    m.add("osdiB1v2eResidualLastUs", f"{residual_last:.2f}",
+    m.add("recB1v2eResidualLastUs", f"{residual_last:.2f}",
           f"{relpath(B1_V2E_RAW)}: mean(cell_b_commitcost.treatment_reps_full[*]."
           "residual_last_us) over 3 reps")
 
-    m.add("osdiB1v2eP50TreatmentMs", f"{engine_p50_trt / 1000:.3f}",
+    m.add("recB1v2eP50TreatmentMs", f"{engine_p50_trt / 1000:.3f}",
           f"{relpath(B1_V2E_RAW)}: cell_b_commitcost.treatment_reps_full[*]."
           "phase_p50_us.total_us, median over 3 reps, /1000, ms -- engine-commit p50 "
-          "(total_us), the Addendum 3 quantity, same as osdiB1v2P50*")
-    m.add("osdiB1v2eP50ControlMs", f"{engine_p50_ctl / 1000:.3f}",
+          "(total_us), the Addendum 3 quantity, same as recB1v2P50*")
+    m.add("recB1v2eP50ControlMs", f"{engine_p50_ctl / 1000:.3f}",
           f"{relpath(B1_V2E_RAW)}: cell_b_commitcost.control_reps_full[*]."
           "phase_p50_us.total_us, median over 3 reps, /1000, ms -- engine-commit p50 "
-          "(total_us), the Addendum 3 quantity, same as osdiB1v2P50*")
-    m.add("osdiB1v2eP50Paired", f"{engine_p50_paired:.3f}",
+          "(total_us), the Addendum 3 quantity, same as recB1v2P50*")
+    m.add("recB1v2eP50Paired", f"{engine_p50_paired:.3f}",
           f"{relpath(B1_V2E_RAW)}: median(treatment[*].phase_p50_us.total_us) / "
           "median(control[*].phase_p50_us.total_us) -- engine-commit p50 (total_us), "
-          "the Addendum 3 quantity, same as osdiB1v2P50*")
+          "the Addendum 3 quantity, same as recB1v2P50*")
 
-    m.add("osdiB1v2eWallP50TreatmentMs", f"{wall_p50_trt:.3f}",
+    m.add("recB1v2eWallP50TreatmentMs", f"{wall_p50_trt:.3f}",
           f"{relpath(B1_V2E_RAW)}: median(cell_b_commitcost.treatment_reps_full[*]."
           "commit_ms.p50) over 3 reps, ms -- wall-clock commit_ms.p50 incl. "
           "Python-side eventlog append -- not the frozen quantity")
-    m.add("osdiB1v2eWallP50ControlMs", f"{wall_p50_ctl:.3f}",
+    m.add("recB1v2eWallP50ControlMs", f"{wall_p50_ctl:.3f}",
           f"{relpath(B1_V2E_RAW)}: median(cell_b_commitcost.control_reps_full[*]."
           "commit_ms.p50) over 3 reps, ms -- wall-clock commit_ms.p50 incl. "
           "Python-side eventlog append -- not the frozen quantity")
-    m.add("osdiB1v2eWallPaired", f"{wall_p50_paired:.3f}",
+    m.add("recB1v2eWallPaired", f"{wall_p50_paired:.3f}",
           f"{relpath(B1_V2E_RAW)}: median(treatment[*].commit_ms.p50) / "
           "median(control[*].commit_ms.p50) -- wall-clock commit_ms.p50 incl. "
           "Python-side eventlog append -- not the frozen quantity")
 
-    m.add("osdiB1v2eOpenComponentMs", f"{component_us / 1000:.2f}",
+    m.add("recB1v2eOpenComponentMs", f"{component_us / 1000:.2f}",
           f"{relpath(B1_V2E_RAW)}: cell_a_chain_open.treatment.open_phase_p50_us -- "
           "checkpoint_read_parse_us + merkle_verify_us + state_build_us + "
           "delta_replay_us, /1000, ms")
-    m.add("osdiB1v2eOpenCheckpointMs", f"{checkpoint_us / 1000:.3f}",
+    m.add("recB1v2eOpenCheckpointMs", f"{checkpoint_us / 1000:.3f}",
           f"{relpath(B1_V2E_RAW)}: cell_a_chain_open.treatment.open_phase_p50_us."
           "checkpoint_read_parse_us, /1000, ms")
-    m.add("osdiB1v2eOpenMerkleVerifyMs", f"{merkle_us / 1000:.3f}",
+    m.add("recB1v2eOpenMerkleVerifyMs", f"{merkle_us / 1000:.3f}",
           f"{relpath(B1_V2E_RAW)}: cell_a_chain_open.treatment.open_phase_p50_us."
           "merkle_verify_us, /1000, ms")
-    m.add("osdiB1v2eOpenStateBuildMs", f"{state_build_us / 1000:.3f}",
+    m.add("recB1v2eOpenStateBuildMs", f"{state_build_us / 1000:.3f}",
           f"{relpath(B1_V2E_RAW)}: cell_a_chain_open.treatment.open_phase_p50_us."
           "state_build_us, /1000, ms")
-    m.add("osdiB1v2eOpenDeltaReplayMs", f"{delta_replay_us / 1000:.3f}",
+    m.add("recB1v2eOpenDeltaReplayMs", f"{delta_replay_us / 1000:.3f}",
           f"{relpath(B1_V2E_RAW)}: cell_a_chain_open.treatment.open_phase_p50_us."
           "delta_replay_us, /1000, ms")
-    m.add("osdiB1v2eOpenDictionaryMs", f"{dictionary_us / 1000:.1f}",
+    m.add("recB1v2eOpenDictionaryMs", f"{dictionary_us / 1000:.1f}",
           f"{relpath(B1_V2E_RAW)}: cell_a_chain_open.treatment.open_phase_p50_us."
           "dictionary_open_us, /1000, ms -- dominates the open (89.5% of total_us)")
-    m.add("osdiB1v2eOpenTotalMs", f"{total_us / 1000:.1f}",
+    m.add("recB1v2eOpenTotalMs", f"{total_us / 1000:.1f}",
           f"{relpath(B1_V2E_RAW)}: cell_a_chain_open.treatment.open_phase_p50_us."
           "total_us, /1000, ms")
-    m.add("osdiB1v2eOpenGeneration", tex_num(trt_generation),
+    m.add("recB1v2eOpenGeneration", tex_num(trt_generation),
           f"{relpath(B1_V2E_RAW)}: cell_a_chain_open.treatment.generation")
 
-    m.add("osdiB1v2eControlOpenStatus", "confounded (concurrent backup transfer)",
+    m.add("recB1v2eControlOpenStatus", "confounded (concurrent backup transfer)",
           f"{relpath(B1_V2E_RAW)}: cell_a_chain_open.control's open time (9.6-10.4s) "
           "was measured while a phase-2 tar backup ran concurrently on xzgpu (text "
           "macro, not a number -- see cell_a_chain_open.control and the manifest's "
           "own measurements.cell_a_chain_open.caveat)")
 
-    m.add("osdiB1v2eManifestBytesTreatment", tex_num(manifest_bytes_trt),
+    m.add("recB1v2eManifestBytesTreatment", tex_num(manifest_bytes_trt),
           f"{relpath(B1_V2E_RAW)}: cell_b_commitcost.treatment_reps_full[*]."
           "first_decile_us.manifest_bytes, constant across 3 reps -- the format-3 "
           "evidence (versus the v2 A/B's mislabeled treatment, which matched "
-          "osdiB1v2eManifestBytesControl instead)")
-    m.add("osdiB1v2eManifestBytesControl", tex_num(manifest_bytes_ctl),
+          "recB1v2eManifestBytesControl instead)")
+    m.add("recB1v2eManifestBytesControl", tex_num(manifest_bytes_ctl),
           f"{relpath(B1_V2E_RAW)}: cell_b_commitcost.control_reps_full[*]."
           "first_decile_us.manifest_bytes, constant across 3 reps -- the format-2 "
           "byte size the v2 A/B's treatment reps actually matched")
@@ -1766,70 +1766,70 @@ def compute_b1_co7(m: Macros) -> None:
           "open at K-1=511 deltas (estimated control per-delta cost * 511 / 1000)")
 
     # --- emit macros ---
-    m.add("osdiB1co7TreatmentCommit", trt_commit,
+    m.add("recB1co7TreatmentCommit", trt_commit,
           f"{relpath(B1_CO7_MANIFEST)}: git_commit")
 
-    m.add("osdiB1co7CheckpointReadParseMs", us_to_ms_str(checkpoint_us, 2),
+    m.add("recB1co7CheckpointReadParseMs", us_to_ms_str(checkpoint_us, 2),
           f"{relpath(B1_CO7_RAW)}: median(cell_a_chain_open.treatment.open_phase_us[*]."
           "checkpoint_read_parse_us) over 3 reps, /1000, ms")
-    m.add("osdiB1co7MerkleVerifyMs", us_to_ms_str(merkle_us, 2),
+    m.add("recB1co7MerkleVerifyMs", us_to_ms_str(merkle_us, 2),
           f"{relpath(B1_CO7_RAW)}: median(cell_a_chain_open.treatment.open_phase_us[*]."
           "merkle_verify_us) over 3 reps, /1000, ms")
-    m.add("osdiB1co7StateBuildMs", us_to_ms_str(state_build_us, 2),
+    m.add("recB1co7StateBuildMs", us_to_ms_str(state_build_us, 2),
           f"{relpath(B1_CO7_RAW)}: median(cell_a_chain_open.treatment.open_phase_us[*]."
           "state_build_us) over 3 reps, /1000, ms")
-    m.add("osdiB1co7DeltaReplayMs", us_to_ms_str(delta_replay_us, 2),
+    m.add("recB1co7DeltaReplayMs", us_to_ms_str(delta_replay_us, 2),
           f"{relpath(B1_CO7_RAW)}: median(cell_a_chain_open.treatment.open_phase_us[*]."
           "delta_replay_us) over 3 reps, /1000, ms")
-    m.add("osdiB1co7ComponentMs", us_to_ms_str(component_us, 2),
+    m.add("recB1co7ComponentMs", us_to_ms_str(component_us, 2),
           f"{relpath(B1_CO7_RAW)}: checkpoint_read_parse_us + merkle_verify_us + "
           "state_build_us + delta_replay_us (each median of 3 reps), /1000, ms -- "
           "asserted equal to the raw record's own manifest_chain_component_us_treatment_"
           "median.sum_us")
-    m.add("osdiB1co7DictionaryOpenMs", us_to_ms_str(dictionary_us, 1),
+    m.add("recB1co7DictionaryOpenMs", us_to_ms_str(dictionary_us, 1),
           f"{relpath(B1_CO7_RAW)}: median(cell_a_chain_open.treatment.open_phase_us[*]."
           "dictionary_open_us) over 3 reps, /1000, ms -- dominates the open")
-    m.add("osdiB1co7TotalMs", us_to_ms_str(total_us, 1),
+    m.add("recB1co7TotalMs", us_to_ms_str(total_us, 1),
           f"{relpath(B1_CO7_RAW)}: median(cell_a_chain_open.treatment.open_phase_us[*]."
           "total_us) over 3 reps, /1000, ms")
-    m.add("osdiB1co7Generation", tex_num(trt_generation),
+    m.add("recB1co7Generation", tex_num(trt_generation),
           f"{relpath(B1_CO7_RAW)}: cell_a_chain_open.treatment.generation")
-    m.add("osdiB1co7DeltaCount", tex_num(delta_count),
+    m.add("recB1co7DeltaCount", tex_num(delta_count),
           f"{relpath(B1_CO7_RAW)}: cell_a_chain_open.treatment.open_phase_us[*]."
           "delta_count, constant across 3 reps")
-    m.add("osdiB1co7CheckpointGeneration", tex_num(checkpoint_generation),
+    m.add("recB1co7CheckpointGeneration", tex_num(checkpoint_generation),
           f"{relpath(B1_CO7_RAW)}: cell_a_chain_open.treatment.generation - delta_count "
           "-- asserted a multiple of the K=512 checkpoint cadence")
-    m.add("osdiB1co7StateBuildPerDeltaUs", f"{state_build_per_delta_us:.1f}",
+    m.add("recB1co7StateBuildPerDeltaUs", f"{state_build_per_delta_us:.1f}",
           f"{relpath(B1_CO7_RAW)}: treatment state_build_us (median) / delta_count, "
           "us/delta")
-    m.add("osdiB1co7DeltaReplayPerDeltaUs", f"{delta_replay_per_delta_us:.1f}",
+    m.add("recB1co7DeltaReplayPerDeltaUs", f"{delta_replay_per_delta_us:.1f}",
           f"{relpath(B1_CO7_RAW)}: treatment delta_replay_us (median) / delta_count, "
           "us/delta")
 
-    m.add("osdiB1co7ControlOpenMs", f"{ctl_open_ms:.1f}",
+    m.add("recB1co7ControlOpenMs", f"{ctl_open_ms:.1f}",
           f"{relpath(B1_CO7_RAW)}: median(cell_a_chain_open.control.open_ms) over 3 reps, ms")
-    m.add("osdiB1co7ControlGeneration", tex_num(ctl_generation),
+    m.add("recB1co7ControlGeneration", tex_num(ctl_generation),
           f"{relpath(B1_CO7_RAW)}: cell_a_chain_open.control.generation")
-    m.add("osdiB1co7ControlDeltaCount", tex_num(ctl_delta_count),
+    m.add("recB1co7ControlDeltaCount", tex_num(ctl_delta_count),
           f"{relpath(B1_CO7_RAW)}: cell_a_chain_open.control.generation mod K=512 "
           "-- the control engine predates open_phase_us() and reports no delta_count "
           "of its own")
-    m.add("osdiB1co7ControlPerDeltaMs", f"{ctl_per_delta_ms:.1f}",
+    m.add("recB1co7ControlPerDeltaMs", f"{ctl_per_delta_ms:.1f}",
           f"{relpath(B1_CO7_RAW)}: (control open_ms (median) - treatment's measured "
           "dictionary_open_us/1000, used as an estimate of the control's own "
           "dictionary-open cost) / control delta_count -- an estimate, not a second "
           "independent measurement")
-    m.add("osdiB1co7OpenRatio", f"{open_ratio:.3f}",
+    m.add("recB1co7OpenRatio", f"{open_ratio:.3f}",
           f"{relpath(B1_CO7_RAW)}: (treatment total_us (median) / 1000) / control "
           "open_ms (median)")
 
-    m.add("osdiB1WorstPhaseOpenTreatmentMs", f"{worst_phase_open_trt_ms:.1f}",
-          "derived, not measured: osdiB1co7CheckpointReadParseMs + osdiB1co7MerkleVerifyMs "
-          "+ (osdiB1co7StateBuildPerDeltaUs + osdiB1co7DeltaReplayPerDeltaUs) * 511 / 1000 "
+    m.add("recB1WorstPhaseOpenTreatmentMs", f"{worst_phase_open_trt_ms:.1f}",
+          "derived, not measured: recB1co7CheckpointReadParseMs + recB1co7MerkleVerifyMs "
+          "+ (recB1co7StateBuildPerDeltaUs + recB1co7DeltaReplayPerDeltaUs) * 511 / 1000 "
           "-- projected treatment manifest-chain open cost at K-1=511 deltas")
-    m.add("osdiB1WorstPhaseOpenControlS", f"{worst_phase_open_ctl_s:.1f}",
-          "derived, not measured: osdiB1co7ControlPerDeltaMs * 511 / 1000 -- projected "
+    m.add("recB1WorstPhaseOpenControlS", f"{worst_phase_open_ctl_s:.1f}",
+          "derived, not measured: recB1co7ControlPerDeltaMs * 511 / 1000 -- projected "
           "control manifest-chain open cost at K-1=511 deltas")
 
 
@@ -1924,14 +1924,14 @@ def compute_c4(m: Macros) -> None:
             eq(doc_proj.group(1), proj_gb,
                "C4: recomputed 100M projection matches the forecast doc's own stated figure")
 
-    m.add("osdiVhRss", f"{rss_gb:.3f}",
+    m.add("recVhRss", f"{rss_gb:.3f}",
           f"{relpath(B2_RAW)}: median(treatment_10m[*].vmhwm_kb), decimal GB")
-    m.add("osdiVhWall", f"{trt_10m_wall / 1000:.2f}",
+    m.add("recVhWall", f"{trt_10m_wall / 1000:.2f}",
           f"{relpath(B2_RAW)}: median(treatment_10m[*].wall_ms) / 1000, s")
-    m.add("osdiVhRatio", f"{flatness_ratio:.2f}",
+    m.add("recVhRatio", f"{flatness_ratio:.2f}",
           f"{relpath(B2_RAW)}: treatment 10M/1M VmHWM median ratio "
           "(the near-flatness falsifier: refuted, bar <=2.5x)")
-    m.add("osdiVhProjHundredM", proj_gb,
+    m.add("recVhProjHundredM", proj_gb,
           f"{relpath(B2_RAW)}: 10x median(treatment_10m[*].vmhwm_kb) -- the same "
           "linear extrapolation BOUNDED_VERSION_HISTORY_FORECAST_2026-09-13.md uses, cross-"
           "checked against that (gitignored) doc's own figure when it is present on disk")
@@ -1972,15 +1972,15 @@ def compute_c5(m: Macros) -> None:
     close(series_pct, 47.53, 0.01, "C5 frozen: series.count p50 writer tail cost at 16 readers")
     close(coactive_pct, 42.71, 0.01, "C5 frozen: coactive.narrow p50 writer tail cost at 16 readers")
 
-    m.add("osdiReadersMax", readers_max,
+    m.add("recReadersMax", readers_max,
           f"{relpath(READERS_10M)}: max(quiescent[*].readers)")
-    m.add("osdiReaderVmhwm", f"{vmhwm_lo:.2f}--{vmhwm_hi:.2f}",
+    m.add("recReaderVmhwm", f"{vmhwm_lo:.2f}--{vmhwm_hi:.2f}",
           f"{relpath(READERS_10M)}: min/max over readers of quiescent[*].vmhwm_kb.median, GiB")
-    m.add("osdiAggQpsOne", f"{agg_one:.2f}",
+    m.add("recAggQpsOne", f"{agg_one:.2f}",
           f"{relpath(READERS_10M)}: quiescent[readers=1].aggregate_qps")
-    m.add("osdiAggQpsThirtyTwo", f"{agg_max:.2f}",
+    m.add("recAggQpsThirtyTwo", f"{agg_max:.2f}",
           f"{relpath(READERS_10M)}: quiescent[readers=32].aggregate_qps")
-    m.add("osdiWriterTailCost",
+    m.add("recWriterTailCost",
           f"+{series_pct:.1f}\\%/+{coactive_pct:.1f}\\%",
           f"{relpath(READERS_10M)}: mixed[readers=16] per_query_p50_ms median, "
           "series.count/coactive.narrow, writer vs quiescent")
@@ -2060,15 +2060,15 @@ def compute_c6(m: Macros) -> None:
     avoided_pct = round(1000 * prop_avoided / prop_rows_total) / 10
     eq(avoided_pct, 99.0, "C6 frozen: M5 round-2 avoided-recomputation rate")
 
-    m.add("osdiFalseFreshCarveTwo", carve2_false_fresh,
+    m.add("recFalseFreshCarveTwo", carve2_false_fresh,
           f"{relpath(M5_CARVE_TWO)}: rows with changed and verdict=='fresh', of 28,044")
-    m.add("osdiRowTouchRate", f"{rt_rate:.1f}",
+    m.add("recRowTouchRate", f"{rt_rate:.1f}",
           f"{relpath(FRESH_FULL)}+{FRESH_FIXTURE.name}: naive row-touch false-fresh "
           "rate over M4's changed column, 212/447")
-    m.add("osdiNewIdentityFF", m4_newid_missed,
+    m.add("recNewIdentityFF", m4_newid_missed,
           f"{relpath(FRESH_FULL)}+{FRESH_FIXTURE.name}: new-identity changed trials "
           "the row-touch rule calls fresh, of 89")
-    m.add("osdiAvoidedPct", f"{avoided_pct:.1f}",
+    m.add("recAvoidedPct", f"{avoided_pct:.1f}",
           "benchmarks/m5-v1/topup-propagation2-{bitcoinotc,collegemsg,sx-mathoverflow}.json: "
           "decisions with child_recomputed==False, 5,808/5,867")
 
@@ -2151,18 +2151,18 @@ def compute_c8(m: Macros) -> None:
     eq(pre_primary_tot["silent-violation"] - post_tot["silent-violation"], f19_pre_count,
        "C8: the silent-violation decrease equals exactly F1-9's former count")
 
-    m.add("osdiFaultTrials", tex_num(post["total_trials"]),
+    m.add("recFaultTrials", tex_num(post["total_trials"]),
           f"{relpath(FAULTS_POST)}: total_trials, the deployed (post-D-160) gate")
-    m.add("osdiSilentPre", silent_pre,
+    m.add("recSilentPre", silent_pre,
           f"{relpath(FAULTS_PRE)}: primary-gate silent-violation total "
           "(F1-9 271 + F2-3 32), before D-160")
-    m.add("osdiSilentPost", post_headline,
+    m.add("recSilentPost", post_headline,
           f"{relpath(FAULTS_POST)}: headline_silent_violation_count (F2-3's 32 is a "
-          "declared non-headline blind spot, see osdiFTwoThree)")
-    m.add("osdiFOneNineBefore", f19_pre_count,
+          "declared non-headline blind spot, see recFTwoThree)")
+    m.add("recFOneNineBefore", f19_pre_count,
           f"{relpath(FAULTS_PRE)}: F1-9 (wrong_step_citation) silent-violation count, "
           "primary gate, before D-160 -- 0 after")
-    m.add("osdiFTwoThree", f23_post_count,
+    m.add("recFTwoThree", f23_post_count,
           f"{relpath(FAULTS_POST)}: F2-3 silent-violation count, the pre-registered "
           "assumption-A2 blind spot, unchanged by D-160")
 
@@ -2273,32 +2273,32 @@ def compute_c7_dag(m: Macros) -> None:
     ff_total = ff_v1 + ff_v2 + ff_v3
     eq(ff_total, 0, "DAG v1+v2+v3 frozen: tgms-L0+tgms-L1 false-fresh total")
 
-    m.add("osdiDagCells", dag_cells,
+    m.add("recDagCells", dag_cells,
           f"{relpath(DAG_V1)}: total_tasks, == v2/v3's own total_tasks (40-cell grid, all three)")
-    m.add("osdiDagV1FalseSafeCells", len(v1_fs_cells),
+    m.add("recDagV1FalseSafeCells", len(v1_fs_cells),
           f"{relpath(DAG_V1)}: per_cell entries with false_safe_count>0, of 40")
-    m.add("osdiDagV2FalseSafeCells", v2_fs_cells,
+    m.add("recDagV2FalseSafeCells", v2_fs_cells,
           f"{relpath(DAG_V2)}: per_cell entries with false_safe_count>0, of 40")
-    m.add("osdiDagV3FalseSafeCells", v3_fs_cells,
+    m.add("recDagV3FalseSafeCells", v3_fs_cells,
           f"{relpath(DAG_V3)}: per_cell entries with false_safe_count>0, of 40")
-    m.add("osdiDagV1FalseSafePerCell", v1_false_safe_per_cell,
+    m.add("recDagV1FalseSafePerCell", v1_false_safe_per_cell,
           f"{relpath(DAG_V1)}: false_safe_count in each of the 20 affected cells (uniform)")
-    m.add("osdiDagV2ExtraVisitsSeedZero", v2_extra_s0,
+    m.add("recDagV2ExtraVisitsSeedZero", v2_extra_s0,
           f"{relpath(DAG_V2)} vs {DAG_V1.name}: nodes_visited delta, seed-0 cells "
           "(constant across all 20, asserted)")
-    m.add("osdiDagV2ExtraVisitsSeedOne", v2_extra_s1,
+    m.add("recDagV2ExtraVisitsSeedOne", v2_extra_s1,
           f"{relpath(DAG_V2)} vs {DAG_V1.name}: nodes_visited delta, seed-1 cells "
           "(constant across all 20, asserted)")
-    m.add("osdiDagV3ExtraVisitsSeedZero", v3_extra_s0,
+    m.add("recDagV3ExtraVisitsSeedZero", v3_extra_s0,
           f"{relpath(DAG_V3)} vs {DAG_V1.name}: nodes_visited delta, seed-0 cells "
           "(constant across all 20, asserted)")
-    m.add("osdiDagV3ExtraVisitsSeedOne", v3_extra_s1,
+    m.add("recDagV3ExtraVisitsSeedOne", v3_extra_s1,
           f"{relpath(DAG_V3)} vs {DAG_V1.name}: nodes_visited delta, seed-1 cells "
           "(constant across all 20, asserted)")
-    m.add("osdiDagV3AllTopTerm", all_top_term_total,
+    m.add("recDagV3AllTopTerm", all_top_term_total,
           f"{relpath(DAG_V3_ROWS)}: sum of summary.narrowing_coverage.n_all_top_term over "
           "all 40 cells")
-    m.add("osdiDagFalseFreshTotal", ff_total,
+    m.add("recDagFalseFreshTotal", ff_total,
           f"{relpath(DAG_V1_ROWS)}+{DAG_V2_ROWS.name}+{DAG_V3_ROWS.name}: sum of "
           "summary.arms.{tgms-L0,tgms-L1}.false_fresh over all 120 cells (v1+v2+v3)")
 
@@ -2389,30 +2389,30 @@ def compute_c7_r18(m: Macros) -> None:
     ttf_l1_s = l1_ttf_med / 1000
     ttf_global_s = global_ttf_med / 1000
 
-    m.add("osdiR18Artifacts", tex_num(d["config"]["n_artifacts"]),
+    m.add("recR18Artifacts", tex_num(d["config"]["n_artifacts"]),
           f"{relpath(R18_PROBE)}: config.n_artifacts")
-    m.add("osdiR18IntersectsCallsMedian", tex_num(int(intersects_med)),
+    m.add("recR18IntersectsCallsMedian", tex_num(int(intersects_med)),
           f"{relpath(R18_PROBE_ROWS)}: median(intersects_calls) over the 5 batches")
-    m.add("osdiR18LookupMsMedian", f"{lookup_med:.2f}",
+    m.add("recR18LookupMsMedian", f"{lookup_med:.2f}",
           f"{relpath(R18_PROBE_ROWS)}: median(lookup_wall_ms) over the 5 batches, ms")
-    m.add("osdiR18SurvivorFraction", f"{survivor_fraction * 100:.1f}",
+    m.add("recR18SurvivorFraction", f"{survivor_fraction * 100:.1f}",
           f"{relpath(R18_PROBE_ROWS)}: median(candidate_survivors) / n_registered, percent")
-    m.add("osdiR18CheckSecondsMedian", f"{check_seconds_med:.1f}",
+    m.add("recR18CheckSecondsMedian", f"{check_seconds_med:.1f}",
           f"{relpath(R18_PROBE_ROWS)}: median(arms.tgms-L1.check_wall_ms) over the 5 "
           "batches, /1000, s")
-    m.add("osdiR18TtfL1Seconds", f"{ttf_l1_s:.1f}",
+    m.add("recR18TtfL1Seconds", f"{ttf_l1_s:.1f}",
           f"{relpath(R18_PROBE_ROWS)}: median(arms.tgms-L1.ttf_ms) over the 5 batches, /1000, s "
           "(== record's own summary.arms.tgms-L1.ttf_p50_ms)")
-    m.add("osdiR18TtfGlobalSeconds", f"{ttf_global_s:.1f}",
+    m.add("recR18TtfGlobalSeconds", f"{ttf_global_s:.1f}",
           f"{relpath(R18_PROBE_ROWS)}: median(arms.global-recompute.ttf_ms) over the 5 "
           "batches, /1000, s (== record's own summary.arms.global-recompute.ttf_p50_ms)")
-    m.add("osdiR18Speedup", f"{speedup:.3f}",
+    m.add("recR18Speedup", f"{speedup:.3f}",
           f"{relpath(R18_PROBE_ROWS)}: median(global-recompute ttf_ms) / median(tgms-L1 "
           "ttf_ms) -- P5/P6's speedup convention, <1.0 means L1 is slower here")
-    m.add("osdiR18Precision", f"{precision_med * 100:.2f}",
+    m.add("recR18Precision", f"{precision_med * 100:.2f}",
           f"{relpath(R18_PROBE_ROWS)}: median(changed_count / candidate_survivors) over the "
           "5 batches, percent")
-    m.add("osdiR18AvoidedRecompute", f"{avoided_decision * 100:.1f}",
+    m.add("recR18AvoidedRecompute", f"{avoided_decision * 100:.1f}",
           f"{relpath(R18_PROBE_ROWS)}: 1 - sum(arms.tgms-L1.invalidated_count) / "
           "sum(n_registered) over the 5 batches, percent (== record's own summary field)")
 
@@ -2425,9 +2425,9 @@ def compute_c7_r18(m: Macros) -> None:
 # 36 cells landed, assembled from a five-job seam across an iTiger
 # disk-quota incident (README.md's "storm-v1 main grid" section, seam
 # table) -- provenance only, no verdict drawn from which job produced
-# which cell. `osdiStormV1*` macros mirror `osdiStormV2*`
+# which cell. `recStormV1*` macros mirror `recStormV2*`
 # (`compute_c7_storm_v2` below) exactly, on this pre-rollout grid instead
-# of the post-rollout rerun, resolving the `osdiStormV1SpeedupN1kSeed0`
+# of the post-rollout rerun, resolving the `recStormV1SpeedupN1kSeed0`
 # stub that stood in add_pending_stubs below, and additionally landing the
 # v1-scoring quantities the C6 pre-registration template (README.md) asked
 # for -- the row-touch/entity-touch/window-overlap false-fresh rates and
@@ -2437,7 +2437,7 @@ def compute_c7_r18(m: Macros) -> None:
 # reason Lane W2l unpacked the v2 tarball for its own survivor-fraction/
 # precision pair below). Unlike storm-v2's rows, these rows carry no
 # `narrowing_coverage` block, so there is no v1 counterpart to
-# `osdiStormV2{AllTopTerms,NonComputeArtifacts}`.
+# `recStormV2{AllTopTerms,NonComputeArtifacts}`.
 # --------------------------------------------------------------------------
 
 _STORM_V1_STORE_TOKEN = {"synth-iv-60k": "Synth", "collegemsg": "CollegeMsg"}
@@ -2605,7 +2605,7 @@ def compute_c7_storm_v1(m: Macros) -> None:
     # avoided-recomputation (decision) medians by mix, tgms-L1 -- median
     # over each mix's 12 cells of the cell's own summary.arms.tgms-L1.
     # avoided_recompute_decision (same per-cell aggregate compute_c7_storm_v2
-    # uses for its c1-only osdiStormV2AvoidedDecisionC1Median, generalized
+    # uses for its c1-only recStormV2AvoidedDecisionC1Median, generalized
     # here to all three mixes per the C6 template's own per-mix prediction).
     avoided_by_mix: dict[str, float] = {}
     for mix in ("c1", "c3", "c4"):
@@ -2737,74 +2737,74 @@ def compute_c7_storm_v1(m: Macros) -> None:
     close(new_identity_row_touch_median, 1.000, 0.001, "storm-v1 main grid frozen: median "
           "row-touch false_fresh_count / changed_count over the 195 new-identity batches")
 
-    m.add("osdiStormV1Commit", commit,
+    m.add("recStormV1Commit", commit,
           f"{relpath(STORM_V1_MAIN_GRID_ROWS)}: git_commit, uniform over all 36 cells (== "
           f"{relpath(STORM_V1_MAIN_GRID)}'s own git_commit)")
-    m.add("osdiStormV1Cells", len(rows),
+    m.add("recStormV1Cells", len(rows),
           f"{relpath(STORM_V1_MAIN_GRID_ROWS)}: line count (== "
           f"{relpath(STORM_V1_MAIN_GRID)}'s own total_tasks/config.n_tasks)")
-    m.add("osdiStormV1CellsFailed", len(failing_cells),
+    m.add("recStormV1CellsFailed", len(failing_cells),
           f"{relpath(STORM_V1_MAIN_GRID_ROWS)}: cells recomputed to fail G-S1 or G-S2, of 36 "
           f"(== union of {relpath(STORM_V1_MAIN_GRID)}'s own gates.g_s{{1,2}}_failing_cells)")
-    m.add("osdiStormV1FalseFreshTgmsCellsNonzero", ff_nonzero,
+    m.add("recStormV1FalseFreshTgmsCellsNonzero", ff_nonzero,
           f"{relpath(STORM_V1_MAIN_GRID_ROWS)}: count of (cell, arm) pairs among tgms-L0/"
           "tgms-L1 over all 36 cells (72 total) with summary.arms[arm].false_fresh > 0")
-    m.add("osdiStormV1SpeedupN1kSeed0", f"{n1k_speedup:.3f}",
+    m.add("recStormV1SpeedupN1kSeed0", f"{n1k_speedup:.3f}",
           f"{relpath(STORM_V1_MAIN_GRID_ROWS)}: summary.arms.{{global-recompute,tgms-L1}}."
           "ttf_p50_ms ratio at (store=synth-iv-60k, mix=c1, age=none, seed=0, "
           "n_artifacts=1000)")
 
     for key, med in per_group_median.items():
         store, mix, age = key
-        name = (f"osdiStormV1Speedup{_STORM_V1_STORE_TOKEN[store]}{_STORM_V1_MIX_TOKEN[mix]}"
+        name = (f"recStormV1Speedup{_STORM_V1_STORE_TOKEN[store]}{_STORM_V1_MIX_TOKEN[mix]}"
                 f"{_STORM_V1_AGE_TOKEN[age]}")
         m.add(name, f"{med:.3f}",
               f"{relpath(STORM_V1_MAIN_GRID_ROWS)}: median over seeds 0/1/2 of "
               "summary.arms.{global-recompute,tgms-L1}.ttf_p50_ms ratio at "
               f"(store={store}, mix={mix}, age={age or 'none'}, n_artifacts=1000)")
 
-    m.add("osdiStormV1SpeedupGridMin", f"{grid_min:.3f}",
+    m.add("recStormV1SpeedupGridMin", f"{grid_min:.3f}",
           f"{relpath(STORM_V1_MAIN_GRID_ROWS)}: minimum per-cell "
           "summary.arms.{global-recompute,tgms-L1}.ttf_p50_ms ratio over all 36 cells")
-    m.add("osdiStormV1SpeedupGridMax", f"{grid_max:.3f}",
+    m.add("recStormV1SpeedupGridMax", f"{grid_max:.3f}",
           f"{relpath(STORM_V1_MAIN_GRID_ROWS)}: maximum per-cell "
           "summary.arms.{global-recompute,tgms-L1}.ttf_p50_ms ratio over all 36 cells")
 
-    m.add("osdiStormV1AvoidedDecisionC1Median", f"{avoided_by_mix['c1']:.3f}",
+    m.add("recStormV1AvoidedDecisionC1Median", f"{avoided_by_mix['c1']:.3f}",
           f"{relpath(STORM_V1_MAIN_GRID_ROWS)}: median(summary.arms.tgms-L1."
           "avoided_recompute_decision) over the 12 c1-mix cells")
-    m.add("osdiStormV1AvoidedDecisionC3Median", f"{avoided_by_mix['c3']:.3f}",
+    m.add("recStormV1AvoidedDecisionC3Median", f"{avoided_by_mix['c3']:.3f}",
           f"{relpath(STORM_V1_MAIN_GRID_ROWS)}: median(summary.arms.tgms-L1."
           "avoided_recompute_decision) over the 12 c3-mix cells")
-    m.add("osdiStormV1AvoidedDecisionC4Median", f"{avoided_by_mix['c4']:.3f}",
+    m.add("recStormV1AvoidedDecisionC4Median", f"{avoided_by_mix['c4']:.3f}",
           f"{relpath(STORM_V1_MAIN_GRID_ROWS)}: median(summary.arms.tgms-L1."
           "avoided_recompute_decision) over the 12 c4-mix cells")
 
-    m.add("osdiStormV1Batches", tex_num(total_batches),
+    m.add("recStormV1Batches", tex_num(total_batches),
           f"{relpath(STORM_V1_RECORDS_TARBALL)}: total per-batch rows over all 36 cells "
           "(36 cells x 20 batches)")
-    m.add("osdiStormV1RowTouchFalseFreshMedian", f"{row_touch_median:.3f}",
+    m.add("recStormV1RowTouchFalseFreshMedian", f"{row_touch_median:.3f}",
           f"{relpath(STORM_V1_RECORDS_TARBALL)}: median over the 36 cells of Sum(row-touch "
           "arms.false_fresh_count) / Sum(changed_count), each summed over that cell's own "
           "20 batches")
-    m.add("osdiStormV1EntityTouchFalseFreshMedian", f"{entity_touch_median:.3f}",
+    m.add("recStormV1EntityTouchFalseFreshMedian", f"{entity_touch_median:.3f}",
           f"{relpath(STORM_V1_RECORDS_TARBALL)}: median over the 36 cells of Sum(entity-touch "
           "arms.false_fresh_count) / Sum(changed_count), each summed over that cell's own "
           "20 batches")
-    m.add("osdiStormV1WindowOverlapFalseFreshMedian", f"{window_overlap_median:.3f}",
+    m.add("recStormV1WindowOverlapFalseFreshMedian", f"{window_overlap_median:.3f}",
           f"{relpath(STORM_V1_RECORDS_TARBALL)}: median over the 36 cells of "
           "Sum(window-overlap arms.false_fresh_count) / Sum(changed_count), each summed over "
           "that cell's own 20 batches")
-    m.add("osdiStormV1WindowOverlapNonzeroBatches", tex_num(window_overlap_nonzero_batches),
+    m.add("recStormV1WindowOverlapNonzeroBatches", tex_num(window_overlap_nonzero_batches),
           f"{relpath(STORM_V1_RECORDS_TARBALL)}: batches (of 720) with window-overlap "
           "arms.false_fresh_count > 0")
-    m.add("osdiStormV1NewIdentityBatches", tex_num(len(new_identity_row_touch_ratios)),
+    m.add("recStormV1NewIdentityBatches", tex_num(len(new_identity_row_touch_ratios)),
           f"{relpath(STORM_V1_RECORDS_TARBALL)}: batches (of 720) whose correction_placement "
           "is new-identity")
-    m.add("osdiStormV1NewIdentityRowTouchMedian", f"{new_identity_row_touch_median:.3f}",
+    m.add("recStormV1NewIdentityRowTouchMedian", f"{new_identity_row_touch_median:.3f}",
           f"{relpath(STORM_V1_RECORDS_TARBALL)}: median row-touch arms.false_fresh_count / "
           "changed_count over the 195 new-identity batches")
-    m.add("osdiStormV1P4ViolationCells", tex_num(p4_violations),
+    m.add("recStormV1P4ViolationCells", tex_num(p4_violations),
           f"{relpath(STORM_V1_MAIN_GRID_ROWS)}: cells (of 36) where summary.arms.tgms-L1."
           "avoided_recompute_wall is not < avoided_recompute_decision (P4: check cost is "
           "O(prefix), paid regardless)")
@@ -2816,9 +2816,9 @@ def compute_c7_storm_v1(m: Macros) -> None:
 # + -rows.jsonl. Same cell as the v1 R-18 probe above (compute_c7_r18: store
 # synth-iv-60k, mix c1, N=10,000, seed 0, 5 batches, sum TTF) -- see
 # README.md's "R-18 probe v2 (addendum-3) -- run of record, v1 vs v2
-# comparison" section for the full side-by-side table. `osdiR18*` above
-# stay untouched; `osdiStormV2Probe*` land beside them here, and beside
-# `osdiStormV2*` (compute_c7_storm_v2, the different 36-cell main-grid
+# comparison" section for the full side-by-side table. `recR18*` above
+# stay untouched; `recStormV2Probe*` land beside them here, and beside
+# `recStormV2*` (compute_c7_storm_v2, the different 36-cell main-grid
 # record) without resolving or comparing across either -- different
 # record, different macro namespace, no verdict macro (the paper's own
 # P5/P6/P7 scoring lives in the internal freeze, same as compute_c7_r18).
@@ -2912,7 +2912,7 @@ def compute_c7_storm_v2_probe(m: Macros) -> None:
 
     # "Speedup of L1 over global-recompute" == baseline/candidate ==
     # global/L1, per campaign.yaml's P5/P6 convention (>1.0 means L1 is
-    # faster) -- same convention as compute_c7_r18's osdiR18Speedup, but
+    # faster) -- same convention as compute_c7_r18's recR18Speedup, but
     # this probe measures speedup > 1.0 (L1 faster here, unlike the v1
     # probe): a genuine, asserted result, no verdict drawn on it here.
     speedup = global_ttf_med / l1_ttf_med
@@ -2933,43 +2933,43 @@ def compute_c7_storm_v2_probe(m: Macros) -> None:
 
     wall_s = d["config"]["wall_s"]
 
-    m.add("osdiStormV2ProbeCommit", commit,
+    m.add("recStormV2ProbeCommit", commit,
           f"{relpath(STORM_V2_R18_PROBE)}: git_commit")
-    m.add("osdiStormV2ProbeBatches", tex_num(d["config"]["batches"]),
+    m.add("recStormV2ProbeBatches", tex_num(d["config"]["batches"]),
           f"{relpath(STORM_V2_R18_PROBE)}: config.batches")
-    m.add("osdiStormV2ProbeWallS", f"{wall_s:,.1f}".replace(",", "{,}"),
+    m.add("recStormV2ProbeWallS", f"{wall_s:,.1f}".replace(",", "{,}"),
           f"{relpath(STORM_V2_R18_PROBE)}: config.wall_s")
-    m.add("osdiStormV2ProbeGlobalTtfS", f"{global_ttf_med / 1000:,.1f}".replace(",", "{,}"),
+    m.add("recStormV2ProbeGlobalTtfS", f"{global_ttf_med / 1000:,.1f}".replace(",", "{,}"),
           f"{relpath(STORM_V2_R18_PROBE_ROWS)}: median(arms.global-recompute.ttf_ms) over "
           "the 5 batches, /1000, s (== record's own summary.arms.global-recompute."
           "ttf_p50_ms)")
-    m.add("osdiStormV2ProbeTgmsL1TtfS", f"{l1_ttf_med / 1000:.1f}",
+    m.add("recStormV2ProbeTgmsL1TtfS", f"{l1_ttf_med / 1000:.1f}",
           f"{relpath(STORM_V2_R18_PROBE_ROWS)}: median(arms.tgms-L1.ttf_ms) over the 5 "
           "batches, /1000, s (== record's own summary.arms.tgms-L1.ttf_p50_ms)")
-    m.add("osdiStormV2ProbeSpeedupN10k", f"{speedup:.3f}",
+    m.add("recStormV2ProbeSpeedupN10k", f"{speedup:.3f}",
           f"{relpath(STORM_V2_R18_PROBE_ROWS)}: median(global-recompute ttf_ms) / "
           "median(tgms-L1 ttf_ms) -- P5/P6's speedup convention, at N=10,000")
-    m.add("osdiStormV2ProbeAvoidedDecision", f"{avoided_decision:.3f}",
+    m.add("recStormV2ProbeAvoidedDecision", f"{avoided_decision:.3f}",
           f"{relpath(STORM_V2_R18_PROBE_ROWS)}: summary.arms.tgms-L1."
           "avoided_recompute_decision (== 1 - sum(invalidated_count)/sum(n_registered) "
           "over the 5 batches)")
-    m.add("osdiStormV2ProbeSurvivorMedian", f"{survivor_median:.3f}",
+    m.add("recStormV2ProbeSurvivorMedian", f"{survivor_median:.3f}",
           f"{relpath(STORM_V2_R18_PROBE_ROWS)}: median(candidate_survivors / n_registered) "
           "over the 5 batches")
-    m.add("osdiStormV2ProbePrecisionMedian", f"{precision_median:.3f}",
+    m.add("recStormV2ProbePrecisionMedian", f"{precision_median:.3f}",
           f"{relpath(STORM_V2_R18_PROBE_ROWS)}: median(changed_count / candidate_survivors) "
           "over the 5 batches")
-    m.add("osdiStormV2ProbeIntersectsMedian", tex_num(int(intersects_med)),
+    m.add("recStormV2ProbeIntersectsMedian", tex_num(int(intersects_med)),
           f"{relpath(STORM_V2_R18_PROBE_ROWS)}: median(intersects_calls) over the 5 batches")
-    m.add("osdiStormV2ProbeR18Tripped", "yes" if r18_tripped else "no",
+    m.add("recStormV2ProbeR18Tripped", "yes" if r18_tripped else "no",
           f"{relpath(STORM_V2_R18_PROBE_ROWS)}: median(intersects_calls) > 50,000 (the R-18 "
           "trip threshold; arithmetic fact only, no verdict)")
-    m.add("osdiStormV2ProbeAllTopTerms", nc["n_all_top_term"],
+    m.add("recStormV2ProbeAllTopTerms", nc["n_all_top_term"],
           f"{relpath(STORM_V2_R18_PROBE)}: summary.narrowing_coverage.n_all_top_term")
-    m.add("osdiStormV2ProbeNonComputeArtifacts", tex_num(non_compute_artifacts),
+    m.add("recStormV2ProbeNonComputeArtifacts", tex_num(non_compute_artifacts),
           f"{relpath(STORM_V2_R18_PROBE)}: summary.narrowing_coverage.n_artifacts - "
           "n_empty_scope")
-    m.add("osdiStormV2ProbeCheckWallMedianS", f"{check_wall_median_s:.1f}",
+    m.add("recStormV2ProbeCheckWallMedianS", f"{check_wall_median_s:.1f}",
           f"{relpath(STORM_V2_R18_PROBE_ROWS)}: median(arms.tgms-L1.check_wall_ms) over the "
           "5 batches, /1000, s (README.md's own quoted field)")
 
@@ -2981,11 +2981,11 @@ def compute_c7_storm_v2_probe(m: Macros) -> None:
 # -rows.jsonl. Each rows.jsonl line is one task's own per-task manifest
 # embedded verbatim (storm_campaign_merge.py's own "why per-task manifests
 # are embedded whole" module note) -- config/summary/dag, never the raw
-# per-batch rows (those stay on iTiger's stage directory). `osdiStormV2*`
-# macros stand beside `osdiStormV1*` (compute_c7_storm_v1 above) without
+# per-batch rows (those stay on iTiger's stage directory). `recStormV2*`
+# macros stand beside `recStormV1*` (compute_c7_storm_v1 above) without
 # resolving or overwriting them -- different grid, different commit, no
 # v1-vs-v2 comparison macro here. (The addendum-1 dead-end's own legacy
-# names -- `osdiStormCells` et al. -- were retired; see the module
+# names -- `recStormCells` et al. -- were retired; see the module
 # docstring's C7 section.)
 # --------------------------------------------------------------------------
 
@@ -3269,72 +3269,72 @@ def compute_c7_storm_v2(m: Macros) -> None:
               f"storm-v2 main grid frozen: median speedup for {key}")
         per_group_median[key] = med
 
-    m.add("osdiStormV2Commit", commit,
+    m.add("recStormV2Commit", commit,
           f"{relpath(STORM_V2_MAIN_GRID_ROWS)}: git_commit, uniform over all 36 cells (== "
           f"{relpath(STORM_V2_MAIN_GRID)}'s own git_commit)")
-    m.add("osdiStormV2Cells", len(rows),
+    m.add("recStormV2Cells", len(rows),
           f"{relpath(STORM_V2_MAIN_GRID_ROWS)}: line count (== "
           f"{relpath(STORM_V2_MAIN_GRID)}'s own total_tasks/config.n_tasks)")
-    m.add("osdiStormV2CellsFailed", len(failing_cells),
+    m.add("recStormV2CellsFailed", len(failing_cells),
           f"{relpath(STORM_V2_MAIN_GRID_ROWS)}: cells recomputed to fail G-S1 or G-S2, of 36 "
           f"(== union of {relpath(STORM_V2_MAIN_GRID)}'s own gates.g_s{{1,2}}_failing_cells)")
-    m.add("osdiStormV2CleanCells", tex_num(p4_clean_cells),
-          f"{relpath(STORM_V2_MAIN_GRID_ROWS)}: cells (of osdiStormV2Cells==36) where "
+    m.add("recStormV2CleanCells", tex_num(p4_clean_cells),
+          f"{relpath(STORM_V2_MAIN_GRID_ROWS)}: cells (of recStormV2Cells==36) where "
           "summary.arms.tgms-L1.avoided_recompute_wall < avoided_recompute_decision (P4), "
           "counted directly from each cell's own per-cell status, not derived from "
-          "osdiStormV2Cells minus a separately-counted violation total -- wrong.tex row 12's "
+          "recStormV2Cells minus a separately-counted violation total -- wrong.tex row 12's "
           "\"34 of StormV2Cells\"")
-    m.add("osdiStormV2AllTopTerms", all_top_term_total,
+    m.add("recStormV2AllTopTerms", all_top_term_total,
           f"{relpath(STORM_V2_MAIN_GRID_ROWS)}: sum of summary.narrowing_coverage."
           "n_all_top_term over all 36 cells")
-    m.add("osdiStormV2NonComputeArtifacts", tex_num(non_compute_artifacts),
+    m.add("recStormV2NonComputeArtifacts", tex_num(non_compute_artifacts),
           f"{relpath(STORM_V2_MAIN_GRID_ROWS)}: sum of (summary.narrowing_coverage.n_artifacts "
           "- n_empty_scope) over all 36 cells")
-    m.add("osdiStormV2SpeedupN1kSeed0", f"{n1k_speedup:.3f}",
+    m.add("recStormV2SpeedupN1kSeed0", f"{n1k_speedup:.3f}",
           f"{relpath(STORM_V2_MAIN_GRID_ROWS)}: summary.arms.{{global-recompute,tgms-L1}}."
           "ttf_p50_ms ratio at (store=synth-iv-60k, mix=c1, age=none, seed=0, "
           "n_artifacts=1000)")
-    m.add("osdiStormV2AvoidedDecisionC1Median", f"{avoided_median:.3f}",
+    m.add("recStormV2AvoidedDecisionC1Median", f"{avoided_median:.3f}",
           f"{relpath(STORM_V2_MAIN_GRID_ROWS)}: median(summary.arms.tgms-L1."
           "avoided_recompute_decision) over the 12 c1-mix cells")
-    m.add("osdiStormV2C1Batches", len(survivor_fracs),
+    m.add("recStormV2C1Batches", len(survivor_fracs),
           f"{relpath(STORM_V2_RECORDS_TARBALL)}: total per-batch rows over the 12 c1-mix "
           "cells' own -rows.jsonl files (12 cells x 20 batches)")
-    m.add("osdiStormV2SurvivorFractionC1Median", f"{survivor_median:.3f}",
+    m.add("recStormV2SurvivorFractionC1Median", f"{survivor_median:.3f}",
           f"{relpath(STORM_V2_RECORDS_TARBALL)}: median(candidate_survivors / "
           "config.n_registered) over the 240 c1-mix batches")
-    m.add("osdiStormV2PrecisionC1Median", f"{precision_median:.3f}",
+    m.add("recStormV2PrecisionC1Median", f"{precision_median:.3f}",
           f"{relpath(STORM_V2_RECORDS_TARBALL)}: median(changed_count / candidate_survivors) "
           "over the 240 c1-mix batches")
-    m.add("osdiStormV2SurvivorFractionSynthC1Median", f"{synth_survivor_median:.3f}",
+    m.add("recStormV2SurvivorFractionSynthC1Median", f"{synth_survivor_median:.3f}",
           f"{relpath(STORM_V2_RECORDS_TARBALL)}: median(candidate_survivors / "
           "config.n_registered) over the 120 synth-iv-60k c1-mix batches")
-    m.add("osdiStormV2SurvivorFractionCollegeMsgC1Median", f"{collegemsg_survivor_median:.3f}",
+    m.add("recStormV2SurvivorFractionCollegeMsgC1Median", f"{collegemsg_survivor_median:.3f}",
           f"{relpath(STORM_V2_RECORDS_TARBALL)}: median(candidate_survivors / "
           "config.n_registered) over the 120 collegemsg c1-mix batches")
-    m.add("osdiStormV2PrecisionSynthC1Median", f"{synth_precision_median:.3f}",
+    m.add("recStormV2PrecisionSynthC1Median", f"{synth_precision_median:.3f}",
           f"{relpath(STORM_V2_RECORDS_TARBALL)}: median(changed_count / candidate_survivors) "
           "over the 120 synth-iv-60k c1-mix batches")
-    m.add("osdiStormV2PrecisionCollegeMsgC1Median", f"{collegemsg_precision_median:.3f}",
+    m.add("recStormV2PrecisionCollegeMsgC1Median", f"{collegemsg_precision_median:.3f}",
           f"{relpath(STORM_V2_RECORDS_TARBALL)}: median(changed_count / candidate_survivors) "
           "over the 120 collegemsg c1-mix batches")
-    m.add("osdiStormV2FalseFreshTgmsCellsNonzero", ff_nonzero,
+    m.add("recStormV2FalseFreshTgmsCellsNonzero", ff_nonzero,
           f"{relpath(STORM_V2_MAIN_GRID_ROWS)}: count of (cell, arm) pairs among tgms-L0/"
           "tgms-L1 over all 36 cells (72 total) with summary.arms[arm].false_fresh > 0")
 
     for key, med in per_group_median.items():
         store, mix, age = key
-        name = (f"osdiStormV2Speedup{_STORM_V2_STORE_TOKEN[store]}{_STORM_V2_MIX_TOKEN[mix]}"
+        name = (f"recStormV2Speedup{_STORM_V2_STORE_TOKEN[store]}{_STORM_V2_MIX_TOKEN[mix]}"
                 f"{_STORM_V2_AGE_TOKEN[age]}")
         m.add(name, f"{med:.3f}",
               f"{relpath(STORM_V2_MAIN_GRID_ROWS)}: median over seeds 0/1/2 of "
               "summary.arms.{global-recompute,tgms-L1}.ttf_p50_ms ratio at "
               f"(store={store}, mix={mix}, age={age or 'none'}, n_artifacts=1000)")
 
-    m.add("osdiStormV2SpeedupGridMin", f"{grid_min:.3f}",
+    m.add("recStormV2SpeedupGridMin", f"{grid_min:.3f}",
           f"{relpath(STORM_V2_MAIN_GRID_ROWS)}: minimum per-cell "
           "summary.arms.{global-recompute,tgms-L1}.ttf_p50_ms ratio over all 36 cells")
-    m.add("osdiStormV2SpeedupGridMax", f"{grid_max:.3f}",
+    m.add("recStormV2SpeedupGridMax", f"{grid_max:.3f}",
           f"{relpath(STORM_V2_MAIN_GRID_ROWS)}: maximum per-cell "
           "summary.arms.{global-recompute,tgms-L1}.ttf_p50_ms ratio over all 36 cells")
 
@@ -3494,42 +3494,42 @@ def compute_d160(m: Macros) -> None:
     old_gate_cond_acc = float(m_stab.group(3))
     eq(old_gate_cond_acc, 0.548, "D160 frozen: old-gate conditional accuracy")
 
-    m.add("osdiD160Tasks", len(task_ids),
+    m.add("recD160Tasks", len(task_ids),
           f"{relpath(D160_ROWS)}: distinct task_id values among system==ours rows")
-    m.add("osdiD160TaskRuns", len(ours),
+    m.add("recD160TaskRuns", len(ours),
           f"{relpath(D160_ROWS)}: row count for system==ours (94 tasks x 3 seeds)")
-    m.add("osdiD160OursCarrying", len(ours_carry),
+    m.add("recD160OursCarrying", len(ours_carry),
           f"{relpath(D160_ROWS)}: ours rows with answer_object.claims non-empty, pooled "
           "over 3 seeds")
-    m.add("osdiD160OursCoverage", f"{ours_coverage:.3f}",
-          f"{relpath(D160_ROWS)}: osdiD160OursCarrying / osdiD160TaskRuns")
-    m.add("osdiD160OursCondAcc", f"{ours_cond_acc:.3f}",
+    m.add("recD160OursCoverage", f"{ours_coverage:.3f}",
+          f"{relpath(D160_ROWS)}: recD160OursCarrying / recD160TaskRuns")
+    m.add("recD160OursCondAcc", f"{ours_cond_acc:.3f}",
           f"{relpath(D160_ROWS)}: mean(em) over ours claim-carrying rows")
-    m.add("osdiD160OursUcrGated", int(ours_ucr_gated),
+    m.add("recD160OursUcrGated", int(ours_ucr_gated),
           f"{relpath(D160_ROWS)}: mean(ucr) over ours claim-carrying rows (post-gate)")
-    m.add("osdiD160OursUcrPreGate", f"{ours_ucr_pre:.3f}",
+    m.add("recD160OursUcrPreGate", f"{ours_ucr_pre:.3f}",
           f"{relpath(D160_ROWS)}: mean(ucr_pre_gate) over the 257 ours rows that reached "
           "claim proposal pre-gate")
-    m.add("osdiD160B6eCoverage", f"{b6e_coverage:.3f}",
+    m.add("recD160B6eCoverage", f"{b6e_coverage:.3f}",
           f"{relpath(D160_ROWS)}: b6e rows with answer_object.claims non-empty / 282, pooled")
-    m.add("osdiD160B6eCondAcc", f"{b6e_cond_acc:.3f}",
+    m.add("recD160B6eCondAcc", f"{b6e_cond_acc:.3f}",
           f"{relpath(D160_ROWS)}: mean(em) over b6e claim-carrying rows")
-    m.add("osdiD160B5Em", f"{b5_em:.3f}",
+    m.add("recD160B5Em", f"{b5_em:.3f}",
           f"{relpath(D160_ROWS)}: mean(em) over all 282 b5 rows (ungated, deterministic)")
-    m.add("osdiD160LlmDirectCarrying", len(llm_carry),
+    m.add("recD160LlmDirectCarrying", len(llm_carry),
           f"{relpath(D160_ROWS)}: llm_direct rows with answer_object.claims non-empty, pooled")
-    m.add("osdiD160LlmDirectOverflowErrors", len(llm_overflow),
+    m.add("recD160LlmDirectOverflowErrors", len(llm_overflow),
           f"{relpath(D160_ROWS)}: llm_direct rows whose task_error is "
           "litellm.ContextWindowExceededError, of 282 (known pre-tokenizer-fix limitation, "
           "see benchmarks/d160-collegemsg-v1/README.md)")
-    m.add("osdiOldGateCoverage", f"{old_gate_coverage:.3f}",
+    m.add("recOldGateCoverage", f"{old_gate_coverage:.3f}",
           f"{relpath(SITE_FACTS)}: unsupported_claims.scope_required 199/282, cross-checked "
           f"against {relpath(STABILITY_MD)} section 9's own stated 0.706 -- the pre-D-160-gate "
-          "coverage, printed only beside osdiD160OursCoverage, never in its place")
-    m.add("osdiOldGateUcr", int(float(old_uc["value"])),
+          "coverage, printed only beside recD160OursCoverage, never in its place")
+    m.add("recOldGateUcr", int(float(old_uc["value"])),
           f"{relpath(SITE_FACTS)}: unsupported_claims.value, of {old_gate_ucr_denominator} "
           "emitted answers -- the pre-D-160-gate UCR")
-    m.add("osdiOldGateCondAcc", f"{old_gate_cond_acc:.3f}",
+    m.add("recOldGateCondAcc", f"{old_gate_cond_acc:.3f}",
           f"{relpath(STABILITY_MD)} section 9 (D-160): the pre-D-160-gate conditional accuracy "
           "among emitted answers -- not a separate site_facts.json field, so parsed from and "
           "cross-checked against that section's own prose")
@@ -3611,21 +3611,21 @@ def compute_d160_llm_direct_fix(m: Macros) -> None:
     raw_em = statistics.mean(pre_gate_ems)
     close(raw_em, 0.064, 0.001, "D160 fix frozen: llm_direct raw pre-gate EM")
 
-    m.add("osdiD160LlmDirectCoverageFixed", f"{coverage:.3f}",
+    m.add("recD160LlmDirectCoverageFixed", f"{coverage:.3f}",
           f"{relpath(D160_ROWS_FIX)}: llm_direct rows with answer_object.claims non-empty / "
-          "282, pooled over 3 seeds -- the fixed-budget re-run of osdiD160LlmDirectCarrying, "
+          "282, pooled over 3 seeds -- the fixed-budget re-run of recD160LlmDirectCarrying, "
           "still 0.000 (the fix removes the context-overflow crash, not the gate's verdict)")
-    m.add("osdiD160LlmDirectErrorsFixed", len(errors),
+    m.add("recD160LlmDirectErrorsFixed", len(errors),
           f"{relpath(D160_ROWS_FIX)}: llm_direct task_error row count, of 282 -- 0 after the "
-          "real-tokenizer budget fix, vs osdiD160LlmDirectOverflowErrors (216) before it")
-    m.add("osdiD160LlmDirectRawEmFixed", f"{raw_em:.3f}",
+          "real-tokenizer budget fix, vs recD160LlmDirectOverflowErrors (216) before it")
+    m.add("recD160LlmDirectRawEmFixed", f"{raw_em:.3f}",
           f"{relpath(D160_ROWS_FIX)}: mean(em) of meta.pre_gate_answer scored via "
           "tgms.eval.metrics.score_answer/extract_pred against "
           "benchmarks/frozen-v1/suite-collegemsg.json's gold/answer_kind fields, over all 282 "
           "rows (complete, vs the pre-fix record's partial n=66 easy-task-only sample)")
-    m.add("osdiD160LlmDirectTokenizerFixed", r"hf\_real",
+    m.add("recD160LlmDirectTokenizerFixed", r"hf\_real",
           f"{relpath(D160_ROWS_FIX)}: meta.tokenizer_kind, asserted uniform across all 282 rows")
-    m.add("osdiD160LlmDirectBudgetFixed", 8000,
+    m.add("recD160LlmDirectBudgetFixed", 8000,
           f"{relpath(D160_ROWS_FIX)}: meta.budget_effective_tokens, asserted uniform across all "
           "282 rows (== manifest protocol.ceilings.llm_direct_budget_tokens)")
 
@@ -3792,50 +3792,50 @@ def compute_c2(m: Macros) -> None:
        f"C2 frozen: non-blob class x mutation cells whose DETECTED count moved by >2 trials "
        f"post-A10 (got {moved})")
 
-    m.add("osdiCorruptionTrials", tex_num(pre["total_trials"]),
+    m.add("recCorruptionTrials", tex_num(pre["total_trials"]),
           f"{relpath(CORRUPTION_PRE)}: total_trials, == {relpath(CORRUPTION_POST)}'s own "
           "(both 10,000-trial sweeps)")
-    m.add("osdiCorruptionClasses", len(classes),
+    m.add("recCorruptionClasses", len(classes),
           f"{relpath(CORRUPTION_PRE)}: distinct classes in stats.detection_matrix keys "
           "(the 13 on-disk file families), unchanged post-A10")
-    m.add("osdiCorruptionMutations", len(mutations),
+    m.add("recCorruptionMutations", len(mutations),
           f"{relpath(CORRUPTION_PRE)}: distinct mutations in stats.detection_matrix keys, "
           "unchanged post-A10")
-    m.add("osdiCorruptionDetected", tex_num(detected_post),
+    m.add("recCorruptionDetected", tex_num(detected_post),
           f"{relpath(CORRUPTION_POST)}: recomputed DETECTED total, of 10,000 -- the deployed "
-          "(post-A10) system's headline count; see osdiCorruptionDetectedPre/Post for the "
+          "(post-A10) system's headline count; see recCorruptionDetectedPre/Post for the "
           "before/after pair")
-    m.add("osdiCorruptionDetectedPre", tex_num(detected_pre),
+    m.add("recCorruptionDetectedPre", tex_num(detected_pre),
           f"{relpath(CORRUPTION_PRE)}: recomputed DETECTED total, of 10,000, before task A10")
-    m.add("osdiCorruptionDetectedPost", tex_num(detected_post),
+    m.add("recCorruptionDetectedPost", tex_num(detected_post),
           f"{relpath(CORRUPTION_POST)}: recomputed DETECTED total, of 10,000, after task A10")
-    m.add("osdiCorruptionSilentPre", recomputed_silent_pre,
+    m.add("recCorruptionSilentPre", recomputed_silent_pre,
           f"{relpath(CORRUPTION_PRE)}: recomputed SILENT total, of 10,000, before task A10")
-    m.add("osdiCorruptionSilentPost", recomputed_silent_post,
+    m.add("recCorruptionSilentPost", recomputed_silent_post,
           f"{relpath(CORRUPTION_POST)}: recomputed SILENT total, of 10,000, after task A10")
-    m.add("osdiCorruptionBlobDetectedPre", f"{det_blob_pre}/{n_blob_pre}",
+    m.add("recCorruptionBlobDetectedPre", f"{det_blob_pre}/{n_blob_pre}",
           f"{relpath(CORRUPTION_PRE)}: DETECTED/trials summed over the six artifact_blob "
           "mutations task A10 fixed (append_garbage/flip_bit/flip_byte/swap_same_class/"
           "truncate/zero_span), before the fix")
-    m.add("osdiCorruptionBlobDetectedPost", f"{det_blob_post}/{n_blob_post}",
+    m.add("recCorruptionBlobDetectedPost", f"{det_blob_post}/{n_blob_post}",
           f"{relpath(CORRUPTION_POST)}: DETECTED/trials summed over the same six artifact_blob "
           "mutations, after the fix")
-    m.add("osdiCorruptionBlobTrials", tex_num(n_blob_all_pre),
+    m.add("recCorruptionBlobTrials", tex_num(n_blob_all_pre),
           f"{relpath(CORRUPTION_PRE)}: trials summed over all seven artifact_blob mutations "
           "(== the six-mutation fix population 621 + the already-detected mutation's own "
           f"{n_already_pre}), unchanged post-A10")
-    m.add("osdiCorruptionBlobDetectedAllPre", f"{det_blob_all_pre}/{n_blob_all_pre}",
+    m.add("recCorruptionBlobDetectedAllPre", f"{det_blob_all_pre}/{n_blob_all_pre}",
           f"{relpath(CORRUPTION_PRE)}: DETECTED/trials summed over all seven artifact_blob "
-          "mutations, before the fix -- distinct from osdiCorruptionBlobDetectedPre, which "
+          "mutations, before the fix -- distinct from recCorruptionBlobDetectedPre, which "
           "covers only the six mutations A10 fixed")
-    m.add("osdiCorruptionBlobDetectedAllPost", f"{det_blob_all_post}/{n_blob_all_post}",
+    m.add("recCorruptionBlobDetectedAllPost", f"{det_blob_all_post}/{n_blob_all_post}",
           f"{relpath(CORRUPTION_POST)}: DETECTED/trials summed over all seven artifact_blob "
           "mutations, after the fix")
-    m.add("osdiCorruptionBlobMutationAlreadyDetected", already_detected_mutation.replace("_", r"\_"),
+    m.add("recCorruptionBlobMutationAlreadyDetected", already_detected_mutation.replace("_", r"\_"),
           f"{relpath(CORRUPTION_PRE)}: the one artifact_blob mutation (of all seven) with a "
           "nonzero pre-A10 DETECTED count, recomputed as the mutation outside the six-mutation "
           "fix set with detected>0 -- not hard-coded")
-    m.add("osdiCorruptionCellsMovedPost", len(moved),
+    m.add("recCorruptionCellsMovedPost", len(moved),
           f"{relpath(CORRUPTION_PRE)} vs {CORRUPTION_POST.name}: non-blob class x mutation "
           "cells whose DETECTED count moved by more than 2 trials (asserted 0 above)")
 
@@ -4040,43 +4040,43 @@ def compute_ladder(m: Macros) -> None:
     eq(sorted(truncated_plans), ["p02-compiled-entity-and-version", "p10-reachability-and-paths"],
        "ladder frozen: the exact two plans truncated at 2-of-3 executed steps")
 
-    m.add("osdiLadderPlans", tex_num(len(plan_ids)),
+    m.add("recLadderPlans", tex_num(len(plan_ids)),
           f"{relpath(LADDER_RAW[0])}: distinct plan_id values in the rung-1 rows")
-    m.add("osdiLadderOperatorsCovered", tex_num(len(all_ops)),
+    m.add("recLadderOperatorsCovered", tex_num(len(all_ops)),
           f"{relpath(LADDER_RAW[0])}: union of every plan's ops_in_plan, rung 1 (13 LEAF_SCOPES "
           "+ compute)")
-    m.add("osdiLadderRung1Min", f"{rung1_min:.3f}",
+    m.add("recLadderRung1Min", f"{rung1_min:.3f}",
           f"{relpath(LADDER_MERGED)}: min over 14 ops of rung1_leaf_overhead[op]."
           f"leaf_over_direct_median ({rung1_min_op})")
-    m.add("osdiLadderRung1Max", f"{rung1_max:.3f}",
+    m.add("recLadderRung1Max", f"{rung1_max:.3f}",
           f"{relpath(LADDER_MERGED)}: max over 14 ops of rung1_leaf_overhead[op]."
           f"leaf_over_direct_median ({rung1_max_op})")
-    m.add("osdiLadderRung2EntityHistory", f"{entity_ratio:.2f}",
+    m.add("recLadderRung2EntityHistory", f"{entity_ratio:.2f}",
           f"{relpath(LADDER_MERGED)}: rung2_compiled_vs_kernel.entity_history."
           "compiled_over_kernel_median")
-    m.add("osdiLadderRung2VersionHistory", f"{version_ratio:.2f}",
+    m.add("recLadderRung2VersionHistory", f"{version_ratio:.2f}",
           f"{relpath(LADDER_MERGED)}: rung2_compiled_vs_kernel.version_history."
           "compiled_over_kernel_median")
-    m.add("osdiLadderRung3BytesOneStepMedian", tex_num(one_step_bytes_median),
+    m.add("recLadderRung3BytesOneStepMedian", tex_num(one_step_bytes_median),
           f"{relpath(LADDER_MERGED)}: median over the 9 one-step plans of "
           "rung3_trace_bytes[plan].bytes_median")
-    m.add("osdiLadderRung3BytesThreeStepMedian", tex_num(three_step_bytes_median),
+    m.add("recLadderRung3BytesThreeStepMedian", tex_num(three_step_bytes_median),
           f"{relpath(LADDER_MERGED)}: median over the 3 three-step plans of "
           "rung3_trace_bytes[plan].bytes_median")
-    m.add("osdiLadderRung3Deterministic", tex_num(n_deterministic),
+    m.add("recLadderRung3Deterministic", tex_num(n_deterministic),
           f"{relpath(LADDER_DIR)}/raw/*.json: plans confirmed bit-identical across all 5 reps "
           "and all 3 seeds (asserted above), of 12")
-    m.add("osdiLadderRung4VerifyMsMedian", f"{verify_ms_median:.2f}",
+    m.add("recLadderRung4VerifyMsMedian", f"{verify_ms_median:.2f}",
           f"{relpath(LADDER_MERGED)}: median over the 12 plans of rung4_verify_ms[plan]."
           "p50_ms_median, ms")
-    m.add("osdiLadderRung5TokensMedian", f"{tokens_median_overall:.1f}",
+    m.add("recLadderRung5TokensMedian", f"{tokens_median_overall:.1f}",
           f"{relpath(LADDER_MERGED)}: median over the 12 plans of rung5_tokens_tool_calls[plan]."
           "tokens_total_median")
-    m.add("osdiLadderRung5ToolCallsEqualExecutedSteps", tex_num(n_tool_calls_eq_executed),
+    m.add("recLadderRung5ToolCallsEqualExecutedSteps", tex_num(n_tool_calls_eq_executed),
           f"{relpath(LADDER_DIR)}/raw/*.json: plans with tool_calls == executed steps "
           "(falsifier (a)'s own 'executed steps' wording, not a naive n_steps comparison), "
           "asserted on all 12")
-    m.add("osdiLadderPlansTruncated", tex_num(len(truncated_plans)),
+    m.add("recLadderPlansTruncated", tex_num(len(truncated_plans)),
           f"{relpath(LADDER_DIR)}/raw/*.json: plans where tool_calls < n_steps "
           "(p02, p10 -- Executor.run's own truncation guard on a downstream compute step, "
           "see README)")
@@ -4098,7 +4098,7 @@ def compute_ladder(m: Macros) -> None:
 #       against that file's own true_total_errors_all_lives field, never
 #       trusted from either without the recomputation. Both numbers are
 #       emitted, side by side, per this script's non-overwrite discipline --
-#       osdiSoakWriterErrorsManifest is explicitly labelled as the wrong,
+#       recSoakWriterErrorsManifest is explicitly labelled as the wrong,
 #       harness-defect value.
 #   (2) digest_equal is JSON `null` ("not computed") because the disk guard
 #       skipped the mandatory final replay: 1,074,952 uncompacted batches
@@ -4311,73 +4311,73 @@ def compute_longevity_soak(m: Macros) -> None:
     eq(projected_tb, 280.8, "Longevity frozen: replay projection, TB")
 
     # --- emit macros ---
-    m.add("osdiSoakHours", tex_num(int(hours)),
+    m.add("recSoakHours", tex_num(int(hours)),
           f"{relpath(LONGEVITY_MANIFEST)}: config.duration_s / 3600")
-    m.add("osdiSoakCommit", manifest["git_commit"],
+    m.add("recSoakCommit", manifest["git_commit"],
           f"{relpath(LONGEVITY_MANIFEST)}: git_commit")
-    m.add("osdiSoakEntitiesStart", tex_num(entities_start),
+    m.add("recSoakEntitiesStart", tex_num(entities_start),
           f"{relpath(LONGEVITY_MANIFEST)}: config.store_name / dataset.name "
           "(\"synth-1m-native\") -- the store's own \"1m\" label, not a counted field; "
           "final_stats.n_entities confirms growth past this nominal start")
-    m.add("osdiSoakEntitiesEnd", tex_num(entities_end),
+    m.add("recSoakEntitiesEnd", tex_num(entities_end),
           f"{relpath(LONGEVITY_MANIFEST)}: summary.final_stats.n_entities")
-    m.add("osdiSoakBatches", tex_num(total_batches),
+    m.add("recSoakBatches", tex_num(total_batches),
           f"{relpath(LONGEVITY_MANIFEST)}: summary.total_batches")
-    m.add("osdiSoakWriterLives", tex_num(by_life["lives"]),
+    m.add("recSoakWriterLives", tex_num(by_life["lives"]),
           f"{relpath(LONGEVITY_WRITER_ERRORS_BY_LIFE)}: lives (== len(per_life_errors))")
-    m.add("osdiSoakRecoveries", tex_num(len(recoveries_rows)),
+    m.add("recSoakRecoveries", tex_num(len(recoveries_rows)),
           f"{relpath(LONGEVITY_RECOVERIES)}: row count, == summary.recoveries")
-    m.add("osdiSoakRecoveriesSigabrt", tex_num(n_sigabrt),
+    m.add("recSoakRecoveriesSigabrt", tex_num(n_sigabrt),
           f"{relpath(LONGEVITY_RECOVERIES)}: rows with returncode == -6 (SIGABRT)")
-    m.add("osdiSoakRecoveriesExit137", tex_num(n_exit137),
+    m.add("recSoakRecoveriesExit137", tex_num(n_exit137),
           f"{relpath(LONGEVITY_RECOVERIES)}: rows with returncode == 137 (os._exit(137))")
-    m.add("osdiSoakUnexpectedRecoveries", tex_num(unexpected),
+    m.add("recSoakUnexpectedRecoveries", tex_num(unexpected),
           f"{relpath(LONGEVITY_MANIFEST)}: summary.unexpected_writer_deaths -- all 41 "
           "recoveries are the harness's own designed restart cycle (kind==\"designed\")")
-    m.add("osdiSoakReaderDeaths", tex_num(len(reader_rows)),
+    m.add("recSoakReaderDeaths", tex_num(len(reader_rows)),
           f"{relpath(LONGEVITY_READER_RESTARTS)}: row count, == summary.reader_restarts")
-    m.add("osdiSoakReaderDeathCause", "reader torn-tail race, pre-fix engine",
+    m.add("recSoakReaderDeathCause", "reader torn-tail race, pre-fix engine",
           f"{relpath(LONGEVITY_READER_RESTARTS)}: both rows (readers 6, 5) are the "
           "D-086-reader-torn-tail-race StateError shape; ops/failure_ledger.jsonl's D-086 "
           "entry (cross-checked when present) confirms both instances against commit "
           "886805f, which predates the fix series (ef97d2d, 43f6ef4, 3a664a8)")
-    m.add("osdiSoakVerifyHealthy", "true",
+    m.add("recSoakVerifyHealthy", "true",
           f"{relpath(LONGEVITY_MANIFEST)}: summary.verify_healthy")
-    m.add("osdiSoakWriterErrorsManifest", tex_num(manifest_error_count),
+    m.add("recSoakWriterErrorsManifest", tex_num(manifest_error_count),
           f"{relpath(LONGEVITY_MANIFEST)}: summary.error_count -- the harness's own "
           "counter_latest label-collision defect (last writer life only, see README.md); "
           "not a run total")
-    m.add("osdiSoakWriterErrorsTrue", tex_num(true_total_errors),
+    m.add("recSoakWriterErrorsTrue", tex_num(true_total_errors),
           f"{relpath(LONGEVITY_WRITER_ERRORS_BY_LIFE)}: sum(per_life_errors), 42 lives")
-    m.add("osdiSoakCorrectionsAppliedTrue", tex_num(corrections_applied),
+    m.add("recSoakCorrectionsAppliedTrue", tex_num(corrections_applied),
           f"{relpath(LONGEVITY_WRITER_ERRORS_BY_LIFE)}: "
           "true_total_corrections_applied_all_lives, 42 lives -- ops issued, not "
           "identities landed (see README.md's \"errors observed\" section)")
-    m.add("osdiSoakCorrectionsSkippedTrue", tex_num(corrections_skipped),
+    m.add("recSoakCorrectionsSkippedTrue", tex_num(corrections_skipped),
           f"{relpath(LONGEVITY_WRITER_ERRORS_BY_LIFE)}: "
           "true_total_corrections_skipped_all_lives, 42 lives")
-    m.add("osdiSoakThroughputStart", f"{throughput_start:.2f}",
+    m.add("recSoakThroughputStart", f"{throughput_start:.2f}",
           f"{relpath(LONGEVITY_MANIFEST)}: summary.drift.throughput_first_hour_avg, commits/s")
-    m.add("osdiSoakThroughputEnd", f"{throughput_end:.2f}",
+    m.add("recSoakThroughputEnd", f"{throughput_end:.2f}",
           f"{relpath(LONGEVITY_MANIFEST)}: summary.drift.throughput_last_hour_avg, commits/s")
-    m.add("osdiSoakP99StartMs", f"{p99_start:.1f}",
+    m.add("recSoakP99StartMs", f"{p99_start:.1f}",
           f"{relpath(LONGEVITY_MANIFEST)}: summary.drift.commit_p99_first_hour_max, ms")
-    m.add("osdiSoakP99EndMs", f"{p99_end:,.1f}".replace(",", "{,}"),
+    m.add("recSoakP99EndMs", f"{p99_end:,.1f}".replace(",", "{,}"),
           f"{relpath(LONGEVITY_MANIFEST)}: summary.drift.commit_p99_last_hour_max, ms")
-    m.add("osdiSoakManifestGrowthBps", f"{manifest_growth:.1f}",
+    m.add("recSoakManifestGrowthBps", f"{manifest_growth:.1f}",
           f"{relpath(LONGEVITY_MANIFEST)}: summary.metadata_growth_slope_bytes_per_s.manifests")
-    m.add("osdiSoakSegmentGrowthBps", f"{segment_growth:,.1f}".replace(",", "{,}"),
+    m.add("recSoakSegmentGrowthBps", f"{segment_growth:,.1f}".replace(",", "{,}"),
           f"{relpath(LONGEVITY_MANIFEST)}: summary.metadata_growth_slope_bytes_per_s.segments")
-    m.add("osdiSoakDigestStatus", "not computed",
+    m.add("recSoakDigestStatus", "not computed",
           f"{relpath(LONGEVITY_MANIFEST)}: summary.digest_equal is JSON null -- the final "
           "replay/digest-equivalence step never ran (disk guard skip), never \"computed "
           "and found False\" (text macro, not a number)")
-    m.add("osdiSoakReplayProjectedTB", f"{projected_tb:.1f}",
+    m.add("recSoakReplayProjectedTB", f"{projected_tb:.1f}",
           f"{relpath(LONGEVITY_ORCHESTRATOR_LOG)}: disk_guard_replay_skip line's "
           "projected_mb / 1e6, cross-checked against longevity_ledger.jsonl and "
           "recomputed from 243.0*total_batches**2/1e6 (scripts/longevity_run.py's own "
           "D-149 projection formula, quoted in README.md)")
-    m.add("osdiSoakCompactions", tex_num(compactions),
+    m.add("recSoakCompactions", tex_num(compactions),
           f"{relpath(LONGEVITY_MANIFEST)}: summary.compactions")
 
 
@@ -4570,68 +4570,68 @@ def compute_longevity_rederived(m: Macros) -> None:
     eq(round(elapsed_h, 2), 3.37, "Longevity replay-check: wall_s / 3600")
 
     # --- emit macros ---
-    m.add("osdiSoakWriterWithinLifeSlopeMedianKBps", f"{median_kb:.1f}",
+    m.add("recSoakWriterWithinLifeSlopeMedianKBps", f"{median_kb:.1f}",
           f"{relpath(LONGEVITY_SUMMARY_REDERIVED)}: median(writer_within_life_rss_slope."
           "per_life[*].slope_kb_per_s), 42 lives")
-    m.add("osdiSoakWriterWithinLifeSlopeMinKBps", f"{min_kb:.1f}",
+    m.add("recSoakWriterWithinLifeSlopeMinKBps", f"{min_kb:.1f}",
           f"{relpath(LONGEVITY_SUMMARY_REDERIVED)}: min(writer_within_life_rss_slope."
           "per_life[*].slope_kb_per_s)")
-    m.add("osdiSoakWriterWithinLifeSlopeMaxKBps", f"{max_kb:.1f}",
+    m.add("recSoakWriterWithinLifeSlopeMaxKBps", f"{max_kb:.1f}",
           f"{relpath(LONGEVITY_SUMMARY_REDERIVED)}: max(writer_within_life_rss_slope."
           "per_life[*].slope_kb_per_s)")
-    m.add("osdiSoakWriterLivesFitted", tex_num(writer_slope["n_lives_with_fit"]),
+    m.add("recSoakWriterLivesFitted", tex_num(writer_slope["n_lives_with_fit"]),
           f"{relpath(LONGEVITY_SUMMARY_REDERIVED)}: writer_within_life_rss_slope."
           "n_lives_with_fit, recomputed as len(per_life)")
-    m.add("osdiSoakWriterLivesPositive", tex_num(n_positive),
+    m.add("recSoakWriterLivesPositive", tex_num(n_positive),
           f"{relpath(LONGEVITY_SUMMARY_REDERIVED)}: recomputed count(per_life[*]."
           "slope_kb_per_s > noise_threshold_kb_per_s=5.0), matches the file's own "
           "n_positive_beyond_noise_5kb_s")
-    m.add("osdiSoakWriterNoiseFloorKBps", tex_num(int(noise_floor)),
+    m.add("recSoakWriterNoiseFloorKBps", tex_num(int(noise_floor)),
           f"{relpath(LONGEVITY_SUMMARY_REDERIVED)}: writer_within_life_rss_slope."
           "noise_threshold_kb_per_s")
-    m.add("osdiSoakReaderWithinLifeSlopeMedianKBps", f"{reader_median_kb:.2f}",
+    m.add("recSoakReaderWithinLifeSlopeMedianKBps", f"{reader_median_kb:.2f}",
           f"{relpath(LONGEVITY_SUMMARY_REDERIVED)}: median of every fitted segment slope "
           "across reader_rss_slope_by_idx (10 segments, 8 readers), matches "
           "reader_rss_slope_pooled.median_kb_per_s")
-    m.add("osdiSoakReaderWithinLifeSlopeMaxKBps", f"{reader_max_kb:.2f}",
+    m.add("recSoakReaderWithinLifeSlopeMaxKBps", f"{reader_max_kb:.2f}",
           f"{relpath(LONGEVITY_SUMMARY_REDERIVED)}: max of every fitted segment slope "
           "across reader_rss_slope_by_idx, matches reader_rss_slope_pooled.max_kb_per_s "
           "-- the short post-restart segment for reader 5")
-    m.add("osdiSoakFirstVsLastSlopeKBps", f"{first_vs_last_kb:.1f}",
+    m.add("recSoakFirstVsLastSlopeKBps", f"{first_vs_last_kb:.1f}",
           f"{relpath(LONGEVITY_SUMMARY_REDERIVED)}: summary.memory_slope_kb_per_s -- the "
           "old two-point first-vs-last figure, carried over unchanged from the original "
           "manifest; SUPERSEDED by the within-life figures above for the memory-FAIL "
           "finding (see gate_e_report_rederived_2026-09-15.md)")
-    m.add("osdiSoakCommitsPerSecMean", f"{commits_per_sec_mean_1dp:.1f}",
+    m.add("recSoakCommitsPerSecMean", f"{commits_per_sec_mean_1dp:.1f}",
           f"{relpath(LONGEVITY_SUMMARY_REDERIVED)}: mean(summary.drift."
           "throughput_first_hour_avg, summary.drift.throughput_last_hour_avg)")
-    m.add("osdiSoakBytesPerCommitLiveKB", tex_num(bytes_per_commit_kb_rounded),
+    m.add("recSoakBytesPerCommitLiveKB", tex_num(bytes_per_commit_kb_rounded),
           f"{relpath(LONGEVITY_SUMMARY_REDERIVED)}: derived (arithmetic, not measured): "
-          "round(writer_within_life_rss_slope.median_kb_per_s / osdiSoakCommitsPerSecMean's "
+          "round(writer_within_life_rss_slope.median_kb_per_s / recSoakCommitsPerSecMean's "
           "unrounded mean) -- README's own prose gives ~158 KB/commit using a coarser "
           "~20 commits/s rate")
-    m.add("osdiSoakReplayOutcome", outcome,
+    m.add("recSoakReplayOutcome", outcome,
           f"{relpath(LONGEVITY_REPLAY_CHECK)}: outcome (text macro, not a number)")
-    m.add("osdiSoakReplayOomRssGB", f"{oom_rss_gb:.1f}",
+    m.add("recSoakReplayOomRssGB", f"{oom_rss_gb:.1f}",
           f"{relpath(LONGEVITY_REPLAY_CHECK)}: summary.attempt_1.dmesg_line's "
           "anon-rss:<N>kB, parsed and divided by 1e6")
-    m.add("osdiSoakReplayOomGeneration", tex_num(oom_generation),
+    m.add("recSoakReplayOomGeneration", tex_num(oom_generation),
           f"{relpath(LONGEVITY_REPLAY_CHECK)}: summary.attempt_1."
           "highest_manifest_generation_observed, cross-checked against "
           "compactions_inferred * 501")
-    m.add("osdiSoakReplayFractionApplied", f"{round(fraction_applied, 3):.3f}",
+    m.add("recSoakReplayFractionApplied", f"{round(fraction_applied, 3):.3f}",
           f"{relpath(LONGEVITY_REPLAY_CHECK)}: summary.attempt_1.batches_applied_inferred "
           "/ dataset.total_batches")
-    m.add("osdiSoakReplayKBPerGeneration", f"{round(kb_per_generation, 1):.1f}",
+    m.add("recSoakReplayKBPerGeneration", f"{round(kb_per_generation, 1):.1f}",
           f"{relpath(LONGEVITY_REPLAY_CHECK)}: (dmesg anon-rss kB) / "
           "highest_manifest_generation_observed")
-    m.add("osdiSoakReplayElapsedH", f"{round(elapsed_h, 2):.2f}",
+    m.add("recSoakReplayElapsedH", f"{round(elapsed_h, 2):.2f}",
           f"{relpath(LONGEVITY_REPLAY_CHECK)}: summary.attempt_1.wall_s / 3600")
 
 
 def compute_longevity_soak_two(m: Macros) -> None:
     """Lane W2p: P-SOAK2, the post-fix second soak (commit ``eed91c0``,
-    OSDI'27 plan Sec 4.3b) -- see benchmarks/longevity-v1/README.md's
+    internal plan memo Sec 4.3b) -- see benchmarks/longevity-v1/README.md's
     "Soak 2 (post-fix)" section. Unlike W2g, the replay/digest step
     actually completed (``digest_equal: True``) and the dedicated
     full-mode ``tgms check`` cleared the believed-versions-overlap class
@@ -4838,7 +4838,7 @@ def compute_longevity_soak_two(m: Macros) -> None:
        "Soak2 frozen: ratio, last-hour throughput average / first-hour throughput "
        "average -- the 'last/first $0.479$' figure the eval paragraph currently "
        "types directly rather than through a macro (soak3's analogous figure is "
-       "osdiSoakThroughputLastOverFirstDayRatioThree)")
+       "recSoakThroughputLastOverFirstDayRatioThree)")
     p99_start = drift["commit_p99_first_hour_max"]
     p99_end = drift["commit_p99_last_hour_max"]
     eq(p99_start, 60.42, "Soak2 frozen: first-hour commit p99, ms")
@@ -4891,87 +4891,87 @@ def compute_longevity_soak_two(m: Macros) -> None:
        "final_stats.n_entities -- two independent sources for the same figure")
 
     # --- emit macros ---
-    m.add("osdiSoakCommitTwo", manifest["git_commit"],
+    m.add("recSoakCommitTwo", manifest["git_commit"],
           f"{relpath(LONGEVITY_MANIFEST_TWO)}: git_commit")
-    m.add("osdiSoakHoursTwo", tex_num(int(hours)),
+    m.add("recSoakHoursTwo", tex_num(int(hours)),
           f"{relpath(LONGEVITY_MANIFEST_TWO)}: config.duration_s / 3600")
-    m.add("osdiSoakWriterLivesTwo", tex_num(writer_lives),
+    m.add("recSoakWriterLivesTwo", tex_num(writer_lives),
           f"{relpath(LONGEVITY_MANIFEST_TWO)}: summary.writer_totals_all_lives.lives")
-    m.add("osdiSoakRecoveriesTwo", tex_num(len(recoveries_rows)),
+    m.add("recSoakRecoveriesTwo", tex_num(len(recoveries_rows)),
           f"{relpath(LONGEVITY_RECOVERIES_TWO)}: row count, == summary.recoveries")
-    m.add("osdiSoakRecoveriesSigabrtTwo", tex_num(n_sigabrt),
+    m.add("recSoakRecoveriesSigabrtTwo", tex_num(n_sigabrt),
           f"{relpath(LONGEVITY_RECOVERIES_TWO)}: rows with returncode == -6 (SIGABRT)")
-    m.add("osdiSoakRecoveriesExit137Two", tex_num(n_exit137),
+    m.add("recSoakRecoveriesExit137Two", tex_num(n_exit137),
           f"{relpath(LONGEVITY_RECOVERIES_TWO)}: rows with returncode == 137 (os._exit(137))")
-    m.add("osdiSoakUnexpectedRecoveriesTwo", tex_num(unexpected),
+    m.add("recSoakUnexpectedRecoveriesTwo", tex_num(unexpected),
           f"{relpath(LONGEVITY_MANIFEST_TWO)}: summary.unexpected_writer_deaths")
-    m.add("osdiSoakWriterWithinLifeSlopeMedianKBpsTwo", f"{median_kb:.3f}",
+    m.add("recSoakWriterWithinLifeSlopeMedianKBpsTwo", f"{median_kb:.3f}",
           f"{relpath(LONGEVITY_RSS_SLOPES_TWO)}: median(writer_lives[*]."
           "slope_kb_per_s_least_squares), 4 lives")
-    m.add("osdiSoakWriterWithinLifeSlopeMinKBpsTwo", f"{min_kb:.3f}",
+    m.add("recSoakWriterWithinLifeSlopeMinKBpsTwo", f"{min_kb:.3f}",
           f"{relpath(LONGEVITY_RSS_SLOPES_TWO)}: min(writer_lives[*]."
           "slope_kb_per_s_least_squares)")
-    m.add("osdiSoakWriterWithinLifeSlopeMaxKBpsTwo", f"{max_kb:.3f}",
+    m.add("recSoakWriterWithinLifeSlopeMaxKBpsTwo", f"{max_kb:.3f}",
           f"{relpath(LONGEVITY_RSS_SLOPES_TWO)}: max(writer_lives[*]."
           "slope_kb_per_s_least_squares)")
-    m.add("osdiSoakReaderWithinLifeSlopeMinKBpsTwo", f"{reader_min_kb:.3f}",
+    m.add("recSoakReaderWithinLifeSlopeMinKBpsTwo", f"{reader_min_kb:.3f}",
           f"{relpath(LONGEVITY_RSS_SLOPES_TWO)}: min(readers[*].slope_kb_per_s_least_squares), "
           "8 readers (reader_restarts=0, one fitted segment each)")
-    m.add("osdiSoakReaderWithinLifeSlopeMaxKBpsTwo", f"{reader_max_kb:.3f}",
+    m.add("recSoakReaderWithinLifeSlopeMaxKBpsTwo", f"{reader_max_kb:.3f}",
           f"{relpath(LONGEVITY_RSS_SLOPES_TWO)}: max(readers[*].slope_kb_per_s_least_squares)")
-    m.add("osdiSoakDigestEqualTwo", "true",
+    m.add("recSoakDigestEqualTwo", "true",
           f"{relpath(LONGEVITY_MANIFEST_TWO)}: summary.digest_equal is the JSON literal "
           "true -- the replay/digest step actually completed, unlike W2g's disk-guard skip")
-    m.add("osdiSoakBatchesTwo", tex_num(total_batches),
+    m.add("recSoakBatchesTwo", tex_num(total_batches),
           f"{relpath(LONGEVITY_MANIFEST_TWO)}: summary.total_batches")
-    m.add("osdiSoakFullVerifyOverlapCountTwo", tex_num(overlap_count),
+    m.add("recSoakFullVerifyOverlapCountTwo", tex_num(overlap_count),
           f"{relpath(LONGEVITY_VERIFY_FULL_TWO)}: PROBLEMS count (believed-versions-overlap "
           "class), 0 vs. W2g's 13,714 on the pre-fix store")
-    m.add("osdiSoakFullVerifyVerdictTwo", "healthy",
+    m.add("recSoakFullVerifyVerdictTwo", "healthy",
           f"{relpath(LONGEVITY_VERIFY_FULL_TWO)}: verdict line (text macro, not a number)")
-    m.add("osdiSoakWriterErrorsTrueTwo", tex_num(true_writer_errors),
+    m.add("recSoakWriterErrorsTrueTwo", tex_num(true_writer_errors),
           f"{relpath(LONGEVITY_WRITER_ERRORS_BY_LIFE_TWO)}: sum(per_life[*].errors), 4 lives, "
           "cross-checked against manifest's own writer_totals_all_lives.errors")
-    m.add("osdiSoakWriterErrorsClassTwo", "NotFoundError",
+    m.add("recSoakWriterErrorsClassTwo", "NotFoundError",
           f"{relpath(LONGEVITY_WRITER_ERRORS_BY_LIFE_TWO)}: the sole exception class across "
           "every writer error in all 4 lives (text macro, not a number)")
-    m.add("osdiSoakReaderErrorsTrueTwo", tex_num(true_reader_errors),
+    m.add("recSoakReaderErrorsTrueTwo", tex_num(true_reader_errors),
           f"{relpath(LONGEVITY_READER_ERRORS_BY_CLASS_TWO)}: OSError + StateError totals, "
           "cross-checked against manifest's own reader_errors_total")
-    m.add("osdiSoakReaderErrorsOSErrorTwo", tex_num(reader_oserror),
+    m.add("recSoakReaderErrorsOSErrorTwo", tex_num(reader_oserror),
           f"{relpath(LONGEVITY_READER_ERRORS_BY_CLASS_TWO)}: by_class_total.OSError -- new "
           "to this soak, 0 in W2g's metrics.jsonl")
-    m.add("osdiSoakReaderErrorsStateErrorTwo", tex_num(reader_stateerror),
+    m.add("recSoakReaderErrorsStateErrorTwo", tex_num(reader_stateerror),
           f"{relpath(LONGEVITY_READER_ERRORS_BY_CLASS_TWO)}: by_class_total.StateError")
-    m.add("osdiSoakReaderQueriesTwo", tex_num(reader_queries),
+    m.add("recSoakReaderQueriesTwo", tex_num(reader_queries),
           f"{relpath(LONGEVITY_MANIFEST_TWO)}: summary.reader_queries_total")
-    m.add("osdiSoakThroughputStartTwo", str(throughput_start),
+    m.add("recSoakThroughputStartTwo", str(throughput_start),
           f"{relpath(LONGEVITY_MANIFEST_TWO)}: summary.drift.throughput_first_hour_avg, "
           "commits/s")
-    m.add("osdiSoakThroughputEndTwo", str(throughput_end),
+    m.add("recSoakThroughputEndTwo", str(throughput_end),
           f"{relpath(LONGEVITY_MANIFEST_TWO)}: summary.drift.throughput_last_hour_avg, "
           "commits/s")
-    m.add("osdiSoakThroughputLastOverFirstRatioTwo", f"{throughput_ratio_end_over_start:.3f}",
+    m.add("recSoakThroughputLastOverFirstRatioTwo", f"{throughput_ratio_end_over_start:.3f}",
           f"{relpath(LONGEVITY_MANIFEST_TWO)}: summary.drift.throughput_last_hour_avg / "
           "summary.drift.throughput_first_hour_avg, recomputed here from this record's own "
-          "two figures (soak3's analogous macro is osdiSoakThroughputLastOverFirstDayRatioThree, "
+          "two figures (soak3's analogous macro is recSoakThroughputLastOverFirstDayRatioThree, "
           "sourced from throughput-3.json's own precomputed ratio field instead -- soak2 has "
           "no equivalent side-file, only the manifest's first/last-hour drift block)")
-    m.add("osdiSoakP99StartMsTwo", str(p99_start),
+    m.add("recSoakP99StartMsTwo", str(p99_start),
           f"{relpath(LONGEVITY_MANIFEST_TWO)}: summary.drift.commit_p99_first_hour_max, ms")
-    m.add("osdiSoakP99EndMsTwo", str(p99_end),
+    m.add("recSoakP99EndMsTwo", str(p99_end),
           f"{relpath(LONGEVITY_MANIFEST_TWO)}: summary.drift.commit_p99_last_hour_max, ms")
-    m.add("osdiSoakManifestGrowthBpsTwo", f"{manifest_growth:.3f}",
+    m.add("recSoakManifestGrowthBpsTwo", f"{manifest_growth:.3f}",
           f"{relpath(LONGEVITY_MANIFEST_TWO)}: summary.metadata_growth_slope_bytes_per_s."
           "manifests")
-    m.add("osdiSoakSegmentGrowthBpsTwo", f"{segment_growth:,.3f}".replace(",", "{,}"),
+    m.add("recSoakSegmentGrowthBpsTwo", f"{segment_growth:,.3f}".replace(",", "{,}"),
           f"{relpath(LONGEVITY_MANIFEST_TWO)}: summary.metadata_growth_slope_bytes_per_s."
           "segments")
-    m.add("osdiSoakEntitiesEndTwo", tex_num(entities_end),
+    m.add("recSoakEntitiesEndTwo", tex_num(entities_end),
           f"{relpath(LONGEVITY_MANIFEST_TWO)}: summary.final_stats.n_entities, "
           "cross-checked against verify-full-soak2-2026-09-17.txt's own dictionary-records "
           "count (both agree)")
-    m.add("osdiSoakCompactionsTwo", tex_num(compactions),
+    m.add("recSoakCompactionsTwo", tex_num(compactions),
           f"{relpath(LONGEVITY_MANIFEST_TWO)}: summary.compactions")
 
     # --- reader-onset edge-row counts (added 2026-09-18, lane W2v) --
@@ -5014,23 +5014,23 @@ def compute_longevity_soak_two(m: Macros) -> None:
             "Soak2: edge-row count grows from the earliest to the latest reader-error onset, "
             "consistent with a monotonically growing store")
 
-    m.add("osdiSoakReaderOnsetEarliestRowsTwo", tex_num(onset_earliest_rows),
+    m.add("recSoakReaderOnsetEarliestRowsTwo", tex_num(onset_earliest_rows),
           f"{relpath(LONGEVITY_READER_ONSET_ROWS_TWO)}: earliest_reader_onset."
           "last_compaction_before.edge_rows -- the last compaction (compactions-2.jsonl) "
           "before reader 6's onset_t_plus_s=61417.1s, mapped from that file's own "
           "perf_counter clock onto reader_error_counts_by_class-2.json's wall-clock "
           "onset via metrics.jsonl's compactions_total counter (method and the mapping's "
           "own error bound, ~60-72s / up to 3 ambiguous rows, stated in the side-file)")
-    m.add("osdiSoakReaderOnsetLatestRowsTwo", tex_num(onset_latest_rows),
+    m.add("recSoakReaderOnsetLatestRowsTwo", tex_num(onset_latest_rows),
           f"{relpath(LONGEVITY_READER_ONSET_ROWS_TWO)}: latest_reader_onset."
           "last_compaction_before.edge_rows -- the last compaction before reader 4's "
           "onset_t_plus_s=75993.1s, same reconciliation method as "
-          "osdiSoakReaderOnsetEarliestRowsTwo")
-    m.add("osdiSoakReaderOnsetEarliestSTwo", f"{onset_earliest_s:.1f}",
+          "recSoakReaderOnsetEarliestRowsTwo")
+    m.add("recSoakReaderOnsetEarliestSTwo", f"{onset_earliest_s:.1f}",
           f"{relpath(LONGEVITY_READER_ERRORS_BY_CLASS_TWO)}: "
           "osrror_storm_onset_by_reader.6.onset_t_plus_s, s into the run (RUN_STARTED "
           "2026-09-16T00:53:01Z) -- the minimum onset_t_plus_s across all 8 readers")
-    m.add("osdiSoakReaderOnsetLatestSTwo", f"{onset_latest_s:.1f}",
+    m.add("recSoakReaderOnsetLatestSTwo", f"{onset_latest_s:.1f}",
           f"{relpath(LONGEVITY_READER_ERRORS_BY_CLASS_TWO)}: "
           "osrror_storm_onset_by_reader.4.onset_t_plus_s, s into the run -- the maximum "
           "onset_t_plus_s across all 8 readers")
@@ -5106,7 +5106,7 @@ def compute_longevity_verify_and_replay2(m: Macros) -> None:
        "summary.predicted_digest (the soak's pre-registered final_digest)")
     eq(replay["dataset"]["total_batches"], 1_074_952,
        "Longevity REPLAY-2 frozen: dataset.total_batches (matches the soak's own "
-       "summary.total_batches, W2g's osdiSoakBatches)")
+       "summary.total_batches, W2g's recSoakBatches)")
     batches_applied = summary["batches_applied"]
     eq(batches_applied, 1_074_450, "Longevity REPLAY-2 frozen: summary.batches_applied")
     compactions_inferred = summary["compactions_inferred"]
@@ -5156,49 +5156,49 @@ def compute_longevity_verify_and_replay2(m: Macros) -> None:
        "Longevity REPLAY-2 frozen: summary.full_verify_of_replayed_store.verdict")
 
     # --- emit macros ---
-    m.add("osdiSoakVerifyFullGeneration", tex_num(orig_generation),
+    m.add("recSoakVerifyFullGeneration", tex_num(orig_generation),
           f"{relpath(LONGEVITY_VERIFY_FULL)}: first entry's generation: header (the "
           "original, pre-replay soak store)")
-    m.add("osdiSoakVerifyFullOverlapCount", tex_num(orig_problems),
+    m.add("recSoakVerifyFullOverlapCount", tex_num(orig_problems),
           f"{relpath(LONGEVITY_VERIFY_FULL)}: first entry's PROBLEMS(N) header, "
           "recomputed as len(row/believed-versions-overlap bullets) in that entry")
-    m.add("osdiSoakVerifyFullVerdict", orig_verdict,
+    m.add("recSoakVerifyFullVerdict", orig_verdict,
           f"{relpath(LONGEVITY_VERIFY_FULL)}: first entry's verdict: line (text macro, "
           "not a number)")
-    m.add("osdiSoakReplay2VerifyGeneration", tex_num(replay_generation),
+    m.add("recSoakReplay2VerifyGeneration", tex_num(replay_generation),
           f"{relpath(LONGEVITY_VERIFY_FULL)}: second entry's generation: header (REPLAY-2's "
           "replayed store), cross-checked against replay-check-2-2026-09.json's own "
           "summary.manifest_current_generation")
-    m.add("osdiSoakReplay2VerifyOverlapCount", tex_num(replay_problems),
+    m.add("recSoakReplay2VerifyOverlapCount", tex_num(replay_problems),
           f"{relpath(LONGEVITY_VERIFY_FULL)}: second entry's PROBLEMS(N) header -- "
-          "identical to osdiSoakVerifyFullOverlapCount, cross-checked against "
+          "identical to recSoakVerifyFullOverlapCount, cross-checked against "
           "replay-check-2-2026-09.json's own summary.full_verify_of_replayed_store.problems")
-    m.add("osdiSoakReplay2VerifyVerdict", replay_verdict,
+    m.add("recSoakReplay2VerifyVerdict", replay_verdict,
           f"{relpath(LONGEVITY_VERIFY_FULL)}: second entry's verdict: line (text macro, "
           "not a number)")
-    m.add("osdiSoakReplay2BatchesApplied", tex_num(batches_applied),
+    m.add("recSoakReplay2BatchesApplied", tex_num(batches_applied),
           f"{relpath(LONGEVITY_REPLAY_CHECK_2)}: summary.batches_applied, of "
-          "dataset.total_batches (== osdiSoakBatches)")
-    m.add("osdiSoakReplay2Compactions", tex_num(compactions_inferred),
+          "dataset.total_batches (== recSoakBatches)")
+    m.add("recSoakReplay2Compactions", tex_num(compactions_inferred),
           f"{relpath(LONGEVITY_REPLAY_CHECK_2)}: summary.compactions_inferred, "
           "cross-checked against manifest_current_generation - batches_applied")
-    m.add("osdiSoakReplay2WallS", tex_num(int(wall_s)),
+    m.add("recSoakReplay2WallS", tex_num(int(wall_s)),
           f"{relpath(LONGEVITY_REPLAY_CHECK_2)}: summary.wall_s")
-    m.add("osdiSoakReplay2ElapsedH", f"{elapsed_h:.2f}",
+    m.add("recSoakReplay2ElapsedH", f"{elapsed_h:.2f}",
           f"{relpath(LONGEVITY_REPLAY_CHECK_2)}: summary.wall_s / 3600, hours (≈ 8h20m)")
-    m.add("osdiSoakReplay2PeakRssKB", tex_num(peak_rss_kb),
+    m.add("recSoakReplay2PeakRssKB", tex_num(peak_rss_kb),
           f"{relpath(LONGEVITY_REPLAY_CHECK_2)}: summary.peak_rss_kb, recomputed as "
           "max(summary.rss_series[*].rss_kb)")
-    m.add("osdiSoakReplay2PeakRssGB", f"{peak_rss_gb:.2f}",
+    m.add("recSoakReplay2PeakRssGB", f"{peak_rss_gb:.2f}",
           f"{relpath(LONGEVITY_REPLAY_CHECK_2)}: summary.peak_rss_kb / 1e6, GB")
-    m.add("osdiSoakReplay2PeakDiskMB", tex_num(peak_disk_mb),
+    m.add("recSoakReplay2PeakDiskMB", tex_num(peak_disk_mb),
           f"{relpath(LONGEVITY_REPLAY_CHECK_2)}: summary.peak_disk_mb_observed")
-    m.add("osdiSoakReplay2RssSamples", tex_num(len(rss_series)),
+    m.add("recSoakReplay2RssSamples", tex_num(len(rss_series)),
           f"{relpath(LONGEVITY_REPLAY_CHECK_2)}: len(summary.rss_series)")
-    m.add("osdiSoakReplay2DigestEqual", "true",
+    m.add("recSoakReplay2DigestEqual", "true",
           f"{relpath(LONGEVITY_REPLAY_CHECK_2)}: summary.digest_equal is the JSON literal "
           "true (text macro, not a number)")
-    m.add("osdiSoakReplay2DigestPrefix", digest_prefix,
+    m.add("recSoakReplay2DigestPrefix", digest_prefix,
           f"{relpath(LONGEVITY_REPLAY_CHECK_2)}: result_digest[:8] (== summary."
           "predicted_digest[:8], the soak's pre-registered final_digest) (text macro, "
           "not a number)")
@@ -5220,7 +5220,7 @@ def compute_longevity_soak_hunt(m: Macros) -> None:
     documented for both soaks. Unlike P-SOAK2, both reader RSS slopes
     (11.4-12.5 kB/s) exceed the 10 kB/s frozen bound. No verdict macro --
     Gate E's own PASS/FAIL/FLAG table is gate_e_report-stormhunt.md, not
-    this script; ``osdiSoakHuntPatternReproduced`` states the
+    this script; ``recSoakHuntPatternReproduced`` states the
     pre-registration's own clause (e) non-conclusion in its provenance,
     not as a scored number.
     """
@@ -5439,66 +5439,66 @@ def compute_longevity_soak_hunt(m: Macros) -> None:
        "paragraph's own \"1.40M edge rows\" figure")
 
     # --- emit macros ---
-    m.add("osdiSoakCommitHunt", manifest["git_commit"],
+    m.add("recSoakCommitHunt", manifest["git_commit"],
           f"{relpath(LONGEVITY_MANIFEST_HUNT)}: git_commit")
-    m.add("osdiSoakDurationSHunt", tex_num(int(duration_s)),
+    m.add("recSoakDurationSHunt", tex_num(int(duration_s)),
           f"{relpath(LONGEVITY_MANIFEST_HUNT)}: config.duration_s")
-    m.add("osdiSoakWriterLivesHunt", tex_num(writer_lives),
+    m.add("recSoakWriterLivesHunt", tex_num(writer_lives),
           f"{relpath(LONGEVITY_MANIFEST_HUNT)}: summary.writer_totals_all_lives.lives")
-    m.add("osdiSoakRecoveriesHunt", tex_num(recoveries),
+    m.add("recSoakRecoveriesHunt", tex_num(recoveries),
           f"{relpath(LONGEVITY_MANIFEST_HUNT)}: summary.recoveries (designed restarts; "
           "config.restart_every_s == 0.0, so none were scheduled)")
-    m.add("osdiSoakWriterWithinLifeSlopeKBpsHunt", f"{writer_slope_1dp:.1f}",
+    m.add("recSoakWriterWithinLifeSlopeKBpsHunt", f"{writer_slope_1dp:.1f}",
           f"{relpath(LONGEVITY_RSS_SLOPES_HUNT)}: writer_lives[0]."
           "slope_kb_per_s_least_squares, rounded to 1dp (single writer life, no restarts)")
-    m.add("osdiSoakReaderWithinLifeSlopeMinKBpsHunt", f"{reader_min_1dp:.1f}",
+    m.add("recSoakReaderWithinLifeSlopeMinKBpsHunt", f"{reader_min_1dp:.1f}",
           f"{relpath(LONGEVITY_RSS_SLOPES_HUNT)}: min(readers[*].slope_kb_per_s_least_squares), "
           "8 readers, rounded to 1dp")
-    m.add("osdiSoakReaderWithinLifeSlopeMaxKBpsHunt", f"{reader_max_1dp:.1f}",
+    m.add("recSoakReaderWithinLifeSlopeMaxKBpsHunt", f"{reader_max_1dp:.1f}",
           f"{relpath(LONGEVITY_RSS_SLOPES_HUNT)}: max(readers[*].slope_kb_per_s_least_squares), "
           "rounded to 1dp")
-    m.add("osdiSoakDigestEqualHunt", "true",
+    m.add("recSoakDigestEqualHunt", "true",
           f"{relpath(LONGEVITY_MANIFEST_HUNT)}: summary.digest_equal is the JSON literal "
           "true (text macro, not a number)")
-    m.add("osdiSoakBatchesHunt", tex_num(total_batches),
+    m.add("recSoakBatchesHunt", tex_num(total_batches),
           f"{relpath(LONGEVITY_MANIFEST_HUNT)}: summary.total_batches (the unscored "
           "end-of-run replay's own batch count)")
-    m.add("osdiSoakVerifyHealthyHunt", "true",
+    m.add("recSoakVerifyHealthyHunt", "true",
           f"{relpath(LONGEVITY_MANIFEST_HUNT)}: summary.verify_healthy is the JSON literal "
           "true (text macro, not a number)")
-    m.add("osdiSoakWriterErrorsTrueHunt", tex_num(total_writer_errors),
+    m.add("recSoakWriterErrorsTrueHunt", tex_num(total_writer_errors),
           f"{relpath(LONGEVITY_WRITER_ERRORS_BY_CLASS_HUNT)}: total_writer_errors, "
           "cross-checked against manifest's own error_count and "
           "writer_totals_all_lives.errors")
-    m.add("osdiSoakWriterErrorsClassHunt", "NotFoundError",
+    m.add("recSoakWriterErrorsClassHunt", "NotFoundError",
           f"{relpath(LONGEVITY_WRITER_ERRORS_BY_CLASS_HUNT)}: the sole key of "
           "writer_by_class (text macro, not a number)")
-    m.add("osdiSoakReaderErrorsTrueHunt", tex_num(reader_errors_total),
+    m.add("recSoakReaderErrorsTrueHunt", tex_num(reader_errors_total),
           f"{relpath(LONGEVITY_WRITER_ERRORS_BY_CLASS_HUNT)}: reader_errors_total, "
           "cross-checked against manifest's own summary.reader_errors_total")
-    m.add("osdiSoakReaderOpErrorEventsHunt", tex_num(reader_op_error_events),
+    m.add("recSoakReaderOpErrorEventsHunt", tex_num(reader_op_error_events),
           f"{relpath(LONGEVITY_WRITER_ERRORS_BY_CLASS_HUNT)}: reader_op_error_events -- "
           f"cross-checked against {relpath(LONGEVITY_READER_OP_ERROR_HUNT)} being empty "
           "(0 bytes)")
-    m.add("osdiSoakReaderOpErrorCaptureCommitHunt", capture_commit,
+    m.add("recSoakReaderOpErrorCaptureCommitHunt", capture_commit,
           f"{relpath(LONGEVITY_WRITER_ERRORS_BY_CLASS_HUNT)}: capture_code_commit -- D-088, "
           "the bounded reader-error-message capture, armed for the whole 6h run (text "
           "macro, not a number)")
-    m.add("osdiSoakEdgeRowsHunt", tex_num(n_edge_versions),
+    m.add("recSoakEdgeRowsHunt", tex_num(n_edge_versions),
           f"{relpath(LONGEVITY_MANIFEST_HUNT)}: summary.final_stats.n_edge_versions "
           "(the record carries this field directly; no compactions.jsonl fallback needed)")
-    m.add("osdiSoakHostLoadMinHunt", f"{host_load_min:.2f}",
+    m.add("recSoakHostLoadMinHunt", f"{host_load_min:.2f}",
           f"{relpath(LONGEVITY_HOST_LOAD_HUNT)}: min(1-min load averages), the 7 samples "
           "at/before launched + config.duration_s (the run's own 6h window)")
-    m.add("osdiSoakHostLoadMaxHunt", f"{host_load_max:.2f}",
+    m.add("recSoakHostLoadMaxHunt", f"{host_load_max:.2f}",
           f"{relpath(LONGEVITY_HOST_LOAD_HUNT)}: max(1-min load averages), same window "
           "(excludes the one post-run verify/replay-step sample)")
-    m.add("osdiSoakHostCoresHunt", tex_num(host_cores_hunt),
+    m.add("recSoakHostCoresHunt", tex_num(host_cores_hunt),
           f"{relpath(LONGEVITY_MANIFEST_HUNT)}: machine.cpus (machine.host == \"xzgpu\")")
-    m.add("osdiSoakHuntPatternReproduced", "false",
+    m.add("recSoakHuntPatternReproduced", "false",
           f"README.md P-STORM-HUNT section, quoted verbatim (its own clause (e) wording): "
           f"\"{outcome_text}\" -- the P-SOAK2 reader OSError/StateError storm "
-          "(osdiSoakReaderErrorsTrueHunt = 0) was not reproduced within this 6h/1.40M-"
+          "(recSoakReaderErrorsTrueHunt = 0) was not reproduced within this 6h/1.40M-"
           "edge-row observation window; per the pre-registration's own clause (e), that "
           "negative result is not evidence the pattern is gone (text macro, not a number)")
 
@@ -5521,7 +5521,7 @@ def compute_longevity_soak_three(m: Macros) -> None:
     not this script's.
 
     The writer-error exception class (100% NotFoundError per README.md
-    (h)) is landed as ``osdiSoakWriterErrorsClassThree``, recomputed from
+    (h)) is landed as ``recSoakWriterErrorsClassThree``, recomputed from
     writer_error_counts_by_class-3.json -- this soak's own per-life/
     per-class writer-error side-file, built read-only from xzgpu's
     longevity_ledger.jsonl (854 writer_op_error lines, all NotFoundError)
@@ -5840,126 +5840,126 @@ def compute_longevity_soak_three(m: Macros) -> None:
     eq(round(host_load_max, 2), 188.27, "Soak3 frozen: host load max, 1-min avg")
 
     # --- emit macros ---
-    m.add("osdiSoakCommitThree", manifest["git_commit"],
+    m.add("recSoakCommitThree", manifest["git_commit"],
           f"{relpath(LONGEVITY_MANIFEST_THREE)}: git_commit")
-    m.add("osdiSoakHoursThree", tex_num(int(hours)),
+    m.add("recSoakHoursThree", tex_num(int(hours)),
           f"{relpath(LONGEVITY_MANIFEST_THREE)}: config.duration_s / 3600")
-    m.add("osdiSoakWallHoursThree", f"{wall_hours:.2f}",
+    m.add("recSoakWallHoursThree", f"{wall_hours:.2f}",
           f"{relpath(LONGEVITY_MANIFEST_THREE)}: summary.wall_s / 3600 -- includes the "
           "final verify(), the end-of-run replay/digest check, and the full-mode "
           "tgms check this record adds, not just the configured 72h duration_s")
-    m.add("osdiSoakWriterLivesThree", tex_num(writer_lives),
+    m.add("recSoakWriterLivesThree", tex_num(writer_lives),
           f"{relpath(LONGEVITY_MANIFEST_THREE)}: summary.writer_totals_all_lives.lives -- "
           "9, not the pre-registered 12 (known fact 1)")
-    m.add("osdiSoakRecoveriesThree", tex_num(len(recoveries_rows)),
+    m.add("recSoakRecoveriesThree", tex_num(len(recoveries_rows)),
           f"{relpath(LONGEVITY_RECOVERIES_THREE)}: row count, == summary.recoveries")
-    m.add("osdiSoakRecoveryMinSThree", f"{recovery_min_s:.3f}",
+    m.add("recSoakRecoveryMinSThree", f"{recovery_min_s:.3f}",
           f"{relpath(LONGEVITY_RECOVERIES_THREE)}: min(recovery_s), the 8 designed "
           "restart cycles")
-    m.add("osdiSoakRecoveryMaxSThree", f"{recovery_max_s:.3f}",
+    m.add("recSoakRecoveryMaxSThree", f"{recovery_max_s:.3f}",
           f"{relpath(LONGEVITY_RECOVERIES_THREE)}: max(recovery_s)")
-    m.add("osdiSoakUnexpectedRecoveriesThree", tex_num(unexpected),
+    m.add("recSoakUnexpectedRecoveriesThree", tex_num(unexpected),
           f"{relpath(LONGEVITY_MANIFEST_THREE)}: summary.unexpected_writer_deaths -- all 8 "
           "recoveries are the harness's own designed restart cycle (kind==\"designed\")")
-    m.add("osdiSoakReaderDeathsThree", tex_num(reader_restarts),
+    m.add("recSoakReaderDeathsThree", tex_num(reader_restarts),
           f"{relpath(LONGEVITY_MANIFEST_THREE)}: summary.reader_restarts -- no reader ever "
           "died or was restarted this run (unlike soak1's 2), no reader_restarts-3.jsonl "
           "file to cross-check a row count against")
-    m.add("osdiSoakDigestEqualThree", "true",
+    m.add("recSoakDigestEqualThree", "true",
           f"{relpath(LONGEVITY_MANIFEST_THREE)}: summary.digest_equal is the JSON literal "
           "true, confirmed by the 19.6h end-of-run replay (known fact 4)")
-    m.add("osdiSoakBatchesThree", tex_num(total_batches),
+    m.add("recSoakBatchesThree", tex_num(total_batches),
           f"{relpath(LONGEVITY_MANIFEST_THREE)}: summary.total_batches (the end-of-run "
           "replay's own batch count)")
-    m.add("osdiSoakReplayCadenceThree", tex_num(replay_cadence),
+    m.add("recSoakReplayCadenceThree", tex_num(replay_cadence),
           f"{relpath(LONGEVITY_MANIFEST_THREE)}: config.replay_compact_every")
-    m.add("osdiSoakWriterWithinLifeSlopeMedianKBpsThree", f"{writer_median_kb:.3f}",
+    m.add("recSoakWriterWithinLifeSlopeMedianKBpsThree", f"{writer_median_kb:.3f}",
           f"{relpath(LONGEVITY_RSS_SLOPES_THREE)}: median(writer_lives[*]."
           "slope_kb_per_s_least_squares), 9 lives")
-    m.add("osdiSoakWriterWithinLifeSlopeMaxKBpsThree", f"{writer_max_kb:.3f}",
+    m.add("recSoakWriterWithinLifeSlopeMaxKBpsThree", f"{writer_max_kb:.3f}",
           f"{relpath(LONGEVITY_RSS_SLOPES_THREE)}: max(writer_lives[*]."
           "slope_kb_per_s_least_squares) (life 6)")
-    m.add("osdiSoakReaderWithinLifeSlopeMinKBpsThree", f"{reader_min_kb:.3f}",
+    m.add("recSoakReaderWithinLifeSlopeMinKBpsThree", f"{reader_min_kb:.3f}",
           f"{relpath(LONGEVITY_RSS_SLOPES_THREE)}: min(readers[*].slope_kb_per_s_least_squares), "
           "8 readers (reader_restarts=0, one fitted segment each)")
-    m.add("osdiSoakReaderWithinLifeSlopeMaxKBpsThree", f"{reader_max_kb:.3f}",
+    m.add("recSoakReaderWithinLifeSlopeMaxKBpsThree", f"{reader_max_kb:.3f}",
           f"{relpath(LONGEVITY_RSS_SLOPES_THREE)}: max(readers[*].slope_kb_per_s_least_squares)")
-    m.add("osdiSoakWriterErrorsTrueThree", tex_num(writer_errors_true),
+    m.add("recSoakWriterErrorsTrueThree", tex_num(writer_errors_true),
           f"{relpath(LONGEVITY_MANIFEST_THREE)}: summary.writer_totals_all_lives.errors")
-    m.add("osdiSoakReaderErrorsTrueThree", tex_num(reader_errors_true),
+    m.add("recSoakReaderErrorsTrueThree", tex_num(reader_errors_true),
           f"{relpath(LONGEVITY_READER_OP_ERROR_THREE)}: OSError + StateError totals, "
           "cross-checked against manifest's own reader_errors_total")
-    m.add("osdiSoakReaderErrorsOSErrorThree", tex_num(reader_oserror),
+    m.add("recSoakReaderErrorsOSErrorThree", tex_num(reader_oserror),
           f"{relpath(LONGEVITY_READER_OP_ERROR_THREE)}: sum(per_reader_totals_by_class[*]."
           "OSError), 8 readers")
-    m.add("osdiSoakReaderErrorsStateErrorThree", tex_num(reader_stateerror),
+    m.add("recSoakReaderErrorsStateErrorThree", tex_num(reader_stateerror),
           f"{relpath(LONGEVITY_READER_OP_ERROR_THREE)}: sum(per_reader_totals_by_class[*]."
           "StateError), 8 readers")
-    m.add("osdiSoakReaderReopensMinThree", tex_num(reopens_min),
+    m.add("recSoakReaderReopensMinThree", tex_num(reopens_min),
           f"{relpath(LONGEVITY_READER_OP_ERROR_THREE)}: min(reopens_per_reader[*]), "
           "--reader-reopen-every-s=300 cycles completed per reader")
-    m.add("osdiSoakReaderReopensMaxThree", tex_num(reopens_max),
+    m.add("recSoakReaderReopensMaxThree", tex_num(reopens_max),
           f"{relpath(LONGEVITY_READER_OP_ERROR_THREE)}: max(reopens_per_reader[*])")
-    m.add("osdiSoakReaderOpErrorEventsThree", tex_num(n_ledger_events),
+    m.add("recSoakReaderOpErrorEventsThree", tex_num(n_ledger_events),
           f"{relpath(LONGEVITY_READER_OP_ERROR_THREE)}: n_ledger_reader_op_error_events -- "
           "the D-088 bounded capture's first-onset ledger line count (17, not soak2's "
           "strictly-one-per-reader pattern: reader 1 has 3 onset lines here)")
-    m.add("osdiSoakReaderErrorEpisodesThree", tex_num(true_episode_count),
+    m.add("recSoakReaderErrorEpisodesThree", tex_num(true_episode_count),
           f"{relpath(LONGEVITY_READER_OP_ERROR_THREE)}: sum(healed_at_next_reopen_evidence"
           "[*].active_run_count), 16 (reader,class) combinations -- the reconstructed true "
           "active/healed episode count, NOT the ledger's 17 first-onset events")
-    m.add("osdiSoakReaderErrorLongestHealedIntervalSThree", f"{longest_healed_s:.1f}",
+    m.add("recSoakReaderErrorLongestHealedIntervalSThree", f"{longest_healed_s:.1f}",
           f"{relpath(LONGEVITY_READER_OP_ERROR_THREE)}: max(healed_at_next_reopen_evidence"
           "[*].healing_intervals[*].duration_s) over all 16 combinations (reader3_StateError)")
-    m.add("osdiSoakReaderOnsetEarliestRowsThree", tex_num(onset_earliest_rows),
+    m.add("recSoakReaderOnsetEarliestRowsThree", tex_num(onset_earliest_rows),
           f"{relpath(LONGEVITY_READER_ONSET_ROWS_THREE)}: earliest_reader_onset."
           "last_compaction_before.edge_rows -- the last compaction before reader 1's "
           "OSError onset_t_plus_s=65655.8s, reconciled via metrics.jsonl's "
           "compactions_total counter (same method as soak2's reader_onset_rows-2.json, "
           "generalized from 4 to 9 writer lives)")
-    m.add("osdiSoakReaderOnsetLatestRowsThree", tex_num(onset_latest_rows),
+    m.add("recSoakReaderOnsetLatestRowsThree", tex_num(onset_latest_rows),
           f"{relpath(LONGEVITY_READER_ONSET_ROWS_THREE)}: latest_reader_onset."
           "last_compaction_before.edge_rows -- the last compaction before reader 2's "
           "StateError onset_t_plus_s=94769.4s, same reconciliation method")
-    m.add("osdiSoakReaderOnsetEarliestSThree", f"{onset_earliest_s:.1f}",
+    m.add("recSoakReaderOnsetEarliestSThree", f"{onset_earliest_s:.1f}",
           f"{relpath(LONGEVITY_READER_ONSET_ROWS_THREE)}: earliest_reader_onset."
           "onset_t_plus_s, s into the run (RUN_STARTED 2026-09-19T00:46:42Z) -- reader 1, "
           "OSError, the minimum first-onset time across all 8 readers x 2 classes")
-    m.add("osdiSoakReaderOnsetLatestSThree", f"{onset_latest_s:.1f}",
+    m.add("recSoakReaderOnsetLatestSThree", f"{onset_latest_s:.1f}",
           f"{relpath(LONGEVITY_READER_ONSET_ROWS_THREE)}: latest_reader_onset.onset_t_plus_s, "
           "s into the run -- reader 2, StateError, the maximum first-onset time")
-    m.add("osdiSoakThroughputStartThree", str(throughput_start),
+    m.add("recSoakThroughputStartThree", str(throughput_start),
           f"{relpath(LONGEVITY_MANIFEST_THREE)}: summary.drift.throughput_first_hour_avg, "
           "commits/s")
-    m.add("osdiSoakThroughputEndThree", str(throughput_end),
+    m.add("recSoakThroughputEndThree", str(throughput_end),
           f"{relpath(LONGEVITY_MANIFEST_THREE)}: summary.drift.throughput_last_hour_avg, "
           "commits/s")
-    m.add("osdiSoakThroughputFirstDayAvgThree", f"{first_day_avg:.3f}",
+    m.add("recSoakThroughputFirstDayAvgThree", f"{first_day_avg:.3f}",
           f"{relpath(LONGEVITY_THROUGHPUT_THREE)}: first_day_avg_commits_per_s (hours 0-23), "
           "commits/s")
-    m.add("osdiSoakThroughputLastDayAvgThree", f"{last_day_avg:.3f}",
+    m.add("recSoakThroughputLastDayAvgThree", f"{last_day_avg:.3f}",
           f"{relpath(LONGEVITY_THROUGHPUT_THREE)}: "
           "last_day_avg_commits_per_s_soak_window (hours 48-71, the last 24h of the "
           "pre-registered 72h window), commits/s")
-    m.add("osdiSoakThroughputLastOverFirstDayRatioThree", f"{ratio_last_over_first:.3f}",
+    m.add("recSoakThroughputLastOverFirstDayRatioThree", f"{ratio_last_over_first:.3f}",
           f"{relpath(LONGEVITY_THROUGHPUT_THREE)}: ratio_last_over_first_soak_window, "
           "recomputed here as last_day_avg / first_day_avg from this same file")
-    m.add("osdiSoakFullVerifyOverlapCountThree", tex_num(overlap_count),
+    m.add("recSoakFullVerifyOverlapCountThree", tex_num(overlap_count),
           f"{relpath(LONGEVITY_VERIFY_FULL_THREE)}: PROBLEMS count (believed-versions-"
           "overlap class), 0 -- matching soak2's clean full-mode result")
-    m.add("osdiSoakFullVerifyGenerationThree", tex_num(verify_generation),
+    m.add("recSoakFullVerifyGenerationThree", tex_num(verify_generation),
           f"{relpath(LONGEVITY_VERIFY_FULL_THREE)}: generation, cross-checked against "
           "the manifest's own summary.generation_final")
-    m.add("osdiSoakHostLoadMinThree", f"{host_load_min:.2f}",
+    m.add("recSoakHostLoadMinThree", f"{host_load_min:.2f}",
           f"{relpath(LONGEVITY_HOST_LOAD_THREE)}: min(1-min load averages), all 93 samples "
           "(known fact 3: a co-tenant ran throughout this record's whole wall-clock window, "
           "including the post-soak replay wind-down -- unlike P-STORM-HUNT's log, this "
           "is not windowed to config.duration_s)")
-    m.add("osdiSoakHostLoadMaxThree", f"{host_load_max:.2f}",
+    m.add("recSoakHostLoadMaxThree", f"{host_load_max:.2f}",
           f"{relpath(LONGEVITY_HOST_LOAD_THREE)}: max(1-min load averages), same (unwindowed) "
           "93-sample set")
 
-    m.add("osdiSoakWriterErrorsClassThree", "NotFoundError",
+    m.add("recSoakWriterErrorsClassThree", "NotFoundError",
           f"{relpath(LONGEVITY_WRITER_ERRORS_BY_CLASS_THREE)}: the sole exception class "
           "across every writer error in all 9 lives (text macro, not a number) -- "
           "cross-checked there against README.md (h), longevity_ledger.jsonl's 854 "
@@ -5971,7 +5971,7 @@ def compute_longevity_soak_three(m: Macros) -> None:
     # unlinked about 48s later" arithmetic is built from. No existing
     # macro family named these (they are neither a Soak-Two/-Three
     # measurement nor a B7/storm/DAG one), so they land under a fresh
-    # osdiD088... prefix, the same way osdiD160... did for D-160.
+    # recD088... prefix, the same way recD160... did for D-160.
     # reader_reopen_every_s is read from this record's own config (soak2's
     # config carries the identical 300.0); generations_retained is
     # cross-checked against every row of compactions-3.jsonl's own gc
@@ -5987,10 +5987,10 @@ def compute_longevity_soak_three(m: Macros) -> None:
        f"Soak3: all {len(compaction_rows_for_gc)} compactions-3.jsonl rows report "
        "gc.generations_retained == 2 -- the gc(keep_last=2) depth, confirmed on "
        "record rather than read from scripts/longevity_run.py")
-    m.add("osdiD088ReopenIntervalS", tex_num(int(reopen_interval_s)),
+    m.add("recD088ReopenIntervalS", tex_num(int(reopen_interval_s)),
           f"{relpath(LONGEVITY_MANIFEST_THREE)}: config.reader_reopen_every_s -- the "
           "reader's --reader-reopen-every-s window (identical in soak2's config)")
-    m.add("osdiD088GenerationsRetained", tex_num(next(iter(generations_retained_values))),
+    m.add("recD088GenerationsRetained", tex_num(next(iter(generations_retained_values))),
           f"{relpath(LONGEVITY_COMPACTIONS_THREE)}: gc.generations_retained, uniform "
           f"across all {len(compaction_rows_for_gc)} rows -- the writer's "
           "gc(keep_last=N) retention depth")
@@ -6098,29 +6098,29 @@ def compute_longevity_compaction_cadence(m: Macros) -> None:
     window_two = gens_two * interval_two
     window_three = gens_three * interval_three
 
-    m.add("osdiSoakCompactionIntervalMedianSTwo", f"{interval_two:.1f}",
+    m.add("recSoakCompactionIntervalMedianSTwo", f"{interval_two:.1f}",
           f"{relpath(LONGEVITY_COMPACTIONS_TWO)}: median(t_start[i] - t_start[i-1]) within "
           "each of the 4 writer lives (life boundaries: batches resets to 500, "
           f"{relpath(LONGEVITY_RECOVERIES_TWO)}'s 3 rows -> 4 lives), pooled over all 4 "
           "lives' own intervals, s")
-    m.add("osdiSoakCompactionDurationMedianSTwo", f"{duration_two:.1f}",
+    m.add("recSoakCompactionDurationMedianSTwo", f"{duration_two:.1f}",
           f"{relpath(LONGEVITY_COMPACTIONS_TWO)}: median(t_end - t_start) over all "
           f"{len(rows_two)} compactions, s")
-    m.add("osdiSoakGenerationWindowSTwo", f"{window_two:.1f}",
+    m.add("recSoakGenerationWindowSTwo", f"{window_two:.1f}",
           f"gc.generations_retained ({gens_two}, {relpath(LONGEVITY_COMPACTIONS_TWO)}, "
-          "osdiD088GenerationsRetained) * osdiSoakCompactionIntervalMedianSTwo -- the "
+          "recD088GenerationsRetained) * recSoakCompactionIntervalMedianSTwo -- the "
           "generation-validity window, s")
-    m.add("osdiSoakCompactionIntervalMedianSThree", f"{interval_three:.1f}",
+    m.add("recSoakCompactionIntervalMedianSThree", f"{interval_three:.1f}",
           f"{relpath(LONGEVITY_COMPACTIONS_THREE)}: median(t_start[i] - t_start[i-1]) within "
           "each of the 9 writer lives (life boundaries: batches resets to 500, "
           f"{relpath(LONGEVITY_RECOVERIES_THREE)}'s 8 rows -> 9 lives), pooled over all 9 "
           "lives' own intervals, s")
-    m.add("osdiSoakCompactionDurationMedianSThree", f"{duration_three:.1f}",
+    m.add("recSoakCompactionDurationMedianSThree", f"{duration_three:.1f}",
           f"{relpath(LONGEVITY_COMPACTIONS_THREE)}: median(t_end - t_start) over all "
           f"{len(rows_three)} compactions, s")
-    m.add("osdiSoakGenerationWindowSThree", f"{window_three:.1f}",
+    m.add("recSoakGenerationWindowSThree", f"{window_three:.1f}",
           f"gc.generations_retained ({gens_three}, {relpath(LONGEVITY_COMPACTIONS_THREE)}, "
-          "osdiD088GenerationsRetained) * osdiSoakCompactionIntervalMedianSThree -- the "
+          "recD088GenerationsRetained) * recSoakCompactionIntervalMedianSThree -- the "
           "generation-validity window, s")
 
 
@@ -6174,7 +6174,7 @@ def compute_longevity_soak_four(m: Macros) -> None:
     before the writer's true final commit, not a store defect (confirmed
     there via the store's own ``native/manifests/`` directory, numbered up
     to ``00000000000001897091.json``). This lane lands the check's own
-    value (the on-disk truth) as ``osdiSoakFullVerifyGenerationFour`` and
+    value (the on-disk truth) as ``recSoakFullVerifyGenerationFour`` and
     documents the 341-generation gap with a require(), rather than
     asserting the two numbers equal -- they are not expected to be.
     """
@@ -6525,138 +6525,138 @@ def compute_longevity_soak_four(m: Macros) -> None:
        "Soak4 frozen: summary.final_stats.n_edge_versions")
 
     # --- emit macros ---
-    m.add("osdiSoakCommitFour", manifest["git_commit"],
+    m.add("recSoakCommitFour", manifest["git_commit"],
           f"{relpath(LONGEVITY_MANIFEST_FOUR)}: git_commit")
-    m.add("osdiSoakHoursFour", tex_num(int(hours)),
+    m.add("recSoakHoursFour", tex_num(int(hours)),
           f"{relpath(LONGEVITY_MANIFEST_FOUR)}: config.duration_s / 3600")
-    m.add("osdiSoakWallHoursFour", f"{wall_hours:.2f}",
+    m.add("recSoakWallHoursFour", f"{wall_hours:.2f}",
           f"{relpath(LONGEVITY_MANIFEST_FOUR)}: summary.wall_s / 3600 -- includes the "
           "final verify(), the end-of-run replay/digest check, and the full-mode "
           "tgms check this record adds, not just the configured 24h duration_s")
-    m.add("osdiSoakWriterLivesFour", tex_num(writer_lives),
+    m.add("recSoakWriterLivesFour", tex_num(writer_lives),
           f"{relpath(LONGEVITY_MANIFEST_FOUR)}: summary.writer_totals_all_lives.lives -- "
           "4 of the pre-registered 4, unlike soak3's 9-of-12 shortfall")
-    m.add("osdiSoakRecoveriesFour", tex_num(len(recoveries_rows)),
+    m.add("recSoakRecoveriesFour", tex_num(len(recoveries_rows)),
           f"{relpath(LONGEVITY_RECOVERIES_FOUR)}: row count, == summary.recoveries")
-    m.add("osdiSoakRecoveryMinSFour", f"{recovery_min_s:.3f}",
+    m.add("recSoakRecoveryMinSFour", f"{recovery_min_s:.3f}",
           f"{relpath(LONGEVITY_RECOVERIES_FOUR)}: min(recovery_s), the 3 designed "
           "restart cycles")
-    m.add("osdiSoakRecoveryMaxSFour", f"{recovery_max_s:.3f}",
+    m.add("recSoakRecoveryMaxSFour", f"{recovery_max_s:.3f}",
           f"{relpath(LONGEVITY_RECOVERIES_FOUR)}: max(recovery_s)")
-    m.add("osdiSoakUnexpectedRecoveriesFour", tex_num(unexpected),
+    m.add("recSoakUnexpectedRecoveriesFour", tex_num(unexpected),
           f"{relpath(LONGEVITY_MANIFEST_FOUR)}: summary.unexpected_writer_deaths -- all 3 "
           "recoveries are the harness's own designed restart cycle (kind==\"designed\")")
-    m.add("osdiSoakReaderDeathsFour", tex_num(reader_restarts),
+    m.add("recSoakReaderDeathsFour", tex_num(reader_restarts),
           f"{relpath(LONGEVITY_MANIFEST_FOUR)}: summary.reader_restarts -- no reader ever "
           "died or was restarted this run")
-    m.add("osdiSoakDigestEqualFour", "true",
+    m.add("recSoakDigestEqualFour", "true",
           f"{relpath(LONGEVITY_MANIFEST_FOUR)}: summary.digest_equal is the JSON literal "
           "true")
-    m.add("osdiSoakBatchesFour", tex_num(total_batches),
+    m.add("recSoakBatchesFour", tex_num(total_batches),
           f"{relpath(LONGEVITY_MANIFEST_FOUR)}: summary.total_batches (the end-of-run "
           "replay's own batch count)")
-    m.add("osdiSoakReplayCadenceFour", tex_num(replay_cadence),
+    m.add("recSoakReplayCadenceFour", tex_num(replay_cadence),
           f"{relpath(LONGEVITY_MANIFEST_FOUR)}: config.replay_compact_every")
-    m.add("osdiSoakWriterWithinLifeSlopeMedianKBpsFour", f"{writer_median_kb:.3f}",
+    m.add("recSoakWriterWithinLifeSlopeMedianKBpsFour", f"{writer_median_kb:.3f}",
           f"{relpath(LONGEVITY_RSS_SLOPES_FOUR)}: median(writer_lives[*]."
           "slope_kb_per_s_least_squares), 4 lives")
-    m.add("osdiSoakWriterWithinLifeSlopeMaxKBpsFour", f"{writer_max_kb:.3f}",
+    m.add("recSoakWriterWithinLifeSlopeMaxKBpsFour", f"{writer_max_kb:.3f}",
           f"{relpath(LONGEVITY_RSS_SLOPES_FOUR)}: max(writer_lives[*]."
           "slope_kb_per_s_least_squares) (life 0)")
-    m.add("osdiSoakReaderWithinLifeSlopeMinKBpsFour", f"{reader_min_kb:.3f}",
+    m.add("recSoakReaderWithinLifeSlopeMinKBpsFour", f"{reader_min_kb:.3f}",
           f"{relpath(LONGEVITY_RSS_SLOPES_FOUR)}: min(readers_harness_series[*]."
           "slope_kb_per_s_least_squares), 8 readers, full ~86,334.4s (~24h) run "
           "(reader_restarts=0, one fitted segment each)")
-    m.add("osdiSoakReaderWithinLifeSlopeMaxKBpsFour", f"{reader_max_kb:.3f}",
+    m.add("recSoakReaderWithinLifeSlopeMaxKBpsFour", f"{reader_max_kb:.3f}",
           f"{relpath(LONGEVITY_RSS_SLOPES_FOUR)}: max(readers_harness_series[*]."
           "slope_kb_per_s_least_squares), same full-run window")
-    m.add("osdiSoakReaderRssAnonSlopeMinKBpsFour", f"{rssanon_min_kb:.3f}",
+    m.add("recSoakReaderRssAnonSlopeMinKBpsFour", f"{rssanon_min_kb:.3f}",
           f"{relpath(LONGEVITY_RSS_SLOPES_FOUR)}: min(readers_composition_series[*]."
           "RssAnon_kb.slope_kb_per_s), 8 readers, the sampler's own 17.5h window "
           "(63,028s, starting ~6.5h into the run) -- not the full 24h")
-    m.add("osdiSoakReaderRssAnonSlopeMaxKBpsFour", f"{rssanon_max_kb:.3f}",
+    m.add("recSoakReaderRssAnonSlopeMaxKBpsFour", f"{rssanon_max_kb:.3f}",
           f"{relpath(LONGEVITY_RSS_SLOPES_FOUR)}: max(readers_composition_series[*]."
           "RssAnon_kb.slope_kb_per_s), same 17.5h sampler window")
-    m.add("osdiSoakReaderRssFileSlopeMinKBpsFour", f"{rssfile_min_kb:.3f}",
+    m.add("recSoakReaderRssFileSlopeMinKBpsFour", f"{rssfile_min_kb:.3f}",
           f"{relpath(LONGEVITY_RSS_SLOPES_FOUR)}: min(readers_composition_series[*]."
           "RssFile_kb.slope_kb_per_s), same 17.5h sampler window")
-    m.add("osdiSoakReaderRssFileSlopeMaxKBpsFour", f"{rssfile_max_kb:.3f}",
+    m.add("recSoakReaderRssFileSlopeMaxKBpsFour", f"{rssfile_max_kb:.3f}",
           f"{relpath(LONGEVITY_RSS_SLOPES_FOUR)}: max(readers_composition_series[*]."
           "RssFile_kb.slope_kb_per_s), same 17.5h sampler window")
-    m.add("osdiSoakReaderVmSizeSlopeMinKBpsFour", f"{vmsize_min_kb:.3f}",
+    m.add("recSoakReaderVmSizeSlopeMinKBpsFour", f"{vmsize_min_kb:.3f}",
           f"{relpath(LONGEVITY_RSS_SLOPES_FOUR)}: min(readers_composition_series[*]."
           "VmSize_kb.slope_kb_per_s), same 17.5h sampler window")
-    m.add("osdiSoakReaderVmSizeSlopeMaxKBpsFour", f"{vmsize_max_kb:.3f}",
+    m.add("recSoakReaderVmSizeSlopeMaxKBpsFour", f"{vmsize_max_kb:.3f}",
           f"{relpath(LONGEVITY_RSS_SLOPES_FOUR)}: max(readers_composition_series[*]."
           "VmSize_kb.slope_kb_per_s), same 17.5h sampler window")
-    m.add("osdiSoakWriterErrorsTrueFour", tex_num(writer_errors_true),
+    m.add("recSoakWriterErrorsTrueFour", tex_num(writer_errors_true),
           f"{relpath(LONGEVITY_MANIFEST_FOUR)}: summary.writer_totals_all_lives.errors")
-    m.add("osdiSoakWriterErrorsClassFour", "NotFoundError",
+    m.add("recSoakWriterErrorsClassFour", "NotFoundError",
           f"{relpath(LONGEVITY_WRITER_ERRORS_BY_CLASS_FOUR)}: the sole exception class "
           "across every writer error in all 4 lives (text macro, not a number)")
-    m.add("osdiSoakReaderErrorsTrueFour", tex_num(reader_errors_true),
+    m.add("recSoakReaderErrorsTrueFour", tex_num(reader_errors_true),
           f"{relpath(LONGEVITY_READER_ERRORS_BY_CLASS_FOUR)}: reader_errors_total -- 0 "
           "reader errors of any class over the whole 24h run (prediction (a))")
-    m.add("osdiSoakReaderErrorsOSErrorFour", tex_num(reader_oserror),
+    m.add("recSoakReaderErrorsOSErrorFour", tex_num(reader_oserror),
           f"{relpath(LONGEVITY_READER_ERRORS_BY_CLASS_FOUR)}: by_class_total has no "
           "OSError key -- 0, same all-zero record as the StateError class")
-    m.add("osdiSoakReaderErrorsStateErrorFour", tex_num(reader_stateerror),
+    m.add("recSoakReaderErrorsStateErrorFour", tex_num(reader_stateerror),
           f"{relpath(LONGEVITY_READER_ERRORS_BY_CLASS_FOUR)}: by_class_total has no "
           "StateError key -- 0 (prediction (f): the D-086 torn-tail class has no event "
           "to credit or discredit)")
-    m.add("osdiSoakReaderReopensMinFour", tex_num(reopens_min),
+    m.add("recSoakReaderReopensMinFour", tex_num(reopens_min),
           f"{relpath(LONGEVITY_READER_REOPEN_ON_ENOENT_FOUR)}: min(per_reader[*]."
           "reopens_total_progress_file), --reader-reopen-every-s=300 cycles completed "
           "per reader")
-    m.add("osdiSoakReaderReopensMaxFour", tex_num(reopens_max),
+    m.add("recSoakReaderReopensMaxFour", tex_num(reopens_max),
           f"{relpath(LONGEVITY_READER_REOPEN_ON_ENOENT_FOUR)}: max(per_reader[*]."
           "reopens_total_progress_file) -- uniform at 272 across all 8 readers")
-    m.add("osdiSoakReaderReopenOnEnoentMaxFour", tex_num(enoent_max),
+    m.add("recSoakReaderReopenOnEnoentMaxFour", tex_num(enoent_max),
           f"{relpath(LONGEVITY_READER_REOPEN_ON_ENOENT_FOUR)}: max(per_reader[*]."
           "reopen_on_enoent_total_progress_file), cross-checked against "
           "metrics.jsonl's own counter (prediction (b)): 0 for every reader")
-    m.add("osdiSoakThroughputStartFour", str(throughput_start),
+    m.add("recSoakThroughputStartFour", str(throughput_start),
           f"{relpath(LONGEVITY_MANIFEST_FOUR)}: summary.drift.throughput_first_hour_avg, "
           "commits/s")
-    m.add("osdiSoakThroughputEndFour", str(throughput_end),
+    m.add("recSoakThroughputEndFour", str(throughput_end),
           f"{relpath(LONGEVITY_MANIFEST_FOUR)}: summary.drift.throughput_last_hour_avg, "
           "commits/s")
-    m.add("osdiSoakThroughputFirstHourAvgFour", str(throughput_start),
+    m.add("recSoakThroughputFirstHourAvgFour", str(throughput_start),
           f"{relpath(LONGEVITY_MANIFEST_FOUR)}: summary.drift.throughput_first_hour_avg "
-          "(same field as osdiSoakThroughputStartFour, landed separately for prediction "
+          "(same field as recSoakThroughputStartFour, landed separately for prediction "
           "(d)'s +-5%-of-soak2 throughput clause)")
-    m.add("osdiSoakThroughputLastOverFirstRatioFour", f"{ratio_last_over_first:.3f}",
+    m.add("recSoakThroughputLastOverFirstRatioFour", f"{ratio_last_over_first:.3f}",
           f"{relpath(LONGEVITY_THROUGHPUT_FOUR)}: ratio_last_over_first, recomputed here "
           "as this_record_last_hour_avg_commits_per_s / "
           "this_record_first_hour_avg_commits_per_s from this same file's own two averages")
-    m.add("osdiSoakFullVerifyOverlapCountFour", tex_num(overlap_count),
+    m.add("recSoakFullVerifyOverlapCountFour", tex_num(overlap_count),
           f"{relpath(LONGEVITY_VERIFY_FULL_FOUR)}: PROBLEMS count (believed-versions-"
           "overlap class), 0 -- matching soak2/soak3's clean full-mode result "
           "(prediction (e))")
-    m.add("osdiSoakFullVerifyGenerationFour", tex_num(verify_generation),
+    m.add("recSoakFullVerifyGenerationFour", tex_num(verify_generation),
           f"{relpath(LONGEVITY_VERIFY_FULL_FOUR)}: generation -- 341 ahead of the "
           "manifest's own summary.generation_final=1,896,750 (the gauge froze a few "
           "seconds early, README.md's Full-mode tgms check section; this is the "
           "on-disk-confirmed true final generation, not a disagreement to resolve by "
           "equality)")
-    m.add("osdiSoakCompactionStallMaxReaderP99MsFour", f"{stall_max:.3f}",
+    m.add("recSoakCompactionStallMaxReaderP99MsFour", f"{stall_max:.3f}",
           f"{relpath(LONGEVITY_COMPACTION_STALL_FOUR)}: this_record_max_reader_p99_ms -- "
           "max query_p99_ms sample inside any of the 4,213 compaction windows "
           "([ts_start-60, ts_end+60]), matching manifest.summary."
           "compaction_stall_max_reader_p99_ms exactly; the first soak in this campaign "
           "where this row is computable at all")
-    m.add("osdiSoakHostLoadMinFour", f"{host_load_min:.2f}",
+    m.add("recSoakHostLoadMinFour", f"{host_load_min:.2f}",
           f"{relpath(LONGEVITY_HOST_LOAD_FOUR)}: min(1-min load averages), all 33 samples")
-    m.add("osdiSoakHostLoadMaxFour", f"{host_load_max:.2f}",
+    m.add("recSoakHostLoadMaxFour", f"{host_load_max:.2f}",
           f"{relpath(LONGEVITY_HOST_LOAD_FOUR)}: max(1-min load averages), same 33-sample "
           "set")
-    m.add("osdiSoakFinalEdgeRowsFour", tex_num(final_edge_rows),
+    m.add("recSoakFinalEdgeRowsFour", tex_num(final_edge_rows),
           f"{relpath(LONGEVITY_MANIFEST_FOUR)}: summary.final_stats.n_edge_versions -- "
           "the final store size this run reached, past the soak-2 onset band "
           "2,235,044-2,450,815 rows (predictions (a)/(f))")
 
     # --- derived first-hour throughput band around soak2's own
-    # first-hour figure (osdiSoakThroughputStartTwo), used to state
+    # first-hour figure (recSoakThroughputStartTwo), used to state
     # prediction (d)'s +-5% clause as a concrete [lo, hi] interval rather
     # than leaving the +-5% arithmetic to the manuscript's prose.
     # Computed from LONGEVITY_MANIFEST_TWO's own
@@ -6666,19 +6666,19 @@ def compute_longevity_soak_four(m: Macros) -> None:
     throughput_start_two = manifest_two["summary"]["drift"]["throughput_first_hour_avg"]
     eq(throughput_start_two, 39.91,
        "Soak2 frozen (re-read for the soak4 band): summary.drift.throughput_first_hour_avg, "
-       "commits/s -- the same value osdiSoakThroughputStartTwo lands")
+       "commits/s -- the same value recSoakThroughputStartTwo lands")
     band_lo = 0.95 * throughput_start_two
     band_hi = 1.05 * throughput_start_two
-    m.add("osdiSoakFourFirstHourBandLo", f"{band_lo:.4f}",
+    m.add("recSoakFourFirstHourBandLo", f"{band_lo:.4f}",
           f"0.95 * {relpath(LONGEVITY_MANIFEST_TWO)}'s summary.drift."
-          "throughput_first_hour_avg (osdiSoakThroughputStartTwo, 39.91 commits/s) -- "
+          "throughput_first_hour_avg (recSoakThroughputStartTwo, 39.91 commits/s) -- "
           "the lower edge of soak4 prediction (d)'s +-5%-of-soak2 first-hour-throughput "
           "band")
-    m.add("osdiSoakFourFirstHourBandHi", f"{band_hi:.4f}",
+    m.add("recSoakFourFirstHourBandHi", f"{band_hi:.4f}",
           f"1.05 * {relpath(LONGEVITY_MANIFEST_TWO)}'s summary.drift."
-          "throughput_first_hour_avg (osdiSoakThroughputStartTwo, 39.91 commits/s) -- "
-          "the upper edge of the same band; osdiSoakThroughputFirstHourAvgFour=40.552 "
-          "falls inside [osdiSoakFourFirstHourBandLo, osdiSoakFourFirstHourBandHi]")
+          "throughput_first_hour_avg (recSoakThroughputStartTwo, 39.91 commits/s) -- "
+          "the upper edge of the same band; recSoakThroughputFirstHourAvgFour=40.552 "
+          "falls inside [recSoakFourFirstHourBandLo, recSoakFourFirstHourBandHi]")
 
     # --- compaction cadence (median inter-compaction interval/duration)
     # and the generation-validity window, same convention as the W2z
@@ -6718,20 +6718,20 @@ def compute_longevity_soak_four(m: Macros) -> None:
     cadence_gens_retained = next(iter(cadence_gens))
     window_four = cadence_gens_retained * interval_four
 
-    m.add("osdiSoakCompactionIntervalMedianSFour", f"{interval_four:.1f}",
+    m.add("recSoakCompactionIntervalMedianSFour", f"{interval_four:.1f}",
           f"{relpath(LONGEVITY_COMPACTIONS_FOUR)}: median(ts_start[i] - ts_start[i-1]) "
           "within each of the 4 writer lives (life boundaries: batches resets to 500, "
           f"{relpath(LONGEVITY_RECOVERIES_FOUR)}'s 3 rows -> 4 lives, cross-checked "
           "against this file's own `life` field), pooled over all 4 lives' own "
           "intervals, s -- this run's compaction log carries epoch ts_start/ts_end "
           "directly, unlike soak3's host-CLOCK_MONOTONIC-only t_start/t_end")
-    m.add("osdiSoakCompactionDurationMedianSFour", f"{duration_four:.1f}",
+    m.add("recSoakCompactionDurationMedianSFour", f"{duration_four:.1f}",
           f"{relpath(LONGEVITY_COMPACTIONS_FOUR)}: median(ts_end - ts_start) over all "
           f"{len(rows_four)} compactions, s")
-    m.add("osdiSoakGenerationWindowSFour", f"{window_four:.1f}",
+    m.add("recSoakGenerationWindowSFour", f"{window_four:.1f}",
           f"gc.generations_retained ({cadence_gens_retained}, "
-          f"{relpath(LONGEVITY_COMPACTIONS_FOUR)}, osdiD088GenerationsRetained) * "
-          "osdiSoakCompactionIntervalMedianSFour -- the generation-validity window, s")
+          f"{relpath(LONGEVITY_COMPACTIONS_FOUR)}, recD088GenerationsRetained) * "
+          "recSoakCompactionIntervalMedianSFour -- the generation-validity window, s")
 
 
 # --------------------------------------------------------------------------
@@ -6857,43 +6857,43 @@ def compute_overload(m: Macros) -> None:
     eq(high_water_mb, 227.3, "Overload: service-surface VmHWM / 1000, MB")
 
     # --- emit macros ---
-    m.add("osdiOverloadCommit", rep1["git_commit"],
+    m.add("recOverloadCommit", rep1["git_commit"],
           f"{relpath(OVERLOAD_REP1)}: git_commit (same in rep2)")
-    m.add("osdiOverloadMaxConcurrent", tex_num(max_concurrent),
+    m.add("recOverloadMaxConcurrent", tex_num(max_concurrent),
           f"{relpath(OVERLOAD_REP1)}: config.max_concurrent (== protocol.ceilings."
           "max_concurrent), the harness's own CLI default under test")
-    m.add("osdiOverloadClientsMax", tex_num(clients_max),
+    m.add("recOverloadClientsMax", tex_num(clients_max),
           f"{relpath(OVERLOAD_REP1)}: max(steps[*].n_clients) -- the gate engages at this "
           "cell in both reps")
-    m.add("osdiOverloadRefusalKindConcurrencyOnly", "true",
+    m.add("recOverloadRefusalKindConcurrencyOnly", "true",
           f"{relpath(OVERLOAD_REP1_RECORDS)}: the set of refusal_stage values over every "
           "n=64 record with outcome==\"refused\" is exactly {\"limit\"} -- every refusal "
           "is a concurrency-cap refusal, never a result-size limit (text macro, not a "
           "number)")
-    m.add("osdiOverloadOperatorErrorsTotal", tex_num(n_error_total),
+    m.add("recOverloadOperatorErrorsTotal", tex_num(n_error_total),
           f"{relpath(OVERLOAD_REP1)}+{relpath(OVERLOAD_REP2)}: sum(steps[*].n_error) over "
           "every step, both reps")
-    m.add("osdiOverloadRefusedCapAtMaxRep1", tex_num(refused_cap_rep1_at64),
+    m.add("recOverloadRefusedCapAtMaxRep1", tex_num(refused_cap_rep1_at64),
           f"{relpath(OVERLOAD_REP1)}: steps[n_clients=64].n_refused")
-    m.add("osdiOverloadRefusedCapAtMaxRep2", tex_num(refused_cap_rep2_at64),
+    m.add("recOverloadRefusedCapAtMaxRep2", tex_num(refused_cap_rep2_at64),
           f"{relpath(OVERLOAD_REP2)}: steps[n_clients=64].n_refused")
-    m.add("osdiOverloadRefusalRepRatio", f"{refusal_ratio:.1f}",
+    m.add("recOverloadRefusalRepRatio", f"{refusal_ratio:.1f}",
           "derived: rep1/rep2 refused-at-n=64 ratio (rep-to-rep variance at the knee, "
           "not a measured field)")
-    m.add("osdiOverloadAdmittedConcurrencyP95AtMax", f"{admitted_p95_at64:.1f}",
+    m.add("recOverloadAdmittedConcurrencyP95AtMax", f"{admitted_p95_at64:.1f}",
           f"{relpath(OVERLOAD_REP1)}: steps[n_clients=64].concurrent_in_flight_p95")
-    m.add("osdiOverloadP99At32ClientsMs", f"{p99_at32_rep1:.2f}",
+    m.add("recOverloadP99At32ClientsMs", f"{p99_at32_rep1:.2f}",
           f"{relpath(OVERLOAD_REP1)}: steps[n_clients=32].p99_ms, with n_refused==0 at "
           "that cell -- the bounded-latency prediction's REFUTED evidence")
-    m.add("osdiOverloadRecoveryQps", f"{recovery_qps:.2f}",
+    m.add("recOverloadRecoveryQps", f"{recovery_qps:.2f}",
           f"{relpath(OVERLOAD_REP1)}: recovery.throughput_qps")
-    m.add("osdiOverloadRecoveryP50Ms", f"{recovery_p50:.2f}",
+    m.add("recOverloadRecoveryP50Ms", f"{recovery_p50:.2f}",
           f"{relpath(OVERLOAD_REP1)}: recovery.p50_ms")
-    m.add("osdiOverloadServiceHighWaterKB", tex_num(hwm_after_step),
+    m.add("recOverloadServiceHighWaterKB", tex_num(hwm_after_step),
           f"{relpath(OVERLOAD_HWM_CHECKPOINTS_V3)}: after_step_n64.vm_hwm_kb (== "
           "after_recovery_step.vm_hwm_kb) -- the \"Pinned\" localization, not the "
           "harness's own end-of-sweep store.digest() lifetime peak")
-    m.add("osdiOverloadServiceHighWaterMB", f"{high_water_mb:.1f}",
+    m.add("recOverloadServiceHighWaterMB", f"{high_water_mb:.1f}",
           f"{relpath(OVERLOAD_HWM_CHECKPOINTS_V3)}: after_step_n64.vm_hwm_kb / 1000, MB")
 
 
@@ -6906,7 +6906,7 @@ def compute_c10_live_osv(m: Macros) -> None:
     first committed record snapshot of the live-osv poller
     (`docs/design/LIVE_WORKLOAD_OSV_DESIGN_2026-09-13.md`) running on xzgpu.
     Resolves the three macros that were PENDING for lack of any committed
-    record: `osdiLiveDays`, `osdiLiveAdvisories`, `osdiLiveCorrections`.
+    record: `recLiveDays`, `recLiveAdvisories`, `recLiveCorrections`.
 
     Every number below is recomputed from the snapshot's own row-level
     fields (`live_osv.cycles_raw`, the 38 raw per-cycle metrics lines the
@@ -7011,39 +7011,39 @@ def compute_c10_live_osv(m: Macros) -> None:
        f"{relpath(LIVE_OSV_SNAPSHOT)}: recomputed sha256 over the canonical counts object "
        "matches the manifest's own top-level result_digest")
 
-    m.add("osdiLiveDays", f"{days_2dp:.2f}",
+    m.add("recLiveDays", f"{days_2dp:.2f}",
           f"{relpath(LIVE_OSV_SNAPSHOT)}: live_osv.operation, "
           "(snapshot_epoch - first_record_epoch) / 86400, recomputed from cycles_raw[0].ts")
-    m.add("osdiLiveAdvisories", tex_num(advisories["total_at_snapshot"]),
+    m.add("recLiveAdvisories", tex_num(advisories["total_at_snapshot"]),
           f"{relpath(LIVE_OSV_SNAPSHOT)}: live_osv.advisories.total_at_snapshot "
           f"({tex_num(advisories['bootstrap'])} bootstrap + "
           f"{advisories['new_since_bootstrap']} live-ingested)")
-    m.add("osdiLiveCorrections", tex_num(corrections["corrections_written"]),
+    m.add("recLiveCorrections", tex_num(corrections["corrections_written"]),
           f"{relpath(LIVE_OSV_SNAPSHOT)}: live_osv.corrections.corrections_written, "
           "recomputed as sum(cycles_raw[*].corrections_written)")
-    m.add("osdiLiveCycles", tex_num(poller["cycles_completed"]),
+    m.add("recLiveCycles", tex_num(poller["cycles_completed"]),
           f"{relpath(LIVE_OSV_SNAPSHOT)}: live_osv.poller.cycles_completed, cross-checked "
           "against len(cycles_raw) (eval.tex's \"38 hourly poller cycles\")")
-    m.add("osdiLiveRestarts", tex_num(poller["restart_count"]),
+    m.add("recLiveRestarts", tex_num(poller["restart_count"]),
           f"{relpath(LIVE_OSV_SNAPSHOT)}: live_osv.poller.restart_count "
           "(eval.tex's \"0 restarts\")")
-    m.add("osdiLiveFeedErrors", tex_num(corrections["feed_errors"]),
+    m.add("recLiveFeedErrors", tex_num(corrections["feed_errors"]),
           f"{relpath(LIVE_OSV_SNAPSHOT)}: live_osv.corrections.feed_errors, recomputed as "
           "sum(cycles_raw[*].feed_errors) (eval.tex's \"0 feed errors\")")
-    m.add("osdiLiveNoopRevisions", tex_num(corrections["noop_revisions"]),
+    m.add("recLiveNoopRevisions", tex_num(corrections["noop_revisions"]),
           f"{relpath(LIVE_OSV_SNAPSHOT)}: live_osv.corrections.noop_revisions, recomputed as "
           "sum(cycles_raw[*].noop_revisions) (eval.tex's \"41 no-op revisions\")")
-    m.add("osdiLiveRecordsSeen", tex_num(corrections["records_seen"]),
+    m.add("recLiveRecordsSeen", tex_num(corrections["records_seen"]),
           f"{relpath(LIVE_OSV_SNAPSHOT)}: live_osv.corrections.records_seen, recomputed as "
           "sum(cycles_raw[*].records_seen) (eval.tex's \"95 records seen\", the denominator)")
-    m.add("osdiLiveRetractions", tex_num(corrections["retractions"]),
+    m.add("recLiveRetractions", tex_num(corrections["retractions"]),
           f"{relpath(LIVE_OSV_SNAPSHOT)}: live_osv.corrections.retractions, recomputed as "
           "sum(cycles_raw[*].retractions) (eval.tex's \"one retraction\"; numerically equal "
-          "to osdiLiveCorrections in this snapshot but a distinct record field)")
-    m.add("osdiLiveNodes", tex_num(store_identity["nodes"]),
+          "to recLiveCorrections in this snapshot but a distinct record field)")
+    m.add("recLiveNodes", tex_num(store_identity["nodes"]),
           f"{relpath(LIVE_OSV_SNAPSHOT)}: live_osv.store_identity_at_snapshot.nodes "
           "(eval.tex's \"247,845 nodes\")")
-    m.add("osdiLiveEdges", tex_num(store_identity["edges"]),
+    m.add("recLiveEdges", tex_num(store_identity["edges"]),
           f"{relpath(LIVE_OSV_SNAPSHOT)}: live_osv.store_identity_at_snapshot.edges "
           "(eval.tex's \"497,522 edges\")")
 
@@ -7065,8 +7065,8 @@ def compute_ldbc_ref_v1(m: Macros) -> None:
     run -- Claim C9's independent-validation axis (TGIR's output vs. an
     independently loaded, unmodified-query Neo4j reference over the 24
     templates TGIR can express). Resolves the three stubs that used to
-    stand PENDING here (`osdiLdbcExpressible`/`osdiLdbcExecuted`/
-    `osdiLdbcValidated`) and lands the rest of the scorecard beside them.
+    stand PENDING here (`recLdbcExpressible`/`recLdbcExecuted`/
+    `recLdbcValidated`) and lands the rest of the scorecard beside them.
 
     Every whole-file sha256 below is checked against the run's own
     `SHA256SUMS.txt` before anything inside is trusted. Every count is
@@ -7084,12 +7084,12 @@ def compute_ldbc_ref_v1(m: Macros) -> None:
     the C6 section of the module docstring, nothing here parses it as
     YAML.
 
-    24 templates have a vendored TGIR plan and ran (`osdiLdbcExpressible`);
+    24 templates have a vendored TGIR plan and ran (`recLdbcExpressible`);
     23 of those completed within the ceiling -- BI6.v2 hit the
     pre-registered ceiling (`bypass_ceiling_s` + `child_open_allowance_s`
     from the TGMS-side campaign record) and produced no rows -- giving
-    `osdiLdbcExecuted`; 18 agree per campaign.yaml's addendum_3 scoring
-    rule, giving `osdiLdbcValidated`.
+    `recLdbcExecuted`; 18 agree per campaign.yaml's addendum_3 scoring
+    rule, giving `recLdbcValidated`.
     """
     sha_table = _sha256sums_by_name(LDBC_REF_V1_SHA256SUMS.read_text(encoding="utf-8"))
     for path in (LDBC_REF_V1_README, LDBC_REF_V1_CAMPAIGN_YAML, LDBC_REF_V1_COMPARE,
@@ -7248,7 +7248,7 @@ def compute_ldbc_ref_v1(m: Macros) -> None:
        "evidence row")
 
     # --- the superseded interim (compare-2026-09-17.json), landed as
-    # osdiLdbcInterim* so the paper can cite the reference-side fix. The
+    # recLdbcInterim* so the paper can cite the reference-side fix. The
     # excluded set (7 templates with an invalid reference side at that
     # point, plus the always-timed-out BI6.v2) is read out of the revision
     # of record's own manifest.supersedes_reason text, not hard-coded
@@ -7291,70 +7291,70 @@ def compute_ldbc_ref_v1(m: Macros) -> None:
        "LDBC ref-v1 frozen: interim agreeing rows over the same 16 templates")
 
     # --- emit ---
-    m.add("osdiLdbcTemplates", tex_num(24),
+    m.add("recLdbcTemplates", tex_num(24),
           f"{relpath(LDBC_REF_V1_COMPARE)}: manifest.plans -- the 24 LDBC templates with a "
           "vendored TGIR plan run by this campaign")
-    m.add("osdiLdbcExpressible", tex_num(24),
+    m.add("recLdbcExpressible", tex_num(24),
           f"{relpath(LDBC_REF_V1_COMPARE)}: manifest.plans -- templates the vendored TGIR "
           "plans cover of the 24 in this campaign")
-    m.add("osdiLdbcExecuted", tex_num(len(attempted)),
+    m.add("recLdbcExecuted", tex_num(len(attempted)),
           f"{relpath(LDBC_REF_V1_COMPARE)}: count of verdicts with attempted == true -- "
           f"templates whose TGMS side completed within the {tex_num(ceiling_s)} s ceiling "
           "(BI6.v2 timed out at that ceiling, README.md §5.6)")
-    m.add("osdiLdbcValidated", tex_num(len(agree)),
+    m.add("recLdbcValidated", tex_num(len(agree)),
           f"{relpath(LDBC_REF_V1_COMPARE)}: count of verdicts with verdict == agreeing -- "
           "templates agreeing per campaign.yaml addendum_3's scoring rule")
-    m.add("osdiLdbcAgree", tex_num(len(agree)),
+    m.add("recLdbcAgree", tex_num(len(agree)),
           f"{relpath(LDBC_REF_V1_COMPARE)}: count of verdict == agreeing")
-    m.add("osdiLdbcNotProjected", tex_num(len(not_projected)),
+    m.add("recLdbcNotProjected", tex_num(len(not_projected)),
           f"{relpath(LDBC_REF_V1_COMPARE)}: count of verdict == reference-column-not-projected "
           "(BI4, IC5, IC12)")
-    m.add("osdiLdbcDisagree", tex_num(len(disagree)),
+    m.add("recLdbcDisagree", tex_num(len(disagree)),
           f"{relpath(LDBC_REF_V1_COMPARE)}: count of verdict == disagreeing (IC2, IS3)")
-    m.add("osdiLdbcTimeout", tex_num(len(timed_out)),
+    m.add("recLdbcTimeout", tex_num(len(timed_out)),
           f"{relpath(LDBC_REF_V1_COMPARE)}: count of attempted == false (BI6.v2)")
-    m.add("osdiLdbcComparableTemplates", tex_num(len(attempted)),
+    m.add("recLdbcComparableTemplates", tex_num(len(attempted)),
           f"{relpath(LDBC_REF_V1_COMPARE)}: count of attempted == true -- the denominator of "
           "the row-agreement fraction")
-    m.add("osdiLdbcRowsCompared", tex_num(rows_compared),
+    m.add("recLdbcRowsCompared", tex_num(rows_compared),
           f"{relpath(LDBC_REF_V1_COMPARE)}: sum(compared) over the 23 comparable templates")
-    m.add("osdiLdbcRowsAgreeing", tex_num(rows_agreeing),
+    m.add("recLdbcRowsAgreeing", tex_num(rows_agreeing),
           f"{relpath(LDBC_REF_V1_COMPARE)}: sum(agreeing) over the 23 comparable templates")
-    m.add("osdiLdbcRowAgreementFraction", row_fraction_3dp,
+    m.add("recLdbcRowAgreementFraction", row_fraction_3dp,
           f"{relpath(LDBC_REF_V1_COMPARE)}: sum(agreeing) / sum(compared) over the 23 "
           "comparable templates, 3dp")
-    m.add("osdiLdbcGate", f"{gate:.2f}",
+    m.add("recLdbcGate", f"{gate:.2f}",
           "campaign.yaml addendum_3 scoring.overall_agreement: the pre-registered pass_if bar")
-    m.add("osdiLdbcGateMet", "true" if row_fraction >= gate else "false",
+    m.add("recLdbcGateMet", "true" if row_fraction >= gate else "false",
           f"{relpath(LDBC_REF_V1_COMPARE)}: recomputed row agreement fraction "
           f"({row_fraction_3dp}) >= campaign.yaml's pass_if gate (0.90)")
-    m.add("osdiLdbcTemplateAgreementFraction", f"{template_fraction:.2f}",
+    m.add("recLdbcTemplateAgreementFraction", f"{template_fraction:.2f}",
           f"{relpath(LDBC_REF_V1_COMPARE)}: count(verdict == agreeing) / 24")
 
     for fam, (fam_agreeing, fam_compared) in fam_rows.items():
-        m.add(f"osdiLdbcRows{fam}Agreeing", tex_num(fam_agreeing),
+        m.add(f"recLdbcRows{fam}Agreeing", tex_num(fam_agreeing),
               f"{relpath(LDBC_REF_V1_COMPARE)}: sum(agreeing) over the {fam} family's "
               "comparable templates (campaign.yaml addendum_3 row_agreement.by_group)")
-        m.add(f"osdiLdbcRows{fam}Compared", tex_num(fam_compared),
+        m.add(f"recLdbcRows{fam}Compared", tex_num(fam_compared),
               f"{relpath(LDBC_REF_V1_COMPARE)}: sum(compared) over the {fam} family's "
               "comparable templates (campaign.yaml addendum_3 row_agreement.by_group)")
 
-    m.add("osdiLdbcDefectId", defect_id,
+    m.add("recLdbcDefectId", defect_id,
           "ops/failure_ledger.jsonl: D-090-is3-knows-both-ways-double-count")
-    m.add("osdiLdbcDefectTemplates", ", ".join(defect_templates_ordered),
+    m.add("recLdbcDefectTemplates", ", ".join(defect_templates_ordered),
           f"{relpath(LDBC_REF_V1_COMPARE)}: the disagreeing verdicts (IC2, IS3), both the "
           "M7 KNOWS-both-ways double count (D-090) per README.md §5.4/§5.5 -- IS3 "
           "the original finding, IC2 the second instance found once its reference became "
           "valid, reported in that order")
 
-    m.add("osdiLdbcInterimAgree", tex_num(interim_agree),
+    m.add("recLdbcInterimAgree", tex_num(interim_agree),
           f"{relpath(LDBC_REF_V1_COMPARE_INTERIM)}: count of verdict == agreeing in the "
           "superseded 2026-09-17 revision")
-    m.add("osdiLdbcInterimRowsAgreeing", tex_num(interim_rows_agreeing),
+    m.add("recLdbcInterimRowsAgreeing", tex_num(interim_rows_agreeing),
           f"{relpath(LDBC_REF_V1_COMPARE_INTERIM)}: sum(agreeing) over the 16 templates that "
           "produced a valid comparison on 2026-09-17 (excludes the 7 templates named in this "
           "record's own manifest.supersedes_reason plus BI6.v2)")
-    m.add("osdiLdbcInterimRowsCompared", tex_num(interim_rows_compared),
+    m.add("recLdbcInterimRowsCompared", tex_num(interim_rows_compared),
           f"{relpath(LDBC_REF_V1_COMPARE_INTERIM)}: sum(compared) over the same 16 templates")
 
 
@@ -7419,7 +7419,7 @@ def compute_ldbc_format3_rebuild(m: Macros) -> None:
           "matches its own quoted +12.8% figure")
     close(rebuild_pct, 12.8, 0.05, "LDBC format-3 rebuild frozen: rebuild cost increase, %")
 
-    m.add("osdiLdbcFormatThreeRebuildPct", f"{rebuild_pct:.1f}",
+    m.add("recLdbcFormatThreeRebuildPct", f"{rebuild_pct:.1f}",
           f"({relpath(LDBC_FMT3_INTERACTIVE_README)}'s Wall - {relpath(LDBC_FMT3_README)}'s "
           f"Wall) / {relpath(LDBC_FMT3_README)}'s Wall * 100 -- 881.0 s vs 780.8 s, both "
           "store builds via scripts/build_snb_store.py with identical flags, eval.tex:120's "
@@ -7669,7 +7669,7 @@ def compute_b7_scale(m: Macros) -> None:
            "itiger-calib-10m.json's build_info.peak_rss.vmhwm")
     # The calibration README's own peak-RSS-row prose ("19.43 GB") divides kB by
     # 1024 then by 1000 -- a mixed-unit slip, not this campaign's convention.
-    # Every other B7 peak-RSS macro (e.g. osdiB7PeakRSS30M above) computes GB
+    # Every other B7 peak-RSS macro (e.g. recB7PeakRSS30M above) computes GB
     # as kB/1e6; recompute this one the same way, from the record field alone,
     # never from the README's prose GB figure. See itiger-calib-2026-09.
     # README.md's appended "Unit note".
@@ -7696,7 +7696,7 @@ def compute_b7_scale(m: Macros) -> None:
     calib1m_peak_gb = round(calib1m_peak_kb / 1e6, 2)
     eq(calib1m_peak_gb, 2.37,
        "B7 frozen: Stage-0 1M calib peak RSS, GB (kB/1e6, same convention as "
-       "osdiB7Calib10MPeakRSS above)")
+       "recB7Calib10MPeakRSS above)")
     calib1m_segment_bytes = cbi1m["store_bytes"]["segment_bytes"]
     calib1m_segment_gb = round(calib1m_segment_bytes / 1e9, 3)
     eq(calib1m_segment_gb, 0.050, "B7 frozen: Stage-0 1M calib final segment bytes, GB")
@@ -7717,104 +7717,104 @@ def compute_b7_scale(m: Macros) -> None:
     # ---------------------------------------------------------------
     # macros
     # ---------------------------------------------------------------
-    m.add("osdiB7BuildWall30M", tex_float(round(wall_s, 3)),
+    m.add("recB7BuildWall30M", tex_float(round(wall_s, 3)),
           f"{relpath(B7_BUILD_30M)}: build_info.wall_s, seconds")
-    m.add("osdiB7PeakRSS30M", f"{peak_rss_gb:.2f}",
+    m.add("recB7PeakRSS30M", f"{peak_rss_gb:.2f}",
           f"{relpath(B7_BUILD_30M)}: build_info.peak_rss.vmhwm / 1e6, GB, 2dp "
           f"({tex_num(peak_vmhwm_kb)} KB)")
-    m.add("osdiB7VersionHistoryWall30M", f"{vh_wall_s:.3f}",
+    m.add("recB7VersionHistoryWall30M", f"{vh_wall_s:.3f}",
           f"{relpath(B7_VERSION_HISTORY_30M)}: clean_alone (job 213175), median(reps[*]."
           "wall_ms) / 1000, seconds")
-    m.add("osdiB7VersionHistoryRSS30M", f"{vh_rss_gb:.3f}",
+    m.add("recB7VersionHistoryRSS30M", f"{vh_rss_gb:.3f}",
           f"{relpath(B7_VERSION_HISTORY_30M)}: clean_alone (job 213175), "
           "median(reps[*].vmhwm_kb) / 1e6, GB")
-    m.add("osdiB7ManifestBytes30M", tex_num(manifest_bytes),
+    m.add("recB7ManifestBytes30M", tex_num(manifest_bytes),
           f"{relpath(B7_BUILD_30M)}: build_info.store_bytes.manifest_bytes")
-    m.add("osdiB7SegmentBytes30M", f"{segment_gb:.3f}",
+    m.add("recB7SegmentBytes30M", f"{segment_gb:.3f}",
           f"{relpath(B7_BUILD_30M)}: build_info.store_bytes.segment_bytes / 1e9, GB")
-    m.add("osdiB7CheckFullWall30M", f"{check_wall:.3f}",
+    m.add("recB7CheckFullWall30M", f"{check_wall:.3f}",
           f"{relpath(B7_CHECK_FULL_30M)}: canonical_run (clean, job 213174), wall_s")
-    m.add("osdiB7Recovery30M", tex_float(recovery_500_s),
+    m.add("recB7Recovery30M", tex_float(recovery_500_s),
           f"{relpath(B7_RECOVERY_30M)}: replay_wall_s, rounded 1dp, seconds "
           "(frozen cadence 500, same as the Stage-0/EXP-A4 1M recovery); "
           "digest_compare.digest_equal true")
-    m.add("osdiB7RecoveryCe5000At30M", tex_float(recovery_5000_s),
+    m.add("recB7RecoveryCe5000At30M", tex_float(recovery_5000_s),
           f"{relpath(B7_RECOVERY_30M_CE5000)}: replay_wall_s, rounded 1dp, seconds "
           "(Addendum 6 cadence-isolation run, compact_every=5000); "
-          "digest_compare.digest_equal true; does not supersede osdiB7Recovery30M "
+          "digest_compare.digest_equal true; does not supersede recB7Recovery30M "
           "(both stand, per the campaign's non-overwrite discipline)")
-    m.add("osdiB7RecoveryBoundRatioAt30M", tex_float(recovery_bound_ratio_30m),
+    m.add("recB7RecoveryBoundRatioAt30M", tex_float(recovery_bound_ratio_30m),
           f"{relpath(B7_RECOVERY_30M)}: replay_wall_s / (band_min[1] * 60s), rounded 1dp -- "
           "the cadence-500 recovery's own multiple of its frozen 46-minute upper bound "
           "(eval.tex's \"$5.3\\times$ its bar\")")
-    m.add("osdiB7RecoveryCadenceRatioAt30M", tex_float(recovery_cadence_ratio_30m),
+    m.add("recB7RecoveryCadenceRatioAt30M", tex_float(recovery_cadence_ratio_30m),
           f"{relpath(B7_RECOVERY_30M)}/{relpath(B7_RECOVERY_30M_CE5000)}: replay_wall_s "
           "ratio, cadence 500 / cadence 5000, rounded 1dp, same 30M store and digest "
           "(\"5.5 times less wall for ten times fewer compactions\")")
     for op_id, frag in B7_SCALE_CURVE_OPS.items():
         val = p50_by_op[op_id]
-        m.add(f"osdiB7ScaleCurveP50{frag}30M", tex_float(val),
+        m.add(f"recB7ScaleCurveP50{frag}30M", tex_float(val),
               f"{relpath(B7_SCALE_CURVE_30M)}: per_operator_p50_ms.{op_id}."
               "clean_213174_p50_ms, ms (clean, job 213174), recomputed from "
               f"{relpath(B7_SCALE_CURVE_30M_RAW)}'s own timings_ms")
-    m.add("osdiB7ReachWindowRefused30M", "false",
+    m.add("recB7ReachWindowRefused30M", "false",
           f"{relpath(B7_SCALE_CURVE_30M)}: reach_window_admission.clean_213174.admitted "
           "is true (not refused) -- Addendum 5's second re-examination revised the "
           "admission-policy prediction from refused to admitted at 30M/100M, confirmed "
           "by both the clean and contended reruns")
-    m.add("osdiB7QueryFloor30M", f"{query_floor_gb:.2f}",
+    m.add("recB7QueryFloor30M", f"{query_floor_gb:.2f}",
           f"{relpath(B7_QUERYFLOOR_30M)}: vmhwm_kb / 1e6, GB (fresh read-only process, "
           "cold-open, job 213173, alone)")
-    m.add("osdiB7BuildSteadyDecileMedian30M", tex_float(steady_decile_median),
+    m.add("recB7BuildSteadyDecileMedian30M", tex_float(steady_decile_median),
           f"{relpath(B7_BUILD_30M)}: build_info.steady_decile_median_ops_per_s, "
           "recomputed as median(ops_per_s_by_decile[*].ops_per_s), ops/s")
-    m.add("osdiB7ReachWindowEstimateMs30M", tex_num(estimate_ms),
+    m.add("recB7ReachWindowEstimateMs30M", tex_num(estimate_ms),
           f"{relpath(B7_SCALE_CURVE_30M)}: reach_window_admission.clean_213174."
           "estimate.time_est_ms, ms")
 
-    # osdiB7300MGate: not a measurement -- the pre-registration's §3 ruling
+    # recB7300MGate: not a measurement -- the pre-registration's §3 ruling
     # ("RULED MOOT", the PI's "300M dropped" superseding the blueprint's
     # "300M only if 100M is clean") means no 300M step is planned or
     # pre-registered at all; scale-independent, so no {30M,100M} suffix.
-    m.add("osdiB7300MGate", "false",
+    m.add("recB7300MGate", "false",
           "docs/design/SCALE_BUILD_FORECAST_2026-09-15.md §3 (gitignored, internal): "
           "\"RULED MOOT\" -- the PI's later ruling (\"300M dropped\") supersedes the "
           "blueprint's \"300M only if 100M is clean\"; no 300M step is planned or "
           "pre-registered. Not a record-derived measurement, unlike every other macro "
           "in this function")
 
-    m.add("osdiB7Calib10MBuildWall", f"{calib10m_wall:.3f}",
+    m.add("recB7Calib10MBuildWall", f"{calib10m_wall:.3f}",
           f"{relpath(B7_ITIGER_CALIB_10M)}: build_info.wall_s, seconds")
-    m.add("osdiB7Calib10MPeakRSS", f"{calib10m_peak_gb:.2f}",
+    m.add("recB7Calib10MPeakRSS", f"{calib10m_peak_gb:.2f}",
           f"{relpath(B7_ITIGER_CALIB_10M)}: build_info.peak_rss.vmhwm "
           f"({tex_num(calib10m_peak_kb)} kB) / 1e6, GB, 2dp -- this campaign's kB/1e6 "
           "convention (same as every other B7 peak-RSS macro), NOT the calibration "
           f"README's own mixed-unit-slip prose figure; see "
           f"{relpath(B7_ITIGER_CALIB_README)}'s appended Unit note")
-    m.add("osdiB7Calib10MSteadyOps", tex_float(round(calib10m_median, 1)),
+    m.add("recB7Calib10MSteadyOps", tex_float(round(calib10m_median, 1)),
           f"{relpath(B7_ITIGER_CALIB_10M)}: recomputed median(ops_per_s_by_decile[*]."
           "ops_per_s), ops/s")
-    m.add("osdiB7KBuild", f"{k_build:.3f}",
+    m.add("recB7KBuild", f"{k_build:.3f}",
           f"{relpath(B7_ITIGER_CALIB_10M)}: (10M steady-decile-median ops/s) / 5,300 "
           f"(xzgpu bulk basis, quoted by {relpath(B7_ITIGER_CALIB_README)}); retired as "
           "a Stage-1 scaling factor (Addendum 5) but kept as a recorded observation")
-    m.add("osdiB7KRecover", f"{k_recover:.3f}",
+    m.add("recB7KRecover", f"{k_recover:.3f}",
           f"{relpath(B7_ITIGER_CALIB_1M)}: recovery.wall_s / 91.01 (xzgpu 1% anchor, "
           f"quoted by {relpath(B7_ITIGER_CALIB_README)}); used as Addendum 4/5's Stage-1 "
           "recovery-band scaling factor")
-    m.add("osdiB7Calib1MBuildWall", f"{calib1m_wall:.3f}",
+    m.add("recB7Calib1MBuildWall", f"{calib1m_wall:.3f}",
           f"{relpath(B7_ITIGER_CALIB_1M)}: build_info.wall_s, seconds")
-    m.add("osdiB7Calib1MPeakRSS", f"{calib1m_peak_gb:.2f}",
+    m.add("recB7Calib1MPeakRSS", f"{calib1m_peak_gb:.2f}",
           f"{relpath(B7_ITIGER_CALIB_1M)}: build_info.peak_rss.vmhwm "
           f"({tex_num(calib1m_peak_kb)} kB) / 1e6, GB, 2dp -- same kB/1e6 convention as "
-          "osdiB7Calib10MPeakRSS")
-    m.add("osdiB7Calib1MRecovery", f"{recovery_1m_wall:.2f}",
+          "recB7Calib10MPeakRSS")
+    m.add("recB7Calib1MRecovery", f"{recovery_1m_wall:.2f}",
           f"{relpath(B7_ITIGER_CALIB_1M)}: recovery.wall_s, seconds (EXP-A4 replay, "
-          "compact_every=500, the same cadence as osdiB7Recovery30M); "
+          "compact_every=500, the same cadence as recB7Recovery30M); "
           "recovery.digest_equal is true")
-    m.add("osdiB7Calib1MSegmentBytes", f"{calib1m_segment_gb:.3f}",
+    m.add("recB7Calib1MSegmentBytes", f"{calib1m_segment_gb:.3f}",
           f"{relpath(B7_ITIGER_CALIB_1M)}: build_info.store_bytes.segment_bytes / 1e9, GB")
-    # osdiB7Calib10MRecovery: itiger-calib-10m.json carries no "recovery" field
+    # recB7Calib10MRecovery: itiger-calib-10m.json carries no "recovery" field
     # (Stage 0's EXP-A4 recovery replay ran only at 1M, per the calibration
     # README's "What ran" §3) -- so no such macro exists, deliberately.
 
@@ -7948,7 +7948,7 @@ def compute_b7_scale(m: Macros) -> None:
     # --- recovery: cadence 5000 only -- no cadence-500 100M run exists
     # (recovery-100m-ce5000.json's own protocol_note says so explicitly:
     # ~45h at ce500 was pre-judged infeasible within the 2-day Slurm wall
-    # and would only re-measure D-164 again). osdiB7Recovery100M aliases
+    # and would only re-measure D-164 again). recB7Recovery100M aliases
     # this single measurement rather than sitting PENDING forever for a
     # run that was never planned -- the §4 record layout has no
     # recovery-100m.json file at all, only recovery-100m-ce5000.json.
@@ -8035,7 +8035,7 @@ def compute_b7_scale(m: Macros) -> None:
     # reach.window: refused, but with a numeric estimate (a dedicated
     # admission probe, same shape as 30M's) -- this is the one refused
     # operator whose ScaleCurveP50 macro stays PENDING-with-reason rather
-    # than becoming an osdiB7Refused* macro.
+    # than becoming an recB7Refused* macro.
     reach100 = curve100["reach_window_admission"]
     require(reach100["run"]["admitted"] is False,
             f"{relpath(B7_SCALE_CURVE_100M)}: reach_window_admission.run.admitted is false")
@@ -8051,34 +8051,34 @@ def compute_b7_scale(m: Macros) -> None:
     # ---------------------------------------------------------------
     # 100M macros
     # ---------------------------------------------------------------
-    m.add("osdiB7BuildWall100M", tex_float(round(wall100_s, 3)),
+    m.add("recB7BuildWall100M", tex_float(round(wall100_s, 3)),
           f"{relpath(B7_BUILD_100M)}: build_info.wall_s, seconds")
-    m.add("osdiB7PeakRSS100M", f"{peak100_rss_gb:.2f}",
+    m.add("recB7PeakRSS100M", f"{peak100_rss_gb:.2f}",
           f"{relpath(B7_BUILD_100M)}: build_info.peak_rss.vmhwm / 1e6, GB, 2dp "
           f"({tex_num(peak100_vmhwm_kb)} KB) -- campaign convention per "
           "falsifiers.build_vmhwm_h1_h2.unit_note, not true decimal GB/GiB")
-    m.add("osdiB7VersionHistoryWall100M", f"{vh100_wall_s:.3f}",
+    m.add("recB7VersionHistoryWall100M", f"{vh100_wall_s:.3f}",
           f"{relpath(B7_VERSION_HISTORY_100M)}: single_run (job 213191), "
           "median(reps[*].wall_ms) / 1000, seconds")
-    m.add("osdiB7VersionHistoryRSS100M", f"{vh100_rss_gb:.3f}",
+    m.add("recB7VersionHistoryRSS100M", f"{vh100_rss_gb:.3f}",
           f"{relpath(B7_VERSION_HISTORY_100M)}: single_run (job 213191), "
           "median(reps[*].vmhwm_kb) / 1e6, GB")
-    m.add("osdiB7ManifestBytes100M", tex_num(manifest100_bytes),
+    m.add("recB7ManifestBytes100M", tex_num(manifest100_bytes),
           f"{relpath(B7_BUILD_100M)}: build_info.store_bytes.manifest_bytes")
-    m.add("osdiB7SegmentBytes100M", f"{segment100_gb:.3f}",
+    m.add("recB7SegmentBytes100M", f"{segment100_gb:.3f}",
           f"{relpath(B7_BUILD_100M)}: build_info.store_bytes.segment_bytes / 1e9, GB")
-    m.add("osdiB7CheckFullWall100M", f"{check100_wall:.3f}",
+    m.add("recB7CheckFullWall100M", f"{check100_wall:.3f}",
           f"{relpath(B7_CHECK_FULL_100M)}: single_run (job 213190), wall_s")
-    m.add("osdiB7RecoveryCe5000At100M", tex_float(recovery100_5000_s),
+    m.add("recB7RecoveryCe5000At100M", tex_float(recovery100_5000_s),
           f"{relpath(B7_RECOVERY_100M_CE5000)}: replay_wall_s, rounded 1dp, seconds "
           "(compact_every=5000, job 213192); digest_compare.digest_equal true")
-    m.add("osdiB7RecoveryCe5000MissPctAt100M", tex_num(recovery100_miss_pct_rounded),
+    m.add("recB7RecoveryCe5000MissPctAt100M", tex_num(recovery100_miss_pct_rounded),
           f"{relpath(B7_RECOVERY_100M_CE5000)}: replay_wall_s / (band_h[1] * 3600s) - 1, "
           f"%, rounded to the nearest percent ({recovery100_miss_pct:.1f}% before rounding) "
           "-- the 100M cadence-5000 control's own miss against its 6h upper bound "
           "(eval.tex's \"a 5% miss rather than a refutation\")")
-    m.add("osdiB7Recovery100M", tex_float(recovery100_5000_s),
-          f"ALIAS of osdiB7RecoveryCe5000At100M -- {relpath(B7_RECOVERY_100M_CE5000)}'s "
+    m.add("recB7Recovery100M", tex_float(recovery100_5000_s),
+          f"ALIAS of recB7RecoveryCe5000At100M -- {relpath(B7_RECOVERY_100M_CE5000)}'s "
           "own protocol_note states there is no cadence-500 100M run (Addendum 6 "
           "pre-judged it infeasible, ~45h extrapolated, over the 2-day Slurm wall, and "
           "would only re-measure D-164 again); the §4 record layout has no separate "
@@ -8087,44 +8087,44 @@ def compute_b7_scale(m: Macros) -> None:
           "was never planned")
     for op_id, val in executed100_p50_by_op.items():
         frag = B7_SCALE_CURVE_OPS[op_id]
-        m.add(f"osdiB7ScaleCurveP50{frag}100M", tex_float(val),
+        m.add(f"recB7ScaleCurveP50{frag}100M", tex_float(val),
               f"{relpath(B7_SCALE_CURVE_100M)}: per_operator_p50_ms.{op_id}."
               "measured_p50_ms, ms (single run, job 213190), recomputed from "
               f"{relpath(B7_SCALE_CURVE_100M_RAW)}'s own timings_ms")
-    m.add_pending("osdiB7ScaleCurveP50ReachWindow100M", "B7 (100M, cost guardrail)",
+    m.add_pending("recB7ScaleCurveP50ReachWindow100M", "B7 (100M, cost guardrail)",
                   f"refused by the cost guardrail (time_est_ms {estimate100_ms}) -- "
                   f"{relpath(B7_SCALE_CURVE_100M)}: reach_window_admission.run, anticipated "
                   "by Addendum 5's restated reach.window prediction (the only refusal the "
-                  "pre-registration foresaw); see osdiB7ReachWindowRefused100M and "
-                  "osdiB7ReachWindowEstimateMs100M")
+                  "pre-registration foresaw); see recB7ReachWindowRefused100M and "
+                  "recB7ReachWindowEstimateMs100M")
     for op_id in B7_SCALE_CURVE_100M_REFUSED_NO_ESTIMATE:
         frag = B7_SCALE_CURVE_OPS[op_id]
-        m.add(f"osdiB7Refused{frag}100M", "true",
+        m.add(f"recB7Refused{frag}100M", "true",
               f"{relpath(B7_SCALE_CURVE_100M)}: per_operator_p50_ms.{op_id}.error = "
               f"{pops100[op_id]['error']!r} -- refused by the cost guardrail with no "
               "numeric time_est_ms in the record (unlike reach.window's dedicated "
               "admission probe); NOT anticipated by SCALE_BUILD_FORECAST_2026-09-15.md "
               "(a new finding at 100M -- all 13 operators executed at 30M). No "
-              "osdiB7ScaleCurveP50 macro is emitted for this operator at 100M: no "
+              "recB7ScaleCurveP50 macro is emitted for this operator at 100M: no "
               "measured p50 exists and no estimate exists to explain a PENDING one")
-    m.add("osdiB7ReachWindowRefused100M", "true",
+    m.add("recB7ReachWindowRefused100M", "true",
           f"{relpath(B7_SCALE_CURVE_100M)}: reach_window_admission.run.admitted is false "
           "(time_est_ms=14,571 > the 10,000 ceiling) -- unlike 30M (admitted), 100M's "
           "reach.window is refused, exactly as Addendum 5's restated admission policy "
           "predicted for this scale")
-    m.add("osdiB7QueryFloor100M", f"{query100_floor_gb:.2f}",
+    m.add("recB7QueryFloor100M", f"{query100_floor_gb:.2f}",
           f"{relpath(B7_QUERYFLOOR_100M)}: vmhwm_kb / 1e6, GB (fresh read-only process, "
           "cold-open, job 213189, n_ok=6/13 -- 7 operators refused even at the "
           "query-ready-floor probe)")
-    m.add("osdiB7BuildSteadyDecileMedian100M", tex_float(round(decile100_median, 1)),
+    m.add("recB7BuildSteadyDecileMedian100M", tex_float(round(decile100_median, 1)),
           f"{relpath(B7_BUILD_100M)}: recomputed median(ops_per_s_by_decile[*].ops_per_s) "
           "-- build_info.steady_decile_median_ops_per_s itself is null for this run "
           "(ops_per_s_by_decile_source flags it), cross-checked instead against "
           "falsifiers.steady_decile_ops_per_s.measured, ops/s")
-    m.add("osdiB7ReachWindowEstimateMs100M", tex_num(estimate100_ms),
+    m.add("recB7ReachWindowEstimateMs100M", tex_num(estimate100_ms),
           f"{relpath(B7_SCALE_CURVE_100M)}: reach_window_admission.run.estimate."
           "time_est_ms, ms")
-    m.add("osdiB7CompactionShare100M", f"{compaction_only_pct:.2f}",
+    m.add("recB7CompactionShare100M", f"{compaction_only_pct:.2f}",
           f"{relpath(B7_BUILD_COMPACTION_WALLS_100M)}: compaction_only_share_of_wall_pct "
           "= 100 * (in_loop_compaction_overhead_estimate_s [checkpoint-delta-pair "
           "estimate over the 100 in-loop compactions, method field quoted below] + "
@@ -8135,7 +8135,7 @@ def compute_b7_scale(m: Macros) -> None:
           f"{walls100['compaction_plus_all_finalization_share_of_wall_pct']}% (adds gc+"
           "stats+digest) is also on record but not emitted as a separate macro")
 
-    # osdiB7300MGate already covers both scales (scale-independent) --
+    # recB7300MGate already covers both scales (scale-independent) --
     # see the 30M section above.
 
 
@@ -8181,20 +8181,20 @@ def compute_external_baselines(m: Macros) -> None:
         "scored one), not the committed grid, the age-banded cells, or the "
         "withheld-correction cell")
 
-    for name in ("osdiExt1NeoVersion", "osdiExt1Families", "osdiExt1IteratedFamilies",
-                "osdiExt1Cells", "osdiExt1RatioGrMedian", "osdiExt1RatioGrMin",
-                "osdiExt1RatioGrMax", "osdiExt1RatioGrSameHostMedian",
-                "osdiExt1SpeedupLOneMedian", "osdiExt1SpeedupLOneMin",
-                "osdiExt1SpeedupCellsMeeting", "osdiExt1ProbeRatio",
-                "osdiExt1AgreeCells", "osdiExt1Disagreements", "osdiExt1RecomputeMedianS"):
+    for name in ("recExt1NeoVersion", "recExt1Families", "recExt1IteratedFamilies",
+                "recExt1Cells", "recExt1RatioGrMedian", "recExt1RatioGrMin",
+                "recExt1RatioGrMax", "recExt1RatioGrSameHostMedian",
+                "recExt1SpeedupLOneMedian", "recExt1SpeedupLOneMin",
+                "recExt1SpeedupCellsMeeting", "recExt1ProbeRatio",
+                "recExt1AgreeCells", "recExt1Disagreements", "recExt1RecomputeMedianS"):
         m.add_pending(name, "C1 (external baselines, Neo4j recompute)", neo4j_reason)
 
-    for name in ("osdiExt2DdVersion", "osdiExt2Families", "osdiExt2RefreshMedianMs",
-                "osdiExt2RatioRecent", "osdiExt2RatioHours", "osdiExt2RatioDays",
-                "osdiExt2RatioDeep", "osdiExt2CrossoverBand",
-                "osdiExt2WithheldFalseFreshIvm", "osdiExt2WithheldFalseFreshWatermark",
-                "osdiExt2WithheldFalseFreshTgms", "osdiExt2UnanswerableMs",
-                "osdiExt2AgreeCells", "osdiExt2Workers"):
+    for name in ("recExt2DdVersion", "recExt2Families", "recExt2RefreshMedianMs",
+                "recExt2RatioRecent", "recExt2RatioHours", "recExt2RatioDays",
+                "recExt2RatioDeep", "recExt2CrossoverBand",
+                "recExt2WithheldFalseFreshIvm", "recExt2WithheldFalseFreshWatermark",
+                "recExt2WithheldFalseFreshTgms", "recExt2UnanswerableMs",
+                "recExt2AgreeCells", "recExt2Workers"):
         m.add_pending(name, "C1 (external baselines, differential-dataflow IVM)", ivm_reason)
 
 
@@ -8212,20 +8212,20 @@ def add_pending_stubs(m: Macros) -> None:
     # in for that same grid under an earlier, never-committed attempt
     # (storm-campaign-2026-09.json: 12/36 cells complete, the other 24
     # blocked on an iTiger disk-quota incident, 2026-09-14) --
-    # osdiTtfSpeedup, osdiStormCells, osdiStormFalseFresh,
-    # osdiStormSpeedupN1k, osdiStormAvoidedN1k -- are retired: superseded
-    # by the landed osdiStormV1* macros (compute_c7_storm_v1 above) and
+    # recTtfSpeedup, recStormCells, recStormFalseFresh,
+    # recStormSpeedupN1k, recStormAvoidedN1k -- are retired: superseded
+    # by the landed recStormV1* macros (compute_c7_storm_v1 above) and
     # referenced nowhere in the paper skeleton or paper/ under their own
     # names, so there is nothing left for them to stand in for. See the
     # module docstring's C7 section for the full provenance trail.
 
-    # osdiLdbcExpressible/osdiLdbcExecuted/osdiLdbcValidated (C9,
+    # recLdbcExpressible/recLdbcExecuted/recLdbcValidated (C9,
     # independent-validation axis) have landed -- see compute_ldbc_ref_v1
     # above, reading benchmarks/ldbc-ref-v1/compare-2026-09-18.json (Lane
     # W2t, the Neo4j reference run that this stub named as the reason to
     # wait). No longer emitted here.
 
-    # osdiLiveDays/osdiLiveAdvisories/osdiLiveCorrections (C10, live OSV
+    # recLiveDays/recLiveAdvisories/recLiveCorrections (C10, live OSV
     # workload) have landed -- see compute_c10_live_osv above, reading
     # benchmarks/live-osv-v1/snapshot-2026-09-16.json, the first committed
     # record snapshot of the live-osv poller running on xzgpu. No longer
@@ -8233,8 +8233,8 @@ def add_pending_stubs(m: Macros) -> None:
 
     # B7 100M: landed -- see compute_b7_scale above (merge of fe52997). Every
     # core 100M macro, 6/13 executed scale-curve p50s, and the 6 unestimated
-    # refusals (osdiB7Refused<Op>100M) are landed; only
-    # osdiB7ScaleCurveP50ReachWindow100M stays PENDING, with a reason naming
+    # refusals (recB7Refused<Op>100M) are landed; only
+    # recB7ScaleCurveP50ReachWindow100M stays PENDING, with a reason naming
     # its own time_est_ms rather than "not landed yet" (compute_b7_scale
     # calls add_pending directly for that one, since the reason is derived
     # from the just-read record).
@@ -8305,7 +8305,7 @@ def main() -> int:
             print(f"  - {f}", file=sys.stderr)
         return 1
 
-    out_path = OUT_DIR / "osdi-macros.tex"
+    out_path = OUT_DIR / "sys-paper-macros.tex"
     text = m.render()
     old = out_path.read_text(encoding="utf-8") if out_path.exists() else None
     changed = old != text
@@ -8339,7 +8339,7 @@ def main() -> int:
 
     landed = sum(1 for _, v, _ in m.items if not v.startswith("\\errmessage"))
     pending = len(m.items) - landed
-    print(f"osdi_paper_macros: {landed} landed macros, {pending} pending stubs, "
+    print(f"sys_paper_macros: {landed} landed macros, {pending} pending stubs, "
           f"{CHECKS} verifications, all passed.")
     print(f"  {status}: {out_path}")
     return 0

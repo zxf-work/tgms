@@ -93,7 +93,7 @@ ROOT = Path(__file__).resolve().parent.parent
 # ops/failure_ledger.jsonl is a public-worktree file -- like this script
 # itself, it lives in the checkout that is actually running, not in the
 # docs/paper tree --root points at.  Fixed to this file's own location (never
-# re-pointed by set_root/--root), exactly as osdi_paper_macros.py's
+# re-pointed by set_root/--root), exactly as sys_paper_macros.py's
 # FAILURE_LEDGER is.
 FAILURE_LEDGER = ROOT / "ops" / "failure_ledger.jsonl"
 
@@ -137,7 +137,7 @@ PAPER_A_FORECAST = Path("benchmarks/paper-a-v1/forecast.yaml")
 EVIDENCE_FREEZE = Path("docs/design/PAPER_A_EVIDENCE_FREEZE.md")
 EVIDENCE_REPORT = Path("docs/design/PAPER_A_EVIDENCE_REPORT.md")
 FORECAST_FREEZE = Path("docs/design/TGIR_FORECAST_FREEZE.md")
-OSDI_PLAN = Path("docs/design/OSDI27_AUDIT_AND_PLAN_2026-09-13.md")
+SUBMISSION_PLAN = Path("docs/design/OSDI27_AUDIT_AND_PLAN_2026-09-13.md")
 
 # --- the external Neo4j reference run (ldbc-ref-v1; revision of record is the
 # --- 2026-09-18 re-run) -----------------------------------------------------
@@ -1604,10 +1604,10 @@ def main() -> int:
     # engine change).  Two macros, two sources, deliberately.
     #
     # The provenance string below names the pre-registration but NOT the file:
-    # docs/design/OSDI27_AUDIT_AND_PLAN_2026-09-13.md §4.3b is an internal
-    # planning document for an unpublished campaign, and tgir-macros.tex ships
-    # in the arXiv source.  The path is here, in the source that reads it.
-    rerun_band = grep_int(OSDI_PLAN,
+    # SUBMISSION_PLAN §4.3b is an internal design memo for an unpublished
+    # campaign, and tgir-macros.tex ships in the arXiv source.  The path is
+    # here, in the source that reads it.
+    rerun_band = grep_int(SUBMISSION_PLAN,
                           r"\*\*P-SF1 — SF1 reruns at the format-3 engine\.\*\*[^\n]*?"
                           r"wall time within ±(\d+) ?% of each existing record",
                           "P-SF1 wall-time band")
