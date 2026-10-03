@@ -69,6 +69,10 @@ SANCTIONED = {
     # rather than bending an existing test's expectations.
     "785ab6ec77af9ebe23ce953d6a200c2358f05681",  # evidence: round-3 schema (D-124)
     "db718e76422d0323e65174a936f7452db6f1d154",  # osv_loader: zero-width affects interval fix + its regression test in one commit (F3-deploy, 2026-09-13; pushed before the gate ran)
+    # --- Fourth category (2026-10-03): comment-only public-tree wording scrub.
+    # Verified: one tgms/ docstring line (tgms/artifact/registry.py), seven
+    # tests/ docstring lines, no expectation or oracle touched; unrewritable on main.
+    "9e7cdec85f93e8e2a3a97dfa53918f74b114ee12",  # public tree: venue name and internal memo paths out of prose
 }
 
 
