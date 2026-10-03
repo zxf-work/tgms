@@ -596,7 +596,7 @@ uv run python scripts/check_result_manifest.py benchmarks/ldbc-ref-v1/manifest-<
 ## 10. Launch hygiene (long-running, on a shared host)
 
 - **One working copy.** Do not run this alongside another checkout's
-  long-running job on the same host (`docs/design/OSDI27_AUDIT_AND_PLAN_2026-09-13.md`:
+  long-running job on the same host (an internal design memo: audit and plan, 2026-09-13:
   a prior lane's relaunch-in-place habit cost 38 GB deleted twice). Use one
   dedicated worktree for this run and nothing else in it at the same time.
 - **`TMPDIR`.** Set `TMPDIR=/mnt/project/xzhang/tmp` (or another

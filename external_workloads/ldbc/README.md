@@ -29,5 +29,5 @@ to Neo4j directly over the `neo4j` Python driver), and each tree's own
 working-tree text at the pinned commit is vendored here).
 
 See `benchmarks/ldbc-ref-v1/RUNBOOK.md` for how this content is used (the
-24-template LDBC reference-correctness campaign, OSDI'27 Claim C9) and
+24-template LDBC reference-correctness campaign, the submission campaign's Claim C9) and
 `external_workloads/MANIFEST.yaml` for the formal pin record.

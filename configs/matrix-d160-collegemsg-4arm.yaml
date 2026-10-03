@@ -1,4 +1,4 @@
-# D-160 re-measurement (OSDI'27 campaign, E3 lane "D-160 re-measurement"):
+# D-160 re-measurement (the submission campaign, E3 lane "D-160 re-measurement"):
 # four-arm CollegeMsg comparison under the post-D-160 production claim gate.
 # `tgms.eval.plan_faults.GATED_VERDICTS = ("unsupported", "unverifiable")`
 # is the code's default since 2026-09-15 (docs/STABILITY.md section 9); this

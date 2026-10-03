@@ -10,7 +10,7 @@
 #SBATCH --output=/home/xzhang12/d160-work-h/logs/%x-%j.out
 #SBATCH --error=/home/xzhang12/d160-work-h/logs/%x-%j.err
 #
-# D-160 re-measurement (OSDI'27 lane "D-160 re-measurement"; docs/STABILITY.md
+# D-160 re-measurement (lane "D-160 re-measurement"; docs/STABILITY.md
 # section 9): re-measure the CollegeMsg agent-loop numbers under the
 # production claim gate's new default (drops `unsupported` AND
 # `unverifiable` -- tgms.eval.plan_faults.GATED_VERDICTS, unchanged by this

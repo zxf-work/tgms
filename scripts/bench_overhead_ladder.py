@@ -1,4 +1,4 @@
-"""The five-rung overhead ladder, on ONE store, in ONE run (OSDI'27 lane D4).
+"""The five-rung overhead ladder, on ONE store, in ONE run (lane D4).
 
 **The ladder.** Five conditions, cheapest to most end-to-end, each answering
 "what does going through TGIR / the agent path cost, on top of the bare
@@ -25,7 +25,7 @@ functions guarded by `if __name__ == "__main__"`.
 
 **Ambiguity this harness had to resolve.** `benchmarks/tgir-v1/merged.yaml`
 does not exist in this tree (checked across every branch) and neither does
-`docs/design/OSDI27_PAPER_SKELETON_2026-09-15.md`, so the ladder's rung
+an internal design memo (paper skeleton, 2026-09-15), so the ladder's rung
 names and boundaries come from this script's own docstring and the task
 brief, not from a frozen spec file. Two design calls follow from that:
 

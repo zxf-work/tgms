@@ -274,7 +274,7 @@ fields.
 
 ## Post-hoc replay check (2026-09-15) — aborted: replay process OOM-killed
 
-**Pre-registered in the OSDI'27 campaign plan (§4.3a), prediction untested.**
+**Pre-registered in the campaign plan (internal) (§4.3a), prediction untested.**
 B7c's `tgms.storage.eventlog.replay(..., compact_every=N)` (see the
 "Replay with periodic compaction" section of `docs/eval_durability.md`,
 2026-09-15) makes the Gate E replay/digest-equivalence check *disk*-feasible
@@ -555,7 +555,7 @@ measured, not a re-run.
 
 ## Soak 2 (post-fix)
 
-**Pre-registration (OSDI'27 plan §4.3b, P-SOAK2).** Same harness and
+**Pre-registration (campaign plan (internal), §4.3b, P-SOAK2).** Same harness and
 parameters as the first soak above (`stores/synth-1m-native`, `--mix
 balanced --readers 8 --compact-every-batches 500
 --compact-min-interval-s 5 --reader-reopen-every-s 300 --artifacts 500

@@ -1,6 +1,6 @@
 # ladder-v1
 
-The frozen plan set and campaign for the OSDI'27 overhead-ladder measurement
+The frozen plan set and campaign for the submission campaign's overhead-ladder measurement
 (lane D4/D4b). **Run of record: 2026-09-14** (`ladder-2026-09-14.json`,
 `raw/` — see "Results" below); this lane itself is laptop-only (no ssh, no
 cluster) and only drafted the plan set — the coordinator scheduled and
