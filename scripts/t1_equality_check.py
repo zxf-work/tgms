@@ -24,7 +24,7 @@ def sha_of_rows_digest(manifest: dict) -> str | None:
 def load_oracle_changed(oracle_path: Path) -> list[list[str]]:
     """Per-epoch changed-artifact-name lists, epoch 1..N, derived by diffing
     consecutive {name: digest} maps (epoch 0 is the baseline)."""
-    lines = [json.loads(l) for l in oracle_path.read_text().splitlines() if l.strip()]
+    lines = [json.loads(line) for line in oracle_path.read_text().splitlines() if line.strip()]
     changed_per_epoch = []
     for k in range(1, len(lines)):
         prev = lines[k - 1]["digests"]
@@ -58,7 +58,7 @@ def main() -> int:
     manifest_path = manifests[0]
     manifest = json.loads(manifest_path.read_text())
     rows_path = t1_dir / (manifest_path.stem + "-rows.jsonl")
-    rows = [json.loads(l) for l in rows_path.read_text().splitlines() if l.strip()]
+    rows = [json.loads(line) for line in rows_path.read_text().splitlines() if line.strip()]
 
     batches_realized = len(rows)
 
@@ -85,7 +85,7 @@ def main() -> int:
     oracle_path = export_dir / "oracle.jsonl"
     per_batch_results = []
     if deltas_path.exists() and oracle_path.exists():
-        deltas = [json.loads(l) for l in deltas_path.read_text().splitlines() if l.strip()]
+        deltas = [json.loads(line) for line in deltas_path.read_text().splitlines() if line.strip()]
         changed_per_epoch = load_oracle_changed(oracle_path)
         n = min(len(rows), len(deltas), len(changed_per_epoch))
         for i in range(n):
