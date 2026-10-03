@@ -24,7 +24,7 @@ at snapshot time and was at no point built, run, or opened for a write).
 
 ## The three numbers this unblocks
 
-`scripts/osdi_paper_macros.py`'s `recLiveDays`, `recLiveAdvisories`, and
+`scripts/sys_paper_macros.py`'s `recLiveDays`, `recLiveAdvisories`, and
 `recLiveCorrections` (C10) were PENDING because no committed record existed
 for the live-osv workload; this snapshot is that record.
 

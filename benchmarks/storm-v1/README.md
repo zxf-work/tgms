@@ -370,7 +370,7 @@ combination for that draw) rather than retrying with a different one —
 `config.n_registration_skipped` records the count directly (1,078 and 116
 respectively here), not further attributed beyond that in either record.
 
-Paper numbers come from `scripts/osdi_paper_macros.py`, recomputed from
+Paper numbers come from `scripts/sys_paper_macros.py`, recomputed from
 this record (its own median/aggregate computations are cross-checked
 against each record's `summary` block before being trusted).
 

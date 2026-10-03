@@ -27,7 +27,7 @@ scripts/anonymize_artifact.py --src . --out /tmp/tgms-artifact \
 Default include set: `benchmarks/**/*.json`, `benchmarks/**/*.jsonl`,
 `benchmarks/**/*.md`, `benchmarks/**/*.yaml`, `benchmarks/schema/**`,
 `docs/system_invariants.md`, `docs/STABILITY.md`, `docs/eval/*.md`,
-`scripts/osdi_paper_macros.py`, `scripts/osdi_paper_figures.py`,
+`scripts/sys_paper_macros.py`, `scripts/sys_paper_figures.py`,
 `README.md`, `LICENSE`. Always excluded, regardless of `--include`:
 `docs/design/**`, `paper/**`, `docs/DECISIONS.md`, `.git`, anything
 gitignored. `ops/failure_ledger.jsonl` is excluded unless named explicitly
