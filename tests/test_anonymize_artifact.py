@@ -1,4 +1,4 @@
-"""Tests for `scripts/anonymize_artifact.py` (OSDI campaign, lane W4).
+"""Tests for `scripts/anonymize_artifact.py` (the submission campaign, lane W4).
 
 The script builds a scrubbed copy of the artifact bundle for double-blind
 review; the repository itself keeps the real provenance. These tests build
@@ -11,7 +11,7 @@ name, the Slurm partition, the university domain, and a PI email, plus a
 whose own *name* carries a token, and a JSON *key* that carries one.
 
 Module loaded fresh via `importlib.util`, matching the pattern
-`tests/test_osdi_paper_macros.py` already uses for `scripts/*.py`.
+`tests/test_sys_paper_macros.py` already uses for `scripts/*.py`.
 """
 
 from __future__ import annotations

@@ -1,5 +1,5 @@
-"""Tests for the OSDI paper's receipts machinery (Lane W, task W2):
-``scripts/osdi_paper_macros.py`` and ``scripts/osdi_paper_figures.py``.
+"""Tests for the submission campaign's receipts machinery (Lane W, task W2):
+``scripts/sys_paper_macros.py`` and ``scripts/sys_paper_figures.py``.
 
 Three things are checked, matching the task's own discipline:
 
@@ -62,7 +62,7 @@ def _ruff_path() -> Path | None:
 
 
 # --------------------------------------------------------------------------
-# osdi_paper_macros.py: recomputation and frozen values
+# sys_paper_macros.py: recomputation and frozen values
 # --------------------------------------------------------------------------
 
 def _run_all_landed(mod):
@@ -104,7 +104,7 @@ def _run_all_landed(mod):
 
 
 def test_landed_macros_recompute_without_any_verification_failure():
-    mod = _load("osdi_paper_macros")
+    mod = _load("sys_paper_macros")
     assert mod.CHECKS == 0 and mod.FAILURES == []
     _run_all_landed(mod)
     assert mod.FAILURES == [], f"unexpected verification failures: {mod.FAILURES}"
@@ -112,585 +112,585 @@ def test_landed_macros_recompute_without_any_verification_failure():
 
 
 FROZEN_LANDED_VALUES = {
-    "osdiCrashTrials": "10{,}000",
-    "osdiCrashProblems": "0",
-    "osdiCrashBoundaries": "10",
-    "osdiCrashWall": "4{,}912.85",
-    "osdiManifestBytesCtl": "25.97",
-    "osdiManifestBytesTrt": "62.0",
-    "osdiManifestCommitRatio": "1.798",
-    "osdiManifestColdOpen": "8.02",
-    "osdiB1v2ControlCommit": "886805f",
-    "osdiB1v2TreatmentCommit": "7a5ff98",
-    "osdiB1v2BytesControlMB": "73.8",
-    "osdiB1v2BytesTreatmentMB": "74.4",
-    "osdiB1v2BytesPaired": "1.008",
-    "osdiB1v2SegmentBytesControlMB": "159.0",
-    "osdiB1v2SegmentBytesTreatmentMB": "163.4",
-    "osdiB1v2ManifestDecileControl": "1.115",
-    "osdiB1v2ManifestDecileTreatment": "1.079",
-    "osdiB1v2ManifestDecileK128": "1.068",
-    "osdiB1v2ManifestDecileK1024": "1.150",
-    "osdiB1v2TotalDecileControl": "1.733",
-    "osdiB1v2TotalDecileTreatment": "1.674",
-    "osdiB1v2P50ControlMs": "5.430",
-    "osdiB1v2P50TreatmentMs": "5.478",
-    "osdiB1v2P50Paired": "1.009",
-    "osdiB1v2OpenControlMs": "2247.9",
-    "osdiB1v2OpenTreatmentMs": "1705.3",
-    "osdiB1v2OpenPaired": "0.76",
-    "osdiB1v2OpenControlGeneration": "10{,}759",
-    "osdiB1v2OpenTreatmentGeneration": "11{,}029",
-    "osdiB1v2BuildOpsPerSecRatioAt2p5M": "2.10",
-    "osdiB1v2OpenComponentStatus": "not computed",
-    "osdiB1v2eTreatmentCommit": "e5d4171",
-    "osdiB1v2eTotalDecileTreatment": "1.017",
-    "osdiB1v2eTotalDecileControl": "1.696",
-    "osdiB1v2eResidualFirstUs": "33.06",
-    "osdiB1v2eResidualLastUs": "30.38",
-    "osdiB1v2eP50TreatmentMs": "3.365",
-    "osdiB1v2eP50ControlMs": "4.704",
-    "osdiB1v2eP50Paired": "0.715",
-    "osdiB1v2eWallP50TreatmentMs": "4.274",
-    "osdiB1v2eWallP50ControlMs": "5.303",
-    "osdiB1v2eWallPaired": "0.806",
-    "osdiB1v2eOpenComponentMs": "87.06",
-    "osdiB1v2eOpenCheckpointMs": "42.124",
-    "osdiB1v2eOpenMerkleVerifyMs": "40.204",
-    "osdiB1v2eOpenStateBuildMs": "1.828",
-    "osdiB1v2eOpenDeltaReplayMs": "2.899",
-    "osdiB1v2eOpenDictionaryMs": "1066.5",
-    "osdiB1v2eOpenTotalMs": "1191.8",
-    "osdiB1v2eOpenGeneration": "10{,}365",
-    "osdiB1v2eControlOpenStatus": "confounded (concurrent backup transfer)",
-    "osdiB1v2eManifestBytesTreatment": "1592",
-    "osdiB1v2eManifestBytesControl": "1565",
-    "osdiB1co7TreatmentCommit": "ebe1dc2",
-    "osdiB1co7CheckpointReadParseMs": "12.67",
-    "osdiB1co7MerkleVerifyMs": "34.86",
-    "osdiB1co7StateBuildMs": "5.94",
-    "osdiB1co7DeltaReplayMs": "6.26",
-    "osdiB1co7ComponentMs": "59.72",
-    "osdiB1co7DictionaryOpenMs": "1092.7",
-    "osdiB1co7TotalMs": "1155.0",
-    "osdiB1co7Generation": "10{,}116",
-    "osdiB1co7DeltaCount": "388",
-    "osdiB1co7CheckpointGeneration": "9728",
-    "osdiB1co7StateBuildPerDeltaUs": "15.3",
-    "osdiB1co7DeltaReplayPerDeltaUs": "16.1",
-    "osdiB1co7ControlOpenMs": "10100.2",
-    "osdiB1co7ControlGeneration": "10{,}042",
-    "osdiB1co7ControlDeltaCount": "314",
-    "osdiB1co7ControlPerDeltaMs": "28.7",
-    "osdiB1co7OpenRatio": "0.114",
-    "osdiB1WorstPhaseOpenTreatmentMs": "63.6",
-    "osdiB1WorstPhaseOpenControlS": "14.7",
-    "osdiVhRss": "1.259",
-    "osdiVhWall": "1.87",
-    "osdiVhRatio": "7.32",
-    "osdiVhProjHundredM": "12.6",
-    "osdiReadersMax": "32",
-    "osdiReaderVmhwm": "1.19--1.22",
-    "osdiAggQpsOne": "2.85",
-    "osdiAggQpsThirtyTwo": "27.72",
-    "osdiWriterTailCost": "+47.5\\%/+42.7\\%",
-    "osdiFalseFreshCarveTwo": "0",
-    "osdiRowTouchRate": "47.4",
-    "osdiNewIdentityFF": "89",
-    "osdiAvoidedPct": "99.0",
-    "osdiFaultTrials": "3102",
-    "osdiSilentPre": "303",
-    "osdiSilentPost": "0",
-    "osdiFOneNineBefore": "271",
-    "osdiFTwoThree": "32",
-    "osdiDagCells": "40",
-    "osdiDagV1FalseSafeCells": "20",
-    "osdiDagV2FalseSafeCells": "0",
-    "osdiDagV3FalseSafeCells": "0",
-    "osdiDagV1FalseSafePerCell": "3",
-    "osdiDagV2ExtraVisitsSeedZero": "61",
-    "osdiDagV2ExtraVisitsSeedOne": "62",
-    "osdiDagV3ExtraVisitsSeedZero": "15",
-    "osdiDagV3ExtraVisitsSeedOne": "11",
-    "osdiDagV3AllTopTerm": "0",
-    "osdiDagFalseFreshTotal": "0",
-    "osdiR18Artifacts": "10{,}000",
-    "osdiR18IntersectsCallsMedian": "13{,}009",
-    "osdiR18LookupMsMedian": "26.91",
-    "osdiR18SurvivorFraction": "71.3",
-    "osdiR18CheckSecondsMedian": "867.6",
-    "osdiR18TtfL1Seconds": "1977.6",
-    "osdiR18TtfGlobalSeconds": "1595.3",
-    "osdiR18Speedup": "0.807",
-    "osdiR18Precision": "8.51",
-    "osdiR18AvoidedRecompute": "29.9",
-    "osdiStormV1Commit": "8962b78",
-    "osdiStormV1Cells": "36",
-    "osdiStormV1CellsFailed": "0",
-    "osdiStormV1FalseFreshTgmsCellsNonzero": "0",
-    "osdiStormV1SpeedupN1kSeed0": "1.938",
-    "osdiStormV1SpeedupSynthC1None": "1.895",
-    "osdiStormV1SpeedupSynthC1Deep": "1.908",
-    "osdiStormV1SpeedupSynthC3None": "1.933",
-    "osdiStormV1SpeedupSynthC3Deep": "1.939",
-    "osdiStormV1SpeedupSynthC4None": "1.788",
-    "osdiStormV1SpeedupSynthC4Deep": "1.756",
-    "osdiStormV1SpeedupCollegeMsgC1None": "2.333",
-    "osdiStormV1SpeedupCollegeMsgC1Deep": "2.304",
-    "osdiStormV1SpeedupCollegeMsgC3None": "2.382",
-    "osdiStormV1SpeedupCollegeMsgC3Deep": "2.427",
-    "osdiStormV1SpeedupCollegeMsgC4None": "2.325",
-    "osdiStormV1SpeedupCollegeMsgC4Deep": "2.151",
-    "osdiStormV1SpeedupGridMin": "1.742",
-    "osdiStormV1SpeedupGridMax": "2.558",
-    "osdiStormV1AvoidedDecisionC1Median": "0.309",
-    "osdiStormV1AvoidedDecisionC3Median": "0.312",
-    "osdiStormV1AvoidedDecisionC4Median": "0.312",
-    "osdiStormV1Batches": "720",
-    "osdiStormV1RowTouchFalseFreshMedian": "1.000",
-    "osdiStormV1EntityTouchFalseFreshMedian": "0.993",
-    "osdiStormV1WindowOverlapFalseFreshMedian": "0.189",
-    "osdiStormV1WindowOverlapNonzeroBatches": "258",
-    "osdiStormV1NewIdentityBatches": "195",
-    "osdiStormV1NewIdentityRowTouchMedian": "1.000",
-    "osdiStormV1P4ViolationCells": "0",
-    "osdiStormV2ProbeCommit": "fdd393c",
-    "osdiStormV2ProbeBatches": "5",
-    "osdiStormV2ProbeWallS": "12{,}452.8",
-    "osdiStormV2ProbeGlobalTtfS": "1{,}569.3",
-    "osdiStormV2ProbeTgmsL1TtfS": "806.3",
-    "osdiStormV2ProbeSpeedupN10k": "1.946",
-    "osdiStormV2ProbeAvoidedDecision": "0.758",
-    "osdiStormV2ProbeSurvivorMedian": "0.283",
-    "osdiStormV2ProbePrecisionMedian": "0.211",
-    "osdiStormV2ProbeIntersectsMedian": "29{,}193",
-    "osdiStormV2ProbeR18Tripped": "no",
-    "osdiStormV2ProbeAllTopTerms": "0",
-    "osdiStormV2ProbeNonComputeArtifacts": "8203",
-    "osdiStormV2ProbeCheckWallMedianS": "336.9",
-    "osdiStormV2Commit": "fdd393c",
-    "osdiStormV2Cells": "36",
-    "osdiStormV2CellsFailed": "0",
-    "osdiStormV2AllTopTerms": "0",
-    "osdiStormV2NonComputeArtifacts": "29{,}826",
-    "osdiStormV2SpeedupN1kSeed0": "5.173",
-    "osdiStormV2AvoidedDecisionC1Median": "0.755",
-    "osdiStormV2C1Batches": "240",
-    "osdiStormV2SurvivorFractionC1Median": "0.262",
-    "osdiStormV2PrecisionC1Median": "0.187",
-    "osdiStormV2SurvivorFractionSynthC1Median": "0.266",
-    "osdiStormV2SurvivorFractionCollegeMsgC1Median": "0.257",
-    "osdiStormV2PrecisionSynthC1Median": "0.182",
-    "osdiStormV2PrecisionCollegeMsgC1Median": "0.194",
-    "osdiStormV2FalseFreshTgmsCellsNonzero": "0",
-    "osdiStormV2SpeedupSynthC1None": "5.173",
-    "osdiStormV2SpeedupSynthC1Deep": "4.902",
-    "osdiStormV2SpeedupSynthC3None": "5.642",
-    "osdiStormV2SpeedupSynthC3Deep": "5.217",
-    "osdiStormV2SpeedupSynthC4None": "6.367",
-    "osdiStormV2SpeedupSynthC4Deep": "5.022",
-    "osdiStormV2SpeedupCollegeMsgC1None": "6.189",
-    "osdiStormV2SpeedupCollegeMsgC1Deep": "6.821",
-    "osdiStormV2SpeedupCollegeMsgC3None": "6.662",
-    "osdiStormV2SpeedupCollegeMsgC3Deep": "6.332",
-    "osdiStormV2SpeedupCollegeMsgC4None": "7.433",
-    "osdiStormV2SpeedupCollegeMsgC4Deep": "8.071",
-    "osdiStormV2SpeedupGridMin": "4.588",
-    "osdiStormV2SpeedupGridMax": "8.863",
-    "osdiD160Tasks": "94",
-    "osdiD160TaskRuns": "282",
-    "osdiD160OursCarrying": "112",
-    "osdiD160OursCoverage": "0.397",
-    "osdiD160OursCondAcc": "0.509",
-    "osdiD160OursUcrGated": "0",
-    "osdiD160OursUcrPreGate": "0.212",
-    "osdiD160B6eCoverage": "0.830",
-    "osdiD160B6eCondAcc": "0.333",
-    "osdiD160B5Em": "0.181",
-    "osdiD160LlmDirectCarrying": "0",
-    "osdiD160LlmDirectOverflowErrors": "216",
-    "osdiD160LlmDirectCoverageFixed": "0.000",
-    "osdiD160LlmDirectErrorsFixed": "0",
-    "osdiD160LlmDirectRawEmFixed": "0.064",
-    "osdiD160LlmDirectTokenizerFixed": "hf\\_real",
-    "osdiD160LlmDirectBudgetFixed": "8000",
-    "osdiOldGateCoverage": "0.706",
-    "osdiOldGateUcr": "0",
-    "osdiOldGateCondAcc": "0.548",
-    "osdiCorruptionTrials": "10{,}000",
-    "osdiCorruptionClasses": "13",
-    "osdiCorruptionMutations": "7",
-    "osdiCorruptionDetected": "6587",
-    "osdiCorruptionDetectedPre": "5966",
-    "osdiCorruptionDetectedPost": "6587",
-    "osdiCorruptionSilentPre": "0",
-    "osdiCorruptionSilentPost": "0",
-    "osdiCorruptionBlobDetectedPre": "0/621",
-    "osdiCorruptionBlobDetectedPost": "621/621",
-    "osdiCorruptionBlobTrials": "710",
-    "osdiCorruptionBlobDetectedAllPre": "89/710",
-    "osdiCorruptionBlobDetectedAllPost": "710/710",
-    "osdiCorruptionBlobMutationAlreadyDetected": "delete\\_file",
-    "osdiCorruptionCellsMovedPost": "0",
-    "osdiLadderPlans": "12",
-    "osdiLadderOperatorsCovered": "14",
-    "osdiLadderRung1Min": "0.992",
-    "osdiLadderRung1Max": "1.064",
-    "osdiLadderRung2EntityHistory": "1.13",
-    "osdiLadderRung2VersionHistory": "2.54",
-    "osdiLadderRung3BytesOneStepMedian": "3309",
-    "osdiLadderRung3BytesThreeStepMedian": "7549",
-    "osdiLadderRung3Deterministic": "12",
-    "osdiLadderRung4VerifyMsMedian": "5.06",
-    "osdiLadderRung5TokensMedian": "1811.5",
-    "osdiLadderRung5ToolCallsEqualExecutedSteps": "12",
-    "osdiLadderPlansTruncated": "2",
-    "osdiSoakHours": "24",
-    "osdiSoakCommit": "886805f",
-    "osdiSoakEntitiesStart": "1{,}000{,}000",
-    "osdiSoakEntitiesEnd": "1{,}730{,}492",
-    "osdiSoakBatches": "1{,}074{,}952",
-    "osdiSoakWriterLives": "42",
-    "osdiSoakRecoveries": "41",
-    "osdiSoakRecoveriesSigabrt": "23",
-    "osdiSoakRecoveriesExit137": "18",
-    "osdiSoakUnexpectedRecoveries": "0",
-    "osdiSoakReaderDeaths": "2",
-    "osdiSoakReaderDeathCause": "reader torn-tail race, pre-fix engine",
-    "osdiSoakVerifyHealthy": "true",
-    "osdiSoakWriterErrorsManifest": "1",
-    "osdiSoakWriterErrorsTrue": "249",
-    "osdiSoakThroughputStart": "24.03",
-    "osdiSoakThroughputEnd": "16.41",
-    "osdiSoakP99StartMs": "485.6",
-    "osdiSoakP99EndMs": "3{,}740.5",
-    "osdiSoakManifestGrowthBps": "-3.4",
-    "osdiSoakSegmentGrowthBps": "1{,}341.1",
-    "osdiSoakDigestStatus": "not computed",
-    "osdiSoakReplayProjectedTB": "280.8",
-    "osdiSoakCompactions": "2415",
-    "osdiSoakWriterWithinLifeSlopeMedianKBps": "3165.6",
-    "osdiSoakWriterWithinLifeSlopeMinKBps": "1921.1",
-    "osdiSoakWriterWithinLifeSlopeMaxKBps": "4154.2",
-    "osdiSoakWriterLivesFitted": "42",
-    "osdiSoakWriterLivesPositive": "42",
-    "osdiSoakReaderWithinLifeSlopeMedianKBps": "5.32",
-    "osdiSoakReaderWithinLifeSlopeMaxKBps": "47.07",
-    "osdiSoakFirstVsLastSlopeKBps": "111.6",
-    "osdiSoakCommitsPerSecMean": "20.2",
-    "osdiSoakBytesPerCommitLiveKB": "157",
-    "osdiSoakReplayOutcome": "aborted_oom",
-    "osdiSoakReplayOomRssGB": "83.0",
-    "osdiSoakReplayOomGeneration": "513{,}024",
-    "osdiSoakReplayFractionApplied": "0.476",
-    "osdiSoakReplayKBPerGeneration": "161.8",
-    "osdiSoakReplayElapsedH": "3.37",
-    "osdiSoakCommitTwo": "eed91c0",
-    "osdiSoakHoursTwo": "24",
-    "osdiSoakWriterLivesTwo": "4",
-    "osdiSoakRecoveriesTwo": "3",
-    "osdiSoakRecoveriesSigabrtTwo": "2",
-    "osdiSoakRecoveriesExit137Two": "1",
-    "osdiSoakUnexpectedRecoveriesTwo": "0",
-    "osdiSoakWriterWithinLifeSlopeMedianKBpsTwo": "27.965",
-    "osdiSoakWriterWithinLifeSlopeMinKBpsTwo": "20.978",
-    "osdiSoakWriterWithinLifeSlopeMaxKBpsTwo": "43.494",
-    "osdiSoakReaderWithinLifeSlopeMinKBpsTwo": "7.212",
-    "osdiSoakReaderWithinLifeSlopeMaxKBpsTwo": "8.098",
-    "osdiSoakDigestEqualTwo": "true",
-    "osdiSoakBatchesTwo": "1{,}891{,}962",
-    "osdiSoakFullVerifyOverlapCountTwo": "0",
-    "osdiSoakFullVerifyVerdictTwo": "healthy",
-    "osdiSoakWriterErrorsTrueTwo": "616",
-    "osdiSoakWriterErrorsClassTwo": "NotFoundError",
-    "osdiSoakReaderErrorsTrueTwo": "150{,}476{,}512",
-    "osdiSoakReaderErrorsOSErrorTwo": "150{,}278{,}720",
-    "osdiSoakReaderErrorsStateErrorTwo": "197{,}792",
-    "osdiSoakReaderQueriesTwo": "16{,}055{,}124",
-    "osdiSoakThroughputStartTwo": "39.91",
-    "osdiSoakThroughputEndTwo": "19.117",
-    "osdiSoakThroughputLastOverFirstRatioTwo": "0.479",
-    "osdiSoakP99StartMsTwo": "60.42",
-    "osdiSoakP99EndMsTwo": "82.075",
-    "osdiSoakManifestGrowthBpsTwo": "3.141",
-    "osdiSoakSegmentGrowthBpsTwo": "2{,}396.455",
-    "osdiSoakEntitiesEndTwo": "3{,}092{,}488",
-    "osdiSoakCompactionsTwo": "4215",
-    "osdiSoakReaderOnsetEarliestRowsTwo": "2{,}235{,}044",
-    "osdiSoakReaderOnsetLatestRowsTwo": "2{,}450{,}815",
-    "osdiSoakReaderOnsetEarliestSTwo": "61417.1",
-    "osdiSoakReaderOnsetLatestSTwo": "75993.1",
-    "osdiLiveDays": "1.89",
-    "osdiLiveAdvisories": "32{,}827",
-    "osdiLiveCorrections": "1",
+    "recCrashTrials": "10{,}000",
+    "recCrashProblems": "0",
+    "recCrashBoundaries": "10",
+    "recCrashWall": "4{,}912.85",
+    "recManifestBytesCtl": "25.97",
+    "recManifestBytesTrt": "62.0",
+    "recManifestCommitRatio": "1.798",
+    "recManifestColdOpen": "8.02",
+    "recB1v2ControlCommit": "886805f",
+    "recB1v2TreatmentCommit": "7a5ff98",
+    "recB1v2BytesControlMB": "73.8",
+    "recB1v2BytesTreatmentMB": "74.4",
+    "recB1v2BytesPaired": "1.008",
+    "recB1v2SegmentBytesControlMB": "159.0",
+    "recB1v2SegmentBytesTreatmentMB": "163.4",
+    "recB1v2ManifestDecileControl": "1.115",
+    "recB1v2ManifestDecileTreatment": "1.079",
+    "recB1v2ManifestDecileK128": "1.068",
+    "recB1v2ManifestDecileK1024": "1.150",
+    "recB1v2TotalDecileControl": "1.733",
+    "recB1v2TotalDecileTreatment": "1.674",
+    "recB1v2P50ControlMs": "5.430",
+    "recB1v2P50TreatmentMs": "5.478",
+    "recB1v2P50Paired": "1.009",
+    "recB1v2OpenControlMs": "2247.9",
+    "recB1v2OpenTreatmentMs": "1705.3",
+    "recB1v2OpenPaired": "0.76",
+    "recB1v2OpenControlGeneration": "10{,}759",
+    "recB1v2OpenTreatmentGeneration": "11{,}029",
+    "recB1v2BuildOpsPerSecRatioAt2p5M": "2.10",
+    "recB1v2OpenComponentStatus": "not computed",
+    "recB1v2eTreatmentCommit": "e5d4171",
+    "recB1v2eTotalDecileTreatment": "1.017",
+    "recB1v2eTotalDecileControl": "1.696",
+    "recB1v2eResidualFirstUs": "33.06",
+    "recB1v2eResidualLastUs": "30.38",
+    "recB1v2eP50TreatmentMs": "3.365",
+    "recB1v2eP50ControlMs": "4.704",
+    "recB1v2eP50Paired": "0.715",
+    "recB1v2eWallP50TreatmentMs": "4.274",
+    "recB1v2eWallP50ControlMs": "5.303",
+    "recB1v2eWallPaired": "0.806",
+    "recB1v2eOpenComponentMs": "87.06",
+    "recB1v2eOpenCheckpointMs": "42.124",
+    "recB1v2eOpenMerkleVerifyMs": "40.204",
+    "recB1v2eOpenStateBuildMs": "1.828",
+    "recB1v2eOpenDeltaReplayMs": "2.899",
+    "recB1v2eOpenDictionaryMs": "1066.5",
+    "recB1v2eOpenTotalMs": "1191.8",
+    "recB1v2eOpenGeneration": "10{,}365",
+    "recB1v2eControlOpenStatus": "confounded (concurrent backup transfer)",
+    "recB1v2eManifestBytesTreatment": "1592",
+    "recB1v2eManifestBytesControl": "1565",
+    "recB1co7TreatmentCommit": "ebe1dc2",
+    "recB1co7CheckpointReadParseMs": "12.67",
+    "recB1co7MerkleVerifyMs": "34.86",
+    "recB1co7StateBuildMs": "5.94",
+    "recB1co7DeltaReplayMs": "6.26",
+    "recB1co7ComponentMs": "59.72",
+    "recB1co7DictionaryOpenMs": "1092.7",
+    "recB1co7TotalMs": "1155.0",
+    "recB1co7Generation": "10{,}116",
+    "recB1co7DeltaCount": "388",
+    "recB1co7CheckpointGeneration": "9728",
+    "recB1co7StateBuildPerDeltaUs": "15.3",
+    "recB1co7DeltaReplayPerDeltaUs": "16.1",
+    "recB1co7ControlOpenMs": "10100.2",
+    "recB1co7ControlGeneration": "10{,}042",
+    "recB1co7ControlDeltaCount": "314",
+    "recB1co7ControlPerDeltaMs": "28.7",
+    "recB1co7OpenRatio": "0.114",
+    "recB1WorstPhaseOpenTreatmentMs": "63.6",
+    "recB1WorstPhaseOpenControlS": "14.7",
+    "recVhRss": "1.259",
+    "recVhWall": "1.87",
+    "recVhRatio": "7.32",
+    "recVhProjHundredM": "12.6",
+    "recReadersMax": "32",
+    "recReaderVmhwm": "1.19--1.22",
+    "recAggQpsOne": "2.85",
+    "recAggQpsThirtyTwo": "27.72",
+    "recWriterTailCost": "+47.5\\%/+42.7\\%",
+    "recFalseFreshCarveTwo": "0",
+    "recRowTouchRate": "47.4",
+    "recNewIdentityFF": "89",
+    "recAvoidedPct": "99.0",
+    "recFaultTrials": "3102",
+    "recSilentPre": "303",
+    "recSilentPost": "0",
+    "recFOneNineBefore": "271",
+    "recFTwoThree": "32",
+    "recDagCells": "40",
+    "recDagV1FalseSafeCells": "20",
+    "recDagV2FalseSafeCells": "0",
+    "recDagV3FalseSafeCells": "0",
+    "recDagV1FalseSafePerCell": "3",
+    "recDagV2ExtraVisitsSeedZero": "61",
+    "recDagV2ExtraVisitsSeedOne": "62",
+    "recDagV3ExtraVisitsSeedZero": "15",
+    "recDagV3ExtraVisitsSeedOne": "11",
+    "recDagV3AllTopTerm": "0",
+    "recDagFalseFreshTotal": "0",
+    "recR18Artifacts": "10{,}000",
+    "recR18IntersectsCallsMedian": "13{,}009",
+    "recR18LookupMsMedian": "26.91",
+    "recR18SurvivorFraction": "71.3",
+    "recR18CheckSecondsMedian": "867.6",
+    "recR18TtfL1Seconds": "1977.6",
+    "recR18TtfGlobalSeconds": "1595.3",
+    "recR18Speedup": "0.807",
+    "recR18Precision": "8.51",
+    "recR18AvoidedRecompute": "29.9",
+    "recStormV1Commit": "8962b78",
+    "recStormV1Cells": "36",
+    "recStormV1CellsFailed": "0",
+    "recStormV1FalseFreshTgmsCellsNonzero": "0",
+    "recStormV1SpeedupN1kSeed0": "1.938",
+    "recStormV1SpeedupSynthC1None": "1.895",
+    "recStormV1SpeedupSynthC1Deep": "1.908",
+    "recStormV1SpeedupSynthC3None": "1.933",
+    "recStormV1SpeedupSynthC3Deep": "1.939",
+    "recStormV1SpeedupSynthC4None": "1.788",
+    "recStormV1SpeedupSynthC4Deep": "1.756",
+    "recStormV1SpeedupCollegeMsgC1None": "2.333",
+    "recStormV1SpeedupCollegeMsgC1Deep": "2.304",
+    "recStormV1SpeedupCollegeMsgC3None": "2.382",
+    "recStormV1SpeedupCollegeMsgC3Deep": "2.427",
+    "recStormV1SpeedupCollegeMsgC4None": "2.325",
+    "recStormV1SpeedupCollegeMsgC4Deep": "2.151",
+    "recStormV1SpeedupGridMin": "1.742",
+    "recStormV1SpeedupGridMax": "2.558",
+    "recStormV1AvoidedDecisionC1Median": "0.309",
+    "recStormV1AvoidedDecisionC3Median": "0.312",
+    "recStormV1AvoidedDecisionC4Median": "0.312",
+    "recStormV1Batches": "720",
+    "recStormV1RowTouchFalseFreshMedian": "1.000",
+    "recStormV1EntityTouchFalseFreshMedian": "0.993",
+    "recStormV1WindowOverlapFalseFreshMedian": "0.189",
+    "recStormV1WindowOverlapNonzeroBatches": "258",
+    "recStormV1NewIdentityBatches": "195",
+    "recStormV1NewIdentityRowTouchMedian": "1.000",
+    "recStormV1P4ViolationCells": "0",
+    "recStormV2ProbeCommit": "fdd393c",
+    "recStormV2ProbeBatches": "5",
+    "recStormV2ProbeWallS": "12{,}452.8",
+    "recStormV2ProbeGlobalTtfS": "1{,}569.3",
+    "recStormV2ProbeTgmsL1TtfS": "806.3",
+    "recStormV2ProbeSpeedupN10k": "1.946",
+    "recStormV2ProbeAvoidedDecision": "0.758",
+    "recStormV2ProbeSurvivorMedian": "0.283",
+    "recStormV2ProbePrecisionMedian": "0.211",
+    "recStormV2ProbeIntersectsMedian": "29{,}193",
+    "recStormV2ProbeR18Tripped": "no",
+    "recStormV2ProbeAllTopTerms": "0",
+    "recStormV2ProbeNonComputeArtifacts": "8203",
+    "recStormV2ProbeCheckWallMedianS": "336.9",
+    "recStormV2Commit": "fdd393c",
+    "recStormV2Cells": "36",
+    "recStormV2CellsFailed": "0",
+    "recStormV2AllTopTerms": "0",
+    "recStormV2NonComputeArtifacts": "29{,}826",
+    "recStormV2SpeedupN1kSeed0": "5.173",
+    "recStormV2AvoidedDecisionC1Median": "0.755",
+    "recStormV2C1Batches": "240",
+    "recStormV2SurvivorFractionC1Median": "0.262",
+    "recStormV2PrecisionC1Median": "0.187",
+    "recStormV2SurvivorFractionSynthC1Median": "0.266",
+    "recStormV2SurvivorFractionCollegeMsgC1Median": "0.257",
+    "recStormV2PrecisionSynthC1Median": "0.182",
+    "recStormV2PrecisionCollegeMsgC1Median": "0.194",
+    "recStormV2FalseFreshTgmsCellsNonzero": "0",
+    "recStormV2SpeedupSynthC1None": "5.173",
+    "recStormV2SpeedupSynthC1Deep": "4.902",
+    "recStormV2SpeedupSynthC3None": "5.642",
+    "recStormV2SpeedupSynthC3Deep": "5.217",
+    "recStormV2SpeedupSynthC4None": "6.367",
+    "recStormV2SpeedupSynthC4Deep": "5.022",
+    "recStormV2SpeedupCollegeMsgC1None": "6.189",
+    "recStormV2SpeedupCollegeMsgC1Deep": "6.821",
+    "recStormV2SpeedupCollegeMsgC3None": "6.662",
+    "recStormV2SpeedupCollegeMsgC3Deep": "6.332",
+    "recStormV2SpeedupCollegeMsgC4None": "7.433",
+    "recStormV2SpeedupCollegeMsgC4Deep": "8.071",
+    "recStormV2SpeedupGridMin": "4.588",
+    "recStormV2SpeedupGridMax": "8.863",
+    "recD160Tasks": "94",
+    "recD160TaskRuns": "282",
+    "recD160OursCarrying": "112",
+    "recD160OursCoverage": "0.397",
+    "recD160OursCondAcc": "0.509",
+    "recD160OursUcrGated": "0",
+    "recD160OursUcrPreGate": "0.212",
+    "recD160B6eCoverage": "0.830",
+    "recD160B6eCondAcc": "0.333",
+    "recD160B5Em": "0.181",
+    "recD160LlmDirectCarrying": "0",
+    "recD160LlmDirectOverflowErrors": "216",
+    "recD160LlmDirectCoverageFixed": "0.000",
+    "recD160LlmDirectErrorsFixed": "0",
+    "recD160LlmDirectRawEmFixed": "0.064",
+    "recD160LlmDirectTokenizerFixed": "hf\\_real",
+    "recD160LlmDirectBudgetFixed": "8000",
+    "recOldGateCoverage": "0.706",
+    "recOldGateUcr": "0",
+    "recOldGateCondAcc": "0.548",
+    "recCorruptionTrials": "10{,}000",
+    "recCorruptionClasses": "13",
+    "recCorruptionMutations": "7",
+    "recCorruptionDetected": "6587",
+    "recCorruptionDetectedPre": "5966",
+    "recCorruptionDetectedPost": "6587",
+    "recCorruptionSilentPre": "0",
+    "recCorruptionSilentPost": "0",
+    "recCorruptionBlobDetectedPre": "0/621",
+    "recCorruptionBlobDetectedPost": "621/621",
+    "recCorruptionBlobTrials": "710",
+    "recCorruptionBlobDetectedAllPre": "89/710",
+    "recCorruptionBlobDetectedAllPost": "710/710",
+    "recCorruptionBlobMutationAlreadyDetected": "delete\\_file",
+    "recCorruptionCellsMovedPost": "0",
+    "recLadderPlans": "12",
+    "recLadderOperatorsCovered": "14",
+    "recLadderRung1Min": "0.992",
+    "recLadderRung1Max": "1.064",
+    "recLadderRung2EntityHistory": "1.13",
+    "recLadderRung2VersionHistory": "2.54",
+    "recLadderRung3BytesOneStepMedian": "3309",
+    "recLadderRung3BytesThreeStepMedian": "7549",
+    "recLadderRung3Deterministic": "12",
+    "recLadderRung4VerifyMsMedian": "5.06",
+    "recLadderRung5TokensMedian": "1811.5",
+    "recLadderRung5ToolCallsEqualExecutedSteps": "12",
+    "recLadderPlansTruncated": "2",
+    "recSoakHours": "24",
+    "recSoakCommit": "886805f",
+    "recSoakEntitiesStart": "1{,}000{,}000",
+    "recSoakEntitiesEnd": "1{,}730{,}492",
+    "recSoakBatches": "1{,}074{,}952",
+    "recSoakWriterLives": "42",
+    "recSoakRecoveries": "41",
+    "recSoakRecoveriesSigabrt": "23",
+    "recSoakRecoveriesExit137": "18",
+    "recSoakUnexpectedRecoveries": "0",
+    "recSoakReaderDeaths": "2",
+    "recSoakReaderDeathCause": "reader torn-tail race, pre-fix engine",
+    "recSoakVerifyHealthy": "true",
+    "recSoakWriterErrorsManifest": "1",
+    "recSoakWriterErrorsTrue": "249",
+    "recSoakThroughputStart": "24.03",
+    "recSoakThroughputEnd": "16.41",
+    "recSoakP99StartMs": "485.6",
+    "recSoakP99EndMs": "3{,}740.5",
+    "recSoakManifestGrowthBps": "-3.4",
+    "recSoakSegmentGrowthBps": "1{,}341.1",
+    "recSoakDigestStatus": "not computed",
+    "recSoakReplayProjectedTB": "280.8",
+    "recSoakCompactions": "2415",
+    "recSoakWriterWithinLifeSlopeMedianKBps": "3165.6",
+    "recSoakWriterWithinLifeSlopeMinKBps": "1921.1",
+    "recSoakWriterWithinLifeSlopeMaxKBps": "4154.2",
+    "recSoakWriterLivesFitted": "42",
+    "recSoakWriterLivesPositive": "42",
+    "recSoakReaderWithinLifeSlopeMedianKBps": "5.32",
+    "recSoakReaderWithinLifeSlopeMaxKBps": "47.07",
+    "recSoakFirstVsLastSlopeKBps": "111.6",
+    "recSoakCommitsPerSecMean": "20.2",
+    "recSoakBytesPerCommitLiveKB": "157",
+    "recSoakReplayOutcome": "aborted_oom",
+    "recSoakReplayOomRssGB": "83.0",
+    "recSoakReplayOomGeneration": "513{,}024",
+    "recSoakReplayFractionApplied": "0.476",
+    "recSoakReplayKBPerGeneration": "161.8",
+    "recSoakReplayElapsedH": "3.37",
+    "recSoakCommitTwo": "eed91c0",
+    "recSoakHoursTwo": "24",
+    "recSoakWriterLivesTwo": "4",
+    "recSoakRecoveriesTwo": "3",
+    "recSoakRecoveriesSigabrtTwo": "2",
+    "recSoakRecoveriesExit137Two": "1",
+    "recSoakUnexpectedRecoveriesTwo": "0",
+    "recSoakWriterWithinLifeSlopeMedianKBpsTwo": "27.965",
+    "recSoakWriterWithinLifeSlopeMinKBpsTwo": "20.978",
+    "recSoakWriterWithinLifeSlopeMaxKBpsTwo": "43.494",
+    "recSoakReaderWithinLifeSlopeMinKBpsTwo": "7.212",
+    "recSoakReaderWithinLifeSlopeMaxKBpsTwo": "8.098",
+    "recSoakDigestEqualTwo": "true",
+    "recSoakBatchesTwo": "1{,}891{,}962",
+    "recSoakFullVerifyOverlapCountTwo": "0",
+    "recSoakFullVerifyVerdictTwo": "healthy",
+    "recSoakWriterErrorsTrueTwo": "616",
+    "recSoakWriterErrorsClassTwo": "NotFoundError",
+    "recSoakReaderErrorsTrueTwo": "150{,}476{,}512",
+    "recSoakReaderErrorsOSErrorTwo": "150{,}278{,}720",
+    "recSoakReaderErrorsStateErrorTwo": "197{,}792",
+    "recSoakReaderQueriesTwo": "16{,}055{,}124",
+    "recSoakThroughputStartTwo": "39.91",
+    "recSoakThroughputEndTwo": "19.117",
+    "recSoakThroughputLastOverFirstRatioTwo": "0.479",
+    "recSoakP99StartMsTwo": "60.42",
+    "recSoakP99EndMsTwo": "82.075",
+    "recSoakManifestGrowthBpsTwo": "3.141",
+    "recSoakSegmentGrowthBpsTwo": "2{,}396.455",
+    "recSoakEntitiesEndTwo": "3{,}092{,}488",
+    "recSoakCompactionsTwo": "4215",
+    "recSoakReaderOnsetEarliestRowsTwo": "2{,}235{,}044",
+    "recSoakReaderOnsetLatestRowsTwo": "2{,}450{,}815",
+    "recSoakReaderOnsetEarliestSTwo": "61417.1",
+    "recSoakReaderOnsetLatestSTwo": "75993.1",
+    "recLiveDays": "1.89",
+    "recLiveAdvisories": "32{,}827",
+    "recLiveCorrections": "1",
     # W2aa: the remaining C10 (live OSV) figures the draft still typed --
     # compute_c10_live_osv above.
-    "osdiLiveCycles": "38",
-    "osdiLiveRestarts": "0",
-    "osdiLiveFeedErrors": "0",
-    "osdiLiveNoopRevisions": "41",
-    "osdiLiveRecordsSeen": "95",
-    "osdiLiveRetractions": "1",
-    "osdiLiveNodes": "247{,}845",
-    "osdiLiveEdges": "497{,}522",
-    "osdiB7BuildWall30M": "3786.004",
-    "osdiB7PeakRSS30M": "59.31",
-    "osdiB7VersionHistoryWall30M": "5.496",
-    "osdiB7VersionHistoryRSS30M": "3.863",
-    "osdiB7ManifestBytes30M": "175{,}244",
-    "osdiB7SegmentBytes30M": "1.549",
-    "osdiB7CheckFullWall30M": "98.673",
-    "osdiB7Recovery30M": "14{,}618.6",
-    "osdiB7RecoveryCe5000At30M": "2656.9",
+    "recLiveCycles": "38",
+    "recLiveRestarts": "0",
+    "recLiveFeedErrors": "0",
+    "recLiveNoopRevisions": "41",
+    "recLiveRecordsSeen": "95",
+    "recLiveRetractions": "1",
+    "recLiveNodes": "247{,}845",
+    "recLiveEdges": "497{,}522",
+    "recB7BuildWall30M": "3786.004",
+    "recB7PeakRSS30M": "59.31",
+    "recB7VersionHistoryWall30M": "5.496",
+    "recB7VersionHistoryRSS30M": "3.863",
+    "recB7ManifestBytes30M": "175{,}244",
+    "recB7SegmentBytes30M": "1.549",
+    "recB7CheckFullWall30M": "98.673",
+    "recB7Recovery30M": "14{,}618.6",
+    "recB7RecoveryCe5000At30M": "2656.9",
     # W2aa: the 30M recovery ratios the draft typed as "5.3x" and "5.5
     # times" -- compute_b7_scale above.
-    "osdiB7RecoveryBoundRatioAt30M": "5.3",
-    "osdiB7RecoveryCadenceRatioAt30M": "5.5",
-    "osdiB7ScaleCurveP50HistSingle30M": "0.977",
-    "osdiB7ScaleCurveP50HistAsof30M": "0.98",
-    "osdiB7ScaleCurveP50SnapHop230M": "1531.519",
-    "osdiB7ScaleCurveP50DiffGlobal30M": "7505.374",
-    "osdiB7ScaleCurveP50ReachWindow30M": "2354.494",
-    "osdiB7ScaleCurveP50PathsK30M": "8.621",
-    "osdiB7ScaleCurveP50SeriesCount30M": "128.144",
-    "osdiB7ScaleCurveP50BurstZscore30M": "129.433",
-    "osdiB7ScaleCurveP50NbrEvolution30M": "100.237",
-    "osdiB7ScaleCurveP50CoactiveNarrow30M": "302.473",
-    "osdiB7ScaleCurveP50ResolveSubstr30M": "342.604",
-    "osdiB7ScaleCurveP50AggRelBucket30M": "176.492",
-    "osdiB7ScaleCurveP50MotifFiltered30M": "76.195",
-    "osdiB7ReachWindowRefused30M": "false",
-    "osdiB7QueryFloor30M": "6.81",
-    "osdiB7BuildSteadyDecileMedian30M": "8463.0",
-    "osdiB7ReachWindowEstimateMs30M": "4371",
-    "osdiB7300MGate": "false",
-    "osdiB7Calib10MBuildWall": "865.592",
-    "osdiB7Calib10MPeakRSS": "19.90",
-    "osdiB7Calib10MSteadyOps": "24{,}390.8",
-    "osdiB7KBuild": "4.602",
-    "osdiB7KRecover": "0.834",
-    "osdiB7Calib1MBuildWall": "78.339",
-    "osdiB7Calib1MPeakRSS": "2.37",
-    "osdiB7Calib1MRecovery": "75.86",
-    "osdiB7Calib1MSegmentBytes": "0.050",
-    "osdiB7BuildWall100M": "28{,}372.936",
-    "osdiB7PeakRSS100M": "186.42",
-    "osdiB7VersionHistoryWall100M": "18.982",
-    "osdiB7VersionHistoryRSS100M": "12.817",
-    "osdiB7ManifestBytes100M": "206{,}946",
-    "osdiB7SegmentBytes100M": "5.218",
-    "osdiB7CheckFullWall100M": "336.353",
-    "osdiB7RecoveryCe5000At100M": "22{,}717.7",
-    "osdiB7Recovery100M": "22{,}717.7",
+    "recB7RecoveryBoundRatioAt30M": "5.3",
+    "recB7RecoveryCadenceRatioAt30M": "5.5",
+    "recB7ScaleCurveP50HistSingle30M": "0.977",
+    "recB7ScaleCurveP50HistAsof30M": "0.98",
+    "recB7ScaleCurveP50SnapHop230M": "1531.519",
+    "recB7ScaleCurveP50DiffGlobal30M": "7505.374",
+    "recB7ScaleCurveP50ReachWindow30M": "2354.494",
+    "recB7ScaleCurveP50PathsK30M": "8.621",
+    "recB7ScaleCurveP50SeriesCount30M": "128.144",
+    "recB7ScaleCurveP50BurstZscore30M": "129.433",
+    "recB7ScaleCurveP50NbrEvolution30M": "100.237",
+    "recB7ScaleCurveP50CoactiveNarrow30M": "302.473",
+    "recB7ScaleCurveP50ResolveSubstr30M": "342.604",
+    "recB7ScaleCurveP50AggRelBucket30M": "176.492",
+    "recB7ScaleCurveP50MotifFiltered30M": "76.195",
+    "recB7ReachWindowRefused30M": "false",
+    "recB7QueryFloor30M": "6.81",
+    "recB7BuildSteadyDecileMedian30M": "8463.0",
+    "recB7ReachWindowEstimateMs30M": "4371",
+    "recB7300MGate": "false",
+    "recB7Calib10MBuildWall": "865.592",
+    "recB7Calib10MPeakRSS": "19.90",
+    "recB7Calib10MSteadyOps": "24{,}390.8",
+    "recB7KBuild": "4.602",
+    "recB7KRecover": "0.834",
+    "recB7Calib1MBuildWall": "78.339",
+    "recB7Calib1MPeakRSS": "2.37",
+    "recB7Calib1MRecovery": "75.86",
+    "recB7Calib1MSegmentBytes": "0.050",
+    "recB7BuildWall100M": "28{,}372.936",
+    "recB7PeakRSS100M": "186.42",
+    "recB7VersionHistoryWall100M": "18.982",
+    "recB7VersionHistoryRSS100M": "12.817",
+    "recB7ManifestBytes100M": "206{,}946",
+    "recB7SegmentBytes100M": "5.218",
+    "recB7CheckFullWall100M": "336.353",
+    "recB7RecoveryCe5000At100M": "22{,}717.7",
+    "recB7Recovery100M": "22{,}717.7",
     # W2aa: the 100M recovery miss the draft typed as "a 5% miss" --
     # compute_b7_scale above.
-    "osdiB7RecoveryCe5000MissPctAt100M": "5",
-    "osdiB7ScaleCurveP50HistSingle100M": "12.965",
-    "osdiB7ScaleCurveP50HistAsof100M": "12.998",
-    "osdiB7ScaleCurveP50PathsK100M": "20.164",
-    "osdiB7ScaleCurveP50SeriesCount100M": "291.521",
-    "osdiB7ScaleCurveP50BurstZscore100M": "294.233",
-    "osdiB7ScaleCurveP50MotifFiltered100M": "110.861",
-    "osdiB7RefusedSnapHop2100M": "true",
-    "osdiB7RefusedDiffGlobal100M": "true",
-    "osdiB7RefusedNbrEvolution100M": "true",
-    "osdiB7RefusedCoactiveNarrow100M": "true",
-    "osdiB7RefusedResolveSubstr100M": "true",
-    "osdiB7RefusedAggRelBucket100M": "true",
-    "osdiB7ReachWindowRefused100M": "true",
-    "osdiB7QueryFloor100M": "19.67",
-    "osdiB7BuildSteadyDecileMedian100M": "3738.9",
-    "osdiB7ReachWindowEstimateMs100M": "14{,}571",
-    "osdiB7CompactionShare100M": "83.76",
+    "recB7RecoveryCe5000MissPctAt100M": "5",
+    "recB7ScaleCurveP50HistSingle100M": "12.965",
+    "recB7ScaleCurveP50HistAsof100M": "12.998",
+    "recB7ScaleCurveP50PathsK100M": "20.164",
+    "recB7ScaleCurveP50SeriesCount100M": "291.521",
+    "recB7ScaleCurveP50BurstZscore100M": "294.233",
+    "recB7ScaleCurveP50MotifFiltered100M": "110.861",
+    "recB7RefusedSnapHop2100M": "true",
+    "recB7RefusedDiffGlobal100M": "true",
+    "recB7RefusedNbrEvolution100M": "true",
+    "recB7RefusedCoactiveNarrow100M": "true",
+    "recB7RefusedResolveSubstr100M": "true",
+    "recB7RefusedAggRelBucket100M": "true",
+    "recB7ReachWindowRefused100M": "true",
+    "recB7QueryFloor100M": "19.67",
+    "recB7BuildSteadyDecileMedian100M": "3738.9",
+    "recB7ReachWindowEstimateMs100M": "14{,}571",
+    "recB7CompactionShare100M": "83.76",
     # Lane W-lane: the original soak's writer corrections (true totals, 42
     # lives) and the writer within-life noise floor -- compute_longevity_soak
     # / compute_longevity_rederived above.
-    "osdiSoakCorrectionsAppliedTrue": "207{,}850",
-    "osdiSoakCorrectionsSkippedTrue": "137{,}163",
-    "osdiSoakWriterNoiseFloorKBps": "5",
+    "recSoakCorrectionsAppliedTrue": "207{,}850",
+    "recSoakCorrectionsSkippedTrue": "137{,}163",
+    "recSoakWriterNoiseFloorKBps": "5",
     # Lane W-lane: the original soak's full-mode verify (two `tgms check`
     # entries) and REPLAY-2 (the post-D-087-fix replay that completed) --
     # compute_longevity_verify_and_replay2 above.
-    "osdiSoakVerifyFullGeneration": "1{,}076{,}872",
-    "osdiSoakVerifyFullOverlapCount": "13{,}714",
-    "osdiSoakVerifyFullVerdict": "CORRUPT",
-    "osdiSoakReplay2VerifyGeneration": "1{,}076{,}598",
-    "osdiSoakReplay2VerifyOverlapCount": "13{,}714",
-    "osdiSoakReplay2VerifyVerdict": "CORRUPT",
-    "osdiSoakReplay2BatchesApplied": "1{,}074{,}450",
-    "osdiSoakReplay2Compactions": "2148",
-    "osdiSoakReplay2WallS": "30{,}015",
-    "osdiSoakReplay2ElapsedH": "8.34",
-    "osdiSoakReplay2PeakRssKB": "4{,}329{,}996",
-    "osdiSoakReplay2PeakRssGB": "4.33",
-    "osdiSoakReplay2PeakDiskMB": "586",
-    "osdiSoakReplay2RssSamples": "101",
-    "osdiSoakReplay2DigestEqual": "true",
-    "osdiSoakReplay2DigestPrefix": "8eb9bc26",
+    "recSoakVerifyFullGeneration": "1{,}076{,}872",
+    "recSoakVerifyFullOverlapCount": "13{,}714",
+    "recSoakVerifyFullVerdict": "CORRUPT",
+    "recSoakReplay2VerifyGeneration": "1{,}076{,}598",
+    "recSoakReplay2VerifyOverlapCount": "13{,}714",
+    "recSoakReplay2VerifyVerdict": "CORRUPT",
+    "recSoakReplay2BatchesApplied": "1{,}074{,}450",
+    "recSoakReplay2Compactions": "2148",
+    "recSoakReplay2WallS": "30{,}015",
+    "recSoakReplay2ElapsedH": "8.34",
+    "recSoakReplay2PeakRssKB": "4{,}329{,}996",
+    "recSoakReplay2PeakRssGB": "4.33",
+    "recSoakReplay2PeakDiskMB": "586",
+    "recSoakReplay2RssSamples": "101",
+    "recSoakReplay2DigestEqual": "true",
+    "recSoakReplay2DigestPrefix": "8eb9bc26",
     # Lane W2u: P-STORM-HUNT, the 6h observation-only run (commit 57952fa)
     # -- compute_longevity_soak_hunt above.
-    "osdiSoakCommitHunt": "57952fa",
-    "osdiSoakDurationSHunt": "21{,}600",
-    "osdiSoakWriterLivesHunt": "1",
-    "osdiSoakRecoveriesHunt": "0",
-    "osdiSoakWriterWithinLifeSlopeKBpsHunt": "20.4",
-    "osdiSoakReaderWithinLifeSlopeMinKBpsHunt": "11.4",
-    "osdiSoakReaderWithinLifeSlopeMaxKBpsHunt": "12.5",
-    "osdiSoakDigestEqualHunt": "true",
-    "osdiSoakBatchesHunt": "476{,}813",
-    "osdiSoakVerifyHealthyHunt": "true",
-    "osdiSoakWriterErrorsTrueHunt": "175",
-    "osdiSoakWriterErrorsClassHunt": "NotFoundError",
-    "osdiSoakReaderErrorsTrueHunt": "0",
-    "osdiSoakReaderOpErrorEventsHunt": "0",
-    "osdiSoakReaderOpErrorCaptureCommitHunt": "c3a5592",
-    "osdiSoakEdgeRowsHunt": "1{,}402{,}818",
-    "osdiSoakHostLoadMinHunt": "10.79",
-    "osdiSoakHostLoadMaxHunt": "48.95",
+    "recSoakCommitHunt": "57952fa",
+    "recSoakDurationSHunt": "21{,}600",
+    "recSoakWriterLivesHunt": "1",
+    "recSoakRecoveriesHunt": "0",
+    "recSoakWriterWithinLifeSlopeKBpsHunt": "20.4",
+    "recSoakReaderWithinLifeSlopeMinKBpsHunt": "11.4",
+    "recSoakReaderWithinLifeSlopeMaxKBpsHunt": "12.5",
+    "recSoakDigestEqualHunt": "true",
+    "recSoakBatchesHunt": "476{,}813",
+    "recSoakVerifyHealthyHunt": "true",
+    "recSoakWriterErrorsTrueHunt": "175",
+    "recSoakWriterErrorsClassHunt": "NotFoundError",
+    "recSoakReaderErrorsTrueHunt": "0",
+    "recSoakReaderOpErrorEventsHunt": "0",
+    "recSoakReaderOpErrorCaptureCommitHunt": "c3a5592",
+    "recSoakEdgeRowsHunt": "1{,}402{,}818",
+    "recSoakHostLoadMinHunt": "10.79",
+    "recSoakHostLoadMaxHunt": "48.95",
     # W2aa: the P-STORM-HUNT host's core count the draft typed as "40
     # cores" -- compute_longevity_soak_hunt above.
-    "osdiSoakHostCoresHunt": "40",
-    "osdiSoakHuntPatternReproduced": "false",
+    "recSoakHostCoresHunt": "40",
+    "recSoakHuntPatternReproduced": "false",
     # Lane W-lane: P-OV1, the xzgpu-calibrated overload sweep -- compute_overload above.
-    "osdiOverloadCommit": "ebe1dc2",
-    "osdiOverloadMaxConcurrent": "8",
-    "osdiOverloadClientsMax": "64",
-    "osdiOverloadRefusalKindConcurrencyOnly": "true",
-    "osdiOverloadOperatorErrorsTotal": "0",
-    "osdiOverloadRefusedCapAtMaxRep1": "4438",
-    "osdiOverloadRefusedCapAtMaxRep2": "285",
-    "osdiOverloadRefusalRepRatio": "15.6",
-    "osdiOverloadAdmittedConcurrencyP95AtMax": "8.0",
-    "osdiOverloadP99At32ClientsMs": "40.39",
-    "osdiOverloadRecoveryQps": "20.13",
-    "osdiOverloadRecoveryP50Ms": "1.43",
-    "osdiOverloadServiceHighWaterKB": "227{,}280",
-    "osdiOverloadServiceHighWaterMB": "227.3",
+    "recOverloadCommit": "ebe1dc2",
+    "recOverloadMaxConcurrent": "8",
+    "recOverloadClientsMax": "64",
+    "recOverloadRefusalKindConcurrencyOnly": "true",
+    "recOverloadOperatorErrorsTotal": "0",
+    "recOverloadRefusedCapAtMaxRep1": "4438",
+    "recOverloadRefusedCapAtMaxRep2": "285",
+    "recOverloadRefusalRepRatio": "15.6",
+    "recOverloadAdmittedConcurrencyP95AtMax": "8.0",
+    "recOverloadP99At32ClientsMs": "40.39",
+    "recOverloadRecoveryQps": "20.13",
+    "recOverloadRecoveryP50Ms": "1.43",
+    "recOverloadServiceHighWaterKB": "227{,}280",
+    "recOverloadServiceHighWaterMB": "227.3",
     # Lane W2t: benchmarks/ldbc-ref-v1/ -- compute_ldbc_ref_v1 above.
-    "osdiLdbcTemplates": "24",
-    "osdiLdbcExpressible": "24",
-    "osdiLdbcExecuted": "23",
-    "osdiLdbcValidated": "18",
-    "osdiLdbcAgree": "18",
-    "osdiLdbcNotProjected": "3",
-    "osdiLdbcDisagree": "2",
-    "osdiLdbcTimeout": "1",
-    "osdiLdbcComparableTemplates": "23",
-    "osdiLdbcRowsCompared": "736",
-    "osdiLdbcRowsAgreeing": "678",
-    "osdiLdbcRowAgreementFraction": "0.921",
-    "osdiLdbcGate": "0.90",
-    "osdiLdbcGateMet": "true",
-    "osdiLdbcTemplateAgreementFraction": "0.75",
-    "osdiLdbcRowsBIAgreeing": "606",
-    "osdiLdbcRowsBICompared": "607",
-    "osdiLdbcRowsICAgreeing": "56",
-    "osdiLdbcRowsICCompared": "66",
-    "osdiLdbcRowsISAgreeing": "16",
-    "osdiLdbcRowsISCompared": "63",
-    "osdiLdbcDefectId": "D-090",
-    "osdiLdbcDefectTemplates": "IS3, IC2",
-    "osdiLdbcInterimAgree": "14",
-    "osdiLdbcInterimRowsAgreeing": "282",
-    "osdiLdbcInterimRowsCompared": "329",
+    "recLdbcTemplates": "24",
+    "recLdbcExpressible": "24",
+    "recLdbcExecuted": "23",
+    "recLdbcValidated": "18",
+    "recLdbcAgree": "18",
+    "recLdbcNotProjected": "3",
+    "recLdbcDisagree": "2",
+    "recLdbcTimeout": "1",
+    "recLdbcComparableTemplates": "23",
+    "recLdbcRowsCompared": "736",
+    "recLdbcRowsAgreeing": "678",
+    "recLdbcRowAgreementFraction": "0.921",
+    "recLdbcGate": "0.90",
+    "recLdbcGateMet": "true",
+    "recLdbcTemplateAgreementFraction": "0.75",
+    "recLdbcRowsBIAgreeing": "606",
+    "recLdbcRowsBICompared": "607",
+    "recLdbcRowsICAgreeing": "56",
+    "recLdbcRowsICCompared": "66",
+    "recLdbcRowsISAgreeing": "16",
+    "recLdbcRowsISCompared": "63",
+    "recLdbcDefectId": "D-090",
+    "recLdbcDefectTemplates": "IS3, IC2",
+    "recLdbcInterimAgree": "14",
+    "recLdbcInterimRowsAgreeing": "282",
+    "recLdbcInterimRowsCompared": "329",
     # Lane W2x: benchmarks/longevity-v1/, "Soak 3 (72 h)" -- compute_longevity_soak_three
     # above.
-    "osdiSoakCommitThree": "9e21a83",
-    "osdiSoakHoursThree": "72",
-    "osdiSoakWallHoursThree": "92.05",
-    "osdiSoakWriterLivesThree": "9",
-    "osdiSoakRecoveriesThree": "8",
-    "osdiSoakRecoveryMinSThree": "25.667",
-    "osdiSoakRecoveryMaxSThree": "96.352",
-    "osdiSoakUnexpectedRecoveriesThree": "0",
-    "osdiSoakReaderDeathsThree": "0",
-    "osdiSoakDigestEqualThree": "true",
-    "osdiSoakBatchesThree": "3{,}618{,}225",
-    "osdiSoakReplayCadenceThree": "5000",
-    "osdiSoakWriterWithinLifeSlopeMedianKBpsThree": "16.630",
-    "osdiSoakWriterWithinLifeSlopeMaxKBpsThree": "28.834",
-    "osdiSoakReaderWithinLifeSlopeMinKBpsThree": "4.271",
-    "osdiSoakReaderWithinLifeSlopeMaxKBpsThree": "4.796",
-    "osdiSoakWriterErrorsTrueThree": "854",
-    "osdiSoakWriterErrorsClassThree": "NotFoundError",
-    "osdiD088ReopenIntervalS": "300",
-    "osdiD088GenerationsRetained": "2",
-    "osdiSoakReaderErrorsTrueThree": "2{,}203{,}551{,}806",
-    "osdiSoakReaderErrorsOSErrorThree": "2{,}202{,}621{,}096",
-    "osdiSoakReaderErrorsStateErrorThree": "930{,}710",
-    "osdiSoakReaderReopensMinThree": "777",
-    "osdiSoakReaderReopensMaxThree": "779",
-    "osdiSoakReaderOpErrorEventsThree": "17",
-    "osdiSoakReaderErrorEpisodesThree": "662",
-    "osdiSoakReaderErrorLongestHealedIntervalSThree": "37272.1",
-    "osdiSoakReaderOnsetEarliestRowsThree": "1{,}950{,}613",
-    "osdiSoakReaderOnsetLatestRowsThree": "2{,}356{,}519",
-    "osdiSoakReaderOnsetEarliestSThree": "65655.8",
-    "osdiSoakReaderOnsetLatestSThree": "94769.4",
-    "osdiSoakThroughputStartThree": "40.648",
-    "osdiSoakThroughputEndThree": "11.014",
-    "osdiSoakThroughputFirstDayAvgThree": "19.713",
-    "osdiSoakThroughputLastDayAvgThree": "12.952",
-    "osdiSoakThroughputLastOverFirstDayRatioThree": "0.657",
-    "osdiSoakFullVerifyOverlapCountThree": "0",
-    "osdiSoakFullVerifyGenerationThree": "3{,}624{,}668",
-    "osdiSoakHostLoadMinThree": "1.21",
-    "osdiSoakHostLoadMaxThree": "188.27",
+    "recSoakCommitThree": "9e21a83",
+    "recSoakHoursThree": "72",
+    "recSoakWallHoursThree": "92.05",
+    "recSoakWriterLivesThree": "9",
+    "recSoakRecoveriesThree": "8",
+    "recSoakRecoveryMinSThree": "25.667",
+    "recSoakRecoveryMaxSThree": "96.352",
+    "recSoakUnexpectedRecoveriesThree": "0",
+    "recSoakReaderDeathsThree": "0",
+    "recSoakDigestEqualThree": "true",
+    "recSoakBatchesThree": "3{,}618{,}225",
+    "recSoakReplayCadenceThree": "5000",
+    "recSoakWriterWithinLifeSlopeMedianKBpsThree": "16.630",
+    "recSoakWriterWithinLifeSlopeMaxKBpsThree": "28.834",
+    "recSoakReaderWithinLifeSlopeMinKBpsThree": "4.271",
+    "recSoakReaderWithinLifeSlopeMaxKBpsThree": "4.796",
+    "recSoakWriterErrorsTrueThree": "854",
+    "recSoakWriterErrorsClassThree": "NotFoundError",
+    "recD088ReopenIntervalS": "300",
+    "recD088GenerationsRetained": "2",
+    "recSoakReaderErrorsTrueThree": "2{,}203{,}551{,}806",
+    "recSoakReaderErrorsOSErrorThree": "2{,}202{,}621{,}096",
+    "recSoakReaderErrorsStateErrorThree": "930{,}710",
+    "recSoakReaderReopensMinThree": "777",
+    "recSoakReaderReopensMaxThree": "779",
+    "recSoakReaderOpErrorEventsThree": "17",
+    "recSoakReaderErrorEpisodesThree": "662",
+    "recSoakReaderErrorLongestHealedIntervalSThree": "37272.1",
+    "recSoakReaderOnsetEarliestRowsThree": "1{,}950{,}613",
+    "recSoakReaderOnsetLatestRowsThree": "2{,}356{,}519",
+    "recSoakReaderOnsetEarliestSThree": "65655.8",
+    "recSoakReaderOnsetLatestSThree": "94769.4",
+    "recSoakThroughputStartThree": "40.648",
+    "recSoakThroughputEndThree": "11.014",
+    "recSoakThroughputFirstDayAvgThree": "19.713",
+    "recSoakThroughputLastDayAvgThree": "12.952",
+    "recSoakThroughputLastOverFirstDayRatioThree": "0.657",
+    "recSoakFullVerifyOverlapCountThree": "0",
+    "recSoakFullVerifyGenerationThree": "3{,}624{,}668",
+    "recSoakHostLoadMinThree": "1.21",
+    "recSoakHostLoadMaxThree": "188.27",
     # Lane W2z
-    "osdiSoakCompactionIntervalMedianSTwo": "20.5",
-    "osdiSoakCompactionDurationMedianSTwo": "12.1",
-    "osdiSoakGenerationWindowSTwo": "40.9",
-    "osdiSoakCompactionIntervalMedianSThree": "31.5",
-    "osdiSoakCompactionDurationMedianSThree": "20.1",
-    "osdiSoakGenerationWindowSThree": "63.1",
-    "osdiStormV2CleanCells": "34",
-    "osdiLdbcFormatThreeRebuildPct": "12.8",
+    "recSoakCompactionIntervalMedianSTwo": "20.5",
+    "recSoakCompactionDurationMedianSTwo": "12.1",
+    "recSoakGenerationWindowSTwo": "40.9",
+    "recSoakCompactionIntervalMedianSThree": "31.5",
+    "recSoakCompactionDurationMedianSThree": "20.1",
+    "recSoakGenerationWindowSThree": "63.1",
+    "recStormV2CleanCells": "34",
+    "recLdbcFormatThreeRebuildPct": "12.8",
     # Lane W2ab (P-SOAK4, 24h, D-088-fixed engine)
-    "osdiSoakCommitFour": "b6cdde0",
-    "osdiSoakHoursFour": "24",
-    "osdiSoakWallHoursFour": "28.47",
-    "osdiSoakWriterLivesFour": "4",
-    "osdiSoakRecoveriesFour": "3",
-    "osdiSoakRecoveryMinSFour": "17.636",
-    "osdiSoakRecoveryMaxSFour": "47.114",
-    "osdiSoakUnexpectedRecoveriesFour": "0",
-    "osdiSoakReaderDeathsFour": "0",
-    "osdiSoakDigestEqualFour": "true",
-    "osdiSoakBatchesFour": "1{,}894{,}067",
-    "osdiSoakReplayCadenceFour": "5000",
-    "osdiSoakWriterWithinLifeSlopeMedianKBpsFour": "22.085",
-    "osdiSoakWriterWithinLifeSlopeMaxKBpsFour": "37.880",
-    "osdiSoakReaderWithinLifeSlopeMinKBpsFour": "7.957",
-    "osdiSoakReaderWithinLifeSlopeMaxKBpsFour": "8.399",
-    "osdiSoakReaderRssAnonSlopeMinKBpsFour": "4.811",
-    "osdiSoakReaderRssAnonSlopeMaxKBpsFour": "5.413",
-    "osdiSoakReaderRssFileSlopeMinKBpsFour": "1.034",
-    "osdiSoakReaderRssFileSlopeMaxKBpsFour": "1.056",
-    "osdiSoakReaderVmSizeSlopeMinKBpsFour": "6.618",
-    "osdiSoakReaderVmSizeSlopeMaxKBpsFour": "7.170",
-    "osdiSoakWriterErrorsTrueFour": "595",
-    "osdiSoakWriterErrorsClassFour": "NotFoundError",
-    "osdiSoakReaderErrorsTrueFour": "0",
-    "osdiSoakReaderErrorsOSErrorFour": "0",
-    "osdiSoakReaderErrorsStateErrorFour": "0",
-    "osdiSoakReaderReopensMinFour": "272",
-    "osdiSoakReaderReopensMaxFour": "272",
-    "osdiSoakReaderReopenOnEnoentMaxFour": "0",
-    "osdiSoakThroughputStartFour": "40.552",
-    "osdiSoakThroughputEndFour": "19.164",
-    "osdiSoakThroughputFirstHourAvgFour": "40.552",
-    "osdiSoakThroughputLastOverFirstRatioFour": "0.475",
-    "osdiSoakFullVerifyOverlapCountFour": "0",
-    "osdiSoakFullVerifyGenerationFour": "1{,}897{,}091",
-    "osdiSoakCompactionStallMaxReaderP99MsFour": "222.871",
-    "osdiSoakHostLoadMinFour": "0.09",
-    "osdiSoakHostLoadMaxFour": "12.48",
-    "osdiSoakFinalEdgeRowsFour": "2{,}600{,}501",
-    "osdiSoakFourFirstHourBandLo": "37.9145",
-    "osdiSoakFourFirstHourBandHi": "41.9055",
-    "osdiSoakCompactionIntervalMedianSFour": "20.5",
-    "osdiSoakCompactionDurationMedianSFour": "12.2",
-    "osdiSoakGenerationWindowSFour": "41.0",
+    "recSoakCommitFour": "b6cdde0",
+    "recSoakHoursFour": "24",
+    "recSoakWallHoursFour": "28.47",
+    "recSoakWriterLivesFour": "4",
+    "recSoakRecoveriesFour": "3",
+    "recSoakRecoveryMinSFour": "17.636",
+    "recSoakRecoveryMaxSFour": "47.114",
+    "recSoakUnexpectedRecoveriesFour": "0",
+    "recSoakReaderDeathsFour": "0",
+    "recSoakDigestEqualFour": "true",
+    "recSoakBatchesFour": "1{,}894{,}067",
+    "recSoakReplayCadenceFour": "5000",
+    "recSoakWriterWithinLifeSlopeMedianKBpsFour": "22.085",
+    "recSoakWriterWithinLifeSlopeMaxKBpsFour": "37.880",
+    "recSoakReaderWithinLifeSlopeMinKBpsFour": "7.957",
+    "recSoakReaderWithinLifeSlopeMaxKBpsFour": "8.399",
+    "recSoakReaderRssAnonSlopeMinKBpsFour": "4.811",
+    "recSoakReaderRssAnonSlopeMaxKBpsFour": "5.413",
+    "recSoakReaderRssFileSlopeMinKBpsFour": "1.034",
+    "recSoakReaderRssFileSlopeMaxKBpsFour": "1.056",
+    "recSoakReaderVmSizeSlopeMinKBpsFour": "6.618",
+    "recSoakReaderVmSizeSlopeMaxKBpsFour": "7.170",
+    "recSoakWriterErrorsTrueFour": "595",
+    "recSoakWriterErrorsClassFour": "NotFoundError",
+    "recSoakReaderErrorsTrueFour": "0",
+    "recSoakReaderErrorsOSErrorFour": "0",
+    "recSoakReaderErrorsStateErrorFour": "0",
+    "recSoakReaderReopensMinFour": "272",
+    "recSoakReaderReopensMaxFour": "272",
+    "recSoakReaderReopenOnEnoentMaxFour": "0",
+    "recSoakThroughputStartFour": "40.552",
+    "recSoakThroughputEndFour": "19.164",
+    "recSoakThroughputFirstHourAvgFour": "40.552",
+    "recSoakThroughputLastOverFirstRatioFour": "0.475",
+    "recSoakFullVerifyOverlapCountFour": "0",
+    "recSoakFullVerifyGenerationFour": "1{,}897{,}091",
+    "recSoakCompactionStallMaxReaderP99MsFour": "222.871",
+    "recSoakHostLoadMinFour": "0.09",
+    "recSoakHostLoadMaxFour": "12.48",
+    "recSoakFinalEdgeRowsFour": "2{,}600{,}501",
+    "recSoakFourFirstHourBandLo": "37.9145",
+    "recSoakFourFirstHourBandHi": "41.9055",
+    "recSoakCompactionIntervalMedianSFour": "20.5",
+    "recSoakCompactionDurationMedianSFour": "12.2",
+    "recSoakGenerationWindowSFour": "41.0",
 }
 
 
@@ -698,7 +698,7 @@ def test_frozen_macro_values_match_the_generator():
     """A moved or edited record would change one of these; a coincidental
     self-consistent-but-wrong recomputation would not also match this
     independently-typed table."""
-    mod = _load("osdi_paper_macros")
+    mod = _load("sys_paper_macros")
     m = _run_all_landed(mod)
     values = {name: value for name, value, _ in m.items}
     for name, expected in FROZEN_LANDED_VALUES.items():
@@ -710,21 +710,21 @@ def test_frozen_macro_values_match_the_generator():
 def test_pending_macros_raise_a_latex_error_never_a_placeholder_number():
     """add_pending_stubs itself now carries no stubs of its own -- the 3
     LDBC (C9) stubs it used to hold have landed (compute_ldbc_ref_v1), and
-    P-SOAK3's osdiSoakWriterErrorsClassThree has since landed too (see
+    P-SOAK3's recSoakWriterErrorsClassThree has since landed too (see
     writer_error_counts_by_class-3.json, compute_longevity_soak_three). The
     one remaining PENDING macro in the whole generator,
-    osdiB7ScaleCurveP50ReachWindow100M, is added directly by its own
+    recB7ScaleCurveP50ReachWindow100M, is added directly by its own
     compute_* function (compute_b7_scale, see
     test_b7_scale_100m_reach_window_p50_is_pending_with_its_estimate), not
     by add_pending_stubs, so this function now emits nothing."""
-    mod = _load("osdi_paper_macros")
+    mod = _load("sys_paper_macros")
     m = mod.Macros()
     mod.add_pending_stubs(m)
     assert m.items == []
 
 
 def test_full_macro_set_has_no_duplicate_names_and_covers_every_skeleton_claim():
-    mod = _load("osdi_paper_macros")
+    mod = _load("sys_paper_macros")
     m = _run_all_landed(mod)
     mod.add_pending_stubs(m)
     names = [name for name, _, _ in m.items]
@@ -732,9 +732,9 @@ def test_full_macro_set_has_no_duplicate_names_and_covers_every_skeleton_claim()
     # 1 pending stub, added directly by its own compute_* function (already
     # present in `m` via _run_all_landed before add_pending_stubs runs,
     # which itself adds nothing now that the 3 LDBC (C9) stubs and
-    # P-SOAK3's osdiSoakWriterErrorsClassThree have all landed as ordinary
+    # P-SOAK3's recSoakWriterErrorsClassThree have all landed as ordinary
     # FROZEN_LANDED_VALUES entries): B7 100M's
-    # osdiB7ScaleCurveP50ReachWindow100M (compute_b7_scale).
+    # recB7ScaleCurveP50ReachWindow100M (compute_b7_scale).
     assert len(names) == len(FROZEN_LANDED_VALUES) + 1
 
 
@@ -742,21 +742,21 @@ def test_cli_check_mode_agrees_with_committed_output(tmp_path):
     """Running the generator twice must be idempotent (--check passes),
     the property the task's frozen-report discipline depends on."""
     env_root = ROOT
-    subprocess.run([_venv_python(), str(env_root / "scripts" / "osdi_paper_macros.py")],
+    subprocess.run([_venv_python(), str(env_root / "scripts" / "sys_paper_macros.py")],
                     cwd=env_root, check=True, capture_output=True, text=True)
     result = subprocess.run(
-        [_venv_python(), str(env_root / "scripts" / "osdi_paper_macros.py"), "--check"],
+        [_venv_python(), str(env_root / "scripts" / "sys_paper_macros.py"), "--check"],
         cwd=env_root, capture_output=True, text=True)
     assert result.returncode == 0, result.stderr
 
 
 def _out_path() -> Path:
-    return ROOT / "paper" / "osdi" / "generated" / "osdi-macros.tex"
+    return ROOT / "paper" / "sys" / "generated" / "sys-paper-macros.tex"
 
 
 def _run_cli(*flags: str) -> subprocess.CompletedProcess:
     return subprocess.run(
-        [_venv_python(), str(ROOT / "scripts" / "osdi_paper_macros.py"), *flags],
+        [_venv_python(), str(ROOT / "scripts" / "sys_paper_macros.py"), *flags],
         cwd=ROOT, capture_output=True, text=True)
 
 
@@ -863,11 +863,11 @@ def test_cli_check_and_check_only_are_mutually_exclusive():
 
 
 # --------------------------------------------------------------------------
-# osdi_paper_macros.py: a tampered record fails loudly
+# sys_paper_macros.py: a tampered record fails loudly
 # --------------------------------------------------------------------------
 
 def test_tampered_crash_record_fails_verification(tmp_path):
-    mod = _load("osdi_paper_macros")
+    mod = _load("sys_paper_macros")
     tampered = tmp_path / "eval-crash-campaign-2026-09-13.json"
     data = json.loads(mod.CRASH_V1.read_text(encoding="utf-8"))
     # Flip one trial's Q1 (acknowledged-write survival) outcome without
@@ -884,7 +884,7 @@ def test_tampered_crash_record_fails_verification(tmp_path):
 
 
 def test_tampered_crash_record_wall_time_mismatch_fails(tmp_path):
-    mod = _load("osdi_paper_macros")
+    mod = _load("sys_paper_macros")
     tampered = tmp_path / "eval-crash-campaign-2026-09-13.json"
     data = json.loads(mod.CRASH_V1.read_text(encoding="utf-8"))
     data["wall_s"] = data["wall_s"] + 1000.0  # record's own field now disagrees with its rows
@@ -903,7 +903,7 @@ def test_tampered_b1_v2_manifest_digest_mismatch_fails(tmp_path):
     digest must be caught before any B1-v2 macro is even computed -- same
     discipline as the D160 rows-digest tamper tests above, applied to this
     record's own digest scheme."""
-    mod = _load("osdi_paper_macros")
+    mod = _load("sys_paper_macros")
     manifest = json.loads(mod.B1_V2_MANIFEST.read_text(encoding="utf-8"))
     manifest["measurements"]["bytes_at_2_5m_ops"]["treatment_manifest_mb"] = 999.9
     tampered = tmp_path / "b1-manifest-v2-ab-2026-09.json"
@@ -917,23 +917,23 @@ def test_tampered_b1_v2_manifest_digest_mismatch_fails(tmp_path):
     assert any("digest" in f.lower() for f in mod.FAILURES)
 
 
-def test_osdi_b1v2_open_component_status_is_a_text_macro_not_a_number(tmp_path):
+def test_rec_b1v2_open_component_status_is_a_text_macro_not_a_number(tmp_path):
     """B1-v2's chain-open component split (checkpoint-load vs. delta-replay)
     was never measured -- NativeAdapter() exposes no internal phase timer.
     The macro documenting that must render as the literal string "not
     computed", not a placeholder number that could be mistaken for one."""
-    mod = _load("osdi_paper_macros")
+    mod = _load("sys_paper_macros")
     m = mod.Macros()
     mod.compute_b1_v2(m)
     values = {name: value for name, value, _ in m.items}
-    status = values["osdiB1v2OpenComponentStatus"]
+    status = values["recB1v2OpenComponentStatus"]
     assert status == "not computed"
     with pytest.raises(ValueError):
         float(status)
 
 
 # --------------------------------------------------------------------------
-# osdi_paper_macros.py: B1-v2e (chain-format correction) macros
+# sys_paper_macros.py: B1-v2e (chain-format correction) macros
 # --------------------------------------------------------------------------
 
 def test_b1_v2_treatment_provenance_is_voided_without_changing_values(tmp_path):
@@ -941,9 +941,9 @@ def test_b1_v2_treatment_provenance_is_voided_without_changing_values(tmp_path):
     reps measured a format-2 chain under the format-3 binary. The frozen
     v2 macro *values* must not move (they are what was actually measured,
     including the mistake) -- only their provenance strings gain a void
-    notice pointing at osdiB1v2e*, and every other v2 macro (chain-open,
+    notice pointing at recB1v2e*, and every other v2 macro (chain-open,
     B1(a) bytes, the K-sweep manifest-decile-only figures) is untouched."""
-    mod = _load("osdi_paper_macros")
+    mod = _load("sys_paper_macros")
     m = mod.Macros()
     mod.compute_b1_v2(m)
     before = {name: value for name, value, _ in m.items}
@@ -951,21 +951,21 @@ def test_b1_v2_treatment_provenance_is_voided_without_changing_values(tmp_path):
     after = {name: (value, provenance) for name, value, provenance in m.items}
 
     voided = {
-        "osdiB1v2TotalDecileTreatment", "osdiB1v2ManifestDecileTreatment",
-        "osdiB1v2ManifestDecileK128", "osdiB1v2ManifestDecileK1024",
-        "osdiB1v2P50TreatmentMs", "osdiB1v2P50Paired",
+        "recB1v2TotalDecileTreatment", "recB1v2ManifestDecileTreatment",
+        "recB1v2ManifestDecileK128", "recB1v2ManifestDecileK1024",
+        "recB1v2P50TreatmentMs", "recB1v2P50Paired",
     }
     for name in voided:
         value, provenance = after[name]
         assert value == before[name], f"{name}: value must not change"
         assert "VOID AS A FORMAT-3 MEASUREMENT" in provenance
-        assert "osdiB1v2e" in provenance
+        assert "recB1v2e" in provenance
 
     untouched = {
-        "osdiB1v2ControlCommit", "osdiB1v2TreatmentCommit",
-        "osdiB1v2BytesControlMB", "osdiB1v2BytesTreatmentMB",
-        "osdiB1v2TotalDecileControl", "osdiB1v2ManifestDecileControl",
-        "osdiB1v2P50ControlMs", "osdiB1v2OpenControlMs", "osdiB1v2OpenTreatmentMs",
+        "recB1v2ControlCommit", "recB1v2TreatmentCommit",
+        "recB1v2BytesControlMB", "recB1v2BytesTreatmentMB",
+        "recB1v2TotalDecileControl", "recB1v2ManifestDecileControl",
+        "recB1v2P50ControlMs", "recB1v2OpenControlMs", "recB1v2OpenTreatmentMs",
     }
     for name in untouched:
         value, provenance = after[name]
@@ -979,7 +979,7 @@ def test_tampered_b1_v2e_manifest_digest_mismatch_fails(tmp_path):
     records *file's bytes* -- editing the raw file without recomputing that
     digest into the summary manifest must be caught before any B1-v2e
     macro trusts a number out of it."""
-    mod = _load("osdi_paper_macros")
+    mod = _load("sys_paper_macros")
     raw = json.loads(mod.B1_V2E_RAW.read_text(encoding="utf-8"))
     raw["cell_b_commitcost"]["treatment_summary"]["phase_p50_us_total_us_median"] = 9999
     tampered_raw = tmp_path / "b1-manifest-v2e-remeasure-2026-09-raw.json"
@@ -996,11 +996,11 @@ def test_tampered_b1_v2e_manifest_digest_mismatch_fails(tmp_path):
 def test_tampered_b1_v2e_raw_manifest_bytes_fails_even_with_a_patched_digest(tmp_path):
     """Same discipline as the D160 rows-digest tests: patch `result_digest`
     to match a tampered raw file so the digest check alone would pass, and
-    confirm the format-evidence macros (`osdiB1v2eManifestBytesTreatment`/
+    confirm the format-evidence macros (`recB1v2eManifestBytesTreatment`/
     `Control`) are still caught -- because they are recomputed per rep and
     cross-checked for internal agreement, not read off the manifest's own
     summary fields."""
-    mod = _load("osdi_paper_macros")
+    mod = _load("sys_paper_macros")
     raw = json.loads(mod.B1_V2E_RAW.read_text(encoding="utf-8"))
     raw["cell_b_commitcost"]["treatment_reps_full"][0]["first_decile_us"]["manifest_bytes"] = 1565
     tampered_bytes = json.dumps(raw).encode("utf-8")
@@ -1022,28 +1022,28 @@ def test_tampered_b1_v2e_raw_manifest_bytes_fails_even_with_a_patched_digest(tmp
                for f in mod.FAILURES)
 
 
-def test_osdi_b1v2e_control_open_status_is_a_text_macro_not_a_number():
+def test_rec_b1v2e_control_open_status_is_a_text_macro_not_a_number():
     """Cell (a)'s control open time was measured under a concurrent phase-2
     backup transfer and is flagged confounded, not a comparable number --
     the macro must render as that literal text, never a placeholder ratio."""
-    mod = _load("osdi_paper_macros")
+    mod = _load("sys_paper_macros")
     m = mod.Macros()
     mod.compute_b1_v2e(m)
     values = {name: value for name, value, _ in m.items}
-    status = values["osdiB1v2eControlOpenStatus"]
+    status = values["recB1v2eControlOpenStatus"]
     assert status == "confounded (concurrent backup transfer)"
     with pytest.raises(ValueError):
         float(status)
 
 
-def test_osdi_b1v2e_p50_macros_distinguish_engine_commit_from_wall_clock(tmp_path):
-    """`osdiB1v2eP50*` is the frozen Addendum 3 quantity -- engine-commit
-    p50 (`phase_p50_us.total_us`), the same one `osdiB1v2P50*` already
-    tracks -- and `osdiB1v2eWallP50*`/`osdiB1v2eWallPaired` is the
+def test_rec_b1v2e_p50_macros_distinguish_engine_commit_from_wall_clock(tmp_path):
+    """`recB1v2eP50*` is the frozen Addendum 3 quantity -- engine-commit
+    p50 (`phase_p50_us.total_us`), the same one `recB1v2P50*` already
+    tracks -- and `recB1v2eWallP50*`/`recB1v2eWallPaired` is the
     wall-clock `commit_ms.p50` figure (incl. Python-side eventlog append),
     which is *not* the frozen quantity. The two must never collapse to the
     same value or this split has lost its point."""
-    mod = _load("osdi_paper_macros")
+    mod = _load("sys_paper_macros")
     raw = json.loads(mod.B1_V2E_RAW.read_text(encoding="utf-8"))
     cb = raw["cell_b_commitcost"]
 
@@ -1058,23 +1058,23 @@ def test_osdi_b1v2e_p50_macros_distinguish_engine_commit_from_wall_clock(tmp_pat
     mod.compute_b1_v2e(m)
     values = {name: value for name, value, _ in m.items}
 
-    assert float(values["osdiB1v2eP50TreatmentMs"]) == pytest.approx(engine_trt, abs=0.001)
-    assert float(values["osdiB1v2eP50ControlMs"]) == pytest.approx(engine_ctl, abs=0.001)
-    assert float(values["osdiB1v2eWallP50TreatmentMs"]) == pytest.approx(wall_trt, abs=0.001)
-    assert float(values["osdiB1v2eWallP50ControlMs"]) == pytest.approx(wall_ctl, abs=0.001)
+    assert float(values["recB1v2eP50TreatmentMs"]) == pytest.approx(engine_trt, abs=0.001)
+    assert float(values["recB1v2eP50ControlMs"]) == pytest.approx(engine_ctl, abs=0.001)
+    assert float(values["recB1v2eWallP50TreatmentMs"]) == pytest.approx(wall_trt, abs=0.001)
+    assert float(values["recB1v2eWallP50ControlMs"]) == pytest.approx(wall_ctl, abs=0.001)
 
     # the point of the split: these must not be the same number
-    assert values["osdiB1v2eP50TreatmentMs"] != values["osdiB1v2eWallP50TreatmentMs"]
-    assert values["osdiB1v2eP50ControlMs"] != values["osdiB1v2eWallP50ControlMs"]
-    assert values["osdiB1v2eP50Paired"] != values["osdiB1v2eWallPaired"]
+    assert values["recB1v2eP50TreatmentMs"] != values["recB1v2eWallP50TreatmentMs"]
+    assert values["recB1v2eP50ControlMs"] != values["recB1v2eWallP50ControlMs"]
+    assert values["recB1v2eP50Paired"] != values["recB1v2eWallPaired"]
 
 
 def test_tampered_b1_co7_raw_digest_mismatch_fails(tmp_path):
     """Same digest discipline as B1-v2e: the co7 record's result_digest is
     the sha256 of the raw records file's own bytes. Editing the raw file
     without recomputing that digest into the summary manifest must be
-    caught before any osdiB1co7* macro trusts a number out of it."""
-    mod = _load("osdi_paper_macros")
+    caught before any recB1co7* macro trusts a number out of it."""
+    mod = _load("sys_paper_macros")
     raw = json.loads(mod.B1_CO7_RAW.read_text(encoding="utf-8"))
     raw["cell_a_chain_open"]["treatment"]["open_phase_p50_us"]["dictionary_open_us"] = 1
     tampered_raw = tmp_path / "b1-manifest-co7-chain-open-2026-09-raw.json"
@@ -1092,13 +1092,13 @@ def test_tampered_b1_co7_raw_component_fails_even_with_a_patched_digest(tmp_path
     """Patch result_digest to match a tampered raw file (so the digest check
     alone would pass) and confirm a precomputed aggregate figure that
     disagrees with the per-rep data underneath it is still caught -- because
-    every osdiB1co7* component is recomputed as a median of the 3
+    every recB1co7* component is recomputed as a median of the 3
     ``open_phase_us`` reps and cross-checked against the raw record's own
     ``open_phase_p50_us`` aggregate, not read off that aggregate directly.
     Only the aggregate field is edited here; the reps it should match are
     left alone, so a generator that trusted the aggregate without
     recomputing it would sail through."""
-    mod = _load("osdi_paper_macros")
+    mod = _load("sys_paper_macros")
     raw = json.loads(mod.B1_CO7_RAW.read_text(encoding="utf-8"))
     raw["cell_a_chain_open"]["treatment"]["open_phase_p50_us"]["state_build_us"] = 1234
     tampered_bytes = json.dumps(raw).encode("utf-8")
@@ -1119,24 +1119,24 @@ def test_tampered_b1_co7_raw_component_fails_even_with_a_patched_digest(tmp_path
     assert any("state_build_us" in f.lower() for f in mod.FAILURES)
 
 
-def test_osdi_b1_worst_phase_open_macros_are_arithmetic_on_measured_per_delta_costs():
-    """`osdiB1WorstPhaseOpenTreatmentMs`/`ControlS` are not measurements --
+def test_rec_b1_worst_phase_open_macros_are_arithmetic_on_measured_per_delta_costs():
+    """`recB1WorstPhaseOpenTreatmentMs`/`ControlS` are not measurements --
     they project the co7 lane's measured per-delta manifest-chain costs
     forward to K-1=511 deltas (the generation just before the next
     checkpoint reset). Recompute both independently from the emitted
-    osdiB1co7* macro values and confirm the generator's own numbers agree,
+    recB1co7* macro values and confirm the generator's own numbers agree,
     proving the projection is arithmetic on those macros and not a separately
     fabricated figure."""
-    mod = _load("osdi_paper_macros")
+    mod = _load("sys_paper_macros")
     m = mod.Macros()
     mod.compute_b1_co7(m)
     values = {name: value for name, value, _ in m.items}
 
-    checkpoint_ms = float(values["osdiB1co7CheckpointReadParseMs"])
-    merkle_ms = float(values["osdiB1co7MerkleVerifyMs"])
-    state_build_per_delta_us = float(values["osdiB1co7StateBuildPerDeltaUs"])
-    delta_replay_per_delta_us = float(values["osdiB1co7DeltaReplayPerDeltaUs"])
-    control_per_delta_ms = float(values["osdiB1co7ControlPerDeltaMs"])
+    checkpoint_ms = float(values["recB1co7CheckpointReadParseMs"])
+    merkle_ms = float(values["recB1co7MerkleVerifyMs"])
+    state_build_per_delta_us = float(values["recB1co7StateBuildPerDeltaUs"])
+    delta_replay_per_delta_us = float(values["recB1co7DeltaReplayPerDeltaUs"])
+    control_per_delta_ms = float(values["recB1co7ControlPerDeltaMs"])
 
     expected_trt_ms = (
         checkpoint_ms + merkle_ms
@@ -1144,21 +1144,21 @@ def test_osdi_b1_worst_phase_open_macros_are_arithmetic_on_measured_per_delta_co
     )
     expected_ctl_s = control_per_delta_ms * 511 / 1000
 
-    assert float(values["osdiB1WorstPhaseOpenTreatmentMs"]) == pytest.approx(
+    assert float(values["recB1WorstPhaseOpenTreatmentMs"]) == pytest.approx(
         expected_trt_ms, abs=0.1)
-    assert float(values["osdiB1WorstPhaseOpenControlS"]) == pytest.approx(
+    assert float(values["recB1WorstPhaseOpenControlS"]) == pytest.approx(
         expected_ctl_s, abs=0.1)
 
 
-def test_osdi_b1_worst_phase_open_macros_have_derived_not_measured_provenance():
+def test_rec_b1_worst_phase_open_macros_have_derived_not_measured_provenance():
     """The two projected-cost macros must carry provenance that says
     'derived, not measured' rather than pointing at a raw record field --
     a reader must not mistake this arithmetic for a fourth measurement."""
-    mod = _load("osdi_paper_macros")
+    mod = _load("sys_paper_macros")
     m = mod.Macros()
     mod.compute_b1_co7(m)
     provenance = {name: prov for name, _, prov in m.items}
-    for name in ("osdiB1WorstPhaseOpenTreatmentMs", "osdiB1WorstPhaseOpenControlS"):
+    for name in ("recB1WorstPhaseOpenTreatmentMs", "recB1WorstPhaseOpenControlS"):
         assert provenance[name].startswith("derived, not measured"), (
             f"{name}: provenance must flag this as arithmetic, not a measurement, "
             f"got {provenance[name]!r}")
@@ -1168,7 +1168,7 @@ def test_tampered_fault_matrix_record_fails_the_frozen_expectation(tmp_path):
     """Edit F1-9's pre-fix silent-violation count (the campaign's own
     headline finding) and confirm the frozen-value assertion, not just a
     cross-file consistency check, is what catches it."""
-    mod = _load("osdi_paper_macros")
+    mod = _load("sys_paper_macros")
     tampered = tmp_path / "fault-matrix-campaign-2026-09-13.json"
     data = json.loads(mod.FAULTS_PRE.read_text(encoding="utf-8"))
     for cell in data["per_cell_gate_table"]:
@@ -1191,7 +1191,7 @@ def test_tampered_fault_matrix_record_fails_the_frozen_expectation(tmp_path):
 def test_tampered_m5_carve_record_fails_when_a_false_fresh_is_introduced(tmp_path):
     """The soundness axis's central number (0 false-fresh in 28,044 carve-2
     trials) must fail if even one row disagrees."""
-    mod = _load("osdi_paper_macros")
+    mod = _load("sys_paper_macros")
     tampered = tmp_path / "topup-carve2-synth-iv-60k.json"
     data = json.loads(mod.M5_CARVE_TWO.read_text(encoding="utf-8"))
     injected = False
@@ -1214,7 +1214,7 @@ def test_tampered_dag_v2_record_fails_the_extra_visits_constancy_assertion(tmp_p
     """v2's nodes_visited delta vs v1 must be the same (+61 or +62, by seed)
     in every one of the 20 same-seed cells; a single outlier cell must be
     caught by the constancy assertion, not averaged away."""
-    mod = _load("osdi_paper_macros")
+    mod = _load("sys_paper_macros")
     tampered = tmp_path / "storm-campaign-dag-v2-2026-09.json"
     data = json.loads(mod.DAG_V2.read_text(encoding="utf-8"))
     for cell in data["per_cell"]:
@@ -1231,7 +1231,7 @@ def test_tampered_dag_v2_record_fails_the_extra_visits_constancy_assertion(tmp_p
 
 
 def test_tampered_dag_v1_record_fails_the_false_safe_per_cell_frozen_value(tmp_path):
-    mod = _load("osdi_paper_macros")
+    mod = _load("sys_paper_macros")
     tampered = tmp_path / "storm-campaign-dag-2026-09.json"
     data = json.loads(mod.DAG_V1.read_text(encoding="utf-8"))
     for cell in data["per_cell"]:
@@ -1247,7 +1247,7 @@ def test_tampered_dag_v1_record_fails_the_false_safe_per_cell_frozen_value(tmp_p
 
 
 def test_tampered_r18_probe_record_fails_the_frozen_speedup(tmp_path):
-    mod = _load("osdi_paper_macros")
+    mod = _load("sys_paper_macros")
     tampered = tmp_path / "storm-r18-probe-2026-09-rows.jsonl"
     rows = [json.loads(line) for line in mod.R18_PROBE_ROWS.read_text(encoding="utf-8")
             .splitlines() if line.strip()]
@@ -1271,7 +1271,7 @@ def test_tampered_storm_v1_records_tarball_sha_mismatch_fails(tmp_path):
     frozen/README-quoted sha256 check before anything inside it is trusted
     -- the same house rule already applied to the storm-v2 tarball above
     and to every other whole-file digest in this module."""
-    mod = _load("osdi_paper_macros")
+    mod = _load("sys_paper_macros")
     original = mod.STORM_V1_RECORDS_TARBALL.read_bytes()
     tampered_bytes = bytearray(original)
     tampered_bytes[-1] ^= 0xFF  # flip the last byte -- still a well-formed gzip trailer byte
@@ -1294,7 +1294,7 @@ def test_tampered_storm_v2_probe_record_digest_mismatch_fails(tmp_path):
     it is supposed to summarize) must be caught -- same digest discipline
     as the storm-v2 main grid's own two digest-tamper tests above, applied
     to this probe's single-record digest scheme."""
-    mod = _load("osdi_paper_macros")
+    mod = _load("sys_paper_macros")
     d = json.loads(mod.STORM_V2_R18_PROBE.read_text(encoding="utf-8"))
     d["result_digest"] = "0" * 64  # implausible digest, rows.jsonl untouched
     tampered = tmp_path / "storm-v2-r18-probe-2026-09-15.json"
@@ -1313,7 +1313,7 @@ def test_tampered_storm_v2_probe_rows_digest_mismatch_fails(tmp_path):
     touching the top-level record's result_digest) must also be caught --
     the digest is recomputed fresh from the rows.jsonl every time, not
     trusted from a value cached anywhere."""
-    mod = _load("osdi_paper_macros")
+    mod = _load("sys_paper_macros")
     rows = [json.loads(line) for line in mod.STORM_V2_R18_PROBE_ROWS.read_text(
         encoding="utf-8").splitlines() if line.strip()]
     rows[0]["intersects_calls"] = 999999
@@ -1333,7 +1333,7 @@ def test_tampered_storm_v2_probe_ttf_fails_the_frozen_speedup(tmp_path):
     result_digest, so the digest check alone does not mask the effect)
     must still fail the cross-check against the record's own summary.arms
     field and/or the frozen speedup."""
-    mod = _load("osdi_paper_macros")
+    mod = _load("sys_paper_macros")
     rows = [json.loads(line) for line in mod.STORM_V2_R18_PROBE_ROWS.read_text(
         encoding="utf-8").splitlines() if line.strip()]
     # batch_index 0 is the one whose tgms-L1 ttf_ms equals the 5-batch
@@ -1364,13 +1364,13 @@ def test_tampered_storm_v2_probe_ttf_fails_the_frozen_speedup(tmp_path):
 
 
 def test_storm_v2_probe_survivor_and_precision_medians_are_recomputed_from_rows():
-    """Arithmetic check: osdiStormV2ProbeSurvivorMedian/PrecisionMedian must
+    """Arithmetic check: recStormV2ProbeSurvivorMedian/PrecisionMedian must
     equal the median, over the probe's own 5 batches, of
     candidate_survivors/n_registered and changed_count/candidate_survivors
     respectively -- recomputed independently here from the committed
     rows.jsonl, not merely re-asserted against the generator's own
     intermediate variables."""
-    mod = _load("osdi_paper_macros")
+    mod = _load("sys_paper_macros")
     rows = [json.loads(line) for line in mod.STORM_V2_R18_PROBE_ROWS.read_text(
         encoding="utf-8").splitlines() if line.strip()]
     assert len(rows) == 5
@@ -1386,12 +1386,12 @@ def test_storm_v2_probe_survivor_and_precision_medians_are_recomputed_from_rows(
     m = mod.Macros()
     mod.compute_c7_storm_v2_probe(m)
     values = {name: value for name, value, _ in m.items}
-    assert values["osdiStormV2ProbeSurvivorMedian"] == f"{expected_survivor_median:.3f}"
-    assert values["osdiStormV2ProbePrecisionMedian"] == f"{expected_precision_median:.3f}"
-    assert values["osdiStormV2ProbeIntersectsMedian"] == mod.tex_num(
+    assert values["recStormV2ProbeSurvivorMedian"] == f"{expected_survivor_median:.3f}"
+    assert values["recStormV2ProbePrecisionMedian"] == f"{expected_precision_median:.3f}"
+    assert values["recStormV2ProbeIntersectsMedian"] == mod.tex_num(
         int(expected_intersects_median))
     assert expected_intersects_median <= 50000
-    assert values["osdiStormV2ProbeR18Tripped"] == "no"
+    assert values["recStormV2ProbeR18Tripped"] == "no"
 
 
 def test_tampered_storm_v2_merged_record_digest_mismatch_fails(tmp_path):
@@ -1402,7 +1402,7 @@ def test_tampered_storm_v2_merged_record_digest_mismatch_fails(tmp_path):
     it is supposed to summarize) must be caught -- same digest discipline
     as the D160/B1-v2e/ladder tamper tests above, applied to this record's
     own digest scheme."""
-    mod = _load("osdi_paper_macros")
+    mod = _load("sys_paper_macros")
     merged = json.loads(mod.STORM_V2_MAIN_GRID.read_text(encoding="utf-8"))
     merged["result_digest"] = "0" * 64  # implausible digest, rows.jsonl untouched
     tampered = tmp_path / "storm-v2-main-grid-2026-09-15.json"
@@ -1421,7 +1421,7 @@ def test_tampered_storm_v2_rows_digest_mismatch_fails(tmp_path):
     (without touching the merged record) must also be caught -- the merged
     record's result_digest is a chain over every row's own claimed digest,
     not a value copied once and never re-verified."""
-    mod = _load("osdi_paper_macros")
+    mod = _load("sys_paper_macros")
     rows = [json.loads(line) for line in mod.STORM_V2_MAIN_GRID_ROWS.read_text(
         encoding="utf-8").splitlines() if line.strip()]
     rows[0]["result_digest"] = "1" * 64
@@ -1438,12 +1438,12 @@ def test_tampered_storm_v2_rows_digest_mismatch_fails(tmp_path):
 
 def test_storm_v2_speedup_synth_c1_none_is_the_median_of_its_three_seeds():
     """Arithmetic check on one of the 12 per-(store,mix,age) macros:
-    osdiStormV2SpeedupSynthC1None must equal the median, over exactly the
+    recStormV2SpeedupSynthC1None must equal the median, over exactly the
     three seed-0/1/2 cells at (synth-iv-60k, c1, age=none), of
     summary.arms.global-recompute.ttf_p50_ms / summary.arms.tgms-L1.ttf_p50_ms
     -- recomputed independently here from the committed rows.jsonl, not
     trusted from the generator's own arithmetic."""
-    mod = _load("osdi_paper_macros")
+    mod = _load("sys_paper_macros")
     rows = [json.loads(line) for line in mod.STORM_V2_MAIN_GRID_ROWS.read_text(
         encoding="utf-8").splitlines() if line.strip()]
     cells = [r for r in rows if r["config"]["store"] == "synth-iv-60k"
@@ -1456,7 +1456,7 @@ def test_storm_v2_speedup_synth_c1_none_is_the_median_of_its_three_seeds():
     m = mod.Macros()
     mod.compute_c7_storm_v2(m)
     values = {name: value for name, value, _ in m.items}
-    assert values["osdiStormV2SpeedupSynthC1None"] == f"{expected_median:.3f}"
+    assert values["recStormV2SpeedupSynthC1None"] == f"{expected_median:.3f}"
 
 
 def test_tampered_storm_v2_records_tarball_sha_mismatch_fails(tmp_path):
@@ -1466,7 +1466,7 @@ def test_tampered_storm_v2_records_tarball_sha_mismatch_fails(tmp_path):
     must fail the frozen/README-quoted sha256 check before anything inside
     it is trusted, the same house rule already applied to every other
     whole-file digest in this module."""
-    mod = _load("osdi_paper_macros")
+    mod = _load("sys_paper_macros")
     original = mod.STORM_V2_RECORDS_TARBALL.read_bytes()
     tampered_bytes = bytearray(original)
     tampered_bytes[-1] ^= 0xFF  # flip the last byte -- still a well-formed gzip trailer byte
@@ -1490,7 +1490,7 @@ def test_storm_v2_c1_survivor_fraction_and_precision_are_medians_over_240_batche
     cells' own per-batch rows inside storm-v2-records-36-tasks.tar.gz,
     located via each cell's own `record` field, matching the generator's
     own -- not just its stated -- values."""
-    mod = _load("osdi_paper_macros")
+    mod = _load("sys_paper_macros")
     merged_rows = [json.loads(line) for line in mod.STORM_V2_MAIN_GRID_ROWS.read_text(
         encoding="utf-8").splitlines() if line.strip()]
     c1_rows = [r for r in merged_rows if r["config"]["mix"] == "c1"]
@@ -1526,15 +1526,15 @@ def test_storm_v2_c1_survivor_fraction_and_precision_are_medians_over_240_batche
     m = mod.Macros()
     mod.compute_c7_storm_v2(m)
     values = {name: value for name, value, _ in m.items}
-    assert values["osdiStormV2C1Batches"] == "240"
-    assert values["osdiStormV2SurvivorFractionC1Median"] == f"{expected_survivor_median:.3f}"
-    assert values["osdiStormV2PrecisionC1Median"] == f"{expected_precision_median:.3f}"
-    assert (values["osdiStormV2SurvivorFractionSynthC1Median"]
+    assert values["recStormV2C1Batches"] == "240"
+    assert values["recStormV2SurvivorFractionC1Median"] == f"{expected_survivor_median:.3f}"
+    assert values["recStormV2PrecisionC1Median"] == f"{expected_precision_median:.3f}"
+    assert (values["recStormV2SurvivorFractionSynthC1Median"]
             == f"{expected_synth_survivor:.3f}")
-    assert (values["osdiStormV2SurvivorFractionCollegeMsgC1Median"]
+    assert (values["recStormV2SurvivorFractionCollegeMsgC1Median"]
             == f"{expected_collegemsg_survivor:.3f}")
-    assert values["osdiStormV2PrecisionSynthC1Median"] == f"{expected_synth_precision:.3f}"
-    assert (values["osdiStormV2PrecisionCollegeMsgC1Median"]
+    assert values["recStormV2PrecisionSynthC1Median"] == f"{expected_synth_precision:.3f}"
+    assert (values["recStormV2PrecisionCollegeMsgC1Median"]
             == f"{expected_collegemsg_precision:.3f}")
 
 
@@ -1542,7 +1542,7 @@ def test_tampered_d160_rows_digest_mismatch_fails(tmp_path):
     """The record's own manifest carries a sha256 of the rows file; editing
     the rows without updating the manifest must be caught before any metric
     is even computed."""
-    mod = _load("osdi_paper_macros")
+    mod = _load("sys_paper_macros")
     rows = json.loads(mod.D160_ROWS.read_text(encoding="utf-8"))
     for r in rows:
         if r["system"] == "ours":
@@ -1564,7 +1564,7 @@ def test_tampered_d160_rows_recomputed_coverage_fails_even_with_a_patched_digest
     digest check alone would pass -- proving the frozen carrying-count/
     coverage assertion, not just the digest check, is what would catch a
     doctored record."""
-    mod = _load("osdi_paper_macros")
+    mod = _load("sys_paper_macros")
     rows = json.loads(mod.D160_ROWS.read_text(encoding="utf-8"))
     changed = False
     for r in rows:
@@ -1603,7 +1603,7 @@ def test_tampered_d160_llm_direct_fix_rows_digest_mismatch_fails(tmp_path):
     without updating its manifest's result_digest must be caught before any
     of the fixed-record macros (coverage/errors/raw-em/tokenizer/budget) are
     even computed."""
-    mod = _load("osdi_paper_macros")
+    mod = _load("sys_paper_macros")
     rows = json.loads(mod.D160_ROWS_FIX.read_text(encoding="utf-8"))
     for r in rows:
         if r["system"] == "llm_direct":
@@ -1625,7 +1625,7 @@ def test_tampered_corruption_pre_record_digest_mismatch_fails(tmp_path):
     per-trial results (corruption_campaign_merge.py's scheme); editing a
     trial's verdict without recomputing that digest must be caught before
     any count is even trusted."""
-    mod = _load("osdi_paper_macros")
+    mod = _load("sys_paper_macros")
     data = json.loads(mod.CORRUPTION_PRE.read_text(encoding="utf-8"))
     for r in data["results"]:
         if r["class"] == "artifact_blob" and r["mutation"] == "append_garbage":
@@ -1645,7 +1645,7 @@ def test_tampered_corruption_post_record_blob_count_fails_even_with_patched_dige
     """Patch both the results and result_digest so the digest check alone
     would pass -- proving the frozen 621-of-621 blob-fix assertion, not
     just the digest, is what would catch a doctored post-A10 record."""
-    mod = _load("osdi_paper_macros")
+    mod = _load("sys_paper_macros")
     data = json.loads(mod.CORRUPTION_POST.read_text(encoding="utf-8"))
     changed = False
     for r in data["results"]:
@@ -1670,12 +1670,12 @@ def test_tampered_corruption_post_record_blob_count_fails_even_with_patched_dige
 
 
 def test_tampered_corruption_pre_record_breaks_the_already_detected_partition(tmp_path):
-    """osdiCorruptionBlobMutationAlreadyDetected's own trial count must equal
+    """recCorruptionBlobMutationAlreadyDetected's own trial count must equal
     its DETECTED count exactly (every one of delete_file's 89 pre-A10 trials
     was DETECTED) for the six-mutation-plus-one partition of the 710 blob
     trials to hold; a single trial flipped away from DETECTED must be
     caught, not averaged into the 89 count as noise."""
-    mod = _load("osdi_paper_macros")
+    mod = _load("sys_paper_macros")
     data = json.loads(mod.CORRUPTION_PRE.read_text(encoding="utf-8"))
     changed = False
     for r in data["results"]:
@@ -1706,7 +1706,7 @@ def test_tampered_ladder_raw_record_digest_mismatch_fails(tmp_path):
     """Each per-seed raw ladder record's result_digest is sha256 over its
     own rows; editing a row without recomputing that digest must be caught
     before any rung's median is trusted."""
-    mod = _load("osdi_paper_macros")
+    mod = _load("sys_paper_macros")
     data = json.loads(mod.LADDER_RAW[0].read_text(encoding="utf-8"))
     for row in data["rows"]:
         if row["rung"] == 4 and row["plan_id"] == "p01-entity-history":
@@ -1726,7 +1726,7 @@ def test_tampered_ladder_merged_summary_fails_the_frozen_rung3_value(tmp_path):
     """Patch the merged record's summary and its own result_digest together
     (so the digest check alone would pass) and confirm the frozen
     bytes-median assertion catches a doctored trace_bytes number."""
-    mod = _load("osdi_paper_macros")
+    mod = _load("sys_paper_macros")
     data = json.loads(mod.LADDER_MERGED.read_text(encoding="utf-8"))
     data["summary"]["rung3_trace_bytes"]["p01-entity-history"]["bytes_median"] = 9999
 
@@ -1752,7 +1752,7 @@ def test_tampered_longevity_manifest_sha256_mismatch_fails(tmp_path):
     "Files here" table states for the byte-copied record; editing any field
     (even one this generator never reads) must be caught by that check
     before a single macro is computed."""
-    mod = _load("osdi_paper_macros")
+    mod = _load("sys_paper_macros")
     manifest = json.loads(mod.LONGEVITY_MANIFEST.read_text(encoding="utf-8"))
     manifest["summary"]["compactions"] = 999999
     tampered = tmp_path / "longevity-synth-1m-native-0.json"
@@ -1770,7 +1770,7 @@ def test_tampered_longevity_side_file_sha256_mismatch_fails(tmp_path):
     """Same discipline as the manifest check, applied to one of the four
     other README-hash-verified side-files (recoveries.jsonl here) -- an
     edited copy must fail before the recovery-cause counts are trusted."""
-    mod = _load("osdi_paper_macros")
+    mod = _load("sys_paper_macros")
     rows = [json.loads(line) for line in
             mod.LONGEVITY_RECOVERIES.read_text(encoding="utf-8").splitlines() if line.strip()]
     rows[0]["returncode"] = 137  # flip one SIGABRT into an exit137, still 41 rows total
@@ -1793,7 +1793,7 @@ def test_longevity_true_error_sum_is_249_over_42_lives():
     per-life rows -- never trusted from that file's own
     true_total_errors_all_lives field without the sum matching it -- is
     249."""
-    mod = _load("osdi_paper_macros")
+    mod = _load("sys_paper_macros")
     by_life = json.loads(mod.LONGEVITY_WRITER_ERRORS_BY_LIFE.read_text(encoding="utf-8"))
     per_life_errors = by_life["per_life_errors"]
     assert len(per_life_errors) == 42
@@ -1803,8 +1803,8 @@ def test_longevity_true_error_sum_is_249_over_42_lives():
     m = mod.Macros()
     mod.compute_longevity_soak(m)
     values = {name: value for name, value, _ in m.items}
-    assert values["osdiSoakWriterErrorsTrue"] == "249"
-    assert values["osdiSoakWriterErrorsManifest"] == "1"
+    assert values["recSoakWriterErrorsTrue"] == "249"
+    assert values["recSoakWriterErrorsManifest"] == "1"
 
 
 def test_tampered_writer_error_counts_by_life_sum_mismatch_fails(tmp_path):
@@ -1813,7 +1813,7 @@ def test_tampered_writer_error_counts_by_life_sum_mismatch_fails(tmp_path):
     be recomputed and cross-checked against its own summary field and the
     frozen 249, not trusted verbatim; editing one life's count must be
     caught even though no digest scheme covers this file at all."""
-    mod = _load("osdi_paper_macros")
+    mod = _load("sys_paper_macros")
     data = json.loads(mod.LONGEVITY_WRITER_ERRORS_BY_LIFE.read_text(encoding="utf-8"))
     data["per_life_errors"][0] += 1  # sum no longer matches the file's own summary field
     tampered = tmp_path / "writer_error_counts_by_life.json"
@@ -1828,14 +1828,14 @@ def test_tampered_writer_error_counts_by_life_sum_mismatch_fails(tmp_path):
 
 
 def test_tampered_longevity_manifest_error_count_defect_check_fails_if_fixed(tmp_path):
-    """The whole point of osdiSoakWriterErrorsManifest/True is that they
+    """The whole point of recSoakWriterErrorsManifest/True is that they
     *disagree* (1 vs. 249) -- that disagreement is the harness defect the
     README documents. If a future manifest ever reported the true total
     directly (i.e. the defect were fixed upstream), this generator's own
     "they must differ" sanity check should catch the now-stale assumption
     rather than silently emitting two identical numbers as if nothing
     changed."""
-    mod = _load("osdi_paper_macros")
+    mod = _load("sys_paper_macros")
     manifest = json.loads(mod.LONGEVITY_MANIFEST.read_text(encoding="utf-8"))
     manifest["summary"]["error_count"] = 249
     manifest["summary"]["writer_final"]["errors"] = 249
@@ -1850,23 +1850,23 @@ def test_tampered_longevity_manifest_error_count_defect_check_fails_if_fixed(tmp
 
 
 def test_longevity_digest_and_reader_death_cause_are_text_macros_not_numbers():
-    """osdiSoakDigestStatus ('not computed') and osdiSoakReaderDeathCause
+    """recSoakDigestStatus ('not computed') and recSoakReaderDeathCause
     ('reader torn-tail race, pre-fix engine') must render as literal text,
     never a placeholder number that could be mistaken for one -- same
-    discipline as osdiB1v2OpenComponentStatus above. osdiSoakVerifyHealthy
+    discipline as recB1v2OpenComponentStatus above. recSoakVerifyHealthy
     is also text ('true'), not the LaTeX-truthy '1'."""
-    mod = _load("osdi_paper_macros")
+    mod = _load("sys_paper_macros")
     m = mod.Macros()
     mod.compute_longevity_soak(m)
     values = {name: value for name, value, _ in m.items}
 
-    for name in ("osdiSoakDigestStatus", "osdiSoakReaderDeathCause", "osdiSoakVerifyHealthy"):
+    for name in ("recSoakDigestStatus", "recSoakReaderDeathCause", "recSoakVerifyHealthy"):
         with pytest.raises(ValueError):
             float(values[name])
 
-    assert values["osdiSoakDigestStatus"] == "not computed"
-    assert values["osdiSoakReaderDeathCause"] == "reader torn-tail race, pre-fix engine"
-    assert values["osdiSoakVerifyHealthy"] == "true"
+    assert values["recSoakDigestStatus"] == "not computed"
+    assert values["recSoakReaderDeathCause"] == "reader torn-tail race, pre-fix engine"
+    assert values["recSoakVerifyHealthy"] == "true"
 
 
 def test_tampered_longevity_summary_rederived_sha256_mismatch_fails(tmp_path):
@@ -1876,7 +1876,7 @@ def test_tampered_longevity_summary_rederived_sha256_mismatch_fails(tmp_path):
     its first read of the committed copy instead. An edited copy (even a
     field this generator never reads) must fail that check before any
     within-life slope statistic is trusted."""
-    mod = _load("osdi_paper_macros")
+    mod = _load("sys_paper_macros")
     data = json.loads(mod.LONGEVITY_SUMMARY_REDERIVED.read_text(encoding="utf-8"))
     data["summary"]["compactions"] = 999999
     tampered = tmp_path / "summary_rederived_2026-09-15.json"
@@ -1897,7 +1897,7 @@ def test_tampered_longevity_summary_rederived_provenance_mismatch_fails(tmp_path
     one. Patching the digest first (so the whole-file check above would
     not itself catch it) and only then editing derived_from must still
     fail."""
-    mod = _load("osdi_paper_macros")
+    mod = _load("sys_paper_macros")
     data = json.loads(mod.LONGEVITY_SUMMARY_REDERIVED.read_text(encoding="utf-8"))
     data["derived_from"]["original_manifest_sha256"] = "0" * 64
     tampered = tmp_path / "summary_rederived_2026-09-15.json"
@@ -1920,7 +1920,7 @@ def test_tampered_longevity_replay_check_sha256_mismatch_fails(tmp_path):
     (README.md's "Post-hoc replay check" section quotes it verbatim) --
     an edited copy must fail before any OOM/generation/timing figure is
     trusted."""
-    mod = _load("osdi_paper_macros")
+    mod = _load("sys_paper_macros")
     data = json.loads(mod.LONGEVITY_REPLAY_CHECK.read_text(encoding="utf-8"))
     data["summary"]["attempt_1"]["wall_s"] = 1.0
     tampered = tmp_path / "replay-check-2026-09-15.json"
@@ -1941,8 +1941,8 @@ def test_tampered_longevity_replay_check_generation_arithmetic_fails_even_with_p
     compaction_inference_basis text) -- editing the generation alone,
     with the whole-file digest patched to match, must still fail this
     internal arithmetic cross-check rather than silently emitting a wrong
-    osdiSoakReplayOomGeneration."""
-    mod = _load("osdi_paper_macros")
+    recSoakReplayOomGeneration."""
+    mod = _load("sys_paper_macros")
     data = json.loads(mod.LONGEVITY_REPLAY_CHECK.read_text(encoding="utf-8"))
     data["summary"]["attempt_1"]["highest_manifest_generation_observed"] = 513025
     tampered = tmp_path / "replay-check-2026-09-15.json"
@@ -1965,20 +1965,20 @@ def test_longevity_rederived_replay_check_sha256_matches_readme_quoted_value():
     generator's frozen constant must be the same string, not just an
     independently-frozen first-read digest like the two re-derived-report
     files above."""
-    mod = _load("osdi_paper_macros")
+    mod = _load("sys_paper_macros")
     readme_text = (mod.LONGEVITY_DIR / "README.md").read_text(encoding="utf-8")
     assert f"sha256 `{mod.LONGEVITY_REPLAY_CHECK_SHA256}`" in readme_text
     assert mod.sha256_file(mod.LONGEVITY_REPLAY_CHECK) == mod.LONGEVITY_REPLAY_CHECK_SHA256
 
 
 def test_longevity_rederived_bytes_per_commit_is_median_slope_over_mean_rate():
-    """osdiSoakBytesPerCommitLiveKB is arithmetic, not a measurement:
+    """recSoakBytesPerCommitLiveKB is arithmetic, not a measurement:
     round(within-life median RSS slope / mean commits-per-s). Recomputed
     independently here from the same two source macros' own underlying
     floats (not the rounded macro strings) and checked against both the
     generator's internal frozen value and the README's own ~157-158
     KB/commit neighborhood."""
-    mod = _load("osdi_paper_macros")
+    mod = _load("sys_paper_macros")
     summary_doc = json.loads(mod.LONGEVITY_SUMMARY_REDERIVED.read_text(encoding="utf-8"))
     median_slope = summary_doc["writer_within_life_rss_slope"]["median_kb_per_s"]
     drift = summary_doc["summary"]["drift"]
@@ -1990,16 +1990,16 @@ def test_longevity_rederived_bytes_per_commit_is_median_slope_over_mean_rate():
     m = mod.Macros()
     mod.compute_longevity_rederived(m)
     values = {name: value for name, value, _ in m.items}
-    assert values["osdiSoakBytesPerCommitLiveKB"] == "157"
-    assert values["osdiSoakCommitsPerSecMean"] == "20.2"
+    assert values["recSoakBytesPerCommitLiveKB"] == "157"
+    assert values["recSoakCommitsPerSecMean"] == "20.2"
 
 
 def test_longevity_rederived_oom_rss_gb_is_kb_over_1e6():
-    """osdiSoakReplayOomRssGB converts the dmesg-parsed anon-rss kB figure
+    """recSoakReplayOomRssGB converts the dmesg-parsed anon-rss kB figure
     to GB via decimal division by 1e6 (kilo/giga, not kibi/gibi) --
     checked directly against the dmesg line's own literal figure, not the
     macro string."""
-    mod = _load("osdi_paper_macros")
+    mod = _load("sys_paper_macros")
     replay_doc = json.loads(mod.LONGEVITY_REPLAY_CHECK.read_text(encoding="utf-8"))
     dmesg_line = replay_doc["summary"]["attempt_1"]["dmesg_line"]
     match = re.search(r"anon-rss:(\d+)kB", dmesg_line)
@@ -2011,30 +2011,30 @@ def test_longevity_rederived_oom_rss_gb_is_kb_over_1e6():
     m = mod.Macros()
     mod.compute_longevity_rederived(m)
     values = {name: value for name, value, _ in m.items}
-    assert values["osdiSoakReplayOomRssGB"] == "83.0"
+    assert values["recSoakReplayOomRssGB"] == "83.0"
 
 
 def test_longevity_rederived_replay_outcome_is_a_text_macro_not_a_number():
-    """osdiSoakReplayOutcome ('aborted_oom') must render as literal text,
-    same discipline as osdiSoakDigestStatus above."""
-    mod = _load("osdi_paper_macros")
+    """recSoakReplayOutcome ('aborted_oom') must render as literal text,
+    same discipline as recSoakDigestStatus above."""
+    mod = _load("sys_paper_macros")
     m = mod.Macros()
     mod.compute_longevity_rederived(m)
     values = {name: value for name, value, _ in m.items}
     with pytest.raises(ValueError):
-        float(values["osdiSoakReplayOutcome"])
-    assert values["osdiSoakReplayOutcome"] == "aborted_oom"
+        float(values["recSoakReplayOutcome"])
+    assert values["recSoakReplayOutcome"] == "aborted_oom"
 
 
 def test_longevity_rederived_first_vs_last_slope_is_labelled_superseded():
-    """osdiSoakFirstVsLastSlopeKBps carries the old two-point figure
+    """recSoakFirstVsLastSlopeKBps carries the old two-point figure
     forward unchanged for comparison, but its provenance string must
     flag it as superseded by the within-life figures -- it must never be
     read as this record's own memory-FAIL headline number."""
-    mod = _load("osdi_paper_macros")
+    mod = _load("sys_paper_macros")
     m = mod.Macros()
     mod.compute_longevity_rederived(m)
-    entry = next(item for item in m.items if item[0] == "osdiSoakFirstVsLastSlopeKBps")
+    entry = next(item for item in m.items if item[0] == "recSoakFirstVsLastSlopeKBps")
     _, value, provenance = entry
     assert value == "111.6"
     assert "SUPERSEDED" in provenance
@@ -2047,7 +2047,7 @@ def test_longevity_soak_two_true_error_totals_match_frozen_and_manifest():
     both equal the manifest's own error_count arithmetic
     (writer + reader + unexpected_writer_deaths == summary.error_count),
     not just self-consistently recompute to the same wrong number."""
-    mod = _load("osdi_paper_macros")
+    mod = _load("sys_paper_macros")
     by_life = json.loads(mod.LONGEVITY_WRITER_ERRORS_BY_LIFE_TWO.read_text(encoding="utf-8"))
     true_writer_errors = sum(row["errors"] for row in by_life["per_life"].values())
     assert true_writer_errors == 616
@@ -2065,26 +2065,26 @@ def test_longevity_soak_two_true_error_totals_match_frozen_and_manifest():
     m = mod.Macros()
     mod.compute_longevity_soak_two(m)
     values = {name: value for name, value, _ in m.items}
-    assert values["osdiSoakWriterErrorsTrueTwo"] == "616"
-    assert values["osdiSoakReaderErrorsTrueTwo"] == "150{,}476{,}512"
+    assert values["recSoakWriterErrorsTrueTwo"] == "616"
+    assert values["recSoakReaderErrorsTrueTwo"] == "150{,}476{,}512"
 
 
 def test_longevity_soak_two_text_macros_are_never_numbers():
-    """osdiSoakDigestEqualTwo ('true'), osdiSoakFullVerifyVerdictTwo
-    ('healthy'), and osdiSoakWriterErrorsClassTwo ('NotFoundError') must
+    """recSoakDigestEqualTwo ('true'), recSoakFullVerifyVerdictTwo
+    ('healthy'), and recSoakWriterErrorsClassTwo ('NotFoundError') must
     all render as literal text, same discipline as W2g's
-    osdiSoakDigestStatus/osdiSoakReaderDeathCause above."""
-    mod = _load("osdi_paper_macros")
+    recSoakDigestStatus/recSoakReaderDeathCause above."""
+    mod = _load("sys_paper_macros")
     m = mod.Macros()
     mod.compute_longevity_soak_two(m)
     values = {name: value for name, value, _ in m.items}
-    for name in ("osdiSoakDigestEqualTwo", "osdiSoakFullVerifyVerdictTwo",
-                 "osdiSoakWriterErrorsClassTwo"):
+    for name in ("recSoakDigestEqualTwo", "recSoakFullVerifyVerdictTwo",
+                 "recSoakWriterErrorsClassTwo"):
         with pytest.raises(ValueError):
             float(values[name])
-    assert values["osdiSoakDigestEqualTwo"] == "true"
-    assert values["osdiSoakFullVerifyVerdictTwo"] == "healthy"
-    assert values["osdiSoakWriterErrorsClassTwo"] == "NotFoundError"
+    assert values["recSoakDigestEqualTwo"] == "true"
+    assert values["recSoakFullVerifyVerdictTwo"] == "healthy"
+    assert values["recSoakWriterErrorsClassTwo"] == "NotFoundError"
 
 
 def test_tampered_longevity_manifest_two_sha256_mismatch_fails(tmp_path):
@@ -2092,7 +2092,7 @@ def test_tampered_longevity_manifest_two_sha256_mismatch_fails(tmp_path):
     (post-fix)" Files-added-here sha256 table -- an edited copy (even a
     field this generator never reads) must fail before any commit/
     duration/error-count figure is trusted."""
-    mod = _load("osdi_paper_macros")
+    mod = _load("sys_paper_macros")
     data = json.loads(mod.LONGEVITY_MANIFEST_TWO.read_text(encoding="utf-8"))
     data["summary"]["compactions"] = 999999
     tampered = tmp_path / "longevity-synth-1m-native-1.json"
@@ -2110,7 +2110,7 @@ def test_tampered_longevity_rss_slopes_two_sha256_mismatch_fails(tmp_path):
     """rss_slopes-2.json is also in that sha256 table -- an edited copy
     must fail before any within-life writer/reader slope macro is
     trusted."""
-    mod = _load("osdi_paper_macros")
+    mod = _load("sys_paper_macros")
     data = json.loads(mod.LONGEVITY_RSS_SLOPES_TWO.read_text(encoding="utf-8"))
     data["writer_lives"][0]["slope_kb_per_s_least_squares"] = 0.0
     tampered = tmp_path / "rss_slopes-2.json"
@@ -2129,7 +2129,7 @@ def test_tampered_writer_error_counts_by_life_two_sum_mismatch_fails_even_with_p
     patch the frozen digest to isolate the internal recomputed-sum
     cross-check (sum(per_life[*].errors) ==
     true_total_writer_errors_all_lives) from the whole-file check."""
-    mod = _load("osdi_paper_macros")
+    mod = _load("sys_paper_macros")
     data = json.loads(mod.LONGEVITY_WRITER_ERRORS_BY_LIFE_TWO.read_text(encoding="utf-8"))
     data["per_life"]["0"]["errors"] += 1
     tampered = tmp_path / "writer_error_counts_by_life-2.json"
@@ -2150,7 +2150,7 @@ def test_tampered_reader_error_counts_by_class_two_total_mismatch_fails_even_wit
     field must equal the recomputed OSError + StateError sum -- editing
     one class total alone, with the whole-file digest patched to match,
     must still fail this internal cross-check."""
-    mod = _load("osdi_paper_macros")
+    mod = _load("sys_paper_macros")
     data = json.loads(mod.LONGEVITY_READER_ERRORS_BY_CLASS_TWO.read_text(encoding="utf-8"))
     data["by_class_total"]["OSError"] += 1
     tampered = tmp_path / "reader_error_counts_by_class-2.json"
@@ -2167,11 +2167,11 @@ def test_tampered_reader_error_counts_by_class_two_total_mismatch_fails_even_wit
 
 
 def test_tampered_longevity_soak_two_digest_equal_false_fails_even_with_patched_digest(tmp_path):
-    """The whole point of osdiSoakDigestEqualTwo is that P-SOAK2's replay
+    """The whole point of recSoakDigestEqualTwo is that P-SOAK2's replay
     actually completed and matched (True, unlike W2g's null) -- a
     manifest reporting False must fail this generator's own require()
     check rather than silently emitting a wrong 'true' macro."""
-    mod = _load("osdi_paper_macros")
+    mod = _load("sys_paper_macros")
     manifest = json.loads(mod.LONGEVITY_MANIFEST_TWO.read_text(encoding="utf-8"))
     manifest["summary"]["digest_equal"] = False
     tampered = tmp_path / "longevity-synth-1m-native-1.json"
@@ -2192,7 +2192,7 @@ def test_tampered_verify_full_soak2_overlap_finding_fails_even_with_patched_dige
     injecting a fabricated PROBLEMS/believed-versions-overlap finding,
     with the whole-file digest patched to match, must still fail the
     overlap-count and no-overlap-text checks."""
-    mod = _load("osdi_paper_macros")
+    mod = _load("sys_paper_macros")
     text = mod.LONGEVITY_VERIFY_FULL_TWO.read_text(encoding="utf-8")
     tampered_text = text.replace(
         "\nverdict: healthy",
@@ -2215,7 +2215,7 @@ def test_tampered_longevity_compactions_two_sha256_mismatch_fails(tmp_path):
     Files-added-here table -- an edited copy (even a line the generator
     never re-derives from directly) must fail before the reader-onset
     edge-row macros are trusted."""
-    mod = _load("osdi_paper_macros")
+    mod = _load("sys_paper_macros")
     lines = mod.LONGEVITY_COMPACTIONS_TWO.read_text(encoding="utf-8").splitlines()
     lines[0] = lines[0].replace('"edge_rows": 1000376', '"edge_rows": 999999')
     tampered = tmp_path / "compactions-2.jsonl"
@@ -2232,8 +2232,8 @@ def test_tampered_longevity_compactions_two_sha256_mismatch_fails(tmp_path):
 def test_tampered_reader_onset_rows_two_sha256_mismatch_fails(tmp_path):
     """reader_onset_rows-2.json (appended 2026-09-18) is also in that
     sha256 table -- an edited copy must fail before either
-    osdiSoakReaderOnset*Two macro is trusted."""
-    mod = _load("osdi_paper_macros")
+    recSoakReaderOnset*Two macro is trusted."""
+    mod = _load("sys_paper_macros")
     data = json.loads(mod.LONGEVITY_READER_ONSET_ROWS_TWO.read_text(encoding="utf-8"))
     data["earliest_reader_onset"]["last_compaction_before"]["edge_rows"] = 1
     tampered = tmp_path / "reader_onset_rows-2.json"
@@ -2252,7 +2252,7 @@ def test_tampered_reader_onset_rows_two_wrong_reader_fails_even_with_patched_dig
     reader_error_counts_by_class-2.json's own osrror_storm_onset_by_reader --
     swapping in a reader that is not the true extremum, with the whole-file
     digest patched to match, must still fail that cross-check."""
-    mod = _load("osdi_paper_macros")
+    mod = _load("sys_paper_macros")
     data = json.loads(mod.LONGEVITY_READER_ONSET_ROWS_TWO.read_text(encoding="utf-8"))
     data["earliest_reader_onset"]["reader"] = 4
     data["earliest_reader_onset"]["onset_t_plus_s"] = 75993.1
@@ -2274,7 +2274,7 @@ def test_tampered_longevity_verify_full_sha256_mismatch_fails(tmp_path):
     the soak's original Files-here table), so it is frozen here from this
     lane's own first read -- an edited copy must fail that check before
     either entry's PROBLEMS/generation is even parsed."""
-    mod = _load("osdi_paper_macros")
+    mod = _load("sys_paper_macros")
     text = mod.LONGEVITY_VERIFY_FULL.read_text(encoding="utf-8")
     tampered = tmp_path / "verify-full-2026-09-15.txt"
     tampered.write_text(text + "\n# tampered\n", encoding="utf-8")
@@ -2294,7 +2294,7 @@ def test_tampered_longevity_verify_full_overlap_counts_diverge_fails_even_with_p
     bullet, so the recomputed bullet count still agrees with its own
     header) must still fail the identical-count cross-check, even with a
     patched whole-file digest."""
-    mod = _load("osdi_paper_macros")
+    mod = _load("sys_paper_macros")
     text = mod.LONGEVITY_VERIFY_FULL.read_text(encoding="utf-8")
     entries = text.split("store:      ")
     assert len(entries) == 3, "expected exactly two `store:` blocks in this fixture"
@@ -2322,7 +2322,7 @@ def test_tampered_longevity_replay_check_2_sha256_mismatch_fails(tmp_path):
     """replay-check-2-2026-09.json has no README-quoted sha256 either
     (README.md quotes the digests inside it, not the file's own hash), so
     it too is frozen from this lane's own first read."""
-    mod = _load("osdi_paper_macros")
+    mod = _load("sys_paper_macros")
     data = json.loads(mod.LONGEVITY_REPLAY_CHECK_2.read_text(encoding="utf-8"))
     data["summary"]["peak_rss_kb"] = 1
     tampered = tmp_path / "replay-check-2-2026-09.json"
@@ -2341,7 +2341,7 @@ def test_tampered_longevity_replay_check_2_digest_equal_false_fails_even_with_pa
     the soak's pre-registered final_digest -- a manifest reporting
     digest_equal=False must fail, even with a patched whole-file digest,
     rather than silently emitting a wrong 'true' macro."""
-    mod = _load("osdi_paper_macros")
+    mod = _load("sys_paper_macros")
     data = json.loads(mod.LONGEVITY_REPLAY_CHECK_2.read_text(encoding="utf-8"))
     data["summary"]["digest_equal"] = False
     tampered = tmp_path / "replay-check-2-2026-09.json"
@@ -2357,38 +2357,38 @@ def test_tampered_longevity_replay_check_2_digest_equal_false_fails_even_with_pa
 
 
 def test_longevity_soak_hunt_text_macros_are_never_numbers():
-    """osdiSoakDigestEqualHunt/osdiSoakVerifyHealthyHunt ('true'),
-    osdiSoakWriterErrorsClassHunt ('NotFoundError'),
-    osdiSoakReaderOpErrorCaptureCommitHunt ('c3a5592'), and
-    osdiSoakHuntPatternReproduced ('false') must render as those exact
+    """recSoakDigestEqualHunt/recSoakVerifyHealthyHunt ('true'),
+    recSoakWriterErrorsClassHunt ('NotFoundError'),
+    recSoakReaderOpErrorCaptureCommitHunt ('c3a5592'), and
+    recSoakHuntPatternReproduced ('false') must render as those exact
     strings, not get coerced through int()/float() anywhere upstream."""
-    mod = _load("osdi_paper_macros")
+    mod = _load("sys_paper_macros")
     m = mod.Macros()
     mod.compute_longevity_soak_hunt(m)
     assert mod.FAILURES == []
     values = {name: value for name, value, _ in m.items}
-    for name in ("osdiSoakDigestEqualHunt", "osdiSoakVerifyHealthyHunt",
-                 "osdiSoakWriterErrorsClassHunt", "osdiSoakReaderOpErrorCaptureCommitHunt",
-                 "osdiSoakHuntPatternReproduced"):
+    for name in ("recSoakDigestEqualHunt", "recSoakVerifyHealthyHunt",
+                 "recSoakWriterErrorsClassHunt", "recSoakReaderOpErrorCaptureCommitHunt",
+                 "recSoakHuntPatternReproduced"):
         with pytest.raises(ValueError):
             float(values[name])
-    assert values["osdiSoakDigestEqualHunt"] == "true"
-    assert values["osdiSoakVerifyHealthyHunt"] == "true"
-    assert values["osdiSoakWriterErrorsClassHunt"] == "NotFoundError"
-    assert values["osdiSoakReaderOpErrorCaptureCommitHunt"] == "c3a5592"
-    assert values["osdiSoakHuntPatternReproduced"] == "false"
+    assert values["recSoakDigestEqualHunt"] == "true"
+    assert values["recSoakVerifyHealthyHunt"] == "true"
+    assert values["recSoakWriterErrorsClassHunt"] == "NotFoundError"
+    assert values["recSoakReaderOpErrorCaptureCommitHunt"] == "c3a5592"
+    assert values["recSoakHuntPatternReproduced"] == "false"
 
 
 def test_longevity_soak_hunt_pattern_reproduced_quotes_readme_clause_e():
-    """osdiSoakHuntPatternReproduced's provenance must quote README.md's
+    """recSoakHuntPatternReproduced's provenance must quote README.md's
     own clause (e) outcome sentence verbatim (not a paraphrase), and the
     macro's own value must be the literal string 'false'."""
-    mod = _load("osdi_paper_macros")
+    mod = _load("sys_paper_macros")
     m = mod.Macros()
     mod.compute_longevity_soak_hunt(m)
     assert mod.FAILURES == []
     by_name = {name: (value, provenance) for name, value, provenance in m.items}
-    value, provenance = by_name["osdiSoakHuntPatternReproduced"]
+    value, provenance = by_name["recSoakHuntPatternReproduced"]
     assert value == "false"
     assert "not reproduced within 6 h at 1.40M edge rows" in provenance
     assert "not evidence that it is gone" in provenance
@@ -2399,13 +2399,13 @@ def test_longevity_soak_hunt_reader_slopes_all_exceed_frozen_bound():
     P-STORM-HUNT reader EXCEEDS it -- min/max must both be > 10, and the
     generator's own require() must have checked this, not just recomputed
     a min/max that happens to be consistent with it."""
-    mod = _load("osdi_paper_macros")
+    mod = _load("sys_paper_macros")
     m = mod.Macros()
     mod.compute_longevity_soak_hunt(m)
     assert mod.FAILURES == []
     values = {name: value for name, value, _ in m.items}
-    assert float(values["osdiSoakReaderWithinLifeSlopeMinKBpsHunt"]) > 10.0
-    assert float(values["osdiSoakReaderWithinLifeSlopeMaxKBpsHunt"]) > 10.0
+    assert float(values["recSoakReaderWithinLifeSlopeMinKBpsHunt"]) > 10.0
+    assert float(values["recSoakReaderWithinLifeSlopeMaxKBpsHunt"]) > 10.0
 
 
 def test_longevity_soak_hunt_host_load_min_max_exclude_post_run_sample():
@@ -2415,13 +2415,13 @@ def test_longevity_soak_hunt_host_load_min_max_exclude_post_run_sample():
     (10.79/48.95) must come from the 7 in-window samples only -- if the
     window boundary were computed wrong (or dropped) and the 3.56 sample
     leaked in, the min would come out 3.56, not 10.79."""
-    mod = _load("osdi_paper_macros")
+    mod = _load("sys_paper_macros")
     m = mod.Macros()
     mod.compute_longevity_soak_hunt(m)
     assert mod.FAILURES == []
     values = {name: value for name, value, _ in m.items}
-    assert values["osdiSoakHostLoadMinHunt"] == "10.79"
-    assert values["osdiSoakHostLoadMaxHunt"] == "48.95"
+    assert values["recSoakHostLoadMinHunt"] == "10.79"
+    assert values["recSoakHostLoadMaxHunt"] == "48.95"
 
 
 def test_tampered_longevity_manifest_hunt_sha256_mismatch_fails(tmp_path):
@@ -2429,7 +2429,7 @@ def test_tampered_longevity_manifest_hunt_sha256_mismatch_fails(tmp_path):
     observation run, 2026-09-17/18)" Files-added-here sha256 table -- an
     edited copy (even a field this generator never reads) must fail
     before any commit/duration/error-count figure is trusted."""
-    mod = _load("osdi_paper_macros")
+    mod = _load("sys_paper_macros")
     data = json.loads(mod.LONGEVITY_MANIFEST_HUNT.read_text(encoding="utf-8"))
     data["summary"]["compactions"] = 999999
     tampered = tmp_path / "stormhunt-2026-09-17.json"
@@ -2447,7 +2447,7 @@ def test_tampered_longevity_rss_slopes_hunt_sha256_mismatch_fails(tmp_path):
     """rss_slopes-stormhunt.json is also in that sha256 table -- an edited
     copy must fail even though every value it carries (writer/reader
     slopes, frozen bounds) would otherwise recompute self-consistently."""
-    mod = _load("osdi_paper_macros")
+    mod = _load("sys_paper_macros")
     data = json.loads(mod.LONGEVITY_RSS_SLOPES_HUNT.read_text(encoding="utf-8"))
     data["readers"]["0"]["slope_kb_per_s_least_squares"] = 1.0
     tampered = tmp_path / "rss_slopes-stormhunt.json"
@@ -2466,7 +2466,7 @@ def test_tampered_longevity_soak_hunt_digest_equal_false_fails_even_with_patched
     own require(... is True) check, even with a patched copy of
     README.md's own sha256 table that matches the tampered file, rather
     than silently emitting a wrong 'true' macro."""
-    mod = _load("osdi_paper_macros")
+    mod = _load("sys_paper_macros")
     data = json.loads(mod.LONGEVITY_MANIFEST_HUNT.read_text(encoding="utf-8"))
     data["summary"]["digest_equal"] = False
     tampered_manifest = tmp_path / "stormhunt-2026-09-17.json"
@@ -2501,7 +2501,7 @@ def test_longevity_soak_three_reader_episode_reconstruction_matches_frozen():
     own top-level total_episodes field, which (per that file's own method
     field) is just a second name for the same 17 ledger-onset count, not
     the reconstructed 662."""
-    mod = _load("osdi_paper_macros")
+    mod = _load("sys_paper_macros")
     doc = json.loads(mod.LONGEVITY_READER_OP_ERROR_THREE.read_text(encoding="utf-8"))
     assert doc["total_episodes"] == doc["n_ledger_reader_op_error_events"] == 17
     true_episode_count = sum(
@@ -2512,9 +2512,9 @@ def test_longevity_soak_three_reader_episode_reconstruction_matches_frozen():
     m = mod.Macros()
     mod.compute_longevity_soak_three(m)
     values = {name: value for name, value, _ in m.items}
-    assert values["osdiSoakReaderOpErrorEventsThree"] == "17"
-    assert values["osdiSoakReaderErrorEpisodesThree"] == "662"
-    assert values["osdiSoakReaderErrorLongestHealedIntervalSThree"] == "37272.1"
+    assert values["recSoakReaderOpErrorEventsThree"] == "17"
+    assert values["recSoakReaderErrorEpisodesThree"] == "662"
+    assert values["recSoakReaderErrorLongestHealedIntervalSThree"] == "37272.1"
 
 
 def test_longevity_soak_three_writer_errors_class_is_landed():
@@ -2524,16 +2524,16 @@ def test_longevity_soak_three_writer_errors_class_is_landed():
     longevity_ledger.jsonl), so the exception-class label README.md (h)
     states (100% NotFoundError) is recomputed from it and lands as an
     ordinary text macro -- no PENDING stub, same discipline as P-SOAK2's
-    osdiSoakWriterErrorsClassTwo and P-STORM-HUNT's
-    osdiSoakWriterErrorsClassHunt. The per-life breakdown (174/125/86/97/
+    recSoakWriterErrorsClassTwo and P-STORM-HUNT's
+    recSoakWriterErrorsClassHunt. The per-life breakdown (174/125/86/97/
     132/90/62/36/52, lives 0-8) and the landed writer-error total (854)
     are cross-checked against the same file."""
-    mod = _load("osdi_paper_macros")
+    mod = _load("sys_paper_macros")
     m = mod.Macros()
     mod.compute_longevity_soak_three(m)
     values = {name: value for name, value, _ in m.items}
-    assert values["osdiSoakWriterErrorsClassThree"] == "NotFoundError"
-    assert values["osdiSoakWriterErrorsTrueThree"] == "854"
+    assert values["recSoakWriterErrorsClassThree"] == "NotFoundError"
+    assert values["recSoakWriterErrorsTrueThree"] == "854"
 
     by_class_doc = json.loads(mod.LONGEVITY_WRITER_ERRORS_BY_CLASS_THREE.read_text(
         encoding="utf-8"))
@@ -2545,21 +2545,21 @@ def test_longevity_soak_three_writer_errors_class_is_landed():
 
 
 def test_longevity_soak_three_text_macros_are_never_numbers():
-    """osdiSoakCommitThree ('9e21a83'), osdiSoakDigestEqualThree ('true')
-    and osdiSoakWriterErrorsClassThree ('NotFoundError') must all render
+    """recSoakCommitThree ('9e21a83'), recSoakDigestEqualThree ('true')
+    and recSoakWriterErrorsClassThree ('NotFoundError') must all render
     as literal text, same discipline as P-SOAK2/P-STORM-HUNT's
     equivalents above."""
-    mod = _load("osdi_paper_macros")
+    mod = _load("sys_paper_macros")
     m = mod.Macros()
     mod.compute_longevity_soak_three(m)
     values = {name: value for name, value, _ in m.items}
-    for name in ("osdiSoakCommitThree", "osdiSoakDigestEqualThree",
-                 "osdiSoakWriterErrorsClassThree"):
+    for name in ("recSoakCommitThree", "recSoakDigestEqualThree",
+                 "recSoakWriterErrorsClassThree"):
         with pytest.raises(ValueError):
             float(values[name])
-    assert values["osdiSoakCommitThree"] == "9e21a83"
-    assert values["osdiSoakDigestEqualThree"] == "true"
-    assert values["osdiSoakWriterErrorsClassThree"] == "NotFoundError"
+    assert values["recSoakCommitThree"] == "9e21a83"
+    assert values["recSoakDigestEqualThree"] == "true"
+    assert values["recSoakWriterErrorsClassThree"] == "NotFoundError"
 
 
 def test_tampered_longevity_manifest_three_sha256_mismatch_fails(tmp_path):
@@ -2567,7 +2567,7 @@ def test_tampered_longevity_manifest_three_sha256_mismatch_fails(tmp_path):
     Files-added-here sha256 table -- an edited copy (even a field this
     generator never reads) must fail before any commit/duration/error-count
     figure is trusted."""
-    mod = _load("osdi_paper_macros")
+    mod = _load("sys_paper_macros")
     data = json.loads(mod.LONGEVITY_MANIFEST_THREE.read_text(encoding="utf-8"))
     data["summary"]["compactions"] = 999999
     tampered = tmp_path / "longevity-synth-1m-native-2.json"
@@ -2585,7 +2585,7 @@ def test_tampered_longevity_soak_three_digest_equal_false_fails_even_with_patche
     """A manifest reporting digest_equal=False must fail the generator's
     own require(... is True) check, even with a patched whole-file digest,
     rather than silently emitting a wrong 'true' macro."""
-    mod = _load("osdi_paper_macros")
+    mod = _load("sys_paper_macros")
     manifest = json.loads(mod.LONGEVITY_MANIFEST_THREE.read_text(encoding="utf-8"))
     manifest["summary"]["digest_equal"] = False
     tampered = tmp_path / "longevity-synth-1m-native-2.json"
@@ -2606,7 +2606,7 @@ def test_tampered_verify_full_three_overlap_finding_fails_even_with_patched_dige
     fabricated PROBLEMS/believed-versions-overlap finding, with the
     whole-file digest patched to match, must still fail the overlap-count
     and no-overlap-text checks."""
-    mod = _load("osdi_paper_macros")
+    mod = _load("sys_paper_macros")
     text = mod.LONGEVITY_VERIFY_FULL_THREE.read_text(encoding="utf-8")
     tampered_text = text.replace(
         "\nverdict: healthy",
@@ -2630,7 +2630,7 @@ def test_tampered_overload_rep1_sha256_not_in_sums_fails(tmp_path):
     rep1 entry is misnamed, so membership rather than a filename-keyed
     lookup is the right check) -- an edited copy's hash must not be in
     that set."""
-    mod = _load("osdi_paper_macros")
+    mod = _load("sys_paper_macros")
     data = json.loads(mod.OVERLOAD_REP1.read_text(encoding="utf-8"))
     data["config"]["max_concurrent"] = 999
     tampered = tmp_path / "overload-2026-09-15.json"
@@ -2649,7 +2649,7 @@ def test_tampered_overload_refusal_stage_not_concurrency_only_fails_even_with_su
     errors) rests on every n=64 refusal carrying refusal_stage==\"limit\"
     -- relabelling one must fail that recomputed-set check, even once the
     tampered file's hash is added to a patched copy of SHA256SUMS."""
-    mod = _load("osdi_paper_macros")
+    mod = _load("sys_paper_macros")
     records = json.loads(mod.OVERLOAD_REP1_RECORDS.read_text(encoding="utf-8"))
     step64 = next(s for s in records if s["n_clients"] == 64)
     relabelled = False
@@ -2677,16 +2677,16 @@ def test_tampered_overload_refusal_stage_not_concurrency_only_fails_even_with_su
 
 
 def test_c10_live_osv_macros_match_frozen_values():
-    """osdiLiveDays/osdiLiveAdvisories/osdiLiveCorrections, the C10 macros
+    """recLiveDays/recLiveAdvisories/recLiveCorrections, the C10 macros
     resolved by benchmarks/live-osv-v1/snapshot-2026-09-16.json (Lane
     C10-snap's first committed live-osv record snapshot)."""
-    mod = _load("osdi_paper_macros")
+    mod = _load("sys_paper_macros")
     m = mod.Macros()
     mod.compute_c10_live_osv(m)
     values = {name: value for name, value, _ in m.items}
-    assert values["osdiLiveDays"] == "1.89"
-    assert values["osdiLiveAdvisories"] == "32{,}827"
-    assert values["osdiLiveCorrections"] == "1"
+    assert values["recLiveDays"] == "1.89"
+    assert values["recLiveAdvisories"] == "32{,}827"
+    assert values["recLiveCorrections"] == "1"
 
 
 def test_tampered_live_osv_snapshot_sha256_mismatch_fails(tmp_path):
@@ -2694,7 +2694,7 @@ def test_tampered_live_osv_snapshot_sha256_mismatch_fails(tmp_path):
     generator never otherwise reads) must fail the whole-file sha256
     check against README.md's own quoted value before any advisory/
     correction/days-of-operation figure is trusted."""
-    mod = _load("osdi_paper_macros")
+    mod = _load("sys_paper_macros")
     data = json.loads(mod.LIVE_OSV_SNAPSHOT.read_text(encoding="utf-8"))
     data["config"]["compact_every_cycles"] = 999
     tampered = tmp_path / "snapshot-2026-09-16.json"
@@ -2713,8 +2713,8 @@ def test_tampered_live_osv_cycles_raw_sum_mismatch_fails_even_with_patched_diges
     sum(cycles_raw[*].corrections_written) -- editing the pre-aggregated
     field alone, with the whole-file sha256 patched to match, must still
     fail this row-level recomputation rather than silently emitting a
-    wrong osdiLiveCorrections."""
-    mod = _load("osdi_paper_macros")
+    wrong recLiveCorrections."""
+    mod = _load("sys_paper_macros")
     data = json.loads(mod.LIVE_OSV_SNAPSHOT.read_text(encoding="utf-8"))
     data["live_osv"]["corrections"]["corrections_written"] = 999
     tampered = tmp_path / "snapshot-2026-09-16.json"
@@ -2734,8 +2734,8 @@ def test_tampered_live_osv_advisories_arithmetic_fails_even_with_patched_digest(
     """advisories.total_at_snapshot must equal bootstrap +
     new_since_bootstrap -- breaking that arithmetic, with the whole-file
     sha256 patched to match, must still fail rather than silently
-    emitting a wrong osdiLiveAdvisories."""
-    mod = _load("osdi_paper_macros")
+    emitting a wrong recLiveAdvisories."""
+    mod = _load("sys_paper_macros")
     data = json.loads(mod.LIVE_OSV_SNAPSHOT.read_text(encoding="utf-8"))
     data["live_osv"]["advisories"]["total_at_snapshot"] = 40000
     tampered = tmp_path / "snapshot-2026-09-16.json"
@@ -2755,7 +2755,7 @@ def test_tampered_live_osv_result_digest_mismatch_fails_even_with_patched_file_d
     """The top-level result_digest (sha256 over the canonical counts
     object) must match a fresh recomputation -- editing it directly,
     with the whole-file sha256 patched to match, must still fail."""
-    mod = _load("osdi_paper_macros")
+    mod = _load("sys_paper_macros")
     data = json.loads(mod.LIVE_OSV_SNAPSHOT.read_text(encoding="utf-8"))
     data["result_digest"] = "0" * 64
     tampered = tmp_path / "snapshot-2026-09-16.json"
@@ -2775,7 +2775,7 @@ def test_live_osv_snapshot_sha256_matches_readme_quoted_value():
     """README.md's "Snapshot" section quotes snapshot-2026-09-16.json's
     sha256 verbatim -- this generator's frozen constant must be the same
     string."""
-    mod = _load("osdi_paper_macros")
+    mod = _load("sys_paper_macros")
     readme_text = (mod.LIVE_OSV_DIR / "README.md").read_text(encoding="utf-8")
     assert f"`{mod.LIVE_OSV_SNAPSHOT_SHA256}`" in readme_text
     assert mod.sha256_file(mod.LIVE_OSV_SNAPSHOT) == mod.LIVE_OSV_SNAPSHOT_SHA256
@@ -2789,56 +2789,56 @@ def test_b7_scale_macros_match_frozen_values():
     """The 30M/Stage-0 macros compute_b7_scale emits, checked against the
     values benchmarks/scale-v1/README.md and itiger-calib-2026-09.README.md
     already quote in prose."""
-    mod = _load("osdi_paper_macros")
+    mod = _load("sys_paper_macros")
     m = mod.Macros()
     mod.compute_b7_scale(m)
     values = {name: value for name, value, _ in m.items}
 
-    assert values["osdiB7BuildWall30M"] == "3786.004"
-    assert values["osdiB7PeakRSS30M"] == "59.31"
-    assert values["osdiB7VersionHistoryWall30M"] == "5.496"
-    assert values["osdiB7VersionHistoryRSS30M"] == "3.863"
-    assert values["osdiB7ManifestBytes30M"] == "175{,}244"
-    assert values["osdiB7SegmentBytes30M"] == "1.549"
-    assert values["osdiB7CheckFullWall30M"] == "98.673"
-    assert values["osdiB7Recovery30M"] == "14{,}618.6"
-    assert values["osdiB7RecoveryCe5000At30M"] == "2656.9"
-    assert values["osdiB7ReachWindowRefused30M"] == "false"
-    assert values["osdiB7QueryFloor30M"] == "6.81"
-    assert values["osdiB7BuildSteadyDecileMedian30M"] == "8463.0"
-    assert values["osdiB7ReachWindowEstimateMs30M"] == "4371"
-    assert values["osdiB7300MGate"] == "false"
-    assert values["osdiB7Calib10MBuildWall"] == "865.592"
-    assert values["osdiB7Calib10MPeakRSS"] == "19.90"
-    assert values["osdiB7Calib10MSteadyOps"] == "24{,}390.8"
-    assert values["osdiB7KBuild"] == "4.602"
-    assert values["osdiB7KRecover"] == "0.834"
-    assert values["osdiB7Calib1MBuildWall"] == "78.339"
-    assert values["osdiB7Calib1MPeakRSS"] == "2.37"
-    assert values["osdiB7Calib1MRecovery"] == "75.86"
-    assert values["osdiB7Calib1MSegmentBytes"] == "0.050"
-    assert "osdiB7Calib10MRecovery" not in values, (
+    assert values["recB7BuildWall30M"] == "3786.004"
+    assert values["recB7PeakRSS30M"] == "59.31"
+    assert values["recB7VersionHistoryWall30M"] == "5.496"
+    assert values["recB7VersionHistoryRSS30M"] == "3.863"
+    assert values["recB7ManifestBytes30M"] == "175{,}244"
+    assert values["recB7SegmentBytes30M"] == "1.549"
+    assert values["recB7CheckFullWall30M"] == "98.673"
+    assert values["recB7Recovery30M"] == "14{,}618.6"
+    assert values["recB7RecoveryCe5000At30M"] == "2656.9"
+    assert values["recB7ReachWindowRefused30M"] == "false"
+    assert values["recB7QueryFloor30M"] == "6.81"
+    assert values["recB7BuildSteadyDecileMedian30M"] == "8463.0"
+    assert values["recB7ReachWindowEstimateMs30M"] == "4371"
+    assert values["recB7300MGate"] == "false"
+    assert values["recB7Calib10MBuildWall"] == "865.592"
+    assert values["recB7Calib10MPeakRSS"] == "19.90"
+    assert values["recB7Calib10MSteadyOps"] == "24{,}390.8"
+    assert values["recB7KBuild"] == "4.602"
+    assert values["recB7KRecover"] == "0.834"
+    assert values["recB7Calib1MBuildWall"] == "78.339"
+    assert values["recB7Calib1MPeakRSS"] == "2.37"
+    assert values["recB7Calib1MRecovery"] == "75.86"
+    assert values["recB7Calib1MSegmentBytes"] == "0.050"
+    assert "recB7Calib10MRecovery" not in values, (
         "itiger-calib-10m.json carries no recovery field -- no such macro should exist")
 
     # the 10M peak-RSS macro must be the record field's own kB / 1e6, never
     # the calibration README's mixed-unit-slip prose figure (19.43 GB)
     calib10m = json.loads(mod.B7_ITIGER_CALIB_10M.read_text(encoding="utf-8"))
     calib10m_peak_kb = calib10m["build_info"]["peak_rss"]["vmhwm"]
-    assert values["osdiB7Calib10MPeakRSS"] == f"{calib10m_peak_kb / 1e6:.2f}"
+    assert values["recB7Calib10MPeakRSS"] == f"{calib10m_peak_kb / 1e6:.2f}"
 
     # every one of the 13 scale-curve operators landed, all 30M
     for frag in mod.B7_SCALE_CURVE_OPS.values():
-        assert f"osdiB7ScaleCurveP50{frag}30M" in values
-    assert values["osdiB7ScaleCurveP50HistSingle30M"] == "0.977"
-    assert values["osdiB7ScaleCurveP50ReachWindow30M"] == "2354.494"
-    assert values["osdiB7ScaleCurveP50DiffGlobal30M"] == "7505.374"
+        assert f"recB7ScaleCurveP50{frag}30M" in values
+    assert values["recB7ScaleCurveP50HistSingle30M"] == "0.977"
+    assert values["recB7ScaleCurveP50ReachWindow30M"] == "2354.494"
+    assert values["recB7ScaleCurveP50DiffGlobal30M"] == "7505.374"
 
 
 def test_tampered_b7_build_30m_sha256_mismatch_fails(tmp_path):
     """An edited copy of build-30m.json must fail the whole-file sha256
     check against benchmarks/scale-v1/README.md's own table before any
     wall/RSS/byte figure inside it is trusted."""
-    mod = _load("osdi_paper_macros")
+    mod = _load("sys_paper_macros")
     data = json.loads(mod.B7_BUILD_30M.read_text(encoding="utf-8"))
     data["build_info"]["wall_s"] = 1.0
     tampered = tmp_path / "build-30m.json"
@@ -2858,7 +2858,7 @@ def test_tampered_b7_scale_curve_30m_operator_p50_mismatch_fails_even_with_patch
     summary's figure alone, with the whole-file sha256 patched to match,
     must still fail rather than silently emitting a wrong scale-curve
     macro."""
-    mod = _load("osdi_paper_macros")
+    mod = _load("sys_paper_macros")
     data = json.loads(mod.B7_SCALE_CURVE_30M.read_text(encoding="utf-8"))
     data["per_operator_p50_ms"]["hist.single"]["clean_213174_p50_ms"] = 999.0
     tampered = tmp_path / "scale-curve-30m.json"
@@ -2888,7 +2888,7 @@ def test_tampered_b7_recovery_30m_digest_mismatch_fails(tmp_path):
     """recovery-30m.json's digest_compare.{src,replayed}_digest must equal
     the 30M store's frozen content digest -- editing one, with the
     whole-file sha256 patched to match, must still fail."""
-    mod = _load("osdi_paper_macros")
+    mod = _load("sys_paper_macros")
     data = json.loads(mod.B7_RECOVERY_30M.read_text(encoding="utf-8"))
     data["digest_compare"]["replayed_digest"] = "0" * 64
     tampered = tmp_path / "recovery-30m.json"
@@ -2913,66 +2913,66 @@ def test_tampered_b7_recovery_30m_digest_mismatch_fails(tmp_path):
 
 
 def test_b7_scale_100m_macros_are_landed():
-    """Every core osdiB7*100M name, the 6 executed scale-curve operators,
-    the 6 osdiB7Refused<Op>100M refusal macros, and
-    osdiB7CompactionShare100M must be landed (not PENDING) now that
+    """Every core recB7*100M name, the 6 executed scale-curve operators,
+    the 6 recB7Refused<Op>100M refusal macros, and
+    recB7CompactionShare100M must be landed (not PENDING) now that
     build-100m.json + sidecars are on main."""
-    mod = _load("osdi_paper_macros")
+    mod = _load("sys_paper_macros")
     m = mod.Macros()
     mod.compute_b7_scale(m)
     values = {name: value for name, value, _ in m.items}
 
-    core_100m = ["osdiB7BuildWall100M", "osdiB7PeakRSS100M",
-                 "osdiB7VersionHistoryWall100M", "osdiB7VersionHistoryRSS100M",
-                 "osdiB7ManifestBytes100M", "osdiB7SegmentBytes100M",
-                 "osdiB7CheckFullWall100M", "osdiB7RecoveryCe5000At100M",
-                 "osdiB7Recovery100M", "osdiB7ReachWindowRefused100M",
-                 "osdiB7QueryFloor100M", "osdiB7BuildSteadyDecileMedian100M",
-                 "osdiB7ReachWindowEstimateMs100M", "osdiB7CompactionShare100M"]
+    core_100m = ["recB7BuildWall100M", "recB7PeakRSS100M",
+                 "recB7VersionHistoryWall100M", "recB7VersionHistoryRSS100M",
+                 "recB7ManifestBytes100M", "recB7SegmentBytes100M",
+                 "recB7CheckFullWall100M", "recB7RecoveryCe5000At100M",
+                 "recB7Recovery100M", "recB7ReachWindowRefused100M",
+                 "recB7QueryFloor100M", "recB7BuildSteadyDecileMedian100M",
+                 "recB7ReachWindowEstimateMs100M", "recB7CompactionShare100M"]
     for name in core_100m:
         assert not values[name].startswith("\\errmessage"), f"{name} should be landed"
 
     executed_100m = ["HistSingle", "HistAsof", "PathsK", "SeriesCount",
                       "BurstZscore", "MotifFiltered"]
     for frag in executed_100m:
-        name = f"osdiB7ScaleCurveP50{frag}100M"
+        name = f"recB7ScaleCurveP50{frag}100M"
         assert not values[name].startswith("\\errmessage"), f"{name} should be landed"
 
     for op_id in mod.B7_SCALE_CURVE_100M_REFUSED_NO_ESTIMATE:
         frag = mod.B7_SCALE_CURVE_OPS[op_id]
-        name = f"osdiB7Refused{frag}100M"
+        name = f"recB7Refused{frag}100M"
         assert values[name] == "true", f"{name} should be a landed refusal macro"
         # no ScaleCurveP50 macro at all for these six at 100M
-        assert f"osdiB7ScaleCurveP50{frag}100M" not in values
+        assert f"recB7ScaleCurveP50{frag}100M" not in values
 
-    assert not values["osdiB7BuildWall30M"].startswith("\\errmessage")
-    assert not values["osdiB7300MGate"].startswith("\\errmessage")
+    assert not values["recB7BuildWall30M"].startswith("\\errmessage")
+    assert not values["recB7300MGate"].startswith("\\errmessage")
 
 
 def test_b7_scale_100m_reach_window_p50_is_pending_with_its_estimate():
-    """osdiB7ScaleCurveP50ReachWindow100M is the one refused-operator
+    """recB7ScaleCurveP50ReachWindow100M is the one refused-operator
     exception: it stays PENDING (reach.window's refusal carries a numeric
     time_est_ms, unlike the other six), and the estimate must be inside
     the rendered \\errmessage, not just the comment."""
-    mod = _load("osdi_paper_macros")
+    mod = _load("sys_paper_macros")
     m = mod.Macros()
     mod.compute_b7_scale(m)
     values = {name: value for name, value, _ in m.items}
-    name = "osdiB7ScaleCurveP50ReachWindow100M"
+    name = "recB7ScaleCurveP50ReachWindow100M"
     assert values[name].startswith("\\errmessage")
     assert "time_est_ms 14571" in values[name]
     assert "cost guardrail" in values[name]
 
 
 def test_b7_scale_100m_recovery_is_an_alias_of_the_ce5000_measurement():
-    """No cadence-500 100M run exists or was ever planned -- osdiB7Recovery100M
-    must equal osdiB7RecoveryCe5000At100M exactly, not a separate figure."""
-    mod = _load("osdi_paper_macros")
+    """No cadence-500 100M run exists or was ever planned -- recB7Recovery100M
+    must equal recB7RecoveryCe5000At100M exactly, not a separate figure."""
+    mod = _load("sys_paper_macros")
     m = mod.Macros()
     mod.compute_b7_scale(m)
     values = {name: value for name, value, _ in m.items}
-    assert values["osdiB7Recovery100M"] == values["osdiB7RecoveryCe5000At100M"]
-    assert values["osdiB7Recovery100M"] == "22{,}717.7"
+    assert values["recB7Recovery100M"] == values["recB7RecoveryCe5000At100M"]
+    assert values["recB7Recovery100M"] == "22{,}717.7"
 
 
 def test_tampered_b7_scale_curve_100m_refused_operator_missing_error_field_fails(tmp_path):
@@ -2982,7 +2982,7 @@ def test_tampered_b7_scale_curve_100m_refused_operator_missing_error_field_fails
     whole-file sha256 patched to match), that must fail rather than
     silently emitting a real-looking p50 for an operator the guardrail
     actually refused."""
-    mod = _load("osdi_paper_macros")
+    mod = _load("sys_paper_macros")
     data = json.loads(mod.B7_SCALE_CURVE_100M.read_text(encoding="utf-8"))
     data["per_operator_p50_ms"]["agg.rel_bucket"]["measured_p50_ms"] = 42.0
     tampered = tmp_path / "scale-curve-100m.json"
@@ -3010,7 +3010,7 @@ def test_tampered_ldbc_ref_v1_compare_sha256_mismatch_fails(tmp_path):
     """An edited copy of compare-2026-09-18.json must fail the whole-file
     sha256 check against benchmarks/ldbc-ref-v1/SHA256SUMS.txt before any
     verdict-count or row-agreement figure inside it is trusted."""
-    mod = _load("osdi_paper_macros")
+    mod = _load("sys_paper_macros")
     data = json.loads(mod.LDBC_REF_V1_COMPARE.read_text(encoding="utf-8"))
     data["manifest"]["host"] = "tampered-host"
     tampered = tmp_path / "compare-2026-09-18.json"
@@ -3044,7 +3044,7 @@ def test_tampered_ldbc_ref_v1_row_agreement_mismatch_fails_even_with_patched_sum
     any other row) must break the frozen 678/736 row-agreement total --
     even with SHA256SUMS.txt patched to match, so the whole-file sha256
     gate is not what catches this."""
-    mod = _load("osdi_paper_macros")
+    mod = _load("sys_paper_macros")
     data = json.loads(mod.LDBC_REF_V1_COMPARE.read_text(encoding="utf-8"))
     by_id = {v["plan_id"]: v for v in data["verdicts"]}
     by_id["BI3"]["agreeing"] = 19  # was 20 of 20 -- must not silently pass as 20/20
@@ -3066,7 +3066,7 @@ def test_tampered_ldbc_ref_v1_verdict_label_disagrees_with_reference_columns_fie
     reference_columns_not_projected list stays non-empty (or vice versa)
     must fail the cross-check between the two fields, even with
     SHA256SUMS.txt patched to match."""
-    mod = _load("osdi_paper_macros")
+    mod = _load("sys_paper_macros")
     data = json.loads(mod.LDBC_REF_V1_COMPARE.read_text(encoding="utf-8"))
     by_id = {v["plan_id"]: v for v in data["verdicts"]}
     by_id["BI4"]["verdict"] = "agreeing"  # BI4 still carries 3 unprojected reference columns
@@ -3088,7 +3088,7 @@ def test_tampered_ldbc_ref_v1_interim_exclusion_set_derivation_fails_even_with_p
     side (plus the always-timed-out BI6.v2) -- editing that list (without
     touching the interim record itself) must fail the frozen count/list
     checks derived from it, even with SHA256SUMS.txt patched to match."""
-    mod = _load("osdi_paper_macros")
+    mod = _load("sys_paper_macros")
     data = json.loads(mod.LDBC_REF_V1_COMPARE.read_text(encoding="utf-8"))
     data["manifest"]["supersedes_reason"] = data["manifest"]["supersedes_reason"].replace(
         "7 templates (BI4 BI9 BI11 BI12 IC2 IC5 IC9)",
@@ -3109,7 +3109,7 @@ def test_tampered_ldbc_ref_v1_ledger_entry_id_mismatch_fails(tmp_path):
     the ledger's own entry no longer names both IS3 and IC2 in its
     symptom -- a cross-check on the defect-templates macro, independent
     of the compare record itself."""
-    mod = _load("osdi_paper_macros")
+    mod = _load("sys_paper_macros")
     entries = mod.load_jsonl(mod.FAILURE_LEDGER)
     for e in entries:
         if e.get("id") == "D-090-is3-knows-both-ways-double-count":
@@ -3126,11 +3126,11 @@ def test_tampered_ldbc_ref_v1_ledger_entry_id_mismatch_fails(tmp_path):
 
 
 # --------------------------------------------------------------------------
-# osdi_paper_figures.py: CSV generation (no matplotlib dependency)
+# sys_paper_figures.py: CSV generation (no matplotlib dependency)
 # --------------------------------------------------------------------------
 
 def _load_figures():
-    return _load("osdi_paper_figures")
+    return _load("sys_paper_figures")
 
 
 def test_all_deliverables_build_and_write_parseable_csvs(tmp_path, monkeypatch):
@@ -3148,7 +3148,7 @@ def test_all_deliverables_build_and_write_parseable_csvs(tmp_path, monkeypatch):
 
 def test_crash_csv_matches_the_macro_generators_own_numbers(tmp_path, monkeypatch):
     fig_mod = _load_figures()
-    macro_mod = _load("osdi_paper_macros")
+    macro_mod = _load("sys_paper_macros")
     monkeypatch.setattr(fig_mod, "OUT_DIR", tmp_path)
     data = fig_mod.build_crash_data()
     assert data["total"]["trials"] == 10000
@@ -3157,7 +3157,7 @@ def test_crash_csv_matches_the_macro_generators_own_numbers(tmp_path, monkeypatc
     m = macro_mod.Macros()
     macro_mod.compute_c1(m)
     values = dict((n, v) for n, v, _ in m.items)
-    assert values["osdiCrashTrials"] == "10{,}000"
+    assert values["recCrashTrials"] == "10{,}000"
     assert str(data["total"]["trials"]) == "10000"
 
 
@@ -3208,8 +3208,8 @@ def test_r18_crossover_csv_has_five_batches_a_p50_row_and_a_landed_n1000_row(tmp
     """The main correction-load grid (storm-v1-main-grid-2026-09-15) landed
     at 36/36 cells, so f8's N=1,000 c1 seed-0 point is no longer a PENDING
     annotation -- it reads the same cell
-    scripts/osdi_paper_macros.py's compute_c7_storm_v1 lands as
-    osdiStormV1SpeedupN1kSeed0 (frozen at 1.938, close tol 0.001 there)."""
+    scripts/sys_paper_macros.py's compute_c7_storm_v1 lands as
+    recStormV1SpeedupN1kSeed0 (frozen at 1.938, close tol 0.001 there)."""
     fig_mod = _load_figures()
     monkeypatch.setattr(fig_mod, "OUT_DIR", tmp_path)
     data = fig_mod.build_r18_crossover_data()
@@ -3330,7 +3330,7 @@ def test_scale_curve_title_is_short_and_commits_move_to_a_caption(tmp_path, monk
     if not fig_mod.HAVE_MPL:
         pytest.skip(
             "matplotlib is not installed in this interpreter "
-            f"({sys.executable}); scripts/osdi_paper_figures.py falls back to "
+            f"({sys.executable}); scripts/sys_paper_figures.py falls back to "
             "CSV-only generation in this environment (see its HAVE_MPL guard). "
             "Install matplotlib in $HOME/.venvs/tgms to exercise this check.")
     monkeypatch.setattr(fig_mod, "OUT_DIR", tmp_path)
@@ -3463,18 +3463,18 @@ def test_scale_costs_csv_is_byte_identical_to_the_frozen_hash(tmp_path, monkeypa
 
 def test_cli_csv_only_mode_is_idempotent(tmp_path):
     result1 = subprocess.run(
-        [_venv_python(), str(ROOT / "scripts" / "osdi_paper_figures.py"), "--csv-only"],
+        [_venv_python(), str(ROOT / "scripts" / "sys_paper_figures.py"), "--csv-only"],
         cwd=ROOT, capture_output=True, text=True)
     assert result1.returncode == 0, result1.stderr
     result2 = subprocess.run(
-        [_venv_python(), str(ROOT / "scripts" / "osdi_paper_figures.py"), "--check"],
+        [_venv_python(), str(ROOT / "scripts" / "sys_paper_figures.py"), "--check"],
         cwd=ROOT, capture_output=True, text=True)
     assert result2.returncode == 0, (
         f"CSVs were not idempotent across two --csv-only runs: {result2.stderr}")
 
 
 # --------------------------------------------------------------------------
-# osdi_paper_figures.py: PDF/PNG rendering (requires matplotlib)
+# sys_paper_figures.py: PDF/PNG rendering (requires matplotlib)
 # --------------------------------------------------------------------------
 
 def test_figures_render_to_pdf_and_png(tmp_path, monkeypatch):
@@ -3482,7 +3482,7 @@ def test_figures_render_to_pdf_and_png(tmp_path, monkeypatch):
     if not fig_mod.HAVE_MPL:
         pytest.skip(
             "matplotlib is not installed in this interpreter "
-            f"({sys.executable}); scripts/osdi_paper_figures.py falls back to "
+            f"({sys.executable}); scripts/sys_paper_figures.py falls back to "
             "CSV-only generation in this environment (see its HAVE_MPL guard). "
             "Install matplotlib in $HOME/.venvs/tgms to exercise PDF/PNG rendering.")
     monkeypatch.setattr(fig_mod, "OUT_DIR", tmp_path)
@@ -3544,27 +3544,27 @@ def test_site_facts_check_gate_passes():
 
 
 # --------------------------------------------------------------------------
-# csname emission: no \newcommand{\osdi<digit>...} form; \osdi{} accessor
+# csname emission: no \newcommand{\rec<digit>...} form; \rec{} accessor
 #
-# The defect this fixes: \newcommand{\osdiFoo30M}{...} is not a legal LaTeX
+# The defect this fixes: \newcommand{\recFoo30M}{...} is not a legal LaTeX
 # control sequence definition -- macro names built without \csname may not
 # contain digits -- yet 267 of the file's 401 names do (e.g.
-# osdiB7BuildWall30M), so the file could not be \input without a catcode
+# recB7BuildWall30M), so the file could not be \input without a catcode
 # shim. \csname...\endcsname has no such restriction.
 # --------------------------------------------------------------------------
 
-_BARE_DIGIT_NEWCOMMAND_RE = re.compile(r"\\newcommand\{\\osdi[A-Za-z0-9]*\d[A-Za-z0-9]*\}")
+_BARE_DIGIT_NEWCOMMAND_RE = re.compile(r"\\newcommand\{\\rec[A-Za-z0-9]*\d[A-Za-z0-9]*\}")
 
 
 def test_rendered_macros_never_use_bare_newcommand_with_a_digit_in_the_name():
     """Every digit-bearing name must go through \\csname...\\endcsname, never
-    a bare \\newcommand{\\osdi...} (which \\TeX{} would refuse to parse)."""
-    mod = _load("osdi_paper_macros")
+    a bare \\newcommand{\\rec...} (which \\TeX{} would refuse to parse)."""
+    mod = _load("sys_paper_macros")
     m = _run_all_landed(mod)
     mod.add_pending_stubs(m)
     rendered = m.render()
     assert not _BARE_DIGIT_NEWCOMMAND_RE.search(rendered), (
-        "found a bare \\newcommand{\\osdi...} control sequence with a digit in its name")
+        "found a bare \\newcommand{\\rec...} control sequence with a digit in its name")
     # sanity: there really are digit-bearing names in this run, so the
     # assertion above is exercising something real, not vacuously true.
     digit_bearing = [name for name, _, _ in m.items if any(c.isdigit() for c in name)]
@@ -3574,14 +3574,14 @@ def test_rendered_macros_never_use_bare_newcommand_with_a_digit_in_the_name():
             f"{name}: not emitted via \\csname")
 
 
-def test_rendered_macros_include_the_osdi_accessor():
-    """\\providecommand{\\osdi}[1]{\\csname osdi#1\\endcsname} must appear once,
+def test_rendered_macros_include_the_rec_accessor():
+    """\\providecommand{\\rec}[1]{\\csname rec#1\\endcsname} must appear once,
     near the top, ahead of any macro definition, so prose can write
-    \\osdi{B7BuildWall30M} instead of the raw \\csname form."""
-    mod = _load("osdi_paper_macros")
+    \\rec{B7BuildWall30M} instead of the raw \\csname form."""
+    mod = _load("sys_paper_macros")
     m = _run_all_landed(mod)
     rendered = m.render()
-    accessor = r"\providecommand{\osdi}[1]{\csname osdi#1\endcsname}"
+    accessor = r"\providecommand{\rec}[1]{\csname rec#1\endcsname}"
     assert rendered.count(accessor) == 1
     first_macro = rendered.index("\\expandafter\\newcommand\\csname")
     assert rendered.index(accessor) < first_macro
@@ -3590,21 +3590,21 @@ def test_rendered_macros_include_the_osdi_accessor():
 @pytest.mark.skipif(shutil.which("tectonic") is None, reason="tectonic not installed")
 def test_generated_tex_compiles_under_tectonic():
     """The actual regression: a real LaTeX engine must accept the generated
-    file, exercising both the \\osdi{...} accessor and a bare digit-bearing
-    control sequence used directly (\\osdiSoakHoursTwo has no digit and
-    already worked before this fix; \\osdi{B7BuildWall30M} names a macro
+    file, exercising both the \\rec{...} accessor and a bare digit-bearing
+    control sequence used directly (\\recSoakHoursTwo has no digit and
+    already worked before this fix; \\rec{B7BuildWall30M} names a macro
     that did not compile before it)."""
-    subprocess.run([_venv_python(), str(ROOT / "scripts" / "osdi_paper_macros.py")],
+    subprocess.run([_venv_python(), str(ROOT / "scripts" / "sys_paper_macros.py")],
                     cwd=ROOT, check=True, capture_output=True, text=True)
     tex_src = _out_path()
     with tempfile.TemporaryDirectory() as tmpdir:
         work = Path(tmpdir)
-        shutil.copy(tex_src, work / "osdi-macros.tex")
+        shutil.copy(tex_src, work / "sys-paper-macros.tex")
         (work / "doc.tex").write_text(
             r"""\documentclass{article}
-\input{osdi-macros.tex}
+\input{sys-paper-macros.tex}
 \begin{document}
-\osdi{B7BuildWall30M} \osdiSoakHoursTwo
+\rec{B7BuildWall30M} \recSoakHoursTwo
 \end{document}
 """,
             encoding="utf-8",
@@ -3624,10 +3624,10 @@ def test_ruff_clean():
     if ruff is None:
         pytest.skip(f"no ruff binary found next to {sys.executable}")
     targets = [
-        "scripts/osdi_paper_macros.py",
-        "scripts/osdi_paper_figures.py",
+        "scripts/sys_paper_macros.py",
+        "scripts/sys_paper_figures.py",
         "scripts/site_facts.py",
-        "tests/test_osdi_paper_macros.py",
+        "tests/test_sys_paper_macros.py",
     ]
     result = subprocess.run([str(ruff), "check", *targets], cwd=ROOT,
                              capture_output=True, text=True)
@@ -3636,17 +3636,17 @@ def test_ruff_clean():
 
 # --------------------------------------------------------------------------
 # cleanup: don't leave a stray tampered file's directory artifacts behind
-# in the real paper/osdi/generated/ tree (tests above use tmp_path/
+# in the real paper/sys/generated/ tree (tests above use tmp_path/
 # monkeypatch for everything except the two CLI idempotency tests, which
 # intentionally exercise the real generator against the real, committed
-# records and write into the documented paper/osdi/generated/ convention).
+# records and write into the documented paper/sys/generated/ convention).
 # --------------------------------------------------------------------------
 
 def test_generated_output_directory_is_the_documented_convention():
-    mod = _load("osdi_paper_macros")
+    mod = _load("sys_paper_macros")
     fig_mod = _load_figures()
-    assert mod.OUT_DIR == ROOT / "paper" / "osdi" / "generated"
-    assert fig_mod.OUT_DIR == ROOT / "paper" / "osdi" / "generated"
+    assert mod.OUT_DIR == ROOT / "paper" / "sys" / "generated"
+    assert fig_mod.OUT_DIR == ROOT / "paper" / "sys" / "generated"
     # paper/ is gitignored repo-wide; nothing this task writes there is
     # ever meant to be committed.
     gitignore = (ROOT / ".gitignore").read_text(encoding="utf-8")
