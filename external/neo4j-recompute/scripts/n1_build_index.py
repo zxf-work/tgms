@@ -64,12 +64,12 @@ if PROGRESS.exists():
                                       + g.get("not_answered", 0))
             except Exception:
                 pass
-        check_verdict = None
+        check_totals = None
         if check_path.exists():
             try:
-                check_verdict = json.loads(check_path.read_text()).get("verdict")
+                check_totals = json.loads(check_path.read_text()).get("totals")
             except Exception:
-                check_verdict = "unreadable"
+                check_totals = "unreadable"
 
         index[cell] = {
             "status": "done",
@@ -82,7 +82,7 @@ if PROGRESS.exists():
             "recompute_ms_median_per_burst": recompute_ms_median,
             "apply_ms_median_per_burst": apply_ms_median,
             "artifacts_total": artifacts_total,
-            "check_verdict": check_verdict,
+            "check_totals_independent": check_totals,
             "result_path": str(result_path) if result_path.exists() else None,
             "check_path": str(check_path) if check_path.exists() else None,
         }
