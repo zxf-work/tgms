@@ -101,6 +101,19 @@ def load_artifacts(artifacts_path: Path) -> list[ArtifactSpec]:
 
 
 def load_oracle(oracle_path: Path) -> dict[int, dict[str, str]]:
+    """Per epoch, `{artifact_name: digest}`, with every name in that
+    epoch's `refused` list mapped to the sentinel `"refused"`
+    (`score_against_oracle` checks for exactly this string) -- `oracle.jsonl`'s
+    own row shape is `{"epoch": k, "digests": {name: digest}, "refused":
+    [name, ...]}` (export_storm_workload.py, external_check.py's
+    `load_oracle_rows`), never a flat `{name: digest}` row. A prior version
+    of this function flattened the raw row instead of `row["digests"]`,
+    scoring every artifact against the two literal keys `"digests"`/
+    `"refused"` and always reporting `agree=0` -- found running the real
+    timed grid's first cell (`collegemsg-c1-deep-n1000-s0`, 2026-10-05), not
+    by this package's own shape tests, whose tiny fixture never exercised a
+    non-empty `refused` list the same way. Fixed here.
+    """
     out: dict[int, dict[str, str]] = {}
     with oracle_path.open() as f:
         for line in f:
@@ -108,7 +121,10 @@ def load_oracle(oracle_path: Path) -> dict[int, dict[str, str]]:
             if not line:
                 continue
             row = json.loads(line)
-            out[row["epoch"]] = {k: v for k, v in row.items() if k != "epoch"}
+            epoch_map: dict[str, str] = dict(row.get("digests", {}))
+            for name in row.get("refused", []):
+                epoch_map[name] = "refused"
+            out[row["epoch"]] = epoch_map
     return out
 
 
