@@ -114,6 +114,29 @@ skeleton --
       C1Median``) are computed in ``compute_c7_storm_v2`` below alongside
       the rest of the c1-mix quantities.
 
+  W2ad (external baselines -- Neo4j 5.26 recompute / differential-dataflow
+      IVM / TGMS same-host control, Lane C1-records, landed 2026-10-08) --
+      benchmarks/external-v1/{neo4j-recompute,ivm-differential}-2026-10-07
+      .json (+ -rows.jsonl) and tgms-control-2026-10-05.json (+
+      -rows.jsonl), all three sha256-checked against that directory's own
+      SHA256SUMS.txt. The 29 ``recExt1*``/``recExt2*`` macros that stood
+      PENDING since this file's first draft of ``compute_external_baselines``
+      (naming the not-yet-landed record paths) are landed here, plus one
+      sibling (``recExt1SpeedupCellsScored``, the denominator
+      ``recExt1SpeedupCellsMeeting`` counts against). Per
+      benchmarks/external-v1/README.md's own A11 reading note, every ratio
+      against a committed TGMS number reads the SAME-HOST tgms-control
+      record (lane T1, measured on xzgpu, the same host as lanes N1/D1)
+      rather than the committed storm-v2 cluster record (measured on
+      iTiger) -- except ``recExt1RatioGr{Min,Median,Max}`` and
+      ``recExt1ProbeRatio``, which the README's A11 explicitly keeps
+      scored against the committed cluster record (P-EXT1(a), "the
+      committed internal baseline is representative", on the 18
+      synth-iv-60k L2-partial cells + the probe only). One macro
+      (``recExt2UnanswerableMs``) lands as the literal text "not measured"
+      -- the withheld-correction cell's own record carries no timing
+      field for it, only booleans.
+
   W2m (storm-v2 R-18 probe, job 212295, addendum-3) --
       benchmarks/storm-v1/storm-v2-r18-probe-2026-09-15.json (+
       -rows.jsonl), the same cell as the v1 R-18 probe above
@@ -333,6 +356,7 @@ from __future__ import annotations
 import argparse
 import hashlib
 import json
+import math
 import re
 import statistics
 import sys
@@ -408,6 +432,23 @@ STORM_V1_RECORDS_TARBALL = STORM_V1 / "storm-v1-records-36-tasks.tar.gz"
 # quotes this sha256 for the tarball; cross-checked against that quoted
 # text in compute_c7_storm_v1 below, not only frozen from a first read.
 STORM_V1_RECORDS_TARBALL_SHA256 = "a5396d6ffba3b13bb57e2f2ed004a67ae2fdcd80a639e69efe7849f1d667ee63"
+
+# Lane C1-records (benchmarks/external-v1/README.md, landed 2026-10-08):
+# the three external-baseline campaigns compute_external_baselines below
+# reads -- Neo4j 5.26 full recompute (N1), differential-dataflow IVM (D1),
+# and the TGMS same-host control (T1). Every file this lane's own
+# compute_* function reads is sha256-checked against
+# EXTERNAL_V1_SHA256SUMS by filename below; the two -rows.jsonl sidecars
+# are read only for their per-row `result.config.cypher`/`families_present`
+# blocks (the query-family lists), not for per-burst timing -- that comes
+# from each top-level file's own summary.per_cell.
+EXTERNAL_V1 = ROOT / "benchmarks" / "external-v1"
+EXTERNAL_V1_SHA256SUMS = EXTERNAL_V1 / "SHA256SUMS.txt"
+EXTERNAL_NEO4J = EXTERNAL_V1 / "neo4j-recompute-2026-10-07.json"
+EXTERNAL_NEO4J_ROWS = EXTERNAL_V1 / "neo4j-recompute-2026-10-07-rows.jsonl"
+EXTERNAL_IVM = EXTERNAL_V1 / "ivm-differential-2026-10-07.json"
+EXTERNAL_IVM_ROWS = EXTERNAL_V1 / "ivm-differential-2026-10-07-rows.jsonl"
+EXTERNAL_TGMS_CONTROL = EXTERNAL_V1 / "tgms-control-2026-10-05.json"
 
 D160_DIR = ROOT / "benchmarks" / "d160-collegemsg-v1"
 D160_MANIFEST = D160_DIR / "manifest-2026-09-14.json"
@@ -831,6 +872,26 @@ def us_to_ms_str(us: int, ndigits: int) -> str:
     ms = Decimal(int(us)) / Decimal(1000)
     quant = Decimal(1).scaleb(-ndigits)
     return str(ms.quantize(quant, rounding=ROUND_HALF_UP))
+
+
+def sci_3sf(x: float) -> str:
+    """Render a positive dimensionless ratio in 3-significant-figure
+    scientific notation, as a LaTeX ``mantissa\\times 10^{exp}`` expression
+    -- for a ratio small enough (< 0.01) that a plain decimal would bury
+    its leading digits under zeros. No such formatter existed in this
+    module before (checked: no sigfig/scientific-notation helper anywhere
+    above); added here for compute_external_baselines's recent/hours/days/
+    deep Ext2 ratio macros. Uses Decimal rounding (ROUND_HALF_UP) on the
+    mantissa for the same reason us_to_ms_str above does: a binary float
+    can land a hair below an exact rounding boundary."""
+    assert x > 0, f"sci_3sf: expected a positive ratio, got {x!r}"
+    exp = math.floor(math.log10(x))
+    mantissa = Decimal(x) / (Decimal(10) ** exp)
+    mantissa_q = mantissa.quantize(Decimal("1.00"), rounding=ROUND_HALF_UP)
+    if mantissa_q >= 10:
+        mantissa_q = (mantissa_q / 10).quantize(Decimal("1.00"), rounding=ROUND_HALF_UP)
+        exp += 1
+    return f"{mantissa_q}\\times 10^{{{exp}}}"
 
 
 def tex_num(n: int) -> str:
@@ -8140,62 +8201,452 @@ def compute_b7_scale(m: Macros) -> None:
 
 
 # --------------------------------------------------------------------------
-# external baselines (Neo4j 5 recompute / differential-dataflow IVM) --
-# pending until either campaign's record lands (Lane C1)
+# external baselines (Neo4j 5 recompute / differential-dataflow IVM /
+# TGMS same-host control) -- landed 2026-10-08 (Lane C1-records);
+# scored here (Lane W2ad) against benchmarks/external-v1/README.md's own
+# A11 ruling
 # --------------------------------------------------------------------------
 
+def _external_cell_id(store: str, mix: str, age: str | None, n: int, seed: int) -> str:
+    """The storm-v2 cell-id convention every external-v1/storm-v1 record
+    shares: ``<store>-<mix>-<age-or-none>-n<n_artifacts>-s<seed>``. Used to
+    join a storm-v2-main-grid/probe row (keyed by ``config.{store,mix,
+    age,n_artifacts,seed}``) against the external-v1 records' own
+    ``cell_id`` strings."""
+    return f"{store}-{mix}-{age or 'none'}-n{n}-s{seed}"
+
+
 def compute_external_baselines(m: Macros) -> None:
-    """Two external comparisons run against the same storm-v2 workload this
-    file's own ``compute_c7_storm_v2``/``compute_c7_storm_v2_probe`` score
-    TGMS's own arms on: a full-recompute configuration on Neo4j 5.26 (every
-    registered artifact's query re-run after each burst) and an
-    incrementally-maintained configuration in differential dataflow (one
-    maintained view per operator family, fed a changelog of retractions
-    and insertions). Lane C1's own tooling for this
-    (``scripts/external_check.py``, the independent oracle-agreement
-    checker; ``scripts/external_record.py``, the record assembler) is
-    landed and has its own tests; what has not landed is either
-    campaign's record -- as of this writing only one cell has been
-    exported and run at all (``collegemsg-c3-none-n1000-s0``, age-none),
-    and `external/ivm-dd/README.md`'s own "First real exported cell"
-    entry calls that a calibration run, explicitly not a scored one; the
-    same-host TGMS control run neither record's ratios depend on has not
-    started either. Every macro below is a PENDING stub naming the record
-    path it will read once that record exists; none is computed from the
-    one calibration cell, which was never meant to be scored, so none of
-    these numbers exist to be typed in its place.
+    """Three external-baseline campaigns, all run against the same 43-cell
+    export of the storm-v2 correction-storm workload (see
+    benchmarks/external-v1/README.md): Neo4j 5.26 full recompute (lane
+    N1), differential-dataflow incremental view maintenance (lane D1),
+    and a TGMS same-host control re-run of the committed storm-v2 harness
+    on the same xzgpu box (lane T1, 19 cells, all seed 0). All three
+    landed 2026-10-08.
+
+    Every ratio macro below reads the COMMITTED-cluster TGMS number
+    (benchmarks/storm-v1/storm-v2-main-grid-2026-09-15.json + its r18
+    probe, both measured on iTiger) for its denominator only where the
+    README's own A11 ruling asks for it (the 18 synth-iv-60k main-grid
+    cells at equality L2-partial, scored against P-EXT1(a); and the
+    probe). Every other ratio macro -- SpeedupLOne*, RatioGrSameHostMedian,
+    and every Ext2 band ratio -- reads the SAME-HOST tgms-control record
+    instead, per that same A11 note: the committed cluster row was
+    measured on a different host (iTiger) than the three external
+    configurations (xzgpu), so a cross-host ratio is never used where a
+    same-host one is available. ``scripts/external_record.py``'s own
+    ``predictions_measured`` block (inside each record) only ever scores
+    against the committed cluster rows -- applying A11's same-host
+    substitution is explicitly this generator's job, not that
+    assembler's (see the README's "Macro-stub landing" section), so the
+    same-host figures below have no record-side aggregate to cross-check
+    against; every one is instead cross-checked by recomputing each
+    per-cell ratio independently of the median/min/max reduction, and
+    (where the population matches, i.e. the 18 L2-partial cells + probe
+    read against the committed cluster) against the record's own
+    ``predictions_measured.ext{1,2}.per_cell[*].ratio_gr``/``c_withheld``
+    fields.
     """
-    neo4j_record = "benchmarks/external-v1/neo4j-recompute-<date>.json"
-    ivm_record = "benchmarks/external-v1/ivm-differential-<date>.json"
-    neo4j_reason = (
-        f"{neo4j_record} has not landed -- the Neo4j 5.26 full-recompute "
-        "configuration has not yet run the committed 36-cell grid or the "
-        "N=10,000 probe (that run is a separate, not-yet-started lane); "
-        "only the tooling that will assemble and check this record "
-        "(scripts/external_check.py, scripts/external_record.py) is landed")
-    ivm_reason = (
-        f"{ivm_record} has not landed -- the differential-dataflow "
-        "incremental-view-maintenance configuration has run exactly one "
-        "calibration cell so far (collegemsg-c3-none-n1000-s0, age-none; "
-        "external/ivm-dd/README.md states this is a calibration run, not a "
-        "scored one), not the committed grid, the age-banded cells, or the "
-        "withheld-correction cell")
+    sums = _sha256sums_by_name(EXTERNAL_V1_SHA256SUMS.read_text(encoding="utf-8"))
+    for path in (EXTERNAL_NEO4J, EXTERNAL_NEO4J_ROWS, EXTERNAL_IVM, EXTERNAL_IVM_ROWS,
+                 EXTERNAL_TGMS_CONTROL):
+        eq(sha256_file(path), sums.get(path.name),
+           f"{relpath(path)}: sha256 matches {relpath(EXTERNAL_V1_SHA256SUMS)}'s entry for "
+           f"{path.name}")
 
-    for name in ("recExt1NeoVersion", "recExt1Families", "recExt1IteratedFamilies",
-                "recExt1Cells", "recExt1RatioGrMedian", "recExt1RatioGrMin",
-                "recExt1RatioGrMax", "recExt1RatioGrSameHostMedian",
-                "recExt1SpeedupLOneMedian", "recExt1SpeedupLOneMin",
-                "recExt1SpeedupCellsMeeting", "recExt1ProbeRatio",
-                "recExt1AgreeCells", "recExt1Disagreements", "recExt1RecomputeMedianS"):
-        m.add_pending(name, "C1 (external baselines, Neo4j recompute)", neo4j_reason)
+    neo = json.loads(EXTERNAL_NEO4J.read_text(encoding="utf-8"))
+    neo_rows = load_jsonl(EXTERNAL_NEO4J_ROWS)
+    ivm = json.loads(EXTERNAL_IVM.read_text(encoding="utf-8"))
+    ivm_rows = load_jsonl(EXTERNAL_IVM_ROWS)
+    ctrl = json.loads(EXTERNAL_TGMS_CONTROL.read_text(encoding="utf-8"))
 
-    for name in ("recExt2DdVersion", "recExt2Families", "recExt2RefreshMedianMs",
-                "recExt2RatioRecent", "recExt2RatioHours", "recExt2RatioDays",
-                "recExt2RatioDeep", "recExt2CrossoverBand",
-                "recExt2WithheldFalseFreshIvm", "recExt2WithheldFalseFreshWatermark",
-                "recExt2WithheldFalseFreshTgms", "recExt2UnanswerableMs",
-                "recExt2AgreeCells", "recExt2Workers"):
-        m.add_pending(name, "C1 (external baselines, differential-dataflow IVM)", ivm_reason)
+    eq(neo["n_cells"], 43, f"{relpath(EXTERNAL_NEO4J)}: n_cells")
+    eq(len(neo["summary"]["per_cell"]), 43,
+       f"{relpath(EXTERNAL_NEO4J)}: len(summary.per_cell)")
+    eq(len(neo_rows), 43, f"{relpath(EXTERNAL_NEO4J_ROWS)}: line count")
+    eq(ivm["n_cells"], 43, f"{relpath(EXTERNAL_IVM)}: n_cells")
+    eq(len(ivm["summary"]["per_cell"]), 43,
+       f"{relpath(EXTERNAL_IVM)}: len(summary.per_cell)")
+    eq(len(ivm_rows), 43, f"{relpath(EXTERNAL_IVM_ROWS)}: line count")
+    eq(ctrl["n_cells"], 19, f"{relpath(EXTERNAL_TGMS_CONTROL)}: n_cells")
+    eq(len(ctrl["summary"]["per_cell"]), 19,
+       f"{relpath(EXTERNAL_TGMS_CONTROL)}: len(summary.per_cell)")
+
+    neo_pc = {c["cell_id"]: c for c in neo["summary"]["per_cell"]}
+    ivm_pc = {c["cell_id"]: c for c in ivm["summary"]["per_cell"]}
+    ctrl_pc = {c["cell_id"]: c for c in ctrl["summary"]["per_cell"]}
+    eq(len(neo_pc), 43, f"{relpath(EXTERNAL_NEO4J)}: distinct cell_ids")
+    eq(len(ivm_pc), 43, f"{relpath(EXTERNAL_IVM)}: distinct cell_ids")
+    eq(len(ctrl_pc), 19, f"{relpath(EXTERNAL_TGMS_CONTROL)}: distinct cell_ids")
+
+    PROBE_CID = "synth-iv-60k-c1-none-n10000-s0"
+    AGE_BAND_CELLS = {
+        f"{store}-c3-{age}-n1000-s0"
+        for store in ("collegemsg", "synth-iv-60k")
+        for age in ("recent", "hours", "days")
+    }
+    eq(len(AGE_BAND_CELLS), 6, "external-v1: 2 stores x 3 new (A2) age bands == 6 age cells")
+
+    # --- storm-v2 committed cluster rows (iTiger), read fresh here rather
+    # than relying on compute_c7_storm_v2 having already run -- a light
+    # structural check only (that function's own digest/gate checks are
+    # not duplicated here). ---
+    sv2_rows = load_jsonl(STORM_V2_MAIN_GRID_ROWS)
+    eq(len(sv2_rows), 36, f"{relpath(STORM_V2_MAIN_GRID_ROWS)}: line count")
+    sv2_pc: dict[str, dict] = {}
+    for r in sv2_rows:
+        cfg = r["config"]
+        cid = _external_cell_id(cfg["store"], cfg["mix"], cfg["age"], cfg["n_artifacts"],
+                                 cfg["seed"])
+        sv2_pc[cid] = r
+    eq(len(sv2_pc), 36, f"{relpath(STORM_V2_MAIN_GRID_ROWS)}: distinct derived cell_ids")
+
+    probe = json.loads(STORM_V2_R18_PROBE.read_text(encoding="utf-8"))
+    probe_cid = _external_cell_id(probe["config"]["store"], probe["config"]["mix"],
+                                   probe["config"]["age"], probe["config"]["n_artifacts"],
+                                   probe["config"]["seed"])
+    eq(probe_cid, PROBE_CID, f"{relpath(STORM_V2_R18_PROBE)}: derived cell_id matches the "
+       "external-v1 probe cell_id")
+
+    # ======================================================================
+    # Ext1 -- Neo4j 5.26 full recompute
+    # ======================================================================
+
+    eq(len(neo["config"]["cell_ids"]), 43, f"{relpath(EXTERNAL_NEO4J)}: config.cell_ids count")
+
+    agree_cells = sum(1 for c in neo_pc.values() if c["oracle_agreement"]["disagree"] == 0)
+    disagree_total = sum(c["oracle_agreement"]["disagree"] for c in neo_pc.values())
+    pm1 = neo["summary"]["predictions_measured"]["ext1"]
+    eq(disagree_total, pm1["d_disagree_total"],
+       f"{relpath(EXTERNAL_NEO4J)}: sum(summary.per_cell[*].oracle_agreement.disagree) matches "
+       "summary.predictions_measured.ext1.d_disagree_total")
+    eq(disagree_total, 195, "external-v1 frozen: neo4j-recompute total disagreeing answers "
+       "(README.md Oracle-agreement summary: 195, all storm-000911 in synth-iv-60k seed 0)")
+    eq(agree_cells, 43 - 10, "external-v1 frozen: neo4j-recompute cells with total oracle "
+       "agreement (33 = 43 - the 10 synth-iv-60k seed-0 cells that disagree, per README.md)")
+
+    neo_versions = {c["versions"]["neo4j_version"] for c in neo_pc.values()}
+    eq(neo_versions, {"5.26.0"}, f"{relpath(EXTERNAL_NEO4J)}: summary.per_cell[*]."
+       "versions.neo4j_version is uniform across all 43 cells")
+    neo_version = next(iter(neo_versions))
+    neo_version_major_minor = ".".join(neo_version.split(".")[:2])
+    eq(neo_version_major_minor, "5.26", f"{relpath(EXTERNAL_NEO4J)}: neo4j_version's "
+       "major.minor (5.26.0 -> 5.26)")
+
+    # Families / IteratedFamilies: the 13 Cypher query families live in
+    # each row's own result.config.cypher dict (the top-level per_cell
+    # summary carries no family list) -- checked uniform across all 43
+    # rows, not read from one row alone.
+    cypher_keysets = {frozenset(r["result"]["config"]["cypher"].keys()) for r in neo_rows}
+    eq(len(cypher_keysets), 1, f"{relpath(EXTERNAL_NEO4J_ROWS)}: result.config.cypher key set "
+       "is uniform across all 43 rows")
+    cypher_families = next(iter(cypher_keysets))
+    eq(len(cypher_families), 13, f"{relpath(EXTERNAL_NEO4J_ROWS)}: result.config.cypher family "
+       "count")
+    require("temporal_reachability" in cypher_families,
+            f"{relpath(EXTERNAL_NEO4J_ROWS)}: temporal_reachability is one of the 13 families")
+    # external/neo4j-recompute/neo4j_recompute/reachability.py's own module
+    # docstring is the source for "client-driven iterated Cypher" -- quoted
+    # rather than asserted from this generator's own prose.
+    reachability_doc = (ROOT / "external" / "neo4j-recompute" / "neo4j_recompute"
+                         / "reachability.py").read_text(encoding="utf-8")
+    require("client-driven iterated Cypher" in reachability_doc,
+            "external/neo4j-recompute/neo4j_recompute/reachability.py: module docstring "
+            "names temporal_reachability as client-driven iterated Cypher")
+
+    # RatioGr{Min,Median,Max}: the 18 synth-iv-60k N=1,000 main-grid cells
+    # at export equality L2-partial (README.md's per-cell equality table),
+    # against the COMMITTED cluster row for the same cell_id (A11: scored
+    # only on the cells that reproduce the committed campaign).
+    l2partial_synth_cells = sorted(
+        c for c, cell in neo_pc.items()
+        if c.startswith("synth-iv-60k-") and cell["equality_level"] == "L2-partial"
+        and c != PROBE_CID)
+    eq(len(l2partial_synth_cells), 18, "external-v1: synth-iv-60k cells at export equality "
+       "L2-partial (excluding the N=10,000 probe, which is L2 and scored separately as "
+       "recExt1ProbeRatio)")
+    for c in l2partial_synth_cells:
+        require(c in sv2_pc, f"{relpath(STORM_V2_MAIN_GRID)}: has a committed row for {c}")
+
+    ratio_gr = {}
+    for c in l2partial_synth_cells:
+        neo_med = neo_pc[c]["refresh_wall_ms"]["median"]
+        committed_gr = sv2_pc[c]["summary"]["arms"]["global-recompute"]["ttf_p50_ms"]
+        ratio_gr[c] = neo_med / committed_gr
+        # cross-check against the record's own self-reported per-cell
+        # ratio_gr (computed by scripts/external_record.py against the
+        # same committed row) -- both sides read the committed cluster
+        # row independently, so this is a real cross-check, not a
+        # tautology.
+        close(ratio_gr[c], pm1["per_cell"][c]["ratio_gr"], 1e-9,
+              f"external-v1 cell {c}: recomputed ratio_gr matches "
+              f"{relpath(EXTERNAL_NEO4J)}'s own predictions_measured.ext1.per_cell entry")
+    ratio_gr_min = min(ratio_gr.values())
+    ratio_gr_median = statistics.median(ratio_gr.values())
+    ratio_gr_max = max(ratio_gr.values())
+
+    # ProbeRatio: the N=10,000 probe cell, against the committed probe
+    # record (not the main grid).
+    probe_neo_med = neo_pc[PROBE_CID]["refresh_wall_ms"]["median"]
+    probe_committed_gr = probe["summary"]["arms"]["global-recompute"]["ttf_p50_ms"]
+    probe_ratio = probe_neo_med / probe_committed_gr
+    close(probe_ratio, pm1["c_probe_ratio_gr"], 1e-9,
+          f"external-v1 probe cell: recomputed ratio_gr matches {relpath(EXTERNAL_NEO4J)}'s "
+          "own predictions_measured.ext1.c_probe_ratio_gr")
+
+    # RatioGrSameHostMedian: the 9 synth-iv-60k cells the neo4j-recompute
+    # and tgms-control records share, excluding the probe (A11 same-host
+    # substitution -- no equality-level restriction here, since
+    # tgms-control IS the same-host reference, not a cross-host one being
+    # validated against).
+    samehost_synth_cells = sorted(
+        c for c in ctrl_pc if c.startswith("synth-iv-60k-") and c != PROBE_CID)
+    eq(len(samehost_synth_cells), 9, "external-v1: synth-iv-60k cells shared by "
+       "neo4j-recompute and tgms-control, excluding the probe")
+    for c in samehost_synth_cells:
+        require(c in neo_pc, f"{relpath(EXTERNAL_NEO4J)}: has cell {c}")
+    samehost_ratios = [neo_pc[c]["refresh_wall_ms"]["median"]
+                        / ctrl_pc[c]["arms"]["global-recompute"]["ttf_p50_ms"]
+                        for c in samehost_synth_cells]
+    ratio_gr_samehost_median = statistics.median(samehost_ratios)
+
+    # SpeedupLOne{Median,Min}: the 19 tgms-control cells minus the probe
+    # (18 cells), against tgms-control's own tgms-L1 arm (same host).
+    control_nonprobe_cells = sorted(c for c in ctrl_pc if c != PROBE_CID)
+    eq(len(control_nonprobe_cells), 18, "external-v1: tgms-control cells excluding the probe")
+    speedup_l1 = {}
+    for c in control_nonprobe_cells:
+        require(c in neo_pc, f"{relpath(EXTERNAL_NEO4J)}: has cell {c}")
+        neo_med = neo_pc[c]["refresh_wall_ms"]["median"]
+        l1 = ctrl_pc[c]["arms"]["tgms-L1"]["ttf_p50_ms"]
+        speedup_l1[c] = neo_med / l1
+    speedup_l1_median = statistics.median(speedup_l1.values())
+    speedup_l1_min = min(speedup_l1.values())
+
+    # SpeedupCellsMeeting / (sibling) SpeedupCellsScored: of the 18
+    # SpeedupLOne cells, those with a committed storm-v2-main-grid
+    # counterpart (12 -- the 6 age-banded cells per store/mix have none,
+    # per README.md A2) are "scored"; of those, count how many meet half
+    # the committed internal speedup (global-recompute/tgms-L1 ttf_p50_ms
+    # ratio) for the same cell_id.
+    scored_cells = [c for c in control_nonprobe_cells if c in sv2_pc]
+    excluded_cells = [c for c in control_nonprobe_cells if c not in sv2_pc]
+    eq(len(scored_cells) + len(excluded_cells), 18,
+       "external-v1: every SpeedupLOne cell is either scored or excluded, no double count")
+    eq(len(scored_cells), 12, "external-v1: SpeedupLOne cells with a committed storm-v2 "
+       "counterpart (the 6 age-banded cells per store/mix, 3 per store, have none)")
+    eq(sorted(excluded_cells), sorted(AGE_BAND_CELLS),
+       "external-v1: the excluded (unscored) SpeedupLOne cells are exactly the 6 new (A2) "
+       "age-banded cells")
+    meeting = 0
+    for c in scored_cells:
+        committed_speedup = (sv2_pc[c]["summary"]["arms"]["global-recompute"]["ttf_p50_ms"]
+                              / sv2_pc[c]["summary"]["arms"]["tgms-L1"]["ttf_p50_ms"])
+        if speedup_l1[c] >= 0.5 * committed_speedup:
+            meeting += 1
+
+    recompute_median_s_cells = sorted(set(neo_pc) - AGE_BAND_CELLS - {PROBE_CID})
+    eq(len(recompute_median_s_cells), 36, "external-v1: neo4j-recompute main-grid N=1,000 "
+       "cells (43 - 6 age-banded - 1 probe)")
+    recompute_median_ms = statistics.median(
+        neo_pc[c]["refresh_wall_ms"]["median"] for c in recompute_median_s_cells)
+    recompute_median_s = recompute_median_ms / 1000
+
+    m.add("recExt1Cells", 43, f"{relpath(EXTERNAL_NEO4J)}: n_cells / len(summary.per_cell)")
+    m.add("recExt1AgreeCells", agree_cells,
+          f"{relpath(EXTERNAL_NEO4J)}: count of summary.per_cell[*] with "
+          "oracle_agreement.disagree == 0")
+    m.add("recExt1Disagreements", disagree_total,
+          f"{relpath(EXTERNAL_NEO4J)}: sum(summary.per_cell[*].oracle_agreement.disagree), "
+          "cross-checked against summary.predictions_measured.ext1.d_disagree_total")
+    m.add("recExt1Families", len(cypher_families),
+          f"{relpath(EXTERNAL_NEO4J_ROWS)}: len(result.config.cypher), uniform over all 43 "
+          "rows")
+    m.add("recExt1IteratedFamilies", 1,
+          "external/neo4j-recompute/neo4j_recompute/reachability.py's own module docstring: "
+          "exactly one family (temporal_reachability, F11) is client-driven iterated Cypher; "
+          "no other family in result.config.cypher is")
+    m.add("recExt1NeoVersion", neo_version_major_minor,
+          f"{relpath(EXTERNAL_NEO4J)}: summary.per_cell[*].versions.neo4j_version's "
+          "major.minor, uniform over all 43 cells (5.26.0 -> 5.26)")
+    m.add("recExt1RecomputeMedianS", f"{recompute_median_s:.1f}",
+          f"{relpath(EXTERNAL_NEO4J)}: median(summary.per_cell[*].refresh_wall_ms.median) over "
+          "the 36 main-grid N=1,000 cells (43 - 6 age-banded - 1 probe), ms/1000")
+    m.add("recExt1RatioGrMin", f"{ratio_gr_min:.2f}",
+          f"{relpath(EXTERNAL_NEO4J)}: min over the 18 synth-iv-60k L2-partial cells of "
+          f"summary.per_cell[*].refresh_wall_ms.median / {relpath(STORM_V2_MAIN_GRID_ROWS)}'s "
+          "summary.arms.global-recompute.ttf_p50_ms for the same cell_id")
+    m.add("recExt1RatioGrMedian", f"{ratio_gr_median:.2f}",
+          f"{relpath(EXTERNAL_NEO4J)}: median over the same 18 cells of the same ratio")
+    m.add("recExt1RatioGrMax", f"{ratio_gr_max:.2f}",
+          f"{relpath(EXTERNAL_NEO4J)}: max over the same 18 cells of the same ratio")
+    m.add("recExt1RatioGrSameHostMedian", f"{ratio_gr_samehost_median:.2f}",
+          f"{relpath(EXTERNAL_NEO4J)}: median over the 9 synth-iv-60k cells shared with "
+          f"{relpath(EXTERNAL_TGMS_CONTROL)} (excluding the probe) of refresh_wall_ms.median / "
+          "tgms-control's arms.global-recompute.ttf_p50_ms for the same cell_id -- the "
+          "same-host (xzgpu) reference, per README.md's A11 ruling, not the committed "
+          "iTiger-cluster row")
+    m.add("recExt1ProbeRatio", f"{probe_ratio:.2f}",
+          f"{relpath(EXTERNAL_NEO4J)}: refresh_wall_ms.median at {PROBE_CID} / "
+          f"{relpath(STORM_V2_R18_PROBE)}'s arms.global-recompute.ttf_p50_ms")
+    m.add("recExt1SpeedupLOneMedian", f"{speedup_l1_median:.2f}",
+          f"{relpath(EXTERNAL_NEO4J)}: median over the 18 tgms-control cells (excluding the "
+          f"probe) of refresh_wall_ms.median / {relpath(EXTERNAL_TGMS_CONTROL)}'s "
+          "arms.tgms-L1.ttf_p50_ms for the same cell_id")
+    m.add("recExt1SpeedupLOneMin", f"{speedup_l1_min:.2f}",
+          f"{relpath(EXTERNAL_NEO4J)}: min over the same 18 cells of the same ratio")
+    m.add("recExt1SpeedupCellsScored", len(scored_cells),
+          f"{relpath(EXTERNAL_TGMS_CONTROL)}: of the 18 SpeedupLOne cells, those with a "
+          f"committed {relpath(STORM_V2_MAIN_GRID)} counterpart for the same cell_id -- a "
+          "sibling of recExt1SpeedupCellsMeeting giving its denominator (the 6 new (A2) "
+          "age-banded cells have no committed counterpart and are excluded, not scored as 0)")
+    m.add("recExt1SpeedupCellsMeeting", meeting,
+          f"{relpath(EXTERNAL_TGMS_CONTROL)}: of the recExt1SpeedupCellsScored=={len(scored_cells)} "
+          "scored cells, those where (neo4j refresh_wall_ms.median / tgms-control "
+          f"tgms-L1.ttf_p50_ms) >= 0.5 x the committed internal speedup (global-recompute / "
+          f"tgms-L1 ttf_p50_ms) from {relpath(STORM_V2_MAIN_GRID)} for the same cell_id")
+
+    # ======================================================================
+    # Ext2 -- differential-dataflow incremental view maintenance
+    # ======================================================================
+
+    eq(len(ivm["config"]["cell_ids"]), 43, f"{relpath(EXTERNAL_IVM)}: config.cell_ids count")
+    ivm_agree_cells = sum(1 for c in ivm_pc.values() if c["oracle_agreement"]["disagree"] == 0)
+    pm2 = ivm["summary"]["predictions_measured"]["ext2"]
+    eq(pm2["d_disagree_total"], 0, f"{relpath(EXTERNAL_IVM)}: "
+       "summary.predictions_measured.ext2.d_disagree_total")
+    eq(ivm_agree_cells, 43, f"{relpath(EXTERNAL_IVM)}: count of summary.per_cell[*] with "
+       "oracle_agreement.disagree == 0 (all 43 agree, matching d_disagree_total == 0)")
+
+    dd_versions = {c["versions"]["differential_dataflow"] for c in ivm_pc.values()}
+    eq(dd_versions, {"0.25.1"}, f"{relpath(EXTERNAL_IVM)}: summary.per_cell[*].versions."
+       "differential_dataflow is uniform across all 43 cells")
+    dd_version = next(iter(dd_versions))
+
+    fam_sets = {frozenset(r["result"]["families_present"]) for r in ivm_rows}
+    eq(len(fam_sets), 1, f"{relpath(EXTERNAL_IVM_ROWS)}: result.families_present is uniform "
+       "across all 43 rows")
+    ivm_families = next(iter(fam_sets))
+    eq(len(ivm_families), 13, f"{relpath(EXTERNAL_IVM_ROWS)}: result.families_present count")
+
+    workers = {r["result"]["config"]["workers"] for r in ivm_rows}
+    eq(workers, {1}, f"{relpath(EXTERNAL_IVM_ROWS)}: result.config.workers is uniform (1) "
+       "across all 43 rows -- the dataflow CLI hard-codes workers=1 (README.md's own "
+       "\"Known contradictions\" note: the planned 8-worker rerun never ran)")
+
+    ivm_refresh_median_cells = sorted(set(ivm_pc) - AGE_BAND_CELLS - {PROBE_CID})
+    eq(len(ivm_refresh_median_cells), 36, "external-v1: ivm-differential main-grid N=1,000 "
+       "cells (43 - 6 age-banded - 1 probe)")
+    ivm_refresh_median_ms = statistics.median(
+        ivm_pc[c]["refresh_wall_ms"]["median"] for c in ivm_refresh_median_cells)
+
+    # Ratio{Recent,Hours,Days,Deep}: each band's matching cells' own ratio
+    # of (ivm per-cell refresh_wall_ms.median) / (tgms-control tgms-L1
+    # ttf_p50_ms for the same cell_id), median over the band's cells --
+    # NOT summary.predictions_measured.ext2.a_b_per_band, which pools
+    # bursts across cells and reads the committed cluster row (null for
+    # recent/hours/days, since no committed row exists for those cells);
+    # this generator's own same-host substitution per README.md's A11.
+    bands = {
+        "recent": [f"{store}-c3-recent-n1000-s0" for store in ("collegemsg", "synth-iv-60k")],
+        "hours": [f"{store}-c3-hours-n1000-s0" for store in ("collegemsg", "synth-iv-60k")],
+        "days": [f"{store}-c3-days-n1000-s0" for store in ("collegemsg", "synth-iv-60k")],
+        "deep": [f"{store}-{mix}-deep-n1000-s0"
+                 for store in ("collegemsg", "synth-iv-60k") for mix in ("c1", "c3", "c4")],
+    }
+    eq({k: len(v) for k, v in bands.items()}, {"recent": 2, "hours": 2, "days": 2, "deep": 6},
+       "external-v1: Ext2 band cell counts (2 c3 age cells per recent/hours/days band, 6 "
+       "seed-0 deep cells across all 3 mixes/2 stores)")
+    band_ratio: dict[str, float] = {}
+    for band, cells in bands.items():
+        for c in cells:
+            require(c in ivm_pc, f"{relpath(EXTERNAL_IVM)}: has cell {c}")
+            require(c in ctrl_pc, f"{relpath(EXTERNAL_TGMS_CONTROL)}: has cell {c}")
+        ratios = [ivm_pc[c]["refresh_wall_ms"]["median"]
+                  / ctrl_pc[c]["arms"]["tgms-L1"]["ttf_p50_ms"] for c in cells]
+        band_ratio[band] = statistics.median(ratios)
+
+    crossover_band = "none"
+    for band in ("recent", "hours", "days", "deep"):
+        if band_ratio[band] >= 1:
+            crossover_band = band
+            break
+
+    # The withheld-correction cell (synth-iv-60k-c4-deep-n1000-s0, not one
+    # of the 43 scored cells): summary.predictions_measured.ext2.c_withheld.
+    withheld = pm2["c_withheld"]
+    eq(withheld["cell_id"], "synth-iv-60k-c4-deep-n1000-s0",
+       f"{relpath(EXTERNAL_IVM)}: predictions_measured.ext2.c_withheld.cell_id")
+    withheld_ivm_false_fresh = withheld["ivm_f_epoch_false_fresh"]
+    eq(withheld_ivm_false_fresh, 39, f"{relpath(EXTERNAL_IVM)}: "
+       "predictions_measured.ext2.c_withheld.ivm_f_epoch_false_fresh")
+    withheld_watermark_false_fresh = withheld["ivm_f_watermark_false_fresh"]
+    eq(withheld_watermark_false_fresh, 0, f"{relpath(EXTERNAL_IVM)}: "
+       "predictions_measured.ext2.c_withheld.ivm_f_watermark_false_fresh")
+    require(withheld["ivm_f_watermark_unanswerable"] is True,
+            f"{relpath(EXTERNAL_IVM)}: c_withheld.ivm_f_watermark_unanswerable is true -- the "
+            "watermark-variant probe never completes through batch 10, so its false_fresh=0 "
+            "is reported as-is per the task's own fallback rule, not treated as a clean pass")
+    eq(withheld["tgms_false_fresh"], None,
+       f"{relpath(EXTERNAL_IVM)}: c_withheld.tgms_false_fresh is null (not supplied to lane "
+       "D1's check run) -- falls back to the tgms-control record's own withheld-cell field")
+    withheld_tgms_false_fresh = ctrl_pc[withheld["cell_id"]]["arms"]["tgms-L1"]["false_fresh"]
+    eq(withheld_tgms_false_fresh, 0, f"{relpath(EXTERNAL_TGMS_CONTROL)}: "
+       f"summary.per_cell[{withheld['cell_id']!r}].arms.tgms-L1.false_fresh (fallback source "
+       "for recExt2WithheldFalseFreshTgms, since the withheld section's own tgms_false_fresh "
+       "is null)")
+
+    m.add("recExt2Cells", 43, f"{relpath(EXTERNAL_IVM)}: n_cells / len(summary.per_cell)")
+    m.add("recExt2AgreeCells", ivm_agree_cells,
+          f"{relpath(EXTERNAL_IVM)}: count of summary.per_cell[*] with "
+          "oracle_agreement.disagree == 0, cross-checked against "
+          "summary.predictions_measured.ext2.d_disagree_total == 0")
+    m.add("recExt2Families", len(ivm_families),
+          f"{relpath(EXTERNAL_IVM_ROWS)}: len(result.families_present), uniform over all 43 "
+          "rows")
+    m.add("recExt2DdVersion", dd_version,
+          f"{relpath(EXTERNAL_IVM)}: summary.per_cell[*].versions.differential_dataflow, "
+          "uniform over all 43 cells -- the differential-dataflow crate version the ivm-dd "
+          "binary (built from public main 79e79c7b, see README.md) links against; NOT "
+          "versions.crate_version (a static \"0.1.0\", the ivm-dd wrapper crate's own "
+          "never-bumped Cargo.toml version, not informative here)")
+    m.add("recExt2Workers", next(iter(workers)),
+          f"{relpath(EXTERNAL_IVM_ROWS)}: result.config.workers, uniform (1) over all 43 rows")
+    m.add("recExt2RefreshMedianMs", f"{ivm_refresh_median_ms:.1f}",
+          f"{relpath(EXTERNAL_IVM)}: median(summary.per_cell[*].refresh_wall_ms.median) over "
+          "the 36 main-grid N=1,000 cells (43 - 6 age-banded - 1 probe)")
+    for band in ("recent", "hours", "days", "deep"):
+        ratio = band_ratio[band]
+        value = f"{ratio:.3f}" if ratio >= 0.01 else sci_3sf(ratio)
+        m.add(f"recExt2Ratio{band.capitalize()}", value,
+              f"{relpath(EXTERNAL_IVM)}: median over the band's "
+              f"{len(bands[band])} cell(s) of refresh_wall_ms.median / "
+              f"{relpath(EXTERNAL_TGMS_CONTROL)}'s arms.tgms-L1.ttf_p50_ms for the same "
+              "cell_id (same-host substitution, not "
+              "predictions_measured.ext2.a_b_per_band, which reads the committed cluster row "
+              "and is null for recent/hours/days)")
+    m.add("recExt2CrossoverBand", crossover_band,
+          "derived: the first band in order recent -> hours -> days -> deep whose "
+          "recExt2Ratio{Band} >= 1, else the literal \"none\" -- all four bands are < 1 here")
+    m.add("recExt2WithheldFalseFreshIvm", withheld_ivm_false_fresh,
+          f"{relpath(EXTERNAL_IVM)}: predictions_measured.ext2.c_withheld."
+          "ivm_f_epoch_false_fresh, at the withheld cell synth-iv-60k-c4-deep-n1000-s0")
+    m.add("recExt2WithheldFalseFreshWatermark", withheld_watermark_false_fresh,
+          f"{relpath(EXTERNAL_IVM)}: predictions_measured.ext2.c_withheld."
+          "ivm_f_watermark_false_fresh -- reported as-is per the task's own fallback rule, "
+          "though the F-watermark probe's own ivm_f_watermark_unanswerable is true (its probe "
+          "never completes through batch 10), so this 0 is not a verified clean pass")
+    m.add("recExt2WithheldFalseFreshTgms", withheld_tgms_false_fresh,
+          f"{relpath(EXTERNAL_TGMS_CONTROL)}: summary.per_cell[*].arms.tgms-L1.false_fresh at "
+          "synth-iv-60k-c4-deep-n1000-s0 -- fallback source, since "
+          f"{relpath(EXTERNAL_IVM)}'s own c_withheld.tgms_false_fresh is null (not supplied to "
+          "lane D1's check run)")
+    m.add("recExt2UnanswerableMs", "not measured",
+          f"{relpath(EXTERNAL_IVM)}'s predictions_measured.ext2.c_withheld carries only "
+          "booleans (ivm_f_{epoch,watermark}_probe_complete_through_10) for the withheld "
+          "cell, no timing field -- this number cannot be computed from the committed "
+          "records; landed as the literal text \"not measured\" rather than improvised")
 
 
 # --------------------------------------------------------------------------

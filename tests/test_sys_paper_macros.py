@@ -100,6 +100,7 @@ def _run_all_landed(mod):
     mod.compute_ldbc_ref_v1(m)
     mod.compute_ldbc_format3_rebuild(m)
     mod.compute_b7_scale(m)
+    mod.compute_external_baselines(m)
     return m
 
 
@@ -691,6 +692,37 @@ FROZEN_LANDED_VALUES = {
     "recSoakCompactionIntervalMedianSFour": "20.5",
     "recSoakCompactionDurationMedianSFour": "12.2",
     "recSoakGenerationWindowSFour": "41.0",
+    "recExt1Cells": "43",
+    "recExt1AgreeCells": "33",
+    "recExt1Disagreements": "195",
+    "recExt1Families": "13",
+    "recExt1IteratedFamilies": "1",
+    "recExt1NeoVersion": "5.26",
+    "recExt1RecomputeMedianS": "57.1",
+    "recExt1RatioGrMin": "0.68",
+    "recExt1RatioGrMedian": "0.77",
+    "recExt1RatioGrMax": "1.14",
+    "recExt1RatioGrSameHostMedian": "0.49",
+    "recExt1ProbeRatio": "0.70",
+    "recExt1SpeedupLOneMedian": "1.23",
+    "recExt1SpeedupLOneMin": "0.14",
+    "recExt1SpeedupCellsScored": "12",
+    "recExt1SpeedupCellsMeeting": "0",
+    "recExt2Cells": "43",
+    "recExt2AgreeCells": "43",
+    "recExt2Families": "13",
+    "recExt2DdVersion": "0.25.1",
+    "recExt2Workers": "1",
+    "recExt2RefreshMedianMs": "19.0",
+    "recExt2RatioRecent": "1.55\\times 10^{-3}",
+    "recExt2RatioHours": "1.68\\times 10^{-3}",
+    "recExt2RatioDays": "1.31\\times 10^{-3}",
+    "recExt2RatioDeep": "7.83\\times 10^{-4}",
+    "recExt2CrossoverBand": "none",
+    "recExt2WithheldFalseFreshIvm": "39",
+    "recExt2WithheldFalseFreshWatermark": "0",
+    "recExt2WithheldFalseFreshTgms": "0",
+    "recExt2UnanswerableMs": "not measured",
 }
 
 
@@ -3123,6 +3155,150 @@ def test_tampered_ldbc_ref_v1_ledger_entry_id_mismatch_fails(tmp_path):
     assert mod.FAILURES, "a D-090 ledger entry that no longer names IC2 in its symptom " \
         "must fail the cross-check"
     assert any("D-090" in f for f in mod.FAILURES)
+
+
+# --------------------------------------------------------------------------
+# sys_paper_macros.py: compute_external_baselines (Lane W2ad, the 30
+# recExt1*/recExt2* macros landed from benchmarks/external-v1/)
+# --------------------------------------------------------------------------
+
+def test_external_baselines_runs_without_verification_failure():
+    mod = _load("sys_paper_macros")
+    m = mod.Macros()
+    mod.compute_external_baselines(m)
+    assert mod.FAILURES == [], f"unexpected verification failures: {mod.FAILURES}"
+    assert mod.CHECKS > 50, "expected many row/cross-record-level assertions"
+
+
+def test_external_baselines_ratio_gr_independently_recomputed_from_raw_records():
+    """Recompute recExt1RatioGrMedian from the raw JSON here, independently
+    of compute_external_baselines's own code path (reading the per-cell
+    refresh_wall_ms.median and the committed storm-v2-main-grid row's own
+    ttf_p50_ms directly), and check it matches the generated macro --
+    exercising the ratio_gr formula itself, not just the generator's
+    self-consistency."""
+    mod = _load("sys_paper_macros")
+    neo = json.loads(mod.EXTERNAL_NEO4J.read_text(encoding="utf-8"))
+    neo_pc = {c["cell_id"]: c for c in neo["summary"]["per_cell"]}
+    sv2_rows = [json.loads(line) for line in
+                mod.STORM_V2_MAIN_GRID_ROWS.read_text(encoding="utf-8").splitlines() if line.strip()]
+    sv2_pc = {}
+    for r in sv2_rows:
+        cfg = r["config"]
+        cid = mod._external_cell_id(cfg["store"], cfg["mix"], cfg["age"], cfg["n_artifacts"],
+                                      cfg["seed"])
+        sv2_pc[cid] = r
+
+    l2partial_synth_cells = sorted(
+        c for c, cell in neo_pc.items()
+        if c.startswith("synth-iv-60k-") and cell["equality_level"] == "L2-partial"
+        and c != "synth-iv-60k-c1-none-n10000-s0")
+    assert len(l2partial_synth_cells) == 18
+    ratios = [neo_pc[c]["refresh_wall_ms"]["median"]
+              / sv2_pc[c]["summary"]["arms"]["global-recompute"]["ttf_p50_ms"]
+              for c in l2partial_synth_cells]
+    independently_computed_median = statistics.median(ratios)
+
+    m = mod.Macros()
+    mod.compute_external_baselines(m)
+    values = {name: value for name, value, _ in m.items}
+    assert values["recExt1RatioGrMedian"] == f"{independently_computed_median:.2f}"
+
+
+def test_external_baselines_speedup_scored_and_meeting_are_a_consistent_pair():
+    """recExt1SpeedupCellsScored is the denominator recExt1SpeedupCellsMeeting
+    counts against (of the 18 SpeedupLOne cells minus the probe, those
+    with a committed storm-v2-main-grid counterpart); the 6 new (A2)
+    age-banded cells have none and are excluded, not scored as failing."""
+    mod = _load("sys_paper_macros")
+    m = mod.Macros()
+    mod.compute_external_baselines(m)
+    values = {name: value for name, value, _ in m.items}
+    scored = int(values["recExt1SpeedupCellsScored"])
+    meeting = int(values["recExt1SpeedupCellsMeeting"])
+    assert scored == 12
+    assert 0 <= meeting <= scored
+
+
+def test_external_baselines_unanswerable_ms_is_literal_text_not_a_number():
+    """The withheld-correction cell's own record carries only booleans for
+    the F-epoch/F-watermark probes, no timing field -- recExt2UnanswerableMs
+    must land as the literal text "not measured", never a fabricated
+    number nor a PENDING \\errmessage stub (the record itself landed; only
+    this one field within it did not)."""
+    mod = _load("sys_paper_macros")
+    m = mod.Macros()
+    mod.compute_external_baselines(m)
+    values = {name: value for name, value, _ in m.items}
+    assert values["recExt2UnanswerableMs"] == "not measured"
+    with pytest.raises(ValueError):
+        float(values["recExt2UnanswerableMs"])
+
+
+def test_external_baselines_crossover_band_is_none_when_every_band_is_below_one():
+    mod = _load("sys_paper_macros")
+    m = mod.Macros()
+    mod.compute_external_baselines(m)
+    values = {name: value for name, value, _ in m.items}
+    assert values["recExt2CrossoverBand"] == "none"
+    for band in ("Recent", "Hours", "Days", "Deep"):
+        ratio_str = values[f"recExt2Ratio{band}"]
+        # every landed band ratio here is < 0.01, so sci_3sf's "\times 10^{-n}"
+        # form is used -- never a plain decimal that could be misread as >= 1.
+        assert "\\times 10^{-" in ratio_str
+
+
+def test_tampered_external_neo4j_sha256_mismatch_fails(tmp_path):
+    """Every benchmarks/external-v1/ file this lane reads is sha256-checked
+    by filename against that directory's own SHA256SUMS.txt -- an edited
+    copy must fail that check before any number is trusted from it."""
+    mod = _load("sys_paper_macros")
+    data = json.loads(mod.EXTERNAL_NEO4J.read_text(encoding="utf-8"))
+    data["summary"]["per_cell"][0]["refresh_wall_ms"]["median"] = 999999.0
+    tampered = tmp_path / mod.EXTERNAL_NEO4J.name
+    tampered.write_text(json.dumps(data), encoding="utf-8")
+
+    mod.EXTERNAL_NEO4J = tampered
+    m = mod.Macros()
+    mod.compute_external_baselines(m)
+    assert mod.FAILURES, "an edited neo4j-recompute-2026-10-07.json must fail the " \
+        "SHA256SUMS.txt check"
+    assert any("SHA256SUMS" in f for f in mod.FAILURES)
+
+
+def test_tampered_external_ivm_disagree_total_cross_check_fails_even_with_patched_sha256(
+        tmp_path):
+    """recExt2AgreeCells is cross-checked against
+    summary.predictions_measured.ext2.d_disagree_total, recomputed from the
+    per-cell oracle_agreement.disagree fields -- not trusted from that
+    self-reported total alone. Corrupting the self-reported total (while
+    patching SHA256SUMS.txt so the sha256 gate itself still passes) must
+    still fail the cross-check."""
+    mod = _load("sys_paper_macros")
+    data = json.loads(mod.EXTERNAL_IVM.read_text(encoding="utf-8"))
+    data["summary"]["predictions_measured"]["ext2"]["d_disagree_total"] = 7
+    tampered = tmp_path / mod.EXTERNAL_IVM.name
+    tampered_bytes = json.dumps(data).encode("utf-8")
+    tampered.write_bytes(tampered_bytes)
+
+    sums_text = mod.EXTERNAL_V1_SHA256SUMS.read_text(encoding="utf-8")
+    new_hash = hashlib.sha256(tampered_bytes).hexdigest()
+    patched_lines = []
+    for line in sums_text.splitlines():
+        if line.strip().endswith(mod.EXTERNAL_IVM.name):
+            patched_lines.append(f"{new_hash}  benchmarks/external-v1/{mod.EXTERNAL_IVM.name}")
+        else:
+            patched_lines.append(line)
+    patched_sums = tmp_path / "SHA256SUMS.txt"
+    patched_sums.write_text("\n".join(patched_lines) + "\n", encoding="utf-8")
+
+    mod.EXTERNAL_IVM = tampered
+    mod.EXTERNAL_V1_SHA256SUMS = patched_sums
+    m = mod.Macros()
+    mod.compute_external_baselines(m)
+    assert mod.FAILURES, "a corrupted ext2.d_disagree_total must fail the recomputed-sum " \
+        "cross-check, even with a patched SHA256SUMS.txt"
+    assert any("d_disagree_total" in f for f in mod.FAILURES)
 
 
 # --------------------------------------------------------------------------
