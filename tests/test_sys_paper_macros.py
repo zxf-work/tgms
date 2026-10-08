@@ -83,6 +83,8 @@ def _run_all_landed(mod):
     mod.compute_c7_storm_v1(m)
     mod.compute_c7_storm_v2_probe(m)
     mod.compute_c7_storm_v2(m)
+    mod.compute_c7_storm_v2_sum_mode(m)
+    mod.compute_c7_storm_v2_probe_sum_mode(m)
     mod.compute_d160(m)
     mod.compute_d160_llm_direct_fix(m)
     mod.compute_c2(m)
@@ -101,6 +103,7 @@ def _run_all_landed(mod):
     mod.compute_ldbc_format3_rebuild(m)
     mod.compute_b7_scale(m)
     mod.compute_external_baselines(m)
+    mod.compute_ext_sum_mode(m)
     return m
 
 
@@ -298,6 +301,36 @@ FROZEN_LANDED_VALUES = {
     "recStormV2SpeedupCollegeMsgC4Deep": "8.071",
     "recStormV2SpeedupGridMin": "4.588",
     "recStormV2SpeedupGridMax": "8.863",
+    "recStormV2LOneSumP50SynthC1None": "69{,}958",
+    "recStormV2SpeedupSumSynthC1None": "2.16",
+    "recStormV2LOneSumP50SynthC1Deep": "72{,}122",
+    "recStormV2SpeedupSumSynthC1Deep": "2.11",
+    "recStormV2LOneSumP50SynthC3None": "60{,}280",
+    "recStormV2SpeedupSumSynthC3None": "2.35",
+    "recStormV2LOneSumP50SynthC3Deep": "66{,}603",
+    "recStormV2SpeedupSumSynthC3Deep": "2.22",
+    "recStormV2LOneSumP50SynthC4None": "49{,}003",
+    "recStormV2SpeedupSumSynthC4None": "2.92",
+    "recStormV2LOneSumP50SynthC4Deep": "72{,}304",
+    "recStormV2SpeedupSumSynthC4Deep": "2.13",
+    "recStormV2LOneSumP50CollegeMsgC1None": "106{,}047",
+    "recStormV2SpeedupSumCollegeMsgC1None": "1.84",
+    "recStormV2LOneSumP50CollegeMsgC1Deep": "97{,}893",
+    "recStormV2SpeedupSumCollegeMsgC1Deep": "2.10",
+    "recStormV2LOneSumP50CollegeMsgC3None": "83{,}599",
+    "recStormV2SpeedupSumCollegeMsgC3None": "2.36",
+    "recStormV2LOneSumP50CollegeMsgC3Deep": "89{,}904",
+    "recStormV2SpeedupSumCollegeMsgC3Deep": "2.18",
+    "recStormV2LOneSumP50CollegeMsgC4None": "58{,}600",
+    "recStormV2SpeedupSumCollegeMsgC4None": "3.33",
+    "recStormV2LOneSumP50CollegeMsgC4Deep": "51{,}152",
+    "recStormV2SpeedupSumCollegeMsgC4Deep": "4.03",
+    "recStormV2SpeedupSumGridMin": "1.66",
+    "recStormV2SpeedupSumGridMedian": "2.26",
+    "recStormV2SpeedupSumGridMax": "4.35",
+    "recStormV2SpeedupSumN1kSeed0": "2.16",
+    "recStormV2LOneE2eOverCheckMedian": "0.999",
+    "recStormV2SpeedupSumProbe": "1.95",
     "recD160Tasks": "94",
     "recD160TaskRuns": "282",
     "recD160OursCarrying": "112",
@@ -708,6 +741,9 @@ FROZEN_LANDED_VALUES = {
     "recExt1SpeedupLOneMin": "0.14",
     "recExt1SpeedupCellsScored": "12",
     "recExt1SpeedupCellsMeeting": "0",
+    "recExt1ControlSpeedupSumMedian": "2.13",
+    "recExt1SpeedupLOneSumMedian": "0.52",
+    "recExt1SpeedupLOneSumMin": "0.06",
     "recExt2Cells": "43",
     "recExt2AgreeCells": "43",
     "recExt2Families": "13",
@@ -718,6 +754,10 @@ FROZEN_LANDED_VALUES = {
     "recExt2RatioHours": "1.68\\times 10^{-3}",
     "recExt2RatioDays": "1.31\\times 10^{-3}",
     "recExt2RatioDeep": "7.83\\times 10^{-4}",
+    "recExt2RatioSumRecent": "6.63\\times 10^{-4}",
+    "recExt2RatioSumHours": "7.22\\times 10^{-4}",
+    "recExt2RatioSumDays": "5.68\\times 10^{-4}",
+    "recExt2RatioSumDeep": "3.37\\times 10^{-4}",
     "recExt2CrossoverBand": "none",
     "recExt2WithheldFalseFreshIvm": "39",
     "recExt2WithheldFalseFreshWatermark": "0",
@@ -1568,6 +1608,121 @@ def test_storm_v2_c1_survivor_fraction_and_precision_are_medians_over_240_batche
     assert values["recStormV2PrecisionSynthC1Median"] == f"{expected_synth_precision:.3f}"
     assert (values["recStormV2PrecisionCollegeMsgC1Median"]
             == f"{expected_collegemsg_precision:.3f}")
+
+
+def test_e2e_percentile_disagrees_with_statistics_median_on_an_even_sample():
+    """`_e2e_percentile` reimplements tgms/eval/storm.py's own nearest-rank
+    `_percentile` (module docstring, W2ae section) specifically because
+    `statistics.median` disagrees with it on an even-sized batch list --
+    every real storm-v2 cell has exactly 20 batches. On this toy 4-value
+    list, nearest-rank picks index round(0.5*3)=2 (the 3rd-smallest, 30),
+    while `statistics.median` averages the two middle values (25)."""
+    mod = _load("sys_paper_macros")
+    values = [10.0, 20.0, 30.0, 40.0]
+    assert mod._e2e_percentile(values, 0.5) == 30.0
+    assert statistics.median(values) == 25.0
+    assert mod._e2e_percentile(values, 0.5) != statistics.median(values)
+
+
+def test_close_rel_flags_a_deviation_beyond_the_relative_tolerance():
+    """Direct unit test of the relative-tolerance helper Lane W2ae's sum-
+    mode reconstruction uses for its "within 0.5%" reproduction check --
+    tight enough that a fixed absolute tolerance would be wrong at both
+    the small and large ends of the millisecond-scale values it compares
+    (a cell's ttf_p50_ms ranges from the tens of thousands to the
+    hundreds of thousands across this file)."""
+    mod = _load("sys_paper_macros")
+
+    mod.close_rel(100300.0, 100000.0, 0.005, "within tolerance (0.3% of 100000)")
+    assert mod.FAILURES == []
+
+    mod.close_rel(101000.0, 100000.0, 0.005, "beyond tolerance (1.0% of 100000)")
+    assert len(mod.FAILURES) == 1
+    assert "beyond tolerance" in mod.FAILURES[0]
+
+
+def test_sum_mode_reconstruction_on_a_tiny_two_cell_three_batch_fixture():
+    """Exercises the exact reconstruction arithmetic
+    `compute_c7_storm_v2_sum_mode` runs against the real 36-cell grid --
+    `_e2e_percentile` for both the sum-mode value and the end-to-end
+    reproduction check, `close_rel` for the 0.5% bar -- against a tiny,
+    hand-computed 2-cell x 3-batch fixture built in exactly the schema
+    the real per-batch rows use (arms.tgms-L1.{check_wall_ms,
+    refresh_wall_ms,ttf_ms}, arms.global-recompute.ttf_ms). One cell's
+    committed end-to-end ttf_p50_ms is internally consistent with its own
+    raw batches (reproduces within 0.5%, as every real cell in this repo
+    does); the other cell's is deliberately wrong by 5% -- proving the
+    reproduction check actually rejects a bad file mapping instead of
+    passing unconditionally."""
+    mod = _load("sys_paper_macros")
+
+    # Cell A: tgms-L1 check/refresh/ttf per batch (end-to-end mode, so
+    # ttf_ms is NOT check+refresh -- the whole point of this section).
+    cell_a_check = [100.0, 140.0, 120.0]
+    cell_a_refresh = [200.0, 150.0, 190.0]
+    cell_a_ttf = [101.0, 139.0, 121.0]  # end-to-end: ~= check alone
+    cell_a_gr_ttf = [900.0, 950.0, 1000.0]
+    # nearest-rank p50 over 3 values, k = round(0.5*2) = 1 -> the median
+    # (odd-length lists happen to agree with statistics.median; the
+    # disagreement on an even count is covered by the dedicated test
+    # above) -- hand-computed expectation, not read back from the code
+    # under test. check+refresh per batch: [300, 290, 310]; sorted
+    # [290, 300, 310][1] == 300.
+    expected_sum_a = [c + r for c, r in zip(cell_a_check, cell_a_refresh)]
+    assert expected_sum_a == [300.0, 290.0, 310.0]
+    expected_sum_p50_a = 300.0
+    expected_ttf_p50_a = sorted(cell_a_ttf)[1]
+    expected_gr_p50_a = sorted(cell_a_gr_ttf)[1]
+
+    recomputed_sum_p50_a = mod._e2e_percentile(expected_sum_a, 0.5)
+    recomputed_ttf_p50_a = mod._e2e_percentile(cell_a_ttf, 0.5)
+    recomputed_gr_p50_a = mod._e2e_percentile(cell_a_gr_ttf, 0.5)
+    assert recomputed_sum_p50_a == expected_sum_p50_a
+    assert recomputed_ttf_p50_a == expected_ttf_p50_a
+    assert recomputed_gr_p50_a == expected_gr_p50_a
+
+    # Cell A's "committed" end-to-end ttf_p50_ms (what a real
+    # storm-v2-main-grid-2026-09-15-rows.jsonl row's own
+    # summary.arms.tgms-L1.ttf_p50_ms field would carry) is exactly the
+    # recomputed value here -- reproduces within 0.5% trivially.
+    committed_ttf_p50_a = recomputed_ttf_p50_a
+    mod.CHECKS = 0
+    mod.FAILURES = []
+    mod.close_rel(recomputed_ttf_p50_a, committed_ttf_p50_a, 0.005,
+                   "cell A: reproduction check")
+    assert mod.FAILURES == [], "a correct file mapping must reproduce within 0.5%"
+
+    # Cell B: same shape, but its "committed" ttf_p50_ms is deliberately
+    # wrong by 5% (as if it were matched to the wrong tarball member) --
+    # the reproduction check must now fail.
+    cell_b_ttf = [50.0, 55.0, 60.0]
+    recomputed_ttf_p50_b = mod._e2e_percentile(cell_b_ttf, 0.5)
+    wrong_committed_ttf_p50_b = recomputed_ttf_p50_b * 1.05
+    mod.close_rel(recomputed_ttf_p50_b, wrong_committed_ttf_p50_b, 0.005,
+                   "cell B: reproduction check (deliberately wrong mapping)")
+    assert len(mod.FAILURES) == 1, "a 5% mismatch must fail the 0.5% reproduction bar"
+    assert "cell B" in mod.FAILURES[0]
+
+
+def test_tampered_storm_v2_records_tarball_sha_mismatch_fails_sum_mode(tmp_path):
+    """Sibling of test_tampered_storm_v2_records_tarball_sha_mismatch_fails
+    for compute_c7_storm_v2_sum_mode -- a second, independent function
+    that also reads storm-v2-records-36-tasks.tar.gz and re-runs its own
+    sha256 gate rather than assuming compute_c7_storm_v2 already checked
+    it in the same process (see that function's own module comment)."""
+    mod = _load("sys_paper_macros")
+    original = mod.STORM_V2_RECORDS_TARBALL.read_bytes()
+    tampered_bytes = bytearray(original)
+    tampered_bytes[-1] ^= 0xFF
+    tampered = tmp_path / "storm-v2-records-36-tasks.tar.gz"
+    tampered.write_bytes(bytes(tampered_bytes))
+    assert tampered.read_bytes() != original
+
+    mod.STORM_V2_RECORDS_TARBALL = tampered
+    m = mod.Macros()
+    mod.compute_c7_storm_v2_sum_mode(m)
+    assert mod.FAILURES, "a tampered tarball byte must fail the sha256 check"
+    assert any("sha256" in f.lower() or "sum-mode" in f.lower() for f in mod.FAILURES)
 
 
 def test_tampered_d160_rows_digest_mismatch_fails(tmp_path):

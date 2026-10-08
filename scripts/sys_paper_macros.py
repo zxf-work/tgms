@@ -137,6 +137,42 @@ skeleton --
       -- the withheld-correction cell's own record carries no timing
       field for it, only booleans.
 
+  W2ae (sum-mode time-to-fresh reconstruction, landed 2026-10-08) --
+      ``tgms/eval/storm.py`` has two TTF measurement modes: ``sum``
+      (``ttf_ms = check_wall_ms + refresh_wall_ms``) and ``end-to-end``
+      (one continuous timed check-then-refresh interval). The committed
+      storm-v2 main grid (all 36 cells) and 18 of the 19 external-v1
+      tgms-control cells ran in ``end-to-end`` mode -- and because the
+      ``tgms-L0`` interval runs first each batch and republishes every
+      artifact it nominates, the ``tgms-L1`` interval that follows finds
+      its own nominated set already fresh and refreshes nothing: its
+      *recorded* ``ttf_ms`` collapses to roughly its own (separately
+      measured) ``check_wall_ms`` alone (``recStormV2LOneE2eOverCheckMedian``
+      below, median 0.999 over every end-to-end cell/batch), not
+      ``check_wall_ms + refresh_wall_ms``. None of the already-landed
+      ``recStormV2Speedup*``/``recExt1*``/``recExt2Ratio*`` macros above
+      are touched -- this section lands their sum-mode-corrected siblings
+      beside them (``compute_c7_storm_v2_sum_mode``,
+      ``compute_c7_storm_v2_probe_sum_mode``, ``compute_ext_sum_mode``
+      below), recomputing the sum-mode value directly from each cell's
+      per-batch rows rather than its (misleading, for L1 under
+      end-to-end) committed ``ttf_p50_ms``. For the main grid and the
+      R-18 probe those per-batch rows are already committed and read
+      fresh, live, every run; for the control they are not (its own
+      ``-rows.jsonl`` sidecar carries only per-cell equality manifests,
+      and this lane may not add anything under ``benchmarks/**``) -- see
+      ``_EXT1_CONTROL_SUM_L1_P50_MS``'s own module-level comment above
+      for exactly how those 18 cells' numbers were derived and frozen.
+      One finding this task's own background note did not anticipate:
+      the R-18 probe turns out to already run in ``sum`` mode (every one
+      of its 5 batch rows carries ``ttf_mode: "sum"``) and so was never
+      affected by the end-to-end bug at all -- ``recStormV2SpeedupSumProbe``
+      recomputes to the same number (to rounding) as the existing,
+      already-correct ``recStormV2ProbeSpeedupN10k``, landed anyway both
+      because the task asked for it and as a live self-check that this
+      section's sum-mode arithmetic reproduces a value that needed no
+      correcting.
+
   W2m (storm-v2 R-18 probe, job 212295, addendum-3) --
       benchmarks/storm-v1/storm-v2-r18-probe-2026-09-15.json (+
       -rows.jsonl), the same cell as the v1 R-18 probe above
@@ -449,6 +485,128 @@ EXTERNAL_NEO4J_ROWS = EXTERNAL_V1 / "neo4j-recompute-2026-10-07-rows.jsonl"
 EXTERNAL_IVM = EXTERNAL_V1 / "ivm-differential-2026-10-07.json"
 EXTERNAL_IVM_ROWS = EXTERNAL_V1 / "ivm-differential-2026-10-07-rows.jsonl"
 EXTERNAL_TGMS_CONTROL = EXTERNAL_V1 / "tgms-control-2026-10-05.json"
+
+# Lane W2ae (sum-mode time-to-fresh reconstruction, landed 2026-10-08): the
+# module docstring's own W2ae section has the full story. In short,
+# `tgms/eval/storm.py`'s `end-to-end` TTF mode (used throughout the
+# committed storm-v2 main grid and 18 of the 19 tgms-control cells) times
+# `tgms-L1` after `tgms-L0` has already republished everything that batch,
+# so its *recorded* `ttf_ms` collapses to roughly `check_wall_ms` alone,
+# not `check_wall_ms + refresh_wall_ms` (the "sum" mode value, and the
+# correct quantity for a global-recompute/L1 speedup claim). This section
+# recomputes that sum-mode value directly from each cell's per-batch rows.
+#
+# For the storm-v2 main grid and R-18 probe, those per-batch rows are
+# already committed (`storm-v2-records-36-tasks.tar.gz`,
+# `storm-v2-r18-probe-2026-09-15-rows.jsonl`) and read fresh, live, every
+# run -- no frozen constants needed for either.
+#
+# For the external-v1 same-host control, they are NOT committed: the
+# repo's own `tgms-control-2026-10-05-rows.jsonl` sidecar carries only
+# per-cell equality manifests (`t1_equality`), never raw per-batch rows
+# (`storm_campaign_merge.py`'s per-batch data for this control stays on
+# xzgpu, `/mnt/project/xzhang/tgms/external-v1/t1/<cell>/storm-*-rows
+# .jsonl`), and this lane's own rule forbids adding anything under
+# `benchmarks/**`. The two constants below are the sum-mode tgms-L1 time-
+# to-fresh p50 and the per-batch (ttf_ms / check_wall_ms) ratio, for each
+# of the 18 end-to-end control cells (the 19th, the probe cell
+# `synth-iv-60k-c1-none-n10000-s0`, already runs in `sum` mode per its own
+# `config.measure_ttf` and needs no correction -- see
+# `compute_external_baselines`'s own `PROBE_CID`) -- computed OFFLINE from
+# a 2026-10-08 read-only `scp` pull of each cell's own rows file named
+# above (nothing on xzgpu was modified), using the identical
+# `_e2e_percentile`-based sum-mode arithmetic this section runs live
+# against the main grid. Before trusting either constant, that same pull
+# was cross-checked offline by reproducing each cell's COMMITTED (sha256-
+# gated) `arms.{tgms-L1,global-recompute}.ttf_p50_ms` end-to-end values
+# from the pulled rows' own raw `ttf_ms` -- 0.0% deviation on all 18
+# cells, well inside the task's 0.5% bar -- proof the pulled file really
+# is the one that produced the committed number. That check is not (and
+# cannot be) repeated at generator run time, since the raw rows
+# themselves are not available then; each entry's own sha256 (of the
+# pulled file's exact bytes) is recorded beside it as the offline
+# derivation's own evidence trail.
+_EXT1_CONTROL_SUM_L1_P50_MS: dict[str, float] = {
+    # sha256 of the pulled .../t1/<cell>/storm-*-rows.jsonl, 2026-10-08:
+    "collegemsg-c1-deep-n1000-s0": 96785.77146911994,
+    # sha256 7f8ca3f8396121e0e8fe36912ad3902e6726c6248bbab310383608ffa96cd635
+    "collegemsg-c1-none-n1000-s0": 105548.80063881865,
+    # sha256 2fc471a2c6bfd794ba7ac6dd9e0dbb0130df2374fb8b6f651c446e55d2774e07
+    "collegemsg-c3-days-n1000-s0": 100010.90024033329,
+    # sha256 dd1109f4341bd45890cbbf18981a50c5e6998451a6c69c6513fe462883b1060a
+    "collegemsg-c3-deep-n1000-s0": 106007.1211521572,
+    # sha256 69a61e35c6be1fd409add25092da5e13ecec691139d4c6e8e6023ffde26206ae
+    "collegemsg-c3-hours-n1000-s0": 107366.52316508116,
+    # sha256 f81c5712df4b21067868c2ad94e4888cba4df159f4b612aed85305c059b23c57
+    "collegemsg-c3-none-n1000-s0": 99110.53237822489,
+    # sha256 7848337aa3164a7d70bd9956e81ac728f81164630f3fe2c4611f28085bc17928
+    "collegemsg-c3-recent-n1000-s0": 93085.17591137206,
+    # sha256 35b939fbdad55802fc0165964dfb4f241a88db6c7e7f972544d39a3a150dc460
+    "collegemsg-c4-deep-n1000-s0": 106795.02980905818,
+    # sha256 8bb3837d6e7eeabd3df7627b0bcbb3f2e583dd0fca937385db3c7a90fb207aec
+    "collegemsg-c4-none-n1000-s0": 100745.15151840751,
+    # sha256 d2eee847c188637d42bfdc10a8298b065b7960fda5038d37283e04cb30987b43
+    "synth-iv-60k-c1-deep-n1000-s0": 109265.78131213319,
+    # sha256 5a1498b2a302c855f2f68e0a341c2aa40d7b398380b28b0541b787e4c1084740
+    "synth-iv-60k-c1-none-n1000-s0": 115583.96773698041,
+    # sha256 3bab2010886532a928d00c041a044e66e762e820268550e253210c74b595a9ae
+    "synth-iv-60k-c3-days-n1000-s0": 107371.1389604141,
+    # sha256 884773727a38756fa6d3466fa687915407a4fbda07f278589220de8eaef84728
+    "synth-iv-60k-c3-deep-n1000-s0": 115019.72104643937,
+    # sha256 a77157f542435f138a3e864f6d7faca6b2e6ef618c8bd5cef01d269756783b04
+    "synth-iv-60k-c3-hours-n1000-s0": 102970.82475118805,
+    # sha256 29d7e3677b63ef10fe1c2946819bd6817b623387b95caacf7a55ac55fca1b8b6
+    "synth-iv-60k-c3-none-n1000-s0": 101318.54351595393,
+    # sha256 642c26488c2a829387b4f3de04146b3208b74ae592d6a46e042e5c707c243e6c
+    "synth-iv-60k-c3-recent-n1000-s0": 112607.29504335904,
+    # sha256 8a703d737b9fb7c3a582bb41ac03084947e8bc21f3ae7704e3b088f719a407df
+    "synth-iv-60k-c4-deep-n1000-s0": 108293.70050434954,
+    # sha256 86a8df2af2b3c132cbdb29cb730c8f5babb47ba5563de90a292f5fab08f5b7ef
+    "synth-iv-60k-c4-none-n1000-s0": 80582.41732328315,
+    # sha256 f0d2ca8d9e9f964ecfee8602aa0a6e1c1075c91c8dc7b15ace5f35104b15d12e
+}
+eq_control_sum_cells = len(_EXT1_CONTROL_SUM_L1_P50_MS)
+assert eq_control_sum_cells == 18, (
+    f"_EXT1_CONTROL_SUM_L1_P50_MS: expected 18 end-to-end control cells, "
+    f"got {eq_control_sum_cells}")
+del eq_control_sum_cells
+
+# Per-batch (tgms-L1 ttf_ms / tgms-L1 check_wall_ms) ratios for the same
+# 18 cells and the same offline pull, rounded to 6 decimal places (ample
+# precision for the 3-decimal-place macro this feeds,
+# `recStormV2LOneE2eOverCheckMedian`) -- this is the "instrument-error
+# evidence" macro's control-side contribution, pooled with the main
+# grid's own per-batch ratios (recomputed live, no freezing needed) in
+# `compute_c7_storm_v2_sum_mode` below. Same offline provenance as
+# `_EXT1_CONTROL_SUM_L1_P50_MS` immediately above (same pulled files,
+# same 2026-10-08 date); not repeated per-cell here to avoid duplicating
+# 18 sha256 lines twice -- see that constant for them.
+_EXT1_CONTROL_L1_E2E_OVER_CHECK: dict[str, list[float]] = {
+    "collegemsg-c1-deep-n1000-s0": [1.007733, 1.000176, 0.997221, 0.995531, 0.992309, 1.00172, 0.991262, 0.993231, 0.99095, 0.999104, 1.00322, 1.002394, 1.000708, 0.99587, 0.999295, 0.996627, 0.992277, 0.998299, 0.990561, 0.995655],
+    "collegemsg-c1-none-n1000-s0": [1.002454, 0.998603, 1.003197, 0.993622, 0.996791, 0.995448, 0.997492, 1.006743, 1.005568, 0.995539, 0.999848, 0.993085, 0.994802, 0.993042, 0.995754, 0.98789, 0.998942, 0.99897, 0.992504, 0.985144],
+    "collegemsg-c3-days-n1000-s0": [1.012978, 0.99875, 1.000508, 0.998767, 0.993123, 0.994371, 0.994469, 0.997533, 0.991933, 0.994136, 1.002341, 0.99109, 0.99204, 0.99481, 1.002902, 1.000787, 1.004718, 0.997924, 0.997445, 0.994471],
+    "collegemsg-c3-deep-n1000-s0": [1.011898, 0.965757, 0.998672, 0.991755, 1.000028, 0.995838, 0.997551, 0.994643, 0.993369, 0.997346, 0.998702, 1.002041, 0.996927, 0.987008, 0.999767, 0.990866, 0.996605, 0.99919, 0.995683, 0.996168],
+    "collegemsg-c3-hours-n1000-s0": [1.011558, 0.996254, 0.990032, 0.999978, 0.99211, 1.004557, 0.992898, 0.994114, 0.990243, 1.000391, 0.998156, 1.000981, 0.990979, 0.997266, 0.999755, 0.994724, 0.996625, 1.000687, 0.986006, 0.999086],
+    "collegemsg-c3-none-n1000-s0": [1.011968, 1.004837, 0.995738, 1.001352, 0.995244, 1.006495, 1.001999, 0.999843, 0.999417, 0.993944, 0.997597, 0.994681, 1.003405, 0.998991, 0.995496, 0.996007, 0.998318, 0.991592, 0.990354, 0.992139],
+    "collegemsg-c3-recent-n1000-s0": [1.003754, 1.004394, 1.000266, 1.001894, 0.990836, 1.00227, 0.998109, 0.995199, 0.990217, 1.000106, 0.990159, 0.997644, 0.995219, 0.993011, 1.002524, 0.99072, 0.994387, 1.000936, 0.996289, 0.998916],
+    "collegemsg-c4-deep-n1000-s0": [1.010628, 1.007737, 0.997648, 1.002869, 1.007552, 0.997932, 0.999377, 0.986995, 0.991518, 0.984568, 0.423496, 0.997962, 0.991415, 1.000162, 0.992754, 1.000078, 0.991394, 0.997149, 0.998023, 0.988898],
+    "collegemsg-c4-none-n1000-s0": [1.010356, 1.001667, 0.993447, 1.002163, 0.987932, 1.001256, 1.000697, 0.99148, 0.990659, 0.999436, 0.424568, 1.003806, 0.998377, 0.995721, 0.997786, 0.992987, 0.996042, 0.994718, 0.987982, 0.992819],
+    "synth-iv-60k-c1-deep-n1000-s0": [1.006512, 1.005862, 0.998879, 0.999065, 0.994578, 0.995499, 1.004497, 0.994344, 1.001427, 0.994896, 0.999649, 0.997154, 1.004681, 0.992091, 0.998213, 1.000913, 1.011959, 0.993284, 0.994277, 0.993363],
+    "synth-iv-60k-c1-none-n1000-s0": [1.014571, 0.999154, 0.99498, 0.999989, 0.99793, 1.002065, 0.995777, 0.992123, 0.995297, 0.999009, 0.998878, 0.995168, 1.004676, 0.994307, 0.991255, 0.994245, 0.996279, 0.996167, 0.99326, 0.997362],
+    "synth-iv-60k-c3-days-n1000-s0": [1.014674, 0.998843, 0.998368, 1.000211, 0.997085, 0.997684, 0.993162, 0.99255, 0.995893, 0.996058, 0.995514, 1.000025, 0.995357, 0.997431, 0.998262, 1.000241, 0.997181, 0.998979, 0.99625, 0.996871],
+    "synth-iv-60k-c3-deep-n1000-s0": [1.012943, 1.000437, 1.003086, 0.998601, 1.003451, 0.996207, 0.996387, 0.993867, 1.004589, 0.992479, 1.000896, 1.005162, 0.995057, 0.997315, 0.989261, 0.995749, 0.998508, 0.998915, 0.991481, 1.00076],
+    "synth-iv-60k-c3-hours-n1000-s0": [1.007653, 1.009601, 1.001251, 0.995936, 0.998344, 1.001948, 0.999422, 0.998947, 1.001858, 0.998081, 1.001484, 0.996831, 1.002186, 0.998547, 0.988675, 0.991831, 0.986167, 1.004919, 0.997712, 0.983683],
+    "synth-iv-60k-c3-none-n1000-s0": [1.012103, 1.001168, 0.996323, 0.999839, 0.999193, 0.999108, 0.99809, 1.001863, 0.999725, 0.992268, 0.994418, 0.991577, 1.000719, 0.993929, 0.993802, 1.001063, 0.999472, 1.000456, 0.992829, 0.989761],
+    "synth-iv-60k-c3-recent-n1000-s0": [1.011138, 0.997318, 0.998043, 1.008483, 0.996362, 1.001226, 1.001133, 1.003678, 0.99606, 0.98662, 0.996331, 0.987976, 0.99091, 1.000773, 0.992626, 0.997228, 1.002168, 0.993749, 0.999376, 1.010534],
+    "synth-iv-60k-c4-deep-n1000-s0": [1.013036, 1.000653, 1.004769, 0.99871, 1.003682, 0.992708, 0.990214, 0.998837, 0.998806, 0.997342, 0.444894, 0.997245, 1.000232, 0.996613, 0.997465, 0.996161, 1.001356, 0.998401, 0.993546, 0.991866],
+    "synth-iv-60k-c4-none-n1000-s0": [1.012521, 1.003493, 0.993832, 1.003425, 0.997228, 1.002346, 0.995432, 1.004236, 0.998174, 0.993402, 0.444202, 1.000947, 1.000814, 1.0025, 1.008298, 0.995522, 0.991606, 0.996737, 0.994377, 0.994046],
+}
+eq_control_ratio_cells = len(_EXT1_CONTROL_L1_E2E_OVER_CHECK)
+assert eq_control_ratio_cells == 18 and set(_EXT1_CONTROL_L1_E2E_OVER_CHECK) == set(
+    _EXT1_CONTROL_SUM_L1_P50_MS), (
+    f"_EXT1_CONTROL_L1_E2E_OVER_CHECK: expected the same 18 cells as "
+    f"_EXT1_CONTROL_SUM_L1_P50_MS, got {eq_control_ratio_cells}")
+del eq_control_ratio_cells
 
 D160_DIR = ROOT / "benchmarks" / "d160-collegemsg-v1"
 D160_MANIFEST = D160_DIR / "manifest-2026-09-14.json"
@@ -796,6 +954,38 @@ def close(got: float, want: float, tol: float, what: str):
     require(abs(got - want) <= tol,
             f"{what}: derived {got!r} not within {tol} of {want!r}")
     return got
+
+
+def close_rel(got: float, want: float, rel_tol: float, what: str):
+    """Relative-tolerance sibling of ``close()`` -- for quantities (like a
+    millisecond-scale ``ttf_p50_ms``) whose absolute magnitude varies by
+    orders of magnitude across cells, where a fixed absolute tolerance
+    would be meaninglessly loose on a small cell and meaninglessly tight
+    on a large one. Added for Lane W2ae's sum-mode reconstruction, whose
+    task brief asks for a reproduction check "to within 0.5%"."""
+    denom = abs(want) if want else 1.0
+    require(abs(got - want) <= rel_tol * denom,
+            f"{what}: derived {got!r} not within {rel_tol:.3%} of {want!r}")
+    return got
+
+
+def _e2e_percentile(values: list[float], p: float) -> float:
+    """Reimplements ``tgms/eval/storm.py``'s own ``_percentile`` (nearest-
+    rank, ``k = round(p * (len-1))``) -- restated here, never imported
+    (this generator never imports ``tgms/**``, per its own house rule
+    above). Every ``ttf_p50_ms``/``ttf_p95_ms`` this generator cross-
+    checks anywhere was produced by that exact function; critically,
+    ``statistics.median`` disagrees with it on an even-sized batch list
+    (every storm-v2 cell here has exactly 20 batches) -- ``median``
+    averages the two middle values, nearest-rank does not -- which
+    silently fails a same-value reproduction check at the ~1% level, not
+    byte-for-byte as it should. Used throughout Lane W2ae's sum-mode
+    reconstruction (``compute_c7_storm_v2_sum_mode`` and friends below)."""
+    if not values:
+        raise ValueError("_e2e_percentile: empty values")
+    s = sorted(values)
+    k = min(len(s) - 1, max(0, int(round(p * (len(s) - 1)))))
+    return s[k]
 
 
 def load_jsonl(path: Path) -> list[dict]:
@@ -3398,6 +3588,255 @@ def compute_c7_storm_v2(m: Macros) -> None:
     m.add("recStormV2SpeedupGridMax", f"{grid_max:.3f}",
           f"{relpath(STORM_V2_MAIN_GRID_ROWS)}: maximum per-cell "
           "summary.arms.{global-recompute,tgms-L1}.ttf_p50_ms ratio over all 36 cells")
+
+
+# --------------------------------------------------------------------------
+# W2ae (partial) -- sum-mode time-to-fresh reconstruction, storm-v2 main
+# grid (module docstring's own W2ae section has the full story). Reads
+# the same two committed files as compute_c7_storm_v2 above
+# (STORM_V2_MAIN_GRID_ROWS + STORM_V2_RECORDS_TARBALL) fresh, independent
+# of that function having already run -- including the tarball's own
+# sha256 gate, not assumed already-checked (this function is called on
+# its own in some tests). None of compute_c7_storm_v2's own macros
+# (recStormV2Speedup*, recStormV2SpeedupGridMin/Max, ...) are read,
+# recomputed differently, or overwritten here -- every macro below is a
+# new name.
+# --------------------------------------------------------------------------
+
+def compute_c7_storm_v2_sum_mode(m: Macros) -> None:
+    readme_text = STORM_V1_README.read_text(encoding="utf-8")
+    readme_sha_match = re.search(
+        r"storm-v2-records-36-tasks\.tar\.gz`\s*\n\(sha256 `([0-9a-f]{64})`\)", readme_text)
+    require(readme_sha_match is not None,
+            f"storm-v2 sum-mode: {relpath(STORM_V1_README)} names a sha256 for "
+            "storm-v2-records-36-tasks.tar.gz in its Per-batch rows section")
+    if readme_sha_match is not None:
+        eq(readme_sha_match.group(1), STORM_V2_RECORDS_TARBALL_SHA256,
+           "storm-v2 sum-mode: frozen sha256 constant matches "
+           f"{relpath(STORM_V1_README)}'s own quoted value")
+    eq(sha256_file(STORM_V2_RECORDS_TARBALL), STORM_V2_RECORDS_TARBALL_SHA256,
+       f"storm-v2 sum-mode: {relpath(STORM_V2_RECORDS_TARBALL)} sha256 matches the frozen/"
+       "README-quoted value")
+
+    rows = load_jsonl(STORM_V2_MAIN_GRID_ROWS)
+    eq(len(rows), 36, "storm-v2 sum-mode: rows.jsonl line count")
+
+    with tarfile.open(STORM_V2_RECORDS_TARBALL, "r:gz") as tf:
+        tar_names = set(tf.getnames())
+        sum_l1_p50: dict[int, float] = {}
+        gr_p50: dict[int, float] = {}
+        e2e_over_check: list[float] = []
+        max_l1_dev = 0.0
+        max_gr_dev = 0.0
+        for r in rows:
+            tid = r["_task_id"]
+            idx = r["record"].index("records/")
+            member = r["record"][idx:]
+            require(member in tar_names,
+                    f"storm-v2 sum-mode: task {tid}'s own record field names a member "
+                    f"({member}) present in the tarball")
+            raw = tf.extractfile(member).read().decode("utf-8")
+            batch_rows = [json.loads(line) for line in raw.splitlines() if line.strip()]
+            eq(len(batch_rows), r["config"]["batches"],
+               f"storm-v2 sum-mode task {tid}: batch row count matches config.batches")
+
+            l1_check = [b["arms"]["tgms-L1"]["check_wall_ms"] for b in batch_rows]
+            l1_refresh = [b["arms"]["tgms-L1"]["refresh_wall_ms"] for b in batch_rows]
+            l1_ttf = [b["arms"]["tgms-L1"]["ttf_ms"] for b in batch_rows]
+            gr_ttf = [b["arms"]["global-recompute"]["ttf_ms"] for b in batch_rows]
+            modes = {b.get("ttf_mode") for b in batch_rows}
+            eq(modes, {"end-to-end"},
+               f"storm-v2 sum-mode task {tid}: every batch row's own ttf_mode is "
+               "end-to-end (the committed main grid's config.ttf_modes == "
+               "[\"end-to-end\"])")
+
+            # Reproduction check (verify the file mapping and the nearest-
+            # rank percentile match tgms/eval/storm.py's own aggregation,
+            # before trusting the sum-mode value below): recompute both
+            # tgms-L1's and global-recompute's end-to-end ttf_p50_ms from
+            # the raw per-batch ttf_ms and compare against the committed
+            # summary.arms[*].ttf_p50_ms this same row already carries.
+            recomputed_l1_ttf_p50 = _e2e_percentile(l1_ttf, 0.5)
+            recomputed_gr_ttf_p50 = _e2e_percentile(gr_ttf, 0.5)
+            committed_l1_ttf_p50 = r["summary"]["arms"]["tgms-L1"]["ttf_p50_ms"]
+            committed_gr_ttf_p50 = r["summary"]["arms"]["global-recompute"]["ttf_p50_ms"]
+            close_rel(recomputed_l1_ttf_p50, committed_l1_ttf_p50, 0.005,
+                      f"storm-v2 sum-mode task {tid}: recomputed end-to-end tgms-L1 "
+                      "ttf_p50_ms (nearest-rank over raw per-batch ttf_ms) reproduces "
+                      "the committed summary.arms.tgms-L1.ttf_p50_ms")
+            close_rel(recomputed_gr_ttf_p50, committed_gr_ttf_p50, 0.005,
+                      f"storm-v2 sum-mode task {tid}: recomputed global-recompute "
+                      "ttf_p50_ms reproduces the committed summary.arms.global-recompute"
+                      ".ttf_p50_ms")
+            dev_l1 = abs(recomputed_l1_ttf_p50 - committed_l1_ttf_p50) / committed_l1_ttf_p50
+            dev_gr = abs(recomputed_gr_ttf_p50 - committed_gr_ttf_p50) / committed_gr_ttf_p50
+            max_l1_dev = max(max_l1_dev, dev_l1)
+            max_gr_dev = max(max_gr_dev, dev_gr)
+
+            sum_vals = [c + rf for c, rf in zip(l1_check, l1_refresh)]
+            sum_l1_p50[tid] = _e2e_percentile(sum_vals, 0.5)
+            gr_p50[tid] = committed_gr_ttf_p50
+            for c, t in zip(l1_check, l1_ttf):
+                if c:
+                    e2e_over_check.append(t / c)
+
+    close(max_l1_dev, 0.0, 0.0005, "storm-v2 sum-mode frozen: max relative deviation, "
+          "recomputed vs. committed end-to-end tgms-L1 ttf_p50_ms, over all 36 cells "
+          "(0.5% was the task's own bar; this reproduces exactly)")
+    close(max_gr_dev, 0.0, 0.0005, "storm-v2 sum-mode frozen: max relative deviation, "
+          "recomputed vs. committed end-to-end global-recompute ttf_p50_ms, over all 36 "
+          "cells")
+
+    speedup_sum = {tid: gr_p50[tid] / sum_l1_p50[tid] for tid in sum_l1_p50}
+
+    groups: dict[tuple[str, str, str | None], list[int]] = {}
+    for r in rows:
+        cfg = r["config"]
+        groups.setdefault((cfg["store"], cfg["mix"], cfg["age"]), []).append(r["_task_id"])
+    eq(len(groups), 12, "storm-v2 sum-mode: 12 distinct (store, mix, age) groups")
+
+    for key, tids in groups.items():
+        store, mix, age = key
+        eq(len(tids), 3, f"storm-v2 sum-mode: group {key} covers exactly 3 seeds")
+        sum_p50_med = statistics.median(sum_l1_p50[tid] for tid in tids)
+        speedup_med = statistics.median(speedup_sum[tid] for tid in tids)
+        name_p50 = (f"recStormV2LOneSumP50{_STORM_V2_STORE_TOKEN[store]}"
+                    f"{_STORM_V2_MIX_TOKEN[mix]}{_STORM_V2_AGE_TOKEN[age]}")
+        name_speedup = (f"recStormV2SpeedupSum{_STORM_V2_STORE_TOKEN[store]}"
+                        f"{_STORM_V2_MIX_TOKEN[mix]}{_STORM_V2_AGE_TOKEN[age]}")
+        m.add(name_p50, tex_num(round(sum_p50_med)),
+              f"{relpath(STORM_V2_RECORDS_TARBALL)}: median over seeds 0/1/2 of the "
+              "per-seed sum-mode tgms-L1 time-to-fresh p50 (_e2e_percentile of "
+              "arms.tgms-L1.check_wall_ms + arms.tgms-L1.refresh_wall_ms over the 20 "
+              f"per-batch rows), ms, at (store={store}, mix={mix}, "
+              f"age={age or 'none'}, n_artifacts=1000)")
+        m.add(name_speedup, f"{speedup_med:.2f}",
+              f"{relpath(STORM_V2_RECORDS_TARBALL)}: median over seeds 0/1/2 of "
+              "(summary.arms.global-recompute.ttf_p50_ms / sum-mode tgms-L1 p50) -- "
+              f"the corrected sibling of recStormV2Speedup{_STORM_V2_STORE_TOKEN[store]}"
+              f"{_STORM_V2_MIX_TOKEN[mix]}{_STORM_V2_AGE_TOKEN[age]}, at "
+              f"(store={store}, mix={mix}, age={age or 'none'}, n_artifacts=1000)")
+
+    all_speedups_sum = list(speedup_sum.values())
+    grid_min_sum = min(all_speedups_sum)
+    grid_median_sum = statistics.median(all_speedups_sum)
+    grid_max_sum = max(all_speedups_sum)
+    m.add("recStormV2SpeedupSumGridMin", f"{grid_min_sum:.2f}",
+          f"{relpath(STORM_V2_RECORDS_TARBALL)}: minimum per-cell (global-recompute "
+          "ttf_p50_ms / sum-mode tgms-L1 p50) over all 36 cells -- the corrected "
+          "sibling of recStormV2SpeedupGridMin")
+    m.add("recStormV2SpeedupSumGridMedian", f"{grid_median_sum:.2f}",
+          f"{relpath(STORM_V2_RECORDS_TARBALL)}: median per-cell (global-recompute "
+          "ttf_p50_ms / sum-mode tgms-L1 p50) over all 36 cells (compute_c7_storm_v2's "
+          "own recStormV2Speedup{Grid}* has no Median sibling; added here)")
+    m.add("recStormV2SpeedupSumGridMax", f"{grid_max_sum:.2f}",
+          f"{relpath(STORM_V2_RECORDS_TARBALL)}: maximum per-cell (global-recompute "
+          "ttf_p50_ms / sum-mode tgms-L1 p50) over all 36 cells -- the corrected "
+          "sibling of recStormV2SpeedupGridMax")
+
+    n1k_target = [r for r in rows if r["config"]["store"] == "synth-iv-60k"
+                  and r["config"]["mix"] == "c1" and r["config"]["age"] is None
+                  and r["config"]["seed"] == 0]
+    eq(len(n1k_target), 1, "storm-v2 sum-mode: exactly one cell at (synth-iv-60k, c1, "
+       "age none, seed 0)")
+    n1k_tid = n1k_target[0]["_task_id"]
+    m.add("recStormV2SpeedupSumN1kSeed0", f"{speedup_sum[n1k_tid]:.2f}",
+          f"{relpath(STORM_V2_RECORDS_TARBALL)}: (global-recompute ttf_p50_ms / "
+          "sum-mode tgms-L1 p50) at (store=synth-iv-60k, mix=c1, age=none, seed=0, "
+          "n_artifacts=1000) -- the corrected sibling of recStormV2SpeedupN1kSeed0, "
+          "same cell")
+
+    # recStormV2LOneE2eOverCheckMedian: pooled over every end-to-end cell
+    # and batch this generator has access to -- the main grid's 720
+    # batches, recomputed live just above, plus the external-v1 control's
+    # 360 batches, frozen in _EXT1_CONTROL_L1_E2E_OVER_CHECK above (its
+    # own module-level comment has the full provenance; those raw rows
+    # are not committed, so they cannot be read live here). The storm-v2
+    # R-18 probe is deliberately excluded: its own rows all carry
+    # ttf_mode == "sum" (compute_c7_storm_v2_probe_sum_mode below), so it
+    # is not an end-to-end cell at all.
+    pooled_ratios = list(e2e_over_check)
+    for cell_ratios in _EXT1_CONTROL_L1_E2E_OVER_CHECK.values():
+        pooled_ratios.extend(cell_ratios)
+    eq(len(pooled_ratios), 720 + 18 * 20,
+       "storm-v2 sum-mode: pooled end-to-end (ttf_ms / check_wall_ms) sample size "
+       "(36 main-grid cells x 20 batches + 18 control cells x 20 batches)")
+    e2e_over_check_median = statistics.median(pooled_ratios)
+    close(e2e_over_check_median, 0.999, 0.001, "storm-v2 sum-mode frozen: median "
+          "(tgms-L1 ttf_ms / tgms-L1 check_wall_ms) pooled over every end-to-end cell "
+          "and batch (main grid + control) -- the instrument-error evidence that the "
+          "end-to-end TTF mode's recorded tgms-L1.ttf_ms is really just its own "
+          "check_wall_ms, not check_wall_ms + refresh_wall_ms")
+    m.add("recStormV2LOneE2eOverCheckMedian", f"{e2e_over_check_median:.3f}",
+          f"{relpath(STORM_V2_MAIN_GRID_ROWS)} (720 batches) + the external-v1 "
+          "tgms-control's 18 end-to-end cells (360 batches, frozen -- see "
+          "_EXT1_CONTROL_L1_E2E_OVER_CHECK): median over all 1,080 pooled batches of "
+          "arms.tgms-L1.ttf_ms / arms.tgms-L1.check_wall_ms")
+
+
+# --------------------------------------------------------------------------
+# W2ae (partial) -- sum-mode time-to-fresh reconstruction, storm-v2 R-18
+# probe. Lands recStormV2SpeedupSumProbe beside compute_c7_storm_v2_probe's
+# own recStormV2ProbeSpeedupN10k without touching it. As the module
+# docstring's W2ae section explains, this probe's own rows already carry
+# ttf_mode == "sum" -- it was never affected by the end-to-end bug -- so
+# this macro recomputes to the same number (to rounding) as the existing
+# one; landed anyway, both because the task asked for it by name and
+# because it is a live self-check that this reconstruction reproduces a
+# value that needed no correcting.
+# --------------------------------------------------------------------------
+
+def compute_c7_storm_v2_probe_sum_mode(m: Macros) -> None:
+    rows = load_jsonl(STORM_V2_R18_PROBE_ROWS)
+    rows.sort(key=lambda r: r["batch_index"])
+    eq(len(rows), 5, "storm-v2 probe sum-mode: rows.jsonl line count")
+
+    modes = {r.get("ttf_mode") for r in rows}
+    eq(modes, {"sum"}, "storm-v2 probe sum-mode frozen: every batch row's own ttf_mode "
+       "is sum -- this probe was never affected by the end-to-end collapse (see the "
+       "module docstring's W2ae section)")
+
+    l1_check = [r["arms"]["tgms-L1"]["check_wall_ms"] for r in rows]
+    l1_refresh = [r["arms"]["tgms-L1"]["refresh_wall_ms"] for r in rows]
+    l1_ttf = [r["arms"]["tgms-L1"]["ttf_ms"] for r in rows]
+    gr_ttf = [r["arms"]["global-recompute"]["ttf_ms"] for r in rows]
+
+    # Since ttf_mode is already "sum", ttf_ms must equal check_wall_ms +
+    # refresh_wall_ms exactly, batch by batch -- checked directly (not
+    # just at the aggregate p50 level below) before trusting that.
+    for i, (c, rf, t) in enumerate(zip(l1_check, l1_refresh, l1_ttf)):
+        eq(t, c + rf, f"storm-v2 probe sum-mode batch {i}: arms.tgms-L1.ttf_ms == "
+           "check_wall_ms + refresh_wall_ms exactly")
+
+    sum_vals = [c + rf for c, rf in zip(l1_check, l1_refresh)]
+    sum_l1_p50 = _e2e_percentile(sum_vals, 0.5)
+    gr_p50 = _e2e_percentile(gr_ttf, 0.5)
+
+    # Since ttf_mode is already "sum" on every row, ttf_ms == check_wall_ms
+    # + refresh_wall_ms exactly, batch by batch -- so the sum-mode p50
+    # must equal the probe's own already-recomputed/committed
+    # summary.arms.tgms-L1.ttf_p50_ms exactly, not just within 0.5%.
+    d = json.loads(STORM_V2_R18_PROBE.read_text(encoding="utf-8"))
+    eq(sum_l1_p50, d["summary"]["arms"]["tgms-L1"]["ttf_p50_ms"],
+       "storm-v2 probe sum-mode: sum-mode tgms-L1 p50 (check_wall_ms + refresh_wall_ms, "
+       "nearest-rank over the 5 batches) equals the committed summary.arms.tgms-L1."
+       "ttf_p50_ms exactly -- ttf_mode is already sum, so there is nothing to correct")
+    eq(gr_p50, d["summary"]["arms"]["global-recompute"]["ttf_p50_ms"],
+       "storm-v2 probe sum-mode: recomputed global-recompute ttf p50 matches the "
+       "committed summary.arms.global-recompute.ttf_p50_ms")
+
+    speedup_sum = gr_p50 / sum_l1_p50
+    close(speedup_sum, 1.946, 0.001, "storm-v2 probe sum-mode frozen: speedup of "
+          "tgms-L1 over global-recompute, sum-mode definition -- same value (to "
+          "rounding) as compute_c7_storm_v2_probe's own frozen recStormV2ProbeSpeedupN10k "
+          "speedup, since this probe's ttf_mode is already sum")
+
+    m.add("recStormV2SpeedupSumProbe", f"{speedup_sum:.2f}",
+          f"{relpath(STORM_V2_R18_PROBE_ROWS)}: median(arms.global-recompute.ttf_ms) / "
+          "_e2e_percentile(arms.tgms-L1.check_wall_ms + arms.tgms-L1.refresh_wall_ms) "
+          "over the 5 batches -- the sum-mode sibling of recStormV2ProbeSpeedupN10k; "
+          "this probe's own ttf_mode is already \"sum\" (never affected by the "
+          "end-to-end collapse), so the two values agree to rounding")
 
 
 # --------------------------------------------------------------------------
@@ -8650,6 +9089,114 @@ def compute_external_baselines(m: Macros) -> None:
 
 
 # --------------------------------------------------------------------------
+# W2ae (partial) -- sum-mode time-to-fresh reconstruction, external-v1
+# same-host control (module docstring's own W2ae section has the full
+# story). None of compute_external_baselines's own macros above
+# (recExt1SpeedupLOne{Median,Min}, recExt2Ratio{Band}, ...) are touched;
+# every macro below is a new name, read against the committed
+# EXTERNAL_NEO4J/EXTERNAL_IVM/EXTERNAL_TGMS_CONTROL files (sha256-gated
+# the same way compute_external_baselines gates them -- re-checked here,
+# not assumed, since this function can run on its own) plus the frozen
+# _EXT1_CONTROL_SUM_L1_P50_MS (module-level comment above has that
+# constant's full offline-derivation provenance -- the control's own raw
+# per-batch rows are not committed to benchmarks/** and so cannot be read
+# live here).
+# --------------------------------------------------------------------------
+
+def compute_ext_sum_mode(m: Macros) -> None:
+    sums = _sha256sums_by_name(EXTERNAL_V1_SHA256SUMS.read_text(encoding="utf-8"))
+    for path in (EXTERNAL_NEO4J, EXTERNAL_IVM, EXTERNAL_TGMS_CONTROL):
+        eq(sha256_file(path), sums.get(path.name),
+           f"ext sum-mode: {relpath(path)} sha256 matches "
+           f"{relpath(EXTERNAL_V1_SHA256SUMS)}'s entry for {path.name}")
+
+    neo = json.loads(EXTERNAL_NEO4J.read_text(encoding="utf-8"))
+    ivm = json.loads(EXTERNAL_IVM.read_text(encoding="utf-8"))
+    ctrl = json.loads(EXTERNAL_TGMS_CONTROL.read_text(encoding="utf-8"))
+    neo_pc = {c["cell_id"]: c for c in neo["summary"]["per_cell"]}
+    ivm_pc = {c["cell_id"]: c for c in ivm["summary"]["per_cell"]}
+    ctrl_pc = {c["cell_id"]: c for c in ctrl["summary"]["per_cell"]}
+    eq(len(ctrl_pc), 19, f"ext sum-mode: {relpath(EXTERNAL_TGMS_CONTROL)} distinct cell_ids")
+
+    PROBE_CID = "synth-iv-60k-c1-none-n10000-s0"
+    control_nonprobe_cells = sorted(c for c in ctrl_pc if c != PROBE_CID)
+    eq(control_nonprobe_cells, sorted(_EXT1_CONTROL_SUM_L1_P50_MS),
+       "ext sum-mode: the 18 non-probe tgms-control cell_ids match "
+       "_EXT1_CONTROL_SUM_L1_P50_MS's own keys exactly")
+    eq(ctrl_pc[PROBE_CID]["arms"]["global-recompute"].get("ttf_p50_ms") is not None, True,
+       f"ext sum-mode: {relpath(EXTERNAL_TGMS_CONTROL)} probe cell {PROBE_CID} carries a "
+       "global-recompute ttf_p50_ms (sanity: this cell is excluded from every macro below, "
+       "not silently dropped for lacking one)")
+
+    # recExt1ControlSpeedupSumMedian: the control's OWN internal speedup
+    # (global-recompute / sum-mode tgms-L1), median over the 18 cells --
+    # the corrected sibling of each cell's own (uncorrected, end-to-end)
+    # arms.speedup_global_recompute_over_l1 field, which no macro reads
+    # directly anywhere in this generator.
+    ctrl_speedup_sum = {
+        c: ctrl_pc[c]["arms"]["global-recompute"]["ttf_p50_ms"] / _EXT1_CONTROL_SUM_L1_P50_MS[c]
+        for c in control_nonprobe_cells
+    }
+    ctrl_speedup_sum_median = statistics.median(ctrl_speedup_sum.values())
+    m.add("recExt1ControlSpeedupSumMedian", f"{ctrl_speedup_sum_median:.2f}",
+          f"{relpath(EXTERNAL_TGMS_CONTROL)}: median over the 18 end-to-end cells of "
+          "(arms.global-recompute.ttf_p50_ms / sum-mode tgms-L1 p50) -- the same-host "
+          "internal speedup, sum-mode corrected (no existing macro reads the record's own "
+          "end-to-end arms.speedup_global_recompute_over_l1 field directly)")
+
+    # recExt1SpeedupLOneSum{Median,Min}: same definition as
+    # compute_external_baselines's own recExt1SpeedupLOne{Median,Min}
+    # (neo4j-recompute refresh_wall_ms.median / tgms-control's own
+    # tgms-L1 time-to-fresh, same cell_id), but with the sum-mode
+    # denominator.
+    for c in control_nonprobe_cells:
+        require(c in neo_pc, f"ext sum-mode: {relpath(EXTERNAL_NEO4J)} has cell {c}")
+    speedup_l1_sum = {
+        c: neo_pc[c]["refresh_wall_ms"]["median"] / _EXT1_CONTROL_SUM_L1_P50_MS[c]
+        for c in control_nonprobe_cells
+    }
+    speedup_l1_sum_median = statistics.median(speedup_l1_sum.values())
+    speedup_l1_sum_min = min(speedup_l1_sum.values())
+    m.add("recExt1SpeedupLOneSumMedian", f"{speedup_l1_sum_median:.2f}",
+          f"{relpath(EXTERNAL_NEO4J)}: median over the 18 tgms-control cells (excluding "
+          f"the probe) of refresh_wall_ms.median / {relpath(EXTERNAL_TGMS_CONTROL)}'s "
+          "sum-mode tgms-L1 p50 for the same cell_id -- the sum-mode-corrected sibling of "
+          "recExt1SpeedupLOneMedian")
+    m.add("recExt1SpeedupLOneSumMin", f"{speedup_l1_sum_min:.2f}",
+          f"{relpath(EXTERNAL_NEO4J)}: min over the same 18 cells of the same ratio -- the "
+          "sum-mode-corrected sibling of recExt1SpeedupLOneMin")
+
+    # recExt2RatioSum{Recent,Hours,Days,Deep}: same band groupings as
+    # compute_external_baselines's own recExt2Ratio{Band}, same
+    # (ivm-differential refresh_wall_ms.median / tgms-control's own
+    # tgms-L1 time-to-fresh) definition, but with the sum-mode
+    # denominator.
+    bands = {
+        "recent": [f"{store}-c3-recent-n1000-s0" for store in ("collegemsg", "synth-iv-60k")],
+        "hours": [f"{store}-c3-hours-n1000-s0" for store in ("collegemsg", "synth-iv-60k")],
+        "days": [f"{store}-c3-days-n1000-s0" for store in ("collegemsg", "synth-iv-60k")],
+        "deep": [f"{store}-{mix}-deep-n1000-s0"
+                 for store in ("collegemsg", "synth-iv-60k") for mix in ("c1", "c3", "c4")],
+    }
+    eq({k: len(v) for k, v in bands.items()}, {"recent": 2, "hours": 2, "days": 2, "deep": 6},
+       "ext sum-mode: Ext2 band cell counts (same as compute_external_baselines)")
+    for band, cells in bands.items():
+        for c in cells:
+            require(c in ivm_pc, f"ext sum-mode: {relpath(EXTERNAL_IVM)} has cell {c}")
+            require(c in _EXT1_CONTROL_SUM_L1_P50_MS,
+                    f"ext sum-mode: _EXT1_CONTROL_SUM_L1_P50_MS has cell {c}")
+        ratios = [ivm_pc[c]["refresh_wall_ms"]["median"] / _EXT1_CONTROL_SUM_L1_P50_MS[c]
+                  for c in cells]
+        ratio_med = statistics.median(ratios)
+        value = f"{ratio_med:.3f}" if ratio_med >= 0.01 else sci_3sf(ratio_med)
+        m.add(f"recExt2RatioSum{band.capitalize()}", value,
+              f"{relpath(EXTERNAL_IVM)}: median over the band's {len(cells)} cell(s) of "
+              f"refresh_wall_ms.median / {relpath(EXTERNAL_TGMS_CONTROL)}'s sum-mode "
+              f"tgms-L1 p50 for the same cell_id -- the sum-mode-corrected sibling of "
+              f"recExt2Ratio{band.capitalize()}")
+
+
+# --------------------------------------------------------------------------
 # pending stubs (records not yet landed)
 # --------------------------------------------------------------------------
 
@@ -8730,6 +9277,8 @@ def main() -> int:
     compute_c7_storm_v1(m)
     compute_c7_storm_v2_probe(m)
     compute_c7_storm_v2(m)
+    compute_c7_storm_v2_sum_mode(m)
+    compute_c7_storm_v2_probe_sum_mode(m)
     compute_d160(m)
     compute_d160_llm_direct_fix(m)
     compute_c2(m)
@@ -8748,6 +9297,7 @@ def main() -> int:
     compute_ldbc_format3_rebuild(m)
     compute_b7_scale(m)
     compute_external_baselines(m)
+    compute_ext_sum_mode(m)
     add_pending_stubs(m)
 
     if FAILURES:
