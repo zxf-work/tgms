@@ -1,44 +1,61 @@
 #!/usr/bin/env python3
 """Lane C1 — assemble the external-baseline campaign records.
 
-Reads, per cell: the configuration's own `result.json` (neo4j-recompute or
-ivm-dd), lane C1's own `check.json` (`scripts/external_check.py`'s output
-— the independent oracle-agreement tally), and the export bundle's
-`digests.json` (workload-equality level, `scripts/export_storm_workload.py`)
-and `deltas.jsonl` (per-burst `generator`, used only to classify a burst
-into an age band — memo §4.1/§3.5/A5/A6). It writes two files, mirroring
-`benchmarks/storm-v1/storm-v2-main-grid-2026-09-15.json` +
-`-rows.jsonl`'s own split between a lean top-level summary and a
-per-cell-detail rows file:
+Three campaigns, two input shapes:
+
+**`neo4j-recompute` / `ivm-differential`** read, per cell: the
+configuration's own `result.json` (neo4j-recompute or ivm-dd), lane C1's
+own `check.json` (`scripts/external_check.py`'s output — the independent
+oracle-agreement tally), and the export bundle's `digests.json`
+(workload-equality level, `scripts/export_storm_workload.py`) and
+`deltas.jsonl` (per-burst `generator`, used only to classify a burst into
+an age band — memo §4.1/§3.5/A5/A6). The TGMS side of every EXT1/EXT2
+ratio comes from the **committed storm-v2 rows**
+(`benchmarks/storm-v1/storm-v2-main-grid-2026-09-15.json`'s `per_cell` +
+the probe's own file), read by `load_storm_v2_committed` — the iTiger
+cluster numbers, not a same-host measurement. A cell with no committed
+storm-v2 row gets `null` predictions with a note saying why, never a
+guessed/omitted-silently value. (Reading note A11: on xzgpu the correct
+*same-host* reference for every cell is lane T1's `tgms-control` record
+below, not this cluster lookup; scoring that substitution is the paper
+macro generator's job, not this script's — this script's own ratios stay
+against the committed cluster rows, exactly as built and tested.)
+
+**`tgms-control`** (lane T1, Addendum EXT-A A1) reads, per cell: the
+same-host harness's own result manifest (`storm-<store>-<task>.json`,
+`bench_correction_storm.py`'s normal output — `config`, `summary.arms`,
+`machine`, `git_commit`) and lane C1's `t1-equality.json` (the
+byte-identical-eventlog check against the matching export bundle). No
+check.json, no committed-grid lookup, no EXT1/EXT2 predictions — this
+campaign *is* the same-host reference the other two are read against.
+
+Every one of the three writes two files, mirroring
+`benchmarks/storm-v1/storm-v2-main-grid-2026-09-15.json` + `-rows.jsonl`'s
+own split between a lean top-level summary and a per-cell-detail rows
+file:
 
   `benchmarks/external-v1/neo4j-recompute-<date>.json`   (campaign="neo4j-recompute")
   `benchmarks/external-v1/ivm-differential-<date>.json`  (campaign="ivm-differential")
+  `benchmarks/external-v1/tgms-control-<date>.json`      (campaign="tgms-control")
   ...-<date>-rows.jsonl                                   (one line per cell, full detail)
 
-Every number in `summary.predictions_measured` is computed from the input
-files at run time — never typed — and the TGMS side of every ratio comes
-from the **committed storm-v2 rows**
-(`benchmarks/storm-v1/storm-v2-main-grid-2026-09-15.json`'s `per_cell` +
-the probe's own file), read by `load_storm_v2_committed`, because that is
-the only committed TGMS number this script has access to as of this
-writing — lane T1 (the same-host control, Addendum EXT-A A1/A2) has not
-run. A cell with no committed storm-v2 row (every Addendum-A2 cell, until
-T1 lands) gets `null` predictions with a note saying why, never a
-guessed/omitted-silently value.
+Every number in `summary.predictions_measured` (first two campaigns) or
+`summary.per_cell` (all three) is computed from the input files at run
+time — never typed.
 
-This script does **not** itself produce a landed campaign record from
-today's data: as of 2026-10-02 only one cell
-(`collegemsg-c3-none-n1000-s0`, `age=none`) has been exported and run
-(ivm-dd, calibration only — its own README says so), so there is nothing
-real yet to assemble into either campaign's record. It is built and
-tested (synthetic fixture, `tests/test_external_record.py`) so lane C1's
-later run — once T1/N1/D1 land real cells — is a CLI invocation, not new
-code.
+As of 2026-10-08 all three campaigns have real data to assemble (lanes
+N1/D1: 43 cells each against the export bundle at
+`/mnt/project/xzhang/tgms/external-v1/` on xzgpu; lane T1: 19 same-host
+control cells) — see `benchmarks/external-v1/README.md` for the landed
+run. Tested throughout with synthetic fixtures
+(`tests/test_external_record.py`), so a later re-run against a wider grid
+is a CLI invocation, not new code.
 """
 from __future__ import annotations
 
 import argparse
 import json
+import re
 import statistics
 from pathlib import Path
 from typing import Any
@@ -199,6 +216,158 @@ class CellInput:
             return self.result.get("machine", {})
         snaps = self.result.get("host_snapshots", [])
         return snaps[-1] if snaps else {}
+
+
+# ---------------------------------------------------------------------------
+# tgms-control (lane T1, Addendum EXT-A A1) -- the same-host TGMS control
+# ---------------------------------------------------------------------------
+
+#: the harness's own per-arm fields this record restates verbatim, never
+#: recomputed -- "per-configuration refresh/recompute medians as the
+#: harness names them" means exactly these keys, read from each cell's
+#: `summary.arms.<arm>` (bench_correction_storm.py's own output), not a
+#: field this script invents.
+T1_ARM_FIELDS = ("ttf_p50_ms", "ttf_p95_ms", "false_fresh", "false_stale",
+                 "avoided_recompute_wall", "avoided_recompute_decision")
+
+_LOADAVG1_RE = re.compile(r"load average:\s*([\d.]+)")
+
+
+def parse_loadavg1(text: str) -> float | None:
+    """The first (1-minute) figure from a `host-snapshot-*.txt`'s `uptime`
+    line, e.g. "load average: 1.03, 1.07, 1.08" -> 1.03. `None` if the
+    snapshot has no such line (never guessed)."""
+    m = _LOADAVG1_RE.search(text)
+    return float(m.group(1)) if m else None
+
+
+def load_t1_equality(t1_cell_dir: Path) -> dict[str, Any]:
+    path = t1_cell_dir / "t1-equality.json"
+    return json.loads(path.read_text()) if path.exists() else {}
+
+
+def find_t1_manifest(t1_cell_dir: Path) -> Path:
+    """The cell's own `storm-<store>-<task>.json` harness manifest --
+    there is exactly one per cell directory, named for the store
+    (`storm-collegemsg-0.json`, `storm-synth-iv-60k-0.json`), distinct
+    from its own `-rows.jsonl` sibling."""
+    candidates = sorted(p for p in t1_cell_dir.glob("storm-*.json")
+                        if not p.name.endswith("-rows.jsonl"))
+    if not candidates:
+        raise ValueError(f"{t1_cell_dir}: no storm-*.json harness manifest found")
+    if len(candidates) > 1:
+        raise ValueError(f"{t1_cell_dir}: more than one storm-*.json manifest "
+                         f"({[c.name for c in candidates]}) -- ambiguous")
+    return candidates[0]
+
+
+class T1CellInput:
+    """One same-host TGMS control cell (lane T1): the harness's own result
+    manifest (`storm-<store>-<task>.json`, same shape as a committed
+    storm-v2 `per_cell` row -- `config`, `summary.arms`, `machine`,
+    `git_commit`, ...) plus lane C1's own `t1-equality.json` (the
+    byte-identical-eventlog check against the matching export bundle).
+    The manifest's own `-rows.jsonl` (per-batch detail) is not read here --
+    everything this record needs is in the manifest's own `summary.arms`
+    medians and `t1-equality.json`."""
+
+    def __init__(self, t1_cell_dir: Path):
+        self.t1_cell_dir = t1_cell_dir
+        manifest_path = find_t1_manifest(t1_cell_dir)
+        self.manifest = json.loads(manifest_path.read_text())
+        self.manifest_path = manifest_path
+        self.equality = load_t1_equality(t1_cell_dir)
+
+        cfg = self.manifest.get("config", {})
+        store = cfg.get("store", "")
+        # the manifest's own `config.store` is a store *path* on xzgpu
+        # (t1-stores/<name>), not the bare name `cell_id` uses -- take the
+        # last path component, matching `export_storm_workload.py`'s own
+        # `cell_id` convention (module docstring).
+        self.store_name = store.rsplit("/", 1)[-1] if store else store
+        self.mix = cfg.get("mix", "")
+        self.age = cfg.get("age")
+        self.n_artifacts = cfg.get("n_artifacts")
+        self.seed = cfg.get("seed", 0)
+        self.cell_id = self.equality.get("cell_id") or cell_id(
+            self.store_name, self.mix, self.age, self.n_artifacts, self.seed)
+        self.git_commit = self.manifest.get("git_commit") or self.equality.get("git_commit")
+
+    def host_load(self, label: str) -> float | None:
+        path = self.t1_cell_dir / f"host-snapshot-{label}.txt"
+        return parse_loadavg1(path.read_text()) if path.exists() else None
+
+
+def summarize_t1_cell(ci: T1CellInput) -> dict[str, Any]:
+    arms = ci.manifest.get("summary", {}).get("arms", {})
+    gr_p50 = arms.get("global-recompute", {}).get("ttf_p50_ms")
+    l1_p50 = arms.get("tgms-L1", {}).get("ttf_p50_ms")
+    speedup = (gr_p50 / l1_p50) if (gr_p50 is not None and l1_p50) else None
+    l1_match = ci.equality.get("l1_eventlog_sha_match")
+    equality_level = "L1" if l1_match is True else (
+        "unknown" if l1_match is None else "no-L1 (eventlog sha mismatch)")
+    return {
+        "cell_id": ci.cell_id,
+        "store": ci.store_name, "mix": ci.mix, "age": ci.age,
+        "n_artifacts": ci.n_artifacts, "seed": ci.seed,
+        "wall_s": ci.manifest.get("config", {}).get("wall_s"),
+        "batches_realized": ci.equality.get("batches_realized"),
+        "batches_requested": ci.manifest.get("config", {}).get("batches"),
+        "equality_level": equality_level,
+        "arms": {name: {k: v for k, v in arm.items() if k in T1_ARM_FIELDS}
+                for name, arm in arms.items()},
+        "speedup_global_recompute_over_l1": speedup,
+        "host_load": {"before": ci.host_load("before"), "after": ci.host_load("after")},
+    }
+
+
+def full_t1_cell_row(ci: T1CellInput) -> dict[str, Any]:
+    """The detailed per-cell row -- the harness's own manifest (minus its
+    own per-batch `-rows.jsonl`, which stays wherever that manifest's
+    `record` field already points) plus lane C1's `t1-equality.json`, so a
+    reader never needs the xzgpu scratch tree to audit one cell."""
+    return {
+        "cell_id": ci.cell_id,
+        "manifest_path": _relpath_or_str(ci.manifest_path),
+        "manifest": ci.manifest,
+        "t1_equality": ci.equality,
+    }
+
+
+def _relpath_or_str(p: Path) -> str:
+    try:
+        return str(p.resolve().relative_to(ROOT))
+    except ValueError:
+        return str(p)
+
+
+def build_t1_record(cells: list[T1CellInput], *, git_commit: str,
+                    timestamp_utc: str) -> tuple[dict[str, Any], list[dict[str, Any]]]:
+    per_cell_summary = [summarize_t1_cell(ci) for ci in cells]
+    rows = [full_t1_cell_row(ci) for ci in cells]
+
+    eventlog_shas = sorted(ci.equality.get("t1_eventlog_sha256", "") for ci in cells)
+    machine = cells[0].manifest.get("machine", {}) if cells else {}
+
+    record = {
+        "schema_version": SCHEMA_VERSION,
+        "git_commit": git_commit,
+        "timestamp_utc": timestamp_utc,
+        "machine": machine,
+        "config": {"campaign": "tgms-control", "cell_ids": [ci.cell_id for ci in cells]},
+        "seed": {"value": None, "reason": "cell identity carries the seed; see cell_id "
+                                         "per row"},
+        "dataset": {"name": "storm-v2 grid (TGMS same-host control, xzgpu, lane T1)",
+                   "digest": _sha256_of(eventlog_shas),
+                   "digest_kind": "eventlog_sha"},
+        "result_digest": _sha256_of([ci.cell_id for ci in cells]),
+        "protocol": {"warmups": 0, "reps": 1,
+                    "ceilings": {"note": "per-cell ceilings are in each row's own manifest"}},
+        "record": "benchmarks/external-v1/tgms-control-rows.jsonl (date-stamped per run)",
+        "n_cells": len(cells),
+        "summary": {"per_cell": per_cell_summary},
+    }
+    return record, rows
 
 
 # ---------------------------------------------------------------------------
@@ -380,6 +549,12 @@ def ext2_predictions(cells: list[CellInput], committed: dict[str, dict],
 def build_record(campaign: str, cells: list[CellInput], *, git_commit: str,
                  timestamp_utc: str, committed: dict[str, dict],
                  withheld: dict[str, Any] | None = None) -> tuple[dict[str, Any], list[dict[str, Any]]]:
+    """Assembles a `neo4j-recompute` or `ivm-differential` record. For
+    `tgms-control` (lane T1, a different cell-input shape with no
+    committed-grid lookup or EXT1/EXT2 predictions), see `build_t1_record`
+    instead -- kept as a separate function rather than overloaded into
+    this one so neither signature grows optional parameters the other
+    campaign never uses."""
     if campaign not in ("neo4j-recompute", "ivm-differential"):
         raise ValueError(f"unknown campaign {campaign!r}")
 
@@ -447,11 +622,18 @@ def write_record(record: dict[str, Any], rows: list[dict[str, Any]], out_dir: Pa
 
 def main(argv: list[str] | None = None) -> int:
     ap = argparse.ArgumentParser(description=__doc__.splitlines()[0])
-    ap.add_argument("--campaign", required=True, choices=["neo4j-recompute", "ivm-differential"])
+    ap.add_argument("--campaign", required=True,
+                    choices=["neo4j-recompute", "ivm-differential", "tgms-control"])
     ap.add_argument("--cell", nargs=3, action="append", default=[],
                     metavar=("EXPORT_DIR", "RESULT_JSON", "CHECK_JSON"),
                     help="one exported cell's bundle dir, its configuration's "
-                        "result.json, and lane C1's check.json; repeatable")
+                        "result.json, and lane C1's check.json; repeatable "
+                        "(neo4j-recompute / ivm-differential only)")
+    ap.add_argument("--t1-cell", action="append", default=[], type=Path,
+                    metavar="T1_CELL_DIR",
+                    help="one lane-T1 same-host-control cell directory "
+                        "(contains storm-<store>-<task>.json + "
+                        "t1-equality.json); repeatable (tgms-control only)")
     ap.add_argument("--withheld-check", type=Path, default=None,
                     help="check.json's \"withheld\" section (from "
                         "external_check.py --withheld-result ...), for EXT2 (c)")
@@ -468,13 +650,22 @@ def main(argv: list[str] | None = None) -> int:
     timestamp_utc = args.timestamp_utc or now.strftime("%Y-%m-%dT%H:%M:%SZ")
     date = args.date or now.strftime("%Y-%m-%d")
 
-    cells = [CellInput(Path(e), Path(r), Path(c)) for e, r, c in args.cell]
-    committed = load_storm_v2_committed(args.storm_v2_main_grid, args.storm_v2_probe)
-    withheld = json.loads(args.withheld_check.read_text()) if args.withheld_check else None
+    if args.campaign == "tgms-control":
+        if args.cell:
+            ap.error("--cell is for neo4j-recompute/ivm-differential; use --t1-cell")
+        t1_cells = [T1CellInput(d) for d in args.t1_cell]
+        record, rows = build_t1_record(t1_cells, git_commit=args.git_commit,
+                                       timestamp_utc=timestamp_utc)
+    else:
+        if args.t1_cell:
+            ap.error("--t1-cell is for tgms-control; use --cell")
+        cells = [CellInput(Path(e), Path(r), Path(c)) for e, r, c in args.cell]
+        committed = load_storm_v2_committed(args.storm_v2_main_grid, args.storm_v2_probe)
+        withheld = json.loads(args.withheld_check.read_text()) if args.withheld_check else None
 
-    record, rows = build_record(args.campaign, cells, git_commit=args.git_commit,
-                                timestamp_utc=timestamp_utc, committed=committed,
-                                withheld=withheld)
+        record, rows = build_record(args.campaign, cells, git_commit=args.git_commit,
+                                    timestamp_utc=timestamp_utc, committed=committed,
+                                    withheld=withheld)
     record_path, rows_path = write_record(record, rows, args.out_dir, args.campaign, date)
     print(f"wrote {record_path} ({len(rows)} cell rows -> {rows_path})")
     return 0

@@ -342,3 +342,133 @@ def test_build_record_rejects_unknown_campaign(tmp_path: Path) -> None:
     with pytest.raises(ValueError):
         external_record.build_record("not-a-campaign", [], git_commit="x",
                                      timestamp_utc="2026-10-02T00:00:00Z", committed={})
+
+
+# ---------------------------------------------------------------------------
+# tgms-control (lane T1, Addendum EXT-A A1) -- the same-host control
+# ---------------------------------------------------------------------------
+
+def test_parse_loadavg1() -> None:
+    text = (" 16:11:22 up 2 days,  1:05,  0 users,  load average: 1.03, 1.07, 1.08\n"
+           "              total        used        free\n")
+    assert external_record.parse_loadavg1(text) == 1.03
+
+
+def test_parse_loadavg1_missing_line() -> None:
+    assert external_record.parse_loadavg1("no load line here\n") is None
+
+
+def _write_t1_cell(t1_cell_dir: Path, *, store: str, mix: str, age: str | None,
+                   n_artifacts: int, seed: int = 0, store_path_prefix: str = "t1-stores/",
+                   l1_match: bool = True) -> None:
+    t1_cell_dir.mkdir(parents=True, exist_ok=True)
+    manifest = {
+        "schema_version": "1.0.0",
+        "git_commit": "fdd393c91c1199f7cfe03aba53ed1733f43111b0-dirty",
+        "timestamp_utc": "2026-10-05T00:00:00Z",
+        "machine": {"host": "xzgpu", "platform": "Linux", "cpus": 40, "ram_gb": 93.0},
+        "config": {"store": f"{store_path_prefix}{store}", "mix": mix, "age": age,
+                  "n_artifacts": n_artifacts, "seed": seed, "batches": 20,
+                  "wall_s": 9000.0},
+        "seed": {"value": seed},
+        "dataset": {"name": store, "digest": "deadbeef", "digest_kind": "eventlog_sha"},
+        "result_digest": "cafe",
+        "protocol": {"reps": 1, "warmups": 0},
+        "record": "storm-rows.jsonl",
+        "summary": {
+            "arms": {
+                "global-recompute": {"ttf_p50_ms": 100000.0, "ttf_p95_ms": 110000.0,
+                                     "false_fresh": 0, "false_stale": 900,
+                                     "avoided_recompute_wall": 0.0},
+                "tgms-L1": {"ttf_p50_ms": 5000.0, "ttf_p95_ms": 6000.0,
+                           "false_fresh": 0, "false_stale": 900,
+                           "avoided_recompute_wall": 0.75},
+            },
+        },
+    }
+    (t1_cell_dir / "storm-tiny-0.json").write_text(json.dumps(manifest))
+    equality = {
+        "cell_id": external_record.cell_id(store, mix, age, n_artifacts, seed),
+        "batches_realized": 20,
+        "git_commit": "fdd393c91c1199f7cfe03aba53ed1733f43111b0-dirty",
+        "l1_eventlog_sha_match": l1_match,
+        "t1_eventlog_sha256": "d0f52ed5" if l1_match else "mismatch",
+    }
+    (t1_cell_dir / "t1-equality.json").write_text(json.dumps(equality))
+    (t1_cell_dir / "host-snapshot-before.txt").write_text(
+        "== 2026-10-05T00:00:00Z ==\n 00:00:00 up 1 day, load average: 1.03, 1.07, 1.08\n")
+    (t1_cell_dir / "host-snapshot-after.txt").write_text(
+        "== 2026-10-05T02:00:00Z ==\n 02:00:00 up 1 day, load average: 1.10, 1.09, 1.08\n")
+
+
+def test_find_t1_manifest_requires_exactly_one(tmp_path: Path) -> None:
+    cell_dir = tmp_path / "cell"
+    cell_dir.mkdir()
+    with pytest.raises(ValueError):
+        external_record.find_t1_manifest(cell_dir)
+    (cell_dir / "storm-a-0.json").write_text("{}")
+    (cell_dir / "storm-a-0-rows.jsonl").write_text("")  # must be excluded, not ambiguous
+    assert external_record.find_t1_manifest(cell_dir).name == "storm-a-0.json"
+    (cell_dir / "storm-b-0.json").write_text("{}")
+    with pytest.raises(ValueError):
+        external_record.find_t1_manifest(cell_dir)
+
+
+def test_t1_cell_input_strips_store_path(tmp_path: Path) -> None:
+    cell_dir = tmp_path / "tiny-c3-none-n1000-s0"
+    _write_t1_cell(cell_dir, store="tiny", mix="c3", age=None, n_artifacts=1000)
+    ci = external_record.T1CellInput(cell_dir)
+    assert ci.store_name == "tiny"
+    assert ci.cell_id == "tiny-c3-none-n1000-s0"
+    assert ci.mix == "c3" and ci.age is None
+
+
+def test_build_t1_record(tmp_path: Path) -> None:
+    cell_a = tmp_path / "tiny-c3-none-n1000-s0"
+    _write_t1_cell(cell_a, store="tiny", mix="c3", age=None, n_artifacts=1000)
+    cell_b = tmp_path / "tiny-c3-recent-n1000-s0"
+    _write_t1_cell(cell_b, store="tiny", mix="c3", age="recent", n_artifacts=1000,
+                   l1_match=False)
+
+    cells = [external_record.T1CellInput(cell_a), external_record.T1CellInput(cell_b)]
+    record, rows = external_record.build_t1_record(
+        cells, git_commit="fdd393c91c1199f7cfe03aba53ed1733f43111b0-dirty",
+        timestamp_utc="2026-10-05T00:00:00Z")
+
+    assert record["schema_version"] == "1.0.0"
+    assert record["config"]["campaign"] == "tgms-control"
+    assert record["config"]["cell_ids"] == ["tiny-c3-none-n1000-s0", "tiny-c3-recent-n1000-s0"]
+    assert record["machine"]["host"] == "xzgpu"
+    assert len(rows) == 2
+
+    per_cell = {row["cell_id"]: row for row in record["summary"]["per_cell"]}
+    a = per_cell["tiny-c3-none-n1000-s0"]
+    assert a["equality_level"] == "L1"
+    assert a["batches_realized"] == 20
+    assert a["speedup_global_recompute_over_l1"] == pytest.approx(100000.0 / 5000.0)
+    assert a["arms"]["tgms-L1"]["ttf_p50_ms"] == 5000.0
+    assert a["host_load"] == {"before": 1.03, "after": 1.10}
+
+    b = per_cell["tiny-c3-recent-n1000-s0"]
+    assert b["equality_level"] == "no-L1 (eventlog sha mismatch)"
+
+    assert rows[0]["cell_id"] == "tiny-c3-none-n1000-s0"
+    assert "manifest" in rows[0] and "t1_equality" in rows[0]
+
+
+def test_written_t1_record_conforms_to_result_manifest_schema(tmp_path: Path) -> None:
+    cell_dir = tmp_path / "tiny-c3-none-n1000-s0"
+    _write_t1_cell(cell_dir, store="tiny", mix="c3", age=None, n_artifacts=1000)
+    ci = external_record.T1CellInput(cell_dir)
+    record, rows = external_record.build_t1_record(
+        [ci], git_commit="fdd393c91c1199f7cfe03aba53ed1733f43111b0-dirty",
+        timestamp_utc="2026-10-05T00:00:00Z")
+
+    out_dir = tmp_path / "out"
+    record_path, rows_path = external_record.write_record(
+        record, rows, out_dir, "tgms-control", "2026-10-05")
+    assert record_path.exists() and rows_path.exists()
+
+    schema = json.loads(SCHEMA_PATH.read_text())
+    written = json.loads(record_path.read_text())
+    jsonschema.Draft202012Validator(schema).validate(written)
