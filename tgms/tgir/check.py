@@ -38,6 +38,7 @@ from __future__ import annotations
 
 import hashlib
 import os
+import weakref
 from dataclasses import dataclass
 from enum import Enum
 from typing import Any, Iterable, Literal, Sequence
@@ -47,7 +48,8 @@ from tgms.core.model import OPEN_END
 from tgms.storage.eventlog import SEED_CHAIN, EventLog, extend_chain
 from tgms.tgir.depscope import (
     INCIDENT_ROLES, KINDS, PSEUDO_PROPS, TOP, TOP_JSON, UNANCHORED, VT_MODES,
-    DependencyScope, EdgeKey, Incident, ScopeTerm, Targets, store_identity,
+    DependencyScope, EdgeKey, Incident, ScopeTerm, StoreIdentityMemo, Targets,
+    store_identity,
 )
 from tgms.tgir.footprint import BatchFootprint, OpFootprint, footprints_of_batch
 
@@ -563,6 +565,26 @@ def _walk(log: EventLog) -> LogWalk:
     return LogWalk(chains, tuple(starts))
 
 
+#: One `StoreIdentityMemo` per live `EventLog` object (weakly keyed: it dies
+#: with the log object, never outlives the process, never touches disk).
+_IDENTITY_MEMOS: "weakref.WeakKeyDictionary[Any, StoreIdentityMemo]" = \
+    weakref.WeakKeyDictionary()
+
+
+def _store_identity_of(log: EventLog) -> str:
+    """D13.24 step 3's `store_identity(log.header(), log.first_batch())`,
+    through `log`'s own memo (`StoreIdentityMemo`: byte-revalidated, so the
+    value and every failure are those of the uncached expression). A log
+    object that cannot be weakly referenced takes the uncached expression."""
+    try:
+        memo = _IDENTITY_MEMOS.get(log)
+        if memo is None:
+            memo = _IDENTITY_MEMOS.setdefault(log, StoreIdentityMemo())
+    except TypeError:
+        return store_identity(log.header(), log.first_batch())
+    return memo.identity(log)
+
+
 # ---------------------------------------------------------------------------
 # check (D13.24)
 # ---------------------------------------------------------------------------
@@ -668,8 +690,15 @@ def check(scope: DependencyScope | dict[str, Any], log: EventLog,
     # 3 — the store identity. UNANCHORED is *always* a mismatch: an
     #     adapter-only read has no log behind it, so there is nothing this log
     #     could be the continuation of.
+    #     The identity is served from a per-`EventLog`-object memo
+    #     (`_store_identity_of`) revalidated against the log's exact genesis
+    #     bytes on every call, so it is the same value — and the same
+    #     exception — the uncached expression gives; unlike `ChainCache` it
+    #     is not opt-in, because it cannot change a verdict, only skip
+    #     re-parsing a multi-megabyte genesis record (failure ledger
+    #     `registry-store-identity-recomputed`).
     try:
-        identity = store_identity(log.header(), log.first_batch())
+        identity = _store_identity_of(log)
     except (StateError, OSError, ValueError):
         return UNDECIDABLE("log-unreadable")
     if scope.store == UNANCHORED or scope.store != identity:

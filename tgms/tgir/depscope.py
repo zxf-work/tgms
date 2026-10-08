@@ -591,6 +591,94 @@ def store_identity(header_record: Any, first_batch_record: Any = None) -> str:
     return digest([_as_record(header_record), _as_record(first_batch_record)])
 
 
+class StoreIdentityMemo:
+    """An in-memory memo of `store_identity(log.header(), log.first_batch())`
+    for one long-lived holder of an event log (a `Registry`, or `check`'s
+    per-`EventLog` memo) — never shared across processes, never on disk.
+
+    **Why.** The identity digests the log's *whole* genesis record, which on
+    a bulk-loaded store is one multi-megabyte line (≈3.4 MB on the campaign
+    stores): every uncached call re-parses it and re-canonicalizes it,
+    ≈100 ms, and the artifact path makes that call twice per publish and
+    once per check (failure ledger `registry-store-identity-recomputed`).
+
+    **Key: the exact bytes it is a function of.** The identity depends only
+    on the log's header line and its first record — the byte prefix
+    `[0, end of first record)` — so the memo keeps that prefix and, on every
+    call, re-reads the same number of bytes from the file and compares them
+    byte for byte before serving the cached value. A different file at the
+    same path, a rebuilt or reopened store, or an in-place rewrite of the
+    genesis record (same size, same inode, same mtime tick — the D-162
+    aliasing case a stat key cannot see) all fail that compare and recompute
+    through the uncached path. A hit costs one sequential read and one
+    `memcmp` of the prefix — no JSON parse, no canonicalization, no hash.
+
+    **Byte-identical to the uncached path, failures included.** `log.header()`
+    is still called on every call, first, exactly as the uncached expression
+    evaluates it, so a missing or unreadable log raises the same exception
+    either way. A hit is served only when the prefix bytes equal ones the
+    uncached path already parsed successfully; `first_batch()` reads nothing
+    past that prefix, so it would have returned the same record. A log with
+    no batches yet (`UNANCHORED`) is never memoized. A miss stores the new
+    entry only after confirming that the identity it computed is a function
+    of the prefix it stores (header line parses to the same header, the
+    first record's raw bytes end the prefix, nothing but blank lines in
+    between) — so a file swapped mid-call can never pin a stale pairing.
+    """
+
+    __slots__ = ("_entry", "hits", "misses")
+
+    def __init__(self) -> None:
+        #: `(path, prefix_bytes, identity)`, replaced as one tuple so a reader
+        #: never sees a prefix from one entry and an identity from another.
+        self._entry: tuple[str, bytes, str] | None = None
+        self.hits = 0
+        self.misses = 0
+
+    def identity(self, log: Any) -> str:
+        header = log.header()
+        path = str(log.path)
+        entry = self._entry
+        if entry is not None and entry[0] == path:
+            prefix = entry[1]
+            with open(log.path, "rb") as f:
+                if f.read(len(prefix)) == prefix:
+                    self.hits += 1
+                    return entry[2]
+        self.misses += 1
+        self._entry = None
+        first: Any = None
+        end = 0
+        raw = b""
+        for first, end, raw in log.batches_from(0):
+            break
+        identity = store_identity(header, first)
+        if first is not None:
+            with open(log.path, "rb") as f:
+                prefix = f.read(end)
+            if _prefix_determines(prefix, header, raw, end):
+                self._entry = (path, prefix, identity)
+        return identity
+
+
+def _prefix_determines(prefix: bytes, header: Any, raw: bytes, end: int) -> bool:
+    """True when `prefix` alone fixes both identity inputs: the header line
+    parses to `header`, `raw` (the first record exactly as parsed) is the
+    prefix's tail, and only blank lines sit between them — the layout
+    `EventLog.batches_from(0)` reads."""
+    if len(prefix) != end or not raw or not prefix.endswith(raw):
+        return False
+    nl = prefix.find(b"\n")
+    if nl < 0 or nl + 1 > end - len(raw):
+        return False
+    try:
+        if json.loads(prefix[:nl + 1]) != header:
+            return False
+    except ValueError:
+        return False
+    return not prefix[nl + 1:end - len(raw)].strip()
+
+
 def _as_record(record: Any) -> Any:
     if isinstance(record, (bytes, bytearray)):
         record = record.decode("utf-8")
@@ -603,6 +691,6 @@ __all__ = [
     "CARVE_PROPS", "Checkpoint", "DependencyScope", "EdgeKey", "FULL_SCAN_CHECKPOINTS",
     "INCIDENT_ROLES", "Incident", "IncidentRole", "KINDS", "K_DENSE_ID", "K_EDGE",
     "K_NODE", "Kind", "PSEUDO_PROPS", "SCHEMA_NAME", "SCHEMA_VERSION", "ScopeTerm",
-    "TOP", "TOP_JSON", "TOP_TERM", "Targets", "UNANCHORED", "union_all",
-    "store_identity", "vt_carve", "vt_closed", "vt_from",
+    "StoreIdentityMemo", "TOP", "TOP_JSON", "TOP_TERM", "Targets", "UNANCHORED",
+    "union_all", "store_identity", "vt_carve", "vt_closed", "vt_from",
 ]

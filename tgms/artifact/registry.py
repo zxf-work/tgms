@@ -73,7 +73,7 @@ from typing import Any, Iterable
 from tgms.core.errors import InvalidArgError, StateError
 from tgms.core.model import canonical_json, sha256_hex_bytes
 from tgms.storage.eventlog import SEED_CHAIN, EventLog, extend_chain
-from tgms.tgir.depscope import DependencyScope, store_identity
+from tgms.tgir.depscope import DependencyScope, StoreIdentityMemo
 
 from tgms.artifact.record import ArtifactId, ArtifactRecord, StepDependency
 
@@ -98,6 +98,9 @@ class Registry:
         #: `Registry` opened only to read — never contends with a writer).
         self._lock_path = self.path.with_name(self.path.name + ".lock")
         self._log = log if log is not None else EventLog(self.store_dir / "eventlog.jsonl")
+        #: Per-instance, in-memory memo of the log's store identity (see
+        #: `_store_identity`); never shared across `Registry` objects.
+        self._identity_memo = StoreIdentityMemo()
         self._by_name: dict[str, list[ArtifactRecord]] = {}
         self._chain = SEED_CHAIN
         self._checkpoint_offset = 0
@@ -111,7 +114,15 @@ class Registry:
     # -- store identity ------------------------------------------------------
 
     def _store_identity(self) -> str:
-        return store_identity(self._log.header(), self._log.first_batch())
+        """`store_identity(log.header(), log.first_batch())` for the log this
+        registry is opened beside — computed once per `Registry` and served
+        from `StoreIdentityMemo` afterwards, revalidated against the log's
+        exact genesis-prefix bytes on every call (a different, rebuilt or
+        rewritten log recomputes). `register` and `append` each ask for it,
+        so the uncached form re-parsed and re-digested the whole genesis
+        record twice per publish (failure ledger
+        `registry-store-identity-recomputed`); the value is unchanged."""
+        return self._identity_memo.identity(self._log)
 
     # -- loading / folding ----------------------------------------------------
 
