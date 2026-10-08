@@ -69,8 +69,10 @@ The two `tgms-*` arms are the only ones that go through the real
 
 from __future__ import annotations
 
+import fcntl
 import fractions
 import json
+import os
 import random
 import time
 from dataclasses import dataclass
@@ -277,15 +279,26 @@ class ArmOutcome:
     ttf_ms: float | None
     false_fresh: tuple[str, ...]
     false_stale: tuple[str, ...]
+    #: End-to-end TTF mode only (`None` otherwise, and then absent from
+    #: `to_json`, so sum-mode rows keep their exact bytes): how many
+    #: `refresh()` calls this arm's own timed check -> refresh interval
+    #: actually made. An interval that nominated names but made zero calls
+    #: timed checks only — the instrument error the failure ledger's
+    #: `storm-e2e-l1-interval-after-l0-refresh` entry records — so this is
+    #: what makes that error detectable from a committed row.
+    e2e_refresh_calls: int | None = None
 
     def to_json(self) -> dict[str, Any]:
-        return {
+        out = {
             "arm": self.arm, "invalidated_count": len(self.invalidated),
             "check_wall_ms": self.check_wall_ms, "refresh_wall_ms": self.refresh_wall_ms,
             "ttf_ms": self.ttf_ms,
             "false_fresh_count": len(self.false_fresh), "false_fresh": list(self.false_fresh),
             "false_stale_count": len(self.false_stale),
         }
+        if self.e2e_refresh_calls is not None:
+            out["e2e_refresh_calls"] = self.e2e_refresh_calls
+        return out
 
 
 @dataclass(frozen=True, slots=True)
@@ -950,28 +963,50 @@ class Storm:
         # actually run check -> refresh over that arm's own nominated set as
         # one continuous timed interval, rather than reporting
         # `check_wall_ms + Σ refresh_wall_ms` computed from the shared
-        # per-artifact table the oracle pass below builds. This necessarily
-        # calls `refresh()` a second time this batch for any name both
-        # passes touch (harmless: `refresh()` is idempotent in content when
-        # nothing changed between the two calls, and every oracle-relevant
-        # decision below — `oracle_changed`, `refused`, every arm's
-        # `invalidated`/`false_fresh`/`false_stale` — is computed from the
-        # *oracle* pass alone, never from this one, so the two TTF modes
-        # produce byte-identical non-timing records; only `ttf_ms` differs).
+        # per-artifact table the oracle pass below builds.
+        #
+        # **Each arm's interval starts from the same pre-interval registry
+        # state** (`_registry_mark` before the first interval,
+        # `_registry_rollback` after each one, both outside the timed
+        # region). Without it the second interval measured nothing: every
+        # interval publishes a fresh generation of each name it refreshes,
+        # so the next arm's `check_artifact` finds those names fresh and
+        # refreshes none of them. With tgms-L0 first (L0 nominates a
+        # superset of L1) the recorded tgms-L1 `ttf_ms` collapsed to its own
+        # check time — failure ledger `storm-e2e-l1-interval-after-l0-
+        # refresh`. Reordering alone (L1 first) is *not* sufficient: it only
+        # moves the error onto L0, whose interval would then find L1's names
+        # already republished and skip them, under-reporting L0 by exactly
+        # L1's refresh share. Rolling the registry back — truncating
+        # `artifacts.jsonl` to the mark and restoring the in-memory fold — is
+        # O(registered names) plus one truncate per arm, untimed.
+        #
+        # The rollback also means the oracle pass below sees exactly the
+        # registry a sum-mode run of the same seed sees, so the two TTF
+        # modes produce byte-identical registries as well as byte-identical
+        # non-timing records (`oracle_changed`, `refused`, every arm's
+        # `invalidated`/`false_fresh`/`false_stale` all come from the oracle
+        # pass alone). Result blobs the intervals wrote under `results/` stay:
+        # `ResultStore.put` is keyed by `result_digest` and writes once, and
+        # no row or registry byte reads them.
         end_to_end_ms: dict[str, float] = {}
+        e2e_refresh_calls: dict[str, int] = {}
         if self.measure_ttf == "end-to-end":
+            mark = _registry_mark(self.registry)
             for arm_name, level1 in (("tgms-L0", False), ("tgms-L1", True)):
                 if arm_name not in self.arms:
                     continue
                 nominated = sorted(tgms_invalidated[arm_name])
+                calls = [0]
 
-                def _run_e2e(names=nominated, l1=level1) -> None:
+                def _run_e2e(names=nominated, l1=level1, calls=calls) -> None:
                     for name in names:
                         record = self.registry.current(name)
                         if record is None:
                             continue
                         verdict = check_artifact(record, self.store.eventlog, level1=l1)
                         if not verdict.actionable_fresh and verdict.refresh is not None:
+                            calls[0] += 1
                             try:
                                 refresh(record, verdict.refresh, self.store, self.registry)
                             except TgmsError:
@@ -979,6 +1014,8 @@ class Storm:
 
                 _unused, dt = self._timed(_run_e2e)
                 end_to_end_ms[arm_name] = dt
+                e2e_refresh_calls[arm_name] = calls[0]
+                _registry_rollback(self.registry, mark)
 
         entity_inv = set(_entity_touch(self.artifacts, touched))
         window_inv = set(_window_overlap(self.artifacts, interval))
@@ -1033,7 +1070,7 @@ class Storm:
             arms_out[arm] = ArmOutcome(
                 arm=arm, invalidated=tuple(sorted(inv)), check_wall_ms=check_ms,
                 refresh_wall_ms=r_ms, ttf_ms=ttf_ms, false_fresh=false_fresh,
-                false_stale=false_stale)
+                false_stale=false_stale, e2e_refresh_calls=e2e_refresh_calls.get(arm))
 
         correction_disc, correction_eid = _correction_disc_eid(correction.ops)
         return BatchResult(
@@ -1069,6 +1106,51 @@ class Storm:
 
     def close(self) -> None:
         self.store.close()
+
+
+# ---------------------------------------------------------------------------
+# end-to-end TTF: per-arm registry rollback (see `Storm.run_batch`)
+# ---------------------------------------------------------------------------
+
+RegistryMark = tuple[int, str, dict[str, list[Any]]]
+
+
+def _registry_mark(registry: Registry) -> RegistryMark:
+    """The registry's state before the end-to-end intervals: its folded
+    checkpoint `(offset, chain)` and a copy of its per-name histories.
+
+    A measurement-harness device, not a registry operation: the registry is
+    append-only and has no rollback of its own, so this reaches into its
+    fold (`_by_name`) deliberately. Single-writer by construction — this
+    harness is the only process writing the scratch store — and checked:
+    the file must end exactly where the fold does."""
+    offset, chain = registry.checkpoint()
+    size = registry.path.stat().st_size
+    if size != offset:
+        raise RuntimeError(
+            f"registry {registry.path} is {size} bytes but its fold ends at "
+            f"{offset}: cannot mark it for the end-to-end rollback")
+    return offset, chain, {name: list(h) for name, h in registry._by_name.items()}
+
+
+def _registry_rollback(registry: Registry, mark: RegistryMark) -> None:
+    """Undo every append since `mark`: truncate `artifacts.jsonl` back to
+    the mark's offset (under the registry's own append lock) and restore
+    the fold, so the next end-to-end interval — and the oracle pass after
+    them — start from the pre-interval registry."""
+    offset, chain, by_name = mark
+    with open(registry._lock_path, "a+b") as lockf:
+        fcntl.flock(lockf, fcntl.LOCK_EX)
+        try:
+            with open(registry.path, "r+b") as f:
+                f.truncate(offset)
+                f.flush()
+                os.fsync(f.fileno())
+        finally:
+            fcntl.flock(lockf, fcntl.LOCK_UN)
+    registry._by_name = {name: list(h) for name, h in by_name.items()}
+    registry._chain = chain
+    registry._checkpoint_offset = offset
 
 
 # ---------------------------------------------------------------------------
