@@ -1,0 +1,7 @@
+cbf5fe9b50726d0f0d6bf5ba22bda58c328531e6b6539f98f1ecc32a9f0661f6  benchmarks/external-v1/README.md
+a783e8cd29ce332e86c3b7fedda48d69ce300ba01fbf886a3e36939aa71dcf51  benchmarks/external-v1/neo4j-recompute-2026-10-07.json
+a9b6bfd21f4547ef3074516d9808e1fc7fc3a143cbc34c1c013f7a77d64e0be5  benchmarks/external-v1/neo4j-recompute-2026-10-07-rows.jsonl
+3dd39bbcf156277b7ff39363798f27ab9aee7fe7be70c5dc22c0365c845b564e  benchmarks/external-v1/ivm-differential-2026-10-07.json
+8b3b83468cfa224321b707737cac80002ca7d966ebb298d9dd524bc581cf0627  benchmarks/external-v1/ivm-differential-2026-10-07-rows.jsonl
+bae0c2f88cd63b0cdc7835fc3dc586832ea44741b2ca824918a3064836d3be82  benchmarks/external-v1/tgms-control-2026-10-05.json
+5bb2a187fce886eb089a4a89b3cf7381841ee81980e8be4674200b2aa7f26025  benchmarks/external-v1/tgms-control-2026-10-05-rows.jsonl

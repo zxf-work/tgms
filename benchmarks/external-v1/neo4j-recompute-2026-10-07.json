@@ -1,0 +1,1647 @@
+{
+  "config": {
+    "campaign": "neo4j-recompute",
+    "cell_ids": [
+      "collegemsg-c1-deep-n1000-s0",
+      "collegemsg-c1-deep-n1000-s1",
+      "collegemsg-c1-deep-n1000-s2",
+      "collegemsg-c1-none-n1000-s0",
+      "collegemsg-c1-none-n1000-s1",
+      "collegemsg-c1-none-n1000-s2",
+      "collegemsg-c3-days-n1000-s0",
+      "collegemsg-c3-deep-n1000-s0",
+      "collegemsg-c3-deep-n1000-s1",
+      "collegemsg-c3-deep-n1000-s2",
+      "collegemsg-c3-hours-n1000-s0",
+      "collegemsg-c3-none-n1000-s0",
+      "collegemsg-c3-none-n1000-s1",
+      "collegemsg-c3-none-n1000-s2",
+      "collegemsg-c3-recent-n1000-s0",
+      "collegemsg-c4-deep-n1000-s0",
+      "collegemsg-c4-deep-n1000-s1",
+      "collegemsg-c4-deep-n1000-s2",
+      "collegemsg-c4-none-n1000-s0",
+      "collegemsg-c4-none-n1000-s1",
+      "collegemsg-c4-none-n1000-s2",
+      "synth-iv-60k-c1-deep-n1000-s0",
+      "synth-iv-60k-c1-deep-n1000-s1",
+      "synth-iv-60k-c1-deep-n1000-s2",
+      "synth-iv-60k-c1-none-n10000-s0",
+      "synth-iv-60k-c1-none-n1000-s0",
+      "synth-iv-60k-c1-none-n1000-s1",
+      "synth-iv-60k-c1-none-n1000-s2",
+      "synth-iv-60k-c3-days-n1000-s0",
+      "synth-iv-60k-c3-deep-n1000-s0",
+      "synth-iv-60k-c3-deep-n1000-s1",
+      "synth-iv-60k-c3-deep-n1000-s2",
+      "synth-iv-60k-c3-hours-n1000-s0",
+      "synth-iv-60k-c3-none-n1000-s0",
+      "synth-iv-60k-c3-none-n1000-s1",
+      "synth-iv-60k-c3-none-n1000-s2",
+      "synth-iv-60k-c3-recent-n1000-s0",
+      "synth-iv-60k-c4-deep-n1000-s0",
+      "synth-iv-60k-c4-deep-n1000-s1",
+      "synth-iv-60k-c4-deep-n1000-s2",
+      "synth-iv-60k-c4-none-n1000-s0",
+      "synth-iv-60k-c4-none-n1000-s1",
+      "synth-iv-60k-c4-none-n1000-s2"
+    ]
+  },
+  "dataset": {
+    "digest": "f6777c1ab8ca28ba36df79d22f2ad28cd0478b7ee994dc3d17ce26de65c51801",
+    "digest_kind": "manifest",
+    "name": "storm-v2 grid (Neo4j 5.26 recompute)"
+  },
+  "git_commit": "79e79c7be087481330b3ee28bfd6dcf1c3aa3ceb",
+  "machine": {
+    "cpus": 40,
+    "host": "xzgpu",
+    "platform": "Linux-5.4.0-216-generic-x86_64-with-glibc2.31",
+    "ram_gb": 93.0
+  },
+  "n_cells": 43,
+  "protocol": {
+    "ceilings": {
+      "note": "per-cell ceilings are in each row's own result"
+    },
+    "reps": 1,
+    "warmups": 1
+  },
+  "record": "c1-work/out/neo4j-recompute-2026-10-07-rows.jsonl",
+  "result_digest": "f02ac33234342403d4b82b3dedcc30ccc10c711cb5493ce652bdbff828501e90",
+  "schema_version": "1.0.0",
+  "seed": {
+    "reason": "cell identity carries the seed; see cell_id per row",
+    "value": null
+  },
+  "summary": {
+    "per_cell": [
+      {
+        "artifacts_touched_per_burst": {
+          "all_registered": true,
+          "median": 934
+        },
+        "cell_id": "collegemsg-c1-deep-n1000-s0",
+        "config_kind": "neo4j",
+        "equality_level": "FAIL",
+        "false_fresh": 0,
+        "false_stale": 17682.0,
+        "host_load": null,
+        "n_bursts": 21,
+        "oracle_agreement": {
+          "agree": 19614,
+          "disagree": 0,
+          "n_compared": 19614,
+          "not_answered": 0,
+          "oracle_refused": 0
+        },
+        "refresh_wall_ms": {
+          "max": 7880.407904041931,
+          "median": 6854.316946992185,
+          "sum": 139901.87952609267
+        },
+        "versions": {
+          "apoc_version": "5.26.0-core",
+          "driver_version": "5.28.6",
+          "jdk_version": "Temurin 21.0.12",
+          "neo4j_version": "5.26.0"
+        }
+      },
+      {
+        "artifacts_touched_per_burst": {
+          "all_registered": true,
+          "median": 939
+        },
+        "cell_id": "collegemsg-c1-deep-n1000-s1",
+        "config_kind": "neo4j",
+        "equality_level": "FAIL",
+        "false_fresh": 0,
+        "false_stale": 17785.0,
+        "host_load": null,
+        "n_bursts": 21,
+        "oracle_agreement": {
+          "agree": 19719,
+          "disagree": 0,
+          "n_compared": 19719,
+          "not_answered": 0,
+          "oracle_refused": 0
+        },
+        "refresh_wall_ms": {
+          "max": 9095.572599035222,
+          "median": 7547.637258016039,
+          "sum": 155267.34597975155
+        },
+        "versions": {
+          "apoc_version": "5.26.0-core",
+          "driver_version": "5.28.6",
+          "jdk_version": "Temurin 21.0.12",
+          "neo4j_version": "5.26.0"
+        }
+      },
+      {
+        "artifacts_touched_per_burst": {
+          "all_registered": true,
+          "median": 930
+        },
+        "cell_id": "collegemsg-c1-deep-n1000-s2",
+        "config_kind": "neo4j",
+        "equality_level": "FAIL",
+        "false_fresh": 0,
+        "false_stale": 17442.0,
+        "host_load": null,
+        "n_bursts": 21,
+        "oracle_agreement": {
+          "agree": 19530,
+          "disagree": 0,
+          "n_compared": 19530,
+          "not_answered": 0,
+          "oracle_refused": 0
+        },
+        "refresh_wall_ms": {
+          "max": 10510.41799003724,
+          "median": 8753.55700799264,
+          "sum": 180495.46329805162
+        },
+        "versions": {
+          "apoc_version": "5.26.0-core",
+          "driver_version": "5.28.6",
+          "jdk_version": "Temurin 21.0.12",
+          "neo4j_version": "5.26.0"
+        }
+      },
+      {
+        "artifacts_touched_per_burst": {
+          "all_registered": true,
+          "median": 934
+        },
+        "cell_id": "collegemsg-c1-none-n1000-s0",
+        "config_kind": "neo4j",
+        "equality_level": "FAIL",
+        "false_fresh": 0,
+        "false_stale": 17498.0,
+        "host_load": null,
+        "n_bursts": 21,
+        "oracle_agreement": {
+          "agree": 19614,
+          "disagree": 0,
+          "n_compared": 19614,
+          "not_answered": 0,
+          "oracle_refused": 0
+        },
+        "refresh_wall_ms": {
+          "max": 8347.558297973592,
+          "median": 6762.032606988214,
+          "sum": 139163.0252081668
+        },
+        "versions": {
+          "apoc_version": "5.26.0-core",
+          "driver_version": "5.28.6",
+          "jdk_version": "Temurin 21.0.12",
+          "neo4j_version": "5.26.0"
+        }
+      },
+      {
+        "artifacts_touched_per_burst": {
+          "all_registered": true,
+          "median": 939
+        },
+        "cell_id": "collegemsg-c1-none-n1000-s1",
+        "config_kind": "neo4j",
+        "equality_level": "FAIL",
+        "false_fresh": 0,
+        "false_stale": 17643.0,
+        "host_load": null,
+        "n_bursts": 21,
+        "oracle_agreement": {
+          "agree": 19719,
+          "disagree": 0,
+          "n_compared": 19719,
+          "not_answered": 0,
+          "oracle_refused": 0
+        },
+        "refresh_wall_ms": {
+          "max": 7590.45550605515,
+          "median": 5932.178840972483,
+          "sum": 123979.25140004372
+        },
+        "versions": {
+          "apoc_version": "5.26.0-core",
+          "driver_version": "5.28.6",
+          "jdk_version": "Temurin 21.0.12",
+          "neo4j_version": "5.26.0"
+        }
+      },
+      {
+        "artifacts_touched_per_burst": {
+          "all_registered": true,
+          "median": 930
+        },
+        "cell_id": "collegemsg-c1-none-n1000-s2",
+        "config_kind": "neo4j",
+        "equality_level": "FAIL",
+        "false_fresh": 0,
+        "false_stale": 17562.0,
+        "host_load": null,
+        "n_bursts": 21,
+        "oracle_agreement": {
+          "agree": 19530,
+          "disagree": 0,
+          "n_compared": 19530,
+          "not_answered": 0,
+          "oracle_refused": 0
+        },
+        "refresh_wall_ms": {
+          "max": 8517.359894001856,
+          "median": 7171.917752013542,
+          "sum": 146067.72140483372
+        },
+        "versions": {
+          "apoc_version": "5.26.0-core",
+          "driver_version": "5.28.6",
+          "jdk_version": "Temurin 21.0.12",
+          "neo4j_version": "5.26.0"
+        }
+      },
+      {
+        "artifacts_touched_per_burst": {
+          "all_registered": true,
+          "median": 934
+        },
+        "cell_id": "collegemsg-c3-days-n1000-s0",
+        "config_kind": "neo4j",
+        "equality_level": "new cell (no committed digest)",
+        "false_fresh": 0,
+        "false_stale": 17644.0,
+        "host_load": null,
+        "n_bursts": 21,
+        "oracle_agreement": {
+          "agree": 19614,
+          "disagree": 0,
+          "n_compared": 19614,
+          "not_answered": 0,
+          "oracle_refused": 0
+        },
+        "refresh_wall_ms": {
+          "max": 7871.269870025571,
+          "median": 6665.370823000558,
+          "sum": 136360.9786160523
+        },
+        "versions": {
+          "apoc_version": "5.26.0-core",
+          "driver_version": "5.28.6",
+          "jdk_version": "Temurin 21.0.12",
+          "neo4j_version": "5.26.0"
+        }
+      },
+      {
+        "artifacts_touched_per_burst": {
+          "all_registered": true,
+          "median": 934
+        },
+        "cell_id": "collegemsg-c3-deep-n1000-s0",
+        "config_kind": "neo4j",
+        "equality_level": "FAIL",
+        "false_fresh": 0,
+        "false_stale": 17556.0,
+        "host_load": null,
+        "n_bursts": 21,
+        "oracle_agreement": {
+          "agree": 19614,
+          "disagree": 0,
+          "n_compared": 19614,
+          "not_answered": 0,
+          "oracle_refused": 0
+        },
+        "refresh_wall_ms": {
+          "max": 7907.873195013963,
+          "median": 6905.334973998833,
+          "sum": 140102.2804211825
+        },
+        "versions": {
+          "apoc_version": "5.26.0-core",
+          "driver_version": "5.28.6",
+          "jdk_version": "Temurin 21.0.12",
+          "neo4j_version": "5.26.0"
+        }
+      },
+      {
+        "artifacts_touched_per_burst": {
+          "all_registered": true,
+          "median": 939
+        },
+        "cell_id": "collegemsg-c3-deep-n1000-s1",
+        "config_kind": "neo4j",
+        "equality_level": "FAIL",
+        "false_fresh": 0,
+        "false_stale": 17892.0,
+        "host_load": null,
+        "n_bursts": 21,
+        "oracle_agreement": {
+          "agree": 19719,
+          "disagree": 0,
+          "n_compared": 19719,
+          "not_answered": 0,
+          "oracle_refused": 0
+        },
+        "refresh_wall_ms": {
+          "max": 7323.188559967093,
+          "median": 5875.949886976741,
+          "sum": 121127.36418301938
+        },
+        "versions": {
+          "apoc_version": "5.26.0-core",
+          "driver_version": "5.28.6",
+          "jdk_version": "Temurin 21.0.12",
+          "neo4j_version": "5.26.0"
+        }
+      },
+      {
+        "artifacts_touched_per_burst": {
+          "all_registered": true,
+          "median": 930
+        },
+        "cell_id": "collegemsg-c3-deep-n1000-s2",
+        "config_kind": "neo4j",
+        "equality_level": "FAIL",
+        "false_fresh": 0,
+        "false_stale": 17567.0,
+        "host_load": null,
+        "n_bursts": 21,
+        "oracle_agreement": {
+          "agree": 19530,
+          "disagree": 0,
+          "n_compared": 19530,
+          "not_answered": 0,
+          "oracle_refused": 0
+        },
+        "refresh_wall_ms": {
+          "max": 10092.339866969269,
+          "median": 8619.768124015536,
+          "sum": 175131.24913809588
+        },
+        "versions": {
+          "apoc_version": "5.26.0-core",
+          "driver_version": "5.28.6",
+          "jdk_version": "Temurin 21.0.12",
+          "neo4j_version": "5.26.0"
+        }
+      },
+      {
+        "artifacts_touched_per_burst": {
+          "all_registered": true,
+          "median": 934
+        },
+        "cell_id": "collegemsg-c3-hours-n1000-s0",
+        "config_kind": "neo4j",
+        "equality_level": "new cell (no committed digest)",
+        "false_fresh": 0,
+        "false_stale": 17502.0,
+        "host_load": null,
+        "n_bursts": 21,
+        "oracle_agreement": {
+          "agree": 19614,
+          "disagree": 0,
+          "n_compared": 19614,
+          "not_answered": 0,
+          "oracle_refused": 0
+        },
+        "refresh_wall_ms": {
+          "max": 7923.513577959966,
+          "median": 6650.259319983888,
+          "sum": 135032.37252595136
+        },
+        "versions": {
+          "apoc_version": "5.26.0-core",
+          "driver_version": "5.28.6",
+          "jdk_version": "Temurin 21.0.12",
+          "neo4j_version": "5.26.0"
+        }
+      },
+      {
+        "artifacts_touched_per_burst": {
+          "all_registered": true,
+          "median": 934
+        },
+        "cell_id": "collegemsg-c3-none-n1000-s0",
+        "config_kind": "neo4j",
+        "equality_level": "FAIL",
+        "false_fresh": 0,
+        "false_stale": 17880.0,
+        "host_load": null,
+        "n_bursts": 21,
+        "oracle_agreement": {
+          "agree": 19614,
+          "disagree": 0,
+          "n_compared": 19614,
+          "not_answered": 0,
+          "oracle_refused": 0
+        },
+        "refresh_wall_ms": {
+          "max": 9225.33744003158,
+          "median": 7960.246642003767,
+          "sum": 162558.030768123
+        },
+        "versions": {
+          "apoc_version": "5.26.0-core",
+          "driver_version": "5.28.6",
+          "jdk_version": "Temurin 21.0.12",
+          "neo4j_version": "5.26.0"
+        }
+      },
+      {
+        "artifacts_touched_per_burst": {
+          "all_registered": true,
+          "median": 939
+        },
+        "cell_id": "collegemsg-c3-none-n1000-s1",
+        "config_kind": "neo4j",
+        "equality_level": "FAIL",
+        "false_fresh": 0,
+        "false_stale": 17880.0,
+        "host_load": null,
+        "n_bursts": 21,
+        "oracle_agreement": {
+          "agree": 19719,
+          "disagree": 0,
+          "n_compared": 19719,
+          "not_answered": 0,
+          "oracle_refused": 0
+        },
+        "refresh_wall_ms": {
+          "max": 7460.354342008941,
+          "median": 5936.052214994561,
+          "sum": 123597.03393897507
+        },
+        "versions": {
+          "apoc_version": "5.26.0-core",
+          "driver_version": "5.28.6",
+          "jdk_version": "Temurin 21.0.12",
+          "neo4j_version": "5.26.0"
+        }
+      },
+      {
+        "artifacts_touched_per_burst": {
+          "all_registered": true,
+          "median": 930
+        },
+        "cell_id": "collegemsg-c3-none-n1000-s2",
+        "config_kind": "neo4j",
+        "equality_level": "FAIL",
+        "false_fresh": 0,
+        "false_stale": 17763.0,
+        "host_load": null,
+        "n_bursts": 21,
+        "oracle_agreement": {
+          "agree": 19530,
+          "disagree": 0,
+          "n_compared": 19530,
+          "not_answered": 0,
+          "oracle_refused": 0
+        },
+        "refresh_wall_ms": {
+          "max": 10264.54007497523,
+          "median": 8605.472713010386,
+          "sum": 176292.28473408148
+        },
+        "versions": {
+          "apoc_version": "5.26.0-core",
+          "driver_version": "5.28.6",
+          "jdk_version": "Temurin 21.0.12",
+          "neo4j_version": "5.26.0"
+        }
+      },
+      {
+        "artifacts_touched_per_burst": {
+          "all_registered": true,
+          "median": 934
+        },
+        "cell_id": "collegemsg-c3-recent-n1000-s0",
+        "config_kind": "neo4j",
+        "equality_level": "new cell (no committed digest)",
+        "false_fresh": 0,
+        "false_stale": 17924.0,
+        "host_load": null,
+        "n_bursts": 21,
+        "oracle_agreement": {
+          "agree": 19614,
+          "disagree": 0,
+          "n_compared": 19614,
+          "not_answered": 0,
+          "oracle_refused": 0
+        },
+        "refresh_wall_ms": {
+          "max": 8325.658825982828,
+          "median": 6808.223155967426,
+          "sum": 144709.28122894838
+        },
+        "versions": {
+          "apoc_version": "5.26.0-core",
+          "driver_version": "5.28.6",
+          "jdk_version": "Temurin 21.0.12",
+          "neo4j_version": "5.26.0"
+        }
+      },
+      {
+        "artifacts_touched_per_burst": {
+          "all_registered": true,
+          "median": 934
+        },
+        "cell_id": "collegemsg-c4-deep-n1000-s0",
+        "config_kind": "neo4j",
+        "equality_level": "FAIL",
+        "false_fresh": 0,
+        "false_stale": 17576.0,
+        "host_load": null,
+        "n_bursts": 21,
+        "oracle_agreement": {
+          "agree": 19614,
+          "disagree": 0,
+          "n_compared": 19614,
+          "not_answered": 0,
+          "oracle_refused": 0
+        },
+        "refresh_wall_ms": {
+          "max": 9499.186539964285,
+          "median": 7008.375134028029,
+          "sum": 146927.94560600305
+        },
+        "versions": {
+          "apoc_version": "5.26.0-core",
+          "driver_version": "5.28.6",
+          "jdk_version": "Temurin 21.0.12",
+          "neo4j_version": "5.26.0"
+        }
+      },
+      {
+        "artifacts_touched_per_burst": {
+          "all_registered": true,
+          "median": 939
+        },
+        "cell_id": "collegemsg-c4-deep-n1000-s1",
+        "config_kind": "neo4j",
+        "equality_level": "FAIL",
+        "false_fresh": 0,
+        "false_stale": 17743.0,
+        "host_load": null,
+        "n_bursts": 21,
+        "oracle_agreement": {
+          "agree": 19719,
+          "disagree": 0,
+          "n_compared": 19719,
+          "not_answered": 0,
+          "oracle_refused": 0
+        },
+        "refresh_wall_ms": {
+          "max": 9093.855091021396,
+          "median": 7804.388730961364,
+          "sum": 158764.88772116136
+        },
+        "versions": {
+          "apoc_version": "5.26.0-core",
+          "driver_version": "5.28.6",
+          "jdk_version": "Temurin 21.0.12",
+          "neo4j_version": "5.26.0"
+        }
+      },
+      {
+        "artifacts_touched_per_burst": {
+          "all_registered": true,
+          "median": 930
+        },
+        "cell_id": "collegemsg-c4-deep-n1000-s2",
+        "config_kind": "neo4j",
+        "equality_level": "FAIL",
+        "false_fresh": 0,
+        "false_stale": 17660.0,
+        "host_load": null,
+        "n_bursts": 21,
+        "oracle_agreement": {
+          "agree": 19530,
+          "disagree": 0,
+          "n_compared": 19530,
+          "not_answered": 0,
+          "oracle_refused": 0
+        },
+        "refresh_wall_ms": {
+          "max": 10514.851220999844,
+          "median": 8983.553069003392,
+          "sum": 183064.41634509247
+        },
+        "versions": {
+          "apoc_version": "5.26.0-core",
+          "driver_version": "5.28.6",
+          "jdk_version": "Temurin 21.0.12",
+          "neo4j_version": "5.26.0"
+        }
+      },
+      {
+        "artifacts_touched_per_burst": {
+          "all_registered": true,
+          "median": 934
+        },
+        "cell_id": "collegemsg-c4-none-n1000-s0",
+        "config_kind": "neo4j",
+        "equality_level": "FAIL",
+        "false_fresh": 0,
+        "false_stale": 17766.0,
+        "host_load": null,
+        "n_bursts": 21,
+        "oracle_agreement": {
+          "agree": 19614,
+          "disagree": 0,
+          "n_compared": 19614,
+          "not_answered": 0,
+          "oracle_refused": 0
+        },
+        "refresh_wall_ms": {
+          "max": 8251.542735029943,
+          "median": 7025.5005629733205,
+          "sum": 141509.4314099988
+        },
+        "versions": {
+          "apoc_version": "5.26.0-core",
+          "driver_version": "5.28.6",
+          "jdk_version": "Temurin 21.0.12",
+          "neo4j_version": "5.26.0"
+        }
+      },
+      {
+        "artifacts_touched_per_burst": {
+          "all_registered": true,
+          "median": 939
+        },
+        "cell_id": "collegemsg-c4-none-n1000-s1",
+        "config_kind": "neo4j",
+        "equality_level": "FAIL",
+        "false_fresh": 0,
+        "false_stale": 17930.0,
+        "host_load": null,
+        "n_bursts": 21,
+        "oracle_agreement": {
+          "agree": 19719,
+          "disagree": 0,
+          "n_compared": 19719,
+          "not_answered": 0,
+          "oracle_refused": 0
+        },
+        "refresh_wall_ms": {
+          "max": 8796.504942001775,
+          "median": 8017.576996993739,
+          "sum": 160979.0002690279
+        },
+        "versions": {
+          "apoc_version": "5.26.0-core",
+          "driver_version": "5.28.6",
+          "jdk_version": "Temurin 21.0.12",
+          "neo4j_version": "5.26.0"
+        }
+      },
+      {
+        "artifacts_touched_per_burst": {
+          "all_registered": true,
+          "median": 930
+        },
+        "cell_id": "collegemsg-c4-none-n1000-s2",
+        "config_kind": "neo4j",
+        "equality_level": "FAIL",
+        "false_fresh": 0,
+        "false_stale": 17789.0,
+        "host_load": null,
+        "n_bursts": 21,
+        "oracle_agreement": {
+          "agree": 19530,
+          "disagree": 0,
+          "n_compared": 19530,
+          "not_answered": 0,
+          "oracle_refused": 0
+        },
+        "refresh_wall_ms": {
+          "max": 10277.795919973869,
+          "median": 9104.346484004054,
+          "sum": 184709.58417106885
+        },
+        "versions": {
+          "apoc_version": "5.26.0-core",
+          "driver_version": "5.28.6",
+          "jdk_version": "Temurin 21.0.12",
+          "neo4j_version": "5.26.0"
+        }
+      },
+      {
+        "artifacts_touched_per_burst": {
+          "all_registered": true,
+          "median": 884
+        },
+        "cell_id": "synth-iv-60k-c1-deep-n1000-s0",
+        "config_kind": "neo4j",
+        "equality_level": "L2-partial",
+        "false_fresh": 0,
+        "false_stale": 16753.0,
+        "host_load": null,
+        "n_bursts": 21,
+        "oracle_agreement": {
+          "agree": 18543,
+          "disagree": 21,
+          "n_compared": 18564,
+          "not_answered": 0,
+          "oracle_refused": 0
+        },
+        "refresh_wall_ms": {
+          "max": 112730.39463802706,
+          "median": 109687.5277130166,
+          "sum": 2208126.975823019
+        },
+        "versions": {
+          "apoc_version": "5.26.0-core",
+          "driver_version": "5.28.6",
+          "jdk_version": "Temurin 21.0.12",
+          "neo4j_version": "5.26.0"
+        }
+      },
+      {
+        "artifacts_touched_per_burst": {
+          "all_registered": true,
+          "median": 883
+        },
+        "cell_id": "synth-iv-60k-c1-deep-n1000-s1",
+        "config_kind": "neo4j",
+        "equality_level": "L2-partial",
+        "false_fresh": 0,
+        "false_stale": 16671.0,
+        "host_load": null,
+        "n_bursts": 21,
+        "oracle_agreement": {
+          "agree": 18543,
+          "disagree": 0,
+          "n_compared": 18543,
+          "not_answered": 0,
+          "oracle_refused": 0
+        },
+        "refresh_wall_ms": {
+          "max": 109410.8721439843,
+          "median": 106235.3114610305,
+          "sum": 2135424.89154113
+        },
+        "versions": {
+          "apoc_version": "5.26.0-core",
+          "driver_version": "5.28.6",
+          "jdk_version": "Temurin 21.0.12",
+          "neo4j_version": "5.26.0"
+        }
+      },
+      {
+        "artifacts_touched_per_burst": {
+          "all_registered": true,
+          "median": 903
+        },
+        "cell_id": "synth-iv-60k-c1-deep-n1000-s2",
+        "config_kind": "neo4j",
+        "equality_level": "L2-partial",
+        "false_fresh": 0,
+        "false_stale": 17174.0,
+        "host_load": null,
+        "n_bursts": 21,
+        "oracle_agreement": {
+          "agree": 18963,
+          "disagree": 0,
+          "n_compared": 18963,
+          "not_answered": 0,
+          "oracle_refused": 0
+        },
+        "refresh_wall_ms": {
+          "max": 199025.55869199568,
+          "median": 114166.04706901126,
+          "sum": 2456753.5502669634
+        },
+        "versions": {
+          "apoc_version": "5.26.0-core",
+          "driver_version": "5.28.6",
+          "jdk_version": "Temurin 21.0.12",
+          "neo4j_version": "5.26.0"
+        }
+      },
+      {
+        "artifacts_touched_per_burst": {
+          "all_registered": true,
+          "median": 8922.0
+        },
+        "cell_id": "synth-iv-60k-c1-none-n10000-s0",
+        "config_kind": "neo4j",
+        "equality_level": "L2",
+        "false_fresh": 0,
+        "false_stale": 42206.0,
+        "host_load": null,
+        "n_bursts": 6,
+        "oracle_agreement": {
+          "agree": 53526,
+          "disagree": 6,
+          "n_compared": 53532,
+          "not_answered": 0,
+          "oracle_refused": 0
+        },
+        "refresh_wall_ms": {
+          "max": 1127409.6512940014,
+          "median": 1092569.4720720057,
+          "sum": 5500096.702897979
+        },
+        "versions": {
+          "apoc_version": "5.26.0-core",
+          "driver_version": "5.28.6",
+          "jdk_version": "Temurin 21.0.12",
+          "neo4j_version": "5.26.0"
+        }
+      },
+      {
+        "artifacts_touched_per_burst": {
+          "all_registered": true,
+          "median": 884
+        },
+        "cell_id": "synth-iv-60k-c1-none-n1000-s0",
+        "config_kind": "neo4j",
+        "equality_level": "L2-partial",
+        "false_fresh": 0,
+        "false_stale": 16704.0,
+        "host_load": null,
+        "n_bursts": 21,
+        "oracle_agreement": {
+          "agree": 18543,
+          "disagree": 21,
+          "n_compared": 18564,
+          "not_answered": 0,
+          "oracle_refused": 0
+        },
+        "refresh_wall_ms": {
+          "max": 221148.274490959,
+          "median": 118628.11155198142,
+          "sum": 2873226.0497189127
+        },
+        "versions": {
+          "apoc_version": "5.26.0-core",
+          "driver_version": "5.28.6",
+          "jdk_version": "Temurin 21.0.12",
+          "neo4j_version": "5.26.0"
+        }
+      },
+      {
+        "artifacts_touched_per_burst": {
+          "all_registered": true,
+          "median": 883
+        },
+        "cell_id": "synth-iv-60k-c1-none-n1000-s1",
+        "config_kind": "neo4j",
+        "equality_level": "L2-partial",
+        "false_fresh": 0,
+        "false_stale": 16500.0,
+        "host_load": null,
+        "n_bursts": 21,
+        "oracle_agreement": {
+          "agree": 18543,
+          "disagree": 0,
+          "n_compared": 18543,
+          "not_answered": 0,
+          "oracle_refused": 0
+        },
+        "refresh_wall_ms": {
+          "max": 119946.72345597064,
+          "median": 114894.59993503988,
+          "sum": 2301786.358970101
+        },
+        "versions": {
+          "apoc_version": "5.26.0-core",
+          "driver_version": "5.28.6",
+          "jdk_version": "Temurin 21.0.12",
+          "neo4j_version": "5.26.0"
+        }
+      },
+      {
+        "artifacts_touched_per_burst": {
+          "all_registered": true,
+          "median": 903
+        },
+        "cell_id": "synth-iv-60k-c1-none-n1000-s2",
+        "config_kind": "neo4j",
+        "equality_level": "L2-partial",
+        "false_fresh": 0,
+        "false_stale": 17099.0,
+        "host_load": null,
+        "n_bursts": 21,
+        "oracle_agreement": {
+          "agree": 18963,
+          "disagree": 0,
+          "n_compared": 18963,
+          "not_answered": 0,
+          "oracle_refused": 0
+        },
+        "refresh_wall_ms": {
+          "max": 121032.95631700894,
+          "median": 117640.08197997464,
+          "sum": 2347644.816050073
+        },
+        "versions": {
+          "apoc_version": "5.26.0-core",
+          "driver_version": "5.28.6",
+          "jdk_version": "Temurin 21.0.12",
+          "neo4j_version": "5.26.0"
+        }
+      },
+      {
+        "artifacts_touched_per_burst": {
+          "all_registered": true,
+          "median": 884
+        },
+        "cell_id": "synth-iv-60k-c3-days-n1000-s0",
+        "config_kind": "neo4j",
+        "equality_level": "new cell (no committed digest)",
+        "false_fresh": 0,
+        "false_stale": 16900.0,
+        "host_load": null,
+        "n_bursts": 21,
+        "oracle_agreement": {
+          "agree": 18543,
+          "disagree": 21,
+          "n_compared": 18564,
+          "not_answered": 0,
+          "oracle_refused": 0
+        },
+        "refresh_wall_ms": {
+          "max": 125837.53928099759,
+          "median": 116540.60435597785,
+          "sum": 2298194.4059020025
+        },
+        "versions": {
+          "apoc_version": "5.26.0-core",
+          "driver_version": "5.28.6",
+          "jdk_version": "Temurin 21.0.12",
+          "neo4j_version": "5.26.0"
+        }
+      },
+      {
+        "artifacts_touched_per_burst": {
+          "all_registered": true,
+          "median": 884
+        },
+        "cell_id": "synth-iv-60k-c3-deep-n1000-s0",
+        "config_kind": "neo4j",
+        "equality_level": "L2-partial",
+        "false_fresh": 0,
+        "false_stale": 16903.0,
+        "host_load": null,
+        "n_bursts": 21,
+        "oracle_agreement": {
+          "agree": 18543,
+          "disagree": 21,
+          "n_compared": 18564,
+          "not_answered": 0,
+          "oracle_refused": 0
+        },
+        "refresh_wall_ms": {
+          "max": 118098.16819202388,
+          "median": 114723.5100690159,
+          "sum": 2304644.8524088482
+        },
+        "versions": {
+          "apoc_version": "5.26.0-core",
+          "driver_version": "5.28.6",
+          "jdk_version": "Temurin 21.0.12",
+          "neo4j_version": "5.26.0"
+        }
+      },
+      {
+        "artifacts_touched_per_burst": {
+          "all_registered": true,
+          "median": 883
+        },
+        "cell_id": "synth-iv-60k-c3-deep-n1000-s1",
+        "config_kind": "neo4j",
+        "equality_level": "L2-partial",
+        "false_fresh": 0,
+        "false_stale": 16950.0,
+        "host_load": null,
+        "n_bursts": 21,
+        "oracle_agreement": {
+          "agree": 18543,
+          "disagree": 0,
+          "n_compared": 18543,
+          "not_answered": 0,
+          "oracle_refused": 0
+        },
+        "refresh_wall_ms": {
+          "max": 118429.2768239975,
+          "median": 108213.52482098155,
+          "sum": 2187146.36467112
+        },
+        "versions": {
+          "apoc_version": "5.26.0-core",
+          "driver_version": "5.28.6",
+          "jdk_version": "Temurin 21.0.12",
+          "neo4j_version": "5.26.0"
+        }
+      },
+      {
+        "artifacts_touched_per_burst": {
+          "all_registered": true,
+          "median": 903
+        },
+        "cell_id": "synth-iv-60k-c3-deep-n1000-s2",
+        "config_kind": "neo4j",
+        "equality_level": "L2-partial",
+        "false_fresh": 0,
+        "false_stale": 17197.0,
+        "host_load": null,
+        "n_bursts": 21,
+        "oracle_agreement": {
+          "agree": 18963,
+          "disagree": 0,
+          "n_compared": 18963,
+          "not_answered": 0,
+          "oracle_refused": 0
+        },
+        "refresh_wall_ms": {
+          "max": 122777.02435397077,
+          "median": 111905.41717596352,
+          "sum": 2259484.185207868
+        },
+        "versions": {
+          "apoc_version": "5.26.0-core",
+          "driver_version": "5.28.6",
+          "jdk_version": "Temurin 21.0.12",
+          "neo4j_version": "5.26.0"
+        }
+      },
+      {
+        "artifacts_touched_per_burst": {
+          "all_registered": true,
+          "median": 884
+        },
+        "cell_id": "synth-iv-60k-c3-hours-n1000-s0",
+        "config_kind": "neo4j",
+        "equality_level": "new cell (no committed digest)",
+        "false_fresh": 0,
+        "false_stale": 17036.0,
+        "host_load": null,
+        "n_bursts": 21,
+        "oracle_agreement": {
+          "agree": 18543,
+          "disagree": 21,
+          "n_compared": 18564,
+          "not_answered": 0,
+          "oracle_refused": 0
+        },
+        "refresh_wall_ms": {
+          "max": 212858.11804194236,
+          "median": 109054.33819897007,
+          "sum": 2674111.903194862
+        },
+        "versions": {
+          "apoc_version": "5.26.0-core",
+          "driver_version": "5.28.6",
+          "jdk_version": "Temurin 21.0.12",
+          "neo4j_version": "5.26.0"
+        }
+      },
+      {
+        "artifacts_touched_per_burst": {
+          "all_registered": true,
+          "median": 884
+        },
+        "cell_id": "synth-iv-60k-c3-none-n1000-s0",
+        "config_kind": "neo4j",
+        "equality_level": "L2-partial",
+        "false_fresh": 0,
+        "false_stale": 16838.0,
+        "host_load": null,
+        "n_bursts": 21,
+        "oracle_agreement": {
+          "agree": 18543,
+          "disagree": 21,
+          "n_compared": 18564,
+          "not_answered": 0,
+          "oracle_refused": 0
+        },
+        "refresh_wall_ms": {
+          "max": 124514.74678498926,
+          "median": 110967.8069470101,
+          "sum": 2294485.169240099
+        },
+        "versions": {
+          "apoc_version": "5.26.0-core",
+          "driver_version": "5.28.6",
+          "jdk_version": "Temurin 21.0.12",
+          "neo4j_version": "5.26.0"
+        }
+      },
+      {
+        "artifacts_touched_per_burst": {
+          "all_registered": true,
+          "median": 883
+        },
+        "cell_id": "synth-iv-60k-c3-none-n1000-s1",
+        "config_kind": "neo4j",
+        "equality_level": "L2-partial",
+        "false_fresh": 0,
+        "false_stale": 16601.0,
+        "host_load": null,
+        "n_bursts": 21,
+        "oracle_agreement": {
+          "agree": 18543,
+          "disagree": 0,
+          "n_compared": 18543,
+          "not_answered": 0,
+          "oracle_refused": 0
+        },
+        "refresh_wall_ms": {
+          "max": 115304.73138997331,
+          "median": 105065.92311401619,
+          "sum": 2122193.5713570565
+        },
+        "versions": {
+          "apoc_version": "5.26.0-core",
+          "driver_version": "5.28.6",
+          "jdk_version": "Temurin 21.0.12",
+          "neo4j_version": "5.26.0"
+        }
+      },
+      {
+        "artifacts_touched_per_burst": {
+          "all_registered": true,
+          "median": 903
+        },
+        "cell_id": "synth-iv-60k-c3-none-n1000-s2",
+        "config_kind": "neo4j",
+        "equality_level": "L2-partial",
+        "false_fresh": 0,
+        "false_stale": 17074.0,
+        "host_load": null,
+        "n_bursts": 21,
+        "oracle_agreement": {
+          "agree": 18963,
+          "disagree": 0,
+          "n_compared": 18963,
+          "not_answered": 0,
+          "oracle_refused": 0
+        },
+        "refresh_wall_ms": {
+          "max": 124959.72980000079,
+          "median": 118286.90577700036,
+          "sum": 2379232.56043985
+        },
+        "versions": {
+          "apoc_version": "5.26.0-core",
+          "driver_version": "5.28.6",
+          "jdk_version": "Temurin 21.0.12",
+          "neo4j_version": "5.26.0"
+        }
+      },
+      {
+        "artifacts_touched_per_burst": {
+          "all_registered": true,
+          "median": 884
+        },
+        "cell_id": "synth-iv-60k-c3-recent-n1000-s0",
+        "config_kind": "neo4j",
+        "equality_level": "new cell (no committed digest)",
+        "false_fresh": 0,
+        "false_stale": 16701.0,
+        "host_load": null,
+        "n_bursts": 21,
+        "oracle_agreement": {
+          "agree": 18543,
+          "disagree": 21,
+          "n_compared": 18564,
+          "not_answered": 0,
+          "oracle_refused": 0
+        },
+        "refresh_wall_ms": {
+          "max": 119789.1664269846,
+          "median": 108980.96143599832,
+          "sum": 2238565.3846499627
+        },
+        "versions": {
+          "apoc_version": "5.26.0-core",
+          "driver_version": "5.28.6",
+          "jdk_version": "Temurin 21.0.12",
+          "neo4j_version": "5.26.0"
+        }
+      },
+      {
+        "artifacts_touched_per_burst": {
+          "all_registered": true,
+          "median": 884
+        },
+        "cell_id": "synth-iv-60k-c4-deep-n1000-s0",
+        "config_kind": "neo4j",
+        "equality_level": "L2-partial",
+        "false_fresh": 0,
+        "false_stale": 16869.0,
+        "host_load": null,
+        "n_bursts": 21,
+        "oracle_agreement": {
+          "agree": 18543,
+          "disagree": 21,
+          "n_compared": 18564,
+          "not_answered": 0,
+          "oracle_refused": 0
+        },
+        "refresh_wall_ms": {
+          "max": 226190.4164450243,
+          "median": 123819.58221702371,
+          "sum": 2677059.8704830045
+        },
+        "versions": {
+          "apoc_version": "5.26.0-core",
+          "driver_version": "5.28.6",
+          "jdk_version": "Temurin 21.0.12",
+          "neo4j_version": "5.26.0"
+        }
+      },
+      {
+        "artifacts_touched_per_burst": {
+          "all_registered": true,
+          "median": 883
+        },
+        "cell_id": "synth-iv-60k-c4-deep-n1000-s1",
+        "config_kind": "neo4j",
+        "equality_level": "L2-partial",
+        "false_fresh": 0,
+        "false_stale": 16493.0,
+        "host_load": null,
+        "n_bursts": 21,
+        "oracle_agreement": {
+          "agree": 18543,
+          "disagree": 0,
+          "n_compared": 18543,
+          "not_answered": 0,
+          "oracle_refused": 0
+        },
+        "refresh_wall_ms": {
+          "max": 120601.83464497095,
+          "median": 114141.94647001568,
+          "sum": 2279920.548996015
+        },
+        "versions": {
+          "apoc_version": "5.26.0-core",
+          "driver_version": "5.28.6",
+          "jdk_version": "Temurin 21.0.12",
+          "neo4j_version": "5.26.0"
+        }
+      },
+      {
+        "artifacts_touched_per_burst": {
+          "all_registered": true,
+          "median": 903
+        },
+        "cell_id": "synth-iv-60k-c4-deep-n1000-s2",
+        "config_kind": "neo4j",
+        "equality_level": "L2-partial",
+        "false_fresh": 0,
+        "false_stale": 16980.0,
+        "host_load": null,
+        "n_bursts": 21,
+        "oracle_agreement": {
+          "agree": 18963,
+          "disagree": 0,
+          "n_compared": 18963,
+          "not_answered": 0,
+          "oracle_refused": 0
+        },
+        "refresh_wall_ms": {
+          "max": 143542.17755200807,
+          "median": 116431.09944905154,
+          "sum": 2390110.170477943
+        },
+        "versions": {
+          "apoc_version": "5.26.0-core",
+          "driver_version": "5.28.6",
+          "jdk_version": "Temurin 21.0.12",
+          "neo4j_version": "5.26.0"
+        }
+      },
+      {
+        "artifacts_touched_per_burst": {
+          "all_registered": true,
+          "median": 884
+        },
+        "cell_id": "synth-iv-60k-c4-none-n1000-s0",
+        "config_kind": "neo4j",
+        "equality_level": "L2-partial",
+        "false_fresh": 0,
+        "false_stale": 16847.0,
+        "host_load": null,
+        "n_bursts": 21,
+        "oracle_agreement": {
+          "agree": 18543,
+          "disagree": 21,
+          "n_compared": 18564,
+          "not_answered": 0,
+          "oracle_refused": 0
+        },
+        "refresh_wall_ms": {
+          "max": 136139.88316903124,
+          "median": 118870.25951204123,
+          "sum": 2401391.742942098
+        },
+        "versions": {
+          "apoc_version": "5.26.0-core",
+          "driver_version": "5.28.6",
+          "jdk_version": "Temurin 21.0.12",
+          "neo4j_version": "5.26.0"
+        }
+      },
+      {
+        "artifacts_touched_per_burst": {
+          "all_registered": true,
+          "median": 883
+        },
+        "cell_id": "synth-iv-60k-c4-none-n1000-s1",
+        "config_kind": "neo4j",
+        "equality_level": "L2-partial",
+        "false_fresh": 0,
+        "false_stale": 16821.0,
+        "host_load": null,
+        "n_bursts": 21,
+        "oracle_agreement": {
+          "agree": 18543,
+          "disagree": 0,
+          "n_compared": 18543,
+          "not_answered": 0,
+          "oracle_refused": 0
+        },
+        "refresh_wall_ms": {
+          "max": 129084.20917001786,
+          "median": 116670.95425800653,
+          "sum": 2370649.3940650835
+        },
+        "versions": {
+          "apoc_version": "5.26.0-core",
+          "driver_version": "5.28.6",
+          "jdk_version": "Temurin 21.0.12",
+          "neo4j_version": "5.26.0"
+        }
+      },
+      {
+        "artifacts_touched_per_burst": {
+          "all_registered": true,
+          "median": 903
+        },
+        "cell_id": "synth-iv-60k-c4-none-n1000-s2",
+        "config_kind": "neo4j",
+        "equality_level": "L2-partial",
+        "false_fresh": 0,
+        "false_stale": 17256.0,
+        "host_load": null,
+        "n_bursts": 21,
+        "oracle_agreement": {
+          "agree": 18963,
+          "disagree": 0,
+          "n_compared": 18963,
+          "not_answered": 0,
+          "oracle_refused": 0
+        },
+        "refresh_wall_ms": {
+          "max": 219169.59233902162,
+          "median": 175110.3608449921,
+          "sum": 3610189.3528159126
+        },
+        "versions": {
+          "apoc_version": "5.26.0-core",
+          "driver_version": "5.28.6",
+          "jdk_version": "Temurin 21.0.12",
+          "neo4j_version": "5.26.0"
+        }
+      }
+    ],
+    "predictions_measured": {
+      "ext1": {
+        "a_n_cells": 37,
+        "a_ratio_gr_max": 1.1399966024210182,
+        "a_ratio_gr_median": 0.6842557630413267,
+        "a_ratio_gr_min": 0.03242010767067505,
+        "b_n_cells": 37,
+        "b_n_cells_meeting_half_margin": 18,
+        "b_speedup_median": 1.3550580973896753,
+        "b_speedup_min": 0.1972106060586742,
+        "c_probe_ratio_gr": 0.6962361719382261,
+        "d_disagree_total": 195,
+        "d_pass": false,
+        "per_cell": {
+          "collegemsg-c1-deep-n1000-s0": {
+            "committed_source": "c1-work/storm-v2-main-grid-2026-09-15.json",
+            "ratio_gr": 0.035151655590104205,
+            "speedup_l1": 0.22838634289228452
+          },
+          "collegemsg-c1-deep-n1000-s1": {
+            "committed_source": "c1-work/storm-v2-main-grid-2026-09-15.json",
+            "ratio_gr": 0.041623063484948264,
+            "speedup_l1": 0.28475454119547045
+          },
+          "collegemsg-c1-deep-n1000-s2": {
+            "committed_source": "c1-work/storm-v2-main-grid-2026-09-15.json",
+            "ratio_gr": 0.04262099067712076,
+            "speedup_l1": 0.2907015927418504
+          },
+          "collegemsg-c1-none-n1000-s0": {
+            "committed_source": "c1-work/storm-v2-main-grid-2026-09-15.json",
+            "ratio_gr": 0.03457920485757515,
+            "speedup_l1": 0.21400892715710498
+          },
+          "collegemsg-c1-none-n1000-s1": {
+            "committed_source": "c1-work/storm-v2-main-grid-2026-09-15.json",
+            "ratio_gr": 0.03260187559375636,
+            "speedup_l1": 0.21171686026023415
+          },
+          "collegemsg-c1-none-n1000-s2": {
+            "committed_source": "c1-work/storm-v2-main-grid-2026-09-15.json",
+            "ratio_gr": 0.03389290959804832,
+            "speedup_l1": 0.20394536431371205
+          },
+          "collegemsg-c3-days-n1000-s0": {
+            "note": "no committed storm-v2 row for this cell (needs lane T1 or the main grid) -- ratio_gr/speedup left null",
+            "ratio_gr": null,
+            "speedup_l1": null
+          },
+          "collegemsg-c3-deep-n1000-s0": {
+            "committed_source": "c1-work/storm-v2-main-grid-2026-09-15.json",
+            "ratio_gr": 0.035255097945841,
+            "speedup_l1": 0.22323611509294913
+          },
+          "collegemsg-c3-deep-n1000-s1": {
+            "committed_source": "c1-work/storm-v2-main-grid-2026-09-15.json",
+            "ratio_gr": 0.03242010767067505,
+            "speedup_l1": 0.1972106060586742
+          },
+          "collegemsg-c3-deep-n1000-s2": {
+            "committed_source": "c1-work/storm-v2-main-grid-2026-09-15.json",
+            "ratio_gr": 0.04203705671773732,
+            "speedup_l1": 0.34218871058979305
+          },
+          "collegemsg-c3-hours-n1000-s0": {
+            "note": "no committed storm-v2 row for this cell (needs lane T1 or the main grid) -- ratio_gr/speedup left null",
+            "ratio_gr": null,
+            "speedup_l1": null
+          },
+          "collegemsg-c3-none-n1000-s0": {
+            "committed_source": "c1-work/storm-v2-main-grid-2026-09-15.json",
+            "ratio_gr": 0.040407257044405516,
+            "speedup_l1": 0.26917636242211546
+          },
+          "collegemsg-c3-none-n1000-s1": {
+            "committed_source": "c1-work/storm-v2-main-grid-2026-09-15.json",
+            "ratio_gr": 0.03298565563973107,
+            "speedup_l1": 0.24289977655255415
+          },
+          "collegemsg-c3-none-n1000-s2": {
+            "committed_source": "c1-work/storm-v2-main-grid-2026-09-15.json",
+            "ratio_gr": 0.042046873023681645,
+            "speedup_l1": 0.25875893379070186
+          },
+          "collegemsg-c3-recent-n1000-s0": {
+            "note": "no committed storm-v2 row for this cell (needs lane T1 or the main grid) -- ratio_gr/speedup left null",
+            "ratio_gr": null,
+            "speedup_l1": null
+          },
+          "collegemsg-c4-deep-n1000-s0": {
+            "committed_source": "c1-work/storm-v2-main-grid-2026-09-15.json",
+            "ratio_gr": 0.03477381017762448,
+            "speedup_l1": 0.30821736968505997
+          },
+          "collegemsg-c4-deep-n1000-s1": {
+            "committed_source": "c1-work/storm-v2-main-grid-2026-09-15.json",
+            "ratio_gr": 0.041622353122088764,
+            "speedup_l1": 0.2828815150081074
+          },
+          "collegemsg-c4-deep-n1000-s2": {
+            "committed_source": "c1-work/storm-v2-main-grid-2026-09-15.json",
+            "ratio_gr": 0.04362619068243698,
+            "speedup_l1": 0.3521070385180496
+          },
+          "collegemsg-c4-none-n1000-s0": {
+            "committed_source": "c1-work/storm-v2-main-grid-2026-09-15.json",
+            "ratio_gr": 0.0360429409128755,
+            "speedup_l1": 0.26791177661242305
+          },
+          "collegemsg-c4-none-n1000-s1": {
+            "committed_source": "c1-work/storm-v2-main-grid-2026-09-15.json",
+            "ratio_gr": 0.04370413131152171,
+            "speedup_l1": 0.3630866505401806
+          },
+          "collegemsg-c4-none-n1000-s2": {
+            "committed_source": "c1-work/storm-v2-main-grid-2026-09-15.json",
+            "ratio_gr": 0.04330164624729095,
+            "speedup_l1": 0.2784480843780789
+          },
+          "synth-iv-60k-c1-deep-n1000-s0": {
+            "committed_source": "c1-work/storm-v2-main-grid-2026-09-15.json",
+            "ratio_gr": 0.7133891859104801,
+            "speedup_l1": 3.49704574701353
+          },
+          "synth-iv-60k-c1-deep-n1000-s1": {
+            "committed_source": "c1-work/storm-v2-main-grid-2026-09-15.json",
+            "ratio_gr": 0.6842557630413267,
+            "speedup_l1": 3.291812670154896
+          },
+          "synth-iv-60k-c1-deep-n1000-s2": {
+            "committed_source": "c1-work/storm-v2-main-grid-2026-09-15.json",
+            "ratio_gr": 0.8219304281646463,
+            "speedup_l1": 4.057393533109052
+          },
+          "synth-iv-60k-c1-none-n1000-s0": {
+            "committed_source": "c1-work/storm-v2-main-grid-2026-09-15.json",
+            "ratio_gr": 0.7865460033284746,
+            "speedup_l1": 4.06871042897172
+          },
+          "synth-iv-60k-c1-none-n1000-s1": {
+            "committed_source": "c1-work/storm-v2-main-grid-2026-09-15.json",
+            "ratio_gr": 0.7842305406394414,
+            "speedup_l1": 3.7313969838700594
+          },
+          "synth-iv-60k-c1-none-n1000-s2": {
+            "committed_source": "c1-work/storm-v2-main-grid-2026-09-15.json",
+            "ratio_gr": 0.7596988289369355,
+            "speedup_l1": 4.202246619873837
+          },
+          "synth-iv-60k-c1-none-n10000-s0": {
+            "committed_source": "c1-work/storm-v2-r18-probe-2026-09-15.json",
+            "ratio_gr": 0.6962361719382261,
+            "speedup_l1": 1.3550580973896753
+          },
+          "synth-iv-60k-c3-days-n1000-s0": {
+            "note": "no committed storm-v2 row for this cell (needs lane T1 or the main grid) -- ratio_gr/speedup left null",
+            "ratio_gr": null,
+            "speedup_l1": null
+          },
+          "synth-iv-60k-c3-deep-n1000-s0": {
+            "committed_source": "c1-work/storm-v2-main-grid-2026-09-15.json",
+            "ratio_gr": 0.7579611134415264,
+            "speedup_l1": 3.743866002315606
+          },
+          "synth-iv-60k-c3-deep-n1000-s1": {
+            "committed_source": "c1-work/storm-v2-main-grid-2026-09-15.json",
+            "ratio_gr": 0.7304033646421206,
+            "speedup_l1": 3.810560048275806
+          },
+          "synth-iv-60k-c3-deep-n1000-s2": {
+            "committed_source": "c1-work/storm-v2-main-grid-2026-09-15.json",
+            "ratio_gr": 0.7284079901775745,
+            "speedup_l1": 4.801742253712958
+          },
+          "synth-iv-60k-c3-hours-n1000-s0": {
+            "note": "no committed storm-v2 row for this cell (needs lane T1 or the main grid) -- ratio_gr/speedup left null",
+            "ratio_gr": null,
+            "speedup_l1": null
+          },
+          "synth-iv-60k-c3-none-n1000-s0": {
+            "committed_source": "c1-work/storm-v2-main-grid-2026-09-15.json",
+            "ratio_gr": 0.8254435077411191,
+            "speedup_l1": 4.4527881453166165
+          },
+          "synth-iv-60k-c3-none-n1000-s1": {
+            "committed_source": "c1-work/storm-v2-main-grid-2026-09-15.json",
+            "ratio_gr": 0.7022495187871046,
+            "speedup_l1": 3.96198187582165
+          },
+          "synth-iv-60k-c3-none-n1000-s2": {
+            "committed_source": "c1-work/storm-v2-main-grid-2026-09-15.json",
+            "ratio_gr": 0.7729947437001075,
+            "speedup_l1": 4.704342728189977
+          },
+          "synth-iv-60k-c3-recent-n1000-s0": {
+            "note": "no committed storm-v2 row for this cell (needs lane T1 or the main grid) -- ratio_gr/speedup left null",
+            "ratio_gr": null,
+            "speedup_l1": null
+          },
+          "synth-iv-60k-c4-deep-n1000-s0": {
+            "committed_source": "c1-work/storm-v2-main-grid-2026-09-15.json",
+            "ratio_gr": 0.8059771909941339,
+            "speedup_l1": 4.313462878461008
+          },
+          "synth-iv-60k-c4-deep-n1000-s1": {
+            "committed_source": "c1-work/storm-v2-main-grid-2026-09-15.json",
+            "ratio_gr": 0.7488822135212049,
+            "speedup_l1": 3.4360719282680408
+          },
+          "synth-iv-60k-c4-deep-n1000-s2": {
+            "committed_source": "c1-work/storm-v2-main-grid-2026-09-15.json",
+            "ratio_gr": 0.757551440870018,
+            "speedup_l1": 3.804457108340157
+          },
+          "synth-iv-60k-c4-none-n1000-s0": {
+            "committed_source": "c1-work/storm-v2-main-grid-2026-09-15.json",
+            "ratio_gr": 0.8100162118497034,
+            "speedup_l1": 5.414705072223561
+          },
+          "synth-iv-60k-c4-none-n1000-s1": {
+            "committed_source": "c1-work/storm-v2-main-grid-2026-09-15.json",
+            "ratio_gr": 0.8366950414450471,
+            "speedup_l1": 5.326820540297211
+          },
+          "synth-iv-60k-c4-none-n1000-s2": {
+            "committed_source": "c1-work/storm-v2-main-grid-2026-09-15.json",
+            "ratio_gr": 1.1399966024210182,
+            "speedup_l1": 6.309199606967572
+          }
+        }
+      }
+    }
+  },
+  "timestamp_utc": "2026-10-08T12:39:54Z"
+}

@@ -1,0 +1,1556 @@
+{
+  "config": {
+    "campaign": "ivm-differential",
+    "cell_ids": [
+      "collegemsg-c1-deep-n1000-s0",
+      "collegemsg-c1-deep-n1000-s1",
+      "collegemsg-c1-deep-n1000-s2",
+      "collegemsg-c1-none-n1000-s0",
+      "collegemsg-c1-none-n1000-s1",
+      "collegemsg-c1-none-n1000-s2",
+      "collegemsg-c3-days-n1000-s0",
+      "collegemsg-c3-deep-n1000-s0",
+      "collegemsg-c3-deep-n1000-s1",
+      "collegemsg-c3-deep-n1000-s2",
+      "collegemsg-c3-hours-n1000-s0",
+      "collegemsg-c3-none-n1000-s0",
+      "collegemsg-c3-none-n1000-s1",
+      "collegemsg-c3-none-n1000-s2",
+      "collegemsg-c3-recent-n1000-s0",
+      "collegemsg-c4-deep-n1000-s0",
+      "collegemsg-c4-deep-n1000-s1",
+      "collegemsg-c4-deep-n1000-s2",
+      "collegemsg-c4-none-n1000-s0",
+      "collegemsg-c4-none-n1000-s1",
+      "collegemsg-c4-none-n1000-s2",
+      "synth-iv-60k-c1-deep-n1000-s0",
+      "synth-iv-60k-c1-deep-n1000-s1",
+      "synth-iv-60k-c1-deep-n1000-s2",
+      "synth-iv-60k-c1-none-n10000-s0",
+      "synth-iv-60k-c1-none-n1000-s0",
+      "synth-iv-60k-c1-none-n1000-s1",
+      "synth-iv-60k-c1-none-n1000-s2",
+      "synth-iv-60k-c3-days-n1000-s0",
+      "synth-iv-60k-c3-deep-n1000-s0",
+      "synth-iv-60k-c3-deep-n1000-s1",
+      "synth-iv-60k-c3-deep-n1000-s2",
+      "synth-iv-60k-c3-hours-n1000-s0",
+      "synth-iv-60k-c3-none-n1000-s0",
+      "synth-iv-60k-c3-none-n1000-s1",
+      "synth-iv-60k-c3-none-n1000-s2",
+      "synth-iv-60k-c3-recent-n1000-s0",
+      "synth-iv-60k-c4-deep-n1000-s0",
+      "synth-iv-60k-c4-deep-n1000-s1",
+      "synth-iv-60k-c4-deep-n1000-s2",
+      "synth-iv-60k-c4-none-n1000-s0",
+      "synth-iv-60k-c4-none-n1000-s1",
+      "synth-iv-60k-c4-none-n1000-s2"
+    ]
+  },
+  "dataset": {
+    "digest": "f6777c1ab8ca28ba36df79d22f2ad28cd0478b7ee994dc3d17ce26de65c51801",
+    "digest_kind": "manifest",
+    "name": "storm-v2 grid (differential-dataflow IVM)"
+  },
+  "git_commit": "79e79c7be087481330b3ee28bfd6dcf1c3aa3ceb",
+  "machine": {
+    "cpus": 1,
+    "host": "xzgpu",
+    "note": "placeholder -- filled from the per-cell host snapshot when the campaign's own machine field differs by cell",
+    "platform": "unknown",
+    "ram_gb": 1.0
+  },
+  "n_cells": 43,
+  "protocol": {
+    "ceilings": {
+      "note": "per-cell ceilings are in each row's own result"
+    },
+    "reps": 1,
+    "warmups": 1
+  },
+  "record": "c1-work/out/ivm-differential-2026-10-07-rows.jsonl",
+  "result_digest": "f02ac33234342403d4b82b3dedcc30ccc10c711cb5493ce652bdbff828501e90",
+  "schema_version": "1.0.0",
+  "seed": {
+    "reason": "cell identity carries the seed; see cell_id per row",
+    "value": null
+  },
+  "summary": {
+    "per_cell": [
+      {
+        "artifacts_touched_per_burst": {
+          "all_registered": false,
+          "median": 35.0
+        },
+        "cell_id": "collegemsg-c1-deep-n1000-s0",
+        "config_kind": "ivm-dd",
+        "equality_level": "FAIL",
+        "false_fresh": 0,
+        "false_stale": null,
+        "host_load": 0.13,
+        "n_bursts": 20,
+        "oracle_agreement": {
+          "agree": 19614,
+          "disagree": 0,
+          "n_compared": 19614,
+          "not_answered": 0,
+          "oracle_refused": 0
+        },
+        "refresh_wall_ms": {
+          "max": 65.328416,
+          "median": 6.0441595,
+          "sum": 294.183553
+        },
+        "versions": {
+          "binary_sha256": "3e5a890bdfdac0ad056ce0e02da02de8e62e547917f440eb880578b995e83f31",
+          "cargo_lock_sha256": "505819c28e17948e80aa48f5e502fe95bde8aa25cc0d40dada009770a38d3d9e",
+          "crate_version": "0.1.0",
+          "differential_dataflow": "0.25.1",
+          "rustc": "unknown",
+          "timely": "0.31.0"
+        }
+      },
+      {
+        "artifacts_touched_per_burst": {
+          "all_registered": false,
+          "median": 44.0
+        },
+        "cell_id": "collegemsg-c1-deep-n1000-s1",
+        "config_kind": "ivm-dd",
+        "equality_level": "FAIL",
+        "false_fresh": 0,
+        "false_stale": null,
+        "host_load": 0.2,
+        "n_bursts": 20,
+        "oracle_agreement": {
+          "agree": 19719,
+          "disagree": 0,
+          "n_compared": 19719,
+          "not_answered": 0,
+          "oracle_refused": 0
+        },
+        "refresh_wall_ms": {
+          "max": 67.300781,
+          "median": 6.240257,
+          "sum": 219.80808100000002
+        },
+        "versions": {
+          "binary_sha256": "3e5a890bdfdac0ad056ce0e02da02de8e62e547917f440eb880578b995e83f31",
+          "cargo_lock_sha256": "505819c28e17948e80aa48f5e502fe95bde8aa25cc0d40dada009770a38d3d9e",
+          "crate_version": "0.1.0",
+          "differential_dataflow": "0.25.1",
+          "rustc": "unknown",
+          "timely": "0.31.0"
+        }
+      },
+      {
+        "artifacts_touched_per_burst": {
+          "all_registered": false,
+          "median": 52.0
+        },
+        "cell_id": "collegemsg-c1-deep-n1000-s2",
+        "config_kind": "ivm-dd",
+        "equality_level": "FAIL",
+        "false_fresh": 0,
+        "false_stale": null,
+        "host_load": 0.2,
+        "n_bursts": 20,
+        "oracle_agreement": {
+          "agree": 19530,
+          "disagree": 0,
+          "n_compared": 19530,
+          "not_answered": 0,
+          "oracle_refused": 0
+        },
+        "refresh_wall_ms": {
+          "max": 58.626121,
+          "median": 5.343706,
+          "sum": 300.296469
+        },
+        "versions": {
+          "binary_sha256": "3e5a890bdfdac0ad056ce0e02da02de8e62e547917f440eb880578b995e83f31",
+          "cargo_lock_sha256": "505819c28e17948e80aa48f5e502fe95bde8aa25cc0d40dada009770a38d3d9e",
+          "crate_version": "0.1.0",
+          "differential_dataflow": "0.25.1",
+          "rustc": "unknown",
+          "timely": "0.31.0"
+        }
+      },
+      {
+        "artifacts_touched_per_burst": {
+          "all_registered": false,
+          "median": 55.5
+        },
+        "cell_id": "collegemsg-c1-none-n1000-s0",
+        "config_kind": "ivm-dd",
+        "equality_level": "FAIL",
+        "false_fresh": 0,
+        "false_stale": null,
+        "host_load": 0.26,
+        "n_bursts": 20,
+        "oracle_agreement": {
+          "agree": 19614,
+          "disagree": 0,
+          "n_compared": 19614,
+          "not_answered": 0,
+          "oracle_refused": 0
+        },
+        "refresh_wall_ms": {
+          "max": 60.191868,
+          "median": 6.1277455,
+          "sum": 221.556626
+        },
+        "versions": {
+          "binary_sha256": "3e5a890bdfdac0ad056ce0e02da02de8e62e547917f440eb880578b995e83f31",
+          "cargo_lock_sha256": "505819c28e17948e80aa48f5e502fe95bde8aa25cc0d40dada009770a38d3d9e",
+          "crate_version": "0.1.0",
+          "differential_dataflow": "0.25.1",
+          "rustc": "unknown",
+          "timely": "0.31.0"
+        }
+      },
+      {
+        "artifacts_touched_per_burst": {
+          "all_registered": false,
+          "median": 40.5
+        },
+        "cell_id": "collegemsg-c1-none-n1000-s1",
+        "config_kind": "ivm-dd",
+        "equality_level": "FAIL",
+        "false_fresh": 0,
+        "false_stale": null,
+        "host_load": 0.32,
+        "n_bursts": 20,
+        "oracle_agreement": {
+          "agree": 19719,
+          "disagree": 0,
+          "n_compared": 19719,
+          "not_answered": 0,
+          "oracle_refused": 0
+        },
+        "refresh_wall_ms": {
+          "max": 71.802397,
+          "median": 8.640003499999999,
+          "sum": 387.31392
+        },
+        "versions": {
+          "binary_sha256": "3e5a890bdfdac0ad056ce0e02da02de8e62e547917f440eb880578b995e83f31",
+          "cargo_lock_sha256": "505819c28e17948e80aa48f5e502fe95bde8aa25cc0d40dada009770a38d3d9e",
+          "crate_version": "0.1.0",
+          "differential_dataflow": "0.25.1",
+          "rustc": "unknown",
+          "timely": "0.31.0"
+        }
+      },
+      {
+        "artifacts_touched_per_burst": {
+          "all_registered": false,
+          "median": 48.0
+        },
+        "cell_id": "collegemsg-c1-none-n1000-s2",
+        "config_kind": "ivm-dd",
+        "equality_level": "FAIL",
+        "false_fresh": 0,
+        "false_stale": null,
+        "host_load": 0.32,
+        "n_bursts": 20,
+        "oracle_agreement": {
+          "agree": 19530,
+          "disagree": 0,
+          "n_compared": 19530,
+          "not_answered": 0,
+          "oracle_refused": 0
+        },
+        "refresh_wall_ms": {
+          "max": 51.218118999999994,
+          "median": 7.230385,
+          "sum": 259.63845399999997
+        },
+        "versions": {
+          "binary_sha256": "3e5a890bdfdac0ad056ce0e02da02de8e62e547917f440eb880578b995e83f31",
+          "cargo_lock_sha256": "505819c28e17948e80aa48f5e502fe95bde8aa25cc0d40dada009770a38d3d9e",
+          "crate_version": "0.1.0",
+          "differential_dataflow": "0.25.1",
+          "rustc": "unknown",
+          "timely": "0.31.0"
+        }
+      },
+      {
+        "artifacts_touched_per_burst": {
+          "all_registered": false,
+          "median": 29.0
+        },
+        "cell_id": "collegemsg-c3-days-n1000-s0",
+        "config_kind": "ivm-dd",
+        "equality_level": "new cell (no committed digest)",
+        "false_fresh": 0,
+        "false_stale": null,
+        "host_load": 0.38,
+        "n_bursts": 20,
+        "oracle_agreement": {
+          "agree": 19614,
+          "disagree": 0,
+          "n_compared": 19614,
+          "not_answered": 0,
+          "oracle_refused": 0
+        },
+        "refresh_wall_ms": {
+          "max": 56.684322,
+          "median": 4.529002,
+          "sum": 263.746036
+        },
+        "versions": {
+          "binary_sha256": "3e5a890bdfdac0ad056ce0e02da02de8e62e547917f440eb880578b995e83f31",
+          "cargo_lock_sha256": "505819c28e17948e80aa48f5e502fe95bde8aa25cc0d40dada009770a38d3d9e",
+          "crate_version": "0.1.0",
+          "differential_dataflow": "0.25.1",
+          "rustc": "unknown",
+          "timely": "0.31.0"
+        }
+      },
+      {
+        "artifacts_touched_per_burst": {
+          "all_registered": false,
+          "median": 46.5
+        },
+        "cell_id": "collegemsg-c3-deep-n1000-s0",
+        "config_kind": "ivm-dd",
+        "equality_level": "FAIL",
+        "false_fresh": 0,
+        "false_stale": null,
+        "host_load": 0.38,
+        "n_bursts": 20,
+        "oracle_agreement": {
+          "agree": 19614,
+          "disagree": 0,
+          "n_compared": 19614,
+          "not_answered": 0,
+          "oracle_refused": 0
+        },
+        "refresh_wall_ms": {
+          "max": 65.16900700000001,
+          "median": 3.8782135,
+          "sum": 323.159498
+        },
+        "versions": {
+          "binary_sha256": "3e5a890bdfdac0ad056ce0e02da02de8e62e547917f440eb880578b995e83f31",
+          "cargo_lock_sha256": "505819c28e17948e80aa48f5e502fe95bde8aa25cc0d40dada009770a38d3d9e",
+          "crate_version": "0.1.0",
+          "differential_dataflow": "0.25.1",
+          "rustc": "unknown",
+          "timely": "0.31.0"
+        }
+      },
+      {
+        "artifacts_touched_per_burst": {
+          "all_registered": false,
+          "median": 38.5
+        },
+        "cell_id": "collegemsg-c3-deep-n1000-s1",
+        "config_kind": "ivm-dd",
+        "equality_level": "FAIL",
+        "false_fresh": 0,
+        "false_stale": null,
+        "host_load": 0.43,
+        "n_bursts": 20,
+        "oracle_agreement": {
+          "agree": 19719,
+          "disagree": 0,
+          "n_compared": 19719,
+          "not_answered": 0,
+          "oracle_refused": 0
+        },
+        "refresh_wall_ms": {
+          "max": 59.537588,
+          "median": 5.6439960000000005,
+          "sum": 213.49837200000002
+        },
+        "versions": {
+          "binary_sha256": "3e5a890bdfdac0ad056ce0e02da02de8e62e547917f440eb880578b995e83f31",
+          "cargo_lock_sha256": "505819c28e17948e80aa48f5e502fe95bde8aa25cc0d40dada009770a38d3d9e",
+          "crate_version": "0.1.0",
+          "differential_dataflow": "0.25.1",
+          "rustc": "unknown",
+          "timely": "0.31.0"
+        }
+      },
+      {
+        "artifacts_touched_per_burst": {
+          "all_registered": false,
+          "median": 47.5
+        },
+        "cell_id": "collegemsg-c3-deep-n1000-s2",
+        "config_kind": "ivm-dd",
+        "equality_level": "FAIL",
+        "false_fresh": 0,
+        "false_stale": null,
+        "host_load": 0.47,
+        "n_bursts": 20,
+        "oracle_agreement": {
+          "agree": 19530,
+          "disagree": 0,
+          "n_compared": 19530,
+          "not_answered": 0,
+          "oracle_refused": 0
+        },
+        "refresh_wall_ms": {
+          "max": 50.357404,
+          "median": 4.731464000000001,
+          "sum": 191.689648
+        },
+        "versions": {
+          "binary_sha256": "3e5a890bdfdac0ad056ce0e02da02de8e62e547917f440eb880578b995e83f31",
+          "cargo_lock_sha256": "505819c28e17948e80aa48f5e502fe95bde8aa25cc0d40dada009770a38d3d9e",
+          "crate_version": "0.1.0",
+          "differential_dataflow": "0.25.1",
+          "rustc": "unknown",
+          "timely": "0.31.0"
+        }
+      },
+      {
+        "artifacts_touched_per_burst": {
+          "all_registered": false,
+          "median": 51.0
+        },
+        "cell_id": "collegemsg-c3-hours-n1000-s0",
+        "config_kind": "ivm-dd",
+        "equality_level": "new cell (no committed digest)",
+        "false_fresh": 0,
+        "false_stale": null,
+        "host_load": 0.47,
+        "n_bursts": 20,
+        "oracle_agreement": {
+          "agree": 19614,
+          "disagree": 0,
+          "n_compared": 19614,
+          "not_answered": 0,
+          "oracle_refused": 0
+        },
+        "refresh_wall_ms": {
+          "max": 69.97514699999999,
+          "median": 7.683636,
+          "sum": 297.995575
+        },
+        "versions": {
+          "binary_sha256": "3e5a890bdfdac0ad056ce0e02da02de8e62e547917f440eb880578b995e83f31",
+          "cargo_lock_sha256": "505819c28e17948e80aa48f5e502fe95bde8aa25cc0d40dada009770a38d3d9e",
+          "crate_version": "0.1.0",
+          "differential_dataflow": "0.25.1",
+          "rustc": "unknown",
+          "timely": "0.31.0"
+        }
+      },
+      {
+        "artifacts_touched_per_burst": {
+          "all_registered": false,
+          "median": 27.5
+        },
+        "cell_id": "collegemsg-c3-none-n1000-s0",
+        "config_kind": "ivm-dd",
+        "equality_level": "FAIL",
+        "false_fresh": 0,
+        "false_stale": null,
+        "host_load": 0.6,
+        "n_bursts": 20,
+        "oracle_agreement": {
+          "agree": 19614,
+          "disagree": 0,
+          "n_compared": 19614,
+          "not_answered": 0,
+          "oracle_refused": 0
+        },
+        "refresh_wall_ms": {
+          "max": 45.359977,
+          "median": 4.3778885,
+          "sum": 132.97081
+        },
+        "versions": {
+          "binary_sha256": "3e5a890bdfdac0ad056ce0e02da02de8e62e547917f440eb880578b995e83f31",
+          "cargo_lock_sha256": "505819c28e17948e80aa48f5e502fe95bde8aa25cc0d40dada009770a38d3d9e",
+          "crate_version": "0.1.0",
+          "differential_dataflow": "0.25.1",
+          "rustc": "unknown",
+          "timely": "0.31.0"
+        }
+      },
+      {
+        "artifacts_touched_per_burst": {
+          "all_registered": false,
+          "median": 44.0
+        },
+        "cell_id": "collegemsg-c3-none-n1000-s1",
+        "config_kind": "ivm-dd",
+        "equality_level": "FAIL",
+        "false_fresh": 0,
+        "false_stale": null,
+        "host_load": 0.63,
+        "n_bursts": 20,
+        "oracle_agreement": {
+          "agree": 19719,
+          "disagree": 0,
+          "n_compared": 19719,
+          "not_answered": 0,
+          "oracle_refused": 0
+        },
+        "refresh_wall_ms": {
+          "max": 19.157762,
+          "median": 6.3450120000000005,
+          "sum": 126.47067600000001
+        },
+        "versions": {
+          "binary_sha256": "3e5a890bdfdac0ad056ce0e02da02de8e62e547917f440eb880578b995e83f31",
+          "cargo_lock_sha256": "505819c28e17948e80aa48f5e502fe95bde8aa25cc0d40dada009770a38d3d9e",
+          "crate_version": "0.1.0",
+          "differential_dataflow": "0.25.1",
+          "rustc": "unknown",
+          "timely": "0.31.0"
+        }
+      },
+      {
+        "artifacts_touched_per_burst": {
+          "all_registered": false,
+          "median": 34.5
+        },
+        "cell_id": "collegemsg-c3-none-n1000-s2",
+        "config_kind": "ivm-dd",
+        "equality_level": "FAIL",
+        "false_fresh": 0,
+        "false_stale": null,
+        "host_load": 0.63,
+        "n_bursts": 20,
+        "oracle_agreement": {
+          "agree": 19530,
+          "disagree": 0,
+          "n_compared": 19530,
+          "not_answered": 0,
+          "oracle_refused": 0
+        },
+        "refresh_wall_ms": {
+          "max": 37.019625000000005,
+          "median": 6.0031655,
+          "sum": 160.52515300000002
+        },
+        "versions": {
+          "binary_sha256": "3e5a890bdfdac0ad056ce0e02da02de8e62e547917f440eb880578b995e83f31",
+          "cargo_lock_sha256": "505819c28e17948e80aa48f5e502fe95bde8aa25cc0d40dada009770a38d3d9e",
+          "crate_version": "0.1.0",
+          "differential_dataflow": "0.25.1",
+          "rustc": "unknown",
+          "timely": "0.31.0"
+        }
+      },
+      {
+        "artifacts_touched_per_burst": {
+          "all_registered": false,
+          "median": 27.0
+        },
+        "cell_id": "collegemsg-c3-recent-n1000-s0",
+        "config_kind": "ivm-dd",
+        "equality_level": "new cell (no committed digest)",
+        "false_fresh": 0,
+        "false_stale": null,
+        "host_load": 0.66,
+        "n_bursts": 20,
+        "oracle_agreement": {
+          "agree": 19614,
+          "disagree": 0,
+          "n_compared": 19614,
+          "not_answered": 0,
+          "oracle_refused": 0
+        },
+        "refresh_wall_ms": {
+          "max": 53.602402,
+          "median": 4.0858215,
+          "sum": 173.83001199999998
+        },
+        "versions": {
+          "binary_sha256": "3e5a890bdfdac0ad056ce0e02da02de8e62e547917f440eb880578b995e83f31",
+          "cargo_lock_sha256": "505819c28e17948e80aa48f5e502fe95bde8aa25cc0d40dada009770a38d3d9e",
+          "crate_version": "0.1.0",
+          "differential_dataflow": "0.25.1",
+          "rustc": "unknown",
+          "timely": "0.31.0"
+        }
+      },
+      {
+        "artifacts_touched_per_burst": {
+          "all_registered": false,
+          "median": 36.5
+        },
+        "cell_id": "collegemsg-c4-deep-n1000-s0",
+        "config_kind": "ivm-dd",
+        "equality_level": "FAIL",
+        "false_fresh": 0,
+        "false_stale": null,
+        "host_load": 0.69,
+        "n_bursts": 20,
+        "oracle_agreement": {
+          "agree": 19614,
+          "disagree": 0,
+          "n_compared": 19614,
+          "not_answered": 0,
+          "oracle_refused": 0
+        },
+        "refresh_wall_ms": {
+          "max": 316.08066900000006,
+          "median": 7.8500195,
+          "sum": 620.7116990000001
+        },
+        "versions": {
+          "binary_sha256": "3e5a890bdfdac0ad056ce0e02da02de8e62e547917f440eb880578b995e83f31",
+          "cargo_lock_sha256": "505819c28e17948e80aa48f5e502fe95bde8aa25cc0d40dada009770a38d3d9e",
+          "crate_version": "0.1.0",
+          "differential_dataflow": "0.25.1",
+          "rustc": "unknown",
+          "timely": "0.31.0"
+        }
+      },
+      {
+        "artifacts_touched_per_burst": {
+          "all_registered": false,
+          "median": 25.5
+        },
+        "cell_id": "collegemsg-c4-deep-n1000-s1",
+        "config_kind": "ivm-dd",
+        "equality_level": "FAIL",
+        "false_fresh": 0,
+        "false_stale": null,
+        "host_load": 0.69,
+        "n_bursts": 20,
+        "oracle_agreement": {
+          "agree": 19719,
+          "disagree": 0,
+          "n_compared": 19719,
+          "not_answered": 0,
+          "oracle_refused": 0
+        },
+        "refresh_wall_ms": {
+          "max": 348.379189,
+          "median": 5.008453,
+          "sum": 782.75088
+        },
+        "versions": {
+          "binary_sha256": "3e5a890bdfdac0ad056ce0e02da02de8e62e547917f440eb880578b995e83f31",
+          "cargo_lock_sha256": "505819c28e17948e80aa48f5e502fe95bde8aa25cc0d40dada009770a38d3d9e",
+          "crate_version": "0.1.0",
+          "differential_dataflow": "0.25.1",
+          "rustc": "unknown",
+          "timely": "0.31.0"
+        }
+      },
+      {
+        "artifacts_touched_per_burst": {
+          "all_registered": false,
+          "median": 36.5
+        },
+        "cell_id": "collegemsg-c4-deep-n1000-s2",
+        "config_kind": "ivm-dd",
+        "equality_level": "FAIL",
+        "false_fresh": 0,
+        "false_stale": null,
+        "host_load": 0.71,
+        "n_bursts": 20,
+        "oracle_agreement": {
+          "agree": 19530,
+          "disagree": 0,
+          "n_compared": 19530,
+          "not_answered": 0,
+          "oracle_refused": 0
+        },
+        "refresh_wall_ms": {
+          "max": 308.92951700000003,
+          "median": 4.2970945,
+          "sum": 543.889458
+        },
+        "versions": {
+          "binary_sha256": "3e5a890bdfdac0ad056ce0e02da02de8e62e547917f440eb880578b995e83f31",
+          "cargo_lock_sha256": "505819c28e17948e80aa48f5e502fe95bde8aa25cc0d40dada009770a38d3d9e",
+          "crate_version": "0.1.0",
+          "differential_dataflow": "0.25.1",
+          "rustc": "unknown",
+          "timely": "0.31.0"
+        }
+      },
+      {
+        "artifacts_touched_per_burst": {
+          "all_registered": false,
+          "median": 32.5
+        },
+        "cell_id": "collegemsg-c4-none-n1000-s0",
+        "config_kind": "ivm-dd",
+        "equality_level": "FAIL",
+        "false_fresh": 0,
+        "false_stale": null,
+        "host_load": 0.73,
+        "n_bursts": 20,
+        "oracle_agreement": {
+          "agree": 19614,
+          "disagree": 0,
+          "n_compared": 19614,
+          "not_answered": 0,
+          "oracle_refused": 0
+        },
+        "refresh_wall_ms": {
+          "max": 308.214297,
+          "median": 5.3362335000000005,
+          "sum": 546.88293
+        },
+        "versions": {
+          "binary_sha256": "3e5a890bdfdac0ad056ce0e02da02de8e62e547917f440eb880578b995e83f31",
+          "cargo_lock_sha256": "505819c28e17948e80aa48f5e502fe95bde8aa25cc0d40dada009770a38d3d9e",
+          "crate_version": "0.1.0",
+          "differential_dataflow": "0.25.1",
+          "rustc": "unknown",
+          "timely": "0.31.0"
+        }
+      },
+      {
+        "artifacts_touched_per_burst": {
+          "all_registered": false,
+          "median": 28.5
+        },
+        "cell_id": "collegemsg-c4-none-n1000-s1",
+        "config_kind": "ivm-dd",
+        "equality_level": "FAIL",
+        "false_fresh": 0,
+        "false_stale": null,
+        "host_load": 0.73,
+        "n_bursts": 20,
+        "oracle_agreement": {
+          "agree": 19719,
+          "disagree": 0,
+          "n_compared": 19719,
+          "not_answered": 0,
+          "oracle_refused": 0
+        },
+        "refresh_wall_ms": {
+          "max": 343.26779500000004,
+          "median": 8.548638,
+          "sum": 620.016243
+        },
+        "versions": {
+          "binary_sha256": "3e5a890bdfdac0ad056ce0e02da02de8e62e547917f440eb880578b995e83f31",
+          "cargo_lock_sha256": "505819c28e17948e80aa48f5e502fe95bde8aa25cc0d40dada009770a38d3d9e",
+          "crate_version": "0.1.0",
+          "differential_dataflow": "0.25.1",
+          "rustc": "unknown",
+          "timely": "0.31.0"
+        }
+      },
+      {
+        "artifacts_touched_per_burst": {
+          "all_registered": false,
+          "median": 30.5
+        },
+        "cell_id": "collegemsg-c4-none-n1000-s2",
+        "config_kind": "ivm-dd",
+        "equality_level": "FAIL",
+        "false_fresh": 0,
+        "false_stale": null,
+        "host_load": 0.76,
+        "n_bursts": 20,
+        "oracle_agreement": {
+          "agree": 19530,
+          "disagree": 0,
+          "n_compared": 19530,
+          "not_answered": 0,
+          "oracle_refused": 0
+        },
+        "refresh_wall_ms": {
+          "max": 312.72526000000005,
+          "median": 7.602108,
+          "sum": 556.745093
+        },
+        "versions": {
+          "binary_sha256": "3e5a890bdfdac0ad056ce0e02da02de8e62e547917f440eb880578b995e83f31",
+          "cargo_lock_sha256": "505819c28e17948e80aa48f5e502fe95bde8aa25cc0d40dada009770a38d3d9e",
+          "crate_version": "0.1.0",
+          "differential_dataflow": "0.25.1",
+          "rustc": "unknown",
+          "timely": "0.31.0"
+        }
+      },
+      {
+        "artifacts_touched_per_burst": {
+          "all_registered": false,
+          "median": 40.5
+        },
+        "cell_id": "synth-iv-60k-c1-deep-n1000-s0",
+        "config_kind": "ivm-dd",
+        "equality_level": "L2-partial",
+        "false_fresh": 0,
+        "false_stale": null,
+        "host_load": 0.85,
+        "n_bursts": 20,
+        "oracle_agreement": {
+          "agree": 18564,
+          "disagree": 0,
+          "n_compared": 18564,
+          "not_answered": 0,
+          "oracle_refused": 0
+        },
+        "refresh_wall_ms": {
+          "max": 574.169862,
+          "median": 141.21379100000001,
+          "sum": 3531.1624189999998
+        },
+        "versions": {
+          "binary_sha256": "3e5a890bdfdac0ad056ce0e02da02de8e62e547917f440eb880578b995e83f31",
+          "cargo_lock_sha256": "505819c28e17948e80aa48f5e502fe95bde8aa25cc0d40dada009770a38d3d9e",
+          "crate_version": "0.1.0",
+          "differential_dataflow": "0.25.1",
+          "rustc": "unknown",
+          "timely": "0.31.0"
+        }
+      },
+      {
+        "artifacts_touched_per_burst": {
+          "all_registered": false,
+          "median": 50.0
+        },
+        "cell_id": "synth-iv-60k-c1-deep-n1000-s1",
+        "config_kind": "ivm-dd",
+        "equality_level": "L2-partial",
+        "false_fresh": 0,
+        "false_stale": null,
+        "host_load": 1.06,
+        "n_bursts": 20,
+        "oracle_agreement": {
+          "agree": 18543,
+          "disagree": 0,
+          "n_compared": 18543,
+          "not_answered": 0,
+          "oracle_refused": 0
+        },
+        "refresh_wall_ms": {
+          "max": 641.424349,
+          "median": 132.8131035,
+          "sum": 3191.366423
+        },
+        "versions": {
+          "binary_sha256": "3e5a890bdfdac0ad056ce0e02da02de8e62e547917f440eb880578b995e83f31",
+          "cargo_lock_sha256": "505819c28e17948e80aa48f5e502fe95bde8aa25cc0d40dada009770a38d3d9e",
+          "crate_version": "0.1.0",
+          "differential_dataflow": "0.25.1",
+          "rustc": "unknown",
+          "timely": "0.31.0"
+        }
+      },
+      {
+        "artifacts_touched_per_burst": {
+          "all_registered": false,
+          "median": 38.5
+        },
+        "cell_id": "synth-iv-60k-c1-deep-n1000-s2",
+        "config_kind": "ivm-dd",
+        "equality_level": "L2-partial",
+        "false_fresh": 0,
+        "false_stale": null,
+        "host_load": 1.04,
+        "n_bursts": 20,
+        "oracle_agreement": {
+          "agree": 18963,
+          "disagree": 0,
+          "n_compared": 18963,
+          "not_answered": 0,
+          "oracle_refused": 0
+        },
+        "refresh_wall_ms": {
+          "max": 475.021598,
+          "median": 126.564008,
+          "sum": 2872.76918
+        },
+        "versions": {
+          "binary_sha256": "3e5a890bdfdac0ad056ce0e02da02de8e62e547917f440eb880578b995e83f31",
+          "cargo_lock_sha256": "505819c28e17948e80aa48f5e502fe95bde8aa25cc0d40dada009770a38d3d9e",
+          "crate_version": "0.1.0",
+          "differential_dataflow": "0.25.1",
+          "rustc": "unknown",
+          "timely": "0.31.0"
+        }
+      },
+      {
+        "artifacts_touched_per_burst": {
+          "all_registered": false,
+          "median": 541
+        },
+        "cell_id": "synth-iv-60k-c1-none-n10000-s0",
+        "config_kind": "ivm-dd",
+        "equality_level": "L2",
+        "false_fresh": 0,
+        "false_stale": null,
+        "host_load": 1.09,
+        "n_bursts": 5,
+        "oracle_agreement": {
+          "agree": 53532,
+          "disagree": 0,
+          "n_compared": 53532,
+          "not_answered": 0,
+          "oracle_refused": 0
+        },
+        "refresh_wall_ms": {
+          "max": 7007.993114999999,
+          "median": 5359.278078,
+          "sum": 27294.230849
+        },
+        "versions": {
+          "binary_sha256": "3e5a890bdfdac0ad056ce0e02da02de8e62e547917f440eb880578b995e83f31",
+          "cargo_lock_sha256": "505819c28e17948e80aa48f5e502fe95bde8aa25cc0d40dada009770a38d3d9e",
+          "crate_version": "0.1.0",
+          "differential_dataflow": "0.25.1",
+          "rustc": "unknown",
+          "timely": "0.31.0"
+        }
+      },
+      {
+        "artifacts_touched_per_burst": {
+          "all_registered": false,
+          "median": 32.5
+        },
+        "cell_id": "synth-iv-60k-c1-none-n1000-s0",
+        "config_kind": "ivm-dd",
+        "equality_level": "L2-partial",
+        "false_fresh": 0,
+        "false_stale": null,
+        "host_load": 1.02,
+        "n_bursts": 20,
+        "oracle_agreement": {
+          "agree": 18564,
+          "disagree": 0,
+          "n_compared": 18564,
+          "not_answered": 0,
+          "oracle_refused": 0
+        },
+        "refresh_wall_ms": {
+          "max": 822.603249,
+          "median": 113.4624865,
+          "sum": 3984.1324050000003
+        },
+        "versions": {
+          "binary_sha256": "3e5a890bdfdac0ad056ce0e02da02de8e62e547917f440eb880578b995e83f31",
+          "cargo_lock_sha256": "505819c28e17948e80aa48f5e502fe95bde8aa25cc0d40dada009770a38d3d9e",
+          "crate_version": "0.1.0",
+          "differential_dataflow": "0.25.1",
+          "rustc": "unknown",
+          "timely": "0.31.0"
+        }
+      },
+      {
+        "artifacts_touched_per_burst": {
+          "all_registered": false,
+          "median": 47.5
+        },
+        "cell_id": "synth-iv-60k-c1-none-n1000-s1",
+        "config_kind": "ivm-dd",
+        "equality_level": "L2-partial",
+        "false_fresh": 0,
+        "false_stale": null,
+        "host_load": 1.08,
+        "n_bursts": 20,
+        "oracle_agreement": {
+          "agree": 18543,
+          "disagree": 0,
+          "n_compared": 18543,
+          "not_answered": 0,
+          "oracle_refused": 0
+        },
+        "refresh_wall_ms": {
+          "max": 698.011751,
+          "median": 124.967925,
+          "sum": 3774.9914360000002
+        },
+        "versions": {
+          "binary_sha256": "3e5a890bdfdac0ad056ce0e02da02de8e62e547917f440eb880578b995e83f31",
+          "cargo_lock_sha256": "505819c28e17948e80aa48f5e502fe95bde8aa25cc0d40dada009770a38d3d9e",
+          "crate_version": "0.1.0",
+          "differential_dataflow": "0.25.1",
+          "rustc": "unknown",
+          "timely": "0.31.0"
+        }
+      },
+      {
+        "artifacts_touched_per_burst": {
+          "all_registered": false,
+          "median": 36.5
+        },
+        "cell_id": "synth-iv-60k-c1-none-n1000-s2",
+        "config_kind": "ivm-dd",
+        "equality_level": "L2-partial",
+        "false_fresh": 0,
+        "false_stale": null,
+        "host_load": 1.04,
+        "n_bursts": 20,
+        "oracle_agreement": {
+          "agree": 18963,
+          "disagree": 0,
+          "n_compared": 18963,
+          "not_answered": 0,
+          "oracle_refused": 0
+        },
+        "refresh_wall_ms": {
+          "max": 875.334477,
+          "median": 117.564345,
+          "sum": 4455.491412
+        },
+        "versions": {
+          "binary_sha256": "3e5a890bdfdac0ad056ce0e02da02de8e62e547917f440eb880578b995e83f31",
+          "cargo_lock_sha256": "505819c28e17948e80aa48f5e502fe95bde8aa25cc0d40dada009770a38d3d9e",
+          "crate_version": "0.1.0",
+          "differential_dataflow": "0.25.1",
+          "rustc": "unknown",
+          "timely": "0.31.0"
+        }
+      },
+      {
+        "artifacts_touched_per_burst": {
+          "all_registered": false,
+          "median": 28.5
+        },
+        "cell_id": "synth-iv-60k-c3-days-n1000-s0",
+        "config_kind": "ivm-dd",
+        "equality_level": "new cell (no committed digest)",
+        "false_fresh": 0,
+        "false_stale": null,
+        "host_load": 1.11,
+        "n_bursts": 20,
+        "oracle_agreement": {
+          "agree": 18564,
+          "disagree": 0,
+          "n_compared": 18564,
+          "not_answered": 0,
+          "oracle_refused": 0
+        },
+        "refresh_wall_ms": {
+          "max": 592.2408790000001,
+          "median": 117.10426849999999,
+          "sum": 2993.327789
+        },
+        "versions": {
+          "binary_sha256": "3e5a890bdfdac0ad056ce0e02da02de8e62e547917f440eb880578b995e83f31",
+          "cargo_lock_sha256": "505819c28e17948e80aa48f5e502fe95bde8aa25cc0d40dada009770a38d3d9e",
+          "crate_version": "0.1.0",
+          "differential_dataflow": "0.25.1",
+          "rustc": "unknown",
+          "timely": "0.31.0"
+        }
+      },
+      {
+        "artifacts_touched_per_burst": {
+          "all_registered": false,
+          "median": 29.5
+        },
+        "cell_id": "synth-iv-60k-c3-deep-n1000-s0",
+        "config_kind": "ivm-dd",
+        "equality_level": "L2-partial",
+        "false_fresh": 0,
+        "false_stale": null,
+        "host_load": 1.13,
+        "n_bursts": 20,
+        "oracle_agreement": {
+          "agree": 18564,
+          "disagree": 0,
+          "n_compared": 18564,
+          "not_answered": 0,
+          "oracle_refused": 0
+        },
+        "refresh_wall_ms": {
+          "max": 618.8744800000001,
+          "median": 87.63799549999999,
+          "sum": 2826.1308630000003
+        },
+        "versions": {
+          "binary_sha256": "3e5a890bdfdac0ad056ce0e02da02de8e62e547917f440eb880578b995e83f31",
+          "cargo_lock_sha256": "505819c28e17948e80aa48f5e502fe95bde8aa25cc0d40dada009770a38d3d9e",
+          "crate_version": "0.1.0",
+          "differential_dataflow": "0.25.1",
+          "rustc": "unknown",
+          "timely": "0.31.0"
+        }
+      },
+      {
+        "artifacts_touched_per_burst": {
+          "all_registered": false,
+          "median": 26.5
+        },
+        "cell_id": "synth-iv-60k-c3-deep-n1000-s1",
+        "config_kind": "ivm-dd",
+        "equality_level": "L2-partial",
+        "false_fresh": 0,
+        "false_stale": null,
+        "host_load": 1.13,
+        "n_bursts": 20,
+        "oracle_agreement": {
+          "agree": 18543,
+          "disagree": 0,
+          "n_compared": 18543,
+          "not_answered": 0,
+          "oracle_refused": 0
+        },
+        "refresh_wall_ms": {
+          "max": 567.7531379999999,
+          "median": 94.5847765,
+          "sum": 3059.220644
+        },
+        "versions": {
+          "binary_sha256": "3e5a890bdfdac0ad056ce0e02da02de8e62e547917f440eb880578b995e83f31",
+          "cargo_lock_sha256": "505819c28e17948e80aa48f5e502fe95bde8aa25cc0d40dada009770a38d3d9e",
+          "crate_version": "0.1.0",
+          "differential_dataflow": "0.25.1",
+          "rustc": "unknown",
+          "timely": "0.31.0"
+        }
+      },
+      {
+        "artifacts_touched_per_burst": {
+          "all_registered": false,
+          "median": 37.0
+        },
+        "cell_id": "synth-iv-60k-c3-deep-n1000-s2",
+        "config_kind": "ivm-dd",
+        "equality_level": "L2-partial",
+        "false_fresh": 0,
+        "false_stale": null,
+        "host_load": 1.07,
+        "n_bursts": 20,
+        "oracle_agreement": {
+          "agree": 18963,
+          "disagree": 0,
+          "n_compared": 18963,
+          "not_answered": 0,
+          "oracle_refused": 0
+        },
+        "refresh_wall_ms": {
+          "max": 453.04059,
+          "median": 195.51208350000002,
+          "sum": 3841.38488
+        },
+        "versions": {
+          "binary_sha256": "3e5a890bdfdac0ad056ce0e02da02de8e62e547917f440eb880578b995e83f31",
+          "cargo_lock_sha256": "505819c28e17948e80aa48f5e502fe95bde8aa25cc0d40dada009770a38d3d9e",
+          "crate_version": "0.1.0",
+          "differential_dataflow": "0.25.1",
+          "rustc": "unknown",
+          "timely": "0.31.0"
+        }
+      },
+      {
+        "artifacts_touched_per_burst": {
+          "all_registered": false,
+          "median": 32.5
+        },
+        "cell_id": "synth-iv-60k-c3-hours-n1000-s0",
+        "config_kind": "ivm-dd",
+        "equality_level": "new cell (no committed digest)",
+        "false_fresh": 0,
+        "false_stale": null,
+        "host_load": 1.53,
+        "n_bursts": 20,
+        "oracle_agreement": {
+          "agree": 18564,
+          "disagree": 0,
+          "n_compared": 18564,
+          "not_answered": 0,
+          "oracle_refused": 0
+        },
+        "refresh_wall_ms": {
+          "max": 298.09877500000005,
+          "median": 141.42347,
+          "sum": 2592.268774
+        },
+        "versions": {
+          "binary_sha256": "3e5a890bdfdac0ad056ce0e02da02de8e62e547917f440eb880578b995e83f31",
+          "cargo_lock_sha256": "505819c28e17948e80aa48f5e502fe95bde8aa25cc0d40dada009770a38d3d9e",
+          "crate_version": "0.1.0",
+          "differential_dataflow": "0.25.1",
+          "rustc": "unknown",
+          "timely": "0.31.0"
+        }
+      },
+      {
+        "artifacts_touched_per_burst": {
+          "all_registered": false,
+          "median": 37.5
+        },
+        "cell_id": "synth-iv-60k-c3-none-n1000-s0",
+        "config_kind": "ivm-dd",
+        "equality_level": "L2-partial",
+        "false_fresh": 0,
+        "false_stale": null,
+        "host_load": 1.32,
+        "n_bursts": 20,
+        "oracle_agreement": {
+          "agree": 18564,
+          "disagree": 0,
+          "n_compared": 18564,
+          "not_answered": 0,
+          "oracle_refused": 0
+        },
+        "refresh_wall_ms": {
+          "max": 550.739433,
+          "median": 166.69178499999998,
+          "sum": 4111.532286
+        },
+        "versions": {
+          "binary_sha256": "3e5a890bdfdac0ad056ce0e02da02de8e62e547917f440eb880578b995e83f31",
+          "cargo_lock_sha256": "505819c28e17948e80aa48f5e502fe95bde8aa25cc0d40dada009770a38d3d9e",
+          "crate_version": "0.1.0",
+          "differential_dataflow": "0.25.1",
+          "rustc": "unknown",
+          "timely": "0.31.0"
+        }
+      },
+      {
+        "artifacts_touched_per_burst": {
+          "all_registered": false,
+          "median": 41.0
+        },
+        "cell_id": "synth-iv-60k-c3-none-n1000-s1",
+        "config_kind": "ivm-dd",
+        "equality_level": "L2-partial",
+        "false_fresh": 0,
+        "false_stale": null,
+        "host_load": 1.18,
+        "n_bursts": 20,
+        "oracle_agreement": {
+          "agree": 18543,
+          "disagree": 0,
+          "n_compared": 18543,
+          "not_answered": 0,
+          "oracle_refused": 0
+        },
+        "refresh_wall_ms": {
+          "max": 777.2608740000001,
+          "median": 217.728559,
+          "sum": 5815.514859
+        },
+        "versions": {
+          "binary_sha256": "3e5a890bdfdac0ad056ce0e02da02de8e62e547917f440eb880578b995e83f31",
+          "cargo_lock_sha256": "505819c28e17948e80aa48f5e502fe95bde8aa25cc0d40dada009770a38d3d9e",
+          "crate_version": "0.1.0",
+          "differential_dataflow": "0.25.1",
+          "rustc": "unknown",
+          "timely": "0.31.0"
+        }
+      },
+      {
+        "artifacts_touched_per_burst": {
+          "all_registered": false,
+          "median": 37.0
+        },
+        "cell_id": "synth-iv-60k-c3-none-n1000-s2",
+        "config_kind": "ivm-dd",
+        "equality_level": "L2-partial",
+        "false_fresh": 0,
+        "false_stale": null,
+        "host_load": 1.23,
+        "n_bursts": 20,
+        "oracle_agreement": {
+          "agree": 18963,
+          "disagree": 0,
+          "n_compared": 18963,
+          "not_answered": 0,
+          "oracle_refused": 0
+        },
+        "refresh_wall_ms": {
+          "max": 692.1455,
+          "median": 136.770692,
+          "sum": 4505.1572559999995
+        },
+        "versions": {
+          "binary_sha256": "3e5a890bdfdac0ad056ce0e02da02de8e62e547917f440eb880578b995e83f31",
+          "cargo_lock_sha256": "505819c28e17948e80aa48f5e502fe95bde8aa25cc0d40dada009770a38d3d9e",
+          "crate_version": "0.1.0",
+          "differential_dataflow": "0.25.1",
+          "rustc": "unknown",
+          "timely": "0.31.0"
+        }
+      },
+      {
+        "artifacts_touched_per_burst": {
+          "all_registered": false,
+          "median": 33.5
+        },
+        "cell_id": "synth-iv-60k-c3-recent-n1000-s0",
+        "config_kind": "ivm-dd",
+        "equality_level": "new cell (no committed digest)",
+        "false_fresh": 0,
+        "false_stale": null,
+        "host_load": 1.13,
+        "n_bursts": 20,
+        "oracle_agreement": {
+          "agree": 18564,
+          "disagree": 0,
+          "n_compared": 18564,
+          "not_answered": 0,
+          "oracle_refused": 0
+        },
+        "refresh_wall_ms": {
+          "max": 737.982182,
+          "median": 144.432906,
+          "sum": 3798.268283
+        },
+        "versions": {
+          "binary_sha256": "3e5a890bdfdac0ad056ce0e02da02de8e62e547917f440eb880578b995e83f31",
+          "cargo_lock_sha256": "505819c28e17948e80aa48f5e502fe95bde8aa25cc0d40dada009770a38d3d9e",
+          "crate_version": "0.1.0",
+          "differential_dataflow": "0.25.1",
+          "rustc": "unknown",
+          "timely": "0.31.0"
+        }
+      },
+      {
+        "artifacts_touched_per_burst": {
+          "all_registered": false,
+          "median": 33.0
+        },
+        "cell_id": "synth-iv-60k-c4-deep-n1000-s0",
+        "config_kind": "ivm-dd",
+        "equality_level": "L2-partial",
+        "false_fresh": 0,
+        "false_stale": null,
+        "host_load": 1.08,
+        "n_bursts": 20,
+        "oracle_agreement": {
+          "agree": 18564,
+          "disagree": 0,
+          "n_compared": 18564,
+          "not_answered": 0,
+          "oracle_refused": 0
+        },
+        "refresh_wall_ms": {
+          "max": 1464.1727540000002,
+          "median": 64.92791700000001,
+          "sum": 4692.203959
+        },
+        "versions": {
+          "binary_sha256": "3e5a890bdfdac0ad056ce0e02da02de8e62e547917f440eb880578b995e83f31",
+          "cargo_lock_sha256": "505819c28e17948e80aa48f5e502fe95bde8aa25cc0d40dada009770a38d3d9e",
+          "crate_version": "0.1.0",
+          "differential_dataflow": "0.25.1",
+          "rustc": "unknown",
+          "timely": "0.31.0"
+        }
+      },
+      {
+        "artifacts_touched_per_burst": {
+          "all_registered": false,
+          "median": 40.0
+        },
+        "cell_id": "synth-iv-60k-c4-deep-n1000-s1",
+        "config_kind": "ivm-dd",
+        "equality_level": "L2-partial",
+        "false_fresh": 0,
+        "false_stale": null,
+        "host_load": 1.09,
+        "n_bursts": 20,
+        "oracle_agreement": {
+          "agree": 18543,
+          "disagree": 0,
+          "n_compared": 18543,
+          "not_answered": 0,
+          "oracle_refused": 0
+        },
+        "refresh_wall_ms": {
+          "max": 1548.3809070000002,
+          "median": 29.2641655,
+          "sum": 5034.958134
+        },
+        "versions": {
+          "binary_sha256": "3e5a890bdfdac0ad056ce0e02da02de8e62e547917f440eb880578b995e83f31",
+          "cargo_lock_sha256": "505819c28e17948e80aa48f5e502fe95bde8aa25cc0d40dada009770a38d3d9e",
+          "crate_version": "0.1.0",
+          "differential_dataflow": "0.25.1",
+          "rustc": "unknown",
+          "timely": "0.31.0"
+        }
+      },
+      {
+        "artifacts_touched_per_burst": {
+          "all_registered": false,
+          "median": 46.5
+        },
+        "cell_id": "synth-iv-60k-c4-deep-n1000-s2",
+        "config_kind": "ivm-dd",
+        "equality_level": "L2-partial",
+        "false_fresh": 0,
+        "false_stale": null,
+        "host_load": 1.05,
+        "n_bursts": 20,
+        "oracle_agreement": {
+          "agree": 18963,
+          "disagree": 0,
+          "n_compared": 18963,
+          "not_answered": 0,
+          "oracle_refused": 0
+        },
+        "refresh_wall_ms": {
+          "max": 1447.89668,
+          "median": 127.475424,
+          "sum": 4995.287204
+        },
+        "versions": {
+          "binary_sha256": "3e5a890bdfdac0ad056ce0e02da02de8e62e547917f440eb880578b995e83f31",
+          "cargo_lock_sha256": "505819c28e17948e80aa48f5e502fe95bde8aa25cc0d40dada009770a38d3d9e",
+          "crate_version": "0.1.0",
+          "differential_dataflow": "0.25.1",
+          "rustc": "unknown",
+          "timely": "0.31.0"
+        }
+      },
+      {
+        "artifacts_touched_per_burst": {
+          "all_registered": false,
+          "median": 30.0
+        },
+        "cell_id": "synth-iv-60k-c4-none-n1000-s0",
+        "config_kind": "ivm-dd",
+        "equality_level": "L2-partial",
+        "false_fresh": 0,
+        "false_stale": null,
+        "host_load": 1.1,
+        "n_bursts": 20,
+        "oracle_agreement": {
+          "agree": 18564,
+          "disagree": 0,
+          "n_compared": 18564,
+          "not_answered": 0,
+          "oracle_refused": 0
+        },
+        "refresh_wall_ms": {
+          "max": 2164.178158,
+          "median": 267.7483335,
+          "sum": 7086.332101
+        },
+        "versions": {
+          "binary_sha256": "3e5a890bdfdac0ad056ce0e02da02de8e62e547917f440eb880578b995e83f31",
+          "cargo_lock_sha256": "505819c28e17948e80aa48f5e502fe95bde8aa25cc0d40dada009770a38d3d9e",
+          "crate_version": "0.1.0",
+          "differential_dataflow": "0.25.1",
+          "rustc": "unknown",
+          "timely": "0.31.0"
+        }
+      },
+      {
+        "artifacts_touched_per_burst": {
+          "all_registered": false,
+          "median": 37.0
+        },
+        "cell_id": "synth-iv-60k-c4-none-n1000-s1",
+        "config_kind": "ivm-dd",
+        "equality_level": "L2-partial",
+        "false_fresh": 0,
+        "false_stale": null,
+        "host_load": 1.05,
+        "n_bursts": 20,
+        "oracle_agreement": {
+          "agree": 18543,
+          "disagree": 0,
+          "n_compared": 18543,
+          "not_answered": 0,
+          "oracle_refused": 0
+        },
+        "refresh_wall_ms": {
+          "max": 2394.274451,
+          "median": 195.8338925,
+          "sum": 7129.666507
+        },
+        "versions": {
+          "binary_sha256": "3e5a890bdfdac0ad056ce0e02da02de8e62e547917f440eb880578b995e83f31",
+          "cargo_lock_sha256": "505819c28e17948e80aa48f5e502fe95bde8aa25cc0d40dada009770a38d3d9e",
+          "crate_version": "0.1.0",
+          "differential_dataflow": "0.25.1",
+          "rustc": "unknown",
+          "timely": "0.31.0"
+        }
+      },
+      {
+        "artifacts_touched_per_burst": {
+          "all_registered": false,
+          "median": 31.0
+        },
+        "cell_id": "synth-iv-60k-c4-none-n1000-s2",
+        "config_kind": "ivm-dd",
+        "equality_level": "L2-partial",
+        "false_fresh": 0,
+        "false_stale": null,
+        "host_load": 1.03,
+        "n_bursts": 20,
+        "oracle_agreement": {
+          "agree": 18963,
+          "disagree": 0,
+          "n_compared": 18963,
+          "not_answered": 0,
+          "oracle_refused": 0
+        },
+        "refresh_wall_ms": {
+          "max": 1623.192621,
+          "median": 127.23925,
+          "sum": 5009.809657
+        },
+        "versions": {
+          "binary_sha256": "3e5a890bdfdac0ad056ce0e02da02de8e62e547917f440eb880578b995e83f31",
+          "cargo_lock_sha256": "505819c28e17948e80aa48f5e502fe95bde8aa25cc0d40dada009770a38d3d9e",
+          "crate_version": "0.1.0",
+          "differential_dataflow": "0.25.1",
+          "rustc": "unknown",
+          "timely": "0.31.0"
+        }
+      }
+    ],
+    "predictions_measured": {
+      "ext2": {
+        "a_b_per_band": {
+          "days": {
+            "ivm_median_ms": 227.91130149999998,
+            "n_bursts_ivm": 4,
+            "n_cells_with_committed_l1": 0,
+            "note": "no committed TGMS tgms-L1 number for a cell in this band -- needs lane T1 (Addendum EXT-A A2) for recent/hours/days, or the committed c3/c4 deep cells for deep",
+            "ratio_ivm_over_l1": null,
+            "tgms_l1_median_ms": null
+          },
+          "deep": {
+            "ivm_median_ms": 239.5720355,
+            "n_bursts_ivm": 44,
+            "n_cells_with_committed_l1": 44,
+            "note": null,
+            "ratio_ivm_over_l1": 0.008436132439735573,
+            "tgms_l1_median_ms": 28398.325561080128
+          },
+          "hours": {
+            "ivm_median_ms": 219.642982,
+            "n_bursts_ivm": 3,
+            "n_cells_with_committed_l1": 0,
+            "note": "no committed TGMS tgms-L1 number for a cell in this band -- needs lane T1 (Addendum EXT-A A2) for recent/hours/days, or the committed c3/c4 deep cells for deep",
+            "ratio_ivm_over_l1": null,
+            "tgms_l1_median_ms": null
+          },
+          "recent": {
+            "ivm_median_ms": 20.6692955,
+            "n_bursts_ivm": 8,
+            "n_cells_with_committed_l1": 0,
+            "note": "no committed TGMS tgms-L1 number for a cell in this band -- needs lane T1 (Addendum EXT-A A2) for recent/hours/days, or the committed c3/c4 deep cells for deep",
+            "ratio_ivm_over_l1": null,
+            "tgms_l1_median_ms": null
+          }
+        },
+        "b_crossover_band": null,
+        "c_withheld": {
+          "cell_id": "synth-iv-60k-c4-deep-n1000-s0",
+          "ivm_f_epoch_false_fresh": 39,
+          "ivm_f_epoch_probe_complete_through_10": true,
+          "ivm_f_watermark_false_fresh": 0,
+          "ivm_f_watermark_probe_complete_through_10": false,
+          "ivm_f_watermark_unanswerable": true,
+          "notes": [
+            "TGMS's own false_fresh/stale_marked at R10 (memo \u00a73.5: `ext_export.py --check-at 10`'s `check_artifact` pass) was not supplied to this run \u2014 pass --tgms-false-fresh/--tgms-stale-marked once that file exists; left null rather than assumed 0"
+          ],
+          "tgms_false_fresh": null,
+          "tgms_stale_marked": null
+        },
+        "d_disagree_total": 0,
+        "d_pass": true
+      }
+    }
+  },
+  "timestamp_utc": "2026-10-08T12:39:54Z"
+}
