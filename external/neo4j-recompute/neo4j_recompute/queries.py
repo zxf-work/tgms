@@ -312,6 +312,17 @@ def f12_branch(hops: int) -> str:
     pruned at every hop (memo §2.3): `tau_i = max(tau_{i-1}, r_i.vt_s) <
     min(r_i.vt_e, $t_b)`, interior nodes distinct from src/dst and from each
     other, only the last node is `$dst`.
+
+    `src` may never be re-entered on *any* hop, including the last
+    (`tgms/temporal/ops_paths.py::temporal_paths`'s DFS seeds
+    `visited = {sid}` and skips any neighbour already in `visited` on
+    every hop; `tgms/temporal/oracle.py::temporal_paths` matches with
+    `visited = {args["src"]}` the same way). Ordinarily `nL.uid<>$src` is
+    vacuous, since `nL` is pinned to `$dst` and `src != dst` -- it only
+    bites when `$src == $dst`, where the last hop would otherwise be free
+    to close a cycle back onto the source (the `storm-000911` defect:
+    `ops/failure_ledger.jsonl`,
+    `neo4j-recompute-temporal-paths-src-eq-dst-cycles`).
     """
     if hops < 1:
         raise ValueError("hops must be >= 1")
@@ -320,7 +331,7 @@ def f12_branch(hops: int) -> str:
     for i in range(1, hops + 1):
         is_last = i == hops
         target = "(nL:E {uid:$dst})" if is_last else f"(n{i}:E)"
-        distinct_clause = "" if is_last else (
+        distinct_clause = " AND nL.uid<>$src" if is_last else (
             f" AND n{i}.uid<>$dst AND n{i}.uid<>$src"
             + "".join(f" AND n{i}.uid<>n{j}.uid" for j in range(1, i)))
         lines.append(f"MATCH (n{i-1})-[r{i}:EV]->{target} "

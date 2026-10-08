@@ -172,6 +172,20 @@ class TestF12BranchGeneration:
             assert f"n{i}.uid<>$dst" in text
             assert f"n{i}.uid<>$src" in text
 
+    @pytest.mark.parametrize("hops", [1, 2, 3, 4])
+    def test_branch_last_hop_excludes_src_even_though_it_is_pinned_to_dst(self, hops):
+        """Regression for `neo4j-recompute-temporal-paths-src-eq-dst-cycles`
+        (`ops/failure_ledger.jsonl`): the last hop's target is matched by
+        `{uid:$dst}`, which is only guaranteed `!= $src` when the caller's
+        `src` and `dst` differ. TGMS's own operator (`ops_paths.py`'s DFS,
+        seeded `visited={sid}`, `if v in visited: continue` on every hop)
+        and its oracle (`oracle.py`, seeded `visited={args["src"]}`) forbid
+        re-entering `src` on *any* hop, including the last -- so the
+        generated branch must too, unconditionally (the clause is vacuous
+        whenever `src != dst`, and only bites when they're equal)."""
+        text = queries.f12_branch(hops)
+        assert "AND nL.uid<>$src" in text
+
     def test_branch_rejects_zero_hops(self):
         with pytest.raises(ValueError):
             queries.f12_branch(0)
