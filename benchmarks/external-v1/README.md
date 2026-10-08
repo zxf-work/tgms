@@ -280,3 +280,33 @@ macros — it does not attempt to read `benchmarks/external-v1/*.json` at
 all yet, so landing these three records changes 0/29 stubs until that
 generator is wired up (lane W2ad's task, not this lane's — this lane
 does not edit `scripts/sys_paper_macros.py`).
+
+## Per-batch rows (addendum 2026-10-08)
+
+`tgms-control-2026-10-05-batches.jsonl` is the raw per-batch data behind
+the 19 `tgms-control-2026-10-05.json` cells — one line per batch, every
+arm's own `ttf_ms`/`check_wall_ms`/`refresh_wall_ms`/`invalidated_count`/
+`false_fresh_count`/`false_stale_count` plus the batch's
+`global_recompute_wall_ms`, each value carried over byte-exact (no
+rounding) from its source file. `tgms-control-2026-10-05-rows.jsonl`
+(the file already described above) carries only per-cell equality
+manifests, never this per-batch detail, because lane T1's own per-batch
+rows stayed on xzgpu rather than being committed at the time that record
+landed.
+
+These per-batch rows exist so that the time-to-fresh of the `tgms-L1`
+arm can be reconstructed in "sum" mode (`check_wall_ms + refresh_wall_ms`)
+directly from the raw batches, rather than read off this record's own
+`arms.tgms-L1.ttf_p50_ms`, which 18 of these 19 cells measured in
+"end-to-end" mode instead (`tgms-control-2026-10-05.json`'s own
+per-cell `config.measure_ttf`; the 19th, `synth-iv-60k-c1-none-n10000-s0`,
+already measured "sum"). `scripts/sys_paper_macros.py`'s
+`compute_ext_sum_mode` is the reader.
+
+Source: a read-only `scp` pull on 2026-10-08 of each cell's own
+`storm-*-rows.jsonl` from `xzgpu`,
+`/mnt/project/xzhang/tgms/external-v1/t1/<cell_id>/` — nothing on xzgpu
+was modified. `tgms-control-2026-10-05-batches.SOURCES.txt` records each
+pulled file's own sha256 and its exact xzgpu path, one line per cell
+(19 lines); `tgms-control-2026-10-05-batches.jsonl`'s own sha256 is in
+`SHA256SUMS.txt` beside it.
