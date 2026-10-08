@@ -234,24 +234,18 @@ matches the brief's "~51 h" closely.
   `config.workers` is `1` (confirmed on the sampled cell above); the
   memo's planned 8-worker rerun was never run — there is no 8-worker
   result tree anywhere under `/mnt/project/xzhang/tgms/external-v1/`.
-- **The Neo4j oracle-loading fix landed in git only ~8 minutes after N1's
-  timed grid started, not comfortably before it.** `n1/HOST-N1.log`
-  records N1 starting at `2026-10-05T16:36:51Z` from laptop checkout
-  `b7674fd6bb16f378c546b4b84ff10f746a397d0a` (committed 2026-10-03
-  08:44:42 -0500, i.e. two days *before* the fix). The fix,
-  `4e1d539b neo4j-recompute: fix load_oracle flattening bug; add N1
-  timed-grid driver`, was committed 2026-10-05 11:44:23 -0500
-  (`2026-10-05T16:44:23Z`) — eight minutes *after* N1 started, per
-  `git log -1 --format=%ci`. `git merge-base --is-ancestor b7674fd6
-  4e1d539b` confirms `b7674fd6` is an ancestor of (strictly older than)
-  `4e1d539b`, the reverse of what a "fixed before the grid ran" reading
-  would need. The actual `neo4j_recompute` package that ran on xzgpu was
-  copied as a sha256-pinned plain file tree (`n1-work/neo4j-recompute`,
-  per `HOST-N1.log`'s own note), not a git checkout, so this does not by
-  itself prove a stale (pre-fix) oracle-loading path ran any real timed
-  cell — but the ~18.2 h grid's own git-commit evidence does not
-  establish "fixed before any timed cell was kept" either; it only shows
-  the fix landed in git 8 minutes into an 18-hour run.
+- **The Neo4j oracle-loading fix and the timed grid's start, reconciled
+  from the host log and file hashes (coordinator check, 2026-10-08).**
+  `n1/HOST-N1.log` records a first launch at `2026-10-05T16:36:51Z` whose
+  first cell was stopped at `16:38:18Z` ("STOPPING grid: load_oracle bug
+  found in runner.py"); the fixed `runner.py` was written to the runner
+  copy at `16:42:25Z` (its sha256 equals the file at commit `4e1d539b`,
+  which differs from the file at `b7674fd6`); the grid was relaunched at
+  `16:42:33Z` and the first kept cell ran `16:42:35Z`–`16:45:43Z`
+  (`result.json` mtime `16:45:42Z`). The git commit of the fix
+  (`16:44:23Z`) postdates the relaunch because the lane committed after
+  copying; every kept timed cell ran on the fixed runner. The discarded
+  first attempt's output was removed by the lane before the rerun.
 - **`ivm_dd::record::oracle_agreement`'s own bookkeeping never reads
   `refused`** (documented in `scripts/external_check.py`'s own module
   docstring as a known latent bug in that crate, not patched by this
