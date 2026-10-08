@@ -97,6 +97,7 @@ from tgms.eval.corrections import (
 from tgms.storage.base import make_op
 from tgms.storage.eventlog import extend_chain
 from tgms.temporal.algebra import ENVELOPE_META_FIELDS, ensure_all_registered
+from tgms.tgir.check import ChainCache
 from tgms.tgir.depscope import TOP, TOP_TERM, DependencyScope
 
 from tgms.artifact.lookup import affected
@@ -342,9 +343,17 @@ class BatchResult:
     #: node branch).
     correction_disc: str | None = None
     correction_eid: str | None = None
+    #: The check-path log-walk memo this run used (`CHECK_CACHES`). `"none"`
+    #: — every `check_artifact` re-walks the event log, the library default
+    #: — is left out of `to_json` so rows written without the setting keep
+    #: their exact bytes; `"chain"` is written, with this batch's
+    #: `ChainCache` miss count (one re-walk per log state: the batch's own
+    #: correction append makes the first check of each batch a miss).
+    check_cache: str = "none"
+    check_cache_misses: int | None = None
 
     def to_json(self) -> dict[str, Any]:
-        return {
+        out = {
             "batch_index": self.batch_index, "correction_class": self.correction_class,
             "correction_generator": self.correction_generator,
             "correction_placement": self.correction_placement,
@@ -363,6 +372,10 @@ class BatchResult:
             "correction_disc": self.correction_disc,
             "correction_eid": self.correction_eid,
         }
+        if self.check_cache != "none":
+            out["check_cache"] = self.check_cache
+            out["check_cache_misses"] = self.check_cache_misses
+        return out
 
 
 # ---------------------------------------------------------------------------
@@ -516,6 +529,19 @@ RANGE_WIDTHS: tuple[str, ...] = ("narrow", "mid", "wide")
 #: pass per batch"); `end-to-end` is this task's addition (see `Storm.
 #: run_batch`'s own note below).
 TTF_MODES: tuple[str, ...] = ("sum", "end-to-end")
+
+#: The tgms arms' check-path setting (failure ledger
+#: `check-walk-parses-every-record`). `check()` re-walks the whole event log
+#: on every call to verify its checkpoints' chains (D13.24 steps 5-6); the
+#: walk parses every record to read its `tt`, so on a store whose genesis is
+#: one multi-megabyte bulk-load record it dominates a check. `"chain"` hands
+#: every `check_artifact` call this harness makes one `ChainCache` — opt-in
+#: in the library by design (D13.26's cost is reported with and without it),
+#: verdict-identical by contract, and D-162-hardened (a stat-key hit is served
+#: only after a sha256 over the cached prefix matches). `"none"` is the
+#: library default and this harness's default; the setting is recorded on
+#: every row that uses it.
+CHECK_CACHES: tuple[str, ...] = ("none", "chain")
 
 #: Age-band Δvt targets as a multiple of `corrections.py`'s own
 #: `step = max(2, sub.span // 20)` unit (`corrections.py:188`) — the
@@ -782,11 +808,19 @@ class Storm:
                 mix: Callable[[Any, Substrate, Target, random.Random],
                              list[Correction]] | None = None,
                 name_prefix: str = "storm", collect_timing: bool = True,
-                measure_ttf: str = "sum") -> None:
+                measure_ttf: str = "sum", check_cache: str = "none") -> None:
         if measure_ttf not in TTF_MODES:
             raise ValueError(f"unknown measure_ttf mode: {measure_ttf!r}; "
                              f"choose from {TTF_MODES}")
         self.measure_ttf = measure_ttf
+        if check_cache not in CHECK_CACHES:
+            raise ValueError(f"unknown check_cache: {check_cache!r}; "
+                             f"choose from {CHECK_CACHES}")
+        self.check_cache = check_cache
+        #: One memo for every check this run makes (`CHECK_CACHES`); `None`
+        #: is the uncached library default.
+        self.chain_cache: ChainCache | None = (
+            ChainCache() if check_cache == "chain" else None)
         self.store_dir = Path(store_dir)
         self.backend = backend
         self.store = tgms.open(self.store_dir, backend=backend)
@@ -942,6 +976,7 @@ class Storm:
 
         # the real pre-filter, shared by both tgms arms (§3.2 / R-18's own
         # instrument: `intersects_calls`, `candidate_survivors`)
+        misses_before = self.chain_cache.misses if self.chain_cache is not None else 0
         lr, lookup_wall_ms = self._timed(lambda: affected(batch, self.registry))
         candidates = {r.name for r in lr.affected}
 
@@ -953,7 +988,8 @@ class Storm:
                 continue
             for arm_name, level1 in (("tgms-L0", False), ("tgms-L1", True)):
                 verdict, dt = self._timed(
-                    lambda r=record, l1=level1: check_artifact(r, self.store.eventlog, level1=l1))
+                    lambda r=record, l1=level1: check_artifact(
+                        r, self.store.eventlog, level1=l1, chain_cache=self.chain_cache))
                 tgms_check_ms[arm_name] += dt
                 if not verdict.actionable_fresh:
                     tgms_invalidated[arm_name].add(name)
@@ -1004,7 +1040,8 @@ class Storm:
                         record = self.registry.current(name)
                         if record is None:
                             continue
-                        verdict = check_artifact(record, self.store.eventlog, level1=l1)
+                        verdict = check_artifact(record, self.store.eventlog, level1=l1,
+                                                 chain_cache=self.chain_cache)
                         if not verdict.actionable_fresh and verdict.refresh is not None:
                             calls[0] += 1
                             try:
@@ -1083,6 +1120,9 @@ class Storm:
             log_bytes=self.store.eventlog.size(), log_records=self.n_batches,
             registry_bytes=self.registry.path.stat().st_size,
             ttf_mode=self.measure_ttf,
+            check_cache=self.check_cache,
+            check_cache_misses=(None if self.chain_cache is None
+                                else self.chain_cache.misses - misses_before),
             age_vt_meaningful=(self.interval_vt if isinstance(self.mix, Mix)
                               and self.mix.age is not None else None),
             correction_identities=tuple(correction.identities), correction_vt=interval,

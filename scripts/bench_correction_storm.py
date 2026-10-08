@@ -54,7 +54,8 @@ from tgms.artifact.lookup import affected  # noqa: E402
 from tgms.artifact.record import ArtifactRecord  # noqa: E402
 from tgms.artifact.refresh import refresh  # noqa: E402
 from tgms.eval.storm import (  # noqa: E402
-    ARMS, AGE_BANDS, DEGREE_BUCKETS, MIXES, RANGE_WIDTHS, TTF_MODES, Storm, build_mix,
+    ARMS, AGE_BANDS, CHECK_CACHES, DEGREE_BUCKETS, MIXES, RANGE_WIDTHS, TTF_MODES, Storm,
+    build_mix,
     narrowing_coverage, summarize,
 )
 from tgms.eval.corrections import _believed_nodes  # noqa: E402
@@ -214,6 +215,10 @@ def main(argv: list[str] | None = None) -> int:
     ap.add_argument("--measure-ttf", choices=list(TTF_MODES), default="sum",
                     help="sum (default, Σ per-artifact costs) or end-to-end (actually "
                          "re-run check->refresh for the tgms arms, timed as one interval)")
+    ap.add_argument("--check-cache", choices=list(CHECK_CACHES), default="none",
+                    help="the tgms arms' check-path log-walk memo: none (default, every "
+                         "check re-walks the event log) or chain (one ChainCache for the "
+                         "run; verdict-identical, recorded on every row)")
     ap.add_argument("--allow-r18-trip", action="store_true",
                     help=f"permit --n-artifacts above {R18_TRIP_N_ARTIFACTS} (design memo "
                          "§3's R-18 trip point) — the campaign's 10^5 cells need this")
@@ -291,7 +296,7 @@ def main(argv: list[str] | None = None) -> int:
     t_start = time.time()
     storm = Storm(work_store, n_artifacts=args.n_artifacts, seed=args.seed,
                  backend=args.backend, arms=tuple(args.arms), mix=mix,
-                 measure_ttf=args.measure_ttf)
+                 measure_ttf=args.measure_ttf, check_cache=args.check_cache)
     n_registered = len(storm.artifacts)
     n_skipped = storm.n_registration_skipped
     # storm-v1 addendum-4 (D-161): registration-time only, read-only against
@@ -389,6 +394,7 @@ def main(argv: list[str] | None = None) -> int:
                   "mix": args.mix, "age": args.age, "degree": args.degree,
                   "range_width": args.range_width, "burst_size": args.burst_size,
                   "burst_after": args.burst_after, "measure_ttf": args.measure_ttf,
+                  "check_cache": args.check_cache,
                   "allow_r18_trip": args.allow_r18_trip, "interval_vt": interval_vt,
                   "dag_shape": args.dag_shape, "dag_depth": args.dag_depth,
                   "dag_fanout": args.dag_fanout, "dag_cascade_k": args.dag_cascade_k,
