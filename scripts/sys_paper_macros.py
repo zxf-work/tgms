@@ -507,6 +507,15 @@ EXTERNAL_NEO4J = EXTERNAL_V1 / "neo4j-recompute-2026-10-07.json"
 EXTERNAL_NEO4J_ROWS = EXTERNAL_V1 / "neo4j-recompute-2026-10-07-rows.jsonl"
 EXTERNAL_IVM = EXTERNAL_V1 / "ivm-differential-2026-10-07.json"
 EXTERNAL_IVM_ROWS = EXTERNAL_V1 / "ivm-differential-2026-10-07-rows.jsonl"
+# Lane C3-records (2026-10-09): the ten-cell re-run of the Neo4j-recompute
+# cells affected by the single-artifact temporal_paths defect (storm-000911,
+# fix commit 1d9e3edb), on public main 08aba6a1 -- see
+# benchmarks/external-v1/README.md's "Re-run of the ten affected cells with
+# the fixed translation (2026-10-09)" section. compute_external_rerun_n1b
+# below is the reader; EXTERNAL_NEO4J/EXTERNAL_NEO4J_ROWS above are also
+# read there, as the "before" comparison point only -- never rewritten.
+EXTERNAL_NEO4J_RERUN = EXTERNAL_V1 / "neo4j-recompute-2026-10-09-rerun.json"
+EXTERNAL_NEO4J_RERUN_ROWS = EXTERNAL_V1 / "neo4j-recompute-2026-10-09-rerun-rows.jsonl"
 EXTERNAL_TGMS_CONTROL = EXTERNAL_V1 / "tgms-control-2026-10-05.json"
 # Lane W2af: the per-cell equality-manifest sidecar (never read by any
 # function above -- they only ever read EXTERNAL_TGMS_CONTROL's own
@@ -10265,6 +10274,132 @@ def compute_external_arc5(m: Macros) -> None:
 
 
 # --------------------------------------------------------------------------
+# Lane C3-records (2026-10-09) -- re-run of the ten Neo4j-recompute cells
+# affected by the single-artifact temporal_paths defect (storm-000911: a
+# generated path with src == dst, cycling back through the source node;
+# fix commit 1d9e3edb, ledger id
+# neo4j-recompute-temporal-paths-src-eq-dst-cycles), measured on the fixed
+# translation at public main 08aba6a1. See benchmarks/external-v1/
+# README.md's "Re-run of the ten affected cells with the fixed translation
+# (2026-10-09)" section for the full per-cell table and host protocol.
+#
+# The original 43-cell neo4j-recompute-2026-10-07 record
+# (compute_external_baselines above, EXTERNAL_NEO4J/EXTERNAL_NEO4J_ROWS) is
+# untouched by this lane -- it is read here strictly as the "before"
+# comparison point for the wall-ratio macro, never rewritten, never
+# re-gated against a different sha256.
+#
+# Neither the 2026-10-07 record nor this 2026-10-09 rerun record carries a
+# field literally named `wall_s` anywhere in summary.per_cell (confirmed
+# directly below, not assumed) -- so the wall-ratio macro falls back to
+# each record's own -rows.jsonl, summing `result.per_cell.per_burst[*]
+# .wall_ms` over every epoch (the only per-cell wall-clock aggregate
+# either committed record actually carries).
+# --------------------------------------------------------------------------
+
+_N1B_CELL_IDS = (
+    "synth-iv-60k-c1-deep-n1000-s0", "synth-iv-60k-c1-none-n1000-s0",
+    "synth-iv-60k-c3-days-n1000-s0", "synth-iv-60k-c3-deep-n1000-s0",
+    "synth-iv-60k-c3-hours-n1000-s0", "synth-iv-60k-c3-none-n1000-s0",
+    "synth-iv-60k-c3-recent-n1000-s0", "synth-iv-60k-c4-deep-n1000-s0",
+    "synth-iv-60k-c4-none-n1000-s0", "synth-iv-60k-c1-none-n10000-s0",
+)
+
+
+def _n1b_wall_ms_sum(row: dict) -> float:
+    """Sum of `result.per_cell.per_burst[*].wall_ms` across every epoch
+    (including the untimed epoch 0) in one neo4j-recompute -rows.jsonl
+    row -- see the module comment above compute_external_rerun_n1b for why
+    this field, not a `wall_s` field, is what this generator reads."""
+    return sum(b["wall_ms"] for b in row["result"]["per_cell"]["per_burst"])
+
+
+def compute_external_rerun_n1b(m: Macros) -> None:
+    sums = _sha256sums_by_name(EXTERNAL_V1_SHA256SUMS.read_text(encoding="utf-8"))
+    for path in (EXTERNAL_NEO4J, EXTERNAL_NEO4J_ROWS,
+                 EXTERNAL_NEO4J_RERUN, EXTERNAL_NEO4J_RERUN_ROWS):
+        eq(sha256_file(path), sums.get(path.name),
+           f"{relpath(path)}: sha256 matches {relpath(EXTERNAL_V1_SHA256SUMS)}'s entry for "
+           f"{path.name}")
+
+    rerun = json.loads(EXTERNAL_NEO4J_RERUN.read_text(encoding="utf-8"))
+    rerun_rows = {r["cell_id"]: r for r in load_jsonl(EXTERNAL_NEO4J_RERUN_ROWS)}
+    orig_rows = {r["cell_id"]: r for r in load_jsonl(EXTERNAL_NEO4J_ROWS)}
+
+    eq(rerun["n_cells"], 10, f"{relpath(EXTERNAL_NEO4J_RERUN)}: n_cells")
+    eq(set(rerun["config"]["cell_ids"]), set(_N1B_CELL_IDS),
+       f"{relpath(EXTERNAL_NEO4J_RERUN)}: config.cell_ids matches the 10 affected cells")
+    eq(rerun["git_commit"], "08aba6a1efa049fdb409f056326a851240ecb0c2",
+       f"{relpath(EXTERNAL_NEO4J_RERUN)} frozen: git_commit (the fix, public main)")
+
+    def _sha256_of(obj) -> str:
+        return hashlib.sha256(json.dumps(obj, sort_keys=True).encode()).hexdigest()
+
+    eq(_sha256_of(rerun["config"]["cell_ids"]), rerun["result_digest"],
+       f"{relpath(EXTERNAL_NEO4J_RERUN)}: sha256(config.cell_ids) matches its own "
+       "result_digest")
+
+    per_cell = {c["cell_id"]: c for c in rerun["summary"]["per_cell"]}
+    orig = json.loads(EXTERNAL_NEO4J.read_text(encoding="utf-8"))
+    orig_per_cell = {c["cell_id"]: c for c in orig["summary"]["per_cell"]}
+    eq(set(per_cell), set(_N1B_CELL_IDS),
+       f"{relpath(EXTERNAL_NEO4J_RERUN)}: summary.per_cell cell_id set")
+    eq(set(rerun_rows), set(_N1B_CELL_IDS),
+       f"{relpath(EXTERNAL_NEO4J_RERUN_ROWS)}: row cell_id set")
+    for cid in _N1B_CELL_IDS:
+        require(cid in orig_rows and cid in orig_per_cell,
+                f"{relpath(EXTERNAL_NEO4J_ROWS)}: has cell {cid} (the pre-fix 'before' row)")
+        require("wall_s" not in per_cell[cid],
+                f"{relpath(EXTERNAL_NEO4J_RERUN)}: summary.per_cell[{cid!r}] has no field "
+                "literally named wall_s (confirms the -rows.jsonl wall_ms-sum fallback "
+                "below is required, not merely preferred)")
+        require("wall_s" not in orig_per_cell[cid],
+                f"{relpath(EXTERNAL_NEO4J)}: summary.per_cell[{cid!r}] has no field "
+                "literally named wall_s either (same gap on the pre-fix 2026-10-07 record)")
+
+    n_cells = len(per_cell)
+    eq(n_cells, 10, f"{relpath(EXTERNAL_NEO4J_RERUN)}: len(summary.per_cell)")
+    agree_cells = sum(1 for c in per_cell.values() if c["oracle_agreement"]["disagree"] == 0)
+    disagreements = sum(c["oracle_agreement"]["disagree"] for c in per_cell.values())
+    eq(disagreements, 0, f"{relpath(EXTERNAL_NEO4J_RERUN)}: total "
+       "oracle_agreement.disagree summed across all 10 cells (the defect's "
+       "re-measurement)")
+    eq(agree_cells, 10, f"{relpath(EXTERNAL_NEO4J_RERUN)}: count of cells with "
+       "oracle_agreement.disagree == 0")
+
+    m.add("recExt1RerunCells", n_cells,
+          f"{relpath(EXTERNAL_NEO4J_RERUN)}: n_cells / len(summary.per_cell)")
+    m.add("recExt1RerunAgreeCells", agree_cells,
+          f"{relpath(EXTERNAL_NEO4J_RERUN)}: count of summary.per_cell[*] with "
+          "oracle_agreement.disagree == 0")
+    m.add("recExt1RerunDisagreements", disagreements,
+          f"{relpath(EXTERNAL_NEO4J_RERUN)}: sum of summary.per_cell[*]."
+          "oracle_agreement.disagree over all 10 cells")
+
+    probe_cid = _ARC5_PROBE_CID
+    probe = per_cell[probe_cid]["oracle_agreement"]
+    eq(probe["n_compared"], 53532, f"{relpath(EXTERNAL_NEO4J_RERUN)}: probe cell "
+       "oracle_agreement.n_compared")
+    eq(probe["agree"], 53532, f"{relpath(EXTERNAL_NEO4J_RERUN)}: probe cell "
+       "oracle_agreement.agree")
+    m.add("recExt1RerunProbeAgree", f"{probe['agree']}/{probe['n_compared']}",
+          f"{relpath(EXTERNAL_NEO4J_RERUN)}: summary.per_cell[{probe_cid!r}]."
+          "oracle_agreement {agree}/{n_compared}, as text")
+
+    ratios = [_n1b_wall_ms_sum(rerun_rows[cid]) / _n1b_wall_ms_sum(orig_rows[cid])
+              for cid in _N1B_CELL_IDS]
+    wall_ratio_median = statistics.median(ratios)
+    close(wall_ratio_median, 0.9273178083458736, 1e-6,
+          "external-v1 C3-records frozen: median over the 10 affected cells of "
+          "rerun-wall / N1-wall (both the -rows.jsonl per_burst wall_ms sum)")
+    m.add("recExt1RerunWallRatioMedian", f"{wall_ratio_median:.3f}",
+          f"median over the 10 cells of sum({relpath(EXTERNAL_NEO4J_RERUN_ROWS)}'s row."
+          "result.per_cell.per_burst[*].wall_ms) / sum(the same field in the matching "
+          f"{relpath(EXTERNAL_NEO4J_ROWS)} row) -- the field used because neither record's "
+          "own summary.per_cell carries one literally named wall_s (checked directly above)")
+
+
+# --------------------------------------------------------------------------
 # pending stubs (records not yet landed)
 # --------------------------------------------------------------------------
 
@@ -10370,6 +10505,7 @@ def main() -> int:
     compute_external_baselines(m)
     compute_ext_sum_mode(m)
     compute_external_arc5(m)
+    compute_external_rerun_n1b(m)
     add_pending_stubs(m)
 
     if FAILURES:

@@ -3698,7 +3698,7 @@ def test_dag_versions_csv_matches_frozen_values(tmp_path, monkeypatch):
 
 
 def test_r18_crossover_csv_plots_the_corrected_sum_mode_arc(tmp_path, monkeypatch):
-    """F6a / \ref{fig:arc} was cut in draft pass 15: its committed N=1,000
+    """F6a / \\ref{fig:arc} was cut in draft pass 15: its committed N=1,000
     point (recStormV1SpeedupN1kSeed0, frozen at 1.938) is the check-only
     end-to-end timer, an instrument error (ledger
     storm-e2e-l1-interval-after-l0-refresh). The re-plot reads every point
@@ -4589,6 +4589,152 @@ def test_external_arc5_publish_ms_reconstruction_on_a_tiny_two_cell_three_batch_
     assert expected_b == 20.0  # [20, 22, 18] -> median 20
     expected_store_median = statistics.median([expected_a, expected_b])
     assert expected_store_median == 15.0
+
+
+# --------------------------------------------------------------------------
+# Lane C3-records (2026-10-09) -- the ten-cell Neo4j-recompute re-run on
+# the fixed translation (compute_external_rerun_n1b).
+# --------------------------------------------------------------------------
+
+def test_external_rerun_n1b_runs_without_verification_failure():
+    mod = _load("sys_paper_macros")
+    m = mod.Macros()
+    mod.compute_external_rerun_n1b(m)
+    assert mod.FAILURES == [], f"unexpected verification failures: {mod.FAILURES}"
+    assert mod.CHECKS > 20
+    values = {name: value for name, value, _ in m.items}
+    assert values["recExt1RerunCells"] == "10"
+    assert values["recExt1RerunAgreeCells"] == "10"
+    assert values["recExt1RerunDisagreements"] == "0"
+    assert values["recExt1RerunProbeAgree"] == "53532/53532"
+    assert values["recExt1RerunWallRatioMedian"] == "0.927"
+
+
+def test_external_rerun_n1b_no_wall_s_field_present_use_rows_fallback():
+    """Both the pre-fix 2026-10-07 record and the 2026-10-09 rerun record's
+    own `summary.per_cell` entries carry no field literally named
+    `wall_s` -- confirmed directly here (not merely assumed), which is
+    exactly why recExt1RerunWallRatioMedian falls back to summing each
+    row's own `result.per_cell.per_burst[*].wall_ms` from the two
+    -rows.jsonl sidecars instead."""
+    mod = _load("sys_paper_macros")
+    orig = json.loads(mod.EXTERNAL_NEO4J.read_text(encoding="utf-8"))
+    rerun = json.loads(mod.EXTERNAL_NEO4J_RERUN.read_text(encoding="utf-8"))
+    for cell in orig["summary"]["per_cell"]:
+        assert "wall_s" not in cell
+    for cell in rerun["summary"]["per_cell"]:
+        assert "wall_s" not in cell
+    # compute_external_rerun_n1b itself asserts this (via `require`), so a
+    # run that reaches here with no FAILURES already proves the gap --
+    # this test additionally proves it independently of that code path.
+    m = mod.Macros()
+    mod.compute_external_rerun_n1b(m)
+    assert mod.FAILURES == []
+
+
+def test_external_rerun_n1b_disagreements_and_agree_cells_independently_recomputed():
+    """Recompute recExt1Rerun{Cells,AgreeCells,Disagreements,ProbeAgree}
+    straight from the committed record, independently of
+    compute_external_rerun_n1b's own code path."""
+    mod = _load("sys_paper_macros")
+    rerun = json.loads(mod.EXTERNAL_NEO4J_RERUN.read_text(encoding="utf-8"))
+    per_cell = rerun["summary"]["per_cell"]
+    assert len(per_cell) == 10
+    expected_disagreements = sum(c["oracle_agreement"]["disagree"] for c in per_cell)
+    expected_agree_cells = sum(1 for c in per_cell
+                                if c["oracle_agreement"]["disagree"] == 0)
+    probe = next(c for c in per_cell
+                 if c["cell_id"] == "synth-iv-60k-c1-none-n10000-s0")["oracle_agreement"]
+
+    m = mod.Macros()
+    mod.compute_external_rerun_n1b(m)
+    values = {name: value for name, value, _ in m.items}
+    assert values["recExt1RerunCells"] == str(len(per_cell))
+    assert values["recExt1RerunAgreeCells"] == str(expected_agree_cells)
+    assert values["recExt1RerunDisagreements"] == str(expected_disagreements)
+    assert values["recExt1RerunProbeAgree"] == f"{probe['agree']}/{probe['n_compared']}"
+
+
+def test_external_rerun_n1b_wall_ratio_median_independently_recomputed_from_rows():
+    """Recompute recExt1RerunWallRatioMedian straight from the two
+    committed -rows.jsonl sidecars (the 2026-10-09 rerun's own rows and
+    the 2026-10-07 pre-fix record's own rows), independently of
+    compute_external_rerun_n1b's own code path: per cell, sum
+    result.per_cell.per_burst[*].wall_ms in each file, take the ratio
+    rerun/orig, then the median over the 10 affected cells."""
+    mod = _load("sys_paper_macros")
+    rerun_rows = {r["cell_id"]: r for r in mod.load_jsonl(mod.EXTERNAL_NEO4J_RERUN_ROWS)}
+    orig_rows = {r["cell_id"]: r for r in mod.load_jsonl(mod.EXTERNAL_NEO4J_ROWS)}
+
+    def wall_ms_sum(row):
+        return sum(b["wall_ms"] for b in row["result"]["per_cell"]["per_burst"])
+
+    ratios = [wall_ms_sum(rerun_rows[cid]) / wall_ms_sum(orig_rows[cid])
+              for cid in mod._N1B_CELL_IDS]
+    expected = statistics.median(ratios)
+
+    m = mod.Macros()
+    mod.compute_external_rerun_n1b(m)
+    values = {name: value for name, value, _ in m.items}
+    assert values["recExt1RerunWallRatioMedian"] == f"{expected:.3f}"
+
+
+def test_wall_ms_sum_reconstruction_on_a_tiny_two_cell_fixture():
+    """Exercises the exact ratio-and-median arithmetic
+    compute_external_rerun_n1b runs for recExt1RerunWallRatioMedian,
+    against a tiny, hand-computed 2-cell fixture in exactly the shape a
+    real neo4j-recompute -rows.jsonl row uses (result.per_cell.per_burst
+    is a list of {epoch, wall_ms, ...} dicts; epoch 0 is untimed but still
+    contributes its own wall_ms to the sum, matching _n1b_wall_ms_sum's
+    own "across every epoch, including the untimed epoch 0" docstring)."""
+    def mk_row(wall_ms_values):
+        return {"result": {"per_cell": {"per_burst": [
+            {"epoch": i, "wall_ms": v} for i, v in enumerate(wall_ms_values)]}}}
+
+    orig = {"cell-a": mk_row([0.0, 100.0, 100.0]), "cell-b": mk_row([0.0, 50.0, 50.0])}
+    rerun = {"cell-a": mk_row([0.0, 80.0, 80.0]), "cell-b": mk_row([0.0, 40.0, 60.0])}
+
+    mod = _load("sys_paper_macros")
+    ratio_a = mod._n1b_wall_ms_sum(rerun["cell-a"]) / mod._n1b_wall_ms_sum(orig["cell-a"])
+    ratio_b = mod._n1b_wall_ms_sum(rerun["cell-b"]) / mod._n1b_wall_ms_sum(orig["cell-b"])
+    assert ratio_a == 0.8  # 160/200
+    assert ratio_b == 1.0  # 100/100
+    assert statistics.median([ratio_a, ratio_b]) == 0.9
+
+
+def test_tampered_external_rerun_n1b_sha256_mismatch_fails(tmp_path):
+    """Sibling of test_tampered_external_arc5_sha256_mismatch_fails for the
+    new 2026-10-09 rerun record -- an edit must fail the SHA256SUMS.txt
+    gate before anything in it is trusted."""
+    mod = _load("sys_paper_macros")
+    data = json.loads(mod.EXTERNAL_NEO4J_RERUN.read_text(encoding="utf-8"))
+    data["summary"]["per_cell"][0]["oracle_agreement"]["disagree"] = 999
+    tampered = tmp_path / mod.EXTERNAL_NEO4J_RERUN.name
+    tampered.write_text(json.dumps(data), encoding="utf-8")
+
+    mod.EXTERNAL_NEO4J_RERUN = tampered
+    m = mod.Macros()
+    mod.compute_external_rerun_n1b(m)
+    assert mod.FAILURES, "an edited neo4j-recompute-2026-10-09-rerun.json must fail the " \
+        "SHA256SUMS.txt check"
+    assert any("SHA256SUMS" in f for f in mod.FAILURES)
+
+
+def test_tampered_external_rerun_n1b_rows_sha256_mismatch_fails(tmp_path):
+    """Sibling of the above for the -rows.jsonl sidecar."""
+    mod = _load("sys_paper_macros")
+    rows = mod.load_jsonl(mod.EXTERNAL_NEO4J_RERUN_ROWS)
+    rows[0]["result"]["per_cell"]["per_burst"][0]["wall_ms"] += 1.0
+    tampered = tmp_path / mod.EXTERNAL_NEO4J_RERUN_ROWS.name
+    tampered.write_text(
+        "\n".join(json.dumps(r, sort_keys=True) for r in rows) + "\n", encoding="utf-8")
+
+    mod.EXTERNAL_NEO4J_RERUN_ROWS = tampered
+    m = mod.Macros()
+    mod.compute_external_rerun_n1b(m)
+    assert mod.FAILURES, "an edited neo4j-recompute-2026-10-09-rerun-rows.jsonl must fail " \
+        "the SHA256SUMS.txt check"
+    assert any("SHA256SUMS" in f for f in mod.FAILURES)
 
 
 # --------------------------------------------------------------------------
