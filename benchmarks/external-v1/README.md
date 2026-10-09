@@ -609,3 +609,131 @@ Validated: `scripts/check_result_manifest.py benchmarks/external-v1/neo4j-recomp
 | `recExt1RerunDisagreements` | 0 | sum of `summary.per_cell[*].oracle_agreement.disagree` over all 10 cells |
 | `recExt1RerunProbeAgree` | `53532/53532` | the probe cell's own `oracle_agreement.{agree}/{n_compared}`, as text |
 | `recExt1RerunWallRatioMedian` | 0.927 | median over the 10 cells of (rerun wall / N1 wall); neither record's own `summary.per_cell` carries a field literally named `wall_s`, so both sides are each record's own `-rows.jsonl` sum of `result.per_cell.per_burst[*].wall_ms` (checked directly in `compute_external_rerun_n1b`, not assumed) — a different, narrower field than this section's own "wall s"/"N1 wall s" table columns above, which read `PROGRESS.log`'s full-cell `wall=` instead (that file is not committed, so the macro cannot use it) |
+
+
+## Watermark hold duration under a withheld correction (2026-10-09)
+
+**Pre-registration.** Memo P-EXT2-H, frozen 2026-10-09T14:30:27Z, before
+this lane (D-W) ran anything: on the withheld-correction cell
+`synth-iv-60k-c4-deep-n1000-s0` (the same cell "The withheld-correction
+cell" section above scores — not a new cell), the F-watermark feeder's
+hold duration is predicted to be exactly 1 burst interval, since batch
+10's correction is withheld and delivered together with batch 11 by
+construction of that cell's own delta schedule — "hold = 1 burst by
+construction; ms ≈ the inter-burst wall." This section measures that
+prediction for real rather than asserting it.
+
+**What changed.** `external/ivm-dd`'s `withheld` module and `ivm-dd
+withheld` CLI (public main, this lane's own commit) were extended to
+report, for each feeder: per held artifact, the hold duration in bursts
+and in milliseconds; and feeder totals `held_artifacts`, `refused_answers`,
+`hold_ms_{median,min,max}`, `hold_bursts_median`. `held` is the mirror of
+the existing `false_fresh` bookkeeping ("The withheld-correction cell"
+section's own `ivm_f_epoch_false_fresh = 39`): an artifact is **held**
+when the probe does *not* claim completeness (F-watermark, always) *and*
+the served value would in fact disagree with the epoch-10 oracle — i.e.
+exactly the 39 artifacts the F-epoch feeder would otherwise have served
+silently wrong. `ivm-dd withheld` additionally now runs a real,
+single-worker `dataflow::run` over the same changelog (the same per-burst
+driver `ivm-dd run` uses) to measure `inter_burst_wall_ms`, the cell's own
+median `refresh_ms + publish_ms` across its bursts — a genuine wall-clock
+figure, not an assumption. Every pre-existing `withheld-result.json`
+field is unchanged: an untimed smoke run of the new binary against this
+cell reproduces the original `ivm_f_epoch_false_fresh = 39` /
+`ivm_f_watermark_false_fresh = 0` and every existing per-artifact field
+byte for byte; only new fields (`held`, the hold stats,
+`inter_burst_wall_ms`) are added.
+
+**Host protocol.** xzgpu, the same host as lanes N1/D1/T1. Build: a fresh
+clone of the project mirror (`/mnt/project/xzhang/tgms/repo.git`, at
+public main `4fced7e3daa26ad484d6a53f62553c118fb8c34b`) under
+`external-v1/dw-work/repo`, this lane's working-tree diff applied on top
+(laptop pushes nothing — the diff was copied over and `git apply`'d), then
+`cargo build --release` (rustc/cargo 1.97.1, matching every other
+external-v1 Rust build in this directory) and `cargo test --release` (41
+tests, including 3 in `withheld_tests.rs` — the pre-existing snapshot
+test plus a new tiny one-artifact/one-delayed-burst hold-duration test
+and an invalid-epoch-ordering panic test) and `cargo clippy --release
+--all-targets -- -D warnings`, all clean. `Cargo.lock` sha256
+`505819c28e17948e80aa48f5e502fe95bde8aa25cc0d40dada009770a38d3d9e`
+(unchanged from the 2026-10-07 build — no dependency changed); new binary
+sha256 `5bb44ff6c406583730a797399304d1cffbe2f23894bda1b9917e0705357d59da`.
+
+Timed run: host quiet immediately before (`uptime`: load average
+0.69/1.15/0.79; no TGMS/Neo4j/dataflow process running; `HOST-DW.log`).
+Memgraph (the project's other co-tenant store) stopped at
+`2026-10-09T14:53:54Z` (`docker stop memgraph`) and restarted at
+`2026-10-09T14:59:48Z` (`docker start memgraph`), both logged in
+`HOST-DW.log`; no co-tenant store running during the timed window. `ivm-dd
+withheld` run without `nice`, single worker (the CLI hard-codes
+`workers=1`, same as every other lane in this directory): started
+`2026-10-09T14:54:04Z`, ended `2026-10-09T14:59:31Z` — 5m27.71s wall per
+`/usr/bin/time -v` (323.80s user + 3.87s system, 99% of one CPU, 4.34 GB
+peak RSS, 0 major page faults, exit 0). Host snapshot taken again
+immediately after (`host-snapshot-after.txt`).
+
+**The numbers.** From this run's own `withheld-result.json`, restated by
+`scripts/external_check.py::check_withheld` (independent of
+`ivm_dd::record`'s own bookkeeping, same discipline as every other
+`check.json` in this directory) and assembled into the standalone record
+below:
+
+| quantity | value | field |
+|---|---:|---|
+| held artifacts | 39 | `ivm_f_watermark_held_artifacts` — the same 39 artifacts `ivm_f_epoch_false_fresh` already named as affected |
+| refused answers | 39 | `ivm_f_watermark_refused_answers` — one refusal per held artifact; this check models a single read point (R10) |
+| hold, bursts (median) | 1.0 | `ivm_f_watermark_hold_bursts_median` — matches the frozen P-EXT2-H prediction exactly |
+| hold, ms (median = min = max) | 69.523 | `ivm_f_watermark_hold_ms_{median,min,max}` — uniform across all 39 held artifacts, since every one shares the same 1-burst hold |
+| inter-burst wall | 69.523 ms | `ivm_inter_burst_wall_ms` — this cell's own measured median `refresh_ms + publish_ms` across the dataflow run's bursts |
+
+Hold ms equals the inter-burst wall exactly (both read from the same
+`69.52254149999999`): P-EXT2-H's "ms ≈ the inter-burst wall" prediction
+holds with 0 error here because the hold is a pure multiple (×1) of that
+measured quantity by construction, not a coincidence of two independent
+measurements landing close. `ivm_f_epoch_false_fresh = 39` and
+`ivm_f_watermark_false_fresh = 0` are reproduced unchanged from "The
+withheld-correction cell" section above (frozen there since 2026-10-07).
+
+**Files.**
+
+| file | cells | sha256 |
+|---|---|---|
+| `ivm-differential-2026-10-09-withheld-hold.json` | 1 (the withheld-correction cell; standalone, not folded into the 43-cell `ivm-differential-2026-10-07.json`) | see `SHA256SUMS.txt` |
+
+Validated: `scripts/check_result_manifest.py
+benchmarks/external-v1/ivm-differential-2026-10-09-withheld-hold.json` →
+`ok: ... conforms to result_manifest.schema.json`. Assembled with
+`scripts/external_record.py`'s new `--withheld-hold-only` mode
+(`build_withheld_hold_record`), which carries
+`external_check.py::check_withheld`'s own dict verbatim under
+`summary.withheld` rather than inventing a 43-cell `per_cell`/
+`predictions_measured` shape this single-cell record has no use for — the
+schema's top-level required fields
+(`schema_version`/`git_commit`/`timestamp_utc`/`machine`/`config`/`seed`/
+`dataset`/`result_digest`/`protocol`/`record`) are generic enough to admit
+this directly, so no README-documented ad hoc layout was needed.
+`git_commit` is `4fced7e3daa26ad484d6a53f62553c118fb8c34b-dirty`: the
+fresh clone's base commit (public main, the same commit every other
+file in this directory's "Date assembled" header predates) plus this
+lane's own patch, applied but not yet committed at measurement time (the
+laptop commits separately, after the measurement — this directory's own
+house convention, see the module docstring of `scripts/external_record.py`
+and the "copy your working-tree changes" build step above).
+
+**Macros** (`scripts/sys_paper_macros.py`'s `compute_external_withheld_hold`):
+
+| macro | value | field |
+|---|---:|---|
+| `recExt2UnanswerableMs` | 70 | `ivm_f_watermark_hold_ms_median`, rounded — was the literal text "not measured" before this lane |
+| `recExt2UnanswerableBursts` | 1.0 | `ivm_f_watermark_hold_bursts_median` |
+| `recExt2WithheldHeldArtifacts` | 39 | `ivm_f_watermark_held_artifacts` |
+| `recExt2WithheldRefusedAnswers` | 39 | `ivm_f_watermark_refused_answers` |
+| `recExt2WithheldInterBurstMs` | 70 | `ivm_inter_burst_wall_ms`, rounded |
+
+Every pre-existing `scripts/sys_paper_macros.py` macro (including
+`recExt2WithheldFalseFresh{Ivm,Watermark,Tgms}` and the entire
+`compute_external_rerun_n1b`/`compute_external_arc5` lanes) stays
+byte-identical — a structural diff of the regenerated `.tex` against the
+committed one shows only the 5 new macro lines above plus the
+`recExt2UnanswerableMs` line changing from the literal text "not measured"
+to `70`, and the assertion-count comment.

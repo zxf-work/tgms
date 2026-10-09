@@ -1,0 +1,56 @@
+{
+  "config": {
+    "campaign": "ivm-differential-withheld-hold",
+    "cell_id": "synth-iv-60k-c4-deep-n1000-s0"
+  },
+  "dataset": {
+    "digest": "e2fecbdee7aba33d9d99a5d5ef330ab060c521953fc0a2ae8d18a4f1b07bf8e0",
+    "digest_kind": "manifest",
+    "name": "storm-v2 withheld-correction cell (differential-dataflow IVM, F-epoch/F-watermark feeders)"
+  },
+  "git_commit": "4fced7e3daa26ad484d6a53f62553c118fb8c34b-dirty",
+  "machine": {
+    "cpus": 40,
+    "host": "xzgpu",
+    "platform": "Linux-5.4.0-216-generic-x86_64-with-glibc2.29",
+    "ram_gb": 93
+  },
+  "n_cells": 1,
+  "protocol": {
+    "ceilings": {
+      "note": "single read point (R10); see benchmarks/external-v1/README.md's \"Watermark hold duration under a withheld correction (2026-10-09)\" section for the full timed-run protocol (quiet box, Memgraph stopped, no nice, single worker)"
+    },
+    "reps": 1,
+    "warmups": 0
+  },
+  "record": "benchmarks/external-v1/ivm-differential-2026-10-09-withheld-hold.json",
+  "result_digest": "61b9f1c19451019ca877467c7010fee39f34f736970a80dcdeabb83847014d3a",
+  "schema_version": "1.0.0",
+  "seed": {
+    "reason": "cell identity carries the seed; see config.cell_id",
+    "value": null
+  },
+  "summary": {
+    "withheld": {
+      "cell_id": "synth-iv-60k-c4-deep-n1000-s0",
+      "ivm_f_epoch_false_fresh": 39,
+      "ivm_f_epoch_probe_complete_through_10": true,
+      "ivm_f_watermark_false_fresh": 0,
+      "ivm_f_watermark_held_artifacts": 39,
+      "ivm_f_watermark_hold_bursts_median": 1.0,
+      "ivm_f_watermark_hold_ms_max": 69.52254149999999,
+      "ivm_f_watermark_hold_ms_median": 69.52254149999999,
+      "ivm_f_watermark_hold_ms_min": 69.52254149999999,
+      "ivm_f_watermark_probe_complete_through_10": false,
+      "ivm_f_watermark_refused_answers": 39,
+      "ivm_f_watermark_unanswerable": true,
+      "ivm_inter_burst_wall_ms": 69.52254149999999,
+      "notes": [
+        "TGMS's own false_fresh/stale_marked at R10 (memo \u00a73.5: `ext_export.py --check-at 10`'s `check_artifact` pass) was not supplied to this run \u2014 pass --tgms-false-fresh/--tgms-stale-marked once that file exists; left null rather than assumed 0"
+      ],
+      "tgms_false_fresh": null,
+      "tgms_stale_marked": null
+    }
+  },
+  "timestamp_utc": "2026-10-09T14:59:31Z"
+}

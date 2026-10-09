@@ -1,4 +1,4 @@
-da8267ee66e0f83a749a418a16e5124dfeeaab9fbb3789aa9a053f008112e97a  benchmarks/external-v1/README.md
+7f0ba21970c81a8a889105a30ad267775f16f70ec8b2f3cd2e3ccf2650a11e72  benchmarks/external-v1/README.md
 a783e8cd29ce332e86c3b7fedda48d69ce300ba01fbf886a3e36939aa71dcf51  benchmarks/external-v1/neo4j-recompute-2026-10-07.json
 a9b6bfd21f4547ef3074516d9808e1fc7fc3a143cbc34c1c013f7a77d64e0be5  benchmarks/external-v1/neo4j-recompute-2026-10-07-rows.jsonl
 3dd39bbcf156277b7ff39363798f27ab9aee7fe7be70c5dc22c0365c845b564e  benchmarks/external-v1/ivm-differential-2026-10-07.json
@@ -15,3 +15,4 @@ f71c08d4b59c747bf2afbf1d61b8e02d3f0d914ec9a4118ac50962146df28e0a  benchmarks/ext
 ec8e02cb6e53e989ef98201707dcd7bac6fbd819c215f1a4f56cc8dcd8899832  benchmarks/external-v1/tgms-control-checks-2026-10-08.SOURCES.txt
 313defdf52abe6f897da2af4816fcd2f38e90e3614f3cc16ba3a35e093140d12  benchmarks/external-v1/neo4j-recompute-2026-10-09-rerun.json
 4cfd5590d41e2b18f1bc28a23a10ad4251ef2fdacdc0f2266e28bb9e15f7afa8  benchmarks/external-v1/neo4j-recompute-2026-10-09-rerun-rows.jsonl
+767a203ae4a0f919552b3ccc6ba6533a397504a50a867c941ba3c465b45f629e  benchmarks/external-v1/ivm-differential-2026-10-09-withheld-hold.json
