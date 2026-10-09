@@ -626,6 +626,157 @@ table only carries cell summaries, not the per-batch `candidate_survivors`/
 `changed_count` rows the paper macros (c1 survivor fraction, precision)
 need.
 
+## storm-v3 (2026-10-08): re-measurement after the fifth arc
+
+Re-measurement of the committed 36-cell storm-v2 grid plus its N=10,000
+probe, after the fifth arc's fixes (end-to-end TTF interval isolation,
+the explicit `--check-cache chain` setting and its `e2e_refresh_calls`/
+`check_cache_misses` recording — commits `48942188`, `5f64e322`,
+`c597cf99`, `93d4543a`, `08aba6a1`). Same 36-cell grid as addendum-1/
+addendum-3 (2 stores × {c1,c3,c4} × {none,deep} × N=1000 × seeds{0,1,2},
+end-to-end TTF only) plus the same N=10,000 `c1`/seed-0 probe cell, now
+run on iTiger at commit `93d4543af61f786884884bee1ebf440ca5ce5673`.
+
+**Provenance.** Checkout `93d4543af61f786884884bee1ebf440ca5ce5673` on
+iTiger; engine built fresh (rustc 1.98.1, `.so` sha256
+`2f3dad8e793f19002394f6943bf884fdd431010a3eac9f7dd095ab6939f73116`).
+Both stores rebuilt rather than reused: `collegemsg` via `ingest_dataset`
+(raw sha256 `50ae2d98ed3bad9ddb18dbd495a89e5e10cfb8f7e86932827db29fc41b41f9fa`),
+`synth-iv-60k` via `scripts/build_synth_iv_store.py --scale 60000` (store
+identity `b5285d5dab57e8bf3c191a6d1852341b740a82805f0805012f502e03a310d688`).
+Main grid: Slurm array job 271859 (`0-35%6`); probe: job 271866. Flags
+are the committed storm-v2 flags plus `--check-cache chain`
+(`TGMS_CHECK_CACHE=chain` passthrough in the campaign slurm scripts,
+commit `08aba6a1`). Every cell's own `config.freeze_sha256` equals
+`c85fb0c8bb3b17e0b9f02a92a5ee0d5273298f43574583206582e5e5aa34d309`
+(addendum-1/addendum-3's value), and the merged manifest's own
+`dataset.digest` —
+`e53e5a2a03df2dea20fcfad26ef4e5dad7448f056a6eee5ae5bbe9d417617c78` —
+is byte-identical to storm-v2's own (`storm-v2-main-grid-2026-09-15.json`'s
+`dataset.digest`), confirmed by direct comparison of both files' fields:
+the fifth arc's fixes changed timing/instrumentation only, never the
+underlying correction-storm population.
+
+All 36 cells realized 20/20 batches (`batches_realized=20` in every
+`per_cell` row, no exceptions); the probe realized 5/5. Both campaign
+gates pass over the whole grid:
+
+| gate | result |
+|---|---|
+| G-S1 (`tgms-L0`/`tgms-L1` false-fresh = 0, every cell) | **PASS**, 0/36 failing cells |
+| G-S2 (false-safe = 0; trivial here — no DAG phase in the main grid) | **PASS**, 0/36 failing cells |
+
+The probe's own `tgms-L0`/`tgms-L1` `false_fresh` is 0 as well (not part
+of the `gates` object, which only scores the 36-cell main grid, but
+checked directly against the probe's own `summary.arms` for this note).
+
+**Slurm (`sacct -j 271859,271866 --format=JobID,State,Elapsed,ExitCode,NodeList -X`).**
+All 36 array tasks plus the probe job COMPLETED, exit code `0:0`, no
+resubmission needed. Per-task wall ranged **1:52–12:42** (task 25,
+`itiger01`, shortest; task 16, `itiger01`, longest) across nodes
+`itiger01`/`itiger03`; the probe job (271866) ran 10:50 on `itiger01`.
+
+**Per-cell table** (`ttf_p50_ms` for `global-recompute`/`tgms-L0`/
+`tgms-L1`, median per-batch `e2e_refresh_calls` and `check_cache_misses`
+for the `tgms-L1` arm — `check_cache="chain"` in every cell, so every
+`med_check_cache_misses` below is 1.0, i.e. exactly one `ChainCache`
+re-walk per batch, matching `BatchResult.check_cache`'s own documented
+"the batch's own correction append makes the first check of each batch a
+miss" and no more):
+
+| cell | batches | `global-recompute` p50 (ms) | `tgms-L0` p50 (ms) | `tgms-L1` p50 (ms) | med. `e2e_refresh_calls` | med. `check_cache_misses` |
+|---|---:|---:|---:|---:|---:|---:|
+| `collegemsg-c1-deep-n1000-s0` | 20 | 2360.4 | 1130.9 | 1132.5 | 233.5 | 1.0 |
+| `collegemsg-c1-deep-n1000-s1` | 20 | 2081.0 | 1120.6 | 1204.3 | 227.0 | 1.0 |
+| `collegemsg-c1-deep-n1000-s2` | 20 | 2645.2 | 1400.0 | 1389.1 | 252.0 | 1.0 |
+| `collegemsg-c1-none-n1000-s0` | 20 | 2455.1 | 1377.6 | 1391.2 | 255.5 | 1.0 |
+| `collegemsg-c1-none-n1000-s1` | 20 | 2359.8 | 1216.1 | 1216.4 | 222.0 | 1.0 |
+| `collegemsg-c1-none-n1000-s2` | 20 | 2288.9 | 1237.1 | 1200.0 | 249.5 | 1.0 |
+| `collegemsg-c3-deep-n1000-s0` | 20 | 2557.0 | 1334.4 | 1285.0 | 254.5 | 1.0 |
+| `collegemsg-c3-deep-n1000-s1` | 20 | 2145.4 | 1118.2 | 1110.1 | 229.5 | 1.0 |
+| `collegemsg-c3-deep-n1000-s2` | 20 | 2626.7 | 1438.3 | 1409.9 | 253.0 | 1.0 |
+| `collegemsg-c3-none-n1000-s0` | 20 | 2466.5 | 1198.6 | 1193.0 | 244.5 | 1.0 |
+| `collegemsg-c3-none-n1000-s1` | 20 | 1904.4 | 1161.3 | 1152.3 | 233.0 | 1.0 |
+| `collegemsg-c3-none-n1000-s2` | 20 | 2353.7 | 1312.6 | 1310.3 | 230.5 | 1.0 |
+| `collegemsg-c4-deep-n1000-s0` | 20 | 2360.8 | 1324.3 | 1275.8 | 239.5 | 1.0 |
+| `collegemsg-c4-deep-n1000-s1` | 20 | 2048.9 | 1138.3 | 1097.9 | 211.5 | 1.0 |
+| `collegemsg-c4-deep-n1000-s2` | 20 | 2634.4 | 1439.3 | 1424.2 | 226.0 | 1.0 |
+| `collegemsg-c4-none-n1000-s0` | 20 | 2373.0 | 1323.9 | 1299.5 | 230.0 | 1.0 |
+| `collegemsg-c4-none-n1000-s1` | 20 | 2021.0 | 912.4 | 877.0 | 149.0 | 1.0 |
+| `collegemsg-c4-none-n1000-s2` | 20 | 2163.0 | 851.3 | 849.4 | 156.5 | 1.0 |
+| `synth-iv-60k-c1-deep-n1000-s0` | 20 | 8187.3 | 3934.2 | 3894.4 | 230.0 | 1.0 |
+| `synth-iv-60k-c1-deep-n1000-s1` | 20 | 8003.3 | 3784.0 | 3699.7 | 276.0 | 1.0 |
+| `synth-iv-60k-c1-deep-n1000-s2` | 20 | 7194.6 | 3491.2 | 3497.9 | 258.5 | 1.0 |
+| `synth-iv-60k-c1-none-n1000-s0` | 20 | 8183.4 | 4026.7 | 4021.5 | 241.0 | 1.0 |
+| `synth-iv-60k-c1-none-n1000-s1` | 20 | 7893.7 | 4074.1 | 4056.1 | 276.5 | 1.0 |
+| `synth-iv-60k-c1-none-n1000-s2` | 20 | 7260.0 | 3511.0 | 3516.5 | 245.0 | 1.0 |
+| `synth-iv-60k-c3-deep-n1000-s0` | 20 | 8238.3 | 3834.8 | 3745.9 | 234.0 | 1.0 |
+| `synth-iv-60k-c3-deep-n1000-s1` | 20 | 8092.6 | 3756.9 | 3786.0 | 245.0 | 1.0 |
+| `synth-iv-60k-c3-deep-n1000-s2` | 20 | 7338.1 | 3471.9 | 3417.7 | 200.0 | 1.0 |
+| `synth-iv-60k-c3-none-n1000-s0` | 20 | 7978.3 | 3202.5 | 3169.2 | 212.0 | 1.0 |
+| `synth-iv-60k-c3-none-n1000-s1` | 20 | 7747.2 | 2717.1 | 2716.8 | 225.5 | 1.0 |
+| `synth-iv-60k-c3-none-n1000-s2` | 20 | 7395.5 | 3146.0 | 3035.2 | 211.0 | 1.0 |
+| `synth-iv-60k-c4-deep-n1000-s0` | 20 | 8353.1 | 3724.6 | 3620.0 | 220.0 | 1.0 |
+| `synth-iv-60k-c4-deep-n1000-s1` | 20 | 8144.2 | 5138.4 | 5241.4 | 278.5 | 1.0 |
+| `synth-iv-60k-c4-deep-n1000-s2` | 20 | 7627.5 | 4811.6 | 4866.6 | 259.5 | 1.0 |
+| `synth-iv-60k-c4-none-n1000-s0` | 20 | 10153.4 | 1997.9 | 2021.2 | 164.5 | 1.0 |
+| `synth-iv-60k-c4-none-n1000-s1` | 20 | 8279.4 | 5352.4 | 5487.1 | 183.5 | 1.0 |
+| `synth-iv-60k-c4-none-n1000-s2` | 20 | 7573.1 | 4378.2 | 4457.4 | 229.0 | 1.0 |
+
+**Probe row** (`synth-iv-60k`, `c1`, N=10,000, seed 0, 5 batches, `sum`
+TTF — the probe always measures in sum mode, per the v1/v2 probes above):
+
+| cell | batches | `global-recompute` p50 (ms) | `tgms-L0` p50 (ms) | `tgms-L1` p50 (ms) |
+|---|---:|---:|---:|---:|
+| `synth-iv-60k-c1-none-n10000-s0` (probe) | 5 | 82,029.2 | 57,883.3 | 57,811.3 |
+
+**The sum-mode `tgms-L1` reconstruction is now redundant.** Before the
+end-to-end TTF interval was isolated (commit `48942188`), a cell's own
+`ttf_p50_ms` under `measure_ttf="sum"` had to be approximated from the
+per-batch `check_wall_ms + refresh_wall_ms` sum, since the two phases
+were timed as a sequence of separate intervals rather than one measured
+span. Every storm-v3 cell now measures `ttf_p50_ms` directly in
+end-to-end mode, so that reconstruction is no longer needed to get a
+real TTF number — but it is still computable from the per-batch rows
+inside `storm-v3-records-36-tasks.tar.gz`, and comparing it against the
+real end-to-end measurement on 3 cells shows the two are close but not
+identical (the end-to-end interval includes scheduling/dispatch time
+between the timed check and the timed refresh that the sum-mode
+reconstruction, by construction, cannot see):
+
+| cell | end-to-end `tgms-L1` `ttf_p50_ms` | sum-mode reconstruction (median `check_wall_ms + refresh_wall_ms`) | ratio (end-to-end ÷ sum-mode) |
+|---|---:|---:|---:|
+| `synth-iv-60k-c1-none-n1000-s0` (task 0) | 4,006.96 | 3,400.70 | **1.178** |
+| `collegemsg-c1-none-n1000-s0` (task 18) | 1,390.12 | 1,268.12 | **1.096** |
+| `collegemsg-c4-none-n1000-s0` (task 30) | 1,294.15 | 1,228.86 | **1.053** |
+
+(Both quantities computed from each cell's own 20 per-batch `tgms-L1`
+rows in `storm-v3-records-36-tasks.tar.gz`'s `task-0`/`task-18`/
+`task-30` directories — the end-to-end figure is the median of each
+batch's own `ttf_ms`; the sum-mode figure is the median of each batch's
+own `check_wall_ms + refresh_wall_ms`. No verdict on which figure to use
+going forward is drawn here — the coordinator scores.)
+
+**Records**: `storm-v3-main-grid-2026-10-08.json` + `-rows.jsonl` (sha256
+`40048723e423384ff17f177c3c0d5d032a96f3b3840bb28143618ac63a59dc22` /
+`73eef8f42940200b0be56af82187ac64880fb5ce7ae3076bb8bdc28e43403cfd`),
+`storm-v3-r18-probe-2026-10-08.json` + `-rows.jsonl` (sha256
+`93eb6429c05b6233ce2c9c2d331ca450c6d5a9661a3b8740e753d6f2d477e077` /
+`cff4283db29ea5997d1dd62d3ab59e8521ed7e3db9efe20a53f7cc8ef7012227`).
+`scripts/check_result_manifest.py` passes on both `.json` files.
+
+**Per-batch rows**: `storm-v3-records-36-tasks.tar.gz` (sha256
+`7cc0e3ab1a1fb77be4852c28e7f61a4e9a0668b874a13f5e445256d4ef9195df`) holds
+the 36 per-task `task-N/storm-*.json` + `storm-*-rows.jsonl` directories;
+`storm-v3-r18-probe-records.tar.gz` (sha256
+`420eca949f94bf45b793ec2e4e45543a37084b6e59bd1264c7e5a95f36a83cd2`) holds
+the probe's own single-task directory — same reason as the storm-v1/
+storm-v2 tarballs above: the merged manifests' own `per_cell`/`summary`
+tables carry cell summaries only, not the per-batch detail the paper
+macros (and the sum-mode-vs-end-to-end comparison above) need. All six
+files' sha256 were verified against the originating lane's own
+`SHA256SUMS.txt` before landing here.
+
 ## Regenerating (once the C6 freeze creates `campaign.yaml`/`FREEZE_BINDING`)
 
 ```sh
