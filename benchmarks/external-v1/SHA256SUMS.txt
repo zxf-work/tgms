@@ -1,4 +1,4 @@
-2e6469834f942b860d215d8212c7fea7b9a08ddefb4b3da23be6d2a50e305f1c  benchmarks/external-v1/README.md
+73df7eeab6ea345029fad0aa156ffb74b695774a1ca052d971880740af6a76f3  benchmarks/external-v1/README.md
 a783e8cd29ce332e86c3b7fedda48d69ce300ba01fbf886a3e36939aa71dcf51  benchmarks/external-v1/neo4j-recompute-2026-10-07.json
 a9b6bfd21f4547ef3074516d9808e1fc7fc3a143cbc34c1c013f7a77d64e0be5  benchmarks/external-v1/neo4j-recompute-2026-10-07-rows.jsonl
 3dd39bbcf156277b7ff39363798f27ab9aee7fe7be70c5dc22c0365c845b564e  benchmarks/external-v1/ivm-differential-2026-10-07.json
@@ -11,3 +11,5 @@ c8a34ddc3baf17e25b60afa02d64bbd91756ed9f27e31cc7a36be09f58ff2692  benchmarks/ext
 4af5cbdce3b031c07e425f235ae6bb00818fd03fcc53926c6e97f4cbc150f163  benchmarks/external-v1/tgms-control-2026-10-08-arc5-rows.jsonl
 1a20b62137a79e07813982712a0ee54435c356de5790cc5f610bc62a245a92df  benchmarks/external-v1/tgms-control-2026-10-08-arc5-batches.jsonl
 f71c08d4b59c747bf2afbf1d61b8e02d3f0d914ec9a4118ac50962146df28e0a  benchmarks/external-v1/tgms-control-2026-10-08-arc5-batches.SOURCES.txt
+9719735dc7450228d5e6ef7dfe2dab85051ebf62a7043d233bc97abde93a5d53  benchmarks/external-v1/tgms-control-checks-2026-10-08.jsonl
+ec8e02cb6e53e989ef98201707dcd7bac6fbd819c215f1a4f56cc8dcd8899832  benchmarks/external-v1/tgms-control-checks-2026-10-08.SOURCES.txt

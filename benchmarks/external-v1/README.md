@@ -444,3 +444,51 @@ check_result_manifest.py` passes. `tgms-control-2026-10-08-arc5-batches.jsonl`
 (one line per batch, byte-exact values, no rounding), built from the
 same read-only tar pull of `external-v1/t1b/` this section's own
 equality reading uses; sha256 of all four files is in `SHA256SUMS.txt`.
+
+## Per-check cost addendum (2026-10-08): the field neither control record carries
+
+Neither `tgms-control-2026-10-05-batches.jsonl` (the pre-arc control) nor
+`tgms-control-2026-10-08-arc5-batches.jsonl` (the fifth-arc re-measurement
+above) carries `candidate_survivors` in its per-batch rows, so the
+same-host control's own per-check cost (`tgms-L0`/`tgms-L1`
+`check_wall_ms` ÷ `candidate_survivors`, the quantity
+`recStormV3PerCheckMs{Synth,CollegeMsg}` reports for the storm grids) was
+landed as the literal text "not measured" in `scripts/sys_paper_macros.py`.
+The per-batch rows on xzgpu do carry it: a read-only `scp` pull on
+2026-10-08 of each cell's own `storm-*-rows.jsonl` from
+`/mnt/project/xzhang/tgms/external-v1/t1b/<cell_id>/` (the fifth-arc
+tree) and `/mnt/project/xzhang/tgms/external-v1/t1/<cell_id>/` (the
+pre-arc tree) — nothing on xzgpu was modified, one `tar`/`scp` pull of
+both trees together.
+
+**Records**: `tgms-control-checks-2026-10-08.jsonl` — one line per
+batch, both controls (730 lines total: 2 controls x (18 cells x 20
+batches + 1 probe cell x 5 batches)), each line carrying `control`
+(`2026-10-05` or `2026-10-08-arc5`), `cell_id`, `batch_index`,
+`candidate_survivors`, `intersects_calls`, `tgms_l0_check_wall_ms`, and
+`tgms_l1_check_wall_ms`, every value byte-exact (no rounding) from its
+source `storm-*-rows.jsonl` row. `tgms-control-checks-2026-10-08
+.SOURCES.txt` records each of the 38 pulled per-cell files' own sha256,
+which control it belongs to, and its exact xzgpu path. Both files'
+sha256 is in `SHA256SUMS.txt`.
+
+**Computed medians** (median over the 9 N=1,000 cells per store of that
+cell's own median-over-batches `tgms-L0.check_wall_ms` /
+`candidate_survivors`, ms — same two-level-median convention
+`recStormV3PerCheckMs{Synth,CollegeMsg}` uses):
+
+| store | pre-arc (2026-10-05) | fifth-arc (2026-10-08-arc5) |
+|---|---:|---:|
+| collegemsg | 185.9 | 12.3 |
+| synth-iv-60k | 204.0 | 12.3 |
+
+The fifth-arc `--check-cache chain` setting (added to every R1 cell, see
+the "Fifth-arc re-measurement" section above) drops the per-check cost
+by roughly 16-17x on both stores, consistent with that section's own
+observation that R1 "walks it once per batch and memoizes" instead of
+re-walking the full event log on every check the way the pre-arc T1
+control did. The probe cell (`synth-iv-60k-c1-none-n10000-s0`, N=10,000)
+medians 11.9 ms/check on the fifth-arc side — landed separately
+(`recExt1ControlArcFiveProbePerCheckMs`) rather than folded into either
+store's N=1,000 median above. No verdict on what these numbers imply is
+drawn here — the coordinator scores it.
