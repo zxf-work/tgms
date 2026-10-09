@@ -130,8 +130,11 @@ def test_l1_interval_refreshes_its_own_strict_subset(
         # the refresh share is in the L1 interval: at least the sleeps it made
         assert l1.ttf_ms >= l1.e2e_refresh_calls * SLEEP_MS
         # ... and the recorded TTF exceeds the check time by about that share
-        # (pre-fix: ttf_ms ~= check_wall_ms, the collapsed ratio)
-        assert l1.ttf_ms - l1.check_wall_ms >= 0.5 * l1.refresh_wall_ms
+        # (pre-fix: ttf_ms ~= check_wall_ms, the collapsed ratio). Compared
+        # against the injected sleep rather than refresh_wall_ms, which is
+        # the oracle pass's own separate timing of the same refresh and
+        # flakes when compared against the interval's independent timing.
+        assert l1.ttf_ms - l1.check_wall_ms >= 0.9 * l1.e2e_refresh_calls * SLEEP_MS
         # the JSON row carries the count, so the error is detectable from rows
         assert r.to_json()["arms"]["tgms-L1"]["e2e_refresh_calls"] == l1.e2e_refresh_calls
     assert strict > 0, "fixture drift: no batch where tgms-L1 is a strict subset of tgms-L0"
