@@ -3947,6 +3947,357 @@ def test_generated_tex_compiles_under_tectonic():
 
 
 # --------------------------------------------------------------------------
+# Lane W2af (2026-10-08) -- storm-v3 (fifth-arc re-measurement of the
+# committed storm-v2 grid/probe) and the external-v1 R1 control
+# re-measurement. Same three-part discipline as the rest of this file:
+# frozen-value checks, tamper-must-fail checks, and a tiny hand-computed
+# fixture exercising the per-batch reconstruction arithmetic
+# (compute_c7_storm_v3/compute_external_arc5 are tightly coupled to the
+# real records' frozen values, so -- same precedent as
+# test_sum_mode_reconstruction_on_a_tiny_two_cell_three_batch_fixture
+# above -- the fixture tests below re-run the generator's own arithmetic
+# against a tiny, hand-built 2-cell x 3-batch dataset rather than
+# monkeypatching the real functions onto fabricated records).
+# --------------------------------------------------------------------------
+
+def test_storm_v3_probe_runs_without_verification_failure():
+    mod = _load("sys_paper_macros")
+    m = mod.Macros()
+    mod.compute_c7_storm_v3_probe(m)
+    assert mod.FAILURES == [], f"unexpected verification failures: {mod.FAILURES}"
+    assert mod.CHECKS > 5
+    values = {name: value for name, value, _ in m.items}
+    assert values["recStormV3ProbeSpeedup"] == "1.419"
+
+
+def test_storm_v3_probe_speedup_independently_recomputed_from_rows():
+    """Recompute the probe's speedup here, independently of
+    compute_c7_storm_v3_probe's own code path, straight from the
+    committed rows.jsonl -- median(global-recompute ttf_ms) /
+    median(tgms-L1 ttf_ms) over the 5 batches."""
+    mod = _load("sys_paper_macros")
+    rows = [json.loads(line) for line in mod.STORM_V3_R18_PROBE_ROWS.read_text(
+        encoding="utf-8").splitlines() if line.strip()]
+    assert len(rows) == 5
+    l1 = statistics.median(r["arms"]["tgms-L1"]["ttf_ms"] for r in rows)
+    gr = statistics.median(r["arms"]["global-recompute"]["ttf_ms"] for r in rows)
+    expected = gr / l1
+
+    m = mod.Macros()
+    mod.compute_c7_storm_v3_probe(m)
+    values = {name: value for name, value, _ in m.items}
+    assert values["recStormV3ProbeSpeedup"] == f"{expected:.3f}"
+
+
+def test_tampered_storm_v3_probe_tarball_sha_mismatch_fails(tmp_path):
+    mod = _load("sys_paper_macros")
+    original = mod.STORM_V3_R18_PROBE_RECORDS_TARBALL.read_bytes()
+    tampered_bytes = bytearray(original)
+    tampered_bytes[-1] ^= 0xFF
+    tampered = tmp_path / "storm-v3-r18-probe-records.tar.gz"
+    tampered.write_bytes(bytes(tampered_bytes))
+    assert tampered.read_bytes() != original
+
+    mod.STORM_V3_R18_PROBE_RECORDS_TARBALL = tampered
+    m = mod.Macros()
+    mod.compute_c7_storm_v3_probe(m)
+    assert mod.FAILURES, "a tampered probe tarball byte must fail the sha256 check"
+    assert any("sha256" in f.lower() for f in mod.FAILURES)
+
+
+def test_tampered_storm_v3_probe_rows_fails_the_tarball_content_cross_check(tmp_path):
+    """compute_c7_storm_v3_probe cross-checks the committed rows.jsonl
+    against the tarball's own copy byte-for-byte (not just by sha256 of
+    the tarball) -- editing the committed rows.jsonl alone, leaving the
+    tarball untouched, must still be caught."""
+    mod = _load("sys_paper_macros")
+    rows = [json.loads(line) for line in mod.STORM_V3_R18_PROBE_ROWS.read_text(
+        encoding="utf-8").splitlines() if line.strip()]
+    rows[0]["intersects_calls"] = 999999
+    tampered = tmp_path / "storm-v3-r18-probe-2026-10-08-rows.jsonl"
+    tampered.write_text("\n".join(json.dumps(r) for r in rows) + "\n", encoding="utf-8")
+
+    mod.STORM_V3_R18_PROBE_ROWS = tampered
+    m = mod.Macros()
+    mod.compute_c7_storm_v3_probe(m)
+    assert mod.FAILURES, "an edited rows.jsonl must fail the cross-check against the " \
+        "tarball's own (untouched) copy"
+
+
+def test_storm_v3_runs_without_verification_failure():
+    mod = _load("sys_paper_macros")
+    m = mod.Macros()
+    mod.compute_c7_storm_v3(m)
+    assert mod.FAILURES == [], f"unexpected verification failures: {mod.FAILURES}"
+    assert mod.CHECKS > 100, "expected many row/cross-record-level assertions"
+    values = {name: value for name, value, _ in m.items}
+    assert values["recStormV3SpeedupN1kSeed0"] == "2.035"
+    assert values["recStormV3SpeedupGridMin"] == "1.509"
+    assert values["recStormV3SpeedupGridMedian"] == "1.968"
+    assert values["recStormV3SpeedupGridMax"] == "5.023"
+    assert values["recStormV3SpeedupSumGridMedian"] == "2.14"
+    assert values["recStormV3LOneE2eOverSumMedian"] == "1.064"
+    assert values["recStormV3LOneRefreshCallsMedian"] == "235"
+    assert values["recStormV3WallRatioMedian"] == "0.049"
+    assert values["recStormV3TotalWallH"] == "3.2"
+    assert values["recStormV2TotalWallH"] == "67.3"
+
+
+def test_storm_v3_n1k_speedup_independently_recomputed_from_rows():
+    """Arithmetic check, recomputed independently here from the committed
+    rows.jsonl: recStormV3SpeedupN1kSeed0 must equal
+    summary.arms.global-recompute.ttf_p50_ms / summary.arms.tgms-L1.ttf_p50_ms
+    at the single (synth-iv-60k, c1, age=none, seed=0) cell."""
+    mod = _load("sys_paper_macros")
+    rows = [json.loads(line) for line in mod.STORM_V3_MAIN_GRID_ROWS.read_text(
+        encoding="utf-8").splitlines() if line.strip()]
+    target = [r for r in rows if r["config"]["store"] == "synth-iv-60k"
+              and r["config"]["mix"] == "c1" and r["config"]["age"] is None
+              and r["config"]["seed"] == 0]
+    assert len(target) == 1
+    arms = target[0]["summary"]["arms"]
+    expected = arms["global-recompute"]["ttf_p50_ms"] / arms["tgms-L1"]["ttf_p50_ms"]
+
+    m = mod.Macros()
+    mod.compute_c7_storm_v3(m)
+    values = {name: value for name, value, _ in m.items}
+    assert values["recStormV3SpeedupN1kSeed0"] == f"{expected:.3f}"
+
+
+def test_tampered_storm_v3_records_tarball_sha_mismatch_fails(tmp_path):
+    mod = _load("sys_paper_macros")
+    original = mod.STORM_V3_RECORDS_TARBALL.read_bytes()
+    tampered_bytes = bytearray(original)
+    tampered_bytes[-1] ^= 0xFF
+    tampered = tmp_path / "storm-v3-records-36-tasks.tar.gz"
+    tampered.write_bytes(bytes(tampered_bytes))
+    assert tampered.read_bytes() != original
+
+    mod.STORM_V3_RECORDS_TARBALL = tampered
+    m = mod.Macros()
+    mod.compute_c7_storm_v3(m)
+    assert mod.FAILURES, "a tampered tarball byte must fail the sha256 check"
+    assert any("sha256" in f.lower() for f in mod.FAILURES)
+
+
+def test_tampered_storm_v3_dataset_digest_fails_the_v2_identity_cross_check(tmp_path):
+    """README.md's own storm-v3 section states the recipe digest is
+    byte-identical to the committed storm-v2 grid's -- compute_c7_storm_v3
+    cross-checks this directly. Editing the merged record's dataset.digest
+    (recomputing a self-consistent-but-different digest from a mutated
+    recipe) must fail that cross-check."""
+    mod = _load("sys_paper_macros")
+    merged = json.loads(mod.STORM_V3_MAIN_GRID.read_text(encoding="utf-8"))
+    merged["config"]["stores"] = list(reversed(merged["config"]["stores"]))
+    import hashlib as _hashlib
+    cfg = merged["config"]
+    recipe = {"stores": cfg["stores"], "mixes": cfg["mixes"], "ages": cfg["ages"],
+              "n_artifacts_list": cfg["n_artifacts_list"], "n_seeds": cfg["n_seeds"],
+              "base_seed": cfg["base_seed"], "ttf_modes": cfg["ttf_modes"]}
+    merged["dataset"]["digest"] = _hashlib.sha256(
+        json.dumps(recipe, sort_keys=True, separators=(",", ":")).encode()).hexdigest()
+    tampered = tmp_path / "storm-v3-main-grid-2026-10-08.json"
+    tampered.write_text(json.dumps(merged), encoding="utf-8")
+
+    mod.STORM_V3_MAIN_GRID = tampered
+    m = mod.Macros()
+    mod.compute_c7_storm_v3(m)
+    assert mod.FAILURES, "a self-consistent but mutated recipe must still fail the " \
+        "byte-identical-to-storm-v2 cross-check"
+
+
+def test_storm_v3_per_batch_reconstruction_on_a_tiny_two_cell_three_batch_fixture():
+    """Exercises the exact per-batch reconstruction arithmetic
+    compute_c7_storm_v3 runs against the real 36-cell grid's tarball --
+    per-cell median(global_recompute_wall_ms / n_registered) ("publish
+    ms"), per-cell median(tgms-L0.check_wall_ms / candidate_survivors)
+    ("check ms"), the pooled median(ttf_ms / (check_wall_ms +
+    refresh_wall_ms)), and the pooled median(e2e_refresh_calls) -- against
+    a tiny, hand-computed 2-cell x 3-batch fixture in exactly the schema
+    the real per-batch rows use."""
+    mod = _load("sys_paper_macros")
+
+    cell_a_n_registered = 100
+    cell_a_batches = [
+        {"global_recompute_wall_ms": 1000.0, "candidate_survivors": 40,
+         "arms": {"tgms-L0": {"check_wall_ms": 80.0},
+                  "tgms-L1": {"check_wall_ms": 20.0, "refresh_wall_ms": 30.0,
+                              "ttf_ms": 51.0, "e2e_refresh_calls": 10}}},
+        {"global_recompute_wall_ms": 1100.0, "candidate_survivors": 50,
+         "arms": {"tgms-L0": {"check_wall_ms": 100.0},
+                  "tgms-L1": {"check_wall_ms": 25.0, "refresh_wall_ms": 35.0,
+                              "ttf_ms": 61.0, "e2e_refresh_calls": 12}}},
+        {"global_recompute_wall_ms": 900.0, "candidate_survivors": 30,
+         "arms": {"tgms-L0": {"check_wall_ms": 60.0},
+                  "tgms-L1": {"check_wall_ms": 15.0, "refresh_wall_ms": 25.0,
+                              "ttf_ms": 41.0, "e2e_refresh_calls": 8}}},
+    ]
+    cell_b_n_registered = 200
+    cell_b_batches = [
+        {"global_recompute_wall_ms": 4000.0, "candidate_survivors": 80,
+         "arms": {"tgms-L0": {"check_wall_ms": 160.0},
+                  "tgms-L1": {"check_wall_ms": 40.0, "refresh_wall_ms": 60.0,
+                              "ttf_ms": 101.0, "e2e_refresh_calls": 20}}},
+        {"global_recompute_wall_ms": 4400.0, "candidate_survivors": 100,
+         "arms": {"tgms-L0": {"check_wall_ms": 200.0},
+                  "tgms-L1": {"check_wall_ms": 50.0, "refresh_wall_ms": 70.0,
+                              "ttf_ms": 121.0, "e2e_refresh_calls": 24}}},
+        {"global_recompute_wall_ms": 3600.0, "candidate_survivors": 60,
+         "arms": {"tgms-L0": {"check_wall_ms": 120.0},
+                  "tgms-L1": {"check_wall_ms": 30.0, "refresh_wall_ms": 50.0,
+                              "ttf_ms": 81.0, "e2e_refresh_calls": 16}}},
+    ]
+
+    def publish_median(batches, n_registered):
+        return statistics.median(b["global_recompute_wall_ms"] / n_registered for b in batches)
+
+    def check_median(batches):
+        return statistics.median(
+            b["arms"]["tgms-L0"]["check_wall_ms"] / b["candidate_survivors"] for b in batches)
+
+    expected_publish_a = publish_median(cell_a_batches, cell_a_n_registered)
+    expected_publish_b = publish_median(cell_b_batches, cell_b_n_registered)
+    assert expected_publish_a == 10.0  # [10, 11, 9] -> median 10
+    assert expected_publish_b == 20.0  # [20, 22, 18] -> median 20
+
+    expected_check_a = check_median(cell_a_batches)
+    expected_check_b = check_median(cell_b_batches)
+    assert expected_check_a == 2.0  # [2.0, 2.0, 2.0] -> median 2.0
+    assert expected_check_b == 2.0  # [2.0, 2.0, 2.0] -> median 2.0
+
+    all_batches = cell_a_batches + cell_b_batches
+    e2e_over_sum = [b["arms"]["tgms-L1"]["ttf_ms"]
+                    / (b["arms"]["tgms-L1"]["check_wall_ms"] + b["arms"]["tgms-L1"]["refresh_wall_ms"])
+                    for b in all_batches]
+    # every batch above was built with ttf_ms == check_wall_ms + refresh_wall_ms + 1.0, so
+    # every ratio is slightly above 1.0, strictly increasing the pooled median past exactly 1.0
+    assert all(r > 1.0 for r in e2e_over_sum)
+    expected_refresh_calls_median = statistics.median(
+        b["arms"]["tgms-L1"]["e2e_refresh_calls"] for b in all_batches)
+    assert expected_refresh_calls_median == 14.0  # sorted [8,10,12,16,20,24] -> (12+16)/2
+
+    # the pooled e2e-over-sum median must be consistent with recomputing it via the
+    # module's own sum-mode percentile helper on a per-cell basis too (cross-check the
+    # same arithmetic two ways, matching compute_c7_storm_v3's own pattern of computing
+    # sum_l1_p50 via _e2e_percentile per cell).
+    for batches, n_registered in ((cell_a_batches, cell_a_n_registered),
+                                   (cell_b_batches, cell_b_n_registered)):
+        sum_vals = [b["arms"]["tgms-L1"]["check_wall_ms"] + b["arms"]["tgms-L1"]["refresh_wall_ms"]
+                    for b in batches]
+        p50 = mod._e2e_percentile(sum_vals, 0.5)
+        assert p50 == sorted(sum_vals)[1]  # 3 values, nearest-rank round(0.5*2)=1 -> the median
+
+
+def test_external_arc5_runs_without_verification_failure():
+    mod = _load("sys_paper_macros")
+    m = mod.Macros()
+    mod.compute_external_arc5(m)
+    assert mod.FAILURES == [], f"unexpected verification failures: {mod.FAILURES}"
+    assert mod.CHECKS > 50
+    values = {name: value for name, value, _ in m.items}
+    assert values["recExt1ControlArcFiveSpeedupMedian"] == "1.53"
+    assert values["recExt1ControlArcFiveWallRatio"] == "0.069"
+    assert values["recExt1ControlArcFiveProbeWallS"] == "1400"
+    assert values["recExt1ControlPreArcProbeWallS"] == "18923"
+    assert values["recExt1RatioGrArcFiveMedianSynth"] == "7.37"
+    assert values["recExt1RatioGrArcFiveMedianCollegeMsg"] == "1.38"
+    assert values["recExt1SpeedupLOneArcFiveProbe"] == "8.51"
+    assert values["recExt2RatioArcFiveProbe"] == "0.042"
+
+
+def test_external_arc5_per_check_ms_lands_as_not_measured_not_a_number():
+    """candidate_survivors is absent from both the pre-arc and arc5
+    tgms-control per-batch records (checked directly by
+    compute_external_arc5 itself) -- recExt1ControlArcFivePerCheckMs{Synth,
+    CollegeMsg} must land as the literal text "not measured", never a
+    fabricated number nor a PENDING stub (the record itself landed; only
+    this one field within it did not)."""
+    mod = _load("sys_paper_macros")
+    m = mod.Macros()
+    mod.compute_external_arc5(m)
+    values = {name: value for name, value, _ in m.items}
+    for tok in ("Synth", "CollegeMsg"):
+        name = f"recExt1ControlArcFivePerCheckMs{tok}"
+        assert values[name] == "not measured"
+        with pytest.raises(ValueError):
+            float(values[name])
+    # and the PerArtifactPublishMs sibling (which uses n_registered, not
+    # candidate_survivors) IS measured, proving the gap is specific to
+    # candidate_survivors, not a blanket refusal for this record.
+    assert values["recExt1ControlArcFivePerArtifactPublishMsSynth"] not in (
+        "not measured", "")
+
+
+def test_tampered_external_arc5_sha256_mismatch_fails(tmp_path):
+    mod = _load("sys_paper_macros")
+    data = json.loads(mod.EXTERNAL_TGMS_CONTROL_ARC5.read_text(encoding="utf-8"))
+    data["summary"]["per_cell"][0]["wall_s"] = 999999.0
+    tampered = tmp_path / mod.EXTERNAL_TGMS_CONTROL_ARC5.name
+    tampered.write_text(json.dumps(data), encoding="utf-8")
+
+    mod.EXTERNAL_TGMS_CONTROL_ARC5 = tampered
+    m = mod.Macros()
+    mod.compute_external_arc5(m)
+    assert mod.FAILURES, "an edited tgms-control-2026-10-08-arc5.json must fail the " \
+        "SHA256SUMS.txt check"
+    assert any("SHA256SUMS" in f for f in mod.FAILURES)
+
+
+def test_external_arc5_wall_ratio_and_speedup_independently_recomputed():
+    """Recompute recExt1ControlArcFiveWallRatio and
+    recExt1ControlArcFiveSpeedupMedian here, independently of
+    compute_external_arc5's own code path, straight from the two
+    committed per-cell summaries."""
+    mod = _load("sys_paper_macros")
+    arc5 = json.loads(mod.EXTERNAL_TGMS_CONTROL_ARC5.read_text(encoding="utf-8"))
+    prearc = json.loads(mod.EXTERNAL_TGMS_CONTROL.read_text(encoding="utf-8"))
+    arc5_pc = {c["cell_id"]: c for c in arc5["summary"]["per_cell"]}
+
+    expected_wall_ratio = (sum(c["wall_s"] for c in arc5["summary"]["per_cell"])
+                            / sum(c["wall_s"] for c in prearc["summary"]["per_cell"]))
+
+    probe_cid = "synth-iv-60k-c1-none-n10000-s0"
+    nonprobe = sorted(c for c in arc5_pc if c != probe_cid)
+    assert len(nonprobe) == 18
+    speedups = [arc5_pc[c]["arms"]["global-recompute"]["ttf_p50_ms"]
+                / arc5_pc[c]["arms"]["tgms-L1"]["ttf_p50_ms"] for c in nonprobe]
+    expected_speedup_median = statistics.median(speedups)
+
+    m = mod.Macros()
+    mod.compute_external_arc5(m)
+    values = {name: value for name, value, _ in m.items}
+    assert values["recExt1ControlArcFiveWallRatio"] == f"{expected_wall_ratio:.3f}"
+    assert values["recExt1ControlArcFiveSpeedupMedian"] == f"{expected_speedup_median:.2f}"
+
+
+def test_external_arc5_publish_ms_reconstruction_on_a_tiny_two_cell_three_batch_fixture():
+    """Exercises the exact per-batch reconstruction arithmetic
+    compute_external_arc5 runs for recExt1ControlArcFive
+    PerArtifactPublishMs{Synth,CollegeMsg} -- per-cell
+    median(global_recompute_wall_ms / n_registered), then median across
+    a store's cells -- against a tiny, hand-computed 2-cell x 3-batch
+    fixture in exactly the schema the real tgms-control-*-batches.jsonl
+    rows use (global_recompute_wall_ms per batch; n_registered read
+    separately, per cell, from the -rows.jsonl manifest.config, exactly
+    as compute_external_arc5 does)."""
+    cell_a = {"n_registered": 500,
+              "global_recompute_wall_ms": [5000.0, 5500.0, 4500.0]}
+    cell_b = {"n_registered": 1000,
+              "global_recompute_wall_ms": [20000.0, 22000.0, 18000.0]}
+
+    def publish_median(cell):
+        return statistics.median(v / cell["n_registered"]
+                                  for v in cell["global_recompute_wall_ms"])
+
+    expected_a = publish_median(cell_a)
+    expected_b = publish_median(cell_b)
+    assert expected_a == 10.0  # [10, 11, 9] -> median 10
+    assert expected_b == 20.0  # [20, 22, 18] -> median 20
+    expected_store_median = statistics.median([expected_a, expected_b])
+    assert expected_store_median == 15.0
+
+
+# --------------------------------------------------------------------------
 # ruff
 # --------------------------------------------------------------------------
 

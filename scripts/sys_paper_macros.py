@@ -461,6 +461,25 @@ STORM_V2_RECORDS_TARBALL = STORM_V1 / "storm-v2-records-36-tasks.tar.gz"
 # quotes this sha256 for the tarball; cross-checked against that quoted
 # text in compute_c7_storm_v2 below, not only frozen from a first read.
 STORM_V2_RECORDS_TARBALL_SHA256 = "f1acac9ed96a3fca8ea76aeba8657c6bced8d726244204a899ee6210a714ed0d"
+# Lane W2af (fifth-arc re-measurement, 2026-10-08): the committed storm-v2
+# grid/probe cells rerun after the fifth arc's end-to-end TTF isolation +
+# check-cache chain fixes, on iTiger at commit 93d4543a. Same schema as
+# the storm-v2 files above (confirmed field-for-field); see
+# benchmarks/storm-v1/README.md's own "storm-v3" section.
+STORM_V3_MAIN_GRID = STORM_V1 / "storm-v3-main-grid-2026-10-08.json"
+STORM_V3_MAIN_GRID_ROWS = STORM_V1 / "storm-v3-main-grid-2026-10-08-rows.jsonl"
+STORM_V3_R18_PROBE = STORM_V1 / "storm-v3-r18-probe-2026-10-08.json"
+STORM_V3_R18_PROBE_ROWS = STORM_V1 / "storm-v3-r18-probe-2026-10-08-rows.jsonl"
+STORM_V3_RECORDS_TARBALL = STORM_V1 / "storm-v3-records-36-tasks.tar.gz"
+STORM_V3_R18_PROBE_RECORDS_TARBALL = STORM_V1 / "storm-v3-r18-probe-records.tar.gz"
+# README.md's own "Per-batch rows" paragraph (storm-v3 section) quotes
+# both of these; cross-checked against that quoted text in
+# compute_c7_storm_v3/compute_c7_storm_v3_probe below, not only frozen
+# from a first read -- same discipline as STORM_V2_RECORDS_TARBALL_SHA256
+# above.
+STORM_V3_RECORDS_TARBALL_SHA256 = "7cc0e3ab1a1fb77be4852c28e7f61a4e9a0668b874a13f5e445256d4ef9195df"
+STORM_V3_R18_PROBE_RECORDS_TARBALL_SHA256 = (
+    "420eca949f94bf45b793ec2e4e45543a37084b6e59bd1264c7e5a95f36a83cd2")
 # Lane W2m: addendum-1's own 36-cell main grid (pre-D-161-rollout, commit
 # 8962b78), landed under this name -- a different file from the never-
 # committed storm-campaign-2026-09.json partial attempt add_pending_stubs
@@ -489,6 +508,14 @@ EXTERNAL_NEO4J_ROWS = EXTERNAL_V1 / "neo4j-recompute-2026-10-07-rows.jsonl"
 EXTERNAL_IVM = EXTERNAL_V1 / "ivm-differential-2026-10-07.json"
 EXTERNAL_IVM_ROWS = EXTERNAL_V1 / "ivm-differential-2026-10-07-rows.jsonl"
 EXTERNAL_TGMS_CONTROL = EXTERNAL_V1 / "tgms-control-2026-10-05.json"
+# Lane W2af: the per-cell equality-manifest sidecar (never read by any
+# function above -- they only ever read EXTERNAL_TGMS_CONTROL's own
+# summary.per_cell and EXTERNAL_TGMS_CONTROL_BATCHES's per-batch rows).
+# compute_external_arc5 below reads it for each cell's own embedded
+# manifest.config.n_registered -- the only place that field is recorded
+# anywhere in this control record (not in the per-cell summary, not in
+# the per-batch rows).
+EXTERNAL_TGMS_CONTROL_ROWS = EXTERNAL_V1 / "tgms-control-2026-10-05-rows.jsonl"
 # Lane W2ae (sum-mode time-to-fresh reconstruction): the committed raw
 # per-batch rows behind EXTERNAL_TGMS_CONTROL's 19 cells (record
 # addendum, 2026-10-08) -- the repo's own tgms-control-2026-10-05-rows
@@ -502,6 +529,21 @@ EXTERNAL_TGMS_CONTROL = EXTERNAL_V1 / "tgms-control-2026-10-05.json"
 EXTERNAL_TGMS_CONTROL_BATCHES = EXTERNAL_V1 / "tgms-control-2026-10-05-batches.jsonl"
 EXTERNAL_TGMS_CONTROL_BATCHES_SOURCES = (
     EXTERNAL_V1 / "tgms-control-2026-10-05-batches.SOURCES.txt")
+
+# Lane R1 (fifth-arc re-measurement of the T1 same-host control, landed
+# 2026-10-08): the exact T1 loop replayed on the fixed engine + harness
+# (public main 93d4543a) with --check-cache chain added -- same 19 cells,
+# same flags/order, scored against the same export/ bundles. See
+# benchmarks/external-v1/README.md's "Fifth-arc re-measurement of the
+# same-host control" section. All four files are already sha256-gated in
+# EXTERNAL_V1_SHA256SUMS (the same table EXTERNAL_NEO4J/EXTERNAL_IVM/
+# EXTERNAL_TGMS_CONTROL are gated against above).
+EXTERNAL_TGMS_CONTROL_ARC5 = EXTERNAL_V1 / "tgms-control-2026-10-08-arc5.json"
+EXTERNAL_TGMS_CONTROL_ARC5_ROWS = EXTERNAL_V1 / "tgms-control-2026-10-08-arc5-rows.jsonl"
+EXTERNAL_TGMS_CONTROL_ARC5_BATCHES = (
+    EXTERNAL_V1 / "tgms-control-2026-10-08-arc5-batches.jsonl")
+EXTERNAL_TGMS_CONTROL_ARC5_BATCHES_SOURCES = (
+    EXTERNAL_V1 / "tgms-control-2026-10-08-arc5-batches.SOURCES.txt")
 
 D160_DIR = ROOT / "benchmarks" / "d160-collegemsg-v1"
 D160_MANIFEST = D160_DIR / "manifest-2026-09-14.json"
@@ -3783,6 +3825,438 @@ def compute_c7_storm_v2_probe_sum_mode(m: Macros) -> None:
           "over the 5 batches -- the sum-mode sibling of recStormV2ProbeSpeedupN10k; "
           "this probe's own ttf_mode is already \"sum\" (never affected by the "
           "end-to-end collapse), so the two values agree to rounding")
+
+
+# --------------------------------------------------------------------------
+# Lane W2af (2026-10-08) -- storm-v3: re-measurement of the committed
+# storm-v2 36-cell grid + its N=10,000 probe after the fifth arc's fixes
+# (end-to-end TTF interval isolation, the explicit --check-cache chain
+# setting and its e2e_refresh_calls/check_cache_misses recording),
+# benchmarks/storm-v1/README.md's own "storm-v3" section. Same schema,
+# same digest/axis checks as compute_c7_storm_v2/compute_c7_storm_v2_probe
+# above (gated the same way, per this lane's own task brief); every
+# recStormV2* macro above is untouched -- every macro below is a new
+# name.
+# --------------------------------------------------------------------------
+
+def _storm_v3_probe_tarball_sha_from_readme() -> str:
+    readme_text = STORM_V1_README.read_text(encoding="utf-8")
+    match = re.search(
+        r"storm-v3-r18-probe-records\.tar\.gz`\s*\(sha256\s*\n`([0-9a-f]{64})`\)", readme_text)
+    require(match is not None,
+            f"storm-v3 probe tarball: {relpath(STORM_V1_README)} names a sha256 for "
+            "storm-v3-r18-probe-records.tar.gz in its Per-batch rows paragraph")
+    return match.group(1) if match else ""
+
+
+def compute_c7_storm_v3_probe(m: Macros) -> None:
+    readme_sha = _storm_v3_probe_tarball_sha_from_readme()
+    eq(readme_sha, STORM_V3_R18_PROBE_RECORDS_TARBALL_SHA256,
+       "storm-v3 probe tarball: frozen sha256 constant matches "
+       f"{relpath(STORM_V1_README)}'s own quoted value")
+    eq(sha256_file(STORM_V3_R18_PROBE_RECORDS_TARBALL), STORM_V3_R18_PROBE_RECORDS_TARBALL_SHA256,
+       f"{relpath(STORM_V3_R18_PROBE_RECORDS_TARBALL)}: sha256 matches the frozen/README-quoted "
+       "value")
+
+    d = json.loads(STORM_V3_R18_PROBE.read_text(encoding="utf-8"))
+    rows = load_jsonl(STORM_V3_R18_PROBE_ROWS)
+    rows.sort(key=lambda r: r["batch_index"])
+    eq(len(rows), 5, "storm-v3 R18 probe: rows.jsonl line count")
+
+    # The probe's own records tarball holds exactly this same rows.jsonl
+    # (committed directly beside the tarball, per README.md's "Per-batch
+    # rows" paragraph) -- cross-checked by content, not re-parsed, since
+    # the committed rows.jsonl is already the authoritative per-batch
+    # source every other check below reads.
+    with tarfile.open(STORM_V3_R18_PROBE_RECORDS_TARBALL, "r:gz") as tf:
+        members = [n for n in tf.getnames() if n.endswith("-rows.jsonl")]
+        eq(len(members), 1, "storm-v3 probe tarball: exactly one *-rows.jsonl member")
+        tarball_rows = [json.loads(line) for line in
+                         tf.extractfile(members[0]).read().decode("utf-8").splitlines()
+                         if line.strip()]
+    tarball_rows.sort(key=lambda r: r["batch_index"])
+    eq(tarball_rows, rows, f"storm-v3 probe tarball: {members[0]} is byte-for-byte the same "
+       f"rows as the committed {relpath(STORM_V3_R18_PROBE_ROWS)}")
+
+    eq(d["config"]["n_artifacts"], 10000, "storm-v3 R18 probe frozen: probe artifact count")
+    eq(d["config"]["batches"], 5, "storm-v3 R18 probe frozen: batch count")
+    eq(d["config"]["measure_ttf"], "sum", "storm-v3 R18 probe frozen: measure_ttf (the probe "
+       "always measures in sum mode, per the v1/v2 probes -- README.md's own Probe-row note)")
+    eq(d["config"]["mix"], "c1", "storm-v3 R18 probe: this probe is the c1 mix (same cell as "
+       "the v1/v2 R-18 probes)")
+    eq(d["config"]["addendum_id"], "storm-v1-addendum-3",
+       "storm-v3 R18 probe frozen: addendum_id (same recipe as the v2 probe)")
+
+    commit = d["git_commit"]
+    eq(commit, "93d4543af61f786884884bee1ebf440ca5ce5673", "storm-v3 R18 probe frozen: engine "
+       "commit (the fifth-arc build, same as the storm-v3 main grid)")
+
+    recomputed_result_digest = hashlib.sha256(
+        json.dumps(rows, sort_keys=True, separators=(",", ":")).encode("utf-8")
+    ).hexdigest()
+    eq(recomputed_result_digest, d["result_digest"],
+       f"storm-v3 R18 probe: sha256 over every {relpath(STORM_V3_R18_PROBE_ROWS)} row (sorted "
+       f"by batch_index) matches {relpath(STORM_V3_R18_PROBE)}'s own result_digest")
+
+    l1_ttf = [r["arms"]["tgms-L1"]["ttf_ms"] for r in rows]
+    gr_ttf = [r["arms"]["global-recompute"]["ttf_ms"] for r in rows]
+    l1_med = statistics.median(l1_ttf)
+    gr_med = statistics.median(gr_ttf)
+    eq(l1_med, d["summary"]["arms"]["tgms-L1"]["ttf_p50_ms"],
+       "storm-v3 R18 probe: recomputed tgms-L1 ttf p50 (median of per-batch ttf_ms over 5 "
+       "batches) matches the record's own summary.arms field")
+    eq(gr_med, d["summary"]["arms"]["global-recompute"]["ttf_p50_ms"],
+       "storm-v3 R18 probe: recomputed global-recompute ttf p50 matches the record's own "
+       "summary.arms field")
+
+    speedup = gr_med / l1_med
+    close(speedup, 1.4189132475656465, 1e-6, "storm-v3 R18 probe frozen: speedup of tgms-L1 "
+          "over global-recompute (global_ttf_median / l1_ttf_median) -- the fifth-arc sibling "
+          "of recStormV2ProbeSpeedupN10k, same cell")
+
+    m.add("recStormV3ProbeSpeedup", f"{speedup:.3f}",
+          f"{relpath(STORM_V3_R18_PROBE_ROWS)}: median(arms.global-recompute.ttf_ms) / "
+          "median(arms.tgms-L1.ttf_ms) over the 5 batches -- P5/P6's speedup convention, at "
+          "N=10,000, fifth-arc re-measurement (== record's own summary.arms ttf_p50_ms ratio)")
+
+
+_STORM_V3_STORE_TOK = _STORM_V2_STORE_TOKEN
+_STORM_V3_MIX_TOK = _STORM_V2_MIX_TOKEN
+_STORM_V3_AGE_TOK = _STORM_V2_AGE_TOKEN
+
+
+def compute_c7_storm_v3(m: Macros) -> None:
+    readme_text = STORM_V1_README.read_text(encoding="utf-8")
+    readme_sha_match = re.search(
+        r"storm-v3-records-36-tasks\.tar\.gz`\s*\(sha256\s*\n`([0-9a-f]{64})`\)", readme_text)
+    require(readme_sha_match is not None,
+            f"storm-v3 main grid: {relpath(STORM_V1_README)} names a sha256 for "
+            "storm-v3-records-36-tasks.tar.gz in its Per-batch rows paragraph")
+    if readme_sha_match is not None:
+        eq(readme_sha_match.group(1), STORM_V3_RECORDS_TARBALL_SHA256,
+           "storm-v3 main grid: frozen sha256 constant matches "
+           f"{relpath(STORM_V1_README)}'s own quoted value")
+    eq(sha256_file(STORM_V3_RECORDS_TARBALL), STORM_V3_RECORDS_TARBALL_SHA256,
+       f"{relpath(STORM_V3_RECORDS_TARBALL)}: sha256 matches the frozen/README-quoted value")
+
+    merged = json.loads(STORM_V3_MAIN_GRID.read_text(encoding="utf-8"))
+    rows = load_jsonl(STORM_V3_MAIN_GRID_ROWS)
+    eq(merged["record"], relpath(STORM_V3_MAIN_GRID_ROWS),
+       f"storm-v3 main grid: {relpath(STORM_V3_MAIN_GRID)}'s own record field names its "
+       "rows.jsonl sidecar")
+    eq(len(rows), 36, "storm-v3 main grid: rows.jsonl line count")
+    eq(merged["total_tasks"], 36, "storm-v3 main grid: merged.total_tasks")
+    eq(merged["config"]["n_tasks"], 36, "storm-v3 main grid: merged.config.n_tasks")
+
+    canon = sorted(
+        ({"task_id": r.get("_task_id"), "result_digest": r.get("result_digest")} for r in rows),
+        key=lambda x: x["task_id"])
+    recomputed_result_digest = hashlib.sha256(
+        json.dumps(canon, sort_keys=True, separators=(",", ":")).encode()
+    ).hexdigest()
+    eq(recomputed_result_digest, merged["result_digest"],
+       f"storm-v3 main grid: sha256 over every {relpath(STORM_V3_MAIN_GRID_ROWS)} row's own "
+       f"(_task_id, result_digest), sorted by task_id, matches {relpath(STORM_V3_MAIN_GRID)}'s "
+       "own result_digest")
+
+    cfg = merged["config"]
+    recipe = {"stores": cfg["stores"], "mixes": cfg["mixes"], "ages": cfg["ages"],
+              "n_artifacts_list": cfg["n_artifacts_list"], "n_seeds": cfg["n_seeds"],
+              "base_seed": cfg["base_seed"], "ttf_modes": cfg["ttf_modes"]}
+    recomputed_dataset_digest = hashlib.sha256(
+        json.dumps(recipe, sort_keys=True, separators=(",", ":")).encode()
+    ).hexdigest()
+    eq(merged["dataset"]["digest_kind"], "manifest", "storm-v3 main grid: dataset.digest_kind")
+    eq(recomputed_dataset_digest, merged["dataset"]["digest"],
+       f"storm-v3 main grid: sha256 of {relpath(STORM_V3_MAIN_GRID)}'s own config.{{stores,"
+       "mixes,ages,n_artifacts_list,n_seeds,base_seed,ttf_modes}} matches its dataset.digest")
+
+    # README.md's own storm-v3 section: this recipe digest is byte-
+    # identical to the committed storm-v2 grid's own -- the fifth arc's
+    # fixes changed timing/instrumentation only, never the underlying
+    # correction-storm population. Cross-checked directly here (read
+    # fresh, independent of compute_c7_storm_v2 having already run).
+    v2_merged = json.loads(STORM_V2_MAIN_GRID.read_text(encoding="utf-8"))
+    eq(merged["dataset"]["digest"], v2_merged["dataset"]["digest"],
+       f"storm-v3 main grid: dataset.digest is byte-identical to {relpath(STORM_V2_MAIN_GRID)}'s "
+       "own (same correction-storm population, fifth arc changed timing/instrumentation only)")
+
+    commits = {r["git_commit"] for r in rows}
+    eq(len(commits), 1, "storm-v3 main grid: single git_commit across all 36 cells")
+    commit = next(iter(commits))
+    eq(commit, merged["git_commit"],
+       f"storm-v3 main grid: row git_commit matches {relpath(STORM_V3_MAIN_GRID)}'s own "
+       "git_commit")
+    eq(commit, "93d4543af61f786884884bee1ebf440ca5ce5673", "storm-v3 main grid frozen: engine "
+       "commit (the fifth-arc build)")
+
+    addenda = {r["config"]["addendum_id"] for r in rows}
+    eq(addenda, {"storm-v1-addendum-3"},
+       "storm-v3 main grid frozen: single addendum_id across all 36 cells (same recipe as v2)")
+    freezes = {r["config"]["freeze_sha256"] for r in rows}
+    eq(len(freezes), 1, "storm-v3 main grid: single freeze_sha256 across all 36 cells")
+    eq(next(iter(freezes)), cfg["freeze_sha256"],
+       f"storm-v3 main grid: row config.freeze_sha256 matches {relpath(STORM_V3_MAIN_GRID)}'s "
+       "own config.freeze_sha256")
+    eq(next(iter(freezes)), "c85fb0c8bb3b17e0b9f02a92a5ee0d5273298f43574583206582e5e5aa34d309",
+       "storm-v3 main grid frozen: freeze_sha256 (addendum-1/addendum-3's value, unchanged)")
+
+    stores = sorted({r["config"]["store"] for r in rows})
+    mixes = sorted({r["config"]["mix"] for r in rows})
+    ages = sorted({r["config"]["age"] for r in rows}, key=lambda a: (a is None, a))
+    seeds = sorted({r["config"]["seed"] for r in rows})
+    n_artifacts_vals = {r["config"]["n_artifacts"] for r in rows}
+    eq(stores, ["collegemsg", "synth-iv-60k"], "storm-v3 main grid frozen: store axis")
+    eq(mixes, ["c1", "c3", "c4"], "storm-v3 main grid frozen: mix axis")
+    eq(ages, ["deep", None], "storm-v3 main grid frozen: age axis")
+    eq(seeds, [0, 1, 2], "storm-v3 main grid frozen: seed axis")
+    eq(n_artifacts_vals, {1000}, "storm-v3 main grid frozen: n_artifacts axis")
+    eq(len(stores) * len(mixes) * len(ages) * len(seeds), 36,
+       "storm-v3 main grid: 2 stores x 3 mixes x 2 ages x 3 seeds == 36 cells")
+
+    def _speedup(r: dict) -> float:
+        arms = r["summary"]["arms"]
+        return arms["global-recompute"]["ttf_p50_ms"] / arms["tgms-L1"]["ttf_p50_ms"]
+
+    # --- plain (fixed end-to-end) per-cell speedups ---
+    all_speedups = [_speedup(r) for r in rows]
+    grid_min, grid_median, grid_max = min(all_speedups), statistics.median(all_speedups), \
+        max(all_speedups)
+    close(grid_min, 1.508881466174435, 1e-6,
+          "storm-v3 main grid frozen: minimum per-cell speedup over all 36 cells")
+    close(grid_median, 1.968053033574681, 1e-6,
+          "storm-v3 main grid frozen: median per-cell speedup over all 36 cells")
+    close(grid_max, 5.023414067288886, 1e-6,
+          "storm-v3 main grid frozen: maximum per-cell speedup over all 36 cells")
+
+    target = [r for r in rows if r["config"]["store"] == "synth-iv-60k"
+              and r["config"]["mix"] == "c1" and r["config"]["age"] is None
+              and r["config"]["seed"] == 0]
+    eq(len(target), 1, "storm-v3 main grid: exactly one cell at (synth-iv-60k, c1, age none, "
+       "seed 0)")
+    n1k_speedup = _speedup(target[0])
+    close(n1k_speedup, 2.034910890895796, 1e-6, "storm-v3 main grid frozen: N=1,000 speedup at "
+          "synth-iv-60k/c1/age-none/seed-0 -- the fifth-arc sibling of recStormV2SpeedupN1kSeed0, "
+          "same cell")
+
+    seed0_speedups: dict[tuple[str, str, str | None], float] = {}
+    for r in rows:
+        if r["config"]["seed"] == 0:
+            key = (r["config"]["store"], r["config"]["mix"], r["config"]["age"])
+            seed0_speedups[key] = _speedup(r)
+    eq(len(seed0_speedups), 12, "storm-v3 main grid: 12 distinct (store, mix, age) seed-0 cells")
+
+    frozen_seed0_speedups = {
+        ("synth-iv-60k", "c1", None): 2.034910890895796,
+        ("synth-iv-60k", "c1", "deep"): 2.102345431383939,
+        ("synth-iv-60k", "c3", None): 2.517466794605825,
+        ("synth-iv-60k", "c3", "deep"): 2.199252811981066,
+        ("synth-iv-60k", "c4", None): 5.023414067288886,
+        ("synth-iv-60k", "c4", "deep"): 2.3074497331999755,
+        ("collegemsg", "c1", None): 1.7647973224339746,
+        ("collegemsg", "c1", "deep"): 2.084192236375599,
+        ("collegemsg", "c3", None): 2.067384726149702,
+        ("collegemsg", "c3", "deep"): 1.9899826204084388,
+        ("collegemsg", "c4", None): 1.826155474407583,
+        ("collegemsg", "c4", "deep"): 1.8504557794516237,
+    }
+    eq(set(seed0_speedups), set(frozen_seed0_speedups), "storm-v3 main grid: (store, mix, age) "
+       "seed-0 keys match the frozen table")
+    for key, val in seed0_speedups.items():
+        close(val, frozen_seed0_speedups[key], 1e-6,
+              f"storm-v3 main grid frozen: seed-0 speedup for {key}")
+
+    # --- sum-mode reconstruction + e2e_refresh_calls + per-artifact/per-
+    # check costs, read live from the per-task per-batch rows packed in
+    # storm-v3-records-36-tasks.tar.gz (never committed as individual
+    # files, same reason as the storm-v2 tarball above). ---
+    sum_l1_p50: dict[int, float] = {}
+    speedup_sum: dict[int, float] = {}
+    store_of: dict[int, str] = {}
+    e2e_over_sum_ratios: list[float] = []
+    refresh_calls: list[float] = []
+    per_cell_publish_median: dict[int, float] = {}
+    per_cell_check_median: dict[int, float] = {}
+
+    with tarfile.open(STORM_V3_RECORDS_TARBALL, "r:gz") as tf:
+        tar_names = set(tf.getnames())
+        for r in rows:
+            tid = r["_task_id"]
+            store_of[tid] = r["config"]["store"]
+            idx = r["record"].index(f"task-{tid}/")
+            member = r["record"][idx:]
+            require(member in tar_names,
+                    f"storm-v3 main grid: task {tid}'s own record field names a member "
+                    f"({member}) present in the tarball")
+            raw = tf.extractfile(member).read().decode("utf-8")
+            batch_rows = [json.loads(line) for line in raw.splitlines() if line.strip()]
+            eq(len(batch_rows), r["config"]["batches"],
+               f"storm-v3 main grid task {tid}: batch row count matches config.batches")
+
+            n_registered = r["config"]["n_registered"]
+            l1_check = [b["arms"]["tgms-L1"]["check_wall_ms"] for b in batch_rows]
+            l1_refresh = [b["arms"]["tgms-L1"]["refresh_wall_ms"] for b in batch_rows]
+            l1_ttf = [b["arms"]["tgms-L1"]["ttf_ms"] for b in batch_rows]
+            sum_vals = [c + rf for c, rf in zip(l1_check, l1_refresh)]
+            sum_l1_p50[tid] = _e2e_percentile(sum_vals, 0.5)
+            speedup_sum[tid] = r["summary"]["arms"]["global-recompute"]["ttf_p50_ms"] \
+                / sum_l1_p50[tid]
+
+            for c, rf, t in zip(l1_check, l1_refresh, l1_ttf):
+                e2e_over_sum_ratios.append(t / (c + rf))
+            for b in batch_rows:
+                refresh_calls.append(b["arms"]["tgms-L1"]["e2e_refresh_calls"])
+
+            publish_vals = [b["global_recompute_wall_ms"] / n_registered for b in batch_rows]
+            per_cell_publish_median[tid] = statistics.median(publish_vals)
+            check_vals = [b["arms"]["tgms-L0"]["check_wall_ms"] / b["candidate_survivors"]
+                          for b in batch_rows]
+            per_cell_check_median[tid] = statistics.median(check_vals)
+
+    eq(len(e2e_over_sum_ratios), 720, "storm-v3 main grid: pooled (ttf_ms / (check_wall_ms + "
+       "refresh_wall_ms)) sample size (36 cells x 20 batches)")
+    eq(len(refresh_calls), 720, "storm-v3 main grid: pooled e2e_refresh_calls sample size "
+       "(36 cells x 20 batches)")
+
+    e2e_over_sum_median = statistics.median(e2e_over_sum_ratios)
+    close(e2e_over_sum_median, 1.0637528228152107, 1e-6, "storm-v3 main grid frozen: median "
+          "(tgms-L1 ttf_ms / (check_wall_ms + refresh_wall_ms)) pooled over all 720 per-batch "
+          "rows -- now a real end-to-end-vs-sum-mode ratio (not instrument error: the fifth "
+          "arc isolated the end-to-end interval, see recStormV2LOneE2eOverCheckMedian for the "
+          "pre-fix evidence)")
+    refresh_calls_median = statistics.median(refresh_calls)
+    eq(refresh_calls_median, 235.0, "storm-v3 main grid frozen: median arms.tgms-L1."
+       "e2e_refresh_calls pooled over all 720 per-batch rows")
+
+    speedup_sum_vals = list(speedup_sum.values())
+    speedup_sum_grid_median = statistics.median(speedup_sum_vals)
+    close(speedup_sum_grid_median, 2.137434239520437, 1e-6, "storm-v3 main grid frozen: median "
+          "per-cell (global-recompute ttf_p50_ms / sum-mode tgms-L1 p50) over all 36 cells")
+
+    frozen_per_store = {
+        "synth-iv-60k": {"publish": 9.024415645020555, "check": 3.047169488402985,
+                          "global_s": 7.990805128123611, "l1_s": 3.722820113413036},
+        "collegemsg": {"publish": 2.5111981979758484, "check": 3.2670570244100636,
+                       "global_s": 2.3600596324540675, "l1_s": 1.210354161914438},
+    }
+    for store in ("synth-iv-60k", "collegemsg"):
+        tok = _STORM_V3_STORE_TOK[store]
+        tids = [tid for tid, s in store_of.items() if s == store]
+        eq(len(tids), 18, f"storm-v3 main grid: {store} cell count (3 mixes x 2 ages x 3 seeds)")
+        publish_med = statistics.median(per_cell_publish_median[t] for t in tids)
+        check_med = statistics.median(per_cell_check_median[t] for t in tids)
+        close(publish_med, frozen_per_store[store]["publish"], 1e-6,
+              f"storm-v3 main grid frozen: {store} median per-cell median "
+              "(global_recompute_wall_ms / n_registered)")
+        close(check_med, frozen_per_store[store]["check"], 1e-6,
+              f"storm-v3 main grid frozen: {store} median per-cell median "
+              "(tgms-L0.check_wall_ms / candidate_survivors)")
+
+        store_cells = [r for r in rows if r["config"]["store"] == store]
+        global_p50_s = statistics.median(
+            c["summary"]["arms"]["global-recompute"]["ttf_p50_ms"] for c in store_cells) / 1000
+        l1_p50_s = statistics.median(
+            c["summary"]["arms"]["tgms-L1"]["ttf_p50_ms"] for c in store_cells) / 1000
+        close(global_p50_s, frozen_per_store[store]["global_s"], 1e-6,
+              f"storm-v3 main grid frozen: {store} median global-recompute ttf_p50_ms, s")
+        close(l1_p50_s, frozen_per_store[store]["l1_s"], 1e-6,
+              f"storm-v3 main grid frozen: {store} median tgms-L1 ttf_p50_ms, s")
+
+        m.add(f"recStormV3PerArtifactPublishMs{tok}", f"{publish_med:.1f}",
+              f"{relpath(STORM_V3_RECORDS_TARBALL)}: median over the {store} grid's 18 cells "
+              "of each cell's own median(per-batch global_recompute_wall_ms / "
+              "config.n_registered)")
+        m.add(f"recStormV3PerCheckMs{tok}", f"{check_med:.1f}",
+              f"{relpath(STORM_V3_RECORDS_TARBALL)}: median over the {store} grid's 18 cells "
+              "of each cell's own median(per-batch arms.tgms-L0.check_wall_ms / "
+              "candidate_survivors)")
+        m.add(f"recStormV3GlobalP50S{tok}", f"{global_p50_s:.1f}",
+              f"{relpath(STORM_V3_MAIN_GRID_ROWS)}: median over the {store} grid's 18 cells of "
+              "summary.arms.global-recompute.ttf_p50_ms, /1000, s")
+        m.add(f"recStormV3LOneP50S{tok}", f"{l1_p50_s:.1f}",
+              f"{relpath(STORM_V3_MAIN_GRID_ROWS)}: median over the {store} grid's 18 cells of "
+              "summary.arms.tgms-L1.ttf_p50_ms, /1000, s")
+
+    # --- wall ratio vs. the committed storm-v2 grid (read fresh,
+    # independent of compute_c7_storm_v2 having already run), matched by
+    # (store, mix, age, seed) -- each grid has exactly one cell per key. ---
+    v2_rows = load_jsonl(STORM_V2_MAIN_GRID_ROWS)
+    eq(len(v2_rows), 36, f"storm-v3 wall ratio: {relpath(STORM_V2_MAIN_GRID_ROWS)} line count")
+
+    def _key(r: dict) -> tuple[str, str, str | None, int]:
+        c = r["config"]
+        return (c["store"], c["mix"], c["age"], c["seed"])
+
+    v2_by_key = {_key(r): r for r in v2_rows}
+    eq(len(v2_by_key), 36, "storm-v3 wall ratio: 36 distinct (store, mix, age, seed) keys in "
+       "the committed storm-v2 grid")
+    wall_ratios = []
+    for r in rows:
+        key = _key(r)
+        require(key in v2_by_key, f"storm-v3 wall ratio: storm-v2 grid has a cell at {key}")
+        wall_ratios.append(r["config"]["wall_s"] / v2_by_key[key]["config"]["wall_s"])
+    eq(len(wall_ratios), 36, "storm-v3 wall ratio: 36 matched (store, mix, age, seed) cells")
+    wall_ratio_median = statistics.median(wall_ratios)
+    close(wall_ratio_median, 0.04861216107057502, 1e-6, "storm-v3 main grid frozen: median "
+          "per-cell (storm-v3 config.wall_s / storm-v2 config.wall_s) over the 36 matched "
+          "cells")
+
+    v3_total_wall_s = sum(r["config"]["wall_s"] for r in rows)
+    v2_total_wall_s = sum(r["config"]["wall_s"] for r in v2_rows)
+    close(v3_total_wall_s, merged["total_wall_s"], 0.01,
+          f"storm-v3 main grid: sum(config.wall_s) matches {relpath(STORM_V3_MAIN_GRID)}'s own "
+          "total_wall_s")
+    close(v2_total_wall_s, v2_merged["total_wall_s"], 0.01,
+          f"storm-v3 wall ratio: sum(config.wall_s) matches {relpath(STORM_V2_MAIN_GRID)}'s own "
+          "total_wall_s")
+    v3_total_wall_h = v3_total_wall_s / 3600
+    v2_total_wall_h = v2_total_wall_s / 3600
+    close(v3_total_wall_h, 3.19837279147572, 1e-6,
+          "storm-v3 main grid frozen: sum(config.wall_s) / 3600, h")
+    close(v2_total_wall_h, 67.31827278203434, 1e-6,
+          "storm-v2 main grid frozen: sum(config.wall_s) / 3600, h (new macro, not previously "
+          "emitted by compute_c7_storm_v2)")
+
+    m.add("recStormV3SpeedupN1kSeed0", f"{n1k_speedup:.3f}",
+          f"{relpath(STORM_V3_MAIN_GRID_ROWS)}: summary.arms.{{global-recompute,tgms-L1}}."
+          "ttf_p50_ms ratio at (store=synth-iv-60k, mix=c1, age=none, seed=0, "
+          "n_artifacts=1000), fifth-arc re-measurement")
+    for key, val in seed0_speedups.items():
+        store, mix, age = key
+        name = (f"recStormV3Speedup{_STORM_V3_STORE_TOK[store]}{_STORM_V3_MIX_TOK[mix]}"
+                f"{_STORM_V3_AGE_TOK[age]}")
+        m.add(name, f"{val:.3f}",
+              f"{relpath(STORM_V3_MAIN_GRID_ROWS)}: summary.arms.{{global-recompute,tgms-L1}}."
+              f"ttf_p50_ms ratio at (store={store}, mix={mix}, age={age or 'none'}, seed=0, "
+              "n_artifacts=1000) -- fifth-arc re-measurement, seed-0 cell only (not a "
+              "median over seeds, unlike recStormV2Speedup's own per-group macros)")
+    m.add("recStormV3SpeedupGridMin", f"{grid_min:.3f}",
+          f"{relpath(STORM_V3_MAIN_GRID_ROWS)}: minimum per-cell "
+          "summary.arms.{global-recompute,tgms-L1}.ttf_p50_ms ratio over all 36 cells")
+    m.add("recStormV3SpeedupGridMedian", f"{grid_median:.3f}",
+          f"{relpath(STORM_V3_MAIN_GRID_ROWS)}: median per-cell "
+          "summary.arms.{global-recompute,tgms-L1}.ttf_p50_ms ratio over all 36 cells")
+    m.add("recStormV3SpeedupGridMax", f"{grid_max:.3f}",
+          f"{relpath(STORM_V3_MAIN_GRID_ROWS)}: maximum per-cell "
+          "summary.arms.{global-recompute,tgms-L1}.ttf_p50_ms ratio over all 36 cells")
+    m.add("recStormV3SpeedupSumGridMedian", f"{speedup_sum_grid_median:.2f}",
+          f"{relpath(STORM_V3_RECORDS_TARBALL)}: median per-cell (summary.arms.global-recompute."
+          "ttf_p50_ms / sum-mode tgms-L1 p50, i.e. _e2e_percentile of arms.tgms-L1."
+          "check_wall_ms + refresh_wall_ms over each cell's 20 batches) over all 36 cells")
+    m.add("recStormV3LOneE2eOverSumMedian", f"{e2e_over_sum_median:.3f}",
+          f"{relpath(STORM_V3_RECORDS_TARBALL)}: median over all 720 per-batch rows of "
+          "arms.tgms-L1.ttf_ms / (arms.tgms-L1.check_wall_ms + arms.tgms-L1.refresh_wall_ms)")
+    m.add("recStormV3LOneRefreshCallsMedian", tex_num(round(refresh_calls_median)),
+          f"{relpath(STORM_V3_RECORDS_TARBALL)}: median over all 720 per-batch rows of "
+          "arms.tgms-L1.e2e_refresh_calls")
+    m.add("recStormV3WallRatioMedian", f"{wall_ratio_median:.3f}",
+          f"{relpath(STORM_V3_MAIN_GRID_ROWS)} vs. {relpath(STORM_V2_MAIN_GRID_ROWS)}: median "
+          "per-cell (storm-v3 config.wall_s / storm-v2 config.wall_s) over the 36 matched "
+          "(store, mix, age, seed) cells")
+    m.add("recStormV3TotalWallH", f"{v3_total_wall_h:.1f}",
+          f"{relpath(STORM_V3_MAIN_GRID_ROWS)}: sum(config.wall_s) / 3600, h")
+    m.add("recStormV2TotalWallH", f"{v2_total_wall_h:.1f}",
+          f"{relpath(STORM_V2_MAIN_GRID_ROWS)}: sum(config.wall_s) / 3600, h")
 
 
 # --------------------------------------------------------------------------
@@ -9187,6 +9661,312 @@ def compute_ext_sum_mode(m: Macros) -> None:
 
 
 # --------------------------------------------------------------------------
+# Lane R1 (2026-10-08) -- fifth-arc re-measurement of the T1 same-host
+# control: the exact 19-cell T1 loop replayed on the fixed engine +
+# harness (public main 93d4543a) with --check-cache chain added. See
+# benchmarks/external-v1/README.md's "Fifth-arc re-measurement of the
+# same-host control" section. None of compute_external_baselines's or
+# compute_ext_sum_mode's own macros above are touched; every macro below
+# is a new name, scored the same same-host-substitution way (A11) the
+# pre-arc T1 control was.
+#
+# n_registered (needed for the per-artifact-publish costs below) is not
+# in EITHER control's own per-cell summary or per-batch rows -- only in
+# each cell's own -rows.jsonl manifest.config.n_registered (the embedded
+# per-cell equality manifest). candidate_survivors (needed for a
+# per-check cost analogous to recStormV3PerCheckMs) is not anywhere in
+# either control record at all -- storm-v1/storm-v2/storm-v3's own
+# per-batch rows carry it, but neither tgms-control-2026-10-05-batches
+# .jsonl nor tgms-control-2026-10-08-arc5-batches.jsonl do (checked
+# directly below, not assumed). recExt1ControlArcFivePerCheckMs{Synth,
+# CollegeMsg} therefore land as the literal text "not measured", per
+# this lane's own task brief, rather than improvised from a field that
+# is not there.
+# --------------------------------------------------------------------------
+
+_ARC5_PROBE_CID = "synth-iv-60k-c1-none-n10000-s0"
+
+
+def compute_external_arc5(m: Macros) -> None:
+    sums = _sha256sums_by_name(EXTERNAL_V1_SHA256SUMS.read_text(encoding="utf-8"))
+    for path in (EXTERNAL_TGMS_CONTROL_ARC5, EXTERNAL_TGMS_CONTROL_ARC5_ROWS,
+                 EXTERNAL_TGMS_CONTROL_ARC5_BATCHES, EXTERNAL_TGMS_CONTROL_ARC5_BATCHES_SOURCES,
+                 EXTERNAL_TGMS_CONTROL, EXTERNAL_TGMS_CONTROL_ROWS, EXTERNAL_TGMS_CONTROL_BATCHES):
+        eq(sha256_file(path), sums.get(path.name),
+           f"{relpath(path)}: sha256 matches {relpath(EXTERNAL_V1_SHA256SUMS)}'s entry for "
+           f"{path.name}")
+
+    arc5 = json.loads(EXTERNAL_TGMS_CONTROL_ARC5.read_text(encoding="utf-8"))
+    arc5_rows = [json.loads(line) for line in
+                 EXTERNAL_TGMS_CONTROL_ARC5_ROWS.read_text(encoding="utf-8").splitlines()
+                 if line.strip()]
+    arc5_batches = load_jsonl(EXTERNAL_TGMS_CONTROL_ARC5_BATCHES)
+    prearc = json.loads(EXTERNAL_TGMS_CONTROL.read_text(encoding="utf-8"))
+    prearc_rows = load_jsonl(EXTERNAL_TGMS_CONTROL_ROWS)
+    prearc_batches = load_jsonl(EXTERNAL_TGMS_CONTROL_BATCHES)
+
+    eq(arc5["n_cells"], 19, f"{relpath(EXTERNAL_TGMS_CONTROL_ARC5)}: n_cells")
+    eq(len(arc5["summary"]["per_cell"]), 19,
+       f"{relpath(EXTERNAL_TGMS_CONTROL_ARC5)}: len(summary.per_cell)")
+    eq(len(arc5_rows), 19, f"{relpath(EXTERNAL_TGMS_CONTROL_ARC5_ROWS)}: line count")
+    eq(len(arc5_batches), 365, f"{relpath(EXTERNAL_TGMS_CONTROL_ARC5_BATCHES)}: line count "
+       "(18 end-to-end cells x 20 batches + the 1 sum-mode probe cell x 5 batches)")
+
+    # digest checks, same formulas as scripts/external_record.py's own
+    # build_t1_record (restated here, never imported -- this generator's
+    # house rule): result_digest == sha256(json.dumps(config.cell_ids,
+    # sort_keys=True)); dataset.digest == sha256(json.dumps(sorted
+    # per-row t1_equality.t1_eventlog_sha256, sort_keys=True)).
+    def _sha256_of(obj) -> str:
+        return hashlib.sha256(json.dumps(obj, sort_keys=True).encode()).hexdigest()
+
+    eq(_sha256_of(arc5["config"]["cell_ids"]), arc5["result_digest"],
+       f"{relpath(EXTERNAL_TGMS_CONTROL_ARC5)}: sha256(config.cell_ids) matches its own "
+       "result_digest")
+    eventlog_shas = sorted(r["t1_equality"].get("t1_eventlog_sha256", "") for r in arc5_rows)
+    eq(_sha256_of(eventlog_shas), arc5["dataset"]["digest"],
+       f"{relpath(EXTERNAL_TGMS_CONTROL_ARC5)}: sha256(sorted per-row "
+       "t1_equality.t1_eventlog_sha256) matches its own dataset.digest")
+    eq(arc5["dataset"]["digest_kind"], "eventlog_sha",
+       f"{relpath(EXTERNAL_TGMS_CONTROL_ARC5)}: dataset.digest_kind")
+    eq(arc5["git_commit"], "93d4543af61f786884884bee1ebf440ca5ce5673",
+       f"{relpath(EXTERNAL_TGMS_CONTROL_ARC5)} frozen: git_commit (the fifth-arc build, same "
+       "as the storm-v3 grid)")
+
+    arc5_pc = {c["cell_id"]: c for c in arc5["summary"]["per_cell"]}
+    prearc_pc = {c["cell_id"]: c for c in prearc["summary"]["per_cell"]}
+    eq(len(arc5_pc), 19, f"{relpath(EXTERNAL_TGMS_CONTROL_ARC5)}: distinct cell_ids")
+    eq(set(arc5_pc), set(prearc_pc), f"{relpath(EXTERNAL_TGMS_CONTROL_ARC5)}: cell_id set "
+       f"matches {relpath(EXTERNAL_TGMS_CONTROL)}'s own (the exact T1 loop replayed)")
+
+    # candidate_survivors is absent from both control records' per-batch
+    # rows (checked directly, not assumed) -- see the module comment
+    # above this function for why recExt1ControlArcFivePerCheckMs{Synth,
+    # CollegeMsg} cannot be computed.
+    require(not any("candidate_survivors" in b for b in arc5_batches),
+            f"{relpath(EXTERNAL_TGMS_CONTROL_ARC5_BATCHES)}: candidate_survivors is absent "
+            "from every batch row (confirms recExt1ControlArcFivePerCheckMs cannot be "
+            "computed from this record)")
+    require(not any("candidate_survivors" in b for b in prearc_batches),
+            f"{relpath(EXTERNAL_TGMS_CONTROL_BATCHES)}: candidate_survivors is absent from "
+            "every batch row (same gap on the pre-arc side)")
+
+    nonprobe = sorted(c for c in arc5_pc if c != _ARC5_PROBE_CID)
+    eq(len(nonprobe), 18, f"{relpath(EXTERNAL_TGMS_CONTROL_ARC5)}: non-probe cell count")
+
+    speedups = {c: arc5_pc[c]["arms"]["global-recompute"]["ttf_p50_ms"]
+                / arc5_pc[c]["arms"]["tgms-L1"]["ttf_p50_ms"] for c in nonprobe}
+    speedup_median = statistics.median(speedups.values())
+    close(speedup_median, 1.5337351212879125, 1e-6, "external-v1 R1 frozen: median per-cell "
+          "(global-recompute / tgms-L1) ttf_p50_ms ratio over the 18 N=1,000 cells, fixed "
+          "end-to-end TTF")
+
+    arc5_nreg = {r["cell_id"]: r["manifest"]["config"]["n_registered"] for r in arc5_rows}
+    prearc_nreg = {r["cell_id"]: r["manifest"]["config"]["n_registered"] for r in prearc_rows}
+    arc5_by_cell: dict[str, list[dict]] = {}
+    for b in arc5_batches:
+        arc5_by_cell.setdefault(b["cell_id"], []).append(b)
+    prearc_by_cell: dict[str, list[dict]] = {}
+    for b in prearc_batches:
+        prearc_by_cell.setdefault(b["cell_id"], []).append(b)
+
+    arc5_publish_med = {c: statistics.median(b["global_recompute_wall_ms"] / arc5_nreg[c]
+                                              for b in bs) for c, bs in arc5_by_cell.items()}
+    prearc_publish_med = {c: statistics.median(b["global_recompute_wall_ms"] / prearc_nreg[c]
+                                                for b in bs) for c, bs in prearc_by_cell.items()}
+
+    frozen_store = {
+        "synth-iv-60k": {"speedup": 1.7706840778409965, "global_s": 15.625486038974486,
+                          "publish": 17.66782513656601, "preArc": 266.2281213501483},
+        "collegemsg": {"speedup": 1.2311506644819457, "global_s": 4.998952686437406,
+                        "publish": 5.324375463327556, "preArc": 228.14183179881775},
+    }
+    for store in ("synth-iv-60k", "collegemsg"):
+        tok = _STORM_V2_STORE_TOKEN[store]
+        cells = [c for c in nonprobe if arc5_pc[c]["store"] == store]
+        eq(len(cells), 9, f"external-v1 R1: {store} non-probe cell count")
+        store_speedup_median = statistics.median(speedups[c] for c in cells)
+        global_p50_s = statistics.median(
+            arc5_pc[c]["arms"]["global-recompute"]["ttf_p50_ms"] for c in cells) / 1000
+        publish_med = statistics.median(arc5_publish_med[c] for c in cells)
+        prearc_cells = [c for c in cells if c in prearc_publish_med]
+        eq(len(prearc_cells), 9, f"external-v1 R1: {store} cells with a pre-arc publish-ms "
+           "counterpart")
+        prearc_publish = statistics.median(prearc_publish_med[c] for c in prearc_cells)
+
+        close(store_speedup_median, frozen_store[store]["speedup"], 1e-6,
+              f"external-v1 R1 frozen: {store} median per-cell speedup")
+        close(global_p50_s, frozen_store[store]["global_s"], 1e-6,
+              f"external-v1 R1 frozen: {store} median global-recompute ttf_p50_ms, s")
+        close(publish_med, frozen_store[store]["publish"], 1e-6,
+              f"external-v1 R1 frozen: {store} median per-cell median (global_recompute_wall_ms "
+              "/ n_registered)")
+        close(prearc_publish, frozen_store[store]["preArc"], 1e-6,
+              f"external-v1 T1 (pre-arc) frozen: {store} median per-cell median "
+              "(global_recompute_wall_ms / n_registered)")
+
+        m.add(f"recExt1ControlArcFive{tok}SpeedupMedian", f"{store_speedup_median:.2f}",
+              f"{relpath(EXTERNAL_TGMS_CONTROL_ARC5)}: median over the {store} grid's 9 "
+              "N=1,000 cells of arms.global-recompute.ttf_p50_ms / arms.tgms-L1.ttf_p50_ms")
+        m.add(f"recExt1ControlArcFiveGlobalP50S{tok}", f"{global_p50_s:.1f}",
+              f"{relpath(EXTERNAL_TGMS_CONTROL_ARC5)}: median over the {store} grid's 9 "
+              "N=1,000 cells of arms.global-recompute.ttf_p50_ms, /1000, s")
+        m.add(f"recExt1ControlArcFivePerArtifactPublishMs{tok}", f"{publish_med:.1f}",
+              f"{relpath(EXTERNAL_TGMS_CONTROL_ARC5_BATCHES)}: median over the {store} grid's "
+              "9 N=1,000 cells of each cell's own median(per-batch global_recompute_wall_ms / "
+              f"{relpath(EXTERNAL_TGMS_CONTROL_ARC5_ROWS)}'s manifest.config.n_registered)")
+        m.add(f"recExt1ControlArcFivePerCheckMs{tok}", "not measured",
+              f"{relpath(EXTERNAL_TGMS_CONTROL_ARC5_BATCHES)} carries no candidate_survivors "
+              "field (checked directly above) -- this quantity cannot be computed from the "
+              "committed record; landed as the literal text \"not measured\" rather than "
+              "improvised")
+        m.add(f"recExt1ControlArcFivePreArcPublishMs{tok}", f"{prearc_publish:.1f}",
+              f"{relpath(EXTERNAL_TGMS_CONTROL_BATCHES)}: same quantity as "
+              f"recExt1ControlArcFivePerArtifactPublishMs{tok}, from the pre-arc "
+              f"(2026-10-05) control -- the \"before\" number")
+
+    m.add("recExt1ControlArcFiveSpeedupMedian", f"{speedup_median:.2f}",
+          f"{relpath(EXTERNAL_TGMS_CONTROL_ARC5)}: median over the 18 N=1,000 cells (both "
+          "stores, excluding the probe) of arms.global-recompute.ttf_p50_ms / "
+          "arms.tgms-L1.ttf_p50_ms, fixed end-to-end TTF")
+
+    arc5_wall_total = sum(c["wall_s"] for c in arc5["summary"]["per_cell"])
+    prearc_wall_total = sum(c["wall_s"] for c in prearc["summary"]["per_cell"])
+    wall_ratio = arc5_wall_total / prearc_wall_total
+    close(wall_ratio, 0.06861499408121433, 1e-6, "external-v1 R1 frozen: sum(R1 wall_s) / "
+          "sum(T1 wall_s) over all 19 cells (README.md's own quoted 0.069, R1 ~14.6x faster)")
+    m.add("recExt1ControlArcFiveWallRatio", f"{wall_ratio:.3f}",
+          f"{relpath(EXTERNAL_TGMS_CONTROL_ARC5)} / {relpath(EXTERNAL_TGMS_CONTROL)}: "
+          "sum(summary.per_cell[*].wall_s) over all 19 cells, R1 / T1")
+
+    arc5_probe_wall_s = arc5_pc[_ARC5_PROBE_CID]["wall_s"]
+    prearc_probe_wall_s = prearc_pc[_ARC5_PROBE_CID]["wall_s"]
+    close(arc5_probe_wall_s, 1399.654662847519, 1e-3,
+          "external-v1 R1 frozen: probe cell wall_s")
+    close(prearc_probe_wall_s, 18922.91165471077, 1e-3,
+          "external-v1 T1 (pre-arc) frozen: probe cell wall_s")
+    m.add("recExt1ControlArcFiveProbeWallS", str(round(arc5_probe_wall_s)),
+          f"{relpath(EXTERNAL_TGMS_CONTROL_ARC5)}: summary.per_cell[{_ARC5_PROBE_CID!r}].wall_s")
+    m.add("recExt1ControlPreArcProbeWallS", str(round(prearc_probe_wall_s)),
+          f"{relpath(EXTERNAL_TGMS_CONTROL)}: summary.per_cell[{_ARC5_PROBE_CID!r}].wall_s "
+          "(the pre-arc, 2026-10-05 \"before\" number)")
+
+    # --- corrected external ratios, scored against R1 instead of T1 ---
+    neo = json.loads(EXTERNAL_NEO4J.read_text(encoding="utf-8"))
+    ivm = json.loads(EXTERNAL_IVM.read_text(encoding="utf-8"))
+    sums2 = _sha256sums_by_name(EXTERNAL_V1_SHA256SUMS.read_text(encoding="utf-8"))
+    for path in (EXTERNAL_NEO4J, EXTERNAL_IVM):
+        eq(sha256_file(path), sums2.get(path.name),
+           f"external-v1 R1 ratios: {relpath(path)} sha256 matches "
+           f"{relpath(EXTERNAL_V1_SHA256SUMS)}'s entry for {path.name}")
+    neo_pc = {c["cell_id"]: c for c in neo["summary"]["per_cell"]}
+    ivm_pc = {c["cell_id"]: c for c in ivm["summary"]["per_cell"]}
+    for c in nonprobe + [_ARC5_PROBE_CID]:
+        require(c in neo_pc, f"{relpath(EXTERNAL_NEO4J)}: has cell {c}")
+        require(c in ivm_pc, f"{relpath(EXTERNAL_IVM)}: has cell {c}")
+
+    frozen_ratio_gr = {"synth-iv-60k": 7.368852303105694, "collegemsg": 1.3762097079744744}
+    frozen_speedup_l1_median = {"synth-iv-60k": 13.05923535264051,
+                                 "collegemsg": 1.6692824958930117}
+    frozen_speedup_l1_min = {"synth-iv-60k": 12.014487745317089, "collegemsg": 1.540457047284815}
+    for store in ("synth-iv-60k", "collegemsg"):
+        tok = _STORM_V2_STORE_TOKEN[store]
+        cells = [c for c in nonprobe if arc5_pc[c]["store"] == store]
+        eq(len(cells), 9, f"external-v1 R1 ratios: {store} N=1,000 cell count (no probe)")
+        ratio_gr = [neo_pc[c]["refresh_wall_ms"]["median"]
+                    / arc5_pc[c]["arms"]["global-recompute"]["ttf_p50_ms"] for c in cells]
+        speedup_l1 = [neo_pc[c]["refresh_wall_ms"]["median"]
+                      / arc5_pc[c]["arms"]["tgms-L1"]["ttf_p50_ms"] for c in cells]
+        ratio_gr_median = statistics.median(ratio_gr)
+        speedup_l1_median = statistics.median(speedup_l1)
+        speedup_l1_min = min(speedup_l1)
+        close(ratio_gr_median, frozen_ratio_gr[store], 1e-6,
+              f"external-v1 R1 frozen: {store} median (neo4j refresh_wall_ms.median / R1 "
+              "global-recompute ttf_p50_ms)")
+        close(speedup_l1_median, frozen_speedup_l1_median[store], 1e-6,
+              f"external-v1 R1 frozen: {store} median (neo4j refresh_wall_ms.median / R1 "
+              "tgms-L1 ttf_p50_ms)")
+        close(speedup_l1_min, frozen_speedup_l1_min[store], 1e-6,
+              f"external-v1 R1 frozen: {store} min (neo4j refresh_wall_ms.median / R1 tgms-L1 "
+              "ttf_p50_ms)")
+
+        name_tail = "CollegeMsg" if store == "collegemsg" else "Synth"
+        m.add(f"recExt1RatioGrArcFiveMedian{name_tail}", f"{ratio_gr_median:.2f}",
+              f"{relpath(EXTERNAL_NEO4J)}: median over the {store} grid's 9 N=1,000 cells of "
+              f"refresh_wall_ms.median / {relpath(EXTERNAL_TGMS_CONTROL_ARC5)}'s "
+              "arms.global-recompute.ttf_p50_ms for the same cell_id")
+        m.add(f"recExt1SpeedupLOneArcFiveMedian{name_tail}", f"{speedup_l1_median:.2f}",
+              f"{relpath(EXTERNAL_NEO4J)}: median over the same 9 cells of refresh_wall_ms."
+              f"median / {relpath(EXTERNAL_TGMS_CONTROL_ARC5)}'s arms.tgms-L1.ttf_p50_ms")
+        m.add(f"recExt1SpeedupLOneArcFiveMin{name_tail}", f"{speedup_l1_min:.2f}",
+              f"{relpath(EXTERNAL_NEO4J)}: min over the same 9 cells of the same ratio")
+
+    probe_ratio_gr = (neo_pc[_ARC5_PROBE_CID]["refresh_wall_ms"]["median"]
+                       / arc5_pc[_ARC5_PROBE_CID]["arms"]["global-recompute"]["ttf_p50_ms"])
+    probe_speedup_l1 = (neo_pc[_ARC5_PROBE_CID]["refresh_wall_ms"]["median"]
+                         / arc5_pc[_ARC5_PROBE_CID]["arms"]["tgms-L1"]["ttf_p50_ms"])
+    close(probe_ratio_gr, 6.728904597792199, 1e-6,
+          "external-v1 R1 frozen: probe cell (neo4j refresh_wall_ms.median / R1 "
+          "global-recompute ttf_p50_ms)")
+    close(probe_speedup_l1, 8.506742638862788, 1e-6,
+          "external-v1 R1 frozen: probe cell (neo4j refresh_wall_ms.median / R1 tgms-L1 "
+          "ttf_p50_ms)")
+    m.add("recExt1RatioGrArcFiveProbe", f"{probe_ratio_gr:.2f}",
+          f"{relpath(EXTERNAL_NEO4J)}: refresh_wall_ms.median at {_ARC5_PROBE_CID} / "
+          f"{relpath(EXTERNAL_TGMS_CONTROL_ARC5)}'s arms.global-recompute.ttf_p50_ms")
+    m.add("recExt1SpeedupLOneArcFiveProbe", f"{probe_speedup_l1:.2f}",
+          f"{relpath(EXTERNAL_NEO4J)}: refresh_wall_ms.median at {_ARC5_PROBE_CID} / "
+          f"{relpath(EXTERNAL_TGMS_CONTROL_ARC5)}'s arms.tgms-L1.ttf_p50_ms")
+
+    bands = {
+        "recent": [f"{s}-c3-recent-n1000-s0" for s in ("collegemsg", "synth-iv-60k")],
+        "hours": [f"{s}-c3-hours-n1000-s0" for s in ("collegemsg", "synth-iv-60k")],
+        "days": [f"{s}-c3-days-n1000-s0" for s in ("collegemsg", "synth-iv-60k")],
+        "deep": [f"{s}-{mix}-deep-n1000-s0" for s in ("collegemsg", "synth-iv-60k")
+                 for mix in ("c1", "c3", "c4")],
+        "none": [f"{s}-{mix}-none-n1000-s0" for s in ("collegemsg", "synth-iv-60k")
+                 for mix in ("c1", "c3", "c4")],
+    }
+    eq({k: len(v) for k, v in bands.items()},
+       {"recent": 2, "hours": 2, "days": 2, "deep": 6, "none": 6},
+       "external-v1 R1: Ext2 band cell counts (same recent/hours/days/deep bands as "
+       "compute_external_baselines, plus a new none band -- R1's own N=1,000 grid now covers "
+       "age=none directly, unlike the committed cluster grid)")
+    frozen_band_ratio = {
+        "recent": 0.008511728081713653, "hours": 0.008990801042505549,
+        "days": 0.007222887469018321, "deep": 0.00456097166367346,
+        "none": 0.006945450776091013,
+    }
+    for band, cells in bands.items():
+        for c in cells:
+            require(c in ivm_pc, f"{relpath(EXTERNAL_IVM)}: has cell {c}")
+            require(c in arc5_pc, f"{relpath(EXTERNAL_TGMS_CONTROL_ARC5)}: has cell {c}")
+        ratios = [ivm_pc[c]["refresh_wall_ms"]["median"]
+                  / arc5_pc[c]["arms"]["tgms-L1"]["ttf_p50_ms"] for c in cells]
+        ratio_med = statistics.median(ratios)
+        close(ratio_med, frozen_band_ratio[band], 1e-6,
+              f"external-v1 R1 frozen: {band} band median (ivm refresh_wall_ms.median / R1 "
+              "tgms-L1 ttf_p50_ms)")
+        value = f"{ratio_med:.3f}" if ratio_med >= 0.01 else sci_3sf(ratio_med)
+        m.add(f"recExt2RatioArcFive{band.capitalize()}", value,
+              f"{relpath(EXTERNAL_IVM)}: median over the band's {len(cells)} cell(s) of "
+              f"refresh_wall_ms.median / {relpath(EXTERNAL_TGMS_CONTROL_ARC5)}'s "
+              "arms.tgms-L1.ttf_p50_ms for the same cell_id -- the recent/hours/days = the 2 "
+              "c3 age cells each, deep/none = the 6 seed-0 cells each")
+
+    probe_band_ratio = (ivm_pc[_ARC5_PROBE_CID]["refresh_wall_ms"]["median"]
+                         / arc5_pc[_ARC5_PROBE_CID]["arms"]["tgms-L1"]["ttf_p50_ms"])
+    close(probe_band_ratio, 0.04172732307190128, 1e-6,
+          "external-v1 R1 frozen: probe cell (ivm refresh_wall_ms.median / R1 tgms-L1 "
+          "ttf_p50_ms)")
+    probe_value = f"{probe_band_ratio:.3f}" if probe_band_ratio >= 0.01 \
+        else sci_3sf(probe_band_ratio)
+    m.add("recExt2RatioArcFiveProbe", probe_value,
+          f"{relpath(EXTERNAL_IVM)}: refresh_wall_ms.median at {_ARC5_PROBE_CID} / "
+          f"{relpath(EXTERNAL_TGMS_CONTROL_ARC5)}'s arms.tgms-L1.ttf_p50_ms")
+
+
+# --------------------------------------------------------------------------
 # pending stubs (records not yet landed)
 # --------------------------------------------------------------------------
 
@@ -9269,6 +10049,8 @@ def main() -> int:
     compute_c7_storm_v2(m)
     compute_c7_storm_v2_sum_mode(m)
     compute_c7_storm_v2_probe_sum_mode(m)
+    compute_c7_storm_v3_probe(m)
+    compute_c7_storm_v3(m)
     compute_d160(m)
     compute_d160_llm_direct_fix(m)
     compute_c2(m)
@@ -9288,6 +10070,7 @@ def main() -> int:
     compute_b7_scale(m)
     compute_external_baselines(m)
     compute_ext_sum_mode(m)
+    compute_external_arc5(m)
     add_pending_stubs(m)
 
     if FAILURES:
