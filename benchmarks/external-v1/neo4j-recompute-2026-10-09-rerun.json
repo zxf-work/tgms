@@ -1,0 +1,426 @@
+{
+  "config": {
+    "campaign": "neo4j-recompute",
+    "cell_ids": [
+      "synth-iv-60k-c1-deep-n1000-s0",
+      "synth-iv-60k-c1-none-n1000-s0",
+      "synth-iv-60k-c3-days-n1000-s0",
+      "synth-iv-60k-c3-deep-n1000-s0",
+      "synth-iv-60k-c3-hours-n1000-s0",
+      "synth-iv-60k-c3-none-n1000-s0",
+      "synth-iv-60k-c3-recent-n1000-s0",
+      "synth-iv-60k-c4-deep-n1000-s0",
+      "synth-iv-60k-c4-none-n1000-s0",
+      "synth-iv-60k-c1-none-n10000-s0"
+    ]
+  },
+  "dataset": {
+    "digest": "611bd9b6ad916aee2a980374cc740159305b108cf89cce8d0c11c3b9e9a314dd",
+    "digest_kind": "manifest",
+    "name": "storm-v2 grid (Neo4j 5.26 recompute)"
+  },
+  "git_commit": "08aba6a1efa049fdb409f056326a851240ecb0c2",
+  "machine": {
+    "cpus": 40,
+    "host": "xzgpu",
+    "platform": "Linux-5.4.0-216-generic-x86_64-with-glibc2.31",
+    "ram_gb": 93.0
+  },
+  "n_cells": 10,
+  "protocol": {
+    "ceilings": {
+      "note": "per-cell ceilings are in each row's own result"
+    },
+    "reps": 1,
+    "warmups": 1
+  },
+  "record": "c1-work/out-n1b/neo4j-recompute-2026-10-09-rows.jsonl",
+  "result_digest": "213d16ed30faa3cf2b32fd0e93dcb4c5bed14a46809057362e5c472d1fb1d974",
+  "schema_version": "1.0.0",
+  "seed": {
+    "reason": "cell identity carries the seed; see cell_id per row",
+    "value": null
+  },
+  "summary": {
+    "per_cell": [
+      {
+        "artifacts_touched_per_burst": {
+          "all_registered": true,
+          "median": 884
+        },
+        "cell_id": "synth-iv-60k-c1-deep-n1000-s0",
+        "config_kind": "neo4j",
+        "equality_level": "L2-partial",
+        "false_fresh": 0,
+        "false_stale": 16753.0,
+        "host_load": null,
+        "n_bursts": 21,
+        "oracle_agreement": {
+          "agree": 18564,
+          "disagree": 0,
+          "n_compared": 18564,
+          "not_answered": 0,
+          "oracle_refused": 0
+        },
+        "refresh_wall_ms": {
+          "max": 114595.23124701809,
+          "median": 111367.24457296077,
+          "sum": 2237132.4150183937
+        },
+        "versions": {
+          "apoc_version": "5.26.0-core",
+          "driver_version": "5.28.6",
+          "jdk_version": "Temurin 21.0.12",
+          "neo4j_version": "5.26.0"
+        }
+      },
+      {
+        "artifacts_touched_per_burst": {
+          "all_registered": true,
+          "median": 884
+        },
+        "cell_id": "synth-iv-60k-c1-none-n1000-s0",
+        "config_kind": "neo4j",
+        "equality_level": "L2-partial",
+        "false_fresh": 0,
+        "false_stale": 16704.0,
+        "host_load": null,
+        "n_bursts": 21,
+        "oracle_agreement": {
+          "agree": 18564,
+          "disagree": 0,
+          "n_compared": 18564,
+          "not_answered": 0,
+          "oracle_refused": 0
+        },
+        "refresh_wall_ms": {
+          "max": 111065.51091303118,
+          "median": 107182.3818340199,
+          "sum": 2157932.7591900947
+        },
+        "versions": {
+          "apoc_version": "5.26.0-core",
+          "driver_version": "5.28.6",
+          "jdk_version": "Temurin 21.0.12",
+          "neo4j_version": "5.26.0"
+        }
+      },
+      {
+        "artifacts_touched_per_burst": {
+          "all_registered": true,
+          "median": 884
+        },
+        "cell_id": "synth-iv-60k-c3-days-n1000-s0",
+        "config_kind": "neo4j",
+        "equality_level": "new cell (no committed digest)",
+        "false_fresh": 0,
+        "false_stale": 16900.0,
+        "host_load": null,
+        "n_bursts": 21,
+        "oracle_agreement": {
+          "agree": 18564,
+          "disagree": 0,
+          "n_compared": 18564,
+          "not_answered": 0,
+          "oracle_refused": 0
+        },
+        "refresh_wall_ms": {
+          "max": 112065.45867293607,
+          "median": 108780.2452739561,
+          "sum": 2186275.339143118
+        },
+        "versions": {
+          "apoc_version": "5.26.0-core",
+          "driver_version": "5.28.6",
+          "jdk_version": "Temurin 21.0.12",
+          "neo4j_version": "5.26.0"
+        }
+      },
+      {
+        "artifacts_touched_per_burst": {
+          "all_registered": true,
+          "median": 884
+        },
+        "cell_id": "synth-iv-60k-c3-deep-n1000-s0",
+        "config_kind": "neo4j",
+        "equality_level": "L2-partial",
+        "false_fresh": 0,
+        "false_stale": 16903.0,
+        "host_load": null,
+        "n_bursts": 21,
+        "oracle_agreement": {
+          "agree": 18564,
+          "disagree": 0,
+          "n_compared": 18564,
+          "not_answered": 0,
+          "oracle_refused": 0
+        },
+        "refresh_wall_ms": {
+          "max": 111205.28441399802,
+          "median": 109398.73466291465,
+          "sum": 2194548.528447747
+        },
+        "versions": {
+          "apoc_version": "5.26.0-core",
+          "driver_version": "5.28.6",
+          "jdk_version": "Temurin 21.0.12",
+          "neo4j_version": "5.26.0"
+        }
+      },
+      {
+        "artifacts_touched_per_burst": {
+          "all_registered": true,
+          "median": 884
+        },
+        "cell_id": "synth-iv-60k-c3-hours-n1000-s0",
+        "config_kind": "neo4j",
+        "equality_level": "new cell (no committed digest)",
+        "false_fresh": 0,
+        "false_stale": 17036.0,
+        "host_load": null,
+        "n_bursts": 21,
+        "oracle_agreement": {
+          "agree": 18564,
+          "disagree": 0,
+          "n_compared": 18564,
+          "not_answered": 0,
+          "oracle_refused": 0
+        },
+        "refresh_wall_ms": {
+          "max": 108774.93981597945,
+          "median": 102614.61426399183,
+          "sum": 2064339.346449473
+        },
+        "versions": {
+          "apoc_version": "5.26.0-core",
+          "driver_version": "5.28.6",
+          "jdk_version": "Temurin 21.0.12",
+          "neo4j_version": "5.26.0"
+        }
+      },
+      {
+        "artifacts_touched_per_burst": {
+          "all_registered": true,
+          "median": 884
+        },
+        "cell_id": "synth-iv-60k-c3-none-n1000-s0",
+        "config_kind": "neo4j",
+        "equality_level": "L2-partial",
+        "false_fresh": 0,
+        "false_stale": 16838.0,
+        "host_load": null,
+        "n_bursts": 21,
+        "oracle_agreement": {
+          "agree": 18564,
+          "disagree": 0,
+          "n_compared": 18564,
+          "not_answered": 0,
+          "oracle_refused": 0
+        },
+        "refresh_wall_ms": {
+          "max": 105539.620812051,
+          "median": 103276.10922697932,
+          "sum": 2072616.0944199655
+        },
+        "versions": {
+          "apoc_version": "5.26.0-core",
+          "driver_version": "5.28.6",
+          "jdk_version": "Temurin 21.0.12",
+          "neo4j_version": "5.26.0"
+        }
+      },
+      {
+        "artifacts_touched_per_burst": {
+          "all_registered": true,
+          "median": 884
+        },
+        "cell_id": "synth-iv-60k-c3-recent-n1000-s0",
+        "config_kind": "neo4j",
+        "equality_level": "new cell (no committed digest)",
+        "false_fresh": 0,
+        "false_stale": 16701.0,
+        "host_load": null,
+        "n_bursts": 21,
+        "oracle_agreement": {
+          "agree": 18564,
+          "disagree": 0,
+          "n_compared": 18564,
+          "not_answered": 0,
+          "oracle_refused": 0
+        },
+        "refresh_wall_ms": {
+          "max": 110819.66085394379,
+          "median": 107974.704068969,
+          "sum": 2162641.1229507066
+        },
+        "versions": {
+          "apoc_version": "5.26.0-core",
+          "driver_version": "5.28.6",
+          "jdk_version": "Temurin 21.0.12",
+          "neo4j_version": "5.26.0"
+        }
+      },
+      {
+        "artifacts_touched_per_burst": {
+          "all_registered": true,
+          "median": 884
+        },
+        "cell_id": "synth-iv-60k-c4-deep-n1000-s0",
+        "config_kind": "neo4j",
+        "equality_level": "L2-partial",
+        "false_fresh": 0,
+        "false_stale": 16869.0,
+        "host_load": null,
+        "n_bursts": 21,
+        "oracle_agreement": {
+          "agree": 18564,
+          "disagree": 0,
+          "n_compared": 18564,
+          "not_answered": 0,
+          "oracle_refused": 0
+        },
+        "refresh_wall_ms": {
+          "max": 112616.69834295753,
+          "median": 102700.29380207416,
+          "sum": 2080474.6614933247
+        },
+        "versions": {
+          "apoc_version": "5.26.0-core",
+          "driver_version": "5.28.6",
+          "jdk_version": "Temurin 21.0.12",
+          "neo4j_version": "5.26.0"
+        }
+      },
+      {
+        "artifacts_touched_per_burst": {
+          "all_registered": true,
+          "median": 884
+        },
+        "cell_id": "synth-iv-60k-c4-none-n1000-s0",
+        "config_kind": "neo4j",
+        "equality_level": "L2-partial",
+        "false_fresh": 0,
+        "false_stale": 16847.0,
+        "host_load": null,
+        "n_bursts": 21,
+        "oracle_agreement": {
+          "agree": 18564,
+          "disagree": 0,
+          "n_compared": 18564,
+          "not_answered": 0,
+          "oracle_refused": 0
+        },
+        "refresh_wall_ms": {
+          "max": 110569.36166400556,
+          "median": 105142.03452400398,
+          "sum": 2104227.810402983
+        },
+        "versions": {
+          "apoc_version": "5.26.0-core",
+          "driver_version": "5.28.6",
+          "jdk_version": "Temurin 21.0.12",
+          "neo4j_version": "5.26.0"
+        }
+      },
+      {
+        "artifacts_touched_per_burst": {
+          "all_registered": true,
+          "median": 8922.0
+        },
+        "cell_id": "synth-iv-60k-c1-none-n10000-s0",
+        "config_kind": "neo4j",
+        "equality_level": "L2",
+        "false_fresh": 0,
+        "false_stale": 42206.0,
+        "host_load": null,
+        "n_bursts": 6,
+        "oracle_agreement": {
+          "agree": 53532,
+          "disagree": 0,
+          "n_compared": 53532,
+          "not_answered": 0,
+          "oracle_refused": 0
+        },
+        "refresh_wall_ms": {
+          "max": 1080248.6043260433,
+          "median": 1069130.51675749,
+          "sum": 5359543.426931021
+        },
+        "versions": {
+          "apoc_version": "5.26.0-core",
+          "driver_version": "5.28.6",
+          "jdk_version": "Temurin 21.0.12",
+          "neo4j_version": "5.26.0"
+        }
+      }
+    ],
+    "predictions_measured": {
+      "ext1": {
+        "a_n_cells": 7,
+        "a_ratio_gr_max": 0.7682281574410234,
+        "a_ratio_gr_median": 0.7164681297147945,
+        "a_ratio_gr_min": 0.6685056824677893,
+        "b_n_cells": 7,
+        "b_n_cells_meeting_half_margin": 6,
+        "b_speedup_median": 3.577737034727127,
+        "b_speedup_min": 1.325987958597443,
+        "c_probe_ratio_gr": 0.6812997775582319,
+        "d_disagree_total": 0,
+        "d_pass": true,
+        "per_cell": {
+          "synth-iv-60k-c1-deep-n1000-s0": {
+            "committed_source": "c1-work/storm-v2-main-grid-2026-09-15.json",
+            "ratio_gr": 0.724313781151708,
+            "speedup_l1": 3.55059829600181
+          },
+          "synth-iv-60k-c1-none-n1000-s0": {
+            "committed_source": "c1-work/storm-v2-main-grid-2026-09-15.json",
+            "ratio_gr": 0.7106567992683075,
+            "speedup_l1": 3.6761444573701625
+          },
+          "synth-iv-60k-c1-none-n10000-s0": {
+            "committed_source": "c1-work/storm-v2-r18-probe-2026-09-15.json",
+            "ratio_gr": 0.6812997775582319,
+            "speedup_l1": 1.325987958597443
+          },
+          "synth-iv-60k-c3-days-n1000-s0": {
+            "note": "no committed storm-v2 row for this cell (needs lane T1 or the main grid) -- ratio_gr/speedup left null",
+            "ratio_gr": null,
+            "speedup_l1": null
+          },
+          "synth-iv-60k-c3-deep-n1000-s0": {
+            "committed_source": "c1-work/storm-v2-main-grid-2026-09-15.json",
+            "ratio_gr": 0.7227811168287434,
+            "speedup_l1": 3.5700982575797973
+          },
+          "synth-iv-60k-c3-hours-n1000-s0": {
+            "note": "no committed storm-v2 row for this cell (needs lane T1 or the main grid) -- ratio_gr/speedup left null",
+            "ratio_gr": null,
+            "speedup_l1": null
+          },
+          "synth-iv-60k-c3-none-n1000-s0": {
+            "committed_source": "c1-work/storm-v2-main-grid-2026-09-15.json",
+            "ratio_gr": 0.7682281574410234,
+            "speedup_l1": 4.144144572307492
+          },
+          "synth-iv-60k-c3-recent-n1000-s0": {
+            "note": "no committed storm-v2 row for this cell (needs lane T1 or the main grid) -- ratio_gr/speedup left null",
+            "ratio_gr": null,
+            "speedup_l1": null
+          },
+          "synth-iv-60k-c4-deep-n1000-s0": {
+            "committed_source": "c1-work/storm-v2-main-grid-2026-09-15.json",
+            "ratio_gr": 0.6685056824677893,
+            "speedup_l1": 3.577737034727127
+          },
+          "synth-iv-60k-c4-none-n1000-s0": {
+            "committed_source": "c1-work/storm-v2-main-grid-2026-09-15.json",
+            "ratio_gr": 0.7164681297147945,
+            "speedup_l1": 4.78936539701387
+          }
+        }
+      }
+    }
+  },
+  "timestamp_utc": "2026-10-09T09:28:07Z"
+}

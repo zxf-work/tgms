@@ -492,3 +492,120 @@ medians 11.9 ms/check on the fifth-arc side — landed separately
 (`recExt1ControlArcFiveProbePerCheckMs`) rather than folded into either
 store's N=1,000 median above. No verdict on what these numbers imply is
 drawn here — the coordinator scores it.
+
+## Re-run of the ten affected cells with the fixed translation (2026-10-09)
+
+**Provenance.** Lane C3-records' re-run of the 10 Neo4j-recompute cells
+named in the "Oracle-agreement summary" section above as disagreeing
+(`n1b/`), on a `git archive` export of public main `08aba6a1efa049fdb409f056326a851240ecb0c2`
+(xzgpu copy under `n1b-work/neo4j-recompute`, a plain `git archive`
+checkout — `HOST-N1B.log` records every `.py` file's own sha256, not a
+git checkout's own commit sha, since the xzgpu copy is not a git working
+tree). `neo4j_recompute/queries.py`'s own sha256
+(`0e58b584d524886c688357a3cf671e365c21aba9f6047488629f611f52a4e29e`) was
+checked directly against the file at the fix commit `1d9e3edb` before the
+grid ran (`HOST-N1B.log`'s own "sha256 of queries.py (must equal the file
+at 1d9e3edb)" line) and matches. Assembled with
+`scripts/external_record.py` at the current public-main version (copied
+onto xzgpu's `c1-work/external_record.py`, sha256-verified equal to the
+laptop's own `scripts/external_record.py` before running), against the
+same `external-v1/export/` bundles the original N1 campaign and the T1
+same-host control both checked against: `--campaign neo4j-recompute`
+with 10 `--cell export/<cell> n1b/<cell>/result.json n1b/<cell>/check.json`
+arguments, `--git-commit 08aba6a1efa049fdb409f056326a851240ecb0c2 --date
+2026-10-09`. The ten cells: the nine `synth-iv-60k-{c1-deep,c1-none,
+c3-days,c3-deep,c3-hours,c3-none,c3-recent,c4-deep,c4-none}-n1000-s0`
+cells plus the N=10,000 probe `synth-iv-60k-c1-none-n10000-s0` — exactly
+the 10 cells the original campaign's own per-cell oracle-agreement table
+named as disagreeing (195 disagreements total, all tracing to the single
+artifact `storm-000911`).
+
+**The defect.** `storm-000911` is one generated artifact whose
+`temporal_paths` query has `src == dst` — a path query whose start and
+end node are the same artifact. The old (pre-fix) Cypher translation
+cycled back through the source node when enumerating hop sequences for
+this case, producing extra/incorrect path rows; the oracle (which
+treats `src == dst` correctly) disagreed with Neo4j's answer at every
+epoch this artifact was queried in every seed-0 `synth-iv-60k` cell (21
+disagreements per N=1,000 cell x 9 cells = 189, + 6 at the N=10,000
+probe = 195, matching the original record's own tally exactly). Fixed
+in commit `1d9e3edb` (ledger id
+`neo4j-recompute-temporal-paths-src-eq-dst-cycles`); this re-run is that
+fix's measurement, not a new finding.
+
+**Host protocol.** Same protocol as every other lane in this directory
+— Memgraph (the project's other co-tenant store) stopped for the timed
+window and restarted after, no co-tenant store running during a timed
+cell, a host snapshot (`uptime`, `free`, top processes) immediately
+before and after every cell. `HOST-N1B.log`: Memgraph stop issued at
+`2026-10-09T00:28:13Z` (`docker stop memgraph`, "for the timed window"),
+restarted at `2026-10-09T08:00:18Z` (`docker start memgraph`, the log's
+own last control line) — a 7h32m timed window, all 10 cells, no
+co-tenant store running throughout. Every cell's own `PROGRESS.log` line
+reports `oracle=a/a` (every artifact-epoch pair compared, zero
+disagreements) and `bursts=20/20` (or `5/5` for the probe).
+
+**The 10-row table.** "wall s" is `n1b/PROGRESS.log`'s own `wall=<N>s`
+field for this re-run; "N1 wall s" is the same field, same cell, from
+the original campaign's `n1/PROGRESS.log` (committed nowhere in this
+repo — both `PROGRESS.log` files are xzgpu-only, read directly for this
+table, same convention this README's own "Estimates vs. actuals"
+section above already uses for a `PROGRESS.log`-sourced number).
+"oracle agree/n_compared" before/after and "recompute_ms_median"
+before/after are each read from the two *committed* records
+(`neo4j-recompute-2026-10-07.json` for "before", this section's own
+`neo4j-recompute-2026-10-09-rerun.json` for "after") —
+`summary.per_cell[*].oracle_agreement.{agree,n_compared}` and
+`summary.per_cell[*].refresh_wall_ms.median` respectively.
+
+| cell_id | wall s | N1 wall s | ratio | oracle agree/n_compared (before) | oracle agree/n_compared (after) | recompute\_ms\_median (before) | recompute\_ms\_median (after) |
+|---|---:|---:|---:|---|---|---:|---:|
+| `synth-iv-60k-c1-deep-n1000-s0` | 2397 | 2367 | 1.013 | 18543/18564 | 18564/18564 | 109687.5 | 111367.2 |
+| `synth-iv-60k-c1-none-n1000-s0` | 2310 | 3173 | 0.728 | 18543/18564 | 18564/18564 | 118628.1 | 107182.4 |
+| `synth-iv-60k-c3-days-n1000-s0` | 2340 | 2468 | 0.948 | 18543/18564 | 18564/18564 | 116540.6 | 108780.2 |
+| `synth-iv-60k-c3-deep-n1000-s0` | 2347 | 2469 | 0.951 | 18543/18564 | 18564/18564 | 114723.5 | 109398.7 |
+| `synth-iv-60k-c3-hours-n1000-s0` | 2211 | 2831 | 0.781 | 18543/18564 | 18564/18564 | 109054.3 | 102614.6 |
+| `synth-iv-60k-c3-none-n1000-s0` | 2218 | 2467 | 0.899 | 18543/18564 | 18564/18564 | 110967.8 | 103276.1 |
+| `synth-iv-60k-c3-recent-n1000-s0` | 2312 | 2395 | 0.965 | 18543/18564 | 18564/18564 | 108981.0 | 107974.7 |
+| `synth-iv-60k-c4-deep-n1000-s0` | 2231 | 2896 | 0.770 | 18543/18564 | 18564/18564 | 123819.6 | 102700.3 |
+| `synth-iv-60k-c4-none-n1000-s0` | 2260 | 2576 | 0.877 | 18543/18564 | 18564/18564 | 118870.3 | 105142.0 |
+| `synth-iv-60k-c1-none-n10000-s0` (probe) | 6494 | 6829 | 0.951 | 53526/53532 | 53532/53532 | 1092569.5 | 1069130.5 |
+
+All 10 cells: 0 disagreements after the fix (`n_compared` unchanged,
+`agree` now equal to `n_compared` on every cell) — the 195 disagreements
+the original campaign reported are fully accounted for by
+`storm-000911` alone, exactly as that section already stated, and are
+now gone on the fixed translation. Wall time moved in both directions
+cell-by-cell (ratio range 0.728-1.013, not a uniform speed-up or
+slow-down) — consistent with ordinary host-load variance between two
+runs on the same shared, non-exclusive host, not a property of the fix
+itself (the fix changes `temporal_paths`'s query plan only for rows
+where `src == dst`, a tiny fraction of each cell's total query mix).
+
+**Record status.** The original campaign record
+(`neo4j-recompute-2026-10-07.json` + `-rows.jsonl`) stays untouched —
+this section's own "before" column reads it, nothing in it was edited.
+It remains the record of what was measured on the pre-fix translation
+(195 disagreements, stated plainly in this README's "Oracle-agreement
+summary" section above). `neo4j-recompute-2026-10-09-rerun.json` +
+`-rows.jsonl` is a new, separate record: the defect's re-measurement on
+the fixed translation, not a correction or replacement of the original.
+
+**Files.**
+
+| file | cells | sha256 |
+|---|---|---|
+| `neo4j-recompute-2026-10-09-rerun.json` + `-rows.jsonl` | Neo4j 5.26 full recompute, fixed translation, the 10 affected cells | see `SHA256SUMS.txt` |
+
+Validated: `scripts/check_result_manifest.py benchmarks/external-v1/neo4j-recompute-2026-10-09-rerun.json`
+→ `ok: ... conforms to result_manifest.schema.json`.
+
+**Macros** (`scripts/sys_paper_macros.py`'s `compute_external_rerun_n1b`):
+
+| macro | value | field |
+|---|---:|---|
+| `recExt1RerunCells` | 10 | `neo4j-recompute-2026-10-09-rerun.json`'s `n_cells` / `len(summary.per_cell)` |
+| `recExt1RerunAgreeCells` | 10 | count of `summary.per_cell[*]` with `oracle_agreement.disagree == 0` |
+| `recExt1RerunDisagreements` | 0 | sum of `summary.per_cell[*].oracle_agreement.disagree` over all 10 cells |
+| `recExt1RerunProbeAgree` | `53532/53532` | the probe cell's own `oracle_agreement.{agree}/{n_compared}`, as text |
+| `recExt1RerunWallRatioMedian` | 0.927 | median over the 10 cells of (rerun wall / N1 wall); neither record's own `summary.per_cell` carries a field literally named `wall_s`, so both sides are each record's own `-rows.jsonl` sum of `result.per_cell.per_burst[*].wall_ms` (checked directly in `compute_external_rerun_n1b`, not assumed) — a different, narrower field than this section's own "wall s"/"N1 wall s" table columns above, which read `PROGRESS.log`'s full-cell `wall=` instead (that file is not committed, so the macro cannot use it) |
